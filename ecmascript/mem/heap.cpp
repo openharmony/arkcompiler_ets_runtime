@@ -493,7 +493,7 @@ void Heap::AdjustBySurvivalRate(size_t originalNewSpaceSize)
         double averageSurvivalRate = memController_->GetAverageSurvivalRate();
         // 2 means half
         if ((averageSurvivalRate / 2) > survivalRate && averageSurvivalRate > GROW_OBJECT_SURVIVAL_RATE) {
-            fullMarkRequested_ = true;
+            SetFullMarkRequestedState(true);
             OPTIONAL_LOG(ecmaVm_, INFO) << " Current survival rate: " << survivalRate
                 << " is less than half the average survival rates: " << averageSurvivalRate
                 << ". Trigger full mark next time.";
@@ -676,7 +676,8 @@ void Heap::RecomputeLimits()
     globalSpaceAllocLimit_ = newGlobalSpaceLimit;
     oldSpace_->SetInitialCapacity(newOldSpaceLimit);
     globalSpaceNativeLimit_ = memController_->CalculateAllocLimit(GetGlobalNativeSize(), MIN_HEAP_SIZE,
-                                                                  maxGlobalSize, newSpaceCapacity, growingFactor);
+                                                                  MAX_GLOBAL_NATIVE_LIMIT, newSpaceCapacity,
+                                                                  growingFactor);
     OPTIONAL_LOG(ecmaVm_, INFO) << "RecomputeLimits oldSpaceAllocLimit_: " << newOldSpaceLimit
         << " globalSpaceAllocLimit_: " << globalSpaceAllocLimit_
         << " globalSpaceNativeLimit_:" << globalSpaceNativeLimit_;
@@ -912,6 +913,18 @@ void Heap::TryTriggerConcurrentMarking()
         markType_ = MarkType::MARK_YOUNG;
         TriggerConcurrentMarking();
         OPTIONAL_LOG(ecmaVm_, INFO) << "Trigger semi mark";
+    }
+}
+
+void Heap::TryTriggerFullMarkByNativeSize()
+{
+    if (GlobalNativeSizeLargerThanLimit()) {
+        if (concurrentMarker_->IsEnabled()) {
+            SetFullMarkRequestedState(true);
+            TryTriggerConcurrentMarking();
+        } else {
+            CheckAndTriggerOldGC();
+        }
     }
 }
 
