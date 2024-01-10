@@ -50,7 +50,8 @@ struct KeyArg {
     std::string_view key;          /* Extracted key, like "--key" */
     std::string_view val;          /* Extracted value, like "value" */
     bool isEqualOpt = false;       /* indicates whether the parsed option contained "=" symbol.
-                                      For options like --key=value, it's true. For options like --key value, it's false */
+                                      For options like --key=value, it's true.
+                                      For options like --key value, it's false */
     bool isJoinedOpt = false;      /* indicates whether the parsed option was a joined option, like: --optValue */
 };
 

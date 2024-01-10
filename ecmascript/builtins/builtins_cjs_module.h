@@ -37,7 +37,6 @@ public:
     static JSTaggedValue UpdateChildren(EcmaRuntimeCallInfo *msg);
 
     static JSTaggedValue ResolveFilename(EcmaRuntimeCallInfo *argv);
-
 };
 }  // namespace panda::ecmascript::builtins
 #endif  // ECMASCRIPT_BUILTINS_BUILTINS_CJS_MODULE_H

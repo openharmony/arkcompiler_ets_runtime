@@ -60,10 +60,7 @@ std::pair<RetCode, size_t> ExtractValue(size_t argsIndex, const std::deque<std::
             return {RetCode::unnecessaryValue, 0};
         }
         return {RetCode::noError, 0};
-    }
-
-    /* Need to parse second command line argument to check options value */
-    else {
+    } else {    // Need to parse second command line argument to check options value
         /* Optional value can be set only with "=" like this --key=value  */
         if (opt.ExpectedVal() == ValueExpectedType::kValueDisallowed ||
             opt.ExpectedVal() == ValueExpectedType::kValueOptional) {

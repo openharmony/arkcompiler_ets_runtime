@@ -134,7 +134,7 @@ GateRef RangeGuard::TryApplyRangeGuardGate(GateRef gate)
         if (originalInputOpcode == OpCode::LOAD_TYPED_ARRAY_LENGTH ||
             originalInputOpcode == OpCode::LOAD_ARRAY_LENGTH) {
             rangeGuardGate = TryApplyRangeGuardForLength(dependChain, gate, originalInput);
-        } else if(originalInputOpcode != OpCode::CONSTANT && rangeGuardGate == Circuit::NullGate()) {
+        } else if (originalInputOpcode != OpCode::CONSTANT && rangeGuardGate == Circuit::NullGate()) {
             rangeGuardGate = TryApplyRangeGuardForIndex(dependChain, gate, originalInput);
         }
         if (rangeGuardGate != Circuit::NullGate()) {

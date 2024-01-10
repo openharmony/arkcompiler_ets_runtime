@@ -408,7 +408,7 @@ void ContainersPrivate::InitializeLightWeightMapIterator(JSThread *thread)
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSHClass> iteratorClass = factory->NewEcmaHClass(JSObject::SIZE, JSType::JS_ITERATOR,
-                                                                   env->GetIteratorPrototype());
+                                                              env->GetIteratorPrototype());
     JSHandle<JSObject> lightWeightMapIteratorPrototype(factory->NewJSObject(iteratorClass));
     SetFrozenFunction(thread, lightWeightMapIteratorPrototype, "next", JSAPILightWeightMapIterator::Next,
                       FuncLength::ONE);

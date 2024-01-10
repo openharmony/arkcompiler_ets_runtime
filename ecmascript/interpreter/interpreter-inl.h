@@ -2666,7 +2666,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
             uint16_t slotId = READ_INST_8_0();
             JSTaggedValue res = ICRuntimeStub::LoadGlobalICByName(thread,
                                                                   ProfileTypeInfo::Cast(
-                                                                  profileTypeInfo.GetTaggedObject()),
+                                                                      profileTypeInfo.GetTaggedObject()),
                                                                   globalObj, prop, slotId, true);
             INTERPRETER_RETURN_IF_ABRUPT(res);
             SET_ACC(res);
@@ -2707,7 +2707,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
             uint16_t slotId = READ_INST_16_0();
             JSTaggedValue res = ICRuntimeStub::LoadGlobalICByName(thread,
                                                                   ProfileTypeInfo::Cast(
-                                                                  profileTypeInfo.GetTaggedObject()),
+                                                                      profileTypeInfo.GetTaggedObject()),
                                                                   globalObj, prop, slotId, true);
             INTERPRETER_RETURN_IF_ABRUPT(res);
             SET_ACC(res);
@@ -2751,7 +2751,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
             SAVE_ACC();
             JSTaggedValue res = ICRuntimeStub::StoreGlobalICByName(thread,
                                                                    ProfileTypeInfo::Cast(
-                                                                   profileTypeInfo.GetTaggedObject()),
+                                                                       profileTypeInfo.GetTaggedObject()),
                                                                    globalObj, propKey, value, slotId, true);
             INTERPRETER_RETURN_IF_ABRUPT(res);
             RESTORE_ACC();
@@ -2874,7 +2874,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
             uint16_t slotId = READ_INST_16_0();
             JSTaggedValue res = ICRuntimeStub::LoadGlobalICByName(thread,
                                                                   ProfileTypeInfo::Cast(
-                                                                  profileTypeInfo.GetTaggedObject()),
+                                                                      profileTypeInfo.GetTaggedObject()),
                                                                   globalObj, propKey, slotId, false);
             INTERPRETER_RETURN_IF_ABRUPT(res);
             SET_ACC(res);
@@ -3082,7 +3082,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
             SAVE_ACC();
             JSTaggedValue res = ICRuntimeStub::StoreGlobalICByName(thread,
                                                                    ProfileTypeInfo::Cast(
-                                                                   profileTypeInfo.GetTaggedObject()),
+                                                                       profileTypeInfo.GetTaggedObject()),
                                                                    globalObj, prop, value, slotId, false);
             INTERPRETER_RETURN_IF_ABRUPT(res);
             RESTORE_ACC();

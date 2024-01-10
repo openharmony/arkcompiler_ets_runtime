@@ -746,7 +746,7 @@ JSHandle<JSTaggedValue> ModuleManager::LoadNativeModule(JSThread *thread, const 
         CString entryPoint = PathHelper::GetStrippedModuleName(requestPath);
         auto [isNative, moduleType] = SourceTextModule::CheckNativeModule(requestPath);
         JSHandle<JSTaggedValue> nativeModuleHandle = ResolveNativeModule(requestPath, moduleType);
-        JSHandle<SourceTextModule> nativeModule = 
+        JSHandle<SourceTextModule> nativeModule =
             JSHandle<SourceTextModule>::Cast(nativeModuleHandle);
         if (!SourceTextModule::LoadNativeModule(thread, nativeModule, moduleType)) {
             LOG_FULL(ERROR) << "loading native module " << requestPath << " failed";

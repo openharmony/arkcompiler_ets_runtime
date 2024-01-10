@@ -47,7 +47,6 @@ private:
     static bool IsEnumCacheValid(JSTaggedValue receiver, JSTaggedValue cachedHclass, EnumCacheKind kind);
     static bool NeedCheckProperty(JSTaggedValue receiver);
     static bool HasProperty(JSThread *thread, JSHandle<JSTaggedValue> receiver, JSHandle<JSTaggedValue> key);
-
 };
 }  // namespace panda::ecmascript
 

@@ -1004,7 +1004,8 @@ JSTaggedValue JSStableArray::ToSpliced(JSHandle<JSArray> receiver, EcmaRuntimeCa
         destElements = *JSObject::GrowElementsCapacity(thread, newArrayHandle, insertCount);
     }
 
-    int64_t i = 0, r = actualStart + actualSkipCount;
+    int64_t i = 0;
+    int64_t r = actualStart + actualSkipCount;
     bool needTransition = true;
     for (int64_t idx = 0; idx < actualStart; idx++, i++) {
         auto kValue = ElementAccessor::Get(thisObjHandle, idx);

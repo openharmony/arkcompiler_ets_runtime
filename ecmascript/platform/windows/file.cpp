@@ -126,7 +126,7 @@ MemMap FileMapForAlignAddress(const char *fileName, int flag, int prot,
                               int64_t offset, uint32_t offStart)
 {
     // AOT not used, previewer used
-    LOG_ECMA(INFO) << "Don't used fileName:" << fileName << " flag:" << flag 
+    LOG_ECMA(INFO) << "Don't used fileName:" << fileName << " flag:" << flag
                    << " prot:" << prot << " offset:" << offset << " offStart:" << offStart;
     return MemMap();
 }

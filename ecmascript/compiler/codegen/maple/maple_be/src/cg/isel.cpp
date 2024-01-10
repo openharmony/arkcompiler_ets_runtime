@@ -122,7 +122,7 @@ static MOperator GetFastCvtMopI(uint32 fromSize, uint32 toSize, bool isSigned)
  * such as : and, or, shl ...
  */
 #define DEF_MOPERATOR_MAPPING_FUNC(TYPE)                                                           \
-    [](uint32 bitSize) -> MOperator {                                                              \
+    [](uint32 bitSize)->MOperator {                                                              \
         /* 8-bits,                16-bits,                   32-bits,                   64-bits */ \
         constexpr static std::array<MOperator, kBitIndexEnd> fastMapping_##TYPE = {                \
             abstract::MOP_##TYPE##_8, abstract::MOP_##TYPE##_16, abstract::MOP_##TYPE##_32,        \
@@ -131,7 +131,7 @@ static MOperator GetFastCvtMopI(uint32 fromSize, uint32 toSize, bool isSigned)
     }
 
 #define DEF_FLOAT_MOPERATOR_MAPPING_FUNC(TYPE)                                                     \
-    [](uint32 bitSize) -> MOperator {                                                              \
+    [](uint32 bitSize)->MOperator {                                                              \
         /* 8-bits,                16-bits,                   32-bits,                   64-bits */ \
         constexpr static std::array<MOperator, kBitIndexEnd> fastMapping_f_##TYPE = {              \
             abstract::MOP_##TYPE##_f_8, abstract::MOP_##TYPE##_f_16, abstract::MOP_##TYPE##_f_32,  \

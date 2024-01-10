@@ -494,7 +494,7 @@ uintptr_t ArkCheckAndGetMethod(int pid, uintptr_t value)
             value += JSProxy::METHOD_OFFSET;
         }
         uintptr_t method = 0;
-        if(!ReadUintptrFromAddr(pid, value, method, true)) {
+        if (!ReadUintptrFromAddr(pid, value, method, true)) {
             return 0;
         }
         return method;

@@ -109,7 +109,7 @@ JSTaggedValue BuiltinsString::FromCharCode(EcmaRuntimeCallInfo *argv)
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         if (EcmaStringAccessor::CanBeCompressed(&codePointValue, 1)) {
             JSHandle<SingleCharTable> singleCharTable(thread, thread->GetSingleCharTable());
-            return singleCharTable->GetStringFromSingleCharTable(codePointValue); 
+            return singleCharTable->GetStringFromSingleCharTable(codePointValue);
         }
         JSHandle<EcmaString> strHandle = factory->NewFromUtf16Literal(&codePointValue, 1);
         return strHandle.GetTaggedValue();
@@ -274,7 +274,7 @@ JSTaggedValue BuiltinsString::CharAt(EcmaRuntimeCallInfo *argv)
     uint16_t res = EcmaStringAccessor(thisFlat).Get<false>(pos);
     if (EcmaStringAccessor::CanBeCompressed(&res, 1)) {
         JSHandle<SingleCharTable> singleCharTable(thread, thread->GetSingleCharTable());
-        return singleCharTable->GetStringFromSingleCharTable(res); 
+        return singleCharTable->GetStringFromSingleCharTable(res);
     }
     return factory->NewFromUtf16Literal(&res, 1).GetTaggedValue();
 }
