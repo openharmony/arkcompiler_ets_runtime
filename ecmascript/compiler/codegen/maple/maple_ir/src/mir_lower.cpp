@@ -413,8 +413,7 @@ BlockNode *MIRLower::LowerDoloopStmt(DoloopNode &doloop)
 {
     DEBUG_ASSERT(doloop.GetDoBody() != nullptr, "nullptr check");
     doloop.SetDoBody(LowerBlock(*doloop.GetDoBody()));
-    int64_t doloopnodeFreq = 0;
-    int64_t bodynodeFreq = 0;
+    int64_t doloopnodeFreq = 0, bodynodeFreq = 0;
     if (GetFuncProfData()) {
         doloopnodeFreq = GetFuncProfData()->GetStmtFreq(doloop.GetStmtID());
         bodynodeFreq = GetFuncProfData()->GetStmtFreq(doloop.GetDoBody()->GetStmtID());

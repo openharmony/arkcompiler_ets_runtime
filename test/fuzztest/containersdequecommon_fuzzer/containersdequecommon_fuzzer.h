@@ -112,9 +112,8 @@ public:
                 JSHandle<JSTaggedValue> deque = GetCallArg(argv, 2); // 2 means the secode arg
                 if (!deque->IsUndefined()) {
                     if (index->IsNumber() && value->IsNumber()) {
-                        // 2 means mul by 2
                         JSHandle<JSAPIDeque>::Cast(deque)->Set(thread, index->GetInt(),
-                                                               JSTaggedValue(value->GetInt() * 2));
+                            JSTaggedValue(value->GetInt() * 2));    // 2 means mul by 2
                     }
                 }
                 return JSTaggedValue::True();
