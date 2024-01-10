@@ -52,7 +52,7 @@ public:
     JSTaggedValue GetModuleNamespaceInternal(JSTaggedValue localName, JSTaggedValue currentModule);
     // deprecated end
 
-    JSHandle<SourceTextModule> HostGetImportedModule(const CString &referencingModule);
+    JSHandle<SourceTextModule> PUBLIC_API HostGetImportedModule(const CString &referencingModule);
     JSHandle<SourceTextModule> HostGetImportedModule(JSTaggedValue referencing);
     JSTaggedValue HostGetImportedModule(void *src);
     bool IsImportedModuleLoaded(JSTaggedValue referencing);
@@ -89,7 +89,7 @@ public:
         isExecuteBuffer_ = mode;
     }
 
-    static CString GetRecordName(JSTaggedValue module);
+    static CString PUBLIC_API GetRecordName(JSTaggedValue module);
     static int GetExportObjectIndex(EcmaVM *vm, JSHandle<SourceTextModule> ecmaModule, const std::string &key);
 
     uint32_t NextModuleAsyncEvaluatingOrdinal()

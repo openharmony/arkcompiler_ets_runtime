@@ -14,6 +14,7 @@
  */
 #ifndef ECMASCRIPT_COMPILER_APP_CRYPTO_H
 #define ECMASCRIPT_COMPILER_APP_CRYPTO_H
+#include "ecmascript/common.h"
 
 namespace panda::ecmascript::ohos {
 // After referencing the kernel header file, need to remove it
@@ -35,9 +36,9 @@ struct code_decrypto_arg {
     void *arg2;
 };
 #if defined(CODE_ENCRYPTION_ENABLE)
-int DecryptSetKey(int fd, int srcAppId);
-int DecrypRemoveKey(int fd, int srcAppId);
-int DecryptAssociateKey(int fd, int dstAppId, int srcAppId);
+int PUBLIC_API DecryptSetKey(int fd, int srcAppId);
+int PUBLIC_API DecrypRemoveKey(int fd, int srcAppId);
+int PUBLIC_API DecryptAssociateKey(int fd, int dstAppId, int srcAppId);
 int DecrypRemoveAssociateKey(int fd, int dstAppId, int srcAppId);
 #endif
 }  // namespace panda::ecmascript::kungfu

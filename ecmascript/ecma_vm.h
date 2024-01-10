@@ -134,8 +134,8 @@ public:
     void InitializePGOProfiler();
     void ResetPGOProfiler();
 
-    bool IsEnablePGOProfiler() const;
-    bool IsEnableElementsKind() const;
+    bool PUBLIC_API IsEnablePGOProfiler() const;
+    bool PUBLIC_API IsEnableElementsKind() const;
 
     bool Initialize();
 
@@ -159,7 +159,7 @@ public:
         return ecmaParamConfiguration_;
     }
 
-    JSHandle<GlobalEnv> GetGlobalEnv() const;
+    JSHandle<GlobalEnv> PUBLIC_API GetGlobalEnv() const;
 
     static EcmaVM *ConstCast(const EcmaVM *vm)
     {

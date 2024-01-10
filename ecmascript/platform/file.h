@@ -63,20 +63,20 @@ using fd_t = int;
 #define FILE_SUCCESS 1
 #define FILE_FAILED 0
 
-std::string GetFileDelimiter();
-std::string GetPathSeparator();
-bool RealPath(const std::string &path, std::string &realPath, bool readOnly = true);
+std::string PUBLIC_API GetFileDelimiter();
+std::string PUBLIC_API GetPathSeparator();
+bool PUBLIC_API RealPath(const std::string &path, std::string &realPath, bool readOnly = true);
 void DPrintf(fd_t fd, const std::string &buffer);
 void Close(fd_t fd);
 void FSync(fd_t fd);
 MemMap FileMap(const char *fileName, int flag, int prot, int64_t offset = 0);
-MemMap FileMapForAlignAddress(const char *fileName, int flag, int prot,
-                              int64_t offset, uint32_t offStart);
-int FileUnMap(MemMap addr);
+MemMap PUBLIC_API FileMapForAlignAddress(const char *fileName, int flag, int prot,
+                                         int64_t offset, uint32_t offStart);
+int PUBLIC_API FileUnMap(MemMap addr);
 JSHandle<EcmaString> ResolveFilenameFromNative(JSThread *thread, JSTaggedValue dirname,
                                                JSTaggedValue request);
-bool FileExist(const char *filename);
-int Unlink(const char *filename);
+bool PUBLIC_API FileExist(const char *filename);
+int PUBLIC_API Unlink(const char *filename);
 bool TryToRemoveSO(JSThread *thread, JSHandle<SourceTextModule> module);
 void *LoadLib(const std::string &libname);
 void *FindSymbol(void *handle, const char *symbol);

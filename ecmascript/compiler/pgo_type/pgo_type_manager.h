@@ -35,7 +35,7 @@ public:
         return thread_;
     }
 
-    void SetCurConstantPool(const JSPandaFile *jsPandaFile, uint32_t methodOffset);
+    void PUBLIC_API SetCurConstantPool(const JSPandaFile *jsPandaFile, uint32_t methodOffset);
 
     JSHandle<JSTaggedValue> GetCurConstantPool() const
     {
@@ -43,7 +43,7 @@ public:
     }
 
     // snapshot
-    void InitAOTSnapshot(uint32_t compileFilesCount);
+    void PUBLIC_API InitAOTSnapshot(uint32_t compileFilesCount);
     void GenArrayInfo();
     void GenConstantIndexInfo();
 
@@ -58,18 +58,18 @@ public:
     }
 
     // array
-    void RecordElements(panda_file::File::EntityId id, JSTaggedValue elements);
+    void PUBLIC_API RecordElements(panda_file::File::EntityId id, JSTaggedValue elements);
 
     void RecordConstantIndex(uint32_t bcAbsoluteOffset, uint32_t index);
 
-    int GetElementsIndexByEntityId(panda_file::File::EntityId id);
+    int PUBLIC_API GetElementsIndexByEntityId(panda_file::File::EntityId id);
 
     // hclass
     void RecordHClass(ProfileType rootType, ProfileType childType, JSTaggedType hclass);
 
-    uint32_t GetHClassIndexByProfileType(ProfileTyper type) const;
+    uint32_t PUBLIC_API GetHClassIndexByProfileType(ProfileTyper type) const;
 
-    JSTaggedValue QueryHClass(ProfileType rootType, ProfileType childType) const;
+    JSTaggedValue PUBLIC_API QueryHClass(ProfileType rootType, ProfileType childType) const;
     ElementsKind QueryElementKind(ProfileType rootType);
 
     inline ProfileType GetRootIdByLocation(const PGOTypeLocation &loc)

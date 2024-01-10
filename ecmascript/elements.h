@@ -38,7 +38,7 @@ enum class ElementsKind : uint8_t {
     DICTIONARY = HOLE_TAGGED,
 };
 
-class Elements {
+class PUBLIC_API Elements {
 public:
     static CMap<ElementsKind, ConstantIndex> InitializeHClassMap();
 

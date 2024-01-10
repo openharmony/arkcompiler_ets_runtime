@@ -35,8 +35,8 @@ public:
     static void AddFirst(JSThread *thread, const JSHandle<JSAPILinkedList> &list, const JSHandle<JSTaggedValue> &value);
     static JSTaggedValue Insert(JSThread *thread, const JSHandle<JSAPILinkedList> &list,
                                 const JSHandle<JSTaggedValue> &value, const int index);
-    static JSTaggedValue Set(JSThread *thread, const JSHandle<JSAPILinkedList> &list,
-                             const int index, const JSHandle<JSTaggedValue> &value);
+    static JSTaggedValue PUBLIC_API Set(JSThread *thread, const JSHandle<JSAPILinkedList> &list,
+                                        const int index, const JSHandle<JSTaggedValue> &value);
     static JSTaggedValue ConvertToArray(const JSThread *thread, const JSHandle<JSAPILinkedList> &list);
     static JSHandle<TaggedArray> OwnKeys(JSThread *thread, const JSHandle<JSAPILinkedList> &list);
     static bool GetOwnProperty(JSThread *thread, const JSHandle<JSAPILinkedList> &list,

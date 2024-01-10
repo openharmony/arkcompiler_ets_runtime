@@ -45,7 +45,7 @@ public:
         bool enableOptTrackField;
     };
 
-    explicit TSTypeParser(TSManager *tsManager);
+    explicit PUBLIC_API TSTypeParser(TSManager *tsManager);
     ~TSTypeParser() = default;
 
     GlobalTSTypeRef PUBLIC_API CreateGT(const JSPandaFile *jsPandaFile, const CString &recordName, uint32_t typeId);

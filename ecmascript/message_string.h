@@ -93,7 +93,7 @@ public:
         BUILTINS_STUB_START = Message_StringCharCodeAt,
         BUILTINS_STUB_LAST = Message_ArrayConstructor,
     };
-    static const std::string& GetMessageString(int id);
+    static const std::string& PUBLIC_API GetMessageString(int id);
 
     static bool IsBuiltinsStubMessageString(int id)
     {

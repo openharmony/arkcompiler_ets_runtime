@@ -64,7 +64,7 @@ public:
 
     static JSTaggedValue GetIteratorObj(JSThread *thread, const JSHandle<JSAPIArrayList> &obj);
 
-    JSTaggedValue Set(JSThread *thread, const uint32_t index, JSTaggedValue value);
+    JSTaggedValue PUBLIC_API Set(JSThread *thread, const uint32_t index, JSTaggedValue value);
     JSTaggedValue Get(JSThread *thread, const uint32_t index);
 
     bool Has(const JSTaggedValue value) const;

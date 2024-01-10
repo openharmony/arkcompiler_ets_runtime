@@ -92,7 +92,7 @@ public:
         return desc_;
     }
 
-    CString GetNormalizedFileDesc() const;
+    CString PUBLIC_API GetNormalizedFileDesc() const;
 
     void SetHapPath(const CString &hapPath)
     {

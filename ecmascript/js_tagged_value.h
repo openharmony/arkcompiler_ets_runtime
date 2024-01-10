@@ -363,7 +363,7 @@ public:
     static int8_t ToInt8(JSThread *thread, const JSHandle<JSTaggedValue> &tagged);
     static uint8_t ToUint8(JSThread *thread, const JSHandle<JSTaggedValue> &tagged);
     static uint8_t ToUint8Clamp(JSThread *thread, const JSHandle<JSTaggedValue> &tagged);
-    static JSHandle<EcmaString> ToString(JSThread *thread, const JSHandle<JSTaggedValue> &tagged);
+    static JSHandle<EcmaString> PUBLIC_API ToString(JSThread *thread, const JSHandle<JSTaggedValue> &tagged);
     static JSHandle<EcmaString> ToString(JSThread *thread, JSTaggedValue val);
     static JSHandle<JSObject> ToObject(JSThread *thread, const JSHandle<JSTaggedValue> &tagged);
     static JSHandle<JSTaggedValue> ToPropertyKey(JSThread *thread, const JSHandle<JSTaggedValue> &tagged);
@@ -415,8 +415,9 @@ public:
     static bool SetProperty(JSThread *thread, const JSHandle<JSTaggedValue> &obj, uint32_t key,
                             const JSHandle<JSTaggedValue> &value, bool mayThrow = false);
 
-    static bool SetProperty(JSThread *thread, const JSHandle<JSTaggedValue> &obj, const JSHandle<JSTaggedValue> &key,
-                            const JSHandle<JSTaggedValue> &value, bool mayThrow = false);
+    static bool PUBLIC_API SetProperty(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
+                                       const JSHandle<JSTaggedValue> &key,
+                                       const JSHandle<JSTaggedValue> &value, bool mayThrow = false);
 
     static bool SetProperty(JSThread *thread, const JSHandle<JSTaggedValue> &obj, const JSHandle<JSTaggedValue> &key,
                             const JSHandle<JSTaggedValue> &value, const JSHandle<JSTaggedValue> &receiver,
@@ -484,7 +485,7 @@ public:
     bool IsCOWArray() const;
     bool IsMutantTaggedArray() const;
     bool IsJSArray() const;
-    bool IsJSCOWArray() const;
+    bool PUBLIC_API IsJSCOWArray() const;
     bool IsStableJSArray(JSThread *thread) const;
     bool IsStableJSArguments(JSThread *thread) const;
     bool HasStableElements(JSThread *thread) const;

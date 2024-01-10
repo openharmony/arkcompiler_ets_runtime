@@ -142,7 +142,7 @@ public:
         return ptManager_;
     }
 
-    void SetTSManager(TSManager *set);
+    void PUBLIC_API SetTSManager(TSManager *set);
 
     ARK_INLINE JSThread *GetJSThread() const
     {
@@ -257,9 +257,9 @@ public:
 
     bool HasCachedConstpool(const JSPandaFile *jsPandaFile) const;
 
-    JSTaggedValue FindConstpool(const JSPandaFile *jsPandaFile, int32_t index);
+    JSTaggedValue PUBLIC_API FindConstpool(const JSPandaFile *jsPandaFile, int32_t index);
     // For new version instruction.
-    JSTaggedValue FindConstpool(const JSPandaFile *jsPandaFile, panda_file::File::EntityId id);
+    JSTaggedValue PUBLIC_API FindConstpool(const JSPandaFile *jsPandaFile, panda_file::File::EntityId id);
     JSTaggedValue FindConstpoolWithAOT(const JSPandaFile *jsPandaFile, int32_t index);
     std::optional<std::reference_wrapper<CMap<int32_t, JSTaggedValue>>> FindConstpools(
         const JSPandaFile *jsPandaFile);

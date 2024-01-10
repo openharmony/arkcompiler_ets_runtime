@@ -205,7 +205,8 @@ public:
     JSHandle<ConstantPool> NewConstantPool(uint32_t capacity);
     JSHandle<Program> NewProgram();
 
-    JSHandle<JSObject> GetJSError(const ErrorType &errorType, const char *data = nullptr, bool needCheckStack = true);
+    JSHandle<JSObject> PUBLIC_API GetJSError(const ErrorType &errorType, const char *data = nullptr,
+        bool needCheckStack = true);
 
     JSHandle<JSObject> NewJSError(const ErrorType &errorType, const JSHandle<EcmaString> &message,
         bool needCheckStack = true);
@@ -322,9 +323,9 @@ public:
     JSHandle<job::PendingJob> NewPendingJob(const JSHandle<JSFunction> &func, const JSHandle<TaggedArray> &argv);
 
     JSHandle<JSArray> NewJSArray();
-    JSHandle<JSArray> NewJSArray(size_t length, JSHandle<JSHClass> &hclass);
-    JSHandle<TaggedArray> NewJsonFixedArray(size_t start, size_t length,
-                                            const std::vector<JSHandle<JSTaggedValue>> &vec);
+    JSHandle<JSArray> PUBLIC_API NewJSArray(size_t length, JSHandle<JSHClass> &hclass);
+    JSHandle<TaggedArray> PUBLIC_API NewJsonFixedArray(size_t start, size_t length,
+                                                       const std::vector<JSHandle<JSTaggedValue>> &vec);
 
     JSHandle<JSProxy> NewJSProxy(const JSHandle<JSTaggedValue> &target, const JSHandle<JSTaggedValue> &handler);
     JSHandle<JSRealm> NewJSRealm();
@@ -360,14 +361,14 @@ public:
     JSHandle<MutantTaggedArray> NewAndCopyMutantTaggedArrayByObject(JSHandle<JSObject> thisObjHandle,
                                                                     uint32_t newLength, uint32_t oldLength,
                                                                     uint32_t k = 0);
-    JSHandle<TaggedArray> NewTaggedArray(uint32_t length, JSTaggedValue initVal = JSTaggedValue::Hole());
+    JSHandle<TaggedArray> PUBLIC_API NewTaggedArray(uint32_t length, JSTaggedValue initVal = JSTaggedValue::Hole());
     JSHandle<TaggedArray> NewTaggedArray(uint32_t length, JSTaggedValue initVal, bool nonMovable);
     JSHandle<TaggedArray> NewTaggedArray(uint32_t length, JSTaggedValue initVal, MemSpaceType spaceType);
     // Copy on write array is allocated in nonmovable space by default.
     JSHandle<COWTaggedArray> NewCOWTaggedArray(uint32_t length, JSTaggedValue initVal = JSTaggedValue::Hole());
     JSHandle<COWMutantTaggedArray> NewCOWMutantTaggedArray(uint32_t length, JSTaggedType initVal = base::SPECIAL_HOLE);
     JSHandle<MutantTaggedArray> NewMutantTaggedArray(uint32_t length, JSTaggedType initVal = base::SPECIAL_HOLE);
-    JSHandle<TaggedArray> NewDictionaryArray(uint32_t length);
+    JSHandle<TaggedArray> PUBLIC_API NewDictionaryArray(uint32_t length);
     JSHandle<JSForInIterator> NewJSForinIterator(const JSHandle<JSTaggedValue> &obj,
                                                  const JSHandle<JSTaggedValue> keys,
                                                  const JSHandle<JSTaggedValue> cachedHclass);
@@ -389,17 +390,17 @@ public:
                                       MemSpaceType type = MemSpaceType::SEMI_SPACE,
                                       ElementsKind kind = ElementsKind::GENERIC);
     JSHandle<TaggedArray> CopyPartArray(const JSHandle<TaggedArray> &old, uint32_t start, uint32_t end);
-    JSHandle<TaggedArray> CopyArray(const JSHandle<TaggedArray> &old, uint32_t oldLength, uint32_t newLength,
-                                    JSTaggedValue initVal = JSTaggedValue::Hole(),
-                                    MemSpaceType type = MemSpaceType::SEMI_SPACE,
-                                    ElementsKind kind = ElementsKind::GENERIC);
+    JSHandle<TaggedArray> PUBLIC_API CopyArray(const JSHandle<TaggedArray> &old, uint32_t oldLength, uint32_t newLength,
+                                               JSTaggedValue initVal = JSTaggedValue::Hole(),
+                                               MemSpaceType type = MemSpaceType::SEMI_SPACE,
+                                               ElementsKind kind = ElementsKind::GENERIC);
     JSHandle<TaggedArray> CopyFromEnumCache(const JSHandle<TaggedArray> &old);
     JSHandle<TaggedArray> CloneProperties(const JSHandle<TaggedArray> &old);
     JSHandle<TaggedArray> CloneProperties(const JSHandle<TaggedArray> &old, const JSHandle<JSTaggedValue> &env,
                                           const JSHandle<JSObject> &obj);
 
-    JSHandle<LayoutInfo> CreateLayoutInfo(int properties, MemSpaceType type = MemSpaceType::SEMI_SPACE,
-                                          GrowMode mode = GrowMode::GROW);
+    JSHandle<LayoutInfo> PUBLIC_API CreateLayoutInfo(int properties, MemSpaceType type = MemSpaceType::SEMI_SPACE,
+                                                     GrowMode mode = GrowMode::GROW);
 
     JSHandle<LayoutInfo> ExtendLayoutInfo(const JSHandle<LayoutInfo> &old, int properties);
 
@@ -499,7 +500,7 @@ public:
     template<typename T, typename S>
     inline void NewJSIntlIcuData(const JSHandle<T> &obj, const S &icu, const DeleteEntryPoint &callback);
 
-    EcmaString *InternString(const JSHandle<JSTaggedValue> &key);
+    EcmaString *PUBLIC_API InternString(const JSHandle<JSTaggedValue> &key);
 
     inline JSHandle<JSNativePointer> NewJSNativePointer(void *externalPointer,
                                                         const DeleteEntryPoint &callBack = nullptr,
@@ -553,25 +554,25 @@ public:
     JSHandle<TSNamespaceType> NewTSNamespaceType();
 
     // ----------------------------------- new string ----------------------------------------
-    JSHandle<EcmaString> NewFromASCII(std::string_view data);
-    JSHandle<EcmaString> NewFromUtf8(std::string_view data);
+    JSHandle<EcmaString> PUBLIC_API NewFromASCII(std::string_view data);
+    JSHandle<EcmaString> PUBLIC_API NewFromUtf8(std::string_view data);
     JSHandle<EcmaString> NewFromUtf16(std::u16string_view data);
 
     JSHandle<EcmaString> NewFromStdString(const std::string &data);
 
     JSHandle<EcmaString> NewFromUtf8(const uint8_t *utf8Data, uint32_t utf8Len);
 
-    JSHandle<EcmaString> NewFromUtf16(const uint16_t *utf16Data, uint32_t utf16Len);
+    JSHandle<EcmaString> PUBLIC_API NewFromUtf16(const uint16_t *utf16Data, uint32_t utf16Len);
     JSHandle<EcmaString> NewFromUtf16Compress(const uint16_t *utf16Data, uint32_t utf16Len);
     JSHandle<EcmaString> NewFromUtf16NotCompress(const uint16_t *utf16Data, uint32_t utf16Len);
 
     JSHandle<EcmaString> NewFromUtf8Literal(const uint8_t *utf8Data, uint32_t utf8Len);
-    JSHandle<EcmaString> NewFromUtf8LiteralCompress(const uint8_t *utf8Data, uint32_t utf8Len);
-    JSHandle<EcmaString> NewCompressedUtf8(const uint8_t *utf8Data, uint32_t utf8Len);
+    JSHandle<EcmaString> PUBLIC_API NewFromUtf8LiteralCompress(const uint8_t *utf8Data, uint32_t utf8Len);
+    JSHandle<EcmaString> PUBLIC_API NewCompressedUtf8(const uint8_t *utf8Data, uint32_t utf8Len);
 
     JSHandle<EcmaString> NewFromUtf16Literal(const uint16_t *utf16Data, uint32_t utf16Len);
     JSHandle<EcmaString> NewFromUtf16LiteralCompress(const uint16_t *utf16Data, uint32_t utf16Len);
-    JSHandle<EcmaString> NewFromUtf16LiteralNotCompress(const uint16_t *utf16Data, uint32_t utf16Len);
+    JSHandle<EcmaString> PUBLIC_API NewFromUtf16LiteralNotCompress(const uint16_t *utf16Data, uint32_t utf16Len);
 
     inline EcmaString *AllocLineStringObject(size_t size);
     inline EcmaString *AllocOldSpaceLineStringObject(size_t size);
@@ -584,7 +585,7 @@ public:
                                           const JSHandle<EcmaString> &secondString);
 
     // used for creating Function
-    JSHandle<JSObject> NewJSObject(const JSHandle<JSHClass> &jshclass);
+    JSHandle<JSObject> PUBLIC_API NewJSObject(const JSHandle<JSHClass> &jshclass);
 
     // used for creating jshclass in Builtins, Function, Class_Linker
     JSHandle<JSHClass> NewEcmaHClass(uint32_t size, JSType type, const JSHandle<JSTaggedValue> &prototype);
@@ -592,8 +593,8 @@ public:
                                      const JSHandle<JSTaggedValue> &prototype);
 
     // used for creating jshclass in Builtins, Function, Class_Linker
-    JSHandle<JSHClass> NewEcmaHClass(uint32_t size, JSType type,
-                                     uint32_t inlinedProps = JSHClass::DEFAULT_CAPACITY_OF_IN_OBJECTS);
+    JSHandle<JSHClass> PUBLIC_API NewEcmaHClass(uint32_t size, JSType type,
+                                                uint32_t inlinedProps = JSHClass::DEFAULT_CAPACITY_OF_IN_OBJECTS);
 
     // It is used to provide iterators for non ECMA standard jsapi containers.
     JSHandle<JSAPIPlainArray> NewJSAPIPlainArray(uint32_t capacity);

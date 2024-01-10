@@ -193,7 +193,7 @@ public:
         return &weakNodeNativeFinalizeCallbacks_;
     }
 
-    void SetException(JSTaggedValue exception);
+    void PUBLIC_API SetException(JSTaggedValue exception);
 
     JSTaggedValue GetException() const
     {
@@ -245,7 +245,7 @@ public:
 
     JSHClass *GetBuiltinHClass(BuiltinTypeId type) const;
 
-    JSHClass *GetBuiltinPrototypeHClass(BuiltinTypeId type) const;
+    PUBLIC_API JSHClass *GetBuiltinPrototypeHClass(BuiltinTypeId type) const;
 
     static size_t GetBuiltinHClassOffset(BuiltinTypeId, bool isArch32);
 
@@ -331,7 +331,7 @@ public:
 
     void IterateWeakEcmaGlobalStorage(const WeakRootVisitor &visitor);
 
-    PropertiesCache *GetPropertiesCache() const;
+    PUBLIC_API PropertiesCache *GetPropertiesCache() const;
 
     MarkStatus GetMarkStatus() const
     {

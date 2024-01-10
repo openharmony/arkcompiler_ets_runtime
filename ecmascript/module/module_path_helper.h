@@ -97,8 +97,8 @@ public:
     static constexpr size_t APP_PREFIX_SIZE = 5;
     static constexpr size_t BUNDLE_INSTALL_PATH_LEN = 25;
 
-    static CString ConcatFileNameWithMerge(JSThread *thread, const JSPandaFile *jsPandaFile,
-                                           CString &baseFileName, CString recordName, CString requestName);
+    static CString PUBLIC_API ConcatFileNameWithMerge(JSThread *thread, const JSPandaFile *jsPandaFile,
+                                                      CString &baseFileName, CString recordName, CString requestName);
     static void ParseOhmUrl(EcmaVM *vm, const CString &inputFileName,
                             CString &outBaseFileName, CString &outEntryPoint);
     static CString ParseUrl(EcmaVM *vm, const CString &recordName);
