@@ -44,11 +44,11 @@ namespace panda::ecmascript::kungfu {
 #define HCR_GATE_META_DATA_LIST_WITH_PC_OFFSET_FIXED_VALUE(V)                                   \
     V(CallGetter, CALL_GETTER, GateFlags::HAS_FRAME_STATE, 1, 1, 3)                             \
     V(CallSetter, CALL_SETTER, GateFlags::HAS_FRAME_STATE, 1, 1, 4)                             \
-    V(MonoCallGetterOnProto, MONO_CALL_GETTER_ON_PROTO, GateFlags::HAS_FRAME_STATE, 1, 1, 4)
+    V(MonoCallGetterOnProto, MONO_CALL_GETTER_ON_PROTO, GateFlags::HAS_FRAME_STATE, 1, 1, 4)    \
+    V(CreateArray, CREATE_ARRAY, GateFlags::NONE_FLAG, 1, 1, 1)                                 \
+    V(CreateArrayWithBuffer, CREATE_ARRAY_WITH_BUFFER, GateFlags::CHECKABLE, 1, 1, 3)
 
 #define HCR_GATE_META_DATA_LIST_WITH_VALUE(V)                                           \
-    V(CreateArray, CREATE_ARRAY, GateFlags::NONE_FLAG, 1, 1, 1)                         \
-    V(CreateArrayWithBuffer, CREATE_ARRAY_WITH_BUFFER, GateFlags::CHECKABLE, 1, 1, 3)   \
     V(RestoreRegister, RESTORE_REGISTER, GateFlags::NONE_FLAG, 0, 0, 1)
 
 #define HCR_GATE_META_DATA_LIST_WITH_BOOL_VALUE_IN(V)                              \
