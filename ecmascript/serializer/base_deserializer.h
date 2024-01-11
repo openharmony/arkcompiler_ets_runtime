@@ -129,6 +129,15 @@ private:
         return isErrorMsg;
     }
 
+    bool GetAndResetFunctionInShared()
+    {
+        bool functionInShared = functionInShared_;
+        if (functionInShared_) {
+            functionInShared_ = false;
+        }
+        return functionInShared;
+    }
+
     void *GetAndResetBufferPointer()
     {
         if (bufferPointer_) {
@@ -174,6 +183,7 @@ private:
     void *bufferPointer_ {nullptr};
     ConstantPool *constpool_ {nullptr};
     bool needNewConstPool_ {false};
+    bool functionInShared_ {false};
     CVector<NewConstPoolInfo *> newConstPoolInfos_;
     CVector<NativeBindingInfo *> nativeBindingInfos_;
     CVector<JSErrorInfo *> jsErrorInfos_;

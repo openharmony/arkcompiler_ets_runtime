@@ -263,7 +263,10 @@ public:
         uint32_t literal, CString entry, ClassKind kind = ClassKind::NON_SENDABLE)
     {
         [[maybe_unused]] EcmaHandleScope handleScope(thread);
-        auto val = constpool->GetObjectFromCache(literal);
+        // Do not use cache when sendable for get wrong obj from cache,
+        // shall be fix or refactor during shared object implements
+        JSTaggedValue val = (kind == ClassKind::NON_SENDABLE) ? constpool->GetObjectFromCache(literal) :
+            JSTaggedValue::Hole();
         JSPandaFile *jsPandaFile = constpool->GetJSPandaFile();
 
         // For AOT

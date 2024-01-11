@@ -62,7 +62,6 @@ private:
     bool defaultTransfer_ {false};
     bool defaultCloneShared_ {false};
     bool notSupport_ {false};
-    int32_t serializeSharedEvent_ = 0;
     CUnorderedSet<uintptr_t> transferDataSet_;
     CUnorderedSet<uintptr_t> cloneArrayBufferSet_;
     CUnorderedSet<uintptr_t> cloneSharedSet_;
