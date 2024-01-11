@@ -943,7 +943,7 @@ void JSFunction::InitializeForConcurrentFunction(JSThread *thread)
         LOG_ECMA(DEBUG) << "CompileMode is esmodule";
         moduleRecord = moduleManager->HostResolveImportedModuleWithMerge(moduleName, recordName);
     }
-    ecmascript::SourceTextModule::InstantiateForConcurrent(thread, moduleRecord, method);
+    ecmascript::SourceTextModule::Instantiate(thread, moduleRecord);
     JSHandle<ecmascript::SourceTextModule> module = JSHandle<ecmascript::SourceTextModule>::Cast(moduleRecord);
     module->SetStatus(ecmascript::ModuleStatus::INSTANTIATED);
     ecmascript::SourceTextModule::EvaluateForConcurrent(thread, module, method);
