@@ -654,12 +654,6 @@ void EcmaContext::PrintJSErrorInfo(JSThread *thread, const JSHandle<JSTaggedValu
     CString nameBuffer = ConvertToString(*name);
     CString msgBuffer = ConvertToString(*msg);
     CString stackBuffer = ConvertToString(*stack);
-    // sourceMap callback
-    EcmaVM* vm = thread->GetEcmaVM();
-    auto cb = vm->GetSourceMapCallback();
-    if (cb != nullptr) {
-        stackBuffer = cb(stackBuffer.c_str());
-    }
     LOG_NO_TAG(ERROR) << panda::ecmascript::previewerTag << nameBuffer << ": " << msgBuffer << "\n" << stackBuffer;
 }
 
