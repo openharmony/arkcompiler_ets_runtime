@@ -50,7 +50,7 @@ void ObjectGetAllPropertyNamesFuzzTest(const uint8_t *data, size_t size)
     }
     Local<ObjectRef> object = ObjectRef::New(vm);
     NativePointerCallback callBack = nullptr;
-    object->SetNativePointerField(index, (void *)data, callBack, (void *)data);
+    object->SetNativePointerField(vm, index, (void *)data, callBack, (void *)data);
     object->GetAllPropertyNames(vm, filter);
     JSNApi::DestroyJSVM(vm);
 }
@@ -77,7 +77,7 @@ void ObjectGetNativePointerFieldCountFuzzTest(const uint8_t *data, size_t size)
         key = 1024;               // 1024 : 1M in size
     }
     Local<ObjectRef> object = ObjectRef::New(vm);
-    object->SetNativePointerFieldCount(key);
+    object->SetNativePointerFieldCount(vm, key);
     object->GetNativePointerFieldCount();
     JSNApi::DestroyJSVM(vm);
 }
@@ -102,7 +102,7 @@ void ObjectGetOwnEnumerablePropertyNamesFuzzTest(const uint8_t *data, size_t siz
     }
     Local<ObjectRef> object = ObjectRef::New(vm);
     NativePointerCallback callBack = nullptr;
-    object->SetNativePointerField(index, (void *)data, callBack, (void *)data);
+    object->SetNativePointerField(vm, index, (void *)data, callBack, (void *)data);
     object->GetOwnEnumerablePropertyNames(vm);
     JSNApi::DestroyJSVM(vm);
 }
@@ -127,7 +127,7 @@ void ObjectGetOwnPropertyNamesFuzzTest(const uint8_t *data, size_t size)
     }
     Local<ObjectRef> object = ObjectRef::New(vm);
     NativePointerCallback callBack = nullptr;
-    object->SetNativePointerField(index, (void *)data, callBack, (void *)data);
+    object->SetNativePointerField(vm, index, (void *)data, callBack, (void *)data);
     object->GetOwnPropertyNames(vm);
     JSNApi::DestroyJSVM(vm);
 }

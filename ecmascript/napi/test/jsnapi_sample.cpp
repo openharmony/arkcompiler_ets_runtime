@@ -731,13 +731,13 @@ void NativePointer(Local<ObjectRef> object, EcmaVM *vm)
 {
     GTEST_LOG_(INFO) << "NativePointer";
     int cnt = 10; // 10 = accommodate quantity
-    object->SetNativePointerFieldCount(cnt);
+    object->SetNativePointerFieldCount(vm, cnt);
     ASSERT_EQ(cnt, object->GetNativePointerFieldCount());
     A *a = new A();
     int cnt2 = 1;  // 11 = random Numbers
     int cnt3 = 11; // 1 = random Numbers
-    object->SetNativePointerField(cnt2, static_cast<void *>(a), nullptr, nullptr);
-    object->SetNativePointerField(cnt3, static_cast<void *>(a), nullptr, nullptr);
+    object->SetNativePointerField(vm, cnt2, static_cast<void *>(a), nullptr, nullptr);
+    object->SetNativePointerField(vm, cnt3, static_cast<void *>(a), nullptr, nullptr);
     A *value1 = static_cast<A *>(object->GetNativePointerField(cnt2));
     A *value2 = static_cast<A *>(object->GetNativePointerField(cnt3));
     if (value1 == nullptr) {
@@ -2404,9 +2404,9 @@ HWTEST_F_L0(JSNApiSampleTest, sample_demo9_map_test_2_WeakMapref)
             jsValue2String(vm_, jsVal);
     }
 
-    bool hasKey2 = weakMap->Has(StringRef::NewFromUtf8(vm_, "key2"));
+    bool hasKey2 = weakMap->Has(vm_, StringRef::NewFromUtf8(vm_, "key2"));
     GTEST_LOG_(INFO) << "Has Key2 : " << hasKey2;
-    bool hasKey222 = weakMap->Has(StringRef::NewFromUtf8(vm_, "key222"));
+    bool hasKey222 = weakMap->Has(vm_, StringRef::NewFromUtf8(vm_, "key222"));
     GTEST_LOG_(INFO) << "Has key222 : " << hasKey222;
 
     GTEST_LOG_(INFO) << "sample_demo9_map_test_2_WeakMapref =======================================";

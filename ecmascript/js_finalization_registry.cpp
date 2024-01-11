@@ -61,8 +61,8 @@ void JSFinalizationRegistry::Register(JSThread *thread, JSHandle<JSTaggedValue> 
     if (!unregisterToken->IsUndefined()) {
         JSHandle<LinkedHashMap> maybeUnregister(thread, obj->GetMaybeUnregister());
         JSHandle<CellRecordVector> array(thread, JSTaggedValue::Undefined());
-        if (maybeUnregister->Has(unregisterToken.GetTaggedValue())) {
-            array = JSHandle<CellRecordVector>(thread, maybeUnregister->Get(unregisterToken.GetTaggedValue()));
+        if (maybeUnregister->Has(thread, unregisterToken.GetTaggedValue())) {
+            array = JSHandle<CellRecordVector>(thread, maybeUnregister->Get(thread, unregisterToken.GetTaggedValue()));
         } else {
             array = JSHandle<CellRecordVector>(CellRecordVector::Create(thread));
         }
@@ -84,7 +84,7 @@ bool JSFinalizationRegistry::Unregister(JSThread *thread, JSHandle<JSTaggedValue
     // Because we have stored the object that may be unregistered in the hash map when registering,
     // at this time we just need to find it in the map and delete it
     JSHandle<LinkedHashMap> maybeUnregister(thread, obj->GetMaybeUnregister());
-    int entry = maybeUnregister->FindElement(UnregisterToken.GetTaggedValue());
+    int entry = maybeUnregister->FindElement(thread, UnregisterToken.GetTaggedValue());
     if (entry == -1) {
         return false;
     }

@@ -240,7 +240,7 @@ void JSHClass::AddProperty(const JSThread *thread, const JSHandle<JSObject> &obj
         if (newClass->IsTS()) {
             newClass->SetPrototype(thread, jshclass->GetPrototype());
         }
-        obj->SynchronizedSetClass(newClass);
+        obj->SynchronizedSetClass(thread, newClass);
         // Because we currently only supports Fast ElementsKind
         JSHandle<JSHClass> newHClass(thread, newClass);
         TryRestoreElementsKind(thread, newHClass, obj);
@@ -260,7 +260,7 @@ void JSHClass::AddProperty(const JSThread *thread, const JSHandle<JSObject> &obj
 #if ECMASCRIPT_ENABLE_IC
     JSHClass::NotifyHclassChanged(thread, jshclass, newJsHClass, key.GetTaggedValue());
 #endif
-    obj->SynchronizedSetClass(*newJsHClass);
+    obj->SynchronizedSetClass(thread, *newJsHClass);
     // Because we currently only supports Fast ElementsKind
     TryRestoreElementsKind(thread, newJsHClass, obj);
 
@@ -410,7 +410,7 @@ void JSHClass::ShouldUpdateProtoClass(const JSThread *thread, const JSHandle<JST
             // After the hclass is updated, check whether the proto chain status of ic is updated.
             NotifyHclassChanged(thread, hclass, newProtoClass);
 #endif
-            JSObject::Cast(proto->GetTaggedObject())->SynchronizedSetClass(*newProtoClass);
+            JSObject::Cast(proto->GetTaggedObject())->SynchronizedSetClass(thread, *newProtoClass);
             newProtoClass->SetIsPrototype(true);
             thread->GetEcmaVM()->GetPGOProfiler()->UpdateRootProfileType(*hclass, *newProtoClass);
         } else {
@@ -437,7 +437,7 @@ void JSHClass::TransitionToDictionary(const JSThread *thread, const JSHandle<JSO
 #if ECMASCRIPT_ENABLE_IC
         JSHClass::NotifyHclassChanged(thread, JSHandle<JSHClass>(thread, obj->GetJSHClass()), newJsHClass);
 #endif
-        obj->SynchronizedSetClass(*newJsHClass);
+        obj->SynchronizedSetClass(thread, *newJsHClass);
         TryRestoreElementsKind(thread, newJsHClass, obj);
     }
 }
@@ -484,7 +484,7 @@ void JSHClass::OptimizeAsFastProperties(const JSThread *thread, const JSHandle<J
 #if ECMASCRIPT_ENABLE_IC
         JSHClass::NotifyHclassChanged(thread, JSHandle<JSHClass>(thread, obj->GetJSHClass()), newJsHClass);
 #endif
-        obj->SynchronizedSetClass(*newJsHClass);
+        obj->SynchronizedSetClass(thread, *newJsHClass);
     }
 }
 
@@ -512,7 +512,7 @@ void JSHClass::TransitionForRepChange(const JSThread *thread, const JSHandle<JSO
     JSHClass::NotifyHclassChanged(thread, oldHClass, newHClass, key.GetTaggedValue());
 #endif
 
-    receiver->SynchronizedSetClass(*newHClass);
+    receiver->SynchronizedSetClass(thread, *newHClass);
     TryRestoreElementsKind(thread, newHClass, receiver);
     // 4. Maybe Transition And Maintain subtypeing check
 }
@@ -550,7 +550,7 @@ void JSHClass::TransitToElementsKind(const JSThread *thread, const JSHandle<JSAr
         auto index = static_cast<size_t>(newKindIter->second);
         auto hclassVal = thread->GlobalConstants()->GetGlobalConstantObject(index);
         JSHClass *hclass = JSHClass::Cast(hclassVal.GetTaggedObject());
-        array->SynchronizedSetClass(hclass);
+        array->SynchronizedSetClass(thread, hclass);
     }
 }
 
@@ -578,7 +578,7 @@ bool JSHClass::TransitToElementsKind(const JSThread *thread, const JSHandle<JSOb
         auto index = static_cast<size_t>(newKindIter->second);
         auto hclassVal = thread->GlobalConstants()->GetGlobalConstantObject(index);
         JSHClass *hclass = JSHClass::Cast(hclassVal.GetTaggedObject());
-        object->SynchronizedSetClass(hclass);
+        object->SynchronizedSetClass(thread, hclass);
         // Update TrackInfo
         if (!thread->IsPGOProfilerEnable()) {
             return true;

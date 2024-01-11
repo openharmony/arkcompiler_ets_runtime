@@ -24,13 +24,13 @@
 #include "ecmascript/ecma_vm.h"
 
 namespace panda::ecmascript {
-static ARK_INLINE void WriteBarrier(void *obj, size_t offset, JSTaggedType value)
+static ARK_INLINE void WriteBarrier(const JSThread *thread, void *obj, size_t offset, JSTaggedType value)
 {
     ASSERT(value != JSTaggedValue::VALUE_UNDEFINED);
     Region *objectRegion = Region::ObjectAddressToRange(static_cast<TaggedObject *>(obj));
     Region *valueRegion = Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(value));
 #if ECMASCRIPT_ENABLE_BARRIER_CHECK
-    if (!valueRegion->GetJSThread()->GetEcmaVM()->GetHeap()->IsAlive(JSTaggedValue(value).GetHeapObject())) {
+    if (!thread->GetEcmaVM()->GetHeap()->IsAlive(JSTaggedValue(value).GetHeapObject())) {
         LOG_FULL(FATAL) << "WriteBarrier checked value:" << value << " is invalid!";
     }
 #endif
@@ -41,8 +41,8 @@ static ARK_INLINE void WriteBarrier(void *obj, size_t offset, JSTaggedType value
         objectRegion->InsertOldToNewRSet(slotAddr);
     }
 
-    if (valueRegion->IsMarking()) {
-        Barriers::Update(slotAddr, objectRegion, reinterpret_cast<TaggedObject *>(value), valueRegion);
+    if (thread->IsConcurrentMarkingOrFinished()) {
+        Barriers::Update(thread, slotAddr, objectRegion, reinterpret_cast<TaggedObject *>(value), valueRegion);
     }
 }
 
@@ -50,25 +50,26 @@ static ARK_INLINE void WriteBarrier(void *obj, size_t offset, JSTaggedType value
 // CODECHECK-NOLINTNEXTLINE(C_RULE_ID_COMMENT_LOCATION)
 // default value for need_write_barrier is true
 template<bool need_write_barrier>
-inline void Barriers::SetObject([[maybe_unused]] const JSThread *thread, void *obj, size_t offset, JSTaggedType value)
+inline void Barriers::SetObject(const JSThread *thread, void *obj, size_t offset, JSTaggedType value)
 {
     // NOLINTNEXTLINE(clang-analyzer-core.NullDereference)
     *reinterpret_cast<JSTaggedType *>(reinterpret_cast<uintptr_t>(obj) + offset) = value;
-    WriteBarrier(obj, offset, value);
+    WriteBarrier(thread, obj, offset, value);
 }
 
-inline void Barriers::SynchronizedSetClass(void *obj, JSTaggedType value)
+inline void Barriers::SynchronizedSetClass(const JSThread *thread, void *obj, JSTaggedType value)
 {
     reinterpret_cast<volatile std::atomic<JSTaggedType> *>(obj)->store(value, std::memory_order_release);
-    WriteBarrier(obj, 0, value);
+    WriteBarrier(thread, obj, 0, value);
 }
 
-inline void Barriers::SynchronizedSetObject(void *obj, size_t offset, JSTaggedType value, bool isPrimitive)
+inline void Barriers::SynchronizedSetObject(const JSThread *thread, void *obj, size_t offset, JSTaggedType value,
+                                            bool isPrimitive)
 {
     reinterpret_cast<volatile std::atomic<JSTaggedType> *>(ToUintPtr(obj) + offset)
     ->store(value, std::memory_order_release);
     if (!isPrimitive) {
-        WriteBarrier(obj, offset, value);
+        WriteBarrier(thread, obj, offset, value);
     }
 }
 }  // namespace panda::ecmascript

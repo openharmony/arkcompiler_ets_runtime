@@ -42,6 +42,7 @@ void GlobalEnv::Init(JSThread *thread)
     SetTemplateMap(thread, TemplateMap::Create(thread));
     SetObjectLiteralHClassCache(thread, JSTaggedValue::Hole());
     SetJsonObjectHclassCache(thread, JSTaggedValue::Hole());
+    SetJSThread(thread);
 }
 JSHandle<JSTaggedValue> GlobalEnv::GetSymbol(JSThread *thread, const JSHandle<JSTaggedValue> &string)
 {

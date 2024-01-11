@@ -208,7 +208,7 @@ JSTaggedValue ContainersLightWeightSet::Has(EcmaRuntimeCallInfo *argv)
     }
     JSHandle<JSTaggedValue> value(GetCallArg(argv, 0));
     JSAPILightWeightSet *set = JSAPILightWeightSet::Cast(self->GetTaggedObject());
-    return JSTaggedValue(set->Has(value));
+    return JSTaggedValue(set->Has(thread, value));
 }
 
 JSTaggedValue ContainersLightWeightSet::HasHash(EcmaRuntimeCallInfo *argv)
@@ -396,7 +396,7 @@ JSTaggedValue ContainersLightWeightSet::GetIndexOf(EcmaRuntimeCallInfo *argv)
     }
     JSHandle<JSTaggedValue> value(GetCallArg(argv, 0));
     JSAPILightWeightSet *set = JSAPILightWeightSet::Cast(self->GetTaggedObject());
-    int32_t result = set->GetIndexOf(value);
+    int32_t result = set->GetIndexOf(thread, value);
     return JSTaggedValue(result);
 }
 

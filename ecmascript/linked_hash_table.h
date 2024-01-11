@@ -25,7 +25,7 @@
 namespace panda::ecmascript {
 class LinkedHash {
 public:
-    static int Hash(JSTaggedValue key);
+    static int Hash(const JSThread *thread, JSTaggedValue key);
 };
 
 /**
@@ -81,12 +81,12 @@ public:
         return false;
     }
 
-    inline int FindElement(JSTaggedValue key) const
+    inline int FindElement(const JSThread *thread, JSTaggedValue key) const
     {
         if (!IsKey(key)) {
             return -1;
         }
-        int hash = LinkedHash::Hash(key);
+        int hash = LinkedHash::Hash(thread, key);
         uint32_t bucket = HashToBucket(hash);
         for (JSTaggedValue entry = GetElement(BucketToIndex(bucket)); !entry.IsHole();
             entry = GetNextEntry(entry.GetInt())) {
@@ -237,7 +237,7 @@ public:
                 key.RemoveWeakTag();
             }
 
-            int bucket = static_cast<int>(newTable->HashToBucket(LinkedHash::Hash(key)));
+            int bucket = static_cast<int>(newTable->HashToBucket(LinkedHash::Hash(thread, key)));
             newTable->InsertNewEntry(thread, bucket, desEntry);
             int desIndex = static_cast<int>(newTable->EntryToIndex(desEntry));
             for (int j = 0; j < HashObject::ENTRY_SIZE; j++) {
@@ -352,12 +352,12 @@ public:
     static JSHandle<LinkedHashMap> SetWeakRef(const JSThread *thread, const JSHandle<LinkedHashMap> &obj,
         const JSHandle<JSTaggedValue> &key, const JSHandle<JSTaggedValue> &value);
 
-    JSTaggedValue Get(JSTaggedValue key) const;
+    JSTaggedValue Get(const JSThread *thread, JSTaggedValue key) const;
 
     static JSHandle<LinkedHashMap> Shrink(const JSThread *thread, const JSHandle<LinkedHashMap> &table,
         int additionalCapacity = 0);
 
-    bool Has(JSTaggedValue key) const;
+    bool Has(const JSThread *thread, JSTaggedValue key) const;
 
     static JSHandle<LinkedHashMap> Clear(const JSThread *thread, const JSHandle<LinkedHashMap> &table);
     DECL_DUMP()
@@ -395,7 +395,7 @@ public:
     static JSHandle<LinkedHashSet> Shrink(const JSThread *thread, const JSHandle<LinkedHashSet> &table,
         int additionalCapacity = 0);
 
-    bool Has(JSTaggedValue key) const;
+    bool Has(const JSThread *thread, JSTaggedValue key) const;
 
     static JSHandle<LinkedHashSet> Clear(const JSThread *thread, const JSHandle<LinkedHashSet> &table);
     DECL_DUMP()

@@ -243,10 +243,5 @@ inline void Region::DeleteSweepingRSet()
         sweepingRSet_ = nullptr;
     }
 }
-
-inline bool Region::IsMarking() const
-{
-    return !thread_->IsReadyToMark();
-}
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_MEM_REGION_INL_H

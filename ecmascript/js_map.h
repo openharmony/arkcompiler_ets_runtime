@@ -30,9 +30,9 @@ public:
                     const JSHandle<JSTaggedValue> &value);
     static void Clear(const JSThread *thread, const JSHandle<JSMap> &map);
 
-    bool Has(JSTaggedValue key) const;
+    bool Has(JSThread *thread, JSTaggedValue key) const;
 
-    JSTaggedValue Get(JSTaggedValue key) const;
+    JSTaggedValue Get(JSThread *thread, JSTaggedValue key) const;
 
     uint32_t GetSize() const;
 

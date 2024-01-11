@@ -220,11 +220,11 @@ HWTEST_F_L0(JSAPILightWeightSetTest, IsEmptyHasHasAll)
 
     tValue = myValue1 + std::to_string(5);
     value1.Update(factory->NewFromStdString(tValue).GetTaggedValue());
-    result = lws->Has(value1);
+    result = lws->Has(thread, value1);
     EXPECT_TRUE(result);
     tValue = myValue1 + std::to_string(NODE_NUMBERS);
     value1.Update(factory->NewFromStdString(tValue).GetTaggedValue());
-    result = lws->Has(value1);
+    result = lws->Has(thread, value1);
     EXPECT_FALSE(result);
 
     std::string myValue2("myvalue");
@@ -268,7 +268,7 @@ HWTEST_F_L0(JSAPILightWeightSetTest, GetIndexOfRemoveRemoveAtGetValueAt)
     // test GetIndexOf
     std::string tValue("myvalue5");
     value.Update(factory->NewFromStdString(tValue).GetTaggedValue());
-    int32_t index = lws->GetIndexOf(value);
+    int32_t index = lws->GetIndexOf(thread, value);
     EXPECT_EQ(index, 5); // 5 means the value
 
     // test GetValueAt
@@ -326,7 +326,7 @@ HWTEST_F_L0(JSAPILightWeightSetTest, RBTreeGetHashIndex)
     int32_t size = static_cast<uint32_t>(lws->GetLength());
     for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
         value.Update(JSTaggedValue(hashCollisionVector[i]));
-        int32_t index = lws->GetHashIndex(value, size);
+        int32_t index = lws->GetHashIndex(thread, value, size);
         EXPECT_TRUE(0 <= index && index < size);
     }
 }
@@ -376,18 +376,18 @@ HWTEST_F_L0(JSAPILightWeightSetTest, GetHashAtHasHash)
     // test GetHashAt
     int32_t size = static_cast<int32_t>(lws->GetLength());
     for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
-        hash.Update(JSTaggedValue(lws->Hash(JSTaggedValue(i))));
-        int32_t index = lws->GetHashIndex(hash, size);
+        hash.Update(JSTaggedValue(lws->Hash(thread, JSTaggedValue(i))));
+        int32_t index = lws->GetHashIndex(thread, hash, size);
         JSTaggedValue getHash= lws->GetHashAt(index);
         EXPECT_EQ(getHash, hash.GetTaggedValue());
     }
 
     // test HasHash
     for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
-        hash.Update(JSTaggedValue(lws->Hash(JSTaggedValue(i))));
+        hash.Update(JSTaggedValue(lws->Hash(thread, JSTaggedValue(i))));
         EXPECT_TRUE(lws->HasHash(hash));
     }
-    hash.Update(JSTaggedValue(lws->Hash(JSTaggedValue(NODE_NUMBERS))));
+    hash.Update(JSTaggedValue(lws->Hash(thread, JSTaggedValue(NODE_NUMBERS))));
     EXPECT_FALSE(lws->HasHash(hash));
 }
 

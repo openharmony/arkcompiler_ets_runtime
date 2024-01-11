@@ -372,7 +372,7 @@ public:
     static constexpr size_t HASH_OFFSET = TaggedObjectSize();
     static constexpr size_t SIZE = HASH_OFFSET + sizeof(JSTaggedType);
 
-    static void SetHash(int32_t hash, const JSHandle<ECMAObject> &obj);
+    static void SetHash(const JSThread *thread, int32_t hash, const JSHandle<ECMAObject> &obj);
     int32_t GetHash() const;
     bool HasHash() const;
 
@@ -382,10 +382,10 @@ public:
     }
 
     void* GetNativePointerField(int32_t index) const;
-    void SetNativePointerField(int32_t index, void *nativePointer,
+    void SetNativePointerField(const JSThread *thread, int32_t index, void *nativePointer,
         const DeleteEntryPoint &callBack, void *data, size_t nativeBindingsize = 0);
     int32_t GetNativePointerFieldCount() const;
-    void SetNativePointerFieldCount(int32_t count);
+    void SetNativePointerFieldCount(const JSThread *thread, int32_t count);
 
     DECL_VISIT_OBJECT(HASH_OFFSET, SIZE);
 

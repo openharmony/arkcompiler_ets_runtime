@@ -35,7 +35,7 @@ void JSSet::Add(JSThread *thread, const JSHandle<JSSet> &set, const JSHandle<JST
 bool JSSet::Delete(const JSThread *thread, const JSHandle<JSSet> &set, const JSHandle<JSTaggedValue> &value)
 {
     JSHandle<LinkedHashSet> setHandle(thread, LinkedHashSet::Cast(set->GetLinkedSet().GetTaggedObject()));
-    int entry = setHandle->FindElement(value.GetTaggedValue());
+    int entry = setHandle->FindElement(thread, value.GetTaggedValue());
     if (entry == -1) {
         return false;
     }
@@ -51,9 +51,9 @@ void JSSet::Clear(const JSThread *thread, const JSHandle<JSSet> &set)
     set->SetLinkedSet(thread, newSet);
 }
 
-bool JSSet::Has(JSTaggedValue value) const
+bool JSSet::Has(const JSThread *thread, JSTaggedValue value) const
 {
-    return LinkedHashSet::Cast(GetLinkedSet().GetTaggedObject())->Has(value);
+    return LinkedHashSet::Cast(GetLinkedSet().GetTaggedObject())->Has(thread, value);
 }
 
 uint32_t JSSet::GetSize() const

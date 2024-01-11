@@ -36,7 +36,7 @@ void JSWeakMap::Set(JSThread *thread, const JSHandle<JSWeakMap> &map, const JSHa
 bool JSWeakMap::Delete(JSThread *thread, const JSHandle<JSWeakMap> &map, const JSHandle<JSTaggedValue> &key)
 {
     JSHandle<LinkedHashMap> mapHandle(thread, LinkedHashMap::Cast(map->GetLinkedMap().GetTaggedObject()));
-    int entry = mapHandle->FindElement(key.GetTaggedValue());
+    int entry = mapHandle->FindElement(thread, key.GetTaggedValue());
     if (entry == -1) {
         return false;
     }
@@ -47,14 +47,14 @@ bool JSWeakMap::Delete(JSThread *thread, const JSHandle<JSWeakMap> &map, const J
     return true;
 }
 
-bool JSWeakMap::Has(JSTaggedValue key) const
+bool JSWeakMap::Has(JSThread *thread, JSTaggedValue key) const
 {
-    return LinkedHashMap::Cast(GetLinkedMap().GetTaggedObject())->Has(key);
+    return LinkedHashMap::Cast(GetLinkedMap().GetTaggedObject())->Has(thread, key);
 }
 
-JSTaggedValue JSWeakMap::Get(JSTaggedValue key) const
+JSTaggedValue JSWeakMap::Get(JSThread *thread, JSTaggedValue key) const
 {
-    return LinkedHashMap::Cast(GetLinkedMap().GetTaggedObject())->Get(key);
+    return LinkedHashMap::Cast(GetLinkedMap().GetTaggedObject())->Get(thread, key);
 }
 
 int JSWeakMap::GetSize() const
@@ -88,7 +88,7 @@ void JSWeakSet::Add(JSThread *thread, const JSHandle<JSWeakSet> &weakSet, const 
 bool JSWeakSet::Delete(JSThread *thread, const JSHandle<JSWeakSet> &weakSet, const JSHandle<JSTaggedValue> &value)
 {
     JSHandle<LinkedHashSet> weakSetHandle(thread, LinkedHashSet::Cast(weakSet->GetLinkedSet().GetTaggedObject()));
-    int entry = weakSetHandle->FindElement(value.GetTaggedValue());
+    int entry = weakSetHandle->FindElement(thread, value.GetTaggedValue());
     if (entry == -1) {
         return false;
     }
@@ -98,9 +98,9 @@ bool JSWeakSet::Delete(JSThread *thread, const JSHandle<JSWeakSet> &weakSet, con
     return true;
 }
 
-bool JSWeakSet::Has(JSTaggedValue value) const
+bool JSWeakSet::Has(JSThread *thread, JSTaggedValue value) const
 {
-    return LinkedHashSet::Cast(GetLinkedSet().GetTaggedObject())->Has(value);
+    return LinkedHashSet::Cast(GetLinkedSet().GetTaggedObject())->Has(thread, value);
 }
 
 int JSWeakSet::GetSize() const

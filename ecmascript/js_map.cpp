@@ -35,7 +35,7 @@ void JSMap::Set(JSThread *thread, const JSHandle<JSMap> &map, const JSHandle<JST
 bool JSMap::Delete(const JSThread *thread, const JSHandle<JSMap> &map, const JSHandle<JSTaggedValue> &key)
 {
     JSHandle<LinkedHashMap> mapHandle(thread, LinkedHashMap::Cast(map->GetLinkedMap().GetTaggedObject()));
-    int entry = mapHandle->FindElement(key.GetTaggedValue());
+    int entry = mapHandle->FindElement(thread, key.GetTaggedValue());
     if (entry == -1) {
         return false;
     }
@@ -51,14 +51,14 @@ void JSMap::Clear(const JSThread *thread, const JSHandle<JSMap> &map)
     map->SetLinkedMap(thread, newMap);
 }
 
-bool JSMap::Has(JSTaggedValue key) const
+bool JSMap::Has(JSThread *thread, JSTaggedValue key) const
 {
-    return LinkedHashMap::Cast(GetLinkedMap().GetTaggedObject())->Has(key);
+    return LinkedHashMap::Cast(GetLinkedMap().GetTaggedObject())->Has(thread, key);
 }
 
-JSTaggedValue JSMap::Get(JSTaggedValue key) const
+JSTaggedValue JSMap::Get(JSThread *thread, JSTaggedValue key) const
 {
-    return LinkedHashMap::Cast(GetLinkedMap().GetTaggedObject())->Get(key);
+    return LinkedHashMap::Cast(GetLinkedMap().GetTaggedObject())->Get(thread, key);
 }
 
 uint32_t JSMap::GetSize() const

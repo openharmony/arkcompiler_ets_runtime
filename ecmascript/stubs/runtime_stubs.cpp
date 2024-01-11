@@ -513,7 +513,7 @@ DEF_RUNTIME_STUBS(UpdateHClassForElementsKind)
         auto targetHClassValue = globalConst->GetGlobalConstantObject(static_cast<size_t>(index));
         auto hclass = JSHClass::Cast(targetHClassValue.GetTaggedObject());
         auto array = JSHandle<JSArray>(receiver);
-        array->SynchronizedSetClass(hclass);
+        array->SynchronizedSetClass(thread, hclass);
         // Update TrackInfo
         if (!thread->IsPGOProfilerEnable()) {
             return JSTaggedValue::Hole().GetRawData();
@@ -2802,15 +2802,16 @@ void RuntimeStubs::MarkingBarrier([[maybe_unused]] uintptr_t argGlue,
     uintptr_t slotAddr = object + offset;
     Region *objectRegion = Region::ObjectAddressToRange(object);
     Region *valueRegion = Region::ObjectAddressToRange(value);
+    auto thread = JSThread::GlueToJSThread(argGlue);
 #if ECMASCRIPT_ENABLE_BARRIER_CHECK
-    if (!valueRegion->GetJSThread()->GetEcmaVM()->GetHeap()->IsAlive(JSTaggedValue(value).GetHeapObject())) {
+    if (!thread->GetEcmaVM()->GetHeap()->IsAlive(JSTaggedValue(value).GetHeapObject())) {
         LOG_FULL(FATAL) << "RuntimeStubs::MarkingBarrier checked value:" << value << " is invalid!";
     }
 #endif
-    if (!valueRegion->IsMarking()) {
+    if (!thread->IsConcurrentMarkingOrFinished()) {
         return;
     }
-    Barriers::Update(slotAddr, objectRegion, value, valueRegion);
+    Barriers::Update(thread, slotAddr, objectRegion, value, valueRegion);
 }
 
 void RuntimeStubs::StoreBarrier([[maybe_unused]] uintptr_t argGlue,
@@ -2819,8 +2820,9 @@ void RuntimeStubs::StoreBarrier([[maybe_unused]] uintptr_t argGlue,
     uintptr_t slotAddr = object + offset;
     Region *objectRegion = Region::ObjectAddressToRange(object);
     Region *valueRegion = Region::ObjectAddressToRange(value);
+    auto thread = JSThread::GlueToJSThread(argGlue);
 #if ECMASCRIPT_ENABLE_BARRIER_CHECK
-    if (!valueRegion->GetJSThread()->GetEcmaVM()->GetHeap()->IsAlive(JSTaggedValue(value).GetHeapObject())) {
+    if (!thread->GetEcmaVM()->GetHeap()->IsAlive(JSTaggedValue(value).GetHeapObject())) {
         LOG_FULL(FATAL) << "RuntimeStubs::StoreBarrier checked value:" << value << " is invalid!";
     }
 #endif
@@ -2829,10 +2831,10 @@ void RuntimeStubs::StoreBarrier([[maybe_unused]] uintptr_t argGlue,
         ASSERT((slotAddr % static_cast<uint8_t>(MemAlignment::MEM_ALIGN_OBJECT)) == 0);
         objectRegion->InsertOldToNewRSet(slotAddr);
     }
-    if (!valueRegion->IsMarking()) {
+    if (!thread->IsConcurrentMarkingOrFinished()) {
         return;
     }
-    Barriers::Update(slotAddr, objectRegion, value, valueRegion);
+    Barriers::Update(thread, slotAddr, objectRegion, value, valueRegion);
 }
 
 bool RuntimeStubs::StringsAreEquals(EcmaString *str1, EcmaString *str2)
@@ -3173,7 +3175,7 @@ DEF_RUNTIME_STUBS(GetLinkedHash)
 {
     RUNTIME_STUBS_HEADER(GetLinkedHash);
     JSTaggedValue key = GetArg(argv, argc, 0);  // 0: means the zeroth parameter
-    return JSTaggedValue(LinkedHash::Hash(key)).GetRawData();
+    return JSTaggedValue(LinkedHash::Hash(thread, key)).GetRawData();
 }
 
 DEF_RUNTIME_STUBS(LinkedHashMapComputeCapacity)

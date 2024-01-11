@@ -165,11 +165,6 @@ public:
         return end_ - packedData_.begin_;
     }
 
-    JSThread *GetJSThread() const
-    {
-        return thread_;
-    }
-
     bool IsGCFlagSet(RegionGCFlags flag) const
     {
         return (packedData_.flags_.gcFlags_ & flag) == flag;
@@ -435,8 +430,6 @@ public:
             }
         }
     }
-
-    inline bool IsMarking() const;
 
     void IncreaseAliveObjectSafe(size_t size)
     {

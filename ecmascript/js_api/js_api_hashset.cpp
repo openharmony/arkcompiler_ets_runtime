@@ -39,7 +39,7 @@ JSTaggedValue JSAPIHashSet::Has(JSThread *thread, JSTaggedValue value)
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
     TaggedHashArray *hashArray = TaggedHashArray::Cast(GetTable().GetTaggedObject());
-    int hash = TaggedNode::Hash(value);
+    int hash = TaggedNode::Hash(thread, value);
     return JSTaggedValue(!(hashArray->GetNode(thread, hash, value).IsHole()));
 }
 
@@ -53,7 +53,7 @@ void JSAPIHashSet::Add(JSThread *thread, JSHandle<JSAPIHashSet> hashSet, JSHandl
         THROW_NEW_ERROR_AND_RETURN(thread, error);
     }
     JSHandle<TaggedHashArray> hashArray(thread, hashSet->GetTable());
-    int hash = TaggedNode::Hash(value.GetTaggedValue());
+    int hash = TaggedNode::Hash(thread, value.GetTaggedValue());
     JSHandle<JSTaggedValue> nullHandle(thread, JSTaggedValue::Null());
     JSTaggedValue setValue = TaggedHashArray::SetVal(thread, hashArray, hash, value, nullHandle);
     uint32_t nodeNum = hashSet->GetSize();
@@ -93,7 +93,7 @@ JSTaggedValue JSAPIHashSet::Remove(JSThread *thread, JSHandle<JSAPIHashSet> hash
     if (nodeNum == 0) {
         return JSTaggedValue::False();
     }
-    int hash = TaggedNode::Hash(key);
+    int hash = TaggedNode::Hash(thread, key);
     JSTaggedValue removeValue = hashArray->RemoveNode(thread, hash, key);
     if (removeValue.IsHole()) {
         return JSTaggedValue::False();

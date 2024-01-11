@@ -173,7 +173,7 @@ JSTaggedValue BuiltinsSet::Has(EcmaRuntimeCallInfo *argv)
     }
     JSSet* jsSet = JSSet::Cast(self.GetTaggedValue().GetTaggedObject());
     JSHandle<JSTaggedValue> value = GetCallArg(argv, 0);
-    bool flag = jsSet->Has(value.GetTaggedValue());
+    bool flag = jsSet->Has(thread, value.GetTaggedValue());
     return GetTaggedBoolean(flag);
 }
 

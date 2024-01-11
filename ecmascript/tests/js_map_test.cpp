@@ -88,7 +88,7 @@ HWTEST_F_L0(JSMapTest, AddAndHas)
     JSHandle<JSTaggedValue> key(factory->NewFromASCII("key"));
     JSHandle<JSTaggedValue> value(thread, JSTaggedValue(1));
     JSMap::Set(thread, map, key, value);
-    EXPECT_TRUE(map->Has(key.GetTaggedValue()));
+    EXPECT_TRUE(map->Has(thread, key.GetTaggedValue()));
 }
 
 HWTEST_F_L0(JSMapTest, DeleteAndGet)
@@ -104,7 +104,7 @@ HWTEST_F_L0(JSMapTest, DeleteAndGet)
         JSHandle<JSTaggedValue> key(factory->NewFromASCII(keyArray));
         JSHandle<JSTaggedValue> value(thread, JSTaggedValue(i));
         JSMap::Set(thread, map, key, value);
-        EXPECT_TRUE(map->Has(key.GetTaggedValue()));
+        EXPECT_TRUE(map->Has(thread, key.GetTaggedValue()));
     }
     EXPECT_EQ(map->GetSize(), 40);
     // whether jsMap has delete key
@@ -112,7 +112,7 @@ HWTEST_F_L0(JSMapTest, DeleteAndGet)
     JSHandle<JSTaggedValue> deleteKey(factory->NewFromASCII(keyArray));
     EXPECT_EQ(map->GetValue(8), JSTaggedValue(8));
     JSMap::Delete(thread, map, deleteKey);
-    EXPECT_FALSE(map->Has(deleteKey.GetTaggedValue()));
+    EXPECT_FALSE(map->Has(thread, deleteKey.GetTaggedValue()));
     EXPECT_EQ(map->GetSize(), 39);
 }
 

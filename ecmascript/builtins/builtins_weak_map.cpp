@@ -112,7 +112,7 @@ JSTaggedValue BuiltinsWeakMap::Has(EcmaRuntimeCallInfo *argv)
     if (!JSTaggedValue::CanBeHeldWeakly(thread, key)) {
         return GetTaggedBoolean(false);
     }
-    return GetTaggedBoolean(jsWeakMap->Has(key.GetTaggedValue()));
+    return GetTaggedBoolean(jsWeakMap->Has(thread, key.GetTaggedValue()));
 }
 
 JSTaggedValue BuiltinsWeakMap::Get(EcmaRuntimeCallInfo *argv)
@@ -133,7 +133,7 @@ JSTaggedValue BuiltinsWeakMap::Get(EcmaRuntimeCallInfo *argv)
     if (!JSTaggedValue::CanBeHeldWeakly(thread, key)) {
         return JSTaggedValue::Undefined();
     }
-    return jsWeakMap->Get(key.GetTaggedValue());
+    return jsWeakMap->Get(thread, key.GetTaggedValue());
 }
 
 JSTaggedValue BuiltinsWeakMap::Set(EcmaRuntimeCallInfo *argv)

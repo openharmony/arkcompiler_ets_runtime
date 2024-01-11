@@ -186,7 +186,7 @@ JSHandle<JSHClass> ObjectFactory::InitClassClass()
 {
     JSHandle<JSHClass> hClassHandle = NewEcmaHClassClass(nullptr, JSHClass::SIZE, JSType::HCLASS);
     JSHClass *hclass = reinterpret_cast<JSHClass *>(hClassHandle.GetTaggedValue().GetTaggedObject());
-    hclass->SetClass(hclass);
+    hclass->SetClass(thread_, hclass);
     return hClassHandle;
 }
 
@@ -2314,13 +2314,13 @@ JSHandle<JSRealm> ObjectFactory::NewJSRealm()
 {
     JSHandle<JSHClass> hClassHandle = NewEcmaHClassClass(nullptr, JSHClass::SIZE, JSType::HCLASS);
     JSHClass *hclass = reinterpret_cast<JSHClass *>(hClassHandle.GetTaggedValue().GetTaggedObject());
-    hclass->SetClass(hclass);
+    hclass->SetClass(thread_, hclass);
     JSHandle<JSHClass> realmEnvClass = NewEcmaHClass(*hClassHandle, GlobalEnv::SIZE, JSType::GLOBAL_ENV);
     JSHandle<GlobalEnv> realmEnvHandle = NewGlobalEnv(*realmEnvClass);
 
     auto result = TemplateMap::Create(thread_);
     realmEnvHandle->SetTemplateMap(thread_, result);
-
+    realmEnvHandle->SetJSThread(thread_);
     Builtins builtins;
     builtins.Initialize(realmEnvHandle, thread_, false, true);
     JSHandle<JSTaggedValue> protoValue = thread_->GlobalConstants()->GetHandledJSRealmClass();
@@ -2409,7 +2409,7 @@ JSHandle<TaggedArray> ObjectFactory::NewAndCopyTaggedArray(JSHandle<TaggedArray>
         return dstElements;
     }
     Region *region = Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(*dstElements));
-    if (region->InYoungSpace() && !region->IsMarking()) {
+    if (region->InYoungSpace() && !thread_->IsConcurrentMarkingOrFinished()) {
         size_t size = oldLength * sizeof(JSTaggedType);
         if (memcpy_s(reinterpret_cast<void *>(dstElements->GetData()), size,
             reinterpret_cast<void *>(srcElements->GetData() + k), size) != EOK) {
@@ -2433,7 +2433,7 @@ JSHandle<TaggedArray> ObjectFactory::NewAndCopyNameDictionary(JSHandle<TaggedArr
         return dstElements;
     }
     Region *region = Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(*dstElements));
-    if (region->InYoungSpace() && !region->IsMarking()) {
+    if (region->InYoungSpace() && !thread_->IsConcurrentMarkingOrFinished()) {
         size_t size = length * sizeof(JSTaggedType);
         if (memcpy_s(reinterpret_cast<void *>(dstElements->GetData()), size,
             reinterpret_cast<void *>(srcElements->GetData()), size) != EOK) {
@@ -2477,7 +2477,7 @@ JSHandle<TaggedArray> ObjectFactory::NewAndCopyTaggedArrayByObject(JSHandle<JSOb
         return dstElements;
     }
     Region *region = Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(*dstElements));
-    if (region->InYoungSpace() && !region->IsMarking()) {
+    if (region->InYoungSpace() && !thread_->IsConcurrentMarkingOrFinished()) {
         size_t size = oldLength * sizeof(JSTaggedType);
         if (memcpy_s(reinterpret_cast<void *>(dstElements->GetData()), size,
             reinterpret_cast<void *>(srcElements->GetData() + k), size) != EOK) {
@@ -2506,7 +2506,7 @@ JSHandle<MutantTaggedArray> ObjectFactory::NewAndCopyMutantTaggedArrayByObject(J
         return dstElements;
     }
     Region *region = Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(*dstElements));
-    if (region->InYoungSpace() && !region->IsMarking()) {
+    if (region->InYoungSpace() && !thread_->IsConcurrentMarkingOrFinished()) {
         size_t size = oldLength * sizeof(JSTaggedType);
         if (memcpy_s(reinterpret_cast<void *>(dstElements->GetData()), size,
             reinterpret_cast<void *>(srcElements->GetData() + k), size) != EOK) {

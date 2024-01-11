@@ -125,9 +125,9 @@ HWTEST_F_L0(JSSetIteratorTest, Update)
     // update SetIterator
     setIterator->Update(thread);
     LinkedHashSet *resultSet = LinkedHashSet::Cast(setIterator->GetIteratedSet().GetTaggedObject());
-    EXPECT_TRUE(resultSet->Has(keyHandle1.GetTaggedValue()));
-    EXPECT_TRUE(resultSet->Has(keyHandle2.GetTaggedValue()));
-    EXPECT_TRUE(resultSet->Has(keyHandle3.GetTaggedValue()));
+    EXPECT_TRUE(resultSet->Has(thread, keyHandle1.GetTaggedValue()));
+    EXPECT_TRUE(resultSet->Has(thread, keyHandle2.GetTaggedValue()));
+    EXPECT_TRUE(resultSet->Has(thread, keyHandle3.GetTaggedValue()));
 }
 
 /**

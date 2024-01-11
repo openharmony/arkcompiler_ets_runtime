@@ -664,10 +664,11 @@ public:
     Local<JSValueRef> Freeze(const EcmaVM *vm);
     Local<JSValueRef> Seal(const EcmaVM *vm);
 
-    void SetNativePointerFieldCount(int32_t count);
+    void SetNativePointerFieldCount(const EcmaVM *vm, int32_t count);
     int32_t GetNativePointerFieldCount();
     void *GetNativePointerField(int32_t index);
-    void SetNativePointerField(int32_t index,
+    void SetNativePointerField(const EcmaVM *vm,
+                               int32_t index,
                                void *nativePointer = nullptr,
                                NativePointerCallback callBack = nullptr,
                                void *data = nullptr, size_t nativeBindingsize = 0);
@@ -1347,7 +1348,7 @@ public:
     Local<JSValueRef> GetValue(const EcmaVM *vm, int entry);
     static Local<WeakMapRef> New(const EcmaVM *vm);
     void Set(const EcmaVM *vm, const Local<JSValueRef> &key, const Local<JSValueRef> &value);
-    bool Has(Local<JSValueRef> key);
+    bool Has(const EcmaVM *vm, Local<JSValueRef> key);
 };
 
 class ECMA_PUBLIC_API SetRef : public ObjectRef {

@@ -31,14 +31,14 @@ inline void TaggedObject::SetClassWithoutBarrier(JSHClass *hclass)
     class_ = reinterpret_cast<MarkWordType>(hclass);
 }
 
-inline void TaggedObject::SetClass(JSHClass *hclass)
+inline void TaggedObject::SetClass(const JSThread *thread, JSHClass *hclass)
 {
-    Barriers::SetObject<true>(GetJSThread(), this, 0, JSTaggedValue(hclass).GetRawData());
+    Barriers::SetObject<true>(thread, this, 0, JSTaggedValue(hclass).GetRawData());
 }
 
-inline void TaggedObject::SetClass(JSHandle<JSHClass> hclass)
+inline void TaggedObject::SetClass(const JSThread *thread, JSHandle<JSHClass> hclass)
 {
-    SetClass(*hclass);
+    SetClass(thread, *hclass);
 }
 
 inline JSHClass *TaggedObject::GetClass() const
@@ -46,22 +46,15 @@ inline JSHClass *TaggedObject::GetClass() const
     return reinterpret_cast<JSHClass *>(class_);
 }
 
-inline void TaggedObject::SynchronizedSetClass(JSHClass *hclass)
+inline void TaggedObject::SynchronizedSetClass(const JSThread *thread, JSHClass *hclass)
 {
-    Barriers::SynchronizedSetClass(this, JSTaggedValue(hclass).GetRawData());
+    Barriers::SynchronizedSetClass(thread, this, JSTaggedValue(hclass).GetRawData());
 }
 
 inline JSHClass *TaggedObject::SynchronizedGetClass() const
 {
     return reinterpret_cast<JSHClass *>(
         reinterpret_cast<volatile std::atomic<MarkWordType> *>(ToUintPtr(this))->load(std::memory_order_acquire));
-}
-
-inline JSThread *TaggedObject::GetJSThread() const
-{
-    Region *region = Region::ObjectAddressToRange(const_cast<TaggedObject *>(this));
-    ASSERT(region != nullptr);
-    return region->GetJSThread();
 }
 }  //  namespace panda::ecmascript
 

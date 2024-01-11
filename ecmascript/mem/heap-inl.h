@@ -155,7 +155,7 @@ TaggedObject *Heap::AllocateYoungOrHugeObject(size_t size)
 TaggedObject *Heap::AllocateYoungOrHugeObject(JSHClass *hclass, size_t size)
 {
     auto object = AllocateYoungOrHugeObject(size);
-    object->SetClass(hclass);
+    object->SetClass(thread_, hclass);
     OnAllocateEvent(reinterpret_cast<TaggedObject*>(object), size);
     return object;
 }
@@ -183,7 +183,7 @@ TaggedObject *Heap::TryAllocateYoungGeneration(JSHClass *hclass, size_t size)
     }
     auto object = reinterpret_cast<TaggedObject *>(activeSemiSpace_->Allocate(size));
     if (object != nullptr) {
-        object->SetClass(hclass);
+        object->SetClass(thread_, hclass);
     }
     return object;
 }
@@ -202,7 +202,7 @@ TaggedObject *Heap::AllocateOldOrHugeObject(JSHClass *hclass, size_t size)
     }
     auto object = reinterpret_cast<TaggedObject *>(oldSpace_->Allocate(size));
     CHECK_OBJ_AND_THROW_OOM_ERROR(object, size, oldSpace_, "Heap::AllocateOldOrHugeObject");
-    object->SetClass(hclass);
+    object->SetClass(thread_, hclass);
     OnAllocateEvent(reinterpret_cast<TaggedObject*>(object), size);
     return object;
 }
@@ -221,7 +221,7 @@ TaggedObject *Heap::AllocateReadOnlyOrHugeObject(JSHClass *hclass, size_t size)
     }
     auto object = reinterpret_cast<TaggedObject *>(readOnlySpace_->Allocate(size));
     CHECK_OBJ_AND_THROW_OOM_ERROR(object, size, readOnlySpace_, "Heap::AllocateReadOnlyOrHugeObject");
-    object->SetClass(hclass);
+    object->SetClass(thread_, hclass);
     OnAllocateEvent(reinterpret_cast<TaggedObject*>(object), size);
     return object;
 }
@@ -240,7 +240,7 @@ TaggedObject *Heap::AllocateNonMovableOrHugeObject(JSHClass *hclass, size_t size
     }
     auto object = reinterpret_cast<TaggedObject *>(nonMovableSpace_->CheckAndAllocate(size));
     CHECK_OBJ_AND_THROW_OOM_ERROR(object, size, nonMovableSpace_, "Heap::AllocateNonMovableOrHugeObject");
-    object->SetClass(hclass);
+    object->SetClass(thread_, hclass);
     OnAllocateEvent(reinterpret_cast<TaggedObject*>(object), size);
     return object;
 }
@@ -287,7 +287,7 @@ TaggedObject *Heap::AllocateHugeObject(JSHClass *hclass, size_t size)
     // Check whether it is necessary to trigger Old GC before expanding to avoid OOM risk.
     CheckAndTriggerOldGC(size);
     auto object = AllocateHugeObject(size);
-    object->SetClass(hclass);
+    object->SetClass(thread_, hclass);
     OnAllocateEvent(reinterpret_cast<TaggedObject*>(object), size);
     return object;
 }
@@ -305,7 +305,7 @@ TaggedObject *Heap::AllocateMachineCodeObject(JSHClass *hclass, size_t size)
         reinterpret_cast<TaggedObject *>(AllocateHugeMachineCodeObject(size)) :
         reinterpret_cast<TaggedObject *>(machineCodeSpace_->Allocate(size));
     CHECK_OBJ_AND_THROW_OOM_ERROR(object, size, machineCodeSpace_, "Heap::AllocateMachineCodeObject");
-    object->SetClass(hclass);
+    object->SetClass(thread_, hclass);
     OnAllocateEvent(reinterpret_cast<TaggedObject*>(object), size);
     return object;
 }

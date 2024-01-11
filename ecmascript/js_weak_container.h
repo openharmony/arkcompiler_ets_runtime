@@ -32,9 +32,9 @@ public:
     static void Set(JSThread *thread, const JSHandle<JSWeakMap> &map, const JSHandle<JSTaggedValue> &key,
                     const JSHandle<JSTaggedValue> &value);
 
-    bool Has(JSTaggedValue key) const;
+    bool Has(JSThread *thread, JSTaggedValue key) const;
 
-    JSTaggedValue Get(JSTaggedValue key) const;
+    JSTaggedValue Get(JSThread *thread, JSTaggedValue key) const;
 
     int GetSize() const;
 
@@ -60,7 +60,7 @@ public:
 
     static void Add(JSThread *thread, const JSHandle<JSWeakSet> &set, const JSHandle<JSTaggedValue> &value);
 
-    bool Has(JSTaggedValue value) const;
+    bool Has(JSThread *thread, JSTaggedValue value) const;
 
     int GetSize() const;
 
