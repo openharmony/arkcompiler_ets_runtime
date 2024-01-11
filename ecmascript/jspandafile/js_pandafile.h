@@ -444,6 +444,8 @@ private:
     CUnorderedMap<uint32_t, MethodLiteral *> methodLiteralMap_;
     CUnorderedMap<uint32_t, const char *> methodNameMap_;
     CUnorderedMap<uint32_t, CString> recordNameMap_;
+    Mutex methodNameMapMutex_;
+    Mutex recordNameMapMutex_;
 
     CUnorderedMap<uint32_t, uint64_t> constpoolMap_;
     uint32_t numMethods_ {0};
