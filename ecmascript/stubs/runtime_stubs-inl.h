@@ -2977,7 +2977,7 @@ JSTaggedValue RuntimeStubs::RuntimeCreatePrivateProperty(JSThread *thread, JSTag
         return JSTaggedValue::Undefined();
     }
     // instace property number is hidden in the last index of literal buffer
-    uint32_t instacePropertyCount = literalBuffer->Get(literalBufferLength - 1).GetInt();
+    uint32_t instacePropertyCount = static_cast<uint32_t>(literalBuffer->Get(literalBufferLength - 1).GetInt());
     ASSERT(startIndex + count + literalBufferLength - (instacePropertyCount == 0) <= length);
     for (uint32_t i = 0; i < literalBufferLength - 1; i++) {
         JSTaggedValue literalValue = literalBuffer->Get(i);

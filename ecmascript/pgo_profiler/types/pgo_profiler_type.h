@@ -410,7 +410,7 @@ public:
         auto count = from->GetCount();
         size_t size = sizeof(PGOProtoChainTemplate);
         if (count != 0) {
-            size += sizeof(PGOProfileType) * (count - 1) * 2;   // 2 means mul by 2
+            size += sizeof(PGOProfileType) * (static_cast<size_t>(count) - 1) * 2;   // 2 means mul by 2
         }
         auto result = reinterpret_cast<PGOProtoChainTemplate *>(malloc(size));
         new (result) PGOProtoChainTemplate(size, count);

@@ -1229,7 +1229,7 @@ void PGOProfiler::UpdateTranstionLayout(JSHClass *parent, JSHClass *child)
         }
     }
 
-    int32_t size = hclassVec.size();
+    int32_t size = static_cast<int32_t>(hclassVec.size());
     for (int32_t i = size - 1; i >= 0; i--) {
         curHClass = hclassVec[i];
         curType = typeVec[i];
