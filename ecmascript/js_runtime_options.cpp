@@ -1066,6 +1066,8 @@ void JSRuntimeOptions::SetOptionsForTargetCompilation()
     if (IsTargetCompilerMode()) {
         SetTargetBuiltinsDtsPath();
         SetTargetTriple("aarch64-unknown-linux-gnu");
+        SetEnableOptTrackField(false);
+        SetEnableOptInlining(false);
         if (IsPartialCompilerMode()) {
             SetEnableOptPGOType(true);
             if (IsPGOProfilerPathEmpty()) {
