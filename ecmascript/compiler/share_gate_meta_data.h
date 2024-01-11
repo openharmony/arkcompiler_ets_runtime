@@ -775,6 +775,24 @@ private:
 
     uint64_t bitField_;
 };
+
+class StringStatusAccessor {
+public:
+    explicit StringStatusAccessor(uint64_t value = 0) : type_(value) {}
+
+    uint32_t GetStringStatus() const
+    {
+        return static_cast<uint32_t>(type_);
+    }
+
+    uint64_t ToValue() const
+    {
+        return type_;
+    }
+
+private:
+    uint64_t type_ {0};
+};
 } // namespace panda::ecmascript::kungfu
 
 #endif  // ECMASCRIPT_COMPILER_SHARE_GATE_META_DATA_H

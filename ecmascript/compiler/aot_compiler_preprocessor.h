@@ -53,6 +53,7 @@ struct CompilationOptions {
     bool isEnableLaterElimination_;
     bool isEnableValueNumbering_;
     bool isEnableOptInlining_;
+    bool isEnableOptString_;
     bool isEnableTypeInfer_;
     bool isEnableOptPGOType_;
     bool isEnableOptTrackField_;
@@ -94,7 +95,7 @@ public:
     void GeneratePGOTypes(const CompilationOptions &cOptions);
 
     void SnapshotInitialize();
-    
+
     std::string GetMainPkgArgsAppSignature() const;
 
     bool GetCompilerResult()

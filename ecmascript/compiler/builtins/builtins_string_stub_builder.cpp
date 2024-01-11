@@ -1551,6 +1551,11 @@ void BuiltinsStringStubBuilder::StoreStartIndex(GateRef glue, GateRef object, Ga
     Store(VariableType::INT32(), glue, object, IntPtr(SlicedString::STARTINDEX_OFFSET), startIndex);
 }
 
+void BuiltinsStringStubBuilder::StoreHasBackingStore(GateRef glue, GateRef object, GateRef hasBackingStore)
+{
+    Store(VariableType::INT32(), glue, object, IntPtr(SlicedString::BACKING_STORE_FLAG), hasBackingStore);
+}
+
 GateRef BuiltinsStringStubBuilder::StringIndexOf(const StringInfoGateRef &lStringInfoGate,
     const StringInfoGateRef &rStringInfoGate, GateRef pos)
 {
@@ -1884,7 +1889,7 @@ void BuiltinsStringStubBuilder::LocaleCompare([[maybe_unused]] GateRef glue, Gat
         Bind(&fristArgIsString);
 #ifdef ARK_SUPPORT_INTL
         GateRef locales = GetCallArg1(numArgs);
-        
+
         GateRef options = GetCallArg2(numArgs);
         GateRef localesIsUndef = TaggedIsUndefined(locales);
         GateRef optionsIsUndef = TaggedIsUndefined(options);

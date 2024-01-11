@@ -131,6 +131,7 @@ bool JitPassManager::Compile(JSHandle<JSFunction> &jsFunction, AOTFileGenerator 
         pipeline.RunPass<LaterEliminationPass>();
         pipeline.RunPass<ValueNumberingPass>();
         pipeline.RunPass<StateSplitLinearizerPass>();
+        pipeline.RunPass<StringOptimizationPass>();
         pipeline.RunPass<NTypeHCRLoweringPass>();
         pipeline.RunPass<TypeHCRLoweringPass>();
         pipeline.RunPass<LaterEliminationPass>();
@@ -295,6 +296,7 @@ bool PassManager::Compile(JSPandaFile *jsPandaFile, const std::string &fileName,
         pipeline.RunPass<LaterEliminationPass>();
         pipeline.RunPass<ValueNumberingPass>();
         pipeline.RunPass<StateSplitLinearizerPass>();
+        pipeline.RunPass<StringOptimizationPass>();
         pipeline.RunPass<NTypeHCRLoweringPass>();
         pipeline.RunPass<TypeHCRLoweringPass>();
         pipeline.RunPass<LaterEliminationPass>();

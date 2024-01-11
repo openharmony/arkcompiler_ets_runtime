@@ -1785,8 +1785,372 @@ void TypedHCRLowering::LowerStringAdd(GateRef gate, GateRef glue)
     Environment env(gate, circuit_, &builder_);
     GateRef left = acc_.GetValueIn(gate, 0);
     GateRef right = acc_.GetValueIn(gate, 1);
-    GateRef result = builder_.CallStub(glue, gate, CommonStubCSigns::FastStringAdd, { glue, left, right });
-    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
+    GateRef leftIsUtf8 = builder_.IsUtf8String(left);
+    GateRef rightIsUtf8 = builder_.IsUtf8String(right);
+    GateRef leftLength = builder_.GetLengthFromString(left);
+    GateRef rightLength = builder_.GetLengthFromString(right);
+    GateRef newLength = builder_.Int32Add(leftLength, rightLength);
+    GateRef backStoreLength = builder_.Int32Mul(newLength, builder_.Int32(LineEcmaString::INIT_LENGTH_TIMES));
+    GateRef canBeCompressed = builder_.BoolAnd(leftIsUtf8, rightIsUtf8);
+    GateRef isValidFirstOpt = builder_.Equal(leftIsUtf8, rightIsUtf8);
+    GateRef isValidOpt = builder_.Equal(leftIsUtf8, rightIsUtf8);
+    if (!IsFirstConcatInStringAdd(gate)) {
+        isValidFirstOpt = builder_.False();
+    }
+    if (!ConcatIsInStringAdd(gate)) {
+        isValidOpt = builder_.False();
+    }
+
+    Label isFirstConcat(&builder_);
+    Label isNotFirstConcat(&builder_);
+    Label leftEmpty(&builder_);
+    Label leftNotEmpty(&builder_);
+    Label slowPath(&builder_);
+    Label exit(&builder_);
+
+    DEFVALUE(lineString, (&builder_), VariableType::JS_POINTER(), builder_.Undefined());
+    DEFVALUE(slicedString, (&builder_), VariableType::JS_POINTER(), builder_.Undefined());
+    DEFVALUE(newLeft, (&builder_), VariableType::JS_POINTER(), builder_.Undefined());
+    DEFVALUE(result, (&builder_), VariableType::JS_POINTER(), builder_.Undefined());
+
+    builder_.Branch(builder_.Equal(leftLength, builder_.Int32(0)), &leftEmpty, &leftNotEmpty);
+    builder_.Bind(&leftEmpty);
+    {
+        result = right;
+        builder_.Jump(&exit);
+    }
+    builder_.Bind(&leftNotEmpty);
+    {
+        Label rightEmpty(&builder_);
+        Label rightNotEmpty(&builder_);
+        builder_.Branch(builder_.Equal(rightLength, builder_.Int32(0)), &rightEmpty, &rightNotEmpty);
+        builder_.Bind(&rightEmpty);
+        {
+            result = left;
+            builder_.Jump(&exit);
+        }
+        builder_.Bind(&rightNotEmpty);
+        {
+            Label stringConcatOpt(&builder_);
+            builder_.Branch(builder_.Int32LessThan(newLength,
+                builder_.Int32(SlicedString::MIN_SLICED_ECMASTRING_LENGTH)), &slowPath, &stringConcatOpt);
+            builder_.Bind(&stringConcatOpt);
+            {
+                builder_.Branch(builder_.IsSpecialSlicedString(left), &isNotFirstConcat, &isFirstConcat);
+                builder_.Bind(&isFirstConcat);
+                {
+                    Label fastPath(&builder_);
+                    Label canBeConcat(&builder_);
+                    Label canBeCompress(&builder_);
+                    Label canNotBeCompress(&builder_);
+                    Label newSlicedStr(&builder_);
+                    builder_.Branch(builder_.Int32LessThan(builder_.Int32(LineEcmaString::MAX_LENGTH),
+                        backStoreLength), &slowPath, &fastPath);
+                    builder_.Bind(&fastPath);
+                    {
+                        builder_.Branch(builder_.CanBeConcat(left, right, isValidFirstOpt),
+                            &canBeConcat, &slowPath);
+                        builder_.Bind(&canBeConcat);
+                        {
+                            lineString = AllocateLineString(backStoreLength, canBeCompressed);
+                            builder_.Branch(canBeCompressed, &canBeCompress, &canNotBeCompress);
+                            builder_.Bind(&canBeCompress);
+                            {
+                                GateRef leftSource = builder_.GetStringDataFromLineOrConstantString(left);
+                                GateRef rightSource = builder_.GetStringDataFromLineOrConstantString(right);
+                                GateRef leftDst = builder_.TaggedPointerToInt64(
+                                    builder_.PtrAdd(*lineString, builder_.IntPtr(LineEcmaString::DATA_OFFSET)));
+                                GateRef rightDst = builder_.TaggedPointerToInt64(builder_.PtrAdd(leftDst,
+                                    builder_.ZExtInt32ToPtr(leftLength)));
+                                builder_.CopyChars(glue, leftDst, leftSource, leftLength,
+                                                   builder_.IntPtr(sizeof(uint8_t)), VariableType::INT8());
+                                builder_.CopyChars(glue, rightDst, rightSource, rightLength,
+                                                   builder_.IntPtr(sizeof(uint8_t)), VariableType::INT8());
+                                builder_.Jump(&newSlicedStr);
+                            }
+                            builder_.Bind(&canNotBeCompress);
+                            {
+                                Label leftIsUtf8L(&builder_);
+                                Label leftIsUtf16L(&builder_);
+                                Label rightIsUtf8L(&builder_);
+                                Label rightIsUtf16L(&builder_);
+                                GateRef leftSource = builder_.GetStringDataFromLineOrConstantString(left);
+                                GateRef rightSource = builder_.GetStringDataFromLineOrConstantString(right);
+                                GateRef leftDst = builder_.TaggedPointerToInt64(
+                                    builder_.PtrAdd(*lineString, builder_.IntPtr(LineEcmaString::DATA_OFFSET)));
+                                GateRef rightDst = builder_.TaggedPointerToInt64(builder_.PtrAdd(leftDst,
+                                    builder_.PtrMul(builder_.ZExtInt32ToPtr(leftLength),
+                                    builder_.IntPtr(sizeof(uint16_t)))));
+                                builder_.Branch(leftIsUtf8, &leftIsUtf8L, &leftIsUtf16L);
+                                builder_.Bind(&leftIsUtf8L);
+                                {
+                                    // left is utf8, right string must utf16
+                                    builder_.CopyUtf8AsUtf16(glue, leftDst, leftSource, leftLength);
+                                    builder_.CopyChars(glue, rightDst, rightSource, rightLength,
+                                        builder_.IntPtr(sizeof(uint16_t)), VariableType::INT16());
+                                    builder_.Jump(&newSlicedStr);
+                                }
+                                builder_.Bind(&leftIsUtf16L);
+                                {
+                                    builder_.CopyChars(glue, leftDst, leftSource, leftLength,
+                                        builder_.IntPtr(sizeof(uint16_t)), VariableType::INT16());
+                                    builder_.Branch(rightIsUtf8, &rightIsUtf8L, &rightIsUtf16L);
+                                    builder_.Bind(&rightIsUtf8L);
+                                    builder_.CopyUtf8AsUtf16(glue, rightDst, rightSource, rightLength);
+                                    builder_.Jump(&newSlicedStr);
+                                    builder_.Bind(&rightIsUtf16L);
+                                    builder_.CopyChars(glue, rightDst, rightSource, rightLength,
+                                        builder_.IntPtr(sizeof(uint16_t)), VariableType::INT16());
+                                    builder_.Jump(&newSlicedStr);
+                                }
+                            }
+                            builder_.Bind(&newSlicedStr);
+                            slicedString = AllocateSlicedString(*lineString, newLength, canBeCompressed);
+                            result = *slicedString;
+                            builder_.Jump(&exit);
+                        }
+                    }
+                }
+                builder_.Bind(&isNotFirstConcat);
+                {
+                    Label fastPath(&builder_);
+                    builder_.Branch(builder_.CanBackStore(right, isValidOpt), &fastPath, &slowPath);
+                    builder_.Bind(&fastPath);
+                    {
+                        // left string length means current length,
+                        // max length means the field which was already initialized.
+                        lineString = builder_.LoadConstOffset(VariableType::JS_POINTER(),
+                                                              left, SlicedString::PARENT_OFFSET);
+                        GateRef maxLength = builder_.GetLengthFromString(*lineString);
+                        Label needsRealloc(&builder_);
+                        Label backingStore(&builder_);
+                        builder_.Branch(builder_.Int32LessThan(maxLength, newLength),
+                                        &needsRealloc, &backingStore);
+                        builder_.Bind(&needsRealloc);
+                        {
+                            Label newLineStr(&builder_);
+                            Label canBeCompress(&builder_);
+                            Label canNotBeCompress(&builder_);
+                            // The new backing store will have a length of min(2*length, LineEcmaString::MAX_LENGTH).
+                            GateRef newBackStoreLength = builder_.Int32Mul(newLength, builder_.Int32(2));
+                            builder_.Branch(builder_.Int32LessThan(newBackStoreLength,
+                                builder_.Int32(LineEcmaString::MAX_LENGTH)), &newLineStr, &slowPath);
+                            builder_.Bind(&newLineStr);
+                            {
+                                builder_.Branch(canBeCompressed, &canBeCompress, &canNotBeCompress);
+                                builder_.Bind(&canBeCompress);
+                                {
+                                    GateRef newBackingStore = AllocateLineString(newBackStoreLength, canBeCompressed);
+                                    GateRef len = builder_.Int32LSL(newLength,
+                                        builder_.Int32(EcmaString::STRING_LENGTH_SHIFT_COUNT));
+                                    GateRef mixLength = builder_.Int32Or(len,
+                                        builder_.Int32(EcmaString::STRING_COMPRESSED));
+                                    GateRef leftSource = builder_.GetStringDataFromLineOrConstantString(*lineString);
+                                    GateRef rightSource = builder_.GetStringDataFromLineOrConstantString(right);
+                                    GateRef leftDst = builder_.TaggedPointerToInt64(
+                                        builder_.PtrAdd(newBackingStore,
+                                        builder_.IntPtr(LineEcmaString::DATA_OFFSET)));
+                                    GateRef rightDst = builder_.TaggedPointerToInt64(
+                                        builder_.PtrAdd(leftDst, builder_.ZExtInt32ToPtr(leftLength)));
+                                    builder_.CopyChars(glue, leftDst, leftSource, leftLength,
+                                        builder_.IntPtr(sizeof(uint8_t)), VariableType::INT8());
+                                    builder_.CopyChars(glue, rightDst, rightSource, rightLength,
+                                        builder_.IntPtr(sizeof(uint8_t)), VariableType::INT8());
+                                    newLeft = left;
+                                    builder_.StoreConstOffset(VariableType::JS_POINTER(), *newLeft,
+                                        SlicedString::PARENT_OFFSET, newBackingStore);
+                                    builder_.StoreConstOffset(VariableType::INT32(), *newLeft,
+                                        EcmaString::MIX_LENGTH_OFFSET, mixLength);
+                                    result = *newLeft;
+                                    builder_.Jump(&exit);
+                                }
+                                builder_.Bind(&canNotBeCompress);
+                                {
+                                    GateRef newBackingStore = AllocateLineString(newBackStoreLength, canBeCompressed);
+                                    GateRef len = builder_.Int32LSL(newLength,
+                                        builder_.Int32(EcmaString::STRING_LENGTH_SHIFT_COUNT));
+                                    GateRef mixLength = builder_.Int32Or(len,
+                                        builder_.Int32(EcmaString::STRING_UNCOMPRESSED));
+                                    GateRef leftSource = builder_.GetStringDataFromLineOrConstantString(*lineString);
+                                    GateRef rightSource = builder_.GetStringDataFromLineOrConstantString(right);
+                                    GateRef leftDst = builder_.TaggedPointerToInt64(
+                                        builder_.PtrAdd(newBackingStore,
+                                        builder_.IntPtr(LineEcmaString::DATA_OFFSET)));
+                                    GateRef rightDst = builder_.TaggedPointerToInt64(
+                                        builder_.PtrAdd(leftDst, builder_.ZExtInt32ToPtr(leftLength)));
+                                    builder_.CopyChars(glue, leftDst, leftSource, leftLength,
+                                        builder_.IntPtr(sizeof(uint16_t)), VariableType::INT16());
+                                    builder_.CopyChars(glue, rightDst, rightSource, rightLength,
+                                        builder_.IntPtr(sizeof(uint16_t)), VariableType::INT16());
+                                    newLeft = left;
+                                    builder_.StoreConstOffset(VariableType::JS_POINTER(), *newLeft,
+                                        SlicedString::PARENT_OFFSET, newBackingStore);
+                                    builder_.StoreConstOffset(VariableType::INT32(), *newLeft,
+                                        EcmaString::MIX_LENGTH_OFFSET, mixLength);
+                                    result = *newLeft;
+                                    builder_.Jump(&exit);
+                                }
+                            }
+                        }
+                        builder_.Bind(&backingStore);
+                        {
+                            Label canBeCompress(&builder_);
+                            Label canNotBeCompress(&builder_);
+                            builder_.Branch(canBeCompressed, &canBeCompress, &canNotBeCompress);
+                            builder_.Bind(&canBeCompress);
+                            {
+                                GateRef len = builder_.Int32LSL(newLength,
+                                    builder_.Int32(EcmaString::STRING_LENGTH_SHIFT_COUNT));
+                                GateRef mixLength = builder_.Int32Or(len,
+                                    builder_.Int32(EcmaString::STRING_COMPRESSED));
+                                GateRef rightSource = builder_.GetStringDataFromLineOrConstantString(right);
+                                GateRef leftDst = builder_.TaggedPointerToInt64(
+                                    builder_.PtrAdd(*lineString, builder_.IntPtr(LineEcmaString::DATA_OFFSET)));
+                                GateRef rightDst = builder_.TaggedPointerToInt64(builder_.PtrAdd(leftDst,
+                                    builder_.ZExtInt32ToPtr(leftLength)));
+                                builder_.CopyChars(glue, rightDst, rightSource, rightLength,
+                                    builder_.IntPtr(sizeof(uint8_t)), VariableType::INT8());
+                                newLeft = left;
+                                builder_.StoreConstOffset(VariableType::JS_POINTER(), *newLeft,
+                                    SlicedString::PARENT_OFFSET, *lineString);
+                                builder_.StoreConstOffset(VariableType::INT32(), *newLeft,
+                                    EcmaString::MIX_LENGTH_OFFSET, mixLength);
+                                result = *newLeft;
+                                builder_.Jump(&exit);
+                            }
+                            builder_.Bind(&canNotBeCompress);
+                            {
+                                GateRef len = builder_.Int32LSL(newLength,
+                                    builder_.Int32(EcmaString::STRING_LENGTH_SHIFT_COUNT));
+                                GateRef mixLength = builder_.Int32Or(len,
+                                    builder_.Int32(EcmaString::STRING_UNCOMPRESSED));
+                                GateRef rightSource = builder_.GetStringDataFromLineOrConstantString(right);
+                                GateRef leftDst = builder_.TaggedPointerToInt64(
+                                    builder_.PtrAdd(*lineString, builder_.IntPtr(LineEcmaString::DATA_OFFSET)));
+                                GateRef rightDst = builder_.TaggedPointerToInt64(
+                                    builder_.PtrAdd(leftDst, builder_.ZExtInt32ToPtr(leftLength)));
+                                builder_.CopyChars(glue, rightDst, rightSource, rightLength,
+                                    builder_.IntPtr(sizeof(uint16_t)), VariableType::INT16());
+                                newLeft = left;
+                                builder_.StoreConstOffset(VariableType::JS_POINTER(), *newLeft,
+                                    SlicedString::PARENT_OFFSET, *lineString);
+                                builder_.StoreConstOffset(VariableType::INT32(), *newLeft,
+                                    EcmaString::MIX_LENGTH_OFFSET, mixLength);
+                                result = *newLeft;
+                                builder_.Jump(&exit);
+                            }
+                        }
+                    }
+                }
+                builder_.Bind(&slowPath);
+                {
+                    result = builder_.CallStub(glue, gate, CommonStubCSigns::FastStringAdd, { glue, left, right });
+                    builder_.Jump(&exit);
+                }
+            }
+        }
+    }
+    builder_.Bind(&exit);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
+}
+
+GateRef TypedHCRLowering::AllocateLineString(GateRef length, GateRef canBeCompressed)
+{
+    Label subentry(&builder_);
+    builder_.SubCfgEntry(&subentry);
+    Label isUtf8(&builder_);
+    Label isUtf16(&builder_);
+    Label exit(&builder_);
+    DEFVALUE(mixLength, (&builder_), VariableType::INT32(), builder_.Int32(0));
+    DEFVALUE(size, (&builder_), VariableType::INT64(), builder_.Int64(0));
+
+    GateRef len = builder_.Int32LSL(length, builder_.Int32(EcmaString::STRING_LENGTH_SHIFT_COUNT));
+
+    builder_.Branch(canBeCompressed, &isUtf8, &isUtf16);
+    builder_.Bind(&isUtf8);
+    {
+        size = builder_.AlignUp(builder_.ComputeSizeUtf8(builder_.ZExtInt32ToPtr(length)),
+            builder_.IntPtr(static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT)));
+        mixLength = builder_.Int32Or(len, builder_.Int32(EcmaString::STRING_COMPRESSED));
+        builder_.Jump(&exit);
+    }
+    builder_.Bind(&isUtf16);
+    {
+        size = builder_.AlignUp(builder_.ComputeSizeUtf16(builder_.ZExtInt32ToPtr(length)),
+            builder_.IntPtr(static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT)));
+        mixLength = builder_.Int32Or(len, builder_.Int32(EcmaString::STRING_UNCOMPRESSED));
+        builder_.Jump(&exit);
+    }
+    builder_.Bind(&exit);
+
+    GateRef stringClass = builder_.GetGlobalConstantValue(ConstantIndex::LINE_STRING_CLASS_INDEX);
+
+    builder_.StartAllocate();
+    GateRef lineString = builder_.HeapAlloc(*size, GateType::TaggedValue(), RegionSpaceFlag::IN_YOUNG_SPACE);
+    builder_.StoreConstOffset(VariableType::JS_POINTER(), lineString, 0, stringClass); // StoreHClass
+    builder_.StoreConstOffset(VariableType::INT32(), lineString, EcmaString::MIX_LENGTH_OFFSET, *mixLength);
+    builder_.StoreConstOffset(VariableType::INT32(), lineString, EcmaString::MIX_HASHCODE_OFFSET, builder_.Int32(0));
+    auto ret = builder_.FinishAllocate(lineString);
+    builder_.SubCfgExit();
+    return ret;
+}
+
+GateRef TypedHCRLowering::AllocateSlicedString(GateRef flatString, GateRef length, GateRef canBeCompressed)
+{
+    Label subentry(&builder_);
+    builder_.SubCfgEntry(&subentry);
+    Label isUtf8(&builder_);
+    Label isUtf16(&builder_);
+    Label exit(&builder_);
+    DEFVALUE(mixLength, (&builder_), VariableType::INT32(), builder_.Int32(0));
+
+    GateRef len = builder_.Int32LSL(length, builder_.Int32(EcmaString::STRING_LENGTH_SHIFT_COUNT));
+
+    builder_.Branch(canBeCompressed, &isUtf8, &isUtf16);
+    builder_.Bind(&isUtf8);
+    {
+        mixLength = builder_.Int32Or(len, builder_.Int32(EcmaString::STRING_COMPRESSED));
+        builder_.Jump(&exit);
+    }
+    builder_.Bind(&isUtf16);
+    {
+        mixLength = builder_.Int32Or(len, builder_.Int32(EcmaString::STRING_UNCOMPRESSED));
+        builder_.Jump(&exit);
+    }
+    builder_.Bind(&exit);
+
+    GateRef stringClass = builder_.GetGlobalConstantValue(ConstantIndex::SLICED_STRING_CLASS_INDEX);
+    GateRef size = builder_.IntPtr(AlignUp(SlicedString::SIZE, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT)));
+
+    builder_.StartAllocate();
+    GateRef slicedString = builder_.HeapAlloc(size, GateType::TaggedValue(), RegionSpaceFlag::IN_YOUNG_SPACE);
+    builder_.StoreConstOffset(VariableType::JS_POINTER(), slicedString, 0, stringClass); // StoreHClass
+    builder_.StoreConstOffset(VariableType::INT32(), slicedString, EcmaString::MIX_LENGTH_OFFSET, *mixLength);
+    builder_.StoreConstOffset(VariableType::INT32(), slicedString, EcmaString::MIX_HASHCODE_OFFSET, builder_.Int32(0));
+    builder_.StoreConstOffset(VariableType::JS_POINTER(), slicedString, SlicedString::PARENT_OFFSET, flatString);
+    builder_.StoreConstOffset(VariableType::INT32(), slicedString, SlicedString::STARTINDEX_OFFSET, builder_.Int32(0));
+    builder_.StoreConstOffset(VariableType::INT32(), slicedString,
+        SlicedString::BACKING_STORE_FLAG, builder_.Int32(EcmaString::HAS_BACKING_STORE));
+    auto ret = builder_.FinishAllocate(slicedString);
+    builder_.SubCfgExit();
+    return ret;
+}
+
+bool TypedHCRLowering::IsFirstConcatInStringAdd(GateRef gate) const
+{
+    if (!ConcatIsInStringAdd(gate)) {
+        return false;
+    }
+    auto status = acc_.GetStringStatus(gate);
+    return status == EcmaString::BEGIN_STRING_ADD || status == EcmaString::IN_STRING_ADD;
+}
+
+bool TypedHCRLowering::ConcatIsInStringAdd(GateRef gate) const
+{
+    auto status = acc_.GetStringStatus(gate);
+    return status == EcmaString::CONFIRMED_IN_STRING_ADD ||
+           status == EcmaString::IN_STRING_ADD ||
+           status == EcmaString::BEGIN_STRING_ADD;
 }
 
 void TypedHCRLowering::LowerTypeOfCheck(GateRef gate)

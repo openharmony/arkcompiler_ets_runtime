@@ -186,10 +186,38 @@ void GateAccessor::SetArraySize(GateRef gate, uint32_t size)
 {
     ASSERT(GetOpCode(gate) == OpCode::CREATE_ARRAY ||
            GetOpCode(gate) == OpCode::CREATE_ARRAY_WITH_BUFFER);
+    uint32_t curSize = GetArraySize(gate);
+    if (curSize != size) {
+        Gate *gatePtr = circuit_->LoadGatePtr(gate);
+        ArrayMetaDataAccessor accessor(gatePtr->GetOneParameterMetaData()->GetValue());
+        accessor.SetArrayLength(size);
+        if (GetOpCode(gate) == OpCode::CREATE_ARRAY) {
+            auto meta = circuit_->CreateArray(accessor.ToValue());
+            SetMetaData(gate, meta);
+        } else {
+            auto meta = circuit_->CreateArrayWithBuffer(accessor.ToValue());
+            SetMetaData(gate, meta);
+        }
+    }
+}
+
+uint32_t GateAccessor::GetStringStatus(GateRef gate) const
+{
+    ASSERT(GetOpCode(gate) == OpCode::STRING_ADD);
     Gate *gatePtr = circuit_->LoadGatePtr(gate);
-    ArrayMetaDataAccessor accessor(gatePtr->GetOneParameterMetaData()->GetValue());
-    accessor.SetArrayLength(size);
-    const_cast<OneParameterMetaData *>(gatePtr->GetOneParameterMetaData())->SetValue(accessor.ToValue());
+    StringStatusAccessor accessor(gatePtr->GetOneParameterMetaData()->GetValue());
+    return accessor.GetStringStatus();
+}
+
+void GateAccessor::SetStringStatus(GateRef gate, uint32_t type)
+{
+    ASSERT(GetOpCode(gate) == OpCode::STRING_ADD);
+    uint32_t curStatus = GetStringStatus(gate);
+    if (curStatus != type) {
+        StringStatusAccessor accessor(static_cast<uint64_t>(type));
+        auto meta = circuit_->StringAdd(accessor.ToValue());
+        SetMetaData(gate, meta);
+    }
 }
 
 TypedUnaryAccessor GateAccessor::GetTypedUnAccessor(GateRef gate) const

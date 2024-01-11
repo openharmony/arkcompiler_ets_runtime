@@ -38,6 +38,7 @@
 #include "ecmascript/compiler/ntype_hcr_lowering.h"
 #include "ecmascript/compiler/number_speculative_runner.h"
 #include "ecmascript/compiler/scheduler.h"
+#include "ecmascript/compiler/string_builder_optimizer.h"
 #include "ecmascript/compiler/slowpath_lowering.h"
 #include "ecmascript/compiler/state_split_linearizer.h"
 #include "ecmascript/compiler/ts_class_analysis.h"
@@ -348,6 +349,27 @@ public:
         DeadCodeElimination deadCodeElimination(data->GetCircuit(), &visitor, &chunk);
         visitor.AddPass(&deadCodeElimination);
         visitor.VisitGraph();
+        return true;
+    }
+};
+
+class StringOptimizationPass {
+public:
+    bool Run(PassData* data)
+    {
+        PassOptions *passOptions = data->GetPassOptions();
+        if (!passOptions->EnableOptString()) {
+            return false;
+        }
+        TimeScope timescope("StringOptimizationPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
+        bool enableLog = data->GetLog()->EnableMethodCIRLog();
+        Chunk chunk(data->GetNativeAreaAllocator());
+        StringBuilderOptimizer stringBuilder(data->GetCircuit(),
+                                             enableLog,
+                                             data->GetMethodName(),
+                                             data->GetCompilerConfig(),
+                                             &chunk);
+        stringBuilder.Run();
         return true;
     }
 };

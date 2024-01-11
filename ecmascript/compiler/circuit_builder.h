@@ -52,6 +52,7 @@ class TSHCRLowering;
 class Variable;
 class NativeInlineLowering;
 class TypedHCRLowering;
+class StringBuilderOptimizer;
 
 #define BINARY_ARITHMETIC_METHOD_LIST_WITH_BITWIDTH(V)                    \
     V(Int16Add, Add, MachineType::I16)                                    \
@@ -285,6 +286,7 @@ public:
     inline GateRef LogicOr(GateRef x, GateRef y);
     GateRef FunctionIsResolved(GateRef function);
     GateRef HasPendingException(GateRef glue); // shareir
+    GateRef IsUtf8String(GateRef string);
     GateRef IsUtf16String(GateRef string);
     GateRef LoadObjectFromConstPool(GateRef jsFunc, GateRef index);
     GateRef IsAccessorInternal(GateRef accessor);
@@ -556,7 +558,7 @@ public:
         MemoryOrder order = MemoryOrder::Default());
     inline GateRef StoreToTaggedArray(GateRef array, size_t index, GateRef value);
     GateRef StringEqual(GateRef x, GateRef y);
-    GateRef StringAdd(GateRef x, GateRef y);
+    GateRef StringAdd(GateRef x, GateRef y, uint32_t stringStatus = 0);
     template<TypedStoreOp Op>
     GateRef StoreElement(GateRef receiver, GateRef index, GateRef value, OnHeapMode onHeap = OnHeapMode::NONE);
     GateRef StoreMemory(MemoryType Op, VariableType type, GateRef receiver, GateRef index, GateRef value);
@@ -629,14 +631,28 @@ public:
     inline GateRef BothAreString(GateRef x, GateRef y);
     inline GateRef IsTreeString(GateRef obj);
     inline GateRef IsSlicedString(GateRef obj);
+    inline GateRef IsSpecialSlicedString(GateRef obj);
+    inline GateRef IsLineString(GateRef obj);
+    inline GateRef IsConstantString(GateRef obj);
     inline GateRef TreeStringIsFlat(GateRef string);
     inline GateRef GetFirstFromTreeString(GateRef string);
     inline GateRef GetSecondFromTreeString(GateRef string);
+    inline GateRef ComputeSizeUtf8(GateRef length);
+    inline GateRef ComputeSizeUtf16(GateRef length);
+    inline GateRef AlignUp(GateRef x, GateRef alignment);
+    GateRef TaggedPointerToInt64(GateRef x);
     GateRef GetLengthFromString(GateRef value);
     GateRef GetHashcodeFromString(GateRef glue, GateRef value);
     GateRef TryGetHashcodeFromString(GateRef string);
     GateRef IsIntegerString(GateRef string);
+    GateRef IsLiteralString(GateRef string);
+    GateRef CanBeConcat(GateRef leftString, GateRef rightString, GateRef isValidOpt);
+    GateRef CanBackStore(GateRef rightString, GateRef isValidOpt);
     GateRef GetRawHashFromString(GateRef value);
+    GateRef GetStringDataFromLineOrConstantString(GateRef str);
+    void CopyUtf8AsUtf16(GateRef glue, GateRef dst, GateRef src, GateRef sourceLength);
+    void CopyChars(GateRef glue, GateRef dst, GateRef source, GateRef sourceLength,
+        GateRef charSize, VariableType type);
     void SetRawHashcode(GateRef glue, GateRef str, GateRef rawHashcode, GateRef isInteger);
     GateRef StringFromSingleCharCode(GateRef gate);
     GateRef ToNumber(GateRef gate, GateRef value, GateRef glue);
@@ -660,6 +676,8 @@ public:
     inline GateRef Int8Equal(GateRef x, GateRef y);
     inline GateRef Int32Equal(GateRef x, GateRef y);
     inline GateRef IntPtrGreaterThan(GateRef x, GateRef y);
+    inline GateRef IntPtrAnd(GateRef x, GateRef y);
+    inline GateRef IntPtrNot(GateRef x);
     GateRef AddWithOverflow(GateRef left, GateRef right);
     GateRef SubWithOverflow(GateRef left, GateRef right);
     GateRef MulWithOverflow(GateRef left, GateRef right);

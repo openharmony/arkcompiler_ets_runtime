@@ -970,6 +970,7 @@ void NewObjectStubBuilder::AllocSlicedStringObject(Variable *result, Label *exit
     builtinsStringStubBuilder.StoreParent(glue_, result->ReadVariable(), flatString->GetFlatString());
     builtinsStringStubBuilder.StoreStartIndex(glue_, result->ReadVariable(),
         Int32Add(from, flatString->GetStartIndex()));
+    builtinsStringStubBuilder.StoreHasBackingStore(glue_, result->ReadVariable(), Int32(0));
     Jump(exit);
 }
 

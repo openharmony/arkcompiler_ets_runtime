@@ -41,6 +41,7 @@ JitCompilationOptions::JitCompilationOptions(JSRuntimeOptions &runtimeOptions, E
     isEnableLaterElimination_ = runtimeOptions.IsEnableLaterElimination();
     isEnableValueNumbering_ = runtimeOptions.IsEnableValueNumbering();
     isEnableOptInlining_ = runtimeOptions.IsEnableOptInlining();
+    isEnableOptString_ = runtimeOptions.IsEnableOptString();
     isEnableTypeInfer_ =
         isEnableTypeLowering_ || vm->GetJSThread()->GetCurrentEcmaContext()->GetTSManager()->AssertTypes();
     isEnableOptPGOType_ = runtimeOptions.IsEnableOptPGOType();
@@ -67,6 +68,7 @@ void JitCompiler::Init()
             .EnableValueNumbering(jitOptions_.isEnableValueNumbering_)
             .EnableTypeInfer(jitOptions_.isEnableTypeInfer_)
             .EnableOptInlining(jitOptions_.isEnableOptInlining_)
+            .EnableOptString(jitOptions_.isEnableOptString_)
             .EnableOptPGOType(jitOptions_.isEnableOptPGOType_)
             .EnableOptTrackField(jitOptions_.isEnableOptTrackField_)
             .EnableOptLoopPeeling(jitOptions_.isEnableOptLoopPeeling_)
