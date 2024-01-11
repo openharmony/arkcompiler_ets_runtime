@@ -1005,6 +1005,44 @@ HWTEST_F_L0(PGOProfilerTest, ArraySizeProfileTest)
     unlink("ark-profiler21/modules.ap");
     rmdir("ark-profiler21/");
 }
+
+HWTEST_F_L0(PGOProfilerTest, StringEqualProfileTest)
+{
+    mkdir("ark-profiler22/", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+    const char *targetRecordName = "string_equal";
+    ExecuteAndLoadJSPandaFile("ark-profiler22/", targetRecordName);
+    ASSERT_NE(pf_, nullptr);
+    uint32_t checksum = pf_->GetChecksum();
+
+    // Loader
+    PGOProfilerDecoder decoder("ark-profiler22/modules.ap", 1);
+    ASSERT_TRUE(decoder.LoadAndVerify(checksum));
+    auto methodLiterals = pf_->GetMethodLiteralMap();
+    for (auto iter : methodLiterals) {
+        auto methodLiteral = iter.second;
+        auto methodId = methodLiteral->GetMethodId();
+        auto methodName = methodLiteral->GetMethodName(pf_.get(), methodId);
+        decoder.MatchAndMarkMethod(pf_.get(), targetRecordName, methodName, methodId);
+        ASSERT_TRUE(decoder.Match(pf_.get(), targetRecordName, methodId));
+        auto callback = [methodName, jsPandaFile = pf_](uint32_t offset, const PGOType *type) {
+            if (type->IsScalarOpType()) {
+                auto sampleType = *reinterpret_cast<const PGOSampleType *>(type);
+                if (sampleType.IsProfileType()) {
+                    return;
+                }
+                if (std::string(methodName) == "foo1" ||
+                    std::string(methodName) == "foo2") {
+                    auto primitiveType = sampleType.GetPrimitiveType();
+                    ASSERT_EQ(static_cast<uint32_t>(primitiveType), PGOSampleType::StringType());
+                }
+            }
+        };
+        decoder.GetTypeInfo(pf_.get(), targetRecordName, methodLiteral,
+                            callback);
+    }
+    unlink("ark-profiler22/modules.ap");
+    rmdir("ark-profiler22/");
+}
 #endif
 
 #if defined(SUPPORT_ENABLE_ASM_INTERP)

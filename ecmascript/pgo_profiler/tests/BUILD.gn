@@ -26,6 +26,7 @@ test_js_files = [
   "array_test",
   "object_literal",
   "sample_test",
+  "string_equal",
   "array_size_test",
   "truck",
   "vehicle",
