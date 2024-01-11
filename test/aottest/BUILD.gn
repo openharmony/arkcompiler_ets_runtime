@@ -71,6 +71,7 @@ group("ark_aot_ts_test") {
     "constpool",
     "continue_from_finally",
     "copyrestargs",
+    "createarray_meta_data",
     "createarrayimm16",
     "createarraywithbuffer",
     "createemptyarray",
