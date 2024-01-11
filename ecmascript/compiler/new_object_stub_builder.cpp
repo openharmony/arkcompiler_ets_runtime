@@ -857,7 +857,8 @@ GateRef NewObjectStubBuilder::NewTrackInfo(GateRef glue, GateRef cachedHClass, G
     GateRef cachedHClassOffset = IntPtr(TrackInfo::CACHED_HCLASS_OFFSET);
     Store(VariableType::JS_POINTER(), glue, *result, cachedHClassOffset, cachedHClass);
     GateRef cachedFuncOffset = IntPtr(TrackInfo::CACHED_FUNC_OFFSET);
-    Store(VariableType::JS_POINTER(), glue, *result, cachedFuncOffset, cachedFunc);
+    GateRef weakCachedFunc = env->GetBuilder()->CreateWeakRef(cachedFunc);
+    Store(VariableType::JS_POINTER(), glue, *result, cachedFuncOffset, weakCachedFunc);
     GateRef arrayLengthOffset = IntPtr(TrackInfo::ARRAY_LENGTH_OFFSET);
     Store(VariableType::INT32(), glue, *result, arrayLengthOffset, arraySize);
     SetSpaceFlagToTrackInfo(glue, *result, Int32(spaceFlag));

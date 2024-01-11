@@ -228,10 +228,14 @@ void PGOProfiler::UpdateTrackInfo(JSTaggedValue trackInfoVal)
     if (trackInfoVal.IsHeapObject()) {
         auto trackInfo = TrackInfo::Cast(trackInfoVal.GetTaggedObject());
         auto func = trackInfo->GetCachedFunc();
-        if (!func.IsJSFunction()) {
+        if (!func.IsWeak()) {
             return;
         }
-        auto method = JSFunction::Cast(func)->GetMethod();
+        TaggedObject *object = func.GetWeakReferentUnChecked();
+        if (!object->GetClass()->IsJSFunction()) {
+            return;
+        }
+        auto method = JSFunction::Cast(object)->GetMethod();
         auto profileTypeInfoVal = Method::Cast(method)->GetProfileTypeInfo();
         if (profileTypeInfoVal.IsUndefined()) {
             return;
@@ -239,7 +243,7 @@ void PGOProfiler::UpdateTrackInfo(JSTaggedValue trackInfoVal)
         auto profileTypeInfo = ProfileTypeInfo::Cast(profileTypeInfoVal.GetTaggedObject());
         if (!profileTypeInfo->IsProfileTypeInfoPreDumped()) {
             profileTypeInfo->SetPreDumpPeriodIndex();
-            PGOPreDump(JSTaggedType(func.GetTaggedObject()));
+            PGOPreDump(JSTaggedType(object));
         }
     }
 }
