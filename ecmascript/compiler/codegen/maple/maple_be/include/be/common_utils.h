@@ -209,6 +209,7 @@ constexpr int32 kMinSimm32 = kNegative256BitSize;
 constexpr int32 kMaxSimm64Pair = 504;
 constexpr int32 kMinSimm64 = kNegative512BitSize;
 
+constexpr int32 kMax8UnsignedImm = 255;
 constexpr int32 kMax12UnsignedImm = 4096;
 constexpr int32 kMax13UnsignedImm = 8192;
 constexpr int32 kMax16UnsignedImm = 65535;

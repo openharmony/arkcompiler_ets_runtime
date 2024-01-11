@@ -295,7 +295,7 @@ bool MIRParser::ParseArrayType(TyIdx &arrayTyIdx)
         Error("expect [ for array type but get ");
         return false;
     }
-    std::vector<uint32> vec;
+    std::vector<uint64> vec;
     while (tokenKind == TK_lbrack) {
         tokenKind = lexer.NextToken();
         if (tokenKind == TK_rbrack && vec.empty()) {
@@ -2270,7 +2270,7 @@ bool MIRParser::ParseInitValue(MIRConstPtr &theConst, TyIdx tyIdx, bool allowEmp
                         if (arrayType.GetDim() == 1) {
                             elemTyIdx = elemType->GetTypeIndex();
                         } else {
-                            std::vector<uint32> sizeSubArray;
+                            std::vector<uint64> sizeSubArray;
                             for (uint16 i = 1; i < arrayType.GetDim(); ++i) {
                                 sizeSubArray.push_back(arrayType.GetSizeArrayItem(i));
                             }

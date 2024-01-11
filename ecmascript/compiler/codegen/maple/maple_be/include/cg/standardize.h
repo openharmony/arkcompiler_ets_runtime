@@ -66,5 +66,7 @@ private:
     CGFunc *cgFunc;
     bool needAddrMapping = false;
 };
+MAPLE_FUNC_PHASE_DECLARE_BEGIN(InstructionStandardize, maplebe::CGFunc)
+MAPLE_FUNC_PHASE_DECLARE_END
 }  // namespace maplebe
 #endif /* MAPLEBE_INCLUDE_STANDARDIZE_H */

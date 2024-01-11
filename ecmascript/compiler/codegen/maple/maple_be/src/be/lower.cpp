@@ -1052,6 +1052,16 @@ void CGLowerer::LowerAsmStmt(AsmNode *asmNode, BlockNode *newBlk)
     newBlk->AddStatement(asmNode);
 }
 
+BaseNode *CGLowerer::NeedRetypeWhenLowerCallAssigned(PrimType pType)
+{
+    BaseNode *retNode = mirModule.GetMIRBuilder()->CreateExprRegread(pType, -kSregRetval0);
+    if (IsPrimitiveInteger(pType) && GetPrimTypeBitSize(pType) <= k32BitSize) {
+        auto newPty = IsPrimitiveUnsigned(pType) ? PTY_u64 : PTY_i64;
+        retNode = mirModule.GetMIRBuilder()->CreateExprTypeCvt(OP_cvt, newPty, pType, *retNode);
+    }
+    return retNode;
+}
+
 DassignNode *CGLowerer::SaveReturnValueInLocal(StIdx stIdx, uint16 fieldID)
 {
     MIRSymbol *var;
@@ -1067,7 +1077,7 @@ DassignNode *CGLowerer::SaveReturnValueInLocal(StIdx stIdx, uint16 fieldID)
     } else {
         pType = GlobalTables::GetTypeTable().GetTypeTable().at(var->GetTyIdx())->GetPrimType();
     }
-    RegreadNode *regRead = mirModule.GetMIRBuilder()->CreateExprRegread(pType, -kSregRetval0);
+    auto *regRead = NeedRetypeWhenLowerCallAssigned(pType);
     return mirModule.GetMIRBuilder()->CreateStmtDassign(*var, fieldID, regRead);
 }
 
@@ -1167,22 +1177,27 @@ StmtNode *CGLowerer::GenIntrinsiccallNode(const StmtNode &stmt, PUIdx &funcCalle
         PUIdx bFunc = GetBuiltinToUse(origCall.GetIntrinsic());
         if (bFunc != kFuncNotFound) {
             newCall = mirModule.GetMIRBuilder()->CreateStmtCall(bFunc, origCall.GetNopnd());
+            CHECK_FATAL(newCall->GetOpCode() == OP_call, "intrinsicnode except intrinsiccall is not expected");
         } else {
             if (stmt.GetOpCode() == OP_intrinsiccallassigned) {
                 newCall =
                     mirModule.GetMIRBuilder()->CreateStmtIntrinsicCall(origCall.GetIntrinsic(), origCall.GetNopnd());
+                CHECK_FATAL(newCall->GetOpCode() == OP_intrinsiccall,
+                            "intrinsicnode except intrinsiccall is not expected");
             } else if (stmt.GetOpCode() == OP_xintrinsiccallassigned) {
                 newCall =
                     mirModule.GetMIRBuilder()->CreateStmtXintrinsicCall(origCall.GetIntrinsic(), origCall.GetNopnd());
+                CHECK_FATAL(newCall->GetOpCode() == OP_intrinsiccall,
+                            "intrinsicnode except intrinsiccall is not expected");
             } else {
                 newCall = mirModule.GetMIRBuilder()->CreateStmtIntrinsicCall(origCall.GetIntrinsic(),
                                                                              origCall.GetNopnd(), origCall.GetTyIdx());
+                CHECK_FATAL(newCall->GetOpCode() == OP_intrinsiccallwithtype,
+                            "intrinsicnode except OP_intrinsiccallwithtype is not expected");
             }
         }
         newCall->SetSrcPos(stmt.GetSrcPos());
         funcCalled = bFunc;
-        CHECK_FATAL((newCall->GetOpCode() == OP_call || newCall->GetOpCode() == OP_intrinsiccall),
-                    "xintrinsic and intrinsiccallwithtype call is not expected");
     }
     return newCall;
 }
@@ -1376,6 +1391,10 @@ BlockNode *CGLowerer::LowerCallAssignedStmt(StmtNode &stmt, bool uselvar)
         }
         case OP_intrinsiccallassigned:
         case OP_xintrinsiccallassigned: {
+            BlockNode *blockNode = LowerIntrinsiccallToIntrinsicop(stmt);
+            if (blockNode) {
+                return blockNode;
+            }
             IntrinsiccallNode &intrincall = static_cast<IntrinsiccallNode &>(stmt);
             auto intrinsicID = intrincall.GetIntrinsic();
             if (IntrinDesc::intrinTable[intrinsicID].IsAtomic()) {
@@ -1397,6 +1416,10 @@ BlockNode *CGLowerer::LowerCallAssignedStmt(StmtNode &stmt, bool uselvar)
             break;
         }
         case OP_intrinsiccallwithtypeassigned: {
+            BlockNode *blockNode = LowerIntrinsiccallToIntrinsicop(stmt);
+            if (blockNode) {
+                return blockNode;
+            }
             auto &origCall = static_cast<IntrinsiccallNode &>(stmt);
             newCall = GenIntrinsiccallNode(stmt, funcCalled, handledAtLowerLevel, origCall);
             p2nRets = &origCall.GetReturnVec();
@@ -1419,6 +1442,16 @@ BlockNode *CGLowerer::LowerCallAssignedStmt(StmtNode &stmt, bool uselvar)
     /* transfer srcPosition location info */
     newCall->SetSrcPos(stmt.GetSrcPos());
     return GenBlockNode(*newCall, *p2nRets, stmt.GetOpCode(), funcCalled, handledAtLowerLevel, uselvar);
+}
+
+BlockNode *CGLowerer::LowerIntrinsiccallToIntrinsicop(StmtNode &stmt)
+{
+    IntrinsiccallNode &intrinCall = static_cast<IntrinsiccallNode &>(stmt);
+    auto intrinsicID = intrinCall.GetIntrinsic();
+    if (IntrinDesc::intrinTable[intrinsicID].IsAtomic()) {
+        return LowerIntrinsiccallAassignedToAssignStmt(intrinCall);
+    }
+    return nullptr;
 }
 
 #if TARGAARCH64
@@ -3690,9 +3723,12 @@ StmtNode *CGLowerer::LowerIntrinsiccall(IntrinsiccallNode &intrincall, BlockNode
     if (intrnID == INTRN_C_va_start) {
         return &intrincall;
     }
+    if (intrnID == maple::INTRN_C___builtin_division_exception) {
+        return &intrincall;
+    }
     IntrinDesc *intrinDesc = &IntrinDesc::intrinTable[intrnID];
     if (intrinDesc->IsSpecial() || intrinDesc->IsAtomic()) {
-        /* For special intrinsics we leave them to CGFunc::SelectIntrinCall() */
+        /* For special intrinsics we leave them to CGFunc::SelectIntrinsicCall() */
         return &intrincall;
     }
     /* default lowers intrinsic call to real function call. */

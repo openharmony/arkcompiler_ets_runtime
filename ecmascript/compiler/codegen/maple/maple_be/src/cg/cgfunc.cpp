@@ -54,7 +54,7 @@ Operand *HandleConstVal(const BaseNode &parent, BaseNode &expr, CGFunc &cgFunc)
     DEBUG_ASSERT(mirConst != nullptr, "get constval of constvalnode failed");
     if (mirConst->GetKind() == kConstInt) {
         auto *mirIntConst = safe_cast<MIRIntConst>(mirConst);
-        return cgFunc.SelectIntConst(*mirIntConst);
+        return cgFunc.SelectIntConst(*mirIntConst, parent);
     } else if (mirConst->GetKind() == kConstFloatConst) {
         auto *mirFloatConst = safe_cast<MIRFloatConst>(mirConst);
         return cgFunc.SelectFloatConst(*mirFloatConst, parent);
@@ -825,8 +825,6 @@ Operand *HandleIntrinOp(const BaseNode &parent, BaseNode &expr, CGFunc &cgFunc)
             return cgFunc.SelectCSyncSynchronize(intrinsicopNode);
         case INTRN_C___atomic_load_n:
             return cgFunc.SelectCAtomicLoadN(intrinsicopNode);
-        case INTRN_C___atomic_exchange_n:
-            return cgFunc.SelectCAtomicExchangeN(intrinsicopNode);
         case INTRN_C__builtin_return_address:
         case INTRN_C__builtin_extract_return_addr:
             return cgFunc.SelectCReturnAddress(intrinsicopNode);
@@ -1394,17 +1392,16 @@ void HandleICall(StmtNode &stmt, CGFunc &cgFunc)
     cgFunc.UpdateFrequency(stmt);
     auto &icallNode = static_cast<IcallNode &>(stmt);
     cgFunc.GetCurBB()->SetHasCall();
-    Operand *opnd0 = cgFunc.HandleExpr(stmt, *icallNode.GetNopndAt(0));
-    cgFunc.SelectIcall(icallNode, *opnd0);
+    cgFunc.SelectIcall(icallNode);
     if (cgFunc.GetCurBB()->GetKind() != BB::kBBFallthru) {
         cgFunc.SetCurBB(*cgFunc.StartNewBB(icallNode));
     }
 }
 
-void HandleIntrinCall(StmtNode &stmt, CGFunc &cgFunc)
+void HandleIntrinsicCall(StmtNode &stmt, CGFunc &cgFunc)
 {
     auto &call = static_cast<IntrinsiccallNode &>(stmt);
-    cgFunc.SelectIntrinCall(call);
+    cgFunc.SelectIntrinsicCall(call);
 }
 
 void HandleDassign(StmtNode &stmt, CGFunc &cgFunc)
@@ -1428,8 +1425,8 @@ void HandleDassign(StmtNode &stmt, CGFunc &cgFunc)
     }
     Operand *opnd0 = cgFunc.HandleExpr(dassignNode, *rhs);
     cgFunc.SelectDassign(dassignNode, *opnd0);
-    if (isSaveRetvalToLocal) {
-        cgFunc.GetCurBB()->GetLastInsn()->MarkAsSaveRetValToLocal();
+    if (isSaveRetvalToLocal && cgFunc.GetCurBB() && cgFunc.GetCurBB()->GetLastMachineInsn()) {
+        cgFunc.GetCurBB()->GetLastMachineInsn()->MarkAsSaveRetValToLocal();
     }
 }
 
@@ -1454,8 +1451,8 @@ void HandleRegassign(StmtNode &stmt, CGFunc &cgFunc)
     }
     Operand *opnd0 = cgFunc.HandleExpr(regAssignNode, *operand);
     cgFunc.SelectRegassign(regAssignNode, *opnd0);
-    if (isSaveRetvalToLocal) {
-        cgFunc.GetCurBB()->GetLastInsn()->MarkAsSaveRetValToLocal();
+    if (isSaveRetvalToLocal && cgFunc.GetCurBB() && cgFunc.GetCurBB()->GetLastMachineInsn()) {
+        cgFunc.GetCurBB()->GetLastMachineInsn()->MarkAsSaveRetValToLocal();
     }
 }
 
@@ -1540,7 +1537,7 @@ void HandleMembar(StmtNode &stmt, CGFunc &cgFunc)
         return;
     }
     cgFunc.SetVolStore(true);
-    cgFunc.SetVolReleaseInsn(cgFunc.GetCurBB()->GetLastInsn());
+    cgFunc.SetVolReleaseInsn(cgFunc.GetCurBB()->GetLastMachineInsn());
 }
 
 void HandleComment(StmtNode &stmt, CGFunc &cgFunc)
@@ -1586,10 +1583,10 @@ void InitHandleStmtFactory()
     RegisterFactoryFunction<HandleStmtFactory>(OP_call, HandleCall);
     RegisterFactoryFunction<HandleStmtFactory>(OP_icall, HandleICall);
     RegisterFactoryFunction<HandleStmtFactory>(OP_icallproto, HandleICall);
-    RegisterFactoryFunction<HandleStmtFactory>(OP_intrinsiccall, HandleIntrinCall);
-    RegisterFactoryFunction<HandleStmtFactory>(OP_intrinsiccallassigned, HandleIntrinCall);
-    RegisterFactoryFunction<HandleStmtFactory>(OP_intrinsiccallwithtype, HandleIntrinCall);
-    RegisterFactoryFunction<HandleStmtFactory>(OP_intrinsiccallwithtypeassigned, HandleIntrinCall);
+    RegisterFactoryFunction<HandleStmtFactory>(OP_intrinsiccall, HandleIntrinsicCall);
+    RegisterFactoryFunction<HandleStmtFactory>(OP_intrinsiccallassigned, HandleIntrinsicCall);
+    RegisterFactoryFunction<HandleStmtFactory>(OP_intrinsiccallwithtype, HandleIntrinsicCall);
+    RegisterFactoryFunction<HandleStmtFactory>(OP_intrinsiccallwithtypeassigned, HandleIntrinsicCall);
     RegisterFactoryFunction<HandleStmtFactory>(OP_dassign, HandleDassign);
     RegisterFactoryFunction<HandleStmtFactory>(OP_dassignoff, HandleDassignoff);
     RegisterFactoryFunction<HandleStmtFactory>(OP_regassign, HandleRegassign);

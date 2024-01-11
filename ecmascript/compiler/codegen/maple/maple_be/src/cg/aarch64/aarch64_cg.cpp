@@ -369,7 +369,8 @@ void AArch64CG::EnrollTargetPhases(MaplePhaseManager *pm) const
 Insn &AArch64CG::BuildPhiInsn(RegOperand &defOpnd, Operand &listParam)
 {
     DEBUG_ASSERT(defOpnd.IsRegister(), "build SSA on register operand");
-    CHECK_FATAL(defOpnd.IsOfIntClass() || defOpnd.IsOfFloatOrSIMDClass(), " unknown operand type ");
+    /* There are cases that CCRegs need add phi insn. */
+    CHECK_FATAL(defOpnd.IsOfIntClass() || defOpnd.IsOfFloatOrSIMDClass() || defOpnd.IsOfCC(), " unknown operand type ");
     bool is64bit = defOpnd.GetSize() == k64BitSize;
     MOperator mop = MOP_nop;
     if (defOpnd.GetSize() == k128BitSize) {

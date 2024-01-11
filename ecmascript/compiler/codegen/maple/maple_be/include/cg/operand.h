@@ -504,7 +504,7 @@ protected:
      * used for EBO(-O1), it can recognize the registers whose use and def are in
      * different BB. It is true by default. Sometime it should be false such as
      * when handle intrinsiccall for target
-     * aarch64(AArch64CGFunc::SelectIntrinCall).
+     * aarch64(AArch64CGFunc::SelectIntrinsicCall).
      */
     bool isBBLocal = true;
     uint32 validBitsNum;
@@ -1293,15 +1293,25 @@ public:
         DEBUG_ASSERT(dSize >= k8BitSize, "error val:dSize");
         DEBUG_ASSERT(dSize <= k128BitSize, "error val:dSize");
         DEBUG_ASSERT((dSize & (dSize - 1)) == 0, "error val:dSize");
-        if (dSize == k8BitSize || addrMode != kAddrModeBOi) {
+        if (dSize == k8BitSize) {
             return false;
         }
         OfstOperand *ofstOpnd = GetOffsetImmediate();
-        if (ofstOpnd->GetOffsetValue() >= kNegative256BitSize && ofstOpnd->GetOffsetValue() < k256BitSizeInt) {
+        if (!ofstOpnd) {
             return false;
         }
-        return ((static_cast<uint32>(ofstOpnd->GetOffsetValue()) &
-                 static_cast<uint32>((1U << static_cast<uint32>(GetImmediateOffsetAlignment(dSize))) - 1)) != 0);
+        int64 ofstVal = ofstOpnd->GetOffsetValue();
+        if (addrMode == kAddrModeBOi) {
+            if (ofstVal >= kMinSimm32 && ofstVal <= kMaxSimm32) {
+                return false;
+            }
+            return ((static_cast<uint32>(ofstOpnd->GetOffsetValue()) &
+                     static_cast<uint32>((1U << static_cast<uint32>(GetImmediateOffsetAlignment(dSize))) - 1)) != 0);
+        } else if (addrMode == kAddrModeLo12Li) {
+            uint32 alignByte = (dSize / k8BitSize);
+            return ((ofstVal % static_cast<int64>(alignByte)) != k0BitSize);
+        }
+        return false;
     }
 
     static bool IsSIMMOffsetOutOfRange(int64 offset, bool is64bit, bool isLDSTPair)
@@ -1491,8 +1501,8 @@ private:
 
 class LabelOperand : public OperandVisitable<LabelOperand> {
 public:
-    LabelOperand(const char *parent, LabelIdx labIdx)
-        : OperandVisitable(kOpdBBAddress, 0), labelIndex(labIdx), parentFunc(parent), orderID(-1u)
+    LabelOperand(const char *parent, LabelIdx labIdx, MemPool &mp)
+        : OperandVisitable(kOpdBBAddress, 0), labelIndex(labIdx), parentFunc(parent, &mp), orderID(-1u)
     {
     }
 
@@ -1519,7 +1529,7 @@ public:
         return labelIndex;
     }
 
-    const std::string &GetParentFunc() const
+    const MapleString &GetParentFunc() const
     {
         return parentFunc;
     }
@@ -1568,7 +1578,7 @@ public:
 
 protected:
     LabelIdx labelIndex;
-    const std::string parentFunc;
+    const MapleString parentFunc;
 
 private:
     /* this index records the order this label is defined during code emit. */

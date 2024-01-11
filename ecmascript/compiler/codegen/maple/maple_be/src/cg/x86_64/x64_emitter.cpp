@@ -227,7 +227,7 @@ int64 X64Emitter::TransferLabel(Operand *opnd, uint32 funcUniqueId)
 {
     LabelOperand *v = static_cast<LabelOperand *>(opnd);
     int64 labelSymIdx = CalculateLabelSymIdx(funcUniqueId, v->GetLabelIndex());
-    assmbler.StoreNameIntoSymMap(labelSymIdx, v->GetParentFunc());
+    assmbler.StoreNameIntoSymMap(labelSymIdx, std::string(v->GetParentFunc().c_str()));
     return labelSymIdx;
 }
 

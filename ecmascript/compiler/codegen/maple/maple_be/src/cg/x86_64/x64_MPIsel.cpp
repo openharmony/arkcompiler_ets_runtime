@@ -412,8 +412,8 @@ void X64MPIsel::SelectAggCopy(MemOperand &lhs, MemOperand &rhs, uint32 copySize)
     SelectCopy(memOpndLhs, memOpndRhs, extraTy);
 }
 
-void X64MPIsel::SelectLibCall(const std::string &funcName, std::vector<Operand*> &opndVec, PrimType primType,
-                              Operand* retOpnd, PrimType retType)
+void X64MPIsel::SelectLibCall(const std::string &funcName, std::vector<Operand *> &opndVec, PrimType primType,
+                              Operand *retOpnd, PrimType retType)
 {
     /* generate libcall */
     std::vector<PrimType> pt(opndVec.size(), primType);
@@ -422,7 +422,7 @@ void X64MPIsel::SelectLibCall(const std::string &funcName, std::vector<Operand*>
 }
 
 void X64MPIsel::SelectLibCallNArg(const std::string &funcName, std::vector<Operand *> &opndVec,
-                                  std::vector<PrimType> pt, Operand* retOpnd, PrimType retPrimType)
+                                  std::vector<PrimType> pt, Operand *retOpnd, PrimType retPrimType)
 {
     std::string newName = funcName;
     MIRSymbol *st = GlobalTables::GetGsymTable().CreateSymbol(kScopeGlobal);
@@ -485,7 +485,7 @@ void X64MPIsel::SelectLibCallNArg(const std::string &funcName, std::vector<Opera
         callInsn.SetIsCallReturnUnsigned(IsUnsignedInteger(mirRetType->GetPrimType()));
     }
     CHECK_FATAL(retOpnd->IsRegister(), "niy");
-    RegOperand *regOpnd = static_cast<RegOperand*>(retOpnd);
+    RegOperand *regOpnd = static_cast<RegOperand *>(retOpnd);
     regno_t retRegNo = retMech.GetReg0();
     if (regOpnd->GetRegisterNumber() != retRegNo) {
         RegOperand &phyRetOpnd =
@@ -501,9 +501,9 @@ Operand *X64MPIsel::SelectFloatingConst(MIRConst &floatingConst, PrimType primTy
     uint32 labelIdxTmp = cgFunc->GetLabelIdx();
     Operand *result = nullptr;
     if (primType == PTY_f64) {
-        result = SelectLiteral(static_cast<MIRDoubleConst&>(floatingConst), cgFunc->GetFunction(), labelIdxTmp++);
+        result = SelectLiteral(static_cast<MIRDoubleConst &>(floatingConst), cgFunc->GetFunction(), labelIdxTmp++);
     } else {
-        result = SelectLiteral(static_cast<MIRFloatConst&>(floatingConst), cgFunc->GetFunction(), labelIdxTmp++);
+        result = SelectLiteral(static_cast<MIRFloatConst &>(floatingConst), cgFunc->GetFunction(), labelIdxTmp++);
     }
     cgFunc->SetLabelIdx(labelIdxTmp);
     return result;
@@ -643,9 +643,10 @@ void X64MPIsel::SelectCall(CallNode &callNode)
     cgFunc->AppendStackMapInsn(callInsn);
 }
 
-void X64MPIsel::SelectIcall(IcallNode &iCallNode, Operand &opnd0)
+void X64MPIsel::SelectIcall(IcallNode &iCallNode)
 {
-    RegOperand &targetOpnd = SelectCopy2Reg(opnd0, iCallNode.Opnd(0)->GetPrimType());
+    Operand *opnd0 = HandleExpr(iCallNode, *iCallNode.GetNopndAt(0));
+    RegOperand &targetOpnd = SelectCopy2Reg(*opnd0, iCallNode.Opnd(0)->GetPrimType());
     ListOperand &paramOpnds = cgFunc->GetOpndBuilder()->CreateList();
     uint32 fpNum = 0;
     SelectParmList(iCallNode, paramOpnds, fpNum);
@@ -866,7 +867,7 @@ void X64MPIsel::SelectCVaStart(const IntrinsiccallNode &intrnNode)
     return;
 }
 
-void X64MPIsel::SelectIntrinCall(IntrinsiccallNode &intrinsiccallNode)
+void X64MPIsel::SelectIntrinsicCall(IntrinsiccallNode &intrinsiccallNode)
 {
     MIRIntrinsicID intrinsic = intrinsiccallNode.GetIntrinsic();
 
@@ -890,7 +891,7 @@ void X64MPIsel::SelectIntrinCall(IntrinsiccallNode &intrinsiccallNode)
 void X64MPIsel::SelectRangeGoto(RangeGotoNode &rangeGotoNode, Operand &srcOpnd)
 {
     MIRType *etype = GlobalTables::GetTypeTable().GetTypeFromTyIdx((TyIdx)PTY_a64);
-    std::vector<uint32> sizeArray;
+    std::vector<uint64> sizeArray;
     const SmallCaseVector &switchTable = rangeGotoNode.GetRangeGotoTable();
     sizeArray.emplace_back(switchTable.size());
     MemPool *memPool = cgFunc->GetMemoryPool();
@@ -1172,17 +1173,18 @@ void X64MPIsel::SelectMpy(Operand &resOpnd, Operand &opnd0, Operand &opnd1, Prim
     SelectCopy(resOpnd, opnd0, primType);
     RegOperand &regOpnd1 = SelectCopy2Reg(opnd1, primType);
     if (IsSignedInteger(primType) || IsUnsignedInteger(primType)) {
-        X64MOP_t mOp = (bitSize == k64BitSize)
-                           ? x64::MOP_imulq_r_r
-                           : (bitSize == k32BitSize) ? x64::MOP_imull_r_r
-                                                     : (bitSize == k16BitSize) ? x64::MOP_imulw_r_r : x64::MOP_begin;
+        X64MOP_t mOp = (bitSize == k64BitSize)   ? x64::MOP_imulq_r_r
+                       : (bitSize == k32BitSize) ? x64::MOP_imull_r_r
+                       : (bitSize == k16BitSize) ? x64::MOP_imulw_r_r
+                                                 : x64::MOP_begin;
         CHECK_FATAL(mOp != x64::MOP_begin, "NIY mapping");
         Insn &insn = cgFunc->GetInsnBuilder()->BuildInsn(mOp, X64CG::kMd[mOp]);
         insn.AddOpndChain(regOpnd1).AddOpndChain(resOpnd);
         cgFunc->GetCurBB()->AppendInsn(insn);
     } else if (IsPrimitiveFloat(primType)) {
-        X64MOP_t mOp = (bitSize == k64BitSize) ? x64::MOP_mulfd_r_r :
-                                                 (bitSize == k32BitSize) ? x64::MOP_mulfs_r_r : x64::MOP_begin;
+        X64MOP_t mOp = (bitSize == k64BitSize)   ? x64::MOP_mulfd_r_r
+                       : (bitSize == k32BitSize) ? x64::MOP_mulfs_r_r
+                                                 : x64::MOP_begin;
         CHECK_FATAL(mOp != x64::MOP_begin, "NIY mapping");
         Insn &insn = cgFunc->GetInsnBuilder()->BuildInsn(mOp, X64CG::kMd[mOp]);
         insn.AddOpndChain(regOpnd1).AddOpndChain(resOpnd);
@@ -1245,10 +1247,10 @@ Operand *X64MPIsel::SelectDivRem(RegOperand &opnd0, RegOperand &opnd1, PrimType 
         bool isSigned = IsSignedInteger(primType);
         if (isSigned) {
             /* cdq edx:eax = sign-extend of eax*/
-            X64MOP_t cvtMOp =
-                (bitSize == k64BitSize)
-                    ? x64::MOP_cqo
-                    : (bitSize == k32BitSize) ? x64::MOP_cdq : (bitSize == k16BitSize) ? x64::MOP_cwd : x64::MOP_begin;
+            X64MOP_t cvtMOp = (bitSize == k64BitSize)   ? x64::MOP_cqo
+                              : (bitSize == k32BitSize) ? x64::MOP_cdq
+                              : (bitSize == k16BitSize) ? x64::MOP_cwd
+                                                        : x64::MOP_begin;
             CHECK_FATAL(cvtMOp != x64::MOP_begin, "NIY mapping");
             Insn &cvtInsn = cgFunc->GetInsnBuilder()->BuildInsn(cvtMOp, raxOpnd, rdxOpnd);
             cgFunc->GetCurBB()->AppendInsn(cvtInsn);
@@ -1257,12 +1259,10 @@ Operand *X64MPIsel::SelectDivRem(RegOperand &opnd0, RegOperand &opnd1, PrimType 
             SelectCopy(rdxOpnd, cgFunc->GetOpndBuilder()->CreateImm(bitSize, 0), primType);
         }
         /* div */
-        X64MOP_t divMOp =
-            (bitSize == k64BitSize)
-                ? (isSigned ? x64::MOP_idivq_r : x64::MOP_divq_r)
-                : (bitSize == k32BitSize)
-                      ? (isSigned ? x64::MOP_idivl_r : x64::MOP_divl_r)
-                      : (bitSize == k16BitSize) ? (isSigned ? x64::MOP_idivw_r : x64::MOP_divw_r) : x64::MOP_begin;
+        X64MOP_t divMOp = (bitSize == k64BitSize)   ? (isSigned ? x64::MOP_idivq_r : x64::MOP_divq_r)
+                          : (bitSize == k32BitSize) ? (isSigned ? x64::MOP_idivl_r : x64::MOP_divl_r)
+                          : (bitSize == k16BitSize) ? (isSigned ? x64::MOP_idivw_r : x64::MOP_divw_r)
+                                                    : x64::MOP_begin;
         CHECK_FATAL(divMOp != x64::MOP_begin, "NIY mapping");
         Insn &insn = cgFunc->GetInsnBuilder()->BuildInsn(divMOp, opnd1, raxOpnd, rdxOpnd);
         cgFunc->GetCurBB()->AppendInsn(insn);
@@ -1374,16 +1374,16 @@ void X64MPIsel::SelectCmpFloatEq(RegOperand &resOpnd, Operand &opnd0, Operand &o
     Insn &setInsn = cgFunc->GetInsnBuilder()->BuildInsn(eqMOp, X64CG::kMd[eqMOp]);
 
     auto &regOpnd1 = cgFunc->GetOpndBuilder()->CreateVReg(GetPrimTypeBitSize(primOpndType),
-        cgFunc->GetRegTyFromPrimTy(primOpndType));
+                                                          cgFunc->GetRegTyFromPrimTy(primOpndType));
     SelectCopy(regOpnd1, opnd1, primOpndType);
     /* CMPEQSD xmm1, xmm2  =>  CMPSD xmm1, xmm2, 0 */
     setInsn.AddOpndChain(opnd0).AddOpndChain(regOpnd1);
     cgFunc->GetCurBB()->AppendInsn(setInsn);
 
     /* set result -> u64/u32 */
-    auto tmpResType = (primOpndType == maple::PTY_f64) ? PTY_u64 :PTY_u32;
-    RegOperand &tmpResOpnd = cgFunc->GetOpndBuilder()->CreateVReg(GetPrimTypeBitSize(tmpResType),
-        cgFunc->GetRegTyFromPrimTy(tmpResType));
+    auto tmpResType = (primOpndType == maple::PTY_f64) ? PTY_u64 : PTY_u32;
+    RegOperand &tmpResOpnd =
+        cgFunc->GetOpndBuilder()->CreateVReg(GetPrimTypeBitSize(tmpResType), cgFunc->GetRegTyFromPrimTy(tmpResType));
     SelectRetypeFloat(tmpResOpnd, regOpnd1, tmpResType, primOpndType);
     /* cvt u64/u32 -> primType */
     SelectIntCvt(resOpnd, tmpResOpnd, primResType, tmpResType);
@@ -1472,7 +1472,7 @@ Operand *X64MPIsel::SelectCexp(IntrinsicopNode &node, Operand &opnd0, const Base
     RegOperand &regOpnd0 = SelectCopy2Reg(opnd0, primType);
     Operand &retReg =
         cgFunc->GetOpndBuilder()->CreateVReg(GetPrimTypeBitSize(primType), cgFunc->GetRegTyFromPrimTy(primType));
-    std::vector<Operand*> opndVec = {&regOpnd0};
+    std::vector<Operand *> opndVec = {&regOpnd0};
     SelectLibCall("exp", opndVec, primType, &retReg, primType);
     return &retReg;
 }

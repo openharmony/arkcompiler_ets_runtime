@@ -498,6 +498,7 @@ bool AArch64Ebo::DoConstProp(Insn &insn, uint32 idx, Operand &opnd)
         case MOP_xmovrr:
         case MOP_wmovrr: {
             DEBUG_ASSERT(idx == kInsnSecondOpnd, "src const for move must be the second operand.");
+            MOperator mOp = (mopCode == MOP_wmovrr) ? MOP_wmovri32 : MOP_xmovri64;
             uint32 targetSize = insn.GetOperand(idx).GetSize();
             if (src->GetSize() != targetSize) {
                 src = static_cast<ImmOperand *>(src->Clone(*cgFunc->GetMemoryPool()));
@@ -509,9 +510,15 @@ bool AArch64Ebo::DoConstProp(Insn &insn, uint32 idx, Operand &opnd)
                     LogInfo::MapleLogger() << " Do constprop:Prop constval " << src->GetValue() << "into insn:\n";
                     insn.Dump();
                 }
-                insn.SetOperand(kInsnSecondOpnd, *src);
-                MOperator mOp = (mopCode == MOP_wmovrr) ? MOP_wmovri32 : MOP_xmovri64;
                 insn.SetMOP(AArch64CG::kMd[mOp]);
+                src = static_cast<ImmOperand *>(src->Clone(*cgFunc->GetMemoryPool()));
+                CHECK_FATAL(src != nullptr, "pointer result is null");
+                src->SetSize(insn.GetOperand(idx).GetSize());
+                if (insn.GetOperandSize(kInsnSecondOpnd) == k32BitSize) {
+                    uint64 newVal = static_cast<uint64>(src->GetValue()) & UINT32_MAX;
+                    src->SetValue(static_cast<int64>(newVal));
+                }
+                insn.SetOperand(kInsnSecondOpnd, *src);
                 if (EBO_DUMP) {
                     LogInfo::MapleLogger() << " after constprop the insn is:\n";
                     insn.Dump();

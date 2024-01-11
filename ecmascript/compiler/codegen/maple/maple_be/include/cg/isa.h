@@ -21,6 +21,8 @@
 #include "operand.h"
 
 namespace maplebe {
+// For verify & split insn
+#define VERIFY_INSN(INSN) (INSN)->VerifySelf()
 #define SPLIT_INSN(INSN, FUNC) \
     (INSN)->SplitSelf((FUNC)->IsAfterRegAlloc(), (FUNC)->GetInsnBuilder(), (FUNC)->GetOpndBuilder())
 
@@ -62,6 +64,7 @@ enum MopProperty : maple::uint8 {
     kInsnSpecialIntrisic,
     kInsnIsNop,
     kInsnIntrinsic,
+    kInsnIsBreakPoint,
 };
 using regno_t = uint32_t;
 #define ISABSTRACT 1ULL
@@ -96,6 +99,7 @@ using regno_t = uint32_t;
 #define SPINTRINSIC (1ULL << kInsnSpecialIntrisic)
 #define ISNOP (1ULL << kInsnIsNop)
 #define ISINTRINSIC (1ULL << kInsnIntrinsic)
+#define ISBREAKPOINT (1ULL << kInsnIsBreakPoint)
 constexpr maplebe::regno_t kInvalidRegNO = 0;
 
 /*
@@ -453,6 +457,11 @@ struct InsnDesc {
     uint32 GetAtomicNum() const
     {
         return atomicNum;
+    }
+
+    bool IsBreakPoint() const
+    {
+        return (properties & ISBREAKPOINT) != 0;
     }
 
     EncodeType GetEncodeType() const

@@ -79,10 +79,8 @@ MOperator GetFastIselMop(Operand::OperandType dTy, Operand::OperandType sTy, Pri
     return abstract::MOP_undef;
 }
 
-#define DEF_EXTEND_MAPPING_TBL(TYPE)                                                            \
-    [](bool isSigned)->MOperator {                                                              \
-        return isSigned ? abstract::MOP_sext_rr_##TYPE : abstract::MOP_zext_rr_##TYPE;          \
-    }
+#define DEF_EXTEND_MAPPING_TBL(TYPE) \
+    [](bool isSigned) -> MOperator { return isSigned ? abstract::MOP_sext_rr_##TYPE : abstract::MOP_zext_rr_##TYPE; }
 using fromToTy = std::pair<uint32, uint32>; /* std::pair<from, to> */
 #define DEF_USE_EXTEND_MAPPING_TBL(FROMSIZE, TOSIZE)                                            \
     {                                                                                           \
@@ -226,7 +224,7 @@ void HandleGoto(StmtNode &stmt, MPISel &iSel)
 void HandleIntrinCall(StmtNode &stmt, MPISel &iSel)
 {
     auto &call = static_cast<IntrinsiccallNode &>(stmt);
-    iSel.SelectIntrinCall(call);
+    iSel.SelectIntrinsicCall(call);
 }
 
 void HandleRangeGoto(StmtNode &stmt, MPISel &iSel)
@@ -275,8 +273,7 @@ void HandleIcall(StmtNode &stmt, MPISel &iSel)
 {
     DEBUG_ASSERT(stmt.GetOpCode() == OP_icall || stmt.GetOpCode() == OP_icallproto, "error");
     auto &iCallNode = static_cast<IcallNode &>(stmt);
-    Operand *opnd0 = iSel.HandleExpr(iCallNode, *iCallNode.Opnd(0));
-    iSel.SelectIcall(iCallNode, *opnd0);
+    iSel.SelectIcall(iCallNode);
     iSel.SelectCallCommon(stmt, iSel);
 }
 
@@ -402,7 +399,7 @@ Operand *HandleConstStr(const BaseNode &parent, BaseNode &expr, MPISel &iSel)
 
 Operand *HandleTrunc(const BaseNode &parent, BaseNode &expr, MPISel &iSel)
 {
-    return iSel.SelectCvt(parent, static_cast<TypeCvtNode&>(expr), *iSel.HandleExpr(expr, *expr.Opnd(0)));
+    return iSel.SelectCvt(parent, static_cast<TypeCvtNode &>(expr), *iSel.HandleExpr(expr, *expr.Opnd(0)));
 }
 
 Operand *HandleConstVal(const BaseNode &parent, BaseNode &expr, MPISel &iSel)
@@ -1400,14 +1397,14 @@ Operand *MPISel::SelectAbs(UnaryNode &node, Operand &opnd0)
          * fabs(x) = x AND 0x7fffffff ffffffff [set sign bit to 0]
          */
         const static uint64 kNaN = 0x7fffffffffffffffUL;
-        const static double kNaNDouble = *(double*)(&kNaN);
+        const static double kNaNDouble = *(double *)(&kNaN);
         const static uint64 kNaNf = 0x7fffffffUL;
-        const static double kNaNFloat = *(double*)(&kNaNf);
+        const static double kNaNFloat = *(double *)(&kNaNf);
         CHECK_FATAL(primType == PTY_f64 || primType == PTY_f32, "niy");
 
         double mask = primType == PTY_f64 ? kNaNDouble : kNaNFloat;
-        MIRDoubleConst *c = cgFunc->GetMemoryPool()->New<MIRDoubleConst>(mask,
-                            *GlobalTables::GetTypeTable().GetTypeTable().at(PTY_f64));
+        MIRDoubleConst *c = cgFunc->GetMemoryPool()->New<MIRDoubleConst>(
+            mask, *GlobalTables::GetTypeTable().GetTypeTable().at(PTY_f64));
         Operand *opnd1 = SelectFloatingConst(*c, PTY_f64);
 
         RegOperand &resOpnd =
@@ -1617,7 +1614,7 @@ Operand *MPISel::SelectBnot(const UnaryNode &node, Operand &opnd0, const BaseNod
 
 void MPISel::SelectBnot(Operand &resOpnd, Operand &opnd0, PrimType primType)
 {
-    const static auto fastBnotMappingFunc = DEF_MOPERATOR_MAPPING_FUNC(not);
+    const static auto fastBnotMappingFunc = DEF_MOPERATOR_MAPPING_FUNC(not );
     MOperator mOp = fastBnotMappingFunc(GetPrimTypeBitSize(primType));
     Insn &insn = cgFunc->GetInsnBuilder()->BuildInsn(mOp, InsnDesc::GetAbstractId(mOp));
     (void)insn.AddOpndChain(resOpnd).AddOpndChain(opnd0);
@@ -1667,14 +1664,14 @@ Operand *MPISel::SelectRetype(TypeCvtNode &node, Operand &opnd0)
         return &SelectCopy2Reg(opnd0, toType, fromType);
     }
     if (IsPrimitiveInteger(fromType) && IsPrimitiveFloat(toType)) {
-        RegOperand *resOpnd = &cgFunc->GetOpndBuilder()->CreateVReg(GetPrimTypeBitSize(toType),
-        cgFunc->GetRegTyFromPrimTy(toType));
+        RegOperand *resOpnd =
+            &cgFunc->GetOpndBuilder()->CreateVReg(GetPrimTypeBitSize(toType), cgFunc->GetRegTyFromPrimTy(toType));
         SelectRetypeFloat(*resOpnd, opnd0, toType, fromType);
         return &(*resOpnd);
     }
     if (IsPrimitiveFloat(fromType) && IsPrimitiveInteger(toType)) {
-        RegOperand *resOpnd = &cgFunc->GetOpndBuilder()->CreateVReg(GetPrimTypeBitSize(toType),
-        cgFunc->GetRegTyFromPrimTy(toType));
+        RegOperand *resOpnd =
+            &cgFunc->GetOpndBuilder()->CreateVReg(GetPrimTypeBitSize(toType), cgFunc->GetRegTyFromPrimTy(toType));
         SelectRetypeFloat(*resOpnd, opnd0, toType, fromType);
         return &(*resOpnd);
     }

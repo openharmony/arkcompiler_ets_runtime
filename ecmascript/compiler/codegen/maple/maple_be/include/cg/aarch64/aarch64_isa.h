@@ -162,6 +162,10 @@ static inline bool IsPseudoInstruction(MOperator mOp)
  */
 uint32 GetJumpTargetIdx(const Insn &insn);
 
+bool IsSub(const Insn &insn);
+
+MOperator GetMopSub2Subs(const Insn &insn);
+
 MOperator FlipConditionOp(MOperator flippedOp);
 
 // Function: for immediate verification, memopnd ofstvalue is returned from opnd input.

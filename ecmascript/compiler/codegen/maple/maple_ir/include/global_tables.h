@@ -481,10 +481,10 @@ public:
     }
 
     void UpdateMIRType(const MIRType &pType, const TyIdx tyIdx);
-    MIRArrayType *GetOrCreateArrayType(const MIRType &elem, uint8 dim, const uint32 *sizeArray,
+    MIRArrayType *GetOrCreateArrayType(const MIRType &elem, uint8 dim, const uint64 *sizeArray,
                                        const TypeAttrs &attrs = TypeAttrs());
     // For one dimention array
-    MIRArrayType *GetOrCreateArrayType(const MIRType &elem, uint32 size, const TypeAttrs &attrs = TypeAttrs());
+    MIRArrayType *GetOrCreateArrayType(const MIRType &elem, uint64 size, const TypeAttrs &attrs = TypeAttrs());
     MIRType *GetOrCreateFarrayType(const MIRType &elem);
     MIRType *GetOrCreateJarrayType(const MIRType &elem);
     MIRType *GetOrCreateFunctionType(const TyIdx &, const std::vector<TyIdx> &, const std::vector<TypeAttrs> &,

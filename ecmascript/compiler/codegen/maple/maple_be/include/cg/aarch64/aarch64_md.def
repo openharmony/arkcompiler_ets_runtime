@@ -434,14 +434,14 @@ DEFINE_MOP(MOP_sdivrrr, {&OpndDesc::Reg32FD,&OpndDesc::Reg32FS,&OpndDesc::Reg32F
 DEFINE_MOP(MOP_ddivrrr, {&OpndDesc::Reg64FD,&OpndDesc::Reg64FS,&OpndDesc::Reg64FS},CANTHROW,kLtAdvsimdDivD,"fdiv","0,1,2",1,kFloatDataProcessing2,0x1e601800)
 
 /* MOP_smadd */
-DEFINE_MOP(MOP_smadd, {&OpndDesc::Reg32FD,&OpndDesc::Reg32FS,&OpndDesc::Reg32FS,&OpndDesc::Reg32FS},CANTHROW,kLtFpmul,"fmadd","0,1,2,3",1, kFloatDataProcessing3, 0x1f000000)
+DEFINE_MOP(MOP_smadd, {&OpndDesc::Reg32FD,&OpndDesc::Reg32FS,&OpndDesc::Reg32FS,&OpndDesc::Reg32FS},CANTHROW,kLtFpmac,"fmadd","0,1,2,3",1, kFloatDataProcessing3, 0x1f000000)
 /* MOP_dmadd */
-DEFINE_MOP(MOP_dmadd, {&OpndDesc::Reg64FD,&OpndDesc::Reg64FS,&OpndDesc::Reg64FS,&OpndDesc::Reg64FS},CANTHROW,kLtFpmul,"fmadd","0,1,2,3",1, kFloatDataProcessing3, 0x1f400000)
+DEFINE_MOP(MOP_dmadd, {&OpndDesc::Reg64FD,&OpndDesc::Reg64FS,&OpndDesc::Reg64FS,&OpndDesc::Reg64FS},CANTHROW,kLtFpmac,"fmadd","0,1,2,3",1, kFloatDataProcessing3, 0x1f400000)
 
 /* MOP_smsub */
-DEFINE_MOP(MOP_smsub, {&OpndDesc::Reg32FD,&OpndDesc::Reg32FS,&OpndDesc::Reg32FS,&OpndDesc::Reg32FS},CANTHROW,kLtFpmul,"fmsub","0,1,2,3",1, kFloatDataProcessing3, 0x1f008000)
+DEFINE_MOP(MOP_smsub, {&OpndDesc::Reg32FD,&OpndDesc::Reg32FS,&OpndDesc::Reg32FS,&OpndDesc::Reg32FS},CANTHROW,kLtFpmac,"fmsub","0,1,2,3",1, kFloatDataProcessing3, 0x1f008000)
 /* MOP_dmsub */
-DEFINE_MOP(MOP_dmsub, {&OpndDesc::Reg64FD,&OpndDesc::Reg64FS,&OpndDesc::Reg64FS,&OpndDesc::Reg64FS},CANTHROW,kLtFpmul,"fmsub","0,1,2,3",1, kFloatDataProcessing3, 0x1f408000)
+DEFINE_MOP(MOP_dmsub, {&OpndDesc::Reg64FD,&OpndDesc::Reg64FS,&OpndDesc::Reg64FS,&OpndDesc::Reg64FS},CANTHROW,kLtFpmac,"fmsub","0,1,2,3",1, kFloatDataProcessing3, 0x1f408000)
 
 /* MOP_snmul */
 DEFINE_MOP(MOP_snmul, {&OpndDesc::Reg32FD,&OpndDesc::Reg32FS,&OpndDesc::Reg32FS},CANTHROW,kLtFpmul,"fnmul","0,1,2",1, kFloatDataProcessing2, 0x1e208800)
@@ -803,6 +803,10 @@ DEFINE_MOP(MOP_xstlxr, {&OpndDesc::Reg32ID,&OpndDesc::Reg64IS,&OpndDesc::Mem64D}
 DEFINE_MOP(MOP_wstlxp, {&OpndDesc::Reg32ID,&OpndDesc::Reg32IS,&OpndDesc::Reg32IS,&OpndDesc::Mem64D},ISSTORE|ISSTOREPAIR|ISATOMIC|HASRELEASE|CANTHROW,kLtStore1,"stlxp","0,1,2,3",1,StrLdr64ImmValid,kStoreExclusivePair,0x88208000)
 DEFINE_MOP(MOP_xstlxp, {&OpndDesc::Reg32ID,&OpndDesc::Reg64IS,&OpndDesc::Reg64IS,&OpndDesc::Mem64D},ISSTORE|ISSTOREPAIR|ISATOMIC|HASRELEASE|CANTHROW,kLtStore1,"stlxp","0,1,2,3",1,StrLdr64ImmValid,kStoreExclusivePair,0xc8208000)
 
+/* Generate a breakpoint instruction exception */
+/* FIXME: DEFINE_MOP(MOP_brk, {OpndDesc::Imm16}, 0, kLtAlu, "brk", "0", 1, Imm16BitValid) */
+DEFINE_MOP(MOP_brk,  {&OpndDesc::Reg64VD,&OpndDesc::Imm8},ISVECTOR,kLtFpalu,"brk","0,1",1)
+
 /* Memory barriers */
 /* MOP_dmb_ishld */
 DEFINE_MOP(MOP_dmb_ishld, {}, HASACQUIRE|ISDMB,kLtBranch, "dmb\tishld", "",1,kSystemInsn,0xd50339bf)
@@ -922,8 +926,8 @@ DEFINE_MOP(MOP_vuaddwvvu,{&OpndDesc::Reg128VD,&OpndDesc::Reg128VS,&OpndDesc::Reg
 DEFINE_MOP(MOP_vsaddw2vvv,{&OpndDesc::Reg128VD,&OpndDesc::Reg128VS,&OpndDesc::Reg128VS},ISVECTOR,kLtFpalu,"saddw2","0,1,2",1)
 DEFINE_MOP(MOP_vuaddw2vvv,{&OpndDesc::Reg128VD,&OpndDesc::Reg128VS,&OpndDesc::Reg128VS},ISVECTOR,kLtFpalu,"uaddw2","0,1,2",1)
 DEFINE_MOP(MOP_vaddvvv, {&OpndDesc::Reg128VD,&OpndDesc::Reg128VS,&OpndDesc::Reg128VS},ISVECTOR,kLtFpalu,"add","0,1,2",1)
-DEFINE_MOP(MOP_vmuluuu, {&OpndDesc::Reg64VD,&OpndDesc::Reg64VS,&OpndDesc::Reg64VS},ISVECTOR,kLtFpalu,"mul","0,1,2",1)
-DEFINE_MOP(MOP_vmulvvv, {&OpndDesc::Reg128VD,&OpndDesc::Reg128VS,&OpndDesc::Reg128VS},ISVECTOR,kLtFpalu,"mul","0,1,2",1)
+DEFINE_MOP(MOP_vmuluuu, {&OpndDesc::Reg64VD,&OpndDesc::Reg64VS,&OpndDesc::Reg64VS},ISVECTOR,kLtAdvsimdMul,"mul","0,1,2",1)
+DEFINE_MOP(MOP_vmulvvv, {&OpndDesc::Reg128VD,&OpndDesc::Reg128VS,&OpndDesc::Reg128VS},ISVECTOR,kLtAdvsimdMulQ,"mul","0,1,2",1)
 DEFINE_MOP(MOP_vsubuuu, {&OpndDesc::Reg64VD,&OpndDesc::Reg64VS,&OpndDesc::Reg64VS},ISVECTOR,kLtFpalu,"sub","0,1,2",1)
 DEFINE_MOP(MOP_vsubvvv, {&OpndDesc::Reg128VD,&OpndDesc::Reg128VS,&OpndDesc::Reg128VS},ISVECTOR,kLtFpalu,"sub","0,1,2",1)
 DEFINE_MOP(MOP_vanduuu, {&OpndDesc::Reg64VD,&OpndDesc::Reg64VS,&OpndDesc::Reg64VS},ISVECTOR,kLtFpalu,"and","0,1,2",1)
@@ -1177,6 +1181,10 @@ DEFINE_MOP(MOP_pseudo_dependence_seperator, {},0,kLtUndef,"//MOP_pseudo_dependen
 /* A pseudo instruction that used for replacing MOP_clinit_tail after clinit merge in scheduling. */
 /* MOP_pseudo_none, */
 DEFINE_MOP(MOP_pseudo_none, {},0,kLtUndef,"//MOP_pseudo_none","0", 0)
+
+/* MOP_ret_assert_nonnull*/
+/* FIXME: DEFINE_MOP(MOP_assert_nonnull, {&OpndDesc::Reg32ID, &OpndDesc::Mem32S},ISLOAD | CANTHROW | ISCALL,kLtUndef,"ldr","0,1", 1, MOP_wldrValid, MOP_wldrSpilt) */
+DEFINE_MOP(MOP_assert_nonnull, {&OpndDesc::Reg32ID,&OpndDesc::Mem32S},ISLOAD|CANTHROW,kLtLoad1,"ldr","0,1",1,StrLdr32ImmValid,kLoadStoreReg,0xb8400000)
 
 /*MOP_nop */
 DEFINE_MOP(MOP_nop, {},ISNOP,kLtAlu,"nop","", 1, kSystemInsn, 0xd503201f)

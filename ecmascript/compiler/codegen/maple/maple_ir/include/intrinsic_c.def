@@ -257,6 +257,8 @@ DEF_MIR_INTRINSIC(C__builtin_extract_return_addr,\
                   "__builtin_extract_return_addr", INTRNISPURE, kArgTyPtr, kArgTyPtr)
 DEF_MIR_INTRINSIC(C___builtin_expect,\
                   "__builtin_expect", INTRNISPURE, kArgTyI32, kArgTyI32, kArgTyI32)
+DEF_MIR_INTRINSIC(C___builtin_division_exception,\
+                  "__builtin_division_exception", INTRNNOSIDEEFFECT | INTRNISPURE, kArgTyVoid, kArgTyI64)
 
 // atomic
 DEF_MIR_INTRINSIC(C___atomic_load_n,\

@@ -70,8 +70,8 @@ public:
     void SelectCondSpecialCase2(const CondGotoNode &stmt, BaseNode &opnd0) override;
     void SelectGoto(GotoNode &stmt) override;
     void SelectCall(CallNode &callNode) override;
-    void SelectIcall(IcallNode &icallNode, Operand &fptrOpnd) override;
-    void SelectIntrinCall(IntrinsiccallNode &intrinsiccallNode) override;
+    void SelectIcall(IcallNode &icallNode) override;
+    void SelectIntrinsicCall(IntrinsiccallNode &intrinsiccallNode) override;
     Operand *SelectIntrinsicOpWithOneParam(IntrinsicopNode &intrinopNode, std::string name) override;
     Operand *SelectCclz(IntrinsicopNode &intrinopNode) override;
     Operand *SelectCctz(IntrinsicopNode &intrinopNode) override;
@@ -84,7 +84,7 @@ public:
     Operand *SelectCSyncFetch(IntrinsicopNode &intrinsicopNode, Opcode op, bool fetchBefore) override;
     Operand *SelectCSyncSynchronize(IntrinsicopNode &intrinsicopNode) override;
     Operand *SelectCAtomicLoadN(IntrinsicopNode &intrinsicopNode) override;
-    Operand *SelectCAtomicExchangeN(IntrinsicopNode &intrinsicopNode) override;
+    Operand *SelectCAtomicExchangeN(const IntrinsiccallNode &intrinsicopNode) override;
     Operand *SelectCSyncBoolCmpSwap(IntrinsicopNode &intrinopNode) override;
     Operand *SelectCSyncValCmpSwap(IntrinsicopNode &intrinopNode) override;
     Operand *SelectCSyncLockTestSet(IntrinsicopNode &intrinopNode, PrimType pty) override;
@@ -102,7 +102,7 @@ public:
                          PrimType finalBitFieldDestType = kPtyInvalid) override;
     Operand *SelectIreadoff(const BaseNode &parent, IreadoffNode &ireadoff) override;
     Operand *SelectIreadfpoff(const BaseNode &parent, IreadFPoffNode &ireadoff) override;
-    Operand *SelectIntConst(const MIRIntConst &intConst) override;
+    Operand *SelectIntConst(const MIRIntConst &intConst, const BaseNode &parent) override;
     Operand *SelectFloatConst(MIRFloatConst &floatConst, const BaseNode &parent) override;
     Operand *SelectDoubleConst(MIRDoubleConst &doubleConst, const BaseNode &parent) override;
     Operand *SelectStrConst(MIRStrConst &strConst) override;

@@ -58,7 +58,7 @@ void CGCFG::BuildCFG()
             case BB::kBBIntrinsic:
                 /*
                  * An intrinsic BB append a MOP_wcbnz instruction at the end, check
-                 * AArch64CGFunc::SelectIntrinCall(IntrinsiccallNode *intrinsiccallNode) for details
+                 * AArch64CGFunc::SelectIntrinsicCall(IntrinsiccallNode *intrinsiccallNode) for details
                  */
                 CHECK_NULL_FATAL(curBB->GetLastMachineInsn());
                 if (!curBB->GetLastMachineInsn()->IsBranch()) {

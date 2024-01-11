@@ -1111,7 +1111,7 @@ public:
     MIRArrayType() : MIRType(kTypeArray, PTY_agg) {}
     explicit MIRArrayType(GStrIdx strIdx) : MIRType(kTypeArray, PTY_agg, strIdx) {}
 
-    MIRArrayType(TyIdx eTyIdx, const std::vector<uint32> &sizeArray)
+    MIRArrayType(TyIdx eTyIdx, const std::vector<uint64> &sizeArray)
         : MIRType(kTypeArray, PTY_agg), eTyIdx(eTyIdx), dim(sizeArray.size())
     {
         for (size_t i = 0; i < kMaxArrayDim; ++i) {
@@ -1132,12 +1132,12 @@ public:
         eTyIdx = idx;
     }
 
-    uint32 GetSizeArrayItem(uint32 n) const
+    uint64 GetSizeArrayItem(uint32 n) const
     {
         CHECK_FATAL((n >= 0 && n < kMaxArrayDim), "out of bound of array!");
         return sizeArray[n];
     }
-    void SetSizeArrayItem(uint32 idx, uint32 value)
+    void SetSizeArrayItem(uint32 idx, uint64 value)
     {
         CHECK_FATAL((idx >= 0 && idx < kMaxArrayDim), "out of bound of array!");
         sizeArray[idx] = value;
@@ -1221,7 +1221,7 @@ public:
 private:
     TyIdx eTyIdx {0};
     uint16 dim = 0;
-    std::array<uint32, kMaxArrayDim> sizeArray {{0}};
+    std::array<uint64, kMaxArrayDim> sizeArray {{0}};
     TypeAttrs typeAttrs;
     mutable uint32 fieldsNum = kInvalidFieldNum;
     mutable size_t size = kInvalidSize;

@@ -222,8 +222,8 @@ public:
     virtual void SelectCondSpecialCase2(const CondGotoNode &stmt, BaseNode &opnd0) = 0;
     virtual void SelectGoto(GotoNode &stmt) = 0;
     virtual void SelectCall(CallNode &callNode) = 0;
-    virtual void SelectIcall(IcallNode &icallNode, Operand &fptrOpnd) = 0;
-    virtual void SelectIntrinCall(IntrinsiccallNode &intrinsiccallNode) = 0;
+    virtual void SelectIcall(IcallNode &icallNode) = 0;
+    virtual void SelectIntrinsicCall(IntrinsiccallNode &intrinsiccallNode) = 0;
     virtual Operand *SelectIntrinsicOpWithOneParam(IntrinsicopNode &intrinsicopNode, std::string name) = 0;
     virtual Operand *SelectIntrinsicOpWithNParams(IntrinsicopNode &intrinsicopNode, PrimType retType,
                                                   const std::string &name) = 0;
@@ -241,7 +241,7 @@ public:
     virtual Operand *SelectCSyncLockTestSet(IntrinsicopNode &intrinsicopNode, PrimType pty) = 0;
     virtual Operand *SelectCSyncSynchronize(IntrinsicopNode &intrinsicopNode) = 0;
     virtual Operand *SelectCAtomicLoadN(IntrinsicopNode &intrinsicopNode) = 0;
-    virtual Operand *SelectCAtomicExchangeN(IntrinsicopNode &intrinsicopNode) = 0;
+    virtual Operand *SelectCAtomicExchangeN(const IntrinsiccallNode &intrinsiccallNode) = 0;
     virtual Operand *SelectCReturnAddress(IntrinsicopNode &intrinsicopNode) = 0;
     virtual void SelectMembar(StmtNode &membar) = 0;
     virtual void SelectComment(CommentNode &comment) = 0;
@@ -258,7 +258,7 @@ public:
                                  PrimType finalBitFieldDestType = kPtyInvalid) = 0;
     virtual Operand *SelectIreadoff(const BaseNode &parent, IreadoffNode &ireadoff) = 0;
     virtual Operand *SelectIreadfpoff(const BaseNode &parent, IreadFPoffNode &ireadoff) = 0;
-    virtual Operand *SelectIntConst(const MIRIntConst &intConst) = 0;
+    virtual Operand *SelectIntConst(const MIRIntConst &intConst, const BaseNode &parent) = 0;
     virtual Operand *SelectFloatConst(MIRFloatConst &floatConst, const BaseNode &parent) = 0;
     virtual Operand *SelectDoubleConst(MIRDoubleConst &doubleConst, const BaseNode &parent) = 0;
     virtual Operand *SelectStrConst(MIRStrConst &strConst) = 0;
@@ -422,7 +422,7 @@ public:
     };
     LabelIdx CreateLabel();
 
-    RegOperand *GetVirtualRegisterOperand(regno_t vRegNO)
+    RegOperand *GetVirtualRegisterOperand(regno_t vRegNO) const
     {
         auto it = vRegOperandTable.find(vRegNO);
         return it == vRegOperandTable.end() ? nullptr : it->second;
@@ -1610,6 +1610,45 @@ protected:
             return true;
         }
         return false;
+    }
+
+    PrimType GetPrimTypeFromSize(uint32 byteSize, PrimType defaultType) const
+    {
+        switch (byteSize) {
+            case 1:
+                return PTY_i8;
+            case 2:
+                return PTY_i16;
+            case 4:
+                return PTY_i32;
+            default:
+                return defaultType;
+        }
+    }
+
+    BB *CreateAtomicBuiltinBB()
+    {
+        LabelIdx atomicBBLabIdx = CreateLabel();
+        BB *atomicBB = CreateNewBB();
+        atomicBB->SetKind(BB::kBBIf);
+        atomicBB->SetAtomicBuiltIn();
+        atomicBB->AddLabel(atomicBBLabIdx);
+        SetLab2BBMap(atomicBBLabIdx, *atomicBB);
+        GetCurBB()->AppendBB(*atomicBB);
+        return atomicBB;
+    }
+
+    // clone old mem and add offset
+    // oldMem: [base, imm:12] -> newMem: [base, imm:(12 + offset)]
+    MemOperand &GetMemOperandAddOffset(const MemOperand &oldMem, uint32 offset, uint32 newSize)
+    {
+        auto &newMem = static_cast<MemOperand &>(*oldMem.Clone(*GetMemoryPool()));
+        auto &oldOffset = *oldMem.GetOffsetOperand();
+        auto &newOffst = static_cast<ImmOperand &>(*oldOffset.Clone(*GetMemoryPool()));
+        newOffst.SetValue(oldOffset.GetValue() + offset);
+        newMem.SetOffsetOperand(newOffst);
+        newMem.SetSize(newSize);
+        return newMem;
     }
 
 private:

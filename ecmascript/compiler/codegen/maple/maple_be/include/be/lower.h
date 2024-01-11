@@ -169,10 +169,15 @@ public:
     BaseNode *LowerCArray(ArrayNode &array);
 
     DassignNode *SaveReturnValueInLocal(StIdx, uint16);
+    BaseNode *NeedRetypeWhenLowerCallAssigned(PrimType pType);
     void LowerCallStmt(StmtNode &, StmtNode *&, BlockNode &, MIRType *retty = nullptr, bool uselvar = false,
                        bool isIntrinAssign = false);
     BlockNode *LowerIntrinsiccallAassignedToAssignStmt(IntrinsiccallNode &intrinsicCall);
     BlockNode *LowerCallAssignedStmt(StmtNode &stmt, bool uselvar = false);
+    /* Intrinsiccall will processe return and vector as a call separately.
+     * To be able to handle them in a unified manner, we lower intrinsiccall to Intrinsicsicop.
+     */
+    BlockNode *LowerIntrinsiccallToIntrinsicop(StmtNode &stmt);
     bool LowerStructReturn(BlockNode &blk, StmtNode *stmt, StmtNode *&nextStmt, bool &lvar, BlockNode *oldblk);
     BlockNode *LowerMemop(StmtNode &);
 

@@ -28,140 +28,23 @@ enum RegisterType : uint8 {
     kRegisterLast,
 };
 
-class ScheduleProcessInfo {
-public:
-    explicit ScheduleProcessInfo(uint32 size)
-    {
-        availableReadyList.reserve(size);
-        scheduledNodes.reserve(size);
-    }
-
-    virtual ~ScheduleProcessInfo() = default;
-
-    uint32 GetLastUpdateCycle() const
-    {
-        return lastUpdateCycle;
-    }
-
-    void SetLastUpdateCycle(uint32 updateCycle)
-    {
-        lastUpdateCycle = updateCycle;
-    }
-
-    uint32 GetCurrCycle() const
-    {
-        return currCycle;
-    }
-
-    void IncCurrCycle()
-    {
-        ++currCycle;
-    }
-
-    void DecAdvanceCycle()
-    {
-        advanceCycle--;
-    }
-
-    uint32 GetAdvanceCycle() const
-    {
-        return advanceCycle;
-    }
-
-    void SetAdvanceCycle(uint32 cycle)
-    {
-        advanceCycle = cycle;
-    }
-
-    void ClearAvailableReadyList()
-    {
-        availableReadyList.clear();
-    }
-
-    void PushElemIntoAvailableReadyList(DepNode *node)
-    {
-        availableReadyList.emplace_back(node);
-    }
-
-    size_t SizeOfAvailableReadyList() const
-    {
-        return availableReadyList.size();
-    }
-
-    bool AvailableReadyListIsEmpty() const
-    {
-        return availableReadyList.empty();
-    }
-
-    void SetAvailableReadyList(const std::vector<DepNode *> &tempReadyList)
-    {
-        availableReadyList = tempReadyList;
-    }
-
-    const std::vector<DepNode *> &GetAvailableReadyList() const
-    {
-        return availableReadyList;
-    }
-
-    const std::vector<DepNode *> &GetAvailableReadyList()
-    {
-        return availableReadyList;
-    }
-
-    void PushElemIntoScheduledNodes(DepNode *node)
-    {
-        node->SetState(kScheduled);
-        node->SetSchedCycle(currCycle);
-        node->OccupyUnits();
-        scheduledNodes.emplace_back(node);
-    }
-
-    bool IsFirstSeparator() const
-    {
-        return isFirstSeparator;
-    }
-
-    void ResetIsFirstSeparator()
-    {
-        isFirstSeparator = false;
-    }
-
-    size_t SizeOfScheduledNodes() const
-    {
-        return scheduledNodes.size();
-    }
-
-    const std::vector<DepNode *> &GetScheduledNodes() const
-    {
-        return scheduledNodes;
-    }
-
-private:
-    std::vector<DepNode *> availableReadyList;
-    std::vector<DepNode *> scheduledNodes;
-    uint32 lastUpdateCycle = 0;
-    uint32 currCycle = 0;
-    uint32 advanceCycle = 0;
-    bool isFirstSeparator = true;
-};
-
 class AArch64ScheduleProcessInfo : public ScheduleProcessInfo {
 public:
     explicit AArch64ScheduleProcessInfo(uint32 size) : ScheduleProcessInfo(size) {}
     ~AArch64ScheduleProcessInfo() override = default;
 
     /* recover register type which is not recorded in live analysis */
-    static RegType GetRegisterType(CGFunc &f, regno_t regNO);
-    void VaryLiveRegSet(CGFunc &f, regno_t regNO, bool isInc);
-    void VaryFreeRegSet(CGFunc &f, std::set<regno_t> regNOs, DepNode &node);
+    static RegType GetRegisterType(const CGFunc &f, regno_t regNO);
+    void VaryLiveRegSet(const CGFunc &f, regno_t regNO, bool isInc);
+    void VaryFreeRegSet(const CGFunc &f, std::set<regno_t> regNOs, DepNode &node);
 
     uint32 GetFreeIntRegs(DepNode &node)
     {
-        return freeIntRegNodeSet.count(&node) ? freeIntRegNodeSet.find(&node)->second : 0;
+        return (freeIntRegNodeSet.count(&node)) > 0 ? freeIntRegNodeSet.find(&node)->second : 0;
     }
     void IncFreeIntRegNode(DepNode &node)
     {
-        if (!freeIntRegNodeSet.count(&node)) {
+        if (freeIntRegNodeSet.count(&node) == 0) {
             freeIntRegNodeSet.emplace(std::pair<DepNode *, uint32>(&node, 1));
         } else {
             freeIntRegNodeSet.find(&node)->second++;
@@ -173,7 +56,7 @@ public:
     }
     void IncFreeFpRegNode(DepNode &node)
     {
-        if (!freeFpRegNodeSet.count(&node)) {
+        if (freeFpRegNodeSet.count(&node) == 0) {
             freeFpRegNodeSet.emplace(std::pair<DepNode *, uint32>(&node, 1));
         } else {
             freeFpRegNodeSet.find(&node)->second++;
@@ -181,7 +64,7 @@ public:
     }
     uint32 GetFreeFpRegs(DepNode &node)
     {
-        return freeFpRegNodeSet.count(&node) ? freeFpRegNodeSet.find(&node)->second : 0;
+        return (freeFpRegNodeSet.count(&node)) > 0 ? freeFpRegNodeSet.find(&node)->second : 0;
     }
     const std::map<DepNode *, uint32> &GetFreeFpRegNodeSet() const
     {
@@ -302,18 +185,18 @@ private:
     void CountUnitKind(const DepNode &depNode, uint32 array[], const uint32 arraySize) const override;
     static bool IfUseUnitKind(const DepNode &depNode, uint32 index);
     void UpdateReadyList(DepNode &targetNode, MapleVector<DepNode *> &readyList, bool updateEStart) override;
-    void UpdateScheduleProcessInfo(AArch64ScheduleProcessInfo &info);
-    void UpdateAdvanceCycle(AArch64ScheduleProcessInfo &scheduleInfo, const DepNode &targetNode);
+    void UpdateScheduleProcessInfo(AArch64ScheduleProcessInfo &info) const;
+    void UpdateAdvanceCycle(AArch64ScheduleProcessInfo &scheduleInfo, const DepNode &targetNode) const;
     bool CheckSchedulable(AArch64ScheduleProcessInfo &info) const;
     void SelectNode(AArch64ScheduleProcessInfo &scheduleInfo);
     static void DumpDebugInfo(const ScheduleProcessInfo &scheduleInfo);
     bool CompareDepNode(DepNode &node1, DepNode &node2, AArch64ScheduleProcessInfo &scheduleInfo) const;
-    void CalculateMaxUnitKindCount(ScheduleProcessInfo &scheduleInfo);
+    void CalculateMaxUnitKindCount(ScheduleProcessInfo &scheduleInfo) const;
     void UpdateReleaseRegInfo(AArch64ScheduleProcessInfo &scheduleInfo);
     std::set<regno_t> CanFreeRegister(const DepNode &node) const;
     void UpdateLiveRegSet(AArch64ScheduleProcessInfo &scheduleInfo, const DepNode &node);
     void InitLiveRegSet(AArch64ScheduleProcessInfo &scheduleInfo);
-    int CalSeriesCycles(const MapleVector<DepNode *> &nodes);
+    int CalSeriesCycles(const MapleVector<DepNode *> &nodes) const;
     CSRResult DoCSR(DepNode &node1, DepNode &node2, AArch64ScheduleProcessInfo &scheduleInfo) const;
     AArch64Schedule::CSRResult ScheduleCrossCall(const DepNode &node1, const DepNode &node2) const;
     int intCalleeSaveThreshold = 0;

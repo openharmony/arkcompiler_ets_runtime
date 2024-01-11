@@ -31,11 +31,12 @@
  */
 namespace maplebe {
 namespace {
-constexpr uint32 kClinitAdvanceCycle = 10;
-constexpr uint32 kAdrpLdrAdvanceCycle = 2;
-constexpr uint32 kClinitTailAdvanceCycle = 4;
 constexpr uint32 kSecondToLastNode = 2;
 }  // namespace
+
+constexpr uint32 kClinitAdvanceCycle = 12;
+constexpr uint32 kAdrpLdrAdvanceCycle = 4;
+constexpr uint32 kClinitTailAdvanceCycle = 6;
 
 uint32 AArch64Schedule::maxUnitIndex = 0;
 /* reserve two register for special purpose */
@@ -97,9 +98,10 @@ bool AArch64Schedule::CanCombine(const Insn &insn) const
     DEBUG_ASSERT(insn.GetOperand(1).IsMemoryAccessOperand(), "expects mem operands");
     auto &memOpnd = static_cast<MemOperand &>(insn.GetOperand(1));
     MemOperand::AArch64AddressingMode addrMode = memOpnd.GetAddrMode();
-    if ((addrMode != MemOperand::kAddrModeBOi) || !memOpnd.IsIntactIndexed()) {
-        return false;
-    }
+    if (addrMode != MemOperand::kAddrModeBOi)
+        {
+            return false;
+        }
 
     auto &regOpnd = static_cast<RegOperand &>(insn.GetOperand(0));
     if (regOpnd.GetSize() != memOpnd.GetSize()) {
@@ -151,7 +153,7 @@ void AArch64Schedule::MemoryAccessPairOpt()
                 FindAndCombineMemoryAccessPair(memList);
             }
             readNode = memList[0];
-            memList.erase(memList.begin());
+            memList.erase(memList.cbegin());
         }
 
         /* schedule readNode */
@@ -161,7 +163,7 @@ void AArch64Schedule::MemoryAccessPairOpt()
         /* add readNode's succs to readyList or memList. */
         for (auto succLink : readNode->GetSuccs()) {
             DepNode &succNode = succLink->GetTo();
-            succNode.DescreaseValidPredsSize();
+            succNode.DecreaseValidPredsSize();
             if (succNode.GetValidPredsSize() == 0) {
                 DEBUG_ASSERT(succNode.GetState() == kNormal, "schedule state should be kNormal");
                 succNode.SetState(kReady);
@@ -272,7 +274,7 @@ uint32 AArch64Schedule::GetNextSepIndex() const
 /* Do register pressure schduling. */
 void AArch64Schedule::RegPressureScheduling(BB &bb, MapleVector<DepNode *> &nodes)
 {
-    RegPressureSchedule *regSchedule = memPool.New<RegPressureSchedule>(cgFunc, alloc);
+    auto *regSchedule = memPool.New<RegPressureSchedule>(cgFunc, alloc);
     /*
      * Get physical register amount currently
      * undef, Int Reg, Float Reg, Flag Reg
@@ -296,20 +298,20 @@ uint32 AArch64Schedule::ComputeEstart(uint32 cycle)
         /* Check validPredsSize. */
         for (uint32 i = lastSeparatorIndex; i <= maxIndex; ++i) {
             DepNode *node = nodes[i];
-            [[maybe_unused]] int32 schedNum = 0;
+            int32 schedNum = 0;
             for (const auto *predLink : node->GetPreds()) {
                 if (predLink->GetFrom().GetState() == kScheduled) {
                     ++schedNum;
                 }
             }
-            DEBUG_ASSERT((node->GetPreds().size() - schedNum) == node->GetValidPredsSize(), "validPredsSize error.");
+            CHECK_FATAL((node->GetPreds().size() - schedNum) == node->GetValidPredsSize(), "validPredsSize error.");
         }
     }
 
     DEBUG_ASSERT(nodes[maxIndex]->GetType() == kNodeTypeSeparator,
                  "CG internal error, nodes[maxIndex] should be a separator node.");
 
-    (void)readyNodes.insert(readyNodes.begin(), readyList.begin(), readyList.end());
+    (void)readyNodes.insert(readyNodes.cbegin(), readyList.cbegin(), readyList.cend());
 
     uint32 maxEstart = cycle;
     for (uint32 i = lastSeparatorIndex; i <= maxIndex; ++i) {
@@ -326,7 +328,7 @@ uint32 AArch64Schedule::ComputeEstart(uint32 cycle)
 
     while (!readyNodes.empty()) {
         DepNode *node = readyNodes.front();
-        readyNodes.erase(readyNodes.begin());
+        readyNodes.erase(readyNodes.cbegin());
 
         for (const auto *succLink : node->GetSuccs()) {
             DepNode &succNode = succLink->GetTo();
@@ -368,7 +370,7 @@ void AArch64Schedule::ComputeLstart(uint32 maxEstart)
     readyNodes.emplace_back(nodes[maxIndex]);
     while (!readyNodes.empty()) {
         DepNode *node = readyNodes.front();
-        readyNodes.erase(readyNodes.begin());
+        readyNodes.erase(readyNodes.cbegin());
         for (const auto *predLink : node->GetPreds()) {
             DepNode &predNode = predLink->GetFrom();
             if (predNode.GetState() == kScheduled) {
@@ -394,117 +396,18 @@ void AArch64Schedule::UpdateELStartsOnCycle(uint32 cycle)
     ComputeLstart(ComputeEstart(cycle));
 }
 
-/*
- * If all unit of this node need when it be scheduling is free, this node can be scheduled,
- * Return true.
- */
-bool DepNode::CanBeScheduled() const
-{
-    for (uint32 i = 0; i < unitNum; ++i) {
-        Unit *unit = units[i];
-        if (unit != nullptr) {
-            if (!unit->IsFree(i)) {
-                return false;
-            }
-        }
-    }
-    return true;
-}
-
-/* Mark those unit that this node need occupy unit when it is being scheduled. */
-void DepNode::OccupyUnits()
-{
-    for (uint32 i = 0; i < unitNum; ++i) {
-        Unit *unit = units[i];
-        if (unit != nullptr) {
-            unit->Occupy(*insn, i);
-        }
-    }
-}
-
-/* Get unit kind of this node's units[0]. */
-uint32 DepNode::GetUnitKind() const
-{
-    uint32 retValue = 0;
-    if ((units == nullptr) || (units[0] == nullptr)) {
-        return retValue;
-    }
-
-    switch (units[0]->GetUnitId()) {
-        case kUnitIdSlotD:
-            retValue |= kUnitKindSlot0;
-            break;
-        case kUnitIdAgen:
-        case kUnitIdSlotSAgen:
-            retValue |= kUnitKindAgen;
-            break;
-        case kUnitIdSlotDAgen:
-            retValue |= kUnitKindAgen;
-            retValue |= kUnitKindSlot0;
-            break;
-        case kUnitIdHazard:
-        case kUnitIdSlotSHazard:
-            retValue |= kUnitKindHazard;
-            break;
-        case kUnitIdCrypto:
-            retValue |= kUnitKindCrypto;
-            break;
-        case kUnitIdMul:
-        case kUnitIdSlotSMul:
-            retValue |= kUnitKindMul;
-            break;
-        case kUnitIdDiv:
-            retValue |= kUnitKindDiv;
-            break;
-        case kUnitIdBranch:
-        case kUnitIdSlotSBranch:
-            retValue |= kUnitKindBranch;
-            break;
-        case kUnitIdStAgu:
-            retValue |= kUnitKindStAgu;
-            break;
-        case kUnitIdLdAgu:
-            retValue |= kUnitKindLdAgu;
-            break;
-        case kUnitIdFpAluS:
-        case kUnitIdFpAluD:
-            retValue |= kUnitKindFpAlu;
-            break;
-        case kUnitIdFpMulS:
-        case kUnitIdFpMulD:
-            retValue |= kUnitKindFpMul;
-            break;
-        case kUnitIdFpDivS:
-        case kUnitIdFpDivD:
-            retValue |= kUnitKindFpDiv;
-            break;
-        case kUnitIdSlot0LdAgu:
-            retValue |= kUnitKindSlot0;
-            retValue |= kUnitKindLdAgu;
-            break;
-        case kUnitIdSlot0StAgu:
-            retValue |= kUnitKindSlot0;
-            retValue |= kUnitKindStAgu;
-            break;
-        default:
-            break;
-    }
-
-    return retValue;
-}
-
 /* Count unit kinds to an array. Each element of the array indicates the unit kind number of a node set. */
 void AArch64Schedule::CountUnitKind(const DepNode &depNode, uint32 array[], const uint32 arraySize) const
 {
     (void)arraySize;
     DEBUG_ASSERT(arraySize >= kUnitKindLast, "CG internal error. unit kind number is not correct.");
     uint32 unitKind = depNode.GetUnitKind();
-    int32 index = static_cast<int32>(__builtin_ffs(unitKind));
-    while (index) {
-        DEBUG_ASSERT(static_cast<uint32>(index) < kUnitKindLast, "CG internal error. index error.");
+    uint32 index = static_cast<uint32>(__builtin_ffs(static_cast<int>(unitKind)));
+    while (index != 0) {
+        DEBUG_ASSERT(index < kUnitKindLast, "CG internal error. index error.");
         ++array[index];
         unitKind &= ~(1u << (index - 1u));
-        index = __builtin_ffs(unitKind);
+        index = static_cast<uint32>(__builtin_ffs(static_cast<int>(unitKind)));
     }
 }
 
@@ -512,14 +415,14 @@ void AArch64Schedule::CountUnitKind(const DepNode &depNode, uint32 array[], cons
 bool AArch64Schedule::IfUseUnitKind(const DepNode &depNode, uint32 index)
 {
     uint32 unitKind = depNode.GetUnitKind();
-    int32 idx = static_cast<int32>(__builtin_ffs(unitKind));
-    while (idx) {
+    uint32 idx = static_cast<uint32>(__builtin_ffs(static_cast<int>(unitKind)));
+    while (idx != 0) {
         DEBUG_ASSERT(index < kUnitKindLast, "CG internal error. index error.");
-        if (idx == static_cast<int32>(index)) {
+        if (idx == index) {
             return true;
         }
         unitKind &= ~(1u << (idx - 1u));
-        idx = __builtin_ffs(unitKind);
+        idx = static_cast<uint32>(__builtin_ffs(static_cast<int>(unitKind)));
     }
 
     return false;
@@ -618,9 +521,9 @@ void AArch64Schedule::SelectNode(AArch64ScheduleProcessInfo &scheduleInfo)
         }
     }
     /* The priority of free-reg node is higher than pipeline */
-    while (!targetNode->CanBeScheduled()) {
+    while (!targetNode->IsResourceIdle()) {
         scheduleInfo.IncCurrCycle();
-        mad->AdvanceCycle();
+        mad->AdvanceOneCycleForAll();
     }
     if (GetConsiderRegPressure() && !scheduleInfo.IsFirstSeparator()) {
         UpdateLiveRegSet(scheduleInfo, *targetNode);
@@ -654,7 +557,7 @@ void AArch64Schedule::SelectNode(AArch64ScheduleProcessInfo &scheduleInfo)
     UpdateAdvanceCycle(scheduleInfo, *targetNode);
 }
 
-void AArch64Schedule::UpdateAdvanceCycle(AArch64ScheduleProcessInfo &scheduleInfo, const DepNode &targetNode)
+void AArch64Schedule::UpdateAdvanceCycle(AArch64ScheduleProcessInfo &scheduleInfo, const DepNode &targetNode) const
 {
     switch (targetNode.GetInsn()->GetLatencyType()) {
         case kLtClinit:
@@ -683,11 +586,11 @@ void AArch64Schedule::UpdateAdvanceCycle(AArch64ScheduleProcessInfo &scheduleInf
  * Advance mad's cycle until info's advanceCycle equal zero,
  * and then clear info's availableReadyList.
  */
-void AArch64Schedule::UpdateScheduleProcessInfo(AArch64ScheduleProcessInfo &info)
+void AArch64Schedule::UpdateScheduleProcessInfo(AArch64ScheduleProcessInfo &info) const
 {
     while (info.GetAdvanceCycle() > 0) {
         info.IncCurrCycle();
-        mad->AdvanceCycle();
+        mad->AdvanceOneCycleForAll();
         info.DecAdvanceCycle();
     }
     info.ClearAvailableReadyList();
@@ -703,7 +606,7 @@ bool AArch64Schedule::CheckSchedulable(AArch64ScheduleProcessInfo &info) const
         if (GetConsiderRegPressure()) {
             info.PushElemIntoAvailableReadyList(node);
         } else {
-            if (node->CanBeScheduled() && node->GetEStart() <= info.GetCurrCycle()) {
+            if (node->IsResourceIdle() && node->GetEStart() <= info.GetCurrCycle()) {
                 info.PushElemIntoAvailableReadyList(node);
             }
         }
@@ -714,7 +617,7 @@ bool AArch64Schedule::CheckSchedulable(AArch64ScheduleProcessInfo &info) const
 /*
  * Calculate estimated machine cycle count for an input node series
  */
-int AArch64Schedule::CalSeriesCycles(const MapleVector<DepNode *> &nodes)
+int AArch64Schedule::CalSeriesCycles(const MapleVector<DepNode *> &nodes) const
 {
     int currentCycle = 0;
     /* after an instruction is issued, the minimum cycle count for the next instruction is 1 */
@@ -774,10 +677,11 @@ uint32 AArch64Schedule::DoSchedule()
     DEBUG_ASSERT(scheduleInfo.SizeOfScheduledNodes() == nodes.size(), "CG internal error, Not all nodes scheduled.");
 
     nodes.clear();
-    (void)nodes.insert(nodes.begin(), scheduleInfo.GetScheduledNodes().begin(), scheduleInfo.GetScheduledNodes().end());
+    (void)nodes.insert(nodes.cbegin(), scheduleInfo.GetScheduledNodes().cbegin(),
+                       scheduleInfo.GetScheduledNodes().cend());
     /* the second to last node is the true last node, because the last is kNodeTypeSeparator node */
-    DEBUG_ASSERT(nodes.size() - 2 >= 0, "size of nodes should be greater than or equal 2"); // size not less than 2
-    return (nodes[nodes.size() - 2]->GetSchedCycle()); // size-2 get the second to last node
+    DEBUG_ASSERT(nodes.size() - 2 >= 0, "size of nodes should be greater than or equal 2");  // size not less than 2
+    return (nodes[nodes.size() - 2]->GetSchedCycle());  // size-2 get the second to last node
 }
 
 struct RegisterInfoUnit {
@@ -787,7 +691,7 @@ struct RegisterInfoUnit {
     uint32 ccRegNum = 0;
 };
 
-RegisterInfoUnit GetDepNodeDefType(const DepNode &depNode, CGFunc &f)
+RegisterInfoUnit GetDepNodeDefType(const DepNode &depNode, const CGFunc &f)
 {
     RegisterInfoUnit rIU;
     for (auto defRegNO : depNode.GetDefRegnos()) {
@@ -835,7 +739,7 @@ AArch64Schedule::CSRResult AArch64Schedule::DoCSR(DepNode &node1, DepNode &node2
             }
         }
     }
-    auto FindFreeRegNode = [&](bool isInt) -> CSRResult {
+    auto findFreeRegNode = [&scheduleInfo, &node1, &node2](bool isInt) -> CSRResult {
         auto freeRegNodes = isInt ? scheduleInfo.GetFreeIntRegNodeSet() : scheduleInfo.GetFreeFpRegNodeSet();
         if (freeRegNodes.find(&node1) != freeRegNodes.end() && freeRegNodes.find(&node2) == freeRegNodes.end()) {
             return kNode1;
@@ -846,13 +750,13 @@ AArch64Schedule::CSRResult AArch64Schedule::DoCSR(DepNode &node1, DepNode &node2
         return kDoCSP;
     };
     if (static_cast<int>(scheduleInfo.SizeOfIntLiveRegSet()) >= intRegPressureThreshold) {
-        if (FindFreeRegNode(true) != kDoCSP) {
-            return FindFreeRegNode(true);
+        if (findFreeRegNode(true) != kDoCSP) {
+            return findFreeRegNode(true);
         }
     }
     if (static_cast<int>(scheduleInfo.SizeOfFpLiveRegSet()) >= fpRegPressureThreshold) {
-        if (FindFreeRegNode(false) != kDoCSP) {
-            return FindFreeRegNode(false);
+        if (findFreeRegNode(false) != kDoCSP) {
+            return findFreeRegNode(false);
         }
     }
 
@@ -950,7 +854,7 @@ bool AArch64Schedule::CompareDepNode(DepNode &node1, DepNode &node2, AArch64Sche
 /*
  * Calculate number of every unit that used by avaliableReadyList's nodes and save the max in maxUnitIndex
  */
-void AArch64Schedule::CalculateMaxUnitKindCount(ScheduleProcessInfo &scheduleInfo)
+void AArch64Schedule::CalculateMaxUnitKindCount(ScheduleProcessInfo &scheduleInfo) const
 {
     uint32 unitKindCount[kUnitKindLast] = {0};
     for (auto node : scheduleInfo.GetAvailableReadyList()) {
@@ -1051,14 +955,14 @@ uint32 AArch64Schedule::SimulateOnly()
     for (uint32 i = 0; i < nodes.size();) {
         while (advanceCycle > 0) {
             ++currCycle;
-            mad->AdvanceCycle();
+            mad->AdvanceOneCycleForAll();
             --advanceCycle;
         }
 
         DepNode *targetNode = nodes[i];
-        if ((currCycle >= targetNode->GetEStart()) && targetNode->CanBeScheduled()) {
+        if ((currCycle >= targetNode->GetEStart()) && targetNode->IsResourceIdle()) {
             targetNode->SetSimulateCycle(currCycle);
-            targetNode->OccupyUnits();
+            targetNode->OccupyRequiredUnits();
 
             /* Update estart. */
             for (auto succLink : targetNode->GetSuccs()) {
@@ -1113,6 +1017,10 @@ void AArch64Schedule::FinalizeScheduling(BB &bb, const DepAnalysis &depAnalysis)
             }
             bb.AppendInsn(*comment);
         }
+        /* Append cfi instructions. */
+        for (auto cfi : node->GetCfiInsns()) {
+            bb.AppendInsn(*cfi);
+        }
         /* Append insn. */
         if (!node->GetClinitInsns().empty()) {
             for (auto clinit : node->GetClinitInsns()) {
@@ -1123,11 +1031,6 @@ void AArch64Schedule::FinalizeScheduling(BB &bb, const DepAnalysis &depAnalysis)
                 bb.AppendInsn(*node->GetInsn()->GetPrev());
             }
             bb.AppendInsn(*node->GetInsn());
-        }
-
-        /* Append cfi instructions. */
-        for (auto cfi : node->GetCfiInsns()) {
-            bb.AppendInsn(*cfi);
         }
     }
     bb.SetLastLoc(prevLocInsn);
@@ -1153,7 +1056,7 @@ void AArch64Schedule::IterateBruteForce(DepNode &targetNode, MapleVector<DepNode
     /* Save states. */
     constexpr int32 unitSize = 31;
     DEBUG_ASSERT(unitSize == mad->GetAllUnitsSize(), "CG internal error.");
-    std::vector<uint32> occupyTable;
+    std::vector<std::bitset<32>> occupyTable;
     occupyTable.resize(unitSize, 0);
     mad->SaveStates(occupyTable, unitSize);
 
@@ -1164,7 +1067,7 @@ void AArch64Schedule::IterateBruteForce(DepNode &targetNode, MapleVector<DepNode
 
     MapleVector<DepNode *> tempList = readyList;
     EraseNodeFromNodeList(targetNode, tempList);
-    targetNode.OccupyUnits();
+    targetNode.OccupyRequiredUnits();
 
     /* Update readyList. */
     UpdateReadyList(targetNode, tempList, true);
@@ -1202,7 +1105,7 @@ void AArch64Schedule::IterateBruteForce(DepNode &targetNode, MapleVector<DepNode
             std::vector<DepNode *> tempAvailableList;
             while (advanceCycle > 0) {
                 ++currCycle;
-                mad->AdvanceCycle();
+                mad->AdvanceOneCycleForAll();
                 --advanceCycle;
             }
             /* Check EStart. */
@@ -1220,7 +1123,7 @@ void AArch64Schedule::IterateBruteForce(DepNode &targetNode, MapleVector<DepNode
 
             /* Check if schedulable */
             for (auto node : tempAvailableList) {
-                if (node->CanBeScheduled()) {
+                if (node->IsResourceIdle()) {
                     availableReadyList.emplace_back(node);
                 }
             }
@@ -1306,7 +1209,7 @@ void AArch64Schedule::UpdateReadyList(DepNode &targetNode, MapleVector<DepNode *
 {
     for (auto succLink : targetNode.GetSuccs()) {
         DepNode &succNode = succLink->GetTo();
-        succNode.DescreaseValidPredsSize();
+        succNode.DecreaseValidPredsSize();
         if (succNode.GetValidPredsSize() == 0) {
             readyList.emplace_back(&succNode);
             succNode.SetState(kReady);
@@ -1385,7 +1288,8 @@ void AArch64Schedule::GenerateDot(const BB &bb, const MapleVector<DepNode *> &no
     fileName.append(str);
     fileName.append("_dep_graph.dot");
 
-    dgFile.open(fileName.c_str(), std::ios::trunc);
+    char absPath[PATH_MAX];
+    dgFile.open(realpath(fileName.c_str(), absPath), std::ios::trunc);
     if (!dgFile.is_open()) {
         LogInfo::MapleLogger(kLlWarn) << "fileName:" << fileName << " open failure.\n";
         return;
@@ -1419,7 +1323,7 @@ void AArch64Schedule::GenerateDot(const BB &bb, const MapleVector<DepNode *> &no
     std::cout.rdbuf(coutBuf);
 }
 
-RegType AArch64ScheduleProcessInfo::GetRegisterType(CGFunc &f, regno_t regNO)
+RegType AArch64ScheduleProcessInfo::GetRegisterType(const CGFunc &f, regno_t regNO)
 {
     if (AArch64isa::IsPhysicalRegister(regNO)) {
         if (AArch64isa::IsGPRegister(static_cast<AArch64reg>(regNO))) {
@@ -1436,7 +1340,7 @@ RegType AArch64ScheduleProcessInfo::GetRegisterType(CGFunc &f, regno_t regNO)
     }
 }
 
-void AArch64ScheduleProcessInfo::VaryLiveRegSet(CGFunc &f, regno_t regNO, bool isInc)
+void AArch64ScheduleProcessInfo::VaryLiveRegSet(const CGFunc &f, regno_t regNO, bool isInc)
 {
     RegType registerTy = GetRegisterType(f, regNO);
     if (registerTy == kRegTyInt || registerTy == kRegTyVary) {
@@ -1447,7 +1351,7 @@ void AArch64ScheduleProcessInfo::VaryLiveRegSet(CGFunc &f, regno_t regNO, bool i
     /* consider other type register */
 }
 
-void AArch64ScheduleProcessInfo::VaryFreeRegSet(CGFunc &f, std::set<regno_t> regNOs, DepNode &node)
+void AArch64ScheduleProcessInfo::VaryFreeRegSet(const CGFunc &f, std::set<regno_t> regNOs, DepNode &node)
 {
     for (auto regNO : regNOs) {
         RegType registerTy = GetRegisterType(f, regNO);
@@ -1540,8 +1444,14 @@ void AArch64Schedule::ListScheduling(bool beforeRA)
         RegPressure::SetMaxRegClassNum(kRegisterLast);
     }
     depAnalysis = memPool.New<AArch64DepAnalysis>(cgFunc, memPool, *mad, beforeRA);
-
-    FOR_ALL_BB(bb, &cgFunc) {
+    FOR_ALL_BB(bb, &cgFunc)
+    {
+        if (bb->IsUnreachable()) {
+            continue;
+        }
+        if (bb->IsAtomicBuiltInBB()) {
+            continue;
+        }
         depAnalysis->Run(*bb, nodes);
 
         if (LIST_SCHED_DUMP_REF) {
