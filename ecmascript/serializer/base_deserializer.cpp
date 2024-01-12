@@ -177,6 +177,7 @@ void BaseDeserializer::HandleNewObjectEncodeFlag(SerializedObjectSpace space, Ob
     ConstantPool *constpool = GetAndResetConstantPool();
     bool needNewConstPool = GetAndResetNeedNewConstPool();
     bool isErrorMsg = GetAndResetIsErrorMsg();
+    bool functionInShared = GetAndResetFunctionInShared();
 
     // deserialize object here
     uintptr_t addr = DeserializeTaggedObject(space);
@@ -197,6 +198,9 @@ void BaseDeserializer::HandleNewObjectEncodeFlag(SerializedObjectSpace space, Ob
     } else if (needNewConstPool) {
         // defer new constpool
         newConstPoolInfos_.back()->slotAddr_ = addr + Method::CONSTANT_POOL_OFFSET;
+    }
+    if (functionInShared) {
+        concurrentFunctions_.push_back(reinterpret_cast<JSFunction *>(addr));
     }
     TaggedObject *object = reinterpret_cast<TaggedObject *>(addr);
     if (object->GetClass()->IsJSNativePointer()) {
@@ -369,6 +373,11 @@ size_t BaseDeserializer::ReadSingleEncodeData(uint8_t encodeFlag, uintptr_t addr
             }
             break;
         }
+        case (uint8_t)EncodeFlag::JS_FUNCTION_IN_SHARED: {
+            functionInShared_ = true;
+            handledFieldSize = 0;
+            break;
+        }
         default:
             LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
@@ -497,8 +506,6 @@ JSTaggedType BaseDeserializer::RelocateObjectProtoAddr(uint8_t objectType)
             return JSHandle<JSFunction>(env->GetArrayBufferFunction())->GetFunctionPrototype().GetRawData();
         case (uint8_t)JSType::JS_SHARED_ARRAY_BUFFER:
             return JSHandle<JSFunction>(env->GetSharedArrayBufferFunction())->GetFunctionPrototype().GetRawData();
-        case (uint8_t)JSType::JS_FUNCTION:
-            return env->GetFunctionPrototype().GetTaggedType();
         case (uint8_t)JSType::JS_ASYNC_FUNCTION:
             return env->GetAsyncFunctionPrototype().GetTaggedType();
         case (uint8_t)JSType::BIGINT:

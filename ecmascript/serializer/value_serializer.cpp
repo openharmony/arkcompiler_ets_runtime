@@ -74,9 +74,7 @@ bool ValueSerializer::CheckObjectCanSerialize(TaggedObject *object, bool &findSh
             }
             break;
         }
-        case JSType::JS_SHARED_FUNCTION:
-        case JSType::SYMBOL:
-        case JSType::JS_FUNCTION: {
+        case JSType::JS_SHARED_FUNCTION: {
             if (serializeSharedEvent_ > 0) {
                 return true;
             }
@@ -183,6 +181,12 @@ void ValueSerializer::SerializeObjectImpl(TaggedObject *object, bool isWeak)
         case JSType::JS_REG_EXP:
             SerializeJSRegExpPrologue(reinterpret_cast<JSRegExp *>(object));
             break;
+        case JSType::JS_SHARED_FUNCTION: {
+            if (serializeSharedEvent_ > 0) {
+                data_->WriteEncodeFlag(EncodeFlag::JS_FUNCTION_IN_SHARED);
+            }
+            break;
+        }
         default:
             break;
     }
