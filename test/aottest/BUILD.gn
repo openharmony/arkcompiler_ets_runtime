@@ -189,6 +189,7 @@ group("ark_aot_ts_test") {
     "optimization",
     "optimized_call",
     "or",
+    "ordinaryhasinstance",
     "pgo_call",
     "pgo_call_js",
     "pgo_class_operation",
