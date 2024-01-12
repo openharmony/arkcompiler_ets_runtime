@@ -780,11 +780,6 @@ GateRef NumberSpeculativeLowering::CompareDoubles(GateRef left, GateRef right)
             condition = builder_.DoubleGreaterThanOrEqual(left, right);
             break;
         case TypedBinOp::TYPED_EQ:
-            condition = builder_.DoubleEqual(left, right);
-            break;
-        case TypedBinOp::TYPED_NOTEQ:
-            condition = builder_.DoubleNotEqual(left, right);
-            break;
         case TypedBinOp::TYPED_STRICTEQ: {
             GateRef leftNotNan = builder_.BoolNot(builder_.DoubleIsNAN(left));
             GateRef rightNotNan = builder_.BoolNot(builder_.DoubleIsNAN(right));
@@ -792,6 +787,7 @@ GateRef NumberSpeculativeLowering::CompareDoubles(GateRef left, GateRef right)
             condition = builder_.BoolAnd(builder_.BoolAnd(leftNotNan, rightNotNan), doubleEqual);
             break;
         }
+        case TypedBinOp::TYPED_NOTEQ:
         case TypedBinOp::TYPED_STRICTNOTEQ: {
             GateRef leftNotNan = builder_.DoubleIsNAN(left);
             GateRef rightNotNan = builder_.DoubleIsNAN(right);

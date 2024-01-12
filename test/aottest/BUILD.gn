@@ -101,6 +101,7 @@ group("ark_aot_ts_test") {
     "duplicatefunctions",
     "duplicatekey",
     "elements_kind",
+    "equal_nan",
     "exception_case1",
     "exception_case10",
     "exception_case11",
