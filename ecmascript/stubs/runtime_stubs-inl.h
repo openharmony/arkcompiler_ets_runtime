@@ -16,6 +16,8 @@
 #ifndef ECMASCRIPT_STUBS_RUNTIME_STUBS_INL_H
 #define ECMASCRIPT_STUBS_RUNTIME_STUBS_INL_H
 
+#include "ecmascript/ecma_macros.h"
+#include "ecmascript/js_tagged_value.h"
 #include "ecmascript/stubs/runtime_stubs.h"
 
 #include "ecmascript/base/array_helper.h"
@@ -848,6 +850,9 @@ JSTaggedValue RuntimeStubs::RuntimeCreateClassWithBuffer(JSThread *thread,
                                                          const JSHandle<JSTaggedValue> &module,
                                                          const JSHandle<JSTaggedValue> &length)
 {
+    if (base->IsJSShared()) {
+        THROW_TYPE_ERROR_AND_RETURN(thread, GET_MESSAGE_STRING(NotSendableSubClass), JSTaggedValue::Exception());
+    }
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     CString entry = ModuleManager::GetRecordName(module.GetTaggedValue());
