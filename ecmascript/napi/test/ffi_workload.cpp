@@ -3273,7 +3273,7 @@ HWTEST_F_L0(JSNApiSplTest, JSNApi_SerializeValue_Bool)
     LocalScope scope(vm_);
     CalculateForTime();
     Local<JSValueRef> value = BooleanRef::New(vm_, true);
-    Local<JSValueRef> transfer = BooleanRef::New(vm_, true);
+    Local<JSValueRef> transfer = JSValueRef::Undefined(vm_);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
         void *ptr = JSNApi::SerializeValue(vm_, value, transfer, JSValueRef::Undefined(vm_));
@@ -3289,7 +3289,7 @@ HWTEST_F_L0(JSNApiSplTest, JSNApi_SerializeValue_Int)
     CalculateForTime();
     int num = 123; // 123 = random number
     Local<JSValueRef> value = IntegerRef::New(vm_, num);
-    Local<JSValueRef> transfer = IntegerRef::New(vm_, num);
+    Local<JSValueRef> transfer = JSValueRef::Undefined(vm_);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
         void *ptr = JSNApi::SerializeValue(vm_, value, transfer, JSValueRef::Undefined(vm_));
@@ -3304,7 +3304,7 @@ HWTEST_F_L0(JSNApiSplTest, JSNApi_SerializeValue_String)
     LocalScope scope(vm_);
     CalculateForTime();
     Local<JSValueRef> value = StringRef::NewFromUtf8(vm_, "abcdefbb");
-    Local<JSValueRef> transfer = StringRef::NewFromUtf8(vm_, "abcdefbb");
+    Local<JSValueRef> transfer = JSValueRef::Undefined(vm_);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
         void *ptr = JSNApi::SerializeValue(vm_, value, transfer, JSValueRef::Undefined(vm_));
@@ -3333,7 +3333,7 @@ HWTEST_F_L0(JSNApiSplTest, JSNApi_SerializeValue_String3)
     LocalScope scope(vm_);
     CalculateForTime();
     Local<JSValueRef> value = StringRef::NewFromUtf8(vm_, "abcdefbb");
-    Local<JSValueRef> transfer = StringRef::NewFromUtf8(vm_, "abcdefbbghijkl");
+    Local<JSValueRef> transfer = JSValueRef::Undefined(vm_);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
         void *ptr = JSNApi::SerializeValue(vm_, value, transfer, JSValueRef::Undefined(vm_));
@@ -3348,7 +3348,7 @@ HWTEST_F_L0(JSNApiSplTest, JSNApi_SerializeValue_String_Bool)
     LocalScope scope(vm_);
     CalculateForTime();
     Local<JSValueRef> value = StringRef::NewFromUtf8(vm_, "abcdefbb");
-    Local<JSValueRef> transfer = BooleanRef::New(vm_, true);
+    Local<JSValueRef> transfer = JSValueRef::Undefined(vm_);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
         void *ptr = JSNApi::SerializeValue(vm_, value, transfer, JSValueRef::Undefined(vm_));
@@ -3362,15 +3362,17 @@ HWTEST_F_L0(JSNApiSplTest, JSNApi_DeserializeValue_String)
 {
     LocalScope scope(vm_);
     CalculateForTime();
+    EcmaVM *vm2 = JSNApi::CreateJSVM(RuntimeOption());
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        void *recoder = JSNApi::SerializeValue(vm_, StringRef::NewFromUtf8(vm_, "abcdefbb"),
-            StringRef::NewFromUtf8(vm_, "abcdefbb"), JSValueRef::Undefined(vm_));
+        void *recoder = JSNApi::SerializeValue(vm_, StringRef::NewFromUtf8(vm_, "abcdefbb"), JSValueRef::Undefined(vm_),
+            JSValueRef::Undefined(vm_));
         void *hint = nullptr;
-        Local<JSValueRef> local = JSNApi::DeserializeValue(vm_, recoder, hint);
+        Local<JSValueRef> local = JSNApi::DeserializeValue(vm2, recoder, hint);
         UNUSED(local);
     }
     gettimeofday(&g_endTime, nullptr);
+    JSNApi::DestroyJSVM(vm2);
     TEST_TIME(JSNApi_DeserializeValue_String);
 }
 
@@ -3378,15 +3380,17 @@ HWTEST_F_L0(JSNApiSplTest, JSNApi_DeserializeValue_Bool)
 {
     LocalScope scope(vm_);
     CalculateForTime();
+    EcmaVM *vm2 = JSNApi::CreateJSVM(RuntimeOption());
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        void *recoder = JSNApi::SerializeValue(vm_, BooleanRef::New(vm_, true), BooleanRef::New(vm_, true),
-                                               JSValueRef::Undefined(vm_));
+        void *recoder = JSNApi::SerializeValue(vm_, BooleanRef::New(vm_, true), JSValueRef::Undefined(vm_),
+            JSValueRef::Undefined(vm_));
         void *hint = nullptr;
-        Local<JSValueRef> local = JSNApi::DeserializeValue(vm_, recoder, hint);
+        Local<JSValueRef> local = JSNApi::DeserializeValue(vm2, recoder, hint);
         UNUSED(local);
     }
     gettimeofday(&g_endTime, nullptr);
+    JSNApi::DestroyJSVM(vm2);
     TEST_TIME(JSNApi_DeserializeValue_Bool);
 }
 
@@ -3394,15 +3398,17 @@ HWTEST_F_L0(JSNApiSplTest, JSNApi_DeserializeValue_Int)
 {
     LocalScope scope(vm_);
     CalculateForTime();
+    EcmaVM *vm2 = JSNApi::CreateJSVM(RuntimeOption());
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        void *recoder = JSNApi::SerializeValue(vm_, IntegerRef::New(vm_, 123), IntegerRef::New(vm_, 123),
-                                               JSValueRef::Undefined(vm_));
+        void *recoder = JSNApi::SerializeValue(vm_, IntegerRef::New(vm_, 123), JSValueRef::Undefined(vm_),
+            JSValueRef::Undefined(vm_));
         void *hint = nullptr;
-        Local<JSValueRef> local = JSNApi::DeserializeValue(vm_, recoder, hint);
+        Local<JSValueRef> local = JSNApi::DeserializeValue(vm2, recoder, hint);
         UNUSED(local);
     }
     gettimeofday(&g_endTime, nullptr);
+    JSNApi::DestroyJSVM(vm2);
     TEST_TIME(JSNApi_DeserializeValue_Int);
 }
 
@@ -3410,15 +3416,17 @@ HWTEST_F_L0(JSNApiSplTest, JSNApi_DeserializeValue_Undefined)
 {
     LocalScope scope(vm_);
     CalculateForTime();
+    EcmaVM *vm2 = JSNApi::CreateJSVM(RuntimeOption());
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
         void *recoder = JSNApi::SerializeValue(vm_, JSValueRef::Undefined(vm_), JSValueRef::Undefined(vm_),
-                                               JSValueRef::Undefined(vm_));
+            JSValueRef::Undefined(vm_));
         void *hint = nullptr;
-        Local<JSValueRef> local = JSNApi::DeserializeValue(vm_, recoder, hint);
+        Local<JSValueRef> local = JSNApi::DeserializeValue(vm2, recoder, hint);
         UNUSED(local);
     }
     gettimeofday(&g_endTime, nullptr);
+    JSNApi::DestroyJSVM(vm2);
     TEST_TIME(JSNApi_DeserializeValue_Undefined);
 }
 
@@ -3426,15 +3434,17 @@ HWTEST_F_L0(JSNApiSplTest, JSNApi_DeserializeValue_Null)
 {
     LocalScope scope(vm_);
     CalculateForTime();
+    EcmaVM *vm2 = JSNApi::CreateJSVM(RuntimeOption());
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        void *recoder = JSNApi::SerializeValue(vm_, JSValueRef::Null(vm_), JSValueRef::Null(vm_),
-                                               JSValueRef::Undefined(vm_));
+        void *recoder =
+            JSNApi::SerializeValue(vm_, JSValueRef::Null(vm_), JSValueRef::Undefined(vm_), JSValueRef::Undefined(vm_));
         void *hint = nullptr;
-        Local<JSValueRef> local = JSNApi::DeserializeValue(vm_, recoder, hint);
+        Local<JSValueRef> local = JSNApi::DeserializeValue(vm2, recoder, hint);
         UNUSED(local);
     }
     gettimeofday(&g_endTime, nullptr);
+    JSNApi::DestroyJSVM(vm2);
     TEST_TIME(JSNApi_DeserializeValue_Null);
 }
 
@@ -3458,8 +3468,8 @@ HWTEST_F_L0(JSNApiSplTest, JSNApi_DeleteSerializationData_Bool)
     CalculateForTime();
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        void *data = JSNApi::SerializeValue(vm_, BooleanRef::New(vm_, true), BooleanRef::New(vm_, true),
-                                            JSValueRef::Undefined(vm_));
+        void *data = JSNApi::SerializeValue(vm_, BooleanRef::New(vm_, true), JSValueRef::Undefined(vm_),
+            JSValueRef::Undefined(vm_));
         JSNApi::DeleteSerializationData(data);
     }
     gettimeofday(&g_endTime, nullptr);
@@ -3472,8 +3482,8 @@ HWTEST_F_L0(JSNApiSplTest, JSNApi_DeleteSerializationData_Int)
     CalculateForTime();
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        void *data = JSNApi::SerializeValue(vm_, BooleanRef::New(vm_, true), BooleanRef::New(vm_, true),
-                                            JSValueRef::Undefined(vm_));
+        void *data = JSNApi::SerializeValue(vm_, BooleanRef::New(vm_, true), JSValueRef::Undefined(vm_),
+            JSValueRef::Undefined(vm_));
         JSNApi::DeleteSerializationData(data);
     }
     gettimeofday(&g_endTime, nullptr);
@@ -3487,7 +3497,7 @@ HWTEST_F_L0(JSNApiSplTest, JSNApi_DeleteSerializationData_Undefined)
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
         void *data = JSNApi::SerializeValue(vm_, JSValueRef::Undefined(vm_), JSValueRef::Undefined(vm_),
-                                            JSValueRef::Undefined(vm_));
+            JSValueRef::Undefined(vm_));
         JSNApi::DeleteSerializationData(data);
     }
     gettimeofday(&g_endTime, nullptr);
@@ -3500,8 +3510,8 @@ HWTEST_F_L0(JSNApiSplTest, JSNApi_DeleteSerializationData_Null)
     CalculateForTime();
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        void *data = JSNApi::SerializeValue(vm_, JSValueRef::Null(vm_), JSValueRef::Null(vm_),
-                                            JSValueRef::Undefined(vm_));
+        void *data =
+            JSNApi::SerializeValue(vm_, JSValueRef::Null(vm_), JSValueRef::Undefined(vm_), JSValueRef::Undefined(vm_));
         JSNApi::DeleteSerializationData(data);
     }
     gettimeofday(&g_endTime, nullptr);
