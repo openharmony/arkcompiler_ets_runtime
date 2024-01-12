@@ -1680,8 +1680,8 @@ DEF_RUNTIME_STUBS(LdPrivateProperty)
 {
     RUNTIME_STUBS_HEADER(LdPrivateProperty);
     JSTaggedValue lexicalEnv = GetArg(argv, argc, 0);  // 0: means the zeroth parameter
-    uint32_t levelIndex = GetArg(argv, argc, 1).GetInt();  // 1: means the first parameter
-    uint32_t slotIndex = GetArg(argv, argc, 2).GetInt();  // 2: means the second parameter
+    uint32_t levelIndex = static_cast<uint32_t>(GetArg(argv, argc, 1).GetInt());  // 1: means the first parameter
+    uint32_t slotIndex = static_cast<uint32_t>(GetArg(argv, argc, 2).GetInt());  // 2: means the second parameter
     JSTaggedValue obj = GetArg(argv, argc, 3);  // 3: means the third parameter
     return RuntimeLdPrivateProperty(thread, lexicalEnv, levelIndex, slotIndex, obj).GetRawData();
 }
@@ -1690,8 +1690,8 @@ DEF_RUNTIME_STUBS(StPrivateProperty)
 {
     RUNTIME_STUBS_HEADER(StPrivateProperty);
     JSTaggedValue lexicalEnv = GetArg(argv, argc, 0);  // 0: means the zeroth parameter
-    uint32_t levelIndex = GetArg(argv, argc, 1).GetInt();  // 1: means the first parameter
-    uint32_t slotIndex = GetArg(argv, argc, 2).GetInt();  // 2: means the second parameter
+    uint32_t levelIndex = static_cast<uint32_t>(GetArg(argv, argc, 1).GetInt());  // 1: means the first parameter
+    uint32_t slotIndex = static_cast<uint32_t>(GetArg(argv, argc, 2).GetInt());  // 2: means the second parameter
     JSTaggedValue obj = GetArg(argv, argc, 3);  // 3: means the third parameter
     JSTaggedValue value = GetArg(argv, argc, 4);  // 4: means the fourth parameter
     return RuntimeStPrivateProperty(thread, lexicalEnv, levelIndex, slotIndex, obj, value).GetRawData();
@@ -1701,8 +1701,8 @@ DEF_RUNTIME_STUBS(TestIn)
 {
     RUNTIME_STUBS_HEADER(TestIn);
     JSTaggedValue lexicalEnv = GetArg(argv, argc, 0);  // 0: means the zeroth parameter
-    uint32_t levelIndex = GetArg(argv, argc, 1).GetInt();  // 1: means the first parameter
-    uint32_t slotIndex = GetArg(argv, argc, 2).GetInt();  // 2: means the second parameter
+    uint32_t levelIndex = static_cast<uint32_t>(GetArg(argv, argc, 1).GetInt());  // 1: means the first parameter
+    uint32_t slotIndex = static_cast<uint32_t>(GetArg(argv, argc, 2).GetInt());  // 2: means the second parameter
     JSTaggedValue obj = GetArg(argv, argc, 3);  // 3: means the third parameter
     return RuntimeTestIn(thread, lexicalEnv, levelIndex, slotIndex, obj).GetRawData();
 }
@@ -2595,9 +2595,9 @@ DEF_RUNTIME_STUBS(CreatePrivateProperty)
 {
     RUNTIME_STUBS_HEADER(CreatePrivateProperty);
     JSTaggedValue lexicalEnv = GetArg(argv, argc, 0);  // 0: means the zeroth parameter
-    uint32_t count = GetArg(argv, argc, 1).GetInt();  // 1: means the first parameter
+    uint32_t count = static_cast<uint32_t>(GetArg(argv, argc, 1).GetInt());  // 1: means the first parameter
     JSTaggedValue constpool = GetArg(argv, argc, 2);  // 2: means the second parameter
-    uint32_t literalId = GetArg(argv, argc, 3).GetInt();  // 3: means the third parameter
+    uint32_t literalId = static_cast<uint32_t>(GetArg(argv, argc, 3).GetInt());  // 3: means the third parameter
     JSTaggedValue module = GetArg(argv, argc, 4);  // 4: means the fourth parameter
     return RuntimeCreatePrivateProperty(thread, lexicalEnv, count, constpool, literalId, module).GetRawData();
 }
@@ -2606,8 +2606,8 @@ DEF_RUNTIME_STUBS(DefinePrivateProperty)
 {
     RUNTIME_STUBS_HEADER(DefinePrivateProperty);
     JSTaggedValue lexicalEnv = GetArg(argv, argc, 0);  // 0: means the zeroth parameter
-    uint32_t levelIndex = GetArg(argv, argc, 1).GetInt();  // 1: means the first parameter
-    uint32_t slotIndex = GetArg(argv, argc, 2).GetInt();  // 2: means the second parameter
+    uint32_t levelIndex = static_cast<uint32_t>(GetArg(argv, argc, 1).GetInt());  // 1: means the first parameter
+    uint32_t slotIndex = static_cast<uint32_t>(GetArg(argv, argc, 2).GetInt());  // 2: means the second parameter
     JSTaggedValue obj = GetArg(argv, argc, 3);  // 3: means the third parameter
     JSTaggedValue value = GetArg(argv, argc, 4);  // 4: means the fourth parameter
     return RuntimeDefinePrivateProperty(thread, lexicalEnv, levelIndex, slotIndex, obj, value).GetRawData();

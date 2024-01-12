@@ -640,7 +640,7 @@ public:
         JSHandle<JSTaggedValue> val3 = JSObject::GetProperty(thread, sObj, key3).GetRawValue();
         JSHandle<JSTaggedValue> val4 = JSObject::GetProperty(thread, sObj, key4).GetRawValue();
         EXPECT_TRUE(val4->IsJSSharedFunction());
-        EXPECT_EQ(val1->GetInt(), 1024);
+        EXPECT_EQ(val1->GetInt(), 1024);    // 1024 is the expected value
         EXPECT_TRUE(val2->ToBoolean());
         JSHandle<EcmaString> str3 = JSHandle<EcmaString>(val3);
         JSHandle<EcmaString> strTest3 = factory->NewFromStdString("hello world!");

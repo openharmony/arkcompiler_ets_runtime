@@ -674,9 +674,9 @@ void Heap::OnAllocateEvent([[maybe_unused]] TaggedObject* address, [[maybe_unuse
 
 std::string FormatCmdLine(const std::string& cmdLine)
 {
-    int startPos = 0;
-    int endPos = cmdLine.size();
-    for (unsigned long i = 0; i < cmdLine.size(); i++) {
+    std::string::size_type startPos = 0;
+    std::string::size_type endPos = cmdLine.size();
+    for (std::string::size_type i = 0; i < cmdLine.size(); i++) {
         if (cmdLine[i] == '/') {
             startPos = i + 1;
         } else if (cmdLine[i] == '\0') {

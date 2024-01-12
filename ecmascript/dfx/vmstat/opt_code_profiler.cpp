@@ -153,7 +153,7 @@ void OptCodeProfiler::Update(JSHandle<JSTaggedValue> &func, int bcIndex, EcmaOpc
         auto itr = std::find(abcNames_.begin(), abcNames_.end(), pfName);
         uint32_t index = 0;
         if (itr != abcNames_.end()) {
-            index = std::distance(abcNames_.begin(), itr);
+            index = static_cast<uint32_t>(std::distance(abcNames_.begin(), itr));
         } else {
             abcNames_.emplace_back(pfName);
             index = abcNames_.size();

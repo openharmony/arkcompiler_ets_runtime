@@ -83,7 +83,7 @@ static std::pair<TaggedArray*, size_t> BuildArgumentsListFast(JSThread *thread,
         TaggedArray *elements = nullptr;
         if (argList->GetElements().IsMutantTaggedArray()) {
             JSHandle<JSObject> obj(arrayObj);
-            int elementsLength = ElementAccessor::GetElementsLength(obj);
+            int elementsLength = static_cast<int>(ElementAccessor::GetElementsLength(obj));
             JSHandle<TaggedArray> newElements = thread->GetEcmaVM()->GetFactory()->
                                                 NewTaggedArray(elementsLength, JSTaggedValue::Undefined());
             for (int i = 0; i < elementsLength; ++i) {

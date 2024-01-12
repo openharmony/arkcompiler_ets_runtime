@@ -850,7 +850,7 @@ void SendableClassDefiner::AddFieldTypeToHClass(JSThread *thread, const JSHandle
 {
     uint32_t length = fieldTypeArray->GetLength();
     JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
-    uint32_t index = layout->NumberOfElements();
+    uint32_t index = static_cast<uint32_t>(layout->NumberOfElements());
     PropertyAttributes attributes = PropertyAttributes::Default(true, true, false);
     attributes.SetIsInlinedProps(true);
     attributes.SetRepresentation(Representation::TAGGED);

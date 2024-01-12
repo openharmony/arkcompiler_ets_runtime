@@ -17,7 +17,7 @@ let a = [1, 2, 3];
 let b = [1, , 3];
 let c = [1, 2, 'test', 1];
 let d = [1, 2, 3, 4.23];
-let e = new Array(3);
+let e = new Array(3); // 3 is the size of Array
 
 function foo(p) {
   p[1] = 1.1;
