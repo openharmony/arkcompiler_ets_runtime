@@ -232,9 +232,9 @@ MOperator AArch64CGFunc::PickMovBetweenRegs(PrimType destType, PrimType srcType)
         return GetPrimTypeSize(srcType) <= k4ByteSize ? MOP_xvmovsr : MOP_xvmovdr;
     }
     if (IsPrimitiveInteger(destType) && IsPrimitiveVector(srcType)) {
-        return GetPrimTypeSize(srcType) == k8ByteSize    ? MOP_vwmovru
-               : GetPrimTypeSize(destType) <= k4ByteSize ? MOP_vwmovrv
-                                                         : MOP_vxmovrv;
+        return GetPrimTypeSize(srcType) == k8ByteSize
+                   ? MOP_vwmovru
+                   : GetPrimTypeSize(destType) <= k4ByteSize ? MOP_vwmovrv : MOP_vxmovrv;
     }
     CHECK_FATAL(false, "unexpected operand primtype for mov");
     return MOP_undef;
@@ -851,36 +851,46 @@ bool AArch64CGFunc::IsImmediateOffsetOutOfRange(const MemOperand &memOpnd, uint3
     }
 }
 
-bool AArch64CGFunc::IsOperandImmValid(MOperator mOp, Operand *o, uint32 opndIdx)
+// This api is used to judge whether opnd is legal for mop.
+// It is implemented by calling verify api of mop (InsnDesc -> Verify).
+bool AArch64CGFunc::IsOperandImmValid(MOperator mOp, Operand *o, uint32 opndIdx) const
 {
     const InsnDesc *md = &AArch64CG::kMd[mOp];
     auto *opndProp = md->opndMD[opndIdx];
-
+    MemPool *localMp = memPoolCtrler.NewMemPool("opnd verify mempool", true);
+    auto *localAlloc = new MapleAllocator(localMp);
+    MapleVector<Operand *> testOpnds(md->opndMD.size(), localAlloc->Adapter());
+    testOpnds[opndIdx] = o;
+    bool flag = true;
     Operand::OperandType opndTy = opndProp->GetOperandType();
     if (opndTy == Operand::kOpdMem) {
         auto *memOpnd = static_cast<MemOperand *>(o);
         CHECK_FATAL(memOpnd != nullptr, "memOpnd should not be nullptr");
-        if (memOpnd->GetAddrMode() == MemOperand::kAddrModeBOrX) {
+        if (memOpnd->GetAddrMode() == MemOperand::kAddrModeBOrX &&
+            (!memOpnd->IsPostIndexed() && !memOpnd->IsPreIndexed())) {
+            delete localAlloc;
+            memPoolCtrler.DeleteMemPool(localMp);
             return true;
         }
         OfstOperand *ofStOpnd = memOpnd->GetOffsetImmediate();
         int64 offsetValue = ofStOpnd ? ofStOpnd->GetOffsetValue() : 0LL;
-        if (md->IsLoadStorePair() ||
-            (memOpnd->GetAddrMode() == MemOperand::kAddrModeBOi && memOpnd->IsIntactIndexed())) {
-            if (ofStOpnd && ofStOpnd->GetVary() == kUnAdjustVary) {
-                offsetValue += static_cast<AArch64MemLayout *>(GetMemlayout())->RealStackFrameSize() + 0xffL;
-            }
-            return md->IsValidImmOpnd(offsetValue);
+        if (md->IsLoadStorePair() || (memOpnd->GetAddrMode() == MemOperand::kAddrModeBOi)) {
+            flag = md->Verify(testOpnds);
         } else if (memOpnd->GetAddrMode() == MemOperand::kAddrModeLo12Li) {
-            return offsetValue == 0LL;
-        } else {
-            CHECK_FATAL(!memOpnd->IsIntactIndexed(), "CHECK WHAT?");
-            return (offsetValue <= static_cast<int64>(k256BitSizeInt) && offsetValue >= kNegative256BitSize);
+            if (offsetValue == 0) {
+                flag = md->Verify(testOpnds);
+            } else {
+                flag = false;
+            }
+        } else if (memOpnd->IsPostIndexed() || memOpnd->IsPreIndexed()) {
+            flag = (offsetValue <= static_cast<int64>(k256BitSizeInt) && offsetValue >= kNegative256BitSize);
         }
     } else if (opndTy == Operand::kOpdImmediate) {
-        return md->IsValidImmOpnd(static_cast<ImmOperand *>(o)->GetValue());
+        flag = md->Verify(testOpnds);
     }
-    return true;
+    delete localAlloc;
+    memPoolCtrler.DeleteMemPool(localMp);
+    return flag;
 }
 
 MemOperand &AArch64CGFunc::CreateReplacementMemOperand(uint32 bitLen, RegOperand &baseReg, int64 offset)
@@ -1192,7 +1202,7 @@ void AArch64CGFunc::SelectAssertNull(UnaryStmtNode &stmt)
     RegOperand &baseReg = LoadIntoRegister(*opnd0, PTY_a64);
     auto &zwr = GetZeroOpnd(k32BitSize);
     auto &mem = CreateMemOpnd(baseReg, 0, k32BitSize);
-    //FIXME  change MOP_wldr  to // MOP_assert_nonnull
+    // FIXME  change MOP_wldr  to // MOP_assert_nonnull
     Insn &loadRef = GetInsnBuilder()->BuildInsn(MOP_wldr, zwr, mem);
     loadRef.SetDoNotRemove(true);
     if (GetCG()->GenerateVerboseCG()) {
@@ -3328,10 +3338,9 @@ Operand *AArch64CGFunc::SelectAddrofoff(AddrofoffNode &expr, const BaseNode &par
 Operand &AArch64CGFunc::SelectAddrofFunc(AddroffuncNode &expr, const BaseNode &parent)
 {
     uint32 instrSize = static_cast<uint32>(expr.SizeOfInstr());
-    PrimType primType = (instrSize == k8ByteSize)   ? PTY_u64
-                        : (instrSize == k4ByteSize) ? PTY_u32
-                        : (instrSize == k2ByteSize) ? PTY_u16
-                                                    : PTY_u8;
+    PrimType primType = (instrSize == k8ByteSize)
+                            ? PTY_u64
+                            : (instrSize == k4ByteSize) ? PTY_u32 : (instrSize == k2ByteSize) ? PTY_u16 : PTY_u8;
     Operand &operand = GetOrCreateResOperand(parent, primType);
     MIRFunction *mirFunction = GlobalTables::GetFunctionTable().GetFunctionFromPuidx(expr.GetPUIdx());
     SelectAddrof(operand, CreateStImmOperand(*mirFunction->GetFuncSymbol(), 0, 0));
@@ -3369,10 +3378,9 @@ Operand &AArch64CGFunc::SelectAddrofLabel(AddroflabelNode &expr, const BaseNode 
 {
     /* adrp reg, label-id */
     uint32 instrSize = static_cast<uint32>(expr.SizeOfInstr());
-    PrimType primType = (instrSize == k8ByteSize)   ? PTY_u64
-                        : (instrSize == k4ByteSize) ? PTY_u32
-                        : (instrSize == k2ByteSize) ? PTY_u16
-                                                    : PTY_u8;
+    PrimType primType = (instrSize == k8ByteSize)
+                            ? PTY_u64
+                            : (instrSize == k4ByteSize) ? PTY_u32 : (instrSize == k2ByteSize) ? PTY_u16 : PTY_u8;
     Operand &dst = GetOrCreateResOperand(parent, primType);
     Operand &immOpnd = CreateImmOperand(expr.GetOffset(), k64BitSize, false);
     GetCurBB()->AppendInsn(GetInsnBuilder()->BuildInsn(MOP_adrp_label, dst, immOpnd));
@@ -5575,9 +5583,8 @@ Operand *AArch64CGFunc::SelectExtractbits(ExtractbitsNode &node, Operand &srcOpn
     }
     PrimType dtype = node.GetPrimType();
     RegOperand &resOpnd = GetOrCreateResOperand(parent, dtype);
-    bool isSigned = (node.GetOpCode() == OP_sext)   ? true
-                    : (node.GetOpCode() == OP_zext) ? false
-                                                    : IsSignedInteger(dtype);
+    bool isSigned =
+        (node.GetOpCode() == OP_sext) ? true : (node.GetOpCode() == OP_zext) ? false : IsSignedInteger(dtype);
     bool is64Bits = (GetPrimTypeBitSize(dtype) == k64BitSize);
     uint32 immWidth = is64Bits ? kMaxImmVal13Bits : kMaxImmVal12Bits;
     Operand &opnd0 = LoadIntoRegister(srcOpnd, dtype);

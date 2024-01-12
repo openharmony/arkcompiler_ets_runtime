@@ -161,6 +161,7 @@ int64 GetMemOpndOffsetValue(Operand *o)
     int64 offsetValue = ofStOpnd ? ofStOpnd->GetOffsetValue() : 0LL;
     return offsetValue;
 }
+
 bool IsSub(const Insn &insn)
 {
     MOperator curMop = insn.GetMachineOpcode();
@@ -202,6 +203,38 @@ MOperator GetMopSub2Subs(const Insn &insn)
         default:
             return curMop;
     }
+}
+
+// Returns the number of trailing 0-bits in x, starting at the least significant bit position.
+// If x is 0, the result is -1.
+int32 GetTail0BitNum(int64 val)
+{
+    uint32 bitNum = 0;
+    for (; bitNum < k64BitSize; bitNum++) {
+        if (((1ULL << bitNum) & static_cast<uint64>(val)) != 0) {
+            break;
+        }
+    }
+    if (bitNum == k64BitSize) {
+        return -1;
+    }
+    return static_cast<int32>(bitNum);
+}
+
+// Returns the number of leading 0-bits in x, starting at the most significant bit position.
+// If x is 0, the result is -1.
+int32 GetHead0BitNum(int64 val)
+{
+    uint32 bitNum = 0;
+    for (; bitNum < k64BitSize; bitNum++) {
+        if (((0x8000000000000000ULL >> bitNum) & static_cast<uint64>(val)) != 0) {
+            break;
+        }
+    }
+    if (bitNum == k64BitSize) {
+        return -1;
+    }
+    return static_cast<int32>(bitNum);
 }
 } /* namespace AArch64isa */
 } /* namespace maplebe */

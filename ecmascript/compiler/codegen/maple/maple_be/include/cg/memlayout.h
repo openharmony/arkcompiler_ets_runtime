@@ -56,6 +56,8 @@ enum MemSegmentKind : uint8 {
     /* local (auto) variables */
     kMsRefLocals,
     kMsLocals,
+    // segment which is accessed rarely
+    kMsCold,
     kMsSpillReg,
     /*
      * In between kMsLocals and MS_args_to_stackpass, we allocate
@@ -238,6 +240,11 @@ public:
         return segArgsRegPassed.GetSize();
     }
 
+    uint32 GetSizeOfSegCold() const
+    {
+        return segCold.GetSize();
+    }
+
     BECommon &GetBECommon()
     {
         return be;
@@ -299,6 +306,7 @@ protected:
     MemSegment segArgsStkPassed;
     MemSegment segArgsRegPassed;
     MemSegment segArgsToStkPass;
+    MemSegment segCold = MemSegment(kMsCold);
     MemSegment segSpillReg = MemSegment(kMsSpillReg);
     MapleVector<SymbolAlloc *> symAllocTable; /* index is stindex from StIdx */
     MapleVector<SymbolAlloc *> spillLocTable; /* index is preg idx */

@@ -14,7 +14,7 @@
  */
 
 /* InsnDesc format:
- * {mop, opndMD, properties, latency, name, format, atomicNum, validFunc(nullptr)}
+ * {mop, opndMD, properties, latency, name, format, atomicNum, validFunc(nullptr), splitFunc(nullptr), encodeType, encode}
  */
 
 /* AARCH64 MOVES */
@@ -23,9 +23,9 @@ DEFINE_MOP(MOP_xmovrr, {&OpndDesc::Reg64ID,&OpndDesc::Reg64IS},ISMOVE,kLtAlu,"mo
 /* MOP_wmovrr */
 DEFINE_MOP(MOP_wmovrr, {&OpndDesc::Reg32ID,&OpndDesc::Reg32IS},ISMOVE,kLtAlu,"mov","0,1",1,kMovReg,0x00000000)
 /* MOP_wmovri32 */
-DEFINE_MOP(MOP_wmovri32, {&OpndDesc::Reg32ID,&OpndDesc::Imm32},ISMOVE,kLtAlu,"mov","0,1",1,kMovImm,0x00000000)
+DEFINE_MOP(MOP_wmovri32, {&OpndDesc::Reg32ID,&OpndDesc::Imm32},ISMOVE,kLtAlu,"mov","0,1",1,MOP_wmovri32Valid,MOP_wmovri32Split,kMovImm,0x00000000)
 /* MOP_xmovri64 */
-DEFINE_MOP(MOP_xmovri64, {&OpndDesc::Reg64ID,&OpndDesc::Imm64},ISMOVE,kLtAlu,"mov","0,1",1,kMovImm,0x00000000)
+DEFINE_MOP(MOP_xmovri64, {&OpndDesc::Reg64ID,&OpndDesc::Imm64},ISMOVE,kLtAlu,"mov","0,1",1,MOP_xmovri64Valid, MOP_xmovri64Split,kMovImm,0x00000000)
 /* MOP_xmovrr_uxtw -- Remove Redundant uxtw -- used in globalopt:UxtwMovPattern */
 DEFINE_MOP(MOP_xmovrr_uxtw, {&OpndDesc::Reg64ID,&OpndDesc::Reg32IS},ISMOVE,kLtAlu,"mov","0,1",1)
 
@@ -57,27 +57,33 @@ DEFINE_MOP(MOP_xadrpl12, {&OpndDesc::Reg64ID,&OpndDesc::Reg64IS,&OpndDesc::Liter
 /* AARCH64 Arithmetic: add */
 /* MOP_xaddrrr */
 DEFINE_MOP(MOP_xaddrrr, {&OpndDesc::Reg64ID,&OpndDesc::Reg64IS,&OpndDesc::Reg64IS},0,kLtAlu,"add","0,1,2",1,kAddSubReg,0x8B000000)
+/* MOP_xaddsrrr */
+DEFINE_MOP(MOP_xaddsrrr, {&OpndDesc::CCD, &OpndDesc::Reg64ID, &OpndDesc::Reg64IS, &OpndDesc::Reg64IS}, 0, kLtAlu, "adds", "1,2,3", 1)
 /* MOP_xaddrrrs */
-DEFINE_MOP(MOP_xaddrrrs, {&OpndDesc::Reg64ID,&OpndDesc::Reg64IS,&OpndDesc::Reg64IS,&OpndDesc::Bitshift64},0,kLtAluShift,"add","0,1,2,3",1,kAddSubShiftReg,0x8B000000)
+DEFINE_MOP(MOP_xaddrrrs, {&OpndDesc::Reg64ID,&OpndDesc::Reg64IS,&OpndDesc::Reg64IS,&OpndDesc::Bitshift64},0,kLtAluShift,"add","0,1,2,3",1,MOP_xaddrrrsValid,kAddSubShiftReg,0x8B000000)
 
 /* MOP_xxwaddrrre */
-DEFINE_MOP(MOP_xxwaddrrre, {&OpndDesc::Reg64ID,&OpndDesc::Reg64IS,&OpndDesc::Reg32IS,&OpndDesc::Extendshift64},0,kLtAluShift,"add","0,1,2,3",1,kAddSubExtendReg,0x8B200000)
+DEFINE_MOP(MOP_xxwaddrrre, {&OpndDesc::Reg64ID,&OpndDesc::Reg64IS,&OpndDesc::Reg32IS,&OpndDesc::Extendshift64},0,kLtAluShift,"add","0,1,2,3",1,MOP_xxwaddrrreValid,kAddSubExtendReg,0x8B200000)
 /* MOP_xaddrri24 */
-DEFINE_MOP(MOP_xaddrri24, {&OpndDesc::Reg64ID,&OpndDesc::Reg64IS,&OpndDesc::Imm12,&OpndDesc::Lsl12},0,kLtShift,"add","0,1,2,3",1,Imm12BitValid,kAddSubShiftImm,0x91000000)
+DEFINE_MOP(MOP_xaddrri24, {&OpndDesc::Reg64ID,&OpndDesc::Reg64IS,&OpndDesc::Imm12,&OpndDesc::Lsl12},0,kLtShift,"add","0,1,2,3",1,MOP_xaddrri24Valid,MOP_xaddrri24Split,kAddSubShiftImm,0x91000000)
 /* MOP_xaddrri12 */
-DEFINE_MOP(MOP_xaddrri12, {&OpndDesc::Reg64ID,&OpndDesc::Reg64IS,&OpndDesc::Imm12},0,kLtAlu,"add","0,1,2",1,Imm12BitValid,kAddSubImm,0x91000000)
+DEFINE_MOP(MOP_xaddrri12, {&OpndDesc::Reg64ID,&OpndDesc::Reg64IS,&OpndDesc::Imm12},0,kLtAlu,"add","0,1,2",1,MOP_xaddrri12Valid,MOP_xaddrri12Split,kAddSubImm,0x91000000)
+/* MOP_xaddsrri12 */
+DEFINE_MOP(MOP_xaddsrri12, {&OpndDesc::CCD, &OpndDesc::Reg64ID, &OpndDesc::Reg64IS, &OpndDesc::Imm12}, 0, kLtAlu, "adds", "1,2,3", 1, MOP_xaddsrri12Valid,MOP_xaddsrri12Split)
 /* MOP_waddrrr */
 DEFINE_MOP(MOP_waddrrr, {&OpndDesc::Reg32ID,&OpndDesc::Reg32IS,&OpndDesc::Reg32IS},0,kLtAlu,"add","0,1,2",1,kAddSubReg,0xb000000)
 /* MOP_waddrrrs */
-DEFINE_MOP(MOP_waddrrrs, {&OpndDesc::Reg32ID,&OpndDesc::Reg32IS,&OpndDesc::Reg32IS,&OpndDesc::Bitshift32},0,kLtAluShift,"add","0,1,2,3",1,kAddSubShiftReg,0xb000000)
+DEFINE_MOP(MOP_waddrrrs, {&OpndDesc::Reg32ID,&OpndDesc::Reg32IS,&OpndDesc::Reg32IS,&OpndDesc::Bitshift32},0,kLtAluShift,"add","0,1,2,3",1,MOP_waddrrrsValid, kAddSubShiftReg,0xb000000)
 /* MOP_waddsrrr */
 DEFINE_MOP(MOP_waddsrrr, {&OpndDesc::CCD,&OpndDesc::Reg32ID,&OpndDesc::Reg32IS,&OpndDesc::Reg32IS},0,kLtAlu,"adds","1,2,3",1, kAddSubReg, 0x2b000000)
 /* MOP_xxwaddrrre */
-DEFINE_MOP(MOP_wwwaddrrre, {&OpndDesc::Reg32ID,&OpndDesc::Reg32IS,&OpndDesc::Reg32IS,&OpndDesc::Extendshift64},0,kLtAluShift,"add","0,1,2,3",1,kAddSubExtendReg, 0xB200000)
+DEFINE_MOP(MOP_wwwaddrrre, {&OpndDesc::Reg32ID,&OpndDesc::Reg32IS,&OpndDesc::Reg32IS,&OpndDesc::Extendshift64},0,kLtAluShift,"add","0,1,2,3",1,MOP_wwwaddrrreValid,kAddSubExtendReg, 0xB200000)
 /* MOP_waddrri24 */
-DEFINE_MOP(MOP_waddrri24, {&OpndDesc::Reg32ID,&OpndDesc::Reg32IS,&OpndDesc::Imm12,&OpndDesc::Lsl12},0,kLtAluShift,"add","0,1,2,3",1,Imm12BitValid,kAddSubShiftImm,0x11000000)
+DEFINE_MOP(MOP_waddrri24, {&OpndDesc::Reg32ID,&OpndDesc::Reg32IS,&OpndDesc::Imm12,&OpndDesc::Lsl12},0,kLtAluShift,"add","0,1,2,3",1,MOP_waddrri24Valid,MOP_waddrri24Split,kAddSubShiftImm,0x11000000)
 /* MOP_waddrri12 */
-DEFINE_MOP(MOP_waddrri12, {&OpndDesc::Reg32ID,&OpndDesc::Reg32IS,&OpndDesc::Imm12},0,kLtAlu,"add","0,1,2",1,Imm12BitValid,kAddSubImm,0x11000000)
+DEFINE_MOP(MOP_waddrri12, {&OpndDesc::Reg32ID,&OpndDesc::Reg32IS,&OpndDesc::Imm12},0,kLtAlu,"add","0,1,2",1,MOP_waddrri12Valid,MOP_waddrri12Split,kAddSubImm,0x11000000)
+/* MOP_waddsrri12 */
+DEFINE_MOP(MOP_waddsrri12, {&OpndDesc::CCD, &OpndDesc::Reg32ID, &OpndDesc::Reg32IS, &OpndDesc::Imm12}, 0, kLtAlu, "adds", "1,2,3", 1,MOP_waddsrri12Valid,MOP_waddsrri12Split)
 /* MOP_dadd */
 DEFINE_MOP(MOP_dadd, {&OpndDesc::Reg64FD,&OpndDesc::Reg64FS,&OpndDesc::Reg64FS},0,kLtFpalu,"fadd","0,1,2",1,kFloatDataProcessing2,0x1e602800)
 /* MOP_sadd */
@@ -89,37 +95,37 @@ DEFINE_MOP(MOP_xsubrrr, {&OpndDesc::Reg64ID,&OpndDesc::Reg64IS,&OpndDesc::Reg64I
 /* MOP_xsubsrrr */
 DEFINE_MOP(MOP_xsubsrrr, {&OpndDesc::CCD, &OpndDesc::Reg64ID,&OpndDesc::Reg64IS,&OpndDesc::Reg64IS},0,kLtAlu,"subs","1,2,3",1, kAddSubReg, 0xeb000000)
 /* MOP_xsubrrrs */
-DEFINE_MOP(MOP_xsubrrrs, {&OpndDesc::Reg64ID,&OpndDesc::Reg64IS,&OpndDesc::Reg64IS,&OpndDesc::Bitshift64},0,kLtAluShift,"sub","0,1,2,3",1,kAddSubShiftReg, 0xcb000000)
+DEFINE_MOP(MOP_xsubrrrs, {&OpndDesc::Reg64ID,&OpndDesc::Reg64IS,&OpndDesc::Reg64IS,&OpndDesc::Bitshift64},0,kLtAluShift,"sub","0,1,2,3",1,MOP_xsubrrrsValid,kAddSubShiftReg, 0xcb000000)
 /* MOP_xxwsubrrre */
 DEFINE_MOP(MOP_xxwsubrrre, {&OpndDesc::Reg64ID,&OpndDesc::Reg64IS,&OpndDesc::Reg32IS,&OpndDesc::Extendshift64},0,kLtAluShift,"sub","0,1,2,3",1, kAddSubExtendReg, 0xcb200000)
 /* MOP_xsubsrrrs */
-DEFINE_MOP(MOP_xsubsrrrs, {&OpndDesc::CCD, &OpndDesc::Reg64ID,&OpndDesc::Reg64IS,&OpndDesc::Reg64IS,&OpndDesc::Bitshift64},0,kLtAluShift,"subs","1,2,3,4",1, kAddSubShiftReg, 0xeb000000)
+DEFINE_MOP(MOP_xsubsrrrs, {&OpndDesc::CCD, &OpndDesc::Reg64ID,&OpndDesc::Reg64IS,&OpndDesc::Reg64IS,&OpndDesc::Bitshift64},0,kLtAluShift,"subs","1,2,3,4",1,MOP_xsubsrrrsValid,kAddSubShiftReg, 0xeb000000)
 /* MOP_xsubrri24 */
-DEFINE_MOP(MOP_xsubrri24, {&OpndDesc::Reg64ID,&OpndDesc::Reg64IS,&OpndDesc::Imm12,&OpndDesc::Lsl12},0,kLtAluShift,"sub","0,1,2,3",1,Imm12BitValid,kAddSubShiftImm,0xd1000000)
+DEFINE_MOP(MOP_xsubrri24, {&OpndDesc::Reg64ID,&OpndDesc::Reg64IS,&OpndDesc::Imm12,&OpndDesc::Lsl12},0,kLtAluShift,"sub","0,1,2,3",1,MOP_xsubrri24Valid, MOP_xsubrri24Split,kAddSubShiftImm,0xd1000000)
 /* MOP_xsubsrri24 */
-DEFINE_MOP(MOP_xsubsrri24, {&OpndDesc::CCD, &OpndDesc::Reg64ID,&OpndDesc::Reg64IS,&OpndDesc::Imm12,&OpndDesc::Lsl12},0,kLtAluShift,"subs","1,2,3,4",1,Imm12BitValid, kAddSubShiftImm, 0xf1000000)
+DEFINE_MOP(MOP_xsubsrri24, {&OpndDesc::CCD, &OpndDesc::Reg64ID,&OpndDesc::Reg64IS,&OpndDesc::Imm12,&OpndDesc::Lsl12},0,kLtAluShift,"subs","1,2,3,4",1,MOP_xsubsrri24Valid,kAddSubShiftImm, 0xf1000000)
 /* MOP_xsubrri12 */
-DEFINE_MOP(MOP_xsubrri12, {&OpndDesc::Reg64ID,&OpndDesc::Reg64IS,&OpndDesc::Imm12},0,kLtAlu,"sub","0,1,2",1,Imm12BitValid,kAddSubImm,0xd1000000)
+DEFINE_MOP(MOP_xsubrri12, {&OpndDesc::Reg64ID,&OpndDesc::Reg64IS,&OpndDesc::Imm12},0,kLtAlu,"sub","0,1,2",1,MOP_xsubrri12Valid,MOP_xsubrri12Split,kAddSubImm,0xd1000000)
 /* MOP_xsubsrri12 */
-DEFINE_MOP(MOP_xsubsrri12, {&OpndDesc::CCD, &OpndDesc::Reg64ID,&OpndDesc::Reg64IS,&OpndDesc::Imm12},0,kLtAlu,"subs","1,2,3",1,Imm12BitValid, kAddSubImm, 0xf1000000)
+DEFINE_MOP(MOP_xsubsrri12, {&OpndDesc::CCD, &OpndDesc::Reg64ID,&OpndDesc::Reg64IS,&OpndDesc::Imm12},0,kLtAlu,"subs","1,2,3",1,MOP_xsubsrri12Valid,MOP_xsubsrri12Split, kAddSubImm, 0xf1000000)
 /* MOP_wsubrrr */
 DEFINE_MOP(MOP_wsubrrr, {&OpndDesc::Reg32ID,&OpndDesc::Reg32IS,&OpndDesc::Reg32IS},0,kLtAlu,"sub","0,1,2",1,kAddSubReg,0x4b000000)
 /* MOP_wsubsrrr */
 DEFINE_MOP(MOP_wsubsrrr, {&OpndDesc::CCD,&OpndDesc::Reg32ID,&OpndDesc::Reg32IS,&OpndDesc::Reg32IS},0,kLtAlu,"subs","1,2,3",1, kAddSubReg, 0x6b000000)
 /* MOP_wsubrrrs */
-DEFINE_MOP(MOP_wsubrrrs, {&OpndDesc::Reg32ID,&OpndDesc::Reg32IS,&OpndDesc::Reg32IS,&OpndDesc::Bitshift32},0,kLtAluShift,"sub","0,1,2,3",1, kAddSubShiftReg, 0x4b000000)
+DEFINE_MOP(MOP_wsubrrrs, {&OpndDesc::Reg32ID,&OpndDesc::Reg32IS,&OpndDesc::Reg32IS,&OpndDesc::Bitshift32},0,kLtAluShift,"sub","0,1,2,3",1,MOP_wsubrrrsValid,kAddSubShiftReg, 0x4b000000)
 /* MOP_wwwsubrrre */
 DEFINE_MOP(MOP_wwwsubrrre, {&OpndDesc::Reg32ID,&OpndDesc::Reg32IS,&OpndDesc::Reg32IS,&OpndDesc::Extendshift64},0,kLtAluShift,"sub","0,1,2,3",1, kAddSubExtendReg, 0x4b200000)
 /* MOP_wsubsrrrs */
-DEFINE_MOP(MOP_wsubsrrrs, {&OpndDesc::CCD,&OpndDesc::Reg32ID,&OpndDesc::Reg32IS,&OpndDesc::Reg32IS,&OpndDesc::Bitshift32},0,kLtAluShift,"subs","1,2,3,4",1, kAddSubShiftReg, 0x6b000000)
+DEFINE_MOP(MOP_wsubsrrrs, {&OpndDesc::CCD,&OpndDesc::Reg32ID,&OpndDesc::Reg32IS,&OpndDesc::Reg32IS,&OpndDesc::Bitshift32},0,kLtAluShift,"subs","1,2,3,4",1,MOP_wsubsrrrsValid,kAddSubShiftReg, 0x6b000000)
 /* MOP_wsubrri24 */
-DEFINE_MOP(MOP_wsubrri24, {&OpndDesc::Reg32ID,&OpndDesc::Reg32IS,&OpndDesc::Imm12,&OpndDesc::Lsl12},0,kLtAluShift,"sub","0,1,2,3",1,Imm12BitValid,kAddSubShiftImm,0x51000000)
+DEFINE_MOP(MOP_wsubrri24, {&OpndDesc::Reg32ID,&OpndDesc::Reg32IS,&OpndDesc::Imm12,&OpndDesc::Lsl12},0,kLtAluShift,"sub","0,1,2,3",1,MOP_wsubrri24Valid,MOP_wsubrri24Split,kAddSubShiftImm,0x51000000)
 /* MOP_wsubsrri24 */
-DEFINE_MOP(MOP_wsubsrri24, {&OpndDesc::CCD,&OpndDesc::Reg32ID,&OpndDesc::Reg32IS,&OpndDesc::Imm12,&OpndDesc::Lsl12},0,kLtAluShift,"subs","1,2,3,4",1,Imm12BitValid, kAddSubShiftImm, 0x71000000)
+DEFINE_MOP(MOP_wsubsrri24, {&OpndDesc::CCD,&OpndDesc::Reg32ID,&OpndDesc::Reg32IS,&OpndDesc::Imm12,&OpndDesc::Lsl12},0,kLtAluShift,"subs","1,2,3,4",1,MOP_wsubsrri24Valid,kAddSubShiftImm, 0x71000000)
 /* MOP_wsubrri12 */
-DEFINE_MOP(MOP_wsubrri12, {&OpndDesc::Reg32ID,&OpndDesc::Reg32IS,&OpndDesc::Imm12},0,kLtAlu,"sub","0,1,2",1,Imm12BitValid,kAddSubImm,0x51000000)
+DEFINE_MOP(MOP_wsubrri12, {&OpndDesc::Reg32ID,&OpndDesc::Reg32IS,&OpndDesc::Imm12},0,kLtAlu,"sub","0,1,2",1,MOP_wsubrri12Valid,MOP_wsubrri12Split,kAddSubImm,0x51000000)
 /* MOP_wsubsrri12 */
-DEFINE_MOP(MOP_wsubsrri12, {&OpndDesc::CCD,&OpndDesc::Reg32ID,&OpndDesc::Reg32IS,&OpndDesc::Imm12},0,kLtAlu,"subs","1,2,3",1,Imm12BitValid, kAddSubImm, 0x71000000)
+DEFINE_MOP(MOP_wsubsrri12, {&OpndDesc::CCD,&OpndDesc::Reg32ID,&OpndDesc::Reg32IS,&OpndDesc::Imm12},0,kLtAlu,"subs","1,2,3",1,MOP_wsubsrri12Valid,MOP_wsubsrri12Split,kAddSubImm, 0x71000000)
 /* MOP_dsub */
 DEFINE_MOP(MOP_dsub, {&OpndDesc::Reg64FD,&OpndDesc::Reg64FS,&OpndDesc::Reg64FS},0,kLtFpalu,"fsub","0,1,2",1,kFloatDataProcessing2,0x1e603800)
 /* MOP_ssub */
@@ -256,15 +262,15 @@ DEFINE_MOP(MOP_xcsinvrrrc, {&OpndDesc::Reg64ID,&OpndDesc::Reg64IS,&OpndDesc::Reg
 /* MOP_xandrrr */
 DEFINE_MOP(MOP_xandrrr, {&OpndDesc::Reg64ID,&OpndDesc::Reg64IS,&OpndDesc::Reg64IS},0,kLtAlu,"and","0,1,2",1,kLogicalReg,0x8a000000)
 /* MOP_xandrrrs */
-DEFINE_MOP(MOP_xandrrrs, {&OpndDesc::Reg64ID,&OpndDesc::Reg64IS,&OpndDesc::Reg64IS,&OpndDesc::Bitshift64},0,kLtAluShift,"and","0,1,2,3",1,kLogicalReg,0x8a000000)
+DEFINE_MOP(MOP_xandrrrs, {&OpndDesc::Reg64ID,&OpndDesc::Reg64IS,&OpndDesc::Reg64IS,&OpndDesc::Bitshift64},0,kLtAluShift,"and","0,1,2,3",1,MOP_xandrrrsValid,kLogicalReg,0x8a000000)
 /* MOP_xandrri13 */
-DEFINE_MOP(MOP_xandrri13, {&OpndDesc::Reg64ID,&OpndDesc::Reg64IS,&OpndDesc::Imm13},0,kLtAlu,"and","0,1,2",1,Imm13BitMaskValid,kLogicalImm,0x92000000)
+DEFINE_MOP(MOP_xandrri13, {&OpndDesc::Reg64ID,&OpndDesc::Reg64IS,&OpndDesc::Imm13},0,kLtAlu,"and","0,1,2",1,MOP_xandrri13Valid,kLogicalImm,0x92000000)
 /* MOP_wandrrr */
 DEFINE_MOP(MOP_wandrrr, {&OpndDesc::Reg32ID,&OpndDesc::Reg32IS,&OpndDesc::Reg32IS},0,kLtAlu,"and","0,1,2",1,kLogicalReg,0xa000000)
 /* MOP_wandrrrs */
-DEFINE_MOP(MOP_wandrrrs, {&OpndDesc::Reg32ID,&OpndDesc::Reg32IS,&OpndDesc::Reg32IS,&OpndDesc::Bitshift32},0,kLtAluShift,"and","0,1,2,3",1,kLogicalReg,0xa000000)
+DEFINE_MOP(MOP_wandrrrs, {&OpndDesc::Reg32ID,&OpndDesc::Reg32IS,&OpndDesc::Reg32IS,&OpndDesc::Bitshift32},0,kLtAluShift,"and","0,1,2,3",1,MOP_wandrrrsValid,kLogicalReg,0xa000000)
 /* MOP_wandrri12 */
-DEFINE_MOP(MOP_wandrri12, {&OpndDesc::Reg32ID,&OpndDesc::Reg32IS,&OpndDesc::Imm12},0,kLtAlu,"and","0,1,2",1,Imm12BitMaskValid,kLogicalImm,0x12000000)
+DEFINE_MOP(MOP_wandrri12, {&OpndDesc::Reg32ID,&OpndDesc::Reg32IS,&OpndDesc::Imm12},0,kLtAlu,"and","0,1,2",1,MOP_wandrri12Valid,kLogicalImm,0x12000000)
 
 /* MOP_xbicrrr */
 DEFINE_MOP(MOP_xbicrrr, {&OpndDesc::Reg64ID,&OpndDesc::Reg64IS,&OpndDesc::Reg64IS},0,kLtAlu,"bic","0,1,2",1, kLogicalReg, 0x8a200000)
@@ -274,28 +280,28 @@ DEFINE_MOP(MOP_wbicrrr, {&OpndDesc::Reg32ID,&OpndDesc::Reg32IS,&OpndDesc::Reg32I
 /* MOP_xiorrrr */
 DEFINE_MOP(MOP_xiorrrr, {&OpndDesc::Reg64ID,&OpndDesc::Reg64IS,&OpndDesc::Reg64IS},0,kLtAlu,"orr","0,1,2",1,kLogicalReg,0xaa000000)
 /* MOP_xiorrrrs */
-DEFINE_MOP(MOP_xiorrrrs, {&OpndDesc::Reg64ID,&OpndDesc::Reg64IS,&OpndDesc::Reg64IS,&OpndDesc::Bitshift64},0,kLtAlu,"orr","0,1,2,3",1,kLogicalReg,0xaa000000)
+DEFINE_MOP(MOP_xiorrrrs, {&OpndDesc::Reg64ID,&OpndDesc::Reg64IS,&OpndDesc::Reg64IS,&OpndDesc::Bitshift64},0,kLtAlu,"orr","0,1,2,3",1,MOP_xiorrrrsValid,kLogicalReg,0xaa000000)
 /* MOP_xiorrri13 */
-DEFINE_MOP(MOP_xiorrri13, {&OpndDesc::Reg64ID,&OpndDesc::Reg64IS,&OpndDesc::Imm13},0,kLtAlu,"orr","0,1,2",1,Imm13BitMaskValid,kLogicalImm,0xb2000000)
+DEFINE_MOP(MOP_xiorrri13, {&OpndDesc::Reg64ID,&OpndDesc::Reg64IS,&OpndDesc::Imm13},0,kLtAlu,"orr","0,1,2",1,MOP_xiorrri13Valid,kLogicalImm,0xb2000000)
 /* MOP_wiorrrr */
 DEFINE_MOP(MOP_wiorrrr, {&OpndDesc::Reg32ID,&OpndDesc::Reg32IS,&OpndDesc::Reg32IS},0,kLtAlu,"orr","0,1,2",1,kLogicalReg,0x2a000000)
 /* MOP_wiorrrrs */
-DEFINE_MOP(MOP_wiorrrrs, {&OpndDesc::Reg32ID,&OpndDesc::Reg32IS,&OpndDesc::Reg32IS,&OpndDesc::Bitshift32},0,kLtAlu,"orr","0,1,2,3",1,kLogicalReg,0x2a000000)
+DEFINE_MOP(MOP_wiorrrrs, {&OpndDesc::Reg32ID,&OpndDesc::Reg32IS,&OpndDesc::Reg32IS,&OpndDesc::Bitshift32},0,kLtAlu,"orr","0,1,2,3",1,MOP_wiorrrrsValid,kLogicalReg,0x2a000000)
 /* MOP_wiorrri12 */
-DEFINE_MOP(MOP_wiorrri12, {&OpndDesc::Reg32ID,&OpndDesc::Reg32IS,&OpndDesc::Imm12},0,kLtAlu,"orr","0,1,2",1,Imm12BitMaskValid,kLogicalImm,0x32000000)
+DEFINE_MOP(MOP_wiorrri12, {&OpndDesc::Reg32ID,&OpndDesc::Reg32IS,&OpndDesc::Imm12},0,kLtAlu,"orr","0,1,2",1,MOP_wiorrri12Valid,kLogicalImm,0x32000000)
 
 /* MOP_xeorrrr */
 DEFINE_MOP(MOP_xeorrrr, {&OpndDesc::Reg64ID,&OpndDesc::Reg64IS,&OpndDesc::Reg64IS},0,kLtAlu,"eor","0,1,2",1,kLogicalReg,0xca000000)
 /* MOP_xeorrrrs */
-DEFINE_MOP(MOP_xeorrrrs, {&OpndDesc::Reg64ID,&OpndDesc::Reg64IS,&OpndDesc::Reg64IS,&OpndDesc::Bitshift64},0,kLtAlu,"eor","0,1,2,3",1,kLogicalReg,0xca000000)
+DEFINE_MOP(MOP_xeorrrrs, {&OpndDesc::Reg64ID,&OpndDesc::Reg64IS,&OpndDesc::Reg64IS,&OpndDesc::Bitshift64},0,kLtAlu,"eor","0,1,2,3",1,MOP_xeorrrrsValid,kLogicalReg,0xca000000)
 /* MOP_xeorrri13 */
-DEFINE_MOP(MOP_xeorrri13, {&OpndDesc::Reg64ID,&OpndDesc::Reg64IS,&OpndDesc::Imm13},0,kLtAlu,"eor","0,1,2",1,Imm13BitMaskValid,kLogicalImm,0xd2000000)
+DEFINE_MOP(MOP_xeorrri13, {&OpndDesc::Reg64ID,&OpndDesc::Reg64IS,&OpndDesc::Imm13},0,kLtAlu,"eor","0,1,2",1,MOP_xeorrri13Valid,kLogicalImm,0xd2000000)
 /* MOP_weorrrr */
 DEFINE_MOP(MOP_weorrrr, {&OpndDesc::Reg32ID,&OpndDesc::Reg32IS,&OpndDesc::Reg32IS},0,kLtAlu,"eor","0,1,2",1,kLogicalReg,0x4a000000)
 /* MOP_weorrrrs */
-DEFINE_MOP(MOP_weorrrrs, {&OpndDesc::Reg32ID,&OpndDesc::Reg32IS,&OpndDesc::Reg32IS,&OpndDesc::Bitshift32},0,kLtAlu,"eor","0,1,2,3",1,kLogicalReg,0x4a000000)
+DEFINE_MOP(MOP_weorrrrs, {&OpndDesc::Reg32ID,&OpndDesc::Reg32IS,&OpndDesc::Reg32IS,&OpndDesc::Bitshift32},0,kLtAlu,"eor","0,1,2,3",1,MOP_weorrrrsValid,kLogicalReg,0x4a000000)
 /* MOP_weorrri12 */
-DEFINE_MOP(MOP_weorrri12, {&OpndDesc::Reg32ID,&OpndDesc::Reg32IS,&OpndDesc::Imm12},0,kLtAlu,"eor","0,1,2",1,Imm12BitMaskValid,kLogicalImm,0x52000000)
+DEFINE_MOP(MOP_weorrri12, {&OpndDesc::Reg32ID,&OpndDesc::Reg32IS,&OpndDesc::Imm12},0,kLtAlu,"eor","0,1,2",1,MOP_weorrri12Valid,kLogicalImm,0x52000000)
 
 /* MOP_xnotrr */
 DEFINE_MOP(MOP_xnotrr, {&OpndDesc::Reg64ID,&OpndDesc::Reg64IS},0,kLtAlu,"mvn","0,1",1,kLogicalReg,0xaa2003e0)
@@ -335,40 +341,40 @@ DEFINE_MOP(MOP_wmnegrrr, {&OpndDesc::Reg32ID,&OpndDesc::Reg32IS,&OpndDesc::Reg32
 DEFINE_MOP(MOP_xmnegrrr, {&OpndDesc::Reg64ID,&OpndDesc::Reg64IS,&OpndDesc::Reg64IS},0,kLtMul,"mneg","0,1,2",1, kDataProcess3Src, 0x9b00fc00)
 
 /* MOP_wubfxrri5i5 */
-DEFINE_MOP(MOP_wubfxrri5i5, {&OpndDesc::Reg32ID,&OpndDesc::Reg32IS,&OpndDesc::Imm5,&OpndDesc::Imm5},0,kLtAluShift,"ubfx","0,1,2,3",1,kBitfield,0x53000000)
+DEFINE_MOP(MOP_wubfxrri5i5, {&OpndDesc::Reg32ID,&OpndDesc::Reg32IS,&OpndDesc::Imm5,&OpndDesc::Imm5},0,kLtAluShift,"ubfx","0,1,2,3",1,MOP_wubfxrri5i5Valid,kBitfield,0x53000000)
 /* MOP_xubfxrri6i6 */
-DEFINE_MOP(MOP_xubfxrri6i6, {&OpndDesc::Reg64ID,&OpndDesc::Reg64IS,&OpndDesc::Imm6,&OpndDesc::Imm6},0,kLtAluShift,"ubfx","0,1,2,3",1,kBitfield,0xd3400000)
+DEFINE_MOP(MOP_xubfxrri6i6, {&OpndDesc::Reg64ID,&OpndDesc::Reg64IS,&OpndDesc::Imm6,&OpndDesc::Imm6},0,kLtAluShift,"ubfx","0,1,2,3",1,MOP_xubfxrri6i6Valid,kBitfield,0xd3400000)
 
 /* MOP_wsbfxrri5i5 -- Signed Bitfield Extract */
-DEFINE_MOP(MOP_wsbfxrri5i5, {&OpndDesc::Reg32ID,&OpndDesc::Reg32IS,&OpndDesc::Imm5,&OpndDesc::Imm5},0,kLtAluShift,"sbfx","0,1,2,3",1,kBitfield,0x13000000)
+DEFINE_MOP(MOP_wsbfxrri5i5, {&OpndDesc::Reg32ID,&OpndDesc::Reg32IS,&OpndDesc::Imm5,&OpndDesc::Imm5},0,kLtAluShift,"sbfx","0,1,2,3",1,MOP_wsbfxrri5i5Valid,kBitfield,0x13000000)
 /* MOP_xsbfxrri6i6 */
-DEFINE_MOP(MOP_xsbfxrri6i6, {&OpndDesc::Reg64ID,&OpndDesc::Reg64IS,&OpndDesc::Imm6,&OpndDesc::Imm6},0,kLtAluShift,"sbfx","0,1,2,3",1,kBitfield,0x93400000)
+DEFINE_MOP(MOP_xsbfxrri6i6, {&OpndDesc::Reg64ID,&OpndDesc::Reg64IS,&OpndDesc::Imm6,&OpndDesc::Imm6},0,kLtAluShift,"sbfx","0,1,2,3",1,MOP_xsbfxrri6i6Valid,kBitfield,0x93400000)
 
 /* MOP_wubfizrri5i5 -- Unsigned Bitfield Insert in Zero */
-DEFINE_MOP(MOP_wubfizrri5i5, {&OpndDesc::Reg32ID,&OpndDesc::Reg32IS,&OpndDesc::Imm5,&OpndDesc::Imm5},0,kLtAluShift,"ubfiz","0,1,2,3",1,kBitfield,0x53000000)
+DEFINE_MOP(MOP_wubfizrri5i5, {&OpndDesc::Reg32ID,&OpndDesc::Reg32IS,&OpndDesc::Imm5,&OpndDesc::Imm5},0,kLtAluShift,"ubfiz","0,1,2,3",1,MOP_wubfizrri5i5Valid,kBitfield,0x53000000)
 /* MOP_xubfizrri6i6 */
-DEFINE_MOP(MOP_xubfizrri6i6, {&OpndDesc::Reg64ID,&OpndDesc::Reg64IS,&OpndDesc::Imm6,&OpndDesc::Imm6},0,kLtAluShift,"ubfiz","0,1,2,3",1,kBitfield,0xd3400000)
+DEFINE_MOP(MOP_xubfizrri6i6, {&OpndDesc::Reg64ID,&OpndDesc::Reg64IS,&OpndDesc::Imm6,&OpndDesc::Imm6},0,kLtAluShift,"ubfiz","0,1,2,3",1,MOP_xubfizrri6i6Valid,kBitfield,0xd3400000)
 
 /* MOP_xsbfizrri6i6 Signed Bitfield Insert in Zero */
-DEFINE_MOP(MOP_xsbfizrri6i6, {&OpndDesc::Reg64ID,&OpndDesc::Reg64IS,&OpndDesc::Imm6,&OpndDesc::Imm6},0,kLtAluShift,"sbfiz","0,1,2,3",1, kBitfield, 0x13000000)
+DEFINE_MOP(MOP_xsbfizrri6i6, {&OpndDesc::Reg64ID,&OpndDesc::Reg64IS,&OpndDesc::Imm6,&OpndDesc::Imm6},0,kLtAluShift,"sbfiz","0,1,2,3",1,MOP_xsbfizrri6i6Valid,kBitfield, 0x13000000)
 
 /* MOP_wbfirri5i5 -- Bitfield Insert */
-DEFINE_MOP(MOP_wbfirri5i5, {&OpndDesc::Reg32IDS,&OpndDesc::Reg32IS,&OpndDesc::Imm5,&OpndDesc::Imm5},ISMOVE,kLtAluShift,"bfi","0,1,2,3",1,kBitfield,0x33000000)
+DEFINE_MOP(MOP_wbfirri5i5, {&OpndDesc::Reg32IDS,&OpndDesc::Reg32IS,&OpndDesc::Imm5,&OpndDesc::Imm5},ISMOVE,kLtAluShift,"bfi","0,1,2,3",1,MOP_wbfirri5i5Valid,kBitfield,0x33000000)
 /* MOP_xbfirri6i6 */
-DEFINE_MOP(MOP_xbfirri6i6, {&OpndDesc::Reg64IDS,&OpndDesc::Reg64IS,&OpndDesc::Imm6,&OpndDesc::Imm6},ISMOVE,kLtAluShift,"bfi","0,1,2,3",1,kBitfield,0xb3400000)
+DEFINE_MOP(MOP_xbfirri6i6, {&OpndDesc::Reg64IDS,&OpndDesc::Reg64IS,&OpndDesc::Imm6,&OpndDesc::Imm6},ISMOVE,kLtAluShift,"bfi","0,1,2,3",1,MOP_xbfirri6i6Valid,kBitfield,0xb3400000)
 
 /* MOP_xlslrri6,--- Logical Shift Left */
-DEFINE_MOP(MOP_xlslrri6, {&OpndDesc::Reg64ID,&OpndDesc::Reg64IS,&OpndDesc::Imm6},0,kLtAluShift,"lsl","0,1,2",1,kBitfield,0xd3400000)
+DEFINE_MOP(MOP_xlslrri6, {&OpndDesc::Reg64ID,&OpndDesc::Reg64IS,&OpndDesc::Imm6},0,kLtAluShift,"lsl","0,1,2",1,MOP_xlslrri6Valid,kBitfield,0xd3400000)
 /* MOP_wlslrri5 */
-DEFINE_MOP(MOP_wlslrri5, {&OpndDesc::Reg32ID,&OpndDesc::Reg32IS,&OpndDesc::Imm8},0,kLtAluShift,"lsl","0,1,2",1,kBitfield,0x53000000)
+DEFINE_MOP(MOP_wlslrri5, {&OpndDesc::Reg32ID,&OpndDesc::Reg32IS,&OpndDesc::Imm8},0,kLtAluShift,"lsl","0,1,2",1,MOP_wlslrri5Valid,kBitfield,0x53000000)
 /* MOP_xasrrri6, */
-DEFINE_MOP(MOP_xasrrri6, {&OpndDesc::Reg64ID,&OpndDesc::Reg64IS,&OpndDesc::Imm6},0,kLtAluShift,"asr","0,1,2",1,kBitfield,0x9340fc00)
+DEFINE_MOP(MOP_xasrrri6, {&OpndDesc::Reg64ID,&OpndDesc::Reg64IS,&OpndDesc::Imm6},0,kLtAluShift,"asr","0,1,2",1,MOP_xasrrri6Valid,kBitfield,0x9340fc00)
 /* MOP_wasrrri5 */
-DEFINE_MOP(MOP_wasrrri5, {&OpndDesc::Reg32ID,&OpndDesc::Reg32IS,&OpndDesc::Imm8},0,kLtAluShift,"asr","0,1,2",1,kBitfield,0x13007c00)
+DEFINE_MOP(MOP_wasrrri5, {&OpndDesc::Reg32ID,&OpndDesc::Reg32IS,&OpndDesc::Imm8},0,kLtAluShift,"asr","0,1,2",1,MOP_wasrrri5Valid,kBitfield,0x13007c00)
 /* MOP_xlsrrri6, */
-DEFINE_MOP(MOP_xlsrrri6, {&OpndDesc::Reg64ID,&OpndDesc::Reg64IS,&OpndDesc::Imm6},0,kLtAluShift,"lsr","0,1,2",1,kBitfield,0xd340fc00)
+DEFINE_MOP(MOP_xlsrrri6, {&OpndDesc::Reg64ID,&OpndDesc::Reg64IS,&OpndDesc::Imm6},0,kLtAluShift,"lsr","0,1,2",1,MOP_xlsrrri6Valid,kBitfield,0xd340fc00)
 /* MOP_wlsrrri5 */
-DEFINE_MOP(MOP_wlsrrri5, {&OpndDesc::Reg32ID,&OpndDesc::Reg32IS,&OpndDesc::Imm8},0,kLtAluShift,"lsr","0,1,2",1,kBitfield,0x53007c00)
+DEFINE_MOP(MOP_wlsrrri5, {&OpndDesc::Reg32ID,&OpndDesc::Reg32IS,&OpndDesc::Imm8},0,kLtAluShift,"lsr","0,1,2",1,MOP_wlsrrri5Valid,kBitfield,0x53007c00)
 /* MOP_xlslrrr, */
 DEFINE_MOP(MOP_xlslrrr, {&OpndDesc::Reg64ID,&OpndDesc::Reg64IS,&OpndDesc::Reg64IS},0,kLtAluShiftReg,"lsl","0,1,2",1,kDataProcess2Src,0x9ac02000)
 /* MOP_wlslrrr */
@@ -387,17 +393,17 @@ DEFINE_MOP(MOP_xrorrrr, {&OpndDesc::Reg64ID,&OpndDesc::Reg64IS,&OpndDesc::Reg64I
 /* MOP_wrorrrr */
 DEFINE_MOP(MOP_wrorrrr, {&OpndDesc::Reg32ID,&OpndDesc::Reg32IS,&OpndDesc::Reg32IS},0,kLtAluShiftReg,"ror","0,1,2",1, kDataProcess2Src, 0x1ac02c00)
 /* MOP_wtstri32 */
-DEFINE_MOP(MOP_wtstri32, {&OpndDesc::CCD,&OpndDesc::Reg32ID,&OpndDesc::Imm32},0,kLtAlu,"tst","1,2",1, kLogicalImm, 0x7200001f)
+DEFINE_MOP(MOP_wtstri32, {&OpndDesc::CCD,&OpndDesc::Reg32ID,&OpndDesc::Imm32},0,kLtAlu,"tst","1,2",1,MOP_wtstri32Valid,kLogicalImm, 0x7200001f)
 /* MOP_xtstri64 */
-DEFINE_MOP(MOP_xtstri64, {&OpndDesc::CCD,&OpndDesc::Reg64ID,&OpndDesc::Imm64},0,kLtAlu,"tst","1,2",1, kLogicalImm, 0xf200001f)
+DEFINE_MOP(MOP_xtstri64, {&OpndDesc::CCD,&OpndDesc::Reg64ID,&OpndDesc::Imm64},0,kLtAlu,"tst","1,2",1,MOP_xtstri64Valid,kLogicalImm, 0xf200001f)
 /* MOP_wtstrr */
 DEFINE_MOP(MOP_wtstrr, {&OpndDesc::CCD,&OpndDesc::Reg32ID,&OpndDesc::Reg32IS},0,kLtAlu,"tst","1,2",1, kLogicalReg, 0x6a00001f)
 /* MOP_xtstrr */
 DEFINE_MOP(MOP_xtstrr, {&OpndDesc::CCD,&OpndDesc::Reg64ID,&OpndDesc::Reg64IS},0,kLtAlu,"tst","1,2",1, kLogicalReg, 0xea00001f)
 /* MOP_wextrrrri5 -- Extracts a register from a pair of registers */
-DEFINE_MOP(MOP_wextrrrri5, {&OpndDesc::Reg32ID,&OpndDesc::Reg32IS,&OpndDesc::Reg32IS,&OpndDesc::Imm5},0,kLtAluShift,"extr","0,1,2,3",1, kExtract, 0x13800000)
+DEFINE_MOP(MOP_wextrrrri5, {&OpndDesc::Reg32ID,&OpndDesc::Reg32IS,&OpndDesc::Reg32IS,&OpndDesc::Imm5},0,kLtAluShift,"extr","0,1,2,3",1,MOP_wextrrrri5Valid,kExtract, 0x13800000)
 /* MOP_xextrrrri6 */
-DEFINE_MOP(MOP_xextrrrri6, {&OpndDesc::Reg64ID,&OpndDesc::Reg64IS,&OpndDesc::Reg64IS,&OpndDesc::Imm6},0,kLtAluShift,"extr","0,1,2,3",1, kExtract, 0x93c00000)
+DEFINE_MOP(MOP_xextrrrri6, {&OpndDesc::Reg64ID,&OpndDesc::Reg64IS,&OpndDesc::Reg64IS,&OpndDesc::Imm6},0,kLtAluShift,"extr","0,1,2,3",1,MOP_xextrrrri6Valid,kExtract, 0x93c00000)
 
 /* MOP_wsfmovri imm8->s */
 DEFINE_MOP(MOP_wsfmovri, {&OpndDesc::Reg32FD,&OpndDesc::Imm8},ISMOVE,kLtFconst,"fmov","0,1",1,kFloatImm,0x1e201000)
@@ -418,11 +424,11 @@ DEFINE_MOP(MOP_dabsrr, {&OpndDesc::Reg64FD,&OpndDesc::Reg64FS},0,kLtFpalu,"fabs"
 /* MOP_winegrr */
 DEFINE_MOP(MOP_winegrr, {&OpndDesc::Reg32ID,&OpndDesc::Reg32IS},0,kLtAlu,"neg","0,1",1,kAddSubReg,0x4b0003e0)
 /* MOP_winegrre */
-DEFINE_MOP(MOP_winegrrs, {&OpndDesc::Reg32ID,&OpndDesc::Reg32IS,&OpndDesc::Bitshift32},0,kLtAlu,"neg","0,1,2",1, kAddSubShiftReg, 0x4b0003e0)
+DEFINE_MOP(MOP_winegrrs, {&OpndDesc::Reg32ID,&OpndDesc::Reg32IS,&OpndDesc::Bitshift32},0,kLtAlu,"neg","0,1,2",1,MOP_winegrrsValid,kAddSubShiftReg, 0x4b0003e0)
 /* neg MOP_xinegrr */
 DEFINE_MOP(MOP_xinegrr, {&OpndDesc::Reg64ID,&OpndDesc::Reg64IS},0,kLtAlu,"neg","0,1",1,kAddSubReg,0xcb0003e0)
 /* neg MOP_xinegrrs */
-DEFINE_MOP(MOP_xinegrrs, {&OpndDesc::Reg64ID,&OpndDesc::Reg64IS,&OpndDesc::Bitshift64},0,kLtAlu,"neg","0,1,2",1, kAddSubShiftReg, 0xcb0003e0)
+DEFINE_MOP(MOP_xinegrrs, {&OpndDesc::Reg64ID,&OpndDesc::Reg64IS,&OpndDesc::Bitshift64},0,kLtAlu,"neg","0,1,2",1,MOP_xinegrrsValid,kAddSubShiftReg, 0xcb0003e0)
 /* neg f32 */
 DEFINE_MOP(MOP_wfnegrr, {&OpndDesc::Reg32FD,&OpndDesc::Reg32FS},0,kLtFpalu,"fneg","0,1",1,kFloatDataProcessing1,0x1e214000)
 /* neg f64 */
@@ -524,86 +530,86 @@ DEFINE_MOP(MOP_sync_lock_test_setL, {&OpndDesc::Reg64ID,&OpndDesc::Reg32ID,&Opnd
 
 /* AARCH64 LOADS */
 /* MOP_wldrsb --- Load Register Signed Byte */
-DEFINE_MOP(MOP_wldrsb, {&OpndDesc::Reg32ID,&OpndDesc::Mem8S},ISLOAD|CANTHROW,kLtLoad1,"ldrsb","0,1",1,StrLdr8ImmValid,kLoadStoreReg,0x38c00000)
+DEFINE_MOP(MOP_wldrsb, {&OpndDesc::Reg32ID,&OpndDesc::Mem8S},ISLOAD|CANTHROW,kLtLoad1,"ldrsb","0,1",1,MOP_wldrsbValid,MOP_wldrsbSplit,kLoadStoreReg,0x38c00000)
 /* MOP_xldrsb --- Load Register Signed Byte */
-DEFINE_MOP(MOP_xldrsb, {&OpndDesc::Reg64ID,&OpndDesc::Mem8S},ISLOAD|CANTHROW,kLtLoad1,"ldrsb","0,1",1,StrLdr8ImmValid, kLoadStoreReg, 0x38800000)
+DEFINE_MOP(MOP_xldrsb, {&OpndDesc::Reg64ID,&OpndDesc::Mem8S},ISLOAD|CANTHROW,kLtLoad1,"ldrsb","0,1",1,MOP_xldrsbValid,MOP_xldrsbSplit,kLoadStoreReg,0x38800000)
 /* MOP_wldrb */
-DEFINE_MOP(MOP_wldrb, {&OpndDesc::Reg32ID,&OpndDesc::Mem8S},ISLOAD|CANTHROW,kLtLoad1,"ldrb","0,1",1,StrLdr8ImmValid,kLoadStoreReg,0x38400000)
+DEFINE_MOP(MOP_wldrb, {&OpndDesc::Reg32ID,&OpndDesc::Mem8S},ISLOAD|CANTHROW,kLtLoad1,"ldrb","0,1",1,MOP_wldrbValid,MOP_wldrbSplit,kLoadStoreReg,0x38400000)
 /* MOP_wldrsh  --- Load Register Signed Halfword */
-DEFINE_MOP(MOP_wldrsh, {&OpndDesc::Reg32ID,&OpndDesc::Mem16S},ISLOAD|CANTHROW,kLtLoad1,"ldrsh","0,1",1,StrLdr16ImmValid,kLoadStoreReg,0x78c00000)
+DEFINE_MOP(MOP_wldrsh, {&OpndDesc::Reg32ID,&OpndDesc::Mem16S},ISLOAD|CANTHROW,kLtLoad1,"ldrsh","0,1",1,MOP_wldrshValid,MOP_wldrshSplit,kLoadStoreReg,0x78c00000)
 /* MOP_xldrsh  --- Load Register Signed Halfword */
-DEFINE_MOP(MOP_xldrsh, {&OpndDesc::Reg64ID,&OpndDesc::Mem16S},ISLOAD|CANTHROW,kLtLoad1,"ldrsh","0,1",1,StrLdr16ImmValid, kLoadStoreReg,0x7880000)
+DEFINE_MOP(MOP_xldrsh, {&OpndDesc::Reg64ID,&OpndDesc::Mem16S},ISLOAD|CANTHROW,kLtLoad1,"ldrsh","0,1",1,MOP_xldrshValid,MOP_xldrshSplit, kLoadStoreReg,0x7880000)
 /* MOP_xldrsw  --- Load Register Signed Word */
-DEFINE_MOP(MOP_xldrsw, {&OpndDesc::Reg64ID,&OpndDesc::Mem32S},ISLOAD|CANTHROW,kLtLoad1,"ldrsw","0,1",1,StrLdr32ImmValid)
+DEFINE_MOP(MOP_xldrsw, {&OpndDesc::Reg64ID,&OpndDesc::Mem32S},ISLOAD|CANTHROW,kLtLoad1,"ldrsw","0,1",1,MOP_xldrswValid,MOP_xldrswSplit)
 /* MOP_wldrh */
-DEFINE_MOP(MOP_wldrh, {&OpndDesc::Reg32ID, &OpndDesc::Mem16S},ISLOAD|CANTHROW,kLtLoad1,"ldrh","0,1",1,StrLdr16ImmValid,kLoadStoreReg,0x78400000)
+DEFINE_MOP(MOP_wldrh, {&OpndDesc::Reg32ID, &OpndDesc::Mem16S},ISLOAD|CANTHROW,kLtLoad1,"ldrh","0,1",1,MOP_wldrhValid,MOP_wldrhSplit,kLoadStoreReg,0x78400000)
 /* MOP_wldr */
-DEFINE_MOP(MOP_wldr, {&OpndDesc::Reg32ID,&OpndDesc::Mem32S},ISLOAD|CANTHROW,kLtLoad1,"ldr","0,1",1,StrLdr32ImmValid,kLoadStoreReg,0xb8400000)
+DEFINE_MOP(MOP_wldr, {&OpndDesc::Reg32ID,&OpndDesc::Mem32S},ISLOAD|CANTHROW,kLtLoad1,"ldr","0,1",1,MOP_wldrValid,MOP_wldrSplit,kLoadStoreReg,0xb8400000)
 /* MOP_xldr */
-DEFINE_MOP(MOP_xldr, {&OpndDesc::Reg64ID,&OpndDesc::Mem64S},ISLOAD|CANTHROW,kLtLoad2,"ldr","0,1",1,StrLdr64ImmValid,kLoadStoreReg,0xf8400000)
+DEFINE_MOP(MOP_xldr, {&OpndDesc::Reg64ID,&OpndDesc::Mem64S},ISLOAD|CANTHROW,kLtLoad2,"ldr","0,1",1,MOP_xldrValid,MOP_xldrSplit,kLoadStoreReg,0xf8400000)
 /* MOP_bldr */
-DEFINE_MOP(MOP_bldr, {&OpndDesc::Reg8FD,&OpndDesc::Mem8S},ISLOAD|CANTHROW,kLtFLoad64,"ldr","0,1",1,StrLdr8ImmValid,kLoadStoreFloat,0x3c400000)
+DEFINE_MOP(MOP_bldr, {&OpndDesc::Reg8FD,&OpndDesc::Mem8S},ISLOAD|CANTHROW,kLtFLoad64,"ldr","0,1",1,MOP_bldrValid,MOP_bldrSplit,kLoadStoreFloat,0x3c400000)
 /* MOP_hldr */
-DEFINE_MOP(MOP_hldr, {&OpndDesc::Reg16FD,&OpndDesc::Mem16S},ISLOAD|CANTHROW,kLtFLoad64,"ldr","0,1",1,StrLdr16ImmValid,kLoadStoreFloat,0x7c400000)
+DEFINE_MOP(MOP_hldr, {&OpndDesc::Reg16FD,&OpndDesc::Mem16S},ISLOAD|CANTHROW,kLtFLoad64,"ldr","0,1",1,MOP_hldrValid,MOP_hldrSplit,kLoadStoreFloat,0x7c400000)
 /* MOP_sldr */
-DEFINE_MOP(MOP_sldr, {&OpndDesc::Reg32FD,&OpndDesc::Mem32S},ISLOAD|CANTHROW,kLtFLoadMany,"ldr","0,1",1,StrLdr32ImmValid,kLoadStoreFloat,0xbc400000)
+DEFINE_MOP(MOP_sldr, {&OpndDesc::Reg32FD,&OpndDesc::Mem32S},ISLOAD|CANTHROW,kLtFLoadMany,"ldr","0,1",1,MOP_sldrValid,MOP_sldrSplit,kLoadStoreFloat,0xbc400000)
 /* MOP_dldr */
-DEFINE_MOP(MOP_dldr, {&OpndDesc::Reg64FD,&OpndDesc::Mem64S},ISLOAD|CANTHROW,kLtFLoadMany,"ldr","0,1",1,StrLdr64ImmValid,kLoadStoreFloat,0xfc400000)
+DEFINE_MOP(MOP_dldr, {&OpndDesc::Reg64FD,&OpndDesc::Mem64S},ISLOAD|CANTHROW,kLtFLoadMany,"ldr","0,1",1,MOP_dldrValid,MOP_dldrSplit,kLoadStoreFloat,0xfc400000)
 /* MOP_qldr */
-DEFINE_MOP(MOP_qldr, {&OpndDesc::Reg128VD,&OpndDesc::Mem128S},ISLOAD|CANTHROW,kLtFLoadMany,"ldr","0,1",1,StrLdr128ImmValid, kLoadStoreFloat, 0x3cc00000)
+DEFINE_MOP(MOP_qldr, {&OpndDesc::Reg128VD,&OpndDesc::Mem128S},ISLOAD|CANTHROW,kLtFLoadMany,"ldr","0,1",1,MOP_qldrValid,MOP_qldrSplit, kLoadStoreFloat, 0x3cc00000)
 
 /* AArch64 LDP/LDPSW */
 /* MOP_wldp */
-DEFINE_MOP(MOP_wldp, {&OpndDesc::Reg32ID,&OpndDesc::Reg32ID,&OpndDesc::Mem32S},ISLOAD|ISLOADPAIR|CANTHROW,kLtLoad2,"ldp","0,1,2",1,StrLdr32PairImmValid,kLoadPair,0x28000000)
+DEFINE_MOP(MOP_wldp, {&OpndDesc::Reg32ID,&OpndDesc::Reg32ID,&OpndDesc::Mem32S},ISLOAD|ISLOADPAIR|CANTHROW,kLtLoad2,"ldp","0,1,2",1,MOP_wldpValid,MOP_wldpSplit,kLoadPair,0x28000000)
 /* MOP_xldp */
-DEFINE_MOP(MOP_xldp, {&OpndDesc::Reg64ID,&OpndDesc::Reg64ID,&OpndDesc::Mem64S},ISLOAD|ISLOADPAIR|CANTHROW,kLtLoad3plus,"ldp","0,1,2",1,StrLdr64PairImmValid,kLoadPair,0xa8000000)
+DEFINE_MOP(MOP_xldp, {&OpndDesc::Reg64ID,&OpndDesc::Reg64ID,&OpndDesc::Mem64S},ISLOAD|ISLOADPAIR|CANTHROW,kLtLoad3plus,"ldp","0,1,2",1,MOP_xldpValid,MOP_xldpSplit,kLoadPair,0xa8000000)
 /* MOP_xldpsw */
-DEFINE_MOP(MOP_xldpsw, {&OpndDesc::Reg64ID,&OpndDesc::Reg64ID,&OpndDesc::Mem32S},ISLOAD|ISLOADPAIR|CANTHROW,kLtLoad2,"ldpsw","0,1,2",1,StrLdr32PairImmValid,kLoadPair,0x68400000)
+DEFINE_MOP(MOP_xldpsw, {&OpndDesc::Reg64ID,&OpndDesc::Reg64ID,&OpndDesc::Mem32S},ISLOAD|ISLOADPAIR|CANTHROW,kLtLoad2,"ldpsw","0,1,2",1,MOP_xldpswValid,MOP_xldpswSplit,kLoadPair,0x68400000)
 /* MOP_sldp */
-DEFINE_MOP(MOP_sldp, {&OpndDesc::Reg32FD,&OpndDesc::Reg32FD,&OpndDesc::Mem32S},ISLOAD|ISLOADPAIR|CANTHROW,kLtFLoad64,"ldp","0,1,2",1,StrLdr32PairImmValid,kLoadPairFloat,0x2c000000)
+DEFINE_MOP(MOP_sldp, {&OpndDesc::Reg32FD,&OpndDesc::Reg32FD,&OpndDesc::Mem32S},ISLOAD|ISLOADPAIR|CANTHROW,kLtFLoad64,"ldp","0,1,2",1,MOP_sldpValid,MOP_sldpSplit,kLoadPairFloat,0x2c000000)
 /* MOP_dldp */
-DEFINE_MOP(MOP_dldp, {&OpndDesc::Reg64FD,&OpndDesc::Reg64FD,&OpndDesc::Mem64S},ISLOAD|ISLOADPAIR|CANTHROW,kLtFLoadMany,"ldp","0,1,2",1,StrLdr64PairImmValid,kLoadPairFloat,0x6c000000)
+DEFINE_MOP(MOP_dldp, {&OpndDesc::Reg64FD,&OpndDesc::Reg64FD,&OpndDesc::Mem64S},ISLOAD|ISLOADPAIR|CANTHROW,kLtFLoadMany,"ldp","0,1,2",1,MOP_dldpValid,MOP_dldpSplit,kLoadPairFloat,0x6c000000)
 /* MOP_qldp */
-DEFINE_MOP(MOP_qldp, {&OpndDesc::Reg128VD,&OpndDesc::Reg128VD,&OpndDesc::Mem128S},ISLOAD|ISLOADPAIR|CANTHROW,kLtFLoadMany,"ldp","0,1,2",1,StrLdr128PairImmValid, kLoadPairFloat, 0xac000000)
+DEFINE_MOP(MOP_qldp, {&OpndDesc::Reg128VD,&OpndDesc::Reg128VD,&OpndDesc::Mem128S},ISLOAD|ISLOADPAIR|CANTHROW,kLtFLoadMany,"ldp","0,1,2",1,MOP_qldpValid,MOP_qldpSplit, kLoadPairFloat, 0xac000000)
 
 /* AARCH64 Load with Acquire semantics */
 /* MOP_wldarb */
-DEFINE_MOP(MOP_wldarb, {&OpndDesc::Reg32ID,&OpndDesc::Mem8S},ISLOAD|ISATOMIC|HASACQUIRE|CANTHROW,kLtLoad1,"ldarb","0,1",1,StrLdr8ImmValid,kLoadStoreAR,0x8dffc00)
+DEFINE_MOP(MOP_wldarb, {&OpndDesc::Reg32ID,&OpndDesc::Mem8S},ISLOAD|ISATOMIC|HASACQUIRE|CANTHROW,kLtLoad1,"ldarb","0,1",1,MOP_wldarbValid,kLoadStoreAR,0x8dffc00)
 /* MOP_wldarh */
-DEFINE_MOP(MOP_wldarh, {&OpndDesc::Reg32ID, &OpndDesc::Mem16S},ISLOAD|ISATOMIC|HASACQUIRE|CANTHROW,kLtLoad1,"ldarh","0,1",1,StrLdr16ImmValid,kLoadStoreAR,0x48dffc00)
+DEFINE_MOP(MOP_wldarh, {&OpndDesc::Reg32ID, &OpndDesc::Mem16S},ISLOAD|ISATOMIC|HASACQUIRE|CANTHROW,kLtLoad1,"ldarh","0,1",1,MOP_wldarhValid,kLoadStoreAR,0x48dffc00)
 /* MOP_wldar */
-DEFINE_MOP(MOP_wldar, {&OpndDesc::Reg32ID,&OpndDesc::Mem32S},ISLOAD|ISATOMIC|HASACQUIRE|CANTHROW,kLtLoad1,"ldar","0,1",1,StrLdr32ImmValid,kLoadStoreAR,0x88dffc00)
+DEFINE_MOP(MOP_wldar, {&OpndDesc::Reg32ID,&OpndDesc::Mem32S},ISLOAD|ISATOMIC|HASACQUIRE|CANTHROW,kLtLoad1,"ldar","0,1",1,MOP_wldarValid,kLoadStoreAR,0x88dffc00)
 /* MOP_xldar */
-DEFINE_MOP(MOP_xldar, {&OpndDesc::Reg64ID,&OpndDesc::Mem64S},ISLOAD|ISATOMIC|HASACQUIRE|CANTHROW,kLtLoad1,"ldar","0,1",1,StrLdr64ImmValid,kLoadStoreAR,0xc8dffc00)
+DEFINE_MOP(MOP_xldar, {&OpndDesc::Reg64ID,&OpndDesc::Mem64S},ISLOAD|ISATOMIC|HASACQUIRE|CANTHROW,kLtLoad1,"ldar","0,1",1,MOP_xldarValid,kLoadStoreAR,0xc8dffc00)
 
 /* MOP_wmovkri16 */
-DEFINE_MOP(MOP_wmovkri16, {&OpndDesc::Reg32IDS,&OpndDesc::Imm16,&OpndDesc::Lsl4},ISMOVE,kLtShift,"movk","0,1,2",1,Imm16BitValid,kMoveWide,0x72800000)
+DEFINE_MOP(MOP_wmovkri16, {&OpndDesc::Reg32IDS,&OpndDesc::Imm16,&OpndDesc::Lsl4},ISMOVE,kLtShift,"movk","0,1,2",1,MOP_wmovkri16Valid,kMoveWide,0x72800000)
 /* MOP_xmovkri16 */
-DEFINE_MOP(MOP_xmovkri16, {&OpndDesc::Reg64IDS,&OpndDesc::Imm16,&OpndDesc::Lsl6},ISMOVE,kLtShift,"movk","0,1,2",1,Imm16BitValid,kMoveWide,0xf2800000)
+DEFINE_MOP(MOP_xmovkri16, {&OpndDesc::Reg64IDS,&OpndDesc::Imm16,&OpndDesc::Lsl6},ISMOVE,kLtShift,"movk","0,1,2",1,MOP_xmovkri16Valid,kMoveWide,0xf2800000)
 
 /* MOP_wmovzri16 */
-DEFINE_MOP(MOP_wmovzri16, {&OpndDesc::Reg32ID,&OpndDesc::Imm16,&OpndDesc::Lsl4},ISMOVE,kLtShift,"movz","0,1,2",1,Imm16BitValid,kMoveWide,0x52800000)
+DEFINE_MOP(MOP_wmovzri16, {&OpndDesc::Reg32ID,&OpndDesc::Imm16,&OpndDesc::Lsl4},ISMOVE,kLtShift,"movz","0,1,2",1,MOP_wmovzri16Valid,kMoveWide,0x52800000)
 /* MOP_xmovzri16 */
-DEFINE_MOP(MOP_xmovzri16, {&OpndDesc::Reg64ID,&OpndDesc::Imm16,&OpndDesc::Lsl6},ISMOVE,kLtShift,"movz","0,1,2",1,Imm16BitValid,kMoveWide,0xd2800000)
+DEFINE_MOP(MOP_xmovzri16, {&OpndDesc::Reg64ID,&OpndDesc::Imm16,&OpndDesc::Lsl6},ISMOVE,kLtShift,"movz","0,1,2",1,MOP_xmovzri16Valid,kMoveWide,0xd2800000)
 
 /* MOP_wmovnri16 */
-DEFINE_MOP(MOP_wmovnri16, {&OpndDesc::Reg32ID,&OpndDesc::Imm16,&OpndDesc::Lsl4},ISMOVE,kLtShift,"movn","0,1,2",1,Imm16BitValid,kMoveWide,0x12800000)
+DEFINE_MOP(MOP_wmovnri16, {&OpndDesc::Reg32ID,&OpndDesc::Imm16,&OpndDesc::Lsl4},ISMOVE,kLtShift,"movn","0,1,2",1,MOP_wmovnri16Valid,kMoveWide,0x12800000)
 /* MOP_xmovnri16 */
-DEFINE_MOP(MOP_xmovnri16, {&OpndDesc::Reg64ID,&OpndDesc::Imm16,&OpndDesc::Lsl6},ISMOVE,kLtShift,"movn","0,1,2",1,Imm16BitValid,kMoveWide,0x92800000)
+DEFINE_MOP(MOP_xmovnri16, {&OpndDesc::Reg64ID,&OpndDesc::Imm16,&OpndDesc::Lsl6},ISMOVE,kLtShift,"movn","0,1,2",1,MOP_xmovnri16Valid,kMoveWide,0x92800000)
 
 /* AARCH64 Load exclusive with/without acquire semantics */
-DEFINE_MOP(MOP_wldxrb, {&OpndDesc::Reg32ID,&OpndDesc::Mem8S},ISLOAD|ISATOMIC|CANTHROW,kLtLoad1,"ldxrb","0,1",1,StrLdr8ImmValid,kLoadExclusive,0x85f7c00)
-DEFINE_MOP(MOP_wldxrh, {&OpndDesc::Reg32ID,&OpndDesc::Mem16S},ISLOAD|ISATOMIC|CANTHROW,kLtLoad1,"ldxrh","0,1",1,StrLdr16ImmValid,kLoadExclusive,0x485f7c00)
-DEFINE_MOP(MOP_wldxr,  {&OpndDesc::Reg32ID,&OpndDesc::Mem32S},ISLOAD|ISATOMIC|CANTHROW,kLtLoad1,"ldxr","0,1",1,StrLdr32ImmValid,kLoadExclusive,0x885f7c00)
-DEFINE_MOP(MOP_xldxr,  {&OpndDesc::Reg64ID,&OpndDesc::Mem64S},ISLOAD|ISATOMIC|CANTHROW,kLtLoad1,"ldxr","0,1",1,StrLdr64ImmValid,kLoadExclusive,0xc85f7c00)
+DEFINE_MOP(MOP_wldxrb, {&OpndDesc::Reg32ID,&OpndDesc::Mem8S},ISLOAD|ISATOMIC|CANTHROW,kLtLoad1,"ldxrb","0,1",1,MOP_wldxrbValid,kLoadExclusive,0x85f7c00)
+DEFINE_MOP(MOP_wldxrh, {&OpndDesc::Reg32ID,&OpndDesc::Mem16S},ISLOAD|ISATOMIC|CANTHROW,kLtLoad1,"ldxrh","0,1",1,MOP_wldxrhValid,kLoadExclusive,0x485f7c00)
+DEFINE_MOP(MOP_wldxr,  {&OpndDesc::Reg32ID,&OpndDesc::Mem32S},ISLOAD|ISATOMIC|CANTHROW,kLtLoad1,"ldxr","0,1",1,MOP_wldxrValid,kLoadExclusive,0x885f7c00)
+DEFINE_MOP(MOP_xldxr,  {&OpndDesc::Reg64ID,&OpndDesc::Mem64S},ISLOAD|ISATOMIC|CANTHROW,kLtLoad1,"ldxr","0,1",1,MOP_xldxrValid,kLoadExclusive,0xc85f7c00)
 
-DEFINE_MOP(MOP_wldaxrb,{&OpndDesc::Reg32ID,&OpndDesc::Mem8S},ISLOAD|ISATOMIC|HASACQUIRE|CANTHROW,kLtLoad1,"ldaxrb","0,1",1,StrLdr8ImmValid,kLoadExclusive,0x85ffc00)
-DEFINE_MOP(MOP_wldaxrh,{&OpndDesc::Reg32ID,&OpndDesc::Mem16S},ISLOAD|ISATOMIC|HASACQUIRE|CANTHROW,kLtLoad1,"ldaxrh","0,1",1,StrLdr16ImmValid,kLoadExclusive,0x485ffc00)
-DEFINE_MOP(MOP_wldaxr, {&OpndDesc::Reg32ID,&OpndDesc::Mem32S},ISLOAD|ISATOMIC|HASACQUIRE|CANTHROW,kLtLoad1,"ldaxr","0,1",1,StrLdr32ImmValid,kLoadExclusive,0x885ffc00)
-DEFINE_MOP(MOP_xldaxr, {&OpndDesc::Reg64ID,&OpndDesc::Mem64S},ISLOAD|ISATOMIC|HASACQUIRE|CANTHROW,kLtLoad1,"ldaxr","0,1",1,StrLdr64ImmValid,kLoadExclusive,0xc85ffc00)
+DEFINE_MOP(MOP_wldaxrb,{&OpndDesc::Reg32ID,&OpndDesc::Mem8S},ISLOAD|ISATOMIC|HASACQUIRE|CANTHROW,kLtLoad1,"ldaxrb","0,1",1,MOP_wldaxrbValid,kLoadExclusive,0x85ffc00)
+DEFINE_MOP(MOP_wldaxrh,{&OpndDesc::Reg32ID,&OpndDesc::Mem16S},ISLOAD|ISATOMIC|HASACQUIRE|CANTHROW,kLtLoad1,"ldaxrh","0,1",1,MOP_wldaxrhValid,kLoadExclusive,0x485ffc00)
+DEFINE_MOP(MOP_wldaxr, {&OpndDesc::Reg32ID,&OpndDesc::Mem32S},ISLOAD|ISATOMIC|HASACQUIRE|CANTHROW,kLtLoad1,"ldaxr","0,1",1,MOP_wldaxrValid,kLoadExclusive,0x885ffc00)
+DEFINE_MOP(MOP_xldaxr, {&OpndDesc::Reg64ID,&OpndDesc::Mem64S},ISLOAD|ISATOMIC|HASACQUIRE|CANTHROW,kLtLoad1,"ldaxr","0,1",1,MOP_xldaxrValid,kLoadExclusive,0xc85ffc00)
 
-DEFINE_MOP(MOP_wldaxp, {&OpndDesc::Reg32ID,&OpndDesc::Reg32ID,&OpndDesc::Mem32S},ISLOAD|ISLOADPAIR|ISATOMIC|HASACQUIRE|CANTHROW,kLtLoad1,"ldaxp","0,1,2",1,StrLdr32ImmValid,kLoadExclusivePair,0x887f8000)
-DEFINE_MOP(MOP_xldaxp, {&OpndDesc::Reg64ID,&OpndDesc::Reg64ID,&OpndDesc::Mem64S},ISLOAD|ISLOADPAIR|ISATOMIC|HASACQUIRE|CANTHROW,kLtLoad1,"ldaxp","0,1,2",1,StrLdr64ImmValid,kLoadExclusivePair,0xc87f8000)
+DEFINE_MOP(MOP_wldaxp, {&OpndDesc::Reg32ID,&OpndDesc::Reg32ID,&OpndDesc::Mem32S},ISLOAD|ISLOADPAIR|ISATOMIC|HASACQUIRE|CANTHROW,kLtLoad1,"ldaxp","0,1,2",1,MOP_wldaxpValid,kLoadExclusivePair,0x887f8000)
+DEFINE_MOP(MOP_xldaxp, {&OpndDesc::Reg64ID,&OpndDesc::Reg64ID,&OpndDesc::Mem64S},ISLOAD|ISLOADPAIR|ISATOMIC|HASACQUIRE|CANTHROW,kLtLoad1,"ldaxp","0,1,2",1,MOP_xldaxpValid,kLoadExclusivePair,0xc87f8000)
 
 /* MOP_vsqrts */
 DEFINE_MOP(MOP_vsqrts, {&OpndDesc::Reg32FD,&OpndDesc::Reg32FS},CANTHROW,kLtAdvsimdDivS,"fsqrt","0,1",1,kFloatDataProcessing1,0x1e21c000)
@@ -683,47 +689,47 @@ DEFINE_MOP(MOP_dcmpqrr, {&OpndDesc::CCD, &OpndDesc::Reg64FS,&OpndDesc::Reg64FS},
 
 /* AARCH64 Integer COMPARES */
 /* MOP_wcmpri -- AArch64 cmp has no dest operand */
-DEFINE_MOP(MOP_wcmpri, {&OpndDesc::CCD, &OpndDesc::Reg32IS,&OpndDesc::Imm12},0,kLtAlu,"cmp","1,2",1,Imm12BitValid,kAddSubImm,0x7100001f)
+DEFINE_MOP(MOP_wcmpri, {&OpndDesc::CCD, &OpndDesc::Reg32IS,&OpndDesc::Imm12},0,kLtAlu,"cmp","1,2",1,MOP_wcmpriValid,kAddSubImm,0x7100001f)
 /* MOP_wcmprr -- register, shifted register, AArch64 cmp has no dest operand */
 DEFINE_MOP(MOP_wcmprr, {&OpndDesc::CCD, &OpndDesc::Reg32IS,&OpndDesc::Reg32IS},0,kLtAlu,"cmp","1,2",1,kAddSubReg,0x6b00001f)
 /* MOP_wcmprrs -- register, shifted register, AArch64 cmp has no dest operand */
-DEFINE_MOP(MOP_wcmprrs, {&OpndDesc::CCD, &OpndDesc::Reg32IS,&OpndDesc::Reg32IS,&OpndDesc::Bitshift32},0,kLtAlu,"cmp","1,2,3",1, kAddSubShiftReg, 0x6b00001f)
+DEFINE_MOP(MOP_wcmprrs, {&OpndDesc::CCD, &OpndDesc::Reg32IS,&OpndDesc::Reg32IS,&OpndDesc::Bitshift32},0,kLtAlu,"cmp","1,2,3",1,MOP_wcmprrsValid,kAddSubShiftReg, 0x6b00001f)
 /* MOP_wwcmprre -- register, shifted register, AArch64 cmp has no dest operand */
-DEFINE_MOP(MOP_wwcmprre, {&OpndDesc::CCD, &OpndDesc::Reg32IS,&OpndDesc::Reg32IS,&OpndDesc::Extendshift64},0,kLtAlu,"cmp","1,2,3",1, kAddSubExtendReg, 0x6b20001f)
+DEFINE_MOP(MOP_wwcmprre, {&OpndDesc::CCD, &OpndDesc::Reg32IS,&OpndDesc::Reg32IS,&OpndDesc::Extendshift64},0,kLtAlu,"cmp","1,2,3",1,MOP_wwcmprreValid,kAddSubExtendReg, 0x6b20001f)
 /* MOP_xcmpri -- AArch64 cmp has no dest operand */
-DEFINE_MOP(MOP_xcmpri, {&OpndDesc::CCD, &OpndDesc::Reg64IS,&OpndDesc::Imm16},0,kLtAlu,"cmp","1,2",1,Imm16BitValid,kAddSubImm,0xf100001f)
+DEFINE_MOP(MOP_xcmpri, {&OpndDesc::CCD, &OpndDesc::Reg64IS,&OpndDesc::Imm16},0,kLtAlu,"cmp","1,2",1,MOP_xcmpriValid,kAddSubImm,0xf100001f)
 /* MOP_xcmprr -- register, shifted register, AArch64 cmp has no dest operand */
 DEFINE_MOP(MOP_xcmprr, {&OpndDesc::CCD, &OpndDesc::Reg64IS,&OpndDesc::Reg64IS},0,kLtAlu,"cmp","1,2",1,kAddSubReg,0xeb00001f)
 /* MOP_xcmprrs -- register, shifted register, AArch64 cmp has no dest operand */
-DEFINE_MOP(MOP_xcmprrs, {&OpndDesc::CCD, &OpndDesc::Reg64IS,&OpndDesc::Reg64IS,&OpndDesc::Bitshift64},0,kLtAlu,"cmp","1,2,3",1, kAddSubShiftReg, 0xeb00001f)
+DEFINE_MOP(MOP_xcmprrs, {&OpndDesc::CCD, &OpndDesc::Reg64IS,&OpndDesc::Reg64IS,&OpndDesc::Bitshift64},0,kLtAlu,"cmp","1,2,3",1,MOP_xcmprrsValid,kAddSubShiftReg, 0xeb00001f)
 /* MOP_xwcmprre -- register, shifted register, AArch64 cmp has no dest operand */
-DEFINE_MOP(MOP_xwcmprre, {&OpndDesc::CCD, &OpndDesc::Reg64IS,&OpndDesc::Reg32IS,&OpndDesc::Extendshift64},0,kLtAlu,"cmp","1,2,3",1, kAddSubExtendReg, 0xeb20001f)
+DEFINE_MOP(MOP_xwcmprre, {&OpndDesc::CCD, &OpndDesc::Reg64IS,&OpndDesc::Reg32IS,&OpndDesc::Extendshift64},0,kLtAlu,"cmp","1,2,3",1,MOP_xwcmprreValid,kAddSubExtendReg, 0xeb20001f)
 
 /* MOP_wccmpriic -- AArch64 cmp has no dest operand */
-DEFINE_MOP(MOP_wccmpriic, {&OpndDesc::CCD, &OpndDesc::Reg32IS,&OpndDesc::Imm5,&OpndDesc::Imm4,&OpndDesc::Cond,&OpndDesc::CCS},0,kLtAlu,"ccmp","1,2,3,4",1,kCondCompareImm,0x7a400800)
+DEFINE_MOP(MOP_wccmpriic, {&OpndDesc::CCD, &OpndDesc::Reg32IS,&OpndDesc::Imm5,&OpndDesc::Imm4,&OpndDesc::Cond,&OpndDesc::CCS},0,kLtAlu,"ccmp","1,2,3,4",1,MOP_wccmpriicValid,MOP_wccmpriicSplit,kCondCompareImm,0x7a400800)
 /* MOP_wccmprric -- register, shifted register, AArch64 cmp has no dest operand */
-DEFINE_MOP(MOP_wccmprric, {&OpndDesc::CCD, &OpndDesc::Reg32IS,&OpndDesc::Reg32IS,&OpndDesc::Imm4,&OpndDesc::Cond,&OpndDesc::CCS},0,kLtAlu,"ccmp","1,2,3,4",1,kCondCompareReg,0x7a400000)
+DEFINE_MOP(MOP_wccmprric, {&OpndDesc::CCD, &OpndDesc::Reg32IS,&OpndDesc::Reg32IS,&OpndDesc::Imm4,&OpndDesc::Cond,&OpndDesc::CCS},0,kLtAlu,"ccmp","1,2,3,4",1,MOP_wccmprricValid,kCondCompareReg,0x7a400000)
 /* MOP_xccmpriic -- AArch64 cmp has no dest operand */
-DEFINE_MOP(MOP_xccmpriic, {&OpndDesc::CCD, &OpndDesc::Reg64IS,&OpndDesc::Imm5,&OpndDesc::Imm4,&OpndDesc::Cond,&OpndDesc::CCS},0,kLtAlu,"ccmp","1,2,3,4",1,kCondCompareImm,0xfa400800)
+DEFINE_MOP(MOP_xccmpriic, {&OpndDesc::CCD, &OpndDesc::Reg64IS,&OpndDesc::Imm5,&OpndDesc::Imm4,&OpndDesc::Cond,&OpndDesc::CCS},0,kLtAlu,"ccmp","1,2,3,4",1,MOP_xccmpriicValid,MOP_xccmpriicSplit,kCondCompareImm,0xfa400800)
 /* MOP_xccmprric -- register, shifted register, AArch64 cmp has no dest operand */
-DEFINE_MOP(MOP_xccmprric, {&OpndDesc::CCD, &OpndDesc::Reg64IS,&OpndDesc::Reg64IS,&OpndDesc::Imm4,&OpndDesc::Cond,&OpndDesc::CCS},0,kLtAlu,"ccmp","1,2,3,4",1,kCondCompareReg,0xfa400000)
+DEFINE_MOP(MOP_xccmprric, {&OpndDesc::CCD, &OpndDesc::Reg64IS,&OpndDesc::Reg64IS,&OpndDesc::Imm4,&OpndDesc::Cond,&OpndDesc::CCS},0,kLtAlu,"ccmp","1,2,3,4",1,MOP_xccmprricValid,kCondCompareReg,0xfa400000)
 
 /* MOP_wcmnri -- AArch64 cmp has no dest operand */
-DEFINE_MOP(MOP_wcmnri, {&OpndDesc::CCD, &OpndDesc::Reg32IS,&OpndDesc::Imm12},0,kLtAlu,"cmn","1,2",1,Imm12BitValid,kAddSubImm,0x3100001f)
+DEFINE_MOP(MOP_wcmnri, {&OpndDesc::CCD, &OpndDesc::Reg32IS,&OpndDesc::Imm12},0,kLtAlu,"cmn","1,2",1,MOP_wcmnriValid,kAddSubImm,0x3100001f)
 /* MOP_wcmnrr -- register, shifted register, AArch64 cmp has no dest operand */
 DEFINE_MOP(MOP_wcmnrr, {&OpndDesc::CCD, &OpndDesc::Reg32IS,&OpndDesc::Reg32IS},0,kLtAlu,"cmn","1,2",1,kAddSubReg,0x2b00001f)
 /* MOP_wcmnrrs -- register, shifted register, AArch64 cmp has no dest operand */
-DEFINE_MOP(MOP_wcmnrrs, {&OpndDesc::CCD, &OpndDesc::Reg32IS,&OpndDesc::Reg32IS,&OpndDesc::Bitshift32},0,kLtAlu,"cmn","1,2,3",1, kAddSubShiftReg, 0x2b00001f)
+DEFINE_MOP(MOP_wcmnrrs, {&OpndDesc::CCD, &OpndDesc::Reg32IS,&OpndDesc::Reg32IS,&OpndDesc::Bitshift32},0,kLtAlu,"cmn","1,2,3",1,MOP_wcmnrrsValid,kAddSubShiftReg, 0x2b00001f)
 /* MOP_wwcmnrre -- register, shifted register, AArch64 cmp has no dest operand */
-DEFINE_MOP(MOP_wwcmnrre, {&OpndDesc::CCD, &OpndDesc::Reg32IS,&OpndDesc::Reg32IS,&OpndDesc::Extendshift64},0,kLtAlu,"cmn","1,2,3",1, kAddSubExtendReg, 0x2b20001f)
+DEFINE_MOP(MOP_wwcmnrre, {&OpndDesc::CCD, &OpndDesc::Reg32IS,&OpndDesc::Reg32IS,&OpndDesc::Extendshift64},0,kLtAlu,"cmn","1,2,3",1,MOP_wwcmnrreValid,kAddSubExtendReg, 0x2b20001f)
 /* MOP_xcmnri -- AArch64 cmp has no dest operand */
-DEFINE_MOP(MOP_xcmnri, {&OpndDesc::CCD, &OpndDesc::Reg64IS,&OpndDesc::Imm16},0,kLtAlu,"cmn","1,2",1,Imm16BitValid,kAddSubImm,0xb100001f)
+DEFINE_MOP(MOP_xcmnri, {&OpndDesc::CCD, &OpndDesc::Reg64IS,&OpndDesc::Imm16},0,kLtAlu,"cmn","1,2",1,MOP_xcmnriValid,kAddSubImm,0xb100001f)
 /* MOP_xcmnrr -- register, shifted register, AArch64 cmp has no dest operand */
 DEFINE_MOP(MOP_xcmnrr, {&OpndDesc::CCD, &OpndDesc::Reg64IS,&OpndDesc::Reg64IS},0,kLtAlu,"cmn","1,2",1,kAddSubReg,0xab00001f)
 /* MOP_xcmnrrs -- register, shifted register, AArch64 cmp has no dest operand */
-DEFINE_MOP(MOP_xcmnrrs, {&OpndDesc::CCD, &OpndDesc::Reg64IS,&OpndDesc::Reg64IS,&OpndDesc::Bitshift64},0,kLtAlu,"cmn","1,2,3",1, kAddSubShiftReg, 0xab00001f)
+DEFINE_MOP(MOP_xcmnrrs, {&OpndDesc::CCD, &OpndDesc::Reg64IS,&OpndDesc::Reg64IS,&OpndDesc::Bitshift64},0,kLtAlu,"cmn","1,2,3",1,MOP_xcmnrrsValid,kAddSubShiftReg, 0xab00001f)
 /* MOP_xwcmnrre -- register, shifted register, AArch64 cmp has no dest operand */
-DEFINE_MOP(MOP_xwcmnrre, {&OpndDesc::CCD, &OpndDesc::Reg64IS,&OpndDesc::Reg32IS,&OpndDesc::Extendshift64},0,kLtAlu,"cmn","1,2,3",1, kAddSubExtendReg, 0xab20001f)
+DEFINE_MOP(MOP_xwcmnrre, {&OpndDesc::CCD, &OpndDesc::Reg64IS,&OpndDesc::Reg32IS,&OpndDesc::Extendshift64},0,kLtAlu,"cmn","1,2,3",1,MOP_xwcmnrreValid,kAddSubExtendReg, 0xab20001f)
 
 /* AArch64 branches */
 /* MOP_xbr -- branch to register */
@@ -741,67 +747,67 @@ DEFINE_MOP(MOP_wcbz, {&OpndDesc::Reg32IS,&OpndDesc::AddressName},ISCONDBRANCH,kL
 DEFINE_MOP(MOP_xcbz, {&OpndDesc::Reg64IS,&OpndDesc::AddressName},ISCONDBRANCH,kLtBranch,"cbz","0,1",1,kCompareBranch,0xb4000000)
 
 /* MOP_wtbnz --- Test bit and Branch if Nonzero */
-DEFINE_MOP(MOP_wtbnz, {&OpndDesc::Reg32IS,&OpndDesc::Imm8,&OpndDesc::AddressName},ISCONDBRANCH,kLtBranch,"tbnz","0,1,2",1,kTestBranch,0x37000000)
+DEFINE_MOP(MOP_wtbnz, {&OpndDesc::Reg32IS,&OpndDesc::Imm8,&OpndDesc::AddressName},ISCONDBRANCH,kLtBranch,"tbnz","0,1,2",1,MOP_wtbnzValid,kTestBranch,0x37000000)
 /* MOP_xtbnz */
-DEFINE_MOP(MOP_xtbnz, {&OpndDesc::Reg64IS,&OpndDesc::Imm8,&OpndDesc::AddressName},ISCONDBRANCH,kLtBranch,"tbnz","0,1,2",1,kTestBranch,0xb7000000)
+DEFINE_MOP(MOP_xtbnz, {&OpndDesc::Reg64IS,&OpndDesc::Imm8,&OpndDesc::AddressName},ISCONDBRANCH,kLtBranch,"tbnz","0,1,2",1,MOP_xtbnzValid,kTestBranch,0xb7000000)
 /* MOP_wtbz --- Test bit and Branch if Zero */
-DEFINE_MOP(MOP_wtbz, {&OpndDesc::Reg32IS,&OpndDesc::Imm8,&OpndDesc::AddressName},ISCONDBRANCH,kLtBranch,"tbz","0,1,2",1,kTestBranch,0x36000000)
+DEFINE_MOP(MOP_wtbz, {&OpndDesc::Reg32IS,&OpndDesc::Imm8,&OpndDesc::AddressName},ISCONDBRANCH,kLtBranch,"tbz","0,1,2",1,MOP_wtbzValid,kTestBranch,0x36000000)
 /* MOP_xtbz */
-DEFINE_MOP(MOP_xtbz, {&OpndDesc::Reg64IS,&OpndDesc::Imm8,&OpndDesc::AddressName},ISCONDBRANCH,kLtBranch,"tbz","0,1,2",1,kTestBranch,0xb6000000)
+DEFINE_MOP(MOP_xtbz, {&OpndDesc::Reg64IS,&OpndDesc::Imm8,&OpndDesc::AddressName},ISCONDBRANCH,kLtBranch,"tbz","0,1,2",1,MOP_xtbzValid,kTestBranch,0xb6000000)
 
 /* AARCH64 STORES */
 /* MOP_wstrb -- Store Register Byte */
-DEFINE_MOP(MOP_wstrb, {&OpndDesc::Reg32IS,&OpndDesc::Mem8D},ISSTORE|CANTHROW,kLtStore1,"strb","0,1",1,StrLdr8ImmValid,kLoadStoreReg,0x38000000)
+DEFINE_MOP(MOP_wstrb, {&OpndDesc::Reg32IS,&OpndDesc::Mem8D},ISSTORE|CANTHROW,kLtStore1,"strb","0,1",1,MOP_wstrbValid,MOP_wstrbSplit,kLoadStoreReg,0x38000000)
 /* MOP_wstrh -- Store Register Halfword */
-DEFINE_MOP(MOP_wstrh, {&OpndDesc::Reg32IS,&OpndDesc::Mem16D},ISSTORE|CANTHROW,kLtStore1,"strh","0,1",1,StrLdr16ImmValid,kLoadStoreReg,0x78000000)
+DEFINE_MOP(MOP_wstrh, {&OpndDesc::Reg32IS,&OpndDesc::Mem16D},ISSTORE|CANTHROW,kLtStore1,"strh","0,1",1,MOP_wstrhValid,MOP_wstrhSplit,kLoadStoreReg,0x78000000)
 /* MOP_wstr -- Store Register Word */
-DEFINE_MOP(MOP_wstr, {&OpndDesc::Reg32IS,&OpndDesc::Mem32D},ISSTORE|CANTHROW,kLtStore1,"str","0,1",1,StrLdr32ImmValid,kLoadStoreReg,0xb8000000)
+DEFINE_MOP(MOP_wstr, {&OpndDesc::Reg32IS,&OpndDesc::Mem32D},ISSTORE|CANTHROW,kLtStore1,"str","0,1",1,MOP_wstrValid,MOP_wstrSplit,kLoadStoreReg,0xb8000000)
 /* MOP_xstr -- Store Register Double word */
-DEFINE_MOP(MOP_xstr, {&OpndDesc::Reg64IS,&OpndDesc::Mem64D},ISSTORE|CANTHROW,kLtStore2,"str","0,1",1,StrLdr64ImmValid,kLoadStoreReg,0xf8000000)
+DEFINE_MOP(MOP_xstr, {&OpndDesc::Reg64IS,&OpndDesc::Mem64D},ISSTORE|CANTHROW,kLtStore2,"str","0,1",1,MOP_xstrValid,MOP_xstrSplit,kLoadStoreReg,0xf8000000)
 
 /* MOP_sstr -- Store Register SIMD/FP Float */
-DEFINE_MOP(MOP_sstr, {&OpndDesc::Reg32FS,&OpndDesc::Mem32D},ISSTORE|CANTHROW,kLtStore2,"str","0,1",1,StrLdr32ImmValid,kLoadStoreFloat,0xbc000000)
+DEFINE_MOP(MOP_sstr, {&OpndDesc::Reg32FS,&OpndDesc::Mem32D},ISSTORE|CANTHROW,kLtStore2,"str","0,1",1,MOP_sstrValid,MOP_sstrSplit,kLoadStoreFloat,0xbc000000)
 /* MOP_dstr -- Store Register SIMD/FP Double */
-DEFINE_MOP(MOP_dstr, {&OpndDesc::Reg64FS,&OpndDesc::Mem64D},ISSTORE|CANTHROW,kLtStore3plus,"str","0,1",1,StrLdr64ImmValid,kLoadStoreFloat,0xfc000000)
+DEFINE_MOP(MOP_dstr, {&OpndDesc::Reg64FS,&OpndDesc::Mem64D},ISSTORE|CANTHROW,kLtStore3plus,"str","0,1",1,MOP_dstrValid,MOP_dstrSplit,kLoadStoreFloat,0xfc000000)
 /* MOP_qstr -- Store Register SIMD/FP Double */
-DEFINE_MOP(MOP_qstr, {&OpndDesc::Reg128VS,&OpndDesc::Mem128D},ISSTORE|CANTHROW,kLtStore3plus,"str","0,1",1,StrLdr128ImmValid, kLoadStoreFloat, 0x3c800000)
+DEFINE_MOP(MOP_qstr, {&OpndDesc::Reg128VS,&OpndDesc::Mem128D},ISSTORE|CANTHROW,kLtStore3plus,"str","0,1",1,MOP_qstrValid,MOP_qstrSplit, kLoadStoreFloat, 0x3c800000)
 
 /* AArch64 STP. */
 /* MOP_wstp */
-DEFINE_MOP(MOP_wstp, {&OpndDesc::Reg32IS,&OpndDesc::Reg32IS,&OpndDesc::Mem32D},ISSTORE|ISSTOREPAIR|CANTHROW,kLtStore2,"stp","0,1,2",1,StrLdr32PairImmValid,kStorePair,0x28000000)
+DEFINE_MOP(MOP_wstp, {&OpndDesc::Reg32IS,&OpndDesc::Reg32IS,&OpndDesc::Mem32D},ISSTORE|ISSTOREPAIR|CANTHROW,kLtStore2,"stp","0,1,2",1,MOP_wstpValid,MOP_wstpSplit,kStorePair,0x28000000)
 /* MOP_xstp */
-DEFINE_MOP(MOP_xstp, {&OpndDesc::Reg64IS,&OpndDesc::Reg64IS,&OpndDesc::Mem64D},ISSTORE|ISSTOREPAIR|CANTHROW,kLtStore3plus,"stp","0,1,2",1,StrLdr64PairImmValid,kStorePair,0xa8000000)
+DEFINE_MOP(MOP_xstp, {&OpndDesc::Reg64IS,&OpndDesc::Reg64IS,&OpndDesc::Mem64D},ISSTORE|ISSTOREPAIR|CANTHROW,kLtStore3plus,"stp","0,1,2",1,MOP_xstpValid,MOP_xstpSplit,kStorePair,0xa8000000)
 /* AArch64 does not define STPSW. It has no practical value. */
 /* MOP_sstp */
-DEFINE_MOP(MOP_sstp, {&OpndDesc::Reg32FS,&OpndDesc::Reg32FS,&OpndDesc::Mem32D},ISSTORE|ISSTOREPAIR|CANTHROW,kLtAdvsimdMulQ,"stp","0,1,2",1,StrLdr32PairImmValid,kStorePairFloat,0x2c000000)
+DEFINE_MOP(MOP_sstp, {&OpndDesc::Reg32FS,&OpndDesc::Reg32FS,&OpndDesc::Mem32D},ISSTORE|ISSTOREPAIR|CANTHROW,kLtAdvsimdMulQ,"stp","0,1,2",1,MOP_sstpValid,MOP_sstpSplit,kStorePairFloat,0x2c000000)
 /* MOP_dstp */
-DEFINE_MOP(MOP_dstp, {&OpndDesc::Reg64FS,&OpndDesc::Reg64FS,&OpndDesc::Mem64D},ISSTORE|ISSTOREPAIR|CANTHROW,kLtAdvsimdMulQ,"stp","0,1,2",1,StrLdr64PairImmValid,kStorePairFloat,0x6c000000)
+DEFINE_MOP(MOP_dstp, {&OpndDesc::Reg64FS,&OpndDesc::Reg64FS,&OpndDesc::Mem64D},ISSTORE|ISSTOREPAIR|CANTHROW,kLtAdvsimdMulQ,"stp","0,1,2",1,MOP_dstpValid,MOP_dstpSplit,kStorePairFloat,0x6c000000)
 /* MOP_qstp */
-DEFINE_MOP(MOP_qstp, {&OpndDesc::Reg128VS,&OpndDesc::Reg128VS,&OpndDesc::Mem128D},ISSTORE|ISSTOREPAIR|CANTHROW,kLtAdvsimdMulQ,"stp","0,1,2",1,StrLdr128PairImmValid, kStorePairFloat, 0xac000000)
+DEFINE_MOP(MOP_qstp, {&OpndDesc::Reg128VS,&OpndDesc::Reg128VS,&OpndDesc::Mem128D},ISSTORE|ISSTOREPAIR|CANTHROW,kLtAdvsimdMulQ,"stp","0,1,2",1,MOP_qstpValid,MOP_qstpSplit, kStorePairFloat, 0xac000000)
 
 /* AARCH64 Store with Release semantics */
 /* MOP_wstlrb -- Store-Release Register Byte */
-DEFINE_MOP(MOP_wstlrb, {&OpndDesc::Reg32IS,&OpndDesc::Mem8D},ISSTORE|ISATOMIC|HASRELEASE|CANTHROW,kLtStore1,"stlrb","0,1",1,StrLdr8ImmValid,kLoadStoreAR,0x89ffc00)
+DEFINE_MOP(MOP_wstlrb, {&OpndDesc::Reg32IS,&OpndDesc::Mem8D},ISSTORE|ISATOMIC|HASRELEASE|CANTHROW,kLtStore1,"stlrb","0,1",1,MOP_wstlrbValid,kLoadStoreAR,0x89ffc00)
 /* MOP_wstlrh -- Store-Release Register Halfword */
-DEFINE_MOP(MOP_wstlrh, {&OpndDesc::Reg32IS,&OpndDesc::Mem16D},ISSTORE|ISATOMIC|HASRELEASE|CANTHROW,kLtStore1,"stlrh","0,1",1,StrLdr16ImmValid,kLoadStoreAR,0x489ffc00)
+DEFINE_MOP(MOP_wstlrh, {&OpndDesc::Reg32IS,&OpndDesc::Mem16D},ISSTORE|ISATOMIC|HASRELEASE|CANTHROW,kLtStore1,"stlrh","0,1",1,MOP_wstlrhValid,kLoadStoreAR,0x489ffc00)
 /* MOP_wstlr -- Store-Release Register Word */
-DEFINE_MOP(MOP_wstlr, {&OpndDesc::Reg32IS,&OpndDesc::Mem32D},ISSTORE|ISATOMIC|HASRELEASE|CANTHROW,kLtStore1,"stlr","0,1",1,StrLdr32ImmValid,kLoadStoreAR,0x889ffc00)
+DEFINE_MOP(MOP_wstlr, {&OpndDesc::Reg32IS,&OpndDesc::Mem32D},ISSTORE|ISATOMIC|HASRELEASE|CANTHROW,kLtStore1,"stlr","0,1",1,MOP_wstlrValid,kLoadStoreAR,0x889ffc00)
 /* MOP_xstlr -- Store-Release Register Double word */
-DEFINE_MOP(MOP_xstlr, {&OpndDesc::Reg64IS,&OpndDesc::Mem64D},ISSTORE|ISATOMIC|HASRELEASE|CANTHROW,kLtStore1,"stlr","0,1",1,StrLdr64ImmValid,kLoadStoreAR,0xc89ffc00)
+DEFINE_MOP(MOP_xstlr, {&OpndDesc::Reg64IS,&OpndDesc::Mem64D},ISSTORE|ISATOMIC|HASRELEASE|CANTHROW,kLtStore1,"stlr","0,1",1,MOP_xstlrValid,kLoadStoreAR,0xc89ffc00)
 
 /* AARCH64 Store exclusive with/without release semantics */
-DEFINE_MOP(MOP_wstxrb, {&OpndDesc::Reg32ID,&OpndDesc::Reg32IS,&OpndDesc::Mem8D},ISSTORE|ISATOMIC|CANTHROW,kLtStore1,"stxrb","0,1,2",1,StrLdr8ImmValid,kStoreExclusive,0x8007c00)
-DEFINE_MOP(MOP_wstxrh, {&OpndDesc::Reg32ID,&OpndDesc::Reg32IS,&OpndDesc::Mem16D},ISSTORE|ISATOMIC|CANTHROW,kLtStore1,"stxrh","0,1,2",1,StrLdr16ImmValid,kStoreExclusive,0x48007c00)
-DEFINE_MOP(MOP_wstxr,  {&OpndDesc::Reg32ID,&OpndDesc::Reg32IS,&OpndDesc::Mem32D},ISSTORE|ISATOMIC|CANTHROW,kLtStore1,"stxr","0,1,2",1,StrLdr32ImmValid,kStoreExclusive,0x88007c00)
-DEFINE_MOP(MOP_xstxr,  {&OpndDesc::Reg32ID,&OpndDesc::Reg64IS,&OpndDesc::Mem64D},ISSTORE|ISATOMIC|CANTHROW,kLtStore1,"stxr","0,1,2",1,StrLdr64ImmValid,kStoreExclusive,0xc8007c00)
+DEFINE_MOP(MOP_wstxrb, {&OpndDesc::Reg32ID,&OpndDesc::Reg32IS,&OpndDesc::Mem8D},ISSTORE|ISATOMIC|CANTHROW,kLtStore1,"stxrb","0,1,2",1,MOP_wstxrbValid,kStoreExclusive,0x8007c00)
+DEFINE_MOP(MOP_wstxrh, {&OpndDesc::Reg32ID,&OpndDesc::Reg32IS,&OpndDesc::Mem16D},ISSTORE|ISATOMIC|CANTHROW,kLtStore1,"stxrh","0,1,2",1,MOP_wstxrhValid,kStoreExclusive,0x48007c00)
+DEFINE_MOP(MOP_wstxr,  {&OpndDesc::Reg32ID,&OpndDesc::Reg32IS,&OpndDesc::Mem32D},ISSTORE|ISATOMIC|CANTHROW,kLtStore1,"stxr","0,1,2",1,MOP_wstxrValid,kStoreExclusive,0x88007c00)
+DEFINE_MOP(MOP_xstxr,  {&OpndDesc::Reg32ID,&OpndDesc::Reg64IS,&OpndDesc::Mem64D},ISSTORE|ISATOMIC|CANTHROW,kLtStore1,"stxr","0,1,2",1,MOP_xstxrValid,kStoreExclusive,0xc8007c00)
 
-DEFINE_MOP(MOP_wstlxrb,{&OpndDesc::Reg32ID,&OpndDesc::Reg32IS,&OpndDesc::Mem8D},ISSTORE|ISATOMIC|HASRELEASE|CANTHROW,kLtStore1,"stlxrb","0,1,2",1,StrLdr8ImmValid,kStoreExclusive,0x800fc00)
-DEFINE_MOP(MOP_wstlxrh,{&OpndDesc::Reg32ID,&OpndDesc::Reg32IS,&OpndDesc::Mem16D},ISSTORE|ISATOMIC|HASRELEASE|CANTHROW,kLtStore1,"stlxrh","0,1,2",1,StrLdr16ImmValid,kStoreExclusive,0x4800fc00)
-DEFINE_MOP(MOP_wstlxr, {&OpndDesc::Reg32ID,&OpndDesc::Reg32IS,&OpndDesc::Mem32D},ISSTORE|ISATOMIC|HASRELEASE|CANTHROW,kLtStore1,"stlxr","0,1,2",1,StrLdr32ImmValid,kStoreExclusive,0x8800fc00)
-DEFINE_MOP(MOP_xstlxr, {&OpndDesc::Reg32ID,&OpndDesc::Reg64IS,&OpndDesc::Mem64D},ISSTORE|ISATOMIC|HASRELEASE|CANTHROW,kLtStore1,"stlxr","0,1,2",1,StrLdr64ImmValid,kStoreExclusive,0xc800fc00)
+DEFINE_MOP(MOP_wstlxrb,{&OpndDesc::Reg32ID,&OpndDesc::Reg32IS,&OpndDesc::Mem8D},ISSTORE|ISATOMIC|HASRELEASE|CANTHROW,kLtStore1,"stlxrb","0,1,2",1,MOP_wstlxrbValid,kStoreExclusive,0x800fc00)
+DEFINE_MOP(MOP_wstlxrh,{&OpndDesc::Reg32ID,&OpndDesc::Reg32IS,&OpndDesc::Mem16D},ISSTORE|ISATOMIC|HASRELEASE|CANTHROW,kLtStore1,"stlxrh","0,1,2",1,MOP_wstlxrhValid,kStoreExclusive,0x4800fc00)
+DEFINE_MOP(MOP_wstlxr, {&OpndDesc::Reg32ID,&OpndDesc::Reg32IS,&OpndDesc::Mem32D},ISSTORE|ISATOMIC|HASRELEASE|CANTHROW,kLtStore1,"stlxr","0,1,2",1,MOP_wstlxrValid,kStoreExclusive,0x8800fc00)
+DEFINE_MOP(MOP_xstlxr, {&OpndDesc::Reg32ID,&OpndDesc::Reg64IS,&OpndDesc::Mem64D},ISSTORE|ISATOMIC|HASRELEASE|CANTHROW,kLtStore1,"stlxr","0,1,2",1,MOP_xstlxrValid,kStoreExclusive,0xc800fc00)
 
-DEFINE_MOP(MOP_wstlxp, {&OpndDesc::Reg32ID,&OpndDesc::Reg32IS,&OpndDesc::Reg32IS,&OpndDesc::Mem64D},ISSTORE|ISSTOREPAIR|ISATOMIC|HASRELEASE|CANTHROW,kLtStore1,"stlxp","0,1,2,3",1,StrLdr64ImmValid,kStoreExclusivePair,0x88208000)
-DEFINE_MOP(MOP_xstlxp, {&OpndDesc::Reg32ID,&OpndDesc::Reg64IS,&OpndDesc::Reg64IS,&OpndDesc::Mem64D},ISSTORE|ISSTOREPAIR|ISATOMIC|HASRELEASE|CANTHROW,kLtStore1,"stlxp","0,1,2,3",1,StrLdr64ImmValid,kStoreExclusivePair,0xc8208000)
+DEFINE_MOP(MOP_wstlxp, {&OpndDesc::Reg32ID,&OpndDesc::Reg32IS,&OpndDesc::Reg32IS,&OpndDesc::Mem64D},ISSTORE|ISSTOREPAIR|ISATOMIC|HASRELEASE|CANTHROW,kLtStore1,"stlxp","0,1,2,3",1,MOP_wstlxpValid,kStoreExclusivePair,0x88208000)
+DEFINE_MOP(MOP_xstlxp, {&OpndDesc::Reg32ID,&OpndDesc::Reg64IS,&OpndDesc::Reg64IS,&OpndDesc::Mem64D},ISSTORE|ISSTOREPAIR|ISATOMIC|HASRELEASE|CANTHROW,kLtStore1,"stlxp","0,1,2,3",1,MOP_xstlxpValid,kStoreExclusivePair,0xc8208000)
 
 /* Generate a breakpoint instruction exception */
 /* FIXME: DEFINE_MOP(MOP_brk, {OpndDesc::Imm16}, 0, kLtAlu, "brk", "0", 1, Imm16BitValid) */
@@ -1183,8 +1189,8 @@ DEFINE_MOP(MOP_pseudo_dependence_seperator, {},0,kLtUndef,"//MOP_pseudo_dependen
 DEFINE_MOP(MOP_pseudo_none, {},0,kLtUndef,"//MOP_pseudo_none","0", 0)
 
 /* MOP_ret_assert_nonnull*/
-/* FIXME: DEFINE_MOP(MOP_assert_nonnull, {&OpndDesc::Reg32ID, &OpndDesc::Mem32S},ISLOAD | CANTHROW | ISCALL,kLtUndef,"ldr","0,1", 1, MOP_wldrValid, MOP_wldrSpilt) */
-DEFINE_MOP(MOP_assert_nonnull, {&OpndDesc::Reg32ID,&OpndDesc::Mem32S},ISLOAD|CANTHROW,kLtLoad1,"ldr","0,1",1,StrLdr32ImmValid,kLoadStoreReg,0xb8400000)
+/* FIXME: DEFINE_MOP(MOP_assert_nonnull, {&OpndDesc::Reg32ID, &OpndDesc::Mem32S},ISLOAD | CANTHROW | ISCALL,kLtUndef,"ldr","0,1", 1, MOP_wldrValid, MOP_wldrSplit) */
+DEFINE_MOP(MOP_assert_nonnull, {&OpndDesc::Reg32ID,&OpndDesc::Mem32S},ISLOAD|CANTHROW,kLtLoad1,"ldr","0,1",1,MOP_wldrValid, MOP_wldrSplit,kLoadStoreReg,0xb8400000)
 
 /*MOP_nop */
 DEFINE_MOP(MOP_nop, {},ISNOP,kLtAlu,"nop","", 1, kSystemInsn, 0xd503201f)

@@ -556,6 +556,25 @@ uint32 AArch64MemLayout::RealStackFrameSize() const
     return static_cast<uint32>(size);
 }
 
+// from cold area to bottom of stk
+// [cold,16] + [GR, 16] + [VR, 16] + stack protect (if has)
+uint64 AArch64MemLayout::GetSizeOfColdToStk() const
+{
+    uint64 total = 0;
+    auto coldsize = RoundUp(GetSizeOfSegCold(), k16BitSize);
+    total += coldsize;
+    if (GetSizeOfGRSaveArea() > 0) {
+        total += RoundUp(GetSizeOfGRSaveArea(), kAarch64StackPtrAlignment);
+    }
+    if (GetSizeOfVRSaveArea() > 0) {
+        total += RoundUp(GetSizeOfVRSaveArea(), kAarch64StackPtrAlignment);
+    }
+    if (cgFunc->GetCG()->IsStackProtectorStrong() || cgFunc->GetCG()->IsStackProtectorAll()) {
+        total += static_cast<uint32>(kAarch64StackPtrAlignment);
+    }
+    return total;
+}
+
 int32 AArch64MemLayout::GetRefLocBaseLoc() const
 {
     AArch64CGFunc *aarchCGFunc = static_cast<AArch64CGFunc *>(cgFunc);

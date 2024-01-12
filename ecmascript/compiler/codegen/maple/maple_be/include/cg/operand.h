@@ -18,6 +18,7 @@
 
 #include "becommon.h"
 #include "cg_option.h"
+#include "aarch64/aarch64_imm_valid.h"
 #include "visitor_common.h"
 
 /* maple_ir */
@@ -34,8 +35,6 @@ class OpndDesc;
 class Emitter;
 class FuncEmitInfo;
 
-bool IsBitSizeImmediate(maple::uint64 val, maple::uint32 bitLen, maple::uint32 nLowerZeroBits);
-bool IsBitmaskImmediate(maple::uint64 val, maple::uint32 bitLen);
 bool IsMoveWidableImmediate(uint64 val, uint32 bitLen);
 bool BetterUseMOVZ(uint64 val);
 
@@ -578,21 +577,21 @@ public:
 
     bool IsInBitSize(uint8 size, uint8 nLowerZeroBits) const
     {
-        return maplebe::IsBitSizeImmediate(static_cast<uint64>(value), size, nLowerZeroBits);
+        return IsBitSizeImmediate(static_cast<uint64>(value), size, nLowerZeroBits);
     }
 
     bool IsBitmaskImmediate() const
     {
         DEBUG_ASSERT(!IsZero(), " 0 is reserved for bitmask immediate");
         DEBUG_ASSERT(!IsAllOnes(), " -1 is reserved for bitmask immediate");
-        return maplebe::IsBitmaskImmediate(static_cast<uint64>(value), static_cast<uint32>(size));
+        return maplebe::aarch64::IsBitmaskImmediate(static_cast<uint64>(value), static_cast<uint32>(size));
     }
 
     bool IsBitmaskImmediate(uint32 destSize) const
     {
         DEBUG_ASSERT(!IsZero(), " 0 is reserved for bitmask immediate");
         DEBUG_ASSERT(!IsAllOnes(), " -1 is reserved for bitmask immediate");
-        return maplebe::IsBitmaskImmediate(static_cast<uint64>(value), static_cast<uint32>(destSize));
+        return maplebe::aarch64::IsBitmaskImmediate(static_cast<uint64>(value), static_cast<uint32>(destSize));
     }
 
     bool IsSingleInstructionMovable() const
@@ -1772,6 +1771,11 @@ public:
         return extendOp;
     }
 
+    uint32 GetValue() const
+    {
+        return shiftAmount;
+    }
+
     bool Less(const Operand &right) const override;
 
     void Dump() const override
@@ -1840,6 +1844,11 @@ public:
     ShiftOp GetShiftOp() const
     {
         return shiftOp;
+    }
+
+    uint32 GetValue() const
+    {
+        return GetShiftAmount();
     }
 
     void Dump() const override

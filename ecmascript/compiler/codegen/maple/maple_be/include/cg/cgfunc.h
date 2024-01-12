@@ -608,6 +608,9 @@ public:
     }
 
     MIRSymbol *GetRetRefSymbol(BaseNode &expr);
+
+    void VerifyAllInsn();
+
     void GenerateCfiPrologEpilog();
 
     void PatchLongBranch();
@@ -1715,6 +1718,8 @@ MAPLE_FUNC_PHASE_DECLARE_END
 MAPLE_FUNC_PHASE_DECLARE_BEGIN(CgHandleFunction, maplebe::CGFunc)
 MAPLE_FUNC_PHASE_DECLARE_END
 MAPLE_FUNC_PHASE_DECLARE_BEGIN(CgFixCFLocOsft, maplebe::CGFunc)
+MAPLE_FUNC_PHASE_DECLARE_END
+MAPLE_FUNC_PHASE_DECLARE_BEGIN(CgVerify, maplebe::CGFunc)
 MAPLE_FUNC_PHASE_DECLARE_END
 MAPLE_FUNC_PHASE_DECLARE_BEGIN(CgGenCfi, maplebe::CGFunc)
 MAPLE_FUNC_PHASE_DECLARE_END

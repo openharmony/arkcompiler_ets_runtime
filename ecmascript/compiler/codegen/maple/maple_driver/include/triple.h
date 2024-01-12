@@ -28,7 +28,7 @@ namespace maple {
 class Triple {
 public:
     /* Currently, only aarch64 is supported */
-    enum ArchType { UnknownArch, aarch64, aarch64_be, LastArchType };
+    enum ArchType { UnknownArch, aarch64, aarch64_be, X64, LastArchType };
 
     /* Currently, only ILP32 and LP64 are supported */
     enum EnvironmentType { UnknownEnvironment, GNU, GNUILP32, LastEnvironmentType };
@@ -45,6 +45,11 @@ public:
     bool IsBigEndian() const
     {
         return (GetArch() == ArchType::aarch64_be);
+    }
+
+    bool IsAarch64BeOrLe() const
+    {
+        return (GetArch() == ArchType::aarch64_be || GetArch() == ArchType::aarch64);
     }
 
     std::string Str() const;

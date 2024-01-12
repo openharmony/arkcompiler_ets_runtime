@@ -14,13 +14,15 @@
  */
 
 #include "aarch64_cg.h"
+#include <cinttypes>
+#include "aarch64_mop_split.h"
+#include "aarch64_mop_valid.h"
 #include "mir_builder.h"
 #include "becommon.h"
 #include "label_creation.h"
 #include "alignment.h"
 
 namespace maplebe {
-#include "immvalid.def"
 #define DEFINE_MOP(...) {__VA_ARGS__},
 const InsnDesc AArch64CG::kMd[kMopLast] = {
 #include "abstract_mmir.def"

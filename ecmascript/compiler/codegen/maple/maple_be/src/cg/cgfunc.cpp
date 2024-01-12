@@ -2430,6 +2430,23 @@ void CGFunc::DumpCFGToDot(const std::string &fileNamePrefix)
     file << "}" << std::endl;
 }
 
+// Cgirverify phase function: all insns will be verified before cgemit.
+void CGFunc::VerifyAllInsn()
+{
+    FOR_ALL_BB(bb, this)
+    {
+        FOR_BB_INSNS(insn, bb)
+        {
+            if (!VERIFY_INSN(insn)) {
+                LogInfo::MapleLogger() << "Illegal insn is:\n";
+                insn->Dump();
+                LogInfo::MapleLogger() << "Function name is:\n" << GetName() << "\n";
+                CHECK_FATAL_FALSE("The problem is illegal insn, info is above.");
+            }
+        }
+    }
+}
+
 void CGFunc::PatchLongBranch()
 {
     for (BB *bb = firstBB->GetNext(); bb != nullptr; bb = bb->GetNext()) {
@@ -2476,4 +2493,14 @@ bool CgFixCFLocOsft::PhaseRun(maplebe::CGFunc &f)
     return false;
 }
 MAPLE_TRANSFORM_PHASE_REGISTER(CgFixCFLocOsft, dbgfixcallframeoffsets)
+
+bool CgVerify::PhaseRun(maplebe::CGFunc &f)
+{
+    f.VerifyAllInsn();
+    if (!f.GetCG()->GetCGOptions().DoEmitCode() || f.GetCG()->GetCGOptions().DoDumpCFG()) {
+        f.DumpCFG();
+    }
+    return false;
+}
+MAPLE_TRANSFORM_PHASE_REGISTER(CgVerify, cgirverify)
 } /* namespace maplebe */

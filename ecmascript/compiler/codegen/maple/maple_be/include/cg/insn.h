@@ -40,6 +40,10 @@ class BB;
 class CG;
 class Emitter;
 class DepNode;
+struct InsnDesc;
+class InsnBuilder;
+class OperandBuilder;
+
 class Insn {
 public:
     /* MCC_DecRefResetPair clear 2 stack position, MCC_ClearLocalStackRef clear 1 stack position */
@@ -173,6 +177,15 @@ public:
     {
         DEBUG_ASSERT(IsCall(), "Insn should be a call.");
         return retSize;
+    }
+
+    // Insn Function: check legitimacy of opnds.
+    bool VerifySelf() const
+    {
+        if (this->IsCfiInsn() || this->IsDbgInsn()) {
+            return true;
+        }
+        return md->Verify(opnds);
     }
 
     void SplitSelf(bool isAfterRegAlloc, InsnBuilder *insnBuilder, OperandBuilder *opndBuilder)

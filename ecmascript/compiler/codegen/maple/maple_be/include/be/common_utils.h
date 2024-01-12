@@ -42,6 +42,7 @@ constexpr uint32 k6BitSize = 6;
 constexpr uint32 k7BitSize = 7;
 constexpr uint32 k8BitSize = 8;
 constexpr uint32 k12BitSize = 12;
+constexpr uint32 k15BitSize = 15;
 constexpr uint32 k16BitSize = 16;
 constexpr uint32 k24BitSize = 24;
 constexpr uint32 k32BitSize = 32;
@@ -81,6 +82,7 @@ constexpr int32 kNegative256BitSize = -256;
 constexpr int32 kNegative512BitSize = -512;
 constexpr int32 kNegative1024BitSize = -1024;
 
+constexpr uint32 k0ByteSize = 0;
 constexpr uint32 k1ByteSize = 1;
 constexpr uint32 k2ByteSize = 2;
 constexpr uint32 k3ByteSize = 3;

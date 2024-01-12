@@ -826,6 +826,9 @@ bool AArch64Ebo::SimplifyBothConst(BB &bb, Insn &insn, const ImmOperand &immOper
     } else {
         MOperator newmOp = opndSize == k64BitSize ? MOP_xmovri64 : MOP_wmovri32;
         Insn &newInsn = cgFunc->GetInsnBuilder()->BuildInsn(newmOp, *res, *immOperand);
+        if (!VERIFY_INSN(&newInsn)) {  // insn needs to be split, so we do not implement the opt.
+            return false;
+        }
         bb.ReplaceInsn(insn, newInsn);
     }
     return true;

@@ -68,9 +68,15 @@ public:
 
     /* create an operand in cgfunc when no mempool is supplied */
     ImmOperand &CreateImm(uint32 size, int64 value, MemPool *mp = nullptr);
+    ImmOperand &CreateImm(uint32 size, int64 value, bool isSigned, MemPool *mp = nullptr);
     ImmOperand &CreateImm(const MIRSymbol &symbol, int64 offset, int32 relocs, MemPool *mp = nullptr);
+    OfstOperand &CreateOfst(int64 offset, uint32 size, MemPool *mp = nullptr);
     MemOperand &CreateMem(uint32 size, MemPool *mp = nullptr);
-    MemOperand &CreateMem(RegOperand &baseOpnd, int64 offset, uint32 size);
+    MemOperand &CreateMem(RegOperand &baseOpnd, int64 offset, uint32 size, MemPool *mp = nullptr);
+    MemOperand &CreateMem(uint32 size, RegOperand &baseOpnd, ImmOperand &ofstOperand, MemPool *mp = nullptr);
+    MemOperand &CreateMem(uint32 size, RegOperand &baseOpnd, ImmOperand &ofstOperand, const MIRSymbol &symbol,
+                          MemPool *mp = nullptr);
+    BitShiftOperand &CreateBitShift(BitShiftOperand::ShiftOp op, uint32 amount, uint32 bitLen, MemPool *mp = nullptr);
     RegOperand &CreateVReg(uint32 size, RegType type, MemPool *mp = nullptr);
     RegOperand &CreateVReg(regno_t vRegNO, uint32 size, RegType type, MemPool *mp = nullptr);
     RegOperand &CreatePReg(regno_t pRegNO, uint32 size, RegType type, MemPool *mp = nullptr);
