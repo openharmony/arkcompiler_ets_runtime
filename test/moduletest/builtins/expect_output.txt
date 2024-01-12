@@ -133,7 +133,3 @@ builtins object end
 builtins object add property begin
 1106
 builtins object add property end
-builtins reflect start
-false
-true
-builtins reflect end
