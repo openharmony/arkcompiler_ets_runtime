@@ -31,6 +31,7 @@ namespace panda::ecmascript {
     V(UpdateSendableAttributes, "Cannot update sendable object's attributes")                \
     V(SetProtoWithSendable, "Cannot set proto with sendable object")                         \
     V(ClassNotDerivedFromShared, "Class not derived from a sendable object")                 \
+    V(NotSendableSubClass, "The subclass of sendable class must be a sendable class")        \
     V(FunctionCallNotConstructor, "class constructor cannot call")                           \
     V(SetPropertyWhenNotExtensible, "Cannot add property in prevent extensions")             \
     V(GetPropertyOutOfBounds, "Get Property index out-of-bounds")                            \
