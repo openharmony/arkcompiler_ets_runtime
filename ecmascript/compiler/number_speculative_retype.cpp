@@ -155,6 +155,7 @@ GateRef NumberSpeculativeRetype::VisitGate(GateRef gate)
         case OpCode::LD_LOCAL_MODULE_VAR:
         case OpCode::STORE_MODULE_VAR:
         case OpCode::STRING_FROM_SINGLE_CHAR_CODE:
+        case OpCode::ORDINARY_HAS_INSTANCE:
             return VisitOthers(gate);
         default:
             return Circuit::NullGate();
