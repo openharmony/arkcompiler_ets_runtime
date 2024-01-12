@@ -575,6 +575,16 @@ public:
     {
         isEnableJit_ = state;
     }
+
+    bool isOverLimit() const
+    {
+        return overLimit_;
+    }
+
+    void SetOverLimit(bool state)
+    {
+        overLimit_ = state;
+    }
 protected:
 
     void PrintJSErrorInfo(const JSHandle<JSTaggedValue> &exceptionInfo) const;
@@ -681,6 +691,7 @@ private:
     Mutex mutex_;
     Jit *jit_ {nullptr};
     bool isEnableJit_ {false};
+    bool overLimit_ {false};
 };
 }  // namespace ecmascript
 }  // namespace panda
