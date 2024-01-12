@@ -99,15 +99,25 @@ OperationResult ModuleNamespace::GetProperty(JSThread *thread, const JSHandle<JS
         JSTaggedValue targetModule = resolvedBind->GetModule();
         // 9. Assert: targetModule is not undefined.
         ASSERT(!targetModule.IsUndefined());
-        result = SourceTextModule::Cast(targetModule.GetTaggedObject())->
-                                        GetModuleValue(thread, resolvedBind->GetBindingName(), true);
+        if (UNLIKELY(SourceTextModule::IsNativeModule(mm->GetTypes()))) {
+            result = SourceTextModule::Cast(mm.GetTaggedValue())->
+                                            GetNativeModuleValue(thread, resolvedBind);
+        } else {
+            result = SourceTextModule::Cast(targetModule.GetTaggedObject())->
+                                            GetModuleValue(thread, resolvedBind->GetBindingName(), true);
+        }
     } else {
         JSHandle<ResolvedIndexBinding> resolvedBind = JSHandle<ResolvedIndexBinding>::Cast(binding);
         JSTaggedValue targetModule = resolvedBind->GetModule();
         // 9. Assert: targetModule is not undefined.
         ASSERT(!targetModule.IsUndefined());
-        result = SourceTextModule::Cast(targetModule.GetTaggedObject())->
-                                        GetModuleValue(thread, resolvedBind->GetIndex(), true);
+        if (UNLIKELY(SourceTextModule::IsNativeModule(mm->GetTypes()))) {
+            result = SourceTextModule::Cast(mm.GetTaggedValue())->
+                                            GetNativeModuleValue(thread, resolvedBind);
+        } else {
+            result = SourceTextModule::Cast(targetModule.GetTaggedObject())->
+                                            GetModuleValue(thread, resolvedBind->GetIndex(), true);
+        }
     }
     return OperationResult(thread, result, PropertyMetaData(true));
 }
