@@ -44,13 +44,13 @@ public:
 
     bool IsEnable(const std::string &candidate)
     {
-        return passBy_ || whiteList_.find(candidate) != whiteList_.end();
+        return passBy_ || whiteList_.find(candidate) == whiteList_.end();
     }
 
     bool IsEnable(const std::string &bundleName, const std::string &moduleName)
     {
-        if (IsEnable(bundleName)) {
-            return true;
+        if (!IsEnable(bundleName)) {
+            return false;
         }
         return IsEnable(bundleName + ":" + moduleName);
     }
@@ -83,6 +83,7 @@ private:
         if (!panda::ecmascript::FileExist(whiteListName.c_str())) {
             LOG_ECMA(INFO) << "bundle white list not exist and will pass by all. file: " << whiteListName;
             passBy_ = true;
+            return;
         }
 
         std::ifstream inputFile(whiteListName);
