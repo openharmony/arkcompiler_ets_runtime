@@ -1057,6 +1057,9 @@ DEF_RUNTIME_STUBS(LoadICByValue)
     JSHandle<JSTaggedValue> key = GetHArg<JSTaggedValue>(argv, argc, 2);  // 2: means the second parameter
     JSTaggedValue slotId = GetArg(argv, argc, 3);  // 3: means the third parameter
 
+    JSTaggedValue::RequireObjectCoercible(thread, receiver, "Cannot load property of null or undefined");
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception().GetRawData());
+
     if (profileTypeInfo->IsUndefined()) {
         return RuntimeLdObjByValue(thread, receiver, key, false, JSTaggedValue::Undefined()).GetRawData();
     }

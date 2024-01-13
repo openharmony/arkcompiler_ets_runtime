@@ -1096,7 +1096,7 @@ GateRef BuiltinsObjectStubBuilder::GetAllEnumKeys(GateRef glue, GateRef obj)
                 LayoutInfoGetAllEnumKeys(num, Int32(EnumCache::ENUM_CACHE_HEADER_SIZE), keyArray, obj, layout);
                 SetValueToTaggedArray(VariableType::JS_ANY(), glue, keyArray,
                     Int32(EnumCache::ENUM_CACHE_KIND_OFFSET),
-                    Int32(static_cast<int32_t>(EnumCacheKind::ONLY_OWN_KEYS)));
+                    IntToTaggedInt(Int32(static_cast<int32_t>(EnumCacheKind::ONLY_OWN_KEYS))));
                 SetEnumCacheToHClass(VariableType::JS_ANY(), glue, hclass, keyArray);
                 result = CopyFromEnumCache(glue, keyArray);
                 Jump(&exit);
