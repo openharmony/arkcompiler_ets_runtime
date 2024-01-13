@@ -372,7 +372,8 @@ public:
                     // literal fetching from AOT ArrayInfos
                     JSMutableHandle<TaggedArray> literal(thread, JSTaggedValue::Undefined());
                     ElementsKind dataKind = ElementsKind::NONE;
-                    if (!constpoolHandle->TryGetAOTArrayLiteral(thread, needSetAotFlag, entryIndexes, literal)) {
+                    if (!constpoolHandle->TryGetAOTArrayLiteral(thread, needSetAotFlag,
+                                                                entryIndexes, literal, &dataKind)) {
                         literal.Update(LiteralDataExtractor::GetDatasIgnoreType(thread, jsPandaFile, id,
                                                                                 constpoolHandle, entry,
                                                                                 needSetAotFlag, entryIndexes,
@@ -408,7 +409,7 @@ public:
     }
 
     bool TryGetAOTArrayLiteral(JSThread *thread, bool loadAOT, JSHandle<AOTLiteralInfo> entryIndexes,
-                               JSMutableHandle<TaggedArray> literal)
+                               JSMutableHandle<TaggedArray> literal, ElementsKind *dataKind)
     {
         if (loadAOT) {
             int elementIndex = entryIndexes->GetElementIndex();
@@ -416,6 +417,7 @@ public:
                 JSTaggedValue arrayInfos = GetAotArrayInfo();
                 JSHandle<TaggedArray> aotArrayInfos(thread, arrayInfos);
                 literal.Update(aotArrayInfos->Get(elementIndex));
+                *dataKind = ElementsKind::HOLE_TAGGED;
                 return true;
             }
         }
