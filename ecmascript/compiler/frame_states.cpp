@@ -848,9 +848,11 @@ public:
             loopInfo.loopAssignment->Union(liveout->defRegisters_);
             loopInfo.numLoopBacks = 1;
             loopInfo.loopBodys->SetBit(backId);
-        } else if (!loopInfo.loopBodys->TestBit(backId)) {
+        } else {
+            if (!loopInfo.loopBodys->TestBit(backId)) {
+                loopInfo.loopBodys->SetBit(backId);
+            }
             loopInfo.numLoopBacks++;
-            loopInfo.loopBodys->SetBit(backId);
         }
     }
 
