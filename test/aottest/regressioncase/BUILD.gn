@@ -11,5 +11,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-true
-true
+import("//arkcompiler/ets_runtime/test/test_helper.gni")
+
+host_aot_js_test_action("regressioncase") {
+  deps = []
+  is_enable_pgo = true
+}

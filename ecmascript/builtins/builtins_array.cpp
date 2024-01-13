@@ -431,6 +431,9 @@ JSTaggedValue BuiltinsArray::Concat(EcmaRuntimeCallInfo *argv)
     // 2. Let A be ArraySpeciesCreate(O, 0).
     uint32_t arrayLen = 0;
     JSTaggedValue newArray = JSArray::ArraySpeciesCreate(thread, thisObjHandle, JSTaggedNumber(arrayLen));
+    if (newArray.IsNull()) {
+        THROW_TYPE_ERROR_AND_RETURN(thread, "array not return null.", JSTaggedValue::Exception());
+    }
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSHandle<JSObject> newArrayHandle(thread, newArray);
 

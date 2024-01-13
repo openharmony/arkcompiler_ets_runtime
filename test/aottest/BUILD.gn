@@ -30,6 +30,7 @@ group("ark_aot_js_test") {
     "equal",
     "js_string_equal",
     "js_string_add",
+    "regressioncase",
   ]
 
   deps = []

@@ -19,6 +19,7 @@ for (var i = 0; i < 10000; i++) {
     a = a + a;
 }
 
+// case 1
 // test toString in holder.
 function t() {}
 var I = t.prototype
@@ -26,3 +27,22 @@ I.toInt = function() {}
 I.toNumber = function() {}
 I.toString = function() {}
 print(Object.getOwnPropertyDescriptor(I, 'toString').enumerable)
+
+const o6 = {
+  ..."function",
+}
+print(Object.getOwnPropertyDescriptor(o6, 0).configurable)
+
+try {
+  const v2 = ("string").match(ArrayBuffer)
+  class C4 extends Array {
+    constructor(a6, a7) {
+      super()
+      try {
+        this.concat(ArrayBuffer, v2, ArrayBuffer);
+        return v2
+      } catch (e) {}
+    }
+  }
+  new C4(C4, C4);
+} catch(e) {}

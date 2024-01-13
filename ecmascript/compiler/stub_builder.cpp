@@ -901,12 +901,16 @@ GateRef StubBuilder::AddPropertyByName(GateRef glue, GateRef receiver, GateRef k
         Jump(&afterInPropsCon);
         Bind(&hasUnusedInProps);
         {
-            SetPropertyInlinedProps(glue, receiver, hclass, value, numberOfProps);
             attr = SetOffsetFieldInPropAttr(*attr, numberOfProps);
             attr = SetIsInlinePropsFieldInPropAttr(*attr, Int32(1)); // 1: set inInlineProps true
             attr = SetTaggedRepInPropAttr(*attr);
             attr = ProfilerStubBuilder(env).UpdateTrackTypeInPropAttr(*attr, value, callback);
             JSHClassAddProperty(glue, receiver, key, *attr);
+            GateRef newHclass = LoadHClass(receiver);
+            GateRef newLayoutInfo = GetLayoutFromHClass(newHclass);
+            GateRef offset = GetInlinedPropOffsetFromHClass(hclass, numberOfProps);
+            attr = GetInt32OfTInt(GetPropAttrFromLayoutInfo(newLayoutInfo, numberOfProps));
+            SetValueWithAttr(glue, receiver, offset, key, value, *attr);
             result = Undefined();
             Jump(&exit);
         }

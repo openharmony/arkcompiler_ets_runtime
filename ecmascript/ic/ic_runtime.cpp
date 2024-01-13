@@ -178,6 +178,9 @@ void ICRuntime::TraceIC([[maybe_unused]] JSHandle<JSTaggedValue> receiver,
 
 JSTaggedValue LoadICRuntime::LoadValueMiss(JSHandle<JSTaggedValue> receiver, JSHandle<JSTaggedValue> key)
 {
+    JSTaggedValue::RequireObjectCoercible(thread_, receiver, "Cannot load property of null or undefined");
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
+
     if ((!receiver->IsJSObject() || receiver->HasOrdinaryGet()) && !receiver->IsString()) {
         icAccessor_.SetAsMega();
         JSHandle<JSTaggedValue> propKey = JSTaggedValue::ToPropertyKey(thread_, key);
