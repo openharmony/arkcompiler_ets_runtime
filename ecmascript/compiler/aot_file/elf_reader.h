@@ -21,6 +21,8 @@
 #include <string>
 #include "ecmascript/compiler/aot_file/aot_file_manager.h"
 #include "ecmascript/compiler/binary_section.h"
+#include "ecmascript/compiler/aot_file/elf_checker.h"
+
 namespace panda::ecmascript {
 
 class ModuleSectionDes;
