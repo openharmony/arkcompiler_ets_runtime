@@ -2093,7 +2093,7 @@ inline GateRef StubBuilder::IsJSSharedType(GateRef jsType)
 inline GateRef StubBuilder::IsSpecialContainer(GateRef jsType)
 {
     // arraylist and vector has fast pass now
-    return BoolAnd(
+    return BoolOr(
         Int32Equal(jsType, Int32(static_cast<int32_t>(JSType::JS_API_ARRAY_LIST))),
         Int32Equal(jsType, Int32(static_cast<int32_t>(JSType::JS_API_VECTOR))));
 }
