@@ -156,6 +156,7 @@ void ValueSerializer::SerializeObjectImpl(TaggedObject *object, bool isWeak)
     }
     bool arrayBufferDeferDetach = false;
     JSTaggedValue trackInfo;
+    JSTaggedType hashfield = JSTaggedValue::VALUE_ZERO;
     JSType type = object->GetClass()->GetObjectType();
     // serialize prologue
     switch (type) {
@@ -187,6 +188,10 @@ void ValueSerializer::SerializeObjectImpl(TaggedObject *object, bool isWeak)
             }
             break;
         }
+        case JSType::JS_OBJECT:
+            hashfield = Barriers::GetValue<JSTaggedType>(object, JSObject::HASH_OFFSET);
+            Barriers::SetPrimitive<JSTaggedType>(object, JSObject::HASH_OFFSET, JSTaggedValue::VALUE_ZERO);
+            break;
         default:
             break;
     }
@@ -198,6 +203,9 @@ void ValueSerializer::SerializeObjectImpl(TaggedObject *object, bool isWeak)
     if (type == JSType::JS_ARRAY) {
         JSArray *array = reinterpret_cast<JSArray *>(object);
         array->SetTrackInfo(thread_, trackInfo);
+    }
+    if (type == JSType::JS_OBJECT) {
+        Barriers::SetPrimitive<JSTaggedType>(object, JSObject::HASH_OFFSET, hashfield);
     }
     if (cloneSharedObject) {
         serializeSharedEvent_--;
