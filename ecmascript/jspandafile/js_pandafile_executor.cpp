@@ -32,7 +32,7 @@
 
 namespace panda::ecmascript {
 using PathHelper = base::PathHelper;
-Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromFile(JSThread *thread, const CString &filename,
+Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromAbcFile(JSThread *thread, const CString &filename,
     std::string_view entryPoint, bool needUpdate, bool excuteFromJob)
 {
     LOG_ECMA(DEBUG) << "JSPandaFileExecutor::ExecuteFromFile filename " << filename;
@@ -70,7 +70,6 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromFile(JSThread *thr
         CString msg = "Load file with filename '" + name + "' failed, recordName '" + entry + "'";
         THROW_REFERENCE_ERROR_AND_RETURN(thread, msg.c_str(), Unexpected(false));
     }
-    BindPandaFilesForAot(vm, jsPandaFile.get());
 
     // realEntry is used to record the original record, which is easy to throw when there are exceptions
     const CString realEntry = entry;
@@ -107,9 +106,11 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromFile(JSThread *thr
         }
         JSHandle<SourceTextModule> module = JSHandle<SourceTextModule>::Cast(moduleRecord);
         module->SetStatus(ModuleStatus::INSTANTIATED);
+        BindPandaFilesForAot(vm, jsPandaFile.get());
         SourceTextModule::Evaluate(thread, module, nullptr, 0, excuteFromJob);
         return JSTaggedValue::Undefined();
     }
+    BindPandaFilesForAot(vm, jsPandaFile.get());
     return JSPandaFileExecutor::Execute(thread, jsPandaFile.get(), entry.c_str(), excuteFromJob);
 }
 
