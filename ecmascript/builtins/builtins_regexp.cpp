@@ -1627,6 +1627,7 @@ JSTaggedValue BuiltinsRegExp::RegExpSplitFast(JSThread *thread, const JSHandle<J
                     return JSTaggedValue(splitArray.GetTaggedValue().GetTaggedObject());
                 }
                 arrLen++;
+                captureIndex++;
             }
             lastMatchEnd = matchEndIndex;
             nextMatchFrom = matchEndIndex;
