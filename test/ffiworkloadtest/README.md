@@ -47,4 +47,4 @@ python3、unzip、openpyxl、hdc >=1.3.0
 
 ## workload 用例位置
 
-  [ffi_workload.cpp](https://gitee.com/openharmony/arkcompiler_ets_runtime/arkcompiler/ecmascript/napi/test/ffi_workload.cpp)
+  [ffi_workload.cpp位置](https://gitee.com/openharmony/arkcompiler_ets_runtime/blob/%6d%61%73%74%65%72/ecmascript/napi/test/ffi_workload.cpp)
