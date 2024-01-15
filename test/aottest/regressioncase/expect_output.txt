@@ -14,3 +14,13 @@
 error
 true
 0.1
+-Infinity
+-Infinity
+-Infinity
+-Infinity
+-Infinity
+-Infinity
+-Infinity
+-Infinity
+-0
+2

@@ -5729,6 +5729,8 @@ GateRef StubBuilder::FastMod(GateRef glue, GateRef left, GateRef right, ProfileO
         Label leftIsNumberAndRightIsNumber(env);
         Label leftIsDoubleAndRightIsDouble(env);
         DEFVARIABLE(curType, VariableType::INT32(), Int32(PGOSampleType::None()));
+        // less than 0 result should be double
+        curType = Int32(PGOSampleType::DoubleType());
         Branch(TaggedIsNumber(left), &leftIsNumber, &leftNotNumberOrRightNotNumber);
         Bind(&leftIsNumber);
         {
@@ -5741,13 +5743,15 @@ GateRef StubBuilder::FastMod(GateRef glue, GateRef left, GateRef right, ProfileO
                 Branch(TaggedIsInt(left), &leftIsInt1, &leftNotInt1);
                 Bind(&leftIsInt1);
                 {
-                    curType = Int32(PGOSampleType::IntType());
+                    GateRef type = Int32(PGOSampleType::IntType());
+                    COMBINE_TYPE_CALL_BACK(curType, type);
                     doubleLeft = ChangeInt32ToFloat64(GetInt32OfTInt(left));
                     Jump(&leftIsNumberAndRightIsNumber);
                 }
                 Bind(&leftNotInt1);
                 {
-                    curType = Int32(PGOSampleType::DoubleType());
+                    GateRef type = Int32(PGOSampleType::DoubleType());
+                    COMBINE_TYPE_CALL_BACK(curType, type);
                     doubleLeft = GetDoubleOfTDouble(left);
                     Jump(&leftIsNumberAndRightIsNumber);
                 }

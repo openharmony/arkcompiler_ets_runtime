@@ -187,6 +187,11 @@ public:
         return min_ <= 0 && max_ >= 0;
     }
 
+    bool MaybeNegative() const
+    {
+        return min_ < 0;
+    }
+
     RangeInfo operator* (const RangeInfo &rhs) const
     {
         ASSERT(min_ <= max_ && rhs.min_ <= rhs.max_);

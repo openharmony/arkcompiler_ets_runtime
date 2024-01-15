@@ -90,6 +90,7 @@ enum class TypedCallTargetCheckOp : uint8_t;
     V(NotJSFastCallTarget3,            NOTJSFASTCALLTGT3)             \
     V(LexVarIsHole1,                   LEXVARISHOLE1)                 \
     V(ModZero1,                        MODZERO1)                      \
+    V(RemainderIsNegativeZero,         REMAINDERISNEGATIVEZERO)       \
     V(Int32Overflow1,                  INT32OVERFLOW1)                \
     V(NotString1,                      NOTSTRING1)                    \
     V(InconsistentType1,               INCONSISTENTTYPE1)             \

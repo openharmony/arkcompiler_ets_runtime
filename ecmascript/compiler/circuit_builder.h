@@ -473,6 +473,7 @@ public:
     inline GateRef TypedCallBuiltin(GateRef hirGate, const std::vector<GateRef> &args, BuiltinsStubCSigns::ID id);
     GateRef TypeConvert(MachineType type, GateType typeFrom, GateType typeTo, const std::vector<GateRef>& inList);
     GateRef Int32CheckRightIsZero(GateRef right);
+    GateRef RemainderIsNegativeZero(GateRef left, GateRef right);
     GateRef Float64CheckRightIsZero(GateRef right);
     GateRef ValueCheckNegOverflow(GateRef value);
     GateRef OverflowCheck(GateRef value);
