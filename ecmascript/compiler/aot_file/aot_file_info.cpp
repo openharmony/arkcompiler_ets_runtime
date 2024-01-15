@@ -40,7 +40,7 @@ bool AOTFileInfo::CalCallSiteInfo(uintptr_t retAddr,
     };
     size_t len = des.size();
     for (size_t i = 0; i < len; i++) {
-        auto d = des[i];
+        auto &d = des[i];
         uint64_t addr = d.GetSecAddr(ElfSecName::TEXT);
         uint32_t size = d.GetSecSize(ElfSecName::TEXT);
         if (retAddr < addr || retAddr >= addr + size) {
