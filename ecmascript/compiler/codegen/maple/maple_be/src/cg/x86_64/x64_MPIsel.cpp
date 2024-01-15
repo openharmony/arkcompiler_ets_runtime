@@ -870,7 +870,6 @@ void X64MPIsel::SelectCVaStart(const IntrinsiccallNode &intrnNode)
 void X64MPIsel::SelectIntrinsicCall(IntrinsiccallNode &intrinsiccallNode)
 {
     MIRIntrinsicID intrinsic = intrinsiccallNode.GetIntrinsic();
-
     if (intrinsic == INTRN_C_va_start) {
         SelectCVaStart(intrinsiccallNode);
         return;

@@ -2936,7 +2936,6 @@ void AArch64CGPeepHole::DoNormalOptimize(BB &bb, Insn &insn)
         case MOP_wstrb:
         case MOP_wldrb: {
             // only strb ldrb can do this pattern, other patterns still need to be done, so there is no break here.
-            // manager->NormalPatternOpt<LdrStrRevPattern>(!cgFunc->IsAfterRegAlloc());
             break;
         }
         case MOP_wstrh:

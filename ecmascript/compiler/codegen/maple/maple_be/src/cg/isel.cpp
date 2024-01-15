@@ -1614,7 +1614,7 @@ Operand *MPISel::SelectBnot(const UnaryNode &node, Operand &opnd0, const BaseNod
 
 void MPISel::SelectBnot(Operand &resOpnd, Operand &opnd0, PrimType primType)
 {
-    const static auto fastBnotMappingFunc = DEF_MOPERATOR_MAPPING_FUNC(not );
+    const static auto fastBnotMappingFunc = DEF_MOPERATOR_MAPPING_FUNC(not);
     MOperator mOp = fastBnotMappingFunc(GetPrimTypeBitSize(primType));
     Insn &insn = cgFunc->GetInsnBuilder()->BuildInsn(mOp, InsnDesc::GetAbstractId(mOp));
     (void)insn.AddOpndChain(resOpnd).AddOpndChain(opnd0);

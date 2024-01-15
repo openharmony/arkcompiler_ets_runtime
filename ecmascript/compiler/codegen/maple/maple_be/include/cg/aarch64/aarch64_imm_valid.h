@@ -1,16 +1,16 @@
 /*
- * Copyright (c) [2023] Huawei Technologies Co.,Ltd.All rights reserved.
+ * Copyright (c) 2023 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * OpenArkCompiler is licensed under Mulan PSL v2.
- * You can use this software according to the terms and conditions of the Mulan PSL v2.
- * You may obtain a copy of Mulan PSL v2 at:
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- *     http://license.coscl.org.cn/MulanPSL2
- *
- * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
- * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
- * FIT FOR A PARTICULAR PURPOSE.
- * See the Mulan PSL v2 for more details.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 #ifndef MAPLEBE_INCLUDE_CG_AARCH64_AARCH64_IMM_VALID_H
 #define MAPLEBE_INCLUDE_CG_AARCH64_AARCH64_IMM_VALID_H
@@ -69,16 +69,18 @@ inline bool IsSingleInstructionMovable32(int64 value)
         (static_cast<uint64>(value) & 0xffffffff00000000ULL) != 0xffffffff00000000ULL) {
         return false;
     }
-    return (IsMoveWidableImmediateCopy(static_cast<uint64>(value), 32) ||
-            IsMoveWidableImmediateCopy(~static_cast<uint64>(value), 32) ||
-            IsBitmaskImmediate(static_cast<uint64>(value), 32));
+    constexpr uint32 bitLen = 32;
+    return (IsMoveWidableImmediateCopy(static_cast<uint64>(value), bitLen) ||
+            IsMoveWidableImmediateCopy(~static_cast<uint64>(value), bitLen) ||
+            IsBitmaskImmediate(static_cast<uint64>(value), bitLen));
 }
 
 inline bool IsSingleInstructionMovable64(int64 value)
 {
-    return (IsMoveWidableImmediateCopy(static_cast<uint64>(value), 64) ||
-            IsMoveWidableImmediateCopy(~static_cast<uint64>(value), 64) ||
-            IsBitmaskImmediate(static_cast<uint64>(value), 64));
+    constexpr uint32 bitLen = 64;
+    return (IsMoveWidableImmediateCopy(static_cast<uint64>(value), bitLen) ||
+            IsMoveWidableImmediateCopy(~static_cast<uint64>(value), bitLen) ||
+            IsBitmaskImmediate(static_cast<uint64>(value), bitLen));
 }
 
 inline bool Imm12BitValid(int64 value)
@@ -177,13 +179,15 @@ inline bool Lsb5BitValid(int64 value)
 // For the 32-bit variant: is the width of the bitfield, in the range 1 to 32-<lsb>
 inline bool Width5BitValid(int64 value, int64 lsb)
 {
-    return (value >= 1) && (value <= 32 - lsb);
+    constexpr int64 offset = 32;
+    return (value >= 1) && (value <= offset - lsb);
 }
 
 // For the 32-bit variant: is the width of the bitfield, in the range 1 to 32, is used for only width verified
 inline bool Width5BitOnlyValid(int64 value)
 {
-    return (value >= 1) && (value <= 32);
+    constexpr int64 offset = 32;
+    return (value >= 1) && (value <= offset);
 }
 
 // For the 64-bit variant: is the bit number of the lsb of the source bitfield, in the range 0 to 63
@@ -196,13 +200,15 @@ inline bool Lsb6BitValid(int64 value)
 // For the 64-bit variant: is the width of the bitfield, in the range 1 to 64-<lsb>
 inline bool Width6BitValid(int64 value, int64 lsb)
 {
-    return (value >= 1) && (value <= 64 - lsb);
+    constexpr int64 offset = 64;
+    return (value >= 1) && (value <= offset - lsb);
 }
 
 // For the 64-bit variant: is the width of the bitfield, in the range 1 to 64, is used for only width verified
 inline bool Width6BitOnlyValid(int64 value)
 {
-    return (value >= 1) && (value <= 64);
+    constexpr int64 offset = 64;
+    return (value >= 1) && (value <= offset);
 }
 
 // Is the left shift amount to be applied after extension in the range 0 to 4, uint32 means value non-negative
@@ -276,8 +282,9 @@ inline bool StrLdr32ImmValid(int64 value)
 
 inline bool StrLdr32PairImmValid(int64 value)
 {
+    constexpr int immValidOffset = 3;
     if ((value <= kMaxSimm32Pair) && (value >= kMinSimm32)) {
-        return (static_cast<uint64>(value) & 3) > 0 ? false : true;
+        return (static_cast<uint64>(value) & immValidOffset) > 0 ? false : true;
     }
     return false;
 }
@@ -289,8 +296,9 @@ inline bool StrLdr64ImmValid(int64 value)
 
 inline bool StrLdr64PairImmValid(int64 value)
 {
+    constexpr int immValidOffset = 7;
     if (value <= kMaxSimm64Pair && (value >= kMinSimm64)) {
-        return (static_cast<uint64>(value) & 7) > 0 ? false : true;
+        return (static_cast<uint64>(value) & immValidOffset) > 0 ? false : true;
     }
     return false;
 }

@@ -112,12 +112,3 @@ void CFIOpndEmitVisitor::Visit(LabelOperand *v)
     }
 }
 } /* namespace cfi */
-
-namespace maplebe {
-bool CgGenCfi::PhaseRun(maplebe::CGFunc &f)
-{
-    f.GenerateCfiPrologEpilog();
-    return true;
-}
-MAPLE_TRANSFORM_PHASE_REGISTER(CgGenCfi, gencfi)
-} /* namespace maplebe */

@@ -547,11 +547,9 @@ public:
     }
     void DumpRegPressure() const
     {
-#ifndef ONLY_C
         if (regPressure) {
             regPressure->DumpRegPressure();
         }
-#endif
     }
     void InitPressure() const
     {

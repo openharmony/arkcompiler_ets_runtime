@@ -177,6 +177,7 @@ public:
     LmbcFormalParamInfo *GetLmbcFormalParamInfo(uint32 offset);
     virtual void LmbcGenSaveSpForAlloca() = 0;
     void RemoveUnreachableBB();
+    Insn &BuildLocInsn(int64 fileNum, int64 lineNum, int64 columnNum);
     void GenerateLoc(StmtNode *stmt, unsigned &lastSrcLoc, unsigned &lastMplLoc);
     int32 GetFreqFromStmt(uint32 stmtId);
     void GenerateInstruction();
@@ -681,7 +682,7 @@ public:
         debugInfo = dbgInfo;
     }
 
-    void AddDIESymbolLocation(const MIRSymbol *sym, SymbolAlloc *loc);
+    void AddDIESymbolLocation(const MIRSymbol *sym, SymbolAlloc *loc, bool isParam);
 
     virtual void DBGFixCallFrameLocationOffsets() {};
 
@@ -1398,9 +1399,9 @@ public:
         return (mirModule.GetSrcLang() != kSrcLangC) || mirModule.IsWithDbgInfo();
     }
 
-    MapleVector<DBGExprLoc *> &GetDbgCallFrameLocations()
+    MapleVector<DBGExprLoc *> &GetDbgCallFrameLocations(bool isParam)
     {
-        return dbgCallFrameLocations;
+        return isParam ? dbgParamCallFrameLocations : dbgLocalCallFrameLocations;
     }
 
     bool HasAsm() const
@@ -1496,6 +1497,15 @@ public:
         return funcEmitInfo;
     }
 
+    void SetExitBBLost(bool val)
+    {
+        exitBBLost = val;
+    }
+    bool GetExitBBLost()
+    {
+        return exitBBLost;
+    }
+
 protected:
     uint32 firstMapleIrVRegNO = 200; /* positioned after physical regs */
     uint32 firstNonPregVRegNO;
@@ -1534,7 +1544,8 @@ protected:
     bool hasTakenLabel = false;
     uint32 frequency = 0;
     DebugInfo *debugInfo = nullptr; /* debugging info */
-    MapleVector<DBGExprLoc *> dbgCallFrameLocations;
+    MapleVector<DBGExprLoc *> dbgParamCallFrameLocations;
+    MapleVector<DBGExprLoc *> dbgLocalCallFrameLocations;
     RegOperand *aggParamReg = nullptr;
     ReachingDefinition *reachingDef = nullptr;
 
@@ -1617,12 +1628,15 @@ protected:
 
     PrimType GetPrimTypeFromSize(uint32 byteSize, PrimType defaultType) const
     {
+        constexpr uint32 oneByte = 1;
+        constexpr uint32 twoByte = 2;
+        constexpr uint32 fourByte = 4;
         switch (byteSize) {
-            case 1:
+            case oneByte:
                 return PTY_i8;
-            case 2:
+            case twoByte:
                 return PTY_i16;
-            case 4:
+            case fourByte:
                 return PTY_i32;
             default:
                 return defaultType;
@@ -1711,6 +1725,9 @@ private:
 
     /* save stack protect kinds which can trigger stack protect */
     uint8 stackProtectInfo = 0;
+
+    // mark exitBB is unreachable
+    bool exitBBLost = false;
 }; /* class CGFunc */
 
 MAPLE_FUNC_PHASE_DECLARE_BEGIN(CgLayoutFrame, maplebe::CGFunc)

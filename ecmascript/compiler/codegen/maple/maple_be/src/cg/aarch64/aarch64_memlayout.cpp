@@ -289,7 +289,7 @@ void AArch64MemLayout::LayoutFormalParams()
             }
         }
         if (cgFunc->GetCG()->GetCGOptions().WithDwarf() && ploc.reg0 == kRinvalid) {
-            cgFunc->AddDIESymbolLocation(sym, symLoc);
+            cgFunc->AddDIESymbolLocation(sym, symLoc, true);
         }
     }
 }
@@ -345,7 +345,7 @@ void AArch64MemLayout::LayoutLocalVariables(std::vector<MIRSymbol *> &tempVar, s
             segLocals.SetSize(segLocals.GetSize() + be.GetTypeSize(tyIdx));
         }
         if (cgFunc->GetCG()->GetCGOptions().WithDwarf()) {
-            cgFunc->AddDIESymbolLocation(sym, symLoc);
+            cgFunc->AddDIESymbolLocation(sym, symLoc, false);
         }
     }
 }
@@ -599,5 +599,33 @@ int32 AArch64MemLayout::GetVRSaveAreaBaseLoc()
                            RoundUp(GetSizeOfVRSaveArea(), kAarch64StackPtrAlignment));
     total -= static_cast<int32>(SizeOfArgsToStackPass()) + cgFunc->GetFunction().GetFrameReseverdSlot();
     return total;
+}
+
+// fp - callee base =
+// RealStackFrameSize - [GR,16] - [VR,16] - [cold,16] - ([callee] - 16(fplr)) - stack protect - stkpass
+// callsave area size includes fp lr, real callee save area size is callee save size - fplr
+// fp lr located on top of args pass area.
+int32 AArch64MemLayout::GetCalleeSaveBaseLoc() const
+{
+    uint32 offset = RealStackFrameSize() - static_cast<AArch64CGFunc *>(cgFunc)->SizeOfCalleeSaved();
+    offset = (offset - SizeOfArgsToStackPass()) + kSizeOfFplr - cgFunc->GetFunction().GetFrameReseverdSlot();
+
+    if (cgFunc->GetMirModule().IsCModule() && cgFunc->GetFunction().GetAttr(FUNCATTR_varargs)) {
+        /* GR/VR save areas are above the callee save area */
+        // According to AAPCS64 document:
+        // __gr_top: set to the address of the byte immediately following the general register argument save area, the
+        // end of the save area being aligned to a 16 byte boundary.
+        // __vr_top: set to the address of the byte immediately following the FP/SIMD register argument save area, the
+        // end of the save area being aligned to a 16 byte boundary.
+        auto saveareasize = RoundUp(GetSizeOfGRSaveArea(), kAarch64StackPtrAlignment) +
+                            RoundUp(GetSizeOfVRSaveArea(), kAarch64StackPtrAlignment);
+        offset = static_cast<uint32>(offset - saveareasize);
+    }
+    offset -= static_cast<uint32>(RoundUp(GetSizeOfSegCold(), k16BitSize));
+
+    if (cgFunc->GetCG()->IsStackProtectorStrong() || cgFunc->GetCG()->IsStackProtectorAll()) {
+        offset -= static_cast<uint32>(kAarch64StackPtrAlignment);
+    }
+    return static_cast<int32>(offset);
 }
 } /* namespace maplebe */

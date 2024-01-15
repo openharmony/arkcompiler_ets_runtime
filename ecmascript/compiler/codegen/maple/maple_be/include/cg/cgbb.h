@@ -403,7 +403,7 @@ public:
     Insn *GetLastMachineInsn()
     {
         FOR_BB_INSNS_REV(insn, this) {
-            if (insn->IsMachineInstruction()) {
+            if (insn->IsMachineInstruction() && !insn->IsPseudo()) {
                 return insn;
             }
         }
@@ -1118,11 +1118,11 @@ struct BBIdCmp {
     }
 };
 
-class Bfs : public AnalysisResult {
+class Bfs {
 public:
     Bfs(CGFunc &cgFunc, MemPool &memPool)
-        : AnalysisResult(&memPool),
-          cgfunc(&cgFunc),
+        : cgfunc(&cgFunc),
+          memPool(&memPool),
           alloc(&memPool),
           cycleSuccs(alloc.Adapter()),
           visitedBBs(alloc.Adapter()),
@@ -1139,8 +1139,9 @@ public:
     void ComputeBlockOrder();
 
     CGFunc *cgfunc;
+    MemPool *memPool;
     MapleAllocator alloc;
-    MapleVector<MapleSet<BBID>> cycleSuccs;   // bb's succs in cycle
+    MapleVector<MapleSet<BBID>> cycleSuccs;  // bb's succs in cycle
     MapleVector<bool> visitedBBs;
     MapleVector<BB *> sortedBBs;
 };

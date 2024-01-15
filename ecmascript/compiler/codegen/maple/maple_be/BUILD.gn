@@ -1,89 +1,86 @@
-#Copyright(c) 2023 Huawei Device Co., Ltd.
-#Licensed under the Apache License, Version 2.0(the "License");
-#you may not use this file except in compliance with the License.
-#You may obtain a copy of the License at
+# Copyright (c) 2023 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
 #
-#http:  // www.apache.org/licenses/LICENSE-2.0
+#     http://www.apache.org/licenses/LICENSE-2.0
 #
-#Unless required by applicable law or agreed to in writing, software
-#distributed under the License is distributed on an "AS IS" BASIS,
-#WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-#See the License for the specific language governing permissions and
-#limitations under the License.
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 import("//arkcompiler/ets_runtime/js_runtime_config.gni")
 
-    include_directories =
-        [
-            "${MAPLEALL_ROOT}/maple_be/include/cg",
-            "${MAPLEALL_ROOT}/maple_be/include/litecg",
-            "${MAPLEALL_ROOT}/maple_be/include/ad",
-            "${MAPLEALL_ROOT}/maple_be/include/ad/target",
-            "${MAPLEALL_ROOT}/maple_be/include/be",
-            "${MAPLEALL_ROOT}/maple_driver/include",
-            "${MAPLEALL_ROOT}/maple_util/include",
-            "${MAPLEALL_ROOT}/maple_ir/include",
-            "${MAPLEALL_ROOT}/maple_me/include",
-            "${MAPLEALL_ROOT}/mpl2mpl/include",
-            "${MAPLEALL_ROOT}/mempool/include",
-            "${MAPLEALL_ROOT}/maple_ipa/include",
-            "${MAPLEALL_ROOT}/maple_ipa/include/old",
-            "${MAPLEALL_ROOT}/maple_phase/include",
-            "${MAPLEALL_THIRD_PARTY_ROOT}/bounds_checking_function/include",
-        ]
+include_directories = [
+  "${MAPLEALL_ROOT}/maple_be/include/cg",
+  "${MAPLEALL_ROOT}/maple_be/include/litecg",
+  "${MAPLEALL_ROOT}/maple_be/include/ad",
+  "${MAPLEALL_ROOT}/maple_be/include/ad/target",
+  "${MAPLEALL_ROOT}/maple_be/include/be",
+  "${MAPLEALL_ROOT}/maple_driver/include",
+  "${MAPLEALL_ROOT}/maple_util/include",
+  "${MAPLEALL_ROOT}/maple_ir/include",
+  "${MAPLEALL_ROOT}/maple_me/include",
+  "${MAPLEALL_ROOT}/mpl2mpl/include",
+  "${MAPLEALL_ROOT}/mempool/include",
+  "${MAPLEALL_ROOT}/maple_ipa/include",
+  "${MAPLEALL_ROOT}/maple_ipa/include/old",
+  "${MAPLEALL_ROOT}/maple_phase/include",
+  "${MAPLEALL_THIRD_PARTY_ROOT}/bounds_checking_function/include",
+]
 
-    deps_libcg =
-        [
-            ":libmplbe",
-            ":libmplad",
-            "${MAPLEALL_ROOT}/mempool:libmempool",
-            "${MAPLEALL_ROOT}/maple_phase:libmplphase",
-            "${MAPLEALL_ROOT}/mpl2mpl:libmpl2mpl",
-            "${MAPLEALL_ROOT}/maple_ir:libmplir",
-            "${MAPLEALL_ROOT}/maple_util:libmplutil",
-            "${MAPLEALL_ROOT}/maple_me:libmplme",
-        ]
+deps_libcg = [
+  ":libmplbe",
+  ":libmplad",
+  "${MAPLEALL_ROOT}/mempool:libmempool",
+  "${MAPLEALL_ROOT}/maple_phase:libmplphase",
+  "${MAPLEALL_ROOT}/mpl2mpl:libmpl2mpl",
+  "${MAPLEALL_ROOT}/maple_ir:libmplir",
+  "${MAPLEALL_ROOT}/maple_util:libmplutil",
+  "${MAPLEALL_ROOT}/maple_me:libmplme",
+]
 
-    deps_libmplbe = [":libcglowerer"]
+deps_libmplbe = [ ":libcglowerer" ]
 
-    if (TARGET == "aarch64")
-{
-    include_directories +=
-        [
-            "${MAPLEALL_ROOT}/maple_be/include/cg/aarch64",
-            "${MAPLEALL_ROOT}/maple_be/include/be/aarch64",
-        ] deps_libcg +=
-        [
-            ":libcgaarch64",
-            ":libcgphases",
-            "${MAPLEALL_ROOT}/maple_driver:libmaple_driver",
-        ]
+if (TARGET == "aarch64") {
+  include_directories += [
+    "${MAPLEALL_ROOT}/maple_be/include/cg/aarch64",
+    "${MAPLEALL_ROOT}/maple_be/include/be/aarch64",
+  ]
+  deps_libcg += [
+    ":libcgaarch64",
+    ":libcgphases",
+    "${MAPLEALL_ROOT}/maple_driver:libmaple_driver",
+  ]
 }
 
 if (TARGET == "x86_64") {
-    include_directories +=
-        [
-            "${MAPLEALL_ROOT}/maple_be/include/cg/x86_64",
-            "${MAPLEALL_ROOT}/maple_be/include/be/x86_64",
-        ] deps_libcg +=
-        [
-            ":libcgx8664",
-            ":libcgx86phases",
-        ]
+  include_directories += [
+    "${MAPLEALL_ROOT}/maple_be/include/cg/x86_64",
+    "${MAPLEALL_ROOT}/maple_be/include/be/x86_64",
+  ]
+  deps_libcg += [
+    ":libcgx8664",
+    ":libcgx86phases",
+  ]
 }
 
 if (TARGET == "riscv64") {
-    include_directories += [
-        "${MAPLEALL_ROOT}/maple_be/include/cg/riscv64",
-        "${MAPLEALL_ROOT}/maple_be/include/be/riscv64",
-    ] deps_libcg += [":libcgriscv64"]
+  include_directories += [
+    "${MAPLEALL_ROOT}/maple_be/include/cg/riscv64",
+    "${MAPLEALL_ROOT}/maple_be/include/be/riscv64",
+  ]
+  deps_libcg += [ ":libcgriscv64" ]
 }
 
 if (TARGET == "ark") {
-    include_directories += [
-        "${MAPLEALL_ROOT}/maple_be/include/cg/ark",
-        "${MAPLEALL_ROOT}/maple_be/include/be/ark",
-    ] deps_libcg += [":libcgark"]
+  include_directories += [
+    "${MAPLEALL_ROOT}/maple_be/include/cg/ark",
+    "${MAPLEALL_ROOT}/maple_be/include/be/ark",
+  ]
+  deps_libcg += [ ":libcgark" ]
 }
 
 src_libmplad = [ "src/ad/mad.cpp" ]
@@ -104,6 +101,7 @@ src_libcgaarch64 = [
   "src/cg/aarch64/aarch64_abi.cpp",
   "src/cg/aarch64/aarch64_call_conv.cpp",
   "src/cg/aarch64/mpl_atomic.cpp",
+  "src/cg/aarch64/aarch64_cfi_generator.cpp",
   "src/cg/aarch64/aarch64_cgfunc.cpp",
   "src/cg/aarch64/aarch64_dependence.cpp",
   "src/cg/aarch64/aarch64_ebo.cpp",
@@ -210,6 +208,7 @@ src_libcgriscv64 = [
 src_libcgark = [ "src/cg/ark/foo.cpp" ]
 
 src_libcgphases = [
+  "src/cg/cfi_generator.cpp",
   "src/cg/cfgo.cpp",
   "src/cg/local_opt.cpp",
   "src/cg/ebo.cpp",
@@ -358,9 +357,13 @@ ohos_source_set("libcgphases") {
   subsystem_name = "arkcompiler"
 }
 
-ohos_static_library("libcg")
-{
-    stack_protector_ret = false configs = ["${MAPLEALL_ROOT}:mapleallcompilecfg"] sources = src_libcg include_dirs =
-        include_directories deps = deps_libcg output_dir = "${root_out_dir}/lib/${HOST_ARCH}" part_name =
-            "ets_runtime" subsystem_name = "arkcompiler"
+ohos_static_library("libcg") {
+  stack_protector_ret = false
+  configs = [ "${MAPLEALL_ROOT}:mapleallcompilecfg" ]
+  sources = src_libcg
+  include_dirs = include_directories
+  deps = deps_libcg
+  output_dir = "${root_out_dir}/lib/${HOST_ARCH}"
+  part_name = "ets_runtime"
+  subsystem_name = "arkcompiler"
 }

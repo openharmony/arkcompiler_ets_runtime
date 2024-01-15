@@ -330,9 +330,24 @@ public:
         isFrameDef = b;
     }
 
+    bool IsStackDef() const
+    {
+        return isStackDef;
+    }
+
     void SetStackDef(bool flag)
     {
         isStackDef = flag;
+    }
+
+    bool IsStackRevert() const
+    {
+        return isStackRevert;
+    }
+
+    void SetStackRevert(bool flag)
+    {
+        isStackRevert = flag;
     }
 
     bool IsAsmDefCondCode() const
@@ -788,7 +803,8 @@ private:
     bool isSpill = false;              /* used as hint for optimization */
     bool isReload = false;             /* used as hint for optimization */
     bool isFrameDef = false;
-    bool isStackDef = false;  // def sp in prolog
+    bool isStackDef = false;     // def sp in prolog
+    bool isStackRevert = false;  // revert sp in epilog
     bool asmDefCondCode = false;
     bool asmModMem = false;
     bool needSplit = false;

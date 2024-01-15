@@ -1626,7 +1626,8 @@ CGFunc::CGFunc(MIRModule &mod, CG &cg, MIRFunction &mirFunc, BECommon &beCommon,
       vregsToPregsMap(std::less<regno_t>(), allocator.Adapter()),
       stackMapInsns(allocator.Adapter()),
       hasVLAOrAlloca(mirFunc.HasVlaOrAlloca()),
-      dbgCallFrameLocations(allocator.Adapter()),
+      dbgParamCallFrameLocations(allocator.Adapter()),
+      dbgLocalCallFrameLocations(allocator.Adapter()),
       cg(&cg),
       mirModule(mod),
       memPool(&memPool),
@@ -1752,6 +1753,16 @@ void CGFunc::RemoveUnreachableBB()
     for (BB *bb = firstBB; bb != nullptr; bb = bb->GetNext()) {
         (void)pattern->Optimize(*bb);
     }
+}
+
+Insn &CGFunc::BuildLocInsn(int64 fileNum, int64 lineNum, int64 columnNum)
+{
+    Operand *o0 = CreateDbgImmOperand(fileNum);
+    Operand *o1 = CreateDbgImmOperand(lineNum);
+    Operand *o2 = CreateDbgImmOperand(columnNum);
+    Insn &loc =
+        GetInsnBuilder()->BuildDbgInsn(mpldbg::OP_DBG_loc).AddOpndChain(*o0).AddOpndChain(*o1).AddOpndChain(*o2);
+    return loc;
 }
 
 void CGFunc::GenerateLoc(StmtNode *stmt, unsigned &lastSrcLoc, unsigned &lastMplLoc)
@@ -2272,7 +2283,7 @@ void CGFunc::HandleFunction()
     }
 }
 
-void CGFunc::AddDIESymbolLocation(const MIRSymbol *sym, SymbolAlloc *loc)
+void CGFunc::AddDIESymbolLocation(const MIRSymbol *sym, SymbolAlloc *loc, bool isParam)
 {
     DEBUG_ASSERT(debugInfo != nullptr, "debugInfo is null!");
     DEBUG_ASSERT(loc->GetMemSegment() != nullptr, "only support those variable that locate at stack now");
@@ -2285,7 +2296,7 @@ void CGFunc::AddDIESymbolLocation(const MIRSymbol *sym, SymbolAlloc *loc)
     CHECK_FATAL(exprloc != nullptr, "exprloc is null in CGFunc::AddDIESymbolLocation");
     exprloc->SetSymLoc(loc);
 
-    GetDbgCallFrameLocations().push_back(exprloc);
+    GetDbgCallFrameLocations(isParam).push_back(exprloc);
 }
 
 void CGFunc::DumpCFG() const

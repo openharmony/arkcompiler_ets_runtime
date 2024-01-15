@@ -202,6 +202,7 @@ public:
     int32 GetRefLocBaseLoc() const;
     int32 GetGRSaveAreaBaseLoc();
     int32 GetVRSaveAreaBaseLoc();
+    int32 GetCalleeSaveBaseLoc() const override;
 
 private:
     MemSegment segRefLocals = MemSegment(kMsRefLocals);

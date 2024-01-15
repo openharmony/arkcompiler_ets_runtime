@@ -1,16 +1,16 @@
 /*
- * Copyright (c) [2023] Huawei Technologies Co.,Ltd.All rights reserved.
+ * Copyright (c) 2023 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * OpenArkCompiler is licensed under Mulan PSL v2.
- * You can use this software according to the terms and conditions of the Mulan PSL v2.
- * You may obtain a copy of Mulan PSL v2 at:
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- *     http://license.coscl.org.cn/MulanPSL2
- *
- * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER
- * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR
- * FIT FOR A PARTICULAR PURPOSE.
- * See the Mulan PSL v2 for more details.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 #ifndef MAPLEBE_INCLUDE_CG_AARCH64_AARCH64_MOP_VALID_H
 #define MAPLEBE_INCLUDE_CG_AARCH64_AARCH64_MOP_VALID_H
@@ -63,9 +63,10 @@ inline bool StrLdr32Valid(Operand *o)
 // Immediate verification: value range -256 ~ 252, multiple of 4.
 inline bool StrLdr32PairValid(Operand *o)
 {
+    constexpr int sImmValidOffset = 3;
     int64 value = AArch64isa::GetMemOpndOffsetValue(o);
     if ((value <= kMaxSimm32Pair) && (value >= kMinSimm32)) {
-        return (static_cast<uint64>(value) & 3) > 0 ? false : true;
+        return (static_cast<uint64>(value) & sImmValidOffset) > 0 ? false : true;
     }
     return false;
 }
@@ -89,9 +90,10 @@ inline bool StrLdr64Valid(Operand *o)
 // Immediate verification: value range -512 ~ 504, multiple of 8.
 inline bool StrLdr64PairValid(Operand *o)
 {
+    constexpr int sImmValidOffset = 7;
     int64 value = AArch64isa::GetMemOpndOffsetValue(o);
     if (value <= kMaxSimm64Pair && (value >= kMinSimm64)) {
-        return (static_cast<uint64>(value) & 7) > 0 ? false : true;
+        return (static_cast<uint64>(value) & sImmValidOffset) > 0 ? false : true;
     }
     return false;
 }

@@ -1202,7 +1202,6 @@ void AArch64CGFunc::SelectAssertNull(UnaryStmtNode &stmt)
     RegOperand &baseReg = LoadIntoRegister(*opnd0, PTY_a64);
     auto &zwr = GetZeroOpnd(k32BitSize);
     auto &mem = CreateMemOpnd(baseReg, 0, k32BitSize);
-    // FIXME  change MOP_wldr  to // MOP_assert_nonnull
     Insn &loadRef = GetInsnBuilder()->BuildInsn(MOP_wldr, zwr, mem);
     loadRef.SetDoNotRemove(true);
     if (GetCG()->GenerateVerboseCG()) {
@@ -2301,18 +2300,22 @@ bool AArch64CGFunc::LmbcSmallAggForRet(const BaseNode &bNode, const Operand *src
                 SelectCopy(*res, pTy, mem, pTy);
             }
         } else {
+            constexpr uint8 numRegMax = 2;
             /* int/float mixed */
-            numRegs = 2;
+            numRegs = numRegMax;
             pTy = PTY_i64;
+            constexpr uint32 oneByte = 1;
+            constexpr uint32 twoByte = 2;
+            constexpr uint32 fourByte = 4;
             size = k4ByteSize;
             switch (tySize) {
-                case 1:
+                case oneByte:
                     pTy = PTY_i8;
                     break;
-                case 2:
+                case twoByte:
                     pTy = PTY_i16;
                     break;
-                case 4:
+                case fourByte:
                     pTy = PTY_i32;
                     break;
                 default:
@@ -2976,6 +2979,9 @@ void AArch64CGFunc::SelectReturnSendOfStructInRegs(BaseNode *x)
             Insn &ld = GetInsnBuilder()->BuildInsn(mop1, *(result[i]), rhsmemopnd);
             ld.MarkAsAccessRefField(isRefField);
             GetCurBB()->AppendInsn(ld);
+            if (!VERIFY_INSN(&ld)) {
+                SPLIT_INSN(&ld, this);
+            }
         }
         RegOperand *dest;
         for (uint32 i = 0; i < numRegs; i++) {
@@ -3551,7 +3557,8 @@ Operand *AArch64CGFunc::SelectIread(const BaseNode &parent, IreadNode &expr, int
         regSize = k4ByteSize; /* 32-bit */
     }
     Operand *result = nullptr;
-    if (parent.GetOpCode() == OP_eval && regSize <= 8) {
+    constexpr int regSizeMax = 8;
+    if (parent.GetOpCode() == OP_eval && regSize <= regSizeMax) {
         /* regSize << 3, that is regSize * 8, change bytes to bits */
         result = &GetZeroOpnd(regSize << 3);
     } else {
@@ -3744,26 +3751,6 @@ Operand *AArch64CGFunc::HandleFmovImm(PrimType stype, int64 val, MIRConst &mirCo
             SetLabelIdx(labelIdxTmp);
             return result;
         }
-        // if (is64Bits) {
-        //     // For DoubleConst, use adrp pattern as GCC for ldr pattern is constrained by insn offset.
-        //     // Simple float numbers need more simply insn pattern later.
-        //     uint32 labelIdxTmp = GetLabelIdx();
-        //     std::string lblStr(".LBF_");
-        //     MIRSymbol *funcSt = GlobalTables::GetGsymTable().GetSymbolFromStidx(GetFunction().GetStIdx().Idx());
-        //     std::string funcName = funcSt->GetName();
-        //     lblStr = lblStr.append(funcName).append("_").append(std::to_string(labelIdxTmp++));
-        //     SetLabelIdx(labelIdxTmp);
-        //     MIRSymbol *sym = GetMirModule().GetMIRBuilder()->CreateGlobalDecl(
-        //         lblStr, *GlobalTables::GetTypeTable().GetPrimType(stype));
-        //     sym->SetStorageClass(kScFstatic);
-        //     sym->SetSKind(kStConst);
-        //     sym->SetKonst(&mirConst);
-        //     StImmOperand &stOpnd = CreateStImmOperand(*sym, 0, 0);
-        //     RegOperand &addrOpnd = CreateRegisterOperandOfType(PTY_a64);
-        //     SelectAddrof(addrOpnd, stOpnd);
-        //     result = &(GetOpndBuilder()->CreateMem(addrOpnd, 0, k64BitSize));
-        //     return result;
-        // }
         Operand *newOpnd0 = &CreateImmOperand(val, GetPrimTypeSize(stype) * kBitsPerByte, false);
         PrimType itype = (stype == PTY_f32) ? PTY_i32 : PTY_i64;
         RegOperand &regOpnd = LoadIntoRegister(*newOpnd0, itype);
@@ -10108,34 +10095,54 @@ Operand *AArch64CGFunc::GetBaseReg(const AArch64SymbolAlloc &symAlloc)
     return fsp;
 }
 
-int32 AArch64CGFunc::GetBaseOffset(const SymbolAlloc &sa)
+int32 AArch64CGFunc::GetBaseOffset(const SymbolAlloc &symbolAlloc)
 {
-    const AArch64SymbolAlloc *symAlloc = static_cast<const AArch64SymbolAlloc *>(&sa);
-    /* Call Frame layout of AArch64
-     * Refer to V2 in aarch64_memlayout.h.
-     * Do Not change this unless you know what you do
-     */
-    const int32 sizeofFplr = 2 * kIntregBytelen;
+    const AArch64SymbolAlloc *symAlloc = static_cast<const AArch64SymbolAlloc *>(&symbolAlloc);
+    // Call Frame layout of AArch64
+    // Refer to V2 in aarch64_memlayout.h.
+    // Do Not change this unless you know what you do
+    // O2 mode refer to V2.1 in  aarch64_memlayout.cpp
+    const int32 sizeofFplr = static_cast<int32>(2 * kIntregBytelen);
     MemSegmentKind sgKind = symAlloc->GetMemSegment()->GetMemSegmentKind();
     AArch64MemLayout *memLayout = static_cast<AArch64MemLayout *>(this->GetMemlayout());
     if (sgKind == kMsArgsStkPassed) { /* for callees */
         int32 offset = static_cast<int32>(symAlloc->GetOffset());
+        offset += static_cast<int32>(memLayout->GetSizeOfColdToStk());
+        return offset;
+    } else if (sgKind == kMsCold) {
+        int offset = static_cast<int32>(symAlloc->GetOffset());
         return offset;
     } else if (sgKind == kMsArgsRegPassed) {
-        int32 baseOffset = memLayout->GetSizeOfLocals() + symAlloc->GetOffset() + memLayout->GetSizeOfRefLocals();
+        int32 baseOffset;
+        if (GetCG()->IsLmbc()) {
+            baseOffset = static_cast<int32>(symAlloc->GetOffset()) +
+                         static_cast<int32>(memLayout->GetSizeOfRefLocals() +
+                                            memLayout->SizeOfArgsToStackPass()); /* SP relative */
+        } else {
+            baseOffset = static_cast<int32>(memLayout->GetSizeOfLocals() + memLayout->GetSizeOfRefLocals()) +
+                         static_cast<int32>(symAlloc->GetOffset());
+        }
         return baseOffset + sizeofFplr;
     } else if (sgKind == kMsRefLocals) {
-        int32 baseOffset = symAlloc->GetOffset() + memLayout->GetSizeOfLocals();
+        int32 baseOffset = static_cast<int32>(symAlloc->GetOffset()) + static_cast<int32>(memLayout->GetSizeOfLocals());
         return baseOffset + sizeofFplr;
     } else if (sgKind == kMsLocals) {
+        if (GetCG()->IsLmbc()) {
+            CHECK_FATAL(false, "invalid lmbc's locals");
+        }
         int32 baseOffset = symAlloc->GetOffset();
         return baseOffset + sizeofFplr;
     } else if (sgKind == kMsSpillReg) {
+        int32 baseOffset;
         if (GetCG()->IsLmbc()) {
-            return symAlloc->GetOffset() + memLayout->SizeOfArgsToStackPass();
+            baseOffset = static_cast<int32>(symAlloc->GetOffset()) +
+                         static_cast<int32>(memLayout->SizeOfArgsRegisterPassed() + memLayout->GetSizeOfRefLocals() +
+                                            memLayout->SizeOfArgsToStackPass());
+        } else {
+            baseOffset = static_cast<int32>(symAlloc->GetOffset()) +
+                         static_cast<int32>(memLayout->SizeOfArgsRegisterPassed() + memLayout->GetSizeOfLocals() +
+                                            memLayout->GetSizeOfRefLocals());
         }
-        int32 baseOffset = symAlloc->GetOffset() + memLayout->SizeOfArgsRegisterPassed() +
-                           memLayout->GetSizeOfLocals() + memLayout->GetSizeOfRefLocals();
         return baseOffset + sizeofFplr;
     } else if (sgKind == kMsArgsToStkPass) { /* this is for callers */
         return static_cast<int32>(symAlloc->GetOffset());
@@ -10153,7 +10160,16 @@ void AArch64CGFunc::AppendCall(const MIRSymbol &funcSymbol)
 
 void AArch64CGFunc::DBGFixCallFrameLocationOffsets()
 {
-    for (DBGExprLoc *el : GetDbgCallFrameLocations()) {
+    unsigned idx = 0;
+    for (DBGExprLoc *el : GetDbgCallFrameLocations(true)) {
+        if (el && el->GetSimpLoc() && el->GetSimpLoc()->GetDwOp() == DW_OP_fbreg) {
+            SymbolAlloc *symloc = static_cast<SymbolAlloc *>(el->GetSymLoc());
+            int32 offset = GetBaseOffset(*symloc) - ((idx < AArch64Abi::kNumIntParmRegs) ? GetDbgCallFrameOffset() : 0);
+            el->SetFboffset(offset);
+        }
+        idx++;
+    }
+    for (DBGExprLoc *el : GetDbgCallFrameLocations(false)) {
         if (el->GetSimpLoc()->GetDwOp() == DW_OP_fbreg) {
             SymbolAlloc *symloc = static_cast<SymbolAlloc *>(el->GetSymLoc());
             int32 offset = GetBaseOffset(*symloc) - GetDbgCallFrameOffset();

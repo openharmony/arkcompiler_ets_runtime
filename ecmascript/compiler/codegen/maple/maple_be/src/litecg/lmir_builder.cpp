@@ -176,7 +176,8 @@ bool LMIRBuilder::IsHeapPointerType(Type *mirType) const
 
 ArrayType *LMIRBuilder::CreateArrayType(Type *elemType, std::vector<uint32_t> &dimSize)
 {
-    auto type = GlobalTables::GetTypeTable().GetOrCreateArrayType(*elemType, dimSize.size(), reinterpret_cast<uint64*>(dimSize.data()));
+    auto type = GlobalTables::GetTypeTable().GetOrCreateArrayType(*elemType, dimSize.size(),
+        reinterpret_cast<uint64*>(dimSize.data()));
     return static_cast<ArrayType *>(type);
 }
 

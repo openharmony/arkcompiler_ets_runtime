@@ -28,13 +28,13 @@
 
 namespace maplebe {
 /* pressure standard value; pressure under this value will not lead to spill operation */
-static constexpr int kPressureStandard = 27;
+static constexpr int PRESSURE_STANDARD = 27;
 /* optimistic scheduling option */
-static constexpr bool kOptimisticScheduling = false;
+static constexpr bool OPTIMISTIC_SCHEDULING = false;
 /* brute maximum count limit option */
-static constexpr bool kBruteMaximumLimit = true;
+static constexpr bool BRUTE_MAXIMUM_LIMIT = true;
 /* brute maximum count */
-static constexpr int kSchedulingMaximumCount = 20000;
+static constexpr int SCHEDULING_MAXIMUM_COUNT = 20000;
 
 /* ---- RegPressureSchedule function ---- */
 void RegPressureSchedule::InitBBInfo(BB &b, MemPool &memPool, const MapleVector<DepNode *> &nodes)
@@ -635,7 +635,7 @@ void RegPressureSchedule::DoScheduling(MapleVector<DepNode *> &nodes)
     LogInfo::MapleLogger() << "Original pressure : " << originalPressure << "\n";
 #endif
     /* Original pressure is small enough, skip pre-scheduling */
-    if (originalPressure < kPressureStandard) {
+    if (originalPressure < PRESSURE_STANDARD) {
 #if PRESCHED_DEBUG
         LogInfo::MapleLogger() << "Original pressure is small enough, skip pre-scheduling \n";
 #endif
@@ -643,7 +643,7 @@ void RegPressureSchedule::DoScheduling(MapleVector<DepNode *> &nodes)
     }
     if (splitterIndexes.empty()) {
         LogInfo::MapleLogger() << "No splitter, normal scheduling \n";
-        if (!kOptimisticScheduling) {
+        if (!OPTIMISTIC_SCHEDULING) {
             HeuristicScheduling(nodes);
         } else {
             InitBruteForceScheduling(nodes);
@@ -809,7 +809,7 @@ void RegPressureSchedule::PartialScheduling(MapleVector<DepNode *> &nodes)
 void RegPressureSchedule::BruteForceScheduling()
 {
     /* stop brute force scheduling when exceeding the count limit */
-    if (kBruteMaximumLimit && (scheduleSeriesCount > kSchedulingMaximumCount)) {
+    if (BRUTE_MAXIMUM_LIMIT && (scheduleSeriesCount > SCHEDULING_MAXIMUM_COUNT)) {
         return;
     }
     int defaultPressureValue = -1;

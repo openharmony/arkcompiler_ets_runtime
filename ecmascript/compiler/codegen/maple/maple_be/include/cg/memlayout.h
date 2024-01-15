@@ -190,6 +190,11 @@ public:
      */
     virtual void AssignSpillLocationsToPseudoRegisters() = 0;
 
+    virtual int32 GetCalleeSaveBaseLoc() const
+    {
+        return 0;
+    }
+
     SymbolAlloc *GetSymAllocInfo(uint32 stIdx)
     {
         DEBUG_ASSERT(stIdx < symAllocTable.size(), "out of symAllocTable's range");

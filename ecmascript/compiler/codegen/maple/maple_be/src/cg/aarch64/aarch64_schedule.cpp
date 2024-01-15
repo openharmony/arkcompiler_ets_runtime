@@ -18,6 +18,7 @@
 #include "aarch64_cg.h"
 #include "aarch64_operand.h"
 #include "aarch64_dependence.h"
+#include "file_utils.h"
 #include "pressure.h"
 
 /*
@@ -98,10 +99,9 @@ bool AArch64Schedule::CanCombine(const Insn &insn) const
     DEBUG_ASSERT(insn.GetOperand(1).IsMemoryAccessOperand(), "expects mem operands");
     auto &memOpnd = static_cast<MemOperand &>(insn.GetOperand(1));
     MemOperand::AArch64AddressingMode addrMode = memOpnd.GetAddrMode();
-    if (addrMode != MemOperand::kAddrModeBOi)
-        {
-            return false;
-        }
+    if (addrMode != MemOperand::kAddrModeBOi) {
+        return false;
+    }
 
     auto &regOpnd = static_cast<RegOperand &>(insn.GetOperand(0));
     if (regOpnd.GetSize() != memOpnd.GetSize()) {
@@ -1056,7 +1056,8 @@ void AArch64Schedule::IterateBruteForce(DepNode &targetNode, MapleVector<DepNode
     /* Save states. */
     constexpr int32 unitSize = 31;
     DEBUG_ASSERT(unitSize == mad->GetAllUnitsSize(), "CG internal error.");
-    std::vector<std::bitset<32>> occupyTable;
+    constexpr int32 bitSetLength = 32;
+    std::vector<std::bitset<bitSetLength>> occupyTable;
     occupyTable.resize(unitSize, 0);
     mad->SaveStates(occupyTable, unitSize);
 
@@ -1288,8 +1289,7 @@ void AArch64Schedule::GenerateDot(const BB &bb, const MapleVector<DepNode *> &no
     fileName.append(str);
     fileName.append("_dep_graph.dot");
 
-    char absPath[PATH_MAX];
-    dgFile.open(realpath(fileName.c_str(), absPath), std::ios::trunc);
+    dgFile.open(FileUtils::GetRealPath(fileName), std::ios::trunc);
     if (!dgFile.is_open()) {
         LogInfo::MapleLogger(kLlWarn) << "fileName:" << fileName << " open failure.\n";
         return;

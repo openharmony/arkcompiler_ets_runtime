@@ -828,6 +828,15 @@ public:
 
     RegOperand &GetZeroOpnd(uint32 size) override;
 
+    bool GetStoreFP() const
+    {
+        return storeFP;
+    }
+    void SetStoreFP(bool val)
+    {
+        storeFP = val;
+    }
+
 private:
     enum RelationOperator : uint8 { kAND, kIOR, kEOR };
 
@@ -885,6 +894,7 @@ private:
     uint32 alignPow = 5; /* function align pow defaults to 5   i.e. 2^5*/
     LmbcArgInfo *lmbcArgInfo = nullptr;
     MIRType *lmbcCallReturnType = nullptr;
+    bool storeFP = false;
 
     void SelectLoadAcquire(Operand &dest, PrimType dtype, Operand &src, PrimType stype,
                            AArch64isa::MemoryOrdering memOrd, bool isDirect);
