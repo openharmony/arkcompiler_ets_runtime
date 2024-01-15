@@ -78,7 +78,7 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
     "--enable-force-gc:                    Enable force gc when allocating object. Default: 'true'\n"
     "--enable-ic:                          Switch of inline cache. Default: 'true'\n"
     "--enable-runtime-stat:                Enable statistics of runtime state. Default: 'false'\n"
-    "--compiler-opt-array-bounds-check-elimination: Enable Index Check elimination. Default: 'false'\n"
+    "--compiler-opt-array-bounds-check-elimination: Enable Index Check elimination. Default: 'true'\n"
     "--compiler-opt-constant-folding:      Enable constant folding. Default: 'true'\n"
     "--compiler-opt-type-lowering:         Enable all type optimization pass for aot compiler. Default: 'true'\n"
     "--compiler-opt-early-elimination:     Enable EarlyElimination for aot compiler. Default: 'true'\n"
