@@ -42,15 +42,7 @@ bool KlassHierarchy::traceFlag = false;
 
 bool IsSystemPreloadedClass(const std::string &className)
 {
-    if (!Options::usePreloadedClass) {
-        return false;
-    }
-    static const std::unordered_set<std::string> preloadedClass = {
-#define CLASS_PREFIX(classname) #classname,
-#include "white_list.def"
-#undef CLASS_PREFIX
-    };
-    return preloadedClass.find(className) != preloadedClass.end();
+    return false;
 }
 
 Klass::Klass(MIRStructType *type, MapleAllocator *alc)

@@ -58,7 +58,6 @@ public:
     };
 
     static const uint8 stringEnd;
-    void InitTestData();
     bool CheckFuncHot(const std::string &className) const;
     bool CheckMethodHot(const std::string &className) const;
     bool CheckMethodSigHot(const std::string &methodSigStr) const;
@@ -66,7 +65,6 @@ public:
     bool CheckClassHot(const std::string &className) const;
     bool CheckLiteralHot(const std::string &literal) const;
     bool CheckReflectionStrHot(const std::string &str, uint8 &layoutType) const;
-    void InitPreHot();
     // default get all kind profile
     bool DeCompress(const std::string &fileName, const std::string &dexName, ProfileType type = kAll);
     const std::unordered_map<std::string, FuncItem> &GetFunctionProf() const;
@@ -110,7 +108,6 @@ private:
     std::unordered_map<std::string, IRProfileDesc> funcDesc;
     std::vector<uint32> counterTab;
     static const std::string preClassHot[];
-    static const std::string preMethodHot[];
     bool CheckProfileHeader(const Header &header) const;
     std::string GetProfileNameByType(uint8 type) const;
     std::string GetFunctionName(uint32 classIdx, uint32 methodIdx, uint32 sigIdx) const;

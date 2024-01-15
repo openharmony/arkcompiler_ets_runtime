@@ -24,14 +24,6 @@
 
 namespace {
 using namespace maple;
-const std::unordered_set<std::string> kJniNativeFuncList = {
-    "Landroid_2Fos_2FParcel_3B_7CnativeWriteString_7C_28JLjava_2Flang_2FString_3B_29V_native",
-    "Landroid_2Fos_2FParcel_3B_7CnativeReadString_7C_28J_29Ljava_2Flang_2FString_3B_native",
-    "Landroid_2Fos_2FParcel_3B_7CnativeWriteInt_7C_28JI_29V_native",
-    "Landroid_2Fos_2FParcel_3B_7CnativeReadInt_7C_28J_29I_native",
-    "Landroid_2Fos_2FParcel_3B_7CnativeWriteInterfaceToken_7C_28JLjava_2Flang_2FString_3B_29V_native",
-    "Landroid_2Fos_2FParcel_3B_7CnativeEnforceInterface_7C_28JLjava_2Flang_2FString_3B_29V_native"};
-constexpr uint32 kBinSearchInsnCount = 56;
 // map func name to <filename, insnCount> pair
 using Func2CodeInsnMap = std::unordered_map<std::string, std::pair<std::string, uint32>>;
 Func2CodeInsnMap func2CodeInsnMap {
@@ -599,23 +591,6 @@ void AArch64AsmEmitter::Run(FuncEmitInfo &funcEmitInfo)
         }
         free(idx);
         idx = nullptr;
-    }
-    /* insert manually optimized assembly language */
-    if (funcSt->GetName() == "Landroid_2Futil_2FContainerHelpers_3B_7C_3Cinit_3E_7C_28_29V") {
-        std::string optFile = "maple/mrt/codetricks/arch/arm64/ContainerHelpers_binarySearch.s";
-        struct stat buffer;
-        if (stat(optFile.c_str(), &buffer) == 0) {
-            std::ifstream binarySearchFileFD(optFile);
-            if (!binarySearchFileFD.is_open()) {
-                ERR(kLncErr, " %s open failed!", optFile.c_str());
-            } else {
-                std::string contend;
-                while (getline(binarySearchFileFD, contend)) {
-                    (void)emitter.Emit(contend + "\n");
-                }
-            }
-        }
-        emitter.IncreaseJavaInsnCount(kBinSearchInsnCount);
     }
 
     for (const auto &mpPair : cgFunc.GetLabelAndValueMap()) {
