@@ -35,13 +35,6 @@ uint32 Profile::hotFuncCountThreshold = 0;
 bool Profile::debug = false;
 bool Profile::initialized = false;
 constexpr uint32 kPrecision = 1000000;
-// preHot data
-const std::string Profile::preClassHot[] = {"Ljava/lang/Class;",          "Ljava/lang/Object;",
-                                            "Ljava/lang/reflect/Field;",  "Ljava/lang/reflect/Constructor;",
-                                            "Ljava/lang/reflect/Method;", "Ljava/lang/reflect/Executable;",
-                                            "Ljava/lang/String;"};
-
-const std::string Profile::preMethodHot[] = {"Landroid/util/ContainerHelpers;", "Landroid/util/SparseArray;"};
 
 Profile::Profile() {}
 
@@ -260,22 +253,6 @@ void Profile::ParseReflectionStr(const char *data, int32 fileNum)
     }
 }
 
-void Profile::InitPreHot()
-{
-    std::string frameworkDexName = "framework";
-    std::string coreDexName = "core-all";
-    if (dexName.find(frameworkDexName) != std::string::npos) {
-        for (auto &item : preMethodHot) {
-            methodMeta.insert(item);
-        }
-    } else if (dexName.find(coreDexName) != std::string::npos) {
-        for (auto &item : preClassHot) {
-            classMeta.insert(item);
-        }
-        isCoreSo = true;
-    }
-}
-
 bool Profile::DeCompress(const std::string &path, const std::string &dexNameInner, ProfileType type)
 {
     if (initialized) {
@@ -285,7 +262,6 @@ bool Profile::DeCompress(const std::string &path, const std::string &dexNameInne
     initialized = true;
 
     this->dexName = dexNameInner;
-    InitPreHot();
     bool res = true;
     std::ifstream in(path, std::ios::binary);
     if (!in.is_open()) {
