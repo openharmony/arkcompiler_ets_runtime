@@ -36,6 +36,8 @@
 #include "ecmascript/property_accessor.h"
 #include "ecmascript/property_attributes.h"
 #include "ecmascript/tagged_array-inl.h"
+#include "ecmascript/jspandafile/debug_info_extractor.h"
+#include "ecmascript/jspandafile/js_pandafile_manager.h"
 
 namespace panda::ecmascript {
 using PGOProfiler = pgo::PGOProfiler;
@@ -2272,7 +2274,14 @@ const CString JSObject::ExtractConstructorAndRecordName(JSThread *thread, Tagged
         result.append(moduleStr);
     }
     if (!nameStr.empty()) {
-        result.append(" ").append(nameStr).append(" ");
+        DebugInfoExtractor *debugExtractor =
+            JSPandaFileManager::GetInstance()->GetJSPtExtractor(jsPandaFile);
+        if (debugExtractor == nullptr) {
+            result.append("JSObject");
+            return result;
+        }
+        int32_t line = debugExtractor->GetFristLine(methodId);
+        result.append(moduleStr).append(" JSObject(line:").append(std::to_string(line)).append(")");
     }
     result.append("JSObject");
     return result;
