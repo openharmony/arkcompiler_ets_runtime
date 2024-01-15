@@ -541,6 +541,29 @@ GateRef NewObjectStubBuilder::NewJSFunction(GateRef glue, GateRef constpool, Gat
     return ret;
 }
 
+void NewObjectStubBuilder::NewJSFunction(GateRef glue, GateRef jsFunc, GateRef index, GateRef length, GateRef lexEnv,
+                                         Variable *result, Label *success, Label *failed)
+{
+    auto env = GetEnvironment();
+    Label hasException(env);
+    Label notException(env);
+    GateRef constPool = GetConstPoolFromFunction(jsFunc);
+    GateRef module = GetModuleFromFunction(jsFunc);
+    result->WriteVariable(NewJSFunction(glue, constPool, module, index));
+    Branch(HasPendingException(glue), &hasException, &notException);
+    Bind(&hasException);
+    {
+        Jump(failed);
+    }
+    Bind(&notException);
+    {
+        SetLengthToFunction(glue_, result->ReadVariable(), length);
+        SetLexicalEnvToFunction(glue_, result->ReadVariable(), lexEnv);
+        SetHomeObjectToFunction(glue_, result->ReadVariable(), GetHomeObjectFromFunction(jsFunc));
+        Jump(success);
+    }
+}
+
 void NewObjectStubBuilder::InitializeJSFunction(GateRef glue, GateRef func, GateRef kind)
 {
     auto env = GetEnvironment();

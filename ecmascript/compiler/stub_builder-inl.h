@@ -2616,6 +2616,11 @@ inline GateRef StubBuilder::GetModuleFromFunction(GateRef function)
     return env_->GetBuilder()->GetModuleFromFunction(function);
 }
 
+inline GateRef StubBuilder::GetHomeObjectFromFunction(GateRef function)
+{
+    return env_->GetBuilder()->GetHomeObjectFromFunction(function);
+}
+
 inline GateRef StubBuilder::GetEntryIndexOfGlobalDictionary(GateRef entry)
 {
     return Int32Add(Int32(OrderTaggedHashTable<GlobalDictionary>::TABLE_HEADER_SIZE),
