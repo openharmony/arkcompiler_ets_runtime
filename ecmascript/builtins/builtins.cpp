@@ -390,6 +390,9 @@ void Builtins::Initialize(const JSHandle<GlobalEnv> &env, JSThread *thread, bool
                                                   JSType::JS_FUNCTION, env->GetFunctionPrototype());
     env->SetFunctionClassWithoutName(thread_, functionClass);
 
+    functionClass = factory_->CreateBoundFunctionClass();
+    env->SetBoundFunctionClass(thread_, functionClass);
+
     if (!isRealm) {
         InitializeAllTypeError(env, objFuncClass);
         InitializeSymbol(env, primRefObjHClass);

@@ -1619,6 +1619,46 @@ JSHandle<JSHClass> ObjectFactory::CreateFunctionClass(FunctionKind kind, uint32_
     return functionClass;
 }
 
+JSHandle<JSHClass> ObjectFactory::CreateBoundFunctionClass()
+{
+    JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
+    JSHandle<JSTaggedValue> proto = env->GetFunctionPrototype();
+    JSHandle<JSHClass> hclass = NewEcmaHClass(JSBoundFunction::SIZE, JSType::JS_BOUND_FUNCTION, proto);
+    hclass->SetCallable(true);
+
+    // set hclass layout
+    uint32_t fieldOrder = 0;
+    const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
+    ASSERT(JSFunction::LENGTH_INLINE_PROPERTY_INDEX == fieldOrder);
+    JSHandle<LayoutInfo> layoutInfoHandle = CreateLayoutInfo(JSFunction::LENGTH_OF_INLINE_PROPERTIES);
+    {
+        PropertyAttributes attributes = PropertyAttributes::DefaultAccessor(false, false, true);
+        attributes.SetIsInlinedProps(true);
+        attributes.SetRepresentation(Representation::TAGGED);
+        attributes.SetOffset(fieldOrder);
+        layoutInfoHandle->AddKey(thread_, fieldOrder, globalConst->GetLengthString(), attributes);
+        fieldOrder++;
+    }
+
+    ASSERT(JSFunction::NAME_INLINE_PROPERTY_INDEX == fieldOrder);
+    // not set name in-object property on class which may have a name() method
+    {
+        PropertyAttributes attributes = PropertyAttributes::DefaultAccessor(false, false, true);
+        attributes.SetIsInlinedProps(true);
+        attributes.SetRepresentation(Representation::TAGGED);
+        attributes.SetOffset(fieldOrder);
+        layoutInfoHandle->AddKey(thread_, fieldOrder,
+                                 globalConst->GetHandledNameString().GetTaggedValue(), attributes);
+        fieldOrder++;
+    }
+
+    {
+        hclass->SetLayout(thread_, layoutInfoHandle);
+        hclass->SetNumberOfProps(fieldOrder);
+    }
+    return hclass;
+}
+
 JSHandle<JSHClass> ObjectFactory::CreateDefaultClassPrototypeHClass(JSHClass *hclass)
 {
     uint32_t size = ClassInfoExtractor::NON_STATIC_RESERVED_LENGTH;
@@ -1807,42 +1847,10 @@ JSHandle<JSBoundFunction> ObjectFactory::NewJSBoundFunction(const JSHandle<JSTag
                                                             const JSHandle<TaggedArray> &args)
 {
     JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
-    JSHandle<JSTaggedValue> proto = env->GetFunctionPrototype();
-    JSHandle<JSHClass> hclass = NewEcmaHClass(JSBoundFunction::SIZE, JSType::JS_BOUND_FUNCTION, proto);
-
-    // set hclass layout
-    uint32_t fieldOrder = 0;
     const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
-    ASSERT(JSFunction::LENGTH_INLINE_PROPERTY_INDEX == fieldOrder);
-    JSHandle<LayoutInfo> layoutInfoHandle = CreateLayoutInfo(JSFunction::LENGTH_OF_INLINE_PROPERTIES);
-    {
-        PropertyAttributes attributes = PropertyAttributes::DefaultAccessor(false, false, true);
-        attributes.SetIsInlinedProps(true);
-        attributes.SetRepresentation(Representation::TAGGED);
-        attributes.SetOffset(fieldOrder);
-        layoutInfoHandle->AddKey(thread_, fieldOrder, globalConst->GetLengthString(), attributes);
-        fieldOrder++;
-    }
 
-    ASSERT(JSFunction::NAME_INLINE_PROPERTY_INDEX == fieldOrder);
-    // not set name in-object property on class which may have a name() method
-    {
-        PropertyAttributes attributes = PropertyAttributes::DefaultAccessor(false, false, true);
-        attributes.SetIsInlinedProps(true);
-        attributes.SetRepresentation(Representation::TAGGED);
-        attributes.SetOffset(fieldOrder);
-        layoutInfoHandle->AddKey(thread_, fieldOrder,
-                                 thread_->GlobalConstants()->GetHandledNameString().GetTaggedValue(), attributes);
-        fieldOrder++;
-    }
-
-    {
-        hclass->SetLayout(thread_, layoutInfoHandle);
-        hclass->SetNumberOfProps(fieldOrder);
-    }
-
+    JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(env->GetBoundFunctionClass());
     JSHandle<JSBoundFunction> bundleFunction = JSHandle<JSBoundFunction>::Cast(NewJSObject(hclass));
-
     // set properties
     JSHandle<JSTaggedValue> accessor = globalConst->GetHandledFunctionNameAccessor();
     bundleFunction->SetPropertyInlinedProps(thread_, JSFunction::NAME_INLINE_PROPERTY_INDEX,
@@ -1854,7 +1862,7 @@ JSHandle<JSBoundFunction> ObjectFactory::NewJSBoundFunction(const JSHandle<JSTag
     bundleFunction->SetBoundTarget(thread_, target);
     bundleFunction->SetBoundThis(thread_, boundThis);
     bundleFunction->SetBoundArguments(thread_, args);
-    hclass->SetCallable(true);
+    
     if (target.GetTaggedValue().IsConstructor()) {
         bundleFunction->SetConstructor(true);
     }
