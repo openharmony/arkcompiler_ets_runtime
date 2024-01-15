@@ -41,3 +41,12 @@ class A {
 
 let a = new A();
 a.Measure();
+
+function foo(arg: number) {
+    return {a: 1, b: arg}
+}
+
+for (let i = 0; i < 3; i++) {
+    let object = foo(i);
+    print(object.b)
+}

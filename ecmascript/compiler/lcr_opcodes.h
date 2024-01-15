@@ -56,7 +56,8 @@ namespace panda::ecmascript::kungfu {
     V(UnsignedFloatToInt, UNSIGNED_FLOAT_TO_INT, GateFlags::NONE_FLAG, 0, 0, 1)  \
     V(TruncFloatToInt64, TRUNC_FLOAT_TO_INT64, GateFlags::NONE_FLAG, 0, 0, 1)    \
     V(TruncFloatToInt32, TRUNC_FLOAT_TO_INT32, GateFlags::NONE_FLAG, 0, 0, 1)    \
-    V(Bitcast, BITCAST, GateFlags::NONE_FLAG, 0, 0, 1)
+    V(Bitcast, BITCAST, GateFlags::NONE_FLAG, 0, 0, 1)                           \
+    V(Float64ToInt32WithOverflow, FLOAT64_TO_INT32_WITH_OVERFLOW, GateFlags::NONE_FLAG, 0, 0, 1)
 
 #define LCR_IMMUTABLE_META_DATA_CACHE_LIST(V)                                                   \
     V(ReadSp, READSP, GateFlags::NONE_FLAG, 0, 0, 0)                                            \
