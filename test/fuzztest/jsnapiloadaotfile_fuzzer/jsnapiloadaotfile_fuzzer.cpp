@@ -30,11 +30,16 @@ void JSNApiLoadAotFileFuzztest(const uint8_t *data, size_t size)
         LOG_ECMA(ERROR) << "illegal input!";
         return;
     }
-    char *value = new char[size]();
-    if (memcpy_s(value, size, data, size) != EOK) {
+    char *value = new char[size + 1]();
+    if (memset_s(value, size + 1, 0, size + 1) != EOK) {
+        LOG_ECMA(ERROR) << "memset_s failed!";
+        UNREACHABLE();
+    }
+    if (memcpy_s(value, size + 1, data, size) != EOK) {
         LOG_ECMA(ERROR) << "memcpy_s failed!";
         UNREACHABLE();
     }
+    value[size] = '\0';
     std::string aotFileName = value;
     JSNApi::LoadAotFile(vm, aotFileName);
     delete[] value;
