@@ -12,30 +12,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-/*
- * @tc.name:storeicbyname
- * @tc.desc:test storeicbyname
- * @tc.type: FUNC
- * @tc.require: issueI7UTOA
- */
-
-var r = /./;
-var coercibleValue = {
-    length: 1,
-    groups: {length : 1.1},
-};
-r.exec = function() {
-    return coercibleValue;
-};
-let a = r[Symbol.replace]('', '[$<length>]');
-print(a)
-
-const manyAs = 'A'.repeat(0x10000);
-const manyas = manyAs.toLowerCase();
-const re = RegExp('^(?:' + manyas + '|' + manyAs + '|' + manyAs + ')$', 'i');
+let badregexp =  "(?:" +  " ".repeat(32768*2)+  ")*";
+let reg = RegExp(badregexp);
 try {
-    manyas.replace(re, manyAs);
+    reg.test();
 } catch (e) {
     print(e instanceof SyntaxError);
 }

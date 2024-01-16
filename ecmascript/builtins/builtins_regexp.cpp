@@ -163,6 +163,9 @@ JSTaggedValue BuiltinsRegExp::Exec(EcmaRuntimeCallInfo *argv)
         // throw a TypeError exception.
         THROW_TYPE_ERROR_AND_RETURN(thread, "this does not have [[RegExpMatcher]]", JSTaggedValue::Exception());
     }
+    if (BuiltinsRegExp::IsValidRegularExpression(thread, thisObj) == JSTaggedValue::False()) {
+        THROW_SYNTAX_ERROR_AND_RETURN(thread, "Regular expression too large", JSTaggedValue::Exception());
+    }
 
     bool useCache = true;
     JSHandle<RegExpExecResultCache> cacheTable(thread->GetCurrentEcmaContext()->GetRegExpCache());
@@ -243,6 +246,9 @@ JSTaggedValue BuiltinsRegExp::RegExpTestFast(JSThread *thread, JSHandle<JSTagged
     if (!regexp->IsJSRegExp()) {
         // throw a TypeError exception.
         THROW_TYPE_ERROR_AND_RETURN(thread, "this does not have a [[RegExpMatcher]]", JSTaggedValue::Exception());
+    }
+    if (BuiltinsRegExp::IsValidRegularExpression(thread, regexp) == JSTaggedValue::False()) {
+        THROW_SYNTAX_ERROR_AND_RETURN(thread, "Regular expression too large", JSTaggedValue::Exception());
     }
     return RegExpExecForTestFast(thread, regexp, inputStr, useCache);
 }
@@ -2356,6 +2362,17 @@ EcmaString *BuiltinsRegExp::EscapeRegExpPattern(JSThread *thread, const JSHandle
     srcStdStr = base::StringHelper::ReplaceAll(srcStdStr, "\\", "\\");
 
     return *factory->NewFromUtf8(srcStdStr);
+}
+
+JSTaggedValue BuiltinsRegExp::IsValidRegularExpression(JSThread *thread, JSHandle<JSTaggedValue> &thisObj)
+{
+    JSHandle<EcmaString> patternStrHandle = JSTaggedValue::ToString(thread, thisObj);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    uint32_t regExpStringLength = static_cast<uint32_t>(EcmaStringAccessor(patternStrHandle).GetLength());
+    if (regExpStringLength > BuiltinsRegExp::MAX_REGEXP_STRING_COUNT) {
+        return JSTaggedValue::False();
+    }
+    return JSTaggedValue::True();
 }
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
