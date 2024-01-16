@@ -152,6 +152,7 @@ group("ark_js_moduletest") {
     "typedarraysubarray",
     "typedarraytosorted",
     "typedarraywith",
+    "typedarrayjoin",
     "watch",
     "weakcollectionswithsymbol",
     "wrapperclassfunc",

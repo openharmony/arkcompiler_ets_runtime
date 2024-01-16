@@ -721,7 +721,7 @@ bool ObjectFastOperator::IsSpecialIndexedObj(JSType jsType)
 
 bool ObjectFastOperator::IsFastTypeArray(JSType jsType)
 {
-    return jsType >= JSType::JS_TYPED_ARRAY_FIRST && jsType <= JSType::JS_FLOAT64_ARRAY;
+    return jsType >= JSType::JS_TYPED_ARRAY_FIRST && jsType <= JSType::JS_TYPED_ARRAY_LAST;
 }
 
 JSTaggedValue ObjectFastOperator::FastGetTypeArrayProperty(JSThread *thread, JSTaggedValue receiver,
