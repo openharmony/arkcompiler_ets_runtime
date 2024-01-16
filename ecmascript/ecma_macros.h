@@ -637,4 +637,9 @@
         }                                     \
     } while (0)
 
+#define CHECK_SLOTID_BREAK(slotId)        \
+    if ((slotId) == 0xff) {               \
+        break;                            \
+    }
+
 #endif  // ECMASCRIPT_ECMA_MACROS_H

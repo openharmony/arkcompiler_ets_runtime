@@ -865,6 +865,7 @@ public:
             InitLoopInfo(loopInfo, toBlock, info.fromId);
         }
         TryMergeLoopEntry();
+        ResizeLoopBody(); // tryMerge will insert region, need resize loop body.
         for (auto& info : loopbacks_) {
             auto& toBlock = bcBuilder_->GetBasicBlockById(info.toId);
             auto& loopInfo = frameBuilder_->GetLoopInfo(toBlock);
@@ -928,6 +929,20 @@ public:
             // clear loopback bits for visit body
             loopInfo.loopBodys->Reset();
             loopInfo.loopBodys->SetBit(loopInfo.loopHeadId);
+        }
+    }
+
+    void ResizeLoopBody()
+    {
+        for (auto& info : loopbacks_) {
+            auto size = bcBuilder_->GetBasicBlockCount();
+            auto& toBlock = bcBuilder_->GetBasicBlockById(info.toId);
+            auto& loopInfo = frameBuilder_->GetLoopInfo(toBlock);
+            if (loopInfo.loopBodys->ShouldExpand(size)) {
+                auto tmp = loopInfo.loopBodys;
+                loopInfo.loopBodys = chunk_->New<BitSet>(chunk_, size);
+                loopInfo.loopBodys->CopyDataFrom(*tmp);
+            }
         }
     }
 
