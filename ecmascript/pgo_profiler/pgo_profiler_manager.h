@@ -242,10 +242,11 @@ private:
         if (!encoder_) {
             return false;
         }
-        if (!enableSignalSaving_) {
+        bool initializedResult = encoder_->InitializeData();
+        if (initializedResult && !enableSignalSaving_) {
             RegisterSavingSignal();
         }
-        return encoder_->InitializeData();
+        return initializedResult;
     }
 
     std::unique_ptr<PGOProfilerEncoder> encoder_;
