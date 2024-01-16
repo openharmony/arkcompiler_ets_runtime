@@ -204,6 +204,7 @@ group("ark_asm_test") {
     "allocatesizeoverflow",
     "array",
     "arrayfindlast",
+    "arrayfill",
     "arrayflat",
     "arrayflatmap",
     "arrayfindlastindex",
