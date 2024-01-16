@@ -1267,7 +1267,23 @@ void AsmInterpreterCall::ThrowStackOverflowExceptionAndReturn(ExtendedAssembler 
     if (glue != r13) {
         __ Movq(glue, r13);
     }
-    __ Jmp(op);
+
+    __ Pushq(rbp);
+    __ Pushq(static_cast<int64_t>(FrameType::ASM_BRIDGE_FRAME)); // set frame type
+    __ Leaq(Operand(rsp, FRAME_SLOT_SIZE), rbp); // skip frame type
+
+    __ Pushq(r10); // caller save
+    __ Pushq(0); // argc
+    __ Pushq(kungfu::RuntimeStubCSigns::ID_ThrowStackOverflowException); // runtime id
+    __ Movq(glue, rax); // glue
+    __ Movq(kungfu::RuntimeStubCSigns::ID_CallRuntime, r10);
+    __ Movq(Operand(rax, r10, Times8, JSThread::GlueData::GetRTStubEntriesOffset(false)), r10);
+    __ Callq(r10); // call CallRuntime
+    __ Addq(2 * FRAME_SLOT_SIZE, rsp); // 2: skip argc and runtime_id
+    __ Popq(r10);
+    __ Addq(FRAME_SLOT_SIZE, rsp); // skip frame type
+    __ Popq(rbp);
+    __ Ret();
 }
 
 void AsmInterpreterCall::HasPendingException([[maybe_unused]] ExtendedAssembler *assembler,
