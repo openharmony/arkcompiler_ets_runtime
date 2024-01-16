@@ -63,6 +63,7 @@ public:
         if (!UseWords()) {
             return data_.inlineWord_ & Mask(offset);
         }  else {
+            ASSERT(wordCount_ > Index(offset));
             return data_.words_[Index(offset)] & Mask(IndexInWord(offset));
         }
     }
@@ -72,6 +73,7 @@ public:
         if (!UseWords()) {
             data_.inlineWord_ |= Mask(offset);
         } else {
+            ASSERT(wordCount_ > Index(offset));
             data_.words_[Index(offset)] |= Mask(IndexInWord(offset));
         }
     }
@@ -81,6 +83,7 @@ public:
         if (!UseWords()) {
             data_.inlineWord_ &= ~Mask(offset);
         } else {
+            ASSERT(wordCount_ > Index(offset));
             data_.words_[Index(offset)] &= ~Mask(IndexInWord(offset));
         }
     }
@@ -137,6 +140,26 @@ public:
         for (size_t i = 0; i < wordCount_; i++) {
             data_.words_[i] = other.data_.words_[i];
         }
+    }
+
+    void CopyDataFrom(const BitSet &other)
+    {
+        ASSERT(wordCount_ >= other.wordCount_);
+        if (!UseWords()) {
+            data_.inlineWord_ = other.data_.inlineWord_;
+            return;
+        }
+        for (size_t i = 0; i < other.wordCount_; i++) {
+            data_.words_[i] = other.data_.words_[i];
+        }
+    }
+
+    bool ShouldExpand(size_t size)
+    {
+        if (SizeOf(size) == this->wordCount_) {
+            return false;
+        }
+        return true;
     }
 private:
     union Data {
