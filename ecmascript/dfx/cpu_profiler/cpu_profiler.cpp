@@ -282,6 +282,7 @@ void CpuProfiler::GetStack(FrameIterator &it)
         struct MethodKey methodKey;
         methodKey.deoptType = method->GetDeoptType();
         if (topFrame) {
+            JsStackGetter::GetCallLineNumber(it, methodKey.lineNumber);
             methodKey.state = JsStackGetter::GetRunningState(it, vm_, isNative, true, enableVMTag_);
             topFrame = false;
         } else {
@@ -350,6 +351,7 @@ bool CpuProfiler::GetStackCallNapi(JSThread *thread, bool beforeCallNapi)
         if (topFrame) {
             if (beforeCallNapi) {
                 methodKey.state = RunningState::NAPI;
+                JsStackGetter::GetCallLineNumber(it, methodKey.lineNumber);
             } else {
                 methodKey.state = JsStackGetter::GetRunningState(it, vm_, isNative, true, enableVMTag_);
             }
