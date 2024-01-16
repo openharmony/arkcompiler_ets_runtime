@@ -908,7 +908,7 @@ JSTaggedValue BuiltinsArkTools::GetUndetectable([[maybe_unused]] EcmaRuntimeCall
 {
     LOG_ECMA(DEBUG) << "Enter GetUndetectable()";
     ASSERT(info);
-    return JSTaggedValue::False();
+    return JSTaggedValue::Undefined();
 }
 
 // empty function for regress-xxx test cases
