@@ -53,6 +53,14 @@ bool JSArray::LengthSetter(JSThread *thread, const JSHandle<JSObject> &self, con
     }
 
     JSArray::SetCapacity(thread, self, oldLen, newLen);
+    uint32_t actualLen = JSArray::Cast(*self)->GetArrayLength();
+    if (actualLen != newLen) {
+        if (mayThrow) {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "Not all array elements is configurable", false);
+        }
+        return false;
+    }
+
     return true;
 }
 
