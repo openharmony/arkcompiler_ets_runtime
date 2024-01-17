@@ -25,9 +25,9 @@
 namespace panda::ecmascript {
 class JSPandaFileExecutor {
 public:
-    static Expected<JSTaggedValue, bool> ExecuteFromFile(JSThread *thread, const CString &filename,
-                                                         std::string_view entryPoint, bool needUpdate = false,
-                                                         bool excuteFromJob = false);
+    static Expected<JSTaggedValue, bool> ExecuteFromAbcFile(JSThread *thread, const CString &filename,
+                                                            std::string_view entryPoint, bool needUpdate = false,
+                                                            bool excuteFromJob = false);
     static Expected<JSTaggedValue, bool> ExecuteFromBuffer(JSThread *thread, const void *buffer, size_t size,
                                                            std::string_view entryPoint, const CString &filename = "",
                                                            bool needUpdate = false);
