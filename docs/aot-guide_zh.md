@@ -19,7 +19,7 @@
 ## 前置操作
 - 打开ap采集开关（默认关闭。设备重启后，开关恢复默认状态）
   ```
-  hdc param set ark.profile true
+  hdc shell param set ark.profile true
   ```
 
 
