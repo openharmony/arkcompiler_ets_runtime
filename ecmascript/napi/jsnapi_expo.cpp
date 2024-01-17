@@ -3096,7 +3096,10 @@ bool JSNApi::NotifyDebugMode([[maybe_unused]] int tid,
     jsDebuggerManager->SetDebugLibraryHandle(std::move(handle.Value()));
     jsDebuggerManager->SetDebugMode(option.isDebugMode && debugApp);
     jsDebuggerManager->SetIsDebugApp(debugApp);
-    bool ret = StartDebuggerForOldProcess(vm, option, instanceId, debuggerPostTask);
+    bool ret = false;
+    if (debugApp) {
+        ret = StartDebuggerForOldProcess(vm, option, instanceId, debuggerPostTask);
+    }
 
     // store debugger postTask in inspector.
     using StoreDebuggerInfo = void (*)(int, EcmaVM *, const DebuggerPostTask &);
@@ -3108,7 +3111,18 @@ bool JSNApi::NotifyDebugMode([[maybe_unused]] int tid,
         return false;
     }
     reinterpret_cast<StoreDebuggerInfo>(symOfStoreDebuggerInfo.Value())(tid, vm, debuggerPostTask);
-
+    using InitializeDebuggerForSocketpair = bool(*)(void*);
+    auto sym = panda::os::library_loader::ResolveSymbol(handler, "InitializeDebuggerForSocketpair");
+    if (!sym) {
+        LOG_ECMA(ERROR) << "[InitializeDebuggerForSocketpair] Resolve symbol fail: " << sym.Error().ToString();
+        return false;
+    }
+    ret = reinterpret_cast<InitializeDebuggerForSocketpair>(sym.Value())(vm);
+    if (!ret) {
+    // Reset the config
+        vm->GetJsDebuggerManager()->SetDebugMode(false);
+        return false;
+    }
     if (option.isDebugMode) {
         using WaitForDebugger = void (*)(EcmaVM *);
         auto symOfWaitForDebugger = panda::os::library_loader::ResolveSymbol(
