@@ -49,20 +49,18 @@ using namespace panda::ecmascript;
 #define ASM_ASSERT(messageId, condition)                                            \
     if (!GetEnvironment()->GetCircuit()->IsOptimizedJSFunctionFrame()) {            \
         SUBENTRY(messageId, condition);                                             \
+        EXITENTRY();                                                                \
     }
 #define ASM_ASSERT_WITH_GLUE(messageId, condition, glue)                            \
-    if (!GetEnvironment()->GetCircuit()->IsOptimizedJSFunctionFrame()) {            \
-        SUBENTRY_WITH_GLUE(messageId, condition, glue);                             \
-    }
+    SUBENTRY_WITH_GLUE(messageId, condition, glue)
 #elif defined(ENABLE_ASM_ASSERT)
 #define ASM_ASSERT(messageId, condition)                                            \
     if (!GetEnvironment()->GetCircuit()->IsOptimizedJSFunctionFrame()) {            \
         SUBENTRY(messageId, condition);                                             \
+        EXITENTRY();                                                                \
     }
 #define ASM_ASSERT_WITH_GLUE(messageId, condition, glue)                            \
-    if (!GetEnvironment()->GetCircuit()->IsOptimizedJSFunctionFrame()) {            \
-        SUBENTRY_WITH_GLUE(messageId, condition, glue);                             \
-    }
+    SUBENTRY_WITH_GLUE(messageId, condition, glue)
 #else
 #define ASM_ASSERT(messageId, ...) ((void)0)
 #define ASM_ASSERT_WITH_GLUE(messageId, ...) ((void)0)
@@ -70,14 +68,10 @@ using namespace panda::ecmascript;
 
 #ifndef NDEBUG
 #define EXITENTRY()                                                                 \
-    if (!GetEnvironment()->GetCircuit()->IsOptimizedJSFunctionFrame()) {            \
-        GetEnvironment()->SubCfgExit();                                             \
-    }
+    GetEnvironment()->SubCfgExit()
 #elif defined(ENABLE_ASM_ASSERT)
 #define EXITENTRY()                                                                 \
-    if (!GetEnvironment()->GetCircuit()->IsOptimizedJSFunctionFrame()) {            \
-        GetEnvironment()->SubCfgExit();                                             \
-    }
+    GetEnvironment()->SubCfgExit()
 #else
 #define EXITENTRY() ((void)0)
 #endif
