@@ -125,6 +125,7 @@ group("ark_js_moduletest") {
     "regexpflagd",
     "regexpmaxindex",
     "regress",
+    "regressmathmaxmin",
 
     #"regressdatetime",
     "regressdefineproperty",
