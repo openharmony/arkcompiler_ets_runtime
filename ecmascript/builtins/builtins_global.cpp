@@ -32,10 +32,37 @@
 namespace panda::ecmascript::builtins {
 using NumberHelper = base::NumberHelper;
 using StringHelper = base::StringHelper;
-std::u16string g_asciiWordChars(u"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_");
-std::u16string g_escapeWordChars(u"@*+-./");
-constexpr std::uint16_t CHAR16_PERCENT_SIGN = 0x0025; // u'%'
-constexpr std::uint16_t CHAR16_LATIN_SMALL_LETTER_U = 0x0075; // u'u';
+// bitmap for "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_" + "@*+-./"
+constexpr std::uint8_t ESCAPE_BIT_MAP[128] = {
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 1, 1, 1,
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0,
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1,
+    0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0};
+constexpr std::uint8_t ESCAPE_HEX_TO_CHAR[16] = {
+    '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'
+};
+constexpr std::uint8_t ESCAPE_CHAR_TO_HEX[128] = {
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 0, 0, 0, 0, 0,
+    0, 10, 11, 12, 13, 14, 15, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 10, 11, 12, 13, 14, 15, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+};
+constexpr std::uint8_t ESCAPE_HEX_MASK = 0xf;
+constexpr std::uint8_t ESCAPE_HEX_BIT4 = 4;
+constexpr std::uint8_t ESCAPE_HEX_BIT8 = 8;
+constexpr std::uint8_t ESCAPE_HEX_BIT12 = 12;
+constexpr std::uint8_t ESCAPE_CHAR_OFFSET2 = 2;
+constexpr std::uint8_t ESCAPE_CHAR_OFFSET3 = 3;
+constexpr std::uint8_t ESCAPE_CHAR_OFFSET4 = 4;
+constexpr std::uint8_t ESCAPE_CHAR_OFFSET5 = 5;
 constexpr std::uint16_t CHAR16_LETTER_NULL = u'\0';
 
 // 18.2.1
@@ -732,13 +759,11 @@ JSTaggedValue BuiltinsGlobal::Escape(EcmaRuntimeCallInfo *msg)
     JSHandle<EcmaString> string = JSTaggedValue::ToString(thread, GetCallArg(msg, 0));
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    EcmaVM *vm = thread->GetEcmaVM();
     // 2. Let len be the length of string.
     uint32_t len = EcmaStringAccessor(string).GetLength();
     // 3. Let R be the empty String.
     std::u16string r;
     // 4. Let unescapedSet be the string-concatenation of the ASCII word characters and "@*+-./".
-    std::u16string unescapedSet = g_asciiWordChars + g_escapeWordChars;
     // 5. Let k be 0.
     uint32_t k = 0;
     // 6. Repeat, while k < len,
@@ -757,29 +782,20 @@ JSTaggedValue BuiltinsGlobal::Escape(EcmaRuntimeCallInfo *msg)
     //    e. Set k to k + 1.
     while (k < len) {
         uint16_t c = EcmaStringAccessor(string).Get(k);
-        if (unescapedSet.find(c) != std::u16string::npos) {
+        if (c < std::numeric_limits<int8_t>::max() && ESCAPE_BIT_MAP[c] == 1) {
             r.push_back(c);
         } else {
-            uint16_t n = c - CHAR16_LETTER_NULL;
-            std::ostringstream oss;
-            oss << std::uppercase << std::hex << n;
-            JSHandle<EcmaString> hex = factory->NewFromStdString(oss.str());
-            JSHandle<EcmaString> fillString = factory->NewFromStdString(std::string("0"));
-            EcmaString *temp = nullptr;
-            JSHandle<EcmaString> hexStringHandle = factory->NewFromStdString(std::string("\0"));
-            if (n <= std::numeric_limits<uint8_t>::max()) {
-                EcmaString *hexEcmaString =
-                    StringPad(thread, hex, 2, fillString, Placement::START); // NOLINT 2: means max string length
-                hexStringHandle = JSHandle<EcmaString>(thread, hexEcmaString);
-                temp = EcmaStringAccessor::Concat(vm, factory->NewFromStdString("%"), hexStringHandle);
+            r.push_back('%');
+            if (c <= std::numeric_limits<uint8_t>::max()) {
+                r.push_back(ESCAPE_HEX_TO_CHAR[(c >> ESCAPE_HEX_BIT4) & ESCAPE_HEX_MASK]);
+                r.push_back(ESCAPE_HEX_TO_CHAR[c & ESCAPE_HEX_MASK]);
             } else {
-                EcmaString *hexEcmaString =
-                    StringPad(thread, hex, 4, fillString, Placement::START); // NOLINT 4: means max string length
-                hexStringHandle = JSHandle<EcmaString>(thread, hexEcmaString);
-                temp = EcmaStringAccessor::Concat(vm, factory->NewFromStdString("%u"), hexStringHandle);
+                r.push_back('u');
+                r.push_back(ESCAPE_HEX_TO_CHAR[(c >> ESCAPE_HEX_BIT12) & ESCAPE_HEX_MASK]);
+                r.push_back(ESCAPE_HEX_TO_CHAR[(c >> ESCAPE_HEX_BIT8) & ESCAPE_HEX_MASK]);
+                r.push_back(ESCAPE_HEX_TO_CHAR[(c >> ESCAPE_HEX_BIT4) & ESCAPE_HEX_MASK]);
+                r.push_back(ESCAPE_HEX_TO_CHAR[c & ESCAPE_HEX_MASK]);
             }
-            JSHandle<EcmaString> s = JSHandle<EcmaString>(thread, temp);
-            r = r + EcmaStringAccessor(s).ToU16String();
         }
         ++k;
     }
@@ -828,33 +844,34 @@ JSTaggedValue BuiltinsGlobal::Unescape(EcmaRuntimeCallInfo *msg)
     //   d. Set k to k + 1.
     while (k < len) {
         uint16_t c = EcmaStringAccessor(string).Get(k);
-        JSHandle<EcmaString> hexDigitsString;
-        if (c == CHAR16_PERCENT_SIGN) {
-            EcmaString *hexDigits = nullptr;
-            uint16_t optionalAdvance = 0;
-            if (k + 5 < len && // NOLINT 5: means offset by 5
-                EcmaStringAccessor(string).Get(k + 1) == CHAR16_LATIN_SMALL_LETTER_U) { // NOLINT 1: means offset by 1
-                hexDigits = EcmaStringAccessor(string).FastSubString(vm, string,
-                                                                     k + 2, 4); // NOLINT 2: means offset 4: means len
-                optionalAdvance = optionalAdvance + 5; // NOLINT 5: means plus 5
-            } else if (k + 3 <= len) { // NOLINT 3: means offset
-                hexDigits = EcmaStringAccessor(string).FastSubString(vm, string, k + 1, 2); // NOLINT 2:means len
-                optionalAdvance = optionalAdvance + 2; // NOLINT 2: means plus 2
-            }
-            if (hexDigits != nullptr) {
-                hexDigitsString = JSHandle<EcmaString>(thread, hexDigits);
-                EcmaString *codePoints = StringToCodePoints(thread, hexDigitsString);
-                JSHandle<EcmaString> codePointString = JSHandle<EcmaString>(thread, codePoints);
-                bool isHex = true;
-                for (uint32_t i = 0; i < EcmaStringAccessor(codePointString).GetLength(); ++i) {
-                    if (!IsHexDigits(EcmaStringAccessor(codePointString).Get(i))) {
-                        isHex = false;
-                    }
+        if (c == '%') {
+            uint16_t c1 = EcmaStringAccessor(string).Get(k + 1);
+            if (k + ESCAPE_CHAR_OFFSET5 < len && c1 == 'u') {
+                uint16_t c2 = EcmaStringAccessor(string).Get(k + ESCAPE_CHAR_OFFSET2);
+                uint16_t c3 = EcmaStringAccessor(string).Get(k + ESCAPE_CHAR_OFFSET3);
+                uint16_t c4 = EcmaStringAccessor(string).Get(k + ESCAPE_CHAR_OFFSET4);
+                uint16_t c5 = EcmaStringAccessor(string).Get(k + ESCAPE_CHAR_OFFSET5);
+                bool c2IsHexDigits = IsHexDigits(c2);
+                bool c3IsHexDigits = IsHexDigits(c3);
+                bool c4IsHexDigits = IsHexDigits(c4);
+                bool c5IsHexDigits = IsHexDigits(c5);
+                bool isHexDigits = c2IsHexDigits && c3IsHexDigits && c4IsHexDigits && c5IsHexDigits;
+                if (isHexDigits) {
+                    c = ESCAPE_CHAR_TO_HEX[c2];
+                    c = (c << ESCAPE_HEX_BIT4) | ESCAPE_CHAR_TO_HEX[c3];
+                    c = (c << ESCAPE_HEX_BIT4) | ESCAPE_CHAR_TO_HEX[c4];
+                    c = (c << ESCAPE_HEX_BIT4) | ESCAPE_CHAR_TO_HEX[c5];
+                    k = k + ESCAPE_CHAR_OFFSET5;
                 }
-                if (isHex) {
-                    uint16_t n = GetValueFromHexString(codePointString);
-                    c = n;
-                    k = k + optionalAdvance;
+            } else if (k + ESCAPE_CHAR_OFFSET3 <= len) {
+                uint16_t c2 = EcmaStringAccessor(string).Get(k + ESCAPE_CHAR_OFFSET2);
+                bool c1IsHexDigits = IsHexDigits(c1);
+                bool c2IsHexDigits = IsHexDigits(c2);
+                bool isHexDigits = c1IsHexDigits && c2IsHexDigits;
+                if (isHexDigits) {
+                    c = ESCAPE_CHAR_TO_HEX[c1];
+                    c = (c << ESCAPE_HEX_BIT4) | ESCAPE_CHAR_TO_HEX[c2];
+                    k = k + ESCAPE_CHAR_OFFSET2;
                 }
             }
         }
