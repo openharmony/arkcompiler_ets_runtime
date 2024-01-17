@@ -311,7 +311,63 @@ HWTEST_F_L0(NumberHelperTest, DoubleInRangeInt32)
     EXPECT_EQ(NumberHelper::DoubleInRangeInt32(-65535), -65535);
 }
 
-HWTEST_F_L0(NumberHelperTest, DoubleToExponential)
+/**
+ * @tc.name: DoubleToExponential
+ * @tc.desc: Convert integer type to string type through "DoubleToExponential" function.
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F_L0(NumberHelperTest, DoubleToExponential01)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    int radix;
+
+    radix = 0;
+    JSHandle<EcmaString> resultStr = factory->NewFromASCII("1.12356e-4");
+    JSHandle<EcmaString> handleEcmaStr1(thread, NumberHelper::DoubleToExponential(thread,
+                                        0.00011235600000000001, radix));
+    EXPECT_EQ(EcmaStringAccessor::Compare(instance, handleEcmaStr1, resultStr), 0);
+
+    radix = 1;
+    resultStr = factory->NewFromASCII("1e-4");
+    JSHandle<EcmaString> handleEcmaStr2(thread, NumberHelper::DoubleToExponential(thread,
+                                        0.00011235600000000001, radix));
+    EXPECT_EQ(EcmaStringAccessor::Compare(instance, handleEcmaStr2, resultStr), 0);
+
+    radix = 2;
+    resultStr = factory->NewFromASCII("1.1e-4");
+    JSHandle<EcmaString> handleEcmaStr3(thread, NumberHelper::DoubleToExponential(thread,
+                                        0.00011235600000000001, radix));
+    EXPECT_EQ(EcmaStringAccessor::Compare(instance, handleEcmaStr3, resultStr), 0);
+
+    radix = 16;
+    resultStr = factory->NewFromASCII("1.123560000000000e-4");
+    JSHandle<EcmaString> handleEcmaStr4(thread, NumberHelper::DoubleToExponential(thread,
+                                        0.00011235600000000001, radix));
+    EXPECT_EQ(EcmaStringAccessor::Compare(instance, handleEcmaStr4, resultStr), 0);
+
+    radix = 0;
+    resultStr = factory->NewFromASCII("1.23456e+2");
+    JSHandle<EcmaString> handleEcmaStr5(thread, NumberHelper::DoubleToExponential(thread, 123.456, radix));
+    EXPECT_EQ(EcmaStringAccessor::Compare(instance, handleEcmaStr5, resultStr), 0);
+
+    radix = 1;
+    resultStr = factory->NewFromASCII("1e+2");
+    JSHandle<EcmaString> handleEcmaStr6(thread, NumberHelper::DoubleToExponential(thread, 123.456, radix));
+    EXPECT_EQ(EcmaStringAccessor::Compare(instance, handleEcmaStr6, resultStr), 0);
+    
+    radix = 2;
+    resultStr = factory->NewFromASCII("1.2e+2");
+    JSHandle<EcmaString> handleEcmaStr7(thread, NumberHelper::DoubleToExponential(thread, 123.456, radix));
+    EXPECT_EQ(EcmaStringAccessor::Compare(instance, handleEcmaStr7, resultStr), 0);
+
+    radix = 16;
+    resultStr = factory->NewFromASCII("1.234560000000000e+2");
+    JSHandle<EcmaString> handleEcmaStr8(thread, NumberHelper::DoubleToExponential(thread, 123.456, radix));
+    EXPECT_EQ(EcmaStringAccessor::Compare(instance, handleEcmaStr8, resultStr), 0);
+}
+
+HWTEST_F_L0(NumberHelperTest, DoubleToExponential02)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     int radix;
@@ -326,97 +382,29 @@ HWTEST_F_L0(NumberHelperTest, DoubleToExponential)
     JSHandle<EcmaString> handleEcmaStr2(thread, NumberHelper::DoubleToExponential(thread, 123.9876, radix));
     EXPECT_EQ(EcmaStringAccessor::Compare(instance, handleEcmaStr2, resultStr), 0);
 
-    radix = 2;
+    radix = 3;
     resultStr = factory->NewFromASCII("1.24e+2");
     JSHandle<EcmaString> handleEcmaStr3(thread, NumberHelper::DoubleToExponential(thread, 123.567, radix));
     EXPECT_EQ(EcmaStringAccessor::Compare(instance, handleEcmaStr3, resultStr), 0);
 
-    radix = 6;
+    radix = 7;
     resultStr = factory->NewFromASCII("1.234567e+2");
     JSHandle<EcmaString> handleEcmaStr4(thread, NumberHelper::DoubleToExponential(thread, 123.4567, radix));
     EXPECT_EQ(EcmaStringAccessor::Compare(instance, handleEcmaStr4, resultStr), 0);
 
-    radix = 7;
+    radix = 8;
     resultStr = factory->NewFromASCII("1.2345670e+2");
     JSHandle<EcmaString> handleEcmaStr5(thread, NumberHelper::DoubleToExponential(thread, 123.45670, radix));
     EXPECT_EQ(EcmaStringAccessor::Compare(instance, handleEcmaStr5, resultStr), 0);
 
-    radix = 3;
+    radix = 4;
     resultStr = factory->NewFromASCII("1.230e+2");
     JSHandle<EcmaString> handleEcmaStr6(thread, NumberHelper::DoubleToExponential(thread, 123.0123, radix));
     EXPECT_EQ(EcmaStringAccessor::Compare(instance, handleEcmaStr6, resultStr), 0);
 }
 
-HWTEST_F_L0(NumberHelperTest, DoubleToFixed)
-{
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    int radix;
-
-    radix = 1;
-    JSHandle<EcmaString> resultStr = factory->NewFromASCII("123.5");
-    JSHandle<EcmaString> handleEcmaStr1(thread, NumberHelper::DoubleToFixed(thread, 123.456, radix));
-    EXPECT_EQ(EcmaStringAccessor::Compare(instance, handleEcmaStr1, resultStr), 0);
-
-    radix = 2;
-    resultStr = factory->NewFromASCII("123.46");
-    JSHandle<EcmaString> handleEcmaStr2(thread, NumberHelper::DoubleToFixed(thread, 123.456, radix));
-    EXPECT_EQ(EcmaStringAccessor::Compare(instance, handleEcmaStr2, resultStr), 0);
-
-    radix = 3;
-    resultStr = factory->NewFromASCII("123.456");
-    JSHandle<EcmaString> handleEcmaStr3(thread, NumberHelper::DoubleToFixed(thread, 123.456, radix));
-    EXPECT_EQ(EcmaStringAccessor::Compare(instance, handleEcmaStr3, resultStr), 0);
-
-    radix = 4;
-    resultStr = factory->NewFromASCII("123.4560");
-    JSHandle<EcmaString> handleEcmaStr4(thread, NumberHelper::DoubleToFixed(thread, 123.456, radix));
-    EXPECT_EQ(EcmaStringAccessor::Compare(instance, handleEcmaStr4, resultStr), 0);
-
-    radix = 0;
-    resultStr = factory->NewFromASCII("123");
-    JSHandle<EcmaString> handleEcmaStr5(thread, NumberHelper::DoubleToFixed(thread, 123.456, radix));
-    EXPECT_EQ(EcmaStringAccessor::Compare(instance, handleEcmaStr5, resultStr), 0);
-}
-
 /**
- * @tc.name: DoubleToPrecision
- * @tc.desc: Convert double decimal type to Precision type through "DoubleToPrecision" function.If the logarithm
- *           of number based on ten is less than zero and radix Digit is more than zero or it is greater than zero
- *           and radix Digit is less than MAX_EXPONENT_DIGIT call the DoubleToFixed function.other call
- *           DoubleToExponential function.
- * @tc.type: FUNC
- * @tc.require:
- */
-HWTEST_F_L0(NumberHelperTest, DoubleToPrecision)
-{
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    int radix;
-
-    radix = 1;
-    JSHandle<EcmaString> resultStr = factory->NewFromASCII("0");
-    JSHandle<EcmaString> handleEcmaStr1(thread, NumberHelper::DoubleToPrecision(thread, 0.0, radix));
-    EXPECT_EQ(EcmaStringAccessor::Compare(instance, handleEcmaStr1, resultStr), 0);
-
-    resultStr = factory->NewFromASCII("0.0001");
-    JSHandle<EcmaString> handleEcmaStr2(thread, NumberHelper::DoubleToPrecision(thread, 0.0001, radix));
-    EXPECT_EQ(EcmaStringAccessor::Compare(instance, handleEcmaStr2, resultStr), 0);
-
-    resultStr = factory->NewFromASCII("1e-7");
-    JSHandle<EcmaString> handleEcmaStr3(thread, NumberHelper::DoubleToPrecision(thread, 0.0000001, radix));
-    EXPECT_EQ(EcmaStringAccessor::Compare(instance, handleEcmaStr3, resultStr), 0);
-
-    resultStr = factory->NewFromASCII("1e+3");
-    JSHandle<EcmaString> handleEcmaStr5(thread, NumberHelper::DoubleToPrecision(thread, 1000.1234, radix));
-    EXPECT_EQ(EcmaStringAccessor::Compare(instance, handleEcmaStr5, resultStr), 0);
-
-    radix = 6;
-    resultStr = factory->NewFromASCII("1000.12");
-    JSHandle<EcmaString> handleEcmaStr6(thread, NumberHelper::DoubleToPrecision(thread, 1000.1234, radix));
-    EXPECT_EQ(EcmaStringAccessor::Compare(instance, handleEcmaStr6, resultStr), 0);
-}
-
-/**
- * @tc.name: DoubleToPrecision
+ * @tc.name: StringToDoubleWithRadix
  * @tc.desc: Convert double decimal type to Precision type through "DoubleToPrecision" function.If the logarithm
  *           of number based on ten is less than zero and radix Digit is more than zero or it is greater than zero
  *           and radix Digit is less than MAX_EXPONENT_DIGIT call the DoubleToFixed function.other call
@@ -576,4 +564,126 @@ HWTEST_F_L0(NumberHelperTest, DoubleToInt64)
     int64_t d5 = NumberHelper::DoubleToInt64(0);
     EXPECT_EQ(d5, 0);
 }
+/**
+ * @tc.name: DoubleToASCII
+ * @tc.desc: When flag is equal to 2, the calculation result of DoubleToASCII is number.toFixed()
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+
+HWTEST_F_L0(NumberHelperTest, DoubleToASCII_001)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    int flags = 2;
+    int digit = 2;
+    JSHandle<EcmaString> resultStr = factory->NewFromASCII("0.10");
+    JSHandle<EcmaString> handleEcmaStr(thread, NumberHelper::DoubleToASCII(thread,
+                                       0.10000000000000001, digit, flags));
+    EXPECT_EQ(EcmaStringAccessor::Compare(instance, handleEcmaStr, resultStr), 0);
+
+    digit = 3;
+    resultStr = factory->NewFromASCII("0.100");
+    JSHandle<EcmaString> handleEcmaStr1(thread, NumberHelper::DoubleToASCII(thread,
+                                        0.10000000000000001, digit, flags));
+    EXPECT_EQ(EcmaStringAccessor::Compare(instance, handleEcmaStr1, resultStr), 0);
+    
+    digit = 2;
+    resultStr = factory->NewFromASCII("0.01");
+    JSHandle<EcmaString> handleEcmaStr2(thread, NumberHelper::DoubleToASCII(thread,
+                                        0.01, digit, flags));
+    EXPECT_EQ(EcmaStringAccessor::Compare(instance, handleEcmaStr2, resultStr), 0);
+
+    digit = 3;
+    resultStr = factory->NewFromASCII("0.010");
+    JSHandle<EcmaString> handleEcmaStr3(thread, NumberHelper::DoubleToASCII(thread,
+                                        0.01, digit, flags));
+    EXPECT_EQ(EcmaStringAccessor::Compare(instance, handleEcmaStr3, resultStr), 0);
+
+    digit = 7;
+    resultStr = factory->NewFromASCII("0.0000006");
+    JSHandle<EcmaString> handleEcmaStr4(thread, NumberHelper::DoubleToASCII(thread,
+                                        5.9999999999999997e-07, digit, flags));
+    EXPECT_EQ(EcmaStringAccessor::Compare(instance, handleEcmaStr4, resultStr), 0);
+    
+    digit = 8;
+    resultStr = factory->NewFromASCII("0.00000006");
+    JSHandle<EcmaString> handleEcmaStr5(thread, NumberHelper::DoubleToASCII(thread,
+                                        5.9999999999999997e-08, digit, flags));
+    EXPECT_EQ(EcmaStringAccessor::Compare(instance, handleEcmaStr5, resultStr), 0);
+
+    digit = 1;
+    resultStr = factory->NewFromASCII("1.3");
+    JSHandle<EcmaString> handleEcmaStr6(thread, NumberHelper::DoubleToASCII(thread, 1.25, digit, flags));
+    EXPECT_EQ(EcmaStringAccessor::Compare(instance, handleEcmaStr6, resultStr), 0);
+    
+    digit = 1;
+    resultStr = factory->NewFromASCII("-1.3");
+    JSHandle<EcmaString> handleEcmaStr7(thread, NumberHelper::DoubleToASCII(thread, -1.25, digit, flags));
+    EXPECT_EQ(EcmaStringAccessor::Compare(instance, handleEcmaStr7, resultStr), 0);
+}
+
+/**
+ * @tc.name: DoubleToASCII
+ * @tc.desc: When flag is equal to 1, the calculation result of DoubleToASCII is number.toPrecision()
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F_L0(NumberHelperTest, DoubleToASCII_002)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    int flags = 1;
+    int digit = 2;
+    JSHandle<EcmaString> resultStr = factory->NewFromASCII("-1.2e-9");
+    JSHandle<EcmaString> handleEcmaStr(thread, NumberHelper::DoubleToASCII(thread, -1.2345e-09, digit, flags));
+    EXPECT_EQ(EcmaStringAccessor::Compare(instance, handleEcmaStr, resultStr), 0);
+
+    digit = 2;
+    flags = 1;
+    resultStr = factory->NewFromASCII("1.2e-8");
+    JSHandle<EcmaString> handleEcmaStr1(thread, NumberHelper::DoubleToASCII(thread,
+                                        1.2345000000000001e-08, digit, flags));
+    EXPECT_EQ(EcmaStringAccessor::Compare(instance, handleEcmaStr1, resultStr), 0);
+    
+    digit = 2;
+    flags = 1;
+    resultStr = factory->NewFromASCII("1.3");
+    JSHandle<EcmaString> handleEcmaStr2(thread, NumberHelper::DoubleToASCII(thread, 1.25, digit, flags));
+    EXPECT_EQ(EcmaStringAccessor::Compare(instance, handleEcmaStr2, resultStr), 0);
+
+    digit = 2;
+    flags = 1;
+    resultStr = factory->NewFromASCII("1.4");
+    JSHandle<EcmaString> handleEcmaStr3(thread, NumberHelper::DoubleToASCII(thread, 1.35, digit, flags));
+    EXPECT_EQ(EcmaStringAccessor::Compare(instance, handleEcmaStr3, resultStr), 0);
+
+
+    digit = 15;
+    flags = 1;
+    resultStr = factory->NewFromASCII("0.000555000000000000");
+    JSHandle<EcmaString> handleEcmaStr4(thread, NumberHelper::DoubleToASCII(thread,
+                                        0.00055500000000000005, digit, flags));
+    EXPECT_EQ(EcmaStringAccessor::Compare(instance, handleEcmaStr4, resultStr), 0);
+    
+    digit = 15;
+    flags = 1;
+    resultStr = factory->NewFromASCII("5.55000000000000e-7");
+    JSHandle<EcmaString> handleEcmaStr5(thread, NumberHelper::DoubleToASCII(thread,
+                                        5.5499999999999998e-07, digit, flags));
+    EXPECT_EQ(EcmaStringAccessor::Compare(instance, handleEcmaStr5, resultStr), 0);
+
+    digit = 15;
+    flags = 1;
+    resultStr = factory->NewFromASCII("-5.55000000000000e-7");
+    JSHandle<EcmaString> handleEcmaStr6(thread, NumberHelper::DoubleToASCII(thread,
+                                        -5.5499999999999998e-07, digit, flags));
+    EXPECT_EQ(EcmaStringAccessor::Compare(instance, handleEcmaStr6, resultStr), 0);
+    
+    digit = 2;
+    flags = 1;
+    resultStr = factory->NewFromASCII("-12");
+    JSHandle<EcmaString> handleEcmaStr7(thread, NumberHelper::DoubleToASCII(thread,
+                                        -12.345000000000001, digit, flags));
+    EXPECT_EQ(EcmaStringAccessor::Compare(instance, handleEcmaStr7, resultStr), 0);
+}
+
 } // namespace panda::ecmascript
