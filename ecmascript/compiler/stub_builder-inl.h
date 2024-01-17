@@ -2943,8 +2943,7 @@ inline GateRef StubBuilder::IsTypedArray(GateRef obj)
 
 inline GateRef StubBuilder::GetProfileTypeInfo(GateRef jsFunc)
 {
-    GateRef method = GetMethodFromFunction(jsFunc);
-    return Load(VariableType::JS_POINTER(), method, IntPtr(Method::PROFILE_TYPE_INFO_OFFSET));
+    return Load(VariableType::JS_POINTER(), jsFunc, IntPtr(JSFunction::PROFILE_TYPE_INFO_OFFSET));
 }
 
 inline void StubBuilder::CheckDetectorName(GateRef glue, GateRef key, Label *fallthrough, Label *slow)

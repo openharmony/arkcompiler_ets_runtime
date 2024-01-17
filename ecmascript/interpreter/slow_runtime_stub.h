@@ -157,7 +157,7 @@ public:
     static JSTaggedValue LdSuperByValue(JSThread *thread, JSTaggedValue obj, JSTaggedValue key, JSTaggedValue thisFunc);
     static JSTaggedValue StSuperByValue(JSThread *thread, JSTaggedValue obj, JSTaggedValue key, JSTaggedValue value,
                                         JSTaggedValue thisFunc);
-    static JSTaggedValue NotifyInlineCache(JSThread *thread, Method *method);
+    static JSTaggedValue NotifyInlineCache(JSThread *thread, JSFunction *function);
     static JSTaggedValue ThrowReferenceError(JSThread *thread, JSTaggedValue prop, const char *desc);
 
     static JSTaggedValue ResolveClass(JSThread *thread, JSTaggedValue ctor, TaggedArray *literal, JSTaggedValue base,

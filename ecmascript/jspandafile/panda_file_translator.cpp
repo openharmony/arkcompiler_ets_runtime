@@ -147,7 +147,7 @@ JSHandle<Program> PandaFileTranslator::GenerateProgramInternal(EcmaVM *vm,
         JSHandle<JSFunction> mainFunc = factory->NewJSFunctionByHClass(method, hclass);
         // Main function is created profileTypeInfo by default.
         if (thread->IsPGOProfilerEnable()) {
-            SlowRuntimeStub::NotifyInlineCache(thread, method.GetObject<Method>());
+            SlowRuntimeStub::NotifyInlineCache(thread, mainFunc.GetObject<JSFunction>());
         }
         program->SetMainFunction(thread, mainFunc.GetTaggedValue());
         method->SetConstantPool(thread, constpool);

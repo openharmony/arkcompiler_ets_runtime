@@ -270,9 +270,9 @@ GateRef InterpreterStubBuilder::GetEnvFromFunction(GateRef function)
     return Load(VariableType::JS_POINTER(), function, IntPtr(JSFunction::LEXICAL_ENV_OFFSET));
 }
 
-GateRef InterpreterStubBuilder::GetProfileTypeInfoFromMethod(GateRef method)
+GateRef InterpreterStubBuilder::GetProfileTypeInfoFromFunction(GateRef function)
 {
-    return Load(VariableType::JS_POINTER(), method, IntPtr(Method::PROFILE_TYPE_INFO_OFFSET));
+    return Load(VariableType::JS_POINTER(), function, IntPtr(JSFunction::PROFILE_TYPE_INFO_OFFSET));
 }
 
 GateRef InterpreterStubBuilder::GetModuleFromFunction(GateRef function)

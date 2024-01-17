@@ -235,7 +235,7 @@ private:
         Register &contextRegister, Register &pcRegister, Register &operatorRegister);
 
     static void CallBCStub(ExtendedAssembler *assembler, Register &newSp, Register &glue,
-        Register &method, Register &pc, Register &temp);
+        Register &callTarget, Register &method, Register &pc, Register &temp);
 
     static void CallNativeEntry(ExtendedAssembler *assembler);
 

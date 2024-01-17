@@ -1102,7 +1102,7 @@ void OptimizedCall::DeoptEnterAsmInterp(ExtendedAssembler *assembler)
         __ Movq(Operand(callTargetRegister, JSFunctionBase::METHOD_OFFSET), methodRegister);
 
         __ Leaq(Operand(rsp, AsmInterpretedFrame::GetSize(false)), opRegister);
-        AsmInterpreterCall::DispatchCall(assembler, r12, opRegister, methodRegister, rsi);
+        AsmInterpreterCall::DispatchCall(assembler, r12, opRegister, callTargetRegister, methodRegister, rsi);
     }
 
     __ Bind(&stackOverflow);

@@ -740,7 +740,7 @@ JSTaggedValue EcmaInterpreter::Execute(EcmaRuntimeCallInfo *info)
 
     state->constpool = method->GetConstantPool();
     JSHandle<JSFunction> thisFunc = JSHandle<JSFunction>::Cast(func);
-    state->profileTypeInfo = method->GetProfileTypeInfo();
+    state->profileTypeInfo = thisFunc->GetProfileTypeInfo();
     state->base.prev = sp;
     state->base.type = FrameType::INTERPRETER_FRAME;
     state->env = thisFunc->GetLexicalEnv();
@@ -822,7 +822,7 @@ JSTaggedValue EcmaInterpreter::GeneratorReEnterInterpreter(JSThread *thread, JSH
     state->function = func.GetTaggedValue();
     state->thisObj = context->GetThis();
     state->constpool = method->GetConstantPool();
-    state->profileTypeInfo = method->GetProfileTypeInfo();
+    state->profileTypeInfo = func->GetProfileTypeInfo();
     state->acc = context->GetAcc();
     state->base.prev = breakSp;
     state->base.type = FrameType::INTERPRETER_FRAME;
@@ -1403,7 +1403,8 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         setVregsAndFrameNotNative:
             startReg--;
         deprecatedSetVregsAndFrameNotNative: {
-            if (JSFunction::Cast(funcObject)->IsClassConstructor()) {
+            JSFunction *func = JSFunction::Cast(funcObject);
+            if (func->IsClassConstructor()) {
                 {
                     [[maybe_unused]] EcmaHandleScope handleScope(thread);
                     JSHandle<JSObject> error =
@@ -1449,8 +1450,8 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
             state->thisObj = JSTaggedValue(thisObj);
             state->acc = JSTaggedValue::Hole();
             state->constpool = methodHandle->GetConstantPool();
-            state->profileTypeInfo = methodHandle->GetProfileTypeInfo();
-            JSTaggedValue env = JSFunction::Cast(funcObject)->GetLexicalEnv();
+            state->profileTypeInfo = func->GetProfileTypeInfo();
+            JSTaggedValue env = func->GetLexicalEnv();
             state->env = env;
             thread->SetCurrentSPFrame(newSp);
             LOG_INST() << "Entry: Runtime Call " << std::hex << reinterpret_cast<uintptr_t>(sp) << " "
@@ -3310,7 +3311,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
 
                     state->function = superCtor;
                     state->constpool = methodHandle->GetConstantPool();
-                    state->profileTypeInfo = methodHandle->GetProfileTypeInfo();
+                    state->profileTypeInfo = superCtorFunc->GetProfileTypeInfo();
                     state->env = superCtorFunc->GetLexicalEnv();
                 }
 
@@ -3446,7 +3447,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
 
                     state->function = superCtor;
                     state->constpool = methodHandle->GetConstantPool();
-                    state->profileTypeInfo = methodHandle->GetProfileTypeInfo();
+                    state->profileTypeInfo = superCtorFunc->GetProfileTypeInfo();
                     state->env = superCtorFunc->GetLexicalEnv();
                 }
 
@@ -3582,7 +3583,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
 
                     state->function = superCtor;
                     state->constpool = methodHandle->GetConstantPool();
-                    state->profileTypeInfo = methodHandle->GetProfileTypeInfo();
+                    state->profileTypeInfo = superCtorFunc->GetProfileTypeInfo();
                     state->env = superCtorFunc->GetLexicalEnv();
                 }
 
@@ -3718,7 +3719,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
 
                     state->function = superCtor;
                     state->constpool = methodHandle->GetConstantPool();
-                    state->profileTypeInfo = methodHandle->GetProfileTypeInfo();
+                    state->profileTypeInfo = superCtorFunc->GetProfileTypeInfo();
                     state->env = superCtorFunc->GetLexicalEnv();
                 }
 
@@ -4090,7 +4091,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
 
                     state->function = ctor;
                     state->constpool = methodHandle->GetConstantPool();
-                    state->profileTypeInfo = methodHandle->GetProfileTypeInfo();
+                    state->profileTypeInfo = ctorFunc->GetProfileTypeInfo();
                     state->env = ctorFunc->GetLexicalEnv();
                 }
 
@@ -4227,7 +4228,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
 
                     state->function = ctor;
                     state->constpool = methodHandle->GetConstantPool();
-                    state->profileTypeInfo = methodHandle->GetProfileTypeInfo();
+                    state->profileTypeInfo = ctorFunc->GetProfileTypeInfo();
                     state->env = ctorFunc->GetLexicalEnv();
                 }
 
@@ -4363,7 +4364,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
 
                     state->function = ctor;
                     state->constpool = methodHandle->GetConstantPool();
-                    state->profileTypeInfo = methodHandle->GetProfileTypeInfo();
+                    state->profileTypeInfo = ctorFunc->GetProfileTypeInfo();
                     state->env = ctorFunc->GetLexicalEnv();
                 }
 
@@ -7632,7 +7633,7 @@ bool EcmaInterpreter::UpdateHotnessCounter(JSThread* thread, JSTaggedType *sp, J
             auto thisFunc = JSFunction::Cast(state->function.GetTaggedObject());
             method = thisFunc->GetCallTarget(); // for CheckSafepoint, method need retrieve.
             method->SetHotnessCounter(EcmaInterpreter::METHOD_HOTNESS_THRESHOLD);
-            auto res = SlowRuntimeStub::NotifyInlineCache(thread, method);
+            auto res = SlowRuntimeStub::NotifyInlineCache(thread, thisFunc);
             state->profileTypeInfo = res;
             return true;
         } else {

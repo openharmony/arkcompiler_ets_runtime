@@ -1756,9 +1756,7 @@ void ObjectFactory::InitializeMethod(const MethodLiteral *methodLiteral, JSHandl
     }
     method->SetCodeEntryOrLiteral(reinterpret_cast<uintptr_t>(methodLiteral));
     method->SetConstantPool(thread_, JSTaggedValue::Undefined());
-    method->SetProfileTypeInfo(thread_, JSTaggedValue::Undefined());
     method->SetModule(thread_, JSTaggedValue::Undefined());
-    method->SetMachineCode(thread_, JSTaggedValue::Undefined());
 }
 
 JSHandle<Method> ObjectFactory::NewMethod(const MethodLiteral *methodLiteral, MemSpaceType spaceType)

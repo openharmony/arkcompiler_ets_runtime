@@ -2531,7 +2531,7 @@ DECLARE_ASM_HANDLER(HandleReturn)
         GateRef function = GetFunctionFromFrame(prevState);
         GateRef method = Load(VariableType::JS_ANY(), function, IntPtr(JSFunctionBase::METHOD_OFFSET));
         varConstpool = GetConstpoolFromMethod(method);
-        varProfileTypeInfo = GetProfileTypeInfoFromMethod(method);
+        varProfileTypeInfo = GetProfileTypeInfoFromFunction(function);
         varHotnessCounter = GetHotnessCounterFromMethod(method);
         GateRef jumpSize = GetCallSizeFromFrame(prevState);
         CallNGCRuntime(glue, RTSTUB_ID(ResumeRspAndDispatch),
@@ -2603,7 +2603,7 @@ DECLARE_ASM_HANDLER(HandleReturnundefined)
         GateRef function = GetFunctionFromFrame(prevState);
         GateRef method = Load(VariableType::JS_ANY(), function, IntPtr(JSFunctionBase::METHOD_OFFSET));
         varConstpool = GetConstpoolFromMethod(method);
-        varProfileTypeInfo = GetProfileTypeInfoFromMethod(method);
+        varProfileTypeInfo = GetProfileTypeInfoFromFunction(function);
         varHotnessCounter = GetHotnessCounterFromMethod(method);
         GateRef jumpSize = GetCallSizeFromFrame(prevState);
         CallNGCRuntime(glue, RTSTUB_ID(ResumeRspAndDispatch),
@@ -2685,7 +2685,7 @@ DECLARE_ASM_HANDLER(HandleSuspendgeneratorV8)
         GateRef function = GetFunctionFromFrame(prevState);
         GateRef method = Load(VariableType::JS_ANY(), function, IntPtr(JSFunctionBase::METHOD_OFFSET));
         varConstpool = GetConstpoolFromMethod(method);
-        varProfileTypeInfo = GetProfileTypeInfoFromMethod(method);
+        varProfileTypeInfo = GetProfileTypeInfoFromFunction(function);
         varHotnessCounter = GetHotnessCounterFromMethod(method);
         GateRef jumpSize = GetCallSizeFromFrame(prevState);
         CallNGCRuntime(glue, RTSTUB_ID(ResumeRspAndDispatch),
@@ -2766,7 +2766,7 @@ DECLARE_ASM_HANDLER(HandleDeprecatedSuspendgeneratorPrefV8V8)
         GateRef function = GetFunctionFromFrame(prevState);
         GateRef method = Load(VariableType::JS_ANY(), function, IntPtr(JSFunctionBase::METHOD_OFFSET));
         varConstpool = GetConstpoolFromMethod(method);
-        varProfileTypeInfo = GetProfileTypeInfoFromMethod(method);
+        varProfileTypeInfo = GetProfileTypeInfoFromFunction(function);
         varHotnessCounter = GetHotnessCounterFromMethod(method);
         GateRef jumpSize = GetCallSizeFromFrame(prevState);
         CallNGCRuntime(glue, RTSTUB_ID(ResumeRspAndDispatch),
@@ -3088,7 +3088,7 @@ DECLARE_ASM_HANDLER(HandleAsyncgeneratorresolveV8V8V8)
         GateRef function = GetFunctionFromFrame(prevState);
         GateRef method = Load(VariableType::JS_ANY(), function, IntPtr(JSFunctionBase::METHOD_OFFSET));
         varConstpool = GetConstpoolFromMethod(method);
-        varProfileTypeInfo = GetProfileTypeInfoFromMethod(method);
+        varProfileTypeInfo = GetProfileTypeInfoFromFunction(function);
         varHotnessCounter = GetHotnessCounterFromMethod(method);
         GateRef jumpSize = GetCallSizeFromFrame(prevState);
         CallNGCRuntime(glue, RTSTUB_ID(ResumeRspAndDispatch),
@@ -4776,7 +4776,7 @@ DECLARE_ASM_HANDLER_NOPRINT(ExceptionHandler)
         GateRef function = GetFunctionFromFrame(GetFrame(*varSp));
         GateRef method = Load(VariableType::JS_ANY(), function, IntPtr(JSFunctionBase::METHOD_OFFSET));
         varConstpool = GetConstpoolFromMethod(method);
-        varProfileTypeInfo = GetProfileTypeInfoFromMethod(method);
+        varProfileTypeInfo = GetProfileTypeInfoFromFunction(function);
         varHotnessCounter = GetHotnessCounterFromMethod(method);
         CallNGCRuntime(glue, RTSTUB_ID(ResumeCaughtFrameAndDispatch), {
             glue, *varSp, *varPc, *varConstpool,
@@ -4818,7 +4818,7 @@ DECLARE_ASM_HANDLER(SingleStepDebugging)
         varAcc = GetAccFromFrame(frameAfter);
         GateRef function = GetFunctionFromFrame(frameAfter);
         GateRef method = Load(VariableType::JS_ANY(), function, IntPtr(JSFunctionBase::METHOD_OFFSET));
-        varProfileTypeInfo = GetProfileTypeInfoFromMethod(method);
+        varProfileTypeInfo = GetProfileTypeInfoFromFunction(function);
         varConstpool = GetConstpoolFromMethod(method);
         varHotnessCounter = GetHotnessCounterFromMethod(method);
     }
@@ -4897,7 +4897,7 @@ DECLARE_ASM_HANDLER(BCDebuggerEntry)
             GateRef function = GetFunctionFromFrame(prevState);
             GateRef method = Load(VariableType::JS_ANY(), function, IntPtr(JSFunctionBase::METHOD_OFFSET));
             varConstpool = GetConstpoolFromMethod(method);
-            varProfileTypeInfo = GetProfileTypeInfoFromMethod(method);
+            varProfileTypeInfo = GetProfileTypeInfoFromFunction(function);
             varHotnessCounter = GetHotnessCounterFromMethod(method);
             GateRef jumpSize = IntPtr(0);
             CallNGCRuntime(glue, RTSTUB_ID(ResumeRspAndRollback),

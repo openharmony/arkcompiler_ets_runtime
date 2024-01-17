@@ -97,6 +97,8 @@ void JSFunction::InitializeWithDefaultValue(JSThread *thread, const JSHandle<JSF
     func->SetHomeObject(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
     func->SetWorkNodePointer(reinterpret_cast<uintptr_t>(nullptr));
     func->SetLexicalEnv(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
+    func->SetMachineCode(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
+    func->SetProfileTypeInfo(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
     func->SetMethod(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
 }
 
