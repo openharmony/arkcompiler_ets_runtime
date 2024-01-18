@@ -323,7 +323,7 @@ StateDepend MCRLowering::LowerConvert(StateDepend stateDepend, GateRef gate)
             if (dstType == ValueType::TAGGED_DOUBLE) {
                 result = ConvertFloat64ToTaggedDouble(value);
             } else if (dstType == ValueType::INT32) {
-                result = builder_.DoubleToInt32(value);
+                result = ConvertFloat64ToInt32(value, &exit);
             } else {
                 ASSERT(dstType == ValueType::BOOL);
                 result = ConvertFloat64ToBool(value);
@@ -383,12 +383,13 @@ GateRef MCRLowering::ConvertTaggedNumberToInt32(GateRef gate, Label *exit)
     DEFVALUE(result, (&builder_), VariableType::INT32(), builder_.Int32(0));
     Label isInt(&builder_);
     Label isDouble(&builder_);
+    Label toInt32(&builder_);
     builder_.Branch(builder_.TaggedIsInt(gate), &isInt, &isDouble);
     builder_.Bind(&isInt);
     result = ConvertTaggedIntToInt32(gate);
     builder_.Jump(exit);
     builder_.Bind(&isDouble);
-    result = builder_.DoubleToInt32(ConvertTaggedDoubleToFloat64(gate));
+    result = ConvertFloat64ToInt32(ConvertTaggedDoubleToFloat64(gate), &toInt32);
     builder_.Jump(exit);
     builder_.Bind(exit);
     return *result;
@@ -424,7 +425,7 @@ void MCRLowering::LowerCheckAndConvert(GateRef gate)
             LowerCheckTaggedIntAndConvert(gate, frameState);
             break;
         case ValueType::TAGGED_DOUBLE:
-            LowerCheckTaggedDoubleAndConvert(gate, frameState);
+            LowerCheckTaggedDoubleAndConvert(gate, frameState, &exit);
             break;
         case ValueType::TAGGED_BOOLEAN:
             LowerCheckTaggedBoolAndConvert(gate, frameState);
@@ -471,7 +472,7 @@ void MCRLowering::LowerCheckTaggedIntAndConvert(GateRef gate, GateRef frameState
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
 }
 
-void MCRLowering::LowerCheckTaggedDoubleAndConvert(GateRef gate, GateRef frameState)
+void MCRLowering::LowerCheckTaggedDoubleAndConvert(GateRef gate, GateRef frameState, Label *exit)
 {
     GateRef value = acc_.GetValueIn(gate, 0);
     GateRef typeCheck = builder_.TaggedIsDouble(value);
@@ -480,7 +481,7 @@ void MCRLowering::LowerCheckTaggedDoubleAndConvert(GateRef gate, GateRef frameSt
     ValueType dst = acc_.GetDstType(gate);
     ASSERT(dst == ValueType::INT32 || dst == ValueType::FLOAT64);
     if (dst == ValueType::INT32) {
-        result = ConvertTaggedDoubleToInt32(value);
+        result = ConvertTaggedDoubleToInt32(value, exit);
     } else {
         result = ConvertTaggedDoubleToFloat64(value);
     }
@@ -620,6 +621,11 @@ GateRef MCRLowering::ConvertUInt32ToTaggedNumber(GateRef gate, Label *exit)
     return *taggedVal;
 }
 
+GateRef MCRLowering::ConvertFloat64ToInt32(GateRef gate, Label *exit)
+{
+    return builder_.DoubleToInt(gate, exit);
+}
+
 GateRef MCRLowering::ConvertFloat64ToBool(GateRef gate)
 {
     GateRef doubleNotZero = builder_.DoubleNotEqual(gate, builder_.Double(0.0));
@@ -642,9 +648,9 @@ GateRef MCRLowering::ConvertTaggedIntToFloat64(GateRef gate)
     return builder_.ChangeInt32ToFloat64(builder_.GetInt32OfTInt(gate));
 }
 
-GateRef MCRLowering::ConvertTaggedDoubleToInt32(GateRef gate)
+GateRef MCRLowering::ConvertTaggedDoubleToInt32(GateRef gate, Label *exit)
 {
-    return builder_.DoubleToInt32(builder_.GetDoubleOfTDouble(gate));
+    return builder_.DoubleToInt(builder_.GetDoubleOfTDouble(gate), exit);
 }
 
 GateRef MCRLowering::ConvertTaggedDoubleToFloat64(GateRef gate)

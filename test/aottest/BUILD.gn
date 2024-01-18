@@ -178,7 +178,6 @@ group("ark_aot_ts_test") {
     "modules",
     "mul",
     "multi_module_compilation",
-    "native_inline_fromcharcode",
     "neg",
     "new",
     "newlexenv",

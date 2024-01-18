@@ -205,7 +205,6 @@ void LLVMIRBuilder::InitializeHandlers()
         {OpCode::SQRT, &LLVMIRBuilder::HandleSqrt},
         {OpCode::READSP, &LLVMIRBuilder::HandleReadSp},
         {OpCode::FINISH_ALLOCATE, &LLVMIRBuilder::HandleFinishAllocate},
-        {OpCode::FLOAT64_TO_INT32_WITH_OVERFLOW, &LLVMIRBuilder::HandleFloat64ToInt32WithOverflow},
     };
     illegalOpHandlers_ = {
         OpCode::NOP, OpCode::CIRCUIT_ROOT, OpCode::DEPEND_ENTRY,
@@ -1361,32 +1360,6 @@ void LLVMIRBuilder::VisitFinishAllocate(GateRef gate, GateRef e1)
 {
     LLVMValueRef result = GetLValue(e1);
     Bind(gate, result);
-    if (IsLogEnabled()) {
-        SetDebugInfo(gate, result);
-    }
-}
-
-void LLVMIRBuilder::HandleFloat64ToInt32WithOverflow(GateRef gate)
-{
-    auto g0 = acc_.GetValueIn(gate, 0);
-    VisitFloat64ToInt32WithOverflow(gate, g0);
-}
-
-void LLVMIRBuilder::VisitFloat64ToInt32WithOverflow(GateRef gate, GateRef e1)
-{
-    LLVMValueRef e1Value = GetLValue(e1);
-    LLVMMetadataRef fpexcept = LLVMMDStringInContext2(context_, "fpexcept.strict", 15);
-    std::vector<LLVMValueRef> args = { e1Value, LLVMMetadataAsValue(context_, fpexcept) };
-    auto fn = LLVMGetNamedFunction(module_, "llvm.experimental.constrained.fptoui.i32.f64");
-    if (!fn) {
-        LLVMTypeRef paramTys1[] = { GetDoubleT(), LLVMMetadataTypeInContext(context_) };
-        auto fnTy = LLVMFunctionType(GetInt32T(), paramTys1, 2, 0);
-        fn = LLVMAddFunction(module_, "llvm.experimental.constrained.fptoui.i32.f64", fnTy);
-    }
-    LLVMValueRef result = LLVMBuildCall(builder_, fn, args.data(), 2, "");
-
-    Bind(gate, result);
-
     if (IsLogEnabled()) {
         SetDebugInfo(gate, result);
     }
