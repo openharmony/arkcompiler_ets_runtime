@@ -51,6 +51,7 @@ group("ark_js_moduletest") {
     "calltype",
     "changelistener",
     "class",
+    "clampedarray",
     "compareobjecthclass",
     "concurrent",
     "container",

@@ -582,13 +582,12 @@ void BuiltinsArrayBuffer::SetValueInBufferForUint8Clamped(double val, uint8_t *b
     uint8_t res;
     if (std::isnan(val) || val <= 0) {
         res = 0;
-        SetTypeData(block, res, byteIndex);
-        return;
+    } else if (val > UINT8_MAX) {
+        res = UINT8_MAX;
+    } else {
+        // same as ToUint8Clamp
+        res = std::lrint(val);
     }
-    val = val >= UINT8_MAX ? UINT8_MAX : val;
-    constexpr double HALF = 0.5;
-    val = val == HALF ? 0 : std::round(val);
-    res = static_cast<uint64_t>(val);
     SetTypeData(block, res, byteIndex);
 }
 
