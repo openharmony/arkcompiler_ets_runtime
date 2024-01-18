@@ -493,6 +493,15 @@ GateRef CircuitBuilder::HasPendingException(GateRef glue)
     return TaggedIsNotHole(exception);
 }
 
+GateRef CircuitBuilder::IsUtf8String(GateRef string)
+{
+    // compressedStringsEnabled fixed to true constant
+    GateRef len = Load(VariableType::INT32(), string, IntPtr(EcmaString::MIX_LENGTH_OFFSET));
+    return Int32Equal(
+        Int32And(len, Int32(EcmaString::STRING_COMPRESSED_BIT)),
+        Int32(EcmaString::STRING_COMPRESSED));
+}
+
 GateRef CircuitBuilder::IsUtf16String(GateRef string)
 {
     // compressedStringsEnabled fixed to true constant

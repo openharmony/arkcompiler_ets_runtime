@@ -48,6 +48,7 @@ CompilationOptions::CompilationOptions(EcmaVM *vm, JSRuntimeOptions &runtimeOpti
     isEnableLaterElimination_ = runtimeOptions.IsEnableLaterElimination();
     isEnableValueNumbering_ = runtimeOptions.IsEnableValueNumbering();
     isEnableOptInlining_ = runtimeOptions.IsEnableOptInlining();
+    isEnableOptString_ = runtimeOptions.IsEnableOptString();
     isEnableTypeInfer_ = isEnableTypeLowering_ ||
         vm->GetJSThread()->GetCurrentEcmaContext()->GetTSManager()->AssertTypes();
     isEnableOptPGOType_ = runtimeOptions.IsEnableOptPGOType();

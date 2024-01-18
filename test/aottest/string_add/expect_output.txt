@@ -11,6 +11,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+12345345
+1234545
+1234545royale
+lashroyale1234545royale
+hello, undefined, undefined, undefined
+<(!(--[^-]*-([^-][^-]*-)*->|[^-]
+strb
+aaaaaabbbbbbbb
+aaaaaabbbbbbbb
+aaaaaaaaaaaaaaaabbbbbbbbbbbbbb
+30
+true
 HelloWorld
 Hello WorldHello
 123

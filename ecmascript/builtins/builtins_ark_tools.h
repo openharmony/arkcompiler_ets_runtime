@@ -31,6 +31,7 @@
     V("getHClass",                      GetHClass,                      1, INVALID)       \
     V("getLexicalEnv",                  GetLexicalEnv,                  1, INVALID)       \
     V("hasTSSubtyping",                 HasTSSubtyping,                 1, INVALID)       \
+    V("isSlicedString",                 IsSlicedString,                 1, INVALID)       \
     V("hiddenStackSourceFile",          HiddenStackSourceFile,          0, INVALID)       \
     V("hintGC",                         HintGC,                         0, INVALID)       \
     V("isNotHoleProperty",              IsNotHoleProperty,              2, INVALID)       \
@@ -151,6 +152,8 @@ public:
     static JSTaggedValue GetHClass(EcmaRuntimeCallInfo *info);
 
     static JSTaggedValue HasTSSubtyping(EcmaRuntimeCallInfo *info);
+
+    static JSTaggedValue IsSlicedString(EcmaRuntimeCallInfo *info);
 
     static JSTaggedValue IsNotHoleProperty(EcmaRuntimeCallInfo *info);
 

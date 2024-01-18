@@ -28,6 +28,7 @@ namespace panda::ecmascript::kungfu {
     V(OptNoGCCall, false)                                                        \
     V(OptPGOType, false)                                                         \
     V(NoCheck, false)                                                            \
+    V(OptString, true)                                                           \
     V(OptTrackField, false)                                                      \
     V(OptLoopPeeling, false)                                                     \
     V(OptLoopInvariantCodeMotion, false)                                         \

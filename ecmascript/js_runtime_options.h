@@ -117,6 +117,7 @@ enum CommandValues {
     OPTION_COMPILER_OPT_TYPE_LOWERING,
     OPTION_COMPILER_OPT_EARLY_ELIMINATION,
     OPTION_COMPILER_OPT_LATER_ELIMINATION,
+    OPTION_COMPILER_OPT_STRING,
     OPTION_COMPILER_OPT_VALUE_NUMBERING,
     OPTION_COMPILER_OPT_INLINING,
     OPTION_COMPILER_OPT_PGOTYPE,
@@ -1079,6 +1080,16 @@ public:
         return enableNewValueNumbering_;
     }
 
+    void SetEnableOptString(bool value)
+    {
+        enableOptString_ = value;
+    }
+
+    bool IsEnableOptString() const
+    {
+        return enableOptString_;
+    }
+
     void SetEnableOptInlining(bool value)
     {
         enableOptInlining_ = value;
@@ -1493,6 +1504,7 @@ private:
     bool enableEarlyElimination_ {true};
     bool enableLaterElimination_ {true};
     bool enableValueNumbering_ {true};
+    bool enableOptString_ {true};
     bool enableElementsKind_ {false};
     bool enableInstrcutionCombine {true};
     bool enableNewValueNumbering_ {true};

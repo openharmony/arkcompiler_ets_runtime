@@ -238,6 +238,10 @@ private:
     GateRef GetObjectFromConstPool(GateRef jsFunc, GateRef index);
     GateRef GetElementSize(BuiltinTypeId id);
     VariableType GetVariableType(BuiltinTypeId id);
+    GateRef AllocateLineString(GateRef length, GateRef canBeCompressed);
+    GateRef AllocateSlicedString(GateRef flatString, GateRef length, GateRef canBeCompressed);
+    bool IsFirstConcatInStringAdd(GateRef gate) const;
+    bool ConcatIsInStringAdd(GateRef gate) const;
 
     GateRef GetFrameState(GateRef gate) const
     {

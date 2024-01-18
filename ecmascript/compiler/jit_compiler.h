@@ -49,6 +49,7 @@ struct JitCompilationOptions {
     bool isEnableLaterElimination_;
     bool isEnableValueNumbering_;
     bool isEnableOptInlining_;
+    bool isEnableOptString_;
     bool isEnableTypeInfer_;
     bool isEnableOptPGOType_;
     bool isEnableOptTrackField_;

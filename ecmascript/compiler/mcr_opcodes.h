@@ -28,8 +28,7 @@ namespace panda::ecmascript::kungfu {
     V(LexVarIsHoleCheck, LEX_VAR_IS_HOLE_CHECK, GateFlags::CHECKABLE, 1, 1, 1)                       \
     V(TaggedIsHeapObject, TAGGED_IS_HEAP_OBJECT, GateFlags::NO_WRITE, 1, 1, 1)                       \
     V(IsMarkerCellValid, IS_MARKER_CELL_VALID, GateFlags::NO_WRITE, 1, 1, 1)                         \
-    V(StringEqual, STRING_EQUAL, GateFlags::NO_WRITE, 1, 1, 2)                                       \
-    V(StringAdd, STRING_ADD, GateFlags::NO_WRITE, 1, 1, 2)
+    V(StringEqual, STRING_EQUAL, GateFlags::NO_WRITE, 1, 1, 2)
 
 #define MCR_IMMUTABLE_META_DATA_CACHE_LIST(V)                                                   \
     V(ArrayGuardianCheck, ARRAY_GUARDIAN_CHECK, GateFlags::CHECKABLE, 1, 1, 0)                  \
@@ -84,7 +83,8 @@ namespace panda::ecmascript::kungfu {
     V(RangeCheckPredicate,         RANGE_CHECK_PREDICATE,          GateFlags::CHECKABLE, 1, 1, 2)       \
     V(BuiltinPrototypeHClassCheck, BUILTIN_PROTOTYPE_HCLASS_CHECK, GateFlags::CHECKABLE, 1, 1, 1)       \
     V(IsSpecificObjectType,        IS_SPECIFIC_OBJECT_TYPE,        GateFlags::NO_WRITE,  1, 1, 1)       \
-    V(LoadBuiltinObject,           LOAD_BUILTIN_OBJECT,            GateFlags::CHECKABLE, 1, 1, 0)
+    V(LoadBuiltinObject,           LOAD_BUILTIN_OBJECT,            GateFlags::CHECKABLE, 1, 1, 0)       \
+    V(StringAdd,                   STRING_ADD,                     GateFlags::NO_WRITE,  1, 1, 2)
 
 #define MCR_GATE_META_DATA_LIST_WITH_BOOL(V)                                                                 \
     V(LoadProperty, LOAD_PROPERTY, GateFlags::NO_WRITE, 1, 1, 2)                                             \

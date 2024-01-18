@@ -133,6 +133,17 @@ JSTaggedValue BuiltinsArkTools::HasTSSubtyping(EcmaRuntimeCallInfo *info)
     return GetTaggedBoolean(hclass->HasTSSubtyping());
 }
 
+JSTaggedValue BuiltinsArkTools::IsSlicedString(EcmaRuntimeCallInfo *info)
+{
+    ASSERT(info);
+    JSThread *thread = info->GetThread();
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+
+    ASSERT(info->GetArgsNumber() == 1);
+    JSHandle<JSTaggedValue> str = GetCallArg(info, 0);
+    return GetTaggedBoolean(str->IsSlicedString());
+}
+
 JSTaggedValue BuiltinsArkTools::IsNotHoleProperty(EcmaRuntimeCallInfo *info)
 {
     [[maybe_unused]] DisallowGarbageCollection noGc;
