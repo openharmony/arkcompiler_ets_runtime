@@ -114,7 +114,6 @@ host_unittest_action("StubTest") {
     "LLVMRISCVDesc",
     "LLVMRISCVDisassembler",
     "LLVMRISCVInfo",
-    "LLVMRISCVUtils",
   ]
 
   deps = [
