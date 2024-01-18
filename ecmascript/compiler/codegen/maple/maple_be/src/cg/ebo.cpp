@@ -70,12 +70,6 @@ MemOpndInfo *Ebo::GetMemInfo(InsnInfo &insnInfo)
     return nullptr;
 }
 
-void Ebo::EnlargeSpaceForLA(Insn &csetInsn)
-{
-    CHECK_FATAL(live != nullptr, "no live info!");
-    live->EnlargeSpaceForLiveAnalysis(*csetInsn.GetBB());
-}
-
 bool Ebo::IsFrameReg(Operand &opnd) const
 {
     if (!opnd.IsRegister()) {

@@ -33,7 +33,8 @@ namespace maplebe {
 
 void LiveAnalysis::InitAndGetDefUse()
 {
-    FOR_ALL_BB(bb, cgFunc) {
+    FOR_ALL_BB(bb, cgFunc)
+    {
         if (!bb->GetEhPreds().empty()) {
             InitEhDefine(*bb);
         }
@@ -49,13 +50,40 @@ void LiveAnalysis::InitAndGetDefUse()
     }
 }
 
-/* Out[BB] = Union all of In[Succs(BB)] */
-bool LiveAnalysis::GenerateLiveOut(BB &bb)
+void LiveAnalysis::RemovePhiLiveInFromSuccNotFromThisBB(BB &curBB, BB &succBB) const
 {
-    const MapleSparseBitVector<> bbLiveOutBak(bb.GetLiveOut()->GetInfo());
+    if (succBB.GetPhiInsns().empty()) {
+        return;
+    }
+    LocalMapleAllocator allocator(cgFunc->GetStackMemPool());
+    SparseDataInfo tempPhiIn(succBB.GetLiveIn()->GetMaxRegNum(), allocator);
+    tempPhiIn.ResetAllBit();
+    for (auto phiInsnIt : succBB.GetPhiInsns()) {
+        auto &phiList = static_cast<PhiOperand &>(phiInsnIt.second->GetOperand(kInsnSecondOpnd));
+        for (auto phiOpndIt : phiList.GetOperands()) {
+            uint32 fBBId = phiOpndIt.first;
+            DEBUG_ASSERT(fBBId != 0, "GetFromBBID = 0");
+            if (fBBId != curBB.GetId()) {
+                regno_t regNo = phiOpndIt.second->GetRegisterNumber();
+                tempPhiIn.SetBit(regNo);
+            }
+        }
+    }
+    curBB.GetLiveOut()->Difference(tempPhiIn);
+}
+
+/* Out[BB] = Union all of In[Succs(BB)]
+ *
+ * in ssa form
+ * Out[BB] = Union all of In[Succs(BB)] Except Phi use reg dont from this BB
+ */
+bool LiveAnalysis::GenerateLiveOut(BB &bb) const
+{
+    const auto bbLiveOutBak(bb.GetLiveOut()->GetInfo());
     for (auto succBB : bb.GetSuccs()) {
         if (succBB->GetLiveInChange() && !succBB->GetLiveIn()->NoneBit()) {
             bb.LiveOutOrBits(*succBB->GetLiveIn());
+            RemovePhiLiveInFromSuccNotFromThisBB(bb, *succBB);
         }
         if (!succBB->GetEhSuccs().empty()) {
             for (auto ehSuccBB : succBB->GetEhSuccs()) {
@@ -74,8 +102,8 @@ bool LiveAnalysis::GenerateLiveOut(BB &bb)
 /* In[BB] = use[BB] Union (Out[BB]-def[BB]) */
 bool LiveAnalysis::GenerateLiveIn(BB &bb)
 {
-    LocalMapleAllocator allocator(stackMp);
-    const MapleSparseBitVector<> bbLiveInBak(bb.GetLiveIn()->GetInfo());
+    LocalMapleAllocator allocator(cgFunc->GetStackMemPool());
+    const auto bbLiveInBak(bb.GetLiveIn()->GetInfo());
     if (!bb.GetInsertUse()) {
         bb.SetLiveInInfo(*bb.GetUse());
         bb.SetInsertUse(true);
@@ -84,6 +112,16 @@ bool LiveAnalysis::GenerateLiveIn(BB &bb)
     if (!bbLiveOut.NoneBit()) {
         bbLiveOut.Difference(*bb.GetDef());
         bb.LiveInOrBits(bbLiveOut);
+    }
+
+    if (!bb.GetEhSuccs().empty()) {
+        /* If bb has eh successors, check if multi-gen exists. */
+        SparseDataInfo allInOfEhSuccs(cgFunc->GetMaxVReg(), allocator);
+        for (auto ehSucc : bb.GetEhSuccs()) {
+            allInOfEhSuccs.OrBits(*ehSucc->GetLiveIn());
+        }
+        allInOfEhSuccs.AndBits(*bb.GetDef());
+        bb.LiveInOrBits(allInOfEhSuccs);
     }
 
     if (!bb.GetLiveIn()->IsEqual(bbLiveInBak)) {
@@ -134,7 +172,11 @@ void LiveAnalysis::BuildInOutforFunc()
     do {
         ++iteration;
         hasChange = false;
-        FOR_ALL_BB_REV(bb, cgFunc) {
+        FOR_ALL_BB_REV(bb, cgFunc)
+        {
+            if (!bb || bb->IsUnreachable() || !bb->GetLiveOut() || !bb->GetLiveIn()) {
+                continue;
+            }
             if (!GenerateLiveOut(*bb) && bb->GetInsertUse()) {
                 continue;
             }
@@ -151,7 +193,8 @@ void LiveAnalysis::BuildInOutforFunc()
 /*  reset to liveout/in_regno */
 void LiveAnalysis::ResetLiveSet()
 {
-    FOR_ALL_BB(bb, cgFunc) {
+    FOR_ALL_BB(bb, cgFunc)
+    {
         bb->GetLiveIn()->GetBitsOfInfo<MapleSet<uint32>>(bb->GetLiveInRegNO());
         bb->GetLiveOut()->GetBitsOfInfo<MapleSet<uint32>>(bb->GetLiveOutRegNO());
     }
@@ -168,7 +211,7 @@ void LiveAnalysis::AnalysisLive()
 
 void LiveAnalysis::DealWithInOutOfCleanupBB()
 {
-    const BB *cleanupBB = cgFunc->GetCleanupEntryBB();
+    const BB *cleanupBB = cgFunc->GetCleanupBB();
     if (cleanupBB == nullptr) {
         return;
     }
@@ -183,7 +226,8 @@ void LiveAnalysis::DealWithInOutOfCleanupBB()
          * a param vreg may used in cleanup bb. So this param vreg will live on the whole function
          * since everywhere in function body may occur exceptions.
          */
-        FOR_ALL_BB(bb, cgFunc) {
+        FOR_ALL_BB(bb, cgFunc)
+        {
             if (bb->IsCleanup()) {
                 continue;
             }
@@ -198,23 +242,25 @@ void LiveAnalysis::DealWithInOutOfCleanupBB()
 
 void LiveAnalysis::InsertInOutOfCleanupBB()
 {
-    const BB *cleanupBB = cgFunc->GetCleanupEntryBB();
+    LocalMapleAllocator allocator(cgFunc->GetStackMemPool());
+    const BB *cleanupBB = cgFunc->GetCleanupBB();
     if (cleanupBB == nullptr) {
         return;
     }
     if (cleanupBB->GetLiveIn() == nullptr || cleanupBB->GetLiveIn()->NoneBit()) {
         return;
     }
-    SparseDataInfo cleanupBBLi = *(cleanupBB->GetLiveIn());
+    SparseDataInfo &cleanupBBLi = cleanupBB->GetLiveIn()->Clone(allocator);
     /* registers need to be ignored: (reg < 8) || (29 <= reg && reg <= 32) */
-    for (uint32 i = 1; i < 8; ++i) { // reset 8 reg for R0-R7
+    for (uint32 i = 1; i < 8; ++i) {  // reset 8 reg for R0-R7
         cleanupBBLi.ResetBit(i);
     }
-    for (uint32 j = 29; j <= 32; ++j) { // registers 29 ~ 32 need to be ignored
+    for (uint32 j = 29; j <= 32; ++j) {  // registers 29 ~ 32 need to be ignored
         cleanupBBLi.ResetBit(j);
     }
 
-    FOR_ALL_BB(bb, cgFunc) {
+    FOR_ALL_BB(bb, cgFunc)
+    {
         if (bb->IsCleanup()) {
             continue;
         }
@@ -226,7 +272,7 @@ void LiveAnalysis::InsertInOutOfCleanupBB()
     }
 }
 
-void LiveAnalysis::MarkStackMapInsn(Insn &insn, BB &bb)
+void LiveAnalysis::MarkStackMapInsn(Insn &insn, BB &bb) const
 {
     insn.SetStackMapDef(*NewDef(*bb.GetDef()));
     insn.SetStackMapUse(*NewUse(*bb.GetUse()));
@@ -236,14 +282,16 @@ void LiveAnalysis::MarkStackMapInsn(Insn &insn, BB &bb)
  * entry of get def/use of bb.
  * getting the def or use info of each regopnd as parameters of CollectLiveInfo().
  */
-void LiveAnalysis::GetBBDefUse(BB &bb)
+void LiveAnalysis::GetBBDefUse(BB &bb) const
 {
     if (bb.GetKind() == BB::kBBReturn) {
         GenerateReturnBBDefUse(bb);
     }
-    if (bb.IsEmpty()) {
+    if (!bb.HasMachineInsn()) {
         return;
     }
+    bb.DefResetAllBit();
+    bb.UseResetAllBit();
 
     FOR_BB_INSNS_REV(insn, &bb)
     {
@@ -275,6 +323,11 @@ void LiveAnalysis::GetBBDefUse(BB &bb)
                 ProcessMemOpnd(bb, opnd);
             } else if (opnd.IsConditionCode()) {
                 ProcessCondOpnd(bb);
+            } else if (opnd.IsPhi()) {
+                auto &phiOpnd = static_cast<PhiOperand &>(opnd);
+                for (auto opIt : phiOpnd.GetOperands()) {
+                    CollectLiveInfo(bb, *opIt.second, false, true);
+                }
             } else {
                 bool isDef = opndDesc->IsRegDef();
                 bool isUse = opndDesc->IsRegUse();
@@ -290,7 +343,7 @@ void LiveAnalysis::CollectLiveInfo(BB &bb, const Operand &opnd, bool isDef, bool
     if (!opnd.IsRegister()) {
         return;
     }
-    const RegOperand &regOpnd = static_cast<const RegOperand &>(opnd);
+    auto &regOpnd = static_cast<const RegOperand &>(opnd);
     regno_t regNO = regOpnd.GetRegisterNumber();
     RegType regType = regOpnd.GetRegisterType();
     if (regType == kRegTyVary) {
@@ -365,7 +418,8 @@ void LiveAnalysis::Dump() const
     DEBUG_ASSERT(funcSt != nullptr, "null ptr check");
     LogInfo::MapleLogger() << "\n---------  liveness for " << funcSt->GetName() << "  iteration ";
     LogInfo::MapleLogger() << iteration << " ---------\n";
-    FOR_ALL_BB(bb, cgFunc) {
+    FOR_ALL_BB(bb, cgFunc)
+    {
         LogInfo::MapleLogger() << "  === BB_" << bb->GetId() << " (" << std::hex << bb << ") " << std::dec << " <"
                                << bb->GetKindName();
         if (bb->GetLabIdx() != MIRLabelTable::GetDummyLabel()) {
@@ -445,23 +499,13 @@ void LiveAnalysis::InitBB(BB &bb)
 
 void LiveAnalysis::ClearInOutDataInfo()
 {
-    FOR_ALL_BB(bb, cgFunc) {
+    FOR_ALL_BB(bb, cgFunc)
+    {
         bb->SetLiveInChange(false);
         bb->DefClearDataInfo();
         bb->UseClearDataInfo();
         bb->LiveInClearDataInfo();
         bb->LiveOutClearDataInfo();
-    }
-}
-
-void LiveAnalysis::EnlargeSpaceForLiveAnalysis(BB &currBB)
-{
-    regno_t currMaxVRegNO = cgFunc->GetMaxVReg();
-    if (currMaxVRegNO >= currBB.GetLiveIn()->Size()) {
-        FOR_ALL_BB(bb, cgFunc) {
-            bb->LiveInEnlargeCapacity(currMaxVRegNO);
-            bb->LiveOutEnlargeCapacity(currMaxVRegNO);
-        }
     }
 }
 

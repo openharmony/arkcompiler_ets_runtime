@@ -46,11 +46,13 @@ void AArch64FixShortBranch::SetInsnId() const
 {
     uint32 i = 0;
     AArch64CGFunc *aarch64CGFunc = static_cast<AArch64CGFunc *>(cgFunc);
-    FOR_ALL_BB(bb, aarch64CGFunc) {
+    FOR_ALL_BB(bb, aarch64CGFunc)
+    {
         if (aarch64CGFunc->GetMirModule().IsCModule() && bb->IsBBNeedAlign() && bb->GetAlignNopNum() != 0) {
             i = i + CalculateAlignRange(*bb, i);
         }
-        FOR_BB_INSNS(insn, bb) {
+        FOR_BB_INSNS(insn, bb)
+        {
             if (!insn->IsMachineInstruction()) {
                 continue;
             }
@@ -67,6 +69,45 @@ void AArch64FixShortBranch::SetInsnId() const
     }
 }
 
+uint32 AArch64FixShortBranch::CalculateIfBBNum() const
+{
+    uint32 ifBBCount = 0;
+    FOR_ALL_BB(bb, cgFunc)
+    {
+        if (bb->GetKind() != BB::kBBIf) {
+            ifBBCount++;
+        }
+    }
+    return ifBBCount;
+}
+
+void AArch64FixShortBranch::PatchLongBranch()
+{
+    AArch64CGFunc *aarch64CGFunc = static_cast<AArch64CGFunc *>(cgFunc);
+    SetInsnId();
+    uint32 ifBBCount = CalculateIfBBNum();
+    for (BB *bb = aarch64CGFunc->GetFirstBB(); bb != nullptr; bb = bb->GetNext()) {
+        if (bb->GetKind() != BB::kBBIf) {
+            continue;
+        }
+        Insn *insn = bb->GetLastMachineInsn();
+        while (insn != nullptr && insn->IsImmaterialInsn()) {
+            insn = insn->GetPrev();
+        }
+        if (insn == nullptr || !insn->IsCondBranch()) {
+            continue;
+        }
+        LabelIdx tbbLabelIdx = aarch64CGFunc->GetLabelInInsn(*insn);
+        // when we change condbr to condbr and b, we will have more insns
+        // in case the insn num will cause distance check not calculating right
+        // we assume that each if bb will be changed(which is the worst case).
+        if (ifBBCount <= AArch64Abi::kMaxInstrForCondBr &&
+            aarch64CGFunc->DistanceCheck(*bb, tbbLabelIdx, insn->GetId(), AArch64Abi::kMaxInstrForCondBr - ifBBCount)) {
+            continue;
+        }
+        aarch64CGFunc->InsertJumpPad(insn);
+    }
+}
 /*
  * TBZ/TBNZ instruction is generated under -O2, these branch instructions only have a range of +/-32KB.
  * If the branch target is not reachable, we split tbz/tbnz into combination of ubfx and cbz/cbnz, which
@@ -74,7 +115,7 @@ void AArch64FixShortBranch::SetInsnId() const
  * that purpose. To save compile time, we do this change when there are more than 32KB / 4 instructions
  * in the function.
  */
-void AArch64FixShortBranch::FixShortBranches()
+void AArch64FixShortBranch::FixShortBranches() const
 {
     AArch64CGFunc *aarch64CGFunc = static_cast<AArch64CGFunc *>(cgFunc);
     bool change = false;
@@ -93,7 +134,8 @@ void AArch64FixShortBranch::FixShortBranches()
                 }
                 LabelOperand &label = static_cast<LabelOperand &>(insn->GetOperand(kInsnThirdOpnd));
                 /*  should not be commented out after bug fix */
-                if (aarch64CGFunc->DistanceCheck(*bb, label.GetLabelIndex(), insn->GetId())) {
+                if (aarch64CGFunc->DistanceCheck(*bb, label.GetLabelIndex(), insn->GetId(),
+                                                 AArch64Abi::kMaxInstrForTbnz)) {
                     continue;
                 }
                 auto &reg = static_cast<RegOperand &>(insn->GetOperand(kInsnFirstOpnd));
@@ -119,6 +161,7 @@ void AArch64FixShortBranch::FixShortBranches()
                         cbOp = MOP_xcbnz;
                         break;
                     default:
+                        CHECK_FATAL_FALSE("must be");
                         break;
                 }
                 RegOperand &tmp = aarch64CGFunc->GetOrCreatePhysicalRegisterOperand(
@@ -133,11 +176,194 @@ void AArch64FixShortBranch::FixShortBranches()
     } while (change);
 }
 
+uint32 GetLabelIdx(const Insn &insn)
+{
+    uint32 res = 0;
+    uint32 foundCount = 0;
+    for (uint32 i = 0; i < insn.GetOperandSize(); ++i) {
+        Operand &opnd = insn.GetOperand(i);
+        if (opnd.GetKind() == Operand::kOpdBBAddress) {
+            res = i;
+            foundCount++;
+        }
+    }
+    CHECK_FATAL(foundCount == 1, "check case");
+    return res;
+}
+
+void AArch64FixShortBranch::FixShortBranchesForSplitting()
+{
+    InitSecEnd();
+    FOR_ALL_BB(bb, cgFunc)
+    {
+        FOR_BB_INSNS(insn, bb)
+        {
+            if (!insn->IsMachineInstruction()) {
+                continue;
+            }
+            if (insn->IsCondBranch()) {
+                CHECK_FATAL(bb->GetKind() == BB::kBBIf, "CHECK bb TYPE");
+                uint32 targetLabelIdx = GetLabelIdx(*insn);
+                CHECK_FATAL(targetLabelIdx != 0, "get label failed in condition branch insn");
+                auto &targetLabelOpnd = dynamic_cast<LabelOperand &>(insn->GetOperand(targetLabelIdx));
+                BB *targetBB = cgFunc->GetBBFromLab2BBMap(targetLabelOpnd.GetLabelIndex());
+                if (!targetBB) {
+                    LogInfo::MapleLogger() << "ISSUE Func : " << cgFunc->GetName()
+                                           << " ISSUE label: " << targetLabelOpnd.GetLabelIndex() << "\n";
+                    CHECK_FATAL_FALSE("get Target bb from lab2bb map failed");
+                }
+                bool crossBoundary = bb->IsInColdSection() != targetBB->IsInColdSection();
+                if (!crossBoundary) {
+                    continue;
+                }
+                InsertJmpPadAtSecEnd(*insn, targetLabelIdx, *targetBB);
+            }
+        }
+    }
+}
+
+void AArch64FixShortBranch::InsertJmpPadAtSecEnd(Insn &insn, uint32 targetLabelIdx, BB &targetBB)
+{
+    BB *bb = insn.GetBB();
+    BB *padBB = cgFunc->CreateNewBB();
+    LabelIdx padBBLabel = cgFunc->CreateLabel();
+    padBB->SetLabIdx(padBBLabel);
+    cgFunc->SetLab2BBMap(padBBLabel, *padBB);
+
+    auto &targetLabelOpnd = dynamic_cast<LabelOperand &>(insn.GetOperand(targetLabelIdx));
+    padBB->AppendInsn(cgFunc->GetInsnBuilder()->BuildInsn(MOP_xuncond, targetLabelOpnd));
+
+    LabelOperand &padBBLabelOpnd = cgFunc->GetOrCreateLabelOperand(padBBLabel);
+    insn.SetOperand(targetLabelIdx, padBBLabelOpnd);
+
+    /* adjust CFG */
+    bb->ReplaceSucc(targetBB, *padBB);
+    targetBB.RemovePreds(*bb);
+    targetBB.PushBackPreds(*padBB);
+    padBB->PushBackPreds(*bb);
+    padBB->PushBackSuccs(targetBB);
+    /* adjust layout
+     * hot section end -- boundary bb
+     * cold section end -- last bb */
+    if (!bb->IsInColdSection()) {
+        padBB->SetNext(boundaryBB);
+        padBB->SetPrev(boundaryBB->GetPrev());
+        boundaryBB->GetPrev()->SetNext(padBB);
+        boundaryBB->SetPrev(padBB);
+        boundaryBB = padBB;
+    } else {
+        CHECK_FATAL(lastBB->GetNext() == nullptr, "must be");
+        lastBB->SetNext(padBB);
+        padBB->SetNext(nullptr);
+        padBB->SetPrev(lastBB);
+        lastBB = padBB;
+        padBB->SetColdSection();
+    }
+}
+
+void AArch64FixShortBranch::InitSecEnd()
+{
+    FOR_ALL_BB(bb, cgFunc)
+    {
+        if (bb->IsInColdSection() && boundaryBB == nullptr) {
+            boundaryBB = bb;
+        }
+        if (bb->GetNext() == nullptr) {
+            CHECK_FATAL(lastBB == nullptr, " last bb exist");
+            lastBB = bb;
+        }
+    }
+}
+
+bool AArch64FixShortBranch::CheckFunctionSize(uint32 maxSize) const
+{
+    uint32 firstInsnId = 0;
+    uint32 lastInsnId = UINT32_MAX;
+    bool findLast = false;
+    bool findFirst = false;
+
+    for (auto *bb = cgFunc->GetLastBB(); bb != nullptr && !findLast; bb = bb->GetPrev()) {
+        for (auto *insn = bb->GetLastInsn(); insn != nullptr && !findLast; insn = insn->GetPrev()) {
+            if (!insn->IsMachineInstruction() || insn->IsImmaterialInsn()) {
+                continue;
+            }
+            findLast = true;
+            lastInsnId = insn->GetId();
+            break;
+        }
+    }
+
+    for (auto *bb = cgFunc->GetFirstBB(); bb != nullptr && !findFirst; bb = bb->GetNext()) {
+        for (auto *insn = bb->GetFirstInsn(); insn != nullptr && !findFirst; insn = insn->GetNext()) {
+            if (!insn->IsMachineInstruction() || insn->IsImmaterialInsn()) {
+                continue;
+            }
+            findFirst = true;
+            firstInsnId = insn->GetId();
+            break;
+        }
+    }
+    return (lastInsnId - firstInsnId + 1) <= maxSize;
+}
+
+// when func size >= kMaxInstrForLdr
+// ldr R1, .L.4__5
+// .L_x: ...
+// =>
+// adrp    x1, .L.4__5
+// add     x1, x1, :lo12:.L.4__5
+// ldr     x1, [x1]
+void AArch64FixShortBranch::FixLdr()
+{
+    AArch64CGFunc *aarch64CGFunc = static_cast<AArch64CGFunc *>(cgFunc);
+    SetInsnId();
+    if (CheckFunctionSize(AArch64Abi::kMaxInstrForLdr)) {
+        return;
+    }
+    FOR_ALL_BB(bb, cgFunc)
+    {
+        FOR_BB_INSNS(insn, bb)
+        {
+            if (!insn->IsMachineInstruction()) {
+                continue;
+            }
+            if (insn->GetMachineOpcode() == MOP_xldli && insn->GetOperand(kInsnSecondOpnd).IsLabelOpnd()) {
+                // ldr -> adrp + add
+                auto &regOpnd = static_cast<RegOperand &>(insn->GetOperand(kInsnFirstOpnd));
+                auto &labelOpnd = static_cast<LabelOperand &>(insn->GetOperand(kInsnSecondOpnd));
+                Operand &immOpnd = aarch64CGFunc->CreateImmOperand(labelOpnd.GetLabelIndex(), k64BitSize, false);
+                insn->SetOperand(kInsnSecondOpnd, immOpnd);
+                insn->SetMOP(AArch64CG::kMd[MOP_adrp_label]);
+                // ldr x1, [x1]
+                MemOperand *newDest = aarch64CGFunc->CreateMemOperand(
+                    k64BitSize, regOpnd, aarch64CGFunc->CreateImmOperand(0, k32BitSize, false), false);
+                auto *newRegOpnd = static_cast<RegOperand *>(regOpnd.Clone(*aarch64CGFunc->GetMemoryPool()));
+                Insn &ldrInsn = aarch64CGFunc->GetInsnBuilder()->BuildInsn(MOP_xldr, *newRegOpnd, *newDest);
+                (void)bb->InsertInsnAfter(*insn, ldrInsn);
+            }
+        }
+    }
+}
+
 bool CgFixShortBranch::PhaseRun(maplebe::CGFunc &f)
 {
     auto *fixShortBranch = GetPhaseAllocator()->New<AArch64FixShortBranch>(&f);
     CHECK_FATAL(fixShortBranch != nullptr, "AArch64FixShortBranch instance create failure");
     fixShortBranch->FixShortBranches();
+
+    // fix ldr would cause insn num increasing, do ldr fix first.
+    fixShortBranch->FixLdr();
+    fixShortBranch->PatchLongBranch();
+    // TODO : add pgo
+    // if (f.HasLaidOutByPgoUse()) {
+    //     LiteProfile::BBInfo *bbInfo = f.GetFunction().GetModule()->GetLiteProfile().GetFuncBBProf(f.GetName());
+    //     if (bbInfo) {
+    //         CHECK_FATAL(bbInfo->verified.first, "Must verified pgo data in pgo use");
+    //         if (bbInfo->verified.second) {
+    //             fixShortBranch->FixShortBranchesForSplitting();
+    //         }
+    //     }
+    // }
     return false;
 }
 MAPLE_TRANSFORM_PHASE_REGISTER(CgFixShortBranch, fixshortbranch)

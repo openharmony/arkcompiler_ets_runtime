@@ -153,8 +153,6 @@ public:
     {
         --info.refCount;
     }
-
-    void EnlargeSpaceForLA(Insn &csetInsn);
     bool IsSaveReg(const Operand &opnd);
     bool IsFrameReg(Operand &opnd) const;
     bool OperandEqual(const Operand &op1, const Operand &op2) const;

@@ -27,7 +27,7 @@ public:
 
     ~LabelCreation() = default;
 
-    void Run();
+    void Run() const;
 
     std::string PhaseName() const
     {
@@ -36,7 +36,7 @@ public:
 
 private:
     CGFunc *cgFunc;
-    void CreateStartEndLabel();
+    void CreateStartEndLabel() const;
 };
 
 MAPLE_FUNC_PHASE_DECLARE_BEGIN(CgCreateLabel, maplebe::CGFunc)

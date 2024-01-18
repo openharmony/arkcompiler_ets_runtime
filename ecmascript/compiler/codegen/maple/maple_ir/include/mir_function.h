@@ -1526,6 +1526,16 @@ public:
         funcProfData->SetStmtFreq(stmtID, static_cast<int64_t>(freq));
     }
 
+    void SetWithSrc(bool var)
+    {
+        withSrc = var;
+    }
+
+    bool GetWithSrc() const
+    {
+        return withSrc;
+    }
+
     uint8 GetFrameReseverdSlot()
     {
         return funcAttrs.GetFrameResverdSlot();
@@ -1572,6 +1582,7 @@ private:
     bool referedRegsValid = false;
     bool hasVlaOrAlloca = false;
     bool withLocInfo = true;
+    bool withSrc = true;
     bool isVisited = false;  // only used in inline phase.
     bool isDirty = false;
     bool fromMpltInline = false;  // Whether this function is imported from mplt_inline file or not.

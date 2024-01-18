@@ -1431,8 +1431,6 @@ bool AArch64Ebo::SpecialSequence(Insn &insn, const MapleVector<OpndInfo *> &orig
                                 AArch64CGFunc *aarFunc = static_cast<AArch64CGFunc *>(cgFunc);
                                 Operand &r = aarFunc->CreateRegisterOperandOfType(
                                     static_cast<RegOperand *>(result)->GetRegisterType(), size / kBitsPerByte);
-                                /* after generate a new vreg, check if the size of DataInfo is big enough */
-                                EnlargeSpaceForLA(*csetInsn);
                                 CondOperand &cond2 = aarFunc->GetCondOperand(GetReverseCond(cond1));
                                 Operand &rflag = aarFunc->GetOrCreateRflag();
                                 Insn &newCset = cgFunc->GetInsnBuilder()->BuildInsn(

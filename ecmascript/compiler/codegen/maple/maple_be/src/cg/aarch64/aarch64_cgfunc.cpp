@@ -7100,6 +7100,17 @@ MemOperand *AArch64CGFunc::CreateStackMemOpnd(regno_t preg, int32 offset, uint32
     return memOp;
 }
 
+/* Mem mod BOI || PreIndex || PostIndex */
+MemOperand *AArch64CGFunc::CreateMemOperand(uint32 size, RegOperand &base, ImmOperand &ofstOp, bool isVolatile,
+                                            MemOperand::AArch64AddressingMode mode) const {
+  auto *memOp = memPool->New<MemOperand>(size, base, ofstOp, mode);
+  memOp->SetVolatile(isVolatile);
+  if (base.GetRegisterNumber() == RFP || base.GetRegisterNumber() == RSP) {
+    memOp->SetStackMem(true);
+  }
+  return memOp;
+}
+
 MemOperand *AArch64CGFunc::CreateMemOperand(MemOperand::AArch64AddressingMode mode, uint32 size, RegOperand &base,
                                             RegOperand *index, ImmOperand *offset, const MIRSymbol *symbol) const
 {
@@ -12798,12 +12809,11 @@ RegOperand *AArch64CGFunc::SelectVectorWiden(PrimType rType, Operand *o1, PrimTy
     return res;
 }
 
-/*
- * Check the distance between the first insn of BB with the lable(targ_labidx)
- * and the insn with targ_id. If the distance greater than kShortBRDistance
+/* Check the distance between the first insn of BB with the lable(targ_labidx)
+ * and the insn with targ_id. If the distance greater than maxDistance
  * return false.
  */
-bool AArch64CGFunc::DistanceCheck(const BB &bb, LabelIdx targLabIdx, uint32 targId) const
+bool AArch64CGFunc::DistanceCheck(const BB &bb, LabelIdx targLabIdx, uint32 targId, uint32 maxDistance) const
 {
     for (auto *tBB : bb.GetSuccs()) {
         if (tBB->GetLabIdx() != targLabIdx) {
@@ -12822,7 +12832,7 @@ bool AArch64CGFunc::DistanceCheck(const BB &bb, LabelIdx targLabIdx, uint32 targ
             }
         }
         uint32 tmp = (tInsn->GetId() > targId) ? (tInsn->GetId() - targId) : (targId - tInsn->GetId());
-        return (tmp < kShortBRDistance);
+        return (tmp < maxDistance);
     }
     CHECK_FATAL(false, "CFG error");
 }
