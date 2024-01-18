@@ -133,8 +133,7 @@ class StringBuilderOptimizer;
     V(SExtInt16ToInt64, Sext, MachineType::I64)                        \
     V(SExtInt16ToInt32, Sext, MachineType::I32)                        \
     V(SExtInt8ToInt32, Sext, MachineType::I32)                         \
-    V(SExtInt8ToInt64, Sext, MachineType::I64)                         \
-    V(Float64ToInt32WithOverflow, Float64ToInt32WithOverflow, MachineType::I32)
+    V(SExtInt8ToInt64, Sext, MachineType::I64)
 
 #define UNARY_ARITHMETIC_METHOD_LIST_WITH_BITWIDTH_PRIVATE(V)          \
     V(ChangeTaggedPointerToInt64, TaggedToInt64, MachineType::I64)
@@ -704,7 +703,8 @@ public:
     inline GateRef GetDoubleOfTDouble(GateRef x);
     inline GateRef GetBooleanOfTBoolean(GateRef x);
     inline GateRef GetDoubleOfTNumber(GateRef x);
-    inline GateRef DoubleToInt32(GateRef x);
+    inline GateRef DoubleToInt(GateRef x, Label *exit);
+    inline GateRef DoubleToInt(GateRef glue, GateRef x, size_t typeBits);
     inline GateRef Int32ToTaggedPtr(GateRef x);
     inline GateRef Int64ToTaggedPtr(GateRef x);
     inline GateRef Int32ToTaggedInt(GateRef x);
