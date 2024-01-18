@@ -809,7 +809,6 @@ void SamplesRecord::AddStartTraceEvent()
 
     Tracing *tracing = vm->GetTracing();
     if (tracing == nullptr || !tracing->IsTracing()) {
-        LOG_ECMA(INFO) << "not in tracing state";
         return;
     }
 
@@ -832,7 +831,6 @@ void SamplesRecord::AddTraceEvent(bool isFinish)
 
     Tracing *tracing = vm->GetTracing();
     if (tracing == nullptr || !tracing->IsTracing()) {
-        LOG_ECMA(INFO) << "not in tracing state";
         return;
     }
 
