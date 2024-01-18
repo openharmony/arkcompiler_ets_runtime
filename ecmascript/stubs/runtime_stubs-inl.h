@@ -818,7 +818,7 @@ JSTaggedValue RuntimeStubs::RuntimeCloneClassFromTemplate(JSThread *thread, cons
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
     // After clone both, reset "constructor" and "prototype" properties.
-    cloneClass->SetFunctionPrototype(thread, cloneClassPrototype.GetTaggedValue());
+    JSFunction::SetFunctionPrototype(thread, cloneClass, cloneClassPrototype.GetTaggedValue());
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
     PropertyDescriptor ctorDesc(thread, JSHandle<JSTaggedValue>(cloneClass), true, false, true);

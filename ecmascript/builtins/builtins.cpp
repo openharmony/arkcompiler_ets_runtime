@@ -375,7 +375,7 @@ void Builtins::Initialize(const JSHandle<GlobalEnv> &env, JSThread *thread, bool
     // Object = new Function()
     JSHandle<JSObject> objectFunction(
         NewBuiltinConstructor(env, objFuncPrototype, Object::ObjectConstructor, "Object", FunctionLength::ONE));
-    objectFunction.GetObject<JSFunction>()->SetFunctionPrototype(thread_, objFuncClass.GetTaggedValue());
+    JSFunction::SetFunctionPrototype(thread_, JSHandle<JSFunction>(objectFunction), objFuncClass.GetTaggedValue());
     // initialize object method.
     env->SetObjectFunction(thread_, objectFunction);
     env->SetObjectFunctionPrototype(thread_, objFuncPrototype);
@@ -618,7 +618,7 @@ void Builtins::InitializeFunction(const JSHandle<GlobalEnv> &env, const JSHandle
     auto funcFuncPrototypeObj = JSHandle<JSObject>(funcFuncPrototype);
     InitializeCtor(env, funcFuncPrototypeObj, funcFunc, "Function", FunctionLength::ONE);
 
-    funcFunc->SetFunctionPrototype(thread_, funcFuncIntanceHClass.GetTaggedValue());
+    JSFunction::SetFunctionPrototype(thread_, funcFunc, funcFuncIntanceHClass.GetTaggedValue());
     env->SetFunctionFunction(thread_, funcFunc);
     env->SetFunctionPrototype(thread_, funcFuncPrototype);
 
@@ -688,7 +688,8 @@ void Builtins::InitializeSymbol(const JSHandle<GlobalEnv> &env, const JSHandle<J
     // Symbol = new Function()
     JSHandle<JSObject> symbolFunction(
         NewBuiltinConstructor(env, symbolFuncPrototype, Symbol::SymbolConstructor, "Symbol", FunctionLength::ZERO));
-    JSHandle<JSFunction>(symbolFunction)->SetFunctionPrototype(thread_, symbolFuncInstanceHClass.GetTaggedValue());
+    JSFunction::SetFunctionPrototype(thread_,
+        JSHandle<JSFunction>(symbolFunction), symbolFuncInstanceHClass.GetTaggedValue());
 
     // "constructor" property on the prototype
     JSHandle<JSTaggedValue> constructorKey = globalConst->GetHandledConstructorString();
@@ -809,7 +810,8 @@ void Builtins::InitializeSymbolWithRealm(const JSHandle<GlobalEnv> &realm,
     // Symbol = new Function()
     JSHandle<JSObject> symbolFunction(
         NewBuiltinConstructor(realm, symbolFuncPrototype, Symbol::SymbolConstructor, "Symbol", FunctionLength::ZERO));
-    JSHandle<JSFunction>(symbolFunction)->SetFunctionPrototype(thread_, symbolFuncInstanceHClass.GetTaggedValue());
+    JSFunction::SetFunctionPrototype(thread_,
+        JSHandle<JSFunction>(symbolFunction), symbolFuncInstanceHClass.GetTaggedValue());
 
     // "constructor" property on the prototype
     JSHandle<JSTaggedValue> constructorKey = thread_->GlobalConstants()->GetHandledConstructorString();
@@ -878,7 +880,8 @@ void Builtins::InitializeNumber(const JSHandle<GlobalEnv> &env, const JSHandle<J
     JSHandle<JSObject> numFunction(
         NewBuiltinConstructor(env, numFuncPrototype, Number::NumberConstructor, "Number", FunctionLength::ONE,
             BUILTINS_STUB_ID(NumberConstructor)));
-    numFunction.GetObject<JSFunction>()->SetFunctionPrototype(thread_, numFuncInstanceHClass.GetTaggedValue());
+    JSFunction::SetFunctionPrototype(thread_,
+        JSHandle<JSFunction>(numFunction), numFuncInstanceHClass.GetTaggedValue());
 
     // Number.prototype method
     for (const base::BuiltinFunctionEntry &entry: Number::GetNumberPrototypeFunctions()) {
@@ -928,7 +931,8 @@ void Builtins::InitializeBigInt(const JSHandle<GlobalEnv> &env, const JSHandle<J
     JSHandle<JSObject> bigIntFunction(
         NewBuiltinConstructor(env, bigIntFuncPrototype,
                               BuiltinsBigInt::BigIntConstructor, "BigInt", FunctionLength::ONE));
-    JSHandle<JSFunction>(bigIntFunction)->SetFunctionPrototype(thread_, bigIntFuncInstanceHClass.GetTaggedValue());
+    JSFunction::SetFunctionPrototype(thread_,
+        JSHandle<JSFunction>(bigIntFunction), bigIntFuncInstanceHClass.GetTaggedValue());
 
     // BigInt.prototype method
     SetFunction(env, bigIntFuncPrototype, "toLocaleString", BuiltinsBigInt::ToLocaleString, FunctionLength::ZERO);
@@ -961,7 +965,8 @@ void Builtins::InitializeDate(const JSHandle<GlobalEnv> &env, JSHandle<JSTaggedV
     JSHandle<JSObject> dateFunction(
         NewBuiltinConstructor(env, dateFuncPrototype, Date::DateConstructor, "Date", FunctionLength::ONE,
                               BUILTINS_STUB_ID(DateConstructor)));
-    JSHandle<JSFunction>(dateFunction)->SetFunctionPrototype(thread_, dateFuncInstanceHClass.GetTaggedValue());
+    JSFunction::SetFunctionPrototype(thread_,
+        JSHandle<JSFunction>(dateFunction), dateFuncInstanceHClass.GetTaggedValue());
 
     // Date.prototype method
     for (const base::BuiltinFunctionEntry &entry: Date::GetDatePrototypeFunctions()) {
@@ -1013,7 +1018,7 @@ void Builtins::InitializeBoolean(const JSHandle<GlobalEnv> &env, const JSHandle<
     // new Boolean Function()
     JSHandle<JSFunction> booleanFunction = NewBuiltinConstructor(env, booleanFuncPrototype, Boolean::BooleanConstructor,
         "Boolean", FunctionLength::ONE, BUILTINS_STUB_ID(BooleanConstructor));
-    booleanFunction->SetFunctionPrototype(thread_, booleanFuncInstanceHClass.GetTaggedValue());
+    JSFunction::SetFunctionPrototype(thread_, booleanFunction, booleanFuncInstanceHClass.GetTaggedValue());
 
     // Boolean.prototype method
     SetFunction(env, booleanFuncPrototype, thread_->GlobalConstants()->GetHandledToStringString(),
@@ -1089,7 +1094,7 @@ void Builtins::InitializeAllTypeError(const JSHandle<GlobalEnv> &env, const JSHa
     // Error() = new Function()
     JSHandle<JSFunction> errorFunction(
         NewBuiltinConstructor(env, errorFuncPrototype, Error::ErrorConstructor, "Error", FunctionLength::ONE));
-    errorFunction->SetFunctionPrototype(thread_, errorFuncInstanceHClass.GetTaggedValue());
+    JSFunction::SetFunctionPrototype(thread_, errorFunction, errorFuncInstanceHClass.GetTaggedValue());
 
     // Error.prototype method
     SetFunction(env, errorFuncPrototype, thread_->GlobalConstants()->GetHandledToStringString(), Error::ToString,
@@ -1269,7 +1274,7 @@ void Builtins::InitializeError(const JSHandle<GlobalEnv> &env, const JSHandle<JS
     InitializeCtor(env, nativeErrorFuncPrototype, nativeErrorFunction, errorParameter.nativePropertyName,
                    functionLength);
 
-    nativeErrorFunction->SetFunctionPrototype(thread_, nativeErrorFuncInstanceHClass.GetTaggedValue());
+    JSFunction::SetFunctionPrototype(thread_, nativeErrorFunction, nativeErrorFuncInstanceHClass.GetTaggedValue());
 
     // NativeError.prototype method
     SetFunction(env, nativeErrorFuncPrototype, thread_->GlobalConstants()->GetHandledToStringString(),
@@ -1318,7 +1323,7 @@ void Builtins::InitializeCtor(const JSHandle<GlobalEnv> &env, const JSHandle<JSO
     JSObject::DefineOwnProperty(thread_, prototype, constructorKey, descriptor1);
 
     /* set "prototype" in constructor */
-    ctor->SetFunctionPrototype(thread_, prototype.GetTaggedValue());
+    JSFunction::SetFunctionPrototype(thread_, ctor, prototype.GetTaggedValue());
 
     if (!JSTaggedValue::SameValue(nameString, thread_->GlobalConstants()->GetHandledAsyncFunctionString())) {
         JSHandle<JSObject> globalObject(thread_, env->GetGlobalObject());
@@ -1342,7 +1347,8 @@ void Builtins::InitializeSet(const JSHandle<GlobalEnv> &env, JSHandle<JSTaggedVa
     // Set() = new Function()
     JSHandle<JSTaggedValue> setFunction(
         NewBuiltinConstructor(env, setFuncPrototype, BuiltinsSet::SetConstructor, "Set", FunctionLength::ZERO));
-    JSHandle<JSFunction>(setFunction)->SetFunctionPrototype(thread_, setFuncInstanceHClass.GetTaggedValue());
+    JSFunction::SetFunctionPrototype(thread_,
+        JSHandle<JSFunction>(setFunction), setFuncInstanceHClass.GetTaggedValue());
 
     // "constructor" property on the prototype
     JSHandle<JSTaggedValue> constructorKey = globalConst->GetHandledConstructorString();
@@ -1416,8 +1422,8 @@ void Builtins::InitializeMap(const JSHandle<GlobalEnv> &env, JSHandle<JSTaggedVa
     JSHandle<JSTaggedValue> mapFunction(
         NewBuiltinConstructor(env, mapFuncPrototype, BuiltinsMap::MapConstructor, "Map", FunctionLength::ZERO));
     // Map().prototype = Map.Prototype & Map.prototype.constructor = Map()
-    JSFunction::Cast(mapFunction->GetTaggedObject())
-        ->SetFunctionPrototype(thread_, mapFuncInstanceHClass.GetTaggedValue());
+    JSFunction::SetFunctionPrototype(thread_,
+        JSHandle<JSFunction>(mapFunction), mapFuncInstanceHClass.GetTaggedValue());
 
     // "constructor" property on the prototype
     JSHandle<JSTaggedValue> constructorKey = globalConst->GetHandledConstructorString();
@@ -1726,7 +1732,8 @@ void Builtins::InitializeString(const JSHandle<GlobalEnv> &env, JSHandle<JSTagge
     // String = new Function()
     JSHandle<JSObject> stringFunction(NewBuiltinConstructor(env, stringFuncPrototype, BuiltinsString::StringConstructor,
                                                             "String", FunctionLength::ONE));
-    stringFunction.GetObject<JSFunction>()->SetFunctionPrototype(thread_, stringFuncInstanceHClass.GetTaggedValue());
+    JSFunction::SetFunctionPrototype(thread_,
+        JSHandle<JSFunction>(stringFunction), stringFuncInstanceHClass.GetTaggedValue());
 
     // String.prototype method
     for (const base::BuiltinFunctionEntry &entry: BuiltinsString::GetStringPrototypeFunctions()) {
@@ -1767,7 +1774,7 @@ void Builtins::InitializeStringIterator(const JSHandle<GlobalEnv> &env,
 
     JSHandle<JSFunction> strIterFunction(
         factory_->NewJSFunction(env, static_cast<void *>(nullptr), FunctionKind::BASE_CONSTRUCTOR));
-    strIterFunction->SetFunctionPrototype(thread_, strIterFuncInstanceHClass.GetTaggedValue());
+    JSFunction::SetFunctionPrototype(thread_, strIterFunction, strIterFuncInstanceHClass.GetTaggedValue());
 
     SetFunction(env, strIterPrototype, "next", StringIterator::Next, FunctionLength::ZERO,
                 BUILTINS_STUB_ID(STRING_ITERATOR_PROTO_NEXT));
@@ -1791,7 +1798,7 @@ void Builtins::InitializeAsyncFromSyncIterator(const JSHandle<GlobalEnv> &env,
                                                         JSHandle<JSTaggedValue>(asyncItPrototype));
     JSHandle<JSFunction> iterFunction(
         factory_->NewJSFunction(env, static_cast<void *>(nullptr), FunctionKind::BASE_CONSTRUCTOR));
-    iterFunction->SetFunctionPrototype(thread_, hclass.GetTaggedValue());
+    JSFunction::SetFunctionPrototype(thread_, iterFunction, hclass.GetTaggedValue());
     env->SetAsyncFromSyncIterator(thread_, iterFunction);
     env->SetAsyncFromSyncIteratorPrototype(thread_, asyncItPrototype);
 
@@ -1959,7 +1966,8 @@ void Builtins::InitializeRegExp(const JSHandle<GlobalEnv> &env)
     // initialize RegExp.$1 .. $9 static and read-only attributes
     InitializeGlobalRegExp(regexpFunction);
 
-    JSHandle<JSFunction>(regexpFunction)->SetFunctionPrototype(thread_, regexpFuncInstanceHClass.GetTaggedValue());
+    JSFunction::SetFunctionPrototype(thread_,
+        JSHandle<JSFunction>(regexpFunction), regexpFuncInstanceHClass.GetTaggedValue());
 
     const GlobalEnvConstants *globalConstants = thread_->GlobalConstants();
     // RegExp.prototype method
@@ -2087,7 +2095,7 @@ void Builtins::InitializeArray(const JSHandle<GlobalEnv> &env, const JSHandle<JS
     lexicalEnv->SetParentEnv(thread_, env.GetTaggedValue());
     arrayFuncFunction->SetLexicalEnv(thread_, lexicalEnv.GetTaggedValue());
 
-    arrayFuncFunction->SetFunctionPrototype(thread_, arrFuncInstanceHClass.GetTaggedValue());
+    JSFunction::SetFunctionPrototype(thread_, arrayFuncFunction, arrFuncInstanceHClass.GetTaggedValue());
 
     // Array.prototype methods (excluding constructor and '@@' internal properties)
     for (const base::BuiltinFunctionEntry &entry: BuiltinsArray::GetArrayPrototypeFunctions()) {
@@ -2306,8 +2314,8 @@ void Builtins::InitializeArrayBuffer(const JSHandle<GlobalEnv> &env, const JSHan
     JSHandle<JSObject> arrayBufferFunction(NewBuiltinConstructor(
         env, arrayBufferFuncPrototype, ArrayBuffer::ArrayBufferConstructor, "ArrayBuffer", FunctionLength::ONE));
 
-    JSHandle<JSFunction>(arrayBufferFunction)
-        ->SetFunctionPrototype(thread_, arrayBufferFuncInstanceHClass.GetTaggedValue());
+    JSFunction::SetFunctionPrototype(thread_,
+        JSHandle<JSFunction>(arrayBufferFunction), arrayBufferFuncInstanceHClass.GetTaggedValue());
 
     // ArrayBuffer prototype method
     SetFunction(env, arrayBufferFuncPrototype, "slice", ArrayBuffer::Slice, FunctionLength::TWO);
@@ -2386,8 +2394,8 @@ void Builtins::InitializeSharedArrayBuffer(const JSHandle<GlobalEnv> &env,
     JSHandle<JSObject> SharedArrayBufferFunction(NewBuiltinConstructor(env, sharedArrayBufferFuncPrototype,
         SharedArrayBuffer::SharedArrayBufferConstructor, "SharedArrayBuffer", FunctionLength::ONE));
 
-    JSHandle<JSFunction>(SharedArrayBufferFunction)
-        ->SetFunctionPrototype(thread_, sharedArrayBufferFuncInstanceHClass.GetTaggedValue());
+    JSFunction::SetFunctionPrototype(thread_,
+        JSHandle<JSFunction>(SharedArrayBufferFunction), sharedArrayBufferFuncInstanceHClass.GetTaggedValue());
 
     // SharedArrayBuffer prototype method
     SetFunction(env, sharedArrayBufferFuncPrototype, "slice", SharedArrayBuffer::Slice, FunctionLength::TWO);
@@ -2437,7 +2445,8 @@ void Builtins::InitializePromise(const JSHandle<GlobalEnv> &env, const JSHandle<
     // Promise() = new Function()
     JSHandle<JSObject> promiseFunction(
         NewBuiltinConstructor(env, promiseFuncPrototype, Promise::PromiseConstructor, "Promise", FunctionLength::ONE));
-    JSHandle<JSFunction>(promiseFunction)->SetFunctionPrototype(thread_, promiseFuncInstanceHClass.GetTaggedValue());
+    JSFunction::SetFunctionPrototype(thread_,
+        JSHandle<JSFunction>(promiseFunction), promiseFuncInstanceHClass.GetTaggedValue());
 
     // Promise method
     for (const base::BuiltinFunctionEntry &entry: Promise::GetPromiseFunctions()) {
@@ -3099,7 +3108,7 @@ void Builtins::InitializeIntlCtor(const JSHandle<GlobalEnv> &env, const JSHandle
     JSObject::DefineOwnProperty(thread_, prototype, constructorKey, descriptor1);
 
     // set "prototype" in constructor.
-    ctor->SetFunctionPrototype(thread_, prototype.GetTaggedValue());
+    JSFunction::SetFunctionPrototype(thread_, ctor, prototype.GetTaggedValue());
 
     if (!JSTaggedValue::SameValue(nameString, thread_->GlobalConstants()->GetHandledAsyncFunctionString())) {
         JSHandle<JSObject> intlObject(thread_, env->GetIntlFunction().GetTaggedValue());
@@ -3146,7 +3155,8 @@ void Builtins::InitializeDateTimeFormat(const JSHandle<GlobalEnv> &env)
     // 13.4.1 Intl.DateTimeFormat.prototype.constructor
     JSHandle<JSObject> dtfFunction(NewIntlConstructor(env, dtfPrototype, DateTimeFormat::DateTimeFormatConstructor,
                                                       "DateTimeFormat", FunctionLength::ZERO));
-    JSHandle<JSFunction>(dtfFunction)->SetFunctionPrototype(thread_, JSTaggedValue(*dtfFuncInstanceHClass));
+    JSFunction::SetFunctionPrototype(thread_,
+        JSHandle<JSFunction>(dtfFunction), JSTaggedValue(*dtfFuncInstanceHClass));
 
     // 13.3.2 Intl.DateTimeFormat.supportedLocalesOf ( locales [ , options ] )
     SetFunction(env, dtfFunction, "supportedLocalesOf", DateTimeFormat::SupportedLocalesOf, FunctionLength::ONE);
@@ -3189,7 +3199,8 @@ void Builtins::InitializeRelativeTimeFormat(const JSHandle<GlobalEnv> &env)
     JSHandle<JSObject> rtfFunction(NewIntlConstructor(env, rtfPrototype,
                                                       RelativeTimeFormat::RelativeTimeFormatConstructor,
                                                       "RelativeTimeFormat", FunctionLength::ZERO));
-    JSHandle<JSFunction>(rtfFunction)->SetFunctionPrototype(thread_, JSTaggedValue(*rtfFuncInstanceHClass));
+    JSFunction::SetFunctionPrototype(thread_,
+        JSHandle<JSFunction>(rtfFunction), JSTaggedValue(*rtfFuncInstanceHClass));
 
     // 14.3.2 Intl.RelativeTimeFormat.supportedLocalesOf ( locales [ , options ] )
     SetFunction(env, rtfFunction, "supportedLocalesOf", RelativeTimeFormat::SupportedLocalesOf, FunctionLength::ONE);
@@ -3225,7 +3236,8 @@ void Builtins::InitializeNumberFormat(const JSHandle<GlobalEnv> &env)
     // 12.4.1 Intl.NumberFormat.prototype.constructor
     JSHandle<JSObject> nfFunction(NewIntlConstructor(env, nfPrototype, NumberFormat::NumberFormatConstructor,
                                                      "NumberFormat", FunctionLength::ZERO));
-    JSHandle<JSFunction>(nfFunction)->SetFunctionPrototype(thread_, JSTaggedValue(*nfFuncInstanceHClass));
+    JSFunction::SetFunctionPrototype(thread_,
+        JSHandle<JSFunction>(nfFunction), JSTaggedValue(*nfFuncInstanceHClass));
 
     // 12.3.2 Intl.NumberFormat.supportedLocalesOf ( locales [ , options ] )
     SetFunction(env, nfFunction, "supportedLocalesOf", NumberFormat::SupportedLocalesOf, FunctionLength::ONE);
@@ -3262,7 +3274,8 @@ void Builtins::InitializeLocale(const JSHandle<GlobalEnv> &env)
     // Locale = new Function()
     JSHandle<JSObject> localeFunction(
         NewIntlConstructor(env, localePrototype, Locale::LocaleConstructor, "Locale", FunctionLength::ONE));
-    JSHandle<JSFunction>(localeFunction)->SetFunctionPrototype(thread_, JSTaggedValue(*localeFuncInstanceHClass));
+    JSFunction::SetFunctionPrototype(thread_,
+        JSHandle<JSFunction>(localeFunction), JSTaggedValue(*localeFuncInstanceHClass));
 
     // Locale.prototype method
     SetFunction(env, localePrototype, "maximize", Locale::Maximize, FunctionLength::ZERO);
@@ -3324,7 +3337,8 @@ void Builtins::InitializeCollator(const JSHandle<GlobalEnv> &env)
     // 11.1.2 Intl.Collator.prototype.constructor
     JSHandle<JSObject> collatorFunction(
         NewIntlConstructor(env, collatorPrototype, Collator::CollatorConstructor, "Collator", FunctionLength::ZERO));
-    JSHandle<JSFunction>(collatorFunction)->SetFunctionPrototype(thread_, JSTaggedValue(*collatorFuncInstanceHClass));
+    JSFunction::SetFunctionPrototype(thread_,
+        JSHandle<JSFunction>(collatorFunction), JSTaggedValue(*collatorFuncInstanceHClass));
 
     // 11.2.2 Intl.Collator.supportedLocalesOf ( locales [ , options ] )
     SetFunction(env, collatorFunction, "supportedLocalesOf", Collator::SupportedLocalesOf, FunctionLength::ONE);
@@ -3359,7 +3373,8 @@ void Builtins::InitializePluralRules(const JSHandle<GlobalEnv> &env)
     // 15.2.1 Intl.PluralRules.prototype.constructor
     JSHandle<JSObject> prFunction(
         NewIntlConstructor(env, prPrototype, PluralRules::PluralRulesConstructor, "PluralRules", FunctionLength::ZERO));
-    JSHandle<JSFunction>(prFunction)->SetFunctionPrototype(thread_, JSTaggedValue(*prFuncInstanceHClass));
+    JSFunction::SetFunctionPrototype(thread_,
+        JSHandle<JSFunction>(prFunction), JSTaggedValue(*prFuncInstanceHClass));
 
     // 15.3.2 Intl.PluralRules.supportedLocalesOf ( locales [ , options ] )
     SetFunction(env, prFunction, "supportedLocalesOf", PluralRules::SupportedLocalesOf, FunctionLength::ONE);
@@ -3392,7 +3407,8 @@ void Builtins::InitializeDisplayNames(const JSHandle<GlobalEnv> &env)
     // 12.4.1 Intl.DisplayNames.prototype.constructor
     JSHandle<JSObject> dnFunction(NewIntlConstructor(env, dnPrototype, DisplayNames::DisplayNamesConstructor,
                                                      "DisplayNames", FunctionLength::TWO));
-    JSHandle<JSFunction>(dnFunction)->SetFunctionPrototype(thread_, JSTaggedValue(*dnFuncInstanceHClass));
+    JSFunction::SetFunctionPrototype(thread_,
+        JSHandle<JSFunction>(dnFunction), JSTaggedValue(*dnFuncInstanceHClass));
 
     // 12.3.2 Intl.DisplayNames.supportedLocalesOf ( locales [ , options ] )
     SetFunction(env, dnFunction, "supportedLocalesOf", DisplayNames::SupportedLocalesOf, FunctionLength::ONE);
@@ -3425,7 +3441,8 @@ void Builtins::InitializeListFormat(const JSHandle<GlobalEnv> &env)
     // 13.4.1 Intl.ListFormat.prototype.constructor
     JSHandle<JSObject> lfFunction(NewIntlConstructor(env, lfPrototype, ListFormat::ListFormatConstructor,
                                                      "ListFormat", FunctionLength::ZERO));
-    JSHandle<JSFunction>(lfFunction)->SetFunctionPrototype(thread_, JSTaggedValue(*lfFuncInstanceHClass));
+    JSFunction::SetFunctionPrototype(thread_,
+        JSHandle<JSFunction>(lfFunction), JSTaggedValue(*lfFuncInstanceHClass));
 
     // 13.3.2 Intl.ListFormat.supportedLocalesOf ( locales [ , options ] )
     SetFunction(env, lfFunction, "supportedLocalesOf", ListFormat::SupportedLocalesOf, FunctionLength::ONE);
@@ -3574,7 +3591,8 @@ void Builtins::InitializeCjsModule(const JSHandle<GlobalEnv> &env) const
         NewBuiltinCjsCtor(env, cjsModulePrototype, BuiltinsCjsModule::CjsModuleConstructor, "Module",
                           FunctionLength::TWO));
 
-    JSHandle<JSFunction>(cjsModuleFunction)->SetFunctionPrototype(thread_, cjsModuleHClass.GetTaggedValue());
+    JSFunction::SetFunctionPrototype(thread_,
+        JSHandle<JSFunction>(cjsModuleFunction), cjsModuleHClass.GetTaggedValue());
 
     // CjsModule method
     SetFunction(env, cjsModuleFunction, "_load", BuiltinsCjsModule::Load, FunctionLength::ONE);
@@ -3629,7 +3647,8 @@ void Builtins::InitializeCjsExports(const JSHandle<GlobalEnv> &env) const
         NewBuiltinCjsCtor(env, cjsExportsPrototype, BuiltinsCjsExports::CjsExportsConstructor, "Exports",
                           FunctionLength::TWO));
 
-    JSHandle<JSFunction>(cjsExportsFunction)->SetFunctionPrototype(thread_, cjsExportsHClass.GetTaggedValue());
+    JSFunction::SetFunctionPrototype(thread_,
+        JSHandle<JSFunction>(cjsExportsFunction), cjsExportsHClass.GetTaggedValue());
 
     env->SetCjsExportsFunction(thread_, cjsExportsFunction);
 }
@@ -3650,7 +3669,8 @@ void Builtins::InitializeCjsRequire(const JSHandle<GlobalEnv> &env) const
     JSHandle<JSFunction> cjsRequireFunction =
         NewBuiltinCjsCtor(env, cjsRequirePrototype, BuiltinsCjsRequire::CjsRequireConstructor, "require",
                           FunctionLength::ONE);
-    JSHandle<JSFunction>(cjsRequireFunction)->SetFunctionPrototype(thread_, cjsRequireHClass.GetTaggedValue());
+    JSFunction::SetFunctionPrototype(thread_,
+        JSHandle<JSFunction>(cjsRequireFunction), cjsRequireHClass.GetTaggedValue());
 
     // CjsModule.prototype method
     SetFunction(env, cjsRequirePrototype, "Main", BuiltinsCjsRequire::Main, FunctionLength::ONE);
@@ -3709,7 +3729,7 @@ void Builtins::InitializeSCtor(const JSHandle<JSHClass> &protoHClass, const JSHa
     JSHandle<JSObject> prototype(thread_, protoHClass->GetProto());
     JSObject::DefineOwnProperty(thread_, prototype, constructorKey, descriptor, SCheckMode::SKIP);
 
-    ctor->SetFunctionPrototype(thread_, protoHClass.GetTaggedValue());
+    JSFunction::SetFunctionPrototype(thread_, ctor, protoHClass.GetTaggedValue());
 }
 
 JSHandle<JSFunction> Builtins::NewSFunction(const JSHandle<GlobalEnv> &env, const JSHandle<JSTaggedValue> &key,
