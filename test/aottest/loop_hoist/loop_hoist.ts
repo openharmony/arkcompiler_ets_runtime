@@ -17,35 +17,41 @@ declare var ArkTools:any;
 for (let i = 0; i < 10; ++i) {
     Math;
 }
-ArkTools.printLoopHoistProfilerAndReset();
+ArkTools.printTypedOpProfilerAndReset("LOAD_BUILTIN_OBJECT");
+ArkTools.printTypedOpProfilerAndReset("LOAD_PROPERTY");
 
 for (let i = 0; i < 1; ++i) {
     for (let j = 0; j < 10; ++j) {
         Math;
     }
 }
-ArkTools.printLoopHoistProfilerAndReset();
+ArkTools.printTypedOpProfilerAndReset("LOAD_BUILTIN_OBJECT");
+ArkTools.printTypedOpProfilerAndReset("LOAD_PROPERTY");
 
 for (let i = 0; i < 10; ++i) {
     Math.sqrt;
 }
-ArkTools.printLoopHoistProfilerAndReset();
+ArkTools.printTypedOpProfilerAndReset("LOAD_BUILTIN_OBJECT");
+ArkTools.printTypedOpProfilerAndReset("LOAD_PROPERTY");
 
 for (let i = 0; i < 1; ++i) {
     for (let j = 0; j < 10; ++j) {
         Math.sqrt;
     }
 }
-ArkTools.printLoopHoistProfilerAndReset();
+ArkTools.printTypedOpProfilerAndReset("LOAD_BUILTIN_OBJECT");
+ArkTools.printTypedOpProfilerAndReset("LOAD_PROPERTY");
 
 for (let i = 0; i < 10; ++i) {
     Math.sqrt(4);
 }
-ArkTools.printLoopHoistProfilerAndReset();
+ArkTools.printTypedOpProfilerAndReset("LOAD_BUILTIN_OBJECT");
+ArkTools.printTypedOpProfilerAndReset("LOAD_PROPERTY");
 
 for (let i = 0; i < 1; ++i) {
     for (let j = 0; j < 10; ++j) {
         Math.sqrt(4);
     }
 }
-ArkTools.printLoopHoistProfilerAndReset();
+ArkTools.printTypedOpProfilerAndReset("LOAD_BUILTIN_OBJECT");
+ArkTools.printTypedOpProfilerAndReset("LOAD_PROPERTY");

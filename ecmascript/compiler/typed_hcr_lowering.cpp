@@ -936,6 +936,7 @@ VariableType TypedHCRLowering::GetVariableType(BuiltinTypeId id)
 void TypedHCRLowering::LowerLoadElement(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
+    AddProfiling(gate);
     LoadElementAccessor accessor = acc_.GetLoadElementAccessor(gate);
     TypedLoadOp op = accessor.GetTypedLoadOp();
     switch (op) {
@@ -3071,12 +3072,14 @@ void TypedHCRLowering::StorePropertyOnHolder(GateRef holder, GateRef value, Prop
 
 void TypedHCRLowering::AddProfiling(GateRef gate)
 {
-    if (IsLoopHoistProfiling()) {
+    if (IsTypedOpProfiling()) {
         OpCode opcode  = acc_.GetOpCode(gate);
         auto opcodeGate = builder_.Int32(static_cast<uint32_t>(opcode));
         GateRef constOpcode = builder_.Int32ToTaggedInt(opcodeGate);
-        builder_.CallRuntime(acc_.GetGlueFromArgList(), RTSTUB_ID(ProfileLoopHoist),
-                             Gate::InvalidGateRef, { constOpcode }, gate);
+        GateRef traceGate = builder_.CallRuntime(acc_.GetGlueFromArgList(), RTSTUB_ID(ProfileTypedOp),
+                                                 acc_.GetDep(gate), { constOpcode }, gate);
+        acc_.SetDep(gate, traceGate);
+        builder_.SetDepend(acc_.GetDep(gate));
     }
 }
 

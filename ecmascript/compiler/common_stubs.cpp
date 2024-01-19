@@ -1036,6 +1036,15 @@ void FastStringAddStubBuilder::GenerateCircuit()
     Return(result);
 }
 
+void DeleteObjectPropertyStubBuilder::GenerateCircuit()
+{
+    GateRef glue = PtrArgument(0);
+    GateRef object = TaggedArgument(1);
+    GateRef prop = TaggedArgument(2);
+    GateRef result = DeletePropertyOrThrow(glue, object, prop);
+    Return(result);
+}
+
 void GetpropiteratorStubBuilder::GenerateCircuit()
 {
     GateRef glue = PtrArgument(0);

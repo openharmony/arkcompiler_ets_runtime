@@ -113,7 +113,7 @@ public:
           enableLoweringBuiltin_(enableLoweringBuiltin)
     {
         if (cmpCfg != nullptr) {
-            loopHoistProfiling_ =cmpCfg->IsLoopHoistProfiling();
+            typedOpProfiling_ = cmpCfg->IsTypedOpProfiling();
         }
     }
 
@@ -262,9 +262,9 @@ private:
 
     void AddProfiling(GateRef gate);
 
-    bool IsLoopHoistProfiling() const
+    bool IsTypedOpProfiling() const
     {
-        return loopHoistProfiling_;
+        return typedOpProfiling_;
     }
 
     Circuit *circuit_;
@@ -273,7 +273,7 @@ private:
     GateRef dependEntry_;
     [[maybe_unused]] TSManager *tsManager_ {nullptr};
     bool enableLoweringBuiltin_ {false};
-    bool loopHoistProfiling_ {false};
+    bool typedOpProfiling_ {false};
 };
 }  // panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_TYPED_HCR_LOWERING_H
