@@ -69,7 +69,7 @@ private:
     AnFileDataManager() = default;
     std::shared_ptr<AnFileInfo> UnsafeFind(const std::string &fileName) const;
     bool UnsafeLoadFromAOT(const std::string &fileName);
-    bool UnsafeLoadFromStub();
+    bool UnsafeLoadFromStub(const std::string &fileName);
     uint32_t UnSafeGetFileInfoIndex(const std::string &fileName);
     std::shared_ptr<AnFileInfo> UnSafeGetAnFileInfo(uint32_t index)
     {

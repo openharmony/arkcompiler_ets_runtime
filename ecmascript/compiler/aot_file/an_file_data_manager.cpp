@@ -70,7 +70,7 @@ bool AnFileDataManager::SafeLoad(const std::string &fileName, Type type)
         if (loadedStub_ != nullptr) {
             return true;
         }
-        return UnsafeLoadFromStub();
+        return UnsafeLoadFromStub(fileName);
     } else {
         const std::shared_ptr<const AOTFileInfo> aotFileInfo = UnsafeFind(fileName);
         if (aotFileInfo != nullptr) {
@@ -92,13 +92,16 @@ std::shared_ptr<AnFileInfo> AnFileDataManager::UnsafeFind(const std::string &fil
     return loadedAn_.at(index);
 }
 
-bool AnFileDataManager::UnsafeLoadFromStub()
+bool AnFileDataManager::UnsafeLoadFromStub(const std::string &fileName)
 {
     // note: This method is not thread-safe
     // need to ensure that the instance of AnFileDataManager has been locked before use
     loadedStub_ = std::make_shared<StubFileInfo>(StubFileInfo());
+    if (!fileName.empty()) {
+        return loadedStub_->MmapLoad(fileName);
+    }
 #if defined(PANDA_TARGET_OHOS)
-    return loadedStub_->MmapLoad();
+    return loadedStub_->MmapLoad(fileName);
 #else
     return loadedStub_->Load();
 #endif
