@@ -179,6 +179,14 @@ ARK_NOINLINE JSTaggedValue ICRuntimeStub::StoreICByValue(JSThread *thread, Profi
     return StoreMiss(thread, profileTypeInfo, receiver, key, value, slotId, ICKind::StoreIC);
 }
 
+ARK_NOINLINE JSTaggedValue ICRuntimeStub::StoreOwnICByValue(JSThread *thread, ProfileTypeInfo *profileTypeInfo,
+                                                            JSTaggedValue receiver, JSTaggedValue key,
+                                                            JSTaggedValue value, uint32_t slotId)
+{
+    INTERPRETER_TRACE(thread, StoreOwnICByValue);
+    return StoreMiss(thread, profileTypeInfo, receiver, key, value, slotId, ICKind::StoreIC, true);
+}
+
 ARK_INLINE JSTaggedValue ICRuntimeStub::TryStoreICByName(JSThread *thread, JSTaggedValue receiver,
                                                          JSTaggedValue firstValue, JSTaggedValue secondValue,
                                                          JSTaggedValue value)
@@ -641,7 +649,7 @@ JSTaggedValue ICRuntimeStub::LoadValueMiss(JSThread *thread, ProfileTypeInfo *pr
 }
 
 JSTaggedValue ICRuntimeStub::StoreMiss(JSThread *thread, ProfileTypeInfo *profileTypeInfo, JSTaggedValue receiver,
-                                       JSTaggedValue key, JSTaggedValue value, uint32_t slotId, ICKind kind)
+                                       JSTaggedValue key, JSTaggedValue value, uint32_t slotId, ICKind kind, bool isOwn)
 {
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     auto keyHandle = JSHandle<JSTaggedValue>(thread, key);
@@ -649,7 +657,7 @@ JSTaggedValue ICRuntimeStub::StoreMiss(JSThread *thread, ProfileTypeInfo *profil
     auto valueHandle = JSHandle<JSTaggedValue>(thread, value);
     auto profileInfoHandle = JSHandle<JSTaggedValue>(thread, profileTypeInfo);
     StoreICRuntime icRuntime(thread, JSHandle<ProfileTypeInfo>::Cast(profileInfoHandle), slotId, kind);
-    return icRuntime.StoreMiss(receiverHandle, keyHandle, valueHandle);
+    return icRuntime.StoreMiss(receiverHandle, keyHandle, valueHandle, isOwn);
 }
 }  // namespace panda::ecmascript
 

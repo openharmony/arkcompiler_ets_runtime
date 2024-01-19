@@ -56,6 +56,20 @@ public:
         return icAccessor_.GetKind();
     }
 
+    ObjectOperator ConstructOp(JSHandle<JSTaggedValue> receiver, JSHandle<JSTaggedValue> key,
+                               JSHandle<JSTaggedValue> value, bool isOwn) const
+    {
+        ObjectOperator op(GetThread(), receiver, key,
+                    isOwn ? OperatorType::OWN : OperatorType::PROTOTYPE_CHAIN);
+        if (isOwn) {
+            bool enumerable = !(receiver->IsClassPrototype() || receiver->IsClassConstructor());
+            PropertyDescriptor desc(GetThread(), value, true, enumerable, true);
+            PropertyAttributes attr(desc);
+            op.SetAttr(attr);
+        }
+        return op;
+    }
+
     void TraceIC(JSHandle<JSTaggedValue> receiver, JSHandle<JSTaggedValue> key) const;
 
 protected:
@@ -88,7 +102,8 @@ public:
     ~StoreICRuntime() = default;
 
     JSTaggedValue StoreMiss(JSHandle<JSTaggedValue> receiver, JSHandle<JSTaggedValue> key,
-                                 JSHandle<JSTaggedValue> value);
+                                 JSHandle<JSTaggedValue> value, bool isOwn = false);
+    
     JSTaggedValue StoreTypedArrayValueMiss(JSHandle<JSTaggedValue> receiver, JSHandle<JSTaggedValue> key,
                                            JSHandle<JSTaggedValue> value);
 };

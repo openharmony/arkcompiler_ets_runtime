@@ -1751,70 +1751,30 @@ DECLARE_ASM_HANDLER(HandleWideStobjbyindexPrefV8Imm32)
     }
 }
 
-DECLARE_ASM_HANDLER(HandleStownbyindexImm16V8Imm16)
-{
-    auto env = GetEnvironment();
-
-    GateRef v0 = ReadInst8_2(pc);
-    GateRef receiver = GetVregValue(sp, ZExtInt8ToPtr(v0));
-    GateRef index = ZExtInt16ToInt32(ReadInst16_3(pc));
-    Label isHeapObject(env);
-    Label slowPath(env);
-    Branch(TaggedIsHeapObject(receiver), &isHeapObject, &slowPath);
-    Bind(&isHeapObject);
-    Label notClassConstructor(env);
-    Branch(IsClassConstructor(receiver), &slowPath, &notClassConstructor);
-    Bind(&notClassConstructor);
-    Label notClassPrototype(env);
-    Branch(IsClassPrototype(receiver), &slowPath, &notClassPrototype);
-    Bind(&notClassPrototype);
-    {
-        // fast path
-        GateRef result = SetPropertyByIndex(glue, receiver, index, acc, true); // acc is value
-        Label notHole(env);
-        Branch(TaggedIsHole(result), &slowPath, &notHole);
-        Bind(&notHole);
-        CHECK_EXCEPTION(result, INT_PTR(STOWNBYINDEX_IMM16_V8_IMM16));
-    }
-    Bind(&slowPath);
-    {
-        GateRef result = CallRuntime(glue, RTSTUB_ID(StOwnByIndex),
-                                     { receiver, IntToTaggedInt(index), acc });
-        CHECK_EXCEPTION(result, INT_PTR(STOWNBYINDEX_IMM16_V8_IMM16));
-    }
-}
-
 DECLARE_ASM_HANDLER(HandleStownbyindexImm8V8Imm16)
 {
-    auto env = GetEnvironment();
-
     GateRef v0 = ReadInst8_1(pc);
     GateRef receiver = GetVregValue(sp, ZExtInt8ToPtr(v0));
     GateRef index = ZExtInt16ToInt32(ReadInst16_2(pc));
-    Label isHeapObject(env);
-    Label slowPath(env);
-    Branch(TaggedIsHeapObject(receiver), &isHeapObject, &slowPath);
-    Bind(&isHeapObject);
-    Label notClassConstructor(env);
-    Branch(IsClassConstructor(receiver), &slowPath, &notClassConstructor);
-    Bind(&notClassConstructor);
-    Label notClassPrototype(env);
-    Branch(IsClassPrototype(receiver), &slowPath, &notClassPrototype);
-    Bind(&notClassPrototype);
-    {
-        // fast path
-        GateRef result = SetPropertyByIndex(glue, receiver, index, acc, true); // acc is value
-        Label notHole(env);
-        Branch(TaggedIsHole(result), &slowPath, &notHole);
-        Bind(&notHole);
-        CHECK_EXCEPTION(result, INT_PTR(STOWNBYINDEX_IMM8_V8_IMM16));
-    }
-    Bind(&slowPath);
-    {
-        GateRef result = CallRuntime(glue, RTSTUB_ID(StOwnByIndex),
-                                     { receiver, IntToTaggedInt(index), acc });
-        CHECK_EXCEPTION(result, INT_PTR(STOWNBYINDEX_IMM8_V8_IMM16));
-    }
+    GateRef value = acc;
+    GateRef slotId = ZExtInt8ToInt32(ReadInst8_0(pc));
+
+    AccessObjectStubBuilder builder(this);
+    GateRef result = builder.StoreOwnByIndex(glue, receiver, index, value, profileTypeInfo, slotId, callback);
+    CHECK_EXCEPTION(result, INT_PTR(STOWNBYINDEX_IMM8_V8_IMM16));
+}
+ 
+DECLARE_ASM_HANDLER(HandleStownbyindexImm16V8Imm16)
+{
+    GateRef v0 = ReadInst8_2(pc);
+    GateRef receiver = GetVregValue(sp, ZExtInt8ToPtr(v0));
+    GateRef index = ZExtInt16ToInt32(ReadInst16_3(pc));
+    GateRef value = acc;
+    GateRef slotId = ZExtInt16ToInt32(ReadInst16_0(pc));
+
+    AccessObjectStubBuilder builder(this);
+    GateRef result = builder.StoreOwnByIndex(glue, receiver, index, value, profileTypeInfo, slotId, callback);
+    CHECK_EXCEPTION(result, INT_PTR(STOWNBYINDEX_IMM16_V8_IMM16));
 }
 
 DECLARE_ASM_HANDLER(HandleWideStownbyindexPrefV8Imm32)
