@@ -264,18 +264,19 @@ JSTaggedValue NumberHelper::DoubleToString(JSThread *thread, double number, int 
 JSTaggedValue NumberHelper::DoubleToASCII(JSThread *thread, double valueNumber, int digitNumber, int flags)
 
 {
-    char buffer[JS_DTOA_BUF_SIZE];
+    std::string buffer(JS_DTOA_BUF_SIZE, '\0');
     DoubleToASCIIWithFlag(buffer, valueNumber, digitNumber, flags);
-    return BuiltinsBase::GetTaggedString(thread, buffer);
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    return factory->NewFromASCII(buffer.c_str()).GetTaggedValue();
 }
 
-void NumberHelper::GetBaseForRoundingMode(double valueNumber, int digitNumber, int *decimalPoint, char *buf,
-                                          char *buf1, int buf1Size, int roundingMode, int *sign)
+void NumberHelper::GetBaseForRoundingMode(double valueNumber, int digitNumber, int *decimalPoint, std::string& buf,
+                                          std::string& buf1, int buf1Size, int roundingMode, int *sign)
 {
     if (roundingMode != FE_TONEAREST) {
         fesetround(roundingMode);
     }
-    int result = snprintf_s(buf1, buf1Size, buf1Size - 1, "%+.*e", digitNumber - 1, valueNumber);
+    int result = snprintf_s(&buf1[0], buf1Size, buf1Size - 1, "%+.*e", digitNumber - 1, valueNumber);
     if (result == -1) {
         LOG_FULL(FATAL) << "snprintf_s failed";
         UNREACHABLE();
@@ -286,24 +287,24 @@ void NumberHelper::GetBaseForRoundingMode(double valueNumber, int digitNumber, i
     *sign = (buf1[0] == '-');
     buf[0] = buf1[1];
     if (digitNumber > 1) {
-        if (memcpy_s(buf + 1, digitNumber - 1, buf1 + POINT_INDEX, digitNumber - 1) != EOK) {
+        if (memcpy_s(&buf[1], digitNumber - 1, &buf1[POINT_INDEX], digitNumber - 1) != EOK) {
             LOG_FULL(FATAL) << "memcpy_s failed";
             UNREACHABLE();
         }
     }
     buf[digitNumber] = '\0';
-    *decimalPoint = std::atoi(buf1 + digitNumber + DECIMAL_INDEX + (digitNumber > 1)) + 1;
+    *decimalPoint = std::atoi(&buf1[digitNumber + DECIMAL_INDEX + (digitNumber > 1)]) + 1;
 }
 
-void NumberHelper::CustomEcvtIsFixed(double &valueNumber, int &digits, int *decimalPoint, char *buf, int *sign)
+void NumberHelper::CustomEcvtIsFixed(double &valueNumber, int &digits, int *decimalPoint, std::string& buf, int *sign)
 {
-    char buffer[JS_DTOA_BUF_SIZE];
+    std::string buffer(JS_DTOA_BUF_SIZE, '\0');
     unsigned int digitsMin = 1;
     unsigned int digitsMax = DOUBLE_MAX_PRECISION;
     while (digitsMin < digitsMax) {
         digits = (digitsMin + digitsMax) / MIN_RADIX;
         GetBaseForRoundingMode(valueNumber, digits, decimalPoint, buf, buffer, sizeof(buffer), FE_TONEAREST, sign);
-        if (strtod(buffer, NULL) == valueNumber) {
+        if (std::strtod(buffer.c_str(), NULL) == valueNumber) {
             while (digits >= MIN_RADIX && buf[digits - 1] == '0') {
                 digits--;
             }
@@ -315,15 +316,16 @@ void NumberHelper::CustomEcvtIsFixed(double &valueNumber, int &digits, int *deci
     digits = digitsMax;
 }
 
-int NumberHelper::CustomEcvt(double valueNumber, int digits, int *decimalPoint, char *buf, bool isFixed, int *sign)
+int NumberHelper::CustomEcvt(double valueNumber, int digits, int *decimalPoint,
+                             std::string& buf, bool isFixed, int *sign)
 {
-    char buffer[JS_DTOA_BUF_SIZE];
+    std::string buffer(JS_DTOA_BUF_SIZE, '\0');
     int roundingMode = FE_TONEAREST;
     if (!isFixed) {
         CustomEcvtIsFixed(valueNumber, digits, decimalPoint, buf, sign);
     } else {
-        char buf1[JS_DTOA_BUF_SIZE];
-        char buf2[JS_DTOA_BUF_SIZE];
+        std::string buf1(JS_DTOA_BUF_SIZE, '\0');
+        std::string buf2(JS_DTOA_BUF_SIZE, '\0');
         int decpt1 = 0;
         int decpt2 = 0;
         int sign1 = 0;
@@ -335,7 +337,7 @@ int NumberHelper::CustomEcvt(double valueNumber, int digits, int *decimalPoint, 
                 FE_DOWNWARD, &sign1);
             GetBaseForRoundingMode(valueNumber, digits + 1, &decpt2, buf2, buffer, sizeof(buffer),
                 FE_UPWARD, &sign2);
-            if (memcmp(buf1, buf2, digits + 1) == 0 && decpt1 == decpt2) {
+            if (memcmp(buf1.c_str(), buf2.c_str(), digits + 1) == 0 && decpt1 == decpt2) {
                 roundingMode = sign1 ? FE_DOWNWARD : FE_UPWARD;
             }
         }
@@ -344,13 +346,12 @@ int NumberHelper::CustomEcvt(double valueNumber, int digits, int *decimalPoint, 
     return digits;
 }
 
-
-int NumberHelper::CustomFcvtHelper(char *buf, int bufSize, double valueNumber, int digits, int roundingMode)
+int NumberHelper::CustomFcvtHelper(std::string& buf, int bufSize, double valueNumber, int digits, int roundingMode)
 {
     if (roundingMode != FE_TONEAREST) {
         std::fesetround(roundingMode);
     }
-    int result = snprintf_s(buf, bufSize, bufSize - 1, "%.*f", digits, valueNumber);
+    int result = snprintf_s(&buf[0], bufSize, bufSize, "%.*f", digits, valueNumber);
     if (result == -1) {
         LOG_FULL(FATAL) << "snprintf_s failed";
         UNREACHABLE();
@@ -362,18 +363,18 @@ int NumberHelper::CustomFcvtHelper(char *buf, int bufSize, double valueNumber, i
     return result;
 }
 
-void NumberHelper::CustomFcvt(char *buf, int bufSize, double valueNumber, int digits)
+void NumberHelper::CustomFcvt(std::string& buf, int bufSize, double valueNumber, int digits)
 {
     int number = 0;
     int tmpNumber = 0;
-    char tmpbuf1[JS_DTOA_BUF_SIZE];
-    char tmpbuf2[JS_DTOA_BUF_SIZE];
+    std::string tmpbuf1(JS_DTOA_BUF_SIZE, '\0');
+    std::string tmpbuf2(JS_DTOA_BUF_SIZE, '\0');
     int roundingMode = FE_TONEAREST;
-    number = CustomFcvtHelper(tmpbuf1, sizeof(tmpbuf1), valueNumber, digits + 1, roundingMode);
+    number = CustomFcvtHelper(tmpbuf1, JS_DTOA_BUF_SIZE, valueNumber, digits + 1, roundingMode);
     if (tmpbuf1[number - 1] == HALFCHAR) {
-        number = CustomFcvtHelper(tmpbuf1, sizeof(tmpbuf1), valueNumber, digits + 1, FE_DOWNWARD);
-        tmpNumber = CustomFcvtHelper(tmpbuf2, sizeof(tmpbuf2), valueNumber, digits + 1, FE_UPWARD);
-        if (number == tmpNumber && memcmp(tmpbuf1, tmpbuf2, number) == 0) {
+        number = CustomFcvtHelper(tmpbuf1, JS_DTOA_BUF_SIZE, valueNumber, digits + 1, FE_DOWNWARD);
+        tmpNumber = CustomFcvtHelper(tmpbuf2, JS_DTOA_BUF_SIZE, valueNumber, digits + 1, FE_UPWARD);
+        if (tmpbuf1 == tmpbuf2) {
             if (tmpbuf1[0] == '-') {
                 roundingMode = FE_DOWNWARD;
             } else {
@@ -387,11 +388,11 @@ void NumberHelper::CustomFcvt(char *buf, int bufSize, double valueNumber, int di
 JSTaggedValue NumberHelper::DoubleToExponential(JSThread *thread, double number, int digit)
 {
     CStringStream ss;
-    char buf[JS_DTOA_BUF_SIZE];
+    std::string buffer(JS_DTOA_BUF_SIZE, '\0');
     if (digit == 0) {
         int decimalPoint = 0;
         int sign = 0;
-        int digitNumber = CustomEcvt(number, digit, &decimalPoint, buf, false, &sign);
+        int digitNumber = CustomEcvt(number, digit, &decimalPoint, buffer, false, &sign);
         ss << std::setiosflags(std::ios::scientific) << std::setprecision(digitNumber - 1) << number;
     } else {
         ss << std::setiosflags(std::ios::scientific) << std::setprecision(digit - 1) << number;
@@ -418,7 +419,7 @@ JSTaggedValue NumberHelper::DoubleToExponential(JSThread *thread, double number,
     return BuiltinsBase::GetTaggedString(thread, result.c_str());
 }
 
-void NumberHelper::DoubleToASCIIWithFlag(char *buf, double valueNumber, int digits, int flags)
+void NumberHelper::DoubleToASCIIWithFlag(std::string& buf, double valueNumber, int digits, int flags)
 {
     if (valueNumber == 0.0) {
         valueNumber = 0.0;
@@ -426,83 +427,63 @@ void NumberHelper::DoubleToASCIIWithFlag(char *buf, double valueNumber, int digi
     if (flags == FRAC_FORMAT) {
         CustomFcvt(buf, JS_DTOA_BUF_SIZE, valueNumber, digits);
     } else {
-        char buf1[JS_DTOA_BUF_SIZE];
+        std::string buf1(JS_DTOA_BUF_SIZE, '\0');
         int decimalPoint = 0;
         int sign = 0;
         bool fixed = ((flags & POINT_INDEX) == base::FIXED_FORMAT);
         int numberMax = fixed ? digits : MAX_DIGITS;
         int digitNumber = CustomEcvt(valueNumber, digits, &decimalPoint, buf1, fixed, &sign);
         int number = decimalPoint;
-        char *tmpbuf = buf;
+        std::string tmpbuf;
         int i = 0;
         if (sign) {
-            *tmpbuf++ = '-';
+            tmpbuf += '-';
         }
         if (number > 0 && number <= numberMax) {
             ToASCIIWithGreatThanZero(tmpbuf, digitNumber, number, buf1);
         } else if (MIN_DIGITS < number && number <= 0) {
-            *tmpbuf++ = '0';
-            *tmpbuf++ = '.';
+            tmpbuf += '0';
+            tmpbuf += '.';
             for (i = 0; i < -number; i++) {
-                *tmpbuf++ = '0';
+                tmpbuf += '0';
             }
-            if (memcpy_s(tmpbuf, digitNumber, buf1, digitNumber) != EOK) {
-                LOG_FULL(FATAL) << "memcpy_s failed";
-                UNREACHABLE();
-            }
-            tmpbuf += digitNumber;
-            *tmpbuf = '\0';
+            tmpbuf += buf1.substr(0, digitNumber);
         } else {
             ToASCIIWithNegative(tmpbuf, digitNumber, number, buf1);
         }
+        buf = tmpbuf;
     }
 }
 
-void NumberHelper::ToASCIIWithGreatThanZero(char *tmpbuf, int digitNumber, int number, const char *buf)
+void NumberHelper::ToASCIIWithGreatThanZero(std::string& tmpbuf, int digitNumber, int number, const std::string& buf)
 {
     if (digitNumber <= number) {
-        if (memcpy_s(tmpbuf, digitNumber, buf, digitNumber) != EOK) {
-            LOG_FULL(FATAL) << "memcpy_s failed";
-            UNREACHABLE();
-        }
-        tmpbuf += digitNumber;
-        for (int i = 0; i < (number - digitNumber); i++) {
-            *tmpbuf++ = '0';
-        }
-        *tmpbuf = '\0';
+        tmpbuf += buf.substr(0, digitNumber);
+        tmpbuf += std::string(number - digitNumber, '0');
+        tmpbuf += '\0';
     } else {
-        if (memcpy_s(tmpbuf, number, buf, number) != EOK) {
-            LOG_FULL(FATAL) << "memcpy_s failed";
-            UNREACHABLE();
-        }
-        tmpbuf += number;
-        *tmpbuf++ = '.';
-        for (int j = 0; j < (digitNumber - number); j++) {
-            *tmpbuf++ = buf[number + j];
-        }
-        *tmpbuf = '\0';
+        tmpbuf += buf.substr(0, number);
+        tmpbuf += '.';
+        tmpbuf += buf.substr(number, digitNumber - number);
+        tmpbuf += '\0';
     }
 }
 
-
-void NumberHelper::ToASCIIWithNegative(char *tmpbuf, int digitNumber, int n, const char *buf)
+void NumberHelper::ToASCIIWithNegative(std::string& tmpbuf, int digitNumber, int n, const std::string& buf)
 {
-    *tmpbuf++ = buf[0];
+    tmpbuf += buf[0];
     if (digitNumber > 1) {
-        *tmpbuf++ = '.';
+        tmpbuf += '.';
         for (int i = 1; i < digitNumber; i++) {
-            *tmpbuf++ = buf[i];
+            tmpbuf += buf[i];
         }
     }
-    *tmpbuf++ = 'e';
+    tmpbuf += 'e';
     int p = n - 1;
     if (p >= 0) {
-        *tmpbuf++ = '+';
+        tmpbuf += '+';
     }
-    int result = sprintf_s(tmpbuf, JS_DTOA_BUF_SIZE -1, "%d", p);
-    if (result == -1) {
-        LOG_FULL(FATAL) << "sprintf_s failed";
-    }
+    tmpbuf += std::to_string(p);
 }
 
 JSTaggedValue NumberHelper::StringToDoubleWithRadix(const uint8_t *start, const uint8_t *end, int radix, bool *negative)

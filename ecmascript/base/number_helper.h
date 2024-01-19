@@ -147,21 +147,22 @@ public:
     static JSTaggedValue StringToBigInt(JSThread *thread, JSHandle<JSTaggedValue> strVal);
     static JSTaggedValue DoubleToExponential(JSThread *thread, double number, int digit);
     static JSTaggedValue DoubleToASCII(JSThread *thread, double valueNumber, int digits, int flags);
-    static void DoubleToASCIIWithFlag(char *buffer, double valueNumber, int digitNumber, int flags);
-    static void ToASCIIWithNegative(char *buffer, int digitNumber, int valueNumber, const char *buf);
-    static void ToASCIIWithGreatThanZero(char *tmpbuf, int digitNumber, int valueNumber, const char *buf);
+    static void DoubleToASCIIWithFlag(std::string& buf, double valueNumber, int digits, int flags);
+    static void ToASCIIWithNegative(std::string& tmpbuf, int digitNumber, int n, const std::string& buf);
+    static void ToASCIIWithGreatThanZero(std::string& tmpbuf, int digitNumber, int number, const std::string& buf);
 private:
     static char Carry(char current, int radix);
     static double Strtod(const char *str, int exponent, uint8_t radix);
     static bool GotoNonspace(uint8_t **ptr, const uint8_t *end);
     static void GetBase(double d, int digits, int *decimalPoint, char *buf, char *bufTmp, int size);
     static int GetMinmumDigits(double d, int *decimalPoint, char *buf);
-    static int CustomEcvt(double valueNumber, int digits, int *decimalPoint, char *buf, bool isFixed, int *sign);
-    static void CustomFcvt(char *buf, int bufSize, double valueNumber, int digits);
-    static int CustomFcvtHelper(char *buf, int bufSize, double valueNumber, int digits, int roundingMode);
-    static void GetBaseForRoundingMode(double d, int digits, int *decimalPoint, char *buf, char *bufTmp,
-        int size, int roundingMode, int *sign);
-    static void CustomEcvtIsFixed(double &valueNumber, int &digits, int *decimalPoint, char *buf, int *sign);
+    static int CustomEcvt(double valueNumber, int digits, int *decimalPoint, std::string& buf,
+                          bool isFixed, int *sign);
+    static void CustomFcvt(std::string& buf, int bufSize, double valueNumber, int digits);
+    static int CustomFcvtHelper(std::string& buf, int bufSize, double valueNumber, int digits, int roundingMode);
+    static void GetBaseForRoundingMode(double valueNumber, int digitNumber, int *decimalPoint, std::string& buf,
+                std::string& buf1, int buf1Size, int roundingMode, int *sign);
+    static void CustomEcvtIsFixed(double &valueNumber, int &digits, int *decimalPoint, std::string& buf, int *sign);
 };
 
 // This class is used to generate 0~1 uniform distribution pseudo-random numbers.
