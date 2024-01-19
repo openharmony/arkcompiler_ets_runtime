@@ -91,6 +91,9 @@
 #include "ecmascript/js_regexp.h"
 #include "ecmascript/js_regexp_iterator.h"
 #include "ecmascript/js_relative_time_format.h"
+#include "ecmascript/js_segmenter.h"
+#include "ecmascript/js_segments.h"
+#include "ecmascript/js_segment_iterator.h"
 #include "ecmascript/js_set.h"
 #include "ecmascript/js_set_iterator.h"
 #include "ecmascript/js_string_iterator.h"
@@ -728,6 +731,21 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
             case JSType::JS_DISPLAYNAMES: {
                 CHECK_DUMP_FIELDS(JSObject::SIZE, JSDisplayNames::SIZE, 3U);
                 NEW_OBJECT_AND_DUMP(JSDisplayNames, JS_DISPLAYNAMES);
+                break;
+            }
+            case JSType::JS_SEGMENTER: {
+                CHECK_DUMP_FIELDS(JSObject::SIZE, JSSegmenter::SIZE, 3U);
+                NEW_OBJECT_AND_DUMP(JSSegmenter, JS_SEGMENTER);
+                break;
+            }
+            case JSType::JS_SEGMENTS: {
+                CHECK_DUMP_FIELDS(JSObject::SIZE, JSSegments::SIZE, 4U);
+                NEW_OBJECT_AND_DUMP(JSSegments, JS_SEGMENTS);
+                break;
+            }
+            case JSType::JS_SEGMENT_ITERATOR: {
+                CHECK_DUMP_FIELDS(JSObject::SIZE, JSSegmentIterator::SIZE, 4U);
+                NEW_OBJECT_AND_DUMP(JSSegmentIterator, JS_SEGMENTS);
                 break;
             }
             case JSType::JS_LIST_FORMAT: {

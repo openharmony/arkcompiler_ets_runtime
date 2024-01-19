@@ -93,6 +93,10 @@
     V(JSTaggedValue, CollatorFunction, COLLATOR_FUNCTION_INDEX)                                     \
     V(JSTaggedValue, PluralRulesFunction, PLURAL_RULES_FUNCTION_INDEX)                              \
     V(JSTaggedValue, DisplayNamesFunction, DISPLAY_NAMES_FUNCTION_INDEX)                            \
+    V(JSTaggedValue, SegmenterFunction, SEGMENTER_FUNCTION_INDEX)                                   \
+    V(JSTaggedValue, SegmentsFunction, SEGMENTS_FUNCTION_INDEX)                                     \
+    V(JSTaggedValue, SegmentIterator, SEGMENT_ITERATOR_INDEX)                                       \
+    V(JSTaggedValue, SegmentIteratorPrototype, SEGMENT_ITERATOR_PROTOTYPE_INDEX)                    \
     V(JSTaggedValue, ListFormatFunction, LIST_FORMAT_FUNCTION_INDEX)                                \
     V(JSTaggedValue, RegExpFunction, REGEXP_FUNCTION_INDEX)                                         \
     V(JSTaggedValue, RegExpExecFunction, REGEXP_EXEC_FUNCTION_INDEX)                                \

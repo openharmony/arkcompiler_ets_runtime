@@ -575,6 +575,9 @@ public:
     bool IsJSCollator() const;
     bool IsJSPluralRules() const;
     bool IsJSDisplayNames() const;
+    bool IsJSSegmenter() const;
+    bool IsJSSegments() const;
+    bool IsJSSegmentIterator() const;
     bool IsJSListFormat() const;
     bool IsMethod() const;
     bool IsClassLiteral() const;

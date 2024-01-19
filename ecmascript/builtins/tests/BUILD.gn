@@ -391,6 +391,31 @@ host_unittest_action("BuiltinsInternational_015_Test") {
   deps += hiviewdfx_deps
 }
 
+host_unittest_action("BuiltinsInternational_016_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "builtins_segmenter_test.cpp",
+  ]
+
+  configs = [
+    "../../../:ecma_test_config",
+    "../../../:icu_path_test_config",
+  ]
+
+  deps = [
+    "$ark_third_party_root/icu/icu4c:shared_icui18n",
+    "$ark_third_party_root/icu/icu4c:shared_icuuc",
+    "../../../:libark_jsruntime_test",
+    sdk_libc_secshared_dep,
+  ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  deps += hiviewdfx_deps
+}
+
 host_unittest_action("BuiltinsNatural_001_Test") {
   module_out_path = module_output_path
 
@@ -590,6 +615,7 @@ group("unittest") {
     ":BuiltinsInternational_013_Test",
     ":BuiltinsInternational_014_Test",
     ":BuiltinsInternational_015_Test",
+    ":BuiltinsInternational_016_Test",
     ":BuiltinsNatural_001_Test",
     ":BuiltinsNatural_002_Test",
     ":BuiltinsNatural_003_Test",
@@ -620,6 +646,7 @@ group("host_unittest") {
     ":BuiltinsInternational_013_TestAction",
     ":BuiltinsInternational_014_TestAction",
     ":BuiltinsInternational_015_TestAction",
+    ":BuiltinsInternational_016_TestAction",
     ":BuiltinsNatural_001_TestAction",
     ":BuiltinsNatural_002_TestAction",
     ":BuiltinsNatural_003_TestAction",
@@ -645,6 +672,7 @@ group("host_unittest") {
       ":BuiltinsInternational_013_TestAction",
       ":BuiltinsInternational_014_TestAction",
       ":BuiltinsInternational_015_TestAction",
+      ":BuiltinsInternational_016_TestAction",
       ":BuiltinsNatural_001_TestAction",
       ":BuiltinsNatural_002_TestAction",
       ":BuiltinsNatural_003_TestAction",

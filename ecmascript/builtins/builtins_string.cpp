@@ -1959,7 +1959,7 @@ JSTaggedValue BuiltinsString::SubStr(EcmaRuntimeCallInfo *argv)
 JSTaggedValue BuiltinsString::At(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
-    BUILTINS_API_TRACE(argv->GetThread(), String, Substring);
+    BUILTINS_API_TRACE(argv->GetThread(), String, At);
     JSThread *thread = argv->GetThread();
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 

@@ -137,6 +137,9 @@
 #include "ecmascript/js_number_format.h"
 #include "ecmascript/js_plural_rules.h"
 #include "ecmascript/js_relative_time_format.h"
+#include "ecmascript/js_segmenter.h"
+#include "ecmascript/js_segments.h"
+#include "ecmascript/js_segment_iterator.h"
 #endif
 namespace panda::ecmascript {
 using Error = builtins::BuiltinsError;
@@ -1114,6 +1117,26 @@ void ObjectFactory::InitializeJSObject(const JSHandle<JSObject> &obj, const JSHa
             JSDisplayNames::Cast(*obj)->SetIcuLDN(thread_, JSTaggedValue::Undefined());
             break;
         }
+        case JSType::JS_SEGMENTER: {
+            JSSegmenter::Cast(*obj)->SetLocale(thread_, JSTaggedValue::Undefined());
+            JSSegmenter::Cast(*obj)->SetGranularity(GranularityOption::EXCEPTION);
+            JSSegmenter::Cast(*obj)->SetIcuField(thread_, JSTaggedValue::Undefined());
+            break;
+        }
+        case JSType::JS_SEGMENTS: {
+            JSSegments::Cast(*obj)->SetIcuField(thread_, JSTaggedValue::Undefined());
+            JSSegments::Cast(*obj)->SetSegmentsString(thread_, JSTaggedValue::Undefined());
+            JSSegments::Cast(*obj)->SetUnicodeString(thread_, JSTaggedValue::Undefined());
+            JSSegments::Cast(*obj)->SetGranularity(GranularityOption::EXCEPTION);
+            break;
+        }
+        case JSType::JS_SEGMENT_ITERATOR: {
+            JSSegmentIterator::Cast(*obj)->SetIcuField(thread_, JSTaggedValue::Undefined());
+            JSSegmentIterator::Cast(*obj)->SetIteratedString(thread_, JSTaggedValue::Undefined());
+            JSSegmentIterator::Cast(*obj)->SetUnicodeString(thread_, JSTaggedValue::Undefined());
+            JSSegmentIterator::Cast(*obj)->SetGranularity(GranularityOption::EXCEPTION);
+            break;
+        }
         case JSType::JS_LIST_FORMAT: {
             JSListFormat::Cast(*obj)->SetLocale(thread_, JSTaggedValue::Undefined());
             JSListFormat::Cast(*obj)->SetType(ListTypeOption::EXCEPTION);
@@ -1130,6 +1153,9 @@ void ObjectFactory::InitializeJSObject(const JSHandle<JSObject> &obj, const JSHa
         case JSType::JS_COLLATOR:
         case JSType::JS_PLURAL_RULES:
         case JSType::JS_DISPLAYNAMES:
+        case JSType::JS_SEGMENTER:
+        case JSType::JS_SEGMENTS:
+        case JSType::JS_SEGMENT_ITERATOR:
         case JSType::JS_LIST_FORMAT: {
             break;
         }

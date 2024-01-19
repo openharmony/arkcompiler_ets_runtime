@@ -125,6 +125,9 @@
 #include "ecmascript/js_intl.h"
 #include "ecmascript/js_locale.h"
 #include "ecmascript/js_relative_time_format.h"
+#include "ecmascript/js_segmenter.h"
+#include "ecmascript/js_segments.h"
+#include "ecmascript/js_segment_iterator.h"
 #endif
 
 namespace panda::ecmascript {
@@ -355,6 +358,12 @@ CString JSHClass::DumpJSType(JSType type)
             return "JSPluralRules";
         case JSType::JS_DISPLAYNAMES:
             return "JSDisplayNames";
+        case JSType::JS_SEGMENTER:
+            return "JSSegmenter";
+        case JSType::JS_SEGMENTS:
+            return "JSSegments";
+        case JSType::JS_SEGMENT_ITERATOR:
+            return "JSSegmentIterator";
         case JSType::JS_LIST_FORMAT:
             return "JSListFormat";
         case JSType::JS_GENERATOR_OBJECT:
@@ -1010,6 +1019,15 @@ static void DumpObject(TaggedObject *obj, std::ostream &os)
         case JSType::JS_DISPLAYNAMES:
             JSDisplayNames::Cast(obj)->Dump(os);
             break;
+        case JSType::JS_SEGMENTER:
+            JSSegmenter::Cast(obj)->Dump(os);
+            break;
+        case JSType::JS_SEGMENTS:
+            JSSegments::Cast(obj)->Dump(os);
+            break;
+        case JSType::JS_SEGMENT_ITERATOR:
+            JSSegmentIterator::Cast(obj)->Dump(os);
+            break;
         case JSType::JS_LIST_FORMAT:
             JSListFormat::Cast(obj)->Dump(os);
             break;
@@ -1022,6 +1040,9 @@ static void DumpObject(TaggedObject *obj, std::ostream &os)
         case JSType::JS_COLLATOR:
         case JSType::JS_PLURAL_RULES:
         case JSType::JS_DISPLAYNAMES:
+        case JSType::JS_SEGMENTER:
+        case JSType::JS_SEGMENTS:
+        case JSType::JS_SEGMENT_ITERATOR:
         case JSType::JS_LIST_FORMAT:
             break;
 #endif
@@ -3203,6 +3224,51 @@ void JSDisplayNames::Dump(std::ostream &os) const
     JSObject::Dump(os);
 }
 
+void JSSegmenter::Dump(std::ostream &os) const
+{
+    os << " - Locale: ";
+    GetLocale().Dump(os);
+    os << "\n";
+    os << " - Granularity: "<< static_cast<int>(GetGranularity());
+    os << "\n";
+    os << " - IcuField: ";
+    GetIcuField().Dump(os);
+    os << "\n";
+    JSObject::Dump(os);
+}
+
+void JSSegments::Dump(std::ostream &os) const
+{
+    os << " - SegmentsString: ";
+    GetSegmentsString().Dump(os);
+    os << "\n";
+    os << " - UnicodeString: ";
+    GetUnicodeString().Dump(os);
+    os << "\n";
+    os << " - Granularity: "<< static_cast<int>(GetGranularity());
+    os << "\n";
+    os << " - IcuField: ";
+    GetIcuField().Dump(os);
+    os << "\n";
+    JSObject::Dump(os);
+}
+
+void JSSegmentIterator::Dump(std::ostream &os) const
+{
+    os << " - IteratedString: ";
+    GetIteratedString().Dump(os);
+    os << "\n";
+    os << " - UnicodeString: ";
+    GetUnicodeString().Dump(os);
+    os << "\n";
+    os << " - Granularity: "<< static_cast<int>(GetGranularity());
+    os << "\n";
+    os << " - IcuField: ";
+    GetIcuField().Dump(os);
+    os << "\n";
+    JSObject::Dump(os);
+}
+
 void JSListFormat::Dump(std::ostream &os) const
 {
     os << " - Locale: ";
@@ -4183,6 +4249,15 @@ static void DumpObject(TaggedObject *obj, std::vector<Reference> &vec, bool isVm
         case JSType::JS_DISPLAYNAMES:
             JSDisplayNames::Cast(obj)->DumpForSnapshot(vec);
             return;
+        case JSType::JS_SEGMENTER:
+            JSSegmenter::Cast(obj)->DumpForSnapshot(vec);
+            return;
+        case JSType::JS_SEGMENTS:
+            JSSegments::Cast(obj)->DumpForSnapshot(vec);
+            return;
+        case JSType::JS_SEGMENT_ITERATOR:
+            JSSegmentIterator::Cast(obj)->DumpForSnapshot(vec);
+            return;
         case JSType::JS_LIST_FORMAT:
             JSListFormat::Cast(obj)->DumpForSnapshot(vec);
             return;
@@ -4195,6 +4270,9 @@ static void DumpObject(TaggedObject *obj, std::vector<Reference> &vec, bool isVm
         case JSType::JS_COLLATOR:
         case JSType::JS_PLURAL_RULES:
         case JSType::JS_DISPLAYNAMES:
+        case JSType::JS_SEGMENTER:
+        case JSType::JS_SEGMENTS:
+        case JSType::JS_SEGMENT_ITERATOR:
         case JSType::JS_LIST_FORMAT:
             return;
 #endif
@@ -5550,6 +5628,32 @@ void JSDisplayNames::DumpForSnapshot(std::vector<Reference> &vec) const
     vec.emplace_back(CString("Style"), JSTaggedValue(static_cast<int>(GetStyle())));
     vec.emplace_back(CString("Fallback"), JSTaggedValue(static_cast<int>(GetFallback())));
     vec.emplace_back(CString("IcuLDN"), GetIcuLDN());
+    JSObject::DumpForSnapshot(vec);
+}
+
+void JSSegmenter::DumpForSnapshot(std::vector<Reference> &vec) const
+{
+    vec.emplace_back(CString("Locale"), GetLocale());
+    vec.emplace_back(CString("Granularity"), JSTaggedValue(static_cast<int>(GetGranularity())));
+    vec.emplace_back(CString("IcuField"), GetIcuField());
+    JSObject::DumpForSnapshot(vec);
+}
+
+void JSSegments::DumpForSnapshot(std::vector<Reference> &vec) const
+{
+    vec.emplace_back(CString("SegmentsString"), GetSegmentsString());
+    vec.emplace_back(CString("UnicodeString"), GetUnicodeString());
+    vec.emplace_back(CString("Granularity"), JSTaggedValue(static_cast<int>(GetGranularity())));
+    vec.emplace_back(CString("IcuField"), GetIcuField());
+    JSObject::DumpForSnapshot(vec);
+}
+
+void JSSegmentIterator::DumpForSnapshot(std::vector<Reference> &vec) const
+{
+    vec.emplace_back(CString("IteratedString"), GetIteratedString());
+    vec.emplace_back(CString("UnicodeString"), GetUnicodeString());
+    vec.emplace_back(CString("Granularity"), JSTaggedValue(static_cast<int>(GetGranularity())));
+    vec.emplace_back(CString("IcuField"), GetIcuField());
     JSObject::DumpForSnapshot(vec);
 }
 

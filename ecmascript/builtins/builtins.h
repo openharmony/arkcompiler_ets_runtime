@@ -159,6 +159,8 @@ private:
     void InitializePluralRules(const JSHandle<GlobalEnv> &env);
     void InitializeDisplayNames(const JSHandle<GlobalEnv> &env);
     void InitializeListFormat(const JSHandle<GlobalEnv> &env);
+    void InitializeSegmenter(const JSHandle<GlobalEnv> &env);
+    void InitializeSegments(const JSHandle<GlobalEnv> &env);
 
     void LazyInitializeLocale(const JSHandle<GlobalEnv> &env) const;
     void LazyInitializeDateTimeFormat(const JSHandle<GlobalEnv> &env) const;
@@ -168,6 +170,8 @@ private:
     void LazyInitializePluralRules(const JSHandle<GlobalEnv> &env) const;
     void LazyInitializeDisplayNames(const JSHandle<GlobalEnv> &env) const;
     void LazyInitializeListFormat(const JSHandle<GlobalEnv> &env) const;
+    void LazyInitializeSegmenter(const JSHandle<GlobalEnv> &env) const;
+    void LazyInitializeSegments(const JSHandle<GlobalEnv> &env) const;
 
     void GeneralUpdateError(ErrorParameter *error, EcmaEntrypoint constructor, EcmaEntrypoint method,
                             std::string_view name, JSType type) const;
@@ -204,6 +208,8 @@ private:
     void InitializeRegexpIterator(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &iteratorFuncClass) const;
 
     void InitializeStringIterator(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &iteratorFuncClass) const;
+
+    void InitializeSegmentIterator(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &iteratorFuncClass) const;
 
     void InitializeAsyncFromSyncIterator(const JSHandle<GlobalEnv> &env,
                                          const JSHandle<JSHClass> &iteratorFuncClass) const;
