@@ -23,3 +23,5 @@ test successful
 [
 123456789{}
 ]
+{"a":"delete","b":{}}
+{"a":"delete","b":{}}

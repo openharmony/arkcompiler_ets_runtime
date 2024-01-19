@@ -781,6 +781,9 @@ bool JsonStringifier::SerializeKeys(const JSHandle<JSObject> &obj, const JSHandl
         JSTaggedValue entryKey = entry.first.GetTaggedValue();
         handleKey_.Update(entryKey);
         int index = nameDic->FindEntry(entryKey);
+        if (index < 0) {
+            continue;
+        }
         JSTaggedValue value = nameDic->GetValue(index);
         if (UNLIKELY(value.IsAccessor())) {
             value = JSObject::CallGetter(thread_, AccessorData::Cast(value.GetTaggedObject()),
