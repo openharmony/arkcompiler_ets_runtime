@@ -998,12 +998,27 @@ GateRef BuiltinsObjectStubBuilder::CopyFromEnumCache(GateRef glue, GateRef eleme
     Label exit(env);
     DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
     DEFVARIABLE(index, VariableType::INT32(), Int32(0));
+    DEFVARIABLE(newLen, VariableType::INT32(), Int32(0));
     NewObjectStubBuilder newBuilder(this);
 
+    Label lenIsZero(env);
+    Label lenNotZero(env);
+    Label afterLenCon(env);
     GateRef oldLen = GetLengthOfTaggedArray(elements);
-    GateRef newLen = Int32Sub(oldLen, Int32(EnumCache::ENUM_CACHE_HEADER_SIZE));
-    GateRef array = newBuilder.NewTaggedArray(glue, newLen);
-    Store(VariableType::INT32(), glue, array, IntPtr(TaggedArray::LENGTH_OFFSET), newLen);
+    Branch(Int32Equal(oldLen, Int32(0)), &lenIsZero, &lenNotZero);
+    {
+        Bind(&lenIsZero);
+        {
+            newLen = Int32(0);
+            Jump(&afterLenCon);
+        }
+        Bind(&lenNotZero);
+        newLen = Int32Sub(oldLen, Int32(EnumCache::ENUM_CACHE_HEADER_SIZE));
+        Jump(&afterLenCon);
+    }
+    Bind(&afterLenCon);
+    GateRef array = newBuilder.NewTaggedArray(glue, *newLen);
+    Store(VariableType::INT32(), glue, array, IntPtr(TaggedArray::LENGTH_OFFSET), *newLen);
     GateRef oldExtractLen = GetExtractLengthOfTaggedArray(elements);
     Store(VariableType::INT32(), glue, array, IntPtr(TaggedArray::EXTRA_LENGTH_OFFSET), oldExtractLen);
     Label loopHead(env);
@@ -1013,7 +1028,7 @@ GateRef BuiltinsObjectStubBuilder::CopyFromEnumCache(GateRef glue, GateRef eleme
     Jump(&loopHead);
     LoopBegin(&loopHead);
     {
-        Branch(Int32UnsignedLessThan(*index, newLen), &storeValue, &afterLoop);
+        Branch(Int32UnsignedLessThan(*index, *newLen), &storeValue, &afterLoop);
         Bind(&storeValue);
         {
             GateRef value = GetValueFromTaggedArray(elements, Int32Add(*index,
