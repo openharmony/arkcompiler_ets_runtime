@@ -274,7 +274,10 @@ void JSObject::TryOptimizeAsFastElements(const JSThread *thread, JSHandle<JSObje
             if (key.IsUndefined() || key.IsHole()) {
                 continue;
             }
-            array->Set(thread, key.GetNumber(), value);
+            ASSERT(key.IsNumber());
+            if (key.GetNumber() < length) {
+                array->Set(thread, key.GetNumber(), value);
+            }
         }
         obj->SetElements(thread, array);
         JSHClass::OptimizeAsFastElements(thread, obj);

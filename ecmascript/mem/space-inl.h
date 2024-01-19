@@ -38,7 +38,6 @@ void Space::RemoveRegion(Region *region)
 template<class Callback>
 void Space::EnumerateRegions(const Callback &cb, Region *end) const
 {
-    LOG_ECMA_MEM(DEBUG) << "EnumerateRegions with " << ToSpaceTypeName(spaceType_) << " space";
     Region *current = regionList_.GetFirst();
     if (current == nullptr) {
         return;
