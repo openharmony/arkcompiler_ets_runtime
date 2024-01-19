@@ -566,6 +566,21 @@ GateRef CircuitBuilder::Int32CheckRightIsZero(GateRef right)
     return ret;
 }
 
+GateRef CircuitBuilder::RemainderIsNegativeZero(GateRef left, GateRef right)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    auto frameState = acc_.FindNearestFrameState(currentDepend);
+    GateRef ret = GetCircuit()->NewGate(circuit_->RemainderIsNegativeZero(),
+                                        MachineType::I1,
+                                        {currentControl, currentDepend, left, right, frameState},
+                                        GateType::NJSValue());
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
+}
+
 GateRef CircuitBuilder::Float64CheckRightIsZero(GateRef right)
 {
     auto currentLabel = env_->GetCurrentLabel();

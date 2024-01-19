@@ -402,14 +402,20 @@ void NumberSpeculativeLowering::VisitNumberMod(GateRef gate)
     if (sampleType->IsNumber()) {
         if (sampleType->IsInt()) {
             gateType = GateType::IntType();
-        } else {
+        } else if (sampleType->IsDouble()) {
             gateType = GateType::DoubleType();
+        } else {
+            gateType = GateType::NumberType();
         }
     }
     GateRef result = Circuit::NullGate();
     if (gateType.IsIntType()) {
         if (GetRange(right).MaybeZero()) {
             builder_.Int32CheckRightIsZero(right);
+        }
+        bool isNegativeZero = (GetRange(left) % GetRange(right)).MaybeZero() && GetRange(left).MaybeNegative();
+        if (isNegativeZero) {
+            builder_.RemainderIsNegativeZero(left, right);
         }
         result = CalculateInts<Op>(left, right);
         UpdateRange(result, GetRange(gate));

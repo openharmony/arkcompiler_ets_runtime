@@ -46,6 +46,7 @@ public:
     using RepresentationBit = OffsetBit::NextField<Representation, PropertyAttributes::REPRESENTATION_NUM>;
     using AttrIndexBit = RepresentationBit::NextField<uint32_t, PropertyAttributes::OFFSET_BITFIELD_NUM>;
     using IsOnHeapBit = AttrIndexBit::NextFlag;
+    using IsOnPrototypeBit = IsOnHeapBit::NextFlag;
 
     static_assert(static_cast<size_t>(HandlerKind::TOTAL_KINDS) <= (1 << KIND_BIT_LENGTH));
 
@@ -122,6 +123,11 @@ public:
         return IsJSArrayBit::Get(handler);
     }
 
+    static inline bool IsOnPrototype(uint32_t handler)
+    {
+        return IsOnPrototypeBit::Get(handler);
+    }
+
     static inline int GetOffset(uint32_t handler)
     {
         return OffsetBit::Get(handler);
@@ -194,6 +200,10 @@ public:
     {
         uint32_t handler = 0;
         KindBit::Set<uint32_t>(HandlerKind::ELEMENT, &handler);
+
+        if (op.GetReceiver() != op.GetHolder()) {
+            IsOnPrototypeBit::Set<uint32_t>(true, &handler);
+        }
 
         if (op.GetReceiver()->IsJSArray()) {
             IsJSArrayBit::Set<uint32_t>(true, &handler);
