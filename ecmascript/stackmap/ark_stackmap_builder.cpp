@@ -115,7 +115,7 @@ void ArkStackMapBuilder::SaveArkStackMap(const ARKCallsiteAOTFileInfo& info, Bin
             LLVMStackMapType::DwarfRegType reg = stackmap.first;
             LLVMStackMapType::OffsetType offset = stackmap.second;
             if (j == 0) {
-                ASSERT(callSite.head.stackmapOffset == writer.GetOffset());
+                ASSERT(callSite.head.stackmapOffsetInSMSec == writer.GetOffset());
             }
             std::vector<uint8_t> regOffset;
             size_t regOffsetSize = 0;
@@ -123,7 +123,7 @@ void ArkStackMapBuilder::SaveArkStackMap(const ARKCallsiteAOTFileInfo& info, Bin
             writer.WriteBuffer(reinterpret_cast<const uint8_t *>(regOffset.data()), regOffset.size());
             dumper_.arkStackMapSize += regOffsetSize;
             if (j == m - 1) {
-                ASSERT((callSite.head.stackmapOffset + callSite.CalStackMapSize(triple)) == writer.GetOffset());
+                ASSERT((callSite.head.stackmapOffsetInSMSec + callSite.CalStackMapSize(triple)) == writer.GetOffset());
             }
         }
     }
@@ -236,7 +236,7 @@ int ArkStackMapBuilder::FindLoc(std::vector<intptr_t> &CallsitePcs, intptr_t pc)
 void ArkStackMapBuilder::GenARKDeopt(const LLVMStackMapType::DeoptInfoType& deopt, std::pair<uint32_t,
                                      std::vector<ARKDeopt>> &sizeAndArkDeopt, Triple triple)
 {
-    ASSERT(deopt.size() % 2 == 0); // 2:<id, value>
+    ASSERT(deopt.size() % DEOPT_ENTRY_SIZE == 0); // 2:<id, value>
     uint32_t total = 0;
     ARKDeopt v;
     for (size_t i = 0; i < deopt.size(); i += 2) { // 2:<id, value>
@@ -315,10 +315,10 @@ void ArkStackMapBuilder::GenArkCallsiteAOTFileInfo(const CGStackMapInfo &stackMa
     uint32_t stackmapOffset = sizeof(ArkStackMapHeader) + sizeof(CallsiteHeader) * callsiteNum;
     for (auto &x: pc2StackMaps) {
         LLVMStackMapType::CallSiteInfo i = x.second;
-        callsite.head.calliteOffset = x.first;
+        callsite.head.calliteOffsetInTxtSec = x.first;
         ASSERT(std::numeric_limits<uint16_t>::min() <= i.size() && i.size() <= std::numeric_limits<uint16_t>::max());
         callsite.head.stackmapNum = i.size();
-        callsite.head.stackmapOffset = stackmapOffset;
+        callsite.head.stackmapOffsetInSMSec = stackmapOffset;
         callsite.head.deoptOffset = 0;
         callsite.head.deoptNum = 0;
         callsite.stackmaps = i;
@@ -334,7 +334,7 @@ void ArkStackMapBuilder::GenArkCallsiteAOTFileInfo(const CGStackMapInfo &stackMa
         int loc = FindLoc(CallsitePcs, x.first);
         ASSERT(loc >= 0 && loc < static_cast<int>(callsiteNum));
         LLVMStackMapType::DeoptInfoType deopt = x.second;
-        result.callsites[static_cast<uint32_t>(loc)].head.calliteOffset = x.first;
+        result.callsites[static_cast<uint32_t>(loc)].head.calliteOffsetInTxtSec = x.first;
         ASSERT(std::numeric_limits<uint16_t>::min() <= deopt.size()
             && deopt.size() <= std::numeric_limits<uint16_t>::max());
         result.callsites[static_cast<uint32_t>(loc)].head.deoptNum = deopt.size();

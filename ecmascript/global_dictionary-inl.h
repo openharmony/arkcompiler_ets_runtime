@@ -177,7 +177,7 @@ std::pair<uint32_t, uint32_t> GlobalDictionary::GetNumOfEnumKeys() const
 void GlobalDictionary::GetEnumAllKeys(const JSThread *thread, int offset, TaggedArray *keyArray,
                                       uint32_t *keys) const
 {
-    ASSERT_PRINT(offset + GetNumOfEnumKeys().first <= static_cast<int>(keyArray->GetLength()),
+    ASSERT_PRINT(offset + GetNumOfEnumKeys().first <= static_cast<unsigned int>(keyArray->GetLength()),
                  "keyArray capacity is not enough for dictionary");
     int arrayIndex = 0;
     int size = Size();

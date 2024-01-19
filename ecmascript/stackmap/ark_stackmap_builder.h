@@ -80,7 +80,8 @@ public:
 
 private:
     static constexpr int DECIMAL_LENS = 2;
-    StackMapDumper dumper_;
+    static constexpr size_t DEOPT_ENTRY_SIZE = 2;
+    static constexpr size_t GC_ENTRY_SIZE = 2;
 
     template <class Vec>
     void SortCallSite(const std::vector<std::unordered_map<uintptr_t, Vec>> &infos,
@@ -98,7 +99,9 @@ private:
     void GenARKDeopt(const LLVMStackMapType::DeoptInfoType& deopt,
         std::pair<uint32_t, std::vector<ARKDeopt>> &sizeAndArkDeopt, Triple triple);
     void Dump(const StackMapDumper& dumpInfo) const;
+
     bool traceStackMap_{false};
+    StackMapDumper dumper_;
 };
 } // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_ARK_STACKMAP_BUILD_H
