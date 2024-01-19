@@ -64,6 +64,7 @@ public:
     ~SerializeData()
     {
         regionRemainSizeVector_.clear();
+        free(buffer_);
     }
     NO_COPY_SEMANTIC(SerializeData);
     NO_MOVE_SEMANTIC(SerializeData);
