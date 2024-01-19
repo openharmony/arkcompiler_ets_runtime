@@ -860,11 +860,13 @@ void SamplesQueue::PostFrame(FrameInfoTemp *frameInfoTemps, MethodKey *frameStac
                 sizeof(frames_[rear_].frameInfoTemps[i].url), frameInfoTemps[i].url);
             frames_[rear_].frameInfoTemps[i].methodKey.methodIdentifier = frameInfoTemps[i].methodKey.methodIdentifier;
             frames_[rear_].frameInfoTemps[i].methodKey.state = frameInfoTemps[i].methodKey.state;
+            frames_[rear_].frameInfoTemps[i].methodKey.lineNumber = frameInfoTemps[i].methodKey.lineNumber;
         }
         // frameStack
         for (int i = 0; i < frameStackLength; i++) {
             frames_[rear_].frameStack[i].methodIdentifier = frameStack[i].methodIdentifier;
             frames_[rear_].frameStack[i].state = frameStack[i].state;
+            frames_[rear_].frameStack[i].lineNumber = frameStack[i].lineNumber;
         }
         // frameStackLength
         frames_[rear_].frameStackLength = frameStackLength;
@@ -898,11 +900,13 @@ void SamplesQueue::PostNapiFrame(CVector<FrameInfoTemp> &napiFrameInfoTemps,
             frames_[rear_].frameInfoTemps[i].methodKey.methodIdentifier =
                 napiFrameInfoTemps[i].methodKey.methodIdentifier;
             frames_[rear_].frameInfoTemps[i].methodKey.state = napiFrameInfoTemps[i].methodKey.state;
+            frames_[rear_].frameInfoTemps[i].methodKey.lineNumber = napiFrameInfoTemps[i].methodKey.lineNumber;
         }
         // napiFrameStack
         for (size_t i = 0; i < frameStackLength; i++) {
             frames_[rear_].frameStack[i].methodIdentifier = napiFrameStack[i].methodIdentifier;
             frames_[rear_].frameStack[i].state = napiFrameStack[i].state;
+            frames_[rear_].frameStack[i].lineNumber = napiFrameStack[i].lineNumber;
         }
         // frameStackLength
         frames_[rear_].frameStackLength = frameStackLength;

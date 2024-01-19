@@ -39,12 +39,15 @@ struct MethodKey {
     void *methodIdentifier = nullptr;
     RunningState state = RunningState::OTHER;
     kungfu::DeoptType deoptType = kungfu::DeoptType::NOTCHECK;
+    int lineNumber = 0;
     bool operator < (const MethodKey &methodKey) const
     {
         return state < methodKey.state ||
                (state == methodKey.state && methodIdentifier < methodKey.methodIdentifier) ||
                (state == methodKey.state && methodIdentifier == methodKey.methodIdentifier &&
-               deoptType < methodKey.deoptType);
+               deoptType < methodKey.deoptType) ||
+               (state == methodKey.state && methodIdentifier == methodKey.methodIdentifier &&
+               deoptType == methodKey.deoptType && lineNumber < methodKey.lineNumber);
     }
 };
 
@@ -84,6 +87,7 @@ public:
                                         bool topFrame, bool enableVMTag = false);
     static void GetNativeMethodCallPos(FrameIterator &it, FrameInfoTemp &codeEntry);
     static void *GetMethodIdentifier(Method *method, const FrameIterator &it);
+    static void GetCallLineNumber(const FrameIterator &it, int &LineNumber);
 };
 } // namespace panda::ecmascript
 #endif  // ECMASCRIPT_DFX_STACKINFO_JS_STACKGETTER_H
