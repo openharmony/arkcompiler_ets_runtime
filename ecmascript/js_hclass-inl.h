@@ -278,7 +278,9 @@ inline JSTaggedValue JSHClass::FindProtoRootHClass(JSHClass *hclass)
 inline void JSHClass::UpdateRootHClass(const JSThread *thread, const JSHandle<JSHClass> &parent,
                                        const JSHandle<JSHClass> &child)
 {
-    child->SetParent(thread, parent);
+    if (thread->GetEcmaVM()->IsEnablePGOProfiler()) {
+        child->SetParent(thread, parent);
+    }
 }
 
 inline int JSHClass::FindPropertyEntry(const JSThread *thread, JSHClass *hclass, JSTaggedValue key)
