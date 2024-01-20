@@ -463,6 +463,7 @@ void Heap::CollectGarbage(TriggerGCType gcType, GCReason reason)
         if (shouldThrowOOMError_) {
             sweeper_->EnsureAllTaskFinished();
             DumpHeapSnapshotBeforeOOM(false);
+            StatisticHeapDetail();
             ThrowOutOfMemoryError(oldSpace_->GetMergeSize(), " OldSpace::Merge");
             oldSpace_->ResetMergeSize();
             shouldThrowOOMError_ = false;
@@ -548,6 +549,7 @@ void Heap::CheckNonMovableSpaceOOM()
     if (nonMovableSpace_->GetHeapObjectSize() > MAX_NONMOVABLE_LIVE_OBJ_SIZE) {
         sweeper_->EnsureAllTaskFinished();
         DumpHeapSnapshotBeforeOOM(false);
+        StatisticHeapDetail();
         ThrowOutOfMemoryError(nonMovableSpace_->GetHeapObjectSize(), "Heap::CheckNonMovableSpaceOOM", true);
     }
 }
@@ -1519,6 +1521,12 @@ void Heap::StatisticHeapObject(TriggerGCType gcType) const
 {
     PrintHeapInfo(gcType);
 #if ECMASCRIPT_ENABLE_HEAP_DETAIL_STATISTICS
+    StatisticHeapDetail();
+#endif
+}
+
+void Heap::StatisticHeapDetail() const
+{
     static const int JS_TYPE_LAST = static_cast<int>(JSType::TYPE_LAST);
     int typeCount[JS_TYPE_LAST] = { 0 };
     static const int MIN_COUNT_THRESHOLD = 1000;
@@ -1555,7 +1563,6 @@ void Heap::StatisticHeapObject(TriggerGCType gcType) const
         }
         typeCount[i] = 0;
     }
-#endif
 }
 
 void Heap::UpdateWorkManager(WorkManager *workManager)
