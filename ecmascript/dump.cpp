@@ -591,6 +591,8 @@ static void DumpAttr(const PropertyAttributes &attr, bool fastMode, std::ostream
 
     os << ")";
 
+    os << " Rep: " << static_cast<int>(attr.GetRepresentation());
+
     os << " InlinedProps: " << attr.IsInlinedProps();
 
     if (fastMode) {
