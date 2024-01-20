@@ -35,8 +35,10 @@ FullGC::FullGC(Heap *heap) : heap_(heap), workManager_(heap->GetWorkManager()) {
 
 void FullGC::RunPhases()
 {
-    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "FullGC::RunPhases");
-    TRACE_GC(GCStats::Scope::ScopeId::TotalGC, heap_->GetEcmaVM()->GetEcmaGCStats());
+    GCStats *gcStats = heap_->GetEcmaVM()->GetEcmaGCStats();
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "FullGC::RunPhases;Reason" +
+        std::to_string(static_cast<int>(gcStats->GetGCReason())));
+    TRACE_GC(GCStats::Scope::ScopeId::TotalGC, gcStats);
     MEM_ALLOCATE_AND_GC_TRACE(heap_->GetEcmaVM(), FullGC_RunPhases);
 
     if (heap_->CheckOngoingConcurrentMarking()) {

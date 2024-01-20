@@ -246,6 +246,11 @@ public:
         return sensitiveStatus_.load(std::memory_order_relaxed);
     }
 
+    bool onStartUpEvent() const
+    {
+        return onStartupEvent_;
+    }
+
     void SetSensitiveStatus(AppSensitiveStatus status)
     {
         sensitiveStatus_.store(status, std::memory_order_release);;

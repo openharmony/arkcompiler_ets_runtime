@@ -24,6 +24,7 @@ Marker::Marker(Heap *heap) : heap_(heap), objXRay_(heap->GetEcmaVM()), workManag
 void Marker::MarkRoots(uint32_t threadId)
 {
     TRACE_GC(GCStats::Scope::ScopeId::MarkRoots, heap_->GetEcmaVM()->GetEcmaGCStats());
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "GC::MarkRoots");
     objXRay_.VisitVMRoots(
         std::bind(&Marker::HandleRoots, this, threadId, std::placeholders::_1, std::placeholders::_2),
         std::bind(&Marker::HandleRangeRoots, this, threadId, std::placeholders::_1, std::placeholders::_2,

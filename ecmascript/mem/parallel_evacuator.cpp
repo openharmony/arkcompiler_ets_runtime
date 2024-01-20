@@ -75,6 +75,7 @@ void ParallelEvacuator::UpdateTrackInfo()
 void ParallelEvacuator::EvacuateSpace()
 {
     TRACE_GC(GCStats::Scope::ScopeId::EvacuateSpace, heap_->GetEcmaVM()->GetEcmaGCStats());
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "GC::EvacuateSpace");
     MEM_ALLOCATE_AND_GC_TRACE(heap_->GetEcmaVM(), ParallelEvacuator);
     heap_->GetFromSpaceDuringEvacuation()->EnumerateRegions([this] (Region *current) {
         AddWorkload(std::make_unique<EvacuateWorkload>(this, current));
@@ -303,6 +304,7 @@ void ParallelEvacuator::UpdateRecordWeakReference()
 void ParallelEvacuator::UpdateWeakReference()
 {
     MEM_ALLOCATE_AND_GC_TRACE(heap_->GetEcmaVM(), UpdateWeakReference);
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "GC::UpdateWeakReference");
     UpdateRecordWeakReference();
     auto stringTable = heap_->GetEcmaVM()->GetEcmaStringTable();
     bool isFullMark = heap_->IsFullMark();
