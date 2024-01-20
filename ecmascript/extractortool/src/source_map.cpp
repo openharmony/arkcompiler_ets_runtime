@@ -63,7 +63,7 @@ bool SourceMap::ReadSourceMapData(const std::string& hapPath, std::string& conte
     if (!extractor->ExtractToBufByName(MEGER_SOURCE_MAP_PATH, dataPtr, len)) {
         return false;
     }
-    content = reinterpret_cast<char *>(dataPtr.get());
+    content.assign(dataPtr.get(), dataPtr.get() + len);
     return true;
 }
 
