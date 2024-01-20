@@ -333,6 +333,11 @@ public:
 
     PropertiesCache *GetPropertiesCache() const;
 
+    MarkStatus GetMarkStatus() const
+    {
+        return MarkStatusBits::Decode(glueData_.gcStateBitField_);
+    }
+
     void SetMarkStatus(MarkStatus status)
     {
         MarkStatusBits::Set(status, &glueData_.gcStateBitField_);

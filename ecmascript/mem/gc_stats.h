@@ -103,6 +103,8 @@ public:
         return reason_;
     }
 
+    const char *GCReasonToString();
+
     double GetAvgSurvivalRate()
     {
         double copiedRate = double(GetRecordData(RecordData::YOUNG_TOTAL_ALIVE)) /
@@ -148,7 +150,6 @@ private:
     void PrintGCDurationStatistic();
     void PrintGCSummaryStatistic(GCType type = GCType::START);
     GCType GetGCType(TriggerGCType gcType);
-    const char *GCReasonToString();
     void InitializeRecordList();
     const char *GetGCTypeName();
     float GetConcurrrentMarkDuration();

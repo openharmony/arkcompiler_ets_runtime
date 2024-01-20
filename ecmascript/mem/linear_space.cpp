@@ -263,7 +263,8 @@ bool SemiSpace::AdjustCapacity(size_t allocatedSizeSinceGC)
         return false;
     }
     double curObjectSurvivalRate = static_cast<double>(survivalObjectSize_) / allocatedSizeSinceGC;
-    if (curObjectSurvivalRate > GROW_OBJECT_SURVIVAL_RATE) {
+    double initialObjectRate = static_cast<double>(survivalObjectSize_) / initialCapacity_;
+    if (curObjectSurvivalRate > GROW_OBJECT_SURVIVAL_RATE || initialObjectRate > GROW_OBJECT_SURVIVAL_RATE) {
         if (initialCapacity_ >= maximumCapacity_) {
             return false;
         }
