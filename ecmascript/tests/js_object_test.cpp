@@ -1289,12 +1289,12 @@ HWTEST_F_L0(JSObjectTest, NativePointerField)
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSTaggedValue> objFunc(thread, JSObjectTestCreate(thread));
     JSHandle<JSObject> obj = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(objFunc), objFunc);
-    ECMAObject::SetHash(87, JSHandle<ECMAObject>::Cast(obj));
+    ECMAObject::SetHash(thread, 87, JSHandle<ECMAObject>::Cast(obj));
     EXPECT_TRUE(obj->GetHash() == 87);
 
-    obj->SetNativePointerFieldCount(1);
+    obj->SetNativePointerFieldCount(thread, 1);
     char array[] = "Hello World!";
-    obj->SetNativePointerField(0, array, nullptr, nullptr);
+    obj->SetNativePointerField(thread, 0, array, nullptr, nullptr);
     int32_t count = obj->GetNativePointerFieldCount();
     EXPECT_TRUE(count == 1);
     void *pointer = obj->GetNativePointerField(0);

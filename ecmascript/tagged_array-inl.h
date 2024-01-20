@@ -174,7 +174,7 @@ void TaggedArray::RemoveElementByIndex(const JSThread *thread, JSHandle<TaggedAr
 {
     ASSERT(0 <= index || index < effectiveLength);
     Region *region = Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(*srcArray));
-    if (region->InYoungSpace() && !region->IsMarking()) {
+    if (region->InYoungSpace() && !thread->IsConcurrentMarkingOrFinished()) {
         size_t taggedTypeSize = JSTaggedValue::TaggedTypeSize();
         size_t offset = taggedTypeSize * index;
         auto *addr = reinterpret_cast<JSTaggedType *>(ToUintPtr(srcArray->GetData()) + offset);
@@ -198,7 +198,7 @@ void TaggedArray::InsertElementByIndex(const JSThread *thread, JSHandle<TaggedAr
     ASSERT(0 <= index || index <= effectiveLength);
     ASSERT(effectiveLength < srcArray->GetLength());
     Region *region = Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(*srcArray));
-    if (region->InYoungSpace() && !region->IsMarking()) {
+    if (region->InYoungSpace() && !thread->IsConcurrentMarkingOrFinished()) {
         size_t taggedTypeSize = JSTaggedValue::TaggedTypeSize();
         size_t offset = taggedTypeSize * effectiveLength;
         auto *addr = reinterpret_cast<JSTaggedType *>(ToUintPtr(srcArray->GetData()) + offset);
@@ -223,7 +223,7 @@ void TaggedArray::CopyTaggedArrayElement(const JSThread *thread, JSHandle<Tagged
     ASSERT(effectiveLength <= srcElements->GetLength());
     ASSERT(effectiveLength <= dstElements->GetLength());
     Region *region = Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(*dstElements));
-    if (region->InYoungSpace() && !region->IsMarking()) {
+    if (region->InYoungSpace() && !thread->IsConcurrentMarkingOrFinished()) {
         size_t size = effectiveLength * sizeof(JSTaggedType);
         if (memcpy_s(reinterpret_cast<void *>(dstElements->GetData()), size,
             reinterpret_cast<void *>(srcElements->GetData()), size) != EOK) {

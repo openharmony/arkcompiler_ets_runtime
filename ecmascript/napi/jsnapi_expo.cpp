@@ -898,7 +898,7 @@ Local<JSValueRef> MapRef::Get(const EcmaVM *vm, Local<JSValueRef> key)
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
     JSHandle<JSMap> map(JSNApiHelper::ToJSHandle(this));
     return JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(thread,
-                map->Get(JSNApiHelper::ToJSTaggedValue(*key))));
+                map->Get(thread, JSNApiHelper::ToJSTaggedValue(*key))));
 }
 
 void MapRef::Set(const EcmaVM *vm, Local<JSValueRef> key, Local<JSValueRef> value)
@@ -1868,13 +1868,14 @@ Local<JSValueRef> ObjectRef::Seal(const EcmaVM *vm)
     return scope.Escape(JSNApiHelper::ToLocal<JSValueRef>(resultValue));
 }
 
-void ObjectRef::SetNativePointerFieldCount(int32_t count)
+void ObjectRef::SetNativePointerFieldCount(const EcmaVM *vm, int32_t count)
 {
+    CROSS_THREAD_AND_EXCEPTION_CHECK(vm);
     // ObjectRef::New may return special value if exception occurs.
     // So we need do special value check before use it.
     DCHECK_SPECIAL_VALUE(this);
     JSHandle<JSObject> object(JSNApiHelper::ToJSHandle(this));
-    object->SetNativePointerFieldCount(count);
+    object->SetNativePointerFieldCount(thread, count);
 }
 
 int32_t ObjectRef::GetNativePointerFieldCount()
@@ -1895,14 +1896,15 @@ void *ObjectRef::GetNativePointerField(int32_t index)
     return object->GetNativePointerField(index);
 }
 
-void ObjectRef::SetNativePointerField(int32_t index, void *nativePointer,
+void ObjectRef::SetNativePointerField(const EcmaVM *vm, int32_t index, void *nativePointer,
     NativePointerCallback callBack, void *data, size_t nativeBindingsize)
 {
+    CROSS_THREAD_AND_EXCEPTION_CHECK(vm);
     // ObjectRef::New may return special value if exception occurs.
     // So we need do special value check before use it.
     DCHECK_SPECIAL_VALUE(this);
     JSHandle<JSObject> object(JSNApiHelper::ToJSHandle(this));
-    object->SetNativePointerField(index, nativePointer, callBack, data, nativeBindingsize);
+    object->SetNativePointerField(thread, index, nativePointer, callBack, data, nativeBindingsize);
 }
 
 // -------------------------------- NativePointerRef ------------------------------------
@@ -3975,11 +3977,12 @@ void WeakMapRef::Set(const EcmaVM *vm, const Local<JSValueRef> &key, const Local
     JSWeakMap::Set(vm->GetJSThread(), weakMap, JSNApiHelper::ToJSHandle(key), JSNApiHelper::ToJSHandle(value));
 }
 
-bool WeakMapRef::Has(Local<JSValueRef> key)
+bool WeakMapRef::Has(const EcmaVM *vm, Local<JSValueRef> key)
 {
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, false);
     DCHECK_SPECIAL_VALUE_WITH_RETURN(this, false);
     JSHandle<JSWeakMap> weakMap(JSNApiHelper::ToJSHandle(this));
-    return weakMap->Has(JSNApiHelper::ToJSTaggedValue(*key));
+    return weakMap->Has(thread, JSNApiHelper::ToJSTaggedValue(*key));
 }
 
 // ---------------------------------- WeakSetRef --------------------------------------

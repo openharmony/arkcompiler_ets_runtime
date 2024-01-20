@@ -36,6 +36,8 @@ public:
     static constexpr uint8_t FIRST_DETECTOR_SYMBOL_INDEX = static_cast<uint8_t>(Field::REPLACE_SYMBOL_INDEX);
     static constexpr uint8_t LAST_DETECTOR_SYMBOL_INDEX = static_cast<uint8_t>(Field::ITERATOR_SYMBOL_INDEX);
     static constexpr uint8_t FINAL_INDEX = static_cast<uint8_t>(GlobalEnvField::FINAL_INDEX);
+    static constexpr uint8_t RESERVED_LENGTH = 1; // divide the gc area
+    static constexpr uint8_t JSTHREAD_INDEX = FINAL_INDEX; // not need gc
 #undef GLOBAL_ENV_SLOT
 
     JSTaggedValue GetGlobalObject() const
@@ -78,6 +80,18 @@ public:
     {
         ASSERT(JSTaggedValue(object).IsJSGlobalEnv());
         return reinterpret_cast<GlobalEnv *>(object);
+    }
+
+    JSThread* GetJSThread() const
+    {
+        uintptr_t address = ComputeObjectAddress(JSTHREAD_INDEX);
+        return *reinterpret_cast<JSThread**>(address);
+    }
+
+    void SetJSThread(JSThread *thread)
+    {
+        uintptr_t address = ComputeObjectAddress(JSTHREAD_INDEX);
+        *reinterpret_cast<JSThread**>(address) = thread;
     }
 
     JSHandle<JSTaggedValue> GetSymbol(JSThread *thread, const JSHandle<JSTaggedValue> &string);
@@ -128,27 +142,28 @@ public:
     {                                                                                                   \
         uint32_t offset = HEADER_SIZE + index * JSTaggedValue::TaggedTypeSize();                        \
         if (mode == WRITE_BARRIER && value.GetTaggedValue().IsHeapObject()) {                           \
-            Barriers::SetObject<true>(thread, this, offset, value.GetTaggedValue().GetRawData());    \
+            Barriers::SetObject<true>(thread, this, offset, value.GetTaggedValue().GetRawData());       \
         } else {                                                                                        \
-            Barriers::SetPrimitive<JSTaggedType>(this, offset, value.GetTaggedValue().GetRawData()); \
+            Barriers::SetPrimitive<JSTaggedType>(this, offset, value.GetTaggedValue().GetRawData());    \
         }                                                                                               \
     }                                                                                                   \
     inline void Set##name(const JSThread *thread, type value, BarrierMode mode = WRITE_BARRIER)         \
     {                                                                                                   \
         uint32_t offset = HEADER_SIZE + index * JSTaggedValue::TaggedTypeSize();                        \
         if (mode == WRITE_BARRIER && value.IsHeapObject()) {                                            \
-            Barriers::SetObject<true>(thread, this, offset, value.GetRawData());                     \
+            Barriers::SetObject<true>(thread, this, offset, value.GetRawData());                        \
         } else {                                                                                        \
-            Barriers::SetPrimitive<JSTaggedType>(this, offset, value.GetRawData());                  \
+            Barriers::SetPrimitive<JSTaggedType>(this, offset, value.GetRawData());                     \
         }                                                                                               \
     }
     GLOBAL_ENV_FIELDS(GLOBAL_ENV_FIELD_ACCESSORS)
 #undef GLOBAL_ENV_FIELD_ACCESSORS
 
     static constexpr size_t HEADER_SIZE = TaggedObjectSize();
-    static constexpr size_t SIZE = HEADER_SIZE + FINAL_INDEX * JSTaggedValue::TaggedTypeSize();
+    static constexpr size_t DATA_SIZE = HEADER_SIZE + FINAL_INDEX * JSTaggedValue::TaggedTypeSize();
+    static constexpr size_t SIZE = DATA_SIZE + RESERVED_LENGTH * JSTaggedValue::TaggedTypeSize();
 
-    DECL_VISIT_OBJECT(HEADER_SIZE, SIZE);
+    DECL_VISIT_OBJECT(HEADER_SIZE, DATA_SIZE);
 
     DECL_DUMP()
 };

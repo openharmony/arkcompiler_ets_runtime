@@ -100,7 +100,7 @@ HWTEST_F_L0(LinkedHashTableTest, addKeyAndValue)
     EXPECT_EQ(dictHandle->NumberOfElements(), 1);
 
     // test find()
-    int entry1 = dictHandle->FindElement(key1.GetTaggedValue());
+    int entry1 = dictHandle->FindElement(thread, key1.GetTaggedValue());
     EXPECT_EQ(key1.GetTaggedValue(), dictHandle->GetKey(entry1));
     EXPECT_EQ(value1.GetTaggedValue(), dictHandle->GetValue(entry1));
 
@@ -108,12 +108,12 @@ HWTEST_F_L0(LinkedHashTableTest, addKeyAndValue)
     EXPECT_EQ(dictHandle->NumberOfElements(), 2);
     // test remove()
     dictHandle = LinkedHashMap::Delete(thread, dictHandle, key1);
-    EXPECT_EQ(-1, dictHandle->FindElement(key1.GetTaggedValue()));
+    EXPECT_EQ(-1, dictHandle->FindElement(thread, key1.GetTaggedValue()));
     EXPECT_EQ(dictHandle->NumberOfElements(), 1);
 
     JSHandle<JSTaggedValue> undefinedKey(thread, JSTaggedValue::Undefined());
     dictHandle = LinkedHashMap::Set(thread, dictHandle, undefinedKey, value1);
-    int entry2 = dictHandle->FindElement(undefinedKey.GetTaggedValue());
+    int entry2 = dictHandle->FindElement(thread, undefinedKey.GetTaggedValue());
     EXPECT_EQ(value1.GetTaggedValue(), dictHandle->GetValue(entry2));
 }
 
@@ -141,18 +141,18 @@ HWTEST_F_L0(LinkedHashTableTest, SetaddKeyAndValue)
     EXPECT_EQ(setHandle->NumberOfElements(), 1);
 
     // test has()
-    EXPECT_TRUE(setHandle->Has(key1.GetTaggedValue()));
+    EXPECT_TRUE(setHandle->Has(thread, key1.GetTaggedValue()));
 
     setHandle = LinkedHashSet::Add(thread, setHandle, key2);
     EXPECT_EQ(setHandle->NumberOfElements(), 2);
     // test remove()
     setHandle = LinkedHashSet::Delete(thread, setHandle, key1);
-    EXPECT_EQ(-1, setHandle->FindElement(key1.GetTaggedValue()));
+    EXPECT_EQ(-1, setHandle->FindElement(thread, key1.GetTaggedValue()));
     EXPECT_EQ(setHandle->NumberOfElements(), 1);
 
     JSHandle<JSTaggedValue> undefinedKey(thread, JSTaggedValue::Undefined());
     setHandle = LinkedHashSet::Add(thread, setHandle, undefinedKey);
-    EXPECT_TRUE(setHandle->Has(undefinedKey.GetTaggedValue()));
+    EXPECT_TRUE(setHandle->Has(thread, undefinedKey.GetTaggedValue()));
 }
 
 HWTEST_F_L0(LinkedHashTableTest, GrowCapacity)
@@ -171,7 +171,7 @@ HWTEST_F_L0(LinkedHashTableTest, GrowCapacity)
 
         // test insert()
         dictHandle = LinkedHashMap::Set(thread, dictHandle, key, value);
-        EXPECT_EQ(i, dictHandle->FindElement(key.GetTaggedValue()));
+        EXPECT_EQ(i, dictHandle->FindElement(thread, key.GetTaggedValue()));
     }
 
     // test order
@@ -180,7 +180,7 @@ HWTEST_F_L0(LinkedHashTableTest, GrowCapacity)
         keyArray[6] = 0;
         JSHandle<EcmaString> stringKey = factory->NewFromASCII(keyArray);
         // test insert()
-        EXPECT_EQ(i, dictHandle->FindElement(stringKey.GetTaggedValue()));
+        EXPECT_EQ(i, dictHandle->FindElement(thread, stringKey.GetTaggedValue()));
     }
     EXPECT_EQ(dictHandle->NumberOfElements(), 33);
     EXPECT_EQ(dictHandle->Capacity(), 64);
@@ -203,7 +203,7 @@ HWTEST_F_L0(LinkedHashTableTest, SetGrowCapacity)
 
         // test insert()
         setHandle = LinkedHashSet::Add(thread, setHandle, key);
-        EXPECT_EQ(i, setHandle->FindElement(key.GetTaggedValue()));
+        EXPECT_EQ(i, setHandle->FindElement(thread, key.GetTaggedValue()));
     }
 
     // test order
@@ -212,7 +212,7 @@ HWTEST_F_L0(LinkedHashTableTest, SetGrowCapacity)
         keyArray[6] = 0;
         JSHandle<EcmaString> stringKey = factory->NewFromASCII(keyArray);
         // test insert()
-        EXPECT_EQ(i, setHandle->FindElement(stringKey.GetTaggedValue()));
+        EXPECT_EQ(i, setHandle->FindElement(thread, stringKey.GetTaggedValue()));
     }
     EXPECT_EQ(setHandle->NumberOfElements(), 33);
     EXPECT_EQ(setHandle->Capacity(), 64);
@@ -244,7 +244,7 @@ HWTEST_F_L0(LinkedHashTableTest, ShrinkCapacity)
         keyArray[6] = 0;
         JSHandle<EcmaString> stringKey = factory->NewFromASCII(keyArray);
         // test insert()
-        EXPECT_EQ(i, dictHandle->FindElement(stringKey.GetTaggedValue()));
+        EXPECT_EQ(i, dictHandle->FindElement(thread, stringKey.GetTaggedValue()));
     }
     EXPECT_EQ(dictHandle->NumberOfElements(), 9);
     EXPECT_EQ(dictHandle->Capacity(), 16);
@@ -276,7 +276,7 @@ HWTEST_F_L0(LinkedHashTableTest, SetShrinkCapacity)
         keyArray[6] = 0;
         JSHandle<EcmaString> stringKey = factory->NewFromASCII(keyArray);
         // test insert()
-        EXPECT_EQ(i, setHandle->FindElement(stringKey.GetTaggedValue()));
+        EXPECT_EQ(i, setHandle->FindElement(thread, stringKey.GetTaggedValue()));
     }
     EXPECT_EQ(setHandle->NumberOfElements(), 9);
     EXPECT_EQ(setHandle->Capacity(), 16);

@@ -338,6 +338,11 @@ public:
         MarkStatusBits::Set(status, &glueData_.gcStateBitField_);
     }
 
+    bool IsConcurrentMarkingOrFinished() const
+    {
+        return !IsReadyToMark();
+    }
+
     bool IsReadyToMark() const
     {
         auto status = MarkStatusBits::Decode(glueData_.gcStateBitField_);

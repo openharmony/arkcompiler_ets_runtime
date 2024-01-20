@@ -5404,7 +5404,7 @@ HWTEST_F_L0(JSNApiSplTest, ObjectRef_SetNativePointerFieldCount)
     int32_t input = 34; // 34 = random number
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        object->SetNativePointerFieldCount(input);
+        object->SetNativePointerFieldCount(vm_, input);
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(ObjectRef::SetNativePointerFieldCount);
@@ -5416,7 +5416,7 @@ HWTEST_F_L0(JSNApiSplTest, ObjectRef_GetNativePointerFieldCount)
     CalculateForTime();
     Local<ObjectRef> object = ObjectRef::New(vm_);
     int32_t input = 34; // 34 = random number
-    object->SetNativePointerFieldCount(input);
+    object->SetNativePointerFieldCount(vm_, input);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
         object->GetNativePointerFieldCount();
@@ -5435,7 +5435,7 @@ HWTEST_F_L0(JSNApiSplTest, ObjectRef_SetNativePointerField)
     void *vp2 = static_cast<void *>(new std::string("test"));
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        object->SetNativePointerField(33, vp1, callBack, vp2);
+        object->SetNativePointerField(vm_, 33, vp1, callBack, vp2);
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(ObjectRef::SetNativePointerField);
@@ -5449,7 +5449,7 @@ HWTEST_F_L0(JSNApiSplTest, ObjectRef_GetNativePointerField)
     NativePointerCallback callBack = nullptr;
     void *vp1 = static_cast<void *>(new std::string("test"));
     void *vp2 = static_cast<void *>(new std::string("test"));
-    object->SetNativePointerField(33, vp1, callBack, vp2);
+    object->SetNativePointerField(vm_, 33, vp1, callBack, vp2);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
         object->GetNativePointerField(33);

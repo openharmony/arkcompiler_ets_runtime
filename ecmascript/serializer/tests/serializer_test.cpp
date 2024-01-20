@@ -319,10 +319,10 @@ public:
         EXPECT_EQ(sum, 16); // 16 : test case
 
         EXPECT_EQ(retSet->GetSize(), 4);  // 4 : test case
-        EXPECT_TRUE(retSet->Has(value1.GetTaggedValue()));
-        EXPECT_TRUE(retSet->Has(value2.GetTaggedValue()));
-        EXPECT_TRUE(retSet->Has(value3.GetTaggedValue()));
-        EXPECT_TRUE(retSet->Has(value4.GetTaggedValue()));
+        EXPECT_TRUE(retSet->Has(thread, value1.GetTaggedValue()));
+        EXPECT_TRUE(retSet->Has(thread, value2.GetTaggedValue()));
+        EXPECT_TRUE(retSet->Has(thread, value3.GetTaggedValue()));
+        EXPECT_TRUE(retSet->Has(thread, value4.GetTaggedValue()));
         Destroy();
     }
 

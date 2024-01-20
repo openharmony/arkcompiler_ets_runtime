@@ -1414,7 +1414,7 @@ bool JSObject::SetPrototype(JSThread *thread, const JSHandle<JSObject> &obj, con
     JSHandle<JSHClass> hclass(thread, obj->GetJSHClass());
     JSHandle<JSHClass> newClass = JSHClass::TransitionProto(thread, hclass, proto);
     JSHClass::NotifyHclassChanged(thread, hclass, newClass);
-    obj->SynchronizedSetClass(*newClass);
+    obj->SynchronizedSetClass(thread, *newClass);
     JSHClass::TryRestoreElementsKind(thread, newClass, obj);
     thread->NotifyStableArrayElementsGuardians(obj, StableArrayChangeKind::PROTO);
     ObjectOperator::UpdateDetectorOnSetPrototype(thread, obj.GetTaggedValue());
@@ -1454,7 +1454,7 @@ bool JSObject::PreventExtensions(JSThread *thread, const JSHandle<JSObject> &obj
     if (obj->IsExtensible()) {
         JSHandle<JSHClass> jshclass(thread, obj->GetJSHClass());
         JSHandle<JSHClass> newHclass = JSHClass::TransitionExtension(thread, jshclass);
-        obj->SynchronizedSetClass(*newHclass);
+        obj->SynchronizedSetClass(thread, *newHclass);
         JSHClass::TryRestoreElementsKind(thread, newHclass, obj);
     }
 
@@ -2666,12 +2666,11 @@ void JSObject::TrimInlinePropsSpace(const JSThread *thread, const JSHandle<JSObj
 }
 
 // The hash field may be a hash value, FunctionExtraInfo(JSNativePointer) or TaggedArray
-void ECMAObject::SetHash(int32_t hash, const JSHandle<ECMAObject> &obj)
+void ECMAObject::SetHash(const JSThread *thread, int32_t hash, const JSHandle<ECMAObject> &obj)
 {
     JSTaggedType hashField = Barriers::GetValue<JSTaggedType>(*obj, HASH_OFFSET);
     JSTaggedValue value(hashField);
     if (value.IsHeapObject()) {
-        JSThread *thread = (*obj)->GetJSThread();
         // Hash position reserve in advance.
         if (value.IsTaggedArray()) {
             TaggedArray *array = TaggedArray::Cast(value.GetTaggedObject());
@@ -2723,23 +2722,21 @@ void *ECMAObject::GetNativePointerField(int32_t index) const
     JSTaggedType hashField = Barriers::GetValue<JSTaggedType>(this, HASH_OFFSET);
     JSTaggedValue value(hashField);
     if (value.IsTaggedArray()) {
-        JSThread *thread = this->GetJSThread();
-        JSHandle<TaggedArray> array(thread, value);
+        auto array = TaggedArray::Cast(value);
         if (static_cast<int32_t>(array->GetExtraLength()) > index) {
-            JSHandle<JSNativePointer> pointer(thread, array->Get(index));
+            auto pointer = JSNativePointer::Cast(array->Get(index).GetTaggedObject());
             return pointer->GetExternalPointer();
         }
     }
     return nullptr;
 }
 
-void ECMAObject::SetNativePointerField(int32_t index, void *nativePointer,
+void ECMAObject::SetNativePointerField(const JSThread *thread, int32_t index, void *nativePointer,
     const DeleteEntryPoint &callBack, void *data, size_t nativeBindingsize)
 {
     JSTaggedType hashField = Barriers::GetValue<JSTaggedType>(this, HASH_OFFSET);
     JSTaggedValue value(hashField);
     if (value.IsTaggedArray()) {
-        JSThread *thread = this->GetJSThread();
         JSHandle<TaggedArray> array(thread, value);
         if (static_cast<int32_t>(array->GetExtraLength()) > index) {
             EcmaVM *vm = thread->GetEcmaVM();
@@ -2769,13 +2766,12 @@ int32_t ECMAObject::GetNativePointerFieldCount() const
     return len;
 }
 
-void ECMAObject::SetNativePointerFieldCount(int32_t count)
+void ECMAObject::SetNativePointerFieldCount(const JSThread *thread, int32_t count)
 {
     if (count == 0) {
         return;
     }
     JSTaggedType hashField = Barriers::GetValue<JSTaggedType>(this, HASH_OFFSET);
-    JSThread *thread = this->GetJSThread();
     JSHandle<JSTaggedValue> value(thread, JSTaggedValue(hashField));
     JSHandle<ECMAObject> obj(thread, this);
     if (value->IsHeapObject()) {

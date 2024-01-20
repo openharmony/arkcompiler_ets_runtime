@@ -72,7 +72,7 @@ protected:
             std::string iValue = myValue + std::to_string(i);
             key.Update(factory->NewFromStdString(iKey).GetTaggedValue());
             value.Update(factory->NewFromStdString(iValue).GetTaggedValue());
-            int hash = TaggedNode::Hash(key.GetTaggedValue());
+            int hash = TaggedNode::Hash(thread, key.GetTaggedValue());
             head = factory->NewLinkedNode(hash, key, value, head);
         }
         return head;
@@ -86,7 +86,7 @@ HWTEST_F_L0(LinkedNodeTest, LinkedNodeCreate)
     std::string v("testValue");
     JSHandle<JSTaggedValue> key(thread, factory->NewFromStdString(k).GetTaggedValue());
     JSHandle<JSTaggedValue> value(thread, factory->NewFromStdString(v).GetTaggedValue());
-    int hash = TaggedNode::Hash(factory->NewFromStdString(k).GetTaggedValue());
+    int hash = TaggedNode::Hash(thread, factory->NewFromStdString(k).GetTaggedValue());
     JSHandle<LinkedNode> hole(thread, JSTaggedValue::Hole());
     JSHandle<LinkedNode> newNode = factory->NewLinkedNode(hash, key, value, hole);
     EXPECT_TRUE(!newNode.GetTaggedValue().IsHole());

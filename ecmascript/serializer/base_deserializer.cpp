@@ -400,8 +400,8 @@ void BaseDeserializer::UpdateBarrier(uintptr_t addr, ObjectSlot slot)
         rootRegion->InsertOldToNewRSet(slot.SlotAddress());
     }
 
-    if (valueRegion->IsMarking()) {
-        Barriers::Update(slot.SlotAddress(), rootRegion, reinterpret_cast<TaggedObject *>(addr), valueRegion);
+    if (thread_->IsConcurrentMarkingOrFinished()) {
+        Barriers::Update(thread_, slot.SlotAddress(), rootRegion, reinterpret_cast<TaggedObject *>(addr), valueRegion);
     }
 }
 

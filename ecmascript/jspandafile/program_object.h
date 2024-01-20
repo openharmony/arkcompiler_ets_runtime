@@ -388,7 +388,7 @@ public:
                         auto globalConstant = const_cast<GlobalEnvConstants *>(thread->GlobalConstants());
                         auto classIndex = static_cast<size_t>(ConstantIndex::ELEMENT_NONE_HCLASS_INDEX);
                         auto hclassVal = globalConstant->GetGlobalConstantObject(classIndex);
-                        arr->SynchronizedSetClass(JSHClass::Cast(hclassVal.GetTaggedObject()));
+                        arr->SynchronizedSetClass(thread, JSHClass::Cast(hclassVal.GetTaggedObject()));
                         ElementsKind oldKind = arr->GetClass()->GetElementsKind();
                         JSHClass::TransitToElementsKind(thread, arr, dataKind);
                         ElementsKind newKind = arr->GetClass()->GetElementsKind();

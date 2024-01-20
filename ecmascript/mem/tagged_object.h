@@ -31,7 +31,7 @@ public:
         return static_cast<TaggedObject *>(header);
     }
 
-    void SynchronizedSetClass(JSHClass *hclass);
+    void SynchronizedSetClass(const JSThread *thread, JSHClass *hclass);
     JSHClass *SynchronizedGetClass() const;
     void SetClassWithoutBarrier(JSHClass *hclass);
     JSHClass *GetClass() const;
@@ -45,11 +45,9 @@ public:
     static constexpr int HCLASS_OFFSET = 0;
     static constexpr int SIZE = sizeof(MarkWordType);
 
-    JSThread* GetJSThread() const;
-
 private:
-    void SetClass(JSHClass *hclass);
-    void SetClass(JSHandle<JSHClass> hclass);
+    void SetClass(const JSThread *thread, JSHClass *hclass);
+    void SetClass(const JSThread *thread, JSHandle<JSHClass> hclass);
 
     MarkWordType class_;
 

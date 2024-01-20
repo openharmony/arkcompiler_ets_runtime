@@ -301,7 +301,7 @@ void ICRuntimeStub::StoreWithTransition(JSThread *thread, JSObject *receiver, JS
         handlerInfo = static_cast<uint32_t>(transitionHandler->GetHandlerInfo().GetInt());
     }
 
-    receiver->SynchronizedSetClass(newHClass);
+    receiver->SynchronizedSetClass(thread, newHClass);
     JSHandle<JSHClass> newHClassHandle(thread, newHClass);
     JSHandle<JSObject> objHandle(thread, receiver);
     JSHClass::TryRestoreElementsKind(thread, newHClassHandle, objHandle);

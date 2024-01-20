@@ -148,7 +148,7 @@ public:
             auto hclass = JSHandle<JSHClass>(thread, protoHandle->GetTaggedObject()->GetClass());
             JSHandle<JSHClass> newJSHClass = JSHClass::Clone(thread, hclass);
             newJSHClass->SetIsPrototype(true);
-            protoHandle->GetTaggedObject()->SynchronizedSetClass(*newJSHClass);
+            protoHandle->GetTaggedObject()->SynchronizedSetClass(thread, *newJSHClass);
         }
     }
 
