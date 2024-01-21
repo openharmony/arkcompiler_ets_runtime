@@ -304,42 +304,54 @@ void TypedHCRLowering::LowerStableArrayCheck(GateRef gate)
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 
-void TypedHCRLowering::SetDeoptTypeInfo(BuiltinTypeId id, DeoptType &type, size_t &funcIndex)
+void TypedHCRLowering::SetDeoptTypeInfo(BuiltinTypeId id, DeoptType &type, size_t &typedArrayRootHclassIndex,
+    size_t &typedArrayRootHclassOnHeapIndex)
 {
     type = DeoptType::NOTARRAY1;
     switch (id) {
         case BuiltinTypeId::INT8_ARRAY:
-            funcIndex = GlobalEnv::INT8_ARRAY_FUNCTION_INDEX;
+            typedArrayRootHclassIndex = GlobalEnv::INT8_ARRAY_ROOT_HCLASS_INDEX;
+            typedArrayRootHclassOnHeapIndex = GlobalEnv::INT8_ARRAY_ROOT_HCLASS_ON_HEAP_INDEX;
             break;
         case BuiltinTypeId::UINT8_ARRAY:
-            funcIndex = GlobalEnv::UINT8_ARRAY_FUNCTION_INDEX;
+            typedArrayRootHclassIndex = GlobalEnv::UINT8_ARRAY_ROOT_HCLASS_INDEX;
+            typedArrayRootHclassOnHeapIndex = GlobalEnv::UINT8_ARRAY_ROOT_HCLASS_ON_HEAP_INDEX;
             break;
         case BuiltinTypeId::UINT8_CLAMPED_ARRAY:
-            funcIndex = GlobalEnv::UINT8_CLAMPED_ARRAY_FUNCTION_INDEX;
+            typedArrayRootHclassIndex = GlobalEnv::UINT8_CLAMPED_ARRAY_ROOT_HCLASS_INDEX;
+            typedArrayRootHclassOnHeapIndex = GlobalEnv::UINT8_CLAMPED_ARRAY_ROOT_HCLASS_ON_HEAP_INDEX;
             break;
         case BuiltinTypeId::INT16_ARRAY:
-            funcIndex = GlobalEnv::INT16_ARRAY_FUNCTION_INDEX;
+            typedArrayRootHclassIndex = GlobalEnv::INT16_ARRAY_ROOT_HCLASS_INDEX;
+            typedArrayRootHclassOnHeapIndex = GlobalEnv::INT16_ARRAY_ROOT_HCLASS_ON_HEAP_INDEX;
             break;
         case BuiltinTypeId::UINT16_ARRAY:
-            funcIndex = GlobalEnv::UINT16_ARRAY_FUNCTION_INDEX;
+            typedArrayRootHclassIndex = GlobalEnv::UINT16_ARRAY_ROOT_HCLASS_INDEX;
+            typedArrayRootHclassOnHeapIndex = GlobalEnv::UINT16_ARRAY_ROOT_HCLASS_ON_HEAP_INDEX;
             break;
         case BuiltinTypeId::INT32_ARRAY:
-            funcIndex = GlobalEnv::INT32_ARRAY_FUNCTION_INDEX;
+            typedArrayRootHclassIndex = GlobalEnv::INT32_ARRAY_ROOT_HCLASS_INDEX;
+            typedArrayRootHclassOnHeapIndex = GlobalEnv::INT32_ARRAY_ROOT_HCLASS_ON_HEAP_INDEX;
             break;
         case BuiltinTypeId::UINT32_ARRAY:
-            funcIndex = GlobalEnv::UINT32_ARRAY_FUNCTION_INDEX;
+            typedArrayRootHclassIndex = GlobalEnv::UINT32_ARRAY_ROOT_HCLASS_INDEX;
+            typedArrayRootHclassOnHeapIndex = GlobalEnv::UINT32_ARRAY_ROOT_HCLASS_ON_HEAP_INDEX;
             break;
         case BuiltinTypeId::FLOAT32_ARRAY:
-            funcIndex = GlobalEnv::FLOAT32_ARRAY_FUNCTION_INDEX;
+            typedArrayRootHclassIndex = GlobalEnv::FLOAT32_ARRAY_ROOT_HCLASS_INDEX;
+            typedArrayRootHclassOnHeapIndex = GlobalEnv::FLOAT32_ARRAY_ROOT_HCLASS_ON_HEAP_INDEX;
             break;
         case BuiltinTypeId::FLOAT64_ARRAY:
-            funcIndex = GlobalEnv::FLOAT64_ARRAY_FUNCTION_INDEX;
+            typedArrayRootHclassIndex = GlobalEnv::FLOAT64_ARRAY_ROOT_HCLASS_INDEX;
+            typedArrayRootHclassOnHeapIndex = GlobalEnv::FLOAT64_ARRAY_ROOT_HCLASS_ON_HEAP_INDEX;
             break;
         case BuiltinTypeId::BIGINT64_ARRAY:
-            funcIndex = GlobalEnv::BIGINT64_ARRAY_FUNCTION_INDEX;
+            typedArrayRootHclassIndex = GlobalEnv::BIGINT64_ARRAY_ROOT_HCLASS_INDEX;
+            typedArrayRootHclassOnHeapIndex = GlobalEnv::BIGINT64_ARRAY_ROOT_HCLASS_ON_HEAP_INDEX;
             break;
         case BuiltinTypeId::BIGUINT64_ARRAY:
-            funcIndex = GlobalEnv::BIGUINT64_ARRAY_FUNCTION_INDEX;
+            typedArrayRootHclassIndex = GlobalEnv::BIGUINT64_ARRAY_ROOT_HCLASS_INDEX;
+            typedArrayRootHclassOnHeapIndex = GlobalEnv::BIGUINT64_ARRAY_ROOT_HCLASS_ON_HEAP_INDEX;
             break;
         default:
             LOG_ECMA(FATAL) << "this branch is unreachable";
@@ -351,24 +363,27 @@ void TypedHCRLowering::LowerTypedArrayCheck(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
     TypedArrayMetaDateAccessor accessor = acc_.GetTypedArrayMetaDateAccessor(gate);
-    size_t typedArrayFuncIndex = GlobalEnv::TYPED_ARRAY_FUNCTION_INDEX;
+    size_t typedArrayRootHclassIndex = GlobalEnv::INT8_ARRAY_ROOT_HCLASS_INDEX;
+    size_t typedArrayRootHclassOnHeapIndex = GlobalEnv::INT8_ARRAY_ROOT_HCLASS_ON_HEAP_INDEX;
     auto deoptType = DeoptType::NOTCHECK;
 
     auto builtinTypeId = tsManager_->GetTypedArrayBuiltinId(accessor.GetType());
-    SetDeoptTypeInfo(builtinTypeId, deoptType, typedArrayFuncIndex);
+    SetDeoptTypeInfo(builtinTypeId, deoptType, typedArrayRootHclassIndex, typedArrayRootHclassOnHeapIndex);
 
     GateRef frameState = GetFrameState(gate);
     GateRef glueGlobalEnv = builder_.GetGlobalEnv();
     GateRef receiver = acc_.GetValueIn(gate, 0);
     GateRef receiverHClass = builder_.LoadHClass(receiver);
-    GateRef protoOrHclass = builder_.GetGlobalEnvObjHClass(glueGlobalEnv, typedArrayFuncIndex);
-    GateRef check = builder_.Equal(receiverHClass, protoOrHclass);
-    builder_.DeoptCheck(check, frameState, deoptType);
+    GateRef rootHclass = builder_.GetGlobalEnvObj(glueGlobalEnv, typedArrayRootHclassIndex);
+    GateRef rootOnHeapHclass = builder_.GetGlobalEnvObj(glueGlobalEnv, typedArrayRootHclassOnHeapIndex);
+    GateRef check1 = builder_.Equal(receiverHClass, rootHclass);
+    GateRef check2 = builder_.Equal(receiverHClass, rootOnHeapHclass);
+    builder_.DeoptCheck(builder_.BoolOr(check1, check2), frameState, deoptType);
 
     OnHeapMode onHeapMode = accessor.GetOnHeapMode();
     if (accessor.IsAccessElement() && !OnHeap::IsNone(onHeapMode)) {
         GateRef profilingOnHeap = builder_.Boolean(OnHeap::ToBoolean(onHeapMode));
-        GateRef runtimeOnHeap = builder_.IsOnHeap(builder_.LoadHClass(receiver));
+        GateRef runtimeOnHeap = builder_.IsOnHeap(receiverHClass);
         GateRef onHeapCheck = builder_.Equal(profilingOnHeap, runtimeOnHeap);
         builder_.DeoptCheck(onHeapCheck, frameState, DeoptType::INCONSISTENTONHEAP1);
     }
@@ -1022,7 +1037,7 @@ void TypedHCRLowering::LowerTypedArrayLoadElement(GateRef gate, BuiltinTypeId id
             result = BuildNotOnHeapTypedArrayLoadElement(receiver, offset, type);
             break;
         }
-        case OnHeapMode::NONE: {
+        default: {
             Label isByteArray(&builder_);
             Label isArrayBuffer(&builder_);
             Label exit(&builder_);
@@ -1213,7 +1228,7 @@ void TypedHCRLowering::LowerTypedArrayStoreElement(GateRef gate, BuiltinTypeId i
             BuildNotOnHeapTypedArrayStoreElement(receiver, offset, value);
             break;
         }
-        case OnHeapMode::NONE: {
+        default: {
             Label isByteArray(&builder_);
             Label isArrayBuffer(&builder_);
             Label exit(&builder_);

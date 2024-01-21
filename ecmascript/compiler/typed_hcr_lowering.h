@@ -194,7 +194,8 @@ private:
     void LowerTypedSuperAllocateThis(GateRef gate, GateRef glue);
     void LowerGetSuperConstructor(GateRef gate);
     void LowerJSInlineTargetTypeCheck(GateRef gate);
-    void SetDeoptTypeInfo(BuiltinTypeId id, DeoptType &type, size_t &funcIndex);
+    void SetDeoptTypeInfo(BuiltinTypeId id, DeoptType &type, size_t &typedArrayRootHclassIndex,
+        size_t &typedArrayRootHclassOnHeapIndex);
     void LowerLoadGetter(GateRef gate);
     void LowerLoadSetter(GateRef gate);
     void LowerPrototypeCheck(GateRef gate);

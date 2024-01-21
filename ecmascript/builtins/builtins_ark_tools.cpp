@@ -355,6 +355,16 @@ JSTaggedValue BuiltinsArkTools::IsAOTCompiled(EcmaRuntimeCallInfo *info)
     return JSTaggedValue(method->IsAotWithCallField());
 }
 
+JSTaggedValue BuiltinsArkTools::IsOnHeap(EcmaRuntimeCallInfo *info)
+{
+    ASSERT(info);
+    JSThread *thread = info->GetThread();
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+
+    JSHandle<JSTaggedValue> obj = GetCallArg(info, 0);
+    return JSTaggedValue(obj.GetTaggedValue().GetTaggedObject()->GetClass()->IsOnHeapFromBitField());
+}
+
 // It is used to check whether a function is aot compiled and deopted at runtime.
 JSTaggedValue BuiltinsArkTools::IsAOTDeoptimized(EcmaRuntimeCallInfo *info)
 {
