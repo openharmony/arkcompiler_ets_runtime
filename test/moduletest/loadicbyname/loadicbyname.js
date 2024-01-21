@@ -57,4 +57,33 @@ for (let i = 0; i < 100; i++) {
    let res3 = numObj3.valueOf();
 }
 
+function foo() { return -4096;}
+Object.defineProperty(Number.prototype, "h", {get:foo});
+for (let i = 0; i < 50; i++)
+{
+    const num = 123456;
+    num.h;
+}
+Object.defineProperty(Number.prototype, "a", {
+  configurable:true,
+  enumerable:false,
+  value:"ggg",
+  writable:true
+});
+
+for (let i = 0; i < 50; i++)
+{
+    const num = 123456;
+    num.h;
+}
+
+// for string inline cache
+function func() { return -4096;}
+Object.defineProperty(String.prototype, "h", {get:func});
+for (let i = 0; i < 50; i++)
+{
+    const str = "normallize";
+    str.h;
+}
+
 print("number ic load success")

@@ -1792,6 +1792,35 @@ GateRef StubBuilder::LoadICWithHandler(
                         Branch(IsStringLength(handlerInfo), &handlerInfoIsStringLength, &handlerInfoNotStringLength);
                         Bind(&handlerInfoNotStringLength);
                         {
+                            // string or number hasaccessor
+                            Label holderIsString(env);
+                            Label holderNotString(env);
+                            Label holderIsNumber(env);
+                            Label holderNotNumber(env);
+                            Branch(TaggedIsString(*holder), &holderIsString, &holderNotString);
+                            Bind(&holderIsString);
+                            {
+                                GateRef glueGlobalEnvOffset =
+                                    IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
+                                GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(),
+                                    glue, glueGlobalEnvOffset);
+                                holder = GetGlobalEnvValue(VariableType::JS_ANY(),
+                                    glueGlobalEnv, GlobalEnv::STRING_PROTOTYPE_INDEX);
+                                Jump(&exit);
+                            }
+                            Bind(&holderNotString);
+                            Branch(TaggedIsNumber(*holder), &holderIsNumber, &holderNotNumber);
+                            Bind(&holderIsNumber);
+                            {
+                                GateRef glueGlobalEnvOffset =
+                                    IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
+                                GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(),
+                                    glue, glueGlobalEnvOffset);
+                                holder = GetGlobalEnvValue(VariableType::JS_ANY(),
+                                    glueGlobalEnv, GlobalEnv::NUMBER_PROTOTYPE_INDEX);
+                                Jump(&exit);
+                            }
+                            Bind(&holderNotNumber);
                             GateRef accessor = LoadFromField(*holder, handlerInfo);
                             result = CallGetterHelper(glue, receiver, *holder, accessor, callback);
                             Jump(&exit);

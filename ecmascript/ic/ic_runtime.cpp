@@ -69,7 +69,7 @@ void ICRuntime::UpdateLoadHandler(const ObjectOperator &op, JSHandle<JSTaggedVal
         } else if (!op.IsOnPrototype()) {
             handlerValue = LoadHandler::LoadProperty(thread_, op);
         } else {
-            // do not support global prototype ic or primitive string
+            // do not support global prototype ic
             if (IsGlobalLoadIC(GetICKind()) || receiver->IsString()) {
                 return;
             }
