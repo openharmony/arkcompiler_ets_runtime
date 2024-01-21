@@ -56,7 +56,7 @@ public:
     }
 
     static void PUBLIC_API Update(const JSThread *thread, uintptr_t slotAddr, Region *objectRegion,
-                                  TaggedObject *value, Region *valueRegion);
+                                  TaggedObject *value, Region *valueRegion, bool onDeserialize = false);
 };
 }  // namespace panda::ecmascript
 

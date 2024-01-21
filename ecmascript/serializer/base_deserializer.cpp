@@ -83,6 +83,15 @@ JSHandle<JSTaggedValue> BaseDeserializer::DeserializeJSTaggedValue()
     // recovery gc after serialize
     heap_->SetOnSerializeEvent(false);
 
+    // If is on concurrent mark, push root object to stack for mark
+    if (JSTaggedValue(result).IsHeapObject() && thread_->IsConcurrentMarkingOrFinished()) {
+        Region *valueRegion = Region::ObjectAddressToRange(static_cast<uintptr_t>(result));
+        TaggedObject *heapValue = JSTaggedValue(result).GetHeapObject();
+        if (valueRegion->AtomicMark(heapValue)) {
+            heap_->GetWorkManager()->Push(0, heapValue, valueRegion);
+        }
+    }
+
     return JSHandle<JSTaggedValue>(thread_, JSTaggedValue(result));
 }
 
@@ -401,7 +410,8 @@ void BaseDeserializer::UpdateBarrier(uintptr_t addr, ObjectSlot slot)
     }
 
     if (thread_->IsConcurrentMarkingOrFinished()) {
-        Barriers::Update(thread_, slot.SlotAddress(), rootRegion, reinterpret_cast<TaggedObject *>(addr), valueRegion);
+        Barriers::Update(thread_, slot.SlotAddress(), rootRegion, reinterpret_cast<TaggedObject *>(addr), valueRegion,
+                         true);
     }
 }
 
