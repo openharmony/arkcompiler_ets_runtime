@@ -25,11 +25,14 @@
 
 #include "ecmascript/base/builtins_base.h"
 #include "ecmascript/base/string_helper.h"
+#include "ecmascript/builtins/builtins_number.h"
 #include "ecmascript/ecma_string_table.h"
 #include "ecmascript/js_tagged_value-inl.h"
 #include "ecmascript/object_factory.h"
 
 namespace panda::ecmascript::base {
+using NumberToStringResultCache = builtins::NumberToStringResultCache;
+
 enum class Sign { NONE, NEG, POS };
 thread_local uint64_t RandomGenerator::randomState_ {0};
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
@@ -600,20 +603,9 @@ JSHandle<EcmaString> NumberHelper::IntToEcmaString(const JSThread *thread, int n
     return factory->NewFromASCII(ToCString(number));
 }
 
-// 7.1.12.1 ToString Applied to the Number Type
-JSHandle<EcmaString> NumberHelper::NumberToString(const JSThread *thread, JSTaggedValue number)
+JSHandle<EcmaString> NumberHelper::DoubleToEcmaString(const JSThread *thread, double d)
 {
-    ASSERT(number.IsNumber());
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    if (number.IsInt()) {
-        int intVal = number.GetInt();
-        if (intVal == 0) {
-            return JSHandle<EcmaString>::Cast(thread->GlobalConstants()->GetHandledZeroString());
-        }
-        return factory->NewFromASCII(IntToString(intVal));
-    }
-
-    double d = number.GetDouble();
     if (std::isnan(d)) {
         return JSHandle<EcmaString>::Cast(thread->GlobalConstants()->GetHandledNanCapitalString());
     }
@@ -695,6 +687,33 @@ JSHandle<EcmaString> NumberHelper::NumberToString(const JSThread *thread, JSTagg
     }
     result += base;
     return factory->NewFromASCII(result.c_str());
+}
+
+// 7.1.12.1 ToString Applied to the Number Type
+JSHandle<EcmaString> NumberHelper::NumberToString(const JSThread *thread, JSTaggedValue number)
+{
+    ASSERT(number.IsNumber());
+    JSHandle<NumberToStringResultCache> cacheTable(
+        thread->GetCurrentEcmaContext()->GetNumberToStringResultCache());
+    JSTaggedValue cacheResult = cacheTable->FindCachedResult(number);
+    if (cacheResult != JSTaggedValue::Undefined()) {
+        return JSHandle<EcmaString>::Cast(JSHandle<JSTaggedValue>(thread, cacheResult));
+    }
+
+    JSHandle<EcmaString> resultJSHandle;
+    if (number.IsInt()) {
+        int intVal = number.GetInt();
+        if (intVal == 0) {
+            resultJSHandle = JSHandle<EcmaString>::Cast(thread->GlobalConstants()->GetHandledZeroString());
+        } else {
+            resultJSHandle = IntToEcmaString(thread, intVal);
+        }
+    } else {
+        resultJSHandle = DoubleToEcmaString(thread, number.GetDouble());
+    }
+    
+    cacheTable->SetCachedResult(thread, number, resultJSHandle);
+    return resultJSHandle;
 }
 
 double NumberHelper::TruncateDouble(double d)
