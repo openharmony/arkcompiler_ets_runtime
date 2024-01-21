@@ -1404,7 +1404,6 @@ GateRef NewObjectStubBuilder::NewTaggedSubArray(GateRef glue, GateRef srcTypedAr
     Store(VariableType::INT32(), glue, obj, IntPtr(JSTypedArray::BYTE_OFFSET_OFFSET), beginByteOffset);
     Store(VariableType::INT32(), glue, obj, IntPtr(JSTypedArray::ARRAY_LENGTH_OFFSET), newLength);
     Store(VariableType::INT32(), glue, obj, IntPtr(JSTypedArray::CONTENT_TYPE_OFFSET), contentType);
-    Store(VariableType::BOOL(), glue, obj, IntPtr(JSTypedArray::ON_HEAP_OFFSET), Boolean(false));
     auto ret = *result;
     env->SubCfgExit();
     return ret;

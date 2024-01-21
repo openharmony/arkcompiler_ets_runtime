@@ -2264,6 +2264,9 @@ void Builtins::Initialize##Type(const JSHandle<GlobalEnv> &env, const JSHandle<J
     /* %TypedArray%.prototype_or_hclass */                                                                      \
     JSHandle<JSHClass> arrFuncInstanceHClass = factory_->NewEcmaHClass(                                         \
         panda::ecmascript::JSTypedArray::SIZE, JSType::JS_##TYPE, arrFuncPrototypeValue);                       \
+    JSHandle<JSHClass> arrFuncInstanceHClassOnHeap = factory_->NewEcmaHClass(                                   \
+        panda::ecmascript::JSTypedArray::SIZE, JSType::JS_##TYPE, arrFuncPrototypeValue);                       \
+    arrFuncInstanceHClassOnHeap->SetIsOnHeap(true);                                                             \
     arrFuncInstanceHClass->SetHasConstructor(false);                                                            \
     /* %TypedArray% = new Function() */                                                                         \
     JSHandle<JSFunction> arrayFunction = factory_->NewSpecificTypedArrayFunction(                               \
@@ -2275,6 +2278,8 @@ void Builtins::Initialize##Type(const JSHandle<GlobalEnv> &env, const JSHandle<J
     SetConstant(JSHandle<JSObject>(arrayFunction), "BYTES_PER_ELEMENT", JSTaggedValue(bytesPerElement));        \
     env->Set##Type##Function(thread_, arrayFunction);                                                           \
     env->Set##Type##FunctionPrototype(thread_, arrFuncPrototypeValue);                                          \
+    env->Set##Type##RootHclass(thread_, arrFuncInstanceHClass);                                                 \
+    env->Set##Type##RootHclassOnHeap(thread_, arrFuncInstanceHClassOnHeap);                                     \
     /* Initializes HClass record of %TypedArray% */                                                             \
     thread_->SetInitialBuiltinHClass(BuiltinTypeId::TYPE,                                                       \
         arrayFunction->GetJSHClass(),                                                                           \

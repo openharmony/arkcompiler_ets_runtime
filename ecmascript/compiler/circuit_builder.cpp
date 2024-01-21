@@ -688,6 +688,15 @@ GateRef CircuitBuilder::HasDeleteProperty(GateRef hClass)
         Int32(0));
 }
 
+GateRef CircuitBuilder::IsOnHeap(GateRef hClass)
+{
+    GateRef bitfield = Load(VariableType::INT32(), hClass, IntPtr(JSHClass::BIT_FIELD_OFFSET));
+    return Int32NotEqual(
+        Int32And(Int32LSR(bitfield, Int32(JSHClass::IsOnHeap::START_BIT)),
+                 Int32((1LU << JSHClass::IsOnHeap::SIZE) - 1)),
+        Int32(0));
+}
+
 GateRef CircuitBuilder::IsEcmaObject(GateRef obj)
 {
     Label entryPass(env_);

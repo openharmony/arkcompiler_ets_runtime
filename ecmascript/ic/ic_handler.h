@@ -223,7 +223,7 @@ public:
     {
         uint32_t handler = 0;
         KindBit::Set<uint32_t>(HandlerKind::TYPED_ARRAY, &handler);
-        IsOnHeapBit::Set<uint32_t>(typedArray->GetIsOnHeap(), &handler);
+        IsOnHeapBit::Set<uint32_t>(JSHandle<TaggedObject>(typedArray)->GetClass()->IsOnHeapFromBitField(), &handler);
         return JSHandle<JSTaggedValue>(thread, JSTaggedValue(handler));
     }
 };
