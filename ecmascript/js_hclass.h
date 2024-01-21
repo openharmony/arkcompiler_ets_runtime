@@ -363,7 +363,8 @@ public:
     using IsTSBit = IsNativeBindingObjectBit::NextFlag;                                           // 24
     using LevelBit = IsTSBit::NextField<uint32_t, LEVEL_BTTFIELD_NUM>;                            // 25-29
     using IsJSFunctionBit = LevelBit::NextFlag;                                                   // 30
-    using BitFieldLastBit = IsJSFunctionBit;
+    using IsOnHeap = IsJSFunctionBit::NextFlag;                                                   // 31
+    using BitFieldLastBit = IsOnHeap;
     static_assert(BitFieldLastBit::START_BIT + BitFieldLastBit::SIZE <= sizeof(uint32_t) * BITS_PER_BYTE, "Invalid");
 
     static constexpr int DEFAULT_CAPACITY_OF_IN_OBJECTS = 4;
@@ -536,6 +537,11 @@ public:
     inline void SetIsJSFunction(bool flag) const
     {
         IsJSFunctionBit::Set<uint32_t>(flag, GetBitFieldAddr());
+    }
+
+    inline void SetIsOnHeap(bool flag) const
+    {
+        IsOnHeap::Set<uint32_t>(flag, GetBitFieldAddr());
     }
 
     inline bool IsJSObject() const
@@ -1324,6 +1330,12 @@ public:
     {
         uint32_t bits = GetBitField();
         return IsJSFunctionBit::Decode(bits);
+    }
+
+    inline bool IsOnHeapFromBitField() const
+    {
+        uint32_t bits = GetBitField();
+        return IsOnHeap::Decode(bits);
     }
 
     inline bool IsGeneratorFunction() const

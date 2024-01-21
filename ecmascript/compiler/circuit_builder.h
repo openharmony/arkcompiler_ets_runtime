@@ -274,6 +274,7 @@ public:
     GateRef GetHasChanged(GateRef object);
     GateRef GetAccessorHasChanged(GateRef object);
     GateRef HasDeleteProperty(GateRef hClass);
+    GateRef IsOnHeap(GateRef hClass);
     GateRef IsEcmaObject(GateRef obj);
 
     // Set

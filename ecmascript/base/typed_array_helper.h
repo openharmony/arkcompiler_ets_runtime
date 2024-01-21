@@ -22,6 +22,8 @@
 #include "ecmascript/js_dataview.h"
 #include "ecmascript/js_typed_array.h"
 
+#include "ecmascript/builtins/builtins_typedarray.h"
+
 namespace panda::ecmascript::base {
 enum ElementSize : uint8_t { ONE = 1, TWO = 2, FOUR = 4, EIGHT = 8 };
 class TypedArrayHelper {
@@ -51,10 +53,24 @@ public:
     inline static JSHandle<JSTaggedValue> GetConstructor(JSThread *thread, const JSHandle<JSTaggedValue> &obj);
     inline static JSHandle<JSFunction> GetConstructorFromType(JSThread *thread,
                                                               const DataViewType arrayType);
+    inline static JSHandle<JSHClass> GetOnHeapHclassFromType(
+        JSThread *thread, const JSHandle<JSTypedArray> &obj, const DataViewType arrayType);
+    inline static JSHandle<JSHClass> GetNotOnHeapHclassFromType(
+        JSThread *thread, const JSHandle<JSTypedArray> &obj, const DataViewType arrayType);
     inline static uint32_t GetSizeFromType(const DataViewType arrayType);
     static int32_t SortCompare(JSThread *thread, const JSHandle<JSTaggedValue> &callbackfnHandle,
                                const JSHandle<JSTaggedValue> &buffer, const JSHandle<JSTaggedValue> &firstValue,
                                const JSHandle<JSTaggedValue> &secondValue);
+
+    #define DEFINE_GET_ONHEAP_HCLASS_FROM_TYPE(Type)                                                          \
+        inline static JSHandle<JSHClass> GetOnHeapHclass##Type(JSThread *thread, JSHClass* objHclass);
+    TYPED_ARRAY_TYPES(DEFINE_GET_ONHEAP_HCLASS_FROM_TYPE)
+    #undef DEFINE_GET_ONHEAP_HCLASS_FROM_TYPE
+
+    #define DEFINE_GET_NOT_ONHEAP_HCLASS_FROM_TYPE(Type)                                                          \
+        inline static JSHandle<JSHClass> GetNotOnHeapHclass##Type(JSThread *thread, JSHClass* objHclass);
+    TYPED_ARRAY_TYPES(DEFINE_GET_NOT_ONHEAP_HCLASS_FROM_TYPE)
+    #undef DEFINE_GET_NOT_ONHEAP_HCLASS_FROM_TYPE
 
 private:
     static JSTaggedValue CreateFromOrdinaryObject(EcmaRuntimeCallInfo *argv, const JSHandle<JSObject> &obj,
