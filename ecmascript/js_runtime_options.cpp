@@ -1071,7 +1071,7 @@ void JSRuntimeOptions::SetOptionsForTargetCompilation()
         if (IsPartialCompilerMode()) {
             SetEnableOptPGOType(true);
             if (IsPGOProfilerPathEmpty()) {
-                LOG_ECMA(ERROR) << "no pgo profile file in partial mode!";
+                LOG_ECMA(DEBUG) << "no pgo profile file in partial mode!";
             }
         } else {
             SetEnableOptPGOType(false);
