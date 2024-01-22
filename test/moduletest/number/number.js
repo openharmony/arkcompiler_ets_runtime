@@ -22,4 +22,5 @@
 
 print(1.25.toFixed(1))
 print(1.25.toPrecision(2))
-print(0.000112356.toExponential()) 
+print(0.000112356.toExponential())
+print((-(true)).toPrecision(0x30, 'lib1-f1'))
