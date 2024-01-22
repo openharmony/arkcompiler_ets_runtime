@@ -750,6 +750,9 @@ bool JsonStringifier::SerializeKeys(const JSHandle<JSObject> &obj, const JSHandl
             JSTaggedValue entryKey = entry.first.GetTaggedValue();
             handleKey_.Update(entryKey);
             int index = globalDic->FindEntry(entryKey);
+            if (index == -1) {
+                continue;
+            }
             JSTaggedValue value = globalDic->GetValue(index);
             if (UNLIKELY(value.IsAccessor())) {
                 value = JSObject::CallGetter(thread_, AccessorData::Cast(value.GetTaggedObject()),
