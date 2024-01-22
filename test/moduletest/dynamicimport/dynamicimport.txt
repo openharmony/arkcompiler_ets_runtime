@@ -1,0 +1,6 @@
+A.js;A;esm;A.js;xxAxx
+B.js;B;esm;B.js;xxBxx
+C.js;C;esm;C.js;xxCxx
+dynamicimport.js;dynamicimport;esm;dynamicimport.js;xxdynamicimportxx
+throwerror.js;throwerror;esm;throwerror.js;xxthrowerrorxx
+1.json;1;esm;1.json;xx1xx

@@ -12,7 +12,8 @@
 # limitations under the License.
 
 TypeError
-{"default":{}}
+dynamicImport Json
+{}
 full name :  Tyrion
 Lion
 full name :  Tywin
