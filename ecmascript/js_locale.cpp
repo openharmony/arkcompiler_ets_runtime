@@ -967,6 +967,7 @@ JSHandle<EcmaString> JSLocale::ToString(JSThread *thread, const JSHandle<JSLocal
         return factory->GetEmptyString();
     }
     JSHandle<EcmaString> result = intl::LocaleHelper::ToLanguageTag(thread, *icuLocale);
+    RETURN_HANDLE_IF_ABRUPT_COMPLETION(EcmaString, thread);
     return result;
 }
 

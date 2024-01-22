@@ -1572,6 +1572,7 @@ JSTaggedValue BuiltinsRegExp::RegExpSplitFast(JSThread *thread, const JSHandle<J
     uint32_t lastMatchEnd = 0;
     uint32_t arrLen = 1; // at least one result string
     JSHandle<JSArray> splitArray(JSArray::ArrayCreate(thread, JSTaggedNumber(1), ArrayMode::LITERAL));
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     TaggedArray *srcElements = TaggedArray::Cast(splitArray->GetElements().GetTaggedObject());
     JSMutableHandle<TaggedArray> elements(thread, srcElements);
     JSMutableHandle<JSTaggedValue> matchValue(thread, JSTaggedValue::Undefined());

@@ -244,6 +244,7 @@ JSHandle<BigInt> BigInt::BitwiseOp(JSThread *thread, Operate op, JSHandle<BigInt
         minLen = xlen;
     }
     JSHandle<BigInt> bigint = BigInt::CreateBigint(thread, maxLen);
+    RETURN_HANDLE_IF_ABRUPT_COMPLETION(BigInt, thread);
     for (size_t i = 0; i < minLen; ++i) {
         if (op == Operate::OR) {
             bigint->SetDigit(i, x->GetDigit(i) | y->GetDigit(i));
@@ -271,6 +272,7 @@ JSHandle<BigInt> BigInt::BitwiseOp(JSThread *thread, Operate op, JSHandle<BigInt
 JSHandle<BigInt> OneIsNegativeAND(JSThread *thread, JSHandle<BigInt> x, JSHandle<BigInt> y)
 {
     JSHandle<BigInt> yVal = BigInt::BitwiseSubOne(thread, y, y->GetLength());
+    RETURN_HANDLE_IF_ABRUPT_COMPLETION(BigInt, thread);
     uint32_t xLength = x->GetLength();
     uint32_t yLength = yVal->GetLength();
     uint32_t minLen = xLength;
@@ -317,8 +319,11 @@ JSHandle<BigInt> BigInt::BitwiseAND(JSThread *thread, JSHandle<BigInt> x, JSHand
 JSHandle<BigInt> OneIsNegativeXOR(JSThread *thread, JSHandle<BigInt> x, JSHandle<BigInt> y)
 {
     JSHandle<BigInt> yVal = BigInt::BitwiseSubOne(thread, y, y->GetLength());
+    RETURN_HANDLE_IF_ABRUPT_COMPLETION(BigInt, thread);
     JSHandle<BigInt> temp = BigInt::BitwiseOp(thread, Operate::XOR, x, yVal);
+    RETURN_HANDLE_IF_ABRUPT_COMPLETION(BigInt, thread);
     JSHandle<BigInt> res = BigInt::BitwiseAddOne(thread, temp);
+    RETURN_HANDLE_IF_ABRUPT_COMPLETION(BigInt, thread);
     return res;
 }
 
@@ -398,6 +403,7 @@ JSHandle<BigInt> OneIsNegativeOR(JSThread *thread, JSHandle<BigInt> x, JSHandle<
         maxLen = y->GetLength();
     }
     JSHandle<BigInt> yVal = BigInt::BitwiseSubOne(thread, y, maxLen);
+    RETURN_HANDLE_IF_ABRUPT_COMPLETION(BigInt, thread);
     uint32_t yLength = yVal->GetLength();
     uint32_t minLen = xLength;
     if (minLen > yLength) {
@@ -417,6 +423,7 @@ JSHandle<BigInt> OneIsNegativeOR(JSThread *thread, JSHandle<BigInt> x, JSHandle<
     }
     JSHandle<BigInt> temp = BigIntHelper::RightTruncate(thread, newBigint);
     JSHandle<BigInt> res = BigInt::BitwiseAddOne(thread, temp);
+    RETURN_HANDLE_IF_ABRUPT_COMPLETION(BigInt, thread);
     res->SetSign(true);
     return res;
 }

@@ -95,6 +95,7 @@ JSTaggedValue TypedArrayHelper::FastCopyElementFromArray(EcmaRuntimeCallInfo *ar
     // load on demand check
     if (ElementAccessor::GetElementsLength(argObj) < len) {
         TypedArrayHelper::CreateFromOrdinaryObject(argv, obj, arrayType);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     }
 
     TypedArrayHelper::AllocateTypedArrayBuffer(thread, obj, len, arrayType);
@@ -253,6 +254,7 @@ JSTaggedValue TypedArrayHelper::CreateFromTypedArray(EcmaRuntimeCallInfo *argv, 
             JSObject::SpeciesConstructor(thread, JSHandle<JSObject>(srcData), env->GetArrayBufferFunction());
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         JSTaggedValue tmp = BuiltinsArrayBuffer::AllocateArrayBuffer(thread, bufferConstructor, byteLength);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         data.Update(tmp);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         //   b. If IsDetachedBuffer(srcData) is true, throw a TypeError exception.
@@ -459,6 +461,7 @@ JSHandle<JSObject> TypedArrayHelper::AllocateTypedArrayBuffer(JSThread *thread,
         JSHandle<JSTaggedValue> constructor = thread->GetEcmaVM()->GetGlobalEnv()->GetArrayBufferFunction();
         data = JSHandle<JSTaggedValue>(thread,
             BuiltinsArrayBuffer::AllocateArrayBuffer(thread, constructor, byteLength));
+        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSHandle<JSObject>(thread, JSTaggedValue::Exception()));
         ASSERT_PRINT(!JSHandle<TaggedObject>(obj)->GetClass()->IsOnHeapFromBitField(), "must be not on heap");
     } else {
         data = JSHandle<JSTaggedValue>(thread,
