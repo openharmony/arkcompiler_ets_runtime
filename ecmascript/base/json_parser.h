@@ -287,9 +287,11 @@ protected:
             JSHandle<JSTaggedValue> valueHandle = propertyList[start + i + 1];
             JSTaggedValue res = ObjectFastOperator::SetPropertyByValue<ObjectFastOperator::Status::UseOwn>
                 (thread_, obj.GetTaggedValue(), keyHandle.GetTaggedValue(), valueHandle.GetTaggedValue());
+            RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread_);
             if (res.IsHole()) {
                 // slow path
                 JSTaggedValue::SetProperty(thread_, JSHandle<JSTaggedValue>(obj), keyHandle, valueHandle, true);
+                RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread_);
             }
         }
         return JSHandle<JSTaggedValue>(obj);

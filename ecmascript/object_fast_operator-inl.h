@@ -504,6 +504,7 @@ bool ObjectFastOperator::FastSetPropertyByValue(JSThread *thread, JSTaggedValue 
 {
     INTERPRETER_TRACE(thread, FastSetPropertyByValue);
     JSTaggedValue result = ObjectFastOperator::SetPropertyByValue(thread, receiver, key, value);
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
     if (!result.IsHole()) {
         return !result.IsException();
     }
