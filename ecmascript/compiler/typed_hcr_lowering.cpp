@@ -2027,8 +2027,9 @@ void TypedHCRLowering::LowerStringAdd(GateRef gate, GateRef glue)
                                 GateRef rightSource = builder_.GetStringDataFromLineOrConstantString(right);
                                 GateRef leftDst = builder_.TaggedPointerToInt64(
                                     builder_.PtrAdd(*lineString, builder_.IntPtr(LineEcmaString::DATA_OFFSET)));
-                                GateRef rightDst = builder_.TaggedPointerToInt64(
-                                    builder_.PtrAdd(leftDst, builder_.ZExtInt32ToPtr(leftLength)));
+                                GateRef rightDst = builder_.TaggedPointerToInt64(builder_.PtrAdd(leftDst,
+                                    builder_.PtrMul(builder_.ZExtInt32ToPtr(leftLength),
+                                    builder_.IntPtr(sizeof(uint16_t)))));
                                 builder_.CopyChars(glue, rightDst, rightSource, rightLength,
                                     builder_.IntPtr(sizeof(uint16_t)), VariableType::INT16());
                                 newLeft = left;
