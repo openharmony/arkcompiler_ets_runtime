@@ -381,6 +381,7 @@ public:
                     }
                     uint32_t length = literal->GetLength();
                     JSHandle<JSArray> arr(JSArray::ArrayCreate(thread, JSTaggedNumber(length), ArrayMode::LITERAL));
+                    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
                     arr->SetElements(thread, literal);
                     if (thread->GetEcmaVM()->IsEnablePGOProfiler() || thread->GetEcmaVM()->IsEnableElementsKind()) {
                         // for all JSArray, the initial ElementsKind should be NONE
