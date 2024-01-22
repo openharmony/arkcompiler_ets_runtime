@@ -57,8 +57,10 @@ JSTaggedValue JSAPILightWeightSetIterator::Next(EcmaRuntimeCallInfo *argv)
         return globalConst->GetUndefinedIterResult();
     }
     iter->SetNextIndex(index + 1);
+    JSHandle<JSAPILightWeightSet> lightWeightSetHandle(lightWeightSet);
+    JSAPILightWeightSet::CheckAndCopyValues(thread, lightWeightSetHandle);
     JSHandle<TaggedArray> valueArray(
-        thread, TaggedArray::Cast(JSHandle<JSAPILightWeightSet>(lightWeightSet)->GetValues().GetTaggedObject()));
+        thread, TaggedArray::Cast(lightWeightSetHandle->GetValues().GetTaggedObject()));
     JSHandle<JSTaggedValue> value(thread, valueArray->Get(index));
     if (itemKind == IterationKind::VALUE) {
         return JSIterator::CreateIterResultObject(thread, value, false).GetTaggedValue();

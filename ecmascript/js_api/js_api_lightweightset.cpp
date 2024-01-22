@@ -29,6 +29,7 @@ using ErrorFlag = containers::ErrorFlag;
 bool JSAPILightWeightSet::Add(JSThread *thread, const JSHandle<JSAPILightWeightSet> &obj,
                               const JSHandle<JSTaggedValue> &value)
 {
+    CheckAndCopyValues(thread, obj);
     uint32_t hashCode = obj->Hash(thread, value.GetTaggedValue());
     JSHandle<TaggedArray> hashArray(thread, obj->GetHashes());
     JSHandle<TaggedArray> valueArray(thread, obj->GetValues());
@@ -320,6 +321,7 @@ JSTaggedValue JSAPILightWeightSet::ForEach(JSThread *thread, const JSHandle<JSTa
                                            const JSHandle<JSTaggedValue> &thisArg)
 {
     JSHandle<JSAPILightWeightSet> lightweightset = JSHandle<JSAPILightWeightSet>::Cast(thisHandle);
+    CheckAndCopyValues(thread, lightweightset);
     uint32_t length = lightweightset->GetSize();
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
     for (uint32_t k = 0; k < length; k++) {
@@ -474,5 +476,18 @@ uint32_t JSAPILightWeightSet::Hash(const JSThread *thread, JSTaggedValue key)
     }
     uint64_t keyValue = key.GetRawData();
     return GetHash32(reinterpret_cast<uint8_t *>(&keyValue), sizeof(keyValue) / sizeof(uint8_t));
+}
+
+void JSAPILightWeightSet::CheckAndCopyValues(const JSThread *thread, JSHandle<JSAPILightWeightSet> obj)
+{
+    JSHandle<TaggedArray> values(thread, obj->GetValues());
+    // Check whether array is shared in the nonmovable space before set properties and elements.
+    // If true, then really copy array in the semi space.
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    if (values.GetTaggedValue().IsCOWArray()) {
+        auto newArray = factory->CopyArray(values, values->GetLength(), values->GetLength(),
+            JSTaggedValue::Hole(), MemSpaceType::SEMI_SPACE);
+        obj->SetValues(thread, newArray.GetTaggedValue());
+    }
 }
 } // namespace panda::ecmascript

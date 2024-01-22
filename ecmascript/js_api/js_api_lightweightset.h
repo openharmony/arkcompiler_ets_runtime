@@ -67,6 +67,7 @@ public:
     {
         return GetLength();
     }
+    static void CheckAndCopyValues(const JSThread *thread, JSHandle<JSAPILightWeightSet> obj);
     static constexpr size_t HASHES_OFFSET = JSObject::SIZE;
     ACCESSORS(Hashes, HASHES_OFFSET, VALUES_OFFSET);
     ACCESSORS(Values, VALUES_OFFSET, LENGTH_OFFSET);
