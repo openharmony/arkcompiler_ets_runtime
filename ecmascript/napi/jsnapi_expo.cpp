@@ -2089,6 +2089,9 @@ static void InitClassFunction(EcmaVM *vm, JSHandle<JSFunction> &func, bool callN
     JSHandle<JSTaggedValue> accessor = globalConst->GetHandledFunctionPrototypeAccessor();
     func->SetPropertyInlinedProps(thread, JSFunction::CLASS_PROTOTYPE_INLINE_PROPERTY_INDEX,
                                   accessor.GetTaggedValue());
+    accessor = globalConst->GetHandledFunctionLengthAccessor();
+    func->SetPropertyInlinedProps(thread, JSFunction::LENGTH_INLINE_PROPERTY_INDEX,
+                                  accessor.GetTaggedValue());
     JSHandle<JSObject> clsPrototype = JSFunction::NewJSFunctionPrototype(thread, func);
     clsPrototype->GetClass()->SetClassPrototype(true);
     func->SetClassConstructor(true);
