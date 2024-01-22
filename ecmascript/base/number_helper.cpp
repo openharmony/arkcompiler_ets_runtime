@@ -306,7 +306,8 @@ void NumberHelper::CustomEcvtIsFixed(double &valueNumber, int &digits, int *deci
     unsigned int digitsMax = DOUBLE_MAX_PRECISION;
     while (digitsMin < digitsMax) {
         digits = (digitsMin + digitsMax) / MIN_RADIX;
-        GetBaseForRoundingMode(valueNumber, digits, decimalPoint, buf, buffer, sizeof(buffer), FE_TONEAREST, sign);
+        ASSERT(buffer.size() <= JS_DTOA_BUF_SIZE);
+        GetBaseForRoundingMode(valueNumber, digits, decimalPoint, buf, buffer, JS_DTOA_BUF_SIZE, FE_TONEAREST, sign);
         if (std::strtod(buffer.c_str(), NULL) == valueNumber) {
             while (digits >= MIN_RADIX && buf[digits - 1] == '0') {
                 digits--;
@@ -333,19 +334,22 @@ int NumberHelper::CustomEcvt(double valueNumber, int digits, int *decimalPoint,
         int decpt2 = 0;
         int sign1 = 0;
         int sign2 = 0;
-
-        GetBaseForRoundingMode(valueNumber, digits + 1, &decpt1, buf1, buffer, sizeof(buffer), roundingMode, &sign1);
+        ASSERT(buffer.size() <= JS_DTOA_BUF_SIZE);
+        GetBaseForRoundingMode(valueNumber, digits + 1, &decpt1, buf1, buffer, JS_DTOA_BUF_SIZE, roundingMode, &sign1);
         if (buf1[digits] == HALFCHAR) {
-            GetBaseForRoundingMode(valueNumber, digits + 1, &decpt1, buf1, buffer, sizeof(buffer),
+            ASSERT(buf1.size() <= JS_DTOA_BUF_SIZE);
+            GetBaseForRoundingMode(valueNumber, digits + 1, &decpt1, buf1, buffer, JS_DTOA_BUF_SIZE,
                 FE_DOWNWARD, &sign1);
-            GetBaseForRoundingMode(valueNumber, digits + 1, &decpt2, buf2, buffer, sizeof(buffer),
+            ASSERT(buf2.size() <= JS_DTOA_BUF_SIZE);
+            GetBaseForRoundingMode(valueNumber, digits + 1, &decpt2, buf2, buffer, JS_DTOA_BUF_SIZE,
                 FE_UPWARD, &sign2);
             if (memcmp(buf1.c_str(), buf2.c_str(), digits + 1) == 0 && decpt1 == decpt2) {
                 roundingMode = sign1 ? FE_DOWNWARD : FE_UPWARD;
             }
         }
     }
-    GetBaseForRoundingMode(valueNumber, digits, decimalPoint, buf, buffer, sizeof(buffer), roundingMode, sign);
+    ASSERT(buffer.size() <= JS_DTOA_BUF_SIZE);
+    GetBaseForRoundingMode(valueNumber, digits, decimalPoint, buf, buffer, JS_DTOA_BUF_SIZE, roundingMode, sign);
     return digits;
 }
 
