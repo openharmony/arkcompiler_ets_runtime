@@ -1576,6 +1576,21 @@ public:
         return funcAlignPow;
     }
 
+    static void EnableOptimizedFrameLayout()
+    {
+        doOptimizedFrameLayout = true;
+    }
+
+    static void DisableOptimizedFrameLayout()
+    {
+        doOptimizedFrameLayout = false;
+    }
+
+    static bool DoOptimizedFrameLayout()
+    {
+        return doOptimizedFrameLayout;
+    }
+
 private:
     std::vector<std::string> phaseSequence;
     EmitMemoryManager emitMemoryManager;
@@ -1685,6 +1700,7 @@ private:
     static uint32 loopAlignPow;
     static uint32 jumpAlignPow;
     static uint32 funcAlignPow;
+    static bool doOptimizedFrameLayout;
 };
 } /* namespace maplebe */
 

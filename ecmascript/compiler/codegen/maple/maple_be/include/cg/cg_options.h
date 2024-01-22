@@ -129,6 +129,7 @@ extern maplecl::Option<uint32_t> alignMaxBbSize;
 extern maplecl::Option<uint32_t> loopAlignPow;
 extern maplecl::Option<uint32_t> jumpAlignPow;
 extern maplecl::Option<uint32_t> funcAlignPow;
+extern maplecl::Option<bool> optimizedFrameLayout;
 
 }  // namespace opts::cg
 

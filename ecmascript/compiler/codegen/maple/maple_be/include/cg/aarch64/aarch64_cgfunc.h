@@ -107,6 +107,7 @@ public:
     CCImpl *GetOrCreateLocator(CallConvKind cc);
     MIRType *LmbcGetAggTyFromCallSite(StmtNode *stmt, std::vector<TyIdx> **parmList) const;
     RegOperand &GetOrCreateResOperand(const BaseNode &parent, PrimType primType);
+    MIRStructType *GetLmbcStructArgType(BaseNode &stmt, size_t argNo) const;
 
     // struct for delayed phy regs copy in param list
     struct RegMapForPhyRegCpy {

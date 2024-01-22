@@ -161,6 +161,36 @@ bool IsBlkassignForPush(const BlkassignoffNode &bNode)
     return spBased;
 }
 
+MIRStructType *AArch64CGFunc::GetLmbcStructArgType(BaseNode &stmt, size_t argNo) const
+{
+    MIRType *ty = nullptr;
+    if (stmt.GetOpCode() == OP_call) {
+        CallNode &callNode = static_cast<CallNode &>(stmt);
+        MIRFunction *callFunc = GlobalTables::GetFunctionTable().GetFunctionFromPuidx(callNode.GetPUIdx());
+        if (callFunc->GetFormalCount() < (argNo + 1UL)) {
+            return nullptr; /* formals less than actuals */
+        }
+        ty = GlobalTables::GetTypeTable().GetTypeFromTyIdx(callFunc->GetFormalDefVec()[argNo].formalTyIdx);
+    } else if (stmt.GetOpCode() == OP_icallproto) {
+        argNo--; /* 1st opnd of icallproto is funcname, skip it relative to param list */
+        IcallNode &icallproto = static_cast<IcallNode &>(stmt);
+        MIRType *type = GlobalTables::GetTypeTable().GetTypeFromTyIdx(icallproto.GetRetTyIdx());
+        MIRFuncType *fType = nullptr;
+        if (type->IsMIRPtrType()) {
+            fType = static_cast<MIRPtrType *>(type)->GetPointedFuncType();
+        } else {
+            fType = static_cast<MIRFuncType *>(type);
+        }
+        CHECK_FATAL(fType != nullptr, "invalid fType");
+        if (fType->GetParamTypeList().size() < (argNo + 1UL)) {
+            return nullptr;
+        }
+        ty = GlobalTables::GetTypeTable().GetTypeFromTyIdx(fType->GetNthParamType(argNo));
+    }
+    CHECK_FATAL(ty && ty->IsStructType(), "lmbc agg arg error");
+    return static_cast<MIRStructType *>(ty);
+}
+
 RegOperand &AArch64CGFunc::GetOrCreateResOperand(const BaseNode &parent, PrimType primType)
 {
     RegOperand *resOpnd = nullptr;
