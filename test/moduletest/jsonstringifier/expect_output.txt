@@ -25,3 +25,4 @@ test successful
 ]
 {"a":"delete","b":{}}
 {"a":"delete","b":{}}
+end JSON.stringify(globalThis)
