@@ -2814,6 +2814,7 @@ JSTaggedValue BuiltinsArray::Flat(EcmaRuntimeCallInfo *argv)
     ArrayHelper::FlattenIntoArray(thread, newArrayHandle, thisObjVal, args,
                                   thread->GlobalConstants()->GetHandledUndefined(),
                                   thread->GlobalConstants()->GetHandledUndefined());
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
     // 7. Return A.
     return newArrayHandle.GetTaggedValue();
@@ -2852,7 +2853,7 @@ JSTaggedValue BuiltinsArray::FlatMap(EcmaRuntimeCallInfo *argv)
     // 5. Perform ? FlattenIntoArray(A, O, sourceLen, 0, 1, mapperFunction, thisArg).
     ArrayHelper::FlattenIntoArray(thread, newArrayHandle, thisObjVal, args,
                                   mapperFunctionHandle, GetCallArg(argv, 1));
-
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     // 6. Return A.
     return newArrayHandle.GetTaggedValue();
 }

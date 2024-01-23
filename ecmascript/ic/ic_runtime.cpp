@@ -316,6 +316,7 @@ JSTaggedValue StoreICRuntime::StoreMiss(JSHandle<JSTaggedValue> receiver, JSHand
     if (!receiver->IsJSObject() || receiver->HasOrdinaryGet()) {
         icAccessor_.SetAsMega();
         bool success = JSTaggedValue::SetProperty(GetThread(), receiver, key, value, true);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
         return success ? JSTaggedValue::Undefined() : JSTaggedValue::Exception();
     }
     if (receiver->IsTypedArray()) {
@@ -379,6 +380,7 @@ JSTaggedValue StoreICRuntime::StoreTypedArrayValueMiss(JSHandle<JSTaggedValue> r
             !GetThread()->GetEcmaVM()->ICEnabled()) {
             icAccessor_.SetAsMega();
             bool success = JSTaggedValue::SetProperty(GetThread(), receiver, propKey, value, true);
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(GetThread());
             return success ? JSTaggedValue::Undefined() : JSTaggedValue::Exception();
         }
         UpdateTypedArrayHandler(receiver);

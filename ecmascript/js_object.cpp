@@ -1608,6 +1608,7 @@ bool JSObject::CreateDataProperty(JSThread *thread, const JSHandle<JSObject> &ob
     ASSERT_PRINT(JSTaggedValue::IsPropertyKey(key), "Key is not a property key");
     auto result = ObjectFastOperator::SetPropertyByValue<ObjectFastOperator::Status::UseOwn>(
         thread, obj.GetTaggedValue(), key.GetTaggedValue(), value.GetTaggedValue(), sCheckMode);
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
     if (!result.IsHole()) {
         return !result.IsException();
     }
