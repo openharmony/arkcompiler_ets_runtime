@@ -69,7 +69,9 @@ public:
             int freeSize = table->Size() - table->EntriesCount() - numOfAddedElements;
             if (table->HoleEntriesCount() > freeSize / 2) { // 2: half
                 int copyLength = Derived::GetEntryIndex(table->Size());
-                JSHandle<Derived> copyTable(thread->GetEcmaVM()->GetFactory()->NewDictionaryArray(copyLength));
+                JSHandle<Derived> copyTable = table.GetTaggedValue().IsInSharedSpace() ?
+                    JSHandle<Derived>(thread->GetEcmaVM()->GetFactory()->NewSDictionaryArray(copyLength)) :
+                    JSHandle<Derived>(thread->GetEcmaVM()->GetFactory()->NewDictionaryArray(copyLength));
                 copyTable->SetHashTableSize(thread, table->Size());
                 table->Rehash(thread, *copyTable);
                 return copyTable;
@@ -80,13 +82,15 @@ public:
             table->Size(), numOfAddedElements);
         newSize = std::max(newSize, MIN_SHRINK_SIZE);
         int length = Derived::GetEntryIndex(newSize);
-        JSHandle<Derived> newTable(thread->GetEcmaVM()->GetFactory()->NewDictionaryArray(length));
+        JSHandle<Derived> newTable = table.GetTaggedValue().IsInSharedSpace() ?
+            JSHandle<Derived>(thread->GetEcmaVM()->GetFactory()->NewSDictionaryArray(length)) :
+            JSHandle<Derived>(thread->GetEcmaVM()->GetFactory()->NewDictionaryArray(length));
         newTable->SetHashTableSize(thread, newSize);
         table->Rehash(thread, *newTable);
         return newTable;
     }
 
-    static JSHandle<Derived> Create(const JSThread *thread, int entriesCount)
+    static JSHandle<Derived> Create(const JSThread *thread, int entriesCount, bool inShareSpace = false)
     {
         ASSERT_PRINT((entriesCount > 0), "the size must be greater than zero");
         auto size = static_cast<uint32_t>(entriesCount);
@@ -94,7 +98,9 @@ public:
 
         int length = Derived::GetEntryIndex(entriesCount);
 
-        JSHandle<Derived> table(thread->GetEcmaVM()->GetFactory()->NewDictionaryArray(length));
+        JSHandle<Derived> table = inShareSpace ?
+            JSHandle<Derived>(thread->GetEcmaVM()->GetFactory()->NewSDictionaryArray(length)) :
+            JSHandle<Derived>(thread->GetEcmaVM()->GetFactory()->NewDictionaryArray(length));
         table->SetEntriesCount(thread, 0);
         table->SetHoleEntriesCount(thread, 0);
         table->SetHashTableSize(thread, size);
@@ -401,9 +407,10 @@ public:
         return newTable;
     }
 
-    static JSHandle<Derived> Create(const JSThread *thread, int numberOfElements = DEFAULT_ELEMENTS_NUMBER)
+    static JSHandle<Derived> Create(const JSThread *thread, int numberOfElements = DEFAULT_ELEMENTS_NUMBER,
+        bool inShareSpace = false)
     {
-        JSHandle<Derived> dict = HashTableT::Create(thread, numberOfElements);
+        JSHandle<Derived> dict = HashTableT::Create(thread, numberOfElements, inShareSpace);
         dict->SetNextEnumerationIndex(thread, PropertyAttributes::INITIAL_PROPERTY_INDEX);
         return dict;
     }

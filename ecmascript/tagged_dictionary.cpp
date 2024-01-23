@@ -193,6 +193,11 @@ JSHandle<NameDictionary> NameDictionary::Create(const JSThread *thread, int numb
     return OrderHashTableT::Create(thread, numberOfElements);
 }
 
+JSHandle<NameDictionary> NameDictionary::CreateInShareSpace(const JSThread *thread, int numberOfElements)
+{
+    return OrderHashTableT::Create(thread, numberOfElements, true);
+}
+
 PropertyAttributes NameDictionary::GetAttributes(int entry) const
 {
     int index = GetEntryIndex(entry) + ENTRY_DETAILS_INDEX;

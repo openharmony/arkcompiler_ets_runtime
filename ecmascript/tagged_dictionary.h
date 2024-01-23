@@ -47,7 +47,9 @@ public:
     static bool IsMatch(const uint8_t* str, int size, const JSTaggedValue &other);
 
     static JSHandle<NameDictionary> Create(const JSThread *thread,
-                                  int numberOfElements = OrderHashTableT::DEFAULT_ELEMENTS_NUMBER);
+        int numberOfElements = OrderHashTableT::DEFAULT_ELEMENTS_NUMBER);
+    static JSHandle<NameDictionary> CreateInShareSpace(const JSThread *thread,
+        int numberOfElements = OrderHashTableT::DEFAULT_ELEMENTS_NUMBER);
     // Returns the property metaData for the property at entry.
     PropertyAttributes GetAttributes(int entry) const;
     void SetAttributes(const JSThread *thread, int entry, const PropertyAttributes &metaData);

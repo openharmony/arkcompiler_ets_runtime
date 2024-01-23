@@ -1182,7 +1182,7 @@ uintptr_t SnapshotProcessor::AllocateObjectToLocalSpace(Space *space, size_t obj
 {
     uintptr_t newObj = 0;
     if (space->GetSpaceType() == MemSpaceType::HUGE_OBJECT_SPACE) {
-        newObj = reinterpret_cast<HugeObjectSpace *>(space)->Allocate(objectSize, vm_->GetAssociatedJSThread());
+        newObj = reinterpret_cast<HugeObjectSpace *>(space)->Allocate(objectSize);
     } else if (space->GetSpaceType() == MemSpaceType::SNAPSHOT_SPACE) {
         newObj = reinterpret_cast<SnapshotSpace *>(space)->Allocate(objectSize);
     } else {
@@ -1238,7 +1238,7 @@ void SnapshotProcessor::DeserializeSpaceObject(uintptr_t beginAddr, Space* space
     }
     for (size_t i = 0; i < numberOfRegions; i++) {
         Region *region = vm_->GetHeapRegionAllocator()->AllocateAlignedRegion(
-            space, DEFAULT_REGION_SIZE, vm_->GetAssociatedJSThread());
+            space, DEFAULT_REGION_SIZE, const_cast<Heap *>(vm_->GetHeap()));
         auto fileRegion = ToNativePtr<Region>(beginAddr + i * (DEFAULT_REGION_SIZE - GetMarkGCBitSetSize()));
         uintptr_t objectBeginAddr =
             ToUintPtr(fileRegion) + AlignUp(sizeof(Region),  static_cast<size_t>(MemAlignment::MEM_ALIGN_REGION));
@@ -1300,7 +1300,7 @@ void SnapshotProcessor::DeserializeHugeSpaceObject(uintptr_t beginAddr, HugeObje
         size_t objSize = SnapshotHelper::GetHugeObjectSize(snapshotData);
         size_t alignedHugeRegionSize = AlignUp(objSize + sizeof(Region), PANDA_POOL_ALIGNMENT_IN_BYTES);
         Region *region = vm_->GetHeapRegionAllocator()->AllocateAlignedRegion(
-            space, alignedHugeRegionSize, vm_->GetAssociatedJSThread());
+            space, alignedHugeRegionSize, const_cast<Heap *>(vm_->GetHeap()));
         // low 32 bits storage regionIndex
         size_t regionIndex = SnapshotHelper::GetHugeObjectRegionIndex(snapshotData);
         regionIndexMap_.emplace(regionIndex, region);
@@ -1357,7 +1357,7 @@ void SnapshotProcessor::DeserializeString(uintptr_t stringBegin, uintptr_t strin
         } else {
             uintptr_t newObj = 0;
             if (UNLIKELY(strSize > MAX_REGULAR_HEAP_OBJECT_SIZE)) {
-                newObj = hugeSpace->Allocate(strSize, vm_->GetJSThread());
+                newObj = hugeSpace->Allocate(strSize);
             } else {
                 newObj = oldSpace->Allocate(strSize, false);
             }
