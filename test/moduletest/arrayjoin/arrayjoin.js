@@ -78,3 +78,15 @@ try {
 }
 
 ([11])["join"]('쏄');
+
+let proxy1 = new Proxy([123], {});
+proxy1.pop();
+proxy1.toString();
+proxy1.push(456);
+print(`proxy1: ${proxy1}`);
+
+let proxy2 = new Proxy([123, 456], {});
+proxy2.pop();
+proxy2.toString();
+proxy2.push(456);
+print(`proxy2: ${proxy2}`);
