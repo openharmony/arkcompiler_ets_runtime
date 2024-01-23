@@ -354,16 +354,6 @@ bool CgFixShortBranch::PhaseRun(maplebe::CGFunc &f)
     // fix ldr would cause insn num increasing, do ldr fix first.
     fixShortBranch->FixLdr();
     fixShortBranch->PatchLongBranch();
-    // TODO : add pgo
-    // if (f.HasLaidOutByPgoUse()) {
-    //     LiteProfile::BBInfo *bbInfo = f.GetFunction().GetModule()->GetLiteProfile().GetFuncBBProf(f.GetName());
-    //     if (bbInfo) {
-    //         CHECK_FATAL(bbInfo->verified.first, "Must verified pgo data in pgo use");
-    //         if (bbInfo->verified.second) {
-    //             fixShortBranch->FixShortBranchesForSplitting();
-    //         }
-    //     }
-    // }
     return false;
 }
 MAPLE_TRANSFORM_PHASE_REGISTER(CgFixShortBranch, fixshortbranch)

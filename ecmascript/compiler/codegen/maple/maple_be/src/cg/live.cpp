@@ -206,7 +206,9 @@ void LiveAnalysis::AnalysisLive()
     InitAndGetDefUse();
     BuildInOutforFunc();
     InsertInOutOfCleanupBB();
-    GenerateStackMapLiveIn();
+    if (!cgFunc->IsStackMapComputed()) {
+        GenerateStackMapLiveIn();
+    }
 }
 
 void LiveAnalysis::DealWithInOutOfCleanupBB()
@@ -274,6 +276,11 @@ void LiveAnalysis::InsertInOutOfCleanupBB()
 
 void LiveAnalysis::MarkStackMapInsn(Insn &insn, BB &bb) const
 {
+    if (insn.GetStackMap() != nullptr) {
+        for (auto [deoptVreg, opnd] : insn.GetStackMap()->GetDeoptInfo().GetDeoptBundleInfo()) {
+            CollectLiveInfo(bb, *opnd, false, true);
+        }
+    }
     insn.SetStackMapDef(*NewDef(*bb.GetDef()));
     insn.SetStackMapUse(*NewUse(*bb.GetUse()));
 }
@@ -299,7 +306,7 @@ void LiveAnalysis::GetBBDefUse(BB &bb) const
             continue;
         }
 
-        if (insn->IsCall()) {
+        if (insn->IsCall() && !cgFunc->IsStackMapComputed()) {
             MarkStackMapInsn(*insn, bb);
         }
 
@@ -358,6 +365,12 @@ void LiveAnalysis::CollectLiveInfo(BB &bb, const Operand &opnd, bool isDef, bool
     if (isUse) {
         bb.SetUseBit(regNO);
         bb.DefResetBit(regNO);
+    }
+    if (!cgFunc->IsStackMapComputed() && regOpnd.GetBaseRefOpnd() != nullptr) {
+        const RegOperand &baseOpnd = *regOpnd.GetBaseRefOpnd();
+        regno_t baseRegNO = baseOpnd.GetRegisterNumber();
+        bb.SetUseBit(baseRegNO);
+        bb.DefResetBit(baseRegNO);
     }
 }
 

@@ -1471,6 +1471,16 @@ public:
         stackMapInsns.emplace_back(&insn);
     }
 
+    bool IsStackMapComputed()
+    {
+        return isStackMapComputed;
+    }
+
+    void SetStackMapComputed()
+    {
+        isStackMapComputed = true;
+    }
+
     void EraseUnreachableStackMapInsns()
     {
         for (auto it = stackMapInsns.begin(); it != stackMapInsns.end();) {
@@ -1751,6 +1761,8 @@ private:
     bool hasAsm = false;
     bool useFP = true;
     bool seenFP = true;
+
+    bool isStackMapComputed = false;
 
     /* save stack protect kinds which can trigger stack protect */
     uint8 stackProtectInfo = 0;

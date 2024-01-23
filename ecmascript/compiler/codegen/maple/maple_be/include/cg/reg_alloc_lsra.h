@@ -712,7 +712,7 @@ public:
           splitPosMap(alloc.Adapter()),
           splitInsnMap(alloc.Adapter()),
           moveInfoVec(alloc.Adapter()),
-          dereivedRef2Base(alloc.Adapter())
+          derivedRef2Base(alloc.Adapter())
     {
         for (uint32 i = 0; i < regInfo->GetIntRegs().size(); ++i) {
             intParamQueue.push_back(initialQue);
@@ -777,7 +777,9 @@ public:
     void ComputeLoopLiveIntervalPriority(const CGFuncLoops &loop);
     void ComputeLoopLiveIntervalPriorityInInsn(const Insn &insn);
     void SetLiSpill(LiveInterval &li);
-
+    void SetStackMapDerivedInfo();
+    void CollectStackMapInfo();
+    void ComputeLiveIntervalForCall(Insn &insn);
 private:
     uint32 FindAvailablePhyRegByFastAlloc(LiveInterval &li);
     bool NeedSaveAcrossCall(LiveInterval &li);
@@ -836,7 +838,7 @@ private:
     MapleMultiMap<uint32, LiveInterval *> splitPosMap; /* LiveInterval split position */
     MapleUnorderedMap<uint32, Insn *> splitInsnMap;    /* split insn */
     MapleVector<MoveInfo> moveInfoVec;                 /* insertion of move(PHI&Split) is based on this */
-    MapleUnorderedMap<regno_t, regno_t> dereivedRef2Base;
+    MapleUnorderedMap<regno_t, RegOperand*> derivedRef2Base;
 };
 } /* namespace maplebe */
 

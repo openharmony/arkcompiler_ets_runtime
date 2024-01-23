@@ -18,6 +18,7 @@
  ADDTARGETPHASE("buildehfunc", true);
  ADDTARGETPHASE("handlefunction", true);
  ADDTARGETPHASE("moveargs", true);
+ ADDTARGETPHASE("stackmapcomputation", false);
  if (GetMIRModule()->GetFlavor() != MIRFlavor::kFlavorLmbc) {
    /* SSA PHASES */
    ADDTARGETPHASE("cgssaconstruct", CGOptions::DoCGSSA());

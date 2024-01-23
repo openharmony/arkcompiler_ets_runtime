@@ -42,7 +42,7 @@ private:
     //   cond_br target_label       cond_br new_label
     //   fallthruBB                 fallthruBB
     //                              [section end]
-    //                              new_label:
+    //                              new_label
     //                              unconditional br target_label
     void InsertJmpPadAtSecEnd(Insn &insn, uint32 targetLabelIdx, BB &targetBB);
     void InitSecEnd();

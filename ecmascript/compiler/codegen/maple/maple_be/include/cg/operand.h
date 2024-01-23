@@ -964,7 +964,6 @@ public:
         kLiteral,         /* xxx_l mode: label */
         // X86 scale Type
         kScale,
-
     };
     /*
      * ARMv8-A A64 ISA Overview by Matteo Franchin @ ARM
@@ -1022,13 +1021,14 @@ public:
     }
 
     MemOperand(uint32 size, RegOperand &baseOp, ImmOperand &ofstOp, AArch64AddressingMode mode = kAddrModeBOi)
-      : OperandVisitable(Operand::kOpdMem, size),
-        baseOpnd(&baseOp),
-        offsetOpnd(&ofstOp),
-        symbol(nullptr),
-        addrMode(mode) {
-    DEBUG_ASSERT((mode == kAddrModeBOi), "check mode!");
-  }
+        : OperandVisitable(Operand::kOpdMem, size),
+          baseOpnd(&baseOp),
+          offsetOpnd(&ofstOp),
+          symbol(nullptr),
+          addrMode(mode)
+    {
+        DEBUG_ASSERT((mode == kAddrModeBOi), "check mode!");
+    }
 
     MemOperand(uint32 size, RegOperand *baseOp, RegOperand *indexOp, ImmOperand *ofstOp, const MIRSymbol *mirSymbol,
                ImmOperand *scaleOp = nullptr)

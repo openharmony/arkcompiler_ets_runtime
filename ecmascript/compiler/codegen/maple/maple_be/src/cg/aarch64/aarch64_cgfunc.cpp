@@ -6686,13 +6686,14 @@ void AArch64CGFunc::ReplaceOpndInInsn(RegOperand &regDest, RegOperand &regSrc, I
                 CHECK_FATAL(regOpnd.GetSize() == regSrc.GetSize(), "NIY");
                 insn.SetOperand(static_cast<uint32>(i), regSrc);
             }
-            if (regOpnd.GetBaseRefOpnd() != nullptr && regOpnd.GetBaseRefOpnd()->GetRegisterNumber() == destNO) {
+            if (!IsStackMapComputed() && regOpnd.GetBaseRefOpnd() != nullptr &&
+                regOpnd.GetBaseRefOpnd()->GetRegisterNumber() == destNO) {
                 regOpnd.SetBaseRefOpnd(regSrc);
                 ReplaceRegReference(regOpnd.GetBaseRefOpnd()->GetRegisterNumber(), regSrc.GetRegisterNumber());
             }
         }
     }
-    if (insn.GetStackMap() != nullptr) {
+    if (!IsStackMapComputed() && insn.GetStackMap() != nullptr) {
         for (auto [deoptVreg, opnd] : insn.GetStackMap()->GetDeoptInfo().GetDeoptBundleInfo()) {
             if (!opnd->IsRegister()) {
                 continue;
@@ -7132,13 +7133,14 @@ MemOperand *AArch64CGFunc::CreateStackMemOpnd(regno_t preg, int32 offset, uint32
 
 /* Mem mod BOI || PreIndex || PostIndex */
 MemOperand *AArch64CGFunc::CreateMemOperand(uint32 size, RegOperand &base, ImmOperand &ofstOp, bool isVolatile,
-                                            MemOperand::AArch64AddressingMode mode) const {
-  auto *memOp = memPool->New<MemOperand>(size, base, ofstOp, mode);
-  memOp->SetVolatile(isVolatile);
-  if (base.GetRegisterNumber() == RFP || base.GetRegisterNumber() == RSP) {
-    memOp->SetStackMem(true);
-  }
-  return memOp;
+                                            MemOperand::AArch64AddressingMode mode) const
+{
+    auto *memOp = memPool->New<MemOperand>(size, base, ofstOp, mode);
+    memOp->SetVolatile(isVolatile);
+    if (base.GetRegisterNumber() == RFP || base.GetRegisterNumber() == RSP) {
+        memOp->SetStackMem(true);
+    }
+    return memOp;
 }
 
 MemOperand *AArch64CGFunc::CreateMemOperand(MemOperand::AArch64AddressingMode mode, uint32 size, RegOperand &base,
