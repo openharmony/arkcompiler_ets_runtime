@@ -478,6 +478,7 @@ private:
     V(CreateStringBySingleCharCode)             \
     V(FastStringEqual)                          \
     V(FastStringAdd)                            \
+    V(DeleteObjectProperty)                     \
     V(Getpropiterator)                          \
     V(Getnextpropname)                          \
     V(CreateJSSetIterator)                      \

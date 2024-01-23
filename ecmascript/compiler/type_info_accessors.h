@@ -848,7 +848,8 @@ public:
 
     bool IsMono() const
     {
-        return types_.size() == 1;
+        return types_.size() == 1 ||
+               IsAllString();
     }
 
     bool IsBuiltinsString() const
@@ -899,6 +900,7 @@ public:
     }
 
 protected:
+    bool IsAllString() const;
     void FetchBuiltinsTypes();
     bool CheckDuplicatedBuiltinType(ProfileType newType) const;
 

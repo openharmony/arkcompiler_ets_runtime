@@ -2452,11 +2452,11 @@ DEF_RUNTIME_STUBS(ProfileOptimizedCode)
     return JSTaggedValue::Undefined().GetRawData();
 }
 
-DEF_RUNTIME_STUBS(ProfileLoopHoist)
+DEF_RUNTIME_STUBS(ProfileTypedOp)
 {
     RUNTIME_STUBS_HEADER(ProfileOptimizedCode);
     kungfu::OpCode opcode = static_cast<kungfu::OpCode>(GetArg(argv, argc, 0).GetInt());
-    LoopHoistProfiler *profiler = thread->GetCurrentEcmaContext()->GetLoopHoistProfiler();
+    TypedOpProfiler *profiler = thread->GetCurrentEcmaContext()->GetTypdOpProfiler();
     if (profiler != nullptr) {
         profiler->Update(opcode);
     }

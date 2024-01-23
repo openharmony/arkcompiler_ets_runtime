@@ -292,9 +292,9 @@ public:
         return optCodeProfiler_;
     }
 
-    LoopHoistProfiler *GetLoopHoistProfiler() const
+    TypedOpProfiler *GetTypdOpProfiler() const
     {
-        return loopHoistProfiler_;
+        return typedOpProfiler_;
     }
 
     // For icu objects cache
@@ -564,7 +564,7 @@ private:
     OptCodeProfiler *optCodeProfiler_ {nullptr};
 
     // opt code loop hoist
-    LoopHoistProfiler *loopHoistProfiler_ {nullptr};
+    TypedOpProfiler *typedOpProfiler_ {nullptr};
 
     // For icu objects cache
     struct IcuFormatter {

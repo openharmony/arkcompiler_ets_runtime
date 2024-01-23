@@ -385,13 +385,17 @@ JSTaggedValue BuiltinsArkTools::IsAOTDeoptimized(EcmaRuntimeCallInfo *info)
     return JSTaggedValue(false);
 }
 
-JSTaggedValue BuiltinsArkTools::PrintLoopHoistProfilerAndReset(EcmaRuntimeCallInfo *info)
+JSTaggedValue BuiltinsArkTools::PrintTypedOpProfilerAndReset(EcmaRuntimeCallInfo *info)
 {
     ASSERT(info);
     JSThread *thread = info->GetThread();
-    LoopHoistProfiler *profiler = thread->GetCurrentEcmaContext()->GetLoopHoistProfiler();
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+
+    JSHandle<JSTaggedValue> opStrVal = GetCallArg(info, 0);
+    std::string opStr = EcmaStringAccessor(opStrVal.GetTaggedValue()).ToStdString();
+    TypedOpProfiler *profiler = thread->GetCurrentEcmaContext()->GetTypdOpProfiler();
     if (profiler != nullptr) {
-        profiler->PrintAndReset();
+        profiler->PrintAndReset(opStr);
     }
     return JSTaggedValue::Undefined();
 }

@@ -11,21 +11,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-[trace] LoopHoistProfiler:
 [trace] Opcode: LOAD_BUILTIN_OBJECT Count:1
 [trace] Opcode: LOAD_PROPERTY Count:0
-[trace] LoopHoistProfiler:
 [trace] Opcode: LOAD_BUILTIN_OBJECT Count:1
 [trace] Opcode: LOAD_PROPERTY Count:0
-[trace] LoopHoistProfiler:
 [trace] Opcode: LOAD_BUILTIN_OBJECT Count:1
 [trace] Opcode: LOAD_PROPERTY Count:1
-[trace] LoopHoistProfiler:
 [trace] Opcode: LOAD_BUILTIN_OBJECT Count:1
 [trace] Opcode: LOAD_PROPERTY Count:1
-[trace] LoopHoistProfiler:
 [trace] Opcode: LOAD_BUILTIN_OBJECT Count:1
 [trace] Opcode: LOAD_PROPERTY Count:1
-[trace] LoopHoistProfiler:
 [trace] Opcode: LOAD_BUILTIN_OBJECT Count:1
 [trace] Opcode: LOAD_PROPERTY Count:1

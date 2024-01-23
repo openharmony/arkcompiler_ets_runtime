@@ -671,6 +671,19 @@ LoadBulitinObjTypeInfoAccessor::LoadBulitinObjTypeInfoAccessor(const JSThread *t
     FetchBuiltinsTypes();
 }
 
+bool AccBuiltinObjTypeInfoAccessor::IsAllString() const
+{
+    if (types_.empty()) {
+        return false;
+    }
+    for (auto type : types_) {
+        if (!type.IsBuiltinsString()) {
+            return false;
+        }
+    }
+    return true;
+}
+
 void AccBuiltinObjTypeInfoAccessor::FetchBuiltinsTypes()
 {
     const PGORWOpType *pgoTypes = acc_.TryGetPGOType(gate_).GetPGORWOpType();
