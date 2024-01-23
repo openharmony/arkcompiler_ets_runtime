@@ -95,6 +95,10 @@ bool JSAPITreeMap::HasValue(JSThread *thread, const JSHandle<JSTaggedValue> &val
 void JSAPITreeMap::Clear(const JSThread *thread, const JSHandle<JSAPITreeMap> &map)
 {
     int cap = map->GetSize();
+    if (cap == 0) {
+        return;
+    }
+    cap = std::max(cap, TaggedTreeMap::MIN_CAPACITY);
     JSTaggedValue internal = TaggedTreeMap::Create(thread, cap);
     map->SetTreeMap(thread, internal);
 }
