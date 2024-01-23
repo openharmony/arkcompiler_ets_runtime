@@ -45,11 +45,9 @@ public:
     ~LiteCG() = default;
 
     // configurations API.
-    // If not specified, default to:
-    // Ofastcompile, Elf, X86_64, NoDebug, Quiet
+    // If not specified, default to: Ofastcompile, Elf, X86_64, NoDebug, Quiet
 
     // O0/O1/Ofastcompile
-    // LiteCG& SetOptLevel(); // default to fastcompile
 
     // return LiteCG& enables chaining of config functions.
     LiteCG &SetOutputType(OutputType config);

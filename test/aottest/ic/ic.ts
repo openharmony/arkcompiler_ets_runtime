@@ -42,8 +42,3 @@ for (let i = 0; i < 100000; i++) {
 print(a1)
 print(a2)
 
-let o1 = [1, , 2.5]
-for (var i = 1; i < 10000; i++) {
-  o1 = [1, , 2.5]
-}
-print(o1);

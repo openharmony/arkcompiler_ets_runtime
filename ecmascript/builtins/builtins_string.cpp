@@ -109,7 +109,7 @@ JSTaggedValue BuiltinsString::FromCharCode(EcmaRuntimeCallInfo *argv)
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         if (EcmaStringAccessor::CanBeCompressed(&codePointValue, 1)) {
             JSHandle<SingleCharTable> singleCharTable(thread, thread->GetSingleCharTable());
-            return singleCharTable->GetStringFromSingleCharTable(codePointValue); 
+            return singleCharTable->GetStringFromSingleCharTable(codePointValue);
         }
         JSHandle<EcmaString> strHandle = factory->NewFromUtf16Literal(&codePointValue, 1);
         return strHandle.GetTaggedValue();
@@ -274,7 +274,7 @@ JSTaggedValue BuiltinsString::CharAt(EcmaRuntimeCallInfo *argv)
     uint16_t res = EcmaStringAccessor(thisFlat).Get<false>(pos);
     if (EcmaStringAccessor::CanBeCompressed(&res, 1)) {
         JSHandle<SingleCharTable> singleCharTable(thread, thread->GetSingleCharTable());
-        return singleCharTable->GetStringFromSingleCharTable(res); 
+        return singleCharTable->GetStringFromSingleCharTable(res);
     }
     return factory->NewFromUtf16Literal(&res, 1).GetTaggedValue();
 }
@@ -862,6 +862,9 @@ JSTaggedValue BuiltinsString::Replace(EcmaRuntimeCallInfo *argv)
     ObjectFactory *factory = ecmaVm->GetFactory();
 
     if (searchTag->IsJSRegExp() && replaceTag->IsString()) {
+        if (BuiltinsRegExp::IsValidRegularExpression(thread, searchTag) == JSTaggedValue::False()) {
+            THROW_SYNTAX_ERROR_AND_RETURN(thread, "Regular expression too large", JSTaggedValue::Exception());
+        }
         JSHandle<RegExpExecResultCache> cacheTable(thread->GetCurrentEcmaContext()->GetRegExpCache());
         JSHandle<JSRegExp> re(searchTag);
         JSHandle<JSTaggedValue> pattern(thread, re->GetOriginalSource());

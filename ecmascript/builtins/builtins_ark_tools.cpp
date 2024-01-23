@@ -133,6 +133,17 @@ JSTaggedValue BuiltinsArkTools::HasTSSubtyping(EcmaRuntimeCallInfo *info)
     return GetTaggedBoolean(hclass->HasTSSubtyping());
 }
 
+JSTaggedValue BuiltinsArkTools::IsSlicedString(EcmaRuntimeCallInfo *info)
+{
+    ASSERT(info);
+    JSThread *thread = info->GetThread();
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+
+    ASSERT(info->GetArgsNumber() == 1);
+    JSHandle<JSTaggedValue> str = GetCallArg(info, 0);
+    return GetTaggedBoolean(str->IsSlicedString());
+}
+
 JSTaggedValue BuiltinsArkTools::IsNotHoleProperty(EcmaRuntimeCallInfo *info)
 {
     [[maybe_unused]] DisallowGarbageCollection noGc;
@@ -342,6 +353,16 @@ JSTaggedValue BuiltinsArkTools::IsAOTCompiled(EcmaRuntimeCallInfo *info)
     JSHandle<JSFunction> func(thread, obj.GetTaggedValue());
     Method *method = func->GetCallTarget();
     return JSTaggedValue(method->IsAotWithCallField());
+}
+
+JSTaggedValue BuiltinsArkTools::IsOnHeap(EcmaRuntimeCallInfo *info)
+{
+    ASSERT(info);
+    JSThread *thread = info->GetThread();
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+
+    JSHandle<JSTaggedValue> obj = GetCallArg(info, 0);
+    return JSTaggedValue(obj.GetTaggedValue().GetTaggedObject()->GetClass()->IsOnHeapFromBitField());
 }
 
 // It is used to check whether a function is aot compiled and deopted at runtime.
@@ -908,7 +929,7 @@ JSTaggedValue BuiltinsArkTools::GetUndetectable([[maybe_unused]] EcmaRuntimeCall
 {
     LOG_ECMA(DEBUG) << "Enter GetUndetectable()";
     ASSERT(info);
-    return JSTaggedValue::False();
+    return JSTaggedValue::Undefined();
 }
 
 // empty function for regress-xxx test cases

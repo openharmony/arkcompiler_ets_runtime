@@ -494,7 +494,7 @@ uintptr_t ArkCheckAndGetMethod(int pid, uintptr_t value)
             value += JSProxy::METHOD_OFFSET;
         }
         uintptr_t method = 0;
-        if(!ReadUintptrFromAddr(pid, value, method, true)) {
+        if (!ReadUintptrFromAddr(pid, value, method, true)) {
             return 0;
         }
         return method;
@@ -743,8 +743,7 @@ bool ArkGetNextFrame(uintptr_t &currentPtr, uintptr_t typeOffset,
 bool ArkFrameCheck(uintptr_t frameType)
 {
     return static_cast<FrameType>(frameType) == FrameType::OPTIMIZED_ENTRY_FRAME ||
-           static_cast<FrameType>(frameType) == FrameType::ASM_INTERPRETER_ENTRY_FRAME ||
-           static_cast<FrameType>(frameType) == FrameType::BUILTIN_ENTRY_FRAME;
+           static_cast<FrameType>(frameType) == FrameType::ASM_INTERPRETER_ENTRY_FRAME;
 }
 
 bool GetArkNativeFrameInfo(int pid, uintptr_t *pc, uintptr_t *fp, uintptr_t *sp,

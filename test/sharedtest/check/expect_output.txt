@@ -77,3 +77,5 @@ typeof sendable function: function
 sendable instanceof Object: false
 sendable instanceof SubClass: true
 sendable instanceof SuperClass: true
+Start testNormInherit
+Fail to define normal class inherit from sendable class, err: TypeError: The subclass of sendable class must be a sendable class

@@ -92,7 +92,7 @@ public:
             LOG_ECMA(ERROR) << "set key error!";
         }
         if (ohos::DecryptAssociateKey(fd, static_cast<int>(GetProcessUid()),
-                         static_cast<int>(GetBundleUid())) < 0) {
+                                      static_cast<int>(GetBundleUid())) < 0) {
             LOG_ECMA(ERROR) << "associate key error!";
         }
     }
@@ -140,7 +140,7 @@ public:
                                                    offset, offStart);
         offset = offset - offStart;
 #else
-        MemMap fileMapMem = FileMap(realPath.c_str(), FILE_RDONLY, PAGE_PROT_READ);   
+        MemMap fileMapMem = FileMap(realPath.c_str(), FILE_RDONLY, PAGE_PROT_READ);
 #endif
         if (fileMapMem.GetOriginAddr() == nullptr) {
             LOG_ECMA(ERROR) << "File mmap failed";
@@ -368,7 +368,7 @@ public:
         // 2. do not baseline ap until new format supported
         auto baselineAp = pgoDir_ + '/' + pgo::ApNameUtils::GetOhosPkgApName(moduleName_);
         if (FileExist(baselineAp.c_str())) {
-            LOG_COMPILER(ERROR) << "Do not support base line ap now, please waiting. baseline ap: " << baselineAp;
+            LOG_COMPILER(DEBUG) << "Do not support base line ap now, please waiting. baseline ap: " << baselineAp;
         }
     }
 

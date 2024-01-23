@@ -284,4 +284,37 @@ void *JsStackGetter::GetMethodIdentifier(Method *method, const FrameIterator &it
     MethodLiteral *methodLiteral = method->GetMethodLiteral();
     return reinterpret_cast<void *>(methodLiteral);
 }
+void JsStackGetter::GetCallLineNumber(const FrameIterator &it, int &LineNumber)
+{
+    FrameIterator itNext(it.GetSp(), it.GetThread());
+    itNext.Advance<GCVisitedFlag::IGNORED>();
+    auto nextMethod = itNext.CheckAndGetMethod();
+    if (nextMethod == nullptr) {
+        return ;
+    }
+    JSFunction* function = JSFunction::Cast(itNext.GetFunction().GetTaggedObject());
+    JSTaggedValue extraInfoValue = function->GetNativeFunctionExtraInfo();
+    if (!extraInfoValue.CheckIsJSNativePointer() && nextMethod->GetJSPandaFile() != nullptr) {
+        DebugInfoExtractor *debugExtractor =
+            JSPandaFileManager::GetInstance()->GetJSPtExtractor(nextMethod->GetJSPandaFile());
+        if (debugExtractor == nullptr) {
+            return;
+        }
+        MethodLiteral *methodLiteral = nextMethod->GetMethodLiteral();
+        if (methodLiteral == nullptr) {
+            return;
+        }
+        panda_file::File::EntityId methodId = methodLiteral->GetMethodId();
+        int lineNum = 0;
+        auto callbackLineFunc = [&lineNum](int32_t line) -> bool {
+            lineNum = line + 1;
+            return true;
+        };
+        uint32_t offset = itNext.GetBytecodeOffset();
+        if (!debugExtractor->MatchLineWithOffset(callbackLineFunc, methodId, offset)) {
+            lineNum = 0;
+        }
+        LineNumber = lineNum;
+    }
+}
 } // namespace panda::ecmascript

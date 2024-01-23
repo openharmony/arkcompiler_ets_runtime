@@ -538,10 +538,10 @@ OperationResult JSTypedArray::FastElementGet(JSThread *thread, const JSHandle<JS
     // 3. Let buffer be the value of O’s [[ViewedArrayBuffer]] internal slot.
     JSHandle<JSTypedArray> typedarrayObj(typedarray);
     JSTaggedValue buffer = typedarrayObj->GetViewedArrayBufferOrByteArray();
-    // 4. If IsDetachedBuffer(buffer) is true, throw a TypeError exception.
+    // 10.4.5.15 TypedArrayGetElement ( O, index )
+    //  1. If IsValidIntegerIndex(O, index) is false, return undefined.
     if (BuiltinsArrayBuffer::IsDetachedBuffer(buffer)) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "Is Detached Buffer",
-                                    OperationResult(thread, JSTaggedValue::Exception(), PropertyMetaData(false)));
+        return OperationResult(thread, JSTaggedValue::Undefined(), PropertyMetaData(true));
     }
 
     // 7. Let length be the value of O’s [[ArrayLength]] internal slot.
@@ -731,7 +731,11 @@ JSTaggedValue JSTypedArray::GetOffHeapBuffer(JSThread *thread, JSHandle<JSTypedA
         JSArrayBuffer::CopyDataPointBytes(toBuf, fromBuf, 0, length);
     }
     typedArray->SetViewedArrayBufferOrByteArray(thread, arrayBuffer.GetTaggedValue());
-    typedArray->SetIsOnHeap(false);
+    JSHandle<JSTaggedValue> typeName(thread, typedArray->GetTypedArrayName());
+    DataViewType arrayType = JSTypedArray::GetTypeFromName(thread, typeName);
+    JSHandle<JSHClass> notOnHeapHclass = TypedArrayHelper::GetNotOnHeapHclassFromType(
+            thread, typedArray, arrayType);
+    TaggedObject::Cast(*typedArray)->SynchronizedSetClass(thread, *notOnHeapHclass); // onHeap->notOnHeap
 
     return arrayBuffer.GetTaggedValue();
 }
@@ -761,14 +765,11 @@ bool JSTypedArray::FastTypedArrayFill(JSThread *thread, const JSHandle<JSTaggedV
     uint32_t elementSize = TypedArrayHelper::GetElementSize(jsType);
     // Let elementType be the String value of the Element Type value in Table 49 for arrayTypeName.
     DataViewType elementType = TypedArrayHelper::GetType(jsType);
-    uint64_t byteIndex = 0;
-    uint32_t k = start;
-    while (k < end && k < arrLen) {
-        // Let indexedPosition = (index × elementSize) + offset.
-        byteIndex = k * elementSize + offset;
-        // Perform SetValueInBuffer(buffer, indexedPosition, elementType, numValue).
-        BuiltinsArrayBuffer::FastSetValueInBuffer(thread, buffer, byteIndex, elementType, numValue.GetNumber(), true);
-        k++;
+    uint64_t byteBeginOffset = start * elementSize + offset;
+    uint64_t byteEndOffset = std::min(end, arrLen) * elementSize + offset;
+    if (byteBeginOffset <= byteEndOffset) {
+        BuiltinsArrayBuffer::TryFastSetValueInBuffer(thread, buffer,
+            byteBeginOffset, byteEndOffset, elementType, numValue.GetNumber(), true);
     }
     return true;
 }

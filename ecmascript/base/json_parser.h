@@ -341,7 +341,7 @@ protected:
         return JSTaggedValue::TryCastDoubleToInt32(v);
     }
 
-    bool ParseBackslash(std::string &res)
+    bool ParseBackslash(std::u16string &res)
     {
         if (current_ == end_) {
             return false;
@@ -377,7 +377,7 @@ protected:
                 if (UNLIKELY(!ConvertStringUnicode(u16Str))) {
                     return false;
                 }
-                res += base::StringHelper::U16stringToString(u16Str);
+                res += u16Str;
                 break;
             }
             default:
@@ -389,7 +389,7 @@ protected:
     JSTaggedValue SlowParseString()
     {
         end_--;
-        std::string res;
+        std::u16string res;
         res.reserve(end_ - current_);
         while (current_ <= end_) {
             if (*current_ == '\\') {
@@ -403,14 +403,14 @@ protected:
                 while (nextCurrent <= end_ && *nextCurrent != '\\') {
                     ++nextCurrent;
                 }
-                ParticalParseString(res, current_, nextCurrent);
+                res += std::u16string(current_, nextCurrent);
                 current_ = nextCurrent;
             }
         }
         ASSERT(res.size() <= static_cast<size_t>(UINT32_MAX));
         Advance();
-        return factory_->NewFromUtf8Literal(reinterpret_cast<const uint8_t *>(res.c_str()), res.size())
-            .GetTaggedValue();
+        return factory_->NewFromUtf16(
+            reinterpret_cast<const uint16_t *>(res.data()), res.size()).GetTaggedValue();
     }
 
     virtual void ParticalParseString(std::string& str, Text current, Text nextCurrent) = 0;

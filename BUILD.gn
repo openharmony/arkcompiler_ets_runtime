@@ -533,7 +533,7 @@ config("icu_path_test_config") {
 config("asm_interp_enable_config") {
   if ((current_cpu == "amd64" || current_cpu == "x64" ||
        current_cpu == "x86_64" || current_cpu == "arm64") && !is_mingw &&
-      !is_mac && target_os != "ios" && !is_emulator) {
+      !is_mac && target_os != "ios") {
     defines = [ "SUPPORT_ENABLE_ASM_INTERP" ]
   }
 }
@@ -598,6 +598,7 @@ ecma_source = [
   "ecmascript/ohos/code_decrypt.cpp",
   "ecmascript/compiler/aot_file/elf_builder.cpp",
   "ecmascript/compiler/aot_file/elf_reader.cpp",
+  "ecmascript/compiler/aot_file/elf_checker.cpp",
   "ecmascript/compiler/aot_file/an_file_data_manager.cpp",
   "ecmascript/compiler/aot_file/an_file_info.cpp",
   "ecmascript/compiler/aot_file/aot_file_info.cpp",
@@ -1188,6 +1189,7 @@ ohos_source_set("libark_jsruntime_static") {
     external_deps += [ "runtime_core:arkfile_header_deps" ]
   } else {
     deps += [ "$ark_root/libpandafile:arkfile_header_deps" ]
+    all_dependent_configs = [ ":ark_jsruntime_public_config" ]
   }
 
   public_configs = [ "$js_root:ark_jsruntime_public_config" ]

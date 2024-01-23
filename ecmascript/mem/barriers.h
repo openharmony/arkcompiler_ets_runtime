@@ -44,8 +44,9 @@ public:
     template<bool need_write_barrier = true>
     static void SetObject(const JSThread *thread, void *obj, size_t offset, JSTaggedType value);
 
-    static void SynchronizedSetClass(void *obj, JSTaggedType value);
-    static void SynchronizedSetObject(void *obj, size_t offset, JSTaggedType value, bool isPrimitive = false);
+    static void SynchronizedSetClass(const JSThread *thread, void *obj, JSTaggedType value);
+    static void SynchronizedSetObject(const JSThread *thread, void *obj, size_t offset, JSTaggedType value,
+                                      bool isPrimitive = false);
 
     template<class T>
     static inline T GetValue(const void *obj, size_t offset)
@@ -54,7 +55,8 @@ public:
         return *addr;
     }
 
-    static void PUBLIC_API Update(uintptr_t slotAddr, Region *objectRegion, TaggedObject *value, Region *valueRegion);
+    static void PUBLIC_API Update(const JSThread *thread, uintptr_t slotAddr, Region *objectRegion,
+                                  TaggedObject *value, Region *valueRegion, bool onDeserialize = false);
 };
 }  // namespace panda::ecmascript
 

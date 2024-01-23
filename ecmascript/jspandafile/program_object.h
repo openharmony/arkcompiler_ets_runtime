@@ -263,7 +263,10 @@ public:
         uint32_t literal, CString entry, ClassKind kind = ClassKind::NON_SENDABLE)
     {
         [[maybe_unused]] EcmaHandleScope handleScope(thread);
-        auto val = constpool->GetObjectFromCache(literal);
+        // Do not use cache when sendable for get wrong obj from cache,
+        // shall be fix or refactor during shared object implements
+        JSTaggedValue val = (kind == ClassKind::NON_SENDABLE) ? constpool->GetObjectFromCache(literal) :
+            JSTaggedValue::Hole();
         JSPandaFile *jsPandaFile = constpool->GetJSPandaFile();
 
         // For AOT
@@ -369,7 +372,8 @@ public:
                     // literal fetching from AOT ArrayInfos
                     JSMutableHandle<TaggedArray> literal(thread, JSTaggedValue::Undefined());
                     ElementsKind dataKind = ElementsKind::NONE;
-                    if (!constpoolHandle->TryGetAOTArrayLiteral(thread, needSetAotFlag, entryIndexes, literal)) {
+                    if (!constpoolHandle->TryGetAOTArrayLiteral(thread, needSetAotFlag,
+                                                                entryIndexes, literal, &dataKind)) {
                         literal.Update(LiteralDataExtractor::GetDatasIgnoreType(thread, jsPandaFile, id,
                                                                                 constpoolHandle, entry,
                                                                                 needSetAotFlag, entryIndexes,
@@ -377,6 +381,7 @@ public:
                     }
                     uint32_t length = literal->GetLength();
                     JSHandle<JSArray> arr(JSArray::ArrayCreate(thread, JSTaggedNumber(length), ArrayMode::LITERAL));
+                    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
                     arr->SetElements(thread, literal);
                     if (thread->GetEcmaVM()->IsEnablePGOProfiler() || thread->GetEcmaVM()->IsEnableElementsKind()) {
                         // for all JSArray, the initial ElementsKind should be NONE
@@ -384,7 +389,7 @@ public:
                         auto globalConstant = const_cast<GlobalEnvConstants *>(thread->GlobalConstants());
                         auto classIndex = static_cast<size_t>(ConstantIndex::ELEMENT_NONE_HCLASS_INDEX);
                         auto hclassVal = globalConstant->GetGlobalConstantObject(classIndex);
-                        arr->SynchronizedSetClass(JSHClass::Cast(hclassVal.GetTaggedObject()));
+                        arr->SynchronizedSetClass(thread, JSHClass::Cast(hclassVal.GetTaggedObject()));
                         ElementsKind oldKind = arr->GetClass()->GetElementsKind();
                         JSHClass::TransitToElementsKind(thread, arr, dataKind);
                         ElementsKind newKind = arr->GetClass()->GetElementsKind();
@@ -405,7 +410,7 @@ public:
     }
 
     bool TryGetAOTArrayLiteral(JSThread *thread, bool loadAOT, JSHandle<AOTLiteralInfo> entryIndexes,
-                               JSMutableHandle<TaggedArray> literal)
+                               JSMutableHandle<TaggedArray> literal, ElementsKind *dataKind)
     {
         if (loadAOT) {
             int elementIndex = entryIndexes->GetElementIndex();
@@ -413,6 +418,7 @@ public:
                 JSTaggedValue arrayInfos = GetAotArrayInfo();
                 JSHandle<TaggedArray> aotArrayInfos(thread, arrayInfos);
                 literal.Update(aotArrayInfos->Get(elementIndex));
+                *dataKind = ElementsKind::HOLE_TAGGED;
                 return true;
             }
         }

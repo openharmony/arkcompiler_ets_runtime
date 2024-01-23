@@ -237,8 +237,9 @@ HWTEST_F_L0(JSTypedArrayTest, TypedArrayCreate)
  * Function: SetViewedArrayBufferOrByteArray
  * SubFunction: GetViewedArrayBufferOrByteArray/ObjectFactory::NewJSArrayBuffer
  * FunctionPoints: Set ViewedArrayBuffer
- * CaseDescription: Check whether the JSArrayBuffer returned through calling GetViewedArrayBufferOrByteArray function from the
- *                  JSTypedArray changed through calling SetViewedArrayBufferOrByteArray function is within expectations.
+ * CaseDescription: Check whether the JSArrayBuffer returned through calling GetViewedArrayBufferOrByteArray
+ *                  function from the JSTypedArray changed through calling SetViewedArrayBufferOrByteArray
+ *                  function is within expectations.
  */
 HWTEST_F_L0(JSTypedArrayTest, SetViewedArrayBufferOrByteArray)
 {

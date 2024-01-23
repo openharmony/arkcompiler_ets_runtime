@@ -52,6 +52,15 @@ GateRef CircuitBuilder::IntPtrGreaterThan(GateRef x, GateRef y)
     return env_->Is32Bit() ? Int32GreaterThan(x, y) : Int64GreaterThan(x, y);
 }
 
+GateRef CircuitBuilder::IntPtrAnd(GateRef x, GateRef y)
+{
+    return env_->Is32Bit() ? Int32And(x, y) : Int64And(x, y);
+}
+
+GateRef CircuitBuilder::IntPtrNot(GateRef x)
+{
+    return env_->Is32Bit() ? Int32Not(x) : Int64Not(x);
+}
 
 GateRef CircuitBuilder::IntPtrLSR(GateRef x, GateRef y)
 {

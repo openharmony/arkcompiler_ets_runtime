@@ -1049,7 +1049,6 @@ inline GateRef StubBuilder::IsJSHClass(GateRef obj)
 {
     ASM_ASSERT(GET_MESSAGE_STRING_ID(IsJSHClass), TaggedIsHeapObject(obj));
     GateRef res = env_->GetBuilder()->IsJSHClass(obj);
-    EXITENTRY();
     return res;
 }
 
@@ -1058,7 +1057,6 @@ inline GateRef StubBuilder::LoadHClass(GateRef object)
 {
     ASM_ASSERT(GET_MESSAGE_STRING_ID(LoadHClass), TaggedIsHeapObject(object));
     GateRef res = env_->GetBuilder()->LoadHClass(object);
-    EXITENTRY();
     return res;
 }
 
@@ -1081,7 +1079,6 @@ inline GateRef StubBuilder::IsDictionaryMode(GateRef object)
 {
     ASM_ASSERT(GET_MESSAGE_STRING_ID(IsDictionaryMode), TaggedIsHeapObject(object));
     GateRef res = env_->GetBuilder()->IsDictionaryMode(object);
-    EXITENTRY();
     return res;
 }
 
@@ -1105,7 +1102,6 @@ inline GateRef StubBuilder::IsClassConstructor(GateRef object)
 {
     ASM_ASSERT(GET_MESSAGE_STRING_ID(IsClassConstructor), TaggedIsHeapObject(object));
     GateRef res = env_->GetBuilder()->IsClassConstructor(object);
-    EXITENTRY();
     return res;
 }
 
@@ -1113,7 +1109,6 @@ inline GateRef StubBuilder::IsClassPrototype(GateRef object)
 {
     ASM_ASSERT(GET_MESSAGE_STRING_ID(IsClassPrototype), TaggedIsHeapObject(object));
     GateRef res = env_->GetBuilder()->IsClassPrototype(object);
-    EXITENTRY();
     return res;
 }
 
@@ -1121,7 +1116,6 @@ inline GateRef StubBuilder::IsExtensible(GateRef object)
 {
     ASM_ASSERT(GET_MESSAGE_STRING_ID(IsExtensible), TaggedIsHeapObject(object));
     GateRef res = env_->GetBuilder()->IsExtensible(object);
-    EXITENTRY();
     return res;
 }
 
@@ -1129,7 +1123,6 @@ inline GateRef StubBuilder::TaggedObjectIsEcmaObject(GateRef obj)
 {
     ASM_ASSERT(GET_MESSAGE_STRING_ID(IsEcmaObject), TaggedIsHeapObject(obj));
     GateRef res = env_->GetBuilder()->TaggedObjectIsEcmaObject(obj);
-    EXITENTRY();
     return res;
 }
 
@@ -1142,7 +1135,6 @@ inline GateRef StubBuilder::IsJSObject(GateRef obj)
 {
     ASM_ASSERT(GET_MESSAGE_STRING_ID(IsJSObject), TaggedIsHeapObject(obj));
     GateRef res = env_->GetBuilder()->IsJSObject(obj);
-    EXITENTRY();
     return res;
 }
 
@@ -1183,7 +1175,6 @@ inline GateRef StubBuilder::IsString(GateRef obj)
 {
     ASM_ASSERT(GET_MESSAGE_STRING_ID(IsJSObject), TaggedIsHeapObject(obj));
     GateRef res = env_->GetBuilder()->TaggedObjectIsString(obj);
-    EXITENTRY();
     return res;
 }
 
@@ -2093,7 +2084,7 @@ inline GateRef StubBuilder::IsJSSharedType(GateRef jsType)
 inline GateRef StubBuilder::IsSpecialContainer(GateRef jsType)
 {
     // arraylist and vector has fast pass now
-    return BoolAnd(
+    return BoolOr(
         Int32Equal(jsType, Int32(static_cast<int32_t>(JSType::JS_API_ARRAY_LIST))),
         Int32Equal(jsType, Int32(static_cast<int32_t>(JSType::JS_API_VECTOR))));
 }
@@ -2373,7 +2364,6 @@ inline GateRef StubBuilder::IsCallable(GateRef obj)
 {
     ASM_ASSERT(GET_MESSAGE_STRING_ID(IsCallable), TaggedIsHeapObject(obj));
     GateRef res = env_->GetBuilder()->IsCallable(obj);
-    EXITENTRY();
     return res;
 }
 
@@ -2614,6 +2604,11 @@ inline GateRef StubBuilder::GetMethodFromFunction(GateRef function)
 inline GateRef StubBuilder::GetModuleFromFunction(GateRef function)
 {
     return env_->GetBuilder()->GetModuleFromFunction(function);
+}
+
+inline GateRef StubBuilder::GetHomeObjectFromFunction(GateRef function)
+{
+    return env_->GetBuilder()->GetHomeObjectFromFunction(function);
 }
 
 inline GateRef StubBuilder::GetEntryIndexOfGlobalDictionary(GateRef entry)

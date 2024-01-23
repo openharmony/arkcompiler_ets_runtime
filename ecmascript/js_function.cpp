@@ -89,7 +89,7 @@ JSHandle<JSObject> JSFunction::NewJSFunctionPrototype(JSThread *thread, const JS
     const GlobalEnvConstants *globalConst = thread->GlobalConstants();
     JSHandle<JSFunction> objFun(env->GetObjectFunction());
     JSHandle<JSObject> funPro = thread->GetEcmaVM()->GetFactory()->NewJSObjectByConstructor(objFun);
-    func->SetFunctionPrototype(thread, funPro.GetTaggedValue());
+    SetFunctionPrototype(thread, func, funPro.GetTaggedValue());
 
     // set "constructor" in prototype
     JSHandle<JSTaggedValue> constructorKey = globalConst->GetHandledConstructorString();
@@ -153,7 +153,7 @@ bool JSFunction::PrototypeSetter(JSThread *thread, const JSHandle<JSObject> &sel
         }
         func->SetProtoOrHClass(thread, newClass);
     } else {
-        func->SetFunctionPrototype(thread, value.GetTaggedValue());
+        SetFunctionPrototype(thread, func, value.GetTaggedValue());
     }
     return true;
 }
@@ -342,7 +342,7 @@ bool JSFunction::MakeConstructor(JSThread *thread, const JSHandle<JSFunction> &f
     // func.prototype = proto
     // Let status be DefinePropertyOrThrow(F, "prototype", PropertyDescriptor{[[Value]]:
     // prototype, [[Writable]]: writablePrototype, [[Enumerable]]: false, [[Configurable]]: false}).
-    func->SetFunctionPrototype(thread, proto.GetTaggedValue());
+    SetFunctionPrototype(thread, func, proto.GetTaggedValue());
 
     ASSERT_PRINT(status, "DefineProperty proto_type failed");
     return status;
@@ -943,7 +943,7 @@ void JSFunction::InitializeForConcurrentFunction(JSThread *thread)
         LOG_ECMA(DEBUG) << "CompileMode is esmodule";
         moduleRecord = moduleManager->HostResolveImportedModuleWithMerge(moduleName, recordName);
     }
-    ecmascript::SourceTextModule::InstantiateForConcurrent(thread, moduleRecord, method);
+    ecmascript::SourceTextModule::Instantiate(thread, moduleRecord);
     JSHandle<ecmascript::SourceTextModule> module = JSHandle<ecmascript::SourceTextModule>::Cast(moduleRecord);
     module->SetStatus(ecmascript::ModuleStatus::INSTANTIATED);
     ecmascript::SourceTextModule::EvaluateForConcurrent(thread, module, method);

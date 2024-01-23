@@ -36,12 +36,12 @@
 namespace panda::ecmascript {
 static constexpr int INSUFFICIENT_CONTINUOUS_MEM = 1455;
 
-MemMap PageMap(size_t size, int prot, size_t alignment)
+MemMap PageMap(size_t size, int prot, size_t alignment, void *addr)
 {
     ASSERT(size == AlignUp(size, PageSize()));
     ASSERT(alignment == AlignUp(alignment, PageSize()));
     size_t allocSize = size + alignment;
-    void *result = VirtualAlloc(nullptr, allocSize, MEM_COMMIT, prot);
+    void *result = VirtualAlloc(addr, allocSize, MEM_COMMIT, prot);
     if (result == nullptr) {
         int errCode = GetLastError();
         if (errCode == INSUFFICIENT_CONTINUOUS_MEM) {

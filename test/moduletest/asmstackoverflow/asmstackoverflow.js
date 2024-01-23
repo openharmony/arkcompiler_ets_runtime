@@ -218,6 +218,81 @@ try {
     print("callnew stackoverflow2");
 }
 
+function callarg0_with_callthis() {
+    const arr = [1]
+    function bar() {
+        return 1;
+    }
+    arr.filter(bar);
+    return foo_arg0();
+}
+
+try {
+    foo_arg0();
+} catch (e) {
+    print("callarg0_with_callthis stack overflow!")
+}
+
+function callarg1_with_callthis(a) {
+    const arr = [1]
+    function bar() {
+        return 1;
+    }
+    arr.filter(bar);
+    return callarg1_with_callthis(a);
+}
+
+try {
+    callarg1_with_callthis(1);
+} catch (e) {
+    print("callarg1_with_callthis stack overflow!")
+}
+
+function callarg2_with_callthis(a, b) {
+    const arr = [1]
+    function bar() {
+        return 1;
+    }
+    arr.filter(bar);
+    return callarg2_with_callthis(a, b);
+}
+
+try {
+    callarg2_with_callthis(1, 2);
+} catch (e) {
+    print("callarg2_with_callthis stack overflow!")
+}
+
+function callarg3_with_callthis(a, b, c) {
+    const arr = [1]
+    function bar() {
+        return 1;
+    }
+    arr.filter(bar);
+    return callarg3_with_callthis(a, b, c);
+}
+
+try {
+    callarg3_with_callthis(1, 2, 3);
+} catch (e) {
+    print("callarg3_with_callthis stack overflow!")
+}
+
+function callrange_with_callthis(a, b, c, d) {
+    const arr = [1]
+    function bar() {
+        return 1;
+    }
+    arr.filter(bar);
+    return callrange_with_callthis(a, b, c, d);
+}
+
+try {
+    callrange_with_callthis(1, 2, 3, 4);
+} catch (e) {
+    print("callrange_with_callthis stack overflow!")
+}
+
 // PoC
 var source = Array(2500).join("(") + "a" + Array(2500).join(")");
 try {
@@ -245,4 +320,20 @@ try {
     const v7 = arr.flat(65535);
 } catch (error) {
     print(error.name)
+}
+
+function f0() {
+    return f0;
+}
+class C1 extends f0 {
+    constructor(a3) {
+        super();
+        const v6 = new Proxy(C1, Reflect);
+        new v6();
+    }
+}
+try {
+    new C1(f0);
+} catch(e) {
+    print(e.name);
 }

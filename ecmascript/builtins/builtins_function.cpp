@@ -83,7 +83,7 @@ static std::pair<TaggedArray*, size_t> BuildArgumentsListFast(JSThread *thread,
         TaggedArray *elements = nullptr;
         if (argList->GetElements().IsMutantTaggedArray()) {
             JSHandle<JSObject> obj(arrayObj);
-            int elementsLength = ElementAccessor::GetElementsLength(obj);
+            int elementsLength = static_cast<int>(ElementAccessor::GetElementsLength(obj));
             JSHandle<TaggedArray> newElements = thread->GetEcmaVM()->GetFactory()->
                                                 NewTaggedArray(elementsLength, JSTaggedValue::Undefined());
             for (int i = 0; i < elementsLength; ++i) {
@@ -190,8 +190,19 @@ JSTaggedValue BuiltinsFunction::FunctionPrototypeBind(EcmaRuntimeCallInfo *argv)
     auto globalConst = thread->GlobalConstants();
     JSTaggedValue functionLengthAccessor = globalConst->GetFunctionLengthAccessor();
     JSHandle<JSTaggedValue> lengthKey = globalConst->GetHandledLengthString();
-    JSTaggedValue lengthProperty =
-        ObjectFastOperator::FastGetPropertyByName(thread, target.GetTaggedValue(), lengthKey.GetTaggedValue());
+    JSTaggedValue lengthProperty;
+    if (target->IsBoundFunction() || target->IsJSFunction()) { // fastpath
+        JSHandle<JSObject> obj(thread, target.GetTaggedValue());
+        uint32_t numberOfInlinedProps = obj->GetJSHClass()->GetInlinedProperties();
+        if (JSFunction::LENGTH_INLINE_PROPERTY_INDEX < numberOfInlinedProps) {
+            lengthProperty = obj->GetPropertyInlinedProps(JSFunction::LENGTH_INLINE_PROPERTY_INDEX);
+        }
+    }
+    if (lengthProperty.IsHole()) {
+        lengthProperty = ObjectFastOperator::FastGetPropertyByName(
+            thread, target.GetTaggedValue(), lengthKey.GetTaggedValue());
+    }
+
     if (!lengthProperty.IsAccessor() || functionLengthAccessor != lengthProperty) {
         // 6. Let targetHasLength be HasOwnProperty(Target, "length").
         bool targetHasLength = JSTaggedValue::HasOwnProperty(thread, target, lengthKey);
@@ -232,8 +243,19 @@ JSTaggedValue BuiltinsFunction::FunctionPrototypeBind(EcmaRuntimeCallInfo *argv)
 
     JSTaggedValue functionNameAccessor = globalConst->GetFunctionNameAccessor();
     JSHandle<JSTaggedValue> nameKey = globalConst->GetHandledNameString();
-    JSTaggedValue nameProperty =
-        ObjectFastOperator::FastGetPropertyByName(thread, target.GetTaggedValue(), nameKey.GetTaggedValue());
+    JSTaggedValue nameProperty;
+    if (target->IsBoundFunction() || target->IsJSFunction()) { // fastpath
+        JSHandle<JSObject> obj(thread, target.GetTaggedValue());
+        uint32_t numberOfInlinedProps = obj->GetJSHClass()->GetInlinedProperties();
+        if (JSFunction::NAME_INLINE_PROPERTY_INDEX < numberOfInlinedProps) {
+            nameProperty = obj->GetPropertyInlinedProps(JSFunction::NAME_INLINE_PROPERTY_INDEX);
+        }
+    }
+    if (nameProperty.IsHole()) {
+        nameProperty = ObjectFastOperator::FastGetPropertyByName(
+            thread, target.GetTaggedValue(), nameKey.GetTaggedValue());
+    }
+
     if (!nameProperty.IsAccessor() || functionNameAccessor != nameProperty) {
         // 12. Let targetName be Get(Target, "name").
         JSHandle<JSTaggedValue> targetName = JSObject::GetProperty(thread, target, nameKey).GetValue();

@@ -674,9 +674,9 @@ void Heap::OnAllocateEvent([[maybe_unused]] TaggedObject* address, [[maybe_unuse
 
 std::string FormatCmdLine(const std::string& cmdLine)
 {
-    int startPos = 0;
-    int endPos = cmdLine.size();
-    for (unsigned long i = 0; i < cmdLine.size(); i++) {
+    std::string::size_type startPos = 0;
+    std::string::size_type endPos = cmdLine.size();
+    for (std::string::size_type i = 0; i < cmdLine.size(); i++) {
         if (cmdLine[i] == '/') {
             startPos = i + 1;
         } else if (cmdLine[i] == '\0') {
@@ -1065,13 +1065,18 @@ void Heap::TryTriggerConcurrentMarking()
         }
         return;
     }
-    newSpaceAllocToLimitDuration = (activeSemiSpace_->GetInitialCapacity() - activeSemiSpace_->GetCommittedSize()) /
-        newSpaceAllocSpeed;
-    newSpaceMarkDuration = activeSemiSpace_->GetHeapObjectSize() / newSpaceConcurrentMarkSpeed;
-    // newSpaceRemainSize means the predicted size which can be allocated after the semi concurrent mark.
-    newSpaceRemainSize = (newSpaceAllocToLimitDuration - newSpaceMarkDuration) * newSpaceAllocSpeed;
+    size_t semiSpaceCapacity = activeSemiSpace_->GetInitialCapacity();
+    size_t semiSpaceCommittedSize = activeSemiSpace_->GetCommittedSize();
+    bool triggerMark = semiSpaceCapacity <= semiSpaceCommittedSize;
+    if (!triggerMark) {
+        newSpaceAllocToLimitDuration = (semiSpaceCapacity - semiSpaceCommittedSize) / newSpaceAllocSpeed;
+        newSpaceMarkDuration = activeSemiSpace_->GetHeapObjectSize() / newSpaceConcurrentMarkSpeed;
+        // newSpaceRemainSize means the predicted size which can be allocated after the semi concurrent mark.
+        newSpaceRemainSize = (newSpaceAllocToLimitDuration - newSpaceMarkDuration) * newSpaceAllocSpeed;
+        triggerMark = newSpaceRemainSize < DEFAULT_REGION_SIZE;
+    }
 
-    if (newSpaceRemainSize < DEFAULT_REGION_SIZE) {
+    if (triggerMark) {
         markType_ = MarkType::MARK_YOUNG;
         TriggerConcurrentMarking();
         OPTIONAL_LOG(ecmaVm_, INFO) << "Trigger semi mark";
@@ -1499,6 +1504,10 @@ void Heap::InvokeWeakNodeNativeFinalizeCallback()
 void Heap::PrintHeapInfo(TriggerGCType gcType) const
 {
     OPTIONAL_LOG(ecmaVm_, INFO) << "-----------------------Statistic Heap Object------------------------";
+    OPTIONAL_LOG(ecmaVm_, INFO) << "GC Reason:" << ecmaVm_->GetEcmaGCStats()->GCReasonToString()
+                                << ";OnStartUp:" << onStartUpEvent()
+                                << ";OnHighSensitive:" << static_cast<int>(GetSensitiveStatus())
+                                << ";ConcurrentMark Status:" << static_cast<int>(thread_->GetMarkStatus());
     OPTIONAL_LOG(ecmaVm_, INFO) << "Heap::CollectGarbage, gcType(" << gcType << "), Concurrent Mark("
                                 << concurrentMarker_->IsEnabled() << "), Full Mark(" << IsFullMark() << ")";
     OPTIONAL_LOG(ecmaVm_, INFO) << "ActiveSemi(" << activeSemiSpace_->GetHeapObjectSize()

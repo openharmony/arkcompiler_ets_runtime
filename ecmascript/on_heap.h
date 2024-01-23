@@ -29,7 +29,7 @@ class OnHeap {
 public:
     static bool IsNone(OnHeapMode mode)
     {
-        return mode == OnHeapMode::NONE;
+        return !(mode == OnHeapMode::ON_HEAP || mode == OnHeapMode::NOT_ON_HEAP);
     }
 
     static OnHeapMode Merge(OnHeapMode first, OnHeapMode second)

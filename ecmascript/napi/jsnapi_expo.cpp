@@ -898,7 +898,7 @@ Local<JSValueRef> MapRef::Get(const EcmaVM *vm, Local<JSValueRef> key)
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
     JSHandle<JSMap> map(JSNApiHelper::ToJSHandle(this));
     return JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(thread,
-                map->Get(JSNApiHelper::ToJSTaggedValue(*key))));
+                map->Get(thread, JSNApiHelper::ToJSTaggedValue(*key))));
 }
 
 void MapRef::Set(const EcmaVM *vm, Local<JSValueRef> key, Local<JSValueRef> value)
@@ -1868,13 +1868,14 @@ Local<JSValueRef> ObjectRef::Seal(const EcmaVM *vm)
     return scope.Escape(JSNApiHelper::ToLocal<JSValueRef>(resultValue));
 }
 
-void ObjectRef::SetNativePointerFieldCount(int32_t count)
+void ObjectRef::SetNativePointerFieldCount(const EcmaVM *vm, int32_t count)
 {
+    CROSS_THREAD_AND_EXCEPTION_CHECK(vm);
     // ObjectRef::New may return special value if exception occurs.
     // So we need do special value check before use it.
     DCHECK_SPECIAL_VALUE(this);
     JSHandle<JSObject> object(JSNApiHelper::ToJSHandle(this));
-    object->SetNativePointerFieldCount(count);
+    object->SetNativePointerFieldCount(thread, count);
 }
 
 int32_t ObjectRef::GetNativePointerFieldCount()
@@ -1895,14 +1896,15 @@ void *ObjectRef::GetNativePointerField(int32_t index)
     return object->GetNativePointerField(index);
 }
 
-void ObjectRef::SetNativePointerField(int32_t index, void *nativePointer,
+void ObjectRef::SetNativePointerField(const EcmaVM *vm, int32_t index, void *nativePointer,
     NativePointerCallback callBack, void *data, size_t nativeBindingsize)
 {
+    CROSS_THREAD_AND_EXCEPTION_CHECK(vm);
     // ObjectRef::New may return special value if exception occurs.
     // So we need do special value check before use it.
     DCHECK_SPECIAL_VALUE(this);
     JSHandle<JSObject> object(JSNApiHelper::ToJSHandle(this));
-    object->SetNativePointerField(index, nativePointer, callBack, data, nativeBindingsize);
+    object->SetNativePointerField(thread, index, nativePointer, callBack, data, nativeBindingsize);
 }
 
 // -------------------------------- NativePointerRef ------------------------------------
@@ -2086,6 +2088,9 @@ static void InitClassFunction(EcmaVM *vm, JSHandle<JSFunction> &func, bool callN
     auto globalConst = thread->GlobalConstants();
     JSHandle<JSTaggedValue> accessor = globalConst->GetHandledFunctionPrototypeAccessor();
     func->SetPropertyInlinedProps(thread, JSFunction::CLASS_PROTOTYPE_INLINE_PROPERTY_INDEX,
+                                  accessor.GetTaggedValue());
+    accessor = globalConst->GetHandledFunctionLengthAccessor();
+    func->SetPropertyInlinedProps(thread, JSFunction::LENGTH_INLINE_PROPERTY_INDEX,
                                   accessor.GetTaggedValue());
     JSHandle<JSObject> clsPrototype = JSFunction::NewJSFunctionPrototype(thread, func);
     clsPrototype->GetClass()->SetClassPrototype(true);
@@ -3167,7 +3172,7 @@ bool JSNApi::StopDebugger([[maybe_unused]] EcmaVM *vm)
 #endif // ECMASCRIPT_SUPPORT_DEBUGGER
 }
 
-bool JSNApi::StopDebugger(int tid)
+bool JSNApi::StopDebugger([[maybe_unused]] int tid)
 {
 #if defined(ECMASCRIPT_SUPPORT_DEBUGGER)
     LOG_ECMA(INFO) << "JSNApi::StopDebugger, tid = " << tid;
@@ -3262,7 +3267,7 @@ bool JSNApi::ExecuteInContext(EcmaVM *vm, const std::string &fileName, const std
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, false);
     LOG_ECMA(DEBUG) << "start to execute ark file in context: " << fileName;
     EcmaContext::MountContext(thread);
-    if (!ecmascript::JSPandaFileExecutor::ExecuteFromFile(thread, fileName.c_str(), entry, needUpdate)) {
+    if (!ecmascript::JSPandaFileExecutor::ExecuteFromAbcFile(thread, fileName.c_str(), entry, needUpdate)) {
         LOG_ECMA(ERROR) << "Cannot execute ark file '" << fileName
                         << "' with entry '" << entry << "'" << std::endl;
         return false;
@@ -3275,7 +3280,7 @@ bool JSNApi::Execute(EcmaVM *vm, const std::string &fileName, const std::string 
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, false);
     LOG_ECMA(DEBUG) << "start to execute ark file: " << fileName;
-    if (!ecmascript::JSPandaFileExecutor::ExecuteFromFile(thread, fileName.c_str(), entry, needUpdate)) {
+    if (!ecmascript::JSPandaFileExecutor::ExecuteFromAbcFile(thread, fileName.c_str(), entry, needUpdate)) {
         LOG_ECMA(ERROR) << "Cannot execute ark file '" << fileName
                         << "' with entry '" << entry << "'" << std::endl;
         return false;
@@ -3820,6 +3825,38 @@ Local<PromiseRef> PromiseRef::Then(const EcmaVM *vm, Local<FunctionRef> onFulfil
     return JSNApiHelper::ToLocal<PromiseRef>(JSHandle<JSTaggedValue>(thread, result));
 }
 
+Local<JSValueRef> PromiseRef::GetPromiseState(const EcmaVM *vm)
+{
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
+    JSHandle<JSPromise> promise(JSNApiHelper::ToJSHandle(this));
+    LOG_IF_SPECIAL(promise, ERROR);
+
+    ecmascript::PromiseState state = promise->GetPromiseState();
+    std::string promiseStateStr;
+    switch (state) {
+        case ecmascript::PromiseState::PENDING:
+            promiseStateStr = "Pending";
+            break;
+        case ecmascript::PromiseState::FULFILLED:
+            promiseStateStr = "Fulfilled";
+            break;
+        case ecmascript::PromiseState::REJECTED:
+            promiseStateStr = "Rejected";
+            break;
+    }
+
+    ObjectFactory *factory = vm->GetFactory();
+    return JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(factory->NewFromStdString(promiseStateStr)));
+}
+
+Local<JSValueRef> PromiseRef::GetPromiseResult(const EcmaVM *vm)
+{
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
+    JSHandle<JSPromise> promise(JSNApiHelper::ToJSHandle(this));
+    LOG_IF_SPECIAL(promise, ERROR);
+
+    return JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(vm->GetJSThread(), promise->GetPromiseResult()));
+}
 // ---------------------------------- ProxyRef -----------------------------------------
 Local<JSValueRef> ProxyRef::GetHandler(const EcmaVM *vm)
 {
@@ -3943,11 +3980,12 @@ void WeakMapRef::Set(const EcmaVM *vm, const Local<JSValueRef> &key, const Local
     JSWeakMap::Set(vm->GetJSThread(), weakMap, JSNApiHelper::ToJSHandle(key), JSNApiHelper::ToJSHandle(value));
 }
 
-bool WeakMapRef::Has(Local<JSValueRef> key)
+bool WeakMapRef::Has(const EcmaVM *vm, Local<JSValueRef> key)
 {
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, false);
     DCHECK_SPECIAL_VALUE_WITH_RETURN(this, false);
     JSHandle<JSWeakMap> weakMap(JSNApiHelper::ToJSHandle(this));
-    return weakMap->Has(JSNApiHelper::ToJSTaggedValue(*key));
+    return weakMap->Has(thread, JSNApiHelper::ToJSTaggedValue(*key));
 }
 
 // ---------------------------------- WeakSetRef --------------------------------------

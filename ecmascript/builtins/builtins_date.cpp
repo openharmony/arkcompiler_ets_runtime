@@ -63,6 +63,7 @@ JSTaggedValue BuiltinsDate::DateConstructor(EcmaRuntimeCallInfo *argv)
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
             if (objValue->IsString()) {  // The value is a string object.
                 timeValue = JSDate::Parse(argv);
+                RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
             } else {  // The value is a number.
                 JSTaggedNumber val = JSTaggedValue::ToNumber(thread, objValue);
                 RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -72,25 +73,8 @@ JSTaggedValue BuiltinsDate::DateConstructor(EcmaRuntimeCallInfo *argv)
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         }
     } else {  // two or more values
-        std::array<int64_t, DATE_LENGTH> fields = {0, 0, 1, 0, 0, 0, 0, 0, 0};
-        if (length > CONSTRUCTOR_MAX_LENGTH) {  // The max length is 7.
-            length = CONSTRUCTOR_MAX_LENGTH;
-        }
-        uint32_t i = 0;
-        for (; i < length; ++i) {
-            JSHandle<JSTaggedValue> value = GetCallArg(argv, i);
-            JSTaggedNumber res = JSTaggedValue::ToNumber(thread, value);
-            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-            double temp = JSDate::TimeClip(res.GetNumber());
-            if (std::isnan(temp) || !std::isfinite(temp)) {  // Check the double value is finite.
-                break;
-            }
-            fields[i] = static_cast<int64_t>(temp);
-            if (i == 0 && fields[0] >= 0 && fields[0] < JSDate::HUNDRED) {
-                fields[0] += JSDate::NINETEEN_HUNDRED_YEAR;
-            }
-        }
-        timeValue = JSTaggedValue((i == length) ? JSDate::SetDateValues(&fields, true) : base::NAN_VALUE);
+        timeValue = ExtractDateFields(thread, length, argv, timeValue);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     }
 
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
@@ -481,5 +465,30 @@ JSTaggedValue BuiltinsDate::ToLocaleTimeString(EcmaRuntimeCallInfo *argv)
     return returnValue.GetTaggedValue();
 #endif
 #endif
+}
+
+JSTaggedValue BuiltinsDate::ExtractDateFields(JSThread *thread, uint32_t &length, EcmaRuntimeCallInfo *argv,
+    JSTaggedValue &timeValue)
+{
+    std::array<int64_t, DATE_LENGTH> fields = {0, 0, 1, 0, 0, 0, 0, 0, 0};
+    if (length > CONSTRUCTOR_MAX_LENGTH) {  // The max length is 7.
+        length = CONSTRUCTOR_MAX_LENGTH;
+    }
+    uint32_t i = 0;
+    for (; i < length; ++i) {
+        JSHandle<JSTaggedValue> value = GetCallArg(argv, i);
+        JSTaggedNumber res = JSTaggedValue::ToNumber(thread, value);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        double temp = JSDate::TimeClip(res.GetNumber());
+        if (std::isnan(temp) || !std::isfinite(temp)) {  // Check the double value is finite.
+            break;
+        }
+        fields[i] = static_cast<int64_t>(temp);
+        if (i == 0 && fields[0] >= 0 && fields[0] < JSDate::HUNDRED) {
+            fields[0] += JSDate::NINETEEN_HUNDRED_YEAR;
+        }
+    }
+    timeValue = JSTaggedValue((i == length) ? JSDate::SetDateValues(&fields, true) : base::NAN_VALUE);
+    return timeValue;
 }
 }  // namespace panda::ecmascript::builtins

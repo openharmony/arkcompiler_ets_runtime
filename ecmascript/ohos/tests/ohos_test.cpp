@@ -83,12 +83,6 @@ public:
         return pkgJson + "}";
     }
 
-    static void AddWhiteList()
-    {
-        auto helper = WhiteListHelper::GetInstance();
-        helper->AddWhiteListEntry(TEST_BUNDLE_NAME);
-    }
-
 protected:
     static constexpr const char *TEST_BUNDLE_NAME = "com.ohos.test";
     JSRuntimeOptions runtimeOptions_;
@@ -109,11 +103,11 @@ HWTEST_F_L0(OhosTest, AotWhiteListTest)
 
     file.close();
     auto helper = std::make_unique<WhiteListHelper>(whiteListName);
-    ASSERT_TRUE(helper->IsEnable(bundleScope));
-    ASSERT_TRUE(helper->IsEnable(bundleScope, "entry"));
-    ASSERT_TRUE(helper->IsEnable(moduleScope, "entry"));
-    ASSERT_FALSE(helper->IsEnable(moduleScope, "entry1"));
-    ASSERT_FALSE(helper->IsEnable(moduleScope, "entryComment"));
+    ASSERT_FALSE(helper->IsEnable(bundleScope));
+    ASSERT_FALSE(helper->IsEnable(bundleScope, "entry"));
+    ASSERT_FALSE(helper->IsEnable(moduleScope, "entry"));
+    ASSERT_TRUE(helper->IsEnable(moduleScope, "entry1"));
+    ASSERT_TRUE(helper->IsEnable(moduleScope, "entryComment"));
     unlink(whiteListName);
     rmdir(whiteListTestDir);
 }
@@ -139,7 +133,6 @@ HWTEST_F_L0(OhosTest, OhosPkgArgsParse)
     mkdir(pgoDir, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
     std::ofstream file(runtimeAp);
     file.close();
-    AddWhiteList();
 
     arg_list_t pandaFileNames {};
     std::map<std::string, std::shared_ptr<OhosPkgArgs>> pkgArgsMap;
@@ -182,6 +175,7 @@ HWTEST_F_L0(OhosTest, UseBaselineApFromPgoDir)
     const char *pgoDir = "ohos-UseBaselineApFromPgoDir";
     std::string baselineAp = std::string(pgoDir) + "/entry.ap";
     std::string runtimeAp = std::string(pgoDir) + "/rt_entry.ap";
+    std::string mergedAp = std::string(pgoDir) + "/merged_entry.ap";
     mkdir(pgoDir, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
     std::ofstream file(baselineAp);
     file.close();
@@ -198,9 +192,10 @@ HWTEST_F_L0(OhosTest, UseBaselineApFromPgoDir)
     // Input format is correct, but there is no available ap file for pgoDir, return success.
     ASSERT_TRUE(preProcessor.HandleTargetCompilerMode(cOptions));
 
-    ASSERT_TRUE(cOptions.profilerIn_.empty());
+    ASSERT_FALSE(cOptions.profilerIn_.empty());
     unlink(runtimeAp.c_str());
     unlink(baselineAp.c_str());
+    unlink(mergedAp.c_str());
     rmdir(pgoDir);
 }
 
@@ -216,7 +211,6 @@ HWTEST_F_L0(OhosTest, UseRuntimeApWhenOnlyRuntimeExits)
     file.open(runtimeAp);
     file.close();
 
-    AddWhiteList();
     arg_list_t pandaFileNames {};
     std::map<std::string, std::shared_ptr<OhosPkgArgs>> pkgArgsMap;
     PGOProfilerDecoder decoder;
@@ -230,6 +224,7 @@ HWTEST_F_L0(OhosTest, UseRuntimeApWhenOnlyRuntimeExits)
     ASSERT_TRUE(FileExist(mergedAp.c_str()));
     ASSERT_TRUE(FileExist(baselineAp.c_str()));
     ASSERT_FALSE(FileExist(runtimeAp.c_str()));
+    unlink(runtimeAp.c_str());
     unlink(baselineAp.c_str());
     unlink(mergedAp.c_str());
     rmdir(pgoDir);
@@ -246,7 +241,6 @@ HWTEST_F_L0(OhosTest, UseMergedApWhenOnlyMergedExist)
     file.open(mergedAp);
     file.close();
 
-    AddWhiteList();
     arg_list_t pandaFileNames {};
     std::map<std::string, std::shared_ptr<OhosPkgArgs>> pkgArgsMap;
     PGOProfilerDecoder decoder;
@@ -277,7 +271,6 @@ HWTEST_F_L0(OhosTest, UseMergedApWhenBothRuntimeAndMergedExist)
     file.open(runtimeAp);
     file.close();
 
-    AddWhiteList();
     arg_list_t pandaFileNames {};
     std::map<std::string, std::shared_ptr<OhosPkgArgs>> pkgArgsMap;
     PGOProfilerDecoder decoder;

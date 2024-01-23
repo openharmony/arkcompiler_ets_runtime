@@ -24,14 +24,14 @@
 #include "ecmascript/platform/os.h"
 
 namespace panda::ecmascript {
-MemMap PageMap(size_t size, int prot, size_t alignment)
+MemMap PageMap(size_t size, int prot, size_t alignment, void *addr)
 {
     ASSERT(size == AlignUp(size, PageSize()));
     ASSERT(alignment == AlignUp(alignment, PageSize()));
     size_t allocSize = size + alignment;
-    void *result = mmap(nullptr, allocSize, prot, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    void *result = mmap(addr, allocSize, prot, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
     if (reinterpret_cast<intptr_t>(result) == -1) {
-        LOG_ECMA(FATAL) << "mmap failed with error code:" << strerror(errno);   
+        LOG_ECMA(FATAL) << "mmap failed with error code:" << strerror(errno);
     }
     if (alignment != 0) {
         auto alignResult = AlignUp(reinterpret_cast<uintptr_t>(result), alignment);

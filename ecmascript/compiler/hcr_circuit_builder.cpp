@@ -571,4 +571,22 @@ GateRef CircuitBuilder::OrdinaryHasInstance(GateRef obj, GateRef target)
     currentLabel->SetDepend(ret);
     return ret;
 }
+
+GateRef CircuitBuilder::IsLiteralString(GateRef string)
+{
+    return BoolOr(IsLineString(string), IsConstantString(string));
+}
+
+// left and right both utf-8 or utf-16 and both linestring or constantstring can be concat.
+GateRef CircuitBuilder::CanBeConcat(GateRef leftString, GateRef rightString, GateRef isValidOpt)
+{
+    GateRef isSameType = BoolAnd(IsLiteralString(leftString), IsLiteralString(rightString));
+    return BoolAnd(isSameType, isValidOpt);
+}
+
+// left and right both utf-8 or utf-16 and right is linestring or constantstring can back store.
+GateRef CircuitBuilder::CanBackStore(GateRef rightString, GateRef isValidOpt)
+{
+    return BoolAnd(isValidOpt, IsLiteralString(rightString));
+}
 }

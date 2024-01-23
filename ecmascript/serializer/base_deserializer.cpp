@@ -83,6 +83,15 @@ JSHandle<JSTaggedValue> BaseDeserializer::DeserializeJSTaggedValue()
     // recovery gc after serialize
     heap_->SetOnSerializeEvent(false);
 
+    // If is on concurrent mark, push root object to stack for mark
+    if (JSTaggedValue(result).IsHeapObject() && thread_->IsConcurrentMarkingOrFinished()) {
+        Region *valueRegion = Region::ObjectAddressToRange(static_cast<uintptr_t>(result));
+        TaggedObject *heapValue = JSTaggedValue(result).GetHeapObject();
+        if (valueRegion->AtomicMark(heapValue)) {
+            heap_->GetWorkManager()->Push(0, heapValue, valueRegion);
+        }
+    }
+
     return JSHandle<JSTaggedValue>(thread_, JSTaggedValue(result));
 }
 
@@ -177,6 +186,7 @@ void BaseDeserializer::HandleNewObjectEncodeFlag(SerializedObjectSpace space, Ob
     ConstantPool *constpool = GetAndResetConstantPool();
     bool needNewConstPool = GetAndResetNeedNewConstPool();
     bool isErrorMsg = GetAndResetIsErrorMsg();
+    bool functionInShared = GetAndResetFunctionInShared();
 
     // deserialize object here
     uintptr_t addr = DeserializeTaggedObject(space);
@@ -197,6 +207,9 @@ void BaseDeserializer::HandleNewObjectEncodeFlag(SerializedObjectSpace space, Ob
     } else if (needNewConstPool) {
         // defer new constpool
         newConstPoolInfos_.back()->slotAddr_ = addr + Method::CONSTANT_POOL_OFFSET;
+    }
+    if (functionInShared) {
+        concurrentFunctions_.push_back(reinterpret_cast<JSFunction *>(addr));
     }
     TaggedObject *object = reinterpret_cast<TaggedObject *>(addr);
     if (object->GetClass()->IsJSNativePointer()) {
@@ -369,6 +382,11 @@ size_t BaseDeserializer::ReadSingleEncodeData(uint8_t encodeFlag, uintptr_t addr
             }
             break;
         }
+        case (uint8_t)EncodeFlag::JS_FUNCTION_IN_SHARED: {
+            functionInShared_ = true;
+            handledFieldSize = 0;
+            break;
+        }
         default:
             LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
@@ -391,8 +409,9 @@ void BaseDeserializer::UpdateBarrier(uintptr_t addr, ObjectSlot slot)
         rootRegion->InsertOldToNewRSet(slot.SlotAddress());
     }
 
-    if (valueRegion->IsMarking()) {
-        Barriers::Update(slot.SlotAddress(), rootRegion, reinterpret_cast<TaggedObject *>(addr), valueRegion);
+    if (thread_->IsConcurrentMarkingOrFinished()) {
+        Barriers::Update(thread_, slot.SlotAddress(), rootRegion, reinterpret_cast<TaggedObject *>(addr), valueRegion,
+                         true);
     }
 }
 
@@ -497,8 +516,6 @@ JSTaggedType BaseDeserializer::RelocateObjectProtoAddr(uint8_t objectType)
             return JSHandle<JSFunction>(env->GetArrayBufferFunction())->GetFunctionPrototype().GetRawData();
         case (uint8_t)JSType::JS_SHARED_ARRAY_BUFFER:
             return JSHandle<JSFunction>(env->GetSharedArrayBufferFunction())->GetFunctionPrototype().GetRawData();
-        case (uint8_t)JSType::JS_FUNCTION:
-            return env->GetFunctionPrototype().GetTaggedType();
         case (uint8_t)JSType::JS_ASYNC_FUNCTION:
             return env->GetAsyncFunctionPrototype().GetTaggedType();
         case (uint8_t)JSType::BIGINT:

@@ -66,6 +66,28 @@
     V(JSTaggedValue, Float64ArrayFunctionPrototype, FLOAT64_ARRAY_FUNCTION_PROTOTYPE_INDEX)         \
     V(JSTaggedValue, BigInt64ArrayFunctionPrototype, BIGINT64_ARRAY_FUNCTION_PROTOTYPE_INDEX)       \
     V(JSTaggedValue, BigUint64ArrayFunctionPrototype, BIGUINT64_ARRAY_FUNCTION_PROTOTYPE_INDEX)     \
+    V(JSTaggedValue, Int8ArrayRootHclass, INT8_ARRAY_ROOT_HCLASS_INDEX)                             \
+    V(JSTaggedValue, Uint8ArrayRootHclass, UINT8_ARRAY_ROOT_HCLASS_INDEX)                           \
+    V(JSTaggedValue, Uint8ClampedArrayRootHclass, UINT8_CLAMPED_ARRAY_ROOT_HCLASS_INDEX)            \
+    V(JSTaggedValue, Int16ArrayRootHclass, INT16_ARRAY_ROOT_HCLASS_INDEX)                           \
+    V(JSTaggedValue, Uint16ArrayRootHclass, UINT16_ARRAY_ROOT_HCLASS_INDEX)                         \
+    V(JSTaggedValue, Int32ArrayRootHclass, INT32_ARRAY_ROOT_HCLASS_INDEX)                           \
+    V(JSTaggedValue, Uint32ArrayRootHclass, UINT32_ARRAY_ROOT_HCLASS_INDEX)                         \
+    V(JSTaggedValue, Float32ArrayRootHclass, FLOAT32_ARRAY_ROOT_HCLASS_INDEX)                       \
+    V(JSTaggedValue, Float64ArrayRootHclass, FLOAT64_ARRAY_ROOT_HCLASS_INDEX)                       \
+    V(JSTaggedValue, BigInt64ArrayRootHclass, BIGINT64_ARRAY_ROOT_HCLASS_INDEX)                     \
+    V(JSTaggedValue, BigUint64ArrayRootHclass, BIGUINT64_ARRAY_ROOT_HCLASS_INDEX)                   \
+    V(JSTaggedValue, Int8ArrayRootHclassOnHeap, INT8_ARRAY_ROOT_HCLASS_ON_HEAP_INDEX)               \
+    V(JSTaggedValue, Uint8ArrayRootHclassOnHeap, UINT8_ARRAY_ROOT_HCLASS_ON_HEAP_INDEX)             \
+    V(JSTaggedValue, Uint8ClampedArrayRootHclassOnHeap, UINT8_CLAMPED_ARRAY_ROOT_HCLASS_ON_HEAP_INDEX)  \
+    V(JSTaggedValue, Int16ArrayRootHclassOnHeap, INT16_ARRAY_ROOT_HCLASS_ON_HEAP_INDEX)             \
+    V(JSTaggedValue, Uint16ArrayRootHclassOnHeap, UINT16_ARRAY_ROOT_HCLASS_ON_HEAP_INDEX)           \
+    V(JSTaggedValue, Int32ArrayRootHclassOnHeap, INT32_ARRAY_ROOT_HCLASS_ON_HEAP_INDEX)             \
+    V(JSTaggedValue, Uint32ArrayRootHclassOnHeap, UINT32_ARRAY_ROOT_HCLASS_ON_HEAP_INDEX)           \
+    V(JSTaggedValue, Float32ArrayRootHclassOnHeap, FLOAT32_ARRAY_ROOT_HCLASS_ON_HEAP_INDEX)         \
+    V(JSTaggedValue, Float64ArrayRootHclassOnHeap, FLOAT64_ARRAY_ROOT_HCLASS_ON_HEAP_INDEX)         \
+    V(JSTaggedValue, BigInt64ArrayRootHclassOnHeap, BIGINT64_ARRAY_ROOT_HCLASS_ON_HEAP_INDEX)       \
+    V(JSTaggedValue, BigUint64ArrayRootHclassOnHeap, BIGUINT64_ARRAY_ROOT_HCLASS_ON_HEAP_INDEX)     \
     V(JSTaggedValue, ArrayBufferFunction, ARRAY_BUFFER_FUNCTION_INDEX)                              \
     V(JSTaggedValue, SharedArrayBufferFunction, SHAREDARRAY_BUFFER_FUNCTION_INDEX)                  \
     V(JSTaggedValue, ArrayProtoValuesFunction, ARRAY_PROTO_VALUES_FUNCTION_INDEX)                   \
@@ -161,6 +183,7 @@
     V(JSTaggedValue, FunctionClassWithProto, FUNCTION_CLASS_WITH_PROTO)                             \
     V(JSTaggedValue, FunctionClassWithoutProto, FUNCTION_CLASS_WITHOUT_PROTO)                       \
     V(JSTaggedValue, FunctionClassWithoutName, FUNCTION_CLASS_WITHOUT_NAME)                         \
+    V(JSTaggedValue, BoundFunctionClass, BOUND_FUNCTION_CLASS)                                      \
     V(JSTaggedValue, SFunctionClassWithoutProto, SHARED_FUNCTION_CLASS_WITHOUT_PROTO)               \
     V(JSTaggedValue, ArgumentsClass, ARGUMENTS_CLASS)                                               \
     V(JSTaggedValue, ArgumentsCallerAccessor, ARGUMENTS_CALLER_ACCESSOR)                            \

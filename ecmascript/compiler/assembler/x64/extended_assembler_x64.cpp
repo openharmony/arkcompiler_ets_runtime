@@ -18,10 +18,12 @@
 #include "ecmascript/frames.h"
 
 namespace panda::ecmascript::x64 {
-Register ExtendedAssembler::ghcJSCallDispacherArgs_[JS_CALL_DISPATCHER_ARGS_COUNT] =
-    { r13, rbp, r12, rbx, r14, rsi, rdi, r8, r9 };
-Register ExtendedAssembler::cppJSCallDispacherArgs_[JS_CALL_DISPATCHER_ARGS_COUNT] =
-    { rdi, rbp, rsi, rdx, rcx, r8, r9, rInvalid, rInvalid };
+Register ExtendedAssembler::ghcJSCallDispacherArgs_[JS_CALL_DISPATCHER_ARGS_COUNT] = {
+    r13, rbp, r12, rbx, r14, rsi, rdi, r8, r9
+};
+Register ExtendedAssembler::cppJSCallDispacherArgs_[JS_CALL_DISPATCHER_ARGS_COUNT] = {
+    rdi, rbp, rsi, rdx, rcx, r8, r9, rInvalid, rInvalid
+};
 
 void ExtendedAssembler::PushAlignBytes()
 {

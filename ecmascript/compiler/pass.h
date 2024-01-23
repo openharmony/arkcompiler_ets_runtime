@@ -38,16 +38,17 @@
 #include "ecmascript/compiler/ntype_hcr_lowering.h"
 #include "ecmascript/compiler/number_speculative_runner.h"
 #include "ecmascript/compiler/scheduler.h"
+#include "ecmascript/compiler/string_builder_optimizer.h"
 #include "ecmascript/compiler/slowpath_lowering.h"
 #include "ecmascript/compiler/state_split_linearizer.h"
 #include "ecmascript/compiler/ts_class_analysis.h"
 #include "ecmascript/compiler/ts_inline_lowering.h"
-#include "ecmascript/compiler/type_bytecode_lowering.h"
+#include "ecmascript/compiler/typed_bytecode_lowering.h"
 #include "ecmascript/compiler/ts_hcr_opt_pass.h"
 #include "ecmascript/compiler/type_inference/global_type_infer.h"
 #include "ecmascript/compiler/type_inference/initialization_analysis.h"
 #include "ecmascript/compiler/type_inference/pgo_type_infer.h"
-#include "ecmascript/compiler/type_hcr_lowering.h"
+#include "ecmascript/compiler/typed_hcr_lowering.h"
 #include "ecmascript/compiler/value_numbering.h"
 #include "ecmascript/compiler/instruction_combine.h"
 #include "ecmascript/compiler/verifier.h"
@@ -306,13 +307,13 @@ public:
         bool enableLog = data->GetLog()->EnableMethodCIRLog();
         bool enableTypeLog = data->GetLog()->GetEnableMethodLog() && data->GetLog()->OutputType();
         Chunk chunk(data->GetNativeAreaAllocator());
-        TypeBytecodeLowering lowering(data->GetCircuit(), data->GetPassContext(), &chunk,
+        TypedBytecodeLowering lowering(data->GetCircuit(), data->GetPassContext(), &chunk,
                                       enableLog,
                                       enableTypeLog,
                                       data->GetMethodName(),
                                       passOptions->EnableLoweringBuiltin(),
                                       data->GetRecordName());
-        bool success = lowering.RunTypeBytecodeLowering();
+        bool success = lowering.RunTypedBytecodeLowering();
         if (!success) {
             data->MarkAsTypeAbort();
         }
@@ -352,6 +353,27 @@ public:
     }
 };
 
+class StringOptimizationPass {
+public:
+    bool Run(PassData* data)
+    {
+        PassOptions *passOptions = data->GetPassOptions();
+        if (!passOptions->EnableOptString()) {
+            return false;
+        }
+        TimeScope timescope("StringOptimizationPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
+        bool enableLog = data->GetLog()->EnableMethodCIRLog();
+        Chunk chunk(data->GetNativeAreaAllocator());
+        StringBuilderOptimizer stringBuilder(data->GetCircuit(),
+                                             enableLog,
+                                             data->GetMethodName(),
+                                             data->GetCompilerConfig(),
+                                             &chunk);
+        stringBuilder.Run();
+        return true;
+    }
+};
+
 class TypeHCRLoweringPass {
 public:
     bool Run(PassData* data)
@@ -364,7 +386,7 @@ public:
         bool enableLog = data->GetLog()->EnableMethodCIRLog();
         Chunk chunk(data->GetNativeAreaAllocator());
         CombinedPassVisitor visitor(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk);
-        TypeHCRLowering lowering(data->GetCircuit(),
+        TypedHCRLowering lowering(data->GetCircuit(),
                                  &visitor,
                                  data->GetCompilerConfig(),
                                  data->GetTSManager(),
@@ -372,7 +394,7 @@ public:
                                  passOptions->EnableLoweringBuiltin());
         visitor.AddPass(&lowering);
         visitor.VisitGraph();
-        visitor.PrintLog("TypeHCRLowering");
+        visitor.PrintLog("TypedHCRLowering");
         return true;
     }
 };
@@ -513,8 +535,10 @@ public:
         TimeScope timescope("NumberSpeculativePass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
         Chunk chunk(data->GetNativeAreaAllocator());
         bool enableLog = data->GetLog()->EnableMethodCIRLog();
+        bool enableArrayBoundsCheckElimination = passOptions->EnableArrayBoundsCheckElimination();
         CombinedPassVisitor visitor(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk);
-        NumberSpeculativeRunner(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk).Run();
+        NumberSpeculativeRunner(data->GetCircuit(), enableLog, enableArrayBoundsCheckElimination,
+                                data->GetMethodName(), &chunk).Run();
         return true;
     }
 };
@@ -593,23 +617,6 @@ public:
         visitor.AddPass(&earlyElimination);
         visitor.VisitGraph();
         visitor.PrintLog("early elimination");
-        return true;
-    }
-};
-
-class ArrayBoundsCheckEliminationPass {
-public:
-    bool Run(PassData* data)
-    {
-        PassOptions *passOptions = data->GetPassOptions();
-        if (!passOptions->EnableTypeLowering() || !passOptions->EnableArrayBoundsCheckElimination()) {
-            return false;
-        }
-        TimeScope timescope("ArrayBoundsCheckEliminationPass",
-                            data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
-        Chunk chunk(data->GetNativeAreaAllocator());
-        bool enableLog = data->GetLog()->EnableMethodCIRLog();
-        ArrayBoundsCheckElimination(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk).Run();
         return true;
     }
 };

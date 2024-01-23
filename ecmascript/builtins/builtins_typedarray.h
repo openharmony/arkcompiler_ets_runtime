@@ -18,6 +18,19 @@
 
 #include "ecmascript/base/builtins_base.h"
 
+#define TYPED_ARRAY_TYPES(V)      \
+    V(Int8Array)                  \
+    V(Uint8Array)                 \
+    V(Uint8ClampedArray)          \
+    V(Int16Array)                 \
+    V(Uint16Array)                \
+    V(Int32Array)                 \
+    V(Uint32Array)                \
+    V(Float32Array)               \
+    V(Float64Array)               \
+    V(BigInt64Array)              \
+    V(BigUint64Array)
+
 // All types of %TypedArray%.
 // V(Type, TYPE, bytesPerElement) where JSType::JS_##TYPE is the type index.
 #define BUILTIN_TYPED_ARRAY_TYPES(V)                \

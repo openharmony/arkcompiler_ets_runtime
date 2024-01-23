@@ -18,9 +18,9 @@
 #include "ecmascript/mem/heap.h"
 
 namespace panda::ecmascript {
-void Barriers::Update(uintptr_t slotAddr, Region *objectRegion, TaggedObject *value, Region *valueRegion)
+void Barriers::Update(const JSThread *thread, uintptr_t slotAddr, Region *objectRegion, TaggedObject *value,
+                      Region *valueRegion, bool onDeserialize)
 {
-    JSThread *thread = valueRegion->GetJSThread();
     auto heap = thread->GetEcmaVM()->GetHeap();
     if (heap->IsFullMark()) {
         if (valueRegion->InCollectSet() && !objectRegion->InYoungSpaceOrCSet()) {
@@ -35,7 +35,7 @@ void Barriers::Update(uintptr_t slotAddr, Region *objectRegion, TaggedObject *va
     // Weak ref record and concurrent mark record maybe conflict.
     // This conflict is solved by keeping alive weak reference. A small amount of floating garbage may be added.
     TaggedObject *heapValue = JSTaggedValue(value).GetHeapObject();
-    if (valueRegion->AtomicMark(heapValue)) {
+    if (!onDeserialize && valueRegion->AtomicMark(heapValue)) {
         heap->GetWorkManager()->Push(0, heapValue, valueRegion);
     }
 }

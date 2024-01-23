@@ -190,9 +190,9 @@ HWTEST_F_L0(JSMapIteratorTest, Update)
     // update MapIterator
     mapIterator->Update(thread);
     LinkedHashMap *resultMap = LinkedHashMap::Cast(mapIterator->GetIteratedMap().GetTaggedObject());
-    EXPECT_TRUE(resultMap->Has(keyHandle1.GetTaggedValue()));
-    EXPECT_TRUE(resultMap->Has(keyHandle2.GetTaggedValue()));
-    EXPECT_TRUE(resultMap->Has(keyHandle3.GetTaggedValue()));
+    EXPECT_TRUE(resultMap->Has(thread, keyHandle1.GetTaggedValue()));
+    EXPECT_TRUE(resultMap->Has(thread, keyHandle2.GetTaggedValue()));
+    EXPECT_TRUE(resultMap->Has(thread, keyHandle3.GetTaggedValue()));
 }
 
 /**

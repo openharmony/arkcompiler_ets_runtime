@@ -135,7 +135,7 @@ JSTaggedValue BuiltinsMap::Has(EcmaRuntimeCallInfo *argv)
     }
     JSMap *jsMap = JSMap::Cast(self.GetTaggedValue().GetTaggedObject());
     JSHandle<JSTaggedValue> key = GetCallArg(argv, 0);
-    bool flag = jsMap->Has(key.GetTaggedValue());
+    bool flag = jsMap->Has(thread, key.GetTaggedValue());
     return GetTaggedBoolean(flag);
 }
 
@@ -152,7 +152,7 @@ JSTaggedValue BuiltinsMap::Get(EcmaRuntimeCallInfo *argv)
     }
     JSMap *jsMap = JSMap::Cast(self.GetTaggedValue().GetTaggedObject());
     JSHandle<JSTaggedValue> key = GetCallArg(argv, 0);
-    JSTaggedValue value = jsMap->Get(key.GetTaggedValue());
+    JSTaggedValue value = jsMap->Get(thread, key.GetTaggedValue());
     return value;
 }
 

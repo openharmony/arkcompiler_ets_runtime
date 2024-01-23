@@ -20,6 +20,9 @@
  * @tc.require: issueI7DG0J
  */
 
+var number = Number(0x01000000000000080000000000000000000000n)
+print(number)
+
 try {
     BigInt.asUintN(2147483649, -1873965464n);
 } catch (e) {

@@ -414,7 +414,9 @@
             "mjsunit/regress/regress-708598.js",
             "mjsunit/regress/regress-5845.js",
             "mjsunit/regress/regress-552302.js",
-            "mjsunit/regress/regress-472504.js"
+            "mjsunit/regress/regress-472504.js",
+            "mjsunit/regress/regress-1151.js",
+            "mjsunit/regress/regress-115452.js"
         ]
     },
     {
@@ -975,7 +977,9 @@
           "mjsunit/regress/wasm/regress-1239116.js",
           "mjsunit/regress/wasm/regress-1239116b.js",
           "mjsunit/regress/wasm/regress-1242300.js",
-          "mjsunit/regress/wasm/regress-1255354.js"
+          "mjsunit/regress/wasm/regress-1255354.js",
+          "mjsunit/regress/regress-444805.js",
+          "mjsunit/regress/regress-444805.js-script"
         ]
     },
     {
@@ -1047,7 +1051,8 @@
           "mjsunit/regress/regress-crbug-683667.js",
           "mjsunit/regress/regress-crbug-702798.js",
           "mjsunit/regress/regress-crbug-959727.js",
-          "mjsunit/regress/regress-crbug-990582.js"
+          "mjsunit/regress/regress-crbug-990582.js",
+          "mjsunit/regress/regress-681984.js"
         ]
     },
     {
@@ -1069,11 +1074,62 @@
           "mjsunit/regress/regress-crbug-1384474-variant2.js"
         ]
     },
-    
     {
         "reason": "Not support not strict",
         "files": [
-          "mjsunit/regress/regress-store-global-proxy.js"
+          "mjsunit/regress/regress-store-global-proxy.js",
+          "intl/regress-13494.js",
+          "intl/regress-9788.js",
+          "mjsunit/compiler/regress-9041.js",
+          "mjsunit/compiler/regress-977670.js",
+          "mjsunit/compiler/regress-arguments.js",
+          "mjsunit/compiler/regress-nonextensiblearray-store-outofbounds.js",
+          "mjsunit/regress/regress-1016703.js",
+          "mjsunit/regress/regress-253.js",
+          "mjsunit/regress/regress-2564.js",
+          "mjsunit/regress/regress-2989.js",
+          "mjsunit/regress/regress-3229.js",
+          "mjsunit/regress/regress-354433.js",
+          "mjsunit/regress/regress-469605b.js",
+          "mjsunit/regress/regress-485.js",
+          "mjsunit/regress/regress-5262.js",
+          "mjsunit/regress/regress-682349.js",
+          "mjsunit/regress/regress-932101.js",
+          "mjsunit/regress/regress-932953.js",
+          "mjsunit/regress/regress-captured-object-no-dummy-use.js",
+          "mjsunit/regress/regress-crbug-140083.js",
+          "mjsunit/regress/regress-crbug-1447430.js",
+          "mjsunit/regress/regress-crbug-3184.js",
+          "mjsunit/regress/regress-crbug-350890.js",
+          "mjsunit/regress/regress-crbug-454091.js",
+          "mjsunit/regress/regress-crbug-573858.js",
+          "mjsunit/regress/regress-crbug-664469.js",
+          "mjsunit/regress/regress-crbug-668101.js",
+          "mjsunit/regress/regress-crbug-687990.js",
+          "mjsunit/regress/regress-crbug-688567.js",
+          "mjsunit/regress/regress-crbug-694416.js",
+          "mjsunit/regress/regress-crbug-722783.js",
+          "mjsunit/regress/regress-crbug-764219.js",
+          "mjsunit/regress/regress-crbug-935932.js",
+          "mjsunit/regress/regress-crbug-967101.js",
+          "mjsunit/regress/regress-crbug-981701.js",
+          "mjsunit/regress/regress-crbug-992914.js",
+          "mjsunit/regress/regress-freeze.js",
+          "mjsunit/regress/regress-334.js",
+          "mjsunit/regress/regress-1436.js",
+          "mjsunit/regress/regress-1320094.js",
+          "mjsunit/es6/regress/regress-4482.js",
+          "mjsunit/regress/regress-6288.js",
+          "mjsunit/compiler/regress-sealedarray-store-outofbounds.js",
+          "mjsunit/es6/regress/regress-4482.js",
+          "mjsunit/regress/regress-crbug-1055138-2.js",
+          "mjsunit/regress/regress-crbug-173974.js",
+          "mjsunit/regress/regress-crbug-583257.js",
+          "mjsunit/regress/regress-mask-array-length.js",
+          "mjsunit/regress/regress-no-dummy-use-for-arguments-object.js",
+          "mjsunit/regress/regress-100702.js",
+          "mjsunit/regress/regress-1209444.js",
+          "mjsunit/regress/regress-crbug-980422.js"
         ]
     },
     {
@@ -1104,6 +1160,13 @@
         ]
     },
     {
+        "reason": "Not support Error.captureStackTrace",
+        "files": [
+          "mjsunit/regress/regress-crbug-489597.js",
+          "mjsunit/regress/regress-crbug-489597.js-script"
+        ]
+    },
+    {
         "reason": "Not support RegExp.prototype.compile",
         "files": [
           "mjsunit/regress/regress-585775.js"
@@ -1128,6 +1191,364 @@
           "intl/regress-1336865.js"
         ]
     },
+    {
+        "reason": "Not support Intl.Segmenter",
+        "files": [
+          "intl/regress-1121156.js",
+          "intl/regress-11595.js"
+        ]
+    },
+    {
+        "reason": "Not support Object.getOwnPropertyDescriptors",
+        "files": [
+          "mjsunit/regress/regress-1144672.js"
+        ]
+    },
+    {
+        "reason": "Not support Proxy printErr",
+        "files": [
+          "mjsunit/regress/regress-1158124.js"
+        ]
+    },
+    {
+        "reason": "Arktools empty implementation code",
+        "files": [
+          "mjsunit/regress/regress-252797.js",
+          "mjsunit/regress/regress-4121.js",
+          "mjsunit/regress/regress-5691.js",
+          "mjsunit/regress/regress-5802.js",
+          "mjsunit/regress/regress-797581.js",
+          "mjsunit/regress/regress-800651.js",
+          "mjsunit/regress/regress-crbug-1161847-1.js",
+          "mjsunit/regress/regress-crbug-1161847-2.js",
+          "mjsunit/regress/regress-crbug-1195331.js",
+          "mjsunit/regress/regress-crbug-242502.js",
+          "mjsunit/regress/regress-delete-empty-double.js",
+          "mjsunit/regress/regress-store-transition-dict.js",
+          "mjsunit/regress/regress-trap-allocation-memento.js",
+          "mjsunit/regress/regress-2618.js",
+          "mjsunit/es6/regress/regress-crbug-837939.js",
+          "mjsunit/regress/regress-1449550.js",
+          "mjsunit/es6/regress/regress-9234.js",
+          "mjsunit/regress/regress-1447326.js",
+          "mjsunit/regress/regress-4267.js",
+          "mjsunit/regress/regress-crbug-245480.js",
+          "mjsunit/regress/regress-double-canonicalization.js",
+          "mjsunit/regress/regress-v8-13190.js",
+          "mjsunit/regress/regress-1006640.js",
+          "mjsunit/maglev/regress-1448986.js",
+          "mjsunit/regress/regress-1034322.js",
+          "mjsunit/regress/regress-private-enumerable.js",
+          "mjsunit/regress/regress-1364429.js"
+        ]
+    },
+    {
+        "reason": "isTurboFanned",
+        "files": [
+            "mjsunit/regress/regress-crbug-594183.js"
+          ]	 
+    },
+    {
+        "reason": "test case throw Error",
+        "files": [
+            "mjsunit/regress/regress-crbug-1020162.js",
+            "mjsunit/regress/regress-crbug-1053364.js",
+            "mjsunit/regress/regress-9383.js"
+          ]	 
+    },
+    {
+      "reason": "BuiltinsDateTimeFormat Error",
+      "files": [
+          "intl/regress-10526.js",
+          "intl/regress-10527.js",
+          "intl/regress-9912.js"
+        ]
+    },
+    {
+      "reason": "RegExpParser Error",
+      "files": [
+          "intl/regress-10599.js",
+          "mjsunit/regress/regress-336820.js",
+          "mjsunit/regress/regress-793588.js",
+          "mjsunit/regress/regress-create-exception.js"
+        ]	 
+    },
+    {
+      "reason": "SimpleDateFormat Error",
+      "files": [
+          "intl/regress-10960.js"
+        ]
+    },
+    {
+      "reason": "BuiltinsLocale Error",
+      "files": [
+          "intl/regress-11350.js",
+          "intl/regress-7770.js",
+          "intl/regress-10248.js"
+        ]
+    },
+    {
+      "reason": "JSDateTimeFormat Error",
+      "files": [
+          "intl/regress-8525.js",
+          "intl/regress-9312.js",
+          "intl/regress-9887.js"
+        ]
+    },
+    {
+      "reason": "JSListFormat Error",
+      "files": [
+          "intl/regress-9747.js"
+        ]
+    },
+    {
+      "reason": "RangeError Error",
+      "files": [
+          "message/regress/fail/regress-crbug-691194.js",
+          "mjsunit/regress/regress-crbug-897404.js"
+        ]
+    },
+    {
+      "reason": "JSObject Error",
+      "files": [
+          "mjsunit/compiler/regress-445858.js",
+          "mjsunit/ignition/regress-597565-double-to-object-transition.js",
+          "mjsunit/regress/regress-4296.js",
+          "mjsunit/regress/regress-5566.js",
+          "mjsunit/regress/regress-678917.js",
+          "mjsunit/regress/regress-1403.js"
+        ]
+    },
+    {
+      "reason": "abc Error",
+      "files": [
+          "mjsunit/compiler/regress-stacktrace-methods.js",
+          "mjsunit/ignition/regress-662418.js",
+          "mjsunit/regress/regress-588599.js",
+          "mjsunit/regress/regress-crbug-1260623.js",
+          "mjsunit/regress/regress-7791.js"
+        ]
+    },
+    {
+      "reason": "JSTaggedValue Error",
+      "files": [
+          "mjsunit/es6/regress/regress-2225.js",
+          "mjsunit/regress/regress-crbug-1057653.js"
+        ]
+    },
+    {
+      "reason": "BuiltinsArray Error",
+      "files": [
+          "mjsunit/es6/regress/regress-5929-1.js",
+          "mjsunit/regress/regress-10931.js",
+          "mjsunit/regress/regress-1185072.js",
+          "mjsunit/regress/regress-581.js",
+          "mjsunit/regress/regress-595319.js",
+          "mjsunit/regress/regress-599414-array-concat-fast-path.js",
+          "mjsunit/regress/regress-crbug-1209152.js",
+          "mjsunit/regress/regress-crbug-1426357.js",
+          "mjsunit/regress/regress-crbug-387031.js",
+          "mjsunit/regress/regress-crbug-516592.js",
+          "mjsunit/regress/regress-crbug-592340.js",
+          "mjsunit/regress/regress-crbug-941743.js",
+          "mjsunit/regress/regress-crbug-967065.js",
+          "mjsunit/regress/regress-crbug-967254.js"
+        ]
+    },
+    {
+      "reason": "BuiltinsRegExp Error",
+      "files": [
+          "mjsunit/regress/regress-1006670.js",
+          "mjsunit/regress/regress-1083450.js",
+          "mjsunit/regress/regress-254.js",
+          "mjsunit/regress/regress-3756.js",
+          "mjsunit/regress/regress-5036.js",
+          "mjsunit/regress/regress-6209.js",
+          "mjsunit/regress/regress-779407.js",
+          "mjsunit/regress/regress-786573.js",
+          "mjsunit/regress/regress-799813.js",
+          "mjsunit/regress/regress-800538.js",
+          "mjsunit/regress/regress-980891.js",
+          "mjsunit/regress/regress-latin-1.js"
+        ]
+    },
+    {
+      "reason": "Prototype Error",
+      "files": [
+          "mjsunit/regress/regress-1018871.js",
+          "mjsunit/regress/regress-1062422.js"
+        ]
+    },
+    {
+      "reason": "BuiltinsString Error",
+      "files": [
+          "mjsunit/regress/regress-1075514.js",
+          "mjsunit/regress/regress-1189077.js",
+          "mjsunit/regress/regress-1447343.js",
+          "mjsunit/regress/regress-176.js",
+          "mjsunit/regress/regress-2437.js",
+          "mjsunit/regress/regress-5404.js",
+          "mjsunit/regress/regress-748069.js",
+          "mjsunit/regress/regress-791334.mjs",
+          "mjsunit/regress/regress-crbug-740398.js",
+          "mjsunit/regress/regress-crbug-762874-1.js",
+          "mjsunit/regress/regress-crbug-762874-2.js",
+          "mjsunit/regress/regress-v8-8445-2.js"
+        ]
+    },
+    {
+      "reason": "Type Error",
+      "files": [
+          "mjsunit/regress/regress-10802.js",
+          "mjsunit/regress/regress-651327.js",
+          "mjsunit/regress/regress-675.js",
+          "mjsunit/regress/regress-707066.js",
+          "mjsunit/regress/regress-crbug-1000094.js"
+        ]
+    },
+    {
+      "reason": "BuiltinsObject Error",
+      "files": [
+          "mjsunit/regress/regress-1083.js",
+          "mjsunit/regress/regress-2346.js",
+          "mjsunit/regress/regress-489151.js",
+          "mjsunit/regress/regress-5275-2.js",
+          "mjsunit/regress/regress-95920.js",
+          "mjsunit/regress/regress-crbug-1272026.js",
+          "mjsunit/regress/regress-v8-8445.js"
+        ]
+    },
+    {
+      "reason": "StringHelper Error",
+      "files": [
+          "mjsunit/regress/regress-1415.js"
+        ]
+    },
+    {
+      "reason": "BuiltinsArkTools Error",
+      "files": [
+          "mjsunit/regress/regress-1849.js"
+        ]
+    },
+    {
+      "reason": "Utf8ToU32String Error",
+      "files": [
+          "mjsunit/regress/regress-244.js"
+        ]
+    },
+    {
+      "reason": "BuiltinsTypedArray Error",
+      "files": [
+          "mjsunit/regress/regress-2596.js"
+        ]
+    },
+    {
+      "reason": "SyntaxError",
+      "files": [
+          "mjsunit/regress/regress-350865.js"
+        ]
+    },
+    {
+      "reason": "BuiltinsFunction Error",
+      "files": [
+          "mjsunit/regress/regress-4525.js",
+          "mjsunit/regress/regress-v8-6712.js"
+        ]
+    },
+    {
+      "reason": "Method Error",
+      "files": [
+          "mjsunit/regress/regress-5178.js"
+        ]
+    },
+    {
+      "reason": "SFunction Error",
+      "files": [
+          "mjsunit/regress/regress-5454.js"
+        ]
+    },
+    {
+      "reason": "BuiltinsReflect Error",
+      "files": [
+          "mjsunit/regress/regress-5638.js",
+          "mjsunit/regress/regress-5638b.js",
+          "mjsunit/regress/regress-crbug-1440685.js",
+          "mjsunit/regress/regress-crbug-751715.js"
+        ]
+    },
+    {
+      "reason": "PropertyAttributes Error",
+      "files": [
+          "mjsunit/regress/regress-578775.js",
+          "mjsunit/regress/regress-729671.js"
+        ]
+    },
+    {
+      "reason": "JSProxy Error",
+      "files": [
+          "mjsunit/regress/regress-7716.js",
+          "mjsunit/regress/regress-v8-4972.js"
+        ]
+    },
+    {
+      "reason": "ObjectFastOperator Error",
+      "files": [
+          "mjsunit/regress/regress-961709-classes-opt.js",
+          "mjsunit/regress/regress-961709-classes.js",
+          "mjsunit/regress/regress-crbug-1053939.js",
+          "mjsunit/regress/regress-crbug-1055138-1.js",
+          "mjsunit/regress/regress-crbug-1055138-3.js",
+          "mjsunit/regress/regress-crbug-961709-1.js",
+          "mjsunit/regress/regress-crbug-961709-2.js",
+          "mjsunit/regress/regress-v8-12421.js",
+          "mjsunit/regress/regress-v8-7682.js"
+        ]
+    },
+    {
+      "reason": "BuiltinsPromise Error",
+      "files": [
+          "mjsunit/regress/regress-chromium-1040238.js"
+        ]
+    },
+    {
+      "reason": "Uint8Array Error",
+      "files": [
+          "mjsunit/regress/regress-crbug-1041232.js"
+        ]
+    },
+    {
+      "reason": "SlowRuntimeStub Error",
+      "files": [
+          "mjsunit/regress/regress-crbug-1053939-1.js",
+          "mjsunit/regress/regress-crbug-768158.js",
+          "mjsunit/regress/regress-integer-indexed-element.js"
+        ]
+    },
+    {
+      "reason": "RuntimeStubs Error",
+      "files": [
+          "mjsunit/regress/regress-crbug-1374995.js",
+          "mjsunit/regress/regress-v8-12595.js"
+        ]
+    },
+    {
+      "reason": "ReferenceError Error",
+      "files": [
+          "mjsunit/regress/regress-put-prototype-transition.js"
+        ]
+    },
+    {
+      "reason": "BuiltinsMath Error",
+      "files": [
+          "mjsunit/regress/asm/regress-6838-3.js"
+        ]
+    },
+    {
+        "reason": "JSArray Error",
+        "files": [
+            "mjsunit/regress/regress-crbug-662907.js"
+          ]
+      },
     {
       "reason": "Not a use case file",
       "files": [

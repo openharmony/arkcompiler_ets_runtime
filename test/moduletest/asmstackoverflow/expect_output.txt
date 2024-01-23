@@ -32,6 +32,12 @@ callstatic3 stackoverflow
 callstaticrange stackoverflow
 callnew stackoverflow
 callnew stackoverflow2
+callarg0_with_callthis stack overflow!
+callarg1_with_callthis stack overflow!
+callarg2_with_callthis stack overflow!
+callarg3_with_callthis stack overflow!
+callrange_with_callthis stack overflow!
 SyntaxError
+RangeError
 RangeError
 RangeError

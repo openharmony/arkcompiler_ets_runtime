@@ -73,7 +73,24 @@ public:
 
     static JSTaggedValue FastSetValueInBuffer(JSThread* thread, JSTaggedValue arrBuf, uint32_t byteIndex,
                                               DataViewType type, double val, bool littleEndian);
-    static JSTaggedValue SetValueInBuffer(JSThread* thread, uint32_t byteIndex, uint8_t *block,
+    static JSTaggedValue TryFastSetValueInBuffer(JSThread *thread, JSTaggedValue arrBuf, uint32_t byteBeginOffset,
+                                                 uint32_t byteEndOffset, DataViewType type,
+                                                 double val, bool littleEndian);
+    template<typename T>
+    static void FastSetValueInBufferForByte(uint8_t *byteBeginOffset, uint8_t *byteEndOffset,
+                                            double val);
+    static void FastSetValueInBufferForUint8Clamped(uint8_t *byteBeginOffset, uint8_t *byteEndOffset,
+                                                    double val);
+    template<typename T>
+    static void FastSetValueInBufferForInteger(uint8_t *byteBeginOffset, uint8_t *byteEndOffset,
+                                               double val, bool littleEndian);
+    template<typename T>
+    static void FastSetValueInBufferForFloat(uint8_t *byteBeginOffset, uint8_t *byteEndOffset,
+                                             double val, bool littleEndian);
+    template<typename T>
+    static void FastSetValueInBufferForBigInt(JSThread *thread, uint8_t *byteBeginOffset, uint8_t *byteEndOffset,
+                                              double val, bool littleEndian);
+    static JSTaggedValue SetValueInBuffer(JSThread *thread, uint32_t byteIndex, uint8_t *block,
                                           DataViewType type, double val, bool littleEndian);
     static JSTaggedValue GetValueFromBuffer(JSThread *thread, uint32_t byteIndex, uint8_t *block,
                                             DataViewType type, bool littleEndian);
@@ -86,6 +103,9 @@ private:
 
     template<typename T>
     static void SetTypeData(uint8_t *block, T value, uint32_t index);
+
+    template<typename T>
+    static void FastSetTypeData(uint8_t *byteBeginOffset, uint8_t *byteEndOffset, T value);
 
     template<typename T, NumberSize size>
     static JSTaggedValue GetValueFromBufferForInteger(uint8_t *block, uint32_t byteIndex, bool littleEndian);

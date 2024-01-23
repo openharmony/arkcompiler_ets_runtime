@@ -61,6 +61,7 @@ private:
     void LowerGetGlobalConstantValue(GateRef gate);
     void LowerHeapAllocate(GateRef gate);
     void LowerInt32CheckRightIsZero(GateRef gate);
+    void LowerRemainderIsNegativeZero(GateRef gate);
     void LowerFloat64CheckRightIsZero(GateRef gate);
     void LowerValueCheckNegOverflow(GateRef gate);
     void LowerOverflowCheck(GateRef gate);

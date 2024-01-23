@@ -22,14 +22,6 @@ namespace maplebe {
 using namespace maple;
 
 namespace {
-const std::set<std::string> kFrameWhiteListFunc {
-#include "framewhitelist.def"
-};
-
-bool IsFuncNeedFrame(const std::string &funcName)
-{
-    return kFrameWhiteListFunc.find(funcName) != kFrameWhiteListFunc.end();
-}
 constexpr int32 kSoeChckOffset = 8192;
 
 enum RegsPushPop : uint8 { kRegsPushOp, kRegsPopOp };
@@ -196,12 +188,6 @@ bool AArch64GenProEpilog::TailCallOpt()
     FOR_ALL_BB(bb, &cgFunc) {
         FOR_BB_INSNS(insn, bb) {
             if (insn->IsMachineInstruction() && insn->IsCall()) {
-                if (insn->GetMachineOpcode() == MOP_xbl) {
-                    auto &target = static_cast<FuncNameOperand &>(insn->GetOperand(0));
-                    if (IsFuncNeedFrame(target.GetName())) {
-                        hasGetStackClass = true;
-                    }
-                }
                 ++nCount;
             }
         }

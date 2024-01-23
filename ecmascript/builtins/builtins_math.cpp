@@ -510,27 +510,37 @@ JSTaggedValue BuiltinsMath::Max(EcmaRuntimeCallInfo *argv)
     JSThread *thread = argv->GetThread();
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     uint32_t argLen = argv->GetArgsNumber();
-    auto numberValue = JSTaggedNumber(-base::POSITIVE_INFINITY);
-    // If no arguments are given, the result is -inf
+    // 1. Let coerced be a new empty List.
+    // 2. For each element arg of args, do
+    //    a. Let n be ? ToNumber(arg).
+    //    b. Append n to coerced.
+    std::vector<JSTaggedNumber> numberList(argLen, JSTaggedNumber(-base::POSITIVE_INFINITY));
+    for (uint32_t i = 0; i < argLen; i++) {
+        JSHandle<JSTaggedValue> msg = GetCallArg(argv, i);
+        numberList[i] = JSTaggedValue::ToNumber(thread, msg);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    }
+    // 3. Let highest be -∞𝔽.
+    // 4. For each element number of coerced, do
+    //    a. If number is NaN, return NaN.
+    //    b. If number is +0𝔽 and highest is -0𝔽, set highest to +0𝔽.
+    //    c. If number > highest, set highest to number.
     auto result = JSTaggedNumber(-base::POSITIVE_INFINITY);
     auto tmpMax = -base::POSITIVE_INFINITY;
     auto value = -base::POSITIVE_INFINITY;
     for (uint32_t i = 0; i < argLen; i++) {
-        JSHandle<JSTaggedValue> msg = GetCallArg(argv, i);
-        numberValue = JSTaggedValue::ToNumber(thread, msg);
-        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-        value = numberValue.GetNumber();
+        value = numberList[i].GetNumber();
         if (std::isnan(std::abs(value))) {
             // If any value is NaN, or -NaN, the max result is NaN
-            result = numberValue;
+            result = numberList[i];
             break;
         }
         if (value > tmpMax) {
-            result = numberValue;
+            result = numberList[i];
             tmpMax = value;
         } else if (value == 0 && tmpMax == 0 && IsNegZero(tmpMax) && !IsNegZero(value)) {
             // if tmp_max is -0, value is 0, max is 0
-            result = numberValue;
+            result = numberList[i];
             tmpMax = value;
         }
     }
@@ -545,27 +555,37 @@ JSTaggedValue BuiltinsMath::Min(EcmaRuntimeCallInfo *argv)
     JSThread *thread = argv->GetThread();
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     uint32_t argLen = argv->GetArgsNumber();
-    auto numberValue = JSTaggedNumber(base::POSITIVE_INFINITY);
-    // If no arguments are given, the result is inf
+    // 1. Let coerced be a new empty List.
+    // 2. For each element arg of args, do
+    //    a. Let n be ? ToNumber(arg).
+    //    b. Append n to coerced.
+    std::vector<JSTaggedNumber> numberList(argLen, JSTaggedNumber(base::POSITIVE_INFINITY));
+    for (uint32_t i = 0; i < argLen; i++) {
+        JSHandle<JSTaggedValue> msg = GetCallArg(argv, i);
+        numberList[i] = JSTaggedValue::ToNumber(thread, msg);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    }
+    // 3. Let lowest be +∞𝔽.
+    // 4. For each element number of coerced, do
+    //    a. If number is NaN, return NaN.
+    //    b. If number is -0𝔽 and lowest is +0𝔽, set lowest to -0𝔽.
+    //    c. If number < lowest, set lowest to number.
     auto result = JSTaggedNumber(base::POSITIVE_INFINITY);
     auto tmpMin = base::POSITIVE_INFINITY;
     auto value = base::POSITIVE_INFINITY;
     for (uint32_t i = 0; i < argLen; i++) {
-        JSHandle<JSTaggedValue> msg = GetCallArg(argv, i);
-        numberValue = JSTaggedValue::ToNumber(thread, msg);
-        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-        value = numberValue.GetNumber();
+        value = numberList[i].GetNumber();
         if (std::isnan(std::abs(value))) {
             // If any value is NaN or -NaN, the min result is NaN
-            result = numberValue;
+            result = numberList[i];
             break;
         }
         if (value < tmpMin) {
-            result = numberValue;
+            result = numberList[i];
             tmpMin = value;
         } else if (value == 0 && tmpMin == 0 && !IsNegZero(tmpMin) && IsNegZero(value)) {
             // if tmp_min is 0, value is -0, min is -0
-            result = numberValue;
+            result = numberList[i];
             tmpMin = value;
         }
     }

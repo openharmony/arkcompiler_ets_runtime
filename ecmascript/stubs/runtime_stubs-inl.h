@@ -16,6 +16,8 @@
 #ifndef ECMASCRIPT_STUBS_RUNTIME_STUBS_INL_H
 #define ECMASCRIPT_STUBS_RUNTIME_STUBS_INL_H
 
+#include "ecmascript/ecma_macros.h"
+#include "ecmascript/js_tagged_value.h"
 #include "ecmascript/stubs/runtime_stubs.h"
 
 #include "ecmascript/base/array_helper.h"
@@ -403,6 +405,7 @@ JSTaggedValue RuntimeStubs::RuntimeCopyDataProperties(JSThread *thread, const JS
 
             if (success && desc.IsEnumerable()) {
                 desc.SetWritable(true);
+                desc.SetConfigurable(true);
                 JSTaggedValue::DefineOwnProperty(thread, dst, key, desc);
                 RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
             }
@@ -815,7 +818,7 @@ JSTaggedValue RuntimeStubs::RuntimeCloneClassFromTemplate(JSThread *thread, cons
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
     // After clone both, reset "constructor" and "prototype" properties.
-    cloneClass->SetFunctionPrototype(thread, cloneClassPrototype.GetTaggedValue());
+    JSFunction::SetFunctionPrototype(thread, cloneClass, cloneClassPrototype.GetTaggedValue());
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
     PropertyDescriptor ctorDesc(thread, JSHandle<JSTaggedValue>(cloneClass), true, false, true);
@@ -848,6 +851,9 @@ JSTaggedValue RuntimeStubs::RuntimeCreateClassWithBuffer(JSThread *thread,
                                                          const JSHandle<JSTaggedValue> &module,
                                                          const JSHandle<JSTaggedValue> &length)
 {
+    if (base->IsJSShared()) {
+        THROW_TYPE_ERROR_AND_RETURN(thread, GET_MESSAGE_STRING(NotSendableSubClass), JSTaggedValue::Exception());
+    }
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     CString entry = ModuleManager::GetRecordName(module.GetTaggedValue());
@@ -1591,7 +1597,7 @@ JSTaggedValue RuntimeStubs::RuntimeDynamicImport(JSThread *thread, const JSHandl
 }
 
 JSTaggedValue RuntimeStubs::RuntimeEq(JSThread *thread, const JSHandle<JSTaggedValue> &left,
-                                         const JSHandle<JSTaggedValue> &right)
+                                      const JSHandle<JSTaggedValue> &right)
 {
     bool ret = JSTaggedValue::Equal(thread, left, right);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -1599,7 +1605,7 @@ JSTaggedValue RuntimeStubs::RuntimeEq(JSThread *thread, const JSHandle<JSTaggedV
 }
 
 JSTaggedValue RuntimeStubs::RuntimeNotEq(JSThread *thread, const JSHandle<JSTaggedValue> &left,
-                                            const JSHandle<JSTaggedValue> &right)
+                                         const JSHandle<JSTaggedValue> &right)
 {
     bool ret = JSTaggedValue::Equal(thread, left, right);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -1607,7 +1613,7 @@ JSTaggedValue RuntimeStubs::RuntimeNotEq(JSThread *thread, const JSHandle<JSTagg
 }
 
 JSTaggedValue RuntimeStubs::RuntimeLess(JSThread *thread, const JSHandle<JSTaggedValue> &left,
-                                           const JSHandle<JSTaggedValue> &right)
+                                        const JSHandle<JSTaggedValue> &right)
 {
     bool ret = JSTaggedValue::Compare(thread, left, right) == ComparisonResult::LESS;
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -1615,7 +1621,7 @@ JSTaggedValue RuntimeStubs::RuntimeLess(JSThread *thread, const JSHandle<JSTagge
 }
 
 JSTaggedValue RuntimeStubs::RuntimeLessEq(JSThread *thread, const JSHandle<JSTaggedValue> &left,
-                                             const JSHandle<JSTaggedValue> &right)
+                                          const JSHandle<JSTaggedValue> &right)
 {
     bool ret = JSTaggedValue::Compare(thread, left, right) <= ComparisonResult::EQUAL;
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -1623,7 +1629,7 @@ JSTaggedValue RuntimeStubs::RuntimeLessEq(JSThread *thread, const JSHandle<JSTag
 }
 
 JSTaggedValue RuntimeStubs::RuntimeGreater(JSThread *thread, const JSHandle<JSTaggedValue> &left,
-                                              const JSHandle<JSTaggedValue> &right)
+                                           const JSHandle<JSTaggedValue> &right)
 {
     bool ret = JSTaggedValue::Compare(thread, left, right) == ComparisonResult::GREAT;
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -1631,7 +1637,7 @@ JSTaggedValue RuntimeStubs::RuntimeGreater(JSThread *thread, const JSHandle<JSTa
 }
 
 JSTaggedValue RuntimeStubs::RuntimeGreaterEq(JSThread *thread, const JSHandle<JSTaggedValue> &left,
-                                                const JSHandle<JSTaggedValue> &right)
+                                             const JSHandle<JSTaggedValue> &right)
 {
     ComparisonResult comparison = JSTaggedValue::Compare(thread, left, right);
     bool ret = (comparison == ComparisonResult::GREAT) || (comparison == ComparisonResult::EQUAL);
@@ -1640,7 +1646,7 @@ JSTaggedValue RuntimeStubs::RuntimeGreaterEq(JSThread *thread, const JSHandle<JS
 }
 
 JSTaggedValue RuntimeStubs::RuntimeAdd2(JSThread *thread, const JSHandle<JSTaggedValue> &left,
-                                           const JSHandle<JSTaggedValue> &right)
+                                        const JSHandle<JSTaggedValue> &right)
 {
     if (left->IsString() && right->IsString()) {
         EcmaString *resultStr = EcmaStringAccessor::Concat(
@@ -2977,7 +2983,7 @@ JSTaggedValue RuntimeStubs::RuntimeCreatePrivateProperty(JSThread *thread, JSTag
         return JSTaggedValue::Undefined();
     }
     // instace property number is hidden in the last index of literal buffer
-    uint32_t instacePropertyCount = literalBuffer->Get(literalBufferLength - 1).GetInt();
+    uint32_t instacePropertyCount = static_cast<uint32_t>(literalBuffer->Get(literalBufferLength - 1).GetInt());
     ASSERT(startIndex + count + literalBufferLength - (instacePropertyCount == 0) <= length);
     for (uint32_t i = 0; i < literalBufferLength - 1; i++) {
         JSTaggedValue literalValue = literalBuffer->Get(i);

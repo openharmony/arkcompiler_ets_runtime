@@ -45,13 +45,14 @@ class Label;
 class NTypeBytecodeLowering;
 class SlowPathLowering;
 class StubBuilder;
-class TypeBytecodeLowering;
+class TypedBytecodeLowering;
 class PGOHCRLowering;
 class NTypeHCRLowering;
 class TSHCRLowering;
 class Variable;
 class NativeInlineLowering;
-class TypeHCRLowering;
+class TypedHCRLowering;
+class StringBuilderOptimizer;
 
 #define BINARY_ARITHMETIC_METHOD_LIST_WITH_BITWIDTH(V)                    \
     V(Int16Add, Add, MachineType::I16)                                    \
@@ -175,8 +176,7 @@ public:
         HAS_AOT_NOTFASTCALL,
     };
 
-
-    // ************************************************************* Share IR **********************************************************************************
+    // **************************** Share IR *****************************
     GateRef Arguments(size_t index);
     GateRef DefaultCase(GateRef switchBranch);
     GateRef DependRelay(GateRef state, GateRef depend);
@@ -274,6 +274,7 @@ public:
     GateRef GetHasChanged(GateRef object);
     GateRef GetAccessorHasChanged(GateRef object);
     GateRef HasDeleteProperty(GateRef hClass);
+    GateRef IsOnHeap(GateRef hClass);
     GateRef IsEcmaObject(GateRef obj);
 
     // Set
@@ -285,6 +286,7 @@ public:
     inline GateRef LogicOr(GateRef x, GateRef y);
     GateRef FunctionIsResolved(GateRef function);
     GateRef HasPendingException(GateRef glue); // shareir
+    GateRef IsUtf8String(GateRef string);
     GateRef IsUtf16String(GateRef string);
     GateRef LoadObjectFromConstPool(GateRef jsFunc, GateRef index);
     GateRef IsAccessorInternal(GateRef accessor);
@@ -335,7 +337,7 @@ public:
         return cmpCfg_;
     }
 
-    // ************************************************************* High IR **********************************************************************************
+    // **************************** High IR ******************************
     GateRef CreateArray(ElementsKind kind, uint32_t arraySize, GateRef elementsLength);
     GateRef CreateArrayWithBuffer(ElementsKind kind, ArrayMetaDataAccessor::Mode mode, GateRef cpId,
                                   GateRef constPoolIndex, GateRef elementIndex);
@@ -425,7 +427,6 @@ public:
     inline GateRef CreateWeakRef(GateRef x);
     inline GateRef LoadObjectFromWeakRef(GateRef x);
 
-
     // hClass
     inline GateRef GetElementsKindByHClass(GateRef hClass);
     inline GateRef GetObjectSizeFromHClass(GateRef hClass);
@@ -441,7 +442,7 @@ public:
     // Others
     GateRef OrdinaryHasInstance(GateRef obj, GateRef target);
 
-    // ************************************************************* Middle IR **********************************************************************************
+    // **************************** Middle IR ****************************
     GateRef HeapObjectCheck(GateRef gate, GateRef frameState);
     GateRef ProtoChangeMarkerCheck(GateRef gate);
     GateRef StableArrayCheck(GateRef gate, ElementsKind kind, ArrayMetaDataAccessor::Mode mode);
@@ -474,6 +475,7 @@ public:
     inline GateRef TypedCallBuiltin(GateRef hirGate, const std::vector<GateRef> &args, BuiltinsStubCSigns::ID id);
     GateRef TypeConvert(MachineType type, GateType typeFrom, GateType typeTo, const std::vector<GateRef>& inList);
     GateRef Int32CheckRightIsZero(GateRef right);
+    GateRef RemainderIsNegativeZero(GateRef left, GateRef right);
     GateRef Float64CheckRightIsZero(GateRef right);
     GateRef ValueCheckNegOverflow(GateRef value);
     GateRef OverflowCheck(GateRef value);
@@ -557,7 +559,7 @@ public:
         MemoryOrder order = MemoryOrder::Default());
     inline GateRef StoreToTaggedArray(GateRef array, size_t index, GateRef value);
     GateRef StringEqual(GateRef x, GateRef y);
-    GateRef StringAdd(GateRef x, GateRef y);
+    GateRef StringAdd(GateRef x, GateRef y, uint32_t stringStatus = 0);
     template<TypedStoreOp Op>
     GateRef StoreElement(GateRef receiver, GateRef index, GateRef value, OnHeapMode onHeap = OnHeapMode::NONE);
     GateRef StoreMemory(MemoryType Op, VariableType type, GateRef receiver, GateRef index, GateRef value);
@@ -630,14 +632,28 @@ public:
     inline GateRef BothAreString(GateRef x, GateRef y);
     inline GateRef IsTreeString(GateRef obj);
     inline GateRef IsSlicedString(GateRef obj);
+    inline GateRef IsSpecialSlicedString(GateRef obj);
+    inline GateRef IsLineString(GateRef obj);
+    inline GateRef IsConstantString(GateRef obj);
     inline GateRef TreeStringIsFlat(GateRef string);
     inline GateRef GetFirstFromTreeString(GateRef string);
     inline GateRef GetSecondFromTreeString(GateRef string);
+    inline GateRef ComputeSizeUtf8(GateRef length);
+    inline GateRef ComputeSizeUtf16(GateRef length);
+    inline GateRef AlignUp(GateRef x, GateRef alignment);
+    GateRef TaggedPointerToInt64(GateRef x);
     GateRef GetLengthFromString(GateRef value);
     GateRef GetHashcodeFromString(GateRef glue, GateRef value);
     GateRef TryGetHashcodeFromString(GateRef string);
     GateRef IsIntegerString(GateRef string);
+    GateRef IsLiteralString(GateRef string);
+    GateRef CanBeConcat(GateRef leftString, GateRef rightString, GateRef isValidOpt);
+    GateRef CanBackStore(GateRef rightString, GateRef isValidOpt);
     GateRef GetRawHashFromString(GateRef value);
+    GateRef GetStringDataFromLineOrConstantString(GateRef str);
+    void CopyUtf8AsUtf16(GateRef glue, GateRef dst, GateRef src, GateRef sourceLength);
+    void CopyChars(GateRef glue, GateRef dst, GateRef source, GateRef sourceLength,
+        GateRef charSize, VariableType type);
     void SetRawHashcode(GateRef glue, GateRef str, GateRef rawHashcode, GateRef isInteger);
     GateRef StringFromSingleCharCode(GateRef gate);
     GateRef ToNumber(GateRef gate, GateRef value, GateRef glue);
@@ -648,7 +664,7 @@ public:
     GateRef IsEnumCacheValid(GateRef receiver, GateRef cachedHclass, GateRef kind);
     GateRef NeedCheckProperty(GateRef receiver);
 
-    // ************************************************************* Low IR **********************************************************************************
+    // **************************** Low IR *******************************
     inline GateRef Equal(GateRef x, GateRef y, const char* comment = nullptr);
     inline GateRef NotEqual(GateRef x, GateRef y, const char* comment = nullptr);
     inline GateRef IntPtrDiv(GateRef x, GateRef y);
@@ -661,6 +677,8 @@ public:
     inline GateRef Int8Equal(GateRef x, GateRef y);
     inline GateRef Int32Equal(GateRef x, GateRef y);
     inline GateRef IntPtrGreaterThan(GateRef x, GateRef y);
+    inline GateRef IntPtrAnd(GateRef x, GateRef y);
+    inline GateRef IntPtrNot(GateRef x);
     GateRef AddWithOverflow(GateRef left, GateRef right);
     GateRef SubWithOverflow(GateRef left, GateRef right);
     GateRef MulWithOverflow(GateRef left, GateRef right);
@@ -761,14 +779,14 @@ private:
     CompilationConfig *cmpCfg_ {nullptr};
     friend StubBuilder;
     friend BuiltinsStringStubBuilder;
-    friend TypeBytecodeLowering;
+    friend TypedBytecodeLowering;
     friend NTypeBytecodeLowering;
     friend PGOHCRLowering;
     friend TSHCRLowering;
     friend NTypeHCRLowering;
     friend SlowPathLowering;
     friend NativeInlineLowering;
-    friend TypeHCRLowering;
+    friend TypedHCRLowering;
 };
 
 }  // namespace panda::ecmascript::kungfu

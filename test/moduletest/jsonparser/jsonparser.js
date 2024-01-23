@@ -59,3 +59,13 @@ try {
 } catch (error) {
     print(error.name)
 }
+
+let strData5 = "\"\\uDC00\"";
+let res5 = JSON.parse(strData5);
+print(res5.codePointAt(0))
+
+let strData6 = '{"a": "{\\"width\\": 18}"}'
+print(JSON.stringify(JSON.parse(strData6)))
+
+let strData7 = '{"a": "{\\"name\\": \\"张三\\"}"}'
+print(JSON.stringify(JSON.parse(strData7)))

@@ -398,3 +398,6 @@ let inputString = "/vedio/av{avid}{cid}";
 let extractedContent = inputString.match(/\{([^{}]+)\}/g);
 let replacedString = inputString.replace(/\{([^{}]+)\}/g, '(uuu)').replace(/\//g, "\\/");
 print(replacedString);
+
+let str = "beep boop   afff测试样本one1";
+print(str.split(/([{}:;,]|\s+)/));

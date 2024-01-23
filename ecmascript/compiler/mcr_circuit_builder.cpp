@@ -199,13 +199,14 @@ GateRef CircuitBuilder::StringEqual(GateRef x, GateRef y)
     return ret;
 }
 
-GateRef CircuitBuilder::StringAdd(GateRef x, GateRef y)
+GateRef CircuitBuilder::StringAdd(GateRef x, GateRef y, uint32_t stringStatus)
 {
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
-    auto ret = GetCircuit()->NewGate(circuit_->StringAdd(), MachineType::I64,
-                                     { currentControl, currentDepend, x, y }, GateType::BooleanType());
+    StringStatusAccessor accessor(stringStatus);
+    auto ret = GetCircuit()->NewGate(circuit_->StringAdd(accessor.ToValue()), MachineType::I64,
+                                     { currentControl, currentDepend, x, y }, GateType::AnyType());
     currentLabel->SetControl(ret);
     currentLabel->SetDepend(ret);
     return ret;
@@ -560,6 +561,21 @@ GateRef CircuitBuilder::Int32CheckRightIsZero(GateRef right)
     auto frameState = acc_.FindNearestFrameState(currentDepend);
     GateRef ret = GetCircuit()->NewGate(circuit_->Int32CheckRightIsZero(),
     MachineType::I1, {currentControl, currentDepend, right, frameState}, GateType::NJSValue());
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
+}
+
+GateRef CircuitBuilder::RemainderIsNegativeZero(GateRef left, GateRef right)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    auto frameState = acc_.FindNearestFrameState(currentDepend);
+    GateRef ret = GetCircuit()->NewGate(circuit_->RemainderIsNegativeZero(),
+                                        MachineType::I1,
+                                        {currentControl, currentDepend, left, right, frameState},
+                                        GateType::NJSValue());
     currentLabel->SetControl(ret);
     currentLabel->SetDepend(ret);
     return ret;
@@ -1095,6 +1111,109 @@ GateRef CircuitBuilder::TryGetHashcodeFromString(GateRef string)
     auto ret = *result;
     SubCfgExit();
     return ret;
+}
+
+GateRef CircuitBuilder::GetStringDataFromLineOrConstantString(GateRef str)
+{
+    Label subentry(env_);
+    SubCfgEntry(&subentry);
+    Label exit(env_);
+    Label isConstantString(env_);
+    Label isLineString(env_);
+    DEFVALUE(result, env_, VariableType::NATIVE_POINTER(), IntPtr(0));
+    Branch(IsConstantString(str), &isConstantString, &isLineString);
+    Bind(&isConstantString);
+    {
+        GateRef address = ChangeTaggedPointerToInt64(PtrAdd(str, IntPtr(ConstantString::CONSTANT_DATA_OFFSET)));
+        result = Load(VariableType::NATIVE_POINTER(), address, IntPtr(0));
+        Jump(&exit);
+    }
+    Bind(&isLineString);
+    {
+        result = ChangeTaggedPointerToInt64(PtrAdd(str, IntPtr(LineEcmaString::DATA_OFFSET)));
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *result;
+    SubCfgExit();
+    return ret;
+}
+
+void CircuitBuilder::CopyChars(GateRef glue, GateRef dst, GateRef source,
+    GateRef sourceLength, GateRef charSize, VariableType type)
+{
+    Label subentry(env_);
+    SubCfgEntry(&subentry);
+    DEFVALUE(dstTmp, env_, VariableType::NATIVE_POINTER(), dst);
+    DEFVALUE(sourceTmp, env_, VariableType::NATIVE_POINTER(), source);
+    DEFVALUE(len, env_, VariableType::INT32(), sourceLength);
+    Label loopHead(env_);
+    Label loopEnd(env_);
+    Label next(env_);
+    Label exit(env_);
+    Jump(&loopHead);
+
+    LoopBegin(&loopHead);
+    {
+        Branch(Int32GreaterThan(*len, Int32(0)), &next, &exit);
+        Bind(&next);
+        {
+            len = Int32Sub(*len, Int32(1));
+            GateRef i = Load(type, *sourceTmp, IntPtr(0));
+            Store(type, glue, *dstTmp, IntPtr(0), i);
+            Jump(&loopEnd);
+        }
+    }
+    Bind(&loopEnd);
+    sourceTmp = PtrAdd(*sourceTmp, charSize);
+    dstTmp = PtrAdd(*dstTmp, charSize);
+    LoopEnd(&loopHead);
+
+    Bind(&exit);
+    SubCfgExit();
+    return;
+}
+
+// source is utf8, dst is utf16
+void CircuitBuilder::CopyUtf8AsUtf16(GateRef glue, GateRef dst, GateRef src,
+
+    GateRef sourceLength)
+{
+    Label subentry(env_);
+    SubCfgEntry(&subentry);
+    DEFVALUE(dstTmp, env_, VariableType::NATIVE_POINTER(), dst);
+    DEFVALUE(sourceTmp, env_, VariableType::NATIVE_POINTER(), src);
+    DEFVALUE(len, env_, VariableType::INT32(), sourceLength);
+    Label loopHead(env_);
+    Label loopEnd(env_);
+    Label next(env_);
+    Label exit(env_);
+    Jump(&loopHead);
+    LoopBegin(&loopHead);
+    {
+        Branch(Int32GreaterThan(*len, Int32(0)), &next, &exit);
+        Bind(&next);
+        {
+            len = Int32Sub(*len, Int32(1));
+            GateRef i = Load(VariableType::INT8(), *sourceTmp, IntPtr(0));
+            Store(VariableType::INT16(), glue, *dstTmp, IntPtr(0), ZExtInt8ToInt16(i));
+            Jump(&loopEnd);
+        }
+    }
+
+    Bind(&loopEnd);
+    sourceTmp = PtrAdd(*sourceTmp, IntPtr(sizeof(uint8_t)));
+    dstTmp = PtrAdd(*dstTmp, IntPtr(sizeof(uint16_t)));
+    LoopEnd(&loopHead);
+
+    Bind(&exit);
+    SubCfgExit();
+    return;
+}
+
+GateRef CircuitBuilder::TaggedPointerToInt64(GateRef x)
+{
+    return ChangeTaggedPointerToInt64(x);
 }
 
 GateRef CircuitBuilder::ComputeTaggedArraySize(GateRef length)

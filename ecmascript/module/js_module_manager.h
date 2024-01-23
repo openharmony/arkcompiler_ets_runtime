@@ -72,6 +72,8 @@ public:
     JSTaggedValue GetCurrentModule();
     JSTaggedValue GetNativeModuleValue(JSThread *thread, JSTaggedValue currentModule,
         JSTaggedValue resolvedModule, ResolvedIndexBinding *binding);
+    JSTaggedValue GetNativeModuleValue(JSThread *thread, JSTaggedValue currentModule,
+        JSTaggedValue resolvedModule, ResolvedBinding *binding);
     JSTaggedValue GetCJSModuleValue(JSThread *thread, JSTaggedValue currentModule,
         JSTaggedValue resolvedModule, ResolvedIndexBinding *binding);
     void AddResolveImportedModule(const JSPandaFile *jsPandaFile, const CString &referencingModule);

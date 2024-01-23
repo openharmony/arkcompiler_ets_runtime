@@ -63,7 +63,9 @@ public:
     {
         bool ret = false;
         if (thread->GetEcmaVM()->GetJSOptions().IsEnableOptTrackField()) {
-            switch (GetTrackType()) {
+            TrackType trackType = GetTrackType();
+            attr.SetTrackType(trackType);
+            switch (trackType) {
                 case TrackType::DOUBLE:
                 case TrackType::NUMBER:
                     attr.SetRepresentation(Representation::DOUBLE);

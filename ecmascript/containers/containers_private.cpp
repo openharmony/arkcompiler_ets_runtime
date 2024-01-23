@@ -184,7 +184,7 @@ JSHandle<JSFunction> ContainersPrivate::NewContainerConstructor(JSThread *thread
     JSObject::DefineOwnProperty(thread, prototype, constructorKey, descriptor1);
 
     /* set "prototype" in constructor */
-    ctor->SetFunctionPrototype(thread, prototype.GetTaggedValue());
+    JSFunction::SetFunctionPrototype(thread, ctor, prototype.GetTaggedValue());
 
     return ctor;
 }
@@ -283,8 +283,8 @@ JSHandle<JSTaggedValue> ContainersPrivate::InitializeArrayList(JSThread *thread)
     // ArrayList() = new Function()
     JSHandle<JSTaggedValue> arrayListFunction(NewContainerConstructor(
         thread, prototype, ContainersArrayList::ArrayListConstructor, "ArrayList", FuncLength::ZERO));
-    JSHandle<JSFunction>::Cast(arrayListFunction)->SetFunctionPrototype(thread,
-                                                                        arrayListInstanceClass.GetTaggedValue());
+    JSFunction::SetFunctionPrototype(thread,
+        JSHandle<JSFunction>::Cast(arrayListFunction), arrayListInstanceClass.GetTaggedValue());
 
     // "constructor" property on the prototype
     JSHandle<JSTaggedValue> constructorKey = globalConst->GetHandledConstructorString();
@@ -357,8 +357,8 @@ JSHandle<JSTaggedValue> ContainersPrivate::InitializeLightWeightMap(JSThread *th
     JSHandle<JSTaggedValue> lightWeightMapFunction(NewContainerConstructor(
         thread, funcPrototype, ContainersLightWeightMap::LightWeightMapConstructor, "LightWeightMap",
         FuncLength::ZERO));
-    JSHandle<JSFunction>::Cast(lightWeightMapFunction)->
-        SetFunctionPrototype(thread, lightWeightMapInstanceClass.GetTaggedValue());
+    JSFunction::SetFunctionPrototype(thread,
+        JSHandle<JSFunction>::Cast(lightWeightMapFunction), lightWeightMapInstanceClass.GetTaggedValue());
 
     // "constructor" property on the prototype
     JSHandle<JSTaggedValue> constructorKey = globalConst->GetHandledConstructorString();
@@ -408,7 +408,7 @@ void ContainersPrivate::InitializeLightWeightMapIterator(JSThread *thread)
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSHClass> iteratorClass = factory->NewEcmaHClass(JSObject::SIZE, JSType::JS_ITERATOR,
-                                                                   env->GetIteratorPrototype());
+                                                              env->GetIteratorPrototype());
     JSHandle<JSObject> lightWeightMapIteratorPrototype(factory->NewJSObject(iteratorClass));
     SetFrozenFunction(thread, lightWeightMapIteratorPrototype, "next", JSAPILightWeightMapIterator::Next,
                       FuncLength::ONE);
@@ -431,8 +431,8 @@ JSHandle<JSTaggedValue> ContainersPrivate::InitializeLightWeightSet(JSThread *th
     JSHandle<JSTaggedValue> lightweightSetFunction(
         NewContainerConstructor(thread, funcPrototype, ContainersLightWeightSet::LightWeightSetConstructor,
                                 "LightWeightSet", FuncLength::ZERO));
-    JSHandle<JSFunction>::Cast(lightweightSetFunction)->SetFunctionPrototype(thread, lightweightSetInstanceClass.
-        GetTaggedValue());
+    JSFunction::SetFunctionPrototype(thread,
+        JSHandle<JSFunction>::Cast(lightweightSetFunction), lightweightSetInstanceClass.GetTaggedValue());
     // "constructor" property on the prototype
     JSHandle<JSTaggedValue> constructorKey = globalConst->GetHandledConstructorString();
     JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(funcPrototype), constructorKey, lightweightSetFunction);
@@ -496,7 +496,8 @@ JSHandle<JSTaggedValue> ContainersPrivate::InitializeTreeMap(JSThread *thread)
     // TreeMap() = new Function()
     JSHandle<JSTaggedValue> mapFunction(NewContainerConstructor(
         thread, mapFuncPrototype, ContainersTreeMap::TreeMapConstructor, "TreeMap", FuncLength::ZERO));
-    JSHandle<JSFunction>::Cast(mapFunction)->SetFunctionPrototype(thread, mapInstanceClass.GetTaggedValue());
+    JSFunction::SetFunctionPrototype(thread,
+        JSHandle<JSFunction>::Cast(mapFunction), mapInstanceClass.GetTaggedValue());
 
     // "constructor" property on the prototype
     JSHandle<JSTaggedValue> constructorKey = globalConst->GetHandledConstructorString();
@@ -572,7 +573,8 @@ JSHandle<JSTaggedValue> ContainersPrivate::InitializeTreeSet(JSThread *thread)
     // TreeSet() = new Function()
     JSHandle<JSTaggedValue> setFunction(NewContainerConstructor(
         thread, setFuncPrototype, ContainersTreeSet::TreeSetConstructor, "TreeSet", FuncLength::ZERO));
-    JSHandle<JSFunction>::Cast(setFunction)->SetFunctionPrototype(thread, setInstanceClass.GetTaggedValue());
+    JSFunction::SetFunctionPrototype(thread,
+        JSHandle<JSFunction>::Cast(setFunction), setInstanceClass.GetTaggedValue());
 
     // "constructor" property on the prototype
     JSHandle<JSTaggedValue> constructorKey = globalConst->GetHandledConstructorString();
@@ -645,8 +647,8 @@ JSHandle<JSTaggedValue> ContainersPrivate::InitializePlainArray(JSThread *thread
     JSHandle<JSTaggedValue> plainArrayFunction(
         NewContainerConstructor(thread, plainArrayFuncPrototype, ContainersPlainArray::PlainArrayConstructor,
                                 "PlainArray", FuncLength::ZERO));
-    JSHandle<JSFunction>::Cast(plainArrayFunction)->SetFunctionPrototype(thread,
-                                                                         plainArrayInstanceClass.GetTaggedValue());
+    JSFunction::SetFunctionPrototype(thread,
+        JSHandle<JSFunction>::Cast(plainArrayFunction), plainArrayInstanceClass.GetTaggedValue());
 
     // "constructor" property on the prototype
     JSHandle<JSTaggedValue> constructorKey = globalConst->GetHandledConstructorString();
@@ -719,7 +721,8 @@ JSHandle<JSTaggedValue> ContainersPrivate::InitializeStack(JSThread *thread)
     // Stack() = new Function()
     JSHandle<JSTaggedValue> stackFunction(NewContainerConstructor(
         thread, stackFuncPrototype, ContainersStack::StackConstructor, "Stack", FuncLength::ZERO));
-    JSHandle<JSFunction>::Cast(stackFunction)->SetFunctionPrototype(thread, stackInstanceClass.GetTaggedValue());
+    JSFunction::SetFunctionPrototype(thread,
+        JSHandle<JSFunction>::Cast(stackFunction), stackInstanceClass.GetTaggedValue());
 
     // "constructor" property on the prototype
     JSHandle<JSTaggedValue> constructorKey = globalConst->GetHandledConstructorString();
@@ -777,7 +780,8 @@ JSHandle<JSTaggedValue> ContainersPrivate::InitializeVector(JSThread *thread)
     // Vector() = new Function()
     JSHandle<JSTaggedValue> vectorFunction(NewContainerConstructor(
         thread, prototype, ContainersVector::VectorConstructor, "Vector", FuncLength::ZERO));
-    JSHandle<JSFunction>::Cast(vectorFunction)->SetFunctionPrototype(thread, vectorInstanceClass.GetTaggedValue());
+    JSFunction::SetFunctionPrototype(thread,
+        JSHandle<JSFunction>::Cast(vectorFunction), vectorInstanceClass.GetTaggedValue());
 
     // "constructor" property on the prototype
     JSHandle<JSTaggedValue> constructorKey = globalConst->GetHandledConstructorString();
@@ -858,7 +862,8 @@ JSHandle<JSTaggedValue> ContainersPrivate::InitializeQueue(JSThread *thread)
     // Queue() = new Function()
     JSHandle<JSTaggedValue> queueFunction(NewContainerConstructor(
         thread, queueFuncPrototype, ContainersQueue::QueueConstructor, "Queue", FuncLength::ZERO));
-    JSHandle<JSFunction>::Cast(queueFunction)->SetFunctionPrototype(thread, queueInstanceClass.GetTaggedValue());
+    JSFunction::SetFunctionPrototype(thread,
+        JSHandle<JSFunction>::Cast(queueFunction), queueInstanceClass.GetTaggedValue());
 
     // "constructor" property on the prototype
     JSHandle<JSTaggedValue> constructorKey = globalConst->GetHandledConstructorString();
@@ -912,7 +917,8 @@ JSHandle<JSTaggedValue> ContainersPrivate::InitializeDeque(JSThread *thread)
     // Deque() = new Function()
     JSHandle<JSTaggedValue> dequeFunction(NewContainerConstructor(
         thread, dequeFuncPrototype, ContainersDeque::DequeConstructor, "Deque", FuncLength::ZERO));
-    JSHandle<JSFunction>::Cast(dequeFunction)->SetFunctionPrototype(thread, dequeInstanceClass.GetTaggedValue());
+    JSFunction::SetFunctionPrototype(thread,
+        JSHandle<JSFunction>::Cast(dequeFunction), dequeInstanceClass.GetTaggedValue());
 
     // "constructor" property on the prototype
     JSHandle<JSTaggedValue> constructorKey = globalConst->GetHandledConstructorString();
@@ -965,7 +971,8 @@ JSHandle<JSTaggedValue> ContainersPrivate::InitializeList(JSThread *thread)
         factory->NewEcmaHClass(JSAPIList::SIZE, JSType::JS_API_LIST, listFuncPrototypeValue);
     JSHandle<JSTaggedValue> listFunction(NewContainerConstructor(
         thread, listFuncPrototype, ContainersList::ListConstructor, "List", FuncLength::ZERO));
-    JSHandle<JSFunction>::Cast(listFunction)->SetFunctionPrototype(thread, listInstanceClass.GetTaggedValue());
+    JSFunction::SetFunctionPrototype(thread,
+        JSHandle<JSFunction>::Cast(listFunction), listInstanceClass.GetTaggedValue());
 
     JSHandle<JSTaggedValue> constructorKey = globalConst->GetHandledConstructorString();
     JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(listFuncPrototype), constructorKey, listFunction);
@@ -1015,8 +1022,8 @@ JSHandle<JSTaggedValue> ContainersPrivate::InitializeLinkedList(JSThread *thread
         factory->NewEcmaHClass(JSAPILinkedList::SIZE, JSType::JS_API_LINKED_LIST, linkedListFuncPrototypeValue);
     JSHandle<JSTaggedValue> linkedListFunction(NewContainerConstructor(
         thread, linkedListFuncPrototype, ContainersLinkedList::LinkedListConstructor, "LinkedList", FuncLength::ZERO));
-    JSHandle<JSFunction>::Cast(linkedListFunction)->SetFunctionPrototype(thread,
-                                                                         linkedListInstanceClass.GetTaggedValue());
+    JSFunction::SetFunctionPrototype(thread,
+        JSHandle<JSFunction>::Cast(linkedListFunction), linkedListInstanceClass.GetTaggedValue());
 
     JSHandle<JSTaggedValue> constructorKey = globalConst->GetHandledConstructorString();
     JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(linkedListFuncPrototype), constructorKey, linkedListFunction);
@@ -1101,7 +1108,8 @@ JSHandle<JSTaggedValue> ContainersPrivate::InitializeHashMap(JSThread *thread)
 
     JSHandle<JSTaggedValue> hashMapFunction(NewContainerConstructor(
         thread, hashMapFuncPrototype, ContainersHashMap::HashMapConstructor, "HashMap", FuncLength::ZERO));
-    JSHandle<JSFunction>::Cast(hashMapFunction)->SetFunctionPrototype(thread, hashMapInstanceClass.GetTaggedValue());
+    JSFunction::SetFunctionPrototype(thread,
+        JSHandle<JSFunction>::Cast(hashMapFunction), hashMapInstanceClass.GetTaggedValue());
 
     // "constructor" property on the prototype
     JSHandle<JSTaggedValue> constructorKey = globalConst->GetHandledConstructorString();
@@ -1183,7 +1191,8 @@ JSHandle<JSTaggedValue> ContainersPrivate::InitializeHashSet(JSThread *thread)
 
     JSHandle<JSTaggedValue> hashSetFunction(NewContainerConstructor(
         thread, hashSetFuncPrototype, ContainersHashSet::HashSetConstructor, "HashSet", FuncLength::ZERO));
-    JSHandle<JSFunction>::Cast(hashSetFunction)->SetFunctionPrototype(thread, hashSetInstanceClass.GetTaggedValue());
+    JSFunction::SetFunctionPrototype(thread,
+        JSHandle<JSFunction>::Cast(hashSetFunction), hashSetInstanceClass.GetTaggedValue());
 
     // "constructor" property on the prototype
     JSHandle<JSTaggedValue> constructorKey = globalConst->GetHandledConstructorString();

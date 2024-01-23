@@ -48,6 +48,7 @@ CompilationOptions::CompilationOptions(EcmaVM *vm, JSRuntimeOptions &runtimeOpti
     isEnableLaterElimination_ = runtimeOptions.IsEnableLaterElimination();
     isEnableValueNumbering_ = runtimeOptions.IsEnableValueNumbering();
     isEnableOptInlining_ = runtimeOptions.IsEnableOptInlining();
+    isEnableOptString_ = runtimeOptions.IsEnableOptString();
     isEnableTypeInfer_ = isEnableTypeLowering_ ||
         vm->GetJSThread()->GetCurrentEcmaContext()->GetTSManager()->AssertTypes();
     isEnableOptPGOType_ = runtimeOptions.IsEnableOptPGOType();
@@ -91,8 +92,6 @@ void AotCompilerPreprocessor::HandleTargetModeInfo(CompilationOptions &cOptions)
     vmOpt.SetFastAOTCompileMode(true);
     vmOpt.SetOptLevel(DEFAULT_OPT_LEVEL);
     cOptions.optLevel_ = DEFAULT_OPT_LEVEL;
-    cOptions.isEnableOptTrackField_ = false;
-    cOptions.isEnableLoweringBuiltin_ = false;
 }
 
 bool AotCompilerPreprocessor::HandlePandaFileNames(const int argc, const char **argv)

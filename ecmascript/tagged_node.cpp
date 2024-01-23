@@ -356,6 +356,7 @@ JSTaggedValue RBTreeNode::Delete(JSThread *thread, const JSTaggedValue &treeNode
         }
         cmp = Compare(hash, key, treeNode->GetHash().GetInt(), treeNodeKey);
         if (cmp == 0 && treeNode->GetRight().IsHole()) {
+            oldValue = treeNode->GetValue();
             return JSTaggedValue::Hole();
         }
         JSTaggedValue rightChildVa = treeNode->GetRight();
@@ -375,7 +376,7 @@ JSTaggedValue RBTreeNode::Delete(JSThread *thread, const JSTaggedValue &treeNode
             treeNode->SetHash(thread, minNode->GetHash());
             treeNode->SetRight(thread, DeleteMin(thread, rightChild));
         } else {
-            JSTaggedValue tmpValue = Delete(thread, rightChildVa, rightChild->GetHash().GetInt(), key, oldValue);
+            JSTaggedValue tmpValue = Delete(thread, rightChildVa, hash, key, oldValue);
             treeNode->SetRight(thread, tmpValue);
         }
     }

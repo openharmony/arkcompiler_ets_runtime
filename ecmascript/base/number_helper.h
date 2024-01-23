@@ -34,6 +34,7 @@ static constexpr uint32_t ALLOW_OCTAL = 1U << 1U;
 static constexpr uint32_t ALLOW_HEX = 1U << 2U;
 static constexpr uint32_t IGNORE_TRAILING = 1U << 3U;
 
+static constexpr char HALFCHAR = '5';
 static constexpr uint32_t MAX_PRECISION = 16;
 static constexpr uint8_t BINARY = 2;
 static constexpr uint8_t OCTAL = 8;
@@ -91,6 +92,20 @@ static constexpr uint64_t SPECIAL_HOLE = 0xFFFE000000000001;
 // Special Value for Hole in ElementsKind
 static constexpr uint32_t PGO_POLY_INLINE_REP = 0x7FFFFFFF;
 
+//
+static constexpr int MAX_DIGITS = 21;
+static constexpr int MIN_DIGITS = -6;
+
+// NumberFormat type
+static constexpr int VAR_FORMAT = 0;
+static constexpr int FIXED_FORMAT = 1;
+static constexpr int FRAC_FORMAT  = 2;
+static constexpr int FORCE_FORMAT = 4;
+
+// means add the point char to buf
+static constexpr int POINT_INDEX = 3;
+static constexpr int DECIMAL_INDEX = 2;
+
 class NumberHelper {
 public:
     static inline JSTaggedType GetNaN()
@@ -114,6 +129,7 @@ public:
     static JSTaggedValue DoubleToString(JSThread *thread, double number, int radix);
     static bool IsEmptyString(const uint8_t *start, const uint8_t *end);
     static JSHandle<EcmaString> IntToEcmaString(const JSThread *thread, int number);
+    static JSHandle<EcmaString> DoubleToEcmaString(const JSThread *thread, double d);
     static uint32_t ToCharCode(uint32_t number);
     static JSTaggedValue Int32ToString(JSThread *thread, int32_t number, uint32_t radix);
     static JSHandle<EcmaString> NumberToString(const JSThread *thread, JSTaggedValue number);
@@ -126,20 +142,28 @@ public:
     static double StringToDouble(const uint8_t *start, const uint8_t *end, uint8_t radix, uint32_t flags = NO_FLAGS);
     static int32_t DoubleToInt(double d, size_t bits);
     static int32_t DoubleInRangeInt32(double d);
-    static JSTaggedValue DoubleToExponential(JSThread *thread, double number, int digit);
-    static JSTaggedValue DoubleToFixed(JSThread *thread, double number, int digit);
-    static JSTaggedValue DoubleToPrecision(JSThread *thread, double number, int digit);
     static JSTaggedValue StringToDoubleWithRadix(const uint8_t *start, const uint8_t *end, int radix, bool *negative);
     static CString IntToString(int number);
     static CString IntegerToString(double number, int radix);
     static JSTaggedValue StringToBigInt(JSThread *thread, JSHandle<JSTaggedValue> strVal);
-
+    static JSTaggedValue DoubleToExponential(JSThread *thread, double number, int digit);
+    static JSTaggedValue DoubleToASCII(JSThread *thread, double valueNumber, int digits, int flags);
+    static void DoubleToASCIIWithFlag(std::string& buf, double valueNumber, int digits, int flags);
+    static void ToASCIIWithNegative(std::string& tmpbuf, int digitNumber, int n, const std::string& buf);
+    static void ToASCIIWithGreatThanZero(std::string& tmpbuf, int digitNumber, int number, const std::string& buf);
 private:
     static char Carry(char current, int radix);
     static double Strtod(const char *str, int exponent, uint8_t radix);
     static bool GotoNonspace(uint8_t **ptr, const uint8_t *end);
-    static void GetBase(double d, int digits, int *decpt, char *buf, char *bufTmp, int size);
-    static int GetMinmumDigits(double d, int *decpt, char *buf);
+    static void GetBase(double d, int digits, int *decimalPoint, char *buf, char *bufTmp, int size);
+    static int GetMinmumDigits(double d, int *decimalPoint, char *buf);
+    static int CustomEcvt(double valueNumber, int digits, int *decimalPoint, std::string& buf,
+                          bool isFixed, int *sign);
+    static void CustomFcvt(std::string& buf, int bufSize, double valueNumber, int digits);
+    static int CustomFcvtHelper(std::string& buf, int bufSize, double valueNumber, int digits, int roundingMode);
+    static void GetBaseForRoundingMode(double valueNumber, int digitNumber, int *decimalPoint, std::string& buf,
+                std::string& buf1, int buf1Size, int roundingMode, int *sign);
+    static void CustomEcvtIsFixed(double &valueNumber, int &digits, int *decimalPoint, std::string& buf, int *sign);
 };
 
 // This class is used to generate 0~1 uniform distribution pseudo-random numbers.

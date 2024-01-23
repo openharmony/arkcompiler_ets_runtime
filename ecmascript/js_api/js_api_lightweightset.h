@@ -52,17 +52,17 @@ public:
     JSTaggedValue GetHashAt(int32_t index);
     JSTaggedValue GetValueAt(int32_t index);
     JSTaggedValue Remove(JSThread *thread, JSHandle<JSTaggedValue> &value);
-    bool Has(const JSHandle<JSTaggedValue> &value);
+    bool Has(const JSThread *thread, const JSHandle<JSTaggedValue> &value);
     bool HasHash(const JSHandle<JSTaggedValue> &hashCode);
     bool HasAll(const JSHandle<JSTaggedValue> &value);
     bool RemoveAt(JSThread *thread, int32_t index);
     void RemoveValue(const JSThread *thread, JSHandle<TaggedArray> &taggedArray,
                      uint32_t index);
     bool IsEmpty();
-    int32_t GetIndexOf(JSHandle<JSTaggedValue> &value);
+    int32_t GetIndexOf(const JSThread *thread, JSHandle<JSTaggedValue> &value);
     int32_t BinarySearchHashes(uint32_t hash, int32_t size);
-    int32_t GetHashIndex(const JSHandle<JSTaggedValue> &value, int32_t size);
-    uint32_t Hash(JSTaggedValue key);
+    int32_t GetHashIndex(const JSThread *thread, const JSHandle<JSTaggedValue> &value, int32_t size);
+    uint32_t Hash(const JSThread *thread, JSTaggedValue key);
     inline uint32_t GetSize() const
     {
         return GetLength();

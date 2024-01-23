@@ -31,6 +31,7 @@
     V("getHClass",                      GetHClass,                      1, INVALID)       \
     V("getLexicalEnv",                  GetLexicalEnv,                  1, INVALID)       \
     V("hasTSSubtyping",                 HasTSSubtyping,                 1, INVALID)       \
+    V("isSlicedString",                 IsSlicedString,                 1, INVALID)       \
     V("hiddenStackSourceFile",          HiddenStackSourceFile,          0, INVALID)       \
     V("hintGC",                         HintGC,                         0, INVALID)       \
     V("isNotHoleProperty",              IsNotHoleProperty,              2, INVALID)       \
@@ -45,7 +46,8 @@
     V("getElementsKind",                GetElementsKind,                1, INVALID)       \
     V("isAOTCompiled",                  IsAOTCompiled,                  1, INVALID)       \
     V("isAOTDeoptimized",               IsAOTDeoptimized,               1, INVALID)       \
-    V("printLoopHoistProfilerAndReset", PrintLoopHoistProfilerAndReset, 0, INVALID)
+    V("printLoopHoistProfilerAndReset", PrintLoopHoistProfilerAndReset, 0, INVALID)       \
+    V("isOnHeap",                       IsOnHeap,                       1, INVALID)       \
 
 #define BUILTIN_ARK_TOOLS_FUNCTIONS_REGRESS(V)                                                                \
     V("prepareFunctionForOptimization",            PrepareFunctionForOptimization,            1, INVALID)     \
@@ -152,6 +154,8 @@ public:
 
     static JSTaggedValue HasTSSubtyping(EcmaRuntimeCallInfo *info);
 
+    static JSTaggedValue IsSlicedString(EcmaRuntimeCallInfo *info);
+
     static JSTaggedValue IsNotHoleProperty(EcmaRuntimeCallInfo *info);
 
     static JSTaggedValue ForceFullGC(EcmaRuntimeCallInfo *info);
@@ -179,6 +183,9 @@ public:
 
     // ArkTools.isAOTCompiledAssert(func)
     static JSTaggedValue IsAOTDeoptimized(EcmaRuntimeCallInfo *info);
+
+    // ArkTools.isOnHeap(object)
+    static JSTaggedValue IsOnHeap(EcmaRuntimeCallInfo *info);
 
     // ArkTools.GetElementsKind(array)
     static JSTaggedValue GetElementsKind(EcmaRuntimeCallInfo *info);

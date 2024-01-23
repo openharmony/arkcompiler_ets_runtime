@@ -36,8 +36,15 @@ PartialGC::PartialGC(Heap *heap) : heap_(heap), workManager_(heap->GetWorkManage
 
 void PartialGC::RunPhases()
 {
-    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "PartialGC::RunPhases" + std::to_string(heap_->IsFullMark()));
-    TRACE_GC(GCStats::Scope::ScopeId::TotalGC, heap_->GetEcmaVM()->GetEcmaGCStats());
+    GCStats *gcStats = heap_->GetEcmaVM()->GetEcmaGCStats();
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "PartialGC::RunPhases" + std::to_string(heap_->IsFullMark())
+        + ";Reason" + std::to_string(static_cast<int>(gcStats->GetGCReason()))
+        + ";Sensitive" + std::to_string(static_cast<int>(heap_->GetSensitiveStatus()))
+        + ";Startup" + std::to_string(heap_->onStartUpEvent())
+        + ";ConMark" + std::to_string(static_cast<int>(heap_->GetJSThread()->GetMarkStatus()))
+        + ";Young" + std::to_string(heap_->GetNewSpace()->GetCommittedSize())
+        + ";Old" + std::to_string(heap_->GetOldSpace()->GetCommittedSize()));
+    TRACE_GC(GCStats::Scope::ScopeId::TotalGC, gcStats);
     MEM_ALLOCATE_AND_GC_TRACE(heap_->GetEcmaVM(), PartialGC_RunPhases);
 
     markingInProgress_ = heap_->CheckOngoingConcurrentMarking();
@@ -112,7 +119,10 @@ void PartialGC::Mark()
     if (heap_->IsFullMark()) {
         heap_->GetNonMovableMarker()->ProcessMarkStack(MAIN_THREAD_INDEX);
     } else {
-        heap_->GetNonMovableMarker()->ProcessOldToNew(MAIN_THREAD_INDEX);
+        {
+            ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "GC::ProcessOldToNew");
+            heap_->GetNonMovableMarker()->ProcessOldToNew(MAIN_THREAD_INDEX);
+        }
         heap_->GetNonMovableMarker()->ProcessSnapshotRSet(MAIN_THREAD_INDEX);
     }
     heap_->WaitRunningTaskFinished();
@@ -133,6 +143,7 @@ void PartialGC::Sweep()
 
 void PartialGC::ProcessNativeDelete()
 {
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "GC::ProcessNativeDelete");
     TRACE_GC(GCStats::Scope::ScopeId::ClearNativeObject, heap_->GetEcmaVM()->GetEcmaGCStats());
     WeakRootVisitor gcUpdateWeak = [this](TaggedObject *header) {
         Region *objectRegion = Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(header));

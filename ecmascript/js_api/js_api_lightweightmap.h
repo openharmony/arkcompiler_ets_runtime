@@ -113,7 +113,7 @@ private:
                             AccossorsKind kind);
     static void SetValue(const JSThread *thread, const JSHandle<JSAPILightWeightMap> &lightWeightMap,
                          int32_t index, const JSHandle<JSTaggedValue> &value, AccossorsKind kind);
-    static int32_t Hash(JSTaggedValue key);
+    static int32_t Hash(const JSThread *thread, JSTaggedValue key);
     static int32_t BinarySearchHashes(JSHandle<TaggedArray> &array, int32_t hash, int32_t size);
     static JSHandle<TaggedArray> GetArrayByKind(const JSThread *thread,
                                                 const JSHandle<JSAPILightWeightMap> &lightWeightMap,

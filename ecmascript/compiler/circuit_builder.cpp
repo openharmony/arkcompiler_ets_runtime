@@ -493,6 +493,15 @@ GateRef CircuitBuilder::HasPendingException(GateRef glue)
     return TaggedIsNotHole(exception);
 }
 
+GateRef CircuitBuilder::IsUtf8String(GateRef string)
+{
+    // compressedStringsEnabled fixed to true constant
+    GateRef len = Load(VariableType::INT32(), string, IntPtr(EcmaString::MIX_LENGTH_OFFSET));
+    return Int32Equal(
+        Int32And(len, Int32(EcmaString::STRING_COMPRESSED_BIT)),
+        Int32(EcmaString::STRING_COMPRESSED));
+}
+
 GateRef CircuitBuilder::IsUtf16String(GateRef string)
 {
     // compressedStringsEnabled fixed to true constant
@@ -679,6 +688,15 @@ GateRef CircuitBuilder::HasDeleteProperty(GateRef hClass)
         Int32(0));
 }
 
+GateRef CircuitBuilder::IsOnHeap(GateRef hClass)
+{
+    GateRef bitfield = Load(VariableType::INT32(), hClass, IntPtr(JSHClass::BIT_FIELD_OFFSET));
+    return Int32NotEqual(
+        Int32And(Int32LSR(bitfield, Int32(JSHClass::IsOnHeap::START_BIT)),
+                 Int32((1LU << JSHClass::IsOnHeap::SIZE) - 1)),
+        Int32(0));
+}
+
 GateRef CircuitBuilder::IsEcmaObject(GateRef obj)
 {
     Label entryPass(env_);
@@ -706,6 +724,10 @@ GateRef CircuitBuilder::GetObjectFromConstPool(GateRef glue, GateRef hirGate, Ga
     Label cacheMiss(env_);
     Label cache(env_);
 
+    // HirGate Can not be a nullGate in Aot
+    if (GetCircuit()->IsOptimizedJSFunctionFrame() && hirGate == Circuit::NullGate()) {
+        hirGate = index;
+    }
     auto cacheValue = GetValueFromTaggedArray(constPool, index);
     DEFVALUE(result, env_, VariableType::JS_ANY(), cacheValue);
     Branch(BoolOr(TaggedIsHole(*result), TaggedIsNullPtr(*result)), &cacheMiss, &cache);

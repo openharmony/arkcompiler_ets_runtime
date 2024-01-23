@@ -166,6 +166,6 @@ JSTaggedValue BuiltinsWeakSet::Has(EcmaRuntimeCallInfo *argv)
     if (!JSTaggedValue::CanBeHeldWeakly(thread, value)) {
         GetTaggedBoolean(false);
     }
-    return GetTaggedBoolean(jsWeakSet->Has(value.GetTaggedValue()));
+    return GetTaggedBoolean(jsWeakSet->Has(thread, value.GetTaggedValue()));
 }
 }  // namespace panda::ecmascript::builtins

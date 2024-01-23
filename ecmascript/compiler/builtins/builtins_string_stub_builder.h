@@ -66,6 +66,7 @@ public:
         GateRef trimMode, GateRef isUtf8);
     void StoreParent(GateRef glue, GateRef object, GateRef parent);
     void StoreStartIndex(GateRef glue, GateRef object, GateRef startIndex);
+    void StoreHasBackingStore(GateRef glue, GateRef object, GateRef hasBackingStore);
 private:
     GateRef ChangeStringTaggedPointerToInt64(GateRef x)
     {
@@ -100,6 +101,11 @@ public:
     GateRef GetStartIndexFromSlicedString(GateRef string)
     {
         GateRef offset = IntPtr(SlicedString::STARTINDEX_OFFSET);
+        return Load(VariableType::INT32(), string, offset);
+    }
+    GateRef GetHasBackingStoreFromSlicedString(GateRef string)
+    {
+        GateRef offset = IntPtr(SlicedString::BACKING_STORE_FLAG);
         return Load(VariableType::INT32(), string, offset);
     }
 

@@ -541,6 +541,29 @@ GateRef NewObjectStubBuilder::NewJSFunction(GateRef glue, GateRef constpool, Gat
     return ret;
 }
 
+void NewObjectStubBuilder::NewJSFunction(GateRef glue, GateRef jsFunc, GateRef index, GateRef length, GateRef lexEnv,
+                                         Variable *result, Label *success, Label *failed)
+{
+    auto env = GetEnvironment();
+    Label hasException(env);
+    Label notException(env);
+    GateRef constPool = GetConstPoolFromFunction(jsFunc);
+    GateRef module = GetModuleFromFunction(jsFunc);
+    result->WriteVariable(NewJSFunction(glue, constPool, module, index));
+    Branch(HasPendingException(glue), &hasException, &notException);
+    Bind(&hasException);
+    {
+        Jump(failed);
+    }
+    Bind(&notException);
+    {
+        SetLengthToFunction(glue_, result->ReadVariable(), length);
+        SetLexicalEnvToFunction(glue_, result->ReadVariable(), lexEnv);
+        SetHomeObjectToFunction(glue_, result->ReadVariable(), GetHomeObjectFromFunction(jsFunc));
+        Jump(success);
+    }
+}
+
 void NewObjectStubBuilder::InitializeJSFunction(GateRef glue, GateRef func, GateRef kind)
 {
     auto env = GetEnvironment();
@@ -857,7 +880,8 @@ GateRef NewObjectStubBuilder::NewTrackInfo(GateRef glue, GateRef cachedHClass, G
     GateRef cachedHClassOffset = IntPtr(TrackInfo::CACHED_HCLASS_OFFSET);
     Store(VariableType::JS_POINTER(), glue, *result, cachedHClassOffset, cachedHClass);
     GateRef cachedFuncOffset = IntPtr(TrackInfo::CACHED_FUNC_OFFSET);
-    Store(VariableType::JS_POINTER(), glue, *result, cachedFuncOffset, cachedFunc);
+    GateRef weakCachedFunc = env->GetBuilder()->CreateWeakRef(cachedFunc);
+    Store(VariableType::JS_POINTER(), glue, *result, cachedFuncOffset, weakCachedFunc);
     GateRef arrayLengthOffset = IntPtr(TrackInfo::ARRAY_LENGTH_OFFSET);
     Store(VariableType::INT32(), glue, *result, arrayLengthOffset, arraySize);
     SetSpaceFlagToTrackInfo(glue, *result, Int32(spaceFlag));
@@ -946,6 +970,7 @@ void NewObjectStubBuilder::AllocSlicedStringObject(Variable *result, Label *exit
     builtinsStringStubBuilder.StoreParent(glue_, result->ReadVariable(), flatString->GetFlatString());
     builtinsStringStubBuilder.StoreStartIndex(glue_, result->ReadVariable(),
         Int32Add(from, flatString->GetStartIndex()));
+    builtinsStringStubBuilder.StoreHasBackingStore(glue_, result->ReadVariable(), Int32(0));
     Jump(exit);
 }
 
@@ -1012,6 +1037,9 @@ GateRef NewObjectStubBuilder::FastSuperAllocateThis(GateRef glue, GateRef superC
     Label entry(env);
     env->SubCfgEntry(&entry);
     Label exit(env);
+    Label newTargetIsBase(env);
+    Label newTargetNotBase(env);
+    Label checkHeapObject(env);
     Label isHeapObject(env);
     Label checkJSObject(env);
     Label callRuntime(env);
@@ -1019,8 +1047,20 @@ GateRef NewObjectStubBuilder::FastSuperAllocateThis(GateRef glue, GateRef superC
 
     DEFVARIABLE(thisObj, VariableType::JS_ANY(), Undefined());
     DEFVARIABLE(protoOrHclass, VariableType::JS_ANY(), Undefined());
-    protoOrHclass = Load(VariableType::JS_ANY(), newTarget,
-        IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
+    Branch(IsBase(newTarget), &newTargetIsBase, &newTargetNotBase);
+    Bind(&newTargetIsBase);
+    {
+        protoOrHclass = Load(VariableType::JS_ANY(), superCtor,
+            IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
+        Jump(&checkHeapObject);
+    }
+    Bind(&newTargetNotBase);
+    {
+        protoOrHclass = Load(VariableType::JS_ANY(), newTarget,
+            IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
+        Jump(&checkHeapObject);
+    }
+    Bind(&checkHeapObject);
     Branch(TaggedIsHeapObject(*protoOrHclass), &isHeapObject, &callRuntime);
     Bind(&isHeapObject);
     Branch(IsJSHClass(*protoOrHclass), &checkJSObject, &callRuntime);
@@ -1364,7 +1404,6 @@ GateRef NewObjectStubBuilder::NewTaggedSubArray(GateRef glue, GateRef srcTypedAr
     Store(VariableType::INT32(), glue, obj, IntPtr(JSTypedArray::BYTE_OFFSET_OFFSET), beginByteOffset);
     Store(VariableType::INT32(), glue, obj, IntPtr(JSTypedArray::ARRAY_LENGTH_OFFSET), newLength);
     Store(VariableType::INT32(), glue, obj, IntPtr(JSTypedArray::CONTENT_TYPE_OFFSET), contentType);
-    Store(VariableType::BOOL(), glue, obj, IntPtr(JSTypedArray::ON_HEAP_OFFSET), Boolean(false));
     auto ret = *result;
     env->SubCfgExit();
     return ret;

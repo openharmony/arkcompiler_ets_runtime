@@ -78,11 +78,12 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
     "--enable-force-gc:                    Enable force gc when allocating object. Default: 'true'\n"
     "--enable-ic:                          Switch of inline cache. Default: 'true'\n"
     "--enable-runtime-stat:                Enable statistics of runtime state. Default: 'false'\n"
-    "--compiler-opt-array-bounds-check-elimination: Enable Index Check elimination. Default: 'false'\n"
+    "--compiler-opt-array-bounds-check-elimination: Enable Index Check elimination. Default: 'true'\n"
     "--compiler-opt-constant-folding:      Enable constant folding. Default: 'true'\n"
     "--compiler-opt-type-lowering:         Enable all type optimization pass for aot compiler. Default: 'true'\n"
     "--compiler-opt-early-elimination:     Enable EarlyElimination for aot compiler. Default: 'true'\n"
     "--compiler-opt-later-elimination:     Enable LaterElimination for aot compiler. Default: 'true'\n"
+    "--compiler-opt-string:                Enable string optimization pass for aot compiler. Default: 'true'\n"
     "--compiler-opt-value-numbering:       Enable ValueNumbering for aot compiler. Default: 'true'\n"
     "--compiler-opt-inlining:              Enable inlining function for aot compiler: Default: 'true'\n"
     "--compiler-opt-pgotype:               Enable pgo type for aot compiler: Default: 'true'\n"
@@ -204,6 +205,7 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"compiler-opt-early-elimination", required_argument, nullptr, OPTION_COMPILER_OPT_EARLY_ELIMINATION},
         {"compiler-opt-later-elimination", required_argument, nullptr, OPTION_COMPILER_OPT_LATER_ELIMINATION},
         {"compiler-opt-instr-combine", required_argument, nullptr, OPTION_COMPILER_OPT_INSTRUCTIONE_COMBINE},
+        {"compiler-opt-string", required_argument, nullptr, OPTION_COMPILER_OPT_STRING},
         {"compiler-opt-value-numbering", required_argument, nullptr, OPTION_COMPILER_OPT_VALUE_NUMBERING},
         {"compiler-opt-new-value-numbering", required_argument, nullptr, OPTION_COMPILER_OPT_NEW_VALUE_NUMBERING},
         {"compiler-opt-inlining", required_argument, nullptr, OPTION_COMPILER_OPT_INLINING},
@@ -736,6 +738,14 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                     return false;
                 }
                 break;
+            case OPTION_COMPILER_OPT_STRING:
+                ret = ParseBoolParam(&argBool);
+                if (ret) {
+                    SetEnableOptString(argBool);
+                } else {
+                    return false;
+                }
+                break;
             case OPTION_COMPILER_OPT_VALUE_NUMBERING:
                 ret = ParseBoolParam(&argBool);
                 if (ret) {
@@ -1066,10 +1076,12 @@ void JSRuntimeOptions::SetOptionsForTargetCompilation()
     if (IsTargetCompilerMode()) {
         SetTargetBuiltinsDtsPath();
         SetTargetTriple("aarch64-unknown-linux-gnu");
+        SetEnableOptTrackField(false);
+        SetEnableOptInlining(false);
         if (IsPartialCompilerMode()) {
             SetEnableOptPGOType(true);
             if (IsPGOProfilerPathEmpty()) {
-                LOG_ECMA(ERROR) << "no pgo profile file in partial mode!";
+                LOG_ECMA(DEBUG) << "no pgo profile file in partial mode!";
             }
         } else {
             SetEnableOptPGOType(false);

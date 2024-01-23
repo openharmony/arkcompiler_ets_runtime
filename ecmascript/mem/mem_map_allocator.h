@@ -75,13 +75,15 @@ public:
         return MemMap();
     }
 
-    bool IsRegularCommittedFull(size_t cachedSize) {
+    bool IsRegularCommittedFull(size_t cachedSize)
+    {
         LockHolder lock(lock_);
         size_t size = regularMapCommitted_.size();
         return size > (cachedSize / REGULAR_MMAP_SIZE) ? true : false;
     }
 
-    int ShouldFreeMore(size_t cachedSize) {
+    int ShouldFreeMore(size_t cachedSize)
+    {
         LockHolder lock(lock_);
         int result = static_cast<int>(regularMapCommitted_.size());
         return result - static_cast<int>(cachedSize / REGULAR_MMAP_SIZE);
@@ -93,7 +95,6 @@ public:
         LockHolder lock(lock_);
         regularMapCommitted_.emplace_back(mem, size);
     }
-
 
     void AddMemToCache(void *mem, size_t size)
     {
@@ -113,6 +114,17 @@ public:
             remainderMem = remainderMem + REGULAR_MMAP_SIZE;
         }
         return MemMap(memMap.GetMem(), REGULAR_MMAP_SIZE);
+    }
+
+    void SplitMemMapToCache(MemMap memMap)
+    {
+        auto memAddr = reinterpret_cast<uintptr_t>(memMap.GetMem());
+        size_t memTotalSize = AlignDown(memMap.GetSize(), REGULAR_MMAP_SIZE);
+        size_t count = memTotalSize / REGULAR_MMAP_SIZE;
+        while (count-- > 0) {
+            memMapCache_.emplace_back(reinterpret_cast<void *>(memAddr), REGULAR_MMAP_SIZE);
+            memAddr += REGULAR_MMAP_SIZE;
+        }
     }
 
     void InsertMemMap(MemMap memMap)
@@ -240,10 +252,18 @@ public:
         AdapterSuitablePoolCapacity();
         memMapTotalSize_ = 0;
         size_t initialHugeObjectCapacity = std::min(capacity_ / 2, INITIAL_HUGE_OBJECT_CAPACITY);
-        MemMap memMap = PageMap(initialHugeObjectCapacity, PAGE_PROT_NONE, alignment);
+        MemMap hugeMemMap = PageMap(initialHugeObjectCapacity, PAGE_PROT_NONE, alignment);
+        PageTag(hugeMemMap.GetMem(), hugeMemMap.GetSize(), PageTagType::MEMPOOL_CACHE);
+        PageRelease(hugeMemMap.GetMem(), hugeMemMap.GetSize());
+        memMapFreeList_.Initialize(hugeMemMap, capacity_);
+#if defined(PANDA_TARGET_64) && !WIN_OR_MAC_OR_IOS_PLATFORM
+        size_t initialRegularObjectCapacity = std::min(capacity_ / 2, INITIAL_REGULAR_OBJECT_CAPACITY);
+        MemMap memMap = PageMap(initialRegularObjectCapacity, PAGE_PROT_NONE, alignment, RandomGenerateBigAddr());
         PageTag(memMap.GetMem(), memMap.GetSize(), PageTagType::MEMPOOL_CACHE);
         PageRelease(memMap.GetMem(), memMap.GetSize());
-        memMapFreeList_.Initialize(memMap, capacity_);
+        memMapPool_.InsertMemMap(memMap);
+        memMapPool_.SplitMemMapToCache(memMap);
+#endif
     }
 
     void Finalize()
@@ -282,7 +302,19 @@ public:
     void CacheOrFree(void *mem, size_t size, bool isRegular, size_t cachedSize);
 
 private:
+    // Random generate big mem map addr to avoid js heap is written by others
+    void *RandomGenerateBigAddr()
+    {
+        std::srand((int)time(NULL));
+        uint64_t randomNum = rand() % RANDOM_NUM_MAX;
+        // Big addr random change in 0x10000000000 ~ 0x1FF00000000
+        return reinterpret_cast<void *>(BIG_MEM_MAP_BEGIN_ADDR + (randomNum << UINT32_BIT));
+    }
+
     static constexpr size_t REGULAR_REGION_MMAP_SIZE = 4_MB;
+    static constexpr uint64_t BIG_MEM_MAP_BEGIN_ADDR = 0x10000000000;
+    static constexpr size_t RANDOM_NUM_MAX = 0xFF;
+    static constexpr size_t UINT32_BIT = 32;
 
     void AdapterSuitablePoolCapacity();
     void Free(void *mem, size_t size, bool isRegular);

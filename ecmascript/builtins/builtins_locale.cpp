@@ -179,6 +179,7 @@ JSTaggedValue BuiltinsLocale::GetBaseName(EcmaRuntimeCallInfo *argv)
     JSHandle<JSLocale> locale = JSHandle<JSLocale>::Cast(loc);
     icu::Locale icuLocale = icu::Locale::createFromName(locale->GetIcuLocale()->getBaseName());
     JSHandle<EcmaString> baseName = intl::LocaleHelper::ToLanguageTag(thread, icuLocale);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     return baseName.GetTaggedValue();
 }
 

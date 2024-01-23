@@ -186,7 +186,7 @@ JSHandle<JSHClass> ObjectFactory::InitClassClass()
 {
     JSHandle<JSHClass> hClassHandle = NewEcmaHClassClass(nullptr, JSHClass::SIZE, JSType::HCLASS);
     JSHClass *hclass = reinterpret_cast<JSHClass *>(hClassHandle.GetTaggedValue().GetTaggedObject());
-    hclass->SetClass(hclass);
+    hclass->SetClass(thread_, hclass);
     return hClassHandle;
 }
 
@@ -201,7 +201,7 @@ JSHandle<JSHClass> ObjectFactory::NewEcmaHClass(JSHClass *hclass, uint32_t size,
 }
 
 JSHandle<JSHClass> ObjectFactory::NewEcmaReadOnlyHClass(JSHClass *hclass, uint32_t size, JSType type,
-                                                          uint32_t inlinedProps)
+                                                        uint32_t inlinedProps)
 {
     NewObjectHook();
     uint32_t classSize = JSHClass::SIZE;
@@ -214,7 +214,7 @@ JSHandle<JSHClass> ObjectFactory::NewEcmaReadOnlyHClass(JSHClass *hclass, uint32
 JSHandle<JSHClass> ObjectFactory::NewEcmaHClass(uint32_t size, JSType type, uint32_t inlinedProps)
 {
     return NewEcmaHClass(JSHClass::Cast(thread_->GlobalConstants()->GetHClassClass().GetTaggedObject()),
-                           size, type, inlinedProps);
+                         size, type, inlinedProps);
 }
 
 void ObjectFactory::InitObjectFields(const TaggedObject *object)
@@ -1619,6 +1619,46 @@ JSHandle<JSHClass> ObjectFactory::CreateFunctionClass(FunctionKind kind, uint32_
     return functionClass;
 }
 
+JSHandle<JSHClass> ObjectFactory::CreateBoundFunctionClass()
+{
+    JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
+    JSHandle<JSTaggedValue> proto = env->GetFunctionPrototype();
+    JSHandle<JSHClass> hclass = NewEcmaHClass(JSBoundFunction::SIZE, JSType::JS_BOUND_FUNCTION, proto);
+    hclass->SetCallable(true);
+
+    // set hclass layout
+    uint32_t fieldOrder = 0;
+    const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
+    ASSERT(JSFunction::LENGTH_INLINE_PROPERTY_INDEX == fieldOrder);
+    JSHandle<LayoutInfo> layoutInfoHandle = CreateLayoutInfo(JSFunction::LENGTH_OF_INLINE_PROPERTIES);
+    {
+        PropertyAttributes attributes = PropertyAttributes::DefaultAccessor(false, false, true);
+        attributes.SetIsInlinedProps(true);
+        attributes.SetRepresentation(Representation::TAGGED);
+        attributes.SetOffset(fieldOrder);
+        layoutInfoHandle->AddKey(thread_, fieldOrder, globalConst->GetLengthString(), attributes);
+        fieldOrder++;
+    }
+
+    ASSERT(JSFunction::NAME_INLINE_PROPERTY_INDEX == fieldOrder);
+    // not set name in-object property on class which may have a name() method
+    {
+        PropertyAttributes attributes = PropertyAttributes::DefaultAccessor(false, false, true);
+        attributes.SetIsInlinedProps(true);
+        attributes.SetRepresentation(Representation::TAGGED);
+        attributes.SetOffset(fieldOrder);
+        layoutInfoHandle->AddKey(thread_, fieldOrder,
+                                 globalConst->GetHandledNameString().GetTaggedValue(), attributes);
+        fieldOrder++;
+    }
+
+    {
+        hclass->SetLayout(thread_, layoutInfoHandle);
+        hclass->SetNumberOfProps(fieldOrder);
+    }
+    return hclass;
+}
+
 JSHandle<JSHClass> ObjectFactory::CreateDefaultClassPrototypeHClass(JSHClass *hclass)
 {
     uint32_t size = ClassInfoExtractor::NON_STATIC_RESERVED_LENGTH;
@@ -1807,42 +1847,10 @@ JSHandle<JSBoundFunction> ObjectFactory::NewJSBoundFunction(const JSHandle<JSTag
                                                             const JSHandle<TaggedArray> &args)
 {
     JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
-    JSHandle<JSTaggedValue> proto = env->GetFunctionPrototype();
-    JSHandle<JSHClass> hclass = NewEcmaHClass(JSBoundFunction::SIZE, JSType::JS_BOUND_FUNCTION, proto);
-
-    // set hclass layout
-    uint32_t fieldOrder = 0;
     const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
-    ASSERT(JSFunction::LENGTH_INLINE_PROPERTY_INDEX == fieldOrder);
-    JSHandle<LayoutInfo> layoutInfoHandle = CreateLayoutInfo(JSFunction::LENGTH_OF_INLINE_PROPERTIES);
-    {
-        PropertyAttributes attributes = PropertyAttributes::DefaultAccessor(false, false, true);
-        attributes.SetIsInlinedProps(true);
-        attributes.SetRepresentation(Representation::TAGGED);
-        attributes.SetOffset(fieldOrder);
-        layoutInfoHandle->AddKey(thread_, fieldOrder, globalConst->GetLengthString(), attributes);
-        fieldOrder++;
-    }
 
-    ASSERT(JSFunction::NAME_INLINE_PROPERTY_INDEX == fieldOrder);
-    // not set name in-object property on class which may have a name() method
-    {
-        PropertyAttributes attributes = PropertyAttributes::DefaultAccessor(false, false, true);
-        attributes.SetIsInlinedProps(true);
-        attributes.SetRepresentation(Representation::TAGGED);
-        attributes.SetOffset(fieldOrder);
-        layoutInfoHandle->AddKey(thread_, fieldOrder,
-                                 thread_->GlobalConstants()->GetHandledNameString().GetTaggedValue(), attributes);
-        fieldOrder++;
-    }
-
-    {
-        hclass->SetLayout(thread_, layoutInfoHandle);
-        hclass->SetNumberOfProps(fieldOrder);
-    }
-
+    JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(env->GetBoundFunctionClass());
     JSHandle<JSBoundFunction> bundleFunction = JSHandle<JSBoundFunction>::Cast(NewJSObject(hclass));
-
     // set properties
     JSHandle<JSTaggedValue> accessor = globalConst->GetHandledFunctionNameAccessor();
     bundleFunction->SetPropertyInlinedProps(thread_, JSFunction::NAME_INLINE_PROPERTY_INDEX,
@@ -1854,7 +1862,7 @@ JSHandle<JSBoundFunction> ObjectFactory::NewJSBoundFunction(const JSHandle<JSTag
     bundleFunction->SetBoundTarget(thread_, target);
     bundleFunction->SetBoundThis(thread_, boundThis);
     bundleFunction->SetBoundArguments(thread_, args);
-    hclass->SetCallable(true);
+    
     if (target.GetTaggedValue().IsConstructor()) {
         bundleFunction->SetConstructor(true);
     }
@@ -1942,7 +1950,7 @@ JSHandle<JSAsyncGeneratorObject> ObjectFactory::NewJSAsyncGeneratorObject(JSHand
         proto = realmHandle->GetAsyncGeneratorPrototype();
     }
     JSHandle<JSHClass> hclass = NewEcmaHClass(JSAsyncGeneratorObject::SIZE,
-                                                  JSType::JS_ASYNC_GENERATOR_OBJECT, proto);
+                                              JSType::JS_ASYNC_GENERATOR_OBJECT, proto);
     JSHandle<JSAsyncGeneratorObject> generatorObject =
         JSHandle<JSAsyncGeneratorObject>::Cast(NewJSObjectWithInit(hclass));
     return generatorObject;
@@ -2306,13 +2314,13 @@ JSHandle<JSRealm> ObjectFactory::NewJSRealm()
 {
     JSHandle<JSHClass> hClassHandle = NewEcmaHClassClass(nullptr, JSHClass::SIZE, JSType::HCLASS);
     JSHClass *hclass = reinterpret_cast<JSHClass *>(hClassHandle.GetTaggedValue().GetTaggedObject());
-    hclass->SetClass(hclass);
+    hclass->SetClass(thread_, hclass);
     JSHandle<JSHClass> realmEnvClass = NewEcmaHClass(*hClassHandle, GlobalEnv::SIZE, JSType::GLOBAL_ENV);
     JSHandle<GlobalEnv> realmEnvHandle = NewGlobalEnv(*realmEnvClass);
 
     auto result = TemplateMap::Create(thread_);
     realmEnvHandle->SetTemplateMap(thread_, result);
-
+    realmEnvHandle->SetJSThread(thread_);
     Builtins builtins;
     builtins.Initialize(realmEnvHandle, thread_, false, true);
     JSHandle<JSTaggedValue> protoValue = thread_->GlobalConstants()->GetHandledJSRealmClass();
@@ -2401,7 +2409,7 @@ JSHandle<TaggedArray> ObjectFactory::NewAndCopyTaggedArray(JSHandle<TaggedArray>
         return dstElements;
     }
     Region *region = Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(*dstElements));
-    if (region->InYoungSpace() && !region->IsMarking()) {
+    if (region->InYoungSpace() && !thread_->IsConcurrentMarkingOrFinished()) {
         size_t size = oldLength * sizeof(JSTaggedType);
         if (memcpy_s(reinterpret_cast<void *>(dstElements->GetData()), size,
             reinterpret_cast<void *>(srcElements->GetData() + k), size) != EOK) {
@@ -2425,7 +2433,7 @@ JSHandle<TaggedArray> ObjectFactory::NewAndCopyNameDictionary(JSHandle<TaggedArr
         return dstElements;
     }
     Region *region = Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(*dstElements));
-    if (region->InYoungSpace() && !region->IsMarking()) {
+    if (region->InYoungSpace() && !thread_->IsConcurrentMarkingOrFinished()) {
         size_t size = length * sizeof(JSTaggedType);
         if (memcpy_s(reinterpret_cast<void *>(dstElements->GetData()), size,
             reinterpret_cast<void *>(srcElements->GetData()), size) != EOK) {
@@ -2469,7 +2477,7 @@ JSHandle<TaggedArray> ObjectFactory::NewAndCopyTaggedArrayByObject(JSHandle<JSOb
         return dstElements;
     }
     Region *region = Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(*dstElements));
-    if (region->InYoungSpace() && !region->IsMarking()) {
+    if (region->InYoungSpace() && !thread_->IsConcurrentMarkingOrFinished()) {
         size_t size = oldLength * sizeof(JSTaggedType);
         if (memcpy_s(reinterpret_cast<void *>(dstElements->GetData()), size,
             reinterpret_cast<void *>(srcElements->GetData() + k), size) != EOK) {
@@ -2498,7 +2506,7 @@ JSHandle<MutantTaggedArray> ObjectFactory::NewAndCopyMutantTaggedArrayByObject(J
         return dstElements;
     }
     Region *region = Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(*dstElements));
-    if (region->InYoungSpace() && !region->IsMarking()) {
+    if (region->InYoungSpace() && !thread_->IsConcurrentMarkingOrFinished()) {
         size_t size = oldLength * sizeof(JSTaggedType);
         if (memcpy_s(reinterpret_cast<void *>(dstElements->GetData()), size,
             reinterpret_cast<void *>(srcElements->GetData() + k), size) != EOK) {
@@ -2508,7 +2516,7 @@ JSHandle<MutantTaggedArray> ObjectFactory::NewAndCopyMutantTaggedArrayByObject(J
         for (uint32_t i = 0; i < oldLength; i++) {
             ElementsKind kind = thisObjHandle->GetClass()->GetElementsKind();
             JSTaggedValue value = JSTaggedValue(ElementAccessor::ConvertTaggedValueWithElementsKind(
-                                                ElementAccessor::Get(thisObjHandle, i + k), kind));
+                ElementAccessor::Get(thisObjHandle, i + k), kind));
             dstElements->Set<false>(thread_, i, value);
         }
     }

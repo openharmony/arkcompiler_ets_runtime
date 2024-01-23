@@ -103,3 +103,25 @@ if (globalThis["ArkPrivate"] != undefined) {
 
 var v6="123456789\u0000";
 print(JSON.stringify([{}],[String],v6))
+
+var handler2 = {
+  get: function(target, name) {
+    delete parent2.c;
+    return name.toUpperCase();
+  }
+}
+var proxy2 = new Proxy({}, handler2);
+var parent2 = { a: "delete", b: proxy2, c: "remove" };
+print(JSON.stringify(parent2))
+parent2.c = "remove";  // Revert side effect.
+print(JSON.stringify(parent2))
+Reflect.defineProperty(globalThis,"c",{
+    get:()=>{
+        delete this["d"];
+        return "c";
+    },
+    enumerable:true,
+});
+Reflect.set(globalThis,"d","d");
+JSON.stringify(globalThis);
+print("end JSON.stringify(globalThis)")

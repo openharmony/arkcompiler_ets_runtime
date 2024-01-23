@@ -157,10 +157,8 @@ RetCode CommandLine::HandleInputArgs(const std::deque<std::string_view> &args, O
                 wasError = true;
             }
             continue;
-        }
-
-        /* option like "--key value" or "--key" */
-        else {
+        } else {
+            /* option like "--key value" or "--key" */
             err = ParseSimpleOption(argsIndex, args, keyArg, optCategory, optCategory.options);
             if (err != RetCode::noError) {
                 badCLArgs.emplace_back(args[argsIndex], err);

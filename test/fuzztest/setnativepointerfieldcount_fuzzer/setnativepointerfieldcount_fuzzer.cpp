@@ -43,7 +43,7 @@ namespace OHOS {
             key = 1024; // 1024 : 1M in size
         }
         Local<ObjectRef> object = ObjectRef::New(vm);
-        object->SetNativePointerFieldCount(key);
+        object->SetNativePointerFieldCount(vm, key);
         JSNApi::DestroyJSVM(vm);
     }
 }

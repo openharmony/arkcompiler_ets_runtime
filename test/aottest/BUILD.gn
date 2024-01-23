@@ -30,6 +30,7 @@ group("ark_aot_js_test") {
     "equal",
     "js_string_equal",
     "js_string_add",
+    "regressioncase",
   ]
 
   deps = []
@@ -71,6 +72,7 @@ group("ark_aot_ts_test") {
     "constpool",
     "continue_from_finally",
     "copyrestargs",
+    "createarray_meta_data",
     "createarrayimm16",
     "createarraywithbuffer",
     "createemptyarray",
@@ -100,6 +102,7 @@ group("ark_aot_ts_test") {
     "duplicatefunctions",
     "duplicatekey",
     "elements_kind",
+    "equal_nan",
     "exception_case1",
     "exception_case10",
     "exception_case11",
@@ -187,6 +190,7 @@ group("ark_aot_ts_test") {
     "optimization",
     "optimized_call",
     "or",
+    "ordinaryhasinstance",
     "pgo_call",
     "pgo_call_js",
     "pgo_class_operation",
@@ -281,6 +285,7 @@ group("ark_aot_ts_test") {
     "ts_multi_inline_recursive",
     "typedarray",
     "typedarray_load_store",
+    "typedarrayfill",
     "typeof",
     "unaryop_special_value",
     "xor",

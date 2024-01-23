@@ -173,6 +173,11 @@ public:
         glueData_.isStartHeapSampling_ = isStart ? JSTaggedValue::True() : JSTaggedValue::False();
     }
 
+    void SetIsTracing(bool isTracing)
+    {
+        glueData_.isTracing_ = isTracing;
+    }
+
     void Iterate(const RootVisitor &visitor, const RootRangeVisitor &rangeVisitor,
         const RootBaseAndDerivedVisitor &derivedVisitor);
 
@@ -328,9 +333,19 @@ public:
 
     PropertiesCache *GetPropertiesCache() const;
 
+    MarkStatus GetMarkStatus() const
+    {
+        return MarkStatusBits::Decode(glueData_.gcStateBitField_);
+    }
+
     void SetMarkStatus(MarkStatus status)
     {
         MarkStatusBits::Set(status, &glueData_.gcStateBitField_);
+    }
+
+    bool IsConcurrentMarkingOrFinished() const
+    {
+        return !IsReadyToMark();
     }
 
     bool IsReadyToMark() const
@@ -779,7 +794,8 @@ public:
                                                  JSTaggedValue,
                                                  base::AlignedPointer,
                                                  BuiltinEntries,
-                                                 JSTaggedValue> {
+                                                 JSTaggedValue,
+                                                 base::AlignedBool> {
         enum class Index : size_t {
             BCStubEntriesIndex = 0,
             ExceptionIndex,
@@ -811,6 +827,7 @@ public:
             CurrentContextIndex,
             BuiltinEntriesIndex,
             SingleCharTableIndex,
+            IsTracingIndex,
             NumOfMembers
         };
         static_assert(static_cast<size_t>(Index::NumOfMembers) == NumOfTypes);
@@ -970,6 +987,11 @@ public:
             return GetOffset<static_cast<size_t>(Index::SingleCharTableIndex)>(isArch32);
         }
 
+        static size_t GetIsTracingOffset(bool isArch32)
+        {
+            return GetOffset<static_cast<size_t>(Index::IsTracingIndex)>(isArch32);
+        }
+
         alignas(EAS) BCStubEntries bcStubEntries_;
         alignas(EAS) JSTaggedValue exception_ {JSTaggedValue::Hole()};
         alignas(EAS) JSTaggedValue globalObject_ {JSTaggedValue::Hole()};
@@ -1000,6 +1022,7 @@ public:
         alignas(EAS) EcmaContext *currentContext_ {nullptr};
         alignas(EAS) BuiltinEntries builtinEntries_;
         alignas(EAS) JSTaggedValue singleCharTable_ {JSTaggedValue::Hole()};
+        alignas(EAS) bool isTracing_ {false};
     };
     STATIC_ASSERT_EQ_ARCH(sizeof(GlueData), GlueData::SizeArch32, GlueData::SizeArch64);
 

@@ -146,7 +146,10 @@ void ConcurrentMarker::InitializeMarking()
     }
     workManager_->Initialize(TriggerGCType::OLD_GC, ParallelGCTaskPhase::CONCURRENT_HANDLE_GLOBAL_POOL_TASK);
     if (!heap_->IsFullMark()) {
-        heap_->GetNonMovableMarker()->ProcessOldToNewNoMarkStack(MAIN_THREAD_INDEX);
+        {
+            ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "GC::MarkOldToNew");
+            heap_->GetNonMovableMarker()->ProcessOldToNewNoMarkStack(MAIN_THREAD_INDEX);
+        }
         heap_->GetNonMovableMarker()->ProcessSnapshotRSetNoMarkStack(MAIN_THREAD_INDEX);
     }
     heap_->GetNonMovableMarker()->MarkRoots(MAIN_THREAD_INDEX);

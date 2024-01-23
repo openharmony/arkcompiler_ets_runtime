@@ -26,12 +26,10 @@ namespace panda::ecmascript::kungfu {
     V(Other, other)
 
 struct CollectedType {
-    explicit CollectedType(Chunk *chunk) :
-        classTypes(chunk),
-        classInstanceTypes(chunk),
-        builtinTypes(chunk),
-        otherTypes(chunk)
-    {}
+    explicit CollectedType(Chunk *chunk) : classTypes(chunk),
+                                           classInstanceTypes(chunk),
+                                           builtinTypes(chunk),
+                                           otherTypes(chunk) {}
 
     bool AllInSameKind() const
     {

@@ -71,8 +71,8 @@ public:
     static JSTaggedValue RegExpExec(JSThread *thread, const JSHandle<JSTaggedValue> &regexp,
                                     const JSHandle<JSTaggedValue> &inputString, bool useCache);
     // 21.2.5.2.3 AdvanceStringIndex ( S, index, unicode )
-    static uint32_t AdvanceStringIndex(const JSHandle<JSTaggedValue> &inputStr, uint32_t index,
-                                       bool unicode);
+    static int64_t AdvanceStringIndex(const JSHandle<JSTaggedValue> &inputStr, int64_t index,
+                                      bool unicode);
     // 22.2.6.6 get RegExp.prototype.hasIndices
     static JSTaggedValue GetHasIndices(EcmaRuntimeCallInfo *argv);
 
@@ -81,6 +81,7 @@ public:
                                          JSHandle<JSTaggedValue> string,
                                          JSHandle<JSTaggedValue> inputReplaceValue);
     static JSTaggedValue GetAllFlagsInternal(JSThread *thread, JSHandle<JSTaggedValue> &thisObj);
+    static JSTaggedValue IsValidRegularExpression(JSThread *thread, JSHandle<JSTaggedValue> &thisObj);
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define SET_GET_CAPTURE(index)                                                                                \
     static JSTaggedValue GetCapture##index(JSThread *thread, const JSHandle<JSObject> &obj);                  \
@@ -103,6 +104,7 @@ private:
     static constexpr uint32_t MAX_SPLIT_LIMIT = 0xFFFFFFFFu;
     static constexpr uint32_t REGEXP_GLOBAL_ARRAY_SIZE = 9;
     static constexpr uint32_t LAST_INDEX_OFFSET = 0;
+    static constexpr uint32_t MAX_REGEXP_STRING_COUNT = 1U << 16;
 
     static bool Matcher(JSThread *thread, const JSHandle<JSTaggedValue> &regexp,
                         const uint8_t *buffer, size_t length, int32_t lastindex, bool isUtf16);
@@ -135,6 +137,10 @@ private:
     static JSHandle<JSTaggedValue> MakeMatchIndicesIndexPairArray(JSThread* thread,
         const std::vector<std::pair<JSTaggedValue, JSTaggedValue>>& indices,
         const std::vector<JSHandle<JSTaggedValue>>& groupNames, bool hasGroups);
+    static bool RegExpExecInternal(JSThread *thread, const JSHandle<JSTaggedValue> &regexp,
+                                   JSHandle<EcmaString> &inputString, int32_t lastIndex);
+    static JSTaggedValue RegExpSplitFast(JSThread *thread, const JSHandle<JSTaggedValue> &regexp,
+                                         JSHandle<EcmaString> string, uint32_t limit, bool useCache);
 };
 
 class RegExpExecResultCache : public TaggedArray {

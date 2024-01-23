@@ -102,6 +102,34 @@ GateRef CircuitBuilder::IsSlicedString(GateRef obj)
     return Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::SLICED_STRING)));
 }
 
+GateRef CircuitBuilder::IsLineString(GateRef obj)
+{
+    GateRef objectType = GetObjectType(LoadHClass(obj));
+    return Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::LINE_STRING)));
+}
+
+GateRef CircuitBuilder::IsConstantString(GateRef obj)
+{
+    GateRef objectType = GetObjectType(LoadHClass(obj));
+    return Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::CONSTANT_STRING)));
+}
+
+GateRef CircuitBuilder::ComputeSizeUtf8(GateRef length)
+{
+    return PtrAdd(IntPtr(LineEcmaString::DATA_OFFSET), length);
+}
+
+GateRef CircuitBuilder::ComputeSizeUtf16(GateRef length)
+{
+    return PtrAdd(IntPtr(LineEcmaString::DATA_OFFSET), PtrMul(length, IntPtr(sizeof(uint16_t))));
+}
+
+GateRef CircuitBuilder::AlignUp(GateRef x, GateRef alignment)
+{
+    GateRef x1 = PtrAdd(x, PtrSub(alignment, IntPtr(1)));
+    return IntPtrAnd(x1, IntPtrNot(PtrSub(alignment, IntPtr(1))));
+}
+
 inline GateRef CircuitBuilder::IsDictionaryMode(GateRef object)
 {
     GateRef type = GetObjectType(LoadHClass(object));

@@ -15,6 +15,7 @@
 
 #include "ecmascript/base/number_helper.h"
 
+#include <cfenv>
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
@@ -24,11 +25,14 @@
 
 #include "ecmascript/base/builtins_base.h"
 #include "ecmascript/base/string_helper.h"
+#include "ecmascript/builtins/builtins_number.h"
 #include "ecmascript/ecma_string_table.h"
 #include "ecmascript/js_tagged_value-inl.h"
 #include "ecmascript/object_factory.h"
 
 namespace panda::ecmascript::base {
+using NumberToStringResultCache = builtins::NumberToStringResultCache;
+
 enum class Sign { NONE, NEG, POS };
 thread_local uint64_t RandomGenerator::randomState_ {0};
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
@@ -260,13 +264,145 @@ JSTaggedValue NumberHelper::DoubleToString(JSThread *thread, double number, int 
     return BuiltinsBase::GetTaggedString(thread, result.get());
 }
 
+JSTaggedValue NumberHelper::DoubleToASCII(JSThread *thread, double valueNumber, int digitNumber, int flags)
+
+{
+    std::string buffer(JS_DTOA_BUF_SIZE, '\0');
+    DoubleToASCIIWithFlag(buffer, valueNumber, digitNumber, flags);
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    return factory->NewFromASCII(buffer.c_str()).GetTaggedValue();
+}
+
+void NumberHelper::GetBaseForRoundingMode(double valueNumber, int digitNumber, int *decimalPoint, std::string& buf,
+                                          std::string& buf1, int buf1Size, int roundingMode, int *sign)
+{
+    if (roundingMode != FE_TONEAREST) {
+        fesetround(roundingMode);
+    }
+    int result = snprintf_s(&buf1[0], buf1Size, buf1Size - 1, "%+.*e", digitNumber - 1, valueNumber);
+    if (result == -1) {
+        LOG_FULL(FATAL) << "snprintf_s failed";
+        UNREACHABLE();
+    }
+    if (roundingMode != FE_TONEAREST) {
+        fesetround(FE_TONEAREST);
+    }
+    *sign = (buf1[0] == '-');
+    buf[0] = buf1[1];
+    if (digitNumber > 1) {
+        if (memcpy_s(&buf[1], digitNumber - 1, &buf1[POINT_INDEX], digitNumber - 1) != EOK) {
+            LOG_FULL(FATAL) << "memcpy_s failed";
+            UNREACHABLE();
+        }
+    }
+    buf[digitNumber] = '\0';
+    *decimalPoint = std::atoi(&buf1[digitNumber + DECIMAL_INDEX + (digitNumber > 1)]) + 1;
+}
+
+void NumberHelper::CustomEcvtIsFixed(double &valueNumber, int &digits, int *decimalPoint, std::string& buf, int *sign)
+{
+    std::string buffer(JS_DTOA_BUF_SIZE, '\0');
+    unsigned int digitsMin = 1;
+    unsigned int digitsMax = DOUBLE_MAX_PRECISION;
+    while (digitsMin < digitsMax) {
+        digits = (digitsMin + digitsMax) / MIN_RADIX;
+        ASSERT(buffer.size() <= JS_DTOA_BUF_SIZE);
+        GetBaseForRoundingMode(valueNumber, digits, decimalPoint, buf, buffer, JS_DTOA_BUF_SIZE, FE_TONEAREST, sign);
+        if (std::strtod(buffer.c_str(), NULL) == valueNumber) {
+            while (digits >= MIN_RADIX && buf[digits - 1] == '0') {
+                digits--;
+            }
+            digitsMax = digits;
+        } else {
+            digitsMin = digits + 1;
+        }
+    }
+    digits = digitsMax;
+}
+
+int NumberHelper::CustomEcvt(double valueNumber, int digits, int *decimalPoint,
+                             std::string& buf, bool isFixed, int *sign)
+{
+    std::string buffer(JS_DTOA_BUF_SIZE, '\0');
+    int roundingMode = FE_TONEAREST;
+    if (!isFixed) {
+        CustomEcvtIsFixed(valueNumber, digits, decimalPoint, buf, sign);
+    } else {
+        std::string buf1(JS_DTOA_BUF_SIZE, '\0');
+        std::string buf2(JS_DTOA_BUF_SIZE, '\0');
+        int decpt1 = 0;
+        int decpt2 = 0;
+        int sign1 = 0;
+        int sign2 = 0;
+        ASSERT(buffer.size() <= JS_DTOA_BUF_SIZE);
+        GetBaseForRoundingMode(valueNumber, digits + 1, &decpt1, buf1, buffer, JS_DTOA_BUF_SIZE, roundingMode, &sign1);
+        if (buf1[digits] == HALFCHAR) {
+            ASSERT(buf1.size() <= JS_DTOA_BUF_SIZE);
+            GetBaseForRoundingMode(valueNumber, digits + 1, &decpt1, buf1, buffer, JS_DTOA_BUF_SIZE,
+                FE_DOWNWARD, &sign1);
+            ASSERT(buf2.size() <= JS_DTOA_BUF_SIZE);
+            GetBaseForRoundingMode(valueNumber, digits + 1, &decpt2, buf2, buffer, JS_DTOA_BUF_SIZE,
+                FE_UPWARD, &sign2);
+            if (memcmp(buf1.c_str(), buf2.c_str(), digits + 1) == 0 && decpt1 == decpt2) {
+                roundingMode = sign1 ? FE_DOWNWARD : FE_UPWARD;
+            }
+        }
+    }
+    ASSERT(buffer.size() <= JS_DTOA_BUF_SIZE);
+    GetBaseForRoundingMode(valueNumber, digits, decimalPoint, buf, buffer, JS_DTOA_BUF_SIZE, roundingMode, sign);
+    return digits;
+}
+
+int NumberHelper::CustomFcvtHelper(std::string& buf, int bufSize, double valueNumber, int digits, int roundingMode)
+{
+    if (roundingMode != FE_TONEAREST) {
+        std::fesetround(roundingMode);
+    }
+    int result = snprintf_s(&buf[0], bufSize, bufSize, "%.*f", digits, valueNumber);
+    if (result == -1) {
+        LOG_FULL(FATAL) << "snprintf_s failed";
+        UNREACHABLE();
+    }
+    if (roundingMode != FE_TONEAREST) {
+        std::fesetround(FE_TONEAREST);
+    }
+    ASSERT(result < bufSize);
+    return result;
+}
+
+void NumberHelper::CustomFcvt(std::string& buf, int bufSize, double valueNumber, int digits)
+{
+    int number = 0;
+    int tmpNumber = 0;
+    std::string tmpbuf1(JS_DTOA_BUF_SIZE, '\0');
+    std::string tmpbuf2(JS_DTOA_BUF_SIZE, '\0');
+    int roundingMode = FE_TONEAREST;
+    number = CustomFcvtHelper(tmpbuf1, JS_DTOA_BUF_SIZE, valueNumber, digits + 1, roundingMode);
+    if (tmpbuf1[number - 1] == HALFCHAR) {
+        number = CustomFcvtHelper(tmpbuf1, JS_DTOA_BUF_SIZE, valueNumber, digits + 1, FE_DOWNWARD);
+        tmpNumber = CustomFcvtHelper(tmpbuf2, JS_DTOA_BUF_SIZE, valueNumber, digits + 1, FE_UPWARD);
+        if (tmpbuf1 == tmpbuf2) {
+            if (tmpbuf1[0] == '-') {
+                roundingMode = FE_DOWNWARD;
+            } else {
+                roundingMode = FE_UPWARD;
+            }
+        }
+    }
+    CustomFcvtHelper(buf, bufSize, valueNumber, digits, roundingMode);
+}
+
 JSTaggedValue NumberHelper::DoubleToExponential(JSThread *thread, double number, int digit)
 {
     CStringStream ss;
-    if (digit < 0) {
-        ss << std::setiosflags(std::ios::scientific) << std::setprecision(base::MAX_PRECISION) << number;
+    std::string buffer(JS_DTOA_BUF_SIZE, '\0');
+    if (digit == 0) {
+        int decimalPoint = 0;
+        int sign = 0;
+        int digitNumber = CustomEcvt(number, digit, &decimalPoint, buffer, false, &sign);
+        ss << std::setiosflags(std::ios::scientific) << std::setprecision(digitNumber - 1) << number;
     } else {
-        ss << std::setiosflags(std::ios::scientific) << std::setprecision(digit) << number;
+        ss << std::setiosflags(std::ios::scientific) << std::setprecision(digit - 1) << number;
     }
     CString result = ss.str();
     size_t found = result.find_last_of('e');
@@ -290,27 +426,71 @@ JSTaggedValue NumberHelper::DoubleToExponential(JSThread *thread, double number,
     return BuiltinsBase::GetTaggedString(thread, result.c_str());
 }
 
-JSTaggedValue NumberHelper::DoubleToFixed(JSThread *thread, double number, int digit)
+void NumberHelper::DoubleToASCIIWithFlag(std::string& buf, double valueNumber, int digits, int flags)
 {
-    CStringStream ss;
-    ss << std::setiosflags(std::ios::fixed) << std::setprecision(digit) << number;
-    return BuiltinsBase::GetTaggedString(thread, ss.str().c_str());
+    if (valueNumber == 0.0) {
+        valueNumber = 0.0;
+    }
+    if (flags == FRAC_FORMAT) {
+        CustomFcvt(buf, JS_DTOA_BUF_SIZE, valueNumber, digits);
+    } else {
+        std::string buf1(JS_DTOA_BUF_SIZE, '\0');
+        int decimalPoint = 0;
+        int sign = 0;
+        bool fixed = ((flags & POINT_INDEX) == base::FIXED_FORMAT);
+        int numberMax = fixed ? digits : MAX_DIGITS;
+        int digitNumber = CustomEcvt(valueNumber, digits, &decimalPoint, buf1, fixed, &sign);
+        int number = decimalPoint;
+        std::string tmpbuf;
+        int i = 0;
+        if (sign) {
+            tmpbuf += '-';
+        }
+        if (number > 0 && number <= numberMax) {
+            ToASCIIWithGreatThanZero(tmpbuf, digitNumber, number, buf1);
+        } else if (MIN_DIGITS < number && number <= 0) {
+            tmpbuf += '0';
+            tmpbuf += '.';
+            for (i = 0; i < -number; i++) {
+                tmpbuf += '0';
+            }
+            tmpbuf += buf1.substr(0, digitNumber);
+        } else {
+            ToASCIIWithNegative(tmpbuf, digitNumber, number, buf1);
+        }
+        buf = tmpbuf;
+    }
 }
 
-JSTaggedValue NumberHelper::DoubleToPrecision(JSThread *thread, double number, int digit)
+void NumberHelper::ToASCIIWithGreatThanZero(std::string& tmpbuf, int digitNumber, int number, const std::string& buf)
 {
-    if (number == 0.0) {
-        return DoubleToFixed(thread, number, digit - 1);
+    if (digitNumber <= number) {
+        tmpbuf += buf.substr(0, digitNumber);
+        tmpbuf += std::string(number - digitNumber, '0');
+        tmpbuf += '\0';
+    } else {
+        tmpbuf += buf.substr(0, number);
+        tmpbuf += '.';
+        tmpbuf += buf.substr(number, digitNumber - number);
+        tmpbuf += '\0';
     }
-    CStringStream ss;
-    double positiveNumber = number > 0 ? number : -number;
-    int logDigit = std::floor(log10(positiveNumber));
-    int radixDigit = digit - logDigit - 1;
-    const int MAX_EXPONENT_DIGIT = 6;
-    if ((logDigit >= 0 && radixDigit >= 0) || (logDigit < 0 && radixDigit <= MAX_EXPONENT_DIGIT)) {
-        return DoubleToFixed(thread, number, std::abs(radixDigit));
+}
+
+void NumberHelper::ToASCIIWithNegative(std::string& tmpbuf, int digitNumber, int n, const std::string& buf)
+{
+    tmpbuf += buf[0];
+    if (digitNumber > 1) {
+        tmpbuf += '.';
+        for (int i = 1; i < digitNumber; i++) {
+            tmpbuf += buf[i];
+        }
     }
-    return DoubleToExponential(thread, number, digit - 1);
+    tmpbuf += 'e';
+    int p = n - 1;
+    if (p >= 0) {
+        tmpbuf += '+';
+    }
+    tmpbuf += std::to_string(p);
 }
 
 JSTaggedValue NumberHelper::StringToDoubleWithRadix(const uint8_t *start, const uint8_t *end, int radix, bool *negative)
@@ -427,20 +607,9 @@ JSHandle<EcmaString> NumberHelper::IntToEcmaString(const JSThread *thread, int n
     return factory->NewFromASCII(ToCString(number));
 }
 
-// 7.1.12.1 ToString Applied to the Number Type
-JSHandle<EcmaString> NumberHelper::NumberToString(const JSThread *thread, JSTaggedValue number)
+JSHandle<EcmaString> NumberHelper::DoubleToEcmaString(const JSThread *thread, double d)
 {
-    ASSERT(number.IsNumber());
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    if (number.IsInt()) {
-        int intVal = number.GetInt();
-        if (intVal == 0) {
-            return JSHandle<EcmaString>::Cast(thread->GlobalConstants()->GetHandledZeroString());
-        }
-        return factory->NewFromASCII(IntToString(intVal));
-    }
-
-    double d = number.GetDouble();
     if (std::isnan(d)) {
         return JSHandle<EcmaString>::Cast(thread->GlobalConstants()->GetHandledNanCapitalString());
     }
@@ -491,7 +660,7 @@ JSHandle<EcmaString> NumberHelper::NumberToString(const JSThread *thread, JSTagg
     int n = 0;
     int k = GetMinmumDigits(d, &n, buffer);
     std::string base = buffer;
-    if (n > 0 && n <= 21) {  // NOLINT(readability-magic-numbers)
+    if (n > 0 && n <= MAX_DIGITS) {
         base.erase(1, 1);
         if (k <= n) {
             // 6. If k ≤ n ≤ 21, return the String consisting of the code units of the k digits of the decimal
@@ -504,7 +673,7 @@ JSHandle<EcmaString> NumberHelper::NumberToString(const JSThread *thread, JSTagg
             // the remaining k−n digits of the decimal representation of s.
             base.insert(n, 1, '.');
         }
-    } else if (-6 < n && n <= 0) {  // NOLINT(readability-magic-numbers)
+    } else if (MIN_DIGITS < n && n <= 0) {
         // 8. If −6 < n ≤ 0, return the String consisting of the code unit 0x0030 (DIGIT ZERO), followed by the code
         // unit 0x002E (FULL STOP), followed by −n occurrences of the code unit 0x0030 (DIGIT ZERO), followed by the
         // code units of the k digits of the decimal representation of s.
@@ -515,13 +684,40 @@ JSHandle<EcmaString> NumberHelper::NumberToString(const JSThread *thread, JSTagg
             // 9. Otherwise, if k = 1, return the String consisting of the code unit of the single digit of s
             base.erase(1, 1);
         }
-        // followed by code unit 0x0065 (LATIN SMALL LETTER E), followed by the code unit 0x002B (PLUS SIGN) or the code
-        // unit 0x002D (HYPHEN-MINUS) according to whether n−1 is positive or negative, followed by the code units of
-        // the decimal representation of the integer abs(n−1) (with no leading zeroes).
+        // followed by code unit 0x0065 (LATIN SMALL LETTER E), followed by the code unit 0x002B (PLUS SIGN) or the
+        // code unit 0x002D (HYPHEN-MINUS) according to whether n−1 is positive or negative, followed by the code
+        // units of the decimal representation of the integer abs(n−1) (with no leading zeroes).
         base += "e" + (n >= 1 ? std::string("+") : "") + std::to_string(n - 1);
     }
     result += base;
     return factory->NewFromASCII(result.c_str());
+}
+
+// 7.1.12.1 ToString Applied to the Number Type
+JSHandle<EcmaString> NumberHelper::NumberToString(const JSThread *thread, JSTaggedValue number)
+{
+    ASSERT(number.IsNumber());
+    JSHandle<NumberToStringResultCache> cacheTable(
+        thread->GetCurrentEcmaContext()->GetNumberToStringResultCache());
+    JSTaggedValue cacheResult = cacheTable->FindCachedResult(number);
+    if (cacheResult != JSTaggedValue::Undefined()) {
+        return JSHandle<EcmaString>::Cast(JSHandle<JSTaggedValue>(thread, cacheResult));
+    }
+
+    JSHandle<EcmaString> resultJSHandle;
+    if (number.IsInt()) {
+        int intVal = number.GetInt();
+        if (intVal == 0) {
+            resultJSHandle = JSHandle<EcmaString>::Cast(thread->GlobalConstants()->GetHandledZeroString());
+        } else {
+            resultJSHandle = IntToEcmaString(thread, intVal);
+        }
+    } else {
+        resultJSHandle = DoubleToEcmaString(thread, number.GetDouble());
+    }
+    
+    cacheTable->SetCachedResult(thread, number, resultJSHandle);
+    return resultJSHandle;
 }
 
 double NumberHelper::TruncateDouble(double d)
@@ -956,7 +1152,7 @@ JSTaggedValue NumberHelper::StringToBigInt(JSThread *thread, JSHandle<JSTaggedVa
     return BigIntHelper::SetBigInt(thread, buffer, radix).GetTaggedValue();
 }
 
-void NumberHelper::GetBase(double d, int digits, int *decpt, char *buf, char *bufTmp, int size)
+void NumberHelper::GetBase(double d, int digits, int *decimalPoint, char *buf, char *bufTmp, int size)
 {
     int result = snprintf_s(bufTmp, size, size - 1, "%+.*e", digits - 1, d);
     if (result == -1) {
@@ -973,10 +1169,10 @@ void NumberHelper::GetBase(double d, int digits, int *decpt, char *buf, char *bu
     }
     buf[digits + 1] = '\0';
     // exponent
-    *decpt = atoi(bufTmp + digits + 2 + (digits > 1)) + 1; // 2 means ignore the integer and point
+    *decimalPoint = atoi(bufTmp + digits + 2 + (digits > 1)) + 1; // 2 means ignore the integer and point
 }
 
-int NumberHelper::GetMinmumDigits(double d, int *decpt, char *buf)
+int NumberHelper::GetMinmumDigits(double d, int *decimalPoint, char *buf)
 {
     int digits = 0;
     char bufTmp[JS_DTOA_BUF_SIZE] = {0};
@@ -986,7 +1182,7 @@ int NumberHelper::GetMinmumDigits(double d, int *decpt, char *buf)
     int MaxDigits = DOUBLE_MAX_PRECISION;
     while (MinDigits < MaxDigits) {
         digits = (MinDigits + MaxDigits) / 2;
-        GetBase(d, digits, decpt, buf, bufTmp, sizeof(bufTmp));
+        GetBase(d, digits, decimalPoint, buf, bufTmp, sizeof(bufTmp));
         if (strtod(bufTmp, NULL) == d) {
             // no need to keep the trailing zeros
             while (digits >= 2 && buf[digits] == '0') { // 2 means ignore the integer and point
@@ -998,7 +1194,7 @@ int NumberHelper::GetMinmumDigits(double d, int *decpt, char *buf)
         }
     }
     digits = MaxDigits;
-    GetBase(d, digits, decpt, buf, bufTmp, sizeof(bufTmp));
+    GetBase(d, digits, decimalPoint, buf, bufTmp, sizeof(bufTmp));
 
     return digits;
 }

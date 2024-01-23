@@ -96,26 +96,26 @@
     }
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
-#define ACCESSORS_SYNCHRONIZED(name, offset, endOffset)                                                       \
-    static constexpr size_t endOffset = (offset) + JSTaggedValue::TaggedTypeSize();                           \
-    JSTaggedValue Get##name() const                                                                           \
-    {                                                                                                         \
-        /* Note: We can't statically decide the element type is a primitive or heap object, especially for */ \
-        /*       dynamically-typed languages like JavaScript. So we simply skip the read-barrier.          */ \
-        /*       Synchronized means it will restrain the store and load in atomic.                         */ \
-        return JSTaggedValue(reinterpret_cast<volatile std::atomic<JSTaggedType> *>(ToUintPtr(this) + offset) \
-                             ->load(std::memory_order_acquire));                                              \
-    }                                                                                                         \
-    template<typename T>                                                                                      \
-    void Set##name([[maybe_unused]] const JSThread *thread, JSHandle<T> value)                                \
-    {                                                                                                         \
-        bool isPrimitive = !value.GetTaggedValue().IsHeapObject();                                            \
-        Barriers::SynchronizedSetObject(this, offset, value.GetTaggedValue().GetRawData(), isPrimitive);      \
-    }                                                                                                         \
-    void Set##name([[maybe_unused]] const JSThread *thread, JSTaggedValue value)                              \
-    {                                                                                                         \
-        bool isPrimitive = !value.IsHeapObject();                                                             \
-        Barriers::SynchronizedSetObject(this, offset, value.GetRawData(), isPrimitive);                       \
+#define ACCESSORS_SYNCHRONIZED(name, offset, endOffset)                                                               \
+    static constexpr size_t endOffset = (offset) + JSTaggedValue::TaggedTypeSize();                                   \
+    JSTaggedValue Get##name() const                                                                                   \
+    {                                                                                                                 \
+        /* Note: We can't statically decide the element type is a primitive or heap object, especially for */         \
+        /*       dynamically-typed languages like JavaScript. So we simply skip the read-barrier.          */         \
+        /*       Synchronized means it will restrain the store and load in atomic.                         */         \
+        return JSTaggedValue(reinterpret_cast<volatile std::atomic<JSTaggedType> *>(ToUintPtr(this) + offset)         \
+                             ->load(std::memory_order_acquire));                                                      \
+    }                                                                                                                 \
+    template<typename T>                                                                                              \
+    void Set##name(const JSThread *thread, JSHandle<T> value)                                                         \
+    {                                                                                                                 \
+        bool isPrimitive = !value.GetTaggedValue().IsHeapObject();                                                    \
+        Barriers::SynchronizedSetObject(thread, this, offset, value.GetTaggedValue().GetRawData(), isPrimitive);      \
+    }                                                                                                                 \
+    void Set##name(const JSThread *thread, JSTaggedValue value)                                                       \
+    {                                                                                                                 \
+        bool isPrimitive = !value.IsHeapObject();                                                                     \
+        Barriers::SynchronizedSetObject(thread, this, offset, value.GetRawData(), isPrimitive);                       \
     }
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
@@ -636,5 +636,10 @@
             return;                           \
         }                                     \
     } while (0)
+
+#define CHECK_SLOTID_BREAK(slotId)        \
+    if ((slotId) == 0xff) {               \
+        break;                            \
+    }
 
 #endif  // ECMASCRIPT_ECMA_MACROS_H

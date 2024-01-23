@@ -574,17 +574,8 @@ void CgFuncPM::EmitDebugInfo(const MIRModule &m) const
     cg->GetEmitter()->EmitDIDebugStrSection();
 }
 
-bool CgFuncPM::IsFramework(MIRModule &m) const
+bool CgFuncPM::IsFramework([[maybe_unused]] MIRModule &m) const
 {
-    auto &funcList = m.GetFunctionList();
-    for (auto it = funcList.begin(); it != funcList.end(); ++it) {
-        MIRFunction *mirFunc = *it;
-        DEBUG_ASSERT(mirFunc != nullptr, "nullptr check");
-        if (mirFunc->GetBody() != nullptr &&
-            mirFunc->GetName() == "Landroid_2Fos_2FParcel_3B_7CnativeWriteString_7C_28JLjava_2Flang_2FString_3B_29V") {
-            return true;
-        }
-    }
     return false;
 }
 MAPLE_TRANSFORM_PHASE_REGISTER(CgFuncPM, cgFuncPhaseManager)

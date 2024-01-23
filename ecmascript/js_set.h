@@ -30,7 +30,7 @@ public:
 
     static void Clear(const JSThread *thread, const JSHandle<JSSet> &set);
 
-    bool Has(JSTaggedValue value) const;
+    bool Has(const JSThread *thread, JSTaggedValue value) const;
 
     uint32_t GetSize() const;
 

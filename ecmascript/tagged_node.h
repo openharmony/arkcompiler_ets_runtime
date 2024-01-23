@@ -43,7 +43,7 @@ public:
     static constexpr size_t SIZE = DATA_OFFSET;
     DECL_VISIT_OBJECT(HASH_OFFSET, SIZE);
 
-    static int Hash(JSTaggedValue key)
+    static int Hash(const JSThread *thread, JSTaggedValue key)
     {
         if (key.IsDouble() && key.GetDouble() == 0.0) {
             key = JSTaggedValue(0);
@@ -60,9 +60,8 @@ public:
             int32_t hash = ECMAObject::Cast(key.GetTaggedObject())->GetHash();
             if (hash == 0) {
                 hash = base::RandomGenerator::GenerateIdentityHash();
-                JSThread *thread = ECMAObject::Cast(key.GetTaggedObject())->GetJSThread();
                 JSHandle<ECMAObject> ecmaObj(thread, key);
-                ECMAObject::Cast(key.GetTaggedObject())->SetHash(hash, ecmaObj);
+                ECMAObject::Cast(key.GetTaggedObject())->SetHash(thread, hash, ecmaObj);
             }
             return hash;
         }

@@ -112,8 +112,8 @@ public:
                 JSHandle<JSTaggedValue> deque = GetCallArg(argv, 2); // 2 means the secode arg
                 if (!deque->IsUndefined()) {
                     if (index->IsNumber() && value->IsNumber()) {
-                        // 2 means mul by 2
-                        JSHandle<JSAPIDeque>::Cast(deque)->Set(thread, index->GetInt(), JSTaggedValue(value->GetInt() * 2));
+                        JSHandle<JSAPIDeque>::Cast(deque)->Set(thread, index->GetInt(),
+                            JSTaggedValue(value->GetInt() * 2));    // 2 means mul by 2
                     }
                 }
                 return JSTaggedValue::True();
@@ -150,8 +150,8 @@ public:
         }
 
         JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-        JSHandle<JSFunction> func = thread->GetEcmaVM()->GetFactory()->NewJSFunction(env, 
-                                    reinterpret_cast<void *>(TestClass::TestForEachFunc));
+        JSHandle<JSFunction> func = thread->GetEcmaVM()->GetFactory()->NewJSFunction(env,
+            reinterpret_cast<void *>(TestClass::TestForEachFunc));
         auto callInfo = CreateEcmaRuntimeCallInfo(thread, 8);
         callInfo->SetFunction(JSTaggedValue::Undefined());
         callInfo->SetThis(deque.GetTaggedValue());
@@ -423,7 +423,6 @@ public:
         JSNApi::DestroyJSVM(vm);
         return;
     }
-
 };
 }
 #endif

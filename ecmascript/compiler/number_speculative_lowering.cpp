@@ -16,7 +16,7 @@
 #include "ecmascript/compiler/share_gate_meta_data.h"
 #include "ecmascript/compiler/number_gate_info.h"
 #include "ecmascript/compiler/type.h"
-#include "ecmascript/compiler/type_hcr_lowering.h"
+#include "ecmascript/compiler/typed_hcr_lowering.h"
 #include "ecmascript/compiler/builtins_lowering.h"
 #include "ecmascript/compiler/new_object_stub_builder.h"
 #include "ecmascript/compiler/number_speculative_lowering.h"
@@ -402,14 +402,20 @@ void NumberSpeculativeLowering::VisitNumberMod(GateRef gate)
     if (sampleType->IsNumber()) {
         if (sampleType->IsInt()) {
             gateType = GateType::IntType();
-        } else {
+        } else if (sampleType->IsDouble()) {
             gateType = GateType::DoubleType();
+        } else {
+            gateType = GateType::NumberType();
         }
     }
     GateRef result = Circuit::NullGate();
     if (gateType.IsIntType()) {
         if (GetRange(right).MaybeZero()) {
             builder_.Int32CheckRightIsZero(right);
+        }
+        bool isNegativeZero = (GetRange(left) % GetRange(right)).MaybeZero() && GetRange(left).MaybeNegative();
+        if (isNegativeZero) {
+            builder_.RemainderIsNegativeZero(left, right);
         }
         result = CalculateInts<Op>(left, right);
         UpdateRange(result, GetRange(gate));
@@ -780,11 +786,6 @@ GateRef NumberSpeculativeLowering::CompareDoubles(GateRef left, GateRef right)
             condition = builder_.DoubleGreaterThanOrEqual(left, right);
             break;
         case TypedBinOp::TYPED_EQ:
-            condition = builder_.DoubleEqual(left, right);
-            break;
-        case TypedBinOp::TYPED_NOTEQ:
-            condition = builder_.DoubleNotEqual(left, right);
-            break;
         case TypedBinOp::TYPED_STRICTEQ: {
             GateRef leftNotNan = builder_.BoolNot(builder_.DoubleIsNAN(left));
             GateRef rightNotNan = builder_.BoolNot(builder_.DoubleIsNAN(right));
@@ -792,6 +793,7 @@ GateRef NumberSpeculativeLowering::CompareDoubles(GateRef left, GateRef right)
             condition = builder_.BoolAnd(builder_.BoolAnd(leftNotNan, rightNotNan), doubleEqual);
             break;
         }
+        case TypedBinOp::TYPED_NOTEQ:
         case TypedBinOp::TYPED_STRICTNOTEQ: {
             GateRef leftNotNan = builder_.DoubleIsNAN(left);
             GateRef rightNotNan = builder_.DoubleIsNAN(right);

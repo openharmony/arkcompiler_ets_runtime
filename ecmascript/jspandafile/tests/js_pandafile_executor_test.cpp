@@ -120,7 +120,7 @@ HWTEST_F_L0(JSPandaFileExecutorTest, ExecuteFromFile)
     pf->SetMethodLiteralToMap(method);
     pfManager->AddJSPandaFileVm(instance, pf);
     Expected<JSTaggedValue, bool> result =
-        JSPandaFileExecutor::ExecuteFromFile(thread, CString(fileName), JSPandaFile::ENTRY_MAIN_FUNCTION);
+        JSPandaFileExecutor::ExecuteFromAbcFile(thread, CString(fileName), JSPandaFile::ENTRY_MAIN_FUNCTION);
     EXPECT_TRUE(result);
 
     pfManager->RemoveJSPandaFileVm(instance, pf.get());

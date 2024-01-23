@@ -33,7 +33,7 @@ JSTaggedValue JSAPIHashMap::IsEmpty()
 JSTaggedValue JSAPIHashMap::HasKey(JSThread *thread, JSTaggedValue key)
 {
     TaggedHashArray *hashArray = TaggedHashArray::Cast(GetTable().GetTaggedObject());
-    int hash = TaggedNode::Hash(key);
+    int hash = TaggedNode::Hash(thread, key);
     return JSTaggedValue(!(hashArray->GetNode(thread, hash, key).IsHole()));
 }
 
@@ -96,7 +96,7 @@ bool JSAPIHashMap::HasValueRBTreeNode(JSTaggedValue node, JSTaggedValue value)
 JSTaggedValue JSAPIHashMap::Replace(JSThread *thread, JSTaggedValue key, JSTaggedValue newValue)
 {
     TaggedHashArray *hashArray = TaggedHashArray::Cast(GetTable().GetTaggedObject());
-    int hash = TaggedNode::Hash(key);
+    int hash = TaggedNode::Hash(thread, key);
     JSTaggedValue nodeVa = hashArray->GetNode(thread, hash, key);
     if (nodeVa.IsHole()) {
         return JSTaggedValue::False();
@@ -120,7 +120,7 @@ void JSAPIHashMap::Set(JSThread *thread, JSHandle<JSAPIHashMap> hashMap,
         THROW_NEW_ERROR_AND_RETURN(thread, error);
     }
     JSHandle<TaggedHashArray> hashArray(thread, hashMap->GetTable());
-    int hash = TaggedNode::Hash(key.GetTaggedValue());
+    int hash = TaggedNode::Hash(thread, key.GetTaggedValue());
     JSTaggedValue setValue = TaggedHashArray::SetVal(thread, hashArray, hash, key, value);
     uint32_t nodeNum = hashMap->GetSize();
     if (!setValue.IsUndefined()) {
@@ -136,7 +136,7 @@ void JSAPIHashMap::Set(JSThread *thread, JSHandle<JSAPIHashMap> hashMap,
 JSTaggedValue JSAPIHashMap::Get(JSThread *thread, JSTaggedValue key)
 {
     TaggedHashArray *hashArray = TaggedHashArray::Cast(GetTable().GetTaggedObject());
-    int hash = TaggedNode::Hash(key);
+    int hash = TaggedNode::Hash(thread, key);
     JSTaggedValue node = hashArray->GetNode(thread, hash, key);
     if (node.IsHole()) {
         return JSTaggedValue::Undefined();
@@ -219,7 +219,7 @@ JSTaggedValue JSAPIHashMap::Remove(JSThread *thread, JSHandle<JSAPIHashMap> hash
     if (nodeNum == 0) {
         return JSTaggedValue::Undefined();
     }
-    int hash = TaggedNode::Hash(key);
+    int hash = TaggedNode::Hash(thread, key);
     JSHandle<JSTaggedValue> removeValue(thread, hashArray->RemoveNode(thread, hash, key));
     if (removeValue->IsHole()) {
         return JSTaggedValue::Undefined();

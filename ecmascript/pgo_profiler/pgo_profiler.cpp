@@ -228,10 +228,14 @@ void PGOProfiler::UpdateTrackInfo(JSTaggedValue trackInfoVal)
     if (trackInfoVal.IsHeapObject()) {
         auto trackInfo = TrackInfo::Cast(trackInfoVal.GetTaggedObject());
         auto func = trackInfo->GetCachedFunc();
-        if (!func.IsJSFunction()) {
+        if (!func.IsWeak()) {
             return;
         }
-        auto method = JSFunction::Cast(func)->GetMethod();
+        TaggedObject *object = func.GetWeakReferentUnChecked();
+        if (!object->GetClass()->IsJSFunction()) {
+            return;
+        }
+        auto method = JSFunction::Cast(object)->GetMethod();
         auto profileTypeInfoVal = Method::Cast(method)->GetProfileTypeInfo();
         if (profileTypeInfoVal.IsUndefined()) {
             return;
@@ -239,7 +243,7 @@ void PGOProfiler::UpdateTrackInfo(JSTaggedValue trackInfoVal)
         auto profileTypeInfo = ProfileTypeInfo::Cast(profileTypeInfoVal.GetTaggedObject());
         if (!profileTypeInfo->IsProfileTypeInfoPreDumped()) {
             profileTypeInfo->SetPreDumpPeriodIndex();
-            PGOPreDump(JSTaggedType(func.GetTaggedObject()));
+            PGOPreDump(JSTaggedType(object));
         }
     }
 }
@@ -491,6 +495,7 @@ void PGOProfiler::ProfileBytecode(ApEntityId abcId, const CString &recordName, J
             case EcmaOpcode::LDTHISBYNAME_IMM8_ID16:
             case EcmaOpcode::LDOBJBYNAME_IMM8_ID16: {
                 uint8_t slotId = READ_INST_8_0();
+                CHECK_SLOTID_BREAK(slotId);
                 DumpICByName(abcId, recordName, methodId, bcOffset, slotId, profileTypeInfo, BCType::LOAD);
                 break;
             }
@@ -503,6 +508,7 @@ void PGOProfiler::ProfileBytecode(ApEntityId abcId, const CString &recordName, J
             case EcmaOpcode::LDOBJBYVALUE_IMM8_V8:
             case EcmaOpcode::LDTHISBYVALUE_IMM8: {
                 uint8_t slotId = READ_INST_8_0();
+                CHECK_SLOTID_BREAK(slotId);
                 DumpICByValue(abcId, recordName, methodId, bcOffset, slotId, profileTypeInfo, BCType::LOAD);
                 break;
             }
@@ -516,6 +522,7 @@ void PGOProfiler::ProfileBytecode(ApEntityId abcId, const CString &recordName, J
             case EcmaOpcode::STTHISBYNAME_IMM8_ID16:
             case EcmaOpcode::DEFINEFIELDBYNAME_IMM8_ID16_V8: {
                 uint8_t slotId = READ_INST_8_0();
+                CHECK_SLOTID_BREAK(slotId);
                 DumpICByName(abcId, recordName, methodId, bcOffset, slotId, profileTypeInfo, BCType::STORE);
                 break;
             }
@@ -528,6 +535,7 @@ void PGOProfiler::ProfileBytecode(ApEntityId abcId, const CString &recordName, J
             case EcmaOpcode::STOBJBYVALUE_IMM8_V8_V8:
             case EcmaOpcode::STTHISBYVALUE_IMM8_V8: {
                 uint8_t slotId = READ_INST_8_0();
+                CHECK_SLOTID_BREAK(slotId);
                 DumpICByValue(abcId, recordName, methodId, bcOffset, slotId, profileTypeInfo, BCType::STORE);
                 break;
             }
@@ -563,6 +571,7 @@ void PGOProfiler::ProfileBytecode(ApEntityId abcId, const CString &recordName, J
             case EcmaOpcode::STRICTNOTEQ_IMM8_V8:
             case EcmaOpcode::STRICTEQ_IMM8_V8: {
                 uint8_t slotId = READ_INST_8_0();
+                CHECK_SLOTID_BREAK(slotId);
                 DumpOpType(abcId, recordName, methodId, bcOffset, slotId, profileTypeInfo);
                 break;
             }
@@ -578,11 +587,13 @@ void PGOProfiler::ProfileBytecode(ApEntityId abcId, const CString &recordName, J
             case EcmaOpcode::CALLTHIS3_IMM8_V8_V8_V8_V8:
             case EcmaOpcode::CALLTHISRANGE_IMM8_IMM8_V8: {
                 uint8_t slotId = READ_INST_8_0();
+                CHECK_SLOTID_BREAK(slotId);
                 DumpCall(abcId, recordName, methodId, bcOffset, slotId, profileTypeInfo);
                 break;
             }
             case EcmaOpcode::CALLRUNTIME_CALLINIT_PREF_IMM8_V8: {
                 uint8_t slotId = READ_INST_8_1();
+                CHECK_SLOTID_BREAK(slotId);
                 DumpCall(abcId, recordName, methodId, bcOffset, slotId, profileTypeInfo);
                 break;
             }
@@ -593,6 +604,7 @@ void PGOProfiler::ProfileBytecode(ApEntityId abcId, const CString &recordName, J
             }
             case EcmaOpcode::NEWOBJRANGE_IMM8_IMM8_V8: {
                 uint8_t slotId = READ_INST_8_0();
+                CHECK_SLOTID_BREAK(slotId);
                 DumpNewObjRange(abcId, recordName, methodId, bcOffset, slotId, profileTypeInfo);
                 break;
             }
@@ -607,6 +619,7 @@ void PGOProfiler::ProfileBytecode(ApEntityId abcId, const CString &recordName, J
             // Create object
             case EcmaOpcode::DEFINECLASSWITHBUFFER_IMM8_ID16_ID16_IMM16_V8: {
                 uint8_t slotId = READ_INST_8_0();
+                CHECK_SLOTID_BREAK(slotId);
                 DumpDefineClass(abcId, recordName, methodId, bcOffset, slotId, profileTypeInfo);
                 break;
             }
@@ -617,6 +630,7 @@ void PGOProfiler::ProfileBytecode(ApEntityId abcId, const CString &recordName, J
             }
             case EcmaOpcode::DEFINEFUNC_IMM8_ID16_IMM8: {
                 uint8_t slotId = READ_INST_8_0();
+                CHECK_SLOTID_BREAK(slotId);
                 DumpDefineClass(abcId, recordName, methodId, bcOffset, slotId, profileTypeInfo);
                 break;
             }
@@ -632,6 +646,7 @@ void PGOProfiler::ProfileBytecode(ApEntityId abcId, const CString &recordName, J
                 auto traceId =
                     static_cast<int32_t>(reinterpret_cast<uintptr_t>(pc) - reinterpret_cast<uintptr_t>(header));
                 uint8_t slotId = READ_INST_8_0();
+                CHECK_SLOTID_BREAK(slotId);
                 DumpCreateObject(abcId, recordName, methodId, bcOffset, slotId, profileTypeInfo, traceId);
                 break;
             }
@@ -647,6 +662,7 @@ void PGOProfiler::ProfileBytecode(ApEntityId abcId, const CString &recordName, J
             }
             case EcmaOpcode::GETITERATOR_IMM8: {
                 uint8_t slotId = READ_INST_8_0();
+                CHECK_SLOTID_BREAK(slotId);
                 DumpGetIterator(abcId, recordName, methodId, bcOffset, slotId, profileTypeInfo);
                 break;
             }
@@ -658,6 +674,7 @@ void PGOProfiler::ProfileBytecode(ApEntityId abcId, const CString &recordName, J
             // Others
             case EcmaOpcode::INSTANCEOF_IMM8_V8: {
                 uint8_t slotId = READ_INST_8_0();
+                CHECK_SLOTID_BREAK(slotId);
                 DumpInstanceof(abcId, recordName, methodId, bcOffset, slotId, profileTypeInfo);
                 break;
             }
@@ -864,6 +881,9 @@ void PGOProfiler::DumpICByValueWithHandler(ApEntityId abcId, const CString &reco
         if (secondValue.IsInt()) {
             auto handlerInfo = static_cast<uint32_t>(secondValue.GetInt());
             if (HandlerBase::IsNormalElement(handlerInfo) || HandlerBase::IsStringElement(handlerInfo)) {
+                if (HandlerBase::IsOnPrototype(handlerInfo)) {
+                    return;
+                }
                 AddBuiltinsInfo(abcId, recordName, methodId, bcOffset, hclass, hclass);
                 return;
             }
@@ -1229,7 +1249,7 @@ void PGOProfiler::UpdateTranstionLayout(JSHClass *parent, JSHClass *child)
         }
     }
 
-    int32_t size = hclassVec.size();
+    int32_t size = static_cast<int32_t>(hclassVec.size());
     for (int32_t i = size - 1; i >= 0; i--) {
         curHClass = hclassVec[i];
         curType = typeVec[i];

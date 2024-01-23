@@ -19,7 +19,6 @@ function foo () {
     let a : number[][];
     a = new Array(500);
     for (let i = 0; i < 500; i++) {
-        // let arr = new Array(500);
         let arr = new Array(500);
         a[i] = arr;
         for (let j = 0; j < 500; j++) {

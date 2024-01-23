@@ -22,3 +22,6 @@ Infinity
 -Infinity
 123
 SyntaxError
+56320
+{"a":"{\"width\": 18}"}
+{"a":"{\"name\": \"张三\"}"}

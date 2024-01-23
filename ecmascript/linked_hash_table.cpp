@@ -41,8 +41,8 @@ JSHandle<Derived> LinkedHashTable<Derived, HashObject>::Insert(const JSThread *t
                                                                const JSHandle<JSTaggedValue> &value)
 {
     ASSERT(IsKey(key.GetTaggedValue()));
-    int hash = LinkedHash::Hash(key.GetTaggedValue());
-    int entry = table->FindElement(key.GetTaggedValue());
+    int hash = LinkedHash::Hash(thread, key.GetTaggedValue());
+    int entry = table->FindElement(thread, key.GetTaggedValue());
     if (entry != -1) {
         table->SetValue(thread, entry, value.GetTaggedValue());
         return table;
@@ -65,8 +65,8 @@ JSHandle<Derived> LinkedHashTable<Derived, HashObject>::InsertWeakRef(const JSTh
     const JSHandle<Derived> &table, const JSHandle<JSTaggedValue> &key, const JSHandle<JSTaggedValue> &value)
 {
     ASSERT(IsKey(key.GetTaggedValue()));
-    int hash = LinkedHash::Hash(key.GetTaggedValue());
-    int entry = table->FindElement(key.GetTaggedValue());
+    int hash = LinkedHash::Hash(thread, key.GetTaggedValue());
+    int entry = table->FindElement(thread, key.GetTaggedValue());
     if (entry != -1) {
         table->SetValue(thread, entry, value.GetTaggedValue());
         return table;
@@ -105,7 +105,7 @@ template<typename Derived, typename HashObject>
 JSHandle<Derived> LinkedHashTable<Derived, HashObject>::Remove(const JSThread *thread, const JSHandle<Derived> &table,
                                                                const JSHandle<JSTaggedValue> &key)
 {
-    int entry = table->FindElement(key.GetTaggedValue());
+    int entry = table->FindElement(thread, key.GetTaggedValue());
     if (entry == -1) {
         return table;
     }
@@ -153,18 +153,18 @@ JSHandle<LinkedHashMap> LinkedHashMap::SetWeakRef(const JSThread *thread, const 
     return LinkedHashTable<LinkedHashMap, LinkedHashMapObject>::InsertWeakRef(thread, obj, key, value);
 }
 
-JSTaggedValue LinkedHashMap::Get(JSTaggedValue key) const
+JSTaggedValue LinkedHashMap::Get(const JSThread *thread, JSTaggedValue key) const
 {
-    int entry = FindElement(key);
+    int entry = FindElement(thread, key);
     if (entry == -1) {
         return JSTaggedValue::Undefined();
     }
     return GetValue(entry);
 }
 
-bool LinkedHashMap::Has(JSTaggedValue key) const
+bool LinkedHashMap::Has(const JSThread *thread, JSTaggedValue key) const
 {
-    int entry = FindElement(key);
+    int entry = FindElement(thread, key);
     return entry != -1;
 }
 
@@ -208,9 +208,9 @@ JSHandle<LinkedHashSet> LinkedHashSet::AddWeakRef(const JSThread *thread, const 
     return LinkedHashTable<LinkedHashSet, LinkedHashSetObject>::InsertWeakRef(thread, obj, key, key);
 }
 
-bool LinkedHashSet::Has(JSTaggedValue key) const
+bool LinkedHashSet::Has(const JSThread *thread, JSTaggedValue key) const
 {
-    int entry = FindElement(key);
+    int entry = FindElement(thread, key);
     return entry != -1;
 }
 
@@ -230,7 +230,7 @@ JSHandle<LinkedHashSet> LinkedHashSet::Shrink(const JSThread *thread, const JSHa
     return LinkedHashTable<LinkedHashSet, LinkedHashSetObject>::Shrink(thread, table, additionalCapacity);
 }
 
-int LinkedHash::Hash(JSTaggedValue key)
+int LinkedHash::Hash(const JSThread *thread, JSTaggedValue key)
 {
     if (key.IsSymbol()) {
         auto symbolString = JSSymbol::Cast(key.GetTaggedObject());
@@ -244,9 +244,8 @@ int LinkedHash::Hash(JSTaggedValue key)
         int32_t hash = ECMAObject::Cast(key.GetTaggedObject())->GetHash();
         if (hash == 0) {
             hash = base::RandomGenerator::GenerateIdentityHash();
-            JSThread *thread = ECMAObject::Cast(key.GetTaggedObject())->GetJSThread();
             JSHandle<ECMAObject> ecmaObj(thread, key);
-            ECMAObject::SetHash(hash, ecmaObj);
+            ECMAObject::SetHash(thread, hash, ecmaObj);
         }
         return hash;
     }

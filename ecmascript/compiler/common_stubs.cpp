@@ -1001,12 +1001,28 @@ void CreateStringBySingleCharCodeStubBuilder::GenerateCircuit()
 
 void FastStringEqualStubBuilder::GenerateCircuit()
 {
+    auto env = GetEnvironment();
     GateRef glue = PtrArgument(0);
     GateRef str1 = TaggedArgument(1);
     GateRef str2 = Int32Argument(2);
 
-    GateRef result = FastStringEqual(glue, str1, str2);
-    Return(result);
+    Label leftEqualRight(env);
+    Label leftNotEqualRight(env);
+    Label exit(env);
+    DEFVARIABLE(result, VariableType::BOOL(), False());
+    Branch(Equal(str1, str2), &leftEqualRight, &leftNotEqualRight);
+    Bind(&leftEqualRight);
+    {
+        result = True();
+        Jump(&exit);
+    }
+    Bind(&leftNotEqualRight);
+    {
+        result = FastStringEqual(glue, str1, str2);
+        Jump(&exit);
+    }
+    Bind(&exit);
+    Return(*result);
 }
 
 void FastStringAddStubBuilder::GenerateCircuit()

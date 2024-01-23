@@ -13,10 +13,105 @@
  * limitations under the License.
  */
 declare function print(arg:any, arg1?:any):string;
+declare class ArkTools {
+    static isSlicedString(str: string): boolean;
+    isAOTCompiled(args: any): boolean;
+}
+function assert (expr: unknown, msg?: string): asserts expr {
+    if (!expr) throw new Error(msg);
+}
 
-let str:string = "Hello World";
+var a : string = "12345";
+var cr : string = "clashroyale";
+var c = a + a.substring(2);
+print(c);
+a += a.substring(3);
+print(a);
+a = a + cr.substring(5);
+print(a);
+
+var d = cr.substring(1) + a;
+print(d);
+
+function test_undefined(message, message2, message3, message4) {
+  print(message + ', ' + message2 + ', ' + message3 + ', ' + message4);
+}
+test_undefined('hello');
+
+// multiple add case
+var Text1 = "[^-]*-";
+var Text2 = Text1 + "([^-]" + Text1 + ")*-";
+var Text3 = Text2 + ">?";
+var Text4 = "<(!(--" + Text2 + ">|[^-]";
+print(Text4);
+
+// loop opt case
+var stra = "aaaaaa";
+var strb = "strb";
+print(strb);
+assert(ArkTools.isSlicedString(strb) == false, "Error optimize string add");
+strb = stra + "bbbbbbbb"
+var kk = 10;
+var strc = "";
+for (let i = 0; i < 3; i++) {
+    if (kk > 100) {
+        strc = strb + "c";
+    } else {
+        strc = strb + "-";
+    }
+}
+print(strb);
+let strbHasStringAddOpt: boolean = ArkTools.isSlicedString(strb);
+assert(ArkTools.isSlicedString(strc) == false, "Error optimize string add");
+
+// function call opt case
+function foo1(str) {
+    var strk = str + "kkk";
+    for (let j = 0; j < 3; j++) {
+        if (strk.length > 5) {
+            var stre = str + "-";
+        } else {
+            var stre = str + "+";
+        }
+    }
+}
+foo1(strb);
+print(strb);
+
+// cocos app opt case
+var count = 9;
+function foo2(num) {
+    if (num < 0) {
+        return 3;
+    } else {
+        return "callthis";
+    }
+}
+var right = "hmos";
+if (count > 10) {
+    right += foo2(count);
+}
+var e = "oooohhhhoooossss";
+assert(ArkTools.isSlicedString(e) == false, "Error optimize string add");
+for (var i = 0; i < count; i++) {
+    e += right;
+}
+let eHasStringAddOpt: boolean = ArkTools.isSlicedString(e);
+
+function foo3(str :string) {
+    print(str);
+    print(str.length);
+}
+
+let s:string = "aaaaaaaaaaaaaaaa" + "bbbbbbbbbbbbbb";
+let s1:string = "aaaaaaaaaaaaaaaa" + "bbbbbbbbbbbbbb";
+let ss:string = s + "-";
+
+foo3(s);
+print(s1 == s);
 
 // two const
+let str:string = "Hello World";
 print("Hello" + "World");
 print(str + "Hello");
 print("" + "" + "123" + "");
@@ -44,3 +139,7 @@ print(left + right1);
 print(left + right2);
 print(right2 + right2);
 
+if (ArkTools.isAOTCompiled(foo)) {
+    assert(strbHasStringAddOpt == true, "Not optimize string add");
+    assert(eHasStringAddOpt == true, "Not optimize string add");
+}

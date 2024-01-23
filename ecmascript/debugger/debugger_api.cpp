@@ -304,7 +304,7 @@ int32_t DebuggerApi::GetObjectHash(const EcmaVM *ecmaVM, const JSHandle<JSTagged
         int32_t hash = base::RandomGenerator::GenerateIdentityHash();
         auto ecmaObj = ECMAObject::Cast(tagged->GetTaggedObject());
         JSHandle<ECMAObject> ecmaObjHandle(ecmaVM->GetJSThread(), ecmaObj);
-        ECMAObject::SetHash(hash, ecmaObjHandle);
+        ECMAObject::SetHash(ecmaVM->GetJSThread(), hash, ecmaObjHandle);
         return hash;
     } else {
         return ECMAObject::Cast(tagged->GetTaggedObject())->GetHash();

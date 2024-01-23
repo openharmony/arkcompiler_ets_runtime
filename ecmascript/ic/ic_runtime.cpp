@@ -27,7 +27,6 @@
 #include "ecmascript/js_tagged_value-inl.h"
 #include "ecmascript/js_typed_array.h"
 #include "ecmascript/object_factory-inl.h"
-#include "ecmascript/object_operator.h"
 #include "ecmascript/tagged_dictionary.h"
 #include "ecmascript/message_string.h"
 
@@ -70,7 +69,7 @@ void ICRuntime::UpdateLoadHandler(const ObjectOperator &op, JSHandle<JSTaggedVal
         } else if (!op.IsOnPrototype()) {
             handlerValue = LoadHandler::LoadProperty(thread_, op);
         } else {
-            // do not support global prototype ic or primitive string
+            // do not support global prototype ic
             if (IsGlobalLoadIC(GetICKind()) || receiver->IsString()) {
                 return;
             }
@@ -179,6 +178,9 @@ void ICRuntime::TraceIC([[maybe_unused]] JSHandle<JSTaggedValue> receiver,
 
 JSTaggedValue LoadICRuntime::LoadValueMiss(JSHandle<JSTaggedValue> receiver, JSHandle<JSTaggedValue> key)
 {
+    JSTaggedValue::RequireObjectCoercible(thread_, receiver, "Cannot load property of null or undefined");
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
+
     if ((!receiver->IsJSObject() || receiver->HasOrdinaryGet()) && !receiver->IsString()) {
         icAccessor_.SetAsMega();
         JSHandle<JSTaggedValue> propKey = JSTaggedValue::ToPropertyKey(thread_, key);
@@ -335,8 +337,8 @@ JSTaggedValue StoreICRuntime::StoreMiss(JSHandle<JSTaggedValue> receiver, JSHand
         }
     }
     UpdateReceiverHClass(JSHandle<JSTaggedValue>(GetThread(), JSHandle<JSObject>::Cast(receiver)->GetClass()));
-    ObjectOperator op(GetThread(), receiver, key,
-                      kind == ICKind::StoreOwnIC ? OperatorType::OWN : OperatorType::PROTOTYPE_CHAIN);
+
+    ObjectOperator op(GetThread(), receiver, key);
     if (!op.IsFound()) {
         if (kind == ICKind::NamedGlobalStoreIC) {
             PropertyAttributes attr = PropertyAttributes::Default(true, true, false);

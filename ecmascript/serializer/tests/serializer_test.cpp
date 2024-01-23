@@ -319,10 +319,10 @@ public:
         EXPECT_EQ(sum, 16); // 16 : test case
 
         EXPECT_EQ(retSet->GetSize(), 4);  // 4 : test case
-        EXPECT_TRUE(retSet->Has(value1.GetTaggedValue()));
-        EXPECT_TRUE(retSet->Has(value2.GetTaggedValue()));
-        EXPECT_TRUE(retSet->Has(value3.GetTaggedValue()));
-        EXPECT_TRUE(retSet->Has(value4.GetTaggedValue()));
+        EXPECT_TRUE(retSet->Has(thread, value1.GetTaggedValue()));
+        EXPECT_TRUE(retSet->Has(thread, value2.GetTaggedValue()));
+        EXPECT_TRUE(retSet->Has(thread, value3.GetTaggedValue()));
+        EXPECT_TRUE(retSet->Has(thread, value4.GetTaggedValue()));
         Destroy();
     }
 
@@ -640,7 +640,7 @@ public:
         JSHandle<JSTaggedValue> val3 = JSObject::GetProperty(thread, sObj, key3).GetRawValue();
         JSHandle<JSTaggedValue> val4 = JSObject::GetProperty(thread, sObj, key4).GetRawValue();
         EXPECT_TRUE(val4->IsJSSharedFunction());
-        EXPECT_EQ(val1->GetInt(), 1024);
+        EXPECT_EQ(val1->GetInt(), 1024);    // 1024 is the expected value
         EXPECT_TRUE(val2->ToBoolean());
         JSHandle<EcmaString> str3 = JSHandle<EcmaString>(val3);
         JSHandle<EcmaString> strTest3 = factory->NewFromStdString("hello world!");
@@ -1071,7 +1071,8 @@ HWTEST_F_L0(JSSerializerTest, SerializeJSError2)
     JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(obj), JSHandle<JSTaggedValue>(key2), errorTag);
 
     ValueSerializer *serializer = new ValueSerializer(thread);
-    serializer->WriteValue(thread, JSHandle<JSTaggedValue>(obj), JSHandle<JSTaggedValue>(obj),
+    serializer->WriteValue(thread, JSHandle<JSTaggedValue>(obj),
+                           JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()),
                            JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
     std::unique_ptr<SerializeData> data = serializer->Release();
     JSDeserializerTest jsDeserializerTest;

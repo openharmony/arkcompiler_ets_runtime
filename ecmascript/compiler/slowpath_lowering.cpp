@@ -2356,22 +2356,30 @@ void SlowPathLowering::LowerDefineClassWithBuffer(GateRef gate)
 
 void SlowPathLowering::LowerDefineFunc(GateRef gate)
 {
+    Environment env(gate, circuit_, &builder_);
+    DEFVALUE(result, (&builder_), VariableType::JS_ANY(), builder_.Undefined());
     GateRef jsFunc = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
     GateRef methodId = acc_.GetValueIn(gate, 0);
     GateRef length = acc_.GetValueIn(gate, 1);
-    GateRef constPool = builder_.GetConstPoolFromFunction(jsFunc);
-    GateRef module = builder_.GetModuleFromFunction(jsFunc);
-    GateRef env = acc_.GetValueIn(gate, 2); // 2: Get current env
-    GateRef homeObject = builder_.GetHomeObjectFromFunction(jsFunc);
-
-    Label defaultLabel(&builder_);
-    Label successExit(&builder_);
-    Label exceptionExit(&builder_);
-    GateRef result = LowerCallRuntime(gate, RTSTUB_ID(DefineFunc),
-        { constPool, builder_.ToTaggedInt(methodId), module, builder_.ToTaggedInt(length), env, homeObject });
-    builder_.Branch(builder_.TaggedIsException(result), &exceptionExit, &successExit);
-    CREATE_DOUBLE_EXIT(successExit, exceptionExit)
-    acc_.ReplaceHirWithIfBranch(gate, successControl, failControl, result);
+    GateRef lexEnv = acc_.GetValueIn(gate, 2); // 2: Get current env
+    StateDepend successControl;
+    StateDepend failControl;
+    Label success(&builder_);
+    Label failed(&builder_);
+    NewObjectStubBuilder newBuilder(&env);
+    newBuilder.NewJSFunction(glue_, jsFunc, builder_.TruncInt64ToInt32(methodId), length, lexEnv, &result, &success,
+                             &failed);
+    builder_.Bind(&failed);
+    {
+        failControl.SetState(builder_.GetState());
+        failControl.SetDepend(builder_.GetDepend());
+    }
+    builder_.Bind(&success);
+    {
+        successControl.SetState(builder_.GetState());
+        successControl.SetDepend(builder_.GetDepend());
+    }
+    acc_.ReplaceHirWithIfBranch(gate, successControl, failControl, *result);
 }
 
 void SlowPathLowering::LowerAsyncFunctionEnter(GateRef gate)

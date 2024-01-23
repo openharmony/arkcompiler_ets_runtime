@@ -431,6 +431,9 @@ JSTaggedValue BuiltinsArray::Concat(EcmaRuntimeCallInfo *argv)
     // 2. Let A be ArraySpeciesCreate(O, 0).
     uint32_t arrayLen = 0;
     JSTaggedValue newArray = JSArray::ArraySpeciesCreate(thread, thisObjHandle, JSTaggedNumber(arrayLen));
+    if (!(newArray.IsECMAObject() || newArray.IsUndefined())) {
+        THROW_TYPE_ERROR_AND_RETURN(thread, "array must be object or undefined.", JSTaggedValue::Exception());
+    }
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSHandle<JSObject> newArrayHandle(thread, newArray);
 
@@ -774,8 +777,8 @@ JSTaggedValue BuiltinsArray::Fill(EcmaRuntimeCallInfo *argv)
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
     // 5. Let relativeStart be ToInteger(start).
-    JSHandle<JSTaggedValue> msg1 = GetCallArg(argv, 1);
-    JSTaggedNumber argStartTemp = JSTaggedValue::ToInteger(thread, msg1);
+    JSHandle<JSTaggedValue> startArg = GetCallArg(argv, 1);
+    JSTaggedNumber argStartTemp = JSTaggedValue::ToInteger(thread, startArg);
     // 6. ReturnIfAbrupt(relativeStart).
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     double argStart = argStartTemp.GetNumber();
@@ -790,9 +793,9 @@ JSTaggedValue BuiltinsArray::Fill(EcmaRuntimeCallInfo *argv)
 
     // 8. If end is undefined, let relativeEnd be len; else let relativeEnd be ToInteger(end).
     double argEnd = len;
-    JSHandle<JSTaggedValue> msg2 = GetCallArg(argv, INDEX_TWO);
-    if (!msg2->IsUndefined()) {
-        JSTaggedNumber argEndTemp = JSTaggedValue::ToInteger(thread, msg2);
+    JSHandle<JSTaggedValue> endArg = GetCallArg(argv, INDEX_TWO);
+    if (!endArg->IsUndefined()) {
+        JSTaggedNumber argEndTemp = JSTaggedValue::ToInteger(thread, endArg);
         // 9. ReturnIfAbrupt(relativeEnd).
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         argEnd = argEndTemp.GetNumber();
@@ -811,8 +814,8 @@ JSTaggedValue BuiltinsArray::Fill(EcmaRuntimeCallInfo *argv)
     //   b. Let setStatus be Set(O, Pk, value, true).
     //   c. ReturnIfAbrupt(setStatus).
     //   d. Increase k by 1.
-    
-    if (thisObjVal->IsStableJSArray(thread)) {
+
+    if (thisObjVal->IsStableJSArray(thread) && !startArg->IsJSObject() && !endArg->IsJSObject()) {
         return JSStableArray::Fill(thread, thisObjHandle, value, start, end, len);
     }
 

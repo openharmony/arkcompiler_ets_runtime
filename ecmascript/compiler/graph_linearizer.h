@@ -468,6 +468,7 @@ private:
     bool loopInvariantCodeMotion_ {false};
     bool enableLiteCG_ {false};
     friend class ArrayBoundsCheckElimination;
+    friend class StringBuilderOptimizer;
     friend class CFGBuilder;
     friend class GateScheduler;
     friend class ImmediateDominatorsGenerator;

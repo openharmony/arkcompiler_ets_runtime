@@ -901,12 +901,16 @@ GateRef StubBuilder::AddPropertyByName(GateRef glue, GateRef receiver, GateRef k
         Jump(&afterInPropsCon);
         Bind(&hasUnusedInProps);
         {
-            SetPropertyInlinedProps(glue, receiver, hclass, value, numberOfProps);
             attr = SetOffsetFieldInPropAttr(*attr, numberOfProps);
             attr = SetIsInlinePropsFieldInPropAttr(*attr, Int32(1)); // 1: set inInlineProps true
             attr = SetTaggedRepInPropAttr(*attr);
             attr = ProfilerStubBuilder(env).UpdateTrackTypeInPropAttr(*attr, value, callback);
             JSHClassAddProperty(glue, receiver, key, *attr);
+            GateRef newHclass = LoadHClass(receiver);
+            GateRef newLayoutInfo = GetLayoutFromHClass(newHclass);
+            GateRef offset = GetInlinedPropOffsetFromHClass(hclass, numberOfProps);
+            attr = GetInt32OfTInt(GetPropAttrFromLayoutInfo(newLayoutInfo, numberOfProps));
+            SetValueWithAttr(glue, receiver, offset, key, value, *attr);
             result = Undefined();
             Jump(&exit);
         }
@@ -1788,6 +1792,35 @@ GateRef StubBuilder::LoadICWithHandler(
                         Branch(IsStringLength(handlerInfo), &handlerInfoIsStringLength, &handlerInfoNotStringLength);
                         Bind(&handlerInfoNotStringLength);
                         {
+                            // string or number hasaccessor
+                            Label holderIsString(env);
+                            Label holderNotString(env);
+                            Label holderIsNumber(env);
+                            Label holderNotNumber(env);
+                            Branch(TaggedIsString(*holder), &holderIsString, &holderNotString);
+                            Bind(&holderIsString);
+                            {
+                                GateRef glueGlobalEnvOffset =
+                                    IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
+                                GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(),
+                                    glue, glueGlobalEnvOffset);
+                                holder = GetGlobalEnvValue(VariableType::JS_ANY(),
+                                    glueGlobalEnv, GlobalEnv::STRING_PROTOTYPE_INDEX);
+                                Jump(&exit);
+                            }
+                            Bind(&holderNotString);
+                            Branch(TaggedIsNumber(*holder), &holderIsNumber, &holderNotNumber);
+                            Bind(&holderIsNumber);
+                            {
+                                GateRef glueGlobalEnvOffset =
+                                    IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
+                                GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(),
+                                    glue, glueGlobalEnvOffset);
+                                holder = GetGlobalEnvValue(VariableType::JS_ANY(),
+                                    glueGlobalEnv, GlobalEnv::NUMBER_PROTOTYPE_INDEX);
+                                Jump(&exit);
+                            }
+                            Bind(&holderNotNumber);
                             GateRef accessor = LoadFromField(*holder, handlerInfo);
                             result = CallGetterHelper(glue, receiver, *holder, accessor, callback);
                             Jump(&exit);
@@ -4603,6 +4636,7 @@ GateRef StubBuilder::GetPrototype(GateRef glue, GateRef object)
     {
         GateRef taggedId = Int32(GET_MESSAGE_STRING_ID(CanNotGetNotEcmaObject));
         CallRuntime(glue, RTSTUB_ID(ThrowTypeError), { IntToTaggedInt(taggedId) });
+        CallRuntime(glue, RTSTUB_ID(Dump), { object });
         result = Exception();
         Jump(&exit);
     }
@@ -5086,18 +5120,33 @@ GateRef StubBuilder::FastEqual(GateRef glue, GateRef left, GateRef right, Profil
         {
             // Collect the type of left value
             result = TaggedTrue();
-            Label leftIsInt(env);
-            Label leftIsNotInt(env);
-            Branch(TaggedIsInt(left), &leftIsInt, &leftIsNotInt);
-            Bind(&leftIsInt);
-            {
-                callback.ProfileOpType(Int32(PGOSampleType::IntType()));
+            if (callback.IsEmpty()) {
                 Jump(&exit);
-            }
-            Bind(&leftIsNotInt);
-            {
-                callback.ProfileOpType(Int32(PGOSampleType::AnyType()));
-                Jump(&exit);
+            } else {
+                Label leftIsInt(env);
+                Label leftIsNotInt(env);
+                Branch(TaggedIsInt(left), &leftIsInt, &leftIsNotInt);
+                Bind(&leftIsInt);
+                {
+                    callback.ProfileOpType(Int32(PGOSampleType::IntType()));
+                    Jump(&exit);
+                }
+                Bind(&leftIsNotInt);
+                {
+                    Label leftIsString(env);
+                    Label leftIsNotString(env);
+                    Branch(TaggedIsString(left), &leftIsString, &leftIsNotString);
+                    Bind(&leftIsString);
+                    {
+                        callback.ProfileOpType(Int32(PGOSampleType::StringType()));
+                        Jump(&exit);
+                    }
+                    Bind(&leftIsNotString);
+                    {
+                        callback.ProfileOpType(Int32(PGOSampleType::AnyType()));
+                        Jump(&exit);
+                    }
+                }
             }
         }
     }
@@ -5709,6 +5758,8 @@ GateRef StubBuilder::FastMod(GateRef glue, GateRef left, GateRef right, ProfileO
         Label leftIsNumberAndRightIsNumber(env);
         Label leftIsDoubleAndRightIsDouble(env);
         DEFVARIABLE(curType, VariableType::INT32(), Int32(PGOSampleType::None()));
+        // less than 0 result should be double
+        curType = Int32(PGOSampleType::DoubleType());
         Branch(TaggedIsNumber(left), &leftIsNumber, &leftNotNumberOrRightNotNumber);
         Bind(&leftIsNumber);
         {
@@ -5721,13 +5772,15 @@ GateRef StubBuilder::FastMod(GateRef glue, GateRef left, GateRef right, ProfileO
                 Branch(TaggedIsInt(left), &leftIsInt1, &leftNotInt1);
                 Bind(&leftIsInt1);
                 {
-                    curType = Int32(PGOSampleType::IntType());
+                    GateRef type = Int32(PGOSampleType::IntType());
+                    COMBINE_TYPE_CALL_BACK(curType, type);
                     doubleLeft = ChangeInt32ToFloat64(GetInt32OfTInt(left));
                     Jump(&leftIsNumberAndRightIsNumber);
                 }
                 Bind(&leftNotInt1);
                 {
-                    curType = Int32(PGOSampleType::DoubleType());
+                    GateRef type = Int32(PGOSampleType::DoubleType());
+                    COMBINE_TYPE_CALL_BACK(curType, type);
                     doubleLeft = GetDoubleOfTDouble(left);
                     Jump(&leftIsNumberAndRightIsNumber);
                 }
@@ -6099,7 +6152,7 @@ GateRef StubBuilder::ToObject(GateRef glue, GateRef obj)
     return ret;
 }
 
-GateRef StubBuilder::NewJSPrimitiveRef(GateRef glue, size_t index , GateRef obj)
+GateRef StubBuilder::NewJSPrimitiveRef(GateRef glue, size_t index, GateRef obj)
 {
     GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env_->Is32Bit()));
     GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);

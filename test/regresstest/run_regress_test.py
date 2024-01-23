@@ -92,6 +92,8 @@ def check_args(args):
         args.out_dir = RegressTestConfig.PROJECT_BASE_OUT_DIR
     else:
         args.out_dir = os.path.join(RegressTestConfig.CURRENT_PATH, args.out_dir)
+    if not args.out_dir.endswith("/"):
+        args.out_dir = f"{args.out_dir}/"
     args.regress_out_dir = os.path.join(args.out_dir, "regresstest")
     args.out_result = os.path.join(args.regress_out_dir, 'result.txt')
     args.out_log = os.path.join(args.regress_out_dir, 'test.log')
@@ -299,6 +301,8 @@ def read_expect_file(expect_file, test_case_file):
         lines = file_object.readlines()
         lines = [line for line in lines if not line.strip().startswith('#')]
         expect_output = ''.join(lines)
+        if test_case_file.startswith("/"):
+            test_case_file = test_case_file.lstrip("/")
         expect_file = test_case_file.replace('regresstest/', '')
         test_file_path = os.path.join(RegressTestConfig.REGRESS_BASE_TEST_DIR, expect_file)
         expect_output_str = expect_output.replace('*%(basename)s', test_file_path)

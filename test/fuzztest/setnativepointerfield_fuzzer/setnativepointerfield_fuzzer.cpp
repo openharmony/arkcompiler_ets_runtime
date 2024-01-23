@@ -41,7 +41,7 @@ namespace OHOS {
         }
         Local<ObjectRef> object = ObjectRef::New(vm);
         NativePointerCallback callBack = nullptr;
-        object->SetNativePointerField(index, (void *)data, callBack, (void *)data);
+        object->SetNativePointerField(vm, index, (void *)data, callBack, (void *)data);
         JSNApi::DestroyJSVM(vm);
     }
 }

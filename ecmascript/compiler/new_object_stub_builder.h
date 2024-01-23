@@ -54,6 +54,8 @@ public:
     GateRef NewJSForinIterator(GateRef glue, GateRef receiver, GateRef keys, GateRef cachedHclass);
     GateRef LoadHClassFromMethod(GateRef glue, GateRef method);
     GateRef NewJSFunction(GateRef glue, GateRef constpool, GateRef module, GateRef index);
+    void NewJSFunction(GateRef glue, GateRef jsFunc, GateRef index, GateRef length, GateRef lexEnv,
+                       Variable *result, Label *success, Label *failed);
     void InitializeJSFunction(GateRef glue, GateRef func, GateRef kind);
     GateRef EnumerateObjectProperties(GateRef glue, GateRef obj);
     void NewArgumentsList(Variable *result, Label *exit, GateRef sp, GateRef startIdx, GateRef numArgs);

@@ -1291,6 +1291,9 @@ HWTEST_F_L0(JSNApiTests, ClassFunction)
     JSTaggedValue accessor =
         JSHandle<JSFunction>(clsObj)->GetPropertyInlinedProps(JSFunction::CLASS_PROTOTYPE_INLINE_PROPERTY_INDEX);
     ASSERT_TRUE(accessor.IsInternalAccessor());
+    
+    accessor = JSHandle<JSFunction>(clsObj)->GetPropertyInlinedProps(JSFunction::LENGTH_INLINE_PROPERTY_INDEX);
+    ASSERT_TRUE(!accessor.IsUndefinedOrNull());
 }
 
 HWTEST_F_L0(JSNApiTests, WeakRefSecondPassCallback)
@@ -1614,14 +1617,14 @@ HWTEST_F_L0(JSNApiTests, ObjectRef_SetNativePointerFieldCount_GetNativePointerFi
     LocalScope scope(vm_);
     Local<ObjectRef> object = ObjectRef::New(vm_);
     int32_t input = 34;
-    object->SetNativePointerFieldCount(input);
+    object->SetNativePointerFieldCount(vm_, input);
     int32_t res = object->GetNativePointerFieldCount();
     ASSERT_EQ(res, input);
     NativePointerCallback callBack = nullptr;
     void *vp1 = static_cast<void *>(new std::string("test"));
     void *vp2 = static_cast<void *>(new std::string("test"));
     std::string *sp1 = static_cast<std::string *>(vp1);
-    object->SetNativePointerField(33, vp1, callBack, vp2);
+    object->SetNativePointerField(vm_, 33, vp1, callBack, vp2);
     void *res1 = object->GetNativePointerField(33);
     std::string *sp2 = static_cast<std::string *>(res1);
     ASSERT_EQ(sp1, sp2);

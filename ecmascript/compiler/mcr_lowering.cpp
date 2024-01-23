@@ -72,6 +72,9 @@ GateRef MCRLowering::VisitGate(GateRef gate)
         case OpCode::INT32_CHECK_RIGHT_IS_ZERO:
             LowerInt32CheckRightIsZero(gate);
             break;
+        case OpCode::REMAINDER_IS_NEGATIVE_ZERO:
+            LowerRemainderIsNegativeZero(gate);
+            break;
         case OpCode::FLOAT64_CHECK_RIGHT_IS_ZERO:
             LowerFloat64CheckRightIsZero(gate);
             break;
@@ -755,6 +758,21 @@ void MCRLowering::LowerInt32CheckRightIsZero(GateRef gate)
     GateRef right = acc_.GetValueIn(gate, 0);
     GateRef rightNotZero = builder_.Int32NotEqual(right, builder_.Int32(0));
     builder_.DeoptCheck(rightNotZero, frameState, DeoptType::MODZERO1);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
+}
+
+void MCRLowering::LowerRemainderIsNegativeZero(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    GateRef frameState = acc_.GetFrameState(gate);
+    GateRef left = acc_.GetValueIn(gate, 0);
+    GateRef right = acc_.GetValueIn(gate, 1);
+    GateRef leftIsNegative = builder_.Int32LessThan(left, builder_.Int32(0));
+    GateRef remainder =
+        builder_.BinaryArithmetic(circuit_->Smod(), MachineType::I32, left, right, GateType::NJSValue());
+    GateRef remainderEqualZero = builder_.Int32Equal(remainder, builder_.Int32(0));
+    GateRef remainderIsNotNegative = builder_.BoolNot(builder_.BoolAnd(leftIsNegative, remainderEqualZero));
+    builder_.DeoptCheck(remainderIsNotNegative, frameState, DeoptType::REMAINDERISNEGATIVEZERO);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 

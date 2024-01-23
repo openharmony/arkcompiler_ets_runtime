@@ -88,6 +88,15 @@ public:
         TRIM_END,
     };
 
+    enum ConcatOptStatus {
+        BEGIN_STRING_ADD = 1,
+        IN_STRING_ADD,
+        CONFIRMED_IN_STRING_ADD,
+        END_STRING_ADD,
+        INVALID_STRING_ADD,
+        HAS_BACKING_STORE,
+    };
+
 private:
     friend class EcmaStringAccessor;
     friend class LineEcmaString;
@@ -720,6 +729,8 @@ private:
 // The LineEcmaString abstract class captures sequential string values, only LineEcmaString can store chars data
 class LineEcmaString : public EcmaString {
 public:
+    static constexpr uint32_t MAX_LENGTH = (1 << 28) - 16;
+    static constexpr uint32_t INIT_LENGTH_TIMES = 4;
     // DATA_OFFSET: the string data stored after the string header.
     // Data can be stored in utf8 or utf16 form according to compressed bit.
     static constexpr size_t DATA_OFFSET = EcmaString::SIZE;  // DATA_OFFSET equal to Empty String size
@@ -861,8 +872,8 @@ public:
     static constexpr uint32_t MIN_SLICED_ECMASTRING_LENGTH = 13;
     static constexpr size_t PARENT_OFFSET = EcmaString::SIZE;
     ACCESSORS(Parent, PARENT_OFFSET, STARTINDEX_OFFSET);
-    ACCESSORS_PRIMITIVE_FIELD(StartIndex, uint32_t, STARTINDEX_OFFSET, LAST_OFFSET);
-    DEFINE_ALIGN_SIZE(LAST_OFFSET);
+    ACCESSORS_PRIMITIVE_FIELD(StartIndex, uint32_t, STARTINDEX_OFFSET, BACKING_STORE_FLAG);
+    ACCESSORS_PRIMITIVE_FIELD(HasBackingStore, uint32_t, BACKING_STORE_FLAG, SIZE);
 
     DECL_VISIT_OBJECT(PARENT_OFFSET, STARTINDEX_OFFSET);
 

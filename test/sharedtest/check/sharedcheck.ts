@@ -459,6 +459,20 @@ function testUpdateWithType(testObj: SubClass) {
   }
 }
 
+function testNormInherit() {
+  print("Start testNormInherit");
+  try {
+    class NormalClass extends SimpleStringSendable {
+      constructor() {
+        super()
+      }
+    }
+    print("Success to define normal class inherit from sendable class")
+  } catch (error) {
+    print("Fail to define normal class inherit from sendable class, err: " + error)
+  }
+}
+
 let b = new SubClass()
 b.subClassPropSendable = new SimpleStringSendable()
 testUpdate(b)
@@ -467,3 +481,4 @@ testExtend(b)
 testObjectProtoFunc(b)
 testUpdateWithType(b)
 testKeywords(b)
+testNormInherit()

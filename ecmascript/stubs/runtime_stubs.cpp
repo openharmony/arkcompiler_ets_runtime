@@ -513,7 +513,7 @@ DEF_RUNTIME_STUBS(UpdateHClassForElementsKind)
         auto targetHClassValue = globalConst->GetGlobalConstantObject(static_cast<size_t>(index));
         auto hclass = JSHClass::Cast(targetHClassValue.GetTaggedObject());
         auto array = JSHandle<JSArray>(receiver);
-        array->SynchronizedSetClass(hclass);
+        array->SynchronizedSetClass(thread, hclass);
         // Update TrackInfo
         if (!thread->IsPGOProfilerEnable()) {
             return JSTaggedValue::Hole().GetRawData();
@@ -579,6 +579,7 @@ DEF_RUNTIME_STUBS(NewMutantTaggedArray)
 
 void RuntimeStubs::Dump(JSTaggedType rawValue)
 {
+    LOG_ECMA(INFO) << "[ECMAObject?] " << rawValue;
     std::ostringstream oss;
     auto value = JSTaggedValue(rawValue);
     value.Dump(oss);
@@ -1056,6 +1057,9 @@ DEF_RUNTIME_STUBS(LoadICByValue)
     JSHandle<JSTaggedValue> key = GetHArg<JSTaggedValue>(argv, argc, 2);  // 2: means the second parameter
     JSTaggedValue slotId = GetArg(argv, argc, 3);  // 3: means the third parameter
 
+    JSTaggedValue::RequireObjectCoercible(thread, receiver, "Cannot load property of null or undefined");
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception().GetRawData());
+
     if (profileTypeInfo->IsUndefined()) {
         return RuntimeLdObjByValue(thread, receiver, key, false, JSTaggedValue::Undefined()).GetRawData();
     }
@@ -1081,25 +1085,6 @@ DEF_RUNTIME_STUBS(StoreICByValue)
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception().GetRawData());
     StoreICRuntime icRuntime(thread, JSHandle<ProfileTypeInfo>::Cast(profileTypeInfo), slotId.GetInt(),
                              ICKind::StoreIC);
-    return icRuntime.StoreMiss(receiver, propKey, value).GetRawData();
-}
-
-DEF_RUNTIME_STUBS(StoreOwnICByValue)
-{
-    RUNTIME_STUBS_HEADER(StoreOwnICByValue);
-    JSHandle<JSTaggedValue> profileTypeInfo = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
-    JSHandle<JSTaggedValue> receiver = GetHArg<JSTaggedValue>(argv, argc, 1);  // 1: means the first parameter
-    JSHandle<JSTaggedValue> key = GetHArg<JSTaggedValue>(argv, argc, 2);  // 2: means the second parameter
-    JSHandle<JSTaggedValue> value = GetHArg<JSTaggedValue>(argv, argc, 3);  // 3: means the third parameter
-    JSTaggedValue slotId = GetArg(argv, argc, 4);   // 4: means the fourth parameter
-
-    if (profileTypeInfo->IsUndefined()) {
-        return RuntimeStObjByValue(thread, receiver, key, value).GetRawData();
-    }
-    JSHandle<JSTaggedValue> propKey = JSTaggedValue::ToPropertyKey(thread, key);
-    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception().GetRawData());
-    StoreICRuntime icRuntime(thread, JSHandle<ProfileTypeInfo>::Cast(profileTypeInfo), slotId.GetInt(),
-                             ICKind::StoreOwnIC);
     return icRuntime.StoreMiss(receiver, propKey, value).GetRawData();
 }
 
@@ -1698,8 +1683,8 @@ DEF_RUNTIME_STUBS(LdPrivateProperty)
 {
     RUNTIME_STUBS_HEADER(LdPrivateProperty);
     JSTaggedValue lexicalEnv = GetArg(argv, argc, 0);  // 0: means the zeroth parameter
-    uint32_t levelIndex = GetArg(argv, argc, 1).GetInt();  // 1: means the first parameter
-    uint32_t slotIndex = GetArg(argv, argc, 2).GetInt();  // 2: means the second parameter
+    uint32_t levelIndex = static_cast<uint32_t>(GetArg(argv, argc, 1).GetInt());  // 1: means the first parameter
+    uint32_t slotIndex = static_cast<uint32_t>(GetArg(argv, argc, 2).GetInt());  // 2: means the second parameter
     JSTaggedValue obj = GetArg(argv, argc, 3);  // 3: means the third parameter
     return RuntimeLdPrivateProperty(thread, lexicalEnv, levelIndex, slotIndex, obj).GetRawData();
 }
@@ -1708,8 +1693,8 @@ DEF_RUNTIME_STUBS(StPrivateProperty)
 {
     RUNTIME_STUBS_HEADER(StPrivateProperty);
     JSTaggedValue lexicalEnv = GetArg(argv, argc, 0);  // 0: means the zeroth parameter
-    uint32_t levelIndex = GetArg(argv, argc, 1).GetInt();  // 1: means the first parameter
-    uint32_t slotIndex = GetArg(argv, argc, 2).GetInt();  // 2: means the second parameter
+    uint32_t levelIndex = static_cast<uint32_t>(GetArg(argv, argc, 1).GetInt());  // 1: means the first parameter
+    uint32_t slotIndex = static_cast<uint32_t>(GetArg(argv, argc, 2).GetInt());  // 2: means the second parameter
     JSTaggedValue obj = GetArg(argv, argc, 3);  // 3: means the third parameter
     JSTaggedValue value = GetArg(argv, argc, 4);  // 4: means the fourth parameter
     return RuntimeStPrivateProperty(thread, lexicalEnv, levelIndex, slotIndex, obj, value).GetRawData();
@@ -1719,8 +1704,8 @@ DEF_RUNTIME_STUBS(TestIn)
 {
     RUNTIME_STUBS_HEADER(TestIn);
     JSTaggedValue lexicalEnv = GetArg(argv, argc, 0);  // 0: means the zeroth parameter
-    uint32_t levelIndex = GetArg(argv, argc, 1).GetInt();  // 1: means the first parameter
-    uint32_t slotIndex = GetArg(argv, argc, 2).GetInt();  // 2: means the second parameter
+    uint32_t levelIndex = static_cast<uint32_t>(GetArg(argv, argc, 1).GetInt());  // 1: means the first parameter
+    uint32_t slotIndex = static_cast<uint32_t>(GetArg(argv, argc, 2).GetInt());  // 2: means the second parameter
     JSTaggedValue obj = GetArg(argv, argc, 3);  // 3: means the third parameter
     return RuntimeTestIn(thread, lexicalEnv, levelIndex, slotIndex, obj).GetRawData();
 }
@@ -2613,9 +2598,9 @@ DEF_RUNTIME_STUBS(CreatePrivateProperty)
 {
     RUNTIME_STUBS_HEADER(CreatePrivateProperty);
     JSTaggedValue lexicalEnv = GetArg(argv, argc, 0);  // 0: means the zeroth parameter
-    uint32_t count = GetArg(argv, argc, 1).GetInt();  // 1: means the first parameter
+    uint32_t count = static_cast<uint32_t>(GetArg(argv, argc, 1).GetInt());  // 1: means the first parameter
     JSTaggedValue constpool = GetArg(argv, argc, 2);  // 2: means the second parameter
-    uint32_t literalId = GetArg(argv, argc, 3).GetInt();  // 3: means the third parameter
+    uint32_t literalId = static_cast<uint32_t>(GetArg(argv, argc, 3).GetInt());  // 3: means the third parameter
     JSTaggedValue module = GetArg(argv, argc, 4);  // 4: means the fourth parameter
     return RuntimeCreatePrivateProperty(thread, lexicalEnv, count, constpool, literalId, module).GetRawData();
 }
@@ -2624,8 +2609,8 @@ DEF_RUNTIME_STUBS(DefinePrivateProperty)
 {
     RUNTIME_STUBS_HEADER(DefinePrivateProperty);
     JSTaggedValue lexicalEnv = GetArg(argv, argc, 0);  // 0: means the zeroth parameter
-    uint32_t levelIndex = GetArg(argv, argc, 1).GetInt();  // 1: means the first parameter
-    uint32_t slotIndex = GetArg(argv, argc, 2).GetInt();  // 2: means the second parameter
+    uint32_t levelIndex = static_cast<uint32_t>(GetArg(argv, argc, 1).GetInt());  // 1: means the first parameter
+    uint32_t slotIndex = static_cast<uint32_t>(GetArg(argv, argc, 2).GetInt());  // 2: means the second parameter
     JSTaggedValue obj = GetArg(argv, argc, 3);  // 3: means the third parameter
     JSTaggedValue value = GetArg(argv, argc, 4);  // 4: means the fourth parameter
     return RuntimeDefinePrivateProperty(thread, lexicalEnv, levelIndex, slotIndex, obj, value).GetRawData();
@@ -2817,15 +2802,16 @@ void RuntimeStubs::MarkingBarrier([[maybe_unused]] uintptr_t argGlue,
     uintptr_t slotAddr = object + offset;
     Region *objectRegion = Region::ObjectAddressToRange(object);
     Region *valueRegion = Region::ObjectAddressToRange(value);
+    auto thread = JSThread::GlueToJSThread(argGlue);
 #if ECMASCRIPT_ENABLE_BARRIER_CHECK
-    if (!valueRegion->GetJSThread()->GetEcmaVM()->GetHeap()->IsAlive(JSTaggedValue(value).GetHeapObject())) {
+    if (!thread->GetEcmaVM()->GetHeap()->IsAlive(JSTaggedValue(value).GetHeapObject())) {
         LOG_FULL(FATAL) << "RuntimeStubs::MarkingBarrier checked value:" << value << " is invalid!";
     }
 #endif
-    if (!valueRegion->IsMarking()) {
+    if (!thread->IsConcurrentMarkingOrFinished()) {
         return;
     }
-    Barriers::Update(slotAddr, objectRegion, value, valueRegion);
+    Barriers::Update(thread, slotAddr, objectRegion, value, valueRegion);
 }
 
 void RuntimeStubs::StoreBarrier([[maybe_unused]] uintptr_t argGlue,
@@ -2834,8 +2820,9 @@ void RuntimeStubs::StoreBarrier([[maybe_unused]] uintptr_t argGlue,
     uintptr_t slotAddr = object + offset;
     Region *objectRegion = Region::ObjectAddressToRange(object);
     Region *valueRegion = Region::ObjectAddressToRange(value);
+    auto thread = JSThread::GlueToJSThread(argGlue);
 #if ECMASCRIPT_ENABLE_BARRIER_CHECK
-    if (!valueRegion->GetJSThread()->GetEcmaVM()->GetHeap()->IsAlive(JSTaggedValue(value).GetHeapObject())) {
+    if (!thread->GetEcmaVM()->GetHeap()->IsAlive(JSTaggedValue(value).GetHeapObject())) {
         LOG_FULL(FATAL) << "RuntimeStubs::StoreBarrier checked value:" << value << " is invalid!";
     }
 #endif
@@ -2844,10 +2831,10 @@ void RuntimeStubs::StoreBarrier([[maybe_unused]] uintptr_t argGlue,
         ASSERT((slotAddr % static_cast<uint8_t>(MemAlignment::MEM_ALIGN_OBJECT)) == 0);
         objectRegion->InsertOldToNewRSet(slotAddr);
     }
-    if (!valueRegion->IsMarking()) {
+    if (!thread->IsConcurrentMarkingOrFinished()) {
         return;
     }
-    Barriers::Update(slotAddr, objectRegion, value, valueRegion);
+    Barriers::Update(thread, slotAddr, objectRegion, value, valueRegion);
 }
 
 bool RuntimeStubs::StringsAreEquals(EcmaString *str1, EcmaString *str2)
@@ -3188,7 +3175,7 @@ DEF_RUNTIME_STUBS(GetLinkedHash)
 {
     RUNTIME_STUBS_HEADER(GetLinkedHash);
     JSTaggedValue key = GetArg(argv, argc, 0);  // 0: means the zeroth parameter
-    return JSTaggedValue(LinkedHash::Hash(key)).GetRawData();
+    return JSTaggedValue(LinkedHash::Hash(thread, key)).GetRawData();
 }
 
 DEF_RUNTIME_STUBS(LinkedHashMapComputeCapacity)
@@ -3339,12 +3326,6 @@ DEF_RUNTIME_STUBS(HasProperty)
     bool res = JSTaggedValue::HasProperty(thread, obj, index);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception().GetRawData());
     return JSTaggedValue(res).GetRawData();
-}
-
-DEF_RUNTIME_STUBS(WorkroundStub)
-{
-    RUNTIME_STUBS_HEADER(WorkroundStub);
-    return JSTaggedValue::Hole().GetRawData();
 }
 
 void RuntimeStubs::Initialize(JSThread *thread)

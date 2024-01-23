@@ -391,6 +391,8 @@ public:
     size_t GetJSType(GateRef gate) const;
     uint32_t GetArraySize(GateRef gate) const;
     void SetArraySize(GateRef gate, uint32_t size);
+    uint32_t GetStringStatus(GateRef gate) const;
+    void SetStringStatus(GateRef gate, uint32_t type);
     size_t GetVirtualRegisterIndex(GateRef gate) const;
     bool TypedOpIsTypedArray(GateRef gate, TypedOpKind kind) const;
     GateType GetReceiverType(GateRef gate) const;

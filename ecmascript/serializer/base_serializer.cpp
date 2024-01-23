@@ -97,8 +97,8 @@ bool BaseSerializer::SerializeSpecialObjIndividually(JSType objectType, TaggedOb
         case JSType::LEXICAL_ENV:
             SerializeLexicalEnvFieldIndividually(root, start, end);
             return true;
-        case JSType::JS_FUNCTION:
-            SerializeJSFunctionFieldIndividually(root, start, end);
+        case JSType::JS_SHARED_FUNCTION:
+            SerializeSFunctionFieldIndividually(root, start, end);
             return true;
         case JSType::JS_ASYNC_FUNCTION:
             SerializeAsyncFunctionFieldIndividually(root, start, end);
@@ -122,7 +122,8 @@ void BaseSerializer::SerializeHClassFieldIndividually(TaggedObject *root, Object
                 JSHClass *kclass = reinterpret_cast<JSHClass *>(root);
                 JSTaggedValue proto = kclass->GetPrototype();
                 JSType type = kclass->GetObjectType();
-                if (type == JSType::JS_SHARED_OBJECT || type == JSType::JS_SHARED_FUNCTION) {
+                if ((serializeSharedEvent_ > 0) &&
+                    (type == JSType::JS_SHARED_OBJECT || type == JSType::JS_SHARED_FUNCTION)) {
                     SerializeJSTaggedValue(JSTaggedValue(slot.GetTaggedType()));
                 } else {
                     SerializeObjectProto(kclass, proto);
@@ -162,9 +163,9 @@ void BaseSerializer::SerializeHClassFieldIndividually(TaggedObject *root, Object
     }
 }
 
-void BaseSerializer::SerializeJSFunctionFieldIndividually(TaggedObject *root, ObjectSlot start, ObjectSlot end)
+void BaseSerializer::SerializeSFunctionFieldIndividually(TaggedObject *root, ObjectSlot start, ObjectSlot end)
 {
-    ASSERT(root->GetClass()->GetObjectType() == JSType::JS_FUNCTION);
+    ASSERT(root->GetClass()->GetObjectType() == JSType::JS_SHARED_FUNCTION);
     ObjectSlot slot = start;
     while (slot < end) {
         size_t fieldOffset = slot.SlotAddress() - ToUintPtr(root);

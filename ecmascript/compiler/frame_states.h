@@ -221,6 +221,7 @@ private:
     size_t ComputeLoopDepth(size_t loopHead);
     void TryInsertLoopExit(const BytecodeRegion &bb, const BytecodeRegion &bbNext);
     void ComputeLoopInfo();
+    void ResizeLoopBody();
     void MergeAssignment(const BytecodeRegion &bbNext);
     BitSet *GetLoopAssignment(const BytecodeRegion &bb);
     LoopInfo& GetLoopInfo(const BytecodeRegion &bb);

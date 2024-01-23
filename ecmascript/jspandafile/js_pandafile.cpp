@@ -374,6 +374,7 @@ CString JSPandaFile::GetNormalizedFileDesc() const
 
 const char *JSPandaFile::GetMethodName(EntityId methodId)
 {
+    LockHolder lock(methodNameMapMutex_);
     uint32_t id = methodId.GetOffset();
     auto iter = methodNameMap_.find(id);
     if (iter != methodNameMap_.end()) {
@@ -390,6 +391,7 @@ const char *JSPandaFile::GetMethodName(EntityId methodId)
 
 CString JSPandaFile::GetRecordName(EntityId methodId)
 {
+    LockHolder lock(recordNameMapMutex_);
     uint32_t id = methodId.GetOffset();
     auto iter = recordNameMap_.find(id);
     if (iter != recordNameMap_.end()) {
@@ -406,7 +408,13 @@ CString JSPandaFile::GetRecordName(EntityId methodId)
 
 void JSPandaFile::ClearNameMap()
 {
-    methodNameMap_.clear();
-    recordNameMap_.clear();
+    {
+        LockHolder lock(methodNameMapMutex_);
+        methodNameMap_.clear();
+    }
+    {
+        LockHolder lock(recordNameMapMutex_);
+        recordNameMap_.clear();
+    }
 }
 }  // namespace panda::ecmascript

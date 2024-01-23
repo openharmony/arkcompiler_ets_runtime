@@ -86,6 +86,28 @@ GateRef CircuitBuilder::TaggedObjectIsEcmaObject(GateRef obj)
         Int32GreaterThanOrEqual(objectType, Int32(static_cast<int32_t>(JSType::ECMA_OBJECT_FIRST))));
 }
 
+GateRef CircuitBuilder::IsSpecialSlicedString(GateRef obj)
+{
+    GateRef objectType = GetObjectType(LoadHClass(obj));
+    GateRef isSlicedString = Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::SLICED_STRING)));
+    Label entry(env_);
+    SubCfgEntry(&entry);
+    Label exit(env_);
+    DEFVALUE(result, env_, VariableType::BOOL(), False());
+    Label isSlicedStr(env_);
+    Branch(isSlicedString, &isSlicedStr, &exit);
+    Bind(&isSlicedStr);
+    {
+        GateRef hasBackingStore = LoadConstOffset(VariableType::INT32(), obj, SlicedString::BACKING_STORE_FLAG);
+        result = Int32Equal(hasBackingStore, Int32(EcmaString::HAS_BACKING_STORE));
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *result;
+    SubCfgExit();
+    return ret;
+}
+
 GateRef CircuitBuilder::TaggedIsBigInt(GateRef obj)
 {
     Label entry(env_);

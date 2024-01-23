@@ -55,8 +55,12 @@ bool JSArray::LengthSetter(JSThread *thread, const JSHandle<JSObject> &self, con
     JSArray::SetCapacity(thread, self, oldLen, newLen);
     uint32_t actualLen = JSArray::Cast(*self)->GetArrayLength();
     if (actualLen != newLen) {
+        if (mayThrow) {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "Not all array elements is configurable", false);
+        }
         return false;
     }
+
     return true;
 }
 
@@ -280,7 +284,8 @@ bool JSArray::ArraySetLength(JSThread *thread, const JSHandle<JSObject> &array, 
         // Also handle the {configurable: true} case since we later use
         // JSArray::SetLength instead of OrdinaryDefineOwnProperty to change
         // the length, and it doesn't have access to the descriptor anymore.
-        newLenDesc.IsConfigurable()) {
+        newLenDesc.IsConfigurable() ||
+        (newLenDesc.HasEnumerable() && (newLenDesc.IsEnumerable() != oldLenDesc.IsEnumerable()))) {
         return false;
     }
     // 14. If newLenDesc.[[Writable]] is absent or has the value true,
@@ -289,16 +294,12 @@ bool JSArray::ArraySetLength(JSThread *thread, const JSHandle<JSObject> &array, 
     if (!newLenDesc.HasWritable() || newLenDesc.IsWritable()) {
         newWritable = true;
     } else {
-        newLenDesc.SetWritable(true);
-    }
     // 15. Else,
     // 15a. Need to defer setting the [[Writable]] attribute to false in case
     //      any elements cannot be deleted.
     // 15b. Let newWritable be false. (It's initialized as "false" anyway.)
     // 15c. Set newLenDesc.[[Writable]] to true.
     // (Not needed.)
-    if (!JSObject::DefineOwnProperty(thread, array, lengthKeyHandle, newLenDesc)) {
-        return false;
     }
 
     // Most of steps 16 through 19 is implemented by JSArray::SetCapacity.

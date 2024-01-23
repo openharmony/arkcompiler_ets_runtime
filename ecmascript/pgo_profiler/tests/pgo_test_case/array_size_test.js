@@ -25,8 +25,15 @@ function foo1() {
 function foo2() {
   return [1, 2, 3, 4];
 }
-foo();
-foo1();
+
+const COUNT = 1000;
+
+for (let i = 0; i < COUNT; i++) {
+  foo();
+}
+for (let i = 0; i < COUNT; i++) {
+  foo1();
+}
 
 let a = foo2();
 a[7] = 10;

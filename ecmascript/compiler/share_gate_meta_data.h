@@ -90,6 +90,7 @@ enum class TypedCallTargetCheckOp : uint8_t;
     V(NotJSFastCallTarget3,            NOTJSFASTCALLTGT3)             \
     V(LexVarIsHole1,                   LEXVARISHOLE1)                 \
     V(ModZero1,                        MODZERO1)                      \
+    V(RemainderIsNegativeZero,         REMAINDERISNEGATIVEZERO)       \
     V(Int32Overflow1,                  INT32OVERFLOW1)                \
     V(NotString1,                      NOTSTRING1)                    \
     V(InconsistentType1,               INCONSISTENTTYPE1)             \
@@ -774,6 +775,24 @@ private:
     using OnHeapModeBits = TypedStoreOpBits::NextField<OnHeapMode, ON_HEAP_MODE_BITS_SIZE>;
 
     uint64_t bitField_;
+};
+
+class StringStatusAccessor {
+public:
+    explicit StringStatusAccessor(uint64_t value = 0) : type_(value) {}
+
+    uint32_t GetStringStatus() const
+    {
+        return static_cast<uint32_t>(type_);
+    }
+
+    uint64_t ToValue() const
+    {
+        return type_;
+    }
+
+private:
+    uint64_t type_ {0};
 };
 } // namespace panda::ecmascript::kungfu
 
