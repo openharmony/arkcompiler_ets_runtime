@@ -4541,8 +4541,10 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
                    << ", slotIndex:" << slotIndex << ", v" << v0
                    <<", obj:" << obj.GetRawData() << ", value:" << value.GetRawData();
 
+        SAVE_ACC();
         JSTaggedValue res = SlowRuntimeStub::StPrivateProperty(thread, lexicalEnv, levelIndex, slotIndex, obj, value);
         INTERPRETER_RETURN_IF_ABRUPT(res);
+        RESTORE_ACC();
         DISPATCH(STPRIVATEPROPERTY_IMM8_IMM16_IMM16_V8);
     }
     HANDLE_OPCODE(TESTIN_IMM8_IMM16_IMM16) {
@@ -7326,6 +7328,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
 
         JSTaggedValue res = SlowRuntimeStub::DefineField(thread, obj, propKey, value);
         INTERPRETER_RETURN_IF_ABRUPT(res);
+        RESTORE_ACC();
         DISPATCH(DEFINEFIELDBYNAME_IMM8_ID16_V8);
     }
     HANDLE_OPCODE(CALLRUNTIME_DEFINEFIELDBYVALUE_PREF_IMM8_V8_V8) {
@@ -7340,8 +7343,10 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
                    << propKey.GetRawData() << ", obj:" << obj.GetRawData()
                    << ", value:" << value.GetRawData();
 
+        SAVE_ACC();
         JSTaggedValue res = SlowRuntimeStub::DefineField(thread, obj, propKey, value);
         INTERPRETER_RETURN_IF_ABRUPT(res);
+        RESTORE_ACC();
         DISPATCH(CALLRUNTIME_DEFINEFIELDBYVALUE_PREF_IMM8_V8_V8);
     }
     HANDLE_OPCODE(CALLRUNTIME_DEFINEFIELDBYINDEX_PREF_IMM8_IMM32_V8) {
@@ -7356,8 +7361,10 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
                    << index << ", obj:" << obj.GetRawData()
                    << ", value:" << value.GetRawData();
 
+        SAVE_ACC();
         JSTaggedValue res = SlowRuntimeStub::DefineField(thread, obj, propKey, value);
         INTERPRETER_RETURN_IF_ABRUPT(res);
+        RESTORE_ACC();
         DISPATCH(CALLRUNTIME_DEFINEFIELDBYINDEX_PREF_IMM8_IMM32_V8);
     }
     HANDLE_OPCODE(CALLRUNTIME_TOPROPERTYKEY_PREF_NONE) {
@@ -7377,9 +7384,11 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         LOG_INST() << "intrinsics::callruntime.createprivateproperty "
                    << "count:" << count << ", literalId:" << literalId;
 
+        SAVE_ACC();
         JSTaggedValue res = SlowRuntimeStub::CreatePrivateProperty(thread, lexicalEnv,
             count, constpool, literalId, module);
         INTERPRETER_RETURN_IF_ABRUPT(res);
+        RESTORE_ACC();
         DISPATCH(CALLRUNTIME_CREATEPRIVATEPROPERTY_PREF_IMM16_ID16);
     }
     HANDLE_OPCODE(CALLRUNTIME_DEFINEPRIVATEPROPERTY_PREF_IMM8_IMM16_IMM16_V8) {
@@ -7395,9 +7404,11 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
                    << ", slotIndex:" << slotIndex << ", obj:" << obj.GetRawData()
                    << ", value:" << value.GetRawData();
 
+        SAVE_ACC();
         JSTaggedValue res = SlowRuntimeStub::DefinePrivateProperty(thread, lexicalEnv,
             levelIndex, slotIndex, obj, value);
         INTERPRETER_RETURN_IF_ABRUPT(res);
+        RESTORE_ACC();
         DISPATCH(CALLRUNTIME_DEFINEPRIVATEPROPERTY_PREF_IMM8_IMM16_IMM16_V8);
     }
     HANDLE_OPCODE(CALLRUNTIME_DEFINESENDABLECLASS_PREF_IMM16_ID16_ID16_IMM16_V8) {
