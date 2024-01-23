@@ -44,3 +44,15 @@ for (const [key, value] of Object.entries(obj)) {
     print(key + "," + value);
 }
 print("e," + obj.e);
+
+var obj3 = {
+    a: 4294967295,
+    b: -1,
+    c: 2147483647,
+    d: 2147483648,
+    e: -2147483648,
+    f: -2147483649
+}
+for (const [key, value] of Object.entries(obj3)) {
+    print(key + "," + value);
+}
