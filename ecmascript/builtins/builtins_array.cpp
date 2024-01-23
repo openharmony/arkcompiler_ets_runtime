@@ -1273,6 +1273,7 @@ JSTaggedValue BuiltinsArray::Join(EcmaRuntimeCallInfo *argv)
         allocateLength = sepLength * (len - 1) + len;
     }
     if (allocateLength > EcmaString::MAX_STRING_LENGTH) {
+        context->JoinStackPopFastPath(thisHandle);
         THROW_RANGE_ERROR_AND_RETURN(thread, "Invalid string length", JSTaggedValue::Exception());
     }
     // 7. ReturnIfAbrupt(sep).
@@ -1281,6 +1282,7 @@ JSTaggedValue BuiltinsArray::Join(EcmaRuntimeCallInfo *argv)
 
     // 8. If len is zero, return the empty String.
     if (len == 0) {
+        context->JoinStackPopFastPath(thisHandle);
         return GetTaggedString(thread, "");
     }
 

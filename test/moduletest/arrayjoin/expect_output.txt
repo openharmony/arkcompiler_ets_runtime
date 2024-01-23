@@ -24,3 +24,5 @@
 1,
 true
 true
+proxy1: 456
+proxy2: 123,456
