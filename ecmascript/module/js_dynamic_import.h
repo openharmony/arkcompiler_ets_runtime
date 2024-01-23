@@ -23,9 +23,9 @@
 namespace panda::ecmascript {
 class DynamicImport {
 public:
-    static JSTaggedValue ExecuteNativeModule(JSThread *thread, JSHandle<EcmaString> specifierString,
+    static JSTaggedValue ExecuteNativeOrJsonModule(JSThread *thread, JSHandle<EcmaString> specifierString,
         ModuleTypes moduleType, JSHandle<JSPromiseReactionsFunction> resolve,
-        JSHandle<JSPromiseReactionsFunction> reject);
+        JSHandle<JSPromiseReactionsFunction> reject, const JSPandaFile *jsPandaFile = nullptr);
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_MODULE_JS_DYNAMIC_IMPORT_H
