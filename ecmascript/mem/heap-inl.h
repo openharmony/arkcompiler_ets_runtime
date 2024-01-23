@@ -38,6 +38,7 @@ namespace panda::ecmascript {
         if ((space)->IsOOMDumpSpace()) {                                                                    \
             DumpHeapSnapshotBeforeOOM();                                                                    \
         }                                                                                                   \
+        StatisticHeapDetail();                                                                              \
         (object) = reinterpret_cast<TaggedObject *>((space)->Allocate(size));                                 \
         ThrowOutOfMemoryError(size, message);                                                               \
     }
@@ -273,6 +274,7 @@ TaggedObject *Heap::AllocateHugeObject(size_t size)
             oldSpace_->IncreaseOutOfMemoryOvershootSize(oomOvershootSize);
             object = reinterpret_cast<TaggedObject *>(hugeObjectSpace_->Allocate(size, thread_));
             DumpHeapSnapshotBeforeOOM();
+            StatisticHeapDetail();
             ThrowOutOfMemoryError(size, "Heap::AllocateHugeObject");
             if (UNLIKELY(object == nullptr)) {
                 FatalOutOfMemoryError(size, "Heap::AllocateHugeObject");
