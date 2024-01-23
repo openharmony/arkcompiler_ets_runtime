@@ -38,7 +38,8 @@ public:
     bool IsQuickFixCausedException(JSThread *thread,
                                    const JSHandle<JSTaggedValue> &exceptionInfo,
                                    const std::string &patchFileName);
-    JSTaggedValue CheckAndGetPatch(JSThread *thread, const JSPandaFile *baseFile, EntityId baseMethodId);
+    JSTaggedValue CheckAndGetPatch(JSThread *thread, const JSPandaFile *baseFile, EntityId baseMethodId,
+        bool shareObject = false);
 
 private:
     // check whether the callback is registered.

@@ -182,7 +182,8 @@ PatchErrorCode QuickFixManager::UnloadPatch(JSThread *thread, const std::string 
     return PatchErrorCode::SUCCESS;
 }
 
-JSTaggedValue QuickFixManager::CheckAndGetPatch(JSThread *thread, const JSPandaFile *baseFile, EntityId baseMethodId)
+JSTaggedValue QuickFixManager::CheckAndGetPatch(JSThread *thread, const JSPandaFile *baseFile, EntityId baseMethodId,
+    bool shareObject)
 {
     if (methodInfos_.empty()) {
         return JSTaggedValue::Hole();
@@ -205,7 +206,12 @@ JSTaggedValue QuickFixManager::CheckAndGetPatch(JSThread *thread, const JSPandaF
     ASSERT(patchFile != nullptr);
 
     EcmaVM *vm = thread->GetEcmaVM();
-    JSHandle<Method> method = vm->GetFactory()->NewMethod(patchMethodLiteral);
+    JSHandle<Method> method;
+    if (shareObject) {
+        method = vm->GetFactory()->NewSMethod(patchMethodLiteral);
+    } else {
+        method = vm->GetFactory()->NewMethod(patchMethodLiteral);
+    }
     JSHandle<ConstantPool> newConstpool = thread->GetCurrentEcmaContext()->FindOrCreateConstPool(
         patchFile.get(), patchMethodLiteral->GetMethodId());
     method->SetConstantPool(thread, newConstpool);
