@@ -2299,6 +2299,8 @@ void Builtins::LazyInitialize##Type(const JSHandle<GlobalEnv> &env) const       
     SetLazyAccessor(globalObject, key, accessor);                                                                   \
     env->Set##Type##Function(thread_, accessor);                                                                    \
     env->Set##Type##FunctionPrototype(thread_, accessor);                                                           \
+    env->Set##Type##RootHclass(thread_, accessor);                                                                  \
+    env->Set##Type##RootHclassOnHeap(thread_, accessor);                                                            \
 }
 
 BUILTIN_TYPED_ARRAY_TYPES(BUILTIN_TYPED_ARRAY_DEFINE_LAZY_INITIALIZE)
