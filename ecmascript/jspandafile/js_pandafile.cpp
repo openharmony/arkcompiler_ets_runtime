@@ -389,6 +389,14 @@ const char *JSPandaFile::GetMethodName(EntityId methodId)
     return name;
 }
 
+const char *JSPandaFile::GetCpuProfilerMethodName(EntityId methodId)
+{
+    panda_file::MethodDataAccessor mda(*pf_, methodId);
+    auto sd = GetStringData(mda.GetNameId());
+    auto name = utf::Mutf8AsCString(sd.data);
+    return name;
+}
+
 CString JSPandaFile::GetRecordName(EntityId methodId)
 {
     LockHolder lock(recordNameMapMutex_);

@@ -315,7 +315,8 @@ public:
         return SlotSizeBits::Decode(literalInfo);
     }
 
-    static const char PUBLIC_API *GetMethodName(const JSPandaFile *jsPandaFile, EntityId methodId);
+    static const char PUBLIC_API *GetMethodName(const JSPandaFile *jsPandaFile, EntityId methodId,
+                                                bool cpuProfiler = false);
     static std::string PUBLIC_API ParseFunctionName(const JSPandaFile *jsPandaFile, EntityId methodId);
     static CString PUBLIC_API ParseFunctionNameToCString(const JSPandaFile *jsPandaFile, EntityId methodId);
 

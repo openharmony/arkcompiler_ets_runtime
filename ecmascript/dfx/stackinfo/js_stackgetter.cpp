@@ -67,7 +67,7 @@ bool JsStackGetter::ParseMethodInfo(struct MethodKey &methodKey,
     } else {
         EntityId methodId = reinterpret_cast<MethodLiteral *>(methodKey.methodIdentifier)->GetMethodId();
         // function name
-        const char *functionName = MethodLiteral::GetMethodName(jsPandaFile, methodId);
+        const char *functionName = MethodLiteral::GetMethodName(jsPandaFile, methodId, true);
         uint8_t length = strlen(functionName);
         if (length != 0 && functionName[0] == '#') {
             uint8_t index = length - 1;

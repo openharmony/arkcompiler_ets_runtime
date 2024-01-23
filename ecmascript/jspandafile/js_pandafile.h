@@ -122,6 +122,7 @@ public:
     }
 
     const char *GetMethodName(EntityId methodId);
+    const char *GetCpuProfilerMethodName(EntityId methodId);
     CString GetRecordName(EntityId methodId);
 
     MethodLiteral* GetMethodLiterals() const
