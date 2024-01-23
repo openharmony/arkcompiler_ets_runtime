@@ -60,7 +60,7 @@ enum class EdgeType { CONTEXT, ELEMENT, PROPERTY, INTERNAL, HIDDEN, SHORTCUT, WE
 class Node {
 public:
     Node(uint32_t id, uint32_t index, const CString *name, NodeType type, size_t size, size_t nativeSize,
-         uint32_t traceId, Address address, bool isLive = true)
+         uint32_t traceId, JSTaggedType address, bool isLive = true)
         : id_(id),
           index_(index),
           name_(name),
@@ -127,11 +127,11 @@ public:
     {
         return traceId_;
     }
-    Address GetAddress() const
+    JSTaggedType GetAddress() const
     {
         return address_;
     }
-    void SetAddress(Address address)
+    void SetAddress(JSTaggedType address)
     {
         address_ = address;
     }
@@ -148,11 +148,11 @@ public:
         traceId_ = traceId;
     }
     static Node *NewNode(Chunk *chunk, size_t id, size_t index, const CString *name, NodeType type, size_t size,
-                         size_t nativeSize, TaggedObject *entry, bool isLive = true);
+                         size_t nativeSize, JSTaggedType entry, bool isLive = true);
     template<typename T>
-    static Address NewAddress(T *addr)
+    static JSTaggedType NewAddress(T *addr)
     {
-        return reinterpret_cast<Address>(addr);
+        return reinterpret_cast<JSTaggedType>(addr);
     }
     static constexpr int NODE_FIELD_COUNT = 8;
     ~Node() = default;
@@ -166,7 +166,7 @@ private:
     size_t nativeSize_ {0};
     size_t edgeCount_ {0};
     uint32_t traceId_ {0};
-    Address address_ {0x0};
+    JSTaggedType address_ {0};
     bool isLive_ {true};
 };
 
@@ -291,21 +291,12 @@ public:
     NO_MOVE_SEMANTIC(HeapEntryMap);
     NO_COPY_SEMANTIC(HeapEntryMap);
     Node *FindOrInsertNode(Node *node);
-    Node *FindAndEraseNode(Address addr);
-    Node *FindEntry(Address addr);
-    size_t GetCapcity() const
-    {
-        return nodesMap_.size();
-    }
-    size_t GetEntryCount() const
-    {
-        return nodeEntryCount_;
-    }
+    Node *FindAndEraseNode(JSTaggedType addr);
+    Node *FindEntry(JSTaggedType addr);
     void InsertEntry(Node *node);
 
 private:
-    size_t nodeEntryCount_ {0};
-    CUnorderedMap<Address, Node *> nodesMap_ {};
+    CUnorderedMap<JSTaggedType, Node *> nodesMap_ {};
 };
 
 struct FunctionInfo {

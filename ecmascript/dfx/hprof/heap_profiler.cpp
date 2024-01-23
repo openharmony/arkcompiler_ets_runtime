@@ -30,7 +30,7 @@
 #endif
 
 namespace panda::ecmascript {
-std::pair<bool, uint32_t> EntryIdMap::FindId(Address addr)
+std::pair<bool, uint32_t> EntryIdMap::FindId(JSTaggedType addr)
 {
     auto it = idMap_.find(addr);
     if (it == idMap_.end()) {
@@ -40,7 +40,7 @@ std::pair<bool, uint32_t> EntryIdMap::FindId(Address addr)
     }
 }
 
-bool EntryIdMap::InsertId(Address addr, uint32_t id)
+bool EntryIdMap::InsertId(JSTaggedType addr, uint32_t id)
 {
     auto it = idMap_.find(addr);
     if (it == idMap_.end()) {
@@ -51,7 +51,7 @@ bool EntryIdMap::InsertId(Address addr, uint32_t id)
     return false;
 }
 
-bool EntryIdMap::EraseId(Address addr)
+bool EntryIdMap::EraseId(JSTaggedType addr)
 {
     auto it = idMap_.find(addr);
     if (it == idMap_.end()) {
@@ -61,7 +61,7 @@ bool EntryIdMap::EraseId(Address addr)
     return true;
 }
 
-bool EntryIdMap::Move(Address oldAddr, Address forwardAddr)
+bool EntryIdMap::Move(JSTaggedType oldAddr, JSTaggedType forwardAddr)
 {
     if (oldAddr == forwardAddr) {
         return true;
@@ -76,10 +76,10 @@ bool EntryIdMap::Move(Address oldAddr, Address forwardAddr)
     return false;
 }
 
-void EntryIdMap::RemoveDeadEntryId(HeapSnapshot *snapshot)
+void EntryIdMap::UpdateEntryIdMap(HeapSnapshot *snapshot)
 {
     auto nodes = snapshot->GetNodes();
-    CUnorderedMap<Address, uint32_t> newIdMap;
+    CUnorderedMap<JSTaggedType, uint32_t> newIdMap;
     for (auto node : *nodes) {
         auto addr = node->GetAddress();
         auto it = idMap_.find(addr);
@@ -119,7 +119,7 @@ void HeapProfiler::MoveEvent(uintptr_t address, TaggedObject *forwardAddress, si
 {
     LockHolder lock(mutex_);
     if (isProfiling_) {
-        entryIdMap_->Move(address, reinterpret_cast<Address>(forwardAddress));
+        entryIdMap_->Move(static_cast<JSTaggedType>(address), reinterpret_cast<JSTaggedType>(forwardAddress));
         if (heapTracker_ != nullptr) {
             heapTracker_->MoveEvent(address, forwardAddress, size);
         }
@@ -170,7 +170,7 @@ bool HeapProfiler::DumpHeapSnapshot(DumpFormat dumpFormat, Stream *stream, Progr
     HeapSnapshot *snapshot = MakeHeapSnapshot(SampleType::ONE_SHOT, isVmMode, isPrivate, captureNumericValue,
                                               false, isFullGC);
     ASSERT(snapshot != nullptr);
-    entryIdMap_->RemoveDeadEntryId(snapshot);
+    entryIdMap_->UpdateEntryIdMap(snapshot);
     isProfiling_ = true;
     if (progress != nullptr) {
         progress->ReportProgress(heapCount, heapCount);
