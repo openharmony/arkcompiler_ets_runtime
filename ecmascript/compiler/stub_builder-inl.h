@@ -1618,6 +1618,15 @@ inline GateRef StubBuilder::IsStringElement(GateRef attr)
         Int32(HandlerBase::HandlerKind::STRING));
 }
 
+inline GateRef StubBuilder::IsNumber(GateRef attr)
+{
+    return Int32Equal(
+        Int32And(
+            Int32LSR(attr, Int32(HandlerBase::KindBit::START_BIT)),
+            Int32((1LLU << HandlerBase::KindBit::SIZE) - 1)),
+        Int32(HandlerBase::HandlerKind::NUMBER));
+}
+
 inline GateRef StubBuilder::IsStringLength(GateRef attr)
 {
     return Int32Equal(
@@ -1691,15 +1700,6 @@ inline GateRef StubBuilder::HandlerBaseGetRep(GateRef attr)
 {
     return Int32And(Int32LSR(attr, Int32(HandlerBase::RepresentationBit::START_BIT)),
         Int32((1LLU << HandlerBase::RepresentationBit::SIZE) - 1));
-}
-
-inline GateRef StubBuilder::IsInternalAccessor(GateRef attr)
-{
-    return Int32NotEqual(
-        Int32And(Int32LSR(attr,
-            Int32(HandlerBase::InternalAccessorBit::START_BIT)),
-            Int32((1LLU << HandlerBase::InternalAccessorBit::SIZE) - 1)),
-        Int32(0));
 }
 
 inline GateRef StubBuilder::IsInvalidPropertyBox(GateRef obj)
