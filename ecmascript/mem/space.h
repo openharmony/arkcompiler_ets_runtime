@@ -39,6 +39,9 @@ enum MemSpaceType {
     READ_ONLY_SPACE,
     APPSPAWN_SPACE,
     HUGE_MACHINE_CODE_SPACE,
+    SHARED_NON_MOVABLE,
+    SHARED_OLD_SPACE,
+    SHARED_HUGE_OBJECT_SPACE,
     SPACE_TYPE_LAST,  // Count of different types
 
     FREE_LIST_NUM = MACHINE_CODE_SPACE - OLD_SPACE + 1,
@@ -69,6 +72,12 @@ static inline std::string ToSpaceTypeName(MemSpaceType type)
             return "appspawn space";
         case HUGE_MACHINE_CODE_SPACE:
             return "huge machine code space";
+        case SHARED_NON_MOVABLE:
+            return "shared non movable space";
+        case SHARED_OLD_SPACE:
+            return "shared old space";
+        case SHARED_HUGE_OBJECT_SPACE:
+            return "shared huge object space";
         default:
             return "unknown space";
     }
@@ -76,7 +85,7 @@ static inline std::string ToSpaceTypeName(MemSpaceType type)
 
 class Space {
 public:
-    Space(Heap* heap, HeapRegionAllocator *regionAllocator, MemSpaceType spaceType, size_t initialCapacity,
+    Space(BaseHeap* heap, HeapRegionAllocator *regionAllocator, MemSpaceType spaceType, size_t initialCapacity,
           size_t maximumCapacity);
     virtual ~Space() = default;
     NO_COPY_SEMANTIC(Space);
@@ -221,7 +230,7 @@ public:
 protected:
     void ClearAndFreeRegion(Region *region, size_t cachedSize = 0);
     
-    Heap *heap_ {nullptr};
+    BaseHeap *heap_ {nullptr};
     HeapRegionAllocator *heapRegionAllocator_ {nullptr};
     EcmaList<Region> regionList_ {};
     MemSpaceType spaceType_ {};
@@ -236,14 +245,15 @@ protected:
 
 class HugeObjectSpace : public Space {
 public:
-    HugeObjectSpace(Heap* heap, HeapRegionAllocator *regionAllocator, size_t initialCapacity,
+    HugeObjectSpace(BaseHeap *heap, HeapRegionAllocator *regionAllocator, size_t initialCapacity,
                     size_t maximumCapacity);
-    HugeObjectSpace(Heap* heap, HeapRegionAllocator *regionAllocator, size_t initialCapacity,
+    HugeObjectSpace(BaseHeap *heap, HeapRegionAllocator *regionAllocator, size_t initialCapacity,
                     size_t maximumCapacity, MemSpaceType spaceType);
     ~HugeObjectSpace() override = default;
     NO_COPY_SEMANTIC(HugeObjectSpace);
     NO_MOVE_SEMANTIC(HugeObjectSpace);
-    uintptr_t Allocate(size_t objectSize, JSThread *thread);
+    uintptr_t Allocate(size_t objectSize);
+    uintptr_t ConcurrentAllocate(size_t objectSize);
     void Sweep();
     size_t GetHeapObjectSize() const;
     void IterateOverObjects(const std::function<void(TaggedObject *object)> &objectVisitor) const;
@@ -255,11 +265,12 @@ public:
 private:
     static constexpr size_t HUGE_OBJECT_BITSET_SIZE = 16;
     EcmaList<Region> hugeNeedFreeList_ {};
+    Mutex allocateLock_;
 };
 
 class HugeMachineCodeSpace : public HugeObjectSpace {
 public:
-    HugeMachineCodeSpace(Heap* heap, HeapRegionAllocator *regionAllocator, size_t initialCapacity,
+    HugeMachineCodeSpace(BaseHeap *heap, HeapRegionAllocator *regionAllocator, size_t initialCapacity,
                          size_t maximumCapacity);
 };
 

@@ -14,14 +14,33 @@
  */
 
 #include "ecmascript/free_object.h"
-#include "ecmascript/object_factory.h"
+#include "ecmascript/global_env_constants-inl.h"
 
 namespace panda::ecmascript {
-FreeObject *FreeObject::FillFreeObject(EcmaVM *vm, uintptr_t address, size_t size)
+FreeObject *FreeObject::FillFreeObject(BaseHeap *heap, uintptr_t address, size_t size)
 {
     ASAN_UNPOISON_MEMORY_REGION(reinterpret_cast<void *>(address), size);
-    FreeObject *freeObject = vm->GetFactory()->FillFreeObject(address, size);
+    auto globalConst = heap->GetGlobalConst();
+    FreeObject *object = nullptr;
+    if (size >= FreeObject::SIZE_OFFSET && size < FreeObject::SIZE) {
+        object = reinterpret_cast<FreeObject *>(address);
+        object->SetClassWithoutBarrier(
+            JSHClass::Cast(globalConst->GetFreeObjectWithOneFieldClass().GetTaggedObject()));
+        object->SetNext(INVALID_OBJECT);
+    } else if (size >= FreeObject::SIZE) {
+        object = reinterpret_cast<FreeObject *>(address);
+        object->SetClassWithoutBarrier(
+            JSHClass::Cast(globalConst->GetFreeObjectWithTwoFieldClass().GetTaggedObject()));
+        object->SetAvailable(size);
+        object->SetNext(INVALID_OBJECT);
+    } else if (size == FreeObject::NEXT_OFFSET) {
+        object = reinterpret_cast<FreeObject *>(address);
+        object->SetClassWithoutBarrier(
+            JSHClass::Cast(globalConst->GetFreeObjectWithNoneFieldClass().GetTaggedObject()));
+    } else {
+        LOG_ECMA(DEBUG) << "Fill free object size is smaller";
+    }
     ASAN_POISON_MEMORY_REGION(reinterpret_cast<void *>(address), size);
-    return freeObject;
+    return object;
 }
 }  // namespace panda::ecmascript

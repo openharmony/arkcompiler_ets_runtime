@@ -220,13 +220,16 @@ bool EcmaVM::Initialize()
     heap_ = new Heap(this);
     heap_->Initialize();
     gcStats_ = chunk_.New<GCStats>(heap_, options_.GetLongPauseTime());
-    factory_ = chunk_.New<ObjectFactory>(thread_, heap_);
+    factory_ = chunk_.New<ObjectFactory>(thread_, heap_, SharedHeap::GetInstance());
     if (UNLIKELY(factory_ == nullptr)) {
         LOG_FULL(FATAL) << "alloc factory_ failed";
         UNREACHABLE();
     }
     debuggerManager_ = chunk_.New<tooling::JsDebuggerManager>(this);
     auto context = new EcmaContext(thread_);
+    // todo(lukai) move SharedHeap initialization to globalRuntime.Including allocator and globalconst
+    SharedHeap::GetInstance()->Initialize(GetNativeAreaAllocator(), GetHeapRegionAllocator(),
+        context->GlobalConstants());
     thread_->PushContext(context);
     [[maybe_unused]] EcmaHandleScope scope(thread_);
     context->Initialize();

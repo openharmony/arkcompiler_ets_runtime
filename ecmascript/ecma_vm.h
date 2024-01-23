@@ -604,7 +604,7 @@ private:
     bool icEnabled_ {true};
     bool initialized_ {false};
     GCStats *gcStats_ {nullptr};
-    EcmaStringTable *stringTable_;
+    EcmaStringTable *stringTable_ {nullptr};
 
     // VM memory management.
     std::unique_ptr<NativeAreaAllocator> nativeAreaAllocator_;

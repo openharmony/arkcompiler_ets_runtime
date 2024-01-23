@@ -297,7 +297,7 @@ public:
 
     static MemMapAllocator *GetInstance();
 
-    MemMap Allocate(const uint32_t threadId, size_t size, size_t alignment, bool regular, bool isMachineCode);
+    MemMap Allocate(size_t size, size_t alignment, bool regular, bool isMachineCode);
 
     void CacheOrFree(void *mem, size_t size, bool isRegular, size_t cachedSize);
 

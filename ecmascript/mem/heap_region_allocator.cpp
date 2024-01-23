@@ -15,7 +15,7 @@
 
 #include "ecmascript/mem/heap_region_allocator.h"
 
-#include "ecmascript/js_thread.h"
+#include "ecmascript/mem/heap-inl.h"
 #include "ecmascript/mem/mark_stack.h"
 #include "ecmascript/mem/mem_map_allocator.h"
 #include "ecmascript/mem/region.h"
@@ -25,7 +25,7 @@
 namespace panda::ecmascript {
 constexpr size_t PANDA_POOL_ALIGNMENT_IN_BYTES = 256_KB;
 
-Region *HeapRegionAllocator::AllocateAlignedRegion(Space *space, size_t capacity, JSThread* thread)
+Region *HeapRegionAllocator::AllocateAlignedRegion(Space *space, size_t capacity, BaseHeap *heap)
 {
     if (capacity == 0) {
         LOG_ECMA_MEM(FATAL) << "capacity must have a size bigger than 0";
@@ -33,10 +33,11 @@ Region *HeapRegionAllocator::AllocateAlignedRegion(Space *space, size_t capacity
     }
     RegionSpaceFlag flags = space->GetRegionFlag();
     bool isRegular = (flags != RegionSpaceFlag::IN_HUGE_OBJECT_SPACE &&
-        flags != RegionSpaceFlag::IN_HUGE_MACHINE_CODE_SPACE);
+        flags != RegionSpaceFlag::IN_HUGE_MACHINE_CODE_SPACE &&
+        flags != RegionSpaceFlag::IN_SHARED_HUGE_OBJECT_SPACE);
     bool isMachineCode = (flags == RegionSpaceFlag::IN_MACHINE_CODE_SPACE ||
         flags == RegionSpaceFlag::IN_HUGE_MACHINE_CODE_SPACE);
-    auto pool = MemMapAllocator::GetInstance()->Allocate(thread->GetThreadId(), capacity, DEFAULT_REGION_SIZE,
+    auto pool = MemMapAllocator::GetInstance()->Allocate(capacity, DEFAULT_REGION_SIZE,
                                                          isRegular, isMachineCode);
     void *mapMem = pool.GetMem();
     if (mapMem == nullptr) {
@@ -59,7 +60,7 @@ Region *HeapRegionAllocator::AllocateAlignedRegion(Space *space, size_t capacity
     uintptr_t begin = AlignUp(mem + sizeof(Region), static_cast<size_t>(MemAlignment::MEM_ALIGN_REGION));
     uintptr_t end = mem + capacity;
 
-    return new (ToVoidPtr(mem)) Region(thread, mem, begin, end, flags);
+    return new (ToVoidPtr(mem)) Region(heap->GetNativeAreaAllocator(), mem, begin, end, flags);
 }
 
 void HeapRegionAllocator::FreeRegion(Region *region, size_t cachedSize)

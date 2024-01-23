@@ -96,6 +96,15 @@ RegionSpaceFlag Space::GetRegionFlag() const
         case MemSpaceType::APPSPAWN_SPACE:
             flags = RegionSpaceFlag::IN_APPSPAWN_SPACE;
             break;
+        case MemSpaceType::SHARED_NON_MOVABLE:
+            flags = RegionSpaceFlag::IN_SHARED_NON_MOVABLE;
+            break;
+        case MemSpaceType::SHARED_OLD_SPACE:
+            flags = RegionSpaceFlag::IN_SHARED_OLD_SPACE;
+            break;
+        case MemSpaceType::SHARED_HUGE_OBJECT_SPACE:
+            flags = RegionSpaceFlag::IN_SHARED_HUGE_OBJECT_SPACE;
+            break; 
         default:
             LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
