@@ -196,4 +196,10 @@ if (globalThis["ArkPrivate"] != undefined) {
     } else {
         print("Test TreeMap fail: " + flag);
     }
+    map = new fastmap();
+    map.set("a", "av");
+    map.clear();
+    map.set("b", "bv");
+    map.set("c", "cv");
+    print("Test TreeMap set After Clear Success")
 }
