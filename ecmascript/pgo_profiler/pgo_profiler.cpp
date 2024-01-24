@@ -881,7 +881,7 @@ void PGOProfiler::DumpICByValueWithHandler(ApEntityId abcId, const CString &reco
         if (secondValue.IsInt()) {
             auto handlerInfo = static_cast<uint32_t>(secondValue.GetInt());
             if (HandlerBase::IsNormalElement(handlerInfo) || HandlerBase::IsStringElement(handlerInfo)) {
-                if (HandlerBase::IsOnPrototype(handlerInfo)) {
+                if (HandlerBase::NeedSkipInPGODump(handlerInfo)) {
                     return;
                 }
                 AddBuiltinsInfo(abcId, recordName, methodId, bcOffset, hclass, hclass);

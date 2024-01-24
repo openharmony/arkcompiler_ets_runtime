@@ -203,6 +203,7 @@ group("ark_aot_ts_test") {
     "pgo_forof_typed_array",
     "pgo_function_operation",
     "pgo_function_prototype",
+    "pgo_ldobjbyvalue_array",
     "pgo_ldobjbyvalue_string",
     "pgo_length",
     "pgo_objectliteral_operation",
