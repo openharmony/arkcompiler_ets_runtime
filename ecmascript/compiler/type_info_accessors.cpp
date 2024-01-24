@@ -717,7 +717,7 @@ void AccBuiltinObjTypeInfoAccessor::FetchBuiltinsTypes()
 bool AccBuiltinObjTypeInfoAccessor::CheckDuplicatedBuiltinType(ProfileType newType) const
 {
     for (auto &type : types_) {
-        if (type.GetBuiltinsId() == newType.GetBuiltinsId()) {
+        if (type.GetBuiltinsType() == newType.GetBuiltinsType()) {
             // When elementsKind switch on, we should check elementsKind too.
             return true;
         }

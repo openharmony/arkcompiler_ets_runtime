@@ -463,7 +463,7 @@ public:
                             OnHeapMode onHeap = OnHeapMode::NONE);
     GateRef LoadTypedArrayLength(GateRef gate, GateType type, OnHeapMode onHeap = OnHeapMode::NONE);
     GateRef RangeGuard(GateRef gate, uint32_t left, uint32_t right);
-    GateRef BuiltinPrototypeHClassCheck(GateRef gate, BuiltinTypeId type);
+    GateRef BuiltinPrototypeHClassCheck(GateRef gate, BuiltinTypeId type, ElementsKind kind = ElementsKind::NONE);
     GateRef OrdinaryHasInstanceCheck(GateRef target, GateRef jsFunc, std::vector<GateRef> &expectedHCIndexes);
     GateRef IndexCheck(GateRef gate, GateRef index);
     GateRef ObjectTypeCheck(GateType type, bool isHeapObject, GateRef gate, GateRef hclassIndex,

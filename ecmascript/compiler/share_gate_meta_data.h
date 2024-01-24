@@ -100,6 +100,7 @@ enum class TypedCallTargetCheckOp : uint8_t;
     V(InconsistentType1,               INCONSISTENTTYPE1)             \
     V(NotNull1,                        NOTNULL1)                      \
     V(NotNull2,                        NOTNULL2)                      \
+    V(BuiltinInstanceHClassMismatch,   BUILTININSTANCEHCLASSMISMATCH)   \
     V(BuiltinPrototypeHClassMismatch1, BUILTINPROTOHCLASSMISMATCH1)   \
     V(ProtoTypeChanged1,               PROTOTYPECHANGED1)             \
     V(ProtoTypeChanged2,               PROTOTYPECHANGED2)             \
@@ -690,16 +691,24 @@ private:
 
 class BuiltinPrototypeHClassAccessor {
 public:
+    static constexpr int WORD_BITS_SIZE = 8;
+
     explicit BuiltinPrototypeHClassAccessor(uint64_t value): type_(value) {}
     // Only valid indices accepted
-    explicit BuiltinPrototypeHClassAccessor(BuiltinTypeId type): type_(static_cast<uint64_t>(type))
+    explicit BuiltinPrototypeHClassAccessor(BuiltinTypeId type, ElementsKind kind): type_(0)
     {
+        type_ = BuiltinTypeIdBits::Encode(type) | ElementsKindBits::Encode(kind);
         ASSERT(BuiltinHClassEntries::GetEntryIndex(type) < BuiltinHClassEntries::N_ENTRIES);
+    }
+
+    ElementsKind GetElementsKind() const
+    {
+        return ElementsKindBits::Get(type_);
     }
 
     BuiltinTypeId GetBuiltinTypeId() const
     {
-        return static_cast<BuiltinTypeId>(type_);
+        return BuiltinTypeIdBits::Get(type_);
     }
 
     uint64_t ToValue() const
@@ -708,6 +717,9 @@ public:
     }
 
 private:
+    using BuiltinTypeIdBits = panda::BitField<BuiltinTypeId, 0, WORD_BITS_SIZE>;
+    using ElementsKindBits = BuiltinTypeIdBits::NextField<ElementsKind, WORD_BITS_SIZE>;
+
     uint64_t type_;
 };
 

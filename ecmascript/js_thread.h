@@ -243,9 +243,13 @@ public:
 
     void ResetGuardians();
 
-    void SetInitialBuiltinHClass(BuiltinTypeId type, JSHClass *builtinHClass, JSHClass *prototypeHClass);
+    void SetInitialBuiltinHClass(
+        BuiltinTypeId type, JSHClass *builtinHClass, JSHClass *instanceHClass, JSHClass *prototypeHClass);
 
     JSHClass *GetBuiltinHClass(BuiltinTypeId type) const;
+
+    JSHClass *GetBuiltinInstanceHClass(BuiltinTypeId type) const;
+    JSHClass *GetArrayInstanceHClass(ElementsKind kind) const;
 
     PUBLIC_API JSHClass *GetBuiltinPrototypeHClass(BuiltinTypeId type) const;
 
@@ -912,6 +916,11 @@ public:
         static size_t GetBuiltinHClassOffset(BuiltinTypeId type, bool isArch32)
         {
             return GetBuiltinHClassEntriesOffset(isArch32) + BuiltinHClassEntries::GetBuiltinHClassOffset(type);
+        }
+
+        static size_t GetBuiltinInstanceHClassOffset(BuiltinTypeId type, bool isArch32)
+        {
+            return GetBuiltinHClassEntriesOffset(isArch32) + BuiltinHClassEntries::GetInstanceHClassOffset(type);
         }
 
         static size_t GetBuiltinPrototypeHClassOffset(BuiltinTypeId type, bool isArch32)

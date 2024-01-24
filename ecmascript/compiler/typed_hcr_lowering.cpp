@@ -22,6 +22,7 @@
 #include "ecmascript/compiler/share_gate_meta_data.h"
 #include "ecmascript/compiler/variable_type.h"
 #include "ecmascript/deoptimizer/deoptimizer.h"
+#include "ecmascript/elements.h"
 #include "ecmascript/enum_conversion.h"
 #include "ecmascript/js_arraybuffer.h"
 #include "ecmascript/js_native_pointer.h"
@@ -614,6 +615,7 @@ void TypedHCRLowering::LowerBuiltinPrototypeHClassCheck(GateRef gate)
     Environment env(gate, circuit_, &builder_);
     BuiltinPrototypeHClassAccessor accessor = acc_.GetBuiltinHClassAccessor(gate);
     BuiltinTypeId type = accessor.GetBuiltinTypeId();
+    ElementsKind kind = accessor.GetElementsKind();
     GateRef frameState = GetFrameState(gate);
     GateRef glue = acc_.GetGlueFromArgList();
 
@@ -624,6 +626,30 @@ void TypedHCRLowering::LowerBuiltinPrototypeHClassCheck(GateRef gate)
     // Only HClasses recorded in the JSThread during builtin initialization are available
     [[maybe_unused]] JSHClass *initialPrototypeHClass = thread->GetBuiltinPrototypeHClass(type);
     ASSERT(initialPrototypeHClass != nullptr);
+
+    GateRef ihcMatches = Circuit::NullGate();
+    if (type == BuiltinTypeId::ARRAY) {
+        if (Elements::IsGeneric(kind)) {
+            auto arrayHClassIndexMap = thread->GetArrayHClassIndexMap();
+            auto iter = arrayHClassIndexMap.find(kind);
+            ASSERT(iter != arrayHClassIndexMap.end());
+            GateRef initialIhcAddress = builder_.GetGlobalConstantValue(iter->second);
+            GateRef receiverHClass = builder_.LoadHClassByConstOffset(receiver);
+            ihcMatches = builder_.Equal(receiverHClass, initialIhcAddress);
+        } else {
+            GateRef receiverHClass = builder_.LoadHClassByConstOffset(receiver);
+            GateRef elementsKind = builder_.GetElementsKindByHClass(receiverHClass);
+            ihcMatches =
+                builder_.NotEqual(elementsKind, builder_.Int32(static_cast<size_t>(ElementsKind::GENERIC)));
+        }
+    } else {
+        size_t ihcOffset = JSThread::GlueData::GetBuiltinInstanceHClassOffset(type, env.IsArch32Bit());
+        GateRef initialIhcAddress = builder_.LoadConstOffset(VariableType::JS_POINTER(), glue, ihcOffset);
+        GateRef receiverHClass = builder_.LoadHClassByConstOffset(receiver);
+        ihcMatches = builder_.Equal(receiverHClass, initialIhcAddress);
+    }
+    // De-opt if HClass of x changed where X is the current builtin object.
+    builder_.DeoptCheck(ihcMatches, frameState, DeoptType::BUILTININSTANCEHCLASSMISMATCH);
 
     // Phc = PrototypeHClass
     size_t phcOffset = JSThread::GlueData::GetBuiltinPrototypeHClassOffset(type, env.IsArch32Bit());

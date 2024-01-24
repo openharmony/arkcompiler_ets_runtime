@@ -18,6 +18,7 @@
 
 #include "ecmascript/compiler/argument_accessor.h"
 #include "ecmascript/compiler/pgo_type/pgo_type_manager.h"
+#include "ecmascript/enum_conversion.h"
 #include "ecmascript/ts_types/ts_manager.h"
 
 namespace panda::ecmascript::kungfu {
@@ -892,6 +893,12 @@ public:
     {
         ProfileType currType = types_[index];
         return currType.GetElementsKindAfterTransition();
+    }
+
+    std::optional<BuiltinTypeId> GetBuiltinsTypeId() const
+    {
+        auto type = types_[0].GetBuiltinsType();
+        return ToBuiltinsTypeId(type);
     }
 
     bool IsBuiltinInstanceType(BuiltinTypeId type) const

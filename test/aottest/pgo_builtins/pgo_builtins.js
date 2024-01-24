@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023 Huawei Device Co., Ltd.
+ * Copyright (c) 2024 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -13,19 +13,38 @@
  * limitations under the License.
  */
 
-declare function print(arg:any):string;
+let array = [1, 2];
+array.push = function() {
+    print("123");
+}
+array.push();
+
+let string = "11"
+string += "22"
+print(string.slice())
+print(string.length)
+
+let object = new Object();
+print(object.toString())
 
 function foo() {
-    return "a1"
-}
-
-function callFoo(f: (n: number) => number, a: number): number {
-    for (let i = 0; i < 100; i++) {
-        f(a);
+    var o = [];
+    for (let i = 0; i < 2; i++) {
+        o.push(foo)
     }
-    return f(a);
+    print(o.length)
 }
 
-let ret = callFoo(<any>foo, 1);
+foo()
 
-print(ret)
+let map = new Map()
+map.set("1", "2")
+print(map.get("1"))
+
+let set = new Set()
+set.add("1")
+set.add(23)
+set.add("c")
+for (const item of set) {
+  print(item);
+}
