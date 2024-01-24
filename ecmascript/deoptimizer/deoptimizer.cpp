@@ -536,6 +536,7 @@ void Deoptimizier::UpdateAndDumpDeoptInfo(kungfu::DeoptType type)
             method->SetDeoptThreshold(--deoptThreshold);
         } else {
             method->ClearAOTFlags();
+            JSFunction::Cast(callTarget.GetTaggedObject())->SetCodeEntry(reinterpret_cast<uintptr_t>(nullptr));
         }
     }
 }

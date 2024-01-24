@@ -16,6 +16,7 @@
 #include "ecmascript/object_factory.h"
 
 #include "ecmascript/accessor_data.h"
+#include "ecmascript/compiler/aot_file/aot_file_manager.h"
 #include "ecmascript/ecma_context.h"
 #include "ecmascript/global_env_constants-inl.h"
 #include "ecmascript/js_function.h"
@@ -156,6 +157,10 @@ JSHandle<JSFunction> ObjectFactory::NewSFunctionByHClass(const JSHandle<Method> 
     hclass->SetCallable(true);
     JSFunction::InitializeSFunction(thread_, function, method->GetFunctionKind());
     function->SetMethod(thread_, method);
+    if (method->IsAotWithCallField()) {
+        thread_->GetCurrentEcmaContext()->GetAOTFileManager()->
+            SetAOTFuncEntry(method->GetJSPandaFile(), *function, *method);
+    }
     return function;
 }
 

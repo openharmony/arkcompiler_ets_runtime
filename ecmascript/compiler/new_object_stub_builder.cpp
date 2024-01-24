@@ -528,6 +528,16 @@ GateRef NewObjectStubBuilder::NewJSFunction(GateRef glue, GateRef constpool, Gat
     InitializeJSFunction(glue, *result, kind);
     SetMethodToFunction(glue, *result, method);
 
+    Label isAotWithCallField(env);
+    Label afterAotWithCallField(env);
+    Branch(IsAotWithCallField(method), &isAotWithCallField, &afterAotWithCallField);
+    {
+        Bind(&isAotWithCallField);
+        SetCodeEntryToFunction(glue, *result, method);
+        Jump(&afterAotWithCallField);
+    }
+    Bind(&afterAotWithCallField);
+
     Label ihcNotUndefined(env);
     Branch(TaggedIsUndefined(*ihc), &exit, &ihcNotUndefined);
     Bind(&ihcNotUndefined);

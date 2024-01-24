@@ -551,7 +551,7 @@ JSHandle<TaggedArray> ObjectFactory::CloneProperties(const JSHandle<TaggedArray>
             newArray->Set(thread_, i, value);
         } else {
             JSHandle<JSFunction> valueHandle(thread_, value);
-            JSHandle<JSFunction> newFunc = CloneJSFuction(valueHandle);
+            JSHandle<JSFunction> newFunc = CloneJSFunction(valueHandle);
             newFunc->SetLexicalEnv(thread_, env);
             newFunc->SetHomeObject(thread_, obj);
             newArray->Set(thread_, i, newFunc);
@@ -560,7 +560,8 @@ JSHandle<TaggedArray> ObjectFactory::CloneProperties(const JSHandle<TaggedArray>
     return newArray;
 }
 
-JSHandle<JSObject> ObjectFactory::CloneObjectLiteral(JSHandle<JSObject> object, const JSHandle<JSTaggedValue> &env,
+JSHandle<JSObject> ObjectFactory::CloneObjectLiteral(JSHandle<JSObject> object,
+                                                     const JSHandle<JSTaggedValue> &env,
                                                      bool canShareHClass)
 {
     NewObjectHook();
@@ -588,7 +589,7 @@ JSHandle<JSObject> ObjectFactory::CloneObjectLiteral(JSHandle<JSObject> object, 
             cloneObject->SetPropertyInlinedPropsWithRep(thread_, i, value);
         } else {
             JSHandle<JSFunction> valueHandle(thread_, value);
-            JSHandle<JSFunction> newFunc = CloneJSFuction(valueHandle);
+            JSHandle<JSFunction> newFunc = CloneJSFunction(valueHandle);
             newFunc->SetLexicalEnv(thread_, env);
             newFunc->SetHomeObject(thread_, cloneObject);
             cloneObject->SetPropertyInlinedProps(thread_, i, newFunc.GetTaggedValue());
@@ -597,7 +598,7 @@ JSHandle<JSObject> ObjectFactory::CloneObjectLiteral(JSHandle<JSObject> object, 
     return cloneObject;
 }
 
-JSHandle<JSFunction> ObjectFactory::CloneJSFuction(JSHandle<JSFunction> func)
+JSHandle<JSFunction> ObjectFactory::CloneJSFunction(JSHandle<JSFunction> func)
 {
     JSHandle<JSHClass> jshclass(thread_, func->GetJSHClass());
     JSHandle<Method> method(thread_, func->GetMethod());
@@ -645,7 +646,7 @@ JSHandle<JSFunction> ObjectFactory::CloneClassCtor(JSHandle<JSFunction> ctor, co
             cloneCtor->SetPropertyInlinedPropsWithRep(thread_, i, value);
         } else {
             JSHandle<JSFunction> valueHandle(thread_, value);
-            JSHandle<JSFunction> newFunc = CloneJSFuction(valueHandle);
+            JSHandle<JSFunction> newFunc = CloneJSFunction(valueHandle);
             newFunc->SetLexicalEnv(thread_, lexenv);
             newFunc->SetHomeObject(thread_, cloneCtor);
             cloneCtor->SetPropertyInlinedProps(thread_, i, newFunc.GetTaggedValue());
@@ -1726,6 +1727,10 @@ JSHandle<JSFunction> ObjectFactory::NewJSFunctionByHClass(const JSHandle<Method>
     clazz->SetExtensible(true);
     JSFunction::InitializeJSFunction(thread_, function, method->GetFunctionKind());
     function->SetMethod(thread_, method);
+    if (method->IsAotWithCallField()) {
+        thread_->GetCurrentEcmaContext()->GetAOTFileManager()->
+            SetAOTFuncEntry(method->GetJSPandaFile(), *function, *method);
+    }
     return function;
 }
 
@@ -1791,7 +1796,7 @@ JSHandle<Method> ObjectFactory::NewMethod(const JSPandaFile *jsPandaFile, Method
     }
     if (needSetAotFlag) {
         thread_->GetCurrentEcmaContext()->GetAOTFileManager()->
-            SetAOTFuncEntry(jsPandaFile, *method, entryIndex, canFastCall);
+            SetAOTFuncEntry(jsPandaFile, nullptr, *method, entryIndex, canFastCall);
     }
     return method;
 }
@@ -4623,6 +4628,7 @@ JSHandle<JSFunction> ObjectFactory::NewJSFunction(const JSHandle<Method> &method
             LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
+
     JSHandle<JSFunction> jsfunc = NewJSFunctionByHClass(methodHandle, hclass);
     ASSERT_NO_ABRUPT_COMPLETION(thread_);
     return jsfunc;
@@ -4634,6 +4640,7 @@ JSHandle<JSFunction> ObjectFactory::NewJSFunction(const JSHandle<Method> &method
     ASSERT(homeObject->IsECMAObject());
     JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
     JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(env->GetFunctionClassWithoutProto());
+
     JSHandle<JSFunction> jsFunc = NewJSFunctionByHClass(methodHandle, hclass);
     jsFunc->SetHomeObject(thread_, homeObject);
     ASSERT_NO_ABRUPT_COMPLETION(thread_);

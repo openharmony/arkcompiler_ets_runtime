@@ -123,7 +123,7 @@ void OptimizedCall::OptimizedCallAndPushUndefined(ExtendedAssembler *assembler)
     Register codeAddrReg = rsi;
     __ Movq(Operand(rsp, DOUBLE_SLOT_SIZE), jsFuncReg); // sp + 16 get jsFunc
     __ Mov(Operand(jsFuncReg, JSFunctionBase::METHOD_OFFSET), method); // get method
-    __ Mov(Operand(method, Method::CODE_ENTRY_OFFSET), codeAddrReg);
+    __ Mov(Operand(jsFuncReg, JSFunctionBase::CODE_ENTRY_OFFSET), codeAddrReg);
 
     Register methodCallField = rcx;
     __ Mov(Operand(method, Method::CALL_FIELD_OFFSET), methodCallField); // get call field
@@ -1047,7 +1047,7 @@ void OptimizedCall::CallOptimized(ExtendedAssembler *assembler)
     Register codeAddrReg = rsi;
     __ Movq(Operand(rsp, DOUBLE_SLOT_SIZE), jsFuncReg); // sp + 16 get jsFunc
     __ Mov(Operand(jsFuncReg, JSFunctionBase::METHOD_OFFSET), method); // get method
-    __ Mov(Operand(method, Method::CODE_ENTRY_OFFSET), codeAddrReg);
+    __ Mov(Operand(jsFuncReg, JSFunctionBase::CODE_ENTRY_OFFSET), codeAddrReg);
     __ Jmp(codeAddrReg);
 }
 

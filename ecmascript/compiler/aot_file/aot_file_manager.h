@@ -166,8 +166,8 @@ public:
     void BindPandaFilesInAotFile(const std::string &aotFileBaseName, const std::string &moduleName);
     void SetAOTMainFuncEntry(JSHandle<JSFunction> mainFunc, const JSPandaFile *jsPandaFile,
                              std::string_view entryPoint);
-    void SetAOTFuncEntry(const JSPandaFile *jsPandaFile, Method *method,
-                         uint32_t entryIndex, bool *canFastCall = nullptr);
+    void SetAOTFuncEntry(const JSPandaFile *jsPandaFile, JSFunction *function,
+                         Method *method, uint32_t entryIndex = 0, bool *canFastCall = nullptr);
     bool LoadAiFile([[maybe_unused]] const std::string &filename);
     bool LoadAiFile(const JSPandaFile *jsPandaFile);
     kungfu::ArkStackMapParser* GetStackMapParser() const;

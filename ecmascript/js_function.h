@@ -64,12 +64,15 @@ public:
         return Method::ConstCast(method.GetTaggedObject())->GetModule();
     }
 
+    void SetCompiledFuncEntry(uintptr_t codeEntry, bool isFastCall);
+
     static constexpr size_t METHOD_OFFSET = JSObject::SIZE;
-    ACCESSORS(Method, METHOD_OFFSET, LENGTH_OFFSET)
+    ACCESSORS(Method, METHOD_OFFSET, CODE_ENTRY_OFFSET)
+    ACCESSORS_PRIMITIVE_FIELD(CodeEntry, uintptr_t, CODE_ENTRY_OFFSET, LENGTH_OFFSET)
     ACCESSORS_PRIMITIVE_FIELD(Length, uint32_t, LENGTH_OFFSET, LAST_OFFSET)
     DEFINE_ALIGN_SIZE(LAST_OFFSET);
 
-    DECL_VISIT_OBJECT_FOR_JS_OBJECT(JSObject, METHOD_OFFSET, LENGTH_OFFSET)
+    DECL_VISIT_OBJECT_FOR_JS_OBJECT(JSObject, METHOD_OFFSET, CODE_ENTRY_OFFSET)
     DECL_DUMP()
 };
 

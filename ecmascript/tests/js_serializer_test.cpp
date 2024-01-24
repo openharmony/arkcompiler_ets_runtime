@@ -1958,7 +1958,6 @@ HWTEST_F_L0(JSSerializerTest, SerializeAOTMethod)
 
     uintptr_t codeEntry = 0x1234;
     method->SetCodeEntryAndMarkAOT(codeEntry);
-
     JSSerializer *serializer = new JSSerializer(thread);
     bool success = serializer->SerializeJSTaggedValue(JSHandle<JSTaggedValue>::Cast(method));
     EXPECT_TRUE(success);

@@ -116,7 +116,7 @@ void OptimizedFastCall::OptimizedFastCallAndPushUndefined(ExtendedAssembler *ass
     Register argvReg = r12;
     __ Leaq(Operand(rsp, 8 * FRAME_SLOT_SIZE), argvReg); // 8: skip 8 frames to get argv
     __ Mov(Operand(jsFuncReg, JSFunctionBase::METHOD_OFFSET), method); // get method
-    __ Mov(Operand(method, Method::CODE_ENTRY_OFFSET), codeAddrReg); // get codeAddress
+    __ Mov(Operand(jsFuncReg, JSFunctionBase::CODE_ENTRY_OFFSET), codeAddrReg); // get codeAddress
     __ Mov(Operand(method, Method::CALL_FIELD_OFFSET), methodCallField); // get call field
     __ Shr(MethodLiteral::NumArgsBits::START_BIT, methodCallField);
     __ Andl(((1LU <<  MethodLiteral::NumArgsBits::SIZE) - 1), methodCallField);
@@ -262,7 +262,7 @@ void OptimizedFastCall::JSFastCallWithArgV(ExtendedAssembler *assembler)
     Register method = r12;
     Register jsFuncReg = rsi;
     __ Mov(Operand(jsFuncReg, JSFunctionBase::METHOD_OFFSET), method); // get method
-    __ Mov(Operand(method, Method::CODE_ENTRY_OFFSET), rbx); // get codeAddress
+    __ Mov(Operand(jsFuncReg, JSFunctionBase::CODE_ENTRY_OFFSET), rbx); // get codeAddress
     __ Callq(rbx);
 }
 
@@ -377,7 +377,7 @@ void OptimizedFastCall::JSFastCallWithArgVAndPushUndefined(ExtendedAssembler *as
     Register method = r12;
     Register jsFuncReg = rsi;
     __ Mov(Operand(jsFuncReg, JSFunctionBase::METHOD_OFFSET), method); // get method
-    __ Mov(Operand(method, Method::CODE_ENTRY_OFFSET), rbx); // get codeAddress
+    __ Mov(Operand(jsFuncReg, JSFunctionBase::CODE_ENTRY_OFFSET), rbx); // get codeAddress
     __ Callq(rbx);
 }
 #undef __

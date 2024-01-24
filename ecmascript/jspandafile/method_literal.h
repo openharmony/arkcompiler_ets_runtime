@@ -99,11 +99,6 @@ public:
         return IsNativeWithCallField(callField_);
     }
 
-    bool IsAotWithCallField() const
-    {
-        return IsAotWithCallField(callField_);
-    }
-
     uint32_t GetNumArgsWithCallField() const
     {
         return GetNumArgsWithCallField(callField_);

@@ -243,9 +243,9 @@ inline GateRef StubBuilder::CallOptimized(GateRef glue, GateRef code, const std:
     return result;
 }
 
-inline GateRef StubBuilder::GetAotCodeAddr(GateRef method)
+inline GateRef StubBuilder::GetAotCodeAddr(GateRef jsFunc)
 {
-    return env_->GetBuilder()->GetCodeAddr(method);
+    return env_->GetBuilder()->GetCodeAddr(jsFunc);
 }
 
 inline GateRef StubBuilder::CallStub(GateRef glue, int index, const std::initializer_list<GateRef>& args)
@@ -2582,6 +2582,14 @@ inline void StubBuilder::SetMethodToFunction(GateRef glue, GateRef function, Gat
 {
     GateRef offset = IntPtr(JSFunctionBase::METHOD_OFFSET);
     Store(VariableType::JS_ANY(), glue, function, offset, value);
+}
+
+inline void StubBuilder::SetCodeEntryToFunction(GateRef glue, GateRef function, GateRef value)
+{
+    GateRef methodOffset = IntPtr(Method::CODEENTRY_LITERAL_OFFSET);
+    GateRef codeEntry = Load(VariableType::NATIVE_POINTER(), value, methodOffset);
+    GateRef funcOffset = IntPtr(JSFunctionBase::CODE_ENTRY_OFFSET);
+    Store(VariableType::NATIVE_POINTER(), glue, function, funcOffset, codeEntry);
 }
 
 inline void StubBuilder::SetLengthToFunction(GateRef glue, GateRef function, GateRef value)

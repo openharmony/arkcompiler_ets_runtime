@@ -128,15 +128,4 @@ const JSTaggedValue Method::GetRecordName() const
     LOG_INTERPRETER(DEBUG) << "record name is undefined";
     return JSTaggedValue::Hole();
 }
-
-void Method::SetCompiledFuncEntry(uintptr_t codeEntry, bool isFastCall)
-{
-    ASSERT(codeEntry != 0);
-    SetCodeEntryAndMarkAOT(codeEntry);
-
-    SetIsFastCall(isFastCall);
-    MethodLiteral *methodLiteral = GetMethodLiteral();
-    methodLiteral->SetAotCodeBit(true);
-    methodLiteral->SetIsFastCall(isFastCall);
-}
 } // namespace panda::ecmascript

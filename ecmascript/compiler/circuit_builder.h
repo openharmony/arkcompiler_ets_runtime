@@ -236,7 +236,7 @@ public:
     // Get
     GateRef GetConstPool(GateRef jsFunc);
     GateRef GetConstPoolFromFunction(GateRef jsFunc);
-    GateRef GetCodeAddr(GateRef method);
+    GateRef GetCodeAddr(GateRef jsFunc);
     GateRef GetObjectFromConstPool(GateRef glue, GateRef hirGate, GateRef jsFunc, GateRef index, ConstPoolType type);
     GateRef GetObjectFromConstPool(GateRef glue, GateRef hirGate, GateRef constPool, GateRef module, GateRef index,
                                    ConstPoolType type);

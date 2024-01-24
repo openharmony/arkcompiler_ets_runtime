@@ -145,7 +145,7 @@ public:
     GateRef CallNGCRuntime(GateRef glue, int index, const std::initializer_list<GateRef>& args);
     GateRef FastCallOptimized(GateRef glue, GateRef code, const std::initializer_list<GateRef>& args);
     GateRef CallOptimized(GateRef glue, GateRef code, const std::initializer_list<GateRef>& args);
-    GateRef GetAotCodeAddr(GateRef method);
+    GateRef GetAotCodeAddr(GateRef jsFunc);
     GateRef CallStub(GateRef glue, int index, const std::initializer_list<GateRef>& args);
     GateRef CallBuiltinRuntime(GateRef glue, const std::initializer_list<GateRef>& args,
                                bool isNew = false, const char* comment = nullptr);
@@ -636,6 +636,7 @@ public:
     void SetWorkNodePointerToFunction(GateRef glue, GateRef function, GateRef value);
     void SetHomeObjectToFunction(GateRef glue, GateRef function, GateRef value);
     void SetMethodToFunction(GateRef glue, GateRef function, GateRef value);
+    void SetCodeEntryToFunction(GateRef glue, GateRef function, GateRef value);
     void SetLengthToFunction(GateRef glue, GateRef function, GateRef value);
     GateRef GetGlobalObject(GateRef glue);
     GateRef GetMethodFromFunction(GateRef function);

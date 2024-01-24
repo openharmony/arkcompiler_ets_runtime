@@ -816,10 +816,10 @@ GateRef CircuitBuilder::GetGlobalEnvValue(VariableType type, GateRef env, size_t
     return Load(type, env, valueIndex);
 }
 
-GateRef CircuitBuilder::GetCodeAddr(GateRef method)
+GateRef CircuitBuilder::GetCodeAddr(GateRef jsFunc)
 {
-    auto codeAddOffset = IntPtr(Method::CODE_ENTRY_OFFSET);
-    return Load(VariableType::NATIVE_POINTER(), method, codeAddOffset);
+    auto codeAddOffset = IntPtr(JSFunction::CODE_ENTRY_OFFSET);
+    return Load(VariableType::NATIVE_POINTER(), jsFunc, codeAddOffset);
 }
 
 GateRef CircuitBuilder::GetHClassGateFromIndex(GateRef gate, int32_t index)
