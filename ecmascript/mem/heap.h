@@ -113,6 +113,8 @@ public:
 
     virtual HugeObjectSpace *GetHugeObjectSpace() const = 0;
 
+    virtual ReadOnlySpace *GetReadOnlySpace() const = 0;
+
     virtual void CollectGarbage(TriggerGCType gcType, GCReason reason) = 0;
 
     virtual inline size_t GetCommittedSize() const = 0;
@@ -321,6 +323,11 @@ public:
         return sHugeObjectSpace_;
     }
 
+    ReadOnlySpace *GetReadOnlySpace() const override
+    {
+        return sReadOnlySpace_;
+    }
+
     void CollectGarbage([[maybe_unused]]TriggerGCType gcType, [[maybe_unused]]GCReason reason) override
     {
         LOG_FULL(ERROR) << "SharedHeap CollectGarbage() not support yet";
@@ -330,7 +337,8 @@ public:
     {
         size_t result = sOldSpace_->GetCommittedSize() +
             sHugeObjectSpace_->GetCommittedSize() +
-            sNonMovableSpace_->GetCommittedSize();
+            sNonMovableSpace_->GetCommittedSize() +
+            sReadOnlySpace_->GetCommittedSize();
         return result;
     }
 
@@ -338,7 +346,8 @@ public:
     {
         size_t result = sOldSpace_->GetHeapObjectSize() +
             sHugeObjectSpace_->GetHeapObjectSize() +
-            sNonMovableSpace_->GetHeapObjectSize();
+            sNonMovableSpace_->GetHeapObjectSize() +
+            sReadOnlySpace_->GetCommittedSize();
         return result;
     }
 
@@ -386,11 +395,13 @@ public:
 
     inline TaggedObject *AllocateHugeObject(JSThread *thread, size_t size);
 
+    inline TaggedObject *AllocateReadOnlyOrHugeObject(JSThread *thread, JSHClass *hclass);
+    inline TaggedObject *AllocateReadOnlyOrHugeObject(JSThread *thread, JSHClass *hclass, size_t size);
 private:
-    Mutex mutex_;
     const GlobalEnvConstants *globalEnvConstants_ {nullptr};
     OldSpace *sOldSpace_ {nullptr};
     NonMovableSpace *sNonMovableSpace_ {nullptr};
+    ReadOnlySpace *sReadOnlySpace_{nullptr};
     HugeObjectSpace *sHugeObjectSpace_ {nullptr};
 };
 
@@ -456,7 +467,7 @@ public:
         return snapshotSpace_;
     }
 
-    ReadOnlySpace *GetReadOnlySpace() const
+    ReadOnlySpace *GetReadOnlySpace() const override
     {
         return readOnlySpace_;
     }

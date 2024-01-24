@@ -112,7 +112,8 @@ private:
 
 class ReadOnlySpace : public LinearSpace {
 public:
-    ReadOnlySpace(BaseHeap *heap, size_t initialCapacity, size_t maximumCapacity);
+    ReadOnlySpace(BaseHeap *heap, size_t initialCapacity, size_t maximumCapacity,
+        MemSpaceType type = MemSpaceType::READ_ONLY_SPACE);
     ~ReadOnlySpace() override = default;
     void SetReadOnly()
     {
@@ -130,8 +131,13 @@ public:
         EnumerateRegions(cb);
     }
 
+    uintptr_t ConcurrentAllocate(size_t size);
+
     NO_COPY_SEMANTIC(ReadOnlySpace);
     NO_MOVE_SEMANTIC(ReadOnlySpace);
+
+private:
+    Mutex allocateLock_;
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_MEM_LINEAR_SPACE_H

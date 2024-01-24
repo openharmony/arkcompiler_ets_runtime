@@ -815,7 +815,7 @@ JSHandle<NameDictionary> SendableClassDefiner::BuildSendableDictionaryProperties
     ASSERT(keys->GetLength() == properties->GetLength());
 
     JSMutableHandle<NameDictionary> dict(
-        thread, NameDictionary::CreateInShareSpace(thread, NameDictionary::ComputeHashTableSize(length)));
+        thread, NameDictionary::CreateInSharedHeap(thread, NameDictionary::ComputeHashTableSize(length)));
     JSMutableHandle<JSTaggedValue> propKey(thread, JSTaggedValue::Undefined());
     JSMutableHandle<JSTaggedValue> propValue(thread, JSTaggedValue::Undefined());
     for (uint32_t index = 0; index < length; index++) {
@@ -926,7 +926,7 @@ void SendableClassDefiner::DefineSendableInstanceHClass(JSThread *thread, const 
         } else {
             iHClass = factory->NewSEcmaHClass(JSSharedObject::SIZE, JSType::JS_SHARED_OBJECT, 0);
             JSHandle<NameDictionary> dict =
-                NameDictionary::CreateInShareSpace(thread, NameDictionary::ComputeHashTableSize(fieldNum));
+                NameDictionary::CreateInSharedHeap(thread, NameDictionary::ComputeHashTableSize(fieldNum));
             AddFieldTypeToHClass(thread, fieldTypeArray, dict, iHClass);
         }
     } else {
@@ -947,7 +947,7 @@ void SendableClassDefiner::DefineSendableInstanceHClass(JSThread *thread, const 
             } else {
                 iHClass = factory->NewSEcmaHClass(JSSharedObject::SIZE, JSType::JS_SHARED_OBJECT, 0);
                 JSHandle<NameDictionary> dict =
-                    NameDictionary::CreateInShareSpace(thread, NameDictionary::ComputeHashTableSize(newLength));
+                    NameDictionary::CreateInSharedHeap(thread, NameDictionary::ComputeHashTableSize(newLength));
                 auto globalConst = const_cast<GlobalEnvConstants *>(thread->GlobalConstants());
                 JSHandle<JSTaggedValue> value = globalConst->GetHandledUndefined();
                 JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
@@ -965,7 +965,7 @@ void SendableClassDefiner::DefineSendableInstanceHClass(JSThread *thread, const 
             auto baseLength = baseDict->EntriesCount();
             auto newLength = fieldNum + baseLength;
             JSHandle<NameDictionary> dict =
-                NameDictionary::CreateInShareSpace(thread, NameDictionary::ComputeHashTableSize(newLength));
+                NameDictionary::CreateInSharedHeap(thread, NameDictionary::ComputeHashTableSize(newLength));
             baseDict->Rehash(thread, *dict);
             dict->SetNextEnumerationIndex(thread, baseDict->GetNextEnumerationIndex());
             iHClass = factory->NewSEcmaHClass(JSSharedObject::SIZE, JSType::JS_SHARED_OBJECT, 0);

@@ -100,6 +100,7 @@ JSHandle<Method> Method::Create(JSThread *thread, const JSPandaFile *jsPandaFile
     }
 
     JSHandle<Method> method;
+    // todo(lukai) allocate all methods to sharedHeap
     if (shareObject) {
         method = vm->GetFactory()->NewSMethod(methodLiteral);
     } else {

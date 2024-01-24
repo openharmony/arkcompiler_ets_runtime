@@ -50,8 +50,12 @@ enum RegionSpaceFlag {
     IN_HUGE_MACHINE_CODE_SPACE = 0x10,
     IN_SHARED_NON_MOVABLE = 0x11,
     IN_SHARED_OLD_SPACE = 0x12,
-    IN_SHARED_HUGE_OBJECT_SPACE = 0x13,
+    IN_SHARED_READ_ONLY_SPACE = 0x13,
+    IN_SHARED_HUGE_OBJECT_SPACE = 0x14,
     VALID_SPACE_MASK = 0xFF,
+
+    SHARED_SPACE_BEGIN = IN_SHARED_NON_MOVABLE,
+    SHARED_SPACE_END = IN_SHARED_HUGE_OBJECT_SPACE,
 };
 
 enum RegionGCFlags {
@@ -95,6 +99,8 @@ static inline std::string ToSpaceTypeName(uint8_t space)
             return "shared non movable space";
         case RegionSpaceFlag::IN_SHARED_OLD_SPACE:
             return "shared old space";
+        case RegionSpaceFlag::IN_SHARED_READ_ONLY_SPACE:
+            return "shared read only space";
         case RegionSpaceFlag::IN_SHARED_HUGE_OBJECT_SPACE:
             return "shared huge object space";
         default:
@@ -309,12 +315,11 @@ public:
     {
         return packedData_.flags_.spaceFlag_ == RegionSpaceFlag::IN_APPSPAWN_SPACE;
     }
-    // todo(lukai) use hclass.sharedtag instead?
+
     bool InSharedSpace() const
     {
         auto flag = packedData_.flags_.spaceFlag_;
-        return flag == RegionSpaceFlag::IN_SHARED_NON_MOVABLE || flag == RegionSpaceFlag::IN_SHARED_OLD_SPACE ||
-               flag == RegionSpaceFlag::IN_SHARED_HUGE_OBJECT_SPACE;
+        return flag >= RegionSpaceFlag::SHARED_SPACE_BEGIN && flag <= RegionSpaceFlag::SHARED_SPACE_END;
     }
 
     bool InHeapSpace() const
@@ -331,6 +336,7 @@ public:
                 space == RegionSpaceFlag::IN_APPSPAWN_SPACE ||
                 space == RegionSpaceFlag::IN_SHARED_NON_MOVABLE ||
                 space == RegionSpaceFlag::IN_SHARED_OLD_SPACE ||
+                space == RegionSpaceFlag::IN_SHARED_READ_ONLY_SPACE ||
                 space == RegionSpaceFlag::IN_SHARED_HUGE_OBJECT_SPACE);
     }
 

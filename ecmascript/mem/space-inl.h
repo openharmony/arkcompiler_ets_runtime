@@ -102,6 +102,9 @@ RegionSpaceFlag Space::GetRegionFlag() const
         case MemSpaceType::SHARED_OLD_SPACE:
             flags = RegionSpaceFlag::IN_SHARED_OLD_SPACE;
             break;
+        case MemSpaceType::SHARED_READ_ONLY_SPACE:
+            flags = RegionSpaceFlag::IN_SHARED_READ_ONLY_SPACE;
+            break;
         case MemSpaceType::SHARED_HUGE_OBJECT_SPACE:
             flags = RegionSpaceFlag::IN_SHARED_HUGE_OBJECT_SPACE;
             break; 

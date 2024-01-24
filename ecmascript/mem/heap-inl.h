@@ -522,6 +522,24 @@ TaggedObject *SharedHeap::AllocateHugeObject(JSThread *thread, size_t size)
     }
     return object;
 }
+
+TaggedObject *SharedHeap::AllocateReadOnlyOrHugeObject(JSThread *thread, JSHClass *hclass)
+{
+    size_t size = hclass->GetObjectSize();
+    return AllocateReadOnlyOrHugeObject(thread, hclass, size);
+}
+
+TaggedObject *SharedHeap::AllocateReadOnlyOrHugeObject(JSThread *thread, JSHClass *hclass, size_t size)
+{
+    size = AlignUp(size, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
+    if (size > MAX_REGULAR_HEAP_OBJECT_SIZE) {
+        return AllocateHugeObject(thread, hclass, size);
+    }
+    auto object = reinterpret_cast<TaggedObject *>(sReadOnlySpace_->ConcurrentAllocate(size));
+    CHECK_SOBJ_AND_THROW_OOM_ERROR(thread, object, size, sReadOnlySpace_, "SharedHeap::AllocateReadOnlyOrHugeObject");
+    object->SetClass(thread, hclass);
+    return object;
+}
 }  // namespace panda::ecmascript
 
 #endif  // ECMASCRIPT_MEM_HEAP_INL_H

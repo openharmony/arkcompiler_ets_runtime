@@ -24,9 +24,6 @@ void Barriers::Update(const JSThread *thread, uintptr_t slotAddr, Region *object
     auto heap = thread->GetEcmaVM()->GetHeap();
     if (heap->IsFullMark()) {
         if (valueRegion->InCollectSet() && !objectRegion->InYoungSpaceOrCSet()) {
-            if (objectRegion->InSharedSpace()) {
-                LOG_FULL(ERROR) << "Shared space reference to CSET space";
-            }
             objectRegion->AtomicInsertCrossRegionRSet(slotAddr);
         }
     } else {

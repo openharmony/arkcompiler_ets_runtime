@@ -685,8 +685,6 @@ public:
 
     TaggedObject *NewSharedOldSpaceObject(const JSHandle<JSHClass> &hclass);
 
-    JSHandle<JSObject> NewJSSharedObjectWithInit(const JSHandle<JSHClass> &jshclass);
-
     JSHandle<JSHClass> NewSEcmaHClass(uint32_t size, JSType type, uint32_t inlinedProps);
 
     JSHandle<JSHClass> NewSEcmaHClass(JSHClass *hclass, uint32_t size, JSType type, uint32_t inlinedProps);
@@ -716,8 +714,7 @@ public:
     JSHandle<Method> NewSMethod(const MethodLiteral *methodLiteral, MemSpaceType spaceType = SHARED_OLD_SPACE);
 
     JSHandle<Method> NewSMethod(const JSPandaFile *jsPandaFile, MethodLiteral *methodLiteral,
-                                JSHandle<ConstantPool> constpool, JSHandle<JSTaggedValue> module,
-                                uint32_t entryIndex, bool needSetAotFlag, bool *canFastCall = nullptr);
+                                JSHandle<ConstantPool> constpool, JSHandle<JSTaggedValue> module);
 
     JSHandle<AccessorData> NewSAccessorData();
 

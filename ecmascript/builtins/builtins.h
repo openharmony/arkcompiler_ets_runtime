@@ -337,12 +337,15 @@ private:
                            EcmaEntrypoint func, int length) const;
     void SetNonConstantObject(const JSHandle<JSObject> &obj, std::string_view key,
                               JSHandle<JSTaggedValue> &value) const;
+
+    // For SharedObject/SharedFunction
     void InitializeSObjectAndSFunction(const JSHandle<GlobalEnv> &env) const;
     void InitializeSObject(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &sObjIHClass,
                            const JSHandle<JSObject> &sObjFuncPrototype,
                            const JSHandle<JSFunction> &sFuncPrototype) const;
     void InitializeSFunction(const JSHandle<GlobalEnv> &env,
                              const JSHandle<JSFunction> &sFuncPrototype) const;
+
     JSHandle<JSHClass> CreateSObjectFunctionHClass(const JSHandle<JSFunction> &sFuncPrototype) const;
     JSHandle<JSHClass> CreateSObjectPrototypeHClass() const;
     JSHandle<JSHClass> CreateSFunctionHClass(const JSHandle<JSFunction> &sFuncPrototype) const;

@@ -68,7 +68,6 @@ bool SharedHeap::CheckAndTriggerOldGC(size_t size)
 void SharedHeap::Initialize(NativeAreaAllocator *nativeAreaAllocator, HeapRegionAllocator *heapRegionAllocator,
     const GlobalEnvConstants *globalConst)
 {
-    LockHolder holder(mutex_);
     nativeAreaAllocator_ = nativeAreaAllocator;
     heapRegionAllocator_ = heapRegionAllocator;
     globalEnvConstants_ = globalConst;
@@ -85,6 +84,9 @@ void SharedHeap::Initialize(NativeAreaAllocator *nativeAreaAllocator, HeapRegion
     sOldSpace_ = new OldSpace(this, oldSpaceCapacity, oldSpaceCapacity, MemSpaceType::SHARED_OLD_SPACE);
     sOldSpace_->Initialize();
 
+    size_t readOnlySpaceCapacity = config_.GetDefaultReadOnlySpaceSize();
+    sReadOnlySpace_ = new ReadOnlySpace(this, readOnlySpaceCapacity, readOnlySpaceCapacity,
+        MemSpaceType::SHARED_READ_ONLY_SPACE);
     sHugeObjectSpace_ = new HugeObjectSpace(this, heapRegionAllocator_, oldSpaceCapacity, oldSpaceCapacity,
         MemSpaceType::SHARED_HUGE_OBJECT_SPACE);
 }

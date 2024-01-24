@@ -48,7 +48,7 @@ public:
 
     static JSHandle<NameDictionary> Create(const JSThread *thread,
         int numberOfElements = OrderHashTableT::DEFAULT_ELEMENTS_NUMBER);
-    static JSHandle<NameDictionary> CreateInShareSpace(const JSThread *thread,
+    static JSHandle<NameDictionary> CreateInSharedHeap(const JSThread *thread,
         int numberOfElements = OrderHashTableT::DEFAULT_ELEMENTS_NUMBER);
     // Returns the property metaData for the property at entry.
     PropertyAttributes GetAttributes(int entry) const;

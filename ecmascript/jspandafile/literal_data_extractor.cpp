@@ -305,7 +305,7 @@ JSHandle<JSFunction> LiteralDataExtractor::DefineMethodInLiteral(JSThread *threa
     JSHandle<Method> method;
     if (classKind == ClassKind::SENDABLE) {
         method = factory->NewSMethod(jsPandaFile, methodLiteral, constpool,
-            module, entryIndex, isLoadedAOT, &canFastCall);
+            module);
     } else {
         method = factory->NewMethod(jsPandaFile, methodLiteral, constpool,
             module, entryIndex, isLoadedAOT, &canFastCall);

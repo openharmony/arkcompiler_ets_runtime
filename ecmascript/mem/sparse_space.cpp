@@ -124,7 +124,6 @@ bool SparseSpace::Expand()
 uintptr_t SparseSpace::AllocateAfterSweepingCompleted(size_t size)
 {
     ASSERT(sweepState_ == SweepState::SWEEPING);
-    // MEM_ALLOCATE_AND_GC_TRACE(heap_->GetEcmaVM(), ConcurrentSweepingWait);
     if (TryFillSweptRegion()) {
         auto object = allocator_->Allocate(size);
         if (object != 0) {

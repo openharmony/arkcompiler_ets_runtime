@@ -308,6 +308,19 @@ size_t SemiSpace::GetAllocatedSizeSinceGC(uintptr_t top) const
 SnapshotSpace::SnapshotSpace(BaseHeap *heap, size_t initialCapacity, size_t maximumCapacity)
     : LinearSpace(heap, MemSpaceType::SNAPSHOT_SPACE, initialCapacity, maximumCapacity) {}
 
-ReadOnlySpace::ReadOnlySpace(BaseHeap *heap, size_t initialCapacity, size_t maximumCapacity)
-    : LinearSpace(heap, MemSpaceType::READ_ONLY_SPACE, initialCapacity, maximumCapacity) {}
+ReadOnlySpace::ReadOnlySpace(BaseHeap *heap, size_t initialCapacity, size_t maximumCapacity, MemSpaceType type)
+    : LinearSpace(heap, type, initialCapacity, maximumCapacity) {}
+
+uintptr_t ReadOnlySpace::ConcurrentAllocate(size_t size)
+{
+    LockHolder holder(allocateLock_);
+    auto object = allocator_.Allocate(size);
+    if (object != 0) {
+        return object;
+    }
+    if (Expand(false)) {
+        object = allocator_.Allocate(size);
+    }
+    return object;
+}
 }  // namespace panda::ecmascript

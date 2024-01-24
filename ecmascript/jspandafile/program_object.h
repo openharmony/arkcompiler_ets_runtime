@@ -256,8 +256,7 @@ public:
         ObjectFactory *factory = vm->GetFactory();
         JSHandle<Method> method;
         if (classKind == ClassKind::SENDABLE) {
-            method = factory->NewSMethod(jsPandaFile, methodLiteral, constpoolHandle, moduleHandle,
-                                         entryIndex, isLoadedAOT && hasEntryIndex);
+            method = factory->NewSMethod(jsPandaFile, methodLiteral, constpoolHandle, moduleHandle);
         } else {
             method = factory->NewMethod(jsPandaFile, methodLiteral, constpoolHandle, moduleHandle,
                                         entryIndex, isLoadedAOT && hasEntryIndex);

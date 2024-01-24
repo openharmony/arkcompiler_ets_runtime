@@ -41,6 +41,7 @@ enum MemSpaceType {
     HUGE_MACHINE_CODE_SPACE,
     SHARED_NON_MOVABLE,
     SHARED_OLD_SPACE,
+    SHARED_READ_ONLY_SPACE,
     SHARED_HUGE_OBJECT_SPACE,
     SPACE_TYPE_LAST,  // Count of different types
 
@@ -76,6 +77,8 @@ static inline std::string ToSpaceTypeName(MemSpaceType type)
             return "shared non movable space";
         case SHARED_OLD_SPACE:
             return "shared old space";
+        case SHARED_READ_ONLY_SPACE:
+            return "shared read only space";
         case SHARED_HUGE_OBJECT_SPACE:
             return "shared huge object space";
         default:

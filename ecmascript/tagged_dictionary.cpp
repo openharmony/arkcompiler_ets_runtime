@@ -193,7 +193,7 @@ JSHandle<NameDictionary> NameDictionary::Create(const JSThread *thread, int numb
     return OrderHashTableT::Create(thread, numberOfElements);
 }
 
-JSHandle<NameDictionary> NameDictionary::CreateInShareSpace(const JSThread *thread, int numberOfElements)
+JSHandle<NameDictionary> NameDictionary::CreateInSharedHeap(const JSThread *thread, int numberOfElements)
 {
     return OrderHashTableT::Create(thread, numberOfElements, true);
 }
