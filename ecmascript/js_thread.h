@@ -29,6 +29,7 @@
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/js_thread_hclass_entries.h"
 #include "ecmascript/js_thread_stub_entries.h"
+#include "ecmascript/log_wrapper.h"
 #include "ecmascript/mem/visitor.h"
 #include "ecmascript/mutator_lock.h"
 
@@ -41,7 +42,6 @@ class PropertiesCache;
 template<typename T>
 class EcmaGlobalStorage;
 class Node;
-class SingleCharTable;
 class DebugNode;
 class VmThreadControl;
 using WeakClearCallback = void (*)(void *);
@@ -75,8 +75,9 @@ enum class ThreadState : uint16_t {
     CREATED = 0,
     RUNNING = 1,
     NATIVE = 2,
-    IS_SUSPENDED = 3,
-    TERMINATED = 4,
+    WAIT = 3,
+    IS_SUSPENDED = 4,
+    TERMINATED = 5,
 };
 
 union ThreadStateAndFlags {
@@ -835,7 +836,6 @@ public:
                                                  JSTaggedValue,
                                                  base::AlignedPointer,
                                                  BuiltinEntries,
-                                                 JSTaggedValue,
                                                  base::AlignedBool,
                                                  base::AlignedPointer> {
         enum class Index : size_t {
@@ -868,7 +868,6 @@ public:
             EntryFrameDroppedStateIndex,
             CurrentContextIndex,
             BuiltinEntriesIndex,
-            SingleCharTableIndex,
             IsTracingIndex,
             unsharedConstpoolsIndex,
             NumOfMembers
@@ -1025,11 +1024,6 @@ public:
             return GetOffset<static_cast<size_t>(Index::BuiltinEntriesIndex)>(isArch32);
         }
 
-        static size_t GetSingleCharTableOffset(bool isArch32)
-        {
-            return GetOffset<static_cast<size_t>(Index::SingleCharTableIndex)>(isArch32);
-        }
-
         static size_t GetIsTracingOffset(bool isArch32)
         {
             return GetOffset<static_cast<size_t>(Index::IsTracingIndex)>(isArch32);
@@ -1069,7 +1063,6 @@ public:
         alignas(EAS) uint64_t entryFrameDroppedState_ {FrameDroppedState::StateFalse};
         alignas(EAS) EcmaContext *currentContext_ {nullptr};
         alignas(EAS) BuiltinEntries builtinEntries_;
-        alignas(EAS) JSTaggedValue singleCharTable_ {JSTaggedValue::Hole()};
         alignas(EAS) bool isTracing_ {false};
         alignas(EAS) uintptr_t unsharedConstpools_ {0};
     };
@@ -1085,13 +1078,8 @@ public:
 
     JSTaggedValue GetSingleCharTable() const
     {
-        ASSERT(glueData_.singleCharTable_ != JSTaggedValue::Hole());
-        return glueData_.singleCharTable_;
-    }
-
-    void SetSingleCharTable(JSTaggedValue singleCharTable)
-    {
-        glueData_.singleCharTable_ = singleCharTable;
+        ASSERT(glueData_.globalConst_->GetSingleCharTable() != JSTaggedValue::Hole());
+        return glueData_.globalConst_->GetSingleCharTable();
     }
 
     void SwitchCurrentContext(EcmaContext *currentContext, bool isInIterate = false);
@@ -1112,6 +1100,11 @@ public:
 
     void InitializeBuiltinObject(const std::string& key);
     void InitializeBuiltinObject();
+
+    inline bool IsThreadSafe()
+    {
+        return IsMainThread() || IsSuspended();
+    }
 
     inline bool IsSuspended()
     {

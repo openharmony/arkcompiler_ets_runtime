@@ -45,8 +45,16 @@ enum MemSpaceType {
     SHARED_HUGE_OBJECT_SPACE,
     SPACE_TYPE_LAST,  // Count of different types
 
+    SHARED_BEGIN = SHARED_NON_MOVABLE,
+    SHARED_END = SHARED_HUGE_OBJECT_SPACE,
+    // Free region means memory maybe always in use and can not be evacuated
     FREE_LIST_NUM = MACHINE_CODE_SPACE - OLD_SPACE + 1,
 };
+
+static inline bool IsSMemSpace(MemSpaceType type)
+{
+    return (type >= MemSpaceType::SHARED_BEGIN) && (type <= MemSpaceType::SHARED_END);
+}
 
 static inline std::string ToSpaceTypeName(MemSpaceType type)
 {

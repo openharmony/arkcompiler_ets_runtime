@@ -51,7 +51,7 @@ public:
 
     inline ~ThreadStateTransitionScope()
     {
-        self->UpdateState(oldState_);
+        self_->UpdateState(oldState_);
     }
 
 private:
@@ -63,7 +63,7 @@ private:
 class SuspendAllScope final {
 public:
     inline explicit SuspendAllScope(JSThread* self)
-        : tst_(self, ThreadState::IS_SUSPENDED)
+        : self_(self), tst_(self, ThreadState::IS_SUSPENDED)
     {
         Runtime::GetInstance()->SuspendAll(self_);
     }
@@ -72,6 +72,7 @@ public:
         Runtime::GetInstance()->ResumeAll(self_);
     }
 private:
+    JSThread* self_;
     ThreadStateTransitionScope tst_;
     NO_COPY_SEMANTIC(SuspendAllScope);
 };

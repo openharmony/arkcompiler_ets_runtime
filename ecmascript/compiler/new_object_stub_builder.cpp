@@ -826,6 +826,14 @@ void NewObjectStubBuilder::HeapAlloc(Variable *result, Label *exit, RegionSpaceF
     }
 }
 
+void NewObjectStubBuilder::AllocateInSOld(Variable *result, Label *exit)
+{
+    DEFVARIABLE(ret, VariableType::JS_ANY(), Undefined());
+    ret = CallRuntime(glue_, RTSTUB_ID(AllocateInSOld), {IntToTaggedInt(size_)});
+    result->WriteVariable(*ret);
+    Jump(exit);
+}
+
 void NewObjectStubBuilder::AllocateInYoung(Variable *result, Label *exit)
 {
     auto env = GetEnvironment();
@@ -948,7 +956,7 @@ void NewObjectStubBuilder::AllocLineStringObject(Variable *result, Label *exit, 
             IntPtr(static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT)));
     }
     Label afterAllocate(env);
-    AllocateInYoung(result, &afterAllocate);
+    AllocateInSOld(result, &afterAllocate);
 
     Bind(&afterAllocate);
     GateRef stringClass = GetGlobalConstantValue(VariableType::JS_POINTER(), glue_,
@@ -966,7 +974,7 @@ void NewObjectStubBuilder::AllocSlicedStringObject(Variable *result, Label *exit
 
     size_ = AlignUp(IntPtr(SlicedString::SIZE), IntPtr(static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT)));
     Label afterAllocate(env);
-    AllocateInYoung(result, &afterAllocate);
+    AllocateInSOld(result, &afterAllocate);
 
     Bind(&afterAllocate);
     GateRef stringClass = GetGlobalConstantValue(VariableType::JS_POINTER(), glue_,
@@ -991,7 +999,7 @@ void NewObjectStubBuilder::AllocTreeStringObject(Variable *result, Label *exit, 
 
     size_ = AlignUp(IntPtr(TreeEcmaString::SIZE), IntPtr(static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT)));
     Label afterAllocate(env);
-    AllocateInYoung(result, &afterAllocate);
+    AllocateInSOld(result, &afterAllocate);
 
     Bind(&afterAllocate);
     GateRef stringClass = GetGlobalConstantValue(VariableType::JS_POINTER(), glue_,

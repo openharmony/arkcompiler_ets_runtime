@@ -83,8 +83,8 @@ std::pair<JSTaggedValue, bool> ObjectFastOperator::HasOwnProperty(JSThread *thre
     }
 
     if (!EcmaStringAccessor(key).IsInternString()) {
-        EcmaString *str =
-            thread->GetEcmaVM()->GetEcmaStringTable()->TryGetInternString(EcmaString::Cast(key.GetTaggedObject()));
+        EcmaString *str = thread->GetEcmaVM()->GetEcmaStringTable()->TryGetInternString(
+            thread, EcmaString::Cast(key.GetTaggedObject()));
         if (str == nullptr) {
             return std::make_pair(JSTaggedValue::Hole(), true);
         }

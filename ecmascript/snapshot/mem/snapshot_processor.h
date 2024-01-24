@@ -20,6 +20,7 @@
 #include <fstream>
 #include <sstream>
 
+#include "ecmascript/mem/heap.h"
 #include "ecmascript/snapshot/mem/encode_bit.h"
 #include "ecmascript/jspandafile/method_literal.h"
 #include "ecmascript/js_tagged_value.h"
@@ -43,7 +44,7 @@ using ObjectEncode = std::pair<uint64_t, ecmascript::EncodeBit>;
 class SnapshotProcessor final {
 public:
     explicit SnapshotProcessor(EcmaVM *vm)
-        : vm_(vm), objXRay_(vm) {}
+        : vm_(vm), sHeap_(SharedHeap::GetInstance()), objXRay_(vm) {}
     ~SnapshotProcessor();
 
     void Initialize();
@@ -132,6 +133,7 @@ private:
     uintptr_t AllocateObjectToLocalSpace(Space *space, size_t objectSize);
 
     EcmaVM *vm_ {nullptr};
+    SharedHeap* sHeap_ {nullptr};
     LocalSpace *oldLocalSpace_ {nullptr};
     LocalSpace *nonMovableLocalSpace_ {nullptr};
     LocalSpace *machineCodeLocalSpace_ {nullptr};

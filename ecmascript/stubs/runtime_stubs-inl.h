@@ -3159,7 +3159,7 @@ JSTaggedType RuntimeStubs::RuntimeTryGetInternString(uintptr_t argGlue, EcmaStri
 {
     auto thread = JSThread::GlueToJSThread(argGlue);
     EcmaString *str =
-        thread->GetEcmaVM()->GetEcmaStringTable()->TryGetInternString(string);
+        thread->GetEcmaVM()->GetEcmaStringTable()->TryGetInternString(thread, string);
     if (str == nullptr) {
         return JSTaggedValue::Hole().GetRawData();
     }

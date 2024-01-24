@@ -612,7 +612,7 @@ void EcmaContext::RelocateConstantString(const JSPandaFile *jsPandaFile)
     if (!jsPandaFile->IsFirstMergedAbc()) {
         return;
     }
-    vm_->GetEcmaStringTable()->RelocateConstantData(jsPandaFile);
+    vm_->GetEcmaStringTable()->RelocateConstantData(vm_, jsPandaFile);
 }
 
 JSHandle<JSTaggedValue> EcmaContext::GetEcmaUncaughtException() const

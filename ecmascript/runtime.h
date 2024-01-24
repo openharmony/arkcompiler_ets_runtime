@@ -16,6 +16,7 @@
 #ifndef ECMASCRIPT_RUNTIME_H
 #define ECMASCRIPT_RUNTIME_H
 
+#include "ecmascript/ecma_string_table.h"
 #include "ecmascript/global_env_constants.h"
 #include "ecmascript/js_runtime_options.h"
 #include "ecmascript/js_thread.h"
@@ -26,6 +27,7 @@
 #include "libpandabase/macros.h"
 
 #include <list>
+#include <memory>
 
 namespace panda::ecmascript {
 class Runtime {
@@ -57,6 +59,11 @@ public:
         return globalConstants_;
     }
 
+    inline EcmaStringTable *GetEcmaStringTable() const
+    {
+        return stringTable_.get();
+    }
+
 private:
     Runtime() = default;
     ~Runtime() = default;
@@ -76,6 +83,8 @@ private:
     // for shared heap.
     std::unique_ptr<NativeAreaAllocator> nativeAreaAllocator_;
     std::unique_ptr<HeapRegionAllocator> heapRegionAllocator_;
+    // for stringTable.
+    std::unique_ptr<EcmaStringTable> stringTable_;
 
     // Runtime instance and VMs creation.
     static int32_t vmCount_;

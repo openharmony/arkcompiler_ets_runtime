@@ -14,9 +14,11 @@
  */
 
 #include "ecmascript/runtime.h"
+#include <memory>
 
 #include "ecmascript/compiler/aot_file/an_file_data_manager.h"
 #include "ecmascript/ecma_vm.h"
+#include "ecmascript/ecma_string_table.h"
 #include "ecmascript/log_wrapper.h"
 #include "ecmascript/mem/mem_map_allocator.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
@@ -67,6 +69,7 @@ void Runtime::PreInitialization(const EcmaVM *vm)
     mainThread_ = vm->GetJSThread();
     nativeAreaAllocator_ = std::make_unique<NativeAreaAllocator>();
     heapRegionAllocator_ = std::make_unique<HeapRegionAllocator>();
+    stringTable_ = std::make_unique<EcmaStringTable>();
     SharedHeap::GetInstance()->Initialize(nativeAreaAllocator_.get(), heapRegionAllocator_.get());
 }
 

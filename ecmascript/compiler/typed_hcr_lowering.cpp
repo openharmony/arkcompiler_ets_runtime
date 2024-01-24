@@ -3154,8 +3154,7 @@ void TypedHCRLowering::LowerStringFromSingleCharCode(GateRef gate, GateRef glue)
         newBuilder.SetParameters(glue, 0);
         builder_.Bind(&canBeCompress);
         {
-            GateRef singleCharTable = builder_.Load(VariableType::JS_ANY(), glue,
-                builder_.IntPtr(JSThread::GlueData::GetSingleCharTableOffset(env.Is32Bit())));
+            GateRef singleCharTable = builder_.GetGlobalConstantValue(ConstantIndex::SINGLE_CHAR_TABLE_INDEX);
             res = builder_.GetValueFromTaggedArray(singleCharTable, builder_.ZExtInt16ToInt32(*value));
             builder_.Jump(&exit);
         }

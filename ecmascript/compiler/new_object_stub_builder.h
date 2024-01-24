@@ -93,6 +93,7 @@ private:
         GateRef glue, GateRef jsFunc, GateRef pc, GateRef arrayLiteral, ProfileOperation callback);
     GateRef CreateEmptyArrayCommon(GateRef glue, GateRef hclass, GateRef trackInfo);
     void AllocateInYoung(Variable *result, Label *exit);
+    void AllocateInSOld(Variable *result, Label *exit);
     void InitializeTaggedArrayWithSpeicalValue(Label *exit,
         GateRef array, GateRef value, GateRef start, GateRef length);
     GateRef glue_ {Circuit::NullGate()};
