@@ -33,6 +33,9 @@ CString ModulePathHelper::ConcatFileNameWithMerge(JSThread *thread, const JSPand
         // load a relative pathName.
         // requestName: ./ || ./xxx/xxx.js || ../xxx/xxx.js || ./xxx/xxx
         entryPoint = MakeNewRecord(jsPandaFile, baseFileName, recordName, requestName);
+    } else if (StringHelper::StringStartWith(requestName, PREFIX_ETS)) {
+        // requestName: ets/xxx/xxx
+        entryPoint = TranslateExpressionInputWithEts(thread, jsPandaFile, baseFileName, requestName);
     } else {
         // this branch save for require/dynamic import/old version sdk
         // requestName: requestPkgName
@@ -519,5 +522,46 @@ void ModulePathHelper::TranstaleExpressionInput(JSThread *thread, CString &reque
     }
     specifierString = thread->GetEcmaVM()->GetFactory()->NewFromUtf8(requestPath);
     LOG_ECMA(DEBUG) << "Exit Translate OhmUrl for DynamicImport, resultPath: " << requestPath;
+}
+
+CString ModulePathHelper::GetModuleNameWithBaseFile(const CString &baseFileName)
+{
+    size_t pos = CString::npos;
+    if (baseFileName.length() > BUNDLE_INSTALL_PATH_LEN &&
+        baseFileName.compare(0, BUNDLE_INSTALL_PATH_LEN, BUNDLE_INSTALL_PATH) == 0) {
+        pos = BUNDLE_INSTALL_PATH_LEN;
+    }
+    CString moduleName;
+    if (pos != CString::npos) {
+        // baseFileName: /data/storage/el1/bundle/moduleName/ets/xxx/xxx.abc
+        pos = baseFileName.find(PathHelper::SLASH_TAG, BUNDLE_INSTALL_PATH_LEN);
+        if (pos == CString::npos) {
+            LOG_FULL(FATAL) << "Invalid Ohm url, please check.";
+        }
+        moduleName = baseFileName.substr(BUNDLE_INSTALL_PATH_LEN, pos - BUNDLE_INSTALL_PATH_LEN);
+    }
+    return moduleName;
+}
+
+/*
+ * Before: ets/xxx/xxx
+ * After:  bundleName/moduleName/ets/xxx/xxx
+ */
+CString ModulePathHelper::TranslateExpressionInputWithEts(JSThread *thread, const JSPandaFile *jsPandaFile,
+                                                          CString &baseFileName, const CString &requestName)
+{
+    CString entryPoint;
+    EcmaVM *vm = thread->GetEcmaVM();
+    CString moduleName = GetModuleNameWithBaseFile(baseFileName);
+    entryPoint = vm->GetBundleName() + PathHelper::SLASH_TAG + moduleName + PathHelper::SLASH_TAG + requestName;
+    if (!jsPandaFile->HasRecord(entryPoint)) {
+        LOG_FULL(ERROR) << "cannot find record '" << entryPoint <<"' from request path '" << requestName << "'.";
+        CString msg = "cannot find record '" + entryPoint + "' from request path'" + requestName +
+            "', please check the request path";
+        ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+        JSTaggedValue error = factory->GetJSError(ErrorType::REFERENCE_ERROR, msg.c_str()).GetTaggedValue();
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, entryPoint);
+    }
+    return entryPoint;
 }
 }  // namespace panda::ecmascript
