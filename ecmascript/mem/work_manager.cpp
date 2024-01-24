@@ -29,14 +29,13 @@
 
 namespace panda::ecmascript {
 WorkManager::WorkManager(Heap *heap, uint32_t threadNum)
-    : heap_(heap), threadNum_(threadNum), continuousQueue_ { nullptr }, workSpace_(0), spaceStart_(0), spaceEnd_(0),
-      parallelGCTaskPhase_(UNDEFINED_TASK)
+    : heap_(heap), threadNum_(threadNum), spaceChunk_(heap_->GetNativeAreaAllocator()), continuousQueue_ { nullptr },
+      workSpace_(0), spaceStart_(0), spaceEnd_(0), parallelGCTaskPhase_(UNDEFINED_TASK)
 {
     for (uint32_t i = 0; i < threadNum_; i++) {
         continuousQueue_.at(i) = new ProcessQueue(heap);
     }
-    workSpace_ =
-        ToUintPtr(heap_->GetNativeAreaAllocator()->AllocateBuffer(SPACE_SIZE));
+    workSpace_ = ToUintPtr(GetSpaceChunk()->Allocate(WORKNODE_SPACE_SIZE));
 }
 
 WorkManager::~WorkManager()
@@ -48,8 +47,7 @@ WorkManager::~WorkManager()
         continuousQueue_.at(i) = nullptr;
     }
 
-    heap_->GetNativeAreaAllocator()->FreeBuffer(
-        reinterpret_cast<void *>(workSpace_));
+    GetSpaceChunk()->Free(reinterpret_cast<void *>(workSpace_));
 }
 
 bool WorkManager::Push(uint32_t threadId, TaggedObject *object)
@@ -128,8 +126,7 @@ size_t WorkManager::Finish()
     }
 
     while (!agedSpaces_.empty()) {
-        heap_->GetNativeAreaAllocator()->FreeBuffer(reinterpret_cast<void *>(
-            agedSpaces_.back()));
+        GetSpaceChunk()->Free(reinterpret_cast<void *>(agedSpaces_.back()));
         agedSpaces_.pop_back();
     }
     initialized_.store(false, std::memory_order_release);
@@ -150,7 +147,7 @@ void WorkManager::Initialize(TriggerGCType gcType, ParallelGCTaskPhase taskPhase
 {
     parallelGCTaskPhase_ = taskPhase;
     spaceStart_ = workSpace_;
-    spaceEnd_ = workSpace_ + SPACE_SIZE;
+    spaceEnd_ = workSpace_ + WORKNODE_SPACE_SIZE;
     for (uint32_t i = 0; i < threadNum_; i++) {
         WorkNodeHolder &holder = works_.at(i);
         holder.inNode_ = AllocateWorkNode();
@@ -173,7 +170,7 @@ void WorkManager::Initialize(TriggerGCType gcType, ParallelGCTaskPhase taskPhase
 WorkNode *WorkManager::AllocateWorkNode()
 {
     size_t totalSize = sizeof(WorkNode) + sizeof(Stack) + STACK_AREA_SIZE;
-    ASSERT(totalSize < SPACE_SIZE);
+    ASSERT(totalSize < WORKNODE_SPACE_SIZE);
 
     // CAS
     volatile auto atomicField = reinterpret_cast<volatile std::atomic<uintptr_t> *>(&spaceStart_);
@@ -186,10 +183,9 @@ WorkNode *WorkManager::AllocateWorkNode()
             begin = atomicField->load(std::memory_order_acquire);
             if (begin + totalSize >= spaceEnd_) {
                 agedSpaces_.emplace_back(workSpace_);
-                workSpace_ = ToUintPtr(
-                    heap_->GetNativeAreaAllocator()->AllocateBuffer(SPACE_SIZE));
+                workSpace_ = ToUintPtr(GetSpaceChunk()->Allocate(WORKNODE_SPACE_SIZE));
                 spaceStart_ = workSpace_;
-                spaceEnd_ = workSpace_ + SPACE_SIZE;
+                spaceEnd_ = workSpace_ + WORKNODE_SPACE_SIZE;
                 begin = spaceStart_;
             }
         }

@@ -18,6 +18,7 @@
 
 #include "ecmascript/mem/mark_stack.h"
 #include "ecmascript/mem/slots.h"
+#include "ecmascript/mem/work_space_chunk.h"
 #include "ecmascript/taskpool/taskpool.h"
 
 namespace panda::ecmascript {
@@ -25,13 +26,13 @@ using SlotNeedUpdate = std::pair<TaggedObject *, ObjectSlot>;
 
 static constexpr uint32_t MARKSTACK_MAX_SIZE = 100;
 static constexpr uint32_t STACK_AREA_SIZE = sizeof(uintptr_t) * MARKSTACK_MAX_SIZE;
-static constexpr uint32_t SPACE_SIZE = 8_KB;
 
 class Heap;
 class Stack;
 class SemiSpaceCollector;
 class TlabAllocator;
 class Region;
+class WorkSpaceChunk;
 
 enum ParallelGCTaskPhase {
     SEMI_HANDLE_THREAD_ROOTS_TASK,
@@ -48,11 +49,7 @@ enum ParallelGCTaskPhase {
 class WorkNode {
 public:
     explicit WorkNode(Stack *stack) : next_(nullptr), stack_(stack) {}
-    ~WorkNode()
-    {
-        delete stack_;
-        stack_ = nullptr;
-    }
+    ~WorkNode() = default;
 
     NO_COPY_SEMANTIC(WorkNode);
     NO_MOVE_SEMANTIC(WorkNode);
@@ -66,10 +63,6 @@ public:
     {
         if (IsEmpty()) {
             return false;
-        }
-        auto object = ToVoidPtr(*obj);
-        if (object != nullptr) {
-            delete reinterpret_cast<WorkNode *>(object);
         }
         *obj = stack_->PopBackUnchecked();
         return true;
@@ -206,6 +199,11 @@ public:
         return initialized_.load(std::memory_order_acquire);
     }
 
+    WorkSpaceChunk *GetSpaceChunk() const
+    {
+        return const_cast<WorkSpaceChunk *>(&spaceChunk_);
+    }
+
 private:
     NO_COPY_SEMANTIC(WorkManager);
     NO_MOVE_SEMANTIC(WorkManager);
@@ -214,6 +212,7 @@ private:
 
     Heap *heap_;
     uint32_t threadNum_;
+    WorkSpaceChunk spaceChunk_;
     std::array<WorkNodeHolder, MAX_TASKPOOL_THREAD_NUM + 1> works_;
     std::array<ContinuousStack<JSTaggedType> *, MAX_TASKPOOL_THREAD_NUM + 1> continuousQueue_;
     GlobalWorkStack workStack_;
