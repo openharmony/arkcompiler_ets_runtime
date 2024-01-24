@@ -699,19 +699,22 @@ bool ObjectOperator::UpdateDataValue(const JSHandle<JSObject> &receiver, const J
 
         auto actualValue =
             JSHClass::ConvertOrTransitionWithRep(thread_, JSHandle<JSObject>(receiver_), key_, value, attr);
+        if (std::get<1>(actualValue)) {
+            SetIsTransition(true);
+        }
         attributes_.SetRepresentation(attr.GetRepresentation());
 
         if (attr.IsInlinedProps()) {
-            receiver->SetPropertyInlinedPropsWithRep(thread_, GetIndex(), actualValue.second);
+            receiver->SetPropertyInlinedPropsWithRep(thread_, GetIndex(), std::get<2>(actualValue));
         } else {
             if (receiver.GetTaggedValue().IsJSCOWArray()) {
                 JSArray::CheckAndCopyArray(thread_, JSHandle<JSArray>(receiver));
                 properties.Update(JSHandle<JSArray>(receiver)->GetProperties());
             }
-            if (actualValue.first) {
-                properties->Set<true>(thread_, GetIndex(), actualValue.second);
+            if (std::get<0>(actualValue)) {
+                properties->Set<true>(thread_, GetIndex(), std::get<2>(actualValue));
             } else {
-                properties->Set<false>(thread_, GetIndex(), actualValue.second);
+                properties->Set<false>(thread_, GetIndex(), std::get<2>(actualValue));
             }
         }
     } else {
@@ -986,12 +989,15 @@ void ObjectOperator::AddPropertyInternal(const JSHandle<JSTaggedValue> &value)
         attr.SetOffset(receiverHoleEntry_);
         auto actualValue =
             JSHClass::ConvertOrTransitionWithRep(thread_, JSHandle<JSObject>(receiver_), key_, value, attr);
+        if (std::get<1>(actualValue)) {
+            SetIsTransition(true);
+        }
         attributes_.SetRepresentation(attr.GetRepresentation());
         auto *hclass = receiver_->GetTaggedObject()->GetClass();
-        if (actualValue.first) {
-            JSObject::Cast(receiver_.GetTaggedValue())->SetProperty<true>(thread_, hclass, attr, actualValue.second);
+        if (std::get<0>(actualValue)) {
+            JSObject::Cast(receiver_.GetTaggedValue())->SetProperty<true>(thread_, hclass, attr, std::get<2>(actualValue));
         } else {
-            JSObject::Cast(receiver_.GetTaggedValue())->SetProperty<false>(thread_, hclass, attr, actualValue.second);
+            JSObject::Cast(receiver_.GetTaggedValue())->SetProperty<false>(thread_, hclass, attr, std::get<2>(actualValue));
         }
         uint32_t index = attr.IsInlinedProps() ? attr.GetOffset() :
                 attr.GetOffset() - obj->GetJSHClass()->GetInlinedProperties();

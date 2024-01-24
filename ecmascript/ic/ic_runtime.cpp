@@ -123,10 +123,7 @@ void ICRuntime::UpdateStoreHandler(const ObjectOperator &op, JSHandle<JSTaggedVa
     JSHandle<JSTaggedValue> handlerValue;
     ASSERT(op.IsFound());
 
-    if (op.IsTSHClass()) {
-        JSHandle<JSHClass> hclass(thread_, JSHandle<JSObject>::Cast(receiver)->GetClass());
-        handlerValue = StoreTSHandler::StoreAOT(thread_, op, hclass);
-    } else if (op.IsTransition()) {
+    if (op.IsTransition()) {
         if (op.IsOnPrototype()) {
             JSHandle<JSHClass> hclass(thread_, JSHandle<JSObject>::Cast(receiver)->GetClass());
             handlerValue = TransWithProtoHandler::StoreTransition(thread_, op, hclass);

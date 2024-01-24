@@ -425,7 +425,7 @@ public:
                                       ElementsKind newKind = ElementsKind::NONE);
     static bool TransitToElementsKind(const JSThread *thread, const JSHandle<JSObject> &object,
                                       const JSHandle<JSTaggedValue> &value, ElementsKind kind = ElementsKind::NONE);
-    static std::pair<bool, JSTaggedValue> ConvertOrTransitionWithRep(const JSThread *thread,
+    static std::tuple<bool, bool, JSTaggedValue> ConvertOrTransitionWithRep(const JSThread *thread,
         const JSHandle<JSObject> &receiver, const JSHandle<JSTaggedValue> &key, const JSHandle<JSTaggedValue> &value,
         PropertyAttributes &attr);
 

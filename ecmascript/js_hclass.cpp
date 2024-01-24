@@ -590,7 +590,7 @@ bool JSHClass::TransitToElementsKind(const JSThread *thread, const JSHandle<JSOb
     return false;
 }
 
-std::pair<bool, JSTaggedValue> JSHClass::ConvertOrTransitionWithRep(const JSThread *thread,
+std::tuple<bool, bool, JSTaggedValue> JSHClass::ConvertOrTransitionWithRep(const JSThread *thread,
     const JSHandle<JSObject> &receiver, const JSHandle<JSTaggedValue> &key, const JSHandle<JSTaggedValue> &value,
     PropertyAttributes &attr)
 {
@@ -601,35 +601,32 @@ std::pair<bool, JSTaggedValue> JSHClass::ConvertOrTransitionWithRep(const JSThre
         layout->SetNormalAttr(thread, attr.GetOffset(), attr);
     }
 
-    if (!hclass->IsTS()) {
-        return std::pair<bool, JSTaggedValue>(true, value.GetTaggedValue());
-    }
     Representation oldRep = attr.GetRepresentation();
     if (oldRep == Representation::DOUBLE) {
         if (value->IsInt()) {
             double doubleValue = value->GetInt();
-            return std::pair<bool, JSTaggedValue>(false, JSTaggedValue(bit_cast<JSTaggedType>(doubleValue)));
+            return std::tuple<bool, bool, JSTaggedValue>(false, false, JSTaggedValue(bit_cast<JSTaggedType>(doubleValue)));
         } else if (value->IsObject()) {
             // Is Object
             attr.SetRepresentation(Representation::TAGGED);
             // Transition
             JSHClass::TransitionForRepChange(thread, receiver, key, attr);
-            return std::pair<bool, JSTaggedValue>(true, value.GetTaggedValue());
+            return std::tuple<bool, bool, JSTaggedValue>(true, true, value.GetTaggedValue());
         } else {
             // Is TaggedDouble
-            return std::pair<bool, JSTaggedValue>(false, JSTaggedValue(bit_cast<JSTaggedType>(value->GetDouble())));
+            return std::tuple<bool, bool, JSTaggedValue>(false, false, JSTaggedValue(bit_cast<JSTaggedType>(value->GetDouble())));
         }
     } else if (oldRep == Representation::INT) {
         if (value->IsInt()) {
             int intValue = value->GetInt();
-            return std::pair<bool, JSTaggedValue>(false, JSTaggedValue(static_cast<JSTaggedType>(intValue)));
+            return std::tuple<bool, bool, JSTaggedValue>(false, false, JSTaggedValue(static_cast<JSTaggedType>(intValue)));
         } else {
             attr.SetRepresentation(Representation::TAGGED);
             JSHClass::TransitionForRepChange(thread, receiver, key, attr);
-            return std::pair<bool, JSTaggedValue>(true, value.GetTaggedValue());
+            return std::tuple<bool, bool, JSTaggedValue>(true, true, value.GetTaggedValue());
         }
     }
-    return std::pair<bool, JSTaggedValue>(true, value.GetTaggedValue());
+    return std::tuple<bool, bool, JSTaggedValue>(true, false, value.GetTaggedValue());
 }
 
 JSHandle<JSTaggedValue> JSHClass::EnableProtoChangeMarker(const JSThread *thread, const JSHandle<JSHClass> &jshclass)
