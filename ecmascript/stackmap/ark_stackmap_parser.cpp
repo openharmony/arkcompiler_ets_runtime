@@ -29,7 +29,7 @@ int ArkStackMapParser::BinaraySearch(CallsiteHeader *callsiteHead, uint32_t call
     uint32_t v = 0;
     while (slow <= high) {
         mid = (slow + high) >> 1;
-        v = callsiteHead[mid].calliteOffsetInTxtSec;
+        v = callsiteHead[mid].calliteOffset;
         if (v == callSiteAddr) {
             return mid;
         } else if (v > callSiteAddr) {
@@ -42,15 +42,13 @@ int ArkStackMapParser::BinaraySearch(CallsiteHeader *callsiteHead, uint32_t call
 }
 
 void ArkStackMapParser::GetArkDeopt(uint8_t *stackmapAddr,
-                                    const CallsiteHeader& callsiteHead,
-                                    std::vector<ARKDeopt>& deopts) const
+    const CallsiteHeader& callsiteHead, std::vector<ARKDeopt>& deopts) const
 {
     ParseArkDeopt(callsiteHead, stackmapAddr, deopts);
 }
 
-void ArkStackMapParser::GetArkDeopt(uintptr_t callSiteAddr,
-                                    uint8_t *stackmapAddr,
-                                    std::vector<ARKDeopt>& deopts) const
+void ArkStackMapParser::GetArkDeopt(uintptr_t callSiteAddr, uint8_t *stackmapAddr,
+    std::vector<ARKDeopt>& deopts) const
 {
     ArkStackMapHeader *head = reinterpret_cast<ArkStackMapHeader *>(stackmapAddr);
     ASSERT(head != nullptr);
@@ -68,9 +66,8 @@ void ArkStackMapParser::GetArkDeopt(uintptr_t callSiteAddr,
     GetArkDeopt(stackmapAddr, *found, deopts);
 }
 
-void ArkStackMapParser::GetConstInfo(uintptr_t callSiteAddr,
-                                     LLVMStackMapType::ConstInfo& info,
-                                     uint8_t *stackmapAddr) const
+void ArkStackMapParser::GetConstInfo(uintptr_t callSiteAddr, LLVMStackMapType::ConstInfo& info,
+    uint8_t *stackmapAddr) const
 {
     std::vector<ARKDeopt> deopts;
     GetArkDeopt(callSiteAddr, stackmapAddr, deopts);
@@ -94,9 +91,8 @@ void ArkStackMapParser::GetConstInfo(uintptr_t callSiteAddr,
     info.emplace_back(v);
 }
 
-void ArkStackMapParser::GetMethodOffsetInfo(uintptr_t callSiteAddr,
-                                            std::map<uint32_t, uint32_t>& info,
-                                            uint8_t *stackmapAddr) const
+void ArkStackMapParser::GetMethodOffsetInfo(uintptr_t callSiteAddr, std::map<uint32_t, uint32_t>& info,
+    uint8_t *stackmapAddr) const
 {
     std::vector<ARKDeopt> deopts;
     GetArkDeopt(callSiteAddr, stackmapAddr, deopts);
@@ -125,8 +121,7 @@ void ArkStackMapParser::GetMethodOffsetInfo(uintptr_t callSiteAddr,
 }
 
 uintptr_t ArkStackMapParser::GetStackSlotAddress(const LLVMStackMapType::DwarfRegAndOffsetType info,
-                                                 uintptr_t callSiteSp,
-                                                 uintptr_t callsiteFp) const
+    uintptr_t callSiteSp, uintptr_t callsiteFp) const
 {
     uintptr_t address = 0;
     if (info.first == GCStackMapRegisters::SP) {
@@ -140,12 +135,8 @@ uintptr_t ArkStackMapParser::GetStackSlotAddress(const LLVMStackMapType::DwarfRe
     return address;
 }
 
-bool ArkStackMapParser::IteratorStackMap(const RootVisitor& visitor,
-                                         const RootBaseAndDerivedVisitor& derivedVisitor,
-                                         uintptr_t callSiteAddr,
-                                         uintptr_t callsiteFp,
-                                         uintptr_t callSiteSp,
-                                         uint8_t *stackmapAddr) const
+bool ArkStackMapParser::IteratorStackMap(const RootVisitor& visitor, const RootBaseAndDerivedVisitor& derivedVisitor,
+    uintptr_t callSiteAddr, uintptr_t callsiteFp, uintptr_t callSiteSp, uint8_t *stackmapAddr) const
 {
     ArkStackMapHeader *head = reinterpret_cast<ArkStackMapHeader *>(stackmapAddr);
     ASSERT(head != nullptr);
@@ -168,8 +159,7 @@ bool ArkStackMapParser::IteratorStackMap(const RootVisitor& visitor,
     }
     ASSERT(callsiteFp != callSiteSp);
     std::map<uintptr_t, uintptr_t> baseSet;
-    ASSERT(arkStackMap.size() % GC_ENTRY_SIZE == 0);
-    for (size_t i = 0; i < arkStackMap.size(); i += GC_ENTRY_SIZE) { // GC_ENTRY_SIZE=<base, derive>
+    for (size_t i = 0; i < arkStackMap.size(); i += 2) { // 2:base and derive
         const LLVMStackMapType::DwarfRegAndOffsetType baseInfo = arkStackMap.at(i);
         const LLVMStackMapType::DwarfRegAndOffsetType derivedInfo = arkStackMap.at(i + 1);
         uintptr_t base = GetStackSlotAddress(baseInfo, callSiteSp, callsiteFp);
@@ -193,15 +183,13 @@ bool ArkStackMapParser::IteratorStackMap(const RootVisitor& visitor,
     return true;
 }
 
-void ArkStackMapParser::ParseArkStackMap(const CallsiteHeader& callsiteHead,
-                                         uint8_t *ptr,
-                                         ArkStackMap& arkStackMaps) const
+void ArkStackMapParser::ParseArkStackMap(const CallsiteHeader& callsiteHead, uint8_t *ptr,
+    ArkStackMap& arkStackMaps) const
 {
     LLVMStackMapType::DwarfRegType reg;
     LLVMStackMapType::OffsetType offsetType;
-    uint32_t offset = callsiteHead.stackmapOffsetInSMSec;
+    uint32_t offset = callsiteHead.stackmapOffset;
     uint16_t stackmapNum = callsiteHead.stackmapNum;
-    ASSERT(stackmapNum % GC_ENTRY_SIZE == 0);
     for (uint32_t j = 0; j < stackmapNum; j++) {
         auto [regOffset, regOffsetSize, is_full] =
             panda::leb128::DecodeSigned<LLVMStackMapType::SLeb128Type>(ptr + offset);
@@ -213,9 +201,8 @@ void ArkStackMapParser::ParseArkStackMap(const CallsiteHeader& callsiteHead,
     offset = AlignUp(offset, LLVMStackMapType::STACKMAP_ALIGN_BYTES);
 }
 
-void ArkStackMapParser::ParseArkDeopt(const CallsiteHeader& callsiteHead,
-                                      uint8_t *ptr,
-                                      std::vector<ARKDeopt> &deopts) const
+void ArkStackMapParser::ParseArkDeopt(const CallsiteHeader& callsiteHead, uint8_t *ptr,
+    std::vector<ARKDeopt> &deopts) const
 {
     ARKDeopt deopt;
     uint32_t deoptOffset = callsiteHead.deoptOffset;
@@ -223,8 +210,8 @@ void ArkStackMapParser::ParseArkDeopt(const CallsiteHeader& callsiteHead,
     LLVMStackMapType::KindType kindType;
     LLVMStackMapType::DwarfRegType reg;
     LLVMStackMapType::OffsetType offsetType;
-    ASSERT(deoptNum % DEOPT_ENTRY_SIZE == 0); // 2:<id, value>
-    for (uint32_t j = 0; j < deoptNum; j += DEOPT_ENTRY_SIZE) { // DEOPT_ENTRY_SIZE:<id, value>
+    ASSERT(deoptNum % 2 == 0); // 2:<id, value>
+    for (uint32_t j = 0; j < deoptNum; j += 2) { // 2:<id, value>
         auto [vregsInfo, vregsInfoSize, InfoIsFull] =
             panda::leb128::DecodeSigned<LLVMStackMapType::SLeb128Type>(ptr + deoptOffset);
         LLVMStackMapType::DecodeVRegsInfo(vregsInfo, deopt.id, kindType);
@@ -253,7 +240,6 @@ void ArkStackMapParser::ParseArkDeopt(const CallsiteHeader& callsiteHead,
     }
 }
 
-#ifndef NDEBUG
 void ArkStackMapParser::ParseArkStackMapAndDeopt(uint8_t *ptr, uint32_t length) const
 {
     CallsiteHeader callsiteHead;
@@ -264,14 +250,13 @@ void ArkStackMapParser::ParseArkStackMapAndDeopt(uint8_t *ptr, uint32_t length) 
         binBufparser.ParseBuffer(&callsiteHead, sizeof(CallsiteHeader));
         std::vector<ARKDeopt> deopts;
         ArkStackMap arkStackMaps;
-        LOG_COMPILER(VERBOSE) << " calliteOffsetInTxtSec: 0x" << std::hex << callsiteHead.calliteOffsetInTxtSec
-                              << " stackmap offset: 0x" << std::hex << callsiteHead.stackmapOffsetInSMSec
+        LOG_COMPILER(VERBOSE) << " calliteOffset:0x" << std::hex << callsiteHead.calliteOffset
+                              << " stackmap offset:0x" << std::hex << callsiteHead.stackmapOffset
                               << " num:" << callsiteHead.stackmapNum
-                              << " deopt Offset: 0x" << std::hex << callsiteHead.deoptOffset
+                              << " deopt Offset:0x" << std::hex << callsiteHead.deoptOffset
                               << " num:" << callsiteHead.deoptNum;
         ParseArkStackMap(callsiteHead, ptr, arkStackMaps);
         ParseArkDeopt(callsiteHead, ptr, deopts);
     }
 }
-#endif
 } // namespace panda::ecmascript::kungfu

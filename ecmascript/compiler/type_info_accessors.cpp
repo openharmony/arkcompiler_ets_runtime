@@ -90,7 +90,6 @@ bool TypeInfoAccessor::IsTrustedStringType(
                 if (tacc.IsMono()) {
                     return tacc.IsBuiltinsString();
                 }
-                break;
             }
             default:
                 break;
