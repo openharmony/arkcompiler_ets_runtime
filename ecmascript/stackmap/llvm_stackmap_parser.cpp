@@ -41,71 +41,141 @@ std::string LocationTy::TypeToString(Kind loc) const
     }
 }
 
+void LLVMStackMapParser::FilterCallSiteInfo(LLVMStackMapType::CallSiteInfo &info)
+{
+    ASSERT(GC_PAIR_SIZE == 2);
+    ASSERT(info.size() % GC_PAIR_SIZE == 0);
+    for (auto it = info.begin(); it != info.end();) {
+        auto base = it;
+        auto deri = ++it;
+        bool baseIsConst = (base->first == LLVMStackMapType::INVALID_DWARF_REG);
+        bool deriIsConst = (deri->first == LLVMStackMapType::INVALID_DWARF_REG);
+        if (baseIsConst && deriIsConst) {
+            it = info.erase(base, base + GC_PAIR_SIZE);
+        } else if (baseIsConst && !deriIsConst) {
+            base->first = deri->first;
+            base->second = deri->second;
+            it++;
+        } else if (!baseIsConst && deriIsConst) {
+            deri->first = base->first;
+            deri->second = base->second;
+            it++;
+        } else {
+            it++;
+        }
+    }
+    ASSERT(info.size() % GC_PAIR_SIZE == 0);
+}
+
 void LLVMStackMapParser::CalcCallSite()
 {
     uint64_t recordNum = 0;
     LLVMStackMapType::Pc2CallSiteInfo pc2CallSiteInfo;
     LLVMStackMapType::Pc2Deopt deoptbundles;
-    auto calStkMapRecordFunc =
-        [this, &recordNum, &pc2CallSiteInfo, &deoptbundles](uintptr_t address, uint32_t recordId) {
-        struct StkMapRecordHeadTy recordHead = llvmStackMap_.stkMapRecord[recordNum + recordId].head;
-        int lastDeoptIndex = -1;
-        for (int j = 0; j < recordHead.numLocations; j++) {
-            struct LocationTy loc = llvmStackMap_.stkMapRecord[recordNum + recordId].locations[j];
-            uint32_t instructionOffset = recordHead.instructionOffset;
-            uintptr_t callsite = address + instructionOffset;
-            uint64_t patchPointID = recordHead.patchPointID;
-            if (j == LocationTy::CONSTANT_DEOPT_CNT_INDEX) {
-                ASSERT(loc.location == LocationTy::Kind::CONSTANT);
-                lastDeoptIndex = loc.offsetOrSmallConstant + LocationTy::CONSTANT_DEOPT_CNT_INDEX;
-            }
-            if (loc.location == LocationTy::Kind::INDIRECT) {
-                OPTIONAL_LOG_COMPILER(DEBUG) << "DwarfRegNum:" << loc.dwarfRegNum << " loc.OffsetOrSmallConstant:"
-                    << loc.offsetOrSmallConstant << "address:" << address << " instructionOffset:" <<
-                    instructionOffset << " callsite:" << "  patchPointID :" << std::hex << patchPointID <<
-                    callsite;
-                LLVMStackMapType::DwarfRegAndOffsetType info(loc.dwarfRegNum, loc.offsetOrSmallConstant);
-                auto it = pc2CallSiteInfo.find(callsite);
-                if (j > lastDeoptIndex) {
-                    if (pc2CallSiteInfo.find(callsite) == pc2CallSiteInfo.end()) {
-                        pc2CallSiteInfo.insert(std::pair<uintptr_t, LLVMStackMapType::CallSiteInfo>(callsite, {info}));
-                    } else {
-                        it->second.emplace_back(info);
+
+    auto calStkMapRecordFunc = [this, &recordNum, &pc2CallSiteInfo, &deoptbundles](uintptr_t address,
+                                                                                   uint32_t recordId) {
+        struct StkMapRecordTy &record = llvmStackMap_.stkMapRecord[recordNum + recordId];
+        struct StkMapRecordHeadTy &recordHead = record.head;
+        uint32_t instructionOffset = recordHead.instructionOffset;
+        uintptr_t pc = address + instructionOffset;
+        uint64_t pID = recordHead.patchPointID;
+
+        if (pc2CallSiteInfo.find(pc) == pc2CallSiteInfo.end()) {
+            auto p = std::pair<uintptr_t, LLVMStackMapType::CallSiteInfo>(pc, {});
+            pc2CallSiteInfo.insert(p);
+        }
+        LLVMStackMapType::CallSiteInfo& callSiteInfo = pc2CallSiteInfo.find(pc)->second;
+
+        ASSERT(recordHead.numLocations > LocationTy::CONSTANT_DEOPT_CNT_INDEX);
+        const int lastDeoptIndex = record.locations[LocationTy::CONSTANT_DEOPT_CNT_INDEX].offsetOrSmallConstant +
+                                   LocationTy::CONSTANT_DEOPT_CNT_INDEX;
+
+        for (int j = LocationTy::CONSTANT_FIRST_ELEMENT_INDEX; j < recordHead.numLocations; j++) {
+            const struct LocationTy &loc = record.locations[j];
+            if (j <= lastDeoptIndex) {
+                switch (loc.location) {
+                    case LocationTy::Kind::REGISTER:
+                    case LocationTy::Kind::DIRECT: {
+                        LOG_ECMA(FATAL) << "this branch is unreachable";
+                        UNREACHABLE();
+                        break;
                     }
-                } else if (j >= LocationTy::CONSTANT_FIRST_ELEMENT_INDEX) {
-                    deoptbundles[callsite].push_back(info);
-                }
-            } else if (loc.location == LocationTy::Kind::CONSTANT) {
-                if (j >= LocationTy::CONSTANT_FIRST_ELEMENT_INDEX && j <= lastDeoptIndex) {
-                    deoptbundles[callsite].push_back(loc.offsetOrSmallConstant);
-                }
-            } else if (loc.location == LocationTy::Kind::DIRECT) {
-                if (j >= LocationTy::CONSTANT_FIRST_ELEMENT_INDEX && j <= lastDeoptIndex) {
-                    LLVMStackMapType::DwarfRegAndOffsetType info(loc.dwarfRegNum, loc.offsetOrSmallConstant);
-                    deoptbundles[callsite].push_back(info);
-                }
-            } else if (loc.location == LocationTy::Kind::CONSTANTNDEX) {
-                if (j >= LocationTy::CONSTANT_FIRST_ELEMENT_INDEX && j <= lastDeoptIndex) {
-                    LLVMStackMapType::LargeInt v = static_cast<LLVMStackMapType::LargeInt>(llvmStackMap_.
-                        constants[loc.offsetOrSmallConstant].largeConstant);
-                    deoptbundles[callsite].push_back(v);
+                    case LocationTy::Kind::INDIRECT: {
+                        OPTIONAL_LOG_COMPILER(DEBUG) << "DwarfRegNum:" << loc.dwarfRegNum
+                                                     << " loc.OffsetOrSmallConstant:" << loc.offsetOrSmallConstant
+                                                     << " address:" << address
+                                                     << " instructionOffset:" << instructionOffset
+                                                     << " callsite:" << "  patchPointID :" << std::hex
+                                                     << pID << pc;
+                        LLVMStackMapType::DwarfRegAndOffsetType info(loc.dwarfRegNum, loc.offsetOrSmallConstant);
+                        deoptbundles[pc].push_back(info);
+                        break;
+                    }
+                    case LocationTy::Kind::CONSTANT: {
+                        deoptbundles[pc].push_back(loc.offsetOrSmallConstant);
+                        break;
+                    }
+                    case LocationTy::Kind::CONSTANTNDEX: {
+                        auto v = llvmStackMap_.constants[loc.offsetOrSmallConstant].largeConstant;
+                        deoptbundles[pc].push_back(static_cast<LLVMStackMapType::LargeInt>(v));
+                        break;
+                    }
+                    default: {
+                        LOG_ECMA(FATAL) << "this branch is unreachable";
+                        UNREACHABLE();
+                        break;
+                    }
                 }
             } else {
-                LOG_ECMA(FATAL) << "this branch is unreachable";
-                UNREACHABLE();
+                switch (loc.location) {
+                    case LocationTy::Kind::REGISTER:
+                    case LocationTy::Kind::DIRECT: {
+                        LOG_ECMA(FATAL) << "this branch is unreachable";
+                        UNREACHABLE();
+                        break;
+                    }
+                    case LocationTy::Kind::INDIRECT:
+                    case LocationTy::Kind::CONSTANT:
+                    case LocationTy::Kind::CONSTANTNDEX: {
+                        OPTIONAL_LOG_COMPILER(DEBUG) << "DwarfRegNum:" << loc.dwarfRegNum
+                                                     << " loc.OffsetOrSmallConstant:" << loc.offsetOrSmallConstant
+                                                     << " address:" << address
+                                                     << " instructionOffset:" << instructionOffset
+                                                     << " callsite:" << "  patchPointID :" << std::hex
+                                                     << pID << pc;
+                        uint16_t regNum = (loc.location == LocationTy::Kind::INDIRECT)
+                                          ? loc.dwarfRegNum
+                                          : LLVMStackMapType::INVALID_DWARF_REG;
+                        int offset = (loc.location == LocationTy::Kind::INDIRECT) ? loc.offsetOrSmallConstant : 0;
+                        LLVMStackMapType::DwarfRegAndOffsetType info(regNum, offset);
+                        callSiteInfo.emplace_back(info);
+                        break;
+                    }
+                    default: {
+                        LOG_ECMA(FATAL) << "this branch is unreachable";
+                        UNREACHABLE();
+                        break;
+                    }
+                }
             }
         }
+        FilterCallSiteInfo(callSiteInfo);
     };
-    for (size_t i = 0; i < llvmStackMap_.stkSizeRecords.size(); i++) {
+
+    const size_t count = llvmStackMap_.stkSizeRecords.size();
+    for (size_t i = 0; i < count; i++) {
         // relative offset
-        uintptr_t address = llvmStackMap_.stkSizeRecords[i].functionAddress;
-        uint64_t recordCount = llvmStackMap_.stkSizeRecords[i].recordCount;
+        struct StkMapSizeRecordTy &sizeRec = llvmStackMap_.stkSizeRecords[i];
+        uintptr_t address = sizeRec.functionAddress;
+        uint64_t recordCount = sizeRec.recordCount;
         fun2RecordNum_.emplace_back(std::make_pair(address, recordCount));
         for (uint64_t k = 0; k < recordCount; k++) {
             calStkMapRecordFunc(address, k);
         }
         recordNum += recordCount;
     }
+
     stackMapInfo.AppendCallSiteInfo(pc2CallSiteInfo);
     stackMapInfo.AppendDeoptInfo(deoptbundles);
 }

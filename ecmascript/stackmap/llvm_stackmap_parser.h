@@ -66,6 +66,8 @@ public:
     }
 
 private:
+    static const size_t GC_PAIR_SIZE = 2;
+    void FilterCallSiteInfo(LLVMStackMapType::CallSiteInfo &info);
     void CalcCallSite();
     struct LLVMStackMap llvmStackMap_;
     // use reference here to avoid extra copy

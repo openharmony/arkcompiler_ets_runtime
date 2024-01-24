@@ -41,6 +41,7 @@ struct LocationTy {
         CONSTANTNDEX = 5,
     };
     static constexpr int CONSTANT_FIRST_ELEMENT_INDEX = 3;
+    // LLVM's stackmap = [cc, flags, numDeopt, <c0, l0>, .., gc-pair<base0, deriv0>, .. ] described in StackMaps.cpp
     static constexpr int CONSTANT_DEOPT_CNT_INDEX = 2;
 
     Kind location;
@@ -84,6 +85,7 @@ public:
     static constexpr size_t STACKMAP_ALIGN_BYTES = 2;
     static constexpr KindType CONSTANT_TYPE = 0;
     static constexpr KindType OFFSET_TYPE = 1;
+    static constexpr uint16_t INVALID_DWARF_REG = 0;
 
     template <typename T>
     static void EncodeData(std::vector<uint8_t> &outData, size_t &dataSize, T value)
