@@ -80,6 +80,8 @@ private:
         uint32_t newCapacity = oldCapacity + (oldCapacity >> 1U);
         return newCapacity > DEFAULT_CAPACITY_LENGTH ? newCapacity : DEFAULT_CAPACITY_LENGTH;
     }
+
+    JSTaggedValue TryFastGetIndexOfValue(TaggedArray *values, JSTaggedValue value);
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_JS_API_JS_API_PLAIN_ARRAY_H
