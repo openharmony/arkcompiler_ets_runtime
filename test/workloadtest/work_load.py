@@ -34,7 +34,6 @@ from openpyxl.styles import PatternFill
 
 class WorkLoadConfig:
     TEST_WORKLOAD_GIT_URL = 'https://gitee.com/xliu-huanwei/ark-workload.git'
-    TEST_WORKLOAD_GIT_HASH = '90236fa3aa853db7af56d80cc6391432a51a1601'
     START_INDEX = -19
     END_INDEX = -5
 
@@ -64,6 +63,7 @@ def parse_args():
                         help='inferior boundary value')
     parser.add_argument('--run-count', default='10', nargs='?',
                         help='Compile all cases, execute the case count')
+    parser.add_argument('--code-v', default='', nargs='?', help='Compile weekly_workload')
     return parser.parse_args()
 
 
@@ -105,7 +105,7 @@ def git_clean(clean_dir=os.getcwd()):
 
 
 def execute_shell_script(script_path, args):
-    command = ['sh', script_path] + args
+    command = ['bash', script_path] + args
     process = subprocess.Popen(command, stdout=subprocess.PIPE,
                                stderr=subprocess.PIPE, universal_newlines=True)
     while True:
@@ -158,12 +158,10 @@ def prepare_workload_code(path):
     if not os.path.isdir(os.path.join(data_dir, '.git')):
         git_clone(WorkLoadConfig.TEST_WORKLOAD_GIT_URL, data_dir)
         os.chdir(data_dir)
-        git_checkout(WorkLoadConfig.TEST_WORKLOAD_GIT_HASH, './')
     else:
         os.chdir(data_dir)
         git_clean(data_dir)
         git_pull(data_dir)
-        git_checkout(WorkLoadConfig.TEST_WORKLOAD_GIT_HASH, './')
     execute_shell_command_add(['chmod', '+x', '*.sh'])
     execute_shell_command_add(['chmod', '+x', '*.py'])
     try:
@@ -205,7 +203,7 @@ def report(boundary_value: int):
             difference = (average_one - average_two) / average_one * 100
             percentage = "{:.2f}%".format(difference)
             result_data.append([case, percentage])
-            write_to_txt('../out/pgo_daily.txt', case + percentage + '\n')
+            write_to_txt('../out/pgo_daily.txt', ''.join([case, percentage, '\n']))
         result_wb = Workbook()
         result_sheet = result_wb.active
         result_sheet.append(['case', 'percentage'])
@@ -216,7 +214,7 @@ def report(boundary_value: int):
                 cell.fill = red_fill
         now = datetime.datetime.now()
         formatted_date = now.strftime("%Y%m%d%H%M%S")
-        daily_excel_name = "pgo_daily_" + formatted_date + ".xlsx"
+        daily_excel_name = "".join(["pgo_daily_", formatted_date, ".xlsx"])
         daily_excel_out = "../out/pgo_daily.xlsx"
         result_wb.save(daily_excel_name)
         result_wb.save(daily_excel_out)
@@ -245,11 +243,18 @@ def main(args):
     run_count = '10'
     if args.run_count:
         run_count = args.run_count
+    code_v = ''
+    if args.code_v:
+        code_v = args.code_v
     if args.run_aot:
         print('execute run_aot.sh is currently not supported')
     else:
         configure_environment(args.code_path, 'toolspath.txt', tools_type)
-        execute_args = ['--build', '--excel', '--run-count']
+        execute_args = ['--build', '--excel']
+        if code_v:
+            execute_args.append('--code-v')
+            execute_args.append(code_v)
+        execute_args.append('--run-count')
         execute_args.append(run_count)
         execute_shell_script("run_pgo.sh", execute_args)
     end_time = datetime.datetime.now()
