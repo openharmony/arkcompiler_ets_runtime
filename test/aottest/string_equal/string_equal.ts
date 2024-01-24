@@ -20,6 +20,7 @@ let str:string = "1234567890上下左右中";
 print("123" == "123");
 print(str == "1234567890上下左右中");
 print("1" == "1")
+print(str[0] == "12")
 
 // one const
 let ans = 0;
