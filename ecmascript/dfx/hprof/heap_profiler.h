@@ -38,11 +38,11 @@ public:
     NO_MOVE_SEMANTIC(EntryIdMap);
 
     static constexpr uint32_t SEQ_STEP = 2;
-    std::pair<bool, uint32_t> FindId(Address addr);
-    bool InsertId(Address addr, uint32_t id);
-    bool EraseId(Address addr);
-    bool Move(Address oldAddr, Address forwardAddr);
-    void RemoveDeadEntryId(HeapSnapshot *snapshot);
+    std::pair<bool, uint32_t> FindId(JSTaggedType addr);
+    bool InsertId(JSTaggedType addr, uint32_t id);
+    bool EraseId(JSTaggedType addr);
+    bool Move(JSTaggedType oldAddr, JSTaggedType forwardAddr);
+    void UpdateEntryIdMap(HeapSnapshot *snapshot);
     uint32_t GetNextId()
     {
         nextId_ += SEQ_STEP;
@@ -59,7 +59,7 @@ public:
 
 private:
     uint32_t nextId_ {3U};  // 1 Reversed for SyntheticRoot
-    CUnorderedMap<Address, uint32_t> idMap_ {};
+    CUnorderedMap<JSTaggedType, uint32_t> idMap_ {};
 };
 
 class HeapProfiler : public HeapProfilerInterface {

@@ -2403,4 +2403,20 @@ DEF_CALL_SIGNATURE(FastStringAdd)
     callSign->SetParameters(params.data());
     callSign->SetCallConv(CallSignature::CallConv::CCallConv);
 }
+
+DEF_CALL_SIGNATURE(DeleteObjectProperty)
+{
+    // 3 : 3 input parameters
+    CallSignature signature("DeleteObjectProperty", 0, 3,
+        ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
+    *callSign = signature;
+    // 3 : 3 input parameters
+    std::array<VariableType, 3> params = {
+        VariableType::NATIVE_POINTER(),  // glue
+        VariableType::JS_ANY(),          // object
+        VariableType::JS_ANY(),          // prop
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetCallConv(CallSignature::CallConv::CCallConv);
+}
 }  // namespace panda::ecmascript::kungfu

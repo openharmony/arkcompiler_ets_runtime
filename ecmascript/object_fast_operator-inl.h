@@ -504,6 +504,7 @@ bool ObjectFastOperator::FastSetPropertyByValue(JSThread *thread, JSTaggedValue 
 {
     INTERPRETER_TRACE(thread, FastSetPropertyByValue);
     JSTaggedValue result = ObjectFastOperator::SetPropertyByValue(thread, receiver, key, value);
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
     if (!result.IsHole()) {
         return !result.IsException();
     }
@@ -613,10 +614,10 @@ PropertyAttributes ObjectFastOperator::AddPropertyByName(JSThread *thread, JSHan
         attr.SetIsInlinedProps(true);
         JSHClass::AddProperty(thread, objHandle, keyHandle, attr);
         auto actualValue = JSHClass::ConvertOrTransitionWithRep(thread, objHandle, keyHandle, valueHandle, attr);
-        if (actualValue.first) {
-            objHandle->SetPropertyInlinedProps<true>(thread, nextInlinedPropsIndex, actualValue.second);
+        if (std::get<0>(actualValue)) {
+            objHandle->SetPropertyInlinedProps<true>(thread, nextInlinedPropsIndex, std::get<2>(actualValue));
         } else {
-            objHandle->SetPropertyInlinedProps<false>(thread, nextInlinedPropsIndex, actualValue.second);
+            objHandle->SetPropertyInlinedProps<false>(thread, nextInlinedPropsIndex, std::get<2>(actualValue));
         }
         return attr;
     }
@@ -658,10 +659,10 @@ PropertyAttributes ObjectFastOperator::AddPropertyByName(JSThread *thread, JSHan
         attr.SetOffset(nonInlinedProps + objHandle->GetJSHClass()->GetInlinedProperties());
         JSHClass::AddProperty(thread, objHandle, keyHandle, attr);
         auto actualValue = JSHClass::ConvertOrTransitionWithRep(thread, objHandle, keyHandle, valueHandle, attr);
-        if (actualValue.first) {
-            array->Set<true>(thread, nonInlinedProps, actualValue.second);
+        if (std::get<0>(actualValue)) {
+            array->Set<true>(thread, nonInlinedProps, std::get<2>(actualValue));
         } else {
-            array->Set<false>(thread, nonInlinedProps, actualValue.second);
+            array->Set<false>(thread, nonInlinedProps, std::get<2>(actualValue));
         }
     } else {
         JSHandle<NameDictionary> dictHandle(array);

@@ -38,7 +38,7 @@ public:
     static JSTaggedValue Remove(JSThread *thread, JSHandle<JSAPIHashMap> hashMap, JSTaggedValue key);
     JSTaggedValue IsEmpty();
     JSTaggedValue HasKey(JSThread *thread, JSTaggedValue key);
-    JSTaggedValue Replace(JSThread *thread, JSTaggedValue key, JSTaggedValue newValue);
+    bool Replace(JSThread *thread, JSTaggedValue key, JSTaggedValue newValue);
     void Clear(JSThread *thread);
     JSTaggedValue Get(JSThread *thread, JSTaggedValue key);
     inline JSTaggedValue GetLength()

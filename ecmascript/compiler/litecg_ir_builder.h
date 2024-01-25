@@ -129,6 +129,12 @@ private:
 #define DECLAREHANDLELOWEROPCODE(name, ignore) void Handle##name(GateRef gate);
     OPCODES(DECLAREHANDLELOWEROPCODE)
 #undef DECLAREHANDLELOWEROPCODE
+    void InsertUsedOpcodeSet(std::unordered_set<OpCode> &usedOpcodeSet, OpCode op)
+    {
+        if (enableLog_) {
+            usedOpcodeSet.insert(op);
+        }
+    }
     void SaveGate2Expr(GateRef gate, maple::litecg::Expr expr);
     maple::litecg::Expr GetExprFromGate(GateRef gate);
     maple::litecg::Expr GetConstant(GateRef gate);

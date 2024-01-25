@@ -45,13 +45,19 @@ public:
                           uintptr_t callSiteAddr, uintptr_t callsiteFp,
                           uintptr_t callSiteSp, uint8_t *stackmapAddr) const;
     void GetArkDeopt(uintptr_t callSiteAddr, uint8_t *stackmapAddr, std::vector<ARKDeopt>& deopts) const;
+
 private:
+    static constexpr size_t DEOPT_ENTRY_SIZE = 2;
+    static constexpr size_t GC_ENTRY_SIZE = 2;
+
     int BinaraySearch(CallsiteHeader *callsiteHead, uint32_t callsiteNum, uintptr_t callSiteAddr) const;
     void GetArkDeopt(uint8_t *stackmapAddr, const CallsiteHeader& callsiteHead,
                      std::vector<ARKDeopt>& deopt) const;
     void ParseArkDeopt(const CallsiteHeader& callsiteHead, uint8_t *ptr, std::vector<ARKDeopt>& deopts) const;
     void ParseArkStackMap(const CallsiteHeader& callsiteHead, uint8_t *ptr, ArkStackMap& stackMap) const;
+#ifndef NDEBUG
     void ParseArkStackMapAndDeopt(uint8_t *ptr, uint32_t length) const;
+#endif
     uintptr_t GetStackSlotAddress(const LLVMStackMapType::DwarfRegAndOffsetType info,
                                   uintptr_t callSiteSp, uintptr_t callsiteFp) const;
     friend class ArkStackMapBuilder;

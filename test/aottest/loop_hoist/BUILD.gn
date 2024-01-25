@@ -20,6 +20,6 @@ host_aot_test_action("loop_hoist") {
   is_enable_pgo = true
   is_enable_opt_loop_peeling = true
   is_enable_lowering_builtin = true
-  is_enable_loop_hoist_profiler = true
+  is_enable_typed_op_profiler = true
   log_option = " --log-info=trace"
 }

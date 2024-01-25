@@ -13,29 +13,10 @@
 
 import("//arkcompiler/ets_runtime/test/test_helper.gni")
 
-host_moduletest_action("throwerror") {
-  deps = []
-}
-
-host_moduletest_action("C") {
-  deps = []
-}
-
-host_moduletest_action("B") {
-  deps = []
-  is_module = true
-}
-
-host_moduletest_action("A") {
-  deps = []
-  is_module = true
-}
-
 host_moduletest_action("dynamicimport") {
-  deps = [
-    ":gen_A_abc",
-    ":gen_B_abc",
-    ":gen_C_abc",
-    ":gen_throwerror_abc",
-  ]
+  deps = []
+  entry_point = "--entry-point=dynamicimport"
+  is_module = true
+  is_merge = true
+  is_merge_abc = true
 }

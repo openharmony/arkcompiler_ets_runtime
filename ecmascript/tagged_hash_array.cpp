@@ -40,6 +40,7 @@ JSTaggedValue TaggedHashArray::GetNode(JSThread *thread, int hash, JSTaggedValue
 {
     uint32_t nodeLength = GetLength();
     JSTaggedValue nodeValue = Get(((nodeLength - 1) & hash));
+    JSTaggedValue hashValue = JSTaggedValue(hash);
     if (nodeValue.IsHole()) {
         return JSTaggedValue::Hole();
     }
@@ -47,13 +48,11 @@ JSTaggedValue TaggedHashArray::GetNode(JSThread *thread, int hash, JSTaggedValue
         JSHandle<JSTaggedValue> node(thread, nodeValue);
         JSHandle<JSTaggedValue> handleKey(thread, key);
         return RBTreeNode::GetTreeNode(thread, node, hash, handleKey);
-    } else {
+    } else if (!key.IsHole()) {
         JSTaggedValue nextNodeVa = nodeValue;
-        JSTaggedValue findKey = JSTaggedValue::Hole();
         while (!nextNodeVa.IsHole()) {
             LinkedNode *nextNode = LinkedNode::Cast(nextNodeVa.GetTaggedObject());
-            findKey = nextNode->GetKey();
-            if (nextNode->GetHash().GetInt() == hash && (!key.IsHole() && JSTaggedValue::SameValue(key, findKey))) {
+            if (nextNode->GetHash() == hashValue && JSTaggedValue::SameValue(key, nextNode->GetKey())) {
                 return nextNodeVa;
             }
             nextNodeVa = nextNode->GetNext();
@@ -189,7 +188,7 @@ JSTaggedValue TaggedHashArray::SetVal(JSThread *thread, JSHandle<TaggedHashArray
             root.Update(nextVal);
             currentKey.Update(root->GetKey());
             if (root->GetHash().GetInt() == hash && (!key->IsHole() &&
-                JSTaggedValue::Equal(thread, key, currentKey))) {
+                JSTaggedValue::SameValue(key.GetTaggedValue(), currentKey.GetTaggedValue()))) {
                 root->SetValue(thread, value.GetTaggedValue());
                 return JSTaggedValue::Undefined();
             }
@@ -198,7 +197,6 @@ JSTaggedValue TaggedHashArray::SetVal(JSThread *thread, JSHandle<TaggedHashArray
         } while (!nextVal->IsHole());
         JSHandle<LinkedNode> newNode = TaggedHashArray::NewLinkedNode(thread, hash, key, value);
         root->SetNext(thread, newNode);
-        table->Set(thread, index, node.GetTaggedValue());
         if (count >= TREEIFY_THRESHOLD - 1) {
             TaggedHashArray::TreeingBin(thread, table, hash);
         }

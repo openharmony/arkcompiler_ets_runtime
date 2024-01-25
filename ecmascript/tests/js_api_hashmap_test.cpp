@@ -227,8 +227,8 @@ HWTEST_F_L0(JSAPIHashMapTest, HashMapReplaceAndClear)
         key.Update(factory->NewFromStdString(iKey).GetTaggedValue());
         value.Update(factory->NewFromStdString(iValue).GetTaggedValue());
         // test replace
-        JSTaggedValue success = hashMap->Replace(thread, key.GetTaggedValue(), value.GetTaggedValue());
-        EXPECT_EQ(success, JSTaggedValue::True());
+        bool success = hashMap->Replace(thread, key.GetTaggedValue(), value.GetTaggedValue());
+        EXPECT_EQ(success, true);
     }
     for (uint32_t i = 0; i < NODE_NUMBERS / 2; i++) {
         std::string iKey = myKey + std::to_string(i);
@@ -399,9 +399,9 @@ HWTEST_F_L0(JSAPIHashMapTest, JSAPIHashMapRBTreeHasValueReplaceGet)
 
     // test RBTree Replace and Get
     for (uint32_t i = 0; i < NODE_NUMBERS - 1; i++) {
-        JSTaggedValue replaceResult = hashMap->Replace(
+        bool replaceResult = hashMap->Replace(
             thread, JSTaggedValue(hashCollisionVector[i]), JSTaggedValue(hashCollisionVector[i] * 2));
-        EXPECT_EQ(replaceResult, JSTaggedValue::True());
+        EXPECT_EQ(replaceResult, true);
     }
     for (uint32_t i = 0; i < NODE_NUMBERS - 1; i++) {
         JSTaggedValue replaceResult = hashMap->Get(

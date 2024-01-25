@@ -1447,11 +1447,16 @@ void SlowPathLowering::LowerXor2(GateRef gate)
 
 void SlowPathLowering::LowerDelObjProp(GateRef gate)
 {
-    const int id = RTSTUB_ID(DelObjProp);
     // 2: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 2);
-    GateRef newGate = LowerCallRuntime(gate, id, {acc_.GetValueIn(gate, 0), acc_.GetValueIn(gate, 1)});
-    ReplaceHirWithValue(gate, newGate);
+    Label successExit(&builder_);
+    Label exceptionExit(&builder_);
+    GateRef newGate = builder_.CallStub(glue_, gate, CommonStubCSigns::DeleteObjectProperty,
+                                        { glue_, acc_.GetValueIn(gate, 0), acc_.GetValueIn(gate, 1) });
+    builder_.Branch(builder_.IsSpecial(newGate, JSTaggedValue::VALUE_EXCEPTION),
+        &exceptionExit, &successExit);
+    CREATE_DOUBLE_EXIT(successExit, exceptionExit)
+    acc_.ReplaceHirWithIfBranch(gate, successControl, failControl, newGate);
 }
 
 void SlowPathLowering::LowerExp(GateRef gate)

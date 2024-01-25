@@ -45,8 +45,17 @@ public:
 
     static int Hash(const JSThread *thread, JSTaggedValue key)
     {
-        if (key.IsDouble() && key.GetDouble() == 0.0) {
-            key = JSTaggedValue(0);
+        if (key.IsInt()) {
+            return key.GetInt();
+        }
+        if (key.IsDouble()) {
+            double keyDoubleVal = key.GetDouble();
+            int32_t tryIntKey = static_cast<int32_t>(keyDoubleVal);
+            if (tryIntKey == keyDoubleVal) {
+                return tryIntKey;
+            }
+            uint64_t keyValue = key.GetRawData();
+            return GetHash32(reinterpret_cast<uint8_t *>(&keyValue), sizeof(keyValue) / sizeof(uint8_t));
         }
         if (key.IsSymbol()) {
             auto symbolString = JSSymbol::Cast(key.GetTaggedObject());
@@ -69,10 +78,7 @@ public:
             uint32_t keyValue = BigInt::Cast(key.GetTaggedObject())->GetDigit(0);
             return GetHash32(reinterpret_cast<uint8_t *>(&keyValue), sizeof(keyValue) / sizeof(uint8_t));
         }
-        if (key.IsDouble()) {
-            key = JSTaggedValue::TryCastDoubleToInt32(key.GetDouble());
-        }
-        // Int, Special and HeapObject(except symbol and string)
+        // Special and HeapObject(except symbol and string)
         uint64_t keyValue = key.GetRawData();
         return GetHash32(reinterpret_cast<uint8_t *>(&keyValue), sizeof(keyValue) / sizeof(uint8_t));
     }

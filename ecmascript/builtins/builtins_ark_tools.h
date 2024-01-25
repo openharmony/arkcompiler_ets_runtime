@@ -46,7 +46,7 @@
     V("getElementsKind",                GetElementsKind,                1, INVALID)       \
     V("isAOTCompiled",                  IsAOTCompiled,                  1, INVALID)       \
     V("isAOTDeoptimized",               IsAOTDeoptimized,               1, INVALID)       \
-    V("printLoopHoistProfilerAndReset", PrintLoopHoistProfilerAndReset, 0, INVALID)       \
+    V("printTypedOpProfilerAndReset",   PrintTypedOpProfilerAndReset,   1, INVALID)       \
     V("isOnHeap",                       IsOnHeap,                       1, INVALID)       \
 
 #define BUILTIN_ARK_TOOLS_FUNCTIONS_REGRESS(V)                                                                \
@@ -190,7 +190,7 @@ public:
     // ArkTools.GetElementsKind(array)
     static JSTaggedValue GetElementsKind(EcmaRuntimeCallInfo *info);
 
-    static JSTaggedValue PrintLoopHoistProfilerAndReset(EcmaRuntimeCallInfo *info);
+    static JSTaggedValue PrintTypedOpProfilerAndReset(EcmaRuntimeCallInfo *info);
 
     static JSTaggedValue IsRegExpReplaceDetectorValid(EcmaRuntimeCallInfo *info);
 

@@ -72,6 +72,7 @@
       panda::ecmascript::Taskpool::*;
       panda::ecmascript::JSThread::*;
       panda::ecmascript::Chunk::*;
+      panda::ecmascript::WorkSpaceChunk::*;
       panda::ecmascript::PGOProfilerDecoder::*;
       panda::ecmascript::PGOProfilerEncoder::*;
       panda::ecmascript::NativeAreaAllocator::*;

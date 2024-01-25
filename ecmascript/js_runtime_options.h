@@ -160,7 +160,7 @@ enum CommandValues {
     OPTION_COMPILER_FORCE_JIT_COMPILE_MAIN,
     OPTION_COMPILER_TRACE_JIT,
     OPTION_ENABLE_ELEMENTSKIND,
-    OPTION_COMPILER_LOOP_HOIST_PROFILER,
+    OPTION_COMPILER_TYPED_OP_PROFILER,
 };
 
 class PUBLIC_API JSRuntimeOptions {
@@ -1424,14 +1424,14 @@ public:
         return enableLiteCG_;
     }
 
-    void SetLoopHoistProfiler(bool value)
+    void SetTypedOpProfiler(bool value)
     {
-        enableLoopHoistProfiler_ = value;
+        enableTypedOpProfiler_ = value;
     }
 
-    bool GetLoopHoistProfiler() const
+    bool GetTypedOpProfiler() const
     {
-        return enableLoopHoistProfiler_;
+        return enableTypedOpProfiler_;
     }
 
 private:
@@ -1499,7 +1499,7 @@ private:
     double typeThreshold_ {-1};
     std::string entryPoint_ {"_GLOBAL::func_main_0"};
     bool mergeAbc_ {false};
-    bool enableArrayBoundsCheckElimination_ {true};
+    bool enableArrayBoundsCheckElimination_ {false};
     bool enableTypeLowering_ {true};
     bool enableEarlyElimination_ {true};
     bool enableLaterElimination_ {true};
@@ -1551,7 +1551,7 @@ private:
     bool enableNativeInline_ {true};
     bool enableLoweringBuiltin_ {true};
     bool enableLiteCG_ {false};
-    bool enableLoopHoistProfiler_ {false};
+    bool enableTypedOpProfiler_ {false};
 };
 }  // namespace panda::ecmascript
 

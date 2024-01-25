@@ -96,6 +96,21 @@ if (globalThis["ArkPrivate"] != undefined) {
     dProxy.clear();
     res.set("test clear:", dProxy.length == 0);
 
+    // test COW
+    let LOOP_COUNT = 5;
+    let myTest = new fastset();
+
+    for (var i = 0; i < LOOP_COUNT; i++) {
+        myTest.add(i);
+    }
+
+    let a = myTest.toArray();
+    res.set("test COW - create a :", a.length == LOOP_COUNT);
+    myTest.add(10);
+    res.set("test COW - check a.length :", a.length == LOOP_COUNT);
+    let b = myTest.toArray();
+    res.set("test COW - check b.length :", b.length == (LOOP_COUNT + 1));
+
     flag = false;
     try {
         proxy["aa"] = 3;

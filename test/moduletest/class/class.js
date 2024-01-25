@@ -107,3 +107,14 @@ try {
 } catch(err) {
     print(err.name);
 }
+
+function foo() {
+
+}
+class Class2024 {
+    static #g;
+    a = [1, 2, 3];
+    #c = foo;
+}
+var class2024 = new Class2024();
+print("test successful!");

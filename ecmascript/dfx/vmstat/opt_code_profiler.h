@@ -206,39 +206,46 @@ private:
     std::vector<CString> abcNames_;
 };
 
-class LoopHoistProfiler {
+class TypedOpProfiler {
 public:
     using OpCode = kungfu::OpCode;
 
-    LoopHoistProfiler()
+    TypedOpProfiler()
     {
+        strOpMap_ = {
+            { "LOAD_BUILTIN_OBJECT", OpCode::LOAD_BUILTIN_OBJECT },
+            { "LOAD_PROPERTY", OpCode::LOAD_PROPERTY },
+            { "LOAD_ELEMENT", OpCode::LOAD_ELEMENT }
+        };
+
         profMap_ = {
             { OpCode::LOAD_BUILTIN_OBJECT, 0 },
-            { OpCode::LOAD_PROPERTY, 0}
+            { OpCode::LOAD_PROPERTY, 0 },
+            { OpCode::LOAD_ELEMENT, 0 }
         };
     }
 
-    void Update (OpCode opcode)
+    void Update(OpCode opcode)
     {
-        if (opcode == OpCode::LOAD_BUILTIN_OBJECT ||
-            opcode == OpCode::LOAD_PROPERTY) {
-            profMap_.at(opcode)++;
+        auto it = profMap_.find(opcode);
+        if (it != profMap_.end()) {
+            it->second++;
         }
     }
 
-    void PrintAndReset()
+    void PrintAndReset(std::string opStr)
     {
-        LOG_TRACE(INFO) << "LoopHoistProfiler:";
-        LOG_TRACE(INFO) << "Opcode: LOAD_BUILTIN_OBJECT Count:"
-                       << profMap_.at(OpCode::LOAD_BUILTIN_OBJECT);
-        profMap_.at(OpCode::LOAD_BUILTIN_OBJECT) = 0;
+        auto it = strOpMap_.find(opStr);
+        if (it != strOpMap_.end()) {
+            LOG_TRACE(INFO) << "Opcode: " << it->first << " Count:"
+                            << profMap_.at(it->second);
 
-        LOG_TRACE(INFO) << "Opcode: LOAD_PROPERTY Count:"
-                       << profMap_.at(OpCode::LOAD_PROPERTY);
-        profMap_.at(OpCode::LOAD_PROPERTY) = 0;
+            profMap_.at(it->second) = 0;
+        }
     }
 
 private:
+    std::map<std::string, OpCode> strOpMap_;
     std::map<OpCode, uint64_t> profMap_;
 };
 }  // namespace panda::ecmascript

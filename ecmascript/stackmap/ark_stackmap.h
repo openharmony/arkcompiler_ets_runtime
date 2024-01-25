@@ -30,8 +30,8 @@ struct ArkStackMapHeader {
 
 #pragma pack(1)
 struct CallsiteHeader {
-    uint32_t calliteOffset {0}; // relative text start addr
-    uint32_t stackmapOffset {0}; // relative stackmap start addr
+    uint32_t calliteOffsetInTxtSec {0}; // relative text start addr
+    uint32_t stackmapOffsetInSMSec{0}; // relative stackmap start addr
     uint32_t deoptOffset {0};
     uint16_t stackmapNum {0};
     uint16_t deoptNum {0};
@@ -51,7 +51,7 @@ struct ARKCallsite {
     std::vector<kungfu::ARKDeopt> callsite2Deopt;
     bool operator < (const ARKCallsite & x) const
     {
-        return head.calliteOffset < x.head.calliteOffset;
+        return head.calliteOffsetInTxtSec < x.head.calliteOffsetInTxtSec;
     }
     uint32_t CalHeadSize() const;
     uint32_t CalStackMapSize(Triple triple) const;
@@ -69,9 +69,9 @@ using CalleeRegAndOffsetVec = std::vector<LLVMStackMapType::DwarfRegAndOffsetTyp
 //               |-----------------------------------------|   ArkStackMapHeader
 //               |               callsiteNum               |         v
 //               +-----------------------------------------+ ---------
-//               |              calliteOffset              |         ^
+//               |           calliteOffsetInTxtSec         |         ^
 //               |-----------------------------------------|         |
-//               |             stackmapOffset              |         |
+//               |            stackmapOffsetInSMSec        |         |
 //               |-----------------------------------------|         |
 //               |               deoptOffset               |   CallsiteHeader[0]
 //               |-----------------------------------------|         |

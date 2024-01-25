@@ -696,9 +696,9 @@ template("host_aot_js_test_action") {
           " --compiler-opt-inlining=true --compiler-opt-type-lowering=true"
     }
 
-    if (defined(invoker.is_enable_loop_hoist_profiler) &&
-        invoker.is_enable_loop_hoist_profiler) {
-      _aot_compile_options_ += " --compiler-loop-hoist-profiler=true "
+    if (defined(invoker.is_enable_typed_op_profiler) &&
+        invoker.is_enable_typed_op_profiler) {
+      _aot_compile_options_ += " --compiler-typed-op-profiler=true "
     }
 
     if (defined(invoker.is_enable_lowering_builtin) &&
@@ -787,9 +787,9 @@ template("host_aot_js_test_action") {
       _aot_run_options_ += invoker.log_option
     }
 
-    if (defined(invoker.is_enable_loop_hoist_profiler) &&
-        invoker.is_enable_loop_hoist_profiler) {
-      _aot_run_options_ += " --compiler-loop-hoist-profiler=ture"
+    if (defined(invoker.is_enable_typed_op_profiler) &&
+        invoker.is_enable_typed_op_profiler) {
+      _aot_run_options_ += " --compiler-typed-op-profiler=ture"
     }
 
     if (defined(invoker.is_enable_lowering_builtin) &&
@@ -863,9 +863,9 @@ template("host_aot_js_test_action") {
       _aot_run_options_ += invoker.log_option
     }
 
-    if (defined(invoker.is_enable_loop_hoist_profiler) &&
-        invoker.is_enable_loop_hoist_profiler) {
-      _aot_run_options_ += " --compiler-loop-hoist-profiler=ture"
+    if (defined(invoker.is_enable_typed_op_profiler) &&
+        invoker.is_enable_typed_op_profiler) {
+      _aot_run_options_ += " --compiler-typed-op-profiler=ture"
     }
 
     if (defined(invoker.is_enable_lowering_builtin) &&
@@ -1052,9 +1052,9 @@ template("host_aot_test_action") {
           " --compiler-opt-inlining=true --compiler-opt-type-lowering=true"
     }
 
-    if (defined(invoker.is_enable_loop_hoist_profiler) &&
-        invoker.is_enable_loop_hoist_profiler) {
-      _aot_compile_options_ += " --compiler-loop-hoist-profiler=true "
+    if (defined(invoker.is_enable_typed_op_profiler) &&
+        invoker.is_enable_typed_op_profiler) {
+      _aot_compile_options_ += " --compiler-typed-op-profiler=true "
     }
 
     if (defined(invoker.is_enable_lowering_builtin) &&
@@ -1236,9 +1236,9 @@ template("host_aot_test_action") {
       _aot_run_options_ += invoker.log_option
     }
 
-    if (defined(invoker.is_enable_loop_hoist_profiler) &&
-        invoker.is_enable_loop_hoist_profiler) {
-      _aot_run_options_ += " --compiler-loop-hoist-profiler=ture"
+    if (defined(invoker.is_enable_typed_op_profiler) &&
+        invoker.is_enable_typed_op_profiler) {
+      _aot_run_options_ += " --compiler-typed-op-profiler=ture"
     }
 
     if (defined(invoker.is_enable_lowering_builtin) &&
@@ -1311,9 +1311,9 @@ template("host_aot_test_action") {
     }
     _aot_run_options_ += " --enable-context=true"
 
-    if (defined(invoker.is_enable_loop_hoist_profiler) &&
-        invoker.is_enable_loop_hoist_profiler) {
-      _aot_run_options_ += " --compiler-loop-hoist-profiler=ture"
+    if (defined(invoker.is_enable_typed_op_profiler) &&
+        invoker.is_enable_typed_op_profiler) {
+      _aot_run_options_ += " --compiler-typed-op-profiler=ture"
     }
 
     if (defined(invoker.is_enable_lowering_builtin) &&

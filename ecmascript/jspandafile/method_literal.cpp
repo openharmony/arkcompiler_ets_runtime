@@ -112,12 +112,14 @@ CString MethodLiteral::ParseFunctionNameToCString(const JSPandaFile *jsPandaFile
     return methodName.substr(index + 1);
 }
 
-const char *MethodLiteral::GetMethodName(const JSPandaFile *jsPandaFile, EntityId methodId)
+const char *MethodLiteral::GetMethodName(const JSPandaFile *jsPandaFile, EntityId methodId, bool cpuProfiler)
 {
     if (jsPandaFile == nullptr) {
         return "";
     }
-
+    if (cpuProfiler) {
+        return const_cast<JSPandaFile *>(jsPandaFile)->GetCpuProfilerMethodName(methodId);
+    }
     return const_cast<JSPandaFile *>(jsPandaFile)->GetMethodName(methodId);
 }
 

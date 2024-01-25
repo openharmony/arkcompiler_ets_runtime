@@ -1273,6 +1273,7 @@ JSTaggedValue BuiltinsArray::Join(EcmaRuntimeCallInfo *argv)
         allocateLength = sepLength * (len - 1) + len;
     }
     if (allocateLength > EcmaString::MAX_STRING_LENGTH) {
+        context->JoinStackPopFastPath(thisHandle);
         THROW_RANGE_ERROR_AND_RETURN(thread, "Invalid string length", JSTaggedValue::Exception());
     }
     // 7. ReturnIfAbrupt(sep).
@@ -1281,6 +1282,7 @@ JSTaggedValue BuiltinsArray::Join(EcmaRuntimeCallInfo *argv)
 
     // 8. If len is zero, return the empty String.
     if (len == 0) {
+        context->JoinStackPopFastPath(thisHandle);
         return GetTaggedString(thread, "");
     }
 
@@ -2814,6 +2816,7 @@ JSTaggedValue BuiltinsArray::Flat(EcmaRuntimeCallInfo *argv)
     ArrayHelper::FlattenIntoArray(thread, newArrayHandle, thisObjVal, args,
                                   thread->GlobalConstants()->GetHandledUndefined(),
                                   thread->GlobalConstants()->GetHandledUndefined());
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
     // 7. Return A.
     return newArrayHandle.GetTaggedValue();
@@ -2852,7 +2855,7 @@ JSTaggedValue BuiltinsArray::FlatMap(EcmaRuntimeCallInfo *argv)
     // 5. Perform ? FlattenIntoArray(A, O, sourceLen, 0, 1, mapperFunction, thisArg).
     ArrayHelper::FlattenIntoArray(thread, newArrayHandle, thisObjVal, args,
                                   mapperFunctionHandle, GetCallArg(argv, 1));
-
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     // 6. Return A.
     return newArrayHandle.GetTaggedValue();
 }

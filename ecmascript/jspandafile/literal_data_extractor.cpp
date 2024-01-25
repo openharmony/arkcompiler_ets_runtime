@@ -375,7 +375,7 @@ void LiteralDataExtractor::ExtractObjectDatas(JSThread *thread, const JSPandaFil
         bool flag = false;
         switch (tag) {
             case LiteralTag::INTEGER: {
-                jt = JSTaggedValue(std::get<uint32_t>(value));
+                jt = JSTaggedValue(static_cast<int32_t>(std::get<uint32_t>(value)));
                 break;
             }
             case LiteralTag::DOUBLE: {

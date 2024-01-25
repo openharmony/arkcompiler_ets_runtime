@@ -86,6 +86,11 @@ if (globalThis["ArkPrivate"] != undefined) {
         print("HashMap hasKey find key error");
     }
 
+    // check key is Double, but search for Int
+    let myTest = new fastmap();
+    myTest.set(Math.floor(1.4), 2);
+    res.set("test key is Double 1, searching for Int 1", myTest.hasKey(1));
+
     let dmap = new fastmap();
     // test setAll: 3
     dmap.setAll(map);

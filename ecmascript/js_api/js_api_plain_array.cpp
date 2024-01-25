@@ -345,21 +345,32 @@ JSTaggedValue JSAPIPlainArray::GetIndexOfKey(int32_t key)
     return JSTaggedValue(index);
 }
 
+JSTaggedValue JSAPIPlainArray::TryFastGetIndexOfValue(TaggedArray *values, JSTaggedValue value)
+{
+    uint32_t size = GetLength();
+    for (uint32_t i = 0; i < size; ++i) {
+        JSTaggedValue currVal = values->Get(i);
+        if (currVal.IsInt() && (currVal == value)) {
+            return JSTaggedValue(i);
+        }
+    }
+    return JSTaggedValue(-1);
+}
+
 JSTaggedValue JSAPIPlainArray::GetIndexOfValue(JSTaggedValue value)
 {
     TaggedArray *values = TaggedArray::Cast(GetValues().GetTaggedObject());
-    int32_t size = static_cast<int32_t>(GetLength());
-    int32_t index = -1;
-    for (int32_t i = 0; i < size; i++) {
-        if (JSTaggedValue::SameValue(values->Get(i), value)) {
-            index = i;
-            break;
+    if (value.IsInt()) {
+        return TryFastGetIndexOfValue(values, value);
+    } else {
+        uint32_t size = GetLength();
+        for (uint32_t i = 0; i < size; ++i) {
+            if (JSTaggedValue::SameValue(values->Get(i), value)) {
+                return JSTaggedValue(i);
+            }
         }
     }
-    if (index < 0) {
-        return JSTaggedValue(-1);
-    }
-    return JSTaggedValue(index);
+    return JSTaggedValue(-1);
 }
 
 bool JSAPIPlainArray::IsEmpty()

@@ -32,7 +32,7 @@ public:
             profiling_ = options->GetOptCodeProfiler();
             stressDeopt_ = options->GetStressDeopt();
             verifyVTable_ = options->GetVerifyVTable();
-            loopHoistProfiling_ = options->GetLoopHoistProfiler();
+            typedOpProfiling_ = options->GetTypedOpProfiler();
         }
     }
     ~CompilationConfig() = default;
@@ -87,9 +87,9 @@ public:
         return verifyVTable_;
     }
 
-    bool IsLoopHoistProfiling() const
+    bool IsTypedOpProfiling() const
     {
-        return loopHoistProfiling_;
+        return typedOpProfiling_;
     }
 
 private:
@@ -115,7 +115,7 @@ private:
     bool profiling_ {false};
     bool stressDeopt_ {false};
     bool verifyVTable_ {false};
-    bool loopHoistProfiling_ {false};
+    bool typedOpProfiling_ {false};
 };
 
 class Label {

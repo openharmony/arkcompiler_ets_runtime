@@ -67,6 +67,7 @@ public:
     static constexpr char PREFIX_BUNDLE[] = "@bundle:";
     static constexpr char PREFIX_MODULE[] = "@module:";
     static constexpr char PREFIX_PACKAGE[] = "@package:";
+    static constexpr char PREFIX_ETS[] = "ets/";
     static constexpr char REQUIRE_NAITVE_MODULE_PREFIX[] = "@native:";
     static constexpr char REQUIRE_NAPI_OHOS_PREFIX[] = "@ohos:";
     static constexpr char REQUIRE_NAPI_APP_PREFIX[] = "@app:";
@@ -125,6 +126,9 @@ public:
     static bool NeedTranstale(const CString &requestName);
     static void TranstaleExpressionInput(JSThread *thread, CString &requestPath, const JSPandaFile *jsPandaFile,
                                          JSHandle<EcmaString> &specifierString);
+    static CString GetModuleNameWithBaseFile(const CString &baseFileName);
+    static CString TranslateExpressionInputWithEts(JSThread *thread, const JSPandaFile *jsPandaFile,
+                                                   CString &baseFileName, const CString &requestName);
     /*
      * Before: data/storage/el1/bundle/moduleName/ets/modules.abc
      * After:  bundle/moduleName

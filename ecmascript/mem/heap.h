@@ -517,6 +517,7 @@ public:
     size_t VerifyHeapObjects() const;
     size_t VerifyOldToNewRSet() const;
     void StatisticHeapObject(TriggerGCType gcType) const;
+    void StatisticHeapDetail() const;
     void PrintHeapInfo(TriggerGCType gcType) const;
 
     bool OldSpaceExceedCapacity(size_t size) const

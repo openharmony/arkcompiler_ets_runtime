@@ -55,3 +55,7 @@ function _f_8() {
     }
 }
 _f_8();
+
+import('./1.json').then(m => {
+    print(m.default.name);
+}).then().catch();

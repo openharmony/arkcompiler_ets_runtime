@@ -123,10 +123,7 @@ void ICRuntime::UpdateStoreHandler(const ObjectOperator &op, JSHandle<JSTaggedVa
     JSHandle<JSTaggedValue> handlerValue;
     ASSERT(op.IsFound());
 
-    if (op.IsTSHClass()) {
-        JSHandle<JSHClass> hclass(thread_, JSHandle<JSObject>::Cast(receiver)->GetClass());
-        handlerValue = StoreTSHandler::StoreAOT(thread_, op, hclass);
-    } else if (op.IsTransition()) {
+    if (op.IsTransition()) {
         if (op.IsOnPrototype()) {
             JSHandle<JSHClass> hclass(thread_, JSHandle<JSObject>::Cast(receiver)->GetClass());
             handlerValue = TransWithProtoHandler::StoreTransition(thread_, op, hclass);
@@ -311,17 +308,17 @@ JSTaggedValue LoadICRuntime::LoadTypedArrayValueMiss(JSHandle<JSTaggedValue> rec
 }
 
 JSTaggedValue StoreICRuntime::StoreMiss(JSHandle<JSTaggedValue> receiver, JSHandle<JSTaggedValue> key,
-                                        JSHandle<JSTaggedValue> value)
+                                        JSHandle<JSTaggedValue> value, bool isOwn)
 {
     if (!receiver->IsJSObject() || receiver->HasOrdinaryGet()) {
         icAccessor_.SetAsMega();
         bool success = JSTaggedValue::SetProperty(GetThread(), receiver, key, value, true);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
         return success ? JSTaggedValue::Undefined() : JSTaggedValue::Exception();
     }
     if (receiver->IsTypedArray()) {
         return StoreTypedArrayValueMiss(receiver, key, value);
     }
-
     ICKind kind = GetICKind();
     // global variable find from global record firstly
     if (kind == ICKind::NamedGlobalStoreIC || kind == ICKind::NamedGlobalTryStoreIC) {
@@ -337,8 +334,7 @@ JSTaggedValue StoreICRuntime::StoreMiss(JSHandle<JSTaggedValue> receiver, JSHand
         }
     }
     UpdateReceiverHClass(JSHandle<JSTaggedValue>(GetThread(), JSHandle<JSObject>::Cast(receiver)->GetClass()));
-
-    ObjectOperator op(GetThread(), receiver, key);
+    ObjectOperator op = ConstructOp(receiver, key, value, isOwn);
     if (!op.IsFound()) {
         if (kind == ICKind::NamedGlobalStoreIC) {
             PropertyAttributes attr = PropertyAttributes::Default(true, true, false);
@@ -379,6 +375,7 @@ JSTaggedValue StoreICRuntime::StoreTypedArrayValueMiss(JSHandle<JSTaggedValue> r
             !GetThread()->GetEcmaVM()->ICEnabled()) {
             icAccessor_.SetAsMega();
             bool success = JSTaggedValue::SetProperty(GetThread(), receiver, propKey, value, true);
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(GetThread());
             return success ? JSTaggedValue::Undefined() : JSTaggedValue::Exception();
         }
         UpdateTypedArrayHandler(receiver);

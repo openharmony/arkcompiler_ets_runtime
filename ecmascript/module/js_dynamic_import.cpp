@@ -19,13 +19,17 @@
 #include "ecmascript/js_function.h"
 #include "ecmascript/module/js_module_deregister.h"
 #include "ecmascript/module/js_module_manager.h"
+#include "ecmascript/module/module_data_extractor.h"
 
 namespace panda::ecmascript {
 using PathHelper = base::PathHelper;
 using BuiltinsPromiseJob = builtins::BuiltinsPromiseJob;
 
-JSTaggedValue DynamicImport::ExecuteNativeModule(JSThread *thread, JSHandle<EcmaString> specifierString,
-    ModuleTypes moduleType, JSHandle<JSPromiseReactionsFunction> resolve, JSHandle<JSPromiseReactionsFunction> reject)
+JSTaggedValue DynamicImport::ExecuteNativeOrJsonModule(JSThread *thread, JSHandle<EcmaString> specifierString,
+                                                       ModuleTypes moduleType,
+                                                       JSHandle<JSPromiseReactionsFunction> resolve,
+                                                       JSHandle<JSPromiseReactionsFunction> reject,
+                                                       const JSPandaFile *jsPandaFile)
 {
     ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
     JSMutableHandle<JSTaggedValue> requiredModule(thread, thread->GlobalConstants()->GetUndefined());
@@ -36,20 +40,24 @@ JSTaggedValue DynamicImport::ExecuteNativeModule(JSThread *thread, JSHandle<Ecma
         requiredModule.Update(moduleRecord);
     } else {
         CString requestPath = ConvertToString(specifierString.GetTaggedValue());
-        CString entryPoint = PathHelper::GetStrippedModuleName(requestPath);
-        JSHandle<JSTaggedValue> nativeModuleHld = moduleManager->ResolveNativeModule(requestPath, moduleType);
-        JSHandle<SourceTextModule> nativeModule = JSHandle<SourceTextModule>::Cast(nativeModuleHld);
-
-        if (!SourceTextModule::LoadNativeModule(thread, nativeModule, moduleType)) {
-            LOG_FULL(ERROR) << " dynamically loading native module" << requestPath << " failed";
+        JSHandle<SourceTextModule> moduleRecord(thread, thread->GlobalConstants()->GetUndefined());
+        if (moduleType != ModuleTypes::JSON_MODULE) {
+            // nativeModule
+            JSHandle<JSTaggedValue> nativeModuleHld = moduleManager->ResolveNativeModule(requestPath, moduleType);
+            moduleRecord = JSHandle<SourceTextModule>::Cast(nativeModuleHld);
+            if (!SourceTextModule::LoadNativeModule(thread, moduleRecord, moduleType)) {
+                LOG_FULL(ERROR) << " dynamically loading native module" << requestPath << " failed";
+            }
+        } else {
+            // json
+            moduleRecord = JSHandle<SourceTextModule>::Cast(ModuleDataExtractor::ParseJsonModule(
+                thread, jsPandaFile, jsPandaFile->GetJSPandaFileDesc(), requestPath));
         }
-
-        // initialize native module
-        nativeModule->SetStatus(ModuleStatus::EVALUATED);
-        nativeModule->SetLoadingTypes(LoadingTypes::DYNAMITC_MODULE);
-        nativeModule->SetRegisterCounts(1);
+        moduleRecord->SetStatus(ModuleStatus::EVALUATED);
+        moduleRecord->SetLoadingTypes(LoadingTypes::DYNAMITC_MODULE);
+        moduleRecord->SetRegisterCounts(1);
         thread->GetEcmaVM()->PushToDeregisterModuleList(requestPath);
-        requiredModule.Update(nativeModule);
+        requiredModule.Update(moduleRecord);
     }
 
     JSHandle<JSTaggedValue> moduleNamespace = SourceTextModule::GetModuleNamespace(thread,
@@ -65,5 +73,4 @@ JSTaggedValue DynamicImport::ExecuteNativeModule(JSThread *thread, JSHandle<Ecma
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     return JSFunction::Call(info);
 }
-
 }  // namespace panda::ecmascript

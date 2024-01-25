@@ -580,6 +580,11 @@ void NumberSpeculativeLowering::VisitPhi(GateRef gate)
             acc_.SetMachineType(gate, MachineType::F64);
             break;
         }
+        case TypeInfo::CHAR: {
+            acc_.SetGateType(gate, GateType::NJSValue());
+            acc_.SetMachineType(gate, MachineType::I32);
+            break;
+        }
         default:
             break;
     }

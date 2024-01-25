@@ -24,5 +24,6 @@ Test PlainArray success!!!
 Test Queue success!!!
 Test Stack success!!!
 Test TreeMap success!!!
+Test TreeMap set After Clear Success
 Test TreeSet success!!!
 Test Vector success!!!

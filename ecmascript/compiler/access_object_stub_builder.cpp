@@ -230,6 +230,46 @@ GateRef AccessObjectStubBuilder::StoreObjByValue(GateRef glue, GateRef receiver,
     return ret;
 }
 
+GateRef AccessObjectStubBuilder::StoreOwnByIndex(GateRef glue, GateRef receiver, GateRef index, GateRef value,
+                                                 GateRef profileTypeInfo, GateRef slotId, ProfileOperation callback)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    Label exit(env);
+    Label tryFastPath(env);
+    Label slowPath(env);
+    DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
+    ICStubBuilder builder(this);
+    builder.SetParameters(glue, receiver, profileTypeInfo, value, slotId, IntToTaggedPtr(index), callback);
+    builder.StoreICByValue(&result, &tryFastPath, &slowPath, &exit);
+    Bind(&tryFastPath);
+    {
+        Label isHeapObject(env);
+        Branch(TaggedIsHeapObject(receiver), &isHeapObject, &slowPath);
+        Bind(&isHeapObject);
+        Label notClassConstructor(env);
+        Branch(IsClassConstructor(receiver), &slowPath, &notClassConstructor);
+        Bind(&notClassConstructor);
+        Label notClassPrototype(env);
+        Branch(IsClassPrototype(receiver), &slowPath, &notClassPrototype);
+        Bind(&notClassPrototype);
+        result = SetPropertyByIndex(glue, receiver, index, value, true);
+        Branch(TaggedIsHole(*result), &slowPath, &exit);
+    }
+    Bind(&slowPath);
+    {
+        result = CallRuntime(glue, RTSTUB_ID(StoreOwnICByValue),
+            { profileTypeInfo, receiver, IntToTaggedInt(index), value, IntToTaggedInt(slotId) });
+        callback.TryPreDump();
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
 GateRef AccessObjectStubBuilder::TryLoadGlobalByName(GateRef glue, GateRef prop, const StringIdInfo &info,
                                                      GateRef profileTypeInfo, GateRef slotId,
                                                      ProfileOperation callback)

@@ -174,7 +174,7 @@ JSTaggedValue BuiltinsPromiseJob::DynamicImportJob(EcmaRuntimeCallInfo *argv)
     auto [isNative, moduleType] = SourceTextModule::CheckNativeModule(requestPath);
     ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
     if (isNative) {
-        return DynamicImport::ExecuteNativeModule(thread, specifierString, moduleType, resolve, reject);
+        return DynamicImport::ExecuteNativeOrJsonModule(thread, specifierString, moduleType, resolve, reject);
     }
 
     if (recordName->IsUndefined()) {
@@ -197,6 +197,18 @@ JSTaggedValue BuiltinsPromiseJob::DynamicImportJob(EcmaRuntimeCallInfo *argv)
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, CatchException(thread, reject));
     }
 
+    JSRecordInfo recordInfo;
+    bool hasRecord = jsPandaFile->CheckAndGetRecordInfo(entryPoint, recordInfo);
+    if (!hasRecord) {
+        LOG_FULL(ERROR) << "cannot find record '" << entryPoint <<"' in basefileName " << fileNameStr << ".";
+        CString msg = "DynamicImport: cannot find record '" + entryPoint + "' in basefileName " + fileNameStr + ".";
+        THROW_REFERENCE_ERROR_AND_RETURN(thread, msg.c_str(), CatchException(thread, reject));
+    }
+    if (jsPandaFile->IsJson(recordInfo)) {
+        JSHandle<EcmaString> jsonRecordName = thread->GetEcmaVM()->GetFactory()->NewFromUtf8(entryPoint);
+        return DynamicImport::ExecuteNativeOrJsonModule(
+            thread, jsonRecordName, ModuleTypes::JSON_MODULE, resolve, reject, jsPandaFile.get());
+    }
     // Loading request module.
     if (!moduleManager->IsImportedModuleLoaded(moduleName.GetTaggedValue())) {
         if (!JSPandaFileExecutor::ExecuteFromAbcFile(thread, fileNameStr.c_str(), entryPoint.c_str(), false, true)) {
@@ -209,13 +221,6 @@ JSTaggedValue BuiltinsPromiseJob::DynamicImportJob(EcmaRuntimeCallInfo *argv)
     }
 
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, CatchException(thread, reject));
-    JSRecordInfo recordInfo;
-    bool hasRecord = jsPandaFile->CheckAndGetRecordInfo(entryPoint, recordInfo);
-    if (!hasRecord) {
-        LOG_FULL(ERROR) << "cannot find record '" << entryPoint <<"' in basefileName " << fileNameStr << ".";
-        CString msg = "cannot find record '" + entryPoint + "', please check the request path.";
-        THROW_REFERENCE_ERROR_AND_RETURN(thread, msg.c_str(), CatchException(thread, reject));
-    }
     JSMutableHandle<JSTaggedValue> moduleNamespace(thread, JSTaggedValue::Undefined());
     // only support importing es module, or return a default object.
     if (!jsPandaFile->IsModule(recordInfo)) {
