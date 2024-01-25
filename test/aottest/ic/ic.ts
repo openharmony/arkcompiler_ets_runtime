@@ -15,6 +15,8 @@
 
 declare function print(a:any):string;
 
+var LOOP_TIME = 100;
+
 class C {
     x:number;
     constructor() {
@@ -56,7 +58,7 @@ class Attrs {
 	z : number;
 }
 
-function test() : void {
+for (let i = 0; i < LOOP_TIME; i++){
 	for (let j = 0; j < 5; ++j) {
 		var _attrs : Attrs[] = [
 			new Attrs(1, 1, 1),
@@ -65,23 +67,11 @@ function test() : void {
 			new Attrs(4, 4, 4),
 			new Attrs(5, 5, 5),
 		];
+		if (i == LOOP_TIME - 1) {
+			print(_attrs[j].x);
+		}
 	}
 }
-for (let i = 0; i < 100; i++){
-    test();
-}
-
-for (let j = 0; j < 5; ++j) {
-    var _attrs : Attrs[] = [
-        new Attrs(1, 1, 1),
-        new Attrs(2, 2, 2),
-        new Attrs(3, 3, 3),
-        new Attrs(4, 4, 4),
-        new Attrs(5, 5, 5),
-    ];
-    print(_attrs[j].x);
-}
-
 
 const tests = [
 	[99.99, "ark"],
@@ -90,14 +80,13 @@ const tests = [
 	[6666, "drk"],
 ];
 
-for (let i = 0; i < 100; i++){
+for (let i = 0; i < LOOP_TIME; i++){
     for (const [number, strData] of tests) {
+		if (i == LOOP_TIME - 1) {
+			print(number);
+			print(strData);
+		}
     }
-}
-
-for (const [number, strData] of tests) {
-    print(number);
-    print(strData);
 }
 
 const exceptions = {
@@ -118,52 +107,46 @@ const units = [
 	"minute",
 ];
 
-for (let i = 0; i < 100; i++){
+for (let i = 0; i < LOOP_TIME; i++){
     for (const unit of units) {
 		const expected = unit in exceptions ?
 			[exceptions[unit]["1"], exceptions[unit]["0"], exceptions[unit]["0"], exceptions[unit]["-1"]] :
 			[`in 1 ${unit}`, `in 0 ${unit}s`, `0 ${unit}s ago`, `1 ${unit} ago`];
+		if (i == LOOP_TIME - 1) {
+			print(expected);
+		}
     }
 }
-  
-for (const unit of units) {
-	const expected = unit in exceptions ?
-		[exceptions[unit]["1"], exceptions[unit]["0"], exceptions[unit]["0"], exceptions[unit]["-1"]] :
-		[`in 1 ${unit}`, `in 0 ${unit}s`, `0 ${unit}s ago`, `1 ${unit} ago`];
-  
-	print(expected);
-}
 
-for (let i = 0; i < 100; i++){
+for (let i = 0; i < LOOP_TIME; i++){
     Object.defineProperty(Array.prototype, '0', {
         value: 42,
     });
     let arr = [, 2, 3];
     arr.pop();
+	if (i == LOOP_TIME - 1) {
+		print(arr[1]);
+	}
 }
 
-Object.defineProperty(Array.prototype, '0', {
-    value: 42,
-});
-let arr = [, 2, 3];
-arr.pop();
-print(arr[1]);
 
-for (let i = 0; i < 100; i++){
+for (let i = 0; i < LOOP_TIME; i++){
     var a : any[] = [ ["ok"], [1, 2, 3] ];
     var b = {
         1 : ["yes", "no"],
         "100" : [4, 5],
     }
+	if (i == LOOP_TIME - 1) {
+		print(a[0][0]);
+		print(a[1][0]);
+		print(a[1][1]);
+		print(a[1][2]);
+		
+		print(b[1][0]);
+		print(b[1][1]);
+		print(b["100"][0]);
+		print(b["100"][1]);
+	}
 }
 
 
-print(a[0][0]);
-print(a[1][0]);
-print(a[1][1]);
-print(a[1][2]);
-
-print(b[1][0]);
-print(b[1][1]);
-print(b["100"][0]);
-print(b["100"][1]);
