@@ -2203,14 +2203,11 @@ JSHandle<AccessorData> ObjectFactory::NewInternalAccessor(void *setter, void *ge
     TaggedObject *header = heap_->AllocateNonMovableOrHugeObject(
         JSHClass::Cast(thread_->GlobalConstants()->GetInternalAccessorClass().GetTaggedObject()));
     JSHandle<AccessorData> obj(thread_, AccessorData::Cast(header));
-    obj->SetGetter(thread_, JSTaggedValue::Undefined());
-    obj->SetSetter(thread_, JSTaggedValue::Undefined());
     if (setter != nullptr) {
         JSHandle<JSNativePointer> setFunc = NewJSNativePointer(setter, nullptr, nullptr, true);
         obj->SetSetter(thread_, setFunc.GetTaggedValue());
     } else {
-        JSTaggedValue setFunc = JSTaggedValue::Undefined();
-        obj->SetSetter(thread_, setFunc);
+        obj->SetSetter(thread_, JSTaggedValue::Undefined());
         ASSERT(!obj->HasSetter());
     }
     JSHandle<JSNativePointer> getFunc = NewJSNativePointer(getter, nullptr, nullptr, true);
