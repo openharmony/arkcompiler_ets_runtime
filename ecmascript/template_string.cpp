@@ -28,6 +28,7 @@ JSHandle<JSTaggedValue> TemplateString::GetTemplateObject(JSThread *thread, JSHa
 {
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     JSHandle<JSTaggedValue> rawStringsTag = JSObject::GetProperty(thread, templateLiteral, 0).GetValue();
+    RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
     JSHandle<JSTaggedValue> templateMapTag = env->GetTemplateMap();
     JSHandle<TemplateMap> templateMap(templateMapTag);
     int32_t element = templateMap->FindEntry(rawStringsTag.GetTaggedValue());
@@ -35,6 +36,7 @@ JSHandle<JSTaggedValue> TemplateString::GetTemplateObject(JSThread *thread, JSHa
         return JSHandle<JSTaggedValue>(thread, templateMap->GetValue(element));
     }
     JSHandle<JSTaggedValue> cookedStringsTag = JSObject::GetProperty(thread, templateLiteral, 1).GetValue();
+    RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
     JSHandle<JSArray> cookedStrings(cookedStringsTag);
     uint32_t count = cookedStrings->GetArrayLength();
     auto countNum = JSTaggedNumber(count);
@@ -46,9 +48,11 @@ JSHandle<JSTaggedValue> TemplateString::GetTemplateObject(JSThread *thread, JSHa
     JSHandle<JSObject> rawObj(rawArr);
     for (uint32_t i = 0; i < count; i++) {
         JSHandle<JSTaggedValue> cookedValue = JSObject::GetProperty(thread, cookedStringsTag, i).GetValue();
+        RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
         PropertyDescriptor descCooked(thread, cookedValue, true, false, false);
         JSArray::DefineOwnProperty(thread, templateObj, i, descCooked);
         JSHandle<JSTaggedValue> rawValue = JSObject::GetProperty(thread, rawStringsTag, i).GetValue();
+        RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
         PropertyDescriptor descRaw(thread, rawValue, true, false, false);
         JSArray::DefineOwnProperty(thread, rawObj, i, descRaw);
     }

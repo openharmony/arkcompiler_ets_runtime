@@ -106,15 +106,16 @@ JSTaggedValue BuiltinsAsyncFromSyncIterator::Throw(EcmaRuntimeCallInfo *argv)
             EcmaInterpreter::NewRuntimeCallInfo(thread, throwResult, syncIterator, undefinedValue, 0);
         RETURN_REJECT_PROMISE_IF_ABRUPT(thread, throwResult, pcap);
         ret = JSFunction::Call(callInfo);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     } else {
         EcmaRuntimeCallInfo *callInfo =
             EcmaInterpreter::NewRuntimeCallInfo(thread, throwResult, syncIterator, undefinedValue, 1);
         RETURN_REJECT_PROMISE_IF_ABRUPT(thread, throwResult, pcap);
         callInfo->SetCallArg(value.GetTaggedValue());
         ret = JSFunction::Call(callInfo);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     }
     JSHandle<JSTaggedValue> result(thread, ret);
-    RETURN_REJECT_PROMISE_IF_ABRUPT(thread, result, pcap);
     // 11.If Type(result) is not Object, then
     if (!result->IsECMAObject()) {
         // a.Perform ! Call(promiseCapability.[[Reject]], undefined, « a newly created TypeError object »).
@@ -125,6 +126,7 @@ JSTaggedValue BuiltinsAsyncFromSyncIterator::Throw(EcmaRuntimeCallInfo *argv)
             EcmaInterpreter::NewRuntimeCallInfo(thread, reject, undefinedValue, undefinedValue, 1);
         info->SetCallArg(resolutionError.GetTaggedValue());
         JSFunction::Call(info);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
         // b.Return promiseCapability.[[Promise]].
         JSHandle<JSObject> promise(thread, pcap->GetPromise());
@@ -181,15 +183,16 @@ JSTaggedValue BuiltinsAsyncFromSyncIterator::Return(EcmaRuntimeCallInfo *argv)
             EcmaInterpreter::NewRuntimeCallInfo(thread, returnResult, syncIterator, undefinedValue, 0);
         RETURN_REJECT_PROMISE_IF_ABRUPT(thread, returnResult, pcap);
         ret = JSFunction::Call(callInfo);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     } else {
         EcmaRuntimeCallInfo *callInfo =
             EcmaInterpreter::NewRuntimeCallInfo(thread, returnResult, syncIterator, undefinedValue, 1);
         RETURN_REJECT_PROMISE_IF_ABRUPT(thread, returnResult, pcap);
         callInfo->SetCallArg(value.GetTaggedValue());
         ret = JSFunction::Call(callInfo);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     }
     JSHandle<JSTaggedValue> result(thread, ret);
-    RETURN_REJECT_PROMISE_IF_ABRUPT(thread, result, pcap);
     // 11.If Type(result) is not Object, then
     if (!result->IsECMAObject()) {
         // a.Perform ! Call(promiseCapability.[[Reject]], undefined, « a newly created TypeError object »).
@@ -201,6 +204,7 @@ JSTaggedValue BuiltinsAsyncFromSyncIterator::Return(EcmaRuntimeCallInfo *argv)
             EcmaInterpreter::NewRuntimeCallInfo(thread, reject, undefinedValue, undefinedValue, 1);
         info->SetCallArg(rstErr.GetTaggedValue());
         JSFunction::Call(info);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
         // b.Return promiseCapability.[[Promise]].
         JSHandle<JSObject> promise(thread, pcap->GetPromise());

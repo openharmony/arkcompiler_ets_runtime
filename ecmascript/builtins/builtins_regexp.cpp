@@ -457,7 +457,9 @@ JSTaggedValue BuiltinsRegExp::GetSource(EcmaRuntimeCallInfo *argv)
         JSHandle<JSTaggedValue> constructor = GetConstructor(argv);
         if (objConstructor->IsJSFunction() && constructor->IsJSFunction()) {
             JSHandle<GlobalEnv> objRealm = JSObject::GetFunctionRealm(thread, objConstructor);
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
             JSHandle<GlobalEnv> ctorRealm = JSObject::GetFunctionRealm(thread, constructor);
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
             if (objRealm->GetRegExpPrototype() == thisObj && *objRealm == *ctorRealm) {
                 JSHandle<EcmaString> result = thread->GetEcmaVM()->GetFactory()->NewFromASCII("(?:)");
                 return result.GetTaggedValue();
@@ -1079,6 +1081,7 @@ JSTaggedValue BuiltinsRegExp::ReplaceInternal(JSThread *thread,
         ncaptures = std::max<uint32_t>((ncaptures - 1), 0);
         // d. Let matched be ToString(Get(result, "0")).
         JSTaggedValue value = ObjectFastOperator::GetPropertyByIndex(thread, resultValues.GetTaggedValue(), 0);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         getMatchString.Update(value);
         JSHandle<EcmaString> matchString = JSTaggedValue::ToString(thread, getMatchString);
         // e. ReturnIfAbrupt(matched).
@@ -1328,6 +1331,7 @@ JSTaggedValue BuiltinsRegExp::Split(EcmaRuntimeCallInfo *argv)
     const GlobalEnvConstants *globalConstants = thread->GlobalConstants();
     JSHandle<JSTaggedValue> flagsString(globalConstants->GetHandledFlagsString());
     JSHandle<JSTaggedValue> taggedFlags = JSObject::GetProperty(thread, thisObj, flagsString).GetValue();
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSHandle<EcmaString> flags;
 
     if (taggedFlags->IsUndefined()) {
@@ -1447,6 +1451,7 @@ JSTaggedValue BuiltinsRegExp::Split(EcmaRuntimeCallInfo *argv)
             // i. Let e be ToLength(Get(splitter, "lastIndex")).
             JSHandle<JSTaggedValue> lastIndexHandle =
                 JSObject::GetProperty(thread, splitter, lastIndexString).GetValue();
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
             JSTaggedNumber lastIndexNumber = JSTaggedValue::ToLength(thread, lastIndexHandle);
             // ii. ReturnIfAbrupt(e).
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -1482,6 +1487,7 @@ JSTaggedValue BuiltinsRegExp::Split(EcmaRuntimeCallInfo *argv)
                 JSHandle<JSTaggedValue> lengthString(thread->GlobalConstants()->GetHandledLengthString());
                 JSHandle<JSTaggedValue> capturesHandle =
                     JSObject::GetProperty(thread, execResult, lengthString).GetValue();
+                RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
                 JSTaggedNumber numberOfCapturesNumber = JSTaggedValue::ToLength(thread, capturesHandle);
                 // 8. ReturnIfAbrupt(numberOfCaptures).
                 RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -1757,6 +1763,7 @@ JSTaggedValue BuiltinsRegExp::GetFlagsInternal(JSThread *thread, const JSHandle<
         if (objConstructor->IsJSFunction() && constructor->IsJSFunction()) {
             JSHandle<GlobalEnv> objRealm = JSObject::GetFunctionRealm(thread, objConstructor);
             JSHandle<GlobalEnv> ctorRealm = JSObject::GetFunctionRealm(thread, constructor);
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
             if (objRealm->GetRegExpPrototype() == obj && *objRealm == *ctorRealm) {
                 return JSTaggedValue::Undefined();
             }

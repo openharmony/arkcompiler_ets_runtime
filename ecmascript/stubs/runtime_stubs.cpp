@@ -2489,6 +2489,7 @@ DEF_RUNTIME_STUBS(VerifyVTableLoading)
     JSHandle<JSTaggedValue> typedPathValue = GetHArg<JSTaggedValue>(argv, argc, 2);  // 2: means the second parameter
 
     JSHandle<JSTaggedValue> verifiedPathValue = JSTaggedValue::GetProperty(thread, receiver, key).GetValue();
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception().GetRawData());
     if (UNLIKELY(!JSTaggedValue::SameValue(typedPathValue, verifiedPathValue))) {
         std::ostringstream oss;
         receiver->Dump(oss);
@@ -2516,6 +2517,7 @@ DEF_RUNTIME_STUBS(VerifyVTableStoring)
     JSHandle<JSTaggedValue> storeValue = GetHArg<JSTaggedValue>(argv, argc, 2);  // 2: means the second parameter
 
     JSHandle<JSTaggedValue> verifiedValue = JSTaggedValue::GetProperty(thread, receiver, key).GetValue();
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception().GetRawData());
     if (UNLIKELY(!JSTaggedValue::SameValue(storeValue, verifiedValue))) {
         std::ostringstream oss;
         receiver->Dump(oss);
@@ -2541,6 +2543,7 @@ DEF_RUNTIME_STUBS(JSObjectGetMethod)
     JSHandle<JSTaggedValue> obj(thread, GetArg(argv, argc, 0));
     JSHandle<JSTaggedValue> key(thread, GetArg(argv, argc, 1));
     JSHandle<JSTaggedValue> result = JSObject::GetMethod(thread, obj, key);
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception().GetRawData());
     return result->GetRawData();
 }
 

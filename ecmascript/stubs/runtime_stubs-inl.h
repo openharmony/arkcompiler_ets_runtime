@@ -494,6 +494,7 @@ JSTaggedValue RuntimeStubs::RuntimeStArraySpread(JSThread *thread, const JSHandl
             break;
         }
         bool success = JSTaggedValue::GetOwnProperty(thread, iterResult, valueStr, desc);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         if (success && desc.IsEnumerable()) {
             JSTaggedValue::DefineOwnProperty(thread, dst, indexHandle, desc);
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -2389,6 +2390,7 @@ JSTaggedValue RuntimeStubs::RuntimeGetCallSpreadArgs(JSThread *thread, const JSH
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<TaggedArray> argv = factory->NewTaggedArray(argvMayMaxLength);
     JSHandle<JSTaggedValue> itor = JSIterator::GetIterator(thread, jsArray);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
     // Fast path when array is stablearray and Iterator not change.
     if (jsArray->IsStableJSArray(thread) && itor->IsJSArrayIterator()) {
@@ -3031,6 +3033,7 @@ JSTaggedValue RuntimeStubs::RuntimeDefinePrivateProperty(JSThread *thread, JSTag
     }
     bool result = JSObject::CreateDataPropertyOrThrow(thread, JSHandle<JSObject>::Cast(handleObj),
                                                       handleKey, handleValue);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     if (!extensible) {
         handleObj->GetTaggedObject()->GetClass()->SetExtensible(false);
     }

@@ -1090,11 +1090,13 @@ void JSDateTimeFormat::ResolvedOptions(JSThread *thread, const JSHandle<JSDateTi
         property = globalConst->GetHandledDateStyleString();
         hcValue = ToDateTimeStyleEcmaString(thread, dateTimeFormat->GetDateStyle());
         JSObject::CreateDataPropertyOrThrow(thread, options, property, hcValue);
+        RETURN_IF_ABRUPT_COMPLETION(thread);
     }
     if (dateTimeFormat->GetTimeStyle() != DateTimeStyleOption::UNDEFINED) {
         property = globalConst->GetHandledTimeStyleString();
         hcValue = ToDateTimeStyleEcmaString(thread, dateTimeFormat->GetTimeStyle());
         JSObject::CreateDataPropertyOrThrow(thread, options, property, hcValue);
+        RETURN_IF_ABRUPT_COMPLETION(thread);
     }
 }
 
@@ -1270,6 +1272,7 @@ JSHandle<JSArray> JSDateTimeFormat::ConstructFDateIntervalToJSArray(JSThread *th
             element = JSLocale::PutElement(thread, part.index, array, ConvertFieldIdToDateType(thread, part.fField),
                                            JSHandle<JSTaggedValue>::Cast(substring));
         }
+        RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSArray, thread);
         JSHandle<JSTaggedValue> value = JSHandle<JSTaggedValue>::Cast(
             ToValueString(thread, TrackValue(part.fBeginIndex, part.fEndIndex, begin, end)));
         JSObject::SetProperty(thread, element, thread->GlobalConstants()->GetHandledSourceString(), value, true);

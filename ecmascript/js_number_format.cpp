@@ -838,6 +838,7 @@ void GroupToParts(JSThread *thread, const icu::number::FormattedNumber &formatte
         JSHandle<EcmaString> substring =
             intl::LocaleHelper::UStringToString(thread, formattedText, previousLimit, formattedText.length());
         JSLocale::PutElement(thread, index, receiver, typeString, JSHandle<JSTaggedValue>::Cast(substring));
+        RETURN_IF_ABRUPT_COMPLETION(thread);
     }
 }
 
@@ -1056,5 +1057,6 @@ void JSNumberFormat::ResolvedOptions(JSThread *thread, const JSHandle<JSNumberFo
     SignDisplayOption signDisplay = numberFormat->GetSignDisplay();
     JSHandle<JSTaggedValue> signDisplayString = OptionToEcmaString(thread, signDisplay);
     JSObject::CreateDataPropertyOrThrow(thread, options, property, signDisplayString);
+    RETURN_IF_ABRUPT_COMPLETION(thread);
 }
 }  // namespace panda::ecmascript

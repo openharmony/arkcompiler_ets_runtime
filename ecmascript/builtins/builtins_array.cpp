@@ -431,6 +431,7 @@ JSTaggedValue BuiltinsArray::Concat(EcmaRuntimeCallInfo *argv)
     // 2. Let A be ArraySpeciesCreate(O, 0).
     uint32_t arrayLen = 0;
     JSTaggedValue newArray = JSArray::ArraySpeciesCreate(thread, thisObjHandle, JSTaggedNumber(arrayLen));
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     if (!(newArray.IsECMAObject() || newArray.IsUndefined())) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "array must be object or undefined.", JSTaggedValue::Exception());
     }
@@ -469,6 +470,7 @@ JSTaggedValue BuiltinsArray::Concat(EcmaRuntimeCallInfo *argv)
 
             if (ele->IsStableJSArray(thread)) {
                 JSStableArray::Concat(thread, newArrayHandle, JSHandle<JSObject>::Cast(ele), k, n);
+                RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
             }
             // iv. Repeat, while k < len,
             while (k < len) {
@@ -932,6 +934,7 @@ JSTaggedValue BuiltinsArray::Filter(EcmaRuntimeCallInfo *argv)
     uint32_t k = 0;
     if (thisObjVal->IsStableJSArray(thread)) {
         JSStableArray::Filter(newArrayHandle, thisObjHandle, argv, k, toIndex);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     }
     return FilterUnStableJSArray(thread, thisArgHandle, thisObjVal, k, len, toIndex, newArrayHandle, callbackFnHandle);
 }
@@ -1481,6 +1484,7 @@ JSTaggedValue BuiltinsArray::Map(EcmaRuntimeCallInfo *argv)
     uint32_t len = static_cast<uint32_t>(rawLen);
     if (thisObjVal->IsStableJSArray(thread)) {
         JSStableArray::Map(newArrayHandle, thisObjHandle, argv, k, len);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     }
     JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
     JSMutableHandle<JSTaggedValue> mapResultHandle(thread, JSTaggedValue::Undefined());
