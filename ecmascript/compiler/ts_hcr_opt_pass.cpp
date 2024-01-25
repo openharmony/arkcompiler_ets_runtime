@@ -61,6 +61,14 @@ GateRef TSHCROptPass::VisitStringEqual(GateRef gate)
         return ConvertToSingleCharComparison(left, right);
     }
 
+    if (IsNotLoadStrOrStringLoadElement(left) || IsNotLoadStrOrStringLoadElement(right)) {
+        return Circuit::NullGate();
+    }
+
+    if (IsSingleCharString(left) || IsSingleCharString(right)) {
+        return builder_.Boolean(false);
+    }
+
     return Circuit::NullGate();
 }
 
@@ -89,6 +97,19 @@ bool TSHCROptPass::IsSingleCharString(GateRef gate)
         return EcmaStringAccessor(str).GetLength() == 1;
     }
     return acc_.IsSingleCharGate(gate);
+}
+
+bool TSHCROptPass::IsNotLoadStrOrStringLoadElement(GateRef gate)
+{
+    OpCode op = acc_.GetOpCode(gate);
+    if (op == OpCode::JS_BYTECODE) {
+        EcmaOpcode ecmaOpcode = acc_.GetByteCodeOpcode(gate);
+        return ecmaOpcode != EcmaOpcode::LDA_STR_ID16;
+    }
+    if (op == OpCode::LOAD_ELEMENT) {
+        return acc_.GetTypedLoadOp(gate) != TypedLoadOp::STRING_LOAD_ELEMENT;
+    }
+    return true;
 }
 
 GateRef TSHCROptPass::ConvertConstSingleCharToInt32(GateRef gate)

@@ -156,6 +156,7 @@ GateRef NumberSpeculativeRetype::VisitGate(GateRef gate)
         case OpCode::STORE_MODULE_VAR:
         case OpCode::STRING_FROM_SINGLE_CHAR_CODE:
         case OpCode::ORDINARY_HAS_INSTANCE:
+        case OpCode::ECMA_STRING_CHECK:
             return VisitOthers(gate);
         default:
             return Circuit::NullGate();
@@ -263,6 +264,23 @@ GateRef NumberSpeculativeRetype::VisitStringCompare(GateRef gate)
 {
     if (IsRetype()) {
         return SetOutputType(gate, GateType::BooleanType());
+    }
+
+    Environment env(gate, circuit_, &builder_);
+    GateRef left = acc_.GetValueIn(gate, 0);
+    GateRef right = acc_.GetValueIn(gate, 1);
+    TypeInfo leftInfo = GetOutputTypeInfo(left);
+    TypeInfo rightInfo = GetOutputTypeInfo(right);
+    if (leftInfo == TypeInfo::CHAR && rightInfo == TypeInfo::CHAR) {
+        return Circuit::NullGate();
+    }
+    if (leftInfo == TypeInfo::CHAR) {
+        GateRef rep = builder_.ConvertCharToEcmaString(left);
+        acc_.ReplaceValueIn(gate, rep, 0);
+    }
+    if (rightInfo == TypeInfo::CHAR) {
+        GateRef rep =  builder_.ConvertCharToEcmaString(right);
+        acc_.ReplaceValueIn(gate, rep, 1);
     }
     return Circuit::NullGate();
 }

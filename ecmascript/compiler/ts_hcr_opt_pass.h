@@ -57,6 +57,7 @@ private:
     GateRef VisitStringBinOp(GateRef gate);
     GateRef VisitStringEqual(GateRef gate);
     bool IsSingleCharString(GateRef gate);
+    bool IsNotLoadStrOrStringLoadElement(GateRef gate);
     GateRef ConvertStringEqualToConst(GateRef left, GateRef right);
     GateRef ConvertConstSingleCharToInt32(GateRef gate);
     GateRef ConvertToSingleCharComparison(GateRef left, GateRef right);
