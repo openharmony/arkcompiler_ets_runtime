@@ -239,9 +239,9 @@ MappingInfo SourceMap::Find(int32_t row, int32_t col, const SourceMapData& targe
     }
 
     return MappingInfo {
-        .row = targetMap.afterPos_[res].beforeRow + 1,
-        .col = targetMap.afterPos_[res].beforeColumn + 1,
-        .sources = sources,
+        targetMap.afterPos_[res].beforeRow + 1,
+        targetMap.afterPos_[res].beforeColumn + 1,
+        sources,
     };
 }
 
