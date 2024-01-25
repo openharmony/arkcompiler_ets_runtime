@@ -842,4 +842,15 @@ void RandomGenerator::InitRandom()
     if (randomState == 0)
         randomState = 1;
 }
+
+int32_t RandomGenerator::Next(int bits)
+{
+    uint64_t val = XorShift64(&randomState);
+    return static_cast<int32_t>(val >> (INT64_BITS - bits));
+}
+
+int32_t RandomGenerator::GenerateIdentityHash()
+{
+    return RandomGenerator::Next(INT32_BITS) & INT32_MAX;
+}
 }  // namespace panda::ecmascript::base

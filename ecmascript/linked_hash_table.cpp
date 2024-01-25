@@ -243,9 +243,7 @@ int LinkedHash::Hash(JSTaggedValue key)
     if (key.IsECMAObject()) {
         int32_t hash = ECMAObject::Cast(key.GetTaggedObject())->GetHash();
         if (hash == 0) {
-            uint64_t keyValue = key.GetRawData();
-            hash = static_cast<int32_t>(
-                GetHash32(reinterpret_cast<uint8_t *>(&keyValue), sizeof(keyValue) / sizeof(uint8_t)));
+            hash = base::RandomGenerator::GenerateIdentityHash();
             ECMAObject::Cast(key.GetTaggedObject())->SetHash(hash);
         }
         return hash;

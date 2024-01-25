@@ -119,7 +119,7 @@ void ContainersStubBuilder::ContainersCommonFuncCall(GateRef glue, GateRef thisV
                 Branch(Int32NotEqual(tempLen, *length), &lenChange, &setValue);
                 Bind(&lenChange);
                 length = tempLen;
-                Jump(&setValue);
+                Branch(Int32GreaterThanOrEqual(*k, *length), &afterLoop, &setValue);
                 Bind(&setValue);
                 if (IsReplaceAllElements(type)) {
                     ContainerSet(glue, *thisObj, *k, retValue, type);
