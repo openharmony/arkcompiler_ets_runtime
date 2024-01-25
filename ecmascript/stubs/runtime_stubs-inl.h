@@ -231,6 +231,7 @@ JSTaggedValue RuntimeStubs::RuntimeCloseIterator(JSThread *thread, const JSHandl
         record = JSHandle<JSTaggedValue>(factory->NewCompletionRecord(CompletionRecordType::NORMAL, undefinedVal));
     }
     JSHandle<JSTaggedValue> result = JSIterator::IteratorClose(thread, iter, record);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     if (result->IsCompletionRecord()) {
         return CompletionRecord::Cast(result->GetTaggedObject())->GetValue();
     }
@@ -545,6 +546,7 @@ JSTaggedValue RuntimeStubs::RuntimeLdObjByValue(JSThread *thread, const JSHandle
     JSTaggedValue res;
     if (callGetter) {
         res = JSObject::CallGetter(thread, AccessorData::Cast(receiver.GetTaggedObject()), object);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     } else {
         JSHandle<JSTaggedValue> propKey = JSTaggedValue::ToPropertyKey(thread, prop);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);

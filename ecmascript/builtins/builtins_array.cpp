@@ -1722,6 +1722,7 @@ JSTaggedValue BuiltinsArray::Reduce(EcmaRuntimeCallInfo *argv)
 
     if (thisObjVal->IsStableJSArray(thread)) {
         JSStableArray::Reduce(thread, thisObjHandle, callbackFnHandle, accumulator, k, len);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     }
     return ReduceUnStableJSArray(thread, thisHandle, thisObjVal, k, len, accumulator, callbackFnHandle);
 }
@@ -3339,6 +3340,7 @@ JSTaggedValue BuiltinsArray::FindLastIndex(EcmaRuntimeCallInfo *argv)
     if (thisObjVal->IsStableJSArray(thread)) {
         callResult =
             JSStableArray::HandleFindLastIndexOfStable(thread, thisObjHandle, callbackFnHandle, thisArgHandle, k);
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         if (callResult.ToBoolean()) {
             return GetTaggedDouble(k);
         }
