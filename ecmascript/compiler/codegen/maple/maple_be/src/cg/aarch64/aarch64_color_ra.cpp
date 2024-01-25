@@ -229,7 +229,7 @@ std::vector<Insn *> LiveRange::Rematerialize(AArch64CGFunc *cgFunc, RegOperand &
 
                 Insn *insn =
                     &cgFunc->GetInsnBuilder()->BuildInsn(MOP_xaddrri12, regOp, *cgFunc->GetBaseReg(*symLoc), *offsetOp);
-                if (CGOptions::kVerboseCG) {
+                if (CGOptions::GetInstance().GenerateVerboseCG()) {
                     std::string comm = "local/formal var: ";
                     comm.append(symbol->GetName());
                     insn->SetComment(comm);

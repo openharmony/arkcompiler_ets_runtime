@@ -2509,12 +2509,13 @@ void CGFunc::VerifyAllInsn()
     {
         FOR_BB_INSNS(insn, bb)
         {
-            if (!VERIFY_INSN(insn)) {
-                LogInfo::MapleLogger() << "Illegal insn is:\n";
-                insn->Dump();
-                LogInfo::MapleLogger() << "Function name is:\n" << GetName() << "\n";
-                CHECK_FATAL_FALSE("The problem is illegal insn, info is above.");
+            if (VERIFY_INSN(insn) && insn->CheckMD()) {
+                continue;
             }
+            LogInfo::MapleLogger() << "Illegal insn is:\n";
+            insn->Dump();
+            LogInfo::MapleLogger() << "Function name is:\n" << GetName() << "\n";
+            CHECK_FATAL_FALSE("The problem is illegal insn, info is above.");
         }
     }
 }

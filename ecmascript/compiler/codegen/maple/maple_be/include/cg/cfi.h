@@ -92,9 +92,7 @@ public:
 
     void Dump() const override;
 
-#if DEBUG
-    void Check() const override;
-#endif
+    bool CheckMD() const override;
 
     bool IsCfiInsn() const override
     {

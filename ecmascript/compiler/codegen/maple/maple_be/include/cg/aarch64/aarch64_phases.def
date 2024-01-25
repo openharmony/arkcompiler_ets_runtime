@@ -70,4 +70,5 @@
  ADDTARGETPHASE("scheduling", CGOptions::DoSchedule());
  ADDTARGETPHASE("alignanalysis", GetMIRModule()->IsCModule() && CGOptions::DoAlignAnalysis());
  ADDTARGETPHASE("fixshortbranch", true);
+ ADDTARGETPHASE("cgirverify", CGOptions::DoCGIRVerify());
  ADDTARGETPHASE("cgemit", true);

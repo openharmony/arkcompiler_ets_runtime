@@ -49,19 +49,18 @@ void DbgInsn::Dump() const
     LogInfo::MapleLogger() << "\n";
 }
 
-#if DEBUG
-void DbgInsn::Check() const
+bool DbgInsn::CheckMD() const
 {
     DbgDescr &dbgDescr = dbgDescrTable[GetMachineOpcode()];
     /* dbg instruction's 3rd /4th/5th operand must be null */
     for (uint32 i = 0; i < dbgDescr.opndCount; ++i) {
         Operand &opnd = GetOperand(i);
         if (opnd.GetKind() != dbgDescr.opndTypes[i]) {
-            CHECK_FATAL(false, "incorrect operand in debug insn");
+            return false;
         }
     }
+    return true;
 }
-#endif
 
 uint32 DbgInsn::GetLoc() const
 {

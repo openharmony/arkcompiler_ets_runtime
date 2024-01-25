@@ -1001,7 +1001,7 @@ public:
     {
         return targetArch == "aarch64";
     };
-    
+
     static void EnableVregRename()
     {
         doVregRename = true;
@@ -1596,6 +1596,10 @@ public:
         return doOptimizedFrameLayout;
     }
 
+    static bool DoCGIRVerify()
+    {
+        return doCgirVerify;
+    }
 private:
     std::vector<std::string> phaseSequence;
     EmitMemoryManager emitMemoryManager;
@@ -1706,6 +1710,7 @@ private:
     static uint32 jumpAlignPow;
     static uint32 funcAlignPow;
     static bool doOptimizedFrameLayout;
+    static bool doCgirVerify;
 };
 } /* namespace maplebe */
 

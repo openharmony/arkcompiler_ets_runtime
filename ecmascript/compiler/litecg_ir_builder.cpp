@@ -646,7 +646,7 @@ void LiteCGIRBuilder::VisitAdd(GateRef gate, GateRef e1, GateRef e2)
             result = lmirBuilder_->Add(returnType, tmp1Expr, tmp2Expr);
         }
     } else if (machineType == MachineType::F64) {
-        result = lmirBuilder_->Add(returnType, e1Value, e2Value);
+        result = lmirBuilder_->Add(lmirBuilder_->f64Type, e1Value, e2Value);
     } else {
         LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();

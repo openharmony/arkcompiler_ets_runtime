@@ -241,10 +241,6 @@ uint32 X64Emitter::TransferFuncName(Operand *opnd)
 
 void X64Emitter::EmitInsn(Insn &insn, uint32 funcUniqueId)
 {
-#if DEBUG
-    insn.Check();
-#endif
-
     MOperator mop = insn.GetMachineOpcode();
     const InsnDesc &curMd = X64CG::kMd[mop];
     uint32 opndNum = curMd.GetOpndMDLength(); /* Get operands Number */

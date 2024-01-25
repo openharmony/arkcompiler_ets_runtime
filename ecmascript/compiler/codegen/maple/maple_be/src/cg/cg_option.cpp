@@ -122,6 +122,7 @@ bool CGOptions::doCondBrAlign = false;
 bool CGOptions::cgBigEndian = false;
 bool CGOptions::arm64ilp32 = false;
 bool CGOptions::noCommon = false;
+bool CGOptions::doCgirVerify = false;
 
 CGOptions &CGOptions::GetInstance()
 {
