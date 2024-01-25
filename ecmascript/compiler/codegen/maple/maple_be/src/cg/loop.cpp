@@ -564,7 +564,7 @@ void LoopFinder::DetectInnerLoop()
             for (LoopHierarchy *loopHierarchy2 = loopHierarchy1->GetNext(); loopHierarchy2 != nullptr;
                  loopHierarchy2 = loopHierarchy2->GetNext()) {
                 if (loopHierarchy1->GetHeader() != loopHierarchy2->GetHeader()) {
-                    auto &loopHierarchy2Members = loopHierarchy2->GetLoopMembers();
+                    const auto &loopHierarchy2Members = loopHierarchy2->GetLoopMembers();
                     if (find(loopHierarchy2Members.begin(), loopHierarchy2Members.end(), loopHierarchy1->GetHeader()) !=
                         loopHierarchy2Members.end()) {
                         bool allin = true;
@@ -605,7 +605,7 @@ static void CopyLoopInfo(const LoopHierarchy *from, CGFuncLoops *to, CGFuncLoops
     }
     for (auto *bb : from->GetLoopMembers()) {
         to->AddLoopMembers(*bb);
-        bb->SetLoop(*to);
+        bb->SetLoop(to);
     }
     for (auto *bb : from->GetBackedge()) {
         to->AddBackedge(*bb);
@@ -648,6 +648,7 @@ void LoopFinder::FormLoopHierarchy()
     FOR_ALL_BB(bb, cgFunc)
     {
         bb->SetLevel(0);
+        bb->SetLoop(nullptr);
     }
     bool changed;
     do {

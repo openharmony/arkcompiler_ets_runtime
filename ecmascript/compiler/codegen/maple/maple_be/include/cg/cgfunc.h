@@ -83,6 +83,74 @@ private:
     MapleSet<MemOperand *, MemOpndCmp> reuseSpillLocMem;
 };
 
+// Memory read/write node helper - such as: iread, dread, iassign, dassign
+class MemRWNodeHelper {
+public:
+    MemRWNodeHelper(const BaseNode &node, MIRFunction &mirFunc, const BECommon &beCommon)
+    {
+        GetMemRWNodeBaseInfo(node, mirFunc);
+        GetTrueMirInfo(beCommon);
+    }
+    ~MemRWNodeHelper() = default;
+
+    FieldID GetFieldID() const
+    {
+        return fieldId;
+    }
+
+    const MIRType *GetMIRType() const
+    {
+        return mirType;
+    }
+
+    MIRType *GetMIRType()
+    {
+        return mirType;
+    }
+
+    int32 GetByteOffset() const
+    {
+        return byteOffset;
+    }
+
+    uint32 GetMemSize() const
+    {
+        return memSize;
+    }
+
+    PrimType GetPrimType() const
+    {
+        return primType;
+    }
+
+    bool IsRefField() const
+    {
+        return isRefField;
+    }
+
+    const MIRSymbol *GetSymbol() const
+    {
+        return symbol;
+    }
+
+    MIRSymbol *GetSymbol()
+    {
+        return symbol;
+    }
+
+private:
+    FieldID fieldId = FieldID(0);  // fieldId from node
+    MIRType *mirType = nullptr;    // true mirType
+    MIRSymbol *symbol = nullptr;   // date sym, for dread/dassign
+    int32 byteOffset = 0;
+    uint32 memSize = 0;
+    PrimType primType = PTY_unknown;
+    bool isRefField = false;  // for java
+
+    void GetMemRWNodeBaseInfo(const BaseNode &node, MIRFunction &mirFunc);
+    void GetTrueMirInfo(const BECommon &beCommon);
+};
+
 #if TARGARM32
 class LiveRange;
 #endif /* TARGARM32 */
@@ -323,7 +391,6 @@ public:
     virtual Operand *SelectLazyLoadStatic(MIRSymbol &st, int64 offset, PrimType primType) = 0;
     virtual Operand *SelectLoadArrayClassCache(MIRSymbol &st, int64 offset, PrimType primType) = 0;
     virtual void GenerateYieldpoint(BB &bb) = 0;
-    virtual Operand &ProcessReturnReg(PrimType primType, int32 sReg) = 0;
 
     virtual Operand &GetOrCreateRflag() = 0;
     virtual const Operand *GetRflag() const = 0;
@@ -336,6 +403,7 @@ public:
     virtual RegOperand &GetOrCreateVirtualRegisterOperand(RegOperand &regOpnd) = 0;
     virtual RegOperand &GetOrCreateFramePointerRegOperand() = 0;
     virtual RegOperand &GetOrCreateStackBaseRegOperand() = 0;
+    virtual RegOperand *GetBaseReg(const SymbolAlloc &symAlloc) = 0;
     virtual int32 GetBaseOffset(const SymbolAlloc &symbolAlloc) = 0;
     virtual RegOperand &GetZeroOpnd(uint32 size) = 0;
     virtual Operand &CreateCfiRegOperand(uint32 reg, uint32 size) = 0;
@@ -512,12 +580,12 @@ public:
             size = k4ByteSize;
         }
 #if TARGAARCH64
-    if (Triple::GetTriple().GetArch() == Triple::ArchType::aarch64) {
-        /* cannot handle 128 size register */
-        if (regType == kRegTyInt && size > k8ByteSize) {
-            size = k8ByteSize;
+        if (Triple::GetTriple().GetArch() == Triple::ArchType::aarch64) {
+            /* cannot handle 128 size register */
+            if (regType == kRegTyInt && size > k8ByteSize) {
+                size = k8ByteSize;
+            }
         }
-    }
 #endif
         DEBUG_ASSERT(size == k4ByteSize || size == k8ByteSize || size == k16ByteSize, "check size");
 #endif
@@ -1203,6 +1271,16 @@ public:
         lmbcTotalArgs = 0;
     }
 
+    void SetSpSaveReg(regno_t reg)
+    {
+        spSaveReg = reg;
+    }
+
+    regno_t GetSpSaveReg() const
+    {
+        return spSaveReg;
+    }
+
     MapleVector<BB *> &GetAllBBs()
     {
         return bbVec;
@@ -1626,9 +1704,8 @@ protected:
         RegType regType = vRegNode.GetType();
         DEBUG_ASSERT(regType == kRegTyInt || regType == kRegTyFloat, "");
         uint32 size = vRegNode.GetSize(); /* in bytes */
-        DEBUG_ASSERT(size == sizeof(int32) || size == sizeof(int64), "");
-        return (regType == kRegTyInt ? (size == sizeof(int32) ? PTY_i32 : PTY_i64)
-                                     : (size == sizeof(float) ? PTY_f32 : PTY_f64));
+        return (regType == kRegTyInt ? (size <= sizeof(int32) ? PTY_i32 : PTY_i64)
+                                     : (size <= sizeof(float) ? PTY_f32 : PTY_f64));
     }
 
     int64 GetPseudoRegisterSpillLocation(PregIdx idx)
@@ -1653,10 +1730,10 @@ protected:
     }
 
     /* See if the symbol is a structure parameter that requires a copy. */
-    bool IsParamStructCopy(const MIRSymbol &symbol)
+    bool IsParamStructCopy(const MIRSymbol &symbol) const
     {
-        if (symbol.GetStorageClass() == kScFormal &&
-            GetBecommon().GetTypeSize(symbol.GetTyIdx().GetIdx()) > k16ByteSize) {
+        auto *mirType = GlobalTables::GetTypeTable().GetTypeFromTyIdx(symbol.GetTyIdx());
+        if (symbol.GetStorageClass() == kScFormal && IsParamStructCopyToMemory(*mirType)) {
             return true;
         }
         return false;
@@ -1718,7 +1795,7 @@ private:
     uint32 bbCnt = 0;
     uint32 labelIdx = 0;               /* local label index number */
     LabelNode *startLabel = nullptr;   /* start label of the function */
-    LabelNode *returnLabel = nullptr;   /* return label of the function */
+    LabelNode *returnLabel = nullptr;  /* return label of the function */
     LabelNode *cleanupLabel = nullptr; /* label to indicate the entry of cleanup code. */
     LabelNode *endLabel = nullptr;     /* end label of the function */
 
@@ -1755,6 +1832,7 @@ private:
     CGCFG *theCFG = nullptr;
     FuncEmitInfo *funcEmitInfo = nullptr;
     uint32 nextSpillLocation = 0;
+    regno_t spSaveReg = 0;
 
     const MapleString shortFuncName;
     bool hasAsm = false;

@@ -159,7 +159,7 @@ void AArch64MemLayout::LayoutVarargParams()
                 }
             }
             MIRType *ty = func->GetNthParamType(i);
-            parmlocator.LocateNextParm(*ty, ploc, i == 0, func);
+            parmlocator.LocateNextParm(*ty, ploc, i == 0, func->GetMIRFuncType());
             if (ploc.reg0 != kRinvalid) {
                 if (ploc.reg0 >= R0 && ploc.reg0 <= R7) {
                     nIntRegs++;
@@ -241,7 +241,7 @@ void AArch64MemLayout::LayoutFormalParams()
         }
         MIRType *ty = GlobalTables::GetTypeTable().GetTypeFromTyIdx(mirFunction->GetFormalDefVec()[i].formalTyIdx);
         uint32 ptyIdx = ty->GetTypeIndex();
-        parmLocator.LocateNextParm(*ty, ploc, i == 0, mirFunction);
+        parmLocator.LocateNextParm(*ty, ploc, i == 0, mirFunction->GetMIRFuncType());
         if (ploc.reg0 != kRinvalid) { /* register */
             symLoc->SetRegisters(static_cast<AArch64reg>(ploc.reg0), static_cast<AArch64reg>(ploc.reg1),
                                  static_cast<AArch64reg>(ploc.reg2), static_cast<AArch64reg>(ploc.reg3));

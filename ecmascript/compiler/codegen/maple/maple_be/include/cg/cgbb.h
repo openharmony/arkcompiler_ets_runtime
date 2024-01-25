@@ -681,9 +681,9 @@ public:
     {
         return loop;
     }
-    void SetLoop(CGFuncLoops &arg)
+    void SetLoop(CGFuncLoops *arg)
     {
-        loop = &arg;
+        loop = arg;
     }
     bool GetLiveInChange() const
     {

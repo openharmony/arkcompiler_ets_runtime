@@ -28,6 +28,7 @@ struct X64ArgInfo {
     X64reg reg;
     MIRType *mirTy;
     uint32 symSize;
+    uint32 stkSize;
     RegType regType;
     MIRSymbol *sym;
     const X64SymbolAlloc *symLoc;
@@ -48,7 +49,7 @@ private:
                              std::map<uint32, X64reg> &pairReg, std::vector<uint32> &numFpRegs,
                              std::vector<uint32> &fpSize) const;
     X64ArgInfo GetArgInfo(std::map<uint32, X64reg> &argsList, uint32 argIndex, std::vector<uint32> &numFpRegs,
-                       std::vector<uint32> &fpSize) const;
+                          std::vector<uint32> &fpSize) const;
     void GenerateMovInsn(X64ArgInfo &argInfo, X64reg reg2);
     void MoveRegisterArgs();
     void MoveVRegisterArgs();

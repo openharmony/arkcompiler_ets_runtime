@@ -232,13 +232,12 @@ private:
 
     X64reg AllocateSIMDFPReturnRegister()
     {
-        return (nextFloatRetRegNO < kNumFloatReturnRegs) ?
-                kFloatReturnRegs[nextFloatRetRegNO++] : X64reg::kRinvalid;
+        return (nextFloatRetRegNO < kNumFloatReturnRegs) ? kFloatReturnRegs[nextFloatRetRegNO++] : X64reg::kRinvalid;
     }
 
     BECommon &beCommon;
     CallConvKind convKind = kCCall;
-    uint64 paramNum = 0;              /* number of all types of parameters processed so far */
+    uint64 paramNum = 0;               /* number of all types of parameters processed so far */
     uint32 nextGeneralParmRegNO = 0;   /* number of integer parameters processed so far */
     uint32 nextGeneralReturnRegNO = 0; /* number of integer return processed so far */
     uint32 nextStackArgAdress = 0;

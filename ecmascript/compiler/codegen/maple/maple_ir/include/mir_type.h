@@ -28,6 +28,7 @@
 namespace maple {
 constexpr uint32 kTypeHashLength = 12289;   // hash length for mirtype, ref: planetmath.org/goodhashtableprimes
 const std::string kRenameKeyWord = "_MNO";  // A static symbol name will be renamed as oriname_MNOxxx.
+const uint8 kAlignBase = 0;                 // alignment base
 
 class FieldAttrs;  // circular dependency exists, no other choice
 using TyIdxFieldAttrPair = std::pair<TyIdx, FieldAttrs>;
@@ -116,6 +117,11 @@ inline bool IsPossible32BitAddress(PrimType tp)
 inline bool MustBeAddress(PrimType tp)
 {
     return (tp == PTY_ptr || tp == PTY_ref || tp == PTY_a64 || tp == PTY_a32);
+}
+
+inline bool IsInt128Ty(PrimType type)
+{
+    return type == PTY_u128 || type == PTY_i128;
 }
 
 inline bool IsPrimitivePureScalar(PrimitiveType primitiveType)
@@ -331,6 +337,16 @@ public:
         attrFlag = flag;
     }
 
+    void SetTypeAlignValue(uint8 align)
+    {
+        attrTypeAlign = align;
+    }
+
+    uint8 GetTypeAlignValue() const
+    {
+        return attrTypeAlign;
+    }
+
     uint64 GetAttrFlag() const
     {
         return attrFlag;
@@ -372,6 +388,30 @@ public:
             --exp;
             res <<= 1;
         } while (exp != 0);
+        return res;
+    }
+
+    void SetTypeAlign(uint32 x)
+    {
+        DEBUG_ASSERT((~(x - 1) & x) == x, "SetTypeAlign called with non-power-of-2");
+        attrTypeAlign = 0;
+        while (x != kAlignBase) {
+            x >>= 1;
+            ++attrTypeAlign;
+        }
+    }
+
+    uint32 GetTypeAlign() const
+    {
+        if (attrTypeAlign == 1) {  // align(1)
+            return 1;
+        }
+        uint32 res = 1;
+        uint32 exp = attrTypeAlign;
+        while (exp > 1) {  // calculate align(x)
+            --exp;
+            res *= 2;  // square of two
+        }
         return res;
     }
 
@@ -422,14 +462,36 @@ public:
 
     bool IsPacked() const
     {
+        return GetAttr(ATTR_packed);
+    }
+
+    bool HasPack() const
+    {
         return GetAttr(ATTR_pack);
+    }
+
+    bool IsTypedef() const
+    {
+        return GetAttr(ATTR_typedef);
+    }
+
+    void SetOriginType(MIRType *basicType)
+    {
+        originType = basicType;
+    }
+
+    MIRType *GetOriginType() const
+    {
+        return originType;
     }
 
 private:
     uint64 attrFlag = 0;
     uint8 attrAlign = 0;        // alignment in bytes is 2 to the power of attrAlign
+    uint8 attrTypeAlign = 0;    // alignment in bytes is 2 to the power of attrTypeAlign
     uint32 attrPack = -1;       // -1 means inactive
     AttrBoundary attrBoundary;  // boundary attr for EnhanceC
+    MIRType *originType = nullptr;
 };
 
 enum FieldAttrKind {
@@ -532,6 +594,11 @@ public:
         return GetAttr(FLDATTR_pack);
     }
 
+    bool HasAligned() const
+    {
+        return GetAttr(FLDATTR_aligned) || GetAlign() != 1;
+    }
+
 private:
     uint8 attrAlign = 0;  // alignment in bytes is 2 to the power of attrAlign
     uint32 attrFlag = 0;
@@ -553,9 +620,13 @@ public:
     StmtAttrs &operator=(const StmtAttrs &p) = default;
     ~StmtAttrs() = default;
 
-    void SetAttr(StmtAttrKind x)
+    void SetAttr(StmtAttrKind x, bool flag = true)
     {
-        attrFlag |= (1u << static_cast<unsigned int>(x));
+        if (flag) {
+            attrFlag |= (1u << static_cast<unsigned int>(x));
+        } else {
+            attrFlag &= ~(1u << static_cast<unsigned int>(x));
+        }
     }
 
     bool GetAttr(StmtAttrKind x) const
@@ -811,6 +882,16 @@ struct OffsetType {
 class MIRStructType;  // circular dependency exists, no other choice
 class MIRFuncType;
 
+// if it is a bitfield, byteoffset gives the offset of the container for
+// extracting the bitfield and bitoffset is with respect to the current byte
+struct FieldInfo {
+    FieldInfo(uint32 byte, uint32 bit) : byteOffset(byte), bitOffset(bit) {}
+    FieldInfo(uint32 byte, uint32 bit, FieldPair &pair) : byteOffset(byte), bitOffset(bit), fieldPair(&pair) {}
+    uint32 byteOffset;
+    uint32 bitOffset;
+    FieldPair *fieldPair = nullptr;
+};
+
 class MIRType {
 public:
     MIRType(MIRTypeKind kind, PrimType pType) : typeKind(kind), primType(pType) {}
@@ -887,6 +968,11 @@ public:
     }
 
     virtual uint32 GetAlign() const
+    {
+        return GetPrimTypeSize(primType);
+    }
+
+    virtual uint32 GetUnadjustedAlign() const
     {
         return GetPrimTypeSize(primType);
     }
@@ -1216,7 +1302,7 @@ public:
     bool HasFields() const override;
     uint32 NumberOfFieldIDs() const override;
     MIRStructType *EmbeddedStructType() override;
-    size_t ElemNumber();
+    size_t ElemNumber() const;
 
 private:
     TyIdx eTyIdx {0};
@@ -1626,7 +1712,10 @@ public:
     bool IsLocal() const;
 
     size_t GetSize() const override;
+    uint32 GetTypedefOriginalAlign() const;
     uint32 GetAlign() const override;
+    uint32 GetAlignAux(bool toGetOriginal) const;
+    uint32 GetUnadjustedAlign() const override;
 
     size_t GetHashIndex() const override
     {
@@ -1758,7 +1847,26 @@ public:
 
     int64 GetBitOffsetFromBaseAddr(FieldID fieldID) override;
 
+    FieldInfo GetFieldOffsetFromBaseAddr(FieldID fieldID) const;
+
     bool HasPadding() const;
+
+    bool HasZeroWidthBitField() const;
+
+    void AddFieldLayout(const FieldInfo &info)
+    {
+        fieldLayout.emplace_back(info);
+    }
+
+    std::vector<FieldInfo> &GetFieldLayout()
+    {
+        if (!layoutComputed) {
+            ComputeLayout();
+        }
+        return fieldLayout;
+    }
+
+    uint32 GetFieldTypeAlignByFieldPair(const FieldPair &fieldPair);
 
 protected:
     FieldVector fields {};
@@ -1781,7 +1889,10 @@ protected:
     std::vector<GenericType *> inheritanceGeneric;
     TypeAttrs typeAttrs;
     mutable uint32 fieldsNum = kInvalidFieldNum;
+    mutable std::vector<FieldInfo> fieldLayout;
     mutable size_t size = kInvalidSize;
+
+    bool layoutComputed = false;
 
 private:
     FieldPair TraverseToField(GStrIdx fieldStrIdx) const;
@@ -1789,6 +1900,8 @@ private:
     bool HasTypeParamInFields(const FieldVector &fieldsOfStruct) const;
     int64 GetBitOffsetFromUnionBaseAddr(FieldID fieldID);
     int64 GetBitOffsetFromStructBaseAddr(FieldID fieldID);
+    void ComputeUnionLayout();
+    void ComputeLayout();
 };
 
 // java array type, must not be nested inside another aggregate
@@ -2532,6 +2645,10 @@ private:
 };
 
 MIRType *GetElemType(const MIRType &arrayType);
+// aarch64 specific
+bool IsHomogeneousAggregates(const MIRType &ty, PrimType &primType, size_t &elemNum, bool firstDepth = true);
+bool IsParamStructCopyToMemory(const MIRType &ty);
+bool IsReturnInMemory(const MIRType &ty);
 #endif  // MIR_FEATURE_FULL
 }  // namespace maple
 
