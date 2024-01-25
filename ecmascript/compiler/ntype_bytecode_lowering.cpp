@@ -58,6 +58,13 @@ void NTypeBytecodeLowering::Lower(GateRef gate)
         case EcmaOpcode::CREATEARRAYWITHBUFFER_IMM16_ID16:
             LowerNTypedCreateArrayWithBuffer(gate);
             break;
+        case EcmaOpcode::COPYRESTARGS_IMM8:
+        case EcmaOpcode::WIDE_COPYRESTARGS_PREF_IMM16:
+            LowerNTypedCopyRestArgs(gate);
+            break;
+        case EcmaOpcode::GETUNMAPPEDARGS:
+            LowerNTypedGetUnmappedArgs(gate);
+            break;
         case EcmaOpcode::STOWNBYINDEX_IMM8_V8_IMM16:
         case EcmaOpcode::STOWNBYINDEX_IMM16_V8_IMM16:
         case EcmaOpcode::WIDE_STOWNBYINDEX_PREF_V8_IMM32:
@@ -182,6 +189,28 @@ void NTypeBytecodeLowering::LowerNTypedCreateArrayWithBuffer(GateRef gate)
     GateRef array =
         builder_.CreateArrayWithBuffer(kind, ArrayMetaDataAccessor::Mode::CREATE, cpIdGr, index, elementIndexGate);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), array);
+}
+
+void NTypeBytecodeLowering::LowerNTypedCopyRestArgs(GateRef gate)
+{
+    ASSERT(acc_.GetNumValueIn(gate) == 1);
+    GateRef restIdx = acc_.GetValueIn(gate, 0);
+    AddProfiling(gate);
+    ElementsKind kind = acc_.TryGetElementsKind(gate);
+    GateRef arguments =
+        builder_.CreateArguments(kind, CreateArgumentsAccessor::Mode::REST_ARGUMENTS, restIdx);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), arguments);
+}
+
+void NTypeBytecodeLowering::LowerNTypedGetUnmappedArgs(GateRef gate)
+{
+    ASSERT(acc_.GetNumValueIn(gate) == 0);
+    GateRef restIdx = builder_.Int32(0);
+    AddProfiling(gate);
+    ElementsKind kind = acc_.TryGetElementsKind(gate);
+    GateRef arguments =
+        builder_.CreateArguments(kind, CreateArgumentsAccessor::Mode::UNMAPPED_ARGUMENTS, restIdx);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), arguments);
 }
 
 void NTypeBytecodeLowering::LowerNTypedStownByIndex(GateRef gate)

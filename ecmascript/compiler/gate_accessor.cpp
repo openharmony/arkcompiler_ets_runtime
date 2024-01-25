@@ -245,9 +245,17 @@ ArrayMetaDataAccessor GateAccessor::GetArrayMetaDataAccessor(GateRef gate) const
     ASSERT(GetOpCode(gate) == OpCode::STABLE_ARRAY_CHECK ||
            GetOpCode(gate) == OpCode::HCLASS_STABLE_ARRAY_CHECK ||
            GetOpCode(gate) == OpCode::CREATE_ARRAY ||
-           GetOpCode(gate) == OpCode::CREATE_ARRAY_WITH_BUFFER);
+           GetOpCode(gate) == OpCode::CREATE_ARRAY_WITH_BUFFER ||
+           GetOpCode(gate) == OpCode::CREATE_ARGUMENTS);
     Gate *gatePtr = circuit_->LoadGatePtr(gate);
     return ArrayMetaDataAccessor(gatePtr->GetOneParameterMetaData()->GetValue());
+}
+
+CreateArgumentsAccessor GateAccessor::GetCreateArgumentsAccessor(GateRef gate) const
+{
+    ASSERT(GetOpCode(gate) == OpCode::CREATE_ARGUMENTS);
+    Gate *gatePtr = circuit_->LoadGatePtr(gate);
+    return CreateArgumentsAccessor(gatePtr->GetOneParameterMetaData()->GetValue());
 }
 
 ObjectTypeAccessor GateAccessor::GetObjectTypeAccessor(GateRef gate) const

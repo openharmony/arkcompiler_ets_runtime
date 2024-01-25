@@ -47,6 +47,7 @@ private:
     void Lower(GateRef gate);
     void LowerCreateArray(GateRef gate, GateRef glue);
     void LowerCreateArrayWithBuffer(GateRef gate, GateRef glue);
+    void LowerCreateArguments(GateRef gate, GateRef glue);
     void LowerCreateEmptyArray(GateRef gate);
     void LowerCreateArrayWithOwn(GateRef gate, GateRef glue);
     void LowerStoreModuleVar(GateRef gate, GateRef glue);

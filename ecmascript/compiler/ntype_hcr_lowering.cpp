@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include "ecmascript/js_arguments.h"
 #include "ecmascript/compiler/ntype_hcr_lowering.h"
 #include "ecmascript/dfx/vmstat/opt_code_profiler.h"
 #include "ecmascript/compiler/new_object_stub_builder.h"
@@ -29,6 +30,9 @@ GateRef NTypeHCRLowering::VisitGate(GateRef gate)
             break;
         case OpCode::CREATE_ARRAY_WITH_BUFFER:
             LowerCreateArrayWithBuffer(gate, glue);
+            break;
+        case OpCode::CREATE_ARGUMENTS:
+            LowerCreateArguments(gate, glue);
             break;
         case OpCode::STORE_MODULE_VAR:
             LowerStoreModuleVar(gate, glue);
@@ -109,6 +113,36 @@ void NTypeHCRLowering::LowerCreateArrayWithBuffer(GateRef gate, GateRef glue)
 
     auto array = NewJSArrayLiteral(gate, elements, length);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), array);
+}
+
+void NTypeHCRLowering::LowerCreateArguments(GateRef gate, GateRef glue)
+{
+    CreateArgumentsAccessor accessor = acc_.GetCreateArgumentsAccessor(gate);
+    CreateArgumentsAccessor::Mode mode = accessor.GetMode();
+    Environment env(gate, circuit_, &builder_);
+    ArgumentAccessor argAcc(circuit_);
+    GateRef frameState = GetFrameState(gate);
+    GateRef actualArgc = argAcc.GetFrameArgsIn(frameState, FrameArgIdx::ACTUAL_ARGC);
+    GateRef startIdx = acc_.GetValueIn(gate, 0);
+
+    switch (mode) {
+        case CreateArgumentsAccessor::Mode::REST_ARGUMENTS: {
+            GateRef newGate = builder_.CallStub(glue, gate, CommonStubCSigns::CopyRestArgs,
+                { glue, startIdx, builder_.TruncInt64ToInt32(actualArgc) });
+            acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), newGate);
+            break;
+        }
+        case CreateArgumentsAccessor::Mode::UNMAPPED_ARGUMENTS: {
+            GateRef newGate = builder_.CallStub(glue, gate, CommonStubCSigns::GetUnmapedArgs,
+                { glue, builder_.TruncInt64ToInt32(actualArgc) });
+            acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), newGate);
+            break;
+        }
+        default: {
+            LOG_ECMA(FATAL) << "this branch is unreachable";
+            UNREACHABLE();
+        }
+    }
 }
 
 GateRef NTypeHCRLowering::LoadFromConstPool(GateRef jsFunc, size_t index, size_t valVecType)

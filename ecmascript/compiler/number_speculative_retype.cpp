@@ -157,6 +157,7 @@ GateRef NumberSpeculativeRetype::VisitGate(GateRef gate)
         case OpCode::STRING_FROM_SINGLE_CHAR_CODE:
         case OpCode::ORDINARY_HAS_INSTANCE:
         case OpCode::ECMA_STRING_CHECK:
+        case OpCode::CREATE_ARGUMENTS:
             return VisitOthers(gate);
         default:
             return Circuit::NullGate();

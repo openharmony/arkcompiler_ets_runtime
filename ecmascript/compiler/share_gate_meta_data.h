@@ -610,6 +610,35 @@ private:
     uint64_t bitField_;
 };
 
+class CreateArgumentsAccessor {
+public:
+    enum Mode : uint8_t {
+        REST_ARGUMENTS,
+        UNMAPPED_ARGUMENTS,
+        INVALID,
+    };
+
+    static constexpr int BITS_SIZE = 8;
+    explicit CreateArgumentsAccessor(uint64_t value) : bitField_(value) {}
+    explicit CreateArgumentsAccessor(ElementsKind kind, Mode mode)
+    {
+        bitField_ = ElementsKindBits::Encode(kind) | ModeBits::Encode(mode);
+    }
+    Mode GetMode() const
+    {
+        return ModeBits::Get(bitField_);
+    }
+    uint64_t ToValue() const
+    {
+        return bitField_;
+    }
+private:
+    using ElementsKindBits = panda::BitField<ElementsKind, 0, BITS_SIZE>;
+    using ModeBits = ElementsKindBits::NextField<Mode, BITS_SIZE>;
+
+    uint64_t bitField_;
+};
+
 class ObjectTypeAccessor {
 public:
     static constexpr int TYPE_BITS_SIZE = 32;
