@@ -339,7 +339,7 @@ JSTaggedValue ContainersHashMap::Replace(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> key = GetCallArg(argv, 0);
     JSHandle<JSTaggedValue> newValue = GetCallArg(argv, 1);
     JSHandle<JSAPIHashMap> jsHashMap = JSHandle<JSAPIHashMap>::Cast(self);
-    return jsHashMap->Replace(thread, key.GetTaggedValue(), newValue.GetTaggedValue());
+    return JSTaggedValue(jsHashMap->Replace(thread, key.GetTaggedValue(), newValue.GetTaggedValue()));
 }
 
 JSTaggedValue ContainersHashMap::Clear(EcmaRuntimeCallInfo *argv)
