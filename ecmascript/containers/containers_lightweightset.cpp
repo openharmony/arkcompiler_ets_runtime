@@ -417,7 +417,9 @@ JSTaggedValue ContainersLightWeightSet::Remove(EcmaRuntimeCallInfo *argv)
         }
     }
     JSHandle<JSTaggedValue> key(GetCallArg(argv, 0));
-    JSAPILightWeightSet *set = JSAPILightWeightSet::Cast(self->GetTaggedObject());
+    JSHandle<JSAPILightWeightSet> lightweightset(self);
+    JSAPILightWeightSet::CheckAndCopyValues(thread, lightweightset);
+    JSAPILightWeightSet *set = JSAPILightWeightSet::Cast(lightweightset.GetTaggedValue().GetTaggedObject());
     return set->Remove(thread, key);
 }
 
@@ -447,7 +449,9 @@ JSTaggedValue ContainersLightWeightSet::RemoveAt(EcmaRuntimeCallInfo *argv)
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
     int32_t index = value->GetInt();
-    JSAPILightWeightSet *set = JSAPILightWeightSet::Cast(self->GetTaggedObject());
+    JSHandle<JSAPILightWeightSet> lightweightset(self);
+    JSAPILightWeightSet::CheckAndCopyValues(thread, lightweightset);
+    JSAPILightWeightSet *set = JSAPILightWeightSet::Cast(lightweightset.GetTaggedValue().GetTaggedObject());
     return JSTaggedValue(set->RemoveAt(thread, index));
 }
 
@@ -517,8 +521,16 @@ JSTaggedValue ContainersLightWeightSet::ToArray(EcmaRuntimeCallInfo *argv)
     array->SetArrayLength(thread, length);
 
     JSHandle<TaggedArray> srcArray(thread, lightweightset->GetValues());
-    JSHandle<TaggedArray> dstElements = factory->NewAndCopyTaggedArray(srcArray, length, length);
-    array->SetElements(thread, dstElements);
+
+    if (srcArray.GetTaggedValue().IsCOWArray()) {
+        array->SetElements(thread, srcArray.GetTaggedValue());
+        return array.GetTaggedValue();
+    }
+
+    auto newElements = factory->CopyArray(srcArray, srcArray->GetLength(), srcArray->GetLength(),
+                                          JSTaggedValue::Hole(), MemSpaceType::NON_MOVABLE);
+    lightweightset->SetValues(thread, newElements.GetTaggedValue());
+    array->SetElements(thread, newElements);
     return array.GetTaggedValue();
 }
 
