@@ -93,20 +93,20 @@ bool JSAPIHashMap::HasValueRBTreeNode(JSTaggedValue node, JSTaggedValue value)
     return false;
 }
 
-JSTaggedValue JSAPIHashMap::Replace(JSThread *thread, JSTaggedValue key, JSTaggedValue newValue)
+bool JSAPIHashMap::Replace(JSThread *thread, JSTaggedValue key, JSTaggedValue newValue)
 {
     TaggedHashArray *hashArray = TaggedHashArray::Cast(GetTable().GetTaggedObject());
     int hash = TaggedNode::Hash(thread, key);
     JSTaggedValue nodeVa = hashArray->GetNode(thread, hash, key);
     if (nodeVa.IsHole()) {
-        return JSTaggedValue::False();
+        return false;
     }
     if (nodeVa.IsLinkedNode()) {
         LinkedNode::Cast(nodeVa.GetTaggedObject())->SetValue(thread, newValue);
     } else {
         RBTreeNode::Cast(nodeVa.GetTaggedObject())->SetValue(thread, newValue);
     }
-    return JSTaggedValue::True();
+    return true;
 }
 
 void JSAPIHashMap::Set(JSThread *thread, JSHandle<JSAPIHashMap> hashMap,
@@ -168,12 +168,10 @@ void JSAPIHashMap::SetAll(JSThread *thread, JSHandle<JSAPIHashMap> dst, JSHandle
 void JSAPIHashMap::SetAllLinkedNode(JSThread *thread, JSHandle<JSAPIHashMap> hashMap, JSMutableHandle<LinkedNode> node)
 {
     ASSERT(node.GetTaggedValue().IsLinkedNode());
-    JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Hole());
-    JSMutableHandle<JSTaggedValue> value(thread, JSTaggedValue::Hole());
     while (!node.GetTaggedValue().IsHole()) {
-        key.Update(node->GetKey());
-        value.Update(node->GetValue());
-        if (hashMap->Replace(thread, key.GetTaggedValue(), value.GetTaggedValue()).IsFalse()) {
+        if (!hashMap->Replace(thread, node->GetKey(), node->GetValue())) {
+            JSHandle<JSTaggedValue> key(thread, node->GetKey());
+            JSHandle<JSTaggedValue> value(thread, node->GetValue());
             Set(thread, hashMap, key, value);
         }
         node.Update(node->GetNext());
@@ -185,7 +183,7 @@ void JSAPIHashMap::SetAllRBTreeNode(JSThread *thread, JSHandle<JSAPIHashMap> has
     ASSERT(node.GetTaggedValue().IsRBTreeNode());
     JSMutableHandle<JSTaggedValue> key(thread, node->GetKey());
     JSMutableHandle<JSTaggedValue> value(thread, node->GetValue());
-    if (hashMap->Replace(thread, key.GetTaggedValue(), value.GetTaggedValue()).IsFalse()) {
+    if (!hashMap->Replace(thread, key.GetTaggedValue(), value.GetTaggedValue())) {
         Set(thread, hashMap, key, value);
     }
     JSMutableHandle<RBTreeNode> left(thread, node->GetLeft());
