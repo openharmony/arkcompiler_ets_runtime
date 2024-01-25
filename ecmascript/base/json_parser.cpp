@@ -70,6 +70,7 @@ JSHandle<JSTaggedValue> Internalize::InternalizeJsonProperty(JSThread *thread, c
 bool Internalize::RecurseAndApply(JSThread *thread, const JSHandle<JSObject> &holder,
                                   const JSHandle<JSTaggedValue> &name, const JSHandle<JSTaggedValue> &receiver)
 {
+    STACK_LIMIT_CHECK(thread, false);
     JSHandle<JSTaggedValue> value = InternalizeJsonProperty(thread, holder, name, receiver);
     bool changeResult = false;
 

@@ -256,6 +256,7 @@ bool JSFunction::OrdinaryHasInstance(JSThread *thread, const JSHandle<JSTaggedVa
     //    a. Let BC be the value of C's [[BoundTargetFunction]] internal slot.
     //    b. Return InstanceofOperator(O,BC)  (see 12.9.4).
     if (constructor->IsBoundFunction()) {
+        STACK_LIMIT_CHECK(thread, false);
         JSHandle<JSBoundFunction> boundFunction(thread, JSBoundFunction::Cast(constructor->GetTaggedObject()));
         JSTaggedValue boundTarget = boundFunction->GetBoundTarget();
         return JSObject::InstanceOf(thread, obj, JSHandle<JSTaggedValue>(thread, boundTarget));
