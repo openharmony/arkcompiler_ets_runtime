@@ -43,6 +43,7 @@ def get_logger(logger_name, log_file_path, level=logging.INFO):
 
     return log
 
+
 logger = None
 CUR_PATH = os.path.abspath(os.path.dirname(__file__))
 TMP_PATH = os.path.join(os.getcwd(), "tmp")
@@ -94,11 +95,11 @@ def degraded_str(yesterday_excute_time, exec_time):
         else:
             is_degraded_tmp = float(exec_time) / float(yesterday_excute_time) >= (1 + DETERIORATION_BOUNDARY_VALUE)
             is_degraded_str = str(True) if is_degraded_tmp else str(False)
-    
+
     return is_degraded_str
 
 
-def v_8_excute_time_return(main_key):
+def v_8_excute_time_compute(main_key):
     v_8_excute_time_str = ''
     if len(V_8_EXCUTE_TIME_DICT) > 0 and main_key in V_8_EXCUTE_TIME_DICT.keys():
         v_8_excute_time_str = V_8_EXCUTE_TIME_DICT[main_key].strip()
@@ -111,7 +112,7 @@ def v_8_excute_time_return(main_key):
     return v_8_excute_time
 
 
-def v_8_gitless_excute_time_return(main_key):
+def v_8_gitless_excute_time_compute(main_key):
     v_8_jitless_excute_time_str = ''
     if len(V_8_JITLESS_EXCUTE_TIME_DICT) > 0 and main_key in V_8_JITLESS_EXCUTE_TIME_DICT.keys():
         v_8_jitless_excute_time_str = V_8_JITLESS_EXCUTE_TIME_DICT[main_key].strip()
@@ -124,22 +125,22 @@ def v_8_gitless_excute_time_return(main_key):
     return v_8_jitless_excute_time
 
 
-def v_8_divide_ark_return(exec_time, v_8_excute_time):
+def ark_divide_v_8_compute(exec_time, v_8_excute_time):
     if len(exec_time) == 0 or len(v_8_excute_time.strip()) == 0:
-        v_8_divide_ark = NA_FIX
+        ark_divide_v_8 = NA_FIX
     elif abs(float(exec_time)) <= COMPARISON_ACCURACY:
         if abs(float(v_8_excute_time)) <= COMPARISON_ACCURACY:
-            v_8_divide_ark = '1'
+            ark_divide_v_8 = '1'
         else:
-            v_8_divide_ark = NA_FIX
+            ark_divide_v_8 = '0'
     else:
         v_8_excute_time = v_8_excute_time.strip()
-        if len(v_8_excute_time) == 0:
-            v_8_divide_ark = NA_FIX
+        if len(v_8_excute_time) == 0 or abs(float(v_8_excute_time)) <= COMPARISON_ACCURACY:
+            ark_divide_v_8 = NA_FIX
         else:
-            v_8_divide_ark = str("{:.2f}".format(float(v_8_excute_time) / float(exec_time)))
-    
-    return v_8_divide_ark
+            ark_divide_v_8 = str("{:.2f}".format(float(exec_time) / float(v_8_excute_time)))
+
+    return ark_divide_v_8
 
 
 def append_row_data(report_file, case_test_data):
@@ -157,35 +158,38 @@ def append_row_data(report_file, case_test_data):
         if len(YESTERDAY_EXCUTE_TIME_DICT) > 0 and YESTERDAY_EXCUTE_TIME_DICT.get(main_key) is not None:
             yesterday_excute_time = str(YESTERDAY_EXCUTE_TIME_DICT[main_key])
         is_degraded_str = degraded_str(yesterday_excute_time, exec_time)
-        v_8_excute_time = v_8_excute_time_return(main_key)
-        v_8_jitless_excute_time = v_8_gitless_excute_time_return(main_key)
-        v_8_divide_ark = v_8_divide_ark_return(exec_time, v_8_excute_time)
+        v_8_excute_time = v_8_excute_time_compute(main_key)
+        v_8_jitless_excute_time = v_8_gitless_excute_time_compute(main_key)
+        ark_divide_v_8 = ark_divide_v_8_compute(exec_time, v_8_excute_time)
         if len(exec_time) == 0 or len(v_8_jitless_excute_time.strip()) == 0:
-            v_8_with_jitless_divide_ark = NA_FIX
+            ark_divide_v_8_with_jitless = NA_FIX
         elif abs(float(exec_time)) <= COMPARISON_ACCURACY:
             if abs(float(v_8_jitless_excute_time)) <= COMPARISON_ACCURACY:
-                v_8_with_jitless_divide_ark = '1'
+                ark_divide_v_8_with_jitless = '1'
             else:
-                v_8_with_jitless_divide_ark = NA_FIX
+                ark_divide_v_8_with_jitless = '0'
         else:
             v_8_jitless_excute_time = v_8_jitless_excute_time.strip()
-            if len(v_8_jitless_excute_time) == 0:
-                v_8_with_jitless_divide_ark = NA_FIX
+            if len(v_8_jitless_excute_time) == 0 or abs(float(v_8_jitless_excute_time)) <= COMPARISON_ACCURACY:
+                ark_divide_v_8_with_jitless = NA_FIX
             else:
-                v_8_with_jitless_divide_ark = str("{:.2f}".format(float(v_8_jitless_excute_time) / float(exec_time)))
+                ark_divide_v_8_with_jitless = str("{:.2f}".format(float(exec_time) / float(v_8_jitless_excute_time)))
         jis_case_file_name_with_class = JS_FILE_SUPER_LINK_DICT['/'.join([class_name, api_name])]
         js_file_super_link = '/'.join([HYPERLINK_HEAD, jis_case_file_name_with_class])
         new_row = [js_case_name, scene, excute_status, exec_time, yesterday_excute_time,
-                   is_degraded_str, v_8_excute_time, v_8_jitless_excute_time, v_8_divide_ark,
-                   v_8_with_jitless_divide_ark, js_file_super_link, ' ']
+                   is_degraded_str, v_8_excute_time, v_8_jitless_excute_time, ark_divide_v_8,
+                   ark_divide_v_8_with_jitless, js_file_super_link, ' ']
         ws.append(new_row)
         if is_degraded_str is str(True):
             ws.cell(row=ws.max_row, column=6).fill = PatternFill(start_color='FF0000', end_color='FF0000',
                                                                  fill_type=SOLID)
-        if v_8_divide_ark != NA_FIX and float(v_8_divide_ark) > 1:
+        if ark_divide_v_8 != NA_FIX and (float(ark_divide_v_8) > 2 or
+                                         abs(float(ark_divide_v_8) - 2) <= COMPARISON_ACCURACY):
             ws.cell(row=ws.max_row, column=9).fill = PatternFill(start_color='FFFF00', end_color='FFFF00',
                                                                  fill_type=SOLID)
-        if v_8_with_jitless_divide_ark != NA_FIX and float(v_8_with_jitless_divide_ark) > 1:
+        if ark_divide_v_8_with_jitless != NA_FIX and (float(ark_divide_v_8_with_jitless) > 2 or
+                                                      abs(float(ark_divide_v_8_with_jitless) - 2) <=
+                                                      COMPARISON_ACCURACY):
             ws.cell(row=ws.max_row, column=10).fill = PatternFill(start_color='FF00FF', end_color='FF00FF',
                                                                   fill_type=SOLID)
     wb.save(report_file)
@@ -301,8 +305,8 @@ def append_summary_info(report_file, total_cost_time):
             degraded count:
             total excute time is(s) :
             degraded percentage upper limit:
-            v 8/ark degraded count:
-            v 8_jitless/ark degraded count:
+            ark/v 8 degraded count:
+            ark/v 8 jitless degraded count:
     """
     wb = load_workbook(report_file)
     ws = wb.worksheets[0]
@@ -312,8 +316,8 @@ def append_summary_info(report_file, total_cost_time):
     pass_num = 0
     failed_num = 0
     degraded_num = 0
-    v_8_divide_ark_degraded_count = 0
-    v_8_jitless_divide_ark_degraded_count = 0
+    ark_divide_v_8_degraded_count = 0
+    ark_divide_v_8_jitless_degraded_count = 0
 
     for row_num in range(2, ws.max_row + 1):
         excu_status = str(ws.cell(row=row_num, column=3).value)
@@ -331,15 +335,15 @@ def append_summary_info(report_file, total_cost_time):
         obj = ws.cell(row=row_num, column=9).value
         if obj is None:
             obj = 0
-        v_8_divide_ark = obj
-        if v_8_divide_ark != NA_FIX and float(v_8_divide_ark) > 1:
-            v_8_divide_ark_degraded_count += 1
+        ark_divide_v_8 = obj
+        if ark_divide_v_8 != NA_FIX and float(ark_divide_v_8) > 1:
+            ark_divide_v_8_degraded_count += 1
         obj = ws.cell(row=row_num, column=10).value
         if obj is None:
             obj = 0
-        v_8_jitless_divide_ark = obj
-        if v_8_jitless_divide_ark != NA_FIX and float(v_8_jitless_divide_ark) > 1:
-            v_8_jitless_divide_ark_degraded_count += 1
+        ark_divide_v_8_jitless = obj
+        if ark_divide_v_8_jitless != NA_FIX and float(ark_divide_v_8_jitless) > 1:
+            ark_divide_v_8_jitless_degraded_count += 1
 
     count = 3
     for _ in range(count):
@@ -357,9 +361,9 @@ def append_summary_info(report_file, total_cost_time):
     ws.append(new_row)
     new_row = ['Total excute time(时:分:秒.微妙)', total_cost_time, ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ']
     ws.append(new_row)
-    new_row = ['v 8/ark 劣化数量', v_8_divide_ark_degraded_count, ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ']
+    new_row = ['ark/v 8 劣化数量', ark_divide_v_8_degraded_count, ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ']
     ws.append(new_row)
-    new_row = ['v 8_jitless/ark 劣化数量', v_8_jitless_divide_ark_degraded_count, ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ',
+    new_row = ['ark/v 8 jitless 劣化数量', ark_divide_v_8_jitless_degraded_count, ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ',
                ' ', ' ']
     ws.append(new_row)
 
@@ -415,7 +419,7 @@ def init_report(report_file):
         today_ws = today_wb.worksheets[0]
     except FileNotFoundError:
         headers_row = ['用例名称', '场景', '执行状态', 'ark用例执行耗时(ms)', '昨日ark用例执行耗时(ms)', '是否劣化',
-                       'v 8(ms)', 'v 8 --jitless(ms)', 'v 8/ark', 'v 8 jitless/ark', 'hyperlink', '备注']
+                       'v 8(ms)', 'v 8 --jitless(ms)', 'ark/v 8', 'ark/v 8 jitless', 'hyperlink', '备注']
         today_wb = Workbook()
         today_ws = today_wb.active
 
