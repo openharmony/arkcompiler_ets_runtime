@@ -239,13 +239,13 @@ GateRef AccessObjectStubBuilder::StoreOwnByIndex(GateRef glue, GateRef receiver,
     Label exit(env);
     Label tryFastPath(env);
     Label slowPath(env);
-    Label isHeapObject(env);
     DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
     ICStubBuilder builder(this);
     builder.SetParameters(glue, receiver, profileTypeInfo, value, slotId, IntToTaggedPtr(index), callback);
     builder.StoreICByValue(&result, &tryFastPath, &slowPath, &exit);
     Bind(&tryFastPath);
     {
+        Label isHeapObject(env);
         Branch(TaggedIsHeapObject(receiver), &isHeapObject, &slowPath);
         Bind(&isHeapObject);
         Label notClassConstructor(env);
@@ -259,7 +259,8 @@ GateRef AccessObjectStubBuilder::StoreOwnByIndex(GateRef glue, GateRef receiver,
     }
     Bind(&slowPath);
     {
-        result = CallRuntime(glue, RTSTUB_ID(StOwnByIndex), { receiver, IntToTaggedInt(index), value });
+        result = CallRuntime(glue, RTSTUB_ID(StoreOwnICByValue),
+            { profileTypeInfo, receiver, IntToTaggedInt(index), value, IntToTaggedInt(slotId) });
         callback.TryPreDump();
         Jump(&exit);
     }
