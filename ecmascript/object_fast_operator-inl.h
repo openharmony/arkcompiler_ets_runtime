@@ -559,6 +559,7 @@ JSTaggedValue ObjectFastOperator::FastGetPropertyByIndex(JSThread *thread, JSTag
 {
     INTERPRETER_TRACE(thread, FastGetPropertyByIndex);
     JSTaggedValue result = ObjectFastOperator::GetPropertyByIndex(thread, receiver, index);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     if (result.IsHole()) {
         return JSTaggedValue::GetProperty(thread,
             JSHandle<JSTaggedValue>(thread, receiver), index).GetValue().GetTaggedValue();

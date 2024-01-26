@@ -82,6 +82,7 @@ void ObjectOperator::HandleKey(const JSHandle<JSTaggedValue> &key)
     }
 
     JSHandle<JSTaggedValue> keyHandle(thread_, JSTaggedValue::ToPrimitive(thread_, key, PREFER_STRING));
+    RETURN_IF_ABRUPT_COMPLETION(thread_);
     if (key->IsSymbol()) {
         key_ = keyHandle;
         return;
@@ -641,6 +642,7 @@ bool ObjectOperator::UpdateDataValue(const JSHandle<JSObject> &receiver, const J
                 JSType jsType = holder.GetTaggedObject()->GetClass()->GetObjectType();
                 JSTaggedValue typedArrayProperty = JSTypedArray::FastSetPropertyByIndex(thread_,
                     receiver.GetTaggedValue(), GetIndex(), value.GetTaggedValue(), jsType);
+                RETURN_VALUE_IF_ABRUPT_COMPLETION(thread_, false);
                 if (typedArrayProperty.IsHole()) {
                     return false;
                 }
@@ -924,6 +926,7 @@ void ObjectOperator::LookupElementInlinedProps(const JSHandle<JSObject> &obj)
         if (obj->IsTypedArray()) {
             JSTaggedValue val = JSTypedArray::FastElementGet(thread_,
                 JSHandle<JSTaggedValue>::Cast(obj), elementIndex_).GetValue().GetTaggedValue();
+            RETURN_IF_ABRUPT_COMPLETION(thread_);
             if (!val.IsHole()) {
                 SetFound(elementIndex_, val, PropertyAttributes::GetDefaultAttributes(), true);
             }

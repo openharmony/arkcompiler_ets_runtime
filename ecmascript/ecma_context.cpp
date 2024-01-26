@@ -628,6 +628,7 @@ void EcmaContext::PrintJSErrorInfo(JSThread *thread, const JSHandle<JSTaggedValu
 {
     JSHandle<JSTaggedValue> nameKey = thread->GlobalConstants()->GetHandledNameString();
     JSHandle<JSTaggedValue> nameValue = JSObject::GetProperty(thread, exceptionInfo, nameKey).GetValue();
+    RETURN_IF_ABRUPT_COMPLETION(thread);
     JSHandle<EcmaString> name = JSTaggedValue::ToString(thread, nameValue);
     // JSTaggedValue::ToString may cause exception. In this case, do not return, use "<error>" instead.
     if (thread->HasPendingException()) {
@@ -636,6 +637,7 @@ void EcmaContext::PrintJSErrorInfo(JSThread *thread, const JSHandle<JSTaggedValu
     }
     JSHandle<JSTaggedValue> msgKey = thread->GlobalConstants()->GetHandledMessageString();
     JSHandle<JSTaggedValue> msgValue = JSObject::GetProperty(thread, exceptionInfo, msgKey).GetValue();
+    RETURN_IF_ABRUPT_COMPLETION(thread);
     JSHandle<EcmaString> msg = JSTaggedValue::ToString(thread, msgValue);
     // JSTaggedValue::ToString may cause exception. In this case, do not return, use "<error>" instead.
     if (thread->HasPendingException()) {
@@ -644,6 +646,7 @@ void EcmaContext::PrintJSErrorInfo(JSThread *thread, const JSHandle<JSTaggedValu
     }
     JSHandle<JSTaggedValue> stackKey = thread->GlobalConstants()->GetHandledStackString();
     JSHandle<JSTaggedValue> stackValue = JSObject::GetProperty(thread, exceptionInfo, stackKey).GetValue();
+    RETURN_IF_ABRUPT_COMPLETION(thread);
     JSHandle<EcmaString> stack = JSTaggedValue::ToString(thread, stackValue);
     // JSTaggedValue::ToString may cause exception. In this case, do not return, use "<error>" instead.
     if (thread->HasPendingException()) {

@@ -63,9 +63,8 @@ JSHandle<JSTaggedValue> JSIterator::GetIterator(JSThread *thread, const JSHandle
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
     EcmaRuntimeCallInfo *info = EcmaInterpreter::NewRuntimeCallInfo(thread, method, obj, undefined, 0);
     JSTaggedValue ret = JSFunction::Call(info);
+    RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
     JSHandle<JSTaggedValue> iter(thread, ret);
-    // 4.ReturnIfAbrupt(iterator).
-    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, iter);
     // 5.If Type(iterator) is not Object, throw a TypeError exception
     if (!iter->IsECMAObject()) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "JSIterator::GetIterator: iter is not object", undefined);
@@ -86,6 +85,7 @@ JSHandle<JSTaggedValue> JSIterator::GetAsyncIterator(JSThread *thread, const JSH
     if (method->IsUndefined()) {
         JSHandle<JSTaggedValue> iteratorSymbol = env->GetIteratorSymbol();
         JSHandle<JSTaggedValue> func = JSObject::GetMethod(thread, obj, iteratorSymbol);
+        RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
         JSHandle<JSTaggedValue> syncIterator = GetIterator(thread, obj, func);
         JSHandle<JSTaggedValue> nextStr = thread->GlobalConstants()->GetHandledNextString();
         JSHandle<JSTaggedValue> nextMethod = JSTaggedValue::GetProperty(thread, syncIterator, nextStr).GetValue();

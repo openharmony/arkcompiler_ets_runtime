@@ -112,6 +112,7 @@ bool ArrayHelper::ElementIsStrictEqualTo(JSThread *thread, const JSHandle<JSTagg
                                          const JSHandle<JSTaggedValue> &target)
 {
     bool exists = thisObjVal->IsTypedArray() || JSTaggedValue::HasProperty(thread, thisObjVal, keyHandle);
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
     if (thread->HasPendingException() || !exists) {
         return false;
     }

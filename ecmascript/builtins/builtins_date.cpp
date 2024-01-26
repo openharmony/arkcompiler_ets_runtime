@@ -160,7 +160,7 @@ JSTaggedValue BuiltinsDate::ToJSON(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> objectHandle = JSHandle<JSTaggedValue>::Cast(object);
     JSHandle<JSTaggedValue> tv(thread,
                                JSTaggedValue::ToPrimitive(thread, objectHandle, PreferredPrimitiveType::PREFER_NUMBER));
-
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     // 3. If Type(tv) is Number and tv is not finite, return null
     if (tv->IsNumber()) {
         if (tv->IsDouble() && !std::isfinite(tv->GetDouble())) {

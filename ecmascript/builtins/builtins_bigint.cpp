@@ -40,6 +40,7 @@ JSTaggedValue BuiltinsBigInt::BigIntConstructor(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> value = GetCallArg(argv, 0);
     // 2. Let prim be ? ToPrimitive(value).
     JSHandle<JSTaggedValue> Primitive(thread, JSTaggedValue::ToPrimitive(thread, value));
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     // 3. If Type(prim) is Number, return ? NumberToBigInt(prim).
     if (Primitive->IsNumber()) {
         return BigInt::NumberToBigInt(thread, Primitive);

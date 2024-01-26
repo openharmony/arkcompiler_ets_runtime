@@ -189,6 +189,7 @@ JSTaggedValue LoadICRuntime::LoadValueMiss(JSHandle<JSTaggedValue> receiver, JSH
     }
     ObjectOperator op(GetThread(), receiver, key);
     auto result = JSHandle<JSTaggedValue>(thread_, JSObject::GetProperty(GetThread(), &op));
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
 
     if (receiver->IsString()) {
          // do not cache element
@@ -287,6 +288,7 @@ JSTaggedValue LoadICRuntime::LoadTypedArrayValueMiss(JSHandle<JSTaggedValue> rec
     } else {
         ObjectOperator op(GetThread(), receiver, key);
         auto result = JSHandle<JSTaggedValue>(GetThread(), JSObject::GetProperty(GetThread(), &op));
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(GetThread());
         if (op.GetValue().IsInternalAccessor()) {
             op = ObjectOperator(GetThread(), receiver, key);
         }

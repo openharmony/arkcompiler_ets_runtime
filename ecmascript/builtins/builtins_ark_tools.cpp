@@ -728,6 +728,7 @@ JSTaggedValue BuiltinsArkTools::CreateDataProperty([[maybe_unused]] EcmaRuntimeC
     JSHandle<JSTaggedValue> value = GetCallArg(info, secondArg);
     JSHandle<JSObject> obj = JSHandle<JSObject>::Cast(GetCallArg(info, 0));
     JSObject::CreateDataPropertyOrThrow(thread, obj, key, value);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     return value.GetTaggedValue();
 }
 

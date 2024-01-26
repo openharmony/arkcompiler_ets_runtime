@@ -376,5 +376,6 @@ void JSPluralRules::ResolvedOptions(JSThread *thread, const JSHandle<JSPluralRul
     property = globalConst->GetHandledPluralCategoriesString();
     JSHandle<JSArray> jsPluralCategories = JSArray::CreateArrayFromList(thread, pluralCategories);
     JSObject::CreateDataPropertyOrThrow(thread, options, property, JSHandle<JSTaggedValue>::Cast(jsPluralCategories));
+    RETURN_IF_ABRUPT_COMPLETION(thread);
 }
 }  // namespace panda::ecmascript

@@ -169,7 +169,8 @@ JSTaggedValue JSFunction::NameGetter(JSThread *thread, const JSHandle<JSObject> 
         JSHandle<JSTaggedValue> nameKey = globalConst->GetHandledNameString();
         JSHandle<JSTaggedValue> boundName = thread->GlobalConstants()->GetHandledBoundString();
         JSHandle<JSTaggedValue> targetName = JSObject::GetProperty(thread, target, nameKey).GetValue();
-
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        
         JSHandle<EcmaString> handlePrefixString = JSTaggedValue::ToString(thread, boundName);
         JSHandle<EcmaString> spaceString(globalConst->GetHandledSpaceString());
         JSHandle<EcmaString> concatString = factory->ConcatFromString(handlePrefixString, spaceString);
