@@ -727,6 +727,17 @@ int ModuleManager::GetExportObjectIndex(EcmaVM *vm, JSHandle<SourceTextModule> e
                                         const std::string &key)
 {
     JSThread *thread = vm->GetJSThread();
+    if (ecmaModule->GetLocalExportEntries().IsUndefined()) {
+        CString msg = "No export named '" + ConvertToString(key);
+        if (!ecmaModule->GetEcmaModuleRecordName().IsUndefined()) {
+            msg += "' which exported by '" + ConvertToString(ecmaModule->GetEcmaModuleRecordName()) + "'";
+        } else {
+            msg += "' which exported by '" + ConvertToString(ecmaModule->GetEcmaModuleFilename()) + "'";
+        }
+        ObjectFactory *factory = vm->GetFactory();
+        JSTaggedValue error = factory->GetJSError(ErrorType::SYNTAX_ERROR, msg.c_str()).GetTaggedValue();
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, 0);
+    }
     JSHandle<TaggedArray> localExportEntries(thread, ecmaModule->GetLocalExportEntries());
     size_t exportEntriesLen = localExportEntries->GetLength();
     // 0: There's only one export value "default"
