@@ -108,6 +108,9 @@
 #include "ecmascript/builtins/builtins_number_format.h"
 #include "ecmascript/builtins/builtins_plural_rules.h"
 #include "ecmascript/builtins/builtins_relative_time_format.h"
+#include "ecmascript/builtins/builtins_segmenter.h"
+#include "ecmascript/builtins/builtins_segments.h"
+#include "ecmascript/builtins/builtins_segment_iterator.h"
 #include "ecmascript/js_collator.h"
 #include "ecmascript/js_date_time_format.h"
 #include "ecmascript/js_displaynames.h"
@@ -116,6 +119,9 @@
 #include "ecmascript/js_number_format.h"
 #include "ecmascript/js_plural_rules.h"
 #include "ecmascript/js_relative_time_format.h"
+#include "ecmascript/js_segmenter.h"
+#include "ecmascript/js_segments.h"
+#include "ecmascript/js_segment_iterator.h"
 #endif
 
 #include "ohos/init_data.h"
@@ -180,6 +186,9 @@ using NumberFormat = builtins::BuiltinsNumberFormat;
 using Collator = builtins::BuiltinsCollator;
 using PluralRules = builtins::BuiltinsPluralRules;
 using DisplayNames = builtins::BuiltinsDisplayNames;
+using Segmenter = builtins::BuiltinsSegmenter;
+using Segments = builtins::BuiltinsSegments;
+using SegmentIterator = builtins::BuiltinsSegmentIterator;
 using ListFormat = builtins::BuiltinsListFormat;
 #endif
 using BuiltinsCjsModule = builtins::BuiltinsCjsModule;
@@ -467,6 +476,8 @@ void Builtins::Initialize(const JSHandle<GlobalEnv> &env, JSThread *thread, bool
         LazyInitializePluralRules(env);
         LazyInitializeDisplayNames(env);
         LazyInitializeListFormat(env);
+        LazyInitializeSegments(env);
+        LazyInitializeSegmenter(env);
     } else {
         InitializeLocale(env);
         InitializeDateTimeFormat(env);
@@ -476,6 +487,8 @@ void Builtins::Initialize(const JSHandle<GlobalEnv> &env, JSThread *thread, bool
         InitializePluralRules(env);
         InitializeDisplayNames(env);
         InitializeListFormat(env);
+        InitializeSegments(env);
+        InitializeSegmenter(env);
     }
 #endif
     InitializeModuleNamespace(env, objFuncClass);
@@ -1849,6 +1862,9 @@ void Builtins::InitializeIterator(const JSHandle<GlobalEnv> &env, const JSHandle
     InitializeArrayIterator(env, iteratorFuncClass);
     InitializeStringIterator(env, iteratorFuncClass);
     InitializeRegexpIterator(env, iteratorFuncClass);
+#ifdef ARK_SUPPORT_INTL
+    InitializeSegmentIterator(env, iteratorFuncClass);
+#endif
 }
 
 void Builtins::InitializeAsyncIterator(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &objFuncDynclass) const
@@ -3467,6 +3483,87 @@ void Builtins::InitializeListFormat(const JSHandle<GlobalEnv> &env)
 
     // 13.4.5 Intl.ListFormat.prototype.resolvedOptions()
     SetFunction(env, lfPrototype, "resolvedOptions", ListFormat::ResolvedOptions, FunctionLength::ZERO);
+}
+
+void Builtins::InitializeSegmenter(const JSHandle<GlobalEnv> &env)
+{
+    [[maybe_unused]] EcmaHandleScope scope(thread_);
+    // Segmenter.prototype
+    JSHandle<JSFunction> objFun(env->GetObjectFunction());
+    JSHandle<JSObject> sgPrototype = factory_->NewJSObjectByConstructor(objFun);
+    JSHandle<JSTaggedValue> sgPrototypeValue(sgPrototype);
+
+    // Segmenter.prototype_or_hclass
+    JSHandle<JSHClass> sgFuncInstanceHClass =
+        factory_->NewEcmaHClass(JSSegmenter::SIZE, JSType::JS_SEGMENTER, sgPrototypeValue);
+
+    // Segmenter = new Function()
+    // 18.3.1 Intl.Segmenter.prototype.constructor
+    JSHandle<JSObject> sgFunction(NewIntlConstructor(env, sgPrototype, Segmenter::SegmenterConstructor,
+                                                     "Segmenter", FunctionLength::ZERO));
+    JSFunction::SetFunctionPrototype(thread_,
+        JSHandle<JSFunction>(sgFunction), sgFuncInstanceHClass.GetTaggedValue());
+
+    // 18.2.2 Intl.Segmenter.supportedLocalesOf ( locales [ , options ] )
+    SetFunction(env, sgFunction, "supportedLocalesOf", Segmenter::SupportedLocalesOf, FunctionLength::ONE);
+
+    // Segmenter.prototype method
+    // 18.3.2 Intl.Segmenter.prototype [ @@toStringTag ]
+    SetStringTagSymbol(env, sgPrototype, "Intl.Segmenter");
+    env->SetSegmenterFunction(thread_, sgFunction);
+
+    // 18.3.4 Intl.Segmenter.prototype.resolvedOptions ( )
+    SetFunction(env, sgPrototype, "resolvedOptions", Segmenter::ResolvedOptions, FunctionLength::ZERO);
+
+    // 18.3.3 Intl.Segmenter.prototype.segment ( string )
+    SetFunction(env, sgPrototype, "segment", Segmenter::Segment, FunctionLength::ONE);
+}
+
+void Builtins::InitializeSegments(const JSHandle<GlobalEnv> &env)
+{
+    [[maybe_unused]] EcmaHandleScope scope(thread_);
+    // Segments.prototype
+    JSHandle<JSFunction> objFun(env->GetObjectFunction());
+    JSHandle<JSObject> segmentsPrototype = factory_->NewJSObjectByConstructor(objFun);
+    JSHandle<JSTaggedValue> segmentsPrototypeValue(segmentsPrototype);
+
+    // Segments.prototype_or_hclass
+    JSHandle<JSHClass> segmentsFuncInstanceHClass =
+        factory_->NewEcmaHClass(JSSegments::SIZE, JSType::JS_SEGMENTS, segmentsPrototypeValue);
+
+    JSHandle<JSFunction> segmentsFunction(
+        factory_->NewJSFunction(env, static_cast<void *>(nullptr), FunctionKind::BASE_CONSTRUCTOR));
+    JSFunction::SetFunctionPrototype(thread_,
+        JSHandle<JSFunction>(segmentsFunction), segmentsFuncInstanceHClass.GetTaggedValue());
+
+    env->SetSegmentsFunction(thread_, segmentsFunction);
+
+    // %SegmentsPrototype%.containing ( index )
+    SetFunction(env, segmentsPrototype, "containing", Segments::Containing, FunctionLength::ONE);
+    SetAndReturnFunctionAtSymbol(env, segmentsPrototype,
+        env->GetIteratorSymbol(), "[Symbol.iterator]", Segments::GetSegmentIterator, FunctionLength::ZERO);
+}
+
+void Builtins::InitializeSegmentIterator(const JSHandle<GlobalEnv> &env,
+                                         const JSHandle<JSHClass> &iteratorFuncClass) const
+{
+    // SegmentIterator.prototype
+    JSHandle<JSObject> segIterPrototype(factory_->NewJSObjectWithInit(iteratorFuncClass));
+
+    // SegmentIterator.prototype_or_hclass
+    JSHandle<JSHClass> segIterFuncInstanceHClass = factory_->NewEcmaHClass(
+        JSSegmentIterator::SIZE, JSType::JS_SEGMENT_ITERATOR, JSHandle<JSTaggedValue>(segIterPrototype));
+
+    JSHandle<JSFunction> segIterFunction(
+        factory_->NewJSFunction(env, static_cast<void *>(nullptr), FunctionKind::BASE_CONSTRUCTOR));
+    JSFunction::SetFunctionPrototype(thread_,
+        JSHandle<JSFunction>(segIterFunction), segIterFuncInstanceHClass.GetTaggedValue());
+
+    SetFunction(env, segIterPrototype, "next", SegmentIterator::Next, FunctionLength::ZERO);
+    SetStringTagSymbol(env, segIterPrototype, "Segmenter String Iterator");
+
+    env->SetSegmentIterator(thread_, segIterFunction);
+    env->SetSegmentIteratorPrototype(thread_, segIterPrototype);
 }
 #endif // #ifdef ARK_SUPPORT_INTL
 

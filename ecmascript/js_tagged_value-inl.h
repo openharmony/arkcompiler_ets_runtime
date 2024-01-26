@@ -713,6 +713,21 @@ inline bool JSTaggedValue::IsJSDisplayNames() const
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSDisplayNames();
 }
 
+inline bool JSTaggedValue::IsJSSegmenter() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSSegmenter();
+}
+
+inline bool JSTaggedValue::IsJSSegments() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSSegments();
+}
+
+inline bool JSTaggedValue::IsJSSegmentIterator() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSSegmentIterator();
+}
+
 inline bool JSTaggedValue::IsJSListFormat() const
 {
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSListFormat();

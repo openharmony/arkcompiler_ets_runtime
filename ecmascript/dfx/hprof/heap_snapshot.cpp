@@ -450,6 +450,12 @@ CString *HeapSnapshot::GenerateNodeName(TaggedObject *entry)
             return GetString("JSPluralRules");
         case JSType::JS_DISPLAYNAMES:
             return GetString("JSDisplayNames");
+        case JSType::JS_SEGMENTER:
+            return GetString("JSSegmenter");
+        case JSType::JS_SEGMENTS:
+            return GetString("JSSegments");
+        case JSType::JS_SEGMENT_ITERATOR:
+            return GetString("JSSegmentIterator");
         case JSType::JS_LIST_FORMAT:
             return GetString("JSListFormat");
         case JSType::JS_GENERATOR_OBJECT:

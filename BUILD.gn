@@ -241,6 +241,9 @@ if (enable_ark_intl) {
     "ecmascript/builtins/builtins_number_format.cpp",
     "ecmascript/builtins/builtins_plural_rules.cpp",
     "ecmascript/builtins/builtins_relative_time_format.cpp",
+    "ecmascript/builtins/builtins_segment_iterator.cpp",
+    "ecmascript/builtins/builtins_segmenter.cpp",
+    "ecmascript/builtins/builtins_segments.cpp",
     "ecmascript/js_collator.cpp",
     "ecmascript/js_date_time_format.cpp",
     "ecmascript/js_displaynames.cpp",
@@ -249,6 +252,9 @@ if (enable_ark_intl) {
     "ecmascript/js_number_format.cpp",
     "ecmascript/js_plural_rules.cpp",
     "ecmascript/js_relative_time_format.cpp",
+    "ecmascript/js_segment_iterator.cpp",
+    "ecmascript/js_segmenter.cpp",
+    "ecmascript/js_segments.cpp",
   ]
 } else {
   if (target_os != "android" && target_os != "ios") {
