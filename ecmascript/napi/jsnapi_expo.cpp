@@ -84,6 +84,7 @@
 #include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
 #include "ecmascript/platform/file.h"
 #include "ecmascript/regexp/regexp_parser.h"
+#include "ecmascript/runtime.h"
 #include "ecmascript/serializer/base_deserializer.h"
 #include "ecmascript/serializer/value_serializer.h"
 #include "ecmascript/tagged_array.h"
@@ -2819,6 +2820,7 @@ EcmaVM *JSNApi::CreateEcmaVM(const JSRuntimeOptions &options)
         LockHolder lock(*mutex);
         vmCount_++;
         if (!initialize_) {
+            ecmascript::Runtime::Create();
             ecmascript::Log::Initialize(options);
             InitializeIcuData(options);
             InitializeMemMapAllocator();
@@ -2847,6 +2849,7 @@ void JSNApi::DestroyJSVM(EcmaVM *ecmaVm)
         DestroyAnDataManager();
         DestroyMemMapAllocator();
         DestroyPGOProfiler();
+        ecmascript::Runtime::Destroy();
         initialize_ = false;
     }
 }

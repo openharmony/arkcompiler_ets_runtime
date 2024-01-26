@@ -801,6 +801,7 @@ ecma_source = [
   "ecmascript/pgo_profiler/ap_file/pgo_method_type_set.cpp",
   "ecmascript/pgo_profiler/types/pgo_profile_type.cpp",
   "ecmascript/property_accessor.cpp",
+  "ecmascript/runtime.cpp",
   "ecmascript/serializer/base_deserializer.cpp",
   "ecmascript/serializer/base_serializer.cpp",
   "ecmascript/serializer/value_serializer.cpp",
