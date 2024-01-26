@@ -406,11 +406,12 @@ public:
         if (attrTypeAlign == 1) {  // align(1)
             return 1;
         }
+        constexpr uint32 square = 2;
         uint32 res = 1;
         uint32 exp = attrTypeAlign;
         while (exp > 1) {  // calculate align(x)
             --exp;
-            res *= 2;  // square of two
+            res *= square;
         }
         return res;
     }

@@ -1589,6 +1589,16 @@ public:
         return stackProtectInfo;
     }
 
+    void SetNeedStackProtect(bool val)
+    {
+        needStackProtect = val;
+    }
+
+    bool GetNeedStackProtect() const
+    {
+        return needStackProtect;
+    }
+
     CallConvKind GetCurCallConvKind() const
     {
         return callingConventionKind;
@@ -1843,6 +1853,7 @@ private:
 
     /* save stack protect kinds which can trigger stack protect */
     uint8 stackProtectInfo = 0;
+    bool needStackProtect = false;
 
     // mark exitBB is unreachable
     bool exitBBLost = false;

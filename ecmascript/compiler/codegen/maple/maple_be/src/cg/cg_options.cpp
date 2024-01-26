@@ -538,11 +538,4 @@ maplecl::Option<uint32_t> jumpAlignPow(
 maplecl::Option<uint32_t> funcAlignPow(
     {"--func-align-pow"}, " --func-align-pow=NUM           \tO2 func bb align pow (NUM == 0, no func-align)\n",
     {cgCategory});
-
-maplecl::Option<bool> optimizedFrameLayout(
-    {"--optimized-frame-layout"},
-    " --optimized-frame-layout     \tEnable optimized framelayout, put small local variables near sp, put "
-    "callee save region near sp\n",
-    {cgCategory}, maplecl::DisableWith("--no-optimized-frame-layout"));
-
 }  // namespace opts::cg

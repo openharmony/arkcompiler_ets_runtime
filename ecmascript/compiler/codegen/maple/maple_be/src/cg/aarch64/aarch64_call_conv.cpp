@@ -57,7 +57,6 @@ static void AllocateHomogeneousAggregatesRegister(CCLocInfo &pLoc, std::vector<A
 
 // instantiated with the type of the function return value, it describes how
 // the return value is to be passed back to the caller
-//
 // Refer to Procedure Call Standard for the Arm 64-bit
 // Architecture (AArch64) 2022Q3.  $6.9
 //  "If the type, T, of the result of a function is such that

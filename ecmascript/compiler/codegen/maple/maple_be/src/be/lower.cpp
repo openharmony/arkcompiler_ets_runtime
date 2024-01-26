@@ -548,7 +548,7 @@ BaseNode *CGLowerer::LowerArrayForLazyBiding(BaseNode &baseNode, BaseNode &offse
               StringUtils::StartsWith(st->GetName(), namemangler::kMuidFuncDefTabPrefixStr) ||
               StringUtils::StartsWith(st->GetName(), namemangler::kMuidDataDefTabPrefixStr) ||
               StringUtils::StartsWith(st->GetName(), namemangler::kMuidDataUndefTabPrefixStr)) &&
-             CGOptions::IsLazyBinding())) {
+              CGOptions::IsLazyBinding())) {
             /* for decouple static or lazybinding def/undef tables, replace it with intrinsic */
             MapleVector<BaseNode *> args(mirBuilder->GetCurrentFuncCodeMpAllocator()->Adapter());
             args.emplace_back(&baseNode);
@@ -1559,11 +1559,9 @@ bool CGLowerer::LowerStructReturnInRegs(BlockNode &newBlk, StmtNode &stmt, const
 void CGLowerer::LowerStructReturnInGpRegs(BlockNode &newBlk, const StmtNode &stmt, const MIRSymbol &symbol)
 {
     auto size = static_cast<uint32>(symbol.GetType()->GetSize());
-
     if (size == 0) {
         return;
     }
-
     // save retval0, retval1
     PregIdx pIdx1R = 0;
     PregIdx pIdx2R = 0;
@@ -1577,7 +1575,6 @@ void CGLowerer::LowerStructReturnInGpRegs(BlockNode &newBlk, const StmtNode &stm
     if (size > k8ByteSize) {
         genRetvalSave(pIdx2R, kSregRetval1);
     }
-
     // save &s
     BaseNode *regAddr = mirBuilder->CreateExprAddrof(0, symbol);
     LowerTypePtr(*regAddr);
