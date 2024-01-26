@@ -803,7 +803,7 @@ void Heap::CollectGarbage(TriggerGCType gcType, GCReason reason)
     ASSERT(thread_->IsPropertyCacheCleared());
     ProcessGCListeners();
 
-    if (GetEcmaVM()->IsEnableJit()) {
+    if (GetEcmaVM()->IsEnableBaselineJit() || GetEcmaVM()->IsEnableFastJit()) {
         // check machine code space if enough
         int remainSize = config_.GetDefaultMachineCodeSpaceSize() - GetMachineCodeSpace()->GetHeapObjectSize();
         Jit::GetInstance()->CheckMechineCodeSpaceMemory(GetEcmaVM()->GetJSThread(), remainSize);
@@ -1948,7 +1948,8 @@ std::tuple<uint64_t, uint8_t *, int, kungfu::CalleeRegAndOffsetVec> Heap::CalCal
         });
     }
 
-    if (code == nullptr) {
+    if (code == nullptr ||
+        code->GetPayLoadSizeInBytes() == code->GetInstructionsSize()) { // baseline code
         return {};
     }
     return code->CalCallSiteInfo(retAddr);

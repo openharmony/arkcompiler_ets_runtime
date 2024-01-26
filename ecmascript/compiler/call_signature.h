@@ -51,6 +51,7 @@ public:
         JSFUNCTION,
         BUILTINS_STUB,
         BUILTINS_WITH_ARGV_STUB,
+        BASELINE_STUB,
 
         STUB_BEGIN = COMMON_STUB,
         STUB_END = BYTECODE_HANDLER,
@@ -192,6 +193,11 @@ public:
     bool IsDeoptStub() const
     {
         return (GetTargetKind() == TargetKind::DEOPT_STUB);
+    }
+
+    bool IsBaselineStub() const
+    {
+        return (GetTargetKind() == TargetKind::BASELINE_STUB);
     }
 
     void SetParameters(VariableType *paramsType)
@@ -397,6 +403,18 @@ private:
     V(BytecodeDebuggerHandler)                  \
     V(CallRuntime)                              \
     V(AsmInterpreterEntry)                      \
+    V(BaselineCallArg0)                         \
+    V(BaselineCallArg1)                         \
+    V(BaselineCallArgs2)                        \
+    V(BaselineCallArgs3)                        \
+    V(BaselineCallThisArg0)                     \
+    V(BaselineCallThisArg1)                     \
+    V(BaselineCallThisArgs2)                    \
+    V(BaselineCallThisArgs3)                    \
+    V(BaselineCallRange)                        \
+    V(BaselineCallNew)                          \
+    V(BaselineSuperCall)                        \
+    V(BaselineCallThisRange)                    \
     V(GeneratorReEnterAsmInterp)                \
     V(CallRuntimeWithArgv)                      \
     V(OptimizedCallAndPushUndefined)            \

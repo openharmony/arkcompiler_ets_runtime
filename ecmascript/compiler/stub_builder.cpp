@@ -786,8 +786,14 @@ GateRef StubBuilder::CallGetterHelper(
         }
         Bind(&objNotUndefined);
         {
-            auto retValue = JSCallDispatch(glue, getter, Int32(0), 0, Circuit::NullGate(),
-                                           JSCallMode::CALL_GETTER, { receiver }, callback);
+            GateRef retValue = 0;
+            if (env->IsBaselineBuiltin()) {
+                retValue = JSCallDispatchForBaseline(
+                    glue, getter, Int32(0), 0, Circuit::NullGate(), JSCallMode::CALL_GETTER, { receiver }, callback);
+            } else {
+                retValue = JSCallDispatch(
+                    glue, getter, Int32(0), 0, Circuit::NullGate(), JSCallMode::CALL_GETTER, { receiver }, callback);
+            }
             Label noPendingException(env);
             BRANCH(HasPendingException(glue), &exit, &noPendingException);
             Bind(&noPendingException);
@@ -835,8 +841,14 @@ GateRef StubBuilder::CallSetterHelper(
         }
         Bind(&objNotUndefined);
         {
-            auto retValue = JSCallDispatch(glue, setter, Int32(1), 0, Circuit::NullGate(),
-                                           JSCallMode::CALL_SETTER, { receiver, value }, callback);
+            GateRef retValue = 0;
+            if (env->IsBaselineBuiltin()) {
+                retValue = JSCallDispatchForBaseline(glue, setter, Int32(1), 0, Circuit::NullGate(),
+                    JSCallMode::CALL_SETTER, { receiver, value }, callback);
+            } else {
+                retValue = JSCallDispatch(glue, setter, Int32(1), 0, Circuit::NullGate(),
+                    JSCallMode::CALL_SETTER, { receiver, value }, callback);
+            }
             Label noPendingException(env);
             BRANCH(HasPendingException(glue), &exit, &noPendingException);
             Bind(&noPendingException);
@@ -4295,9 +4307,15 @@ void StubBuilder::TryFastHasInstance(GateRef glue, GateRef instof, GateRef targe
     Jump(fastPath);
     Bind(&slowPath);
     {
-        GateRef retValue = JSCallDispatch(glue, instof, Int32(1), 0, Circuit::NullGate(),
-                                          JSCallMode::CALL_SETTER, { target, object }, callback);
-        result->WriteVariable(FastToBoolean(retValue));
+        if (env->IsBaselineBuiltin()) {
+            GateRef retValue = JSCallDispatchForBaseline(glue, instof, Int32(1), 0, Circuit::NullGate(),
+                                                         JSCallMode::CALL_SETTER, { target, object }, callback);
+            result->WriteVariable(FastToBoolean(retValue));
+        } else {
+            GateRef retValue = JSCallDispatch(glue, instof, Int32(1), 0, Circuit::NullGate(),
+                                              JSCallMode::CALL_SETTER, { target, object }, callback);
+            result->WriteVariable(FastToBoolean(retValue));
+        }
         Jump(exit);
     }
 }
@@ -5422,6 +5440,105 @@ GateRef StubBuilder::FastToBoolean(GateRef value, bool flag)
                 BRANCH(DoubleIsNAN(doubleValue), &returnFalse, &notNan);
                 Bind(&notNan);
                 BRANCH(DoubleEqual(doubleValue, Double(0.0)), &returnFalse, &returnTrue);
+            }
+        }
+    }
+    if (flag == 1) {
+        Bind(&returnTrue);
+        {
+            result = TaggedTrue();
+            Jump(&exit);
+        }
+        Bind(&returnFalse);
+        {
+            result = TaggedFalse();
+            Jump(&exit);
+        }
+    } else {
+        Bind(&returnFalse);
+        {
+            result = TaggedTrue();
+            Jump(&exit);
+        }
+        Bind(&returnTrue);
+        {
+            result = TaggedFalse();
+            Jump(&exit);
+        }
+    }
+
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef StubBuilder::FastToBooleanBaseline(GateRef value, bool flag)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
+    Label exit(env);
+
+    Label isSpecial(env);
+    Label notSpecial(env);
+    Label isNumber(env);
+    Label isInt(env);
+    Label isDouble(env);
+    Label notNumber(env);
+    Label notNan(env);
+    Label isString(env);
+    Label notString(env);
+    Label isBigint(env);
+    Label lengthIsOne(env);
+    Label returnTrue(env);
+    Label returnFalse(env);
+
+    Branch(TaggedIsSpecial(value), &isSpecial, &notSpecial);
+    Bind(&isSpecial);
+    {
+        Branch(TaggedIsTrue(value), &returnTrue, &returnFalse);
+    }
+    Bind(&notSpecial);
+    {
+        Branch(TaggedIsNumber(value), &isNumber, &notNumber);
+        Bind(&notNumber);
+        {
+            Branch(TaggedIsString(value), &isString, &notString);
+            Bind(&isString);
+            {
+                auto len = GetLengthFromString(value);
+                Branch(Int32Equal(len, Int32(0)), &returnFalse, &returnTrue);
+            }
+            Bind(&notString);
+            Branch(env_->GetBuilder()->TaggedIsBigInt(value), &isBigint, &returnTrue);
+            Bind(&isBigint);
+            {
+                auto len = Load(VariableType::INT32(), value, IntPtr(BigInt::LENGTH_OFFSET));
+                Branch(Int32Equal(len, Int32(1)), &lengthIsOne, &returnTrue);
+                Bind(&lengthIsOne);
+                {
+                    auto data = PtrAdd(value, IntPtr(BigInt::DATA_OFFSET));
+                    auto data0 = Load(VariableType::INT32(), data, Int32(0));
+                    Branch(Int32Equal(data0, Int32(0)), &returnFalse, &returnTrue);
+                }
+            }
+        }
+        Bind(&isNumber);
+        {
+            Branch(TaggedIsInt(value), &isInt, &isDouble);
+            Bind(&isInt);
+            {
+                auto intValue = GetInt32OfTInt(value);
+                Branch(Int32Equal(intValue, Int32(0)), &returnFalse, &returnTrue);
+            }
+            Bind(&isDouble);
+            {
+                auto doubleValue = GetDoubleOfTDouble(value);
+                Branch(DoubleIsNAN(doubleValue), &returnFalse, &notNan);
+                Bind(&notNan);
+                Branch(DoubleEqual(doubleValue, Double(0.0)), &returnFalse, &returnTrue);
             }
         }
     }
@@ -6935,8 +7052,13 @@ GateRef StubBuilder::GetIterator(GateRef glue, GateRef obj, ProfileOperation cal
     BRANCH(IsCallable(*result), &objIsCallable, &throwError);
     Bind(&objIsCallable);
     {
-        result = JSCallDispatch(glue, *result, Int32(0), 0, Circuit::NullGate(),
-                                JSCallMode::CALL_GETTER, { obj }, ProfileOperation());
+        if (env->IsBaselineBuiltin()) {
+            result = JSCallDispatchForBaseline(glue, *result, Int32(0), 0, Circuit::NullGate(),
+                                               JSCallMode::CALL_GETTER, { obj }, ProfileOperation());
+        } else {
+            result = JSCallDispatch(glue, *result, Int32(0), 0, Circuit::NullGate(),
+                                    JSCallMode::CALL_GETTER, { obj }, ProfileOperation());
+        }
         Jump(&exit);
     }
     Bind(&throwError);
@@ -7005,6 +7127,766 @@ bool StubBuilder::IsCallModeSupportCallBuiltin(JSCallMode mode)
             LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
+}
+
+GateRef StubBuilder::JSCallDispatchForBaseline(GateRef glue, GateRef func, GateRef actualNumArgs, GateRef jumpSize,
+    GateRef hotnessCounter, JSCallMode mode, std::initializer_list<GateRef> args,
+    ProfileOperation callback, bool checkIsCallable)
+{
+    auto env = GetEnvironment();
+    Label entryPass(env);
+    Label exit(env);
+    env->SubCfgEntry(&entryPass);
+    DEFVARIABLE(result, VariableType::JS_ANY(), Exception());
+    // 1. call initialize
+    Label funcIsHeapObject(env);
+    Label funcIsCallable(env);
+    Label funcNotCallable(env);
+    GateRef bitfield = 0;
+    GateRef hclass = 0;
+#if ECMASCRIPT_ENABLE_FUNCTION_CALL_TIMER
+    CallNGCRuntime(glue, RTSTUB_ID(StartCallTimer), { glue, func, False()});
+#endif
+    if (checkIsCallable) {
+        BRANCH(TaggedIsHeapObject(func), &funcIsHeapObject, &funcNotCallable);
+        Bind(&funcIsHeapObject);
+        hclass = LoadHClass(func);
+        bitfield = Load(VariableType::INT32(), hclass, IntPtr(JSHClass::BIT_FIELD_OFFSET));
+        BRANCH(IsCallableFromBitField(bitfield), &funcIsCallable, &funcNotCallable);
+        Bind(&funcNotCallable);
+        {
+            CallRuntime(glue, RTSTUB_ID(ThrowNotCallableException), {});
+            Jump(&exit);
+        }
+        Bind(&funcIsCallable);
+    } else {
+        hclass = LoadHClass(func);
+        bitfield = Load(VariableType::INT32(), hclass, IntPtr(JSHClass::BIT_FIELD_OFFSET));
+    }
+    GateRef method = GetMethodFromJSFunction(func);
+    GateRef callField = GetCallFieldFromMethod(method);
+    GateRef isNativeMask = Int64(static_cast<uint64_t>(1) << MethodLiteral::IsNativeBit::START_BIT);
+
+    // 2. call dispatch
+    Label methodIsNative(env);
+    Label methodNotNative(env);
+    BRANCH(Int64NotEqual(Int64And(callField, isNativeMask), Int64(0)), &methodIsNative, &methodNotNative);
+    auto data = std::begin(args);
+    Label notFastBuiltinsArg0(env);
+    Label notFastBuiltinsArg1(env);
+    Label notFastBuiltinsArg2(env);
+    Label notFastBuiltinsArg3(env);
+    Label notFastBuiltins(env);
+    // 3. call native
+    Bind(&methodIsNative);
+    {
+        if (IsCallModeSupportPGO(mode)) {
+            callback.ProfileNativeCall(func);
+        }
+        GateRef nativeCode = Load(VariableType::NATIVE_POINTER(), method,
+                                  IntPtr(Method::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET));
+        GateRef newTarget = Undefined();
+        GateRef thisValue = Undefined();
+        GateRef numArgs = Int32Add(actualNumArgs, Int32(NUM_MANDATORY_JSFUNC_ARGS));
+        switch (mode) {
+            case JSCallMode::CALL_THIS_ARG0: {
+                thisValue = data[0];
+                CallFastBuiltin(glue, nativeCode, func, thisValue, actualNumArgs, callField,
+                    method, &notFastBuiltinsArg0, &exit, &result, args, mode);
+                Bind(&notFastBuiltinsArg0);
+                result = CallNGCRuntime(glue, RTSTUB_ID(PushCallArgsAndDispatchNative),
+                                        { nativeCode, glue, numArgs, func, newTarget, thisValue });
+                break;
+            }
+            case JSCallMode::CALL_ARG0:
+            case JSCallMode::DEPRECATED_CALL_ARG0:
+                result = CallNGCRuntime(glue, RTSTUB_ID(PushCallArgsAndDispatchNative),
+                                        { nativeCode, glue, numArgs, func, newTarget, thisValue });
+                break;
+            case JSCallMode::CALL_THIS_ARG1: {
+                thisValue = data[1];
+                CallFastBuiltin(glue, nativeCode, func, thisValue, actualNumArgs, callField,
+                    method, &notFastBuiltinsArg1, &exit, &result, args, mode);
+                Bind(&notFastBuiltinsArg1);
+                result = CallNGCRuntime(glue, RTSTUB_ID(PushCallArgsAndDispatchNative),
+                                        { nativeCode, glue, numArgs, func, newTarget, thisValue, data[0]});
+                break;
+            }
+            case JSCallMode::CALL_ARG1:
+            case JSCallMode::DEPRECATED_CALL_ARG1:
+                result = CallNGCRuntime(glue, RTSTUB_ID(PushCallArgsAndDispatchNative),
+                                        { nativeCode, glue, numArgs, func, newTarget, thisValue, data[0]});
+                break;
+            case JSCallMode::CALL_THIS_ARG2: {
+                thisValue = data[2];
+                CallFastBuiltin(glue, nativeCode, func, thisValue, actualNumArgs, callField,
+                    method, &notFastBuiltinsArg2, &exit, &result, args, mode);
+                Bind(&notFastBuiltinsArg2);
+                result = CallNGCRuntime(glue, RTSTUB_ID(PushCallArgsAndDispatchNative),
+                                        { nativeCode, glue, numArgs, func, newTarget, thisValue, data[0], data[1] });
+                break;
+            }
+            case JSCallMode::CALL_ARG2:
+            case JSCallMode::DEPRECATED_CALL_ARG2:
+                result = CallNGCRuntime(glue, RTSTUB_ID(PushCallArgsAndDispatchNative),
+                                        { nativeCode, glue, numArgs, func, newTarget, thisValue, data[0], data[1] });
+                break;
+            case JSCallMode::CALL_THIS_ARG3: {
+                thisValue = data[3];
+                CallFastBuiltin(glue, nativeCode, func, thisValue, actualNumArgs, callField,
+                    method, &notFastBuiltinsArg3, &exit, &result, args, mode);
+                Bind(&notFastBuiltinsArg3);
+                result = CallNGCRuntime(glue, RTSTUB_ID(PushCallArgsAndDispatchNative),
+                                        { nativeCode, glue, numArgs, func,
+                                          newTarget, thisValue, data[0], data[1], data[2] }); // 2: args2
+                break;
+            }
+            case JSCallMode::CALL_ARG3:
+            case JSCallMode::DEPRECATED_CALL_ARG3:
+                result = CallNGCRuntime(glue, RTSTUB_ID(PushCallArgsAndDispatchNative),
+                                        { nativeCode, glue, numArgs, func,
+                                          newTarget, thisValue, data[0], data[1], data[2] }); // 2: args2
+                break;
+            case JSCallMode::CALL_THIS_WITH_ARGV:
+            case JSCallMode::CALL_THIS_ARGV_WITH_RETURN:
+            case JSCallMode::DEPRECATED_CALL_THIS_WITH_ARGV: {
+                thisValue = data[2]; // 2: this input
+                [[fallthrough]];
+            }
+            case JSCallMode::CALL_WITH_ARGV:
+            case JSCallMode::DEPRECATED_CALL_WITH_ARGV:
+                result = CallNGCRuntime(glue, RTSTUB_ID(PushCallRangeAndDispatchNative),
+                                        { glue, nativeCode, func, thisValue, data[0], data[1] });
+                break;
+            case JSCallMode::DEPRECATED_CALL_CONSTRUCTOR_WITH_ARGV:
+            case JSCallMode::CALL_CONSTRUCTOR_WITH_ARGV: {
+                CallFastBuiltin(glue, nativeCode, func, thisValue, actualNumArgs, callField,
+                    method, &notFastBuiltins, &exit, &result, args, mode);
+                Bind(&notFastBuiltins);
+                result = CallNGCRuntime(glue, RTSTUB_ID(PushCallNewAndDispatchNative),
+                                        { glue, nativeCode, func, data[2], data[0], data[1] });
+                break;
+            }
+            case JSCallMode::CALL_GETTER:
+                result = CallNGCRuntime(glue, RTSTUB_ID(PushCallArgsAndDispatchNative),
+                                        { nativeCode, glue, numArgs, func, newTarget, data[0] });
+                break;
+            case JSCallMode::CALL_SETTER:
+                result = CallNGCRuntime(glue, RTSTUB_ID(PushCallArgsAndDispatchNative),
+                                        { nativeCode, glue, numArgs, func, newTarget, data[0], data[1] });
+                break;
+            case JSCallMode::CALL_THIS_ARG3_WITH_RETURN:
+                result = CallNGCRuntime(glue, RTSTUB_ID(PushCallArgsAndDispatchNative),
+                                        { nativeCode, glue, numArgs, func, newTarget, data[0], data[1], data[2], data[3] });
+                break;
+            case JSCallMode::SUPER_CALL_WITH_ARGV:
+                result = CallRuntime(glue, RTSTUB_ID(SuperCall), { data[0], data[1], IntToTaggedInt(data[2]) });
+                break;
+            case JSCallMode::SUPER_CALL_SPREAD_WITH_ARGV:
+                result = CallRuntime(glue, RTSTUB_ID(SuperCallSpread), {data[0], data[1]});
+                break;
+            default:
+                LOG_ECMA(FATAL) << "this branch is unreachable";
+                UNREACHABLE();
+        }
+        Jump(&exit);
+    }
+
+    // 4. call nonNative
+    Bind(&methodNotNative);
+    Label funcIsClassConstructor(env);
+    Label funcNotClassConstructor(env);
+    Label methodNotAot(env);
+    if (!AssemblerModule::IsCallNew(mode)) {
+        BRANCH(IsClassConstructorFromBitField(bitfield), &funcIsClassConstructor, &funcNotClassConstructor);
+        Bind(&funcIsClassConstructor);
+        {
+            CallRuntime(glue, RTSTUB_ID(ThrowCallConstructorException), {});
+            Jump(&exit);
+        }
+        Bind(&funcNotClassConstructor);
+    } else {
+        BRANCH(IsClassConstructorFromBitField(bitfield), &funcIsClassConstructor, &methodNotAot);
+        Bind(&funcIsClassConstructor);
+    }
+    if (IsCallModeSupportPGO(mode)) {
+        callback.ProfileCall(func);
+    }
+    GateRef sp = 0;
+    if (env->IsBaselineBuiltin()) {
+        sp = Argument(static_cast<size_t>(BaselineCallInputs::SP));
+    }
+    Label methodisAot(env);
+    Label funcHasBaselineCode(env);
+    Label funcCheckBaselineCode(env);
+    Label checkIsBaselineCompiling(env);
+    Label methodIsFastCall(env);
+    Label methodNotFastCall(env);
+    Label fastCall(env);
+    Label fastCallBridge(env);
+    Label slowCall(env);
+    Label slowCallBridge(env);
+    {
+        GateRef newTarget = Undefined();
+        GateRef thisValue = Undefined();
+        GateRef realNumArgs = Int64Add(ZExtInt32ToInt64(actualNumArgs), Int64(NUM_MANDATORY_JSFUNC_ARGS));
+        BRANCH(JudgeAotAndFastCallWithMethod(method, CircuitBuilder::JudgeMethodType::HAS_AOT_FASTCALL),
+               &methodIsFastCall, &methodNotFastCall);
+        Bind(&methodIsFastCall);
+        {
+            GateRef expectedNum = Int64And(Int64LSR(callField, Int64(MethodLiteral::NumArgsBits::START_BIT)),
+                                           Int64((1LU << MethodLiteral::NumArgsBits::SIZE) - 1));
+            GateRef expectedArgc = Int64Add(expectedNum, Int64(NUM_MANDATORY_JSFUNC_ARGS));
+            BRANCH(Int64LessThanOrEqual(expectedArgc, realNumArgs), &fastCall, &fastCallBridge);
+            Bind(&fastCall);
+            {
+                GateRef code = GetAotCodeAddr(func);
+                switch (mode) {
+                    case JSCallMode::CALL_THIS_ARG0:
+                        thisValue = data[0];
+                        [[fallthrough]];
+                    case JSCallMode::CALL_ARG0:
+                    case JSCallMode::DEPRECATED_CALL_ARG0:
+                        result = FastCallOptimized(glue, code, { glue, func, thisValue});
+                        Jump(&exit);
+                        break;
+                    case JSCallMode::CALL_THIS_ARG1:
+                        thisValue = data[1];
+                        [[fallthrough]];
+                    case JSCallMode::CALL_ARG1:
+                    case JSCallMode::DEPRECATED_CALL_ARG1:
+                        result = FastCallOptimized(glue, code, { glue, func, thisValue, data[0] });
+                        Jump(&exit);
+                        break;
+                    case JSCallMode::CALL_THIS_ARG2:
+                        thisValue = data[2];
+                        [[fallthrough]];
+                    case JSCallMode::CALL_ARG2:
+                    case JSCallMode::DEPRECATED_CALL_ARG2:
+                        result = FastCallOptimized(glue, code, { glue, func, thisValue, data[0], data[1] });
+                        Jump(&exit);
+                        break;
+                    case JSCallMode::CALL_THIS_ARG3:
+                        thisValue = data[3];
+                        [[fallthrough]];
+                    case JSCallMode::CALL_ARG3:
+                    case JSCallMode::DEPRECATED_CALL_ARG3:
+                        result = FastCallOptimized(glue, code, { glue, func, thisValue, data[0], data[1], data[2] });
+                        Jump(&exit);
+                        break;
+                    case JSCallMode::CALL_THIS_WITH_ARGV:
+                    case JSCallMode::CALL_THIS_ARGV_WITH_RETURN:
+                    case JSCallMode::DEPRECATED_CALL_THIS_WITH_ARGV:
+                        thisValue = data[2]; // 2: this input
+                        [[fallthrough]];
+                    case JSCallMode::CALL_WITH_ARGV:
+                    case JSCallMode::DEPRECATED_CALL_WITH_ARGV:
+                        result = CallNGCRuntime(glue, RTSTUB_ID(JSFastCallWithArgV),
+                                                { glue, func, thisValue, ZExtInt32ToInt64(actualNumArgs), data[1] });
+                        Jump(&exit);
+                        break;
+                    case JSCallMode::DEPRECATED_CALL_CONSTRUCTOR_WITH_ARGV:
+                    case JSCallMode::CALL_CONSTRUCTOR_WITH_ARGV:
+                        result = CallNGCRuntime(glue, RTSTUB_ID(JSFastCallWithArgV),
+                                                { glue, func, data[2], ZExtInt32ToInt64(actualNumArgs), data[1]});
+                        result = ConstructorCheck(glue, func, *result, data[2]);  // 2: the second index
+                        Jump(&exit);
+                        break;
+                    case JSCallMode::CALL_GETTER:
+                        result = FastCallOptimized(glue, code, { glue, func, data[0] });
+                        Jump(&exit);
+                        break;
+                    case JSCallMode::CALL_SETTER:
+                        result = FastCallOptimized(glue, code, { glue, func, data[0], data[1] });
+                        Jump(&exit);
+                        break;
+                    case JSCallMode::CALL_THIS_ARG3_WITH_RETURN:
+                        result = FastCallOptimized(glue, code, { glue, func, data[0], data[1], data[2], data[3] });
+                        Jump(&exit);
+                        break;
+                    case JSCallMode::SUPER_CALL_WITH_ARGV:
+                        result = CallRuntime(glue, RTSTUB_ID(SuperCall), { data[0], data[1], IntToTaggedInt(data[2]) });
+                        Jump(&exit);
+                        break;
+                    case JSCallMode::SUPER_CALL_SPREAD_WITH_ARGV:
+                        result = CallRuntime(glue, RTSTUB_ID(SuperCallSpread), {data[0], data[1]});
+                        Jump(&exit);
+                        break;
+                    default:
+                        LOG_ECMA(FATAL) << "this branch is unreachable";
+                        UNREACHABLE();
+                }
+            }
+            Bind(&fastCallBridge);
+            {
+                switch (mode) {
+                    case JSCallMode::CALL_THIS_ARG0:
+                        thisValue = data[0];
+                        [[fallthrough]];
+                    case JSCallMode::CALL_ARG0:
+                    case JSCallMode::DEPRECATED_CALL_ARG0:
+                        result = CallNGCRuntime(glue, RTSTUB_ID(OptimizedFastCallAndPushUndefined),
+                                                { glue, realNumArgs, func, newTarget, thisValue});
+                        Jump(&exit);
+                        break;
+                    case JSCallMode::CALL_THIS_ARG1:
+                        thisValue = data[1];
+                        [[fallthrough]];
+                    case JSCallMode::CALL_ARG1:
+                    case JSCallMode::DEPRECATED_CALL_ARG1:
+                        result = CallNGCRuntime(glue, RTSTUB_ID(OptimizedFastCallAndPushUndefined),
+                                                { glue, realNumArgs, func, newTarget, thisValue, data[0] });
+                        Jump(&exit);
+                        break;
+                    case JSCallMode::CALL_THIS_ARG2:
+                        thisValue = data[2];
+                        [[fallthrough]];
+                    case JSCallMode::CALL_ARG2:
+                    case JSCallMode::DEPRECATED_CALL_ARG2:
+                        result = CallNGCRuntime(glue, RTSTUB_ID(OptimizedFastCallAndPushUndefined),
+                                                { glue, realNumArgs, func, newTarget, thisValue, data[0], data[1] });
+                        Jump(&exit);
+                        break;
+                    case JSCallMode::CALL_THIS_ARG3:
+                        thisValue = data[3];
+                        [[fallthrough]];
+                    case JSCallMode::CALL_ARG3:
+                    case JSCallMode::DEPRECATED_CALL_ARG3:
+                        result = CallNGCRuntime(glue, RTSTUB_ID(OptimizedFastCallAndPushUndefined),
+                                                { glue, realNumArgs, func, newTarget, thisValue,
+                                                  data[0], data[1], data[2] }); // 2: args2
+                        Jump(&exit);
+                        break;
+                    case JSCallMode::CALL_THIS_WITH_ARGV:
+                    case JSCallMode::CALL_THIS_ARGV_WITH_RETURN:
+                    case JSCallMode::DEPRECATED_CALL_THIS_WITH_ARGV:
+                        thisValue = data[2]; // 2: this input
+                        [[fallthrough]];
+                    case JSCallMode::CALL_WITH_ARGV:
+                    case JSCallMode::DEPRECATED_CALL_WITH_ARGV:
+                        result = CallNGCRuntime(glue, RTSTUB_ID(JSFastCallWithArgVAndPushUndefined),
+                                                { glue, func, thisValue, ZExtInt32ToInt64(actualNumArgs), data[1], expectedNum });
+                        Jump(&exit);
+                        break;
+                    case JSCallMode::DEPRECATED_CALL_CONSTRUCTOR_WITH_ARGV:
+                    case JSCallMode::CALL_CONSTRUCTOR_WITH_ARGV:
+                        result = CallNGCRuntime(glue, RTSTUB_ID(JSFastCallWithArgVAndPushUndefined),
+                                                { glue, func, data[2], ZExtInt32ToInt64(actualNumArgs), data[1], expectedNum });
+                        result = ConstructorCheck(glue, func, *result, data[2]);  // 2: the second index
+                        Jump(&exit);
+                        break;
+                    case JSCallMode::CALL_GETTER:
+                        result = CallNGCRuntime(glue, RTSTUB_ID(OptimizedFastCallAndPushUndefined),
+                                                { glue, realNumArgs, func, newTarget, data[0]});
+                        Jump(&exit);
+                        break;
+                    case JSCallMode::CALL_SETTER:
+                        result = CallNGCRuntime(glue, RTSTUB_ID(OptimizedFastCallAndPushUndefined),
+                                                { glue, realNumArgs, func, newTarget, data[0], data[1]});
+                        Jump(&exit);
+                        break;
+                    case JSCallMode::CALL_THIS_ARG3_WITH_RETURN:
+                        result = CallNGCRuntime(glue, RTSTUB_ID(OptimizedFastCallAndPushUndefined),
+                                                { glue, realNumArgs, func, newTarget, data[0], data[1], data[2], data[3] });
+                        Jump(&exit);
+                        break;
+                    case JSCallMode::SUPER_CALL_WITH_ARGV:
+                        result = CallRuntime(glue, RTSTUB_ID(SuperCall), { data[0], data[1], IntToTaggedInt(data[2]) });
+                        Jump(&exit);
+                        break;
+                    case JSCallMode::SUPER_CALL_SPREAD_WITH_ARGV:
+                        result = CallRuntime(glue, RTSTUB_ID(SuperCallSpread), {data[0], data[1]});
+                        Jump(&exit);
+                        break;
+                    default:
+                        LOG_ECMA(FATAL) << "this branch is unreachable";
+                        UNREACHABLE();
+                }
+            }
+        }
+
+        Bind(&methodNotFastCall);
+        BRANCH(JudgeAotAndFastCallWithMethod(method, CircuitBuilder::JudgeMethodType::HAS_AOT),
+               &methodisAot, &funcCheckBaselineCode);
+        Bind(&methodisAot);
+        {
+            GateRef expectedNum = Int64And(Int64LSR(callField, Int64(MethodLiteral::NumArgsBits::START_BIT)),
+                                           Int64((1LU << MethodLiteral::NumArgsBits::SIZE) - 1));
+            GateRef expectedArgc = Int64Add(expectedNum, Int64(NUM_MANDATORY_JSFUNC_ARGS));
+            BRANCH(Int64LessThanOrEqual(expectedArgc, realNumArgs), &slowCall, &slowCallBridge);
+            Bind(&slowCall);
+            {
+                GateRef code = GetAotCodeAddr(func);
+                switch (mode) {
+                    case JSCallMode::CALL_THIS_ARG0:
+                        thisValue = data[0];
+                        [[fallthrough]];
+                    case JSCallMode::CALL_ARG0:
+                    case JSCallMode::DEPRECATED_CALL_ARG0:
+                        result = CallOptimized(glue, code, { glue, realNumArgs, func, newTarget, thisValue });
+                        Jump(&exit);
+                        break;
+                    case JSCallMode::CALL_THIS_ARG1:
+                        thisValue = data[1];
+                        [[fallthrough]];
+                    case JSCallMode::CALL_ARG1:
+                    case JSCallMode::DEPRECATED_CALL_ARG1:
+                        result = CallOptimized(glue, code, { glue, realNumArgs, func, newTarget, thisValue, data[0] });
+                        Jump(&exit);
+                        break;
+                    case JSCallMode::CALL_THIS_ARG2:
+                        thisValue = data[2];
+                        [[fallthrough]];
+                    case JSCallMode::CALL_ARG2:
+                    case JSCallMode::DEPRECATED_CALL_ARG2:
+                        result = CallOptimized(glue, code,
+                                               { glue, realNumArgs, func, newTarget, thisValue, data[0], data[1] });
+                        Jump(&exit);
+                        break;
+                    case JSCallMode::CALL_THIS_ARG3:
+                        thisValue = data[3];
+                        [[fallthrough]];
+                    case JSCallMode::CALL_ARG3:
+                    case JSCallMode::DEPRECATED_CALL_ARG3:
+                        result = CallOptimized(glue, code, { glue, realNumArgs, func, newTarget, thisValue,
+                                                             data[0], data[1], data[2] });
+                        Jump(&exit);
+                        break;
+                    case JSCallMode::CALL_THIS_WITH_ARGV:
+                    case JSCallMode::CALL_THIS_ARGV_WITH_RETURN:
+                    case JSCallMode::DEPRECATED_CALL_THIS_WITH_ARGV:
+                        thisValue = data[2]; // 2: this input
+                        [[fallthrough]];
+                    case JSCallMode::CALL_WITH_ARGV:
+                    case JSCallMode::DEPRECATED_CALL_WITH_ARGV:
+                        result = CallNGCRuntime(glue, RTSTUB_ID(JSCallWithArgV),
+                                                { glue, ZExtInt32ToInt64(actualNumArgs), func, newTarget, thisValue, data[1] });
+                        Jump(&exit);
+                        break;
+                    case JSCallMode::DEPRECATED_CALL_CONSTRUCTOR_WITH_ARGV:
+                    case JSCallMode::CALL_CONSTRUCTOR_WITH_ARGV:
+                        result = CallNGCRuntime(glue, RTSTUB_ID(JSCallWithArgV),
+                                                { glue, ZExtInt32ToInt64(actualNumArgs), func, func, data[2], data[1]});
+                        result = ConstructorCheck(glue, func, *result, data[2]);  // 2: the second index
+                        Jump(&exit);
+                        break;
+                    case JSCallMode::CALL_GETTER:
+                        result = CallOptimized(glue, code, { glue, realNumArgs, func, newTarget, data[0] });
+                        Jump(&exit);
+                        break;
+                    case JSCallMode::CALL_SETTER:
+                        result = CallOptimized(glue, code, { glue, realNumArgs, func, newTarget, data[0], data[1] });
+                        Jump(&exit);
+                        break;
+                    case JSCallMode::CALL_THIS_ARG3_WITH_RETURN:
+                        result = CallOptimized(glue, code,
+                                               { glue, realNumArgs, func, newTarget, data[0], data[1], data[2], data[3] });
+                        Jump(&exit);
+                        break;
+                    case JSCallMode::SUPER_CALL_WITH_ARGV:
+                        result = CallRuntime(glue, RTSTUB_ID(SuperCall), { data[0], data[1], IntToTaggedInt(data[2]) });
+                        Jump(&exit);
+                        break;
+                    case JSCallMode::SUPER_CALL_SPREAD_WITH_ARGV:
+                        result = CallRuntime(glue, RTSTUB_ID(SuperCallSpread), {data[0], data[1]});
+                        Jump(&exit);
+                        break;
+                    default:
+                        LOG_ECMA(FATAL) << "this branch is unreachable";
+                        UNREACHABLE();
+                }
+            }
+            Bind(&slowCallBridge);
+            {
+                switch (mode) {
+                    case JSCallMode::CALL_THIS_ARG0:
+                        thisValue = data[0];
+                        [[fallthrough]];
+                    case JSCallMode::CALL_ARG0:
+                    case JSCallMode::DEPRECATED_CALL_ARG0:
+                        result = CallNGCRuntime(glue, RTSTUB_ID(OptimizedCallAndPushUndefined),
+                                                { glue, realNumArgs, func, newTarget, thisValue});
+                        Jump(&exit);
+                        break;
+                    case JSCallMode::CALL_THIS_ARG1:
+                        thisValue = data[1];
+                        [[fallthrough]];
+                    case JSCallMode::CALL_ARG1:
+                    case JSCallMode::DEPRECATED_CALL_ARG1:
+                        result = CallNGCRuntime(glue, RTSTUB_ID(OptimizedCallAndPushUndefined),
+                                                { glue, realNumArgs, func, newTarget, thisValue, data[0] });
+                        Jump(&exit);
+                        break;
+                    case JSCallMode::CALL_THIS_ARG2:
+                        thisValue = data[2];
+                        [[fallthrough]];
+                    case JSCallMode::CALL_ARG2:
+                    case JSCallMode::DEPRECATED_CALL_ARG2:
+                        result = CallNGCRuntime(glue, RTSTUB_ID(OptimizedCallAndPushUndefined),
+                                                { glue, realNumArgs, func, newTarget, thisValue, data[0], data[1] });
+                        Jump(&exit);
+                        break;
+                    case JSCallMode::CALL_THIS_ARG3:
+                        thisValue = data[3];
+                        [[fallthrough]];
+                    case JSCallMode::CALL_ARG3:
+                    case JSCallMode::DEPRECATED_CALL_ARG3:
+                        result = CallNGCRuntime(glue, RTSTUB_ID(OptimizedCallAndPushUndefined),
+                                                { glue, realNumArgs, func, newTarget, thisValue,
+                                                  data[0], data[1], data[2] }); // 2: args2
+                        Jump(&exit);
+                        break;
+                    case JSCallMode::CALL_THIS_WITH_ARGV:
+                    case JSCallMode::CALL_THIS_ARGV_WITH_RETURN:
+                    case JSCallMode::DEPRECATED_CALL_THIS_WITH_ARGV:
+                        thisValue = data[2]; // 2: this input
+                        [[fallthrough]];
+                    case JSCallMode::CALL_WITH_ARGV:
+                    case JSCallMode::DEPRECATED_CALL_WITH_ARGV:
+                        result = CallNGCRuntime(glue, RTSTUB_ID(JSCallWithArgVAndPushUndefined),
+                                                { glue, ZExtInt32ToInt64(actualNumArgs), func, newTarget, thisValue, data[1] });
+                        Jump(&exit);
+                        break;
+                    case JSCallMode::DEPRECATED_CALL_CONSTRUCTOR_WITH_ARGV:
+                    case JSCallMode::CALL_CONSTRUCTOR_WITH_ARGV:
+                        result = CallNGCRuntime(glue, RTSTUB_ID(JSCallWithArgVAndPushUndefined),
+                                                { glue, ZExtInt32ToInt64(actualNumArgs), func, func, data[2], data[1]});
+                        result = ConstructorCheck(glue, func, *result, data[2]);  // 2: the second index
+                        Jump(&exit);
+                        break;
+                    case JSCallMode::CALL_GETTER:
+                        result = CallNGCRuntime(glue, RTSTUB_ID(OptimizedCallAndPushUndefined),
+                                                { glue, realNumArgs, func, newTarget, data[0]});
+                        Jump(&exit);
+                        break;
+                    case JSCallMode::CALL_SETTER:
+                        result = CallNGCRuntime(glue, RTSTUB_ID(OptimizedCallAndPushUndefined),
+                                                { glue, realNumArgs, func, newTarget, data[0], data[1]});
+                        Jump(&exit);
+                        break;
+                    case JSCallMode::CALL_THIS_ARG3_WITH_RETURN:
+                        result = CallNGCRuntime(glue, RTSTUB_ID(OptimizedCallAndPushUndefined),
+                                                { glue, realNumArgs, func, newTarget, data[0], data[1], data[2], data[3] });
+                        Jump(&exit);
+                        break;
+                    case JSCallMode::SUPER_CALL_WITH_ARGV:
+                        result = CallRuntime(glue, RTSTUB_ID(SuperCall), { data[0], data[1], IntToTaggedInt(data[2]) });
+                        Jump(&exit);
+                        break;
+                    case JSCallMode::SUPER_CALL_SPREAD_WITH_ARGV:
+                        result = CallRuntime(glue, RTSTUB_ID(SuperCallSpread), {data[0], data[1]});
+                        Jump(&exit);
+                        break;
+                    default:
+                        LOG_ECMA(FATAL) << "this branch is unreachable";
+                        UNREACHABLE();
+                }
+            }
+        }
+
+        Bind(&funcCheckBaselineCode);
+        GateRef baselineCodeOffset = IntPtr(JSFunction::BASELINECODE_OFFSET);
+        GateRef baselineCode = Load(VariableType::JS_POINTER(), func, baselineCodeOffset);
+
+        Branch(NotEqual(baselineCode, Undefined()), &checkIsBaselineCompiling, &methodNotAot);
+        Bind(&checkIsBaselineCompiling);
+        Branch(NotEqual(baselineCode, Hole()), &funcHasBaselineCode, &methodNotAot);
+        Bind(&funcHasBaselineCode);
+        {
+            if (jumpSize != 0) {
+                SaveJumpSizeIfNeeded(glue, jumpSize);
+            }
+            SaveHotnessCounterIfNeeded(glue, sp, hotnessCounter, mode);
+            switch (mode) {
+                case JSCallMode::CALL_THIS_ARG0:
+                    result = CallNGCRuntime(glue, RTSTUB_ID(BaselineCallThisArg0),
+                                            { glue, sp, func, method, callField, data[0] });
+                    Jump(&exit);
+                    break;
+                case JSCallMode::CALL_ARG0:
+                case JSCallMode::DEPRECATED_CALL_ARG0:
+                    result = CallNGCRuntime(glue, RTSTUB_ID(BaselineCallArg0),
+                                            { glue, sp, func, method, callField });
+                    Jump(&exit);
+                    break;
+                case JSCallMode::CALL_THIS_ARG1:
+                    result = CallNGCRuntime(glue, RTSTUB_ID(BaselineCallThisArg1),
+                                            { glue, sp, func, method, callField, data[0], data[1] });
+                    Jump(&exit);
+                    break;
+                case JSCallMode::CALL_ARG1:
+                case JSCallMode::DEPRECATED_CALL_ARG1:
+                    result = CallNGCRuntime(glue, RTSTUB_ID(BaselineCallArg1),
+                                            { glue, sp, func, method, callField, data[0] });
+                    Jump(&exit);
+                    break;
+                case JSCallMode::CALL_THIS_ARG2:
+                    result = CallNGCRuntime(glue, RTSTUB_ID(BaselineCallThisArgs2),
+                                            { glue, sp, func, method, callField, data[0], data[1], data[2] });
+                    Jump(&exit);
+                    break;
+                case JSCallMode::CALL_ARG2:
+                case JSCallMode::DEPRECATED_CALL_ARG2:
+                    result = CallNGCRuntime(glue, RTSTUB_ID(BaselineCallArgs2),
+                                            { glue, sp, func, method, callField, data[0], data[1] });
+                    Jump(&exit);
+                    break;
+                case JSCallMode::CALL_THIS_ARG3:
+                    result = CallNGCRuntime(glue, RTSTUB_ID(BaselineCallThisArgs3),
+                                            { glue, sp, func, method, callField, data[0], data[1], data[2], data[3] });
+                    Jump(&exit);
+                    break;
+                case JSCallMode::CALL_ARG3:
+                case JSCallMode::DEPRECATED_CALL_ARG3:
+                    result = CallNGCRuntime(glue, RTSTUB_ID(BaselineCallArgs3),
+                                            { glue, sp, func, method, callField, data[0], data[1], data[2] }); // 2: args2
+                    Jump(&exit);
+                    break;
+                case JSCallMode::CALL_WITH_ARGV:
+                case JSCallMode::DEPRECATED_CALL_WITH_ARGV:
+                    result = CallNGCRuntime(glue, RTSTUB_ID(BaselineCallRange),
+                                            { glue, sp, func, method, callField, data[0], data[1] });
+                    Jump(&exit);
+                    break;
+                case JSCallMode::CALL_THIS_WITH_ARGV:
+                case JSCallMode::DEPRECATED_CALL_THIS_WITH_ARGV:
+                    result = CallNGCRuntime(glue, RTSTUB_ID(BaselineCallThisRange),
+                                            { glue, sp, func, method, callField, data[0], data[1], data[2] });
+                    Jump(&exit);
+                    break;
+                case JSCallMode::DEPRECATED_CALL_CONSTRUCTOR_WITH_ARGV:
+                case JSCallMode::CALL_CONSTRUCTOR_WITH_ARGV:
+                    result = CallNGCRuntime(glue, RTSTUB_ID(BaselineCallNew),
+                                            { glue, sp, func, method, callField, data[0], data[1], data[2] });
+                    Jump(&exit);
+                    break;
+                case JSCallMode::CALL_GETTER:
+                    Jump(&methodNotAot);
+                    break;
+                case JSCallMode::CALL_SETTER:
+                    Jump(&methodNotAot);
+                    break;
+                case JSCallMode::CALL_THIS_ARG3_WITH_RETURN:
+                    Jump(&methodNotAot);
+                    break;
+                case JSCallMode::CALL_THIS_ARGV_WITH_RETURN:
+                    Jump(&methodNotAot);
+                    break;
+                case JSCallMode::SUPER_CALL_WITH_ARGV:
+                case JSCallMode::SUPER_CALL_SPREAD_WITH_ARGV:
+                    result = CallNGCRuntime(glue, RTSTUB_ID(BaselineSuperCall),
+                                            { glue, sp, func, method, callField, data[2], data[3], data[4], data[5] });
+                    Jump(&exit);
+                    break;
+                default:
+                    LOG_ECMA(FATAL) << "this branch is unreachable";
+                    UNREACHABLE();
+            }
+        }
+
+        Bind(&methodNotAot);
+        if (jumpSize != 0) {
+            SaveJumpSizeIfNeeded(glue, jumpSize);
+        }
+        SaveHotnessCounterIfNeeded(glue, sp, hotnessCounter, mode);
+        switch (mode) {
+            case JSCallMode::CALL_THIS_ARG0:
+                result = CallNGCRuntime(glue, RTSTUB_ID(PushCallThisArg0AndDispatch),
+                                        { glue, sp, func, method, callField, data[0] });
+                Jump(&exit);
+                break;
+            case JSCallMode::CALL_ARG0:
+            case JSCallMode::DEPRECATED_CALL_ARG0:
+                result = CallNGCRuntime(glue, RTSTUB_ID(PushCallArg0AndDispatch),
+                                        { glue, sp, func, method, callField });
+                Jump(&exit);
+                break;
+            case JSCallMode::CALL_THIS_ARG1:
+                result = CallNGCRuntime(glue, RTSTUB_ID(PushCallThisArg1AndDispatch),
+                                        { glue, sp, func, method, callField, data[0], data[1] });
+                Jump(&exit);
+                break;
+            case JSCallMode::CALL_ARG1:
+            case JSCallMode::DEPRECATED_CALL_ARG1:
+                result = CallNGCRuntime(glue, RTSTUB_ID(PushCallArg1AndDispatch),
+                                        { glue, sp, func, method, callField, data[0] });
+                Jump(&exit);
+                break;
+            case JSCallMode::CALL_THIS_ARG2:
+                result = CallNGCRuntime(glue, RTSTUB_ID(PushCallThisArgs2AndDispatch),
+                                        { glue, sp, func, method, callField, data[0], data[1], data[2] });
+                Jump(&exit);
+                break;
+            case JSCallMode::CALL_ARG2:
+            case JSCallMode::DEPRECATED_CALL_ARG2:
+                result = CallNGCRuntime(glue, RTSTUB_ID(PushCallArgs2AndDispatch),
+                                        { glue, sp, func, method, callField, data[0], data[1] });
+                Jump(&exit);
+                break;
+            case JSCallMode::CALL_THIS_ARG3:
+                result = CallNGCRuntime(glue, RTSTUB_ID(PushCallThisArgs3AndDispatch),
+                                        { glue, sp, func, method, callField, data[0], data[1], data[2], data[3] });
+                Jump(&exit);
+                break;
+            case JSCallMode::CALL_ARG3:
+            case JSCallMode::DEPRECATED_CALL_ARG3:
+                result = CallNGCRuntime(glue, RTSTUB_ID(PushCallArgs3AndDispatch),
+                                        { glue, sp, func, method, callField, data[0], data[1], data[2] }); // 2: args2
+                Jump(&exit);
+                break;
+            case JSCallMode::CALL_WITH_ARGV:
+            case JSCallMode::DEPRECATED_CALL_WITH_ARGV:
+                result = CallNGCRuntime(glue, RTSTUB_ID(PushCallRangeAndDispatch),
+                                        { glue, sp, func, method, callField, data[0], data[1] });
+                Jump(&exit);
+                break;
+            case JSCallMode::CALL_THIS_WITH_ARGV:
+            case JSCallMode::DEPRECATED_CALL_THIS_WITH_ARGV:
+                result = CallNGCRuntime(glue, RTSTUB_ID(PushCallThisRangeAndDispatch),
+                                        { glue, sp, func, method, callField, data[0], data[1], data[2] });
+                Jump(&exit);
+                break;
+            case JSCallMode::DEPRECATED_CALL_CONSTRUCTOR_WITH_ARGV:
+            case JSCallMode::CALL_CONSTRUCTOR_WITH_ARGV:
+                result = CallNGCRuntime(glue, RTSTUB_ID(PushCallNewAndDispatch),
+                                        { glue, sp, func, method, callField, data[0], data[1], data[2] });
+                Jump(&exit);
+                break;
+            case JSCallMode::CALL_GETTER:
+                result = CallNGCRuntime(glue, RTSTUB_ID(CallGetter),
+                                        { glue, func, method, callField, data[0] });
+                Jump(&exit);
+                break;
+            case JSCallMode::CALL_SETTER:
+                result = CallNGCRuntime(glue, RTSTUB_ID(CallSetter),
+                                        { glue, func, method, callField, data[1], data[0] });
+                Jump(&exit);
+                break;
+            case JSCallMode::CALL_THIS_ARG3_WITH_RETURN:
+                result = CallNGCRuntime(glue, RTSTUB_ID(CallContainersArgs3),
+                                        { glue, func, method, callField, data[1], data[2], data[3], data[0] });
+                Jump(&exit);
+                break;
+            case JSCallMode::CALL_THIS_ARGV_WITH_RETURN:
+                result = CallNGCRuntime(glue, RTSTUB_ID(CallReturnWithArgv),
+                                        { glue, func, method, callField, data[0], data[1], data[2] });
+                Jump(&exit);
+                break;
+            case JSCallMode::SUPER_CALL_WITH_ARGV:
+            case JSCallMode::SUPER_CALL_SPREAD_WITH_ARGV:
+                result = CallNGCRuntime(glue, RTSTUB_ID(PushSuperCallAndDispatch),
+                                        { glue, sp, func, method, callField, data[2], data[3], data[4], data[5] });
+                Jump(&exit);
+                break;
+            default:
+                LOG_ECMA(FATAL) << "this branch is unreachable";
+                UNREACHABLE();
+        }
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
 }
 
 GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNumArgs, GateRef jumpSize,
@@ -7198,6 +8080,9 @@ GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNu
     Label methodisAot(env);
     Label methodIsFastCall(env);
     Label methodNotFastCall(env);
+    Label funcHasBaselineCode(env);
+    Label funcCheckBaselineCode(env);
+    Label checkIsBaselineCompiling(env);
     Label fastCall(env);
     Label fastCallBridge(env);
     Label slowCall(env);
@@ -7383,7 +8268,7 @@ GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNu
 
         Bind(&methodNotFastCall);
         BRANCH(JudgeAotAndFastCallWithMethod(method, CircuitBuilder::JudgeMethodType::HAS_AOT),
-            &methodisAot, &methodNotAot);
+            &methodisAot, &funcCheckBaselineCode);
         Bind(&methodisAot);
         {
             GateRef expectedNum = Int64And(Int64LSR(callField, Int64(MethodLiteral::NumArgsBits::START_BIT)),
@@ -7557,6 +8442,106 @@ GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNu
                         LOG_ECMA(FATAL) << "this branch is unreachable";
                         UNREACHABLE();
                 }
+            }
+        }
+
+        Bind(&funcCheckBaselineCode);
+        GateRef baselineCodeOffset = IntPtr(JSFunction::BASELINECODE_OFFSET);
+        GateRef baselineCode = Load(VariableType::JS_POINTER(), func, baselineCodeOffset);
+
+        Branch(NotEqual(baselineCode, Undefined()), &checkIsBaselineCompiling, &methodNotAot);
+        Bind(&checkIsBaselineCompiling);
+        Branch(NotEqual(baselineCode, Hole()), &funcHasBaselineCode, &methodNotAot);
+        Bind(&funcHasBaselineCode);
+        {
+            if (jumpSize != 0) {
+                SaveJumpSizeIfNeeded(glue, jumpSize);
+            }
+            SaveHotnessCounterIfNeeded(glue, sp, hotnessCounter, mode);
+            switch (mode) {
+                case JSCallMode::CALL_THIS_ARG0:
+                    result = CallNGCRuntime(glue, RTSTUB_ID(BaselineCallThisArg0),
+                                            { glue, sp, func, method, callField, data[0] });
+                    Return();
+                    break;
+                case JSCallMode::CALL_ARG0:
+                case JSCallMode::DEPRECATED_CALL_ARG0:
+                    result = CallNGCRuntime(glue, RTSTUB_ID(BaselineCallArg0),
+                                            { glue, sp, func, method, callField });
+                    Return();
+                    break;
+                case JSCallMode::CALL_THIS_ARG1:
+                    result = CallNGCRuntime(glue, RTSTUB_ID(BaselineCallThisArg1),
+                                            { glue, sp, func, method, callField, data[0], data[1] });
+                    Return();
+                    break;
+                case JSCallMode::CALL_ARG1:
+                case JSCallMode::DEPRECATED_CALL_ARG1:
+                    result = CallNGCRuntime(glue, RTSTUB_ID(BaselineCallArg1),
+                                            { glue, sp, func, method, callField, data[0] });
+                    Return();
+                    break;
+                case JSCallMode::CALL_THIS_ARG2:
+                    result = CallNGCRuntime(glue, RTSTUB_ID(BaselineCallThisArgs2),
+                                            { glue, sp, func, method, callField, data[0], data[1], data[2] });
+                    Return();
+                    break;
+                case JSCallMode::CALL_ARG2:
+                case JSCallMode::DEPRECATED_CALL_ARG2:
+                    result = CallNGCRuntime(glue, RTSTUB_ID(BaselineCallArgs2),
+                                            { glue, sp, func, method, callField, data[0], data[1] });
+                    Return();
+                    break;
+                case JSCallMode::CALL_THIS_ARG3:
+                    result = CallNGCRuntime(glue, RTSTUB_ID(BaselineCallThisArgs3),
+                                            { glue, sp, func, method, callField, data[0], data[1], data[2], data[3] });
+                    Return();
+                    break;
+                case JSCallMode::CALL_ARG3:
+                case JSCallMode::DEPRECATED_CALL_ARG3:
+                    result = CallNGCRuntime(glue, RTSTUB_ID(BaselineCallArgs3),
+                                            { glue, sp, func, method, callField, data[0], data[1], data[2] }); // 2: args2
+                    Return();
+                    break;
+                case JSCallMode::CALL_WITH_ARGV:
+                case JSCallMode::DEPRECATED_CALL_WITH_ARGV:
+                    result = CallNGCRuntime(glue, RTSTUB_ID(BaselineCallRange),
+                                            { glue, sp, func, method, callField, data[0], data[1] });
+                    Return();
+                    break;
+                case JSCallMode::CALL_THIS_WITH_ARGV:
+                case JSCallMode::DEPRECATED_CALL_THIS_WITH_ARGV:
+                    result = CallNGCRuntime(glue, RTSTUB_ID(BaselineCallThisRange),
+                                            { glue, sp, func, method, callField, data[0], data[1], data[2] });
+                    Return();
+                    break;
+                case JSCallMode::DEPRECATED_CALL_CONSTRUCTOR_WITH_ARGV:
+                case JSCallMode::CALL_CONSTRUCTOR_WITH_ARGV:
+                    result = CallNGCRuntime(glue, RTSTUB_ID(BaselineCallNew),
+                                            { glue, sp, func, method, callField, data[0], data[1], data[2] });
+                    Return();
+                    break;
+                case JSCallMode::CALL_GETTER:
+                    Jump(&methodNotAot);
+                    break;
+                case JSCallMode::CALL_SETTER:
+                    Jump(&methodNotAot);
+                    break;
+                case JSCallMode::CALL_THIS_ARG3_WITH_RETURN:
+                    Jump(&methodNotAot);
+                    break;
+                case JSCallMode::CALL_THIS_ARGV_WITH_RETURN:
+                    Jump(&methodNotAot);
+                    break;
+                case JSCallMode::SUPER_CALL_WITH_ARGV:
+                case JSCallMode::SUPER_CALL_SPREAD_WITH_ARGV:
+                    result = CallNGCRuntime(glue, RTSTUB_ID(BaselineSuperCall),
+                                            { glue, sp, func, method, callField, data[2], data[3], data[4], data[5] });
+                    Return();
+                    break;
+                default:
+                    LOG_ECMA(FATAL) << "this branch is unreachable";
+                    UNREACHABLE();
             }
         }
 

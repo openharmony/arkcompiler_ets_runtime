@@ -715,29 +715,32 @@ void InterpreterStubBuilder::CheckExceptionWithJump(GateRef glue, GateRef sp, Ga
 
 GateRef InterpreterToolsStubBuilder::GetStringId(const StringIdInfo &info)
 {
+    if (info.GetStringIdType() == StringIdInfo::StringIdType::STRING_ID) {
+        return info.GetStringId();
+    }
     GateRef stringId;
-    switch (info.offset) {
+    switch (info.GetOffset()) {
         case StringIdInfo::Offset::BYTE_0: {
-            if (info.length == StringIdInfo::Length::BITS_16) {
-                stringId = ZExtInt16ToInt32(ReadInst16_0(info.pc));
+            if (info.GetLength() == StringIdInfo::Length::BITS_16) {
+                stringId = ZExtInt16ToInt32(ReadInst16_0(info.GetPc()));
             } else {
                 std::abort();
             }
             break;
         }
         case StringIdInfo::Offset::BYTE_1: {
-            if (info.length == StringIdInfo::Length::BITS_16) {
-                stringId = ZExtInt16ToInt32(ReadInst16_1(info.pc));
-            } else if (info.length == StringIdInfo::Length::BITS_32) {
-                stringId = ReadInst32_1(info.pc);
+            if (info.GetLength() == StringIdInfo::Length::BITS_16) {
+                stringId = ZExtInt16ToInt32(ReadInst16_1(info.GetPc()));
+            } else if (info.GetLength() == StringIdInfo::Length::BITS_32) {
+                stringId = ReadInst32_1(info.GetPc());
             } else {
                 std::abort();
             }
             break;
         }
         case StringIdInfo::Offset::BYTE_2: {
-            if (info.length == StringIdInfo::Length::BITS_16) {
-                stringId = ZExtInt16ToInt32(ReadInst16_2(info.pc));
+            if (info.GetLength() == StringIdInfo::Length::BITS_16) {
+                stringId = ZExtInt16ToInt32(ReadInst16_2(info.GetPc()));
             } else {
                 std::abort();
             }

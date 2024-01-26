@@ -169,10 +169,12 @@ void EcmaVM::PostFork()
     }
     ResetPGOProfiler();
 
-    bool isEnableJit = options_.IsEnableJIT() && options_.GetEnableAsmInterpreter();
+    bool isEnableFastJit = options_.IsEnableJIT() && options_.GetEnableAsmInterpreter();
+    bool isEnableBaselineJit = options_.IsEnableBaselineJIT() && options_.GetEnableAsmInterpreter();
+    options_.SetEnableAPPJIT(true);
     if (ohos::EnableAotListHelper::GetJitInstance()->IsEnableJit(bundleName) && options_.GetEnableAsmInterpreter()) {
-        Jit::GetInstance()->SetEnableOrDisable(options_, isEnableJit);
-        if (isEnableJit) {
+        Jit::GetInstance()->SetEnableOrDisable(options_, isEnableFastJit, isEnableBaselineJit);
+        if (isEnableFastJit || isEnableBaselineJit) {
             EnableJit();
         }
     }
@@ -246,9 +248,14 @@ bool EcmaVM::IsEnableElementsKind() const
     return options_.GetEnableAsmInterpreter() && options_.IsEnableElementsKind();
 }
 
-bool EcmaVM::IsEnableJit() const
+bool EcmaVM::IsEnableFastJit() const
 {
-    return GetJit()->IsEnable();
+    return GetJit()->IsEnableFastJit();
+}
+
+bool EcmaVM::IsEnableBaselineJit() const
+{
+    return GetJit()->IsEnableBaselineJit();
 }
 
 void EcmaVM::EnableJit()
@@ -307,7 +314,7 @@ bool EcmaVM::Initialize()
 
     callTimer_ = new FunctionCallTimer();
     strategy_ = new ThroughputJSObjectResizingStrategy();
-    if (IsEnableJit()) {
+    if (IsEnableFastJit() || IsEnableBaselineJit()) {
         EnableJit();
     }
     initialized_ = true;
@@ -339,7 +346,7 @@ EcmaVM::~EcmaVM()
 #if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
     DeleteHeapProfile();
 #endif
-    if (IsEnableJit()) {
+    if (IsEnableFastJit() || IsEnableBaselineJit()) {
         GetJit()->ClearTaskWithVm(this);
     }
     heap_->WaitAllTasksFinished();
@@ -825,7 +832,7 @@ void EcmaVM::TriggerConcurrentCallback(JSTaggedValue result, JSTaggedValue hint)
         LOG_ECMA(INFO) << "FunctionExtraInfo is not JSNativePointer";
         return;
     }
-    
+
     void *taskInfo = reinterpret_cast<void*>(thread_->GetTaskInfo());
     // clear the taskInfo when return, which can prevent the callback to get it
     thread_->SetTaskInfo(reinterpret_cast<uintptr_t>(nullptr));

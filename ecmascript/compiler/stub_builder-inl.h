@@ -23,6 +23,7 @@
 #include "ecmascript/base/number_helper.h"
 #include "ecmascript/compiler/assembler_module.h"
 #include "ecmascript/compiler/bc_call_signature.h"
+#include "ecmascript/compiler/baseline/baseline_call_signature.h"
 #include "ecmascript/global_dictionary.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/global_env_constants.h"
@@ -249,6 +250,11 @@ inline GateRef StubBuilder::GetAotCodeAddr(GateRef jsFunc)
     return env_->GetBuilder()->GetCodeAddr(jsFunc);
 }
 
+inline GateRef StubBuilder::GetBaselineCodeAddr(GateRef baselineCode)
+{
+    return env_->GetBuilder()->GetBaselineCodeAddr(baselineCode);
+}
+
 inline GateRef StubBuilder::CallStub(GateRef glue, int index, const std::initializer_list<GateRef>& args)
 {
     SavePcIfNeeded(glue);
@@ -291,7 +297,7 @@ void StubBuilder::SavePcIfNeeded(GateRef glue)
 
 void StubBuilder::SaveJumpSizeIfNeeded(GateRef glue, GateRef jumpSize)
 {
-    if (env_->IsAsmInterp()) {
+    if (env_->IsAsmInterp() || env_->IsBaselineBuiltin()) {
         GateRef sp = Argument(static_cast<size_t>(InterpreterHandlerInputs::SP));
         GateRef frame = PtrSub(sp,
             IntPtr(AsmInterpretedFrame::GetSize(GetEnvironment()->IsArch32Bit())));
@@ -309,7 +315,8 @@ void StubBuilder::SetHotnessCounter(GateRef glue, GateRef method, GateRef value)
 
 void StubBuilder::SaveHotnessCounterIfNeeded(GateRef glue, GateRef sp, GateRef hotnessCounter, JSCallMode mode)
 {
-    if (env_->IsAsmInterp() && kungfu::AssemblerModule::IsJumpToCallCommonEntry(mode)) {
+    if ((env_->IsAsmInterp() || env_->IsBaselineBuiltin())
+         && kungfu::AssemblerModule::IsJumpToCallCommonEntry(mode)) {
         ASSERT(hotnessCounter != Circuit::NullGate());
         GateRef frame = PtrSub(sp, IntPtr(AsmInterpretedFrame::GetSize(env_->IsArch32Bit())));
         GateRef function = Load(VariableType::JS_POINTER(), frame,
@@ -883,6 +890,11 @@ inline GateRef StubBuilder::Int8GreaterThanOrEqual(GateRef x, GateRef y)
 inline GateRef StubBuilder::Equal(GateRef x, GateRef y)
 {
     return env_->GetBuilder()->Equal(x, y);
+}
+
+inline GateRef StubBuilder::NotEqual(GateRef x, GateRef y)
+{
+    return env_->GetBuilder()->NotEqual(x, y);
 }
 
 inline GateRef StubBuilder::Int32Equal(GateRef x, GateRef y)
@@ -3299,6 +3311,13 @@ inline GateRef StubBuilder::GetArrayBufferData(GateRef buffer)
 {
     GateRef offset = IntPtr(JSArrayBuffer::DATA_OFFSET);
     return Load(VariableType::JS_ANY(), buffer, offset);
+}
+
+inline GateRef StubBuilder::GetLastLeaveFrame(GateRef glue)
+{
+    bool isArch32 = GetEnvironment()->Is32Bit();
+    GateRef spOffset = IntPtr(JSThread::GlueData::GetLeaveFrameOffset(isArch32));
+    return Load(VariableType::NATIVE_POINTER(), glue, spOffset);
 }
 } //  namespace panda::ecmascript::kungfu
 #endif // ECMASCRIPT_COMPILER_STUB_INL_H

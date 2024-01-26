@@ -3225,12 +3225,16 @@ JSHandle<ProfileTypeInfo> ObjectFactory::NewProfileTypeInfo(uint32_t length)
         JSHClass::Cast(thread_->GlobalConstants()->GetProfileTypeInfoClass().GetTaggedObject()), size);
     JSHandle<ProfileTypeInfo> array(thread_, header);
     array->InitializeWithSpecialValue(JSTaggedValue::Undefined(), length);
-    if (vm_->IsEnableJit()) {
+    if (vm_->IsEnableFastJit()) {
         uint16_t threshold = vm_->GetJSOptions().GetJitHotnessThreshold();
         ASSERT(threshold != ProfileTypeInfo::JIT_DISABLE_FLAG);
         array->SetJitHotnessThreshold(threshold);
         threshold = vm_->GetJSOptions().GetOsrHotnessThreshold();
         array->SetOsrHotnessThreshold(threshold);
+    }
+    if (vm_->IsEnableBaselineJit()) {
+        uint16_t threshold = vm_->GetJSOptions().GetBaselineJitHotnessThreshold();
+        array->SetBaselineJitHotnessThreshold(threshold);
     }
     return array;
 }
@@ -3878,7 +3882,7 @@ uintptr_t ObjectFactory::NewSpaceBySnapshotAllocator(size_t size)
 }
 
 JSHandle<MachineCode> ObjectFactory::NewMachineCodeObject(size_t length,
-    const MachineCodeDesc *desc, JSHandle<Method> &method)
+    const MachineCodeDesc &desc, JSHandle<Method> &method)
 {
     NewObjectHook();
     TaggedObject *obj = heap_->AllocateMachineCodeObject(JSHClass::Cast(
@@ -3888,9 +3892,7 @@ JSHandle<MachineCode> ObjectFactory::NewMachineCodeObject(size_t length,
         LOG_FULL(FATAL) << "machine code cast failed";
         UNREACHABLE();
     }
-    if (desc != nullptr) {
-        code->SetData(desc, method, length);
-    }
+    code->SetData(desc, method, length);
     JSHandle<MachineCode> codeObj(thread_, code);
     return codeObj;
 }

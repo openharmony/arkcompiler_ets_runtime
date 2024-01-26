@@ -275,7 +275,8 @@ void OptimizedCall::OptimizedCallAsmInterpreter(ExtendedAssembler *assembler)
     __ Ret();
     __ Bind(&target);
     {
-        AsmInterpreterCall::JSCallCommonEntry(assembler, JSCallMode::CALL_FROM_AOT);
+        AsmInterpreterCall::JSCallCommonEntry(assembler, JSCallMode::CALL_FROM_AOT,
+                                              CompilerTierCheck::NOT_CHECK_BASELINE_CODE);
     }
 }
 

@@ -90,7 +90,7 @@ private:
 class JitTask {
 public:
     JitTask(JSThread *hostThread, JSThread *compilerThread, Jit *jit,
-        JSHandle<JSFunction> &jsFunction, CString &methodName, int32_t offset,
+        JSHandle<JSFunction> &jsFunction, CompilerTier tier, CString &methodName, int32_t offset,
         uint32_t taskThreadId, JitCompileMode mode);
     // for ut
     JitTask(EcmaVM *hVm, EcmaVM *cVm, Jit *jit, uint32_t taskThreadId, JitCompileMode mode);
@@ -101,9 +101,9 @@ public:
 
     void InstallCode();
     void InstallOsrCode(JSHandle<Method> &method, JSHandle<MachineCode> &codeObj);
-    MachineCodeDesc *GetMachineCodeDesc()
+    MachineCodeDesc &GetMachineCodeDesc()
     {
-        return &codeDesc_;
+        return codeDesc_;
     }
 
     JSHandle<JSFunction> GetJsFunction() const
@@ -134,6 +134,11 @@ public:
     bool IsOsrTask()
     {
         return offset_ != MachineCode::INVALID_OSR_OFFSET;
+    }
+
+    CompilerTier GetCompilerTier() const
+    {
+        return compilerTier_;
     }
 
     Jit *GetJit()
@@ -265,6 +270,7 @@ private:
     void *compilerTask_;
     MachineCodeDesc codeDesc_;
     CompileState state_;
+    CompilerTier compilerTier_;
     CString methodInfo_;
     int32_t offset_;
     uint32_t taskThreadId_;

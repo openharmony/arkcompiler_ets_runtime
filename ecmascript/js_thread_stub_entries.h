@@ -18,6 +18,7 @@
 
 #include "ecmascript/compiler/bc_call_signature.h"
 #include "ecmascript/compiler/common_stubs.h"
+#include "ecmascript/compiler/baseline/baseline_stubs.h"
 
 namespace panda::ecmascript {
 struct BCStubEntries {
@@ -142,6 +143,27 @@ struct BuiltinStubEntries {
         return stubEntries_[index];
     }
 };
+
+struct BaselineStubEntries {
+    static constexpr size_t COUNT = kungfu::BaselineStubCSigns::NUM_OF_STUBS;
+    Address stubEntries_[COUNT];
+
+    static constexpr size_t SizeArch32 = sizeof(uint32_t) * COUNT;
+    static constexpr size_t SizeArch64 = sizeof(uint64_t) * COUNT;
+
+    void Set(size_t index, Address addr)
+    {
+        ASSERT(index < COUNT);
+        stubEntries_[index] = addr;
+    }
+
+    Address Get(size_t index) const
+    {
+        ASSERT(index < COUNT);
+        return stubEntries_[index];
+    }
+};
+
 STATIC_ASSERT_EQ_ARCH(sizeof(COStubEntries), COStubEntries::SizeArch32, COStubEntries::SizeArch64);
 } // namespace panda::ecmascript
 

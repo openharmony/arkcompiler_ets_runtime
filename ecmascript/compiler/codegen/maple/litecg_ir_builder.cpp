@@ -20,6 +20,7 @@
 
 #include "ecmascript/compiler/argument_accessor.h"
 #include "ecmascript/compiler/bc_call_signature.h"
+#include "ecmascript/compiler/baseline/baseline_call_signature.h"
 #include "ecmascript/compiler/circuit.h"
 #include "ecmascript/compiler/call_signature.h"
 #include "ecmascript/compiler/common_stubs.h"
@@ -293,7 +294,7 @@ void LiteCGIRBuilder::Build()
 void LiteCGIRBuilder::GenPrologue(maple::litecg::Function &function)
 {
     auto frameType = circuit_->GetFrameType();
-    if (IsInterpreted()) {
+    if (IsInterpreted() || IsBaselineBuiltin()) {
         return;
     }
     lmirBuilder_->SetFuncFramePointer("all");
@@ -1311,9 +1312,14 @@ bool LiteCGIRBuilder::IsInterpreted() const
     return circuit_->GetFrameType() == FrameType::ASM_INTERPRETER_FRAME;
 }
 
+bool LiteCGIRBuilder::IsBaselineBuiltin() const
+{
+    return circuit_->GetFrameType() == FrameType::BASELINE_BUILTIN_FRAME;
+}
+
 Expr LiteCGIRBuilder::CallingFp(bool /*isCaller*/)
 {
-    ASSERT(!IsInterpreted());
+    ASSERT(!IsInterpreted() && !IsBaselineBuiltin());
     /* 0:calling 1:its caller */
     Function &func = lmirBuilder_->GetCurFunction();
     return lmirBuilder_->LiteCGGetPregFP(func);

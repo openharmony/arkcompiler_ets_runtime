@@ -387,6 +387,14 @@ void AOTFileManager::InitializeStubEntries(const std::vector<AnFileInfo::FuncEnt
             LOG_ECMA(DEBUG) << "builtins index: " << std::dec << des.indexInKindOrMethodId_ << " :" << format
                             << " addr: 0x" << std::hex << des.codeAddr_;
 #endif
+        } else if (des.IsBaselineStub()) {
+            thread->SetBaselineStubEntry(des.indexInKindOrMethodId_, des.codeAddr_);
+#if ECMASCRIPT_ENABLE_ASM_FILE_LOAD_LOG
+            int start = GET_MESSAGE_STRING_ID(BaselineLdObjByName);
+            std::string format = MessageString::GetMessageString(des.indexInKindOrMethodId_ + start - 1);  // -1: NONE
+            LOG_ECMA(DEBUG) << "baseline stub index: " << std::dec << des.indexInKindOrMethodId_ << " :" << format
+                            << " addr: 0x" << std::hex << des.codeAddr_;
+#endif
         } else {
             thread->RegisterRTInterface(des.indexInKindOrMethodId_, des.codeAddr_);
 #if ECMASCRIPT_ENABLE_ASM_FILE_LOAD_LOG

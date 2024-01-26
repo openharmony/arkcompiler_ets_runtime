@@ -369,6 +369,16 @@ public:
         glueData_.bcStubEntries_.Set(id, entry);
     }
 
+    Address GetBaselineStubEntry(uint32_t id) const
+    {
+        return glueData_.baselineStubEntries_.Get(id);
+    }
+
+    void SetBaselineStubEntry(size_t id, Address entry)
+    {
+        glueData_.baselineStubEntries_.Set(id, entry);
+    }
+
     void SetBCDebugStubEntry(size_t id, Address entry)
     {
         glueData_.bcDebuggerStubEntries_.Set(id, entry);
@@ -873,6 +883,7 @@ public:
                                                  BuiltinStubEntries,
                                                  BuiltinHClassEntries,
                                                  BCDebuggerStubEntries,
+                                                 BaselineStubEntries,
                                                  base::AlignedUint64,
                                                  base::AlignedPointer,
                                                  base::AlignedUint64,
@@ -908,6 +919,7 @@ public:
             BuiltinsStubEntriesIndex,
             BuiltinHClassEntriesIndex,
             BCDebuggerStubEntriesIndex,
+            BaselineStubEntriesIndex,
             StateBitFieldIndex,
             FrameBaseIndex,
             StackStartIndex,
@@ -1137,6 +1149,7 @@ public:
         alignas(EAS) BuiltinStubEntries builtinStubEntries_;
         alignas(EAS) BuiltinHClassEntries builtinHClassEntries_;
         alignas(EAS) BCDebuggerStubEntries bcDebuggerStubEntries_;
+        alignas(EAS) BaselineStubEntries baselineStubEntries_;
         alignas(EAS) volatile uint64_t gcStateBitField_ {0ULL};
         alignas(EAS) JSTaggedType *frameBase_ {nullptr};
         alignas(EAS) uint64_t stackStart_ {0};

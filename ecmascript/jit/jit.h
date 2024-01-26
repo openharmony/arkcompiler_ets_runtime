@@ -31,16 +31,23 @@ enum JitCompileMode {
     SYNC = 0,
     ASYNC
 };
+
+enum class CompilerTier : uint8_t {
+    BASELINE,
+    FAST,
+};
+
 class Jit {
 public:
     Jit() {}
     ~Jit();
     static PUBLIC_API Jit *GetInstance();
-    void SetEnableOrDisable(const JSRuntimeOptions &options, bool isEnable);
-    bool PUBLIC_API IsEnable();
+    void SetEnableOrDisable(const JSRuntimeOptions &options, bool isEnableFastJit, bool isEnableBaselineJit);
+    bool PUBLIC_API IsEnableFastJit() const;
+    bool PUBLIC_API IsEnableBaselineJit() const;
     void Initialize();
 
-    static void Compile(EcmaVM *vm, JSHandle<JSFunction> &jsFunction,
+    static void Compile(EcmaVM *vm, JSHandle<JSFunction> &jsFunction, CompilerTier tier = CompilerTier::FAST,
                         int32_t offset = MachineCode::INVALID_OSR_OFFSET, JitCompileMode mode = SYNC);
     bool JitCompile(void *compiler, JitTask *jitTask);
     bool JitFinalize(void *compiler, JitTask *jitTask);
@@ -68,11 +75,13 @@ public:
 
     class TimeScope : public ClockScope {
     public:
-        explicit TimeScope(CString message, bool outPutLog = true) : message_(message), outPutLog_(outPutLog) {}
-        explicit TimeScope() : message_(""), outPutLog_(false) {}
+        explicit TimeScope(CString message, CompilerTier tier = CompilerTier::FAST, bool outPutLog = true)
+            : message_(message), tier_(tier), outPutLog_(outPutLog) {}
+        explicit TimeScope() : message_(""), tier_(CompilerTier::FAST), outPutLog_(false) {}
         PUBLIC_API ~TimeScope();
     private:
         CString message_;
+        CompilerTier tier_;
         bool outPutLog_;
     };
 
@@ -90,7 +99,7 @@ public:
         }
 
         explicit JitLockHolder(const CompilationEnv *env, CString message) : thread_(nullptr),
-            scope_("Jit Compile Pass: " + message + ", Time:", false)
+            scope_("Jit Compile Pass: " + message + ", Time:", CompilerTier::FAST, false)
         {
             if (env->IsJitCompiler()) {
                 JSThread *thread = env->GetJSThread();
@@ -120,7 +129,7 @@ public:
         explicit JitGCLockHolder(JSThread *thread) : thread_(thread)
         {
             ASSERT(!thread->IsJitThread());
-            if (Jit::GetInstance()->IsEnable()) {
+            if (Jit::GetInstance()->IsEnableFastJit() || Jit::GetInstance()->IsEnableBaselineJit()) {
                 thread_->GetJitLock()->Lock();
                 locked_ = true;
             }
@@ -143,9 +152,10 @@ public:
     };
 
 private:
-    bool SupportJIT(Method *method);
+    bool SupportJIT(const Method *method) const;
     bool initialized_ { false };
-    bool jitEnable_ { false };
+    bool fastJitEnable_ { false };
+    bool baselineJitEnable_ { false };
 
     std::unordered_map<uint32_t, std::deque<std::shared_ptr<JitTask>>> installJitTasks_;
     Mutex installJitTasksDequeMtx_;
@@ -158,6 +168,8 @@ private:
     static void*(*createJitCompilerTask_)(JitTask*);
     static void(*deleteJitCompile_)(void*);
     static void *libHandle_;
+    static bool CheckJitCompileStatus(JSHandle<JSFunction> &jsFunction,
+        const CString &methodName, CompilerTier tier);
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_JIT_H

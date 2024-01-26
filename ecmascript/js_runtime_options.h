@@ -180,6 +180,9 @@ enum CommandValues {
     OPTION_LAST,
     OPTION_COMPILER_OPT_INDUCTION_VARIABLE,
     OPTION_COMPILER_TRACE_INDUCTION_VARIABLE,
+    OPTION_COMPILER_ENABLE_BASELINEJIT,
+    OPTION_COMPILER_BASELINEJIT_HOTNESS_THRESHOLD,
+    OPTION_COMPILER_FORCE_BASELINEJIT_COMPILE_MAIN,
 };
 static_assert(OPTION_SPLIT_ONE == 64);
 
@@ -1070,12 +1073,12 @@ public:
 
     void SetEnableJIT(bool value)
     {
-        enableJIT_ = value;
+        enableFastJIT_ = value;
     }
 
     bool IsEnableJIT() const
     {
-        return enableJIT_;
+        return enableFastJIT_;
     }
 
     void SetEnableAPPJIT(bool value)
@@ -1126,6 +1129,36 @@ public:
     bool IsEnableForceJitCompileMain()
     {
         return forceJitCompileMain_;
+    }
+
+    void SetEnableBaselineJIT(bool value)
+    {
+        enableBaselineJIT_ = value;
+    }
+
+    bool IsEnableBaselineJIT() const
+    {
+        return enableBaselineJIT_;
+    }
+
+    void SetBaselineJitHotnessThreshold(uint16_t value)
+    {
+        baselineJitHotnessThreshold_ = value;
+    }
+
+    uint16_t GetBaselineJitHotnessThreshold() const
+    {
+        return baselineJitHotnessThreshold_;
+    }
+
+    void SetForceBaselineCompileMain(bool value)
+    {
+        forceBaselineCompileMain_ = value;
+    }
+
+    bool IsEnableForceBaselineCompileMain()
+    {
+        return forceBaselineCompileMain_;
     }
 
     void SetEnableNewValueNumbering(bool value)
@@ -1734,12 +1767,15 @@ private:
     bool enableNewValueNumbering_ {true};
     bool enableOptInlining_ {true};
     bool enableOptPGOType_ {true};
-    bool enableJIT_{false};
+    bool enableFastJIT_{false};
     bool enableAPPJIT_{false};
     bool enableOSR_{false};
     uint16_t jitHotnessThreshold_ {2};
     uint16_t osrHotnessThreshold_ {2};
     bool forceJitCompileMain_{false};
+    bool enableBaselineJIT_{false};
+    uint16_t baselineJitHotnessThreshold_{1};
+    bool forceBaselineCompileMain_ {false};
     bool enableOptTrackField_ {true};
     uint32_t compilerModuleMethods_ {100};
     uint64_t wasSetPartOne_ {0};

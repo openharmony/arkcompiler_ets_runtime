@@ -58,6 +58,7 @@ enum Component {
     BUILTINS = 1ULL << 5ULL,
     TRACE = 1ULL << 6ULL,
     JIT = 1UL << 7ULL,
+    BASELINEJIT = 1UL << 8ULL,
     NO_TAG = 0xFFFFFFFFULL >> 1ULL,
     ALL = 0xFFFFFFFFULL,
 };
@@ -103,6 +104,8 @@ public:
                 return "[trace] ";
             case Component::JIT:
                 return "[jit] ";
+            case Component::BASELINEJIT:
+                return "[baselinejit] ";
             case Component::ALL:
                 return "[default] ";
             default:

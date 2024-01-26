@@ -395,7 +395,7 @@ void GetPropertyByNameStubBuilder::GenerateCircuit()
     GateRef jsFunc = TaggedArgument(3); // 3 : 4th para
     GateRef slotId = Int32Argument(4); // 4 : 5th para
     AccessObjectStubBuilder builder(this, jsFunc);
-    StringIdInfo info = { 0, 0, StringIdInfo::Offset::INVALID, StringIdInfo::Length::INVALID };
+    StringIdInfo info(0, 0, StringIdInfo::Offset::INVALID, StringIdInfo::Length::INVALID);
     GateRef profileTypeInfo = UpdateProfileTypeInfo(glue, jsFunc);
     Return(builder.LoadObjByName(glue, receiver, id, info, profileTypeInfo, slotId, ProfileOperation()));
 }
@@ -418,7 +418,7 @@ void SetPropertyByNameStubBuilder::GenerateCircuit()
     GateRef jsFunc = TaggedArgument(4); // 4 : 5th para
     GateRef slotId = Int32Argument(5); // 5 : 6th para
     AccessObjectStubBuilder builder(this, jsFunc);
-    StringIdInfo info = { 0, 0, StringIdInfo::Offset::INVALID, StringIdInfo::Length::INVALID };
+    StringIdInfo info(0, 0, StringIdInfo::Offset::INVALID, StringIdInfo::Length::INVALID);
     GateRef profileTypeInfo = UpdateProfileTypeInfo(glue, jsFunc);
     Return(builder.StoreObjByName(glue, receiver, id, info, value, profileTypeInfo, slotId, ProfileOperation()));
 }
@@ -568,7 +568,7 @@ void TryLdGlobalByNameStubBuilder::GenerateCircuit()
     GateRef jsFunc = TaggedArgument(2); // 2 : 3th para
     GateRef slotId = Int32Argument(3); // 3 : 4th para
     AccessObjectStubBuilder builder(this, jsFunc);
-    StringIdInfo info = { 0, 0, StringIdInfo::Offset::INVALID, StringIdInfo::Length::INVALID };
+    StringIdInfo info(0, 0, StringIdInfo::Offset::INVALID, StringIdInfo::Length::INVALID);
     GateRef profileTypeInfo = UpdateProfileTypeInfo(glue, jsFunc);
     Return(builder.TryLoadGlobalByName(glue, id, info, profileTypeInfo, slotId, ProfileOperation()));
 }
@@ -581,7 +581,7 @@ void TryStGlobalByNameStubBuilder::GenerateCircuit()
     GateRef jsFunc = TaggedArgument(3); // 3 : 4th para
     GateRef slotId = Int32Argument(4);  // 4: 5th para
     AccessObjectStubBuilder builder(this, jsFunc);
-    StringIdInfo info = { 0, 0, StringIdInfo::Offset::INVALID, StringIdInfo::Length::INVALID };
+    StringIdInfo info(0, 0, StringIdInfo::Offset::INVALID, StringIdInfo::Length::INVALID);
     GateRef profileTypeInfo = UpdateProfileTypeInfo(glue, jsFunc);
     Return(builder.TryStoreGlobalByName(glue, id, info, value, profileTypeInfo, slotId, ProfileOperation()));
 }
@@ -593,7 +593,7 @@ void LdGlobalVarStubBuilder::GenerateCircuit()
     GateRef jsFunc = TaggedArgument(2); // 2 : 3th para
     GateRef slotId = Int32Argument(3); // 3 : 4th para
     AccessObjectStubBuilder builder(this, jsFunc);
-    StringIdInfo info = { 0, 0, StringIdInfo::Offset::INVALID, StringIdInfo::Length::INVALID };
+    StringIdInfo info(0, 0, StringIdInfo::Offset::INVALID, StringIdInfo::Length::INVALID);
     GateRef profileTypeInfo = UpdateProfileTypeInfo(glue, jsFunc);
     Return(builder.LoadGlobalVar(glue, id, info, profileTypeInfo, slotId, ProfileOperation()));
 }
@@ -606,7 +606,7 @@ void StGlobalVarStubBuilder::GenerateCircuit()
     GateRef jsFunc = TaggedArgument(3); // 3 : 4th para
     GateRef slotId = Int32Argument(4);  // 4: 5th para
     AccessObjectStubBuilder builder(this, jsFunc);
-    StringIdInfo info = { 0, 0, StringIdInfo::Offset::INVALID, StringIdInfo::Length::INVALID };
+    StringIdInfo info(0, 0, StringIdInfo::Offset::INVALID, StringIdInfo::Length::INVALID);
     GateRef profileTypeInfo = UpdateProfileTypeInfo(glue, jsFunc);
     Return(builder.StoreGlobalVar(glue, id, info, value, profileTypeInfo, slotId));
 }
@@ -810,8 +810,8 @@ void CreateArrayWithBufferStubBuilder::GenerateCircuit()
     GateRef jsFunc = TaggedArgument(2); // 2 : 3rd para
     GateRef slotId = Int32Argument(5); // 5 : 6th para
     NewObjectStubBuilder newBuilder(this);
-    Return(newBuilder.CreateArrayWithBuffer(glue, index, jsFunc, IntPtr(0),
-        Undefined(), slotId, ProfileOperation()));
+    Return(newBuilder.CreateArrayWithBuffer(
+        glue, index, jsFunc, { IntPtr(0), 0, true }, Undefined(), slotId, ProfileOperation()));
 }
 
 void NewJSObjectStubBuilder::GenerateCircuit()

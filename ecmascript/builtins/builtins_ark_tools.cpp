@@ -1153,7 +1153,8 @@ JSTaggedValue BuiltinsArkTools::JitCompileSync(EcmaRuntimeCallInfo *info)
         return JSTaggedValue::False();
     }
     JSHandle<JSFunction> jsFunction(thisValue);
-    Jit::Compile(thread->GetEcmaVM(), jsFunction, MachineCode::INVALID_OSR_OFFSET, JitCompileMode::SYNC);
+    Jit::Compile(thread->GetEcmaVM(), jsFunction, CompilerTier::FAST,
+                 MachineCode::INVALID_OSR_OFFSET, JitCompileMode::SYNC);
     return JSTaggedValue::True();
 }
 
@@ -1167,7 +1168,8 @@ JSTaggedValue BuiltinsArkTools::JitCompileAsync(EcmaRuntimeCallInfo *info)
         return JSTaggedValue::False();
     }
     JSHandle<JSFunction> jsFunction(thisValue);
-    Jit::Compile(thread->GetEcmaVM(), jsFunction, MachineCode::INVALID_OSR_OFFSET, JitCompileMode::ASYNC);
+    Jit::Compile(thread->GetEcmaVM(), jsFunction, CompilerTier::FAST,
+                 MachineCode::INVALID_OSR_OFFSET, JitCompileMode::ASYNC);
     return JSTaggedValue::True();
 }
 
@@ -1183,7 +1185,7 @@ JSTaggedValue BuiltinsArkTools::WaitJitCompileFinish(EcmaRuntimeCallInfo *info)
     JSHandle<JSFunction> jsFunction(thisValue);
 
     auto jit = Jit::GetInstance();
-    if (!jit->IsEnable()) {
+    if (!jit->IsEnableFastJit() || !jit->IsEnableBaselineJit()) {
         return JSTaggedValue::False();
     }
     if (jsFunction->GetMachineCode() == JSTaggedValue::Undefined()) {

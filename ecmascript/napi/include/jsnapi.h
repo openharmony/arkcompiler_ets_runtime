@@ -263,7 +263,12 @@ public:
 
     void SetEnableJIT(bool value)
     {
-        enableJIT_ = value;
+        enableFastJIT_ = value;
+    }
+
+    void SetEnableBaselineJIT(bool value)
+    {
+        enableBaselineJIT_ = value;
     }
 
 private:
@@ -383,7 +388,12 @@ private:
 
     bool GetEnableJIT() const
     {
-        return enableJIT_;
+        return enableFastJIT_;
+    }
+
+    bool GetEnableBaselineJIT() const
+    {
+        return enableBaselineJIT_;
     }
 
     GC_TYPE gcType_ = GC_TYPE::EPSILON;
@@ -407,7 +417,8 @@ private:
     std::string anDir_ {};
     bool enableProfile_ {false};
     std::string profileDir_ {};
-    bool enableJIT_ {false};
+    bool enableFastJIT_ {false};
+    bool enableBaselineJIT_ {false};
     friend JSNApi;
 };
 
