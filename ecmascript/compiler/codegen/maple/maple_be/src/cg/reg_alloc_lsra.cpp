@@ -14,17 +14,10 @@
  */
 
 #include "reg_alloc_lsra.h"
-#include <iomanip>
-#include <queue>
-#include <chrono>
 #include "loop.h"
+#include <queue>
 
 namespace maplebe {
-/*
- * ==================
- * = Linear Scan RA
- * ==================
- */
 namespace {
 constexpr uint32 kSpilled = 1;
 constexpr uint32 kMinLiveIntervalLength = 20;
@@ -32,33 +25,6 @@ constexpr uint32 kPrintedActiveListLength = 10;
 /* Here, kLoopWeight is a fine-tuned empirical parameter */
 constexpr uint32 kLoopWeight = 4;
 }  // namespace
-
-#define IN_SPILL_RANGE                                                                           \
-    (cgFunc->GetName().find(CGOptions::GetDumpFunc()) != std::string::npos && ++debugSpillCnt && \
-     (CGOptions::GetSpillRangesBegin() < debugSpillCnt) && (debugSpillCnt < CGOptions::GetSpillRangesEnd()))
-
-#ifdef RA_PERF_ANALYSIS
-static long bfsUS = 0;
-static long liveIntervalUS = 0;
-static long holesUS = 0;
-static long lsraUS = 0;
-static long finalizeUS = 0;
-static long totalUS = 0;
-
-extern void printLSRATime()
-{
-    std::cout << "============================================================\n";
-    std::cout << "               LSRA sub-phase time information              \n";
-    std::cout << "============================================================\n";
-    std::cout << "BFS BB sorting cost: " << bfsUS << "us \n";
-    std::cout << "live interval computing cost: " << liveIntervalUS << "us \n";
-    std::cout << "live range approximation cost: " << holesUS << "us \n";
-    std::cout << "LSRA cost: " << lsraUS << "us \n";
-    std::cout << "finalize cost: " << finalizeUS << "us \n";
-    std::cout << "LSRA total cost: " << totalUS << "us \n";
-    std::cout << "============================================================\n";
-}
-#endif
 
 /*
  * This LSRA implementation is an interpretation of the [Poletto97] paper.
@@ -106,7 +72,8 @@ void LSRALinearScanRegAllocator::PrintLiveRanges(const LiveInterval &li) const
 {
     if (li.GetAssignedReg() != 0) {
         uint32 base = (li.GetRegType() == kRegTyInt) ? firstIntReg : firstFpReg;
-        LogInfo::MapleLogger() << "(assigned R" << (li.GetAssignedReg() - base) << ")";
+        char regType = (li.GetRegType() == kRegTyInt) ? 'R' : 'V';
+        LogInfo::MapleLogger() << "(assigned " << regType << (li.GetAssignedReg() - base) << ")";
     }
     if (li.GetStackSlot() == kSpilled) {
         LogInfo::MapleLogger() << "(spill)";
@@ -254,6 +221,7 @@ void LSRALinearScanRegAllocator::PrintLiveRangesGraph() const
 
 void LSRALinearScanRegAllocator::SpillStackMapInfo()
 {
+    RA_TIMER_REGISTER(lsra, "LSRA SpillStackMapInfo");
     const auto &referenceMapInsns = cgFunc->GetStackMapInsns();
 
     for (auto *insn : referenceMapInsns) {
@@ -309,15 +277,15 @@ void LSRALinearScanRegAllocator::PrintLiveInterval(const LiveInterval &li, const
     if (li.GetIsCall() != nullptr) {
         LogInfo::MapleLogger() << " firstDef " << li.GetFirstDef();
         LogInfo::MapleLogger() << " isCall";
-    } else if (li.GetPhysUse()) {
+    } else if (li.GetPhysUse() > 0) {
         LogInfo::MapleLogger() << "\tregNO " << li.GetRegNO();
         LogInfo::MapleLogger() << " firstDef " << li.GetFirstDef();
         LogInfo::MapleLogger() << " physUse " << li.GetPhysUse();
         LogInfo::MapleLogger() << " endByCall " << li.IsEndByCall();
     } else {
-        LogInfo::MapleLogger() << "\tregNO " << std::setw(5) << li.GetRegNO(); /* show regno with 5 width */
-        LogInfo::MapleLogger() << " firstDef " << std::setw(8) << li.GetFirstDef(); /* show firstDef with 8 width */
-        LogInfo::MapleLogger() << " lastUse " << std::setw(8) << li.GetLastUse(); /* show lastUse with 8 width */
+        LogInfo::MapleLogger() << "\tregNO " << li.GetRegNO();
+        LogInfo::MapleLogger() << " firstDef " << li.GetFirstDef();
+        LogInfo::MapleLogger() << " lastUse " << li.GetLastUse();
         LogInfo::MapleLogger() << " assigned " << li.GetAssignedReg();
         LogInfo::MapleLogger() << " refCount " << li.GetRefCount();
         LogInfo::MapleLogger() << " priority " << li.GetPriority();
@@ -373,7 +341,7 @@ void LSRALinearScanRegAllocator::PrintActiveListSimple() const
     for (const auto *li : active) {
         uint32 assignedReg = li->GetAssignedReg();
         LogInfo::MapleLogger() << li->GetRegNO() << "(" << assignedReg << ", ";
-        if (li->GetPhysUse()) {
+        if (li->GetPhysUse() > 0) {
             LogInfo::MapleLogger() << "p) ";
         } else {
             LogInfo::MapleLogger() << li->GetFirstAcrossedCall();
@@ -442,7 +410,7 @@ void LSRALinearScanRegAllocator::DebugCheckActiveList() const
  */
 void LSRALinearScanRegAllocator::InitFreeRegPool()
 {
-    for (regno_t regNO = regInfo->GetInvalidReg(); regNO < regInfo->GetAllRegNum(); ++regNO) {
+    for (regno_t regNO : regInfo->GetAllRegs()) {
         if (!regInfo->IsAvailableReg(regNO)) {
             continue;
         }
@@ -517,10 +485,7 @@ void LSRALinearScanRegAllocator::RecordPhysRegs(const RegOperand &regOpnd, uint3
     if (regType == kRegTyCc || regType == kRegTyVary) {
         return;
     }
-    if (regInfo->IsUntouchableReg(regNO)) {
-        return;
-    }
-    if (!regInfo->IsPreAssignedReg(regNO)) {
+    if (regInfo->IsUnconcernedReg(regNO) || regInfo->IsVirtualRegister(regNO)) {
         return;
     }
     if (isDef) {
@@ -561,7 +526,7 @@ void LSRALinearScanRegAllocator::UpdateLiveIntervalState(const BB &bb, LiveInter
         li.SetNotInCatchState();
     }
 
-    if (bb.GetInternalFlag1()) {
+    if (bb.GetInternalFlag1() != 0) {
         li.SetInCleanupState();
     } else {
         li.SetNotInCleanupState(bb.GetId() == 1);
@@ -593,7 +558,7 @@ void LSRALinearScanRegAllocator::SetupLiveInterval(Operand &opnd, Insn &insn, bo
     }
     auto &regOpnd = static_cast<RegOperand &>(opnd);
     uint32 insnNum = insn.GetId();
-    if (regOpnd.IsPhysicalRegister()) {
+    if (!regInfo->IsVirtualRegister(regOpnd)) {
         RecordPhysRegs(regOpnd, insnNum, isDef);
         return;
     }
@@ -719,30 +684,6 @@ MapleVector<LSRALinearScanRegAllocator::LinearRange>::iterator LSRALinearScanReg
     return rangeFinder;
 }
 
-void LSRALinearScanRegAllocator::SetupIntervalRangesByOperand(Operand &opnd, const Insn &insn, uint32 blockFrom,
-                                                              bool isDef)
-{
-    auto &regOpnd = static_cast<RegOperand &>(opnd);
-    RegType regType = regOpnd.GetRegisterType();
-    if (regType == kRegTyCc || regType == kRegTyVary) {
-        return;
-    }
-    regno_t regNO = regOpnd.GetRegisterNumber();
-    if (regNO <= regInfo->GetAllRegNum()) {
-        return;
-    }
-    if (!isDef) {
-        liveIntervalsArray[regNO]->AddRange(blockFrom, insn.GetId());
-        return;
-    }
-    if (liveIntervalsArray[regNO]->GetRanges().empty()) {
-        liveIntervalsArray[regNO]->AddRange(insn.GetId(), insn.GetId());
-    } else {
-        liveIntervalsArray[regNO]->GetRanges().front().SetStart(insn.GetId());
-    }
-    liveIntervalsArray[regNO]->AddUsePositions(insn.GetId());
-}
-
 /* Extend live interval with live-in info */
 void LSRALinearScanRegAllocator::UpdateLiveIntervalByLiveIn(const BB &bb, uint32 insnNum)
 {
@@ -794,8 +735,8 @@ void LSRALinearScanRegAllocator::UpdateLiveIntervalByLiveIn(const BB &bb, uint32
 /* traverse live in regNO, for each live in regNO create a new liveinterval */
 void LSRALinearScanRegAllocator::UpdateParamLiveIntervalByLiveIn(const BB &bb, uint32 insnNum)
 {
-    for (const auto &regNO : bb.GetLiveInRegNO()) {
-        if (!regInfo->IsPreAssignedReg(regNO)) {
+    for (const auto regNO : bb.GetLiveInRegNO()) {
+        if (regInfo->IsUnconcernedReg(regNO) || regInfo->IsVirtualRegister(regNO)) {
             continue;
         }
         auto *li = memPool->New<LiveInterval>(*memPool);
@@ -857,8 +798,11 @@ void LSRALinearScanRegAllocator::ComputeLiveOut(BB &bb, uint32 insnNum)
      *  for each live out regNO if the last corresponding live interval is created within this bb
      *  update this lastUse of li to the end of BB
      */
-    for (const auto &regNO : bb.GetLiveOutRegNO()) {
-        if (regInfo->IsPreAssignedReg(static_cast<regno_t>(regNO))) {
+    for (const auto regNO : bb.GetLiveOutRegNO()) {
+        if (regInfo->IsUnconcernedReg(regNO)) {
+            continue;
+        }
+        if (!regInfo->IsVirtualRegister(regNO)) {
             LiveInterval *liOut = nullptr;
             if (regInfo->IsGPRegister(regNO)) {
                 if (intParamQueue[regInfo->GetIntParamRegIdx(regNO)].empty()) {
@@ -897,45 +841,62 @@ void LSRALinearScanRegAllocator::ComputeLiveOut(BB &bb, uint32 insnNum)
     }
 }
 
+struct RegOpndInfo {
+    RegOpndInfo(RegOperand &opnd, uint32 size, uint32 idx, bool def)
+        : regOpnd(opnd), regSize(size), opndIdx(idx), isDef(def) {}
+    RegOperand &regOpnd;
+    uint32 regSize = 0;
+    uint32 opndIdx = -1;
+    bool isDef = false;
+};
+
 void LSRALinearScanRegAllocator::ComputeLiveIntervalForEachOperand(Insn &insn)
 {
-    uint32 numUses = 0;
+    std::vector<RegOpndInfo> allRegOpndInfo;
     const InsnDesc *md = insn.GetDesc();
-    uint32 opndNum = insn.GetOperandSize();
-    /*
-     * we need to process src opnd first just in case the src/dest vreg are the same and the src vreg belongs to the
-     * last interval.
-     */
-    for (int32 i = opndNum - 1; i >= 0; --i) {
-        Operand &opnd = insn.GetOperand(static_cast<uint32>(i));
+    for (uint32 i = 0; i < insn.GetOperandSize(); ++i) {
+        Operand &opnd = insn.GetOperand(i);
         const OpndDesc *opndDesc = md->GetOpndDes(i);
         DEBUG_ASSERT(opndDesc != nullptr, "ptr null check.");
         if (opnd.IsRegister()) {
             auto &regOpnd = static_cast<RegOperand&>(opnd);
-             /* Specifically, the "use-def" opnd is treated as a "use" opnd */
+            // Specifically, the "use-def" opnd is treated as a "use" opnd
             bool isUse = opndDesc->IsRegUse();
-            /* Fixup: The size in the insn md of x64 is not accurate, and the size in the fload opnd
-                      does not change, so we use the size in the opnd first. */
+            // Fixup: The size in the insn md of x64 is not accurate, and the size in the fload opnd
+            //        does not change, so we use the size in the opnd first.
             auto regSize = (regOpnd.GetRegisterType() == kRegTyInt ? opndDesc->GetSize() : regOpnd.GetSize());
-            SetupLiveInterval(opnd, insn, !isUse, numUses, regSize);
+            allRegOpndInfo.emplace_back(regOpnd, regSize, i, !isUse);
         } else if (opnd.IsMemoryAccessOperand()) {
-            bool isDef = false;
-            auto &memOpnd = static_cast<MemOperand &>(opnd);
-            Operand *base = memOpnd.GetBaseRegister();
-            Operand *offset = memOpnd.GetIndexRegister();
+            auto &memOpnd = static_cast<MemOperand&>(opnd);
+            RegOperand *base = memOpnd.GetBaseRegister();
+            RegOperand *offset = memOpnd.GetIndexRegister();
             if (base != nullptr) {
-                SetupLiveInterval(*base, insn, isDef, numUses, k64BitSize);
+                allRegOpndInfo.emplace_back(*base, k64BitSize, i, false);
             }
             if (offset != nullptr) {
-                SetupLiveInterval(*offset, insn, isDef, numUses, k64BitSize);
+                allRegOpndInfo.emplace_back(*offset, k64BitSize, i, false);
             }
         } else if (opnd.IsList()) {
-            auto &listOpnd = static_cast<ListOperand &>(opnd);
+            auto &listOpnd = static_cast<ListOperand&>(opnd);
             for (auto op : listOpnd.GetOperands()) {
-                SetupLiveInterval(*op, insn, opndDesc->IsDef(), numUses, opnd.GetSize());
+                allRegOpndInfo.emplace_back(*op, op->GetSize(), i, opndDesc->IsDef());
             }
         }
     }
+
+    uint32 numUses = 0;
+    for (auto &regOpndInfo : allRegOpndInfo) {
+        if (!regOpndInfo.isDef) {
+            SetupLiveInterval(regOpndInfo.regOpnd, insn, false, numUses, regOpndInfo.regSize);
+        }
+    }
+
+    for (auto &regOpndInfo : allRegOpndInfo) {
+        if (regOpndInfo.isDef) {
+            SetupLiveInterval(regOpndInfo.regOpnd, insn, true, numUses, regOpndInfo.regSize);
+        }
+    }
+
     if (numUses >= regInfo->GetNormalUseOperandNum()) {
         needExtraSpillReg = true;
     }
@@ -967,7 +928,7 @@ void LSRALinearScanRegAllocator::ComputeLoopLiveIntervalPriorityInInsn(const Ins
             continue;
         }
         auto &regOpnd = static_cast<RegOperand &>(opnd);
-        if (regOpnd.IsPhysicalRegister()) {
+        if (!regInfo->IsVirtualRegister(regOpnd)) {
             continue;
         }
         uint32 regNo = regOpnd.GetRegisterNumber();
@@ -983,6 +944,7 @@ void LSRALinearScanRegAllocator::ComputeLoopLiveIntervalPriorityInInsn(const Ins
 
 void LSRALinearScanRegAllocator::ComputeLiveInterval()
 {
+    RA_TIMER_REGISTER(lsra, "LSRA ComputeLiveInterval");
     liQue.clear();
     uint32 regUsedInBBSz = (cgFunc->GetMaxVReg() / (sizeof(uint64) * k8ByteSize) + 1);
     regUsedInBB.resize(regUsedInBBSz, 0);
@@ -1011,17 +973,15 @@ void LSRALinearScanRegAllocator::ComputeLiveInterval()
                  * and then their live begins.
                  * next optimization, you can determine which registers are actually used.
                  */
-                RegOperand *retReg = nullptr;
-                if (insn->GetRetType() == Insn::kRegInt) {
                     for (uint32 i = 0; i < regInfo->GetIntRetRegsNum(); i++) {
-                        retReg = regInfo->GetOrCreatePhyRegOperand(regInfo->GetIntRetReg(i), k64BitSize, kRegTyInt);
+                        auto *retReg = regInfo->GetOrCreatePhyRegOperand(regInfo->GetIntRetReg(i),
+                                                                         k64BitSize, kRegTyInt);
                         RecordPhysRegs(*retReg, insnNum, true);
                     }
-                } else {
                     for (uint32 i = 0; i < regInfo->GetFpRetRegsNum(); i++) {
-                        retReg = regInfo->GetOrCreatePhyRegOperand(regInfo->GetFpRetReg(i), k64BitSize, kRegTyFloat);
+                        auto *retReg = regInfo->GetOrCreatePhyRegOperand(regInfo->GetFpRetReg(i),
+                                                                         k64BitSize, kRegTyFloat);
                         RecordPhysRegs(*retReg, insnNum, true);
-                    }
                 }
             }
             ++insnNum;
@@ -1037,7 +997,7 @@ void LSRALinearScanRegAllocator::ComputeLiveInterval()
         if (li == nullptr || li->GetRegNO() == 0) {
             continue;
         }
-        if (li->GetIsCall() != nullptr || li->GetPhysUse()) {
+        if (li->GetIsCall() != nullptr || (li->GetPhysUse() > 0)) {
             continue;
         }
         if (li->GetLastUse() > li->GetFirstDef()) {
@@ -1064,6 +1024,7 @@ void LSRALinearScanRegAllocator::ComputeLiveInterval()
 /* Calculate the weight of a live interval for pre-spill and flexible spill */
 void LSRALinearScanRegAllocator::LiveIntervalAnalysis()
 {
+    RA_TIMER_REGISTER(lsra, "LSRA BuildIntervalRanges");
     for (uint32 bbIdx = 0; bbIdx < bfs->sortedBBs.size(); ++bbIdx) {
         BB *bb = bfs->sortedBBs[bbIdx];
 
@@ -1295,72 +1256,6 @@ uint32 LSRALinearScanRegAllocator::GetRegFromMask(uint32 mask, regno_t offset, c
     return bestReg;
 }
 
-/* Handle adrp register assignment. Use the same register for the next instruction. */
-uint32 LSRALinearScanRegAllocator::GetSpecialPhysRegPattern(const LiveInterval &li)
-{
-    /* li's first def point */
-    Insn *nInsn = nullptr;
-    if (nInsn == nullptr || !nInsn->IsMachineInstruction() || nInsn->IsDMBInsn() || li.GetLastUse() > nInsn->GetId()) {
-        return 0;
-    }
-
-    const InsnDesc *md = nInsn->GetDesc();
-    if (!md->GetOpndDes(0)->IsRegDef()) {
-        return 0;
-    }
-    Operand &opnd = nInsn->GetOperand(0);
-    if (!opnd.IsRegister()) {
-        return 0;
-    }
-    auto &regOpnd = static_cast<RegOperand &>(opnd);
-    if (!regOpnd.IsPhysicalRegister()) {
-        return 0;
-    }
-    uint32 regNO = regOpnd.GetRegisterNumber();
-    if (!regInfo->IsPreAssignedReg(regNO)) {
-        return 0;
-    }
-
-    /* next insn's dest is a physical param reg 'regNO'. return 'regNO' if dest of adrp is src of next insn */
-    uint32 opndNum = nInsn->GetOperandSize();
-    for (uint32 i = 1; i < opndNum; ++i) {
-        Operand &src = nInsn->GetOperand(i);
-        if (src.IsMemoryAccessOperand()) {
-            auto &memOpnd = static_cast<MemOperand &>(src);
-            Operand *base = memOpnd.GetBaseRegister();
-            if (base != nullptr) {
-                auto *regSrc = static_cast<RegOperand *>(base);
-                uint32 srcRegNO = regSrc->GetRegisterNumber();
-                if (li.GetRegNO() == srcRegNO) {
-                    return regNO;
-                }
-            }
-            Operand *offset = memOpnd.GetIndexRegister();
-            if (offset != nullptr) {
-                auto *regSrc = static_cast<RegOperand *>(offset);
-                uint32 srcRegNO = regSrc->GetRegisterNumber();
-                if (li.GetRegNO() == srcRegNO) {
-                    return regNO;
-                }
-            }
-        } else if (src.IsRegister()) {
-            auto &regSrc = static_cast<RegOperand &>(src);
-            uint32 srcRegNO = regSrc.GetRegisterNumber();
-            if (li.GetRegNO() == srcRegNO) {
-                const OpndDesc *regProp = md->GetOpndDes(i);
-                DEBUG_ASSERT(regProp != nullptr,
-                             "pointer is null in LSRALinearScanRegAllocator::GetSpecialPhysRegPattern");
-                bool srcIsDef = regProp->IsRegDef();
-                if (srcIsDef) {
-                    break;
-                }
-                return regNO;
-            }
-        }
-    }
-    return 0;
-}
-
 uint32 LSRALinearScanRegAllocator::FindAvailablePhyRegByFastAlloc(LiveInterval &li)
 {
     uint32 regNO = 0;
@@ -1447,7 +1342,6 @@ void LSRALinearScanRegAllocator::InsertCallerSave(Insn &insn, Operand &opnd, boo
     LiveInterval *rli = liveIntervalsArray[vRegNO];
     auto regType = rli->GetRegType();
 
-    isSpillZero = false;
     if (!isDef && rli->IsNoNeedReloadPosition(insn.GetId())) {
         if (needDump) {
             LogInfo::MapleLogger() << "InsertCallerSave R" << rli->GetRegNO() << " assigned "
@@ -1526,24 +1420,6 @@ MemOperand *LSRALinearScanRegAllocator::GetSpillMem(uint32 vRegNO, bool isDest, 
     return regInfo->AdjustMemOperandIfOffsetOutOfRange(memOpnd, vRegNO, isDest, insn, regNO, isOutOfRange);
 }
 
-/* Set a vreg in live interval as being marked for spill. */
-void LSRALinearScanRegAllocator::SetOperandSpill(Operand &opnd)
-{
-    auto &regOpnd = static_cast<RegOperand &>(opnd);
-    uint32 regNO = regOpnd.GetRegisterNumber();
-    if (needDump) {
-        LogInfo::MapleLogger() << "SetOperandSpill " << regNO;
-        LogInfo::MapleLogger() << "(" << liveIntervalsArray[regNO]->GetFirstAcrossedCall();
-        LogInfo::MapleLogger() << ", refCount " << liveIntervalsArray[regNO]->GetRefCount() << ")\n";
-    }
-
-    DEBUG_ASSERT(regNO < liveIntervalsArray.size(),
-                 "index out of vector size in LSRALinearScanRegAllocator::SetOperandSpill");
-    LiveInterval *li = liveIntervalsArray[regNO];
-    li->SetStackSlot(kSpilled);
-    li->SetShouldSave(false);
-}
-
 /*
  * Generate spill/reload for an operand.
  * spill_idx : one of 3 phys regs set aside for the purpose of spills.
@@ -1616,12 +1492,7 @@ void LSRALinearScanRegAllocator::SpillOperand(Insn &insn, Operand &opnd, bool is
     }
 
     bool isOutOfRange = false;
-    RegOperand *phyOpnd = nullptr;
-    if (isSpillZero) {
-        phyOpnd = &cgFunc->GetZeroOpnd(regSize);
-    } else {
-        phyOpnd = regInfo->GetOrCreatePhyRegOperand(static_cast<regno_t>(spReg), regSize, regType);
-    }
+    auto *phyOpnd = regInfo->GetOrCreatePhyRegOperand(static_cast<regno_t>(spReg), regSize, regType);
     li->SetAssignedReg(phyOpnd->GetRegisterNumber());
 
     MemOperand *memOpnd = nullptr;
@@ -1687,7 +1558,8 @@ void LSRALinearScanRegAllocator::FindLowestPrioInActive(LiveInterval *&targetLi,
         }
     }
 
-    float lowestPrio = (li0 != nullptr ? li0->GetPriority() : 1000.0);
+    constexpr float kBiggestFloat = 1000.0;
+    float lowestPrio = (li0 != nullptr ? li0->GetPriority() : kBiggestFloat);
     bool found = false;
     bool hintCalleeSavedReg = li0 && NeedSaveAcrossCall(*li0);
     MapleSet<LiveInterval *, ActiveCmp>::iterator lowestIt;
@@ -1699,7 +1571,7 @@ void LSRALinearScanRegAllocator::FindLowestPrioInActive(LiveInterval *&targetLi,
             continue;
         }
         /* 2. If li is pre-assigned to Physical register primitively, ignore it. */
-        if (regInfo->IsPreAssignedReg(li->GetRegNO())) {
+        if (!regInfo->IsVirtualRegister(li->GetRegNO())) {
             continue;
         }
         /* 3. CalleeSavedReg is preferred here. If li is assigned to Non-CalleeSavedReg, ignore it. */
@@ -1781,49 +1653,50 @@ uint32 LSRALinearScanRegAllocator::HandleSpillForLi(LiveInterval &li)
     return newRegNO;
 }
 
-uint32 LSRALinearScanRegAllocator::FindAvailablePhyReg(LiveInterval &li, bool isIntReg)
+uint32 LSRALinearScanRegAllocator::FindAvailablePhyRegAcrossCall(LiveInterval &li, bool isIntReg)
 {
-    uint32 &callerRegMask = isIntReg ? intCallerMask : fpCallerMask;
-    uint32 &calleeRegMask = isIntReg ? intCalleeMask : fpCalleeMask;
+    uint32 callerRegMask = isIntReg ? intCallerMask : fpCallerMask;
+    uint32 calleeRegMask = isIntReg ? intCalleeMask : fpCalleeMask;
     regno_t reg0 = isIntReg ? firstIntReg : firstFpReg;
-    regno_t bestReg = 0;
-    regno_t secondReg = 0;
 
-    /* See if register is live accross a call */
-    if (NeedSaveAcrossCall(li)) {
-        if (!li.IsAllInCatch() && !li.IsAllInCleanupOrFirstBB()) {
-            /* call in live interval, use callee if available */
-            bestReg = GetRegFromMask(calleeRegMask, reg0, li);
-            if (bestReg != 0 && freeUntilPos[bestReg] >= li.GetLastUse()) {
-                li.SetShouldSave(false);
-                return bestReg;
-            }
-        }
-        /* can be optimize multi use between calls rather than in bb */
-        if (bestReg == 0 || li.IsMultiUseInBB()) {
-            secondReg = GetRegFromMask(callerRegMask, reg0, li);
-            if (freeUntilPos[secondReg] >= li.GetLastUse()) {
-                li.SetShouldSave(true);
-                return secondReg;
-            }
-        }
-    } else {
-        /* Get forced register */
-        uint32 forcedReg = GetSpecialPhysRegPattern(li);
-        if (forcedReg != 0) {
-            return forcedReg;
-        }
-
-        bestReg = GetRegFromMask(intCallerMask, reg0, li);
-        if (bestReg == 0) {
-            bestReg = GetRegFromMask(intCalleeMask, reg0, li);
-        } else if (freeUntilPos[bestReg] < li.GetLastUse()) {
-            secondReg = GetRegFromMask(intCalleeMask, reg0, li);
-            if (secondReg != 0) {
-                bestReg = (freeUntilPos[bestReg] > freeUntilPos[secondReg]) ? bestReg : secondReg;
-            }
+    /* call in live interval, use callee if available */
+    auto bestReg = GetRegFromMask(calleeRegMask, reg0, li);
+    if (bestReg != 0 && freeUntilPos[bestReg] >= li.GetLastUse()) {
+        li.SetShouldSave(false);
+        return bestReg;
+    }
+    /* can be optimize multi use between calls rather than in bb */
+    if (bestReg == 0 || li.IsMultiUseInBB()) {
+        auto secondReg = GetRegFromMask(callerRegMask, reg0, li);
+        if (freeUntilPos[secondReg] >= li.GetLastUse()) {
+            li.SetShouldSave(true);
+            return secondReg;
         }
     }
+    return 0;
+}
+
+uint32 LSRALinearScanRegAllocator::FindAvailablePhyReg(LiveInterval &li, bool isIntReg)
+{
+    /* See if register is live accross a call */
+    bool liAcrossCall = NeedSaveAcrossCall(li);
+    if (liAcrossCall && !regInfo->IsPrefCallerSaveRegs(li.GetRegType(), li.GetSpillSize())) {
+        return FindAvailablePhyRegAcrossCall(li, isIntReg);
+    }
+
+    uint32 callerRegMask = isIntReg ? intCallerMask : fpCallerMask;
+    uint32 calleeRegMask = isIntReg ? intCalleeMask : fpCalleeMask;
+    regno_t reg0 = isIntReg ? firstIntReg : firstFpReg;
+    auto bestReg = GetRegFromMask(callerRegMask, reg0, li);
+    if (bestReg == 0) {
+        bestReg = GetRegFromMask(calleeRegMask, reg0, li);
+    } else if (freeUntilPos[bestReg] < li.GetLastUse()) {
+        auto secondReg = GetRegFromMask(calleeRegMask, reg0, li);
+        if (secondReg != 0) {
+            bestReg = (freeUntilPos[bestReg] > freeUntilPos[secondReg]) ? bestReg : secondReg;
+        }
+    }
+
     if (bestReg != 0 && freeUntilPos[bestReg] < li.GetLastUse()) {
         DEBUG_ASSERT(freeUntilPos[bestReg] != 0, "impossible");
         bestReg = 0;
@@ -1889,10 +1762,7 @@ RegOperand *LSRALinearScanRegAllocator::GetReplaceUdOpnd(Insn &insn, Operand &op
     if (regType == kRegTyCc || regType == kRegTyVary) {
         return nullptr;
     }
-    if (regInfo->IsUntouchableReg(vRegNO)) {
-        return nullptr;
-    }
-    if (regOpnd->IsPhysicalRegister()) {
+    if (regInfo->IsUnconcernedReg(vRegNO) || !regInfo->IsVirtualRegister(vRegNO)) {
         return nullptr;
     }
 
@@ -1935,10 +1805,7 @@ RegOperand *LSRALinearScanRegAllocator::GetReplaceOpnd(Insn &insn, Operand &opnd
     if (regType == kRegTyCc || regType == kRegTyVary) {
         return nullptr;
     }
-    if (regInfo->IsUntouchableReg(vRegNO)) {
-        return nullptr;
-    }
-    if (regOpnd->IsPhysicalRegister()) {
+    if (regInfo->IsUnconcernedReg(vRegNO) || !regInfo->IsVirtualRegister(vRegNO)) {
         return nullptr;
     }
 
@@ -1974,7 +1841,7 @@ bool LSRALinearScanRegAllocator::CallerSaveOpt::UpdateLocalDefWithBBLiveIn(const
     for (uint32 i = 0; i < callerSaves.size(); ++i) {
         auto *li = callerSaves[i];
         auto &defLiveIn = localDefLiveIn[i];
-        auto &defLiveOut = localDefLiveOut[i];
+        auto &defAfterInsn = localDefAfterInsn[i];
 
         if (bb.GetLiveInRegNO().count(li->GetRegNO()) == 0) {
             continue;
@@ -1984,14 +1851,14 @@ bool LSRALinearScanRegAllocator::CallerSaveOpt::UpdateLocalDefWithBBLiveIn(const
         }
         bool isLocalDef = true;
         for (auto *pred : bb.GetPreds()) {
-            if (defLiveOut.count(pred->GetId()) == 0) {
+            if (defAfterInsn.count(pred->GetId()) == 0) {
                 isLocalDef = false;
                 break;
             }
         }
         if (isLocalDef) {
             defLiveIn.insert(bb.GetId());
-            defLiveOut.insert(bb.GetId());
+            defAfterInsn.emplace(bb.GetId(), 0);
             changed = true;
         }
     }
@@ -2003,19 +1870,24 @@ void LSRALinearScanRegAllocator::CallerSaveOpt::CollectCallerNoNeedReloadByInsn(
     auto curId = insn.GetId();
     for (uint32 i = 0; i < callerSaves.size(); ++i) {
         auto *li = callerSaves[i];
-        auto &defLiveOut = localDefLiveOut[i];
+        auto &defLiveIn = localDefLiveIn[i];
+        auto &defAfterInsn = localDefAfterInsn[i];
         auto posRange = li->FindPosRange(curId);
         if (posRange == li->GetRanges().end() || posRange->GetStart() > curId) {
             continue;
         }
         if (insn.IsCall()) {
-            defLiveOut.erase(insn.GetBB()->GetId());
+            defAfterInsn.erase(insn.GetBB()->GetId());
             continue;
         }
         auto &usePositions = li->GetUsePositions();
         if (std::binary_search(usePositions.begin(), usePositions.end(), curId)) {
-            if (defLiveOut.count(insn.GetBB()->GetId()) == 0) {
-                defLiveOut.insert(insn.GetBB()->GetId());
+            auto iter = defAfterInsn.find(insn.GetBB()->GetId());
+            if (iter == defAfterInsn.end() || iter->second > curId) {
+                defAfterInsn.insert_or_assign(insn.GetBB()->GetId(), curId);
+                continue;
+            }
+            if (iter->second == curId && defLiveIn.count(insn.GetBB()->GetId()) == 0) {
                 continue;
             }
             li->AddNoNeedReloadPosition(curId);
@@ -2050,6 +1922,7 @@ void LSRALinearScanRegAllocator::CallerSaveOpt::Run()
 /* Iterate through all instructions and change the vreg to preg. */
 void LSRALinearScanRegAllocator::FinalizeRegisters()
 {
+    RA_TIMER_REGISTER(lsra, "LSRA FinalizeRegisters");
     CallerSaveOpt opt(liveIntervalsArray, bfs);
     opt.Run();
     for (BB *bb : bfs->sortedBBs) {
@@ -2064,38 +1937,49 @@ void LSRALinearScanRegAllocator::FinalizeRegisters()
 
             /* Handle source(use) opernads first */
             for (uint32 i = 0; i < opndNum; ++i) {
-                const OpndDesc *regProp = md->GetOpndDes(i);
-                DEBUG_ASSERT(regProp != nullptr, "pointer is null in LSRALinearScanRegAllocator::FinalizeRegisters");
-                bool isDef = regProp->IsRegDef();
+                const OpndDesc *opndDesc = md->GetOpndDes(i);
+                DEBUG_ASSERT(opndDesc != nullptr, "pointer is null in LSRALinearScanRegAllocator::FinalizeRegisters");
+                Operand &opnd = insn->GetOperand(i);
+                bool isDef = (opndDesc->IsDef() && !opnd.IsMemoryAccessOperand());
                 if (isDef) {
                     continue;
                 }
-                Operand &opnd = insn->GetOperand(i);
-                RegOperand *phyOpnd = nullptr;
                 if (opnd.IsList()) {
-                    /* For arm32, not arm64 */
+                    auto &listOpnd = static_cast<ListOperand&>(opnd);
+                    auto *newList = &cgFunc->GetOpndBuilder()->CreateList(cgFunc->GetFuncScopeAllocator()->
+                                                                          GetMemPool());
+                    RegOperand *phyOpnd = nullptr;
+                    for (auto *regOpnd : listOpnd.GetOperands()) {
+                        if (regOpnd->IsPhysicalRegister()) {
+                            phyOpnd = regOpnd;
+                        } else {
+                            phyOpnd = GetReplaceOpnd(*insn, *regOpnd, spillIdx, false);
+                        }
+                        newList->PushOpnd(*phyOpnd);
+                    }
+                    insn->SetOperand(i, *newList);
                 } else if (opnd.IsMemoryAccessOperand()) {
                     auto *memOpnd =
-                        static_cast<MemOperand *>(static_cast<MemOperand &>(opnd).Clone(*cgFunc->GetMemoryPool()));
+                        static_cast<MemOperand*>(static_cast<MemOperand&>(opnd).Clone(*cgFunc->GetMemoryPool()));
                     DEBUG_ASSERT(memOpnd != nullptr,
                                  "memopnd is null in LSRALinearScanRegAllocator::FinalizeRegisters");
                     insn->SetOperand(i, *memOpnd);
                     Operand *base = memOpnd->GetBaseRegister();
                     Operand *offset = memOpnd->GetIndexRegister();
                     if (base != nullptr) {
-                        phyOpnd = GetReplaceOpnd(*insn, *base, spillIdx, false);
+                        auto *phyOpnd = GetReplaceOpnd(*insn, *base, spillIdx, false);
                         if (phyOpnd != nullptr) {
                             memOpnd->SetBaseRegister(*phyOpnd);
                         }
                     }
                     if (offset != nullptr) {
-                        phyOpnd = GetReplaceOpnd(*insn, *offset, spillIdx, false);
+                        auto *phyOpnd = GetReplaceOpnd(*insn, *offset, spillIdx, false);
                         if (phyOpnd != nullptr) {
                             memOpnd->SetIndexRegister(*phyOpnd);
                         }
                     }
                 } else {
-                    phyOpnd = GetReplaceOpnd(*insn, opnd, spillIdx, false);
+                    auto *phyOpnd = GetReplaceOpnd(*insn, opnd, spillIdx, false);
                     if (phyOpnd != nullptr) {
                         insn->SetOperand(i, *phyOpnd);
                     }
@@ -2104,10 +1988,10 @@ void LSRALinearScanRegAllocator::FinalizeRegisters()
 
             /* Handle ud(use-def) opernads */
             for (uint32 i = 0; i < opndNum; ++i) {
-                const OpndDesc *regProp = md->GetOpndDes(i);
-                DEBUG_ASSERT(regProp != nullptr, "pointer is null in LSRALinearScanRegAllocator::FinalizeRegisters");
+                const OpndDesc *opndDesc = md->GetOpndDes(i);
+                DEBUG_ASSERT(opndDesc != nullptr, "pointer is null in LSRALinearScanRegAllocator::FinalizeRegisters");
                 Operand &opnd = insn->GetOperand(i);
-                bool isUseDef = regProp->IsRegDef() && regProp->IsRegUse();
+                bool isUseDef = opndDesc->IsRegDef() && opndDesc->IsRegUse();
                 if (!isUseDef) {
                     continue;
                 }
@@ -2119,20 +2003,32 @@ void LSRALinearScanRegAllocator::FinalizeRegisters()
 
             /* Handle dest(def) opernads last */
             for (uint32 i = 0; i < opndNum; ++i) {
-                const OpndDesc *regProp = md->GetOpndDes(i);
-                DEBUG_ASSERT(regProp != nullptr, "pointer is null in LSRALinearScanRegAllocator::FinalizeRegisters");
+                const OpndDesc *opndDesc = md->GetOpndDes(i);
+                DEBUG_ASSERT(opndDesc != nullptr, "pointer is null in LSRALinearScanRegAllocator::FinalizeRegisters");
                 Operand &opnd = insn->GetOperand(i);
-                bool isUse = (regProp->IsRegUse()) || (opnd.IsMemoryAccessOperand());
+                bool isUse = (opndDesc->IsUse() || opnd.IsMemoryAccessOperand());
                 if (isUse) {
                     continue;
                 }
-                isSpillZero = false;
-                RegOperand *phyOpnd = GetReplaceOpnd(*insn, opnd, spillIdx, true);
-                if (phyOpnd != nullptr) {
-                    insn->SetOperand(i, *phyOpnd);
-                    if (isSpillZero) {
-                        insn->GetBB()->RemoveInsn(*insn);
+                if (opnd.IsRegister()) {
+                    RegOperand *phyOpnd = GetReplaceOpnd(*insn, opnd, spillIdx, true);
+                    if (phyOpnd != nullptr) {
+                        insn->SetOperand(i, *phyOpnd);
                     }
+                } else if (opnd.IsList()) {
+                    auto &listOpnd = static_cast<ListOperand&>(opnd);
+                    auto *newList = &cgFunc->GetOpndBuilder()->CreateList(cgFunc->
+                                                                          GetFuncScopeAllocator()->GetMemPool());
+                    RegOperand *phyOpnd = nullptr;
+                    for (auto *regOpnd : listOpnd.GetOperands()) {
+                        if (regOpnd->IsPhysicalRegister()) {
+                            phyOpnd = regOpnd;
+                        } else {
+                            phyOpnd = GetReplaceOpnd(*insn, *regOpnd, spillIdx, true);
+                        }
+                        newList->PushOpnd(*phyOpnd);
+                    }
+                    insn->SetOperand(i, *newList);
                 }
             }
         }
@@ -2141,6 +2037,7 @@ void LSRALinearScanRegAllocator::FinalizeRegisters()
 
 void LSRALinearScanRegAllocator::CollectReferenceMap()
 {
+    RA_TIMER_REGISTER(lsra, "LSRA CollectReferenceMap");
     const auto &referenceMapInsns = cgFunc->GetStackMapInsns();
     if (needDump) {
         LogInfo::MapleLogger() << "===========reference map stack info================\n";
@@ -2205,7 +2102,7 @@ void LSRALinearScanRegAllocator::CollectReferenceMap()
 void LSRALinearScanRegAllocator::SolveRegOpndDeoptInfo(const RegOperand &regOpnd, DeoptInfo &deoptInfo,
                                                        int32 deoptVregNO) const
 {
-    if (regOpnd.IsPhysicalRegister()) {
+    if (!regInfo->IsVirtualRegister(regOpnd)) {
         // Get Register No
         deoptInfo.RecordDeoptVreg2LocationInfo(deoptVregNO, LocationInfo({kInRegister, 0}));
         return;
@@ -2231,6 +2128,7 @@ void LSRALinearScanRegAllocator::SolveMemOpndDeoptInfo(const MemOperand &memOpnd
 
 void LSRALinearScanRegAllocator::CollectDeoptInfo()
 {
+    RA_TIMER_REGISTER(lsra, "LSRA CollectReferenceMap");
     const auto referenceMapInsns = cgFunc->GetStackMapInsns();
     for (auto *insn : referenceMapInsns) {
         auto &deoptInfo = insn->GetStackMap()->GetDeoptInfo();
@@ -2292,6 +2190,7 @@ void LSRALinearScanRegAllocator::SetAllocMode()
 
 void LSRALinearScanRegAllocator::LinearScanRegAllocator()
 {
+    RA_TIMER_REGISTER(lsra, "LSRA LinearScanRegAllocator");
     if (needDump) {
         PrintParamQueue("Initial param queue");
         PrintCallQueue("Initial call queue");
@@ -2339,19 +2238,12 @@ bool LSRALinearScanRegAllocator::AllocateRegisters()
     liveIntervalsArray.resize(cgFunc->GetMaxVReg());
     regInfo->Fini();
     SetAllocMode();
-#ifdef RA_PERF_ANALYSIS
-    auto begin = std::chrono::system_clock::now();
-#endif
     if (needDump) {
         const MIRModule &mirModule = cgFunc->GetMirModule();
         DotGenerator::GenerateDot("RA", *cgFunc, mirModule);
         DotGenerator::GenerateDot("RAe", *cgFunc, mirModule, true);
         LogInfo::MapleLogger() << "Entering LinearScanRegAllocator: " << cgFunc->GetName() << "\n";
     }
-/* ================= LiveInterval =============== */
-#ifdef RA_PERF_ANALYSIS
-    start = std::chrono::system_clock::now();
-#endif
     ComputeLiveInterval();
 
     if (needDump) {
@@ -2363,50 +2255,16 @@ bool LSRALinearScanRegAllocator::AllocateRegisters()
         LiveIntervalAnalysis();
     }
 
-#ifdef RA_PERF_ANALYSIS
-    end = std::chrono::system_clock::now();
-    liveIntervalUS += std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
-#endif
-
-/* ================= LiveRange =============== */
-#ifdef RA_PERF_ANALYSIS
-    start = std::chrono::system_clock::now();
-#endif
-
     SpillStackMapInfo();
-
-    if (needDump) {
-        PrintAllLiveRanges();
-    }
-#ifdef RA_PERF_ANALYSIS
-    end = std::chrono::system_clock::now();
-    holesUS += std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
-#endif
-    /* ================= InitFreeRegPool =============== */
     InitFreeRegPool();
 
-/* ================= LinearScanRegAllocator =============== */
-#ifdef RA_PERF_ANALYSIS
-    start = std::chrono::system_clock::now();
-#endif
     LinearScanRegAllocator();
-#ifdef RA_PERF_ANALYSIS
-    end = std::chrono::system_clock::now();
-    lsraUS += std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
-#endif
 
     if (needDump) {
         PrintAllLiveRanges();
     }
 
-#ifdef RA_PERF_ANALYSIS
-    start = std::chrono::system_clock::now();
-#endif
     FinalizeRegisters();
-#ifdef RA_PERF_ANALYSIS
-    end = std::chrono::system_clock::now();
-    finalizeUS += std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
-#endif
 
     CollectReferenceMap();
     CollectDeoptInfo();
@@ -2427,11 +2285,6 @@ bool LSRALinearScanRegAllocator::AllocateRegisters()
     }
 
     bfs = nullptr; /* bfs is not utilized outside the function. */
-
-#ifdef RA_PERF_ANALYSIS
-    end = std::chrono::system_clock::now();
-    totalUS += std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
-#endif
 
     return true;
 }

@@ -675,18 +675,16 @@ class LSRALinearScanRegAllocator : public RegAllocator {
                 }
             }
             localDefLiveIn.resize(callerSaves.size());
-            localDefLiveOut.resize(callerSaves.size());
+            localDefAfterInsn.resize(callerSaves.size());
         }
 
         void Run();
     private:
-        using LocalDefBBSet = std::unordered_set<uint32>;
-
         bool firstTime = true;
         Bfs *bfs = nullptr;
         std::vector<LiveInterval*> callerSaves;
-        std::vector<LocalDefBBSet> localDefLiveIn;
-        std::vector<LocalDefBBSet> localDefLiveOut;
+        std::vector<std::unordered_set<uint32>> localDefLiveIn;         // bbid: which is defined in livein
+        std::vector<std::unordered_map<uint32, uint32>> localDefAfterInsn;  // bbid: def-insnid
 
         bool UpdateLocalDefWithBBLiveIn(const BB &bb);
         void CollectCallerNoNeedReloadByInsn(const Insn &insn);
@@ -716,8 +714,6 @@ public:
           moveInfoVec(alloc.Adapter()),
           dereivedRef2Base(alloc.Adapter())
     {
-        regInfo = cgFunc.GetTargetRegInfo();
-        regInfo->Init();
         for (uint32 i = 0; i < regInfo->GetIntRegs().size(); ++i) {
             intParamQueue.push_back(initialQue);
         }
@@ -730,7 +726,6 @@ public:
     ~LSRALinearScanRegAllocator() override = default;
 
     bool AllocateRegisters() override;
-    void PreWork();
     bool CheckForReg(Operand &opnd, const Insn &insn, const LiveInterval &li, regno_t regNO, bool isDef) const;
     void PrintRegSet(const MapleSet<uint32> &set, const std::string &str) const;
     void PrintLiveInterval(const LiveInterval &li, const std::string &str) const;
@@ -745,7 +740,6 @@ public:
     void PrintLiveIntervals() const;
     void DebugCheckActiveList() const;
     void InitFreeRegPool();
-    void RecordCall(Insn &insn);
     void RecordPhysRegs(const RegOperand &regOpnd, uint32 insnNum, bool isDef);
     void UpdateLiveIntervalState(const BB &bb, LiveInterval &li) const;
     void UpdateRegUsedInfo(LiveInterval &li, regno_t regNO);
@@ -763,41 +757,23 @@ public:
     void UpdateParamAllocateInfo(const LiveInterval &li);
     void RetireActive(LiveInterval &li, uint32 insnID);
     void AssignPhysRegsForLi(LiveInterval &li);
-    LiveInterval *GetLiveIntervalAt(uint32 regNO, uint32 pos);
-    bool OpndNeedAllocation(const Insn &insn, Operand &opnd, bool isDef, uint32 insnNum);
-    void InsertParamToActive(Operand &opnd);
-    void InsertToActive(Operand &opnd, uint32 insnNum);
-    void ReleasePregToSet(const LiveInterval &li, uint32 preg);
-    void UpdateActiveAtRetirement(uint32 insnID);
-    void RetireFromActive(const Insn &insn);
-    void AssignPhysRegsForInsn(Insn &insn);
     RegOperand *GetReplaceOpnd(Insn &insn, Operand &opnd, uint32 &spillIdx, bool isDef);
     RegOperand *GetReplaceUdOpnd(Insn &insn, Operand &opnd, uint32 &spillIdx);
-    void ResolveSplitBBEdge(BB &bb);
     void SetAllocMode();
     void LinearScanRegAllocator();
     void FinalizeRegisters();
-    void ResolveMoveVec();
     void CollectReferenceMap();
     void SolveRegOpndDeoptInfo(const RegOperand &regOpnd, DeoptInfo &deoptInfo, int32 deoptVregNO) const;
     void SolveMemOpndDeoptInfo(const MemOperand &memOpnd, DeoptInfo &deoptInfo, int32 deoptVregNO) const;
     void CollectDeoptInfo();
     void SpillOperand(Insn &insn, Operand &opnd, bool isDef, uint32 spillIdx);
-    void SetOperandSpill(Operand &opnd);
     regno_t HandleSpillForLi(LiveInterval &li);
-    RegOperand *HandleSpillForInsn(const Insn &insn, Operand &opnd);
     MemOperand *GetSpillMem(uint32 vregNO, bool isDest, Insn &insn, regno_t regNO, bool &isOutOfRange,
                             uint32 bitSize) const;
     void InsertCallerSave(Insn &insn, Operand &opnd, bool isDef);
     uint32 GetRegFromMask(uint32 mask, regno_t offset, const LiveInterval &li);
-    uint32 GetSpecialPhysRegPattern(const LiveInterval &li);
-    uint32 GetRegFromSet(MapleSet<uint32> &set, regno_t offset, LiveInterval &li, regno_t forcedReg = 0) const;
-    uint32 AssignSpecialPhysRegPattern(const Insn &insn, LiveInterval &li);
     uint32 FindAvailablePhyReg(LiveInterval &li);
     uint32 AssignPhysRegs(LiveInterval &li);
-    void SetupIntervalRangesByOperand(Operand &opnd, const Insn &insn, uint32 blockFrom, bool isDef);
-    bool SplitLiveInterval(LiveInterval &li, uint32 pos);
-    void LiveIntervalQueueInsert(LiveInterval &li);
     void ComputeLoopLiveIntervalPriority(const CGFuncLoops &loop);
     void ComputeLoopLiveIntervalPriorityInInsn(const Insn &insn);
     void SetLiSpill(LiveInterval &li);
@@ -805,9 +781,9 @@ public:
 private:
     uint32 FindAvailablePhyRegByFastAlloc(LiveInterval &li);
     bool NeedSaveAcrossCall(LiveInterval &li);
+    uint32 FindAvailablePhyRegAcrossCall(LiveInterval &li, bool isIntReg);
     uint32 FindAvailablePhyReg(LiveInterval &li, bool isIntReg);
 
-    RegisterInfo *regInfo = nullptr;
     regno_t firstIntReg = 0;
     regno_t firstFpReg = 0;
 
@@ -852,7 +828,6 @@ private:
     bool fastAlloc = false;
     bool spillAll = false;
     bool needExtraSpillReg = false;
-    bool isSpillZero = false;
     uint64 spillCount = 0;
     uint64 reloadCount = 0;
     uint64 callerSaveSpillCount = 0;

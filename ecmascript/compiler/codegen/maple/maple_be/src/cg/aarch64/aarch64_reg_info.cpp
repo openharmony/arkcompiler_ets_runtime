@@ -27,8 +27,7 @@ void AArch64RegInfo::Init()
         if (IsYieldPointReg(regNO)) {
             continue;
         }
-        if (regNO == R29 && !GetCurrFunction()->UseFP()) {
-            AddToAllRegs(regNO);
+        if (regNO == R29 && GetCurrFunction()->UseFP()) {
             continue;
         }
         if (!AArch64Abi::IsAvailableReg(static_cast<AArch64reg>(regNO))) {
@@ -60,20 +59,6 @@ void AArch64RegInfo::SaveCalleeSavedReg(MapleSet<regno_t> savedRegs)
     }
 }
 
-bool AArch64RegInfo::IsSpecialReg(regno_t regno) const
-{
-    AArch64reg reg = static_cast<AArch64reg>(regno);
-    if ((reg == RLR) || (reg == RSP)) {
-        return true;
-    }
-
-    /* when yieldpoint is enabled, the dedicated register can not be allocated. */
-    if (IsYieldPointReg(reg)) {
-        return true;
-    }
-
-    return false;
-}
 bool AArch64RegInfo::IsSpillRegInRA(regno_t regNO, bool has3RegOpnd)
 {
     return AArch64Abi::IsSpillRegInRA(static_cast<AArch64reg>(regNO), has3RegOpnd);
@@ -85,7 +70,7 @@ bool AArch64RegInfo::IsCalleeSavedReg(regno_t regno) const
 bool AArch64RegInfo::IsYieldPointReg(regno_t regno) const
 {
     /* when yieldpoint is enabled, x19 is reserved. */
-    if (GetCurrFunction()->GetCG()->GenYieldPoint()) {
+    if (CGOptions::GetInstance().GenYieldPoint()) {
         return (static_cast<AArch64reg>(regno) == RYP);
     }
     return false;
@@ -93,7 +78,7 @@ bool AArch64RegInfo::IsYieldPointReg(regno_t regno) const
 bool AArch64RegInfo::IsUnconcernedReg(regno_t regNO) const
 {
     /* RFP = 32, RLR = 31, RSP = 33, RZR = 34, ccReg */
-    if ((regNO >= RLR && regNO <= RZR) || regNO == RFP) {
+    if ((regNO >= RLR && regNO <= RZR) || regNO == RFP || regNO == kRFLAG) {
         return true;
     }
 
@@ -123,21 +108,6 @@ RegOperand *AArch64RegInfo::GetOrCreatePhyRegOperand(regno_t regNO, uint32 size,
     return &aarch64CgFunc->GetOrCreatePhysicalRegisterOperand(static_cast<AArch64reg>(regNO), size, kind, flag);
 }
 
-ListOperand *AArch64RegInfo::CreateListOperand()
-{
-    AArch64CGFunc *aarch64CgFunc = static_cast<AArch64CGFunc *>(GetCurrFunction());
-    return (aarch64CgFunc->CreateListOpnd(*aarch64CgFunc->GetFuncScopeAllocator()));
-}
-
-Insn *AArch64RegInfo::BuildMovInstruction(Operand &opnd0, Operand &opnd1)
-{
-    AArch64CGFunc *a64CGFunc = static_cast<AArch64CGFunc *>(GetCurrFunction());
-    MOperator mop =
-        a64CGFunc->PickMovInsn(static_cast<const RegOperand &>(opnd0), static_cast<const RegOperand &>(opnd1));
-    Insn *newInsn = &a64CGFunc->GetInsnBuilder()->BuildInsn(mop, opnd0, opnd1);
-    return newInsn;
-}
-
 Insn *AArch64RegInfo::BuildStrInsn(uint32 regSize, PrimType stype, RegOperand &phyOpnd, MemOperand &memOpnd)
 {
     AArch64CGFunc *a64CGFunc = static_cast<AArch64CGFunc *>(GetCurrFunction());
@@ -150,15 +120,10 @@ Insn *AArch64RegInfo::BuildLdrInsn(uint32 regSize, PrimType stype, RegOperand &p
     return &a64CGFunc->GetInsnBuilder()->BuildInsn(a64CGFunc->PickLdInsn(regSize, stype), phyOpnd, memOpnd);
 }
 
-Insn *AArch64RegInfo::BuildCommentInsn(const std::string &comment)
-{
-    return &(static_cast<AArch64CGFunc *>(GetCurrFunction())->CreateCommentInsn("split around loop begin"));
-}
-
 MemOperand *AArch64RegInfo::GetOrCreatSpillMem(regno_t vrNum, uint32 bitSize)
 {
     AArch64CGFunc *a64CGFunc = static_cast<AArch64CGFunc *>(GetCurrFunction());
-    return a64CGFunc->GetOrCreatSpillMem(vrNum);
+    return a64CGFunc->GetOrCreatSpillMem(vrNum, bitSize);
 }
 MemOperand *AArch64RegInfo::AdjustMemOperandIfOffsetOutOfRange(MemOperand *memOpnd, regno_t vrNum, bool isDest,
                                                                Insn &insn, regno_t regNum, bool &isOutOfRange)

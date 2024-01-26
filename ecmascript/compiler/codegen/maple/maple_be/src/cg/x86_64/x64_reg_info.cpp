@@ -48,20 +48,6 @@ void X64RegInfo::SaveCalleeSavedReg(MapleSet<regno_t> savedRegs)
     }
 }
 
-bool X64RegInfo::IsSpecialReg(regno_t regno) const
-{
-    X64reg reg = static_cast<X64reg>(regno);
-    if ((reg == RBP) || (reg == RSP)) {
-        return true;
-    }
-
-    /* when yieldpoint is enabled, the dedicated register(RYP) can not be allocated. */
-    if (IsYieldPointReg(reg)) {
-        return true;
-    }
-    return false;
-}
-
 bool X64RegInfo::IsCalleeSavedReg(regno_t regno) const
 {
     return x64::IsCalleeSavedReg(static_cast<X64reg>(regno));
@@ -74,8 +60,13 @@ bool X64RegInfo::IsYieldPointReg(regno_t regno) const
 
 bool X64RegInfo::IsUnconcernedReg(regno_t regNO) const
 {
+    X64reg reg = static_cast<X64reg>(regNO);
+    if (reg == RBP || reg == RSP || reg == RIP) {
+        return true;
+    }
+
     /* when yieldpoint is enabled, the RYP(R12) can not be used. */
-    if (IsYieldPointReg(static_cast<X64reg>(regNO))) {
+    if (IsYieldPointReg(reg)) {
         return true;
     }
     return false;
@@ -92,18 +83,6 @@ bool X64RegInfo::IsUnconcernedReg(const RegOperand &regOpnd) const
 }
 
 void X64RegInfo::Fini() {}
-
-ListOperand *X64RegInfo::CreateListOperand()
-{
-    CHECK_FATAL(false, "CreateListOperand, unsupported");
-    return nullptr;
-}
-
-Insn *X64RegInfo::BuildMovInstruction(Operand &opnd0, Operand &opnd1)
-{
-    CHECK_FATAL(false, "BuildMovInstruction, unsupported");
-    return nullptr;
-}
 
 RegOperand *X64RegInfo::GetOrCreatePhyRegOperand(regno_t regNO, uint32 size, RegType kind, uint32 flag)
 {
@@ -160,13 +139,6 @@ Insn *X64RegInfo::BuildLdrInsn(uint32 regSize, PrimType stype, RegOperand &phyOp
     Insn &insn = GetCurrFunction()->GetInsnBuilder()->BuildInsn(mOp, X64CG::kMd[mOp]);
     insn.AddOpndChain(memOpnd).AddOpndChain(phyOpnd);
     return &insn;
-}
-
-Insn *X64RegInfo::BuildCommentInsn(const std::string &comment)
-{
-    CHECK_FATAL(false, "Comment Insn, unsupported");
-    GetCurrFunction()->GetOpndBuilder()->CreateComment(comment);
-    return nullptr;
 }
 
 void X64RegInfo::FreeSpillRegMem(regno_t vrNum)

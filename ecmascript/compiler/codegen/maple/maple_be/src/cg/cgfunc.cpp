@@ -2263,6 +2263,9 @@ void CGFunc::ProcessExitBBVec()
 
 void CGFunc::AddCommonExitBB()
 {
+    if (commonExitBB != nullptr) {
+        return;
+    }
     uint32 i = 0;
     while (exitBBVec[i]->IsUnreachable() && i < exitBBVec.size()) {
         i++;
@@ -2322,7 +2325,6 @@ void CGFunc::HandleFunction()
         MarkCatchBBs();
     }
     MarkCleanupEntryBB();
-    DetermineReturnTypeofCall();
     theCFG->MarkLabelTakenBB();
     theCFG->UnreachCodeAnalysis();
     EraseUnreachableStackMapInsns();

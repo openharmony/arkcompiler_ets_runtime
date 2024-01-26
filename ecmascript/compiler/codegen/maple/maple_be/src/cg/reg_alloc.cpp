@@ -31,72 +31,70 @@ namespace maplebe {
 
 void CgRegAlloc::GetAnalysisDependence(AnalysisDep &aDep) const
 {
-    if (Globals::GetInstance()->GetOptimLevel() == CGOptions::kLevelLiteCG ||
-        CGOptions::GetInstance().DoLinearScanRegisterAllocation()) {
+    if (Globals::GetInstance()->GetOptimLevel() == CGOptions::kLevel0) {
+        return;
+    }
+
+    if (CGOptions::GetInstance().DoLinearScanRegisterAllocation()) {
         aDep.AddRequired<CgBBSort>();
-    }
-    if (Globals::GetInstance()->GetOptimLevel() > CGOptions::kLevel0) {
-        aDep.AddRequired<CgLoopAnalysis>();
-        aDep.AddRequired<CgLiveAnalysis>();
-        aDep.PreservedAllExcept<CgLiveAnalysis>();
-    }
-#if TARGAARCH64
-    if (Globals::GetInstance()->GetOptimLevel() > CGOptions::kLevel0 &&
-        CGOptions::GetInstance().DoColoringBasedRegisterAllocation()) {
+    } else if (CGOptions::GetInstance().DoColoringBasedRegisterAllocation()) {
         aDep.AddRequired<CgDomAnalysis>();
     }
-#endif
+
+    aDep.AddRequired<CgLoopAnalysis>();
+    aDep.AddRequired<CgLiveAnalysis>();
+    aDep.PreservedAllExcept<CgLiveAnalysis>();
 }
 
 bool CgRegAlloc::PhaseRun(maplebe::CGFunc &f)
 {
     bool success = false;
-    while (success == false) {
+    while (!success) {
         MemPool *phaseMp = GetPhaseMemPool();
+        LiveAnalysis *live = nullptr;
+
         /* create register allocator */
         RegAllocator *regAllocator = nullptr;
+        MemPool *tempMP = memPoolCtrler.NewMemPool("regalloc", true);
         if (Globals::GetInstance()->GetOptimLevel() == CGOptions::kLevel0) {
             regAllocator = phaseMp->New<DefaultO0RegAllocator>(f, *phaseMp);
-        } else if (Globals::GetInstance()->GetOptimLevel() == CGOptions::kLevelLiteCG) {
+        } else if (f.GetCG()->GetCGOptions().DoLinearScanRegisterAllocation()) {
             Bfs *bfs = GET_ANALYSIS(CgBBSort, f);
             CHECK_FATAL(bfs != nullptr, "null ptr check");
+            live = GET_ANALYSIS(CgLiveAnalysis, f);
+            CHECK_FATAL(live != nullptr, "null ptr check");
+            // revert liveanalysis result container.
+            live->ResetLiveSet();
             regAllocator = phaseMp->New<LSRALinearScanRegAllocator>(f, *phaseMp, bfs);
-        } else {
 #if TARGAARCH64
-            if (f.GetCG()->GetCGOptions().DoLinearScanRegisterAllocation()) {
-                Bfs *bfs = GET_ANALYSIS(CgBBSort, f);
-                CHECK_FATAL(bfs != nullptr, "null ptr check");
-                regAllocator = phaseMp->New<LSRALinearScanRegAllocator>(f, *phaseMp, bfs);
-            } else if (f.GetCG()->GetCGOptions().DoColoringBasedRegisterAllocation()) {
-                MaplePhase *it = GetAnalysisInfoHook()->ForceRunAnalysisPhase<MapleFunctionPhase<CGFunc>, CGFunc>(
-                    &CgLiveAnalysis::id, f);
-                LiveAnalysis *live = static_cast<CgLiveAnalysis *>(it)->GetResult();
-                CHECK_FATAL(live != nullptr, "null ptr check");
-                /* revert liveanalysis result container. */
-                live->ResetLiveSet();
-                DomAnalysis *dom = GET_ANALYSIS(CgDomAnalysis, f);
-                CHECK_FATAL(dom != nullptr, "null ptr check");
-                regAllocator = phaseMp->New<GraphColorRegAllocator>(f, *phaseMp, *dom);
-            } else {
-                maple::LogInfo::MapleLogger(kLlErr)
-                    << "Warning: We only support Linear Scan and GraphColor register allocation\n";
-            }
-#elif TARGX86_64
-            LogInfo::MapleLogger(kLlErr) << "Error: We only support -O0, and -LiteCG for x64.\n";
+        } else if (f.GetCG()->GetCGOptions().DoColoringBasedRegisterAllocation()) {
+            MaplePhase *it = GetAnalysisInfoHook()->ForceRunAnalysisPhase<MapleFunctionPhase<CGFunc>, CGFunc>(
+                &CgLiveAnalysis::id, f);
+            live = static_cast<CgLiveAnalysis*>(it)->GetResult();
+            CHECK_FATAL(live != nullptr, "null ptr check");
+            /* revert liveanalysis result container. */
+            live->ResetLiveSet();
+            DomAnalysis *dom = GET_ANALYSIS(CgDomAnalysis, f);
+            CHECK_FATAL(dom != nullptr, "null ptr check");
+            regAllocator = phaseMp->New<GraphColorRegAllocator>(f, *tempMP, *dom);
 #endif
+        } else {
+            maple::LogInfo::MapleLogger(kLlErr)
+                << "Warning: We only support Linear Scan and GraphColor register allocation\n";
         }
+        RA_TIMER_REGISTER(ra, "RA Time");
         /* do register allocation */
         CHECK_FATAL(regAllocator != nullptr, "regAllocator is null in CgDoRegAlloc::Run");
         regAllocator->SetNeedDump(RA_DUMP);
         f.SetIsAfterRegAlloc();
         success = regAllocator->AllocateRegisters();
+
         if (Globals::GetInstance()->GetOptimLevel() > CGOptions::kLevel0) {
             GetAnalysisInfoHook()->ForceEraseAnalysisPhase(f.GetUniqueID(), &CgLiveAnalysis::id);
         }
+        memPoolCtrler.DeleteMemPool(tempMP);
     }
-    if (Globals::GetInstance()->GetOptimLevel() > CGOptions::kLevel0) {
-        GetAnalysisInfoHook()->ForceEraseAnalysisPhase(f.GetUniqueID(), &CgLoopAnalysis::id);
-    }
+    RA_TIMER_PRINT(f.GetName());
     return false;
 }
 } /* namespace maplebe */

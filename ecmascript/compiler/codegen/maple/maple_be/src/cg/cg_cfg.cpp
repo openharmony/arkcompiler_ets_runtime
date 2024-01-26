@@ -521,6 +521,7 @@ void CGCFG::RemoveBB(BB &curBB, bool isGotoIf)
             if (curBB.GetNext()->GetLabIdx() == 0) {
                 targetLabel = insnVisitor->GetCGFunc()->CreateLabel();
                 curBB.GetNext()->SetLabIdx(targetLabel);
+                cgFunc->SetLab2BBMap(targetLabel, *curBB.GetNext());
             } else {
                 targetLabel = curBB.GetNext()->GetLabIdx();
             }
@@ -925,10 +926,16 @@ void CGCFG::BreakCriticalEdge(BB &pred, BB &succ)
 }
 #endif
 
+void CgHandleCFG::GetAnalysisDependence(AnalysisDep &aDep) const
+{
+    aDep.SetPreservedAll();
+}
+
 bool CgHandleCFG::PhaseRun(maplebe::CGFunc &f)
 {
     CGCFG *cfg = f.GetMemoryPool()->New<CGCFG>(f);
     f.SetTheCFG(cfg);
+    cfg->MarkLabelTakenBB();
     /* build control flow graph */
     f.GetTheCFG()->BuildCFG();
     /* analysis unreachable code */

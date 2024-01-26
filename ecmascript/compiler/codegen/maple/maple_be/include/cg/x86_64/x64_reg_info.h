@@ -33,17 +33,13 @@ public:
     void Init() override;
     void Fini() override;
     void SaveCalleeSavedReg(MapleSet<regno_t> savedRegs) override;
-    bool IsSpecialReg(regno_t regno) const override;
     bool IsCalleeSavedReg(regno_t regno) const override;
     bool IsYieldPointReg(regno_t regNO) const override;
     bool IsUnconcernedReg(regno_t regNO) const override;
     bool IsUnconcernedReg(const RegOperand &regOpnd) const override;
     RegOperand *GetOrCreatePhyRegOperand(regno_t regNO, uint32 size, RegType kind, uint32 flag) override;
-    ListOperand *CreateListOperand() override;
-    Insn *BuildMovInstruction(Operand &opnd0, Operand &opnd1) override;
     Insn *BuildStrInsn(uint32 regSize, PrimType stype, RegOperand &phyOpnd, MemOperand &memOpnd) override;
     Insn *BuildLdrInsn(uint32 regSize, PrimType stype, RegOperand &phyOpnd, MemOperand &memOpnd) override;
-    Insn *BuildCommentInsn(const std::string &comment) override;
     void FreeSpillRegMem(regno_t vrNum) override;
     MemOperand *GetOrCreatSpillMem(regno_t vrNum, uint32 bitSize) override;
     MemOperand *AdjustMemOperandIfOffsetOutOfRange(MemOperand *memOpnd, regno_t vrNum, bool isDest, Insn &insn,
@@ -51,11 +47,6 @@ public:
     bool IsGPRegister(regno_t regNO) const override
     {
         return x64::IsGPRegister(static_cast<X64reg>(regNO));
-    }
-    /* Those registers can not be overwrite. */
-    bool IsUntouchableReg(regno_t regNO) const override
-    {
-        return false;
     }
     /* Refactor later: Integrate parameters and return Reg */
     uint32 GetIntRegsParmsNum() override
@@ -88,16 +79,6 @@ public:
     {
         CHECK_FATAL(idx <= GetFpRetRegsNum(), "index out of range in IntRetReg");
         return static_cast<regno_t>(X64CallConvImpl::GetCallConvInfo(callConv).GetFloatReturnRegs()[idx]);
-    }
-    /* phys reg which can be pre-Assignment:
-     * INT param regs -- rdi, rsi, rdx, rcx, r8, r9
-     * INT return regs -- rdx, rax
-     * FP param regs -- xmm0 ~ xmm7
-     * FP return regs -- xmm0 ~ xmm1
-     */
-    bool IsPreAssignedReg(regno_t regNO) const override
-    {
-        return x64::IsParamReg(static_cast<X64reg>(regNO)) || regNO == x64::RAX || regNO == x64::RDX;
     }
     uint32 GetIntParamRegIdx(regno_t regNO) const override
     {
