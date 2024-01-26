@@ -62,6 +62,7 @@ public:
     void Clear(JSThread *thread);
     void AdjustArray(JSThread *thread, TaggedArray *srcArray, int32_t fromIndex, int32_t toIndex,
                      bool direction);
+    void AdjustPrimitiveArray(TaggedArray *srcArray, int32_t fromIndex, int32_t toIndex);
     inline uint32_t GetSize() const
     {
         return GetLength();

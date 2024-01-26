@@ -2432,8 +2432,7 @@ JSHandle<TaggedArray> ObjectFactory::NewAndCopyTaggedArray(JSHandle<TaggedArray>
     if (newLength == 0) {
         return dstElements;
     }
-    Region *region = Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(*dstElements));
-    if (region->InYoungSpace() && !thread_->IsConcurrentMarkingOrFinished()) {
+    if (dstElements->IsYoungAndNotMarking(thread_)) {
         size_t size = oldLength * sizeof(JSTaggedType);
         if (memcpy_s(reinterpret_cast<void *>(dstElements->GetData()), size,
             reinterpret_cast<void *>(srcElements->GetData() + k), size) != EOK) {
@@ -2456,8 +2455,7 @@ JSHandle<TaggedArray> ObjectFactory::NewAndCopyNameDictionary(JSHandle<TaggedArr
     if (length == 0) {
         return dstElements;
     }
-    Region *region = Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(*dstElements));
-    if (region->InYoungSpace() && !thread_->IsConcurrentMarkingOrFinished()) {
+    if (dstElements->IsYoungAndNotMarking(thread_)) {
         size_t size = length * sizeof(JSTaggedType);
         if (memcpy_s(reinterpret_cast<void *>(dstElements->GetData()), size,
             reinterpret_cast<void *>(srcElements->GetData()), size) != EOK) {
@@ -2500,8 +2498,7 @@ JSHandle<TaggedArray> ObjectFactory::NewAndCopyTaggedArrayByObject(JSHandle<JSOb
     if (newLength == 0) {
         return dstElements;
     }
-    Region *region = Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(*dstElements));
-    if (region->InYoungSpace() && !thread_->IsConcurrentMarkingOrFinished()) {
+    if (dstElements->IsYoungAndNotMarking(thread_)) {
         size_t size = oldLength * sizeof(JSTaggedType);
         if (memcpy_s(reinterpret_cast<void *>(dstElements->GetData()), size,
             reinterpret_cast<void *>(srcElements->GetData() + k), size) != EOK) {
@@ -2529,8 +2526,7 @@ JSHandle<MutantTaggedArray> ObjectFactory::NewAndCopyMutantTaggedArrayByObject(J
     if (newLength == 0) {
         return dstElements;
     }
-    Region *region = Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(*dstElements));
-    if (region->InYoungSpace() && !thread_->IsConcurrentMarkingOrFinished()) {
+    if (dstElements->IsYoungAndNotMarking(thread_)) {
         size_t size = oldLength * sizeof(JSTaggedType);
         if (memcpy_s(reinterpret_cast<void *>(dstElements->GetData()), size,
             reinterpret_cast<void *>(srcElements->GetData() + k), size) != EOK) {

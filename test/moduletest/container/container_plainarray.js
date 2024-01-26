@@ -70,10 +70,16 @@ if (globalThis["ArkPrivate"] != undefined) {
         }
     }
 
-    let removeFrom = proxy.removeRangeFrom(1, 2)
+    newPlainArray = proxy.clone()
+    res = proxy.removeRangeFrom(1, 2)
     testArray.splice(1, 2)
-
-    map.set("test plainarray removeRangeFrom:", removeFrom)
+    if (res > 0) {
+        res = newPlainArray.removeRangeFrom(0, 100)
+        if (res > 0) {
+            res = newPlainArray.isEmpty()
+        }
+    }
+    map.set("test plainarray removeRangeFrom:", res)
 
     res = true
     proxy.forEach((i, d) => {
