@@ -64,6 +64,33 @@ enum class BCStubStatus: uint8_t {
 
 enum class StableArrayChangeKind { PROTO, NOT_PROTO };
 
+enum ThreadFlag : uint16_t {
+    NO_FLAGS = 0 << 0,
+    SUSPEND_REQUEST = 1 << 0
+};
+
+static constexpr uint32_t THREAD_STATE_OFFSET = 16;
+enum class ThreadState : uint16_t {
+    CREATED = 0,
+    RUNNING = 1,
+    NATIVE = 2,
+    IS_SUSPENDED = 3,
+    TERMINATED = 4,
+};
+
+union ThreadStateAndFlags {
+    explicit ThreadStateAndFlags(uint32_t val = 0): asInt(val) {}
+    struct {
+        volatile uint16_t flags;
+        volatile ThreadState state;
+    } asStruct;
+    volatile uint32_t asInt;
+    uint32_t asNonvolatileInt;
+    std::atomic<uint32_t> asAtomicInt;
+private:
+    NO_COPY_SEMANTIC(ThreadStateAndFlags);
+};
+
 class JSThread {
 public:
     static constexpr int CONCURRENT_MARKING_BITFIELD_NUM = 2;
@@ -99,6 +126,7 @@ public:
     }
 
     static JSThread *Create(EcmaVM *vm);
+    static JSThread *GetCurrent();
 
     int GetNestedLevel() const
     {
@@ -1064,6 +1092,20 @@ public:
     void InitializeBuiltinObject(const std::string& key);
     void InitializeBuiltinObject();
 
+    inline bool IsSuspended()
+    {
+        return ReadFlag(ThreadFlag::SUSPEND_REQUEST);
+    }
+    ThreadState GetState()
+    {
+        uint32_t stateAndFlags = stateAndFlags_.asAtomicInt.load(std::memory_order_acquire);
+        return static_cast<enum ThreadState>(stateAndFlags >> THREAD_STATE_OFFSET);
+    }
+    void UpdateState(ThreadState newState);
+    void SuspendThread(bool internalSuspend);
+    void ResumeThread(bool internalSuspend);
+    void WaitSuspension();
+
 private:
     NO_COPY_SEMANTIC(JSThread);
     NO_MOVE_SEMANTIC(JSThread);
@@ -1079,6 +1121,23 @@ private:
     void SetArrayHClassIndexMap(const CMap<ElementsKind, ConstantIndex> &map)
     {
         arrayHClassIndexMap_ = map;
+    }
+
+    void TransferFromRunningToSuspended(ThreadState newState);
+    void TransferToRunning();
+    void StoreState(ThreadState newState, bool lockMutatorLock);
+    bool ReadFlag(ThreadFlag flag) const
+    {
+        return (stateAndFlags_.asStruct.flags & static_cast<uint16_t>(flag)) != 0;
+    }
+    void SetFlag(ThreadFlag flag)
+    {
+        stateAndFlags_.asAtomicInt.fetch_or(flag, std::memory_order_seq_cst);
+    }
+
+    void ClearFlag(ThreadFlag flag)
+    {
+        stateAndFlags_.asAtomicInt.fetch_and(UINT32_MAX ^ flag, std::memory_order_seq_cst);
     }
 
     void DumpStack() DUMP_API_ATTR;
@@ -1133,6 +1192,12 @@ private:
     CVector<EcmaContext *> contexts_;
     EcmaContext *currentContext_ {nullptr};
     mutable Mutex interruptMutex_;
+
+    Mutex suspendLock_;
+    int32_t suspendCount_ {0};
+    ConditionVariable suspendCondVar_;
+
+    ThreadStateAndFlags stateAndFlags_ {};
 
     friend class GlobalHandleCollection;
     friend class EcmaVM;
