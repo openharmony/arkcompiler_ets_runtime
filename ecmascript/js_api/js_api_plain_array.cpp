@@ -71,11 +71,30 @@ bool JSAPIPlainArray::AdjustForward(JSThread *thread, int32_t index, int32_t for
     uint32_t size = GetLength();
     TaggedArray *keys = TaggedArray::Cast(GetKeys().GetTaggedObject());
     TaggedArray *values = TaggedArray::Cast(GetValues().GetTaggedObject());
-    AdjustArray(thread, keys, index + forwardSize, index, false);
+    AdjustPrimitiveArray(keys, index + forwardSize, index);
     AdjustArray(thread, values, index + forwardSize, index, false);
     size = size - static_cast<uint32_t>(forwardSize);
     SetLength(size);
     return true;
+}
+
+void JSAPIPlainArray::AdjustPrimitiveArray(TaggedArray *srcArray, int32_t fromIndex, int32_t toIndex)
+{
+    uint32_t size = GetLength();
+    auto srcPtr = reinterpret_cast<JSTaggedType *>(
+                            ToUintPtr(srcArray->GetData()) + fromIndex * JSTaggedValue::TaggedTypeSize());
+    auto dstPtr = reinterpret_cast<JSTaggedType *>(
+                            ToUintPtr(srcArray->GetData()) + toIndex * JSTaggedValue::TaggedTypeSize());
+    // move Array element from srcPtr to dstPtr
+    for (uint32_t count = size - fromIndex; count > 0; --count) {
+        *dstPtr = *srcPtr;
+        ++srcPtr;
+        ++dstPtr;
+    }
+    for (uint32_t count = fromIndex - toIndex; count > 0; --count) {
+        *dstPtr = JSTaggedValue::Hole().GetRawData();
+        ++dstPtr;
+    }
 }
 
 void JSAPIPlainArray::AdjustArray(JSThread *thread, TaggedArray *srcArray, int32_t fromIndex,
@@ -91,13 +110,20 @@ void JSAPIPlainArray::AdjustArray(JSThread *thread, TaggedArray *srcArray, int32
             fromIndex++;
         }
     } else {
-        uint32_t moveSize = size - static_cast<uint32_t>(fromIndex);
-        for (uint32_t i = 0; i < moveSize; i++) {
-            if ((fromIndex + static_cast<int32_t>(i)) < static_cast<int32_t>(size)) {
-                JSTaggedValue value = srcArray->Get(fromIndex + i);
-                srcArray->Set(thread, toIndex + i, value);
-            } else {
-                srcArray->Set(thread, toIndex + i, JSTaggedValue::Hole());
+        if (srcArray->IsYoungAndNotMarking(thread)) {
+            AdjustPrimitiveArray(srcArray, fromIndex, toIndex);
+        } else {
+            auto srcPtr = reinterpret_cast<JSTaggedType *>(
+                                    ToUintPtr(srcArray->GetData()) + fromIndex * JSTaggedValue::TaggedTypeSize());
+            uint32_t dstIndex = toIndex;
+            for (uint32_t count = size - fromIndex; count > 0; --count) {
+                srcArray->Set(thread, dstIndex, JSTaggedValue(*srcPtr));
+                ++srcPtr;
+                ++dstIndex;
+            }
+            for (uint32_t count = fromIndex - toIndex; count > 0; --count) {
+                srcArray->Set(thread, dstIndex, JSTaggedValue::Hole());
+                ++dstIndex;
             }
         }
     }

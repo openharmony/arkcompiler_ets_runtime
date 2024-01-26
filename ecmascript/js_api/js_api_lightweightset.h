@@ -57,7 +57,7 @@ public:
     bool HasAll(const JSHandle<JSTaggedValue> &value);
     bool RemoveAt(JSThread *thread, int32_t index);
     void RemoveValue(const JSThread *thread, JSHandle<TaggedArray> &taggedArray,
-                     uint32_t index);
+                     uint32_t index, bool isHash = false);
     bool IsEmpty();
     int32_t GetIndexOf(const JSThread *thread, JSHandle<JSTaggedValue> &value);
     int32_t BinarySearchHashes(uint32_t hash, int32_t size);
