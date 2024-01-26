@@ -128,15 +128,14 @@ void TransitionsDictionary::Rehash(const JSThread *thread, TransitionsDictionary
     newTable->SetHoleEntriesCount(thread, 0);
 }
 
-// class JSHClass
-void JSHClass::Initialize(const JSThread *thread, uint32_t size, JSType type, uint32_t inlinedProps)
+void JSHClass::InitializeWithDefaultValue(const JSThread *thread, uint32_t size, JSType type, uint32_t inlinedProps)
 {
     DISALLOW_GARBAGE_COLLECTION;
     ClearBitField();
     if (JSType::JS_OBJECT_FIRST <= type && type <= JSType::JS_OBJECT_LAST) {
         SetObjectSize(size + inlinedProps * JSTaggedValue::TaggedTypeSize());
         SetInlinedPropsStart(size);
-        SetLayout(thread, thread->GlobalConstants()->GetEmptyLayoutInfo());
+        SetLayout(thread, JSTaggedValue::Null());
     } else {
         SetObjectSize(size);
         SetLayout(thread, JSTaggedValue::Null());
@@ -157,7 +156,29 @@ void JSHClass::Initialize(const JSThread *thread, uint32_t size, JSType type, ui
     SetProtoChangeMarker(thread, JSTaggedValue::Null());
     SetProtoChangeDetails(thread, JSTaggedValue::Null());
     SetEnumCache(thread, JSTaggedValue::Null());
+    SetSupers(thread, JSTaggedValue::Undefined());
+    SetLevel(0);
+    SetVTable(thread, JSTaggedValue::Undefined());
+}
+
+// class JSHClass
+void JSHClass::Initialize(const JSThread *thread, uint32_t size, JSType type, uint32_t inlinedProps)
+{
+    InitializeWithDefaultValue(thread, size, type, inlinedProps);
+    if (JSType::JS_OBJECT_FIRST <= type && type <= JSType::JS_OBJECT_LAST) {
+        SetLayout(thread, thread->GlobalConstants()->GetEmptyLayoutInfo());
+    }
     InitTSInheritInfo(thread);
+}
+
+// for sharedHeap
+void JSHClass::Initialize(const JSThread *thread, uint32_t size, JSType type,
+    uint32_t inlinedProps, const JSHandle<JSTaggedValue> &layout)
+{
+    InitializeWithDefaultValue(thread, size, type, inlinedProps);
+    if (JSType::JS_OBJECT_FIRST <= type && type <= JSType::JS_OBJECT_LAST) {
+        SetLayout(thread, layout);
+    }
 }
 
 void JSHClass::InitTSInheritInfo(const JSThread *thread)
@@ -875,6 +896,9 @@ void JSHClass::RefreshUsers(const JSThread *thread, const JSHandle<JSHClass> &ol
 bool JSHClass::HasTSSubtyping() const
 {
     // if fill TS inherit info, supers must not be empty
+    if (!GetSupers().IsHeapObject()) {
+        return false;
+    }
     WeakVector *supers = WeakVector::Cast(GetSupers().GetTaggedObject());
     return !(supers->Empty());
 }

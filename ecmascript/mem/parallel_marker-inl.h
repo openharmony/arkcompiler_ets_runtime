@@ -253,7 +253,7 @@ inline void MovableMarker::UpdateForwardAddressIfSuccess(uint32_t threadId, Tagg
 inline bool MovableMarker::UpdateForwardAddressIfFailed(TaggedObject *object, uintptr_t toAddress, size_t size,
     ObjectSlot slot)
 {
-    FreeObject::FillFreeObject(heap_->GetEcmaVM(), toAddress, size);
+    FreeObject::FillFreeObject(heap_, toAddress, size);
     TaggedObject *dst = MarkWord(object).ToForwardingAddress();
     slot.Update(dst);
     return Region::ObjectAddressToRange(dst)->InYoungSpace();
@@ -412,7 +412,8 @@ inline void CompressGCMarker::RecordWeakReference(uint32_t threadId, JSTaggedTyp
 inline bool CompressGCMarker::NeedEvacuate(Region *region)
 {
     if (isAppSpawn_) {
-        return !region->InHugeObjectSpace()  && !region->InReadOnlySpace() && !region->InNonMovableSpace();
+        return !region->InHugeObjectSpace()  && !region->InReadOnlySpace() && !region->InNonMovableSpace() &&
+               !region->InSharedSpace();
     }
     return region->InYoungOrOldSpace();
 }

@@ -48,8 +48,14 @@ enum RegionSpaceFlag {
     IN_READ_ONLY_SPACE = 0x0E,
     IN_APPSPAWN_SPACE = 0X0F,
     IN_HUGE_MACHINE_CODE_SPACE = 0x10,
-
+    IN_SHARED_NON_MOVABLE = 0x11,
+    IN_SHARED_OLD_SPACE = 0x12,
+    IN_SHARED_READ_ONLY_SPACE = 0x13,
+    IN_SHARED_HUGE_OBJECT_SPACE = 0x14,
     VALID_SPACE_MASK = 0xFF,
+
+    SHARED_SPACE_BEGIN = IN_SHARED_NON_MOVABLE,
+    SHARED_SPACE_END = IN_SHARED_HUGE_OBJECT_SPACE,
 };
 
 enum RegionGCFlags {
@@ -89,6 +95,14 @@ static inline std::string ToSpaceTypeName(uint8_t space)
             return "appspawn space";
         case RegionSpaceFlag::IN_HUGE_MACHINE_CODE_SPACE:
             return "huge machine code space";
+        case RegionSpaceFlag::IN_SHARED_NON_MOVABLE:
+            return "shared non movable space";
+        case RegionSpaceFlag::IN_SHARED_OLD_SPACE:
+            return "shared old space";
+        case RegionSpaceFlag::IN_SHARED_READ_ONLY_SPACE:
+            return "shared read only space";
+        case RegionSpaceFlag::IN_SHARED_HUGE_OBJECT_SPACE:
+            return "shared huge object space";
         default:
             return "invalid space";
     }
@@ -102,9 +116,10 @@ static inline std::string ToSpaceTypeName(uint8_t space)
 
 class Region {
 public:
-    Region(JSThread *thread, uintptr_t allocateBase, uintptr_t begin, uintptr_t end, RegionSpaceFlag spaceType)
+    Region(NativeAreaAllocator *allocator, uintptr_t allocateBase, uintptr_t begin, uintptr_t end,
+        RegionSpaceFlag spaceType)
         : packedData_(begin, end, spaceType),
-          thread_(thread),
+          nativeAreaAllocator_(allocator),
           allocateBase_(allocateBase),
           end_(end),
           highWaterMark_(end),
@@ -301,6 +316,12 @@ public:
         return packedData_.flags_.spaceFlag_ == RegionSpaceFlag::IN_APPSPAWN_SPACE;
     }
 
+    bool InSharedSpace() const
+    {
+        auto flag = packedData_.flags_.spaceFlag_;
+        return flag >= RegionSpaceFlag::SHARED_SPACE_BEGIN && flag <= RegionSpaceFlag::SHARED_SPACE_END;
+    }
+
     bool InHeapSpace() const
     {
         uint8_t space = packedData_.flags_.spaceFlag_;
@@ -312,7 +333,11 @@ public:
                 space == RegionSpaceFlag::IN_NON_MOVABLE_SPACE ||
                 space == RegionSpaceFlag::IN_SNAPSHOT_SPACE ||
                 space == RegionSpaceFlag::IN_READ_ONLY_SPACE ||
-                space == RegionSpaceFlag::IN_APPSPAWN_SPACE);
+                space == RegionSpaceFlag::IN_APPSPAWN_SPACE ||
+                space == RegionSpaceFlag::IN_SHARED_NON_MOVABLE ||
+                space == RegionSpaceFlag::IN_SHARED_OLD_SPACE ||
+                space == RegionSpaceFlag::IN_SHARED_READ_ONLY_SPACE ||
+                space == RegionSpaceFlag::IN_SHARED_HUGE_OBJECT_SPACE);
     }
 
     bool InCollectSet() const
@@ -534,7 +559,8 @@ public:
             flags_.spaceFlag_ = spaceType;
             flags_.gcFlags_ = 0;
             bitsetSize_ = (spaceType == RegionSpaceFlag::IN_HUGE_OBJECT_SPACE ||
-                           spaceType == RegionSpaceFlag::IN_HUGE_MACHINE_CODE_SPACE) ?
+                           spaceType == RegionSpaceFlag::IN_HUGE_MACHINE_CODE_SPACE ||
+                           spaceType == RegionSpaceFlag::IN_SHARED_HUGE_OBJECT_SPACE) ?
                 GCBitset::BYTE_PER_WORD : GCBitset::SizeOfGCBitset(end - begin);
             markGCBitset_ = new (ToVoidPtr(begin)) GCBitset();
             markGCBitset_->Clear(bitsetSize_);
@@ -582,15 +608,7 @@ private:
     RememberedSet *GetOrCreateOldToNewRememberedSet();
 
     PackedData packedData_;
-    /*
-     * The thread instance here is used by the GC barriers to get marking related information
-     * and perform marking related operations. The barriers will indirectly access such information
-     * via. the objects' associated regions.
-     * fixme: Figure out a more elegant solution to bridging the barrier
-     * and the information / operations it depends on. Then we can get rid of this from the region,
-     * and consequently, the region allocator, the spaces using the region allocator, etc.
-     */
-    JSThread *thread_;
+    NativeAreaAllocator *nativeAreaAllocator_;
 
     uintptr_t allocateBase_;
     uintptr_t end_;

@@ -58,6 +58,16 @@ JSHandle<EcmaString> GetTypeString(JSThread *thread, PreferredPrimitiveType type
     return JSHandle<EcmaString>::Cast(globalConst->GetHandledStringString());
 }
 
+// todo(lukai) maybe add new tag: hclass.sharedTag == 1
+bool JSTaggedValue::IsInSharedSpace() const
+{
+    if (IsHeapObject()) {
+        Region *region = Region::ObjectAddressToRange(GetTaggedObject());
+        return region->InSharedSpace();
+    }
+    return false;
+}
+
 JSHandle<JSTaggedValue> JSTaggedValue::ToPropertyKey(JSThread *thread, const JSHandle<JSTaggedValue> &tagged)
 {
     if (tagged->IsStringOrSymbol() || tagged->IsNumber()) {

@@ -54,17 +54,55 @@
 #endif
 
 namespace panda::ecmascript {
-Heap::Heap(EcmaVM *ecmaVm) : ecmaVm_(ecmaVm), thread_(ecmaVm->GetJSThread()),
-                             nativeAreaAllocator_(ecmaVm->GetNativeAreaAllocator()),
-                             heapRegionAllocator_(ecmaVm->GetHeapRegionAllocator()) {}
+bool SharedHeap::CheckAndTriggerOldGC(size_t size)
+{
+    if ((OldSpaceExceedLimit() || OldSpaceExceedCapacity(size) ||
+        GetHeapObjectSize() > globalSpaceAllocLimit_ ) && !NeedStopCollection()) {
+        CollectGarbage(TriggerGCType::SHARED_GC, GCReason::ALLOCATION_LIMIT);
+        return true;
+    }
+    return false;
+}
+
+// todo(lukai) use GlobalRuntime.globalconst
+void SharedHeap::Initialize(NativeAreaAllocator *nativeAreaAllocator, HeapRegionAllocator *heapRegionAllocator,
+    const GlobalEnvConstants *globalConst)
+{
+    nativeAreaAllocator_ = nativeAreaAllocator;
+    heapRegionAllocator_ = heapRegionAllocator;
+    globalEnvConstants_ = globalConst;
+    size_t maxHeapSize = config_.GetMaxHeapSize();
+
+    size_t nonmovableSpaceCapacity = config_.GetDefaultNonMovableSpaceSize();
+    sNonMovableSpace_ = new NonMovableSpace(this, nonmovableSpaceCapacity, nonmovableSpaceCapacity,
+        MemSpaceType::SHARED_NON_MOVABLE);
+    sNonMovableSpace_->Initialize();
+
+    size_t oldSpaceCapacity = maxHeapSize - nonmovableSpaceCapacity;
+    globalSpaceAllocLimit_ = maxHeapSize;
+
+    sOldSpace_ = new OldSpace(this, oldSpaceCapacity, oldSpaceCapacity, MemSpaceType::SHARED_OLD_SPACE);
+    sOldSpace_->Initialize();
+
+    size_t readOnlySpaceCapacity = config_.GetDefaultReadOnlySpaceSize();
+    sReadOnlySpace_ = new ReadOnlySpace(this, readOnlySpaceCapacity, readOnlySpaceCapacity,
+        MemSpaceType::SHARED_READ_ONLY_SPACE);
+    sHugeObjectSpace_ = new HugeObjectSpace(this, heapRegionAllocator_, oldSpaceCapacity, oldSpaceCapacity,
+        MemSpaceType::SHARED_HUGE_OBJECT_SPACE);
+}
+
+Heap::Heap(EcmaVM *ecmaVm)
+    : BaseHeap(ecmaVm->GetEcmaParamConfiguration()),
+      ecmaVm_(ecmaVm), thread_(ecmaVm->GetJSThread()) {}
 
 void Heap::Initialize()
 {
     memController_ = new MemController(this);
-    auto &config = ecmaVm_->GetEcmaParamConfiguration();
-    size_t maxHeapSize = config.GetMaxHeapSize();
-    size_t minSemiSpaceCapacity = config.GetMinSemiSpaceSize();
-    size_t maxSemiSpaceCapacity = config.GetMaxSemiSpaceSize();
+    nativeAreaAllocator_ = ecmaVm_->GetNativeAreaAllocator();
+    heapRegionAllocator_ = ecmaVm_->GetHeapRegionAllocator();
+    size_t maxHeapSize = config_.GetMaxHeapSize();
+    size_t minSemiSpaceCapacity = config_.GetMinSemiSpaceSize();
+    size_t maxSemiSpaceCapacity = config_.GetMaxSemiSpaceSize();
     activeSemiSpace_ = new SemiSpace(this, minSemiSpaceCapacity, maxSemiSpaceCapacity);
     activeSemiSpace_->Restart();
     activeSemiSpace_->SetWaterLine();
@@ -74,18 +112,18 @@ void Heap::Initialize()
     inactiveSemiSpace_ = new SemiSpace(this, minSemiSpaceCapacity, maxSemiSpaceCapacity);
     // not set up from space
 
-    size_t readOnlySpaceCapacity = config.GetDefaultReadOnlySpaceSize();
+    size_t readOnlySpaceCapacity = config_.GetDefaultReadOnlySpaceSize();
     readOnlySpace_ = new ReadOnlySpace(this, readOnlySpaceCapacity, readOnlySpaceCapacity);
     appSpawnSpace_ = new AppSpawnSpace(this, maxHeapSize);
-    size_t nonmovableSpaceCapacity = config.GetDefaultNonMovableSpaceSize();
+    size_t nonmovableSpaceCapacity = config_.GetDefaultNonMovableSpaceSize();
     if (ecmaVm_->GetJSOptions().WasSetMaxNonmovableSpaceCapacity()) {
         nonmovableSpaceCapacity = ecmaVm_->GetJSOptions().MaxNonmovableSpaceCapacity();
     }
     nonMovableSpace_ = new NonMovableSpace(this, nonmovableSpaceCapacity, nonmovableSpaceCapacity);
     nonMovableSpace_->Initialize();
-    size_t snapshotSpaceCapacity = config.GetDefaultSnapshotSpaceSize();
+    size_t snapshotSpaceCapacity = config_.GetDefaultSnapshotSpaceSize();
     snapshotSpace_ = new SnapshotSpace(this, snapshotSpaceCapacity, snapshotSpaceCapacity);
-    size_t machineCodeSpaceCapacity = config.GetDefaultMachineCodeSpaceSize();
+    size_t machineCodeSpaceCapacity = config_.GetDefaultMachineCodeSpaceSize();
     machineCodeSpace_ = new MachineCodeSpace(this, machineCodeSpaceCapacity, machineCodeSpaceCapacity);
 
     size_t capacities = minSemiSpaceCapacity * 2 + nonmovableSpaceCapacity + snapshotSpaceCapacity +
@@ -259,7 +297,7 @@ void Heap::Prepare()
 void Heap::Resume(TriggerGCType gcType)
 {
     if (mode_ != HeapMode::SPAWN &&
-        activeSemiSpace_->AdjustCapacity(inactiveSemiSpace_->GetAllocatedSizeSinceGC())) {
+        activeSemiSpace_->AdjustCapacity(inactiveSemiSpace_->GetAllocatedSizeSinceGC(), thread_)) {
         // if activeSpace capacity changes， oldSpace maximumCapacity should change, too.
         size_t multiple = 2;
         size_t oldSpaceMaxLimit = 0;
@@ -277,6 +315,12 @@ void Heap::Resume(TriggerGCType gcType)
     PrepareRecordRegionsForReclaim();
     hugeObjectSpace_->ReclaimHugeRegion();
     hugeMachineCodeSpace_->ReclaimHugeRegion();
+    // todo(lukai) onlyfortest, delete this after all references of sharedobject are in shared space.
+    SharedHeap::GetInstance()->EnumerateOldSpaceRegions([] (Region *region) {
+        region->ClearMarkGCBitset();
+        region->ClearCrossRegionRSet();
+        region->ResetAliveObject();
+    });
     if (parallelGC_) {
         clearTaskFinished_ = false;
         Taskpool::GetCurrentTaskpool()->PostTask(
@@ -397,9 +441,9 @@ void Heap::CollectGarbage(TriggerGCType gcType, GCReason reason)
         memController_->StartCalculationBeforeGC();
         StatisticHeapObject(gcType);
         if (!GetJSThread()->IsReadyToMark() && markType_ == MarkType::MARK_FULL) {
-            ecmaVm_->GetEcmaGCStats()->SetGCReason(reason);
+            GetEcmaGCStats()->SetGCReason(reason);
         } else {
-            ecmaVm_->GetEcmaGCStats()->RecordStatisticBeforeGC(gcType, reason);
+            GetEcmaGCStats()->RecordStatisticBeforeGC(gcType, reason);
         }
         gcType_ = gcType;
         GetEcmaVM()->GetPGOProfiler()->WaitPGODumpPause();
@@ -433,7 +477,7 @@ void Heap::CollectGarbage(TriggerGCType gcType, GCReason reason)
                 SetMarkType(MarkType::MARK_FULL);
                 if (fullConcurrentMarkRequested && idleTask_ == IdleTaskType::NO_TASK) {
                     LOG_ECMA(INFO) << "Trigger old gc here may cost long time, trigger full concurrent mark instead";
-                    oldSpace_->SetOvershootSize(GetEcmaVM()->GetEcmaParamConfiguration().GetOldSpaceOvershootSize());
+                    oldSpace_->SetOvershootSize(config_.GetOldSpaceOvershootSize());
                     TriggerConcurrentMarking();
                     oldGCRequested_ = true;
                     return;
@@ -464,7 +508,7 @@ void Heap::CollectGarbage(TriggerGCType gcType, GCReason reason)
             sweeper_->EnsureAllTaskFinished();
             DumpHeapSnapshotBeforeOOM(false);
             StatisticHeapDetail();
-            ThrowOutOfMemoryError(oldSpace_->GetMergeSize(), " OldSpace::Merge");
+            ThrowOutOfMemoryError(thread_, oldSpace_->GetMergeSize(), " OldSpace::Merge");
             oldSpace_->ResetMergeSize();
             shouldThrowOOMError_ = false;
         }
@@ -488,8 +532,8 @@ void Heap::CollectGarbage(TriggerGCType gcType, GCReason reason)
             concurrentMarker_->EnableConcurrentMarking(EnableConcurrentMarkType::DISABLE);
         }
         // GC log
-        ecmaVm_->GetEcmaGCStats()->RecordStatisticAfterGC();
-        ecmaVm_->GetEcmaGCStats()->PrintGCStatistic();
+        GetEcmaGCStats()->RecordStatisticAfterGC();
+        GetEcmaGCStats()->PrintGCStatistic();
     }
 
     if (gcType_ == TriggerGCType::OLD_GC) {
@@ -523,23 +567,29 @@ void Heap::CollectGarbage(TriggerGCType gcType, GCReason reason)
     ASSERT(thread_->IsPropertyCacheCleared());
 }
 
-void Heap::ThrowOutOfMemoryError(size_t size, std::string functionName, bool NonMovableObjNearOOM)
+void BaseHeap::ThrowOutOfMemoryError(JSThread *thread, size_t size, std::string functionName,
+    bool NonMovableObjNearOOM)
 {
-    ecmaVm_->GetEcmaGCStats()->PrintGCMemoryStatistic();
+    if (GetEcmaGCStats() != nullptr) {
+        GetEcmaGCStats()->PrintGCMemoryStatistic();
+    }
     std::ostringstream oss;
     if (NonMovableObjNearOOM) {
         oss << "OutOfMemory when nonmovable live obj size: " << size << " bytes"
             << " function name: " << functionName.c_str();
     } else {
-        oss << "OutOfMemory when trying to allocate " << size << " bytes" << " function name: " << functionName.c_str();
+        oss << "OutOfMemory when trying to allocate " << size << " bytes" << " function name: "
+            << functionName.c_str();
     }
     LOG_ECMA_MEM(ERROR) << oss.str().c_str();
-    THROW_OOM_ERROR(thread_, oss.str().c_str());
+    THROW_OOM_ERROR(thread, oss.str().c_str());
 }
 
-void Heap::FatalOutOfMemoryError(size_t size, std::string functionName)
+void BaseHeap::FatalOutOfMemoryError(size_t size, std::string functionName)
 {
-    ecmaVm_->GetEcmaGCStats()->PrintGCMemoryStatistic();
+    if (GetEcmaGCStats() != nullptr) {
+        GetEcmaGCStats()->PrintGCMemoryStatistic();
+    }
     LOG_ECMA_MEM(FATAL) << "OOM fatal when trying to allocate " << size << " bytes"
                         << " function name: " << functionName.c_str();
 }
@@ -550,7 +600,7 @@ void Heap::CheckNonMovableSpaceOOM()
         sweeper_->EnsureAllTaskFinished();
         DumpHeapSnapshotBeforeOOM(false);
         StatisticHeapDetail();
-        ThrowOutOfMemoryError(nonMovableSpace_->GetHeapObjectSize(), "Heap::CheckNonMovableSpaceOOM", true);
+        ThrowOutOfMemoryError(thread_, nonMovableSpace_->GetHeapObjectSize(), "Heap::CheckNonMovableSpaceOOM", true);
     }
 }
 
@@ -757,8 +807,7 @@ void Heap::AddToKeptObjects(JSHandle<JSTaggedValue> value) const
 void Heap::AdjustSpaceSizeForAppSpawn()
 {
     SetHeapMode(HeapMode::SPAWN);
-    auto &config = ecmaVm_->GetEcmaParamConfiguration();
-    size_t minSemiSpaceCapacity = config.GetMinSemiSpaceSize();
+    size_t minSemiSpaceCapacity = config_.GetMinSemiSpaceSize();
     activeSemiSpace_->SetInitialCapacity(minSemiSpaceCapacity);
     auto committedSize = appSpawnSpace_->GetCommittedSize();
     appSpawnSpace_->SetInitialCapacity(committedSize);
@@ -811,7 +860,7 @@ void Heap::RecomputeLimits()
     size_t maxOldSpaceCapacity = oldSpace_->GetMaximumCapacity() - newSpaceCapacity;
     size_t newOldSpaceLimit = memController_->CalculateAllocLimit(oldSpaceSize, MIN_OLD_SPACE_LIMIT,
         maxOldSpaceCapacity, newSpaceCapacity, growingFactor);
-    size_t maxGlobalSize = ecmaVm_->GetEcmaParamConfiguration().GetMaxHeapSize() - newSpaceCapacity;
+    size_t maxGlobalSize = config_.GetMaxHeapSize() - newSpaceCapacity;
     size_t newGlobalSpaceLimit = memController_->CalculateAllocLimit(GetHeapObjectSize(), MIN_HEAP_SIZE,
                                                                      maxGlobalSize, newSpaceCapacity, growingFactor);
     globalSpaceAllocLimit_ = newGlobalSpaceLimit;
@@ -836,7 +885,7 @@ bool Heap::CheckAndTriggerOldGC(size_t size)
     bool isFullMarking = IsFullMark() && GetJSThread()->IsMarking();
     bool isNativeSizeLargeTrigger = isFullMarking ? false : GlobalNativeSizeLargerThanLimit();
     if (isFullMarking && oldSpace_->GetOvershootSize() == 0) {
-        oldSpace_->SetOvershootSize(GetEcmaVM()->GetEcmaParamConfiguration().GetOldSpaceOvershootSize());
+        oldSpace_->SetOvershootSize(config_.GetOldSpaceOvershootSize());
     }
     if ((isNativeSizeLargeTrigger || OldSpaceExceedLimit() || OldSpaceExceedCapacity(size) ||
         GetHeapObjectSize() > globalSpaceAllocLimit_ + oldSpace_->GetOvershootSize()) &&
@@ -923,8 +972,8 @@ void Heap::CalculateIdleDuration()
     // update reference duration
     idlePredictDuration_ = 0.0f;
     size_t updateReferenceSpeed = markType_ == MarkType::MARK_YOUNG ?
-        ecmaVm_->GetEcmaGCStats()->GetGCSpeed(SpeedData::YOUNG_UPDATE_REFERENCE_SPEED) :
-        ecmaVm_->GetEcmaGCStats()->GetGCSpeed(SpeedData::UPDATE_REFERENCE_SPEED);
+        GetEcmaGCStats()->GetGCSpeed(SpeedData::YOUNG_UPDATE_REFERENCE_SPEED) :
+        GetEcmaGCStats()->GetGCSpeed(SpeedData::UPDATE_REFERENCE_SPEED);
     if (updateReferenceSpeed != 0) {
         idlePredictDuration_ += (float)GetHeapObjectSize() / updateReferenceSpeed;
     }
@@ -932,9 +981,9 @@ void Heap::CalculateIdleDuration()
     // clear native object duration
     size_t clearNativeObjSpeed = 0;
     if (markType_ == MarkType::MARK_YOUNG) {
-        clearNativeObjSpeed = ecmaVm_->GetEcmaGCStats()->GetGCSpeed(SpeedData::YOUNG_CLEAR_NATIVE_OBJ_SPEED);
+        clearNativeObjSpeed = GetEcmaGCStats()->GetGCSpeed(SpeedData::YOUNG_CLEAR_NATIVE_OBJ_SPEED);
     } else if (markType_ == MarkType::MARK_FULL) {
-        clearNativeObjSpeed = ecmaVm_->GetEcmaGCStats()->GetGCSpeed(SpeedData::OLD_CLEAR_NATIVE_OBJ_SPEED);
+        clearNativeObjSpeed = GetEcmaGCStats()->GetGCSpeed(SpeedData::OLD_CLEAR_NATIVE_OBJ_SPEED);
     }
 
     if (clearNativeObjSpeed != 0) {
@@ -942,10 +991,10 @@ void Heap::CalculateIdleDuration()
     }
 
     // sweep and evacuate duration
-    size_t youngEvacuateSpeed = ecmaVm_->GetEcmaGCStats()->GetGCSpeed(SpeedData::YOUNG_EVACUATE_SPACE_SPEED);
-    size_t sweepSpeed = ecmaVm_->GetEcmaGCStats()->GetGCSpeed(SpeedData::SWEEP_SPEED);
-    size_t oldEvacuateSpeed = ecmaVm_->GetEcmaGCStats()->GetGCSpeed(SpeedData::OLD_EVACUATE_SPACE_SPEED);
-    double survivalRate = ecmaVm_->GetEcmaGCStats()->GetAvgSurvivalRate();
+    size_t youngEvacuateSpeed = GetEcmaGCStats()->GetGCSpeed(SpeedData::YOUNG_EVACUATE_SPACE_SPEED);
+    size_t sweepSpeed = GetEcmaGCStats()->GetGCSpeed(SpeedData::SWEEP_SPEED);
+    size_t oldEvacuateSpeed = GetEcmaGCStats()->GetGCSpeed(SpeedData::OLD_EVACUATE_SPACE_SPEED);
+    double survivalRate = GetEcmaGCStats()->GetAvgSurvivalRate();
     if (markType_ == MarkType::MARK_YOUNG && youngEvacuateSpeed != 0) {
         idlePredictDuration_ += survivalRate * activeSemiSpace_->GetHeapObjectSize() / youngEvacuateSpeed;
     } else if (markType_ == MarkType::MARK_FULL) {
@@ -953,7 +1002,7 @@ void Heap::CalculateIdleDuration()
             idlePredictDuration_ += (float)GetHeapObjectSize() / sweepSpeed;
         }
         if (oldEvacuateSpeed != 0) {
-            size_t collectRegionSetSize = GetEcmaVM()->GetEcmaGCStats()->GetRecordData(
+            size_t collectRegionSetSize = GetEcmaGCStats()->GetRecordData(
                 RecordData::COLLECT_REGION_SET_SIZE);
             idlePredictDuration_ += (survivalRate * activeSemiSpace_->GetHeapObjectSize() + collectRegionSetSize) /
                                     oldEvacuateSpeed;
@@ -961,7 +1010,7 @@ void Heap::CalculateIdleDuration()
     }
 
     // Idle YoungGC mark duration
-    size_t markSpeed = ecmaVm_->GetEcmaGCStats()->GetGCSpeed(SpeedData::MARK_SPEED);
+    size_t markSpeed = GetEcmaGCStats()->GetGCSpeed(SpeedData::MARK_SPEED);
     if (idleTask_ == IdleTaskType::YOUNG_GC && markSpeed != 0) {
         idlePredictDuration_ += (float)activeSemiSpace_->GetHeapObjectSize() / markSpeed;
     }
@@ -1059,8 +1108,7 @@ void Heap::TryTriggerConcurrentMarking()
     double newSpaceAllocSpeed = memController_->GetNewSpaceAllocationThroughputPerMS();
     double newSpaceConcurrentMarkSpeed = memController_->GetNewSpaceConcurrentMarkSpeedPerMS();
     if (newSpaceConcurrentMarkSpeed == 0 || newSpaceAllocSpeed == 0) {
-        auto &config = ecmaVm_->GetEcmaParamConfiguration();
-        if (activeSemiSpace_->GetCommittedSize() >= config.GetSemiSpaceTriggerConcurrentMark()) {
+        if (activeSemiSpace_->GetCommittedSize() >= config_.GetSemiSpaceTriggerConcurrentMark()) {
             markType_ = MarkType::MARK_YOUNG;
             TriggerConcurrentMarking();
             OPTIONAL_LOG(ecmaVm_, INFO) << "Trigger the first semi mark" << fullGCRequested_;
@@ -1213,6 +1261,16 @@ void Heap::ChangeGCParams(bool inBackground)
     }
 }
 
+GCStats *Heap::GetEcmaGCStats()
+{
+    return ecmaVm_->GetEcmaGCStats();
+}
+
+JSObjectResizingStrategy *Heap::GetJSObjectResizingStrategy()
+{
+    return ecmaVm_->GetJSObjectResizingStrategy();
+}
+
 void Heap::TriggerIdleCollection(int idleMicroSec)
 {
     if (idleTask_ == IdleTaskType::NO_TASK) {
@@ -1282,7 +1340,7 @@ void Heap::NotifyFinishColdStart(bool isMainThread)
         int64_t semiRemainSize =
             static_cast<int64_t>(GetNewSpace()->GetInitialCapacity() - GetNewSpace()->GetCommittedSize());
         int64_t overshootSize =
-            static_cast<int64_t>(GetEcmaVM()->GetEcmaParamConfiguration().GetOldSpaceOvershootSize()) - semiRemainSize;
+            static_cast<int64_t>(config_.GetOldSpaceOvershootSize()) - semiRemainSize;
         // overshoot size should be larger than 0.
         GetNewSpace()->SetOverShootSize(std::max(overshootSize, (int64_t)0));
         GetNewSpace()->SetWaterLineWithoutGC();
@@ -1321,7 +1379,7 @@ void Heap::HandleExitHighSensitiveEvent()
         int64_t semiRemainSize =
             static_cast<int64_t>(GetNewSpace()->GetInitialCapacity() - GetNewSpace()->GetCommittedSize());
         int64_t overshootSize =
-            static_cast<int64_t>(GetEcmaVM()->GetEcmaParamConfiguration().GetOldSpaceOvershootSize()) - semiRemainSize;
+            static_cast<int64_t>(config_.GetOldSpaceOvershootSize()) - semiRemainSize;
         // overshoot size should be larger than 0.
         GetNewSpace()->SetOverShootSize(std::max(overshootSize, (int64_t)0));
         GetNewSpace()->SetWaterLineWithoutGC();
@@ -1337,8 +1395,8 @@ void Heap::HandleExitHighSensitiveEvent()
 // concurrent mark
 bool Heap::ObjectExceedMaxHeapSize() const
 {
-    size_t configMaxHeapSize = ecmaVm_->GetEcmaParamConfiguration().GetMaxHeapSize();
-    size_t overshootSize = ecmaVm_->GetEcmaParamConfiguration().GetOldSpaceOvershootSize();
+    size_t configMaxHeapSize = config_.GetMaxHeapSize();
+    size_t overshootSize = config_.GetOldSpaceOvershootSize();
     return GetHeapObjectSize() > configMaxHeapSize - overshootSize;
 }
 
@@ -1359,7 +1417,7 @@ bool Heap::NeedStopCollection()
     LOG_GC(INFO) << "SmartGC: force expand will cause OOM, have to trigger gc";
     GetNewSpace()->SetOverShootSize(
         GetNewSpace()->GetCommittedSize() - GetNewSpace()->GetInitialCapacity() +
-        ecmaVm_->GetEcmaParamConfiguration().GetOldSpaceOvershootSize());
+        config_.GetOldSpaceOvershootSize());
     return false;
 }
 
@@ -1449,8 +1507,7 @@ size_t Heap::GetLiveObjectSize() const
 size_t Heap::GetHeapLimitSize() const
 {
     // Obtains the theoretical upper limit of space that can be allocated to JS heap.
-    auto &config = ecmaVm_->GetEcmaParamConfiguration();
-    return config.GetMaxHeapSize();
+    return config_.GetMaxHeapSize();
 }
 
 bool Heap::IsAlive(TaggedObject *object) const

@@ -92,6 +92,7 @@ class JSLocale;
 class ResolvingFunctionsRecord;
 class EcmaVM;
 class Heap;
+class SharedHeap;
 class ConstantPool;
 class Program;
 class LayoutInfo;
@@ -194,7 +195,7 @@ enum class GrowMode { KEEP, GROW };
 
 class ObjectFactory {
 public:
-    ObjectFactory(JSThread *thread, Heap *heap);
+    ObjectFactory(JSThread *thread, Heap *heap, SharedHeap *sHeap);
     ~ObjectFactory() = default;
     JSHandle<Method> NewMethodForNativeFunction(const void *func, FunctionKind kind = FunctionKind::NORMAL_FUNCTION,
                                                 kungfu::BuiltinsStubCSigns::ID builtinId =
@@ -228,10 +229,7 @@ public:
                                        FunctionKind kind = FunctionKind::NORMAL_FUNCTION,
                                        kungfu::BuiltinsStubCSigns::ID builtinId = kungfu::BuiltinsStubCSigns::INVALID,
                                        MemSpaceType spaceType = OLD_SPACE);
-    JSHandle<JSFunction> NewSFunction(const JSHandle<GlobalEnv> &env, const void *nativeFunc = nullptr,
-        FunctionKind kind = FunctionKind::NORMAL_FUNCTION,
-        kungfu::BuiltinsStubCSigns::ID builtinId = kungfu::BuiltinsStubCSigns::INVALID,
-        MemSpaceType spaceType = OLD_SPACE);
+    void InitializeMethod(const MethodLiteral *methodLiteral, JSHandle<Method> &method);
     // use for method
     JSHandle<JSFunction> NewJSFunction(const JSHandle<GlobalEnv> &env, const JSHandle<Method> &method);
 
@@ -354,7 +352,7 @@ public:
                                                uint32_t oldLength, uint32_t k = 0);
     JSHandle<TaggedArray> NewAndCopyTaggedArray(JSHandle<TaggedArray> &srcElements, uint32_t newLength,
                                                 uint32_t oldLength, uint32_t k = 0);
-    JSHandle<TaggedArray> NewAndCopyNameDictionary(JSHandle<TaggedArray> &srcElements, uint32_t length);
+    JSHandle<TaggedArray> NewAndCopySNameDictionary(JSHandle<TaggedArray> &srcElements, uint32_t length);
     JSHandle<TaggedArray> NewAndCopyTaggedArrayByObject(JSHandle<JSObject> thisObjHandle, uint32_t newLength,
                                                         uint32_t oldLength, uint32_t k = 0);
     JSHandle<MutantTaggedArray> NewAndCopyMutantTaggedArrayByObject(JSHandle<JSObject> thisObjHandle,
@@ -682,6 +680,54 @@ public:
     JSHandle<JSTaggedValue> CreateJSObjectWithNamedProperties(size_t propertyCount, const char **keys,
                                                               const Local<JSValueRef> *values);
 
+    // -----------------------------------shared object-----------------------------------------
+    JSHandle<JSObject> NewSharedOldSpaceJSObject(const JSHandle<JSHClass> &jshclass);
+
+    TaggedObject *NewSharedOldSpaceObject(const JSHandle<JSHClass> &hclass);
+
+    JSHandle<JSHClass> NewSEcmaHClass(uint32_t size, JSType type, uint32_t inlinedProps);
+
+    JSHandle<JSHClass> NewSEcmaHClass(JSHClass *hclass, uint32_t size, JSType type, uint32_t inlinedProps);
+
+    JSHandle<JSHClass> NewSEcmaHClass(uint32_t size, uint32_t inlinedProps, JSType type,
+        const JSHandle<JSTaggedValue> &prototype, const JSHandle<JSTaggedValue> &layout);
+
+    JSHandle<TaggedArray> SharedEmptyArray() const;
+
+    JSHandle<Method> NewSMethodForNativeFunction(const void *func, FunctionKind kind = FunctionKind::NORMAL_FUNCTION,
+                                                kungfu::BuiltinsStubCSigns::ID builtinId =
+                                                kungfu::BuiltinsStubCSigns::INVALID,
+                                                MemSpaceType spaceType = SHARED_OLD_SPACE);
+
+    JSHandle<JSFunction> NewSFunctionByHClass(const JSHandle<Method> &methodHandle,
+                                              const JSHandle<JSHClass> &hclass);
+    JSHandle<JSFunction> NewSFunctionByHClass(const void *func, const JSHandle<JSHClass> &hclass,
+        FunctionKind kind, 
+        kungfu::BuiltinsStubCSigns::ID builtinId = kungfu::BuiltinsStubCSigns::INVALID,
+        MemSpaceType spaceType = SHARED_OLD_SPACE);
+
+    JSHandle<JSFunction> NewSFunctionWithAccessor(const void *func, const JSHandle<JSHClass> &hclass,
+        FunctionKind kind, 
+        kungfu::BuiltinsStubCSigns::ID builtinId = kungfu::BuiltinsStubCSigns::INVALID,
+        MemSpaceType spaceType = SHARED_OLD_SPACE);
+
+    JSHandle<Method> NewSMethod(const MethodLiteral *methodLiteral, MemSpaceType spaceType = SHARED_OLD_SPACE);
+
+    JSHandle<Method> NewSMethod(const JSPandaFile *jsPandaFile, MethodLiteral *methodLiteral,
+                                JSHandle<ConstantPool> constpool, JSHandle<JSTaggedValue> module);
+
+    JSHandle<AccessorData> NewSAccessorData();
+
+    JSHandle<LayoutInfo> CopyAndReSortSLayoutInfo(const JSHandle<LayoutInfo> &old, int end, int capacity);
+
+    JSHandle<LayoutInfo> CreateSLayoutInfo(uint32_t properties);
+
+    JSHandle<TaggedArray> NewSDictionaryArray(uint32_t length);
+
+    JSHandle<TaggedArray> NewSTaggedArrayWithoutInit(uint32_t length);
+
+    JSHandle<JSHClass> CreateSFunctionClass(uint32_t size, JSType type,
+                                            const JSHandle<JSTaggedValue> &prototype, bool isAccessor = true);
 private:
     friend class GlobalEnv;
     friend class GlobalEnvConstants;
@@ -697,6 +743,7 @@ private:
 
     EcmaVM *vm_ {nullptr};
     Heap *heap_ {nullptr};
+    SharedHeap *sHeap_ {nullptr};
 
     static constexpr uint32_t LENGTH_THRESHOLD = 50;
     static constexpr int MAX_LITERAL_HCLASS_CACHE_SIZE = 63;
@@ -773,15 +820,6 @@ private:
 
     JSHandle<MutantTaggedArray> NewMutantTaggedArrayWithoutInit(uint32_t length, MemSpaceType spaceType);
 
-    // For sharedobject
-    JSHandle<JSFunction> NewSFunction(const JSHandle<Method> &methodHandle,
-                                      const JSHandle<JSTaggedValue> &homeObject);
-    JSHandle<JSFunction> NewSFunctionByHClass(const void *func, const JSHandle<JSHClass> &hclass,
-                                              FunctionKind kind);
-    JSHandle<JSFunction> NewSFunctionByHClass(const JSHandle<Method> &methodHandle,
-                                              const JSHandle<JSHClass> &hclass);
-    JSHandle<JSHClass> CreateSFunctionClassWithoutProto(uint32_t size, JSType type,
-                                                        const JSHandle<JSTaggedValue> &prototype);
     friend class Builtins;    // create builtins object need hclass
     friend class JSFunction;  // create prototype_or_hclass need hclass
     friend class JSHClass;    // HC transition need hclass

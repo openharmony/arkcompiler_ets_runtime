@@ -42,6 +42,35 @@ public:
 
     // ecma 19.2.3.6 Function.prototype[@@hasInstance] (V)
     static JSTaggedValue FunctionPrototypeHasInstance(EcmaRuntimeCallInfo *argv);
+
+    static Span<const std::pair<std::string_view, bool>> GetFunctionPrototypeProperties()
+    {
+        return Span<const std::pair<std::string_view, bool>>(FUNCTION_PROTOTYPE_PROPERTIES);
+    }
+
+    static Span<const std::pair<std::string_view, bool>> GetFunctionProperties()
+    {
+        return Span<const std::pair<std::string_view, bool>>(FUNCTION_PROPERTIES);
+    }
+private:
+    static constexpr std::array FUNCTION_PROTOTYPE_PROPERTIES = {
+        std::pair<std::string_view, bool>("length", false),
+        std::pair<std::string_view, bool>("name", false),
+        std::pair<std::string_view, bool>("constructor", false),
+        std::pair<std::string_view, bool>("caller", true),
+        std::pair<std::string_view, bool>("arguments", true),
+        std::pair<std::string_view, bool>("apply", false),
+        std::pair<std::string_view, bool>("bind", false),
+        std::pair<std::string_view, bool>("call", false),
+        std::pair<std::string_view, bool>("toString", false),
+        std::pair<std::string_view, bool>("[Symbol.hasInstance]", false),
+    };
+
+    static constexpr std::array FUNCTION_PROPERTIES = {
+        std::pair<std::string_view, bool>("length", false),
+        std::pair<std::string_view, bool>("name", false),
+        std::pair<std::string_view, bool>("prototype", false),
+    };
 };
 }  // namespace panda::ecmascript::builtins
 #endif  // ECMASCRIPT_BUILTINS_BUILTINS_FUNCTION_H

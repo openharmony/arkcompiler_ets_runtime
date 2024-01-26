@@ -35,12 +35,7 @@
 namespace panda::ecmascript {
 void JSFunction::InitializeJSFunction(JSThread *thread, const JSHandle<JSFunction> &func, FunctionKind kind)
 {
-    func->SetProtoOrHClass(thread, JSTaggedValue::Hole(), SKIP_BARRIER);
-    func->SetHomeObject(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
-    func->SetWorkNodePointer(reinterpret_cast<uintptr_t>(nullptr));
-    func->SetLexicalEnv(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
-    func->SetMethod(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
-
+    InitializeWithDefaultValue(thread, func);
     auto globalConst = thread->GlobalConstants();
     if (HasPrototype(kind)) {
         JSHandle<JSTaggedValue> accessor = globalConst->GetHandledFunctionPrototypeAccessor();
@@ -81,6 +76,28 @@ void JSFunction::InitializeJSFunction(JSThread *thread, const JSHandle<JSFunctio
         accessor = globalConst->GetHandledFunctionLengthAccessor();
         func->SetPropertyInlinedProps(thread, LENGTH_INLINE_PROPERTY_INDEX, accessor.GetTaggedValue());
     }
+}
+
+void JSFunction::InitializeSFunction(JSThread *thread, const JSHandle<JSFunction> &func, FunctionKind kind)
+{
+    InitializeWithDefaultValue(thread, func);
+    // todo(lukai) gobalruntime.const
+    auto globalConst = thread->GlobalConstants();
+    if (HasAccessor(kind)) {
+        JSHandle<JSTaggedValue> accessor = globalConst->GetHandledFunctionNameAccessor();
+        func->SetPropertyInlinedProps(thread, NAME_INLINE_PROPERTY_INDEX, accessor.GetTaggedValue());
+        accessor = globalConst->GetHandledFunctionLengthAccessor();
+        func->SetPropertyInlinedProps(thread, LENGTH_INLINE_PROPERTY_INDEX, accessor.GetTaggedValue());
+    }
+}
+
+void JSFunction::InitializeWithDefaultValue(JSThread *thread, const JSHandle<JSFunction> &func)
+{
+    func->SetProtoOrHClass(thread, JSTaggedValue::Hole(), SKIP_BARRIER);
+    func->SetHomeObject(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
+    func->SetWorkNodePointer(reinterpret_cast<uintptr_t>(nullptr));
+    func->SetLexicalEnv(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
+    func->SetMethod(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
 }
 
 JSHandle<JSObject> JSFunction::NewJSFunctionPrototype(JSThread *thread, const JSHandle<JSFunction> &func)

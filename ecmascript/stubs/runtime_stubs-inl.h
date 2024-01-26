@@ -913,7 +913,7 @@ JSTaggedValue RuntimeStubs::RuntimeCreateSharedClass(JSThread *thread,
     CString entry = ModuleManager::GetRecordName(module.GetTaggedValue());
 
     auto methodObj = ConstantPool::GetMethodFromCache(
-        thread, constpool.GetTaggedValue(), module.GetTaggedValue(), methodId);
+        thread, constpool.GetTaggedValue(), module.GetTaggedValue(), methodId, ClassKind::SENDABLE);
     JSHandle<JSTaggedValue> method(thread, methodObj);
     JSHandle<ConstantPool> constpoolHandle = JSHandle<ConstantPool>::Cast(constpool);
 

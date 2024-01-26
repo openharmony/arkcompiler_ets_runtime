@@ -14,6 +14,7 @@
  */
 
 #include "ecmascript/mem/mem_map_allocator.h"
+#include "ecmascript/js_thread.h"
 #include "ecmascript/platform/map.h"
 #include "ecmascript/platform/os.h"
 
@@ -24,7 +25,7 @@ MemMapAllocator *MemMapAllocator::GetInstance()
     return vmAllocator_;
 }
 
-MemMap MemMapAllocator::Allocate(const uint32_t threadId, size_t size, size_t alignment, bool regular,
+MemMap MemMapAllocator::Allocate(size_t size, size_t alignment, bool regular,
                                  bool isMachineCode)
 {
     if (UNLIKELY(memMapTotalSize_ + size > capacity_)) {
@@ -44,7 +45,7 @@ MemMap MemMapAllocator::Allocate(const uint32_t threadId, size_t size, size_t al
             int prot = isMachineCode ? PAGE_PROT_EXEC_READWRITE : PAGE_PROT_READWRITE;
             PageTagType type = isMachineCode ? PageTagType::MACHINE_CODE : PageTagType::HEAP;
             PageProtect(mem.GetMem(), mem.GetSize(), prot);
-            PageTag(mem.GetMem(), size, type, threadId);
+            PageTag(mem.GetMem(), size, type, JSThread::GetCurrentThreadId());
             return mem;
         }
         mem = PageMap(REGULAR_REGION_MMAP_SIZE, PAGE_PROT_NONE, alignment);
@@ -57,7 +58,7 @@ MemMap MemMapAllocator::Allocate(const uint32_t threadId, size_t size, size_t al
         int prot = isMachineCode ? PAGE_PROT_EXEC_READWRITE : PAGE_PROT_READWRITE;
         PageTagType type = isMachineCode ? PageTagType::MACHINE_CODE : PageTagType::HEAP;
         PageProtect(mem.GetMem(), mem.GetSize(), prot);
-        PageTag(mem.GetMem(), mem.GetSize(), type, threadId);
+        PageTag(mem.GetMem(), mem.GetSize(), type, JSThread::GetCurrentThreadId());
         memMapTotalSize_ += mem.GetSize();
     }
     return mem;

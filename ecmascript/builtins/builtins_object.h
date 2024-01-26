@@ -177,6 +177,17 @@ public:
 
     static JSTaggedValue AssignTaggedValue(JSThread *thread, const JSHandle<JSTaggedValue> &source,
                                            const JSHandle<JSObject> &toAssign);
+
+    static Span<const std::pair<std::string_view, bool>> GetFunctionPrototypeProperties()
+    {
+        return Span<const std::pair<std::string_view, bool>>(OBJECT_PROTOTYPE_PROPERTIES);
+    }
+
+    static Span<const std::pair<std::string_view, bool>> GetFunctionProperties()
+    {
+        return Span<const std::pair<std::string_view, bool>>(OBJECT_PROPERTIES);
+    }
+    
 private:
 #define BUILTIN_OBJECT_FUNCTION_ENTRY(name, func, length, id) \
     base::BuiltinFunctionEntry::Create(name, BuiltinsObject::func, length, kungfu::BuiltinsStubCSigns::id),
@@ -188,6 +199,24 @@ private:
         BUILTIN_OBJECT_PROTOTYPE_FUNCTIONS(BUILTIN_OBJECT_FUNCTION_ENTRY)
     };
 #undef BUILTIN_OBJECT_FUNCTION_ENTRY
+
+#define OBJECT_PROPERTIES_PAIR(name, func, length, id) \
+    std::pair<std::string_view, bool>(name, false),
+
+    static constexpr std::array OBJECT_PROTOTYPE_PROPERTIES = {
+        std::pair<std::string_view, bool>("constructor", false),
+        BUILTIN_OBJECT_PROTOTYPE_FUNCTIONS(OBJECT_PROPERTIES_PAIR)
+        std::pair<std::string_view, bool>("__proto__", true),
+    };
+
+    static constexpr std::array OBJECT_PROPERTIES = {
+        std::pair<std::string_view, bool>("length", false),
+        std::pair<std::string_view, bool>("name", false),
+        std::pair<std::string_view, bool>("prototype", false),
+        BUILTIN_OBJECT_FUNCTIONS(OBJECT_PROPERTIES_PAIR)
+
+    };
+#undef OBJECT_PROPERTIES_PAIR
 
     static JSTaggedValue ObjectDefineProperties(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
                                                 const JSHandle<JSTaggedValue> &prop);

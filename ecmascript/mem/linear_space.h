@@ -21,7 +21,7 @@
 namespace panda::ecmascript {
 class LinearSpace : public Space {
 public:
-    LinearSpace(Heap *heap, MemSpaceType type, size_t initialCapacity, size_t maximumCapacity);
+    LinearSpace(BaseHeap *heap, MemSpaceType type, size_t initialCapacity, size_t maximumCapacity);
     NO_COPY_SEMANTIC(LinearSpace);
     NO_MOVE_SEMANTIC(LinearSpace);
     uintptr_t Allocate(size_t size, bool isPromoted = false);
@@ -54,7 +54,7 @@ protected:
 
 class SemiSpace : public LinearSpace {
 public:
-    SemiSpace(Heap *heap, size_t initialCapacity, size_t maximumCapacity);
+    SemiSpace(BaseHeap *heap, size_t initialCapacity, size_t maximumCapacity);
     ~SemiSpace() override = default;
     NO_COPY_SEMANTIC(SemiSpace);
     NO_MOVE_SEMANTIC(SemiSpace);
@@ -65,7 +65,7 @@ public:
     uintptr_t AllocateSync(size_t size);
 
     void SetOverShootSize(size_t size);
-    bool AdjustCapacity(size_t allocatedSizeSinceGC);
+    bool AdjustCapacity(size_t allocatedSizeSinceGC, JSThread *thread);
     void SetWaterLine();
     void SetWaterLineWithoutGC();
 
@@ -91,7 +91,7 @@ private:
 
 class SnapshotSpace : public LinearSpace {
 public:
-    SnapshotSpace(Heap *heap, size_t initialCapacity, size_t maximumCapacity);
+    SnapshotSpace(BaseHeap *heap, size_t initialCapacity, size_t maximumCapacity);
     ~SnapshotSpace() override = default;
     NO_COPY_SEMANTIC(SnapshotSpace);
     NO_MOVE_SEMANTIC(SnapshotSpace);
@@ -112,7 +112,8 @@ private:
 
 class ReadOnlySpace : public LinearSpace {
 public:
-    ReadOnlySpace(Heap *heap, size_t initialCapacity, size_t maximumCapacity);
+    ReadOnlySpace(BaseHeap *heap, size_t initialCapacity, size_t maximumCapacity,
+        MemSpaceType type = MemSpaceType::READ_ONLY_SPACE);
     ~ReadOnlySpace() override = default;
     void SetReadOnly()
     {
@@ -130,8 +131,13 @@ public:
         EnumerateRegions(cb);
     }
 
+    uintptr_t ConcurrentAllocate(size_t size);
+
     NO_COPY_SEMANTIC(ReadOnlySpace);
     NO_MOVE_SEMANTIC(ReadOnlySpace);
+
+private:
+    Mutex allocateLock_;
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_MEM_LINEAR_SPACE_H

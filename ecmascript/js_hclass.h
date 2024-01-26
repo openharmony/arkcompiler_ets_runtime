@@ -62,6 +62,7 @@
 namespace panda::ecmascript {
 class ProtoChangeDetails;
 class PropertyLookupResult;
+class SharedHeap;
 namespace pgo {
     class HClassLayoutDesc;
     class PGOHClassTreeDesc;
@@ -389,7 +390,9 @@ public:
 
     // size need to add inlined property numbers
     void Initialize(const JSThread *thread, uint32_t size, JSType type, uint32_t inlinedProps);
-
+    // for sharedHeap
+    void Initialize(const JSThread *thread, uint32_t size, JSType type, uint32_t inlinedProps,
+        const JSHandle<JSTaggedValue> &layout);
     static JSHandle<JSHClass> Clone(const JSThread *thread, const JSHandle<JSHClass> &jshclass,
                                     bool withoutInlinedProperties = false, uint32_t incInlinedProperties = 0);
     static JSHandle<JSHClass> CloneWithoutInlinedProperties(const JSThread *thread, const JSHandle<JSHClass> &jshclass);
@@ -1849,6 +1852,8 @@ private:
     static inline void AddPropertyToNewHClass(const JSThread *thread, JSHandle<JSHClass> &jshclass,
                                               JSHandle<JSHClass> &newJsHClass, const JSHandle<JSTaggedValue> &key,
                                               const PropertyAttributes &attr);
+
+    void InitializeWithDefaultValue(const JSThread *thread, uint32_t size, JSType type, uint32_t inlinedProps);
 
     inline void Copy(const JSThread *thread, const JSHClass *jshclass);
 

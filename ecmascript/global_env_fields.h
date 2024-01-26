@@ -185,6 +185,7 @@
     V(JSTaggedValue, FunctionClassWithoutName, FUNCTION_CLASS_WITHOUT_NAME)                         \
     V(JSTaggedValue, BoundFunctionClass, BOUND_FUNCTION_CLASS)                                      \
     V(JSTaggedValue, SFunctionClassWithoutProto, SHARED_FUNCTION_CLASS_WITHOUT_PROTO)               \
+    V(JSTaggedValue, SFunctionClassWithoutAccessor, SHARED_FUNCTION_CLASS_WITHOUT_ACCESSOR)         \
     V(JSTaggedValue, ArgumentsClass, ARGUMENTS_CLASS)                                               \
     V(JSTaggedValue, ArgumentsCallerAccessor, ARGUMENTS_CALLER_ACCESSOR)                            \
     V(JSTaggedValue, ArgumentsCalleeAccessor, ARGUMENTS_CALLEE_ACCESSOR)                            \

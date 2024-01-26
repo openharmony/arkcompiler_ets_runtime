@@ -302,9 +302,15 @@ JSHandle<JSFunction> LiteralDataExtractor::DefineMethodInLiteral(JSThread *threa
     } else {
         module.Update(factory->NewFromUtf8(moduleName));
     }
-
-    JSHandle<Method> method = factory->NewMethod(jsPandaFile, methodLiteral, constpool,
-        module, entryIndex, isLoadedAOT, &canFastCall);
+    JSHandle<Method> method;
+    if (classKind == ClassKind::SENDABLE) {
+        method = factory->NewSMethod(jsPandaFile, methodLiteral, constpool,
+            module);
+    } else {
+        method = factory->NewMethod(jsPandaFile, methodLiteral, constpool,
+            module, entryIndex, isLoadedAOT, &canFastCall);
+    }
+    
     JSHandle<JSHClass> functionClass;
     JSHandle<JSFunction> jsFunc = CreateJSFunctionInLiteral(vm, method, kind, classKind);
     jsFunc->SetLength(length);

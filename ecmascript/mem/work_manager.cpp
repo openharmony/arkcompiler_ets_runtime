@@ -78,7 +78,7 @@ void WorkManager::PushWorkNodeToGlobal(uint32_t threadId, bool postTask)
         workStack_.Push(inNode);
         inNode = AllocateWorkNode();
         if (postTask && heap_->IsParallelGCEnabled() && heap_->CheckCanDistributeTask() &&
-            !(heap_->GetJSThread()->IsMarking() && heap_->GetIncrementalMarker()->IsTriggeredIncrementalMark())) {
+            !(heap_->IsMarking() && heap_->GetIncrementalMarker()->IsTriggeredIncrementalMark())) {
             heap_->PostParallelGCTask(parallelGCTaskPhase_);
         }
     }

@@ -1657,7 +1657,7 @@ void JSFunction::Dump(std::ostream &os) const
     os << "\n";
     os << " - LexicalEnv: ";
     if (GetClass()->IsJSSharedFunction()) {
-        os << GetLexicalEnv().GetTaggedObject()<< "\n";
+        os << GetLexicalEnv().GetRawData()<< "\n";
     } else {
         GetLexicalEnv().Dump(os);
         os << "\n";

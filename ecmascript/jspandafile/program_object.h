@@ -219,7 +219,8 @@ public:
     }
 
     static JSTaggedValue GetMethodFromCache(
-        JSThread *thread, JSTaggedValue constpool, JSTaggedValue module, uint32_t index)
+        JSThread *thread, JSTaggedValue constpool, JSTaggedValue module, uint32_t index,
+        ClassKind classKind = ClassKind::NON_SENDABLE)
     {
         const ConstantPool *taggedPool = ConstantPool::Cast(constpool.GetTaggedObject());
         auto val = taggedPool->GetObjectFromCache(index);
@@ -253,8 +254,13 @@ public:
         MethodLiteral *methodLiteral = jsPandaFile->FindMethodLiteral(id.GetOffset());
         ASSERT(methodLiteral != nullptr);
         ObjectFactory *factory = vm->GetFactory();
-        JSHandle<Method> method = factory->NewMethod(jsPandaFile, methodLiteral, constpoolHandle, moduleHandle,
-                                                     entryIndex, isLoadedAOT && hasEntryIndex);
+        JSHandle<Method> method;
+        if (classKind == ClassKind::SENDABLE) {
+            method = factory->NewSMethod(jsPandaFile, methodLiteral, constpoolHandle, moduleHandle);
+        } else {
+            method = factory->NewMethod(jsPandaFile, methodLiteral, constpoolHandle, moduleHandle,
+                                        entryIndex, isLoadedAOT && hasEntryIndex);
+        }
         constpoolHandle->SetObjectToCache(thread, index, method.GetTaggedValue());
         return method.GetTaggedValue();
     }

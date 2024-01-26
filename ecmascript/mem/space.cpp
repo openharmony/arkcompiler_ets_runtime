@@ -22,7 +22,7 @@
 #include "ecmascript/mem/space.h"
 
 namespace panda::ecmascript {
-Space::Space(Heap* heap, HeapRegionAllocator *heapRegionAllocator,
+Space::Space(BaseHeap* heap, HeapRegionAllocator *heapRegionAllocator,
              MemSpaceType spaceType, size_t initialCapacity,
              size_t maximumCapacity)
     : heap_(heap),
@@ -71,32 +71,33 @@ void Space::ClearAndFreeRegion(Region *region, size_t cachedSize)
     DecreaseObjectSize(region->GetSize());
     if (spaceType_ == MemSpaceType::OLD_SPACE || spaceType_ == MemSpaceType::NON_MOVABLE ||
         spaceType_ == MemSpaceType::MACHINE_CODE_SPACE || spaceType_ == MemSpaceType::LOCAL_SPACE ||
-        spaceType_ == MemSpaceType::APPSPAWN_SPACE) {
+        spaceType_ == MemSpaceType::APPSPAWN_SPACE || spaceType_ == MemSpaceType::SHARED_NON_MOVABLE ||
+        spaceType_ == MemSpaceType::SHARED_OLD_SPACE) {
         region->DestroyFreeObjectSets();
     }
     heapRegionAllocator_->FreeRegion(region, cachedSize);
 }
 
-HugeObjectSpace::HugeObjectSpace(Heap *heap, HeapRegionAllocator *heapRegionAllocator,
+HugeObjectSpace::HugeObjectSpace(BaseHeap *heap, HeapRegionAllocator *heapRegionAllocator,
                                  size_t initialCapacity, size_t maximumCapacity)
     : Space(heap, heapRegionAllocator, MemSpaceType::HUGE_OBJECT_SPACE, initialCapacity, maximumCapacity)
 {
 }
 
-HugeObjectSpace::HugeObjectSpace(Heap *heap, HeapRegionAllocator *heapRegionAllocator,
+HugeObjectSpace::HugeObjectSpace(BaseHeap *heap, HeapRegionAllocator *heapRegionAllocator,
                                  size_t initialCapacity, size_t maximumCapacity, MemSpaceType spaceType)
     : Space(heap, heapRegionAllocator, spaceType, initialCapacity, maximumCapacity)
 {
 }
 
-HugeMachineCodeSpace::HugeMachineCodeSpace(Heap *heap, HeapRegionAllocator *heapRegionAllocator,
+HugeMachineCodeSpace::HugeMachineCodeSpace(BaseHeap *heap, HeapRegionAllocator *heapRegionAllocator,
                                            size_t initialCapacity, size_t maximumCapacity)
     : HugeObjectSpace(heap, heapRegionAllocator, initialCapacity,
         maximumCapacity, MemSpaceType::HUGE_MACHINE_CODE_SPACE)
 {
 }
 
-uintptr_t HugeObjectSpace::Allocate(size_t objectSize, JSThread *thread)
+uintptr_t HugeObjectSpace::Allocate(size_t objectSize)
 {
     // In HugeObject allocation, we have a revervation of 8 bytes for markBitSet in objectSize.
     // In case Region is not aligned by 16 bytes, HUGE_OBJECT_BITSET_SIZE is 8 bytes more.
@@ -105,7 +106,7 @@ uintptr_t HugeObjectSpace::Allocate(size_t objectSize, JSThread *thread)
         LOG_ECMA_MEM(INFO) << "Committed size " << committedSize_ << " of huge object space is too big.";
         return 0;
     }
-    Region *region = heapRegionAllocator_->AllocateAlignedRegion(this, alignedSize, thread);
+    Region *region = heapRegionAllocator_->AllocateAlignedRegion(this, alignedSize, heap_);
     AddRegion(region);
     // It need to mark unpoison when huge object being allocated.
     ASAN_UNPOISON_MEMORY_REGION(reinterpret_cast<void *>(region->GetBegin()), objectSize);
@@ -113,6 +114,12 @@ uintptr_t HugeObjectSpace::Allocate(size_t objectSize, JSThread *thread)
     InvokeAllocationInspector(region->GetBegin(), objectSize);
 #endif
     return region->GetBegin();
+}
+
+uintptr_t HugeObjectSpace::ConcurrentAllocate(size_t objectSize)
+{
+    LockHolder holder(allocateLock_);
+    return Allocate(objectSize);
 }
 
 void HugeObjectSpace::Sweep()

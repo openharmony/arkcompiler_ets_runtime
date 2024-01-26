@@ -240,6 +240,10 @@ void ParallelEvacuator::UpdateReference()
     heap_->EnumerateSnapshotSpaceRegions([this] (Region *current) {
         AddWorkload(std::make_unique<UpdateRSetWorkload>(this, current));
     });
+    // todo(lukai) onlyfortest, delete this after all references of sharedobject are in shared space.
+    SharedHeap::GetInstance()->EnumerateOldSpaceRegions([this] (Region *current) {
+        AddWorkload(std::make_unique<UpdateRSetWorkload>(this, current));
+    });
     LOG_GC(DEBUG) << "UpdatePointers statistic: younge space region compact moving count:"
                         << youngeRegionMoveCount
                         << "younge space region compact coping count:" << youngeRegionCopyCount
@@ -411,7 +415,7 @@ void ParallelEvacuator::UpdateAndSweepNewRegionReference(Region *region)
         uintptr_t freeEnd = ToUintPtr(mem);
         if (freeStart != freeEnd) {
             size_t freeSize = freeEnd - freeStart;
-            FreeObject::FillFreeObject(heap_->GetEcmaVM(), freeStart, freeSize);
+            FreeObject::FillFreeObject(heap_, freeStart, freeSize);
             SemiSpace *toSpace = heap_->GetNewSpace();
             toSpace->DecreaseSurvivalObjectSize(freeSize);
         }
@@ -420,7 +424,7 @@ void ParallelEvacuator::UpdateAndSweepNewRegionReference(Region *region)
     });
     CHECK_REGION_END(freeStart, freeEnd);
     if (freeStart < freeEnd) {
-        FreeObject::FillFreeObject(heap_->GetEcmaVM(), freeStart, freeEnd - freeStart);
+        FreeObject::FillFreeObject(heap_, freeStart, freeEnd - freeStart);
     }
 }
 

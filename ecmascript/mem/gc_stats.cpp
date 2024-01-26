@@ -551,7 +551,7 @@ void GCStats::RecordGCSpeed()
 
 GCType GCStats::GetGCType(TriggerGCType gcType)
 {
-    if (!heap_->GetJSThread()->IsReadyToMark()) {
+    if (!heap_->IsReadyToMark()) {
         return heap_->IsFullMark() ? GCType::PARTIAL_OLD_GC : GCType::PARTIAL_YOUNG_GC;
     }
     switch (gcType) {

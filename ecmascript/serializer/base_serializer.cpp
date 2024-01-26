@@ -24,7 +24,8 @@ namespace panda::ecmascript {
 SerializedObjectSpace BaseSerializer::GetSerializedObjectSpace(TaggedObject *object) const
 {
     auto region = Region::ObjectAddressToRange(object);
-    if (region->InYoungOrOldSpace() || region->InAppSpawnSpace()) {
+    // todo(lukai) allocateToSharedSpace please!
+    if (region->InYoungOrOldSpace() || region->InAppSpawnSpace() || region->InSharedSpace()) {
         return SerializedObjectSpace::OLD_SPACE;
     }
     if (region->InNonMovableSpace() || region->InReadOnlySpace()) {

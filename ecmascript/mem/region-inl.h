@@ -26,7 +26,7 @@ namespace panda::ecmascript {
 inline RememberedSet *Region::CreateRememberedSet()
 {
     auto bitSize = GCBitset::SizeOfGCBitset(GetCapacity());
-    auto setAddr = thread_->GetNativeAreaAllocator()->Allocate(bitSize + RememberedSet::GCBITSET_DATA_OFFSET);
+    auto setAddr = nativeAreaAllocator_->Allocate(bitSize + RememberedSet::GCBITSET_DATA_OFFSET);
     auto ret = new (setAddr) RememberedSet(bitSize);
     ret->ClearAll();
     return ret;
@@ -159,7 +159,7 @@ inline void Region::AtomicClearCrossRegionRSetInRange(uintptr_t start, uintptr_t
 inline void Region::DeleteCrossRegionRSet()
 {
     if (crossRegionSet_ != nullptr) {
-        thread_->GetNativeAreaAllocator()->Free(crossRegionSet_, crossRegionSet_->Size());
+        nativeAreaAllocator_->Free(crossRegionSet_, crossRegionSet_->Size());
         crossRegionSet_ = nullptr;
     }
 }
@@ -217,7 +217,7 @@ inline void Region::ClearOldToNewRSetInRange(uintptr_t start, uintptr_t end)
 inline void Region::DeleteOldToNewRSet()
 {
     if (packedData_.oldToNewSet_ != nullptr) {
-        thread_->GetNativeAreaAllocator()->Free(packedData_.oldToNewSet_, packedData_.oldToNewSet_->Size());
+        nativeAreaAllocator_->Free(packedData_.oldToNewSet_, packedData_.oldToNewSet_->Size());
         packedData_.oldToNewSet_ = nullptr;
     }
 }
@@ -239,7 +239,7 @@ inline void Region::ClearSweepingRSetInRange(uintptr_t start, uintptr_t end)
 inline void Region::DeleteSweepingRSet()
 {
     if (sweepingRSet_ != nullptr) {
-        thread_->GetNativeAreaAllocator()->Free(sweepingRSet_, sweepingRSet_->Size());
+        nativeAreaAllocator_->Free(sweepingRSet_, sweepingRSet_->Size());
         sweepingRSet_ = nullptr;
     }
 }
