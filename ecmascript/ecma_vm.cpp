@@ -752,7 +752,7 @@ void EcmaVM::ResumeWorkerVm(uint32_t tid)
 }
 
 /*  This moduleName is a readOnly variable for napi, represent which abc is running in current vm.
-*   Get Current recordName: bundleName/ets/xxx/xxx
+*   Get Current recordName: bundleName/moduleName/ets/xxx/xxx
 *                           pkg_modules@xxx/xxx/xxx
 *   Get Current fileName: /data/storage/el1/bundle/moduleName/ets/modules.abc
 *   output: moduleName: moduleName

@@ -68,6 +68,8 @@ public:
     JSHandle<JSTaggedValue> HostResolveImportedModule(const JSPandaFile *jsPandaFile, const CString &filename);
 
     JSHandle<JSTaggedValue> LoadNativeModule(JSThread *thread, const std::string &key);
+    JSHandle<JSTaggedValue> GetModuleNameSpaceFromFile(
+        JSThread *thread, std::string &recordNameStr, std::string &baseFileName);
 
     JSTaggedValue GetCurrentModule();
     JSTaggedValue GetNativeModuleValue(JSThread *thread, JSTaggedValue currentModule,

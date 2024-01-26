@@ -796,4 +796,22 @@ JSHandle<JSTaggedValue> ModuleManager::LoadNativeModule(JSThread *thread, const 
     JSTaggedValue result = ecmaModule->GetModuleValue(thread, keyHandle.GetTaggedValue(), false);
     return JSHandle<JSTaggedValue>(thread, result);
 }
+
+JSHandle<JSTaggedValue> ModuleManager::GetModuleNameSpaceFromFile(
+    JSThread *thread, std::string &recordNameStr, std::string &baseFileName)
+{
+    JSHandle<EcmaString> recordName = thread->GetEcmaVM()->GetFactory()->NewFromASCII(recordNameStr.c_str());
+    if (!IsImportedModuleLoaded(recordName.GetTaggedValue())) {
+        if (!ecmascript::JSPandaFileExecutor::ExecuteFromAbcFile(
+            thread, baseFileName.c_str(), recordNameStr.c_str(), false, true)) {
+            LOG_ECMA(ERROR) << "LoadModuleNameSpaceFromFile:Cannot execute module: %{public}s, recordName: %{public}s",
+                baseFileName.c_str(), recordNameStr.c_str();
+            return thread->GlobalConstants()->GetHandledUndefinedString();
+        }
+    }
+    JSHandle<ecmascript::SourceTextModule> moduleRecord = HostGetImportedModule(recordName.GetTaggedValue());
+    moduleRecord->SetLoadingTypes(ecmascript::LoadingTypes::STABLE_MODULE);
+    return ecmascript::SourceTextModule::GetModuleNamespace(
+        thread, JSHandle<ecmascript::SourceTextModule>(moduleRecord));
+}
 } // namespace panda::ecmascript
