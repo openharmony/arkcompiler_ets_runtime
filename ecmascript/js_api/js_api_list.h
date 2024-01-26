@@ -33,8 +33,8 @@ public:
     static void Add(JSThread *thread, const JSHandle<JSAPIList> &list, const JSHandle<JSTaggedValue> &value);
     static JSTaggedValue Insert(JSThread *thread, const JSHandle<JSAPIList> &list,
                                 const JSHandle<JSTaggedValue> &value, const int index);
-    static JSTaggedValue Set(JSThread *thread, const JSHandle<JSAPIList> &list,
-                             const int index, const JSHandle<JSTaggedValue> &value);
+    static JSTaggedValue PUBLIC_API Set(JSThread *thread, const JSHandle<JSAPIList> &list,
+                                        const int index, const JSHandle<JSTaggedValue> &value);
     static JSTaggedValue ReplaceAllElements(JSThread *thread, const JSHandle<JSTaggedValue> &thisHandle,
                                             const JSHandle<JSTaggedValue> &callbackFn,
                                             const JSHandle<JSTaggedValue> &thisArg);

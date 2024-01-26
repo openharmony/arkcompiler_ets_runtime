@@ -247,7 +247,7 @@ public:
 
     static void InitializeJSFunction(JSThread *thread, const JSHandle<JSFunction> &func,
                                      FunctionKind kind = FunctionKind::NORMAL_FUNCTION);
-    static JSHClass *GetOrCreateInitialJSHClass(JSThread *thread, const JSHandle<JSFunction> &fun);
+    static JSHClass *PUBLIC_API GetOrCreateInitialJSHClass(JSThread *thread, const JSHandle<JSFunction> &fun);
     static JSHandle<JSHClass> GetInstanceJSHClass(JSThread *thread, JSHandle<JSFunction> constructor,
                                                   JSHandle<JSTaggedValue> newTarget);
 

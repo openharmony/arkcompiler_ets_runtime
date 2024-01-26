@@ -102,7 +102,7 @@ public:
 
     bool Find(JSTaggedValue key) const;
 
-    int GetElementIndexByKey(JSTaggedValue key) const;
+    int PUBLIC_API GetElementIndexByKey(JSTaggedValue key) const;
     void GetAccessorIndexByKey(JSTaggedValue key, std::vector<int> &vec);
 
     JSTaggedValue TryGetTypeByIndexSign(const uint32_t typeId);

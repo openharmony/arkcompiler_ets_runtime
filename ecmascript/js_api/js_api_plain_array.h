@@ -44,8 +44,8 @@ public:
     static bool SetProperty(JSThread *thread, const JSHandle<JSAPIPlainArray> &obj,
                             const JSHandle<JSTaggedValue> &key,
                             const JSHandle<JSTaggedValue> &value);
-    static JSTaggedValue Set(JSThread *thread, const JSHandle<JSAPIPlainArray> &obj,
-                             const uint32_t index, JSTaggedValue value);
+    static JSTaggedValue PUBLIC_API Set(JSThread *thread, const JSHandle<JSAPIPlainArray> &obj,
+                                        const uint32_t index, JSTaggedValue value);
     JSTaggedValue RemoveAt(JSThread *thread, JSTaggedValue index);
     JSTaggedValue GetIndexOfKey(int32_t key);
     JSTaggedValue GetIndexOfValue(JSTaggedValue value);

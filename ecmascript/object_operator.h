@@ -61,7 +61,7 @@ public:
                         const JSHandle<JSTaggedValue> &value, const PropertyAttributes &attr);
 
     void UpdateDetector();
-    static void UpdateDetector(const JSThread *thread, JSTaggedValue receiver, JSTaggedValue key);
+    static void PUBLIC_API UpdateDetector(const JSThread *thread, JSTaggedValue receiver, JSTaggedValue key);
     static void UpdateDetectorOnSetPrototype(const JSThread *thread, JSTaggedValue receiver);
     static bool IsDetectorName(JSHandle<GlobalEnv> env, JSTaggedValue key);
 

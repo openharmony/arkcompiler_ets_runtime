@@ -20,6 +20,7 @@
 
 #include "mem/mem.h"
 #include "libpandafile/file.h"
+#include "ecmascript/common.h"
 
 namespace panda::ecmascript::pgo {
 static constexpr Alignment ALIGN_SIZE = Alignment::LOG_ALIGN_4;
@@ -48,9 +49,9 @@ public:
     static const std::string RUNTIME_AP_PREFIX;
     static const std::string MERGED_AP_PREFIX;
     static const std::string DEFAULT_AP_NAME;
-    static std::string GetRuntimeApName(const std::string &ohosModuleName);
-    static std::string GetMergedApName(const std::string &ohosModuleName);
-    static std::string GetOhosPkgApName(const std::string &ohosModuleName);
+    static std::string PUBLIC_API GetRuntimeApName(const std::string &ohosModuleName);
+    static std::string PUBLIC_API GetMergedApName(const std::string &ohosModuleName);
+    static std::string PUBLIC_API GetOhosPkgApName(const std::string &ohosModuleName);
 
 private:
     static std::string GetBriefApName(const std::string &ohosModuleName);

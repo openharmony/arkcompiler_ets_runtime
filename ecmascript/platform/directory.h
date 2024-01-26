@@ -17,10 +17,11 @@
 #define ECMASCRIPT_PLATFORM_DIRECTORY_H
 
 #include <string>
+#include "ecmascript/common.h"
 
 namespace panda::ecmascript {
-bool ForceCreateDirectory(const std::string &path);
-bool SetDirModeAsDefault(const std::string &path);
-bool SetFileModeAsDefault(const std::string &filename);
+bool PUBLIC_API ForceCreateDirectory(const std::string &path);
+bool PUBLIC_API SetDirModeAsDefault(const std::string &path);
+bool PUBLIC_API SetFileModeAsDefault(const std::string &filename);
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_PLATFORM_DIRECTORY_H

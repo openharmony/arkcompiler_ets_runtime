@@ -24,7 +24,7 @@ public:
     using FuncEntryIndexKey = std::pair<std::string, uint32_t>; // (compilefileName, MethodID)
     AnFileInfo() = default;
     ~AnFileInfo() override = default;
-    void Save(const std::string &filename, Triple triple);
+    void PUBLIC_API Save(const std::string &filename, Triple triple);
     void AddModuleDes(ModuleSectionDes &moduleDes)
     {
         des_.emplace_back(moduleDes);
@@ -85,7 +85,7 @@ public:
         return methodToEntryIndexMap_;
     }
 
-    void GenerateMethodToEntryIndexMap();
+    void PUBLIC_API GenerateMethodToEntryIndexMap();
 
     void Dump() const;
 

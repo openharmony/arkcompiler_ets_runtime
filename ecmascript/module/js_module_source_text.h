@@ -198,7 +198,7 @@ public:
                          const void *buffer = nullptr, size_t size = 0, bool excuteFromJob = false);
 
     // 15.2.1.16.4 Instantiate()
-    static int Instantiate(JSThread *thread, const JSHandle<JSTaggedValue> &moduleHdl,
+    static int PUBLIC_API Instantiate(JSThread *thread, const JSHandle<JSTaggedValue> &moduleHdl,
         bool excuteFromJob = false);
     static void InstantiateCJS(JSThread *thread, const JSHandle<SourceTextModule> &currentModule,
                                const JSHandle<SourceTextModule> &requiredModule);

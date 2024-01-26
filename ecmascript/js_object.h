@@ -445,7 +445,7 @@ public:
     static bool CreateDataPropertyOrThrow(JSThread *thread, const JSHandle<JSObject> &obj, uint32_t index,
                                           const JSHandle<JSTaggedValue> &value);
 
-    static JSHandle<TaggedArray> EnumerableOwnNames(JSThread *thread, const JSHandle<JSObject> &obj);
+    static JSHandle<TaggedArray> PUBLIC_API EnumerableOwnNames(JSThread *thread, const JSHandle<JSObject> &obj);
 
     // 7.3.23 EnumerableOwnPropertyNames ( O, kind )
     static JSHandle<TaggedArray> EnumerableOwnPropertyNames(JSThread *thread, const JSHandle<JSObject> &obj,
@@ -511,8 +511,8 @@ public:
                                                    const PropertyDescriptor &current,
                                                    SCheckMode sCheckMode = SCheckMode::CHECK);
 
-    static OperationResult GetProperty(JSThread *thread, const JSHandle<JSObject> &obj,
-                                       const JSHandle<JSTaggedValue> &key);
+    static OperationResult PUBLIC_API GetProperty(JSThread *thread, const JSHandle<JSObject> &obj,
+                                                  const JSHandle<JSTaggedValue> &key);
 
     static OperationResult GetProperty(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
                                        const JSHandle<JSTaggedValue> &key, const JSHandle<JSTaggedValue> &receiver);
@@ -580,8 +580,9 @@ public:
 
     static JSTaggedValue CallGetter(JSThread *thread, const AccessorData *accessor,
                                     const JSHandle<JSTaggedValue> &receiver);
-    static bool CallSetter(JSThread *thread, const AccessorData &accessor, const JSHandle<JSTaggedValue> &receiver,
-                           const JSHandle<JSTaggedValue> &value, bool mayThrow = false);
+    static bool PUBLIC_API CallSetter(JSThread *thread, const AccessorData &accessor,
+                                      const JSHandle<JSTaggedValue> &receiver,
+                                      const JSHandle<JSTaggedValue> &value, bool mayThrow = false);
 
     void FillElementsWithHoles(const JSThread *thread, uint32_t start, uint32_t end);
 
@@ -621,15 +622,16 @@ public:
     bool IsPropertiesDict() const;
     bool IsTypedArray() const;
 
-    static void DefinePropertyByLiteral(JSThread *thread, const JSHandle<JSObject> &obj,
-                                        const JSHandle<JSTaggedValue> &key, const JSHandle<JSTaggedValue> &value,
-                                        bool useForClass = false);
+    static PUBLIC_API void DefinePropertyByLiteral(JSThread *thread, const JSHandle<JSObject> &obj,
+                                                   const JSHandle<JSTaggedValue> &key,
+                                                   const JSHandle<JSTaggedValue> &value,
+                                                   bool useForClass = false);
     static void DefineSetter(JSThread *thread, const JSHandle<JSTaggedValue> &obj, const JSHandle<JSTaggedValue> &key,
                              const JSHandle<JSTaggedValue> &value);
     static void DefineGetter(JSThread *thread, const JSHandle<JSTaggedValue> &obj, const JSHandle<JSTaggedValue> &key,
                              const JSHandle<JSTaggedValue> &value);
-    static JSHandle<JSObject> CreateObjectFromProperties(const JSThread *thread,
-                                                         const JSHandle<TaggedArray> &properties,
+    static PUBLIC_API JSHandle<JSObject> CreateObjectFromProperties(const JSThread *thread,
+                                                                    const JSHandle<TaggedArray> &properties,
                                                          JSTaggedValue ihc = JSTaggedValue::Undefined());
     static JSHandle<JSObject> CreateObjectFromProperties(const JSThread *thread,
                                                          const JSHandle<TaggedArray> &properties,
@@ -687,7 +689,8 @@ public:
     DECL_DUMP()
     static const CString ExtractConstructorAndRecordName(JSThread *thread, TaggedObject *obj);
 
-    static JSHandle<NameDictionary> TransitionToDictionary(const JSThread *thread, const JSHandle<JSObject> &receiver);
+    static JSHandle<NameDictionary> PUBLIC_API TransitionToDictionary(const JSThread *thread,
+                                                                      const JSHandle<JSObject> &receiver);
 
     static inline std::pair<bool, JSTaggedValue> ConvertValueWithRep(PropertyAttributes attr, JSTaggedValue value);
 
@@ -743,7 +746,7 @@ private:
     friend class RuntimeStubs;
 
     PropertyBox* GetGlobalPropertyBox(JSTaggedValue key);
-    static bool AddElementInternal(
+    static bool PUBLIC_API AddElementInternal(
         JSThread *thread, const JSHandle<JSObject> &receiver, uint32_t index, const JSHandle<JSTaggedValue> &value,
         PropertyAttributes attr = PropertyAttributes(PropertyAttributes::GetDefaultAttributes()));
 

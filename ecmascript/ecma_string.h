@@ -354,9 +354,10 @@ private:
     // Compares string1 + string2 by bytes, It doesn't check canonical unicode equivalence.
     bool EqualToSplicedString(const EcmaString *str1, const EcmaString *str2);
     // Compares strings by bytes, It doesn't check canonical unicode equivalence.
-    static bool StringsAreEqual(const EcmaVM *vm, const JSHandle<EcmaString> &str1, const JSHandle<EcmaString> &str2);
+    static PUBLIC_API bool StringsAreEqual(const EcmaVM *vm, const JSHandle<EcmaString> &str1,
+        const JSHandle<EcmaString> &str2);
     // Compares strings by bytes, It doesn't check canonical unicode equivalence.
-    static bool StringsAreEqual(EcmaString *str1, EcmaString *str2);
+    static PUBLIC_API bool StringsAreEqual(EcmaString *str1, EcmaString *str2);
     // Two strings have the same type of utf encoding format.
     static bool StringsAreEqualDiffUtfEncoding(EcmaString *str1, EcmaString *str2);
     static bool StringsAreEqualDiffUtfEncoding(const FlatStringInfo &str1, const FlatStringInfo &str2);
@@ -601,13 +602,13 @@ private:
     static bool CanBeCompressed(const uint16_t *utf16Data, uint32_t utf16Len);
     static bool CanBeCompressed(const EcmaString *string);
 
-    bool ToElementIndex(uint32_t *index);
+    bool PUBLIC_API ToElementIndex(uint32_t *index);
 
     bool ToInt(int32_t *index, bool *negative);
 
     bool ToUInt64FromLoopStart(uint64_t *index, uint32_t loopStart, const uint8_t *data);
 
-    bool ToTypedArrayIndex(uint32_t *index);
+    bool PUBLIC_API ToTypedArrayIndex(uint32_t *index);
 
     template<bool isLower>
     static EcmaString *ConvertCase(const EcmaVM *vm, const JSHandle<EcmaString> &src);
@@ -697,9 +698,9 @@ private:
     template <typename Char>
     static void WriteToFlat(EcmaString *src, Char *buf, uint32_t maxLength);
 
-    static const uint8_t *GetUtf8DataFlat(const EcmaString *src, CVector<uint8_t> &buf);
+    static const uint8_t *PUBLIC_API GetUtf8DataFlat(const EcmaString *src, CVector<uint8_t> &buf);
 
-    static const uint16_t *GetUtf16DataFlat(const EcmaString *src, CVector<uint16_t> &buf);
+    static const uint16_t *PUBLIC_API GetUtf16DataFlat(const EcmaString *src, CVector<uint16_t> &buf);
 
     // string must be not flat
     static EcmaString *SlowFlatten(const EcmaVM *vm, const JSHandle<EcmaString> &string, MemSpaceType type);
@@ -1379,7 +1380,7 @@ public:
 
     // not change string data structure.
     // if string is not flat, this func has low efficiency.
-    bool ToTypedArrayIndex(uint32_t *index)
+    bool PUBLIC_API ToTypedArrayIndex(uint32_t *index)
     {
         return string_->ToTypedArrayIndex(index);
     }

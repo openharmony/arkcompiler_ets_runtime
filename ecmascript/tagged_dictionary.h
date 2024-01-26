@@ -40,22 +40,22 @@ public:
     {
         return ENTRY_SIZE;
     }
-    static int Hash(const JSTaggedValue &key);
+    static int PUBLIC_API Hash(const JSTaggedValue &key);
     static int Hash(const uint8_t* str, int strSize);
 
-    static bool IsMatch(const JSTaggedValue &key, const JSTaggedValue &other);
+    static bool PUBLIC_API IsMatch(const JSTaggedValue &key, const JSTaggedValue &other);
     static bool IsMatch(const uint8_t* str, int size, const JSTaggedValue &other);
 
     static JSHandle<NameDictionary> Create(const JSThread *thread,
                                   int numberOfElements = OrderHashTableT::DEFAULT_ELEMENTS_NUMBER);
     // Returns the property metaData for the property at entry.
-    PropertyAttributes GetAttributes(int entry) const;
-    void SetAttributes(const JSThread *thread, int entry, const PropertyAttributes &metaData);
-    void SetEntry(const JSThread *thread, int entry, const JSTaggedValue &key, const JSTaggedValue &value,
-                  const PropertyAttributes &metaData);
+    PropertyAttributes PUBLIC_API GetAttributes(int entry) const;
+    void PUBLIC_API SetAttributes(const JSThread *thread, int entry, const PropertyAttributes &metaData);
+    void PUBLIC_API SetEntry(const JSThread *thread, int entry, const JSTaggedValue &key, const JSTaggedValue &value,
+                             const PropertyAttributes &metaData);
     void UpdateValueAndAttributes(const JSThread *thread, int entry, const JSTaggedValue &value,
                                   const PropertyAttributes &metaData);
-    void UpdateValue(const JSThread *thread, int entry, const JSTaggedValue &value);
+    void PUBLIC_API UpdateValue(const JSThread *thread, int entry, const JSTaggedValue &value);
     void UpdateAttributes(int entry, const PropertyAttributes &metaData);
     void ClearEntry(const JSThread *thread, int entry);
     void GetAllKeys(const JSThread *thread, int offset, TaggedArray *keyArray) const;
@@ -107,18 +107,18 @@ public:
     {
         return ENTRY_SIZE;
     }
-    static int Hash(const JSTaggedValue &key);
-    static bool IsMatch(const JSTaggedValue &key, const JSTaggedValue &other);
+    static int PUBLIC_API Hash(const JSTaggedValue &key);
+    static bool PUBLIC_API IsMatch(const JSTaggedValue &key, const JSTaggedValue &other);
     static JSHandle<NumberDictionary> Create(const JSThread *thread,
                                     int numberOfElements = OrderHashTableT::DEFAULT_ELEMENTS_NUMBER);
     // Returns the property metaData for the property at entry.
-    PropertyAttributes GetAttributes(int entry) const;
+    PropertyAttributes PUBLIC_API GetAttributes(int entry) const;
     void SetAttributes(const JSThread *thread, int entry, const PropertyAttributes &metaData);
     void SetEntry([[maybe_unused]] const JSThread *thread, int entry, const JSTaggedValue &key,
                   const JSTaggedValue &value, const PropertyAttributes &metaData);
     void UpdateValueAndAttributes(const JSThread *thread, int entry, const JSTaggedValue &value,
                                   const PropertyAttributes &metaData);
-    void UpdateValue(const JSThread *thread, int entry, const JSTaggedValue &value);
+    void PUBLIC_API UpdateValue(const JSThread *thread, int entry, const JSTaggedValue &value);
     void UpdateAttributes(int entry, const PropertyAttributes &metaData);
     void ClearEntry(const JSThread *thread, int entry);
 

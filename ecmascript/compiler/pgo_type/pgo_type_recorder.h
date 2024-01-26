@@ -29,14 +29,15 @@ using PGORWOpType = pgo::PGORWOpType;
 class PGOTypeRecorder {
 public:
     explicit PGOTypeRecorder(const PGOProfilerDecoder &decoder);
-    PGOTypeRecorder(const PGOProfilerDecoder &decoder, const JSPandaFile *jsPandaFile, uint32_t methodOffset);
+    PUBLIC_API PGOTypeRecorder(const PGOProfilerDecoder &decoder,
+        const JSPandaFile *jsPandaFile, uint32_t methodOffset);
     ~PGOTypeRecorder() = default;
 
-    std::vector<ElementsKind> GetElementsKindsForUser(int32_t offset) const;
-    ElementsKind GetElementsKindForCreater(int32_t offset) const;
-    uint32_t GetElementsLength(int32_t offset) const;
+    std::vector<ElementsKind> PUBLIC_API GetElementsKindsForUser(int32_t offset) const;
+    ElementsKind PUBLIC_API GetElementsKindForCreater(int32_t offset) const;
+    uint32_t PUBLIC_API GetElementsLength(int32_t offset) const;
 
-    PGOTypeRef GetPGOType(int32_t offset) const;
+    PGOTypeRef PUBLIC_API GetPGOType(int32_t offset) const;
 
     inline PGODefineOpType GetPGODefOpType(int32_t bcOffset) const
     {

@@ -402,8 +402,8 @@ public:
     static JSHandle<JSHClass> SetPropertyOfObjHClass(const JSThread *thread, JSHandle<JSHClass> &jshclass,
                                                      const JSHandle<JSTaggedValue> &key,
                                                      const PropertyAttributes &attr);
-    static void AddProperty(const JSThread *thread, const JSHandle<JSObject> &obj, const JSHandle<JSTaggedValue> &key,
-                            const PropertyAttributes &attr);
+    static void PUBLIC_API AddProperty(const JSThread *thread, const JSHandle<JSObject> &obj,
+                                       const JSHandle<JSTaggedValue> &key, const PropertyAttributes &attr);
 
     static void TryRestoreElementsKind(const JSThread *thread, JSHandle<JSHClass> newJsHClass,
                                        const JSHandle<JSObject> &obj);
@@ -421,11 +421,12 @@ public:
     static void TransitionForElementsKindChange(const JSThread *thread, const JSHandle<JSObject> &receiver,
                                          const ElementsKind newKind);
     static JSHClass* GetInitialArrayHClassWithElementsKind(const JSThread *thread, const ElementsKind kind);
-    static void TransitToElementsKind(const JSThread *thread, const JSHandle<JSArray> &array,
-                                      ElementsKind newKind = ElementsKind::NONE);
-    static bool TransitToElementsKind(const JSThread *thread, const JSHandle<JSObject> &object,
-                                      const JSHandle<JSTaggedValue> &value, ElementsKind kind = ElementsKind::NONE);
-    static std::tuple<bool, bool, JSTaggedValue> ConvertOrTransitionWithRep(const JSThread *thread,
+    static void PUBLIC_API TransitToElementsKind(const JSThread *thread, const JSHandle<JSArray> &array,
+                                                 ElementsKind newKind = ElementsKind::NONE);
+    static bool PUBLIC_API TransitToElementsKind(const JSThread *thread, const JSHandle<JSObject> &object,
+                                                 const JSHandle<JSTaggedValue> &value,
+                                                 ElementsKind kind = ElementsKind::NONE);
+    static std::tuple<bool, bool, JSTaggedValue> PUBLIC_API ConvertOrTransitionWithRep(const JSThread *thread,
         const JSHandle<JSObject> &receiver, const JSHandle<JSTaggedValue> &key, const JSHandle<JSTaggedValue> &value,
         PropertyAttributes &attr);
 
@@ -461,7 +462,7 @@ public:
 
     void InitTSInheritInfo(const JSThread *thread);
 
-    bool HasTSSubtyping() const;
+    bool PUBLIC_API HasTSSubtyping() const;
 
     bool IsTSIHCWithInheritInfo() const;
 
@@ -1788,12 +1789,14 @@ public:
 
     inline static int FindPropertyEntry(const JSThread *thread, JSHClass *hclass, JSTaggedValue key);
 
-    static PropertyLookupResult LookupPropertyInAotHClass(const JSThread *thread, JSHClass *hclass, JSTaggedValue key);
-    static PropertyLookupResult LookupPropertyInPGOHClass(const JSThread *thread, JSHClass *hclass, JSTaggedValue key);
-    static PropertyLookupResult LookupPropertyInBuiltinPrototypeHClass(const JSThread *thread, JSHClass *hclass,
-                                                                       JSTaggedValue key);
-    static PropertyLookupResult LookupPropertyInBuiltinHClass(const JSThread *thread, JSHClass *hclass,
-                                                              JSTaggedValue key);
+    static PUBLIC_API PropertyLookupResult LookupPropertyInAotHClass(const JSThread *thread, JSHClass *hclass,
+        JSTaggedValue key);
+    static PUBLIC_API PropertyLookupResult LookupPropertyInPGOHClass(const JSThread *thread, JSHClass *hclass,
+        JSTaggedValue key);
+    static PUBLIC_API PropertyLookupResult LookupPropertyInBuiltinPrototypeHClass(const JSThread *thread,
+                                                                                  JSHClass *hclass, JSTaggedValue key);
+    static PUBLIC_API PropertyLookupResult LookupPropertyInBuiltinHClass(const JSThread *thread, JSHClass *hclass,
+                                                                         JSTaggedValue key);
 
     static constexpr size_t PROTOTYPE_OFFSET = TaggedObjectSize();
     ACCESSORS(Proto, PROTOTYPE_OFFSET, LAYOUT_OFFSET);
@@ -1810,7 +1813,7 @@ public:
     DEFINE_ALIGN_SIZE(LAST_OFFSET);
 
     void SetPrototype(const JSThread *thread, JSTaggedValue proto);
-    void SetPrototype(const JSThread *thread, const JSHandle<JSTaggedValue> &proto);
+    void PUBLIC_API SetPrototype(const JSThread *thread, const JSHandle<JSTaggedValue> &proto);
     void ShouldUpdateProtoClass(const JSThread *thread, const JSHandle<JSTaggedValue> &proto);
     inline JSTaggedValue GetPrototype() const
     {

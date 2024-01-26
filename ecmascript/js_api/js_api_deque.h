@@ -67,7 +67,7 @@ public:
 
     JSTaggedValue Get(const uint32_t index);
 
-    JSTaggedValue Set(JSThread *thread, const uint32_t index, JSTaggedValue value);
+    JSTaggedValue PUBLIC_API Set(JSThread *thread, const uint32_t index, JSTaggedValue value);
 
     uint32_t GetSize() const;
 

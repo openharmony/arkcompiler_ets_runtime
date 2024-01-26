@@ -87,10 +87,10 @@ private:
 
 class PGOTypeParser {
 public:
-    explicit PGOTypeParser(const PGOProfilerDecoder &decoder, PGOTypeManager *ptManager);
+    explicit PUBLIC_API PGOTypeParser(const PGOProfilerDecoder &decoder, PGOTypeManager *ptManager);
     ~PGOTypeParser() = default;
 
-    void CreatePGOType(BytecodeInfoCollector &collector);
+    void PUBLIC_API CreatePGOType(BytecodeInfoCollector &collector);
 
 private:
     const PGOProfilerDecoder &decoder_;

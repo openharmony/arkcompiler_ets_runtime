@@ -56,7 +56,7 @@ public:
     virtual ~PGOProfiler();
 
     static ProfileType CreateRecordProfileType(ApEntityId abcId, ApEntityId classId);
-    void ProfileCreateObject(JSTaggedType object, ApEntityId abcId, int32_t traceId);
+    void PUBLIC_API ProfileCreateObject(JSTaggedType object, ApEntityId abcId, int32_t traceId);
     void ProfileDefineClass(JSTaggedType ctor);
     void ProfileDefineGetterSetter(
         JSHClass *receverHClass, JSHClass *holderHClass, const JSHandle<JSTaggedValue> &func, int32_t pcOffset);
