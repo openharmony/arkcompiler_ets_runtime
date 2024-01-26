@@ -848,6 +848,25 @@ Local<JSValueRef> DebuggerApi::EvaluateViaFuncCall(EcmaVM *ecmaVm, Local<Functio
     return result;
 }
 
+Local<JSValueRef> DebuggerApi::CallFunctionOnCall(EcmaVM *ecmaVm, Local<FunctionRef> funcRef,
+    std::shared_ptr<FrameHandler> &frameHandler)
+{
+    JSNApi::EnableUserUncaughtErrorHandler(ecmaVm);
+
+    JsDebuggerManager *mgr = ecmaVm->GetJsDebuggerManager();
+    bool prevDebugMode = mgr->IsDebugMode();
+    mgr->SetEvalFrameHandler(frameHandler);
+    mgr->SetDebugMode(false);
+    ecmaVm->GetJSThread()->CheckSwitchDebuggerBCStub();
+    std::vector<Local<JSValueRef>> args;
+    auto result = funcRef->Call(ecmaVm, JSValueRef::Undefined(ecmaVm), args.data(), args.size());
+    mgr->SetDebugMode(prevDebugMode);
+    ecmaVm->GetJSThread()->CheckSwitchDebuggerBCStub();
+    mgr->SetEvalFrameHandler(nullptr);
+
+    return result;
+}
+
 bool DebuggerApi::IsExceptionCaught(const EcmaVM *ecmaVm)
 {
     FrameHandler frameHandler(ecmaVm->GetJSThread());
