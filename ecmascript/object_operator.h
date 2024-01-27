@@ -259,6 +259,11 @@ public:
         return key_;
     }
 
+    inline bool KeyFromStringType() const
+    {
+        return keyFromStringType_;
+    }
+
     inline uint32_t GetElementIndex() const
     {
         return elementIndex_;
@@ -352,6 +357,7 @@ private:
     PropertyAttributes attributes_;
     uint32_t metaData_{0};
     int receiverHoleEntry_{-1};
+    bool keyFromStringType_{false};
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_OBJECT_OPERATOR_H

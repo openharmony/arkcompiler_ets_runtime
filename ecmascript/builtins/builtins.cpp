@@ -1732,7 +1732,7 @@ void Builtins::InitializeString(const JSHandle<GlobalEnv> &env, JSHandle<JSTagge
     // String.prototype
     JSHandle<JSTaggedValue> toObject(factory_->GetEmptyString());
     JSHandle<JSHClass> primRefObjHClass =
-        factory_->NewEcmaHClass(JSPrimitiveRef::SIZE, BuiltinsSet::GetNumPrototypeInlinedProperties(),
+        factory_->NewEcmaHClass(JSPrimitiveRef::SIZE, BuiltinsString::GetNumPrototypeInlinedProperties(),
                                 JSType::JS_PRIMITIVE_REF, objFuncPrototypeVal);
     JSHandle<JSObject> stringFuncPrototype =
         JSHandle<JSObject>::Cast(factory_->NewJSPrimitiveRef(primRefObjHClass, toObject));

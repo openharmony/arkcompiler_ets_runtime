@@ -49,6 +49,7 @@ void ObjectOperator::HandleKey(const JSHandle<JSTaggedValue> &key)
     }
 
     if (key->IsString()) {
+        keyFromStringType_ = true;
         uint32_t index = 0;
         if (JSTaggedValue::ToElementIndex(key.GetTaggedValue(), &index)) {
             ASSERT(index < JSObject::MAX_ELEMENT_INDEX);

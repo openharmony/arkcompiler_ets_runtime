@@ -539,8 +539,8 @@ DECLARE_ASM_HANDLER(HandleLdhole)
 DECLARE_ASM_HANDLER(HandleCreateemptyobject)
 {
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
-    GateRef res = CallRuntime(glue, RTSTUB_ID(CreateEmptyObject), {});
-    varAcc = res;
+    NewObjectStubBuilder newBuilder(this);
+    varAcc = newBuilder.CreateEmptyObject(glue);
     DISPATCH_WITH_ACC(CREATEEMPTYOBJECT);
 }
 
