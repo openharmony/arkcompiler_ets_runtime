@@ -245,6 +245,61 @@ if (globalThis["ArkPrivate"] != undefined) {
     }
     map.set("test list remove:", res)
 
+
+    function testCopyArray() {
+        let myList = new List();
+        let obj = {};
+        let result = [
+            "hello9",
+            "hello10",
+            "hello0",
+            "hello1",
+            "hello2",
+            "hello3",
+            "hello4",
+            "hello5",
+            "hello6",
+            "hello7",
+            "hello8",
+            "hello10",
+            "hello9"
+        ]
+        function prepareList() {
+            const list = new List();
+            for (let i = 0; i <= 10; i++) {
+                list.add("hello" + i);
+            }
+            obj.dataArray = list;
+        }
+
+        function checkList() {
+            for (let i = 0; i < obj.dataArray.length; i++) {
+                if (obj.dataArray.get(i) != result[i]) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        function addData(data) {
+            const tmp = obj.dataArray;
+            tmp.add(data);
+            obj.dataArray = tmp;
+
+            const tmp2 = obj.dataArray;
+            tmp2.remove(data);
+            tmp2.insert(data, 0);
+            obj.dataArray = tmp2;
+        }
+
+        prepareList();
+        addData("hello10");
+        addData("hello9");
+        return checkList();
+    }
+
+    map.set("test list copyArray:", testCopyArray());
+
     proxy.replaceAllElements((item, index) => {
         return item * 2
     })

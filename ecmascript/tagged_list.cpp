@@ -74,16 +74,16 @@ void TaggedList<Derived>::CopyArray(const JSThread *thread, JSHandle<Derived> &t
     if (std::is_same_v<TaggedDoubleList, Derived>) {
         taggedList->SetElement(thread, ELEMENTS_START_INDEX + PREV_PTR_OFFSET, JSTaggedValue(tailTableIndex));
     }
-    int nextIndex = GetElement(ELEMENTS_START_INDEX + NEXT_PTR_OFFSET).GetInt();
+    int srcDataIndex = GetElement(ELEMENTS_START_INDEX + NEXT_PTR_OFFSET).GetInt();
     for (int i = 0; i < actualNodeNum; i++) {
         int index = nextTailIndex + i * Derived::ENTRY_SIZE;
-        taggedList->SetElement(thread, index, GetElement(nextIndex + i * Derived::ENTRY_SIZE));
-        taggedList->SetElement(thread, index + NEXT_PTR_OFFSET,
-                               JSTaggedValue(nextTailIndex + (i + 1) * Derived::ENTRY_SIZE));
+        taggedList->SetElement(thread, index, GetElement(srcDataIndex));
+        taggedList->SetElement(thread, index + NEXT_PTR_OFFSET, JSTaggedValue(index + Derived::ENTRY_SIZE));
         if (std::is_same_v<TaggedDoubleList, Derived>) {
             taggedList->SetElement(thread, index + PREV_PTR_OFFSET,
                                    JSTaggedValue(ELEMENTS_START_INDEX + i * Derived::ENTRY_SIZE));
         }
+        srcDataIndex = GetElement(srcDataIndex + NEXT_PTR_OFFSET).GetInt();
     }
     taggedList->SetElement(thread, tailTableIndex + NEXT_PTR_OFFSET, JSTaggedValue(ELEMENTS_START_INDEX));
 }
