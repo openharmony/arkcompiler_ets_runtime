@@ -123,6 +123,8 @@ public:
     static void HandleUncaughtException(const EcmaVM *ecmaVm, std::string &message);
     static Local<JSValueRef> EvaluateViaFuncCall(EcmaVM *ecmaVm, Local<FunctionRef> funcRef,
                                                  std::shared_ptr<FrameHandler> &frameHandler);
+    static Local<JSValueRef> CallFunctionOnCall(EcmaVM *ecmaVm, Local<FunctionRef> funcRef,
+                                                std::shared_ptr<FrameHandler> &frameHandler);
     static Local<FunctionRef> GenerateFuncFromBuffer(const EcmaVM *ecmaVm, const void *buffer, size_t size,
                                                      std::string_view entryPoint);
     static void SetSingleStepStatus(JSDebugger *debugger, bool status);
