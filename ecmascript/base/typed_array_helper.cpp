@@ -31,8 +31,9 @@
 #include "ecmascript/js_tagged_value-inl.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/js_typed_array.h"
-#include "ecmascript/object_factory.h"
 #include "ecmascript/js_stable_array.h"
+#include "ecmascript/object_factory.h"
+#include "ecmascript/property_detector-inl.h"
 
 namespace panda::ecmascript::base {
 using BuiltinsArrayBuffer = builtins::BuiltinsArrayBuffer;
@@ -500,14 +501,32 @@ JSHandle<JSObject> TypedArrayHelper::TypedArraySpeciesCreate(JSThread *thread, c
     JSHandle<JSTaggedValue> buffHandle(thread, JSTaggedValue(argv[0]));
     JSHandle<JSTaggedValue> defaultConstructor =
         TypedArrayHelper::GetConstructor(thread, JSHandle<JSTaggedValue>(obj));
-    // 3. Let constructor be ? SpeciesConstructor(exemplar, defaultConstructor).
-    JSHandle<JSTaggedValue> thisConstructor =
-        JSObject::SpeciesConstructor(thread, JSHandle<JSObject>::Cast(obj), defaultConstructor);
-    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSHandle<JSObject>(thread, JSTaggedValue::Exception()));
-    // 4. Let result be ? TypedArrayCreate(constructor, argumentList).
-    argv[0] = buffHandle.GetTaggedType();
-    JSHandle<JSObject> result = TypedArrayHelper::TypedArrayCreate(thread, thisConstructor, argc, argv);
-    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSHandle<JSObject>(thread, JSTaggedValue::Exception()));
+    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+    JSHandle<JSTaggedValue> key = thread->GlobalConstants()->GetHandledConstructorString();
+    JSHandle<JSTaggedValue> objConstructor =
+        JSObject::GetProperty(thread, JSHandle<JSTaggedValue>(obj), key, JSHandle<JSTaggedValue>(obj)).GetValue();
+    JSHandle<JSObject> result;
+    JSHandle<JSTaggedValue> proto(thread, obj->GetJSHClass()->GetPrototype());
+    if (proto->IsJSTypedArray() && PropertyDetector::IsTypedArraySpeciesProtectDetectorValid(env) &&
+        buffHandle->IsInt() && objConstructor->IsECMAObject()) {
+        JSType type = obj->GetJSHClass()->GetObjectType();
+        DataViewType arrayType = GetType(type);
+        uint32_t length = buffHandle->GetInt();
+        // 3. Let result be ? AllocateTypedArray(constructorName, defaultConstructor, length, arrayType).
+        JSHandle<JSTaggedValue> constructorName = GetConstructorNameFromType(thread, arrayType);
+        result = TypedArrayHelper::AllocateTypedArray(thread, constructorName,
+                                                      defaultConstructor, length, arrayType);
+        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSHandle<JSObject>(thread, JSTaggedValue::Exception()));
+    } else {
+        // 3. Let constructor be ? SpeciesConstructor(exemplar, defaultConstructor).
+        JSHandle<JSTaggedValue> thisConstructor =
+            JSObject::SlowSpeciesConstructor(thread, objConstructor, defaultConstructor);
+        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSHandle<JSObject>(thread, JSTaggedValue::Exception()));
+        // 4. Let result be ? TypedArrayCreate(constructor, argumentList).
+        argv[0] = buffHandle.GetTaggedType();
+        result = TypedArrayHelper::TypedArrayCreate(thread, thisConstructor, argc, argv);
+        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSHandle<JSObject>(thread, JSTaggedValue::Exception()));
+    }
     // 5. If result.[[ContentType]] ≠ exemplar.[[ContentType]], throw a TypeError exception.
     ContentType objContentType = obj->GetContentType();
     ContentType resultContentType = JSHandle<JSTypedArray>::Cast(result)->GetContentType();
