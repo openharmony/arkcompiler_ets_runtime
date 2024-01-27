@@ -869,6 +869,15 @@ void LSRALinearScanRegAllocator::ComputeLiveIntervalForEachOperand(Insn &insn)
             //        does not change, so we use the size in the opnd first.
             auto regSize = (regOpnd.GetRegisterType() == kRegTyInt ? opndDesc->GetSize() : regOpnd.GetSize());
             allRegOpndInfo.emplace_back(regOpnd, regSize, i, !isUse);
+
+            if (opndDesc->IsRegDef() && !cgFunc->IsStackMapComputed()) {
+                uint32 regNO = regOpnd.GetRegisterNumber();
+                if (regOpnd.GetBaseRefOpnd() != nullptr) {
+                    // set the base reference of derived reference for stackmap
+                    derivedRef2Base[regNO] = regOpnd.GetBaseRefOpnd();
+                }
+            }
+
         } else if (opnd.IsMemoryAccessOperand()) {
             auto &memOpnd = static_cast<MemOperand&>(opnd);
             RegOperand *base = memOpnd.GetBaseRegister();
