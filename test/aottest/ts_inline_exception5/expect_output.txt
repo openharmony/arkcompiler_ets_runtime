@@ -14,7 +14,7 @@
 RangeError: Invalid array length
     at foo1 (maybe inlined). depth: 1
     at foo2 (maybe inlined). depth: 0
-    at foo3 (hidden:30:30)
+    at foo3 (hidden:31:31)
     at foo4 (hidden:33:33)
     at func_main_0 (hidden:35:1)
 

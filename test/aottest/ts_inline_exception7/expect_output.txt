@@ -15,6 +15,6 @@ SyntaxError: Unexpected Number in JSON Array Or Object
     at Student (hidden:26:26)
     at foo1 (maybe inlined). depth: 1
     at foo2 (maybe inlined). depth: 0
-    at foo3 (hidden:40:40)
+    at foo3 (hidden:41:41)
     at func_main_0 (hidden:43:1)
 
