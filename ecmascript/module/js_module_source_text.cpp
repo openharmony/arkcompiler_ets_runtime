@@ -498,6 +498,7 @@ int SourceTextModule::HandleInstantiateException([[maybe_unused]] JSHandle<Sourc
 int SourceTextModule::Instantiate(JSThread *thread, const JSHandle<JSTaggedValue> &moduleHdl,
     bool excuteFromJob)
 {
+    STACK_LIMIT_CHECK(thread, SourceTextModule::UNDEFINED_INDEX);
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "SourceTextModule::Instantiate");
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, SourceTextModule::UNDEFINED_INDEX);
     JSHandle<SourceTextModule> module = JSHandle<SourceTextModule>::Cast(moduleHdl);
@@ -980,6 +981,7 @@ int SourceTextModule::InnerModuleEvaluation(JSThread *thread, const JSHandle<Mod
                                             CVector<JSHandle<SourceTextModule>> &stack, int index,
                                             const void *buffer, size_t size, bool excuteFromJob)
 {
+    STACK_LIMIT_CHECK(thread, index);
     // 1.If module is not a Cyclic Module Record, then
     if (!moduleRecord.GetTaggedValue().IsSourceTextModule()) {
         // a. Let promise be ! module.Evaluate().

@@ -272,6 +272,7 @@ bool JSSerializer::WriteIfSerialized(uintptr_t addr)
 // Write HeapObject
 bool JSSerializer::WriteTaggedObject(const JSHandle<JSTaggedValue> &value)
 {
+    STACK_LIMIT_CHECK(thread_, false);
     uintptr_t addr = reinterpret_cast<uintptr_t>(value.GetTaggedValue().GetTaggedObject());
     bool serialized = IsSerialized(addr);
     if (serialized) {
@@ -1451,6 +1452,7 @@ JSHandle<JSTaggedValue> JSDeserializer::ReadJSDate()
 
 JSHandle<JSTaggedValue> JSDeserializer::ReadJSArray()
 {
+    STACK_LIMIT_CHECK(thread_, JSHandle<JSTaggedValue>(thread_, JSTaggedValue::Exception()));
     JSHandle<JSArray> jsArray = thread_->GetEcmaVM()->GetFactory()->NewJSArray();
     JSHandle<JSTaggedValue> arrayTag = JSHandle<JSTaggedValue>::Cast(jsArray);
     referenceMap_.emplace(objectId_++, arrayTag);
@@ -1506,6 +1508,7 @@ JSHandle<JSTaggedValue> JSDeserializer::ReadEcmaString()
 
 JSHandle<JSTaggedValue> JSDeserializer::ReadPlainObject()
 {
+    STACK_LIMIT_CHECK(thread_, JSHandle<JSTaggedValue>(thread_, JSTaggedValue::Exception()));
     JSHandle<GlobalEnv> env = thread_->GetEcmaVM()->GetGlobalEnv();
     JSHandle<JSFunction> objFunc(env->GetObjectFunction());
     JSHandle<JSObject> jsObject = thread_->GetEcmaVM()->GetFactory()->NewJSObjectByConstructor(objFunc);
@@ -1551,6 +1554,7 @@ JSHandle<JSTaggedValue> JSDeserializer::ReadNativeBindingObject()
 
 JSHandle<JSTaggedValue> JSDeserializer::ReadJSMap()
 {
+    STACK_LIMIT_CHECK(thread_, JSHandle<JSTaggedValue>(thread_, JSTaggedValue::Exception()));
     JSHandle<GlobalEnv> env = thread_->GetEcmaVM()->GetGlobalEnv();
     JSHandle<JSFunction> mapFunction(env->GetBuiltinsMapFunction());
     JSHandle<JSMap> jsMap = JSHandle<JSMap>::Cast(factory_->NewJSObjectByConstructor(mapFunction));
@@ -1581,6 +1585,7 @@ JSHandle<JSTaggedValue> JSDeserializer::ReadJSMap()
 
 JSHandle<JSTaggedValue> JSDeserializer::ReadJSSet()
 {
+    STACK_LIMIT_CHECK(thread_, JSHandle<JSTaggedValue>(thread_, JSTaggedValue::Exception()));
     JSHandle<GlobalEnv> env = thread_->GetEcmaVM()->GetGlobalEnv();
     JSHandle<JSFunction> setFunction(env->GetBuiltinsSetFunction());
     JSHandle<JSSet> jsSet = JSHandle<JSSet>::Cast(factory_->NewJSObjectByConstructor(setFunction));
