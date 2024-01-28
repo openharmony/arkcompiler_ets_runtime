@@ -4107,6 +4107,8 @@ GateRef StubBuilder::InstanceOf(
     Bind(&targetNotEcmaObject);
     {
         GateRef taggedId = Int32(GET_MESSAGE_STRING_ID(TargetTypeNotObject));
+        // stability testing log 20240127
+        CallRuntime(glue, RTSTUB_ID(DumpObject), { target, IntToTaggedInt(taggedId) });
         CallRuntime(glue, RTSTUB_ID(ThrowTypeError), { IntToTaggedInt(taggedId) });
         result = Exception();
         Jump(&exit);
@@ -4148,6 +4150,8 @@ GateRef StubBuilder::InstanceOf(
             Bind(&targetNotCallable);
             {
                 GateRef taggedId = Int32(GET_MESSAGE_STRING_ID(InstanceOfErrorTargetNotCallable));
+                // stability testing log 20240127
+                CallRuntime(glue, RTSTUB_ID(DumpObject), { target, IntToTaggedInt(taggedId) });
                 CallRuntime(glue, RTSTUB_ID(ThrowTypeError), { IntToTaggedInt(taggedId) });
                 result = Exception();
                 Jump(&exit);

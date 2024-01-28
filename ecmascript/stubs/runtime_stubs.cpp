@@ -818,6 +818,18 @@ DEF_RUNTIME_STUBS(InstanceOf)
     return RuntimeInstanceof(thread, obj, target).GetRawData();
 }
 
+DEF_RUNTIME_STUBS(DumpObject)
+{
+    RUNTIME_STUBS_HEADER(DumpObject);
+    JSHandle<JSTaggedValue> target = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
+    JSHandle<JSTaggedValue> targetId = GetHArg<JSTaggedValue>(argv, argc, 1);  // 1: means the first parameter
+    LOG_ECMA(INFO) << "InstanceOf Stability Testing Num: " << targetId->GetInt();
+    std::ostringstream oss;
+    target->Dump(oss);
+    LOG_ECMA(INFO) << "dump log for instance of target: " << oss.str();
+    return JSTaggedValue::True().GetRawData();
+}
+
 DEF_RUNTIME_STUBS(CreateGeneratorObj)
 {
     RUNTIME_STUBS_HEADER(CreateGeneratorObj);
