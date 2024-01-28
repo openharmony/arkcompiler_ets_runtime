@@ -37,6 +37,7 @@ Region *HeapRegionAllocator::AllocateAlignedRegion(Space *space, size_t capacity
     bool isMachineCode = (flags == RegionSpaceFlag::IN_MACHINE_CODE_SPACE ||
         flags == RegionSpaceFlag::IN_HUGE_MACHINE_CODE_SPACE);
     auto pool = MemMapAllocator::GetInstance()->Allocate(thread->GetThreadId(), capacity, DEFAULT_REGION_SIZE,
+                                                         ToSpaceTypeName(space->GetSpaceType()),
                                                          isRegular, isMachineCode);
     void *mapMem = pool.GetMem();
     if (mapMem == nullptr) {
@@ -59,7 +60,9 @@ Region *HeapRegionAllocator::AllocateAlignedRegion(Space *space, size_t capacity
     uintptr_t begin = AlignUp(mem + sizeof(Region), static_cast<size_t>(MemAlignment::MEM_ALIGN_REGION));
     uintptr_t end = mem + capacity;
 
-    return new (ToVoidPtr(mem)) Region(thread, mem, begin, end, flags);
+    Region *region = new (ToVoidPtr(mem)) Region(thread, mem, begin, end, flags);
+    std::atomic_thread_fence(std::memory_order_seq_cst);
+    return region;
 }
 
 void HeapRegionAllocator::FreeRegion(Region *region, size_t cachedSize)

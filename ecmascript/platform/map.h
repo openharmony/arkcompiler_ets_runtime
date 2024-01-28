@@ -80,15 +80,17 @@ enum class PageTagType : uint8_t {
 
 static constexpr char HEAP_TAG[] = "ArkTS Heap";
 static constexpr char CODE_TAG[] = "ArkTS Code";
+static const std::string EMPTY_STRING = "";
 MemMap PUBLIC_API PageMap(size_t size, int prot = PAGE_PROT_NONE, size_t alignment = 0, void *addr = nullptr);
 void PUBLIC_API PageUnmap(MemMap it);
 MemMap PUBLIC_API MachineCodePageMap(size_t size, int prot = PAGE_PROT_NONE, size_t alignment = 0);
 void PUBLIC_API MachineCodePageUnmap(MemMap it);
 void PageRelease(void *mem, size_t size);
 void PagePreRead(void *mem, size_t size);
-void PageTag(void *mem, size_t size, PageTagType type, const uint32_t threadId = 0);
+void PageTag(void *mem, size_t size, PageTagType type, const std::string &spaceName = EMPTY_STRING,
+             const uint32_t threadId = 0);
 void PageClearTag(void *mem, size_t size);
-const CString GetPageTagString(PageTagType type, const uint32_t threadId = 0);
+const CString GetPageTagString(PageTagType type, const std::string &spaceName, const uint32_t threadId = 0);
 void PageProtect(void *mem, size_t size, int prot);
 size_t PageSize();
 }  // namespace panda::ecmascript

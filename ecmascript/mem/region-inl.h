@@ -29,6 +29,7 @@ inline RememberedSet *Region::CreateRememberedSet()
     auto setAddr = thread_->GetNativeAreaAllocator()->Allocate(bitSize + RememberedSet::GCBITSET_DATA_OFFSET);
     auto ret = new (setAddr) RememberedSet(bitSize);
     ret->ClearAll();
+    std::atomic_thread_fence(std::memory_order_seq_cst);
     return ret;
 }
 
