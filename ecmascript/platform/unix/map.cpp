@@ -74,9 +74,9 @@ void PagePreRead(void *mem, size_t size)
     madvise(mem, size, MADV_WILLNEED);
 }
 
-void PageTag(void *mem, size_t size, PageTagType type, const uint32_t threadId)
+void PageTag(void *mem, size_t size, PageTagType type, const std::string &spaceName, const uint32_t threadId)
 {
-    const CString &tag = GetPageTagString(type, threadId);
+    const CString &tag = GetPageTagString(type, spaceName, threadId);
     PrctlSetVMA(mem, size, tag.c_str());
 }
 

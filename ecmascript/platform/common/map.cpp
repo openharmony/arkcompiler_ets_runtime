@@ -18,14 +18,14 @@
 #include "ecmascript/log_wrapper.h"
 
 namespace panda::ecmascript {
-const CString GetPageTagString(PageTagType type, const uint32_t threadId)
+const CString GetPageTagString(PageTagType type, const std::string &spaceName, const uint32_t threadId)
 {
     switch (type) {
         case PageTagType::HEAP:
             if (threadId == 0) {
-                return HEAP_TAG;
+                return CString(HEAP_TAG).append(spaceName);
             }
-            return CString(HEAP_TAG).append(std::to_string(threadId));
+            return CString(HEAP_TAG).append(std::to_string(threadId)).append(spaceName);
         case PageTagType::MACHINE_CODE:
             if (threadId == 0) {
                 return CODE_TAG;
