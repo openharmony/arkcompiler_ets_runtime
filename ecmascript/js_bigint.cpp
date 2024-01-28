@@ -300,9 +300,13 @@ JSHandle<BigInt> BigInt::BitwiseAND(JSThread *thread, JSHandle<BigInt> x, JSHand
     if (x->GetSign() && y->GetSign()) {
         // (-x) & (-y) == -(((x-1) | (y-1)) + 1)
         JSHandle<BigInt> xVal = BitwiseSubOne(thread, x, x->GetLength());
+        RETURN_HANDLE_IF_ABRUPT_COMPLETION(BigInt, thread);
         JSHandle<BigInt> yVal = BitwiseSubOne(thread, y, y->GetLength());
+        RETURN_HANDLE_IF_ABRUPT_COMPLETION(BigInt, thread);
         JSHandle<BigInt> temp = BitwiseOp(thread, Operate::OR, xVal, yVal);
+        RETURN_HANDLE_IF_ABRUPT_COMPLETION(BigInt, thread);
         JSHandle<BigInt> res = BitwiseAddOne(thread, temp);
+        RETURN_HANDLE_IF_ABRUPT_COMPLETION(BigInt, thread);
         return res;
     }
     if (x->GetSign() != y->GetSign()) {
@@ -333,7 +337,9 @@ JSHandle<BigInt> BigInt::BitwiseXOR(JSThread *thread, JSHandle<BigInt> x, JSHand
     if (x->GetSign() && y->GetSign()) {
         // (-x) ^ (-y) == (x-1) ^ (y-1)
         JSHandle<BigInt> xVal = BitwiseSubOne(thread, x, x->GetLength());
+        RETURN_HANDLE_IF_ABRUPT_COMPLETION(BigInt, thread);
         JSHandle<BigInt> yVal = BitwiseSubOne(thread, y, y->GetLength());
+        RETURN_HANDLE_IF_ABRUPT_COMPLETION(BigInt, thread);
         return BitwiseOp(thread, Operate::XOR, xVal, yVal);
     }
     if (x->GetSign() != y->GetSign()) {
@@ -437,9 +443,13 @@ JSHandle<BigInt> BigInt::BitwiseOR(JSThread *thread, JSHandle<BigInt> x, JSHandl
         uint32_t yLen = y->GetLength();
         maxLen < yLen ? maxLen = yLen : 0;
         JSHandle<BigInt> xVal = BitwiseSubOne(thread, x, maxLen);
+        RETURN_HANDLE_IF_ABRUPT_COMPLETION(BigInt, thread);
         JSHandle<BigInt> yVal = BitwiseSubOne(thread, y, yLen);
+        RETURN_HANDLE_IF_ABRUPT_COMPLETION(BigInt, thread);
         JSHandle<BigInt> temp = BitwiseOp(thread, Operate::AND, xVal, yVal);
+        RETURN_HANDLE_IF_ABRUPT_COMPLETION(BigInt, thread);
         JSHandle<BigInt> res = BitwiseAddOne(thread, temp);
+        RETURN_HANDLE_IF_ABRUPT_COMPLETION(BigInt, thread);
         res->SetSign(true);
         return res;
     }
@@ -597,6 +607,7 @@ void BigInt::BigIntToInt64(JSThread *thread, JSHandle<JSTaggedValue> bigint, int
     ASSERT(lossless != nullptr);
     if (bigint->IsBoolean()) {
         bigint = JSHandle<JSTaggedValue>(thread, JSTaggedValue::ToBigInt(thread, bigint));
+        RETURN_IF_ABRUPT_COMPLETION(thread);
     }
     JSHandle<BigInt> bigInt64(thread, JSTaggedValue::ToBigInt64(thread, bigint));
     RETURN_IF_ABRUPT_COMPLETION(thread);
@@ -614,6 +625,7 @@ void BigInt::BigIntToUint64(JSThread *thread, JSHandle<JSTaggedValue> bigint, ui
     ASSERT(lossless != nullptr);
     if (bigint->IsBoolean()) {
         bigint = JSHandle<JSTaggedValue>(thread, JSTaggedValue::ToBigInt(thread, bigint));
+        RETURN_IF_ABRUPT_COMPLETION(thread);
     }
     JSHandle<BigInt> bigUint64(thread, JSTaggedValue::ToBigUint64(thread, bigint));
     RETURN_IF_ABRUPT_COMPLETION(thread);
@@ -776,12 +788,14 @@ JSHandle<BigInt> BigInt::BigintSub(JSThread *thread, JSHandle<BigInt> x, JSHandl
 JSHandle<BigInt> BigInt::BigintAddOne(JSThread *thread, JSHandle<BigInt> x)
 {
     JSHandle<BigInt> temp = Int32ToBigInt(thread, 1);
+    RETURN_HANDLE_IF_ABRUPT_COMPLETION(BigInt, thread);
     return Add(thread, x, temp);
 }
 
 JSHandle<BigInt> BigInt::BigintSubOne(JSThread *thread, JSHandle<BigInt> x)
 {
     JSHandle<BigInt> temp = Int32ToBigInt(thread, 1);
+    RETURN_HANDLE_IF_ABRUPT_COMPLETION(BigInt, thread);
     return Subtract(thread, x, temp);
 }
 
@@ -1004,6 +1018,7 @@ JSHandle<BigInt> BigInt::BitwiseNOT(JSThread *thread, JSHandle<BigInt> x)
     // ~(-x) == ~(~(x-1)) == x-1
     // ~x == -x-1 == -(x+1)
     JSHandle<BigInt> result = BigintAddOne(thread, x);
+    RETURN_HANDLE_IF_ABRUPT_COMPLETION(BigInt, thread);
     if (x->GetSign()) {
         result->SetSign(false);
     } else {

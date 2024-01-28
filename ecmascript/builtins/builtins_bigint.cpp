@@ -42,6 +42,7 @@ JSTaggedValue BuiltinsBigInt::BigIntConstructor(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> Primitive(thread, JSTaggedValue::ToPrimitive(thread, value));
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     // 3. If Type(prim) is Number, return ? NumberToBigInt(prim).
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     if (Primitive->IsNumber()) {
         return BigInt::NumberToBigInt(thread, Primitive);
     }
@@ -59,6 +60,7 @@ JSTaggedValue BuiltinsBigInt::AsUintN(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> bigint = GetCallArg(argv, 1);
     // 1. Let bits be ? ToIndex(bits).
     JSTaggedNumber index = JSTaggedValue::ToIndex(thread, bits);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     // 2. Let bigint be ? ToBigInt(bigint).
     JSTaggedValue jsBigint = JSTaggedValue::ToBigInt(thread, bigint);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -77,6 +79,7 @@ JSTaggedValue BuiltinsBigInt::AsIntN(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> bigint = GetCallArg(argv, 1);
     // 1. Let bits be ? ToIndex(bits).
     JSTaggedNumber index = JSTaggedValue::ToIndex(thread, bits);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     // 2. Let bigint be ? ToBigInt(bigint).
     JSTaggedValue jsBigint = JSTaggedValue::ToBigInt(thread, bigint);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
