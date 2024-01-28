@@ -201,13 +201,17 @@ private:
     template <>
     bool ClearWord<AccessType::ATOMIC>(uint32_t index, uint32_t mask)
     {
-        auto word = reinterpret_cast<std::atomic<GCBitsetWord> *>(&Words()[index]);
+        volatile auto word = reinterpret_cast<volatile std::atomic<GCBitsetWord> *>(&Words()[index]);
         auto oldValue = word->load(std::memory_order_relaxed);
+        GCBitsetWord oldValueBeforeCAS;
         do {
             if ((oldValue & mask) == 0) {
                 return false;
             }
-        } while (!word->compare_exchange_weak(oldValue, oldValue & (~mask), std::memory_order_seq_cst));
+            oldValueBeforeCAS = oldValue;
+            std::atomic_compare_exchange_strong_explicit(word, &oldValue, oldValue & (~mask),
+                std::memory_order_release, std::memory_order_relaxed);
+        } while (oldValue != oldValueBeforeCAS);
         return true;
     }
 };
@@ -227,14 +231,18 @@ inline bool GCBitset::SetBit<AccessType::NON_ATOMIC>(uintptr_t offset)
 template <>
 inline bool GCBitset::SetBit<AccessType::ATOMIC>(uintptr_t offset)
 {
-    auto word = reinterpret_cast<std::atomic<GCBitsetWord> *>(&Words()[Index(offset)]);
+    volatile auto word = reinterpret_cast<volatile std::atomic<GCBitsetWord> *>(&Words()[Index(offset)]);
     auto mask = Mask(IndexInWord(offset));
     auto oldValue = word->load(std::memory_order_relaxed);
+    GCBitsetWord oldValueBeforeCAS;
     do {
         if (oldValue & mask) {
             return false;
         }
-    } while (!word->compare_exchange_weak(oldValue, oldValue | mask, std::memory_order_seq_cst));
+        oldValueBeforeCAS = oldValue;
+        std::atomic_compare_exchange_strong_explicit(word, &oldValue, oldValue | mask,
+            std::memory_order_release, std::memory_order_relaxed);
+    } while (oldValue != oldValueBeforeCAS);
     return true;
 }
 }  // namespace panda::ecmascript

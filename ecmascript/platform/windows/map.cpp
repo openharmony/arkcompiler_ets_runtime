@@ -88,7 +88,7 @@ void PagePreRead([[maybe_unused]] void *mem, [[maybe_unused]] size_t size)
 }
 
 void PageTag([[maybe_unused]] void *mem, [[maybe_unused]] size_t size, [[maybe_unused]] PageTagType type,
-             [[maybe_unused]] const uint32_t threadId)
+             [[maybe_unused]] const std::string &spaceName, [[maybe_unused]] const uint32_t threadId)
 {
 }
 
