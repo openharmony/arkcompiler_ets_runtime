@@ -123,6 +123,8 @@ public:
     static uint64_t& GetRandomState();
     static uint64_t XorShift64(uint64_t *pVal);
     static void InitRandom();
+    static int32_t GenerateIdentityHash();
+    static int32_t Next(int bits);
 private:
     static thread_local uint64_t randomState;
 };

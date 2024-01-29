@@ -447,7 +447,7 @@ void JSAPIVector::Clear(JSThread *thread, const JSHandle<JSAPIVector> &obj)
     int length = obj->GetLength();
     JSHandle<TaggedArray> elements(thread, obj->GetElements());
     ASSERT(!elements->IsDictionaryMode());
-    for (int i = 0; i <= length; ++i) {
+    for (int i = 0; i < length; ++i) {
         elements->Set(thread, i, JSTaggedValue::Hole());
     }
     obj->SetLength(0);
