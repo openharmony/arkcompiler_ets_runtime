@@ -60,6 +60,7 @@ CompilationOptions::CompilationOptions(EcmaVM *vm, JSRuntimeOptions &runtimeOpti
     isEnableLexenvSpecialization_ = runtimeOptions.IsEnableLexenvSpecialization();
     isEnableNativeInline_ = runtimeOptions.IsEnableNativeInline();
     isEnableLoweringBuiltin_ = runtimeOptions.IsEnableLoweringBuiltin();
+    isEnableOptBranchProfiling_ = runtimeOptions.IsEnableBranchProfiling();
 }
 
 bool AotCompilerPreprocessor::HandleTargetCompilerMode(CompilationOptions &cOptions)

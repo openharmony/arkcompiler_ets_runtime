@@ -751,10 +751,11 @@ public:
         bool enableLog = data->GetLog()->EnableMethodCIRLog() || data->GetLog()->EnableMethodASMLog();
         PassOptions *passOptions = data->GetPassOptions();
         bool enableOptInlining = passOptions->EnableOptInlining() && passOptions->EnableTypeLowering();
+        bool enableOptBranchProfiling = passOptions->EnableOptBranchProfiling();
         CreateCodeGen(module, enableLog);
         CodeGenerator codegen(cgImpl_, data->GetMethodName());
         codegen.Run(data->GetCircuit(), data->GetConstScheduleResult(), data->GetCompilerConfig(),
-                    data->GetMethodLiteral(), data->GetJSPandaFile(), enableOptInlining);
+                    data->GetMethodLiteral(), data->GetJSPandaFile(), enableOptInlining, enableOptBranchProfiling);
         return true;
     }
 private:
