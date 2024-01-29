@@ -570,6 +570,32 @@ JSHandle<TaggedArray> TaggedSingleList::OwnKeys(JSThread *thread, const JSHandle
     return TaggedList<TaggedSingleList>::OwnKeys(thread, taggedList);
 }
 
+JSTaggedValue TaggedSingleList::SortByNodeOrder(const JSThread *thread, const JSHandle<TaggedSingleList> &taggedList)
+{
+    int actualNodeNum = taggedList->NumberOfNodes();
+    int nextDataIndex = taggedList->GetElement(ELEMENTS_START_INDEX + NEXT_PTR_OFFSET).GetInt();
+    uint32_t length = static_cast<uint32_t>(actualNodeNum);
+    JSHandle<TaggedSingleList> list = TaggedList<TaggedSingleList>::Create(
+        thread, length < DEFAULT_ARRAY_LENGHT ? DEFAULT_ARRAY_LENGHT : length);
+
+    int tailTableIndex = ELEMENTS_START_INDEX + actualNodeNum * TaggedSingleList::ENTRY_SIZE;
+    int nextTailIndex = ELEMENTS_START_INDEX + TaggedSingleList::ENTRY_SIZE;
+    list->SetNumberOfNodes(thread, actualNodeNum);
+    list->SetElement(thread, TAIL_TABLE_INDEX, JSTaggedValue(tailTableIndex));
+    list->SetElement(thread, ELEMENTS_START_INDEX, JSTaggedValue::Hole());
+    list->SetElement(thread, ELEMENTS_START_INDEX + NEXT_PTR_OFFSET, JSTaggedValue(nextTailIndex));
+
+    for (int i = 0; i < actualNodeNum; ++i) {
+        int curDataIndex = ELEMENTS_START_INDEX + (i + 1) * TaggedSingleList::ENTRY_SIZE;
+        list->SetElement(thread, curDataIndex, taggedList->GetElement(nextDataIndex));
+        list->SetElement(thread, curDataIndex + NEXT_PTR_OFFSET,
+            JSTaggedValue(curDataIndex + TaggedSingleList::ENTRY_SIZE));
+        nextDataIndex = taggedList->GetElement(nextDataIndex + NEXT_PTR_OFFSET).GetInt();
+    }
+    list->SetElement(thread, tailTableIndex + NEXT_PTR_OFFSET, JSTaggedValue(ELEMENTS_START_INDEX));
+    return list.GetTaggedValue();
+}
+
 // TaggedDoubleList
 JSTaggedValue TaggedDoubleList::Create(const JSThread *thread, int numberOfElements)
 {

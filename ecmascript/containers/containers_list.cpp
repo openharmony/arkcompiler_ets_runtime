@@ -44,6 +44,7 @@ JSTaggedValue ContainersList::ListConstructor(EcmaRuntimeCallInfo *argv)
     JSHandle<JSObject> obj = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(constructor), newTarget);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSHandle<JSAPIList> list = JSHandle<JSAPIList>::Cast(obj);
+    list->SetIsOrderedList(true);
 
     JSTaggedValue singleList = TaggedSingleList::Create(thread);
     list->SetSingleList(thread, singleList);
@@ -213,7 +214,8 @@ JSTaggedValue ContainersList::Get(EcmaRuntimeCallInfo *argv)
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
-    return jsAPIList->Get(index->GetInt());
+
+    return JSAPIList::FastGet(thread, index->GetInt(), jsAPIList);
 }
 
 JSTaggedValue ContainersList::GetIndexOf(EcmaRuntimeCallInfo *argv)
