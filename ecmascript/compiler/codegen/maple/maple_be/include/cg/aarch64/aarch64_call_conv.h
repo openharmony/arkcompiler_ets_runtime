@@ -193,7 +193,7 @@ private:
 
     AArch64reg AllocateSIMDFPRetRegister()
     {
-        return (nextFloatRegNO < AArch64WebKitJSCC::kNumFloatParmRegs)
+        return (nextFloatRegNO < AArch64WebKitJSCC::kNumFloatRetRegs)
                    ? AArch64WebKitJSCC::floatReturnRegs[nextFloatRegNO++]
                    : kRinvalid;
     }
