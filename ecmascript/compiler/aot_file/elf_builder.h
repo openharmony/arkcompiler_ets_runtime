@@ -42,8 +42,10 @@ public:
         std::vector<ModuleSectionDes::ModuleRegionInfo> &moduleInfo, llvm::ELF::Elf64_Off &curSecOffset);
     void MergeStrtabSections(std::ofstream &elfFile,
         std::vector<ModuleSectionDes::ModuleRegionInfo> &moduleInfo, llvm::ELF::Elf64_Off &curSecOffset);
-    void MergeSymtabSections(std::ofstream &elfFile,
-        std::vector<ModuleSectionDes::ModuleRegionInfo> &moduleInfo, llvm::ELF::Elf64_Off &curSecOffset);
+    void MergeSymtabSections(std::ofstream &elfFile, std::vector<ModuleSectionDes::ModuleRegionInfo> &moduleInfo,
+        llvm::ELF::Elf64_Off &curSecOffset, llvm::ELF::Elf64_Off &asmStubOffset);
+    uint32_t AddAsmStubStrTab(std::ofstream &elfFile,
+        const std::vector<std::pair<std::string, uint32_t>> &asmStubELFInfo);
     static llvm::ELF::Elf64_Word FindShName(std::string name, uintptr_t strTabPtr, int strTabSize);
     std::map<ElfSecName, std::pair<uint64_t, uint32_t>> GetFullSecInfo() const
     {
@@ -85,6 +87,7 @@ private:
     std::vector<ElfSecName> sections_ {};
     std::set<ElfSecName> segments_;
     std::vector<uint32_t> stubTextOffset_ {};
+    std::vector<uint32_t> asmStubStrName_ {};
     bool enableSecDump_ {false};
     ElfSecName lastDataSection {ElfSecName::NONE};
     ElfSecName lastCodeSection {ElfSecName::NONE};

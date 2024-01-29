@@ -482,6 +482,7 @@ void StubFileGenerator::RunAsmAssembler()
     if (bufferSize == 0U) {
         return;
     }
+    stubInfo_.AddAsmStubELFInfo(asmModule_.GetCSigns(), asmModule_.GetStubsOffset());
     stubInfo_.FillAsmStubTempHolder(buffer, bufferSize);
     stubInfo_.accumulateTotalSize(bufferSize);
 }

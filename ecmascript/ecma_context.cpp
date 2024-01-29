@@ -886,7 +886,10 @@ void EcmaContext::ShrinkHandleStorage(int prevIndex)
 
 void EcmaContext::LoadStubFile()
 {
-    std::string stubFile = vm_->GetJSOptions().GetStubFile();
+    std::string stubFile = "";
+    if (vm_->GetJSOptions().WasStubFileSet()) {
+        stubFile = vm_->GetJSOptions().GetStubFile();
+    }
     aotFileManager_->LoadStubFile(stubFile);
 }
 
