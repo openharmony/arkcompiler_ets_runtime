@@ -209,6 +209,15 @@ public:
     template <typename Visitor>
     void IterateAllMarkedBits(Visitor visitor) const;
     void ClearMarkGCBitset();
+    // local to share remembered set
+    bool HasLocalToShareRememberedSet() const;
+    void InsertLocalToShareRset(uintptr_t addr);
+    void AtomicInsertLocalToShareRset(uintptr_t addr);
+    void AtomicClearLocalToShareRSetInRange(uintptr_t start, uintptr_t end);
+    template <typename Visitor>
+    void AtomicIterateAllLocalToShareBits(Visitor visitor);
+    void ClearLocalToShareRSet();
+    void DeleteLocalToShareRSet();
     // Cross region remembered set
     void InsertCrossRegionRSet(uintptr_t addr);
     void AtomicInsertCrossRegionRSet(uintptr_t addr);
@@ -606,6 +615,7 @@ private:
     RememberedSet *CreateRememberedSet();
     RememberedSet *GetOrCreateCrossRegionRememberedSet();
     RememberedSet *GetOrCreateOldToNewRememberedSet();
+    RememberedSet *GetOrCreateLocalToShareRememberedSet();
 
     PackedData packedData_;
     NativeAreaAllocator *nativeAreaAllocator_;
@@ -620,6 +630,7 @@ private:
 
     RememberedSet *crossRegionSet_ {nullptr};
     RememberedSet *sweepingRSet_ {nullptr};
+    RememberedSet *localToShareSet_ {nullptr};
     Span<FreeObjectSet *> freeObjectSets_;
     Mutex *lock_ {nullptr};
     uint64_t wasted_;

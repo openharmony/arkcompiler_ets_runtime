@@ -32,7 +32,7 @@ static constexpr uint32_t INVALID_THRESHOLD = 0x40000;
 class VerifyObjectVisitor {
 public:
     VerifyObjectVisitor(const Heap *heap, size_t *failCount)
-        : heap_(heap), failCount_(failCount), objXRay_(heap->GetEcmaVM())
+        : heap_(heap), failCount_(failCount)
     {
     }
     ~VerifyObjectVisitor() = default;
@@ -55,12 +55,11 @@ private:
 
     const Heap* const heap_ {nullptr};
     size_t* const failCount_ {nullptr};
-    ObjectXRay objXRay_;
 };
 
 class Verification {
 public:
-    explicit Verification(const Heap *heap) : heap_(heap), objXRay_(heap->GetEcmaVM()) {}
+    explicit Verification(const Heap *heap) : heap_(heap) {}
     ~Verification() = default;
 
     size_t VerifyAll() const
@@ -80,7 +79,6 @@ private:
     NO_MOVE_SEMANTIC(Verification);
 
     const Heap *heap_ {nullptr};
-    ObjectXRay objXRay_;
 };
 }  // namespace panda::ecmascript
 

@@ -19,13 +19,14 @@
 #include "ecmascript/mem/visitor.h"
 
 namespace panda::ecmascript {
-Marker::Marker(Heap *heap) : heap_(heap), objXRay_(heap->GetEcmaVM()), workManager_(heap->GetWorkManager()) {}
+Marker::Marker(Heap *heap) : heap_(heap), workManager_(heap->GetWorkManager()) {}
 
 void Marker::MarkRoots(uint32_t threadId)
 {
     TRACE_GC(GCStats::Scope::ScopeId::MarkRoots, heap_->GetEcmaVM()->GetEcmaGCStats());
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "GC::MarkRoots");
-    objXRay_.VisitVMRoots(
+    ObjectXRay::VisitVMRoots(
+        heap_->GetEcmaVM(),
         std::bind(&Marker::HandleRoots, this, threadId, std::placeholders::_1, std::placeholders::_2),
         std::bind(&Marker::HandleRangeRoots, this, threadId, std::placeholders::_1, std::placeholders::_2,
                   std::placeholders::_3),
@@ -92,7 +93,7 @@ void NonMovableMarker::ProcessMarkStack(uint32_t threadId)
 
         JSHClass *jsHclass = obj->SynchronizedGetClass();
         MarkObject(threadId, jsHclass);
-        objXRay_.VisitObjectBody<VisitType::OLD_GC_VISIT>(obj, jsHclass, visitor);
+        ObjectXRay::VisitObjectBody<VisitType::OLD_GC_VISIT>(obj, jsHclass, visitor);
     }
 }
 
@@ -134,7 +135,7 @@ void NonMovableMarker::ProcessIncrementalMarkStack(uint32_t threadId, uint32_t m
 
         JSHClass *jsHclass = obj->GetClass();
         MarkObject(threadId, jsHclass);
-        objXRay_.VisitObjectBody<VisitType::OLD_GC_VISIT>(obj, jsHclass, visitor);
+        ObjectXRay::VisitObjectBody<VisitType::OLD_GC_VISIT>(obj, jsHclass, visitor);
         if (heap_->GetIncrementalMarker()->IsTriggeredIncrementalMark() && visitAddrNum >= markStepSize) {
             costTime = heap_->GetIncrementalMarker()->GetCurrentTimeInMs() - startTime;
             heap_->GetIncrementalMarker()->UpdateMarkingSpeed(visitAddrNum, costTime);
@@ -171,7 +172,7 @@ void SemiGCMarker::ProcessMarkStack(uint32_t threadId)
         }
 
         auto jsHclass = obj->GetClass();
-        objXRay_.VisitObjectBody<VisitType::SEMI_GC_VISIT>(obj, jsHclass, visitor);
+        ObjectXRay::VisitObjectBody<VisitType::SEMI_GC_VISIT>(obj, jsHclass, visitor);
     }
 }
 
@@ -200,7 +201,7 @@ void CompressGCMarker::ProcessMarkStack(uint32_t threadId)
         auto jsHClass = obj->GetClass();
         ObjectSlot objectSlot(ToUintPtr(obj));
         MarkObject(threadId, jsHClass, objectSlot);
-        objXRay_.VisitObjectBody<VisitType::OLD_GC_VISIT>(obj, jsHClass, visitor);
+        ObjectXRay::VisitObjectBody<VisitType::OLD_GC_VISIT>(obj, jsHClass, visitor);
     }
 }
 

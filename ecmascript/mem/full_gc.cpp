@@ -75,6 +75,7 @@ void FullGC::Initialize()
     auto callback = [](Region *current) {
         current->ResetAliveObject();
         current->ClearOldToNewRSet();
+        current->ClearLocalToShareRSet();
     };
     heap_->EnumerateNonMovableRegions(callback);
     heap_->GetAppSpawnSpace()->EnumerateRegions([](Region *current) {

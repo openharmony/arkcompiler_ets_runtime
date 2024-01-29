@@ -25,7 +25,7 @@ class Ecmavm;
 class JSThread;
 class BaseSerializer {
 public:
-    explicit BaseSerializer(JSThread *thread) : thread_(thread), vm_(thread->GetEcmaVM()), objXRay_(vm_)
+    explicit BaseSerializer(JSThread *thread) : thread_(thread), vm_(thread->GetEcmaVM())
     {
         data_.reset(new SerializeData(thread));
     }
@@ -66,7 +66,6 @@ protected:
 protected:
     JSThread *thread_;
     EcmaVM *vm_;
-    ObjectXRay objXRay_;
     std::unique_ptr<SerializeData> data_;
     CUnorderedMap<TaggedObject *, uint32_t> referenceMap_;
     size_t objectIndex_ {0};

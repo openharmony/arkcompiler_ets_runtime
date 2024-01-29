@@ -1489,7 +1489,7 @@ void SnapshotProcessor::SerializeObject(TaggedObject *objectHeader, CQueue<Tagge
         }
     };
 
-    objXRay_.VisitObjectBody<VisitType::SNAPSHOT_VISIT>(objectHeader, objectHeader->GetClass(), visitor);
+    ObjectXRay::VisitObjectBody<VisitType::SNAPSHOT_VISIT>(objectHeader, objectHeader->GetClass(), visitor);
 }
 
 bool SnapshotProcessor::VisitObjectBodyWithRep(TaggedObject *root, ObjectSlot slot, uintptr_t obj, int index,
@@ -1666,6 +1666,9 @@ void SnapshotProcessor::DeserializeTaggedField(uint64_t *value, TaggedObject *ro
             ASSERT((ToUintPtr(value) % static_cast<uint8_t>(MemAlignment::MEM_ALIGN_OBJECT)) == 0);
             rootRegion->InsertOldToNewRSet((uintptr_t)value);
         }
+        if (!rootRegion->InSharedSpace() && valueRegion->InSharedSpace()) {
+            rootRegion->AtomicInsertLocalToShareRset((uintptr_t)value);
+        }
         *value = taggedObjectAddr;
         return;
     }
@@ -1704,7 +1707,7 @@ void SnapshotProcessor::DeserializeField(TaggedObject *objectHeader)
         }
     };
 
-    objXRay_.VisitObjectBody<VisitType::SNAPSHOT_VISIT>(objectHeader, objectHeader->GetClass(), visitor);
+    ObjectXRay::VisitObjectBody<VisitType::SNAPSHOT_VISIT>(objectHeader, objectHeader->GetClass(), visitor);
 }
 
 EncodeBit SnapshotProcessor::NativePointerToEncodeBit(void *nativePointer)

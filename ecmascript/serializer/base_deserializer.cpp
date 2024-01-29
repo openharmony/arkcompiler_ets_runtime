@@ -412,7 +412,9 @@ void BaseDeserializer::UpdateBarrier(uintptr_t addr, ObjectSlot slot)
         ASSERT(slot.SlotAddress() % static_cast<uint8_t>(MemAlignment::MEM_ALIGN_OBJECT) == 0);
         rootRegion->InsertOldToNewRSet(slot.SlotAddress());
     }
-
+    if (!rootRegion->InSharedSpace() && valueRegion->InSharedSpace()) {
+        rootRegion->AtomicInsertLocalToShareRset(slot.SlotAddress());
+    }
     if (thread_->IsConcurrentMarkingOrFinished()) {
         Barriers::Update(thread_, slot.SlotAddress(), rootRegion, reinterpret_cast<TaggedObject *>(addr), valueRegion,
                          true);

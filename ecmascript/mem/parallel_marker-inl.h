@@ -259,6 +259,39 @@ inline bool MovableMarker::UpdateForwardAddressIfFailed(TaggedObject *object, ui
     return Region::ObjectAddressToRange(dst)->InYoungSpace();
 }
 
+void MovableMarker::UpdateLocalToShareRSet(TaggedObject *object, JSHClass *cls)
+{
+    Region *region = Region::ObjectAddressToRange(object);
+    ASSERT(!region->InSharedSpace());
+    auto callbackWithCSet = [this, region](TaggedObject *root, ObjectSlot start, ObjectSlot end, VisitObjectArea area) {
+        if (area == VisitObjectArea::IN_OBJECT) {
+            if (VisitBodyInObj(root, start, end,
+                               [&](ObjectSlot slot, [[maybe_unused]]TaggedObject *root) {
+                                   SetLocalToShareRSet(slot, region);
+                               })) {
+                return;
+            };
+        }
+        for (ObjectSlot slot = start; slot < end; slot++) {
+            SetLocalToShareRSet(slot, region);
+        }
+    };
+    ObjectXRay::VisitObjectBody<VisitType::OLD_GC_VISIT>(object, cls, callbackWithCSet);
+}
+
+void MovableMarker::SetLocalToShareRSet(ObjectSlot slot, Region *region)
+{
+    ASSERT(!region->InSharedSpace());
+    JSTaggedType value = slot.GetTaggedType();
+    if (!JSTaggedValue(value).IsHeapObject()) {
+        return;
+    }
+    Region *valueRegion = Region::ObjectAddressToRange(value);
+    if (valueRegion->InSharedSpace()) {
+        region->InsertLocalToShareRset(slot.SlotAddress());
+    }
+}
+
 inline void SemiGCMarker::MarkValue(uint32_t threadId, TaggedObject *root, ObjectSlot slot)
 {
     JSTaggedValue value(slot.GetTaggedType());
@@ -393,6 +426,10 @@ inline SlotStatus CompressGCMarker::EvacuateObject(uint32_t threadId, TaggedObje
                                                MarkWord::FromForwardingAddress(forwardAddress));
     if (result) {
         UpdateForwardAddressIfSuccess(threadId, object, klass, forwardAddress, size, markWord, slot);
+        Region *region = Region::ObjectAddressToRange(object);
+        if (region->HasLocalToShareRememberedSet()) {
+            UpdateLocalToShareRSet(reinterpret_cast<TaggedObject *>(forwardAddress), klass);
+        }
         if (isAppSpawn_ && klass->IsString()) {
             // calculate and set hashcode for read-only ecmastring in advance
             EcmaStringAccessor(reinterpret_cast<TaggedObject *>(forwardAddress)).GetHashcode();

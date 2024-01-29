@@ -414,6 +414,7 @@ void Heap::ClearSlotsRange(Region *current, uintptr_t freeStart, uintptr_t freeE
 {
     current->AtomicClearSweepingRSetInRange(freeStart, freeEnd);
     current->ClearOldToNewRSetInRange(freeStart, freeEnd);
+    current->AtomicClearLocalToShareRSetInRange(freeStart, freeEnd);
     current->AtomicClearCrossRegionRSetInRange(freeStart, freeEnd);
 }
 

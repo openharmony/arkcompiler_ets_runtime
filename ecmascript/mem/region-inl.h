@@ -59,6 +59,17 @@ inline RememberedSet *Region::GetOrCreateOldToNewRememberedSet()
     return packedData_.oldToNewSet_;
 }
 
+inline RememberedSet *Region::GetOrCreateLocalToShareRememberedSet()
+{
+    if (UNLIKELY(localToShareSet_ == nullptr)) {
+        LockHolder lock(*lock_);
+        if (localToShareSet_ == nullptr) {
+            localToShareSet_ = CreateRememberedSet();
+        }
+    }
+    return localToShareSet_;
+}
+
 inline void Region::MergeRSetForConcurrentSweeping()
 {
     if (sweepingRSet_ == nullptr) {
@@ -125,6 +136,53 @@ inline void Region::AtomicInsertCrossRegionRSet(uintptr_t addr)
 {
     auto set = GetOrCreateCrossRegionRememberedSet();
     set->AtomicInsert(ToUintPtr(this), addr);
+}
+
+inline bool Region::HasLocalToShareRememberedSet() const
+{
+    return localToShareSet_ != nullptr;
+}
+
+inline void Region::InsertLocalToShareRset(uintptr_t addr)
+{
+    auto set = GetOrCreateLocalToShareRememberedSet();
+    set->Insert(ToUintPtr(this), addr);
+}
+
+inline void Region::AtomicInsertLocalToShareRset(uintptr_t addr)
+{
+    auto set = GetOrCreateLocalToShareRememberedSet();
+    set->AtomicInsert(ToUintPtr(this), addr);
+}
+
+inline void Region::AtomicClearLocalToShareRSetInRange(uintptr_t start, uintptr_t end)
+{
+    if (localToShareSet_ != nullptr) {
+        localToShareSet_->AtomicClearRange(ToUintPtr(this), start, end);
+    }
+}
+
+inline void Region::ClearLocalToShareRSet()
+{
+    if (localToShareSet_ != nullptr) {
+        localToShareSet_->ClearAll();
+    }
+}
+
+inline void Region::DeleteLocalToShareRSet()
+{
+    if (localToShareSet_ != nullptr) {
+        nativeAreaAllocator_->Free(localToShareSet_, localToShareSet_->Size());
+        localToShareSet_ = nullptr;
+    }
+}
+
+template <typename Visitor>
+inline void Region::AtomicIterateAllLocalToShareBits(Visitor visitor)
+{
+    if (localToShareSet_ != nullptr) {
+        localToShareSet_->AtomicIterateAllMarkedBits(ToUintPtr(this), visitor);
+    }
 }
 
 template <typename Visitor>

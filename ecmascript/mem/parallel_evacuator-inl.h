@@ -138,6 +138,36 @@ void ParallelEvacuator::UpdateWeakObjectSlot(TaggedObject *value, ObjectSlot &sl
     }
 }
 
+void ParallelEvacuator::UpdateLocalToShareRSet(TaggedObject *object, JSHClass *cls)
+{
+    Region *region = Region::ObjectAddressToRange(object);
+    ASSERT(!region->InSharedSpace());
+    auto callbackWithCSet = [this, region](TaggedObject *root, ObjectSlot start, ObjectSlot end, VisitObjectArea area) {
+        if (area == VisitObjectArea::IN_OBJECT) {
+            if (VisitBodyInObj(root, start, end, [&](ObjectSlot slot) { SetLocalToShareRSet(slot, region); })) {
+                return;
+            };
+        }
+        for (ObjectSlot slot = start; slot < end; slot++) {
+            SetLocalToShareRSet(slot, region);
+        }
+    };
+    ObjectXRay::VisitObjectBody<VisitType::OLD_GC_VISIT>(object, cls, callbackWithCSet);
+}
+
+void ParallelEvacuator::SetLocalToShareRSet(ObjectSlot slot, Region *region)
+{
+    ASSERT(!region->InSharedSpace());
+    JSTaggedType value = slot.GetTaggedType();
+    if (!JSTaggedValue(value).IsHeapObject()) {
+        return;
+    }
+    Region *valueRegion = Region::ObjectAddressToRange(value);
+    if (valueRegion->InSharedSpace()) {
+        region->InsertLocalToShareRset(slot.SlotAddress());
+    }
+}
+
 void ParallelEvacuator::SetObjectFieldRSet(TaggedObject *object, JSHClass *cls)
 {
     Region *region = Region::ObjectAddressToRange(object);
@@ -151,7 +181,7 @@ void ParallelEvacuator::SetObjectFieldRSet(TaggedObject *object, JSHClass *cls)
             SetObjectRSet(slot, region);
         }
     };
-    objXRay_.VisitObjectBody<VisitType::OLD_GC_VISIT>(object, cls, callbackWithCSet);
+    ObjectXRay::VisitObjectBody<VisitType::OLD_GC_VISIT>(object, cls, callbackWithCSet);
 }
 
 void ParallelEvacuator::SetObjectRSet(ObjectSlot slot, Region *region)

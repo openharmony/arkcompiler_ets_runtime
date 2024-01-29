@@ -548,6 +548,7 @@ void OldSpace::ReclaimCSet()
     EnumerateCollectRegionSet([this, &cachedSize](Region *region) {
         region->DeleteCrossRegionRSet();
         region->DeleteOldToNewRSet();
+        region->DeleteLocalToShareRSet();
         region->DeleteSweepingRSet();
         region->DestroyFreeObjectSets();
         heapRegionAllocator_->FreeRegion(region, cachedSize);

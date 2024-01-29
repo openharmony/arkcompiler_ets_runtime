@@ -44,7 +44,7 @@ using ObjectEncode = std::pair<uint64_t, ecmascript::EncodeBit>;
 class SnapshotProcessor final {
 public:
     explicit SnapshotProcessor(EcmaVM *vm)
-        : vm_(vm), sHeap_(SharedHeap::GetInstance()), objXRay_(vm) {}
+        : vm_(vm), sHeap_(SharedHeap::GetInstance()) {}
     ~SnapshotProcessor();
 
     void Initialize();
@@ -139,7 +139,6 @@ private:
     LocalSpace *machineCodeLocalSpace_ {nullptr};
     SnapshotSpace *snapshotLocalSpace_ {nullptr};
     HugeObjectSpace *hugeObjectLocalSpace_ {nullptr};
-    ObjectXRay objXRay_;
     bool programSerialize_ {false};
     bool builtinsSerialize_ {false};
     bool builtinsDeserialize_ {false};

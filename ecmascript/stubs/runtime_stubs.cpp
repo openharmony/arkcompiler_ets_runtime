@@ -2844,6 +2844,14 @@ void RuntimeStubs::InsertOldToNewRSet([[maybe_unused]] uintptr_t argGlue,
     return region->InsertOldToNewRSet(slotAddr);
 }
 
+void RuntimeStubs::InsertLocalToShareRSet([[maybe_unused]] uintptr_t argGlue,
+    uintptr_t object, size_t offset)
+{
+    Region *region = Region::ObjectAddressToRange(object);
+    uintptr_t slotAddr = object + offset;
+    region->AtomicInsertLocalToShareRset(slotAddr);
+}
+
 void RuntimeStubs::MarkingBarrier([[maybe_unused]] uintptr_t argGlue,
     uintptr_t object, size_t offset, TaggedObject *value)
 {
@@ -2878,6 +2886,9 @@ void RuntimeStubs::StoreBarrier([[maybe_unused]] uintptr_t argGlue,
         // Should align with '8' in 64 and 32 bit platform
         ASSERT((slotAddr % static_cast<uint8_t>(MemAlignment::MEM_ALIGN_OBJECT)) == 0);
         objectRegion->InsertOldToNewRSet(slotAddr);
+    }
+    if (!objectRegion->InSharedSpace() && valueRegion->InSharedSpace()) {
+        objectRegion->AtomicInsertLocalToShareRset(slotAddr);
     }
     if (!thread->IsConcurrentMarkingOrFinished()) {
         return;

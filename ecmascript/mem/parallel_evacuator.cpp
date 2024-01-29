@@ -174,6 +174,9 @@ void ParallelEvacuator::EvacuateRegion(TlabAllocator *allocator, Region *region,
         if (actualPromoted) {
             SetObjectFieldRSet(reinterpret_cast<TaggedObject *>(address), klass);
         }
+        if(region->HasLocalToShareRememberedSet()) {
+            UpdateLocalToShareRSet(reinterpret_cast<TaggedObject *>(address), klass);
+        }
     });
     promotedSize_.fetch_add(promotedSize);
 }
@@ -181,7 +184,7 @@ void ParallelEvacuator::EvacuateRegion(TlabAllocator *allocator, Region *region,
 void ParallelEvacuator::VerifyHeapObject(TaggedObject *object)
 {
     auto klass = object->GetClass();
-    objXRay_.VisitObjectBody<VisitType::OLD_GC_VISIT>(object, klass,
+    ObjectXRay::VisitObjectBody<VisitType::OLD_GC_VISIT>(object, klass,
         [&](TaggedObject *root, ObjectSlot start, ObjectSlot end, VisitObjectArea area) {
             if (area == VisitObjectArea::IN_OBJECT) {
                 if (VisitBodyInObj(root, start, end, [&](ObjectSlot slot) { VerifyValue(object, slot); })) {
@@ -282,7 +285,7 @@ void ParallelEvacuator::UpdateRoot()
         }
     };
 
-    objXRay_.VisitVMRoots(gcUpdateYoung, gcUpdateRangeYoung, gcUpdateDerived);
+    ObjectXRay::VisitVMRoots(heap_->GetEcmaVM(), gcUpdateYoung, gcUpdateRangeYoung, gcUpdateDerived);
 }
 
 void ParallelEvacuator::UpdateRecordWeakReference()
@@ -432,7 +435,7 @@ void ParallelEvacuator::UpdateAndSweepNewRegionReference(Region *region)
 
 void ParallelEvacuator::UpdateNewObjectField(TaggedObject *object, JSHClass *cls)
 {
-    objXRay_.VisitObjectBody<VisitType::OLD_GC_VISIT>(object, cls,
+    ObjectXRay::VisitObjectBody<VisitType::OLD_GC_VISIT>(object, cls,
         [this](TaggedObject *root, ObjectSlot start, ObjectSlot end, VisitObjectArea area) {
             if (area == VisitObjectArea::IN_OBJECT) {
                 if (VisitBodyInObj(root, start, end, [&](ObjectSlot slot) { UpdateObjectSlot(slot); })) {
