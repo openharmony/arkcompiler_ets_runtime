@@ -202,6 +202,9 @@ public:
     {
         ASSERT_PRINT(!GetNextTable().IsUndefined(), "function only execute after rehash");
         int currentEntry = entry - 1;
+        if (NumberOfDeletedElements() == -1) {
+            return entry;
+        }
         while (currentEntry >= 0) {
             if (GetKey(currentEntry).IsHole()) {
                 return GetDeletedNum(currentEntry);
