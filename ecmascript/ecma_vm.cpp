@@ -79,6 +79,7 @@
 #include "ecmascript/patch/quick_fix_manager.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
 #include "ecmascript/regexp/regexp_parser_cache.h"
+#include "ecmascript/runtime.h"
 #include "ecmascript/runtime_call_id.h"
 #include "ecmascript/snapshot/mem/snapshot.h"
 #include "ecmascript/snapshot/mem/snapshot_env.h"
@@ -97,22 +98,22 @@ namespace panda::ecmascript {
 using RandomGenerator = base::RandomGenerator;
 using PGOProfilerManager = pgo::PGOProfilerManager;
 AOTFileManager *JsStackInfo::loader = nullptr;
-/* static */
-EcmaVM *EcmaVM::Create(const JSRuntimeOptions &options, EcmaParamConfiguration &config)
+
+EcmaVM *EcmaVM::Create(const JSRuntimeOptions &options)
 {
+    Runtime::CreateIfFirstVm(options);
+    auto config = EcmaParamConfiguration(options.IsWorker(),
+                                         MemMapAllocator::GetInstance()->GetCapacity());
+    MemMapAllocator::GetInstance()->IncreaseAndCheckReserved(config.GetMaxHeapSize());
     JSRuntimeOptions newOptions = options;
     // only define SUPPORT_ENABLE_ASM_INTERP can enable asm-interpreter
 #if !defined(SUPPORT_ENABLE_ASM_INTERP)
     newOptions.SetEnableAsmInterpreter(false);
 #endif
     auto vm = new EcmaVM(newOptions, config);
-    if (UNLIKELY(vm == nullptr)) {
-        LOG_ECMA(ERROR) << "Failed to create jsvm";
-        return nullptr;
-    }
     auto jsThread = JSThread::Create(vm);
     vm->thread_ = jsThread;
-    vm->Initialize();
+    Runtime::GetInstance()->InitializeIfFirstVm(vm);
     if (JsStackInfo::loader == nullptr) {
         JsStackInfo::loader = vm->GetJSThread()->GetCurrentEcmaContext()->GetAOTFileManager();
     }
@@ -127,12 +128,12 @@ EcmaVM *EcmaVM::Create(const JSRuntimeOptions &options, EcmaParamConfiguration &
 // static
 bool EcmaVM::Destroy(EcmaVM *vm)
 {
-    if (vm != nullptr) {
-        delete vm;
-        vm = nullptr;
-        return true;
+    if (UNLIKELY(vm == nullptr)) {
+        return false;
     }
-    return false;
+    delete vm;
+    Runtime::DestroyIfLastVm();
+    return true;
 }
 
 void EcmaVM::PreFork()
@@ -227,9 +228,6 @@ bool EcmaVM::Initialize()
     }
     debuggerManager_ = chunk_.New<tooling::JsDebuggerManager>(this);
     auto context = new EcmaContext(thread_);
-    // todo(lukai) move SharedHeap initialization to globalRuntime.Including allocator and globalconst
-    SharedHeap::GetInstance()->Initialize(GetNativeAreaAllocator(), GetHeapRegionAllocator(),
-        context->GlobalConstants());
     thread_->PushContext(context);
     [[maybe_unused]] EcmaHandleScope scope(thread_);
     context->Initialize();
@@ -812,5 +810,21 @@ bool EcmaVM::IsHmsModule(const CString &moduleStr) const
         return false;
     }
     return true;
+}
+
+// Initialize IcuData Path
+void EcmaVM::InitializeIcuData(const JSRuntimeOptions &options)
+{
+    std::string icuPath = options.GetIcuDataPath();
+    if (icuPath == "default") {
+#if !WIN_OR_MAC_OR_IOS_PLATFORM && !defined(PANDA_TARGET_LINUX)
+        SetHwIcuDirectory();
+#endif
+    } else {
+        std::string absPath;
+        if (ecmascript::RealPath(icuPath, absPath)) {
+            u_setDataDirectory(absPath.c_str());
+        }
+    }
 }
 }  // namespace panda::ecmascript

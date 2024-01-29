@@ -15,30 +15,80 @@
 
 #include "ecmascript/runtime.h"
 
-namespace panda::ecmascript {
+#include "ecmascript/compiler/aot_file/an_file_data_manager.h"
+#include "ecmascript/ecma_vm.h"
+#include "ecmascript/log_wrapper.h"
+#include "ecmascript/mem/mem_map_allocator.h"
+#include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
 
-static Runtime *runtime = nullptr;
+namespace panda::ecmascript {
+using PGOProfilerManager = pgo::PGOProfilerManager;
+
+int32_t Runtime::vmCount_ = 0;
+bool Runtime::firstVmCreated_ = false;
+Mutex *Runtime::vmCreationLock_ = new Mutex();
+Runtime *Runtime::instance_ = nullptr;
 
 Runtime *Runtime::GetInstance()
 {
-    ASSERT(runtime != nullptr);
-    return runtime;
+    ASSERT(instance_ != nullptr);
+    return instance_;
 }
 
-void Runtime::CreateRuntimeIfNotCreated()
+void Runtime::CreateIfFirstVm(const JSRuntimeOptions &options)
 {
-    static Mutex creationLock;
-    LockHolder lock(creationLock);
-    if (runtime == nullptr) {
-        runtime = new Runtime();
+    LockHolder lock(*vmCreationLock_);
+    if (!firstVmCreated_) {
+        Log::Initialize(options);
+        EcmaVM::InitializeIcuData(options);
+        MemMapAllocator::GetInstance()->Initialize(ecmascript::DEFAULT_REGION_SIZE);
+        PGOProfilerManager::GetInstance()->Initialize(options.GetPGOProfilerPath(),
+                                                      options.GetPGOHotnessThreshold());
+        ASSERT(instance_ == nullptr);
+        instance_ = new Runtime();
+        firstVmCreated_ = true;
     }
 }
 
-void Runtime::Destroy()
+void Runtime::InitializeIfFirstVm(EcmaVM *vm)
 {
-    if (runtime != nullptr) {
-        delete runtime;
-        runtime = nullptr;
+    LockHolder lock(*vmCreationLock_);
+    if (++vmCount_ == 1) {
+        PreInitialization(vm);
+        vm->Initialize();
+        PostInitialization();
+    } else {
+        vm->Initialize();
+    }
+}
+
+void Runtime::PreInitialization(const EcmaVM *vm)
+{
+    mainThread_ = vm->GetJSThread();
+    nativeAreaAllocator_ = std::make_unique<NativeAreaAllocator>();
+    heapRegionAllocator_ = std::make_unique<HeapRegionAllocator>();
+    SharedHeap::GetInstance()->Initialize(nativeAreaAllocator_.get(), heapRegionAllocator_.get());
+}
+
+void Runtime::PostInitialization()
+{
+    // Use the main thread's globalconst after it has initialized,
+    // and copy shared parts to other thread's later.
+    globalConstants_ = mainThread_->GlobalConstants();
+    SharedHeap::GetInstance()->SetGlobalEnvConstants(globalConstants_);
+}
+
+void Runtime::DestroyIfLastVm()
+{
+    LockHolder lock(*vmCreationLock_);
+    if (--vmCount_ <= 0) {
+        AnFileDataManager::GetInstance()->SafeDestroyAllData();
+        MemMapAllocator::GetInstance()->Finalize();
+        PGOProfilerManager::GetInstance()->Destroy();
+        ASSERT(instance_ != nullptr);
+        delete instance_;
+        instance_ = nullptr;
+        firstVmCreated_ = false;
     }
 }
 
@@ -101,5 +151,4 @@ void Runtime::ResumeAllThreadsImpl(JSThread *current)
         }
     }
 }
-
 }  // namespace panda::ecmascript

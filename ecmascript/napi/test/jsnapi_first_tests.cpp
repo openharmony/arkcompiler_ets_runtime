@@ -1374,6 +1374,7 @@ HWTEST_F_L0(JSNApiTests, addWorker_DeleteWorker)
     EcmaVM *workerVm = JSNApi::CreateEcmaVM(option);
     JSNApi::AddWorker(vm_, workerVm);
     bool hasDeleted = JSNApi::DeleteWorker(vm_, workerVm);
+    JSNApi::DestroyJSVM(workerVm);
     EXPECT_TRUE(hasDeleted);
 
     hasDeleted = JSNApi::DeleteWorker(vm_, nullptr);

@@ -601,6 +601,7 @@ HWTEST_F_L0(JSNApiTests, SynchronizVMInfo)
     EcmaVM *hostVM = JSNApi::CreateEcmaVM(option);
     LocalScope scope2(hostVM);
     JSNApi::SynchronizVMInfo(vm_, hostVM);
+    JSNApi::DestroyJSVM(hostVM);
 }
 
 /*

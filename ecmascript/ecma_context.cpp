@@ -94,17 +94,15 @@ bool EcmaContext::Initialize()
     propertiesCache_ = new PropertiesCache();
     regExpParserCache_ = new RegExpParserCache();
 
-    JSHandle<JSHClass> hClassHandle = factory_->InitClassClass();
-
+    thread_->SetGlobalConst(&globalConst_);
+    globalConst_.Init(thread_);
+    JSHandle<JSHClass> hClassHandle = JSHandle<JSHClass>(thread_, globalConst_.GetHClassClass());
     JSHandle<JSHClass> globalEnvClass = factory_->NewEcmaHClass(
         *hClassHandle,
         GlobalEnv::SIZE,
         JSType::GLOBAL_ENV);
-    thread_->SetGlobalConst(&globalConst_);
-    globalConst_.Init(thread_, *hClassHandle);
     auto arrayHClassIndexMaps = Elements::InitializeHClassMap();
     thread_->SetArrayHClassIndexMap(arrayHClassIndexMaps);
-
     JSHandle<GlobalEnv> globalEnv = factory_->NewGlobalEnv(*globalEnvClass);
     globalEnv->Init(thread_);
     globalEnv_ = globalEnv.GetTaggedValue();

@@ -687,11 +687,18 @@ public:
 
     JSHandle<JSHClass> NewSEcmaHClass(uint32_t size, JSType type, uint32_t inlinedProps);
 
-    JSHandle<JSHClass> NewSEcmaHClass(JSHClass *hclass, uint32_t size, JSType type, uint32_t inlinedProps);
+    JSHandle<JSHClass> NewSEcmaHClass(JSHClass *hclass, uint32_t size, JSType type,
+        uint32_t inlinedProps = JSHClass::DEFAULT_CAPACITY_OF_IN_OBJECTS);
 
     JSHandle<JSHClass> NewSEcmaHClass(uint32_t size, uint32_t inlinedProps, JSType type,
         const JSHandle<JSTaggedValue> &prototype, const JSHandle<JSTaggedValue> &layout);
 
+    JSHandle<JSHClass> NewSEcmaHClassClass(JSHClass *hclass, uint32_t size, JSType type);
+
+    JSHandle<JSHClass> InitSClassClass();
+
+    JSHandle<JSHClass> NewSEcmaReadOnlyHClass(JSHClass *hclass, uint32_t size, JSType type,
+                                             uint32_t inlinedProps = JSHClass::DEFAULT_CAPACITY_OF_IN_OBJECTS);
     JSHandle<TaggedArray> SharedEmptyArray() const;
 
     JSHandle<Method> NewSMethodForNativeFunction(const void *func, FunctionKind kind = FunctionKind::NORMAL_FUNCTION,
