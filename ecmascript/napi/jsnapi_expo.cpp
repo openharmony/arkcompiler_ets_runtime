@@ -2820,7 +2820,7 @@ EcmaVM *JSNApi::CreateEcmaVM(const JSRuntimeOptions &options)
         LockHolder lock(*mutex);
         vmCount_++;
         if (!initialize_) {
-            ecmascript::Runtime::Create();
+            ecmascript::Runtime::CreateRuntimeIfNotCreated();
             ecmascript::Log::Initialize(options);
             InitializeIcuData(options);
             InitializeMemMapAllocator();
@@ -2849,7 +2849,7 @@ void JSNApi::DestroyJSVM(EcmaVM *ecmaVm)
         DestroyAnDataManager();
         DestroyMemMapAllocator();
         DestroyPGOProfiler();
-        ecmascript::Runtime::Destroy();
+        ecmascript::Runtime::GetInstance()->Destroy();
         initialize_ = false;
     }
 }

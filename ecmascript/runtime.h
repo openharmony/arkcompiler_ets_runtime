@@ -16,17 +16,51 @@
 #ifndef ECMASCRIPT_RUNTIME_H
 #define ECMASCRIPT_RUNTIME_H
 
+#include "ecmascript/js_thread.h"
+#include "ecmascript/platform/mutex.h"
+#include "ecmascript/mutator_lock.h"
+#include "libpandabase/macros.h"
+#include <list>
+
 namespace panda::ecmascript {
 class Runtime {
 public:
     static Runtime *GetInstance();
-    static void Create();
-    static void Destroy();
+    static void CreateRuntimeIfNotCreated();
+    void Destroy();
+    ~Runtime() = default;
 
-    void Initialize();
+    void RegisterThread(JSThread* newThread);
+    void UnregisterThread(JSThread* thread);
+
+    void SuspendAll(JSThread *current);
+    void ResumeAll(JSThread *current);
+
+    MutatorLock *GetMutatorLock()
+    {
+        return &mutatorLock_;
+    }
+
+    const MutatorLock *GetMutatorLock() const
+    {
+        return &mutatorLock_;
+    }
+
 private:
     Runtime() = default;
-    ~Runtime() = default;
+    void SuspendAllThreadsImpl(JSThread *current);
+    void ResumeAllThreadsImpl(JSThread *current);
+
+    Mutex threadsLock_;
+    std::list<JSThread*> threads_;
+    uint32_t suspendNewCount_ {0};
+
+    MutatorLock mutatorLock_;
+
+    NO_COPY_SEMANTIC(Runtime);
+    NO_MOVE_SEMANTIC(Runtime);
+
+    friend class JSThread;
 };
 }  // namespace panda::ecmascript
 #endif // ECMASCRIPT_RUNTIME_H

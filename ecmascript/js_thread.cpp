@@ -14,6 +14,8 @@
  */
 
 #include "ecmascript/js_thread.h"
+
+#include "ecmascript/runtime.h"
 #include "ecmascript/builtin_entries.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/runtime_call_id.h"
@@ -45,10 +47,18 @@ namespace panda::ecmascript {
 using CommonStubCSigns = panda::ecmascript::kungfu::CommonStubCSigns;
 using BytecodeStubCSigns = panda::ecmascript::kungfu::BytecodeStubCSigns;
 
+thread_local JSThread *currentThread = nullptr;
+
+JSThread *JSThread::GetCurrent()
+{
+    return currentThread;
+}
+
 // static
 JSThread *JSThread::Create(EcmaVM *vm)
 {
     auto jsThread = new JSThread(vm);
+
     AsmInterParsedOption asmInterOpt = vm->GetJSOptions().GetAsmInterParsedOption();
     if (asmInterOpt.enableAsm) {
         jsThread->EnableAsmInterpreter();
@@ -65,6 +75,11 @@ JSThread *JSThread::Create(EcmaVM *vm)
 
     jsThread->glueData_.stackLimit_ = GetAsmStackLimit();
     jsThread->glueData_.stackStart_ = GetCurrentStackPosition();
+
+    currentThread = jsThread;
+    Runtime::CreateRuntimeIfNotCreated();
+    Runtime::GetInstance()->RegisterThread(jsThread);
+    jsThread->UpdateState(ThreadState::RUNNING);
     return jsThread;
 }
 
@@ -124,6 +139,8 @@ JSThread::~JSThread()
         delete vmThreadControl_;
         vmThreadControl_ = nullptr;
     }
+    UpdateState(ThreadState::TERMINATED);
+    Runtime::GetInstance()->UnregisterThread(this);
 }
 
 void JSThread::SetException(JSTaggedValue exception)
@@ -549,6 +566,10 @@ bool JSThread::CheckSafepoint()
         SetInstallMachineCodeWithoutLock(false);
     }
 
+    if (IsSuspended()) {
+        WaitSuspension();
+    }
+
     // vmThreadControl_ 's thread_ is current JSThread's this.
     if (VMNeedSuspensionWithoutLock()) {
         interruptMutex_.Unlock();
@@ -844,5 +865,103 @@ bool JSThread::IsPropertyCacheCleared() const
         }
     }
     return true;
+}
+
+void JSThread::UpdateState(ThreadState newState)
+{
+    ThreadState oldState = GetState();
+    if (oldState == ThreadState::RUNNING && newState != ThreadState::RUNNING) {
+        TransferFromRunningToSuspended(newState);
+    } else if (oldState != ThreadState::RUNNING && newState == ThreadState::RUNNING) {
+        TransferToRunning();
+    } else {
+        // Here can be some extra checks...
+    }
+}
+
+void JSThread::SuspendThread(bool internalSuspend)
+{
+    LockHolder lock(suspendLock_);
+    if (!internalSuspend) {
+        // do smth here if we want to combine internal and external suspension
+    }
+    uint32_t old_count = suspendCount_++;
+    if (old_count == 0) {
+        SetFlag(ThreadFlag::SUSPEND_REQUEST);
+        SetCheckSafePointStatus();
+    }
+}
+
+void JSThread::ResumeThread(bool internalSuspend)
+{
+    LockHolder lock(suspendLock_);
+    if (!internalSuspend) {
+        // do smth here if we want to combine internal and external suspension
+    }
+    if (suspendCount_ > 0) {
+        suspendCount_--;
+        if (suspendCount_ == 0) {
+            ClearFlag(ThreadFlag::SUSPEND_REQUEST);
+            ResetCheckSafePointStatus();
+        }
+    }
+    suspendCondVar_.Signal();
+}
+
+void JSThread::WaitSuspension()
+{
+    constexpr int TIMEOUT = 100;
+    ThreadState oldState = GetState();
+    UpdateState(ThreadState::IS_SUSPENDED);
+    {
+        LockHolder lock(suspendLock_);
+        while (suspendCount_ > 0) {
+            suspendCondVar_.TimedWait(&suspendLock_, TIMEOUT);
+            // we need to do smth if Runtime is terminating at this point
+        }
+        ASSERT(!IsSuspended());
+    }
+    UpdateState(oldState);
+}
+
+void JSThread::TransferFromRunningToSuspended(ThreadState newState)
+{
+    StoreState(newState, false);
+    Runtime::GetInstance()->GetMutatorLock()->Unlock();
+}
+
+void JSThread::TransferToRunning()
+{
+    StoreState(ThreadState::RUNNING, true);
+}
+
+void JSThread::StoreState(ThreadState newState, bool lockMutatorLock)
+{
+    while (true) {
+        ThreadStateAndFlags oldStateAndFlags;
+        oldStateAndFlags.asInt = stateAndFlags_.asInt;
+        if (lockMutatorLock && oldStateAndFlags.asStruct.flags != ThreadFlag::NO_FLAGS) {
+            // Someone requested smth from this thread. Go to safepoint
+            CheckSafepoint();
+            continue;
+        }
+        ThreadStateAndFlags newStateAndFlags;
+        newStateAndFlags.asStruct.flags = oldStateAndFlags.asStruct.flags;
+        newStateAndFlags.asStruct.state = newState;
+
+        if (lockMutatorLock) {
+            Runtime::GetInstance()->GetMutatorLock()->ReadLock();
+        }
+
+        if (stateAndFlags_.asAtomicInt.compare_exchange_weak(oldStateAndFlags.asNonvolatileInt,
+            newStateAndFlags.asNonvolatileInt, std::memory_order_release)) {
+            break;
+        }
+
+        // CAS failed. Unlock mutator lock
+        if (lockMutatorLock) {
+            Runtime::GetInstance()->GetMutatorLock()->Unlock();
+        }
+    }
 }
 }  // namespace panda::ecmascript
