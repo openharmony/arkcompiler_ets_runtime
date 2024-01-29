@@ -268,7 +268,7 @@ public:
     LLVMIRBuilder(const std::vector<std::vector<GateRef>> *schedule, Circuit *circuit,
                   LLVMModule *module, LLVMValueRef function, const CompilationConfig *cfg,
                   CallSignature::CallConv callConv, bool enableLog, bool isFastCallAot, const std::string &funcName,
-                  bool enableOptInlining = false);
+                  bool enableOptInlining = false, bool enableOptBranchProfiling = true);
     ~LLVMIRBuilder();
     void Build();
 
@@ -462,6 +462,7 @@ private:
     bool isFastCallAot_ {false};
     LLVMMetadataRef dFuncMD_ {nullptr};
     bool enableOptInlining_ {false};
+    bool enableOptBranchProfiling_ {true};
 };
 }  // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_LLVM_IR_BUILDER_H

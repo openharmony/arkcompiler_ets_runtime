@@ -139,6 +139,7 @@ int Main(const int argc, const char **argv)
                 .EnableLexenvSpecialization(cOptions.isEnableLexenvSpecialization_)
                 .EnableInlineNative(cOptions.isEnableNativeInline_)
                 .EnableLoweringBuiltin(cOptions.isEnableLoweringBuiltin_)
+                .EnableOptBranchProfiling(cOptions.isEnableOptBranchProfiling_)
                 .Build();
 
         PassManager passManager(vm,

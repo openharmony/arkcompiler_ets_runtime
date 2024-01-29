@@ -164,7 +164,8 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
     "--compiler-jit-hotness-threshold:     Set hotness threshold for jit. Default: '2'\n"
     "--compiler-force-jit-compile-main:    Enable jit compile main function: Default: 'false'\n"
     "--compiler-trace-jit:                 Enable trace jit: Default: 'false'\n\n"
-    "--compiler-typed-op-profiler:         Enable Typed Opcode Statistics for aot runtime. Default: 'false'\n";
+    "--compiler-typed-op-profiler:         Enable Typed Opcode Statistics for aot runtime. Default: 'false'\n"
+    "--compiler-opt-branch-profiling:      Enable branch profiling for aot compiler. Default: 'true'\n";
 
 bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
 {
@@ -270,6 +271,7 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"compiler-jit-hotness-threshold", required_argument, nullptr, OPTION_COMPILER_JIT_HOTNESS_THRESHOLD},
         {"compiler-force-jit-compile-main", required_argument, nullptr, OPTION_COMPILER_FORCE_JIT_COMPILE_MAIN},
         {"compiler-typed-op-profiler", required_argument, nullptr, OPTION_COMPILER_TYPED_OP_PROFILER},
+        {"compiler-opt-branch-profiling", required_argument, nullptr, OPTION_COMPILER_OPT_BRANCH_PROFILING},
         {nullptr, 0, nullptr, 0},
     };
 
@@ -950,6 +952,14 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                 ret = ParseBoolParam(&argBool);
                 if (ret) {
                     SetTypedOpProfiler(argBool);
+                } else {
+                    return false;
+                }
+                break;
+            case OPTION_COMPILER_OPT_BRANCH_PROFILING:
+                ret = ParseBoolParam(&argBool);
+                if (ret) {
+                    SetEnableBranchProfiling(argBool);
                 } else {
                     return false;
                 }

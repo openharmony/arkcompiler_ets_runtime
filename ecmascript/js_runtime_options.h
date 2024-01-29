@@ -161,6 +161,7 @@ enum CommandValues {
     OPTION_COMPILER_TRACE_JIT,
     OPTION_ENABLE_ELEMENTSKIND,
     OPTION_COMPILER_TYPED_OP_PROFILER,
+    OPTION_COMPILER_OPT_BRANCH_PROFILING,
 };
 
 class PUBLIC_API JSRuntimeOptions {
@@ -1434,6 +1435,16 @@ public:
         return enableTypedOpProfiler_;
     }
 
+    bool IsEnableBranchProfiling() const
+    {
+        return enableBranchProfiling_;
+    }
+
+    void SetEnableBranchProfiling(bool value)
+    {
+        enableBranchProfiling_ = value;
+    }
+
 private:
     static bool StartsWith(const std::string &haystack, const std::string &needle)
     {
@@ -1552,6 +1563,7 @@ private:
     bool enableLoweringBuiltin_ {true};
     bool enableLiteCG_ {false};
     bool enableTypedOpProfiler_ {false};
+    bool enableBranchProfiling_ {true};
 };
 }  // namespace panda::ecmascript
 
