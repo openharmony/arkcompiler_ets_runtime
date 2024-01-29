@@ -1457,10 +1457,10 @@ void LiteCGIRBuilder::VisitChangeUInt32ToDouble(GateRef gate, GateRef e1)
 {
     Expr e1Value = GetExprFromGate(e1);
     auto e1Type = ConvertLiteCGTypeFromGate(e1);
-    if (e1Type == lmirBuilder_->i32Type) {
+    if (e1Type != lmirBuilder_->u32Type) {
         e1Value = lmirBuilder_->Cvt(e1Type, lmirBuilder_->u32Type, e1Value);
     }
-    Expr result = lmirBuilder_->Cvt(e1Type, ConvertLiteCGTypeFromGate(gate), e1Value);
+    Expr result = lmirBuilder_->Cvt(lmirBuilder_->u32Type, ConvertLiteCGTypeFromGate(gate), e1Value);
     SaveGate2Expr(gate, result);
 }
 
