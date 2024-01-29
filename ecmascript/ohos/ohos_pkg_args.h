@@ -34,7 +34,7 @@
 #include "ecmascript/log_wrapper.h"
 #include "ecmascript/mem/c_string.h"
 #include "ecmascript/module/module_path_helper.h"
-#include "ecmascript/ohos/white_list_helper.h"
+#include "ecmascript/ohos/enable_aot_list_helper.h"
 #include "ecmascript/pgo_profiler/pgo_utils.h"
 #include "ecmascript/platform/file.h"
 #if defined(CODE_ENCRYPTION_ENABLE)
@@ -356,10 +356,7 @@ public:
     {
         pgoPaths.clear();
         needMerge = false;
-        // 1. use target aps when app in white list
-        if (WhiteListHelper::GetInstance()->IsEnable(bundleName_, moduleName_)) {
-            pgoPaths = GetTargetApPaths();
-        }
+        pgoPaths = GetTargetApPaths();
         if (!pgoPaths.empty()) {
             needMerge = true;
             return;
