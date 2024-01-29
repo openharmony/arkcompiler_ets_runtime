@@ -138,6 +138,7 @@
       panda::ecmascript::Elements::MigrateArrayWithKind*;
       panda::ecmascript::FileExist*;
       panda::ecmascript::FileMapForAlignAddress*;
+      panda::ecmascript::FileMap*;
       panda::ecmascript::FileUnMap*;
       panda::ecmascript::ForceCreateDirectory*;
       panda::ecmascript::GetFileDelimiter*;
