@@ -1335,6 +1335,7 @@ void ObjectFactory::InitializeJSObject(const JSHandle<JSObject> &obj, const JSHa
         }
         case JSType::JS_API_LIST: {
             JSAPIList::Cast(*obj)->SetSingleList(thread_, JSTaggedValue::Undefined());
+            JSAPIList::Cast(*obj)->SetBitField(0UL);
             break;
         }
         case JSType::JS_API_LINKED_LIST: {

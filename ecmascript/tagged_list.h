@@ -146,6 +146,8 @@ public:
     static void GetSubList(JSThread *thread, const JSHandle<TaggedSingleList> &taggedList,
                            const int fromIndex, const int toIndex, const JSHandle<TaggedSingleList> &subList);
     static JSHandle<TaggedArray> OwnKeys(JSThread *thread, const JSHandle<TaggedSingleList> &taggedList);
+    static JSTaggedValue SortByNodeOrder(const JSThread *thread, const JSHandle<TaggedSingleList> &taggedList);
+
     void Clear(const JSThread *thread);
     bool IsEmpty() const;
     bool Has(const JSTaggedValue &value);

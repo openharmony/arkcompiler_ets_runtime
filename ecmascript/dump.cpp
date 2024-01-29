@@ -2275,6 +2275,7 @@ void JSAPIList::Dump(std::ostream &os) const
     os << " - length: " << std::dec << list->GetCapacityFromTaggedArray() << "\n";
     os << " - node num: " << std::dec << list->NumberOfNodes() << "\n";
     os << " - delete node num: " << std::dec << list->NumberOfDeletedNodes() << "\n";
+    os << " - is odered list: " << std::dec << this->IsOrderedList() << "\n";
     JSObject::Dump(os);
     list->Dump(os);
 }

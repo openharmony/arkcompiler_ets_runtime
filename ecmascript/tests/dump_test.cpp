@@ -1301,7 +1301,7 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
             }
             case JSType::JS_API_LIST: {
                 // 1 : 1 dump fileds number
-                CHECK_DUMP_FIELDS(JSObject::SIZE, JSAPIList::SIZE, 1U);
+                CHECK_DUMP_FIELDS(JSObject::SIZE, JSAPIList::SIZE, 2U);
                 JSHandle<JSAPIList> jsAPIList = NewJSAPIList(thread, factory);
                 DUMP_FOR_HANDLE(jsAPIList);
                 break;
