@@ -163,6 +163,10 @@ static inline bool IsPseudoInstruction(MOperator mOp)
 uint32 GetJumpTargetIdx(const Insn &insn);
 
 MOperator FlipConditionOp(MOperator flippedOp);
+
+// Function: for immediate verification, memopnd ofstvalue is returned from opnd input.
+// It's worth noting that 0 will be returned when kBOR memopnd is input.
+int64 GetMemOpndOffsetValue(Operand *o);
 } /* namespace AArch64isa */
 
 /*
@@ -176,7 +180,7 @@ inline void GetNextOffsetCalleeSaved(int &offset)
     offset += (kIntregBytelen << 1);
 }
 
-MOperator GetMopPair(MOperator mop);
+MOperator GetMopPair(MOperator mop, bool isIncludeStrbStrh);
 } /* namespace maplebe */
 
 #endif /* MAPLEBE_INCLUDE_CG_AARCH64_AARCH64_ISA_H */

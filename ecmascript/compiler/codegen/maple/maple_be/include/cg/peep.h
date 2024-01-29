@@ -40,7 +40,7 @@ public:
         }
         OptimizePattern optPattern(*cgFunc, *currBB, *currInsn, *ssaInfo);
         optPattern.Run(*currBB, *currInsn);
-        optSuccess = optPattern.GetPatternRes();
+        optSuccess = optPattern.GetPatternRes() || optSuccess;
         if (optSuccess && optPattern.GetCurrInsn() != nullptr) {
             currInsn = optPattern.GetCurrInsn();
         }
@@ -53,6 +53,14 @@ public:
         }
         OptimizePattern optPattern(*cgFunc, *currBB, *currInsn);
         optPattern.Run(*currBB, *currInsn);
+        optSuccess = optPattern.GetPatternRes() || optSuccess;
+        if (optSuccess && optPattern.GetCurrInsn() != nullptr) {
+            currInsn = optPattern.GetCurrInsn();
+        }
+    }
+    void SetOptSuccess(bool optRes)
+    {
+        optSuccess = optRes;
     }
     bool OptSuccess() const
     {
@@ -64,6 +72,13 @@ private:
     BB *currBB;
     Insn *currInsn;
     CGSSAInfo *ssaInfo;
+    /*
+     * The flag indicates whether the optimization pattern is successful,
+     * this prevents the next optimization pattern that processs the same mop from failing to get the validInsn,
+     * which was changed by previous pattern.
+     *
+     * Set the flag to true when the pattern optimize successfully.
+     */
     bool optSuccess = false;
 };
 
@@ -75,7 +90,10 @@ public:
     CGPeepHole(CGFunc &f, MemPool *memPool, CGSSAInfo *cgssaInfo) : cgFunc(&f), peepMemPool(memPool), ssaInfo(cgssaInfo)
     {
     }
-    ~CGPeepHole() = default;
+    virtual ~CGPeepHole()
+    {
+        ssaInfo = nullptr;
+    }
 
     virtual void Run() = 0;
     virtual bool DoSSAOptimize(BB &bb, Insn &insn) = 0;
@@ -99,7 +117,7 @@ public:
     bool CheckOpndLiveinSuccs(const RegOperand &regOpnd, const BB &bb) const;
     bool CheckRegLiveinReturnBB(const RegOperand &regOpnd, const BB &bb) const;
     ReturnType IsOpndLiveinBB(const RegOperand &regOpnd, const BB &bb) const;
-    int logValueAtBase2(int64 val) const;
+    int LogValueAtBase2(int64 val) const;
     bool IsMemOperandOptPattern(const Insn &insn, Insn &nextInsn);
 
 protected:
@@ -125,10 +143,10 @@ public:
     virtual std::string GetPatternName() = 0;
     Insn *GetDefInsn(const RegOperand &useReg);
     void DumpAfterPattern(std::vector<Insn *> &prevInsns, const Insn *replacedInsn, const Insn *newInsn);
-    InsnSet GetAllUseInsn(const RegOperand &defReg);
+    InsnSet GetAllUseInsn(const RegOperand &defReg) const;
     int64 GetLogValueAtBase2(int64 val) const;
     /* The CC reg is unique and cannot cross-version props. */
-    bool IsCCRegCrossVersion(Insn &startInsn, Insn &endInsn, const RegOperand &ccReg);
+    bool IsCCRegCrossVersion(Insn &startInsn, Insn &endInsn, const RegOperand &ccReg) const;
     /* optimization support function */
     bool IfOperandIsLiveAfterInsn(const RegOperand &regOpnd, Insn &insn);
     bool FindRegLiveOut(const RegOperand &regOpnd, const BB &bb);
@@ -155,6 +173,8 @@ protected:
     BB *currBB;
     Insn *currInsn;
     CGSSAInfo *ssaInfo;
+    // !!! If the pattern is optimized, set the $optSuccess to true and check before the subsequent patterns
+    // of the same mop, otherwise, the subsequent patterns of the same mop will get the old wrong instruction.
     bool optSuccess = false;
 };
 
@@ -172,7 +192,7 @@ public:
 
 private:
     CGFunc *cgFunc;
-    CG *cg;
+    CG *cg = nullptr;
 }; /* class PeepHoleOptimizer */
 
 class PeepPatternMatch {

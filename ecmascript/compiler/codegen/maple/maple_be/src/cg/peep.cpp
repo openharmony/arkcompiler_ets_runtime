@@ -30,7 +30,7 @@
 
 namespace maplebe {
 #if TARGAARCH64
-bool CGPeepPattern::IsCCRegCrossVersion(Insn &startInsn, Insn &endInsn, const RegOperand &ccReg)
+bool CGPeepPattern::IsCCRegCrossVersion(Insn &startInsn, Insn &endInsn, const RegOperand &ccReg) const
 {
     if (startInsn.GetBB() != endInsn.GetBB()) {
         return true;
@@ -74,7 +74,7 @@ int64 CGPeepPattern::GetLogValueAtBase2(int64 val) const
     return (__builtin_popcountll(static_cast<uint64>(val)) == 1) ? (__builtin_ffsll(val) - 1) : -1;
 }
 
-InsnSet CGPeepPattern::GetAllUseInsn(const RegOperand &defReg)
+InsnSet CGPeepPattern::GetAllUseInsn(const RegOperand &defReg) const
 {
     InsnSet allUseInsn;
     if ((ssaInfo != nullptr) && defReg.IsSSAForm()) {
@@ -170,7 +170,7 @@ bool CGPeepPattern::IfOperandIsLiveAfterInsn(const RegOperand &regOpnd, Insn &in
                     }
                 }
             } else if (opnd.IsList()) {
-                auto &opndList = static_cast<ListOperand&>(opnd).GetOperands();
+                auto &opndList = static_cast<ListOperand &>(opnd).GetOperands();
                 if (find(opndList.begin(), opndList.end(), &regOpnd) != opndList.end()) {
                     return true;
                 }
@@ -184,7 +184,7 @@ bool CGPeepPattern::IfOperandIsLiveAfterInsn(const RegOperand &regOpnd, Insn &in
                 continue;
             }
             const InsnDesc *md = nextInsn->GetDesc();
-            auto *regProp = (md->opndMD[static_cast<uint64>(i)]);
+            auto *regProp = (md->opndMD[static_cast<uint32>(i)]);
             bool isUse = regProp->IsUse();
             /* if noUse Redefined, no need to check live-out. */
             return isUse;
@@ -202,7 +202,8 @@ bool CGPeepPattern::FindRegLiveOut(const RegOperand &regOpnd, const BB &bb)
      * and the internal_flags3 should be cleared.
      */
     if (PeepOptimizer::index == 0) {
-        FOR_ALL_BB(currbb, cgFunc) {
+        FOR_ALL_BB(currbb, cgFunc)
+        {
             currbb->SetInternalFlag3(0);
         }
     }
@@ -285,7 +286,8 @@ bool CGPeepPattern::CheckRegLiveinReturnBB(const RegOperand &regOpnd, const BB &
  */
 ReturnType CGPeepPattern::IsOpndLiveinBB(const RegOperand &regOpnd, const BB &bb) const
 {
-    FOR_BB_INSNS_CONST(insn, &bb) {
+    FOR_BB_INSNS_CONST(insn, &bb)
+    {
         if (!insn->IsMachineInstruction()) {
             continue;
         }
@@ -293,7 +295,7 @@ ReturnType CGPeepPattern::IsOpndLiveinBB(const RegOperand &regOpnd, const BB &bb
         int32 lastOpndId = static_cast<int32>(insn->GetOperandSize() - 1);
         for (int32 i = lastOpndId; i >= 0; --i) {
             Operand &opnd = insn->GetOperand(static_cast<uint32>(i));
-            auto *regProp = (md->opndMD[static_cast<uint64>(i)]);
+            auto *regProp = (md->opndMD[static_cast<uint32>(i)]);
             if (opnd.IsConditionCode()) {
                 if (regOpnd.GetRegisterNumber() == kRFLAG) {
                     bool isUse = regProp->IsUse();
@@ -307,7 +309,7 @@ ReturnType CGPeepPattern::IsOpndLiveinBB(const RegOperand &regOpnd, const BB &bb
                 auto &listOpnd = static_cast<ListOperand &>(opnd);
                 if (insn->GetMachineOpcode() == MOP_asm) {
                     if (static_cast<uint32>(i) == kAsmOutputListOpnd || static_cast<uint32>(i) == kAsmClobberListOpnd) {
-                        for (auto op : listOpnd.GetOperands()) {
+                        for (const auto op : listOpnd.GetOperands()) {
                             if (op->GetRegisterNumber() == regOpnd.GetRegisterNumber()) {
                                 return kResDefFirst;
                             }
@@ -318,7 +320,7 @@ ReturnType CGPeepPattern::IsOpndLiveinBB(const RegOperand &regOpnd, const BB &bb
                     }
                     /* fall thru for kAsmInputListOpnd */
                 }
-                for (auto op : listOpnd.GetOperands()) {
+                for (const auto op : listOpnd.GetOperands()) {
                     if (op->GetRegisterNumber() == regOpnd.GetRegisterNumber()) {
                         return kResUseFirst;
                     }
@@ -357,7 +359,7 @@ ReturnType CGPeepPattern::IsOpndLiveinBB(const RegOperand &regOpnd, const BB &bb
     return kResNotFind;
 }
 
-int PeepPattern::logValueAtBase2(int64 val) const
+int PeepPattern::LogValueAtBase2(int64 val) const
 {
     return (__builtin_popcountll(static_cast<uint64>(val)) == 1) ? (__builtin_ffsll(val) - 1) : (-1);
 }
@@ -390,7 +392,7 @@ bool PeepPattern::IfOperandIsLiveAfterInsn(const RegOperand &regOpnd, Insn &insn
                     }
                 }
             } else if (opnd.IsList()) {
-                auto &opndList = static_cast<ListOperand&>(opnd).GetOperands();
+                auto &opndList = static_cast<ListOperand &>(opnd).GetOperands();
                 if (find(opndList.begin(), opndList.end(), &regOpnd) != opndList.end()) {
                     return true;
                 }
@@ -422,7 +424,8 @@ bool PeepPattern::FindRegLiveOut(const RegOperand &regOpnd, const BB &bb)
      * and the internal_flags3 should be cleared.
      */
     if (PeepOptimizer::index == 0) {
-        FOR_ALL_BB(currbb, &cgFunc) {
+        FOR_ALL_BB(currbb, &cgFunc)
+        {
             currbb->SetInternalFlag3(0);
         }
     }
@@ -505,7 +508,8 @@ bool PeepPattern::CheckRegLiveinReturnBB(const RegOperand &regOpnd, const BB &bb
  */
 ReturnType PeepPattern::IsOpndLiveinBB(const RegOperand &regOpnd, const BB &bb) const
 {
-    FOR_BB_INSNS_CONST(insn, &bb) {
+    FOR_BB_INSNS_CONST(insn, &bb)
+    {
         if (!insn->IsMachineInstruction()) {
             continue;
         }
@@ -513,7 +517,7 @@ ReturnType PeepPattern::IsOpndLiveinBB(const RegOperand &regOpnd, const BB &bb) 
         int32 lastOpndId = static_cast<int32>(insn->GetOperandSize() - 1);
         for (int32 i = lastOpndId; i >= 0; --i) {
             Operand &opnd = insn->GetOperand(static_cast<uint32>(i));
-            auto *regProp = (md->opndMD[static_cast<uint64>(i)]);
+            auto *regProp = (md->opndMD[static_cast<uint32>(i)]);
             if (opnd.IsConditionCode()) {
                 if (regOpnd.GetRegisterNumber() == kRFLAG) {
                     bool isUse = regProp->IsUse();
@@ -527,7 +531,7 @@ ReturnType PeepPattern::IsOpndLiveinBB(const RegOperand &regOpnd, const BB &bb) 
                 auto &listOpnd = static_cast<ListOperand &>(opnd);
                 if (insn->GetMachineOpcode() == MOP_asm) {
                     if (static_cast<uint32>(i) == kAsmOutputListOpnd || static_cast<uint32>(i) == kAsmClobberListOpnd) {
-                        for (auto op : listOpnd.GetOperands()) {
+                        for (const auto op : listOpnd.GetOperands()) {
                             if (op->GetRegisterNumber() == regOpnd.GetRegisterNumber()) {
                                 return kResDefFirst;
                             }
@@ -538,7 +542,7 @@ ReturnType PeepPattern::IsOpndLiveinBB(const RegOperand &regOpnd, const BB &bb) 
                     }
                     /* fall thru for kAsmInputListOpnd */
                 }
-                for (auto op : listOpnd.GetOperands()) {
+                for (const auto op : listOpnd.GetOperands()) {
                     if (op->GetRegisterNumber() == regOpnd.GetRegisterNumber()) {
                         return kResUseFirst;
                     }
@@ -618,8 +622,10 @@ void PeepOptimizer::Run()
 {
     auto *patterMatcher = peepOptMemPool->New<T>(cgFunc, peepOptMemPool);
     patterMatcher->InitOpts();
-    FOR_ALL_BB(bb, &cgFunc) {
-        FOR_BB_INSNS_SAFE(insn, bb, nextInsn) {
+    FOR_ALL_BB(bb, &cgFunc)
+    {
+        FOR_BB_INSNS_SAFE(insn, bb, nextInsn)
+        {
             if (!insn->IsMachineInstruction()) {
                 continue;
             }
@@ -744,10 +750,20 @@ bool CgPrePeepHole1::PhaseRun(maplebe::CGFunc &f)
     peep->PrePeepholeOpt1();
     return false;
 }
+
 MAPLE_TRANSFORM_PHASE_REGISTER_CANSKIP(CgPrePeepHole1, prepeephole1)
 
 bool CgPeepHole0::PhaseRun(maplebe::CGFunc &f)
 {
+    ReachingDefinition *reachingDef = nullptr;
+    if (Globals::GetInstance()->GetOptimLevel() >= CGOptions::kLevel2) {
+        reachingDef = GET_ANALYSIS(CgReachingDefinition, f);
+    }
+    if (reachingDef == nullptr || !f.GetRDStatus()) {
+        GetAnalysisInfoHook()->ForceEraseAnalysisPhase(f.GetUniqueID(), &CgReachingDefinition::id);
+        return false;
+    }
+
     auto *peep = GetPhaseMemPool()->New<PeepHoleOptimizer>(&f);
     CHECK_FATAL(peep != nullptr, "PeepHoleOptimizer instance create failure");
     peep->Peephole0();

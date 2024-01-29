@@ -36,8 +36,15 @@ public:
     LabelIdx GetJumpLabel(const Insn &insn) const override;
     bool IsCompareInsn(const Insn &insn) const override;
     bool IsCompareAndBranchInsn(const Insn &insn) const override;
+    bool IsTestAndSetCCInsn(const Insn &insn) const override;
+    bool IsTestAndBranchInsn(const Insn &insn) const override;
     bool IsAddOrSubInsn(const Insn &insn) const override;
+    bool IsSimpleJumpInsn(const Insn &insn) const override;
     RegOperand *CreateVregFromReg(const RegOperand &pReg) override;
+    void ReTargetSuccBB(BB &bb, LabelIdx newTarget) const override;
+    void FlipIfBB(BB &bb, LabelIdx ftLabel) const override;
+    BB *CreateGotoBBAfterCondBB(BB &bb, BB &fallthru, bool isTargetFallthru) const override;
+    void ModifyFathruBBToGotoBB(BB &bb, LabelIdx labelIdx) const override;
 };
 } /* namespace maplebe */
 

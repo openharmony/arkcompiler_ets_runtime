@@ -16,6 +16,7 @@
 #include "x64_optimize_common.h"
 #include "x64_cgfunc.h"
 #include "cgbb.h"
+#include "cg.h"
 
 namespace maplebe {
 void X64InsnVisitor::ModifyJumpTarget(Operand &targetOperand, BB &bb)
@@ -80,31 +81,36 @@ LabelIdx X64InsnVisitor::GetJumpLabel(const Insn &insn) const
 bool X64InsnVisitor::IsCompareInsn(const Insn &insn) const
 {
     switch (insn.GetMachineOpcode()) {
-        case MOP_cmpb_r_r:
-        case MOP_cmpb_m_r:
-        case MOP_cmpb_i_r:
-        case MOP_cmpb_r_m:
-        case MOP_cmpb_i_m:
-        case MOP_cmpw_r_r:
-        case MOP_cmpw_m_r:
-        case MOP_cmpw_i_r:
-        case MOP_cmpw_r_m:
-        case MOP_cmpw_i_m:
-        case MOP_cmpl_r_r:
-        case MOP_cmpl_m_r:
-        case MOP_cmpl_i_r:
-        case MOP_cmpl_r_m:
-        case MOP_cmpl_i_m:
-        case MOP_cmpq_r_r:
-        case MOP_cmpq_m_r:
-        case MOP_cmpq_i_r:
-        case MOP_cmpq_r_m:
-        case MOP_cmpq_i_m:
-        case MOP_testq_r_r:
+        case x64::MOP_cmpb_r_r:
+        case x64::MOP_cmpb_m_r:
+        case x64::MOP_cmpb_i_r:
+        case x64::MOP_cmpb_r_m:
+        case x64::MOP_cmpb_i_m:
+        case x64::MOP_cmpw_r_r:
+        case x64::MOP_cmpw_m_r:
+        case x64::MOP_cmpw_i_r:
+        case x64::MOP_cmpw_r_m:
+        case x64::MOP_cmpw_i_m:
+        case x64::MOP_cmpl_r_r:
+        case x64::MOP_cmpl_m_r:
+        case x64::MOP_cmpl_i_r:
+        case x64::MOP_cmpl_r_m:
+        case x64::MOP_cmpl_i_m:
+        case x64::MOP_cmpq_r_r:
+        case x64::MOP_cmpq_m_r:
+        case x64::MOP_cmpq_i_r:
+        case x64::MOP_cmpq_r_m:
+        case x64::MOP_cmpq_i_m:
+        case x64::MOP_testq_r_r:
             return true;
         default:
             return false;
     }
+}
+
+bool X64InsnVisitor::IsSimpleJumpInsn(const Insn &insn) const
+{
+    return (insn.GetMachineOpcode() == x64::MOP_jmpq_l);
 }
 
 bool X64InsnVisitor::IsCompareAndBranchInsn(const Insn &insn) const
@@ -112,49 +118,58 @@ bool X64InsnVisitor::IsCompareAndBranchInsn(const Insn &insn) const
     return false;
 }
 
+bool X64InsnVisitor::IsTestAndSetCCInsn(const Insn &insn) const
+{
+    return false;
+}
+
+bool X64InsnVisitor::IsTestAndBranchInsn(const Insn &insn) const
+{
+    return false;
+}
+
 bool X64InsnVisitor::IsAddOrSubInsn(const Insn &insn) const
 {
     switch (insn.GetMachineOpcode()) {
-        case MOP_addb_r_r:
-        case MOP_addw_r_r:
-        case MOP_addl_r_r:
-        case MOP_addq_r_r:
-        case MOP_addb_m_r:
-        case MOP_addw_m_r:
-        case MOP_addl_m_r:
-        case MOP_addq_m_r:
-        case MOP_addb_i_r:
-        case MOP_addw_i_r:
-        case MOP_addl_i_r:
-        case MOP_addq_i_r:
-        case MOP_addb_r_m:
-        case MOP_addw_r_m:
-        case MOP_addl_r_m:
-        case MOP_addq_r_m:
-        case MOP_addb_i_m:
-        case MOP_addw_i_m:
-        case MOP_addl_i_m:
-        case MOP_addq_i_m:
-        case MOP_subb_r_r:
-        case MOP_subw_r_r:
-        case MOP_subl_r_r:
-        case MOP_subq_r_r:
-        case MOP_subb_m_r:
-        case MOP_subw_m_r:
-        case MOP_subl_m_r:
-        case MOP_subq_m_r:
-        case MOP_subb_i_r:
-        case MOP_subw_i_r:
-        case MOP_subl_i_r:
-        case MOP_subq_i_r:
-        case MOP_subb_r_m:
-        case MOP_subw_r_m:
-        case MOP_subl_r_m:
-        case MOP_subq_r_m:
-        case MOP_subb_i_m:
-        case MOP_subw_i_m:
-        case MOP_subl_i_m:
-        case MOP_subq_i_m:
+        case x64::MOP_addb_r_r:
+        case x64::MOP_addw_r_r:
+        case x64::MOP_addl_r_r:
+        case x64::MOP_addq_r_r:
+        case x64::MOP_addb_m_r:
+        case x64::MOP_addw_m_r:
+        case x64::MOP_addl_m_r:
+        case x64::MOP_addq_m_r:
+        case x64::MOP_addb_i_r:
+        case x64::MOP_addw_i_r:
+        case x64::MOP_addl_i_r:
+        case x64::MOP_addq_i_r:
+        case x64::MOP_addb_r_m:
+        case x64::MOP_addw_r_m:
+        case x64::MOP_addl_r_m:
+        case x64::MOP_addq_r_m:
+        case x64::MOP_addb_i_m:
+        case x64::MOP_addw_i_m:
+        case x64::MOP_addl_i_m:
+        case x64::MOP_addq_i_m:
+        case x64::MOP_subb_r_r:
+        case x64::MOP_subw_r_r:
+        case x64::MOP_subl_r_r:
+        case x64::MOP_subq_r_r:
+        case x64::MOP_subb_m_r:
+        case x64::MOP_subw_m_r:
+        case x64::MOP_subl_m_r:
+        case x64::MOP_subq_m_r:
+        case x64::MOP_subb_i_r:
+        case x64::MOP_subw_i_r:
+        case x64::MOP_subl_i_r:
+        case x64::MOP_subq_i_r:
+        case x64::MOP_subb_r_m:
+        case x64::MOP_subw_r_m:
+        case x64::MOP_subl_r_m:
+        case x64::MOP_subq_r_m:
+        case x64::MOP_subb_i_m:
+        case x64::MOP_subw_i_m:
+        case x64::MOP_subl_i_m:
             return true;
         default:
             return false;
@@ -164,5 +179,37 @@ bool X64InsnVisitor::IsAddOrSubInsn(const Insn &insn) const
 RegOperand *X64InsnVisitor::CreateVregFromReg(const RegOperand &pReg)
 {
     return &GetCGFunc()->GetOpndBuilder()->CreateVReg(pReg.GetRegisterNumber(), pReg.GetSize(), pReg.GetRegisterType());
+}
+
+void X64InsnVisitor::ReTargetSuccBB(BB &bb, LabelIdx newTarget) const
+{
+    DEBUG_ASSERT(false, "not implement in X86_64");
+    (void)bb;
+    (void)newTarget;
+    return;
+}
+
+void X64InsnVisitor::FlipIfBB(BB &bb, LabelIdx ftLabel) const
+{
+    DEBUG_ASSERT(false, "not implement in X86_64");
+    (void)bb;
+    (void)ftLabel;
+    return;
+}
+
+BB *X64InsnVisitor::CreateGotoBBAfterCondBB(BB &bb, BB &fallthru, bool isTargetFallthru) const
+{
+    DEBUG_ASSERT(false, "not implement in X86_64");
+    (void)bb;
+    (void)fallthru;
+    (void)isTargetFallthru;
+    return nullptr;
+}
+
+void X64InsnVisitor::ModifyFathruBBToGotoBB(BB &bb, LabelIdx labelIdx) const
+{
+    DEBUG_ASSERT(false, "not implement in X86_64");
+    (void)bb;
+    return;
 }
 } /* namespace maplebe */

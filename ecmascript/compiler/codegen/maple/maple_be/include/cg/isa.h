@@ -21,6 +21,14 @@
 #include "operand.h"
 
 namespace maplebe {
+#define SPLIT_INSN(INSN, FUNC) \
+    (INSN)->SplitSelf((FUNC)->IsAfterRegAlloc(), (FUNC)->GetInsnBuilder(), (FUNC)->GetOpndBuilder())
+
+// circular dependency exists, no other choice
+class Insn;
+class InsnBuilder;
+class OperandBuilder;
+
 enum MopProperty : maple::uint8 {
     kInsnIsAbstract,
     kInsnIsMove,
@@ -28,8 +36,10 @@ enum MopProperty : maple::uint8 {
     kInsnIsLoadPair,
     kInsnIsStore,
     kInsnIsStorePair,
+    kInsnIsLoadAddress,
     kInsnIsAtomic,
     kInsnIsCall,
+    kInsnIsSpecialCall,
     kInsnIsTailCall,
     kInsnIsConversion,
     kInsnIsCondDef,
@@ -60,8 +70,10 @@ using regno_t = uint32_t;
 #define ISLOADPAIR (1ULL << kInsnIsLoadPair)
 #define ISSTORE (1ULL << kInsnIsStore)
 #define ISSTOREPAIR (1ULL << kInsnIsStorePair)
+#define ISLOADADDR (1ULL << kInsnIsLoadAddress)
 #define ISATOMIC (1ULL << kInsnIsAtomic)
 #define ISCALL (1ULL << kInsnIsCall)
+#define ISSPCALL (1ULL << kInsnIsSpecialCall)
 #define ISTAILCALL (1ULL << kInsnIsTailCall)
 #define ISCONVERSION (1ULL << kInsnIsConversion)
 #define ISCONDDEF (1ULL << kInsnIsCondDef)
@@ -172,6 +184,8 @@ enum EncodeType : uint8 {
 };
 
 struct InsnDesc {
+    using SplitFunc = std::function<void(Insn *, bool, InsnBuilder *, OperandBuilder *)>;
+
     InsnDesc(MOperator op, std::vector<const OpndDesc *> opndmd, uint64 props, uint64 ltype, const std::string &inName,
              const std::string &inFormat, uint32 anum)
         : opc(op),
@@ -229,6 +243,8 @@ struct InsnDesc {
     const std::string format;
     uint32 atomicNum;                               /* indicate how many asm instructions it will emit. */
     std::function<bool(int64)> validFunc = nullptr; /* If insn has immOperand, this function needs to be implemented. */
+    // If insn needs to be split, this function needs to be implemented.
+    SplitFunc splitFunc = nullptr;
     EncodeType encodeType = kUnknownEncodeType;
     uint32 mopEncode = 0x00000000;
 
@@ -237,6 +253,11 @@ struct InsnDesc {
     bool IsCall() const
     {
         return (properties & ISCALL) != 0;
+    }
+    // call insn does not obey standard call procedure!
+    bool IsSpecialCall() const
+    {
+        return (properties & ISSPCALL) != 0;
     }
     bool IsTailCall() const
     {
@@ -293,6 +314,10 @@ struct InsnDesc {
     bool IsUnCondBranch() const
     {
         return (properties & (ISUNCONDBRANCH)) != 0;
+    }
+    bool IsLoadAddress() const
+    {
+        return (properties & (ISLOADADDR)) != 0;
     }
     bool IsAtomic() const
     {
@@ -357,6 +382,14 @@ struct InsnDesc {
     MOperator GetOpc() const
     {
         return opc;
+    }
+
+    void Split(Insn *insn, bool isAfterRegAlloc, InsnBuilder *insnBuilder, OperandBuilder *opndBuilder) const
+    {
+        if (!splitFunc) {
+            return;
+        }
+        splitFunc(insn, isAfterRegAlloc, insnBuilder, opndBuilder);
     }
 
     const OpndDesc *GetOpndDes(size_t index) const

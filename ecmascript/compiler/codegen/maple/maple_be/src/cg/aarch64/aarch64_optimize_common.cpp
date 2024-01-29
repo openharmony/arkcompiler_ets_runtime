@@ -14,7 +14,7 @@
  */
 
 #include "aarch64_optimize_common.h"
-#include "aarch64_isa.h"
+#include "aarch64_cg.h"
 #include "aarch64_cgfunc.h"
 #include "cgbb.h"
 
@@ -45,7 +45,8 @@ void AArch64InsnVisitor::ModifyJumpTarget(Operand &targetOperand, BB &bb)
         }
         // fallthru below to patch the branch insn
     }
-    bb.GetLastInsn()->SetOperand(AArch64isa::GetJumpTargetIdx(*bb.GetLastInsn()), targetOperand);
+    CHECK_NULL_FATAL(bb.GetLastMachineInsn());
+    bb.GetLastMachineInsn()->SetOperand(AArch64isa::GetJumpTargetIdx(*bb.GetLastMachineInsn()), targetOperand);
 }
 
 void AArch64InsnVisitor::ModifyJumpTarget(maple::LabelIdx targetLabel, BB &bb)
@@ -55,27 +56,28 @@ void AArch64InsnVisitor::ModifyJumpTarget(maple::LabelIdx targetLabel, BB &bb)
 
 void AArch64InsnVisitor::ModifyJumpTarget(BB &newTarget, BB &bb)
 {
-    ModifyJumpTarget(newTarget.GetLastInsn()->GetOperand(AArch64isa::GetJumpTargetIdx(*newTarget.GetLastInsn())), bb);
+    if (newTarget.GetLastMachineInsn() != nullptr) {
+        ModifyJumpTarget(newTarget.GetLastInsn()->GetOperand(AArch64isa::GetJumpTargetIdx(*newTarget.GetLastInsn())),
+                         bb);
+    }
 }
 
 Insn *AArch64InsnVisitor::CloneInsn(Insn &originalInsn)
 {
+    // Use custom deep copy
+    MapleAllocator *allocator = GetCGFunc()->GetFuncScopeAllocator();
     MemPool *memPool = const_cast<MemPool *>(CG::GetCurCGFunc()->GetMemoryPool());
-    if (originalInsn.IsTargetInsn()) {
-        if (!originalInsn.IsVectorOp()) {
-            return memPool->Clone<Insn>(originalInsn);
-        } else {
+    if (originalInsn.IsTargetInsn() || originalInsn.IsComment()) {
+        if (originalInsn.IsVectorOp()) {
             auto *insn = memPool->Clone<VectorInsn>(*static_cast<VectorInsn *>(&originalInsn));
             insn->SetRegSpecList(static_cast<VectorInsn &>(originalInsn).GetRegSpecList());
             return insn;
         }
+        return originalInsn.CloneTree(*allocator);
     } else if (originalInsn.IsCfiInsn()) {
-        return memPool->Clone<cfi::CfiInsn>(*static_cast<cfi::CfiInsn *>(&originalInsn));
+        return static_cast<cfi::CfiInsn &>(originalInsn).CloneTree(*allocator);
     } else if (originalInsn.IsDbgInsn()) {
-        return memPool->Clone<mpldbg::DbgInsn>(*static_cast<mpldbg::DbgInsn *>(&originalInsn));
-    }
-    if (originalInsn.IsComment()) {
-        return memPool->Clone<Insn>(originalInsn);
+        return static_cast<mpldbg::DbgInsn &>(originalInsn).CloneTree(*allocator);
     }
     CHECK_FATAL(false, "Cannot clone");
     return nullptr;
@@ -102,8 +104,10 @@ bool AArch64InsnVisitor::IsCompareInsn(const Insn &insn) const
     switch (insn.GetMachineOpcode()) {
         case MOP_wcmpri:
         case MOP_wcmprr:
+        case MOP_wcmprrs:
         case MOP_xcmpri:
         case MOP_xcmprr:
+        case MOP_xcmprrs:
         case MOP_hcmperi:
         case MOP_hcmperr:
         case MOP_scmperi:
@@ -120,6 +124,12 @@ bool AArch64InsnVisitor::IsCompareInsn(const Insn &insn) const
         case MOP_wcmnrr:
         case MOP_xcmnri:
         case MOP_xcmnrr:
+        case MOP_wwcmprre:
+        case MOP_xwcmprre:
+        case MOP_wccmpriic:
+        case MOP_wccmprric:
+        case MOP_xccmpriic:
+        case MOP_xccmprric:
             return true;
         default:
             return false;
@@ -133,6 +143,32 @@ bool AArch64InsnVisitor::IsCompareAndBranchInsn(const Insn &insn) const
         case MOP_xcbnz:
         case MOP_wcbz:
         case MOP_xcbz:
+            return true;
+        default:
+            return false;
+    }
+}
+
+bool AArch64InsnVisitor::IsTestAndSetCCInsn(const Insn &insn) const
+{
+    switch (insn.GetMachineOpcode()) {
+        case MOP_wtstri32:
+        case MOP_xtstri64:
+        case MOP_wtstrr:
+        case MOP_xtstrr:
+            return true;
+        default:
+            return false;
+    }
+}
+
+bool AArch64InsnVisitor::IsTestAndBranchInsn(const Insn &insn) const
+{
+    switch (insn.GetMachineOpcode()) {
+        case MOP_xtbz:
+        case MOP_wtbz:
+        case MOP_xtbnz:
+        case MOP_wtbnz:
             return true;
         default:
             return false;
@@ -156,9 +192,76 @@ bool AArch64InsnVisitor::IsAddOrSubInsn(const Insn &insn) const
     }
 }
 
+bool AArch64InsnVisitor::IsSimpleJumpInsn(const Insn &insn) const
+{
+    return (insn.GetMachineOpcode() == MOP_xuncond);
+}
+
 RegOperand *AArch64InsnVisitor::CreateVregFromReg(const RegOperand &pReg)
 {
     return &static_cast<AArch64CGFunc *>(GetCGFunc())
                 ->CreateRegisterOperandOfType(pReg.GetRegisterType(), pReg.GetSize() / k8BitSize);
+}
+
+void AArch64InsnVisitor::ReTargetSuccBB(BB &bb, LabelIdx newTarget) const
+{
+    Insn *lastInsn = bb.GetLastMachineInsn();
+    if (lastInsn && (lastInsn->IsBranch() || lastInsn->IsCondBranch() || lastInsn->IsUnCondBranch())) {
+        CHECK_FATAL(false, "check last insn of a ft BB");
+    }
+    LabelOperand &targetOpnd = GetCGFunc()->GetOrCreateLabelOperand(newTarget);
+    Insn &newInsn = GetCGFunc()->GetInsnBuilder()->BuildInsn(MOP_xuncond, targetOpnd);
+    bb.AppendInsn(newInsn);
+}
+
+void AArch64InsnVisitor::FlipIfBB(BB &bb, LabelIdx ftLabel) const
+{
+    Insn *lastInsn = bb.GetLastMachineInsn();
+    CHECK_FATAL(lastInsn && lastInsn->IsCondBranch(), "must be ? of a if BB");
+    uint32 targetIdx = AArch64isa::GetJumpTargetIdx(*lastInsn);
+    MOperator mOp = AArch64isa::FlipConditionOp(lastInsn->GetMachineOpcode());
+    if (mOp == 0 || mOp > MOP_nop) {
+        CHECK_FATAL(false, "get flip op failed");
+    }
+    lastInsn->SetMOP(AArch64CG::kMd[mOp]);
+    LabelOperand &targetOpnd = GetCGFunc()->GetOrCreateLabelOperand(ftLabel);
+    lastInsn->SetOperand(targetIdx, targetOpnd);
+}
+
+BB *AArch64InsnVisitor::CreateGotoBBAfterCondBB(BB &bb, BB &fallthru, bool isTargetFallthru) const
+{
+    BB *newBB = GetCGFunc()->CreateNewBB();
+    newBB->SetKind(BB::kBBGoto);
+    LabelIdx fallthruLabel = fallthru.GetLabIdx();
+    if (fallthruLabel == MIRLabelTable::GetDummyLabel()) {
+        fallthruLabel = GetCGFunc()->CreateLabel();
+        fallthru.SetLabIdx(fallthruLabel);
+    }
+    LabelOperand &targetOpnd = GetCGFunc()->GetOrCreateLabelOperand(fallthruLabel);
+    Insn &gotoInsn = GetCGFunc()->GetInsnBuilder()->BuildInsn(MOP_xuncond, targetOpnd);
+    newBB->AppendInsn(gotoInsn);
+
+    // maintain pred and succ
+    if (!isTargetFallthru) {
+        fallthru.RemovePreds(bb);
+    }
+    fallthru.PushBackPreds(*newBB);
+    if (!isTargetFallthru) {
+        bb.RemoveSuccs(fallthru);
+    }
+    bb.PushBackSuccs(*newBB);
+    newBB->PushBackSuccs(fallthru);
+    newBB->PushBackPreds(bb);
+    return newBB;
+}
+
+void AArch64InsnVisitor::ModifyFathruBBToGotoBB(BB &bb, LabelIdx labelIdx) const
+{
+    CHECK_FATAL(bb.GetKind() == BB::kBBFallthru, "invalid kind of bb");
+    CGFunc *cgFunc = GetCGFunc();
+    LabelOperand &labelOpnd = cgFunc->GetOrCreateLabelOperand(labelIdx);
+    Insn &jumpInsn = cgFunc->GetInsnBuilder()->BuildInsn(MOP_xuncond, labelOpnd);
+    bb.AppendInsn(jumpInsn);
+    bb.SetKind(BB::kBBGoto);
 }
 } /* namespace maplebe */
