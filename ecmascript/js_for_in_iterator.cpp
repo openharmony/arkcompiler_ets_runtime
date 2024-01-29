@@ -69,6 +69,7 @@ bool JSForInIterator::HasProperty(JSThread *thread, JSHandle<JSTaggedValue> rece
             return true;
         }
         current.Update(JSTaggedValue::GetPrototype(thread, current));
+        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
     }
     return false;
 }

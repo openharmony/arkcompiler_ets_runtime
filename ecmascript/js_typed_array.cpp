@@ -577,12 +577,12 @@ bool JSTypedArray::IntegerIndexedElementSet(JSThread *thread, const JSHandle<JST
     ContentType contentType = JSHandle<JSTypedArray>::Cast(typedarray)->GetContentType();
     if (UNLIKELY(contentType == ContentType::BigInt)) {
         numValueHandle = JSHandle<JSTaggedValue>(thread, JSTaggedValue::ToBigInt(thread, value));
+        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
     } else {
         numValueHandle = JSHandle<JSTaggedValue>(thread, JSTaggedValue::ToNumber(thread, value));
+        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
     }
-    // 4. ReturnIfAbrupt(numValue).
-    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
-
+    
     JSHandle<JSTypedArray> typedarrayObj(typedarray);
     JSTaggedValue buffer = typedarrayObj->GetViewedArrayBufferOrByteArray();
     JSHandle<JSTaggedValue> indexHandle(thread, index);

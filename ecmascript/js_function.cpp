@@ -235,6 +235,7 @@ JSTaggedValue JSFunction::LengthGetter(JSThread *thread, const JSHandle<JSObject
                 lengthValue =
                     std::max(0u, static_cast<uint32_t>(JSTaggedValue::ToNumber(thread, targetLength).GetNumber()) -
                              argsLength);
+                RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
             }
         }
         return JSTaggedValue(lengthValue);
@@ -754,6 +755,7 @@ JSHandle<JSHClass> JSFunction::GetInstanceJSHClass(JSThread *thread, JSHandle<JS
             JSMutableHandle<JSTaggedValue> mutableNewTargetProto(thread, JSTaggedValue::Undefined());
             while (!mutableNewTargetProto->IsNull()) {
                 mutableNewTargetProto.Update(JSTaggedValue::GetPrototype(thread, mutableNewTarget));
+                RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSHClass, thread);
                 if (mutableNewTargetProto.GetTaggedValue() == constructor.GetTaggedValue()) {
                     return GetOrCreateDerivedJSHClass(thread, newTargetFunc, ctorInitialJSHClass);
                 }
