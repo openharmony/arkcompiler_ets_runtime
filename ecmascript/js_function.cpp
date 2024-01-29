@@ -756,6 +756,7 @@ JSHandle<JSHClass> JSFunction::GetInstanceJSHClass(JSThread *thread, JSHandle<JS
             JSMutableHandle<JSTaggedValue> mutableNewTargetProto(thread, JSTaggedValue::Undefined());
             while (!mutableNewTargetProto->IsNull()) {
                 mutableNewTargetProto.Update(JSTaggedValue::GetPrototype(thread, mutableNewTarget));
+                RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSHClass, thread);
                 if (mutableNewTargetProto.GetTaggedValue() == constructor.GetTaggedValue()) {
                     return GetOrCreateDerivedJSHClass(thread, newTargetFunc, ctorInitialJSHClass);
                 }

@@ -3051,6 +3051,7 @@ DEF_RUNTIME_STUBS(LocaleCompare)
     JSHandle<JSTaggedValue> options = GetHArg<JSTaggedValue>(argv, argc, 3);  // 3: means the third parameter
 
     JSHandle<JSTaggedValue> thisObj(JSTaggedValue::RequireObjectCoercible(thread, thisTag));
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception().GetRawData());
     [[maybe_unused]] JSHandle<EcmaString> thisHandle = JSTaggedValue::ToString(thread, thisObj);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception().GetRawData());
     [[maybe_unused]] JSHandle<EcmaString> thatHandle = JSTaggedValue::ToString(thread, thatTag);
@@ -3129,6 +3130,7 @@ JSTaggedValue RuntimeStubs::RuntimeArraySort(JSThread *thread, JSHandle<JSTagged
 
     JSHandle<JSTaggedValue> callbackFnHandle(thread, JSTaggedValue::Undefined());
     JSArray::Sort(thread, JSHandle<JSTaggedValue>::Cast(thisObjHandle), callbackFnHandle);
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception());
     return thisObjHandle.GetTaggedValue();
 }
 

@@ -77,6 +77,7 @@ void PropertyAccessor::CollectPrototypeInfo()
 {
     DISALLOW_GARBAGE_COLLECTION;
     JSTaggedValue current = JSTaggedValue::GetPrototype(thread_, receiver_);
+    RETURN_IF_ABRUPT_COMPLETION(thread_);
     while (current.IsHeapObject()) {
         if (current.IsSlowKeysObject()) {
             hasSlowProperties_ = true;
@@ -227,6 +228,7 @@ JSHandle<JSTaggedValue> PropertyAccessor::GetKeysSlow()
         JSObject::ClearHasDeleteProperty(current);
         visited.emplace_back(thread_, current.GetTaggedValue());
         current.Update(JSTaggedValue::GetPrototype(thread_, current));
+        RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread_);
     }
     MergeRemainings(remainings, visited);
     return JSHandle<JSTaggedValue>(thread_, slowKeysArray_.GetTaggedValue());
