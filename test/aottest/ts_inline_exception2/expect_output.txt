@@ -17,6 +17,6 @@ TypeError: CallObj is NonCallable
     at foo3 (maybe inlined). depth: 2
     at foo4 (maybe inlined). depth: 1
     at foo5 (maybe inlined). depth: 0
-    at foo6 (hidden:40:40)
+    at foo6 (hidden:41:41)
     at func_main_0 (hidden:42:1)
 

@@ -15,7 +15,7 @@ ReferenceError: c is not defined
     at anonymous (hidden:23:23)
     at foo1 (maybe inlined). depth: 1
     at foo2 (maybe inlined). depth: 0
-    at foo3 (hidden:35:35)
+    at foo3 (hidden:36:36)
     at foo4 (hidden:38:38)
     at func_main_0 (hidden:41:1)
 
