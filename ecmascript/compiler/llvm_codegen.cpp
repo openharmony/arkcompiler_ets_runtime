@@ -284,7 +284,7 @@ void LLVMIRGeneratorImpl::GenerateCodeForStub(Circuit *circuit, const ControlFlo
 void LLVMIRGeneratorImpl::GenerateCode(Circuit *circuit, const ControlFlowGraph &graph, const CompilationConfig *cfg,
                                        const panda::ecmascript::MethodLiteral *methodLiteral,
                                        const JSPandaFile *jsPandaFile, const std::string &methodName,
-                                       bool enableOptInlining)
+                                       bool enableOptInlining, bool enableOptBranchProfiling)
 {
     auto function = module_->AddFunc(methodLiteral, jsPandaFile);
     circuit->SetFrameType(FrameType::OPTIMIZED_JS_FUNCTION_FRAME);
@@ -295,7 +295,8 @@ void LLVMIRGeneratorImpl::GenerateCode(Circuit *circuit, const ControlFlowGraph 
         conv = CallSignature::CallConv::WebKitJSCallConv;
     }
     LLVMIRBuilder builder(&graph, circuit, module_, function, cfg, conv,
-                          enableLog_, methodLiteral->IsFastCall(), methodName, enableOptInlining);
+                          enableLog_, methodLiteral->IsFastCall(), methodName,
+                          enableOptInlining, enableOptBranchProfiling);
     builder.Build();
 }
 
