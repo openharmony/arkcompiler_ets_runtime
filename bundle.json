@@ -29,7 +29,8 @@
               "qos_manager",
               "runtime_core",
               "c_utils",
-              "code_signature"
+              "code_signature",
+              "libuv"
             ],
             "third_party": [
               "bounds_checking_function",
