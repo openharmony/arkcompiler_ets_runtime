@@ -15,125 +15,155 @@
 
 #ifndef MAPLE_ME_INCLUDE_DOMINANCE_H
 #define MAPLE_ME_INCLUDE_DOMINANCE_H
-#include "bb.h"
-
+#include "mpl_number.h"
+#include "mempool.h"
+#include "mempool_allocator.h"
+#include "types_def.h"
+#include "base_graph_node.h"
 namespace maple {
-class Dominance : public AnalysisResult {
+class Dominance {
 public:
-    Dominance(MemPool &memPool, MemPool &tmpPool, MapleVector<BB *> &bbVec, BB &commonEntryBB, BB &commonExitBB)
-        : AnalysisResult(&memPool),
-          domAllocator(&memPool),
-          tmpAllocator(&tmpPool),
-          bbVec(bbVec),
-          commonEntryBB(commonEntryBB),
-          commonExitBB(commonExitBB),
-          postOrderIDVec(bbVec.size(), -1, domAllocator.Adapter()),
+    using NodeId = uint32;
+
+    Dominance(MemPool &memPool, MapleVector<BaseGraphNode *> &nodeVec, BaseGraphNode &commonEntryNode,
+              BaseGraphNode &commonExitNode, bool isPdom)
+        : domAllocator(&memPool),
+          nodeVec(nodeVec),
+          commonEntryNode(commonEntryNode),
+          commonExitNode(commonExitNode),
+          isPdom(isPdom),
+          postOrderIDVec(nodeVec.size(), -1, domAllocator.Adapter()),
           reversePostOrder(domAllocator.Adapter()),
           reversePostOrderId(domAllocator.Adapter()),
           doms(domAllocator.Adapter()),
-          pdomPostOrderIDVec(bbVec.size(), -1, domAllocator.Adapter()),
-          pdomReversePostOrder(domAllocator.Adapter()),
-          pdoms(domAllocator.Adapter()),
-          domFrontier(bbVec.size(), MapleSet<BBId>(domAllocator.Adapter()), domAllocator.Adapter()),
-          domChildren(bbVec.size(), MapleVector<BBId>(domAllocator.Adapter()), domAllocator.Adapter()),
-          iterDomFrontier(bbVec.size(), MapleSet<BBId>(domAllocator.Adapter()), domAllocator.Adapter()),
-          dtPreOrder(bbVec.size(), BBId(0), domAllocator.Adapter()),
-          dtDfn(bbVec.size(), -1, domAllocator.Adapter()),
-          pdomFrontier(bbVec.size(), MapleSet<BBId>(domAllocator.Adapter()), domAllocator.Adapter()),
-          pdomChildren(bbVec.size(), MapleSet<BBId>(domAllocator.Adapter()), domAllocator.Adapter()),
-          iterPdomFrontier(bbVec.size(), MapleSet<BBId>(domAllocator.Adapter()), domAllocator.Adapter()),
-          pdtPreOrder(bbVec.size(), BBId(0), domAllocator.Adapter()),
-          pdtDfn(bbVec.size(), -1, domAllocator.Adapter())
+          domFrontier(nodeVec.size(), MapleSet<NodeId>(domAllocator.Adapter()), domAllocator.Adapter()),
+          domChildren(nodeVec.size(), MapleVector<NodeId>(domAllocator.Adapter()), domAllocator.Adapter()),
+          iterDomFrontier(nodeVec.size(), MapleSet<NodeId>(domAllocator.Adapter()), domAllocator.Adapter()),
+          dtPreOrder(nodeVec.size(), NodeId(0), domAllocator.Adapter()),
+          dtDfn(nodeVec.size(), -1, domAllocator.Adapter())
     {
     }
 
-    ~Dominance() override = default;
+    ~Dominance() = default;
 
-    void GenPostOrderID();
-    void ComputeDominance();
-    void ComputeDomFrontiers();
-    void ComputeDomChildren();
-    void GetIterDomFrontier(const BB *bb, MapleSet<BBId> *dfset, BBId bbidMarker, std::vector<bool> &visitedMap);
-    void ComputeIterDomFrontiers();
-    void ComputeDtPreorder(const BB &bb, size_t &num);
-    void ComputeDtDfn();
-    bool Dominate(const BB &bb1, const BB &bb2);  // true if bb1 dominates bb2
-    void DumpDoms();
-    void PdomGenPostOrderID();
-    void ComputePostDominance();
-    void ComputePdomFrontiers();
-    void ComputePdomChildren();
-    void GetIterPdomFrontier(const BB *bb, MapleSet<BBId> *dfset, BBId bbidMarker, std::vector<bool> &visitedMap);
-    void ComputeIterPdomFrontiers();
-    void ComputePdtPreorder(const BB &bb, size_t &num);
-    void ComputePdtDfn();
-    bool PostDominate(const BB &bb1, const BB &bb2);  // true if bb1 postdominates bb2
-    void DumpPdoms();
-
-    const MapleVector<BB *> &GetBBVec() const
+    const MapleVector<BaseGraphNode *> &GetNodeVec() const
     {
-        return bbVec;
+        return nodeVec;
     }
 
-    bool IsBBVecEmpty() const
+    bool IsNodeVecEmpty() const
     {
-        return bbVec.empty();
+        return nodeVec.empty();
     }
 
-    size_t GetBBVecSize() const
+    size_t GetNodeVecSize() const
     {
-        return bbVec.size();
+        return nodeVec.size();
     }
 
-    BB *GetBBAt(size_t i) const
+    BaseGraphNode *GetNodeAt(size_t i) const
     {
-        return bbVec[i];
+        return nodeVec.at(i);
     }
 
-    BB &GetCommonEntryBB() const
+    const BaseGraphNode &GetCommonEntryNode() const
     {
-        return commonEntryBB;
+        return commonEntryNode;
     }
 
-    BB &GetCommonExitBB() const
+    const BaseGraphNode &GetCommonExitNode() const
     {
-        return commonExitBB;
+        return commonExitNode;
     }
 
-    const MapleVector<int32> &GetPostOrderIDVec() const
+    const BaseGraphNode *GetReversePostOrder(size_t idx) const
     {
-        return postOrderIDVec;
+        return reversePostOrder[idx];
     }
 
-    MapleVector<BB *> &GetReversePostOrder()
+    const MapleVector<BaseGraphNode *> &GetReversePostOrder() const
     {
         return reversePostOrder;
     }
 
-    MapleVector<uint32> &GetReversePostOrderId()
+    MapleVector<BaseGraphNode *> &GetReversePostOrder()
+    {
+        return reversePostOrder;
+    }
+
+    const MapleVector<uint32> &GetReversePostOrderId()
     {
         if (reversePostOrderId.empty()) {
-            reversePostOrderId.resize(bbVec.size(), 0);
+            reversePostOrderId.resize(nodeVec.size(), 0);
             for (size_t id = 0; id < reversePostOrder.size(); ++id) {
-                reversePostOrderId[reversePostOrder[id]->GetBBId()] = static_cast<uint32>(id);
+                reversePostOrderId[reversePostOrder[id]->GetID()] = static_cast<uint32>(id);
             }
         }
         return reversePostOrderId;
     }
 
-    const MapleUnorderedMap<BBId, BB *> &GetDoms() const
+    BaseGraphNode *GetDom(NodeId id)
     {
-        return doms;
+        auto it = doms.find(id);
+        if (it == doms.end()) {
+            return nullptr;
+        }
+        return it->second;
     }
 
-    MapleVector<BBId> &GetDtPreOrder()
+    MapleSet<NodeId> &GetDomFrontier(size_t idx)
     {
-        return dtPreOrder;
+        return domFrontier[idx];
     }
 
-    BBId GetDtPreOrderItem(size_t idx) const
+    const MapleSet<NodeId> &GetDomFrontier(size_t idx) const
+    {
+        return domFrontier.at(idx);
+    }
+
+    size_t GetDomFrontierSize() const
+    {
+        return domFrontier.size();
+    }
+
+    const MapleSet<NodeId> &GetIterDomFrontier(const NodeId &idx) const
+    {
+        return iterDomFrontier[idx];
+    }
+
+    MapleSet<NodeId> &GetIterDomFrontier(const NodeId &idx)
+    {
+        return iterDomFrontier[idx];
+    }
+
+    size_t GetIterDomFrontierSize() const
+    {
+        return iterDomFrontier.size();
+    }
+
+    const MapleVector<NodeId> &GetDomChildren(const NodeId &idx) const
+    {
+        return domChildren[idx];
+    }
+
+    MapleVector<NodeId> &GetDomChildren(const NodeId &idx)
+    {
+        return domChildren[idx];
+    }
+
+    size_t GetDomChildrenSize() const
+    {
+        return domChildren.size();
+    }
+
+    const NodeId &GetDtPreOrderItem(size_t idx) const
     {
         return dtPreOrder[idx];
+    }
+
+    const MapleVector<NodeId> &GetDtPreOrder() const
+    {
+        return dtPreOrder;
     }
 
     size_t GetDtPreOrderSize() const
@@ -151,132 +181,327 @@ public:
         return dtDfn.size();
     }
 
-    MapleSet<BBId> &GetPdomFrontierItem(size_t idx)
+    void DumpDoms() const
     {
-        return pdomFrontier[idx];
+        const std::string tag = isPdom ? "pdom" : "dom";
+        for (auto &node : reversePostOrder) {
+            auto nodeId = node->GetID();
+            LogInfo::MapleLogger() << tag << "_postorder no " << postOrderIDVec[nodeId];
+            LogInfo::MapleLogger() << " is node:" << nodeId;
+            LogInfo::MapleLogger() << " im_" << tag << " is node:" << doms.at(nodeId)->GetID();
+            LogInfo::MapleLogger() << " " << tag << "frontier: [";
+            for (auto &id : domFrontier[nodeId]) {
+                LogInfo::MapleLogger() << id << " ";
+            }
+            LogInfo::MapleLogger() << "] iter" << tag << "Frontier: [";
+            for (auto &id : iterDomFrontier[nodeId]) {
+                LogInfo::MapleLogger() << id << " ";
+            }
+            LogInfo::MapleLogger() << "] " << tag << "children: [";
+            for (auto &id : domChildren[nodeId]) {
+                LogInfo::MapleLogger() << id << " ";
+            }
+            LogInfo::MapleLogger() << "]\n";
+        }
+        LogInfo::MapleLogger() << "\npreorder traversal of " << tag << " tree:";
+        for (auto &id : dtPreOrder) {
+            LogInfo::MapleLogger() << id << " ";
+        }
+        LogInfo::MapleLogger() << "\n\n";
     }
 
-    size_t GetPdomFrontierSize() const
+    void Init()
     {
-        return pdomFrontier.size();
+        GenPostOrderID();
+        ComputeDominance();
+        ComputeDomFrontiers();
+        ComputeDomChildren();
+        ComputeIterDomFrontiers();
+        size_t num = 0;
+        ComputeDtPreorder(num);
+        dtPreOrder.resize(num);
+        ComputeDtDfn();
     }
 
-    MapleSet<BBId> &GetPdomChildrenItem(size_t idx)
+    // true if b1 dominates b2
+    bool Dominate(const BaseGraphNode &node1, const BaseGraphNode &node2) const
     {
-        return pdomChildren[idx];
+        if (&node1 == &node2) {
+            return true;
+        }
+        const auto *iDom = &node2;
+        while (iDom != &commonEntryNode) {
+            auto it = doms.find(iDom->GetID());
+            if (it == doms.end() || it->second == nullptr) {
+                return false;
+            }
+            iDom = it->second;
+            if (iDom == &node1) {
+                return true;
+            }
+        }
+        return false;
     }
 
-    void ResizePdtPreOrder(size_t n)
+    // true if b1 dominates b2
+    bool Dominate(const uint32 nodeId1, const uint32 nodeId2) const
     {
-        pdtPreOrder.resize(n);
+        if (nodeId1 == nodeId2) {
+            return true;
+        }
+        uint32 curId = nodeId2;
+        while (curId != commonEntryNode.GetID()) {
+            auto it = doms.find(curId);
+            if (it == doms.end() || it->second == nullptr) {
+                return false;
+            }
+            curId = it->second->GetID();
+            if (curId == nodeId1) {
+                return true;
+            }
+        }
+        return false;
     }
 
-    BBId GetPdtPreOrderItem(size_t idx) const
+private:
+    void GenPostOrderID()
     {
-        return pdtPreOrder[idx];
+        DEBUG_ASSERT(!nodeVec.empty(), "size to be allocated is 0");
+        std::vector<bool> visitedMap(nodeVec.size(), false);
+        size_t postOrderID = 0;
+        PostOrderWalk(commonEntryNode, postOrderID, visitedMap);
+        // initialize reversePostOrder
+        reversePostOrder.resize(postOrderID);
+        auto maxPostOrderID = postOrderID - 1;
+        for (size_t i = 0; i < postOrderIDVec.size(); ++i) {
+            auto postOrderNo = postOrderIDVec[i];
+            if (postOrderNo == -1) {
+                continue;
+            }
+            reversePostOrder[maxPostOrderID - static_cast<uint32>(postOrderNo)] = nodeVec[i];
+        }
     }
 
-    uint32 GetPdtDfnItem(size_t idx) const
+    // Figure 5 in "A Simple, Fast Dominance Algorithm" by Keith Cooper et al.
+    void ComputeDomFrontiers()
     {
-        return pdtDfn[idx];
+        constexpr uint32 kNodeVectorInitialSize = 2;
+        for (const auto node : nodeVec) {
+            if (node == nullptr || node == &commonExitNode) {
+                continue;
+            }
+            std::vector<BaseGraphNode *> prevNodes;
+            GetPrevNodesToVisit(*node, prevNodes);
+
+            if (prevNodes.size() < kNodeVectorInitialSize) {
+                continue;
+            }
+            for (auto *pre : prevNodes) {
+                auto runner = pre;
+                while (runner != doms.at(node->GetID()) && runner != &commonEntryNode) {
+                    (void)domFrontier[runner->GetID()].insert(node->GetID());
+                    runner = doms.at(runner->GetID());
+                }
+            }
+        }
     }
 
-    BB *GetDom(BBId id)
+    void ComputeDomChildren()
     {
-        return doms[id];
+        for (const auto node : reversePostOrder) {
+            if (node == nullptr) {
+                continue;
+            }
+            auto *parent = doms.at(node->GetID());
+            if (parent == nullptr || parent == node) {
+                continue;
+            }
+            domChildren[parent->GetID()].push_back(node->GetID());
+        }
     }
 
-    size_t GetDomsSize() const
+    void ComputeIterDomFrontiers()
     {
-        return doms.size();
+        for (auto &node : nodeVec) {
+            if (node == nullptr || node == &commonExitNode) {
+                continue;
+            }
+            std::vector<bool> visitedMap(nodeVec.size(), false);
+            GetIterDomFrontier(*node, iterDomFrontier[node->GetID()], node->GetID(), visitedMap);
+        }
     }
 
-    int32 GetPdomPostOrderIDVec(size_t idx) const
+    void ComputeDtPreorder(size_t &num)
     {
-        return pdomPostOrderIDVec[idx];
+        ComputeDtPreorder(commonEntryNode, num);
     }
 
-    BB *GetPdomReversePostOrder(size_t idx)
+    void ComputeDtDfn()
     {
-        return pdomReversePostOrder[idx];
+        for (size_t i = 0; i < dtPreOrder.size(); ++i) {
+            dtDfn[dtPreOrder[i]] = static_cast<uint32>(i);
+        }
     }
 
-    MapleVector<BB *> &GetPdomReversePostOrder()
+    // Figure 3 in "A Simple, Fast Dominance Algorithm" by Keith Cooper et al.
+    void ComputeDominance()
     {
-        return pdomReversePostOrder;
+        doms[commonEntryNode.GetID()] = &commonEntryNode;
+        bool changed;
+        do {
+            changed = false;
+            for (size_t i = 1; i < reversePostOrder.size(); ++i) {
+                auto node = reversePostOrder[i];
+                BaseGraphNode *pre = nullptr;
+                std::vector<BaseGraphNode *> prevNodes;
+                GetPrevNodesToVisit(*node, prevNodes);
+                auto numOfPrevNodes = prevNodes.size();
+                if (InitNodeIsPred(*node) || numOfPrevNodes == 0) {
+                    pre = &commonEntryNode;
+                } else {
+                    pre = prevNodes[0];
+                }
+                size_t j = 1;
+                while ((doms[pre->GetID()] == nullptr || pre == node) && j < numOfPrevNodes) {
+                    pre = prevNodes[j];
+                    ++j;
+                }
+                BaseGraphNode *newIDom = pre;
+                for (; j < numOfPrevNodes; ++j) {
+                    pre = prevNodes[j];
+                    if (doms[pre->GetID()] != nullptr && pre != node) {
+                        newIDom = Intersect(*pre, *newIDom);
+                    }
+                }
+                if (doms[node->GetID()] != newIDom) {
+                    doms[node->GetID()] = newIDom;
+                    changed = true;
+                }
+            }
+        } while (changed);
     }
 
-    size_t GetPdomReversePostOrderSize() const
+    BaseGraphNode *Intersect(BaseGraphNode &node1, const BaseGraphNode &node2) const
     {
-        return pdomReversePostOrder.size();
+        auto *ptrNode1 = &node1;
+        auto *ptrNode2 = &node2;
+        while (ptrNode1 != ptrNode2) {
+            while (postOrderIDVec[ptrNode1->GetID()] < postOrderIDVec[ptrNode2->GetID()]) {
+                ptrNode1 = doms.at(ptrNode1->GetID());
+            }
+            while (postOrderIDVec[ptrNode2->GetID()] < postOrderIDVec[ptrNode1->GetID()]) {
+                ptrNode2 = doms.at(ptrNode2->GetID());
+            }
+        }
+        return ptrNode1;
     }
 
-    MapleSet<BBId> &GetDomFrontier(size_t idx)
+    bool InitNodeIsPred(const BaseGraphNode &node) const
     {
-        return domFrontier[idx];
+        std::vector<BaseGraphNode *> succNodes;
+        GetNextNodesToVisit(commonEntryNode, succNodes);
+        for (const auto &suc : succNodes) {
+            if (suc == &node) {
+                return true;
+            }
+        }
+        return false;
     }
 
-    size_t GetDomFrontierSize() const
+    void PostOrderWalk(const BaseGraphNode &root, size_t &pid, std::vector<bool> &visitedMap)
     {
-        return domFrontier.size();
+        std::stack<const BaseGraphNode *> s;
+        s.push(&root);
+        visitedMap[root.GetID()] = true;
+        while (!s.empty()) {
+            auto node = s.top();
+            auto nodeId = node->GetID();
+            if (nodeVec[nodeId] == nullptr) {
+                s.pop();
+                continue;
+            }
+            DEBUG_ASSERT(nodeId < visitedMap.size() && nodeId < postOrderIDVec.size(), "index out of range");
+            bool tail = true;
+            std::vector<BaseGraphNode *> succNodes;
+            GetNextNodesToVisit(*node, succNodes);
+            for (auto succ : succNodes) {
+                if (!visitedMap[succ->GetID()]) {
+                    tail = false;
+                    visitedMap[succ->GetID()] = true;
+                    s.push(succ);
+                    break;
+                }
+            }
+            if (tail) {
+                s.pop();
+                postOrderIDVec[nodeId] = static_cast<int32>(pid++);
+            }
+        }
     }
 
-    MapleVector<MapleVector<BBId>> &GetDomChildren()
+    void ComputeDtPreorder(const BaseGraphNode &node, size_t &num)
     {
-        return domChildren;
+        CHECK_FATAL(num < dtPreOrder.size(), "index out of range");
+        dtPreOrder[num++] = node.GetID();
+        for (auto &k : domChildren[node.GetID()]) {
+            ComputeDtPreorder(*nodeVec[k], num);
+        }
     }
 
-    MapleVector<BBId> &GetDomChildren(size_t idx)
+    void GetNextNodesToVisit(const BaseGraphNode &node, std::vector<BaseGraphNode *> &nodesToVisit) const
     {
-        return domChildren[idx];
+        if (isPdom) {
+            node.GetInNodes(nodesToVisit);
+        } else {
+            node.GetOutNodes(nodesToVisit);
+        }
     }
 
-    size_t GetDomChildrenSize() const
+    void GetPrevNodesToVisit(const BaseGraphNode &node, std::vector<BaseGraphNode *> &nodesToVisit) const
     {
-        return domChildren.size();
+        if (isPdom) {
+            node.GetOutNodes(nodesToVisit);
+        } else {
+            node.GetInNodes(nodesToVisit);
+        }
     }
 
-    BB *GetPdom(BBId id)
+    // nodeIdMarker indicates that the iterDomFrontier results for nodeId < nodeIdMarker have been computed
+    void GetIterDomFrontier(const BaseGraphNode &node, MapleSet<NodeId> &dfSet, const NodeId &nodeIdMarker,
+                            std::vector<bool> &visitedMap)
     {
-        return pdoms[id];
+        if (visitedMap[node.GetID()]) {
+            return;
+        }
+        visitedMap[node.GetID()] = true;
+        for (auto frontierNodeId : domFrontier[node.GetID()]) {
+            (void)dfSet.insert(frontierNodeId);
+            if (frontierNodeId < nodeIdMarker) {  // union with its computed result
+                dfSet.insert(iterDomFrontier[frontierNodeId].cbegin(), iterDomFrontier[frontierNodeId].cend());
+            } else {  // recursive call
+                auto frontierNode = nodeVec[frontierNodeId];
+                if (frontierNode == nullptr) {
+                    continue;
+                }
+                GetIterDomFrontier(*frontierNode, dfSet, nodeIdMarker, visitedMap);
+            }
+        }
     }
-
-protected:
-    void PostOrderWalk(const BB &bb, int32 &pid, std::vector<bool> &visitedMap);
-    BB *Intersect(BB &bb1, const BB &bb2) const;
-    bool CommonEntryBBIsPred(const BB &bb) const;
-    void PdomPostOrderWalk(const BB &bb, int32 &pid, std::vector<bool> &visitedMap);
-    BB *PdomIntersect(BB &bb1, const BB &bb2);
 
     MapleAllocator domAllocator;  // stores the analysis results
-
-private:
-    MapleAllocator tmpAllocator;  // can be freed after dominator computation
-    MapleVector<BB *> &bbVec;
-    BB &commonEntryBB;
-    BB &commonExitBB;
-    MapleVector<int32> postOrderIDVec;       // index is bb id
-    MapleVector<BB *> reversePostOrder;      // an ordering of the BB in reverse postorder
-    MapleVector<uint32> reversePostOrderId;  // gives position of each BB in reversePostOrder
-    MapleUnorderedMap<BBId, BB *> doms;      // index is bb id; immediate dominator for each BB
-    // following is for post-dominance
-    MapleVector<int32> pdomPostOrderIDVec;    // index is bb id
-    MapleVector<BB *> pdomReversePostOrder;   // an ordering of the BB in reverse postorder
-    MapleUnorderedMap<BBId, BB *> pdoms;      // index is bb id; immediate dominator for each BB
-    MapleVector<MapleSet<BBId>> domFrontier;  // index is bb id
-public:
-    MapleVector<MapleVector<BBId>> domChildren;   // index is bb id; for dom tree
-    MapleVector<MapleSet<BBId>> iterDomFrontier;  // index is bb id
-private:
-    MapleVector<BBId> dtPreOrder;              // ordering of the BBs in a preorder traversal of the dominator tree
-    MapleVector<uint32> dtDfn;                 // gives position of each BB in dt_preorder
-    MapleVector<MapleSet<BBId>> pdomFrontier;  // index is bb id
-public:
-    MapleVector<MapleSet<BBId>> pdomChildren;      // index is bb id; for pdom tree
-    MapleVector<MapleSet<BBId>> iterPdomFrontier;  // index is bb id
-private:
-    MapleVector<BBId> pdtPreOrder;  // ordering of the BBs in a preorder traversal of the post-dominator tree
-    MapleVector<uint32> pdtDfn;     // gives position of each BB in pdt_preorder
+    MapleVector<BaseGraphNode *> &nodeVec;
+    BaseGraphNode &commonEntryNode;
+    BaseGraphNode &commonExitNode;
+    bool isPdom;
+    MapleVector<int32> postOrderIDVec;                // index is node id
+    MapleVector<BaseGraphNode *> reversePostOrder;    // an ordering of the node in reverse postorder
+    MapleVector<uint32> reversePostOrderId;           // gives position of each node in reversePostOrder
+    MapleUnorderedMap<NodeId, BaseGraphNode *> doms;  // index is node id; immediate dominator for each node
+    MapleVector<MapleSet<NodeId>> domFrontier;        // index is node id
+    MapleVector<MapleVector<NodeId>> domChildren;     // index is node id; for dom tree
+    MapleVector<MapleSet<NodeId>> iterDomFrontier;    // index is node id
+    MapleVector<NodeId> dtPreOrder;  // ordering of the nodes in a preorder traversal of the dominator tree
+    MapleVector<uint32> dtDfn;       // gives position of each node in dt_preorder
 };
 }  // namespace maple
-#endif  // MAPLE_ME_INCLUDE_DOMINANCE_H
+#endif  // MAPLE_UTIL_INCLUDE_DOMINANCE_H

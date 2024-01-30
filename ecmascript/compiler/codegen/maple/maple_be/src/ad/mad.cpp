@@ -165,6 +165,7 @@ MAD::~MAD()
             for (auto *bypass : bypassVector) {
                 delete bypass;
             }
+            bypassVector.clear();
         }
     }
     allUnits.clear();

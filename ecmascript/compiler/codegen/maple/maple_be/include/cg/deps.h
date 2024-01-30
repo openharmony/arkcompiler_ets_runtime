@@ -25,6 +25,16 @@
 namespace maplebe {
 #define PRINT_STR_VAL(STR, VAL) (LogInfo::MapleLogger() << std::left << std::setw(12) << (STR) << (VAL) << " | ")
 #define PRINT_VAL(VAL) (LogInfo::MapleLogger() << std::left << std::setw(12) << (VAL) << " | ")
+
+constexpr uint8 kNumOne = 1;
+constexpr uint8 kNumTwo = 2;
+constexpr uint8 kNumThree = 3;
+constexpr uint8 kNumFour = 4;
+constexpr uint8 kNumEight = 8;
+constexpr uint8 kNumTen = 10;
+constexpr uint8 kNumTwelve = 12;
+constexpr uint8 kNumFifteen = 15;
+
 enum DepType : uint8 {
     kDependenceTypeTrue,
     kDependenceTypeOutput,

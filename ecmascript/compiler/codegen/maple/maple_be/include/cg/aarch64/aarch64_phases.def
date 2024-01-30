@@ -67,7 +67,7 @@
  ADDTARGETPHASE("peephole", CGOptions::DoPeephole())
  ADDTARGETPHASE("gencfi", !GetMIRModule()->IsCModule() || GetMIRModule()->IsWithDbgInfo());
  ADDTARGETPHASE("yieldpoint", GetMIRModule()->IsJavaModule() && CGOptions::IsInsertYieldPoint());
- ADDTARGETPHASE("scheduling", CGOptions::DoSchedule());
+ ADDTARGETPHASE("localschedule", CGOptions::DoLocalSchedule());
  ADDTARGETPHASE("alignanalysis", GetMIRModule()->IsCModule() && CGOptions::DoAlignAnalysis());
  ADDTARGETPHASE("fixshortbranch", true);
  ADDTARGETPHASE("cgirverify", CGOptions::DoCGIRVerify());

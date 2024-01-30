@@ -962,6 +962,12 @@ public:
         return commonExitBB;
     }
 
+    BB *GetCommonEntryBB()
+    {
+        DEBUG_ASSERT(bbVec[0]->GetId() == 0 && bbVec[0] != firstBB, "there is no commonEntryBB");
+        return bbVec[0];
+    }
+
     LabelIdx GetFirstCGGenLabelIdx() const
     {
         return firstCGGenLabelIdx;
@@ -1280,6 +1286,11 @@ public:
     MapleVector<BB *> &GetAllBBs()
     {
         return bbVec;
+    }
+
+    std::size_t GetAllBBSize() const
+    {
+        return bbVec.size();
     }
 
     BB *GetBBFromID(uint32 id)
