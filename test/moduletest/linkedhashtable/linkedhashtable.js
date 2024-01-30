@@ -33,3 +33,13 @@ if (flag1 && flag2) {
 } else {
     print("test linkedhashtable failed!!!");
 }
+
+var s=new Set([0]);
+for(var x of s){
+    s.add(x+1);
+    print(x)
+    if(x>3){
+        s.clear();
+        s.clear();
+    }
+}
