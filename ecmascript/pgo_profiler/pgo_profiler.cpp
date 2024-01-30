@@ -235,8 +235,7 @@ void PGOProfiler::UpdateTrackInfo(JSTaggedValue trackInfoVal)
         if (!object->GetClass()->IsJSFunction()) {
             return;
         }
-        auto method = JSFunction::Cast(object)->GetMethod();
-        auto profileTypeInfoVal = Method::Cast(method)->GetProfileTypeInfo();
+        auto profileTypeInfoVal = JSFunction::Cast(object)->GetProfileTypeInfo();
         if (profileTypeInfoVal.IsUndefined()) {
             return;
         }
@@ -386,7 +385,7 @@ void PGOProfiler::HandlePGOPreDump()
         auto abcId = GetMethodAbcId(func);
         ProfileType recordType = GetRecordProfileType(abcId, recordName);
         recordInfos_->AddMethod(recordType, Method::Cast(methodValue), SampleMode::HOTNESS_MODE);
-        ProfileBytecode(abcId, recordName, methodValue);
+        ProfileBytecode(abcId, recordName, funcValue);
     });
 }
 
@@ -419,7 +418,7 @@ void PGOProfiler::HandlePGODump(bool force)
         if (recordInfos_->AddMethod(recordType, Method::Cast(methodValue), SampleMode::HOTNESS_MODE)) {
             methodCount_++;
         }
-        ProfileBytecode(abcId, recordName, methodValue);
+        ProfileBytecode(abcId, recordName, current);
         current = PopFromProfileQueue();
     }
     if (state_ == State::PAUSE) {
@@ -472,10 +471,11 @@ bool PGOProfiler::PausePGODump()
     return false;
 }
 
-void PGOProfiler::ProfileBytecode(ApEntityId abcId, const CString &recordName, JSTaggedValue value)
+void PGOProfiler::ProfileBytecode(ApEntityId abcId, const CString &recordName, JSTaggedValue funcValue)
 {
-    Method *method = Method::Cast(value.GetTaggedObject());
-    JSTaggedValue profileTypeInfoVal = method->GetProfileTypeInfo();
+    JSFunction *function = JSFunction::Cast(funcValue);
+    Method *method = Method::Cast(function->GetMethod());
+    JSTaggedValue profileTypeInfoVal = function->GetProfileTypeInfo();
     ASSERT(!profileTypeInfoVal.IsUndefined());
     auto profileTypeInfo = ProfileTypeInfo::Cast(profileTypeInfoVal.GetTaggedObject());
     auto methodId = method->GetMethodId();

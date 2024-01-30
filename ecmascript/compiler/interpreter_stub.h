@@ -102,7 +102,7 @@ public:
     inline GateRef GetEnvFromFunction(GateRef frame);
     inline GateRef GetConstpoolFromMethod(GateRef function);
     inline GateRef GetModule(GateRef sp);
-    inline GateRef GetProfileTypeInfoFromMethod(GateRef function);
+    inline GateRef GetProfileTypeInfoFromFunction(GateRef function);
     inline GateRef GetModuleFromFunction(GateRef function);
     inline GateRef GetHomeObjectFromFunction(GateRef function);
     inline GateRef GetResumeModeFromGeneratorObject(GateRef obj);

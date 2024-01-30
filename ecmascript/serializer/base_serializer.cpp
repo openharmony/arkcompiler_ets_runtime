@@ -171,6 +171,13 @@ void BaseSerializer::SerializeSFunctionFieldIndividually(TaggedObject *root, Obj
     while (slot < end) {
         size_t fieldOffset = slot.SlotAddress() - ToUintPtr(root);
         switch (fieldOffset) {
+            case JSFunction::MACHINECODE_OFFSET:
+            case JSFunction::PROFILE_TYPE_INFO_OFFSET: {
+                data_->WriteEncodeFlag(EncodeFlag::PRIMITIVE);
+                data_->WriteJSTaggedValue(JSTaggedValue::Undefined());
+                slot++;
+                break;
+            }
             case JSFunction::WORK_NODE_POINTER_OFFSET: {
                 data_->WriteEncodeFlag(EncodeFlag::MULTI_RAW_DATA);
                 data_->WriteUint32(sizeof(uintptr_t));
@@ -225,6 +232,8 @@ void BaseSerializer::SerializeAsyncFunctionFieldIndividually(TaggedObject *root,
             }
             case JSFunction::PROTO_OR_DYNCLASS_OFFSET:
             case JSFunction::LEXICAL_ENV_OFFSET:
+            case JSFunction::MACHINECODE_OFFSET:
+            case JSFunction::PROFILE_TYPE_INFO_OFFSET:
             case JSFunction::HOME_OBJECT_OFFSET: {
                 data_->WriteEncodeFlag(EncodeFlag::PRIMITIVE);
                 data_->WriteJSTaggedValue(JSTaggedValue::Undefined());
@@ -255,7 +264,6 @@ void BaseSerializer::SerializeMethodFieldIndividually(TaggedObject *root, Object
         size_t fieldOffset = slot.SlotAddress() - ToUintPtr(root);
         switch (fieldOffset) {
             case Method::CONSTANT_POOL_OFFSET:
-            case Method::PROFILE_TYPE_INFO_OFFSET:
             case Method::ECMA_MODULE_OFFSET: {
                 data_->WriteEncodeFlag(EncodeFlag::PRIMITIVE);
                 data_->WriteJSTaggedValue(JSTaggedValue::Undefined());

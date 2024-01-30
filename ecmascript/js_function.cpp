@@ -97,7 +97,10 @@ void JSFunction::InitializeWithDefaultValue(JSThread *thread, const JSHandle<JSF
     func->SetHomeObject(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
     func->SetWorkNodePointer(reinterpret_cast<uintptr_t>(nullptr));
     func->SetLexicalEnv(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
+    func->SetMachineCode(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
+    func->SetProfileTypeInfo(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
     func->SetMethod(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
+    func->SetCodeEntry(reinterpret_cast<uintptr_t>(nullptr));
 }
 
 JSHandle<JSObject> JSFunction::NewJSFunctionPrototype(JSThread *thread, const JSHandle<JSFunction> &func)
@@ -965,5 +968,19 @@ void JSFunction::InitializeForConcurrentFunction(JSThread *thread)
     module->SetStatus(ecmascript::ModuleStatus::INSTANTIATED);
     ecmascript::SourceTextModule::EvaluateForConcurrent(thread, module, method);
     method->SetModule(thread, module);
+}
+
+void JSFunctionBase::SetCompiledFuncEntry(uintptr_t codeEntry, bool isFastCall)
+{
+    ASSERT(codeEntry != 0);
+    SetCodeEntry(codeEntry);
+
+    Method* method = Method::Cast(GetMethod());
+    method->SetAotCodeBit(true);
+    method->SetNativeBit(false);
+    method->SetIsFastCall(isFastCall);
+    MethodLiteral *methodLiteral = method->GetMethodLiteral();
+    methodLiteral->SetAotCodeBit(true);
+    methodLiteral->SetIsFastCall(isFastCall);
 }
 }  // namespace panda::ecmascript

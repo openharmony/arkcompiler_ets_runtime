@@ -111,7 +111,7 @@ void Jit::Compile(EcmaVM *vm, JSHandle<JSFunction> &jsFunction, JitCompileMode m
         LOG_JIT(INFO) << "method does not support jit:" << methodName << ", kind:" << static_cast<int>(kind);
         return;
     }
-    if (method->GetMachineCode() != JSTaggedValue::Undefined()) {
+    if (jsFunction->GetMachineCode() != JSTaggedValue::Undefined()) {
         LOG_JIT(DEBUG) << "skip method, as it has been jit compiled:" << methodName;
         return;
     }

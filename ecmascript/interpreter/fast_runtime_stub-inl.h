@@ -289,7 +289,7 @@ JSTaggedValue FastRuntimeStub::NewThisObject(JSThread *thread, JSTaggedValue cto
     Method *method = Method::Cast(ctorHandle->GetMethod().GetTaggedObject());
     state->function = ctorHandle.GetTaggedValue();
     state->constpool = method->GetConstantPool();
-    state->profileTypeInfo = method->GetProfileTypeInfo();
+    state->profileTypeInfo = ctorHandle->GetProfileTypeInfo();
     state->env = ctorHandle->GetLexicalEnv();
 
     return obj.GetTaggedValue();

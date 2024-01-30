@@ -472,7 +472,7 @@ public:
                                           bool canShareHClass = true);
     JSHandle<JSObject> CloneObjectLiteral(JSHandle<JSObject> object);
     JSHandle<JSArray> CloneArrayLiteral(JSHandle<JSArray> object);
-    JSHandle<JSFunction> CloneJSFuction(JSHandle<JSFunction> func);
+    JSHandle<JSFunction> CloneJSFunction(JSHandle<JSFunction> func);
     JSHandle<JSFunction> CloneSFunction(JSHandle<JSFunction> func);
     JSHandle<JSFunction> CloneClassCtor(JSHandle<JSFunction> ctor, const JSHandle<JSTaggedValue> &lexenv,
                                         bool canShareHClass);

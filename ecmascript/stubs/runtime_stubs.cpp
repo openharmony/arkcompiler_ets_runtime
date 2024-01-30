@@ -1359,10 +1359,10 @@ DEF_RUNTIME_STUBS(UpdateHotnessCounter)
     JSHandle<JSFunction> thisFunc = GetHArg<JSFunction>(argv, argc, 0);  // 0: means the zeroth parameter
     thread->CheckSafepoint();
     JSHandle<Method> method(thread, thisFunc->GetMethod());
-    auto profileTypeInfo = method->GetProfileTypeInfo();
+    auto profileTypeInfo = thisFunc->GetProfileTypeInfo();
     if (profileTypeInfo.IsUndefined()) {
         uint32_t slotSize = method->GetSlotSize();
-        auto res = RuntimeNotifyInlineCache(thread, method, slotSize);
+        auto res = RuntimeNotifyInlineCache(thread, thisFunc, slotSize);
         return res.GetRawData();
     }
     return profileTypeInfo.GetRawData();
@@ -1389,11 +1389,10 @@ DEF_RUNTIME_STUBS(UpdateHotnessCounterWithProf)
     RUNTIME_STUBS_HEADER(UpdateHotnessCounterWithProf);
     JSHandle<JSFunction> thisFunc = GetHArg<JSFunction>(argv, argc, 0);  // 0: means the zeroth parameter
     thread->CheckSafepoint();
-    JSHandle<Method> method(thread, thisFunc->GetMethod());
-    auto profileTypeInfo = method->GetProfileTypeInfo();
+    auto profileTypeInfo = thisFunc->GetProfileTypeInfo();
     if (profileTypeInfo.IsUndefined()) {
-        uint32_t slotSize = method->GetSlotSize();
-        auto res = RuntimeNotifyInlineCache(thread, method, slotSize);
+        uint32_t slotSize = thisFunc->GetCallTarget()->GetSlotSize();
+        auto res = RuntimeNotifyInlineCache(thread, thisFunc, slotSize);
         return res.GetRawData();
     }
     return profileTypeInfo.GetRawData();
@@ -2950,9 +2949,11 @@ void RuntimeStubs::SaveFrameToContext(JSThread *thread, JSHandle<GeneratorContex
     }
     context->SetRegsArray(thread, regsArray.GetTaggedValue());
     JSTaggedValue function = frameHandler.GetFunction();
-    Method *method = JSFunction::Cast(function.GetTaggedObject())->GetCallTarget();
+    JSFunction* func = JSFunction::Cast(function.GetTaggedObject());
+    Method *method = func->GetCallTarget();
     if (method->IsAotWithCallField()) {
         method->ClearAOTFlags();
+        func->SetCodeEntry(reinterpret_cast<uintptr_t>(nullptr));
     }
     context->SetMethod(thread, function);
     context->SetThis(thread, frameHandler.GetThis());

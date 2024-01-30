@@ -64,8 +64,8 @@ public:
     static void PUBLIC_API GetMethodOffsets(const JSPandaFile *jsPandaFile, EntityId id,
                                             std::vector<uint32_t> &methodOffsets);
 private:
-    static JSHandle<JSFunction> CreateJSFunctionInLiteral(EcmaVM *vm, JSHandle<Method> method, FunctionKind kind,
-                                                          ClassKind classKind);
+    static JSHandle<JSFunction> CreateJSFunctionInLiteral(EcmaVM *vm, const JSHandle<Method> &method,
+                                                          FunctionKind kind, ClassKind classKind);
     static JSHandle<TaggedArray> EnumerateLiteralVals(JSThread *thread, panda_file::LiteralDataAccessor &lda,
         const JSPandaFile *jsPandaFile, size_t index, JSHandle<ConstantPool> constpool,
         const CString &entryPoint = "");

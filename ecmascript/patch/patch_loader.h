@@ -79,6 +79,8 @@ struct PatchInfo {
     CVector<JSHandle<JSTaggedValue>> baseConstpools;
     // patch replaced recordNames.
     CUnorderedSet<CString> replacedRecordNames;
+    // patch replaced methods.
+    CUnorderedSet<EntityId> repalcedPatchMethods;
 };
 
 enum class StageOfHotReload : int32_t {
@@ -127,6 +129,7 @@ private:
     static void ReplaceModuleOfMethod(JSThread *thread, const JSPandaFile *baseFile, PatchInfo &patchInfo);
     static Method *GetPatchMethod(JSThread *thread,
         const BaseMethodIndex &methodIndex, const ConstantPool *baseConstpool);
+    static void UpdateProfileTypeInfo(JSThread *thread, PatchInfo &patchInfo);
 };
 }  // namespace panda::ecmascript
 #endif // ECMASCRIPT_PATCH_PATCH_LOADER_H

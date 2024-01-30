@@ -61,11 +61,11 @@ void JitTask::InstallCode()
     // oom?
     uintptr_t codeAddr = machineCodeObj->GetFuncAddr();
     FuncEntryDes *funcEntryDes = reinterpret_cast<FuncEntryDes*>(machineCodeObj->GetFuncEntryDes());
-    methodHandle->SetCompiledFuncEntry(codeAddr, funcEntryDes->isFastCall_);
+    jsFunction_->SetCompiledFuncEntry(codeAddr, funcEntryDes->isFastCall_);
     methodHandle->SetDeoptThreshold(vm_->GetJSOptions().GetDeoptThreshold());
-    methodHandle->SetMachineCode(vm_->GetJSThread(), machineCodeObj);
+    jsFunction_->SetMachineCode(vm_->GetJSThread(), machineCodeObj);
 
-    LOG_JIT(DEBUG) <<"Install machine code:" << GetMethodInfo();
+    LOG_JIT(DEBUG) << "Install machine code:" << GetMethodInfo();
 }
 
 void JitTask::PersistentHandle()

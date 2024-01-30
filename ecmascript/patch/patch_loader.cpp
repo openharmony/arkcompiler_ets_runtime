@@ -59,6 +59,7 @@ PatchErrorCode PatchLoader::LoadPatchInternal(JSThread *thread, const JSPandaFil
     // create empty patch constpool for replace method constpool.
     thread->GetCurrentEcmaContext()->CreateAllConstpool(patchFile);
     FindAndReplaceSameMethod(thread, baseFile, patchFile, patchInfo, baseClassInfo);
+    UpdateProfileTypeInfo(thread, patchInfo);
 
     // cached patch modules can only be clear before load patch.
     thread->GetCurrentEcmaContext()->ClearPatchModules();
@@ -249,8 +250,24 @@ void PatchLoader::ReplaceMethod(JSThread *thread,
     destMethod->SetCodeEntryOrLiteral(reinterpret_cast<uintptr_t>(srcMethodLiteral));
     destMethod->SetNativePointerOrBytecodeArray(const_cast<void *>(srcMethodLiteral->GetNativePointer()));
     destMethod->SetConstantPool(thread, srcConstpool);
-    destMethod->SetProfileTypeInfo(thread, JSTaggedValue::Undefined());
     destMethod->SetAotCodeBit(false);
+}
+
+// Iterator heap to update profileTypeInfo in JSFunction.
+void PatchLoader::UpdateProfileTypeInfo(JSThread *thread, PatchInfo &patchInfo)
+{
+    CUnorderedSet<EntityId> &repalcedPatchMethods = patchInfo.repalcedPatchMethods;
+    const Heap *heap = thread->GetEcmaVM()->GetHeap();
+    heap->GetSweeper()->EnsureAllTaskFinished();
+    heap->IterateOverObjects([&repalcedPatchMethods, thread]([[maybe_unused]] TaggedObject *obj) {
+        JSFunction *function = nullptr;
+        if (JSTaggedValue(obj).IsJSFunction()) {
+            function = JSFunction::Cast(obj);
+            if (repalcedPatchMethods.count(Method::Cast(function->GetMethod())->GetMethodId()) > 0) {
+                function->SetProfileTypeInfo(thread, JSTaggedValue::Undefined());
+            }
+        }
+    });
 }
 
 void PatchLoader::FindAndReplaceSameMethod(JSThread *thread, const JSPandaFile *baseFile,
@@ -285,6 +302,7 @@ void PatchLoader::FindAndReplaceSameMethod(JSThread *thread, const JSPandaFile *
 
                 JSTaggedValue patchConstpoolValue = context->FindConstpool(patchFile,
                     patchMethodLiteral->GetMethodId());
+                patchInfo.repalcedPatchMethods.insert(baseMethod->GetMethodId());
                 ReplaceMethod(thread, baseMethod, patchMethodLiteral, patchConstpoolValue);
 
                 BaseMethodIndex indexs = {constpoolNum, constpoolIndex};
@@ -312,6 +330,7 @@ void PatchLoader::FindAndReplaceSameMethod(JSThread *thread, const JSPandaFile *
 
                     JSTaggedValue patchConstpoolValue = context->FindConstpool(patchFile,
                         patchMethodLiteral->GetMethodId());
+                    patchInfo.repalcedPatchMethods.insert(baseMethod->GetMethodId());
                     ReplaceMethod(thread, baseMethod, patchMethodLiteral, patchConstpoolValue);
 
                     BaseMethodIndex indexs = {constpoolNum, constpoolIndex, literalIndex};

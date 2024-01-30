@@ -2942,7 +2942,7 @@ void SlowPathLowering::LowerFastCall(GateRef gate, GateRef glue, GateRef func, G
                     builder_.Bind(&call);
                     {
                         builder_.StartCallTimer(glue_, gate, {glue_, func, builder_.True()}, true);
-                        GateRef code = builder_.GetCodeAddr(method);
+                        GateRef code = builder_.GetCodeAddr(func);
                         auto depend = builder_.GetDepend();
                         const CallSignature *cs = RuntimeStubCSigns::GetOptimizedFastCallSign();
                         result->WriteVariable(builder_.Call(cs, glue, code, depend, argsFastCall, gate));
@@ -2972,7 +2972,7 @@ void SlowPathLowering::LowerFastCall(GateRef gate, GateRef glue, GateRef func, G
                 builder_.Bind(&call1);
                 {
                     builder_.StartCallTimer(glue_, gate, {glue_, func, builder_.True()}, true);
-                    GateRef code = builder_.GetCodeAddr(method);
+                    GateRef code = builder_.GetCodeAddr(func);
                     auto depend = builder_.GetDepend();
                     const CallSignature *cs = RuntimeStubCSigns::GetOptimizedCallSign();
                     result->WriteVariable(builder_.Call(cs, glue, code, depend, args, gate));
@@ -3018,8 +3018,7 @@ void SlowPathLowering::LowerTypedCall(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
     GateRef func = acc_.GetValueIn(gate, static_cast<size_t>(CommonArgIdx::FUNC));
-    GateRef method  = builder_.GetMethodFromFunction(func);
-    GateRef code = builder_.GetCodeAddr(method);
+    GateRef code = builder_.GetCodeAddr(func);
     size_t num = acc_.GetNumValueIn(gate);
     std::vector<GateRef> args(num);
     for (size_t i = 0; i < num; ++i) {
@@ -3036,8 +3035,7 @@ void SlowPathLowering::LowerTypedFastCall(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
     GateRef func = acc_.GetValueIn(gate, static_cast<size_t>(FastCallArgIdx::FUNC));
-    GateRef method  = builder_.GetMethodFromFunction(func);
-    GateRef code = builder_.GetCodeAddr(method);
+    GateRef code = builder_.GetCodeAddr(func);
     size_t num = acc_.GetNumValueIn(gate);
     std::vector<GateRef> args(num);
     for (size_t i = 0; i < num; ++i) {

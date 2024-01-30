@@ -203,7 +203,7 @@ protected:
     }
 
     void CheckApMethodsInApFiles(const std::string &fileName,
-                                  std::unordered_map<std::string, std::vector<PGOMethodId>> &recordMethodList)
+                                 std::unordered_map<std::string, std::vector<PGOMethodId>> &recordMethodList)
     {
         std::vector<MethodLiteral *> methodLiterals {};
         CreateJSPandaFile(fileName.c_str(), methodLiterals);
@@ -213,7 +213,7 @@ protected:
             if (recordEntry == recordMethodList.end()) {
                 continue;
             }
-            for (auto index = 0; index < recordEntry->second.size(); ++index) {
+            for (size_t index = 0; index < recordEntry->second.size(); ++index) {
                 if (!(recordEntry->second.at(index) == methodLiteral->GetMethodId())) {
                     continue;
                 }

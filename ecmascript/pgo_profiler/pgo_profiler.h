@@ -105,7 +105,7 @@ private:
         FORCE_SAVE_PAUSE,
     };
 
-    void ProfileBytecode(ApEntityId abcId, const CString &recordName, JSTaggedValue value);
+    void ProfileBytecode(ApEntityId abcId, const CString &recordName, JSTaggedValue funcValue);
     bool PausePGODump();
 
     void DumpICByName(ApEntityId abcId, const CString &recordName, EntityId methodId, int32_t bcOffset, uint32_t slotId,

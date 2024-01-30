@@ -392,7 +392,7 @@ JSHandle<JSFunction> ClassHelper::DefineClassFromExtractor(JSThread *thread, con
         for (uint32_t index = 0; index < nonStaticLength; ++index) {
             propValue.Update(nonStaticProperties->Get(index));
             if (propValue->IsJSFunction()) {
-                JSHandle<JSFunction> propFunc = factory->CloneJSFuction(JSHandle<JSFunction>::Cast(propValue));
+                JSHandle<JSFunction> propFunc = factory->CloneJSFunction(JSHandle<JSFunction>::Cast(propValue));
                 propFunc->SetHomeObject(thread, prototype);
                 propFunc->SetLexicalEnv(thread, lexenv);
                 propValue.Update(propFunc);
@@ -418,7 +418,7 @@ JSHandle<JSFunction> ClassHelper::DefineClassFromExtractor(JSThread *thread, con
         for (uint32_t index = 0; index < staticLength; ++index) {
             propValue.Update(staticProperties->Get(index));
             if (propValue->IsJSFunction()) {
-                JSHandle<JSFunction> propFunc = factory->CloneJSFuction(JSHandle<JSFunction>::Cast(propValue));
+                JSHandle<JSFunction> propFunc = factory->CloneJSFunction(JSHandle<JSFunction>::Cast(propValue));
                 propFunc->SetHomeObject(thread, constructor);
                 propFunc->SetLexicalEnv(thread, lexenv);
                 propValue.Update(propFunc);
@@ -485,7 +485,7 @@ JSHandle<JSFunction> ClassHelper::DefineClassWithIHClass(JSThread *thread,
         for (uint32_t index = 0; index < nonStaticLength; ++index) {
             propValue.Update(nonStaticProperties->Get(index));
             if (propValue->IsJSFunction()) {
-                JSHandle<JSFunction> propFunc = factory->CloneJSFuction(JSHandle<JSFunction>::Cast(propValue));
+                JSHandle<JSFunction> propFunc = factory->CloneJSFunction(JSHandle<JSFunction>::Cast(propValue));
                 propFunc->SetHomeObject(thread, prototype);
                 propFunc->SetLexicalEnv(thread, lexenv);
                 propValue.Update(propFunc);
@@ -512,7 +512,7 @@ JSHandle<JSFunction> ClassHelper::DefineClassWithIHClass(JSThread *thread,
         for (uint32_t index = 0; index < staticLength; ++index) {
             propValue.Update(staticProperties->Get(index));
             if (propValue->IsJSFunction()) {
-                JSHandle<JSFunction> propFunc = factory->CloneJSFuction(JSHandle<JSFunction>::Cast(propValue));
+                JSHandle<JSFunction> propFunc = factory->CloneJSFunction(JSHandle<JSFunction>::Cast(propValue));
                 propFunc->SetHomeObject(thread, constructor);
                 propFunc->SetLexicalEnv(thread, lexenv);
                 propValue.Update(propFunc);
@@ -594,7 +594,7 @@ JSHandle<NameDictionary> ClassHelper::BuildDictionaryProperties(JSThread *thread
         propKey.Update(keys->Get(index));
         propValue.Update(properties->Get(index));
         if (propValue->IsJSFunction()) {
-            JSHandle<JSFunction> propFunc = factory->CloneJSFuction(JSHandle<JSFunction>::Cast(propValue));
+            JSHandle<JSFunction> propFunc = factory->CloneJSFunction(JSHandle<JSFunction>::Cast(propValue));
             propFunc->SetHomeObject(thread, object);
             propFunc->SetLexicalEnv(thread, lexenv);
             propValue.Update(propFunc);
@@ -687,6 +687,7 @@ JSHandle<JSFunction> SendableClassDefiner::DefineSendableClassFromExtractor(JSTh
         auto layout = JSHandle<LayoutInfo>(thread, constructorHClass->GetLayout());
         AddFieldTypeToHClass(thread, staticFieldArray, layout, constructorHClass);
     }
+
     JSHandle<JSFunction> constructor = factory->NewSFunctionByHClass(method, constructorHClass);
 
     // non-static

@@ -6917,7 +6917,7 @@ GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNu
             Branch(Int64LessThanOrEqual(expectedArgc, realNumArgs), &fastCall, &fastCallBridge);
             Bind(&fastCall);
             {
-                GateRef code = GetAotCodeAddr(method);
+                GateRef code = GetAotCodeAddr(func);
                 switch (mode) {
                     case JSCallMode::CALL_THIS_ARG0:
                         thisValue = data[0];
@@ -7093,7 +7093,7 @@ GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNu
             Branch(Int64LessThanOrEqual(expectedArgc, realNumArgs), &slowCall, &slowCallBridge);
             Bind(&slowCall);
             {
-                GateRef code = GetAotCodeAddr(method);
+                GateRef code = GetAotCodeAddr(func);
                 switch (mode) {
                     case JSCallMode::CALL_THIS_ARG0:
                         thisValue = data[0];

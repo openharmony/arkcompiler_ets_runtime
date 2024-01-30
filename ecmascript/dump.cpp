@@ -1662,6 +1662,9 @@ void JSFunction::Dump(std::ostream &os) const
         GetLexicalEnv().Dump(os);
         os << "\n";
     }
+    os << " - ProfileTypeInfo: ";
+    GetProfileTypeInfo().Dump(os);
+    os << "\n";
     os << " - HomeObject: ";
     GetHomeObject().Dump(os);
     os << "\n";
@@ -3829,9 +3832,6 @@ void Method::Dump(std::ostream &os) const
     os << " - ConstantPool: ";
     GetConstantPool().Dump(os);
     os << "\n";
-    os << " - ProfileTypeInfo: ";
-    GetProfileTypeInfo().Dump(os);
-    os << "\n";
     os << " - Module: ";
     GetModule().Dump(os);
     os << "\n";
@@ -4684,6 +4684,7 @@ void JSFunction::DumpForSnapshot(std::vector<Reference> &vec) const
 {
     vec.emplace_back(CString("ProtoOrHClass"), GetProtoOrHClass());
     vec.emplace_back(CString("LexicalEnv"), GetLexicalEnv());
+    vec.emplace_back(CString("ProfileTypeInfo"), GetProfileTypeInfo());
     vec.emplace_back(CString("HomeObject"), GetHomeObject());
     vec.emplace_back(CString("FunctionKind"), JSTaggedValue(static_cast<int>(GetFunctionKind())));
     vec.emplace_back(CString("FunctionExtraInfo"), GetFunctionExtraInfo());
@@ -4693,7 +4694,6 @@ void JSFunction::DumpForSnapshot(std::vector<Reference> &vec) const
 void Method::DumpForSnapshot(std::vector<Reference> &vec) const
 {
     vec.emplace_back(CString("ConstantPool"), GetConstantPool());
-    vec.emplace_back(CString("ProfileTypeInfo"), GetProfileTypeInfo());
     vec.emplace_back(CString("Module"), GetModule());
 }
 

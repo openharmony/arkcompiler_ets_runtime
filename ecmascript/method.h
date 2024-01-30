@@ -78,11 +78,6 @@ public:
         return IsNativeBit::Decode(callField);
     }
 
-    bool IsAotWithCallField(uint64_t callField) const
-    {
-        return IsAotCodeBit::Decode(callField);
-    }
-
     bool OnlyHaveThisWithCallField(uint64_t callField) const
     {
         return (callField & CALL_TYPE_MASK) == 1;  // 1: the first bit of callFiled is HaveThisBit
@@ -400,7 +395,6 @@ public:
         SetDeoptType(kungfu::DeoptType::NOTCHECK);
         SetCodeEntryOrLiteral(reinterpret_cast<uintptr_t>(nullptr));
     }
-
     void SetCompiledFuncEntry(uintptr_t codeEntry, bool isFastCall);
 
     static constexpr size_t Size()
@@ -447,15 +441,13 @@ public:
     using IsCallNapiBit = DeoptTypeBits::NextFlag; // offset 28
 
     static constexpr size_t CONSTANT_POOL_OFFSET = TaggedObjectSize();
-    ACCESSORS(ConstantPool, CONSTANT_POOL_OFFSET, PROFILE_TYPE_INFO_OFFSET)
-    ACCESSORS(ProfileTypeInfo, PROFILE_TYPE_INFO_OFFSET, MACHINECODE_OFFSET)
-    ACCESSORS(MachineCode, MACHINECODE_OFFSET, ECMA_MODULE_OFFSET)
+    ACCESSORS(ConstantPool, CONSTANT_POOL_OFFSET, ECMA_MODULE_OFFSET)
     ACCESSORS(Module, ECMA_MODULE_OFFSET, CALL_FIELD_OFFSET)
     ACCESSORS_PRIMITIVE_FIELD(CallField, uint64_t, CALL_FIELD_OFFSET, NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET)
     // Native method decides this filed is NativePointer or BytecodeArray pointer.
     ACCESSORS_NATIVE_FIELD(
-        NativePointerOrBytecodeArray, void, NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET, CODE_ENTRY_OFFSET)
-    ACCESSORS_PRIMITIVE_FIELD(CodeEntryOrLiteral, uintptr_t, CODE_ENTRY_OFFSET, LITERAL_INFO_OFFSET)
+        NativePointerOrBytecodeArray, void, NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET, CODEENTRY_LITERAL_OFFSET)
+    ACCESSORS_PRIMITIVE_FIELD(CodeEntryOrLiteral, uintptr_t, CODEENTRY_LITERAL_OFFSET, LITERAL_INFO_OFFSET)
     // hotness counter is encoded in a js method field, the first uint16_t in a uint64_t.
     ACCESSORS_PRIMITIVE_FIELD(LiteralInfo, uint64_t, LITERAL_INFO_OFFSET, EXTRA_LITERAL_INFO_OFFSET)
     ACCESSORS_PRIMITIVE_FIELD(ExtraLiteralInfo, uint64_t, EXTRA_LITERAL_INFO_OFFSET, LAST_OFFSET)

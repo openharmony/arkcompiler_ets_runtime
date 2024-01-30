@@ -1041,7 +1041,7 @@ JSTaggedValue RuntimeStubs::RuntimeSetClassConstructorLength(JSThread *thread, J
     return JSTaggedValue::Undefined();
 }
 
-JSTaggedValue RuntimeStubs::RuntimeNotifyInlineCache(JSThread *thread, const JSHandle<Method> &method,
+JSTaggedValue RuntimeStubs::RuntimeNotifyInlineCache(JSThread *thread, const JSHandle<JSFunction> &function,
                                                      uint32_t icSlotSize)
 {
     if (icSlotSize == 0) {
@@ -1055,7 +1055,7 @@ JSTaggedValue RuntimeStubs::RuntimeNotifyInlineCache(JSThread *thread, const JSH
         profileTypeInfo->Set(thread, ProfileTypeInfo::INVALID_SLOT_INDEX, JSTaggedValue::Hole());
         ASSERT(icSlotSize <= ProfileTypeInfo::MAX_SLOT_INDEX + 1);
     }
-    method->SetProfileTypeInfo(thread, profileTypeInfo.GetTaggedValue());
+    function->SetProfileTypeInfo(thread, profileTypeInfo.GetTaggedValue());
     return profileTypeInfo.GetTaggedValue();
 }
 

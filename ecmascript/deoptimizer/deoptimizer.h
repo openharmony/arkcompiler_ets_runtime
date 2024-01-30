@@ -174,7 +174,7 @@ private:
     }
     Method* GetMethod(JSTaggedValue &target);
     void RelocateCalleeSave();
-    void Dump(Method* method, kungfu::DeoptType type, size_t depth);
+    void Dump(JSTaggedValue callTarget, kungfu::DeoptType type, size_t depth);
     size_t GetCallSize(size_t curDepth, const uint8_t *resumePc);
     JSThread *thread_ {nullptr};
     uintptr_t *calleeRegAddr_ {nullptr};

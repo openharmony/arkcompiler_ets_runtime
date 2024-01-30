@@ -947,7 +947,7 @@ void JsProxyCallInternalStubBuilder::GenerateCircuit()
                     Branch(IsClassConstructor(method), &slowPath1, &notCallConstructor1);
                     Bind(&notCallConstructor1);
                     GateRef meth = GetMethodFromFunction(method);
-                    GateRef code = GetAotCodeAddr(meth);
+                    GateRef code = GetAotCodeAddr(method);
                     Branch(JudgeAotAndFastCallWithMethod(meth, CircuitBuilder::JudgeMethodType::HAS_AOT_FASTCALL),
                         &fastCall1, &notFastCall1);
                     Bind(&fastCall1);

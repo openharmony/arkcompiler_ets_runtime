@@ -243,9 +243,9 @@ inline GateRef StubBuilder::CallOptimized(GateRef glue, GateRef code, const std:
     return result;
 }
 
-inline GateRef StubBuilder::GetAotCodeAddr(GateRef method)
+inline GateRef StubBuilder::GetAotCodeAddr(GateRef jsFunc)
 {
-    return env_->GetBuilder()->GetCodeAddr(method);
+    return env_->GetBuilder()->GetCodeAddr(jsFunc);
 }
 
 inline GateRef StubBuilder::CallStub(GateRef glue, int index, const std::initializer_list<GateRef>& args)
@@ -2584,6 +2584,14 @@ inline void StubBuilder::SetMethodToFunction(GateRef glue, GateRef function, Gat
     Store(VariableType::JS_ANY(), glue, function, offset, value);
 }
 
+inline void StubBuilder::SetCodeEntryToFunction(GateRef glue, GateRef function, GateRef value)
+{
+    GateRef methodOffset = IntPtr(Method::CODEENTRY_LITERAL_OFFSET);
+    GateRef codeEntry = Load(VariableType::NATIVE_POINTER(), value, methodOffset);
+    GateRef funcOffset = IntPtr(JSFunctionBase::CODE_ENTRY_OFFSET);
+    Store(VariableType::NATIVE_POINTER(), glue, function, funcOffset, codeEntry);
+}
+
 inline void StubBuilder::SetLengthToFunction(GateRef glue, GateRef function, GateRef value)
 {
     GateRef offset = IntPtr(JSFunctionBase::LENGTH_OFFSET);
@@ -2943,8 +2951,7 @@ inline GateRef StubBuilder::IsTypedArray(GateRef obj)
 
 inline GateRef StubBuilder::GetProfileTypeInfo(GateRef jsFunc)
 {
-    GateRef method = GetMethodFromFunction(jsFunc);
-    return Load(VariableType::JS_POINTER(), method, IntPtr(Method::PROFILE_TYPE_INFO_OFFSET));
+    return Load(VariableType::JS_POINTER(), jsFunc, IntPtr(JSFunction::PROFILE_TYPE_INFO_OFFSET));
 }
 
 inline void StubBuilder::CheckDetectorName(GateRef glue, GateRef key, Label *fallthrough, Label *slow)

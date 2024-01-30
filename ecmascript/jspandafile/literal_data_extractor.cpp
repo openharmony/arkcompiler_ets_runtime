@@ -232,8 +232,10 @@ JSHandle<TaggedArray> LiteralDataExtractor::EnumerateLiteralVals(JSThread *threa
     return literals;
 }
 
-JSHandle<JSFunction> LiteralDataExtractor::CreateJSFunctionInLiteral(EcmaVM *vm, JSHandle<Method> method,
-                                                                     FunctionKind kind, ClassKind classKind)
+JSHandle<JSFunction> LiteralDataExtractor::CreateJSFunctionInLiteral(EcmaVM *vm,
+                                                                     const JSHandle<Method> &method,
+                                                                     FunctionKind kind,
+                                                                     ClassKind classKind)
 {
     ObjectFactory *factory = vm->GetFactory();
     JSHandle<GlobalEnv> env = vm->GetGlobalEnv();
