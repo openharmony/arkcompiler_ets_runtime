@@ -312,6 +312,7 @@ JSTaggedValue RuntimeStubs::RuntimeAsyncFunctionAwaitUncaught(JSThread *thread,
                                                               const JSHandle<JSTaggedValue> &value)
 {
     JSAsyncFunction::AsyncFunctionAwait(thread, asyncFuncObj, value);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     if (asyncFuncObj->IsAsyncGeneratorObject()) {
         JSHandle<JSObject> obj = JSTaggedValue::ToObject(thread, asyncFuncObj);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
