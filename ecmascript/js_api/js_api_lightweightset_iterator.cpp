@@ -65,12 +65,9 @@ JSTaggedValue JSAPILightWeightSetIterator::Next(EcmaRuntimeCallInfo *argv)
     if (itemKind == IterationKind::VALUE) {
         return JSIterator::CreateIterResultObject(thread, value, false).GetTaggedValue();
     }
-    TaggedArray *hashArray =
-        TaggedArray::Cast(JSHandle<JSAPILightWeightSet>(lightWeightSet)->GetHashes().GetTaggedObject());
-    JSHandle<JSTaggedValue> keyHandle(thread, hashArray->Get(index));
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<TaggedArray> array = factory->NewTaggedArray(2); // 2 means the length of array
-    array->Set(thread, 0, keyHandle);
+    array->Set(thread, 0, value);
     array->Set(thread, 1, value);
     JSHandle<JSTaggedValue> keyAndValue(JSArray::CreateArrayFromList(thread, array));
     return JSIterator::CreateIterResultObject(thread, keyAndValue, false).GetTaggedValue();
