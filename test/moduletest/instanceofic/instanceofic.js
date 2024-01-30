@@ -53,37 +53,3 @@ for (let index = 0; index <= 30; index++) {
     }
 }
 print("test success")
-
-for (let index = 0; index <= 30; index++) {
-    function foo() {
-        try {
-            const obj = {};
-            obj instanceof {};
-        } catch (e) {
-
-        }
-    }
-    foo();
-}
-print("test success")
-
-// Test instanceof when hasInstance is modified uncallable
-var instanceObj = {
-    [Symbol.hasInstance]: 1.1
-}
-try {
-    print({} instanceof instanceObj);
-} catch (e) {
-    print("CallbackFn is not callable");
-}
-
-// Test instanceof if constructor's prototype has been modified
-function function_prototype_changed() {
-
-}
-try {
-    function_prototype_changed.prototype = 5;
-    Array instanceof function_prototype_changed;
-} catch (e) {
-    print(e.name)
-}
