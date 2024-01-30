@@ -226,6 +226,7 @@ JSTaggedValue BuiltinsFunction::FunctionPrototypeBind(EcmaRuntimeCallInfo *argv)
                 lengthValue =
                     std::max(0.0, JSTaggedValue::ToNumber(thread, targetLen).GetNumber() -
                              static_cast<double>(argsLength));
+                RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
             }
         }
         // 9. Else let L be 0.

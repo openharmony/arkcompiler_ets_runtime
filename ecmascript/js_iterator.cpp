@@ -94,6 +94,7 @@ JSHandle<JSTaggedValue> JSIterator::GetAsyncIterator(JSThread *thread, const JSH
             factory->NewAsyncIteratorRecord(syncIterator, nextMethod, false);
         JSHandle<JSTaggedValue> asyncIterator =
             JSAsyncFromSyncIterator::CreateAsyncFromSyncIterator(thread, syncIteratorRecord);
+        RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
         return asyncIterator;
     }
     

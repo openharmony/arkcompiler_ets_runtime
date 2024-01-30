@@ -310,6 +310,7 @@ Local<BigIntRef> JSValueRef::ToBigInt(const EcmaVM *vm)
     JSHandle<JSTaggedValue> obj = JSNApiHelper::ToJSHandle(this);
     LOG_IF_SPECIAL(obj, ERROR);
     JSHandle<JSTaggedValue> bigIntObj(thread, JSTaggedValue::ToBigInt(thread, obj));
+    RETURN_VALUE_IF_ABRUPT(thread, JSValueRef::Undefined(vm));
     return JSNApiHelper::ToLocal<BigIntRef>(bigIntObj);
 }
 

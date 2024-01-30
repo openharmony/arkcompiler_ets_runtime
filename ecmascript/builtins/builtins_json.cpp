@@ -71,6 +71,7 @@ JSTaggedValue BuiltinsJson::Parse(EcmaRuntimeCallInfo *argv)
             bool success = JSObject::CreateDataProperty(thread, root, rootName, result);
             if (success) {
                 result = base::Internalize::InternalizeJsonProperty(thread, root, rootName, callbackfnHandle);
+                RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
             }
         }
     }

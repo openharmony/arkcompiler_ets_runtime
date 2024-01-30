@@ -188,6 +188,7 @@ void AotCompilerPreprocessor::ResolveModule(const JSPandaFile *jsPandaFile, cons
             auto recordName = info.first;
             JSHandle<JSTaggedValue> moduleRecord = moduleManager->HostResolveImportedModuleWithMerge(fileName.c_str(),
                 recordName);
+            RETURN_IF_ABRUPT_COMPLETION(thread);
             SourceTextModule::Instantiate(thread, moduleRecord);
         }
     }

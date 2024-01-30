@@ -185,6 +185,7 @@ JSTaggedValue BuiltinsAtomics::Wait(EcmaRuntimeCallInfo *argv)
     if (array->IsJSBigInt64Array()) {
         if (value->IsBoolean()) {
             value = JSHandle<JSTaggedValue>(thread, JSTaggedValue::ToBigInt64(thread, value));
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         }
         v = JSHandle<BigInt>::Cast(value)->ToInt64();
     } else {
