@@ -16,7 +16,7 @@ import("//arkcompiler/ets_runtime/js_runtime_config.gni")
 import("$build_root/test.gni")
 
 declare_args() {
-  TEST_LITECG = false
+  TEST_LLVM_ONLY = false
 }
 
 if (is_standard_system || ark_standalone_build) {
@@ -1007,6 +1007,14 @@ template("host_aot_js_test_action") {
   _test_aot_log_level = "info"
   _test_expect_path_ = "./expect_output.txt"
   _test_pgo_expect_path_ = "./pgo_expect_output.txt"
+  if (target_cpu == "x64" ||
+      (ark_standalone_build && run_with_qemu && host_os == "linux" &&
+       target_os == "ohos" && target_cpu == "arm64")) {
+    _test_aot_path_litecg_ = "$target_out_dir/litecg/${_target_name_}.an"
+    _test_aot_snapshot_path_litecg_ =
+        "$target_out_dir/litecg/${_target_name_}.ai"
+    _test_aot_arg_litecg_ = "$target_out_dir/litecg/${_target_name_}"
+  }
 
   if (defined(invoker.is_common_js) && invoker.is_common_js) {
     extra_args = [ "--commonjs" ]
@@ -1158,10 +1166,6 @@ template("host_aot_js_test_action") {
       _aot_compile_options_ += " --compiler-module-methods=2"
     }
 
-    if (TEST_LITECG) {
-      _aot_compile_options_ += " --compiler-enable-litecg=true"
-    }
-
     args = [
       "--script-file",
       rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime/ark_aot_compiler",
@@ -1202,6 +1206,14 @@ template("host_aot_js_test_action") {
       _host_jsvm_target_,
     ]
     deps += _deps_
+    if (!TEST_LLVM_ONLY) {
+      if (target_cpu == "x64") {
+        deps += [ ":${_target_name_}AotActionWithLiteCG" ]
+      } else if (ark_standalone_build && run_with_qemu && host_os == "linux" &&
+                 target_os == "ohos" && target_cpu == "arm64") {
+        deps += [ ":${_target_name_}AotActionWithLiteCGQemu" ]
+      }
+    }
 
     script = "//arkcompiler/ets_runtime/script/run_ark_executable.py"
 
@@ -1275,6 +1287,15 @@ template("host_aot_js_test_action") {
     ]
     deps += _deps_
 
+    if (!TEST_LLVM_ONLY) {
+      if (target_cpu == "x64") {
+        deps += [ ":${_target_name_}AotContextActionWithLiteCG" ]
+      } else if (ark_standalone_build && run_with_qemu && host_os == "linux" &&
+                 target_os == "ohos" && target_cpu == "arm64") {
+        deps += [ ":${_target_name_}AotContextActionWithLiteCGQemu" ]
+      }
+    }
+
     script = "//arkcompiler/ets_runtime/script/run_ark_executable.py"
 
     _aot_run_options_ =
@@ -1333,6 +1354,513 @@ template("host_aot_js_test_action") {
     inputs = [ _test_abc_path_ ]
 
     outputs = [ "$target_out_dir/${_target_name_}Context/" ]
+  }
+
+  if (target_cpu == "x64") {
+    action("${_target_name_}AotCompileActionWithLiteCG") {
+      testonly = true
+
+      _host_aot_target_ = "//arkcompiler/ets_runtime/ecmascript/compiler:ark_aot_compiler(${host_toolchain})"
+      _root_out_dir_ = get_label_info(_host_aot_target_, "root_out_dir")
+      deps = [
+        ":gen_${_target_name_}_abc",
+        _host_aot_target_,
+      ]
+      deps += _deps_
+
+      if (defined(invoker.is_enable_pgo) && invoker.is_enable_pgo) {
+        deps += [ ":${_target_name_}PgoExecute" ]
+      }
+
+      script = "//arkcompiler/ets_runtime/script/run_ark_executable.py"
+
+      _aot_compile_options_ =
+          " --aot-file=" + rebase_path(_test_aot_arg_litecg_) +
+          " --log-level=" + _test_aot_log_level + " --log-components=compiler" +
+          " --compiler-opt-type-lowering=false" +
+          " --compiler-opt-inlining=false" +
+          " --compiler-opt-loop-peeling=false" +
+          " --compiler-enable-litecg=true"
+
+      if (defined(invoker.is_enable_pgo) && invoker.is_enable_pgo) {
+        _aot_compile_options_ += " --compiler-pgo-profiler-path=" +
+                                 rebase_path(_test_aot_arg_) + "/modules.ap"
+      }
+
+      if (defined(invoker.is_enable_trace_deopt) &&
+          invoker.is_enable_trace_deopt) {
+        _aot_compile_options_ += " --compiler-trace-deopt=true"
+      }
+
+      if (defined(invoker.is_enable_opt_inlining) &&
+          invoker.is_enable_opt_inlining) {
+        _aot_compile_options_ +=
+            " --compiler-opt-inlining=true --compiler-opt-type-lowering=true"
+      }
+
+      if (defined(invoker.is_enable_typed_op_profiler) &&
+          invoker.is_enable_typed_op_profiler) {
+        _aot_compile_options_ += " --compiler-typed-op-profiler=ture"
+      }
+
+      if (defined(invoker.is_enable_lowering_builtin) &&
+          invoker.is_enable_lowering_builtin) {
+        _aot_compile_options_ += " --compiler-enable-lowering-builtin=true"
+      }
+
+      if (defined(invoker.is_enable_native_inline) &&
+          invoker.is_enable_native_inline) {
+        _aot_compile_options_ += " --compiler-enable-native-inline"
+      }
+
+      if (defined(invoker.is_enable_opt_loop_peeling) &&
+          invoker.is_enable_opt_loop_peeling) {
+        _aot_compile_options_ += " --compiler-opt-loop-peeling=true"
+      }
+
+      if (defined(invoker.is_enable_inline_trace) &&
+          invoker.is_enable_inline_trace) {
+        _aot_compile_options_ += " --compiler-trace-inline=true"
+      }
+
+      if (defined(invoker.userDefinedMethodsInModule) &&
+          invoker.userDefinedMethodsInModule) {
+        _aot_compile_options_ += " --compiler-module-methods=2"
+      }
+
+      args = [
+        "--script-file",
+        rebase_path(_root_out_dir_) +
+            "/arkcompiler/ets_runtime/ark_aot_compiler",
+        "--script-options",
+        _aot_compile_options_,
+        "--script-args",
+        _script_args_,
+        "--expect-sub-output",
+        "ts aot compile success",
+        "--env-path",
+        rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime:" +
+            rebase_path(_root_out_dir_) + "/${_icu_path_}:" +
+            rebase_path(_root_out_dir_) + "/thirdparty/zlib:" +
+            rebase_path(_root_out_dir_) +
+            "/resourceschedule/frame_aware_sched:" +
+            rebase_path(_root_out_dir_) + "/hiviewdfx/hilog:" +
+            rebase_path(_root_out_dir_) +
+            "/thirdparty/bounds_checking_function:" +
+            rebase_path("//prebuilts/clang/ohos/linux-x86_64/llvm/lib/"),
+      ]
+
+      inputs = [ _test_abc_path_ ]
+
+      outputs = [
+        _test_aot_path_litecg_,
+        _test_aot_snapshot_path_litecg_,
+      ]
+    }
+
+    action("${_target_name_}AotActionWithLiteCG") {
+      testonly = true
+
+      _host_jsvm_target_ = "//arkcompiler/ets_runtime/ecmascript/js_vm:ark_js_vm(${host_toolchain})"
+      _root_out_dir_ = get_label_info(_host_jsvm_target_, "root_out_dir")
+
+      deps = [
+        ":${_target_name_}AotCompileActionWithLiteCG",
+        ":gen_${_target_name_}_abc",
+        _host_jsvm_target_,
+      ]
+      deps += _deps_
+
+      script = "//arkcompiler/ets_runtime/script/run_ark_executable.py"
+
+      _aot_run_options_ =
+          " --aot-file=" + rebase_path(_test_aot_arg_litecg_) +
+          " --asm-interpreter=true" + " --entry-point=${_target_name_}"
+
+      if (defined(invoker.is_enable_enableArkTools) &&
+          invoker.is_enable_enableArkTools) {
+        _aot_run_options_ += " --enable-ark-tools=true"
+        _aot_run_options_ += " --enable-force-gc=false"
+      }
+
+      if (defined(invoker.log_option)) {
+        _aot_run_options_ += invoker.log_option
+      }
+
+      if (defined(invoker.is_enable_typed_op_profiler) &&
+          invoker.is_enable_typed_op_profiler) {
+        _aot_run_options_ += " --compiler-typed-op-profiler=ture"
+      }
+
+      if (defined(invoker.is_enable_lowering_builtin) &&
+          invoker.is_enable_lowering_builtin) {
+        _aot_run_options_ += " --compiler-enable-lowering-builtin=true"
+      }
+
+      _icu_data_path_options_ =
+          " --icu-data-path=" + rebase_path("//third_party/icu/ohos_icu4j/data")
+      _aot_run_options_ += _icu_data_path_options_
+
+      args = [
+        "--script-file",
+        rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime/ark_js_vm",
+        "--script-options",
+        _aot_run_options_,
+        "--script-args",
+        _script_args_,
+        "--expect-file",
+        rebase_path(_test_expect_path_),
+        "--env-path",
+        rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime:" +
+            rebase_path(_root_out_dir_) + "/${_icu_path_}:" +
+            rebase_path(_root_out_dir_) + "/thirdparty/zlib:" +
+            rebase_path(_root_out_dir_) +
+            "/resourceschedule/frame_aware_sched:" +
+            rebase_path(_root_out_dir_) + "/hiviewdfx/hilog:" +
+            rebase_path(_root_out_dir_) +
+            "/thirdparty/bounds_checking_function:" +
+            rebase_path("//prebuilts/clang/ohos/linux-x86_64/llvm/lib/"),
+      ]
+
+      inputs = [ _test_abc_path_ ]
+
+      outputs = [ "$target_out_dir/${_target_name_}/LiteCG/" ]
+    }
+
+    action("${_target_name_}AotContextActionWithLiteCG") {
+      testonly = true
+
+      _host_jsvm_target_ = "//arkcompiler/ets_runtime/ecmascript/js_vm:ark_js_vm(${host_toolchain})"
+      _root_out_dir_ = get_label_info(_host_jsvm_target_, "root_out_dir")
+
+      deps = [
+        ":${_target_name_}AotCompileActionWithLiteCG",
+        ":gen_${_target_name_}_abc",
+        _host_jsvm_target_,
+      ]
+      deps += _deps_
+
+      script = "//arkcompiler/ets_runtime/script/run_ark_executable.py"
+
+      _aot_run_options_ =
+          " --aot-file=" + rebase_path(_test_aot_arg_litecg_) +
+          " --asm-interpreter=true" + " --entry-point=${_target_name_}"
+
+      if (defined(invoker.is_enable_enableArkTools) &&
+          invoker.is_enable_enableArkTools) {
+        _aot_run_options_ += " --enable-ark-tools=true"
+        _aot_run_options_ += " --enable-force-gc=false"
+      }
+
+      if (defined(invoker.disable_force_gc) && invoker.disable_force_gc) {
+        _aot_run_options_ += " --enable-force-gc=false"
+      }
+
+      if (defined(invoker.log_option)) {
+        _aot_run_options_ += invoker.log_option
+      }
+
+      if (defined(invoker.is_enable_typed_op_profiler) &&
+          invoker.is_enable_typed_op_profiler) {
+        _aot_run_options_ += " --compiler-typed-op-profiler=ture"
+      }
+
+      if (defined(invoker.is_enable_lowering_builtin) &&
+          invoker.is_enable_lowering_builtin) {
+        _aot_run_options_ += " --compiler-enable-lowering-builtin=true"
+      }
+
+      _icu_data_path_options_ =
+          " --icu-data-path=" + rebase_path("//third_party/icu/ohos_icu4j/data")
+      _aot_run_options_ += _icu_data_path_options_
+      _aot_run_options_ += " --enable-context=true"
+
+      args = [
+        "--script-file",
+        rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime/ark_js_vm",
+        "--script-options",
+        _aot_run_options_,
+        "--script-args",
+        _script_args_,
+        "--expect-file",
+        rebase_path(_test_expect_path_),
+        "--env-path",
+        rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime:" +
+            rebase_path(_root_out_dir_) + "/${_icu_path_}:" +
+            rebase_path(_root_out_dir_) + "/thirdparty/zlib:" +
+            rebase_path(_root_out_dir_) +
+            "/resourceschedule/frame_aware_sched:" +
+            rebase_path(_root_out_dir_) + "/hiviewdfx/hilog:" +
+            rebase_path(_root_out_dir_) +
+            "/thirdparty/bounds_checking_function:" +
+            rebase_path("//prebuilts/clang/ohos/linux-x86_64/llvm/lib/"),
+      ]
+
+      inputs = [ _test_abc_path_ ]
+
+      outputs = [ "$target_out_dir/${_target_name_}Context/LiteCG/" ]
+    }
+  } else if (ark_standalone_build && run_with_qemu && host_os == "linux" &&
+             target_os == "ohos" && target_cpu == "arm64") {
+    import("$ark_third_party_root/musl/musl_template.gni")
+    import("$build_root/config/qemu/config.gni")
+
+    action("${_target_name_}AotCompileActionWithLiteCGQemu") {
+      testonly = true
+
+      _host_aot_target_ = "//arkcompiler/ets_runtime/ecmascript/compiler:ark_aot_compiler(${host_toolchain})"
+      _root_out_dir_ = get_label_info(_host_aot_target_, "root_out_dir")
+      deps = [
+        ":gen_${_target_name_}_abc",
+        _host_aot_target_,
+      ]
+      deps += _deps_
+
+      if (defined(invoker.is_enable_pgo) && invoker.is_enable_pgo) {
+        deps += [ ":${_target_name_}PgoExecute" ]
+      }
+
+      script = "//arkcompiler/ets_runtime/script/run_ark_executable.py"
+
+      _aot_compile_options_ =
+          " --aot-file=" + rebase_path(_test_aot_arg_litecg_) +
+          " --log-level=" + _test_aot_log_level + " --log-components=compiler" +
+          " --compiler-opt-type-lowering=false" +
+          " --compiler-opt-inlining=false" +
+          " --compiler-opt-loop-peeling=false" +
+          " --compiler-enable-litecg=true" +
+          " --compiler-target-triple=aarch64-unknown-linux-gnu"
+
+      if (defined(invoker.is_enable_pgo) && invoker.is_enable_pgo) {
+        _aot_compile_options_ += " --compiler-pgo-profiler-path=" +
+                                 rebase_path(_test_aot_arg_) + "/modules.ap"
+      }
+
+      if (defined(invoker.is_enable_trace_deopt) &&
+          invoker.is_enable_trace_deopt) {
+        _aot_compile_options_ += " --compiler-trace-deopt=true"
+      }
+
+      if (defined(invoker.is_enable_opt_inlining) &&
+          invoker.is_enable_opt_inlining) {
+        _aot_compile_options_ +=
+            " --compiler-opt-inlining=true --compiler-opt-type-lowering=true"
+      }
+
+      if (defined(invoker.is_enable_typed_op_profiler) &&
+          invoker.is_enable_typed_op_profiler) {
+        _aot_compile_options_ += " --compiler-typed-op-profiler=ture"
+      }
+
+      if (defined(invoker.is_enable_lowering_builtin) &&
+          invoker.is_enable_lowering_builtin) {
+        _aot_compile_options_ += " --compiler-enable-lowering-builtin=true"
+      }
+
+      if (defined(invoker.is_enable_native_inline) &&
+          invoker.is_enable_native_inline) {
+        _aot_compile_options_ += " --compiler-enable-native-inline"
+      }
+
+      if (defined(invoker.is_enable_opt_loop_peeling) &&
+          invoker.is_enable_opt_loop_peeling) {
+        _aot_compile_options_ += " --compiler-opt-loop-peeling=true"
+      }
+
+      if (defined(invoker.is_enable_inline_trace) &&
+          invoker.is_enable_inline_trace) {
+        _aot_compile_options_ += " --compiler-trace-inline=true"
+      }
+
+      if (defined(invoker.userDefinedMethodsInModule) &&
+          invoker.userDefinedMethodsInModule) {
+        _aot_compile_options_ += " --compiler-module-methods=2"
+      }
+
+      args = [
+        "--script-file",
+        rebase_path(_root_out_dir_) +
+            "/arkcompiler/ets_runtime/ark_aot_compiler",
+        "--script-options",
+        _aot_compile_options_,
+        "--script-args",
+        _script_args_,
+        "--expect-sub-output",
+        "ts aot compile success",
+        "--env-path",
+        rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime:" +
+            rebase_path(_root_out_dir_) + "/${_icu_path_}:" +
+            rebase_path(_root_out_dir_) + "/thirdparty/zlib:" +
+            rebase_path(_root_out_dir_) +
+            "/resourceschedule/frame_aware_sched:" +
+            rebase_path(_root_out_dir_) + "/hiviewdfx/hilog:" +
+            rebase_path(_root_out_dir_) +
+            "/thirdparty/bounds_checking_function:" +
+            rebase_path("//prebuilts/clang/ohos/linux-x86_64/llvm/lib/"),
+      ]
+
+      inputs = [ _test_abc_path_ ]
+
+      outputs = [
+        _test_aot_path_litecg_,
+        _test_aot_snapshot_path_litecg_,
+      ]
+    }
+
+    action("${_target_name_}AotActionWithLiteCGQemu") {
+      testonly = true
+
+      _host_jsvm_target_ = "//arkcompiler/ets_runtime/ecmascript/js_vm:ark_js_vm(${default_toolchain})"
+      _root_out_dir_ = get_label_info(_host_jsvm_target_, "root_out_dir")
+
+      deps = [
+        ":${_target_name_}AotCompileActionWithLiteCGQemu",
+        ":gen_${_target_name_}_abc",
+        "$ark_third_party_root/musl:soft_create_linker_for_qemu",
+        _host_jsvm_target_,
+      ]
+      deps += _deps_
+
+      script = "//arkcompiler/ets_runtime/script/run_ark_executable.py"
+
+      _aot_run_options_ =
+          " --aot-file=" + rebase_path(_test_aot_arg_litecg_) +
+          " --asm-interpreter=true" + " --entry-point=${_target_name_}"
+
+      if (defined(invoker.is_enable_enableArkTools) &&
+          invoker.is_enable_enableArkTools) {
+        _aot_run_options_ += " --enable-ark-tools=true"
+        _aot_run_options_ += " --enable-force-gc=false"
+      }
+
+      if (defined(invoker.log_option)) {
+        _aot_run_options_ += invoker.log_option
+      }
+
+      if (defined(invoker.is_enable_typed_op_profiler) &&
+          invoker.is_enable_typed_op_profiler) {
+        _aot_run_options_ += " --compiler-typed-op-profiler=ture"
+      }
+
+      if (defined(invoker.is_enable_lowering_builtin) &&
+          invoker.is_enable_lowering_builtin) {
+        _aot_run_options_ += " --compiler-enable-lowering-builtin=true"
+      }
+
+      _icu_data_path_options_ =
+          " --icu-data-path=" + rebase_path("//third_party/icu/ohos_icu4j/data")
+      _aot_run_options_ += _icu_data_path_options_
+
+      args = [
+        "--script-file",
+        rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime/ark_js_vm",
+        "--script-options",
+        _aot_run_options_,
+        "--script-args",
+        _script_args_,
+        "--expect-file",
+        rebase_path(_test_expect_path_),
+        "--qemu-binary-path",
+        "${QEMU_INSTALLATION_PATH}/bin/qemu-${musl_arch}",
+        "--qemu-ld-prefix",
+        rebase_path(musl_linker_so_out_dir, root_build_dir),
+        "--clang-lib-path",
+        rebase_path("${clang_base_path}/lib/${musl_arch}-linux-ohos:",
+                    root_build_dir) + rebase_path(_root_out_dir_) +
+            "/arkcompiler/ets_runtime:" + rebase_path(_root_out_dir_) +
+            "/${_icu_path_}:" + rebase_path(_root_out_dir_) +
+            "/thirdparty/zlib:" + rebase_path(_root_out_dir_) +
+            "/resourceschedule/frame_aware_sched:" +
+            rebase_path(_root_out_dir_) + "/hiviewdfx/hilog:" +
+            rebase_path(_root_out_dir_) +
+            "/thirdparty/bounds_checking_function:" +
+            rebase_path("//prebuilts/clang/ohos/linux-x86_64/llvm/lib/"),
+      ]
+
+      inputs = [ _test_abc_path_ ]
+
+      outputs = [ "$target_out_dir/${_target_name_}/LiteCG/" ]
+    }
+
+    action("${_target_name_}AotContextActionWithLiteCGQemu") {
+      testonly = true
+
+      _host_jsvm_target_ = "//arkcompiler/ets_runtime/ecmascript/js_vm:ark_js_vm(${default_toolchain})"
+      _root_out_dir_ = get_label_info(_host_jsvm_target_, "root_out_dir")
+
+      deps = [
+        ":${_target_name_}AotCompileActionWithLiteCGQemu",
+        ":gen_${_target_name_}_abc",
+        "$ark_third_party_root/musl:soft_create_linker_for_qemu",
+        _host_jsvm_target_,
+      ]
+      deps += _deps_
+
+      script = "//arkcompiler/ets_runtime/script/run_ark_executable.py"
+
+      _aot_run_options_ =
+          " --aot-file=" + rebase_path(_test_aot_arg_litecg_) +
+          " --asm-interpreter=true" + " --entry-point=${_target_name_}"
+
+      if (defined(invoker.is_enable_enableArkTools) &&
+          invoker.is_enable_enableArkTools) {
+        _aot_run_options_ += " --enable-ark-tools=true"
+        _aot_run_options_ += " --enable-force-gc=false"
+      }
+
+      if (defined(invoker.disable_force_gc) && invoker.disable_force_gc) {
+        _aot_run_options_ += " --enable-force-gc=false"
+      }
+
+      if (defined(invoker.log_option)) {
+        _aot_run_options_ += invoker.log_option
+      }
+
+      if (defined(invoker.is_enable_typed_op_profiler) &&
+          invoker.is_enable_typed_op_profiler) {
+        _aot_run_options_ += " --compiler-typed-op-profiler=ture"
+      }
+
+      if (defined(invoker.is_enable_lowering_builtin) &&
+          invoker.is_enable_lowering_builtin) {
+        _aot_run_options_ += " --compiler-enable-lowering-builtin=true"
+      }
+
+      _icu_data_path_options_ =
+          " --icu-data-path=" + rebase_path("//third_party/icu/ohos_icu4j/data")
+      _aot_run_options_ += _icu_data_path_options_
+      _aot_run_options_ += " --enable-context=true"
+
+      args = [
+        "--script-file",
+        rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime/ark_js_vm",
+        "--script-options",
+        _aot_run_options_,
+        "--script-args",
+        _script_args_,
+        "--expect-file",
+        rebase_path(_test_expect_path_),
+        "--qemu-binary-path",
+        "${QEMU_INSTALLATION_PATH}/bin/qemu-${musl_arch}",
+        "--qemu-ld-prefix",
+        rebase_path(musl_linker_so_out_dir, root_build_dir),
+        "--clang-lib-path",
+        rebase_path("${clang_base_path}/lib/${musl_arch}-linux-ohos:",
+                    root_build_dir) + rebase_path(_root_out_dir_) +
+            "/arkcompiler/ets_runtime:" + rebase_path(_root_out_dir_) +
+            "/${_icu_path_}:" + rebase_path(_root_out_dir_) +
+            "/thirdparty/zlib:" + rebase_path(_root_out_dir_) +
+            "/resourceschedule/frame_aware_sched:" +
+            rebase_path(_root_out_dir_) + "/hiviewdfx/hilog:" +
+            rebase_path(_root_out_dir_) +
+            "/thirdparty/bounds_checking_function:" +
+            rebase_path("//prebuilts/clang/ohos/linux-x86_64/llvm/lib/"),
+      ]
+
+      inputs = [ _test_abc_path_ ]
+
+      outputs = [ "$target_out_dir/${_target_name_}Context/LiteCG/" ]
+    }
   }
 }
 
@@ -1492,10 +2020,6 @@ template("host_aot_js_assert_test_action") {
     if (defined(invoker.userDefinedMethodsInModule) &&
         invoker.userDefinedMethodsInModule) {
       _aot_compile_options_ += " --compiler-module-methods=2"
-    }
-
-    if (TEST_LITECG) {
-      _aot_compile_options_ += " --compiler-enable-litecg=true"
     }
 
     _aot_compile_options_ += " --test-assert=true"
@@ -1701,6 +2225,20 @@ template("host_aot_test_action") {
   if (defined(invoker.use_one_expect_path) && invoker.use_one_expect_path) {
     _test_pgo_expect_path_ = _test_expect_path_
   }
+  if (target_cpu == "x64" ||
+      (ark_standalone_build && run_with_qemu && host_os == "linux" &&
+       target_os == "ohos" && target_cpu == "arm64")) {
+    _test_aot_path_litecg_ = "$target_out_dir/litecg/${_target_name_}.an"
+    _test_aot_snapshot_path_litecg_ =
+        "$target_out_dir/litecg/${_target_name_}.ai"
+    _test_aot_arg_litecg_ = "$target_out_dir/litecg/${_target_name_}"
+    _test_aot_path_slowpath_litecg_ =
+        "$target_out_dir/slowpath/litecg/${_target_name_}.an"
+    _test_aot_snapshot_path_slowpath_litecg_ =
+        "$target_out_dir/slowpath/litecg/${_target_name_}.ai"
+    _test_aot_arg_slowpath_litecg_ =
+        "$target_out_dir/slowpath/litecg/${_target_name_}"
+  }
 
   es2abc_gen_abc("gen_${_target_name_}_abc") {
     extra_visibility = [ ":*" ]  # Only targets in this file can depend on this.
@@ -1858,10 +2396,6 @@ template("host_aot_test_action") {
       _aot_compile_options_ += " --compiler-module-methods=2"
     }
 
-    if (TEST_LITECG) {
-      _aot_compile_options_ += " --compiler-enable-litecg=true"
-    }
-
     args = [
       "--script-file",
       rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime/ark_aot_compiler",
@@ -1945,10 +2479,6 @@ template("host_aot_test_action") {
       _aot_compile_options_ += " --compiler-module-methods=2"
     }
 
-    if (TEST_LITECG) {
-      _aot_compile_options_ += " --compiler-enable-litecg=true"
-    }
-
     args = [
       "--script-file",
       rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime/ark_aot_compiler",
@@ -1991,6 +2521,15 @@ template("host_aot_test_action") {
       deps += [ ":${_target_name_}AotActionSlowPath" ]
     }
     deps += _deps_
+
+    if (!TEST_LLVM_ONLY) {
+      if (target_cpu == "x64") {
+        deps += [ ":${_target_name_}AotActionWithLiteCG" ]
+      } else if (ark_standalone_build && run_with_qemu && host_os == "linux" &&
+                 target_os == "ohos" && target_cpu == "arm64") {
+        deps += [ ":${_target_name_}AotActionWithLiteCGQemu" ]
+      }
+    }
 
     script = "//arkcompiler/ets_runtime/script/run_ark_executable.py"
 
@@ -2066,6 +2605,15 @@ template("host_aot_test_action") {
       deps += [ ":${_target_name_}AotActionSlowPath" ]
     }
     deps += _deps_
+
+    if (!TEST_LLVM_ONLY) {
+      if (target_cpu == "x64") {
+        deps += [ ":${_target_name_}AotContextActionWithLiteCG" ]
+      } else if (ark_standalone_build && run_with_qemu && host_os == "linux" &&
+                 target_os == "ohos" && target_cpu == "arm64") {
+        deps += [ ":${_target_name_}AotContextActionWithLiteCGQemu" ]
+      }
+    }
 
     script = "//arkcompiler/ets_runtime/script/run_ark_executable.py"
 
@@ -2182,6 +2730,840 @@ template("host_aot_test_action") {
     inputs = [ _test_abc_path_ ]
 
     outputs = [ "$target_out_dir/${_target_name_}/SlowPath" ]
+  }
+
+  if (target_cpu == "x64") {
+    action("${_target_name_}AotCompileActionWithLiteCG") {
+      testonly = true
+
+      _host_aot_target_ = "//arkcompiler/ets_runtime/ecmascript/compiler:ark_aot_compiler(${host_toolchain})"
+      _root_out_dir_ = get_label_info(_host_aot_target_, "root_out_dir")
+      deps = [
+        ":gen_${_target_name_}_abc",
+        _host_aot_target_,
+      ]
+      deps += _deps_
+
+      if (defined(invoker.is_enable_pgo) && invoker.is_enable_pgo) {
+        deps += [ ":${_target_name_}PgoExecute" ]
+      }
+
+      script = "//arkcompiler/ets_runtime/script/run_ark_executable.py"
+
+      _aot_compile_options_ =
+          " --aot-file=" + rebase_path(_test_aot_arg_litecg_) +
+          " --log-level=" + _test_aot_log_level + " --log-components=compiler" +
+          " --compiler-opt-inlining=false" +
+          " --compiler-opt-loop-peeling=false" +
+          " --compiler-enable-litecg=true"
+
+      if (defined(invoker.is_enable_pgo) && invoker.is_enable_pgo) {
+        _aot_compile_options_ += " --compiler-pgo-profiler-path=" +
+                                 rebase_path(_test_aot_arg_) + "/modules.ap"
+      }
+      if (defined(invoker.is_enable_trace_deopt) &&
+          invoker.is_enable_trace_deopt) {
+        _aot_compile_options_ += " --compiler-trace-deopt=true"
+      }
+      if (defined(invoker.is_enable_builtins_dts) &&
+          invoker.is_enable_builtins_dts) {
+        deps += [ "//arkcompiler/ets_runtime:es2abc_gen_builtins_d_abc" ]
+        _aot_compile_options_ += " --builtins-dts=" +
+                                 rebase_path(root_out_dir) + "/obj/arkcompiler/ets_runtime/lib_ark_builtins/es2abc/lib_ark_builtins.d.abc"
+      }
+      if (defined(invoker.is_enable_opt_inlining) &&
+          invoker.is_enable_opt_inlining) {
+        _aot_compile_options_ +=
+            " --compiler-opt-inlining=true --compiler-opt-type-lowering=true"
+      }
+
+      if (defined(invoker.is_enable_typed_op_profiler) &&
+          invoker.is_enable_typed_op_profiler) {
+        _aot_compile_options_ += " --compiler-typed-op-profiler=ture"
+      }
+
+      if (defined(invoker.is_enable_lowering_builtin) &&
+          invoker.is_enable_lowering_builtin) {
+        _aot_compile_options_ += " --compiler-enable-lowering-builtin=true"
+      }
+
+      if (defined(invoker.is_enable_native_inline) &&
+          invoker.is_enable_native_inline) {
+        _aot_compile_options_ += " --compiler-enable-native-inline"
+      }
+
+      if (defined(invoker.is_enable_opt_loop_peeling) &&
+          invoker.is_enable_opt_loop_peeling) {
+        _aot_compile_options_ += " --compiler-opt-loop-peeling=true"
+      }
+
+      if (defined(invoker.is_enable_inline_trace) &&
+          invoker.is_enable_inline_trace) {
+        _aot_compile_options_ += " --compiler-trace-inline=true"
+      }
+
+      if (defined(invoker.userDefinedMethodsInModule) &&
+          invoker.userDefinedMethodsInModule) {
+        _aot_compile_options_ += " --compiler-module-methods=2"
+      }
+
+      args = [
+        "--script-file",
+        rebase_path(_root_out_dir_) +
+            "/arkcompiler/ets_runtime/ark_aot_compiler",
+        "--script-options",
+        _aot_compile_options_,
+        "--script-args",
+        _script_args_,
+        "--expect-sub-output",
+        "ts aot compile success",
+        "--env-path",
+        rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime:" +
+            rebase_path(_root_out_dir_) + "/${_icu_path_}:" +
+            rebase_path(_root_out_dir_) + "/thirdparty/zlib:" +
+            rebase_path(_root_out_dir_) +
+            "/resourceschedule/frame_aware_sched:" +
+            rebase_path(_root_out_dir_) + "/hiviewdfx/hilog:" +
+            rebase_path(_root_out_dir_) +
+            "/thirdparty/bounds_checking_function:" +
+            rebase_path("//prebuilts/clang/ohos/linux-x86_64/llvm/lib/"),
+      ]
+
+      inputs = [ _test_abc_path_ ]
+
+      outputs = [
+        _test_aot_path_litecg_,
+        _test_aot_snapshot_path_litecg_,
+      ]
+    }
+
+    action("${_target_name_}AotCompileActionSlowPathWithLiteCG") {
+      testonly = true
+      _host_aot_target_ =
+          "$js_root/ecmascript/compiler:ark_aot_compiler(${host_toolchain})"
+      _root_out_dir_ = get_label_info(_host_aot_target_, "root_out_dir")
+      deps = [
+        ":gen_${_target_name_}_abc",
+        _host_aot_target_,
+      ]
+      deps += _deps_
+
+      script = "$js_root/script/run_ark_executable.py"
+
+      _aot_compile_options_ =
+          " --aot-file=" + rebase_path(_test_aot_arg_slowpath_litecg_) +
+          " --log-level=" + _test_aot_log_level + " --log-components=compiler" +
+          " --compiler-opt-type-lowering=false" +
+          " --compiler-opt-inlining=false" +
+          " --compiler-opt-loop-peeling=false" +
+          " --compiler-enable-litecg=true"
+      if (defined(invoker.is_enable_trace_deopt) &&
+          invoker.is_enable_trace_deopt) {
+        _aot_compile_options_ += " --compiler-trace-deopt=true"
+      }
+
+      if (defined(invoker.is_enable_builtins_dts) &&
+          invoker.is_enable_builtins_dts) {
+        deps += [ "//arkcompiler/ets_runtime:es2abc_gen_builtins_d_abc" ]
+        _aot_compile_options_ += " --builtins-dts=" +
+                                 rebase_path(root_out_dir) + "/obj/arkcompiler/ets_runtime/lib_ark_builtins/es2abc/lib_ark_builtins.d.abc"
+      }
+
+      if (defined(invoker.is_enable_opt_inlining) &&
+          invoker.is_enable_opt_inlining) {
+        _aot_compile_options_ +=
+            " --compiler-opt-inlining=true --compiler-opt-type-lowering=true"
+      }
+
+      if (defined(invoker.is_enable_native_inline) &&
+          invoker.is_enable_native_inline) {
+        _aot_compile_options_ += " --compiler-enable-native-inline"
+      }
+
+      if (defined(invoker.is_enable_opt_loop_peeling) &&
+          invoker.is_enable_opt_loop_peeling) {
+        _aot_compile_options_ += " --compiler-opt-loop-peeling=true"
+      }
+
+      if (defined(invoker.is_enable_inline_trace) &&
+          invoker.is_enable_inline_trace) {
+        _aot_compile_options_ += " --compiler-trace-inline=true"
+      }
+
+      if (defined(invoker.userDefinedMethodsInModule) &&
+          invoker.userDefinedMethodsInModule) {
+        _aot_compile_options_ += " --compiler-module-methods=2"
+      }
+
+      args = [
+        "--script-file",
+        rebase_path(_root_out_dir_) +
+            "/arkcompiler/ets_runtime/ark_aot_compiler",
+        "--script-options",
+        _aot_compile_options_,
+        "--script-args",
+        _script_args_,
+        "--expect-sub-output",
+        "ts aot compile success",
+        "--env-path",
+        rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime:" +
+            rebase_path(_root_out_dir_) + "/${_icu_path_}:" +
+            rebase_path(_root_out_dir_) + "/thirdparty/zlib:" +
+            rebase_path(_root_out_dir_) +
+            "/resourceschedule/frame_aware_sched:" +
+            rebase_path(_root_out_dir_) + "/hiviewdfx/hilog:" +
+            rebase_path(_root_out_dir_) +
+            "/thirdparty/bounds_checking_function:" +
+            rebase_path("//prebuilts/clang/ohos/linux-x86_64/llvm/lib/"),
+      ]
+
+      inputs = [ _test_abc_path_ ]
+
+      outputs = [
+        _test_aot_path_slowpath_litecg_,
+        _test_aot_snapshot_path_slowpath_litecg_,
+      ]
+    }
+
+    action("${_target_name_}AotActionWithLiteCG") {
+      testonly = true
+      _host_jsvm_target_ = "//arkcompiler/ets_runtime/ecmascript/js_vm:ark_js_vm(${host_toolchain})"
+      _root_out_dir_ = get_label_info(_host_jsvm_target_, "root_out_dir")
+
+      deps = [
+        ":${_target_name_}AotCompileActionWithLiteCG",
+        ":gen_${_target_name_}_abc",
+        _host_jsvm_target_,
+      ]
+      if (!defined(invoker.is_only_typed_path) || !invoker.is_only_typed_path) {
+        deps += [ ":${_target_name_}AotActionSlowPathWithLiteCG" ]
+      }
+      deps += _deps_
+
+      script = "//arkcompiler/ets_runtime/script/run_ark_executable.py"
+
+      _aot_run_options_ =
+          " --aot-file=" + rebase_path(_test_aot_arg_litecg_) +
+          " --asm-interpreter=true" + " --entry-point=${_target_name_}"
+
+      _icu_data_path_options_ =
+          " --icu-data-path=" + rebase_path("//third_party/icu/ohos_icu4j/data")
+      _aot_run_options_ += _icu_data_path_options_
+
+      if (defined(invoker.is_enable_enableArkTools) &&
+          invoker.is_enable_enableArkTools) {
+        _aot_run_options_ += " --enable-ark-tools=true"
+        _aot_run_options_ += " --enable-force-gc=false"
+      }
+
+      if (defined(invoker.log_option)) {
+        _aot_run_options_ += invoker.log_option
+      }
+
+      if (defined(invoker.is_enable_typed_op_profiler) &&
+          invoker.is_enable_typed_op_profiler) {
+        _aot_run_options_ += " --compiler-typed-op-profiler=ture"
+      }
+
+      if (defined(invoker.is_enable_lowering_builtin) &&
+          invoker.is_enable_lowering_builtin) {
+        _aot_run_options_ += " --compiler-enable-lowering-builtin=true"
+      }
+
+      if (defined(invoker.is_enable_trace_deopt) &&
+          invoker.is_enable_trace_deopt) {
+        _aot_run_options_ += " --compiler-trace-deopt=true"
+      }
+
+      args = [
+        "--script-file",
+        rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime/ark_js_vm",
+        "--script-options",
+        _aot_run_options_,
+        "--script-args",
+        _script_args_,
+        "--expect-file",
+        rebase_path(_test_expect_path_),
+        "--env-path",
+        rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime:" +
+            rebase_path(_root_out_dir_) + "/${_icu_path_}:" +
+            rebase_path(_root_out_dir_) + "/thirdparty/zlib:" +
+            rebase_path(_root_out_dir_) +
+            "/resourceschedule/frame_aware_sched:" +
+            rebase_path(_root_out_dir_) + "/hiviewdfx/hilog:" +
+            rebase_path(_root_out_dir_) +
+            "/thirdparty/bounds_checking_function:" +
+            rebase_path("//prebuilts/clang/ohos/linux-x86_64/llvm/lib/"),
+      ]
+
+      inputs = [ _test_abc_path_ ]
+
+      outputs = [ "$target_out_dir/${_target_name_}/LiteCG/" ]
+    }
+
+    action("${_target_name_}AotContextActionWithLiteCG") {
+      testonly = true
+      _host_jsvm_target_ = "//arkcompiler/ets_runtime/ecmascript/js_vm:ark_js_vm(${host_toolchain})"
+      _root_out_dir_ = get_label_info(_host_jsvm_target_, "root_out_dir")
+
+      deps = [
+        ":${_target_name_}AotCompileAction",
+        ":gen_${_target_name_}_abc",
+        _host_jsvm_target_,
+      ]
+      if (!defined(invoker.is_only_typed_path) || !invoker.is_only_typed_path) {
+        deps += [ ":${_target_name_}AotActionSlowPathWithLiteCG" ]
+      }
+      deps += _deps_
+
+      script = "//arkcompiler/ets_runtime/script/run_ark_executable.py"
+
+      _aot_run_options_ =
+          " --aot-file=" + rebase_path(_test_aot_arg_litecg_) +
+          " --asm-interpreter=true" + " --entry-point=${_target_name_}"
+
+      _icu_data_path_options_ =
+          " --icu-data-path=" + rebase_path("//third_party/icu/ohos_icu4j/data")
+      _aot_run_options_ += _icu_data_path_options_
+
+      if (defined(invoker.is_enable_enableArkTools) &&
+          invoker.is_enable_enableArkTools) {
+        _aot_run_options_ += " --enable-ark-tools=true"
+        _aot_run_options_ += " --enable-force-gc=false"
+      }
+
+      if (defined(invoker.log_option)) {
+        _aot_run_options_ += invoker.log_option
+      }
+      _aot_run_options_ += " --enable-context=true"
+
+      if (defined(invoker.is_enable_typed_op_profiler) &&
+          invoker.is_enable_typed_op_profiler) {
+        _aot_run_options_ += " --compiler-typed-op-profiler=ture"
+      }
+
+      if (defined(invoker.is_enable_lowering_builtin) &&
+          invoker.is_enable_lowering_builtin) {
+        _aot_run_options_ += " --compiler-enable-lowering-builtin=true"
+      }
+
+      if (defined(invoker.is_enable_trace_deopt) &&
+          invoker.is_enable_trace_deopt) {
+        _aot_run_options_ += " --compiler-trace-deopt=true"
+      }
+
+      args = [
+        "--script-file",
+        rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime/ark_js_vm",
+        "--script-options",
+        _aot_run_options_,
+        "--script-args",
+        _script_args_,
+        "--expect-file",
+        rebase_path(_test_expect_path_),
+        "--env-path",
+        rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime:" +
+            rebase_path(_root_out_dir_) + "/${_icu_path_}:" +
+            rebase_path(_root_out_dir_) + "/thirdparty/zlib:" +
+            rebase_path(_root_out_dir_) +
+            "/resourceschedule/frame_aware_sched:" +
+            rebase_path(_root_out_dir_) + "/hiviewdfx/hilog:" +
+            rebase_path(_root_out_dir_) +
+            "/thirdparty/bounds_checking_function:" +
+            rebase_path("//prebuilts/clang/ohos/linux-x86_64/llvm/lib/"),
+      ]
+
+      inputs = [ _test_abc_path_ ]
+
+      outputs = [ "$target_out_dir/${_target_name_}Context/LiteCG/" ]
+    }
+
+    action("${_target_name_}AotActionSlowPathWithLiteCG") {
+      testonly = true
+      _host_jsvm_target_ =
+          "$js_root/ecmascript/js_vm:ark_js_vm(${host_toolchain})"
+      _root_out_dir_ = get_label_info(_host_jsvm_target_, "root_out_dir")
+
+      deps = [
+        ":${_target_name_}AotCompileActionSlowPathWithLiteCG",
+        ":gen_${_target_name_}_abc",
+        _host_jsvm_target_,
+      ]
+      deps += _deps_
+
+      script = "$js_root/script/run_ark_executable.py"
+
+      _aot_run_options_ =
+          " --aot-file=" + rebase_path(_test_aot_arg_slowpath_litecg_) +
+          " --asm-interpreter=true" + " --entry-point=${_target_name_}"
+
+      _icu_data_path_options_ =
+          " --icu-data-path=" + rebase_path("//third_party/icu/ohos_icu4j/data")
+      _aot_run_options_ += _icu_data_path_options_
+
+      if (defined(invoker.is_enable_enableArkTools) &&
+          invoker.is_enable_enableArkTools) {
+        _aot_run_options_ += " --enable-ark-tools=true"
+        _aot_run_options_ += " --enable-force-gc=false"
+      }
+
+      if (defined(invoker.log_option)) {
+        _aot_run_options_ += invoker.log_option
+      }
+
+      args = [
+        "--script-file",
+        rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime/ark_js_vm",
+        "--script-options",
+        _aot_run_options_,
+        "--script-args",
+        _script_args_,
+        "--expect-file",
+        rebase_path(_test_expect_path_),
+        "--env-path",
+        rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime:" +
+            rebase_path(_root_out_dir_) + "/${_icu_path_}:" +
+            rebase_path(_root_out_dir_) + "/thirdparty/zlib:" +
+            rebase_path(_root_out_dir_) +
+            "/resourceschedule/frame_aware_sched:" +
+            rebase_path(_root_out_dir_) + "/hiviewdfx/hilog:" +
+            rebase_path(_root_out_dir_) +
+            "/thirdparty/bounds_checking_function:" +
+            rebase_path("//prebuilts/clang/ohos/linux-x86_64/llvm/lib/"),
+      ]
+
+      inputs = [ _test_abc_path_ ]
+
+      outputs = [ "$target_out_dir/${_target_name_}/SlowPath/LiteCG" ]
+    }
+  } else if (ark_standalone_build && run_with_qemu && host_os == "linux" &&
+             target_os == "ohos" && target_cpu == "arm64") {
+    import("$ark_third_party_root/musl/musl_template.gni")
+    import("$build_root/config/qemu/config.gni")
+
+    action("${_target_name_}AotCompileActionWithLiteCGQemu") {
+      testonly = true
+
+      _host_aot_target_ = "//arkcompiler/ets_runtime/ecmascript/compiler:ark_aot_compiler(${host_toolchain})"
+      _root_out_dir_ = get_label_info(_host_aot_target_, "root_out_dir")
+      deps = [
+        ":gen_${_target_name_}_abc",
+        _host_aot_target_,
+      ]
+      deps += _deps_
+
+      if (defined(invoker.is_enable_pgo) && invoker.is_enable_pgo) {
+        deps += [ ":${_target_name_}PgoExecute" ]
+      }
+
+      script = "//arkcompiler/ets_runtime/script/run_ark_executable.py"
+
+      _aot_compile_options_ =
+          " --aot-file=" + rebase_path(_test_aot_arg_litecg_) +
+          " --log-level=" + _test_aot_log_level + " --log-components=compiler" +
+          " --compiler-opt-inlining=false" +
+          " --compiler-opt-loop-peeling=false" +
+          " --compiler-enable-litecg=true" +
+          " --compiler-target-triple=aarch64-unknown-linux-gnu"
+
+      if (defined(invoker.is_enable_pgo) && invoker.is_enable_pgo) {
+        _aot_compile_options_ += " --compiler-pgo-profiler-path=" +
+                                 rebase_path(_test_aot_arg_) + "/modules.ap"
+      }
+      if (defined(invoker.is_enable_trace_deopt) &&
+          invoker.is_enable_trace_deopt) {
+        _aot_compile_options_ += " --compiler-trace-deopt=true"
+      }
+      if (defined(invoker.is_enable_builtins_dts) &&
+          invoker.is_enable_builtins_dts) {
+        deps += [ "//arkcompiler/ets_runtime:es2abc_gen_builtins_d_abc" ]
+        _aot_compile_options_ += " --builtins-dts=" +
+                                 rebase_path(root_out_dir) + "/obj/arkcompiler/ets_runtime/lib_ark_builtins/es2abc/lib_ark_builtins.d.abc"
+      }
+      if (defined(invoker.is_enable_opt_inlining) &&
+          invoker.is_enable_opt_inlining) {
+        _aot_compile_options_ +=
+            " --compiler-opt-inlining=true --compiler-opt-type-lowering=true"
+      }
+
+      if (defined(invoker.is_enable_typed_op_profiler) &&
+          invoker.is_enable_typed_op_profiler) {
+        _aot_compile_options_ += " --compiler-typed-op-profiler=ture"
+      }
+
+      if (defined(invoker.is_enable_lowering_builtin) &&
+          invoker.is_enable_lowering_builtin) {
+        _aot_compile_options_ += " --compiler-enable-lowering-builtin=true"
+      }
+
+      if (defined(invoker.is_enable_native_inline) &&
+          invoker.is_enable_native_inline) {
+        _aot_compile_options_ += " --compiler-enable-native-inline"
+      }
+
+      if (defined(invoker.is_enable_opt_loop_peeling) &&
+          invoker.is_enable_opt_loop_peeling) {
+        _aot_compile_options_ += " --compiler-opt-loop-peeling=true"
+      }
+
+      if (defined(invoker.is_enable_inline_trace) &&
+          invoker.is_enable_inline_trace) {
+        _aot_compile_options_ += " --compiler-trace-inline=true"
+      }
+
+      if (defined(invoker.userDefinedMethodsInModule) &&
+          invoker.userDefinedMethodsInModule) {
+        _aot_compile_options_ += " --compiler-module-methods=2"
+      }
+
+      args = [
+        "--script-file",
+        rebase_path(_root_out_dir_) +
+            "/arkcompiler/ets_runtime/ark_aot_compiler",
+        "--script-options",
+        _aot_compile_options_,
+        "--script-args",
+        _script_args_,
+        "--expect-sub-output",
+        "ts aot compile success",
+        "--env-path",
+        rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime:" +
+            rebase_path(_root_out_dir_) + "/${_icu_path_}:" +
+            rebase_path(_root_out_dir_) + "/thirdparty/zlib:" +
+            rebase_path(_root_out_dir_) +
+            "/resourceschedule/frame_aware_sched:" +
+            rebase_path(_root_out_dir_) + "/hiviewdfx/hilog:" +
+            rebase_path(_root_out_dir_) +
+            "/thirdparty/bounds_checking_function:" +
+            rebase_path("//prebuilts/clang/ohos/linux-x86_64/llvm/lib/"),
+      ]
+
+      inputs = [ _test_abc_path_ ]
+
+      outputs = [
+        _test_aot_path_litecg_,
+        _test_aot_snapshot_path_litecg_,
+      ]
+    }
+
+    action("${_target_name_}AotCompileActionSlowPathWithLiteCGQemu") {
+      testonly = true
+      _host_aot_target_ =
+          "$js_root/ecmascript/compiler:ark_aot_compiler(${host_toolchain})"
+      _root_out_dir_ = get_label_info(_host_aot_target_, "root_out_dir")
+      deps = [
+        ":gen_${_target_name_}_abc",
+        _host_aot_target_,
+      ]
+      deps += _deps_
+
+      script = "$js_root/script/run_ark_executable.py"
+
+      _aot_compile_options_ =
+          " --aot-file=" + rebase_path(_test_aot_arg_slowpath_litecg_) +
+          " --log-level=" + _test_aot_log_level + " --log-components=compiler" +
+          " --compiler-opt-type-lowering=false" +
+          " --compiler-opt-inlining=false" +
+          " --compiler-opt-loop-peeling=false" +
+          " --compiler-enable-litecg=true" +
+          " --compiler-target-triple=aarch64-unknown-linux-gnu"
+      if (defined(invoker.is_enable_trace_deopt) &&
+          invoker.is_enable_trace_deopt) {
+        _aot_compile_options_ += " --compiler-trace-deopt=true"
+      }
+
+      if (defined(invoker.is_enable_builtins_dts) &&
+          invoker.is_enable_builtins_dts) {
+        deps += [ "//arkcompiler/ets_runtime:es2abc_gen_builtins_d_abc" ]
+        _aot_compile_options_ += " --builtins-dts=" +
+                                 rebase_path(root_out_dir) + "/obj/arkcompiler/ets_runtime/lib_ark_builtins/es2abc/lib_ark_builtins.d.abc"
+      }
+
+      if (defined(invoker.is_enable_opt_inlining) &&
+          invoker.is_enable_opt_inlining) {
+        _aot_compile_options_ +=
+            " --compiler-opt-inlining=true --compiler-opt-type-lowering=true"
+      }
+
+      if (defined(invoker.is_enable_native_inline) &&
+          invoker.is_enable_native_inline) {
+        _aot_compile_options_ += " --compiler-enable-native-inline"
+      }
+
+      if (defined(invoker.is_enable_opt_loop_peeling) &&
+          invoker.is_enable_opt_loop_peeling) {
+        _aot_compile_options_ += " --compiler-opt-loop-peeling=true"
+      }
+
+      if (defined(invoker.is_enable_inline_trace) &&
+          invoker.is_enable_inline_trace) {
+        _aot_compile_options_ += " --compiler-trace-inline=true"
+      }
+
+      if (defined(invoker.userDefinedMethodsInModule) &&
+          invoker.userDefinedMethodsInModule) {
+        _aot_compile_options_ += " --compiler-module-methods=2"
+      }
+
+      args = [
+        "--script-file",
+        rebase_path(_root_out_dir_) +
+            "/arkcompiler/ets_runtime/ark_aot_compiler",
+        "--script-options",
+        _aot_compile_options_,
+        "--script-args",
+        _script_args_,
+        "--expect-sub-output",
+        "ts aot compile success",
+        "--env-path",
+        rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime:" +
+            rebase_path(_root_out_dir_) + "/${_icu_path_}:" +
+            rebase_path(_root_out_dir_) + "/thirdparty/zlib:" +
+            rebase_path(_root_out_dir_) +
+            "/resourceschedule/frame_aware_sched:" +
+            rebase_path(_root_out_dir_) + "/hiviewdfx/hilog:" +
+            rebase_path(_root_out_dir_) +
+            "/thirdparty/bounds_checking_function:" +
+            rebase_path("//prebuilts/clang/ohos/linux-x86_64/llvm/lib/"),
+      ]
+
+      inputs = [ _test_abc_path_ ]
+
+      outputs = [
+        _test_aot_path_slowpath_litecg_,
+        _test_aot_snapshot_path_slowpath_litecg_,
+      ]
+    }
+
+    action("${_target_name_}AotActionWithLiteCGQemu") {
+      testonly = true
+      _host_jsvm_target_ = "//arkcompiler/ets_runtime/ecmascript/js_vm:ark_js_vm(${default_toolchain})"
+      _root_out_dir_ = get_label_info(_host_jsvm_target_, "root_out_dir")
+
+      deps = [
+        ":${_target_name_}AotCompileActionWithLiteCGQemu",
+        ":gen_${_target_name_}_abc",
+        "$ark_third_party_root/musl:soft_create_linker_for_qemu",
+        _host_jsvm_target_,
+      ]
+      if (!defined(invoker.is_only_typed_path) || !invoker.is_only_typed_path) {
+        deps += [ ":${_target_name_}AotActionSlowPathWithLiteCGQemu" ]
+      }
+      deps += _deps_
+
+      script = "//arkcompiler/ets_runtime/script/run_ark_executable.py"
+
+      _aot_run_options_ =
+          " --aot-file=" + rebase_path(_test_aot_arg_litecg_) +
+          " --asm-interpreter=true" + " --entry-point=${_target_name_}"
+
+      _icu_data_path_options_ =
+          " --icu-data-path=" + rebase_path("//third_party/icu/ohos_icu4j/data")
+      _aot_run_options_ += _icu_data_path_options_
+
+      if (defined(invoker.is_enable_enableArkTools) &&
+          invoker.is_enable_enableArkTools) {
+        _aot_run_options_ += " --enable-ark-tools=true"
+        _aot_run_options_ += " --enable-force-gc=false"
+      }
+
+      if (defined(invoker.log_option)) {
+        _aot_run_options_ += invoker.log_option
+      }
+
+      if (defined(invoker.is_enable_typed_op_profiler) &&
+          invoker.is_enable_typed_op_profiler) {
+        _aot_run_options_ += " --compiler-typed-op-profiler=ture"
+      }
+
+      if (defined(invoker.is_enable_lowering_builtin) &&
+          invoker.is_enable_lowering_builtin) {
+        _aot_run_options_ += " --compiler-enable-lowering-builtin=true"
+      }
+
+      if (defined(invoker.is_enable_trace_deopt) &&
+          invoker.is_enable_trace_deopt) {
+        _aot_run_options_ += " --compiler-trace-deopt=true"
+      }
+
+      args = [
+        "--script-file",
+        rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime/ark_js_vm",
+        "--script-options",
+        _aot_run_options_,
+        "--script-args",
+        _script_args_,
+        "--expect-file",
+        rebase_path(_test_expect_path_),
+        "--qemu-binary-path",
+        "${QEMU_INSTALLATION_PATH}/bin/qemu-${musl_arch}",
+        "--qemu-ld-prefix",
+        rebase_path(musl_linker_so_out_dir, root_build_dir),
+        "--clang-lib-path",
+        rebase_path("${clang_base_path}/lib/${musl_arch}-linux-ohos:",
+                    root_build_dir) + rebase_path(_root_out_dir_) +
+            "/arkcompiler/ets_runtime:" + rebase_path(_root_out_dir_) +
+            "/${_icu_path_}:" + rebase_path(_root_out_dir_) +
+            "/thirdparty/zlib:" + rebase_path(_root_out_dir_) +
+            "/resourceschedule/frame_aware_sched:" +
+            rebase_path(_root_out_dir_) + "/hiviewdfx/hilog:" +
+            rebase_path(_root_out_dir_) +
+            "/thirdparty/bounds_checking_function:" +
+            rebase_path("//prebuilts/clang/ohos/linux-x86_64/llvm/lib/"),
+      ]
+
+      inputs = [ _test_abc_path_ ]
+
+      outputs = [ "$target_out_dir/${_target_name_}/LiteCG/" ]
+    }
+
+    action("${_target_name_}AotContextActionWithLiteCGQemu") {
+      testonly = true
+      _host_jsvm_target_ = "//arkcompiler/ets_runtime/ecmascript/js_vm:ark_js_vm(${default_toolchain})"
+      _root_out_dir_ = get_label_info(_host_jsvm_target_, "root_out_dir")
+
+      deps = [
+        ":${_target_name_}AotCompileActionWithLiteCGQemu",
+        ":gen_${_target_name_}_abc",
+        "$ark_third_party_root/musl:soft_create_linker_for_qemu",
+        _host_jsvm_target_,
+      ]
+      if (!defined(invoker.is_only_typed_path) || !invoker.is_only_typed_path) {
+        deps += [ ":${_target_name_}AotActionSlowPathWithLiteCGQemu" ]
+      }
+      deps += _deps_
+
+      script = "//arkcompiler/ets_runtime/script/run_ark_executable.py"
+
+      _aot_run_options_ =
+          " --aot-file=" + rebase_path(_test_aot_arg_litecg_) +
+          " --asm-interpreter=true" + " --entry-point=${_target_name_}"
+
+      _icu_data_path_options_ =
+          " --icu-data-path=" + rebase_path("//third_party/icu/ohos_icu4j/data")
+      _aot_run_options_ += _icu_data_path_options_
+
+      if (defined(invoker.is_enable_enableArkTools) &&
+          invoker.is_enable_enableArkTools) {
+        _aot_run_options_ += " --enable-ark-tools=true"
+        _aot_run_options_ += " --enable-force-gc=false"
+      }
+
+      if (defined(invoker.log_option)) {
+        _aot_run_options_ += invoker.log_option
+      }
+      _aot_run_options_ += " --enable-context=true"
+
+      if (defined(invoker.is_enable_typed_op_profiler) &&
+          invoker.is_enable_typed_op_profiler) {
+        _aot_run_options_ += " --compiler-typed-op-profiler=ture"
+      }
+
+      if (defined(invoker.is_enable_lowering_builtin) &&
+          invoker.is_enable_lowering_builtin) {
+        _aot_run_options_ += " --compiler-enable-lowering-builtin=true"
+      }
+
+      if (defined(invoker.is_enable_trace_deopt) &&
+          invoker.is_enable_trace_deopt) {
+        _aot_run_options_ += " --compiler-trace-deopt=true"
+      }
+
+      args = [
+        "--script-file",
+        rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime/ark_js_vm",
+        "--script-options",
+        _aot_run_options_,
+        "--script-args",
+        _script_args_,
+        "--expect-file",
+        rebase_path(_test_expect_path_),
+        "--qemu-binary-path",
+        "${QEMU_INSTALLATION_PATH}/bin/qemu-${musl_arch}",
+        "--qemu-ld-prefix",
+        rebase_path(musl_linker_so_out_dir, root_build_dir),
+        "--clang-lib-path",
+        rebase_path("${clang_base_path}/lib/${musl_arch}-linux-ohos:",
+                    root_build_dir) + rebase_path(_root_out_dir_) +
+            "/arkcompiler/ets_runtime:" + rebase_path(_root_out_dir_) +
+            "/${_icu_path_}:" + rebase_path(_root_out_dir_) +
+            "/thirdparty/zlib:" + rebase_path(_root_out_dir_) +
+            "/resourceschedule/frame_aware_sched:" +
+            rebase_path(_root_out_dir_) + "/hiviewdfx/hilog:" +
+            rebase_path(_root_out_dir_) +
+            "/thirdparty/bounds_checking_function:" +
+            rebase_path("//prebuilts/clang/ohos/linux-x86_64/llvm/lib/"),
+      ]
+
+      inputs = [ _test_abc_path_ ]
+
+      outputs = [ "$target_out_dir/${_target_name_}Context/LiteCG/" ]
+    }
+
+    action("${_target_name_}AotActionSlowPathWithLiteCGQemu") {
+      testonly = true
+      _host_jsvm_target_ =
+          "$js_root/ecmascript/js_vm:ark_js_vm(${default_toolchain})"
+      _root_out_dir_ = get_label_info(_host_jsvm_target_, "root_out_dir")
+
+      deps = [
+        ":${_target_name_}AotCompileActionSlowPathWithLiteCGQemu",
+        ":gen_${_target_name_}_abc",
+        "$ark_third_party_root/musl:soft_create_linker_for_qemu",
+        _host_jsvm_target_,
+      ]
+      deps += _deps_
+
+      script = "$js_root/script/run_ark_executable.py"
+
+      _aot_run_options_ =
+          " --aot-file=" + rebase_path(_test_aot_arg_slowpath_litecg_) +
+          " --asm-interpreter=true" + " --entry-point=${_target_name_}"
+
+      _icu_data_path_options_ =
+          " --icu-data-path=" + rebase_path("//third_party/icu/ohos_icu4j/data")
+      _aot_run_options_ += _icu_data_path_options_
+
+      if (defined(invoker.is_enable_enableArkTools) &&
+          invoker.is_enable_enableArkTools) {
+        _aot_run_options_ += " --enable-ark-tools=true"
+        _aot_run_options_ += " --enable-force-gc=false"
+      }
+
+      if (defined(invoker.log_option)) {
+        _aot_run_options_ += invoker.log_option
+      }
+
+      args = [
+        "--script-file",
+        rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime/ark_js_vm",
+        "--script-options",
+        _aot_run_options_,
+        "--script-args",
+        _script_args_,
+        "--expect-file",
+        rebase_path(_test_expect_path_),
+        "--qemu-binary-path",
+        "${QEMU_INSTALLATION_PATH}/bin/qemu-${musl_arch}",
+        "--qemu-ld-prefix",
+        rebase_path(musl_linker_so_out_dir, root_build_dir),
+        "--clang-lib-path",
+        rebase_path("${clang_base_path}/lib/${musl_arch}-linux-ohos:",
+                    root_build_dir) + rebase_path(_root_out_dir_) +
+            "/arkcompiler/ets_runtime:" + rebase_path(_root_out_dir_) +
+            "/${_icu_path_}:" + rebase_path(_root_out_dir_) +
+            "/thirdparty/zlib:" + rebase_path(_root_out_dir_) +
+            "/resourceschedule/frame_aware_sched:" +
+            rebase_path(_root_out_dir_) + "/hiviewdfx/hilog:" +
+            rebase_path(_root_out_dir_) +
+            "/thirdparty/bounds_checking_function:" +
+            rebase_path("//prebuilts/clang/ohos/linux-x86_64/llvm/lib/"),
+      ]
+
+      inputs = [ _test_abc_path_ ]
+
+      outputs = [ "$target_out_dir/${_target_name_}/SlowPath/LiteCG" ]
+    }
   }
 }
 
@@ -2353,10 +3735,6 @@ template("host_aot_assert_test_action") {
       _aot_compile_options_ += " --compiler-module-methods=2"
     }
 
-    if (TEST_LITECG) {
-      _aot_compile_options_ += " --compiler-enable-litecg=true"
-    }
-
     _aot_compile_options_ += " --test-assert=true"
 
     args = [
@@ -2440,10 +3818,6 @@ template("host_aot_assert_test_action") {
     if (defined(invoker.userDefinedMethodsInModule) &&
         invoker.userDefinedMethodsInModule) {
       _aot_compile_options_ += " --compiler-module-methods=2"
-    }
-
-    if (TEST_LITECG) {
-      _aot_compile_options_ += " --compiler-enable-litecg=true"
     }
 
     _aot_compile_options_ += " --test-assert=true"
@@ -2731,6 +4105,9 @@ template("host_typeinfer_test_action") {
       _host_aot_target_,
     ]
     deps += _deps_
+    if (target_cpu == "x64") {
+      deps += [ ":${_target_name_}Es2abcAotTypeInferActionWithLiteCG" ]
+    }
 
     script = "//arkcompiler/ets_runtime/script/run_ark_executable.py"
 
@@ -2747,10 +4124,6 @@ template("host_typeinfer_test_action") {
     if (defined(invoker.is_enable_global_typeinfer) &&
         invoker.is_enable_global_typeinfer) {
       _aot_compile_options_ += " --compiler-opt-global-typeinfer=true"
-    }
-
-    if (TEST_LITECG) {
-      _aot_compile_options_ += " --compiler-enable-litecg=true"
     }
 
     args = [
@@ -2776,6 +4149,60 @@ template("host_typeinfer_test_action") {
     inputs = [ _test_es2abc_abc_path_ ]
 
     outputs = [ "$target_out_dir/${_target_name_}/es2abc/" ]
+  }
+
+  action("${_target_name_}Es2abcAotTypeInferActionWithLiteCG") {
+    testonly = true
+
+    _script_args_ = rebase_path(_test_es2abc_abc_path_)
+    _root_out_dir_ = get_label_info(_host_aot_target_, "root_out_dir")
+    deps = [
+      ":es2abc_gen_${_target_name_}_abc",
+      _host_aot_target_,
+    ]
+    deps += _deps_
+
+    script = "//arkcompiler/ets_runtime/script/run_ark_executable.py"
+
+    _aot_compile_options_ =
+        " --compiler-assert-types=true" +
+        " --compiler-opt-type-lowering=false" +
+        " --compiler-opt-loop-peeling=false" + " --compiler-enable-litecg=true"
+
+    if (defined(invoker.is_enable_builtins_dts) &&
+        invoker.is_enable_builtins_dts) {
+      deps += [ "//arkcompiler/ets_runtime:es2abc_gen_builtins_d_abc" ]
+      _aot_compile_options_ += " --builtins-dts=" + rebase_path(root_out_dir) + "/obj/arkcompiler/ets_runtime/lib_ark_builtins/es2abc/lib_ark_builtins.d.abc"
+    }
+
+    if (defined(invoker.is_enable_global_typeinfer) &&
+        invoker.is_enable_global_typeinfer) {
+      _aot_compile_options_ += " --compiler-opt-global-typeinfer=true"
+    }
+
+    args = [
+      "--script-file",
+      rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime/ark_aot_compiler",
+      "--script-options",
+      _aot_compile_options_,
+      "--script-args",
+      _script_args_,
+      "--expect-output",
+      "0",
+      "--env-path",
+      rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime:" +
+          rebase_path(_root_out_dir_) + "/${_icu_path_}:" +
+          rebase_path(_root_out_dir_) + "/thirdparty/zlib:" +
+          rebase_path(_root_out_dir_) + "/resourceschedule/frame_aware_sched:" +
+          rebase_path(_root_out_dir_) + "/hiviewdfx/hilog:" +
+          rebase_path(_root_out_dir_) +
+          "/thirdparty/bounds_checking_function:" +
+          rebase_path("//prebuilts/clang/ohos/linux-x86_64/llvm/lib/"),
+    ]
+
+    inputs = [ _test_es2abc_abc_path_ ]
+
+    outputs = [ "$target_out_dir/${_target_name_}/es2abc/LiteCG/" ]
   }
 }
 
@@ -2878,6 +4305,9 @@ template("host_pgotypeinfer_test_action") {
       _host_aot_target_,
     ]
     deps += _deps_
+    if (target_cpu == "x64") {
+      deps += [ ":${_target_name_}Es2abcAotTypeInferActionWithLiteCG" ]
+    }
 
     # Pgo Execute
     deps += [ ":${_target_name_}PgoExecute" ]
@@ -2926,6 +4356,67 @@ template("host_pgotypeinfer_test_action") {
     inputs = [ _test_es2abc_abc_path_ ]
 
     outputs = [ "$target_out_dir/${_target_name_}/es2abc/" ]
+  }
+
+  action("${_target_name_}Es2abcAotTypeInferActionWithLiteCG") {
+    testonly = true
+
+    _script_args_ = rebase_path(_test_es2abc_abc_path_)
+    _root_out_dir_ = get_label_info(_host_aot_target_, "root_out_dir")
+    deps = [
+      ":es2abc_gen_${_target_name_}_abc",
+      _host_aot_target_,
+    ]
+    deps += _deps_
+
+    # Pgo Execute
+    deps += [ ":${_target_name_}PgoExecute" ]
+
+    script = "//arkcompiler/ets_runtime/script/run_ark_executable.py"
+
+    _aot_compile_options_ =
+        " --compiler-assert-types=true" +
+        " --compiler-opt-type-lowering=false" +
+        " --compiler-opt-loop-peeling=false" + " --compiler-enable-litecg=true"
+
+    # Pgo Option
+    _aot_compile_options_ += " --compiler-pgo-profiler-path=" +
+                             rebase_path(_test_aot_arg_) + "/modules.ap"
+
+    if (defined(invoker.is_enable_builtins_dts) &&
+        invoker.is_enable_builtins_dts) {
+      deps += [ "//arkcompiler/ets_runtime:es2abc_gen_builtins_d_abc" ]
+      _aot_compile_options_ += " --builtins-dts=" + rebase_path(root_out_dir) + "/obj/arkcompiler/ets_runtime/lib_ark_builtins/es2abc/lib_ark_builtins.d.abc"
+    }
+
+    if (defined(invoker.is_enable_global_typeinfer) &&
+        invoker.is_enable_global_typeinfer) {
+      _aot_compile_options_ += " --compiler-opt-global-typeinfer=true"
+    }
+
+    args = [
+      "--script-file",
+      rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime/ark_aot_compiler",
+      "--script-options",
+      _aot_compile_options_,
+      "--script-args",
+      _script_args_,
+      "--expect-output",
+      "0",
+      "--env-path",
+      rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime:" +
+          rebase_path(_root_out_dir_) + "/${_icu_path_}:" +
+          rebase_path(_root_out_dir_) + "/thirdparty/zlib:" +
+          rebase_path(_root_out_dir_) + "/resourceschedule/frame_aware_sched:" +
+          rebase_path(_root_out_dir_) + "/hiviewdfx/hilog:" +
+          rebase_path(_root_out_dir_) +
+          "/thirdparty/bounds_checking_function:" +
+          rebase_path("//prebuilts/clang/ohos/linux-x86_64/llvm/lib/"),
+    ]
+
+    inputs = [ _test_es2abc_abc_path_ ]
+
+    outputs = [ "$target_out_dir/${_target_name_}/es2abc/LiteCG/" ]
   }
 }
 
