@@ -34,11 +34,12 @@ public:
     }
 
     template<class T>
-    static inline bool AtomicSetPrimitive(volatile void *obj, size_t offset, T oldValue, T value)
+    static inline T AtomicSetPrimitive(volatile void *obj, size_t offset, T oldValue, T value)
     {
         volatile auto atomicField = reinterpret_cast<volatile std::atomic<T> *>(ToUintPtr(obj) + offset);
-        return std::atomic_compare_exchange_strong_explicit(atomicField, &oldValue, value, std::memory_order_release,
-                                                            std::memory_order_relaxed);
+        std::atomic_compare_exchange_strong_explicit(atomicField, &oldValue, value, std::memory_order_release,
+                                                     std::memory_order_relaxed);
+        return oldValue;
     }
 
     template<bool need_write_barrier = true>
