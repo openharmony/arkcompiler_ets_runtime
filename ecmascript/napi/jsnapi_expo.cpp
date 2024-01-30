@@ -2659,6 +2659,7 @@ std::pair<std::string, std::string> JSNApi::GetCurrentModuleInfo(EcmaVM *vm, boo
 // Enable cross thread execution.
 void JSNApi::AllowCrossThreadExecution(EcmaVM *vm)
 {
+    LOG_ECMA(WARN) << "enable cross thread execution";
     vm->GetAssociatedJSThread()->EnableCrossThreadExecution();
 }
 
