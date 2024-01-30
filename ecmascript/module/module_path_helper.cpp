@@ -111,7 +111,7 @@ void ModulePathHelper::ParseOhmUrl(EcmaVM *vm, const CString &inputFileName,
 }
 
 /*
- * Before: recordName: bundleName/moduleName@namespace/moduleName/xxx/xxx.abc
+ * Before: recordName: bundleName/moduleName@namespace/xxx/xxx.abc
  * After: Intra-application cross hap:   /data/storage/el1/bundle/bundleName/ets/modules.abc
  *        Cross-application:             /data/storage/el1/bundle/bundleName/moduleName/moduleName/ets/modules.abc
  */

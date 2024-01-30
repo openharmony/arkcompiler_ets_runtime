@@ -3708,6 +3708,20 @@ Local<ObjectRef> JSNApi::ExecuteNativeModule(EcmaVM *vm, const std::string &key)
     return JSNApiHelper::ToLocal<ObjectRef>(exportObj);
 }
 
+Local<ObjectRef> JSNApi::GetModuleNameSpaceFromFile(EcmaVM *vm, const std::string &file)
+{
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
+    // need get moduleName from stack
+    std::pair<std::string, std::string> moduleInfo = vm->GetCurrentModuleInfo(false);
+    std::string recordNameStr = std::string(vm->GetBundleName().c_str()) + PathHelper::SLASH_TAG +
+        moduleInfo.first + PathHelper::SLASH_TAG + file;
+    LOG_ECMA(DEBUG) << "JSNApi::LoadModuleNameSpaceFromFile: Concated recordName " << recordNameStr.c_str();
+    ecmascript::ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
+    JSHandle<JSTaggedValue> moduleNamespace = moduleManager->
+        GetModuleNameSpaceFromFile(thread, recordNameStr, moduleInfo.second);
+    return JSNApiHelper::ToLocal<ObjectRef>(moduleNamespace);
+}
+
  // Initialize IcuData Path
 void JSNApi::InitializeIcuData(const JSRuntimeOptions &options)
 {
