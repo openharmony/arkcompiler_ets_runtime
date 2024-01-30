@@ -16,6 +16,7 @@
 1234545royale
 lashroyale1234545royale
 hello, undefined, undefined, undefined
+false
 <(!(--[^-]*-([^-][^-]*-)*->|[^-]
 strb
 aaaaaabbbbbbbb

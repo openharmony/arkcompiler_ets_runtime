@@ -38,6 +38,14 @@ function test_undefined(message, message2, message3, message4) {
 }
 test_undefined('hello');
 
+let as = "aaaaaaaa";
+let bs = "bbbbbbbb";
+let cs = "ccc";
+let abs = as + bs;
+let abcs = abs + cs;
+assert(abs == "aaaaaaaabbbbbbbb", "Error optimize string add");
+print(abs == "aaaaaaaabbbbbbbbccc");
+
 // multiple add case
 var Text1 = "[^-]*-";
 var Text2 = Text1 + "([^-]" + Text1 + ")*-";
