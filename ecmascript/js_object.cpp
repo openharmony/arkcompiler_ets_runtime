@@ -1410,6 +1410,7 @@ bool JSObject::SetPrototype(JSThread *thread, const JSHandle<JSObject> &obj, con
                 break;
             }
             tempProtoHandle.Update(JSTaggedValue::GetPrototype(thread, JSHandle<JSTaggedValue>(tempProtoHandle)));
+            RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
         }
     }
     // map transition

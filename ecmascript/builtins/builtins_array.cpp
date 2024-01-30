@@ -2257,6 +2257,7 @@ JSTaggedValue BuiltinsArray::Sort(EcmaRuntimeCallInfo *argv)
         JSStableArray::Sort(thread, thisObjHandle, callbackFnHandle);
     } else {
         JSArray::Sort(thread, JSHandle<JSTaggedValue>::Cast(thisObjHandle), callbackFnHandle);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     }
     return thisObjHandle.GetTaggedValue();
 }

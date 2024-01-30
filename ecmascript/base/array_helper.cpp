@@ -50,9 +50,8 @@ int64_t ArrayHelper::GetStartIndex(JSThread *thread, const JSHandle<JSTaggedValu
     }
     // Slow path: startIndexHandle is targged double, or type conversion is involved.
     JSTaggedNumber fromIndexTemp = JSTaggedValue::ToNumber(thread, startIndexHandle);
-    if (UNLIKELY(thread->HasPendingException())) {
-        return length;
-    }
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, length);
+
     double fromIndexValue = base::NumberHelper::TruncateDouble(fromIndexTemp.GetNumber()); // NaN -> 0
     return doClamp(fromIndexValue);
 }
@@ -89,9 +88,8 @@ int64_t ArrayHelper::GetLastStartIndex(JSThread *thread, const JSHandle<JSTagged
     }
     // Slow path: startIndexHandle is targged double, or type conversion is involved.
     JSTaggedNumber fromIndexTemp = JSTaggedValue::ToNumber(thread, startIndexHandle);
-    if (UNLIKELY(thread->HasPendingException())) {
-        return -1;
-    }
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, -1);
+
     double fromIndexValue = base::NumberHelper::TruncateDouble(fromIndexTemp.GetNumber()); // NaN -> 0
     return doClamp(fromIndexValue);
 }
