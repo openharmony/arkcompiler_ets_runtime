@@ -22,6 +22,7 @@
 #include "ecmascript/mem/area.h"
 #include "ecmascript/mem/chunk.h"
 #include "ecmascript/mem/c_containers.h"
+#include "ecmascript/platform/mutex.h"
 
 namespace panda::ecmascript {
 class NativeAreaAllocator;
@@ -42,6 +43,7 @@ public:
 
     void *Allocate(size_t size)
     {
+        LockHolder lock(mtx_);
         if (size != WORKNODE_SPACE_SIZE) {
             LOG_ECMA_MEM(FATAL) << "WorkNode size is illegal, size:" << size;
             UNREACHABLE();
@@ -65,6 +67,7 @@ private:
     void ReleaseMemory();
     static constexpr size_t MAX_WORK_SPACE_CHUNK_SIZE = 2_MB;
     NativeAreaAllocator *allocator_ {nullptr};
+    Mutex mtx_;
     CUnorderedMap<uintptr_t, uintptr_t> areaList_ {};
     CList<uintptr_t> cachedAreaList_ {};
 };
