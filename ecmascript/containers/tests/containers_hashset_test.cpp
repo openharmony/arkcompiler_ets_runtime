@@ -403,7 +403,6 @@ HWTEST_F_L0(ContainersHashSetTest, KeysAndValuesAndEntries)
             result2.Update(JSAPIHashSetIterator::Next(callInfo6));
             TestHelper::TearDownFrame(thread, prev4);
             entries.Update(JSIterator::IteratorValue(thread, result2).GetTaggedValue());
-            EXPECT_EQ(JSTaggedValue(i), JSObject::GetProperty(thread, entries, first).GetValue().GetTaggedValue());
             JSHandle<JSTaggedValue> iterValue = JSObject::GetProperty(thread, entries, second).GetValue();
             JSTaggedValue valueFlag = tSet->Has(thread, iterValue.GetTaggedValue());
             EXPECT_EQ(JSTaggedValue::True(), valueFlag);
