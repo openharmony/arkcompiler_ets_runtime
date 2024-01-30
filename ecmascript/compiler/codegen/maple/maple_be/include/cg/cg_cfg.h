@@ -86,7 +86,7 @@ public:
     void CheckCFG();
     void CheckCFGFreq();
 
-    void InitInsnVisitor(CGFunc &func);
+    void InitInsnVisitor(CGFunc &func) const;
     InsnVisitor *GetInsnModifier() const
     {
         return insnVisitor;
@@ -105,9 +105,9 @@ public:
      * Remove a BB from its position in the CFG.
      * Prev, next, preds and sucs are all modified accordingly.
      */
-    void RemoveBB(BB &curBB, bool isGotoIf = false);
+    void RemoveBB(BB &curBB, bool isGotoIf = false) const;
     /* Skip the successor of bb, directly jump to bb's successor'ssuccessor */
-    void RetargetJump(BB &srcBB, BB &targetBB);
+    void RetargetJump(BB &srcBB, BB &targetBB) const;
 
     /*
      * Update the preds of CommonExitBB after changing cfg,
@@ -119,8 +119,8 @@ public:
     static bool InLSDA(LabelIdx label, const EHFunc *ehFunc);
     static bool InSwitchTable(LabelIdx label, const CGFunc &func);
 
-    RegOperand *CreateVregFromReg(const RegOperand &pReg);
-    Insn *CloneInsn(Insn &originalInsn);
+    RegOperand *CreateVregFromReg(const RegOperand &pReg) const;
+    Insn *CloneInsn(Insn &originalInsn) const;
     static BB *GetTargetSuc(BB &curBB, bool branchOnly = false, bool isGotoIf = false);
     bool IsCompareAndBranchInsn(const Insn &insn) const;
     bool IsTestAndBranchInsn(const Insn &insn) const;
@@ -129,14 +129,14 @@ public:
     Insn *FindLastCondBrInsn(BB &bb) const;
     static void FindAndMarkUnreachable(CGFunc &func);
     void FlushUnReachableStatusAndRemoveRelations(BB &bb, const CGFunc &func) const;
-    void MarkLabelTakenBB();
-    void UnreachCodeAnalysis();
+    void MarkLabelTakenBB() const;
+    void UnreachCodeAnalysis() const;
     void FindWillExitBBs(BB *bb, std::set<BB *, BBIdCmp> *visitedBBs);
     void WontExitAnalysis();
     BB *FindLastRetBB();
 
-    void UpdatePredsSuccsAfterSplit(BB &pred, BB &succ, BB &newBB);
-    void BreakCriticalEdge(BB &pred, BB &succ);
+    void UpdatePredsSuccsAfterSplit(BB &pred, BB &succ, BB &newBB) const;
+    void BreakCriticalEdge(BB &pred, BB &succ) const;
     /* cgcfgvisitor */
 private:
     CGFunc *cgFunc = nullptr;
