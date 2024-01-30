@@ -357,7 +357,7 @@ bool JSThread::DoStackOverflowCheck(const JSTaggedType *sp)
     // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
     if (UNLIKELY(sp <= glueData_.frameBase_ + RESERVE_STACK_SIZE)) {
         LOG_ECMA(ERROR) << "Stack overflow! Remaining stack size is: " << (sp - glueData_.frameBase_);
-        if (LIKELY(!HasPendingException())) {
+        if (!IsCrossThreadExecutionEnable() && LIKELY(!HasPendingException())) {
             ObjectFactory *factory = GetEcmaVM()->GetFactory();
             JSHandle<JSObject> error = factory->GetJSError(base::ErrorType::RANGE_ERROR, "Stack overflow!", false);
             SetException(error.GetTaggedValue());
@@ -372,7 +372,7 @@ bool JSThread::DoStackLimitCheck()
     if (UNLIKELY(GetCurrentStackPosition() < GetStackLimit())) {
         vm_->CheckThread();
         LOG_ECMA(ERROR) << "Stack overflow! current:" << GetCurrentStackPosition() << " limit:" << GetStackLimit();
-        if (LIKELY(!HasPendingException())) {
+        if (!IsCrossThreadExecutionEnable() && LIKELY(!HasPendingException())) {
             ObjectFactory *factory = GetEcmaVM()->GetFactory();
             JSHandle<JSObject> error = factory->GetJSError(base::ErrorType::RANGE_ERROR, "Stack overflow!", false);
             SetException(error.GetTaggedValue());
