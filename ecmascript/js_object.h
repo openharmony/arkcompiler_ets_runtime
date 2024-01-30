@@ -461,7 +461,10 @@ public:
     static bool TestIntegrityLevel(JSThread *thread, const JSHandle<JSObject> &obj, IntegrityLevel level);
 
     static JSHandle<JSTaggedValue> SpeciesConstructor(JSThread *thread, const JSHandle<JSObject> &obj,
-                                                      const JSHandle<JSTaggedValue> &defaultConstructort);
+                                                      const JSHandle<JSTaggedValue> &defaultConstructor);
+    static JSHandle<JSTaggedValue> SlowSpeciesConstructor(JSThread *thread,
+                                                          const JSHandle<JSTaggedValue> &objConstructor,
+                                                          const JSHandle<JSTaggedValue> &defaultConstructor);
     // 7.3.17
     template<ElementTypes types = ElementTypes::ALLTYPES>
     static JSHandle<JSTaggedValue> CreateListFromArrayLike(JSThread *thread, const JSHandle<JSTaggedValue> &obj);
