@@ -20,7 +20,20 @@
 
 namespace panda::ecmascript {
 class MutatorLock : public RWLock {
-    // here must be some kind of debug functionality
+#ifndef NDEBUG
+public:
+    enum MutatorLockState { UNLOCKED, RDLOCK, WRLOCK };
+    void ReadLock();
+    void WriteLock();
+    bool TryReadLock();
+    bool TryWriteLock();
+    void Unlock();
+    bool HasLock() const;
+
+private:
+    MutatorLockState GetState() const;
+    void SetState(MutatorLockState newState);
+#endif
 };
 }  // namespace panda::ecmascript
 #endif // ECMASCRIPT_MUTATOR_LOCK_H

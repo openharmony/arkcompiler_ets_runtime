@@ -64,6 +64,7 @@ void Runtime::SuspendAll(JSThread *current)
 {
     ASSERT(current != nullptr);
     ASSERT(current->GetState() != ThreadState::RUNNING);
+    ASSERT(!mutatorLock_.HasLock());
     SuspendAllThreadsImpl(current);
     mutatorLock_.WriteLock();
 }
@@ -72,6 +73,7 @@ void Runtime::ResumeAll(JSThread *current)
 {
     ASSERT(current != nullptr);
     ASSERT(current->GetState() != ThreadState::RUNNING);
+    ASSERT(mutatorLock_.HasLock());
     mutatorLock_.Unlock();
     ResumeAllThreadsImpl(current);
 }

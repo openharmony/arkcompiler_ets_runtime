@@ -30,6 +30,7 @@
 #include "ecmascript/js_thread_hclass_entries.h"
 #include "ecmascript/js_thread_stub_entries.h"
 #include "ecmascript/mem/visitor.h"
+#include "ecmascript/mutator_lock.h"
 
 namespace panda::ecmascript {
 class EcmaContext;
@@ -346,6 +347,8 @@ public:
     {
         return id_.load(std::memory_order_relaxed);
     }
+
+    void PostFork();
 
     void SetThreadId()
     {
@@ -1105,6 +1108,10 @@ public:
     void SuspendThread(bool internalSuspend);
     void ResumeThread(bool internalSuspend);
     void WaitSuspension();
+#ifndef NDEBUG
+    MutatorLock::MutatorLockState GetMutatorLockState() const;
+    void SetMutatorLockState(MutatorLock::MutatorLockState newState);
+#endif
 
 private:
     NO_COPY_SEMANTIC(JSThread);
@@ -1198,6 +1205,9 @@ private:
     ConditionVariable suspendCondVar_;
 
     ThreadStateAndFlags stateAndFlags_ {};
+#ifndef NDEBUG
+    MutatorLock::MutatorLockState mutatorLockState_ = MutatorLock::MutatorLockState::UNLOCKED;
+#endif
 
     friend class GlobalHandleCollection;
     friend class EcmaVM;

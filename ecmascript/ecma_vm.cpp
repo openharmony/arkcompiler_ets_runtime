@@ -147,7 +147,7 @@ void EcmaVM::PostFork()
 {
     RandomGenerator::InitRandom();
     heap_->SetHeapMode(HeapMode::SHARE);
-    GetAssociatedJSThread()->SetThreadId();
+    GetAssociatedJSThread()->PostFork();
     heap_->EnableParallelGC();
     std::string bundleName = PGOProfilerManager::GetInstance()->GetBundleName();
     if (!WhiteListHelper::GetInstance()->IsEnable(bundleName)) {
