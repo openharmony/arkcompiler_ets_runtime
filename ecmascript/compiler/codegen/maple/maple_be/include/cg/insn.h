@@ -654,7 +654,7 @@ public:
         if (mOp != rhs.mOp || opnds.size() != rhs.opnds.size()) {
             return false;
         }
-        for (int i = 0; i < opnds.size(); ++i) {
+        for (uint32 i = 0; i < opnds.size(); ++i) {
             if (!opnds[i]->Equals(*rhs.opnds[i])) {
                 return false;
             }

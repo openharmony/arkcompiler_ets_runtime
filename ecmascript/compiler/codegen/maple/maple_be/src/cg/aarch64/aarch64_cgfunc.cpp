@@ -1919,7 +1919,6 @@ void AArch64CGFunc::SelectAggDassign(DassignNode &stmt)
             PregIdx pregIdx = rhsregread->GetRegIdx();
             if (IsSpecialPseudoRegister(pregIdx)) {
                 if ((-pregIdx) == kSregRetval0) {
-                    CHECK_FATAL(GetFunction().GetAttr(FUNCATTR_ccall), "only c calling convention support here");
                     AArch64CallConvImpl parmlocator(GetBecommon());
                     CCLocInfo pLoc;
                     PrimType retPtype;
@@ -2296,7 +2295,6 @@ bool AArch64CGFunc::LmbcSmallAggForCall(BlkassignoffNode &bNode, const Operand *
    to have the lowerer figures out the address of the large agg to reside */
 uint32 AArch64CGFunc::LmbcFindTotalStkUsed(std::vector<TyIdx> *paramList)
 {
-    CHECK_FATAL(GetFunction().GetAttr(FUNCATTR_ccall), "only c calling convention support here");
     AArch64CallConvImpl parmlocator(GetBecommon());
     CCLocInfo pLoc;
     for (TyIdx tyIdx : *paramList) {
@@ -2436,7 +2434,6 @@ void AArch64CGFunc::SelectAggIassign(IassignNode &stmt, Operand &AddrOpnd)
         if (loadToRegs4StructReturn) {
             /* generate move to regs for agg return */
             CHECK_FATAL(lhsSize <= k16ByteSize, "SelectAggIassign: illegal struct size");
-            CHECK_FATAL(GetFunction().GetAttr(FUNCATTR_ccall), "only c calling convention support here");
             AArch64CallConvImpl parmlocator(GetBecommon());
             CCLocInfo pLoc;
             parmlocator.LocateNextParm(*lhsType, pLoc, true, GetBecommon().GetMIRModule().CurFunction());
@@ -2785,7 +2782,6 @@ void AArch64CGFunc::SelectReturnSendOfStructInRegs(BaseNode *x)
         }
         uint32 typeSize = GetBecommon().GetTypeSize(mirType->GetTypeIndex());
         /* generate move to regs for agg return */
-        CHECK_FATAL(GetFunction().GetAttr(FUNCATTR_ccall), "only c calling convention support here");
         AArch64CallConvImpl parmlocator(GetBecommon());
         CCLocInfo pLoc;
         (void)parmlocator.LocateNextParm(*mirType, pLoc, true, GetBecommon().GetMIRModule().CurFunction());
@@ -6783,7 +6779,6 @@ void AArch64CGFunc::GenerateCleanupCode(BB &bb)
 
 uint32 AArch64CGFunc::FloatParamRegRequired(MIRStructType *structType, uint32 &fpSize)
 {
-    CHECK_FATAL(GetFunction().GetAttr(FUNCATTR_ccall), "only c calling convention support here");
     AArch64CallConvImpl parmlocator(GetBecommon());
     return parmlocator.FloatParamRegRequired(*structType, fpSize);
 }
@@ -7742,7 +7737,6 @@ void AArch64CGFunc::SelectParmListDreadSmallAggregate(const MIRSymbol &sym, MIRT
      */
     int32 symSize = GetBecommon().GetTypeSize(structType.GetTypeIndex().GetIdx());
     CCLocInfo ploc;
-    CHECK_FATAL(GetFunction().GetAttr(FUNCATTR_ccall), "only c calling convention support here");
     parmLocator.LocateNextParm(structType, ploc);
     if (ploc.reg0 == 0) {
         /* No param regs available, pass on stack. */
@@ -7775,7 +7769,6 @@ void AArch64CGFunc::SelectParmListIreadSmallAggregate(const IreadNode &iread, MI
     RegOperand *addrOpnd0 = static_cast<RegOperand *>(HandleExpr(iread, *(iread.Opnd(0))));
     RegOperand *addrOpnd1 = &LoadIntoRegister(*addrOpnd0, iread.Opnd(0)->GetPrimType());
     CCLocInfo ploc;
-    CHECK_FATAL(GetFunction().GetAttr(FUNCATTR_ccall), "only c calling convention support here");
     parmLocator.LocateNextParm(structType, ploc);
     if (ploc.reg0 == 0) {
         /* No param regs available, pass on stack. */
@@ -7852,7 +7845,6 @@ void AArch64CGFunc::SelectParmListDreadLargeAggregate(const MIRSymbol &sym, MIRT
      */
     uint64 symSize = GetBecommon().GetTypeSize(structType.GetTypeIndex().GetIdx());
     CCLocInfo ploc;
-    CHECK_FATAL(GetFunction().GetAttr(FUNCATTR_ccall), "only c calling convention support here");
     parmLocator.LocateNextParm(structType, ploc);
     uint32 numMemOp = static_cast<uint32>(RoundUp(symSize, GetPointerSize()) / GetPointerSize()); /* round up */
     /* Create the struct copies. */
@@ -7872,7 +7864,6 @@ void AArch64CGFunc::SelectParmListIreadLargeAggregate(const IreadNode &iread, MI
     RegOperand *addrOpnd0 = static_cast<RegOperand *>(HandleExpr(iread, *(iread.Opnd(0))));
     RegOperand *addrOpnd1 = &LoadIntoRegister(*addrOpnd0, iread.Opnd(0)->GetPrimType());
     CCLocInfo ploc;
-    CHECK_FATAL(GetFunction().GetAttr(FUNCATTR_ccall), "only c calling convention support here");
     parmLocator.LocateNextParm(structType, ploc);
     uint32 numMemOp = static_cast<uint32>(RoundUp(symSize, GetPointerSize()) / GetPointerSize()); /* round up */
     RegOperand *parmOpnd =
@@ -8151,7 +8142,6 @@ void AArch64CGFunc::CreateCallStructMemcpyToParamReg(MIRType &structType, int32 
 
     CCLocInfo ploc;
     parmLocator.LocateNextParm(structType, ploc);
-    CHECK_FATAL(GetFunction().GetAttr(FUNCATTR_ccall), "only c calling convention support here");
     if (ploc.reg0 != 0) {
         RegOperand &res = GetOrCreatePhysicalRegisterOperand(static_cast<AArch64reg>(ploc.reg0), k64BitSize, kRegTyInt);
         SelectAdd(res, spReg, offsetOpnd, PTY_a64);
@@ -8658,7 +8648,6 @@ void AArch64CGFunc::SelectClearStackCallParmList(const StmtNode &naryNode, ListO
         Operand *opnd = SelectClearStackCallParam(*expr, offsetValue);
         stackPostion.emplace_back(offsetValue);
         auto *expRegOpnd = static_cast<RegOperand *>(opnd);
-        CHECK_FATAL(GetFunction().GetAttr(FUNCATTR_ccall), "only c calling convention support here");
         parmLocator.LocateNextParm(*ty, ploc);
         CHECK_FATAL(ploc.reg0 != 0, "the parameter of ClearStackCall must be passed by register");
         CHECK_FATAL(expRegOpnd != nullptr, "null ptr check");
@@ -10662,7 +10651,6 @@ void AArch64CGFunc::SelectCVaStart(const IntrinsiccallNode &intrnNode)
     uint32 inReg = 0;
     for (uint32 i = 0; i < GetFunction().GetFormalCount(); i++) {
         MIRType *ty = GlobalTables::GetTypeTable().GetTypeFromTyIdx(GetFunction().GetNthParamTyIdx(i));
-        CHECK_FATAL(GetFunction().GetAttr(FUNCATTR_ccall), "only c calling convention support here");
         parmLocator.LocateNextParm(*ty, pLoc);
         if (pLoc.reg0 == kRinvalid) { /* on stack */
             stkSize = static_cast<uint32_t>(pLoc.memOffset + pLoc.memSize);
