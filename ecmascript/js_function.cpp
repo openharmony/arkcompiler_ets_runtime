@@ -236,6 +236,7 @@ JSTaggedValue JSFunction::LengthGetter(JSThread *thread, const JSHandle<JSObject
                 lengthValue =
                     std::max(0u, static_cast<uint32_t>(JSTaggedValue::ToNumber(thread, targetLength).GetNumber()) -
                              argsLength);
+                RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
             }
         }
         return JSTaggedValue(lengthValue);
@@ -945,6 +946,7 @@ void JSFunction::InitializeForConcurrentFunction(JSThread *thread)
         LOG_ECMA(DEBUG) << "CompileMode is esmodule";
         moduleRecord = moduleManager->HostResolveImportedModuleWithMerge(moduleName, recordName);
     }
+    RETURN_IF_ABRUPT_COMPLETION(thread);
     ecmascript::SourceTextModule::Instantiate(thread, moduleRecord);
     JSHandle<ecmascript::SourceTextModule> module = JSHandle<ecmascript::SourceTextModule>::Cast(moduleRecord);
     module->SetStatus(ecmascript::ModuleStatus::INSTANTIATED);

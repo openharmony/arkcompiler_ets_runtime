@@ -247,6 +247,7 @@ JSHandle<JSPluralRules> JSPluralRules::InitializePluralRules(JSThread *thread,
     // 9. Perform ? SetNumberFormatDigitOptions(pluralRules, options, 0, 3, "standard").
     JSLocale::SetNumberFormatDigitOptions(thread, pluralRules, JSHandle<JSTaggedValue>::Cast(prOptions), MNFD_DEFAULT,
                                           MXFD_DEFAULT, NotationOption::STANDARD);
+    RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSPluralRules, thread);
     icuNumberFormatter = JSNumberFormat::SetICUFormatterDigitOptions(icuNumberFormatter, pluralRules);
 
     // Set pluralRules.[[IcuPluralRules]] to icuPluralRules

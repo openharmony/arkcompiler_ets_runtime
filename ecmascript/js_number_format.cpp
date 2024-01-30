@@ -568,6 +568,7 @@ void JSNumberFormat::InitializeNumberFormat(JSThread *thread, const JSHandle<JSN
     // 21. Perform ? SetNumberFormatDigitOptions(numberFormat, options, mnfdDefault, mxfdDefault, notation).
     JSLocale::SetNumberFormatDigitOptions(thread, numberFormat, JSHandle<JSTaggedValue>::Cast(optionsObject),
                                           mnfdDefault, mxfdDefault, notation);
+    RETURN_IF_ABRUPT_COMPLETION(thread);
     icuNumberFormatter = SetICUFormatterDigitOptions(icuNumberFormatter, numberFormat);
 
     // 22. Let compactDisplay be ? GetOptionOfString(options, "compactDisplay", "string", « "short", "long" », "short").

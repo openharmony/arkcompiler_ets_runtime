@@ -384,6 +384,7 @@ JSHandle<JSTaggedValue> JSArray::FastGetPropertyByValue(JSThread *thread, const 
                                                         uint32_t index)
 {
     auto result = ObjectFastOperator::FastGetPropertyByIndex(thread, obj.GetTaggedValue(), index);
+    RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
     return JSHandle<JSTaggedValue>(thread, result);
 }
 
@@ -391,6 +392,7 @@ JSHandle<JSTaggedValue> JSArray::FastGetPropertyByValue(JSThread *thread, const 
                                                         const JSHandle<JSTaggedValue> &key)
 {
     auto result = ObjectFastOperator::FastGetPropertyByValue(thread, obj.GetTaggedValue(), key.GetTaggedValue());
+    RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
     return JSHandle<JSTaggedValue>(thread, result);
 }
 
