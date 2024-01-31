@@ -20,7 +20,7 @@
 #include <string>
 
 #include "ecmascript/log_wrapper.h"
-#include "ecmascript/ohos/white_list_helper.h"
+#include "ecmascript/ohos/enable_aot_list_helper.h"
 #include "ecmascript/mem/c_string.h"
 #include "ecmascript/pgo_profiler/ap_file/pgo_file_info.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_decoder.h"
@@ -218,12 +218,6 @@ bool PGOProfilerEncoder::SaveAndRename(const SaveTask *task)
 void PGOProfilerEncoder::RequestAot()
 {
     if (bundleName_.empty() || moduleName_.empty()) {
-        return;
-    }
-
-    if (!WhiteListHelper::GetInstance()->IsEnable(bundleName_, moduleName_)) {
-        LOG_ECMA(INFO) << "Request local aot failed. App Not in whitelist, bundle: " << bundleName_
-                       << ", module: " << moduleName_;
         return;
     }
 
