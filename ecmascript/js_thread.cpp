@@ -76,10 +76,13 @@ JSThread *JSThread::Create(EcmaVM *vm)
     jsThread->glueData_.stackLimit_ = GetAsmStackLimit();
     jsThread->glueData_.stackStart_ = GetCurrentStackPosition();
 
-    currentThread = jsThread;
     Runtime::CreateRuntimeIfNotCreated();
     Runtime::GetInstance()->RegisterThread(jsThread);
-    jsThread->UpdateState(ThreadState::RUNNING);
+    // If it is not true, we created a new thread for future fork
+    if (currentThread == nullptr) {
+        currentThread = jsThread;
+        jsThread->UpdateState(ThreadState::RUNNING);
+    }
     return jsThread;
 }
 
@@ -139,7 +142,14 @@ JSThread::~JSThread()
         delete vmThreadControl_;
         vmThreadControl_ = nullptr;
     }
-    UpdateState(ThreadState::TERMINATED);
+    if (currentThread == this) {
+        UpdateState(ThreadState::TERMINATED);
+        currentThread = nullptr;
+    } else {
+        // We have created this JSThread instance but hadn't forked it.
+        ASSERT(GetState() == ThreadState::CREATED);
+        UpdateState(ThreadState::TERMINATED);
+    }
     Runtime::GetInstance()->UnregisterThread(this);
 }
 
@@ -876,6 +886,7 @@ void JSThread::UpdateState(ThreadState newState)
         TransferToRunning();
     } else {
         // Here can be some extra checks...
+        StoreState(newState, false);
     }
 }
 
@@ -926,12 +937,15 @@ void JSThread::WaitSuspension()
 
 void JSThread::TransferFromRunningToSuspended(ThreadState newState)
 {
+    ASSERT(currentThread == this);
     StoreState(newState, false);
+    ASSERT(Runtime::GetInstance()->GetMutatorLock()->HasLock());
     Runtime::GetInstance()->GetMutatorLock()->Unlock();
 }
 
 void JSThread::TransferToRunning()
 {
+    ASSERT(currentThread == this);
     StoreState(ThreadState::RUNNING, true);
 }
 
@@ -960,8 +974,34 @@ void JSThread::StoreState(ThreadState newState, bool lockMutatorLock)
 
         // CAS failed. Unlock mutator lock
         if (lockMutatorLock) {
+            ASSERT(Runtime::GetInstance()->GetMutatorLock()->HasLock());
             Runtime::GetInstance()->GetMutatorLock()->Unlock();
         }
     }
 }
+
+void JSThread::PostFork()
+{
+    SetThreadId();
+    if (currentThread == nullptr) {
+        currentThread = this;
+        ASSERT(GetState() == ThreadState::CREATED);
+        UpdateState(ThreadState::RUNNING);
+    } else {
+        // We tried to call fork in the same thread
+        ASSERT(currentThread == this);
+        ASSERT(GetState() != ThreadState::CREATED);
+    }
+}
+#ifndef NDEBUG
+MutatorLock::MutatorLockState JSThread::GetMutatorLockState() const
+{
+    return mutatorLockState_;
+}
+
+void JSThread::SetMutatorLockState(MutatorLock::MutatorLockState newState)
+{
+    mutatorLockState_ = newState;
+}
+#endif
 }  // namespace panda::ecmascript
