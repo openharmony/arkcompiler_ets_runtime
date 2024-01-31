@@ -3990,7 +3990,14 @@ static void DumpStringClass([[maybe_unused]] const EcmaString *str, [[maybe_unus
 static void DumpClass(TaggedObject *obj, std::vector<Reference> &vec)
 {
     JSHClass *jshclass = obj->GetClass();
-    vec.emplace_back(CString("__proto__"), jshclass->GetPrototype());
+    if (!jshclass->GetPrototype().IsNull()) {
+        vec.emplace_back(CString("__proto__"), jshclass->GetPrototype());
+    }
+    auto hclass = JSHClass::Cast(obj);
+    auto parent = hclass->GetParent();
+    if (!parent.IsUndefined()) {
+        vec.emplace_back(CString("Parent"), JSTaggedValue(parent.GetTaggedObject()->GetClass()));
+    }
 }
 
 static void DumpObject(TaggedObject *obj, std::vector<Reference> &vec, bool isVmMode)
