@@ -48,6 +48,7 @@
 #include "ecmascript/global_env.h"
 #include "ecmascript/interpreter/fast_runtime_stub-inl.h"
 #include "ecmascript/interpreter/frame_handler.h"
+#include "ecmascript/interpreter/interpreter_assembly.h"
 #include "ecmascript/jobs/micro_job_queue.h"
 #include "ecmascript/js_array.h"
 #include "ecmascript/js_arraybuffer.h"
@@ -188,6 +189,7 @@ using JSMutableHandle = ecmascript::JSMutableHandle<T>;
 using PathHelper = ecmascript::base::PathHelper;
 using ModulePathHelper = ecmascript::ModulePathHelper;
 using JsDebuggerManager = ecmascript::tooling::JsDebuggerManager;
+using FrameIterator = ecmascript::FrameIterator;
 
 namespace {
 // NOLINTNEXTLINE(fuchsia-statically-constructed-objects)
@@ -2195,7 +2197,21 @@ JSValueRef* FunctionRef::CallForNapi(const EcmaVM *vm, JSValueRef *thisObj,
                 argv[i] == nullptr ? JSTaggedValue::Undefined() : JSNApiHelper::ToJSTaggedValue(argv[i]);
             info->SetCallArg(i, arg);
         }
-        result = JSFunction::Call(info);
+        if (thread->IsAsmInterpreter()) {
+            RETURN_VALUE_IF_ABRUPT_COMPLETION(thread,
+                reinterpret_cast<JSValueRef *>(JSHandle<JSTaggedValue>(thread, thread->GetException()).GetAddress()));
+            STACK_LIMIT_CHECK(thread,
+                reinterpret_cast<JSValueRef *>(JSHandle<JSTaggedValue>(thread, thread->GetException()).GetAddress()));
+            auto *hclass = func.GetTaggedObject()->GetClass();
+            if (hclass->IsClassConstructor()) {
+                RETURN_STACK_BEFORE_THROW_IF_ASM(thread);
+                THROW_TYPE_ERROR_AND_RETURN(thread, "class constructor cannot call",
+                    reinterpret_cast<JSValueRef *>(JSHandle<JSTaggedValue>(thread, undefined).GetAddress()));
+            }
+            result = ecmascript::InterpreterAssembly::Execute(info);
+        } else {
+            result = JSFunction::Call(info);
+        }
         RETURN_VALUE_IF_ABRUPT(thread, *JSValueRef::Undefined(vm));
         vm->GetHeap()->ClearKeptObjects();
         if (dm->IsMixedDebugEnabled()) {
