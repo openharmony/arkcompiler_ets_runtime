@@ -34,6 +34,7 @@ uintptr_t WorkSpaceChunk::NewArea(size_t size)
 
 void WorkSpaceChunk::Free([[maybe_unused]] void *mem)
 {
+    LockHolder lock(mtx_);
     if (cachedAreaList_.size() < MAX_WORK_SPACE_CHUNK_SIZE / WORKNODE_SPACE_SIZE) {
         cachedAreaList_.emplace_back(reinterpret_cast<uintptr_t>(mem));
     } else {
@@ -47,10 +48,11 @@ void WorkSpaceChunk::Free([[maybe_unused]] void *mem)
 
 void WorkSpaceChunk::ReleaseMemory()
 {
+    LockHolder lock(mtx_);
     cachedAreaList_.clear();
-    for (auto iter = areaList_.begin(); iter != areaList_.end();) {
+    for (auto iter = areaList_.begin(); iter != areaList_.end(); ++iter) {
         allocator_->FreeBuffer(reinterpret_cast<void *>(iter->second));
-        iter = areaList_.erase(iter);
     }
+    areaList_.clear();
 }
 }  // namespace panda::ecmascript

@@ -91,7 +91,7 @@
 #include "ecmascript/taskpool/taskpool.h"
 #include "ecmascript/ts_types/ts_manager.h"
 
-#include "ecmascript/ohos/white_list_helper.h"
+#include "ecmascript/ohos/enable_aot_list_helper.h"
 
 namespace panda::ecmascript {
 using RandomGenerator = base::RandomGenerator;
@@ -150,8 +150,10 @@ void EcmaVM::PostFork()
     GetAssociatedJSThread()->SetThreadId();
     heap_->EnableParallelGC();
     std::string bundleName = PGOProfilerManager::GetInstance()->GetBundleName();
-    if (!WhiteListHelper::GetInstance()->IsEnable(bundleName)) {
+    if (ohos::EnableAotListHelper::GetInstance()->IsDisableBlackList(bundleName)) {
         options_.SetEnablePGOProfiler(false);
+    } else if (ohos::EnableAotListHelper::GetInstance()->IsEnableList(bundleName)) {
+        options_.SetEnablePGOProfiler(true);
     }
     ResetPGOProfiler();
 #ifdef ENABLE_POSTFORK_FORCEEXPAND
