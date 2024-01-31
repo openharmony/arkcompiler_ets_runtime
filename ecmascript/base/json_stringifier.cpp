@@ -429,6 +429,7 @@ bool JsonStringifier::SerializeJSONObject(const JSHandle<JSTaggedValue> &value, 
             JSTaggedValue tagVal =
                 ObjectFastOperator::FastGetPropertyByValue(thread_, obj.GetTaggedValue(),
                                                            propList_[i].GetTaggedValue());
+            RETURN_VALUE_IF_ABRUPT_COMPLETION(thread_, false);
             handleValue_.Update(tagVal);
             JSTaggedValue serializeValue = GetSerializeValue(value, propList_[i], handleValue_, replacer);
             RETURN_VALUE_IF_ABRUPT_COMPLETION(thread_, false);

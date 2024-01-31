@@ -327,6 +327,7 @@ JSTaggedValue JSStableArray::HandleFindIndexOfStable(JSThread *thread, JSHandle<
     JSHandle<JSTaggedValue> thisObjVal(thisObjHandle);
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
     uint64_t len = static_cast<uint64_t>(base::ArrayHelper::GetArrayLength(thread, thisObjVal));
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSTaggedValue callResult = base::BuiltinsBase::GetTaggedBoolean(false);
     const int32_t argsLength = 3; // 3: ?kValue, k, O?
     JSMutableHandle<JSTaggedValue> kValue(thread, JSTaggedValue::Undefined());
@@ -396,6 +397,7 @@ JSTaggedValue JSStableArray::HandleFindLastIndexOfStable(JSThread *thread, JSHan
         }
         k--;
         if (base::ArrayHelper::GetArrayLength(thread, thisObjVal) - 1 < k) {
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
             return callResult;
         }
         if (!thisObjVal->IsStableJSArray(thread)) {
@@ -412,6 +414,7 @@ JSTaggedValue JSStableArray::HandleEveryOfStable(JSThread *thread, JSHandle<JSOb
     JSHandle<JSTaggedValue> thisObjVal(thisObjHandle);
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
     uint64_t len = static_cast<uint64_t>(base::ArrayHelper::GetArrayLength(thread, thisObjVal));
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     const int32_t argsLength = 3; // 3: ?kValue, k, O?
     JSTaggedValue callResult = base::BuiltinsBase::GetTaggedBoolean(true);
     JSMutableHandle<JSTaggedValue> kValue(thread, JSTaggedValue::Undefined());
@@ -733,6 +736,7 @@ JSTaggedValue JSStableArray::Filter(JSHandle<JSObject> newArrayHandle, JSHandle<
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
     const int32_t argsLength = 3; // 3: ?kValue, k, O?
     uint64_t len = static_cast<uint64_t>(base::ArrayHelper::GetArrayLength(thread, thisObjVal));
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSMutableHandle<JSTaggedValue> kValue(thread, JSTaggedValue::Undefined());
     while (k < len) {
         // Elements of thisObjHandle may change.
@@ -846,6 +850,7 @@ JSTaggedValue JSStableArray::Concat(JSThread *thread, JSHandle<JSObject> newArra
 {
     JSHandle<JSTaggedValue> thisObjVal(thisObjHandle);
     int64_t thisLen = base::ArrayHelper::GetArrayLength(thread, thisObjVal);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSMutableHandle<JSTaggedValue> toKey(thread, JSTaggedValue::Undefined());
     while (k < thisLen) {
         if (ElementAccessor::GetElementsLength(thisObjHandle) != thisLen) {

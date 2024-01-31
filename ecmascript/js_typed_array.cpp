@@ -399,6 +399,8 @@ OperationResult JSTypedArray::IntegerIndexedElementGet(JSThread *thread, const J
     // 8. If index < 0 or index ≥ length, return undefined.
     JSHandle<JSTaggedValue> indexHandle(thread, index);
     JSTaggedNumber indexNumber = JSTaggedValue::ToNumber(thread, indexHandle);
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(
+        thread, OperationResult(thread, JSTaggedValue::Exception(), PropertyMetaData(false)));
     double tNegZero = -0.0;
     auto eZero = JSTaggedNumber(tNegZero);
     JSHandle<JSTaggedValue> zero(thread, JSTaggedValue(0));

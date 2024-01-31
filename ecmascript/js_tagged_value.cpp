@@ -571,6 +571,7 @@ JSTaggedValue JSTaggedValue::CanonicalNumericIndexString(JSThread *thread, const
             return JSTaggedValue(-0.0);
         }
         JSHandle<JSTaggedValue> tmp(thread, ToNumber(thread, tagged));
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         if (SameValue(ToString(thread, tmp).GetTaggedValue(), tagged.GetTaggedValue())) {
             return tmp.GetTaggedValue();
         }
