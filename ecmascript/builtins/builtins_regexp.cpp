@@ -835,7 +835,7 @@ JSTaggedValue BuiltinsRegExp::RegExpReplaceFast(JSThread *thread, JSHandle<JSTag
         }
         if (endIndex == startIndex) {
             bool unicode = EcmaStringAccessor(inputString).IsUtf16() && (flags & RegExpParser::FLAG_UTF16);
-            endIndex = AdvanceStringIndex(tagInputString, endIndex, unicode);
+            endIndex = static_cast<uint32_t>(AdvanceStringIndex(tagInputString, endIndex, unicode));
         }
         lastIndex = endIndex;
     }
@@ -1035,7 +1035,7 @@ JSTaggedValue BuiltinsRegExp::ReplaceInternal(JSThread *thread,
                     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
                 }
                 // c. Let nextIndex be AdvanceStringIndex(S, thisIndex, fullUnicode).
-                uint32_t nextIndex = AdvanceStringIndex(inputStr, thisIndex, fullUnicode);
+                uint32_t nextIndex = static_cast<uint32_t>(AdvanceStringIndex(inputStr, thisIndex, fullUnicode));
                 nextIndexHandle.Update(JSTaggedValue(nextIndex));
                 // d. Let setStatus be Set(rx, "lastIndex", nextIndex, true).
                 ObjectFastOperator::FastSetPropertyByValue(thread, thisObj.GetTaggedValue(), lastIndex.GetTaggedValue(),
@@ -1441,7 +1441,7 @@ JSTaggedValue BuiltinsRegExp::Split(EcmaRuntimeCallInfo *argv)
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         // e. If z is null, let q be AdvanceStringIndex(S, q, unicodeMatching).
         if (execResult->IsNull()) {
-            endIndex = AdvanceStringIndex(jsString, endIndex, unicodeMatching);
+            endIndex = static_cast<uint32_t>(AdvanceStringIndex(jsString, endIndex, unicodeMatching));
         } else {
             // f. Else z is not null,
             // i. Let e be ToLength(Get(splitter, "lastIndex")).
@@ -1453,7 +1453,7 @@ JSTaggedValue BuiltinsRegExp::Split(EcmaRuntimeCallInfo *argv)
             uint32_t lastIndex = lastIndexNumber.GetNumber();
             // iii. If e = p, let q be AdvanceStringIndex(S, q, unicodeMatching).
             if (lastIndex == startIndex) {
-                endIndex = AdvanceStringIndex(jsString, endIndex, unicodeMatching);
+                endIndex = static_cast<uint32_t>(AdvanceStringIndex(jsString, endIndex, unicodeMatching));
             } else {
                 // iv. Else e != p,
                 // 1. Let T be a String value equal to the substring of S consisting of the elements at indices p
@@ -1588,7 +1588,7 @@ JSTaggedValue BuiltinsRegExp::RegExpSplitFast(JSThread *thread, const JSHandle<J
         uint32_t matchEndIndex = static_cast<uint32_t>(matchResultInfo->GetEndOfCaptureIndex(0).GetInt());
         if (matchEndIndex == lastMatchEnd && matchEndIndex == nextMatchFrom) {
             // advance index and continue if match result is empty.
-            nextMatchFrom = AdvanceStringIndex(jsString, nextMatchFrom, isUnicode);
+            nextMatchFrom = static_cast<uint32_t>(AdvanceStringIndex(jsString, nextMatchFrom, isUnicode));
         } else {
             matchValue.Update(JSTaggedValue(EcmaStringAccessor::FastSubString(thread->GetEcmaVM(),
                 string, lastMatchEnd, matchStartIndex - lastMatchEnd)));
@@ -1610,9 +1610,11 @@ JSTaggedValue BuiltinsRegExp::RegExpSplitFast(JSThread *thread, const JSHandle<J
             uint32_t capturesSize = static_cast<uint32_t>(matchResultInfo->GetTotalCaptureCounts().GetInt());
             uint32_t captureIndex = 1;
             while (captureIndex < capturesSize) {
-                uint32_t captureStartIndex = matchResultInfo->GetStartOfCaptureIndex(captureIndex).GetInt();
-                uint32_t captureEndIndex = matchResultInfo->GetEndOfCaptureIndex(captureIndex).GetInt();
-                int32_t subStrLen = captureEndIndex - captureStartIndex;
+                uint32_t captureStartIndex = static_cast<uint32_t>(
+                    matchResultInfo->GetStartOfCaptureIndex(captureIndex).GetInt());
+                uint32_t captureEndIndex = static_cast<uint32_t>(
+                    matchResultInfo->GetEndOfCaptureIndex(captureIndex).GetInt());
+                int32_t subStrLen = static_cast<int32_t>(captureEndIndex - captureStartIndex);
                 if (subStrLen < 0) {
                     matchValue.Update(JSTaggedValue::Undefined());
                 } else {
