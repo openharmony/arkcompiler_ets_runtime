@@ -312,6 +312,12 @@ CString ModulePathHelper::FindPackageInTopLevelWithNamespace(const JSPandaFile *
         }
         ohpmPath = CString(PACKAGE_PATH_SEGMENT) + PathHelper::NAME_SPACE_TAG + moduleName;
         entryPoint = FindOhpmEntryPoint(jsPandaFile, ohpmPath, requestName);
+        // If haven't find with namespace, then use moduleName
+        if ((pos != CString::npos) && entryPoint.empty()) {
+            moduleName = vec[1].substr(0, pos);
+            ohpmPath = CString(PACKAGE_PATH_SEGMENT) + PathHelper::NAME_SPACE_TAG + moduleName;
+            entryPoint = FindOhpmEntryPoint(jsPandaFile, ohpmPath, requestName);
+        }
     }
     if (!entryPoint.empty()) {
         return entryPoint;
