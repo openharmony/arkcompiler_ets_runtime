@@ -65,7 +65,7 @@ JSTaggedValue JSAPIHashSetIterator::Next(EcmaRuntimeCallInfo *argv)
             }
             ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
             JSHandle<TaggedArray> array = factory->NewTaggedArray(2); // 2 means the length of array
-            array->Set(thread, 0, valueHandle);
+            array->Set(thread, 0, JSTaggedValue(--index));
             array->Set(thread, 1, valueHandle);
             JSHandle<JSTaggedValue> keyAndValue(JSArray::CreateArrayFromList(thread, array));
             return JSIterator::CreateIterResultObject(thread, keyAndValue, false).GetTaggedValue();
