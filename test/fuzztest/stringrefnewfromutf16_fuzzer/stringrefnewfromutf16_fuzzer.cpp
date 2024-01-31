@@ -32,7 +32,7 @@ namespace OHOS {
             LOG_ECMA(ERROR) << "illegal input!";
             return;
         }
-        StringRef::NewFromUtf16(vm, (char16_t*)data);
+        StringRef::NewFromUtf16(vm, (char16_t*)data, size / sizeof(char16_t));
         JSNApi::DestroyJSVM(vm);
         return;
     }
