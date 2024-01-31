@@ -26,11 +26,15 @@ using namespace panda::ecmascript;
 #endif
 
 namespace OHOS {
-void JSValueRefIntegerValueFuzzTest([[maybe_unused]] const uint8_t *data, [[maybe_unused]] size_t size)
+void JSValueRefIntegerValueFuzzTest(const uint8_t *data, size_t size)
 {
     RuntimeOption option;
     option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
+    if (data == nullptr || size <= 0) {
+        LOG_ECMA(ERROR) << "illegal input!";
+        return;
+    }
     Local<JSValueRef> globalObject = NumberRef::New(vm, 0xffffffffffff);
     int64_t i64 = globalObject->IntegerValue(vm);
     UNUSED(i64);

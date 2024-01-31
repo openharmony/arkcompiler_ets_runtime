@@ -31,22 +31,8 @@ void ProxyRefIsRevokedFuzzTest(const uint8_t *data, size_t size)
         LOG_ECMA(ERROR) << "illegal input!";
         return;
     }
-    auto thread_ = vm->GetAssociatedJSThread();
-    uint8_t *ptr = nullptr;
-    ptr = const_cast<uint8_t *>(data);
-    JSHandle<GlobalEnv> env = vm->GetGlobalEnv();
-    ObjectFactory *factory = thread_->GetEcmaVM()->GetFactory();
-    JSHandle<JSTaggedValue> hclass(thread_, env->GetObjectFunction().GetObject<JSFunction>());
-    JSHandle<JSTaggedValue> targetHandle(factory->NewJSObjectByConstructor(JSHandle<JSFunction>::Cast(hclass), hclass));
-    JSHandle<JSTaggedValue> key(factory->NewFromASCII("x"));
-    JSHandle<JSTaggedValue> value(thread_, JSTaggedValue(size));
-    JSObject::SetProperty(thread_, targetHandle, key, value);
-    JSHandle<JSTaggedValue> handlerHandle(
-        factory->NewJSObjectByConstructor(JSHandle<JSFunction>::Cast(hclass), hclass));
-    JSHandle<JSProxy> proxyHandle = JSProxy::ProxyCreate(thread_, targetHandle, handlerHandle);
-    JSHandle<JSTaggedValue> proxyTagValue = JSHandle<JSTaggedValue>::Cast(proxyHandle);
-    Local<ProxyRef> object = JSNApiHelper::ToLocal<ProxyRef>(proxyTagValue);
-    object->IsRevoked();
+    Local<ProxyRef> tag = ProxyRef::New(vm);
+    tag->IsRevoked();
     JSNApi::DestroyJSVM(vm);
 }
 }
