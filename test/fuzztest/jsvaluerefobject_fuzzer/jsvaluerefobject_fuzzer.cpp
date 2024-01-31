@@ -92,7 +92,7 @@ namespace OHOS {
             LOG_ECMA(ERROR) << "illegal input!";
             return;
         }
-        int length = 8;
+        int length = size / sizeof(char16_t);
         Local<StringRef> obj =  StringRef::NewFromUtf16(vm, (char16_t*)data, length);
         obj->IsJSPrimitiveBoolean();
         JSNApi::DestroyJSVM(vm);
@@ -107,7 +107,7 @@ namespace OHOS {
             LOG_ECMA(ERROR) << "illegal input!";
             return;
         }
-        int length = 8;
+        int length = size / sizeof(char16_t);
         Local<StringRef> obj = StringRef::NewFromUtf16(vm, (char16_t*)data, length);
         obj->IsGeneratorFunction();
         JSNApi::DestroyJSVM(vm);

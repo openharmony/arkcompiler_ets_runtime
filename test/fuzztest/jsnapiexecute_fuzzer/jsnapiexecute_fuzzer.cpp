@@ -32,12 +32,16 @@ void JSNApiExecuteFuzztest(const uint8_t *data, size_t size)
         LOG_ECMA(ERROR) << "illegal input!";
         return;
     }
-    char *value = new char[size]();
-    memset_s(value, size, 0, size);
-    if (memcpy_s(value, size, data, size) != EOK) {
+    char *value = new char[size + 1]();
+    if (memset_s(value, size + 1, 0, size + 1) != EOK) {
+        LOG_ECMA(ERROR) << "memset_s failed!";
+        UNREACHABLE();
+    }
+    if (memcpy_s(value, size + 1, data, size) != EOK) {
         LOG_ECMA(ERROR) << "memcpy_s failed!";
         UNREACHABLE();
     }
+    value[size] = '\0';
     const std::string fileName = value;
     bool needUpdate = size % DIVISOR ? true : false; // 2:Cannot divide by 2 as true, otherwise it is false
     JSNApi::Execute(vm, fileName, fileName, needUpdate);
