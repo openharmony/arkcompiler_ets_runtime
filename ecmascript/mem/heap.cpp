@@ -904,8 +904,9 @@ void Heap::TryTriggerIdleCollection()
 
     double newSpaceAllocSpeed = memController_->GetNewSpaceAllocationThroughputPerMS();
     double newSpaceConcurrentMarkSpeed = memController_->GetNewSpaceConcurrentMarkSpeedPerMS();
-    double newSpaceAllocToLimitDuration =
-        (activeSemiSpace_->GetInitialCapacity() - activeSemiSpace_->GetCommittedSize()) / newSpaceAllocSpeed;
+    double newSpaceAllocToLimitDuration = (static_cast<double>(activeSemiSpace_->GetInitialCapacity()) -
+                                           static_cast<double>(activeSemiSpace_->GetCommittedSize())) /
+                                           newSpaceAllocSpeed;
     double newSpaceMarkDuration = activeSemiSpace_->GetHeapObjectSize() / newSpaceConcurrentMarkSpeed;
     double newSpaceRemainSize = (newSpaceAllocToLimitDuration - newSpaceMarkDuration) * newSpaceAllocSpeed;
     // 2 means double

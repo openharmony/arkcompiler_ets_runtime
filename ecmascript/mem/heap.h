@@ -271,6 +271,11 @@ public:
     void SetOnSerializeEvent(bool isSerialize)
     {
         onSerializeEvent_ = isSerialize;
+        if (!onSerializeEvent_ && !InSensitiveStatus()) {
+            TryTriggerIncrementalMarking();
+            TryTriggerIdleCollection();
+            TryTriggerConcurrentMarking();
+        }
     }
 
     bool GetOnSerializeEvent() const
