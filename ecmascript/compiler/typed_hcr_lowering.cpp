@@ -1552,17 +1552,7 @@ void TypedHCRLowering::LowerTypedNewAllocateThis(GateRef gate, GateRef glue)
     builder_.Branch(isBase, &allocate, &exit);
     builder_.Bind(&allocate);
     {
-        // add typecheck to detect protoOrHclass is equal with ihclass,
-        // if pass typecheck: 1.no need to check whether hclass is valid 2.no need to check return result
-        GateRef protoOrHclass = builder_.LoadConstOffset(VariableType::JS_ANY(), ctor,
-            JSFunction::PROTO_OR_DYNCLASS_OFFSET);
-        GateRef ihclassIndex = acc_.GetValueIn(gate, 1);
-        auto hclassIndex = acc_.GetConstantValue(ihclassIndex);
-        GateRef ihclass =  builder_.GetHClassGateFromIndex(frameState, hclassIndex);
-        GateRef checkProto = builder_.Equal(protoOrHclass, ihclass);
-        builder_.DeoptCheck(checkProto, frameState, DeoptType::NOTNEWOBJ2);
-
-        thisObj = builder_.CallStub(glue, gate, CommonStubCSigns::NewJSObject, { glue, protoOrHclass });
+        thisObj = builder_.CallStub(glue, gate, CommonStubCSigns::NewJSObject, { glue, ctor });
         builder_.Jump(&exit);
     }
     builder_.Bind(&exit);
@@ -1583,13 +1573,7 @@ void TypedHCRLowering::LowerTypedSuperAllocateThis(GateRef gate, GateRef glue)
     builder_.Branch(isBase, &allocate, &exit);
     builder_.Bind(&allocate);
     {
-        GateRef protoOrHclass = builder_.LoadConstOffset(VariableType::JS_ANY(), newTarget,
-            JSFunction::PROTO_OR_DYNCLASS_OFFSET);
-        GateRef check = builder_.IsJSHClass(protoOrHclass);
-        GateRef frameState = GetFrameState(gate);
-        builder_.DeoptCheck(check, frameState, DeoptType::NOTNEWOBJ3);
-
-        thisObj = builder_.CallStub(glue, gate, CommonStubCSigns::NewJSObject, { glue, protoOrHclass });
+        thisObj = builder_.CallStub(glue, gate, CommonStubCSigns::NewJSObject, { glue, newTarget });
         builder_.Jump(&exit);
     }
     builder_.Bind(&exit);
