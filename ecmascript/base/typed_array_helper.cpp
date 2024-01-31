@@ -507,8 +507,13 @@ JSHandle<JSObject> TypedArrayHelper::TypedArraySpeciesCreate(JSThread *thread, c
         JSObject::GetProperty(thread, JSHandle<JSTaggedValue>(obj), key, JSHandle<JSTaggedValue>(obj)).GetValue();
     JSHandle<JSObject> result;
     JSHandle<JSTaggedValue> proto(thread, obj->GetJSHClass()->GetPrototype());
-    if (proto->IsJSTypedArray() && PropertyDetector::IsTypedArraySpeciesProtectDetectorValid(env) &&
-        buffHandle->IsInt() && objConstructor->IsECMAObject()) {
+    bool ctrVali = objConstructor->IsUndefined();
+    bool isJSTypedArr = proto->IsJSTypedArray();
+    bool isCtrUnchanged = PropertyDetector::IsTypedArraySpeciesProtectDetectorValid(env) &&
+        !objConstructor->IsClassConstructor();
+    bool isCtrBylen = buffHandle->IsInt();
+    bool isCtrObj = objConstructor->IsECMAObject();
+    if (ctrVali || (isJSTypedArr && isCtrUnchanged && isCtrBylen && isCtrObj)) {
         JSType type = obj->GetJSHClass()->GetObjectType();
         DataViewType arrayType = GetType(type);
         uint32_t length = buffHandle->GetInt();
