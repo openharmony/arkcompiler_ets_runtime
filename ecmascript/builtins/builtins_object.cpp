@@ -392,6 +392,55 @@ JSTaggedValue BuiltinsObject::GetOwnPropertyDescriptor(EcmaRuntimeCallInfo *argv
     return res.GetTaggedValue();
 }
 
+JSTaggedValue BuiltinsObject::GetOwnPropertyDescriptors(EcmaRuntimeCallInfo *argv)
+{
+    ASSERT(argv);
+    JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, Object, GetOwnPropertyDescriptors);
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+
+    // 1.Let obj be ToObject(O).
+    JSHandle<JSTaggedValue> func = GetCallArg(argv, 0);
+    JSHandle<JSObject> handle = JSTaggedValue::ToObject(thread, func);
+
+    // 2.ReturnIfAbrupt(obj).
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+
+    // 3. Let ownKeys be ? obj.[[OwnPropertyKeys]]().
+    JSHandle<TaggedArray> ownKeys =
+        JSTaggedValue::GetOwnPropertyKeys(thread, JSHandle<JSTaggedValue>(handle));
+
+    // 4.ReturnIfAbrupt(ownKeys).
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+
+    // 5.Let descriptors be OrdinaryObjectCreate(%Object.prototype%).
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+    JSHandle<JSFunction> constructor(env->GetObjectFunction());
+    JSHandle<JSObject> descriptors = factory->NewJSObjectByConstructor(constructor);
+
+    // 6.For each element key of ownKeys, do
+    // a. Let desc be ? obj.[[GetOwnProperty]](key).
+    // b. Let descriptor be FromPropertyDescriptor(desc).
+    // c. If descriptor is not undefined, perform ! CreateDataPropertyOrThrow(descriptors, key, descriptor).
+    uint32_t length = ownKeys->GetLength();
+    JSMutableHandle<JSTaggedValue> handleKey(thread, JSTaggedValue::Undefined());
+    for (uint32_t i = 0; i < length; ++i) {
+        handleKey.Update(ownKeys->Get(i));
+        PropertyDescriptor desc(thread);
+        JSTaggedValue::GetOwnProperty(thread, JSHandle<JSTaggedValue>::Cast(handle), handleKey, desc);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        JSHandle<JSTaggedValue> descriptor = JSObject::FromPropertyDescriptor(thread, desc);
+        if (!descriptor->IsUndefined()) {
+            JSObject::CreateDataPropertyOrThrow(thread, descriptors, handleKey, descriptor);
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        }
+    }
+
+    // 7.Return descriptors.
+    return descriptors.GetTaggedValue();
+}
+
 // Runtime Semantics
 JSTaggedValue BuiltinsObject::GetOwnPropertyKeys(JSThread *thread, const JSHandle<JSTaggedValue> &object,
                                                  const KeyType &type)
