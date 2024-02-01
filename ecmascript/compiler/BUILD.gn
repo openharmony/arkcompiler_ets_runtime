@@ -460,7 +460,7 @@ ohos_executable("ark_stub_compiler") {
     defines = [ "RUN_WITH_ASAN" ]
   }
 
-  if (target_os == "ios") {
+  if (defined(is_arkui_x) && is_arkui_x) {
     deps += [
       "$ark_third_party_root/icu/icu4c:static_icui18n",
       "$ark_third_party_root/icu/icu4c:static_icuuc",
@@ -509,7 +509,7 @@ ohos_executable("ark_aot_compiler") {
     ]
   }
 
-  if (target_os == "ios") {
+  if (defined(is_arkui_x) && is_arkui_x) {
     deps += [
       "$ark_third_party_root/icu/icu4c:static_icui18n",
       "$ark_third_party_root/icu/icu4c:static_icuuc",

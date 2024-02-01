@@ -1143,10 +1143,18 @@ ohos_source_set("libark_jsruntime_test_set") {
       "/system/lib64/${arkcompiler_relative_lib_path}/lib_ark_builtins.d.abc"
   defines += [ "TARGET_BUILTINS_DTS_PATH=\"${target_builtins_dts_path}\"" ]
 
-  deps = [
-    "$ark_third_party_root/icu/icu4c:shared_icui18n",
-    "$ark_third_party_root/icu/icu4c:shared_icuuc",
-  ]
+  if (defined(is_arkui_x) && is_arkui_x) {
+    deps = [
+      "$ark_third_party_root/icu/icu4c:static_icui18n",
+      "$ark_third_party_root/icu/icu4c:static_icuuc",
+    ]
+  } else {
+    deps = [
+      "$ark_third_party_root/icu/icu4c:shared_icui18n",
+      "$ark_third_party_root/icu/icu4c:shared_icuuc",
+    ]
+  }
+
   external_deps = []
   if (enable_dump_in_faultlog) {
     external_deps += [ "libuv:uv" ]
@@ -1264,7 +1272,7 @@ ohos_shared_library("libark_jsruntime") {
     libs = [ "log" ]
     version_script = "libark_jsruntime.map"
   }
-  if (target_os == "ios" || ark_standalone_build) {
+  if (ark_standalone_build || (defined(is_arkui_x) && is_arkui_x)) {
     deps += [
       "$ark_third_party_root/icu/icu4c:static_icui18n",
       "$ark_third_party_root/icu/icu4c:static_icuuc",
