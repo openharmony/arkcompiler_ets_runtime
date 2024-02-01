@@ -17,9 +17,11 @@ Description: Use ark to execute workload test suite
 
 import argparse
 import datetime
+import json
 import logging
 import os
 import shutil
+import stat
 from collections import namedtuple
 from openpyxl import Workbook, load_workbook
 from openpyxl.styles import PatternFill
@@ -296,6 +298,28 @@ def get_js_case_super_link_data(jspath):
             JS_FILE_SUPER_LINK_DICT[key] = js_case_name
 
 
+def export_sumary_info_for_notifying_email(json_path, total_cases_num, ark_divide_v_8_num, ark_divide_v_8_jitless_num):
+    data = {}
+    data['kind'] = 'V 8 js-perf-test'
+    data['Total'] = total_cases_num
+    data['Ark劣化v 8'] = ark_divide_v_8_num
+    data['Ark劣化v 8 jitless'] = ark_divide_v_8_jitless_num
+    flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
+    modes = stat.S_IWUSR | stat.S_IRUSR
+    if os.path.exists(json_path):
+        os.remove(json_path)
+    with os.fdopen(os.open(json_path, flags, modes), 'w', encoding='utf-8') as f:
+        json.dump(data, f, indent=4, ensure_ascii=False)
+        logger.info("export summary info to json file successfully.")
+
+
+def get_umary_info_json_file_path(daily_report_file_path):
+    dir_path = os.path.dirname(daily_report_file_path)
+    json_file_name = 'jsperftest_notifying_info_in_email.json'
+    json_file_path = os.path.join(dir_path, json_file_name)
+    return json_file_path
+
+
 def append_summary_info(report_file, total_cost_time):
     """
         summary info:
@@ -369,6 +393,10 @@ def append_summary_info(report_file, total_cost_time):
 
     ws.column_dimensions.group('E', hidden=True)
     wb.save(report_file)
+
+    json_file_path = get_umary_info_json_file_path(report_file)
+    export_sumary_info_for_notifying_email(json_file_path, totle_num, ark_divide_v_8_degraded_count,
+                                           ark_divide_v_8_jitless_degraded_count)
     return RET_OK
 
 

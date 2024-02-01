@@ -60,9 +60,9 @@ function check_and_config_v8_binary_path()
 {
     ret=$(check_command_exist "/usr/bin/v8/d8")
     if [ "$ret" == "$ret_error" ];then
-        wget -P "$TMP_PATH" https://storage.googleapis.com/chromium-v8/official/canary/v8-linux64-dbg-11.9.169.zip\
+        wget -P "$TMP_PATH" https://storage.googleapis.com/chromium-v8/official/canary/v8-linux64-rel-12.0.267.zip\
             --no-check-certificate
-        unzip "$TMP_PATH"/v8-linux64-dbg-11.9.169.zip -d "$TMP_PATH"/v8
+        unzip "$TMP_PATH"/v8-linux64-rel-12.0.267.zip -d "$TMP_PATH"/v8
         cp -r "$TMP_PATH"/v8 /usr/bin
         echo "export PATH=/usr/bin/v8/:$PATH" >> /root/.bashrc
         # shellcheck disable=SC1091
