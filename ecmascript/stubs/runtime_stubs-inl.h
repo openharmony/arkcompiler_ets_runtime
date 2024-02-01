@@ -441,7 +441,12 @@ JSTaggedValue RuntimeStubs::RuntimeStArraySpread(JSThread *thread, const JSHandl
             JSTaggedValue::SetProperty(thread, dst, dstLen + i, strValue, true);
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         }
-        return JSTaggedValue(dstLen + strLen);
+        JSHandle<JSTaggedValue> length(thread, JSTaggedValue(dstLen + strLen));
+        if (strLen == 0U) {
+            JSHandle<JSTaggedValue> lengthKey = thread->GlobalConstants()->GetHandledLengthString();
+            JSTaggedValue::SetProperty(thread, dst, lengthKey, length);
+        }
+        return length.GetTaggedValue();
     }
 
     if (index.GetInt() == 0 && src->IsStableJSArray(thread)) {
@@ -489,6 +494,7 @@ JSTaggedValue RuntimeStubs::RuntimeStArraySpread(JSThread *thread, const JSHandl
     JSHandle<JSTaggedValue> valueStr = globalConst->GetHandledValueString();
     PropertyDescriptor desc(thread);
     JSHandle<JSTaggedValue> iterResult;
+    uint32_t srcLen = 0U;
     do {
         iterResult = JSIterator::IteratorStep(thread, iter);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -501,9 +507,13 @@ JSTaggedValue RuntimeStubs::RuntimeStArraySpread(JSThread *thread, const JSHandl
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
             int tmp = indexHandle->GetInt();
             indexHandle.Update(JSTaggedValue(tmp + 1));
+            ++srcLen;
         }
     } while (true);
-
+    if (srcLen == 0U) {
+        JSHandle<JSTaggedValue> lengthKey = thread->GlobalConstants()->GetHandledLengthString();
+        JSTaggedValue::SetProperty(thread, dst, lengthKey, indexHandle);
+    }
     return indexHandle.GetTaggedValue();
 }
 
