@@ -579,6 +579,7 @@ namespace panda::ecmascript {
     V(Object, Freeze)                         \
     V(Object, FromEntries)                    \
     V(Object, GetOwnPropertyDescriptor)       \
+    V(Object, GetOwnPropertyDescriptors)      \
     V(Object, GetOwnPropertyKeys)             \
     V(Object, GetOwnPropertyNames)            \
     V(Object, GetOwnPropertySymbols)          \
