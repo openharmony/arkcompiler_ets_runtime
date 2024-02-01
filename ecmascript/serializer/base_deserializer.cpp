@@ -137,7 +137,7 @@ void BaseDeserializer::DeserializeConstPool(NewConstPoolInfo *info)
     int32_t index = static_cast<int32_t>(indexAccessor.GetHeaderIndex());
     thread_->GetCurrentEcmaContext()->AddConstpool(jsPandaFile, constpool.GetTaggedValue(), index);
     slot.Update(constpool.GetTaggedType());
-    UpdateBarrier(constpool.GetTaggedType(), slot);
+    UpdateBarrier(constpool.GetTaggedType(), slot, false);
 }
 
 void BaseDeserializer::DeserializeNativeBindingObject(NativeBindingInfo *info)
@@ -157,7 +157,7 @@ void BaseDeserializer::DeserializeNativeBindingObject(NativeBindingInfo *info)
     JSTaggedType res = JSNApiHelper::ToJSHandle(attachVal).GetTaggedType();
     slot.Update(res);
     if (!root) {
-        UpdateBarrier(res, slot);
+        UpdateBarrier(res, slot, false);
     }
 }
 
@@ -173,7 +173,7 @@ void BaseDeserializer::DeserializeJSError(JSErrorInfo *info)
     JSHandle<JSObject> errorTag = factory->NewJSError(errorType, JSHandle<EcmaString>(thread_, errorMsg));
     slot.Update(errorTag.GetTaggedType());
     if (!root) {
-        UpdateBarrier(errorTag.GetTaggedType(), slot);
+        UpdateBarrier(errorTag.GetTaggedType(), slot, false);
     }
 }
 
@@ -395,7 +395,7 @@ size_t BaseDeserializer::ReadSingleEncodeData(uint8_t encodeFlag, uintptr_t addr
     return handledFieldSize;
 }
 
-void BaseDeserializer::UpdateBarrier(uintptr_t addr, ObjectSlot slot)
+void BaseDeserializer::UpdateBarrier(uintptr_t addr, ObjectSlot slot, bool onDeserialize)
 {
     Region *valueRegion = Region::ObjectAddressToRange(addr);
     if (valueRegion == nullptr) {
@@ -411,7 +411,7 @@ void BaseDeserializer::UpdateBarrier(uintptr_t addr, ObjectSlot slot)
 
     if (thread_->IsConcurrentMarkingOrFinished()) {
         Barriers::Update(thread_, slot.SlotAddress(), rootRegion, reinterpret_cast<TaggedObject *>(addr), valueRegion,
-                         true);
+                         onDeserialize);
     }
 }
 
