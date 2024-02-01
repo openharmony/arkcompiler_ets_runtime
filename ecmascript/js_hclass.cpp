@@ -605,7 +605,8 @@ std::tuple<bool, bool, JSTaggedValue> JSHClass::ConvertOrTransitionWithRep(const
     if (oldRep == Representation::DOUBLE) {
         if (value->IsInt()) {
             double doubleValue = value->GetInt();
-            return std::tuple<bool, bool, JSTaggedValue>(false, false, JSTaggedValue(bit_cast<JSTaggedType>(doubleValue)));
+            return std::tuple<bool, bool, JSTaggedValue>(false, false,
+                JSTaggedValue(bit_cast<JSTaggedType>(doubleValue)));
         } else if (value->IsObject()) {
             // Is Object
             attr.SetRepresentation(Representation::TAGGED);
@@ -614,7 +615,8 @@ std::tuple<bool, bool, JSTaggedValue> JSHClass::ConvertOrTransitionWithRep(const
             return std::tuple<bool, bool, JSTaggedValue>(true, true, value.GetTaggedValue());
         } else {
             // Is TaggedDouble
-            return std::tuple<bool, bool, JSTaggedValue>(false, false, JSTaggedValue(bit_cast<JSTaggedType>(value->GetDouble())));
+            return std::tuple<bool, bool, JSTaggedValue>(false, false,
+                JSTaggedValue(bit_cast<JSTaggedType>(value->GetDouble())));
         }
     } else if (oldRep == Representation::INT) {
         if (value->IsInt()) {

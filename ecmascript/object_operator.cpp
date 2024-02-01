@@ -718,16 +718,17 @@ bool ObjectOperator::UpdateDataValue(const JSHandle<JSObject> &receiver, const J
         attributes_.SetRepresentation(attr.GetRepresentation());
 
         if (attr.IsInlinedProps()) {
-            receiver->SetPropertyInlinedPropsWithRep(thread_, GetIndex(), std::get<2>(actualValue));
+            receiver->SetPropertyInlinedPropsWithRep(thread_, GetIndex(),
+                std::get<2>(actualValue)); // 2 : Gets the third value
         } else {
             if (receiver.GetTaggedValue().IsJSCOWArray()) {
                 JSArray::CheckAndCopyArray(thread_, JSHandle<JSArray>(receiver));
                 properties.Update(JSHandle<JSArray>(receiver)->GetProperties());
             }
             if (std::get<0>(actualValue)) {
-                properties->Set<true>(thread_, GetIndex(), std::get<2>(actualValue));
+                properties->Set<true>(thread_, GetIndex(), std::get<2>(actualValue)); // 2 : Gets the third value
             } else {
-                properties->Set<false>(thread_, GetIndex(), std::get<2>(actualValue));
+                properties->Set<false>(thread_, GetIndex(), std::get<2>(actualValue)); // 2 : Gets the third value
             }
         }
     } else {
@@ -1009,9 +1010,11 @@ void ObjectOperator::AddPropertyInternal(const JSHandle<JSTaggedValue> &value)
         attributes_.SetRepresentation(attr.GetRepresentation());
         auto *hclass = receiver_->GetTaggedObject()->GetClass();
         if (std::get<0>(actualValue)) {
-            JSObject::Cast(receiver_.GetTaggedValue())->SetProperty<true>(thread_, hclass, attr, std::get<2>(actualValue));
+            JSObject::Cast(receiver_.GetTaggedValue())->SetProperty<true>(thread_,
+                hclass, attr, std::get<2>(actualValue)); // 2 : Gets the third value
         } else {
-            JSObject::Cast(receiver_.GetTaggedValue())->SetProperty<false>(thread_, hclass, attr, std::get<2>(actualValue));
+            JSObject::Cast(receiver_.GetTaggedValue())->SetProperty<false>(thread_,
+                hclass, attr, std::get<2>(actualValue)); // 2 : Gets the third value
         }
         uint32_t index = attr.IsInlinedProps() ? attr.GetOffset() :
                 attr.GetOffset() - obj->GetJSHClass()->GetInlinedProperties();

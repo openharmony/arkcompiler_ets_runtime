@@ -736,7 +736,7 @@ JSTaggedValue JSTypedArray::GetOffHeapBuffer(JSThread *thread, JSHandle<JSTypedA
     JSHandle<JSTaggedValue> typeName(thread, typedArray->GetTypedArrayName());
     DataViewType arrayType = JSTypedArray::GetTypeFromName(thread, typeName);
     JSHandle<JSHClass> notOnHeapHclass = TypedArrayHelper::GetNotOnHeapHclassFromType(
-            thread, typedArray, arrayType);
+        thread, typedArray, arrayType);
     TaggedObject::Cast(*typedArray)->SynchronizedSetClass(thread, *notOnHeapHclass); // onHeap->notOnHeap
 
     return arrayBuffer.GetTaggedValue();
