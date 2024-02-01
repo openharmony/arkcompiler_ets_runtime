@@ -91,7 +91,7 @@ private:
     void AllocateToOldSpace(size_t oldSpaceSize);
     void AllocateToNonMovableSpace(size_t nonMovableSpaceSize);
     void AllocateToMachineCodeSpace(size_t machineCodeSpaceSize);
-    void UpdateBarrier(uintptr_t addr, ObjectSlot slot);
+    void UpdateBarrier(uintptr_t addr, ObjectSlot slot, bool onDeserialize = true);
 
     bool GetAndResetWeak()
     {
