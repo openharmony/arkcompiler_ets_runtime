@@ -18,6 +18,7 @@
 
 #include "ecmascript/js_tagged_value-inl.h"
 #include "ecmascript/mem/dyn_chunk.h"
+#include "ecmascript/shared_mm/shared_mm.h"
 #include "ecmascript/snapshot/mem/snapshot_env.h"
 
 namespace panda::ecmascript {
@@ -38,6 +39,7 @@ enum class EncodeFlag : uint8_t {
     OBJECT_PROTO,
     ARRAY_BUFFER,
     TRANSFER_ARRAY_BUFFER,
+    SHARED_ARRAY_BUFFER,
     METHOD,
     NATIVE_BINDING_OBJECT,
     JS_ERROR,
@@ -64,6 +66,10 @@ public:
     ~SerializeData()
     {
         regionRemainSizeVector_.clear();
+        // decrease sharedArrayBuffer reference
+        if (sharedArrayBufferSet_.size() > 0) {
+            DecreaseSharedArrayBufferReference();
+        }
         free(buffer_);
     }
     NO_COPY_SEMANTIC(SerializeData);
@@ -318,6 +324,20 @@ public:
         position_ = 0;
     }
 
+    void DecreaseSharedArrayBufferReference()
+    {
+        auto manager = JSSharedMemoryManager::GetInstance();
+        for (auto iter = sharedArrayBufferSet_.begin(); iter != sharedArrayBufferSet_.end(); iter++) {
+            JSSharedMemoryManager::RemoveSharedMemory(reinterpret_cast<void *>(*iter), manager);
+        }
+        sharedArrayBufferSet_.clear();
+    }
+
+    void insertSharedArrayBuffer(uintptr_t ptr)
+    {
+        sharedArrayBufferSet_.insert(ptr);
+    }
+
 private:
     static constexpr size_t U8_SIZE = 1;
     static constexpr size_t U16_SIZE = 2;
@@ -334,6 +354,7 @@ private:
     size_t position_ {0};
     bool incompleteData_ {false};
     std::vector<size_t> regionRemainSizeVector_;
+    std::set<uintptr_t> sharedArrayBufferSet_;
 };
 }
 

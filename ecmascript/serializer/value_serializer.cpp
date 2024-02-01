@@ -301,6 +301,13 @@ bool ValueSerializer::SerializeJSArrayBufferPrologue(TaggedObject *object)
             data_->WriteEncodeFlag(EncodeFlag::TRANSFER_ARRAY_BUFFER);
             return true;
         } else if (clone || !defaultTransfer_) {
+            bool nativeAreaAllocated = arrayBuffer->GetWithNativeAreaAllocator();
+            if (!nativeAreaAllocated) {
+                LOG_ECMA(ERROR) << "ValueSerialize: don't support clone arraybuffer has external allocated buffer, \
+                    considering transfer it";
+                notSupport_ = true;
+                return false;
+            }
             data_->WriteEncodeFlag(EncodeFlag::ARRAY_BUFFER);
             data_->WriteUint32(arrayLength);
             JSNativePointer *np =
@@ -334,6 +341,8 @@ void ValueSerializer::SerializeJSSharedArrayBufferPrologue(TaggedObject *object)
             notSupport_ = true;
             return;
         }
+        data_->WriteEncodeFlag(EncodeFlag::SHARED_ARRAY_BUFFER);
+        data_->insertSharedArrayBuffer(reinterpret_cast<uintptr_t>(buffer));
     }
 }
 

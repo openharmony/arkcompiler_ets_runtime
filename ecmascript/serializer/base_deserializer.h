@@ -83,6 +83,7 @@ private:
     void HandleMethodEncodeFlag();
 
     void TransferArrayBufferAttach(uintptr_t objAddr);
+    void IncreaseSharedArrayBufferReference(uintptr_t objAddr);
     void ResetNativePointerBuffer(uintptr_t objAddr, void *bufferPointer);
     void ResetMethodConstantPool(uintptr_t objAddr, ConstantPool *constpool);
 
@@ -109,6 +110,15 @@ private:
             isTransferArrayBuffer_ = false;
         }
         return isTransferArrayBuffer;
+    }
+
+    bool GetAndResetSharedArrayBuffer()
+    {
+        bool isSharedArrayBuffer = isSharedArrayBuffer_;
+        if (isSharedArrayBuffer_) {
+            isSharedArrayBuffer_ = false;
+        }
+        return isSharedArrayBuffer;
     }
 
     bool GetAndResetNeedNewConstPool()
@@ -179,6 +189,7 @@ private:
     size_t regionRemainSizeIndex_ {0};
     bool isWeak_ {false};
     bool isTransferArrayBuffer_ {false};
+    bool isSharedArrayBuffer_ {false};
     bool isErrorMsg_ {false};
     void *bufferPointer_ {nullptr};
     ConstantPool *constpool_ {nullptr};
