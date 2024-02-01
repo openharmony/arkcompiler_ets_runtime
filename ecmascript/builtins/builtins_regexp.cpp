@@ -2490,6 +2490,7 @@ JSTaggedValue RegExpExecResultCache::FindCachedResult(JSThread *thread,
     JSHandle<JSTaggedValue> lastIndexHandle = thread->GlobalConstants()->GetHandledLastIndexString();
     ObjectFastOperator::FastSetPropertyByValue(thread, regexp.GetTaggedValue(), lastIndexHandle.GetTaggedValue(),
                                                Get(index + LAST_INDEX_INDEX));
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     if (!isIntermediateResult && result.IsJSArray()) {
         JSHandle<JSArray> resultHandle(thread, JSArray::Cast(result));
         JSHandle<JSArray> copyArray = thread->GetEcmaVM()->GetFactory()->CloneArrayLiteral(resultHandle);

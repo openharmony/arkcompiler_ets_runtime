@@ -547,9 +547,11 @@ public:
             // b. Let mnsd be ? DefaultNumberOption(mnsd, 1, 21, 1).
             mnsd = JSHandle<JSTaggedValue>(
                 thread, JSTaggedValue(JSLocale::DefaultNumberOption(thread, mnsd, 1, MAX_DIGITS, 1)));
+            RETURN_IF_ABRUPT_COMPLETION(thread);
             // c. Let mxsd be ? DefaultNumberOption(mxsd, mnsd, 21, 21).
             mxsd = JSHandle<JSTaggedValue>(thread,
                 JSTaggedValue(JSLocale::DefaultNumberOption(thread, mxsd, mnsd->GetInt(), MAX_DIGITS, MAX_DIGITS)));
+            RETURN_IF_ABRUPT_COMPLETION(thread);
             // d. Set intlObj.[[MinimumSignificantDigits]] to mnsd.
             intlObj->SetMinimumSignificantDigits(thread, mnsd);
             // e. Set intlObj.[[MaximumSignificantDigits]] to mxsd.
@@ -562,6 +564,7 @@ public:
                 if (!mxfd->IsUndefined()) {
                     JSTaggedValue mxfdValue =
                         JSTaggedValue(JSLocale::DefaultNumberOption(thread, mxfd, 0, MAX_FRACTION_DIGITS, mxfdDefault));
+                    RETURN_IF_ABRUPT_COMPLETION(thread);
                     mxfd = JSHandle<JSTaggedValue>(thread, mxfdValue);
                     mnfdDefault = std::min(mnfdDefault, mxfd->GetInt());
                 }
@@ -574,6 +577,7 @@ public:
                 mxfd = JSHandle<JSTaggedValue>(
                     thread, JSTaggedValue(JSLocale::DefaultNumberOption(thread, mxfd, mnfd->GetInt(),
                                                                         MAX_FRACTION_DIGITS, mxfdActualDefault)));
+                RETURN_IF_ABRUPT_COMPLETION(thread);
                 // e. Set intlObj.[[MinimumFractionDigits]] to mnfd.
                 intlObj->SetMinimumFractionDigits(thread, mnfd);
                 // f. Set intlObj.[[MaximumFractionDigits]] to mxfd.

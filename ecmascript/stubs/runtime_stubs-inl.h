@@ -608,6 +608,7 @@ JSTaggedValue RuntimeStubs::RuntimeLdSuperByValue(JSThread *thread, const JSHand
     // get Homeobject form function
     JSHandle<JSTaggedValue> homeObject(thread, JSFunction::Cast(thisFunc.GetTaggedObject())->GetHomeObject());
     JSHandle<JSTaggedValue> superBase(thread, JSTaggedValue::GetSuperBase(thread, homeObject));
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSTaggedValue::RequireObjectCoercible(thread, superBase);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSHandle<JSTaggedValue> propKey(JSTaggedValue::ToPropertyKey(thread, key));
@@ -626,6 +627,7 @@ JSTaggedValue RuntimeStubs::RuntimeStSuperByValue(JSThread *thread, const JSHand
     // get Homeobject form function
     JSHandle<JSTaggedValue> homeObject(thread, JSFunction::Cast(thisFunc.GetTaggedObject())->GetHomeObject());
     JSHandle<JSTaggedValue> superBase(thread, JSTaggedValue::GetSuperBase(thread, homeObject));
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSTaggedValue::RequireObjectCoercible(thread, superBase);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSHandle<JSTaggedValue> propKey(JSTaggedValue::ToPropertyKey(thread, key));
