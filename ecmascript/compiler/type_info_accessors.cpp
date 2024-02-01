@@ -163,7 +163,10 @@ bool NewObjRangeTypeInfoAccessor::FindHClass()
     }
     auto type = std::make_pair(sampleType->GetProfileType(), sampleType->GetProfileType());
     hclassIndex_ = static_cast<int>(ptManager_->GetHClassIndexByProfileType(type));
-    return hclassIndex_ != -1; // -1 : not found
+    if (hclassIndex_ == -1) {
+        return false;
+    }
+    return ptManager_->QueryHClass(type.first, type.second).IsJSHClass();
 }
 
 bool TypeOfTypeInfoAccessor::IsIllegalType() const

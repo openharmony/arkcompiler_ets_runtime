@@ -351,6 +351,7 @@ GateRef TSInlineLowering::BuildAccessor(InlineTypeInfoAccessor &info)
     ProfileTyper holderType = std::make_pair(pgoType.GetHoldRootType(), pgoType.GetHoldType());
     PGOTypeManager *ptManager = thread_->GetCurrentEcmaContext()->GetPTManager();
     int holderHCIndex = static_cast<int>(ptManager->GetHClassIndexByProfileType(holderType));
+    ASSERT(ptManager->QueryHClass(holderType.first, holderType.second).IsJSHClass());
     auto holderHC = builder_.GetHClassGateFromIndex(gate, holderHCIndex);
 
     auto currentLabel = env.GetCurrentLabel();
@@ -542,6 +543,7 @@ void TSInlineLowering::InlineAccessorCheck(const InlineTypeInfoAccessor &info)
     ProfileTyper receiverType = std::make_pair(pgoType.GetReceiverRootType(), pgoType.GetReceiverType());
     PGOTypeManager *ptManager = thread_->GetCurrentEcmaContext()->GetPTManager();
     int receiverHCIndex = static_cast<int>(ptManager->GetHClassIndexByProfileType(receiverType));
+    ASSERT(ptManager->QueryHClass(receiverType.first, receiverType.second).IsJSHClass());
 
     bool noNeedCheckHeapObject = acc_.IsHeapObjectFromElementsKind(receiver);
     builder_.ObjectTypeCheck(acc_.GetGateType(gate), noNeedCheckHeapObject, receiver, builder_.Int32(receiverHCIndex));
