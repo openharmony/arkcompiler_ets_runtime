@@ -39,6 +39,7 @@
 #include "ecmascript/runtime_call_id.h"
 #include "ecmascript/stubs/runtime_stubs.h"
 #include "ecmascript/template_string.h"
+#include "ecmascript/checkpoint/thread_state_transition.h"
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
 #include "ecmascript/dfx/cpu_profiler/cpu_profiler.h"
 #endif
@@ -634,8 +635,12 @@ JSTaggedValue EcmaInterpreter::ExecuteNative(EcmaRuntimeCallInfo *info)
     ECMAObject *callTarget = reinterpret_cast<ECMAObject*>(info->GetFunctionValue().GetTaggedObject());
     Method *method = callTarget->GetCallTarget();
     LOG_INST() << "Entry: Runtime Call.";
-    JSTaggedValue tagged =
-        reinterpret_cast<EcmaEntrypoint>(const_cast<void *>(method->GetNativePointer()))(info);
+    JSTaggedValue tagged;
+    {
+        ASSERT(thread == JSThread::GetCurrent());
+        ThreadNativeScope nativeScope(thread);
+        tagged = reinterpret_cast<EcmaEntrypoint>(const_cast<void *>(method->GetNativePointer()))(info);
+    }
     LOG_INST() << "Exit: Runtime Call.";
 
     InterpretedEntryFrame *entryState = GET_ENTRY_FRAME(sp);
