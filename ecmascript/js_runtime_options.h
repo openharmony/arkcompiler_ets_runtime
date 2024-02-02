@@ -909,7 +909,7 @@ public:
         enableContext_ = value;
     }
 
-    bool IsEnableContext()
+    bool IsEnableContext() const
     {
         return enableContext_;
     }
@@ -919,7 +919,7 @@ public:
         enablePrintExecuteTime_ = value;
     }
 
-    bool IsEnablePrintExecuteTime()
+    bool IsEnablePrintExecuteTime() const
     {
         return enablePrintExecuteTime_;
     }

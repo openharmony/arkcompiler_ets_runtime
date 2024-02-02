@@ -21,6 +21,9 @@ namespace panda::ecmascript {
 void Barriers::Update(const JSThread *thread, uintptr_t slotAddr, Region *objectRegion, TaggedObject *value,
                       Region *valueRegion, bool onDeserialize)
 {
+    if (valueRegion->InSharedHeap()) {
+        return;
+    }
     auto heap = thread->GetEcmaVM()->GetHeap();
     if (heap->IsFullMark()) {
         if (valueRegion->InCollectSet() && !objectRegion->InYoungSpaceOrCSet()) {

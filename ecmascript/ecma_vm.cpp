@@ -479,6 +479,7 @@ void EcmaVM::ProcessReferences(const WeakRootVisitor &visitor)
 
 void EcmaVM::PushToNativePointerList(JSNativePointer *pointer)
 {
+    ASSERT(!JSTaggedValue(pointer).IsInSharedHeap());
     nativePointerList_.emplace_back(pointer);
 }
 

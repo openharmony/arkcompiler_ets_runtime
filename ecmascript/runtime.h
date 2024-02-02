@@ -54,6 +54,12 @@ public:
         return &mutatorLock_;
     }
 
+    std::list<JSThread*> ThreadList()
+    {
+        LockHolder lock(threadsLock_);
+        return threads_;
+    }
+
     inline const GlobalEnvConstants *GetGlobalEnvConstants()
     {
         return globalConstants_;
@@ -71,7 +77,7 @@ private:
     void ResumeAllThreadsImpl(JSThread *current);
 
     void PreInitialization(const EcmaVM *vm);
-    void PostInitialization();
+    void PostInitialization(const EcmaVM *vm);
 
     Mutex threadsLock_;
     std::list<JSThread*> threads_;

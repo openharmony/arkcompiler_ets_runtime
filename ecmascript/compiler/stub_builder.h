@@ -221,7 +221,8 @@ public:
     GateRef TaggedIsAccessor(GateRef x);
     GateRef ObjectAddressToRange(GateRef x);
     GateRef InYoungGeneration(GateRef region);
-    GateRef InSharedSpace(GateRef region);
+    GateRef InSharedHeap(GateRef region);
+    GateRef InSharedSweepableSpace(GateRef region);
     GateRef TaggedIsGeneratorObject(GateRef x);
     GateRef TaggedIsJSArray(GateRef x);
     GateRef TaggedIsAsyncGeneratorObject(GateRef x);

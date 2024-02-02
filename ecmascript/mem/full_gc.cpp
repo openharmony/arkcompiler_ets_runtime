@@ -75,7 +75,6 @@ void FullGC::Initialize()
     auto callback = [](Region *current) {
         current->ResetAliveObject();
         current->ClearOldToNewRSet();
-        current->ClearLocalToShareRSet();
     };
     heap_->EnumerateNonMovableRegions(callback);
     heap_->GetAppSpawnSpace()->EnumerateRegions([](Region *current) {
@@ -125,7 +124,7 @@ void FullGC::Sweep()
 
             Region *objectRegion = Region::ObjectAddressToRange(header);
             if (!HasEvacuated(objectRegion)) {
-                if (!objectRegion->Test(header)) {
+                if (!objectRegion->InSharedHeap() && !objectRegion->Test(header)) {
                     slot.Clear();
                 }
             } else {
@@ -150,7 +149,7 @@ void FullGC::Sweep()
             return reinterpret_cast<TaggedObject *>(ToUintPtr(nullptr));
         }
         if (!HasEvacuated(objectRegion)) {
-            if (objectRegion->Test(header)) {
+            if (objectRegion->InSharedHeap() || objectRegion->Test(header)) {
                 return header;
             }
             return reinterpret_cast<TaggedObject *>(ToUintPtr(nullptr));

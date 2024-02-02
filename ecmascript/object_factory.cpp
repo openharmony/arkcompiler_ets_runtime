@@ -2376,18 +2376,9 @@ JSHandle<TaggedArray> ObjectFactory::NewAndCopyTaggedArray(JSHandle<TaggedArray>
     if (newLength == 0) {
         return dstElements;
     }
-    // Region *region = Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(*dstElements));
-    // if (region->InYoungSpace() && !thread_->IsConcurrentMarkingOrFinished()) {
-    //     size_t size = oldLength * sizeof(JSTaggedType);
-    //     if (memcpy_s(reinterpret_cast<void *>(dstElements->GetData()), size,
-    //         reinterpret_cast<void *>(srcElements->GetData() + k), size) != EOK) {
-    //         LOG_FULL(FATAL) << "memcpy_s failed";
-    //     }
-    // } else {
-        for (uint32_t i = 0; i < oldLength; i++) {
-            dstElements->Set(thread_, i, srcElements->Get(i + k));
-        }
-    // }
+    for (uint32_t i = 0; i < oldLength; i++) {
+        dstElements->Set(thread_, i, srcElements->Get(i + k));
+    }
     for (uint32_t i = oldLength; i < newLength; i++) {
         dstElements->Set(thread_, i, JSTaggedValue::Hole());
     }
@@ -2435,18 +2426,9 @@ JSHandle<TaggedArray> ObjectFactory::NewAndCopyTaggedArrayByObject(JSHandle<JSOb
     if (newLength == 0) {
         return dstElements;
     }
-    // Region *region = Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(*dstElements));
-    // if (region->InYoungSpace() && !thread_->IsConcurrentMarkingOrFinished()) {
-    //     size_t size = oldLength * sizeof(JSTaggedType);
-    //     if (memcpy_s(reinterpret_cast<void *>(dstElements->GetData()), size,
-    //         reinterpret_cast<void *>(srcElements->GetData() + k), size) != EOK) {
-    //         LOG_FULL(FATAL) << "memcpy_s failed";
-    //     }
-    // } else {
-        for (uint32_t i = 0; i < oldLength; i++) {
-            dstElements->Set(thread_, i, ElementAccessor::Get(thisObjHandle, i + k));
-        }
-    // }
+    for (uint32_t i = 0; i < oldLength; i++) {
+        dstElements->Set(thread_, i, ElementAccessor::Get(thisObjHandle, i + k));
+    }
     for (uint32_t i = oldLength; i < newLength; i++) {
         dstElements->Set(thread_, i, JSTaggedValue::Hole());
     }
@@ -2464,21 +2446,12 @@ JSHandle<MutantTaggedArray> ObjectFactory::NewAndCopyMutantTaggedArrayByObject(J
     if (newLength == 0) {
         return dstElements;
     }
-    // Region *region = Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(*dstElements));
-    // if (region->InYoungSpace() && !thread_->IsConcurrentMarkingOrFinished()) {
-    //     size_t size = oldLength * sizeof(JSTaggedType);
-    //     if (memcpy_s(reinterpret_cast<void *>(dstElements->GetData()), size,
-    //         reinterpret_cast<void *>(srcElements->GetData() + k), size) != EOK) {
-    //         LOG_FULL(FATAL) << "memcpy_s failed";
-    //     }
-    // } else {
-        for (uint32_t i = 0; i < oldLength; i++) {
-            ElementsKind kind = thisObjHandle->GetClass()->GetElementsKind();
-            JSTaggedValue value = JSTaggedValue(ElementAccessor::ConvertTaggedValueWithElementsKind(
-                ElementAccessor::Get(thisObjHandle, i + k), kind));
-            dstElements->Set<false>(thread_, i, value);
-        }
-    // }
+    for (uint32_t i = 0; i < oldLength; i++) {
+        ElementsKind kind = thisObjHandle->GetClass()->GetElementsKind();
+        JSTaggedValue value = JSTaggedValue(ElementAccessor::ConvertTaggedValueWithElementsKind(
+            ElementAccessor::Get(thisObjHandle, i + k), kind));
+        dstElements->Set<false>(thread_, i, value);
+    }
     for (uint32_t i = oldLength; i < newLength; i++) {
         ElementsKind kind = thisObjHandle->GetClass()->GetElementsKind();
         JSTaggedValue value = JSTaggedValue(ElementAccessor::ConvertTaggedValueWithElementsKind(JSTaggedValue::Hole(),

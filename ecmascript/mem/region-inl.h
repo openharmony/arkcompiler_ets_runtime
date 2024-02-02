@@ -162,13 +162,6 @@ inline void Region::AtomicClearLocalToShareRSetInRange(uintptr_t start, uintptr_
     }
 }
 
-inline void Region::ClearLocalToShareRSet()
-{
-    if (localToShareSet_ != nullptr) {
-        localToShareSet_->ClearAll();
-    }
-}
-
 inline void Region::DeleteLocalToShareRSet()
 {
     if (localToShareSet_ != nullptr) {

@@ -1666,7 +1666,7 @@ void SnapshotProcessor::DeserializeTaggedField(uint64_t *value, TaggedObject *ro
             ASSERT((ToUintPtr(value) % static_cast<uint8_t>(MemAlignment::MEM_ALIGN_OBJECT)) == 0);
             rootRegion->InsertOldToNewRSet((uintptr_t)value);
         }
-        if (!rootRegion->InSharedSpace() && valueRegion->InSharedSpace()) {
+        if (!rootRegion->InSharedHeap() && valueRegion->InSharedSweepableSpace()) {
             rootRegion->AtomicInsertLocalToShareRset((uintptr_t)value);
         }
         *value = taggedObjectAddr;

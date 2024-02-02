@@ -98,6 +98,9 @@ void ParallelEvacuator::UpdateObjectSlot(ObjectSlot &slot)
 {
     JSTaggedValue value(slot.GetTaggedType());
     if (value.IsHeapObject()) {
+        if (value.IsInSharedHeap()) {
+            return;
+        }
         if (value.IsWeakForHeapObject()) {
             return UpdateWeakObjectSlot(value.GetTaggedWeakRef(), slot);
         }
@@ -129,9 +132,12 @@ void ParallelEvacuator::UpdateWeakObjectSlot(TaggedObject *value, ObjectSlot &sl
             slot.Clear();
         }
         return;
+    } else if (objectRegion->InSharedHeap()) {
+        return;
     }
 
     if (heap_->IsFullMark()) {
+        ASSERT(!objectRegion->InSharedHeap());
         if (!objectRegion->Test(value)) {
             slot.Clear();
         }
@@ -141,7 +147,7 @@ void ParallelEvacuator::UpdateWeakObjectSlot(TaggedObject *value, ObjectSlot &sl
 void ParallelEvacuator::UpdateLocalToShareRSet(TaggedObject *object, JSHClass *cls)
 {
     Region *region = Region::ObjectAddressToRange(object);
-    ASSERT(!region->InSharedSpace());
+    ASSERT(!region->InSharedHeap());
     auto callbackWithCSet = [this, region](TaggedObject *root, ObjectSlot start, ObjectSlot end, VisitObjectArea area) {
         if (area == VisitObjectArea::IN_OBJECT) {
             if (VisitBodyInObj(root, start, end, [&](ObjectSlot slot) { SetLocalToShareRSet(slot, region); })) {
@@ -157,13 +163,13 @@ void ParallelEvacuator::UpdateLocalToShareRSet(TaggedObject *object, JSHClass *c
 
 void ParallelEvacuator::SetLocalToShareRSet(ObjectSlot slot, Region *region)
 {
-    ASSERT(!region->InSharedSpace());
+    ASSERT(!region->InSharedHeap());
     JSTaggedType value = slot.GetTaggedType();
     if (!JSTaggedValue(value).IsHeapObject()) {
         return;
     }
     Region *valueRegion = Region::ObjectAddressToRange(value);
-    if (valueRegion->InSharedSpace()) {
+    if (valueRegion->InSharedSweepableSpace()) {
         region->InsertLocalToShareRset(slot.SlotAddress());
     }
 }

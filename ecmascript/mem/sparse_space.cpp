@@ -24,9 +24,10 @@
 #include "ecmascript/runtime_call_id.h"
 
 namespace panda::ecmascript {
-SparseSpace::SparseSpace(BaseHeap *heap, MemSpaceType type, size_t initialCapacity, size_t maximumCapacity)
+SparseSpace::SparseSpace(Heap *heap, MemSpaceType type, size_t initialCapacity, size_t maximumCapacity)
     : Space(heap, heap->GetHeapRegionAllocator(), type, initialCapacity, maximumCapacity),
       sweepState_(SweepState::NO_SWEEP),
+      localHeap_(heap),
       liveObjectSize_(0)
 {
     allocator_ = new FreeListAllocator(heap);
@@ -34,7 +35,7 @@ SparseSpace::SparseSpace(BaseHeap *heap, MemSpaceType type, size_t initialCapaci
 
 void SparseSpace::Initialize()
 {
-    Region *region = heapRegionAllocator_->AllocateAlignedRegion(this, DEFAULT_REGION_SIZE, heap_);
+    Region *region = heapRegionAllocator_->AllocateAlignedRegion(this, DEFAULT_REGION_SIZE, localHeap_);
     region->InitializeFreeObjectSets();
     AddRegion(region);
 
@@ -64,7 +65,7 @@ uintptr_t SparseSpace::Allocate(size_t size, bool allowGC)
     }
 
     // Check whether it is necessary to trigger Old GC before expanding to avoid OOM risk.
-    if (allowGC && heap_->CheckAndTriggerOldGC()) {
+    if (allowGC && localHeap_->CheckAndTriggerOldGC()) {
         object = allocator_->Allocate(size);
         CHECK_OBJECT_AND_INC_OBJ_SIZE(size);
     }
@@ -75,32 +76,7 @@ uintptr_t SparseSpace::Allocate(size_t size, bool allowGC)
     }
 
     if (allowGC) {
-        heap_->CollectGarbage(TriggerGCType::OLD_GC, GCReason::ALLOCATION_FAILED);
-        object = Allocate(size, false);
-        // Size is already increment
-    }
-    return object;
-}
-
-uintptr_t SparseSpace::ConcurrentAllocate(size_t size, bool allowGC)
-{
-    LockHolder holder(allocateLock_);
-    auto object = allocator_->Allocate(size);
-    CHECK_OBJECT_AND_INC_OBJ_SIZE(size);
-
-    // Check whether it is necessary to trigger Old GC before expanding to avoid OOM risk.
-    if (allowGC && heap_->CheckAndTriggerOldGC()) {
-        object = allocator_->Allocate(size);
-        CHECK_OBJECT_AND_INC_OBJ_SIZE(size);
-    }
-
-    if (Expand()) {
-        object = allocator_->Allocate(size);
-        CHECK_OBJECT_AND_INC_OBJ_SIZE(size);
-    }
-
-    if (allowGC) {
-        heap_->CollectGarbage(TriggerGCType::SHARED_GC, GCReason::ALLOCATION_FAILED);
+        localHeap_->CollectGarbage(TriggerGCType::OLD_GC, GCReason::ALLOCATION_FAILED);
         object = Allocate(size, false);
         // Size is already increment
     }
@@ -114,7 +90,7 @@ bool SparseSpace::Expand()
         return false;
     }
 
-    Region *region = heapRegionAllocator_->AllocateAlignedRegion(this, DEFAULT_REGION_SIZE, heap_);
+    Region *region = heapRegionAllocator_->AllocateAlignedRegion(this, DEFAULT_REGION_SIZE, localHeap_);
     region->InitializeFreeObjectSets();
     AddRegion(region);
     allocator_->AddFree(region);
@@ -131,7 +107,7 @@ uintptr_t SparseSpace::AllocateAfterSweepingCompleted(size_t size)
         }
     }
     // Parallel sweep and fill
-    heap_->GetSweeper()->EnsureTaskFinished(spaceType_);
+    localHeap_->GetSweeper()->EnsureTaskFinished(spaceType_);
     return allocator_->Allocate(size);
 }
 
@@ -293,7 +269,7 @@ void SparseSpace::FreeRegion(Region *current, bool isMain)
 
 void SparseSpace::FreeLiveRange(Region *current, uintptr_t freeStart, uintptr_t freeEnd, bool isMain)
 {
-    heap_->GetSweeper()->ClearRSetInRange(current, freeStart, freeEnd);
+    localHeap_->GetSweeper()->ClearRSetInRange(current, freeStart, freeEnd);
     allocator_->Free(freeStart, freeEnd - freeStart, isMain);
 }
 
@@ -373,11 +349,8 @@ void SparseSpace::InvokeAllocationInspector(Address object, size_t size, size_t 
     allocationCounter_.AdvanceAllocationInspector(alignedSize);
 }
 
-OldSpace::OldSpace(BaseHeap *heap, size_t initialCapacity, size_t maximumCapacity)
+OldSpace::OldSpace(Heap *heap, size_t initialCapacity, size_t maximumCapacity)
     : SparseSpace(heap, OLD_SPACE, initialCapacity, maximumCapacity) {}
-
-OldSpace::OldSpace(BaseHeap *heap, size_t initialCapacity, size_t maximumCapacity, MemSpaceType type)
-    : SparseSpace(heap, type, initialCapacity, maximumCapacity) {}
 
 Region *OldSpace::TrySweepToGetSuitableRegion(size_t size)
 {
@@ -437,10 +410,10 @@ void OldSpace::Merge(LocalSpace *localSpace)
         IncreaseLiveObjectSize(region->AliveObject());
         allocator_->CollectFreeObjectSet(region);
     });
-    size_t hugeSpaceCommitSize = heap_->GetHugeObjectSpace()->GetCommittedSize();
+    size_t hugeSpaceCommitSize = localHeap_->GetHugeObjectSpace()->GetCommittedSize();
     if (committedSize_ + hugeSpaceCommitSize > GetOverShootMaximumCapacity()) {
         LOG_ECMA_MEM(ERROR) << "Merge::Committed size " << committedSize_ << " of old space is too big. ";
-        heap_->ShouldThrowOOMError(true);
+        localHeap_->ShouldThrowOOMError(true);
         IncreaseMergeSize(committedSize_ - oldCommittedSize);
         // if throw OOM, temporarily increase space size to avoid vm crash
         IncreaseOutOfMemoryOvershootSize(committedSize_ + hugeSpaceCommitSize - GetOverShootMaximumCapacity());
@@ -452,13 +425,13 @@ void OldSpace::Merge(LocalSpace *localSpace)
 
 void OldSpace::SelectCSet()
 {
-    if (heap_->IsMarking()) {
-        heap_->GetEcmaGCStats()->RecordStatisticBeforeGC(TriggerGCType::OLD_GC, GCReason::OTHER);
+    if (localHeap_->IsMarking()) {
+        localHeap_->GetEcmaGCStats()->RecordStatisticBeforeGC(TriggerGCType::OLD_GC, GCReason::OTHER);
     }
     CheckRegionSize();
     // 1、Select region which alive object larger than limit
     int64_t evacuateSizeLimit = 0;
-    if (!heap_->IsInBackground()) {
+    if (!localHeap_->IsInBackground()) {
         evacuateSizeLimit = PARTIAL_GC_MAX_EVACUATION_SIZE_FOREGROUND;
         EnumerateRegions([this](Region *region) {
             if (!region->MostObjectAlive()) {
@@ -485,7 +458,7 @@ void OldSpace::SelectCSet()
 
     // Limit cset size
     unsigned long selectedRegionNumber = 0;
-    int64_t expectFreeSize = static_cast<int64_t>(heap_->GetCommittedSize() - heap_->GetHeapAliveSizeAfterGC());
+    int64_t expectFreeSize = static_cast<int64_t>(localHeap_->GetCommittedSize() - localHeap_->GetHeapAliveSizeAfterGC());
     int64_t evacuateSize = std::min(evacuateSizeLimit, expectFreeSize);
     EnumerateCollectRegionSet([&](Region *current) {
         if (evacuateSize > 0) {
@@ -502,7 +475,7 @@ void OldSpace::SelectCSet()
         collectRegionSet_.resize(selectedRegionNumber);
     }
 
-    heap_->GetEcmaGCStats()->SetRecordData(
+    localHeap_->GetEcmaGCStats()->SetRecordData(
         RecordData::COLLECT_REGION_SET_SIZE, collectRegionSet_.size() * Region::AVERAGE_REGION_EVACUATE_SIZE);
     EnumerateCollectRegionSet([&](Region *current) {
         RemoveRegion(current);
@@ -518,7 +491,7 @@ void OldSpace::CheckRegionSize()
 {
 #ifndef NDEBUG
     if (sweepState_ == SweepState::SWEEPING) {
-        heap_->GetSweeper()->EnsureTaskFinished(spaceType_);
+        localHeap_->GetSweeper()->EnsureTaskFinished(spaceType_);
     }
     size_t available = allocator_->GetAvailableSize();
     size_t wasted = allocator_->GetWastedSize();
@@ -544,7 +517,7 @@ void OldSpace::RevertCSet()
 
 void OldSpace::ReclaimCSet()
 {
-    size_t cachedSize = heap_->GetRegionCachedSize();
+    size_t cachedSize = localHeap_->GetRegionCachedSize();
     EnumerateCollectRegionSet([this, &cachedSize](Region *region) {
         region->DeleteCrossRegionRSet();
         region->DeleteOldToNewRSet();
@@ -556,7 +529,7 @@ void OldSpace::ReclaimCSet()
     collectRegionSet_.clear();
 }
 
-LocalSpace::LocalSpace(BaseHeap *heap, size_t initialCapacity, size_t maximumCapacity)
+LocalSpace::LocalSpace(Heap *heap, size_t initialCapacity, size_t maximumCapacity)
     : SparseSpace(heap, LOCAL_SPACE, initialCapacity, maximumCapacity) {}
 
 bool LocalSpace::AddRegionToList(Region *region)
@@ -586,23 +559,18 @@ void LocalSpace::Stop()
 uintptr_t NonMovableSpace::CheckAndAllocate(size_t size)
 {
     if (maximumCapacity_ == committedSize_ && GetHeapObjectSize() > MAX_NONMOVABLE_LIVE_OBJ_SIZE &&
-        !heap_->GetOldGCRequested()) {
-        heap_->CollectGarbage(TriggerGCType::OLD_GC, GCReason::ALLOCATION_LIMIT);
+        !localHeap_->GetOldGCRequested()) {
+        localHeap_->CollectGarbage(TriggerGCType::OLD_GC, GCReason::ALLOCATION_LIMIT);
     }
     return Allocate(size);
 }
 
-NonMovableSpace::NonMovableSpace(BaseHeap *heap, size_t initialCapacity, size_t maximumCapacity)
+NonMovableSpace::NonMovableSpace(Heap *heap, size_t initialCapacity, size_t maximumCapacity)
     : SparseSpace(heap, MemSpaceType::NON_MOVABLE, initialCapacity, maximumCapacity)
 {
 }
 
-NonMovableSpace::NonMovableSpace(BaseHeap *heap, size_t initialCapacity, size_t maximumCapacity, MemSpaceType type)
-    : SparseSpace(heap, type, initialCapacity, maximumCapacity)
-{
-}
-
-AppSpawnSpace::AppSpawnSpace(BaseHeap *heap, size_t initialCapacity)
+AppSpawnSpace::AppSpawnSpace(Heap *heap, size_t initialCapacity)
     : SparseSpace(heap, MemSpaceType::APPSPAWN_SPACE, initialCapacity, initialCapacity)
 {
 }
@@ -631,7 +599,7 @@ uintptr_t LocalSpace::Allocate(size_t size, bool isExpand)
     return object;
 }
 
-MachineCodeSpace::MachineCodeSpace(BaseHeap *heap, size_t initialCapacity, size_t maximumCapacity)
+MachineCodeSpace::MachineCodeSpace(Heap *heap, size_t initialCapacity, size_t maximumCapacity)
     : SparseSpace(heap, MemSpaceType::MACHINE_CODE_SPACE, initialCapacity, maximumCapacity)
 {
 }

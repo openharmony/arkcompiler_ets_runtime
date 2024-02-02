@@ -785,7 +785,7 @@ private:
     NO_MOVE_SEMANTIC(ObjectFactory);
 
     void NewObjectHook() const;
-
+    void NewSObjectHook() const;
     // used for creating jshclass in GlobalEnv, EcmaVM
     JSHandle<JSHClass> NewEcmaHClassClass(JSHClass *hclass, uint32_t size, JSType type);
 

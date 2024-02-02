@@ -28,14 +28,55 @@
 #include "ecmascript/mem/tlab_allocator-inl.h"
 
 namespace panda::ecmascript {
+WorkManagerBase::WorkManagerBase(NativeAreaAllocator *allocator)
+    : spaceChunk_(allocator), workSpace_(0), spaceStart_(0), spaceEnd_(0)
+{
+    workSpace_ = ToUintPtr(GetSpaceChunk()->Allocate(WORKNODE_SPACE_SIZE));
+}
+
+WorkNode *WorkManagerBase::AllocateWorkNode()
+{
+    size_t totalSize = sizeof(WorkNode) + sizeof(Stack) + STACK_AREA_SIZE;
+    ASSERT(totalSize < WORKNODE_SPACE_SIZE);
+
+    // CAS
+    volatile auto atomicField = reinterpret_cast<volatile std::atomic<uintptr_t> *>(&spaceStart_);
+    bool result = false;
+    uintptr_t begin = 0;
+    do {
+        begin = atomicField->load(std::memory_order_acquire);
+        if (begin + totalSize >= spaceEnd_) {
+            LockHolder lock(mtx_);
+            begin = atomicField->load(std::memory_order_acquire);
+            if (begin + totalSize >= spaceEnd_) {
+                agedSpaces_.emplace_back(workSpace_);
+                workSpace_ = ToUintPtr(GetSpaceChunk()->Allocate(WORKNODE_SPACE_SIZE));
+                spaceStart_ = workSpace_;
+                spaceEnd_ = workSpace_ + WORKNODE_SPACE_SIZE;
+                begin = spaceStart_;
+            }
+        }
+        result = std::atomic_compare_exchange_strong_explicit(atomicField, &begin, begin + totalSize,
+                                                              std::memory_order_release, std::memory_order_relaxed);
+    } while (!result);
+    Stack *stack = reinterpret_cast<Stack *>(begin + sizeof(WorkNode));
+    stack->ResetBegin(begin + sizeof(WorkNode) + sizeof(Stack), begin + totalSize);
+    WorkNode *work = reinterpret_cast<WorkNode *>(begin);
+    return new (work) WorkNode(stack);
+}
+
+WorkManagerBase::~WorkManagerBase()
+{
+    GetSpaceChunk()->Free(reinterpret_cast<void *>(workSpace_));
+}
+
 WorkManager::WorkManager(Heap *heap, uint32_t threadNum)
-    : heap_(heap), threadNum_(threadNum), spaceChunk_(heap_->GetNativeAreaAllocator()), continuousQueue_ { nullptr },
-      workSpace_(0), spaceStart_(0), spaceEnd_(0), parallelGCTaskPhase_(UNDEFINED_TASK)
+    : WorkManagerBase(heap->GetNativeAreaAllocator()), heap_(heap), threadNum_(threadNum),
+      continuousQueue_ { nullptr }, parallelGCTaskPhase_(UNDEFINED_TASK)
 {
     for (uint32_t i = 0; i < threadNum_; i++) {
-        continuousQueue_.at(i) = new ProcessQueue(heap);
+        continuousQueue_.at(i) = new ProcessQueue();
     }
-    workSpace_ = ToUintPtr(GetSpaceChunk()->Allocate(WORKNODE_SPACE_SIZE));
 }
 
 WorkManager::~WorkManager()
@@ -46,8 +87,6 @@ WorkManager::~WorkManager()
         delete continuousQueue_.at(i);
         continuousQueue_.at(i) = nullptr;
     }
-
-    GetSpaceChunk()->Free(reinterpret_cast<void *>(workSpace_));
 }
 
 bool WorkManager::Push(uint32_t threadId, TaggedObject *object)
@@ -125,10 +164,7 @@ size_t WorkManager::Finish()
         aliveSize += holder.aliveSize_;
     }
 
-    while (!agedSpaces_.empty()) {
-        GetSpaceChunk()->Free(reinterpret_cast<void *>(agedSpaces_.back()));
-        agedSpaces_.pop_back();
-    }
+    FinishBase();
     initialized_.store(false, std::memory_order_release);
     return aliveSize;
 }
@@ -146,14 +182,13 @@ void WorkManager::Finish(size_t &aliveSize, size_t &promotedSize)
 void WorkManager::Initialize(TriggerGCType gcType, ParallelGCTaskPhase taskPhase)
 {
     parallelGCTaskPhase_ = taskPhase;
-    spaceStart_ = workSpace_;
-    spaceEnd_ = workSpace_ + WORKNODE_SPACE_SIZE;
+    InitializeBase();
     for (uint32_t i = 0; i < threadNum_; i++) {
         WorkNodeHolder &holder = works_.at(i);
         holder.inNode_ = AllocateWorkNode();
         holder.outNode_ = AllocateWorkNode();
         holder.weakQueue_ = new ProcessQueue();
-        holder.weakQueue_->BeginMarking(heap_, continuousQueue_.at(i));
+        holder.weakQueue_->BeginMarking(continuousQueue_.at(i));
         holder.aliveSize_ = 0;
         holder.promotedSize_ = 0;
         if (gcType != TriggerGCType::OLD_GC) {
@@ -167,34 +202,97 @@ void WorkManager::Initialize(TriggerGCType gcType, ParallelGCTaskPhase taskPhase
     initialized_.store(true, std::memory_order_release);
 }
 
-WorkNode *WorkManager::AllocateWorkNode()
+ShareGCWorkManager::ShareGCWorkManager(SharedHeap *heap, uint32_t threadNum)
+    : WorkManagerBase(heap->GetNativeAreaAllocator()), sHeap_(heap), threadNum_(threadNum),
+      continuousQueue_ { nullptr }
 {
-    size_t totalSize = sizeof(WorkNode) + sizeof(Stack) + STACK_AREA_SIZE;
-    ASSERT(totalSize < WORKNODE_SPACE_SIZE);
+    for (uint32_t i = 0; i < threadNum_; i++) {
+        continuousQueue_.at(i) = new ProcessQueue();
+    }
+}
 
-    // CAS
-    volatile auto atomicField = reinterpret_cast<volatile std::atomic<uintptr_t> *>(&spaceStart_);
-    bool result = false;
-    uintptr_t begin = 0;
-    do {
-        begin = atomicField->load(std::memory_order_acquire);
-        if (begin + totalSize >= spaceEnd_) {
-            LockHolder lock(mtx_);
-            begin = atomicField->load(std::memory_order_acquire);
-            if (begin + totalSize >= spaceEnd_) {
-                agedSpaces_.emplace_back(workSpace_);
-                workSpace_ = ToUintPtr(GetSpaceChunk()->Allocate(WORKNODE_SPACE_SIZE));
-                spaceStart_ = workSpace_;
-                spaceEnd_ = workSpace_ + WORKNODE_SPACE_SIZE;
-                begin = spaceStart_;
-            }
+ShareGCWorkManager::~ShareGCWorkManager()
+{
+    Finish();
+    for (uint32_t i = 0; i < threadNum_; i++) {
+        continuousQueue_.at(i)->Destroy();
+        delete continuousQueue_.at(i);
+        continuousQueue_.at(i) = nullptr;
+    }
+}
+
+void ShareGCWorkManager::Initialize()
+{
+    InitializeBase();
+    for (uint32_t i = 0; i < threadNum_; i++) {
+        ShareGCWorkNodeHolder &holder = works_.at(i);
+        holder.inNode_ = AllocateWorkNode();
+        holder.outNode_ = AllocateWorkNode();
+        holder.weakQueue_ = new ProcessQueue();
+        holder.weakQueue_->BeginMarking(continuousQueue_.at(i));
+    }
+    if (initialized_.load(std::memory_order_relaxed)) {
+        LOG_ECMA(FATAL) << "this branch is unreachable";
+        UNREACHABLE();
+    }
+    initialized_.store(true, std::memory_order_release);
+}
+
+void ShareGCWorkManager::Finish()
+{
+    for (uint32_t i = 0; i < threadNum_; i++) {
+        ShareGCWorkNodeHolder &holder = works_.at(i);
+        if (holder.weakQueue_ != nullptr) {
+            holder.weakQueue_->FinishMarking(continuousQueue_.at(i));
+            delete holder.weakQueue_;
+            holder.weakQueue_ = nullptr;
         }
-        result = std::atomic_compare_exchange_strong_explicit(atomicField, &begin, begin + totalSize,
-                                                              std::memory_order_release, std::memory_order_relaxed);
-    } while (!result);
-    Stack *stack = reinterpret_cast<Stack *>(begin + sizeof(WorkNode));
-    stack->ResetBegin(begin + sizeof(WorkNode) + sizeof(Stack), begin + totalSize);
-    WorkNode *work = reinterpret_cast<WorkNode *>(begin);
-    return new (work) WorkNode(stack);
+    }
+    FinishBase();
+    initialized_.store(false, std::memory_order_release);
+}
+
+bool ShareGCWorkManager::Push(uint32_t threadId, TaggedObject *object)
+{
+    WorkNode *&inNode = works_.at(threadId).inNode_;
+    if (!inNode->PushObject(ToUintPtr(object))) {
+        PushWorkNodeToGlobal(threadId);
+        return inNode->PushObject(ToUintPtr(object));
+    }
+    return true;
+}
+
+void ShareGCWorkManager::PushWorkNodeToGlobal(uint32_t threadId, bool postTask)
+{
+    WorkNode *&inNode = works_.at(threadId).inNode_;
+    if (!inNode->IsEmpty()) {
+        workStack_.Push(inNode);
+        inNode = AllocateWorkNode();
+        if (postTask && sHeap_->IsParallelGCEnabled() && sHeap_->CheckCanDistributeTask()) {
+            sHeap_->PostGCMarkingTask();
+        }
+    }
+}
+
+bool ShareGCWorkManager::Pop(uint32_t threadId, TaggedObject **object)
+{
+    WorkNode *&outNode = works_.at(threadId).outNode_;
+    WorkNode *&inNode = works_.at(threadId).inNode_;
+    if (!outNode->PopObject(reinterpret_cast<uintptr_t *>(object))) {
+        if (!inNode->IsEmpty()) {
+            WorkNode *tmp = outNode;
+            outNode = inNode;
+            inNode = tmp;
+        } else if (!PopWorkNodeFromGlobal(threadId)) {
+            return false;
+        }
+        return outNode->PopObject(reinterpret_cast<uintptr_t *>(object));
+    }
+    return true;
+}
+
+bool ShareGCWorkManager::PopWorkNodeFromGlobal(uint32_t threadId)
+{
+    return workStack_.Pop(&works_.at(threadId).outNode_);
 }
 }  // namespace panda::ecmascript

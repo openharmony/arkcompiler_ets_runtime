@@ -2887,7 +2887,7 @@ void RuntimeStubs::StoreBarrier([[maybe_unused]] uintptr_t argGlue,
         ASSERT((slotAddr % static_cast<uint8_t>(MemAlignment::MEM_ALIGN_OBJECT)) == 0);
         objectRegion->InsertOldToNewRSet(slotAddr);
     }
-    if (!objectRegion->InSharedSpace() && valueRegion->InSharedSpace()) {
+    if (!objectRegion->InSharedHeap() && valueRegion->InSharedSweepableSpace()) {
         objectRegion->AtomicInsertLocalToShareRset(slotAddr);
     }
     if (!thread->IsConcurrentMarkingOrFinished()) {

@@ -25,7 +25,7 @@ SerializedObjectSpace BaseSerializer::GetSerializedObjectSpace(TaggedObject *obj
 {
     auto region = Region::ObjectAddressToRange(object);
     // todo(lukai) allocateToSharedSpace please!
-    if (region->InYoungOrOldSpace() || region->InAppSpawnSpace() || region->InSharedSpace()) {
+    if (region->InYoungOrOldSpace() || region->InAppSpawnSpace() || region->InSharedHeap()) {
         return SerializedObjectSpace::OLD_SPACE;
     }
     if (region->InNonMovableSpace() || region->InReadOnlySpace()) {

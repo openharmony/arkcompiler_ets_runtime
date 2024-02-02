@@ -205,6 +205,9 @@ void ParallelEvacuator::VerifyValue(TaggedObject *object, ObjectSlot slot)
             return;
         }
         Region *objectRegion = Region::ObjectAddressToRange(value.GetTaggedObject());
+        if (objectRegion->InSharedHeap()) {
+            return;
+        }
         if (!heap_->IsFullMark() && !objectRegion->InYoungSpace()) {
             return;
         }
@@ -241,10 +244,6 @@ void ParallelEvacuator::UpdateReference()
         oldRegionCount++;
     });
     heap_->EnumerateSnapshotSpaceRegions([this] (Region *current) {
-        AddWorkload(std::make_unique<UpdateRSetWorkload>(this, current));
-    });
-    // todo(lukai) onlyfortest, delete this after all references of sharedobject are in shared space.
-    SharedHeap::GetInstance()->EnumerateOldSpaceRegions([this] (Region *current) {
         AddWorkload(std::make_unique<UpdateRSetWorkload>(this, current));
     });
     LOG_GC(DEBUG) << "UpdatePointers statistic: younge space region compact moving count:"
@@ -321,6 +320,9 @@ void ParallelEvacuator::UpdateWeakReference()
         if (!objectRegion) {
             LOG_GC(ERROR) << "PartialGC updateWeakReference: region is nullptr, header is " << header;
             return reinterpret_cast<TaggedObject *>(ToUintPtr(nullptr));
+        }
+        if (objectRegion->InSharedHeap()) {
+            return header;
         }
         if (objectRegion->InYoungSpaceOrCSet()) {
             if (objectRegion->InNewToNewSet()) {

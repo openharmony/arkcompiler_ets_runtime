@@ -222,18 +222,9 @@ void TaggedArray::CopyTaggedArrayElement(const JSThread *thread, JSHandle<Tagged
 {
     ASSERT(effectiveLength <= srcElements->GetLength());
     ASSERT(effectiveLength <= dstElements->GetLength());
-    // Region *region = Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(*dstElements));
-    // if (region->InYoungSpace() && !thread->IsConcurrentMarkingOrFinished()) {
-    //     size_t size = effectiveLength * sizeof(JSTaggedType);
-    //     if (memcpy_s(reinterpret_cast<void *>(dstElements->GetData()), size,
-    //         reinterpret_cast<void *>(srcElements->GetData()), size) != EOK) {
-    //         LOG_FULL(FATAL) << "memcpy_s failed" << " size: " << size;
-    //     }
-    // } else {
-        for (uint32_t i = 0; i < effectiveLength; i++) {
-            dstElements->Set(thread, i, srcElements->Get(i));
-        }
-    // }
+    for (uint32_t i = 0; i < effectiveLength; i++) {
+        dstElements->Set(thread, i, srcElements->Get(i));
+    }
 }
 
 inline bool TaggedArray::IsDictionaryMode() const

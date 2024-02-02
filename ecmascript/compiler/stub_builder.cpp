@@ -1257,8 +1257,8 @@ void StubBuilder::SetValueWithBarrier(GateRef glue, GateRef obj, GateRef offset,
     GateRef objectRegion = ObjectAddressToRange(obj);
     GateRef valueRegion = ObjectAddressToRange(value);
     GateRef slotAddr = PtrAdd(TaggedCastToIntPtr(obj), offset);
-    GateRef objectNotInShare = BoolNot(InSharedSpace(objectRegion));
-    GateRef valueRegionInShare = InSharedSpace(valueRegion);
+    GateRef objectNotInShare = BoolNot(InSharedHeap(objectRegion));
+    GateRef valueRegionInShare = InSharedSweepableSpace(valueRegion);
     Branch(BoolAnd(objectNotInShare, valueRegionInShare), &shareBarrier, &shareBarrierExit);
     Bind(&shareBarrier);
     {

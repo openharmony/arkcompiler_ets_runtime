@@ -40,11 +40,11 @@ static ARK_INLINE void WriteBarrier(const JSThread *thread, void *obj, size_t of
         ASSERT((slotAddr % static_cast<uint8_t>(MemAlignment::MEM_ALIGN_OBJECT)) == 0);
         objectRegion->InsertOldToNewRSet(slotAddr);
     }
-    if (!objectRegion->InSharedSpace() && valueRegion->InSharedSpace()) {
+    if (!objectRegion->InSharedHeap() && valueRegion->InSharedSweepableSpace()) {
         objectRegion->AtomicInsertLocalToShareRset(slotAddr);
     }
     // todo(lukai) remove this check in future, when all references are allocated in sharedheap.
-    if (objectRegion->InSharedSpace() && !valueRegion->InSharedSpace()) {
+    if (objectRegion->InSharedHeap() && !valueRegion->InSharedHeap()) {
         LOG_FULL(ERROR) << "Shared space reference to " << valueRegion->GetSpaceTypeName();
     }
     if (thread->IsConcurrentMarkingOrFinished()) {
