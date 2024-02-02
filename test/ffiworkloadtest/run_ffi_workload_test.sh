@@ -11,8 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-#!/bin/bash
-
 #
 # usage: bash run_ffi_workload_test.sh $run_mode $openharmony_path  $daily_report_folder_path $hdc_machine_ip 
 # eg:  bash run_ffi_workload_test.sh 1 /home/codes out 172.24.32.1:8710 
