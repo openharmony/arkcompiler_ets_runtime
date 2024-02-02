@@ -150,7 +150,17 @@ public:
         JSTaggedValue callResult = JSFunction::Call(info);
         RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, ComparisonResult::UNDEFINED);
         int compareResult = 0;
-        if (callResult.IsInt()) {
+        if (callResult.IsBoolean()) {
+            if (callResult.IsTrue()) {
+                compareResult = -1;
+            } else {
+                info = EcmaInterpreter::NewRuntimeCallInfo(thread, compareFn, thisArgHandle, undefined, argsLength);
+                info->SetCallArg(valueY.GetTaggedValue(), valueX.GetTaggedValue());
+                callResult = JSFunction::Call(info);
+                RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, ComparisonResult::UNDEFINED);
+                compareResult = callResult.IsTrue() ? 1 : 0;
+            }
+        } else if (callResult.IsInt()) {
             compareResult = callResult.GetInt();
         } else {
             JSHandle<JSTaggedValue> resultHandle(thread, callResult);
@@ -158,7 +168,8 @@ public:
             RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, ComparisonResult::UNDEFINED);
             double value = v.GetNumber();
             if (std::isnan(value)) {
-                THROW_TYPE_ERROR_AND_RETURN(thread, "CompareFn has illegal return value", ComparisonResult::UNDEFINED);
+                THROW_TYPE_ERROR_AND_RETURN(thread, "CompareFn has illegal return value",
+                                            ComparisonResult::UNDEFINED);
             }
             compareResult = static_cast<int>(value);
         }
