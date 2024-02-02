@@ -71,14 +71,15 @@ inline uintptr_t GlobalEnvConstants::GetGlobalConstantAddr(ConstantIndex index) 
     }
 
 #define DECL_GET_IMPL_WITH_TYPE(Type, Name, Index, Desc) DECL_GET_IMPL_COMMON(Type, Name, Index)
-    GLOBAL_ENV_CONSTANT_CLASS(DECL_GET_IMPL_WITH_TYPE)     // NOLINT(readability-const-return-type)
-    GLOBAL_ENV_CONSTANT_SPECIAL(DECL_GET_IMPL_WITH_TYPE)   // NOLINT(readability-const-return-type)
-    GLOBAL_ENV_CONSTANT_CONSTANT(DECL_GET_IMPL_WITH_TYPE)  // NOLINT(readability-const-return-type)
-    GLOBAL_ENV_CONSTANT_ACCESSOR(DECL_GET_IMPL_WITH_TYPE)  // NOLINT(readability-const-return-type)
-    GLOBAL_ENV_CACHES(DECL_GET_IMPL_WITH_TYPE)             // NOLINT(readability-const-return-type)
+    SHARED_GLOBAL_ENV_CONSTANT_CLASS(DECL_GET_IMPL_WITH_TYPE) // NOLINT(readability-const-return-type)
+    GLOBAL_ENV_CONSTANT_CLASS(DECL_GET_IMPL_WITH_TYPE)        // NOLINT(readability-const-return-type)
+    GLOBAL_ENV_CONSTANT_SPECIAL(DECL_GET_IMPL_WITH_TYPE)      // NOLINT(readability-const-return-type)
+    GLOBAL_ENV_CONSTANT_CONSTANT(DECL_GET_IMPL_WITH_TYPE)     // NOLINT(readability-const-return-type)
+    GLOBAL_ENV_CONSTANT_ACCESSOR(DECL_GET_IMPL_WITH_TYPE)     // NOLINT(readability-const-return-type)
+    GLOBAL_ENV_CACHES(DECL_GET_IMPL_WITH_TYPE)                // NOLINT(readability-const-return-type)
 
 #define DECL_GET_IMPL_STRING(Name, Index, Token) DECL_GET_IMPL_COMMON(JSTaggedValue, Name, Index)
-    GLOBAL_ENV_CONSTANT_STRING(DECL_GET_IMPL_STRING)       // NOLINT(readability-const-return-type)
+    SHARED_GLOBAL_ENV_CONSTANT_STRING(DECL_GET_IMPL_STRING)       // NOLINT(readability-const-return-type)
 #undef DECL_GET_IMPL_STRING
 
 #undef DECL_GET_IMPL_COMMON

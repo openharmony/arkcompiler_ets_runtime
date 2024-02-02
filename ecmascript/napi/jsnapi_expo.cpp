@@ -194,9 +194,7 @@ namespace {
 // NOLINTNEXTLINE(fuchsia-statically-constructed-objects)
 constexpr std::string_view ENTRY_POINTER = "_GLOBAL::func_main_0";
 }
-int JSNApi::vmCount_ = 0;
-bool JSNApi::initialize_ = false;
-static Mutex *mutex = new panda::Mutex();
+
 #define XPM_PROC_PREFIX "/proc/"
 #define XPM_PROC_SUFFIX "/xpm_region"
 #define XPM_PROC_LENGTH 50
@@ -2816,42 +2814,17 @@ void JSNApi::DestroyJSContext(EcmaVM *vm, EcmaContext *context)
 
 EcmaVM *JSNApi::CreateEcmaVM(const JSRuntimeOptions &options)
 {
-    {
-        LockHolder lock(*mutex);
-        vmCount_++;
-        if (!initialize_) {
-            ecmascript::Runtime::CreateRuntimeIfNotCreated();
-            ecmascript::Log::Initialize(options);
-            InitializeIcuData(options);
-            InitializeMemMapAllocator();
-            InitializePGOProfiler(options);
-            initialize_ = true;
-        }
-    }
-    auto config = ecmascript::EcmaParamConfiguration(options.IsWorker(),
-        MemMapAllocator::GetInstance()->GetCapacity());
-    LOG_ECMA(DEBUG) << " [NAPI]: CreateEcmaVM, isWorker = " << options.IsWorker() << ", vmCount = " << vmCount_;
-    MemMapAllocator::GetInstance()->IncreaseAndCheckReserved(config.GetMaxHeapSize());
-    return EcmaVM::Create(options, config);
+    return EcmaVM::Create(options);
 }
 
 void JSNApi::DestroyJSVM(EcmaVM *ecmaVm)
 {
-    LockHolder lock(*mutex);
-    if (!initialize_) {
+    if (UNLIKELY(ecmaVm == nullptr)) {
         return;
     }
     auto &config = ecmaVm->GetEcmaParamConfiguration();
     MemMapAllocator::GetInstance()->DecreaseReserved(config.GetMaxHeapSize());
     EcmaVM::Destroy(ecmaVm);
-    vmCount_--;
-    if (vmCount_ <= 0) {
-        DestroyAnDataManager();
-        DestroyMemMapAllocator();
-        DestroyPGOProfiler();
-        ecmascript::Runtime::GetInstance()->Destroy();
-        initialize_ = false;
-    }
 }
 
 void JSNApi::RegisterUncatchableErrorHandler(EcmaVM *ecmaVm, const UncatchableErrorHandler &handler)
@@ -3703,48 +3676,6 @@ Local<ObjectRef> JSNApi::ExecuteNativeModule(EcmaVM *vm, const std::string &key)
     ecmascript::ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
     JSHandle<JSTaggedValue> exportObj = moduleManager->LoadNativeModule(thread, key);
     return JSNApiHelper::ToLocal<ObjectRef>(exportObj);
-}
-
- // Initialize IcuData Path
-void JSNApi::InitializeIcuData(const JSRuntimeOptions &options)
-{
-    std::string icuPath = options.GetIcuDataPath();
-    if (icuPath == "default") {
-#if !WIN_OR_MAC_OR_IOS_PLATFORM && !defined(PANDA_TARGET_LINUX)
-        SetHwIcuDirectory();
-#endif
-    } else {
-        std::string absPath;
-        if (ecmascript::RealPath(icuPath, absPath)) {
-            u_setDataDirectory(absPath.c_str());
-        }
-    }
-}
-
-void JSNApi::InitializeMemMapAllocator()
-{
-    MemMapAllocator::GetInstance()->Initialize(ecmascript::DEFAULT_REGION_SIZE);
-}
-
-void JSNApi::DestroyMemMapAllocator()
-{
-    MemMapAllocator::GetInstance()->Finalize();
-}
-
-void JSNApi::InitializePGOProfiler(const ecmascript::JSRuntimeOptions &options)
-{
-    ecmascript::pgo::PGOProfilerManager::GetInstance()->Initialize(
-        options.GetPGOProfilerPath(), options.GetPGOHotnessThreshold());
-}
-
-void JSNApi::DestroyPGOProfiler()
-{
-    ecmascript::pgo::PGOProfilerManager::GetInstance()->Destroy();
-}
-
-void JSNApi::DestroyAnDataManager()
-{
-    ecmascript::AnFileDataManager::GetInstance()->SafeDestroyAllData();
 }
 
 // ---------------------------------- Promise -------------------------------------

@@ -76,7 +76,6 @@ JSThread *JSThread::Create(EcmaVM *vm)
     jsThread->glueData_.stackLimit_ = GetAsmStackLimit();
     jsThread->glueData_.stackStart_ = GetCurrentStackPosition();
 
-    Runtime::CreateRuntimeIfNotCreated();
     Runtime::GetInstance()->RegisterThread(jsThread);
     // If it is not true, we created a new thread for future fork
     if (currentThread == nullptr) {

@@ -1256,12 +1256,6 @@ public:
     static void SetSourceMapCallback(EcmaVM *vm, SourceMapCallback cb);
     static void SetSourceMapTranslateCallback(EcmaVM *vm, SourceMapTranslateCallback cb);
     static void SetHostEnqueueJob(const EcmaVM* vm, Local<JSValueRef> cb);
-    static void InitializeIcuData(const ecmascript::JSRuntimeOptions &options);
-    static void InitializeMemMapAllocator();
-    static void InitializePGOProfiler(const ecmascript::JSRuntimeOptions &options);
-    static void DestroyAnDataManager();
-    static void DestroyMemMapAllocator();
-    static void DestroyPGOProfiler();
     static EcmaVM* CreateEcmaVM(const ecmascript::JSRuntimeOptions &options);
     static void PreFork(EcmaVM *vm);
     static void PostFork(EcmaVM *vm, const RuntimeOption &option);

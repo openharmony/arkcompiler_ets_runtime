@@ -101,7 +101,7 @@ using DeviceDisconnectCallback = std::function<bool()>;
 using UncatchableErrorHandler = std::function<void(panda::TryCatch&)>;
 class EcmaVM {
 public:
-    static EcmaVM *Create(const JSRuntimeOptions &options, EcmaParamConfiguration &config);
+    static EcmaVM *Create(const JSRuntimeOptions &options);
 
     static bool Destroy(EcmaVM *vm);
 
@@ -585,6 +585,9 @@ public:
     {
         overLimit_ = state;
     }
+
+    static void InitializeIcuData(const JSRuntimeOptions &options);
+
 protected:
 
     void PrintJSErrorInfo(const JSHandle<JSTaggedValue> &exceptionInfo) const;

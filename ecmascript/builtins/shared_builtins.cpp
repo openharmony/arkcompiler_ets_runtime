@@ -36,7 +36,7 @@ void Builtins::InitializeSObjectAndSFunction(const JSHandle<GlobalEnv> &env) con
         factory_->NewSharedOldSpaceJSObject(sobjPrototypeHClass);
     JSHandle<JSTaggedValue> sObjFuncPrototypeVal(sObjFuncPrototype);
     // SharedObject.prototype_or_hclass
-    auto emptySLayout = sHeap_->GetGlobalConst()->GetHandledEmptySLayoutInfo();
+    auto emptySLayout = thread_->GlobalConstants()->GetHandledEmptySLayoutInfo();
     JSHandle<JSHClass> sObjIHClass =
         factory_->NewSEcmaHClass(JSSharedObject::SIZE, 0, JSType::JS_SHARED_OBJECT, sObjFuncPrototypeVal,
                                  emptySLayout);
@@ -90,9 +90,9 @@ void Builtins::InitializeSFunction(const JSHandle<GlobalEnv> &env,
 {
     [[maybe_unused]] EcmaHandleScope scope(thread_);
     SetSFunctionLength(sFuncPrototype, FunctionLength::ZERO);
-    SetSFunctionName(sFuncPrototype, sHeap_->GetGlobalConst()->GetHandledEmptyString());
+    SetSFunctionName(sFuncPrototype, thread_->GlobalConstants()->GetHandledEmptyString());
     // SharedFunction.prototype_or_hclass
-    auto emptySLayout = sHeap_->GetGlobalConst()->GetHandledEmptySLayoutInfo();
+    auto emptySLayout = thread_->GlobalConstants()->GetHandledEmptySLayoutInfo();
     JSHandle<JSHClass> sFuncIHClass = factory_->NewSEcmaHClass(JSSharedFunction::SIZE, 0, JSType::JS_SHARED_FUNCTION,
         JSHandle<JSTaggedValue>(sFuncPrototype), emptySLayout);
     sFuncIHClass->SetCallable(true);

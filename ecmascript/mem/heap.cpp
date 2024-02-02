@@ -64,13 +64,10 @@ bool SharedHeap::CheckAndTriggerOldGC(size_t size)
     return false;
 }
 
-// todo(lukai) use GlobalRuntime.globalconst
-void SharedHeap::Initialize(NativeAreaAllocator *nativeAreaAllocator, HeapRegionAllocator *heapRegionAllocator,
-    const GlobalEnvConstants *globalConst)
+void SharedHeap::Initialize(NativeAreaAllocator *nativeAreaAllocator, HeapRegionAllocator *heapRegionAllocator)
 {
     nativeAreaAllocator_ = nativeAreaAllocator;
     heapRegionAllocator_ = heapRegionAllocator;
-    globalEnvConstants_ = globalConst;
     size_t maxHeapSize = config_.GetMaxHeapSize();
 
     size_t nonmovableSpaceCapacity = config_.GetDefaultNonMovableSpaceSize();

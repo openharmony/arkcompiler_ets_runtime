@@ -275,6 +275,20 @@ TaggedObject *Heap::AllocateClassClass(JSHClass *hclass, size_t size)
     return object;
 }
 
+TaggedObject *SharedHeap::AllocateClassClass(JSHClass *hclass, size_t size)
+{
+    size = AlignUp(size, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
+    auto object = reinterpret_cast<TaggedObject *>(sNonMovableSpace_->Allocate(size));
+    if (UNLIKELY(object == nullptr)) {
+        LOG_ECMA_MEM(FATAL) << "Heap::AllocateClassClass can not allocate any space";
+        UNREACHABLE();
+    }
+    *reinterpret_cast<MarkWordType *>(ToUintPtr(object)) = reinterpret_cast<MarkWordType>(hclass);
+    // todo(Gymee)
+    // OnAllocateEvent(reinterpret_cast<TaggedObject*>(object), size);
+    return object;
+}
+
 TaggedObject *Heap::AllocateHugeObject(size_t size)
 {
     // Check whether it is necessary to trigger Old GC before expanding to avoid OOM risk.

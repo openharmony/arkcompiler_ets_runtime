@@ -16,19 +16,25 @@
 #ifndef ECMASCRIPT_RUNTIME_H
 #define ECMASCRIPT_RUNTIME_H
 
+#include "ecmascript/global_env_constants.h"
+#include "ecmascript/js_runtime_options.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/platform/mutex.h"
+#include "ecmascript/mem/heap.h"
 #include "ecmascript/mutator_lock.h"
+
 #include "libpandabase/macros.h"
+
 #include <list>
 
 namespace panda::ecmascript {
 class Runtime {
 public:
     static Runtime *GetInstance();
-    static void CreateRuntimeIfNotCreated();
-    void Destroy();
-    ~Runtime() = default;
+
+    static void CreateIfFirstVm(const JSRuntimeOptions &options);
+    static void DestroyIfLastVm();
+    void InitializeIfFirstVm(EcmaVM *vm);
 
     void RegisterThread(JSThread* newThread);
     void UnregisterThread(JSThread* thread);
@@ -46,21 +52,42 @@ public:
         return &mutatorLock_;
     }
 
+    inline const GlobalEnvConstants *GetGlobalEnvConstants()
+    {
+        return globalConstants_;
+    }
+
 private:
     Runtime() = default;
+    ~Runtime() = default;
     void SuspendAllThreadsImpl(JSThread *current);
     void ResumeAllThreadsImpl(JSThread *current);
+
+    void PreInitialization(const EcmaVM *vm);
+    void PostInitialization();
 
     Mutex threadsLock_;
     std::list<JSThread*> threads_;
     uint32_t suspendNewCount_ {0};
-
     MutatorLock mutatorLock_;
+
+    const GlobalEnvConstants *globalConstants_ {nullptr};
+    JSThread *mainThread_ {nullptr};
+    // for shared heap.
+    std::unique_ptr<NativeAreaAllocator> nativeAreaAllocator_;
+    std::unique_ptr<HeapRegionAllocator> heapRegionAllocator_;
+
+    // Runtime instance and VMs creation.
+    static int32_t vmCount_;
+    static bool firstVmCreated_;
+    static Mutex *vmCreationLock_;
+    static Runtime *instance_;
+
+    friend class EcmaVM;
+    friend class JSThread;
 
     NO_COPY_SEMANTIC(Runtime);
     NO_MOVE_SEMANTIC(Runtime);
-
-    friend class JSThread;
 };
 }  // namespace panda::ecmascript
 #endif // ECMASCRIPT_RUNTIME_H

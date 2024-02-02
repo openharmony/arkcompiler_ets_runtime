@@ -237,8 +237,7 @@ public:
         return shareHeap;
     }
 
-    void Initialize(NativeAreaAllocator *nativeAreaAllocator, HeapRegionAllocator *heapRegionAllocator,
-        const GlobalEnvConstants *globalConst);
+    void Initialize(NativeAreaAllocator *nativeAreaAllocator, HeapRegionAllocator *heapRegionAllocator);
 
     bool IsMarking() const override
     {
@@ -375,13 +374,20 @@ public:
         return nullptr;
     }
 
-    const GlobalEnvConstants *GetGlobalConst() const override
+    inline void SetGlobalEnvConstants(const GlobalEnvConstants *globalEnvConstants)
+    {
+        globalEnvConstants_ = globalEnvConstants;
+    }
+
+    inline const GlobalEnvConstants *GetGlobalConst() const override
     {
         return globalEnvConstants_;
     }
 
     template<class Callback>
     void EnumerateOldSpaceRegions(const Callback &cb) const;
+
+    inline TaggedObject *AllocateClassClass(JSHClass *hclass, size_t size);
 
     inline TaggedObject *AllocateNonMovableOrHugeObject(JSThread *thread, JSHClass *hclass);
 
