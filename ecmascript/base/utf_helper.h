@@ -32,6 +32,7 @@ static constexpr uint32_t DECODE_SECOND_FACTOR = 0x10000;
 static constexpr uint32_t UTF8_OFFSET = 6;
 static constexpr uint32_t UTF16_OFFSET = 10;
 static constexpr uint16_t SURROGATE_MASK = 0xF800;
+static constexpr uint16_t UTF16_REPLACEMENT_CHARACTER = 0xFFFD;
 
 static constexpr uint8_t BIT_MASK_1 = 0x80;
 static constexpr uint8_t BIT_MASK_2 = 0xC0;
@@ -85,6 +86,11 @@ size_t Utf16ToUtf8Size(const uint16_t *utf16, uint32_t length, bool modify = tru
 
 size_t PUBLIC_API ConvertRegionUtf16ToUtf8(const uint16_t *utf16In, uint8_t *utf8Out, size_t utf16Len, size_t utf8Len,
                                            size_t start, bool modify = true, bool isWriteBuffer = false);
+
+size_t DebuggerConvertRegionUtf16ToUtf8(const uint16_t *utf16In, uint8_t *utf8Out, size_t utf16Len, size_t utf8Len,
+                                           size_t start, bool modify = true, bool isWriteBuffer = false);
+
+uint32_t HandleAndDecodeInvalidUTF16(uint16_t const *utf16, size_t len, size_t *index);
 
 std::pair<uint32_t, size_t> ConvertUtf8ToUtf16Pair(const uint8_t *data, bool combine = false);
 
