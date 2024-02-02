@@ -87,7 +87,7 @@ size_t ConvertRegionUtf16ToUtf8(const uint16_t *utf16In, uint8_t *utf8Out, size_
                                 size_t start, bool modify = true, bool isWriteBuffer = false);
 
 size_t DebuggerConvertRegionUtf16ToUtf8(const uint16_t *utf16In, uint8_t *utf8Out, size_t utf16Len, size_t utf8Len,
-                                           size_t start, bool modify = true, bool isWriteBuffer = false);
+                                        size_t start, bool modify = true, bool isWriteBuffer = false);
 
 uint32_t HandleAndDecodeInvalidUTF16(uint16_t const *utf16, size_t len, size_t *index);
 
