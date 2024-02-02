@@ -2280,9 +2280,8 @@ const CString JSObject::ExtractConstructorAndRecordName(JSThread *thread, Tagged
 }
 
 JSHandle<JSTaggedValue> JSObject::SpeciesConstructor(JSThread *thread, const JSHandle<JSObject> &obj,
-                                                     const JSHandle<JSTaggedValue> &defaultConstructort)
+                                                     const JSHandle<JSTaggedValue> &defaultConstructor)
 {
-    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     const GlobalEnvConstants *globalConst = thread->GlobalConstants();
     // Assert: Type(O) is Object.
     ASSERT_PRINT(obj->IsECMAObject(), "obj must be js object");
@@ -2293,9 +2292,16 @@ JSHandle<JSTaggedValue> JSObject::SpeciesConstructor(JSThread *thread, const JSH
         contructorKey).GetValue());
     // ReturnIfAbrupt(C).
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
-    // If C is undefined, return defaultConstructor.
+    return SlowSpeciesConstructor(thread, objConstructor, defaultConstructor);
+}
+
+JSHandle<JSTaggedValue> JSObject::SlowSpeciesConstructor(JSThread *thread,
+                                                         const JSHandle<JSTaggedValue> &objConstructor,
+                                                         const JSHandle<JSTaggedValue> &defaultConstructor)
+{
+    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     if (objConstructor->IsUndefined()) {
-        return defaultConstructort;
+        return defaultConstructor;
     }
     // If Type(C) is not Object, throw a TypeError exception.
     if (!objConstructor->IsECMAObject()) {
@@ -2304,12 +2310,12 @@ JSHandle<JSTaggedValue> JSObject::SpeciesConstructor(JSThread *thread, const JSH
     }
     // Let S be Get(C, @@species).
     JSHandle<JSTaggedValue> speciesSymbol = env->GetSpeciesSymbol();
-    JSHandle<JSTaggedValue> speciesConstructor(GetProperty(thread, objConstructor, speciesSymbol).GetValue());
+    JSHandle<JSTaggedValue> speciesConstructor = GetProperty(thread, objConstructor, speciesSymbol).GetValue();
     // ReturnIfAbrupt(S).
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
     // If S is either undefined or null, return defaultConstructor.
     if (speciesConstructor->IsUndefined() || speciesConstructor->IsNull()) {
-        return defaultConstructort;
+        return defaultConstructor;
     }
     // If IsConstructor(S) is true, return S.
     if (speciesConstructor->IsConstructor()) {

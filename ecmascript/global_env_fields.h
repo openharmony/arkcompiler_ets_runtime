@@ -155,7 +155,6 @@
     V(JSTaggedValue, MatchSymbol, MATCH_SYMBOL_INDEX)                                               \
     V(JSTaggedValue, MatchAllSymbol, MATCH_All_SYMBOL_INDEX)                                        \
     V(JSTaggedValue, SearchSymbol, SEARCH_SYMBOL_INDEX)                                             \
-    V(JSTaggedValue, SpeciesSymbol, SPECIES_SYMBOL_INDEX)                                           \
     V(JSTaggedValue, ToPrimitiveSymbol, TOPRIMITIVE_SYMBOL_INDEX)                                   \
     V(JSTaggedValue, UnscopablesSymbol, UNSCOPABLES_SYMBOL_INDEX)                                   \
     V(JSTaggedValue, HoleySymbol, HOLEY_SYMBOL_OFFSET)                                              \
@@ -232,7 +231,8 @@
 #define GLOBAL_ENV_DETECTOR_SYMBOL_FIELDS(V)                                                        \
     V(JSTaggedValue, ReplaceSymbol, REPLACE_SYMBOL_INDEX)                                           \
     V(JSTaggedValue, SplitSymbol, SPLIT_SYMBOL_INDEX)                                               \
-    V(JSTaggedValue, IteratorSymbol, ITERATOR_SYMBOL_INDEX)
+    V(JSTaggedValue, IteratorSymbol, ITERATOR_SYMBOL_INDEX)                                         \
+    V(JSTaggedValue, SpeciesSymbol, SPECIES_SYMBOL_INDEX)
 
 #define GLOBAL_ENV_FIELDS(V)                                \
     GLOBAL_ENV_COMMON_FIELDS(V)                             \

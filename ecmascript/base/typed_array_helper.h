@@ -53,6 +53,8 @@ public:
     inline static JSHandle<JSTaggedValue> GetConstructor(JSThread *thread, const JSHandle<JSTaggedValue> &obj);
     inline static JSHandle<JSFunction> GetConstructorFromType(JSThread *thread,
                                                               const DataViewType arrayType);
+    inline static JSHandle<JSTaggedValue> GetConstructorNameFromType(JSThread *thread,
+                                                                     const DataViewType arrayType);
     inline static JSHandle<JSHClass> GetOnHeapHclassFromType(
         JSThread *thread, const JSHandle<JSTypedArray> &obj, const DataViewType arrayType);
     inline static JSHandle<JSHClass> GetNotOnHeapHclassFromType(
