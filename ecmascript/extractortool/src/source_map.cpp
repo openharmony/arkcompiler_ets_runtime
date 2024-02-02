@@ -238,11 +238,11 @@ MappingInfo SourceMap::Find(int32_t row, int32_t col, const SourceMapData& targe
         sources.replace(pos, sizeof(WEBPACK) - 1, "");
     }
 
-    return MappingInfo {
-        .row = targetMap.afterPos_[res].beforeRow + 1,
-        .col = targetMap.afterPos_[res].beforeColumn + 1,
-        .sources = sources,
-    };
+    MappingInfo mappingInfo;
+    mappingInfo.row = targetMap.afterPos_[res].beforeRow + 1;
+    mappingInfo.col = targetMap.afterPos_[res].beforeColumn + 1;
+    mappingInfo.sources = sources;
+    return mappingInfo;
 }
 
 void SourceMap::ExtractKeyInfo(const std::string& sourceMap, std::vector<std::string>& sourceKeyInfo)

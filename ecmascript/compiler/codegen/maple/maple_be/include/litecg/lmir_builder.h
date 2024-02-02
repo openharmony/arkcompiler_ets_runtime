@@ -301,7 +301,6 @@ public:
                              .Ret(i32Type)               // optional for void
                              .Done();
 
-         // i32 myfunc1(i32 param1, i64 param2);
          auto structType = DeclareFunction("myfunc1")
                              .Param(i32Type, "param1")
                              .Param(i64Type, "param2")
