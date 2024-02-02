@@ -572,6 +572,24 @@ private:
         return str;
     }
 
+    Span<const uint8_t> DebuggerToUtf8Span(CVector<uint8_t> &buf, bool modify = true)
+    {
+        Span<const uint8_t> str;
+        uint32_t strLen = GetLength();
+        if (UNLIKELY(IsUtf16())) {
+            CVector<uint16_t> tmpBuf;
+            const uint16_t *data = EcmaString::GetUtf16DataFlat(this, tmpBuf);
+            size_t len = base::utf_helper::Utf16ToUtf8Size(data, strLen, modify) - 1;
+            buf.reserve(len);
+            len = base::utf_helper::DebuggerConvertRegionUtf16ToUtf8(data, buf.data(), strLen, len, 0, modify);
+            str = Span<const uint8_t>(buf.data(), len);
+        } else {
+            const uint8_t *data = EcmaString::GetUtf8DataFlat(this, buf);
+            str = Span<const uint8_t>(data, strLen);
+        }
+        return str;
+    }
+
     inline Span<const uint8_t> FastToUtf8Span() const;
 
     bool TryToGetInteger(uint32_t *result)
@@ -1198,6 +1216,7 @@ public:
     // if string is not flat, this func has low efficiency.
     std::string ToStdString(StringConvertedUsage usage = StringConvertedUsage::PRINT);
 
+    std::string DebuggerToStdString(StringConvertedUsage usage = StringConvertedUsage::PRINT);
     // not change string data structure.
     // if string is not flat, this func has low efficiency.
     CString ToCString(StringConvertedUsage usage = StringConvertedUsage::LOGICOPERATION);
