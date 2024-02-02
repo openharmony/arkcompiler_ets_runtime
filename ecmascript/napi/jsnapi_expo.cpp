@@ -1326,6 +1326,12 @@ std::string StringRef::ToString()
     return EcmaStringAccessor(JSNApiHelper::ToJSTaggedValue(this)).ToStdString();
 }
 
+std::string StringRef::DebuggerToString()
+{
+    DCHECK_SPECIAL_VALUE_WITH_RETURN(this, "");
+    return EcmaStringAccessor(JSNApiHelper::ToJSTaggedValue(this)).DebuggerToStdString();
+}
+
 uint32_t StringRef::Length()
 {
     DCHECK_SPECIAL_VALUE_WITH_RETURN(this, 0);

@@ -57,6 +57,31 @@ uint32_t DecodeUTF16(uint16_t const *utf16, size_t len, size_t *index)
     return ((high - DECODE_LEAD_LOW) << UTF16_OFFSET) + (low - DECODE_TRAIL_LOW) + DECODE_SECOND_FACTOR;
 }
 
+uint32_t HandleAndDecodeInvalidUTF16(uint16_t const *utf16, size_t len, size_t *index)
+{
+    uint16_t first = utf16[*index];
+    // A valid surrogate pair should always start with a High Surrogate
+    if (IsUTF16LowSurrogate(first)) {
+        return UTF16_REPLACEMENT_CHARACTER;
+    }
+    if (IsUTF16HighSurrogate(first) || (first & SURROGATE_MASK) == DECODE_LEAD_LOW) {
+        if (*index == len - 1) {
+            // A High surrogate not paired with another surrogate
+            return UTF16_REPLACEMENT_CHARACTER;
+        }
+        uint16_t second = utf16[*index + 1];
+        if (!IsUTF16LowSurrogate(second)) {
+            // A High surrogate not followed by a low surrogate
+            return UTF16_REPLACEMENT_CHARACTER;
+        }
+        // A valid surrogate pair, decode normally
+        (*index)++;
+        return ((first - DECODE_LEAD_LOW) << UTF16_OFFSET) + (second - DECODE_TRAIL_LOW) + DECODE_SECOND_FACTOR;
+    }
+    // A unicode not fallen into the range of representing by surrogate pair, return as it is
+    return first;
+}
+
 inline size_t UTF8Length(uint32_t codepoint)
 {
     if (codepoint <= UTF8_1B_MAX) {
@@ -223,6 +248,33 @@ size_t ConvertRegionUtf16ToUtf8(const uint16_t *utf16In, uint8_t *utf8Out, size_
     size_t end = start + utf16Len;
     for (size_t i = start; i < end; ++i) {
         uint32_t codepoint = DecodeUTF16(utf16In, end, &i);
+        if (codepoint == 0) {
+            if (isWriteBuffer) {
+                utf8Out[utf8Pos++] = 0x00U;
+                continue;
+            }
+            if (modify) {
+                // special case for \u0000 ==> C080 - 1100'0000 1000'0000
+                utf8Out[utf8Pos++] = UTF8_2B_FIRST;
+                utf8Out[utf8Pos++] = UTF8_2B_SECOND;
+            }
+            continue;
+        }
+        utf8Pos += EncodeUTF8(codepoint, utf8Out, utf8Len, utf8Pos);
+    }
+    return utf8Pos;
+}
+
+size_t DebuggerConvertRegionUtf16ToUtf8(const uint16_t *utf16In, uint8_t *utf8Out, size_t utf16Len, size_t utf8Len,
+                                        size_t start, bool modify, bool isWriteBuffer)
+{
+    if (utf16In == nullptr || utf8Out == nullptr || utf8Len == 0) {
+        return 0;
+    }
+    size_t utf8Pos = 0;
+    size_t end = start + utf16Len;
+    for (size_t i = start; i < end; ++i) {
+        uint32_t codepoint = HandleAndDecodeInvalidUTF16(utf16In, end, &i);
         if (codepoint == 0) {
             if (isWriteBuffer) {
                 utf8Out[utf8Pos++] = 0x00U;
