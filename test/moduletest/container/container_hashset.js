@@ -131,6 +131,22 @@ if (globalThis["ArkPrivate"] != undefined) {
     map.set("test clear:", proxy.length == 0 && !proxy.has("cc") && proxy.isEmpty());
 
     flag = false;
+    let seten = new fastset();
+    seten.add(1);
+    seten.add(2);
+    seten.add(3);
+    seten.add(4);
+    seten.add(5);
+    let iter = seten.entries();
+    let temp = iter.next();
+    while(!temp.done) {
+        if ((temp.value[0]) == (temp.value[1])) {
+            flag = true;
+        }
+        temp = iter.next();
+    }
+    map.set("test entries return type", flag);
+    flag = false;
     try {
         proxy["aa"] = 3;
     } catch (e) {

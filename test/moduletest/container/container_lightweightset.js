@@ -112,6 +112,23 @@ if (globalThis["ArkPrivate"] != undefined) {
     res.set("test COW - check b.length :", b.length == (LOOP_COUNT + 1));
 
     flag = false;
+    let seten = new fastset();
+    seten.add(1);
+    seten.add(2);
+    seten.add(3);
+    seten.add(4);
+    seten.add(5);
+    let iter = seten.entries();
+    let temp = iter.next();
+    while(!temp.done) {
+        if ((temp.value[0]) == (temp.value[1])) {
+            flag = true;
+        }
+        temp = iter.next();
+    }
+    res.set("test entries return type", flag);
+
+    flag = false;
     try {
         proxy["aa"] = 3;
     } catch (e) {
