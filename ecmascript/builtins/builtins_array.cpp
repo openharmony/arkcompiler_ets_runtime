@@ -170,6 +170,11 @@ JSTaggedValue BuiltinsArray::From(EcmaRuntimeCallInfo *argv)
         JSHandle<EcmaString> strItems(items);
         return BuiltinsString::StringToList(thread, strItems);
     }
+    // Fast path for TypedArray
+    if (!mapping && items->IsTypedArray()) {
+        JSHandle<JSTypedArray> arrayItems(items);
+        return BuiltinsArrayBuffer::TypedArrayToList(thread, arrayItems);
+    }
 
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     JSHandle<JSTaggedValue> iteratorSymbol = env->GetIteratorSymbol();

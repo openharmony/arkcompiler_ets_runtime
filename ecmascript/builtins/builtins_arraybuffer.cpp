@@ -30,11 +30,15 @@
 #include "ecmascript/js_tagged_value-inl.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/object_factory.h"
+#include "ecmascript/base/typed_array_helper-inl.h"
+#include "ecmascript/base/typed_array_helper.h"
+
 #include "securec.h"
 #include "cstdio"
 #include "cstring"
 
 namespace panda::ecmascript::builtins {
+using TypedArrayHelper = base::TypedArrayHelper;
 // 24.1.2.1 ArrayBuffer(length)
 JSTaggedValue BuiltinsArrayBuffer::ArrayBufferConstructor(EcmaRuntimeCallInfo *argv)
 {
@@ -753,6 +757,34 @@ void *BuiltinsArrayBuffer::GetDataPointFromBuffer(JSTaggedValue arrBuf, uint32_t
     JSTaggedValue data = arrayBuffer->GetArrayBufferData();
     return reinterpret_cast<void *>(ToUintPtr(JSNativePointer::Cast(data.GetTaggedObject())
                                     ->GetExternalPointer()) + byteOffset);
+}
+
+JSTaggedValue BuiltinsArrayBuffer::TypedArrayToList(JSThread *thread, JSHandle<JSTypedArray>& items)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<JSTaggedValue> bufferHandle(thread, items->GetViewedArrayBufferOrByteArray());
+    uint32_t arrayLen = items->GetArrayLength();
+    JSTaggedValue newArray = JSArray::ArrayCreate(thread, JSTaggedNumber(0)).GetTaggedValue();
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    JSHandle<JSObject> newArrayHandle(thread, newArray);
+    JSHandle<TaggedArray> oldElements(thread, newArrayHandle->GetElements());
+    JSHandle<TaggedArray> elements = (oldElements->GetLength() < arrayLen) ?
+        factory->ExtendArray(oldElements, arrayLen) : oldElements;
+    newArrayHandle->SetElements(thread, elements);
+    uint32_t offset = items->GetByteOffset();
+    uint32_t elementSize = TypedArrayHelper::GetElementSize(items);
+    DataViewType elementType = TypedArrayHelper::GetType(items);
+    uint32_t index = 0;
+    while (index < arrayLen) {
+        uint32_t byteIndex = index * elementSize + offset;
+        JSTaggedValue result = GetValueFromBuffer(thread, bufferHandle.GetTaggedValue(),
+                                                  byteIndex, elementType, true);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        ElementAccessor::Set(thread, newArrayHandle, index, result, true);
+        index++;
+    }
+    JSHandle<JSArray>(newArrayHandle)->SetArrayLength(thread, arrayLen);
+    return newArrayHandle.GetTaggedValue();
 }
 
 template<typename T>
