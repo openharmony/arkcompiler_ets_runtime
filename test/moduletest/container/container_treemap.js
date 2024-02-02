@@ -165,6 +165,19 @@ if (globalThis["ArkPrivate"] != undefined) {
     dProxy.clear();
     res.set("test clear:", dProxy.length == 0);
 
+    let commap = new fastmap((firstValue, secondValue) => {return firstValue > secondValue});
+    commap.set("c","1");
+    commap.set("a","8");
+    commap.set("b","2");
+    commap.set("d","4");
+    if (commap.length == 4) {
+        commap.remove("a");
+        commap.remove("b");
+        commap.remove("c");
+        commap.remove("d");
+    }
+    res.set("test commpare", commap.length == 0);
+
     flag = false;
     try {
         proxy["aa"] = 3;
