@@ -266,7 +266,7 @@ size_t ConvertRegionUtf16ToUtf8(const uint16_t *utf16In, uint8_t *utf8Out, size_
 }
 
 size_t DebuggerConvertRegionUtf16ToUtf8(const uint16_t *utf16In, uint8_t *utf8Out, size_t utf16Len, size_t utf8Len,
-                                size_t start, bool modify, bool isWriteBuffer)
+                                        size_t start, bool modify, bool isWriteBuffer)
 {
     if (utf16In == nullptr || utf8Out == nullptr || utf8Len == 0) {
         return 0;
