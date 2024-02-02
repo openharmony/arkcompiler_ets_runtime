@@ -19,6 +19,7 @@
 #include "ecmascript/base/builtins_base.h"
 #include "ecmascript/base/number_helper.h"
 #include "ecmascript/js_dataview.h"
+#include "ecmascript/js_typed_array.h"
 
 namespace panda::ecmascript::builtins {
 static constexpr double NUMBER_HALF = 0.5;
@@ -95,6 +96,7 @@ public:
     static JSTaggedValue GetValueFromBuffer(JSThread *thread, uint32_t byteIndex, uint8_t *block,
                                             DataViewType type, bool littleEndian);
     static void *GetDataPointFromBuffer(JSTaggedValue arrBuf, uint32_t byteOffset = 0);
+
 private:
     template <typename T>
     static T LittleEndianToBigEndian(T liValue);
@@ -136,6 +138,10 @@ private:
     template<typename T>
     static void SetValueInBufferForBigInt(JSThread *thread, double val,
                                           uint8_t *block, uint32_t byteIndex, bool littleEndian);
+
+    static JSTaggedValue TypedArrayToList(JSThread *thread, JSHandle<JSTypedArray>& items);
+
+    friend class BuiltinsArray;
 };
 }  // namespace panda::ecmascript::builtins
 
