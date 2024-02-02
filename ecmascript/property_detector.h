@@ -32,7 +32,8 @@ public:
     V(JSTaggedValue, SetIteratorDetector, SET_ITERATOR_DETECTOR_INDEX)                  \
     V(JSTaggedValue, StringIteratorDetector, STRING_ITERATOR_DETECTOR_INDEX)            \
     V(JSTaggedValue, ArrayIteratorDetector, ARRAY_ITERATOR_DETECTOR_INDEX)              \
-    V(JSTaggedValue, TypedArrayIteratorDetector, TYPED_ARRAY_ITERATOR_DETECTOR_INDEX)
+    V(JSTaggedValue, TypedArrayIteratorDetector, TYPED_ARRAY_ITERATOR_DETECTOR_INDEX)   \
+    V(JSTaggedValue, TypedArraySpeciesProtectDetector, TYPED_ARRAY_SPECIES_PROTECT_DETECTOR_INDEX)
 
 #define DECLARE_DETECTOR(type, name, index)                        \
     static inline bool Is##name##Valid(JSHandle<GlobalEnv> env);   \
@@ -43,7 +44,8 @@ public:
 #define DETECTOR_SYMBOL_LIST(V)                      \
     V(ReplaceSymbol,  "Symbol.replace",   replace )  \
     V(SplitSymbol,    "Symbol.split",     split   )  \
-    V(IteratorSymbol, "Symbol.iterator",  iterator)
+    V(IteratorSymbol, "Symbol.iterator",  iterator)  \
+    V(SpeciesSymbol,  "Symbol.species",   species)
 };
 
 }  // namespace ecmascript

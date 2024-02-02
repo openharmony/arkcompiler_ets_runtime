@@ -185,6 +185,36 @@ JSHandle<JSFunction> TypedArrayHelper::GetConstructorFromType(JSThread *thread, 
     return JSHandle<JSFunction>(env->GetBigUint64ArrayFunction());
 }
 
+JSHandle<JSTaggedValue> TypedArrayHelper::GetConstructorNameFromType(JSThread *thread, const DataViewType arrayType)
+{
+    const GlobalEnvConstants *globalConst = thread->GlobalConstants();
+    switch (arrayType) {
+        case DataViewType::INT8:
+            return globalConst->GetHandledInt8ArrayString();
+        case DataViewType::UINT8:
+            return globalConst->GetHandledUint8ArrayString();
+        case DataViewType::UINT8_CLAMPED:
+            return globalConst->GetHandledUint8ClampedArrayString();
+        case DataViewType::INT16:
+            return globalConst->GetHandledInt16ArrayString();
+        case DataViewType::UINT16:
+            return globalConst->GetHandledUint16ArrayString();
+        case DataViewType::INT32:
+            return globalConst->GetHandledInt32ArrayString();
+        case DataViewType::UINT32:
+            return globalConst->GetHandledUint32ArrayString();
+        case DataViewType::FLOAT32:
+            return globalConst->GetHandledFloat32ArrayString();
+        case DataViewType::FLOAT64:
+            return globalConst->GetHandledFloat64ArrayString();
+        case DataViewType::BIGINT64:
+            return globalConst->GetHandledBigInt64ArrayString();
+        default:
+            break;
+    }
+    return globalConst->GetHandledBigInt64ArrayString();
+}
+
 JSHandle<JSHClass> TypedArrayHelper::GetOnHeapHclassFromType(
     JSThread *thread, const JSHandle<JSTypedArray> &obj, const DataViewType arrayType)
 {

@@ -34,7 +34,7 @@ public:
 
     GLOBAL_ENV_FIELDS(GLOBAL_ENV_SLOT)
     static constexpr uint8_t FIRST_DETECTOR_SYMBOL_INDEX = static_cast<uint8_t>(Field::REPLACE_SYMBOL_INDEX);
-    static constexpr uint8_t LAST_DETECTOR_SYMBOL_INDEX = static_cast<uint8_t>(Field::ITERATOR_SYMBOL_INDEX);
+    static constexpr uint8_t LAST_DETECTOR_SYMBOL_INDEX = static_cast<uint8_t>(Field::SPECIES_SYMBOL_INDEX);
     static constexpr uint8_t FINAL_INDEX = static_cast<uint8_t>(GlobalEnvField::FINAL_INDEX);
     static constexpr uint8_t RESERVED_LENGTH = 1; // divide the gc area
     static constexpr uint8_t JSTHREAD_INDEX = FINAL_INDEX; // not need gc

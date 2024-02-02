@@ -274,6 +274,9 @@ void ObjectOperator::UpdateDetectorOnSetPrototype(const JSThread *thread, JSTagg
             if (PropertyDetector::IsTypedArrayIteratorDetectorValid(env)) {
                 PropertyDetector::InvalidateTypedArrayIteratorDetector(env);
             }
+            if (PropertyDetector::IsTypedArraySpeciesProtectDetectorValid(env)) {
+                PropertyDetector::InvalidateTypedArraySpeciesProtectDetector(env);
+            }
             return;
         }
         default:
@@ -373,6 +376,13 @@ void ObjectOperator::UpdateDetector(const JSThread *thread, JSTaggedValue receiv
                 return;
             }
             PropertyDetector::InvalidateTypedArrayIteratorDetector(env);
+        }
+    } else if (key == env->GetTaggedSpeciesSymbol()) {
+        if (receiver.IsJSObject()) {
+            if (!PropertyDetector::IsTypedArraySpeciesProtectDetectorValid(env)) {
+                return;
+            }
+            PropertyDetector::InvalidateTypedArraySpeciesProtectDetector(env);
         }
     }
 }

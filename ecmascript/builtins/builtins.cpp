@@ -716,8 +716,6 @@ void Builtins::InitializeSymbol(const JSHandle<GlobalEnv> &env, const JSHandle<J
     SetNoneAttributeProperty(symbolFunction, "matchAll", matchAllSymbol);
     JSHandle<JSTaggedValue> searchSymbol(factory_->NewPublicSymbolWithChar("Symbol.search"));
     SetNoneAttributeProperty(symbolFunction, "search", searchSymbol);
-    JSHandle<JSTaggedValue> speciesSymbol(factory_->NewPublicSymbolWithChar("Symbol.species"));
-    SetNoneAttributeProperty(symbolFunction, "species", speciesSymbol);
     JSHandle<JSTaggedValue> toPrimitiveSymbol(factory_->NewPublicSymbolWithChar("Symbol.toPrimitive"));
     SetNoneAttributeProperty(symbolFunction, "toPrimitive", toPrimitiveSymbol);
     JSHandle<JSTaggedValue> unscopablesSymbol(factory_->NewPublicSymbolWithChar("Symbol.unscopables"));
