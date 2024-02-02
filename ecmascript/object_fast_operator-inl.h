@@ -616,9 +616,11 @@ PropertyAttributes ObjectFastOperator::AddPropertyByName(JSThread *thread, JSHan
         JSHClass::AddProperty(thread, objHandle, keyHandle, attr);
         auto actualValue = JSHClass::ConvertOrTransitionWithRep(thread, objHandle, keyHandle, valueHandle, attr);
         if (std::get<0>(actualValue)) {
-            objHandle->SetPropertyInlinedProps<true>(thread, nextInlinedPropsIndex, std::get<2>(actualValue));
+            objHandle->SetPropertyInlinedProps<true>(thread, nextInlinedPropsIndex,
+                std::get<2>(actualValue)); // 2 : Gets the third value
         } else {
-            objHandle->SetPropertyInlinedProps<false>(thread, nextInlinedPropsIndex, std::get<2>(actualValue));
+            objHandle->SetPropertyInlinedProps<false>(thread, nextInlinedPropsIndex,
+                std::get<2>(actualValue)); // 2 : Gets the third value
         }
         return attr;
     }

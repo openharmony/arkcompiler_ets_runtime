@@ -1599,8 +1599,7 @@ void BytecodeInfo::InitBytecodeInfo(BytecodeCircuitBuilder *builder,
             info.inputs.emplace_back(VirtualRegister(builder->GetEnvVregIdx()));
             break;
         }
-        case EcmaOpcode::STPRIVATEPROPERTY_IMM8_IMM16_IMM16_V8:
-        {
+        case EcmaOpcode::STPRIVATEPROPERTY_IMM8_IMM16_IMM16_V8: {
             uint32_t slotId = READ_INST_8_0();
             uint32_t levelIndex = READ_INST_16_1();
             uint32_t slotIndex = READ_INST_16_3();

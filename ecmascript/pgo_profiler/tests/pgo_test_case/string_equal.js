@@ -14,14 +14,14 @@
  * limitations under the License.
  */
 
-let a = "abcString";
+let a = 'abcString';
 
 function foo1(a) {
-    typeof a == "string";
+  typeof a == 'string';
 }
 
 function foo2(a) {
-    a[0] == "a";
+  a[0] == "a";
 }
 
 foo1(a);

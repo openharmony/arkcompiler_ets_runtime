@@ -14,32 +14,32 @@
  */
 declare function print(arg:any, arg1?:any):string;
 
-let str:string = "1234567890上下左右中";
+let str:string = '1234567890上下左右中';
 
 // two const
-print("123" == "123");
-print(str == "1234567890上下左右中");
-print("1" == "1")
-print(str[0] == "12")
+print('123' == '123');
+print(str == '1234567890上下左右中');
+print('1' == '1')
+print(str[0] == '12')
 
 // one const
 let ans = 0;
 for (let i = 0; i<15; ++i) {
-    let m:string = str[i];
-    if (m == "1" || m == "上" || m == "国") {
-        ans += 1;
-    }
+  let m:string = str[i];
+  if (m == '1' || m == '上' || m == '国') {
+    ans += 1;
+  }
 }
 print(ans);
 
 // no const
 function foo(flag) {
-    let str = "12";
-    if (flag) {
-        return str[0];
-    } else {
-        return str[1];
-    }
+  let str = '12';
+  if (flag) {
+    return str[0];
+  } else {
+    return str[1];
+  }
 }
 let left:string = foo(true);
 let right1:string = foo(true);
