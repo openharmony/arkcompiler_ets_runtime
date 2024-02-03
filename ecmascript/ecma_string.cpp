@@ -1259,6 +1259,23 @@ std::string EcmaStringAccessor::ToStdString(StringConvertedUsage usage)
     return res;
 }
 
+std::string EcmaStringAccessor::DebuggerToStdString(StringConvertedUsage usage)
+{
+    if (string_ == nullptr) {
+        return "";
+    }
+
+    bool modify = (usage != StringConvertedUsage::PRINT);
+    CVector<uint8_t> buf;
+    Span<const uint8_t> sp = string_->DebuggerToUtf8Span(buf, modify);
+    std::string res;
+    res.reserve(sp.size());
+    for (const auto &c : sp) {
+        res.push_back(c);
+    }
+    return res;
+}
+
 CString EcmaStringAccessor::ToCString(StringConvertedUsage usage)
 {
     if (string_ == nullptr) {
