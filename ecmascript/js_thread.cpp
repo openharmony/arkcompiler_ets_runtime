@@ -356,6 +356,7 @@ bool JSThread::DoStackOverflowCheck(const JSTaggedType *sp)
 {
     // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
     if (UNLIKELY(sp <= glueData_.frameBase_ + RESERVE_STACK_SIZE)) {
+        vm_->CheckThread();
         LOG_ECMA(ERROR) << "Stack overflow! Remaining stack size is: " << (sp - glueData_.frameBase_);
         if (!IsCrossThreadExecutionEnable() && LIKELY(!HasPendingException())) {
             ObjectFactory *factory = GetEcmaVM()->GetFactory();
