@@ -205,8 +205,10 @@ if (globalThis["ArkPrivate"] != undefined) {
         testArray3.push(i)
     }
 
+    let s = Math.trunc(1.33);
     map.set("test list proxy isEmpty2:", proxy.isEmpty() === false);
     map.set("test list get 1:", proxy.get(1) === 1)
+    map.set("test list get Math.trunc:", proxy.get(s) === 1)
     map.set("test list has:",  proxy.has(8))
     map.set("test list not has:", proxy.has(123) === false)
 
