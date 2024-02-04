@@ -213,6 +213,9 @@ JSTaggedValue ContainersList::Get(EcmaRuntimeCallInfo *argv)
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
+    if (index->IsDouble()) {
+        index = JSHandle<JSTaggedValue>(thread, JSTaggedValue::TryCastDoubleToInt32(index->GetDouble()));
+    }
     return jsAPIList->Get(index->GetInt());
 }
 
