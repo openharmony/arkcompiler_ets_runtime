@@ -17,16 +17,10 @@ set -e
 declare -i ret_ok=0
 declare -i ret_error=1
 
-function init() {
-    OPENHARMONY_OUT_PATH="/root" # refer to openharmony out folder
+function init()
+{
     CUR_PATH=$(dirname "$(readlink -f "$0")")
     TMP_PATH=$CUR_PATH/tmp
-    # JS_TEST_PATH Default "", and download https://gitee.com/dov1s/arkjs-perf-test.git with builtins_test1110branch.
-    JS_TEST_PATH=""     
-    ETS_RUNTIME_PATH=""
-    ICU_PATH=""
-    ZLIB_PATH=""
-    LIB_PATH=""
 }
 
 function check_command_exist()
