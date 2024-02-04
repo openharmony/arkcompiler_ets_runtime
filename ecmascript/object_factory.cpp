@@ -3074,7 +3074,7 @@ JSHandle<BigInt> ObjectFactory::NewBigInt(uint32_t length)
     NewObjectHook();
     ASSERT(length > 0);
     size_t size = BigInt::ComputeSize(length);
-    auto header = heap_->AllocateYoungOrHugeObject(
+    auto header = sHeap_->AllocateNonMovableOrHugeObject(thread_,
         JSHClass::Cast(thread_->GlobalConstants()->GetBigIntClass().GetTaggedObject()), size);
     JSHandle<BigInt> bigint(thread_, header);
     bigint->SetLength(length);
