@@ -11,22 +11,17 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-#!/bin/bash
+
+set -e
 
 declare -i ret_ok=0
 declare -i ret_error=1
 
-OPENHARMONY_OUT_PATH="/root" # refer to openharmony out folder
-CUR_PATH=$(dirname "$(readlink -f "$0")")
-TMP_PATH=$CUR_PATH/tmp
-# JS_TEST_PATH配置说明：
-# 默认为空，不配置，则会下载用例工程https://gitee.com/dov1s/arkjs-perf-test.git ，取builtins_test1110分支用例进行测试。
-JS_TEST_PATH=""     
-ETS_RUNTIME_PATH=""
-ICU_PATH=""
-ZLIB_PATH=""
-LIB_PATH=""
-
+function init()
+{
+    CUR_PATH=$(dirname "$(readlink -f "$0")")
+    TMP_PATH=$CUR_PATH/tmp
+}
 
 function check_command_exist()
 {
@@ -60,9 +55,9 @@ function check_and_config_v8_binary_path()
 {
     ret=$(check_command_exist "/usr/bin/v8/d8")
     if [ "$ret" == "$ret_error" ];then
-        wget -P "$TMP_PATH" https://storage.googleapis.com/chromium-v8/official/canary/v8-linux64-dbg-11.9.169.zip\
+        wget -P "$TMP_PATH" https://storage.googleapis.com/chromium-v8/official/canary/v8-linux64-rel-12.0.267.zip\
             --no-check-certificate
-        unzip "$TMP_PATH"/v8-linux64-dbg-11.9.169.zip -d "$TMP_PATH"/v8
+        unzip "$TMP_PATH"/v8-linux64-rel-12.0.267.zip -d "$TMP_PATH"/v8
         cp -r "$TMP_PATH"/v8 /usr/bin
         echo "export PATH=/usr/bin/v8/:$PATH" >> /root/.bashrc
         # shellcheck disable=SC1091
@@ -95,6 +90,7 @@ function download_js_test_files()
 
 main() 
 {
+    init
     js_perf_test_archive_path=$1
     OPENHARMONY_OUT_PATH=$2
     cur_path=$(dirname "$(readlink -f "$0")")
@@ -117,12 +113,8 @@ main()
    
     download_js_test_files || { return $ret_error; } 
 
-    # time_str=$(date "+%Y-%m-%d_%H-%M-%S")
-    # output_path=$TMP_PATH/test_result_$time_str
-    # mkdir -p "$output_path"
     echo "LD_LIBRARY_PATH:$LD_LIBRARY_PATH"
     python3  "$cur_path"/run_js_test.py -bp "$OPENHARMONY_OUT_PATH" -p "$JS_TEST_PATH" -o "$js_perf_test_archive_path"
-    # rm -rf "$codes_path"
 }
 
 main "$@"
