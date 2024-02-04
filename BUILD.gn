@@ -1040,6 +1040,11 @@ ohos_source_set("libark_jsruntime_set") {
   }
 
   external_deps = []
+
+  if (enable_dump_in_faultlog) {
+    external_deps += [ "libuv:uv" ]
+  }
+
   deps = []
   if (!is_arkui_x) {
     external_deps += [ "runtime_core:arkfile_header_deps" ]
@@ -1135,6 +1140,10 @@ ohos_source_set("libark_jsruntime_test_set") {
     "$ark_third_party_root/icu/icu4c:shared_icuuc",
   ]
   external_deps = []
+  if (enable_dump_in_faultlog) {
+    external_deps += [ "libuv:uv" ]
+  }
+
   if (!is_arkui_x) {
     external_deps += [ "runtime_core:arkfile_header_deps" ]
   } else {

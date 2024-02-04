@@ -366,7 +366,7 @@ public:
         }
     }
 
-    bool IsWorkerThread()
+    bool IsWorkerThread() const
     {
         return options_.IsWorker();
     }
@@ -569,6 +569,11 @@ public:
     bool IsEnableJit() const
     {
         return isEnableJit_;
+    }
+
+    CMap<uint32_t, EcmaVM *> GetWorkList() const
+    {
+        return workerList_;
     }
 
     void SetEnableJit(bool state)
