@@ -3133,8 +3133,8 @@ bool JSNApi::NotifyDebugMode([[maybe_unused]] int tid,
     ret = StartDebuggerForOldProcess(vm, option, instanceId, debuggerPostTask);
 
     // store debugger postTask in inspector.
-    using StoreDebuggerInfo = void (*)(int, EcmaVM *, const DebuggerPostTask &);                                 
-    auto symOfStoreDebuggerInfo = panda::os::library_loader::ResolveSymbol(                                                                                                                                                                                                                                     
+    using StoreDebuggerInfo = void (*)(int, EcmaVM *, const DebuggerPostTask &);
+    auto symOfStoreDebuggerInfo = panda::os::library_loader::ResolveSymbol(
         jsDebuggerManager->GetDebugLibraryHandle(), "StoreDebuggerInfo");
     if (!symOfStoreDebuggerInfo) {
         LOG_ECMA(ERROR) << "[NotifyDebugMode] Resolve StoreDebuggerInfo symbol fail: " <<
