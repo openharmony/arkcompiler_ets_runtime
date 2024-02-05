@@ -165,6 +165,7 @@
       panda::ecmascript::JSPandaFile::FindMethodLiteral*;
       panda::ecmascript::JSPandaFile::GetFunctionKind*;
       panda::ecmascript::JSPandaFile::GetNormalizedFileDesc*;
+      panda::ecmascript::JSPandaFile::GetRecordNameWithBundlePack*;
       panda::ecmascript::JSProxy::IsArray*;
       panda::ecmascript::JSTaggedValue::IsJSCOWArray*;
       panda::ecmascript::JSTaggedValue::SetProperty*;

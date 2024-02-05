@@ -535,6 +535,9 @@ void Deoptimizier::UpdateAndDumpDeoptInfo(kungfu::DeoptType type)
             method->SetDeoptThreshold(--deoptThreshold);
         } else {
             method->ClearAOTFlags();
+            if (method->GetMachineCode() != JSTaggedValue::Undefined()) {
+                method->SetMachineCode(thread_, JSTaggedValue::Undefined());
+            }
         }
     }
 }

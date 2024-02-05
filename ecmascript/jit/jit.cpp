@@ -21,12 +21,36 @@
 namespace panda::ecmascript {
 std::deque<JitTask*> Jit::asyncCompileJitTasks_;
 Mutex Jit::asyncCompileJitTasksMtx_;
+void (*Jit::initJitCompiler_)(EcmaVM *vm) = nullptr;
+bool(*Jit::jitCompile_)(void*, JitTask*) = nullptr;
+bool(*Jit::jitFinalize_)(void*, JitTask*) = nullptr;
+void*(*Jit::createJitCompilerTask_)(JitTask*) = nullptr;
+void(*Jit::deleteJitCompile_)(void*) = nullptr;
+void *Jit::libHandle_ = nullptr;
+
+Jit *Jit::GetInstance()
+{
+    static Jit instance_;
+    return &instance_;
+}
+
+void Jit::SetEnable(const EcmaVM *vm)
+{
+    if (initialized_ && !jitEnable_) {
+        jitEnable_ = true;
+        initJitCompiler_(const_cast<EcmaVM*>(vm));
+    }
+}
+
+bool Jit::IsEnable()
+{
+    return jitEnable_;
+}
+
 void Jit::Initialize()
 {
-    if (!vm_->IsEnableJit()) {
-        return;
-    }
-    static const std::string CREATEJITCOMPILE = "CreateJitCompiler";
+    static const std::string CREATEJITCOMPILETASK = "CreateJitCompilerTask";
+    static const std::string JITCOMPILEINIT = "InitJitCompiler";
     static const std::string JITCOMPILE = "JitCompile";
     static const std::string JITFINALIZE = "JitFinalize";
     static const std::string DELETEJITCOMPILE = "DeleteJitCompile";
@@ -38,6 +62,11 @@ void Jit::Initialize()
         return;
     }
 
+    initJitCompiler_ = reinterpret_cast<void(*)(EcmaVM*)>(FindSymbol(libHandle_, JITCOMPILEINIT.c_str()));
+    if (initJitCompiler_ == nullptr) {
+        LOG_JIT(ERROR) << "jit can't find symbol initJitCompiler";
+        return;
+    }
     jitCompile_ = reinterpret_cast<bool(*)(void*, JitTask*)>(FindSymbol(libHandle_, JITCOMPILE.c_str()));
     if (jitCompile_ == nullptr) {
         LOG_JIT(ERROR) << "jit can't find symbol jitCompile";
@@ -50,20 +79,19 @@ void Jit::Initialize()
         return;
     }
 
-    createJitCompiler_ = reinterpret_cast<void*(*)(EcmaVM*, JitTask*)>(FindSymbol(libHandle_,
-        CREATEJITCOMPILE.c_str()));
-    if (createJitCompiler_ == nullptr) {
-        LOG_JIT(ERROR) << "jit can't find symbol createJitCompiler";
+    createJitCompilerTask_ = reinterpret_cast<void*(*)(JitTask*)>(FindSymbol(libHandle_,
+        CREATEJITCOMPILETASK.c_str()));
+    if (createJitCompilerTask_ == nullptr) {
+        LOG_JIT(ERROR) << "jit can't find symbol createJitCompilertask";
         return;
     }
 
     deleteJitCompile_ = reinterpret_cast<void(*)(void*)>(FindSymbol(libHandle_, DELETEJITCOMPILE.c_str()));
-    if (createJitCompiler_ == nullptr) {
+    if (deleteJitCompile_ == nullptr) {
         LOG_JIT(ERROR) << "jit can't find symbol deleteJitCompile";
         return;
     }
     initialized_= true;
-    vm_->GetJSThread()->SwitchJitProfileStubsIfNeeded();
     return;
 }
 
@@ -95,11 +123,8 @@ void Jit::DeleteJitCompile(void *compiler)
 
 void Jit::Compile(EcmaVM *vm, JSHandle<JSFunction> &jsFunction, JitCompileMode mode)
 {
-    if (!vm->IsEnableJit()) {
-        return;
-    }
-    auto jit = vm->GetJit();
-    if (!jit->IsInitialized()) {
+    auto jit = Jit::GetInstance();
+    if (!jit->IsEnable()) {
         return;
     }
 
@@ -111,32 +136,25 @@ void Jit::Compile(EcmaVM *vm, JSHandle<JSFunction> &jsFunction, JitCompileMode m
         LOG_JIT(INFO) << "method does not support jit:" << methodName << ", kind:" << static_cast<int>(kind);
         return;
     }
+
+    if (method->GetMachineCode() == JSTaggedValue::Hole()) {
+        LOG_JIT(DEBUG) << "skip method, as it compiling:" << methodName;
+        return;
+    }
     if (method->GetMachineCode() != JSTaggedValue::Undefined()) {
         LOG_JIT(DEBUG) << "skip method, as it has been jit compiled:" << methodName;
         return;
     }
-
-    if (jit->IsCompiling(jsFunction)) {
-        LOG_JIT(DEBUG) << "skip method, as it compiling:" << methodName;
-        return;
-    }
-
-    LOG_JIT(DEBUG) << "start compile:" << methodName << ", kind:" << static_cast<int>(kind) <<
-        ", mode:" << ((mode == SYNC) ? "sync" : "async");
+    // using hole value to indecate compiling. todo: reset when failed
+    method->SetMachineCode(vm->GetJSThread(), JSTaggedValue::Hole());
 
     {
         CString msg = "compile method:" + methodName + ", in work thread";
         Scope scope(msg);
 
-        ASSERT(jit->createJitCompiler_ != nullptr);
-        ASSERT(jit->deleteJitCompile_ != nullptr);
+        JitTask *jitTask = new JitTask(vm, jit, jsFunction, methodName, vm->GetJSThread()->GetThreadId());
 
-        JitTask *jitTask = new JitTask(vm, jit, jsFunction);
-        jitTask->SetMethodInfo(methodName);
-        jit->AddCompilingTask(jitTask);
-
-        void *compiler = jit->createJitCompiler_(vm, jitTask);
-        jitTask->SetCompiler(compiler);
+        jitTask->PrepareCompile();
 
         jitTask->Optimize();
 
@@ -144,25 +162,12 @@ void Jit::Compile(EcmaVM *vm, JSHandle<JSFunction> &jsFunction, JitCompileMode m
             // cg
             jitTask->Finalize();
             jitTask->InstallCode();
-            jit->RemoveCompilingTask(jitTask);
             // free
             delete jitTask;
         } else {
             jit->AddAsyncCompileTask(jitTask);
         }
     }
-}
-
-void Jit::AddCompilingTask(JitTask *jitTask)
-{
-    compilingJitTasks_.push_back(jitTask);
-}
-
-void Jit::RemoveCompilingTask(JitTask *jitTask)
-{
-    auto findIt = std::find(compilingJitTasks_.begin(), compilingJitTasks_.end(), jitTask);
-    ASSERT(findIt != compilingJitTasks_.end());
-    compilingJitTasks_.erase(findIt);
 }
 
 JitTask *Jit::GetAsyncCompileTask()
@@ -181,7 +186,7 @@ void Jit::AddAsyncCompileTask(JitTask *jitTask)
     LockHolder holder(asyncCompileJitTasksMtx_);
     if (asyncCompileJitTasks_.empty()) {
         Taskpool::GetCurrentTaskpool()->PostTask(
-            std::make_unique<JitTask::AsyncTask>(jitTask, vm_->GetJSThread()->GetThreadId()));
+            std::make_unique<JitTask::AsyncTask>(jitTask, jitTask->GetVM()->GetJSThread()->GetThreadId()));
     }
     asyncCompileJitTasks_.push_back(jitTask);
 }
@@ -197,44 +202,25 @@ void Jit::RemoveAsyncCompileTask([[maybe_unused]] JitTask *jitTask)
 void Jit::RequestInstallCode(JitTask *jitTask)
 {
     LockHolder holder(installJitTasksDequeMtx_);
-    installJitTasks_.push_back(jitTask);
+    auto &taskQueue = installJitTasks_[jitTask->GetTaskThreadId()];
+    taskQueue.push_back(jitTask);
 
     // set
-    vm_->GetJSThread()->SetInstallMachineCode(true);
-    vm_->GetJSThread()->SetCheckSafePointStatus();
+    jitTask->GetVM()->GetJSThread()->SetInstallMachineCode(true);
+    jitTask->GetVM()->GetJSThread()->SetCheckSafePointStatus();
 }
 
-bool Jit::IsCompiling(JSHandle<JSFunction> &jsFunction)
-{
-    Method *srcMethod = Method::Cast(jsFunction->GetMethod().GetTaggedObject());
-    for (auto it = compilingJitTasks_.begin(); it != compilingJitTasks_.end(); it++) {
-        JitTask *task = *it;
-        Method *compilingMethod = Method::Cast(task->GetJsFunction()->GetMethod().GetTaggedObject());
-        if (srcMethod == compilingMethod) {
-            return true;
-        }
-    }
-    return false;
-}
-
-void Jit::InstallTasksWithoutClearFlag()
+void Jit::InstallTasks(uint32_t threadId)
 {
     LockHolder holder(installJitTasksDequeMtx_);
-    for (auto it = installJitTasks_.begin(); it != installJitTasks_.end(); it++) {
+    auto &taskQueue = installJitTasks_[threadId];
+    for (auto it = taskQueue.begin(); it != taskQueue.end(); it++) {
         JitTask *task = *it;
         // check task state
         task->InstallCode();
-        RemoveCompilingTask(task);
         delete task;
     }
-    installJitTasks_.clear();
-}
-
-void Jit::InstallTasks()
-{
-    InstallTasksWithoutClearFlag();
-    // clear flag
-    vm_->GetJSThread()->SetInstallMachineCode(false);
+    taskQueue.clear();
 }
 
 bool Jit::JitCompile(void *compiler, JitTask *jitTask)
@@ -247,6 +233,12 @@ bool Jit::JitFinalize(void *compiler, JitTask *jitTask)
 {
     ASSERT(jitFinalize_ != nullptr);
     return jitFinalize_(compiler, jitTask);
+}
+
+void *Jit::CreateJitCompilerTask(JitTask *jitTask)
+{
+    ASSERT(createJitCompilerTask_ != nullptr);
+    return createJitCompilerTask_(jitTask);
 }
 
 Jit::Scope::~Scope()
