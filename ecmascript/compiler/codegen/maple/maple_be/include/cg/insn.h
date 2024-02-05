@@ -23,13 +23,14 @@
 /* Maple CG headers */
 #include "operand.h"
 #include "isa.h"
-#include "stackmap.h"
-#include "mpl_logging.h"
-#include "sparse_datainfo.h"
-
+#include "common_utils.h"
 /* Maple IR header */
 #include "types_def.h" /* for uint32 */
-#include "common_utils.h"
+/* Maple Util headers */
+#include "mpl_logging.h"
+
+#include "stackmap.h"
+#include "sparse_datainfo.h"
 
 /* Maple Util headers */
 #include "mem_reference_table.h" /* for alias */
@@ -40,6 +41,9 @@ class CG;
 class Emitter;
 class DepNode;
 struct InsnDesc;
+class InsnBuilder;
+class OperandBuilder;
+
 class Insn {
 public:
     /* MCC_DecRefResetPair clear 2 stack position, MCC_ClearLocalStackRef clear 1 stack position */
@@ -155,7 +159,7 @@ public:
         opnds[index] = &opnd;
     }
 
-    // Get size info from machine description
+    /* Get size info from machine description */
     uint32 GetOperandSize(uint32 index) const
     {
         CHECK_FATAL(index < opnds.size(), "index out of range!");
@@ -173,6 +177,15 @@ public:
     {
         DEBUG_ASSERT(IsCall(), "Insn should be a call.");
         return retSize;
+    }
+
+    // Insn Function: check legitimacy of opnds.
+    bool VerifySelf() const
+    {
+        if (this->IsCfiInsn() || this->IsDbgInsn()) {
+            return true;
+        }
+        return md->Verify(opnds);
     }
 
     void SplitSelf(bool isAfterRegAlloc, InsnBuilder *insnBuilder, OperandBuilder *opndBuilder)
@@ -317,9 +330,24 @@ public:
         isFrameDef = b;
     }
 
+    bool IsStackDef() const
+    {
+        return isStackDef;
+    }
+
     void SetStackDef(bool flag)
     {
         isStackDef = flag;
+    }
+
+    bool IsStackRevert() const
+    {
+        return isStackRevert;
+    }
+
+    void SetStackRevert(bool flag)
+    {
+        isStackRevert = flag;
     }
 
     bool IsAsmDefCondCode() const
@@ -764,7 +792,7 @@ private:
     uint32 id = 0;
     uint32 address = 0;
     uint32 nopNum = 0;
-    uint32 retSize = 0;         /* Byte size of the return value if insn is a call. */
+    uint32 retSize = 0; /* Byte size of the return value if insn is a call. */
     /* record the stack cleared by MCC_ClearLocalStackRef or MCC_DecRefResetPair */
     int64 clearStackOffset[kMaxStackOffsetSize] = {-1, -1};
     DepNode *depNode = nullptr; /* For dependence analysis, pointing to a dependence node. */
@@ -775,7 +803,8 @@ private:
     bool isSpill = false;              /* used as hint for optimization */
     bool isReload = false;             /* used as hint for optimization */
     bool isFrameDef = false;
-    bool isStackDef = false;  // def sp in prolog
+    bool isStackDef = false;     // def sp in prolog
+    bool isStackRevert = false;  // revert sp in epilog
     bool asmDefCondCode = false;
     bool asmModMem = false;
     bool needSplit = false;

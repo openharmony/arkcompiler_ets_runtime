@@ -221,10 +221,10 @@ MIRType *TypeTable::GetPointedTypeIfApplicable(MIRType &type)
     return const_cast<MIRType *>(const_cast<const TypeTable *>(this)->GetPointedTypeIfApplicable(type));
 }
 
-MIRArrayType *TypeTable::GetOrCreateArrayType(const MIRType &elem, uint8 dim, const uint32 *sizeArray,
+MIRArrayType *TypeTable::GetOrCreateArrayType(const MIRType &elem, uint8 dim, const uint64 *sizeArray,
                                               const TypeAttrs &attrs)
 {
-    std::vector<uint32> sizeVector;
+    std::vector<uint64> sizeVector;
     for (size_t i = 0; i < dim; ++i) {
         sizeVector.push_back(sizeArray != nullptr ? sizeArray[i] : 0);
     }
@@ -235,7 +235,7 @@ MIRArrayType *TypeTable::GetOrCreateArrayType(const MIRType &elem, uint8 dim, co
 }
 
 // For one dimension array
-MIRArrayType *TypeTable::GetOrCreateArrayType(const MIRType &elem, uint32 size, const TypeAttrs &attrs)
+MIRArrayType *TypeTable::GetOrCreateArrayType(const MIRType &elem, uint64 size, const TypeAttrs &attrs)
 {
     return GetOrCreateArrayType(elem, 1, &size, attrs);
 }

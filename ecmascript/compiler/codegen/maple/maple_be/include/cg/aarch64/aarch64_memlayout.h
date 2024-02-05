@@ -198,9 +198,11 @@ public:
         return segRefLocals.GetSize();
     }
 
+    uint64 GetSizeOfColdToStk() const;
     int32 GetRefLocBaseLoc() const;
     int32 GetGRSaveAreaBaseLoc();
     int32 GetVRSaveAreaBaseLoc();
+    int32 GetCalleeSaveBaseLoc() const override;
 
 private:
     MemSegment segRefLocals = MemSegment(kMsRefLocals);

@@ -108,6 +108,18 @@ public:
     MIRType *LmbcGetAggTyFromCallSite(StmtNode *stmt, std::vector<TyIdx> **parmList) const;
     RegOperand &GetOrCreateResOperand(const BaseNode &parent, PrimType primType);
 
+    // struct for delayed phy regs copy in param list
+    struct RegMapForPhyRegCpy {
+        RegMapForPhyRegCpy(RegOperand *dReg, PrimType dType, RegOperand *sReg, PrimType sType)
+            : destReg(dReg), destType(dType), srcReg(sReg), srcType(sType)
+        {
+        }
+        RegOperand *destReg;
+        PrimType destType;
+        RegOperand *srcReg;
+        PrimType srcType;
+    };
+
     void IntrinsifyGetAndAddInt(ListOperand &srcOpnds, PrimType pty);
     void IntrinsifyGetAndSetInt(ListOperand &srcOpnds, PrimType pty);
     void IntrinsifyCompareAndSwapInt(ListOperand &srcOpnds, PrimType pty);
@@ -129,8 +141,7 @@ public:
     MemOperand *FixLargeMemOpnd(MOperator mOp, MemOperand &memOpnd, uint32 dSize, uint32 opndIdx);
     uint32 LmbcFindTotalStkUsed(std::vector<TyIdx> *paramList);
     uint32 LmbcTotalRegsUsed();
-    void LmbcSelectParmList(ListOperand *srcOpnds, bool isArgReturn);
-    bool LmbcSmallAggForRet(const BlkassignoffNode &bNode, const Operand *src);
+    bool LmbcSmallAggForRet(const BaseNode &bNode, const Operand *src, int32 offset = 0, bool skip1 = false);
     bool LmbcSmallAggForCall(BlkassignoffNode &bNode, const Operand *src, std::vector<TyIdx> **parmList);
     void SelectAggDassign(DassignNode &stmt) override;
     void SelectIassign(IassignNode &stmt) override;
@@ -149,8 +160,8 @@ public:
     void SelectCondSpecialCase2(const CondGotoNode &stmt, BaseNode &opnd0) override;
     void SelectGoto(GotoNode &stmt) override;
     void SelectCall(CallNode &callNode) override;
-    void SelectIcall(IcallNode &icallNode, Operand &fptrOpnd) override;
-    void SelectIntrinCall(IntrinsiccallNode &intrinsicCallNode) override;
+    void SelectIcall(IcallNode &icallNode) override;
+    void SelectIntrinsicCall(IntrinsiccallNode &intrinsicCallNode) override;
     Operand *SelectIntrinsicOpWithOneParam(IntrinsicopNode &intrinsicopNode, std::string name) override;
     Operand *SelectIntrinsicOpWithNParams(IntrinsicopNode &intrinsicopNode, PrimType retType,
                                           const std::string &name) override;
@@ -169,7 +180,7 @@ public:
     Operand *SelectCSyncSynchronize(IntrinsicopNode &intrinsicopNode) override;
     AArch64isa::MemoryOrdering PickMemOrder(std::memory_order memOrder, bool isLdr) const;
     Operand *SelectCAtomicLoadN(IntrinsicopNode &intrinsicopNode) override;
-    Operand *SelectCAtomicExchangeN(IntrinsicopNode &intrinsicopNode) override;
+    Operand *SelectCAtomicExchangeN(const IntrinsiccallNode &intrinsiccallNode) override;
     Operand *SelectAtomicLoad(Operand &addrOpnd, PrimType primType, AArch64isa::MemoryOrdering memOrder);
     Operand *SelectCReturnAddress(IntrinsicopNode &intrinsicopNode) override;
     void SelectMembar(StmtNode &membar) override;
@@ -193,7 +204,8 @@ public:
                          PrimType finalBitFieldDestType = kPtyInvalid) override;
     Operand *SelectIreadoff(const BaseNode &parent, IreadoffNode &ireadoff) override;
     Operand *SelectIreadfpoff(const BaseNode &parent, IreadFPoffNode &ireadoff) override;
-    Operand *SelectIntConst(const MIRIntConst &intConst) override;
+    Operand *SelectIntConst(const MIRIntConst &intConst, const BaseNode &parent) override;
+    Operand *SelectIntConst(const MIRIntConst &intConst);
     Operand *HandleFmovImm(PrimType stype, int64 val, MIRConst &mirConst, const BaseNode &parent);
     Operand *SelectFloatConst(MIRFloatConst &floatConst, const BaseNode &parent) override;
     Operand *SelectDoubleConst(MIRDoubleConst &doubleConst, const BaseNode &parent) override;
@@ -244,7 +256,7 @@ public:
                                                    AArch64reg regNum, bool &isOutOfRange);
     void SelectAddAfterInsn(Operand &resOpnd, Operand &o0, Operand &o1, PrimType primType, bool isDest, Insn &insn);
     bool IsImmediateOffsetOutOfRange(const MemOperand &memOpnd, uint32 bitLen);
-    bool IsOperandImmValid(MOperator mOp, Operand *o, uint32 opndIdx);
+    bool IsOperandImmValid(MOperator mOp, Operand *o, uint32 opndIdx) const;
     Operand *SelectRem(BinaryNode &node, Operand &opnd0, Operand &opnd1, const BaseNode &parent) override;
     void SelectDiv(Operand &resOpnd, Operand &opnd0, Operand &opnd1, PrimType primType) override;
     Operand *SelectDiv(BinaryNode &node, Operand &opnd0, Operand &opnd1, const BaseNode &parent) override;
@@ -282,7 +294,7 @@ public:
     Operand *SelectLazyLoadStatic(MIRSymbol &st, int64 offset, PrimType primType) override;
     Operand *SelectLoadArrayClassCache(MIRSymbol &st, int64 offset, PrimType primType) override;
     RegOperand &SelectCopy(Operand &src, PrimType stype, PrimType dtype) override;
-    void SelectCopy(Operand &dest, PrimType dtype, Operand &src, PrimType stype);
+    void SelectCopy(Operand &dest, PrimType dtype, Operand &src, PrimType stype, BaseNode *baseNode = nullptr);
     void SelectCopyImm(Operand &dest, PrimType dType, ImmOperand &src, PrimType sType);
     void SelectCopyImm(Operand &dest, ImmOperand &src, PrimType dtype);
     void SelectLibCall(const std::string &, std::vector<Operand *> &, PrimType, PrimType, bool is2ndRet = false);
@@ -434,8 +446,7 @@ public:
         return GetOrCreatePhysicalRegisterOperand(reg, GetPointerSize() * kBitsPerByte, kRegTyInt);
     }
 
-    RegOperand &GenStructParamIndex(RegOperand &base, const BaseNode &indexExpr, int shift, PrimType baseType,
-                                    PrimType targetType);
+    RegOperand &GenStructParamIndex(RegOperand &base, const BaseNode &indexExpr, int shift, PrimType baseType);
     void SelectAddrofAfterRa(Operand &result, StImmOperand &stImm, std::vector<Insn *> &rematInsns);
     MemOperand &GetOrCreateMemOpndAfterRa(const MIRSymbol &symbol, int32 offset, uint32 size, bool needLow12,
                                           RegOperand *regOp, std::vector<Insn *> &rematInsns);
@@ -664,7 +675,7 @@ public:
     bool CheckIfSplitOffsetWithAdd(const MemOperand &memOpnd, uint32 bitLen) const;
     RegOperand *GetBaseRegForSplit(uint32 baseRegNum);
 
-    MemOperand &ConstraintOffsetToSafeRegion(uint32 bitLen, const MemOperand &memOpnd);
+    MemOperand &ConstraintOffsetToSafeRegion(uint32 bitLen, const MemOperand &memOpnd, const MIRSymbol *symbol);
     MemOperand &SplitOffsetWithAddInstruction(const MemOperand &memOpnd, uint32 bitLen,
                                               uint32 baseRegNum = AArch64reg::kRinvalid, bool isDest = false,
                                               Insn *insn = nullptr, bool forPair = false);
@@ -817,6 +828,15 @@ public:
 
     RegOperand &GetZeroOpnd(uint32 size) override;
 
+    bool GetStoreFP() const
+    {
+        return storeFP;
+    }
+    void SetStoreFP(bool val)
+    {
+        storeFP = val;
+    }
+
 private:
     enum RelationOperator : uint8 { kAND, kIOR, kEOR };
 
@@ -838,7 +858,7 @@ private:
     MapleUnorderedMap<LabelIdx, LabelOperand *> hashLabelOpndTable;
     MapleUnorderedMap<OfstRegIdx, OfstOperand *> hashOfstOpndTable;
     MapleUnorderedMap<MemOperand, MemOperand *> hashMemOpndTable;
-    MapleUnorderedMap<StIdx, std::pair<RegOperand*, RegOperand*>> stIdx2OverflowResult;
+    MapleUnorderedMap<StIdx, std::pair<RegOperand *, RegOperand *>> stIdx2OverflowResult;
     /*
      * Local variables, formal parameters that are passed via registers
      * need offset adjustment after callee-saved registers are known.
@@ -874,6 +894,7 @@ private:
     uint32 alignPow = 5; /* function align pow defaults to 5   i.e. 2^5*/
     LmbcArgInfo *lmbcArgInfo = nullptr;
     MIRType *lmbcCallReturnType = nullptr;
+    bool storeFP = false;
 
     void SelectLoadAcquire(Operand &dest, PrimType dtype, Operand &src, PrimType stype,
                            AArch64isa::MemoryOrdering memOrd, bool isDirect);
@@ -915,8 +936,9 @@ private:
     RegOperand *SelectParmListDreadAccessField(const MIRSymbol &sym, FieldID fieldID, const CCLocInfo &ploc,
                                                int32 offset, uint32 parmNum);
     void CreateCallStructParamPassByReg(regno_t reg, MemOperand &memOpnd, ListOperand &srcOpnds, fpParamState state);
-    void CreateCallStructParamMemcpy(const MIRSymbol *sym, RegOperand *addropnd, uint32 structSize, int32 copyOffset,
-                                     int32 fromOffset);
+    void CreateCallStructParamMemcpy(const MIRSymbol &sym, uint32 structSize, int32 copyOffset, int32 fromOffset);
+    void CreateCallStructParamMemcpy(RegOperand &addrOpnd, uint32 structSize, int32 copyOffset, int32 fromOffset);
+
     RegOperand *CreateCallStructParamCopyToStack(uint32 numMemOp, const MIRSymbol *sym, RegOperand *addrOpd,
                                                  int32 copyOffset, int32 fromOffset, const CCLocInfo &ploc);
     void SelectParmListDreadSmallAggregate(const MIRSymbol &sym, MIRType &structType, ListOperand &srcOpnds,
@@ -964,6 +986,7 @@ private:
     bool GenerateCompareWithZeroInstruction(Opcode jmpOp, Opcode cmpOp, bool is64Bits, PrimType primType,
                                             LabelOperand &targetOpnd, Operand &opnd0);
     void GenCVaStartIntrin(RegOperand &opnd, uint32 stkSize);
+    void SelectCDIVException();
     void SelectCVaStart(const IntrinsiccallNode &intrnNode);
     void SelectOverFlowCall(const IntrinsiccallNode &intrnNode);
     void SelectCAtomicStoreN(const IntrinsiccallNode &intrinsiccallNode);
@@ -1012,6 +1035,8 @@ private:
     RegOperand *PrepareMemcpyParamOpnd(bool isLo12, const MIRSymbol &symbol, int64 offsetVal, RegOperand &BaseReg);
     RegOperand *PrepareMemcpyParamOpnd(int64 offset, Operand &exprOpnd);
     RegOperand *PrepareMemcpyParamOpnd(uint64 copySize);
+    MemOperand &CreateMemOpndForStatic(const MIRSymbol &symbol, int64 offset, uint32 size, bool needLow12,
+                                       RegOperand *regOp);
     Insn *AggtStrLdrInsert(bool bothUnion, Insn *lastStrLdr, Insn &newStrLdr);
     LabelIdx GetLabelInInsn(Insn &insn) override
     {

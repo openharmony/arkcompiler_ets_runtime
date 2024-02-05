@@ -161,5 +161,80 @@ int64 GetMemOpndOffsetValue(Operand *o)
     int64 offsetValue = ofStOpnd ? ofStOpnd->GetOffsetValue() : 0LL;
     return offsetValue;
 }
+
+bool IsSub(const Insn &insn)
+{
+    MOperator curMop = insn.GetMachineOpcode();
+    switch (curMop) {
+        case MOP_xsubrrr:
+        case MOP_xsubrrrs:
+        case MOP_xsubrri24:
+        case MOP_xsubrri12:
+        case MOP_wsubrrr:
+        case MOP_wsubrrrs:
+        case MOP_wsubrri24:
+        case MOP_wsubrri12:
+            return true;
+        default:
+            return false;
+    }
+}
+
+MOperator GetMopSub2Subs(const Insn &insn)
+{
+    MOperator curMop = insn.GetMachineOpcode();
+    switch (curMop) {
+        case MOP_xsubrrr:
+            return MOP_xsubsrrr;
+        case MOP_xsubrrrs:
+            return MOP_xsubsrrrs;
+        case MOP_xsubrri24:
+            return MOP_xsubsrri24;
+        case MOP_xsubrri12:
+            return MOP_xsubsrri12;
+        case MOP_wsubrrr:
+            return MOP_wsubsrrr;
+        case MOP_wsubrrrs:
+            return MOP_wsubsrrrs;
+        case MOP_wsubrri24:
+            return MOP_wsubsrri24;
+        case MOP_wsubrri12:
+            return MOP_wsubsrri12;
+        default:
+            return curMop;
+    }
+}
+
+// Returns the number of trailing 0-bits in x, starting at the least significant bit position.
+// If x is 0, the result is -1.
+int32 GetTail0BitNum(int64 val)
+{
+    uint32 bitNum = 0;
+    for (; bitNum < k64BitSize; bitNum++) {
+        if (((1ULL << bitNum) & static_cast<uint64>(val)) != 0) {
+            break;
+        }
+    }
+    if (bitNum == k64BitSize) {
+        return -1;
+    }
+    return static_cast<int32>(bitNum);
+}
+
+// Returns the number of leading 0-bits in x, starting at the most significant bit position.
+// If x is 0, the result is -1.
+int32 GetHead0BitNum(int64 val)
+{
+    uint32 bitNum = 0;
+    for (; bitNum < k64BitSize; bitNum++) {
+        if (((0x8000000000000000ULL >> bitNum) & static_cast<uint64>(val)) != 0) {
+            break;
+        }
+    }
+    if (bitNum == k64BitSize) {
+        return -1;
+    }
+    return static_cast<int32>(bitNum);
+}
 } /* namespace AArch64isa */
 } /* namespace maplebe */

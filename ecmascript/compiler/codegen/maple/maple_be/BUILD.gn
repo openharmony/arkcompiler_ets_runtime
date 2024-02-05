@@ -101,6 +101,7 @@ src_libcgaarch64 = [
   "src/cg/aarch64/aarch64_abi.cpp",
   "src/cg/aarch64/aarch64_call_conv.cpp",
   "src/cg/aarch64/mpl_atomic.cpp",
+  "src/cg/aarch64/aarch64_cfi_generator.cpp",
   "src/cg/aarch64/aarch64_cgfunc.cpp",
   "src/cg/aarch64/aarch64_dependence.cpp",
   "src/cg/aarch64/aarch64_ebo.cpp",
@@ -137,6 +138,7 @@ src_libcgaarch64 = [
   "src/cg/aarch64/aarch64_cg.cpp",
   "src/cg/aarch64/aarch64_validbit_opt.cpp",
   "src/cg/aarch64/aarch64_cfgo.cpp",
+  "src/cg/aarch64/aarch64_imm_valid.cpp",
 ]
 
 src_libcgx86phases = [
@@ -206,6 +208,7 @@ src_libcgriscv64 = [
 src_libcgark = [ "src/cg/ark/foo.cpp" ]
 
 src_libcgphases = [
+  "src/cg/cfi_generator.cpp",
   "src/cg/cfgo.cpp",
   "src/cg/local_opt.cpp",
   "src/cg/ebo.cpp",

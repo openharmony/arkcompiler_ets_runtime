@@ -92,6 +92,13 @@ public:
                 return true;
             }
             if (fieldID != 0) {
+                auto type = GlobalTables::GetTypeTable().GetTypeFromTyIdx(symOrPreg.mirSt->GetTyIdx());
+                if (type->IsMIRArrayType()) {
+                    type = static_cast<MIRArrayType *>(type)->GetElemType();
+                }
+                if (!type->IsMIRStructType()) {
+                    return false;
+                }
                 MIRStructType *structType = static_cast<MIRStructType *>(
                     GlobalTables::GetTypeTable().GetTypeFromTyIdx(symOrPreg.mirSt->GetTyIdx()));
                 FieldAttrs fattrs = structType->GetFieldAttrs(fieldID);

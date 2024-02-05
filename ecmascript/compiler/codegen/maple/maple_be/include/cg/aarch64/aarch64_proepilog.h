@@ -38,6 +38,16 @@ public:
             stackBaseReg = useFP ? R29 : RSP;
         }
         exitBB2CallSitesMap.clear();
+        AArch64CGFunc &aarchCGFunc = static_cast<AArch64CGFunc &>(func);
+        const MapleVector<AArch64reg> &calleeSavedRegs = aarchCGFunc.GetCalleeSavedRegs();
+        if (useFP) {
+            storeFP = true;
+        } else if (find(calleeSavedRegs.begin(), calleeSavedRegs.end(), RFP) != calleeSavedRegs.end()) {
+            storeFP = true;
+        } else if (find(calleeSavedRegs.begin(), calleeSavedRegs.end(), R29) != calleeSavedRegs.end()) {
+            storeFP = true;
+        }
+        aarchCGFunc.SetStoreFP(storeFP);
     }
     ~AArch64GenProEpilog() override = default;
 
@@ -112,6 +122,11 @@ private:
     BB *curTailcallExitBB = nullptr;
     BB *fastPathReturnBB = nullptr;
     bool useFP = true;
+    // To be compatible with previous code more easily，we use storeFP boolean to indicate the case
+    // (1) use FP to address
+    // (2) FP is clobbered
+    // need to delete this and optimize the callee save process.
+    bool storeFP = false;
     /* frame pointer(x29) is available as a general-purpose register if useFP is set as false */
     AArch64reg stackBaseReg = RFP;
 };

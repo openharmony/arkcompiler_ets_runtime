@@ -1308,6 +1308,9 @@ void AndCmpBranchesToTbzPattern::Run(BB &bb, Insn &insn)
     ImmOperand &tbzImmOpnd = aarFunc->CreateImmOperand(tbzImmVal, k8BitSize, false);
     Insn &newInsn =
         cgFunc->GetInsnBuilder()->BuildInsn(newMop, prevAndInsn->GetOperand(kInsnSecondOpnd), tbzImmOpnd, labelOpnd);
+    if (!VERIFY_INSN(&newInsn)) {
+        return;
+    }
     bb.ReplaceInsn(insn, newInsn);
     /* update ssa info */
     ssaInfo->ReplaceInsn(insn, newInsn);
@@ -1559,6 +1562,9 @@ void ZeroCmpBranchesToTbzPattern::Run(BB &bb, Insn &insn)
     auto &labelOpnd = static_cast<LabelOperand &>(insn.GetOperand(kInsnSecondOpnd));
     Insn &newInsn =
         cgFunc->GetInsnBuilder()->BuildInsn(newMop, *static_cast<RegOperand *>(regOpnd), bitOpnd, labelOpnd);
+    if (!VERIFY_INSN(&newInsn)) {
+        return;
+    }
     bb.ReplaceInsn(insn, newInsn);
     /* update ssa info */
     ssaInfo->ReplaceInsn(insn, newInsn);
@@ -2792,6 +2798,9 @@ void OneHoleBranchPattern::Run(BB &bb, Insn &insn)
         ImmOperand &oneHoleOpnd = aarch64CGFunc->CreateImmOperand(0, k8BitSize, false);
         auto &regOperand = static_cast<RegOperand &>(prePrevInsn->GetOperand(kInsnSecondOpnd));
         Insn &newTbzInsn = cgFunc->GetInsnBuilder()->BuildInsn(newOp, regOperand, oneHoleOpnd, label);
+        if (!VERIFY_INSN(&newTbzInsn)) {
+            return;
+        }
         bb.ReplaceInsn(insn, newTbzInsn);
         ssaInfo->ReplaceInsn(insn, newTbzInsn);
         optSuccess = true;
@@ -2927,6 +2936,7 @@ void AArch64CGPeepHole::DoNormalOptimize(BB &bb, Insn &insn)
         case MOP_wstrb:
         case MOP_wldrb: {
             // only strb ldrb can do this pattern, other patterns still need to be done, so there is no break here.
+            break;
         }
         case MOP_wstrh:
         case MOP_wldrh:
@@ -7906,6 +7916,9 @@ void NormRevTbzToTbzPattern::Run(BB &bb, Insn &insn)
     MOperator useMop = tbzInsn->GetMachineOpcode();
     Insn &newInsn = cgFunc->GetInsnBuilder()->BuildInsn(useMop, insn.GetOperand(kInsnSecondOpnd), newImmOpnd,
                                                         tbzInsn->GetOperand(kInsnThirdOpnd));
+    if (!VERIFY_INSN(&newInsn)) {
+        return;
+    }
     bb.ReplaceInsn(*tbzInsn, newInsn);
     optSuccess = true;
     /* dump pattern info */
@@ -8021,12 +8034,16 @@ void AddSubMergeLdStPattern::Run(BB &bb, Insn &insn)
         newInsn = &static_cast<AArch64CGFunc *>(cgFunc)->GetInsnBuilder()->BuildInsn(
             insnToBeReplaced->GetMachineOpcode(), insnToBeReplaced->GetOperand(kInsnFirstOpnd), *newMemOpnd);
     }
-    // Both [RSP, #imm]! and [RSP], #imm should be set true for stackdef.
-    if (insnUseReg->GetRegisterNumber() == RSP) {
-        newInsn->SetStackDef(true);
+    if (!VERIFY_INSN(newInsn)) {
+        return;
+    } else {
+        // Both [RSP, #imm]! and [RSP], #imm should be set true for stackdef.
+        if (insnUseReg->GetRegisterNumber() == RSP) {
+            newInsn->SetStackDef(true);
+        }
+        bb.ReplaceInsn(*insnToBeReplaced, *newInsn);
+        bb.RemoveInsn(insn);
     }
-    bb.ReplaceInsn(*insnToBeReplaced, *newInsn);
-    bb.RemoveInsn(insn);
 }
 
 void UbfxAndMergetPattern::Run(BB &bb, Insn &insn)
@@ -8138,6 +8155,9 @@ void UbfxAndCbzToTbzPattern::Run(BB &bb, Insn &insn)
         return;
     }
     Insn *newInsn = &cgFunc->GetInsnBuilder()->BuildInsn(newMop, opnd2, imm3, label);
+    if (!VERIFY_INSN(newInsn)) {
+        return;
+    }
     BB *useInsnBB = useInsn->GetBB();
     useInsnBB->ReplaceInsn(*useInsn, *newInsn);
     if (ssaInfo) {

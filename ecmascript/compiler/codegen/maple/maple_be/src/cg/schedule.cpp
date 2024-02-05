@@ -15,10 +15,10 @@
 
 #if TARGAARCH64
 #include "aarch64_schedule.h"
-#elif TARGRISCV64
+#elif defined(TARGRISCV64) && TARGRISCV64
 #include "riscv64_schedule.h"
 #endif
-#if TARGARM32
+#if defined(TARGARM32) && TARGARM32
 #include "arm32_schedule.h"
 #endif
 #include "cg.h"
@@ -28,13 +28,13 @@
 
 namespace maplebe {
 /* pressure standard value; pressure under this value will not lead to spill operation */
-static constexpr int g_pressureStandard = 27;
+static constexpr int PRESSURE_STANDARD = 27;
 /* optimistic scheduling option */
-static constexpr bool g_optimisticScheduling = false;
+static constexpr bool OPTIMISTIC_SCHEDULING = false;
 /* brute maximum count limit option */
-static constexpr bool g_bruteMaximumLimit = true;
+static constexpr bool BRUTE_MAXIMUM_LIMIT = true;
 /* brute maximum count */
-static constexpr int g_schedulingMaximumCount = 20000;
+static constexpr int SCHEDULING_MAXIMUM_COUNT = 20000;
 
 /* ---- RegPressureSchedule function ---- */
 void RegPressureSchedule::InitBBInfo(BB &b, MemPool &memPool, const MapleVector<DepNode *> &nodes)
@@ -59,7 +59,7 @@ RegType RegPressureSchedule::GetRegisterType(regno_t reg) const
 }
 
 /* Get amount of every physical register */
-void RegPressureSchedule::BuildPhyRegInfo(const std::vector<int32> &regNumVec)
+void RegPressureSchedule::BuildPhyRegInfo(const std::vector<int32> &regNumVec) const
 {
     FOR_ALL_REGCLASS(i)
     {
@@ -68,22 +68,22 @@ void RegPressureSchedule::BuildPhyRegInfo(const std::vector<int32> &regNumVec)
 }
 
 /* Initialize pre-scheduling split point in BB */
-void RegPressureSchedule::initPartialSplitters(const MapleVector<DepNode *> &nodes)
+void RegPressureSchedule::InitPartialSplitters(const MapleVector<DepNode *> &nodes)
 {
     bool addFirstAndLastNodeIndex = false;
-    constexpr uint32 SecondLastNodeIndexFromBack = 2;
-    constexpr uint32 LastNodeIndexFromBack = 1;
-    constexpr uint32 FirstNodeIndex = 0;
-    constexpr uint32 minimumBBSize = 2;
+    constexpr uint32 kSecondLastNodeIndexFromBack = 2;
+    constexpr uint32 kLastNodeIndexFromBack = 1;
+    constexpr uint32 kFirstNodeIndex = 0;
+    constexpr uint32 kMinimumBBSize = 2;
     /* Add split point for the last instruction in return BB */
-    if (bb->GetKind() == BB::kBBReturn && nodes.size() > minimumBBSize) {
-        splitterIndexes.emplace_back(nodes.size() - SecondLastNodeIndexFromBack);
+    if (bb->GetKind() == BB::kBBReturn && nodes.size() > kMinimumBBSize) {
+        splitterIndexes.emplace_back(nodes.size() - kSecondLastNodeIndexFromBack);
         addFirstAndLastNodeIndex = true;
     }
     /* Add first and last node as split point if needed */
     if (addFirstAndLastNodeIndex) {
-        splitterIndexes.emplace_back(nodes.size() - LastNodeIndexFromBack);
-        splitterIndexes.emplace_back(FirstNodeIndex);
+        splitterIndexes.emplace_back(nodes.size() - kLastNodeIndexFromBack);
+        splitterIndexes.emplace_back(kFirstNodeIndex);
     }
     std::sort(splitterIndexes.begin(), splitterIndexes.end(), std::less<int> {});
 }
@@ -154,7 +154,7 @@ bool RegPressureSchedule::DepNodePriorityCmp(const DepNode *node1, const DepNode
 
     int32 numCall1 = node1->GetNumCall();
     int32 numCall2 = node2->GetNumCall();
-    if (node1->GetIncPressure() == true && node2->GetIncPressure() == true) {
+    if (node1->GetIncPressure() && node2->GetIncPressure()) {
         if (numCall1 != numCall2) {
             return numCall1 > numCall2;
         }
@@ -190,7 +190,7 @@ bool RegPressureSchedule::DepNodePriorityCmp(const DepNode *node1, const DepNode
 }
 
 /* set a node's incPressure is true, when a class register inscrease */
-void RegPressureSchedule::ReCalculateDepNodePressure(DepNode &node)
+void RegPressureSchedule::ReCalculateDepNodePressure(const DepNode &node) const
 {
     /* if there is a type of register pressure increases, set incPressure as true. */
     auto &pressures = node.GetPressure();
@@ -198,7 +198,7 @@ void RegPressureSchedule::ReCalculateDepNodePressure(DepNode &node)
 }
 
 /* calculate the maxDepth of every node in nodes. */
-void RegPressureSchedule::CalculateMaxDepth(const MapleVector<DepNode *> &nodes)
+void RegPressureSchedule::CalculateMaxDepth(const MapleVector<DepNode *> &nodes) const
 {
     /* from the last node to first node. */
     for (auto it = nodes.rbegin(); it != nodes.rend(); ++it) {
@@ -223,7 +223,7 @@ void RegPressureSchedule::CalculateMaxDepth(const MapleVector<DepNode *> &nodes)
 }
 
 /* calculate the near of every successor of the node. */
-void RegPressureSchedule::CalculateNear(const DepNode &node)
+void RegPressureSchedule::CalculateNear(const DepNode &node) const
 {
     for (auto succ : node.GetSuccs()) {
         DepNode &to = succ->GetTo();
@@ -246,7 +246,7 @@ bool RegPressureSchedule::IsLastUse(const DepNode &node, regno_t regNO)
     RegList *regList = node.GetRegUses(i);
 
     /*
-     * except the node, if there are insn that has no scheduled in regNO'sregList,
+     * except the node, if there are insn that has no scheduled in regNO's regList,
      * then it is not the last time using the regNO, return false.
      */
     while (regList != nullptr) {
@@ -261,7 +261,7 @@ bool RegPressureSchedule::IsLastUse(const DepNode &node, regno_t regNO)
     return true;
 }
 
-void RegPressureSchedule::CalculatePressure(DepNode &node, regno_t reg, bool def)
+void RegPressureSchedule::CalculatePressure(const DepNode &node, regno_t reg, bool def) const
 {
     RegType regType = GetRegisterType(reg);
     /* if def a register, register pressure increase. */
@@ -426,7 +426,7 @@ void RegPressureSchedule::UpdateReadyList(const DepNode &node)
         if (!partialSet.empty() && (partialSet.find(&succNode) == partialSet.end())) {
             continue;
         }
-        succNode.DescreaseValidPredsSize();
+        succNode.DecreaseValidPredsSize();
         if (((succ->GetDepType() == kDependenceTypeTrue) || CanSchedule(succNode)) &&
             (succNode.GetState() == kNormal)) {
             readyList.emplace_back(&succNode);
@@ -453,7 +453,7 @@ void RegPressureSchedule::BruteUpdateReadyList(const DepNode &node, std::vector<
         if (!partialSet.empty() && (partialSet.find(&succNode) == partialSet.end())) {
             continue;
         }
-        succNode.DescreaseValidPredsSize();
+        succNode.DecreaseValidPredsSize();
         if (((succ->GetDepType() == kDependenceTypeTrue) || CanSchedule(succNode)) &&
             (succNode.GetState() == kNormal)) {
             readyList.emplace_back(&succNode);
@@ -626,7 +626,7 @@ void RegPressureSchedule::DoScheduling(MapleVector<DepNode *> &nodes)
     for (auto node : nodes) {
         originalNodeSeries.emplace_back(node);
     }
-    initPartialSplitters(nodes);
+    InitPartialSplitters(nodes);
 #if PRESCHED_DEBUG
     LogInfo::MapleLogger() << "\n Calculate Pressure Info for Schedule Input Series \n";
 #endif
@@ -635,7 +635,7 @@ void RegPressureSchedule::DoScheduling(MapleVector<DepNode *> &nodes)
     LogInfo::MapleLogger() << "Original pressure : " << originalPressure << "\n";
 #endif
     /* Original pressure is small enough, skip pre-scheduling */
-    if (originalPressure < g_pressureStandard) {
+    if (originalPressure < PRESSURE_STANDARD) {
 #if PRESCHED_DEBUG
         LogInfo::MapleLogger() << "Original pressure is small enough, skip pre-scheduling \n";
 #endif
@@ -643,7 +643,7 @@ void RegPressureSchedule::DoScheduling(MapleVector<DepNode *> &nodes)
     }
     if (splitterIndexes.empty()) {
         LogInfo::MapleLogger() << "No splitter, normal scheduling \n";
-        if (!g_optimisticScheduling) {
+        if (!OPTIMISTIC_SCHEDULING) {
             HeuristicScheduling(nodes);
         } else {
             InitBruteForceScheduling(nodes);
@@ -809,7 +809,7 @@ void RegPressureSchedule::PartialScheduling(MapleVector<DepNode *> &nodes)
 void RegPressureSchedule::BruteForceScheduling()
 {
     /* stop brute force scheduling when exceeding the count limit */
-    if (g_bruteMaximumLimit && (scheduleSeriesCount > g_schedulingMaximumCount)) {
+    if (BRUTE_MAXIMUM_LIMIT && (scheduleSeriesCount > SCHEDULING_MAXIMUM_COUNT)) {
         return;
     }
     int defaultPressureValue = -1;
@@ -910,9 +910,11 @@ void RegPressureSchedule::EmitSchedulingSeries(MapleVector<DepNode *> &nodes)
 void Schedule::InitIDAndLoc()
 {
     uint32 id = 0;
-    FOR_ALL_BB(bb, &cgFunc) {
+    FOR_ALL_BB(bb, &cgFunc)
+    {
         bb->SetLastLoc(bb->GetPrev() ? bb->GetPrev()->GetLastLoc() : nullptr);
-        FOR_BB_INSNS(insn, bb) {
+        FOR_BB_INSNS(insn, bb)
+        {
             insn->SetId(id++);
 #if DEBUG
             insn->AppendComment(" Insn id: " + std::to_string(insn->GetId()));
@@ -942,10 +944,10 @@ bool CgPreScheduling::PhaseRun(maplebe::CGFunc &f)
     live->ResetLiveSet();
 
     Schedule *schedule = nullptr;
-#if TARGAARCH64 || TARGRISCV64
+#if (defined(TARGAARCH64) && TARGAARCH64) || (defined(TARGRISCV64) && TARGRISCV64)
     schedule = GetPhaseAllocator()->New<AArch64Schedule>(f, *GetPhaseMemPool(), *live, PhaseName());
 #endif
-#if TARGARM32
+#if defined(TARGARM32) && TARGARM32
     schedule = GetPhaseAllocator()->New<Arm32Schedule>(f, *GetPhaseMemPool(), *live, PhaseName());
 #endif
     schedule->ListScheduling(true);
@@ -976,10 +978,10 @@ bool CgScheduling::PhaseRun(maplebe::CGFunc &f)
     live->ResetLiveSet();
 
     Schedule *schedule = nullptr;
-#if TARGAARCH64 || TARGRISCV64
+#if (defined(TARGAARCH64) && TARGAARCH64) || (defined(TARGRISCV64) && TARGRISCV64)
     schedule = GetPhaseAllocator()->New<AArch64Schedule>(f, *GetPhaseMemPool(), *live, PhaseName());
 #endif
-#if TARGARM32
+#if defined(TARGARM32) && TARGARM32
     schedule = GetPhaseAllocator()->New<Arm32Schedule>(f, *GetPhaseMemPool(), *live, PhaseName());
 #endif
     schedule->ListScheduling(false);

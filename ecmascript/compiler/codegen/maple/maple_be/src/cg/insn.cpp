@@ -220,7 +220,6 @@ uint32 Insn::GetMemOpndIdx() const
     }
     return opndIdx;
 }
-
 void Insn::SetMemOpnd(MemOperand *memOpnd)
 {
     for (uint32 i = 0; i < static_cast<uint32>(opnds.size()); ++i) {

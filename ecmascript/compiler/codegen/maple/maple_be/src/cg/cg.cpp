@@ -150,11 +150,12 @@ void CG::AddStackGuardvar()
     chkGuard->SetTyIdx(GlobalTables::GetTypeTable().GetTypeTable()[PTY_u64]->GetTypeIndex());
     GlobalTables::GetGsymTable().AddToStringSymbolMap(*chkGuard);
 
-    MIRSymbol *chkFunc = GlobalTables::GetGsymTable().CreateSymbol(kScopeGlobal);
-    chkFunc->SetNameStrIdx(std::string("__stack_chk_fail"));
-    chkFunc->SetStorageClass(kScText);
-    chkFunc->SetSKind(kStFunc);
-    GlobalTables::GetGsymTable().AddToStringSymbolMap(*chkFunc);
+    MIRFunction *func = GetMIRModule()->GetMIRBuilder()->GetOrCreateFunction(
+        "__stack_chk_fail", GlobalTables::GetTypeTable().GetVoid()->GetTypeIndex());
+    MIRSymbol *chkFuncSym = func->GetFuncSymbol();
+    chkFuncSym->SetAppearsInCode(true);
+    chkFuncSym->SetStorageClass(kScExtern);
+    GlobalTables::GetGsymTable().AddToStringSymbolMap(*chkFuncSym);
 }
 
 void CG::SetInstrumentationFunction(const std::string &name)

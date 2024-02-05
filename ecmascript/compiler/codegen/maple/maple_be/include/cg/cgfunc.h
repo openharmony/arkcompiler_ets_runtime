@@ -177,6 +177,7 @@ public:
     LmbcFormalParamInfo *GetLmbcFormalParamInfo(uint32 offset);
     virtual void LmbcGenSaveSpForAlloca() = 0;
     void RemoveUnreachableBB();
+    Insn &BuildLocInsn(int64 fileNum, int64 lineNum, int64 columnNum);
     void GenerateLoc(StmtNode *stmt, unsigned &lastSrcLoc, unsigned &lastMplLoc);
     int32 GetFreqFromStmt(uint32 stmtId);
     void GenerateInstruction();
@@ -222,8 +223,8 @@ public:
     virtual void SelectCondSpecialCase2(const CondGotoNode &stmt, BaseNode &opnd0) = 0;
     virtual void SelectGoto(GotoNode &stmt) = 0;
     virtual void SelectCall(CallNode &callNode) = 0;
-    virtual void SelectIcall(IcallNode &icallNode, Operand &fptrOpnd) = 0;
-    virtual void SelectIntrinCall(IntrinsiccallNode &intrinsiccallNode) = 0;
+    virtual void SelectIcall(IcallNode &icallNode) = 0;
+    virtual void SelectIntrinsicCall(IntrinsiccallNode &intrinsiccallNode) = 0;
     virtual Operand *SelectIntrinsicOpWithOneParam(IntrinsicopNode &intrinsicopNode, std::string name) = 0;
     virtual Operand *SelectIntrinsicOpWithNParams(IntrinsicopNode &intrinsicopNode, PrimType retType,
                                                   const std::string &name) = 0;
@@ -241,7 +242,7 @@ public:
     virtual Operand *SelectCSyncLockTestSet(IntrinsicopNode &intrinsicopNode, PrimType pty) = 0;
     virtual Operand *SelectCSyncSynchronize(IntrinsicopNode &intrinsicopNode) = 0;
     virtual Operand *SelectCAtomicLoadN(IntrinsicopNode &intrinsicopNode) = 0;
-    virtual Operand *SelectCAtomicExchangeN(IntrinsicopNode &intrinsicopNode) = 0;
+    virtual Operand *SelectCAtomicExchangeN(const IntrinsiccallNode &intrinsiccallNode) = 0;
     virtual Operand *SelectCReturnAddress(IntrinsicopNode &intrinsicopNode) = 0;
     virtual void SelectMembar(StmtNode &membar) = 0;
     virtual void SelectComment(CommentNode &comment) = 0;
@@ -258,7 +259,7 @@ public:
                                  PrimType finalBitFieldDestType = kPtyInvalid) = 0;
     virtual Operand *SelectIreadoff(const BaseNode &parent, IreadoffNode &ireadoff) = 0;
     virtual Operand *SelectIreadfpoff(const BaseNode &parent, IreadFPoffNode &ireadoff) = 0;
-    virtual Operand *SelectIntConst(const MIRIntConst &intConst) = 0;
+    virtual Operand *SelectIntConst(const MIRIntConst &intConst, const BaseNode &parent) = 0;
     virtual Operand *SelectFloatConst(MIRFloatConst &floatConst, const BaseNode &parent) = 0;
     virtual Operand *SelectDoubleConst(MIRDoubleConst &doubleConst, const BaseNode &parent) = 0;
     virtual Operand *SelectStrConst(MIRStrConst &strConst) = 0;
@@ -422,7 +423,7 @@ public:
     };
     LabelIdx CreateLabel();
 
-    RegOperand *GetVirtualRegisterOperand(regno_t vRegNO)
+    RegOperand *GetVirtualRegisterOperand(regno_t vRegNO) const
     {
         auto it = vRegOperandTable.find(vRegNO);
         return it == vRegOperandTable.end() ? nullptr : it->second;
@@ -608,6 +609,9 @@ public:
     }
 
     MIRSymbol *GetRetRefSymbol(BaseNode &expr);
+
+    void VerifyAllInsn();
+
     void GenerateCfiPrologEpilog();
 
     void PatchLongBranch();
@@ -678,7 +682,7 @@ public:
         debugInfo = dbgInfo;
     }
 
-    void AddDIESymbolLocation(const MIRSymbol *sym, SymbolAlloc *loc);
+    void AddDIESymbolLocation(const MIRSymbol *sym, SymbolAlloc *loc, bool isParam);
 
     virtual void DBGFixCallFrameLocationOffsets() {};
 
@@ -1395,9 +1399,9 @@ public:
         return (mirModule.GetSrcLang() != kSrcLangC) || mirModule.IsWithDbgInfo();
     }
 
-    MapleVector<DBGExprLoc *> &GetDbgCallFrameLocations()
+    MapleVector<DBGExprLoc *> &GetDbgCallFrameLocations(bool isParam)
     {
-        return dbgCallFrameLocations;
+        return isParam ? dbgParamCallFrameLocations : dbgLocalCallFrameLocations;
     }
 
     bool HasAsm() const
@@ -1493,6 +1497,15 @@ public:
         return funcEmitInfo;
     }
 
+    void SetExitBBLost(bool val)
+    {
+        exitBBLost = val;
+    }
+    bool GetExitBBLost()
+    {
+        return exitBBLost;
+    }
+
 protected:
     uint32 firstMapleIrVRegNO = 200; /* positioned after physical regs */
     uint32 firstNonPregVRegNO;
@@ -1531,7 +1544,8 @@ protected:
     bool hasTakenLabel = false;
     uint32 frequency = 0;
     DebugInfo *debugInfo = nullptr; /* debugging info */
-    MapleVector<DBGExprLoc *> dbgCallFrameLocations;
+    MapleVector<DBGExprLoc *> dbgParamCallFrameLocations;
+    MapleVector<DBGExprLoc *> dbgLocalCallFrameLocations;
     RegOperand *aggParamReg = nullptr;
     ReachingDefinition *reachingDef = nullptr;
 
@@ -1612,6 +1626,48 @@ protected:
         return false;
     }
 
+    PrimType GetPrimTypeFromSize(uint32 byteSize, PrimType defaultType) const
+    {
+        constexpr uint32 oneByte = 1;
+        constexpr uint32 twoByte = 2;
+        constexpr uint32 fourByte = 4;
+        switch (byteSize) {
+            case oneByte:
+                return PTY_i8;
+            case twoByte:
+                return PTY_i16;
+            case fourByte:
+                return PTY_i32;
+            default:
+                return defaultType;
+        }
+    }
+
+    BB *CreateAtomicBuiltinBB()
+    {
+        LabelIdx atomicBBLabIdx = CreateLabel();
+        BB *atomicBB = CreateNewBB();
+        atomicBB->SetKind(BB::kBBIf);
+        atomicBB->SetAtomicBuiltIn();
+        atomicBB->AddLabel(atomicBBLabIdx);
+        SetLab2BBMap(atomicBBLabIdx, *atomicBB);
+        GetCurBB()->AppendBB(*atomicBB);
+        return atomicBB;
+    }
+
+    // clone old mem and add offset
+    // oldMem: [base, imm:12] -> newMem: [base, imm:(12 + offset)]
+    MemOperand &GetMemOperandAddOffset(const MemOperand &oldMem, uint32 offset, uint32 newSize)
+    {
+        auto &newMem = static_cast<MemOperand &>(*oldMem.Clone(*GetMemoryPool()));
+        auto &oldOffset = *oldMem.GetOffsetOperand();
+        auto &newOffst = static_cast<ImmOperand &>(*oldOffset.Clone(*GetMemoryPool()));
+        newOffst.SetValue(oldOffset.GetValue() + offset);
+        newMem.SetOffsetOperand(newOffst);
+        newMem.SetSize(newSize);
+        return newMem;
+    }
+
 private:
     CGFunc &operator=(const CGFunc &cgFunc);
     CGFunc(const CGFunc &);
@@ -1669,6 +1725,9 @@ private:
 
     /* save stack protect kinds which can trigger stack protect */
     uint8 stackProtectInfo = 0;
+
+    // mark exitBB is unreachable
+    bool exitBBLost = false;
 }; /* class CGFunc */
 
 MAPLE_FUNC_PHASE_DECLARE_BEGIN(CgLayoutFrame, maplebe::CGFunc)
@@ -1676,6 +1735,8 @@ MAPLE_FUNC_PHASE_DECLARE_END
 MAPLE_FUNC_PHASE_DECLARE_BEGIN(CgHandleFunction, maplebe::CGFunc)
 MAPLE_FUNC_PHASE_DECLARE_END
 MAPLE_FUNC_PHASE_DECLARE_BEGIN(CgFixCFLocOsft, maplebe::CGFunc)
+MAPLE_FUNC_PHASE_DECLARE_END
+MAPLE_FUNC_PHASE_DECLARE_BEGIN(CgVerify, maplebe::CGFunc)
 MAPLE_FUNC_PHASE_DECLARE_END
 MAPLE_FUNC_PHASE_DECLARE_BEGIN(CgGenCfi, maplebe::CGFunc)
 MAPLE_FUNC_PHASE_DECLARE_END

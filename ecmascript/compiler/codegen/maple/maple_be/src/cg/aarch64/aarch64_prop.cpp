@@ -307,6 +307,11 @@ bool A64ConstProp::ArithmeticConstReplace(DUInsnInfo &useDUInfo, ImmOperand &con
         uint32 useOpndIdx = useOpndInfoIt->first;
         CHECK_FATAL(useOpndIdx == kInsnSecondOpnd || useOpndIdx == kInsnThirdOpnd, "check this insn");
         Insn *newInsn = nullptr;
+        auto &tempImm = static_cast<ImmOperand &>(*constOpnd.Clone(*constPropMp));
+        if (tempImm.GetSize() == k64BitSize && useInsn->GetOperandSize(useOpndIdx) == k32BitSize) {
+            uint64 newVal = static_cast<uint64>(tempImm.GetValue()) & UINT32_MAX;
+            tempImm.SetValue(static_cast<int64>(newVal));
+        }
         if (static_cast<AArch64CGFunc *>(cgFunc)->IsOperandImmValid(newMop, &constOpnd, kInsnThirdOpnd)) {
             if (useOpndIdx == kInsnThirdOpnd) {
                 newInsn = &cgFunc->GetInsnBuilder()->BuildInsn(newMop, useInsn->GetOperand(kInsnFirstOpnd),
@@ -887,7 +892,7 @@ RegOperand *A64StrLdrProp::GetReplaceReg(RegOperand &a64Reg)
     if (a64Reg.IsSSAForm()) {
         regno_t ssaIndex = a64Reg.GetRegisterNumber();
         replaceVersions[ssaIndex] = ssaInfo->FindSSAVersion(ssaIndex);
-        DEBUG_ASSERT(replaceVersions.size() <= 2, "CHECK THIS CASE IN A64PROP"); // size <= 2 in A64PROP
+        DEBUG_ASSERT(replaceVersions.size() <= 2, "CHECK THIS CASE IN A64PROP");  // size <= 2 in A64PROP
         return &a64Reg;
     }
     return nullptr;
@@ -1431,8 +1436,10 @@ void ExtendShiftPattern::Run()
     if (!cgFunc.GetMirModule().IsCModule()) {
         return;
     }
-    FOR_ALL_BB_REV(bb, &cgFunc) {
-        FOR_BB_INSNS_REV(insn, bb) {
+    FOR_ALL_BB_REV(bb, &cgFunc)
+    {
+        FOR_BB_INSNS_REV(insn, bb)
+        {
             if (!insn->IsMachineInstruction()) {
                 continue;
             }
@@ -1446,8 +1453,10 @@ void ExtendMovPattern::Run()
     if (!cgFunc.GetMirModule().IsCModule()) {
         return;
     }
-    FOR_ALL_BB(bb, &cgFunc) {
-        FOR_BB_INSNS(insn, bb) {
+    FOR_ALL_BB(bb, &cgFunc)
+    {
+        FOR_BB_INSNS(insn, bb)
+        {
             if (!insn->IsMachineInstruction()) {
                 continue;
             }
@@ -1581,8 +1590,10 @@ void ExtendMovPattern::Optimize(Insn &insn)
 
 void CopyRegProp::Run()
 {
-    FOR_ALL_BB(bb, &cgFunc) {
-        FOR_BB_INSNS(insn, bb) {
+    FOR_ALL_BB(bb, &cgFunc)
+    {
+        FOR_BB_INSNS(insn, bb)
+        {
             if (!insn->IsMachineInstruction()) {
                 continue;
             }
@@ -1703,7 +1714,8 @@ void CopyRegProp::VaildateImplicitCvt(RegOperand &destReg, const RegOperand &src
 
 void RedundantPhiProp::Run()
 {
-    FOR_ALL_BB(bb, &cgFunc) {
+    FOR_ALL_BB(bb, &cgFunc)
+    {
         for (auto phiIt : bb->GetPhiInsns()) {
             Init();
             if (!CheckCondition(*phiIt.second)) {
@@ -1791,8 +1803,10 @@ void ValidBitNumberProp::Optimize(Insn &insn)
 
 void ValidBitNumberProp::Run()
 {
-    FOR_ALL_BB(bb, &cgFunc) {
-        FOR_BB_INSNS(insn, bb) {
+    FOR_ALL_BB(bb, &cgFunc)
+    {
+        FOR_BB_INSNS(insn, bb)
+        {
             if (!insn->IsMachineInstruction()) {
                 continue;
             }
@@ -1807,8 +1821,10 @@ void ValidBitNumberProp::Run()
 
 void FpSpConstProp::Run()
 {
-    FOR_ALL_BB(bb, &cgFunc) {
-        FOR_BB_INSNS(insn, bb) {
+    FOR_ALL_BB(bb, &cgFunc)
+    {
+        FOR_BB_INSNS(insn, bb)
+        {
             if (!insn->IsMachineInstruction()) {
                 continue;
             }
@@ -2443,8 +2459,10 @@ void A64PregCopyPattern::Optimize(Insn &insn)
 
 void A64PregCopyPattern::Run()
 {
-    FOR_ALL_BB(bb, &cgFunc) {
-        FOR_BB_INSNS(insn, bb) {
+    FOR_ALL_BB(bb, &cgFunc)
+    {
+        FOR_BB_INSNS(insn, bb)
+        {
             if (!insn->IsMachineInstruction()) {
                 continue;
             }

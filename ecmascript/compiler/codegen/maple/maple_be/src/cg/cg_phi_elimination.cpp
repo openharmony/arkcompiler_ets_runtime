@@ -41,8 +41,12 @@ void PhiEliminate::TranslateTSSAToCSSA()
 #endif
                 PlaceMovInPredBB(fBBId, CreateMov(tempMovDest, *(phiOpndIt.second)));
             }
-            Insn &movInsn = CreateMov(destReg, tempMovDest);
-            bb->ReplaceInsn(*phiInsnIt.second, movInsn);
+            if (!destReg.IsOfCC()) {
+                Insn &movInsn = CreateMov(destReg, tempMovDest);
+                bb->ReplaceInsn(*phiInsnIt.second, movInsn);
+            } else {
+                bb->RemoveInsn(*phiInsnIt.second);
+            }
         }
     }
 

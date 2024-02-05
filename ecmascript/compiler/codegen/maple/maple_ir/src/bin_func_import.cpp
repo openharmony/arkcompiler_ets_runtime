@@ -47,7 +47,7 @@ void BinaryMplImport::ImportFuncIdInfo(MIRFunction *func)
     func->SetPuidxOrigin(static_cast<PUIdx>(ReadNum()));
     ImportInfoVector(func->GetInfoVector(), func->InfoIsString());
     if (mod.GetFlavor() == kFlavorLmbc) {
-        func->SetFrameSize(static_cast<uint16>(ReadNum()));
+        func->SetFrameSize(static_cast<uint32>(ReadNum()));
     }
 }
 

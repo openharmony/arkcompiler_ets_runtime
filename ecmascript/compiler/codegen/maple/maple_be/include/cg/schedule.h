@@ -17,13 +17,130 @@
 #define MAPLEBE_INCLUDE_CG_SCHEDULE_H
 
 #include "insn.h"
+#include "live.h"
 #include "mad.h"
 #include "dependence.h"
-#include "live.h"
 
 namespace maplebe {
 #define LIST_SCHED_DUMP_NEWPM CG_DEBUG_FUNC(f)
 #define LIST_SCHED_DUMP_REF CG_DEBUG_FUNC(cgFunc)
+
+class ScheduleProcessInfo {
+public:
+    explicit ScheduleProcessInfo(uint32 size)
+    {
+        availableReadyList.reserve(size);
+        scheduledNodes.reserve(size);
+    }
+
+    virtual ~ScheduleProcessInfo() = default;
+
+    uint32 GetLastUpdateCycle() const
+    {
+        return lastUpdateCycle;
+    }
+
+    void SetLastUpdateCycle(uint32 updateCycle)
+    {
+        lastUpdateCycle = updateCycle;
+    }
+
+    uint32 GetCurrCycle() const
+    {
+        return currCycle;
+    }
+
+    void IncCurrCycle()
+    {
+        ++currCycle;
+    }
+
+    void DecAdvanceCycle()
+    {
+        advanceCycle--;
+    }
+
+    uint32 GetAdvanceCycle() const
+    {
+        return advanceCycle;
+    }
+
+    void SetAdvanceCycle(uint32 cycle)
+    {
+        advanceCycle = cycle;
+    }
+
+    void ClearAvailableReadyList()
+    {
+        availableReadyList.clear();
+    }
+
+    void PushElemIntoAvailableReadyList(DepNode *node)
+    {
+        availableReadyList.emplace_back(node);
+    }
+
+    size_t SizeOfAvailableReadyList() const
+    {
+        return availableReadyList.size();
+    }
+
+    bool AvailableReadyListIsEmpty() const
+    {
+        return availableReadyList.empty();
+    }
+
+    void SetAvailableReadyList(const std::vector<DepNode *> &tempReadyList)
+    {
+        availableReadyList = tempReadyList;
+    }
+
+    const std::vector<DepNode *> &GetAvailableReadyList() const
+    {
+        return availableReadyList;
+    }
+
+    const std::vector<DepNode *> &GetAvailableReadyList()
+    {
+        return availableReadyList;
+    }
+
+    void PushElemIntoScheduledNodes(DepNode *node)
+    {
+        node->SetState(kScheduled);
+        node->SetSchedCycle(currCycle);
+        node->OccupyRequiredUnits();
+        scheduledNodes.emplace_back(node);
+    }
+
+    bool IsFirstSeparator() const
+    {
+        return isFirstSeparator;
+    }
+
+    void ResetIsFirstSeparator()
+    {
+        isFirstSeparator = false;
+    }
+
+    size_t SizeOfScheduledNodes() const
+    {
+        return scheduledNodes.size();
+    }
+
+    const std::vector<DepNode *> &GetScheduledNodes() const
+    {
+        return scheduledNodes;
+    }
+
+private:
+    std::vector<DepNode *> availableReadyList;
+    std::vector<DepNode *> scheduledNodes;
+    uint32 lastUpdateCycle = 0;
+    uint32 currCycle = 0;
+    uint32 advanceCycle = 0;
+    bool isFirstSeparator = true;
+};
 
 class RegPressureSchedule {
 public:
@@ -38,6 +155,7 @@ public:
           partialScheduledNode(alloc.Adapter()),
           optimisticScheduledNodes(alloc.Adapter()),
           splitterIndexes(alloc.Adapter()),
+          integerRegisterPressureList(alloc.Adapter()),
           liveInRegNO(alloc.Adapter()),
           liveOutRegNO(alloc.Adapter())
     {
@@ -45,22 +163,22 @@ public:
     virtual ~RegPressureSchedule() = default;
 
     void InitBBInfo(BB &b, MemPool &memPool, const MapleVector<DepNode *> &nodes);
-    void BuildPhyRegInfo(const std::vector<int32> &regNumVec);
-    void initPartialSplitters(const MapleVector<DepNode *> &nodes);
+    void BuildPhyRegInfo(const std::vector<int32> &regNumVec) const;
+    void InitPartialSplitters(const MapleVector<DepNode *> &nodes);
     void Init(const MapleVector<DepNode *> &nodes);
     void UpdateBBPressure(const DepNode &node);
-    void CalculatePressure(DepNode &node, regno_t reg, bool def);
+    void CalculatePressure(const DepNode &node, regno_t reg, bool def) const;
     void SortReadyList();
     static bool IsLastUse(const DepNode &node, regno_t regNO);
-    void ReCalculateDepNodePressure(DepNode &node);
+    void ReCalculateDepNodePressure(const DepNode &node) const;
     void UpdateLiveReg(const DepNode &node, regno_t reg, bool def);
     bool CanSchedule(const DepNode &node) const;
     void UpdateReadyList(const DepNode &node);
     void BruteUpdateReadyList(const DepNode &node, std::vector<bool> &changedToReady);
     void RestoreReadyList(DepNode &node, std::vector<bool> &changedToReady);
     void UpdatePriority(DepNode &node);
-    void CalculateMaxDepth(const MapleVector<DepNode *> &nodes);
-    void CalculateNear(const DepNode &node);
+    void CalculateMaxDepth(const MapleVector<DepNode *> &nodes) const;
+    void CalculateNear(const DepNode &node) const;
     static bool DepNodePriorityCmp(const DepNode *node1, const DepNode *node2);
     DepNode *ChooseNode();
     void DoScheduling(MapleVector<DepNode *> &nodes);
@@ -101,7 +219,7 @@ private:
     /* save split points */
     MapleVector<int> splitterIndexes;
     /* save integer register pressure */
-    std::vector<int> integerRegisterPressureList;
+    MapleVector<int> integerRegisterPressureList;
     /* save the amount of every type register. */
     int32 *physicalRegNum = nullptr;
     int32 maxPriority = 0;

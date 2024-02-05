@@ -508,7 +508,7 @@ MIRSymbol *MIRBuilder::CreateConstStringSymbol(const std::string &symbolName, co
 {
     auto elemPrimType = PTY_u8;
     MIRType *type = GlobalTables::GetTypeTable().GetPrimType(elemPrimType);
-    uint32 sizeIn = static_cast<uint32>(content.length());
+    uint64 sizeIn = static_cast<uint64>(content.length());
     MIRType *arrayTypeWithSize = GlobalTables::GetTypeTable().GetOrCreateArrayType(
         *GlobalTables::GetTypeTable().GetPrimType(elemPrimType), 1, &sizeIn);
 
