@@ -34,21 +34,17 @@ public:
           enableLog_(enableLog),
           methodName_(name),
           nocheck_(ctx->GetEcmaVM()->GetJSOptions().IsCompilerNoCheck()),
+          traceInline_(ctx->GetEcmaVM()->GetJSOptions().GetTraceInline()),
           thread_(ctx->GetEcmaVM()->GetJSThread()) {}
     ~NativeInlineLowering() = default;
     void RunNativeInlineLowering();
 
 private:
-    void RunArrayForeachInline(GateRef gate);
-    void ArrayForeachCall(GateRef gate, GateRef thisObj, GateRef callBack, GateRef thisArg, Label *exit);
-    void TryInlineNativeCallThis1(GateRef gate);
-    void TryInlineBuiltinsArrayFunc(GateRef gate);
-    bool IsCreateArray(GateRef gate);
-    GateRef LoadArrayElement(ElementsKind kind, GateRef gate, GateRef index);
-    void ReplaceHirDirectly(GateRef gate, GateRef value);
-    GateRef LowerCallRuntime(GateRef glue, GateRef hirGate, int index, const std::vector<GateRef> &args, bool useLabel);
-    GateRef NativeCallTS(GateRef gate, GateRef depend, const std::vector<GateRef> &args);
-    void TryInlineStringFromCharCode(GateRef gate, CallThis1TypeInfoAccessor &tacc);
+    std::optional<size_t> GetArgc(GateRef gate);
+    void TryInlineStringFromCharCode(GateRef gate, size_t argc);
+    void TryInlineMathMinWithOneArg(GateRef gate, size_t argc);
+    void TryInlineMathUnaryBuiltin(GateRef gate, size_t argc, BuiltinsStubCSigns::ID id, const GateMetaData* op);
+
     bool EnableLog() const
     {
         return enableLog_;
@@ -64,6 +60,12 @@ private:
         return nocheck_;
     }
 
+    bool EnableTrace() const
+    {
+        return traceInline_;
+    }
+
+private:
     Circuit *circuit_ {nullptr};
     CircuitBuilder builder_;
     GateAccessor acc_;
@@ -72,6 +74,7 @@ private:
     bool enableLog_;
     std::string methodName_;
     bool nocheck_;
+    bool traceInline_;
     const JSThread *thread_ {nullptr};
 };
 }

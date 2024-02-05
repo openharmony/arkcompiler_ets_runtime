@@ -29,8 +29,6 @@ void BuiltinLowering::LowerTypedCallBuitin(GateRef gate)
             LowerTypedAbs(gate);
             break;
         case BUILTINS_STUB_ID(FLOOR):
-        case BUILTINS_STUB_ID(COS):
-        case BUILTINS_STUB_ID(SIN):
         case BUILTINS_STUB_ID(ACOS):
         case BUILTINS_STUB_ID(ATAN):
             LowerTypedTrigonometric(gate, id);
@@ -108,12 +106,6 @@ GateRef BuiltinLowering::TypedTrigonometric(GateRef gate, BuiltinsStubCSigns::ID
                     break;
                 case BUILTINS_STUB_ID(ATAN):
                     index = RTSTUB_ID(FloatATan);
-                    break;
-                case BUILTINS_STUB_ID(COS):
-                    index = RTSTUB_ID(FloatCos);
-                    break;
-                case BUILTINS_STUB_ID(SIN):
-                    index = RTSTUB_ID(FloatSin);
                     break;
                 default:
                     LOG_ECMA(FATAL) << "this branch is unreachable";
@@ -359,12 +351,13 @@ GateRef BuiltinLowering::CheckPara(GateRef gate, GateRef funcCheck)
     GateRef idGate = acc_.GetValueIn(gate, 1);
     BuiltinsStubCSigns::ID id = static_cast<BuiltinsStubCSigns::ID>(acc_.GetConstantValue(idGate));
     switch (id) {
-        case BuiltinsStubCSigns::ID::COS:
-        case BuiltinsStubCSigns::ID::SIN:
         case BuiltinsStubCSigns::ID::ACOS:
         case BuiltinsStubCSigns::ID::ATAN:
         case BuiltinsStubCSigns::ID::ABS:
         case BuiltinsStubCSigns::ID::FLOOR: {
+            if (acc_.GetNumValueIn(gate) <= 2) {
+                return funcCheck;
+            }
             GateRef para = acc_.GetValueIn(gate, 2);
             GateRef paracheck = builder_.TaggedIsNumber(para);
             return builder_.BoolAnd(paracheck, funcCheck);
@@ -388,6 +381,10 @@ GateRef BuiltinLowering::CheckPara(GateRef gate, GateRef funcCheck)
         case BuiltinsStubCSigns::ID::NumberConstructor:
         case BuiltinsStubCSigns::ID::StringFromCharCode:
             // Don't need check para
+            return funcCheck;
+        case BuiltinsStubCSigns::ID::MathCos:
+        case BuiltinsStubCSigns::ID::MathSin:
+            // Don't need check param. Param was checked before
             return funcCheck;
         default: {
             LOG_COMPILER(FATAL) << "this branch is unreachable";

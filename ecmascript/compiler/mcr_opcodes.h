@@ -50,7 +50,6 @@ namespace panda::ecmascript::kungfu {
     V(LoadStringLength, LOAD_STRING_LENGTH, GateFlags::NO_WRITE, 1, 1, 1)                       \
     V(StartAllocate, START_ALLOCATE, GateFlags::NONE_FLAG, 0, 1, 0)                             \
     V(StorePropertyNoBarrier, STORE_PROPERTY_NO_BARRIER, GateFlags::NONE_FLAG, 1, 1, 3)         \
-    V(TypedCallCheck, TYPED_CALL_CHECK, GateFlags::CHECKABLE, 1, 1, 3)                          \
     V(TypedNewAllocateThis, TYPED_NEW_ALLOCATE_THIS, GateFlags::CHECKABLE, 1, 1, 2)             \
     V(TypedSuperAllocateThis, TYPED_SUPER_ALLOCATE_THIS, GateFlags::CHECKABLE, 1, 1, 2)         \
     V(ArrayConstructorCheck, ARRAY_CONSTRUCTOR_CHECK, GateFlags::CHECKABLE, 1, 1, 1)            \
@@ -62,6 +61,8 @@ namespace panda::ecmascript::kungfu {
     V(MigrateFromHeapValueToRawValue, MIGRATE_FROM_HEAPVALUE_TO_RAWVALUE, GateFlags::NONE_FLAG, 1, 1, 3)     \
     V(MigrateFromHoleIntToHoleNumber, MIGRATE_FROM_HOLEINT_TO_HOLENUMBER, GateFlags::NONE_FLAG, 1, 1, 1)     \
     V(MigrateFromHoleNumberToHoleInt, MIGRATE_FROM_HOLENUMBER_TO_HOLEINT, GateFlags::NONE_FLAG, 1, 1, 1)     \
+    V(MathCos, MATH_COS, GateFlags::NO_WRITE, 1, 1, 1)                                          \
+    V(MathSin, MATH_SIN, GateFlags::NO_WRITE, 1, 1, 1)                                          \
     MCR_BINARY_GATE_META_DATA_CACHE_LIST(V)
 
 #define MCR_GATE_META_DATA_LIST_WITH_PC_OFFSET(V)                              \
@@ -69,7 +70,7 @@ namespace panda::ecmascript::kungfu {
 
 #define MCR_GATE_META_DATA_LIST_FOR_CALL(V)                                    \
     V(TypedCall, TYPEDCALL, GateFlags::HAS_FRAME_STATE, 1, 1, value)           \
-    V(TypedFastCall, TYPEDFASTCALL, GateFlags::HAS_FRAME_STATE, 1, 1, value)
+    V(TypedFastCall, TYPEDFASTCALL, GateFlags::HAS_FRAME_STATE, 1, 1, value)   \
 
 #define MCR_GATE_META_DATA_LIST_WITH_VALUE(V)                                                           \
     V(LoadConstOffset,             LOAD_CONST_OFFSET,              GateFlags::NO_WRITE,  0, 1, 1)       \
@@ -124,7 +125,12 @@ namespace panda::ecmascript::kungfu {
 }
 
 #define MCR_GATE_META_DATA_LIST_WITH_VALUE_IN(V)                                                 \
+<<<<<<< HEAD
     V(TypedCreateObjWithBuffer, TYPED_CREATE_OBJ_WITH_BUFFER, GateFlags::CHECKABLE, 1, 1, value)
+=======
+    V(TypedCreateObjWithBuffer, TYPED_CREATE_OBJ_WITH_BUFFER, GateFlags::NONE_FLAG, 1, 1, value) \
+    V(TypedCallCheck, TYPED_CALL_CHECK, GateFlags::CHECKABLE, 1, 1, value)  
+>>>>>>> bf72f67fb (Initial support of builtin inlining)
 
 #define MCR_GATE_META_DATA_LIST_WITH_SIZE(V)                                       \
     MCR_GATE_META_DATA_LIST_WITH_VALUE_IN(V)

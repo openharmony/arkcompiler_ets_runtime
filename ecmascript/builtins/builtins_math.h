@@ -45,7 +45,7 @@
     V("cbrt",   Cbrt,   1, INVALID)     /* Math.cbrt ( x ) */               \
     V("ceil",   Ceil,   1, INVALID)     /* Math.ceil ( x ) */               \
     V("clz32",  Clz32,  1, INVALID)     /* Math.clz32 ( x ) */              \
-    V("cos",    Cos,    1, COS)         /* Math.cos ( x ) */                \
+    V("cos",    Cos,    1, MathCos)     /* Math.cos ( x ) */                \
     V("cosh",   Cosh,   1, INVALID)     /* Math.cosh ( x ) */               \
     V("exp",    Exp,    1, INVALID)     /* Math.exp ( x ) */                \
     V("expm1",  Expm1,  1, INVALID)     /* Math.expm1 ( x ) */              \
@@ -63,7 +63,7 @@
     V("random", Random, 0, INVALID)     /* Math.random ( ) */               \
     V("round",  Round,  1, INVALID)     /* Math.round ( x ) */              \
     V("sign",   Sign,   1, INVALID)     /* Math.sign ( x ) */               \
-    V("sin",    Sin,    1, SIN)         /* Math.sin ( x ) */                \
+    V("sin",    Sin,    1, MathSin)     /* Math.sin ( x ) */                \
     V("sinh",   Sinh,   1, INVALID)     /* Math.sinh ( x ) */               \
     V("sqrt",   Sqrt,   1, SQRT)        /* Math.sqrt ( x ) */               \
     V("tan",    Tan,    1, INVALID)     /* Math.tan ( x ) */                \

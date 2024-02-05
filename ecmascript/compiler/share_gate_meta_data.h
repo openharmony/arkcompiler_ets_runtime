@@ -110,6 +110,7 @@ enum class TypedCallTargetCheckOp : uint8_t;
     V(NewBuiltinCtorFail2,             NEWBUILTINCTORFAIL2)           \
     V(IsUndefinedOrHole,               ISUNDEFINEDORHOLE)             \
     V(IsNotUndefinedOrHole,            ISNOTUNDEFINEDORHOLE)          \
+    V(BuiltinInliningTypeGuard,        BUILTIN_INLINING_TYPE_GUARD)   \
 
 enum class DeoptType : uint8_t {
     NOTCHECK = 0,

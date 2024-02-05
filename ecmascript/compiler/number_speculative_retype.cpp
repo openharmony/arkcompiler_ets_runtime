@@ -160,6 +160,9 @@ GateRef NumberSpeculativeRetype::VisitGate(GateRef gate)
         case OpCode::ORDINARY_HAS_INSTANCE:
         case OpCode::ECMA_STRING_CHECK:
         case OpCode::CREATE_ARGUMENTS:
+        case OpCode::TAGGED_TO_INT64:
+        case OpCode::MATH_COS:
+        case OpCode::MATH_SIN:
             return VisitOthers(gate);
         default:
             return Circuit::NullGate();

@@ -20,21 +20,56 @@
 #include "ecmascript/message_string.h"
 
 namespace panda::ecmascript::kungfu {
+
+std::optional<size_t> NativeInlineLowering::GetArgc(GateRef gate)
+{
+    EcmaOpcode ecmaOpcode = acc_.GetByteCodeOpcode(gate);
+    switch (ecmaOpcode) {
+        case EcmaOpcode::CALLTHIS0_IMM8_V8:
+            return 0;
+        case EcmaOpcode::CALLTHIS1_IMM8_V8_V8:
+            return 1;
+        case EcmaOpcode::CALLTHIS2_IMM8_V8_V8_V8:
+            return 2;
+        case EcmaOpcode::CALLTHIS3_IMM8_V8_V8_V8_V8:
+            return 3;
+        case EcmaOpcode::CALLTHISRANGE_IMM8_IMM8_V8: {
+            CallThisRangeTypeInfoAccessor tia(thread_, circuit_, gate);
+            return tia.GetArgc();
+        }
+        default:
+            return std::nullopt;
+    }
+}
+
 void NativeInlineLowering::RunNativeInlineLowering()
 {
     std::vector<GateRef> gateList;
     circuit_->GetAllGates(gateList);
     for (const auto &gate : gateList) {
         auto op = acc_.GetOpCode(gate);
-        if (op == OpCode::JS_BYTECODE) {
-            EcmaOpcode ecmaOpcode = acc_.GetByteCodeOpcode(gate);
-            switch (ecmaOpcode) {
-                case EcmaOpcode::CALLTHIS1_IMM8_V8_V8:
-                    TryInlineNativeCallThis1(gate);
-                    break;
-                default:
-                    break;
-            }
+        if (op != OpCode::JS_BYTECODE) {
+            continue;
+        }
+        std::optional<size_t> opt_argc = GetArgc(gate);
+        if (!opt_argc) {
+            continue;
+        }
+        size_t argc = opt_argc.value();
+        CallTypeInfoAccessor ctia(thread_, circuit_, gate);
+        BuiltinsStubCSigns::ID id = ctia.TryGetPGOBuiltinId();
+        switch (id) {
+            case BuiltinsStubCSigns::ID::StringFromCharCode:
+                TryInlineStringFromCharCode(gate, argc);
+                break;
+            case BuiltinsStubCSigns::ID::MathCos:
+                TryInlineMathUnaryBuiltin(gate, argc, id, circuit_->MathCos());
+                break;
+            case BuiltinsStubCSigns::ID::MathSin:
+                TryInlineMathUnaryBuiltin(gate, argc, id, circuit_->MathSin());
+                break;
+            default:
+                break;
         }
     }
 
@@ -49,199 +84,38 @@ void NativeInlineLowering::RunNativeInlineLowering()
     }
 }
 
-void NativeInlineLowering::TryInlineNativeCallThis1(GateRef gate)
+void NativeInlineLowering::TryInlineStringFromCharCode(GateRef gate, size_t argc)
 {
-    CallThis1TypeInfoAccessor tacc(thread_, circuit_, gate);
-    BuiltinsStubCSigns::ID id = tacc.TryGetPGOBuiltinId();
-    switch (id) {
-        case BuiltinsStubCSigns::ID::StringFromCharCode: {
-            TryInlineStringFromCharCode(gate, tacc);
-            break;
-        }
-        default:
-            break;
-    }
-}
-
-void NativeInlineLowering::TryInlineStringFromCharCode(GateRef gate, CallThis1TypeInfoAccessor &tacc)
-{
-    if (acc_.GetByteCodeOpcode(gate) != EcmaOpcode::CALLTHIS1_IMM8_V8_V8) {
+    if (argc != 1) {
         return;
     }
+    CallThis1TypeInfoAccessor tacc(thread_, circuit_, gate);
     Environment env(gate, circuit_, &builder_);
     if (!Uncheck()) {
         builder_.CallTargetCheck(gate, tacc.GetFunc(),
                                  builder_.IntPtr(static_cast<int64_t>(BuiltinsStubCSigns::ID::StringFromCharCode)),
-                                 tacc.GetArg0());
+                                 {tacc.GetArg0()});
     }
     GateRef ret = builder_.StringFromSingleCharCode(tacc.GetArg0());
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), ret);
 }
 
-void NativeInlineLowering::TryInlineBuiltinsArrayFunc(GateRef gate)
-{
-    GateRef func = acc_.GetValueIn(gate, acc_.GetNumValueIn(gate) - 1); // 1: last value in
-    GateType funcType = acc_.GetGateType(func);
-    if (tsManager_->IsBuiltinObjectMethod(BuiltinTypeId::ARRAY, funcType)) {
-        std::string name = tsManager_->GetFuncName(funcType);
-        if (name == "forEach") {
-            RunArrayForeachInline(gate);
-        }
-    }
-}
-
-void NativeInlineLowering::RunArrayForeachInline(GateRef gate)
+void NativeInlineLowering::TryInlineMathUnaryBuiltin(GateRef gate, size_t argc, BuiltinsStubCSigns::ID id, const GateMetaData* op)
 {
     Environment env(gate, circuit_, &builder_);
-
-    GateRef thisObj = acc_.GetValueIn(gate, 0);
-    GateRef callBack = acc_.GetValueIn(gate, 1);
-    GateRef thisArg = builder_.Undefined();
-    EcmaOpcode ecmaOpcode = acc_.GetByteCodeOpcode(gate);
-    if (ecmaOpcode == EcmaOpcode::CALLTHIS2_IMM8_V8_V8_V8) {
-        thisArg = acc_.GetValueIn(gate, 2); // 2: this arg parameter
+    if (!Uncheck()) {
+        builder_.CallTargetCheck(gate, acc_.GetValueIn(gate, argc + 1),
+                                 builder_.IntPtr(static_cast<int64_t>(id)));
     }
-    builder_.BuiltinPrototypeHClassCheck(thisObj, BuiltinTypeId::ARRAY);
-    ElementsKind kind = acc_.TryGetArrayElementsKind(thisObj);
-    if (!IsCreateArray(thisObj)) {
-        builder_.StableArrayCheck(thisObj, kind, ArrayMetaDataAccessor::Mode::LOAD_ELEMENT);
+    // NOTE(schernykh): Add tracing
+    if (argc == 0) {
+        acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), builder_.NanValue());
+        return;
     }
-    Label callBackIsCallable(&builder_);
-    Label callBackNotCallable(&builder_);
-    builder_.Branch(builder_.IsCallable(callBack), &callBackIsCallable, &callBackNotCallable);
-    builder_.Bind(&callBackNotCallable);
-    {
-        GateRef taggedId = builder_.Int64(GET_MESSAGE_STRING_ID(NonCallable));
-        LowerCallRuntime(glue_, gate, RTSTUB_ID(ThrowTypeError), { builder_.ToTaggedIntPtr(taggedId) }, true);
-        GateRef exception = builder_.ExceptionConstant();
-        builder_.Return(exception);
-    }
-    builder_.Bind(&callBackIsCallable);
-    Label exit(&builder_);
-    ArrayForeachCall(gate, thisObj, callBack, thisArg, &exit);
-    builder_.Bind(&exit);
-    ReplaceHirDirectly(gate, builder_.Undefined());
+    auto param_check = builder_.TaggedIsNumber(acc_.GetValueIn(gate, 1));
+    builder_.DeoptCheck(param_check, acc_.GetFrameState(gate), DeoptType::BUILTIN_INLINING_TYPE_GUARD);
+    GateRef ret = builder_.BuildUnaryOp(op, acc_.GetValueIn(gate, 1));
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), ret);
 }
 
-void NativeInlineLowering::ArrayForeachCall(GateRef gate, GateRef thisObj, GateRef callBack, GateRef thisArg,
-                                            Label *exit)
-{
-    GateRef length = builder_.LoadArrayLength(thisObj);
-    Label loopHead(&builder_);
-    Label loopEnd(&builder_);
-    Label exitloop(&builder_);
-    Label slowForeach(&builder_);
-    DEFVALUE(i, (&builder_), VariableType::INT32(), builder_.Int32(0));
-    DEFVALUE(propKey, (&builder_), VariableType::JS_ANY(), builder_.ToTaggedIntPtr(builder_.SExtInt32ToInt64(*i)));
-    DEFVALUE(value, (&builder_), VariableType::JS_ANY(), builder_.Hole());
-    builder_.Branch(builder_.Int32LessThan(*i, length), &loopHead, &exitloop);
-    builder_.LoopBegin(&loopHead);
-    ElementsKind kind = acc_.TryGetArrayElementsKind(thisObj);
-    value = LoadArrayElement(kind, thisObj, *i);
-    Label NotHole(&builder_);
-    Label merge(&builder_);
-    builder_.Branch(builder_.NotEqual(*value, builder_.Hole()), &NotHole, &exitloop);
-    builder_.Bind(&NotHole);
-    {
-        auto depend = builder_.GetDepend();
-        GateRef nativeCall = NativeCallTS(gate, depend,
-            {glue_, builder_.Int64(6), callBack, builder_.Undefined(), thisArg, *value, *propKey, thisObj}); // 6: args
-        builder_.SetDepend(nativeCall);
-        i = builder_.Int32Add(*i, builder_.Int32(1));
-        propKey = builder_.ToTaggedIntPtr(builder_.SExtInt32ToInt64(*i));
-        builder_.Branch(builder_.IsStabelArray(glue_, thisObj), &merge, &exitloop);
-    }
-    builder_.Bind(&merge);
-    builder_.Branch(builder_.Int32LessThan(*i, length), &loopEnd, &exitloop);
-    builder_.Bind(&loopEnd);
-    builder_.LoopEnd(&loopHead);
-    builder_.Bind(&exitloop);
-    builder_.Branch(builder_.Int32LessThan(*i, length), &slowForeach, exit);
-    builder_.Bind(&slowForeach);
-    {
-        GateRef taggedLength = builder_.ToTaggedIntPtr(builder_.SExtInt32ToInt64(length));
-        GateRef slowPathCall = LowerCallRuntime(glue_, gate, RTSTUB_ID(ArrayForEachContinue),
-            {thisArg, *propKey, thisObj, callBack, taggedLength}, true);
-        builder_.SetDepend(slowPathCall);
-        builder_.Jump(exit);
-    }
-}
-
-bool NativeInlineLowering::IsCreateArray(GateRef gate)
-{
-    if (acc_.GetOpCode(gate) != OpCode::JS_BYTECODE) {
-        return false;
-    }
-    EcmaOpcode ecmaop = acc_.GetByteCodeOpcode(gate);
-    switch (ecmaop) {
-        case EcmaOpcode::CREATEEMPTYARRAY_IMM8:
-        case EcmaOpcode::CREATEEMPTYARRAY_IMM16:
-        case EcmaOpcode::CREATEARRAYWITHBUFFER_IMM8_ID16:
-        case EcmaOpcode::CREATEARRAYWITHBUFFER_IMM16_ID16:
-            return true;
-        default:
-            return false;
-    }
-    UNREACHABLE();
-    return false;
-}
-
-GateRef NativeInlineLowering::LoadArrayElement(ElementsKind kind, GateRef gate, GateRef index)
-{
-    switch (kind) {
-        case ElementsKind::INT:
-            return builder_.LoadElement<TypedLoadOp::ARRAY_LOAD_INT_ELEMENT>(gate, index);
-        case ElementsKind::NUMBER:
-            return builder_.LoadElement<TypedLoadOp::ARRAY_LOAD_DOUBLE_ELEMENT>(gate, index);
-        case ElementsKind::OBJECT:
-            return builder_.LoadElement<TypedLoadOp::ARRAY_LOAD_OBJECT_ELEMENT>(gate, index);
-        default:
-            if (!Elements::IsHole(kind)) {
-                return builder_.LoadElement<TypedLoadOp::ARRAY_LOAD_TAGGED_ELEMENT>(gate, index);
-            }
-    }
-    return builder_.LoadElement<TypedLoadOp::ARRAY_LOAD_HOLE_TAGGED_ELEMENT>(gate, index);
-}
-
-void NativeInlineLowering::ReplaceHirDirectly(GateRef gate, GateRef value)
-{
-    GateRef state = builder_.GetState();
-    GateRef depend = builder_.GetDepend();
-    auto uses = acc_.Uses(gate);
-    for (auto it = uses.begin(); it != uses.end();) {
-        if (acc_.IsStateIn(it)) {
-            ASSERT(acc_.GetOpCode(*it) != OpCode::IF_SUCCESS &&
-                acc_.GetOpCode(*it) != OpCode::IF_EXCEPTION);
-            it = acc_.ReplaceIn(it, state);
-        } else if (acc_.IsDependIn(it)) {
-            it = acc_.ReplaceIn(it, depend);
-        } else {
-            ASSERT(acc_.IsValueIn(it));
-            it = acc_.ReplaceIn(it, value);
-        }
-    }
-    acc_.DeleteGate(gate);
-}
-
-GateRef NativeInlineLowering::LowerCallRuntime(GateRef glue, GateRef hirGate, int index,
-    const std::vector<GateRef> &args, bool useLabel)
-{
-    if (useLabel) {
-        GateRef result = builder_.CallRuntime(glue, index, Gate::InvalidGateRef, args, hirGate);
-        return result;
-    } else {
-        const CallSignature *cs = RuntimeStubCSigns::Get(RTSTUB_ID(CallRuntime));
-        GateRef target = builder_.IntPtr(index);
-        GateRef result = builder_.Call(cs, glue, target, acc_.GetDependRoot(), args, hirGate);
-        return result;
-    }
-}
-
-GateRef NativeInlineLowering::NativeCallTS(GateRef gate, GateRef depend, const std::vector<GateRef> &args)
-{
-    const CallSignature *cs = RuntimeStubCSigns::Get(RTSTUB_ID(JSCall));
-    GateRef target = builder_.IntPtr(RTSTUB_ID(JSCall));
-    GateRef call = builder_.Call(cs, glue_, target, depend, args, gate);
-    return call;
-}
 }  // namespace panda::ecmascript
