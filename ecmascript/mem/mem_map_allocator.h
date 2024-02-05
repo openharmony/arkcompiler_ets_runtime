@@ -18,6 +18,7 @@
 
 #include <deque>
 #include <map>
+#include <random>
 #include <set>
 
 #include "ecmascript/platform/map.h"
@@ -306,8 +307,14 @@ private:
     // Random generate big mem map addr to avoid js heap is written by others
     void *RandomGenerateBigAddr()
     {
-        std::srand((int)time(NULL));
-        uint64_t randomNum = rand() % RANDOM_NUM_MAX;
+        // Use the current time as the seed
+        unsigned seed = static_cast<unsigned>(std::chrono::system_clock::now().time_since_epoch().count());
+        std::mt19937_64 generator(seed);
+
+        // Generate a random number between 0 and RANDOM_NUM_MAX
+        std::uniform_int_distribution<uint64_t> distribution(0, RANDOM_NUM_MAX);
+        uint64_t randomNum = distribution(generator);
+
         // Big addr random change in 0x10000000000 ~ 0x1FF00000000
         return reinterpret_cast<void *>(BIG_MEM_MAP_BEGIN_ADDR + (randomNum << UINT32_BIT));
     }
