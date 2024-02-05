@@ -302,6 +302,7 @@ static uintptr_t g_nativeTable[] = {
     reinterpret_cast<uintptr_t>(Object::DefineProperty),
     reinterpret_cast<uintptr_t>(Object::Freeze),
     reinterpret_cast<uintptr_t>(Object::GetOwnPropertyDescriptor),
+    reinterpret_cast<uintptr_t>(Object::GetOwnPropertyDescriptors),
     reinterpret_cast<uintptr_t>(Object::GetOwnPropertyNames),
     reinterpret_cast<uintptr_t>(Object::GetOwnPropertySymbols),
     reinterpret_cast<uintptr_t>(Object::GetPrototypeOf),

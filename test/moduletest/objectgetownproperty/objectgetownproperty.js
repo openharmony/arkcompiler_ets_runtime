@@ -23,3 +23,17 @@ print(g.__proto__.constructor == FakeGeneratorFunctionConstructor);
 function FakeGeneratorObjectConstructor() {}
 Object.defineProperty(g.prototype.__proto__, "constructor", {value: FakeGeneratorObjectConstructor});
 print(g.prototype.__proto__.constructor == FakeGeneratorObjectConstructor);
+
+const obj = {
+    name: '小明',
+    age: 20,
+    get fullName() {
+      return this.name;
+    }
+  };
+
+const descriptors = Object.getOwnPropertyDescriptors(obj);
+print(descriptors.name.value === '小明');
+print(descriptors.age.value === 20);
+print(typeof descriptors.fullName.get === 'function');
+print(descriptors);
