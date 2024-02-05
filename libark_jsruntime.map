@@ -89,6 +89,8 @@
       panda::ecmascript::LockHolder::*;
       panda::ecmascript::ReadLockHolder::*;
       panda::ecmascript::WriteLockHolder::*;
+
+      panda::ecmascript::JSObject::ElementsAndPropertiesIsEmpty*;
     };
     extern "C" {
       get_ark_js_heap_crash_info;
