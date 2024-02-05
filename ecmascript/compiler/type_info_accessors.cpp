@@ -766,7 +766,10 @@ JSTaggedValue CreateObjWithBufferTypeInfoAccessor::GetHClass() const
 
     JSHClass *oldClass = objHandle_->GetClass();
     if (hclassIndex == -1) {
-        return JSTaggedValue(oldClass);
+        if (objHandle_->ElementsAndPropertiesIsEmpty()) {
+            return JSTaggedValue(oldClass);
+        }
+        return JSTaggedValue::Undefined();
     }
     JSHClass *newClass = JSHClass::Cast(ptManager_->QueryHClass(type.first, type.second).GetTaggedObject());
     if (oldClass->GetInlinedProperties() != newClass->GetInlinedProperties()) {

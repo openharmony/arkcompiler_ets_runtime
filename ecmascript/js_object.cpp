@@ -2821,4 +2821,13 @@ void ECMAObject::SetNativePointerFieldCount(const JSThread *thread, int32_t coun
         Barriers::SetObject<true>(thread, *obj, HASH_OFFSET, newArray.GetTaggedValue().GetRawData());
     }
 }
+
+bool JSObject::ElementsAndPropertiesIsEmpty() const
+{
+    if (TaggedArray::Cast(GetElements().GetTaggedObject())->GetLength() == 0 &&
+        TaggedArray::Cast(GetProperties().GetTaggedObject())->GetLength() == 0) {
+        return true;
+    }
+    return false;
+}
 }  // namespace panda::ecmascript

@@ -623,6 +623,7 @@ public:
     bool IsElementDict() const;
     bool IsPropertiesDict() const;
     bool IsTypedArray() const;
+    bool PUBLIC_API ElementsAndPropertiesIsEmpty() const;
 
     static void DefinePropertyByLiteral(JSThread *thread, const JSHandle<JSObject> &obj,
                                         const JSHandle<JSTaggedValue> &key, const JSHandle<JSTaggedValue> &value,

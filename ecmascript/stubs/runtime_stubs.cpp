@@ -577,6 +577,24 @@ DEF_RUNTIME_STUBS(NewMutantTaggedArray)
     return factory->NewMutantTaggedArray(length.GetInt()).GetTaggedValue().GetRawData();
 }
 
+DEF_RUNTIME_STUBS(RuntimeDump)
+{
+    RUNTIME_STUBS_HEADER(RuntimeDump);
+    JSHandle<JSTaggedValue> obj = JSHandle<JSTaggedValue>(GetHArg<JSTaggedValue>(argv, argc, 0));
+    {
+        std::ostringstream oss;
+        obj->Dump(oss);
+        LOG_ECMA(ERROR) << "RuntimeDump: " << oss.str();
+    }
+
+    LOG_ECMA(ERROR) << "---------- before force gc ---------------";
+    {
+        thread->GetEcmaVM()->CollectGarbage(TriggerGCType::FULL_GC);
+    }
+    LOG_ECMA(ERROR) << "---------- end force gc ---------------";
+    return JSTaggedValue::Hole().GetRawData();
+}
+
 void RuntimeStubs::Dump(JSTaggedType rawValue)
 {
     LOG_ECMA(INFO) << "[ECMAObject?] " << rawValue;
