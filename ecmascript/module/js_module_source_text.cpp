@@ -496,7 +496,7 @@ int SourceTextModule::HandleInstantiateException([[maybe_unused]] JSHandle<Sourc
 }
 
 int SourceTextModule::Instantiate(JSThread *thread, const JSHandle<JSTaggedValue> &moduleHdl,
-    bool excuteFromJob)
+    bool executeFromJob)
 {
     STACK_LIMIT_CHECK(thread, SourceTextModule::UNDEFINED_INDEX);
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "SourceTextModule::Instantiate");
@@ -511,7 +511,7 @@ int SourceTextModule::Instantiate(JSThread *thread, const JSHandle<JSTaggedValue
     CVector<JSHandle<SourceTextModule>> stack;
     // 4. Let result be InnerModuleInstantiation(module, stack, 0).
     JSHandle<ModuleRecord> moduleRecord = JSHandle<ModuleRecord>::Cast(module);
-    int result = SourceTextModule::InnerModuleInstantiation(thread, moduleRecord, stack, 0, excuteFromJob);
+    int result = SourceTextModule::InnerModuleInstantiation(thread, moduleRecord, stack, 0, executeFromJob);
     // 5. If result is an abrupt completion, then
     if (thread->HasPendingException()) {
         return HandleInstantiateException(module, stack, result);
@@ -565,7 +565,7 @@ std::optional<int> SourceTextModule::HandleInnerModuleInstantiation(JSThread *th
                                                                     JSHandle<SourceTextModule> &module,
                                                                     JSMutableHandle<JSTaggedValue> &required,
                                                                     CVector<JSHandle<SourceTextModule>> &stack,
-                                                                    int &index, bool excuteFromJob)
+                                                                    int &index, bool executeFromJob)
 {
     // a. Let requiredModule be ? HostResolveImportedModule(module, required).
     JSMutableHandle<SourceTextModule> requiredModule(thread, thread->GlobalConstants()->GetUndefined());
@@ -574,21 +574,21 @@ std::optional<int> SourceTextModule::HandleInnerModuleInstantiation(JSThread *th
         JSHandle<JSTaggedValue> requiredVal =
             SourceTextModule::HostResolveImportedModule(thread, module, required);
         RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, SourceTextModule::UNDEFINED_INDEX);
-        ModuleDeregister::InitForDeregisterModule(thread, requiredVal, excuteFromJob);
+        ModuleDeregister::InitForDeregisterModule(thread, requiredVal, executeFromJob);
         requiredModule.Update(JSHandle<SourceTextModule>::Cast(requiredVal));
     } else {
         ASSERT(moduleRecordName.IsString());
         JSHandle<JSTaggedValue> requiredVal =
             SourceTextModule::HostResolveImportedModuleWithMerge(thread, module, required);
         RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, SourceTextModule::UNDEFINED_INDEX);
-        ModuleDeregister::InitForDeregisterModule(thread, requiredVal, excuteFromJob);
+        ModuleDeregister::InitForDeregisterModule(thread, requiredVal, executeFromJob);
         requiredModule.Update(JSHandle<SourceTextModule>::Cast(requiredVal));
     }
 
     // b. Set index to ? InnerModuleInstantiation(requiredModule, stack, index).
     JSHandle<ModuleRecord> requiredModuleRecord = JSHandle<ModuleRecord>::Cast(requiredModule);
     index = SourceTextModule::InnerModuleInstantiation(thread,
-        requiredModuleRecord, stack, index, excuteFromJob);
+        requiredModuleRecord, stack, index, executeFromJob);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, index);
     // c. Assert: requiredModule.[[Status]] is one of LINKING, LINKED, EVALUATING-ASYNC, or EVALUATED.
     ModuleStatus requiredModuleStatus = requiredModule->GetStatus();
@@ -611,7 +611,7 @@ std::optional<int> SourceTextModule::HandleInnerModuleInstantiation(JSThread *th
 }
 
 int SourceTextModule::InnerModuleInstantiation(JSThread *thread, const JSHandle<ModuleRecord> &moduleRecord,
-    CVector<JSHandle<SourceTextModule>> &stack, int index, bool excuteFromJob)
+    CVector<JSHandle<SourceTextModule>> &stack, int index, bool executeFromJob)
 {
     // 1. If module is not a Source Text Module Record, then
     if (!moduleRecord.GetTaggedValue().IsSourceTextModule()) {
@@ -649,7 +649,7 @@ int SourceTextModule::InnerModuleInstantiation(JSThread *thread, const JSHandle<
         JSMutableHandle<JSTaggedValue> required(thread, thread->GlobalConstants()->GetUndefined());
         for (size_t idx = 0; idx < requestedModulesLen; idx++) {
             required.Update(requestedModules->Get(idx));
-            auto result = HandleInnerModuleInstantiation(thread, module, required, stack, index, excuteFromJob);
+            auto result = HandleInnerModuleInstantiation(thread, module, required, stack, index, executeFromJob);
             if (UNLIKELY(result.has_value())) { // exception occurs
                 return result.value();
             }
@@ -922,7 +922,7 @@ void SourceTextModule::HandleEvaluateResult(JSThread *thread, JSHandle<SourceTex
 }
 
 JSTaggedValue SourceTextModule::Evaluate(JSThread *thread, const JSHandle<SourceTextModule> &moduleHdl,
-                                         const void *buffer, size_t size, bool excuteFromJob)
+                                         const void *buffer, size_t size, bool executeFromJob)
 {
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "SourceTextModule::Evaluate");
     // 1. Let module be this Source Text Module Record.
@@ -949,7 +949,7 @@ JSTaggedValue SourceTextModule::Evaluate(JSThread *thread, const JSHandle<Source
     module->SetTopLevelCapability(thread, capability);
     // 8. Let result be Completion(InnerModuleEvaluation(module, stack, 0)).
     JSHandle<ModuleRecord> moduleRecord = JSHandle<ModuleRecord>::Cast(module);
-    int result = SourceTextModule::InnerModuleEvaluation(thread, moduleRecord, stack, 0, buffer, size, excuteFromJob);
+    int result = SourceTextModule::InnerModuleEvaluation(thread, moduleRecord, stack, 0, buffer, size, executeFromJob);
     HandleEvaluateResult(thread, module, capability, stack, result);
     if (!thread->HasPendingException()) {
         job::MicroJobQueue::ExecutePendingJob(thread, thread->GetCurrentEcmaContext()->GetMicroJobQueue());
@@ -979,7 +979,7 @@ int SourceTextModule::EvaluateForConcurrent(JSThread *thread, const JSHandle<Sou
 
 int SourceTextModule::InnerModuleEvaluation(JSThread *thread, const JSHandle<ModuleRecord> &moduleRecord,
                                             CVector<JSHandle<SourceTextModule>> &stack, int index,
-                                            const void *buffer, size_t size, bool excuteFromJob)
+                                            const void *buffer, size_t size, bool executeFromJob)
 {
     STACK_LIMIT_CHECK(thread, index);
     // 1.If module is not a Cyclic Module Record, then
@@ -1067,7 +1067,8 @@ int SourceTextModule::InnerModuleEvaluation(JSThread *thread, const JSHandle<Mod
             }
             // b. Set index to ? InnerModuleEvaluation(requiredModule, stack, index).
             JSHandle<ModuleRecord> requiredModuleRecord = JSHandle<ModuleRecord>::Cast(requiredModule);
-            index = SourceTextModule::InnerModuleEvaluation(thread, requiredModuleRecord, stack, index);
+            index = SourceTextModule::InnerModuleEvaluation(
+                thread, requiredModuleRecord, stack, index, buffer, size, executeFromJob);
             RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, index);
             // c. If requiredModule is a Cyclic Module Record, then
             // i. Assert: requiredModule.[[Status]] is one of EVALUATING, EVALUATING-ASYNC, or EVALUATED.
@@ -1125,12 +1126,12 @@ int SourceTextModule::InnerModuleEvaluation(JSThread *thread, const JSHandle<Mod
         module->SetAsyncEvaluatingOrdinal(moduleManager->NextModuleAsyncEvaluatingOrdinal());
         // d. If module.[[PendingAsyncDependencies]] = 0, perform ExecuteAsyncModule(module).
         if (pendingAsyncDependencies == 0) {
-            SourceTextModule::ExecuteAsyncModule(thread, module, buffer, size, excuteFromJob);
+            SourceTextModule::ExecuteAsyncModule(thread, module, buffer, size, executeFromJob);
             RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, index);
         }
     } else {
         // 13. Else, Perform ? module.ExecuteModule().
-        SourceTextModule::ModuleExecution(thread, module, buffer, size, excuteFromJob);
+        SourceTextModule::ModuleExecution(thread, module, buffer, size, executeFromJob);
         RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, index);
     }
     // 14. Assert: module occurs exactly once in stack.
@@ -1253,7 +1254,7 @@ int SourceTextModule::ModuleEvaluation(JSThread *thread, const JSHandle<ModuleRe
 }
 
 Expected<JSTaggedValue, bool> SourceTextModule::ModuleExecution(JSThread *thread,
-    const JSHandle<SourceTextModule> &module, const void *buffer, size_t size, bool excuteFromJob)
+    const JSHandle<SourceTextModule> &module, const void *buffer, size_t size, bool executeFromJob)
 {
     JSTaggedValue moduleFileName = module->GetEcmaModuleFilename();
     ASSERT(moduleFileName.IsString());
@@ -1282,7 +1283,7 @@ Expected<JSTaggedValue, bool> SourceTextModule::ModuleExecution(JSThread *thread
                       entryPoint.c_str() + "'";
         THROW_REFERENCE_ERROR_AND_RETURN(thread, msg.c_str(), Unexpected(false));
     }
-    return JSPandaFileExecutor::Execute(thread, jsPandaFile.get(), entryPoint, excuteFromJob);
+    return JSPandaFileExecutor::Execute(thread, jsPandaFile.get(), entryPoint, executeFromJob);
 }
 
 void SourceTextModule::AddImportEntry(JSThread *thread, const JSHandle<SourceTextModule> &module,
@@ -1791,7 +1792,7 @@ void SourceTextModule::AddAsyncParentModule(JSThread *thread, JSHandle<SourceTex
 }
 
 void SourceTextModule::ExecuteAsyncModule(JSThread *thread, const JSHandle<SourceTextModule> &module,
-                                          const void *buffer, size_t size, bool excuteFromJob)
+                                          const void *buffer, size_t size, bool executeFromJob)
 {
     // 1. Assert: module.[[Status]] is either EVALUATING or EVALUATING-ASYNC.
     ASSERT(module->GetStatus() == ModuleStatus::EVALUATING || module->GetStatus() == ModuleStatus::EVALUATING_ASYNC);
@@ -1825,7 +1826,7 @@ void SourceTextModule::ExecuteAsyncModule(JSThread *thread, const JSHandle<Sourc
         THROW_ERROR(thread, ErrorType::REFERENCE_ERROR, msg.c_str());
     }
     Expected<JSTaggedValue, bool> result =
-        JSPandaFileExecutor::Execute(thread, jsPandaFile.get(), entryPoint, excuteFromJob);
+        JSPandaFileExecutor::Execute(thread, jsPandaFile.get(), entryPoint, executeFromJob);
     ASSERT(result.Value().IsJSPromise());
     // 3. Let capability be ! NewPromiseCapability(%Promise%).
     // 4. Let fulfilledClosure be a new Abstract Closure with no parameters that captures module and performs

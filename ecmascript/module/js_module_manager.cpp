@@ -404,7 +404,7 @@ bool ModuleManager::SkipDefaultBundleFile(const CString &moduleFileName) const
 }
 
 JSHandle<JSTaggedValue> ModuleManager::ResolveModuleInMergedABC(JSThread *thread, const JSPandaFile *jsPandaFile,
-    const CString &recordName, bool excuteFromJob)
+    const CString &recordName, bool executeFromJob)
 {
     // In static parse Phase, due to lack of some parameters, we will create a empty SourceTextModule which will
     // be marked as INSTANTIATED to skip Dfs traversal of this import branch.
@@ -412,12 +412,12 @@ JSHandle<JSTaggedValue> ModuleManager::ResolveModuleInMergedABC(JSThread *thread
         (jsPandaFile != nullptr && !jsPandaFile->HasRecord(recordName)))) {
         return CreateEmptyModule();
     } else {
-        return ResolveModuleWithMerge(thread, jsPandaFile, recordName, excuteFromJob);
+        return ResolveModuleWithMerge(thread, jsPandaFile, recordName, executeFromJob);
     }
 }
 
 JSHandle<JSTaggedValue> ModuleManager::HostResolveImportedModuleWithMerge(const CString &moduleFileName,
-    const CString &recordName, bool excuteFromJob)
+    const CString &recordName, bool executeFromJob)
 {
     JSHandle<EcmaString> recordNameHandle = vm_->GetFactory()->NewFromUtf8(recordName);
     NameDictionary *dict = NameDictionary::Cast(resolvedModules_.GetTaggedObject());
@@ -425,17 +425,17 @@ JSHandle<JSTaggedValue> ModuleManager::HostResolveImportedModuleWithMerge(const 
     if (entry != -1) {
         return JSHandle<JSTaggedValue>(vm_->GetJSThread(), dict->GetValue(entry));
     }
-    return CommonResolveImportedModuleWithMerge(moduleFileName, recordName, excuteFromJob);
+    return CommonResolveImportedModuleWithMerge(moduleFileName, recordName, executeFromJob);
 }
 
 JSHandle<JSTaggedValue> ModuleManager::HostResolveImportedModuleWithMergeForHotReload(const CString &moduleFileName,
-    const CString &recordName, bool excuteFromJob)
+    const CString &recordName, bool executeFromJob)
 {
-    return CommonResolveImportedModuleWithMerge(moduleFileName, recordName, excuteFromJob);
+    return CommonResolveImportedModuleWithMerge(moduleFileName, recordName, executeFromJob);
 }
 
 JSHandle<JSTaggedValue> ModuleManager::CommonResolveImportedModuleWithMerge(const CString &moduleFileName,
-    const CString &recordName, bool excuteFromJob)
+    const CString &recordName, bool executeFromJob)
 {
     JSThread *thread = vm_->GetJSThread();
 
@@ -451,7 +451,7 @@ JSHandle<JSTaggedValue> ModuleManager::CommonResolveImportedModuleWithMerge(cons
         }
     }
     JSHandle<JSTaggedValue> moduleRecord = ResolveModuleInMergedABC(thread,
-        jsPandaFile.get(), recordName, excuteFromJob);
+        jsPandaFile.get(), recordName, executeFromJob);
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
     JSHandle<NameDictionary> handleDict(thread, resolvedModules_);
     JSHandle<EcmaString> recordNameHandle= vm_->GetFactory()->NewFromUtf8(recordName);
@@ -475,7 +475,7 @@ JSHandle<JSTaggedValue> ModuleManager::CreateEmptyModule()
     return JSHandle<JSTaggedValue>::Cast(tmpModuleRecord);
 }
 
-JSHandle<JSTaggedValue> ModuleManager::HostResolveImportedModule(const CString &referencingModule, bool excuteFromJob)
+JSHandle<JSTaggedValue> ModuleManager::HostResolveImportedModule(const CString &referencingModule, bool executeFromJob)
 {
     JSThread *thread = vm_->GetJSThread();
     ObjectFactory *factory = vm_->GetFactory();
@@ -504,7 +504,7 @@ JSHandle<JSTaggedValue> ModuleManager::HostResolveImportedModule(const CString &
         THROW_NEW_ERROR_AND_RETURN_HANDLE(thread, ErrorType::REFERENCE_ERROR, JSTaggedValue, msg.c_str());
     }
 
-    return ResolveModule(thread, jsPandaFile.get(), excuteFromJob);
+    return ResolveModule(thread, jsPandaFile.get(), executeFromJob);
 }
 
 // The security interface needs to be modified accordingly.
@@ -533,7 +533,7 @@ JSHandle<JSTaggedValue> ModuleManager::HostResolveImportedModule(const void *buf
 }
 
 JSHandle<JSTaggedValue> ModuleManager::ResolveModule(JSThread *thread, const JSPandaFile *jsPandaFile,
-    bool excuteFromJob)
+    bool executeFromJob)
 {
     ObjectFactory *factory = vm_->GetFactory();
     CString moduleFileName = jsPandaFile->GetJSPandaFileDesc();
@@ -547,7 +547,7 @@ JSHandle<JSTaggedValue> ModuleManager::ResolveModule(JSThread *thread, const JSP
         ASSERT(jsPandaFile->IsCjs(recordInfo));
         moduleRecord = ModuleDataExtractor::ParseCjsModule(thread, jsPandaFile);
     }
-    ModuleDeregister::InitForDeregisterModule(thread, moduleRecord, excuteFromJob);
+    ModuleDeregister::InitForDeregisterModule(thread, moduleRecord, executeFromJob);
     JSHandle<NameDictionary> dict(thread, resolvedModules_);
     JSHandle<JSTaggedValue> referencingHandle = JSHandle<JSTaggedValue>::Cast(factory->NewFromUtf8(moduleFileName));
     resolvedModules_ =
@@ -571,7 +571,7 @@ JSHandle<JSTaggedValue> ModuleManager::ResolveNativeModule(const CString &module
 }
 
 JSHandle<JSTaggedValue> ModuleManager::ResolveModuleWithMerge(
-    JSThread *thread, const JSPandaFile *jsPandaFile, const CString &recordName, bool excuteFromJob)
+    JSThread *thread, const JSPandaFile *jsPandaFile, const CString &recordName, bool executeFromJob)
 {
     ObjectFactory *factory = vm_->GetFactory();
     CString moduleFileName = jsPandaFile->GetJSPandaFileDesc();
@@ -597,7 +597,7 @@ JSHandle<JSTaggedValue> ModuleManager::ResolveModuleWithMerge(
 
     JSHandle<JSTaggedValue> recordNameHandle = JSHandle<JSTaggedValue>::Cast(factory->NewFromUtf8(recordName));
     JSHandle<SourceTextModule>::Cast(moduleRecord)->SetEcmaModuleRecordName(thread, recordNameHandle);
-    ModuleDeregister::InitForDeregisterModule(thread, moduleRecord, excuteFromJob);
+    ModuleDeregister::InitForDeregisterModule(thread, moduleRecord, executeFromJob);
     return moduleRecord;
 }
 
