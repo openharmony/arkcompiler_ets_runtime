@@ -161,6 +161,7 @@
       panda::ecmascript::JSObject::EnumerableOwnNames*;
       panda::ecmascript::JSObject::GetProperty*;
       panda::ecmascript::JSObject::TransitionToDictionary*;
+      panda::ecmascript::JSObject::ElementsAndPropertiesIsEmpty*;
       panda::ecmascript::JSPandaFile::FindMethodLiteral*;
       panda::ecmascript::JSPandaFile::GetFunctionKind*;
       panda::ecmascript::JSPandaFile::GetNormalizedFileDesc*;

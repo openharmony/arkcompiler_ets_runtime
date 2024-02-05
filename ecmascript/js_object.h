@@ -624,7 +624,7 @@ public:
     bool IsElementDict() const;
     bool IsPropertiesDict() const;
     bool IsTypedArray() const;
-    bool ElementsAndPropertiesIsEmpty() const;
+    bool PUBLIC_API ElementsAndPropertiesIsEmpty() const;
 
     static PUBLIC_API void DefinePropertyByLiteral(JSThread *thread, const JSHandle<JSObject> &obj,
                                                    const JSHandle<JSTaggedValue> &key,
