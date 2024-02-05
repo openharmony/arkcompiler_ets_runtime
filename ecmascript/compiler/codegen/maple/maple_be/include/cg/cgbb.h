@@ -279,6 +279,21 @@ public:
         return static_cast<uint32>(succs.size());
     }
 
+    void UniqueSuccs()
+    {
+        for (auto i = succs.begin(); i != succs.end(); ++i) {
+            auto j = ++i;
+            --i;
+            while (j != succs.end()) {
+                if (*i == *j) {
+                    j = succs.erase(j);
+                } else {
+                    ++j;
+                }
+            }
+        }
+    }
+
     bool HasCall() const
     {
         return hasCall;
