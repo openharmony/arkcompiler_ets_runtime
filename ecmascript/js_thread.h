@@ -64,6 +64,8 @@ enum class BCStubStatus: uint8_t {
 
 enum class StableArrayChangeKind { PROTO, NOT_PROTO };
 
+static constexpr uint32_t MAIN_THREAD_INDEX = 0;
+
 class JSThread {
 public:
     static constexpr int CONCURRENT_MARKING_BITFIELD_NUM = 2;

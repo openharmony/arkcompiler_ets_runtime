@@ -23,6 +23,8 @@
 namespace panda::ecmascript {
 class Region;
 
+enum class WriteBarrierType : size_t { NORMAL, DESERIALIZE };
+
 class Barriers {
 public:
     template<class T>
@@ -57,7 +59,10 @@ public:
     }
 
     static void PUBLIC_API Update(const JSThread *thread, uintptr_t slotAddr, Region *objectRegion,
-                                  TaggedObject *value, Region *valueRegion, bool onDeserialize = false);
+                                  TaggedObject *value, Region *valueRegion,
+                                  WriteBarrierType writeType = WriteBarrierType::NORMAL);
+    // For work deserialize, push deserialize result to mark stack if thread IsConcurrentMarkingOrFinished
+    static void MarkAndPushForDeserialize(const JSThread *thread, TaggedObject *object);
 };
 }  // namespace panda::ecmascript
 
