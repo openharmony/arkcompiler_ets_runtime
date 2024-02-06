@@ -68,12 +68,12 @@ public:
     SourceMap() = default;
     ~SourceMap() = default;
 
-    void Init(const std::string& hapPath);
+    void Init(const std::string& url, const std::string& hapPath);
     bool TranslateUrlPositionBySourceMap(std::string& url, int& line, int& column);
     static void ExtractStackInfo(const std::string& stackStr, std::vector<std::string>& res);
     
 private:
-    void SplitSourceMap(const std::string& sourceMapData);
+    void SplitSourceMap(const std::string& url, const std::string& sourceMapData);
     void ExtractSourceMapData(const std::string& sourceMapData, std::shared_ptr<SourceMapData>& curMapData);
     void ExtractKeyInfo(const std::string& sourceMap, std::vector<std::string>& sourceKeyInfo);
     std::vector<std::string> HandleMappings(const std::string& mapping);
