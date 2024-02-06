@@ -679,6 +679,7 @@ group("host_unittest") {
       ":BuiltinsNatural_004_TestAction",
       ":BuiltinsNatural_005_TestAction",
       ":BuiltinsNatural_006_TestAction",
+      ":BuiltinsSharedObject_TestAction",
     ]
   }
 }

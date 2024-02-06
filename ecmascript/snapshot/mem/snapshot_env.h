@@ -31,6 +31,7 @@ public:
     ~SnapshotEnv() = default;
 
     void Initialize();
+    void InitializeStringClass();
 
     void ClearEnvMap()
     {

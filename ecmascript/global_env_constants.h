@@ -631,6 +631,16 @@ public:
         return static_cast<size_t>(ConstantIndex::JSAPI_CONTAINERS_END);
     }
 
+    size_t GetLineStringClassIndex() const
+    {
+        return static_cast<size_t>(ConstantIndex::LINE_STRING_CLASS_INDEX);
+    }
+
+    size_t GetConstStringClassIndex() const
+    {
+        return static_cast<size_t>(ConstantIndex::CONSTANT_STRING_CLASS_INDEX);
+    }
+
     bool IsSpecialOrUndefined(size_t index) const
     {
         size_t specialBegin = static_cast<size_t>(ConstantIndex::UNDEFINED_INDEX);

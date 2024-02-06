@@ -25,10 +25,26 @@ class JSThread;
 struct NewConstPoolInfo {
     JSPandaFile *jsPandaFile_ {nullptr};
     panda_file::File::EntityId methodId_;
-    uintptr_t slotAddr_ {0U};
+    uintptr_t objAddr_ {0U};
+    size_t offset_ {0U};
 
     NewConstPoolInfo(JSPandaFile *jsPandaFile, panda_file::File::EntityId methodId)
         : jsPandaFile_(jsPandaFile), methodId_(methodId) {}
+
+    uintptr_t GetObjAddr() const
+    {
+        return objAddr_;
+    }
+
+    size_t GetFieldOffset() const
+    {
+        return offset_;
+    }
+
+    ObjectSlot GetSlot() const
+    {
+        return ObjectSlot(objAddr_ + offset_);
+    }
 };
 
 struct NativeBindingInfo {
@@ -36,21 +52,54 @@ struct NativeBindingInfo {
     void *bufferPointer_ {nullptr};
     void *hint_ = {nullptr};
     void *attachData_ = {nullptr};
-    ObjectSlot slot_;
+    uintptr_t objAddr_ {0U};
+    size_t offset_ {0U};
     bool root_ {false};
 
-    NativeBindingInfo(AttachFunc af, void *bufferPointer, void *hint, void *attachData, ObjectSlot slot, bool root)
-        : af_(af), bufferPointer_(bufferPointer), hint_(hint), attachData_(attachData), slot_(slot), root_(root) {}
+    NativeBindingInfo(AttachFunc af, void *bufferPointer, void *hint, void *attachData,
+                      uintptr_t objAddr, size_t offset, bool root) : af_(af), bufferPointer_(bufferPointer),
+        hint_(hint), attachData_(attachData), objAddr_(objAddr), offset_(offset), root_(root) {}
+
+    uintptr_t GetObjAddr() const
+    {
+        return objAddr_;
+    }
+
+    size_t GetFieldOffset() const
+    {
+        return offset_;
+    }
+
+    ObjectSlot GetSlot() const
+    {
+        return ObjectSlot(objAddr_ + offset_);
+    }
 };
 
 struct JSErrorInfo {
     uint8_t errorType_ {0};
     JSTaggedValue errorMsg_;
-    ObjectSlot slot_;
+    uintptr_t objAddr_ {0U};
+    size_t offset_ {0U};
     bool root_ {false};
 
-    JSErrorInfo(uint8_t errorType, JSTaggedValue errorMsg, ObjectSlot slot, bool root)
-        : errorType_(errorType), errorMsg_(errorMsg), slot_(slot), root_(root) {}
+    JSErrorInfo(uint8_t errorType, JSTaggedValue errorMsg, uintptr_t objAddr, size_t offset, bool root)
+        : errorType_(errorType), errorMsg_(errorMsg), objAddr_(objAddr), offset_(offset), root_(root) {}
+
+    uintptr_t GetObjAddr() const
+    {
+        return objAddr_;
+    }
+
+    size_t GetFieldOffset() const
+    {
+        return offset_;
+    }
+
+    ObjectSlot GetSlot() const
+    {
+        return ObjectSlot(objAddr_ + offset_);
+    }
 };
 
 class BaseDeserializer {
@@ -78,8 +127,8 @@ private:
     uintptr_t RelocateObjectAddr(SerializedObjectSpace space, size_t objSize);
     JSTaggedType RelocateObjectProtoAddr(uint8_t objectType);
     void DeserializeObjectField(uintptr_t start, uintptr_t end);
-    size_t ReadSingleEncodeData(uint8_t encodeFlag, uintptr_t addr, bool isRoot = false);
-    void HandleNewObjectEncodeFlag(SerializedObjectSpace space, ObjectSlot slot, bool isRoot);
+    size_t ReadSingleEncodeData(uint8_t encodeFlag, uintptr_t objAddr, size_t fieldOffset, bool isRoot = false);
+    void HandleNewObjectEncodeFlag(SerializedObjectSpace space, uintptr_t objAddr, size_t fieldOffset, bool isRoot);
     void HandleMethodEncodeFlag();
 
     void TransferArrayBufferAttach(uintptr_t objAddr);
@@ -91,7 +140,6 @@ private:
     void AllocateToOldSpace(size_t oldSpaceSize);
     void AllocateToNonMovableSpace(size_t nonMovableSpaceSize);
     void AllocateToMachineCodeSpace(size_t machineCodeSpaceSize);
-    void UpdateBarrier(uintptr_t addr, ObjectSlot slot, bool onDeserialize = true);
 
     bool GetAndResetWeak()
     {

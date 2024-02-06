@@ -19,7 +19,7 @@
 
 namespace panda::ecmascript {
 void Barriers::Update(const JSThread *thread, uintptr_t slotAddr, Region *objectRegion, TaggedObject *value,
-                      Region *valueRegion, bool onDeserialize)
+                      Region *valueRegion, WriteBarrierType writeType)
 {
     auto heap = thread->GetEcmaVM()->GetHeap();
     if (heap->IsFullMark()) {
@@ -35,8 +35,20 @@ void Barriers::Update(const JSThread *thread, uintptr_t slotAddr, Region *object
     // Weak ref record and concurrent mark record maybe conflict.
     // This conflict is solved by keeping alive weak reference. A small amount of floating garbage may be added.
     TaggedObject *heapValue = JSTaggedValue(value).GetHeapObject();
-    if (!onDeserialize && valueRegion->AtomicMark(heapValue)) {
-        heap->GetWorkManager()->Push(0, heapValue, valueRegion);
+    if (writeType != WriteBarrierType::DESERIALIZE && valueRegion->AtomicMark(heapValue)) {
+        heap->GetWorkManager()->Push(MAIN_THREAD_INDEX, heapValue, valueRegion);
+    }
+}
+
+// For work deserialize, deserialize root object will be set to another object, however, this object may have been
+// marked by concurrent mark, this may cause deserialize root object miss mark, this is to ensure the deserialize object
+// will been marked
+void Barriers::MarkAndPushForDeserialize(const JSThread *thread, TaggedObject *object)
+{
+    auto heap = thread->GetEcmaVM()->GetHeap();
+    Region *valueRegion = Region::ObjectAddressToRange(object);
+    if ((heap->IsFullMark() || valueRegion->InYoungSpace()) && valueRegion->AtomicMark(object)) {
+        heap->GetWorkManager()->Push(MAIN_THREAD_INDEX, object, valueRegion);
     }
 }
 }  // namespace panda::ecmascript
