@@ -46,7 +46,7 @@ public:
     using RepresentationBit = OffsetBit::NextField<Representation, PropertyAttributes::REPRESENTATION_NUM>;
     using AttrIndexBit = RepresentationBit::NextField<uint32_t, PropertyAttributes::OFFSET_BITFIELD_NUM>;
     using IsOnHeapBit = AttrIndexBit::NextFlag;
-    using IsOnPrototypeBit = IsOnHeapBit::NextFlag;
+    using NeedSkipInPGODumpBit = IsOnHeapBit::NextFlag;
 
     static_assert(static_cast<size_t>(HandlerKind::TOTAL_KINDS) <= (1 << KIND_BIT_LENGTH));
 
@@ -123,9 +123,9 @@ public:
         return IsJSArrayBit::Get(handler);
     }
 
-    static inline bool IsOnPrototype(uint32_t handler)
+    static inline bool NeedSkipInPGODump(uint32_t handler)
     {
-        return IsOnPrototypeBit::Get(handler);
+        return NeedSkipInPGODumpBit::Get(handler);
     }
 
     static inline int GetOffset(uint32_t handler)
@@ -201,8 +201,16 @@ public:
         uint32_t handler = 0;
         KindBit::Set<uint32_t>(HandlerKind::ELEMENT, &handler);
 
-        if (op.GetReceiver() != op.GetHolder()) {
-            IsOnPrototypeBit::Set<uint32_t>(true, &handler);
+        // To avoid logical errors and Deopt, temporarily skipping PGO Profiling.
+        // logical errors:
+        //     When accessing an element of an object, AOT does not have a chain-climbing operation,
+        //     so if the element is on a prototype, it will not be able to get the correct element.
+        // deopt:
+        //     Currently there is no way to save the type of the key in pgo file, even if the type of the key
+        //     is string, it will be treated as a number type by the AOT, leading to deopt at runtime.
+        if (op.GetReceiver() != op.GetHolder() ||
+            op.KeyFromStringType()) {
+            NeedSkipInPGODumpBit::Set<uint32_t>(true, &handler);
         }
 
         if (op.GetReceiver()->IsJSArray()) {

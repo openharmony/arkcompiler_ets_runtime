@@ -74,6 +74,7 @@ public:
     GateRef FastNewThisObject(GateRef glue, GateRef ctor);
     GateRef FastSuperAllocateThis(GateRef glue, GateRef superCtor, GateRef newTarget);
     GateRef NewThisObjectChecked(GateRef glue, GateRef ctor);
+    GateRef CreateEmptyObject(GateRef glue);
     GateRef CreateEmptyArray(GateRef glue);
     GateRef CreateEmptyArray(GateRef glue, GateRef jsFunc, GateRef pc, GateRef profileTypeInfo, GateRef slotId,
                              ProfileOperation callback);
