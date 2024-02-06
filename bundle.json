@@ -30,12 +30,12 @@
               "runtime_core",
               "c_utils",
               "code_signature",
-              "libuv"
+              "libuv",
+              "zlib"
             ],
             "third_party": [
               "bounds_checking_function",
-              "icu",
-              "zlib"
+              "icu"
             ]
         },
         "build": {
