@@ -273,7 +273,7 @@ JSTaggedValue EcmaContext::ExecuteAot(size_t actualNumArgs, JSTaggedType *args,
 }
 
 Expected<JSTaggedValue, bool> EcmaContext::CommonInvokeEcmaEntrypoint(const JSPandaFile *jsPandaFile,
-    std::string_view entryPoint, JSHandle<JSFunction> &func)
+    std::string_view entryPoint, JSHandle<JSFunction> &func, bool executeFromJob)
 {
     JSHandle<Method> method(thread_, func->GetMethod());
     JSHandle<JSTaggedValue> global = GlobalEnv::Cast(globalEnv_.GetTaggedObject())->GetJSGlobalObject();
@@ -320,7 +320,7 @@ Expected<JSTaggedValue, bool> EcmaContext::CommonInvokeEcmaEntrypoint(const JSPa
             result = EcmaInterpreter::Execute(info);
         }
     }
-    if (!thread_->HasPendingException()) {
+    if (!executeFromJob && !thread_->HasPendingException()) {
         job::MicroJobQueue::ExecutePendingJob(thread_, GetMicroJobQueue());
     }
 
@@ -328,7 +328,7 @@ Expected<JSTaggedValue, bool> EcmaContext::CommonInvokeEcmaEntrypoint(const JSPa
 }
 
 Expected<JSTaggedValue, bool> EcmaContext::InvokeEcmaEntrypoint(const JSPandaFile *jsPandaFile,
-                                                                std::string_view entryPoint, bool excuteFromJob)
+                                                                std::string_view entryPoint, bool executeFromJob)
 {
     [[maybe_unused]] EcmaHandleScope scope(thread_);
     JSHandle<Program> program = JSPandaFileManager::GetInstance()->GenerateProgram(vm_, jsPandaFile, entryPoint);
@@ -341,23 +341,23 @@ Expected<JSTaggedValue, bool> EcmaContext::InvokeEcmaEntrypoint(const JSPandaFil
         jsPandaFile->GetJSPandaFileDesc(), entryPoint);
 
     JSHandle<JSFunction> func(thread_, program->GetMainFunction());
-    Expected<JSTaggedValue, bool> result = CommonInvokeEcmaEntrypoint(jsPandaFile, entryPoint, func);
+    Expected<JSTaggedValue, bool> result = CommonInvokeEcmaEntrypoint(jsPandaFile, entryPoint, func, executeFromJob);
 
     // print exception information
-    if (!excuteFromJob && thread_->HasPendingException()) {
+    if (!executeFromJob && thread_->HasPendingException()) {
         HandleUncaughtException(thread_->GetException());
     }
     return result;
 }
 
 Expected<JSTaggedValue, bool> EcmaContext::InvokeEcmaEntrypointForHotReload(
-    const JSPandaFile *jsPandaFile, std::string_view entryPoint, bool excuteFromJob)
+    const JSPandaFile *jsPandaFile, std::string_view entryPoint, bool executeFromJob)
 {
     [[maybe_unused]] EcmaHandleScope scope(thread_);
     JSHandle<Program> program = JSPandaFileManager::GetInstance()->GenerateProgram(vm_, jsPandaFile, entryPoint);
 
     JSHandle<JSFunction> func(thread_, program->GetMainFunction());
-    Expected<JSTaggedValue, bool> result = CommonInvokeEcmaEntrypoint(jsPandaFile, entryPoint, func);
+    Expected<JSTaggedValue, bool> result = CommonInvokeEcmaEntrypoint(jsPandaFile, entryPoint, func, executeFromJob);
 
     JSHandle<JSTaggedValue> finalModuleRecord(thread_, func->GetModule());
     // avoid GC problems.
@@ -368,7 +368,7 @@ Expected<JSTaggedValue, bool> EcmaContext::InvokeEcmaEntrypointForHotReload(
     AddPatchModule(recordName, moduleRecordHandle);
 
     // print exception information
-    if (!excuteFromJob && thread_->HasPendingException() &&
+    if (!executeFromJob && thread_->HasPendingException() &&
         Method::Cast(func->GetMethod())->GetMethodName() != JSPandaFile::PATCH_FUNCTION_NAME_0) {
         HandleUncaughtException(thread_->GetException());
     }

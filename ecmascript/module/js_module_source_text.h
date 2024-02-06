@@ -92,7 +92,7 @@ public:
     // 15.2.1.16.4.1 InnerModuleInstantiation ( module, stack, index )
     static int InnerModuleInstantiation(JSThread *thread,
         const JSHandle<ModuleRecord> &moduleRecord, CVector<JSHandle<SourceTextModule>> &stack,
-        int index, bool excuteFromJob = false);
+        int index, bool executeFromJob = false);
 
     // 15.2.1.16.4.2 ModuleDeclarationEnvironmentSetup ( module )
     static void ModuleDeclarationEnvironmentSetup(JSThread *thread, const JSHandle<SourceTextModule> &module);
@@ -101,15 +101,15 @@ public:
     // 15.2.1.16.5.1 InnerModuleEvaluation ( module, stack, index )
     static int InnerModuleEvaluation(JSThread *thread, const JSHandle<ModuleRecord> &moduleRecord,
         CVector<JSHandle<SourceTextModule>> &stack, int index, const void *buffer = nullptr,
-        size_t size = 0, bool excuteFromJob = false);
+        size_t size = 0, bool executeFromJob = false);
 
     // 15.2.1.16.5.2 ModuleExecution ( module )
     static Expected<JSTaggedValue, bool> ModuleExecution(JSThread *thread, const JSHandle<SourceTextModule> &module,
-                                 const void *buffer = nullptr, size_t size = 0, bool excuteFromJob = false);
+                                 const void *buffer = nullptr, size_t size = 0, bool executeFromJob = false);
 
     // 16.2.1.5.3.2 ExecuteAsyncModule ( module )
     static void ExecuteAsyncModule(JSThread *thread, const JSHandle<SourceTextModule> &module,
-                                   const void *buffer = nullptr, size_t size = 0, bool excuteFromJob = false);
+                                   const void *buffer = nullptr, size_t size = 0, bool executeFromJob = false);
 
     // 16.2.1.5.3.3 GatherAvailableAncestors ( module, execList )
     static void GatherAvailableAncestors(JSThread *thread, const JSHandle<SourceTextModule> &module,
@@ -195,11 +195,11 @@ public:
 
     // 15.2.1.16.5 Evaluate()
     static JSTaggedValue Evaluate(JSThread *thread, const JSHandle<SourceTextModule> &module,
-                         const void *buffer = nullptr, size_t size = 0, bool excuteFromJob = false);
+                         const void *buffer = nullptr, size_t size = 0, bool executeFromJob = false);
 
     // 15.2.1.16.4 Instantiate()
     static int PUBLIC_API Instantiate(JSThread *thread, const JSHandle<JSTaggedValue> &moduleHdl,
-        bool excuteFromJob = false);
+        bool executeFromJob = false);
     static void InstantiateCJS(JSThread *thread, const JSHandle<SourceTextModule> &currentModule,
                                const JSHandle<SourceTextModule> &requiredModule);
     static void InstantiateNativeModule(JSThread *thread, JSHandle<SourceTextModule> &currentModule,
@@ -268,7 +268,7 @@ private:
                                                              JSHandle<SourceTextModule> &module,
                                                              JSMutableHandle<JSTaggedValue> &required,
                                                              CVector<JSHandle<SourceTextModule>> &stack,
-                                                             int &index, bool excuteFromJob);
+                                                             int &index, bool executeFromJob);
     static int HandleInstantiateException(JSHandle<SourceTextModule> &module,
                                           const CVector<JSHandle<SourceTextModule>> &stack, int result);
     static void HandleEvaluateResult(JSThread *thread, JSHandle<SourceTextModule> &module,

@@ -60,11 +60,11 @@ public:
     JSHandle<JSTaggedValue> ResolveNativeModule(const CString &moduleRequestName, ModuleTypes moduleType);
     JSHandle<JSTaggedValue> HostResolveImportedModule(const void *buffer, size_t size, const CString &filename);
     JSHandle<JSTaggedValue> HostResolveImportedModule(const CString &referencingModule,
-        bool excuteFromJob = false);
+        bool executeFromJob = false);
     JSHandle<JSTaggedValue> PUBLIC_API HostResolveImportedModuleWithMerge(const CString &referencingModule,
-        const CString &recordName, bool excuteFromJob = false);
+        const CString &recordName, bool executeFromJob = false);
     JSHandle<JSTaggedValue> PUBLIC_API HostResolveImportedModuleWithMergeForHotReload(const CString &referencingModule,
-        const CString &recordName, bool excuteFromJob = false);
+        const CString &recordName, bool executeFromJob = false);
     JSHandle<JSTaggedValue> HostResolveImportedModule(const JSPandaFile *jsPandaFile, const CString &filename);
 
     JSHandle<JSTaggedValue> LoadNativeModule(JSThread *thread, const std::string &key);
@@ -106,7 +106,7 @@ private:
 
     bool SkipDefaultBundleFile(const CString &moduleFileName) const;
     JSHandle<JSTaggedValue> ResolveModuleInMergedABC(JSThread *thread, const JSPandaFile *jsPandaFile,
-        const CString &recordName, bool excuteFromJob = false);
+        const CString &recordName, bool executeFromJob = false);
     JSHandle<JSTaggedValue> CreateEmptyModule();
     JSTaggedValue GetModuleValueOutterInternal(int32_t index, JSTaggedValue currentModule);
     void StoreModuleValueInternal(JSHandle<SourceTextModule> &currentModule,
@@ -121,12 +121,12 @@ private:
     // deprecated end
 
     JSHandle<JSTaggedValue> ResolveModule(JSThread *thread, const JSPandaFile *jsPandaFile,
-        bool excuteFromJob = false);
+        bool executeFromJob = false);
     JSHandle<JSTaggedValue> ResolveModuleWithMerge(JSThread *thread, const JSPandaFile *jsPandaFile,
-        const CString &recordName, bool excuteFromJob = false);
+        const CString &recordName, bool executeFromJob = false);
 
     JSHandle<JSTaggedValue> CommonResolveImportedModuleWithMerge(const CString &moduleFileName,
-        const CString &recordName, bool excuteFromJob = false);
+        const CString &recordName, bool executeFromJob = false);
 
     static constexpr uint32_t DEAULT_DICTIONART_CAPACITY = 4;
 

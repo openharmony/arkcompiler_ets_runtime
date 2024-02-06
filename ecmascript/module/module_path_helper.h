@@ -81,6 +81,7 @@ public:
     static constexpr char BUNDLE_SUB_INSTALL_PATH[] = "/data/storage/el1/";
     static constexpr char PREVIEW_OF_ACROSS_HAP_FLAG[] = "[preview]";
     static constexpr char PREVIER_TEST_DIR[] = ".test";
+    static constexpr char PHYCICAL_FILE_PATH[] = "/src/main";
 
     static constexpr size_t MAX_PACKAGE_LEVEL = 1;
     static constexpr size_t SEGMENTS_LIMIT_TWO = 2;
@@ -96,6 +97,7 @@ public:
     static constexpr size_t OHOS_PREFIX_SIZE = 6;
     static constexpr size_t APP_PREFIX_SIZE = 5;
     static constexpr size_t BUNDLE_INSTALL_PATH_LEN = 25;
+    static constexpr size_t PHYCICAL_FILE_PATH_LEN = 10;
 
     static CString PUBLIC_API ConcatFileNameWithMerge(JSThread *thread, const JSPandaFile *jsPandaFile,
                                                       CString &baseFileName, CString recordName, CString requestName);
@@ -124,11 +126,11 @@ public:
     static bool IsImportFile(const CString &moduleRequestName);
     static CString RemoveSuffix(const CString &requestName);
     static bool NeedTranstale(const CString &requestName);
-    static void TranstaleExpressionInput(JSThread *thread, CString &requestPath, const JSPandaFile *jsPandaFile,
-                                         JSHandle<EcmaString> &specifierString);
+    static void TranstaleExpressionInput(const JSPandaFile *jsPandaFile, CString &requestPath);
     static CString GetModuleNameWithBaseFile(const CString &baseFileName);
     static CString TranslateExpressionInputWithEts(JSThread *thread, const JSPandaFile *jsPandaFile,
                                                    CString &baseFileName, const CString &requestName);
+    static void ParseCrossModuleFile(const JSPandaFile *jsPandaFile, CString &requestPath);
     /*
      * Before: data/storage/el1/bundle/moduleName/ets/modules.abc
      * After:  bundle/moduleName

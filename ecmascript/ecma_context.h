@@ -508,11 +508,11 @@ private:
                                           const JSPandaFile *jsPandaFile, std::string_view entryPoint,
                                           CJSInfo *cjsInfo = nullptr);
     Expected<JSTaggedValue, bool> InvokeEcmaEntrypoint(const JSPandaFile *jsPandaFile, std::string_view entryPoint,
-                                                       bool excuteFromJob = false);
+                                                       bool executeFromJob = false);
     Expected<JSTaggedValue, bool> InvokeEcmaEntrypointForHotReload(
-        const JSPandaFile *jsPandaFile, std::string_view entryPoint, bool excuteFromJob);
+        const JSPandaFile *jsPandaFile, std::string_view entryPoint, bool executeFromJob);
     Expected<JSTaggedValue, bool> CommonInvokeEcmaEntrypoint(const JSPandaFile *jsPandaFile,
-        std::string_view entryPoint, JSHandle<JSFunction> &func);
+        std::string_view entryPoint, JSHandle<JSFunction> &func, bool executeFromJob);
     bool LoadAOTFiles(const std::string &aotFileName);
     void RelocateConstantString(const JSPandaFile *jsPandaFile);
     NO_MOVE_SEMANTIC(EcmaContext);

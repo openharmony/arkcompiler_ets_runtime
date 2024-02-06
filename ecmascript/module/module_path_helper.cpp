@@ -243,11 +243,6 @@ CString ModulePathHelper::MakeNewRecord(const JSPandaFile *jsPandaFile, CString 
     return entryPoint;
 }
 
-/*
- * Before: ohpmPath:      pkg_modules/.ohpm/pkgName/pkg_modules
- *         requestName:   requestPkgName
- * After:  entryPoint：   pkg_modules/.ohpm/requestPkgName/pkg_modules/requestPkgName/xxx
- */
 CString ModulePathHelper::FindOhpmEntryPoint(const JSPandaFile *jsPandaFile,
     const CString& ohpmPath, const CString& requestName)
 {
@@ -258,9 +253,7 @@ CString ModulePathHelper::FindOhpmEntryPoint(const JSPandaFile *jsPandaFile,
     size_t index = 0;
     // first we find the ohpmKey by splicing the requestName
     while (index <= maxIndex) {
-        // maybeKey: pkg_modules/.ohpm/pkgName/pkg_modules/requestPkgName
         CString maybeKey = ohpmPath + PathHelper::SLASH_TAG + StringHelper::JoinString(vec, 0, index);
-        // ohpmKey: pkg_modules/.ohpm/requestPkgName/pkg_modules/requestPkgName
         if (jsPandaFile->FindOhmUrlInPF(maybeKey, ohpmKey)) {
             break;
         }
@@ -273,7 +266,6 @@ CString ModulePathHelper::FindOhpmEntryPoint(const JSPandaFile *jsPandaFile,
     CString entryPoint;
     if (index == maxIndex) {
         // requestName is a packageName
-        // entryPoint: pkg_modules/.ohpm/requestPkgName/pkg_modules/requestPkgName/xxx
         entryPoint = jsPandaFile->GetEntryPoint(ohpmKey);
     } else {
         // import a specific file or directory
@@ -298,6 +290,7 @@ CString ModulePathHelper::FindPackageInTopLevelWithNamespace(const JSPandaFile *
         ohpmPath = recordName.substr(0, pos);
         entryPoint = FindOhpmEntryPoint(jsPandaFile, recordName.substr(0, pos), requestName);
     } else {
+        // recordName: moduleName/xxx/xxx
         CVector<CString> vec;
         StringHelper::SplitString(recordName, vec, 0, SEGMENTS_LIMIT_TWO);
         if (vec.size() < SEGMENTS_LIMIT_TWO) {
@@ -508,28 +501,31 @@ bool ModulePathHelper::NeedTranstale(const CString &requestName)
 }
 
 // Adapt dynamic import using expression input, translate include NativeModule/ohpm/hsp/har.
-void ModulePathHelper::TranstaleExpressionInput(JSThread *thread, CString &requestPath,
-                                                const JSPandaFile *jsPandaFile, JSHandle<EcmaString> &specifierString)
+void ModulePathHelper::TranstaleExpressionInput(const JSPandaFile *jsPandaFile, CString &requestPath)
 {
     LOG_ECMA(DEBUG) << "Enter Translate OhmUrl for DynamicImport, requestPath: " << requestPath;
     if (StringHelper::StringStartWith(requestPath, RAW_ARKUIX_PREFIX)) {
         requestPath = StringHelper::Replace(requestPath, RAW_ARKUIX_PREFIX, REQUIRE_NAPI_OHOS_PREFIX);
-    } else {
-        CString outEntryPoint;
-        // FindOhmUrlInPF: frontend generate mapping in abc,
-        // all we need to do is to find the corresponding mapping result.
-        // EXCEPTION: @ohos. @hms. is translated all by runtime.
-        if (jsPandaFile->FindOhmUrlInPF(requestPath, outEntryPoint)) {
-            requestPath = outEntryPoint;
-        }
-        // change origin: @ohos. @hms. -> @ohos: @hms:
-        // change mapping result: @package. @bundle. @xxx. -> @package: @bundle: @xxx:
-        ChangeTag(requestPath);
+        return;
     }
-    specifierString = thread->GetEcmaVM()->GetFactory()->NewFromUtf8(requestPath);
-    LOG_ECMA(DEBUG) << "Exit Translate OhmUrl for DynamicImport, resultPath: " << requestPath;
+    CString outEntryPoint;
+    // FindOhmUrlInPF: frontend generate mapping in abc,
+    // all we need to do is to find the corresponding mapping result.
+    // EXCEPTION: @ohos. @hms. is translated all by runtime.
+    if (jsPandaFile->FindOhmUrlInPF(requestPath, outEntryPoint)) {
+        requestPath = outEntryPoint;
+    } else {
+        ParseCrossModuleFile(jsPandaFile, requestPath);
+    }
+    // change origin: @ohos. @hms. -> @ohos: @hms:
+    // change mapping result: @package. @bundle. @xxx. -> @package: @bundle: @xxx:
+    ChangeTag(requestPath);
 }
 
+/*
+ * Before: /data/storage/el1/bundle/moduleName/ets/xxx/xxx.abc
+ * After:  moduleName
+ */
 CString ModulePathHelper::GetModuleNameWithBaseFile(const CString &baseFileName)
 {
     size_t pos = CString::npos;
@@ -569,5 +565,29 @@ CString ModulePathHelper::TranslateExpressionInputWithEts(JSThread *thread, cons
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, entryPoint);
     }
     return entryPoint;
+}
+
+/*
+ * input requestPath: moduleName/src/main/xxx/xxx/xxx
+ *                    moduleName/xxx/xxx
+ * output requestPath: @bundle.bundleName/moduleName/xxx/xxx/xxx
+ *                     @bundle.bundleName/moduleName/xxx/xxx
+ */
+void ModulePathHelper::ParseCrossModuleFile(const JSPandaFile *jsPandaFile, CString &requestPath)
+{
+    size_t pos = requestPath.find(PathHelper::SLASH_TAG);
+    CString moduleName = requestPath.substr(0, pos);
+    CString outEntryPoint;
+    if (jsPandaFile->FindOhmUrlInPF(moduleName, outEntryPoint)) {
+        // outEntryPoint: @bundle.bundleName/moduleName/Index
+        CString relativePath = requestPath.substr(pos);
+        size_t index = outEntryPoint.rfind(PathHelper::SLASH_TAG);
+        if (relativePath.find(PHYCICAL_FILE_PATH, 0) == 0) {
+            requestPath = outEntryPoint.substr(0, index) + PathHelper::SLASH_TAG +
+                requestPath.substr(pos + PHYCICAL_FILE_PATH_LEN);
+            return;
+        }
+        requestPath = outEntryPoint.substr(0, index) + requestPath.substr(pos);
+    }
 }
 }  // namespace panda::ecmascript
