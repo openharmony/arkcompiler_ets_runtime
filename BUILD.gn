@@ -1007,110 +1007,28 @@ if (enable_target_compilation) {
   ecma_platform_source += [ "ecmascript/platform/unix/directory.cpp" ]
 }
 
-ohos_source_set("libark_jsruntime_set") {
-  stack_protector_ret = false
-  if (is_ohos && is_standard_system) {
-    stub_an_file_path = "/system/lib64/${arkcompiler_relative_lib_path}/stub.an"
-  } else {
-    stub_an_file_path =
-        rebase_path("$root_gen_dir/arkcompiler/ets_runtime/stub.an")
-  }
-  defines = [ "STUB_AN_FILE=\"${stub_an_file_path}\"" ]
-  target_builtins_dts_path =
-      "/system/lib64/${arkcompiler_relative_lib_path}/lib_ark_builtins.d.abc"
-  defines += [ "TARGET_BUILTINS_DTS_PATH=\"${target_builtins_dts_path}\"" ]
-
-  if (current_cpu == "arm64") {
-    defines += [ "ENABLE_POSTFORK_FORCEEXPAND" ]
-  }
-
-  sources = ecma_source
-  sources += ecma_profiler_source
-  sources += ecma_debugger_source
-  sources += hitrace_scope_source
-  sources += ecma_platform_source
-
-  if (is_ohos) {
-    sources += ecma_stackinfo_source
-  }
-
-  public_configs = [ "$js_root:ark_jsruntime_public_config" ]
-  public_configs += [ ":include_llvm" ]
-
-  configs = [
-    "$js_root:ark_jsruntime_common_config",
-    "$js_root:asm_interp_enable_config",
-  ]
-
-  cflags_cc = []
-  if (is_standard_system || target_os == "android" || target_os == "ios") {
-    cflags_cc += [ "-fvisibility=hidden" ]
-  }
-
-  external_deps = []
-
-  if (enable_dump_in_faultlog) {
-    external_deps += [ "libuv:uv" ]
-  }
-
-  deps = []
-  if (!is_arkui_x) {
-    external_deps += [ "runtime_core:arkfile_header_deps" ]
-  } else {
-    deps += [ "$ark_root/libpandafile:arkfile_header_deps" ]
-  }
-
-  if (is_ohos && is_standard_system && !is_arkui_x &&
-      defined(global_parts_info) && defined(global_parts_info.qos_manager)) {
-    defines += [ "ENABLE_QOS" ]
-    external_deps += [ "qos_manager:qos" ]
-  }
-
-  if (enable_target_compilation) {
-    external_deps += [ "c_utils:utils" ]
-  }
-
-  # hiviewdfx libraries
-  external_deps += hiviewdfx_ext_deps
-  deps += hiviewdfx_deps
-
-  if (ark_standalone_build || is_arkui_x) {
-    deps += [ "$ark_third_party_root/zlib:libz" ]
-  } else {
-    deps += [ "$ark_third_party_root/zlib:shared_libz" ]
-  }
-
-  part_name = "ets_runtime"
-  subsystem_name = "arkcompiler"
+libark_jsruntime_common_set("libark_jsruntime_set") {
 }
 
-ohos_source_set("libark_js_intl_set") {
-  stack_protector_ret = false
-  sources = intl_sources
-
-  public_configs = [ "$js_root:ark_jsruntime_public_config" ]
-
-  configs = [ "$js_root:ark_jsruntime_common_config" ]
-
-  cflags_cc = []
-  if (is_standard_system || target_os == "android" || target_os == "ios") {
-    cflags_cc += [ "-fvisibility=hidden" ]
+libark_jsruntime_common_set("libark_jsruntime_arm_set") {
+  if (is_ohos && is_standard_system && current_toolchain != host_toolchain &&
+      !ark_standalone_build) {
+    sanitize = {
+      ubsan = true
+    }
   }
+}
 
-  external_deps = []
-  deps = []
-  if (!is_arkui_x) {
-    external_deps += [ "runtime_core:arkfile_header_deps" ]
-  } else {
-    deps += [ "$ark_root/libpandafile:arkfile_header_deps" ]
+libark_jsruntime_intl_common_set("libark_js_intl_set") {
+}
+
+libark_jsruntime_intl_common_set("libark_js_intl_arm_set") {
+  if (is_ohos && is_standard_system && current_toolchain != host_toolchain &&
+      !ark_standalone_build) {
+    sanitize = {
+      ubsan = true
+    }
   }
-
-  # hiviewdfx libraries
-  external_deps += hiviewdfx_ext_deps
-  deps += hiviewdfx_deps
-
-  part_name = "ets_runtime"
-  subsystem_name = "arkcompiler"
 }
 
 config("ark_jsruntime_test_nolto") {
@@ -1206,9 +1124,16 @@ ohos_source_set("libark_jsruntime_test_set") {
 
 ohos_source_set("libark_jsruntime_static") {
   stack_protector_ret = false
+  if (is_ohos && is_standard_system && current_toolchain != host_toolchain &&
+      !ark_standalone_build) {
+    sanitize = {
+      ubsan = true
+    }
+  }
+
   deps = [
-    ":libark_js_intl_set",
-    ":libark_jsruntime_set",
+    ":libark_js_intl_arm_set",
+    ":libark_jsruntime_arm_set",
   ]
   external_deps = []
   if (!is_arkui_x) {
@@ -1234,6 +1159,13 @@ ohos_source_set("libark_jsruntime_static") {
 
 ohos_shared_library("libark_jsruntime") {
   stack_protector_ret = false
+  if (is_ohos && is_standard_system && current_toolchain != host_toolchain &&
+      !ark_standalone_build) {
+    sanitize = {
+      ubsan = true
+    }
+  }
+
   deps = [
     ":libark_jsruntime_static",
     sdk_libc_secshared_dep,
