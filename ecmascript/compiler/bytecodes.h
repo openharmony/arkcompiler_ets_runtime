@@ -66,6 +66,7 @@ enum BytecodeKind : uint32_t {
     GENERATOR_RESOLVE,
     DISCARDED,
     CALL_BC,
+    ACCESSOR_BC,
 };
 
 class BytecodeMetaData {
@@ -220,6 +221,11 @@ public:
     bool IsCall() const
     {
         return GetKind() == BytecodeKind::CALL_BC;
+    }
+
+    bool IsAccessorBC() const
+    {
+        return GetKind() == BytecodeKind::ACCESSOR_BC;
     }
 
     bool HasDebuggerStmt() const
@@ -787,6 +793,11 @@ public:
     bool IsCall() const
     {
         return metaData_.IsCall();
+    }
+
+    bool IsAccessorBC() const
+    {
+        return metaData_.IsAccessorBC();
     }
 
     bool HasDebuggerStmt() const

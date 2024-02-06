@@ -214,6 +214,18 @@ void PGOTypeParser::CreatePGOType(BytecodeInfoCollector &collector)
             JSHandle<JSHClass> phclass(thread, phValue);
             JSHandle<JSObject> prototype = thread->GetEcmaVM()->GetFactory()->NewJSObject(phclass);
             generator.GenerateIHClass(rootSampleType, prototype);
+        } else if (rootType.IsPrototype()) {
+            // When the collected object only has phc, use phc to create a prototype and store it in the IHC field.
+            generator.GenerateHClass(rootSampleType);
+            auto classType = ProfileType(rootType.GetRaw());
+            classType.UpdateKind(ProfileType::Kind::ClassId);
+            auto ihc = ptManager_->QueryHClass(classType, classType);
+            if (ihc.IsUndefined()) {
+                auto phc = ptManager_->QueryHClass(rootType, rootType);
+                JSHandle<JSHClass> phclass(thread, phc);
+                JSHandle<JSObject> prototype = thread->GetEcmaVM()->GetFactory()->NewJSObject(phclass);
+                ptManager_->RecordHClass(classType, classType, prototype.GetTaggedType());
+            }
         } else {
             generator.GenerateHClass(rootSampleType);
         }

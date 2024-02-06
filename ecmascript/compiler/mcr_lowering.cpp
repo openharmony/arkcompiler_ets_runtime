@@ -20,6 +20,7 @@
 #include "ecmascript/js_thread.h"
 #include "ecmascript/js_function.h"
 #include "ecmascript/message_string.h"
+#include "ecmascript/compiler/argument_accessor.h"
 
 namespace panda::ecmascript::kungfu {
 

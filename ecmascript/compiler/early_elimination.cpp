@@ -92,6 +92,7 @@ GateRef EarlyElimination::VisitGate(GateRef gate)
         case OpCode::PROTO_CHANGE_MARKER_CHECK:
         case OpCode::MONO_LOAD_PROPERTY_ON_PROTO:
         case OpCode::LOAD_BUILTIN_OBJECT:
+        case OpCode::LOOK_UP_HOLDER:
             return TryEliminateGate(gate);
         case OpCode::STATE_SPLIT:
             return TryEliminateFrameState(gate);
@@ -381,13 +382,6 @@ bool EarlyElimination::CheckReplacement(GateRef lhs, GateRef rhs)
         }
         case OpCode::JSINLINETARGET_TYPE_CHECK: {
             if (acc_.GetFuncGT(lhs) != acc_.GetFuncGT(rhs)) {
-                return false;
-            }
-            break;
-        }
-        case OpCode::LOAD_GETTER:
-        case OpCode::LOAD_SETTER: {
-            if (acc_.TryGetValue(lhs) != acc_.TryGetValue(rhs)) {
                 return false;
             }
             break;
