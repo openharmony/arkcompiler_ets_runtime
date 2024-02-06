@@ -100,15 +100,15 @@ uint32_t Base64CharToInt(char charCode)
     return DIGIT_NUM;
 };
 
-void SourceMap::Init(const std::string& hapPath)
+void SourceMap::Init(const std::string& url, const std::string& hapPath)
 {
     std::string sourceMapData;
     if (ReadSourceMapData(hapPath, sourceMapData)) {
-        SplitSourceMap(sourceMapData);
+        SplitSourceMap(url, sourceMapData);
     }
 }
 
-void SourceMap::SplitSourceMap(const std::string& sourceMapData)
+void SourceMap::SplitSourceMap(const std::string& url, const std::string& sourceMapData)
 {
     size_t leftBracket = 0;
     size_t rightBracket = 0;
@@ -126,9 +126,15 @@ void SourceMap::SplitSourceMap(const std::string& sourceMapData)
         }
         // Intercept the sourcemap file path as the key
         std::string key = value.substr(sources + NUM_TWENTY, names - sources - NUM_TWENTYSIX);
-        std::shared_ptr<SourceMapData> modularMap = std::make_shared<SourceMapData>();
-        ExtractSourceMapData(value, modularMap);
-        sourceMaps_.emplace(key, modularMap);
+        if (key == url) {
+            auto iter = sourceMaps_.find(key);
+            if (iter != sourceMaps_.end()) {
+                continue;
+            }
+            std::shared_ptr<SourceMapData> modularMap = std::make_shared<SourceMapData>();
+            ExtractSourceMapData(value, modularMap);
+            sourceMaps_.emplace(key, modularMap);
+        }
     }
 }
 
