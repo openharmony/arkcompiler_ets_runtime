@@ -3739,13 +3739,18 @@ Local<ObjectRef> JSNApi::ExecuteNativeModule(EcmaVM *vm, const std::string &key)
     return JSNApiHelper::ToLocal<ObjectRef>(exportObj);
 }
 
-Local<ObjectRef> JSNApi::GetModuleNameSpaceFromFile(EcmaVM *vm, const std::string &file)
+Local<ObjectRef> JSNApi::GetModuleNameSpaceFromFile(EcmaVM *vm, const std::string &file, const std::string &module_path)
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
     // need get moduleName from stack
     std::pair<std::string, std::string> moduleInfo = vm->GetCurrentModuleInfo(false);
-    std::string recordNameStr = std::string(vm->GetBundleName().c_str()) + PathHelper::SLASH_TAG +
-        moduleInfo.first + PathHelper::SLASH_TAG + file;
+    std::string recordNameStr;
+    if (module_path.size() != 0) {
+        recordNameStr = module_path + PathHelper::SLASH_TAG + file;
+    } else {
+        recordNameStr = std::string(vm->GetBundleName().c_str()) + PathHelper::SLASH_TAG +
+            moduleInfo.first + PathHelper::SLASH_TAG + file;
+    }
     LOG_ECMA(DEBUG) << "JSNApi::LoadModuleNameSpaceFromFile: Concated recordName " << recordNameStr.c_str();
     ecmascript::ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
     JSHandle<JSTaggedValue> moduleNamespace = moduleManager->
