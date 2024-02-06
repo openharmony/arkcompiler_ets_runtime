@@ -110,7 +110,12 @@ bool ValueSerializer::WriteValue(JSThread *thread,
         return false;
     }
     if (value->IsHeapObject()) {
-        vm_->GetSnapshotEnv()->Initialize();
+        // Add fast path for string
+        if (value->IsString()) {
+            vm_->GetSnapshotEnv()->InitializeStringClass();
+        } else {
+            vm_->GetSnapshotEnv()->Initialize();
+        }
     }
     SerializeJSTaggedValue(value.GetTaggedValue());
     if (value->IsHeapObject()) {

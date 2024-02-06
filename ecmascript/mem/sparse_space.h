@@ -124,6 +124,11 @@ public:
         }
     }
 
+    bool CommittedSizeExceed() const
+    {
+        return committedSize_ >= maximumCapacity_ + overshootSize_ + outOfMemoryOvershootSize_;
+    }
+
     size_t GetTotalAllocatedSize() const;
 
     void InvokeAllocationInspector(Address object, size_t size, size_t alignedSize);
