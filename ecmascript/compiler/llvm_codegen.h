@@ -134,7 +134,7 @@ public:
                              const CompilationConfig *cfg) override;
     void GenerateCode(Circuit *circuit, const ControlFlowGraph &graph, const CompilationConfig *cfg,
         const MethodLiteral *methodLiteral, const JSPandaFile *jsPandaFile, const std::string &methodName,
-        bool enableOptInlining) override;
+        bool enableOptInlining, bool enableBranchProfiling) override;
 
     bool IsLogEnabled() const
     {
