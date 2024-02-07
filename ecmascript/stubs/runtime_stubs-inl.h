@@ -1048,7 +1048,12 @@ JSTaggedValue RuntimeStubs::RuntimeNotifyInlineCache(JSThread *thread, const JSH
         return JSTaggedValue::Undefined();
     }
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<ProfileTypeInfo> profileTypeInfo = factory->NewProfileTypeInfo(icSlotSize);
+    JSHandle<ProfileTypeInfo> profileTypeInfo;
+    if (function->GetClass()->IsJSSharedFunction()) {
+        return JSTaggedValue::Undefined();
+    } else {
+        profileTypeInfo = factory->NewProfileTypeInfo(icSlotSize);
+    }
     // overflow 8bit
     if (icSlotSize > ProfileTypeInfo::INVALID_SLOT_INDEX) {
         // set as mega
