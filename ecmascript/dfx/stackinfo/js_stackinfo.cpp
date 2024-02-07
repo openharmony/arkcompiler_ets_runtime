@@ -710,7 +710,7 @@ JsFrame ArkParseJsFrameInfo(const panda_file::File *pf, std::string &fileName,
         }
     }
     SourceMap sourceMapObj;
-    sourceMapObj.Init(hapPath);
+    sourceMapObj.Init(url, hapPath);
     sourceMapObj.TranslateUrlPositionBySourceMap(url, lineNumber, columnNumber);
     JsFrame jsFrame;
     size_t urlSize = url.size() + 1;
