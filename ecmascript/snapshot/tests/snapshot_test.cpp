@@ -254,17 +254,20 @@ HWTEST_F_L0(SnapshotTest, SerializeBuiltins)
     EcmaVM *ecmaVm2 = JSNApi::CreateEcmaVM(options2);
     EXPECT_TRUE(ecmaVm2->GetGlobalEnv()->GetClass()->GetObjectType() == JSType::GLOBAL_ENV);
     auto globalConst = const_cast<GlobalEnvConstants *>(ecmaVm2->GetJSThread()->GlobalConstants());
-    size_t hclassEndIndex = static_cast<size_t>(ConstantIndex::UNDEFINED_INDEX);
-    size_t hclassIndex = 0;
-    globalConst->VisitRangeSlot([&hclassIndex, &hclassEndIndex]([[maybe_unused]] Root type,
-                                                                ObjectSlot start, ObjectSlot end) {
+    globalConst->VisitRangeSlot([]([[maybe_unused]] Root type, ObjectSlot start, ObjectSlot end) {
+        size_t sharedBeginHclassIndex = static_cast<size_t>(ConstantIndex::SHARED_HCLASS_BEGIN);
+        size_t sharedHclassEndIndex = static_cast<size_t>(ConstantIndex::SHARED_HCLASS_END);
+        size_t hclassBeginIndex = static_cast<size_t>(ConstantIndex::NON_SHARED_HCLASS_BEGIN);
+        size_t hclassEndIndex = static_cast<size_t>(ConstantIndex::NON_SHARED_HCLASS_END);
+        size_t index = sharedBeginHclassIndex;
         while (start < end) {
             JSTaggedValue object(start.GetTaggedType());
             start++;
-            if (hclassIndex < hclassEndIndex) {
+            if ((index >= sharedBeginHclassIndex && index <= sharedHclassEndIndex) ||
+                (index >= hclassBeginIndex && index <= hclassEndIndex)) {
                 EXPECT_TRUE(object.IsJSHClass());
             }
-            hclassIndex++;
+            index++;
         }
     });
     JSNApi::DestroyJSVM(ecmaVm2);

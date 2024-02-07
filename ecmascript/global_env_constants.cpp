@@ -84,23 +84,18 @@ void GlobalEnvConstants::Init(JSThread *thread)
     auto *globalConst = Runtime::GetInstance()->GetGlobalEnvConstants();
     if (globalConst != nullptr) {
         // 1. Copy shareds.
-        for (size_t i = static_cast<size_t>(ConstantIndex::SHARED_HCLASS_BEGIN);
-            i <= static_cast<size_t>(ConstantIndex::SHARED_HCLASS_END); i++) {
-            constants_[i] = globalConst->constants_[i];
-        }
-        for (size_t i = static_cast<size_t>(ConstantIndex::SHARED_STRING_BEGIN);
-            i <= static_cast<size_t>(ConstantIndex::SHARED_STRING_END); i++) {
+        for (size_t i = static_cast<size_t>(ConstantIndex::SHARED_BEGIN);
+            i <= static_cast<size_t>(ConstantIndex::SHARED_END); i++) {
             constants_[i] = globalConst->constants_[i];
         }
     } else {
         InitSharedRootsClasses(factory);
         InitSharedStrings(factory);
+        InitSharedMiscellanious(thread, factory);
     }
     // 2. Init non-shareds.
-    InitGlobalConstantSpecial(thread);
+    InitMiscellanious(thread, factory);
     InitRootsClasses(factory);
-    InitGlobalConstant(thread);
-    InitGlobalCaches();
 }
 
 void GlobalEnvConstants::InitSharedStrings(ObjectFactory *factory)
@@ -251,6 +246,40 @@ void GlobalEnvConstants::InitSharedRootsClasses(ObjectFactory *factory)
         factory->NewSEcmaReadOnlyHClass(hClass, TSNamespaceType::SIZE, JSType::TS_NAMESPACE_TYPE));
     SetConstant(ConstantIndex::CELL_RECORD_CLASS_INDEX,
         factory->NewSEcmaReadOnlyHClass(hClass, CellRecord::SIZE, JSType::CELL_RECORD));
+    SetConstant(ConstantIndex::METHOD_CLASS_INDEX,
+        factory->NewSEcmaReadOnlyHClass(hClass, Method::SIZE, JSType::METHOD));
+    SetConstant(ConstantIndex::LINKED_NODE_CLASS_INDEX,
+        factory->NewSEcmaReadOnlyHClass(hClass, LinkedNode::SIZE, JSType::LINKED_NODE));
+    SetConstant(ConstantIndex::RB_TREENODE_CLASS_INDEX,
+        factory->NewSEcmaReadOnlyHClass(hClass, RBTreeNode::SIZE, JSType::RB_TREENODE));
+    SetConstant(ConstantIndex::CLASS_LITERAL_HCLASS_INDEX,
+        factory->NewSEcmaReadOnlyHClass(hClass, ClassLiteral::SIZE, JSType::CLASS_LITERAL));
+}
+
+void GlobalEnvConstants::InitSharedMiscellanious(JSThread *thread, ObjectFactory *factory)
+{
+    // Accessors
+    auto accessor = factory->NewSInternalAccessor(reinterpret_cast<void *>(JSFunction::PrototypeSetter),
+                                                  reinterpret_cast<void *>(JSFunction::PrototypeGetter));
+    SetConstant(ConstantIndex::FUNCTION_PROTOTYPE_ACCESSOR, accessor);
+    accessor = factory->NewSInternalAccessor(nullptr, reinterpret_cast<void *>(JSFunction::NameGetter));
+    SetConstant(ConstantIndex::FUNCTION_NAME_ACCESSOR, accessor);
+    accessor = factory->NewSInternalAccessor(nullptr, reinterpret_cast<void *>(JSFunction::LengthGetter));
+    SetConstant(ConstantIndex::FUNCTION_LENGTH_ACCESSOR, accessor);
+    accessor = factory->NewSInternalAccessor(reinterpret_cast<void *>(JSArray::LengthSetter),
+                                             reinterpret_cast<void *>(JSArray::LengthGetter));
+    SetConstant(ConstantIndex::ARRAY_LENGTH_ACCESSOR, accessor);
+    // Specials
+    SetConstant(ConstantIndex::UNDEFINED_INDEX, JSTaggedValue::Undefined());
+    SetConstant(ConstantIndex::NULL_INDEX, JSTaggedValue::Null());
+    SetConstant(ConstantIndex::TRUE_INDEX, JSTaggedValue::True());
+    SetConstant(ConstantIndex::FALSE_INDEX, JSTaggedValue::False());
+    // Emptys
+    auto vm = thread->GetEcmaVM();
+    SetConstant(ConstantIndex::EMPTY_STRING_OBJECT_INDEX, JSTaggedValue(EcmaStringAccessor::CreateEmptyString(vm)));
+    SetConstant(ConstantIndex::EMPTY_ARRAY_OBJECT_INDEX, factory->NewSEmptyArray());
+    SetConstant(ConstantIndex::EMPTY_MUTANT_ARRAY_OBJECT_INDEX, factory->NewSEmptyMutantArray());
+    SetConstant(ConstantIndex::EMPTY_SLAYOUT_INFO_OBJECT_INDEX, factory->CreateSLayoutInfo(0));
 }
 
 void GlobalEnvConstants::InitRootsClasses(ObjectFactory *factory)
@@ -297,14 +326,6 @@ void GlobalEnvConstants::InitRootsClasses(ObjectFactory *factory)
                 factory->NewEcmaHClass(hClass, JSAPITreeMapIterator::SIZE, JSType::JS_API_TREEMAP_ITERATOR));
     SetConstant(ConstantIndex::JS_API_TREE_SET_ITERATOR_CLASS_INDEX,
                 factory->NewEcmaHClass(hClass, JSAPITreeSetIterator::SIZE, JSType::JS_API_TREESET_ITERATOR));
-    SetConstant(ConstantIndex::LINKED_NODE_CLASS_INDEX,
-                factory->NewEcmaHClass(hClass, LinkedNode::SIZE, JSType::LINKED_NODE));
-    SetConstant(ConstantIndex::RB_TREENODE_CLASS_INDEX,
-                factory->NewEcmaHClass(hClass, RBTreeNode::SIZE, JSType::RB_TREENODE));
-    SetConstant(ConstantIndex::METHOD_CLASS_INDEX,
-                factory->NewEcmaHClass(hClass, Method::SIZE, JSType::METHOD));
-    SetConstant(ConstantIndex::CLASS_LITERAL_HCLASS_INDEX,
-                factory->NewEcmaHClass(hClass, ClassLiteral::SIZE, JSType::CLASS_LITERAL));
     SetConstant(ConstantIndex::OBJECT_HCLASS_INDEX, factory->NewEcmaHClass(JSObject::SIZE, JSType::JS_OBJECT));
     SetConstant(ConstantIndex::CLASS_PROTOTYPE_HCLASS_INDEX,
                 factory->CreateDefaultClassPrototypeHClass(hClass));
@@ -323,42 +344,17 @@ void GlobalEnvConstants::InitRootsClasses(ObjectFactory *factory)
     SetConstant(ConstantIndex::JS_PROXY_CONSTRUCT_CLASS_INDEX, JSTaggedValue(jsProxyConstructClass));
 }
 
-void GlobalEnvConstants::InitGlobalConstantSpecial(JSThread *thread)
+void GlobalEnvConstants::InitMiscellanious(JSThread *thread, ObjectFactory *factory)
 {
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    // SPECIAL INIT
-    SetConstant(ConstantIndex::UNDEFINED_INDEX, JSTaggedValue::Undefined());
-    SetConstant(ConstantIndex::NULL_INDEX, JSTaggedValue::Null());
-    SetConstant(ConstantIndex::TRUE_INDEX, JSTaggedValue::True());
-    SetConstant(ConstantIndex::FALSE_INDEX, JSTaggedValue::False());
-    auto vm = thread->GetEcmaVM();
-    SetConstant(ConstantIndex::EMPTY_STRING_OBJECT_INDEX, JSTaggedValue(EcmaStringAccessor::CreateEmptyString(vm)));
-    SetConstant(ConstantIndex::EMPTY_ARRAY_OBJECT_INDEX, factory->NewEmptyArray());
-    SetConstant(ConstantIndex::EMPTY_MUTANT_ARRAY_OBJECT_INDEX, factory->NewEmptyMutantArray());
     SetConstant(ConstantIndex::EMPTY_LAYOUT_INFO_OBJECT_INDEX, factory->CreateLayoutInfo(0));
-    SetConstant(ConstantIndex::EMPTY_SLAYOUT_INFO_OBJECT_INDEX, factory->CreateSLayoutInfo(0));
     SetConstant(ConstantIndex::EMPTY_TAGGED_QUEUE_OBJECT_INDEX, factory->NewTaggedQueue(0));
     SetConstant(ConstantIndex::DEFAULT_SUPERS_INDEX,
                 WeakVector::Create(thread, SubtypingOperator::DEFAULT_SUPERS_CAPACITY, MemSpaceType::NON_MOVABLE));
-}
 
-// NOLINTNEXTLINE(readability-function-size)
-void GlobalEnvConstants::InitGlobalConstant(JSThread *thread)
-{
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    /* non ECMA standard jsapi containers iterators, init to Undefined first */
+    // non ECMA standard jsapi containers iterators, init to Undefined first
     InitJSAPIContainers();
 
-    auto accessor = factory->NewInternalAccessor(reinterpret_cast<void *>(JSFunction::PrototypeSetter),
-                                                 reinterpret_cast<void *>(JSFunction::PrototypeGetter));
-    SetConstant(ConstantIndex::FUNCTION_PROTOTYPE_ACCESSOR, accessor);
-    accessor = factory->NewInternalAccessor(nullptr, reinterpret_cast<void *>(JSFunction::NameGetter));
-    SetConstant(ConstantIndex::FUNCTION_NAME_ACCESSOR, accessor);
-    accessor = factory->NewInternalAccessor(nullptr, reinterpret_cast<void *>(JSFunction::LengthGetter));
-    SetConstant(ConstantIndex::FUNCTION_LENGTH_ACCESSOR, accessor);
-    accessor = factory->NewInternalAccessor(reinterpret_cast<void *>(JSArray::LengthSetter),
-                                            reinterpret_cast<void *>(JSArray::LengthGetter));
-    SetConstant(ConstantIndex::ARRAY_LENGTH_ACCESSOR, accessor);
+    InitGlobalCaches();
 }
 
 void GlobalEnvConstants::InitGlobalCaches()
