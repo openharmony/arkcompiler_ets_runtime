@@ -458,8 +458,7 @@ public:
     DECL_DUMP()
 
 private:
-    static JSHandle<Method> Create(JSThread *thread, const JSPandaFile *jsPandaFile, MethodLiteral *methodLiteral,
-        bool shareObject = false);
+    static JSHandle<Method> Create(JSThread *thread, const JSPandaFile *jsPandaFile, MethodLiteral *methodLiteral);
 
     friend class ObjectFactory;
 };

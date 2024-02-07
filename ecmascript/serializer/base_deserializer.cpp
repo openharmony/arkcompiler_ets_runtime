@@ -132,7 +132,7 @@ void BaseDeserializer::DeserializeConstPool(NewConstPoolInfo *info)
     JSPandaFile *jsPandaFile = info->jsPandaFile_;
     panda_file::File::EntityId methodId = info->methodId_;
     ObjectSlot slot = ObjectSlot(info->slotAddr_);
-    JSHandle<ConstantPool> constpool = ConstantPool::CreateConstPool(thread_->GetEcmaVM(), jsPandaFile, methodId);
+    JSHandle<ConstantPool> constpool = ConstantPool::CreateSharedConstPool(thread_->GetEcmaVM(), jsPandaFile, methodId);
     panda_file::IndexAccessor indexAccessor(*jsPandaFile->GetPandaFile(), methodId);
     int32_t index = static_cast<int32_t>(indexAccessor.GetHeaderIndex());
     thread_->GetCurrentEcmaContext()->AddConstpool(jsPandaFile, constpool.GetTaggedValue(), index);

@@ -305,13 +305,7 @@ JSHandle<JSFunction> LiteralDataExtractor::DefineMethodInLiteral(JSThread *threa
         module.Update(factory->NewFromUtf8(moduleName));
     }
     JSHandle<Method> method;
-    if (classKind == ClassKind::SENDABLE) {
-        method = factory->NewSMethod(jsPandaFile, methodLiteral, constpool,
-            module);
-    } else {
-        method = factory->NewMethod(jsPandaFile, methodLiteral, constpool,
-            module, entryIndex, isLoadedAOT, &canFastCall);
-    }
+    method = factory->NewSMethod(jsPandaFile, methodLiteral, constpool, module, entryIndex, isLoadedAOT, &canFastCall);
     
     JSHandle<JSHClass> functionClass;
     JSHandle<JSFunction> jsFunc = CreateJSFunctionInLiteral(vm, method, kind, classKind);
@@ -475,7 +469,12 @@ JSHandle<TaggedArray> LiteralDataExtractor::GetDatasIgnoreType(JSThread *thread,
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     LiteralDataAccessor lda = jsPandaFile->GetLiteralDataAccessor();
     uint32_t num = lda.GetLiteralValsNum(id) / 2;  // 2: half
-    JSHandle<TaggedArray> literals = JSHandle<TaggedArray>(factory->NewCOWTaggedArray(num));
+    JSHandle<TaggedArray> literals;
+    if (classKind == ClassKind::SENDABLE) {
+        literals = JSHandle<TaggedArray>(factory->NewSCOWTaggedArray(num));
+    } else {
+        literals = JSHandle<TaggedArray>(factory->NewCOWTaggedArray(num));
+    }
     uint32_t pos = 0;
     uint32_t methodId = 0;
     FunctionKind kind;

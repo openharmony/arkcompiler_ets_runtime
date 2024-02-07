@@ -217,14 +217,21 @@ void AotCompilerPreprocessor::GenerateGlobalTypes(const CompilationOptions &cOpt
             typeRecorder.BindPgoTypeToGateType(jsPandaFile, tsManager, methodLiteral);
 
             bcInfo->IterateInfoByType(methodOffset, PGOBCInfo::Type::ARRAY_LITERAL,
-                                      [this, tsManager, ptManager,
-                                       &recordName]([[maybe_unused]] const uint32_t bcIdx,
-                                                    [[maybe_unused]] const uint32_t bcOffset, const uint32_t cpIdx) {
+                                      [this, tsManager, ptManager, &recordName]([[maybe_unused]] const uint32_t bcIdx,
+                                            [[maybe_unused]] const uint32_t bcOffset, const uint32_t cpIdx) {
                                             JSHandle<ConstantPool> constpoolHandle(tsManager->GetConstantPool());
                                             JSThread *thread = vm_->GetJSThread();
-                                            JSTaggedValue arr =
-                                                ConstantPool::GetLiteralFromCache<ConstPoolType::ARRAY_LITERAL>(
-                                                    thread, constpoolHandle.GetTaggedValue(), cpIdx, recordName);
+                                            JSTaggedValue arr = JSTaggedValue::Undefined();
+                                            // TODO(aot) only save the code in if after aot adapting share heap.
+                                            if (!constpoolHandle->GetJSPandaFile()->IsLoadedAOT()) {
+                                                JSTaggedValue unsharedCp = thread->GetCurrentEcmaContext()
+                                                    ->FindUnsharedConstpool(constpoolHandle.GetTaggedValue());
+                                                ConstantPool::CheckUnsharedConstpool(unsharedCp);
+                                                arr = ConstantPool::GetLiteralFromCache<ConstPoolType::ARRAY_LITERAL>(
+                                                    thread, unsharedCp, cpIdx, recordName);
+                                            }
+                                            arr = ConstantPool::GetLiteralFromCache<ConstPoolType::ARRAY_LITERAL>(
+                                                thread, constpoolHandle.GetTaggedValue(), cpIdx, recordName);
                                             JSHandle<JSArray> arrayHandle(thread, arr);
                                             panda_file::File::EntityId id =
                                                 ConstantPool::GetIdFromCache(constpoolHandle.GetTaggedValue(), cpIdx);

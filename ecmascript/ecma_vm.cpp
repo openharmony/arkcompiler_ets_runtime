@@ -616,7 +616,7 @@ void EcmaVM::GenerateInternalNativeMethods()
     size_t length = static_cast<size_t>(MethodIndex::METHOD_END);
     constexpr uint32_t numArgs = 2;  // function object and this
     for (size_t i = 0; i < length; i++) {
-        auto method = factory_->NewMethod(nullptr, MemSpaceType::NON_MOVABLE);
+        auto method = factory_->NewSMethod(nullptr, MemSpaceType::SHARED_NON_MOVABLE);
         method->SetNativePointer(InternalMethodTable[i]);
         method->SetNativeBit(true);
         method->SetNumArgsWithCallField(numArgs);

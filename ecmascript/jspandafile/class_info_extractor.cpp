@@ -22,7 +22,8 @@
 
 namespace panda::ecmascript {
 void ClassInfoExtractor::BuildClassInfoExtractorFromLiteral(JSThread *thread, JSHandle<ClassInfoExtractor> &extractor,
-                                                            const JSHandle<TaggedArray> &literal)
+                                                            const JSHandle<TaggedArray> &literal,
+                                                            ClassKind kind)
 {
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     const GlobalEnvConstants *globalConst = thread->GlobalConstants();
@@ -36,9 +37,18 @@ void ClassInfoExtractor::BuildClassInfoExtractorFromLiteral(JSThread *thread, JS
     }
 
     // Reserve sufficient length to prevent frequent creation.
-    JSHandle<TaggedArray> nonStaticKeys = factory->NewOldSpaceTaggedArray(nonStaticNum + NON_STATIC_RESERVED_LENGTH);
-    JSHandle<TaggedArray> nonStaticProperties =
+    JSHandle<TaggedArray> nonStaticKeys;
+    JSHandle<TaggedArray> nonStaticProperties;
         factory->NewOldSpaceTaggedArray(nonStaticNum + NON_STATIC_RESERVED_LENGTH);
+    if (kind == ClassKind::SENDABLE) {
+        nonStaticKeys = factory->NewSOldSpaceTaggedArray(nonStaticNum + NON_STATIC_RESERVED_LENGTH);
+        nonStaticProperties =
+            factory->NewSOldSpaceTaggedArray(nonStaticNum + NON_STATIC_RESERVED_LENGTH);
+    } else {
+        nonStaticKeys = factory->NewOldSpaceTaggedArray(nonStaticNum + NON_STATIC_RESERVED_LENGTH);
+        nonStaticProperties =
+            factory->NewOldSpaceTaggedArray(nonStaticNum + NON_STATIC_RESERVED_LENGTH);
+    }
 
     nonStaticKeys->Set(thread, CONSTRUCTOR_INDEX, globalConst->GetConstructorString());
     Method *method = Method::Cast(extractor->GetConstructorMethod().GetTaggedObject());
@@ -62,8 +72,15 @@ void ClassInfoExtractor::BuildClassInfoExtractorFromLiteral(JSThread *thread, JS
     uint32_t staticNum = literalBufferLength == 0 ? 0 : (literalBufferLength - 1) / 2 - nonStaticNum;
 
     // Reserve sufficient length to prevent frequent creation.
-    JSHandle<TaggedArray> staticKeys = factory->NewOldSpaceTaggedArray(staticNum + STATIC_RESERVED_LENGTH);
-    JSHandle<TaggedArray> staticProperties = factory->NewOldSpaceTaggedArray(staticNum + STATIC_RESERVED_LENGTH);
+    JSHandle<TaggedArray> staticKeys;
+    JSHandle<TaggedArray> staticProperties;
+    if (kind == ClassKind::SENDABLE) {
+        staticKeys = factory->NewSOldSpaceTaggedArray(staticNum + STATIC_RESERVED_LENGTH);
+        staticProperties = factory->NewSOldSpaceTaggedArray(staticNum + STATIC_RESERVED_LENGTH);
+    } else {
+        staticKeys = factory->NewOldSpaceTaggedArray(staticNum + STATIC_RESERVED_LENGTH);
+        staticProperties = factory->NewOldSpaceTaggedArray(staticNum + STATIC_RESERVED_LENGTH);
+    }
 
     staticKeys->Set(thread, LENGTH_INDEX, globalConst->GetLengthString());
     staticKeys->Set(thread, NAME_INDEX, globalConst->GetNameString());

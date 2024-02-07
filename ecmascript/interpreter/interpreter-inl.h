@@ -4579,7 +4579,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         uint16_t imm = READ_INST_16_1();
         LOG_INST() << "intrinsics::createarraywithbuffer"
                    << " imm:" << imm;
-        auto constpool = GetConstantPool(sp);
+        auto constpool = GetUnsharedConstpool(thread, sp);
         JSArray *result = JSArray::Cast(GET_LITERA_FROM_CACHE(imm, ConstPoolType::ARRAY_LITERAL,
                                                               GetEcmaModule(sp)).GetTaggedObject());
         SAVE_PC();
@@ -4592,7 +4592,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         uint16_t imm = READ_INST_16_2();
         LOG_INST() << "intrinsics::createarraywithbuffer"
                    << " imm:" << imm;
-        auto constpool = GetConstantPool(sp);
+        auto constpool = GetUnsharedConstpool(thread, sp);
         JSArray *result = JSArray::Cast(GET_LITERA_FROM_CACHE(imm, ConstPoolType::ARRAY_LITERAL,
                                                               GetEcmaModule(sp)).GetTaggedObject());
         SAVE_PC();
@@ -4618,7 +4618,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         uint16_t imm = READ_INST_16_1();
         LOG_INST() << "intrinsics::createobjectwithbuffer"
                    << " imm:" << imm;
-        auto constpool = GetConstantPool(sp);
+        auto constpool = GetUnsharedConstpool(thread, sp);
         JSObject *result = JSObject::Cast(GET_LITERA_FROM_CACHE(imm, ConstPoolType::OBJECT_LITERAL,
                                                                 GetEcmaModule(sp)).GetTaggedObject());
         SAVE_PC();
@@ -4632,7 +4632,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         uint16_t imm = READ_INST_16_2();
         LOG_INST() << "intrinsics::createobjectwithbuffer"
                    << " imm:" << imm;
-        auto constpool = GetConstantPool(sp);
+        auto constpool = GetUnsharedConstpool(thread, sp);
         JSObject *result = JSObject::Cast(GET_LITERA_FROM_CACHE(imm, ConstPoolType::OBJECT_LITERAL,
                                                                 GetEcmaModule(sp)).GetTaggedObject());
         SAVE_PC();
@@ -7612,6 +7612,12 @@ JSTaggedValue EcmaInterpreter::GetConstantPool(JSTaggedType *sp)
     // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
     InterpretedFrame *state = reinterpret_cast<InterpretedFrame *>(sp) - 1;
     return state->constpool;
+}
+
+JSTaggedValue EcmaInterpreter::GetUnsharedConstpool(JSThread* thread, JSTaggedType *sp)
+{
+    InterpretedFrame *state = reinterpret_cast<InterpretedFrame *>(sp) - 1;
+    return thread->GetCurrentEcmaContext()->FindUnsharedConstpool(state->constpool);
 }
 
 bool EcmaInterpreter::UpdateHotnessCounter(JSThread* thread, JSTaggedType *sp, JSTaggedValue acc, int32_t offset)

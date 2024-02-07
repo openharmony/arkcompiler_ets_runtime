@@ -873,7 +873,17 @@ JSTaggedValue RuntimeStubs::RuntimeCreateClassWithBuffer(JSThread *thread,
         ihc.Update(aotLiteralInfo->GetIhc());
         chc.Update(aotLiteralInfo->GetChc());
     }
-    auto literalObj = ConstantPool::GetClassLiteralFromCache(thread, constpoolHandle, literalId, entry);
+
+    JSTaggedValue literalObj = JSTaggedValue::Undefined();
+    // TODO(aot) delete if content after aot adapting share heap. now aot and asm-interpreter all enter.
+    if (constpoolHandle->GetJSPandaFile()->IsLoadedAOT()) {
+        literalObj = ConstantPool::GetClassLiteralFromCache(thread, constpoolHandle, literalId, entry);
+    } else {
+        JSTaggedValue cp = thread->GetCurrentEcmaContext()->
+            FindUnsharedConstpool(constpoolHandle.GetTaggedValue());
+        literalObj = ConstantPool::GetClassLiteralFromCache(
+            thread, JSHandle<ConstantPool>(thread, cp), literalId, entry);
+    }
     JSHandle<ClassLiteral> classLiteral(thread, literalObj);
     JSHandle<TaggedArray> arrayHandle(thread, classLiteral->GetArray());
     JSHandle<ClassInfoExtractor> extractor = factory->NewClassInfoExtractor(method);
@@ -913,7 +923,7 @@ JSTaggedValue RuntimeStubs::RuntimeCreateSharedClass(JSThread *thread,
     CString entry = ModuleManager::GetRecordName(module.GetTaggedValue());
 
     auto methodObj = ConstantPool::GetMethodFromCache(
-        thread, constpool.GetTaggedValue(), module.GetTaggedValue(), methodId, ClassKind::SENDABLE);
+        thread, constpool.GetTaggedValue(), module.GetTaggedValue(), methodId);
     JSHandle<JSTaggedValue> method(thread, methodObj);
     JSHandle<ConstantPool> constpoolHandle = JSHandle<ConstantPool>::Cast(constpool);
 
@@ -925,7 +935,7 @@ JSTaggedValue RuntimeStubs::RuntimeCreateSharedClass(JSThread *thread,
     // fieldTypeId is the last element in literal buffer
     auto fieldTypeId = static_cast<uint32_t>(arrayHandle->Get(literalLength - 1).GetInt());
     arrayHandle->Trim(thread, literalLength - 1);
-    JSHandle<ClassInfoExtractor> extractor = factory->NewClassInfoExtractor(method);
+    JSHandle<ClassInfoExtractor> extractor = factory->NewSClassInfoExtractor(method);
     ClassInfoExtractor::BuildClassInfoExtractorFromLiteral(thread, extractor, arrayHandle);
 
     JSHandle<TaggedArray> fieldTypeArray = ConstantPool::GetFieldLiteral(thread, constpoolHandle, fieldTypeId, entry);
@@ -2980,7 +2990,16 @@ JSTaggedValue RuntimeStubs::RuntimeCreatePrivateProperty(JSThread *thread, JSTag
         handleLexicalEnv->SetProperties(thread, startIndex + i, symbol.GetTaggedValue());
     }
 
-    JSTaggedValue literalObj = ConstantPool::GetClassLiteralFromCache(thread, handleConstpool, literalId, entry);
+    JSTaggedValue literalObj = JSTaggedValue::Undefined();
+    // TODO(aot) delete if content after aot adapting share heap. now aot and asm-interpreter all enter.
+    if (handleConstpool->GetJSPandaFile()->IsLoadedAOT()) {
+        literalObj = ConstantPool::GetClassLiteralFromCache(thread, handleConstpool, literalId, entry);
+    } else {
+        JSTaggedValue cp = thread->GetCurrentEcmaContext()->
+            FindUnsharedConstpool(handleConstpool.GetTaggedValue());
+        literalObj = ConstantPool::GetClassLiteralFromCache(
+            thread, JSHandle<ConstantPool>(thread, cp), literalId, entry);
+    }
     JSHandle<ClassLiteral> classLiteral(thread, literalObj);
     JSHandle<TaggedArray> literalBuffer(thread, classLiteral->GetArray());
     uint32_t literalBufferLength = literalBuffer->GetLength();

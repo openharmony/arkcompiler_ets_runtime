@@ -63,8 +63,8 @@ public:
 private:
     JSHandle<ConstantPool> NewSnapshotConstantPool(uint32_t cacheSize);
 
-    void GenerateSnapshotConstantPools(const CMap<int32_t, JSTaggedValue> &allConstantPools, const CString &fileName,
-                                       uint32_t fileIndex);
+    void GenerateSnapshotConstantPools(
+        const CMap<int32_t, JSTaggedValue> &allConstantPools, const CString &fileName, uint32_t fileIndex);
 
     EcmaVM *vm_ {nullptr};
     ObjectFactory *factory_ {nullptr};

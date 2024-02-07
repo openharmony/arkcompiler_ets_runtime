@@ -200,7 +200,7 @@ public:
     JSHandle<Method> NewMethodForNativeFunction(const void *func, FunctionKind kind = FunctionKind::NORMAL_FUNCTION,
                                                 kungfu::BuiltinsStubCSigns::ID builtinId =
                                                 kungfu::BuiltinsStubCSigns::INVALID,
-                                                MemSpaceType spaceType = OLD_SPACE);
+                                                MemSpaceType methodSpaceType = SHARED_OLD_SPACE);
 
     JSHandle<ProfileTypeInfo> NewProfileTypeInfo(uint32_t length);
     JSHandle<ConstantPool> NewConstantPool(uint32_t capacity);
@@ -228,7 +228,7 @@ public:
     JSHandle<JSFunction> NewJSFunction(const JSHandle<GlobalEnv> &env, const void *nativeFunc = nullptr,
                                        FunctionKind kind = FunctionKind::NORMAL_FUNCTION,
                                        kungfu::BuiltinsStubCSigns::ID builtinId = kungfu::BuiltinsStubCSigns::INVALID,
-                                       MemSpaceType spaceType = OLD_SPACE);
+                                       MemSpaceType methodSpaceType = SHARED_OLD_SPACE);
     void InitializeMethod(const MethodLiteral *methodLiteral, JSHandle<Method> &method);
     // use for method
     JSHandle<JSFunction> NewJSFunction(const JSHandle<GlobalEnv> &env, const JSHandle<Method> &method);
@@ -718,10 +718,23 @@ public:
         kungfu::BuiltinsStubCSigns::ID builtinId = kungfu::BuiltinsStubCSigns::INVALID,
         MemSpaceType spaceType = SHARED_OLD_SPACE);
 
-    JSHandle<Method> NewSMethod(const MethodLiteral *methodLiteral, MemSpaceType spaceType = SHARED_OLD_SPACE);
+    JSHandle<Method> NewSMethod(const MethodLiteral *methodLiteral, MemSpaceType methodSpaceType = SHARED_OLD_SPACE);
 
     JSHandle<Method> NewSMethod(const JSPandaFile *jsPandaFile, MethodLiteral *methodLiteral,
-                                JSHandle<ConstantPool> constpool, JSHandle<JSTaggedValue> module);
+                                JSHandle<ConstantPool> constpool, JSHandle<JSTaggedValue> module,
+                                uint32_t entryIndex, bool needSetAotFlag, bool *canFastCall = nullptr);
+
+    JSHandle<ConstantPool> NewSConstantPool(uint32_t capacity);
+
+    JSHandle<COWTaggedArray> NewSCOWTaggedArray(uint32_t length, JSTaggedValue initVal = JSTaggedValue::Hole());
+
+    JSHandle<ClassLiteral> NewSClassLiteral();
+
+    JSHandle<ClassInfoExtractor> NewSClassInfoExtractor(JSHandle<JSTaggedValue> method);
+
+    JSHandle<TaggedArray> NewSOldSpaceTaggedArray(uint32_t length, JSTaggedValue initVal = JSTaggedValue::Hole());
+
+    JSHandle<TaggedArray> NewSTaggedArray(uint32_t length, JSTaggedValue initVal, MemSpaceType spaceType);
 
     JSHandle<AccessorData> NewSAccessorData();
 

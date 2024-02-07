@@ -128,8 +128,12 @@ private:
 
     static void ReplaceModuleOfMethod(JSThread *thread, const JSPandaFile *baseFile, PatchInfo &patchInfo);
     static Method *GetPatchMethod(JSThread *thread,
-        const BaseMethodIndex &methodIndex, const ConstantPool *baseConstpool);
+        const BaseMethodIndex &methodIndex, const JSTaggedValue baseConstpool);
     static void UpdateProfileTypeInfo(JSThread *thread, PatchInfo &patchInfo);
+    static void FindAndReplaceClassLiteral(JSThread *thread, const JSPandaFile *baseFile,
+                                           const JSPandaFile *patchFile, JSTaggedValue constpoolValue,
+                                           PatchInfo &patchInfo, uint32_t constpoolIndex,
+                                           uint32_t constpoolNum, const CMap<uint32_t, CString> &baseClassInfo);
 };
 }  // namespace panda::ecmascript
 #endif // ECMASCRIPT_PATCH_PATCH_LOADER_H

@@ -3905,7 +3905,7 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsAsyncGeneratorFunction_True)
     CalculateForTime();
     ObjectFactory *factory = vm_->GetFactory();
     MethodLiteral *methodLiteral = nullptr;
-    JSHandle<Method> method = factory->NewMethod(methodLiteral);
+    JSHandle<Method> method = factory->NewSMethod(methodLiteral);
     JSHandle<JSFunction> asyncGeneratorFunction = factory->NewJSAsyncGeneratorFunction(method);
     JSHandle<JSTaggedValue> asyncgefu = JSHandle<JSTaggedValue>::Cast(asyncGeneratorFunction);
     Local<JSValueRef> object = JSNApiHelper::ToLocal<JSValueRef>(asyncgefu);

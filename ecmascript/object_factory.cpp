@@ -156,10 +156,10 @@ ObjectFactory::ObjectFactory(JSThread *thread, Heap *heap, SharedHeap *sHeap)
 
 JSHandle<Method> ObjectFactory::NewMethodForNativeFunction(const void *func, FunctionKind kind,
                                                            kungfu::BuiltinsStubCSigns::ID builtinId,
-                                                           MemSpaceType spaceType)
+                                                           MemSpaceType methodSpaceType)
 {
     uint32_t numArgs = 2;  // function object and this
-    auto method = NewMethod(nullptr, spaceType);
+    auto method = NewSMethod(nullptr, methodSpaceType);
     method->SetNativePointer(const_cast<void *>(func));
     method->SetNativeBit(true);
     if (builtinId != kungfu::BuiltinsStubCSigns::INVALID) {
@@ -1527,9 +1527,9 @@ JSHandle<JSObject> ObjectFactory::OrdinaryNewJSObjectCreate(const JSHandle<JSTag
 
 JSHandle<JSFunction> ObjectFactory::NewJSFunction(const JSHandle<GlobalEnv> &env, const void *nativeFunc,
                                                   FunctionKind kind, kungfu::BuiltinsStubCSigns::ID builtinId,
-                                                  MemSpaceType spaceType)
+                                                  MemSpaceType methodSpaceType)
 {
-    JSHandle<Method> target = NewMethodForNativeFunction(nativeFunc, kind, builtinId, spaceType);
+    JSHandle<Method> target = NewMethodForNativeFunction(nativeFunc, kind, builtinId, methodSpaceType);
     return NewJSFunction(env, target);
 }
 

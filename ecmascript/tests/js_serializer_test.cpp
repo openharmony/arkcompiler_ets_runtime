@@ -750,8 +750,8 @@ public:
         EXPECT_FALSE(method->IsNativeWithCallField());
 
         JSHandle<ConstantPool> constpool(thread, method->GetConstantPool());
-        EXPECT_EQ(constpool->GetLength(), 6U);
-        EXPECT_EQ(constpool->GetCacheLength(), 4U);
+        EXPECT_EQ(constpool->GetLength(), 7U);
+        EXPECT_EQ(constpool->GetCacheLength(), 5U);
         const JSPandaFile *jsPandaFile = constpool->GetJSPandaFile();
         EXPECT_TRUE(jsPandaFile != nullptr);
         const CString &desc = jsPandaFile->GetJSPandaFileDesc();
@@ -1909,12 +1909,12 @@ HWTEST_F_L0(JSSerializerTest, SerializeMethod2)
     uint32_t methodOffset = 0;
     std::shared_ptr<JSPandaFile> pf = CreateJSPandaFile(source, fileName, &methodOffset);
     MethodLiteral *methodLiteral = new MethodLiteral(EntityId(methodOffset));
-    JSHandle<Method> method = factory->NewMethod(methodLiteral);
+    JSHandle<Method> method = factory->NewSMethod(methodLiteral);
     EXPECT_TRUE(method.GetTaggedValue().IsMethod());
     JSPandaFileManager::GetInstance()->AddJSPandaFileVm(thread->GetEcmaVM(), pf);
     EXPECT_TRUE(pf != nullptr);
 
-    JSHandle<ConstantPool> constPool = factory->NewConstantPool(4);
+    JSHandle<ConstantPool> constPool = factory->NewSConstantPool(4);
     constPool->SetJSPandaFile(pf.get());
     EXPECT_TRUE(constPool.GetTaggedValue().IsConstantPool());
     method->SetConstantPool(thread, constPool.GetTaggedValue());
@@ -1946,12 +1946,12 @@ HWTEST_F_L0(JSSerializerTest, SerializeAOTMethod)
     methodLiteral->SetIsFastCall(true);
     pf->SetMethodLiteralToMap(methodLiteral);
 
-    JSHandle<Method> method = factory->NewMethod(methodLiteral);
+    JSHandle<Method> method = factory->NewSMethod(methodLiteral);
     EXPECT_TRUE(method.GetTaggedValue().IsMethod());
     JSPandaFileManager::GetInstance()->AddJSPandaFileVm(thread->GetEcmaVM(), pf);
     EXPECT_TRUE(pf != nullptr);
 
-    JSHandle<ConstantPool> constPool = factory->NewConstantPool(4);
+    JSHandle<ConstantPool> constPool = factory->NewSConstantPool(4);
     constPool->SetJSPandaFile(pf.get());
     EXPECT_TRUE(constPool.GetTaggedValue().IsConstantPool());
     method->SetConstantPool(thread, constPool.GetTaggedValue());
