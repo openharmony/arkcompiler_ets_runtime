@@ -205,7 +205,7 @@ template("libark_jsruntime_common_set") {
     deps += hiviewdfx_deps
 
     if (ark_standalone_build || is_arkui_x) {
-      external_deps += [ "zlib:libz" ]
+      deps += [ "$ark_third_party_root/zlib:libz" ]
     } else {
       external_deps += [ "zlib:shared_libz" ]
     }
