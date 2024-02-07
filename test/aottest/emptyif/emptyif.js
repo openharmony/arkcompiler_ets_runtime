@@ -23,5 +23,5 @@ function emptyiftrue() {
     return 2;
 }
 
-print(emptycompare(2, 3));
-print(emptyiftrue());
+assert_equal(emptycompare(2, 3), 1);
+assert_equal(emptyiftrue(), 2);

@@ -13,10 +13,8 @@
 
 group("ark_js_moduletest") {
   testonly = true
-
   test_list = [
     "addelementinternal",
-    "addpropertybyname",
     "allocatearraybuffer",
     "array",
     "arrayfindlast",
@@ -183,8 +181,6 @@ group("ark_js_moduletest") {
 
   if (!is_debug) {
     release_test_list = [
-      "hugearray",
-      "multiconstpoolarray",
       "multiconstpoolclass",
       "multiconstpoolconstructor",
       "multiconstpoolfunc",
@@ -200,12 +196,37 @@ group("ark_js_moduletest") {
   }
 }
 
+group("ark_js_assert_moduletest") {
+  testonly = true
+  assert_test_list = [ "addpropertybyname" ]
+
+  deps = []
+  foreach(test, assert_test_list) {
+    deps += [ "${test}:${test}AssertAction" ]
+    if (!is_debug) {
+      deps += [ "${test}:${test}ContextAssertAction" ]
+    }
+  }
+
+  if (!is_debug) {
+    release_test_assert_list = [
+      "hugearray",
+      "multiconstpoolarray",
+    ]
+
+    foreach(test, release_test_assert_list) {
+      deps += [
+        "${test}:${test}AssertAction",
+        "${test}:${test}ContextAssertAction",
+      ]
+    }
+  }
+}
+
 group("ark_asm_test") {
   testonly = true
-
   test_list = [
     "addelementinternal",
-    "addpropertybyname",
     "allocatearraybuffer",
     "allocatesizeoverflow",
     "array",
@@ -339,8 +360,6 @@ group("ark_asm_test") {
 
   if (!is_debug) {
     release_test_list = [
-      "hugearray",
-      "multiconstpoolarray",
       "multiconstpoolclass",
       "multiconstpoolconstructor",
       "multiconstpoolfunc",
@@ -356,12 +375,37 @@ group("ark_asm_test") {
   }
 }
 
+group("ark_asm_assert_test") {
+  testonly = true
+  assert_test_list = [ "addpropertybyname" ]
+  deps = []
+
+  foreach(test, assert_test_list) {
+    deps += [ "${test}:${test}AsmAssertAction" ]
+    if (!is_debug) {
+      deps += [ "${test}:${test}AsmContextAssertAction" ]
+    }
+  }
+
+  if (!is_debug) {
+    release_test_assert_list = [
+      "hugearray",
+      "multiconstpoolarray",
+    ]
+
+    foreach(test, release_test_assert_list) {
+      deps += [
+        "${test}:${test}AsmAssertAction",
+        "${test}:${test}AsmContextAssertAction",
+      ]
+    }
+  }
+}
+
 group("ark_asm_single_step_test") {
   testonly = true
-
   test_list = [
     "addelementinternal",
-    "addpropertybyname",
     "allocatearraybuffer",
     "allocatesizeoverflow",
     "arrayfindindex",
@@ -468,10 +512,8 @@ group("ark_asm_single_step_test") {
       deps += [ "${test}:${test}AsmSingleStepContextAction" ]
     }
   }
-
   if (!is_debug) {
     release_test_list = [
-      "multiconstpoolarray",
       "multiconstpoolclass",
       "multiconstpoolconstructor",
       "multiconstpoolfunc",
@@ -482,6 +524,29 @@ group("ark_asm_single_step_test") {
       deps += [
         "${test}:${test}AsmSingleStepAction",
         "${test}:${test}AsmSingleStepContextAction",
+      ]
+    }
+  }
+}
+
+group("ark_asm_single_step_assert_test") {
+  testonly = true
+  assert_test_list = [ "addpropertybyname" ]
+
+  deps = []
+  foreach(test, assert_test_list) {
+    deps += [ "${test}:${test}AsmSingleStepAssertAction" ]
+    if (!is_debug) {
+      deps += [ "${test}:${test}AsmSingleStepContextAssertAction" ]
+    }
+  }
+  if (!is_debug) {
+    release_test_assert_list = [ "multiconstpoolarray" ]
+
+    foreach(test, release_test_assert_list) {
+      deps += [
+        "${test}:${test}AsmSingleStepAssertAction",
+        "${test}:${test}AsmSingleStepContextAssertAction",
       ]
     }
   }

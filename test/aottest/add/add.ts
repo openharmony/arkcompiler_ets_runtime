@@ -13,13 +13,12 @@
  * limitations under the License.
  */
 
-declare function print(arg:any):string;
-print(1 + 1);
+assert_equal(1 + 1, 2);
 
-print(1 + 1.1);
+assert_equal(1 + 1.1, 2.1);
 
-print(0.1 + 1.1)
+assert_equal(0.1 + 1.1, 1.2000000000000002);
 
-print("hello" + "world");
+assert_equal("hello" + "world", "helloworld");
 
-print("hello" + 1);
+assert_equal("hello" + 1, "hello1");

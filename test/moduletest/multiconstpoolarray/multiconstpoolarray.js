@@ -12794,4 +12794,5 @@ var arr = [
     }
 ]
 
-print(arr[0](), arr[1]())
+assert_equal(arr[0](), "foo")
+assert_equal(arr[1](), "foo2")

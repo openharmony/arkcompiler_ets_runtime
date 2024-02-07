@@ -162,6 +162,7 @@ enum CommandValues {
     OPTION_ENABLE_ELEMENTSKIND,
     OPTION_COMPILER_TYPED_OP_PROFILER,
     OPTION_COMPILER_OPT_BRANCH_PROFILING,
+    OPTION_TEST_ASSERT,
 };
 
 class PUBLIC_API JSRuntimeOptions {
@@ -1445,6 +1446,16 @@ public:
         enableBranchProfiling_ = value;
     }
 
+    void SetTestAssert(bool value)
+    {
+        testAssert_ = value;
+    }
+
+    bool GetTestAssert() const
+    {
+        return testAssert_;
+    }
+
 private:
     static bool StartsWith(const std::string &haystack, const std::string &needle)
     {
@@ -1564,6 +1575,7 @@ private:
     bool enableLiteCG_ {false};
     bool enableTypedOpProfiler_ {false};
     bool enableBranchProfiling_ {true};
+    bool testAssert_ {false};
 };
 }  // namespace panda::ecmascript
 
