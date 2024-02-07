@@ -2530,8 +2530,9 @@ JSHandle<JSFunction> Builtins::NewFunction(const JSHandle<GlobalEnv> &env, const
                                            EcmaEntrypoint func, int length,
                                            kungfu::BuiltinsStubCSigns::ID builtinId) const
 {
+    MemSpaceType methodSpaceType = MemSpaceType::SHARED_NON_MOVABLE;
     JSHandle<JSFunction> function = factory_->NewJSFunction(env, reinterpret_cast<void *>(func),
-        FunctionKind::NORMAL_FUNCTION, builtinId, MemSpaceType::NON_MOVABLE);
+        FunctionKind::NORMAL_FUNCTION, builtinId, methodSpaceType);
     JSFunction::SetFunctionLength(thread_, function, JSTaggedValue(length));
     JSHandle<JSFunctionBase> baseFunction(function);
     auto globalConst = const_cast<GlobalEnvConstants *>(thread_->GlobalConstants());

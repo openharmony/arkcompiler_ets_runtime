@@ -1321,7 +1321,7 @@ JSHandle<JSTaggedValue> JSDeserializer::ReadMethod()
     if (!ReadNativePointer(&methodLiteral)) {
         return JSHandle<JSTaggedValue>();
     }
-    JSHandle<Method> method = factory_->NewMethod(reinterpret_cast<MethodLiteral *>(methodLiteral));
+    JSHandle<Method> method = factory_->NewSMethod(reinterpret_cast<MethodLiteral *>(methodLiteral));
     JSHandle<JSTaggedValue> methodTag(method);
     referenceMap_.emplace(objectId_++, methodTag);
 

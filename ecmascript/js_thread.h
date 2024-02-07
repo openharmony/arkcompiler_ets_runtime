@@ -197,6 +197,16 @@ public:
         glueData_.newSpaceAllocationEndAddress_ = end;
     }
 
+    uintptr_t GetUnsharedConstpools() const
+    {
+        return glueData_.unsharedConstpools_;
+    }
+
+    void SetUnsharedConstpools(uintptr_t unsharedConstpools)
+    {
+        glueData_.unsharedConstpools_ = unsharedConstpools;
+    }
+
     void SetIsStartHeapSampling(bool isStart)
     {
         glueData_.isStartHeapSampling_ = isStart ? JSTaggedValue::True() : JSTaggedValue::False();
@@ -826,7 +836,8 @@ public:
                                                  base::AlignedPointer,
                                                  BuiltinEntries,
                                                  JSTaggedValue,
-                                                 base::AlignedBool> {
+                                                 base::AlignedBool,
+                                                 base::AlignedPointer> {
         enum class Index : size_t {
             BCStubEntriesIndex = 0,
             ExceptionIndex,
@@ -859,6 +870,7 @@ public:
             BuiltinEntriesIndex,
             SingleCharTableIndex,
             IsTracingIndex,
+            unsharedConstpoolsIndex,
             NumOfMembers
         };
         static_assert(static_cast<size_t>(Index::NumOfMembers) == NumOfTypes);
@@ -1023,6 +1035,11 @@ public:
             return GetOffset<static_cast<size_t>(Index::IsTracingIndex)>(isArch32);
         }
 
+        static size_t GetUnSharedConstpoolsOffset(bool isArch32)
+        {
+            return GetOffset<static_cast<size_t>(Index::unsharedConstpoolsIndex)>(isArch32);
+        }
+
         alignas(EAS) BCStubEntries bcStubEntries_;
         alignas(EAS) JSTaggedValue exception_ {JSTaggedValue::Hole()};
         alignas(EAS) JSTaggedValue globalObject_ {JSTaggedValue::Hole()};
@@ -1054,6 +1071,7 @@ public:
         alignas(EAS) BuiltinEntries builtinEntries_;
         alignas(EAS) JSTaggedValue singleCharTable_ {JSTaggedValue::Hole()};
         alignas(EAS) bool isTracing_ {false};
+        alignas(EAS) uintptr_t unsharedConstpools_ {0};
     };
     STATIC_ASSERT_EQ_ARCH(sizeof(GlueData), GlueData::SizeArch32, GlueData::SizeArch64);
 

@@ -54,7 +54,8 @@ public:
     CAST_CHECK(ClassInfoExtractor, IsClassInfoExtractor);
 
     static void BuildClassInfoExtractorFromLiteral(JSThread *thread, JSHandle<ClassInfoExtractor> &extractor,
-                                                   const JSHandle<TaggedArray> &literal);
+                                                   const JSHandle<TaggedArray> &literal,
+                                                   ClassKind kind = ClassKind::NON_SENDABLE);
 
     static JSHandle<JSHClass> CreatePrototypeHClass(JSThread *thread,
                                                     JSHandle<TaggedArray> &keys,

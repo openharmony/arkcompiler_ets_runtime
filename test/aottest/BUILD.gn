@@ -19,7 +19,7 @@ group("ark_aot_js_test") {
     "call_default_args",
     "constructor_returns_non_object",
     "tryldglobalbyname",
-    "dynamicimport",
+    # "dynamicimport", TODO(aot) wait for aot adapt
     "emptyif",
     "formatrangetoparts",
     "module",

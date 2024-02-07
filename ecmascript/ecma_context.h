@@ -15,6 +15,7 @@
 #ifndef ECMASCRIPT_ECMA_CONTEXT_H
 #define ECMASCRIPT_ECMA_CONTEXT_H
 
+#include <cstdint>
 #include <optional>
 #include "ecmascript/base/config.h"
 #include "ecmascript/common.h"
@@ -260,6 +261,7 @@ public:
     JSTaggedValue FindConstpool(const JSPandaFile *jsPandaFile, int32_t index);
     // For new version instruction.
     JSTaggedValue FindConstpool(const JSPandaFile *jsPandaFile, panda_file::File::EntityId id);
+    JSTaggedValue FindUnsharedConstpool(JSTaggedValue sharedConstpool);
     JSTaggedValue FindConstpoolWithAOT(const JSPandaFile *jsPandaFile, int32_t index);
     std::optional<std::reference_wrapper<CMap<int32_t, JSTaggedValue>>> FindConstpools(
         const JSPandaFile *jsPandaFile);
@@ -500,6 +502,22 @@ public:
         return isAotEntry_;
     }
 
+    void SetUnsharedConstpool(int32_t unsharedConstpoolIndex, JSTaggedValue constpool)
+    {
+        ASSERT(0 <= unsharedConstpoolIndex && unsharedConstpoolIndex < UNSHARED_CONSTANTPOOL_COUNT);
+        unsharedConstpools_->data()[unsharedConstpoolIndex] = constpool;
+    }
+
+    void IncreaseUnsharedConstpoolCount()
+    {
+        unsharedConstpoolCount_++;
+    }
+
+    int32_t GetUnsharedConstpoolCount() const
+    {
+        return unsharedConstpoolCount_;
+    }
+
     std::tuple<uint64_t, uint8_t *, int, kungfu::CalleeRegAndOffsetVec> CalCallSiteInfo(uintptr_t retAddr) const;
 private:
     void CJSExecution(JSHandle<JSFunction> &func, JSHandle<JSTaggedValue> &thisArg,
@@ -539,7 +557,11 @@ private:
     JSTaggedValue microJobQueue_ {JSTaggedValue::Hole()};
     EcmaRuntimeStat *runtimeStat_ {nullptr};
 
-    CMap<const JSPandaFile *, CMap<int32_t, JSTaggedValue>> cachedConstpools_ {};
+    CMap<const JSPandaFile *, CMap<int32_t, JSTaggedValue>> cachedSharedConstpools_ {};
+    // TODO(lijiamin) Consider expanding capacity.
+    static constexpr int32_t UNSHARED_CONSTANTPOOL_COUNT = 1024;
+    std::array<JSTaggedValue, UNSHARED_CONSTANTPOOL_COUNT> *unsharedConstpools_ = nullptr;
+    int32_t unsharedConstpoolCount_ = 0; // unshared constpool index.
 
     // for HotReload of module.
     CMap<CString, JSHandle<JSTaggedValue>> cachedPatchModules_ {};

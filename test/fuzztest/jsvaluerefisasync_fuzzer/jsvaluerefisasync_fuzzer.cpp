@@ -37,7 +37,7 @@ namespace OHOS {
         ptr = const_cast<uint8_t*>(data);
         ObjectFactory *factory = vm->GetFactory();
         MethodLiteral *methodLiteral = nullptr;
-        JSHandle<Method> method = factory->NewMethod(methodLiteral);
+        JSHandle<Method> method = factory->NewSMethod(methodLiteral);
         JSHandle<JSFunction> asyncGeneratorFunction = factory->NewJSAsyncGeneratorFunction(method);
         JSHandle<JSTaggedValue> asyncgefu = JSHandle<JSTaggedValue>::Cast(asyncGeneratorFunction);
         Local<JSValueRef> object = JSNApiHelper::ToLocal<JSValueRef>(asyncgefu);
@@ -75,7 +75,7 @@ namespace OHOS {
         ptr = const_cast<uint8_t*>(data);
         ObjectFactory *factory = vm->GetFactory();
         MethodLiteral *methodLiteral = nullptr;
-        JSHandle<Method> method = factory->NewMethod(methodLiteral);
+        JSHandle<Method> method = factory->NewSMethod(methodLiteral);
         JSHandle<JSFunction> asyncGeneratorFunction = factory->NewJSAsyncGeneratorFunction(method);
         JSHandle<JSTaggedValue> asyncgefu = JSHandle<JSTaggedValue>::Cast(asyncGeneratorFunction);
         Local<JSValueRef> object = JSNApiHelper::ToLocal<JSValueRef>(asyncgefu);

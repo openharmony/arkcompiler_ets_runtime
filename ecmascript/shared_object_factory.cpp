@@ -22,6 +22,7 @@
 #include "ecmascript/js_function.h"
 #include "ecmascript/layout_info-inl.h"
 #include "ecmascript/mem/heap-inl.h"
+#include "ecmascript/jspandafile/program_object.h"
 
 namespace panda::ecmascript {
 JSHandle<JSHClass> ObjectFactory::CreateSFunctionClass(uint32_t size, JSType type,
@@ -127,17 +128,22 @@ JSHandle<AccessorData> ObjectFactory::NewSAccessorData()
 }
 
 JSHandle<Method> ObjectFactory::NewSMethod(const JSPandaFile *jsPandaFile, MethodLiteral *methodLiteral,
-                                           JSHandle<ConstantPool> constpool, JSHandle<JSTaggedValue> module)
+                                           JSHandle<ConstantPool> constpool, JSHandle<JSTaggedValue> module,
+                                           uint32_t entryIndex, bool needSetAotFlag, bool *canFastCall)
 {
     JSHandle<Method> method;
     if (jsPandaFile->IsNewVersion()) {
-        method = Method::Create(thread_, jsPandaFile, methodLiteral, true);
+        method = Method::Create(thread_, jsPandaFile, methodLiteral);
     } else {
         method = NewSMethod(methodLiteral);
         method->SetConstantPool(thread_, constpool);
     }
     if (method->GetModule().IsUndefined()) {
         method->SetModule(thread_, module);
+    }
+    if (needSetAotFlag) {
+        auto aotFileManager = thread_->GetCurrentEcmaContext()->GetAOTFileManager();
+        aotFileManager->SetAOTFuncEntry(jsPandaFile, nullptr, *method, entryIndex, canFastCall);
     }
     return method;
 }
@@ -343,5 +349,95 @@ JSHandle<AccessorData> ObjectFactory::NewSInternalAccessor(void *setter, void *g
         obj->SetGetter(thread_, getFunc);
     }
     return obj;
+}
+
+JSHandle<ConstantPool> ObjectFactory::NewSConstantPool(uint32_t capacity)
+{
+    NewObjectHook();
+    size_t size = ConstantPool::ComputeSize(capacity);
+    auto header = sHeap_->AllocateOldOrHugeObject(
+        thread_, JSHClass::Cast(sHeap_->GetGlobalConst()->GetConstantPoolClass().GetTaggedObject()), size);
+    JSHandle<ConstantPool> array(thread_, header);
+    array->InitializeWithSpecialValue(thread_, JSTaggedValue::Hole(), capacity);
+    return array;
+}
+
+JSHandle<COWTaggedArray> ObjectFactory::NewSCOWTaggedArray(uint32_t length, JSTaggedValue initVal)
+{
+    NewObjectHook();
+    ASSERT(length > 0);
+
+    size_t size = TaggedArray::ComputeSize(JSTaggedValue::TaggedTypeSize(), length);
+    auto header = sHeap_->AllocateNonMovableOrHugeObject(
+        thread_, JSHClass::Cast(sHeap_->GetGlobalConst()->GetCOWArrayClass().GetTaggedObject()), size);
+    JSHandle<COWTaggedArray> cowArray(thread_, header);
+    cowArray->InitializeWithSpecialValue(initVal, length);
+    return cowArray;
+}
+
+JSHandle<ClassLiteral> ObjectFactory::NewSClassLiteral()
+{
+    NewObjectHook();
+
+    TaggedObject *header = sHeap_->AllocateOldOrHugeObject(
+        thread_, JSHClass::Cast(sHeap_->GetGlobalConst()->GetClassLiteralClass().GetTaggedObject()));
+    JSHandle<TaggedArray> emptyArray = EmptyArray();
+
+    JSHandle<ClassLiteral> classLiteral(thread_, header);
+    classLiteral->SetArray(thread_, emptyArray);
+    classLiteral->SetIsAOTUsed(false);
+
+    return classLiteral;
+}
+
+JSHandle<ClassInfoExtractor> ObjectFactory::NewSClassInfoExtractor(
+    JSHandle<JSTaggedValue> method)
+{
+    NewObjectHook();
+    TaggedObject *header = sHeap_->AllocateOldOrHugeObject(
+        thread_, JSHClass::Cast(sHeap_->GetGlobalConst()->GetClassInfoExtractorHClass().GetTaggedObject()));
+    JSHandle<ClassInfoExtractor> obj(thread_, header);
+    obj->ClearBitField();
+    obj->SetConstructorMethod(thread_, method.GetTaggedValue());
+    JSHandle<TaggedArray> emptyArray = EmptyArray();
+    obj->SetNonStaticKeys(thread_, emptyArray, SKIP_BARRIER);
+    obj->SetNonStaticProperties(thread_, emptyArray, SKIP_BARRIER);
+    obj->SetNonStaticElements(thread_, emptyArray, SKIP_BARRIER);
+    obj->SetStaticKeys(thread_, emptyArray, SKIP_BARRIER);
+    obj->SetStaticProperties(thread_, emptyArray, SKIP_BARRIER);
+    obj->SetStaticElements(thread_, emptyArray, SKIP_BARRIER);
+    return obj;
+}
+
+JSHandle<TaggedArray> ObjectFactory::NewSOldSpaceTaggedArray(uint32_t length, JSTaggedValue initVal)
+{
+    return NewSTaggedArray(length, initVal, MemSpaceType::SHARED_OLD_SPACE);
+}
+
+JSHandle<TaggedArray> ObjectFactory::NewSTaggedArray(uint32_t length, JSTaggedValue initVal, MemSpaceType spaceType)
+{
+    NewObjectHook();
+    if (length == 0) {
+        return EmptyArray();
+    }
+
+    size_t size = TaggedArray::ComputeSize(JSTaggedValue::TaggedTypeSize(), length);
+    TaggedObject *header = nullptr;
+    JSHClass *arrayClass = JSHClass::Cast(thread_->GlobalConstants()->GetArrayClass().GetTaggedObject());
+    switch (spaceType) {
+        case MemSpaceType::SHARED_OLD_SPACE:
+            header = sHeap_->AllocateOldOrHugeObject(thread_, arrayClass, size);
+            break;
+        case MemSpaceType::SHARED_NON_MOVABLE:
+            header = sHeap_->AllocateNonMovableOrHugeObject(thread_, arrayClass, size);
+            break;
+        default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
+            UNREACHABLE();
+    }
+
+    JSHandle<TaggedArray> array(thread_, header);
+    array->InitializeWithSpecialValue(initVal, length);
+    return array;
 }
 }  // namespace panda::ecmascript

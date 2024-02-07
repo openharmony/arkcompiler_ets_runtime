@@ -89,23 +89,18 @@ uint32_t Method::FindCatchBlock(uint32_t pc) const
     return pcOffset;
 }
 
-JSHandle<Method> Method::Create(JSThread *thread, const JSPandaFile *jsPandaFile, MethodLiteral *methodLiteral,
-    bool shareObject)
+JSHandle<Method> Method::Create(JSThread *thread, const JSPandaFile *jsPandaFile, MethodLiteral *methodLiteral)
 {
     EcmaVM *vm = thread->GetEcmaVM();
     EntityId methodId = methodLiteral->GetMethodId();
-    JSTaggedValue patchVal = vm->GetQuickFixManager()->CheckAndGetPatch(thread, jsPandaFile, methodId, shareObject);
+    JSTaggedValue patchVal = vm->GetQuickFixManager()->CheckAndGetPatch(thread, jsPandaFile, methodId);
     if (!patchVal.IsHole()) {
         return JSHandle<Method>(thread, patchVal);
     }
 
     JSHandle<Method> method;
     // todo(lukai) allocate all methods to sharedHeap
-    if (shareObject) {
-        method = vm->GetFactory()->NewSMethod(methodLiteral);
-    } else {
-        method = vm->GetFactory()->NewMethod(methodLiteral);
-    }
+    method = vm->GetFactory()->NewSMethod(methodLiteral);
     JSHandle<ConstantPool> newConstpool = thread->GetCurrentEcmaContext()->FindOrCreateConstPool(jsPandaFile, methodId);
     method->SetConstantPool(thread, newConstpool);
     return method;

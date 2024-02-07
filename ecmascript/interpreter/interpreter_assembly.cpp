@@ -7426,7 +7426,7 @@ void InterpreterAssembly::HandleCreateobjectwithbufferImm16Id16(
     uint16_t imm = READ_INST_16_2();
     LOG_INST() << "intrinsics::createobjectwithbuffer"
                << " imm:" << imm;
-    constpool = GetConstantPool(sp);
+    constpool = GetUnsharedConstpool(thread, sp);
     JSObject *result = JSObject::Cast(
         ConstantPool::GetLiteralFromCache<ConstPoolType::OBJECT_LITERAL>(
             thread, constpool, imm, GetModule(sp)).GetTaggedObject());
@@ -7447,7 +7447,7 @@ void InterpreterAssembly::HandleCreateobjectwithbufferImm8Id16(
     uint16_t imm = READ_INST_16_1();
     LOG_INST() << "intrinsics::createobjectwithbuffer"
                << " imm:" << imm;
-    constpool = GetConstantPool(sp);
+    constpool = GetUnsharedConstpool(thread, sp);
     JSObject *result = JSObject::Cast(
         ConstantPool::GetLiteralFromCache<ConstPoolType::OBJECT_LITERAL>(
             thread, constpool, imm, GetModule(sp)).GetTaggedObject());
@@ -7484,7 +7484,7 @@ void InterpreterAssembly::HandleCreatearraywithbufferImm8Id16(
     uint16_t imm = READ_INST_16_1();
     LOG_INST() << "intrinsics::createarraywithbuffer"
                << " imm:" << imm;
-    constpool = GetConstantPool(sp);
+    constpool = GetUnsharedConstpool(thread, sp);;
     JSArray *result = JSArray::Cast(
         ConstantPool::GetLiteralFromCache<ConstPoolType::ARRAY_LITERAL>(
             thread, constpool, imm, GetModule(sp)).GetTaggedObject());
@@ -7630,6 +7630,13 @@ JSTaggedValue InterpreterAssembly::GetConstantPool(JSTaggedType *sp)
     AsmInterpretedFrame *state = reinterpret_cast<AsmInterpretedFrame *>(sp) - 1;
     Method *method = JSFunction::Cast(state->function.GetTaggedObject())->GetCallTarget();
     return method->GetConstantPool();
+}
+
+JSTaggedValue InterpreterAssembly::GetUnsharedConstpool(JSThread* thread, JSTaggedType *sp)
+{
+    AsmInterpretedFrame *state = reinterpret_cast<AsmInterpretedFrame *>(sp) - 1;
+    Method *method = JSFunction::Cast(state->function.GetTaggedObject())->GetCallTarget();
+    return thread->GetCurrentEcmaContext()->FindUnsharedConstpool(method->GetConstantPool());
 }
 
 JSTaggedValue InterpreterAssembly::GetModule(JSTaggedType *sp)

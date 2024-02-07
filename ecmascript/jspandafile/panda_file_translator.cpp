@@ -142,7 +142,7 @@ JSHandle<Program> PandaFileTranslator::GenerateProgramInternal(EcmaVM *vm,
         program->SetMainFunction(thread, JSTaggedValue::Undefined());
     } else {
         JSHandle<GlobalEnv> env = vm->GetGlobalEnv();
-        JSHandle<Method> method = factory->NewMethod(mainMethodLiteral);
+        JSHandle<Method> method = factory->NewSMethod(mainMethodLiteral);
         JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(env->GetFunctionClassWithProto());
         JSHandle<JSFunction> mainFunc = factory->NewJSFunctionByHClass(method, hclass);
         // Main function is created profileTypeInfo by default.
@@ -216,7 +216,7 @@ JSHandle<ConstantPool> PandaFileTranslator::ParseConstPool(EcmaVM *vm, const JSP
             ASSERT(methodLiteral != nullptr);
             methodLiteral->SetFunctionKind(JSPandaFile::GetFunctionKind(type));
 
-            JSHandle<Method> method = factory->NewMethod(methodLiteral);
+            JSHandle<Method> method = factory->NewSMethod(methodLiteral);
             constpool->SetObjectToCache(thread, value.GetConstpoolIndex(), method.GetTaggedValue());
             method->SetConstantPool(thread, constpool.GetTaggedValue());
         }
@@ -285,7 +285,7 @@ void PandaFileTranslator::ParseFuncAndLiteralConstPool(EcmaVM *vm, const JSPanda
             ASSERT(methodLiteral != nullptr);
             methodLiteral->SetFunctionKind(JSPandaFile::GetFunctionKind(type));
 
-            JSHandle<Method> method = factory->NewMethod(methodLiteral);
+            JSHandle<Method> method = factory->NewSMethod(methodLiteral);
             constpool->SetObjectToCache(thread, value.GetConstpoolIndex(), method.GetTaggedValue());
             method->SetConstantPool(thread, constpool.GetTaggedValue());
         }
@@ -297,7 +297,7 @@ JSHandle<ConstantPool> PandaFileTranslator::AllocateConstPool(EcmaVM *vm, const 
 {
     ObjectFactory *factory = vm->GetFactory();
     uint32_t constpoolIndex = jsPandaFile->GetConstpoolIndex();
-    JSHandle<ConstantPool> constpool = factory->NewConstantPool(constpoolIndex);
+    JSHandle<ConstantPool> constpool = factory->NewSConstantPool(constpoolIndex);
     constpool->SetJSPandaFile(jsPandaFile);
     return constpool;
 }
