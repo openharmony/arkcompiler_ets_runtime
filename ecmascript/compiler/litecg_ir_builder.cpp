@@ -399,6 +399,7 @@ void LiteCGIRBuilder::InitializeHandlers()
         {OpCode::ORDINARY_BLOCK, &LiteCGIRBuilder::HandleGoto},
         {OpCode::IF_TRUE, &LiteCGIRBuilder::HandleGoto},
         {OpCode::IF_FALSE, &LiteCGIRBuilder::HandleGoto},
+        {OpCode::SWITCH_BRANCH, &LiteCGIRBuilder::HandleSwitch},
         {OpCode::SWITCH_CASE, &LiteCGIRBuilder::HandleGoto},
         {OpCode::MERGE, &LiteCGIRBuilder::HandleGoto},
         {OpCode::DEFAULT_CASE, &LiteCGIRBuilder::HandleGoto},
@@ -1915,7 +1916,7 @@ void LiteCGIRBuilder::VisitSwitch(GateRef gate, GateRef input, const std::vector
             continue;
         }
         BB &curOutBB = GetOrCreateBB(instID2bbID_[acc_.GetId(outList[i])]);
-        builder.Case(i, curOutBB);
+        builder.Case(acc_.TryGetValue(outList[i]), curOutBB);
     }
     Stmt &switchStmt = builder.Done();
     lmirBuilder_->AppendStmt(GetOrCreateBB(instID2bbID_[acc_.GetId(gate)]), switchStmt);

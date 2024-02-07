@@ -686,7 +686,7 @@ int32 AArch64WebKitJSCC::LocateNextParm(MIRType &mirType, CCLocInfo &pLoc, bool 
     int32 alignedTySize = ClassificationArg(beCommon, mirType, classes);
     pLoc.memSize = alignedTySize;
     if (classes[0] == kIntegerClass) {
-        if (alignedTySize == k8ByteSize) {
+        if (alignedTySize == k4ByteSize || alignedTySize == k8ByteSize) {
             pLoc.reg0 = AllocateGPParmRegister();
         } else {
             CHECK_FATAL(false, "no should not go here");
