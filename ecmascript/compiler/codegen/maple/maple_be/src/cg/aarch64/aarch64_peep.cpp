@@ -78,29 +78,34 @@ static bool IsZeroRegister(const Operand &opnd)
 MOperator GetMopUpdateAPSR(MOperator mop, bool &isAddShift)
 {
     MOperator newMop = MOP_undef;
-    // todo: the mop commented is in BiShengC
     switch (mop) {
         case MOP_xaddrrr: {
+            newMop = MOP_xaddsrrr;
             isAddShift = false;
             break;
         }
         case MOP_xaddrri12: {
+            newMop = MOP_xaddsrri12;
             isAddShift = false;
             break;
         }
         case MOP_waddrrr: {
+            newMop = MOP_waddsrrr;
             isAddShift = false;
             break;
         }
         case MOP_waddrri12: {
+            newMop = MOP_waddsrri12;
             isAddShift = false;
             break;
         }
         case MOP_xaddrrrs: {
+            newMop = MOP_xaddsrrrs;
             isAddShift = true;
             break;
         }
         case MOP_waddrrrs: {
+            newMop = MOP_waddsrrrs;
             isAddShift = true;
             break;
         }
@@ -926,14 +931,14 @@ Insn *CselToCsetPattern::BuildCondSetInsn(const Insn &cselInsn) const
         if (isOne) {
             return &cgFunc->GetInsnBuilder()->BuildInsn((is32Bits ? MOP_wcsetrc : MOP_xcsetrc), dest, cond, rflag);
         } else if (isAllOnes) {
-            // todo: nop in BiShengC
+            return &cgFunc->GetInsnBuilder()->BuildInsn((is32Bits ? MOP_wcsetmrc : MOP_xcsetmrc), dest, cond, rflag);
         }
     } else {
         CondOperand &cond = func->GetCondOperand(ccCode);
         if (isOne) {
             return &cgFunc->GetInsnBuilder()->BuildInsn((is32Bits ? MOP_wcsetrc : MOP_xcsetrc), dest, cond, rflag);
         } else if (isAllOnes) {
-            // todo: nop in BiShengC
+            return &cgFunc->GetInsnBuilder()->BuildInsn((is32Bits ? MOP_wcsetmrc : MOP_xcsetmrc), dest, cond, rflag);
         }
     }
     return nullptr;
@@ -985,7 +990,7 @@ void CselToCsetPattern::Run(BB &bb, Insn &insn)
         if (IsOpndDefByOne(*prevMovInsn1)) {
             newMop = (dstOpndSize == k64BitSize ? MOP_xcsetrc : MOP_wcsetrc);
         } else if (IsOpndDefByAllOnes(*prevMovInsn1)) {
-            // todo: nop in BiShengC
+            newMop = (dstOpndSize == k64BitSize ? MOP_xcsetmrc : MOP_wcsetmrc);
         }
         newInsn = &(cgFunc->GetInsnBuilder()->BuildInsn(newMop, dstOpnd, condOpnd, rflag));
     } else if (IsOpndDefByZero(*prevMovInsn1)) {
@@ -999,7 +1004,7 @@ void CselToCsetPattern::Run(BB &bb, Insn &insn)
         if (IsOpndDefByOne(*prevMovInsn2)) {
             newMop = (dstOpndSize == k64BitSize ? MOP_xcsetrc : MOP_wcsetrc);
         } else if (IsOpndDefByAllOnes(*prevMovInsn1)) {
-            // todo: nop in BiShengC
+            newMop = (dstOpndSize == k64BitSize ? MOP_xcsetmrc : MOP_wcsetmrc);
         }
         newInsn = &(cgFunc->GetInsnBuilder()->BuildInsn(newMop, dstOpnd, inverseCondOpnd, rflag));
     }
@@ -1206,7 +1211,8 @@ void CsetToCincPattern::Run(BB &bb, Insn &insn)
     if (!CheckCondition(insn) || defInsn == nullptr || csetOpnd1 == 0) {
         return;
     }
-    MOperator newMop = MOP_undef;
+
+    MOperator newMop = (insn.GetMachineOpcode() == MOP_waddrrr) ? MOP_wcincrc : MOP_xcincrc;
     int32 cincOpnd2 = (csetOpnd1 == kInsnSecondOpnd) ? kInsnThirdOpnd : kInsnSecondOpnd;
     RegOperand &opnd2 = static_cast<RegOperand &>(insn.GetOperand(static_cast<uint32>(cincOpnd2)));
     Operand &condOpnd = defInsn->GetOperand(kInsnSecondOpnd);

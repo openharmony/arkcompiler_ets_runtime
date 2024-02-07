@@ -10,7 +10,7 @@
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
-* limitations under the License.
+ * limitations under the License.
  */
 
 #ifndef MAPLEBE_INCLUDE_CG_X64_X64_REG_INFO_H
@@ -42,8 +42,8 @@ public:
     Insn *BuildLdrInsn(uint32 regSize, PrimType stype, RegOperand &phyOpnd, MemOperand &memOpnd) override;
     void FreeSpillRegMem(regno_t vrNum) override;
     MemOperand *GetOrCreatSpillMem(regno_t vrNum, uint32 bitSize) override;
-    MemOperand *AdjustMemOperandIfOffsetOutOfRange(MemOperand *memOpnd, regno_t vrNum, bool isDest, Insn &insn,
-                                                   regno_t regNum, bool &isOutOfRange) override;
+    MemOperand *AdjustMemOperandIfOffsetOutOfRange(MemOperand *memOpnd, const RegNoPair &regNoPair, bool isDest,
+                                                   Insn &insn, bool &isOutOfRange) override;
     bool IsGPRegister(regno_t regNO) const override
     {
         return x64::IsGPRegister(static_cast<X64reg>(regNO));

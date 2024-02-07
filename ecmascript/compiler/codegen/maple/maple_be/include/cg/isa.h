@@ -181,6 +181,7 @@ enum EncodeType : uint8 {
     kMoveWide,
     kPCRelAddr,
     kAddPCRelAddr,
+    kBrkInsn,
     kSystemInsn,
     kTestBranch,
     kCondBranch,

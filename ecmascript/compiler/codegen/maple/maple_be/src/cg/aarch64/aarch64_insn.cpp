@@ -72,6 +72,11 @@ void A64OpndEmitVisitor::Visit(maplebe::ImmOperand *v)
         return Visit(static_cast<OfstOperand *>(v));
     }
 
+    if (v->IsStImmediate()) {
+        Visit(*v->GetSymbol(), v->GetValue());
+        return;
+    }
+
     int64 value = v->GetValue();
     if (!v->IsFmov()) {
         (void)emitter.Emit((opndProp != nullptr && opndProp->IsLoadLiteral()) ? "=" : "#")
@@ -92,7 +97,7 @@ void A64OpndEmitVisitor::Visit(maplebe::ImmOperand *v)
     float result = std::pow(2, exp) * mantissa;
 
     std::stringstream ss;
-    ss << std::setprecision(10) << result; // float aligned with 10 characters
+    ss << std::setprecision(10) << result;  // float aligned with 10 characters
     std::string res;
     ss >> res;
     size_t dot = res.find('.');
@@ -132,7 +137,7 @@ void A64OpndEmitVisitor::Visit(maplebe::MemOperand *v)
         }
         EmitIntReg(*baseReg);
         baseReg->SetSize(baseSize);
-        OfstOperand *offset = a64v->GetOffsetImmediate();
+        ImmOperand *offset = a64v->GetOffsetImmediate();
         if (offset != nullptr) {
 #ifndef USE_32BIT_REF /* can be load a ref here */
                       /*
@@ -147,7 +152,7 @@ void A64OpndEmitVisitor::Visit(maplebe::MemOperand *v)
 #endif
 #endif /* USE_32BIT_REF */
             if (a64v->IsPostIndexed()) {
-                DEBUG_ASSERT(!a64v->IsSIMMOffsetOutOfRange(offset->GetOffsetValue(), md->Is64Bit(), isLDSTpair),
+                DEBUG_ASSERT(!a64v->IsSIMMOffsetOutOfRange(offset->GetValue(), md->Is64Bit(), isLDSTpair),
                              "should not be SIMMOffsetOutOfRange");
                 (void)emitter.Emit("]");
                 if (!offset->IsZero()) {
@@ -155,7 +160,7 @@ void A64OpndEmitVisitor::Visit(maplebe::MemOperand *v)
                     Visit(offset);
                 }
             } else if (a64v->IsPreIndexed()) {
-                DEBUG_ASSERT(!a64v->IsSIMMOffsetOutOfRange(offset->GetOffsetValue(), md->Is64Bit(), isLDSTpair),
+                DEBUG_ASSERT(!a64v->IsSIMMOffsetOutOfRange(offset->GetValue(), md->Is64Bit(), isLDSTpair),
                              "should not be SIMMOffsetOutOfRange");
                 if (!offset->IsZero()) {
                     (void)emitter.Emit(",");
@@ -163,15 +168,10 @@ void A64OpndEmitVisitor::Visit(maplebe::MemOperand *v)
                 }
                 (void)emitter.Emit("]!");
             } else {
-                if (CGOptions::IsPIC() && (offset->IsSymOffset() || offset->IsSymAndImmOffset()) &&
-                    (offset->GetSymbol()->NeedPIC() || offset->GetSymbol()->IsThreadLocal())) {
-                    std::string gotEntry = offset->GetSymbol()->IsThreadLocal() ? ", #:tlsdesc_lo12:" : ", #:got_lo12:";
-                    (void)emitter.Emit(gotEntry + offset->GetSymbolName());
-                } else {
-                    if (!offset->IsZero()) {
-                        (void)emitter.Emit(",");
-                        Visit(offset);
-                    }
+                if (!offset->IsZero() || static_cast<OfstOperand *>(offset)->IsSymAndImmOffset() ||
+                    static_cast<OfstOperand *>(offset)->IsSymOffset()) {
+                    (void)emitter.Emit(",");
+                    Visit(offset);
                 }
                 (void)emitter.Emit("]");
             }
@@ -293,8 +293,11 @@ void A64OpndEmitVisitor::Visit(ExtendShiftOperand *v)
 
 void A64OpndEmitVisitor::Visit(BitShiftOperand *v)
 {
-    (void)emitter.Emit((v->GetShiftOp() == BitShiftOperand::kLSL) ? "LSL #" :
-        ((v->GetShiftOp() == BitShiftOperand::kLSR) ? "LSR #" : "ASR #")).Emit(v->GetShiftAmount());
+    (void)emitter
+        .Emit((v->GetShiftOp() == BitShiftOperand::kLSL)
+                  ? "LSL #"
+                  : ((v->GetShiftOp() == BitShiftOperand::kLSR) ? "LSR #" : "ASR #"))
+        .Emit(v->GetShiftAmount());
 }
 
 void A64OpndEmitVisitor::Visit(StImmOperand *v)
@@ -373,8 +376,9 @@ void A64OpndEmitVisitor::Visit(OfstOperand *v)
         return;
     }
     const MIRSymbol *symbol = v->GetSymbol();
+    CHECK_NULL_FATAL(symbol);
     if (CGOptions::IsPIC() && symbol->NeedPIC()) {
-        (void)emitter.Emit(":got:" + symbol->GetName());
+        (void)emitter.Emit("#:got_lo12:" + symbol->GetName());
     } else if (symbol->GetStorageClass() == kScPstatic && symbol->GetSKind() != kStConst && symbol->IsLocal()) {
         (void)emitter.Emit(symbol->GetName() +
                            std::to_string(emitter.GetCG()->GetMIRModule()->CurFunction()->GetPuidx()));
@@ -584,6 +588,40 @@ void A64OpndDumpVisitor::Visit(ListOperand *v)
     for (auto it = opndList.begin(); it != opndList.end();) {
         Visit(*it);
         LogInfo::MapleLogger() << (++it == opndList.end() ? "" : " ,");
+    }
+}
+
+void A64OpndEmitVisitor::Visit(const MIRSymbol &symbol, int64 offset)
+{
+    CHECK_FATAL(opndProp != nullptr, "opndProp is nullptr in  StImmOperand::Emit");
+    const bool isThreadLocal = symbol.IsThreadLocal();
+    const bool isLiteralLow12 = opndProp->IsLiteralLow12();
+    bool hasPrefix = false;
+    if (isThreadLocal) {
+        (void)emitter.Emit(":tlsdesc");
+        hasPrefix = true;
+    }
+    if (isLiteralLow12) {
+        std::string lo12String = hasPrefix ? "_lo12" : ":lo12";
+        (void)emitter.Emit(lo12String);
+        hasPrefix = true;
+    }
+    if (hasPrefix) {
+        (void)emitter.Emit(":");
+    }
+    if (symbol.GetAsmAttr() != UStrIdx(0) && symbol.GetStorageClass() == kScPstatic) {
+        std::string asmSection = GlobalTables::GetUStrTable().GetStringFromStrIdx(symbol.GetAsmAttr());
+        (void)emitter.Emit(asmSection);
+    } else {
+        if (symbol.GetStorageClass() == kScPstatic && symbol.GetSKind() != kStConst) {
+            (void)emitter.Emit(symbol.GetName() +
+                               std::to_string(emitter.GetCG()->GetMIRModule()->CurFunction()->GetPuidx()));
+        } else {
+            (void)emitter.Emit(symbol.GetName());
+        }
+    }
+    if (offset != 0) {
+        (void)emitter.Emit("+" + std::to_string(offset));
     }
 }
 } /* namespace maplebe */
