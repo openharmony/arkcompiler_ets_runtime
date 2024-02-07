@@ -2322,28 +2322,6 @@ JSHandle<JSRealm> ObjectFactory::NewJSRealm()
     return realm;
 }
 
-JSHandle<TaggedArray> ObjectFactory::NewEmptyArray()
-{
-    NewObjectHook();
-    auto header = heap_->AllocateReadOnlyOrHugeObject(
-        JSHClass::Cast(thread_->GlobalConstants()->GetArrayClass().GetTaggedObject()), TaggedArray::SIZE);
-    JSHandle<TaggedArray> array(thread_, header);
-    array->SetLength(0);
-    array->SetExtraLength(0);
-    return array;
-}
-
-JSHandle<MutantTaggedArray> ObjectFactory::NewEmptyMutantArray()
-{
-    NewObjectHook();
-    auto header = heap_->AllocateReadOnlyOrHugeObject(
-        JSHClass::Cast(thread_->GlobalConstants()->GetMutantTaggedArrayClass().GetTaggedObject()), TaggedArray::SIZE);
-    JSHandle<MutantTaggedArray> array(thread_, header);
-    array->SetLength(0);
-    array->SetExtraLength(0);
-    return array;
-}
-
 JSHandle<TaggedArray> ObjectFactory::NewTaggedArray(uint32_t length, JSTaggedValue initVal, bool nonMovable)
 {
     if (nonMovable) {

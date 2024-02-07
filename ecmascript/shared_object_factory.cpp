@@ -280,4 +280,68 @@ JSHandle<TaggedArray> ObjectFactory::NewSDictionaryArray(uint32_t length)
     array->InitializeWithSpecialValue(JSTaggedValue::Undefined(), length);
     return array;
 }
+
+JSHandle<TaggedArray> ObjectFactory::NewSEmptyArray()
+{
+    NewObjectHook();
+    auto header = sHeap_->AllocateReadOnlyOrHugeObject(thread_,
+        JSHClass::Cast(thread_->GlobalConstants()->GetArrayClass().GetTaggedObject()), TaggedArray::SIZE);
+    JSHandle<TaggedArray> array(thread_, header);
+    array->SetLength(0);
+    array->SetExtraLength(0);
+    return array;
+}
+
+JSHandle<MutantTaggedArray> ObjectFactory::NewSEmptyMutantArray()
+{
+    NewObjectHook();
+    auto header = sHeap_->AllocateReadOnlyOrHugeObject(thread_,
+        JSHClass::Cast(thread_->GlobalConstants()->GetMutantTaggedArrayClass().GetTaggedObject()), TaggedArray::SIZE);
+    JSHandle<MutantTaggedArray> array(thread_, header);
+    array->SetLength(0);
+    array->SetExtraLength(0);
+    return array;
+}
+
+JSHandle<JSNativePointer> ObjectFactory::NewSJSNativePointer(void *externalPointer,
+                                                             void *data,
+                                                             bool nonMovable,
+                                                             size_t nativeBindingsize,
+                                                             NativeFlag flag)
+{
+    NewObjectHook();
+    TaggedObject *header;
+    auto jsNativePointerClass = JSHClass::Cast(thread_->GlobalConstants()->GetJSNativePointerClass().GetTaggedObject());
+    if (nonMovable) {
+        header = sHeap_->AllocateNonMovableOrHugeObject(thread_, jsNativePointerClass);
+    } else {
+        header = sHeap_->AllocateOldOrHugeObject(thread_, jsNativePointerClass);
+    }
+    JSHandle<JSNativePointer> obj(thread_, header);
+    obj->SetExternalPointer(externalPointer);
+    obj->SetDeleter(nullptr);
+    obj->SetData(data);
+    obj->SetBindingSize(nativeBindingsize);
+    obj->SetNativeFlag(flag);
+    return obj;
+}
+
+JSHandle<AccessorData> ObjectFactory::NewSInternalAccessor(void *setter, void *getter)
+{
+    NewObjectHook();
+    TaggedObject *header = sHeap_->AllocateNonMovableOrHugeObject(thread_,
+        JSHClass::Cast(thread_->GlobalConstants()->GetInternalAccessorClass().GetTaggedObject()));
+    JSHandle<AccessorData> obj(thread_, AccessorData::Cast(header));
+    obj->SetGetter(thread_, JSTaggedValue::Undefined());
+    obj->SetSetter(thread_, JSTaggedValue::Undefined());
+    if (setter != nullptr) {
+        JSHandle<JSNativePointer> setFunc = NewSJSNativePointer(setter, nullptr, true);
+        obj->SetSetter(thread_, setFunc.GetTaggedValue());
+    }
+    if (getter != nullptr) {
+        JSHandle<JSNativePointer> getFunc = NewSJSNativePointer(getter, nullptr, true);
+        obj->SetGetter(thread_, getFunc);
+    }
+    return obj;
+}
 }  // namespace panda::ecmascript

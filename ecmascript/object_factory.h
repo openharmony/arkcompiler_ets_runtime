@@ -729,12 +729,25 @@ public:
 
     JSHandle<LayoutInfo> CreateSLayoutInfo(uint32_t properties);
 
+    JSHandle<TaggedArray> NewSEmptyArray(); // only used for EcmaVM.
+
+    JSHandle<MutantTaggedArray> NewSEmptyMutantArray();
+
     JSHandle<TaggedArray> NewSDictionaryArray(uint32_t length);
 
     JSHandle<TaggedArray> NewSTaggedArrayWithoutInit(uint32_t length);
 
     JSHandle<JSHClass> CreateSFunctionClass(uint32_t size, JSType type,
                                             const JSHandle<JSTaggedValue> &prototype, bool isAccessor = true);
+
+    JSHandle<JSNativePointer> NewSJSNativePointer(void *externalPointer,
+                                                  void *data = nullptr,
+                                                  bool nonMovable = false,
+                                                  size_t nativeBindingsize = 0,
+                                                  NativeFlag flag = NativeFlag::NO_DIV);
+
+    JSHandle<AccessorData> NewSInternalAccessor(void *setter, void *getter);
+
 private:
     friend class GlobalEnv;
     friend class GlobalEnvConstants;
@@ -800,9 +813,6 @@ private:
 
     JSHandle<EcmaString> GetStringFromStringTable(const JSHandle<EcmaString> &firstString,
                                                   const JSHandle<EcmaString> &secondString);
-
-    JSHandle<TaggedArray> NewEmptyArray();  // only used for EcmaVM.
-    JSHandle<MutantTaggedArray> NewEmptyMutantArray();
 
     JSHandle<JSHClass> CreateJSArguments(const JSHandle<GlobalEnv> &env);
     JSHandle<JSHClass> CreateJSArrayInstanceClass(JSHandle<JSTaggedValue> proto,
