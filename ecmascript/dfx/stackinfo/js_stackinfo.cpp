@@ -16,6 +16,7 @@
 #include "ecmascript/dfx/stackinfo/js_stackinfo.h"
 #include "ecmascript/base/builtins_base.h"
 #include "ecmascript/ecma_vm.h"
+#include "ecmascript/extractortool/src/source_map.h"
 #include "ecmascript/interpreter/frame_handler.h"
 #include "ecmascript/interpreter/interpreter.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
@@ -25,7 +26,6 @@
 #include "ecmascript/platform/os.h"
 #if defined(PANDA_TARGET_OHOS)
 #include "ecmascript/extractortool/src/extractor.h"
-#include "ecmascript/extractortool/src/source_map.h"
 #endif
 #if defined(ENABLE_EXCEPTION_BACKTRACE)
 #include "ecmascript/platform/backtrace.h"
@@ -375,6 +375,240 @@ bool GetTypeOffsetAndPrevOffsetFromFrameType(uintptr_t frameType, uintptr_t &typ
             break;
         default:
             return false;
+    }
+    return true;
+}
+
+bool ArkFrameCheck(uintptr_t frameType)
+{
+    return static_cast<FrameType>(frameType) == FrameType::OPTIMIZED_ENTRY_FRAME ||
+           static_cast<FrameType>(frameType) == FrameType::ASM_INTERPRETER_ENTRY_FRAME;
+}
+
+bool IsFunctionFrame(uintptr_t frameType)
+{
+    // ato need stackmaps, the pc value is not set.
+    // FrameType::OPTIMIZED_JS_FAST_CALL_FUNCTION_FRAME:
+    // FrameType::OPTIMIZED_JS_FUNCTION_FRAME:
+    return static_cast<FrameType>(frameType) == FrameType::ASM_INTERPRETER_FRAME ||
+           static_cast<FrameType>(frameType) == FrameType::INTERPRETER_CONSTRUCTOR_FRAME ||
+           static_cast<FrameType>(frameType) == FrameType::INTERPRETER_FRAME ||
+           static_cast<FrameType>(frameType) == FrameType::INTERPRETER_FAST_NEW_FRAME;
+}
+
+std::optional<MethodInfo> ReadMethodInfo(panda_file::MethodDataAccessor &mda)
+{
+    uintptr_t methodId = mda.GetMethodId().GetOffset();
+    auto codeId = mda.GetCodeId();
+    if (!codeId) {
+        return std::nullopt;
+    }
+    panda_file::CodeDataAccessor cda(mda.GetPandaFile(), codeId.value());
+    uint32_t codeSize = cda.GetCodeSize();
+    uintptr_t codeBegin = reinterpret_cast<uintptr_t>(cda.GetInstructions());
+    return std::make_optional<MethodInfo>(methodId, codeBegin, codeSize);
+}
+
+std::vector<MethodInfo> ReadAllMethodInfos(std::shared_ptr<JSPandaFile> jsPandaFile)
+{
+    std::vector<MethodInfo> result;
+    const panda_file::File *pf = jsPandaFile->GetPandaFile();
+    Span<const uint32_t> classIndexes = jsPandaFile->GetClasses();
+    for (const uint32_t index : classIndexes) {
+        panda_file::File::EntityId classId(index);
+        if (jsPandaFile->IsExternal(classId)) {
+            continue;
+        }
+        panda_file::ClassDataAccessor cda(*pf, classId);
+        cda.EnumerateMethods([&result, jsPandaFile](panda_file::MethodDataAccessor &mda) {
+            auto info = ReadMethodInfo(mda);
+            if (!info) {
+                return;
+            }
+            result.push_back(info.value());
+        });
+    }
+
+    std::sort(result.begin(), result.end());
+    return result;
+}
+
+std::optional<CodeInfo> TranslateByteCodePc(uintptr_t realPc, const std::vector<MethodInfo> &vec)
+{
+    uint32_t left = 0;
+    uint32_t right = vec.size() - 1;
+    for (; left <= right;) {
+        uint32_t mid = (left + right) / 2;
+        bool isRight = realPc >= (vec[mid].codeBegin + vec[mid].codeSize);
+        bool isLeft = realPc < vec[mid].codeBegin;
+        // codeBegin <= realPc < codeBegin + codeSize
+        if (!isRight && !isLeft) {
+            return std::make_optional<CodeInfo>(realPc - vec[mid].codeBegin, vec[mid].methodId, vec[mid].codeSize);
+        } else if (isRight) {
+            left = mid + 1;
+        } else {
+            right = mid -1;
+        }
+    }
+    return std::nullopt;
+}
+
+bool ArkParseJsFrameInfo(uintptr_t byteCodePc, uintptr_t mapBase, uintptr_t loadOffset,
+                         uint8_t *data, uint64_t dataSize, JsFunction *jsFunction)
+{
+    loadOffset = loadOffset % PageSize();
+    auto pf = panda_file::OpenPandaFileFromSecureMemory(data, dataSize);
+    CString fileName = "";
+    std::shared_ptr<JSPandaFile> jsPandaFile = std::make_shared<JSPandaFile>(pf.release(), fileName);
+    auto methodInfos = ReadAllMethodInfos(jsPandaFile);
+    uintptr_t realOffset = byteCodePc - mapBase - loadOffset;
+    uintptr_t pfBasePtr = reinterpret_cast<uintptr_t>(jsPandaFile->GetBase());
+    auto codeInfo = TranslateByteCodePc(realOffset + pfBasePtr, methodInfos);
+    if (!codeInfo) {
+        return false;
+    }
+    auto methodId = EntityId(codeInfo.value().methodId);
+    std::string name = MethodLiteral::ParseFunctionName(jsPandaFile.get(), methodId);
+    name = name.empty() ? "anonymous" : name;
+
+    auto debugExtractor = std::make_unique<DebugInfoExtractor>(jsPandaFile.get());
+    std::string url = debugExtractor->GetSourceFile(methodId);
+    auto offset = codeInfo.value().offset;
+    // line number and column number
+    int lineNumber = 0;
+    int columnNumber = 0;
+    auto callbackLineFunc = [&lineNumber](int32_t line) -> bool {
+        lineNumber = line + 1;
+        return true;
+    };
+    auto callbackColumnFunc = [&columnNumber](int32_t column) -> bool {
+        columnNumber = column + 1;
+        return true;
+    };
+    if (!debugExtractor->MatchLineWithOffset(callbackLineFunc, methodId, offset) ||
+        !debugExtractor->MatchColumnWithOffset(callbackColumnFunc, methodId, offset)) {
+        lineNumber = 0;
+        columnNumber = 0;
+    }
+
+    jsFunction->codeBegin = byteCodePc - offset;
+    jsFunction->codeSize = codeInfo.value().codeSize;
+    jsFunction->line = lineNumber;
+    jsFunction->column = columnNumber;
+    size_t nameSize = name.size() + 1;
+    size_t urlSize = url.size() + 1;
+    if (strcpy_s(jsFunction->functionName, nameSize, name.c_str()) != EOK ||
+        strcpy_s(jsFunction->url, urlSize, url.c_str()) != EOK) {
+        LOG_FULL(FATAL) << "strcpy_s failed";
+        UNREACHABLE();
+    }
+    return true;
+}
+
+bool ArkTranslateJsFrameInfo(uint8_t *data, size_t dataSize, [[maybe_unused]]JsFunction *jsFunction)
+{
+    SourceMap sourceMap;
+    std::string strUrl = jsFunction->url;
+    sourceMap.Init(data, dataSize, strUrl);
+    bool ret = sourceMap.TranslateUrlPositionBySourceMap(strUrl, jsFunction->line, jsFunction->column);
+    size_t strUrlSize = strUrl.size() + 1;
+    if (strcpy_s(jsFunction->url, strUrlSize, strUrl.c_str()) != EOK) {
+        LOG_FULL(FATAL) << "strcpy_s failed";
+        UNREACHABLE();
+    }
+    return ret;
+}
+
+uintptr_t GetBytecodeOffset(void *ctx, ReadMemFunc readMem, uintptr_t frameType, uintptr_t currentPtr)
+{
+    // currentPtr points to the frametype.
+    uintptr_t bytecodePc = 0;
+    FrameType type = static_cast<FrameType>(frameType);
+    switch (type) {
+        case FrameType::ASM_INTERPRETER_FRAME:
+        case FrameType::INTERPRETER_CONSTRUCTOR_FRAME: {
+            currentPtr -= AsmInterpretedFrame::GetTypeOffset();
+            currentPtr += AsmInterpretedFrame::GetPcOffset(false);
+            readMem(ctx, currentPtr, &bytecodePc);
+            return bytecodePc;
+        }
+        case FrameType::INTERPRETER_FRAME:
+        case FrameType::INTERPRETER_FAST_NEW_FRAME: {
+            currentPtr -= InterpretedFrame::GetTypeOffset();
+            currentPtr += InterpretedFrame::GetPcOffset(false);
+            readMem(ctx, currentPtr, &bytecodePc);
+            return bytecodePc;
+        }
+        // aot need stackmaps
+        case FrameType::OPTIMIZED_JS_FAST_CALL_FUNCTION_FRAME:
+        case FrameType::OPTIMIZED_JS_FUNCTION_FRAME: {
+            break;
+        }
+        default: {
+            break;
+        }
+    }
+    return 0;
+}
+
+bool ArkGetNextFrame(void *ctx, ReadMemFunc readMem, uintptr_t &currentPtr, uintptr_t &frameType, uintptr_t &pc)
+{
+    currentPtr -= sizeof(FrameType);
+    if (!readMem(ctx, currentPtr, &frameType)) {
+        return false;
+    }
+    if (ArkFrameCheck(frameType)) {
+        return true;
+    }
+    bool ret = false;
+    if (IsFunctionFrame(frameType)) {
+        pc = GetBytecodeOffset(ctx, readMem, frameType, currentPtr);
+        ret = true;
+    }
+
+    uintptr_t typeOffset = 0;
+    uintptr_t prevOffset = 0;
+    if (!GetTypeOffsetAndPrevOffsetFromFrameType(frameType, typeOffset, prevOffset)) {
+        return false;
+    }
+    currentPtr -= typeOffset;
+    currentPtr += prevOffset;
+    if (!readMem(ctx, currentPtr, &currentPtr)) {
+        return false;
+    }
+
+    if (ret) {
+        return true;
+    }
+    return ArkGetNextFrame(ctx, readMem, currentPtr, frameType, pc);
+}
+
+bool StepArk(void *ctx, ReadMemFunc readMem, uintptr_t *fp, uintptr_t *sp, uintptr_t *pc, bool *isJsFrame)
+{
+    constexpr size_t FP_SIZE = 8;
+    constexpr size_t LR_SIZE = 8;
+    uintptr_t currentPtr = *fp;
+    if (currentPtr == 0) {
+        LOG_ECMA(ERROR) << "fp is nullptr in StepArk()!";
+        return false;
+    }
+
+    uintptr_t frameType = 0;
+    if (ArkGetNextFrame(ctx, readMem, currentPtr, frameType, *pc)) {
+        if (ArkFrameCheck(frameType)) {
+            currentPtr += sizeof(FrameType);
+            bool ret = readMem(ctx, currentPtr, fp);
+            currentPtr += FP_SIZE;
+            ret &= readMem(ctx, currentPtr, pc);
+            currentPtr += LR_SIZE;
+            ret &= readMem(ctx, currentPtr, sp);
+            *isJsFrame = false;
+            return ret;
+        } else {
+            *fp = currentPtr;
+            *sp = currentPtr;
+            *isJsFrame = true;
+        }
     }
     return true;
 }
@@ -740,12 +974,6 @@ bool ArkGetNextFrame(uintptr_t &currentPtr, uintptr_t typeOffset,
     return true;
 }
 
-bool ArkFrameCheck(uintptr_t frameType)
-{
-    return static_cast<FrameType>(frameType) == FrameType::OPTIMIZED_ENTRY_FRAME ||
-           static_cast<FrameType>(frameType) == FrameType::ASM_INTERPRETER_ENTRY_FRAME;
-}
-
 bool GetArkNativeFrameInfo(int pid, uintptr_t *pc, uintptr_t *fp, uintptr_t *sp,
                            panda::ecmascript::JsFrame *jsFrame, size_t &size)
 {
@@ -1009,6 +1237,34 @@ bool GetArkJSHeapCrashInfo(int pid, uintptr_t *bytecodePc, uintptr_t *fp, bool o
     return true;
 }
 } // namespace panda::ecmascript
+
+__attribute__((visibility("default"))) int step_ark(
+    void *ctx, panda::ecmascript::ReadMemFunc readMem, uintptr_t *fp, uintptr_t *sp, uintptr_t *pc, bool *isJsFrame)
+{
+    if (panda::ecmascript::StepArk(ctx, readMem, fp, sp, pc, isJsFrame)) {
+        return 1;
+    }
+    return -1;
+}
+
+__attribute__((visibility("default"))) int ark_parse_js_frame_info(
+    uintptr_t byteCodePc, uintptr_t mapBase, uintptr_t loadOffset, uint8_t *data,
+    uint64_t dataSize, panda::ecmascript::JsFunction *jsFunction)
+{
+    if (panda::ecmascript::ArkParseJsFrameInfo(byteCodePc, mapBase, loadOffset, data, dataSize, jsFunction)) {
+        return 1;
+    }
+    return -1;
+}
+
+__attribute__((visibility("default"))) int ark_translate_js_frame_info(
+    uint8_t *data, size_t dataSize, panda::ecmascript::JsFunction *jsFunction)
+{
+    if (panda::ecmascript::ArkTranslateJsFrameInfo(data, dataSize, jsFunction)) {
+        return 1;
+    }
+    return -1;
+}
 
 __attribute__((visibility("default"))) int step_ark_managed_native_frame(
     int pid, uintptr_t *pc, uintptr_t *fp, uintptr_t *sp, char *buf, size_t buf_sz)
