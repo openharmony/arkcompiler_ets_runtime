@@ -107,6 +107,7 @@ public:
     CCImpl *GetOrCreateLocator(CallConvKind cc);
     MIRType *LmbcGetAggTyFromCallSite(StmtNode *stmt, std::vector<TyIdx> **parmList) const;
     RegOperand &GetOrCreateResOperand(const BaseNode &parent, PrimType primType);
+    MIRStructType *GetLmbcStructArgType(BaseNode &stmt, size_t argNo) const;
 
     // struct for delayed phy regs copy in param list
     struct RegMapForPhyRegCpy {
@@ -371,7 +372,7 @@ public:
     void SelectVectorZip(PrimType rType, Operand *o1, Operand *o2);
     void PrepareVectorOperands(Operand **o1, PrimType &oty1, Operand **o2, PrimType &oty2);
     RegOperand *AdjustOneElementVectorOperand(PrimType oType, RegOperand *opnd);
-    bool DistanceCheck(const BB &bb, LabelIdx targLabIdx, uint32 targId) const;
+    bool DistanceCheck(const BB &bb, LabelIdx targLabIdx, uint32 targId, uint32 maxDistance) const;
 
     PrimType FilterOneElementVectorType(PrimType origTyp) const
     {
@@ -610,6 +611,8 @@ public:
 
     MemOperand &CreateStkTopOpnd(uint32 offset, uint32 size);
     MemOperand *CreateStackMemOpnd(regno_t preg, int32 offset, uint32 size);
+    MemOperand *CreateMemOperand(uint32 size, RegOperand &base, ImmOperand &ofstOp, bool isVolatile,
+                               MemOperand::AArch64AddressingMode mode = MemOperand::kAddrModeBOi) const;
     MemOperand *CreateMemOperand(MemOperand::AArch64AddressingMode mode, uint32 size, RegOperand &base,
                                  RegOperand *index, ImmOperand *offset, const MIRSymbol *symbol) const;
     MemOperand *CreateMemOperand(MemOperand::AArch64AddressingMode mode, uint32 size, RegOperand &base,
@@ -837,6 +840,11 @@ public:
         storeFP = val;
     }
 
+    LabelIdx GetLabelInInsn(Insn &insn) override
+    {
+        return static_cast<LabelOperand &>(insn.GetOperand(AArch64isa::GetJumpTargetIdx(insn))).GetLabelIndex();
+    }
+
 private:
     enum RelationOperator : uint8 { kAND, kIOR, kEOR };
 
@@ -1038,10 +1046,6 @@ private:
     MemOperand &CreateMemOpndForStatic(const MIRSymbol &symbol, int64 offset, uint32 size, bool needLow12,
                                        RegOperand *regOp);
     Insn *AggtStrLdrInsert(bool bothUnion, Insn *lastStrLdr, Insn &newStrLdr);
-    LabelIdx GetLabelInInsn(Insn &insn) override
-    {
-        return static_cast<LabelOperand &>(insn.GetOperand(AArch64isa::GetJumpTargetIdx(insn))).GetLabelIndex();
-    }
     void SelectParmListWrapper(StmtNode &naryNode, ListOperand &srcOpnds, bool isCallNative);
 };
 } /* namespace maplebe */

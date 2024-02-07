@@ -62,6 +62,7 @@ uint32 CGOptions::alignMaxBBSize = 96;
 uint32 CGOptions::loopAlignPow = 4;
 uint32 CGOptions::jumpAlignPow = 5;
 uint32 CGOptions::funcAlignPow = 5;
+bool CGOptions::doOptimizedFrameLayout = true;
 #if TARGAARCH64 || TARGRISCV64
 bool CGOptions::useBarriersForVolatile = false;
 #else
@@ -609,6 +610,10 @@ bool CGOptions::SolveOptions(bool isDebug)
 
     if (opts::cg::funcAlignPow.IsEnabledByUser()) {
         SetFuncAlignPow(opts::cg::funcAlignPow);
+    }
+
+    if (opts::cg::optimizedFrameLayout.IsEnabledByUser()) {
+        opts::cg::optimizedFrameLayout ? EnableOptimizedFrameLayout() : DisableOptimizedFrameLayout();
     }
 
     /* override some options when loc, dwarf is generated */

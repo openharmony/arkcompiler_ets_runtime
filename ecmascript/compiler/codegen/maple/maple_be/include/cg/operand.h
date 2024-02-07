@@ -959,8 +959,11 @@ public:
          * "calculates an address from the PC value and an immediate offset,
          * loads a word from memory, and writes it to a register."
          */
-        kAddrModeLo12Li  // EA = [base] + #:lo12:Label+immediate. (Example: [x0,
-                         // #:lo12:__Label300+456]
+        kAddrModeLo12Li,  // EA = [base] + #:lo12:Label+immediate. (Example: [x0,
+                          // #:lo12:__Label300+456]
+        kLiteral,         /* xxx_l mode: label */
+        // X86 scale Type
+        kScale,
     };
     /*
      * ARMv8-A A64 ISA Overview by Matteo Franchin @ ARM
@@ -1015,6 +1018,16 @@ public:
     MemOperand(uint32 size) : OperandVisitable(Operand::kOpdMem, size) {}
     MemOperand(uint32 size, const MIRSymbol &mirSymbol) : OperandVisitable(Operand::kOpdMem, size), symbol(&mirSymbol)
     {
+    }
+
+    MemOperand(uint32 size, RegOperand &baseOp, ImmOperand &ofstOp, AArch64AddressingMode mode = kAddrModeBOi)
+        : OperandVisitable(Operand::kOpdMem, size),
+          baseOpnd(&baseOp),
+          offsetOpnd(&ofstOp),
+          symbol(nullptr),
+          addrMode(mode)
+    {
+        DEBUG_ASSERT((mode == kAddrModeBOi), "check mode!");
     }
 
     MemOperand(uint32 size, RegOperand *baseOp, RegOperand *indexOp, ImmOperand *ofstOp, const MIRSymbol *mirSymbol,

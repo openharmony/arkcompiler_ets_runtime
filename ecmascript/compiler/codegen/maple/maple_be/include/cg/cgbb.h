@@ -326,6 +326,14 @@ public:
     {
         frequency = arg;
     }
+    bool IsInColdSection() const
+    {
+        return inColdSection;
+    }
+    void SetColdSection()
+    {
+        inColdSection = true;
+    }
     BB *GetNext()
     {
         return next;
@@ -1054,6 +1062,7 @@ private:
     MapleList<BB *> loopPreds;
     MapleList<BB *> loopSuccs;
     MapleMap<const BB *, int32> succsProb;
+    bool inColdSection = false; /* for bb splitting */
 
     /* this is for live in out analysis */
     MapleSet<regno_t> liveInRegNO;

@@ -804,6 +804,16 @@ public:
         cleanupLabel = &node;
     }
 
+    const LabelNode *GetReturnLabel() const
+    {
+        return returnLabel;
+    }
+
+    void SetReturnLabel(LabelNode &label)
+    {
+        returnLabel = &label;
+    }
+
     BB *GetFirstBB()
     {
         return firstBB;
@@ -1392,6 +1402,16 @@ public:
         hasTakenLabel = true;
     }
 
+    bool HasLaidOutByPgoUse() const
+    {
+        return hasLaidOutByPgoUse;
+    }
+
+    void SetHasLaidOutByPgoUse()
+    {
+        hasLaidOutByPgoUse = true;
+    }
+
     virtual InsnVisitor *NewInsnModifier() = 0;
 
     bool GenCfi() const
@@ -1451,6 +1471,16 @@ public:
         stackMapInsns.emplace_back(&insn);
     }
 
+    bool IsStackMapComputed()
+    {
+        return isStackMapComputed;
+    }
+
+    void SetStackMapComputed()
+    {
+        isStackMapComputed = true;
+    }
+
     void EraseUnreachableStackMapInsns()
     {
         for (auto it = stackMapInsns.begin(); it != stackMapInsns.end();) {
@@ -1506,6 +1536,11 @@ public:
         return exitBBLost;
     }
 
+    bool GetWithSrc() const
+    {
+        return withSrc;
+    }
+
 protected:
     uint32 firstMapleIrVRegNO = 200; /* positioned after physical regs */
     uint32 firstNonPregVRegNO;
@@ -1542,6 +1577,8 @@ protected:
     bool isAfterRegAlloc = false;
     bool isAggParamInReg = false;
     bool hasTakenLabel = false;
+    bool hasLaidOutByPgoUse = false;
+    bool withSrc = true;
     uint32 frequency = 0;
     DebugInfo *debugInfo = nullptr; /* debugging info */
     MapleVector<DBGExprLoc *> dbgParamCallFrameLocations;
@@ -1682,8 +1719,10 @@ private:
     uint32 bbCnt = 0;
     uint32 labelIdx = 0;               /* local label index number */
     LabelNode *startLabel = nullptr;   /* start label of the function */
-    LabelNode *endLabel = nullptr;     /* end label of the function */
+    LabelNode *returnLabel = nullptr;   /* return label of the function */
     LabelNode *cleanupLabel = nullptr; /* label to indicate the entry of cleanup code. */
+    LabelNode *endLabel = nullptr;     /* end label of the function */
+
     BB *firstBB = nullptr;
     BB *cleanupBB = nullptr;
     BB *cleanupEntryBB = nullptr;
@@ -1722,6 +1761,8 @@ private:
     bool hasAsm = false;
     bool useFP = true;
     bool seenFP = true;
+
+    bool isStackMapComputed = false;
 
     /* save stack protect kinds which can trigger stack protect */
     uint8 stackProtectInfo = 0;

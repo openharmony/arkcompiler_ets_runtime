@@ -148,6 +148,7 @@ src_libcgx86phases = [
   "src/cg/local_opt.cpp",
   "src/cg/cfgo.cpp",
   "src/cg/cg_dominance.cpp",
+  "src/cg/cg_stackmap_computation.cpp",
 ]
 
 src_libcgx8664 = [
@@ -234,6 +235,7 @@ src_libcgphases = [
   "src/cg/cg_critical_edge.cpp",
   "src/cg/alignment.cpp",
   "src/cg/cg_validbit_opt.cpp",
+  "src/cg/cg_stackmap_computation.cpp",
 ]
 
 src_libcg = [

@@ -161,6 +161,36 @@ bool IsBlkassignForPush(const BlkassignoffNode &bNode)
     return spBased;
 }
 
+MIRStructType *AArch64CGFunc::GetLmbcStructArgType(BaseNode &stmt, size_t argNo) const
+{
+    MIRType *ty = nullptr;
+    if (stmt.GetOpCode() == OP_call) {
+        CallNode &callNode = static_cast<CallNode &>(stmt);
+        MIRFunction *callFunc = GlobalTables::GetFunctionTable().GetFunctionFromPuidx(callNode.GetPUIdx());
+        if (callFunc->GetFormalCount() < (argNo + 1UL)) {
+            return nullptr; /* formals less than actuals */
+        }
+        ty = GlobalTables::GetTypeTable().GetTypeFromTyIdx(callFunc->GetFormalDefVec()[argNo].formalTyIdx);
+    } else if (stmt.GetOpCode() == OP_icallproto) {
+        argNo--; /* 1st opnd of icallproto is funcname, skip it relative to param list */
+        IcallNode &icallproto = static_cast<IcallNode &>(stmt);
+        MIRType *type = GlobalTables::GetTypeTable().GetTypeFromTyIdx(icallproto.GetRetTyIdx());
+        MIRFuncType *fType = nullptr;
+        if (type->IsMIRPtrType()) {
+            fType = static_cast<MIRPtrType *>(type)->GetPointedFuncType();
+        } else {
+            fType = static_cast<MIRFuncType *>(type);
+        }
+        CHECK_FATAL(fType != nullptr, "invalid fType");
+        if (fType->GetParamTypeList().size() < (argNo + 1UL)) {
+            return nullptr;
+        }
+        ty = GlobalTables::GetTypeTable().GetTypeFromTyIdx(fType->GetNthParamType(argNo));
+    }
+    CHECK_FATAL(ty && ty->IsStructType(), "lmbc agg arg error");
+    return static_cast<MIRStructType *>(ty);
+}
+
 RegOperand &AArch64CGFunc::GetOrCreateResOperand(const BaseNode &parent, PrimType primType)
 {
     RegOperand *resOpnd = nullptr;
@@ -6656,13 +6686,14 @@ void AArch64CGFunc::ReplaceOpndInInsn(RegOperand &regDest, RegOperand &regSrc, I
                 CHECK_FATAL(regOpnd.GetSize() == regSrc.GetSize(), "NIY");
                 insn.SetOperand(static_cast<uint32>(i), regSrc);
             }
-            if (regOpnd.GetBaseRefOpnd() != nullptr && regOpnd.GetBaseRefOpnd()->GetRegisterNumber() == destNO) {
+            if (!IsStackMapComputed() && regOpnd.GetBaseRefOpnd() != nullptr &&
+                regOpnd.GetBaseRefOpnd()->GetRegisterNumber() == destNO) {
                 regOpnd.SetBaseRefOpnd(regSrc);
                 ReplaceRegReference(regOpnd.GetBaseRefOpnd()->GetRegisterNumber(), regSrc.GetRegisterNumber());
             }
         }
     }
-    if (insn.GetStackMap() != nullptr) {
+    if (!IsStackMapComputed() && insn.GetStackMap() != nullptr) {
         for (auto [deoptVreg, opnd] : insn.GetStackMap()->GetDeoptInfo().GetDeoptBundleInfo()) {
             if (!opnd->IsRegister()) {
                 continue;
@@ -7095,6 +7126,18 @@ MemOperand *AArch64CGFunc::CreateStackMemOpnd(regno_t preg, int32 offset, uint32
         memPool->New<MemOperand>(memPool->New<RegOperand>(preg, k64BitSize, kRegTyInt),
                                  &CreateOfstOpnd(static_cast<uint64>(static_cast<int64>(offset)), k32BitSize), size);
     if (preg == RFP || preg == RSP) {
+        memOp->SetStackMem(true);
+    }
+    return memOp;
+}
+
+/* Mem mod BOI || PreIndex || PostIndex */
+MemOperand *AArch64CGFunc::CreateMemOperand(uint32 size, RegOperand &base, ImmOperand &ofstOp, bool isVolatile,
+                                            MemOperand::AArch64AddressingMode mode) const
+{
+    auto *memOp = memPool->New<MemOperand>(size, base, ofstOp, mode);
+    memOp->SetVolatile(isVolatile);
+    if (base.GetRegisterNumber() == RFP || base.GetRegisterNumber() == RSP) {
         memOp->SetStackMem(true);
     }
     return memOp;
@@ -12798,12 +12841,11 @@ RegOperand *AArch64CGFunc::SelectVectorWiden(PrimType rType, Operand *o1, PrimTy
     return res;
 }
 
-/*
- * Check the distance between the first insn of BB with the lable(targ_labidx)
- * and the insn with targ_id. If the distance greater than kShortBRDistance
+/* Check the distance between the first insn of BB with the lable(targ_labidx)
+ * and the insn with targ_id. If the distance greater than maxDistance
  * return false.
  */
-bool AArch64CGFunc::DistanceCheck(const BB &bb, LabelIdx targLabIdx, uint32 targId) const
+bool AArch64CGFunc::DistanceCheck(const BB &bb, LabelIdx targLabIdx, uint32 targId, uint32 maxDistance) const
 {
     for (auto *tBB : bb.GetSuccs()) {
         if (tBB->GetLabIdx() != targLabIdx) {
@@ -12822,7 +12864,7 @@ bool AArch64CGFunc::DistanceCheck(const BB &bb, LabelIdx targLabIdx, uint32 targ
             }
         }
         uint32 tmp = (tInsn->GetId() > targId) ? (tInsn->GetId() - targId) : (targId - tInsn->GetId());
-        return (tmp < kShortBRDistance);
+        return (tmp < maxDistance);
     }
     CHECK_FATAL(false, "CFG error");
 }

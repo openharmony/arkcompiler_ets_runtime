@@ -1222,6 +1222,16 @@ DBGDie *DebugInfo::GetDie(const MIRFunction *func)
     return nullptr;
 }
 
+DBGDie *DebugInfo::GetFuncDie(const MIRFunction &func, bool isDeclDie)
+{
+    uint32 id = isDeclDie ? stridxDieIdMap[func.GetNameStrIdx().GetIdx()]
+                          : funcDefStrIdxDieIdMap[func.GetNameStrIdx().GetIdx()];
+    if (id != 0) {
+        return idDieMap[id];
+    }
+    return nullptr;
+}
+
 // Methods for calculating Offset and Size of DW_AT_xxx
 size_t DBGDieAttr::SizeOf(DBGDieAttr *attr)
 {

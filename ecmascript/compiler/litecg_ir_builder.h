@@ -102,6 +102,11 @@ private:
         GateRef operand;
         maple::litecg::PregIdx phi;
     };
+    enum DerivedStatus {
+        IS_DERIVED,
+        IS_BASE,
+        UNKNOW
+    };
     const std::vector<std::vector<GateRef>> *scheduledGates_ {nullptr};
     const Circuit *circuit_ {nullptr};
     LMIRModule *lmirModule_ {nullptr};
@@ -122,6 +127,11 @@ private:
     int slotSize_ {-1};
     maple::litecg::Type *slotType_ {nullptr};
     std::map<int, std::vector<PhiDesc>> bbID2unmergedPhis_;
+    std::map<int, std::vector<PhiDesc>> bbID2basePhis_; // use for collect all the base references
+    // derived phi reference gate to base phi preg map
+    std::map<GateRef, maple::litecg::PregIdx> derivedPhiGate2BasePhiPreg_;
+    std::map<GateRef, GateRef> derivedGate2BaseGate_; // derived reference gate to base reference gate map
+    std::map<GateRef, bool> derivedGateCache_; // cache whether the phi reference is derived, base or unknow
 
 #define DECLAREVISITLOWEROPCODE(name, signature) void Visit##name signature;
     OPCODES(DECLAREVISITLOWEROPCODE)
@@ -142,7 +152,9 @@ private:
     maple::litecg::BB &GetOrCreateBB(int bbID);
     maple::litecg::BB &GetFirstBB();
     maple::litecg::BB &CreateBB();
-    void AddPhiDesc(int bbID, PhiDesc &desc);
+    void AddPhiDesc(int bbID, PhiDesc &desc, std::map<int, std::vector<PhiDesc>> &bbID2Phis);
+    DerivedStatus CheckDerivedPhi(GateRef gate, std::set<GateRef> &vis);
+    void FindBaseRefForPhi(GateRef gate, const std::vector<GateRef> &phiIns);
     maple::litecg::Type *ConvertLiteCGTypeFromGate(GateRef gate, bool isSigned = true) const;
     maple::litecg::IntCmpCondition ConvertLiteCGPredicateFromICMP(ICmpCondition cond) const;
     maple::litecg::FloatCmpCondition ConvertLiteCGPredicateFromFCMP(FCmpCondition cond) const;
@@ -195,6 +207,7 @@ private:
     void SaveFrameTypeOnFrame(FrameType frameType);
     bool IsInterpreted() const;
     void AddFunc();
+    void CollectDerivedRefInfo();
     bool IsLogEnabled() const
     {
         return enableLog_;

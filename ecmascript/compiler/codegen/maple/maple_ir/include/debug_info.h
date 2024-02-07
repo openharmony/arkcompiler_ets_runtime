@@ -708,6 +708,7 @@ public:
     void SetLocalDie(MIRFunction *func, GStrIdx strIdx, const DBGDie *die);
     DBGDie *GetLocalDie(GStrIdx strIdx);
     DBGDie *GetLocalDie(MIRFunction *func, GStrIdx strIdx);
+    DBGDie *GetFuncDie(const MIRFunction &func, bool isDeclDie = false);
 
     LabelIdx GetLabelIdx(GStrIdx strIdx);
     LabelIdx GetLabelIdx(MIRFunction *func, GStrIdx strIdx);
