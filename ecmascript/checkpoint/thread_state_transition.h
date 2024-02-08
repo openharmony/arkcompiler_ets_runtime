@@ -22,13 +22,13 @@ namespace panda::ecmascript {
 
 class ThreadSuspensionScope final {
 public:
-    inline explicit ThreadSuspensionScope(JSThread* self) : self_(self)
+    explicit ThreadSuspensionScope(JSThread* self) : self_(self)
     {
         oldState_ = self_->GetState();
         self_->UpdateState(ThreadState::IS_SUSPENDED);
     }
 
-    inline ~ThreadSuspensionScope()
+    ~ThreadSuspensionScope()
     {
         self_->UpdateState(oldState_);
     }
@@ -41,7 +41,7 @@ private:
 
 class ThreadStateTransitionScope final {
 public:
-    inline ThreadStateTransitionScope(JSThread* self, ThreadState newState)
+    explicit ThreadStateTransitionScope(JSThread* self, ThreadState newState)
         : self_(self)
         {
             ASSERT(self_ != nullptr);
@@ -49,7 +49,7 @@ public:
             self_->UpdateState(newState);
         }
 
-    inline ~ThreadStateTransitionScope()
+    ~ThreadStateTransitionScope()
     {
         self_->UpdateState(oldState_);
     }
@@ -60,20 +60,45 @@ private:
     NO_COPY_SEMANTIC(ThreadStateTransitionScope);
 };
 
+class ThreadNativeScope final {
+public:
+    explicit ThreadNativeScope(JSThread* self) : scope_(self, ThreadState::NATIVE)
+    {
+        ASSERT(self->GetState() == ThreadState::NATIVE);
+    }
+
+    ~ThreadNativeScope() = default;
+
+private:
+    ThreadStateTransitionScope scope_;
+    NO_COPY_SEMANTIC(ThreadNativeScope);
+};
+
+class ThreadManagedScope final {
+public:
+    explicit ThreadManagedScope(JSThread* self) : scope_(self, ThreadState::RUNNING) {}
+
+    ~ThreadManagedScope() = default;
+
+private:
+    ThreadStateTransitionScope scope_;
+    NO_COPY_SEMANTIC(ThreadManagedScope);
+};
+
 class SuspendAllScope final {
 public:
-    inline explicit SuspendAllScope(JSThread* self)
-        : self_(self), tst_(self, ThreadState::IS_SUSPENDED)
+    explicit SuspendAllScope(JSThread* self)
+        : self_(self), scope_(self, ThreadState::IS_SUSPENDED)
     {
         Runtime::GetInstance()->SuspendAll(self_);
     }
-    inline ~SuspendAllScope()
+    ~SuspendAllScope()
     {
         Runtime::GetInstance()->ResumeAll(self_);
     }
 private:
     JSThread* self_;
-    ThreadStateTransitionScope tst_;
+    ThreadStateTransitionScope scope_;
     NO_COPY_SEMANTIC(SuspendAllScope);
 };
 }  // namespace panda::ecmascript

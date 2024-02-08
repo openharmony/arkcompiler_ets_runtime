@@ -575,7 +575,9 @@ bool JSThread::CheckSafepoint()
     }
 
     if (IsSuspended()) {
+        interruptMutex_.Unlock();
         WaitSuspension();
+        interruptMutex_.Lock();
     }
 
     // vmThreadControl_ 's thread_ is current JSThread's this.
