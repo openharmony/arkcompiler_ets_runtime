@@ -162,8 +162,7 @@ void EcmaVM::PostFork()
 }
 
 EcmaVM::EcmaVM(JSRuntimeOptions options, EcmaParamConfiguration config)
-    : stringTable_(new EcmaStringTable(this)),
-      nativeAreaAllocator_(std::make_unique<NativeAreaAllocator>()),
+    : nativeAreaAllocator_(std::make_unique<NativeAreaAllocator>()),
       heapRegionAllocator_(std::make_unique<HeapRegionAllocator>()),
       chunk_(nativeAreaAllocator_.get()),
       ecmaParamConfiguration_(std::move(config))
@@ -213,6 +212,7 @@ bool EcmaVM::IsEnableElementsKind() const
 bool EcmaVM::Initialize()
 {
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "EcmaVM::Initialize");
+    stringTable_ = Runtime::GetInstance()->GetEcmaStringTable();
     InitializePGOProfiler();
     Taskpool::GetCurrentTaskpool()->Initialize();
 #ifndef PANDA_TARGET_WINDOWS
@@ -234,7 +234,6 @@ bool EcmaVM::Initialize()
     thread_->SetGlueGlobalEnv(reinterpret_cast<GlobalEnv *>(context->GetGlobalEnv().GetTaggedType()));
     thread_->SetGlobalObject(GetGlobalEnv()->GetGlobalObject());
     thread_->SetCurrentEcmaContext(context);
-    SingleCharTable::CreateSingleCharTable(thread_);
     GenerateInternalNativeMethods();
     quickFixManager_ = new QuickFixManager();
     snapshotEnv_ = new SnapshotEnv(this);
@@ -331,7 +330,6 @@ EcmaVM::~EcmaVM()
     }
 
     if (stringTable_ != nullptr) {
-        delete stringTable_;
         stringTable_ = nullptr;
     }
 

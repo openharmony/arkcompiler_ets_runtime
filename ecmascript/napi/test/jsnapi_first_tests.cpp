@@ -58,6 +58,7 @@
 #include "ecmascript/tagged_tree.h"
 #include "ecmascript/weak_vector.h"
 #include "gtest/gtest.h"
+#include "jsnapi_expo.h"
 
 using namespace panda;
 using namespace panda::ecmascript;
@@ -2039,10 +2040,10 @@ HWTEST_F_L0(JSNApiTests, PrintExceptionInfo)
     LocalScope scope(vm_);
     RuntimeOption option;
     option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
-    vm_ = JSNApi::CreateJSVM(option);
-    ASSERT_TRUE(vm_ != nullptr) << "Cannot create Runtime";
-    thread_ = vm_->GetJSThread();
-    JSNApi::PrintExceptionInfo(vm_);
+    auto *vm = JSNApi::CreateJSVM(option);
+    ASSERT_TRUE(vm != nullptr) << "Cannot create Runtime";
+    JSNApi::PrintExceptionInfo(vm);
+    JSNApi::DestroyJSVM(vm);
 }
 
 /*

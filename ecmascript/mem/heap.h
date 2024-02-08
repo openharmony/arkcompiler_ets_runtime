@@ -397,6 +397,8 @@ public:
 
     inline TaggedObject *AllocateOldOrHugeObject(JSThread *thread, JSHClass *hclass, size_t size);
 
+    inline TaggedObject *AllocateOldOrHugeObject(JSThread *thread, size_t size);
+
     inline TaggedObject *AllocateHugeObject(JSThread *thread, JSHClass *hclass, size_t size);
 
     inline TaggedObject *AllocateHugeObject(JSThread *thread, size_t size);

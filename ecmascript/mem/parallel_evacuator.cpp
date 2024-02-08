@@ -310,7 +310,8 @@ void ParallelEvacuator::UpdateWeakReference()
     MEM_ALLOCATE_AND_GC_TRACE(heap_->GetEcmaVM(), UpdateWeakReference);
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "GC::UpdateWeakReference");
     UpdateRecordWeakReference();
-    auto stringTable = heap_->GetEcmaVM()->GetEcmaStringTable();
+    // TODO(hzzhouzebin) wait for shared-gc
+    // auto stringTable = heap_->GetEcmaVM()->GetEcmaStringTable();
     bool isFullMark = heap_->IsFullMark();
     WeakRootVisitor gcUpdateWeak = [isFullMark](TaggedObject *header) {
         Region *objectRegion = Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(header));
@@ -340,7 +341,8 @@ void ParallelEvacuator::UpdateWeakReference()
     };
     if (isFullMark) {
         // Only old gc will sweep string table.
-        stringTable->SweepWeakReference(gcUpdateWeak);
+        // TODO(hzzhouzebin) wait for shared-gc
+        // stringTable->SweepWeakReference(gcUpdateWeak);
     }
 
     heap_->GetEcmaVM()->GetJSThread()->IterateWeakEcmaGlobalStorage(gcUpdateWeak);

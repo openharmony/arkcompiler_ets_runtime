@@ -14,6 +14,7 @@
  */
 
 #include "ecmascript/js_function_kind.h"
+#include "ecmascript/mem/heap.h"
 #include "ecmascript/object_factory-inl.h"
 
 #include "ecmascript/accessor_data.h"
@@ -2350,6 +2351,12 @@ JSHandle<TaggedArray> ObjectFactory::NewTaggedArray(uint32_t length, JSTaggedVal
         case MemSpaceType::NON_MOVABLE:
             header = heap_->AllocateNonMovableOrHugeObject(arrayClass, size);
             break;
+        case MemSpaceType::SHARED_OLD_SPACE:
+            header = sHeap_->AllocateOldOrHugeObject(thread_, arrayClass, size);
+            break;
+        case MemSpaceType::SHARED_NON_MOVABLE:
+            header = sHeap_->AllocateNonMovableOrHugeObject(thread_, arrayClass, size);
+            break;
         default:
             LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
@@ -2935,7 +2942,7 @@ JSHandle<EcmaString> ObjectFactory::GetStringFromStringTable(const uint8_t *utf8
         return GetEmptyString();
     }
     auto stringTable = vm_->GetEcmaStringTable();
-    return JSHandle<EcmaString>(thread_, stringTable->GetOrInternString(utf8Data, utf8Len, canBeCompress));
+    return JSHandle<EcmaString>(thread_, stringTable->GetOrInternString(vm_, utf8Data, utf8Len, canBeCompress));
 }
 
 JSHandle<EcmaString> ObjectFactory::GetStringFromStringTableNonMovable(const uint8_t *utf8Data, uint32_t utf8Len) const
@@ -2945,7 +2952,7 @@ JSHandle<EcmaString> ObjectFactory::GetStringFromStringTableNonMovable(const uin
         return GetEmptyString();
     }
     auto stringTable = vm_->GetEcmaStringTable();
-    return JSHandle<EcmaString>(thread_, stringTable->CreateAndInternStringNonMovable(utf8Data, utf8Len));
+    return JSHandle<EcmaString>(thread_, stringTable->CreateAndInternStringNonMovable(vm_, utf8Data, utf8Len));
 }
 
 JSHandle<EcmaString> ObjectFactory::GetStringFromStringTable(const uint16_t *utf16Data, uint32_t utf16Len,
@@ -2956,7 +2963,7 @@ JSHandle<EcmaString> ObjectFactory::GetStringFromStringTable(const uint16_t *utf
         return GetEmptyString();
     }
     auto stringTable = vm_->GetEcmaStringTable();
-    return JSHandle<EcmaString>(thread_, stringTable->GetOrInternString(utf16Data, utf16Len, canBeCompress));
+    return JSHandle<EcmaString>(thread_, stringTable->GetOrInternString(vm_, utf16Data, utf16Len, canBeCompress));
 }
 
 JSHandle<EcmaString> ObjectFactory::GetStringFromStringTable(EcmaString *string) const
@@ -2966,7 +2973,7 @@ JSHandle<EcmaString> ObjectFactory::GetStringFromStringTable(EcmaString *string)
         return GetEmptyString();
     }
     auto stringTable = vm_->GetEcmaStringTable();
-    return JSHandle<EcmaString>(thread_, stringTable->GetOrInternString(string));
+    return JSHandle<EcmaString>(thread_, stringTable->GetOrInternString(vm_, string));
 }
 
 // NB! don't do special case for C0 80, it means '\u0000', so don't convert to UTF-8
@@ -2983,10 +2990,10 @@ EcmaString *ObjectFactory::GetRawStringFromStringTable(StringData sd, MemSpaceTy
     const uint8_t *mutf8Data = sd.data;
     if (canBeCompressed) {
         // This branch will use constant string, which has a pointer at the string in the pandafile.
-        return vm_->GetEcmaStringTable()->GetOrInternStringWithSpaceType(mutf8Data, utf16Len, true, type,
+        return vm_->GetEcmaStringTable()->GetOrInternStringWithSpaceType(vm_, mutf8Data, utf16Len, true, type,
                                                                          isConstantString, idOffset);
     }
-    return vm_->GetEcmaStringTable()->GetOrInternStringWithSpaceType(mutf8Data, utf16Len, type);
+    return vm_->GetEcmaStringTable()->GetOrInternStringWithSpaceType(vm_, mutf8Data, utf16Len, type);
 }
 
 JSHandle<PropertyBox> ObjectFactory::NewPropertyBox(const JSHandle<JSTaggedValue> &value)
@@ -3438,7 +3445,7 @@ EcmaString *ObjectFactory::InternString(const JSHandle<JSTaggedValue> &key)
     }
 
     EcmaStringTable *stringTable = vm_->GetEcmaStringTable();
-    return stringTable->GetOrInternString(str);
+    return stringTable->GetOrInternString(vm_, str);
 }
 
 JSHandle<TransitionHandler> ObjectFactory::NewTransitionHandler()
@@ -3981,7 +3988,7 @@ JSHandle<EcmaString> ObjectFactory::GetStringFromStringTable(const JSHandle<Ecma
                                                              const JSHandle<EcmaString> &secondString)
 {
     auto stringTable = vm_->GetEcmaStringTable();
-    return JSHandle<EcmaString>(thread_, stringTable->GetOrInternString(firstString, secondString));
+    return JSHandle<EcmaString>(thread_, stringTable->GetOrInternString(vm_, firstString, secondString));
 }
 
 JSHandle<JSAPIArrayList> ObjectFactory::NewJSAPIArrayList(uint32_t capacity)

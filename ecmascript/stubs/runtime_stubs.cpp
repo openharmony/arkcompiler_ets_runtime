@@ -18,6 +18,7 @@
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/log.h"
 #include "ecmascript/log_wrapper.h"
+#include "ecmascript/mem/heap.h"
 #include "ecmascript/stubs/runtime_stubs-inl.h"
 #include "ecmascript/accessor_data.h"
 #include "ecmascript/base/fast_json_stringifier.h"
@@ -156,6 +157,22 @@ DEF_RUNTIME_STUBS(AllocateInYoung)
     auto result = reinterpret_cast<TaggedObject *>(space->Allocate(size));
     if (result == nullptr) {
         result = heap->AllocateYoungOrHugeObject(size);
+        ASSERT(result != nullptr);
+    }
+    return JSTaggedValue(result).GetRawData();
+}
+
+DEF_RUNTIME_STUBS(AllocateInSOld)
+{
+    RUNTIME_STUBS_HEADER(AllocateInSOld);
+    JSTaggedValue allocateSize = GetArg(argv, argc, 0);  // 0: means the zeroth parameter
+    auto size = static_cast<size_t>(allocateSize.GetInt());
+    auto sharedHeap = const_cast<SharedHeap*>(SharedHeap::GetInstance());
+    auto oldSpace = sharedHeap->GetOldSpace();
+    ASSERT(size <= MAX_REGULAR_HEAP_OBJECT_SIZE);
+    auto result = reinterpret_cast<TaggedObject *>(oldSpace->Allocate(size));
+    if (result == nullptr) {
+        result = sharedHeap->AllocateOldOrHugeObject(thread, size);
         ASSERT(result != nullptr);
     }
     return JSTaggedValue(result).GetRawData();
@@ -2690,7 +2707,7 @@ DEF_RUNTIME_STUBS(InsertStringToTable)
     RUNTIME_STUBS_HEADER(InsertStringToTable);
     JSHandle<EcmaString> str = GetHArg<EcmaString>(argv, argc, 0);  // 0: means the zeroth parameter
     return JSTaggedValue::Cast(
-        static_cast<void *>(thread->GetEcmaVM()->GetEcmaStringTable()->InsertStringToTable(str)));
+        static_cast<void *>(thread->GetEcmaVM()->GetEcmaStringTable()->InsertStringToTable(thread->GetEcmaVM(), str)));
 }
 
 DEF_RUNTIME_STUBS(SlowFlattenString)

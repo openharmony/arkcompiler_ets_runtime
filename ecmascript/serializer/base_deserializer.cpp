@@ -21,6 +21,9 @@
 #include "ecmascript/js_thread.h"
 #include "ecmascript/mem/mem.h"
 #include "ecmascript/mem/sparse_space.h"
+#include "ecmascript/platform/mutex.h"
+#include "ecmascript/runtime.h"
+#include "ecmascript/runtime_lock.h"
 
 namespace panda::ecmascript {
 
@@ -106,13 +109,14 @@ uintptr_t BaseDeserializer::DeserializeTaggedObject(SerializedObjectSpace space)
     // String need remove duplicates if string table can find
     if (type == JSType::LINE_STRING || type == JSType::CONSTANT_STRING) {
         EcmaStringTable *stringTable = thread_->GetEcmaVM()->GetEcmaStringTable();
-        EcmaString *str = stringTable->GetString(reinterpret_cast<EcmaString *>(res));
+        RuntimeLockHolder locker(thread_, stringTable->mutex_);
+        EcmaString *str = stringTable->GetStringThreadUnsafe(reinterpret_cast<EcmaString *>(res));
         if (str) {
             res = ToUintPtr(str);
             objectVector_[resIndex] = res;
         } else {
             EcmaStringAccessor(reinterpret_cast<EcmaString *>(res)).ClearInternString();
-            stringTable->InternString(reinterpret_cast<EcmaString *>(res));
+            stringTable->InternStringThreadUnsafe(reinterpret_cast<EcmaString *>(res));
         }
     }
     return res;

@@ -821,6 +821,7 @@ ecma_source = [
   "ecmascript/regexp/regexp_parser.cpp",
   "ecmascript/regexp/regexp_parser_cache.cpp",
   "ecmascript/runtime.cpp",
+  "ecmascript/runtime_lock.cpp",
   "ecmascript/global_index_map.cpp",
   "ecmascript/shared_mm/shared_mm.cpp",
   "ecmascript/tagged_dictionary.cpp",

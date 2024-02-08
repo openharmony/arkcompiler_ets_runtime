@@ -513,7 +513,7 @@ public:
             EcmaVM *vm = thread->GetEcmaVM();
             ObjectFactory *factory = vm->GetFactory();
             JSHandle<ConstantPool> constpoolHandle(thread, constpool);
-            auto string = factory->GetRawStringFromStringTable(foundStr, MemSpaceType::OLD_SPACE,
+            auto string = factory->GetRawStringFromStringTable(foundStr, MemSpaceType::SHARED_OLD_SPACE,
                 jsPandaFile->IsFirstMergedAbc(), id.GetOffset());
 
             val = JSTaggedValue(string);

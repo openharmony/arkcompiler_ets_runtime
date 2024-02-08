@@ -246,7 +246,6 @@ void JSThread::Iterate(const RootVisitor &visitor, const RootRangeVisitor &range
     if (!glueData_.exception_.IsHole()) {
         visitor(Root::ROOT_VM, ObjectSlot(ToUintPtr(&glueData_.exception_)));
     }
-    visitor(Root::ROOT_VM, ObjectSlot(ToUintPtr(&glueData_.singleCharTable_)));
     rangeVisitor(
         Root::ROOT_VM, ObjectSlot(glueData_.builtinEntries_.Begin()), ObjectSlot(glueData_.builtinEntries_.End()));
 

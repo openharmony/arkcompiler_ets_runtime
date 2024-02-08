@@ -67,7 +67,7 @@ void LiteralDataExtractor::ExtractObjectDatas(JSThread *thread, const JSPandaFil
             }
             case LiteralTag::STRING: {
                 StringData sd = jsPandaFile->GetStringData(EntityId(std::get<uint32_t>(value)));
-                EcmaString *str = factory->GetRawStringFromStringTable(sd, MemSpaceType::OLD_SPACE);
+                EcmaString *str = factory->GetRawStringFromStringTable(sd, MemSpaceType::SHARED_OLD_SPACE);
                 jt = JSTaggedValue(str);
                 uint32_t elementIndex = 0;
                 if (JSTaggedValue::ToElementIndex(jt, &elementIndex) && ppos % pairSize == 0) {
@@ -176,7 +176,7 @@ JSHandle<TaggedArray> LiteralDataExtractor::EnumerateLiteralVals(JSThread *threa
                 }
                 case LiteralTag::STRING: {
                     StringData sd = jsPandaFile->GetStringData(EntityId(std::get<uint32_t>(value)));
-                    EcmaString *str = factory->GetRawStringFromStringTable(sd, MemSpaceType::OLD_SPACE);
+                    EcmaString *str = factory->GetRawStringFromStringTable(sd, MemSpaceType::SHARED_OLD_SPACE);
                     jt = JSTaggedValue(str);
                     break;
                 }
@@ -390,7 +390,7 @@ void LiteralDataExtractor::ExtractObjectDatas(JSThread *thread, const JSPandaFil
             }
             case LiteralTag::STRING: {
                 StringData sd = jsPandaFile->GetStringData(EntityId(std::get<uint32_t>(value)));
-                EcmaString *str = factory->GetRawStringFromStringTable(sd, MemSpaceType::OLD_SPACE);
+                EcmaString *str = factory->GetRawStringFromStringTable(sd, MemSpaceType::SHARED_OLD_SPACE);
                 jt = JSTaggedValue(str);
                 uint32_t elementIndex = 0;
                 if (JSTaggedValue::ToElementIndex(jt, &elementIndex) && ppos % pairSize == 0) {
@@ -499,7 +499,7 @@ JSHandle<TaggedArray> LiteralDataExtractor::GetDatasIgnoreType(JSThread *thread,
                 }
                 case LiteralTag::STRING: {
                     StringData sd = jsPandaFile->GetStringData(EntityId(std::get<uint32_t>(value)));
-                    EcmaString *str = factory->GetRawStringFromStringTable(sd, MemSpaceType::OLD_SPACE);
+                    EcmaString *str = factory->GetRawStringFromStringTable(sd, MemSpaceType::SHARED_OLD_SPACE);
                     jt = JSTaggedValue(str);
                     break;
                 }

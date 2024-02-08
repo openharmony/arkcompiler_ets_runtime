@@ -38,7 +38,7 @@ void GlobalEnv::Init(JSThread *thread)
     SetGlobalRecord(thread, GlobalDictionary::Create(thread));
     JSTaggedValue emptyStr = thread->GlobalConstants()->GetEmptyString();
     EcmaStringTable *stringTable = thread->GetEcmaVM()->GetEcmaStringTable();
-    stringTable->InternEmptyString(EcmaString::Cast(emptyStr.GetTaggedObject()));
+    stringTable->InternEmptyString(thread, EcmaString::Cast(emptyStr.GetTaggedObject()));
     SetTemplateMap(thread, TemplateMap::Create(thread));
     SetObjectLiteralHClassCache(thread, JSTaggedValue::Hole());
     SetJsonObjectHclassCache(thread, JSTaggedValue::Hole());

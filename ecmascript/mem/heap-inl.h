@@ -501,6 +501,18 @@ TaggedObject *SharedHeap::AllocateOldOrHugeObject(JSThread *thread, JSHClass *hc
     return object;
 }
 
+TaggedObject *SharedHeap::AllocateOldOrHugeObject(JSThread *thread, size_t size)
+{
+    size = AlignUp(size, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
+    if (size > MAX_REGULAR_HEAP_OBJECT_SIZE) {
+        return AllocateHugeObject(thread, size);
+    }
+
+    auto object = reinterpret_cast<TaggedObject *>(sOldSpace_->ConcurrentAllocate(size));
+    CHECK_SOBJ_AND_THROW_OOM_ERROR(thread, object, size, sOldSpace_, "SharedHeap::AllocateOldOrHugeObject");
+    return object;
+}
+
 TaggedObject *SharedHeap::AllocateHugeObject(JSThread *thread, JSHClass *hclass, size_t size)
 {
     // Check whether it is necessary to trigger Old GC before expanding to avoid OOM risk.
