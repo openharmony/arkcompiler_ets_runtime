@@ -25,6 +25,7 @@ namespace panda::ecmascript {
 class HandlerBase {
 public:
     static constexpr uint32_t KIND_BIT_LENGTH = 3;
+    static constexpr uint32_t STORE_KIND_BIT_LENGTH = 2;
     enum HandlerKind {
         NONE = 0,
         FIELD,
@@ -37,6 +38,15 @@ public:
         TOTAL_KINDS,
     };
 
+    // Store Handler kind combined with KindBit called SWholeKindBit. Which used to quickly check S_FIELD kind
+    enum StoreHandlerKind {
+        S_NONE = HandlerKind::NONE,
+        S_FIELD,
+        S_ELEMENT,
+        S_TOTAL_KINDS,
+    };
+
+    // For Load
     using KindBit = BitField<HandlerKind, 0, KIND_BIT_LENGTH>;
     using InlinedPropsBit = KindBit::NextFlag;
     using AccessorBit = InlinedPropsBit::NextFlag;
@@ -47,8 +57,16 @@ public:
     using AttrIndexBit = RepresentationBit::NextField<uint32_t, PropertyAttributes::OFFSET_BITFIELD_NUM>;
     using IsOnHeapBit = AttrIndexBit::NextFlag;
     using NeedSkipInPGODumpBit = IsOnHeapBit::NextFlag;
-
     static_assert(static_cast<size_t>(HandlerKind::TOTAL_KINDS) <= (1 << KIND_BIT_LENGTH));
+
+    // For Store
+    using SKindBit = BitField<StoreHandlerKind, 0, STORE_KIND_BIT_LENGTH>;
+    using SSharedBit = SKindBit::NextFlag;
+    using SWholeKindBit = KindBit;
+    static_assert(SKindBit::START_BIT == SWholeKindBit::START_BIT);
+    static_assert(SSharedBit::Mask() || SKindBit::Mask() == KindBit::Mask());
+    using STrackTypeBit = AttrIndexBit::NextField<uint32_t, PropertyAttributes::TRACK_TYPE_NUM>;
+    static_assert(static_cast<size_t>(StoreHandlerKind::S_TOTAL_KINDS) <= (1 << STORE_KIND_BIT_LENGTH));
 
     HandlerBase() = default;
     virtual ~HandlerBase() = default;
@@ -63,6 +81,11 @@ public:
         return InternalAccessorBit::Get(handler);
     }
 
+    static inline TrackType GetTrackType(uint32_t handler)
+    {
+        return static_cast<TrackType>(STrackTypeBit::Get(handler));
+    }
+
     static inline bool IsNonExist(uint32_t handler)
     {
         return GetKind(handler) == HandlerKind::NON_EXIST;
@@ -71,6 +94,21 @@ public:
     static inline bool IsField(uint32_t handler)
     {
         return GetKind(handler) == HandlerKind::FIELD;
+    }
+
+    static inline bool IsNonSharedStoreField(uint32_t handler)
+    {
+        return static_cast<StoreHandlerKind>(GetKind(handler)) == StoreHandlerKind::S_FIELD;
+    }
+
+    static inline bool IsStoreShared(uint32_t handler)
+    {
+        return SSharedBit::Get(handler);
+    }
+
+    static inline void ClearSharedStoreKind(uint32_t &handler)
+    {
+        SSharedBit::Set<uint32_t>(false, &handler);
     }
 
     static inline bool IsString(uint32_t handler)
@@ -240,10 +278,18 @@ class StoreHandler final : public HandlerBase {
 public:
     static inline JSHandle<JSTaggedValue> StoreProperty(const JSThread *thread, const ObjectOperator &op)
     {
-        if (op.IsElement()) {
-            return StoreElement(thread, op.GetReceiver());
-        }
         uint32_t handler = 0;
+        JSHandle<JSObject> receiver = JSHandle<JSObject>::Cast(op.GetReceiver());
+        SSharedBit::Set<uint32_t>(op.GetReceiver()->IsJSShared(), &handler);
+        TaggedArray *array = TaggedArray::Cast(receiver->GetProperties().GetTaggedObject());
+        if (!array->IsDictionaryMode()) {
+            STrackTypeBit::Set(static_cast<uint32_t>(op.GetAttr().GetTrackType()), &handler);
+        } else {
+            STrackTypeBit::Set(static_cast<uint32_t>(op.GetAttr().GetDictTrackType()), &handler);
+        }
+        if (op.IsElement()) {
+            return StoreElement(thread, op.GetReceiver(), handler);
+        }
         JSTaggedValue val = op.GetValue();
         if (val.IsPropertyBox()) {
             return JSHandle<JSTaggedValue>(thread, val);
@@ -251,13 +297,12 @@ public:
         bool hasSetter = op.IsAccessorDescriptor();
         AccessorBit::Set<uint32_t>(hasSetter, &handler);
         if (!hasSetter) {
-            KindBit::Set<uint32_t>(HandlerKind::FIELD, &handler);
+            SKindBit::Set<uint32_t>(StoreHandlerKind::S_FIELD, &handler);
         }
         if (op.IsInlinedProps()) {
             InlinedPropsBit::Set<uint32_t>(true, &handler);
             uint32_t index = 0;
             if (!hasSetter) {
-                JSHandle<JSObject> receiver = JSHandle<JSObject>::Cast(op.GetReceiver());
                 index = receiver->GetJSHClass()->GetInlinedPropertiesIndex(op.GetIndex());
             } else {
                 JSHandle<JSObject> holder = JSHandle<JSObject>::Cast(op.GetHolder());
@@ -266,27 +311,25 @@ public:
             AttrIndexBit::Set<uint32_t>(op.GetIndex(), &handler);
             OffsetBit::Set<uint32_t>(index, &handler);
             RepresentationBit::Set(op.GetRepresentation(), &handler);
-            return JSHandle<JSTaggedValue>(thread, JSTaggedValue(handler));
+            return JSHandle<JSTaggedValue>(thread, JSTaggedValue(static_cast<int32_t>(handler)));
         }
         ASSERT(op.IsFastMode());
-        JSHandle<JSObject> receiver = JSHandle<JSObject>::Cast(op.GetReceiver());
         uint32_t inlinePropNum = receiver->GetJSHClass()->GetInlinedProperties();
         AttrIndexBit::Set<uint32_t>(op.GetIndex() + inlinePropNum, &handler);
         OffsetBit::Set<uint32_t>(op.GetIndex(), &handler);
         RepresentationBit::Set(Representation::TAGGED, &handler);
-        return JSHandle<JSTaggedValue>(thread, JSTaggedValue(handler));
+        return JSHandle<JSTaggedValue>(thread, JSTaggedValue(static_cast<int32_t>(handler)));
     }
 
     static inline JSHandle<JSTaggedValue> StoreElement(const JSThread *thread,
-                                                       JSHandle<JSTaggedValue> receiver)
+                                                       JSHandle<JSTaggedValue> receiver, uint32_t handler)
     {
-        uint32_t handler = 0;
-        KindBit::Set<uint32_t>(HandlerKind::ELEMENT, &handler);
+        SKindBit::Set<uint32_t>(StoreHandlerKind::S_ELEMENT, &handler);
 
         if (receiver->IsJSArray()) {
             IsJSArrayBit::Set<uint32_t>(true, &handler);
         }
-        return JSHandle<JSTaggedValue>(thread, JSTaggedValue(handler));
+        return JSHandle<JSTaggedValue>(thread, JSTaggedValue(static_cast<int32_t>(handler)));
     }
 };
 

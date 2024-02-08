@@ -16,6 +16,7 @@
 #include "ecmascript/compiler/profiler_stub_builder.h"
 
 #include "ecmascript/base/number_helper.h"
+#include "ecmascript/compiler/circuit_builder_helper.h"
 #include "ecmascript/compiler/share_gate_meta_data.h"
 #include "ecmascript/compiler/interpreter_stub-inl.h"
 #include "ecmascript/compiler/stub_builder-inl.h"
@@ -444,6 +445,7 @@ void ProfilerStubBuilder::UpdatePropAttrIC(
     Label entry(env);
     env->SubCfgEntry(&entry);
     Label exit(env);
+    Label handleUnShared(env);
     Label updateLayout(env);
 
     GateRef attrIndex = HandlerBaseGetAttrIndex(handler);
@@ -452,19 +454,23 @@ void ProfilerStubBuilder::UpdatePropAttrIC(
     GateRef propAttr = GetPropAttrFromLayoutInfo(layout, attrIndex);
     GateRef attr = GetInt32OfTInt(propAttr);
     GateRef newAttr = UpdateTrackTypeInPropAttr(attr, value, callback);
-    Branch(Equal(attr, newAttr), &exit, &updateLayout);
-    Bind(&updateLayout);
+    Branch(IsJSShared(receiver), &exit, &handleUnShared);
+    Bind(&handleUnShared);
     {
-        SetPropAttrToLayoutInfo(glue, layout, attrIndex, newAttr);
-        callback.TryPreDump();
-        Jump(&exit);
+        Branch(Equal(attr, newAttr), &exit, &updateLayout);
+        Bind(&updateLayout);
+        {
+            SetPropAttrToLayoutInfo(glue, layout, attrIndex, newAttr);
+            callback.TryPreDump();
+            Jump(&exit);
+        }
     }
     Bind(&exit);
     env->SubCfgExit();
 }
 
-void ProfilerStubBuilder::UpdatePropAttrWithValue(
-    GateRef glue, GateRef layout, GateRef attr, GateRef attrIndex, GateRef value, ProfileOperation callback)
+void ProfilerStubBuilder::UpdatePropAttrWithValue(GateRef glue, GateRef jsType, GateRef layout, GateRef attr,
+                                                  GateRef attrIndex, GateRef value, ProfileOperation callback)
 {
     if (callback.IsEmpty()) {
         return;
@@ -474,6 +480,9 @@ void ProfilerStubBuilder::UpdatePropAttrWithValue(
     env->SubCfgEntry(&entry);
     Label exit(env);
     Label updateLayout(env);
+    Label notSharedType(env);
+    Branch(IsJSSharedType(jsType), &exit, &notSharedType);
+    Bind(&notSharedType);
     GateRef newAttr = UpdateTrackTypeInPropAttr(attr, value, callback);
     Branch(Equal(attr, newAttr), &exit, &updateLayout);
     Bind(&updateLayout);

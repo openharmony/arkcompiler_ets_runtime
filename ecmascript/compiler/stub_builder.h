@@ -355,6 +355,8 @@ public:
     GateRef IsAccessor(GateRef attr);
     GateRef IsInlinedProperty(GateRef attr);
     GateRef IsField(GateRef attr);
+    GateRef IsNonSharedStoreField(GateRef attr);
+    GateRef IsStoreShared(GateRef attr);
     GateRef IsElement(GateRef attr);
     GateRef IsStringElement(GateRef attr);
     GateRef IsStringLength(GateRef attr);
@@ -470,6 +472,10 @@ public:
     GateRef GetValueFromMutantTaggedArray(GateRef elements, GateRef index);
     void CheckUpdateSharedType(bool isDicMode, Variable *result, GateRef glue, GateRef jsType, GateRef attr,
                                GateRef value, Label *executeSetProp, Label *exit);
+    void MatchTrackType(Variable *result, GateRef glue, GateRef trackType, GateRef value, Label *executeSetProp,
+                               Label *exit);
+    GateRef GetTrackTypeFromHandler(GateRef attr);
+    GateRef ClearSharedStoreKind(GateRef handlerInfo);
     GateRef GetTaggedValueWithElementsKind(GateRef receiver, GateRef index);
     GateRef SetValueWithElementsKind(GateRef glue, GateRef receiver, GateRef rawValue, GateRef index,
                                      GateRef needTransition, GateRef extraKind);
