@@ -72,7 +72,7 @@ inline void NonMovableMarker::MarkObject(uint32_t threadId, TaggedObject *object
 {
     Region *objectRegion = Region::ObjectAddressToRange(object);
 
-    if (!heap_->IsFullMark() && !objectRegion->InYoungSpace()) {
+    if (!heap_->IsConcurrentFullMark() && !objectRegion->InYoungSpace()) {
         return;
     }
 

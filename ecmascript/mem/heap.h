@@ -78,6 +78,16 @@ enum AppSensitiveStatus : uint8_t {
     EXIT_HIGH_SENSITIVE,
 };
 
+enum class VerifyKind {
+    VERIFY_PRE_GC,
+    VERIFY_POST_GC,
+    VERIFY_CONCURRENT_MARK_YOUNG,
+    VERIFY_EVACUATE_YOUNG,
+    VERIFY_CONCURRENT_MARK_FULL,
+    VERIFY_EVACUATE_OLD,
+    VERIFY_EVACUATE_FULL
+};
+
 class Heap {
 public:
     explicit Heap(EcmaVM *ecmaVm);
@@ -284,6 +294,12 @@ public:
         return onSerializeEvent_;
     }
 
+    // Whether should verify heap during gc.
+    bool ShouldVerifyHeap() const
+    {
+        return shouldVerifyHeap_;
+    }
+
     /*
      * For object allocations.
      */
@@ -372,7 +388,7 @@ public:
         markType_ = markType;
     }
 
-    bool IsFullMark() const
+    bool IsConcurrentFullMark() const
     {
         return markType_ == MarkType::MARK_FULL;
     }
@@ -520,8 +536,8 @@ public:
     bool IsAlive(TaggedObject *object) const;
     bool ContainObject(TaggedObject *object) const;
 
-    size_t VerifyHeapObjects() const;
-    size_t VerifyOldToNewRSet() const;
+    size_t VerifyHeapObjects(VerifyKind verifyKind = VerifyKind::VERIFY_PRE_GC) const;
+    size_t VerifyOldToNewRSet(VerifyKind verifyKind = VerifyKind::VERIFY_PRE_GC) const;
     void StatisticHeapObject(TriggerGCType gcType) const;
     void StatisticHeapDetail() const;
     void PrintHeapInfo(TriggerGCType gcType) const;
@@ -540,12 +556,19 @@ public:
     }
 
     void AdjustSpaceSizeForAppSpawn();
-#if ECMASCRIPT_ENABLE_HEAP_VERIFY
+
+    // ONLY used for heap verification.
     bool IsVerifying() const
     {
         return isVerifying_;
     }
-#endif
+
+    // ONLY used for heap verification.
+    void SetVerifying(bool verifying)
+    {
+        isVerifying_ = verifying;
+    }
+
     static bool ShouldMoveToRoSpace(JSHClass *hclass, TaggedObject *object)
     {
         return hclass->IsString() && !Region::ObjectAddressToRange(object)->InHugeObjectSpace();
@@ -620,6 +643,11 @@ public:
     bool GetOldGCRequested()
     {
         return oldGCRequested_;
+    }
+
+    TriggerGCType GetGCType() const
+    {
+        return gcType_;
     }
 
     void CheckNonMovableSpaceOOM();
@@ -829,9 +857,9 @@ private:
     double idleTaskFinishTime_ {0.0};
     int32_t recursionDepth_ {0};
 
-#if ECMASCRIPT_ENABLE_HEAP_VERIFY
+    // ONLY used for heap verification.
+    bool shouldVerifyHeap_ {false};
     bool isVerifying_ {false};
-#endif
 };
 }  // namespace panda::ecmascript
 

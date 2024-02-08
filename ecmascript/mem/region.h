@@ -66,6 +66,8 @@ enum RegionGCFlags {
     // INVALID_VALUE in ZAP_MEM.
     HAS_BEEN_SWEPT = 1 << 11,
     NEED_RELOCATE = 1 << 12,
+    // ONLY used for heap verification.
+    IN_INACTIVE_SEMI_SPACE = 1 << 13,
 };
 
 static inline std::string ToSpaceTypeName(uint8_t space)
@@ -191,6 +193,8 @@ public:
     bool AtomicMark(void *address);
     void ClearMark(void *address);
     bool Test(void *addr) const;
+    // ONLY used for heap verification.
+    bool TestOldToNew(uintptr_t addr);
     template <typename Visitor>
     void IterateAllMarkedBits(Visitor visitor) const;
     void ClearMarkGCBitset();
@@ -343,6 +347,30 @@ public:
     bool NeedRelocate() const
     {
         return IsGCFlagSet(RegionGCFlags::NEED_RELOCATE);
+    }
+
+    // ONLY used for heap verification.
+    bool InInactiveSemiSpace() const
+    {
+        return IsGCFlagSet(RegionGCFlags::IN_INACTIVE_SEMI_SPACE);
+    }
+
+    // ONLY used for heap verification.
+    bool InActiveSemiSpace() const
+    {
+        return InYoungSpace() && !InInactiveSemiSpace();
+    }
+
+    // ONLY used for heap verification.
+    void SetInactiveSemiSpace()
+    {
+        SetGCFlag(RegionGCFlags::IN_INACTIVE_SEMI_SPACE);
+    }
+
+    // ONLY used for heap verification.
+    void ResetInactiveSemiSpace()
+    {
+        ClearGCFlag(RegionGCFlags::IN_INACTIVE_SEMI_SPACE);
     }
 
     void SetSwept()

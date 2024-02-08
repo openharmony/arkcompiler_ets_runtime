@@ -102,6 +102,18 @@ inline bool Region::Test(void *addr) const
     return packedData_.markGCBitset_->TestBit((addrPtr & DEFAULT_REGION_MASK) >> TAGGED_TYPE_SIZE_LOG);
 }
 
+// ONLY used for heap verification.
+inline bool Region::TestOldToNew(uintptr_t addr)
+{
+    ASSERT(InRange(addr));
+    // Only used for heap verification, so donot need to use lock
+    auto set = packedData_.oldToNewSet_;
+    if (set == nullptr) {
+        return false;
+    }
+    return set->TestBit(ToUintPtr(this), addr);
+}
+
 template <typename Visitor>
 inline void Region::IterateAllMarkedBits(Visitor visitor) const
 {

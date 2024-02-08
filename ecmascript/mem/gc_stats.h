@@ -103,6 +103,22 @@ public:
         return reason_;
     }
 
+    const char *GetGCTypeName()
+    {
+        switch (gcType_) {
+            case GCType::STW_YOUNG_GC:
+                return "STWYoungGC";
+            case GCType::PARTIAL_YOUNG_GC:
+                return "HPP YoungGC";
+            case GCType::PARTIAL_OLD_GC:
+                return "HPP OldGC";
+            case GCType::COMPRESS_GC:
+                return "CompressGC";
+            default:
+                return "UnknownType";
+        }
+    }
+
     const char *GCReasonToString();
 
     double GetAvgSurvivalRate()
@@ -151,7 +167,6 @@ private:
     void PrintGCSummaryStatistic(GCType type = GCType::START);
     GCType GetGCType(TriggerGCType gcType);
     void InitializeRecordList();
-    const char *GetGCTypeName();
     float GetConcurrrentMarkDuration();
 
     int GetRecordDurationIndex(RecordDuration durationIdx)

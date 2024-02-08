@@ -1452,6 +1452,9 @@ FreeObject *ObjectFactory::FillFreeObject(uintptr_t address, size_t size, Remove
             JSHClass::Cast(globalConst->GetFreeObjectWithTwoFieldClass().GetTaggedObject()));
         object->SetAvailable(size);
         object->SetNext(INVALID_OBJECT);
+        if (UNLIKELY(heap_->ShouldVerifyHeap())) {
+            FillFreeMemoryRange(address + FreeObject::SIZE, address + size);
+        }
     } else if (size == FreeObject::NEXT_OFFSET) {
         object = reinterpret_cast<FreeObject *>(address);
         object->SetClassWithoutBarrier(
@@ -4909,5 +4912,16 @@ JSHandle<JSHClass> ObjectFactory::CreateSFunctionClassWithoutProto(uint32_t size
     functionClass->SetCallable(true);
     functionClass->SetExtensible(false);
     return functionClass;
+}
+
+void ObjectFactory::FillFreeMemoryRange(uintptr_t start, uintptr_t end)
+{
+    ASSERT(start < end);
+    ASSERT(start % static_cast<uint8_t>(MemAlignment::MEM_ALIGN_OBJECT) == 0);
+    ASSERT(end % static_cast<uint8_t>(MemAlignment::MEM_ALIGN_OBJECT) == 0);
+    while (start < end) {
+        Barriers::SetPrimitive<JSTaggedType>(reinterpret_cast<void*>(start), 0, FREE_MEMMORY_ADDRESS_ZAM_VALUE);
+        start += sizeof(JSTaggedType);
+    }
 }
 }  // namespace panda::ecmascript

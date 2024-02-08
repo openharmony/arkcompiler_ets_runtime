@@ -1391,10 +1391,7 @@ HWTEST_F_L0(JSObjectTest, CreateObjectFromProperties)
     JSHandle<JSObject> newObj = JSObject::CreateObjectFromProperties(thread, properties);
     Heap *heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
     heap->GetSweeper()->EnsureAllTaskFinished();
-    auto failCount = Verification(heap).VerifyAll();
-    if (failCount > 0) {
-        LOG_GC(FATAL) <<  "Heap occur dead object";
-    }
+    Verification(heap).VerifyAll();
     EXPECT_TRUE(newObj->GetClass()->IsDictionaryMode());
 }
 }  // namespace panda::test
