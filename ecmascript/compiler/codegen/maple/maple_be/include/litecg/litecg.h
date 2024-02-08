@@ -41,7 +41,7 @@ enum InfoType { kQuiet, kVerbose };
 
 class LiteCG {
 public:
-    LiteCG(Module &mirModule);
+    LiteCG(Module &mirModule, const std::vector<std::string> &litecgOptions);
     ~LiteCG() = default;
 
     // configurations API.

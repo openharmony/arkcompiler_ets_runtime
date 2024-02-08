@@ -36,7 +36,8 @@ public:
                       LOptions *lOptions,
                       CompilerLog *log,
                       bool outputAsm,
-                      size_t maxMethodsInModule);
+                      size_t maxMethodsInModule,
+                      const std::pair<uint32_t, uint32_t> &compilerMethodsRange);
     virtual ~CompilationDriver();
 
     NO_COPY_SEMANTIC(CompilationDriver);
@@ -116,7 +117,8 @@ public:
                 auto &methodPcInfo = methodPcInfos[methodInfo.GetMethodPcInfoIndex()];
                 auto methodLiteral = jsPandaFile_->FindMethodLiteral(compilingMethod);
                 const std::string methodName(MethodLiteral::GetMethodName(jsPandaFile_, methodLiteral->GetMethodId()));
-                if (FilterMethod(bytecodeInfo_.GetRecordName(index), methodLiteral, methodPcInfo, methodName)) {
+                if (FilterMethod(bytecodeInfo_.GetRecordName(index), methodLiteral, methodPcInfo, methodName) ||
+                    OutCompiledMethodsRange()) {
                     bytecodeInfo_.AddSkippedMethod(compilingMethod);
                 } else {
                     if (!methodInfo.IsCompiled()) {
@@ -334,6 +336,13 @@ protected:
         UpdateResolveDepends(importNames, needUpdateCompile);
     }
 
+    bool OutCompiledMethodsRange()
+    {
+        static uint32_t compiledMethodsCount = 0;
+        ++compiledMethodsCount;
+        return compiledMethodsCount < optionMethodsRange_.first || optionMethodsRange_.second <= compiledMethodsCount;
+    }
+
     bool FilterMethod(const CString &recordName, const MethodLiteral *methodLiteral,
                       const MethodPcInfo &methodPCInfo, const std::string &methodName) const;
 
@@ -365,6 +374,7 @@ protected:
     CompilerLog *log_ {nullptr};
     bool outputAsm_ {false};
     size_t maxMethodsInModule_ {0};
+    std::pair<uint32_t, uint32_t> optionMethodsRange_ {0, UINT32_MAX};
 };
 
 class JitCompilationDriver : public CompilationDriver {
@@ -379,10 +389,11 @@ public:
                          LOptions *lOptions,
                          CompilerLog *log,
                          bool outputAsm,
-                         size_t maxMethodsInModule) : CompilationDriver(profilerDecoder, collector,
-                                                                        compilemMethodsOption, compileSkipMethodsOption,
-                                                                        fileGenerator, fileName, triple, lOptions, log,
-                                                                        outputAsm, maxMethodsInModule) { };
+                         size_t maxMethodsInModule,
+                         const std::pair<uint32_t, uint32_t> &compilerMethodsRange)
+        : CompilationDriver(profilerDecoder, collector, compilemMethodsOption, compileSkipMethodsOption,
+                            fileGenerator, fileName, triple, lOptions, log, outputAsm, maxMethodsInModule,
+                            compilerMethodsRange) { };
     ~JitCompilationDriver() = default;
     bool RunCg();
     Module *GetModule();

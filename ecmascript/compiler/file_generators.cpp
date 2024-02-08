@@ -437,7 +437,7 @@ Module* AOTFileGenerator::AddModule(const std::string &name, const std::string &
 #ifdef COMPILE_MAPLE
     if (useLiteCG_) {
         LMIRModule *irModule = new LMIRModule(vm_->GetNativeAreaAllocator(), name, logDebug, triple, isJit);
-        LiteCGAssembler* ass = new LiteCGAssembler(*irModule);
+        LiteCGAssembler *ass = new LiteCGAssembler(*irModule, vm_->GetJSOptions().GetCompilerCodegenOptions());
         modulePackage_.emplace_back(Module(irModule, ass));
         if (stackMapInfo_ == nullptr) {
             stackMapInfo_ = new LiteCGStackMapInfo();
@@ -445,8 +445,8 @@ Module* AOTFileGenerator::AddModule(const std::string &name, const std::string &
         return &modulePackage_.back();
     }
 #endif
-    LLVMModule* m = new LLVMModule(vm_->GetNativeAreaAllocator(), name, logDebug, triple);
-    LLVMAssembler* ass = new LLVMAssembler(m, option);
+    LLVMModule *m = new LLVMModule(vm_->GetNativeAreaAllocator(), name, logDebug, triple);
+    LLVMAssembler *ass = new LLVMAssembler(m, option);
     modulePackage_.emplace_back(Module(m, ass));
     if (stackMapInfo_ == nullptr) {
         stackMapInfo_ = new LLVMStackMapInfo();
