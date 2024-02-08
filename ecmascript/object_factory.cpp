@@ -1474,9 +1474,7 @@ FreeObject *ObjectFactory::FillFreeObject(uintptr_t address, size_t size, Remove
         // For huge object, the region of `object` might not be its 1st region. Use `hugeObjectHead` instead.
         Region *region = Region::ObjectAddressToRange(hugeObjectHead == 0 ? object :
                                                       reinterpret_cast<TaggedObject *>(hugeObjectHead));
-        if (!region->InYoungSpace()) {
-            heap_->ClearSlotsRange(region, address, address + size);
-        }
+        heap_->ClearSlotsRange(region, address, address + size);
     }
     return object;
 }

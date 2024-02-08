@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#ifndef ECMASCRIPT_MEM_SHARED_HEAP_SHARE_GC_H
-#define ECMASCRIPT_MEM_SHARED_HEAP_SHARE_GC_H
+#ifndef ECMASCRIPT_MEM_SHARED_HEAP_SHARED_GC_H
+#define ECMASCRIPT_MEM_SHARED_HEAP_SHARED_GC_H
 
 #include "ecmascript/mem/allocator.h"
 #include "ecmascript/mem/garbage_collector.h"
@@ -25,12 +25,12 @@
 #include "ecmascript/mem/work_manager.h"
 
 namespace panda::ecmascript {
-class ShareGC : public GarbageCollector {
+class SharedGC : public GarbageCollector {
 public:
-    explicit ShareGC(SharedHeap *heap) : sHeap_(heap), sWorkManager_(heap->GetWorkManager()) {}
-    ~ShareGC() override = default;
-    NO_COPY_SEMANTIC(ShareGC);
-    NO_MOVE_SEMANTIC(ShareGC);
+    explicit SharedGC(SharedHeap *heap) : sHeap_(heap), sWorkManager_(heap->GetWorkManager()) {}
+    ~SharedGC() override = default;
+    NO_COPY_SEMANTIC(SharedGC);
+    NO_MOVE_SEMANTIC(SharedGC);
 
     void RunPhases() override;
 protected:
@@ -42,9 +42,9 @@ protected:
 private:
     void UpdateRecordWeakReference();
 
-    SharedHeap *sHeap_;
-    ShareGCWorkManager *sWorkManager_ {nullptr};
+    SharedHeap *sHeap_  {nullptr};
+    SharedGCWorkManager *sWorkManager_ {nullptr};
 };
 }  // namespace panda::ecmascript
 
-#endif  // ECMASCRIPT_MEM_SHARED_HEAP_SHARE_GC_H
+#endif  // ECMASCRIPT_MEM_SHARED_HEAP_SHARED_GC_H

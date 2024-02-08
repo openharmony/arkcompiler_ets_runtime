@@ -95,7 +95,7 @@ void EcmaStringTable::InternStringThreadUnsafe(EcmaString *string)
         return;
     }
     // Strings in string table should not be in the young space.
-    ASSERT(Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(string))->InSharedSpace());
+    ASSERT(Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(string))->InSharedHeap());
     ASSERT(EcmaStringAccessor(string).NotTreeString());
     auto hashcode = EcmaStringAccessor(string).GetHashcode();
     table_.emplace(hashcode, string);

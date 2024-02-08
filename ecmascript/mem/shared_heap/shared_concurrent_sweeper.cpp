@@ -47,8 +47,7 @@ void SharedConcurrentSweeper::Sweep()
         sHeap_->GetNonMovableSpace()->PrepareSweeping();
         // Prepare
         isSweeping_ = true;
-        for (int type = SHARED_SWEEPING_SPACE_BEGIN; type < SHARED_SWEEPING_SPACE_NUM; type++) {
-            int spaceIndex = SHARED_SWEEPING_SPACE_BEGIN - type;
+        for (int spaceIndex = 0; spaceIndex < SHARED_SWEEPING_SPACE_NUM; spaceIndex++) {
             remainingTaskNum_[spaceIndex] = SHARED_SWEEPING_SPACE_NUM;
         }
     } else {
@@ -65,7 +64,7 @@ void SharedConcurrentSweeper::AsyncSweepSpace(MemSpaceType type, bool isMain)
     int spaceIndex = type - SHARED_SWEEPING_SPACE_BEGIN;
     LockHolder holder(mutexs_[spaceIndex]);
     if (--remainingTaskNum_[spaceIndex] == 0) {
-        cvs_[type].SignalAll();
+        cvs_[spaceIndex].SignalAll();
     }
 }
 
@@ -74,8 +73,7 @@ void SharedConcurrentSweeper::WaitAllTaskFinished()
     if (!isSweeping_) {
         return;
     }
-    for (int type = SHARED_SWEEPING_SPACE_BEGIN; type < SHARED_SWEEPING_SPACE_NUM; type++) {
-        int spaceIndex = type - SHARED_SWEEPING_SPACE_BEGIN;
+    for (int spaceIndex = 0; spaceIndex < SHARED_SWEEPING_SPACE_NUM; spaceIndex++) {
         if (remainingTaskNum_[spaceIndex] > 0) {
             LockHolder holder(mutexs_[spaceIndex]);
             while (remainingTaskNum_[spaceIndex] > 0) {
@@ -91,9 +89,9 @@ void SharedConcurrentSweeper::EnsureAllTaskFinished()
     if (!isSweeping_) {
         return;
     }
-    for (int type = SHARED_SWEEPING_SPACE_BEGIN; type < SHARED_SWEEPING_SPACE_NUM; type++) {
-        int spaceIndex = type - SHARED_SWEEPING_SPACE_BEGIN;
-        WaitingTaskFinish(static_cast<MemSpaceType>(spaceIndex));
+    for (int spaceIndex = 0; spaceIndex < SHARED_SWEEPING_SPACE_NUM; spaceIndex++) {
+        int type = spaceIndex + SHARED_SWEEPING_SPACE_BEGIN;
+        WaitingTaskFinish(static_cast<MemSpaceType>(type));
     }
     isSweeping_ = false;
     if (IsRequestDisabled()) {

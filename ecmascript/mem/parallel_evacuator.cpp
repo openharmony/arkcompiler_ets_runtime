@@ -312,8 +312,6 @@ void ParallelEvacuator::UpdateWeakReference()
     MEM_ALLOCATE_AND_GC_TRACE(heap_->GetEcmaVM(), UpdateWeakReference);
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "GC::UpdateWeakReference");
     UpdateRecordWeakReference();
-    // TODO(hzzhouzebin) wait for shared-gc
-    // auto stringTable = heap_->GetEcmaVM()->GetEcmaStringTable();
     bool isFullMark = heap_->IsFullMark();
     WeakRootVisitor gcUpdateWeak = [isFullMark](TaggedObject *header) {
         Region *objectRegion = Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(header));
@@ -321,6 +319,7 @@ void ParallelEvacuator::UpdateWeakReference()
             LOG_GC(ERROR) << "PartialGC updateWeakReference: region is nullptr, header is " << header;
             return reinterpret_cast<TaggedObject *>(ToUintPtr(nullptr));
         }
+        // The weak object in shared heap is always alive during partialGC.
         if (objectRegion->InSharedHeap()) {
             return header;
         }
@@ -344,11 +343,6 @@ void ParallelEvacuator::UpdateWeakReference()
         }
         return header;
     };
-    if (isFullMark) {
-        // Only old gc will sweep string table.
-        // TODO(hzzhouzebin) wait for shared-gc
-        // stringTable->SweepWeakReference(gcUpdateWeak);
-    }
 
     heap_->GetEcmaVM()->GetJSThread()->IterateWeakEcmaGlobalStorage(gcUpdateWeak);
     heap_->GetEcmaVM()->ProcessReferences(gcUpdateWeak);

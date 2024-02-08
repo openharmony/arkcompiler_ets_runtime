@@ -252,16 +252,16 @@ private:
     std::atomic<bool> initialized_ {false};
 };
 
-struct ShareGCWorkNodeHolder {
+struct SharedGCWorkNodeHolder {
     WorkNode *inNode_ {nullptr};
     WorkNode *outNode_ {nullptr};
     ProcessQueue *weakQueue_ {nullptr};
 };
 
-class ShareGCWorkManager : public WorkManagerBase {
+class SharedGCWorkManager : public WorkManagerBase {
 public:
-    ShareGCWorkManager(SharedHeap *heap, uint32_t threadNum);
-    ~ShareGCWorkManager() override;
+    SharedGCWorkManager(SharedHeap *heap, uint32_t threadNum);
+    ~SharedGCWorkManager() override;
 
     void Initialize();
     void Finish();
@@ -293,12 +293,12 @@ public:
     }
 
 private:
-    NO_COPY_SEMANTIC(ShareGCWorkManager);
-    NO_MOVE_SEMANTIC(ShareGCWorkManager);
+    NO_COPY_SEMANTIC(SharedGCWorkManager);
+    NO_MOVE_SEMANTIC(SharedGCWorkManager);
 
     SharedHeap *sHeap_;
     uint32_t threadNum_;
-    std::array<ShareGCWorkNodeHolder, MAX_TASKPOOL_THREAD_NUM + 1> works_;
+    std::array<SharedGCWorkNodeHolder, MAX_TASKPOOL_THREAD_NUM + 1> works_;
     std::array<ContinuousStack<JSTaggedType> *, MAX_TASKPOOL_THREAD_NUM + 1> continuousQueue_;
     GlobalWorkStack workStack_;
     std::atomic<bool> initialized_ {false};

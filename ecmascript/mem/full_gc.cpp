@@ -140,8 +140,6 @@ void FullGC::Sweep()
         }
     }
 
-    // TODO(hzzhouzebin) wait for shared-gc
-    // auto stringTable = heap_->GetEcmaVM()->GetEcmaStringTable();
     WeakRootVisitor gcUpdateWeak = [this](TaggedObject *header) {
         Region *objectRegion = Region::ObjectAddressToRange(header);
         if (!objectRegion) {
@@ -149,6 +147,7 @@ void FullGC::Sweep()
             return reinterpret_cast<TaggedObject *>(ToUintPtr(nullptr));
         }
         if (!HasEvacuated(objectRegion)) {
+            // The weak object in shared heap is always alive during fullGC.
             if (objectRegion->InSharedHeap() || objectRegion->Test(header)) {
                 return header;
             }
@@ -161,8 +160,6 @@ void FullGC::Sweep()
         }
         return reinterpret_cast<TaggedObject *>(ToUintPtr(nullptr));
     };
-    // TODO(hzzhouzebin) wait for shared-gc
-    // stringTable->SweepWeakReference(gcUpdateWeak);
     heap_->GetEcmaVM()->GetJSThread()->IterateWeakEcmaGlobalStorage(gcUpdateWeak);
     heap_->GetEcmaVM()->ProcessReferences(gcUpdateWeak);
 

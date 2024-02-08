@@ -90,10 +90,8 @@ uintptr_t SharedSparseSpace::AllocateWithExpand(size_t size)
     LockHolder lock(allocateLock_);
     // In order to avoid expand twice by different threads, try allocate first.
     auto object = allocator_->Allocate(size);
-    CHECK_SOBJECT_AND_INC_OBJ_SIZE(size);
     if (Expand()) {
         object = allocator_->Allocate(size);
-        CHECK_SOBJECT_AND_INC_OBJ_SIZE(size);
     }
     return object;
 }

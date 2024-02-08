@@ -25,6 +25,7 @@
 #include "ecmascript/mem/parallel_marker-inl.h"
 #include "ecmascript/mem/partial_gc.h"
 #include "ecmascript/mem/region.h"
+#include "ecmascript/mem/shared_heap/shared_gc_marker-inl.h"
 #include "ecmascript/mem/tlab_allocator-inl.h"
 
 namespace panda::ecmascript {
@@ -202,7 +203,7 @@ void WorkManager::Initialize(TriggerGCType gcType, ParallelGCTaskPhase taskPhase
     initialized_.store(true, std::memory_order_release);
 }
 
-ShareGCWorkManager::ShareGCWorkManager(SharedHeap *heap, uint32_t threadNum)
+SharedGCWorkManager::SharedGCWorkManager(SharedHeap *heap, uint32_t threadNum)
     : WorkManagerBase(heap->GetNativeAreaAllocator()), sHeap_(heap), threadNum_(threadNum),
       continuousQueue_ { nullptr }
 {
@@ -211,7 +212,7 @@ ShareGCWorkManager::ShareGCWorkManager(SharedHeap *heap, uint32_t threadNum)
     }
 }
 
-ShareGCWorkManager::~ShareGCWorkManager()
+SharedGCWorkManager::~SharedGCWorkManager()
 {
     Finish();
     for (uint32_t i = 0; i < threadNum_; i++) {
@@ -221,11 +222,11 @@ ShareGCWorkManager::~ShareGCWorkManager()
     }
 }
 
-void ShareGCWorkManager::Initialize()
+void SharedGCWorkManager::Initialize()
 {
     InitializeBase();
     for (uint32_t i = 0; i < threadNum_; i++) {
-        ShareGCWorkNodeHolder &holder = works_.at(i);
+        SharedGCWorkNodeHolder &holder = works_.at(i);
         holder.inNode_ = AllocateWorkNode();
         holder.outNode_ = AllocateWorkNode();
         holder.weakQueue_ = new ProcessQueue();
@@ -238,10 +239,10 @@ void ShareGCWorkManager::Initialize()
     initialized_.store(true, std::memory_order_release);
 }
 
-void ShareGCWorkManager::Finish()
+void SharedGCWorkManager::Finish()
 {
     for (uint32_t i = 0; i < threadNum_; i++) {
-        ShareGCWorkNodeHolder &holder = works_.at(i);
+        SharedGCWorkNodeHolder &holder = works_.at(i);
         if (holder.weakQueue_ != nullptr) {
             holder.weakQueue_->FinishMarking(continuousQueue_.at(i));
             delete holder.weakQueue_;
@@ -252,7 +253,7 @@ void ShareGCWorkManager::Finish()
     initialized_.store(false, std::memory_order_release);
 }
 
-bool ShareGCWorkManager::Push(uint32_t threadId, TaggedObject *object)
+bool SharedGCWorkManager::Push(uint32_t threadId, TaggedObject *object)
 {
     WorkNode *&inNode = works_.at(threadId).inNode_;
     if (!inNode->PushObject(ToUintPtr(object))) {
@@ -262,7 +263,7 @@ bool ShareGCWorkManager::Push(uint32_t threadId, TaggedObject *object)
     return true;
 }
 
-void ShareGCWorkManager::PushWorkNodeToGlobal(uint32_t threadId, bool postTask)
+void SharedGCWorkManager::PushWorkNodeToGlobal(uint32_t threadId, bool postTask)
 {
     WorkNode *&inNode = works_.at(threadId).inNode_;
     if (!inNode->IsEmpty()) {
@@ -274,7 +275,7 @@ void ShareGCWorkManager::PushWorkNodeToGlobal(uint32_t threadId, bool postTask)
     }
 }
 
-bool ShareGCWorkManager::Pop(uint32_t threadId, TaggedObject **object)
+bool SharedGCWorkManager::Pop(uint32_t threadId, TaggedObject **object)
 {
     WorkNode *&outNode = works_.at(threadId).outNode_;
     WorkNode *&inNode = works_.at(threadId).inNode_;
@@ -291,7 +292,7 @@ bool ShareGCWorkManager::Pop(uint32_t threadId, TaggedObject **object)
     return true;
 }
 
-bool ShareGCWorkManager::PopWorkNodeFromGlobal(uint32_t threadId)
+bool SharedGCWorkManager::PopWorkNodeFromGlobal(uint32_t threadId)
 {
     return workStack_.Pop(&works_.at(threadId).outNode_);
 }

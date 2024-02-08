@@ -170,7 +170,7 @@ void ParallelEvacuator::SetLocalToShareRSet(ObjectSlot slot, Region *region)
     }
     Region *valueRegion = Region::ObjectAddressToRange(value);
     if (valueRegion->InSharedSweepableSpace()) {
-        region->InsertLocalToShareRset(slot.SlotAddress());
+        region->InsertLocalToShareRSet(slot.SlotAddress());
     }
 }
 

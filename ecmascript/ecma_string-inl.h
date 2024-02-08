@@ -137,8 +137,9 @@ inline EcmaString *EcmaString::CreateLineStringNoGC(const EcmaVM *vm, size_t len
 {
     size_t size = compressed ? LineEcmaString::ComputeSizeUtf8(length) : LineEcmaString::ComputeSizeUtf16(length);
     size = AlignUp(size, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
-    auto object = reinterpret_cast<TaggedObject *>(SharedHeap::GetInstance()->GetOldSpace()->Allocate(size, false));
     auto thread = vm->GetJSThread();
+    auto object =
+        reinterpret_cast<TaggedObject *>(SharedHeap::GetInstance()->GetOldSpace()->Allocate(thread, size, false));
     object->SetClass(thread, JSHClass::Cast(thread->GlobalConstants()->GetLineStringClass().GetTaggedObject()));
     auto string = EcmaString::Cast(object);
     string->SetLength(length, compressed);

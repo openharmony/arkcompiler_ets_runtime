@@ -170,7 +170,7 @@ DEF_RUNTIME_STUBS(AllocateInSOld)
     auto sharedHeap = const_cast<SharedHeap*>(SharedHeap::GetInstance());
     auto oldSpace = sharedHeap->GetOldSpace();
     ASSERT(size <= MAX_REGULAR_HEAP_OBJECT_SIZE);
-    auto result = reinterpret_cast<TaggedObject *>(oldSpace->Allocate(size));
+    auto result = reinterpret_cast<TaggedObject *>(oldSpace->Allocate(thread, size));
     if (result == nullptr) {
         result = sharedHeap->AllocateOldOrHugeObject(thread, size);
         ASSERT(result != nullptr);
@@ -2849,7 +2849,7 @@ void RuntimeStubs::InsertLocalToShareRSet([[maybe_unused]] uintptr_t argGlue,
 {
     Region *region = Region::ObjectAddressToRange(object);
     uintptr_t slotAddr = object + offset;
-    region->AtomicInsertLocalToShareRset(slotAddr);
+    region->AtomicInsertLocalToShareRSet(slotAddr);
 }
 
 void RuntimeStubs::MarkingBarrier([[maybe_unused]] uintptr_t argGlue,
@@ -2888,7 +2888,7 @@ void RuntimeStubs::StoreBarrier([[maybe_unused]] uintptr_t argGlue,
         objectRegion->InsertOldToNewRSet(slotAddr);
     }
     if (!objectRegion->InSharedHeap() && valueRegion->InSharedSweepableSpace()) {
-        objectRegion->AtomicInsertLocalToShareRset(slotAddr);
+        objectRegion->AtomicInsertLocalToShareRSet(slotAddr);
     }
     if (!thread->IsConcurrentMarkingOrFinished()) {
         return;

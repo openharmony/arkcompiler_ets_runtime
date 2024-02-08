@@ -189,30 +189,5 @@ private:
     bool isAppSpawn_ {false};
     Mutex mutex_;
 };
-
-class ShareGCMarker {
-public:
-    explicit ShareGCMarker(ShareGCWorkManager *workManger) : sWorkManager_(workManger) {}
-    ~ShareGCMarker() = default;
-
-    void MarkRoots(uint32_t threadId, EcmaVM *localVm);
-    void ProcessMarkStack(uint32_t threadId);
-    template <typename Callback>
-    inline bool VisitBodyInObj(TaggedObject *root, ObjectSlot start, ObjectSlot end, Callback callback);
-    inline void MarkValue(uint32_t threadId, ObjectSlot &slot);
-    inline void MarkObject(uint32_t threadId, TaggedObject *object);
-    inline void HandleRoots(uint32_t threadId, [[maybe_unused]] Root type, ObjectSlot slot);
-    inline void HandleRangeRoots(uint32_t threadId, [[maybe_unused]] Root type, ObjectSlot start,
-                                 ObjectSlot end);
-    inline void HandleDerivedRoots(Root type, ObjectSlot base, ObjectSlot derived,
-                                   uintptr_t baseOldObject);
-
-    inline void ProcessLocalToShare(uint32_t threadId, Heap *localHeap);
-    inline void HandleLocalToShareRSet(uint32_t threadId, Region *region);
-    inline void RecordWeakReference(uint32_t threadId, JSTaggedType *ref);
-
-private:
-    ShareGCWorkManager *sWorkManager_ { nullptr };
-};
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_MEM_PARALLEL_MARKER_H

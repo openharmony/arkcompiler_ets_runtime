@@ -413,7 +413,7 @@ void JSHClass::ShouldUpdateProtoClass(const JSThread *thread, const JSHandle<JST
     ASSERT(!Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(*hclass))->InReadOnlySpace());
     if (!hclass->IsPrototype()) {
         // There is no sharing in AOT hclass. Therefore, it is not necessary or possible to clone here.
-        if (!hclass->IsTS()) {
+        if (!hclass->IsTS() && !hclass->IsJSShared()) {
             // If the object should be changed to the proto of an object,
             // the original hclass cannot be shared.
             JSHandle<JSHClass> newProtoClass = JSHClass::Clone(thread, hclass);

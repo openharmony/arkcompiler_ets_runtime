@@ -289,7 +289,7 @@ void MovableMarker::SetLocalToShareRSet(ObjectSlot slot, Region *region)
     }
     Region *valueRegion = Region::ObjectAddressToRange(value);
     if (valueRegion->InSharedSweepableSpace()) {
-        region->InsertLocalToShareRset(slot.SlotAddress());
+        region->InsertLocalToShareRSet(slot.SlotAddress());
     }
 }
 
@@ -454,108 +454,6 @@ inline bool CompressGCMarker::NeedEvacuate(Region *region)
                !region->InSharedHeap();
     }
     return region->InYoungOrOldSpace();
-}
-
-inline void ShareGCMarker::MarkObject(uint32_t threadId, TaggedObject *object)
-{
-    Region *objectRegion = Region::ObjectAddressToRange(object);
-    ASSERT(objectRegion->InSharedSweepableSpace());
-    if (objectRegion->AtomicMark(object)) {
-        sWorkManager_->Push(threadId, object);
-    }
-}
-
-inline void ShareGCMarker::MarkValue(uint32_t threadId, ObjectSlot &slot)
-{
-    JSTaggedValue value(slot.GetTaggedType());
-    if (value.IsInSharedSweepableSpace()) {
-        if (!value.IsWeakForHeapObject()) {
-            MarkObject(threadId, value.GetTaggedObject());
-        } else {
-            RecordWeakReference(threadId, reinterpret_cast<JSTaggedType *>(slot.SlotAddress()));
-        }
-    }
-}
-
-inline void ShareGCMarker::HandleRoots(uint32_t threadId, [[maybe_unused]] Root type, ObjectSlot slot)
-{
-    JSTaggedValue value(slot.GetTaggedType());
-    if (value.IsInSharedSweepableSpace()) {
-        MarkObject(threadId, value.GetTaggedObject());
-    }
-}
-
-inline void ShareGCMarker::HandleRangeRoots(uint32_t threadId, [[maybe_unused]] Root type, ObjectSlot start,
-    ObjectSlot end)
-{
-    for (ObjectSlot slot = start; slot < end; slot++) {
-        JSTaggedValue value(slot.GetTaggedType());
-        if (value.IsInSharedSweepableSpace()) {
-            if (value.IsWeakForHeapObject()) {
-                LOG_ECMA_MEM(FATAL) << "Weak Reference in ShareGCMarker roots";
-            }
-            MarkObject(threadId, value.GetTaggedObject());
-        }
-    }
-}
-
-inline void ShareGCMarker::HandleDerivedRoots([[maybe_unused]] Root type, [[maybe_unused]] ObjectSlot base,
-                                              [[maybe_unused]] ObjectSlot derived,
-                                              [[maybe_unused]] uintptr_t baseOldObject)
-{
-    // It is only used to update the derived value. The mark of share GC does not need to update slot
-}
-
-template <typename Callback>
-ARK_INLINE bool ShareGCMarker::VisitBodyInObj(TaggedObject *root, ObjectSlot start, ObjectSlot end,
-                                              Callback callback)
-{
-    auto hclass = root->SynchronizedGetClass();
-    int index = 0;
-    auto layout = LayoutInfo::UncheckCast(hclass->GetLayout().GetTaggedObject());
-    ObjectSlot realEnd = start;
-    realEnd += layout->GetPropertiesCapacity();
-    end = end > realEnd ? realEnd : end;
-    for (ObjectSlot slot = start; slot < end; slot++) {
-        auto attr = layout->GetAttr(index++);
-        if (attr.IsTaggedRep()) {
-            callback(slot);
-        }
-    }
-    return true;
-}
-
-inline void ShareGCMarker::ProcessLocalToShare(uint32_t threadId, Heap *localHeap)
-{
-    localHeap->EnumerateRegions(std::bind(&ShareGCMarker::HandleLocalToShareRSet, this, threadId,
-                                std::placeholders::_1));
-    ProcessMarkStack(threadId);
-}
-
-inline void ShareGCMarker::RecordWeakReference(uint32_t threadId, JSTaggedType *slot)
-{
-    sWorkManager_->PushWeakReference(threadId, slot);
-}
-
-// Don't call this function when mutator thread is running.
-inline void ShareGCMarker::HandleLocalToShareRSet(uint32_t threadId, Region *region)
-{
-    // If the mem does not point to a shared object, the related bit in localToShareRSet will be cleared.
-    region->AtomicIterateAllLocalToShareBits([this, threadId](void *mem) -> bool {
-        ObjectSlot slot(ToUintPtr(mem));
-        JSTaggedValue value(slot.GetTaggedType());
-        if (value.IsInSharedSweepableSpace()) {
-            if (value.IsWeakForHeapObject()) {
-                RecordWeakReference(threadId, reinterpret_cast<JSTaggedType *>(mem));
-            } else {
-                MarkObject(threadId, value.GetTaggedObject());
-            }
-            return true;
-        } else {
-            // clear bit.
-            return false;
-        }
-    });
 }
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_MEM_PARALLEL_MARKER_INL_H

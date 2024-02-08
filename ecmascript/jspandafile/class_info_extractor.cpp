@@ -697,7 +697,6 @@ JSHandle<JSFunction> SendableClassDefiner::DefineSendableClassFromExtractor(JSTh
     uint32_t staticFields =  length / 2; // 2: key-type
     JSHandle<JSHClass> constructorHClass =
         ClassInfoExtractor::CreateSendableHClass(thread, staticKeys, staticProperties, false, staticFields);
-    // todo(lukai) method from constantpool should allocate to sharedspace in future.
     JSHandle<Method> method(thread, Method::Cast(extractor->GetConstructorMethod().GetTaggedObject()));
     method->SetFunctionKind(FunctionKind::CLASS_CONSTRUCTOR);
     if (!constructorHClass->IsDictionaryMode() && staticFields > 0) {
@@ -868,10 +867,8 @@ void SendableClassDefiner::AddFieldTypeToHClass(JSThread *thread, const JSHandle
     uint32_t length = fieldTypeArray->GetLength();
     JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
     uint32_t index = static_cast<uint32_t>(layout->NumberOfElements());
-    PropertyAttributes attributes = PropertyAttributes::Default(true, true, false);
-    attributes.SetIsInlinedProps(true);
-    attributes.SetRepresentation(Representation::TAGGED);
     for (uint32_t i = 0; i < length; i += 2) { // 2: key-value pair;
+        PropertyAttributes attributes = PropertyAttributes::Default(true, true, false);
         key.Update(fieldTypeArray->Get(i));
         ASSERT(key->IsString());
         TrackType type = FromFieldType(FieldType(fieldTypeArray->Get(i + 1).GetInt()));
@@ -881,6 +878,8 @@ void SendableClassDefiner::AddFieldTypeToHClass(JSThread *thread, const JSHandle
             attributes.SetTrackType(type);
             layout->SetNormalAttr(thread, entry, attributes);
         } else {
+            attributes.SetIsInlinedProps(true);
+            attributes.SetRepresentation(Representation::TAGGED);
             attributes.SetTrackType(type);
             attributes.SetOffset(index);
             layout->AddKey(thread, index++, key.GetTaggedValue(), attributes);

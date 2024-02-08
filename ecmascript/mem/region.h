@@ -213,8 +213,8 @@ public:
     void ClearMarkGCBitset();
     // local to share remembered set
     bool HasLocalToShareRememberedSet() const;
-    void InsertLocalToShareRset(uintptr_t addr);
-    void AtomicInsertLocalToShareRset(uintptr_t addr);
+    void InsertLocalToShareRSet(uintptr_t addr);
+    void AtomicInsertLocalToShareRSet(uintptr_t addr);
     void AtomicClearLocalToShareRSetInRange(uintptr_t start, uintptr_t end);
     template <typename Visitor>
     void AtomicIterateAllLocalToShareBits(Visitor visitor);
@@ -319,6 +319,11 @@ public:
     bool InReadOnlySpace() const
     {
         return packedData_.flags_.spaceFlag_ == RegionSpaceFlag::IN_READ_ONLY_SPACE;
+    }
+
+    bool InSharedReadOnlySpace() const
+    {
+        return packedData_.flags_.spaceFlag_ == RegionSpaceFlag::IN_SHARED_READ_ONLY_SPACE;
     }
 
     bool InAppSpawnSpace() const

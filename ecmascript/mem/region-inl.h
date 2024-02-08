@@ -143,13 +143,13 @@ inline bool Region::HasLocalToShareRememberedSet() const
     return localToShareSet_ != nullptr;
 }
 
-inline void Region::InsertLocalToShareRset(uintptr_t addr)
+inline void Region::InsertLocalToShareRSet(uintptr_t addr)
 {
     auto set = GetOrCreateLocalToShareRememberedSet();
     set->Insert(ToUintPtr(this), addr);
 }
 
-inline void Region::AtomicInsertLocalToShareRset(uintptr_t addr)
+inline void Region::AtomicInsertLocalToShareRSet(uintptr_t addr)
 {
     auto set = GetOrCreateLocalToShareRememberedSet();
     set->AtomicInsert(ToUintPtr(this), addr);

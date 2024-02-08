@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "ecmascript/mem/shared_heap/share_gc.h"
+#include "ecmascript/mem/shared_heap/shared_gc.h"
 
 #include "ecmascript/ecma_string_table.h"
 #include "ecmascript/ecma_vm.h"
@@ -22,84 +22,84 @@
 #include "ecmascript/mem/mem.h"
 #include "ecmascript/mem/parallel_marker-inl.h"
 #include "ecmascript/mem/shared_heap/shared_concurrent_sweeper.h"
+#include "ecmascript/mem/shared_heap/shared_gc_marker-inl.h"
 #include "ecmascript/mem/space-inl.h"
 #include "ecmascript/mem/visitor.h"
 #include "ecmascript/mem/gc_stats.h"
 #include "ecmascript/runtime.h"
 
 namespace panda::ecmascript {
-void ShareGC::RunPhases()
+void SharedGC::RunPhases()
 {
-    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "ShareGC::RunPhases");
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "SharedGC::RunPhases");
     Initialize();
     Mark();
     Sweep();
     Finish();
 }
 
-void ShareGC::Initialize()
+void SharedGC::Initialize()
 {
-    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "ShareGC::Initialize");
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "SharedGC::Initialize");
     sHeap_->EnumerateOldSpaceRegions([](Region *current) {
         ASSERT(current->InSharedSweepableSpace());
         current->ResetAliveObject();
     });
     sWorkManager_->Initialize();
 }
-void ShareGC::Mark()
+void SharedGC::Mark()
 {
-    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "ShareGC::Mark");
-    auto threads = Runtime::GetInstance()->ThreadList();
-    for (auto &thread : threads) {
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "SharedGC::Mark");
+    Runtime::GetInstance()->IterateThreadList([&](JSThread *thread) {
         auto vm = thread->GetEcmaVM();
         if (!vm->IsInitialized()) {
-            continue;
+            return;
         }
-        sHeap_->GetShareGCMarker()->MarkRoots(MAIN_THREAD_INDEX, vm);
-        sHeap_->GetShareGCMarker()->ProcessLocalToShare(MAIN_THREAD_INDEX, const_cast<Heap*>(vm->GetHeap()));
-    }
+        sHeap_->GetSharedGCMarker()->MarkRoots(MAIN_THREAD_INDEX, vm);
+        sHeap_->GetSharedGCMarker()->ProcessLocalToShare(MAIN_THREAD_INDEX, const_cast<Heap*>(vm->GetHeap()));
+    });
     sHeap_->WaitRunningTaskFinished();
 }
 
-void ShareGC::Sweep()
+void SharedGC::Sweep()
 {
-    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "ShareGC::Sweep");
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "SharedGC::Sweep");
     UpdateRecordWeakReference();
     WeakRootVisitor gcUpdateWeak = [](TaggedObject *header) {
         Region *objectRegion = Region::ObjectAddressToRange(header);
         if (!objectRegion) {
-            LOG_GC(ERROR) << "ShareGC updateWeakReference: region is nullptr, header is " << header;
+            LOG_GC(ERROR) << "SharedGC updateWeakReference: region is nullptr, header is " << header;
             return reinterpret_cast<TaggedObject *>(ToUintPtr(nullptr));
         }
+        ASSERT(objectRegion->InSharedSweepableSpace());
         if (objectRegion->Test(header)) {
             return header;
         }
         return reinterpret_cast<TaggedObject *>(ToUintPtr(nullptr));
     };
-    // todo(lukai) wait for stringtable.
-    // EcmaStringTable::GetInstance()->SweepWeakReference(gcUpdateWeak);
+    Runtime::GetInstance()->GetEcmaStringTable()->SweepWeakReference(gcUpdateWeak);
 
-    auto threads = Runtime::GetInstance()->ThreadList();
-    for (auto &thread : threads) {
+    Runtime::GetInstance()->IterateThreadList([&](JSThread *thread) {
         if (!thread->GetEcmaVM()->IsInitialized()) {
-            continue;
+            return;
         }
+        thread->GetCurrentEcmaContext()->ProcessNativeDelete(gcUpdateWeak);
         thread->IterateWeakEcmaGlobalStorage(gcUpdateWeak);
-    }
+    });
 
     sHeap_->GetSweeper()->Sweep();
     sHeap_->GetSweeper()->PostTask();
 }
 
-void ShareGC::Finish()
+void SharedGC::Finish()
 {
-    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "ShareGC::Finish");
-    sHeap_->Resume();
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "SharedGC::Finish");
+    sHeap_->Reclaim();
     sWorkManager_->Finish();
     sHeap_->GetSweeper()->TryFillSweptRegion();
 }
 
-void ShareGC::UpdateRecordWeakReference()
+void SharedGC::UpdateRecordWeakReference()
 {
     auto totalThreadCount = Taskpool::GetCurrentTaskpool()->GetTotalThreadNum() + 1;
     for (uint32_t i = 0; i < totalThreadCount; i++) {

@@ -420,10 +420,12 @@ void Heap::ReclaimRegions(TriggerGCType gcType)
 // only call in js-thread
 void Heap::ClearSlotsRange(Region *current, uintptr_t freeStart, uintptr_t freeEnd)
 {
-    current->AtomicClearSweepingRSetInRange(freeStart, freeEnd);
-    current->ClearOldToNewRSetInRange(freeStart, freeEnd);
+    if (!current->InYoungSpace()) {
+        current->AtomicClearSweepingRSetInRange(freeStart, freeEnd);
+        current->ClearOldToNewRSetInRange(freeStart, freeEnd);
+        current->AtomicClearCrossRegionRSetInRange(freeStart, freeEnd);
+    }
     current->AtomicClearLocalToShareRSetInRange(freeStart, freeEnd);
-    current->AtomicClearCrossRegionRSetInRange(freeStart, freeEnd);
 }
 
 size_t Heap::GetCommittedSize() const
@@ -485,7 +487,7 @@ TaggedObject *SharedHeap::AllocateNonMovableOrHugeObject(JSThread *thread, JSHCl
     CHECK_SOBJ_AND_THROW_OOM_ERROR(thread, object, size, sNonMovableSpace_,
         "SharedHeap::AllocateNonMovableOrHugeObject");
     object->SetClass(thread, hclass);
-    // todo(lukai)
+    // TODO(lukai)
     // OnAllocateEvent(reinterpret_cast<TaggedObject*>(object), size);
     return object;
 }
@@ -505,7 +507,7 @@ TaggedObject *SharedHeap::AllocateOldOrHugeObject(JSThread *thread, JSHClass *hc
     auto object = reinterpret_cast<TaggedObject *>(sOldSpace_->Allocate(thread, size));
     CHECK_SOBJ_AND_THROW_OOM_ERROR(thread, object, size, sOldSpace_, "SharedHeap::AllocateOldOrHugeObject");
     object->SetClass(thread, hclass);
-    // todo(lukai)
+    // TODO(lukai)
     // OnAllocateEvent(reinterpret_cast<TaggedObject*>(object), size);
     return object;
 }
@@ -517,7 +519,7 @@ TaggedObject *SharedHeap::AllocateOldOrHugeObject(JSThread *thread, size_t size)
         return AllocateHugeObject(thread, size);
     }
 
-    auto object = reinterpret_cast<TaggedObject *>(sOldSpace_->ConcurrentAllocate(size));
+    auto object = reinterpret_cast<TaggedObject *>(sOldSpace_->Allocate(thread, size));
     CHECK_SOBJ_AND_THROW_OOM_ERROR(thread, object, size, sOldSpace_, "SharedHeap::AllocateOldOrHugeObject");
     return object;
 }
@@ -528,7 +530,7 @@ TaggedObject *SharedHeap::AllocateHugeObject(JSThread *thread, JSHClass *hclass,
     CheckAndTriggerOldGC(thread, size);
     auto object = AllocateHugeObject(thread, size);
     object->SetClass(thread, hclass);
-    // todo(lukai)
+    // TODO(lukai)
     // OnAllocateEvent(reinterpret_cast<TaggedObject*>(object), size);
     return object;
 }
@@ -547,7 +549,7 @@ TaggedObject *SharedHeap::AllocateHugeObject(JSThread *thread, size_t size)
             size_t oomOvershootSize = config_.GetOutOfMemoryOvershootSize();
             sOldSpace_->IncreaseOutOfMemoryOvershootSize(oomOvershootSize);
             object = reinterpret_cast<TaggedObject *>(sHugeObjectSpace_->Allocate(size));
-            // todo(lukai)
+            // TODO(lukai)
             // DumpHeapSnapshotBeforeOOM();
             ThrowOutOfMemoryError(thread, size, "SharedHeap::AllocateHugeObject");
             if (UNLIKELY(object == nullptr)) {

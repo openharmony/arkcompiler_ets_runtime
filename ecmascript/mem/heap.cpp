@@ -38,7 +38,8 @@
 #include "ecmascript/mem/parallel_evacuator.h"
 #include "ecmascript/mem/parallel_marker-inl.h"
 #include "ecmascript/mem/shared_heap/shared_concurrent_sweeper.h"
-#include "ecmascript/mem/shared_heap/share_gc.h"
+#include "ecmascript/mem/shared_heap/shared_gc_marker-inl.h"
+#include "ecmascript/mem/shared_heap/shared_gc.h"
 #include "ecmascript/mem/stw_young_gc.h"
 #include "ecmascript/mem/verification.h"
 #include "ecmascript/mem/work_manager.h"
@@ -95,11 +96,11 @@ void SharedHeap::PostInitialization(const GlobalEnvConstants *globalEnvConstants
     globalEnvConstants_ = globalEnvConstants;
     uint32_t totalThreadNum = Taskpool::GetCurrentTaskpool()->GetTotalThreadNum();
     maxMarkTaskCount_ = totalThreadNum - 1;
-    sWorkManager_ = new ShareGCWorkManager(this, totalThreadNum + 1);
-    shareGCMarker_ = new ShareGCMarker(sWorkManager_);
+    sWorkManager_ = new SharedGCWorkManager(this, totalThreadNum + 1);
+    sharedGCMarker_ = new SharedGCMarker(sWorkManager_);
     sSweeper_ = new SharedConcurrentSweeper(this, option.EnableConcurrentSweep() ?
         EnableConcurrentSweepType::ENABLE : EnableConcurrentSweepType::CONFIG_DISABLE);
-    shareGC_ = new ShareGC(this);
+    sharedGC_ = new SharedGC(this);
 }
 
 void SharedHeap::PostGCMarkingTask()
@@ -112,7 +113,7 @@ bool SharedHeap::ParallelMarkTask::Run(uint32_t threadIndex)
 {
     // Synchronizes-with. Ensure that WorkManager::Initialize must be seen by MarkerThreads.
     while (!sHeap_->GetWorkManager()->HasInitialized());
-    sHeap_->GetShareGCMarker()->ProcessMarkStack(threadIndex);
+    sHeap_->GetSharedGCMarker()->ProcessMarkStack(threadIndex);
     sHeap_->ReduceTaskCount();
     return true;
 }
@@ -126,11 +127,12 @@ bool SharedHeap::AsyncClearTask::Run([[maybe_unused]] uint32_t threadIndex)
 void SharedHeap::CollectGarbage(JSThread *thread, [[maybe_unused]]TriggerGCType gcType, [[maybe_unused]]GCReason reason)
 {
     ASSERT(gcType == TriggerGCType::SHARED_GC);
-    CHECK_NO_GC
     Prepare();
-    SuspendAllScope scope(thread);
-    shareGC_->RunPhases();
-    // Weak node nativeFinalizeCallback would be called after localGC
+    {
+        SuspendAllScope scope(thread);
+        sharedGC_->RunPhases();
+    }
+    // Don't process weak node nativeFinalizeCallback here. These callbacks would be called after localGC.
 }
 
 void SharedHeap::Prepare()
@@ -147,7 +149,7 @@ void SharedHeap::PrepareRecordRegionsForReclaim()
     sHugeObjectSpace_->SetRecordRegion();
 }
 
-void SharedHeap::Resume()
+void SharedHeap::Reclaim()
 {
     sHugeObjectSpace_->ReclaimHugeRegion();
     PrepareRecordRegionsForReclaim();

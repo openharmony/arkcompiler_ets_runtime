@@ -1262,6 +1262,7 @@ void StubBuilder::SetValueWithBarrier(GateRef glue, GateRef obj, GateRef offset,
     Branch(BoolAnd(objectNotInShare, valueRegionInShare), &shareBarrier, &shareBarrierExit);
     Bind(&shareBarrier);
     {
+        // TODO(lukai) fastpath
         CallNGCRuntime(glue, RTSTUB_ID(InsertLocalToShareRSet), { glue, obj, offset });
         Jump(&shareBarrierExit);
     }

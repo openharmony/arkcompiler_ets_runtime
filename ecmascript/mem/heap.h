@@ -46,8 +46,8 @@ class NativeAreaAllocator;
 class ParallelEvacuator;
 class PartialGC;
 class SharedConcurrentSweeper;
-class ShareGC;
-class ShareGCMarker;
+class SharedGC;
+class SharedGCMarker;
 class STWYoungGC;
 
 using IdleNotifyStatusCallback = std::function<void(bool)>;
@@ -380,18 +380,17 @@ public:
     }
 
     void Prepare();
-    void Resume();
-    void ReclaimRegions();
+    void Reclaim();
     void PostGCMarkingTask();
 
-    ShareGCWorkManager *GetWorkManager() const
+    SharedGCWorkManager *GetWorkManager() const
     {
         return sWorkManager_;
     }
 
-    ShareGCMarker *GetShareGCMarker() const
+    SharedGCMarker *GetSharedGCMarker() const
     {
-        return shareGCMarker_;
+        return sharedGCMarker_;
     }
 
     void PrepareRecordRegionsForReclaim();
@@ -422,16 +421,18 @@ public:
 
     inline TaggedObject *AllocateReadOnlyOrHugeObject(JSThread *thread, JSHClass *hclass, size_t size);
 private:
+    void ReclaimRegions();
+
     bool parallelGC_ {true};
     const GlobalEnvConstants *globalEnvConstants_ {nullptr};
     SharedOldSpace *sOldSpace_ {nullptr};
     SharedNonMovableSpace *sNonMovableSpace_ {nullptr};
     SharedReadOnlySpace *sReadOnlySpace_ {nullptr};
     HugeObjectSpace *sHugeObjectSpace_ {nullptr};
-    ShareGCWorkManager *sWorkManager_ {nullptr};
+    SharedGCWorkManager *sWorkManager_ {nullptr};
     SharedConcurrentSweeper *sSweeper_ {nullptr};
-    ShareGC *shareGC_ {nullptr};
-    ShareGCMarker *shareGCMarker_ {nullptr};
+    SharedGC *sharedGC_ {nullptr};
+    SharedGCMarker *sharedGCMarker_ {nullptr};
 };
 
 class Heap : public BaseHeap {

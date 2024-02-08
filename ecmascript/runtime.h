@@ -54,10 +54,13 @@ public:
         return &mutatorLock_;
     }
 
-    std::list<JSThread*> ThreadList()
+    template<class Callback>
+    void IterateThreadList(const Callback &cb)
     {
         LockHolder lock(threadsLock_);
-        return threads_;
+        for (auto thread : threads_) {
+            cb(thread);
+        }
     }
 
     inline const GlobalEnvConstants *GetGlobalEnvConstants()

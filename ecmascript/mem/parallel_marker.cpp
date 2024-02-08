@@ -218,49 +218,4 @@ uintptr_t CompressGCMarker::AllocateForwardAddress(uint32_t threadId, size_t siz
         return AllocateAppSpawnSpace(size);
     }
 }
-
-void ShareGCMarker::MarkRoots(uint32_t threadId, EcmaVM *localVm)
-{
-    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "ShareGCMarker::MarkRoots");
-    ObjectXRay::VisitVMRoots(
-        localVm,
-        std::bind(&ShareGCMarker::HandleRoots, this, threadId, std::placeholders::_1, std::placeholders::_2),
-        std::bind(&ShareGCMarker::HandleRangeRoots, this, threadId, std::placeholders::_1, std::placeholders::_2,
-                  std::placeholders::_3),
-        std::bind(&ShareGCMarker::HandleDerivedRoots, this, std::placeholders::_1, std::placeholders::_2,
-                  std::placeholders::_3, std::placeholders::_4));
-    sWorkManager_->PushWorkNodeToGlobal(threadId, false);
-}
-
-void ShareGCMarker::ProcessMarkStack(uint32_t threadId)
-{
-    auto cb = [&](ObjectSlot slot) {
-        MarkValue(threadId, slot);
-    };
-    auto visitor = [this, threadId, cb](TaggedObject *root, ObjectSlot start, ObjectSlot end,
-                                        VisitObjectArea area) {
-        if (area == VisitObjectArea::IN_OBJECT) {
-            if (VisitBodyInObj(root, start, end, cb)) {
-                return;
-            }
-        }
-        for (ObjectSlot slot = start; slot < end; slot++) {
-            MarkValue(threadId, slot);
-        }
-    };
-    TaggedObject *obj = nullptr;
-    while (true) {
-        obj = nullptr;
-        if (!sWorkManager_->Pop(threadId, &obj)) {
-            break;
-        }
-        JSHClass *hclass = obj->SynchronizedGetClass();
-        auto size = hclass->SizeFromJSHClass(obj);
-        Region *region = Region::ObjectAddressToRange(obj);
-        ASSERT(region->InSharedSweepableSpace());
-        region->IncreaseAliveObjectSafe(size);
-        MarkObject(threadId, hclass);
-        ObjectXRay::VisitObjectBody<VisitType::OLD_GC_VISIT>(obj, hclass, visitor);
-    }
-}
 }  // namespace panda::ecmascript

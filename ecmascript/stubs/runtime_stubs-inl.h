@@ -935,7 +935,7 @@ JSTaggedValue RuntimeStubs::RuntimeCreateSharedClass(JSThread *thread,
     // fieldTypeId is the last element in literal buffer
     auto fieldTypeId = static_cast<uint32_t>(arrayHandle->Get(literalLength - 1).GetInt());
     arrayHandle->Trim(thread, literalLength - 1);
-    JSHandle<ClassInfoExtractor> extractor = factory->NewSClassInfoExtractor(method);
+    JSHandle<ClassInfoExtractor> extractor = factory->NewClassInfoExtractor(method);
     ClassInfoExtractor::BuildClassInfoExtractorFromLiteral(thread, extractor, arrayHandle);
 
     JSHandle<TaggedArray> fieldTypeArray = ConstantPool::GetFieldLiteral(thread, constpoolHandle, fieldTypeId, entry);
