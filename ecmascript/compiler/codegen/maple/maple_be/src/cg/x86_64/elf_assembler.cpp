@@ -952,11 +952,13 @@ void ElfAssembler::WriteElfFile()
         memcpy_s(codeSpace, textSection->GetSectionSize(), textSection->GetData().data(), textSection->GetDataSize());
         if (CGOptions::addFuncSymbol()) {
             uint8 *symtabSpace = emitMemoryManager.allocateDataSection(emitMemoryManager.codeSpace,
-                    symbolTabSection->GetDataSize(), symbolTabSection->GetAlign(), symbolTabSection->GetName().c_str());
-            memcpy_s(symtabSpace, symbolTabSection->GetDataSize() , symbolTabSection->GetAddr(), symbolTabSection->GetDataSize());
+                symbolTabSection->GetDataSize(), symbolTabSection->GetAlign(), symbolTabSection->GetName().c_str());
+            memcpy_s(symtabSpace, symbolTabSection->GetDataSize(),
+                symbolTabSection->GetAddr(), symbolTabSection->GetDataSize());
             uint8 *stringTabSpace = emitMemoryManager.allocateDataSection(emitMemoryManager.codeSpace,
-                    strTabSection->GetDataSize(), strTabSection->GetAlign(), strTabSection->GetName().c_str());
-            memcpy_s(stringTabSpace, strTabSection->GetDataSize(), strTabSection->GetData().data(), strTabSection->GetDataSize());
+                strTabSection->GetDataSize(), strTabSection->GetAlign(), strTabSection->GetName().c_str());
+            memcpy_s(stringTabSpace, strTabSection->GetDataSize(),
+                strTabSection->GetData().data(), strTabSection->GetDataSize());
         }
         return;
     }

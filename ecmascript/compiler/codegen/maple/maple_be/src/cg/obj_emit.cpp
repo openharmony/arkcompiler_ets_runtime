@@ -116,15 +116,17 @@ void ObjEmitter::WriteObjFile()
     if (emitMemorymanager.codeSpace != nullptr) {
         DEBUG_ASSERT(textSection != nullptr, "textSection has not been initialized");
         uint8 *codeSpace = emitMemorymanager.allocateDataSection(emitMemorymanager.codeSpace,
-                textSection->GetDataSize(), textSection->GetAlign(), textSection->GetName().c_str());
+            textSection->GetDataSize(), textSection->GetAlign(), textSection->GetName().c_str());
         memcpy_s(codeSpace, textSection->GetDataSize(), textSection->GetData().data(), textSection->GetDataSize());
         if (CGOptions::addFuncSymbol()) {
             uint8 *symtabSpace = emitMemorymanager.allocateDataSection(emitMemorymanager.codeSpace,
-                    symbolTabSection->GetDataSize(), symbolTabSection->GetAlign(), symbolTabSection->GetName().c_str());
-            memcpy_s(symtabSpace, symbolTabSection->GetDataSize() , symbolTabSection->GetAddr(), symbolTabSection->GetDataSize());
+                symbolTabSection->GetDataSize(), symbolTabSection->GetAlign(), symbolTabSection->GetName().c_str());
+            memcpy_s(symtabSpace, symbolTabSection->GetDataSize(),
+                symbolTabSection->GetAddr(), symbolTabSection->GetDataSize());
             uint8 *stringTabSpace = emitMemorymanager.allocateDataSection(emitMemorymanager.codeSpace,
-                    strTabSection->GetDataSize(), strTabSection->GetAlign(), strTabSection->GetName().c_str());
-            memcpy_s(stringTabSpace, strTabSection->GetDataSize(), strTabSection->GetData().data(), strTabSection->GetDataSize());
+                strTabSection->GetDataSize(), strTabSection->GetAlign(), strTabSection->GetName().c_str());
+            memcpy_s(stringTabSpace, strTabSection->GetDataSize(),
+                strTabSection->GetData().data(), strTabSection->GetDataSize());
         }
 
         return;

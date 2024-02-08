@@ -284,7 +284,6 @@ void AArch64ObjEmitter::AppendGlobalLabel()
 
 void AArch64ObjEmitter::AppendSymsToSymTabSec()
 {
-
     Address offset = 0;
     auto &contents = GetContents();
     for (auto *content : contents) {

@@ -101,7 +101,7 @@ void ElfBuilder::DumpSection() const
 }
 
 ElfBuilder::ElfBuilder(const std::vector<ModuleSectionDes> &des,
-                       const std::vector<ElfSecName> &sections, bool useLiteCG): des_(des), sections_(sections), useLiteCG_(useLiteCG)
+    const std::vector<ElfSecName> &sections, bool useLiteCG): des_(des), sections_(sections), useLiteCG_(useLiteCG)
 {
     Initialize();
     AddShStrTabSection();
@@ -469,8 +469,8 @@ void ElfBuilder::MergeArkStackMapSections(std::ofstream &file,
 }
 
 void ElfBuilder::MergeSymTabSectionsForLiteCG(std::ofstream &file,
-                                          std::vector<ModuleSectionDes::ModuleRegionInfo> &moduleInfo,
-                                          llvm::ELF::Elf64_Off &curSecOffset)
+                                              std::vector<ModuleSectionDes::ModuleRegionInfo> &moduleInfo,
+                                              llvm::ELF::Elf64_Off &curSecOffset)
 {
     // here we only support func symbol here.
     using Elf64_Sym = llvm::ELF::Elf64_Sym;
