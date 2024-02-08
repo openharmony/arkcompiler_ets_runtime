@@ -270,7 +270,7 @@ JSTaggedValue ObjectFastOperator::SetPropertyByName(JSThread *thread, JSTaggedVa
                 if (UNLIKELY(holder != receiver)) {
                     break;
                 }
-                if (!sCheckMode && holder.IsJSShared()) {
+                if ((sCheckMode == SCheckMode::CHECK) && holder.IsJSShared()) {
                     if (!ClassHelper::MatchTrackType(attr.GetDictTrackType(), value)) {
                         THROW_TYPE_ERROR_AND_RETURN((thread), GET_MESSAGE_STRING(SetTypeMismatchedSharedProperty),
                                                     JSTaggedValue::Exception());

@@ -473,6 +473,78 @@ function testNormInherit() {
   }
 }
 
+function testICCheckingForUpdateInstanceProps(testObj: SubClass) {
+  let loopIndex: number = 0;
+  try {
+    for (loopIndex = 0; loopIndex < 2000; loopIndex++) {
+      testObj.subClassPropString = loopIndex < 1000 ? "hello" : 1;
+    }
+    print("[IC] Success update subClassPropString with mismatch type")
+  } catch (error) {
+    print("[IC] Fail to update subClassPropString with mismatch type. err: " + error + ", loopIndex: " + loopIndex)
+  }
+
+  try {
+    for (loopIndex = 0; loopIndex < 2000; loopIndex++) {
+      testObj.propNumber = loopIndex < 1000 ? 100 : "Hi";
+    }
+    print("[IC] Success update propNumber with mismatch type")
+  } catch (error) {
+    print("[IC] Fail to update propNumber with mismatch type. err: " + error + ", loopIndex: " + loopIndex);
+  }
+
+  try {
+    for (loopIndex = 0; loopIndex < 2000; loopIndex++) {
+      testObj.subClassPropString = loopIndex < 1000 ? 33 : "Hi";
+    }
+    print("[IC] Success update subClassPropString with mismatch type")
+  } catch (error) {
+    print("[IC] Fail to update subClassPropString with mismatch type. err: " + error + ", loopIndex: " + loopIndex);
+  }
+
+  try {
+    let simpleSendable = new SimpleStringSendable();
+    for (loopIndex = 0; loopIndex < 2000; loopIndex++) {
+      testObj.subClassPropSendable = loopIndex < 1000 ? simpleSendable : 1;
+    }
+    print("[IC] Success to update subClassPropSendable with mismatch type.");
+  } catch (error) {
+    print("[IC] Fail to update subClassPropSendable with mismatch type. err: " + error + ", loopIndex: " + loopIndex);
+  }
+
+  try {
+    for (loopIndex = 0; loopIndex < 2000; loopIndex++) {
+      SubClass.staticSubClassPropString = loopIndex < 1000 ? "modify static" : 1;
+    }
+    print("[IC] Success to modify constructor's property with mismatch type.");
+  } catch (error) {
+    print("[IC] Fail to modify constructor's property with mismatch type. err: " + error + ", loopIndex: " + loopIndex);
+  }
+}
+
+function testHotFunction(testObj: SubClass, loopIndex: number) {
+  testObj.accessorPrivatePropString = loopIndex < 1000 ? "123" : 1;
+}
+
+function testICCheckingUpdateInstanceAccessor(testObj: SubClass) {
+  let loopIndex: number = 0;
+  try {
+    for (loopIndex = 0; loopIndex < 2000; loopIndex++) {
+        testHotFunction(testObj, loopIndex);
+    }
+    print("[IC] Success set prop through accessor with matched type");
+  } catch (error) {
+    print("[IC] Fail to set prop through accessor with matched type. err: " + error);
+  }
+}
+
+function testICChecking(testObj: SubClass)
+{
+  print("Start testICChecking");
+  testICCheckingForUpdateInstanceProps(testObj);
+  testICCheckingUpdateInstanceAccessor(testObj);
+}
+
 let b = new SubClass()
 b.subClassPropSendable = new SimpleStringSendable()
 testUpdate(b)
@@ -482,3 +554,4 @@ testObjectProtoFunc(b)
 testUpdateWithType(b)
 testKeywords(b)
 testNormInherit()
+testICChecking(b);
