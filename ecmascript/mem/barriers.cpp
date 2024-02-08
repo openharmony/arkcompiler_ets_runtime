@@ -22,7 +22,7 @@ void Barriers::Update(const JSThread *thread, uintptr_t slotAddr, Region *object
                       Region *valueRegion, WriteBarrierType writeType)
 {
     auto heap = thread->GetEcmaVM()->GetHeap();
-    if (heap->IsFullMark()) {
+    if (heap->IsConcurrentFullMark()) {
         if (valueRegion->InCollectSet() && !objectRegion->InYoungSpaceOrCSet()) {
             objectRegion->AtomicInsertCrossRegionRSet(slotAddr);
         }
@@ -47,7 +47,7 @@ void Barriers::MarkAndPushForDeserialize(const JSThread *thread, TaggedObject *o
 {
     auto heap = thread->GetEcmaVM()->GetHeap();
     Region *valueRegion = Region::ObjectAddressToRange(object);
-    if ((heap->IsFullMark() || valueRegion->InYoungSpace()) && valueRegion->AtomicMark(object)) {
+    if ((heap->IsConcurrentFullMark() || valueRegion->InYoungSpace()) && valueRegion->AtomicMark(object)) {
         heap->GetWorkManager()->Push(MAIN_THREAD_INDEX, object, valueRegion);
     }
 }

@@ -66,7 +66,7 @@ void Marker::ProcessSnapshotRSetNoMarkStack(uint32_t threadId)
 void NonMovableMarker::ProcessMarkStack(uint32_t threadId)
 {
     TRACE_GC(GCStats::Scope::ScopeId::ProcessMarkStack, heap_->GetEcmaVM()->GetEcmaGCStats());
-    bool isFullMark = heap_->IsFullMark();
+    bool isFullMark = heap_->IsConcurrentFullMark();
     auto cb = [&](ObjectSlot s, Region *rootRegion, bool needBarrier) {
         MarkValue(threadId, s, rootRegion, needBarrier);
     };
@@ -99,7 +99,7 @@ void NonMovableMarker::ProcessMarkStack(uint32_t threadId)
 void NonMovableMarker::ProcessIncrementalMarkStack(uint32_t threadId, uint32_t markStepSize)
 {
     TRACE_GC(GCStats::Scope::ScopeId::ProcessMarkStack, heap_->GetEcmaVM()->GetEcmaGCStats());
-    bool isFullMark = heap_->IsFullMark();
+    bool isFullMark = heap_->IsConcurrentFullMark();
     uint32_t visitAddrNum = 0;
     auto cb = [&](ObjectSlot s, Region *rootRegion, bool needBarrier) {
         MarkValue(threadId, s, rootRegion, needBarrier);

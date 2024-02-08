@@ -69,6 +69,11 @@ public:
             (start - begin) >> TAGGED_TYPE_SIZE_LOG, (end - begin) >> TAGGED_TYPE_SIZE_LOG);
     }
 
+    bool TestBit(uintptr_t begin, uintptr_t addr) const
+    {
+        return GCBitsetData()->TestBit((addr - begin) >> TAGGED_TYPE_SIZE_LOG);
+    }
+
     template <typename Visitor>
     void IterateAllMarkedBits(uintptr_t begin, Visitor visitor)
     {

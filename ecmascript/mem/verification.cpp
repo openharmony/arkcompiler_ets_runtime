@@ -18,8 +18,75 @@
 #include "ecmascript/js_tagged_value-inl.h"
 #include "ecmascript/mem/slots.h"
 #include "ecmascript/mem/visitor.h"
+#include "ecmascript/mem/concurrent_sweeper.h"
 
 namespace panda::ecmascript {
+void LogErrorForObjSlot(const Heap *heap, const char *headerInfo, TaggedObject *obj, ObjectSlot slot,
+                        TaggedObject *value)
+{
+    TaggedObject *slotValue = slot.GetTaggedObject();
+    Region *region = Region::ObjectAddressToRange(obj);
+    Region *valueRegion = Region::ObjectAddressToRange(value);
+    Region *slotRegion = Region::ObjectAddressToRange(slotValue);
+    LOG_GC(FATAL) << headerInfo
+                  << ": gctype=" << heap->GetGCType()
+                  << ", obj address=" << obj
+                  << ", obj region=" << region
+                  << ", obj space type=" << region->GetSpaceTypeName()
+                  << ", obj type=" << JSHClass::DumpJSType(obj->GetClass()->GetObjectType())
+                  << ", slot address=" << reinterpret_cast<void*>(slot.SlotAddress())
+                  << ", slot value=" << slotValue
+                  << ", slot value region=" << slotRegion
+                  << ", slot value space type=" << slotRegion->GetSpaceTypeName()
+                  << ", slot value type=" << JSHClass::DumpJSType(slotValue->GetClass()->GetObjectType())
+                  << ", value address=" << value
+                  << ", value region=" << valueRegion
+                  << ", value space type=" << valueRegion->GetSpaceTypeName()
+                  << ", value type=" << JSHClass::DumpJSType(value->GetClass()->GetObjectType())
+                  << ", obj mark bit=" << region->Test(obj)
+                  << ", obj slot olwToNew bit=" << region->TestOldToNew(slot.SlotAddress())
+                  << ", obj slot value mark bit=" << slotRegion->Test(slotValue)
+                  << ", value mark bit=" << valueRegion->Test(value);
+    UNREACHABLE();
+}
+
+void LogErrorForObj(const Heap *heap, const char *headerInfo, TaggedObject *obj)
+{
+    Region *region = Region::ObjectAddressToRange(obj);
+    LOG_GC(FATAL) << headerInfo
+                  << ": gctype=" << heap->GetGCType()
+                  << ", obj address=" << obj
+                  << ", obj value=" << ObjectSlot(ToUintPtr(obj)).GetTaggedObject()
+                  << ", obj region=" << region
+                  << ", obj space type=" << region->GetSpaceTypeName()
+                  << ", obj type=" << JSHClass::DumpJSType(obj->GetClass()->GetObjectType())
+                  << ", obj mark bit=" << region->Test(obj);
+    UNREACHABLE();
+}
+
+// Only used for verify InactiveSemiSpace
+void VerifyObjectVisitor::VerifyInactiveSemiSpaceMarkedObject(const Heap *heap, void *addr)
+{
+    TaggedObject *object = reinterpret_cast<TaggedObject*>(addr);
+    Region *objectRegion = Region::ObjectAddressToRange(object);
+    if (!objectRegion->InInactiveSemiSpace()) {
+        LogErrorForObj(heap, "Verify InactiveSemiSpaceMarkedObject: Object is not in InactiveSemiSpace.", object);
+    } else {
+        MarkWord word(object);
+        if (!word.IsForwardingAddress()) {
+            LogErrorForObj(heap, "Verify InactiveSemiSpaceMarkedObject: not forwarding address.", object);
+        } else {
+            ObjectSlot slot(ToUintPtr(object));
+            TaggedObject *value = word.ToForwardingAddress();
+            Region *valueRegion = Region::ObjectAddressToRange(value);
+            if (valueRegion->InInactiveSemiSpace()) {
+                LogErrorForObjSlot(heap, "Verify InactiveSemiSpaceMarkedObject: forwarding address, "
+                    "but InactiveSemiSpace(FromSpace) Object.", object, slot, value);
+            }
+        }
+    }
+}
+
 // Verify the object body
 void VerifyObjectVisitor::VisitAllObjects(TaggedObject *obj)
 {
@@ -35,41 +102,147 @@ void VerifyObjectVisitor::VisitAllObjects(TaggedObject *obj)
                     auto layout = LayoutInfo::Cast(hclass->GetLayout().GetTaggedObject());
                     auto attr = layout->GetAttr(index++);
                     if (attr.IsTaggedRep()) {
-                        VisitObject(slot, root);
+                        VerifyObjectSlotLegal(slot, root);
                     }
                 }
                 return;
             }
             for (ObjectSlot slot = start; slot < end; slot++) {
-                VisitObject(slot, root);
+                VerifyObjectSlotLegal(slot, root);
             }
         });
 }
 
-void VerifyObjectVisitor::VisitObject(ObjectSlot slot, TaggedObject *root)
+void VerifyObjectVisitor::VerifyObjectSlotLegal(ObjectSlot slot, TaggedObject *object) const
 {
     JSTaggedValue value(slot.GetTaggedType());
     if (value.IsWeak()) {
         if (ToUintPtr(value.GetTaggedWeakRef()) < INVALID_THRESHOLD) {
-            LOG_GC(ERROR) << "Heap verify detected an invalid value at " << value.GetTaggedWeakRef()
-                                << " at object:" << slot.SlotAddress() << ", root:" << root;
+            LogErrorForObjSlot(heap_, "Heap verify detected an invalid value.",
+                object, slot, value.GetTaggedWeakRef());
         }
         if (!heap_->IsAlive(value.GetTaggedWeakRef())) {
-            LOG_GC(ERROR) << "Heap verify detected a dead weak object at " << value.GetTaggedWeakRef()
-                                << " at object:" << slot.SlotAddress();
+            LogErrorForObjSlot(heap_, "Heap verify detected a dead weak object.",
+                object, slot, value.GetTaggedWeakRef());
             ++(*failCount_);
         }
     } else if (value.IsHeapObject()) {
         if (ToUintPtr(value.GetTaggedObject()) < INVALID_THRESHOLD) {
-            LOG_GC(ERROR) << "Heap verify detected an invalid value at " << value.GetTaggedObject()
-                                << " at object:" << slot.SlotAddress() << ", root:" << root;
+            LogErrorForObjSlot(heap_, "Heap verify detected an invalid value.",
+                object, slot, value.GetTaggedObject());
         }
         if (!heap_->IsAlive(value.GetTaggedObject())) {
-            LOG_GC(ERROR) << "Heap verify detected a dead object at " << value.GetTaggedObject()
-                                << " at object:" << slot.SlotAddress();
+            LogErrorForObjSlot(heap_, "Heap verify detected a dead object.",
+                object, slot, value.GetTaggedObject());
             ++(*failCount_);
         }
+        switch (verifyKind_) {
+            case VerifyKind::VERIFY_PRE_GC:
+            case VerifyKind::VERIFY_POST_GC:
+                break;
+            case VerifyKind::VERIFY_CONCURRENT_MARK_YOUNG:
+                VerifyMarkYoung(object, slot, value.GetTaggedObject());
+                break;
+            case VerifyKind::VERIFY_EVACUATE_YOUNG:
+                VerifyEvacuateYoung(object, slot, value.GetTaggedObject());
+                break;
+            case VerifyKind::VERIFY_CONCURRENT_MARK_FULL:
+                VerifyMarkFull(object, slot, value.GetTaggedObject());
+                break;
+            case VerifyKind::VERIFY_EVACUATE_OLD:
+                VerifyEvacuateOld(object, slot, value.GetTaggedObject());
+                break;
+            case VerifyKind::VERIFY_EVACUATE_FULL:
+                VerifyEvacuateFull(object, slot, value.GetTaggedObject());
+                break;
+            default:
+                LOG_GC(FATAL) << "unknown verify kind:" << static_cast<size_t>(verifyKind_);
+                UNREACHABLE();
+        }
     }
+}
+
+void VerifyObjectVisitor::VerifyMarkYoung(TaggedObject *object, ObjectSlot slot, TaggedObject *value) const
+{
+    Region *objectRegion = Region::ObjectAddressToRange(object);
+    Region *valueRegion = Region::ObjectAddressToRange(value);
+    if (!objectRegion->InYoungSpace() && valueRegion->InYoungSpace()) {
+        if (!objectRegion->TestOldToNew(slot.SlotAddress())) {
+            LogErrorForObjSlot(heap_, "Verify MarkYoung: Old object, slot miss old_to_new bit.", object, slot, value);
+        } else if (!valueRegion->Test(value)) {
+            LogErrorForObjSlot(heap_, "Verify MarkYoung: Old object, slot has old_to_new bit, miss gc_mark bit.",
+                object, slot, value);
+        }
+    }
+    if (objectRegion->Test(object)) {
+        if (!objectRegion->InYoungSpace() && !objectRegion->InAppSpawnSpace() && !objectRegion->InReadOnlySpace()) {
+            LogErrorForObj(heap_, "Verify MarkYoung: Marked object, NOT in Young/AppSpawn/ReadOnly Space", object);
+        }
+        if (valueRegion->InYoungSpace() && !valueRegion->Test(value)) {
+            LogErrorForObjSlot(heap_, "Verify MarkYoung: Marked object, slot in YoungSpace, miss gc_mark bit.",
+                object, slot, value);
+        }
+        if (valueRegion->Test(value) && !(valueRegion->InYoungSpace() || valueRegion->InAppSpawnSpace() ||
+                                          valueRegion->InReadOnlySpace())) {
+            LogErrorForObjSlot(heap_, "Verify MarkYoung: Marked object, slot marked, but NOT in "
+                "Young/AppSpawn/ReadOnly Space.", object, slot, value);
+        }
+    }
+}
+
+void VerifyObjectVisitor::VerifyEvacuateYoung(TaggedObject *object, ObjectSlot slot, TaggedObject *value) const
+{
+    Region *objectRegion = Region::ObjectAddressToRange(object);
+    Region *valueRegion = Region::ObjectAddressToRange(value);
+    if (!objectRegion->InYoungSpace()) {
+        if (objectRegion->TestOldToNew(slot.SlotAddress())) {
+            if (!valueRegion->InActiveSemiSpace()) {
+                LogErrorForObjSlot(heap_, "Verify EvacuateYoung: Old object, slot old_to_new bit = 1, "
+                    "but NOT ActiveSpace(ToSpace) object.", object, slot, value);
+            }
+        } else {
+            if (valueRegion->InYoungSpace()) {
+                LogErrorForObjSlot(heap_, "Verify EvacuateYoung: Old object, slot old_to_new bit = 0, "
+                    "but YoungSpace object.", object, slot, value);
+            }
+        }
+    }
+    if (objectRegion->InActiveSemiSpace()) {
+        if (valueRegion->InInactiveSemiSpace()) {
+            LogErrorForObjSlot(heap_, "Verify EvacuateYoung: ActiveSpace object, slot in InactiveSpace(FromSpace).",
+                object, slot, value);
+        }
+    }
+}
+
+void VerifyObjectVisitor::VerifyMarkFull(TaggedObject *object, ObjectSlot slot, TaggedObject *value) const
+{
+    Region *objectRegion = Region::ObjectAddressToRange(object);
+    Region *valueRegion = Region::ObjectAddressToRange(value);
+    if (!objectRegion->InYoungSpace() && valueRegion->InYoungSpace()) {
+        if (!objectRegion->TestOldToNew(slot.SlotAddress())) {
+            LogErrorForObjSlot(heap_, "Verify MarkFull: Old object, slot miss old_to_new bit.", object, slot, value);
+        }
+    }
+    if (objectRegion->Test(object)) {
+        if (!valueRegion->Test(value)) {
+            LogErrorForObjSlot(heap_, "Verify MarkFull: Marked object, slot miss gc_mark bit.", object, slot, value);
+        }
+    }
+}
+
+void VerifyObjectVisitor::VerifyEvacuateOld([[maybe_unused]]TaggedObject *root,
+                                            [[maybe_unused]]ObjectSlot slot,
+                                            [[maybe_unused]]TaggedObject *value) const
+{
+    VerifyEvacuateYoung(root, slot, value);
+}
+
+void VerifyObjectVisitor::VerifyEvacuateFull([[maybe_unused]]TaggedObject *root,
+                                             [[maybe_unused]]ObjectSlot slot,
+                                             [[maybe_unused]]TaggedObject *value) const
+{
+    VerifyEvacuateYoung(root, slot, value);
 }
 
 void VerifyObjectVisitor::operator()(TaggedObject *obj, JSTaggedValue value)
@@ -89,6 +262,18 @@ void VerifyObjectVisitor::operator()(TaggedObject *obj, JSTaggedValue value)
                       << JSHClass::DumpJSType(slot.GetTaggedObject()->GetClass()->GetObjectType())
                       << ")" << " in " << region->GetSpaceTypeName();
         ++(*failCount_);
+    }
+}
+
+void Verification::VerifyAll() const
+{
+    [[maybe_unused]] VerifyScope verifyScope(heap_);
+    heap_->GetSweeper()->EnsureAllTaskFinished();
+    size_t result = VerifyRoot();
+    result += VerifyHeap();
+    if (result > 0) {
+        LOG_GC(FATAL) << "Verify (type=" << static_cast<uint8_t>(verifyKind_)
+                      << ") corrupted and " << result << " corruptions";
     }
 }
 
@@ -117,7 +302,7 @@ size_t Verification::VerifyRoot() const
 
 size_t Verification::VerifyHeap() const
 {
-    size_t failCount = heap_->VerifyHeapObjects();
+    size_t failCount = heap_->VerifyHeapObjects(verifyKind_);
     if (failCount > 0) {
         LOG_GC(ERROR) << "VerifyHeap detects deadObject count is " << failCount;
     }
@@ -126,7 +311,7 @@ size_t Verification::VerifyHeap() const
 
 size_t Verification::VerifyOldToNewRSet() const
 {
-    size_t failCount = heap_->VerifyOldToNewRSet();
+    size_t failCount = heap_->VerifyOldToNewRSet(verifyKind_);
     if (failCount > 0) {
         LOG_GC(ERROR) << "VerifyOldToNewRSet detects non new space count is " << failCount;
     }
@@ -137,9 +322,9 @@ void Verification::VerifyObjectSlot(const ObjectSlot &slot, size_t *failCount) c
 {
     JSTaggedValue value(slot.GetTaggedType());
     if (value.IsWeak()) {
-        VerifyObjectVisitor(heap_, failCount)(value.GetTaggedWeakRef());
+        VerifyObjectVisitor(heap_, failCount, verifyKind_)(value.GetTaggedWeakRef());
     } else if (value.IsHeapObject()) {
-        VerifyObjectVisitor(heap_, failCount)(value.GetTaggedObject());
+        VerifyObjectVisitor(heap_, failCount, verifyKind_)(value.GetTaggedObject());
     }
 }
 }  // namespace panda::ecmascript

@@ -139,7 +139,7 @@ void MemController::StopCalculationAfterGC(TriggerGCType gcType)
     switch (gcType) {
         case TriggerGCType::YOUNG_GC:
         case TriggerGCType::OLD_GC: {
-            if (heap_->IsFullMark()) {
+            if (heap_->IsConcurrentFullMark()) {
                 if (heap_->GetConcurrentMarker()->IsEnabled()) {
                     duration += heap_->GetConcurrentMarker()->GetDuration();
                 }

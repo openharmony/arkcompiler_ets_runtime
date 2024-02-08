@@ -344,6 +344,11 @@ void Heap::SwapNewSpace()
     SemiSpace *newSpace = inactiveSemiSpace_;
     inactiveSemiSpace_ = activeSemiSpace_;
     activeSemiSpace_ = newSpace;
+    if (UNLIKELY(ShouldVerifyHeap())) {
+        inactiveSemiSpace_->EnumerateRegions([](Region *region) {
+            region->SetInactiveSemiSpace();
+        });
+    }
 #ifdef ECMASCRIPT_SUPPORT_HEAPSAMPLING
     activeSemiSpace_->SwapAllocationCounter(inactiveSemiSpace_);
 #endif

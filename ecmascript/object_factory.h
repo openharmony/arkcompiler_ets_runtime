@@ -194,6 +194,7 @@ enum class GrowMode { KEEP, GROW };
 
 class ObjectFactory {
 public:
+    static constexpr JSTaggedType FREE_MEMMORY_ADDRESS_ZAM_VALUE = 0xDEADFACE;
     ObjectFactory(JSThread *thread, Heap *heap);
     ~ObjectFactory() = default;
     JSHandle<Method> NewMethodForNativeFunction(const void *func, FunctionKind kind = FunctionKind::NORMAL_FUNCTION,
@@ -682,6 +683,9 @@ public:
                                                          const PropertyDescriptor *attributes);
     JSHandle<JSTaggedValue> CreateJSObjectWithNamedProperties(size_t propertyCount, const char **keys,
                                                               const Local<JSValueRef> *values);
+
+    // Fill the given free memory range with special zam value.
+    void FillFreeMemoryRange(uintptr_t start, uintptr_t end);
 
 private:
     friend class GlobalEnv;
