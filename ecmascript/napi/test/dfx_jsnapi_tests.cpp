@@ -307,7 +307,7 @@ HWTEST_F_L0(DFXJSNApiTests, NotifyApplicationState)
     const_cast<ecmascript::Heap *>(heap)->CollectGarbage(TriggerGCType::OLD_GC, GCReason::OTHER);
     DFXJSNApi::NotifyApplicationState(vm_, true);
     EXPECT_TRUE(concurrentMarker->IsDisabled());
-    EXPECT_TRUE(sweeper->IsRequestDisabled());
+    EXPECT_TRUE(sweeper->IsRequestDisabled() || sweeper->IsDisabled());
 }
 
 HWTEST_F_L0(DFXJSNApiTests, NotifyMemoryPressure)

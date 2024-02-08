@@ -27,12 +27,31 @@
 namespace panda::ecmascript {
 static constexpr uint32_t INVALID_THRESHOLD = 0x40000;
 
+class VerifyScope {
+public:
+    VerifyScope(Heap *heap) : heap_(heap)
+    {
+        heap_->SetVerifying(true);
+    }
+
+    ~VerifyScope()
+    {
+        heap_->SetVerifying(false);
+    }
+private:
+    Heap *heap_ {nullptr};
+};
+
 // Verify the object body
 // NOLINTNEXTLINE(cppcoreguidelines-special-member-functions, hicpp-special-member-functions)
 class VerifyObjectVisitor {
 public:
-    VerifyObjectVisitor(const Heap *heap, size_t *failCount)
-        : heap_(heap), failCount_(failCount), objXRay_(heap->GetEcmaVM())
+    // Only used for verify InactiveSemiSpace
+    static void VerifyInactiveSemiSpaceMarkedObject(const Heap *heap, void *addr);
+
+    VerifyObjectVisitor(const Heap *heap, size_t *failCount,
+                        VerifyKind verifyKind = VerifyKind::VERIFY_PRE_GC)
+        : heap_(heap), failCount_(failCount), objXRay_(heap->GetEcmaVM()), verifyKind_(verifyKind)
     {
     }
     ~VerifyObjectVisitor() = default;
@@ -51,24 +70,26 @@ public:
 
 private:
     void VisitAllObjects(TaggedObject *obj);
-    void VisitObject(ObjectSlot slot, TaggedObject *root);
+    void VerifyObjectSlotLegal(ObjectSlot slot, TaggedObject *obj) const;
+    void VerifyMarkYoung(TaggedObject *obj, ObjectSlot slot, TaggedObject *value) const;
+    void VerifyEvacuateYoung(TaggedObject *obj, ObjectSlot slot, TaggedObject *value) const;
+    void VerifyMarkFull(TaggedObject *obj, ObjectSlot slot, TaggedObject *value) const;
+    void VerifyEvacuateOld(TaggedObject *obj, ObjectSlot slot, TaggedObject *value) const;
+    void VerifyEvacuateFull(TaggedObject *obj, ObjectSlot slot, TaggedObject *value) const;
 
     const Heap* const heap_ {nullptr};
     size_t* const failCount_ {nullptr};
     ObjectXRay objXRay_;
+    VerifyKind verifyKind_;
 };
 
 class Verification {
 public:
-    explicit Verification(const Heap *heap) : heap_(heap), objXRay_(heap->GetEcmaVM()) {}
+    explicit Verification(Heap *heap, VerifyKind verifyKind = VerifyKind::VERIFY_PRE_GC)
+        : heap_(heap), objXRay_(heap->GetEcmaVM()), verifyKind_(verifyKind) {}
     ~Verification() = default;
 
-    size_t VerifyAll() const
-    {
-        size_t result = VerifyRoot();
-        result += VerifyHeap();
-        return result;
-    }
+    void VerifyAll() const;
 
     size_t VerifyRoot() const;
     size_t VerifyHeap() const;
@@ -79,8 +100,9 @@ private:
     NO_COPY_SEMANTIC(Verification);
     NO_MOVE_SEMANTIC(Verification);
 
-    const Heap *heap_ {nullptr};
+    Heap *heap_ {nullptr};
     ObjectXRay objXRay_;
+    VerifyKind verifyKind_;
 };
 }  // namespace panda::ecmascript
 
