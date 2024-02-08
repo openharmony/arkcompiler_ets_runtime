@@ -860,9 +860,11 @@ void EcmaContext::ShrinkHandleStorage(int prevIndex)
     int32_t lastIndex = static_cast<int32_t>(handleStorageNodes_.size() - 1);
 #if ECMASCRIPT_ENABLE_ZAP_MEM
     uintptr_t size = ToUintPtr(handleScopeStorageEnd_) - ToUintPtr(handleScopeStorageNext_);
-    if (memset_s(handleScopeStorageNext_, size, 0, size) != EOK) {
-        LOG_FULL(FATAL) << "memset_s failed";
-        UNREACHABLE();
+    if (currentHandleStorageIndex_ != -1) {
+        if (memset_s(handleScopeStorageNext_, size, 0, size) != EOK) {
+            LOG_FULL(FATAL) << "memset_s failed";
+            UNREACHABLE();
+        }
     }
     for (int32_t i = currentHandleStorageIndex_ + 1; i < lastIndex; i++) {
         if (memset_s(handleStorageNodes_[i],
