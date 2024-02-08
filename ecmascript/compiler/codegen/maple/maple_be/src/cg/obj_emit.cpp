@@ -161,11 +161,10 @@ void ObjEmitter::AddSymbol(const std::string &name, Word size, const Section &se
 
 void ObjEmitter::AddFuncSymbol(const MapleString &name, Word size, Address value)
 {
-    uint32 lastModulePC = cg->GetMIRModule()->GetLastModulePC();
     auto symbolStrIndex = strTabSection->AddString(name);
     symbolTabSection->AppendSymbol({static_cast<Word>(symbolStrIndex),
                                     static_cast<uint8>((STB_GLOBAL << k4BitSize) + (STT_FUNC & 0xf)), 0,
-                                    textSection->GetIndex(), value + lastModulePC, size});
+                                    textSection->GetIndex(), value, size});
 }
 
 void ObjEmitter::ClearData()

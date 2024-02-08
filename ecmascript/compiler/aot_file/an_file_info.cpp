@@ -26,7 +26,7 @@
 #include "macros.h"
 
 namespace panda::ecmascript {
-void AnFileInfo::Save(const std::string &filename, Triple triple, bool useLiteCG)
+void AnFileInfo::Save(const std::string &filename, Triple triple)
 {
     std::string realPath;
     if (!RealPath(filename, realPath, false)) {
@@ -39,7 +39,7 @@ void AnFileInfo::Save(const std::string &filename, Triple triple, bool useLiteCG
     SetStubNum(entries_.size());
     AddFuncEntrySec();
 
-    ElfBuilder builder(des_, GetDumpSectionNames(), useLiteCG);
+    ElfBuilder builder(des_, GetDumpSectionNames());
     llvm::ELF::Elf64_Ehdr header;
     builder.PackELFHeader(header, base::FileHeaderBase::ToVersionNumber(AOTFileVersion::AN_VERSION), triple);
     file.write(reinterpret_cast<char *>(&header), sizeof(llvm::ELF::Elf64_Ehdr));

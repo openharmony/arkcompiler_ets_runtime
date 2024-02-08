@@ -180,7 +180,7 @@ void ElfAssembler::EmitFunctionFoot(int64 symIdx, SymbolAttr funcAttr)
     auto nameIndex = strTabSection->AddString(symbolName);
     AddSymToSymTab({static_cast<Word>(nameIndex),
                     static_cast<uint8>((funcSymType << kLeftShift4Bits) + (STT_FUNC & 0xf)), 0, textSection->GetIndex(),
-                    funcSymValue + lastModulePC, funcSymSize},
+                    funcSymValue, funcSymSize},
                    symIdx);
 }
 

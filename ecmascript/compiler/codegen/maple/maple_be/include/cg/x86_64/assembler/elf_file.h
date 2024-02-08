@@ -249,6 +249,7 @@ public:
         SetEntSize(sizeof(Symbol));
         SetLink(link);
         SetInfo(1);
+        AppendSymbol({0, 0, 0, 0, 0, 0});
     }
 
     ~SymbolSection() = default;

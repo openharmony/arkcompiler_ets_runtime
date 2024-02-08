@@ -31,7 +31,7 @@ class ModuleSectionDes;
 class ElfBuilder {
 public:
     ElfBuilder(const std::vector<ModuleSectionDes> &des,
-        const std::vector<ElfSecName> &sections, bool useLiteCG = false);
+        const std::vector<ElfSecName> &sections);
     ~ElfBuilder();
     static constexpr uint32_t FuncEntryModuleDesIndex = 0;
     void PackELFHeader(llvm::ELF::Elf64_Ehdr &header, uint32_t version, Triple triple);
@@ -94,7 +94,6 @@ private:
     bool enableSecDump_ {false};
     ElfSecName lastDataSection {ElfSecName::NONE};
     ElfSecName lastCodeSection {ElfSecName::NONE};
-    bool useLiteCG_ {false};
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_COMPILER_AOT_FILE_ELF_BUILDER_H

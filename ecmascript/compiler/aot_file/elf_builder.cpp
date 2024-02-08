@@ -101,7 +101,7 @@ void ElfBuilder::DumpSection() const
 }
 
 ElfBuilder::ElfBuilder(const std::vector<ModuleSectionDes> &des,
-    const std::vector<ElfSecName> &sections, bool useLiteCG): des_(des), sections_(sections), useLiteCG_(useLiteCG)
+    const std::vector<ElfSecName> &sections): des_(des), sections_(sections)
 {
     Initialize();
     AddShStrTabSection();
@@ -468,44 +468,6 @@ void ElfBuilder::MergeArkStackMapSections(std::ofstream &file,
     }
 }
 
-void ElfBuilder::MergeSymTabSectionsForLiteCG(std::ofstream &file,
-                                              std::vector<ModuleSectionDes::ModuleRegionInfo> &moduleInfo,
-                                              llvm::ELF::Elf64_Off &curSecOffset)
-{
-    // here we only support func symbol here.
-    using Elf64_Sym = llvm::ELF::Elf64_Sym;
-    uint64_t lastStrIdx = 0;
-    // put und at first pos in sym tab.
-    Elf64_Sym und;
-    file.write(reinterpret_cast<char *>(&und), sizeof(und));
-    curSecOffset += sizeof(und);
-    for (size_t i = 0; i < des_.size(); ++i) {
-        ModuleSectionDes &des = des_[i];
-        ModuleSectionDes::ModuleRegionInfo &curInfo = moduleInfo[i];
-        uint64_t textSecOffset = sectionToShdr_[ElfSecName::TEXT].sh_offset;
-        uint32_t curSecSize = des.GetSecSize(ElfSecName::SYMTAB);
-        uint64_t curSecAddr = des.GetSecAddr(ElfSecName::SYMTAB);
-        uint32_t index = des.GetStartIndex();
-        uint32_t cnt = des.GetFuncCount();
-        uint32_t textSecIndex = GetShIndex(ElfSecName::TEXT);
-        curInfo.startIndex = index;
-        curInfo.funcCount = cnt;
-        Elf64_Sym *syms = reinterpret_cast<Elf64_Sym*>(curSecAddr);
-        size_t n = curSecSize / sizeof(Elf64_Sym);
-        for (size_t j = 0; j < n; ++j) {
-            Elf64_Sym* sy = &syms[j];
-            if (sy->getType() == llvm::ELF::STT_FUNC) {
-                sy->st_value += textSecOffset;
-                sy->st_name += lastStrIdx;
-                sy->st_shndx = static_cast<uint16_t>(textSecIndex);
-            }
-        }
-        lastStrIdx += des.GetSecSize(ElfSecName::STRTAB);
-        file.write(reinterpret_cast<char *>(curSecAddr), curSecSize);
-        curSecOffset += curSecSize;
-    }
-}
-
 void ElfBuilder::FixSymtab(llvm::ELF::Elf64_Shdr* shdr)
 {
     using Elf64_Sym = llvm::ELF::Elf64_Sym;
@@ -649,17 +611,11 @@ void ElfBuilder::PackELFSections(std::ofstream &file)
                 break;
             }
             case ElfSecName::SYMTAB: {
-                if (useLiteCG_) {
-                    uint32_t curSize = curSecOffset;
-                    MergeSymTabSectionsForLiteCG(file, moduleInfo, curSecOffset);
-                    curShdr.sh_size = curSecOffset - curSize;
-                } else {
-                    FixSymtab(&curShdr);
-                    uint32_t curSize = curSecOffset;
-                    uint32_t asmSecIndex = GetShIndex(ElfSecName::ARK_ASMSTUB);
-                    MergeSymtabSections(file, moduleInfo, curSecOffset, shdr[asmSecIndex].sh_offset);
-                    curShdr.sh_size = curSecOffset - curSize;
-                }
+                FixSymtab(&curShdr);
+                uint32_t curSize = curSecOffset;
+                uint32_t asmSecIndex = GetShIndex(ElfSecName::ARK_ASMSTUB);
+                MergeSymtabSections(file, moduleInfo, curSecOffset, shdr[asmSecIndex].sh_offset);
+                curShdr.sh_size = curSecOffset - curSize;
                 break;
             }
             case ElfSecName::SHSTRTAB:
