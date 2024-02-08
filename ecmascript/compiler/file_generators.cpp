@@ -584,7 +584,7 @@ void AOTFileGenerator::SaveAOTFile(const std::string &filename, const std::strin
     PrintMergedCodeComment();
     GenerateMergedStackmapSection();
     aotInfo_.GenerateMethodToEntryIndexMap();
-    aotInfo_.Save(filename, cfg_.GetTriple());
+    aotInfo_.Save(filename, cfg_.GetTriple(), useLiteCG_);
     if (!panda::ecmascript::SetFileModeAsDefault(filename)) {
         LOG_COMPILER(ERROR) << "Fail to set an file mode:" << filename;
     }

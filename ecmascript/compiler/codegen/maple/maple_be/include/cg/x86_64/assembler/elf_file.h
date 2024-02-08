@@ -249,7 +249,6 @@ public:
         SetEntSize(sizeof(Symbol));
         SetLink(link);
         SetInfo(1);
-        AppendSymbol({0, 0, 0, 0, 0, 0});
     }
 
     ~SymbolSection() = default;
@@ -287,6 +286,15 @@ public:
     bool ExistSymInSymbols(int64 symIdx)
     {
         return symbolIdxMap.count(symIdx) != 0;
+    }
+
+    uint32 GetDataSize() const
+    {
+        return symbols.size() * sizeof(Symbol);
+    }
+
+    const char* GetAddr() {
+        return reinterpret_cast<const char *>(symbols.data());
     }
 
 private:

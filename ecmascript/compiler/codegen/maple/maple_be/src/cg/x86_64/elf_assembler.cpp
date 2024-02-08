@@ -180,7 +180,7 @@ void ElfAssembler::EmitFunctionFoot(int64 symIdx, SymbolAttr funcAttr)
     auto nameIndex = strTabSection->AddString(symbolName);
     AddSymToSymTab({static_cast<Word>(nameIndex),
                     static_cast<uint8>((funcSymType << kLeftShift4Bits) + (STT_FUNC & 0xf)), 0, textSection->GetIndex(),
-                    funcSymValue, funcSymSize},
+                    funcSymValue + lastModulePC, funcSymSize},
                    symIdx);
 }
 
@@ -309,7 +309,7 @@ void ElfAssembler::PostEmitVariable(int64 symIdx, SymbolAttr symAttr, uint64 siz
 
 void ElfAssembler::FinalizeFileInfo()
 {
-    AppendSymsToSymTabSec();
+    AppendGlobalSymsToSymTabSec();
     HandleTextSectionFixup();
     HandleDataSectionFixup();
     HandleRodataSectionFixup();
@@ -782,9 +782,6 @@ void ElfAssembler::AppendRela(const Label &label, const std::pair<uint32, size_t
                (label.GetRelOffset() == 0xFFFFFFFFU && labelType == LabelType::kLNone)) {
         int64 labelIdx = label.GetlabelIdx();
         if (!symbolTabSection->ExistSymInSymbols(labelIdx)) {
-            symbolTabSection->AppendSymbol({static_cast<Word>(strTabSection->AddString(GetNameFromSymMap(labelIdx))),
-                                            static_cast<uint8>((STB_GLOBAL << kLeftShift4Bits) + (STT_NOTYPE & 0xf)), 0,
-                                            0, 0, 0});
             symbolTabSection->AppendIdxInSymbols(labelIdx);
         }
         relaSection->AppendRela({offsetPair.first,
@@ -950,9 +947,17 @@ void ElfAssembler::WriteElfFile()
     const auto &emitMemoryManager = maplebe::CGOptions::GetInstance().GetEmitMemoryManager();
     if (emitMemoryManager.codeSpace != nullptr) {
         DEBUG_ASSERT(textSection != nullptr, "textSection has not been initialized");
-        uint8 *memSpace = emitMemoryManager.allocateDataSection(emitMemoryManager.codeSpace,
+        uint8 *codeSpace = emitMemoryManager.allocateDataSection(emitMemoryManager.codeSpace,
             textSection->GetSectionSize(), textSection->GetAlign(), textSection->GetName());
-        memcpy_s(memSpace, textSection->GetSectionSize(), textSection->GetData().data(), textSection->GetDataSize());
+        memcpy_s(codeSpace, textSection->GetSectionSize(), textSection->GetData().data(), textSection->GetDataSize());
+        if (CGOptions::addFuncSymbol()) {
+            uint8 *symtabSpace = emitMemoryManager.allocateDataSection(emitMemoryManager.codeSpace,
+                    symbolTabSection->GetDataSize(), symbolTabSection->GetAlign(), symbolTabSection->GetName().c_str());
+            memcpy_s(symtabSpace, symbolTabSection->GetDataSize() , symbolTabSection->GetAddr(), symbolTabSection->GetDataSize());
+            uint8 *stringTabSpace = emitMemoryManager.allocateDataSection(emitMemoryManager.codeSpace,
+                    strTabSection->GetDataSize(), strTabSection->GetAlign(), strTabSection->GetName().c_str());
+            memcpy_s(stringTabSpace, strTabSection->GetDataSize(), strTabSection->GetData().data(), strTabSection->GetDataSize());
+        }
         return;
     }
 
@@ -993,6 +998,16 @@ void ElfAssembler::AppendSecSymsToSymTabSec()
             int64 secSymIdx = ~section->GetIndex() + 1;
             symbolTabSection->AppendIdxInSymbols(secSymIdx);
         }
+    }
+}
+
+void ElfAssembler::AppendGlobalSymsToSymTabSec()
+{
+    for (auto elem : symTab) {
+        const Symbol &symbol = elem.first;
+        int64 symIdx = elem.second;
+        symbolTabSection->AppendSymbol(symbol);
+        symbolTabSection->AppendIdxInSymbols(symIdx);
     }
 }
 

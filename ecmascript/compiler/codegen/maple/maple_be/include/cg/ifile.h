@@ -360,7 +360,6 @@ public:
         SetEntSize(sizeof(Symbol));
         SetLink(link);
         SetInfo(1);
-        AppendSymbol({0, 0, 0, 0, 0, 0});
     }
 
     ~SymbolSection() = default;
@@ -400,6 +399,9 @@ public:
         return symbolIdxMap.count(symIdx) != 0;
     }
 
+    const char *GetAddr() {
+        return reinterpret_cast<const char *>(symbols.data());
+    }
 private:
     MapleAllocator alloc;
     MapleVector<Symbol> symbols;

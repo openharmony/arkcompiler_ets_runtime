@@ -793,6 +793,21 @@ public:
         doCGSSA = true;
     }
 
+    static void EnableSupportFuncSymbol()
+    {
+        supportFuncSymbol = true;
+    }
+
+    static void DisableSupportFuncSymbol()
+    {
+        supportFuncSymbol = false;
+    }
+
+    static bool addFuncSymbol()
+    {
+        return supportFuncSymbol;
+    }
+
     static bool DoCGSSA()
     {
         return doCGSSA;
@@ -1711,6 +1726,7 @@ private:
     static uint32 funcAlignPow;
     static bool doOptimizedFrameLayout;
     static bool doCgirVerify;
+    static bool supportFuncSymbol;
 };
 } /* namespace maplebe */
 

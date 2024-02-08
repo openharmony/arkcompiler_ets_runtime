@@ -115,9 +115,18 @@ void ObjEmitter::WriteObjFile()
     const auto &emitMemorymanager = CGOptions::GetInstance().GetEmitMemoryManager();
     if (emitMemorymanager.codeSpace != nullptr) {
         DEBUG_ASSERT(textSection != nullptr, "textSection has not been initialized");
-        uint8 *memSpace = emitMemorymanager.allocateDataSection(emitMemorymanager.codeSpace,
-            textSection->GetDataSize(), textSection->GetAlign(), textSection->GetName().c_str());
-        memcpy_s(memSpace, textSection->GetDataSize(), textSection->GetData().data(), textSection->GetDataSize());
+        uint8 *codeSpace = emitMemorymanager.allocateDataSection(emitMemorymanager.codeSpace,
+                textSection->GetDataSize(), textSection->GetAlign(), textSection->GetName().c_str());
+        memcpy_s(codeSpace, textSection->GetDataSize(), textSection->GetData().data(), textSection->GetDataSize());
+        if (CGOptions::addFuncSymbol()) {
+            uint8 *symtabSpace = emitMemorymanager.allocateDataSection(emitMemorymanager.codeSpace,
+                    symbolTabSection->GetDataSize(), symbolTabSection->GetAlign(), symbolTabSection->GetName().c_str());
+            memcpy_s(symtabSpace, symbolTabSection->GetDataSize() , symbolTabSection->GetAddr(), symbolTabSection->GetDataSize());
+            uint8 *stringTabSpace = emitMemorymanager.allocateDataSection(emitMemorymanager.codeSpace,
+                    strTabSection->GetDataSize(), strTabSection->GetAlign(), strTabSection->GetName().c_str());
+            memcpy_s(stringTabSpace, strTabSection->GetDataSize(), strTabSection->GetData().data(), strTabSection->GetDataSize());
+        }
+
         return;
     }
     /* write header */
@@ -150,10 +159,11 @@ void ObjEmitter::AddSymbol(const std::string &name, Word size, const Section &se
 
 void ObjEmitter::AddFuncSymbol(const MapleString &name, Word size, Address value)
 {
+    uint32 lastModulePC = cg->GetMIRModule()->GetLastModulePC();
     auto symbolStrIndex = strTabSection->AddString(name);
     symbolTabSection->AppendSymbol({static_cast<Word>(symbolStrIndex),
                                     static_cast<uint8>((STB_GLOBAL << k4BitSize) + (STT_FUNC & 0xf)), 0,
-                                    textSection->GetIndex(), value, size});
+                                    textSection->GetIndex(), value + lastModulePC, size});
 }
 
 void ObjEmitter::ClearData()

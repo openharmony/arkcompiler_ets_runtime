@@ -593,6 +593,7 @@ private:
     void WriteElfFile();
     void AppendSecSymsToSymTabSec();
     void AppendSymsToSymTabSec();
+    void AppendGlobalSymsToSymTabSec();
 
 private:
     std::vector<uint8> codeBuff;

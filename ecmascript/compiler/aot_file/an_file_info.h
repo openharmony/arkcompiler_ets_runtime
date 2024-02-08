@@ -24,7 +24,7 @@ public:
     using FuncEntryIndexKey = std::pair<std::string, uint32_t>; // (compilefileName, MethodID)
     AnFileInfo() = default;
     ~AnFileInfo() override = default;
-    void PUBLIC_API Save(const std::string &filename, Triple triple);
+    void PUBLIC_API Save(const std::string &filename, Triple triple, bool useLiteCG = false);
     void AddModuleDes(ModuleSectionDes &moduleDes)
     {
         des_.emplace_back(moduleDes);
