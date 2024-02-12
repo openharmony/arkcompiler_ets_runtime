@@ -61,17 +61,17 @@ HWTEST_F_L0(JsonParserTest, Parser_001)
     // JSON Number
     JSHandle<JSTaggedValue> handleMsg2(factory->NewFromASCII("1234"));
     JSHandle<EcmaString> handleStr2(JSTaggedValue::ToString(thread, handleMsg2));
-    JSHandle<JSTaggedValue> result2 = parser.Parse(*handleStr2);
+    JSHandle<JSTaggedValue> result2 = parser.Parse(handleStr2);
     EXPECT_EQ(result2->GetNumber(), 1234);
     // JSON Literal
     JSHandle<JSTaggedValue> handleMsg3(factory->NewFromASCII("true"));
     JSHandle<EcmaString> handleStr3(JSTaggedValue::ToString(thread, handleMsg3));
-    JSHandle<JSTaggedValue> result3 = parser.Parse(*handleStr3);
+    JSHandle<JSTaggedValue> result3 = parser.Parse(handleStr3);
     EXPECT_EQ(result3.GetTaggedValue(), JSTaggedValue::True());
     // JSON Unexpected
     JSHandle<JSTaggedValue> handleMsg4(factory->NewFromASCII("trus"));
     JSHandle<EcmaString> handleStr4(JSTaggedValue::ToString(thread, handleMsg4));
-    JSHandle<JSTaggedValue> result4 = parser.Parse(*handleStr4);
+    JSHandle<JSTaggedValue> result4 = parser.Parse(handleStr4);
     EXPECT_EQ(result4.GetTaggedValue(), JSTaggedValue::Exception());
 }
 
@@ -127,7 +127,7 @@ HWTEST_F_L0(JsonParserTest, Parser_003)
         "\t\r \n{\t\r \n \"json\"\t\r\n:\t\r \n{\t\r \n}\t\r \n,\t\r \n \"prop2\"\t\r \n:\t\r \n [\t\r \nfalse\t\r"
         "\n,\t\r \nnull\t\r, \ntrue\t\r,123.456\t\r \n]\t\r \n}\t\r \n"));
     JSHandle<EcmaString> handleStr(JSTaggedValue::ToString(thread, handleMsg)); // JSON Object
-    JSHandle<JSTaggedValue> result = parser.Parse(*handleStr);
+    JSHandle<JSTaggedValue> result = parser.Parse(handleStr);
     EXPECT_TRUE(result->IsECMAObject());
 }
 
@@ -146,7 +146,7 @@ HWTEST_F_L0(JsonParserTest, Parser_004)
 
     JSHandle<JSTaggedValue> handleMsg(factory->NewFromASCII("[100,2.5,\"abc\"]"));
     JSHandle<EcmaString> handleStr(JSTaggedValue::ToString(thread, handleMsg)); // JSON Array
-    JSHandle<JSTaggedValue> result = parser.Parse(*handleStr);
+    JSHandle<JSTaggedValue> result = parser.Parse(handleStr);
 
     JSTaggedValue resultValue(static_cast<JSTaggedType>(result->GetRawData()));
     EXPECT_TRUE(resultValue.IsECMAObject());
@@ -173,7 +173,7 @@ HWTEST_F_L0(JsonParserTest, Parser_005)
     JSHandle<JSTaggedValue> handleMsg(factory->NewFromASCII("{\"epf\":100,\"key1\":400}"));
     JSHandle<EcmaString> handleStr(JSTaggedValue::ToString(thread, handleMsg)); // JSON Object
 
-    JSHandle<JSTaggedValue> result = parser.Parse(*handleStr);
+    JSHandle<JSTaggedValue> result = parser.Parse(handleStr);
     JSTaggedValue resultValue(static_cast<JSTaggedType>(result->GetRawData()));
     EXPECT_TRUE(resultValue.IsECMAObject());
 
@@ -198,7 +198,7 @@ HWTEST_F_L0(JsonParserTest, Parser_006)
 {
     Utf8JsonParser parser(thread);
     JSHandle<EcmaString> emptyString(thread->GlobalConstants()->GetHandledEmptyString());
-    JSHandle<JSTaggedValue> result = parser.Parse(*emptyString);
+    JSHandle<JSTaggedValue> result = parser.Parse(emptyString);
     EXPECT_TRUE(result->IsException());
 }
 } // namespace panda::test

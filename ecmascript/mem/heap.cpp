@@ -137,6 +137,7 @@ void Heap::Initialize()
     compressGCMarker_ = new CompressGCMarker(this);
     evacuator_ = new ParallelEvacuator(this);
     incrementalMarker_ = new IncrementalMarker(this);
+    gcListeners_.reserve(16U);
 }
 
 void Heap::Destroy()
@@ -365,6 +366,7 @@ void Heap::CollectGarbage(TriggerGCType gcType, GCReason reason)
     {
         RecursionScope recurScope(this);
         if (thread_->IsCrossThreadExecutionEnable() || (InSensitiveStatus() && !ObjectExceedMaxHeapSize())) {
+            ProcessGCListeners();
             return;
         }
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
@@ -433,6 +435,7 @@ void Heap::CollectGarbage(TriggerGCType gcType, GCReason reason)
                     oldSpace_->SetOvershootSize(GetEcmaVM()->GetEcmaParamConfiguration().GetOldSpaceOvershootSize());
                     TriggerConcurrentMarking();
                     oldGCRequested_ = true;
+                    ProcessGCListeners();
                     return;
                 }
                 partialGC_->RunPhases();
@@ -513,6 +516,7 @@ void Heap::CollectGarbage(TriggerGCType gcType, GCReason reason)
     }
 #endif
     ASSERT(thread_->IsPropertyCacheCleared());
+    ProcessGCListeners();
 }
 
 void Heap::ThrowOutOfMemoryError(size_t size, std::string functionName, bool NonMovableObjNearOOM)
@@ -1643,4 +1647,23 @@ std::tuple<uint64_t, uint8_t *, int, kungfu::CalleeRegAndOffsetVec> Heap::CalCal
     }
     return code->CalCallSiteInfo(retAddr);
 };
+
+GCListenerId Heap::AddGCListener(FinishGCListener listener, void *data)
+{
+    gcListeners_.emplace_back(std::make_pair(listener, data));
+    return std::prev(gcListeners_.cend());
+}
+
+void Heap::ProcessGCListeners()
+{
+    for (auto &&[listener, data] : gcListeners_) {
+        listener(data);
+    }
+}
+
+void Heap::RemoveGCListener(GCListenerId listenerId)
+{
+    gcListeners_.erase(listenerId);
+}
+
 }  // namespace panda::ecmascript

@@ -112,6 +112,8 @@ private:
     static EcmaString *CreateFromUtf8(const EcmaVM *vm, const uint8_t *utf8Data, uint32_t utf8Len,
         bool canBeCompress, MemSpaceType type = MemSpaceType::SEMI_SPACE, bool isConstantString = false,
         uint32_t idOffset = 0);
+    static EcmaString *CreateFromUtf8CompressedSubString(const EcmaVM *vm, const JSHandle<EcmaString> &string,
+        uint32_t offset, uint32_t utf8Len, MemSpaceType type = MemSpaceType::SEMI_SPACE);
     static EcmaString *CreateUtf16StringFromUtf8(const EcmaVM *vm, const uint8_t *utf8Data, uint32_t utf8Len,
         MemSpaceType type = MemSpaceType::SEMI_SPACE);
     static EcmaString *CreateFromUtf16(const EcmaVM *vm, const uint16_t *utf16Data, uint32_t utf16Len,
@@ -482,22 +484,12 @@ private:
                 LOG_FULL(FATAL) << " length is higher than half of size_t::max";
                 UNREACHABLE();
             }
-            // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-            // Only memcpy_s maxLength number of chars into buffer if length > maxLength
             CVector<uint8_t> tmpBuf;
-            const uint8_t *data = GetUtf8DataFlat(this, tmpBuf);
-            if (length > maxLength) {
-                if (memcpy_s(buf, maxLength, data + start, maxLength) != EOK) {
-                    LOG_FULL(FATAL) << "memcpy_s failed when length > maxlength";
-                    UNREACHABLE();
-                }
-                return maxLength;
-            }
-            if (memcpy_s(buf, maxLength, data + start, length) != EOK) {
-                LOG_FULL(FATAL) << "memcpy_s failed when length <= maxlength";
-                UNREACHABLE();
-            }
-            return length;
+            const uint8_t *data = GetUtf8DataFlat(this, tmpBuf) + start;
+            // Only copy maxLength number of chars into buffer if length > maxLength
+            auto dataLen = std::min(length, maxLength);
+            std::copy(data, data + dataLen, buf);
+            return dataLen;
         }
         CVector<uint16_t> tmpBuf;
         const uint16_t *data = GetUtf16DataFlat(this, tmpBuf);
@@ -1074,6 +1066,13 @@ public:
         return EcmaString::CreateFromUtf8(vm, utf8Data, utf8Len, canBeCompress, type, isConstantString, idOffset);
     }
 
+    static EcmaString *CreateFromUtf8CompressedSubString(const EcmaVM *vm, const JSHandle<EcmaString> &string,
+                                                         uint32_t offset, uint32_t utf8Len,
+                                                         MemSpaceType type = MemSpaceType::SEMI_SPACE)
+    {
+        return EcmaString::CreateFromUtf8CompressedSubString(vm, string, offset, utf8Len, type);
+    }
+
     static EcmaString *CreateConstantString(const EcmaVM *vm, const uint8_t *utf8Data, size_t length,
         bool compressed, MemSpaceType type = MemSpaceType::SEMI_SPACE, uint32_t idOffset = 0)
     {
@@ -1448,6 +1447,11 @@ public:
     bool IsConstantString() const
     {
         return string_->IsConstantString();
+    }
+
+    bool IsSlicedString() const
+    {
+        return string_->IsSlicedString();
     }
 
     bool IsLineOrConstantString() const
