@@ -474,7 +474,8 @@ public:
                             GateRef frameState = Gate::InvalidGateRef);
     GateRef TryPrimitiveTypeCheck(GateType type, GateRef gate);
     GateRef CallTargetCheck(GateRef gate, GateRef function, GateRef id, const char* comment = nullptr);
-    GateRef CallTargetCheck(GateRef gate, GateRef function, GateRef id, std::vector<GateRef> params, const char* comment = nullptr);
+    GateRef CallTargetCheck(GateRef gate, GateRef function, GateRef id, std::vector<GateRef> params,
+                            const char* comment = nullptr);
     GateRef JSCallTargetFromDefineFuncCheck(GateType type, GateRef func, GateRef gate);
     template<TypedCallTargetCheckOp Op>
     GateRef JSCallTargetTypeCheck(GateType type, GateRef func, GateRef methodIndex, GateRef gate);
@@ -768,7 +769,7 @@ public:
     static MachineType GetMachineTypeFromVariableType(VariableType type);
 
     // Unary / BinaryOp
-    GateRef BuildUnaryOp(const GateMetaData* op, GateRef gate);
+    GateRef BuildMathBuiltinOp(const GateMetaData* op, std::vector<GateRef> args);
     template<OpCode Op, MachineType Type>
     inline GateRef BinaryOp(GateRef x, GateRef y);
     template<OpCode Op, MachineType Type>

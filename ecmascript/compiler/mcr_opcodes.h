@@ -61,8 +61,19 @@ namespace panda::ecmascript::kungfu {
     V(MigrateFromHeapValueToRawValue, MIGRATE_FROM_HEAPVALUE_TO_RAWVALUE, GateFlags::NONE_FLAG, 1, 1, 3)     \
     V(MigrateFromHoleIntToHoleNumber, MIGRATE_FROM_HOLEINT_TO_HOLENUMBER, GateFlags::NONE_FLAG, 1, 1, 1)     \
     V(MigrateFromHoleNumberToHoleInt, MIGRATE_FROM_HOLENUMBER_TO_HOLEINT, GateFlags::NONE_FLAG, 1, 1, 1)     \
+    V(MathAcos, MATH_ACOS, GateFlags::NO_WRITE, 1, 1, 1)                                        \
+    V(MathAcosh, MATH_ACOSH, GateFlags::NO_WRITE, 1, 1, 1)                                      \
+    V(MathAsin, MATH_ASIN, GateFlags::NO_WRITE, 1, 1, 1)                                        \
+    V(MathAsinh, MATH_ASINH, GateFlags::NO_WRITE, 1, 1, 1)                                      \
+    V(MathAtan, MATH_ATAN, GateFlags::NO_WRITE, 1, 1, 1)                                        \
+    V(MathAtan2, MATH_ATAN2, GateFlags::NO_WRITE, 1, 1, 2)                                      \
+    V(MathAtanh, MATH_ATANH, GateFlags::NO_WRITE, 1, 1, 1)                                      \
     V(MathCos, MATH_COS, GateFlags::NO_WRITE, 1, 1, 1)                                          \
+    V(MathCosh, MATH_COSH, GateFlags::NO_WRITE, 1, 1, 1)                                        \
     V(MathSin, MATH_SIN, GateFlags::NO_WRITE, 1, 1, 1)                                          \
+    V(MathSinh, MATH_SINH, GateFlags::NO_WRITE, 1, 1, 1)                                        \
+    V(MathTan, MATH_TAN, GateFlags::NO_WRITE, 1, 1, 1)                                          \
+    V(MathTanh, MATH_TANH, GateFlags::NO_WRITE, 1, 1, 1)                                        \
     MCR_BINARY_GATE_META_DATA_CACHE_LIST(V)
 
 #define MCR_GATE_META_DATA_LIST_WITH_PC_OFFSET(V)                              \
@@ -129,8 +140,12 @@ namespace panda::ecmascript::kungfu {
     V(TypedCreateObjWithBuffer, TYPED_CREATE_OBJ_WITH_BUFFER, GateFlags::CHECKABLE, 1, 1, value)
 =======
     V(TypedCreateObjWithBuffer, TYPED_CREATE_OBJ_WITH_BUFFER, GateFlags::NONE_FLAG, 1, 1, value) \
+<<<<<<< HEAD
     V(TypedCallCheck, TYPED_CALL_CHECK, GateFlags::CHECKABLE, 1, 1, value)  
 >>>>>>> bf72f67fb (Initial support of builtin inlining)
+=======
+    V(TypedCallCheck, TYPED_CALL_CHECK, GateFlags::CHECKABLE, 1, 1, value)
+>>>>>>> 4e2d019da (Implement inlining of trigonometric builtins)
 
 #define MCR_GATE_META_DATA_LIST_WITH_SIZE(V)                                       \
     MCR_GATE_META_DATA_LIST_WITH_VALUE_IN(V)

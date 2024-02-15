@@ -116,10 +116,19 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(DoubleToLength)                          \
     V(FloatMod)                                \
     V(FloatSqrt)                               \
+    V(FloatAcos)                               \
+    V(FloatAcosh)                              \
+    V(FloatAsin)                               \
+    V(FloatAsinh)                              \
+    V(FloatAtan)                               \
+    V(FloatAtan2)                              \
+    V(FloatAtanh)                              \
     V(FloatCos)                                \
+    V(FloatCosh)                               \
     V(FloatSin)                                \
-    V(FloatACos)                               \
-    V(FloatATan)                               \
+    V(FloatSinh)                               \
+    V(FloatTan)                                \
+    V(FloatTanh)                               \
     V(FloatFloor)                              \
     V(FindElementWithCache)                    \
     V(TryToElementsIndexOrFindInStringTable)   \
@@ -458,10 +467,19 @@ public:
     static JSTaggedType DoubleToLength(double x);
     static double FloatMod(double x, double y);
     static JSTaggedType FloatSqrt(double x);
+    static JSTaggedType FloatAcos(double x);
+    static JSTaggedType FloatAcosh(double x);
+    static JSTaggedType FloatAsin(double x);
+    static JSTaggedType FloatAsinh(double x);
+    static JSTaggedType FloatAtan(double x);
+    static JSTaggedType FloatAtan2(double y, double x);
+    static JSTaggedType FloatAtanh(double x);
     static JSTaggedType FloatCos(double x);
+    static JSTaggedType FloatCosh(double x);
     static JSTaggedType FloatSin(double x);
-    static JSTaggedType FloatACos(double x);
-    static JSTaggedType FloatATan(double x);
+    static JSTaggedType FloatSinh(double x);
+    static JSTaggedType FloatTan(double x);
+    static JSTaggedType FloatTanh(double x);
     static JSTaggedType FloatFloor(double x);
     static int32_t FindElementWithCache(uintptr_t argGlue, JSTaggedType hclass,
                                         JSTaggedType key, int32_t num);

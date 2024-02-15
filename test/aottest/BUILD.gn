@@ -229,9 +229,7 @@ group("ark_aot_ts_test") {
     test_list += [ "pgo_call_deopt" ]
   }
 
-  deps = [
-    "builtin_inlining:ark_aot_builtin_inlining_test",
-  ]
+  deps = [ "builtin_inlining:ark_aot_builtin_inlining_test" ]
 
   foreach(test, test_list) {
     deps += [ "${test}:${test}AotAction" ]

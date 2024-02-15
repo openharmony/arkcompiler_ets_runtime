@@ -26,13 +26,13 @@ std::optional<size_t> NativeInlineLowering::GetArgc(GateRef gate)
     EcmaOpcode ecmaOpcode = acc_.GetByteCodeOpcode(gate);
     switch (ecmaOpcode) {
         case EcmaOpcode::CALLTHIS0_IMM8_V8:
-            return 0;
+            return 0U;
         case EcmaOpcode::CALLTHIS1_IMM8_V8_V8:
-            return 1;
+            return 1U;
         case EcmaOpcode::CALLTHIS2_IMM8_V8_V8_V8:
-            return 2;
+            return 2U;
         case EcmaOpcode::CALLTHIS3_IMM8_V8_V8_V8_V8:
-            return 3;
+            return 3U;
         case EcmaOpcode::CALLTHISRANGE_IMM8_IMM8_V8: {
             CallThisRangeTypeInfoAccessor tia(thread_, circuit_, gate);
             return tia.GetArgc();
@@ -62,11 +62,44 @@ void NativeInlineLowering::RunNativeInlineLowering()
             case BuiltinsStubCSigns::ID::StringFromCharCode:
                 TryInlineStringFromCharCode(gate, argc);
                 break;
+            case BuiltinsStubCSigns::ID::MathAcos:
+                TryInlineMathUnaryBuiltin(gate, argc, id, circuit_->MathAcos());
+                break;
+            case BuiltinsStubCSigns::ID::MathAcosh:
+                TryInlineMathUnaryBuiltin(gate, argc, id, circuit_->MathAcosh());
+                break;
+            case BuiltinsStubCSigns::ID::MathAsin:
+                TryInlineMathUnaryBuiltin(gate, argc, id, circuit_->MathAsin());
+                break;
+            case BuiltinsStubCSigns::ID::MathAsinh:
+                TryInlineMathUnaryBuiltin(gate, argc, id, circuit_->MathAsinh());
+                break;
+            case BuiltinsStubCSigns::ID::MathAtan:
+                TryInlineMathUnaryBuiltin(gate, argc, id, circuit_->MathAtan());
+                break;
+            case BuiltinsStubCSigns::ID::MathAtan2:
+                TryInlineMathBinaryBuiltin(gate, argc, id, circuit_->MathAtan2());
+                break;
+            case BuiltinsStubCSigns::ID::MathAtanh:
+                TryInlineMathUnaryBuiltin(gate, argc, id, circuit_->MathAtanh());
+                break;
             case BuiltinsStubCSigns::ID::MathCos:
                 TryInlineMathUnaryBuiltin(gate, argc, id, circuit_->MathCos());
                 break;
+            case BuiltinsStubCSigns::ID::MathCosh:
+                TryInlineMathUnaryBuiltin(gate, argc, id, circuit_->MathCosh());
+                break;
             case BuiltinsStubCSigns::ID::MathSin:
                 TryInlineMathUnaryBuiltin(gate, argc, id, circuit_->MathSin());
+                break;
+            case BuiltinsStubCSigns::ID::MathSinh:
+                TryInlineMathUnaryBuiltin(gate, argc, id, circuit_->MathSinh());
+                break;
+            case BuiltinsStubCSigns::ID::MathTan:
+                TryInlineMathUnaryBuiltin(gate, argc, id, circuit_->MathTan());
+                break;
+            case BuiltinsStubCSigns::ID::MathTanh:
+                TryInlineMathUnaryBuiltin(gate, argc, id, circuit_->MathTanh());
                 break;
             default:
                 break;
@@ -100,7 +133,8 @@ void NativeInlineLowering::TryInlineStringFromCharCode(GateRef gate, size_t argc
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), ret);
 }
 
-void NativeInlineLowering::TryInlineMathUnaryBuiltin(GateRef gate, size_t argc, BuiltinsStubCSigns::ID id, const GateMetaData* op)
+void NativeInlineLowering::TryInlineMathUnaryBuiltin(GateRef gate, size_t argc, BuiltinsStubCSigns::ID id,
+                                                     const GateMetaData* op)
 {
     Environment env(gate, circuit_, &builder_);
     if (!Uncheck()) {
@@ -109,13 +143,35 @@ void NativeInlineLowering::TryInlineMathUnaryBuiltin(GateRef gate, size_t argc, 
     }
     // NOTE(schernykh): Add tracing
     if (argc == 0) {
-        acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), builder_.NanValue());
+        acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), builder_.NanValue());
         return;
     }
     auto param_check = builder_.TaggedIsNumber(acc_.GetValueIn(gate, 1));
     builder_.DeoptCheck(param_check, acc_.GetFrameState(gate), DeoptType::BUILTIN_INLINING_TYPE_GUARD);
-    GateRef ret = builder_.BuildUnaryOp(op, acc_.GetValueIn(gate, 1));
-    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), ret);
+    GateRef ret = builder_.BuildMathBuiltinOp(op, {acc_.GetValueIn(gate, 1)});
+    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), ret);
 }
+
+void NativeInlineLowering::TryInlineMathBinaryBuiltin(GateRef gate, size_t argc, BuiltinsStubCSigns::ID id, const GateMetaData* op)
+{
+    Environment env(gate, circuit_, &builder_);
+    if (!Uncheck()) {
+        builder_.CallTargetCheck(gate, acc_.GetValueIn(gate, argc + 1),
+                                 builder_.IntPtr(static_cast<int64_t>(id)));
+    }
+    // NOTE(schernykh): Add tracing
+    if (argc < 2) {
+        acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), builder_.NanValue());
+        return;
+    }
+    auto param_check1 = builder_.TaggedIsNumber(acc_.GetValueIn(gate, 1));
+    auto param_check2 = builder_.TaggedIsNumber(acc_.GetValueIn(gate, 2));
+    auto check = builder_.BoolAnd(param_check1, param_check2); 
+    builder_.DeoptCheck(check, acc_.GetFrameState(gate), DeoptType::BUILTIN_INLINING_TYPE_GUARD);
+    GateRef ret = builder_.BuildMathBuiltinOp(op, {acc_.GetValueIn(gate, 1), acc_.GetValueIn(gate, 2)});
+    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), ret);
+    return;
+}
+
 
 }  // namespace panda::ecmascript

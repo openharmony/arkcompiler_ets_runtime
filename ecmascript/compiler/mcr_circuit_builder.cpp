@@ -541,7 +541,8 @@ GateRef CircuitBuilder::TryPrimitiveTypeCheck(GateType type, GateRef gate)
     return ret;
 }
 
-std::vector<GateRef> CircuitBuilder::ConcatParams(const std::vector<std::vector<GateRef>>& params) {
+std::vector<GateRef> CircuitBuilder::ConcatParams(const std::vector<std::vector<GateRef>>& params)
+{
     std::vector<GateRef> union_params;
     for (auto param: params) {
         union_params.insert(union_params.end(), param.begin(), param.end());
@@ -554,7 +555,8 @@ GateRef CircuitBuilder::CallTargetCheck(GateRef gate, GateRef function, GateRef 
     return CallTargetCheck(gate, function, id, {}, comment);
 }
 
-GateRef CircuitBuilder::CallTargetCheck(GateRef gate, GateRef function, GateRef id, std::vector<GateRef> params, const char* comment)
+GateRef CircuitBuilder::CallTargetCheck(GateRef gate, GateRef function, GateRef id, std::vector<GateRef> params,
+                                        const char* comment)
 {
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
@@ -565,9 +567,10 @@ GateRef CircuitBuilder::CallTargetCheck(GateRef gate, GateRef function, GateRef 
     } else {
         frameState = acc_.FindNearestFrameState(currentDepend);
     }
+    auto params_vec = ConcatParams({{ currentControl, currentDepend, function, id }, params, {frameState}});
     GateRef ret = GetCircuit()->NewGate(circuit_->TypedCallCheck(params.size() + 2),
                                         MachineType::I1,
-                                        ConcatParams({{ currentControl, currentDepend, function, id }, params, {frameState}}),
+                                        params_vec,
                                         GateType::NJSValue(),
                                         comment);
     currentLabel->SetControl(ret);
@@ -1563,14 +1566,14 @@ GateRef CircuitBuilder::ToNumber(GateRef gate, GateRef value, GateRef glue)
     return ret;
 }
 
-GateRef CircuitBuilder::BuildUnaryOp(const GateMetaData* op, GateRef gate)
+GateRef CircuitBuilder::BuildMathBuiltinOp(const GateMetaData* op, std::vector<GateRef> args)
 {
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
     GateRef ret =
         GetCircuit()->NewGate(op, MachineType::I64,
-            { currentControl, currentDepend, gate }, GateType::AnyType());
+            ConcatParams({std::vector{ currentControl, currentDepend}, args}), GateType::AnyType());
     currentLabel->SetControl(ret);
     currentLabel->SetDepend(ret);
     return ret;

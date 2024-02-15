@@ -44,6 +44,7 @@ private:
     void TryInlineStringFromCharCode(GateRef gate, size_t argc);
     void TryInlineMathMinWithOneArg(GateRef gate, size_t argc);
     void TryInlineMathUnaryBuiltin(GateRef gate, size_t argc, BuiltinsStubCSigns::ID id, const GateMetaData* op);
+    void TryInlineMathBinaryBuiltin(GateRef gate, size_t argc, BuiltinsStubCSigns::ID id, const GateMetaData* op);
 
     bool EnableLog() const
     {

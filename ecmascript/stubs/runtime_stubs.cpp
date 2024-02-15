@@ -2839,9 +2839,57 @@ JSTaggedType RuntimeStubs::FloatSqrt(double x)
     return JSTaggedValue(result).GetRawData();
 }
 
+JSTaggedType RuntimeStubs::FloatAcos(double x)
+{
+    double result = std::acos(x);
+    return JSTaggedValue(result).GetRawData();
+}
+
+JSTaggedType RuntimeStubs::FloatAcosh(double x)
+{
+    double result = std::acosh(x);
+    return JSTaggedValue(result).GetRawData();
+}
+
+JSTaggedType RuntimeStubs::FloatAsin(double x)
+{
+    double result = std::asin(x);
+    return JSTaggedValue(result).GetRawData();
+}
+
+JSTaggedType RuntimeStubs::FloatAsinh(double x)
+{
+    double result = std::asinh(x);
+    return JSTaggedValue(result).GetRawData();
+}
+
+JSTaggedType RuntimeStubs::FloatAtan(double x)
+{
+    double result = std::atan(x);
+    return JSTaggedValue(result).GetRawData();
+}
+
+JSTaggedType RuntimeStubs::FloatAtan2(double y, double x)
+{
+    double result = std::atan2(y, x);
+    return JSTaggedValue(result).GetRawData();
+}
+
+JSTaggedType RuntimeStubs::FloatAtanh(double x)
+{
+    double result = std::atanh(x);
+    return JSTaggedValue(result).GetRawData();
+}
+
 JSTaggedType RuntimeStubs::FloatCos(double x)
 {
     double result = std::cos(x);
+    return JSTaggedValue(result).GetRawData();
+}
+
+JSTaggedType RuntimeStubs::FloatCosh(double x)
+{
+    double result = std::cosh(x);
     return JSTaggedValue(result).GetRawData();
 }
 
@@ -2851,15 +2899,21 @@ JSTaggedType RuntimeStubs::FloatSin(double x)
     return JSTaggedValue(result).GetRawData();
 }
 
-JSTaggedType RuntimeStubs::FloatACos(double x)
+JSTaggedType RuntimeStubs::FloatSinh(double x)
 {
-    double result = std::acos(x);
+    double result = std::sinh(x);
     return JSTaggedValue(result).GetRawData();
 }
 
-JSTaggedType RuntimeStubs::FloatATan(double x)
+JSTaggedType RuntimeStubs::FloatTan(double x)
 {
-    double result = std::atan(x);
+    double result = std::tan(x);
+    return JSTaggedValue(result).GetRawData();
+}
+
+JSTaggedType RuntimeStubs::FloatTanh(double x)
+{
+    double result = std::tanh(x);
     return JSTaggedValue(result).GetRawData();
 }
 

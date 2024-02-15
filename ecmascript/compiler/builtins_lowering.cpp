@@ -29,8 +29,6 @@ void BuiltinLowering::LowerTypedCallBuitin(GateRef gate)
             LowerTypedAbs(gate);
             break;
         case BUILTINS_STUB_ID(FLOOR):
-        case BUILTINS_STUB_ID(ACOS):
-        case BUILTINS_STUB_ID(ATAN):
             LowerTypedTrigonometric(gate, id);
             break;
         case BUILTINS_STUB_ID(LocaleCompare):
@@ -96,21 +94,8 @@ GateRef BuiltinLowering::TypedTrigonometric(GateRef gate, BuiltinsStubCSigns::ID
         builder_.Bind(&NotNan);
         {
             GateRef glue = acc_.GetGlueFromArgList();
-            int index = RTSTUB_ID(FloatCos);
-            switch (id) {
-                case BUILTINS_STUB_ID(FLOOR):
-                    index = RTSTUB_ID(FloatFloor);
-                    break;
-                case BUILTINS_STUB_ID(ACOS):
-                    index = RTSTUB_ID(FloatACos);
-                    break;
-                case BUILTINS_STUB_ID(ATAN):
-                    index = RTSTUB_ID(FloatATan);
-                    break;
-                default:
-                    LOG_ECMA(FATAL) << "this branch is unreachable";
-                    UNREACHABLE();
-            }
+            ASSERT(id == BUILTINS_STUB_ID(FLOOR));
+            int index = RTSTUB_ID(FloatFloor);
             result = builder_.CallNGCRuntime(glue, index, Gate::InvalidGateRef, {value}, gate);
             builder_.Jump(&exit);
         }
@@ -350,12 +335,14 @@ GateRef BuiltinLowering::CheckPara(GateRef gate, GateRef funcCheck)
 {
     GateRef idGate = acc_.GetValueIn(gate, 1);
     BuiltinsStubCSigns::ID id = static_cast<BuiltinsStubCSigns::ID>(acc_.GetConstantValue(idGate));
+    if (IS_TYPED_INLINE_BUILTINS_ID(id)) {
+        // Don't need check param. Param was checked before
+        return funcCheck;
+    }
     switch (id) {
-        case BuiltinsStubCSigns::ID::ACOS:
-        case BuiltinsStubCSigns::ID::ATAN:
         case BuiltinsStubCSigns::ID::ABS:
         case BuiltinsStubCSigns::ID::FLOOR: {
-            if (acc_.GetNumValueIn(gate) <= 2) {
+            if (acc_.GetNumValueIn(gate) <= 2U) {
                 return funcCheck;
             }
             GateRef para = acc_.GetValueIn(gate, 2);
@@ -379,12 +366,7 @@ GateRef BuiltinLowering::CheckPara(GateRef gate, GateRef funcCheck)
         case BuiltinsStubCSigns::ID::ARRAY_ITERATOR_PROTO_NEXT:
         case BuiltinsStubCSigns::ID::ITERATOR_PROTO_RETURN:
         case BuiltinsStubCSigns::ID::NumberConstructor:
-        case BuiltinsStubCSigns::ID::StringFromCharCode:
             // Don't need check para
-            return funcCheck;
-        case BuiltinsStubCSigns::ID::MathCos:
-        case BuiltinsStubCSigns::ID::MathSin:
-            // Don't need check param. Param was checked before
             return funcCheck;
         default: {
             LOG_COMPILER(FATAL) << "this branch is unreachable";

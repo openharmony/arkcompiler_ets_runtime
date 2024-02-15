@@ -49,6 +49,10 @@ print(len); // 1
 len = Math.cos(0, 0, 0, 0, 0);
 print(len); // 1
 
+try {
+    print(Math.cos(0))
+} catch(e) {}
+
 // Replace standart builtin
 let true_cos = Math.cos
 Math.cos = replace
@@ -59,9 +63,3 @@ print(len); // 111
 Math.cos = true_cos
 len = Math.cos("0"); // deopt
 print(len); // 1
-
-
-
-
-
-

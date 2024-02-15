@@ -59,9 +59,3 @@ print(len); // 111
 Math.sin = true_sin
 len = Math.sin("0"); // deopt
 print(len); // 0
-
-
-
-
-
-

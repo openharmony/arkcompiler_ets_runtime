@@ -441,10 +441,19 @@ private:
     V(DoubleToLength)                           \
     V(FloatMod)                                 \
     V(FloatSqrt)                                \
+    V(FloatAcos)                                \
+    V(FloatAcosh)                               \
+    V(FloatAsin)                                \
+    V(FloatAsinh)                               \
+    V(FloatAtan)                                \
+    V(FloatAtan2)                               \
+    V(FloatAtanh)                               \
     V(FloatCos)                                 \
+    V(FloatCosh)                                \
     V(FloatSin)                                 \
-    V(FloatACos)                                \
-    V(FloatATan)                                \
+    V(FloatSinh)                                \
+    V(FloatTan)                                 \
+    V(FloatTanh)                                \
     V(FloatFloor)                               \
     V(FindElementWithCache)                     \
     V(MarkingBarrier)                           \
