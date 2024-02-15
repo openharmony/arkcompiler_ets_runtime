@@ -23,6 +23,8 @@
 #include "ecmascript/mem/mem_map_allocator.h"
 #include "ecmascript/module/js_module_manager.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
+#include "ecmascript/checkpoint/thread_state_transition.h"
+#include "jsnapi_expo.h"
 
 namespace panda::ecmascript {
 using PGOProfilerManager = pgo::PGOProfilerManager;
@@ -58,12 +60,14 @@ void Runtime::InitializeIfFirstVm(EcmaVM *vm)
     {
         LockHolder lock(*vmCreationLock_);
         if (++vmCount_ == 1) {
+            ThreadManagedScope managedScope(vm->GetJSThread());
             PreInitialization(vm);
             vm->Initialize();
             PostInitialization(vm);
         }
     }
     if (!vm->IsInitialized()) {
+        ThreadManagedScope managedScope(vm->GetJSThread());
         vm->Initialize();
     }
 }

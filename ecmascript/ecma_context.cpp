@@ -263,6 +263,7 @@ JSTaggedValue EcmaContext::ExecuteAot(size_t actualNumArgs, JSTaggedType *args,
                                       const JSTaggedType *prevFp, bool needPushUndefined)
 {
     INTERPRETER_TRACE(thread_, ExecuteAot);
+    ASSERT(thread_->IsInManagedState());
     auto entry = thread_->GetRTInterface(kungfu::RuntimeStubCSigns::ID_JSFunctionEntry);
     // do not modify this log to INFO, this will call many times
     LOG_ECMA(DEBUG) << "start to execute aot entry: " << (void*)entry;
@@ -277,6 +278,7 @@ JSTaggedValue EcmaContext::ExecuteAot(size_t actualNumArgs, JSTaggedType *args,
 Expected<JSTaggedValue, bool> EcmaContext::CommonInvokeEcmaEntrypoint(const JSPandaFile *jsPandaFile,
     std::string_view entryPoint, JSHandle<JSFunction> &func, bool executeFromJob)
 {
+    ASSERT(thread_->IsInManagedState());
     JSHandle<JSTaggedValue> global = GlobalEnv::Cast(globalEnv_.GetTaggedObject())->GetJSGlobalObject();
     JSHandle<JSTaggedValue> undefined = thread_->GlobalConstants()->GetHandledUndefined();
     CString entry = entryPoint.data();

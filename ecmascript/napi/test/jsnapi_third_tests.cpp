@@ -17,6 +17,7 @@
 #include "ecmascript/builtins/builtins.h"
 #include "ecmascript/builtins/builtins_function.h"
 #include "ecmascript/builtins/builtins_object.h"
+#include "ecmascript/checkpoint/thread_state_transition.h"
 #include "ecmascript/compiler/aot_file/an_file_data_manager.h"
 #include "ecmascript/compiler/aot_file/aot_file_manager.h"
 #include "ecmascript/compiler/circuit_builder_helper.h"
@@ -87,10 +88,12 @@ public:
         ASSERT_TRUE(vm_ != nullptr) << "Cannot create Runtime";
         thread_ = vm_->GetJSThread();
         vm_->SetEnableForceGC(true);
+        thread_->ManagedCodeBegin();
     }
 
     void TearDown() override
     {
+        thread_->ManagedCodeEnd();
         vm_->SetEnableForceGC(false);
         JSNApi::DestroyJSVM(vm_);
     }
@@ -731,6 +734,7 @@ HWTEST_F_L0(JSNApiTests, PreFork)
 HWTEST_F_L0(JSNApiTests, PostFork)
 {
     RuntimeOption option;
+    ecmascript::ThreadNativeScope nativeScope(vm_->GetJSThread());
     LocalScope scope(vm_);
     JSNApi::PostFork(vm_, option);
 }

@@ -363,11 +363,6 @@ public:
 
     void PostFork();
 
-    void SetThreadId()
-    {
-        id_.store(JSThread::GetCurrentThreadId(), std::memory_order_relaxed);
-    }
-
     static ThreadId GetCurrentThreadId()
     {
         return os::thread::GetCurrentThreadId();
@@ -1137,7 +1132,10 @@ public:
     void SuspendThread(bool internalSuspend);
     void ResumeThread(bool internalSuspend);
     void WaitSuspension();
+    void ManagedCodeBegin();
+    void ManagedCodeEnd();
 #ifndef NDEBUG
+    bool IsInManagedState() const;
     MutatorLock::MutatorLockState GetMutatorLockState() const;
     void SetMutatorLockState(MutatorLock::MutatorLockState newState);
 #endif
@@ -1157,6 +1155,11 @@ private:
     void SetArrayHClassIndexMap(const CMap<ElementsKind, ConstantIndex> &map)
     {
         arrayHClassIndexMap_ = map;
+    }
+
+    void SetThreadId()
+    {
+        id_.store(JSThread::GetCurrentThreadId(), std::memory_order_relaxed);
     }
 
     void TransferFromRunningToSuspended(ThreadState newState);

@@ -617,6 +617,7 @@ using CommonStubCSigns = kungfu::CommonStubCSigns;
 JSTaggedValue EcmaInterpreter::ExecuteNative(EcmaRuntimeCallInfo *info)
 {
     JSThread *thread = info->GetThread();
+    ASSERT(thread->IsInManagedState());
     INTERPRETER_TRACE(thread, ExecuteNative);
 
     // current is entry frame.
@@ -656,6 +657,7 @@ JSTaggedValue EcmaInterpreter::Execute(EcmaRuntimeCallInfo *info)
     }
 
     JSThread *thread = info->GetThread();
+    ASSERT(thread->IsInManagedState());
     INTERPRETER_TRACE(thread, Execute);
     // check stack overflow before re-enter interpreter
     STACK_LIMIT_CHECK(thread, thread->GetException());

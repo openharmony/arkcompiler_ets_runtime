@@ -20,25 +20,6 @@
 
 namespace panda::ecmascript {
 
-class ThreadSuspensionScope final {
-public:
-    explicit ThreadSuspensionScope(JSThread* self) : self_(self)
-    {
-        oldState_ = self_->GetState();
-        self_->UpdateState(ThreadState::IS_SUSPENDED);
-    }
-
-    ~ThreadSuspensionScope()
-    {
-        self_->UpdateState(oldState_);
-    }
-
-private:
-    JSThread* self_;
-    ThreadState oldState_;
-    NO_COPY_SEMANTIC(ThreadSuspensionScope);
-};
-
 class ThreadStateTransitionScope final {
 public:
     explicit ThreadStateTransitionScope(JSThread* self, ThreadState newState)
@@ -46,18 +27,36 @@ public:
         {
             ASSERT(self_ != nullptr);
             oldState_ = self_->GetState();
-            self_->UpdateState(newState);
+            if (oldState_ != newState) {
+                self_->UpdateState(newState);
+            }
         }
 
     ~ThreadStateTransitionScope()
     {
-        self_->UpdateState(oldState_);
+        if (oldState_ != self_->GetState()) {
+            self_->UpdateState(oldState_);
+        }
     }
 
 private:
     JSThread* self_;
     ThreadState oldState_;
     NO_COPY_SEMANTIC(ThreadStateTransitionScope);
+};
+
+class ThreadSuspensionScope final {
+public:
+    explicit ThreadSuspensionScope(JSThread* self) : scope_(self, ThreadState::IS_SUSPENDED)
+    {
+        ASSERT(self->GetState() == ThreadState::IS_SUSPENDED);
+    }
+
+    ~ThreadSuspensionScope() = default;
+
+private:
+    ThreadStateTransitionScope scope_;
+    NO_COPY_SEMANTIC(ThreadSuspensionScope);
 };
 
 class ThreadNativeScope final {

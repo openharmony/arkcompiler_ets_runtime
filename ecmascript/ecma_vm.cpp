@@ -18,6 +18,7 @@
 #include "ecmascript/base/string_helper.h"
 #include "ecmascript/builtins/builtins.h"
 #include "ecmascript/builtins/builtins_ark_tools.h"
+#include "ecmascript/checkpoint/thread_state_transition.h"
 #ifdef ARK_SUPPORT_INTL
 #include "ecmascript/builtins/builtins_collator.h"
 #include "ecmascript/builtins/builtins_date_time_format.h"
@@ -370,6 +371,7 @@ JSHandle<GlobalEnv> EcmaVM::GetGlobalEnv() const
 JSTaggedValue EcmaVM::FastCallAot(size_t actualNumArgs, JSTaggedType *args, const JSTaggedType *prevFp)
 {
     INTERPRETER_TRACE(thread_, ExecuteAot);
+    ASSERT(thread_->IsInManagedState());
     auto entry = thread_->GetRTInterface(kungfu::RuntimeStubCSigns::ID_OptimizedFastCallEntry);
     // do not modify this log to INFO, this will call many times
     LOG_ECMA(DEBUG) << "start to execute aot entry: " << (void*)entry;
