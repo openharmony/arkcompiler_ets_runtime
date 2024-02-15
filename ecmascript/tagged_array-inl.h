@@ -141,10 +141,15 @@ inline bool TaggedArray::HasDuplicateEntry() const
 
 void TaggedArray::InitializeWithSpecialValue(JSTaggedValue initValue, uint32_t length, uint32_t extraLength)
 {
-    ASSERT(initValue.IsSpecial());
     SetLength(length);
     SetExtraLength(extraLength);
-    for (uint32_t i = 0; i < length; i++) {
+    FillRangeWithSpecialValue(initValue, 0, length);
+}
+
+void TaggedArray::FillRangeWithSpecialValue(JSTaggedValue initValue, uint32_t start, uint32_t end)
+{
+    ASSERT(initValue.IsSpecial());
+    for (uint32_t i = start; i < end; i++) {
         size_t offset = JSTaggedValue::TaggedTypeSize() * i;
         Barriers::SetPrimitive<JSTaggedType>(GetData(), offset, initValue.GetRawData());
     }
