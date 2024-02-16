@@ -106,6 +106,13 @@ void CircuitBuilder::StoreWithNoBarrier(VariableType type, GateRef base, GateRef
     label->SetDepend(result);
 }
 
+void CircuitBuilder::StoreWithBarrier(VariableType type, GateRef glue, GateRef base, GateRef offset, GateRef value,
+    MemoryOrder order)
+{
+    StoreWithNoBarrier(type, base, offset, value, order);
+    CallStub(glue, base, CommonStubCSigns::SetValueWithBarrier, { glue, base, offset, value });
+}
+
 // memory
 void CircuitBuilder::Store(VariableType type, GateRef glue, GateRef base, GateRef offset, GateRef value,
     MemoryOrder order)

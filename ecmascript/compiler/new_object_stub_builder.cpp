@@ -37,13 +37,10 @@ void NewObjectStubBuilder::NewLexicalEnv(Variable *result, Label *exit, GateRef 
 
     auto length = Int32Add(numSlots, Int32(LexicalEnv::RESERVED_ENV_LENGTH));
     size_ = ComputeTaggedArraySize(ZExtInt32ToPtr(length));
-    Label afterAllocate(env);
     // Be careful. NO GC is allowed when initization is not complete.
-    AllocateInYoung(result, &afterAllocate);
-    Bind(&afterAllocate);
     Label hasPendingException(env);
     Label noException(env);
-    Branch(TaggedIsException(result->ReadVariable()), &hasPendingException, &noException);
+    AllocateInYoung(result, &hasPendingException, &noException);
     Bind(&noException);
     {
         auto hclass = GetGlobalConstantValue(
@@ -87,13 +84,10 @@ void NewObjectStubBuilder::NewJSObject(Variable *result, Label *exit, GateRef hc
     auto env = GetEnvironment();
 
     size_ = GetObjectSizeFromHClass(hclass);
-    Label afterAllocate(env);
     // Be careful. NO GC is allowed when initization is not complete.
-    AllocateInYoung(result, &afterAllocate);
-    Bind(&afterAllocate);
     Label hasPendingException(env);
     Label noException(env);
-    Branch(TaggedIsException(result->ReadVariable()), &hasPendingException, &noException);
+    AllocateInYoung(result, &hasPendingException, &noException);
     Bind(&noException);
     {
         StoreHClass(glue_, result->ReadVariable(), hclass);
@@ -160,17 +154,14 @@ void NewObjectStubBuilder::NewTaggedArrayChecked(Variable *result, GateRef len, 
     }
     Bind(&notOverflow);
     size_ = ComputeTaggedArraySize(ZExtInt32ToPtr(len));
-    Label afterAllocate(env);
     // Be careful. NO GC is allowed when initization is not complete.
-    AllocateInYoung(result, &afterAllocate);
-    Bind(&afterAllocate);
     Label noException(env);
-    Branch(TaggedIsException(result->ReadVariable()), exit, &noException);
+    AllocateInYoung(result, exit, &noException);
     Bind(&noException);
     {
         auto hclass = GetGlobalConstantValue(
             VariableType::JS_POINTER(), glue_, ConstantIndex::ARRAY_CLASS_INDEX);
-        StoreHClass(glue_, result->ReadVariable(), hclass);
+        StoreBuiltinHClass(result->ReadVariable(), hclass);
         Label afterInitialize(env);
         InitializeTaggedArrayWithSpeicalValue(&afterInitialize,
             result->ReadVariable(), Hole(), Int32(0), len);
@@ -705,10 +696,7 @@ void NewObjectStubBuilder::NewArgumentsList(Variable *result, Label *exit,
     DEFVARIABLE(i, VariableType::INT32(), Int32(0));
     Label setHClass(env);
     size_ = ComputeTaggedArraySize(ZExtInt32ToPtr(numArgs));
-    Label afterAllocate(env);
-    AllocateInYoung(result, &afterAllocate);
-    Bind(&afterAllocate);
-    Branch(TaggedIsException(result->ReadVariable()), exit, &setHClass);
+    AllocateInYoung(result, exit, &setHClass);
     Bind(&setHClass);
     GateRef arrayClass = GetGlobalConstantValue(VariableType::JS_POINTER(), glue_,
                                                 ConstantIndex::ARRAY_CLASS_INDEX);
@@ -816,21 +804,19 @@ void NewObjectStubBuilder::HeapAlloc(Variable *result, Label *exit, RegionSpaceF
     }
 }
 
-void NewObjectStubBuilder::AllocateInYoung(Variable *result, Label *exit)
+void NewObjectStubBuilder::AllocateInYoungPrologue(Variable *result, Label *callRuntime, Label *exit)
 {
     auto env = GetEnvironment();
     Label success(env);
-    Label callRuntime(env);
     Label next(env);
 
 #ifdef ARK_ASAN_ON
-    DEFVARIABLE(ret, VariableType::JS_ANY(), Undefined());
-    Jump(&callRuntime);
+    Jump(callRuntime);
 #else
 #ifdef ECMASCRIPT_SUPPORT_HEAPSAMPLING
     auto isStartHeapSamplingOffset = JSThread::GlueData::GetIsStartHeapSamplingOffset(env->Is32Bit());
     auto isStartHeapSampling = Load(VariableType::JS_ANY(), glue_, IntPtr(isStartHeapSamplingOffset));
-    Branch(TaggedIsTrue(isStartHeapSampling), &callRuntime, &next);
+    Branch(TaggedIsTrue(isStartHeapSampling), callRuntime, &next);
     Bind(&next);
 #endif
     auto topOffset = JSThread::GlueData::GetNewSpaceAllocationTopAddressOffset(env->Is32Bit());
@@ -839,26 +825,47 @@ void NewObjectStubBuilder::AllocateInYoung(Variable *result, Label *exit)
     auto endAddress = Load(VariableType::NATIVE_POINTER(), glue_, IntPtr(endOffset));
     auto top = Load(VariableType::JS_POINTER(), topAddress, IntPtr(0));
     auto end = Load(VariableType::JS_POINTER(), endAddress, IntPtr(0));
-    DEFVARIABLE(ret, VariableType::JS_ANY(), Undefined());
     auto newTop = PtrAdd(top, size_);
-    Branch(IntPtrGreaterThan(newTop, end), &callRuntime, &success);
+    Branch(IntPtrGreaterThan(newTop, end), callRuntime, &success);
     Bind(&success);
     {
         Store(VariableType::NATIVE_POINTER(), glue_, topAddress, IntPtr(0), newTop);
         if (env->Is32Bit()) {
             top = ZExtInt32ToInt64(top);
         }
-        ret = top;
-        result->WriteVariable(*ret);
+        result->WriteVariable(top);
         Jump(exit);
     }
 #endif
+}
+
+void NewObjectStubBuilder::AllocateInYoung(Variable *result, Label *exit)
+{
+    auto env = GetEnvironment();
+    Label callRuntime(env);
+    AllocateInYoungPrologue(result, &callRuntime, exit);
     Bind(&callRuntime);
     {
+        DEFVARIABLE(ret, VariableType::JS_ANY(), Undefined());
         ret = CallRuntime(glue_, RTSTUB_ID(AllocateInYoung), {
             IntToTaggedInt(size_) });
         result->WriteVariable(*ret);
         Jump(exit);
+    }
+}
+
+void NewObjectStubBuilder::AllocateInYoung(Variable *result, Label *error, Label *noError)
+{
+    auto env = GetEnvironment();
+    Label callRuntime(env);
+    AllocateInYoungPrologue(result, &callRuntime, noError);
+    Bind(&callRuntime);
+    {
+        DEFVARIABLE(ret, VariableType::JS_ANY(), Undefined());
+        ret = CallRuntime(glue_, RTSTUB_ID(AllocateInYoung), {
+            IntToTaggedInt(size_) });
+        result->WriteVariable(*ret);
+        Branch(TaggedIsException(*ret), error, noError);
     }
 }
 
@@ -1355,15 +1362,12 @@ void NewObjectStubBuilder::CreateJSCollectionIterator(
     }
     GateRef iteratorHClass = GetGlobalConstantValue(VariableType::JS_POINTER(), glue_, iterClassIdx);
 
-    Label afterAllocate(env);
-    // Be careful. NO GC is allowed when initization is not complete.
-    AllocateInYoung(result, &afterAllocate);
-    Bind(&afterAllocate);
     Label noException(env);
-    Branch(TaggedIsException(result->ReadVariable()), exit, &noException);
+    // Be careful. NO GC is allowed when initization is not complete.
+    AllocateInYoung(result, exit, &noException);
     Bind(&noException);
     {
-        StoreHClass(glue_, result->ReadVariable(), iteratorHClass);
+        StoreBuiltinHClass(result->ReadVariable(), iteratorHClass);
         SetHash(glue_, result->ReadVariable(), Int64(JSTaggedValue(0).GetRawData()));
         auto emptyArray = GetGlobalConstantValue(
             VariableType::JS_POINTER(), glue_, ConstantIndex::EMPTY_ARRAY_OBJECT_INDEX);
@@ -1374,7 +1378,7 @@ void NewObjectStubBuilder::CreateJSCollectionIterator(
         GateRef linked = Load(VariableType::JS_ANY(), thisValue, IntPtr(linkedOffset));
         // SetIterated
         GateRef iteratorOffset = IntPtr(iterOffset);
-        Store(VariableType::JS_POINTER(), glue_, result->ReadVariable(), iteratorOffset, linked);
+        StoreWithBarrier(VariableType::JS_POINTER(), glue_, result->ReadVariable(), iteratorOffset, linked);
 
         // SetIteratorNextIndex
         GateRef nextIndexOffset = IntPtr(IteratorType::NEXT_INDEX_OFFSET);

@@ -1147,6 +1147,22 @@ void StubBuilder::Store(VariableType type, GateRef glue, GateRef base, GateRef o
     }
 }
 
+void StubBuilder::StoreWithBarrier(VariableType type, GateRef glue, GateRef base, GateRef offset, GateRef value)
+{
+    if (!env_->IsAsmInterp()) {
+        env_->GetBuilder()->Store(type, glue, base, offset, value);
+    } else {
+        auto depend = env_->GetCurrentLabel()->GetDepend();
+        GateRef ptr = PtrAdd(base, offset);
+        auto bit = LoadStoreAccessor::ToValue(MemoryOrder::Default());
+        GateRef result = env_->GetCircuit()->NewGate(
+            env_->GetCircuit()->Store(bit), MachineType::NOVALUE,
+            { depend, value, ptr }, type.GetGateType());
+        env_->GetCurrentLabel()->SetDepend(result);
+        CallNGCRuntime(glue, RTSTUB_ID(StoreBarrier), { glue, base, offset, value });
+    }
+}
+
 void StubBuilder::SetValueWithAttr(GateRef glue, GateRef obj, GateRef offset, GateRef key, GateRef value, GateRef attr)
 {
     auto env = GetEnvironment();
