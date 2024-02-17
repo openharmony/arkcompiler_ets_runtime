@@ -151,11 +151,6 @@ int Main(const int argc, const char **argv)
             }
 
             res = JSNApi::Execute(vm, testLoadFileName, TEST_ENTRY_POINT);
-            if (!res) {
-                std::cout << "Cannot execute panda file '" << testLoadFileName
-                        << "' with entry '" << entry << "'" << std::endl;
-                break;
-            }
 
             if (size == entryNum) {
                 std::cout << "QuickFix start check exception" << std::endl;

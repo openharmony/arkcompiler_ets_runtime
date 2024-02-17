@@ -129,21 +129,27 @@ def judge_output(args: object):
     except subprocess.TimeoutExpired:
         raise RuntimeError('Run [', cmd, '] timeout, timeout_limit = ', timeout_limit, 's')
 
+    out_str = out.decode('UTF-8', errors="ignore")
+    err_str = err.decode('UTF-8', errors="ignore")
+    returncode = str(subp.returncode)
     if args.expect_output:
-        returncode = str(subp.returncode)
         if returncode != args.expect_output:
-            out_str = out.decode('UTF-8', errors="ignore")
-            err_str = err.decode('UTF-8', errors="ignore")
+            print(">>>>> ret <<<<<")
+            print(returncode)
+            print(">>>>> out <<<<<")
             print(out_str)
+            print(">>>>> err <<<<<")
             print(err_str)
             print(">>>>> Expect return: [" + args.expect_output \
                 + "]\n>>>>> But got: [" + returncode + "]")
             raise RuntimeError("Run [" + cmd + "] failed!")
     elif args.expect_sub_output:
         out_str = out.decode('UTF-8', errors="ignore")
-        if out_str.find(args.expect_sub_output) == -1:
-            out_str = out.decode('UTF-8', errors="ignore")
-            print(out_str)
+        if out_str.find(args.expect_sub_output) == -1 or returncode != "0":
+            print(">>>>> ret <<<<<")
+            print(returncode)
+            print(">>>>> err <<<<<")
+            print(err_str)
             print(">>>>> Expect contain: [" + args.expect_sub_output \
                 + "]\n>>>>> But got: [" + out_str + "]")
             raise RuntimeError("Run [" + cmd + "] failed!")
@@ -153,8 +159,10 @@ def judge_output(args: object):
             expect_output = ''.join(file.readlines()[13:])
             file.close()
             out_str = out.decode('UTF-8', errors="ignore")
-            if out_str != expect_output:
-                err_str = err.decode('UTF-8', errors="ignore")
+            if out_str != expect_output or returncode != "0":
+                print(">>>>> ret <<<<<")
+                print(returncode)
+                print(">>>>> err <<<<<")
                 print(err_str)
                 print(">>>>> Expect : [" + expect_output \
                     + "]\n>>>>> But got: [" + out_str + "]")

@@ -151,7 +151,7 @@ JSHandle<JSTaggedValue> CjsModule::Load(JSThread *thread, JSHandle<EcmaString> &
     // Execute required JSPandaFile
     RequireExecution(thread, mergedFilename, requestEntryPoint);
     if (thread->HasPendingException()) {
-        thread->GetCurrentEcmaContext()->HandleUncaughtException(thread->GetException());
+        thread->GetCurrentEcmaContext()->HandleUncaughtException();
         return thread->GlobalConstants()->GetHandledUndefined();
     }
     // Search from Module.cache after execution.
