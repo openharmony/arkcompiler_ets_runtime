@@ -73,11 +73,11 @@ void AArch64MoveRegArgs::CollectRegisterArgs(std::map<uint32, AArch64reg> &argsL
     }
 }
 
-ArgInfo AArch64MoveRegArgs::GetArgInfo(std::map<uint32, AArch64reg> &argsList, std::vector<uint32> &numFpRegs,
-                                       std::vector<uint32> &fpSize, uint32 argIndex) const
+AArch64ArgInfo AArch64MoveRegArgs::GetArgInfo(std::map<uint32, AArch64reg> &argsList, std::vector<uint32> &numFpRegs,
+                                              std::vector<uint32> &fpSize, uint32 argIndex) const
 {
     AArch64CGFunc *aarchCGFunc = static_cast<AArch64CGFunc *>(cgFunc);
-    ArgInfo argInfo;
+    AArch64ArgInfo argInfo;
     argInfo.reg = argsList[argIndex];
     argInfo.mirTy = aarchCGFunc->GetFunction().GetNthParamType(argIndex);
     argInfo.symSize = aarchCGFunc->GetBecommon().GetTypeSize(argInfo.mirTy->GetTypeIndex());
@@ -147,7 +147,7 @@ ArgInfo AArch64MoveRegArgs::GetArgInfo(std::map<uint32, AArch64reg> &argsList, s
     return argInfo;
 }
 
-bool AArch64MoveRegArgs::IsInSameSegment(const ArgInfo &firstArgInfo, const ArgInfo &secondArgInfo) const
+bool AArch64MoveRegArgs::IsInSameSegment(const AArch64ArgInfo &firstArgInfo, const AArch64ArgInfo &secondArgInfo) const
 {
     if (firstArgInfo.symLoc->GetMemSegment() != secondArgInfo.symLoc->GetMemSegment()) {
         return false;
@@ -164,7 +164,7 @@ bool AArch64MoveRegArgs::IsInSameSegment(const ArgInfo &firstArgInfo, const ArgI
     return firstArgInfo.symLoc->GetOffset() + firstArgInfo.stkSize == secondArgInfo.symLoc->GetOffset();
 }
 
-void AArch64MoveRegArgs::GenerateStpInsn(const ArgInfo &firstArgInfo, const ArgInfo &secondArgInfo)
+void AArch64MoveRegArgs::GenerateStpInsn(const AArch64ArgInfo &firstArgInfo, const AArch64ArgInfo &secondArgInfo)
 {
     AArch64CGFunc *aarchCGFunc = static_cast<AArch64CGFunc *>(cgFunc);
     RegOperand *baseOpnd = static_cast<RegOperand *>(aarchCGFunc->GetBaseReg(*firstArgInfo.symLoc));
@@ -215,7 +215,8 @@ void AArch64MoveRegArgs::GenerateStpInsn(const ArgInfo &firstArgInfo, const ArgI
     aarchCGFunc->GetCurBB()->AppendInsn(pushInsn);
 }
 
-void AArch64MoveRegArgs::GenOneInsn(const ArgInfo &argInfo, RegOperand &baseOpnd, uint32 stBitSize, AArch64reg dest,
+void AArch64MoveRegArgs::GenOneInsn(const AArch64ArgInfo &argInfo, RegOperand &baseOpnd,
+                                    uint32 stBitSize, AArch64reg dest,
                                     int32 offset) const
 {
     AArch64CGFunc *aarchCGFunc = static_cast<AArch64CGFunc *>(cgFunc);
@@ -235,7 +236,8 @@ void AArch64MoveRegArgs::GenOneInsn(const ArgInfo &argInfo, RegOperand &baseOpnd
     aarchCGFunc->GetCurBB()->AppendInsn(insn);
 }
 
-void AArch64MoveRegArgs::GenerateStrInsn(const ArgInfo &argInfo, AArch64reg reg2, uint32 numFpRegs, uint32 fpSize)
+void AArch64MoveRegArgs::GenerateStrInsn(const AArch64ArgInfo &argInfo,
+                                         AArch64reg reg2, uint32 numFpRegs, uint32 fpSize)
 {
     AArch64CGFunc *aarchCGFunc = static_cast<AArch64CGFunc *>(cgFunc);
     int32 stOffset = aarchCGFunc->GetBaseOffset(*argInfo.symLoc);
@@ -313,12 +315,12 @@ void AArch64MoveRegArgs::MoveRegisterArgs()
     std::vector<uint32>::iterator next;
     for (it = moveParaIndex.begin(); it != moveParaIndex.end(); ++it) {
         uint32 firstIndex = *it;
-        ArgInfo firstArgInfo = GetArgInfo(movePara, numFpRegs, fpSize, firstIndex);
+        AArch64ArgInfo firstArgInfo = GetArgInfo(movePara, numFpRegs, fpSize, firstIndex);
         next = it;
         ++next;
         if ((next != moveParaIndex.end()) || (firstArgInfo.doMemPairOpt)) {
             uint32 secondIndex = (firstArgInfo.doMemPairOpt) ? firstIndex : *next;
-            ArgInfo secondArgInfo = GetArgInfo(movePara, numFpRegs, fpSize, secondIndex);
+            AArch64ArgInfo secondArgInfo = GetArgInfo(movePara, numFpRegs, fpSize, secondIndex);
             secondArgInfo.reg = (firstArgInfo.doMemPairOpt) ? pairReg[firstIndex] : movePara[secondIndex];
             secondArgInfo.symSize =
                 (firstArgInfo.doMemPairOpt) ? firstArgInfo.memPairSecondRegSize : secondArgInfo.symSize;

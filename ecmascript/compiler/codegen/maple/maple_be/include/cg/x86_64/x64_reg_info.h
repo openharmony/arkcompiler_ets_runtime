@@ -10,7 +10,7 @@
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
- * limitations under the License.
+* limitations under the License.
  */
 
 #ifndef MAPLEBE_INCLUDE_CG_X64_X64_REG_INFO_H
@@ -116,11 +116,11 @@ public:
     }
     bool IsVirtualRegister(const RegOperand &regOpnd) override
     {
-        return regOpnd.GetRegisterNumber() > kAllRegNum;
+        return regOpnd.GetRegisterNumber() > x64::kAllRegNum;
     }
     bool IsVirtualRegister(regno_t regno) override
     {
-        return regno > kAllRegNum;
+        return regno > x64::kAllRegNum;
     }
     uint32 GetReservedSpillReg() override
     {

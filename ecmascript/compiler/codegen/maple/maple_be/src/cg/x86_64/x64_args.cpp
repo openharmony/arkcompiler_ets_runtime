@@ -72,11 +72,12 @@ void X64MoveRegArgs::CollectRegisterArgs(std::map<uint32, X64reg> &argsList, std
     }
 }
 
-ArgInfo X64MoveRegArgs::GetArgInfo(std::map<uint32, X64reg> &argsList, uint32 argIndex, std::vector<uint32> &numFpRegs,
-                                   std::vector<uint32> &fpSize) const
+X64ArgInfo X64MoveRegArgs::GetArgInfo(std::map<uint32, X64reg> &argsList,
+                                      uint32 argIndex, std::vector<uint32> &numFpRegs,
+                                      std::vector<uint32> &fpSize) const
 {
     X64CGFunc *x64CGFunc = static_cast<X64CGFunc *>(cgFunc);
-    ArgInfo argInfo;
+    X64ArgInfo argInfo;
     argInfo.reg = argsList[argIndex];
     argInfo.mirTy = x64CGFunc->GetFunction().GetNthParamType(argIndex);
     argInfo.symSize = x64CGFunc->GetBecommon().GetTypeSize(argInfo.mirTy->GetTypeIndex());
@@ -123,7 +124,7 @@ ArgInfo X64MoveRegArgs::GetArgInfo(std::map<uint32, X64reg> &argsList, uint32 ar
     return argInfo;
 }
 
-void X64MoveRegArgs::GenerateMovInsn(ArgInfo &argInfo, X64reg reg2)
+void X64MoveRegArgs::GenerateMovInsn(X64ArgInfo &argInfo, X64reg reg2)
 {
     /* reg2 is required when the struct size is between 8-16 bytes */
     X64CGFunc *x64CGFunc = static_cast<X64CGFunc *>(cgFunc);
@@ -176,7 +177,7 @@ void X64MoveRegArgs::MoveRegisterArgs()
 
     for (auto indexItem = moveParaIndex.begin(); indexItem != moveParaIndex.end(); ++indexItem) {
         uint32 index = *indexItem;
-        ArgInfo argInfo = GetArgInfo(movePara, index, numFpRegs, fpSize);
+        X64ArgInfo argInfo = GetArgInfo(movePara, index, numFpRegs, fpSize);
         GenerateMovInsn(argInfo, pairReg[index]);
     }
 

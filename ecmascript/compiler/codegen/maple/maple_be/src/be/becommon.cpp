@@ -777,10 +777,6 @@ BaseNode *BECommon::GetAddressOfNode(const BaseNode &node)
             MIRType *pointedType = GlobalTables::GetTypeTable().GetTypeTable().at(index);
             std::pair<int32, int32> byteBitOffset =
                 GetFieldOffset(static_cast<MIRStructType &>(*pointedType), iNode.GetFieldID());
-#if TARGAARCH64 || TARGRISCV64
-            DEBUG_ASSERT(GetAddressPrimType() == GetLoweredPtrType(),
-                         "incorrect address type, expect a GetLoweredPtrType()");
-#endif
             return mirModule.GetMIRBuilder()->CreateExprBinary(
                 OP_add, *GlobalTables::GetTypeTable().GetPrimType(GetAddressPrimType()),
                 static_cast<BaseNode *>(iNode.Opnd(0)),

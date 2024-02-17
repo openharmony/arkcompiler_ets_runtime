@@ -206,13 +206,15 @@ uint8 GetPointerSize()
 {
 #if TARGX86 || TARGARM32 || TARGVM
     return k4ByteSize;
-#elif TARGX86_64
-    return k8ByteSize;
-#elif TARGAARCH64
-    DEBUG_ASSERT(Triple::GetTriple().GetEnvironment() != Triple::UnknownEnvironment,
-                 "Triple must be initialized before using");
-    uint8 size = (Triple::GetTriple().GetEnvironment() == Triple::GNUILP32) ? k4ByteSize : k8ByteSize;
-    return size;
+#elif TARGX86_64 || TARGAARCH64
+    if (Triple::GetTriple().GetArch() == Triple::ArchType::x64) {
+        return k8ByteSize;
+    } else if (Triple::GetTriple().GetArch() == Triple::ArchType::aarch64) {
+        uint8 size = (Triple::GetTriple().GetEnvironment() == Triple::GNUILP32) ? k4ByteSize : k8ByteSize;
+        return size;
+    } else {
+        CHECK_FATAL(false, "Unsupported target");
+    }
 #else
 #error "Unsupported target"
 #endif
@@ -222,13 +224,15 @@ uint8 GetP2Size()
 {
 #if TARGX86 || TARGARM32 || TARGVM
     return k2ByteSize;
-#elif TARGX86_64
-    return k3ByteSize;
-#elif TARGAARCH64
-    DEBUG_ASSERT(Triple::GetTriple().GetEnvironment() != Triple::UnknownEnvironment,
-                 "Triple must be initialized before using");
-    uint8 size = (Triple::GetTriple().GetEnvironment() == Triple::GNUILP32) ? k2ByteSize : k3ByteSize;
-    return size;
+#elif TARGX86_64 || TARGAARCH64
+    if (Triple::GetTriple().GetArch() == Triple::ArchType::x64) {
+        return k3ByteSize;
+    } else if (Triple::GetTriple().GetArch() == Triple::ArchType::aarch64) {
+        uint8 size = (Triple::GetTriple().GetEnvironment() == Triple::GNUILP32) ? k2ByteSize : k3ByteSize;
+        return size;
+    } else {
+        CHECK_FATAL(false, "Unsupported target");
+    }
 #else
 #error "Unsupported target"
 #endif
@@ -238,13 +242,15 @@ PrimType GetLoweredPtrType()
 {
 #if TARGX86 || TARGARM32 || TARGVM
     return PTY_a32;
-#elif TARGX86_64
-    return PTY_a64;
-#elif TARGAARCH64
-    DEBUG_ASSERT(Triple::GetTriple().GetEnvironment() != Triple::UnknownEnvironment,
-                 "Triple must be initialized before using");
-    auto pty = (Triple::GetTriple().GetEnvironment() == Triple::GNUILP32) ? PTY_a32 : PTY_a64;
-    return pty;
+#elif TARGX86_64 || TARGAARCH64
+    if (Triple::GetTriple().GetArch() == Triple::ArchType::x64) {
+        return PTY_a64;
+    } else if (Triple::GetTriple().GetArch() == Triple::ArchType::aarch64) {
+        auto pty = (Triple::GetTriple().GetEnvironment() == Triple::GNUILP32) ? PTY_a32 : PTY_a64;
+        return pty;
+    } else {
+        CHECK_FATAL(false, "Unsupported target");
+    }
 #else
 #error "Unsupported target"
 #endif

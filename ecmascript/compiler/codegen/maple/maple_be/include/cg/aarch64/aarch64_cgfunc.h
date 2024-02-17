@@ -560,7 +560,7 @@ public:
         /* npairs = num / 2 + num % 2 */
         uint32 nPairs = (numIntregToCalleeSave >> 1) + (numIntregToCalleeSave & 0x1);
         nPairs += (numFpregToCalleeSave >> 1) + (numFpregToCalleeSave & 0x1);
-        return (nPairs * (kIntregBytelen << 1));
+        return (nPairs * (kAarch64IntregBytelen << 1));
     }
 
     void DBGFixCallFrameLocationOffsets() override;

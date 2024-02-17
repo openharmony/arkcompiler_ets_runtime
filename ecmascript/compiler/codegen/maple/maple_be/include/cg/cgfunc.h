@@ -36,6 +36,7 @@
 
 /* Maple MP header */
 #include "mempool_allocator.h"
+#include "triple.h"
 
 namespace maplebe {
 constexpr int32 kBBLimit = 100000;
@@ -511,10 +512,12 @@ public:
             size = k4ByteSize;
         }
 #if TARGAARCH64
+    if (Triple::GetTriple().GetArch() == Triple::ArchType::aarch64) {
         /* cannot handle 128 size register */
         if (regType == kRegTyInt && size > k8ByteSize) {
             size = k8ByteSize;
         }
+    }
 #endif
         DEBUG_ASSERT(size == k4ByteSize || size == k8ByteSize || size == k16ByteSize, "check size");
 #endif
@@ -580,17 +583,13 @@ public:
         return vRegTable[rNum].GetType();
     }
 
-#if TARGX86_64
     uint32 GetMaxVReg() const
     {
-        return vRegCount + opndBuilder->GetCurrentVRegNum();
-    }
-#else
-    uint32 GetMaxVReg() const
-    {
+        if (Triple::GetTriple().GetArch() == Triple::ArchType::x64) {
+            return vRegCount + opndBuilder->GetCurrentVRegNum();
+        }
         return vRegCount;
     }
-#endif
 
     uint32 GetSSAvRegCount() const
     {

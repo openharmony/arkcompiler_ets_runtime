@@ -20,7 +20,7 @@
 #include "peep.h"
 
 namespace maplebe {
-class X64CGPeepHole : CGPeepHole {
+class X64CGPeepHole : public CGPeepHole {
 public:
     /* normal constructor */
     X64CGPeepHole(CGFunc &f, MemPool *memPool) : CGPeepHole(f, memPool) {};
@@ -32,17 +32,18 @@ public:
     void DoNormalOptimize(BB &bb, Insn &insn) override;
 };
 
-class RemoveMovingtoSameRegPattern : public CGPeepPattern {
+class X64RemoveMovingtoSameRegPattern : public CGPeepPattern {
 public:
-    RemoveMovingtoSameRegPattern(CGFunc &cgFunc, BB &currBB, Insn &currInsn) : CGPeepPattern(cgFunc, currBB, currInsn)
+    X64RemoveMovingtoSameRegPattern(CGFunc &cgFunc,
+        BB &currBB, Insn &currInsn) : CGPeepPattern(cgFunc, currBB, currInsn)
     {
     }
-    ~RemoveMovingtoSameRegPattern() override = default;
+    ~X64RemoveMovingtoSameRegPattern() override = default;
     void Run(BB &bb, Insn &insn) override;
     bool CheckCondition(Insn &insn) override;
     std::string GetPatternName() override
     {
-        return "RemoveMovingtoSameRegPattern";
+        return "X64RemoveMovingtoSameRegPattern";
     }
 };
 

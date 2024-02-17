@@ -24,8 +24,7 @@
 namespace maplebe {
 using namespace maple;
 using namespace x64;
-
-struct ArgInfo {
+struct X64ArgInfo {
     X64reg reg;
     MIRType *mirTy;
     uint32 symSize;
@@ -48,9 +47,9 @@ private:
     void CollectRegisterArgs(std::map<uint32, X64reg> &argsList, std::vector<uint32> &indexList,
                              std::map<uint32, X64reg> &pairReg, std::vector<uint32> &numFpRegs,
                              std::vector<uint32> &fpSize) const;
-    ArgInfo GetArgInfo(std::map<uint32, X64reg> &argsList, uint32 argIndex, std::vector<uint32> &numFpRegs,
+    X64ArgInfo GetArgInfo(std::map<uint32, X64reg> &argsList, uint32 argIndex, std::vector<uint32> &numFpRegs,
                        std::vector<uint32> &fpSize) const;
-    void GenerateMovInsn(ArgInfo &argInfo, X64reg reg2);
+    void GenerateMovInsn(X64ArgInfo &argInfo, X64reg reg2);
     void MoveRegisterArgs();
     void MoveVRegisterArgs();
     void LoadStackArgsToVReg(MIRSymbol &mirSym);

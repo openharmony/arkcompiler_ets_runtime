@@ -68,15 +68,17 @@ bool CgRegAlloc::PhaseRun(maplebe::CGFunc &f)
             regAllocator = phaseMp->New<LSRALinearScanRegAllocator>(f, *phaseMp, bfs);
 #if TARGAARCH64
         } else if (f.GetCG()->GetCGOptions().DoColoringBasedRegisterAllocation()) {
-            MaplePhase *it = GetAnalysisInfoHook()->ForceRunAnalysisPhase<MapleFunctionPhase<CGFunc>, CGFunc>(
-                &CgLiveAnalysis::id, f);
-            live = static_cast<CgLiveAnalysis*>(it)->GetResult();
-            CHECK_FATAL(live != nullptr, "null ptr check");
-            /* revert liveanalysis result container. */
-            live->ResetLiveSet();
-            DomAnalysis *dom = GET_ANALYSIS(CgDomAnalysis, f);
-            CHECK_FATAL(dom != nullptr, "null ptr check");
-            regAllocator = phaseMp->New<GraphColorRegAllocator>(f, *tempMP, *dom);
+            if (Triple::GetTriple().GetArch() == Triple::ArchType::aarch64) {
+                MaplePhase *it = GetAnalysisInfoHook()->ForceRunAnalysisPhase<MapleFunctionPhase<CGFunc>, CGFunc>(
+                    &CgLiveAnalysis::id, f);
+                live = static_cast<CgLiveAnalysis*>(it)->GetResult();
+                CHECK_FATAL(live != nullptr, "null ptr check");
+                /* revert liveanalysis result container. */
+                live->ResetLiveSet();
+                DomAnalysis *dom = GET_ANALYSIS(CgDomAnalysis, f);
+                CHECK_FATAL(dom != nullptr, "null ptr check");
+                regAllocator = phaseMp->New<GraphColorRegAllocator>(f, *tempMP, *dom);
+            }
 #endif
         } else {
             maple::LogInfo::MapleLogger(kLlErr)

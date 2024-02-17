@@ -75,7 +75,7 @@ void AArch64GenCfi::GenerateRegisterSaveDirective(BB &bb, Insn &stackDefInsn)
         cfiOffset = stackFrameSize - offset;
         curInsn = bb.InsertInsnAfter(*curInsn, aarchCGFunc.CreateCfiOffsetInsn(reg, -cfiOffset, k64BitSize));
         /* On AArch64, kIntregBytelen == 8 */
-        offset += static_cast<int32>(kIntregBytelen);
+        offset += static_cast<int32>(kAarch64IntregBytelen);
     }
 }
 

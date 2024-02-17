@@ -28,7 +28,7 @@ namespace maple {
 class Triple {
 public:
     /* Currently, only aarch64 is supported */
-    enum ArchType { UnknownArch, aarch64, aarch64_be, X64, LastArchType };
+    enum ArchType { UnknownArch, aarch64, aarch64_be, x64, LastArchType };
 
     /* Currently, only ILP32 and LP64 are supported */
     enum EnvironmentType { UnknownEnvironment, GNU, GNUILP32, LastEnvironmentType };
@@ -49,7 +49,7 @@ public:
 
     bool IsAarch64BeOrLe() const
     {
-        return (GetArch() == ArchType::aarch64_be || GetArch() == ArchType::aarch64);
+        return (GetArch() == ArchType::aarch64_be) || (GetArch() == ArchType::aarch64);
     }
 
     std::string Str() const;
@@ -65,7 +65,7 @@ public:
     Triple &operator=(const Triple &) = delete;
 
     void Init(const std::string &target);
-    void Init();
+    void Init(bool isAArch64);
 
 private:
     std::string data;

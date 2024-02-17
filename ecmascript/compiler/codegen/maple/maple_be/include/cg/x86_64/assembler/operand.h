@@ -18,6 +18,7 @@
 
 #include <unordered_map>
 #include <string>
+#include <array>
 #include "util.h"
 
 namespace assembler {

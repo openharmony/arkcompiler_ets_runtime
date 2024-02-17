@@ -807,12 +807,14 @@ void CGOptions::EnableLiteCG()
 
 void CGOptions::SetTargetMachine(const std::string &str)
 {
-    if (str == "aarch64") {
+    // this is a temporary plan, all ilp32 logic follow the same path with aarch64
+    if (str == "aarch64" || str == "aarch64_be-linux-gnu_ilp32" || str == "aarch64_be-linux-gnu") {
         targetArch = "aarch64";
     } else if (str == "x86_64") {
         targetArch = "x86_64";
+    } else {
+        CHECK_FATAL_FALSE("unsupported target!!");
     }
-    CHECK_FATAL(false, "unknown target. not implement yet");
 }
 
 void CGOptions::SplitPhases(const std::string &str, std::unordered_set<std::string> &set)

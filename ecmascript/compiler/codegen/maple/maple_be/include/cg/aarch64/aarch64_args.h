@@ -22,7 +22,7 @@
 namespace maplebe {
 using namespace maple;
 
-struct ArgInfo {
+struct AArch64ArgInfo {
     AArch64reg reg;
     MIRType *mirTy;
     uint32 symSize;
@@ -48,13 +48,13 @@ private:
     void CollectRegisterArgs(std::map<uint32, AArch64reg> &argsList, std::vector<uint32> &indexList,
                              std::map<uint32, AArch64reg> &pairReg, std::vector<uint32> &numFpRegs,
                              std::vector<uint32> &fpSize) const;
-    ArgInfo GetArgInfo(std::map<uint32, AArch64reg> &argsList, std::vector<uint32> &numFpRegs,
+    AArch64ArgInfo GetArgInfo(std::map<uint32, AArch64reg> &argsList, std::vector<uint32> &numFpRegs,
                        std::vector<uint32> &fpSize, uint32 argIndex) const;
-    bool IsInSameSegment(const ArgInfo &firstArgInfo, const ArgInfo &secondArgInfo) const;
-    void GenOneInsn(const ArgInfo &argInfo, RegOperand &baseOpnd, uint32 stBitSize, AArch64reg dest,
+    bool IsInSameSegment(const AArch64ArgInfo &firstArgInfo, const AArch64ArgInfo &secondArgInfo) const;
+    void GenOneInsn(const AArch64ArgInfo &argInfo, RegOperand &baseOpnd, uint32 stBitSize, AArch64reg dest,
                     int32 offset) const;
-    void GenerateStpInsn(const ArgInfo &firstArgInfo, const ArgInfo &secondArgInfo);
-    void GenerateStrInsn(const ArgInfo &argInfo, AArch64reg reg2, uint32 numFpRegs, uint32 fpSize);
+    void GenerateStpInsn(const AArch64ArgInfo &firstArgInfo, const AArch64ArgInfo &secondArgInfo);
+    void GenerateStrInsn(const AArch64ArgInfo &argInfo, AArch64reg reg2, uint32 numFpRegs, uint32 fpSize);
     void MoveRegisterArgs();
     void MoveVRegisterArgs();
     void MoveLocalRefVarToRefLocals(MIRSymbol &mirSym) const;

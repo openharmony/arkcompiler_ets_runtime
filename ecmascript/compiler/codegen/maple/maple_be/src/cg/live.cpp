@@ -525,7 +525,9 @@ void LiveAnalysis::ClearInOutDataInfo()
 void CgLiveAnalysis::GetAnalysisDependence(AnalysisDep &aDep) const
 {
 #if TARGX86_64
-    aDep.AddRequired<CgHandleCFG>();
+    if (Triple::GetTriple().GetArch() == Triple::ArchType::x64) {
+        aDep.AddRequired<CgHandleCFG>();
+    }
 #endif
     aDep.SetPreservedAll();
 }

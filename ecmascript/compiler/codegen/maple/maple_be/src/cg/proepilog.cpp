@@ -14,17 +14,6 @@
  */
 
 #include "proepilog.h"
-#if TARGAARCH64
-#include "aarch64_proepilog.h"
-#elif TARGRISCV64
-#include "riscv64_proepilog.h"
-#endif
-#if TARGARM32
-#include "arm32_proepilog.h"
-#endif
-#if TARGX86_64
-#include "x64_proepilog.h"
-#endif
 #include "cgfunc.h"
 #include "cg.h"
 
@@ -121,15 +110,7 @@ bool GenProEpilog::IncludeArray(const MIRType &type) const
 bool CgGenProEpiLog::PhaseRun(maplebe::CGFunc &f)
 {
     GenProEpilog *genPE = nullptr;
-#if TARGAARCH64 || TARGRISCV64
-    genPE = GetPhaseAllocator()->New<AArch64GenProEpilog>(f, *ApplyTempMemPool());
-#endif
-#if TARGARM32
-    genPE = GetPhaseAllocator()->New<Arm32GenProEpilog>(f);
-#endif
-#if TARGX86_64
-    genPE = GetPhaseAllocator()->New<X64GenProEpilog>(f);
-#endif
+    genPE = f.GetCG()->CreateGenProEpilog(f, *GetPhaseMemPool(), ApplyTempMemPool());
     genPE->Run();
     return false;
 }
