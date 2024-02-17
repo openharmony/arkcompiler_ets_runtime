@@ -2151,6 +2151,9 @@ void X64Emitter::Run(CGFunc &cgFunc)
 
     assmbler.SetLastModulePC(cgFunc.GetMirModule().GetLastModulePC());
 
+    /* emit local variable(s) if exists */
+    EmitLocalVariable(cgFunc);
+
     /* emit function header */
     EmitFunctionHeader(cgFunc);
 
