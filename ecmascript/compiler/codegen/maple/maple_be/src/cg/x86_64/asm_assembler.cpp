@@ -1896,7 +1896,7 @@ void AsmAssembler::Cvttsd2si(InsnSize insnSize, Reg srcReg, Reg destReg)
 
 void AsmAssembler::Cvttss2si(InsnSize insnSize, Reg srcReg, Reg destReg)
 {
-    Emit("\tcvtss2si");
+    Emit("\tcvttss2si");
     EmitInsnSuffix(insnSize);
     Emit("\t");
     EmitRegReg(srcReg, destReg);

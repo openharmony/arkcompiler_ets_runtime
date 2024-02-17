@@ -327,8 +327,10 @@ void AArch64AsmEmitter::RecordRegInfo(FuncEmitInfo &funcEmitInfo) const
 
     std::set<regno_t> referedRegs;
     MIRFunction &mirFunc = cgFunc.GetFunction();
-    FOR_ALL_BB_REV(bb, &aarchCGFunc) {
-        FOR_BB_INSNS_REV(insn, bb) {
+    FOR_ALL_BB_REV(bb, &aarchCGFunc)
+    {
+        FOR_BB_INSNS_REV(insn, bb)
+        {
             if (!insn->IsMachineInstruction()) {
                 continue;
             }
@@ -492,8 +494,10 @@ void AArch64AsmEmitter::Run(FuncEmitInfo &funcEmitInfo)
 
     /* if the last  insn is call, then insert nop */
     bool found = false;
-    FOR_ALL_BB_REV(bb, &aarchCGFunc) {
-        FOR_BB_INSNS_REV(insn, bb) {
+    FOR_ALL_BB_REV(bb, &aarchCGFunc)
+    {
+        FOR_BB_INSNS_REV(insn, bb)
+        {
             if (insn->IsMachineInstruction()) {
                 if (insn->IsCall()) {
                     Insn &newInsn = aarchCGFunc.GetInsnBuilder()->BuildInsn<AArch64CG>(MOP_nop);
@@ -511,7 +515,8 @@ void AArch64AsmEmitter::Run(FuncEmitInfo &funcEmitInfo)
     RecordRegInfo(funcEmitInfo);
 
     /* emit instructions */
-    FOR_ALL_BB(bb, &aarchCGFunc) {
+    FOR_ALL_BB(bb, &aarchCGFunc)
+    {
         if (bb->IsUnreachable()) {
             continue;
         }
@@ -528,7 +533,8 @@ void AArch64AsmEmitter::Run(FuncEmitInfo &funcEmitInfo)
             EmitBBHeaderLabel(funcEmitInfo, funcName, bb->GetLabIdx());
         }
 
-        FOR_BB_INSNS(insn, bb) {
+        FOR_BB_INSNS(insn, bb)
+        {
             if (insn->IsCfiInsn()) {
                 EmitAArch64CfiInsn(emitter, *insn);
             } else if (insn->IsDbgInsn()) {
@@ -569,6 +575,8 @@ void AArch64AsmEmitter::Run(FuncEmitInfo &funcEmitInfo)
             EmitFastLSDA(funcEmitInfo);
         }
     }
+
+    EmitFunctionSymbolTable(funcEmitInfo);
 
     for (auto &it : cgFunc.GetEmitStVec()) {
         /* emit switch table only here */
