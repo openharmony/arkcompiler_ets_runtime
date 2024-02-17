@@ -925,6 +925,9 @@ template("host_aot_test_action") {
   _test_aot_log_level = "info"
   _test_expect_path_ = "${_src_dir_}/expect_output.txt"
   _test_pgo_expect_path_ = "${_src_dir_}/pgo_expect_output.txt"
+  if (defined(invoker.use_one_expect_path) && invoker.use_one_expect_path) {
+    _test_pgo_expect_path_ = _test_expect_path_
+  }
 
   es2abc_gen_abc("gen_${_target_name_}_abc") {
     extra_visibility = [ ":*" ]  # Only targets in this file can depend on this.
