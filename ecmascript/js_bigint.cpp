@@ -1594,7 +1594,8 @@ JSTaggedNumber BigInt::BigIntToNumber(JSHandle<BigInt> bigint)
     uint64_t sign = bigintSign ? 1ULL << 63 : 0; // 63 : Set the sign bit of sign to 1
     int needMoveBit = static_cast<int>(leadingZeros + BigInt::DATEBITS + 1);
     // Align to the most significant bit, then right shift 12 bits so that the head of the mantissa is in place
-    uint64_t mantissa = (static_cast<uint64_t>(BigintHead) << needMoveBit) >> 12; // 12 mantissa just has 52 bits
+    uint64_t mantissa = (needMoveBit == 64) ? 0 :
+        ((static_cast<uint64_t>(BigintHead) << needMoveBit) >> 12); // 12 mantissa// just has 52 bits
     int remainMantissaBits = needMoveBit - 12;
     uint64_t exponent = static_cast<uint64_t>(bigintBitLen - 1);
     int index = static_cast<int>(bigintLen - 1);
