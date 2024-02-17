@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023 Huawei Device Co., Ltd.
+ * Copyright (c) 2024 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -14,15 +14,11 @@
  */
 
 /*
- * @tc.name:importJson
- * @tc.desc:test import Json
+ * @tc.name:moduleCircularCheck
+ * @tc.desc:check module circular import
  * @tc.type: FUNC
- * @tc.require: issueI5NO8G
+ * @tc.require: issueI5RC2C
  */
-import data from "./1.json"
-import { fun } from "./cjsImportJson";
-import {a} from './moduleCircularCheck'
 
-print(data.name);
-fun();
-print(a);
+ArkTools.checkCircularImport("moduleCircularCheck");
+export let ss = "check";
