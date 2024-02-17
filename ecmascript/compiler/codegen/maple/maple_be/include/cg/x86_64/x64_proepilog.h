@@ -17,7 +17,6 @@
 #define MAPLEBE_INCLUDE_CG_X64_X64_PROEPILOG_H
 
 #include "proepilog.h"
-#include "x64_cgfunc.h"
 
 namespace maplebe {
 using namespace maple;

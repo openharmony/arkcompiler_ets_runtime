@@ -18,7 +18,8 @@
 #include <algorithm>
 #if TARGAARCH64
 #include "aarch64_operand.h"
-#elif defined(TARGRISCV64) && TARGRISCV64
+#endif
+#if defined(TARGRISCV64) && TARGRISCV64
 #include "riscv64_operand.h"
 #endif
 #include "schedule.h"

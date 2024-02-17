@@ -544,7 +544,7 @@ int32 AArch64RegSavesOpt::FindNextOffsetForCalleeSave() const
 {
     int32 offset = static_cast<int32>(
         static_cast<AArch64MemLayout *>(cgFunc->GetMemlayout())->RealStackFrameSize() -
-        (static_cast<AArch64CGFunc *>(cgFunc)->SizeOfCalleeSaved() - (kDivide2 * kIntregBytelen) /* FP/LR */) -
+        (static_cast<AArch64CGFunc *>(cgFunc)->SizeOfCalleeSaved() - (kDivide2 * kAarch64IntregBytelen) /* FP/LR */) -
         cgFunc->GetMemlayout()->SizeOfArgsToStackPass() - cgFunc->GetFunction().GetFrameReseverdSlot());
 
     if (cgFunc->GetFunction().GetAttr(FUNCATTR_varargs)) {
@@ -585,7 +585,7 @@ void AArch64RegSavesOpt::InsertCalleeSaveCode()
                 /* If reg not seen before, record offset and then update */
                 if (regOffset.find(areg) == regOffset.end()) {
                     regOffset[areg] = static_cast<uint32>(offset);
-                    offset += static_cast<int32>(kIntregBytelen);
+                    offset += static_cast<int32>(kAarch64IntregBytelen);
                 }
                 if (firstHalf == kRinvalid) {
                     /* 1st half in reg pair */

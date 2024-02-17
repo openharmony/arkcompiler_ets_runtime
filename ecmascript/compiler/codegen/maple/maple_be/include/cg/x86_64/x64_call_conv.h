@@ -96,26 +96,34 @@ public:
     ;
 
 CALL_CONVENTION_INFO_SUBCLASS_DECLARE_BEGIN(WebKitJSCallConventionInfo)
-const std::vector<X64reg> intParmRegs {R0};
-const std::vector<X64reg> intReturnRegs {R0};
-const std::vector<X64reg> floatParmRegs {};
-const std::vector<X64reg> floatReturnRegs {};
+
+const std::vector<X64reg> intParmRegs {
+    RAX};
+const std::vector<X64reg> intReturnRegs {
+    RAX};
+const std::vector<X64reg> floatParmRegs{};
+const std::vector<X64reg> floatReturnRegs{};
 CALL_CONVENTION_INFO_SUBCLASS_DECLARE_END
 
 CALL_CONVENTION_INFO_SUBCLASS_DECLARE_BEGIN(CCallConventionInfo)
-const std::vector<X64reg> intParmRegs {R7, R6, R2, R1, R8, R9};
-const std::vector<X64reg> intReturnRegs {R0, R2};
-const std::vector<X64reg> floatParmRegs {V0, V1, V2, V3, V4, V5, V6, V7};
-const std::vector<X64reg> floatReturnRegs {V0, V1};
+const std::vector<X64reg> intParmRegs {
+    RDI, RSI, RDX, RCX, X64reg::R8, X64reg::R9};
+const std::vector<X64reg> intReturnRegs {
+    RAX, RDX};
+const std::vector<X64reg> floatParmRegs = {
+    X64reg::V0, X64reg::V1, X64reg::V2, X64reg::V3, X64reg::V4, X64reg::V5, X64reg::V6, X64reg::V7};
+const std::vector<X64reg> floatReturnRegs = {
+    X64reg::V0, X64reg::V1 };
 
 int32 ClassifyAggregate(MIRType &mirType, uint64 sizeOfTy, std::vector<ArgumentClass> &classes) const;
 CALL_CONVENTION_INFO_SUBCLASS_DECLARE_END
 
 CALL_CONVENTION_INFO_SUBCLASS_DECLARE_BEGIN(GHCCallConventionInfo)
-const std::vector<X64reg> intParmRegs {R13, RBP, R12, RBX, R14, RSI, RDI, R8, R9, R15};
-const std::vector<X64reg> intReturnRegs {};
-const std::vector<X64reg> floatParmRegs {};
-const std::vector<X64reg> floatReturnRegs {};
+const std::vector<X64reg> intParmRegs {
+    X64reg::R13, RBP, X64reg::R12, RBX, X64reg::R14, RSI, RDI, X64reg::R8, X64reg::R9, X64reg::R15};
+const std::vector<X64reg> intReturnRegs{};
+const std::vector<X64reg> floatParmRegs{};
+const std::vector<X64reg> floatReturnRegs{};
 CALL_CONVENTION_INFO_SUBCLASS_DECLARE_END
 
 class X64CallConvImpl {
@@ -185,7 +193,7 @@ private:
     X64reg AllocateGPParmRegister()
     {
         const std::vector<X64reg> &intParamRegs = GetCallConvInfo().GetIntParamRegs();
-        return (nextGeneralParmRegNO < intParamRegs.size()) ? intParamRegs[nextGeneralParmRegNO++] : kRinvalid;
+        return (nextGeneralParmRegNO < intParamRegs.size()) ? intParamRegs[nextGeneralParmRegNO++] : X64reg::kRinvalid;
     }
 
     void AllocateTwoGPParmRegisters(CCLocInfo &pLoc)
@@ -195,19 +203,20 @@ private:
             pLoc.reg0 = intParamRegs[nextGeneralParmRegNO++];
             pLoc.reg1 = intParamRegs[nextGeneralParmRegNO++];
         } else {
-            pLoc.reg0 = kRinvalid;
+            pLoc.reg0 = X64reg::kRinvalid;
         }
     }
 
     X64reg AllocateSIMDFPRegister()
     {
-        return (nextFloatRegNO < kNumFloatParmRegs) ? kFloatParmRegs[nextFloatRegNO++] : kRinvalid;
+        return (nextFloatRegNO < kNumFloatParmRegs) ? kFloatParmRegs[nextFloatRegNO++] : X64reg::kRinvalid;
     }
 
     X64reg AllocateGPReturnRegister()
     {
         const std::vector<X64reg> &intReturnRegs = GetCallConvInfo().GetIntReturnRegs();
-        return (nextGeneralReturnRegNO < intReturnRegs.size()) ? intReturnRegs[nextGeneralReturnRegNO++] : kRinvalid;
+        return (nextGeneralReturnRegNO < intReturnRegs.size()) ?
+            intReturnRegs[nextGeneralReturnRegNO++] : X64reg::kRinvalid;
     }
 
     void AllocateTwoGPReturnRegisters(CCLocInfo &pLoc)
@@ -217,14 +226,14 @@ private:
             pLoc.reg0 = intReturnRegs[nextGeneralReturnRegNO++];
             pLoc.reg1 = intReturnRegs[nextGeneralReturnRegNO++];
         } else {
-            pLoc.reg0 = kRinvalid;
+            pLoc.reg0 = X64reg::kRinvalid;
         }
     }
 
     X64reg AllocateSIMDFPReturnRegister()
     {
         return (nextFloatRetRegNO < kNumFloatReturnRegs) ?
-                kFloatReturnRegs[nextFloatRetRegNO++] : kRinvalid;
+                kFloatReturnRegs[nextFloatRetRegNO++] : X64reg::kRinvalid;
     }
 
     BECommon &beCommon;

@@ -251,7 +251,7 @@ public:
 
     uint32 SizeOfCalleeSaved() const
     {
-        uint32 size = numIntregToCalleeSave * kIntregBytelen + numFpregToCalleeSave * kFpregBytelen;
+        uint32 size = numIntregToCalleeSave * kX64IntregBytelen + numFpregToCalleeSave * kX64FpregBytelen;
         return RoundUp(size, GetMemlayout()->GetStackPtrAlignment());
     }
 

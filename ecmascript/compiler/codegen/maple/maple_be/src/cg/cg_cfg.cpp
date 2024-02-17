@@ -16,7 +16,8 @@
 #include "cg_cfg.h"
 #if TARGAARCH64
 #include "aarch64_insn.h"
-#elif TARGRISCV64
+#endif
+#if defined(TARGRISCV64) && TARGRISCV64
 #include "riscv64_insn.h"
 #endif
 #if TARGARM32
@@ -28,6 +29,7 @@
 #include "x64_cgfunc.h"
 #include "cg.h"
 #endif
+#include "triple.h"
 #include <cstdlib>
 
 namespace {
@@ -665,8 +667,9 @@ BB *CGCFG::GetTargetSuc(BB &curBB, bool branchOnly, bool isGotoIf)
         case BB::kBBIgoto: {
             for (Insn *insn = curBB.GetLastInsn(); insn != nullptr; insn = insn->GetPrev()) {
 #if TARGAARCH64
-                if (insn->GetMachineOpcode() == MOP_adrp_label) {
-                    int64 label = static_cast<ImmOperand &>(insn->GetOperand(1)).GetValue();
+                if (Triple::GetTriple().IsAarch64BeOrLe() &&
+                    insn->GetMachineOpcode() == MOP_adrp_label) {
+                    int64 label = static_cast<ImmOperand&>(insn->GetOperand(1)).GetValue();
                     for (BB *bb : curBB.GetSuccs()) {
                         if (bb->GetLabIdx() == static_cast<LabelIdx>(label)) {
                             return bb;

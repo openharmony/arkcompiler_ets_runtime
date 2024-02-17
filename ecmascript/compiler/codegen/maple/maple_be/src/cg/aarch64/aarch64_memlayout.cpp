@@ -582,7 +582,7 @@ int32 AArch64MemLayout::GetRefLocBaseLoc() const
     if (aarchCGFunc->UsedStpSubPairForCallFrameAllocation()) {
         return static_cast<int32>(beforeSize);
     }
-    return static_cast<int32>(beforeSize + kSizeOfFplr);
+    return static_cast<int32>(beforeSize + kAarch64SizeOfFplr);
 }
 
 int32 AArch64MemLayout::GetGRSaveAreaBaseLoc()
@@ -608,7 +608,7 @@ int32 AArch64MemLayout::GetVRSaveAreaBaseLoc()
 int32 AArch64MemLayout::GetCalleeSaveBaseLoc() const
 {
     uint32 offset = RealStackFrameSize() - static_cast<AArch64CGFunc *>(cgFunc)->SizeOfCalleeSaved();
-    offset = (offset - SizeOfArgsToStackPass()) + kSizeOfFplr - cgFunc->GetFunction().GetFrameReseverdSlot();
+    offset = (offset - SizeOfArgsToStackPass()) + kAarch64SizeOfFplr - cgFunc->GetFunction().GetFrameReseverdSlot();
 
     if (cgFunc->GetMirModule().IsCModule() && cgFunc->GetFunction().GetAttr(FUNCATTR_varargs)) {
         /* GR/VR save areas are above the callee save area */

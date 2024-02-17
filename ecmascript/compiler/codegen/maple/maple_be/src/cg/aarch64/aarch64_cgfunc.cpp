@@ -844,7 +844,7 @@ bool AArch64CGFunc::IsImmediateOffsetOutOfRange(const MemOperand &memOpnd, uint3
             offsetValue +=
                 static_cast<int32>(static_cast<AArch64MemLayout *>(GetMemlayout())->RealStackFrameSize() + 0xff);
         }
-        offsetValue += kIntregBytelen << 1; /* Refer to the above comment */
+        offsetValue += kAarch64IntregBytelen << 1; /* Refer to the above comment */
         return MemOperand::IsPIMMOffsetOutOfRange(offsetValue, bitLen);
     } else {
         return false;
@@ -7464,25 +7464,26 @@ bool AArch64CGFunc::GenRetCleanup(const IntrinsiccallNode *cleanupNode, bool for
         LogInfo::MapleLogger() << "skip " << skipSym->GetName() << " offset " << skipOffset << '\n';
 #endif
 
-        skipIndex = symLoc->GetOffset() / kOffsetAlign;
+        skipIndex = symLoc->GetOffset() / kAarch64OffsetAlign;
     }
 
     /* call runtime cleanup */
     if (minByteOffset < INT_MAX) {
         int32 refLocBase = memLayout->GetRefLocBaseLoc();
-        uint32 refNum = memLayout->GetSizeOfRefLocals() / kOffsetAlign;
-        CHECK_FATAL((refLocBase + (refNum - 1) * kIntregBytelen) < std::numeric_limits<int32>::max(), "out of range");
-        int32 refLocEnd = refLocBase + (refNum - 1) * kIntregBytelen;
+        uint32 refNum = memLayout->GetSizeOfRefLocals() / kAarch64OffsetAlign;
+        CHECK_FATAL((refLocBase +(refNum - 1) * kAarch64IntregBytelen) < std::numeric_limits<int32>::max(),
+            "out of range");
+        int32 refLocEnd = refLocBase + (refNum - 1) * kAarch64IntregBytelen;
         int32 realMin = minByteOffset < refLocBase ? refLocBase : minByteOffset;
         int32 realMax = maxByteOffset > refLocEnd ? refLocEnd : maxByteOffset;
         if (forEA) {
             std::sort(offsets.begin(), offsets.end());
             int32 prev = offsets[0];
             for (size_t i = 1; i < offsets.size(); i++) {
-                CHECK_FATAL((offsets[i] == prev) || ((offsets[i] - prev) == kIntregBytelen), "must be");
+                CHECK_FATAL((offsets[i] == prev) || ((offsets[i] - prev) == kAarch64IntregBytelen), "must be");
                 prev = offsets[i];
             }
-            CHECK_FATAL((refLocBase - prev) == kIntregBytelen, "must be");
+            CHECK_FATAL((refLocBase - prev) == kAarch64IntregBytelen, "must be");
             realMin = minByteOffset;
             realMax = maxByteOffset;
         }
@@ -7528,7 +7529,7 @@ bool AArch64CGFunc::GenRetCleanup(const IntrinsiccallNode *cleanupNode, bool for
         srcOpnds->PushOpnd(parmRegOpnd1);
         SelectCopy(parmRegOpnd1, PTY_a64, vReg0, PTY_a64);
 
-        uint32 realRefNum = (realMax - realMin) / kOffsetAlign + 1;
+        uint32 realRefNum = (realMax - realMin) / kAarch64OffsetAlign + 1;
 
         ImmOperand &countOpnd = CreateImmOperand(realRefNum, k64BitSize, true);
 
@@ -7539,7 +7540,7 @@ bool AArch64CGFunc::GenRetCleanup(const IntrinsiccallNode *cleanupNode, bool for
         MIRSymbol *funcSym = GlobalTables::GetGsymTable().CreateSymbol(kScopeGlobal);
         if ((skipSym != nullptr) && (skipOffset >= realMin) && (skipOffset <= realMax)) {
             /* call cleanupskip */
-            uint32 stOffset = (skipOffset - realMin) / kOffsetAlign;
+            uint32 stOffset = (skipOffset - realMin) / kAarch64OffsetAlign;
             ImmOperand &retLoc = CreateImmOperand(stOffset, k64BitSize, true);
 
             RegOperand &parmRegOpnd3 = GetOrCreatePhysicalRegisterOperand(R2, k64BitSize, GetRegTyFromPrimTy(PTY_a64));
@@ -7631,7 +7632,7 @@ void AArch64CGFunc::HandleRCCall(bool begin, const MIRSymbol *retRef)
     }
 
     AArch64MemLayout *memLayout = static_cast<AArch64MemLayout *>(this->GetMemlayout());
-    int32 refNum = static_cast<int32>(memLayout->GetSizeOfRefLocals() / kOffsetAlign);
+    int32 refNum = static_cast<int32>(memLayout->GetSizeOfRefLocals() / kAarch64OffsetAlign);
     if (!refNum) {
         if (begin) {
             GenerateYieldpoint(*GetCurBB());
@@ -7665,13 +7666,14 @@ void AArch64CGFunc::HandleRCCall(bool begin, const MIRSymbol *retRef)
      * if the number of local refvar is less than 12, use stp or str to init local refvar
      * else call function MCC_InitializeLocalStackRef to init.
      */
-    if (begin && (refNum <= kRefNum12) && ((refLocBase + kIntregBytelen * (refNum - 1)) < kStpLdpImm64UpperBound)) {
+    if (begin && (refNum <= kRefNum12) &&
+        ((refLocBase + kAarch64IntregBytelen * (refNum - 1)) < kStpLdpImm64UpperBound)) {
         int32 pairNum = refNum / kDivide2;
         int32 singleNum = refNum % kDivide2;
         const int32 pairRefBytes = 16; /* the size of each pair of ref is 16 bytes */
         int32 ind = 0;
         while (ind < pairNum) {
-            int32 offset = memLayout->GetRefLocBaseLoc() + kIntregBytelen * formalRef + pairRefBytes * ind;
+            int32 offset = memLayout->GetRefLocBaseLoc() + kAarch64IntregBytelen * formalRef + pairRefBytes * ind;
             Operand &zeroOp = GetZeroOpnd(k64BitSize);
             Operand &stackLoc = CreateStkTopOpnd(static_cast<uint32>(offset), GetPointerSize() * kBitsPerByte);
             Insn &setInc = GetInsnBuilder()->BuildInsn(MOP_xstp, zeroOp, zeroOp, stackLoc);
@@ -7679,7 +7681,9 @@ void AArch64CGFunc::HandleRCCall(bool begin, const MIRSymbol *retRef)
             ind++;
         }
         if (singleNum > 0) {
-            int32 offset = memLayout->GetRefLocBaseLoc() + kIntregBytelen * formalRef + kIntregBytelen * (refNum - 1);
+            int32 offset =
+                memLayout->GetRefLocBaseLoc() +
+                kAarch64IntregBytelen * formalRef + kAarch64IntregBytelen * (refNum - 1);
             Operand &zeroOp = GetZeroOpnd(k64BitSize);
             Operand &stackLoc = CreateStkTopOpnd(static_cast<uint32>(offset), GetPointerSize() * kBitsPerByte);
             Insn &setInc = GetInsnBuilder()->BuildInsn(MOP_xstr, zeroOp, stackLoc);
@@ -7719,12 +7723,12 @@ void AArch64CGFunc::HandleRCCall(bool begin, const MIRSymbol *retRef)
     if ((refNum == 2) && !begin && retRef != nullptr) {
         AArch64SymbolAlloc *symLoc =
             static_cast<AArch64SymbolAlloc *>(memLayout->GetSymAllocInfo(retRef->GetStIndex()));
-        int32 stOffset = symLoc->GetOffset() / kOffsetAlign;
+        int32 stOffset = symLoc->GetOffset() / kAarch64OffsetAlign;
         RegOperand &phyOpnd = GetOrCreatePhysicalRegisterOperand(R0, k64BitSize, GetRegTyFromPrimTy(PTY_a64));
         Operand *stackLoc = nullptr;
         if (stOffset == 0) {
             /* just have to Dec the next one. */
-            stackLoc = &CreateStkTopOpnd(static_cast<uint32>(memLayout->GetRefLocBaseLoc()) + kIntregBytelen,
+            stackLoc = &CreateStkTopOpnd(static_cast<uint32>(memLayout->GetRefLocBaseLoc()) + kAarch64IntregBytelen,
                                          GetPointerSize() * kBitsPerByte);
         } else {
             /* just have to Dec the current one. */
@@ -7754,17 +7758,17 @@ void AArch64CGFunc::HandleRCCall(bool begin, const MIRSymbol *retRef)
     ListOperand *srcOpnds = CreateListOpnd(*GetFuncScopeAllocator());
 
     ImmOperand *beginOpnd =
-        &CreateImmOperand(memLayout->GetRefLocBaseLoc() + kIntregBytelen * formalRef, k64BitSize, true);
+        &CreateImmOperand(memLayout->GetRefLocBaseLoc() + kAarch64IntregBytelen * formalRef, k64BitSize, true);
     ImmOperand *countOpnd = &CreateImmOperand(refNum, k64BitSize, true);
     int32 refSkipIndex = -1;
     if (!begin && retRef != nullptr) {
         AArch64SymbolAlloc *symLoc =
             static_cast<AArch64SymbolAlloc *>(memLayout->GetSymAllocInfo(retRef->GetStIndex()));
-        int32 stOffset = symLoc->GetOffset() / kOffsetAlign;
+        int32 stOffset = symLoc->GetOffset() / kAarch64OffsetAlign;
         refSkipIndex = stOffset;
         if (stOffset == 0) {
             /* ret_ref at begin. */
-            beginOpnd = &CreateImmOperand(memLayout->GetRefLocBaseLoc() + kIntregBytelen, k64BitSize, true);
+            beginOpnd = &CreateImmOperand(memLayout->GetRefLocBaseLoc() + kAarch64IntregBytelen, k64BitSize, true);
             countOpnd = &CreateImmOperand(refNum - 1, k64BitSize, true);
         } else if (stOffset == (refNum - 1)) {
             /* ret_ref at end. */
@@ -7808,7 +7812,7 @@ void AArch64CGFunc::HandleRCCall(bool begin, const MIRSymbol *retRef)
         }
         AArch64SymbolAlloc *symLoc =
             static_cast<AArch64SymbolAlloc *>(memLayout->GetSymAllocInfo(retRef->GetStIndex()));
-        int32 stOffset = symLoc->GetOffset() / kOffsetAlign;
+        int32 stOffset = symLoc->GetOffset() / kAarch64OffsetAlign;
         ImmOperand &retLoc = CreateImmOperand(stOffset, k64BitSize, true);
 
         regno_t vRegNO2 = NewVReg(GetRegTyFromPrimTy(PTY_a64), GetPrimTypeSize(PTY_a64));
@@ -10102,7 +10106,7 @@ int32 AArch64CGFunc::GetBaseOffset(const SymbolAlloc &symbolAlloc)
     // Refer to V2 in aarch64_memlayout.h.
     // Do Not change this unless you know what you do
     // O2 mode refer to V2.1 in  aarch64_memlayout.cpp
-    const int32 sizeofFplr = static_cast<int32>(2 * kIntregBytelen);
+    const int32 sizeofFplr = static_cast<int32>(2 * kAarch64IntregBytelen);
     MemSegmentKind sgKind = symAlloc->GetMemSegment()->GetMemSegmentKind();
     AArch64MemLayout *memLayout = static_cast<AArch64MemLayout *>(this->GetMemlayout());
     if (sgKind == kMsArgsStkPassed) { /* for callees */

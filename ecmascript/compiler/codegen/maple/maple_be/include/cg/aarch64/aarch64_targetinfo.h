@@ -13,21 +13,15 @@
  * limitations under the License.
  */
 
-#include "pressure.h"
-#include "deps.h"
+#ifndef MAPLEBE_INCLUDE_CG_AARCH64TARGETINFO_H
+#define MAPLEBE_INCLUDE_CG_AARCH64TARGETINFO_H
 
 namespace maplebe {
-/* ------- RegPressure function -------- */
-int32 RegPressure::maxRegClassNum = 0;
 
-/* print regpressure information */
-void RegPressure::DumpRegPressure() const
-{
-    PRINT_STR_VAL("Priority: ", priority);
-    PRINT_STR_VAL("maxDepth: ", maxDepth);
-    PRINT_STR_VAL("near: ", near);
-    PRINT_STR_VAL("callNum: ", callNum);
+class Target;
 
-    LogInfo::MapleLogger() << "\n";
+Target &getTheAArch64Target();
+
 }
-} /* namespace maplebe */
+
+#endif

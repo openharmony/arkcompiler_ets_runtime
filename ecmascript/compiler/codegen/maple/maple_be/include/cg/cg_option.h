@@ -997,6 +997,11 @@ public:
         return targetArch == "x86_64";
     };
 
+    static bool IsTargetAArch64()
+    {
+        return targetArch == "aarch64";
+    };
+    
     static void EnableVregRename()
     {
         doVregRename = true;

@@ -1271,9 +1271,8 @@ void AArch64GenProEpilog::GeneratePushRegs()
                                     memLayout->GetSizeOfLocals());
     } else {
         offset = (static_cast<int32>(memLayout->RealStackFrameSize() -
-                                     (aarchCGFunc.SizeOfCalleeSaved() - (kDivide2 * kIntregBytelen))) - /* for FP/LR */
-                  memLayout->SizeOfArgsToStackPass() -
-                  cgFunc.GetFunction().GetFrameReseverdSlot());
+            (aarchCGFunc.SizeOfCalleeSaved() - (kDivide2 * kAarch64IntregBytelen))) - /* for FP/LR */
+            memLayout->SizeOfArgsToStackPass() - cgFunc.GetFunction().GetFrameReseverdSlot());
     }
 
     if (cgFunc.GetCG()->IsStackProtectorStrong() || cgFunc.GetCG()->IsStackProtectorAll()) {
@@ -1307,19 +1306,19 @@ void AArch64GenProEpilog::GeneratePushRegs()
             uint16 regNO = (regType == kRegTyInt) ? static_cast<uint16>(reg - 1) : static_cast<uint16>(reg - V8 + 72);
             calleeRegAndOffsetVec.push_back(std::pair<uint16, int32>(regNO, offset + k8ByteSize));
             AppendInstructionPushPair(cgFunc, firstHalf, reg, regType, offset);
-            GetNextOffsetCalleeSaved(offset);
+            AArch64isa::GetNextOffsetCalleeSaved(offset);
             firstHalf = kRinvalid;
         }
     }
 
     if (intRegFirstHalf != kRinvalid) {
         AppendInstructionPushSingle(cgFunc, intRegFirstHalf, kRegTyInt, offset);
-        GetNextOffsetCalleeSaved(offset);
+        AArch64isa::GetNextOffsetCalleeSaved(offset);
     }
 
     if (fpRegFirstHalf != kRinvalid) {
         AppendInstructionPushSingle(cgFunc, fpRegFirstHalf, kRegTyFloat, offset);
-        GetNextOffsetCalleeSaved(offset);
+        AArch64isa::GetNextOffsetCalleeSaved(offset);
     }
 
     /*
@@ -1809,7 +1808,7 @@ void AArch64GenProEpilog::GeneratePopRegs()
                                     memLayout->GetSizeOfLocals());
     } else {
         offset = (static_cast<AArch64MemLayout *>(cgFunc.GetMemlayout())->RealStackFrameSize() -
-                  (aarchCGFunc.SizeOfCalleeSaved() - (kDivide2 * kIntregBytelen))) - /* for FP/LR */
+                  (aarchCGFunc.SizeOfCalleeSaved() - (kDivide2 * kAarch64IntregBytelen))) -
                  memLayout->SizeOfArgsToStackPass() -
                  cgFunc.GetFunction().GetFrameReseverdSlot();
     }
@@ -1843,19 +1842,19 @@ void AArch64GenProEpilog::GeneratePopRegs()
         } else {
             /* flush the pair */
             AppendInstructionPopPair(cgFunc, firstHalf, reg, regType, offset);
-            GetNextOffsetCalleeSaved(offset);
+            AArch64isa::GetNextOffsetCalleeSaved(offset);
             firstHalf = kRinvalid;
         }
     }
 
     if (intRegFirstHalf != kRinvalid) {
         AppendInstructionPopSingle(cgFunc, intRegFirstHalf, kRegTyInt, offset);
-        GetNextOffsetCalleeSaved(offset);
+        AArch64isa::GetNextOffsetCalleeSaved(offset);
     }
 
     if (fpRegFirstHalf != kRinvalid) {
         AppendInstructionPopSingle(cgFunc, fpRegFirstHalf, kRegTyFloat, offset);
-        GetNextOffsetCalleeSaved(offset);
+        AArch64isa::GetNextOffsetCalleeSaved(offset);
     }
 
     if (!currCG->GenerateDebugFriendlyCode()) {

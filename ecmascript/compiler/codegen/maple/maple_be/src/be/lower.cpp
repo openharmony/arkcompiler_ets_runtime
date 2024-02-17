@@ -1525,9 +1525,11 @@ bool CGLowerer::LowerStructReturn(BlockNode &newBlk, StmtNode *stmt, StmtNode *&
     DreadNode *dnode = static_cast<DreadNode *>(bnode);
     MIRType *dtype = mirModule.CurFunction()->GetLocalOrGlobalSymbol(dnode->GetStIdx())->GetType();
 #if TARGAARCH64
-    PrimType ty = IsStructElementSame(dtype);
-    if (ty == PTY_f32 || ty == PTY_f64 || IsPrimitiveVector(ty)) {
-        return false;
+    if (Triple::GetTriple().GetArch() == Triple::ArchType::aarch64) {
+        PrimType ty = IsStructElementSame(dtype);
+        if (ty == PTY_f32 || ty == PTY_f64 || IsPrimitiveVector(ty)) {
+            return false;
+        }
     }
 #endif
     if (dnode->GetPrimType() != PTY_agg) {
@@ -2264,11 +2266,13 @@ void CGLowerer::LowerEntry(MIRFunction &func)
     if (func.IsReturnStruct()) {
         MIRType *retType = func.GetReturnType();
 #if TARGAARCH64
+    if (Triple::GetTriple().GetArch() == Triple::ArchType::aarch64) {
         PrimType pty = IsStructElementSame(retType);
         if (pty == PTY_f32 || pty == PTY_f64 || IsPrimitiveVector(pty)) {
             func.SetStructReturnedInRegs();
             return;
         }
+    }
 #endif
         if (retType->GetPrimType() != PTY_agg) {
             return;

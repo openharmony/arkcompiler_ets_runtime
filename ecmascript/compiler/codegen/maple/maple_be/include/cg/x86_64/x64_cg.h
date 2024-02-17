@@ -26,13 +26,19 @@
 #include "x64_args.h"
 #include "x64_local_opt.h"
 #include "x64_cfgo.h"
+#include "x64_peep.h"
+#include "x64_proepilog.h"
 
 namespace maplebe {
-constexpr int32 kIntRegTypeNum = 5;
-
 class X64CG : public CG {
 public:
-    X64CG(MIRModule &mod, const CGOptions &opts) : CG(mod, opts) {}
+    X64CG(MIRModule &mod, const CGOptions &opts, const std::vector<std::string> &nameVec,
+          const std::unordered_map<std::string, std::vector<std::string>> &patternMap)
+        : CG(mod, opts),
+        ehExclusiveNameVec(nameVec),
+        cyclePatternMap(patternMap),
+        keyPatternMap(allocator.Adapter()),
+        symbolPatternMap(allocator.Adapter()) {}
 
     static const InsnDesc kMd[x64::kMopLast];
     void EnrollTargetPhases(MaplePhaseManager *pm) const override;
@@ -46,6 +52,14 @@ public:
     ReachingDefinition *CreateReachingDefinition(MemPool &mp, CGFunc &f) const override
     {
         return mp.New<X64ReachingDefinition>(f, mp);
+    }
+    CGPeepHole *CreateCGPeepHole(MemPool &mp, CGFunc &f) const override
+    {
+        return mp.New<X64CGPeepHole>(f, &mp);
+    }
+    virtual GenProEpilog *CreateGenProEpilog(CGFunc &f, MemPool &mp, MemPool *tempMemPool = nullptr) const override
+    {
+        return mp.New<X64GenProEpilog>(f);
     }
     LocalOpt *CreateLocalOpt(MemPool &mp, CGFunc &f, ReachingDefinition &rd) const override
     {
@@ -84,6 +98,14 @@ public:
 
     /* NOTE: Consider making be_common a field of CG. */
     void GenerateObjectMaps(BECommon &beCommon) override;
+	
+    void DoNothing()
+    {
+        (void)ehExclusiveNameVec;
+        (void)cyclePatternMap;
+        (void)keyPatternMap;
+        (void)symbolPatternMap;
+    }
 
     /* Used for GCTIB pattern merging */
     std::string FindGCTIBPatternName(const std::string &name) const override;
@@ -97,6 +119,11 @@ public:
     {
         return kMd[mOp];
     }
+private:
+	const std::vector<std::string> &ehExclusiveNameVec;
+    const std::unordered_map<std::string, std::vector<std::string>> &cyclePatternMap;
+    MapleUnorderedMap<GCTIBKey*, GCTIBPattern*, Hasher, EqualFn> keyPatternMap;
+    MapleUnorderedMap<std::string, GCTIBPattern*> symbolPatternMap;
 };
 }  // namespace maplebe
 #endif /* MAPLEBE_INCLUDE_CG_X86_64_CG_H */

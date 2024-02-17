@@ -18,7 +18,8 @@
 
 #include <vector>
 #include "peep.h"
-#include "aarch64_cg.h"
+#include "aarch64_isa.h"
+#include "cg_ssa.h"
 #include "optimize_common.h"
 #include "mir_builder.h"
 

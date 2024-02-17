@@ -22,11 +22,11 @@ namespace maplebe {
 void X64LocalOpt::DoLocalCopyProp()
 {
     LocalOptimizeManager optManager(*cgFunc, *GetRDInfo());
-    optManager.Optimize<CopyRegProp>();
+    optManager.Optimize<LocalCopyRegProp>();
     optManager.Optimize<X64RedundantDefRemove>();
 }
 
-bool CopyRegProp::CheckCondition(Insn &insn)
+bool LocalCopyRegProp::CheckCondition(Insn &insn)
 {
     MOperator mOp = insn.GetMachineOpcode();
     if (mOp != MOP_movb_r_r && mOp != MOP_movw_r_r && mOp != MOP_movl_r_r && mOp != MOP_movq_r_r) {
@@ -46,7 +46,7 @@ bool CopyRegProp::CheckCondition(Insn &insn)
     return true;
 }
 
-void CopyRegProp::Optimize(BB &bb, Insn &insn)
+void LocalCopyRegProp::Optimize(BB &bb, Insn &insn)
 {
     InsnSet useInsnSet;
     Insn *nextInsn = insn.GetNextMachineInsn();
@@ -71,7 +71,7 @@ void CopyRegProp::Optimize(BB &bb, Insn &insn)
     return;
 }
 
-bool CopyRegProp::propagateOperand(Insn &insn, RegOperand &oldOpnd, RegOperand &replaceOpnd)
+bool LocalCopyRegProp::propagateOperand(Insn &insn, RegOperand &oldOpnd, RegOperand &replaceOpnd)
 {
     bool propagateSuccess = false;
     uint32 opndNum = insn.GetOperandSize();

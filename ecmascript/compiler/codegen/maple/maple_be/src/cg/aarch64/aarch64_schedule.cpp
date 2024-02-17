@@ -110,7 +110,7 @@ bool AArch64Schedule::CanCombine(const Insn &insn) const
 
     uint32 size = regOpnd.GetSize() >> kLog2BitsPerByte;
 #ifdef USE_32BIT_REF
-    if (insn.IsAccessRefField() && (size > (kIntregBytelen >> 1))) {
+    if (insn.IsAccessRefField() && (size > (kAarch64IntregBytelen >> 1))) {
         return false;
     }
 #endif /* USE_32BIT_REF */
@@ -120,11 +120,11 @@ bool AArch64Schedule::CanCombine(const Insn &insn) const
         return false;
     }
     int32 offsetValue = static_cast<int32>(offset->GetOffsetValue());
-    if (size == kIntregBytelen) { /* 64 bit */
+    if (size == kAarch64IntregBytelen) { /* 64 bit */
         if ((offsetValue <= kStpLdpImm64LowerBound) || (offsetValue >= kStpLdpImm64UpperBound)) {
             return false;
         }
-    } else if (size == (kIntregBytelen >> 1)) { /* 32 bit */
+    } else if (size == (kAarch64IntregBytelen >> 1)) { /* 32 bit */
         if ((offsetValue <= kStpLdpImm32LowerBound) || (offsetValue >= kStpLdpImm32UpperBound)) {
             return false;
         }

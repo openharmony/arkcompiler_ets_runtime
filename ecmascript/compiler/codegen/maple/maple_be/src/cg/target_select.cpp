@@ -12,22 +12,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-#include "pressure.h"
-#include "deps.h"
+#include "target_select.h"
+#include "becommon.h"
 
 namespace maplebe {
-/* ------- RegPressure function -------- */
-int32 RegPressure::maxRegClassNum = 0;
+using namespace maple;
 
-/* print regpressure information */
-void RegPressure::DumpRegPressure() const
-{
-    PRINT_STR_VAL("Priority: ", priority);
-    PRINT_STR_VAL("maxDepth: ", maxDepth);
-    PRINT_STR_VAL("near: ", near);
-    PRINT_STR_VAL("callNum: ", callNum);
-
-    LogInfo::MapleLogger() << "\n";
-}
-} /* namespace maplebe */
+}  /* namespace maplebe */

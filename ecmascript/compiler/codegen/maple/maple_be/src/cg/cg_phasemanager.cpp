@@ -29,13 +29,16 @@
 #include "aarch64_emitter.h"
 #include "aarch64_obj_emitter.h"
 #include "aarch64_cg.h"
-#elif TARGRISCV64
+#endif
+#if defined(TARGRISCV64)
 #include "riscv64_emitter.h"
-#elif TARGX86_64
+#endif
+#if defined(TARGX86_64)
 #include "x64_cg.h"
 #include "x64_emitter.h"
 #include "string_utils.h"
 #endif
+#include "triple.h"
 
 namespace maplebe {
 #define JAVALANG (module.IsJavaModule())
@@ -72,24 +75,27 @@ void CgFuncPM::GenerateOutPutFile(MIRModule &m)
 {
     CHECK_FATAL(cg != nullptr, "cg is null");
     CHECK_FATAL(cg->GetEmitter(), "emitter is null");
-#if TARGX86_64
-    assembler::Assembler &assm = static_cast<X64Emitter &>(*cg->GetEmitter()).GetAssembler();
-    if (!cgOptions->SuppressFileInfo()) {
-        assm.InitialFileInfo(m.GetInputFileName());
-    }
-    if (cgOptions->WithDwarf()) {
-        assm.EmitDIHeader();
-    }
-#else
-    if (CGOptions::GetEmitFileType() == CGOptions::kAsm) {
+    CHECK_FATAL(Triple::GetTriple().GetArch() != Triple::ArchType::UnknownArch, "should have triple init before!");
+    if (Triple::GetTriple().GetArch() == Triple::ArchType::x64) {
+        assembler::Assembler &assm = static_cast<X64Emitter &>(*cg->GetEmitter()).GetAssembler();
         if (!cgOptions->SuppressFileInfo()) {
-            cg->GetEmitter()->EmitFileInfo(m.GetInputFileName());
+            assm.InitialFileInfo(m.GetInputFileName());
         }
         if (cgOptions->WithDwarf()) {
-            cg->GetEmitter()->EmitDIHeader();
+            assm.EmitDIHeader();
         }
+    } else if (Triple::GetTriple().GetArch() == Triple::ArchType::aarch64) {
+        if (CGOptions::GetEmitFileType() == CGOptions::kAsm) {
+            if (!cgOptions->SuppressFileInfo()) {
+                cg->GetEmitter()->EmitFileInfo(m.GetInputFileName());
+            }
+            if (cgOptions->WithDwarf()) {
+                cg->GetEmitter()->EmitDIHeader();
+            }
+        }
+    } else {
+        CHECK_FATAL(false, "unsupportted target!");
     }
-#endif
     InitProfile(m);
 }
 
@@ -116,29 +122,31 @@ bool CgFuncPM::FuncLevelRun(CGFunc &cgFunc, AnalysisDataManager &serialADM)
 
 void CgFuncPM::PostOutPut(MIRModule &m)
 {
-#if TARGX86_64
-    X64Emitter *x64Emitter = static_cast<X64Emitter *>(cg->GetEmitter());
-    assembler::Assembler &assm = x64Emitter->GetAssembler();
-    if (cgOptions->WithDwarf()) {
-        assm.EmitDIFooter();
-    }
-    x64Emitter->EmitGlobalVariable(*cg);
-    x64Emitter->EmitDebugInfo(*cg);
-    assm.FinalizeFileInfo();
-    assm.CloseOutput();
-#else
-    if (CGOptions::GetEmitFileType() == CGOptions::kAsm) {
-        cg->GetEmitter()->EmitHugeSoRoutines(true);
+    if (Triple::GetTriple().GetArch() == Triple::ArchType::x64) {
+        X64Emitter *x64Emitter = static_cast<X64Emitter *>(cg->GetEmitter());
+        assembler::Assembler &assm = x64Emitter->GetAssembler();
         if (cgOptions->WithDwarf()) {
-            cg->GetEmitter()->EmitDIFooter();
+            assm.EmitDIFooter();
         }
-        /* Emit global info */
-        EmitGlobalInfo(m);
+        x64Emitter->EmitGlobalVariable(*cg);
+        x64Emitter->EmitDebugInfo(*cg);
+        assm.FinalizeFileInfo();
+        assm.CloseOutput();
+    } else if (Triple::GetTriple().GetArch() == Triple::ArchType::aarch64) {
+        if (CGOptions::GetEmitFileType() == CGOptions::kAsm) {
+            cg->GetEmitter()->EmitHugeSoRoutines(true);
+            if (cgOptions->WithDwarf()) {
+                cg->GetEmitter()->EmitDIFooter();
+            }
+            /* Emit global info */
+            EmitGlobalInfo(m);
+        } else {
+            cg->GetEmitter()->Finish();
+            cg->GetEmitter()->CloseOutput();
+        }
     } else {
-        cg->GetEmitter()->Finish();
-        cg->GetEmitter()->CloseOutput();
+        CHECK_FATAL(false, "unsupported target");
     }
-#endif
 }
 
 void MarkUsedStaticSymbol(const StIdx &symbolIdx);
@@ -282,7 +290,21 @@ extern void printRATime();
 
 bool CgFuncPM::PhaseRun(MIRModule &m)
 {
-    CreateCGAndBeCommon(m);
+    // registry target based on build, cgfunc, emitter need to be registried.
+    InitializeAllTargetInfos(m.GetMemPool());
+    std::string compileTarget = "";
+    if (Triple::GetTriple().IsAarch64BeOrLe()) {
+        compileTarget = "aarch64";
+    } else if (Triple::GetTriple().GetArch() == Triple::ArchType::x64) {
+        compileTarget =  "x86";
+    } else {
+        CHECK_FATAL(false, "unsupport");
+    }
+    const Target *TheTarget = nullptr;
+    TheTarget =
+        TargetRegistry::lookupTarget(compileTarget);
+    // get target based on option
+    CreateCGAndBeCommon(m, TheTarget);
     bool changed = false;
     /* reserve static symbol for debugging */
     if (!cgOptions->WithDwarf()) {
@@ -406,34 +428,37 @@ void CgFuncPM::InitProfile(MIRModule &m) const
     }
 }
 
-void CgFuncPM::CreateCGAndBeCommon(MIRModule &m)
+void CgFuncPM::CreateCGAndBeCommon(MIRModule &m, const Target *t)
 {
     DEBUG_ASSERT(cgOptions != nullptr, "New cg phase manager running FAILED  :: cgOptions unset");
     auto outputFileName = m.GetOutputFileName();
-#if TARGAARCH64 || TARGRISCV64
-    cg = new AArch64CG(m, *cgOptions, cgOptions->GetEHExclusiveFunctionNameVec(), CGOptions::GetCyclePatternMap());
-    if (CGOptions::GetEmitFileType() == CGOptions::kAsm) {
-        cg->SetEmitter(*m.GetMemPool()->New<AArch64AsmEmitter>(*cg, outputFileName));
+    Emitter *emitter = nullptr;
+    cg = t->createCG(m, *cgOptions, cgOptions->GetEHExclusiveFunctionNameVec(), CGOptions::GetCyclePatternMap());
+    CHECK_FATAL(cg, "you may not register the target");
+    if (Triple::GetTriple().GetArch() == Triple::ArchType::x64) {
+        assembler::Assembler *assembler = nullptr;
+        if (CGOptions::GetEmitFileType() == CGOptions::kAsm) {
+            assembler = new assembler::AsmAssembler(outputFileName);
+        } else {
+            outputFileName = outputFileName.replace(outputFileName.length() - 1, 1, 1, 'o');
+            assembler = new assembler::ElfAssembler(outputFileName);
+        }
+        emitter = t->createDecoupledEmitter(*cg, *assembler);
+    } else if (Triple::GetTriple().GetArch() == Triple::ArchType::aarch64) {
+        if (CGOptions::GetEmitFileType() == CGOptions::kAsm) {
+            emitter = m.GetMemPool()->New<AArch64AsmEmitter>(*cg, outputFileName);
+        } else {
+            outputFileName = outputFileName.replace(outputFileName.length() - 1, 1, 1, 'o');
+            emitter = m.GetMemPool()->New<AArch64ObjEmitter>(*cg, outputFileName);
+        }
     } else {
-        outputFileName = outputFileName.replace(outputFileName.length() - 1, 1, 1, 'o');
-        cg->SetEmitter(*m.GetMemPool()->New<AArch64ObjEmitter>(*cg, outputFileName));
+        CHECK_FATAL(false, "unsupportted");
     }
-#elif TARGARM32
-    cg = new Arm32CG(m, *cgOptions, cgOptions->GetEHExclusiveFunctionNameVec(), CGOptions::GetCyclePatternMap());
-    cg->SetEmitter(*m.GetMemPool()->New<Arm32AsmEmitter>(*cg, outputFileName));
-#elif TARGX86_64
-    cg = new X64CG(m, *cgOptions);
-    if (CGOptions::GetEmitFileType() == CGOptions::kAsm) {
-        assembler::Assembler *assembler = new assembler::AsmAssembler(outputFileName);
-        cg->SetEmitter(*m.GetMemPool()->New<X64Emitter>(*cg, *assembler));
-    } else {
-        outputFileName = outputFileName.replace(outputFileName.length() - 1, 1, 1, 'o');
-        assembler::Assembler *assembler = new assembler::ElfAssembler(outputFileName);
-        cg->SetEmitter(*m.GetMemPool()->New<X64Emitter>(*cg, *assembler));
-    }
-#else
-#error "unknown platform"
-#endif
+    CHECK_FATAL(emitter, "you may not register emitter");
+    cg->SetEmitter(*emitter);
+    TargetMachine *targetMachine = t->createTargetMachine();
+    CHECK_FATAL(targetMachine, "you may not register targetMachine");
+    cg->SetTargetMachine(*targetMachine);
 
     /*
      * Must be done before creating any BECommon instances.
@@ -458,11 +483,9 @@ void CgFuncPM::CreateCGAndBeCommon(MIRModule &m)
         CHECK_FATAL(cgOptions->IsInsertCall(), "handling of --insert-call is not correct");
         cg->SetInstrumentationFunction(cgOptions->GetInstrumentationFunction());
     }
-#if TARGAARCH64
-    if (!m.IsCModule()) {
+    if (!m.IsCModule() && Triple::GetTriple().IsAarch64BeOrLe()) {
         CGOptions::EnableFramePointer();
     }
-#endif
 }
 
 void CgFuncPM::PrepareLower(MIRModule &m)

@@ -13,21 +13,26 @@
  * limitations under the License.
  */
 
-#include "pressure.h"
-#include "deps.h"
-
+#include "aarch64_targetinfo.h"
+#include "target_registry.h"
+#include "aarch64_cg.h"
+#include "aarch64_emitter.h"
+#include "aarch64_targetmachine.h"
+#include <iostream>
 namespace maplebe {
-/* ------- RegPressure function -------- */
-int32 RegPressure::maxRegClassNum = 0;
 
-/* print regpressure information */
-void RegPressure::DumpRegPressure() const
+Target &getTheAArch64Target()
 {
-    PRINT_STR_VAL("Priority: ", priority);
-    PRINT_STR_VAL("maxDepth: ", maxDepth);
-    PRINT_STR_VAL("near: ", near);
-    PRINT_STR_VAL("callNum: ", callNum);
-
-    LogInfo::MapleLogger() << "\n";
+    static Target TheAArch64Target;
+    return TheAArch64Target;
 }
-} /* namespace maplebe */
+
+extern "C" void MAPLEInitializeAArch64TargetInfo(MemPool *m)
+{
+    RegisterTarget X(getTheAArch64Target(), "aarch64");
+    RegisterCGFUnc<AArch64CG> Y(getTheAArch64Target());
+    RegisterEmitter<AArch64AsmEmitter> Z(getTheAArch64Target(), m);
+    RegisterTargetMachine<AArch64TargetMachine> A(getTheAArch64Target(), m);
+}
+
+}

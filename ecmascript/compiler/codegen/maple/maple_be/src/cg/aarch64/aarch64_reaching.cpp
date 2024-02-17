@@ -1243,7 +1243,7 @@ void AArch64ReachingDefinition::InitInfoForRegOpnd(const BB &bb, Operand &opnd, 
 
 int32 AArch64ReachingDefinition::GetStackSize() const
 {
-    const int sizeofFplr = kDivide2 * kIntregBytelen;
+    const int sizeofFplr = kDivide2 * kAarch64IntregBytelen;
     return static_cast<int32>(static_cast<AArch64MemLayout *>(cgFunc->GetMemlayout())->RealStackFrameSize() +
                               sizeofFplr);
 }
