@@ -657,7 +657,11 @@ void EcmaContext::PrintJSErrorInfo(JSThread *thread, const JSHandle<JSTaggedValu
     CString nameBuffer = ConvertToString(*name);
     CString msgBuffer = ConvertToString(*msg);
     CString stackBuffer = ConvertToString(*stack);
-    LOG_NO_TAG(ERROR) << panda::ecmascript::previewerTag << nameBuffer << ": " << msgBuffer << "\n" << stackBuffer;
+    LOG_NO_TAG(ERROR) << panda::ecmascript::previewerTag << nameBuffer << ": " << msgBuffer << "\n"
+                      << (panda::ecmascript::previewerTag.empty()
+                              ? stackBuffer
+                              : std::regex_replace(stackBuffer, std::regex(".+(\n|$)"),
+                                                   panda::ecmascript::previewerTag + "$0"));
 }
 
 bool EcmaContext::HasPendingJob()
