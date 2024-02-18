@@ -15,7 +15,8 @@
 
 #if TARGAARCH64
 #include "aarch64_ebo.h"
-#elif TARGRISCV64
+#endif
+#if TARGRISCV64
 #include "riscv64_ebo.h"
 #endif
 #if TARGARM32
@@ -68,12 +69,6 @@ MemOpndInfo *Ebo::GetMemInfo(InsnInfo &insnInfo)
         }
     }
     return nullptr;
-}
-
-void Ebo::EnlargeSpaceForLA(Insn &csetInsn)
-{
-    CHECK_FATAL(live != nullptr, "no live info!");
-    live->EnlargeSpaceForLiveAnalysis(*csetInsn.GetBB());
 }
 
 bool Ebo::IsFrameReg(Operand &opnd) const

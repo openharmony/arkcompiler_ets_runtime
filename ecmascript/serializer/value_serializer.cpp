@@ -110,7 +110,12 @@ bool ValueSerializer::WriteValue(JSThread *thread,
         return false;
     }
     if (value->IsHeapObject()) {
-        vm_->GetSnapshotEnv()->Initialize();
+        // Add fast path for string
+        if (value->IsString()) {
+            vm_->GetSnapshotEnv()->InitializeStringClass();
+        } else {
+            vm_->GetSnapshotEnv()->Initialize();
+        }
     }
     SerializeJSTaggedValue(value.GetTaggedValue());
     if (value->IsHeapObject()) {
@@ -203,9 +208,12 @@ void ValueSerializer::SerializeObjectImpl(TaggedObject *object, bool isWeak)
     if (type == JSType::JS_ARRAY) {
         JSArray *array = reinterpret_cast<JSArray *>(object);
         array->SetTrackInfo(thread_, trackInfo);
-    }
-    if (type == JSType::JS_OBJECT) {
-        Barriers::SetPrimitive<JSTaggedType>(object, JSObject::HASH_OFFSET, hashfield);
+    } else if (type == JSType::JS_OBJECT) {
+        if (JSTaggedValue(hashfield).IsHeapObject()) {
+            Barriers::SetObject<true>(thread_, object, JSObject::HASH_OFFSET, hashfield);
+        } else {
+            Barriers::SetPrimitive<JSTaggedType>(object, JSObject::HASH_OFFSET, hashfield);
+        }
     }
     if (cloneSharedObject) {
         serializeSharedEvent_--;

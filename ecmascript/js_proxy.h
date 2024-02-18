@@ -86,7 +86,7 @@ public:
     // ES6 9.5.14 [[Construct]] ( argumentsList, newTarget)
     static JSTaggedValue ConstructInternal(EcmaRuntimeCallInfo *info);
 
-    bool IsArray(JSThread *thread) const;
+    bool PUBLIC_API IsArray(JSThread *thread) const;
 
     static constexpr size_t TARGET_OFFSET = ECMAObject::SIZE;
     ACCESSORS(Target, TARGET_OFFSET, HANDLER_OFFSET)

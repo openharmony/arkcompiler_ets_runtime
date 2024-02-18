@@ -23,14 +23,14 @@ class SubtypingOperator {
 public:
     static constexpr uint32_t DEFAULT_SUPERS_CAPACITY = 4;
 
-    static bool CheckBaseClass(const JSThread *thread, const JSHandle<TSClassType> &classType);
+    PUBLIC_API static bool CheckBaseClass(const JSThread *thread, const JSHandle<TSClassType> &classType);
 
-    static bool CheckSubtyping(const JSThread *thread, const JSHandle<TSClassType> &classType);
+    PUBLIC_API static bool CheckSubtyping(const JSThread *thread, const JSHandle<TSClassType> &classType);
 
-    static void MergeClassField(const JSThread *thread, const JSHandle<TSClassType> &classType);
+    PUBLIC_API static void MergeClassField(const JSThread *thread, const JSHandle<TSClassType> &classType);
 
-    static void FillTSInheritInfo(JSThread *thread, const JSHandle<TSClassType> &classType,
-                                  const JSHandle<JSHClass> &ihcHandle);
+    PUBLIC_API static void FillTSInheritInfo(JSThread *thread, const JSHandle<TSClassType> &classType,
+                                             const JSHandle<JSHClass> &ihcHandle);
 
     static void GenVTable(const JSThread *thread, const JSHandle<JSHClass> &ihcHandle,
                           const JSHandle<JSHClass> &phcHandle, const JSHandle<JSHClass> &eIhcHandle);

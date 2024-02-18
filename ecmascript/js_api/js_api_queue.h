@@ -35,7 +35,7 @@ public:
     static void ForEach(JSThread *thread, const JSHandle<JSAPIQueue> &queue, const JSHandle<JSTaggedValue> &value);
     JSTaggedValue Get(JSThread *thread, const uint32_t index);
 
-    JSTaggedValue Set(JSThread *thread, const uint32_t index, JSTaggedValue value);
+    JSTaggedValue PUBLIC_API Set(JSThread *thread, const uint32_t index, JSTaggedValue value);
     bool Has(JSTaggedValue value) const;
 
     static JSHandle<TaggedArray> OwnKeys(JSThread *thread, const JSHandle<JSAPIQueue> &obj);

@@ -355,6 +355,7 @@ bool FastJsonStringifier::SerializeJSArray(const JSHandle<JSTaggedValue> &value)
             RETURN_VALUE_IF_ABRUPT_COMPLETION(thread_, false);
             if (UNLIKELY(tagVal.IsAccessor())) {
                 tagVal = JSObject::CallGetter(thread_, AccessorData::Cast(tagVal.GetTaggedObject()), value);
+                RETURN_VALUE_IF_ABRUPT_COMPLETION(thread_, false);
             }
             handleKey_.Update(JSTaggedValue(i));
             handleValue_.Update(tagVal);
@@ -441,6 +442,7 @@ bool FastJsonStringifier::TryCacheSerializeElements(const JSHandle<JSObject> &ob
             if (UNLIKELY(value.IsAccessor())) {
                 value = JSObject::CallGetter(thread_, AccessorData::Cast(value.GetTaggedObject()),
                                              JSHandle<JSTaggedValue>(obj));
+                RETURN_VALUE_IF_ABRUPT_COMPLETION(thread_, false);
             }
             handleValue_.Update(value);
             hasContent = AppendJsonString(hasContent, strCache, index);
@@ -473,6 +475,7 @@ bool FastJsonStringifier::SerializeElementsWithCache(const JSHandle<JSObject> &o
             if (UNLIKELY(value.IsAccessor())) {
                 value = JSObject::CallGetter(thread_, AccessorData::Cast(value.GetTaggedObject()),
                                              JSHandle<JSTaggedValue>(obj));
+                RETURN_VALUE_IF_ABRUPT_COMPLETION(thread_, false);
             }
             handleValue_.Update(value);
             hasContent = FastAppendJsonString(hasContent, key);
@@ -512,6 +515,7 @@ bool FastJsonStringifier::TryCacheSerializeKeys(const JSHandle<JSObject> &obj, b
                 if (UNLIKELY(value.IsAccessor())) {
                     value = JSObject::CallGetter(thread_, AccessorData::Cast(value.GetTaggedObject()),
                                                  JSHandle<JSTaggedValue>(obj));
+                    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread_, false);
                 }
                 handleValue_.Update(value);
                 hasContent = AppendJsonString(hasContent, strCache, index);
@@ -541,6 +545,7 @@ bool FastJsonStringifier::TryCacheSerializeKeys(const JSHandle<JSObject> &obj, b
                 if (UNLIKELY(value.IsAccessor())) {
                     value = JSObject::CallGetter(thread_, AccessorData::Cast(value.GetTaggedObject()),
                                                  JSHandle<JSTaggedValue>(obj));
+                    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread_, false);
                 }
                 handleValue_.Update(value);
                 hasContent = AppendJsonString(hasContent, strCache, index);
@@ -574,6 +579,7 @@ bool FastJsonStringifier::TryCacheSerializeKeys(const JSHandle<JSObject> &obj, b
             if (UNLIKELY(value.IsAccessor())) {
                 value = JSObject::CallGetter(thread_, AccessorData::Cast(value.GetTaggedObject()),
                                              JSHandle<JSTaggedValue>(obj));
+                RETURN_VALUE_IF_ABRUPT_COMPLETION(thread_, false);
             }
             handleValue_.Update(value);
             hasContent = AppendJsonString(hasContent, strCache, index);
@@ -605,6 +611,7 @@ bool FastJsonStringifier::TryCacheSerializeKeys(const JSHandle<JSObject> &obj, b
         if (UNLIKELY(value.IsAccessor())) {
             value = JSObject::CallGetter(thread_, AccessorData::Cast(value.GetTaggedObject()),
                                          JSHandle<JSTaggedValue>(obj));
+            RETURN_VALUE_IF_ABRUPT_COMPLETION(thread_, false);
         }
         handleValue_.Update(value);
         hasContent = AppendJsonString(hasContent, strCache, index);
@@ -631,6 +638,7 @@ bool FastJsonStringifier::SerializeKeysWithCache(const JSHandle<JSObject> &obj, 
             if (UNLIKELY(value.IsAccessor())) {
                 value = JSObject::CallGetter(thread_, AccessorData::Cast(value.GetTaggedObject()),
                                              JSHandle<JSTaggedValue>(obj));
+                RETURN_VALUE_IF_ABRUPT_COMPLETION(thread_, false);
             }
             handleValue_.Update(value);
             hasContent = FastAppendJsonString(hasContent, str);
@@ -648,6 +656,7 @@ bool FastJsonStringifier::SerializeKeysWithCache(const JSHandle<JSObject> &obj, 
             if (UNLIKELY(value.IsAccessor())) {
                 value = JSObject::CallGetter(thread_, AccessorData::Cast(value.GetTaggedObject()),
                                              JSHandle<JSTaggedValue>(obj));
+                RETURN_VALUE_IF_ABRUPT_COMPLETION(thread_, false);
             }
             handleValue_.Update(value);
             hasContent = FastAppendJsonString(hasContent, str);
@@ -664,6 +673,7 @@ bool FastJsonStringifier::SerializeKeysWithCache(const JSHandle<JSObject> &obj, 
         if (UNLIKELY(value.IsAccessor())) {
             value = JSObject::CallGetter(thread_, AccessorData::Cast(value.GetTaggedObject()),
                                          JSHandle<JSTaggedValue>(obj));
+            RETURN_VALUE_IF_ABRUPT_COMPLETION(thread_, false);
         }
         handleValue_.Update(value);
         hasContent = FastAppendJsonString(hasContent, str);
@@ -751,6 +761,7 @@ bool FastJsonStringifier::DefaultSerializeElements(const JSHandle<JSObject> &obj
             if (UNLIKELY(value.IsAccessor())) {
                 value = JSObject::CallGetter(thread_, AccessorData::Cast(value.GetTaggedObject()),
                                              JSHandle<JSTaggedValue>(obj));
+                RETURN_VALUE_IF_ABRUPT_COMPLETION(thread_, false);
             }
             handleValue_.Update(value);
             hasContent = AppendJsonString(hasContent);
@@ -789,6 +800,7 @@ bool FastJsonStringifier::DefaultSerializeKeys(const JSHandle<JSObject> &obj, bo
                 if (UNLIKELY(value.IsAccessor())) {
                     value = JSObject::CallGetter(thread_, AccessorData::Cast(value.GetTaggedObject()),
                                                  JSHandle<JSTaggedValue>(obj));
+                    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread_, false);
                 }
                 handleValue_.Update(value);
                 hasContent = AppendJsonString(hasContent);
@@ -818,6 +830,7 @@ bool FastJsonStringifier::DefaultSerializeKeys(const JSHandle<JSObject> &obj, bo
                 if (UNLIKELY(value.IsAccessor())) {
                     value = JSObject::CallGetter(thread_, AccessorData::Cast(value.GetTaggedObject()),
                                                  JSHandle<JSTaggedValue>(obj));
+                    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread_, false);
                 }
                 handleValue_.Update(value);
                 hasContent = AppendJsonString(hasContent);
@@ -851,6 +864,7 @@ bool FastJsonStringifier::DefaultSerializeKeys(const JSHandle<JSObject> &obj, bo
             if (UNLIKELY(value.IsAccessor())) {
                 value = JSObject::CallGetter(thread_, AccessorData::Cast(value.GetTaggedObject()),
                                              JSHandle<JSTaggedValue>(obj));
+                RETURN_VALUE_IF_ABRUPT_COMPLETION(thread_, false);
             }
             handleValue_.Update(value);
             hasContent = AppendJsonString(hasContent);
@@ -882,6 +896,7 @@ bool FastJsonStringifier::DefaultSerializeKeys(const JSHandle<JSObject> &obj, bo
         if (UNLIKELY(value.IsAccessor())) {
             value = JSObject::CallGetter(thread_, AccessorData::Cast(value.GetTaggedObject()),
                                          JSHandle<JSTaggedValue>(obj));
+            RETURN_VALUE_IF_ABRUPT_COMPLETION(thread_, false);
         }
         handleValue_.Update(value);
         hasContent = AppendJsonString(hasContent);

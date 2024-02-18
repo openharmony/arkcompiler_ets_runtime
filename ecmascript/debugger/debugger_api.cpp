@@ -737,6 +737,7 @@ void DebuggerApi::GetIndirectExportVariables(const EcmaVM *ecmaVm, Local<ObjectR
                 importModule = SourceTextModule::HostResolveImportedModule(thread, module, moduleRequest);
             } else {
                 importModule = SourceTextModule::HostResolveImportedModuleWithMerge(thread, module, moduleRequest);
+                RETURN_IF_ABRUPT_COMPLETION(thread);
             }
             std::string importName = EcmaStringAccessor(ee->GetImportName()).ToStdString();
             Local<JSValueRef> value = GetModuleValue(ecmaVm, importModule, importName);
@@ -777,6 +778,7 @@ void DebuggerApi::GetImportVariables(const EcmaVM *ecmaVm, Local<ObjectRef> &mod
                 importModule = SourceTextModule::HostResolveImportedModule(thread, module, moduleRequest);
             } else {
                 importModule = SourceTextModule::HostResolveImportedModuleWithMerge(thread, module, moduleRequest);
+                RETURN_IF_ABRUPT_COMPLETION(thread);
             }
             Local<ObjectRef> importModuleObj = ObjectRef::New(ecmaVm);
             GetLocalExportVariables(ecmaVm, importModuleObj, importModule, true);
@@ -838,6 +840,25 @@ Local<JSValueRef> DebuggerApi::EvaluateViaFuncCall(EcmaVM *ecmaVm, Local<Functio
     bool prevDebugMode = mgr->IsDebugMode();
     mgr->SetEvalFrameHandler(frameHandler);
     mgr->SetDebugMode(false); // in order to catch exception
+    ecmaVm->GetJSThread()->CheckSwitchDebuggerBCStub();
+    std::vector<Local<JSValueRef>> args;
+    auto result = funcRef->Call(ecmaVm, JSValueRef::Undefined(ecmaVm), args.data(), args.size());
+    mgr->SetDebugMode(prevDebugMode);
+    ecmaVm->GetJSThread()->CheckSwitchDebuggerBCStub();
+    mgr->SetEvalFrameHandler(nullptr);
+
+    return result;
+}
+
+Local<JSValueRef> DebuggerApi::CallFunctionOnCall(EcmaVM *ecmaVm, Local<FunctionRef> funcRef,
+    std::shared_ptr<FrameHandler> &frameHandler)
+{
+    JSNApi::EnableUserUncaughtErrorHandler(ecmaVm);
+
+    JsDebuggerManager *mgr = ecmaVm->GetJsDebuggerManager();
+    bool prevDebugMode = mgr->IsDebugMode();
+    mgr->SetEvalFrameHandler(frameHandler);
+    mgr->SetDebugMode(false);
     ecmaVm->GetJSThread()->CheckSwitchDebuggerBCStub();
     std::vector<Local<JSValueRef>> args;
     auto result = funcRef->Call(ecmaVm, JSValueRef::Undefined(ecmaVm), args.data(), args.size());

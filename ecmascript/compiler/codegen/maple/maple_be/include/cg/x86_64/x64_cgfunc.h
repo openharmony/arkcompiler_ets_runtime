@@ -47,7 +47,6 @@ public:
     void AssignLmbcFormalParams() override;
     void LmbcGenSaveSpForAlloca() override;
     void MergeReturn() override;
-    void DetermineReturnTypeofCall() override;
     void HandleRCCall(bool begin, const MIRSymbol *retRef = nullptr) override;
     void HandleRetCleanup(NaryStmtNode &retNode) override;
     void SelectDassign(DassignNode &stmt, Operand &opnd0) override;
@@ -71,8 +70,8 @@ public:
     void SelectCondSpecialCase2(const CondGotoNode &stmt, BaseNode &opnd0) override;
     void SelectGoto(GotoNode &stmt) override;
     void SelectCall(CallNode &callNode) override;
-    void SelectIcall(IcallNode &icallNode, Operand &fptrOpnd) override;
-    void SelectIntrinCall(IntrinsiccallNode &intrinsiccallNode) override;
+    void SelectIcall(IcallNode &icallNode) override;
+    void SelectIntrinsicCall(IntrinsiccallNode &intrinsiccallNode) override;
     Operand *SelectIntrinsicOpWithOneParam(IntrinsicopNode &intrinopNode, std::string name) override;
     Operand *SelectCclz(IntrinsicopNode &intrinopNode) override;
     Operand *SelectCctz(IntrinsicopNode &intrinopNode) override;
@@ -85,7 +84,7 @@ public:
     Operand *SelectCSyncFetch(IntrinsicopNode &intrinsicopNode, Opcode op, bool fetchBefore) override;
     Operand *SelectCSyncSynchronize(IntrinsicopNode &intrinsicopNode) override;
     Operand *SelectCAtomicLoadN(IntrinsicopNode &intrinsicopNode) override;
-    Operand *SelectCAtomicExchangeN(IntrinsicopNode &intrinsicopNode) override;
+    Operand *SelectCAtomicExchangeN(const IntrinsiccallNode &intrinsicopNode) override;
     Operand *SelectCSyncBoolCmpSwap(IntrinsicopNode &intrinopNode) override;
     Operand *SelectCSyncValCmpSwap(IntrinsicopNode &intrinopNode) override;
     Operand *SelectCSyncLockTestSet(IntrinsicopNode &intrinopNode, PrimType pty) override;
@@ -103,7 +102,7 @@ public:
                          PrimType finalBitFieldDestType = kPtyInvalid) override;
     Operand *SelectIreadoff(const BaseNode &parent, IreadoffNode &ireadoff) override;
     Operand *SelectIreadfpoff(const BaseNode &parent, IreadFPoffNode &ireadoff) override;
-    Operand *SelectIntConst(const MIRIntConst &intConst) override;
+    Operand *SelectIntConst(const MIRIntConst &intConst, const BaseNode &parent) override;
     Operand *SelectFloatConst(MIRFloatConst &floatConst, const BaseNode &parent) override;
     Operand *SelectDoubleConst(MIRDoubleConst &doubleConst, const BaseNode &parent) override;
     Operand *SelectStrConst(MIRStrConst &strConst) override;
@@ -165,7 +164,6 @@ public:
     Operand *SelectLazyLoadStatic(MIRSymbol &st, int64 offset, PrimType primType) override;
     Operand *SelectLoadArrayClassCache(MIRSymbol &st, int64 offset, PrimType primType) override;
     void GenerateYieldpoint(BB &bb) override;
-    Operand &ProcessReturnReg(PrimType primType, int32 sReg) override;
     Operand &GetOrCreateRflag() override;
     const Operand *GetRflag() const override;
     const Operand *GetFloatRflag() const override;
@@ -229,7 +227,7 @@ public:
     MemOperand *GetPseudoRegisterSpillMemoryOperand(PregIdx idx) override;
 
     int32 GetBaseOffset(const SymbolAlloc &symbolAlloc) override;
-    RegOperand *GetBaseReg(const SymbolAlloc &symAlloc);
+    RegOperand *GetBaseReg(const SymbolAlloc &symAlloc) override;
 
     void AddtoCalleeSaved(regno_t reg) override
     {
@@ -252,7 +250,7 @@ public:
 
     uint32 SizeOfCalleeSaved() const
     {
-        uint32 size = numIntregToCalleeSave * kIntregBytelen + numFpregToCalleeSave * kFpregBytelen;
+        uint32 size = numIntregToCalleeSave * kX64IntregBytelen + numFpregToCalleeSave * kX64FpregBytelen;
         return RoundUp(size, GetMemlayout()->GetStackPtrAlignment());
     }
 

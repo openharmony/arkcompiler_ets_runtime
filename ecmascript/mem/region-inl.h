@@ -29,6 +29,7 @@ inline RememberedSet *Region::CreateRememberedSet()
     auto setAddr = nativeAreaAllocator_->Allocate(bitSize + RememberedSet::GCBITSET_DATA_OFFSET);
     auto ret = new (setAddr) RememberedSet(bitSize);
     ret->ClearAll();
+    std::atomic_thread_fence(std::memory_order_seq_cst);
     return ret;
 }
 
@@ -99,6 +100,18 @@ inline bool Region::Test(void *addr) const
     auto addrPtr = reinterpret_cast<uintptr_t>(addr);
     ASSERT(InRange(addrPtr));
     return packedData_.markGCBitset_->TestBit((addrPtr & DEFAULT_REGION_MASK) >> TAGGED_TYPE_SIZE_LOG);
+}
+
+// ONLY used for heap verification.
+inline bool Region::TestOldToNew(uintptr_t addr)
+{
+    ASSERT(InRange(addr));
+    // Only used for heap verification, so donot need to use lock
+    auto set = packedData_.oldToNewSet_;
+    if (set == nullptr) {
+        return false;
+    }
+    return set->TestBit(ToUintPtr(this), addr);
 }
 
 template <typename Visitor>

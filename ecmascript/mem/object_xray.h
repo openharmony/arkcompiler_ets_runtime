@@ -86,6 +86,9 @@
 #include "ecmascript/js_regexp.h"
 #include "ecmascript/js_regexp_iterator.h"
 #include "ecmascript/js_relative_time_format.h"
+#include "ecmascript/js_segmenter.h"
+#include "ecmascript/js_segments.h"
+#include "ecmascript/js_segment_iterator.h"
 #include "ecmascript/js_set.h"
 #include "ecmascript/js_displaynames.h"
 #include "ecmascript/js_list_format.h"
@@ -512,6 +515,15 @@ public:
                 break;
             case JSType::JS_DISPLAYNAMES:
                 JSDisplayNames::Cast(object)->VisitRangeSlot<visitType>(visitor);
+                break;
+            case JSType::JS_SEGMENTER:
+                JSSegmenter::Cast(object)->VisitRangeSlot<visitType>(visitor);
+                break;
+            case JSType::JS_SEGMENTS:
+                JSSegments::Cast(object)->VisitRangeSlot<visitType>(visitor);
+                break;
+            case JSType::JS_SEGMENT_ITERATOR:
+                JSSegmentIterator::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::JS_LIST_FORMAT:
                 JSListFormat::Cast(object)->VisitRangeSlot<visitType>(visitor);

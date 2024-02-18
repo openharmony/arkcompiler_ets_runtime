@@ -26,10 +26,10 @@ namespace maplebe {
  */
 constexpr int kX64StackPtrAlignment = 16;
 
-constexpr int32 kOffsetAlign = 8;
-constexpr uint32 kIntregBytelen = 8; /* 64-bit */
-constexpr uint32 kFpregBytelen = 8;  /* only lower 64 bits are used */
-constexpr int kSizeOfFplr = 16;
+constexpr int32 kX64OffsetAlign = 8;
+constexpr uint32 kX64IntregBytelen = 8; /* 64-bit */
+constexpr uint32 kX64FpregBytelen = 8;  /* only lower 64 bits are used */
+constexpr int kX64SizeOfFplr = 16;
 
 class Insn;
 
@@ -120,11 +120,11 @@ MOperator FlipConditionOp(MOperator flippedOp);
  * We save callee-saved registers from lower stack area to upper stack area.
  * If possible, we store a pair of registers (int/int and fp/fp) in the stack.
  * The Stack Pointer has to be aligned at 16-byte boundary.
- * On X64, kIntregBytelen == 8 (see the above)
+ * On X64, kX64IntregBytelen == 8 (see the above)
  */
 inline void GetNextOffsetCalleeSaved(int &offset)
 {
-    offset += (kIntregBytelen << 1);
+    offset += (kX64IntregBytelen << 1);
 }
 } /* namespace maplebe */
 

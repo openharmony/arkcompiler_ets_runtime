@@ -33,6 +33,7 @@
 #endif
 #if defined(ENABLE_DUMP_IN_FAULTLOG)
 #include "faultloggerd_client.h"
+#include "uv.h"
 #endif
 
 namespace panda {
@@ -122,12 +123,58 @@ void DFXJSNApi::DumpHeapSnapshot([[maybe_unused]] const EcmaVM *vm, [[maybe_unus
 #endif // ECMASCRIPT_SUPPORT_SNAPSHOT
 }
 
+void DFXJSNApi::DumpHeapSnapshotAllVMs([[maybe_unused]] const EcmaVM *vm, [[maybe_unused]] int dumpFormat,
+                                       [[maybe_unused]] bool isVmMode, [[maybe_unused]] bool isPrivate,
+                                       [[maybe_unused]] bool captureNumericValue, [[maybe_unused]] bool isFullGC)
+{
+#if defined(ENABLE_DUMP_IN_FAULTLOG)
+    if (vm->IsWorkerThread()) {
+        LOG_ECMA(ERROR) << "this is a workthread!";
+        return;
+    }
+    // dump host vm.
+    DumpHeapSnapshot(vm, dumpFormat, isVmMode, isPrivate, captureNumericValue, isFullGC);
+    const_cast<EcmaVM *>(vm)->EnumerateWorkerVm([&](const EcmaVM *workerVm) -> void {
+        uv_loop_t *loop = reinterpret_cast<uv_loop_t *>(workerVm->GetLoop());
+        if (loop == nullptr) {
+            LOG_ECMA(ERROR) << "loop is nullptr";
+            return;
+        }
+        struct DumpForSnapShotStruct *dumpStruct = new DumpForSnapShotStruct();
+        dumpStruct->vm = workerVm;
+        dumpStruct->dumpFormat = dumpFormat;
+        dumpStruct->isVmMode = isVmMode;
+        dumpStruct->isPrivate = isPrivate;
+        dumpStruct->captureNumericValue = captureNumericValue;
+        dumpStruct->isFullGC = isFullGC;
+        uv_work_t *work = new uv_work_t;
+        work->data = (void *)dumpStruct;
+        if (uv_loop_alive(loop) == 0) {
+            LOG_ECMA(ERROR) << "uv_loop_alive is dead";
+            return;
+        }
+        uv_queue_work(
+            loop,
+            work,
+            [](uv_work_t *) {},
+            [](uv_work_t *work, int32_t) {
+                struct DumpForSnapShotStruct *dump = (struct DumpForSnapShotStruct *)(work->data);
+                DumpHeapSnapshot(dump->vm, dump->dumpFormat, dump->isVmMode,
+                                 dump->isPrivate, dump->captureNumericValue, dump->isFullGC);
+                delete dump;
+                delete work;
+        });
+    });
+#endif
+}
+
 void DFXJSNApi::DestroyHeapProfiler([[maybe_unused]] const EcmaVM *vm)
 {
 #if defined(ECMASCRIPT_SUPPORT_SNAPSHOT)
+    LOG_ECMA(ERROR) << "DestroyHeapProfiler start";
     ecmascript::HeapProfilerInterface::Destroy(const_cast<EcmaVM *>(vm));
 #else
-    LOG_ECMA(ERROR) << "Not support arkcompiler heap snapshot";
+    LOG_ECMA(ERROR) << "Not support arkcompiler heap profiler";
 #endif
 }
 

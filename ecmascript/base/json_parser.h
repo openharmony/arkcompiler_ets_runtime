@@ -100,6 +100,7 @@ protected:
         SkipEndWhiteSpace();
         range_ = end_;
         JSTaggedValue result = ParseJSONText();
+        RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread_);
         return JSHandle<JSTaggedValue>(thread_, result);
     }
 

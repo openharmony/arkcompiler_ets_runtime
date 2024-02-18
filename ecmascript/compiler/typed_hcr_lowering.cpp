@@ -1552,17 +1552,7 @@ void TypedHCRLowering::LowerTypedNewAllocateThis(GateRef gate, GateRef glue)
     builder_.Branch(isBase, &allocate, &exit);
     builder_.Bind(&allocate);
     {
-        // add typecheck to detect protoOrHclass is equal with ihclass,
-        // if pass typecheck: 1.no need to check whether hclass is valid 2.no need to check return result
-        GateRef protoOrHclass = builder_.LoadConstOffset(VariableType::JS_ANY(), ctor,
-            JSFunction::PROTO_OR_DYNCLASS_OFFSET);
-        GateRef ihclassIndex = acc_.GetValueIn(gate, 1);
-        auto hclassIndex = acc_.GetConstantValue(ihclassIndex);
-        GateRef ihclass =  builder_.GetHClassGateFromIndex(frameState, hclassIndex);
-        GateRef checkProto = builder_.Equal(protoOrHclass, ihclass);
-        builder_.DeoptCheck(checkProto, frameState, DeoptType::NOTNEWOBJ2);
-
-        thisObj = builder_.CallStub(glue, gate, CommonStubCSigns::NewJSObject, { glue, protoOrHclass });
+        thisObj = builder_.CallStub(glue, gate, CommonStubCSigns::NewJSObject, { glue, ctor });
         builder_.Jump(&exit);
     }
     builder_.Bind(&exit);
@@ -1583,13 +1573,7 @@ void TypedHCRLowering::LowerTypedSuperAllocateThis(GateRef gate, GateRef glue)
     builder_.Branch(isBase, &allocate, &exit);
     builder_.Bind(&allocate);
     {
-        GateRef protoOrHclass = builder_.LoadConstOffset(VariableType::JS_ANY(), newTarget,
-            JSFunction::PROTO_OR_DYNCLASS_OFFSET);
-        GateRef check = builder_.IsJSHClass(protoOrHclass);
-        GateRef frameState = GetFrameState(gate);
-        builder_.DeoptCheck(check, frameState, DeoptType::NOTNEWOBJ3);
-
-        thisObj = builder_.CallStub(glue, gate, CommonStubCSigns::NewJSObject, { glue, protoOrHclass });
+        thisObj = builder_.CallStub(glue, gate, CommonStubCSigns::NewJSObject, { glue, newTarget });
         builder_.Jump(&exit);
     }
     builder_.Bind(&exit);
@@ -3087,29 +3071,47 @@ void TypedHCRLowering::AddProfiling(GateRef gate)
 void TypedHCRLowering::LowerTypedCreateObjWithBuffer(GateRef gate, GateRef glue)
 {
     Environment env(gate, circuit_, &builder_);
+    DEFVALUE(ret, (&builder_), VariableType::JS_ANY(), builder_.Undefined());
+    Label equal(&builder_);
+    Label notEqual(&builder_);
+    Label exit(&builder_);
     GateRef jsFunc = acc_.GetValueIn(gate, 0);
     GateRef objSize = acc_.GetValueIn(gate, 1); // 1: objSize
     GateRef index = acc_.GetValueIn(gate, 2); // 2: index
+    GateRef lexEnv = acc_.GetValueIn(gate, 4); // 4: lexenv
     size_t numValueIn = acc_.GetNumValueIn(gate);
     GateRef oldObj = builder_.GetObjectFromConstPool(glue, gate, jsFunc,
         builder_.TruncInt64ToInt32(index), ConstPoolType::OBJECT_LITERAL);
     GateRef hclass = builder_.LoadConstOffset(VariableType::JS_POINTER(), oldObj, JSObject::HCLASS_OFFSET);
     GateRef emptyArray = builder_.GetGlobalConstantValue(ConstantIndex::EMPTY_ARRAY_OBJECT_INDEX);
-    builder_.StartAllocate();
-    GateRef newObj = builder_.HeapAlloc(objSize, GateType::TaggedValue(), RegionSpaceFlag::IN_YOUNG_SPACE);
-    builder_.StoreConstOffset(VariableType::JS_POINTER(), newObj, JSObject::HCLASS_OFFSET, hclass);
-    builder_.StoreConstOffset(VariableType::INT64(), newObj,
-        JSObject::HASH_OFFSET, builder_.Int64(JSTaggedValue(0).GetRawData()));
-    builder_.StoreConstOffset(VariableType::INT64(), newObj, JSObject::PROPERTIES_OFFSET, emptyArray);
-    builder_.StoreConstOffset(VariableType::INT64(), newObj, JSObject::ELEMENTS_OFFSET, emptyArray);
-    size_t fixedNumValueIn = 4; // jsFunc, objSize, index, hclass
-    for (uint32_t i = 0; i < numValueIn - fixedNumValueIn; i += 2) { // 2 : value, offset
+    GateRef objectSize = builder_.GetObjectSizeFromHClass(hclass);
+    builder_.Branch(builder_.Equal(objectSize, objSize), &equal, &notEqual);
+    builder_.Bind(&equal);
+    {
+        builder_.StartAllocate();
+        GateRef newObj = builder_.HeapAlloc(objSize, GateType::TaggedValue(), RegionSpaceFlag::IN_YOUNG_SPACE);
+        builder_.StoreConstOffset(VariableType::JS_POINTER(), newObj, JSObject::HCLASS_OFFSET, hclass);
         builder_.StoreConstOffset(VariableType::INT64(), newObj,
-                                  acc_.GetConstantValue(acc_.GetValueIn(gate, i + fixedNumValueIn + 1)),
-                                  acc_.GetValueIn(gate, i + fixedNumValueIn));
+            JSObject::HASH_OFFSET, builder_.Int64(JSTaggedValue(0).GetRawData()));
+        builder_.StoreConstOffset(VariableType::INT64(), newObj, JSObject::PROPERTIES_OFFSET, emptyArray);
+        builder_.StoreConstOffset(VariableType::INT64(), newObj, JSObject::ELEMENTS_OFFSET, emptyArray);
+        size_t fixedNumValueIn = 5; // jsFunc, objSize, index, hclass, lexEnv
+        for (uint32_t i = 0; i < numValueIn - fixedNumValueIn; i += 2) { // 2 : value, offset
+            builder_.StoreConstOffset(VariableType::INT64(), newObj,
+                acc_.GetConstantValue(acc_.GetValueIn(gate, i + fixedNumValueIn + 1)),
+                acc_.GetValueIn(gate, i + fixedNumValueIn));
+        }
+        ret = builder_.FinishAllocate(newObj);
+        builder_.Jump(&exit);
     }
-    GateRef ret = builder_.FinishAllocate(newObj);
-    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), ret);
+    builder_.Bind(&notEqual);
+    {
+        ret = builder_.CallRuntime(glue, RTSTUB_ID(CreateObjectHavingMethod),
+            Gate::InvalidGateRef, { oldObj, lexEnv }, gate);
+        builder_.Jump(&exit);
+    }
+    builder_.Bind(&exit);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *ret);
 }
 
 void TypedHCRLowering::LowerStringFromSingleCharCode(GateRef gate, GateRef glue)

@@ -45,6 +45,8 @@
     V(Collator)               \
     V(PluralRules)            \
     V(DisplayNames)           \
+    V(Segmenter)              \
+    V(Segments)               \
     V(ListFormat)             \
 
 namespace panda::ecmascript::builtins {
@@ -80,6 +82,8 @@ public:
     static JSTaggedValue Collator(JSThread *thread, const JSHandle<JSObject> &obj);
     static JSTaggedValue PluralRules(JSThread *thread, const JSHandle<JSObject> &obj);
     static JSTaggedValue DisplayNames(JSThread *thread, const JSHandle<JSObject> &obj);
+    static JSTaggedValue Segmenter(JSThread *thread, const JSHandle<JSObject> &obj);
+    static JSTaggedValue Segments(JSThread *thread, const JSHandle<JSObject> &obj);
     static JSTaggedValue ListFormat(JSThread *thread, const JSHandle<JSObject> &obj);
 #endif
 

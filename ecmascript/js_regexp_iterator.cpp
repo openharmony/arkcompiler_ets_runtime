@@ -86,10 +86,11 @@ JSTaggedValue JSRegExpIterator::Next(EcmaRuntimeCallInfo *argv)
                 JSHandle<JSTaggedValue> lastIndexString(globalConstants->GetHandledLastIndexString());
                 JSHandle<JSTaggedValue> getLastIndex(JSObject::GetProperty(thread, regexHandle,
                     lastIndexString).GetValue());
+                RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
                 JSTaggedNumber thisIndex = JSTaggedValue::ToLength(thread, getLastIndex);
                 RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-                uint32_t nextIndex = BuiltinsRegExp::AdvanceStringIndex(inputStr, thisIndex.ToUint32(),
-                                                                        fullUnicode);
+                uint32_t nextIndex = static_cast<uint32_t>(
+                    BuiltinsRegExp::AdvanceStringIndex(inputStr, thisIndex.ToUint32(), fullUnicode));
                 ObjectFastOperator::FastSetPropertyByValue(thread, regexHandle.GetTaggedValue(),
                                                            lastIndexString.GetTaggedValue(),
                                                            JSTaggedValue(nextIndex));

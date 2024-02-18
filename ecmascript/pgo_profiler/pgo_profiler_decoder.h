@@ -124,15 +124,15 @@ public:
         recordSimpleInfos_->MatchAndMarkMethod(GetNormalizedFileDesc(jsPandaFile), recordName, methodName, methodId);
     }
 
-    void GetMismatchResult(const JSPandaFile *jsPandaFile, uint32_t &totalMethodCount, uint32_t &mismatchMethodCount,
-                           std::set<std::pair<std::string, CString>> &mismatchMethodSet) const;
+    void PUBLIC_API GetMismatchResult(const JSPandaFile *jsPandaFile, uint32_t &totalMethodCount,
+        uint32_t &mismatchMethodCount, std::set<std::pair<std::string, CString>> &mismatchMethodSet) const;
 
     bool IsMethodMatchEnabled() const
     {
         return header_->SupportMethodChecksum();
     }
 
-    bool GetHClassTreeDesc(PGOSampleType profileType, PGOHClassTreeDesc **desc) const;
+    bool PUBLIC_API GetHClassTreeDesc(PGOSampleType profileType, PGOHClassTreeDesc **desc) const;
 
     template <typename Callback>
     bool IterateHClassTreeDesc(Callback callback) const
@@ -200,7 +200,7 @@ private:
 
     bool LoadAPBinaryFile(int prot = PAGE_PROT_READ);
     void UnLoadAPBinaryFile();
-    CString GetNormalizedFileDesc(const JSPandaFile *jsPandaFile) const;
+    CString PUBLIC_API GetNormalizedFileDesc(const JSPandaFile *jsPandaFile) const;
     void LoadAbcIdPool(const std::shared_ptr<PGOAbcFilePool> &externalAbcFilePool, PGOContext &context,
                        void *addr);
 

@@ -6576,8 +6576,10 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
     }
     HANDLE_OPCODE(TRYSTGLOBALBYNAME_IMM16_ID16) {
         uint16_t stringId = READ_INST_16_2();
+        SAVE_ACC();
         auto constpool = GetConstantPool(sp);
         JSTaggedValue propKey = GET_STR_FROM_CACHE(stringId);
+        RESTORE_ACC();
         LOG_INST() << "intrinsics::trystglobalbyname"
                    << " stringId:" << stringId << ", " << ConvertToString(EcmaString::Cast(propKey.GetTaggedObject()));
 
@@ -6627,9 +6629,10 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
     HANDLE_OPCODE(STSUPERBYNAME_IMM16_ID16_V8) {
         uint16_t stringId = READ_INST_16_2();
         uint32_t v0 = READ_INST_8_4();
+        SAVE_ACC();
         auto constpool = GetConstantPool(sp);
-
         JSTaggedValue propKey = GET_STR_FROM_CACHE(stringId);
+        RESTORE_ACC();
         JSTaggedValue obj = GET_VREG_VALUE(v0);
         JSTaggedValue value = GET_ACC();
 
@@ -6693,8 +6696,10 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
 
         JSTaggedValue receiver = GET_VREG_VALUE(v0);
         if (receiver.IsJSObject() && !receiver.IsClassConstructor() && !receiver.IsClassPrototype()) {
+            SAVE_ACC();
             JSTaggedValue propKey = GET_STR_FROM_CACHE(stringId);
             receiver = GET_VREG_VALUE(v0);
+            RESTORE_ACC();
             JSTaggedValue value = GET_ACC();
             // fast path
             SAVE_ACC();
@@ -6713,6 +6718,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         SAVE_PC();
         auto propKey = GET_STR_FROM_CACHE(stringId);  // Maybe moved by GC
         receiver = GET_VREG_VALUE(v0);                           // Maybe moved by GC
+        RESTORE_ACC();
         auto value = GET_ACC();                                  // Maybe moved by GC
         JSTaggedValue res = SlowRuntimeStub::StOwnByNameWithNameSet(thread, receiver, propKey, value);
         RESTORE_ACC();

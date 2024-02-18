@@ -25,8 +25,8 @@ MemMapAllocator *MemMapAllocator::GetInstance()
     return vmAllocator_;
 }
 
-MemMap MemMapAllocator::Allocate(size_t size, size_t alignment, bool regular,
-                                 bool isMachineCode)
+MemMap MemMapAllocator::Allocate(size_t size, size_t alignment,
+                                 const std::string &spaceName, bool regular, bool isMachineCode)
 {
     if (UNLIKELY(memMapTotalSize_ + size > capacity_)) {
         LOG_GC(ERROR) << "memory map overflow";
@@ -37,6 +37,10 @@ MemMap MemMapAllocator::Allocate(size_t size, size_t alignment, bool regular,
     if (regular) {
         mem = memMapPool_.GetRegularMemFromCommitted(size);
         if (mem.GetMem() != nullptr) {
+            int prot = isMachineCode ? PAGE_PROT_EXEC_READWRITE : PAGE_PROT_READWRITE;
+            PageTagType type = isMachineCode ? PageTagType::MACHINE_CODE : PageTagType::HEAP;
+            PageProtect(mem.GetMem(), mem.GetSize(), prot);
+            PageTag(mem.GetMem(), size, type, spaceName, JSThread::GetCurrentThreadId());
             return mem;
         }
         mem = memMapPool_.GetMemFromCache(size);
@@ -45,7 +49,7 @@ MemMap MemMapAllocator::Allocate(size_t size, size_t alignment, bool regular,
             int prot = isMachineCode ? PAGE_PROT_EXEC_READWRITE : PAGE_PROT_READWRITE;
             PageTagType type = isMachineCode ? PageTagType::MACHINE_CODE : PageTagType::HEAP;
             PageProtect(mem.GetMem(), mem.GetSize(), prot);
-            PageTag(mem.GetMem(), size, type, JSThread::GetCurrentThreadId());
+            PageTag(mem.GetMem(), size, type, spaceName, JSThread::GetCurrentThreadId());
             return mem;
         }
         mem = PageMap(REGULAR_REGION_MMAP_SIZE, PAGE_PROT_NONE, alignment);
@@ -58,7 +62,7 @@ MemMap MemMapAllocator::Allocate(size_t size, size_t alignment, bool regular,
         int prot = isMachineCode ? PAGE_PROT_EXEC_READWRITE : PAGE_PROT_READWRITE;
         PageTagType type = isMachineCode ? PageTagType::MACHINE_CODE : PageTagType::HEAP;
         PageProtect(mem.GetMem(), mem.GetSize(), prot);
-        PageTag(mem.GetMem(), mem.GetSize(), type, JSThread::GetCurrentThreadId());
+        PageTag(mem.GetMem(), mem.GetSize(), type, spaceName, JSThread::GetCurrentThreadId());
         memMapTotalSize_ += mem.GetSize();
     }
     return mem;
@@ -70,7 +74,7 @@ void MemMapAllocator::CacheOrFree(void *mem, size_t size, bool isRegular, size_t
         // Cache regions to accelerate allocation.
         // Clear ThreadId tag and tag the mem with ARKTS HEAP.
         PageClearTag(mem, size);
-        PageTag(mem, size, PageTagType::HEAP, 0);
+        PageTag(mem, size, PageTagType::HEAP);
         memMapPool_.AddMemToCommittedCache(mem, size);
         return;
     }

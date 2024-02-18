@@ -21,6 +21,16 @@
 #include "operand.h"
 
 namespace maplebe {
+// For verify & split insn
+#define VERIFY_INSN(INSN) (INSN)->VerifySelf()
+#define SPLIT_INSN(INSN, FUNC) \
+    (INSN)->SplitSelf((FUNC)->IsAfterRegAlloc(), (FUNC)->GetInsnBuilder(), (FUNC)->GetOpndBuilder())
+
+// circular dependency exists, no other choice
+class Insn;
+class InsnBuilder;
+class OperandBuilder;
+
 enum MopProperty : maple::uint8 {
     kInsnIsAbstract,
     kInsnIsMove,
@@ -28,8 +38,10 @@ enum MopProperty : maple::uint8 {
     kInsnIsLoadPair,
     kInsnIsStore,
     kInsnIsStorePair,
+    kInsnIsLoadAddress,
     kInsnIsAtomic,
     kInsnIsCall,
+    kInsnIsSpecialCall,
     kInsnIsTailCall,
     kInsnIsConversion,
     kInsnIsCondDef,
@@ -52,6 +64,7 @@ enum MopProperty : maple::uint8 {
     kInsnSpecialIntrisic,
     kInsnIsNop,
     kInsnIntrinsic,
+    kInsnIsBreakPoint,
 };
 using regno_t = uint32_t;
 #define ISABSTRACT 1ULL
@@ -60,8 +73,10 @@ using regno_t = uint32_t;
 #define ISLOADPAIR (1ULL << kInsnIsLoadPair)
 #define ISSTORE (1ULL << kInsnIsStore)
 #define ISSTOREPAIR (1ULL << kInsnIsStorePair)
+#define ISLOADADDR (1ULL << kInsnIsLoadAddress)
 #define ISATOMIC (1ULL << kInsnIsAtomic)
 #define ISCALL (1ULL << kInsnIsCall)
+#define ISSPCALL (1ULL << kInsnIsSpecialCall)
 #define ISTAILCALL (1ULL << kInsnIsTailCall)
 #define ISCONVERSION (1ULL << kInsnIsConversion)
 #define ISCONDDEF (1ULL << kInsnIsCondDef)
@@ -84,6 +99,7 @@ using regno_t = uint32_t;
 #define SPINTRINSIC (1ULL << kInsnSpecialIntrisic)
 #define ISNOP (1ULL << kInsnIsNop)
 #define ISINTRINSIC (1ULL << kInsnIntrinsic)
+#define ISBREAKPOINT (1ULL << kInsnIsBreakPoint)
 constexpr maplebe::regno_t kInvalidRegNO = 0;
 
 /*
@@ -98,8 +114,8 @@ using CsrBitset = uint64_t;
 template <typename ParaType>
 class ConstraintFunction {
 public:
-    using cfPointer = bool (*)(ParaType);
-    bool CheckConstraint(cfPointer ccfunc, ParaType a) const
+    using CfPointer = bool (*)(ParaType);
+    bool CheckConstraint(CfPointer ccfunc, ParaType a) const
     {
         return (*ccfunc)(a);
     }
@@ -172,6 +188,9 @@ enum EncodeType : uint8 {
 };
 
 struct InsnDesc {
+    using ImmValidFunc = std::function<bool(const MapleVector<Operand *>)>;
+    using SplitFunc = std::function<void(Insn *, bool, InsnBuilder *, OperandBuilder *)>;
+
     InsnDesc(MOperator op, std::vector<const OpndDesc *> opndmd, uint64 props, uint64 ltype, const std::string &inName,
              const std::string &inFormat, uint32 anum)
         : opc(op),
@@ -184,7 +203,7 @@ struct InsnDesc {
 
     // for hard-coded machine description.
     InsnDesc(MOperator op, std::vector<const OpndDesc *> opndmd, uint64 props, uint64 ltype, const std::string &inName,
-             const std::string &inFormat, uint32 anum, std::function<bool(int64)> vFunc)
+             const std::string &inFormat, uint32 anum, const ImmValidFunc &vFunc, const SplitFunc &sFunc)
         : opc(op),
           opndMD(opndmd),
           properties(props),
@@ -192,11 +211,28 @@ struct InsnDesc {
           name(inName),
           format(inFormat),
           atomicNum(anum),
-          validFunc(vFunc) {};
+          validFunc(vFunc),
+          splitFunc(sFunc) {};
+
+    // for hard-coded machine description.
+    InsnDesc(MOperator op, std::vector<const OpndDesc *> opndmd, uint64 props, uint64 ltype, const std::string &inName,
+             const std::string &inFormat, uint32 anum, const ImmValidFunc &vFunc, const SplitFunc &sFunc,
+             EncodeType type, uint32 encode)
+        : opc(op),
+          opndMD(opndmd),
+          properties(props),
+          latencyType(ltype),
+          name(inName),
+          format(inFormat),
+          atomicNum(anum),
+          validFunc(vFunc),
+          splitFunc(sFunc),
+          encodeType(type),
+          mopEncode(encode) {};
 
     // for aarch64 assemble
     InsnDesc(MOperator op, std::vector<const OpndDesc *> opndmd, uint64 props, uint64 ltype, const std::string &inName,
-             const std::string &inFormat, uint32 anum, std::function<bool(int64)> vFunc, EncodeType type, uint32 encode)
+             const std::string &inFormat, uint32 anum, const ImmValidFunc &vFunc, EncodeType type, uint32 encode)
         : opc(op),
           opndMD(opndmd),
           properties(props),
@@ -227,8 +263,10 @@ struct InsnDesc {
     uint32 latencyType;
     const std::string name;
     const std::string format;
-    uint32 atomicNum;                               /* indicate how many asm instructions it will emit. */
-    std::function<bool(int64)> validFunc = nullptr; /* If insn has immOperand, this function needs to be implemented. */
+    uint32 atomicNum;                 /* indicate how many asm instructions it will emit. */
+    ImmValidFunc validFunc = nullptr; /* If insn has immOperand, this function needs to be implemented. */
+    // If insn needs to be split, this function needs to be implemented.
+    SplitFunc splitFunc = nullptr;
     EncodeType encodeType = kUnknownEncodeType;
     uint32 mopEncode = 0x00000000;
 
@@ -237,6 +275,11 @@ struct InsnDesc {
     bool IsCall() const
     {
         return (properties & ISCALL) != 0;
+    }
+    // call insn does not obey standard call procedure!
+    bool IsSpecialCall() const
+    {
+        return (properties & ISSPCALL) != 0;
     }
     bool IsTailCall() const
     {
@@ -293,6 +336,10 @@ struct InsnDesc {
     bool IsUnCondBranch() const
     {
         return (properties & (ISUNCONDBRANCH)) != 0;
+    }
+    bool IsLoadAddress() const
+    {
+        return (properties & (ISLOADADDR)) != 0;
     }
     bool IsAtomic() const
     {
@@ -359,6 +406,25 @@ struct InsnDesc {
         return opc;
     }
 
+    bool Verify(const MapleVector<Operand *> &opnds) const
+    {
+        if (!validFunc) {
+            return true;
+        }
+        if (opnds.size() != opndMD.size()) {
+            CHECK_FATAL_FALSE("The size of opnds is wrong.");
+        }
+        return validFunc(opnds);
+    }
+
+    void Split(Insn *insn, bool isAfterRegAlloc, InsnBuilder *insnBuilder, OperandBuilder *opndBuilder) const
+    {
+        if (!splitFunc) {
+            return;
+        }
+        splitFunc(insn, isAfterRegAlloc, insnBuilder, opndBuilder);
+    }
+
     const OpndDesc *GetOpndDes(size_t index) const
     {
         return opndMD[index];
@@ -382,14 +448,6 @@ struct InsnDesc {
     bool Is64Bit() const
     {
         return GetOperandSize() == k64BitSize;
-    }
-
-    bool IsValidImmOpnd(int64 val) const
-    {
-        if (!validFunc) {
-            return true;
-        }
-        return validFunc(val);
     }
 
     uint32 GetLatencyType() const
@@ -420,6 +478,11 @@ struct InsnDesc {
     uint32 GetAtomicNum() const
     {
         return atomicNum;
+    }
+
+    bool IsBreakPoint() const
+    {
+        return (properties & ISBREAKPOINT) != 0;
     }
 
     EncodeType GetEncodeType() const

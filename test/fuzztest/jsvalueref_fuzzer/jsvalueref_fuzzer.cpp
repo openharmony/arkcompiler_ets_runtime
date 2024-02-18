@@ -30,11 +30,7 @@ namespace OHOS {
             LOG_ECMA(ERROR) << "illegal input!";
             return;
         }
-        uint8_t* ptr = nullptr;
-        ptr = const_cast<uint8_t*>(data);
-        char16_t utf16[] = u"This is a char16 array";
-        int size1 = sizeof(utf16);
-        Local<StringRef> obj = StringRef::NewFromUtf16(vm, utf16, size1);
+        Local<JSValueRef> obj = StringRef::NewFromUtf8(vm, "TestKey");
         obj->IsNull();
         JSNApi::DestroyJSVM(vm);
     }
@@ -48,12 +44,8 @@ namespace OHOS {
             LOG_ECMA(ERROR) << "illegal input!";
             return;
         }
-        uint8_t* ptr = nullptr;
-        ptr = const_cast<uint8_t*>(data);
-        char16_t utf16[] = u"This is a char16 array";
-        int size1 = sizeof(utf16);
-        Local<StringRef> obj = StringRef::NewFromUtf16(vm, utf16, size1);
-        obj->IsBoolean();
+        Local<JSValueRef> tag = BooleanRef::New(vm, false);
+        tag->IsBoolean();
         JSNApi::DestroyJSVM(vm);
     }
 }

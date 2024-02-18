@@ -123,9 +123,9 @@ public:
     void CollectDeoptBundleVec(std::vector<kungfu::ARKDeopt>& deoptBundle);
     JSTaggedType ConstructAsmInterpretFrame();
     void UpdateAndDumpDeoptInfo(kungfu::DeoptType type);
-    static std::string DisplayItems(kungfu::DeoptType type);
-    static int32_t EncodeDeoptVregIndex(int32_t index, size_t depth, size_t shift);
-    static size_t ComputeShift(size_t depth);
+    static PUBLIC_API std::string DisplayItems(kungfu::DeoptType type);
+    static PUBLIC_API int32_t EncodeDeoptVregIndex(int32_t index, size_t depth, size_t shift);
+    static PUBLIC_API size_t ComputeShift(size_t depth);
     static int32_t DecodeVregIndex(OffsetType id, size_t shift);
     static size_t DecodeDeoptDepth(OffsetType id, size_t shift);
     JSThread *GetThread() const

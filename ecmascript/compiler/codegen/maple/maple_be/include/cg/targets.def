@@ -1,0 +1,6 @@
+#ifndef MAPLE_TARGET
+# error
+#endif
+MAPLE_TARGET(AArch64);
+MAPLE_TARGET(X64);
+#undef MAPLE_TARGET

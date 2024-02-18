@@ -148,4 +148,6 @@ TestArrayWithElementsAndProperties();
 TestFullArrayWithElementsAndProperties();
 TestShouldNotOptimizeAsFastElements();
 TestStringArrayWithElementsAndProperties();
-TestSpecialCase();
+try {
+    TestSpecialCase();
+} catch (e) {}

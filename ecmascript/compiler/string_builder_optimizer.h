@@ -82,6 +82,10 @@ private:
         int id = state == State::INVALID_OPT ? INVALID_ID : GetStatus(gate).id;
         status_[acc_.GetId(gate)] = Status{id, state};
     }
+    bool IsInvalidGate(GateRef gate) const
+    {
+        return GetStatus(gate).state == State::INVALID_OPT;
+    }
 
     struct StringBuilder {
         GateRef start {Circuit::NullGate()};
@@ -96,8 +100,7 @@ private:
     void VisitGateUse(GateRef use);
     void StatusTransfer(GateRef gate);
     bool HasConcatOrPhiUse(GateRef gate);
-    bool CheckStringAddUses(GateRef gate, GateId stringAddId);
-    bool CheckPhiUses(GateRef gate, GateId stringAddId);
+    bool CheckStringAddUses(GateRef gate);
     bool IsLiteralString(GateRef gate);
     bool IsLoopHeader(GateRef gate);
     bool LoopContains(GateRef loopPhi, GateRef gate);
@@ -111,6 +114,7 @@ private:
 
     uint32_t stringBuilderCount_ {0};
     size_t currentIndex_ {0};
+    GateId curStringAddId_ {0};
 
     ChunkVector<Status> status_;
     ChunkVector<StringBuilder> stringBuilders_;

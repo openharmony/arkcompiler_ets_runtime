@@ -25,8 +25,10 @@ inline const std::string kCfgoAlways = "green";
 inline const std::string kCfgoUnreach = "yellow";
 inline const std::string kCfgoDup = "orange";
 inline const std::string kCfgoEmpty = "purple";
+inline const std::string kCfgoCrossJump = "brown";
 inline const std::string kIcoIte = "blue"; /* if conversion optimization, if-then-else */
 inline const std::string kIcoIt = "grey";  /* if conversion optimization, if-then-else */
+inline const std::string kDup = "maize";   /* dup optimization */
 
 class OptimizationPattern {
 public:
@@ -48,12 +50,17 @@ public:
 
     bool IsLabelInLSDAOrSwitchTable(LabelIdx label) const
     {
+#ifndef ONLY_C
         EHFunc *ehFunc = cgFunc->GetEHFunc();
-        return (ehFunc != nullptr && cgFunc->GetTheCFG()->InLSDA(label, *ehFunc)) ||
+        return (ehFunc != nullptr && cgFunc->GetTheCFG()->InLSDA(label, ehFunc)) ||
                cgFunc->GetTheCFG()->InSwitchTable(label, *cgFunc);
+#else
+        return CGCFG::InSwitchTable(label, *cgFunc);
+#endif
     }
 
-    void Search2Op(bool noOptimize);
+    bool Search2Op(bool noOptimize);
+    virtual void InitPattern() {}
     virtual bool Optimize(BB &curBB) = 0;
 
 protected:

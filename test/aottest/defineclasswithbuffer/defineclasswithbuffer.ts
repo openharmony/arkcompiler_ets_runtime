@@ -57,5 +57,7 @@ function f26() {
     f29();
     throw f29
 }
-const v31 = f26();
+try {
+    const v31 = f26();
+} catch (e) {}
 class C33 {}

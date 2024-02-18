@@ -184,7 +184,7 @@ JSHandle<JSFunction> ContainersPrivate::NewContainerConstructor(JSThread *thread
     JSObject::DefineOwnProperty(thread, prototype, constructorKey, descriptor1);
 
     /* set "prototype" in constructor */
-    JSFunction::SetFunctionPrototype(thread, ctor, prototype.GetTaggedValue());
+    JSFunction::SetFunctionPrototypeOrInstanceHClass(thread, ctor, prototype.GetTaggedValue());
 
     return ctor;
 }
@@ -283,12 +283,13 @@ JSHandle<JSTaggedValue> ContainersPrivate::InitializeArrayList(JSThread *thread)
     // ArrayList() = new Function()
     JSHandle<JSTaggedValue> arrayListFunction(NewContainerConstructor(
         thread, prototype, ContainersArrayList::ArrayListConstructor, "ArrayList", FuncLength::ZERO));
-    JSFunction::SetFunctionPrototype(thread,
+    JSFunction::SetFunctionPrototypeOrInstanceHClass(thread,
         JSHandle<JSFunction>::Cast(arrayListFunction), arrayListInstanceClass.GetTaggedValue());
 
     // "constructor" property on the prototype
     JSHandle<JSTaggedValue> constructorKey = globalConst->GetHandledConstructorString();
     JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(prototype), constructorKey, arrayListFunction);
+    RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
 
     // ArrayList.prototype
     SetFrozenFunction(thread, prototype, "add", ContainersArrayList::Add, FuncLength::ONE);
@@ -357,12 +358,13 @@ JSHandle<JSTaggedValue> ContainersPrivate::InitializeLightWeightMap(JSThread *th
     JSHandle<JSTaggedValue> lightWeightMapFunction(NewContainerConstructor(
         thread, funcPrototype, ContainersLightWeightMap::LightWeightMapConstructor, "LightWeightMap",
         FuncLength::ZERO));
-    JSFunction::SetFunctionPrototype(thread,
+    JSFunction::SetFunctionPrototypeOrInstanceHClass(thread,
         JSHandle<JSFunction>::Cast(lightWeightMapFunction), lightWeightMapInstanceClass.GetTaggedValue());
 
     // "constructor" property on the prototype
     JSHandle<JSTaggedValue> constructorKey = globalConst->GetHandledConstructorString();
     JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(funcPrototype), constructorKey, lightWeightMapFunction);
+    RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
 
     // LightWeightMap.prototype.add()
     SetFrozenFunction(thread, funcPrototype, "hasAll", ContainersLightWeightMap::HasAll, FuncLength::ONE);
@@ -431,11 +433,12 @@ JSHandle<JSTaggedValue> ContainersPrivate::InitializeLightWeightSet(JSThread *th
     JSHandle<JSTaggedValue> lightweightSetFunction(
         NewContainerConstructor(thread, funcPrototype, ContainersLightWeightSet::LightWeightSetConstructor,
                                 "LightWeightSet", FuncLength::ZERO));
-    JSFunction::SetFunctionPrototype(thread,
+    JSFunction::SetFunctionPrototypeOrInstanceHClass(thread,
         JSHandle<JSFunction>::Cast(lightweightSetFunction), lightweightSetInstanceClass.GetTaggedValue());
     // "constructor" property on the prototype
     JSHandle<JSTaggedValue> constructorKey = globalConst->GetHandledConstructorString();
     JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(funcPrototype), constructorKey, lightweightSetFunction);
+    RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
     SetFrozenFunction(thread, funcPrototype, "add", ContainersLightWeightSet::Add, FuncLength::ONE);
     SetFrozenFunction(thread, funcPrototype, "addAll", ContainersLightWeightSet::AddAll, FuncLength::ONE);
     SetFrozenFunction(thread, funcPrototype, "isEmpty", ContainersLightWeightSet::IsEmpty, FuncLength::ONE);
@@ -496,13 +499,13 @@ JSHandle<JSTaggedValue> ContainersPrivate::InitializeTreeMap(JSThread *thread)
     // TreeMap() = new Function()
     JSHandle<JSTaggedValue> mapFunction(NewContainerConstructor(
         thread, mapFuncPrototype, ContainersTreeMap::TreeMapConstructor, "TreeMap", FuncLength::ZERO));
-    JSFunction::SetFunctionPrototype(thread,
+    JSFunction::SetFunctionPrototypeOrInstanceHClass(thread,
         JSHandle<JSFunction>::Cast(mapFunction), mapInstanceClass.GetTaggedValue());
 
     // "constructor" property on the prototype
     JSHandle<JSTaggedValue> constructorKey = globalConst->GetHandledConstructorString();
     JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(mapFuncPrototype), constructorKey, mapFunction);
-
+    RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
     // TreeMap.prototype
     SetFrozenFunction(thread, mapFuncPrototype, "set", ContainersTreeMap::Set, FuncLength::TWO);
     SetFrozenFunction(thread, mapFuncPrototype, "get", ContainersTreeMap::Get, FuncLength::ONE);
@@ -573,13 +576,13 @@ JSHandle<JSTaggedValue> ContainersPrivate::InitializeTreeSet(JSThread *thread)
     // TreeSet() = new Function()
     JSHandle<JSTaggedValue> setFunction(NewContainerConstructor(
         thread, setFuncPrototype, ContainersTreeSet::TreeSetConstructor, "TreeSet", FuncLength::ZERO));
-    JSFunction::SetFunctionPrototype(thread,
+    JSFunction::SetFunctionPrototypeOrInstanceHClass(thread,
         JSHandle<JSFunction>::Cast(setFunction), setInstanceClass.GetTaggedValue());
 
     // "constructor" property on the prototype
     JSHandle<JSTaggedValue> constructorKey = globalConst->GetHandledConstructorString();
     JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(setFuncPrototype), constructorKey, setFunction);
-
+    RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
     // TreeSet.prototype
     SetFrozenFunction(thread, setFuncPrototype, "add", ContainersTreeSet::Add, FuncLength::TWO);
     SetFrozenFunction(thread, setFuncPrototype, "remove", ContainersTreeSet::Remove, FuncLength::ONE);
@@ -647,13 +650,14 @@ JSHandle<JSTaggedValue> ContainersPrivate::InitializePlainArray(JSThread *thread
     JSHandle<JSTaggedValue> plainArrayFunction(
         NewContainerConstructor(thread, plainArrayFuncPrototype, ContainersPlainArray::PlainArrayConstructor,
                                 "PlainArray", FuncLength::ZERO));
-    JSFunction::SetFunctionPrototype(thread,
+    JSFunction::SetFunctionPrototypeOrInstanceHClass(thread,
         JSHandle<JSFunction>::Cast(plainArrayFunction), plainArrayInstanceClass.GetTaggedValue());
 
     // "constructor" property on the prototype
     JSHandle<JSTaggedValue> constructorKey = globalConst->GetHandledConstructorString();
     JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(plainArrayFuncPrototype), constructorKey,
                           plainArrayFunction);
+    RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
     // PlainArray.prototype.add()
     SetFrozenFunction(thread, plainArrayFuncPrototype, "add", ContainersPlainArray::Add, FuncLength::ONE);
     SetFrozenFunction(thread, plainArrayFuncPrototype, "clear", ContainersPlainArray::Clear, FuncLength::ONE);
@@ -721,13 +725,13 @@ JSHandle<JSTaggedValue> ContainersPrivate::InitializeStack(JSThread *thread)
     // Stack() = new Function()
     JSHandle<JSTaggedValue> stackFunction(NewContainerConstructor(
         thread, stackFuncPrototype, ContainersStack::StackConstructor, "Stack", FuncLength::ZERO));
-    JSFunction::SetFunctionPrototype(thread,
+    JSFunction::SetFunctionPrototypeOrInstanceHClass(thread,
         JSHandle<JSFunction>::Cast(stackFunction), stackInstanceClass.GetTaggedValue());
 
     // "constructor" property on the prototype
     JSHandle<JSTaggedValue> constructorKey = globalConst->GetHandledConstructorString();
     JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(stackFuncPrototype), constructorKey, stackFunction);
-
+    RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
     // Stack.prototype.push()
     SetFrozenFunction(thread, stackFuncPrototype, "push", ContainersStack::Push, FuncLength::ONE);
     // Stack.prototype.empty()
@@ -780,13 +784,13 @@ JSHandle<JSTaggedValue> ContainersPrivate::InitializeVector(JSThread *thread)
     // Vector() = new Function()
     JSHandle<JSTaggedValue> vectorFunction(NewContainerConstructor(
         thread, prototype, ContainersVector::VectorConstructor, "Vector", FuncLength::ZERO));
-    JSFunction::SetFunctionPrototype(thread,
+    JSFunction::SetFunctionPrototypeOrInstanceHClass(thread,
         JSHandle<JSFunction>::Cast(vectorFunction), vectorInstanceClass.GetTaggedValue());
 
     // "constructor" property on the prototype
     JSHandle<JSTaggedValue> constructorKey = globalConst->GetHandledConstructorString();
     JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(prototype), constructorKey, vectorFunction);
-
+    RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
     // Vector.prototype
     SetFrozenFunction(thread, prototype, "add", ContainersVector::Add, FuncLength::ONE);
     SetFrozenFunction(thread, prototype, "insert", ContainersVector::Insert, FuncLength::TWO);
@@ -862,13 +866,13 @@ JSHandle<JSTaggedValue> ContainersPrivate::InitializeQueue(JSThread *thread)
     // Queue() = new Function()
     JSHandle<JSTaggedValue> queueFunction(NewContainerConstructor(
         thread, queueFuncPrototype, ContainersQueue::QueueConstructor, "Queue", FuncLength::ZERO));
-    JSFunction::SetFunctionPrototype(thread,
+    JSFunction::SetFunctionPrototypeOrInstanceHClass(thread,
         JSHandle<JSFunction>::Cast(queueFunction), queueInstanceClass.GetTaggedValue());
 
     // "constructor" property on the prototype
     JSHandle<JSTaggedValue> constructorKey = globalConst->GetHandledConstructorString();
     JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(queueFuncPrototype), constructorKey, queueFunction);
-
+    RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
     // Queue.prototype.add()
     SetFrozenFunction(thread, queueFuncPrototype, "add", ContainersQueue::Add, FuncLength::ONE);
     SetFrozenFunction(thread, queueFuncPrototype, "getFirst", ContainersQueue::GetFirst, FuncLength::ZERO);
@@ -917,13 +921,13 @@ JSHandle<JSTaggedValue> ContainersPrivate::InitializeDeque(JSThread *thread)
     // Deque() = new Function()
     JSHandle<JSTaggedValue> dequeFunction(NewContainerConstructor(
         thread, dequeFuncPrototype, ContainersDeque::DequeConstructor, "Deque", FuncLength::ZERO));
-    JSFunction::SetFunctionPrototype(thread,
+    JSFunction::SetFunctionPrototypeOrInstanceHClass(thread,
         JSHandle<JSFunction>::Cast(dequeFunction), dequeInstanceClass.GetTaggedValue());
 
     // "constructor" property on the prototype
     JSHandle<JSTaggedValue> constructorKey = globalConst->GetHandledConstructorString();
     JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(dequeFuncPrototype), constructorKey, dequeFunction);
-
+    RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
     SetFrozenFunction(thread, dequeFuncPrototype, "insertFront", ContainersDeque::InsertFront, FuncLength::ONE);
     SetFrozenFunction(thread, dequeFuncPrototype, "insertEnd", ContainersDeque::InsertEnd, FuncLength::ONE);
     SetFrozenFunction(thread, dequeFuncPrototype, "getFirst", ContainersDeque::GetFirst, FuncLength::ZERO);
@@ -971,12 +975,12 @@ JSHandle<JSTaggedValue> ContainersPrivate::InitializeList(JSThread *thread)
         factory->NewEcmaHClass(JSAPIList::SIZE, JSType::JS_API_LIST, listFuncPrototypeValue);
     JSHandle<JSTaggedValue> listFunction(NewContainerConstructor(
         thread, listFuncPrototype, ContainersList::ListConstructor, "List", FuncLength::ZERO));
-    JSFunction::SetFunctionPrototype(thread,
+    JSFunction::SetFunctionPrototypeOrInstanceHClass(thread,
         JSHandle<JSFunction>::Cast(listFunction), listInstanceClass.GetTaggedValue());
 
     JSHandle<JSTaggedValue> constructorKey = globalConst->GetHandledConstructorString();
     JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(listFuncPrototype), constructorKey, listFunction);
-
+    RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
     SetFrozenFunction(thread, listFuncPrototype, "add", ContainersList::Add, FuncLength::ONE);
     SetFrozenFunction(thread, listFuncPrototype, "getFirst", ContainersList::GetFirst, FuncLength::ONE);
     SetFrozenFunction(thread, listFuncPrototype, "getLast", ContainersList::GetLast, FuncLength::ONE);
@@ -1022,12 +1026,12 @@ JSHandle<JSTaggedValue> ContainersPrivate::InitializeLinkedList(JSThread *thread
         factory->NewEcmaHClass(JSAPILinkedList::SIZE, JSType::JS_API_LINKED_LIST, linkedListFuncPrototypeValue);
     JSHandle<JSTaggedValue> linkedListFunction(NewContainerConstructor(
         thread, linkedListFuncPrototype, ContainersLinkedList::LinkedListConstructor, "LinkedList", FuncLength::ZERO));
-    JSFunction::SetFunctionPrototype(thread,
+    JSFunction::SetFunctionPrototypeOrInstanceHClass(thread,
         JSHandle<JSFunction>::Cast(linkedListFunction), linkedListInstanceClass.GetTaggedValue());
 
     JSHandle<JSTaggedValue> constructorKey = globalConst->GetHandledConstructorString();
     JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(linkedListFuncPrototype), constructorKey, linkedListFunction);
-
+    RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
     SetFrozenFunction(thread, linkedListFuncPrototype, "add", ContainersLinkedList::Add, FuncLength::ONE);
     SetFrozenFunction(thread, linkedListFuncPrototype, "insert", ContainersLinkedList::Insert, FuncLength::ONE);
     SetFrozenFunction(thread, linkedListFuncPrototype, "clear", ContainersLinkedList::Clear, FuncLength::ONE);
@@ -1108,12 +1112,13 @@ JSHandle<JSTaggedValue> ContainersPrivate::InitializeHashMap(JSThread *thread)
 
     JSHandle<JSTaggedValue> hashMapFunction(NewContainerConstructor(
         thread, hashMapFuncPrototype, ContainersHashMap::HashMapConstructor, "HashMap", FuncLength::ZERO));
-    JSFunction::SetFunctionPrototype(thread,
+    JSFunction::SetFunctionPrototypeOrInstanceHClass(thread,
         JSHandle<JSFunction>::Cast(hashMapFunction), hashMapInstanceClass.GetTaggedValue());
 
     // "constructor" property on the prototype
     JSHandle<JSTaggedValue> constructorKey = globalConst->GetHandledConstructorString();
     JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(hashMapFuncPrototype), constructorKey, hashMapFunction);
+    RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
     // HashMap.prototype.set()
     SetFrozenFunction(thread, hashMapFuncPrototype, "set", ContainersHashMap::Set, FuncLength::TWO);
      // HashMap.prototype.setall()
@@ -1191,13 +1196,13 @@ JSHandle<JSTaggedValue> ContainersPrivate::InitializeHashSet(JSThread *thread)
 
     JSHandle<JSTaggedValue> hashSetFunction(NewContainerConstructor(
         thread, hashSetFuncPrototype, ContainersHashSet::HashSetConstructor, "HashSet", FuncLength::ZERO));
-    JSFunction::SetFunctionPrototype(thread,
+    JSFunction::SetFunctionPrototypeOrInstanceHClass(thread,
         JSHandle<JSFunction>::Cast(hashSetFunction), hashSetInstanceClass.GetTaggedValue());
 
     // "constructor" property on the prototype
     JSHandle<JSTaggedValue> constructorKey = globalConst->GetHandledConstructorString();
     JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(hashSetFuncPrototype), constructorKey, hashSetFunction);
-
+    RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
     SetFrozenFunction(thread, hashSetFuncPrototype, "isEmpty", ContainersHashSet::IsEmpty, FuncLength::ZERO);
     SetFrozenFunction(thread, hashSetFuncPrototype, "has", ContainersHashSet::Has, FuncLength::ONE);
     SetFrozenFunction(thread, hashSetFuncPrototype, "add", ContainersHashSet::Add, FuncLength::ONE);

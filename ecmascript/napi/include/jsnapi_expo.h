@@ -730,6 +730,7 @@ public:
     static Local<StringRef> NewFromUtf8(const EcmaVM *vm, const char *utf8, int length = -1);
     static Local<StringRef> NewFromUtf16(const EcmaVM *vm, const char16_t *utf16, int length = -1);
     std::string ToString();
+    std::string DebuggerToString();
     uint32_t Length();
     int32_t Utf8Length(const EcmaVM *vm);
     int WriteUtf8(char *buffer, int length, bool isWriteBuffer = false);
@@ -1187,6 +1188,8 @@ public:
     static Local<ObjectRef> GetExportObject(EcmaVM *vm, const std::string &file, const std::string &key);
     static Local<ObjectRef> GetExportObjectFromBuffer(EcmaVM *vm, const std::string &file, const std::string &key);
     static Local<ObjectRef> ExecuteNativeModule(EcmaVM *vm, const std::string &key);
+    static Local<ObjectRef> GetModuleNameSpaceFromFile(EcmaVM *vm, const std::string &file,
+                                                       const std::string &module_path);
     // secure memory check
     static bool CheckSecureMem(uintptr_t mem);
 

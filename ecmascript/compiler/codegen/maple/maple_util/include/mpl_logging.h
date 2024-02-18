@@ -213,6 +213,13 @@ private:
         DEBUG_STMT(CHECK(cond, fmt, ##__VA_ARGS__)); \
     } while (0)
 
+// To shut down the codecheck warning: boolean condition for 'if' always evaluates to 'true'
+#define CHECK_FATAL_FALSE(fmt, ...)                                                            \
+    do {                                                                                       \
+        maple::logInfo.EmitErrorMessage("false", __FILE__, __LINE__, fmt "\n", ##__VA_ARGS__); \
+        exit(1);                                                                               \
+    } while (0)
+
 #define CHECK_FATAL(cond, fmt, ...)                                                              \
     do {                                                                                         \
         if (!(cond)) {                                                                           \

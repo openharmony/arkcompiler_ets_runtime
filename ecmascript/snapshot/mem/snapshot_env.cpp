@@ -25,6 +25,15 @@ void SnapshotEnv::Initialize()
     InitGlobalEnv();
 }
 
+void SnapshotEnv::InitializeStringClass()
+{
+    auto globalConst = const_cast<GlobalEnvConstants *>(vm_->GetJSThread()->GlobalConstants());
+    auto lineStringClass = globalConst->GetLineStringClass();
+    rootObjectMap_.emplace(ToUintPtr(lineStringClass.GetTaggedObject()), globalConst->GetLineStringClassIndex());
+    auto constStringClass = globalConst->GetConstantStringClass();
+    rootObjectMap_.emplace(ToUintPtr(constStringClass.GetTaggedObject()), globalConst->GetConstStringClassIndex());
+}
+
 void SnapshotEnv::InitGlobalConst()
 {
     auto globalConst = const_cast<GlobalEnvConstants *>(vm_->GetJSThread()->GlobalConstants());

@@ -16,7 +16,8 @@
 #include "cg_cfg.h"
 #if TARGAARCH64
 #include "aarch64_insn.h"
-#elif TARGRISCV64
+#endif
+#if defined(TARGRISCV64) && TARGRISCV64
 #include "riscv64_insn.h"
 #endif
 #if TARGARM32
@@ -28,13 +29,15 @@
 #include "x64_cgfunc.h"
 #include "cg.h"
 #endif
+#include "triple.h"
 #include <cstdlib>
 
 namespace {
 using namespace maplebe;
 bool CanBBThrow(const BB &bb)
 {
-    FOR_BB_INSNS_CONST(insn, &bb) {
+    FOR_BB_INSNS_CONST(insn, &bb)
+    {
         if (insn->IsTargetInsn() && insn->CanThrow()) {
             return true;
         }
@@ -57,9 +60,10 @@ void CGCFG::BuildCFG()
             case BB::kBBIntrinsic:
                 /*
                  * An intrinsic BB append a MOP_wcbnz instruction at the end, check
-                 * AArch64CGFunc::SelectIntrinCall(IntrinsiccallNode *intrinsiccallNode) for details
+                 * AArch64CGFunc::SelectIntrinsicCall(IntrinsiccallNode *intrinsiccallNode) for details
                  */
-                if (!curBB->GetLastInsn()->IsBranch()) {
+                CHECK_NULL_FATAL(curBB->GetLastMachineInsn());
+                if (!curBB->GetLastMachineInsn()->IsBranch()) {
                     break;
                 }
                 /* else fall through */
@@ -72,9 +76,9 @@ void CGCFG::BuildCFG()
                 CHECK_FATAL(branchInsn != nullptr, "machine instruction must be exist in ifBB");
                 DEBUG_ASSERT(branchInsn->IsCondBranch(), "must be a conditional branch generated from an intrinsic");
                 /* Assume the last non-null operand is the branch target */
-                int lastOpndIndex = curBB->GetLastInsn()->GetOperandSize() - 1;
-                DEBUG_ASSERT(lastOpndIndex > -1, "lastOpndIndex's opnd is greater than -1");
-                Operand &lastOpnd = branchInsn->GetOperand(static_cast<uint32>(lastOpndIndex));
+                uint32 opSz = branchInsn->GetOperandSize();
+                DEBUG_ASSERT(opSz >= 1, "lastOpndIndex's opnd is greater than 1");
+                Operand &lastOpnd = branchInsn->GetOperand(opSz - 1u);
                 DEBUG_ASSERT(lastOpnd.IsLabelOpnd(), "label Operand must be exist in branch insn");
                 auto &labelOpnd = static_cast<LabelOperand &>(lastOpnd);
                 BB *brToBB = cgFunc->GetBBFromLab2BBMap(labelOpnd.GetLabelIndex());
@@ -156,44 +160,51 @@ void CGCFG::BuildCFG()
             }
         }
     }
+    FindAndMarkUnreachable(*cgFunc);
 }
 
 void CGCFG::CheckCFG()
 {
-    FOR_ALL_BB(bb, cgFunc) {
+    FOR_ALL_BB(bb, cgFunc)
+    {
         for (BB *sucBB : bb->GetSuccs()) {
             bool found = false;
             for (BB *sucPred : sucBB->GetPreds()) {
                 if (sucPred == bb) {
-                    if (found == false) {
+                    if (!found) {
                         found = true;
                     } else {
                         LogInfo::MapleLogger()
                             << "dup pred " << sucPred->GetId() << " for sucBB " << sucBB->GetId() << "\n";
+                        CHECK_FATAL_FALSE("CG_CFG check failed !");
                     }
                 }
             }
-            if (found == false) {
+            if (!found) {
                 LogInfo::MapleLogger() << "non pred for sucBB " << sucBB->GetId() << " for BB " << bb->GetId() << "\n";
+                CHECK_FATAL_FALSE("CG_CFG check failed !");
             }
         }
     }
-    FOR_ALL_BB(bb, cgFunc) {
+    FOR_ALL_BB(bb, cgFunc)
+    {
         for (BB *predBB : bb->GetPreds()) {
             bool found = false;
             for (BB *predSucc : predBB->GetSuccs()) {
                 if (predSucc == bb) {
-                    if (found == false) {
+                    if (!found) {
                         found = true;
                     } else {
                         LogInfo::MapleLogger()
                             << "dup succ " << predSucc->GetId() << " for predBB " << predBB->GetId() << "\n";
+                        CHECK_FATAL_FALSE("CG_CFG check failed !");
                     }
                 }
             }
-            if (found == false) {
+            if (!found) {
                 LogInfo::MapleLogger() << "non succ for predBB " << predBB->GetId() << " for BB " << bb->GetId()
                                        << "\n";
+                CHECK_FATAL_FALSE("CG_CFG check failed !");
             }
         }
     }
@@ -213,7 +224,8 @@ void CGCFG::CheckCFGFreq()
             CHECK_FATAL(false, "Verifyfreq failure BB frequency!");
         }
     };
-    FOR_ALL_BB(bb, cgFunc) {
+    FOR_ALL_BB(bb, cgFunc)
+    {
         if (bb->IsUnreachable() || bb->IsCleanup()) {
             continue;
         }
@@ -240,22 +252,24 @@ void CGCFG::CheckCFGFreq()
             }
         }
     }
+    LogInfo::MapleLogger() << "Check Frequency for " << cgFunc->GetName() << " success!\n";
 }
 
 InsnVisitor *CGCFG::insnVisitor;
 
-void CGCFG::InitInsnVisitor(CGFunc &func)
+void CGCFG::InitInsnVisitor(CGFunc &func) const
 {
     insnVisitor = func.NewInsnModifier();
 }
 
-Insn *CGCFG::CloneInsn(Insn &originalInsn)
+// Do custom deep copy
+Insn *CGCFG::CloneInsn(Insn &originalInsn) const
 {
     cgFunc->IncTotalNumberOfInstructions();
     return insnVisitor->CloneInsn(originalInsn);
 }
 
-RegOperand *CGCFG::CreateVregFromReg(const RegOperand &pReg)
+RegOperand *CGCFG::CreateVregFromReg(const RegOperand &pReg) const
 {
     return insnVisitor->CreateVregFromReg(pReg);
 }
@@ -269,6 +283,11 @@ RegOperand *CGCFG::CreateVregFromReg(const RegOperand &pReg)
 bool CGCFG::BBJudge(const BB &first, const BB &second) const
 {
     if (first.GetKind() == BB::kBBReturn || second.GetKind() == BB::kBBReturn) {
+        return false;
+    }
+    // If the address of firstBB or secondBB is referenced by adrp_label insn,
+    // it can not be merged
+    if (first.IsAdrpLabel() || second.IsAdrpLabel()) {
         return false;
     }
     if (&first == &second) {
@@ -321,14 +340,34 @@ bool CGCFG::AreCommentAllPreds(const BB &bb)
 /* Merge sucBB into curBB. */
 void CGCFG::MergeBB(BB &merger, BB &mergee, CGFunc &func)
 {
+	BB *prevLast = mergee.GetPrev();
     MergeBB(merger, mergee);
+    if (func.GetLastBB()->GetId() == mergee.GetId()) {
+        func.SetLastBB(*prevLast);
+    }
     if (mergee.GetKind() == BB::kBBReturn) {
-        for (size_t i = 0; i < func.ExitBBsVecSize(); ++i) {
-            if (func.GetExitBB(i) == &mergee) {
-                func.EraseExitBBsVec(func.GetExitBBsVec().begin() + i);
+        auto retIt = func.GetExitBBsVec().begin();
+        while (retIt != func.GetExitBBsVec().end()) {
+            if (*retIt == &mergee) {
+                (void)func.EraseExitBBsVec(retIt);
+                break;
+            } else {
+                ++retIt;
             }
         }
         func.PushBackExitBBsVec(merger);
+    }
+    if (mergee.GetKind() == BB::kBBNoReturn) {
+        auto noRetIt = func.GetNoRetCallBBVec().begin();
+        while (noRetIt != func.GetNoRetCallBBVec().end()) {
+            if (*noRetIt == &mergee) {
+                (void)func.EraseNoReturnCallBB(noRetIt);
+                break;
+            } else {
+                ++noRetIt;
+            }
+        }
+        func.PushBackNoReturnCallBBsVec(merger);
     }
     if (mergee.GetKind() == BB::kBBRangeGoto) {
         func.AddEmitSt(merger.GetId(), *func.GetEmitSt(mergee.GetId()));
@@ -338,11 +377,11 @@ void CGCFG::MergeBB(BB &merger, BB &mergee, CGFunc &func)
 
 void CGCFG::MergeBB(BB &merger, BB &mergee)
 {
-    if (merger.GetKind() == BB::kBBGoto) {
-        if (!merger.GetLastInsn()->IsBranch()) {
+    if (merger.GetKind() == BB::kBBGoto && merger.GetLastMachineInsn() != nullptr) {
+        if (!merger.GetLastMachineInsn()->IsBranch()) {
             CHECK_FATAL(false, "unexpected insn kind");
         }
-        merger.RemoveInsn(*merger.GetLastInsn());
+        merger.RemoveInsn(*merger.GetLastMachineInsn());
     }
     merger.AppendBBInsns(mergee);
     if (mergee.GetPrev() != nullptr) {
@@ -397,8 +436,8 @@ void CGCFG::FindAndMarkUnreachable(CGFunc &func)
     /* set all bb's unreacable to true */
     while (bb != nullptr) {
         /* Check if bb is the first or the last BB of the function */
-        if (bb->GetFirstStmt() == func.GetCleanupLabel() || InSwitchTable(bb->GetLabIdx(), func) ||
-            bb == func.GetFirstBB() || bb == func.GetLastBB()) {
+        if (bb->IsCleanup() || InSwitchTable(bb->GetLabIdx(), func) || bb == func.GetFirstBB() ||
+            bb == func.GetLastBB()) {
             toBeAnalyzedBBs.push(bb);
         } else if (bb->IsLabelTaken() == false) {
             bb->SetUnreachable(true);
@@ -427,6 +466,19 @@ void CGCFG::FindAndMarkUnreachable(CGFunc &func)
             }
         }
     }
+    FOR_ALL_BB(tmpBB, &func)
+    {
+        for (MapleList<BB *>::iterator predIt = tmpBB->GetPredsBegin(); predIt != tmpBB->GetPredsEnd(); ++predIt) {
+            if ((*predIt)->IsUnreachable()) {
+                tmpBB->ErasePreds(predIt);
+            }
+        }
+        for (MapleList<BB *>::iterator predIt = tmpBB->GetEhPredsBegin(); predIt != tmpBB->GetEhPredsEnd(); ++predIt) {
+            if ((*predIt)->IsUnreachable()) {
+                tmpBB->ErasePreds(predIt);
+            }
+        }
+    }
 }
 
 /*
@@ -440,8 +492,7 @@ void CGCFG::FlushUnReachableStatusAndRemoveRelations(BB &bb, const CGFunc &func)
     /* Check if bb is the first or the last BB of the function */
     bool isFirstBBInfunc = (&bb == func.GetFirstBB());
     bool isLastBBInfunc = (&bb == func.GetLastBB());
-    if (bb.GetFirstStmt() == func.GetCleanupLabel() || InSwitchTable(bb.GetLabIdx(), func) || isFirstBBInfunc ||
-        isLastBBInfunc) {
+    if (bb.IsCleanup() || InSwitchTable(bb.GetLabIdx(), func) || isFirstBBInfunc || isLastBBInfunc) {
         return;
     }
     std::stack<BB *> toBeAnalyzedBBs;
@@ -455,7 +506,7 @@ void CGCFG::FlushUnReachableStatusAndRemoveRelations(BB &bb, const CGFunc &func)
         /* Check if bb is the first or the last BB of the function */
         isFirstBBInfunc = (it == func.GetFirstBB());
         isLastBBInfunc = (it == func.GetLastBB());
-        bool needFlush = !isFirstBBInfunc && !isLastBBInfunc && it->GetFirstStmt() != func.GetCleanupLabel() &&
+        bool needFlush = !isFirstBBInfunc && !isLastBBInfunc && !it->IsCleanup() &&
                          (it->GetPreds().empty() || (it->GetPreds().size() == 1 && it->GetEhPreds().front() == it)) &&
                          it->GetEhPreds().empty() && !InSwitchTable(it->GetLabIdx(), *cgFunc) &&
                          !cgFunc->IsExitBB(*it) && (it->IsLabelTaken() == false);
@@ -486,65 +537,80 @@ void CGCFG::FlushUnReachableStatusAndRemoveRelations(BB &bb, const CGFunc &func)
     }
 }
 
-void CGCFG::RemoveBB(BB &curBB, bool isGotoIf)
+void CGCFG::RemoveBB(BB &curBB, bool isGotoIf) const
 {
-    BB *sucBB = CGCFG::GetTargetSuc(curBB, false, isGotoIf);
-    if (sucBB != nullptr) {
-        sucBB->RemovePreds(curBB);
-    }
-    BB *fallthruSuc = nullptr;
-    if (isGotoIf) {
-        for (BB *succ : curBB.GetSuccs()) {
-            if (succ == sucBB) {
-                continue;
+    if (!curBB.IsUnreachable()) {
+        BB *sucBB = CGCFG::GetTargetSuc(curBB, false, isGotoIf);
+        if (sucBB != nullptr) {
+            sucBB->RemovePreds(curBB);
+        }
+        BB *fallthruSuc = nullptr;
+        if (isGotoIf) {
+            for (BB *succ : curBB.GetSuccs()) {
+                if (succ == sucBB) {
+                    continue;
+                }
+                fallthruSuc = succ;
+                break;
             }
-            fallthruSuc = succ;
-            break;
+            DEBUG_ASSERT(fallthruSuc == curBB.GetNext(), "fallthru succ should be its next bb.");
+            if (fallthruSuc != nullptr) {
+                fallthruSuc->RemovePreds(curBB);
+            }
         }
 
-        DEBUG_ASSERT(fallthruSuc == curBB.GetNext(), "fallthru succ should be its next bb.");
-        if (fallthruSuc != nullptr) {
-            fallthruSuc->RemovePreds(curBB);
+        for (BB *preBB : curBB.GetPreds()) {
+            if (preBB->GetKind() == BB::kBBIgoto) {
+                if (sucBB != nullptr) {
+                    sucBB->PushBackPreds(curBB);
+                }
+                return;
+            }
+            /*
+             * If curBB is the target of its predecessor, change
+             * the jump target.
+             */
+            if (&curBB == GetTargetSuc(*preBB, true, isGotoIf)) {
+                LabelIdx targetLabel;
+                if (curBB.GetNext()->GetLabIdx() == 0) {
+                    targetLabel = insnVisitor->GetCGFunc()->CreateLabel();
+                    curBB.GetNext()->SetLabIdx(targetLabel);
+                    cgFunc->SetLab2BBMap(targetLabel, *curBB.GetNext());
+                } else {
+                    targetLabel = curBB.GetNext()->GetLabIdx();
+                }
+                insnVisitor->ModifyJumpTarget(targetLabel, *preBB);
+            }
+            if (fallthruSuc != nullptr && !fallthruSuc->IsPredecessor(*preBB)) {
+                preBB->PushBackSuccs(*fallthruSuc);
+                fallthruSuc->PushBackPreds(*preBB);
+            }
+            if (sucBB != nullptr && !sucBB->IsPredecessor(*preBB)) {
+                preBB->PushBackSuccs(*sucBB);
+                sucBB->PushBackPreds(*preBB);
+            }
+            preBB->RemoveSuccs(curBB);
         }
     }
 
-    for (BB *preBB : curBB.GetPreds()) {
-        if (preBB->GetKind() == BB::kBBIgoto) {
-            return;
-        }
-        /*
-         * If curBB is the target of its predecessor, change
-         * the jump target.
-         */
-        if (&curBB == GetTargetSuc(*preBB, true, isGotoIf)) {
-            LabelIdx targetLabel;
-            if (curBB.GetNext()->GetLabIdx() == 0) {
-                targetLabel = insnVisitor->GetCGFunc()->CreateLabel();
-                curBB.GetNext()->SetLabIdx(targetLabel);
-            } else {
-                targetLabel = curBB.GetNext()->GetLabIdx();
-            }
-            insnVisitor->ModifyJumpTarget(targetLabel, *preBB);
-        }
-        if (fallthruSuc != nullptr && !fallthruSuc->IsPredecessor(*preBB)) {
-            preBB->PushBackSuccs(*fallthruSuc);
-            fallthruSuc->PushBackPreds(*preBB);
-        }
-        if (sucBB != nullptr && !sucBB->IsPredecessor(*preBB)) {
-            preBB->PushBackSuccs(*sucBB);
-            sucBB->PushBackPreds(*preBB);
-        }
-        preBB->RemoveSuccs(curBB);
-    }
     for (BB *ehSucc : curBB.GetEhSuccs()) {
         ehSucc->RemoveEhPreds(curBB);
     }
     for (BB *ehPred : curBB.GetEhPreds()) {
         ehPred->RemoveEhSuccs(curBB);
     }
-    curBB.GetNext()->RemovePreds(curBB);
-    curBB.GetPrev()->SetNext(curBB.GetNext());
-    curBB.GetNext()->SetPrev(curBB.GetPrev());
+    if (curBB.GetNext() != nullptr) {
+        cgFunc->GetCommonExitBB()->RemovePreds(curBB);
+        curBB.GetNext()->RemovePreds(curBB);
+        curBB.GetNext()->SetPrev(curBB.GetPrev());
+    } else {
+        cgFunc->SetLastBB(*curBB.GetPrev());
+    }
+    if (curBB.GetPrev() != nullptr) {
+        curBB.GetPrev()->SetNext(curBB.GetNext());
+    } else {
+        cgFunc->SetFirstBB(*curBB.GetNext());
+    }
     cgFunc->ClearBBInVec(curBB.GetId());
     /* remove callsite */
     EHFunc *ehFunc = cgFunc->GetEHFunc();
@@ -554,7 +620,25 @@ void CGCFG::RemoveBB(BB &curBB, bool isGotoIf)
     }
 }
 
-void CGCFG::RetargetJump(BB &srcBB, BB &targetBB)
+void CGCFG::UpdateCommonExitBBInfo()
+{
+    BB *commonExitBB = cgFunc->GetCommonExitBB();
+    ASSERT_NOT_NULL(commonExitBB);
+    commonExitBB->ClearPreds();
+    for (BB *exitBB : cgFunc->GetExitBBsVec()) {
+        if (!exitBB->IsUnreachable()) {
+            commonExitBB->PushBackPreds(*exitBB);
+        }
+    }
+    for (BB *noRetBB : cgFunc->GetNoRetCallBBVec()) {
+        if (!noRetBB->IsUnreachable()) {
+            commonExitBB->PushBackPreds(*noRetBB);
+        }
+    }
+    WontExitAnalysis();
+}
+
+void CGCFG::RetargetJump(BB &srcBB, BB &targetBB) const
 {
     insnVisitor->ModifyJumpTarget(srcBB, targetBB);
 }
@@ -566,6 +650,7 @@ BB *CGCFG::GetTargetSuc(BB &curBB, bool branchOnly, bool isGotoIf)
         case BB::kBBIntrinsic:
         case BB::kBBIf: {
             const Insn *origLastInsn = curBB.GetLastMachineInsn();
+            ASSERT_NOT_NULL(origLastInsn);
             if (isGotoIf && (curBB.GetPrev() != nullptr) &&
                 (curBB.GetKind() == BB::kBBGoto || curBB.GetKind() == BB::kBBIf) &&
                 (curBB.GetPrev()->GetKind() == BB::kBBGoto || curBB.GetPrev()->GetKind() == BB::kBBIf)) {
@@ -582,8 +667,9 @@ BB *CGCFG::GetTargetSuc(BB &curBB, bool branchOnly, bool isGotoIf)
         case BB::kBBIgoto: {
             for (Insn *insn = curBB.GetLastInsn(); insn != nullptr; insn = insn->GetPrev()) {
 #if TARGAARCH64
-                if (insn->GetMachineOpcode() == MOP_adrp_label) {
-                    int64 label = static_cast<ImmOperand &>(insn->GetOperand(1)).GetValue();
+                if (Triple::GetTriple().IsAarch64BeOrLe() &&
+                    insn->GetMachineOpcode() == MOP_adrp_label) {
+                    int64 label = static_cast<ImmOperand&>(insn->GetOperand(1)).GetValue();
                     for (BB *bb : curBB.GetSuccs()) {
                         if (bb->GetLabIdx() == static_cast<LabelIdx>(label)) {
                             return bb;
@@ -606,21 +692,26 @@ BB *CGCFG::GetTargetSuc(BB &curBB, bool branchOnly, bool isGotoIf)
     return nullptr;
 }
 
-bool CGCFG::InLSDA(LabelIdx label, const EHFunc &ehFunc)
+bool CGCFG::InLSDA(LabelIdx label [[maybe_unused]], const EHFunc *ehFunc [[maybe_unused]])
 {
-    if (!label || ehFunc.GetLSDACallSiteTable() == nullptr) {
+    /* the function have no exception handle module */
+    if (ehFunc == nullptr) {
         return false;
     }
-    if (label == ehFunc.GetLSDACallSiteTable()->GetCSTable().GetEndOffset()->GetLabelIdx() ||
-        label == ehFunc.GetLSDACallSiteTable()->GetCSTable().GetStartOffset()->GetLabelIdx()) {
+
+    if ((label == 0) || ehFunc->GetLSDACallSiteTable() == nullptr) {
+        return false;
+    }
+    if (label == ehFunc->GetLSDACallSiteTable()->GetCSTable().GetEndOffset()->GetLabelIdx() ||
+        label == ehFunc->GetLSDACallSiteTable()->GetCSTable().GetStartOffset()->GetLabelIdx()) {
         return true;
     }
-    return ehFunc.GetLSDACallSiteTable()->InCallSiteTable(label);
+    return ehFunc->GetLSDACallSiteTable()->InCallSiteTable(label);
 }
 
 bool CGCFG::InSwitchTable(LabelIdx label, const CGFunc &func)
 {
-    if (!label) {
+    if (label == 0) {
         return false;
     }
     return func.InSwitchTable(label);
@@ -629,6 +720,11 @@ bool CGCFG::InSwitchTable(LabelIdx label, const CGFunc &func)
 bool CGCFG::IsCompareAndBranchInsn(const Insn &insn) const
 {
     return insnVisitor->IsCompareAndBranchInsn(insn);
+}
+
+bool CGCFG::IsTestAndBranchInsn(const Insn &insn) const
+{
+    return insnVisitor->IsTestAndBranchInsn(insn);
 }
 
 bool CGCFG::IsAddOrSubInsn(const Insn &insn) const
@@ -641,7 +737,8 @@ Insn *CGCFG::FindLastCondBrInsn(BB &bb) const
     if (bb.GetKind() != BB::kBBIf) {
         return nullptr;
     }
-    FOR_BB_INSNS_REV(insn, (&bb)) {
+    FOR_BB_INSNS_REV(insn, (&bb))
+    {
         if (insn->IsBranch()) {
             return insn;
         }
@@ -649,7 +746,7 @@ Insn *CGCFG::FindLastCondBrInsn(BB &bb) const
     return nullptr;
 }
 
-void CGCFG::MarkLabelTakenBB()
+void CGCFG::MarkLabelTakenBB() const
 {
     if (cgFunc->GetMirModule().GetSrcLang() != kSrcLangC) {
         return;
@@ -667,7 +764,7 @@ void CGCFG::MarkLabelTakenBB()
  * analyse the CFG to find the BBs that are not reachable from function entries
  * and delete them
  */
-void CGCFG::UnreachCodeAnalysis()
+void CGCFG::UnreachCodeAnalysis() const
 {
     if (cgFunc->GetMirModule().GetSrcLang() == kSrcLangC &&
         (cgFunc->HasTakenLabel() || (cgFunc->GetEHFunc() && cgFunc->GetEHFunc()->GetLSDAHeader()))) {
@@ -685,9 +782,9 @@ void CGCFG::UnreachCodeAnalysis()
     BB *bb = firstBB;
     /* set all bb's unreacable to true */
     while (bb != nullptr) {
-        /* Check if bb is the first or the last BB of the function */
-        if (bb->GetFirstStmt() == cgFunc->GetCleanupLabel() || InSwitchTable(bb->GetLabIdx(), *cgFunc) ||
-            bb == cgFunc->GetFirstBB() || bb == cgFunc->GetLastBB() || bb->GetKind() == BB::kBBReturn) {
+        /* Check if bb is the firstBB/cleanupBB/returnBB/lastBB of the function */
+        if (bb->IsCleanup() || InSwitchTable(bb->GetLabIdx(), *cgFunc) || bb == cgFunc->GetFirstBB() ||
+            bb == cgFunc->GetLastBB() || bb->GetKind() == BB::kBBReturn) {
             toBeAnalyzedBBs.push_front(bb);
         } else {
             (void)unreachBBs.insert(bb);
@@ -715,22 +812,21 @@ void CGCFG::UnreachCodeAnalysis()
             unreachBBs.erase(succBB);
         }
     }
-    /* Don't remove unreach code if withDwarf is enabled. */
-    if (cgFunc->GetCG()->GetCGOptions().WithDwarf()) {
-        return;
-    }
+
     /* remove unreachable bb */
     std::set<BB *, BBIdCmp>::iterator it;
     for (it = unreachBBs.begin(); it != unreachBBs.end(); it++) {
         BB *unreachBB = *it;
         DEBUG_ASSERT(unreachBB != nullptr, "unreachBB must not be nullptr");
-        if (cgFunc->IsExitBB(*unreachBB)) {
-            unreachBB->SetUnreachable(false);
+        for (auto exitBB = cgFunc->GetExitBBsVec().begin(); exitBB != cgFunc->GetExitBBsVec().end(); ++exitBB) {
+            if (*exitBB == unreachBB) {
+                cgFunc->GetExitBBsVec().erase(exitBB);
+                break;
+            }
         }
         EHFunc *ehFunc = cgFunc->GetEHFunc();
         /* if unreachBB InLSDA ,replace unreachBB's label with nextReachableBB before remove it. */
-        if (ehFunc != nullptr && ehFunc->NeedFullLSDA() &&
-            cgFunc->GetTheCFG()->InLSDA(unreachBB->GetLabIdx(), *ehFunc)) {
+        if (ehFunc != nullptr && ehFunc->NeedFullLSDA() && maplebe::CGCFG::InLSDA(unreachBB->GetLabIdx(), ehFunc)) {
             /* find next reachable BB */
             BB *nextReachableBB = nullptr;
             for (BB *curBB = unreachBB; curBB != nullptr; curBB = curBB->GetNext()) {
@@ -749,12 +845,11 @@ void CGCFG::UnreachCodeAnalysis()
             ehFunc->GetLSDACallSiteTable()->UpdateCallSite(*unreachBB, *nextReachableBB);
         }
 
-        if (unreachBB->IsUnreachable() == false) {
-            continue;
-        }
-
         unreachBB->GetPrev()->SetNext(unreachBB->GetNext());
-        unreachBB->GetNext()->SetPrev(unreachBB->GetPrev());
+        cgFunc->GetCommonExitBB()->RemovePreds(*unreachBB);
+        if (unreachBB->GetNext()) {
+            unreachBB->GetNext()->SetPrev(unreachBB->GetPrev());
+        }
 
         for (BB *sucBB : unreachBB->GetSuccs()) {
             sucBB->RemovePreds(*unreachBB);
@@ -765,6 +860,8 @@ void CGCFG::UnreachCodeAnalysis()
 
         unreachBB->ClearSuccs();
         unreachBB->ClearEhSuccs();
+
+        cgFunc->ClearBBInVec(unreachBB->GetId());
 
         /* Clear insns in GOT Map. */
         cgFunc->ClearUnreachableGotInfos(*unreachBB);
@@ -807,7 +904,8 @@ void CGCFG::WontExitAnalysis()
 
 BB *CGCFG::FindLastRetBB()
 {
-    FOR_ALL_BB_REV(bb, cgFunc) {
+    FOR_ALL_BB_REV(bb, cgFunc)
+    {
         if (bb->GetKind() == BB::kBBReturn) {
             return bb;
         }
@@ -815,7 +913,7 @@ BB *CGCFG::FindLastRetBB()
     return nullptr;
 }
 
-void CGCFG::UpdatePredsSuccsAfterSplit(BB &pred, BB &succ, BB &newBB)
+void CGCFG::UpdatePredsSuccsAfterSplit(BB &pred, BB &succ, BB &newBB) const
 {
     /* connext newBB -> succ */
     for (auto it = succ.GetPredsBegin(); it != succ.GetPredsEnd(); ++it) {
@@ -858,9 +956,9 @@ void CGCFG::UpdatePredsSuccsAfterSplit(BB &pred, BB &succ, BB &newBB)
     }
 
     /* update phi */
-    for (auto phiInsnIt : succ.GetPhiInsns()) {
+    for (const auto phiInsnIt : succ.GetPhiInsns()) {
         auto &phiList = static_cast<PhiOperand &>(phiInsnIt.second->GetOperand(kInsnSecondOpnd));
-        for (auto phiOpndIt : phiList.GetOperands()) {
+        for (const auto phiOpndIt : phiList.GetOperands()) {
             uint32 fBBId = phiOpndIt.first;
             DEBUG_ASSERT(fBBId != 0, "GetFromBBID = 0");
             BB *predBB = cgFunc->GetBBFromID(fBBId);
@@ -873,7 +971,7 @@ void CGCFG::UpdatePredsSuccsAfterSplit(BB &pred, BB &succ, BB &newBB)
 }
 
 #if TARGAARCH64
-void CGCFG::BreakCriticalEdge(BB &pred, BB &succ)
+void CGCFG::BreakCriticalEdge(BB &pred, BB &succ) const
 {
     LabelIdx newLblIdx = cgFunc->CreateLabel();
     BB *newBB = cgFunc->CreateNewBB(newLblIdx, false, BB::kBBGoto, pred.GetFrequency());
@@ -889,11 +987,19 @@ void CGCFG::BreakCriticalEdge(BB &pred, BB &succ)
         newBB->SetKind(BB::kBBFallthru);
     } else {
         BB *exitBB = cgFunc->GetExitBBsVec().size() == 0 ? nullptr : cgFunc->GetExitBB(0);
-        if (exitBB == nullptr) {
-            cgFunc->GetLastBB()->AppendBB(*newBB);
-            cgFunc->SetLastBB(*newBB);
+        if (exitBB == nullptr || exitBB->IsUnreachable()) {
+            if (cgFunc->GetLastBB()->IsUnreachable()) {
+                // nowhere to connect the newBB, drop it
+                cgFunc->ClearBBInVec(newBB->GetId());
+                return;
+            } else {
+                cgFunc->GetLastBB()->PrependBB(*newBB);
+            }
         } else {
             exitBB->AppendBB(*newBB);
+            if (cgFunc->GetLastBB() == exitBB) {
+                cgFunc->SetLastBB(*newBB);
+            }
         }
         newBB->AppendInsn(
             cgFunc->GetInsnBuilder()->BuildInsn(MOP_xuncond, cgFunc->GetOrCreateLabelOperand(succ.GetLabIdx())));
@@ -912,7 +1018,7 @@ void CGCFG::BreakCriticalEdge(BB &pred, BB &succ)
         for (size_t i = 0; i < labelVec.size(); ++i) {
             if (labelVec[i] == succ.GetLabIdx()) {
                 /* single edge for multi jump target, so have to replace all. */
-                pred.SetRangeGotoLabel(i, newLblIdx);
+                pred.SetRangeGotoLabel(static_cast<uint32>(i), newLblIdx);
             }
         }
         cgFunc->UpdateEmitSt(pred, succ.GetLabIdx(), newLblIdx);
@@ -925,12 +1031,20 @@ void CGCFG::BreakCriticalEdge(BB &pred, BB &succ)
 }
 #endif
 
+void CgHandleCFG::GetAnalysisDependence(AnalysisDep &aDep) const
+{
+    aDep.SetPreservedAll();
+}
+
 bool CgHandleCFG::PhaseRun(maplebe::CGFunc &f)
 {
     CGCFG *cfg = f.GetMemoryPool()->New<CGCFG>(f);
     f.SetTheCFG(cfg);
+    cfg->MarkLabelTakenBB();
     /* build control flow graph */
     f.GetTheCFG()->BuildCFG();
+    f.HandleFuncCfg(cfg);
+
     /* analysis unreachable code */
     f.GetTheCFG()->UnreachCodeAnalysis();
     f.EraseUnreachableStackMapInsns();

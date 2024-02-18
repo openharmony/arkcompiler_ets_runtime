@@ -404,7 +404,7 @@ public:
 
     const JSPandaFile *PUBLIC_API GetJSPandaFile() const;
     uint32_t GetCodeSize() const;
-    MethodLiteral *GetMethodLiteral() const;
+    MethodLiteral *PUBLIC_API GetMethodLiteral() const;
 
     const char *PUBLIC_API GetMethodName() const;
     const char *PUBLIC_API GetMethodName(const JSPandaFile *file) const;

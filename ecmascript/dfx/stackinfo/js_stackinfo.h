@@ -20,12 +20,12 @@
 #include "ecmascript/compiler/aot_file/aot_file_manager.h"
 #include "ecmascript/js_thread.h"
 
-#if defined(PANDA_TARGET_OHOS)
-constexpr uint16_t URL_MAX = 1024;
-constexpr uint16_t FUNCTIONNAME_MAX = 1024;
-#endif
-
 namespace panda::ecmascript {
+typedef bool (*ReadMemFunc)(void *ctx, uintptr_t addr, uintptr_t *val);
+
+static constexpr uint16_t URL_MAX = 1024;
+static constexpr uint16_t FUNCTIONNAME_MAX = 1024;
+
 struct JsFrameInfo {
     std::string functionName;
     std::string fileName;
@@ -33,10 +33,33 @@ struct JsFrameInfo {
     uintptr_t *nativePointer = nullptr;
 };
 
-struct JsFrameParam {
-    std::string PandaFileName;
-    panda_file::File::EntityId methodId;
-    uint32_t byteCodeOffset;
+struct JsFunction {
+    char functionName[FUNCTIONNAME_MAX];
+    char url[URL_MAX];
+    int32_t line;
+    int32_t column;
+    uintptr_t codeBegin;
+    uintptr_t codeSize;
+};
+
+struct MethodInfo {
+    uintptr_t methodId;
+    uintptr_t codeBegin;
+    uint32_t codeSize;
+    MethodInfo(uintptr_t methodId, uintptr_t codeBegin, uint32_t codeSize)
+        : methodId(methodId), codeBegin(codeBegin), codeSize(codeSize) {}
+    friend bool operator<(const MethodInfo &lhs, const MethodInfo &rhs)
+    {
+        return lhs.codeBegin < rhs.codeBegin;
+    }
+};
+
+struct CodeInfo {
+    uintptr_t offset;
+    uintptr_t methodId;
+    uint32_t codeSize;
+    CodeInfo(uintptr_t offset, uintptr_t methodId, uint32_t codeSize)
+        : offset(offset), methodId(methodId), codeSize(codeSize) {}
 };
 
 #if defined(PANDA_TARGET_OHOS)
@@ -63,6 +86,13 @@ extern "C" int step_ark_managed_native_frame(
     int pid, uintptr_t *pc, uintptr_t *fp, uintptr_t *sp, char *buf, size_t buf_sz);
 extern "C" int get_ark_js_heap_crash_info(
     int pid, uintptr_t *x20, uintptr_t *fp, int out_js_info, char *buf, size_t buf_sz);
+extern "C" int ark_parse_js_frame_info(
+    uintptr_t byteCodePc, uintptr_t mapBase, uintptr_t loadOffset, uint8_t *data, uint64_t dataSize,
+    panda::ecmascript::JsFunction *jsFunction);
+extern "C" int ark_translate_js_frame_info(
+    uint8_t *data, size_t dataSize, panda::ecmascript::JsFunction *jsFunction);
+extern "C" int step_ark(
+    void *ctx, panda::ecmascript::ReadMemFunc readMem, uintptr_t *fp, uintptr_t *sp, uintptr_t *pc, bool *isJsFrame);
 #if defined(PANDA_TARGET_OHOS)
 extern "C" int get_ark_native_frame_info(
     int pid, uintptr_t *pc, uintptr_t *fp, uintptr_t *sp, panda::ecmascript::JsFrame *jsFrame, size_t &size);

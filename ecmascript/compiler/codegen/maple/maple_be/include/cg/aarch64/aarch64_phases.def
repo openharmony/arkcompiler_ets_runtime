@@ -18,6 +18,7 @@
  ADDTARGETPHASE("buildehfunc", true);
  ADDTARGETPHASE("handlefunction", true);
  ADDTARGETPHASE("moveargs", true);
+ ADDTARGETPHASE("stackmapcomputation", false);
  if (GetMIRModule()->GetFlavor() != MIRFlavor::kFlavorLmbc) {
    /* SSA PHASES */
    ADDTARGETPHASE("cgssaconstruct", CGOptions::DoCGSSA());
@@ -69,4 +70,5 @@
  ADDTARGETPHASE("scheduling", CGOptions::DoSchedule());
  ADDTARGETPHASE("alignanalysis", GetMIRModule()->IsCModule() && CGOptions::DoAlignAnalysis());
  ADDTARGETPHASE("fixshortbranch", true);
+ ADDTARGETPHASE("cgirverify", CGOptions::DoCGIRVerify());
  ADDTARGETPHASE("cgemit", true);

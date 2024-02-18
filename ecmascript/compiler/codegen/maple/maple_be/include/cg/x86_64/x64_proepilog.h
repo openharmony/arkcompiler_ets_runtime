@@ -17,7 +17,6 @@
 #define MAPLEBE_INCLUDE_CG_X64_X64_PROEPILOG_H
 
 #include "proepilog.h"
-#include "x64_cgfunc.h"
 
 namespace maplebe {
 using namespace maple;
@@ -27,7 +26,6 @@ public:
     explicit X64GenProEpilog(CGFunc &func) : GenProEpilog(func) {}
     ~X64GenProEpilog() override = default;
 
-    bool TailCallOpt() override;
     bool NeedProEpilog() override;
     void Run() override;
 

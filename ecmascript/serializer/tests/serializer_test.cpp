@@ -94,6 +94,48 @@ public:
         Destroy();
     }
 
+    void LineStringTest(SerializeData* data)
+    {
+        Init();
+        BaseDeserializer deserializer(thread, data);
+        JSHandle<JSTaggedValue> res = deserializer.ReadValue();
+        ecmaVm->CollectGarbage(TriggerGCType::YOUNG_GC);
+        ecmaVm->CollectGarbage(TriggerGCType::OLD_GC);
+
+        EXPECT_FALSE(res.IsEmpty());
+        EXPECT_TRUE(res->IsLineString());
+
+        Destroy();
+    }
+
+    void TreeStringTest(SerializeData* data)
+    {
+        Init();
+        BaseDeserializer deserializer(thread, data);
+        JSHandle<JSTaggedValue> res = deserializer.ReadValue();
+        ecmaVm->CollectGarbage(TriggerGCType::YOUNG_GC);
+        ecmaVm->CollectGarbage(TriggerGCType::OLD_GC);
+
+        EXPECT_FALSE(res.IsEmpty());
+        EXPECT_TRUE(res->IsLineString());
+
+        Destroy();
+    }
+
+    void SlicedStringTest(SerializeData* data)
+    {
+        Init();
+        BaseDeserializer deserializer(thread, data);
+        JSHandle<JSTaggedValue> res = deserializer.ReadValue();
+        ecmaVm->CollectGarbage(TriggerGCType::YOUNG_GC);
+        ecmaVm->CollectGarbage(TriggerGCType::OLD_GC);
+
+        EXPECT_FALSE(res.IsEmpty());
+        EXPECT_TRUE(res->IsLineString());
+
+        Destroy();
+    }
+
     void JSPlainObjectTest1(SerializeData* data)
     {
         Init();
@@ -814,6 +856,62 @@ HWTEST_F_L0(JSSerializerTest, SerializeJSSpecialValue)
 
     JSDeserializerTest jsDeserializerTest;
     std::thread t1(&JSDeserializerTest::JSSpecialValueTest, jsDeserializerTest, data.release());
+    t1.join();
+    delete serializer;
+};
+
+HWTEST_F_L0(JSSerializerTest, SerializeLineString)
+{
+    ObjectFactory *factory = ecmaVm->GetFactory();
+    JSHandle<EcmaString> str(factory->NewFromASCII("123"));
+
+    ValueSerializer *serializer = new ValueSerializer(thread);
+    serializer->WriteValue(thread, JSHandle<JSTaggedValue>(str),
+                           JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()),
+                           JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
+    std::unique_ptr<SerializeData> data = serializer->Release();
+    JSDeserializerTest jsDeserializerTest;
+    std::thread t1(&JSDeserializerTest::LineStringTest, jsDeserializerTest, data.release());
+    t1.join();
+    delete serializer;
+};
+
+HWTEST_F_L0(JSSerializerTest, SerializeTreeString)
+{
+    ObjectFactory *factory = ecmaVm->GetFactory();
+    JSHandle<EcmaString> str1(factory->NewFromASCII("123456789"));
+    JSHandle<EcmaString> str2(factory->NewFromASCII("abcdefghi"));
+
+    JSHandle<EcmaString> str3 = JSHandle<EcmaString>(thread, EcmaStringAccessor::Concat(ecmaVm, str1, str2));
+    EXPECT_TRUE(str3.GetTaggedValue().IsTreeString());
+
+    ValueSerializer *serializer = new ValueSerializer(thread);
+    serializer->WriteValue(thread, JSHandle<JSTaggedValue>(str3),
+                           JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()),
+                           JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
+    std::unique_ptr<SerializeData> data = serializer->Release();
+    JSDeserializerTest jsDeserializerTest;
+    std::thread t1(&JSDeserializerTest::TreeStringTest, jsDeserializerTest, data.release());
+    t1.join();
+    delete serializer;
+};
+
+HWTEST_F_L0(JSSerializerTest, SerializeSlicedString)
+{
+    ObjectFactory *factory = ecmaVm->GetFactory();
+    JSHandle<EcmaString> str1(factory->NewFromASCII("123456789abcedfghijk"));
+
+    JSHandle<EcmaString> str2 =
+        JSHandle<EcmaString>(thread, EcmaStringAccessor::GetSubString(ecmaVm, str1, 2, 13)); // 2: start, 3: len
+    EXPECT_TRUE(str2.GetTaggedValue().IsSlicedString());
+
+    ValueSerializer *serializer = new ValueSerializer(thread);
+    serializer->WriteValue(thread, JSHandle<JSTaggedValue>(str2),
+                           JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()),
+                           JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
+    std::unique_ptr<SerializeData> data = serializer->Release();
+    JSDeserializerTest jsDeserializerTest;
+    std::thread t1(&JSDeserializerTest::SlicedStringTest, jsDeserializerTest, data.release());
     t1.join();
     delete serializer;
 };

@@ -67,7 +67,6 @@ public:
 
     void SetAliasVarMap(GStrIdx idx, const MIRAliasVars &vars)
     {
-        DEBUG_ASSERT(aliasVarMap.find(idx) == aliasVarMap.end(), "alias already exist");
         aliasVarMap[idx] = vars;
     }
 

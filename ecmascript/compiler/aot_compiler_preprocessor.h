@@ -65,6 +65,7 @@ struct CompilationOptions {
     bool isEnableNativeInline_;
     bool isEnablePGOHCRLowering_;
     bool isEnableLoweringBuiltin_;
+    bool isEnableOptBranchProfiling_;
 };
 
 class AotCompilerPreprocessor {

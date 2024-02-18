@@ -60,6 +60,7 @@ CompilationOptions::CompilationOptions(EcmaVM *vm, JSRuntimeOptions &runtimeOpti
     isEnableLexenvSpecialization_ = runtimeOptions.IsEnableLexenvSpecialization();
     isEnableNativeInline_ = runtimeOptions.IsEnableNativeInline();
     isEnableLoweringBuiltin_ = runtimeOptions.IsEnableLoweringBuiltin();
+    isEnableOptBranchProfiling_ = runtimeOptions.IsEnableBranchProfiling();
 }
 
 bool AotCompilerPreprocessor::HandleTargetCompilerMode(CompilationOptions &cOptions)
@@ -188,6 +189,7 @@ void AotCompilerPreprocessor::ResolveModule(const JSPandaFile *jsPandaFile, cons
             auto recordName = info.first;
             JSHandle<JSTaggedValue> moduleRecord = moduleManager->HostResolveImportedModuleWithMerge(fileName.c_str(),
                 recordName);
+            RETURN_IF_ABRUPT_COMPLETION(thread);
             SourceTextModule::Instantiate(thread, moduleRecord);
         }
     }

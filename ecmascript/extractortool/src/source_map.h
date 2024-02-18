@@ -68,12 +68,15 @@ public:
     SourceMap() = default;
     ~SourceMap() = default;
 
-    void Init(const std::string& hapPath);
+#if defined(PANDA_TARGET_OHOS)
+    void Init(const std::string& url, const std::string& hapPath);
+#endif
+    void Init(uint8_t *data, size_t dataSize, const std::string& url);
     bool TranslateUrlPositionBySourceMap(std::string& url, int& line, int& column);
     static void ExtractStackInfo(const std::string& stackStr, std::vector<std::string>& res);
     
 private:
-    void SplitSourceMap(const std::string& sourceMapData);
+    void SplitSourceMap(const std::string& url, const std::string& sourceMapData);
     void ExtractSourceMapData(const std::string& sourceMapData, std::shared_ptr<SourceMapData>& curMapData);
     void ExtractKeyInfo(const std::string& sourceMap, std::vector<std::string>& sourceKeyInfo);
     std::vector<std::string> HandleMappings(const std::string& mapping);
@@ -81,8 +84,9 @@ private:
     MappingInfo Find(int32_t row, int32_t col, const SourceMapData& targetMap, const std::string& key);
     void GetPosInfo(const std::string& temp, int32_t start, std::string& line, std::string& column);
     bool GetLineAndColumnNumbers(int& line, int& column, SourceMapData& targetMap, std::string& key);
+#if defined(PANDA_TARGET_OHOS)
     bool ReadSourceMapData(const std::string& hapPath, std::string& content);
-
+#endif
 private:
     std::unordered_map<std::string, std::shared_ptr<SourceMapData>> sourceMaps_;
 };

@@ -43,7 +43,7 @@ std::string LocationTy::TypeToString(Kind loc) const
 
 void LLVMStackMapParser::FilterCallSiteInfo(LLVMStackMapType::CallSiteInfo &info)
 {
-    ASSERT(GC_PAIR_SIZE == 2);
+    ASSERT(GC_PAIR_SIZE == 2); // 2 : The expected value of GC_PAIR_SIZE is 2
     ASSERT(info.size() % GC_PAIR_SIZE == 0);
     for (auto it = info.begin(); it != info.end();) {
         auto base = it;

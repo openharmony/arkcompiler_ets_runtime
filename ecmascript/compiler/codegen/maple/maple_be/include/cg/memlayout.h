@@ -17,7 +17,6 @@
 #define MAPLEBE_INCLUDE_CG_MEMLAYOUT_H
 
 /* C++ headers. */
-#include <cstddef>
 #include <utility>
 #include "becommon.h"
 #include "mir_function.h"
@@ -56,6 +55,8 @@ enum MemSegmentKind : uint8 {
     /* local (auto) variables */
     kMsRefLocals,
     kMsLocals,
+    // segment which is accessed rarely
+    kMsCold,
     kMsSpillReg,
     /*
      * In between kMsLocals and MS_args_to_stackpass, we allocate
@@ -188,6 +189,11 @@ public:
      */
     virtual void AssignSpillLocationsToPseudoRegisters() = 0;
 
+    virtual int32 GetCalleeSaveBaseLoc() const
+    {
+        return 0;
+    }
+
     SymbolAlloc *GetSymAllocInfo(uint32 stIdx)
     {
         DEBUG_ASSERT(stIdx < symAllocTable.size(), "out of symAllocTable's range");
@@ -236,6 +242,11 @@ public:
     uint32 SizeOfArgsRegisterPassed() const
     {
         return segArgsRegPassed.GetSize();
+    }
+
+    uint32 GetSizeOfSegCold() const
+    {
+        return segCold.GetSize();
     }
 
     BECommon &GetBECommon()
@@ -299,6 +310,7 @@ protected:
     MemSegment segArgsStkPassed;
     MemSegment segArgsRegPassed;
     MemSegment segArgsToStkPass;
+    MemSegment segCold = MemSegment(kMsCold);
     MemSegment segSpillReg = MemSegment(kMsSpillReg);
     MapleVector<SymbolAlloc *> symAllocTable; /* index is stindex from StIdx */
     MapleVector<SymbolAlloc *> spillLocTable; /* index is preg idx */

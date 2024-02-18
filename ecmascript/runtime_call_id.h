@@ -390,6 +390,13 @@ namespace panda::ecmascript {
     V(DisplayNames, SupportedLocalesOf)       \
     V(DisplayNames, Of)                       \
     V(DisplayNames, ResolvedOptions)          \
+    V(Segmenter, Constructor)                 \
+    V(Segmenter, SupportedLocalesOf)          \
+    V(Segmenter, ResolvedOptions)             \
+    V(Segmenter, Segment)                     \
+    V(Segments, Containing)                   \
+    V(Segments, GetSegmentIterator)           \
+    V(SegmentIterator, Next)                  \
     V(Error, ErrorConstructor)                \
     V(Error, ErrorToString)                   \
     V(Error, RangeErrorConstructor)           \
@@ -579,6 +586,7 @@ namespace panda::ecmascript {
     V(Object, Freeze)                         \
     V(Object, FromEntries)                    \
     V(Object, GetOwnPropertyDescriptor)       \
+    V(Object, GetOwnPropertyDescriptors)      \
     V(Object, GetOwnPropertyKeys)             \
     V(Object, GetOwnPropertyNames)            \
     V(Object, GetOwnPropertySymbols)          \

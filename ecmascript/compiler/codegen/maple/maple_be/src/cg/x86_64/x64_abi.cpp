@@ -66,29 +66,6 @@ bool IsCalleeSavedReg(X64reg reg)
     }
 }
 
-bool IsParamReg(X64reg reg)
-{
-    switch (reg) {
-/* integer registers */
-#define INT_REG(ID, PREF8, PREF8_16, PREF16, PREF32, PREF64, canBeAssigned, isCalleeSave, isParam, isSpill, \
-                isExtraSpill)                                                                               \
-    case R##ID:                                                                                             \
-        return isParam;
-#define INT_REG_ALIAS(ALIAS, ID)
-#include "x64_int_regs.def"
-#undef INT_REG
-#undef INT_REG_ALIAS
-/* fp-simd registers */
-#define FP_SIMD_REG(ID, P8, P16, P32, P64, P128, canBeAssigned, isCalleeSave, isParam, isSpill, isExtraSpill) \
-    case V##ID:                                                                                               \
-        return isParam;
-#include "x64_fp_simd_regs.def"
-#undef FP_SIMD_REG
-        default:
-            return false;
-    }
-}
-
 bool IsSpillReg(X64reg reg)
 {
     switch (reg) {

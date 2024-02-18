@@ -231,6 +231,7 @@ JSTaggedValue RuntimeStubs::RuntimeCloseIterator(JSThread *thread, const JSHandl
         record = JSHandle<JSTaggedValue>(factory->NewCompletionRecord(CompletionRecordType::NORMAL, undefinedVal));
     }
     JSHandle<JSTaggedValue> result = JSIterator::IteratorClose(thread, iter, record);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     if (result->IsCompletionRecord()) {
         return CompletionRecord::Cast(result->GetTaggedObject())->GetValue();
     }
@@ -311,6 +312,7 @@ JSTaggedValue RuntimeStubs::RuntimeAsyncFunctionAwaitUncaught(JSThread *thread,
                                                               const JSHandle<JSTaggedValue> &value)
 {
     JSAsyncFunction::AsyncFunctionAwait(thread, asyncFuncObj, value);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     if (asyncFuncObj->IsAsyncGeneratorObject()) {
         JSHandle<JSObject> obj = JSTaggedValue::ToObject(thread, asyncFuncObj);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -439,7 +441,12 @@ JSTaggedValue RuntimeStubs::RuntimeStArraySpread(JSThread *thread, const JSHandl
             JSTaggedValue::SetProperty(thread, dst, dstLen + i, strValue, true);
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         }
-        return JSTaggedValue(dstLen + strLen);
+        JSHandle<JSTaggedValue> length(thread, JSTaggedValue(dstLen + strLen));
+        if (strLen == 0U) {
+            JSHandle<JSTaggedValue> lengthKey = thread->GlobalConstants()->GetHandledLengthString();
+            JSTaggedValue::SetProperty(thread, dst, lengthKey, length);
+        }
+        return length.GetTaggedValue();
     }
 
     if (index.GetInt() == 0 && src->IsStableJSArray(thread)) {
@@ -487,6 +494,7 @@ JSTaggedValue RuntimeStubs::RuntimeStArraySpread(JSThread *thread, const JSHandl
     JSHandle<JSTaggedValue> valueStr = globalConst->GetHandledValueString();
     PropertyDescriptor desc(thread);
     JSHandle<JSTaggedValue> iterResult;
+    uint32_t srcLen = 0U;
     do {
         iterResult = JSIterator::IteratorStep(thread, iter);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -494,14 +502,19 @@ JSTaggedValue RuntimeStubs::RuntimeStArraySpread(JSThread *thread, const JSHandl
             break;
         }
         bool success = JSTaggedValue::GetOwnProperty(thread, iterResult, valueStr, desc);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         if (success && desc.IsEnumerable()) {
             JSTaggedValue::DefineOwnProperty(thread, dst, indexHandle, desc);
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
             int tmp = indexHandle->GetInt();
             indexHandle.Update(JSTaggedValue(tmp + 1));
+            ++srcLen;
         }
     } while (true);
-
+    if (srcLen == 0U) {
+        JSHandle<JSTaggedValue> lengthKey = thread->GlobalConstants()->GetHandledLengthString();
+        JSTaggedValue::SetProperty(thread, dst, lengthKey, indexHandle);
+    }
     return indexHandle.GetTaggedValue();
 }
 
@@ -545,6 +558,7 @@ JSTaggedValue RuntimeStubs::RuntimeLdObjByValue(JSThread *thread, const JSHandle
     JSTaggedValue res;
     if (callGetter) {
         res = JSObject::CallGetter(thread, AccessorData::Cast(receiver.GetTaggedObject()), object);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     } else {
         JSHandle<JSTaggedValue> propKey = JSTaggedValue::ToPropertyKey(thread, prop);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -605,6 +619,7 @@ JSTaggedValue RuntimeStubs::RuntimeLdSuperByValue(JSThread *thread, const JSHand
     // get Homeobject form function
     JSHandle<JSTaggedValue> homeObject(thread, JSFunction::Cast(thisFunc.GetTaggedObject())->GetHomeObject());
     JSHandle<JSTaggedValue> superBase(thread, JSTaggedValue::GetSuperBase(thread, homeObject));
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSTaggedValue::RequireObjectCoercible(thread, superBase);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSHandle<JSTaggedValue> propKey(JSTaggedValue::ToPropertyKey(thread, key));
@@ -623,6 +638,7 @@ JSTaggedValue RuntimeStubs::RuntimeStSuperByValue(JSThread *thread, const JSHand
     // get Homeobject form function
     JSHandle<JSTaggedValue> homeObject(thread, JSFunction::Cast(thisFunc.GetTaggedObject())->GetHomeObject());
     JSHandle<JSTaggedValue> superBase(thread, JSTaggedValue::GetSuperBase(thread, homeObject));
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSTaggedValue::RequireObjectCoercible(thread, superBase);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSHandle<JSTaggedValue> propKey(JSTaggedValue::ToPropertyKey(thread, key));
@@ -818,7 +834,7 @@ JSTaggedValue RuntimeStubs::RuntimeCloneClassFromTemplate(JSThread *thread, cons
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
     // After clone both, reset "constructor" and "prototype" properties.
-    JSFunction::SetFunctionPrototype(thread, cloneClass, cloneClassPrototype.GetTaggedValue());
+    JSFunction::SetFunctionPrototypeOrInstanceHClass(thread, cloneClass, cloneClassPrototype.GetTaggedValue());
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
     PropertyDescriptor ctorDesc(thread, JSHandle<JSTaggedValue>(cloneClass), true, false, true);
@@ -2404,6 +2420,7 @@ JSTaggedValue RuntimeStubs::RuntimeGetCallSpreadArgs(JSThread *thread, const JSH
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<TaggedArray> argv = factory->NewTaggedArray(argvMayMaxLength);
     JSHandle<JSTaggedValue> itor = JSIterator::GetIterator(thread, jsArray);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
     // Fast path when array is stablearray and Iterator not change.
     if (jsArray->IsStableJSArray(thread) && itor->IsJSArrayIterator()) {
@@ -3055,6 +3072,7 @@ JSTaggedValue RuntimeStubs::RuntimeDefinePrivateProperty(JSThread *thread, JSTag
     }
     bool result = JSObject::CreateDataPropertyOrThrow(thread, JSHandle<JSObject>::Cast(handleObj),
                                                       handleKey, handleValue);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     if (!extensible) {
         handleObj->GetTaggedObject()->GetClass()->SetExtensible(false);
     }

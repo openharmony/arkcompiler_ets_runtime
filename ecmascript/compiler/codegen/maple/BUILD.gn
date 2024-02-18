@@ -86,12 +86,9 @@ config("mapleallcompilecfg") {
     cflags_cc += [ "-fno-stack-protector" ]
   }
 
-  if (TARGET == "aarch64") {
-    cflags_cc += [ "-DTARGAARCH64" ]
-  }
-
-  if (TARGET == "x86_64") {
+  if (TARGET == "aarch64" || TARGET == "x86_64") {
     cflags_cc += [ "-DTARGX86_64" ]
+    cflags_cc += [ "-DTARGAARCH64" ]
   }
 
   if (TARGET == "riscv64") {

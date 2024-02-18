@@ -256,7 +256,7 @@ void AArch64DepAnalysis::CombineMemoryAccessPair(DepNode &firstNode, DepNode &se
     DEBUG_ASSERT(firstNode.GetInsn(), "the insn of first Node should not be nullptr");
     DEBUG_ASSERT(secondNode.GetInsn(), "the insn of second Node should not be nullptr");
     MOperator thisMop = firstNode.GetInsn()->GetMachineOpcode();
-    MOperator mopPair = GetMopPair(thisMop);
+    MOperator mopPair = GetMopPair(thisMop, false);
     DEBUG_ASSERT(mopPair != 0, "mopPair should not be zero");
     Operand *opnd0 = nullptr;
     Operand *opnd1 = nullptr;
@@ -1146,7 +1146,8 @@ void AArch64DepAnalysis::Run(BB &bb, MapleVector<DepNode *> &nodes)
     uint32 nodeSum = 1;
     MapleVector<Insn *> comments(alloc.Adapter());
     const Insn *locInsn = bb.GetFirstLoc();
-    FOR_BB_INSNS(insn, (&bb)) {
+    FOR_BB_INSNS(insn, (&bb))
+    {
         if (!insn->IsMachineInstruction()) {
             if (insn->IsImmaterialInsn()) {
                 if (!insn->IsComment()) {

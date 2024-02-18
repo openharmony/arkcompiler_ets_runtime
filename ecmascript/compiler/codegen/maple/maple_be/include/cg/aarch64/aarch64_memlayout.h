@@ -158,7 +158,7 @@ public:
 
     uint32 RealStackFrameSize() const;
 
-    const MemSegment &locals() const
+    const MemSegment &Locals() const
     {
         return segLocals;
     }
@@ -171,6 +171,11 @@ public:
     uint32 GetSizeOfLocals() const
     {
         return segLocals.GetSize();
+    }
+
+    uint32 GetSizeOfCold() const
+    {
+        return segCold.GetSize();
     }
 
     void SetSizeOfGRSaveArea(uint32 sz)
@@ -198,9 +203,12 @@ public:
         return segRefLocals.GetSize();
     }
 
+    uint64 GetSizeOfColdToStk() const;
+    bool IsSegMentVaried(const MemSegment *seg) const;
     int32 GetRefLocBaseLoc() const;
-    int32 GetGRSaveAreaBaseLoc();
-    int32 GetVRSaveAreaBaseLoc();
+    int32 GetGRSaveAreaBaseLoc() const;
+    int32 GetVRSaveAreaBaseLoc() const;
+    int32 GetCalleeSaveBaseLoc() const override;
 
 private:
     MemSegment segRefLocals = MemSegment(kMsRefLocals);
@@ -217,6 +225,8 @@ private:
     void LayoutLocalVariables(std::vector<MIRSymbol *> &tempVar, std::vector<MIRSymbol *> &returnDelays);
     void LayoutEAVariales(std::vector<MIRSymbol *> &tempVar);
     void LayoutReturnRef(std::vector<MIRSymbol *> &returnDelays, int32 &structCopySize, int32 &maxParmStackSize);
+    // layout small local near sp, otherwise, above spill region
+    void LayoutLocalsInSize(const MIRSymbol &mirSym);
 
     SymbolAlloc *CreateSymbolAlloc() const override
     {

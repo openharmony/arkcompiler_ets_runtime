@@ -33,3 +33,13 @@ print(arr.length)
 arr[0] = 'a'
 arr = Array.from("")
 print(arr.length)
+
+var src = new Uint8Array(10000);
+for(var i = 0; i < 10000; i++)
+{
+    src[i] = 1;
+}
+arr = Array.from(src);
+print(arr[666]);
+print(arr[999]);
+print(arr.length);

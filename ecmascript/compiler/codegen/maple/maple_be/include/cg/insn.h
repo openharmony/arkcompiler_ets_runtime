@@ -20,15 +20,20 @@
 #include <string>
 #include <vector>
 #include <list>
+/* Maple CG headers */
 #include "operand.h"
-#include "stackmap.h"
-#include "mpl_logging.h"
-#include "sparse_datainfo.h"
-
+#include "isa.h"
+#include "common_utils.h"
 /* Maple IR header */
 #include "types_def.h" /* for uint32 */
-#include "common_utils.h"
+/* Maple Util headers */
+#include "mpl_logging.h"
 
+#include "stackmap.h"
+#include "sparse_datainfo.h"
+
+/* Maple Util headers */
+#include "mem_reference_table.h" /* for alias */
 namespace maplebe {
 /* forward declaration */
 class BB;
@@ -36,13 +41,11 @@ class CG;
 class Emitter;
 class DepNode;
 struct InsnDesc;
+class InsnBuilder;
+class OperandBuilder;
+
 class Insn {
 public:
-    enum RetType : uint8 {
-        kRegNull,  /* no return type */
-        kRegFloat, /* return register is V0 */
-        kRegInt    /* return register is R0 */
-    };
     /* MCC_DecRefResetPair clear 2 stack position, MCC_ClearLocalStackRef clear 1 stack position */
     static constexpr uint8 kMaxStackOffsetSize = 2;
 
@@ -88,6 +91,22 @@ public:
         opnds.emplace_back(&opnd4);
     }
     virtual ~Insn() = default;
+
+    void DeepClone(const Insn &insn, MapleAllocator &allocator)
+    {
+        opnds.clear();
+        for (auto opnd : insn.opnds) {
+            opnds.emplace_back(opnd->CloneTree(allocator));
+        }
+    }
+
+    // Custom deep copy
+    virtual Insn *CloneTree(MapleAllocator &allocator) const
+    {
+        auto *insn = allocator.GetMemPool()->New<Insn>(*this);
+        insn->DeepClone(*this, allocator);
+        return insn;
+    }
 
     MOperator GetMachineOpcode() const
     {
@@ -140,6 +159,14 @@ public:
         opnds[index] = &opnd;
     }
 
+    /* Get size info from machine description */
+    uint32 GetOperandSize(uint32 index) const
+    {
+        CHECK_FATAL(index < opnds.size(), "index out of range!");
+        const OpndDesc *opndMD = md->GetOpndDes(index);
+        return opndMD->GetSize();
+    }
+
     void SetRetSize(uint32 size)
     {
         DEBUG_ASSERT(IsCall(), "Insn should be a call.");
@@ -150,6 +177,20 @@ public:
     {
         DEBUG_ASSERT(IsCall(), "Insn should be a call.");
         return retSize;
+    }
+
+    // Insn Function: check legitimacy of opnds.
+    bool VerifySelf() const
+    {
+        if (this->IsCfiInsn() || this->IsDbgInsn()) {
+            return true;
+        }
+        return md->Verify(opnds);
+    }
+
+    void SplitSelf(bool isAfterRegAlloc, InsnBuilder *insnBuilder, OperandBuilder *opndBuilder)
+    {
+        md->Split(this, isAfterRegAlloc, insnBuilder, opndBuilder);
     }
 
     virtual bool IsMachineInstruction() const;
@@ -170,9 +211,12 @@ public:
 
     Operand *GetMemOpnd() const;
 
+    uint32 GetMemOpndIdx() const;
+
     void SetMemOpnd(MemOperand *memOpnd);
 
     bool IsCall() const;
+    bool IsSpecialCall() const;
     bool IsTailCall() const;
     bool IsAsmInsn() const;
     bool IsClinit() const;
@@ -236,6 +280,11 @@ public:
         return false;
     }
 
+    virtual bool IsDbgLine() const
+    {
+        return false;
+    }
+
     bool IsDMBInsn() const;
 
     bool IsVectorOp() const;
@@ -281,6 +330,26 @@ public:
         isFrameDef = b;
     }
 
+    bool IsStackDef() const
+    {
+        return isStackDef;
+    }
+
+    void SetStackDef(bool flag)
+    {
+        isStackDef = flag;
+    }
+
+    bool IsStackRevert() const
+    {
+        return isStackRevert;
+    }
+
+    void SetStackRevert(bool flag)
+    {
+        isStackRevert = flag;
+    }
+
     bool IsAsmDefCondCode() const
     {
         return asmDefCondCode;
@@ -308,9 +377,7 @@ public:
 
     virtual void Dump() const;
 
-#if DEBUG
-    virtual void Check() const;
-#endif
+    virtual bool CheckMD() const;
 
     void SetComment(const std::string &str)
     {
@@ -521,16 +588,6 @@ public:
         return !isCallReturnUnsigned;
     }
 
-    void SetRetType(RetType retType)
-    {
-        this->retType = retType;
-    }
-
-    RetType GetRetType() const
-    {
-        return retType;
-    }
-
     void SetClearStackOffset(short index, int64 offset)
     {
         CHECK_FATAL(index < kMaxStackOffsetSize, "out of clearStackOffset's range");
@@ -594,6 +651,41 @@ public:
     const MapleMap<uint32, uint32> &GetRegBinding() const
     {
         return registerBinding;
+    }
+
+    void SetReferenceOsts(MemDefUse *memDefUse)
+    {
+        referenceOsts = memDefUse;
+    }
+
+    const MemDefUse *GetReferenceOsts() const
+    {
+        return referenceOsts;
+    }
+
+    void MergeReferenceOsts(Insn &rhs)
+    {
+        if (referenceOsts == nullptr) {
+            SetReferenceOsts(rhs.referenceOsts);
+        } else if (rhs.referenceOsts != nullptr) {
+            referenceOsts->MergeOthers(*rhs.referenceOsts);
+        }
+    }
+
+    bool Equals(const Insn &rhs) const
+    {
+        if (&rhs == this) {
+            return true;
+        }
+        if (mOp != rhs.mOp || opnds.size() != rhs.opnds.size()) {
+            return false;
+        }
+        for (uint32 i = 0; i < opnds.size(); ++i) {
+            if (!opnds[i]->Equals(*rhs.opnds[i])) {
+                return false;
+            }
+        }
+        return true;
     }
 
     void AddDeoptBundleInfo(int32 deoptVreg, Operand &opnd)
@@ -698,8 +790,7 @@ private:
     uint32 id = 0;
     uint32 address = 0;
     uint32 nopNum = 0;
-    RetType retType = kRegNull; /* if this insn is call, it represent the return register type R0/V0 */
-    uint32 retSize = 0;         /* Byte size of the return value if insn is a call. */
+    uint32 retSize = 0; /* Byte size of the return value if insn is a call. */
     /* record the stack cleared by MCC_ClearLocalStackRef or MCC_DecRefResetPair */
     int64 clearStackOffset[kMaxStackOffsetSize] = {-1, -1};
     DepNode *depNode = nullptr; /* For dependence analysis, pointing to a dependence node. */
@@ -710,6 +801,8 @@ private:
     bool isSpill = false;              /* used as hint for optimization */
     bool isReload = false;             /* used as hint for optimization */
     bool isFrameDef = false;
+    bool isStackDef = false;     // def sp in prolog
+    bool isStackRevert = false;  // revert sp in epilog
     bool asmDefCondCode = false;
     bool asmModMem = false;
     bool needSplit = false;
@@ -719,6 +812,7 @@ private:
 
     /* for multiple architecture */
     const InsnDesc *md = nullptr;
+    MemDefUse *referenceOsts = nullptr;
     SparseDataInfo *stackMapDef = nullptr;
     SparseDataInfo *stackMapUse = nullptr;
     SparseDataInfo *stackMapLiveIn = nullptr;

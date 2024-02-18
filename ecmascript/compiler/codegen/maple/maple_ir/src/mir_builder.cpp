@@ -297,8 +297,8 @@ MIRFunction *MIRBuilder::CreateFunction(const std::string &name, const MIRType &
         }
     }
     funcSymbol->SetTyIdx(GlobalTables::GetTypeTable()
-                         .GetOrCreateFunctionType(returnType.GetTypeIndex(), funcVecType, funcVecAttrs, isVarg)
-                         ->GetTypeIndex());
+                             .GetOrCreateFunctionType(returnType.GetTypeIndex(), funcVecType, funcVecAttrs, isVarg)
+                             ->GetTypeIndex());
     auto *funcType = static_cast<MIRFuncType *>(funcSymbol->GetType());
     fn->SetMIRFuncType(funcType);
     funcSymbol->SetFunction(fn);
@@ -508,7 +508,7 @@ MIRSymbol *MIRBuilder::CreateConstStringSymbol(const std::string &symbolName, co
 {
     auto elemPrimType = PTY_u8;
     MIRType *type = GlobalTables::GetTypeTable().GetPrimType(elemPrimType);
-    uint32 sizeIn = static_cast<uint32>(content.length());
+    uint64 sizeIn = static_cast<uint64>(content.length());
     MIRType *arrayTypeWithSize = GlobalTables::GetTypeTable().GetOrCreateArrayType(
         *GlobalTables::GetTypeTable().GetPrimType(elemPrimType), 1, &sizeIn);
 
@@ -843,7 +843,7 @@ ArrayNode *MIRBuilder::CreateExprArray(const MIRType &arrayType, BaseNode *op1, 
 {
     ArrayNode *arrayNode = CreateExprArray(arrayType, op1);
     arrayNode->GetNopnd().push_back(op2);
-    arrayNode->SetNumOpnds(2); // 2 operands
+    arrayNode->SetNumOpnds(2);  // 2 operands
     return arrayNode;
 }
 
@@ -933,11 +933,12 @@ IcallNode *MIRBuilder::CreateStmtIcall(const MapleVector<BaseNode *> &args)
     return stmt;
 }
 
-IcallNode *MIRBuilder::CreateStmtIcallproto(const MapleVector<BaseNode *> &args)
+IcallNode *MIRBuilder::CreateStmtIcallproto(const MapleVector<BaseNode *> &args, const TyIdx &prototypeIdx)
 {
     auto *stmt = GetCurrentFuncCodeMp()->New<IcallNode>(*GetCurrentFuncCodeMpAllocator(), OP_icallproto);
     DEBUG_ASSERT(stmt != nullptr, "stmt is null");
     stmt->SetOpnds(args);
+    stmt->SetRetTyIdx(prototypeIdx);
     return stmt;
 }
 
@@ -1198,7 +1199,7 @@ IfStmtNode *MIRBuilder::CreateStmtIfThenElse(BaseNode *cond)
     ifStmt->SetThenPart(thenBlock);
     auto *elseBlock = GetCurrentFuncCodeMp()->New<BlockNode>();
     ifStmt->SetElsePart(elseBlock);
-    ifStmt->SetNumOpnds(3); // 3 operands
+    ifStmt->SetNumOpnds(3);  // 3 operands
     return ifStmt;
 }
 

@@ -50,7 +50,7 @@ uintptr_t LinearSpace::Allocate(size_t size, bool isPromoted)
         object = allocator_.Allocate(size);
     } else if (heap_->IsMarking() || !heap_->IsEmptyIdleTask()) {
         // Temporary adjust semi space capacity
-        if (heap_->IsFullMark()) {
+        if (heap_->IsConcurrentFullMark()) {
             overShootSize_ = heap_->CalculateLinearSpaceOverShoot();
         } else {
             size_t stepOverShootSize = heap_->GetEcmaParamConfiguration().GetSemiSpaceStepOvershootSize();
@@ -197,6 +197,10 @@ bool SemiSpace::SwapRegion(Region *region, SemiSpace *fromSpace)
     fromSpace->RemoveRegion(region);
 
     region->SetGCFlag(RegionGCFlags::IN_NEW_TO_NEW_SET);
+
+    if (UNLIKELY(heap_->ShouldVerifyHeap())) {
+        region->ResetInactiveSemiSpace();
+    }
 
     regionList_.AddNodeToFront(region);
     IncreaseCommitted(region->GetCapacity());

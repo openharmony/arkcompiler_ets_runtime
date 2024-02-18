@@ -32,8 +32,21 @@ namespace OHOS {
             LOG_ECMA(ERROR) << "illegal input!";
             return;
         }
-        Local<StringRef> res = StringRef::NewFromUtf16(vm, (char16_t*)data);
-        res->WriteUtf16((char16_t*)data, (int)size);
+        int length = size / sizeof(char16_t);
+        char16_t* buffer = new char16_t[length];
+        if (memset_s(buffer, length, 0, length) != EOK) {
+            LOG_ECMA(ERROR) << "memset_s fail!";
+            UNREACHABLE();
+        }
+        Local<StringRef> res = StringRef::NewFromUtf16(vm, (char16_t*)data, length);
+        if (length == 1) {
+            buffer[0] = '\0';
+        } else if (length != 0) {
+            int count = res->WriteUtf16(buffer, length - 1);
+            buffer[count] = '\0';
+        }
+        delete[] buffer;
+        buffer = nullptr;
         JSNApi::DestroyJSVM(vm);
     }
 }

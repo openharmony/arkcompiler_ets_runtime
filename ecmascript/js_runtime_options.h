@@ -47,7 +47,8 @@ enum ArkProperties {
     ENABLE_GC_TRACER = 1 << 15,
     CPU_PROFILER_COLD_START_WORKER_THREAD = 1 << 16,
     CPU_PROFILER_ANY_TIME_MAIN_THREAD = 1 << 17,
-    CPU_PROFILER_ANY_TIME_WORKER_THREAD = 1 << 18
+    CPU_PROFILER_ANY_TIME_WORKER_THREAD = 1 << 18,
+    ENABLE_HEAP_VERIFY = 1 << 19
 };
 
 // asm interpreter control parsed option
@@ -161,6 +162,7 @@ enum CommandValues {
     OPTION_COMPILER_TRACE_JIT,
     OPTION_ENABLE_ELEMENTSKIND,
     OPTION_COMPILER_TYPED_OP_PROFILER,
+    OPTION_COMPILER_OPT_BRANCH_PROFILING,
 };
 
 class PUBLIC_API JSRuntimeOptions {
@@ -480,6 +482,11 @@ public:
         }
 
         return (static_cast<uint32_t>(arkProperties_) & ArkProperties::ENABLE_SNAPSHOT_DESERIALIZE) != 0;
+    }
+
+    bool EnableHeapVerify() const
+    {
+        return (static_cast<uint32_t>(arkProperties_) & ArkProperties::ENABLE_HEAP_VERIFY) != 0;
     }
 
     void DisableReportModuleResolvingFailure()
@@ -909,7 +916,7 @@ public:
         enableContext_ = value;
     }
 
-    bool IsEnableContext()
+    bool IsEnableContext() const
     {
         return enableContext_;
     }
@@ -919,7 +926,7 @@ public:
         enablePrintExecuteTime_ = value;
     }
 
-    bool IsEnablePrintExecuteTime()
+    bool IsEnablePrintExecuteTime() const
     {
         return enablePrintExecuteTime_;
     }
@@ -1434,6 +1441,16 @@ public:
         return enableTypedOpProfiler_;
     }
 
+    bool IsEnableBranchProfiling() const
+    {
+        return enableBranchProfiling_;
+    }
+
+    void SetEnableBranchProfiling(bool value)
+    {
+        enableBranchProfiling_ = value;
+    }
+
 private:
     static bool StartsWith(const std::string &haystack, const std::string &needle)
     {
@@ -1552,6 +1569,7 @@ private:
     bool enableLoweringBuiltin_ {true};
     bool enableLiteCG_ {false};
     bool enableTypedOpProfiler_ {false};
+    bool enableBranchProfiling_ {true};
 };
 }  // namespace panda::ecmascript
 

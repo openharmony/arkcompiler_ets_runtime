@@ -36,6 +36,8 @@
 #include "ecmascript/property_accessor.h"
 #include "ecmascript/property_attributes.h"
 #include "ecmascript/tagged_array-inl.h"
+#include "ecmascript/jspandafile/debug_info_extractor.h"
+#include "ecmascript/jspandafile/js_pandafile_manager.h"
 
 namespace panda::ecmascript {
 using PGOProfiler = pgo::PGOProfiler;
@@ -1408,6 +1410,7 @@ bool JSObject::SetPrototype(JSThread *thread, const JSHandle<JSObject> &obj, con
                 break;
             }
             tempProtoHandle.Update(JSTaggedValue::GetPrototype(thread, JSHandle<JSTaggedValue>(tempProtoHandle)));
+            RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
         }
     }
     // map transition
@@ -2272,16 +2275,22 @@ const CString JSObject::ExtractConstructorAndRecordName(JSThread *thread, Tagged
         result.append(moduleStr);
     }
     if (!nameStr.empty()) {
-        result.append(" ").append(nameStr).append(" ");
+        DebugInfoExtractor *debugExtractor =
+            JSPandaFileManager::GetInstance()->GetJSPtExtractor(jsPandaFile);
+        if (debugExtractor == nullptr) {
+            result.append("JSObject");
+            return result;
+        }
+        int32_t line = debugExtractor->GetFristLine(methodId);
+        result.append(moduleStr).append(" JSObject(line:").append(std::to_string(line)).append(")");
     }
     result.append("JSObject");
     return result;
 }
 
 JSHandle<JSTaggedValue> JSObject::SpeciesConstructor(JSThread *thread, const JSHandle<JSObject> &obj,
-                                                     const JSHandle<JSTaggedValue> &defaultConstructort)
+                                                     const JSHandle<JSTaggedValue> &defaultConstructor)
 {
-    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     const GlobalEnvConstants *globalConst = thread->GlobalConstants();
     // Assert: Type(O) is Object.
     ASSERT_PRINT(obj->IsECMAObject(), "obj must be js object");
@@ -2292,9 +2301,16 @@ JSHandle<JSTaggedValue> JSObject::SpeciesConstructor(JSThread *thread, const JSH
         contructorKey).GetValue());
     // ReturnIfAbrupt(C).
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
-    // If C is undefined, return defaultConstructor.
+    return SlowSpeciesConstructor(thread, objConstructor, defaultConstructor);
+}
+
+JSHandle<JSTaggedValue> JSObject::SlowSpeciesConstructor(JSThread *thread,
+                                                         const JSHandle<JSTaggedValue> &objConstructor,
+                                                         const JSHandle<JSTaggedValue> &defaultConstructor)
+{
+    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     if (objConstructor->IsUndefined()) {
-        return defaultConstructort;
+        return defaultConstructor;
     }
     // If Type(C) is not Object, throw a TypeError exception.
     if (!objConstructor->IsECMAObject()) {
@@ -2303,12 +2319,12 @@ JSHandle<JSTaggedValue> JSObject::SpeciesConstructor(JSThread *thread, const JSH
     }
     // Let S be Get(C, @@species).
     JSHandle<JSTaggedValue> speciesSymbol = env->GetSpeciesSymbol();
-    JSHandle<JSTaggedValue> speciesConstructor(GetProperty(thread, objConstructor, speciesSymbol).GetValue());
+    JSHandle<JSTaggedValue> speciesConstructor = GetProperty(thread, objConstructor, speciesSymbol).GetValue();
     // ReturnIfAbrupt(S).
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
     // If S is either undefined or null, return defaultConstructor.
     if (speciesConstructor->IsUndefined() || speciesConstructor->IsNull()) {
-        return defaultConstructort;
+        return defaultConstructor;
     }
     // If IsConstructor(S) is true, return S.
     if (speciesConstructor->IsConstructor()) {
@@ -2804,5 +2820,14 @@ void ECMAObject::SetNativePointerFieldCount(const JSThread *thread, int32_t coun
         newArray->Set(thread, count + HASH_INDEX, value);
         Barriers::SetObject<true>(thread, *obj, HASH_OFFSET, newArray.GetTaggedValue().GetRawData());
     }
+}
+
+bool JSObject::ElementsAndPropertiesIsEmpty() const
+{
+    if (TaggedArray::Cast(GetElements().GetTaggedObject())->GetLength() == 0 &&
+        TaggedArray::Cast(GetProperties().GetTaggedObject())->GetLength() == 0) {
+        return true;
+    }
+    return false;
 }
 }  // namespace panda::ecmascript

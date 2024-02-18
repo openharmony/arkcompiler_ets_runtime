@@ -78,7 +78,7 @@ public:
 
     static JSTaggedValue Get(JSThread *thread, const JSHandle<JSAPIVector> &vector, int32_t index);
 
-    JSTaggedValue Set(JSThread *thread, int32_t index, const JSTaggedValue &value);
+    JSTaggedValue PUBLIC_API Set(JSThread *thread, int32_t index, const JSTaggedValue &value);
 
     bool Has(const JSTaggedValue &value) const;
 

@@ -48,6 +48,7 @@
 #include "ecmascript/global_env.h"
 #include "ecmascript/interpreter/fast_runtime_stub-inl.h"
 #include "ecmascript/interpreter/frame_handler.h"
+#include "ecmascript/interpreter/interpreter_assembly.h"
 #include "ecmascript/jobs/micro_job_queue.h"
 #include "ecmascript/js_array.h"
 #include "ecmascript/js_arraybuffer.h"
@@ -189,6 +190,7 @@ using JSMutableHandle = ecmascript::JSMutableHandle<T>;
 using PathHelper = ecmascript::base::PathHelper;
 using ModulePathHelper = ecmascript::ModulePathHelper;
 using JsDebuggerManager = ecmascript::tooling::JsDebuggerManager;
+using FrameIterator = ecmascript::FrameIterator;
 
 namespace {
 // NOLINTNEXTLINE(fuchsia-statically-constructed-objects)
@@ -309,6 +311,7 @@ Local<BigIntRef> JSValueRef::ToBigInt(const EcmaVM *vm)
     JSHandle<JSTaggedValue> obj = JSNApiHelper::ToJSHandle(this);
     LOG_IF_SPECIAL(obj, ERROR);
     JSHandle<JSTaggedValue> bigIntObj(thread, JSTaggedValue::ToBigInt(thread, obj));
+    RETURN_VALUE_IF_ABRUPT(thread, JSValueRef::Undefined(vm));
     return JSNApiHelper::ToLocal<BigIntRef>(bigIntObj);
 }
 
@@ -990,6 +993,7 @@ Local<MapIteratorRef> MapIteratorRef::New(const EcmaVM *vm, Local<MapRef> map)
     IterationKind iterKind = IterationKind::KEY_AND_VALUE;
     JSHandle<JSTaggedValue> mapIteratorKeyAndValue =
         JSMapIterator::CreateMapIterator(vm->GetJSThread(), JSHandle<JSTaggedValue>::Cast(jsMap), iterKind);
+    RETURN_VALUE_IF_ABRUPT(thread, JSValueRef::Undefined(vm));
     return JSNApiHelper::ToLocal<JSValueRef>(mapIteratorKeyAndValue);
 }
 
@@ -1009,6 +1013,7 @@ Local<ArrayRef> MapIteratorRef::Next(const EcmaVM *vm, ecmascript::EcmaRuntimeCa
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
     JSHandle<JSTaggedValue> nextTagValResult(vm->GetJSThread(), JSMapIterator::Next(ecmaRuntimeCallInfo));
+    RETURN_VALUE_IF_ABRUPT(thread, JSValueRef::Undefined(vm));
     JSHandle<JSTaggedValue> iteratorVal(vm->GetJSThread(),
         JSIterator::IteratorValue(vm->GetJSThread(), nextTagValResult).GetTaggedValue());
     return JSNApiHelper::ToLocal<ArrayRef>(iteratorVal);
@@ -1052,6 +1057,7 @@ Local<SetIteratorRef> SetIteratorRef::New(const EcmaVM *vm, Local<SetRef> set)
     IterationKind iterKind = IterationKind::KEY_AND_VALUE;
     JSHandle<JSTaggedValue> setIteratorKeyAndValue =
         JSSetIterator::CreateSetIterator(vm->GetJSThread(), JSHandle<JSTaggedValue>::Cast(jsSet), iterKind);
+    RETURN_VALUE_IF_ABRUPT(thread, JSValueRef::Undefined(vm));
     return JSNApiHelper::ToLocal<JSValueRef>(setIteratorKeyAndValue);
 }
 
@@ -1071,6 +1077,7 @@ Local<ArrayRef> SetIteratorRef::Next(const EcmaVM *vm, ecmascript::EcmaRuntimeCa
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
     JSHandle<JSTaggedValue> nextTagValResult(vm->GetJSThread(), JSSetIterator::Next(ecmaRuntimeCallInfo));
+    RETURN_VALUE_IF_ABRUPT(thread, JSValueRef::Undefined(vm));
     JSHandle<JSTaggedValue> iteratorVal(vm->GetJSThread(),
         JSIterator::IteratorValue(vm->GetJSThread(), nextTagValResult).GetTaggedValue());
     return JSNApiHelper::ToLocal<ArrayRef>(iteratorVal);
@@ -1179,6 +1186,7 @@ Local<PromiseCapabilityRef> PromiseCapabilityRef::New(const EcmaVM *vm)
     JSHandle<GlobalEnv> globalEnv = vm->GetGlobalEnv();
     JSHandle<JSTaggedValue> constructor(globalEnv->GetPromiseFunction());
     JSHandle<JSTaggedValue> capability(JSPromise::NewPromiseCapability(thread, constructor));
+    RETURN_VALUE_IF_ABRUPT(thread, JSValueRef::Undefined(vm));
     return JSNApiHelper::ToLocal<PromiseCapabilityRef>(capability);
 }
 
@@ -1315,6 +1323,12 @@ std::string StringRef::ToString()
 {
     DCHECK_SPECIAL_VALUE_WITH_RETURN(this, "");
     return EcmaStringAccessor(JSNApiHelper::ToJSTaggedValue(this)).ToStdString();
+}
+
+std::string StringRef::DebuggerToString()
+{
+    DCHECK_SPECIAL_VALUE_WITH_RETURN(this, "");
+    return EcmaStringAccessor(JSNApiHelper::ToJSTaggedValue(this)).DebuggerToStdString();
 }
 
 uint32_t StringRef::Length()
@@ -2194,7 +2208,21 @@ JSValueRef* FunctionRef::CallForNapi(const EcmaVM *vm, JSValueRef *thisObj,
                 argv[i] == nullptr ? JSTaggedValue::Undefined() : JSNApiHelper::ToJSTaggedValue(argv[i]);
             info->SetCallArg(i, arg);
         }
-        result = JSFunction::Call(info);
+        if (thread->IsAsmInterpreter()) {
+            RETURN_VALUE_IF_ABRUPT_COMPLETION(thread,
+                reinterpret_cast<JSValueRef *>(JSHandle<JSTaggedValue>(thread, thread->GetException()).GetAddress()));
+            STACK_LIMIT_CHECK(thread,
+                reinterpret_cast<JSValueRef *>(JSHandle<JSTaggedValue>(thread, thread->GetException()).GetAddress()));
+            auto *hclass = func.GetTaggedObject()->GetClass();
+            if (hclass->IsClassConstructor()) {
+                RETURN_STACK_BEFORE_THROW_IF_ASM(thread);
+                THROW_TYPE_ERROR_AND_RETURN(thread, "class constructor cannot call",
+                    reinterpret_cast<JSValueRef *>(JSHandle<JSTaggedValue>(thread, undefined).GetAddress()));
+            }
+            result = ecmascript::InterpreterAssembly::Execute(info);
+        } else {
+            result = JSFunction::Call(info);
+        }
         RETURN_VALUE_IF_ABRUPT(thread, *JSValueRef::Undefined(vm));
         vm->GetHeap()->ClearKeptObjects();
         if (dm->IsMixedDebugEnabled()) {
@@ -2652,6 +2680,7 @@ std::pair<std::string, std::string> JSNApi::GetCurrentModuleInfo(EcmaVM *vm, boo
 // Enable cross thread execution.
 void JSNApi::AllowCrossThreadExecution(EcmaVM *vm)
 {
+    LOG_ECMA(WARN) << "enable cross thread execution";
     vm->GetAssociatedJSThread()->EnableCrossThreadExecution();
 }
 
@@ -3078,7 +3107,10 @@ bool JSNApi::NotifyDebugMode([[maybe_unused]] int tid,
     jsDebuggerManager->SetDebugLibraryHandle(std::move(handle.Value()));
     jsDebuggerManager->SetDebugMode(option.isDebugMode && debugApp);
     jsDebuggerManager->SetIsDebugApp(debugApp);
-    bool ret = StartDebuggerForOldProcess(vm, option, instanceId, debuggerPostTask);
+    bool ret = false;
+    if (debugApp) {
+        ret = StartDebuggerForOldProcess(vm, option, instanceId, debuggerPostTask);
+    }
 
     // store debugger postTask in inspector.
     using StoreDebuggerInfo = void (*)(int, EcmaVM *, const DebuggerPostTask &);
@@ -3090,7 +3122,18 @@ bool JSNApi::NotifyDebugMode([[maybe_unused]] int tid,
         return false;
     }
     reinterpret_cast<StoreDebuggerInfo>(symOfStoreDebuggerInfo.Value())(tid, vm, debuggerPostTask);
-
+    using InitializeDebuggerForSocketpair = bool(*)(void*);
+    auto sym = panda::os::library_loader::ResolveSymbol(handler, "InitializeDebuggerForSocketpair");
+    if (!sym) {
+        LOG_ECMA(ERROR) << "[InitializeDebuggerForSocketpair] Resolve symbol fail: " << sym.Error().ToString();
+        return false;
+    }
+    ret = reinterpret_cast<InitializeDebuggerForSocketpair>(sym.Value())(vm);
+    if (!ret) {
+    // Reset the config
+        vm->GetJsDebuggerManager()->SetDebugMode(false);
+        return false;
+    }
     if (option.isDebugMode) {
         using WaitForDebugger = void (*)(EcmaVM *);
         auto symOfWaitForDebugger = panda::os::library_loader::ResolveSymbol(
@@ -3245,6 +3288,9 @@ bool JSNApi::ExecuteInContext(EcmaVM *vm, const std::string &fileName, const std
     LOG_ECMA(DEBUG) << "start to execute ark file in context: " << fileName;
     EcmaContext::MountContext(thread);
     if (!ecmascript::JSPandaFileExecutor::ExecuteFromAbcFile(thread, fileName.c_str(), entry, needUpdate)) {
+        if (thread->HasPendingException()) {
+            thread->GetCurrentEcmaContext()->HandleUncaughtException();
+        }
         LOG_ECMA(ERROR) << "Cannot execute ark file '" << fileName
                         << "' with entry '" << entry << "'" << std::endl;
         return false;
@@ -3258,6 +3304,9 @@ bool JSNApi::Execute(EcmaVM *vm, const std::string &fileName, const std::string 
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, false);
     LOG_ECMA(DEBUG) << "start to execute ark file: " << fileName;
     if (!ecmascript::JSPandaFileExecutor::ExecuteFromAbcFile(thread, fileName.c_str(), entry, needUpdate)) {
+        if (thread->HasPendingException()) {
+            thread->GetCurrentEcmaContext()->HandleUncaughtException();
+        }
         LOG_ECMA(ERROR) << "Cannot execute ark file '" << fileName
                         << "' with entry '" << entry << "'" << std::endl;
         return false;
@@ -3272,6 +3321,9 @@ bool JSNApi::Execute(EcmaVM *vm, const uint8_t *data, int32_t size, const std::s
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, false);
     LOG_ECMA(DEBUG) << "start to execute ark buffer: " << filename;
     if (!ecmascript::JSPandaFileExecutor::ExecuteFromBuffer(thread, data, size, entry, filename.c_str(), needUpdate)) {
+        if (thread->HasPendingException()) {
+            thread->GetCurrentEcmaContext()->HandleUncaughtException();
+        }
         LOG_ECMA(ERROR) << "Cannot execute ark buffer file '" << filename
                         << "' with entry '" << entry << "'" << std::endl;
         return false;
@@ -3286,6 +3338,9 @@ bool JSNApi::ExecuteModuleBuffer(EcmaVM *vm, const uint8_t *data, int32_t size, 
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, false);
     LOG_ECMA(DEBUG) << "start to execute module buffer: " << filename;
     if (!ecmascript::JSPandaFileExecutor::ExecuteModuleBuffer(thread, data, size, filename.c_str(), needUpdate)) {
+        if (thread->HasPendingException()) {
+            thread->GetCurrentEcmaContext()->HandleUncaughtException();
+        }
         LOG_ECMA(ERROR) << "Cannot execute module buffer file '" << filename;
         return false;
     }
@@ -3303,6 +3358,9 @@ bool JSNApi::ExecuteSecure(EcmaVM *vm, uint8_t *data, int32_t size, const std::s
     }
     if (!ecmascript::JSPandaFileExecutor::ExecuteFromBufferSecure(thread, data, size, entry, filename.c_str(),
                                                                   needUpdate)) {
+        if (thread->HasPendingException()) {
+            thread->GetCurrentEcmaContext()->HandleUncaughtException();
+        }
         LOG_ECMA(ERROR) << "Cannot execute ark buffer file '" << filename
                         << "' with entry '" << entry << "'" << std::endl;
         return false;
@@ -3321,6 +3379,9 @@ bool JSNApi::ExecuteModuleBufferSecure(EcmaVM *vm, uint8_t* data, int32_t size, 
     }
     if (!ecmascript::JSPandaFileExecutor::ExecuteModuleBufferSecure(thread, data, size, filename.c_str(),
                                                                     needUpdate)) {
+        if (thread->HasPendingException()) {
+            thread->GetCurrentEcmaContext()->HandleUncaughtException();
+        }
         LOG_ECMA(ERROR) << "Cannot execute module buffer file '" << filename;
         return false;
     }
@@ -3676,6 +3737,25 @@ Local<ObjectRef> JSNApi::ExecuteNativeModule(EcmaVM *vm, const std::string &key)
     ecmascript::ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
     JSHandle<JSTaggedValue> exportObj = moduleManager->LoadNativeModule(thread, key);
     return JSNApiHelper::ToLocal<ObjectRef>(exportObj);
+}
+
+Local<ObjectRef> JSNApi::GetModuleNameSpaceFromFile(EcmaVM *vm, const std::string &file, const std::string &module_path)
+{
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
+    // need get moduleName from stack
+    std::pair<std::string, std::string> moduleInfo = vm->GetCurrentModuleInfo(false);
+    std::string recordNameStr;
+    if (module_path.size() != 0) {
+        recordNameStr = module_path + PathHelper::SLASH_TAG + file;
+    } else {
+        recordNameStr = std::string(vm->GetBundleName().c_str()) + PathHelper::SLASH_TAG +
+            moduleInfo.first + PathHelper::SLASH_TAG + file;
+    }
+    LOG_ECMA(DEBUG) << "JSNApi::LoadModuleNameSpaceFromFile: Concated recordName " << recordNameStr.c_str();
+    ecmascript::ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
+    JSHandle<JSTaggedValue> moduleNamespace = moduleManager->
+        GetModuleNameSpaceFromFile(thread, recordNameStr, moduleInfo.second);
+    return JSNApiHelper::ToLocal<ObjectRef>(moduleNamespace);
 }
 
 // ---------------------------------- Promise -------------------------------------

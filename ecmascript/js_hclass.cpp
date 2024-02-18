@@ -393,29 +393,43 @@ JSHandle<JSHClass> JSHClass::TransProtoWithoutLayout(const JSThread *thread, con
 
 void JSHClass::SetPrototype(const JSThread *thread, JSTaggedValue proto)
 {
+    // Because the heap-space of hclass is non-movable, this function can be non-static.
     JSHandle<JSTaggedValue> protoHandle(thread, proto);
     SetPrototype(thread, protoHandle);
 }
 
+JSHandle<JSTaggedValue> JSHClass::SetPrototypeWithNotification(const JSThread *thread,
+                                                               const JSHandle<JSTaggedValue> &hclass,
+                                                               const JSHandle<JSTaggedValue> &proto)
+{
+    JSHandle<JSHClass> newClass = JSHClass::TransitionProto(thread, JSHandle<JSHClass>::Cast(hclass), proto);
+    JSHClass::NotifyHclassChanged(thread, JSHandle<JSHClass>::Cast(hclass), newClass);
+    return JSHandle<JSTaggedValue>(newClass);
+}
+
 void JSHClass::SetPrototype(const JSThread *thread, const JSHandle<JSTaggedValue> &proto)
 {
-    // In the original version, whether the objcet is EcmaObject is determined,
-    // but proxy is not allowd.
+    // Because the heap-space of hclass is non-movable, this function can be non-static.
     if (proto->IsJSObject()) {
-        ShouldUpdateProtoClass(thread, proto);
+        OptimizePrototypeForIC(thread, proto);
     }
     SetProto(thread, proto);
 }
 
-void JSHClass::ShouldUpdateProtoClass(const JSThread *thread, const JSHandle<JSTaggedValue> &proto)
+void JSHClass::OptimizePrototypeForIC(const JSThread *thread, const JSHandle<JSTaggedValue> &proto)
 {
     JSHandle<JSHClass> hclass(thread, proto->GetTaggedObject()->GetClass());
     ASSERT(!Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(*hclass))->InReadOnlySpace());
     if (!hclass->IsPrototype()) {
-        // There is no sharing in AOT hclass. Therefore, it is not necessary or possible to clone here.
         if (!hclass->IsTS()) {
-            // If the object should be changed to the proto of an object,
-            // the original hclass cannot be shared.
+            // The local IC and on-proto IC are different, because the former don't need to notify the whole
+            // prototype-chain or listen the changes of prototype chain, but the latter do. Therefore, when
+            // an object becomes a prototype object at the first time, we need to copy its hidden class in
+            // order to maintain the previously generated local IC and support the on-proto IC in the future.
+            // For example, a local IC adds a new property x for o1 and the o1.hclass1 -> o1.hclass2, when the
+            // o1 becomes a prototype object of object o2 and an on-proto IC loading x from o2 will rely on the
+            // stability of the prototype-chain o2 -> o1. If directly marking the o1.hclass1 as a prototype hclass,
+            // the previous IC of adding property x won't trigger IC-miss and fails to notify the IC on o2.
             JSHandle<JSHClass> newProtoClass = JSHClass::Clone(thread, hclass);
             JSTaggedValue layout = newProtoClass->GetLayout();
             // If the type of object is JSObject, the layout info value is initialized to the default value,
@@ -435,6 +449,7 @@ void JSHClass::ShouldUpdateProtoClass(const JSThread *thread, const JSHandle<JST
             newProtoClass->SetIsPrototype(true);
             thread->GetEcmaVM()->GetPGOProfiler()->UpdateRootProfileType(*hclass, *newProtoClass);
         } else {
+            // There is no sharing in AOT hclass. Therefore, it is not necessary or possible to clone here.
             hclass->SetIsPrototype(true);
         }
     }
@@ -626,7 +641,8 @@ std::tuple<bool, bool, JSTaggedValue> JSHClass::ConvertOrTransitionWithRep(const
     if (oldRep == Representation::DOUBLE) {
         if (value->IsInt()) {
             double doubleValue = value->GetInt();
-            return std::tuple<bool, bool, JSTaggedValue>(false, false, JSTaggedValue(bit_cast<JSTaggedType>(doubleValue)));
+            return std::tuple<bool, bool, JSTaggedValue>(false, false,
+                JSTaggedValue(bit_cast<JSTaggedType>(doubleValue)));
         } else if (value->IsObject()) {
             // Is Object
             attr.SetRepresentation(Representation::TAGGED);
@@ -635,7 +651,8 @@ std::tuple<bool, bool, JSTaggedValue> JSHClass::ConvertOrTransitionWithRep(const
             return std::tuple<bool, bool, JSTaggedValue>(true, true, value.GetTaggedValue());
         } else {
             // Is TaggedDouble
-            return std::tuple<bool, bool, JSTaggedValue>(false, false, JSTaggedValue(bit_cast<JSTaggedType>(value->GetDouble())));
+            return std::tuple<bool, bool, JSTaggedValue>(false, false,
+                JSTaggedValue(bit_cast<JSTaggedType>(value->GetDouble())));
         }
     } else if (oldRep == Representation::INT) {
         if (value->IsInt()) {
@@ -711,7 +728,7 @@ void JSHClass::NotifyHclassChanged(const JSThread *thread, JSHandle<JSHClass> ol
     if (oldHclass.GetTaggedValue() == newHclass.GetTaggedValue()) {
         return;
     }
-    newHclass->SetIsPrototype(true);
+    ASSERT(newHclass->IsPrototype());
     JSHClass::NoticeThroughChain(thread, oldHclass, addedKey);
     JSHClass::RefreshUsers(thread, oldHclass, newHclass);
 }

@@ -162,12 +162,6 @@ void DefaultO0RegAllocator::InitAvailReg()
     }
 }
 
-/* these registers can not be allocated */
-bool DefaultO0RegAllocator::IsSpecialReg(regno_t reg) const
-{
-    return regInfo->IsSpecialReg(reg);
-}
-
 void DefaultO0RegAllocator::ReleaseReg(const RegOperand &regOpnd)
 {
     ReleaseReg(regMap[regOpnd.GetRegisterNumber()]);
@@ -177,7 +171,8 @@ void DefaultO0RegAllocator::ReleaseReg(regno_t reg)
 {
     DEBUG_ASSERT(reg < regInfo->GetAllRegNum(), "can't release virtual register");
     liveReg.erase(reg);
-    if (!IsSpecialReg(reg)) {
+    /* Special registers can not be allocated */
+    if (!regInfo->IsUnconcernedReg(reg)) {
         availRegSet[reg] = true;
     }
 }
@@ -429,7 +424,6 @@ void DefaultO0RegAllocator::AllocHandleSrc(Insn &insn, Operand &opnd, uint32 idx
 
 bool DefaultO0RegAllocator::AllocateRegisters()
 {
-    regInfo->Init();
     InitAvailReg();
     cgFunc->SetIsAfterRegAlloc();
 

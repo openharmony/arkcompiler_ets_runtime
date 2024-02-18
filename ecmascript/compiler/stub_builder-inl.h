@@ -1582,6 +1582,24 @@ inline GateRef StubBuilder::IsField(GateRef attr)
         Int32(HandlerBase::HandlerKind::FIELD));
 }
 
+inline GateRef StubBuilder::IsNonSharedStoreField(GateRef attr)
+{
+    return Int32Equal(
+        Int32And(
+            Int32LSR(attr, Int32(HandlerBase::SWholeKindBit::START_BIT)),
+            Int32((1LLU << HandlerBase::SWholeKindBit::SIZE) - 1)),
+        Int32(HandlerBase::StoreHandlerKind::S_FIELD));
+}
+
+inline GateRef StubBuilder::IsStoreShared(GateRef attr)
+{
+    return Int32NotEqual(
+        Int32And(Int32LSR(attr,
+            Int32(HandlerBase::SSharedBit::START_BIT)),
+            Int32((1LLU << HandlerBase::SSharedBit::SIZE) - 1)),
+        Int32(0));
+}
+
 inline GateRef StubBuilder::IsElement(GateRef attr)
 {
     return Int32Equal(
@@ -2073,6 +2091,33 @@ inline void StubBuilder::CheckUpdateSharedType(bool isDicMode, Variable *result,
             Jump(exit);
         }
     }
+}
+
+inline void StubBuilder::MatchTrackType(Variable *result, GateRef glue, GateRef trackType, GateRef value,
+                                        Label *executeSetProp, Label *exit)
+{
+    auto *env = GetEnvironment();
+    Label typeMismatch(env);
+    MatchTrackType(trackType, value, executeSetProp, &typeMismatch);
+    Bind(&typeMismatch);
+    {
+        GateRef taggedId = Int32(GET_MESSAGE_STRING_ID(SetTypeMismatchedSharedProperty));
+        CallRuntime(glue, RTSTUB_ID(ThrowTypeError), {IntToTaggedInt(taggedId)});
+        *result = Exception();
+        Jump(exit);
+    }
+}
+
+inline GateRef StubBuilder::GetTrackTypeFromHandler(GateRef attr)
+{
+    return Int32And(Int32LSR(attr,
+        Int32(HandlerBase::STrackTypeBit::START_BIT)),
+        Int32((1LLU << HandlerBase::STrackTypeBit::SIZE) - 1));
+}
+
+inline GateRef StubBuilder::ClearSharedStoreKind(GateRef handlerInfo)
+{
+    return Int32And(handlerInfo, Int32Not(Int32(HandlerBase::SSharedBit::Mask())));
 }
 
 inline GateRef StubBuilder::IsJSSharedType(GateRef jsType)

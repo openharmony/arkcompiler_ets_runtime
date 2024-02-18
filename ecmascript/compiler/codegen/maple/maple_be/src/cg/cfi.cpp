@@ -52,19 +52,18 @@ void CfiInsn::Dump() const
     LogInfo::MapleLogger() << "\n";
 }
 
-#if DEBUG
-void CfiInsn::Check() const
+bool CfiInsn::CheckMD() const
 {
     CfiDescr &cfiDescr = cfiDescrTable[GetMachineOpcode()];
     /* cfi instruction's 3rd /4th/5th operand must be null */
     for (uint32 i = 0; i < static_cast<uint32>(cfiDescr.opndCount); ++i) {
         Operand &opnd = GetOperand(i);
         if (opnd.GetKind() != cfiDescr.opndTypes[i]) {
-            CHECK_FATAL(false, "incorrect operand in cfi insn");
+            return false;
         }
     }
+    return true;
 }
-#endif
 
 void RegOperand::Dump() const
 {
@@ -112,12 +111,3 @@ void CFIOpndEmitVisitor::Visit(LabelOperand *v)
     }
 }
 } /* namespace cfi */
-
-namespace maplebe {
-bool CgGenCfi::PhaseRun(maplebe::CGFunc &f)
-{
-    f.GenerateCfiPrologEpilog();
-    return true;
-}
-MAPLE_TRANSFORM_PHASE_REGISTER(CgGenCfi, gencfi)
-} /* namespace maplebe */

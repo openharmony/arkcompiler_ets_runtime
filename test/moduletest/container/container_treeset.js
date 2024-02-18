@@ -93,6 +93,19 @@ if (globalThis["ArkPrivate"] != undefined) {
     }
     map.set("test set throw error", flag);
 
+    let comset =  new fastset((firstValue, secondValue) => {return firstValue < secondValue});
+    comset.add("c");
+    comset.add("a");
+    comset.add("b");
+    comset.add("d");
+    if (comset.length == 4) {
+        comset.remove("a");
+        comset.remove("b");
+        comset.remove("c");
+        comset.remove("d");
+    }
+    map.set("test commpare", comset.length == 0);
+
     let set1 = new fastset();
     let proxy = new Proxy(set1, {});
     proxy.add("aa");

@@ -40,8 +40,8 @@ public:
         data_.emplace_back(data);
     }
 
-    void Resolve(JSThread *thread, const SnapshotGlobalData *globalData,
-                 const CMap<std::pair<std::string, uint32_t>, uint32_t> &methodToEntryIndexMap);
+    void PUBLIC_API Resolve(JSThread *thread, const SnapshotGlobalData *globalData,
+                            const CMap<std::pair<std::string, uint32_t>, uint32_t> &methodToEntryIndexMap);
 
 protected:
     JSHandle<ConstantPool> GetConstantPoolFromSnapshotData(JSThread *thread, const SnapshotGlobalData *globalData,

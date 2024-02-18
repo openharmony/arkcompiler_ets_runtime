@@ -25,7 +25,7 @@ namespace ecmascript {
 // ElementAccessor intends to replace all .GetElements and share the common following methods.
 class ElementAccessor {
 public:
-    static JSTaggedValue Get(JSHandle<JSObject> receiver, uint32_t idx);
+    static JSTaggedValue PUBLIC_API Get(JSHandle<JSObject> receiver, uint32_t idx);
     static JSTaggedValue Get(JSObject *receiver, uint32_t idx);
 
     template<typename T>
@@ -43,7 +43,7 @@ public:
     static uint32_t GetElementsLength(JSObject *receiver);
 
     static JSTaggedValue GetTaggedValueWithElementsKind(JSTaggedType rawValue, ElementsKind kind);
-    static JSTaggedType ConvertTaggedValueWithElementsKind(JSTaggedValue rawValue, ElementsKind kind);
+    static JSTaggedType PUBLIC_API ConvertTaggedValueWithElementsKind(JSTaggedValue rawValue, ElementsKind kind);
 private:
 };
 }  // namespace ecmascript

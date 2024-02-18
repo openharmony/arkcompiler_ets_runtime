@@ -55,6 +55,37 @@ void ElfBuilder::AddShStrTabSection()
     }
 }
 
+uint32_t ElfBuilder::AddAsmStubStrTab(std::ofstream &elfFile,
+    const std::vector<std::pair<std::string, uint32_t>> &asmStubELFInfo)
+{
+    uint32_t size = 1;
+    uint32_t asmStubSymTabNum = asmStubELFInfo.size() - 1;
+    for (size_t idx = 0; idx < asmStubSymTabNum; ++idx) {
+        const std::string &str = asmStubELFInfo[idx].first;
+        size = size + str.size() + 1;
+    }
+
+    std::unique_ptr<char []> asmStubStrTabPtr = std::make_unique<char []>(size);
+    char *dst = asmStubStrTabPtr.get();
+    dst[0] = 0x0;
+    uint32_t i = 1;
+    for (size_t idx = 0; idx < asmStubSymTabNum; ++idx) {
+        const std::string &str = asmStubELFInfo[idx].first;
+        asmStubStrName_.emplace_back(i);
+        uint32_t copySize = str.size();
+        if (copySize == 0) {
+            UNREACHABLE();
+        }
+        if ((copySize != 0) && ((memcpy_s(dst + i, size - i + 1, str.data(), copySize)) != EOK)) {
+            UNREACHABLE();
+        }
+        dst[i + copySize] = 0x0;
+        i = i + copySize + 1;
+    }
+    elfFile.write(reinterpret_cast<char *>(dst), size);
+    return size;
+}
+
 void ElfBuilder::DumpSection() const
 {
     const std::map<ElfSecName, std::pair<uint64_t, uint32_t>> &sections = GetFullSecInfo();
@@ -370,13 +401,22 @@ void ElfBuilder::MergeStrtabSections(std::ofstream &file,
         curInfo.strtabSize = curSecSize;
         file.write(reinterpret_cast<char *>(curSecAddr), curSecSize);
         curSecOffset += curSecSize;
+        if (des.HasAsmStubStrTab()) {
+            uint32_t asmStubStrTabSize = AddAsmStubStrTab(file, des.GetAsmStubELFInfo());
+            curSecOffset += asmStubStrTabSize;
+            curInfo.strtabSize += asmStubStrTabSize;
+        }
     }
 }
 
 void ElfBuilder::MergeSymtabSections(std::ofstream &file,
                                      std::vector<ModuleSectionDes::ModuleRegionInfo> &moduleInfo,
-                                     llvm::ELF::Elf64_Off &curSecOffset)
+                                     llvm::ELF::Elf64_Off &curSecOffset,
+                                     llvm::ELF::Elf64_Off &asmStubOffset)
 {
+    using Elf64_Sym = llvm::ELF::Elf64_Sym;
+    uint32_t strTabSize = 0;
+    uint32_t textSecIndex = GetShIndex(ElfSecName::ARK_ASMSTUB);
     for (size_t i = 0; i < des_.size(); ++i) {
         ModuleSectionDes &des = des_[i];
         ModuleSectionDes::ModuleRegionInfo &curInfo = moduleInfo[i];
@@ -385,6 +425,27 @@ void ElfBuilder::MergeSymtabSections(std::ofstream &file,
         curInfo.symtabSize = curSecSize;
         file.write(reinterpret_cast<char *>(curSecAddr), curSecSize);
         curSecOffset += curSecSize;
+        strTabSize += des.GetSecSize(ElfSecName::STRTAB);
+        if (des.HasAsmStubStrTab()) {
+            const std::vector<std::pair<std::string, uint32_t>> &asmStubELFInfo = des.GetAsmStubELFInfo();
+            uint32_t asmStubSymTabNum = asmStubELFInfo.size() - 1;
+            std::unique_ptr<Elf64_Sym []> syms = std::make_unique<Elf64_Sym []>(asmStubSymTabNum);
+            ASSERT(asmStubStrName_.size() == asmStubSymTabNum);
+            for (size_t idx = 0; idx < asmStubSymTabNum; ++idx) {
+                Elf64_Sym &sym = syms[idx];
+                sym.setBindingAndType(llvm::ELF::STB_GLOBAL, llvm::ELF::STT_FUNC);
+                sym.st_shndx = static_cast<uint16_t>(textSecIndex);
+                sym.st_value = asmStubELFInfo[idx].second + asmStubOffset;
+                sym.st_name = asmStubStrName_[idx];
+                sym.st_name += strTabSize;
+                sym.st_other = llvm::ELF::STV_DEFAULT;
+                sym.st_size = asmStubELFInfo[idx + 1].second - asmStubELFInfo[idx].second;
+            }
+            uint32_t asmStubSymTabSize = asmStubSymTabNum * sizeof(llvm::ELF::Elf64_Sym);
+            file.write(reinterpret_cast<char *>(syms.get()), asmStubSymTabSize);
+            curInfo.symtabSize += asmStubSymTabSize;
+            curSecOffset += asmStubSymTabSize;
+        }
     }
 }
 
@@ -552,7 +613,8 @@ void ElfBuilder::PackELFSections(std::ofstream &file)
             case ElfSecName::SYMTAB: {
                 FixSymtab(&curShdr);
                 uint32_t curSize = curSecOffset;
-                MergeSymtabSections(file, moduleInfo, curSecOffset);
+                uint32_t asmSecIndex = GetShIndex(ElfSecName::ARK_ASMSTUB);
+                MergeSymtabSections(file, moduleInfo, curSecOffset, shdr[asmSecIndex].sh_offset);
                 curShdr.sh_size = curSecOffset - curSize;
                 break;
             }

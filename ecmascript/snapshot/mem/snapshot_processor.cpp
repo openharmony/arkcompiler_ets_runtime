@@ -117,6 +117,9 @@
 #include "ecmascript/builtins/builtins_number_format.h"
 #include "ecmascript/builtins/builtins_plural_rules.h"
 #include "ecmascript/builtins/builtins_relative_time_format.h"
+#include "ecmascript/builtins/builtins_segmenter.h"
+#include "ecmascript/builtins/builtins_segments.h"
+#include "ecmascript/builtins/builtins_segment_iterator.h"
 #endif
 
 namespace panda::ecmascript {
@@ -195,6 +198,8 @@ using NumberFormat = builtins::BuiltinsNumberFormat;
 using RelativeTimeFormat = builtins::BuiltinsRelativeTimeFormat;
 using Collator = builtins::BuiltinsCollator;
 using PluralRules = builtins::BuiltinsPluralRules;
+using Segmenter = builtins::BuiltinsSegmenter;
+using Segments = builtins::BuiltinsSegments;
 #endif
 
 // NOLINTNEXTLINE(modernize-avoid-c-arrays)
@@ -305,6 +310,7 @@ static uintptr_t g_nativeTable[] = {
     reinterpret_cast<uintptr_t>(Object::DefineProperty),
     reinterpret_cast<uintptr_t>(Object::Freeze),
     reinterpret_cast<uintptr_t>(Object::GetOwnPropertyDescriptor),
+    reinterpret_cast<uintptr_t>(Object::GetOwnPropertyDescriptors),
     reinterpret_cast<uintptr_t>(Object::GetOwnPropertyNames),
     reinterpret_cast<uintptr_t>(Object::GetOwnPropertySymbols),
     reinterpret_cast<uintptr_t>(Object::GetPrototypeOf),
@@ -731,6 +737,11 @@ static uintptr_t g_nativeTable[] = {
     reinterpret_cast<uintptr_t>(ListFormat::Format),
     reinterpret_cast<uintptr_t>(ListFormat::FormatToParts),
     reinterpret_cast<uintptr_t>(ListFormat::ResolvedOptions),
+    reinterpret_cast<uintptr_t>(Segmenter::SegmenterConstructor),
+    reinterpret_cast<uintptr_t>(Segmenter::SupportedLocalesOf),
+    reinterpret_cast<uintptr_t>(Segmenter::ResolvedOptions),
+    reinterpret_cast<uintptr_t>(Segmenter::Segment),
+    reinterpret_cast<uintptr_t>(Segments::Containing),
 #endif
 
     // non ECMA standard jsapi containers.

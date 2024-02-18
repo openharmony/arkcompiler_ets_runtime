@@ -29,6 +29,7 @@ group("ark_js_packages") {
       is_ohos) {
     deps += [
       "ecmascript/compiler:ark_aot_compiler",
+      "ecmascript/compiler:libark_jsoptimizer",
       "ecmascript/pgo_profiler/prof_dump:profdump",
     ]
   }
@@ -240,6 +241,9 @@ if (enable_ark_intl) {
     "ecmascript/builtins/builtins_number_format.cpp",
     "ecmascript/builtins/builtins_plural_rules.cpp",
     "ecmascript/builtins/builtins_relative_time_format.cpp",
+    "ecmascript/builtins/builtins_segment_iterator.cpp",
+    "ecmascript/builtins/builtins_segmenter.cpp",
+    "ecmascript/builtins/builtins_segments.cpp",
     "ecmascript/js_collator.cpp",
     "ecmascript/js_date_time_format.cpp",
     "ecmascript/js_displaynames.cpp",
@@ -248,6 +252,9 @@ if (enable_ark_intl) {
     "ecmascript/js_number_format.cpp",
     "ecmascript/js_plural_rules.cpp",
     "ecmascript/js_relative_time_format.cpp",
+    "ecmascript/js_segment_iterator.cpp",
+    "ecmascript/js_segmenter.cpp",
+    "ecmascript/js_segments.cpp",
   ]
 } else {
   if (target_os != "android" && target_os != "ios") {
@@ -597,6 +604,7 @@ ecma_source = [
   "ecmascript/builtins/shared_builtins.cpp",
   "ecmascript/byte_array.cpp",
   "ecmascript/ohos/code_decrypt.cpp",
+  "ecmascript/ohos/enable_aot_list_helper.cpp",
   "ecmascript/compiler/aot_file/elf_builder.cpp",
   "ecmascript/compiler/aot_file/elf_reader.cpp",
   "ecmascript/compiler/aot_file/elf_checker.cpp",
@@ -649,6 +657,7 @@ ecma_source = [
   "ecmascript/ecma_vm.cpp",
   "ecmascript/element_accessor.cpp",
   "ecmascript/elements.cpp",
+  "ecmascript/extractortool/src/source_map.cpp",
   "ecmascript/frames.cpp",
   "ecmascript/free_object.cpp",
   "ecmascript/generator_helper.cpp",
@@ -897,7 +906,6 @@ ecma_stackinfo_source = [
   "ecmascript/extractortool/src/extractor.cpp",
   "ecmascript/extractortool/src/file_mapper.cpp",
   "ecmascript/extractortool/src/file_path_utils.cpp",
-  "ecmascript/extractortool/src/source_map.cpp",
   "ecmascript/extractortool/src/zip_file_reader_io.cpp",
   "ecmascript/extractortool/src/zip_file_reader_mem.cpp",
   "ecmascript/extractortool/src/zip_file_reader.cpp",
@@ -1004,105 +1012,28 @@ if (enable_target_compilation) {
   ecma_platform_source += [ "ecmascript/platform/unix/directory.cpp" ]
 }
 
-ohos_source_set("libark_jsruntime_set") {
-  stack_protector_ret = false
-  if (is_ohos && is_standard_system) {
-    stub_an_file_path = "/system/lib64/${arkcompiler_relative_lib_path}/stub.an"
-  } else {
-    stub_an_file_path =
-        rebase_path("$root_gen_dir/arkcompiler/ets_runtime/stub.an")
-  }
-  defines = [ "STUB_AN_FILE=\"${stub_an_file_path}\"" ]
-  target_builtins_dts_path =
-      "/system/lib64/${arkcompiler_relative_lib_path}/lib_ark_builtins.d.abc"
-  defines += [ "TARGET_BUILTINS_DTS_PATH=\"${target_builtins_dts_path}\"" ]
-
-  if (current_cpu == "arm64") {
-    defines += [ "ENABLE_POSTFORK_FORCEEXPAND" ]
-  }
-
-  sources = ecma_source
-  sources += ecma_profiler_source
-  sources += ecma_debugger_source
-  sources += hitrace_scope_source
-  sources += ecma_platform_source
-
-  if (is_ohos) {
-    sources += ecma_stackinfo_source
-  }
-
-  public_configs = [ "$js_root:ark_jsruntime_public_config" ]
-  public_configs += [ ":include_llvm" ]
-
-  configs = [
-    "$js_root:ark_jsruntime_common_config",
-    "$js_root:asm_interp_enable_config",
-  ]
-
-  cflags_cc = []
-  if (is_standard_system || target_os == "android" || target_os == "ios") {
-    cflags_cc += [ "-fvisibility=hidden" ]
-  }
-
-  external_deps = []
-  deps = []
-  if (!is_arkui_x) {
-    external_deps += [ "runtime_core:arkfile_header_deps" ]
-  } else {
-    deps += [ "$ark_root/libpandafile:arkfile_header_deps" ]
-  }
-
-  if (is_ohos && is_standard_system && !is_arkui_x &&
-      defined(global_parts_info) && defined(global_parts_info.qos_manager)) {
-    defines += [ "ENABLE_QOS" ]
-    external_deps += [ "qos_manager:qos" ]
-  }
-
-  if (enable_target_compilation) {
-    external_deps += [ "c_utils:utils" ]
-  }
-
-  # hiviewdfx libraries
-  external_deps += hiviewdfx_ext_deps
-  deps += hiviewdfx_deps
-
-  if (ark_standalone_build || is_arkui_x) {
-    deps += [ "$ark_third_party_root/zlib:libz" ]
-  } else {
-    deps += [ "$ark_third_party_root/zlib:shared_libz" ]
-  }
-
-  part_name = "ets_runtime"
-  subsystem_name = "arkcompiler"
+libark_jsruntime_common_set("libark_jsruntime_set") {
 }
 
-ohos_source_set("libark_js_intl_set") {
-  stack_protector_ret = false
-  sources = intl_sources
-
-  public_configs = [ "$js_root:ark_jsruntime_public_config" ]
-
-  configs = [ "$js_root:ark_jsruntime_common_config" ]
-
-  cflags_cc = []
-  if (is_standard_system || target_os == "android" || target_os == "ios") {
-    cflags_cc += [ "-fvisibility=hidden" ]
+libark_jsruntime_common_set("libark_jsruntime_arm_set") {
+  if (is_ohos && is_standard_system && current_toolchain != host_toolchain &&
+      !ark_standalone_build) {
+    sanitize = {
+      ubsan = true
+    }
   }
+}
 
-  external_deps = []
-  deps = []
-  if (!is_arkui_x) {
-    external_deps += [ "runtime_core:arkfile_header_deps" ]
-  } else {
-    deps += [ "$ark_root/libpandafile:arkfile_header_deps" ]
+libark_jsruntime_intl_common_set("libark_js_intl_set") {
+}
+
+libark_jsruntime_intl_common_set("libark_js_intl_arm_set") {
+  if (is_ohos && is_standard_system && current_toolchain != host_toolchain &&
+      !ark_standalone_build) {
+    sanitize = {
+      ubsan = true
+    }
   }
-
-  # hiviewdfx libraries
-  external_deps += hiviewdfx_ext_deps
-  deps += hiviewdfx_deps
-
-  part_name = "ets_runtime"
-  subsystem_name = "arkcompiler"
 }
 
 config("ark_jsruntime_test_nolto") {
@@ -1135,11 +1066,23 @@ ohos_source_set("libark_jsruntime_test_set") {
       "/system/lib64/${arkcompiler_relative_lib_path}/lib_ark_builtins.d.abc"
   defines += [ "TARGET_BUILTINS_DTS_PATH=\"${target_builtins_dts_path}\"" ]
 
-  deps = [
-    "$ark_third_party_root/icu/icu4c:shared_icui18n",
-    "$ark_third_party_root/icu/icu4c:shared_icuuc",
-  ]
+  if (defined(is_arkui_x) && is_arkui_x) {
+    deps = [
+      "$ark_third_party_root/icu/icu4c:static_icui18n",
+      "$ark_third_party_root/icu/icu4c:static_icuuc",
+    ]
+  } else {
+    deps = [
+      "$ark_third_party_root/icu/icu4c:shared_icui18n",
+      "$ark_third_party_root/icu/icu4c:shared_icuuc",
+    ]
+  }
+
   external_deps = []
+  if (enable_dump_in_faultlog) {
+    external_deps += [ "libuv:uv" ]
+  }
+
   if (!is_arkui_x) {
     external_deps += [ "runtime_core:arkfile_header_deps" ]
   } else {
@@ -1186,9 +1129,16 @@ ohos_source_set("libark_jsruntime_test_set") {
 
 ohos_source_set("libark_jsruntime_static") {
   stack_protector_ret = false
+  if (is_ohos && is_standard_system && current_toolchain != host_toolchain &&
+      !ark_standalone_build) {
+    sanitize = {
+      ubsan = true
+    }
+  }
+
   deps = [
-    ":libark_js_intl_set",
-    ":libark_jsruntime_set",
+    ":libark_js_intl_arm_set",
+    ":libark_jsruntime_arm_set",
   ]
   external_deps = []
   if (!is_arkui_x) {
@@ -1214,6 +1164,13 @@ ohos_source_set("libark_jsruntime_static") {
 
 ohos_shared_library("libark_jsruntime") {
   stack_protector_ret = false
+  if (is_ohos && is_standard_system && current_toolchain != host_toolchain &&
+      !ark_standalone_build) {
+    sanitize = {
+      ubsan = true
+    }
+  }
+
   deps = [
     ":libark_jsruntime_static",
     sdk_libc_secshared_dep,
@@ -1252,7 +1209,7 @@ ohos_shared_library("libark_jsruntime") {
     libs = [ "log" ]
     version_script = "libark_jsruntime.map"
   }
-  if (target_os == "ios" || ark_standalone_build) {
+  if (ark_standalone_build || (defined(is_arkui_x) && is_arkui_x)) {
     deps += [
       "$ark_third_party_root/icu/icu4c:static_icui18n",
       "$ark_third_party_root/icu/icu4c:static_icuuc",
@@ -1294,9 +1251,18 @@ ohos_shared_library("libark_jsruntime_test") {
   subsystem_name = "test"
 }
 
-ohos_prebuilt_etc("app_aot_white_list") {
+ohos_prebuilt_etc("app_aot_enable_list") {
   relative_install_dir = "ark"
-  source = "$js_root/ecmascript/ohos/app_aot_white_list.conf"
+  source = "$js_root/ecmascript/ohos/app_aot_enable_list.conf"
+
+  # Set the subsystem name
+  part_name = "ets_runtime"
+  subsystem_name = "arkcompiler"
+}
+
+ohos_prebuilt_etc("app_aot_disable_list") {
+  relative_install_dir = "ark"
+  source = "$js_root/ecmascript/ohos/app_aot_disable_list.conf"
 
   # Set the subsystem name
   part_name = "ets_runtime"

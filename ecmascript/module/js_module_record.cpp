@@ -20,6 +20,7 @@
 namespace panda::ecmascript {
 int32_t ModuleRecord::Instantiate(JSThread *thread, const JSHandle<JSTaggedValue> &module)
 {
+    STACK_LIMIT_CHECK(thread, SourceTextModule::UNDEFINED_INDEX);
     if (module->IsSourceTextModule()) {
         return SourceTextModule::Instantiate(thread, module);
     }

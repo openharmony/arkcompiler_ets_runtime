@@ -25,8 +25,7 @@
 // V(name, func, length, stubIndex)
 // where BuiltinsObject::func refers to the native implementation of Object[name].
 //       kungfu::BuiltinsStubCSigns::stubIndex refers to the builtin stub index, or INVALID if no stub available.
-// The following functions are not implemented yet:
-//  - Object.getOwnPropertyDescriptors ( O )
+
 #define BUILTIN_OBJECT_FUNCTIONS(V)                                                 \
     /* Object.assign ( target, ...sources ) */                                      \
     V("assign",                   Assign,                   2, ObjectAssign)        \
@@ -44,6 +43,8 @@
     V("fromEntries",              FromEntries,              1, INVALID)             \
     /* Object.getOwnPropertyDescriptor ( O, P ) */                                  \
     V("getOwnPropertyDescriptor", GetOwnPropertyDescriptor, 2, INVALID)             \
+    /* Object.getOwnPropertyDescriptors ( O ) */                                    \
+    V("getOwnPropertyDescriptors", GetOwnPropertyDescriptors, 1, INVALID)           \
     /* Object.getOwnPropertyNames ( O ) */                                          \
     V("getOwnPropertyNames",      GetOwnPropertyNames,      1, INVALID)             \
     /* Object.getOwnPropertySymbols ( O ) */                                        \
@@ -136,6 +137,8 @@ public:
     static JSTaggedValue Seal(EcmaRuntimeCallInfo *argv);
     // 19.1.2.18 Object.setPrototypeOf(O, proto)
     static JSTaggedValue SetPrototypeOf(EcmaRuntimeCallInfo *argv);
+    
+    static JSTaggedValue GetOwnPropertyDescriptors(EcmaRuntimeCallInfo *argv);
 
     // 19.1.3.2 Object.prototype.hasOwnProperty(V)
     static JSTaggedValue HasOwnProperty(EcmaRuntimeCallInfo *argv);

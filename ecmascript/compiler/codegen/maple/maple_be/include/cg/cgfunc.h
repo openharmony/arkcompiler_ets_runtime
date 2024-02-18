@@ -23,7 +23,6 @@
 #include "reg_info.h"
 #include "cgbb.h"
 #include "call_conv.h"
-#include "reg_alloc.h"
 #include "cfi.h"
 #include "dbg.h"
 #include "reaching.h"
@@ -37,6 +36,7 @@
 
 /* Maple MP header */
 #include "mempool_allocator.h"
+#include "triple.h"
 
 namespace maplebe {
 constexpr int32 kBBLimit = 100000;
@@ -81,6 +81,74 @@ public:
 
 private:
     MapleSet<MemOperand *, MemOpndCmp> reuseSpillLocMem;
+};
+
+// Memory read/write node helper - such as: iread, dread, iassign, dassign
+class MemRWNodeHelper {
+public:
+    MemRWNodeHelper(const BaseNode &node, MIRFunction &mirFunc, const BECommon &beCommon)
+    {
+        GetMemRWNodeBaseInfo(node, mirFunc);
+        GetTrueMirInfo(beCommon);
+    }
+    ~MemRWNodeHelper() = default;
+
+    FieldID GetFieldID() const
+    {
+        return fieldId;
+    }
+
+    const MIRType *GetMIRType() const
+    {
+        return mirType;
+    }
+
+    MIRType *GetMIRType()
+    {
+        return mirType;
+    }
+
+    int32 GetByteOffset() const
+    {
+        return byteOffset;
+    }
+
+    uint32 GetMemSize() const
+    {
+        return memSize;
+    }
+
+    PrimType GetPrimType() const
+    {
+        return primType;
+    }
+
+    bool IsRefField() const
+    {
+        return isRefField;
+    }
+
+    const MIRSymbol *GetSymbol() const
+    {
+        return symbol;
+    }
+
+    MIRSymbol *GetSymbol()
+    {
+        return symbol;
+    }
+
+private:
+    FieldID fieldId = FieldID(0);  // fieldId from node
+    MIRType *mirType = nullptr;    // true mirType
+    MIRSymbol *symbol = nullptr;   // date sym, for dread/dassign
+    int32 byteOffset = 0;
+    uint32 memSize = 0;
+    PrimType primType = PTY_unknown;
+    bool isRefField = false;  // for java
+
+    void GetMemRWNodeBaseInfo(const BaseNode &node, MIRFunction &mirFunc);
+    void GetTrueMirInfo(const BECommon &beCommon);
 };
 
 #if TARGARM32
@@ -177,6 +245,8 @@ public:
     virtual void AssignLmbcFormalParams() = 0;
     LmbcFormalParamInfo *GetLmbcFormalParamInfo(uint32 offset);
     virtual void LmbcGenSaveSpForAlloca() = 0;
+    void RemoveUnreachableBB();
+    Insn &BuildLocInsn(int64 fileNum, int64 lineNum, int64 columnNum);
     void GenerateLoc(StmtNode *stmt, unsigned &lastSrcLoc, unsigned &lastMplLoc);
     int32 GetFreqFromStmt(uint32 stmtId);
     void GenerateInstruction();
@@ -188,9 +258,6 @@ public:
     virtual void MergeReturn() = 0;
     void TraverseAndClearCatchMark(BB &bb);
     void MarkCatchBBs();
-    void MarkCleanupEntryBB();
-    void SetCleanupLabel(BB &cleanupEntry);
-    bool ExitbbNotInCleanupArea(const BB &bb) const;
     uint32 GetMaxRegNum() const
     {
         return maxRegCount;
@@ -200,7 +267,6 @@ public:
     void DumpLoop() const;
     void ClearLoopInfo();
     Operand *HandleExpr(const BaseNode &parent, BaseNode &expr);
-    virtual void DetermineReturnTypeofCall() = 0;
     /* handle rc reset */
     virtual void HandleRCCall(bool begin, const MIRSymbol *retRef = nullptr) = 0;
     virtual void HandleRetCleanup(NaryStmtNode &retNode) = 0;
@@ -226,8 +292,8 @@ public:
     virtual void SelectCondSpecialCase2(const CondGotoNode &stmt, BaseNode &opnd0) = 0;
     virtual void SelectGoto(GotoNode &stmt) = 0;
     virtual void SelectCall(CallNode &callNode) = 0;
-    virtual void SelectIcall(IcallNode &icallNode, Operand &fptrOpnd) = 0;
-    virtual void SelectIntrinCall(IntrinsiccallNode &intrinsiccallNode) = 0;
+    virtual void SelectIcall(IcallNode &icallNode) = 0;
+    virtual void SelectIntrinsicCall(IntrinsiccallNode &intrinsiccallNode) = 0;
     virtual Operand *SelectIntrinsicOpWithOneParam(IntrinsicopNode &intrinsicopNode, std::string name) = 0;
     virtual Operand *SelectIntrinsicOpWithNParams(IntrinsicopNode &intrinsicopNode, PrimType retType,
                                                   const std::string &name) = 0;
@@ -245,7 +311,7 @@ public:
     virtual Operand *SelectCSyncLockTestSet(IntrinsicopNode &intrinsicopNode, PrimType pty) = 0;
     virtual Operand *SelectCSyncSynchronize(IntrinsicopNode &intrinsicopNode) = 0;
     virtual Operand *SelectCAtomicLoadN(IntrinsicopNode &intrinsicopNode) = 0;
-    virtual Operand *SelectCAtomicExchangeN(IntrinsicopNode &intrinsicopNode) = 0;
+    virtual Operand *SelectCAtomicExchangeN(const IntrinsiccallNode &intrinsiccallNode) = 0;
     virtual Operand *SelectCReturnAddress(IntrinsicopNode &intrinsicopNode) = 0;
     virtual void SelectMembar(StmtNode &membar) = 0;
     virtual void SelectComment(CommentNode &comment) = 0;
@@ -262,7 +328,7 @@ public:
                                  PrimType finalBitFieldDestType = kPtyInvalid) = 0;
     virtual Operand *SelectIreadoff(const BaseNode &parent, IreadoffNode &ireadoff) = 0;
     virtual Operand *SelectIreadfpoff(const BaseNode &parent, IreadFPoffNode &ireadoff) = 0;
-    virtual Operand *SelectIntConst(const MIRIntConst &intConst) = 0;
+    virtual Operand *SelectIntConst(const MIRIntConst &intConst, const BaseNode &parent) = 0;
     virtual Operand *SelectFloatConst(MIRFloatConst &floatConst, const BaseNode &parent) = 0;
     virtual Operand *SelectDoubleConst(MIRDoubleConst &doubleConst, const BaseNode &parent) = 0;
     virtual Operand *SelectStrConst(MIRStrConst &strConst) = 0;
@@ -325,7 +391,6 @@ public:
     virtual Operand *SelectLazyLoadStatic(MIRSymbol &st, int64 offset, PrimType primType) = 0;
     virtual Operand *SelectLoadArrayClassCache(MIRSymbol &st, int64 offset, PrimType primType) = 0;
     virtual void GenerateYieldpoint(BB &bb) = 0;
-    virtual Operand &ProcessReturnReg(PrimType primType, int32 sReg) = 0;
 
     virtual Operand &GetOrCreateRflag() = 0;
     virtual const Operand *GetRflag() const = 0;
@@ -338,6 +403,7 @@ public:
     virtual RegOperand &GetOrCreateVirtualRegisterOperand(RegOperand &regOpnd) = 0;
     virtual RegOperand &GetOrCreateFramePointerRegOperand() = 0;
     virtual RegOperand &GetOrCreateStackBaseRegOperand() = 0;
+    virtual RegOperand *GetBaseReg(const SymbolAlloc &symAlloc) = 0;
     virtual int32 GetBaseOffset(const SymbolAlloc &symbolAlloc) = 0;
     virtual RegOperand &GetZeroOpnd(uint32 size) = 0;
     virtual Operand &CreateCfiRegOperand(uint32 reg, uint32 size) = 0;
@@ -406,6 +472,11 @@ public:
     virtual RegOperand *SelectVectorTableLookup(PrimType rType, Operand *o1, Operand *o2) = 0;
     virtual RegOperand *SelectVectorWiden(PrimType rType, Operand *o1, PrimType otyp, bool isLow) = 0;
 
+    virtual void HandleFuncCfg(CGCFG *cfg)
+    {
+        AddCommonExitBB();
+    }
+
     /* For ebo issue. */
     virtual Operand *GetTrueOpnd()
     {
@@ -421,7 +492,7 @@ public:
     };
     LabelIdx CreateLabel();
 
-    RegOperand *GetVirtualRegisterOperand(regno_t vRegNO)
+    RegOperand *GetVirtualRegisterOperand(regno_t vRegNO) const
     {
         auto it = vRegOperandTable.find(vRegNO);
         return it == vRegOperandTable.end() ? nullptr : it->second;
@@ -509,9 +580,11 @@ public:
             size = k4ByteSize;
         }
 #if TARGAARCH64
-        /* cannot handle 128 size register */
-        if (regType == kRegTyInt && size > k8ByteSize) {
-            size = k8ByteSize;
+        if (Triple::GetTriple().GetArch() == Triple::ArchType::aarch64) {
+            /* cannot handle 128 size register */
+            if (regType == kRegTyInt && size > k8ByteSize) {
+                size = k8ByteSize;
+            }
         }
 #endif
         DEBUG_ASSERT(size == k4ByteSize || size == k8ByteSize || size == k16ByteSize, "check size");
@@ -578,17 +651,13 @@ public:
         return vRegTable[rNum].GetType();
     }
 
-#if TARGX86_64
     uint32 GetMaxVReg() const
     {
-        return vRegCount + opndBuilder->GetCurrentVRegNum();
-    }
-#else
-    uint32 GetMaxVReg() const
-    {
+        if (Triple::GetTriple().GetArch() == Triple::ArchType::x64) {
+            return vRegCount + opndBuilder->GetCurrentVRegNum();
+        }
         return vRegCount;
     }
-#endif
 
     uint32 GetSSAvRegCount() const
     {
@@ -607,6 +676,9 @@ public:
     }
 
     MIRSymbol *GetRetRefSymbol(BaseNode &expr);
+
+    void VerifyAllInsn();
+
     void GenerateCfiPrologEpilog();
 
     void PatchLongBranch();
@@ -677,7 +749,7 @@ public:
         debugInfo = dbgInfo;
     }
 
-    void AddDIESymbolLocation(const MIRSymbol *sym, SymbolAlloc *loc);
+    void AddDIESymbolLocation(const MIRSymbol *sym, SymbolAlloc *loc, bool isParam);
 
     virtual void DBGFixCallFrameLocationOffsets() {};
 
@@ -797,6 +869,16 @@ public:
     void SetCleanupLabel(LabelNode &node)
     {
         cleanupLabel = &node;
+    }
+
+    const LabelNode *GetReturnLabel() const
+    {
+        return returnLabel;
+    }
+
+    void SetReturnLabel(LabelNode &label)
+    {
+        returnLabel = &label;
     }
 
     BB *GetFirstBB()
@@ -957,6 +1039,21 @@ public:
     const BB *GetExitBB(int32 index) const
     {
         return exitBBVec.at(index);
+    }
+
+    MapleVector<BB *>::iterator EraseNoReturnCallBB(MapleVector<BB *>::iterator it)
+    {
+        return noReturnCallBBVec.erase(it);
+    }
+
+    void PushBackNoReturnCallBBsVec(BB &bb)
+    {
+        noReturnCallBBVec.emplace_back(&bb);
+    }
+
+    MapleVector<BB *> &GetNoRetCallBBVec()
+    {
+        return noReturnCallBBVec;
     }
 
     void SetLab2BBMap(int32 index, BB &bb)
@@ -1174,6 +1271,16 @@ public:
         lmbcTotalArgs = 0;
     }
 
+    void SetSpSaveReg(regno_t reg)
+    {
+        spSaveReg = reg;
+    }
+
+    regno_t GetSpSaveReg() const
+    {
+        return spSaveReg;
+    }
+
     MapleVector<BB *> &GetAllBBs()
     {
         return bbVec;
@@ -1372,6 +1479,16 @@ public:
         hasTakenLabel = true;
     }
 
+    bool HasLaidOutByPgoUse() const
+    {
+        return hasLaidOutByPgoUse;
+    }
+
+    void SetHasLaidOutByPgoUse()
+    {
+        hasLaidOutByPgoUse = true;
+    }
+
     virtual InsnVisitor *NewInsnModifier() = 0;
 
     bool GenCfi() const
@@ -1379,9 +1496,9 @@ public:
         return (mirModule.GetSrcLang() != kSrcLangC) || mirModule.IsWithDbgInfo();
     }
 
-    MapleVector<DBGExprLoc *> &GetDbgCallFrameLocations()
+    MapleVector<DBGExprLoc *> &GetDbgCallFrameLocations(bool isParam)
     {
-        return dbgCallFrameLocations;
+        return isParam ? dbgParamCallFrameLocations : dbgLocalCallFrameLocations;
     }
 
     bool HasAsm() const
@@ -1431,6 +1548,16 @@ public:
         stackMapInsns.emplace_back(&insn);
     }
 
+    bool IsStackMapComputed()
+    {
+        return isStackMapComputed;
+    }
+
+    void SetStackMapComputed()
+    {
+        isStackMapComputed = true;
+    }
+
     void EraseUnreachableStackMapInsns()
     {
         for (auto it = stackMapInsns.begin(); it != stackMapInsns.end();) {
@@ -1462,6 +1589,16 @@ public:
         return stackProtectInfo;
     }
 
+    void SetNeedStackProtect(bool val)
+    {
+        needStackProtect = val;
+    }
+
+    bool GetNeedStackProtect() const
+    {
+        return needStackProtect;
+    }
+
     CallConvKind GetCurCallConvKind() const
     {
         return callingConventionKind;
@@ -1475,6 +1612,20 @@ public:
     FuncEmitInfo *GetFuncEmitInfo()
     {
         return funcEmitInfo;
+    }
+
+    void SetExitBBLost(bool val)
+    {
+        exitBBLost = val;
+    }
+    bool GetExitBBLost()
+    {
+        return exitBBLost;
+    }
+
+    bool GetWithSrc() const
+    {
+        return withSrc;
     }
 
 protected:
@@ -1513,9 +1664,12 @@ protected:
     bool isAfterRegAlloc = false;
     bool isAggParamInReg = false;
     bool hasTakenLabel = false;
+    bool hasLaidOutByPgoUse = false;
+    bool withSrc = true;
     uint32 frequency = 0;
     DebugInfo *debugInfo = nullptr; /* debugging info */
-    MapleVector<DBGExprLoc *> dbgCallFrameLocations;
+    MapleVector<DBGExprLoc *> dbgParamCallFrameLocations;
+    MapleVector<DBGExprLoc *> dbgLocalCallFrameLocations;
     RegOperand *aggParamReg = nullptr;
     ReachingDefinition *reachingDef = nullptr;
 
@@ -1560,9 +1714,8 @@ protected:
         RegType regType = vRegNode.GetType();
         DEBUG_ASSERT(regType == kRegTyInt || regType == kRegTyFloat, "");
         uint32 size = vRegNode.GetSize(); /* in bytes */
-        DEBUG_ASSERT(size == sizeof(int32) || size == sizeof(int64), "");
-        return (regType == kRegTyInt ? (size == sizeof(int32) ? PTY_i32 : PTY_i64)
-                                     : (size == sizeof(float) ? PTY_f32 : PTY_f64));
+        return (regType == kRegTyInt ? (size <= sizeof(int32) ? PTY_i32 : PTY_i64)
+                                     : (size <= sizeof(float) ? PTY_f32 : PTY_f64));
     }
 
     int64 GetPseudoRegisterSpillLocation(PregIdx idx)
@@ -1587,13 +1740,55 @@ protected:
     }
 
     /* See if the symbol is a structure parameter that requires a copy. */
-    bool IsParamStructCopy(const MIRSymbol &symbol)
+    bool IsParamStructCopy(const MIRSymbol &symbol) const
     {
-        if (symbol.GetStorageClass() == kScFormal &&
-            GetBecommon().GetTypeSize(symbol.GetTyIdx().GetIdx()) > k16ByteSize) {
+        auto *mirType = GlobalTables::GetTypeTable().GetTypeFromTyIdx(symbol.GetTyIdx());
+        if (symbol.GetStorageClass() == kScFormal && IsParamStructCopyToMemory(*mirType)) {
             return true;
         }
         return false;
+    }
+
+    PrimType GetPrimTypeFromSize(uint32 byteSize, PrimType defaultType) const
+    {
+        constexpr uint32 oneByte = 1;
+        constexpr uint32 twoByte = 2;
+        constexpr uint32 fourByte = 4;
+        switch (byteSize) {
+            case oneByte:
+                return PTY_i8;
+            case twoByte:
+                return PTY_i16;
+            case fourByte:
+                return PTY_i32;
+            default:
+                return defaultType;
+        }
+    }
+
+    BB *CreateAtomicBuiltinBB()
+    {
+        LabelIdx atomicBBLabIdx = CreateLabel();
+        BB *atomicBB = CreateNewBB();
+        atomicBB->SetKind(BB::kBBIf);
+        atomicBB->SetAtomicBuiltIn();
+        atomicBB->AddLabel(atomicBBLabIdx);
+        SetLab2BBMap(atomicBBLabIdx, *atomicBB);
+        GetCurBB()->AppendBB(*atomicBB);
+        return atomicBB;
+    }
+
+    // clone old mem and add offset
+    // oldMem: [base, imm:12] -> newMem: [base, imm:(12 + offset)]
+    MemOperand &GetMemOperandAddOffset(const MemOperand &oldMem, uint32 offset, uint32 newSize)
+    {
+        auto &newMem = static_cast<MemOperand &>(*oldMem.Clone(*GetMemoryPool()));
+        auto &oldOffset = *oldMem.GetOffsetOperand();
+        auto &newOffst = static_cast<ImmOperand &>(*oldOffset.Clone(*GetMemoryPool()));
+        newOffst.SetValue(oldOffset.GetValue() + offset);
+        newMem.SetOffsetOperand(newOffst);
+        newMem.SetSize(newSize);
+        return newMem;
     }
 
 private:
@@ -1610,8 +1805,10 @@ private:
     uint32 bbCnt = 0;
     uint32 labelIdx = 0;               /* local label index number */
     LabelNode *startLabel = nullptr;   /* start label of the function */
-    LabelNode *endLabel = nullptr;     /* end label of the function */
+    LabelNode *returnLabel = nullptr;  /* return label of the function */
     LabelNode *cleanupLabel = nullptr; /* label to indicate the entry of cleanup code. */
+    LabelNode *endLabel = nullptr;     /* end label of the function */
+
     BB *firstBB = nullptr;
     BB *cleanupBB = nullptr;
     BB *cleanupEntryBB = nullptr;
@@ -1621,6 +1818,7 @@ private:
     BB *commonExitBB = nullptr;     /* this post-dominate all BBs */
     Insn *volReleaseInsn = nullptr; /* use to record the release insn for volatile strore */
     MapleVector<BB *> exitBBVec;
+    MapleVector<BB *> noReturnCallBBVec;
     MapleSet<regno_t> extendSet; /* use to mark regs which spilled 32 bits but loaded 64 bits. */
     MapleUnorderedMap<LabelIdx, BB *> lab2BBMap;
     BECommon &beCommon;
@@ -1644,14 +1842,21 @@ private:
     CGCFG *theCFG = nullptr;
     FuncEmitInfo *funcEmitInfo = nullptr;
     uint32 nextSpillLocation = 0;
+    regno_t spSaveReg = 0;
 
     const MapleString shortFuncName;
     bool hasAsm = false;
     bool useFP = true;
     bool seenFP = true;
 
+    bool isStackMapComputed = false;
+
     /* save stack protect kinds which can trigger stack protect */
     uint8 stackProtectInfo = 0;
+    bool needStackProtect = false;
+
+    // mark exitBB is unreachable
+    bool exitBBLost = false;
 }; /* class CGFunc */
 
 MAPLE_FUNC_PHASE_DECLARE_BEGIN(CgLayoutFrame, maplebe::CGFunc)
@@ -1659,6 +1864,8 @@ MAPLE_FUNC_PHASE_DECLARE_END
 MAPLE_FUNC_PHASE_DECLARE_BEGIN(CgHandleFunction, maplebe::CGFunc)
 MAPLE_FUNC_PHASE_DECLARE_END
 MAPLE_FUNC_PHASE_DECLARE_BEGIN(CgFixCFLocOsft, maplebe::CGFunc)
+MAPLE_FUNC_PHASE_DECLARE_END
+MAPLE_FUNC_PHASE_DECLARE_BEGIN(CgVerify, maplebe::CGFunc)
 MAPLE_FUNC_PHASE_DECLARE_END
 MAPLE_FUNC_PHASE_DECLARE_BEGIN(CgGenCfi, maplebe::CGFunc)
 MAPLE_FUNC_PHASE_DECLARE_END

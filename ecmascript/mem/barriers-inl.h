@@ -24,6 +24,7 @@
 #include "ecmascript/ecma_vm.h"
 
 namespace panda::ecmascript {
+template<WriteBarrierType writeType = WriteBarrierType::NORMAL>
 static ARK_INLINE void WriteBarrier(const JSThread *thread, void *obj, size_t offset, JSTaggedType value)
 {
     ASSERT(value != JSTaggedValue::VALUE_UNDEFINED);
@@ -45,7 +46,8 @@ static ARK_INLINE void WriteBarrier(const JSThread *thread, void *obj, size_t of
         LOG_FULL(ERROR) << "Shared space reference to " << valueRegion->GetSpaceTypeName();
     }
     if (thread->IsConcurrentMarkingOrFinished()) {
-        Barriers::Update(thread, slotAddr, objectRegion, reinterpret_cast<TaggedObject *>(value), valueRegion);
+        Barriers::Update(thread, slotAddr, objectRegion, reinterpret_cast<TaggedObject *>(value),
+                         valueRegion, writeType);
     }
 }
 

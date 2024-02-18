@@ -143,7 +143,7 @@ public:
         return ptManager_;
     }
 
-    void SetTSManager(TSManager *set);
+    void PUBLIC_API SetTSManager(TSManager *set);
 
     ARK_INLINE JSThread *GetJSThread() const
     {
@@ -258,9 +258,9 @@ public:
 
     bool HasCachedConstpool(const JSPandaFile *jsPandaFile) const;
 
-    JSTaggedValue FindConstpool(const JSPandaFile *jsPandaFile, int32_t index);
+    JSTaggedValue PUBLIC_API FindConstpool(const JSPandaFile *jsPandaFile, int32_t index);
     // For new version instruction.
-    JSTaggedValue FindConstpool(const JSPandaFile *jsPandaFile, panda_file::File::EntityId id);
+    JSTaggedValue PUBLIC_API FindConstpool(const JSPandaFile *jsPandaFile, panda_file::File::EntityId id);
     JSTaggedValue FindUnsharedConstpool(JSTaggedValue sharedConstpool);
     JSTaggedValue FindConstpoolWithAOT(const JSPandaFile *jsPandaFile, int32_t index);
     std::optional<std::reference_wrapper<CMap<int32_t, JSTaggedValue>>> FindConstpools(
@@ -271,6 +271,7 @@ public:
     void CreateAllConstpool(const JSPandaFile *jsPandaFile);
 
     void HandleUncaughtException(JSTaggedValue exception);
+    void HandleUncaughtException();
     void ProcessNativeDelete(const WeakRootVisitor &visitor);
     void ProcessReferences(const WeakRootVisitor &visitor);
     JSHandle<GlobalEnv> GetGlobalEnv() const;
@@ -526,11 +527,11 @@ private:
                                           const JSPandaFile *jsPandaFile, std::string_view entryPoint,
                                           CJSInfo *cjsInfo = nullptr);
     Expected<JSTaggedValue, bool> InvokeEcmaEntrypoint(const JSPandaFile *jsPandaFile, std::string_view entryPoint,
-                                                       bool excuteFromJob = false);
+                                                       bool executeFromJob = false);
     Expected<JSTaggedValue, bool> InvokeEcmaEntrypointForHotReload(
-        const JSPandaFile *jsPandaFile, std::string_view entryPoint, bool excuteFromJob);
+        const JSPandaFile *jsPandaFile, std::string_view entryPoint, bool executeFromJob);
     Expected<JSTaggedValue, bool> CommonInvokeEcmaEntrypoint(const JSPandaFile *jsPandaFile,
-        std::string_view entryPoint, JSHandle<JSFunction> &func);
+        std::string_view entryPoint, JSHandle<JSFunction> &func, bool executeFromJob);
     bool LoadAOTFiles(const std::string &aotFileName);
     void RelocateConstantString(const JSPandaFile *jsPandaFile);
     NO_MOVE_SEMANTIC(EcmaContext);

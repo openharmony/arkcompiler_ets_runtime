@@ -399,6 +399,8 @@ OperationResult JSTypedArray::IntegerIndexedElementGet(JSThread *thread, const J
     // 8. If index < 0 or index ≥ length, return undefined.
     JSHandle<JSTaggedValue> indexHandle(thread, index);
     JSTaggedNumber indexNumber = JSTaggedValue::ToNumber(thread, indexHandle);
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(
+        thread, OperationResult(thread, JSTaggedValue::Exception(), PropertyMetaData(false)));
     double tNegZero = -0.0;
     auto eZero = JSTaggedNumber(tNegZero);
     JSHandle<JSTaggedValue> zero(thread, JSTaggedValue(0));
@@ -577,12 +579,12 @@ bool JSTypedArray::IntegerIndexedElementSet(JSThread *thread, const JSHandle<JST
     ContentType contentType = JSHandle<JSTypedArray>::Cast(typedarray)->GetContentType();
     if (UNLIKELY(contentType == ContentType::BigInt)) {
         numValueHandle = JSHandle<JSTaggedValue>(thread, JSTaggedValue::ToBigInt(thread, value));
+        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
     } else {
         numValueHandle = JSHandle<JSTaggedValue>(thread, JSTaggedValue::ToNumber(thread, value));
+        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
     }
-    // 4. ReturnIfAbrupt(numValue).
-    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
-
+    
     JSHandle<JSTypedArray> typedarrayObj(typedarray);
     JSTaggedValue buffer = typedarrayObj->GetViewedArrayBufferOrByteArray();
     JSHandle<JSTaggedValue> indexHandle(thread, index);
@@ -734,7 +736,7 @@ JSTaggedValue JSTypedArray::GetOffHeapBuffer(JSThread *thread, JSHandle<JSTypedA
     JSHandle<JSTaggedValue> typeName(thread, typedArray->GetTypedArrayName());
     DataViewType arrayType = JSTypedArray::GetTypeFromName(thread, typeName);
     JSHandle<JSHClass> notOnHeapHclass = TypedArrayHelper::GetNotOnHeapHclassFromType(
-            thread, typedArray, arrayType);
+        thread, typedArray, arrayType);
     TaggedObject::Cast(*typedArray)->SynchronizedSetClass(thread, *notOnHeapHclass); // onHeap->notOnHeap
 
     return arrayBuffer.GetTaggedValue();

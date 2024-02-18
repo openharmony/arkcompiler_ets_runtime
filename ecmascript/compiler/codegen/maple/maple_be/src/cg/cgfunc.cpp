@@ -22,6 +22,7 @@
 #include "loop.h"
 #include "mir_builder.h"
 #include "factory.h"
+#include "cfgo.h"
 #include "debug_info.h"
 #include "optimize_common.h"
 
@@ -29,6 +30,70 @@ namespace maplebe {
 using namespace maple;
 
 #define JAVALANG (GetMirModule().IsJavaModule())
+// deal mem read/write node base info
+void MemRWNodeHelper::GetMemRWNodeBaseInfo(const BaseNode &node, MIRFunction &mirFunc)
+{
+    if (node.GetOpCode() == maple::OP_iread) {
+        auto &iread = static_cast<const IreadNode &>(node);
+        fieldId = iread.GetFieldID();
+        auto *type = GlobalTables::GetTypeTable().GetTypeFromTyIdx(iread.GetTyIdx());
+        DEBUG_ASSERT(type->IsMIRPtrType(), "expect a pointer type at iread node");
+        auto *pointerType = static_cast<MIRPtrType *>(type);
+        mirType = GlobalTables::GetTypeTable().GetTypeFromTyIdx(pointerType->GetPointedTyIdx());
+        if (mirType->GetKind() == kTypeArray) {
+            auto *arrayType = static_cast<MIRArrayType *>(mirType);
+            mirType = GlobalTables::GetTypeTable().GetTypeFromTyIdx(arrayType->GetElemTyIdx());
+        }
+    } else if (node.GetOpCode() == maple::OP_dassign) {
+        auto &dassign = static_cast<const DassignNode &>(node);
+        fieldId = dassign.GetFieldID();
+        symbol = mirFunc.GetLocalOrGlobalSymbol(dassign.GetStIdx());
+        CHECK_FATAL(symbol != nullptr, "symbol should not be nullptr");
+        mirType = symbol->GetType();
+    } else if (node.GetOpCode() == maple::OP_dread) {
+        auto &dread = static_cast<const AddrofNode &>(node);
+        fieldId = dread.GetFieldID();
+        symbol = mirFunc.GetLocalOrGlobalSymbol(dread.GetStIdx());
+        CHECK_FATAL(symbol != nullptr, "symbol should not be nullptr");
+        mirType = symbol->GetType();
+    } else {
+        CHECK_FATAL(node.GetOpCode() == maple::OP_iassign, "unsupported OpCode");
+        auto &iassign = static_cast<const IassignNode &>(node);
+        fieldId = iassign.GetFieldID();
+        auto &addrofNode = static_cast<AddrofNode &>(iassign.GetAddrExprBase());
+        auto *iassignMirType = GlobalTables::GetTypeTable().GetTypeFromTyIdx(iassign.GetTyIdx());
+        MIRPtrType *pointerType = nullptr;
+        if (iassignMirType->GetPrimType() == PTY_agg) {
+            auto *addrSym = mirFunc.GetLocalOrGlobalSymbol(addrofNode.GetStIdx());
+            auto *addrMirType = GlobalTables::GetTypeTable().GetTypeFromTyIdx(addrSym->GetTyIdx());
+            addrMirType = GlobalTables::GetTypeTable().GetTypeFromTyIdx(addrMirType->GetTypeIndex());
+            DEBUG_ASSERT(addrMirType->GetKind() == kTypePointer, "non-pointer");
+            pointerType = static_cast<MIRPtrType *>(addrMirType);
+        } else {
+            DEBUG_ASSERT(iassignMirType->GetKind() == kTypePointer, "non-pointer");
+            pointerType = static_cast<MIRPtrType *>(iassignMirType);
+        }
+        mirType = GlobalTables::GetTypeTable().GetTypeFromTyIdx(pointerType->GetPointedTyIdx());
+    }
+}
+
+void MemRWNodeHelper::GetTrueMirInfo(const BECommon &beCommon)
+{
+    // fixup mirType, primType and offset
+    if (fieldId != 0) {  // get true field type
+        DEBUG_ASSERT((mirType->IsMIRStructType() || mirType->IsMIRUnionType() || mirType->IsMIRClassType()),
+                     "non-structure");
+        auto *structType = static_cast<MIRStructType *>(mirType);
+        mirType = structType->GetFieldType(fieldId);
+        byteOffset = mirType->IsMIRClassType()
+                         ? static_cast<int32>(beCommon.GetJClassFieldOffset(*structType, fieldId).byteOffset)
+                         : static_cast<int32>(structType->GetFieldOffsetFromBaseAddr(fieldId).byteOffset);
+        isRefField = beCommon.IsRefField(*structType, fieldId);
+    }
+    primType = mirType->GetPrimType();
+    // get mem size
+    memSize = static_cast<uint32>(mirType->GetSize());
+}
 
 Operand *HandleDread(const BaseNode &parent, BaseNode &expr, CGFunc &cgFunc)
 {
@@ -40,9 +105,6 @@ Operand *HandleRegread(const BaseNode &parent, BaseNode &expr, CGFunc &cgFunc)
 {
     (void)parent;
     auto &regReadNode = static_cast<RegreadNode &>(expr);
-    if (regReadNode.GetRegIdx() == -kSregRetval0 || regReadNode.GetRegIdx() == -kSregRetval1) {
-        return &cgFunc.ProcessReturnReg(regReadNode.GetPrimType(), -(regReadNode.GetRegIdx()));
-    }
     return cgFunc.SelectRegread(regReadNode);
 }
 
@@ -53,7 +115,7 @@ Operand *HandleConstVal(const BaseNode &parent, BaseNode &expr, CGFunc &cgFunc)
     DEBUG_ASSERT(mirConst != nullptr, "get constval of constvalnode failed");
     if (mirConst->GetKind() == kConstInt) {
         auto *mirIntConst = safe_cast<MIRIntConst>(mirConst);
-        return cgFunc.SelectIntConst(*mirIntConst);
+        return cgFunc.SelectIntConst(*mirIntConst, parent);
     } else if (mirConst->GetKind() == kConstFloatConst) {
         auto *mirFloatConst = safe_cast<MIRFloatConst>(mirConst);
         return cgFunc.SelectFloatConst(*mirFloatConst, parent);
@@ -824,8 +886,6 @@ Operand *HandleIntrinOp(const BaseNode &parent, BaseNode &expr, CGFunc &cgFunc)
             return cgFunc.SelectCSyncSynchronize(intrinsicopNode);
         case INTRN_C___atomic_load_n:
             return cgFunc.SelectCAtomicLoadN(intrinsicopNode);
-        case INTRN_C___atomic_exchange_n:
-            return cgFunc.SelectCAtomicExchangeN(intrinsicopNode);
         case INTRN_C__builtin_return_address:
         case INTRN_C__builtin_extract_return_addr:
             return cgFunc.SelectCReturnAddress(intrinsicopNode);
@@ -1393,17 +1453,16 @@ void HandleICall(StmtNode &stmt, CGFunc &cgFunc)
     cgFunc.UpdateFrequency(stmt);
     auto &icallNode = static_cast<IcallNode &>(stmt);
     cgFunc.GetCurBB()->SetHasCall();
-    Operand *opnd0 = cgFunc.HandleExpr(stmt, *icallNode.GetNopndAt(0));
-    cgFunc.SelectIcall(icallNode, *opnd0);
+    cgFunc.SelectIcall(icallNode);
     if (cgFunc.GetCurBB()->GetKind() != BB::kBBFallthru) {
         cgFunc.SetCurBB(*cgFunc.StartNewBB(icallNode));
     }
 }
 
-void HandleIntrinCall(StmtNode &stmt, CGFunc &cgFunc)
+void HandleIntrinsicCall(StmtNode &stmt, CGFunc &cgFunc)
 {
     auto &call = static_cast<IntrinsiccallNode &>(stmt);
-    cgFunc.SelectIntrinCall(call);
+    cgFunc.SelectIntrinsicCall(call);
 }
 
 void HandleDassign(StmtNode &stmt, CGFunc &cgFunc)
@@ -1427,8 +1486,8 @@ void HandleDassign(StmtNode &stmt, CGFunc &cgFunc)
     }
     Operand *opnd0 = cgFunc.HandleExpr(dassignNode, *rhs);
     cgFunc.SelectDassign(dassignNode, *opnd0);
-    if (isSaveRetvalToLocal) {
-        cgFunc.GetCurBB()->GetLastInsn()->MarkAsSaveRetValToLocal();
+    if (isSaveRetvalToLocal && cgFunc.GetCurBB() && cgFunc.GetCurBB()->GetLastMachineInsn()) {
+        cgFunc.GetCurBB()->GetLastMachineInsn()->MarkAsSaveRetValToLocal();
     }
 }
 
@@ -1453,8 +1512,8 @@ void HandleRegassign(StmtNode &stmt, CGFunc &cgFunc)
     }
     Operand *opnd0 = cgFunc.HandleExpr(regAssignNode, *operand);
     cgFunc.SelectRegassign(regAssignNode, *opnd0);
-    if (isSaveRetvalToLocal) {
-        cgFunc.GetCurBB()->GetLastInsn()->MarkAsSaveRetValToLocal();
+    if (isSaveRetvalToLocal && cgFunc.GetCurBB() && cgFunc.GetCurBB()->GetLastMachineInsn()) {
+        cgFunc.GetCurBB()->GetLastMachineInsn()->MarkAsSaveRetValToLocal();
     }
 }
 
@@ -1539,7 +1598,7 @@ void HandleMembar(StmtNode &stmt, CGFunc &cgFunc)
         return;
     }
     cgFunc.SetVolStore(true);
-    cgFunc.SetVolReleaseInsn(cgFunc.GetCurBB()->GetLastInsn());
+    cgFunc.SetVolReleaseInsn(cgFunc.GetCurBB()->GetLastMachineInsn());
 }
 
 void HandleComment(StmtNode &stmt, CGFunc &cgFunc)
@@ -1585,10 +1644,10 @@ void InitHandleStmtFactory()
     RegisterFactoryFunction<HandleStmtFactory>(OP_call, HandleCall);
     RegisterFactoryFunction<HandleStmtFactory>(OP_icall, HandleICall);
     RegisterFactoryFunction<HandleStmtFactory>(OP_icallproto, HandleICall);
-    RegisterFactoryFunction<HandleStmtFactory>(OP_intrinsiccall, HandleIntrinCall);
-    RegisterFactoryFunction<HandleStmtFactory>(OP_intrinsiccallassigned, HandleIntrinCall);
-    RegisterFactoryFunction<HandleStmtFactory>(OP_intrinsiccallwithtype, HandleIntrinCall);
-    RegisterFactoryFunction<HandleStmtFactory>(OP_intrinsiccallwithtypeassigned, HandleIntrinCall);
+    RegisterFactoryFunction<HandleStmtFactory>(OP_intrinsiccall, HandleIntrinsicCall);
+    RegisterFactoryFunction<HandleStmtFactory>(OP_intrinsiccallassigned, HandleIntrinsicCall);
+    RegisterFactoryFunction<HandleStmtFactory>(OP_intrinsiccallwithtype, HandleIntrinsicCall);
+    RegisterFactoryFunction<HandleStmtFactory>(OP_intrinsiccallwithtypeassigned, HandleIntrinsicCall);
     RegisterFactoryFunction<HandleStmtFactory>(OP_dassign, HandleDassign);
     RegisterFactoryFunction<HandleStmtFactory>(OP_dassignoff, HandleDassignoff);
     RegisterFactoryFunction<HandleStmtFactory>(OP_regassign, HandleRegassign);
@@ -1628,13 +1687,15 @@ CGFunc::CGFunc(MIRModule &mod, CG &cg, MIRFunction &mirFunc, BECommon &beCommon,
       vregsToPregsMap(std::less<regno_t>(), allocator.Adapter()),
       stackMapInsns(allocator.Adapter()),
       hasVLAOrAlloca(mirFunc.HasVlaOrAlloca()),
-      dbgCallFrameLocations(allocator.Adapter()),
+      dbgParamCallFrameLocations(allocator.Adapter()),
+      dbgLocalCallFrameLocations(allocator.Adapter()),
       cg(&cg),
       mirModule(mod),
       memPool(&memPool),
       stackMp(stackMp),
       func(mirFunc),
       exitBBVec(allocator.Adapter()),
+      noReturnCallBBVec(allocator.Adapter()),
       extendSet(allocator.Adapter()),
       lab2BBMap(allocator.Adapter()),
       beCommon(beCommon),
@@ -1745,6 +1806,24 @@ bool CGFunc::CheckSkipMembarOp(const StmtNode &stmt)
     }
 #endif /* TARGAARCH64 */
     return false;
+}
+
+void CGFunc::RemoveUnreachableBB()
+{
+    OptimizationPattern *pattern = memPool->New<UnreachBBPattern>(*this);
+    for (BB *bb = firstBB; bb != nullptr; bb = bb->GetNext()) {
+        (void)pattern->Optimize(*bb);
+    }
+}
+
+Insn &CGFunc::BuildLocInsn(int64 fileNum, int64 lineNum, int64 columnNum)
+{
+    Operand *o0 = CreateDbgImmOperand(fileNum);
+    Operand *o1 = CreateDbgImmOperand(lineNum);
+    Operand *o2 = CreateDbgImmOperand(columnNum);
+    Insn &loc =
+        GetInsnBuilder()->BuildDbgInsn(mpldbg::OP_DBG_loc).AddOpndChain(*o0).AddOpndChain(*o1).AddOpndChain(*o2);
+    return loc;
 }
 
 void CGFunc::GenerateLoc(StmtNode *stmt, unsigned &lastSrcLoc, unsigned &lastMplLoc)
@@ -2074,12 +2153,14 @@ void CGFunc::TraverseAndClearCatchMark(BB &bb)
 void CGFunc::MarkCatchBBs()
 {
     /* First, suspect all bb to be in catch */
-    FOR_ALL_BB(bb, this) {
+    FOR_ALL_BB(bb, this)
+    {
         bb->SetIsCatch(true);
         bb->SetInternalFlag3(0); /* mark as not visited */
     }
     /* Eliminate cleanup section from catch */
-    FOR_ALL_BB(bb, this) {
+    FOR_ALL_BB(bb, this)
+    {
         if (bb->GetFirstStmt() == cleanupLabel) {
             bb->SetIsCatch(false);
             DEBUG_ASSERT(bb->GetSuccs().size() <= 1, "MarkCatchBBs incorrect cleanup label");
@@ -2103,81 +2184,6 @@ void CGFunc::MarkCatchBBs()
     }
     /* Unmark all normally reachable bb as NOT catch. */
     TraverseAndClearCatchMark(*firstBB);
-}
-
-/*
- * Mark CleanupEntryBB
- * Note: Cleanup bbs and func body bbs are seperated, no edges between them.
- * No ehSuccs or eh_prevs between cleanup bbs.
- */
-void CGFunc::MarkCleanupEntryBB()
-{
-    BB *cleanupEntry = nullptr;
-    FOR_ALL_BB(bb, this) {
-        bb->SetIsCleanup(0);     /* Use to mark cleanup bb */
-        bb->SetInternalFlag3(0); /* Use to mark if visited. */
-        if (bb->GetFirstStmt() == this->cleanupLabel) {
-            cleanupEntry = bb;
-        }
-    }
-    /* If a function without cleanup bb, return. */
-    if (cleanupEntry == nullptr) {
-        return;
-    }
-    /* after merge bb, update cleanupBB. */
-    if (cleanupEntry->GetSuccs().empty()) {
-        this->cleanupBB = cleanupEntry;
-    }
-    SetCleanupLabel(*cleanupEntry);
-    DEBUG_ASSERT(cleanupEntry->GetEhSuccs().empty(), "CG internal error. Cleanup bb should not have ehSuccs.");
-#if DEBUG /* Please don't remove me. */
-    /* Check if all of the cleanup bb is at bottom of the function. */
-    bool isCleanupArea = true;
-    if (!mirModule.IsCModule()) {
-        FOR_ALL_BB_REV(bb, this) {
-            if (isCleanupArea) {
-                DEBUG_ASSERT(bb->IsCleanup(),
-                             "CG internal error, cleanup BBs should be at the bottom of the function.");
-            } else {
-                DEBUG_ASSERT(!bb->IsCleanup(),
-                             "CG internal error, cleanup BBs should be at the bottom of the function.");
-            }
-
-            if (bb == cleanupEntry) {
-                isCleanupArea = false;
-            }
-        }
-    }
-#endif /* DEBUG */
-    this->cleanupEntryBB = cleanupEntry;
-}
-
-/* Tranverse from current bb's successor and set isCleanup true. */
-void CGFunc::SetCleanupLabel(BB &cleanupEntry)
-{
-    /* If bb hasn't been visited, return. */
-    if (cleanupEntry.GetInternalFlag3()) {
-        return;
-    }
-    cleanupEntry.SetInternalFlag3(1);
-    cleanupEntry.SetIsCleanup(1);
-    for (auto tmpBB : cleanupEntry.GetSuccs()) {
-        if (tmpBB->GetKind() != BB::kBBReturn) {
-            SetCleanupLabel(*tmpBB);
-        } else {
-            DEBUG_ASSERT(ExitbbNotInCleanupArea(cleanupEntry), "exitBB created in cleanupArea.");
-        }
-    }
-}
-
-bool CGFunc::ExitbbNotInCleanupArea(const BB &bb) const
-{
-    for (const BB *nextBB = bb.GetNext(); nextBB != nullptr; nextBB = nextBB->GetNext()) {
-        if (nextBB->GetKind() == BB::kBBReturn) {
-            return false;
-        }
-    }
-    return true;
 }
 
 /*
@@ -2263,11 +2269,9 @@ void CGFunc::ProcessExitBBVec()
 
 void CGFunc::AddCommonExitBB()
 {
-    uint32 i = 0;
-    while (exitBBVec[i]->IsUnreachable() && i < exitBBVec.size()) {
-        i++;
+    if (commonExitBB != nullptr) {
+        return;
     }
-    DEBUG_ASSERT(i < exitBBVec.size(), "all exit BBs are unreachable");
     // create fake commonExitBB
     commonExitBB = CreateNewBB(true, BB::kBBFallthru, 0);
     DEBUG_ASSERT(commonExitBB != nullptr, "cannot create fake commonExitBB");
@@ -2283,7 +2287,8 @@ void CGFunc::UpdateCallBBFrequency()
     if (!func.HasFreqMap() || func.GetLastFreqMap().empty()) {
         return;
     }
-    FOR_ALL_BB(bb, this) {
+    FOR_ALL_BB(bb, this)
+    {
         if (bb->GetKind() != BB::kBBFallthru || !bb->HasCall()) {
             continue;
         }
@@ -2317,12 +2322,11 @@ void CGFunc::HandleFunction()
     /* build control flow graph */
     theCFG = memPool->New<CGCFG>(*this);
     theCFG->BuildCFG();
+    RemoveUnreachableBB();
     AddCommonExitBB();
     if (mirModule.GetSrcLang() != kSrcLangC) {
         MarkCatchBBs();
     }
-    MarkCleanupEntryBB();
-    DetermineReturnTypeofCall();
     theCFG->MarkLabelTakenBB();
     theCFG->UnreachCodeAnalysis();
     EraseUnreachableStackMapInsns();
@@ -2340,7 +2344,7 @@ void CGFunc::HandleFunction()
     }
 }
 
-void CGFunc::AddDIESymbolLocation(const MIRSymbol *sym, SymbolAlloc *loc)
+void CGFunc::AddDIESymbolLocation(const MIRSymbol *sym, SymbolAlloc *loc, bool isParam)
 {
     DEBUG_ASSERT(debugInfo != nullptr, "debugInfo is null!");
     DEBUG_ASSERT(loc->GetMemSegment() != nullptr, "only support those variable that locate at stack now");
@@ -2353,7 +2357,7 @@ void CGFunc::AddDIESymbolLocation(const MIRSymbol *sym, SymbolAlloc *loc)
     CHECK_FATAL(exprloc != nullptr, "exprloc is null in CGFunc::AddDIESymbolLocation");
     exprloc->SetSymLoc(loc);
 
-    GetDbgCallFrameLocations().push_back(exprloc);
+    GetDbgCallFrameLocations(isParam).push_back(exprloc);
 }
 
 void CGFunc::DumpCFG() const
@@ -2361,7 +2365,8 @@ void CGFunc::DumpCFG() const
     MIRSymbol *funcSt = GlobalTables::GetGsymTable().GetSymbolFromStidx(func.GetStIdx().Idx());
     DEBUG_ASSERT(funcSt != nullptr, "null ptr check");
     LogInfo::MapleLogger() << "\n****** CFG built by CG for " << funcSt->GetName() << " *******\n";
-    FOR_ALL_BB_CONST(bb, this) {
+    FOR_ALL_BB_CONST(bb, this)
+    {
         LogInfo::MapleLogger() << "=== BB ( " << std::hex << bb << std::dec << " ) <" << bb->GetKindName() << "> ===\n";
         LogInfo::MapleLogger() << "BB id:" << bb->GetId() << "\n";
         if (!bb->GetPreds().empty()) {
@@ -2398,7 +2403,8 @@ void CGFunc::DumpCGIR() const
     MIRSymbol *funcSt = GlobalTables::GetGsymTable().GetSymbolFromStidx(func.GetStIdx().Idx());
     DEBUG_ASSERT(funcSt != nullptr, "null ptr check");
     LogInfo::MapleLogger() << "\n******  CGIR for " << funcSt->GetName() << " *******\n";
-    FOR_ALL_BB_CONST(bb, this) {
+    FOR_ALL_BB_CONST(bb, this)
+    {
         if (bb->IsUnreachable()) {
             continue;
         }
@@ -2450,7 +2456,8 @@ void CGFunc::DumpCGIR() const
         LogInfo::MapleLogger() << "===\n";
         LogInfo::MapleLogger() << "frequency:" << bb->GetFrequency() << "\n";
 
-        FOR_BB_INSNS_CONST(insn, bb) {
+        FOR_BB_INSNS_CONST(insn, bb)
+        {
             insn->Dump();
         }
     }
@@ -2467,7 +2474,8 @@ void CGFunc::ClearLoopInfo()
 {
     loops.clear();
     loops.shrink_to_fit();
-    FOR_ALL_BB(bb, this) {
+    FOR_ALL_BB(bb, this)
+    {
         bb->ClearLoopPreds();
         bb->ClearLoopSuccs();
     }
@@ -2492,6 +2500,24 @@ void CGFunc::DumpCFGToDot(const std::string &fileNamePrefix)
         file << "};";
     }
     file << "}" << std::endl;
+}
+
+// Cgirverify phase function: all insns will be verified before cgemit.
+void CGFunc::VerifyAllInsn()
+{
+    FOR_ALL_BB(bb, this)
+    {
+        FOR_BB_INSNS(insn, bb)
+        {
+            if (VERIFY_INSN(insn) && insn->CheckMD()) {
+                continue;
+            }
+            LogInfo::MapleLogger() << "Illegal insn is:\n";
+            insn->Dump();
+            LogInfo::MapleLogger() << "Function name is:\n" << GetName() << "\n";
+            CHECK_FATAL_FALSE("The problem is illegal insn, info is above.");
+        }
+    }
 }
 
 void CGFunc::PatchLongBranch()
@@ -2540,4 +2566,14 @@ bool CgFixCFLocOsft::PhaseRun(maplebe::CGFunc &f)
     return false;
 }
 MAPLE_TRANSFORM_PHASE_REGISTER(CgFixCFLocOsft, dbgfixcallframeoffsets)
+
+bool CgVerify::PhaseRun(maplebe::CGFunc &f)
+{
+    f.VerifyAllInsn();
+    if (!f.GetCG()->GetCGOptions().DoEmitCode() || f.GetCG()->GetCGOptions().DoDumpCFG()) {
+        f.DumpCFG();
+    }
+    return false;
+}
+MAPLE_TRANSFORM_PHASE_REGISTER(CgVerify, cgirverify)
 } /* namespace maplebe */

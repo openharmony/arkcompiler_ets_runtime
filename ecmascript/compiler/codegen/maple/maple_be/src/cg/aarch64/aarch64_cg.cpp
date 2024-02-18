@@ -14,13 +14,15 @@
  */
 
 #include "aarch64_cg.h"
+#include <cinttypes>
+#include "aarch64_mop_split.h"
+#include "aarch64_mop_valid.h"
 #include "mir_builder.h"
 #include "becommon.h"
 #include "label_creation.h"
 #include "alignment.h"
 
 namespace maplebe {
-#include "immvalid.def"
 #define DEFINE_MOP(...) {__VA_ARGS__},
 const InsnDesc AArch64CG::kMd[kMopLast] = {
 #include "abstract_mmir.def"
@@ -369,7 +371,8 @@ void AArch64CG::EnrollTargetPhases(MaplePhaseManager *pm) const
 Insn &AArch64CG::BuildPhiInsn(RegOperand &defOpnd, Operand &listParam)
 {
     DEBUG_ASSERT(defOpnd.IsRegister(), "build SSA on register operand");
-    CHECK_FATAL(defOpnd.IsOfIntClass() || defOpnd.IsOfFloatOrSIMDClass(), " unknown operand type ");
+    /* There are cases that CCRegs need add phi insn. */
+    CHECK_FATAL(defOpnd.IsOfIntClass() || defOpnd.IsOfFloatOrSIMDClass() || defOpnd.IsOfCC(), " unknown operand type ");
     bool is64bit = defOpnd.GetSize() == k64BitSize;
     MOperator mop = MOP_nop;
     if (defOpnd.GetSize() == k128BitSize) {

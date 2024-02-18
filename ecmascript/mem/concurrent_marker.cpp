@@ -86,7 +86,7 @@ void ConcurrentMarker::HandleMarkingFinished()  // js-thread wait for sweep
 {
     LockHolder lock(waitMarkingFinishedMutex_);
     if (notifyMarkingFinished_) {
-        heap_->CollectGarbage(heap_->IsFullMark() ? TriggerGCType::OLD_GC : TriggerGCType::YOUNG_GC,
+        heap_->CollectGarbage(heap_->IsConcurrentFullMark() ? TriggerGCType::OLD_GC : TriggerGCType::YOUNG_GC,
                               GCReason::ALLOCATION_LIMIT);
     }
 }
@@ -114,7 +114,7 @@ void ConcurrentMarker::Reset(bool revertCSet)
             region->ClearCrossRegionRSet();
             region->ResetAliveObject();
         };
-        if (heap_->IsFullMark()) {
+        if (heap_->IsConcurrentFullMark()) {
             heap_->EnumerateRegions(callback);
         } else {
             heap_->EnumerateNewSpaceRegions(callback);
@@ -130,7 +130,7 @@ void ConcurrentMarker::InitializeMarking()
     isConcurrentMarking_ = true;
     thread_->SetMarkStatus(MarkStatus::MARKING);
 
-    if (heap_->IsFullMark()) {
+    if (heap_->IsConcurrentFullMark()) {
         heapObjectSize_ = heap_->GetHeapObjectSize();
         heap_->GetOldSpace()->SelectCSet();
         heap_->GetAppSpawnSpace()->EnumerateRegions([](Region *current) {
@@ -145,7 +145,7 @@ void ConcurrentMarker::InitializeMarking()
         heapObjectSize_ = heap_->GetNewSpace()->GetHeapObjectSize();
     }
     workManager_->Initialize(TriggerGCType::OLD_GC, ParallelGCTaskPhase::CONCURRENT_HANDLE_GLOBAL_POOL_TASK);
-    if (!heap_->IsFullMark()) {
+    if (!heap_->IsConcurrentFullMark()) {
         {
             ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "GC::MarkOldToNew");
             heap_->GetNonMovableMarker()->ProcessOldToNewNoMarkStack(MAIN_THREAD_INDEX);
@@ -176,7 +176,7 @@ void ConcurrentMarker::FinishMarking(float spendTime)
         waitMarkingFinishedCV_.Signal();
     }
     notifyMarkingFinished_ = true;
-    if (!heap_->IsFullMark()) {
+    if (!heap_->IsConcurrentFullMark()) {
         heapObjectSize_ = heap_->GetNewSpace()->GetHeapObjectSize();
     } else {
         heapObjectSize_ = heap_->GetHeapObjectSize();

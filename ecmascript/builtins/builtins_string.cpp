@@ -518,6 +518,7 @@ JSTaggedValue BuiltinsString::LastIndexOf(EcmaRuntimeCallInfo *argv)
         } else {
             pos = posVal.ToInt32();
         }
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     }
     pos = std::min(std::max(pos, 0), thisLen);
     int32_t res = EcmaStringAccessor::LastIndexOf(thread->GetEcmaVM(), thisHandle, searchHandle, pos);
@@ -1959,7 +1960,7 @@ JSTaggedValue BuiltinsString::SubStr(EcmaRuntimeCallInfo *argv)
 JSTaggedValue BuiltinsString::At(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
-    BUILTINS_API_TRACE(argv->GetThread(), String, Substring);
+    BUILTINS_API_TRACE(argv->GetThread(), String, At);
     JSThread *thread = argv->GetThread();
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 

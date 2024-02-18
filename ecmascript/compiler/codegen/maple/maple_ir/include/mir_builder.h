@@ -289,7 +289,7 @@ public:
     IcallNode *CreateStmtIcall(const MapleVector<BaseNode *> &args);
     IcallNode *CreateStmtIcallAssigned(const MapleVector<BaseNode *> &args, const MIRSymbol &ret);
     IcallNode *CreateStmtIcallAssigned(const MapleVector<BaseNode *> &args, PregIdx pregIdx);
-    IcallNode *CreateStmtIcallproto(const MapleVector<BaseNode *> &args);
+    IcallNode *CreateStmtIcallproto(const MapleVector<BaseNode *> &args, const TyIdx &prototypeIdx);
     IcallNode *CreateStmtIcallprotoAssigned(const MapleVector<BaseNode *> &args, const MIRSymbol &ret);
     // For Call, VirtualCall, SuperclassCall, InterfaceCall
     IntrinsiccallNode *CreateStmtIntrinsicCall(MIRIntrinsicID idx, const MapleVector<BaseNode *> &arguments,

@@ -134,8 +134,8 @@ public:
     void InitializePGOProfiler();
     void ResetPGOProfiler();
 
-    bool IsEnablePGOProfiler() const;
-    bool IsEnableElementsKind() const;
+    bool PUBLIC_API IsEnablePGOProfiler() const;
+    bool PUBLIC_API IsEnableElementsKind() const;
 
     bool Initialize();
 
@@ -159,7 +159,7 @@ public:
         return ecmaParamConfiguration_;
     }
 
-    JSHandle<GlobalEnv> GetGlobalEnv() const;
+    JSHandle<GlobalEnv> PUBLIC_API GetGlobalEnv() const;
 
     static EcmaVM *ConstCast(const EcmaVM *vm)
     {
@@ -366,7 +366,7 @@ public:
         }
     }
 
-    bool IsWorkerThread()
+    bool IsWorkerThread() const
     {
         return options_.IsWorker();
     }
@@ -502,7 +502,6 @@ public:
 
     JSTaggedValue FastCallAot(size_t actualNumArgs, JSTaggedType *args, const JSTaggedType *prevFp);
 
-    void HandleUncaughtException(JSTaggedValue exception);
     void RegisterUncatchableErrorHandler(const UncatchableErrorHandler &uncatchableErrorHandler)
     {
         uncatchableErrorHandler_ = uncatchableErrorHandler;
@@ -569,6 +568,11 @@ public:
     bool IsEnableJit() const
     {
         return isEnableJit_;
+    }
+
+    CMap<uint32_t, EcmaVM *> GetWorkList() const
+    {
+        return workerList_;
     }
 
     void SetEnableJit(bool state)

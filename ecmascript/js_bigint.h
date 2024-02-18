@@ -47,7 +47,7 @@ public:
     static JSHandle<BigInt> CreateBigint(JSThread *thread, uint32_t size);
 
     static bool Equal(const JSTaggedValue &x, const JSTaggedValue &y);
-    static bool SameValue(const JSTaggedValue &x, const JSTaggedValue &y);
+    static PUBLIC_API bool SameValue(const JSTaggedValue &x, const JSTaggedValue &y);
     static bool SameValueZero(const JSTaggedValue &x, const JSTaggedValue &y);
 
     static JSHandle<BigInt> BitwiseOp(JSThread *thread, Operate op, JSHandle<BigInt> x, JSHandle<BigInt> y);

@@ -23,7 +23,7 @@
 #define CHECK_OBJECT_AND_INC_OBJ_SIZE(size)                                   \
     if (object != 0) {                                                        \
         IncreaseLiveObjectSize(size);                                         \
-        if (!heap_->IsFullMark() || heap_->IsReadyToMark()) {                 \
+        if (!heap_->IsConcurrentFullMark() || heap_->IsReadyToMark()) {       \
             Region::ObjectAddressToRange(object)->IncreaseAliveObject(size);  \
         }                                                                     \
         InvokeAllocationInspector(object, size, size);                        \
@@ -33,7 +33,7 @@
 #define CHECK_OBJECT_AND_INC_OBJ_SIZE(size)                                   \
     if (object != 0) {                                                        \
         IncreaseLiveObjectSize(size);                                         \
-        if (!heap_->IsFullMark() || heap_->IsReadyToMark()) {                 \
+        if (!heap_->IsConcurrentFullMark() || heap_->IsReadyToMark()) {       \
             Region::ObjectAddressToRange(object)->IncreaseAliveObject(size);  \
         }                                                                     \
         return object;                                                        \
@@ -123,6 +123,11 @@ public:
             size_t size = maximumCapacity_ - committedSize_;
             overshootSize_ = overshootSize_ > size ? overshootSize_ - size : 0;
         }
+    }
+
+    bool CommittedSizeExceed() const
+    {
+        return committedSize_ >= maximumCapacity_ + overshootSize_ + outOfMemoryOvershootSize_;
     }
 
     size_t GetTotalAllocatedSize() const;

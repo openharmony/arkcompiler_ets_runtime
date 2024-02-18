@@ -168,9 +168,10 @@ void ParallelEvacuator::EvacuateRegion(TlabAllocator *allocator, Region *region,
             }
         }
         Barriers::SetPrimitive(header, 0, MarkWord::FromForwardingAddress(address));
-#if ECMASCRIPT_ENABLE_HEAP_VERIFY
-        VerifyHeapObject(reinterpret_cast<TaggedObject *>(address));
-#endif
+
+        if (UNLIKELY(heap_->ShouldVerifyHeap())) {
+            VerifyHeapObject(reinterpret_cast<TaggedObject *>(address));
+        }
         if (actualPromoted) {
             SetObjectFieldRSet(reinterpret_cast<TaggedObject *>(address), klass);
         }
@@ -202,7 +203,7 @@ void ParallelEvacuator::VerifyValue(TaggedObject *object, ObjectSlot slot)
             return;
         }
         Region *objectRegion = Region::ObjectAddressToRange(value.GetTaggedObject());
-        if (!heap_->IsFullMark() && !objectRegion->InYoungSpace()) {
+        if (!heap_->IsConcurrentFullMark() && !objectRegion->InYoungSpace()) {
             return;
         }
         if (!objectRegion->Test(value.GetTaggedObject()) && !objectRegion->InAppSpawnSpace()) {
@@ -312,7 +313,7 @@ void ParallelEvacuator::UpdateWeakReference()
     UpdateRecordWeakReference();
     // TODO(hzzhouzebin) wait for shared-gc
     // auto stringTable = heap_->GetEcmaVM()->GetEcmaStringTable();
-    bool isFullMark = heap_->IsFullMark();
+    bool isFullMark = heap_->IsConcurrentFullMark();
     WeakRootVisitor gcUpdateWeak = [isFullMark](TaggedObject *header) {
         Region *objectRegion = Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(header));
         if (!objectRegion) {

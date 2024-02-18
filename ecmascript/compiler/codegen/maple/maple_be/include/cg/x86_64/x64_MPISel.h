@@ -27,7 +27,7 @@ public:
     void SelectReturn(NaryStmtNode &retNode, Operand &opnd) override;
     void SelectReturn() override;
     void SelectCall(CallNode &callNode) override;
-    void SelectIcall(IcallNode &icallNode, Operand &opnd0) override;
+    void SelectIcall(IcallNode &icallNode) override;
     Operand &ProcessReturnReg(PrimType primType, int32 sReg) override;
     Operand &GetTargetRetOperand(PrimType primType, int32 sReg) override;
     Operand *SelectAddrof(AddrofNode &expr, const BaseNode &parent) override;
@@ -35,7 +35,7 @@ public:
     Operand *SelectAddrofLabel(AddroflabelNode &expr, const BaseNode &parent) override;
     Operand *SelectFloatingConst(MIRConst &floatingConst, PrimType primType) const override;
     void SelectGoto(GotoNode &stmt) override;
-    void SelectIntrinCall(IntrinsiccallNode &intrinsiccallNode) override;
+    void SelectIntrinsicCall(IntrinsiccallNode &intrinsiccallNode) override;
     void SelectAggIassign(IassignNode &stmt, Operand &AddrOpnd, Operand &opndRhs) override;
     void SelectAggDassign(maplebe::MirTypeInfo &lhsInfo, MemOperand &symbolMem, Operand &opndRhs) override;
     void SelectAggCopy(MemOperand &lhs, MemOperand &rhs, uint32 copySize) override;
@@ -78,7 +78,7 @@ private:
     /* lt/le in float is replaced by gt/ge on swaped operands */
     void SelectCmp(Operand &opnd0, Operand &opnd1, PrimType primType, bool isSwap = false);
     void SelectCmpFloatEq(RegOperand &resOpnd, Operand &opnd0, Operand &opnd1, PrimType primResType,
-        PrimType primOpndType);
+                          PrimType primOpndType);
     void SelectCmpResult(RegOperand &resOpnd, Opcode opCode, PrimType primType, PrimType primOpndType);
     void SelectSelect(Operand &resOpnd, Operand &trueOpnd, Operand &falseOpnd, PrimType primType, Opcode cmpOpcode,
                       PrimType cmpPrimType);
@@ -91,7 +91,6 @@ private:
     void CreateCallStructParamPassByReg(MemOperand &memOpnd, regno_t regNo, uint32 parmNum);
     void CreateCallStructParamPassByStack(MemOperand &addrOpnd, int32 symSize, int32 baseOffset);
     void SelectAggCopyReturn(const MIRSymbol &symbol, MIRType &symbolType, uint64 symbolSize);
-    uint32 GetAggCopySize(uint32 offset1, uint32 offset2, uint32 alignment) const;
     bool IsParamStructCopy(const MIRSymbol &symbol);
     void SelectMinOrMax(bool isMin, Operand &resOpnd, Operand &opnd0, Operand &opnd1, PrimType primType) override;
     void SelectLibCall(const std::string &funcName, std::vector<Operand *> &opndVec, PrimType primType,

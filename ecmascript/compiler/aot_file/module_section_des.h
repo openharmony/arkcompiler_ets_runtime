@@ -176,11 +176,27 @@ public:
         }
     }
 
+    bool HasAsmStubStrTab() const
+    {
+        return asmStubELFInfo_.size() != 0;
+    }
+
+    const std::vector<std::pair<std::string, uint32_t>>& GetAsmStubELFInfo()
+    {
+        return asmStubELFInfo_;
+    }
+
+    void AddAsmStubELFInfo(std::vector<std::pair<std::string, uint32_t>> &asmStubELFInfo)
+    {
+        asmStubELFInfo_ = asmStubELFInfo;
+    }
+
 private:
     static constexpr int DECIMAL_LENS = 2;
     static constexpr int HUNDRED_TIME = 100;
     static constexpr int PERCENT_LENS = 4;
 
+    std::vector<std::pair<std::string, uint32_t>> asmStubELFInfo_ {};
     std::map<ElfSecName, std::pair<uint64_t, uint32_t>> sectionsInfo_ {};
     uint32_t startIndex_ {static_cast<uint32_t>(-1)};  // record current module first function index in AOTFileInfo
     uint32_t funcCount_ {0};

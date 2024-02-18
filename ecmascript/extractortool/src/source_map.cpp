@@ -47,6 +47,7 @@ constexpr int32_t DIGIT_NUM = 64;
 const std::string MEGER_SOURCE_MAP_PATH = "ets/sourceMaps.map";
 } // namespace
 
+#if defined(PANDA_TARGET_OHOS)
 bool SourceMap::ReadSourceMapData(const std::string& hapPath, std::string& content)
 {
     if (hapPath.empty()) {
@@ -66,6 +67,7 @@ bool SourceMap::ReadSourceMapData(const std::string& hapPath, std::string& conte
     content.assign(dataPtr.get(), dataPtr.get() + len);
     return true;
 }
+#endif
 
 int32_t StringToInt(const std::string& value)
 {
@@ -100,15 +102,24 @@ uint32_t Base64CharToInt(char charCode)
     return DIGIT_NUM;
 };
 
-void SourceMap::Init(const std::string& hapPath)
+#if defined(PANDA_TARGET_OHOS)
+void SourceMap::Init(const std::string& url, const std::string& hapPath)
 {
     std::string sourceMapData;
     if (ReadSourceMapData(hapPath, sourceMapData)) {
-        SplitSourceMap(sourceMapData);
+        SplitSourceMap(url, sourceMapData);
     }
 }
+#endif
 
-void SourceMap::SplitSourceMap(const std::string& sourceMapData)
+void SourceMap::Init(uint8_t *data, size_t dataSize, const std::string& url)
+{
+    std::string content;
+    content.assign(data, data + dataSize);
+    SplitSourceMap(url, content);
+}
+
+void SourceMap::SplitSourceMap(const std::string& url, const std::string& sourceMapData)
 {
     size_t leftBracket = 0;
     size_t rightBracket = 0;
@@ -126,9 +137,15 @@ void SourceMap::SplitSourceMap(const std::string& sourceMapData)
         }
         // Intercept the sourcemap file path as the key
         std::string key = value.substr(sources + NUM_TWENTY, names - sources - NUM_TWENTYSIX);
-        std::shared_ptr<SourceMapData> modularMap = std::make_shared<SourceMapData>();
-        ExtractSourceMapData(value, modularMap);
-        sourceMaps_.emplace(key, modularMap);
+        if (key == url) {
+            auto iter = sourceMaps_.find(key);
+            if (iter != sourceMaps_.end()) {
+                continue;
+            }
+            std::shared_ptr<SourceMapData> modularMap = std::make_shared<SourceMapData>();
+            ExtractSourceMapData(value, modularMap);
+            sourceMaps_.emplace(key, modularMap);
+        }
     }
 }
 
@@ -238,11 +255,11 @@ MappingInfo SourceMap::Find(int32_t row, int32_t col, const SourceMapData& targe
         sources.replace(pos, sizeof(WEBPACK) - 1, "");
     }
 
-    return MappingInfo {
-        .row = targetMap.afterPos_[res].beforeRow + 1,
-        .col = targetMap.afterPos_[res].beforeColumn + 1,
-        .sources = sources,
-    };
+    MappingInfo mappingInfo;
+    mappingInfo.row = targetMap.afterPos_[res].beforeRow + 1;
+    mappingInfo.col = targetMap.afterPos_[res].beforeColumn + 1;
+    mappingInfo.sources = sources;
+    return mappingInfo;
 }
 
 void SourceMap::ExtractKeyInfo(const std::string& sourceMap, std::vector<std::string>& sourceKeyInfo)

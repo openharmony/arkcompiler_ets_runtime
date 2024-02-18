@@ -113,7 +113,7 @@ public:
     }
 };
 
-class TSManager {
+class PUBLIC_API TSManager {
 public:
     explicit TSManager(EcmaVM *vm);
     ~TSManager() = default;

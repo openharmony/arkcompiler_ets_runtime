@@ -19,6 +19,7 @@
 #include "mir_const.h"
 #include "mir_preg.h"
 #include "src_position.h"
+#include "triple.h"
 
 constexpr int kScopeLocal = 2;   // the default scope level for function variables
 constexpr int kScopeGlobal = 1;  // the scope level for global variables
@@ -572,6 +573,35 @@ public:
             default:
                 return false;
         }
+    }
+
+    uint8 GetSymbolAlign(bool isArm64ilp32) const
+    {
+        uint8 align = GetAttrs().GetAlignValue();
+        if (align == 0) {
+            if (GetType()->GetKind() == kTypeStruct || GetType()->GetKind() == kTypeClass ||
+                GetType()->GetKind() == kTypeArray || GetType()->GetKind() == kTypeUnion) {
+                // when x64 does not driver, there is no triple init, this is a temporary plan
+                if (Triple::GetTriple().GetArch() == Triple::ArchType::x64) {
+                    return align;
+                }
+                uint8 alignMin = 0;
+                if (GetType()->GetAlign() > 0) {
+                    alignMin = static_cast<uint8>(log2(GetType()->GetAlign()));
+                }
+                align = std::max<uint8>(3, alignMin);  // 3: alignment in bytes of uint8
+            } else {
+                align = static_cast<uint8>(GetType()->GetAlign());
+                if (Triple::GetTriple().IsAarch64BeOrLe()) {
+                    if (isArm64ilp32 && GetType()->GetPrimType() == PTY_a32) {
+                        align = 3;  // 3: alignment in bytes of uint8
+                    } else {
+                        align = static_cast<uint8>(log2(align));
+                    }
+                }
+            }
+        }
+        return align;
     }
 
     // Please keep order of the fields, avoid paddings.

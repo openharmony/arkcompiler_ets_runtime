@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
 """
 Copyright (c) 2023 Huawei Device Co., Ltd.
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,9 +19,12 @@ Description: Use ark to execute workload test suite
 
 import argparse
 import datetime
+import json
 import logging
 import os
 import shutil
+import stat
+import subprocess
 from collections import namedtuple
 from openpyxl import Workbook, load_workbook
 from openpyxl.styles import PatternFill
@@ -43,34 +48,36 @@ def get_logger(logger_name, log_file_path, level=logging.INFO):
 
     return log
 
-logger = None
-CUR_PATH = os.path.abspath(os.path.dirname(__file__))
-TMP_PATH = os.path.join(os.getcwd(), "tmp")
-REPORT_NAME_HEAD_FIX = "js_perf_test_result"
-RET_OK = 0
-RET_FAILED = 1
-BINARY_PATH = ""
-OUTPUT_PATH = ""
-LOG_PATH = ""
-TODAY_EXCEL_PATH = ""
-YESTERDAY_EXCEL_PATH = ""
-DETERIORATION_BOUNDARY_VALUE = 0.05
-TODAY_EXCUTE_INFO = {}
-YESTERDAY_EXCUTE_TIME_DICT = {}
-V_8_EXCUTE_TIME_DICT = {}
-V_8_JITLESS_EXCUTE_TIME_DICT = {}
-JS_FILE_SUPER_LINK_DICT = {}
-HYPERLINK_HEAD = "https://gitee.com/dov1s/arkjs-perf-test/tree/builtins_test1110/js-perf-test"
-PASS = 'pass'
-FAIL = 'fail'
-SOLID = 'solid'
-NA_FIX = 'NA'
-# 1e-6 s
-COMPARISON_ACCURACY = 0.001
-ICU_DATA_PATH = ""
-FIX_STR = "8/d"
-V_8_ENGINED_PATH = '/usr/bin/v{}8'.format(FIX_STR)
-CaseTestDataType = namedtuple('test', ['exec_status', 'exec_time'])
+
+class Constants:
+    logger = None
+    CUR_PATH = os.path.abspath(os.path.dirname(__file__))
+    TMP_PATH = os.path.join(os.getcwd(), "tmp")
+    REPORT_NAME_HEAD_FIX = "js_perf_test_result"
+    RET_OK = 0
+    RET_FAILED = 1
+    BINARY_PATH = ""
+    OUTPUT_PATH = ""
+    LOG_PATH = ""
+    TODAY_EXCEL_PATH = ""
+    YESTERDAY_EXCEL_PATH = ""
+    DETERIORATION_BOUNDARY_VALUE = 0.05
+    TODAY_EXCUTE_INFO = {}
+    YESTERDAY_EXCUTE_TIME_DICT = {}
+    V_8_EXCUTE_TIME_DICT = {}
+    V_8_JITLESS_EXCUTE_TIME_DICT = {}
+    JS_FILE_SUPER_LINK_DICT = {}
+    HYPERLINK_HEAD = "https://gitee.com/dov1s/arkjs-perf-test/tree/builtins_test1110/js-perf-test"
+    PASS = 'pass'
+    FAIL = 'fail'
+    SOLID = 'solid'
+    NA_FIX = 'NA'
+    # 1e-6 s
+    COMPARISON_ACCURACY = 0.001
+    ICU_DATA_PATH = ""
+    FIX_STR = "8/d"
+    V_8_ENGINED_PATH = '/usr/bin/v{}8'.format(FIX_STR)
+    CaseTestDataType = namedtuple('test', ['exec_status', 'exec_time'])
 
 
 def get_js_file_class_api_scenes(js_file_path):
@@ -87,21 +94,21 @@ def get_js_file_class_api_scenes(js_file_path):
 
 
 def degraded_str(yesterday_excute_time, exec_time):
-    is_degraded_str = NA_FIX
+    is_degraded_str = Constants.NA_FIX
     if len(str(yesterday_excute_time).strip()) != 0:
-        if abs(float(yesterday_excute_time)) <= COMPARISON_ACCURACY:
+        if abs(float(yesterday_excute_time)) <= Constants.COMPARISON_ACCURACY:
             is_degraded_str = str(True) if abs(float(exec_time)) >= DETERIORATION_BOUNDARY_VALUE else str(False)
         else:
             is_degraded_tmp = float(exec_time) / float(yesterday_excute_time) >= (1 + DETERIORATION_BOUNDARY_VALUE)
             is_degraded_str = str(True) if is_degraded_tmp else str(False)
-    
+
     return is_degraded_str
 
 
-def v_8_excute_time_return(main_key):
+def v_8_excute_time_compute(main_key):
     v_8_excute_time_str = ''
-    if len(V_8_EXCUTE_TIME_DICT) > 0 and main_key in V_8_EXCUTE_TIME_DICT.keys():
-        v_8_excute_time_str = V_8_EXCUTE_TIME_DICT[main_key].strip()
+    if len(Constants.V_8_EXCUTE_TIME_DICT) > 0 and main_key in Constants.V_8_EXCUTE_TIME_DICT.keys():
+        v_8_excute_time_str = Constants.V_8_EXCUTE_TIME_DICT[main_key].strip()
 
     if len(v_8_excute_time_str) == 0:
         v_8_excute_time = ' '
@@ -111,10 +118,10 @@ def v_8_excute_time_return(main_key):
     return v_8_excute_time
 
 
-def v_8_gitless_excute_time_return(main_key):
+def v_8_gitless_excute_time_compute(main_key):
     v_8_jitless_excute_time_str = ''
-    if len(V_8_JITLESS_EXCUTE_TIME_DICT) > 0 and main_key in V_8_JITLESS_EXCUTE_TIME_DICT.keys():
-        v_8_jitless_excute_time_str = V_8_JITLESS_EXCUTE_TIME_DICT[main_key].strip()
+    if len(Constants.V_8_JITLESS_EXCUTE_TIME_DICT) > 0 and main_key in Constants.V_8_JITLESS_EXCUTE_TIME_DICT.keys():
+        v_8_jitless_excute_time_str = Constants.V_8_JITLESS_EXCUTE_TIME_DICT[main_key].strip()
 
     if len(v_8_jitless_excute_time_str) == 0:
         v_8_jitless_excute_time = ' '
@@ -124,22 +131,22 @@ def v_8_gitless_excute_time_return(main_key):
     return v_8_jitless_excute_time
 
 
-def v_8_divide_ark_return(exec_time, v_8_excute_time):
+def ark_divide_v_8_compute(exec_time, v_8_excute_time):
     if len(exec_time) == 0 or len(v_8_excute_time.strip()) == 0:
-        v_8_divide_ark = NA_FIX
-    elif abs(float(exec_time)) <= COMPARISON_ACCURACY:
-        if abs(float(v_8_excute_time)) <= COMPARISON_ACCURACY:
-            v_8_divide_ark = '1'
+        ark_divide_v_8 = Constants.NA_FIX
+    elif abs(float(exec_time)) <= Constants.COMPARISON_ACCURACY:
+        if abs(float(v_8_excute_time)) <= Constants.COMPARISON_ACCURACY:
+            ark_divide_v_8 = '1'
         else:
-            v_8_divide_ark = NA_FIX
+            ark_divide_v_8 = '0'
     else:
         v_8_excute_time = v_8_excute_time.strip()
-        if len(v_8_excute_time) == 0:
-            v_8_divide_ark = NA_FIX
+        if len(v_8_excute_time) == 0 or abs(float(v_8_excute_time)) <= Constants.COMPARISON_ACCURACY:
+            ark_divide_v_8 = Constants.NA_FIX
         else:
-            v_8_divide_ark = str("{:.2f}".format(float(v_8_excute_time) / float(exec_time)))
-    
-    return v_8_divide_ark
+            ark_divide_v_8 = str("{:.2f}".format(float(exec_time) / float(v_8_excute_time)))
+
+    return ark_divide_v_8
 
 
 def append_row_data(report_file, case_test_data):
@@ -154,55 +161,61 @@ def append_row_data(report_file, case_test_data):
         excute_status = case_test_data[main_key].exec_status
         exec_time = case_test_data[main_key].exec_time.strip()
         yesterday_excute_time = ''
-        if len(YESTERDAY_EXCUTE_TIME_DICT) > 0 and YESTERDAY_EXCUTE_TIME_DICT.get(main_key) is not None:
-            yesterday_excute_time = str(YESTERDAY_EXCUTE_TIME_DICT[main_key])
+        if (len(Constants.YESTERDAY_EXCUTE_TIME_DICT) > 0 and
+                Constants.YESTERDAY_EXCUTE_TIME_DICT.get(main_key) is not None):
+            yesterday_excute_time = str(Constants.YESTERDAY_EXCUTE_TIME_DICT[main_key])
         is_degraded_str = degraded_str(yesterday_excute_time, exec_time)
-        v_8_excute_time = v_8_excute_time_return(main_key)
-        v_8_jitless_excute_time = v_8_gitless_excute_time_return(main_key)
-        v_8_divide_ark = v_8_divide_ark_return(exec_time, v_8_excute_time)
+        v_8_excute_time = v_8_excute_time_compute(main_key)
+        v_8_jitless_excute_time = v_8_gitless_excute_time_compute(main_key)
+        ark_divide_v_8 = ark_divide_v_8_compute(exec_time, v_8_excute_time)
         if len(exec_time) == 0 or len(v_8_jitless_excute_time.strip()) == 0:
-            v_8_with_jitless_divide_ark = NA_FIX
-        elif abs(float(exec_time)) <= COMPARISON_ACCURACY:
-            if abs(float(v_8_jitless_excute_time)) <= COMPARISON_ACCURACY:
-                v_8_with_jitless_divide_ark = '1'
+            ark_divide_v_8_with_jitless = Constants.NA_FIX
+        elif abs(float(exec_time)) <= Constants.COMPARISON_ACCURACY:
+            if abs(float(v_8_jitless_excute_time)) <= Constants.COMPARISON_ACCURACY:
+                ark_divide_v_8_with_jitless = '1'
             else:
-                v_8_with_jitless_divide_ark = NA_FIX
+                ark_divide_v_8_with_jitless = '0'
         else:
             v_8_jitless_excute_time = v_8_jitless_excute_time.strip()
-            if len(v_8_jitless_excute_time) == 0:
-                v_8_with_jitless_divide_ark = NA_FIX
+            if (len(v_8_jitless_excute_time) == 0 or
+                    abs(float(v_8_jitless_excute_time)) <= Constants.COMPARISON_ACCURACY):
+                ark_divide_v_8_with_jitless = Constants.NA_FIX
             else:
-                v_8_with_jitless_divide_ark = str("{:.2f}".format(float(v_8_jitless_excute_time) / float(exec_time)))
-        jis_case_file_name_with_class = JS_FILE_SUPER_LINK_DICT['/'.join([class_name, api_name])]
-        js_file_super_link = '/'.join([HYPERLINK_HEAD, jis_case_file_name_with_class])
+                ark_divide_v_8_with_jitless = str("{:.2f}".format(float(exec_time) / float(v_8_jitless_excute_time)))
+        jis_case_file_name_with_class = Constants.JS_FILE_SUPER_LINK_DICT['/'.join([class_name, api_name])]
+        js_file_super_link = '/'.join([Constants.HYPERLINK_HEAD, jis_case_file_name_with_class])
         new_row = [js_case_name, scene, excute_status, exec_time, yesterday_excute_time,
-                   is_degraded_str, v_8_excute_time, v_8_jitless_excute_time, v_8_divide_ark,
-                   v_8_with_jitless_divide_ark, js_file_super_link, ' ']
+                   is_degraded_str, v_8_excute_time, v_8_jitless_excute_time, ark_divide_v_8,
+                   ark_divide_v_8_with_jitless, js_file_super_link, ' ']
         ws.append(new_row)
         if is_degraded_str is str(True):
             ws.cell(row=ws.max_row, column=6).fill = PatternFill(start_color='FF0000', end_color='FF0000',
-                                                                 fill_type=SOLID)
-        if v_8_divide_ark != NA_FIX and float(v_8_divide_ark) > 1:
+                                                                 fill_type=Constants.SOLID)
+        if (ark_divide_v_8 != Constants.NA_FIX and
+            (float(ark_divide_v_8) > 2 or
+             abs(float(ark_divide_v_8) - 2) <= Constants.COMPARISON_ACCURACY)):
             ws.cell(row=ws.max_row, column=9).fill = PatternFill(start_color='FFFF00', end_color='FFFF00',
-                                                                 fill_type=SOLID)
-        if v_8_with_jitless_divide_ark != NA_FIX and float(v_8_with_jitless_divide_ark) > 1:
+                                                                 fill_type=Constants.SOLID)
+        if (ark_divide_v_8_with_jitless != Constants.NA_FIX and
+            (float(ark_divide_v_8_with_jitless) > 2 or
+             abs(float(ark_divide_v_8_with_jitless) - 2) <= Constants.COMPARISON_ACCURACY)):
             ws.cell(row=ws.max_row, column=10).fill = PatternFill(start_color='FF00FF', end_color='FF00FF',
-                                                                  fill_type=SOLID)
+                                                                  fill_type=Constants.SOLID)
     wb.save(report_file)
-    return RET_OK
+    return Constants.RET_OK
 
 
 def run_js_case_via_ark(binary_path, js_file_path, class_name, api_name, report_file):
     composite_scenes = get_js_file_class_api_scenes(js_file_path)
     case_test_data = {}
-    execute_status = 'fail'
+    execute_status = Constants.FAIL
     execute_time = ' '
 
     for composite_scene in enumerate(composite_scenes):
-        case_test_data[composite_scene] = CaseTestDataType(execute_status, execute_time)
+        case_test_data[composite_scene] = Constants.CaseTestDataType(execute_status, execute_time)
 
     js_file_name = class_name + '/' + api_name + '.js'
-    fangzhou_test_path = os.path.join(TMP_PATH, "fangzhou_test")  # for abc file
+    fangzhou_test_path = os.path.join(Constants.TMP_PATH, "fangzhou_test")  # for abc file
     if os.path.exists(fangzhou_test_path):
         shutil.rmtree(fangzhou_test_path)
     os.makedirs(fangzhou_test_path)
@@ -212,25 +225,40 @@ def run_js_case_via_ark(binary_path, js_file_path, class_name, api_name, report_
     if not os.path.exists(class_folder_path):
         os.makedirs(class_folder_path)
     abc_file_path = api_path + ".abc"
-    cur_abc_file = os.path.join(CUR_PATH, api_name + ".abc")
+    cur_abc_file = os.path.join(Constants.CUR_PATH, api_name + ".abc")
     api_log_path = os.path.join(class_folder_path, api_name + ".log")
 
     es2abc_path = "{}/out/rk3568/clang_x64/arkcompiler/ets_frontend/es2abc".format(BINARY_PATH)
     # tranmit abc
-    cmd = f"{es2abc_path} {js_file_path};cp {cur_abc_file} {abc_file_path}"
+    cmd = [es2abc_path, js_file_path]
+
     logger.info("run cmd: %s", cmd)
-    ret = os.system(cmd)
-    if ret != 0:
-        logger.error("%s generate abc file failed. cmd: %s", js_file_name, cmd)
+    ret = subprocess.run(cmd)
+    if ret.returncode != 0:
+        logger.error("ret = %s, %s generate abc file failed. cmd: %s", str(ret), js_file_name, cmd)
+        append_row_data(report_file, case_test_data)
+        return case_test_data
+
+    cmd2 = ["/usr/bin/cp", cur_abc_file, abc_file_path]
+    ret = subprocess.run(cmd2)
+    if ret.returncode != 0:
+        logger.error("ret.returncode = %s, %s generate abc file failed. cmd: %s", str(ret.returncode), js_file_name, cmd2)
         append_row_data(report_file, case_test_data)
         return case_test_data
     # execute abc
     ark_js_vm_path = "{}/out/rk3568/clang_x64/arkcompiler/ets_runtime/ark_js_vm".format(binary_path)
-    cmd = f"{ark_js_vm_path} --log-level=info --enable-runtime-stat=true --icu-data-path {ICU_DATA_PATH} {cur_abc_file}\
-            > {api_log_path}"
+    cmd = [ark_js_vm_path, "--log-level=info", "--enable-runtime-stat=true", "--icu-data-path",
+           ICU_DATA_PATH, cur_abc_file]
+
     logger.info("run cmd: %s", cmd)
-    ret = os.system(cmd)
-    if ret != 0:
+    flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
+    modes = stat.S_IWUSR | stat.S_IRUSR
+    if os.path.exists(api_log_path):
+        os.remove(api_log_path)
+    with os.fdopen(os.open(api_log_path, flags, modes), 'wb') as outfile:
+        ret = subprocess.run(cmd, stdout=outfile)
+
+    if ret.returncode != 0:
         logger.error("%s execute abc file failed. cmd: %s", js_file_name, cmd)
         append_row_data(report_file, case_test_data)
         return case_test_data
@@ -246,8 +274,8 @@ def run_js_case_via_ark(binary_path, js_file_path, class_name, api_name, report_
                     scene = mid_str.split()[2]
                     main_key = '/'.join([js_file_name, scene]).lower()
                     execute_time = line.split(':')[2]
-                    execute_status = 'pass'
-                    case_test_data[main_key] = CaseTestDataType(execute_status, execute_time)
+                    execute_status = Constants.PASS
+                    case_test_data[main_key] = Constants.CaseTestDataType(execute_status, execute_time)
 
         append_row_data(report_file, case_test_data)
         logger.info("%s execute abc file successfully. cmd: %s case_test_data: %s", js_file_name, cmd, case_test_data)
@@ -273,8 +301,8 @@ def run_via_ark(jspath, report_file):
             logger.info("begin to execute %s.", js_case_name)
             test_data = run_js_case_via_ark(BINARY_PATH, file_path, class_name, api_name, report_file)
             for _, key in enumerate(test_data.keys()):
-                TODAY_EXCUTE_INFO[key] = test_data.get(key)
-            logger.info("finish executing %s. executing info: %s.", js_case_name, TODAY_EXCUTE_INFO)
+                Constants.TODAY_EXCUTE_INFO[key] = test_data.get(key)
+            logger.info("finish executing %s. executing info: %s.", js_case_name, Constants.TODAY_EXCUTE_INFO)
 
 
 def get_js_case_super_link_data(jspath):
@@ -289,7 +317,29 @@ def get_js_case_super_link_data(jspath):
             class_name = results[-2]
             js_case_name = '/'.join([class_name, results[-1]])
             key = js_case_name.lower()
-            JS_FILE_SUPER_LINK_DICT[key] = js_case_name
+            Constants.JS_FILE_SUPER_LINK_DICT[key] = js_case_name
+
+
+def export_sumary_info_for_notifying_email(json_path, total_cases_num, ark_divide_v_8_num, ark_divide_v_8_jitless_num):
+    data = {}
+    data['kind'] = 'V 8 js-perf-test'
+    data['Total'] = total_cases_num
+    data['Ark劣化v 8'] = ark_divide_v_8_num
+    data['Ark劣化v 8 jitless'] = ark_divide_v_8_jitless_num
+    flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
+    modes = stat.S_IWUSR | stat.S_IRUSR
+    if os.path.exists(json_path):
+        os.remove(json_path)
+    with os.fdopen(os.open(json_path, flags, modes), 'w', encoding='utf-8') as f:
+        json.dump(data, f, indent=4, ensure_ascii=False)
+        logger.info("export summary info to json file successfully.")
+
+
+def get_umary_info_json_file_path(daily_report_file_path):
+    dir_path = os.path.dirname(daily_report_file_path)
+    json_file_name = 'jsperftest_notifying_info_in_email.json'
+    json_file_path = os.path.join(dir_path, json_file_name)
+    return json_file_path
 
 
 def append_summary_info(report_file, total_cost_time):
@@ -301,8 +351,8 @@ def append_summary_info(report_file, total_cost_time):
             degraded count:
             total excute time is(s) :
             degraded percentage upper limit:
-            v 8/ark degraded count:
-            v 8_jitless/ark degraded count:
+            ark/v 8 degraded count:
+            ark/v 8 jitless degraded count:
     """
     wb = load_workbook(report_file)
     ws = wb.worksheets[0]
@@ -312,8 +362,8 @@ def append_summary_info(report_file, total_cost_time):
     pass_num = 0
     failed_num = 0
     degraded_num = 0
-    v_8_divide_ark_degraded_count = 0
-    v_8_jitless_divide_ark_degraded_count = 0
+    ark_divide_v_8_degraded_count = 0
+    ark_divide_v_8_jitless_degraded_count = 0
 
     for row_num in range(2, ws.max_row + 1):
         excu_status = str(ws.cell(row=row_num, column=3).value)
@@ -321,25 +371,25 @@ def append_summary_info(report_file, total_cost_time):
         if is_degraded == str(True):
             degraded_num += 1
 
-        if excu_status == PASS:
+        if excu_status == Constants.PASS:
             pass_num += 1
             totle_num += 1
-        elif excu_status == FAIL:
+        elif excu_status == Constants.FAIL:
             failed_num += 1
             totle_num += 1
 
         obj = ws.cell(row=row_num, column=9).value
         if obj is None:
             obj = 0
-        v_8_divide_ark = obj
-        if v_8_divide_ark != NA_FIX and float(v_8_divide_ark) > 1:
-            v_8_divide_ark_degraded_count += 1
+        ark_divide_v_8 = obj
+        if ark_divide_v_8 != Constants.NA_FIX and float(ark_divide_v_8) > 1:
+            ark_divide_v_8_degraded_count += 1
         obj = ws.cell(row=row_num, column=10).value
         if obj is None:
             obj = 0
-        v_8_jitless_divide_ark = obj
-        if v_8_jitless_divide_ark != NA_FIX and float(v_8_jitless_divide_ark) > 1:
-            v_8_jitless_divide_ark_degraded_count += 1
+        ark_divide_v_8_jitless = obj
+        if ark_divide_v_8_jitless != Constants.NA_FIX and float(ark_divide_v_8_jitless) > 1:
+            ark_divide_v_8_jitless_degraded_count += 1
 
     count = 3
     for _ in range(count):
@@ -357,15 +407,19 @@ def append_summary_info(report_file, total_cost_time):
     ws.append(new_row)
     new_row = ['Total excute time(时:分:秒.微妙)', total_cost_time, ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ']
     ws.append(new_row)
-    new_row = ['v 8/ark 劣化数量', v_8_divide_ark_degraded_count, ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ']
+    new_row = ['ark/v 8 劣化数量', ark_divide_v_8_degraded_count, ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ']
     ws.append(new_row)
-    new_row = ['v 8_jitless/ark 劣化数量', v_8_jitless_divide_ark_degraded_count, ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ',
+    new_row = ['ark/v 8 jitless 劣化数量', ark_divide_v_8_jitless_degraded_count, ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ',
                ' ', ' ']
     ws.append(new_row)
 
     ws.column_dimensions.group('E', hidden=True)
     wb.save(report_file)
-    return RET_OK
+
+    json_file_path = get_umary_info_json_file_path(report_file)
+    export_sumary_info_for_notifying_email(json_file_path, totle_num, ark_divide_v_8_degraded_count,
+                                           ark_divide_v_8_jitless_degraded_count)
+    return Constants.RET_OK
 
 
 def get_args():
@@ -415,7 +469,7 @@ def init_report(report_file):
         today_ws = today_wb.worksheets[0]
     except FileNotFoundError:
         headers_row = ['用例名称', '场景', '执行状态', 'ark用例执行耗时(ms)', '昨日ark用例执行耗时(ms)', '是否劣化',
-                       'v 8(ms)', 'v 8 --jitless(ms)', 'v 8/ark', 'v 8 jitless/ark', 'hyperlink', '备注']
+                       'v 8(ms)', 'v 8 --jitless(ms)', 'ark/v 8', 'ark/v 8 jitless', 'hyperlink', '备注']
         today_wb = Workbook()
         today_ws = today_wb.active
 
@@ -464,13 +518,13 @@ def get_v_8_benchmark_daily_report_path():
 
     based_date = year_str + month_str + str(based_day)
     base_date_file = based_date + '.xlsx'
-    based_report_name = '_'.join([REPORT_NAME_HEAD_FIX, base_date_file])
+    based_report_name = '_'.join([Constants.REPORT_NAME_HEAD_FIX, base_date_file])
     report_file_path = os.path.join(OUTPUT_PATH, based_report_name)
     return report_file_path
 
 
 def get_given_date_report_name(date_input):
-    report_name_head = append_date_label(REPORT_NAME_HEAD_FIX, date_input)
+    report_name_head = append_date_label(Constants.REPORT_NAME_HEAD_FIX, date_input)
     return report_name_head + ".xlsx"
 
 
@@ -490,30 +544,35 @@ def get_yesterday_excute_times(yesterday_report):
         js_case = ws.cell(row=row_num, column=1).value
         scene = ws.cell(row=row_num, column=2).value
         exec_status = ws.cell(row=row_num, column=3).value
-        if exec_status == PASS or exec_status == FAIL:
+        if exec_status == Constants.PASS or exec_status == Constants.FAIL:
             main_key = '/'.join([js_case, scene]).lower()
             excute_time = ws.cell(row=row_num, column=4).value
-            YESTERDAY_EXCUTE_TIME_DICT[main_key] = excute_time
+            Constants.YESTERDAY_EXCUTE_TIME_DICT[main_key] = excute_time
 
 
 def run_v_8_single_js_case(js_file_path, cmd_para, js_case_name):
     v_8_exec_time_dict = {}
     scenes = get_js_file_class_api_scenes(js_file_path)
 
-    v_8_log_path = os.path.join(CUR_PATH, "v_8.log")
+    v_8_log_path = os.path.join(Constants.CUR_PATH, "v_8.log")
+    if os.path.exists(v_8_log_path):
+        os.remove(v_8_log_path)
 
-    if len(cmd_para) == 0:
-        cmd = f"{V_8_ENGINED_PATH} {js_file_path} > {v_8_log_path}"
-    else:
-        cmd = f"{V_8_ENGINED_PATH} {cmd_para} {js_file_path} > {v_8_log_path}"
+    flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
+    modes = stat.S_IWUSR | stat.S_IRUSR
+    with os.fdopen(os.open(v_8_log_path, flags, modes), 'wb') as outfile:
+        if len(cmd_para) == 0:
+            cmd = [Constants.V_8_ENGINED_PATH, js_file_path]
+        else:
+            cmd = [Constants.V_8_ENGINED_PATH, cmd_para, js_file_path]
+        logger.info("run cmd:%s", cmd)
+        ret = subprocess.run(cmd, stdout=outfile)
 
-    logger.info("run cmd:%s", cmd)
-    ret = os.system(cmd)
-    if ret != 0:
-        for elem in enumerate(scenes):
-            v_8_exec_time_dict[elem] = 0
-        logger.error("execute cmd failed. cmd: %s", cmd)
-        return v_8_exec_time_dict
+        if ret.returncode != 0:
+            for elem in enumerate(scenes):
+                v_8_exec_time_dict[elem] = 0
+            logger.error("execute cmd failed. cmd: %s", cmd)
+            return v_8_exec_time_dict
 
     logger.info("v 8 excute %s successfully. cmd: %s", js_file_path, cmd)
 
@@ -543,7 +602,7 @@ def get_given_column_data(report_file, column_index):
             scene = str(ws.cell(row=row_num, column=2).value)
             exec_status = str(ws.cell(row=row_num, column=3).value)
             time = str(ws.cell(row=row_num, column=column_index).value)
-            if exec_status == PASS or exec_status == FAIL:
+            if exec_status == Constants.PASS or exec_status == Constants.FAIL:
                 main_key = '/'.join([js_case_name, scene])
                 column_data[main_key] = time
 
@@ -556,8 +615,8 @@ def get_v_8_excute_times(jspath, v_8_based_report_file):
         # these V 8 benchmark data
         v_8_exec_time_dict = get_given_column_data(v_8_based_report_file, 7)
         for key in v_8_exec_time_dict.keys():
-            V_8_EXCUTE_TIME_DICT[key] = v_8_exec_time_dict[key]
-        return RET_OK
+            Constants.V_8_EXCUTE_TIME_DICT[key] = v_8_exec_time_dict[key]
+        return Constants.RET_OK
 
     file_list = []
     for root, _, files in os.walk(jspath):
@@ -574,9 +633,9 @@ def get_v_8_excute_times(jspath, v_8_based_report_file):
 
         v_8_exec_time_dict = run_v_8_single_js_case(file_path, '', js_case_name)
         for key in v_8_exec_time_dict.keys():
-            V_8_EXCUTE_TIME_DICT[key] = v_8_exec_time_dict[key]
+            Constants.V_8_EXCUTE_TIME_DICT[key] = v_8_exec_time_dict[key]
 
-    return RET_OK
+    return Constants.RET_OK
 
 
 def get_v_8_jitless_excute_times(jspath, v_8_based_report_file_path):
@@ -585,8 +644,8 @@ def get_v_8_jitless_excute_times(jspath, v_8_based_report_file_path):
         # these V 8 benchmark data
         v_8_exec_time_dict = get_given_column_data(v_8_based_report_file_path, 8)
         for key in v_8_exec_time_dict.keys():
-            V_8_JITLESS_EXCUTE_TIME_DICT[key] = v_8_exec_time_dict[key]
-        return RET_OK
+            Constants.V_8_JITLESS_EXCUTE_TIME_DICT[key] = v_8_exec_time_dict[key]
+        return Constants.RET_OK
 
     file_list = []
     for root, _, files in os.walk(jspath):
@@ -604,9 +663,9 @@ def get_v_8_jitless_excute_times(jspath, v_8_based_report_file_path):
 
         v_8_exec_time_dict = run_v_8_single_js_case(file_path, '--jitless', js_case_name)
         for key in v_8_exec_time_dict.keys():
-            V_8_JITLESS_EXCUTE_TIME_DICT[key] = v_8_exec_time_dict[key]
+            Constants.V_8_JITLESS_EXCUTE_TIME_DICT[key] = v_8_exec_time_dict[key]
 
-    return RET_OK
+    return Constants.RET_OK
 
 
 if __name__ == "__main__":
@@ -614,7 +673,7 @@ if __name__ == "__main__":
         command format: python3  run_js_test.py  -bp /home/out -p /home/arkjs-perf-test/js-perf-test -o output_path
         notes: all paths must be absolute path
     """
-    LOG_PATH = os.path.join(TMP_PATH, "test.log")
+    LOG_PATH = os.path.join(Constants.TMP_PATH, "test.log")
     if os.path.exists(LOG_PATH):
         os.remove(LOG_PATH)
     logger = get_logger("jstest", LOG_PATH)
@@ -625,7 +684,7 @@ if __name__ == "__main__":
     DETERIORATION_BOUNDARY_VALUE = paras.deterioration_boundary_value
     BINARY_PATH = paras.binarypath
     ICU_DATA_PATH = os.path.join(BINARY_PATH, "third_party/icu/ohos_icu4j/data/")
-    OUTPUT_PATH = CUR_PATH
+    OUTPUT_PATH = Constants.CUR_PATH
     if paras.output_folder_path is not None:
         OUTPUT_PATH = paras.output_folder_path
 
