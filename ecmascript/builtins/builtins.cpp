@@ -1132,6 +1132,10 @@ void Builtins::InitializeAllTypeError(const JSHandle<GlobalEnv> &env, const JSHa
     InitializeError(env, errorNativeFuncInstanceHClass, JSType::JS_EVAL_ERROR);
     InitializeError(env, errorNativeFuncInstanceHClass, JSType::JS_OOM_ERROR);
     InitializeError(env, errorNativeFuncInstanceHClass, JSType::JS_TERMINATION_ERROR);
+
+    JSHandle<EcmaString> handleMsg = factory_->NewFromUtf8("Default oom error");
+    JSHandle<JSObject> oomError = factory_->NewJSError(ErrorType::OOM_ERROR, handleMsg, true);
+    env->SetOOMErrorObject(thread_, oomError);
 }
 
 void Builtins::InitializeAllTypeErrorWithRealm(const JSHandle<GlobalEnv> &realm) const
