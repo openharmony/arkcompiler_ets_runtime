@@ -320,7 +320,10 @@ Expected<JSTaggedValue, bool> EcmaContext::CommonInvokeEcmaEntrypoint(const JSPa
             result = EcmaInterpreter::Execute(info);
         }
     }
-    if (!executeFromJob && !thread_->HasPendingException()) {
+    if (thread_->HasPendingException()) {
+        return Unexpected(false);
+    }
+    if (!executeFromJob) {
         job::MicroJobQueue::ExecutePendingJob(thread_, GetMicroJobQueue());
     }
 
@@ -343,10 +346,6 @@ Expected<JSTaggedValue, bool> EcmaContext::InvokeEcmaEntrypoint(const JSPandaFil
     JSHandle<JSFunction> func(thread_, program->GetMainFunction());
     Expected<JSTaggedValue, bool> result = CommonInvokeEcmaEntrypoint(jsPandaFile, entryPoint, func, executeFromJob);
 
-    // print exception information
-    if (!executeFromJob && thread_->HasPendingException()) {
-        HandleUncaughtException(thread_->GetException());
-    }
     return result;
 }
 
@@ -368,9 +367,9 @@ Expected<JSTaggedValue, bool> EcmaContext::InvokeEcmaEntrypointForHotReload(
     AddPatchModule(recordName, moduleRecordHandle);
 
     // print exception information
-    if (!executeFromJob && thread_->HasPendingException() &&
+    if (thread_->HasPendingException() &&
         Method::Cast(func->GetMethod())->GetMethodName() != JSPandaFile::PATCH_FUNCTION_NAME_0) {
-        HandleUncaughtException(thread_->GetException());
+        return Unexpected(false);
     }
     return result;
 }
@@ -621,6 +620,12 @@ void EcmaContext::HandleUncaughtException(JSTaggedValue exception)
     JSHandle<EcmaString> result = JSTaggedValue::ToString(thread_, exceptionHandle);
     CString string = ConvertToString(*result);
     LOG_NO_TAG(ERROR) << string;
+}
+
+void EcmaContext::HandleUncaughtException()
+{
+    JSTaggedValue exception = thread_->GetException();
+    HandleUncaughtException(exception);
 }
 
 // static

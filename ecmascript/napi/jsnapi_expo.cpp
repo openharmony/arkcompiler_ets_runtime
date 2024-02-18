@@ -3312,6 +3312,9 @@ bool JSNApi::ExecuteInContext(EcmaVM *vm, const std::string &fileName, const std
     LOG_ECMA(DEBUG) << "start to execute ark file in context: " << fileName;
     EcmaContext::MountContext(thread);
     if (!ecmascript::JSPandaFileExecutor::ExecuteFromAbcFile(thread, fileName.c_str(), entry, needUpdate)) {
+        if (thread->HasPendingException()) {
+            thread->GetCurrentEcmaContext()->HandleUncaughtException();
+        }
         LOG_ECMA(ERROR) << "Cannot execute ark file '" << fileName
                         << "' with entry '" << entry << "'" << std::endl;
         return false;
@@ -3325,6 +3328,9 @@ bool JSNApi::Execute(EcmaVM *vm, const std::string &fileName, const std::string 
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, false);
     LOG_ECMA(DEBUG) << "start to execute ark file: " << fileName;
     if (!ecmascript::JSPandaFileExecutor::ExecuteFromAbcFile(thread, fileName.c_str(), entry, needUpdate)) {
+        if (thread->HasPendingException()) {
+            thread->GetCurrentEcmaContext()->HandleUncaughtException();
+        }
         LOG_ECMA(ERROR) << "Cannot execute ark file '" << fileName
                         << "' with entry '" << entry << "'" << std::endl;
         return false;
@@ -3339,6 +3345,9 @@ bool JSNApi::Execute(EcmaVM *vm, const uint8_t *data, int32_t size, const std::s
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, false);
     LOG_ECMA(DEBUG) << "start to execute ark buffer: " << filename;
     if (!ecmascript::JSPandaFileExecutor::ExecuteFromBuffer(thread, data, size, entry, filename.c_str(), needUpdate)) {
+        if (thread->HasPendingException()) {
+            thread->GetCurrentEcmaContext()->HandleUncaughtException();
+        }
         LOG_ECMA(ERROR) << "Cannot execute ark buffer file '" << filename
                         << "' with entry '" << entry << "'" << std::endl;
         return false;
@@ -3353,6 +3362,9 @@ bool JSNApi::ExecuteModuleBuffer(EcmaVM *vm, const uint8_t *data, int32_t size, 
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, false);
     LOG_ECMA(DEBUG) << "start to execute module buffer: " << filename;
     if (!ecmascript::JSPandaFileExecutor::ExecuteModuleBuffer(thread, data, size, filename.c_str(), needUpdate)) {
+        if (thread->HasPendingException()) {
+            thread->GetCurrentEcmaContext()->HandleUncaughtException();
+        }
         LOG_ECMA(ERROR) << "Cannot execute module buffer file '" << filename;
         return false;
     }
@@ -3370,6 +3382,9 @@ bool JSNApi::ExecuteSecure(EcmaVM *vm, uint8_t *data, int32_t size, const std::s
     }
     if (!ecmascript::JSPandaFileExecutor::ExecuteFromBufferSecure(thread, data, size, entry, filename.c_str(),
                                                                   needUpdate)) {
+        if (thread->HasPendingException()) {
+            thread->GetCurrentEcmaContext()->HandleUncaughtException();
+        }
         LOG_ECMA(ERROR) << "Cannot execute ark buffer file '" << filename
                         << "' with entry '" << entry << "'" << std::endl;
         return false;
@@ -3388,6 +3403,9 @@ bool JSNApi::ExecuteModuleBufferSecure(EcmaVM *vm, uint8_t* data, int32_t size, 
     }
     if (!ecmascript::JSPandaFileExecutor::ExecuteModuleBufferSecure(thread, data, size, filename.c_str(),
                                                                     needUpdate)) {
+        if (thread->HasPendingException()) {
+            thread->GetCurrentEcmaContext()->HandleUncaughtException();
+        }
         LOG_ECMA(ERROR) << "Cannot execute module buffer file '" << filename;
         return false;
     }

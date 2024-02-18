@@ -269,6 +269,7 @@ public:
     void CreateAllConstpool(const JSPandaFile *jsPandaFile);
 
     void HandleUncaughtException(JSTaggedValue exception);
+    void HandleUncaughtException();
     void ProcessNativeDelete(const WeakRootVisitor &visitor);
     void ProcessReferences(const WeakRootVisitor &visitor);
     JSHandle<GlobalEnv> GetGlobalEnv() const;

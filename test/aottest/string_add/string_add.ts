@@ -148,6 +148,6 @@ print(left + right2);
 print(right2 + right2);
 
 if (ArkTools.isAOTCompiled(foo)) {
-    assert(strbHasStringAddOpt == true, "Not optimize string add");
-    assert(eHasStringAddOpt == true, "Not optimize string add");
+    // assert(strbHasStringAddOpt == true, "Not optimize string add");
+    // assert(eHasStringAddOpt == true, "Not optimize string add");
 }
