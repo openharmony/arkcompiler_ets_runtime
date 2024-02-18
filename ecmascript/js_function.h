@@ -136,21 +136,8 @@ public:
         return protoOrHClass;
     }
 
-    static void SetFunctionPrototype(const JSThread *thread, const JSHandle<JSFunction> &fun, JSTaggedValue proto)
-    {
-        JSHandle<JSTaggedValue> protoHandle(thread, proto);
-        fun->SetProtoOrHClass(thread, protoHandle.GetTaggedValue());
-        if (protoHandle->IsJSHClass()) {
-            protoHandle = JSHandle<JSTaggedValue>(thread,
-                JSHClass::Cast(protoHandle->GetTaggedObject())->GetPrototype());
-        }
-        if (protoHandle->IsECMAObject()) {
-            auto hclass = JSHandle<JSHClass>(thread, protoHandle->GetTaggedObject()->GetClass());
-            JSHandle<JSHClass> newJSHClass = JSHClass::Clone(thread, hclass);
-            newJSHClass->SetIsPrototype(true);
-            protoHandle->GetTaggedObject()->SynchronizedSetClass(thread, *newJSHClass);
-        }
-    }
+    static void SetFunctionPrototypeOrInstanceHClass(const JSThread *thread, const JSHandle<JSFunction> &fun,
+                                                     JSTaggedValue protoOrHClass);
 
     inline bool HasInitialClass() const
     {
