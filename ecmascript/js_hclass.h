@@ -1830,9 +1830,12 @@ public:
     ACCESSORS_PRIMITIVE_FIELD(BitField1, uint32_t, BIT_FIELD1_OFFSET, LAST_OFFSET);
     DEFINE_ALIGN_SIZE(LAST_OFFSET);
 
+    static JSHandle<JSTaggedValue> SetPrototypeWithNotification(const JSThread *thread,
+                                                                const JSHandle<JSTaggedValue> &hclass,
+                                                                const JSHandle<JSTaggedValue> &proto);
     void SetPrototype(const JSThread *thread, JSTaggedValue proto);
     void PUBLIC_API SetPrototype(const JSThread *thread, const JSHandle<JSTaggedValue> &proto);
-    void ShouldUpdateProtoClass(const JSThread *thread, const JSHandle<JSTaggedValue> &proto);
+    static void OptimizePrototypeForIC(const JSThread *thread, const JSHandle<JSTaggedValue> &proto);
     inline JSTaggedValue GetPrototype() const
     {
         return GetProto();
