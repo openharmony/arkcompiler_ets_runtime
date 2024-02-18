@@ -41,8 +41,6 @@ public:
         std::vector<ModuleSectionDes::ModuleRegionInfo> &moduleInfo, llvm::ELF::Elf64_Off &curSecOffset);
     void MergeArkStackMapSections(std::ofstream &elfFile,
         std::vector<ModuleSectionDes::ModuleRegionInfo> &moduleInfo, llvm::ELF::Elf64_Off &curSecOffset);
-    void MergeSymTabSectionsForLiteCG(std::ofstream &file,
-        std::vector<ModuleSectionDes::ModuleRegionInfo> &moduleInfo, llvm::ELF::Elf64_Off &curSecOffset);
     void MergeStrtabSections(std::ofstream &elfFile,
         std::vector<ModuleSectionDes::ModuleRegionInfo> &moduleInfo, llvm::ELF::Elf64_Off &curSecOffset);
     void MergeSymtabSections(std::ofstream &elfFile, std::vector<ModuleSectionDes::ModuleRegionInfo> &moduleInfo,
