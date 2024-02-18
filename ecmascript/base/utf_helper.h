@@ -46,13 +46,16 @@ static constexpr uint16_t UTF8_2B_MAX = 0x7ff;
 static constexpr uint8_t UTF8_2B_FIRST = 0xc0;
 static constexpr uint8_t UTF8_2B_SECOND = 0x80;
 static constexpr uint8_t UTF8_2B_THIRD = 0x3f;
+static constexpr uint8_t UTF8_2B_FIRST_MIN = 0xc2;  // the minimum for 2 bytes is 128, which is 0xc280
 
 static constexpr uint16_t UTF8_3B_MAX = 0xffff;
 static constexpr uint8_t UTF8_3B_FIRST = 0xe0;
 static constexpr uint8_t UTF8_3B_SECOND = 0x80;
 static constexpr uint8_t UTF8_3B_THIRD = 0x80;
+static constexpr uint8_t UTF8_3B_SECOND_MIN = 0xa0;  // the minimum for 3 bytes is 2048, which is 0xe0a080
 
 static constexpr uint8_t UTF8_4B_FIRST = 0xf0;
+static constexpr uint8_t UTF8_4B_SECOND_MIN = 0x90;  // the minimum for 4 bytes is 65536, which is 0xf0908080
 
 static constexpr uint8_t byteMask = 0xbf;
 static constexpr uint8_t byteMark = 0x80;

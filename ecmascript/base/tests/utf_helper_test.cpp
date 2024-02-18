@@ -114,47 +114,61 @@ HWTEST_F_L0(UtfHelperTest, UTF16Decode)
  */
 HWTEST_F_L0(UtfHelperTest, IsValidUTF8)
 {
-    const std::vector<uint8_t> utfDataOneBitVaild1 = {0x00}; // //0xxxxxxx
+    // 0xxxxxxx, min:0, max:127
+    const std::vector<uint8_t> utfDataOneBitVaild1 = {0x00};
     const std::vector<uint8_t> utfDataOneBitVaild2 = {BIT_MASK_1 - 0x01};
-    const std::vector<uint8_t> utfDataOneBitUnvaild = {BIT_MASK_1};
+    const std::vector<uint8_t> utfDataOneBitInvaild = {BIT_MASK_1};
     EXPECT_TRUE(utf_helper::IsValidUTF8(utfDataOneBitVaild1));
     EXPECT_TRUE(utf_helper::IsValidUTF8(utfDataOneBitVaild2));
-    EXPECT_FALSE(utf_helper::IsValidUTF8(utfDataOneBitUnvaild));
-    const std::vector<uint8_t> utfDataTwoBitVaild1 = {BIT_MASK_2, BIT_MASK_1}; // 110xxxxx 10xxxxxx
+    EXPECT_FALSE(utf_helper::IsValidUTF8(utfDataOneBitInvaild));
+    // 110xxxxx 10xxxxxx, min:128, max:2047
+    const std::vector<uint8_t> utfDataTwoBitVaild1 = {BIT_MASK_2 + 0x02, BIT_MASK_1};
     const std::vector<uint8_t> utfDataTwoBitVaild2 = {BIT_MASK_3 - 0x01, BIT_MASK_2 - 0x01};
-    const std::vector<uint8_t> utfDataTwoBitUnvaild1 = {BIT_MASK_2, BIT_MASK_2};
-    const std::vector<uint8_t> utfDataTwoBitUnvaild2 = {BIT_MASK_3, BIT_MASK_1};
+    const std::vector<uint8_t> utfDataTwoBitInvaild1 = {BIT_MASK_2, BIT_MASK_2};
+    const std::vector<uint8_t> utfDataTwoBitInvaild2 = {BIT_MASK_3, BIT_MASK_1};
+    const std::vector<uint8_t> utfDataTwoBitInvaild3 = {BIT_MASK_2, BIT_MASK_1};
     EXPECT_TRUE(utf_helper::IsValidUTF8(utfDataTwoBitVaild1));
     EXPECT_TRUE(utf_helper::IsValidUTF8(utfDataTwoBitVaild2));
-    EXPECT_FALSE(utf_helper::IsValidUTF8(utfDataTwoBitUnvaild1));
-    EXPECT_FALSE(utf_helper::IsValidUTF8(utfDataTwoBitUnvaild2));
-    const std::vector<uint8_t> utfDataThreeBitVaild1 = {BIT_MASK_3, BIT_MASK_1, BIT_MASK_1};
-    const std::vector<uint8_t>utfDataThreeBitVaild2 = {BIT_MASK_4 - 0x01, BIT_MASK_2 - 0x01, BIT_MASK_2 - 0x01};
-    const std::vector<uint8_t>utfDataThreeBitUnvaild1 = {BIT_MASK_3, BIT_MASK_1, BIT_MASK_2};
-    const std::vector<uint8_t>utfDataThreeBitUnvaild2 = {BIT_MASK_3, BIT_MASK_2, BIT_MASK_1};
-    const std::vector<uint8_t>utfDataThreeBitUnvaild3 = {BIT_MASK_4, BIT_MASK_1, BIT_MASK_1};
-    const std::vector<uint8_t>utfDataThreeBitUnvaild4 = {BIT_MASK_4, BIT_MASK_2, BIT_MASK_2};
+    EXPECT_FALSE(utf_helper::IsValidUTF8(utfDataTwoBitInvaild1));
+    EXPECT_FALSE(utf_helper::IsValidUTF8(utfDataTwoBitInvaild2));
+    EXPECT_FALSE(utf_helper::IsValidUTF8(utfDataTwoBitInvaild3));
+    // 1110xxxx 10xxxxxx 10xxxxxx, min:2048, max:65535
+    const std::vector<uint8_t> utfDataThreeBitVaild1 = {BIT_MASK_3, BIT_MASK_1 + 0x20, BIT_MASK_1};
+    const std::vector<uint8_t> utfDataThreeBitVaild2 = {BIT_MASK_4 - 0x01, BIT_MASK_2 - 0x01, BIT_MASK_2 - 0x01};
+    const std::vector<uint8_t> utfDataThreeBitVaild3 = {BIT_MASK_3 + 0x01, BIT_MASK_1, BIT_MASK_1};
+    const std::vector<uint8_t> utfDataThreeBitInvaild1 = {BIT_MASK_3, BIT_MASK_1, BIT_MASK_2};
+    const std::vector<uint8_t> utfDataThreeBitInvaild2 = {BIT_MASK_3, BIT_MASK_2, BIT_MASK_1};
+    const std::vector<uint8_t> utfDataThreeBitInvaild3 = {BIT_MASK_4, BIT_MASK_1, BIT_MASK_1};
+    const std::vector<uint8_t> utfDataThreeBitInvaild4 = {BIT_MASK_4, BIT_MASK_2, BIT_MASK_2};
+    const std::vector<uint8_t> utfDataThreeBitInvaild5 = {BIT_MASK_3, BIT_MASK_1, BIT_MASK_1};
     EXPECT_TRUE(utf_helper::IsValidUTF8(utfDataThreeBitVaild1));
     EXPECT_TRUE(utf_helper::IsValidUTF8(utfDataThreeBitVaild2));
-    EXPECT_FALSE(utf_helper::IsValidUTF8(utfDataThreeBitUnvaild1));
-    EXPECT_FALSE(utf_helper::IsValidUTF8(utfDataThreeBitUnvaild2));
-    EXPECT_FALSE(utf_helper::IsValidUTF8(utfDataThreeBitUnvaild3));
-    EXPECT_FALSE(utf_helper::IsValidUTF8(utfDataThreeBitUnvaild4));
-    const std::vector<uint8_t>utfDataFourBitVaild1 = {BIT_MASK_4, BIT_MASK_1, BIT_MASK_1, BIT_MASK_1};
+    EXPECT_TRUE(utf_helper::IsValidUTF8(utfDataThreeBitVaild3));
+    EXPECT_FALSE(utf_helper::IsValidUTF8(utfDataThreeBitInvaild1));
+    EXPECT_FALSE(utf_helper::IsValidUTF8(utfDataThreeBitInvaild2));
+    EXPECT_FALSE(utf_helper::IsValidUTF8(utfDataThreeBitInvaild3));
+    EXPECT_FALSE(utf_helper::IsValidUTF8(utfDataThreeBitInvaild4));
+    EXPECT_FALSE(utf_helper::IsValidUTF8(utfDataThreeBitInvaild5));
+    // 11110xxx 10xxxxxx 10xxxxxx 10xxxxxx, min:65536, max:2097151
+    const std::vector<uint8_t> utfDataFourBitVaild1 = {BIT_MASK_4, BIT_MASK_1 + 0x10, BIT_MASK_1, BIT_MASK_1};
     const std::vector<uint8_t> utfDataFourBitVaild2 =
         {BIT_MASK_5 - 0x01, BIT_MASK_2 - 0x01, BIT_MASK_2 - 0x01, BIT_MASK_2 - 0x01};
-    const std::vector<uint8_t>utfDataFourBitUnvaild1 = {BIT_MASK_4, BIT_MASK_1, BIT_MASK_1, BIT_MASK_2};
-    const std::vector<uint8_t>utfDataFourBitUnvaild2 = {BIT_MASK_4, BIT_MASK_1, BIT_MASK_2, BIT_MASK_1};
-    const std::vector<uint8_t>utfDataFourBitUnvaild3 = {BIT_MASK_4, BIT_MASK_2, BIT_MASK_1, BIT_MASK_1};
-    const std::vector<uint8_t>utfDataFourBitUnvaild4 = {BIT_MASK_5, BIT_MASK_1, BIT_MASK_1, BIT_MASK_1};
-    const std::vector<uint8_t>utfDataFourBitUnvaild5 = {BIT_MASK_5, BIT_MASK_2, BIT_MASK_2, BIT_MASK_2};
+    const std::vector<uint8_t> utfDataFourBitVaild3 = {BIT_MASK_4 + 0x01, BIT_MASK_1, BIT_MASK_1, BIT_MASK_1};
+    const std::vector<uint8_t> utfDataFourBitInvaild1 = {BIT_MASK_4, BIT_MASK_1, BIT_MASK_1, BIT_MASK_2};
+    const std::vector<uint8_t> utfDataFourBitInvaild2 = {BIT_MASK_4, BIT_MASK_1, BIT_MASK_2, BIT_MASK_1};
+    const std::vector<uint8_t> utfDataFourBitInvaild3 = {BIT_MASK_4, BIT_MASK_2, BIT_MASK_1, BIT_MASK_1};
+    const std::vector<uint8_t> utfDataFourBitInvaild4 = {BIT_MASK_5, BIT_MASK_1, BIT_MASK_1, BIT_MASK_1};
+    const std::vector<uint8_t> utfDataFourBitInvaild5 = {BIT_MASK_5, BIT_MASK_2, BIT_MASK_2, BIT_MASK_2};
+    const std::vector<uint8_t> utfDataFourBitInvaild6 = {BIT_MASK_4, BIT_MASK_1, BIT_MASK_1, BIT_MASK_1};
     EXPECT_TRUE(utf_helper::IsValidUTF8(utfDataFourBitVaild1));
     EXPECT_TRUE(utf_helper::IsValidUTF8(utfDataFourBitVaild2));
-    EXPECT_FALSE(utf_helper::IsValidUTF8(utfDataFourBitUnvaild1));
-    EXPECT_FALSE(utf_helper::IsValidUTF8(utfDataFourBitUnvaild2));
-    EXPECT_FALSE(utf_helper::IsValidUTF8(utfDataFourBitUnvaild3));
-    EXPECT_FALSE(utf_helper::IsValidUTF8(utfDataFourBitUnvaild4));
-    EXPECT_FALSE(utf_helper::IsValidUTF8(utfDataFourBitUnvaild5));
+    EXPECT_TRUE(utf_helper::IsValidUTF8(utfDataFourBitVaild3));
+    EXPECT_FALSE(utf_helper::IsValidUTF8(utfDataFourBitInvaild1));
+    EXPECT_FALSE(utf_helper::IsValidUTF8(utfDataFourBitInvaild2));
+    EXPECT_FALSE(utf_helper::IsValidUTF8(utfDataFourBitInvaild3));
+    EXPECT_FALSE(utf_helper::IsValidUTF8(utfDataFourBitInvaild4));
+    EXPECT_FALSE(utf_helper::IsValidUTF8(utfDataFourBitInvaild5));
+    EXPECT_FALSE(utf_helper::IsValidUTF8(utfDataFourBitInvaild6));
 }
 
 /*
