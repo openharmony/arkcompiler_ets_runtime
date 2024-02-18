@@ -595,6 +595,7 @@ public:
     }
 
     void ThrowOutOfMemoryError(size_t size, std::string functionName, bool NonMovableObjNearOOM = false);
+    void ThrowOutOfMemoryErrorForDefault(size_t size, std::string functionName, bool NonMovableObjNearOOM = false);
 
     void IncreaseNativeBindingSize(size_t size);
     void IncreaseNativeBindingSize(JSNativePointer *object);

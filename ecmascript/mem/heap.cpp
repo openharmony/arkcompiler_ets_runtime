@@ -546,6 +546,25 @@ void Heap::ThrowOutOfMemoryError(size_t size, std::string functionName, bool Non
     THROW_OOM_ERROR(thread_, oss.str().c_str());
 }
 
+void Heap::ThrowOutOfMemoryErrorForDefault(size_t size, std::string functionName, bool NonMovableObjNearOOM)
+{
+    ecmaVm_->GetEcmaGCStats()->PrintGCMemoryStatistic();
+    std::ostringstream oss;
+    if (NonMovableObjNearOOM) {
+        oss << "OutOfMemory when nonmovable live obj size: " << size << " bytes"
+            << " function name: " << functionName.c_str();
+    } else {
+        oss << "OutOfMemory when trying to allocate " << size << " bytes" << " function name: " << functionName.c_str();
+    }
+    LOG_ECMA_MEM(ERROR) << oss.str().c_str();
+    EcmaVM *ecmaVm = (thread_)->GetEcmaVM();
+    JSHandle<GlobalEnv> env = ecmaVm->GetGlobalEnv();
+    JSHandle<JSObject> error = JSHandle<JSObject>::Cast(env->GetOOMErrorObject());
+
+    (thread_)->SetException(error.GetTaggedValue());
+    ecmaVm->HandleUncatchableError();
+}
+
 void Heap::FatalOutOfMemoryError(size_t size, std::string functionName)
 {
     ecmaVm_->GetEcmaGCStats()->PrintGCMemoryStatistic();
