@@ -269,30 +269,30 @@ std::set<uint32> Insn::GetDefRegs() const
     return defRegNOs;
 }
 
-#if DEBUG
-void Insn::Check() const
+bool Insn::CheckMD() const
 {
     if (!md) {
-        CHECK_FATAL(false, " need machine description for target insn ");
+        LogInfo::MapleLogger() << " need machine description for target insn\n";
+        return false;
     }
     /* check if the number of operand(s) matches */
     uint32 insnOperandSize = GetOperandSize();
     if (insnOperandSize != md->GetOpndMDLength()) {
-        CHECK_FATAL(false, " the number of operands in instruction does not match machine description ");
+        LogInfo::MapleLogger() << " need machine description for target insn\n";
+        return false;
     }
     /* check if the type of each operand  matches */
     for (uint32 i = 0; i < insnOperandSize; ++i) {
         Operand &opnd = GetOperand(i);
         auto *opndDesc = md->GetOpndDes(i);
         if (opnd.IsImmediate()) {
-            CHECK_FATAL(opndDesc->IsImm(), "operand type does not match machine description!");
+            return opndDesc->IsImm();
         } else {
-            CHECK_FATAL(opnd.GetKind() == opndDesc->GetOperandType(),
-                        "operand type does not match machine description!");
+            return (opnd.GetKind() == opndDesc->GetOperandType());
         }
     }
+    return true;
 }
-#endif
 
 Insn *Insn::Clone(MemPool &memPool) const
 {

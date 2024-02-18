@@ -25,5 +25,6 @@
  ADDTARGETPHASE("postcfgo", false);
  ADDTARGETPHASE("cgpostpeephole", false);
  ADDTARGETPHASE("generateproepilog", true);
- /* ASM EMIT */
+ ADDTARGETPHASE("cgirverify", CGOptions::DoCGIRVerify());
+ /* ASM or OBJ EMIT */
  ADDTARGETPHASE("cgemit", true);

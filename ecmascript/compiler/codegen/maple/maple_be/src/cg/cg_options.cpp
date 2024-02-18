@@ -538,5 +538,4 @@ maplecl::Option<uint32_t> jumpAlignPow(
 maplecl::Option<uint32_t> funcAlignPow(
     {"--func-align-pow"}, " --func-align-pow=NUM           \tO2 func bb align pow (NUM == 0, no func-align)\n",
     {cgCategory});
-
 }  // namespace opts::cg

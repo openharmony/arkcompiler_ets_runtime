@@ -1827,6 +1827,16 @@ public:
         this->stmtAttrs.AppendAttr(stmtAttr.GetTargetAttrFlag(STMTATTR_insaferegion));
     }
 
+    void SetMayTailcall(bool flag = true)
+    {
+        stmtAttrs.SetAttr(STMTATTR_mayTailcall, flag);
+    }
+
+    bool GetMayTailCall() const
+    {
+        return stmtAttrs.GetAttr(STMTATTR_mayTailcall);
+    }
+
     const StmtAttrs &GetStmtAttrs() const
     {
         return stmtAttrs;

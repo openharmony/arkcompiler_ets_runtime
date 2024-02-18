@@ -64,7 +64,7 @@ static uint32 TryAllocInPaddingSlots(std::list<uint32> paddingSlots[], uint32 fi
                                      size_t paddingSlotsLength)
 {
     CHECK_FATAL(paddingSlotsLength > 0, "expect paddingSlotsLength > 0");
-    if (fieldSize > 4) { // padding slots are just for size 1/2/4 bytes
+    if (fieldSize > 4) {  // padding slots are just for size 1/2/4 bytes
         return 0;
     }
 
@@ -259,7 +259,7 @@ void BECommon::ComputeClassTypeSizesAligns(MIRType &ty, const TyIdx &tyIdx, uint
      * a list of un-occupied (small size) slots available for insertion
      * so far, just for 1, 2, 4 bytes types (map to array index 0, 1, 2)
      */
-    std::list<uint32> paddingSlots[3]; // padding slots are just 3 types for size 1/2/4 bytes
+    std::list<uint32> paddingSlots[3];  // padding slots are just 3 types for size 1/2/4 bytes
     /* process fields */
     AppendStructFieldCount(tyIdx, fields.size());
     if (fields.size() == 0 && mirModule.IsCModule()) {
@@ -564,6 +564,19 @@ void BECommon::GenObjSize(const MIRClassType &classType, FILE &outFile)
     fprintf(&outFile, "__MRT_CLASS(%s, %" PRIu64 ", %s)\n", className.c_str(), objSize, parentName);
 }
 
+// compute the offset of the field given by fieldID within the java class
+FieldInfo BECommon::GetJClassFieldOffset(MIRStructType &classType, FieldID fieldID) const
+{
+    CHECK_FATAL(fieldID <= GetStructFieldCount(classType.GetTypeIndex()), "GetFieldOFfset: fieldID too large");
+    if (fieldID == 0) {
+        return {0, 0};
+    }
+    CHECK_FATAL(HasJClassLayout(static_cast<MIRClassType &>(classType)), "Cannot found java class layout information");
+    const JClassLayout &layout = GetJClassLayout(static_cast<MIRClassType &>(classType));
+    CHECK_FATAL(static_cast<uint32>(fieldID) - 1 < layout.size(), "subscript out of range");
+    return {static_cast<uint32>(layout[static_cast<unsigned long>(fieldID) - 1].GetOffset()), 0};
+}
+
 /*
  * compute the offset of the field given by fieldID within the structure type
  * structy; it returns the answer in the pair (byteoffset, bitoffset) such that
@@ -773,7 +786,7 @@ BaseNode *BECommon::GetAddressOfNode(const BaseNode &node)
             }
 
             uint32 index = static_cast<MIRPtrType *>(GlobalTables::GetTypeTable().GetTypeTable().at(iNode.GetTyIdx()))
-                           ->GetPointedTyIdx();
+                               ->GetPointedTyIdx();
             MIRType *pointedType = GlobalTables::GetTypeTable().GetTypeTable().at(index);
             std::pair<int32, int32> byteBitOffset =
                 GetFieldOffset(static_cast<MIRStructType &>(*pointedType), iNode.GetFieldID());

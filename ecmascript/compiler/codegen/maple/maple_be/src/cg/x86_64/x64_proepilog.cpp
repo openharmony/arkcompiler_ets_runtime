@@ -21,16 +21,6 @@
 
 namespace maplebe {
 using namespace maple;
-/*
- *  If a function without callee-saved register, and end with a function call,
- *  then transfer bl/blr to b/br.
- *  Return value: true if function do not need Prologue/Epilogue. false otherwise.
- */
-bool X64GenProEpilog::TailCallOpt()
-{
-    return false;
-}
-
 bool X64GenProEpilog::NeedProEpilog()
 {
     return true;

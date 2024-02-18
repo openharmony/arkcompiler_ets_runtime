@@ -1544,7 +1544,7 @@ void LSRALinearScanRegAllocator::SpillOperand(Insn &insn, Operand &opnd, bool is
         if (li->GetLastUse() == insn.GetId() && !cgFunc->IsRegReference(regNO)) {
             regInfo->FreeSpillRegMem(regNO);
         }
-        if (CGOptions::kVerboseCG) {
+        if (CGOptions::GetInstance().GenerateVerboseCG()) {
             std::string comment = " SPILL vreg:" + std::to_string(regNO);
             stInsn->SetComment(comment);
         }
@@ -1570,7 +1570,7 @@ void LSRALinearScanRegAllocator::SpillOperand(Insn &insn, Operand &opnd, bool is
         if (li->GetLastUse() == insn.GetId() && !cgFunc->IsRegReference(regNO)) {
             regInfo->FreeSpillRegMem(regNO);
         }
-        if (CGOptions::kVerboseCG) {
+        if (CGOptions::GetInstance().GenerateVerboseCG()) {
             std::string comment = " RELOAD vreg" + std::to_string(regNO);
             ldInsn->SetComment(comment);
         }

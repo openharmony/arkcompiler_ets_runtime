@@ -33,7 +33,9 @@ enum SpecialReg : signed int {
     kSregMethodhdl = 5,
     kSregRetval0 = 6,
     kSregRetval1 = 7,
-    kSregLast = 8,
+    kSregRetval2 = 8,
+    kSregRetval3 = 9,
+    kSregLast = 10,
 };
 #if MIR_FEATURE_FULL
 class MIRPreg {

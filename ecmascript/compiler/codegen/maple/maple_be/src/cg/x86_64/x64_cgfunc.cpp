@@ -588,12 +588,6 @@ void X64CGFunc::GenerateYieldpoint(BB &bb)
 {
     CHECK_FATAL(false, "NIY");
 }
-Operand &X64CGFunc::ProcessReturnReg(PrimType primType, int32 sReg)
-{
-    CHECK_FATAL(false, "NIY");
-    Operand *a;
-    return *a;
-}
 Operand &X64CGFunc::GetOrCreateRflag()
 {
     CHECK_FATAL(false, "NIY");

@@ -65,6 +65,7 @@ public:
 
 class MeFunction;         // circular dependency exists, no other choice
 class EAConnectionGraph;  // circular dependency exists, no other choice
+class MemReferenceTable;
 class MIRFunction {
 public:
     MIRFunction(MIRModule *mod, StIdx idx) : module(mod), symbolTableIdx(idx)
@@ -1541,6 +1542,20 @@ public:
         return funcAttrs.GetFrameResverdSlot();
     }
 
+    MemReferenceTable *GetMemReferenceTable()
+    {
+        return memReferenceTable;
+    }
+
+    void DiscardMemReferenceTable()
+    {
+        memReferenceTable = nullptr;
+    }
+
+    void CreateMemReferenceTable();
+
+    MemReferenceTable *GetOrCreateMemReferenceTable();
+
 private:
     MIRModule *module;      // the module that owns this function
     PUIdx puIdx = 0;        // the PU index of this function
@@ -1645,6 +1660,7 @@ private:
     uint64 fileLinenoChksum = 0;
     uint64 cfgChksum = 0;
     GcovFuncInfo *funcProfData = nullptr;
+    MemReferenceTable *memReferenceTable = nullptr;
     void DumpFlavorLoweredThanMmpl() const;
     MIRFuncType *ReconstructFormals(const std::vector<MIRSymbol *> &symbols, bool clearOldArgs);
 };
