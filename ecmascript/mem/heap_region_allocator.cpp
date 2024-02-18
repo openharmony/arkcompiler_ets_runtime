@@ -15,7 +15,9 @@
 
 #include "ecmascript/mem/heap_region_allocator.h"
 
+#include "ecmascript/ecma_vm.h"
 #include "ecmascript/js_thread.h"
+#include "ecmascript/mem/heap.h"
 #include "ecmascript/mem/mark_stack.h"
 #include "ecmascript/mem/mem_map_allocator.h"
 #include "ecmascript/mem/region.h"
@@ -41,6 +43,8 @@ Region *HeapRegionAllocator::AllocateAlignedRegion(Space *space, size_t capacity
                                                          isRegular, isMachineCode);
     void *mapMem = pool.GetMem();
     if (mapMem == nullptr) {
+        const_cast<Heap *>(thread->GetEcmaVM()->GetHeap())->ThrowOutOfMemoryErrorForDefault(DEFAULT_REGION_SIZE,
+            "HeapRegionAllocator::AllocateAlignedRegion", false);
         LOG_ECMA_MEM(FATAL) << "pool is empty " << annoMemoryUsage_.load(std::memory_order_relaxed);
         UNREACHABLE();
     }
