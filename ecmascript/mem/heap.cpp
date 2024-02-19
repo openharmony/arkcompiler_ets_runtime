@@ -81,18 +81,15 @@ void SharedHeap::Initialize(NativeAreaAllocator *nativeAreaAllocator, HeapRegion
     size_t maxHeapSize = config_.GetMaxHeapSize();
     size_t nonmovableSpaceCapacity = config_.GetDefaultNonMovableSpaceSize();
     sNonMovableSpace_ = new SharedNonMovableSpace(this, nonmovableSpaceCapacity, nonmovableSpaceCapacity);
-    sNonMovableSpace_->Initialize();
 
     size_t oldSpaceCapacity = maxHeapSize - nonmovableSpaceCapacity;
     globalSpaceAllocLimit_ = maxHeapSize;
 
     sOldSpace_ = new SharedOldSpace(this, oldSpaceCapacity, oldSpaceCapacity);
-    sOldSpace_->Initialize();
 
     size_t readOnlySpaceCapacity = config_.GetDefaultReadOnlySpaceSize();
     sReadOnlySpace_ = new SharedReadOnlySpace(this, readOnlySpaceCapacity, readOnlySpaceCapacity);
-    sHugeObjectSpace_ = new HugeObjectSpace(this, heapRegionAllocator_, oldSpaceCapacity, oldSpaceCapacity,
-        MemSpaceType::SHARED_HUGE_OBJECT_SPACE);
+    sHugeObjectSpace_ = new SharedHugeObjectSpace(this, heapRegionAllocator_, oldSpaceCapacity, oldSpaceCapacity);
 }
 
 #if defined(ENABLE_DUMP_IN_FAULTLOG)
@@ -675,7 +672,8 @@ void BaseHeap::ThrowOutOfMemoryError(JSThread *thread, size_t size, std::string 
     THROW_OOM_ERROR(thread, oss.str().c_str());
 }
 
-void BaseHeap::ThrowOutOfMemoryErrorForDefault(JSThread *thread, size_t size, std::string functionName, bool NonMovableObjNearOOM)
+void BaseHeap::ThrowOutOfMemoryErrorForDefault(JSThread *thread, size_t size, std::string functionName,
+    bool NonMovableObjNearOOM)
 {
     EcmaVM *ecmaVm = thread->GetEcmaVM();
     ecmaVm->GetEcmaGCStats()->PrintGCMemoryStatistic();

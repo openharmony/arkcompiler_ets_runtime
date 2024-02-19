@@ -393,7 +393,7 @@ public:
         return sNonMovableSpace_;
     }
 
-    HugeObjectSpace *GetHugeObjectSpace() const
+    SharedHugeObjectSpace *GetHugeObjectSpace() const
     {
         return sHugeObjectSpace_;
     }
@@ -513,7 +513,7 @@ private:
     SharedOldSpace *sOldSpace_ {nullptr};
     SharedNonMovableSpace *sNonMovableSpace_ {nullptr};
     SharedReadOnlySpace *sReadOnlySpace_ {nullptr};
-    HugeObjectSpace *sHugeObjectSpace_ {nullptr};
+    SharedHugeObjectSpace *sHugeObjectSpace_ {nullptr};
     SharedGCWorkManager *sWorkManager_ {nullptr};
     SharedConcurrentSweeper *sSweeper_ {nullptr};
     SharedGC *sharedGC_ {nullptr};

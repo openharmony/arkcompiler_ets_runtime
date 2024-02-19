@@ -26,7 +26,7 @@
 namespace panda::ecmascript {
 constexpr size_t PANDA_POOL_ALIGNMENT_IN_BYTES = 256_KB;
 
-Region *HeapRegionAllocator::AllocateAlignedRegion(Space *space, size_t capacity, BaseHeap *heap)
+Region *HeapRegionAllocator::AllocateAlignedRegion(Space *space, size_t capacity, JSThread* thread, BaseHeap *heap)
 {
     if (capacity == 0) {
         LOG_ECMA_MEM(FATAL) << "capacity must have a size bigger than 0";
@@ -38,13 +38,16 @@ Region *HeapRegionAllocator::AllocateAlignedRegion(Space *space, size_t capacity
         flags != RegionSpaceFlag::IN_SHARED_HUGE_OBJECT_SPACE);
     bool isMachineCode = (flags == RegionSpaceFlag::IN_MACHINE_CODE_SPACE ||
         flags == RegionSpaceFlag::IN_HUGE_MACHINE_CODE_SPACE);
-    auto pool = MemMapAllocator::GetInstance()->Allocate(capacity, DEFAULT_REGION_SIZE,
+    auto tid = thread ? thread->GetThreadId() : JSThread::GetCurrentThreadId();
+    auto pool = MemMapAllocator::GetInstance()->Allocate(tid, capacity, DEFAULT_REGION_SIZE,
                                                          ToSpaceTypeName(space->GetSpaceType()),
                                                          isRegular, isMachineCode);
     void *mapMem = pool.GetMem();
     if (mapMem == nullptr) {
-        // heap->ThrowOutOfMemoryErrorForDefault(thread, DEFAULT_REGION_SIZE,
-        //     "HeapRegionAllocator::AllocateAlignedRegion", false);
+        if (thread != nullptr) {
+            heap->ThrowOutOfMemoryErrorForDefault(thread, DEFAULT_REGION_SIZE,
+                "HeapRegionAllocator::AllocateAlignedRegion", false);
+        }
         LOG_ECMA_MEM(FATAL) << "pool is empty " << annoMemoryUsage_.load(std::memory_order_relaxed);
         UNREACHABLE();
     }
