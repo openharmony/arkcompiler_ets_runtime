@@ -389,7 +389,7 @@ private:
         {
             if (HasExtraProfileTypeInfo()) {
                 for (auto& iter: map_) {
-                    auto info = iter.second;
+                    auto& info = iter.second;
                     visitor(Root::ROOT_VM, ObjectSlot(info.GetReceiverAddr()));
                     visitor(Root::ROOT_VM, ObjectSlot(info.GetHolderAddr()));
                 }
