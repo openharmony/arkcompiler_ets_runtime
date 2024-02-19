@@ -3114,6 +3114,63 @@ bool JSNApi::NotifyDebugMode([[maybe_unused]] int tid,
     if (vm == nullptr) {
         return false;
     }
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, false);
+
+    bool ret = false;
+    if (!debugApp) {
+        return false;
+    }
+    JsDebuggerManager *jsDebuggerManager = vm->GetJsDebuggerManager();
+    auto handle = panda::os::library_loader::Load(std::string(option.libraryPath));
+    if (!handle) {
+        LOG_ECMA(ERROR) << "[NotifyDebugMode] Load library fail: " << option.libraryPath << " " << errno;
+        return false;
+    }
+    JsDebuggerManager::AddJsDebuggerManager(tid, jsDebuggerManager);
+    jsDebuggerManager->SetDebugLibraryHandle(std::move(handle.Value()));
+    jsDebuggerManager->SetDebugMode(option.isDebugMode && debugApp);
+    jsDebuggerManager->SetIsDebugApp(debugApp);
+    ret = StartDebuggerForOldProcess(vm, option, instanceId, debuggerPostTask);
+
+    // store debugger postTask in inspector.
+    using StoreDebuggerInfo = void (*)(int, EcmaVM *, const DebuggerPostTask &);
+    auto symOfStoreDebuggerInfo = panda::os::library_loader::ResolveSymbol(
+        jsDebuggerManager->GetDebugLibraryHandle(), "StoreDebuggerInfo");
+    if (!symOfStoreDebuggerInfo) {
+        LOG_ECMA(ERROR) << "[NotifyDebugMode] Resolve StoreDebuggerInfo symbol fail: " <<
+            symOfStoreDebuggerInfo.Error().ToString();
+        return false;
+    }
+    reinterpret_cast<StoreDebuggerInfo>(symOfStoreDebuggerInfo.Value())(tid, vm, debuggerPostTask);
+    if (option.isDebugMode) {
+        using WaitForDebugger = void (*)(EcmaVM *);
+        auto symOfWaitForDebugger = panda::os::library_loader::ResolveSymbol(
+            jsDebuggerManager->GetDebugLibraryHandle(), "WaitForDebugger");
+        if (!symOfWaitForDebugger) {
+            LOG_ECMA(ERROR) << "[NotifyDebugMode] Resolve symbol WaitForDebugger fail: " <<
+                symOfWaitForDebugger.Error().ToString();
+            return false;
+        }
+        reinterpret_cast<WaitForDebugger>(symOfWaitForDebugger.Value())(vm);
+    }
+    return ret;
+
+#else
+    LOG_ECMA(ERROR) << "Not support arkcompiler debugger";
+    return false;
+#endif // ECMASCRIPT_SUPPORT_DEBUGGER
+}
+
+bool JSNApi::StoreDebugInfo([[maybe_unused]] int tid,
+                            [[maybe_unused]] EcmaVM *vm,
+                            [[maybe_unused]] const DebugOption &option,
+                            [[maybe_unused]] const DebuggerPostTask &debuggerPostTask,
+                            [[maybe_unused]] bool debugApp)
+{
+#if defined(ECMASCRIPT_SUPPORT_DEBUGGER)
+    if (vm == nullptr) {
+        return false;
+    }
 
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, false);
     JsDebuggerManager *jsDebuggerManager = vm->GetJsDebuggerManager();
@@ -3131,11 +3188,6 @@ bool JSNApi::NotifyDebugMode([[maybe_unused]] int tid,
     jsDebuggerManager->SetDebugLibraryHandle(std::move(handle.Value()));
     jsDebuggerManager->SetDebugMode(option.isDebugMode && debugApp);
     jsDebuggerManager->SetIsDebugApp(debugApp);
-    bool ret = false;
-    if (debugApp) {
-        ret = StartDebuggerForOldProcess(vm, option, instanceId, debuggerPostTask);
-    }
-
     // store debugger postTask in inspector.
     using StoreDebuggerInfo = void (*)(int, EcmaVM *, const DebuggerPostTask &);
     auto symOfStoreDebuggerInfo = panda::os::library_loader::ResolveSymbol(
@@ -3146,6 +3198,7 @@ bool JSNApi::NotifyDebugMode([[maybe_unused]] int tid,
         return false;
     }
     reinterpret_cast<StoreDebuggerInfo>(symOfStoreDebuggerInfo.Value())(tid, vm, debuggerPostTask);
+    bool ret = false;
     using InitializeDebuggerForSocketpair = bool(*)(void*);
     auto sym = panda::os::library_loader::ResolveSymbol(handler, "InitializeDebuggerForSocketpair");
     if (!sym) {
@@ -3157,17 +3210,6 @@ bool JSNApi::NotifyDebugMode([[maybe_unused]] int tid,
     // Reset the config
         vm->GetJsDebuggerManager()->SetDebugMode(false);
         return false;
-    }
-    if (option.isDebugMode) {
-        using WaitForDebugger = void (*)(EcmaVM *);
-        auto symOfWaitForDebugger = panda::os::library_loader::ResolveSymbol(
-            jsDebuggerManager->GetDebugLibraryHandle(), "WaitForDebugger");
-        if (!symOfWaitForDebugger) {
-            LOG_ECMA(ERROR) << "[NotifyDebugMode] Resolve symbol WaitForDebugger fail: " <<
-                symOfWaitForDebugger.Error().ToString();
-            return false;
-        }
-        reinterpret_cast<WaitForDebugger>(symOfWaitForDebugger.Value())(vm);
     }
     return ret;
 #else
