@@ -3302,6 +3302,10 @@ void JSNApi::LoadAotFile(EcmaVM *vm, const std::string &moduleName)
     }  else {
         aotFileName = ecmascript::AnFileDataManager::GetInstance()->GetDir() + moduleName;
     }
+    if (ecmascript::pgo::PGOProfilerManager::GetInstance()->IsDisableAot()) {
+        LOG_ECMA(INFO) << "can't load disable aot file: " << aotFileName;
+        return;
+    }
     LOG_ECMA(INFO) << "start to load aot file: " << aotFileName;
     thread->GetCurrentEcmaContext()->LoadAOTFiles(aotFileName);
 }

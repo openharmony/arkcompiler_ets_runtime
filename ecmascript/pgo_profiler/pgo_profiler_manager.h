@@ -189,6 +189,16 @@ public:
         }
     }
 
+    bool IsDisableAot() const
+    {
+        return disableAot_;
+    }
+
+    void SetDisableAot(bool state)
+    {
+        disableAot_ = state;
+    }
+
     void ForceSave()
     {
         os::memory::LockHolder lock(*mutex_);
@@ -249,6 +259,7 @@ private:
         return initializedResult;
     }
 
+    bool disableAot_ {false};
     std::unique_ptr<PGOProfilerEncoder> encoder_;
     RequestAotCallback requestAotCallback_;
     std::atomic_bool enableSignalSaving_ { false };
