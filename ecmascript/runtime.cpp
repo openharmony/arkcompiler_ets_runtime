@@ -58,7 +58,7 @@ void Runtime::InitializeIfFirstVm(EcmaVM *vm)
     if (++vmCount_ == 1) {
         PreInitialization(vm);
         vm->Initialize();
-        PostInitialization();
+        PostInitialization(vm);
     } else {
         vm->Initialize();
     }
@@ -70,15 +70,16 @@ void Runtime::PreInitialization(const EcmaVM *vm)
     nativeAreaAllocator_ = std::make_unique<NativeAreaAllocator>();
     heapRegionAllocator_ = std::make_unique<HeapRegionAllocator>();
     stringTable_ = std::make_unique<EcmaStringTable>();
-    SharedHeap::GetInstance()->Initialize(nativeAreaAllocator_.get(), heapRegionAllocator_.get());
+    SharedHeap::GetInstance()->Initialize(nativeAreaAllocator_.get(), heapRegionAllocator_.get(),
+        const_cast<EcmaVM*>(vm)->GetJSOptions());
 }
 
-void Runtime::PostInitialization()
+void Runtime::PostInitialization(const EcmaVM *vm)
 {
     // Use the main thread's globalconst after it has initialized,
     // and copy shared parts to other thread's later.
     globalConstants_ = mainThread_->GlobalConstants();
-    SharedHeap::GetInstance()->SetGlobalEnvConstants(globalConstants_);
+    SharedHeap::GetInstance()->PostInitialization(globalConstants_, const_cast<EcmaVM*>(vm)->GetJSOptions());
 }
 
 void Runtime::DestroyIfLastVm()

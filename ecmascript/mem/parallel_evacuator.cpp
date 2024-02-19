@@ -174,6 +174,9 @@ void ParallelEvacuator::EvacuateRegion(TlabAllocator *allocator, Region *region,
         if (actualPromoted) {
             SetObjectFieldRSet(reinterpret_cast<TaggedObject *>(address), klass);
         }
+        if(region->HasLocalToShareRememberedSet()) {
+            UpdateLocalToShareRSet(reinterpret_cast<TaggedObject *>(address), klass);
+        }
     });
     promotedSize_.fetch_add(promotedSize);
 }
@@ -181,7 +184,7 @@ void ParallelEvacuator::EvacuateRegion(TlabAllocator *allocator, Region *region,
 void ParallelEvacuator::VerifyHeapObject(TaggedObject *object)
 {
     auto klass = object->GetClass();
-    objXRay_.VisitObjectBody<VisitType::OLD_GC_VISIT>(object, klass,
+    ObjectXRay::VisitObjectBody<VisitType::OLD_GC_VISIT>(object, klass,
         [&](TaggedObject *root, ObjectSlot start, ObjectSlot end, VisitObjectArea area) {
             if (area == VisitObjectArea::IN_OBJECT) {
                 if (VisitBodyInObj(root, start, end, [&](ObjectSlot slot) { VerifyValue(object, slot); })) {
@@ -202,6 +205,9 @@ void ParallelEvacuator::VerifyValue(TaggedObject *object, ObjectSlot slot)
             return;
         }
         Region *objectRegion = Region::ObjectAddressToRange(value.GetTaggedObject());
+        if (objectRegion->InSharedHeap()) {
+            return;
+        }
         if (!heap_->IsFullMark() && !objectRegion->InYoungSpace()) {
             return;
         }
@@ -238,10 +244,6 @@ void ParallelEvacuator::UpdateReference()
         oldRegionCount++;
     });
     heap_->EnumerateSnapshotSpaceRegions([this] (Region *current) {
-        AddWorkload(std::make_unique<UpdateRSetWorkload>(this, current));
-    });
-    // todo(lukai) onlyfortest, delete this after all references of sharedobject are in shared space.
-    SharedHeap::GetInstance()->EnumerateOldSpaceRegions([this] (Region *current) {
         AddWorkload(std::make_unique<UpdateRSetWorkload>(this, current));
     });
     LOG_GC(DEBUG) << "UpdatePointers statistic: younge space region compact moving count:"
@@ -282,7 +284,7 @@ void ParallelEvacuator::UpdateRoot()
         }
     };
 
-    objXRay_.VisitVMRoots(gcUpdateYoung, gcUpdateRangeYoung, gcUpdateDerived);
+    ObjectXRay::VisitVMRoots(heap_->GetEcmaVM(), gcUpdateYoung, gcUpdateRangeYoung, gcUpdateDerived);
 }
 
 void ParallelEvacuator::UpdateRecordWeakReference()
@@ -310,14 +312,16 @@ void ParallelEvacuator::UpdateWeakReference()
     MEM_ALLOCATE_AND_GC_TRACE(heap_->GetEcmaVM(), UpdateWeakReference);
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "GC::UpdateWeakReference");
     UpdateRecordWeakReference();
-    // TODO(hzzhouzebin) wait for shared-gc
-    // auto stringTable = heap_->GetEcmaVM()->GetEcmaStringTable();
     bool isFullMark = heap_->IsFullMark();
     WeakRootVisitor gcUpdateWeak = [isFullMark](TaggedObject *header) {
         Region *objectRegion = Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(header));
         if (!objectRegion) {
             LOG_GC(ERROR) << "PartialGC updateWeakReference: region is nullptr, header is " << header;
             return reinterpret_cast<TaggedObject *>(ToUintPtr(nullptr));
+        }
+        // The weak object in shared heap is always alive during partialGC.
+        if (objectRegion->InSharedHeap()) {
+            return header;
         }
         if (objectRegion->InYoungSpaceOrCSet()) {
             if (objectRegion->InNewToNewSet()) {
@@ -339,11 +343,6 @@ void ParallelEvacuator::UpdateWeakReference()
         }
         return header;
     };
-    if (isFullMark) {
-        // Only old gc will sweep string table.
-        // TODO(hzzhouzebin) wait for shared-gc
-        // stringTable->SweepWeakReference(gcUpdateWeak);
-    }
 
     heap_->GetEcmaVM()->GetJSThread()->IterateWeakEcmaGlobalStorage(gcUpdateWeak);
     heap_->GetEcmaVM()->ProcessReferences(gcUpdateWeak);
@@ -432,7 +431,7 @@ void ParallelEvacuator::UpdateAndSweepNewRegionReference(Region *region)
 
 void ParallelEvacuator::UpdateNewObjectField(TaggedObject *object, JSHClass *cls)
 {
-    objXRay_.VisitObjectBody<VisitType::OLD_GC_VISIT>(object, cls,
+    ObjectXRay::VisitObjectBody<VisitType::OLD_GC_VISIT>(object, cls,
         [this](TaggedObject *root, ObjectSlot start, ObjectSlot end, VisitObjectArea area) {
             if (area == VisitObjectArea::IN_OBJECT) {
                 if (VisitBodyInObj(root, start, end, [&](ObjectSlot slot) { UpdateObjectSlot(slot); })) {

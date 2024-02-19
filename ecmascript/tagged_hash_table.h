@@ -69,7 +69,7 @@ public:
             int freeSize = table->Size() - table->EntriesCount() - numOfAddedElements;
             if (table->HoleEntriesCount() > freeSize / 2) { // 2: half
                 int copyLength = Derived::GetEntryIndex(table->Size());
-                JSHandle<Derived> copyTable = table.GetTaggedValue().IsInSharedSpace() ?
+                JSHandle<Derived> copyTable = table.GetTaggedValue().IsInSharedHeap() ?
                     JSHandle<Derived>(thread->GetEcmaVM()->GetFactory()->NewSDictionaryArray(copyLength)) :
                     JSHandle<Derived>(thread->GetEcmaVM()->GetFactory()->NewDictionaryArray(copyLength));
                 copyTable->SetHashTableSize(thread, table->Size());
@@ -82,7 +82,7 @@ public:
             table->Size(), numOfAddedElements);
         newSize = std::max(newSize, MIN_SHRINK_SIZE);
         int length = Derived::GetEntryIndex(newSize);
-        JSHandle<Derived> newTable = table.GetTaggedValue().IsInSharedSpace() ?
+        JSHandle<Derived> newTable = table.GetTaggedValue().IsInSharedHeap() ?
             JSHandle<Derived>(thread->GetEcmaVM()->GetFactory()->NewSDictionaryArray(length)) :
             JSHandle<Derived>(thread->GetEcmaVM()->GetFactory()->NewDictionaryArray(length));
         newTable->SetHashTableSize(thread, newSize);

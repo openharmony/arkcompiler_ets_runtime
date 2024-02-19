@@ -30,21 +30,21 @@
 namespace panda::ecmascript {
 EcmaString *ObjectFactory::AllocNonMovableLineStringObject(size_t size)
 {
-    NewObjectHook();
+    NewSObjectHook();
     return reinterpret_cast<EcmaString *>(sHeap_->AllocateNonMovableOrHugeObject(thread_, 
         JSHClass::Cast(thread_->GlobalConstants()->GetLineStringClass().GetTaggedObject()), size));
 }
 
 EcmaString *ObjectFactory::AllocLineStringObject(size_t size)
 {
-    NewObjectHook();
+    NewSObjectHook();
     return reinterpret_cast<EcmaString *>(sHeap_->AllocateOldOrHugeObject(thread_, 
         JSHClass::Cast(thread_->GlobalConstants()->GetLineStringClass().GetTaggedObject()), size));
 }
 
 EcmaString *ObjectFactory::AllocOldSpaceLineStringObject(size_t size)
 {
-    NewObjectHook();
+    NewSObjectHook();
     return reinterpret_cast<EcmaString *>(sHeap_->AllocateOldOrHugeObject(thread_, 
         JSHClass::Cast(thread_->GlobalConstants()->GetLineStringClass().GetTaggedObject()), size));
 }
@@ -52,7 +52,7 @@ EcmaString *ObjectFactory::AllocOldSpaceLineStringObject(size_t size)
 EcmaString *ObjectFactory::AllocSlicedStringObject(MemSpaceType type)
 {
     ASSERT(IsSMemSpace(type));
-    NewObjectHook();
+    NewSObjectHook();
     return reinterpret_cast<EcmaString *>(AllocObjectWithSpaceType(SlicedString::SIZE,
         JSHClass::Cast(thread_->GlobalConstants()->GetSlicedStringClass().GetTaggedObject()), type));
 }
@@ -60,14 +60,14 @@ EcmaString *ObjectFactory::AllocSlicedStringObject(MemSpaceType type)
 EcmaString *ObjectFactory::AllocConstantStringObject(MemSpaceType type)
 {
     ASSERT(IsSMemSpace(type));
-    NewObjectHook();
+    NewSObjectHook();
     return reinterpret_cast<EcmaString *>(AllocObjectWithSpaceType(ConstantString::SIZE,
         JSHClass::Cast(thread_->GlobalConstants()->GetConstantStringClass().GetTaggedObject()), type));
 }
 
 EcmaString *ObjectFactory::AllocTreeStringObject()
 {
-    NewObjectHook();
+    NewSObjectHook();
     return reinterpret_cast<EcmaString *>(sHeap_->AllocateOldOrHugeObject(thread_, 
         JSHClass::Cast(thread_->GlobalConstants()->GetTreeStringClass().GetTaggedObject()), TreeEcmaString::SIZE));
 }

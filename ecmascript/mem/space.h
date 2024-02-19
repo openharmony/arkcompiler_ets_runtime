@@ -49,6 +49,9 @@ enum MemSpaceType {
     SHARED_END = SHARED_HUGE_OBJECT_SPACE,
     // Free region means memory maybe always in use and can not be evacuated
     FREE_LIST_NUM = MACHINE_CODE_SPACE - OLD_SPACE + 1,
+    SHARED_SWEEPING_SPACE_BEGIN = SHARED_NON_MOVABLE,
+    SHARED_SWEEPING_SPACE_END = SHARED_OLD_SPACE,
+    SHARED_SWEEPING_SPACE_NUM = SHARED_SWEEPING_SPACE_END - SHARED_SWEEPING_SPACE_BEGIN + 1,
 };
 
 static inline bool IsSMemSpace(MemSpaceType type)

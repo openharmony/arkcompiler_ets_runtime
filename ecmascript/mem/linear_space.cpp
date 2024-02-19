@@ -23,8 +23,9 @@
 #include "ecmascript/mem/mem_controller.h"
 
 namespace panda::ecmascript {
-LinearSpace::LinearSpace(BaseHeap *heap, MemSpaceType type, size_t initialCapacity, size_t maximumCapacity)
+LinearSpace::LinearSpace(Heap *heap, MemSpaceType type, size_t initialCapacity, size_t maximumCapacity)
     : Space(heap, heap->GetHeapRegionAllocator(), type, initialCapacity, maximumCapacity),
+      localHeap_(heap),
       waterLine_(0)
 {
 }
@@ -42,18 +43,18 @@ uintptr_t LinearSpace::Allocate(size_t size, bool isPromoted)
         return object;
     }
     if (Expand(isPromoted)) {
-        if (!isPromoted && !heap_->NeedStopCollection()) {
-            heap_->TryTriggerIncrementalMarking();
-            heap_->TryTriggerIdleCollection();
-            heap_->TryTriggerConcurrentMarking();
+        if (!isPromoted && !localHeap_->NeedStopCollection()) {
+            localHeap_->TryTriggerIncrementalMarking();
+            localHeap_->TryTriggerIdleCollection();
+            localHeap_->TryTriggerConcurrentMarking();
         }
         object = allocator_.Allocate(size);
-    } else if (heap_->IsMarking() || !heap_->IsEmptyIdleTask()) {
+    } else if (localHeap_->IsMarking() || !localHeap_->IsEmptyIdleTask()) {
         // Temporary adjust semi space capacity
-        if (heap_->IsFullMark()) {
-            overShootSize_ = heap_->CalculateLinearSpaceOverShoot();
+        if (localHeap_->IsFullMark()) {
+            overShootSize_ = localHeap_->CalculateLinearSpaceOverShoot();
         } else {
-            size_t stepOverShootSize = heap_->GetEcmaParamConfiguration().GetSemiSpaceStepOvershootSize();
+            size_t stepOverShootSize = localHeap_->GetEcmaParamConfiguration().GetSemiSpaceStepOvershootSize();
             size_t maxOverShootSize = std::max(initialCapacity_ / 2, stepOverShootSize); // 2: half
             if (overShootSize_ < maxOverShootSize) {
                 overShootSize_ += stepOverShootSize;
@@ -75,7 +76,7 @@ uintptr_t LinearSpace::Allocate(size_t size, bool isPromoted)
 bool LinearSpace::Expand(bool isPromoted)
 {
     if (committedSize_ >= initialCapacity_ + overShootSize_ + outOfMemoryOvershootSize_ &&
-        !heap_->NeedStopCollection()) {
+        !localHeap_->NeedStopCollection()) {
         return false;
     }
 
@@ -95,7 +96,7 @@ bool LinearSpace::Expand(bool isPromoted)
         }
         currentRegion->SetHighWaterMark(top);
     }
-    Region *region = heapRegionAllocator_->AllocateAlignedRegion(this, DEFAULT_REGION_SIZE, heap_);
+    Region *region = heapRegionAllocator_->AllocateAlignedRegion(this, DEFAULT_REGION_SIZE, localHeap_);
     allocator_.Reset(region->GetBegin(), region->GetEnd());
 
     AddRegion(region);
@@ -163,13 +164,13 @@ void LinearSpace::InvokeAllocationInspector(Address object, size_t size, size_t 
     allocationCounter_.AdvanceAllocationInspector(alignedSize);
 }
 
-SemiSpace::SemiSpace(BaseHeap *heap, size_t initialCapacity, size_t maximumCapacity)
+SemiSpace::SemiSpace(Heap *heap, size_t initialCapacity, size_t maximumCapacity)
     : LinearSpace(heap, MemSpaceType::SEMI_SPACE, initialCapacity, maximumCapacity),
       minimumCapacity_(initialCapacity) {}
 
 void SemiSpace::Initialize()
 {
-    Region *region = heapRegionAllocator_->AllocateAlignedRegion(this, DEFAULT_REGION_SIZE, heap_);
+    Region *region = heapRegionAllocator_->AllocateAlignedRegion(this, DEFAULT_REGION_SIZE, localHeap_);
     AddRegion(region);
     allocator_.Reset(region->GetBegin(), region->GetEnd());
 }
@@ -271,7 +272,7 @@ bool SemiSpace::AdjustCapacity(size_t allocatedSizeSinceGC, JSThread *thread)
         size_t newCapacity = initialCapacity_ * GROWING_FACTOR;
         SetInitialCapacity(std::min(newCapacity, maximumCapacity_));
         if (newCapacity == maximumCapacity_) {
-            heap_->GetJSObjectResizingStrategy()->UpdateGrowStep(
+            localHeap_->GetJSObjectResizingStrategy()->UpdateGrowStep(
                 thread,
                 JSObjectResizingStrategy::PROPERTIES_GROW_SIZE * 2);   // 2: double
         }
@@ -280,13 +281,13 @@ bool SemiSpace::AdjustCapacity(size_t allocatedSizeSinceGC, JSThread *thread)
         if (initialCapacity_ <= minimumCapacity_) {
             return false;
         }
-        double speed = heap_->GetMemController()->GetNewSpaceAllocationThroughputPerMS();
+        double speed = localHeap_->GetMemController()->GetNewSpaceAllocationThroughputPerMS();
         if (speed > LOW_ALLOCATION_SPEED_PER_MS) {
             return false;
         }
         size_t newCapacity = initialCapacity_ / GROWING_FACTOR;
         SetInitialCapacity(std::max(newCapacity, minimumCapacity_));
-        heap_->GetJSObjectResizingStrategy()->UpdateGrowStep(thread);
+        localHeap_->GetJSObjectResizingStrategy()->UpdateGrowStep(thread);
         return true;
     }
     return false;
@@ -305,22 +306,9 @@ size_t SemiSpace::GetAllocatedSizeSinceGC(uintptr_t top) const
     return allocateAfterLastGC_ + currentRegionSize;
 }
 
-SnapshotSpace::SnapshotSpace(BaseHeap *heap, size_t initialCapacity, size_t maximumCapacity)
+SnapshotSpace::SnapshotSpace(Heap *heap, size_t initialCapacity, size_t maximumCapacity)
     : LinearSpace(heap, MemSpaceType::SNAPSHOT_SPACE, initialCapacity, maximumCapacity) {}
 
-ReadOnlySpace::ReadOnlySpace(BaseHeap *heap, size_t initialCapacity, size_t maximumCapacity, MemSpaceType type)
+ReadOnlySpace::ReadOnlySpace(Heap *heap, size_t initialCapacity, size_t maximumCapacity, MemSpaceType type)
     : LinearSpace(heap, type, initialCapacity, maximumCapacity) {}
-
-uintptr_t ReadOnlySpace::ConcurrentAllocate(size_t size)
-{
-    LockHolder holder(allocateLock_);
-    auto object = allocator_.Allocate(size);
-    if (object != 0) {
-        return object;
-    }
-    if (Expand(false)) {
-        object = allocator_.Allocate(size);
-    }
-    return object;
-}
 }  // namespace panda::ecmascript

@@ -1364,7 +1364,7 @@ void SnapshotProcessor::DeserializeString(uintptr_t stringBegin, uintptr_t strin
                 if (UNLIKELY(strSize > MAX_REGULAR_HEAP_OBJECT_SIZE)) {
                     newObj = hugeSpace->Allocate(strSize);
                 } else {
-                    newObj = oldSpace->Allocate(strSize, false);
+                    newObj = oldSpace->Allocate(vm_->GetJSThread(), strSize, false);
                 }
                 if (newObj == 0) {
                     LOG_ECMA_MEM(FATAL) << "Snapshot Allocate OldLocalSpace OOM";
@@ -1489,7 +1489,7 @@ void SnapshotProcessor::SerializeObject(TaggedObject *objectHeader, CQueue<Tagge
         }
     };
 
-    objXRay_.VisitObjectBody<VisitType::SNAPSHOT_VISIT>(objectHeader, objectHeader->GetClass(), visitor);
+    ObjectXRay::VisitObjectBody<VisitType::SNAPSHOT_VISIT>(objectHeader, objectHeader->GetClass(), visitor);
 }
 
 bool SnapshotProcessor::VisitObjectBodyWithRep(TaggedObject *root, ObjectSlot slot, uintptr_t obj, int index,
@@ -1666,6 +1666,9 @@ void SnapshotProcessor::DeserializeTaggedField(uint64_t *value, TaggedObject *ro
             ASSERT((ToUintPtr(value) % static_cast<uint8_t>(MemAlignment::MEM_ALIGN_OBJECT)) == 0);
             rootRegion->InsertOldToNewRSet((uintptr_t)value);
         }
+        if (!rootRegion->InSharedHeap() && valueRegion->InSharedSweepableSpace()) {
+            rootRegion->AtomicInsertLocalToShareRSet((uintptr_t)value);
+        }
         *value = taggedObjectAddr;
         return;
     }
@@ -1704,7 +1707,7 @@ void SnapshotProcessor::DeserializeField(TaggedObject *objectHeader)
         }
     };
 
-    objXRay_.VisitObjectBody<VisitType::SNAPSHOT_VISIT>(objectHeader, objectHeader->GetClass(), visitor);
+    ObjectXRay::VisitObjectBody<VisitType::SNAPSHOT_VISIT>(objectHeader, objectHeader->GetClass(), visitor);
 }
 
 EncodeBit SnapshotProcessor::NativePointerToEncodeBit(void *nativePointer)

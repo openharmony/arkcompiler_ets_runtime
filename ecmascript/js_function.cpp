@@ -81,7 +81,6 @@ void JSFunction::InitializeJSFunction(JSThread *thread, const JSHandle<JSFunctio
 void JSFunction::InitializeSFunction(JSThread *thread, const JSHandle<JSFunction> &func, FunctionKind kind)
 {
     InitializeWithDefaultValue(thread, func);
-    // todo(lukai) gobalruntime.const
     auto globalConst = thread->GlobalConstants();
     if (HasAccessor(kind)) {
         JSHandle<JSTaggedValue> accessor = globalConst->GetHandledFunctionNameAccessor();

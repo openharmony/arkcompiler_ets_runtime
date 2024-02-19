@@ -125,12 +125,12 @@ HWTEST_F_L0(ReadOnlySpaceTest, CompactHeapBeforeForkTest)
     JSHandle<JSObject> obj = factory->NewEmptyJSObject();
     auto *regionBefore = Region::ObjectAddressToRange(string.GetObject<TaggedObject>());
     auto *objRegionBefore = Region::ObjectAddressToRange(obj.GetObject<TaggedObject>());
-    EXPECT_TRUE(regionBefore->InSharedSpace());
+    EXPECT_TRUE(regionBefore->InSharedHeap());
     EXPECT_FALSE(objRegionBefore->InReadOnlySpace());
     heap->CompactHeapBeforeFork();
     auto *regionAfter = Region::ObjectAddressToRange(string.GetObject<TaggedObject>());
     auto *objRegionAfter = Region::ObjectAddressToRange(obj.GetObject<TaggedObject>());
-    EXPECT_TRUE(regionAfter->InSharedSpace());
+    EXPECT_TRUE(regionAfter->InSharedHeap());
     EXPECT_FALSE(objRegionAfter->InReadOnlySpace());
 }
 
@@ -162,7 +162,7 @@ HWTEST_F_L0(ReadOnlySpaceTest, ForkTest)
         // test gc in child process
         heap->CollectGarbage(TriggerGCType::OLD_GC);
         auto *region = Region::ObjectAddressToRange(string.GetObject<TaggedObject>());
-        EXPECT_TRUE(region->InSharedSpace());
+        EXPECT_TRUE(region->InSharedHeap());
     }
 }
 }  // namespace panda::test

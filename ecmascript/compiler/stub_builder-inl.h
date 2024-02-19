@@ -2496,6 +2496,42 @@ inline GateRef StubBuilder::InYoungGeneration(GateRef region)
     }
 }
 
+inline GateRef StubBuilder::InSharedHeap(GateRef region)
+{
+    auto offset = Region::PackedData::GetFlagOffset(env_->Is32Bit());
+    GateRef x = Load(VariableType::NATIVE_POINTER(), PtrAdd(IntPtr(offset), region),
+        IntPtr(0));
+    if (env_->Is32Bit()) {
+        GateRef spaceType = Int32And(x, Int32(RegionSpaceFlag::VALID_SPACE_MASK));
+        GateRef greater = Int32GreaterThanOrEqual(spaceType, Int32(RegionSpaceFlag::SHARED_SPACE_BEGIN));
+        GateRef less = Int32LessThanOrEqual(spaceType, Int32(RegionSpaceFlag::SHARED_SPACE_END));
+        return BoolAnd(greater, less);
+    } else {
+        GateRef spaceType = Int64And(x, Int64(RegionSpaceFlag::VALID_SPACE_MASK));
+        GateRef greater = Int64GreaterThanOrEqual(spaceType, Int64(RegionSpaceFlag::SHARED_SPACE_BEGIN));
+        GateRef less = Int64LessThanOrEqual(spaceType, Int64(RegionSpaceFlag::SHARED_SPACE_END));
+        return BoolAnd(greater, less);
+    }
+}
+
+inline GateRef StubBuilder::InSharedSweepableSpace(GateRef region)
+{
+    auto offset = Region::PackedData::GetFlagOffset(env_->Is32Bit());
+    GateRef x = Load(VariableType::NATIVE_POINTER(), PtrAdd(IntPtr(offset), region),
+        IntPtr(0));
+    if (env_->Is32Bit()) {
+        GateRef spaceType = Int32And(x, Int32(RegionSpaceFlag::VALID_SPACE_MASK));
+        GateRef greater = Int32GreaterThanOrEqual(spaceType, Int32(RegionSpaceFlag::SHARED_SWEEPABLE_SPACE_BEGIN));
+        GateRef less = Int32LessThanOrEqual(spaceType, Int32(RegionSpaceFlag::SHARED_SWEEPABLE_SPACE_END));
+        return BoolAnd(greater, less);
+    } else {
+        GateRef spaceType = Int64And(x, Int64(RegionSpaceFlag::VALID_SPACE_MASK));
+        GateRef greater = Int64GreaterThanOrEqual(spaceType, Int64(RegionSpaceFlag::SHARED_SWEEPABLE_SPACE_BEGIN));
+        GateRef less = Int64LessThanOrEqual(spaceType, Int64(RegionSpaceFlag::SHARED_SWEEPABLE_SPACE_END));
+        return BoolAnd(greater, less);
+    }
+}
+
 inline GateRef StubBuilder::GetParentEnv(GateRef object)
 {
     GateRef index = Int32(LexicalEnv::PARENT_ENV_INDEX);

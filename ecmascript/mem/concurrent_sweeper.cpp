@@ -152,6 +152,7 @@ void ConcurrentSweeper::ClearRSetInRange(Region *current, uintptr_t freeStart, u
     } else {
         current->ClearOldToNewRSetInRange(freeStart, freeEnd);
     }
+    current->AtomicClearLocalToShareRSetInRange(freeStart, freeEnd);
     current->ClearCrossRegionRSetInRange(freeStart, freeEnd);
 }
 
