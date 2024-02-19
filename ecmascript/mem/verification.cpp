@@ -91,7 +91,7 @@ void VerifyObjectVisitor::VerifyInactiveSemiSpaceMarkedObject(const Heap *heap, 
 void VerifyObjectVisitor::VisitAllObjects(TaggedObject *obj)
 {
     auto jsHclass = obj->GetClass();
-    objXRay_.VisitObjectBody<VisitType::OLD_GC_VISIT>(
+    ObjectXRay::VisitObjectBody<VisitType::OLD_GC_VISIT>(
         obj, jsHclass, [this](TaggedObject *root, ObjectSlot start, ObjectSlot end,
                               VisitObjectArea area) {
             if (area == VisitObjectArea::IN_OBJECT) {
@@ -292,7 +292,7 @@ size_t Verification::VerifyRoot() const
         []([[maybe_unused]] Root type, [[maybe_unused]] ObjectSlot base, [[maybe_unused]] ObjectSlot derived,
            [[maybe_unused]] uintptr_t baseOldObject) {
     };
-    objXRay_.VisitVMRoots(visitor, rangeVisitor, derivedVisitor);
+    ObjectXRay::VisitVMRoots(heap_->GetEcmaVM(), visitor, rangeVisitor, derivedVisitor);
     if (failCount > 0) {
         LOG_GC(ERROR) << "VerifyRoot detects deadObject count is " << failCount;
     }

@@ -20,6 +20,8 @@
 #include <thread>
 
 #include "ecmascript/base/block_hook_scope.h"
+#include "ecmascript/checkpoint/thread_state_transition.h"
+#include "ecmascript/ecma_string_table.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/free_object.h"
 #include "ecmascript/js_finalization_registry.h"
@@ -32,15 +34,17 @@
 #include "ecmascript/mem/incremental_marker.h"
 #include "ecmascript/mem/mark_stack.h"
 #include "ecmascript/mem/mem_controller.h"
-#include "ecmascript/mem/partial_gc.h"
 #include "ecmascript/mem/native_area_allocator.h"
+#include "ecmascript/mem/partial_gc.h"
 #include "ecmascript/mem/parallel_evacuator.h"
 #include "ecmascript/mem/parallel_marker-inl.h"
+#include "ecmascript/mem/shared_heap/shared_concurrent_sweeper.h"
+#include "ecmascript/mem/shared_heap/shared_gc_marker-inl.h"
+#include "ecmascript/mem/shared_heap/shared_gc.h"
 #include "ecmascript/mem/stw_young_gc.h"
 #include "ecmascript/mem/verification.h"
 #include "ecmascript/mem/work_manager.h"
 #include "ecmascript/mem/gc_stats.h"
-#include "ecmascript/ecma_string_table.h"
 #include "ecmascript/runtime_call_id.h"
 #if !WIN_OR_MAC_OR_IOS_PLATFORM
 #include "ecmascript/dfx/hprof/heap_profiler_interface.h"
@@ -58,36 +62,35 @@
 #endif
 
 namespace panda::ecmascript {
-bool SharedHeap::CheckAndTriggerOldGC(size_t size)
+bool SharedHeap::CheckAndTriggerOldGC(JSThread *thread, size_t size)
 {
     if ((OldSpaceExceedLimit() || OldSpaceExceedCapacity(size) ||
         GetHeapObjectSize() > globalSpaceAllocLimit_ ) && !NeedStopCollection()) {
-        CollectGarbage(TriggerGCType::SHARED_GC, GCReason::ALLOCATION_LIMIT);
+        CollectGarbage(thread, TriggerGCType::SHARED_GC, GCReason::ALLOCATION_LIMIT);
         return true;
     }
     return false;
 }
 
-void SharedHeap::Initialize(NativeAreaAllocator *nativeAreaAllocator, HeapRegionAllocator *heapRegionAllocator)
+void SharedHeap::Initialize(NativeAreaAllocator *nativeAreaAllocator, HeapRegionAllocator *heapRegionAllocator,
+    const JSRuntimeOptions &option)
 {
     nativeAreaAllocator_ = nativeAreaAllocator;
     heapRegionAllocator_ = heapRegionAllocator;
+    parallelGC_ = option.EnableParallelGC();
     size_t maxHeapSize = config_.GetMaxHeapSize();
-
     size_t nonmovableSpaceCapacity = config_.GetDefaultNonMovableSpaceSize();
-    sNonMovableSpace_ = new NonMovableSpace(this, nonmovableSpaceCapacity, nonmovableSpaceCapacity,
-        MemSpaceType::SHARED_NON_MOVABLE);
+    sNonMovableSpace_ = new SharedNonMovableSpace(this, nonmovableSpaceCapacity, nonmovableSpaceCapacity);
     sNonMovableSpace_->Initialize();
 
     size_t oldSpaceCapacity = maxHeapSize - nonmovableSpaceCapacity;
     globalSpaceAllocLimit_ = maxHeapSize;
 
-    sOldSpace_ = new OldSpace(this, oldSpaceCapacity, oldSpaceCapacity, MemSpaceType::SHARED_OLD_SPACE);
+    sOldSpace_ = new SharedOldSpace(this, oldSpaceCapacity, oldSpaceCapacity);
     sOldSpace_->Initialize();
 
     size_t readOnlySpaceCapacity = config_.GetDefaultReadOnlySpaceSize();
-    sReadOnlySpace_ = new ReadOnlySpace(this, readOnlySpaceCapacity, readOnlySpaceCapacity,
-        MemSpaceType::SHARED_READ_ONLY_SPACE);
+    sReadOnlySpace_ = new SharedReadOnlySpace(this, readOnlySpaceCapacity, readOnlySpaceCapacity);
     sHugeObjectSpace_ = new HugeObjectSpace(this, heapRegionAllocator_, oldSpaceCapacity, oldSpaceCapacity,
         MemSpaceType::SHARED_HUGE_OBJECT_SPACE);
 }
@@ -103,6 +106,92 @@ struct JsHeapDumpWork {
 static constexpr int DUMP_TIME_OUT = 30;
 static constexpr int DEFAULT_SLEEP_TIME = 100000;
 #endif
+
+void SharedHeap::PostInitialization(const GlobalEnvConstants *globalEnvConstants, const JSRuntimeOptions &option)
+{
+    globalEnvConstants_ = globalEnvConstants;
+    uint32_t totalThreadNum = Taskpool::GetCurrentTaskpool()->GetTotalThreadNum();
+    maxMarkTaskCount_ = totalThreadNum - 1;
+    sWorkManager_ = new SharedGCWorkManager(this, totalThreadNum + 1);
+    sharedGCMarker_ = new SharedGCMarker(sWorkManager_);
+    sSweeper_ = new SharedConcurrentSweeper(this, option.EnableConcurrentSweep() ?
+        EnableConcurrentSweepType::ENABLE : EnableConcurrentSweepType::CONFIG_DISABLE);
+    sharedGC_ = new SharedGC(this);
+}
+
+void SharedHeap::PostGCMarkingTask()
+{
+    IncreaseTaskCount();
+    Taskpool::GetCurrentTaskpool()->PostTask(std::make_unique<ParallelMarkTask>(-1, this));
+}
+
+bool SharedHeap::ParallelMarkTask::Run(uint32_t threadIndex)
+{
+    // Synchronizes-with. Ensure that WorkManager::Initialize must be seen by MarkerThreads.
+    while (!sHeap_->GetWorkManager()->HasInitialized());
+    sHeap_->GetSharedGCMarker()->ProcessMarkStack(threadIndex);
+    sHeap_->ReduceTaskCount();
+    return true;
+}
+
+bool SharedHeap::AsyncClearTask::Run([[maybe_unused]] uint32_t threadIndex)
+{
+    sHeap_->ReclaimRegions();
+    return true;
+}
+
+void SharedHeap::CollectGarbage(JSThread *thread, [[maybe_unused]]TriggerGCType gcType, [[maybe_unused]]GCReason reason)
+{
+    ASSERT(gcType == TriggerGCType::SHARED_GC);
+    Prepare();
+    {
+        SuspendAllScope scope(thread);
+        sharedGC_->RunPhases();
+    }
+    // Don't process weak node nativeFinalizeCallback here. These callbacks would be called after localGC.
+}
+
+void SharedHeap::Prepare()
+{
+    WaitRunningTaskFinished();
+    sSweeper_->EnsureAllTaskFinished();
+    WaitClearTaskFinished();
+}
+
+void SharedHeap::PrepareRecordRegionsForReclaim()
+{
+    sOldSpace_->SetRecordRegion();
+    sNonMovableSpace_->SetRecordRegion();
+    sHugeObjectSpace_->SetRecordRegion();
+}
+
+void SharedHeap::Reclaim()
+{
+    sHugeObjectSpace_->ReclaimHugeRegion();
+    PrepareRecordRegionsForReclaim();
+    if (parallelGC_) {
+        clearTaskFinished_ = false;
+        Taskpool::GetCurrentTaskpool()->PostTask(
+            std::make_unique<AsyncClearTask>(JSThread::GetCurrentThreadId(), this));
+    } else {
+        ReclaimRegions();
+    }
+}
+
+void SharedHeap::ReclaimRegions()
+{
+    sSweeper_->WaitAllTaskFinished();
+    EnumerateOldSpaceRegionsWithRecord([] (Region *region) {
+        region->ClearMarkGCBitset();
+        region->ClearCrossRegionRSet();
+        region->ResetAliveObject();
+    });
+    if (!clearTaskFinished_) {
+        LockHolder holder(waitClearTaskFinishedMutex_);
+        clearTaskFinished_ = true;
+        waitClearTaskFinishedCV_.SignalAll();
+    }
+}
 
 Heap::Heap(EcmaVM *ecmaVm)
     : BaseHeap(ecmaVm->GetEcmaParamConfiguration()),
@@ -331,12 +420,6 @@ void Heap::Resume(TriggerGCType gcType)
     PrepareRecordRegionsForReclaim();
     hugeObjectSpace_->ReclaimHugeRegion();
     hugeMachineCodeSpace_->ReclaimHugeRegion();
-    // todo(lukai) onlyfortest, delete this after all references of sharedobject are in shared space.
-    SharedHeap::GetInstance()->EnumerateOldSpaceRegions([] (Region *region) {
-        region->ClearMarkGCBitset();
-        region->ClearCrossRegionRSet();
-        region->ResetAliveObject();
-    });
     if (parallelGC_) {
         clearTaskFinished_ = false;
         Taskpool::GetCurrentTaskpool()->PostTask(
@@ -1270,22 +1353,6 @@ void Heap::TriggerConcurrentMarking()
     }
 }
 
-void Heap::WaitRunningTaskFinished()
-{
-    LockHolder holder(waitTaskFinishedMutex_);
-    while (runningTaskCount_ > 0) {
-        waitTaskFinishedCV_.Wait(&waitTaskFinishedMutex_);
-    }
-}
-
-void Heap::WaitClearTaskFinished()
-{
-    LockHolder holder(waitClearTaskFinishedMutex_);
-    while (!clearTaskFinished_) {
-        waitClearTaskFinishedCV_.Wait(&waitClearTaskFinishedMutex_);
-    }
-}
-
 void Heap::WaitAllTasksFinished()
 {
     WaitRunningTaskFinished();
@@ -1306,12 +1373,6 @@ void Heap::PostParallelGCTask(ParallelGCTaskPhase gcTask)
     IncreaseTaskCount();
     Taskpool::GetCurrentTaskpool()->PostTask(
         std::make_unique<ParallelGCTask>(GetJSThread()->GetThreadId(), this, gcTask));
-}
-
-void Heap::IncreaseTaskCount()
-{
-    LockHolder holder(waitTaskFinishedMutex_);
-    runningTaskCount_++;
 }
 
 void Heap::ChangeGCParams(bool inBackground)
@@ -1504,21 +1565,6 @@ bool Heap::NeedStopCollection()
         GetNewSpace()->GetCommittedSize() - GetNewSpace()->GetInitialCapacity() +
         config_.GetOldSpaceOvershootSize());
     return false;
-}
-
-bool Heap::CheckCanDistributeTask()
-{
-    LockHolder holder(waitTaskFinishedMutex_);
-    return runningTaskCount_ < maxMarkTaskCount_;
-}
-
-void Heap::ReduceTaskCount()
-{
-    LockHolder holder(waitTaskFinishedMutex_);
-    runningTaskCount_--;
-    if (runningTaskCount_ == 0) {
-        waitTaskFinishedCV_.SignalAll();
-    }
 }
 
 bool Heap::ParallelGCTask::Run(uint32_t threadIndex)
@@ -1761,4 +1807,41 @@ std::tuple<uint64_t, uint8_t *, int, kungfu::CalleeRegAndOffsetVec> Heap::CalCal
     }
     return code->CalCallSiteInfo(retAddr);
 };
+
+void BaseHeap::IncreaseTaskCount()
+{
+    LockHolder holder(waitTaskFinishedMutex_);
+    runningTaskCount_++;
+}
+
+void BaseHeap::WaitRunningTaskFinished()
+{
+    LockHolder holder(waitTaskFinishedMutex_);
+    while (runningTaskCount_ > 0) {
+        waitTaskFinishedCV_.Wait(&waitTaskFinishedMutex_);
+    }
+}
+
+bool BaseHeap::CheckCanDistributeTask()
+{
+    LockHolder holder(waitTaskFinishedMutex_);
+    return runningTaskCount_ < maxMarkTaskCount_;
+}
+
+void BaseHeap::ReduceTaskCount()
+{
+    LockHolder holder(waitTaskFinishedMutex_);
+    runningTaskCount_--;
+    if (runningTaskCount_ == 0) {
+        waitTaskFinishedCV_.SignalAll();
+    }
+}
+
+void BaseHeap::WaitClearTaskFinished()
+{
+    LockHolder holder(waitClearTaskFinishedMutex_);
+    while (!clearTaskFinished_) {
+        waitClearTaskFinishedCV_.Wait(&waitClearTaskFinishedMutex_);
+    }
+}
 }  // namespace panda::ecmascript

@@ -765,6 +765,8 @@ public:
 
     JSHandle<AccessorData> NewSInternalAccessor(void *setter, void *getter);
 
+    JSHandle<JSSymbol> NewSWellKnownSymbol(const JSHandle<JSTaggedValue> &name);
+    JSHandle<JSSymbol> NewSWellKnownSymbolWithChar(std::string_view description);
 private:
     friend class GlobalEnv;
     friend class GlobalEnvConstants;
@@ -789,7 +791,7 @@ private:
     NO_MOVE_SEMANTIC(ObjectFactory);
 
     void NewObjectHook() const;
-
+    void NewSObjectHook() const;
     // used for creating jshclass in GlobalEnv, EcmaVM
     JSHandle<JSHClass> NewEcmaHClassClass(JSHClass *hclass, uint32_t size, JSType type);
 

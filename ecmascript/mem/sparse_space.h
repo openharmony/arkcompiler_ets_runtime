@@ -51,7 +51,7 @@ class LocalSpace;
 
 class SparseSpace : public Space {
 public:
-    SparseSpace(BaseHeap *heap, MemSpaceType type, size_t initialCapacity, size_t maximumCapacity);
+    SparseSpace(Heap *heap, MemSpaceType type, size_t initialCapacity, size_t maximumCapacity);
     ~SparseSpace() override
     {
         delete allocator_;
@@ -64,7 +64,6 @@ public:
     void ResetTopPointer(uintptr_t top);
 
     uintptr_t Allocate(size_t size, bool allowGC = true);
-    uintptr_t ConcurrentAllocate(size_t size, bool allowGC = true);
     bool Expand();
 
     // For sweeping
@@ -137,13 +136,13 @@ public:
 protected:
     FreeListAllocator *allocator_;
     SweepState sweepState_ = SweepState::NO_SWEEP;
+    Heap *localHeap_ {nullptr};
 
 private:
     // For sweeping
     uintptr_t AllocateAfterSweepingCompleted(size_t size);
 
     Mutex lock_;
-    Mutex allocateLock_;
     std::vector<Region *> sweepingList_;
     std::vector<Region *> sweptList_;
     size_t liveObjectSize_ {0};
@@ -152,8 +151,7 @@ private:
 
 class OldSpace : public SparseSpace {
 public:
-    OldSpace(BaseHeap *heap, size_t initialCapacity, size_t maximumCapacity);
-    OldSpace(BaseHeap *heap, size_t initialCapacity, size_t maximumCapacity, MemSpaceType type);
+    OldSpace(Heap *heap, size_t initialCapacity, size_t maximumCapacity);
     ~OldSpace() override = default;
     NO_COPY_SEMANTIC(OldSpace);
     NO_MOVE_SEMANTIC(OldSpace);
@@ -212,8 +210,7 @@ private:
 
 class NonMovableSpace : public SparseSpace {
 public:
-    NonMovableSpace(BaseHeap *heap, size_t initialCapacity, size_t maximumCapacity);
-    NonMovableSpace(BaseHeap *heap, size_t initialCapacity, size_t maximumCapacity, MemSpaceType type);
+    NonMovableSpace(Heap *heap, size_t initialCapacity, size_t maximumCapacity);
     ~NonMovableSpace() override = default;
     NO_COPY_SEMANTIC(NonMovableSpace);
     NO_MOVE_SEMANTIC(NonMovableSpace);
@@ -223,7 +220,7 @@ public:
 
 class AppSpawnSpace : public SparseSpace {
 public:
-    AppSpawnSpace(BaseHeap *heap, size_t initialCapacity);
+    AppSpawnSpace(Heap *heap, size_t initialCapacity);
     ~AppSpawnSpace() override = default;
     NO_COPY_SEMANTIC(AppSpawnSpace);
     NO_MOVE_SEMANTIC(AppSpawnSpace);
@@ -234,7 +231,7 @@ public:
 class LocalSpace : public SparseSpace {
 public:
     LocalSpace() = delete;
-    LocalSpace(BaseHeap *heap, size_t initialCapacity, size_t maximumCapacity);
+    LocalSpace(Heap *heap, size_t initialCapacity, size_t maximumCapacity);
     ~LocalSpace() override = default;
     NO_COPY_SEMANTIC(LocalSpace);
     NO_MOVE_SEMANTIC(LocalSpace);
@@ -247,7 +244,7 @@ public:
 
 class MachineCodeSpace : public SparseSpace {
 public:
-    MachineCodeSpace(BaseHeap *heap, size_t initialCapacity, size_t maximumCapacity);
+    MachineCodeSpace(Heap *heap, size_t initialCapacity, size_t maximumCapacity);
     ~MachineCodeSpace() override = default;
     NO_COPY_SEMANTIC(MachineCodeSpace);
     NO_MOVE_SEMANTIC(MachineCodeSpace);  // Note: Expand() left for define

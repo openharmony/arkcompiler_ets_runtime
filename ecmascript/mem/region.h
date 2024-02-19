@@ -50,12 +50,14 @@ enum RegionSpaceFlag {
     IN_HUGE_MACHINE_CODE_SPACE = 0x10,
     IN_SHARED_NON_MOVABLE = 0x11,
     IN_SHARED_OLD_SPACE = 0x12,
-    IN_SHARED_READ_ONLY_SPACE = 0x13,
-    IN_SHARED_HUGE_OBJECT_SPACE = 0x14,
+    IN_SHARED_HUGE_OBJECT_SPACE = 0x13,
+    IN_SHARED_READ_ONLY_SPACE = 0x14,
     VALID_SPACE_MASK = 0xFF,
 
     SHARED_SPACE_BEGIN = IN_SHARED_NON_MOVABLE,
-    SHARED_SPACE_END = IN_SHARED_HUGE_OBJECT_SPACE,
+    SHARED_SPACE_END = IN_SHARED_READ_ONLY_SPACE,
+    SHARED_SWEEPABLE_SPACE_BEGIN = IN_SHARED_NON_MOVABLE,
+    SHARED_SWEEPABLE_SPACE_END = IN_SHARED_HUGE_OBJECT_SPACE,
 };
 
 enum RegionGCFlags {
@@ -213,6 +215,14 @@ public:
     template <typename Visitor>
     void IterateAllMarkedBits(Visitor visitor) const;
     void ClearMarkGCBitset();
+    // local to share remembered set
+    bool HasLocalToShareRememberedSet() const;
+    void InsertLocalToShareRSet(uintptr_t addr);
+    void AtomicInsertLocalToShareRSet(uintptr_t addr);
+    void AtomicClearLocalToShareRSetInRange(uintptr_t start, uintptr_t end);
+    template <typename Visitor>
+    void AtomicIterateAllLocalToShareBits(Visitor visitor);
+    void DeleteLocalToShareRSet();
     // Cross region remembered set
     void InsertCrossRegionRSet(uintptr_t addr);
     void AtomicInsertCrossRegionRSet(uintptr_t addr);
@@ -315,12 +325,24 @@ public:
         return packedData_.flags_.spaceFlag_ == RegionSpaceFlag::IN_READ_ONLY_SPACE;
     }
 
+    bool InSharedReadOnlySpace() const
+    {
+        return packedData_.flags_.spaceFlag_ == RegionSpaceFlag::IN_SHARED_READ_ONLY_SPACE;
+    }
+
     bool InAppSpawnSpace() const
     {
         return packedData_.flags_.spaceFlag_ == RegionSpaceFlag::IN_APPSPAWN_SPACE;
     }
 
-    bool InSharedSpace() const
+    // Not including shared read only space.
+    bool InSharedSweepableSpace() const
+    {
+        auto flag = packedData_.flags_.spaceFlag_;
+        return flag >= RegionSpaceFlag::SHARED_SWEEPABLE_SPACE_BEGIN && flag <= RegionSpaceFlag::SHARED_SWEEPABLE_SPACE_END;
+    }
+
+    bool InSharedHeap() const
     {
         auto flag = packedData_.flags_.spaceFlag_;
         return flag >= RegionSpaceFlag::SHARED_SPACE_BEGIN && flag <= RegionSpaceFlag::SHARED_SPACE_END;
@@ -634,6 +656,7 @@ private:
     RememberedSet *CreateRememberedSet();
     RememberedSet *GetOrCreateCrossRegionRememberedSet();
     RememberedSet *GetOrCreateOldToNewRememberedSet();
+    RememberedSet *GetOrCreateLocalToShareRememberedSet();
 
     PackedData packedData_;
     NativeAreaAllocator *nativeAreaAllocator_;
@@ -648,6 +671,7 @@ private:
 
     RememberedSet *crossRegionSet_ {nullptr};
     RememberedSet *sweepingRSet_ {nullptr};
+    RememberedSet *localToShareSet_ {nullptr};
     Span<FreeObjectSet *> freeObjectSets_;
     Mutex *lock_ {nullptr};
     uint64_t wasted_;

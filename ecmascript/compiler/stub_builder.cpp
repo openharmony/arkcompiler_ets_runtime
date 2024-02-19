@@ -1251,11 +1251,22 @@ void StubBuilder::SetValueWithBarrier(GateRef glue, GateRef obj, GateRef offset,
     Label exit(env);
     Label isVailedIndex(env);
     Label notValidIndex(env);
-
+    Label shareBarrier(env);
+    Label shareBarrierExit(env);
     // ObjectAddressToRange function may cause obj is not an object. GC may not mark this obj.
     GateRef objectRegion = ObjectAddressToRange(obj);
     GateRef valueRegion = ObjectAddressToRange(value);
     GateRef slotAddr = PtrAdd(TaggedCastToIntPtr(obj), offset);
+    GateRef objectNotInShare = BoolNot(InSharedHeap(objectRegion));
+    GateRef valueRegionInShare = InSharedSweepableSpace(valueRegion);
+    Branch(BoolAnd(objectNotInShare, valueRegionInShare), &shareBarrier, &shareBarrierExit);
+    Bind(&shareBarrier);
+    {
+        // TODO(lukai) fastpath
+        CallNGCRuntime(glue, RTSTUB_ID(InsertLocalToShareRSet), { glue, obj, offset });
+        Jump(&shareBarrierExit);
+    }
+    Bind(&shareBarrierExit);
     GateRef objectNotInYoung = BoolNot(InYoungGeneration(objectRegion));
     GateRef valueRegionInYoung = InYoungGeneration(valueRegion);
     Branch(BoolAnd(objectNotInYoung, valueRegionInYoung), &isVailedIndex, &notValidIndex);

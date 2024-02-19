@@ -54,6 +54,15 @@ public:
         return &mutatorLock_;
     }
 
+    template<class Callback>
+    void IterateThreadList(const Callback &cb)
+    {
+        LockHolder lock(threadsLock_);
+        for (auto thread : threads_) {
+            cb(thread);
+        }
+    }
+
     inline const GlobalEnvConstants *GetGlobalEnvConstants()
     {
         return globalConstants_;
@@ -71,7 +80,7 @@ private:
     void ResumeAllThreadsImpl(JSThread *current);
 
     void PreInitialization(const EcmaVM *vm);
-    void PostInitialization();
+    void PostInitialization(const EcmaVM *vm);
 
     Mutex threadsLock_;
     std::list<JSThread*> threads_;

@@ -51,7 +51,7 @@ public:
 
     VerifyObjectVisitor(const Heap *heap, size_t *failCount,
                         VerifyKind verifyKind = VerifyKind::VERIFY_PRE_GC)
-        : heap_(heap), failCount_(failCount), objXRay_(heap->GetEcmaVM()), verifyKind_(verifyKind)
+        : heap_(heap), failCount_(failCount), verifyKind_(verifyKind)
     {
     }
     ~VerifyObjectVisitor() = default;
@@ -79,14 +79,13 @@ private:
 
     const Heap* const heap_ {nullptr};
     size_t* const failCount_ {nullptr};
-    ObjectXRay objXRay_;
     VerifyKind verifyKind_;
 };
 
 class Verification {
 public:
     explicit Verification(Heap *heap, VerifyKind verifyKind = VerifyKind::VERIFY_PRE_GC)
-        : heap_(heap), objXRay_(heap->GetEcmaVM()), verifyKind_(verifyKind) {}
+        : heap_(heap), verifyKind_(verifyKind) {}
     ~Verification() = default;
 
     void VerifyAll() const;
@@ -101,7 +100,6 @@ private:
     NO_MOVE_SEMANTIC(Verification);
 
     Heap *heap_ {nullptr};
-    ObjectXRay objXRay_;
     VerifyKind verifyKind_;
 };
 }  // namespace panda::ecmascript

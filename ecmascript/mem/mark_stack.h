@@ -97,14 +97,12 @@ template<class T>
 class ContinuousStack : public Stack {
 public:
     ContinuousStack() = default;
-    explicit ContinuousStack(Heap *heap) : heap_(heap) {}
     ~ContinuousStack() override = default;
     NO_COPY_SEMANTIC(ContinuousStack);
     NO_MOVE_SEMANTIC(ContinuousStack);
 
-    inline void BeginMarking(Heap *heap, ContinuousStack<T> *other)
+    inline void BeginMarking(ContinuousStack<T> *other)
     {
-        heap_ = heap;
         currentArea_ = other->currentArea_;
         if (currentArea_ == nullptr) {
             currentArea_ = NativeAreaAllocator::AllocateSpace(DEFAULT_MARK_STACK_SIZE);
@@ -161,7 +159,6 @@ private:
         ResetBegin(currentArea_->GetBegin(), currentArea_->GetEnd());
     }
 
-    Heap *heap_ {nullptr};
     Area *currentArea_ {nullptr};
     EcmaList<Area> areaList_ {};
     EcmaList<Area> unusedList_ {};

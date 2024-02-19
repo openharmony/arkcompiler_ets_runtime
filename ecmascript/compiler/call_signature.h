@@ -436,6 +436,7 @@ private:
     V(FatalPrintCustom)                         \
     V(GetActualArgvNoGC)                        \
     V(InsertOldToNewRSet)                       \
+    V(InsertLocalToShareRSet)                   \
     V(DoubleToInt)                              \
     V(DoubleToLength)                           \
     V(FloatMod)                                 \

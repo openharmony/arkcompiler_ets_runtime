@@ -43,8 +43,8 @@ Region *HeapRegionAllocator::AllocateAlignedRegion(Space *space, size_t capacity
                                                          isRegular, isMachineCode);
     void *mapMem = pool.GetMem();
     if (mapMem == nullptr) {
-        const_cast<Heap *>(thread->GetEcmaVM()->GetHeap())->ThrowOutOfMemoryErrorForDefault(thread, DEFAULT_REGION_SIZE,
-            "HeapRegionAllocator::AllocateAlignedRegion", false);
+        // heap->ThrowOutOfMemoryErrorForDefault(thread, DEFAULT_REGION_SIZE,
+        //     "HeapRegionAllocator::AllocateAlignedRegion", false);
         LOG_ECMA_MEM(FATAL) << "pool is empty " << annoMemoryUsage_.load(std::memory_order_relaxed);
         UNREACHABLE();
     }

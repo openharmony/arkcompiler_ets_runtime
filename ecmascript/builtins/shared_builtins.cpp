@@ -223,7 +223,6 @@ JSHandle<JSHClass> Builtins::CreateSFunctionPrototypeHClass(const JSHandle<JSTag
         attributes.SetOffset(index);
         attributes.SetIsAccessor(each.second);
         if (each.first == "[Symbol.hasInstance]") {
-            // todo(lukai) globalruntime.env
             keyString = env->GetHasInstanceSymbol();
         } else {
             keyString = JSHandle<JSTaggedValue>(factory_->NewFromUtf8(each.first));
@@ -275,7 +274,6 @@ JSHandle<JSFunction> Builtins::NewSFunction(const JSHandle<GlobalEnv> &env, cons
                                             EcmaEntrypoint func, int length,
                                             kungfu::BuiltinsStubCSigns::ID builtinId) const
 {
-    // todo(lukai) globalruntime.globalenv?
     JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(env->GetSFunctionClassWithoutAccessor());
     JSHandle<JSFunction> function = factory_->NewSFunctionByHClass(reinterpret_cast<void *>(func),
         hclass, FunctionKind::NORMAL_FUNCTION, builtinId, MemSpaceType::SHARED_NON_MOVABLE);
@@ -321,7 +319,6 @@ JSHandle<JSTaggedValue> Builtins::CreateSGetterSetter(const JSHandle<GlobalEnv> 
 void Builtins::SharedStrictModeForbiddenAccessCallerArguments(const JSHandle<GlobalEnv> &env, uint32_t &index,
                                                               const JSHandle<JSObject> &prototype) const
 {
-    // todo(lukai) globalruntime.env?
     JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(env->GetSFunctionClassWithoutProto());
     JSHandle<JSFunction> func =
         factory_->NewSFunctionWithAccessor(

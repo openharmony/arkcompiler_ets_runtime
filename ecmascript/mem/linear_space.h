@@ -21,7 +21,7 @@
 namespace panda::ecmascript {
 class LinearSpace : public Space {
 public:
-    LinearSpace(BaseHeap *heap, MemSpaceType type, size_t initialCapacity, size_t maximumCapacity);
+    LinearSpace(Heap *heap, MemSpaceType type, size_t initialCapacity, size_t maximumCapacity);
     NO_COPY_SEMANTIC(LinearSpace);
     NO_MOVE_SEMANTIC(LinearSpace);
     uintptr_t Allocate(size_t size, bool isPromoted = false);
@@ -45,6 +45,7 @@ public:
     void InvokeAllocationInspector(Address object, size_t size, size_t alignedSize);
 
 protected:
+    Heap *localHeap_;
     BumpPointerAllocator allocator_;
     size_t overShootSize_ {0};
     size_t allocateAfterLastGC_ {0};
@@ -54,7 +55,7 @@ protected:
 
 class SemiSpace : public LinearSpace {
 public:
-    SemiSpace(BaseHeap *heap, size_t initialCapacity, size_t maximumCapacity);
+    SemiSpace(Heap *heap, size_t initialCapacity, size_t maximumCapacity);
     ~SemiSpace() override = default;
     NO_COPY_SEMANTIC(SemiSpace);
     NO_MOVE_SEMANTIC(SemiSpace);
@@ -91,7 +92,7 @@ private:
 
 class SnapshotSpace : public LinearSpace {
 public:
-    SnapshotSpace(BaseHeap *heap, size_t initialCapacity, size_t maximumCapacity);
+    SnapshotSpace(Heap *heap, size_t initialCapacity, size_t maximumCapacity);
     ~SnapshotSpace() override = default;
     NO_COPY_SEMANTIC(SnapshotSpace);
     NO_MOVE_SEMANTIC(SnapshotSpace);
@@ -112,7 +113,7 @@ private:
 
 class ReadOnlySpace : public LinearSpace {
 public:
-    ReadOnlySpace(BaseHeap *heap, size_t initialCapacity, size_t maximumCapacity,
+    ReadOnlySpace(Heap *heap, size_t initialCapacity, size_t maximumCapacity,
         MemSpaceType type = MemSpaceType::READ_ONLY_SPACE);
     ~ReadOnlySpace() override = default;
     void SetReadOnly()
@@ -131,13 +132,8 @@ public:
         EnumerateRegions(cb);
     }
 
-    uintptr_t ConcurrentAllocate(size_t size);
-
     NO_COPY_SEMANTIC(ReadOnlySpace);
     NO_MOVE_SEMANTIC(ReadOnlySpace);
-
-private:
-    Mutex allocateLock_;
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_MEM_LINEAR_SPACE_H

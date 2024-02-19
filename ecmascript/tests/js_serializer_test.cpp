@@ -21,6 +21,7 @@
 #include "libpandafile/class_data_accessor-inl.h"
 
 #include "ecmascript/builtins/builtins_arraybuffer.h"
+#include "ecmascript/checkpoint/thread_state_transition.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_array.h"
@@ -1033,6 +1034,7 @@ HWTEST_F_L0(JSSerializerTest, SerializeJSSpecialValue)
     std::pair<uint8_t *, size_t> data = serializer->ReleaseBuffer();
     JSDeserializerTest jsDeserializerTest;
     std::thread t1(&JSDeserializerTest::JSSpecialValueTest, jsDeserializerTest, data);
+    ThreadSuspensionScope scope(thread);
     t1.join();
     delete serializer;
 };
@@ -1078,6 +1080,7 @@ HWTEST_F_L0(JSSerializerTest, SerializeJSPlainObject1)
     std::pair<uint8_t *, size_t> data = serializer->ReleaseBuffer();
     JSDeserializerTest jsDeserializerTest;
     std::thread t1(&JSDeserializerTest::JSPlainObjectTest1, jsDeserializerTest, data);
+    ThreadSuspensionScope scope(thread);
     t1.join();
     delete serializer;
 };
@@ -1126,6 +1129,7 @@ HWTEST_F_L0(JSSerializerTest, SerializeJSPlainObject2)
     std::pair<uint8_t *, size_t> data = serializer->ReleaseBuffer();
     JSDeserializerTest jsDeserializerTest;
     std::thread t1(&JSDeserializerTest::JSPlainObjectTest2, jsDeserializerTest, data);
+    ThreadSuspensionScope scope(thread);
     t1.join();
     delete serializer;
 };
@@ -1166,6 +1170,7 @@ HWTEST_F_L0(JSSerializerTest, SerializeJSPlainObject3)
     std::pair<uint8_t *, size_t> data = serializer->ReleaseBuffer();
     JSDeserializerTest jsDeserializerTest;
     std::thread t1(&JSDeserializerTest::JSPlainObjectTest3, jsDeserializerTest, data);
+    ThreadSuspensionScope scope(thread);
     t1.join();
     delete serializer;
 }
@@ -1243,6 +1248,7 @@ HWTEST_F_L0(JSSerializerTest, SerializeNativeBindingObject1)
     std::pair<uint8_t *, size_t> data = serializer->ReleaseBuffer();
     JSDeserializerTest jsDeserializerTest;
     std::thread t1(&JSDeserializerTest::NativeBindingObjectTest1, jsDeserializerTest, data);
+    ThreadSuspensionScope scope(thread);
     t1.join();
     delete serializer;
 }
@@ -1281,6 +1287,7 @@ HWTEST_F_L0(JSSerializerTest, SerializeNativeBindingObject2)
     std::pair<uint8_t *, size_t> data = serializer->ReleaseBuffer();
     JSDeserializerTest jsDeserializerTest;
     std::thread t1(&JSDeserializerTest::NativeBindingObjectTest2, jsDeserializerTest, data);
+    ThreadSuspensionScope scope(thread);
     t1.join();
     delete serializer;
 }
@@ -1323,6 +1330,7 @@ HWTEST_F_L0(JSSerializerTest, SerializeNativeBindingObject3)
     std::pair<uint8_t *, size_t> data = serializer->ReleaseBuffer();
     JSDeserializerTest jsDeserializerTest;
     std::thread t1(&JSDeserializerTest::NativeBindingObjectTest3, jsDeserializerTest, data);
+    ThreadSuspensionScope scope(thread);
     t1.join();
     delete serializer;
 }
@@ -1357,6 +1365,7 @@ HWTEST_F_L0(JSSerializerTest, TestSerializeDescription)
     std::pair<uint8_t *, size_t> data = serializer->ReleaseBuffer();
     JSDeserializerTest jsDeserializerTest;
     std::thread t1(&JSDeserializerTest::DescriptionTest, jsDeserializerTest, data);
+    ThreadSuspensionScope scope(thread);
     t1.join();
     delete serializer;
 };
@@ -1395,6 +1404,7 @@ HWTEST_F_L0(JSSerializerTest, TestSerializeJSSet)
     std::pair<uint8_t *, size_t> data = serializer->ReleaseBuffer();
     JSDeserializerTest jsDeserializerTest;
     std::thread t1(&JSDeserializerTest::JSSetTest, jsDeserializerTest, data);
+    ThreadSuspensionScope scope(thread);
     t1.join();
     delete serializer;
 };
@@ -1427,6 +1437,7 @@ HWTEST_F_L0(JSSerializerTest, TestSerializeJSArray)
     std::pair<uint8_t *, size_t> data = serializer->ReleaseBuffer();
     JSDeserializerTest jsDeserializerTest;
     std::thread t1(&JSDeserializerTest::JSArrayTest, jsDeserializerTest, data);
+    ThreadSuspensionScope scope(thread);
     t1.join();
     delete serializer;
 };
@@ -1463,6 +1474,7 @@ HWTEST_F_L0(JSSerializerTest, TestObjectsPropertyReference)
     std::pair<uint8_t *, size_t> data = serializer->ReleaseBuffer();
     JSDeserializerTest jsDeserializerTest;
     std::thread t1(&JSDeserializerTest::ObjectsPropertyReferenceTest, jsDeserializerTest, data);
+    ThreadSuspensionScope scope(thread);
     t1.join();
     delete serializer;
 };
@@ -1477,6 +1489,7 @@ HWTEST_F_L0(JSSerializerTest, SerializeEcmaString1)
     std::pair<uint8_t *, size_t> data = serializer->ReleaseBuffer();
     JSDeserializerTest jsDeserializerTest;
     std::thread t1(&JSDeserializerTest::EcmaStringTest1, jsDeserializerTest, data);
+    ThreadSuspensionScope scope(thread);
     t1.join();
     delete serializer;
 };
@@ -1494,6 +1507,7 @@ HWTEST_F_L0(JSSerializerTest, SerializeEcmaString2)
     std::pair<uint8_t *, size_t> data = serializer->ReleaseBuffer();
     JSDeserializerTest jsDeserializerTest;
     std::thread t1(&JSDeserializerTest::EcmaStringTest2, jsDeserializerTest, data);
+    ThreadSuspensionScope scope(thread);
     t1.join();
     delete serializer;
 };
@@ -1507,6 +1521,7 @@ HWTEST_F_L0(JSSerializerTest, SerializeEcmaString3)
     std::pair<uint8_t *, size_t> data = serializer->ReleaseBuffer();
     JSDeserializerTest jsDeserializerTest;
     std::thread t1(&JSDeserializerTest::EcmaStringTest3, jsDeserializerTest, data);
+    ThreadSuspensionScope scope(thread);
     t1.join();
     delete serializer;
 };
@@ -1522,6 +1537,7 @@ HWTEST_F_L0(JSSerializerTest, SerializeEcmaString4)
     std::pair<uint8_t *, size_t> data = serializer->ReleaseBuffer();
     JSDeserializerTest jsDeserializerTest;
     std::thread t1(&JSDeserializerTest::EcmaStringTest4, jsDeserializerTest, data);
+    ThreadSuspensionScope scope(thread);
     t1.join();
     delete serializer;
 };
@@ -1538,6 +1554,7 @@ HWTEST_F_L0(JSSerializerTest, SerializeInt32_t)
     std::pair<uint8_t *, size_t> data = serializer->ReleaseBuffer();
     JSDeserializerTest jsDeserializerTest;
     std::thread t1(&JSDeserializerTest::Int32Test, jsDeserializerTest, data);
+    ThreadSuspensionScope scope(thread);
     t1.join();
     delete serializer;
 };
@@ -1553,6 +1570,7 @@ HWTEST_F_L0(JSSerializerTest, SerializeDouble)
     std::pair<uint8_t *, size_t> data = serializer->ReleaseBuffer();
     JSDeserializerTest jsDeserializerTest;
     std::thread t1(&JSDeserializerTest::DoubleTest, jsDeserializerTest, data);
+    ThreadSuspensionScope scope(thread);
     t1.join();
     delete serializer;
 };
@@ -1578,6 +1596,7 @@ HWTEST_F_L0(JSSerializerTest, SerializeDate)
     std::pair<uint8_t *, size_t> data = serializer->ReleaseBuffer();
     JSDeserializerTest jsDeserializerTest;
     std::thread t1(&JSDeserializerTest::JSDateTest, jsDeserializerTest, data);
+    ThreadSuspensionScope scope(thread);
     t1.join();
     delete serializer;
 };
@@ -1611,6 +1630,7 @@ HWTEST_F_L0(JSSerializerTest, SerializeJSMap)
     std::pair<uint8_t *, size_t> data = serializer->ReleaseBuffer();
     JSDeserializerTest jsDeserializerTest;
     std::thread t1(&JSDeserializerTest::JSMapTest, jsDeserializerTest, data, map);
+    ThreadSuspensionScope scope(thread);
     t1.join();
     delete serializer;
 };
@@ -1645,6 +1665,7 @@ HWTEST_F_L0(JSSerializerTest, SerializeJSArrayBuffer)
     std::pair<uint8_t *, size_t> data = serializer->ReleaseBuffer();
     JSDeserializerTest jsDeserializerTest;
     std::thread t1(&JSDeserializerTest::JSArrayBufferTest, jsDeserializerTest, data, jsArrayBuffer, 10, nullptr);
+    ThreadSuspensionScope scope(thread);
     t1.join();
     delete serializer;
 };
@@ -1668,6 +1689,7 @@ HWTEST_F_L0(JSSerializerTest, SerializeJSArrayBufferShared)
     std::pair<uint8_t *, size_t> data = serializer->ReleaseBuffer();
     JSDeserializerTest jsDeserializerTest;
     std::thread t1(&JSDeserializerTest::JSArrayBufferTest, jsDeserializerTest, data, jsArrayBuffer, 12, nullptr);
+    ThreadSuspensionScope scope(thread);
     t1.join();
     delete serializer;
     delete[] msgBuffer;
@@ -1693,6 +1715,7 @@ HWTEST_F_L0(JSSerializerTest, SerializeJSArrayBufferShared2)
     std::string changeStr = "world hello";
     std::thread t1(&JSDeserializerTest::JSSharedArrayBufferTest,
                    jsDeserializerTest, data, jsArrayBuffer, 12, changeStr.c_str());
+    ThreadSuspensionScope scope(thread);
     t1.join();
     EXPECT_TRUE(strcmp((char *)Buffer, "world hello") == 0) << "Serialize JSArrayBuffer fail";
     delete serializer;
@@ -1717,7 +1740,10 @@ HWTEST_F_L0(JSSerializerTest, SerializeJSArrayBufferShared3)
     JSDeserializerTest jsDeserializerTest;
     std::string changeStr = "aaaaaaaaaa";
     std::thread t1(&JSDeserializerTest::JSSharedArrayBufferTest1, jsDeserializerTest, data, 5, changeStr.c_str());
-    t1.join();
+    {
+        ThreadSuspensionScope scope(thread);
+        t1.join();
+    }
     EXPECT_TRUE(strcmp((char *)Buffer, "aaaaa world") == 0) << "Serialize JSArrayBuffer fail";
     JSSerializer *serializer2 = new JSSerializer(thread);
     bool success2 = serializer2->SerializeJSTaggedValue(JSHandle<JSTaggedValue>::Cast(jsArrayBuffer));
@@ -1726,6 +1752,7 @@ HWTEST_F_L0(JSSerializerTest, SerializeJSArrayBufferShared3)
     JSDeserializerTest jsDeserializerTest2;
     std::string changeStr2 = "bbbbbbbbbbb";
     std::thread t2(&JSDeserializerTest::JSSharedArrayBufferTest1, jsDeserializerTest2, data2, 6, changeStr2.c_str());
+    ThreadSuspensionScope scope(thread);
     t2.join();
     EXPECT_TRUE(strcmp((char *)Buffer, "bbbbbbworld") == 0) << "Serialize JSArrayBuffer fail";
     delete serializer;
@@ -1753,6 +1780,7 @@ HWTEST_F_L0(JSSerializerTest, SerializeJSRegExp)
     std::pair<uint8_t *, size_t> data = serializer->ReleaseBuffer();
     JSDeserializerTest jsDeserializerTest;
     std::thread t1(&JSDeserializerTest::JSRegexpTest, jsDeserializerTest, data);
+    ThreadSuspensionScope scope(thread);
     t1.join();
     delete serializer;
 };
@@ -1796,6 +1824,7 @@ HWTEST_F_L0(JSSerializerTest, SerializeJSTypedArray1)
     std::pair<uint8_t *, size_t> data = serializer->ReleaseBuffer();
     JSDeserializerTest jsDeserializerTest;
     std::thread t1(&JSDeserializerTest::TypedArrayTest1, jsDeserializerTest, data);
+    ThreadSuspensionScope scope(thread);
     t1.join();
     delete serializer;
 };
@@ -1829,6 +1858,7 @@ HWTEST_F_L0(JSSerializerTest, SerializeJSTypedArray2)
     std::pair<uint8_t *, size_t> data = serializer->ReleaseBuffer();
     JSDeserializerTest jsDeserializerTest;
     std::thread t1(&JSDeserializerTest::TypedArrayTest2, jsDeserializerTest, data);
+    ThreadSuspensionScope scope(thread);
     t1.join();
     delete serializer;
 };
@@ -1850,6 +1880,7 @@ HWTEST_F_L0(JSSerializerTest, SerializeTaggedArray)
     std::pair<uint8_t *, size_t> data = serializer->ReleaseBuffer();
     JSDeserializerTest jsDeserializerTest;
     std::thread t1(&JSDeserializerTest::TaggedArrayTest, jsDeserializerTest, data);
+    ThreadSuspensionScope scope(thread);
     t1.join();
     delete serializer;
 };
@@ -1892,6 +1923,7 @@ HWTEST_F_L0(JSSerializerTest, SerializeMethod1)
     std::pair<uint8_t *, size_t> data = serializer->ReleaseBuffer();
     JSDeserializerTest jsDeserializerTest;
     std::thread t1(&JSDeserializerTest::MethodTest, jsDeserializerTest, data);
+    ThreadSuspensionScope scope(thread);
     t1.join();
     delete serializer;
 };
@@ -1925,6 +1957,7 @@ HWTEST_F_L0(JSSerializerTest, SerializeMethod2)
     std::pair<uint8_t *, size_t> data = serializer->ReleaseBuffer();
     JSDeserializerTest jsDeserializerTest;
     std::thread t1(&JSDeserializerTest::MethodTest1, jsDeserializerTest, data);
+    ThreadSuspensionScope scope(thread);
     t1.join();
     delete serializer;
 };
@@ -1964,6 +1997,7 @@ HWTEST_F_L0(JSSerializerTest, SerializeAOTMethod)
     std::pair<uint8_t *, size_t> data = serializer->ReleaseBuffer();
     JSDeserializerTest jsDeserializerTest;
     std::thread t1(&JSDeserializerTest::AOTMethodTest, jsDeserializerTest, data);
+    ThreadSuspensionScope scope(thread);
     t1.join();
     delete serializer;
 };
@@ -1983,6 +2017,7 @@ HWTEST_F_L0(JSSerializerTest, SerializeConcurrentFunction)
     std::pair<uint8_t *, size_t> data = serializer->ReleaseBuffer();
     JSDeserializerTest jsDeserializerTest;
     std::thread t1(&JSDeserializerTest::ConcurrentFunctionTest, jsDeserializerTest, data);
+    ThreadSuspensionScope scope(thread);
     t1.join();
     delete serializer;
 };
@@ -2040,6 +2075,7 @@ HWTEST_F_L0(JSSerializerTest, SerializeBigInt)
     std::pair<uint8_t *, size_t> data = serializer->ReleaseBuffer();
     JSDeserializerTest jsDeserializerTest;
     std::thread t1(&JSDeserializerTest::BigIntTest, jsDeserializerTest, data);
+    ThreadSuspensionScope scope(thread);
     t1.join();
     delete serializer;
 }
@@ -2075,6 +2111,7 @@ HWTEST_F_L0(JSSerializerTest, SerializeObjectWithConcurrentFunction)
     std::pair<uint8_t *, size_t> data = serializer->ReleaseBuffer();
     JSDeserializerTest jsDeserializerTest;
     std::thread t1(&JSDeserializerTest::ObjectWithConcurrentFunctionTest, jsDeserializerTest, data);
+    ThreadSuspensionScope scope(thread);
     t1.join();
     delete serializer;
 };
@@ -2148,6 +2185,7 @@ HWTEST_F_L0(JSSerializerTest, TransferJSArrayBuffer1)
                    jsDeserializerTest,
                    data,
                    reinterpret_cast<uintptr_t>(buffer));
+    ThreadSuspensionScope scope(thread);
     t1.join();
     delete serializer;
     // test if detached
@@ -2178,6 +2216,7 @@ HWTEST_F_L0(JSSerializerTest, TransferJSArrayBuffer2)
     JSDeserializerTest jsDeserializerTest;
     std::thread t1(&JSDeserializerTest::TransferJSArrayBufferTest2, jsDeserializerTest, data,
         reinterpret_cast<uintptr_t>(buffer));
+    ThreadSuspensionScope scope(thread);
     t1.join();
     delete serializer;
     // test if detached
@@ -2199,6 +2238,7 @@ HWTEST_F_L0(JSSerializerTest, TransferJSArrayBuffer3)
     std::pair<uint8_t *, size_t> data = serializer->ReleaseBuffer();
     JSDeserializerTest jsDeserializerTest;
     std::thread t1(&JSDeserializerTest::TransferJSArrayBufferTest3, jsDeserializerTest, data);
+    ThreadSuspensionScope scope(thread);
     t1.join();
     delete serializer;
     // test if detached
@@ -2230,6 +2270,7 @@ HWTEST_F_L0(JSSerializerTest, TransferJSArrayBuffer4)
     JSDeserializerTest jsDeserializerTest;
     std::thread t1(&JSDeserializerTest::TransferJSArrayBufferTest4, jsDeserializerTest, data,
         reinterpret_cast<uintptr_t>(buffer));
+    ThreadSuspensionScope scope(thread);
     t1.join();
     delete serializer;
     // test if detached
@@ -2268,6 +2309,7 @@ HWTEST_F_L0(JSSerializerTest, TransferJSArrayBufferInTypedArray)
     std::pair<uint8_t *, size_t> data = serializer->ReleaseBuffer();
     JSDeserializerTest jsDeserializerTest;
     std::thread t1(&JSDeserializerTest::TransferJSArrayBufferTest5, jsDeserializerTest, data, buffer);
+    ThreadSuspensionScope scope(thread);
     t1.join();
     delete serializer;
     // test if detached

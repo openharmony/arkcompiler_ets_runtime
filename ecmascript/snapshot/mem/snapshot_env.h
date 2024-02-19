@@ -27,7 +27,7 @@ class EcmaVM;
 
 class SnapshotEnv final {
 public:
-    explicit SnapshotEnv(EcmaVM *vm) : vm_(vm), objXRay_(vm) {}
+    explicit SnapshotEnv(EcmaVM *vm) : vm_(vm) {}
     ~SnapshotEnv() = default;
 
     void Initialize();
@@ -70,7 +70,6 @@ private:
     void InitGlobalEnv();
 
     EcmaVM *vm_;
-    ObjectXRay objXRay_;
     CUnorderedMap<uintptr_t, uint32_t> rootObjectMap_;
 };
 }  // namespace panda::ecmascript

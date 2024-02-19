@@ -58,12 +58,20 @@ JSHandle<EcmaString> GetTypeString(JSThread *thread, PreferredPrimitiveType type
     return JSHandle<EcmaString>::Cast(globalConst->GetHandledStringString());
 }
 
-// todo(lukai) maybe add new tag: hclass.sharedTag == 1
-bool JSTaggedValue::IsInSharedSpace() const
+bool JSTaggedValue::IsInSharedHeap() const
 {
     if (IsHeapObject()) {
-        Region *region = Region::ObjectAddressToRange(GetTaggedObject());
-        return region->InSharedSpace();
+        Region *region = Region::ObjectAddressToRange(value_);
+        return region->InSharedHeap();
+    }
+    return false;
+}
+
+bool JSTaggedValue::IsInSharedSweepableSpace() const
+{
+    if (IsHeapObject()) {
+        Region *region = Region::ObjectAddressToRange(value_);
+        return region->InSharedSweepableSpace();
     }
     return false;
 }

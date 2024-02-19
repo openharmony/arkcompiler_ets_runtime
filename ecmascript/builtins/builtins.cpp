@@ -596,7 +596,7 @@ void Builtins::InitializeSymbol(const JSHandle<GlobalEnv> &env, const JSHandle<J
     }
 
     // Symbol attribute
-    JSHandle<JSTaggedValue> hasInstanceSymbol(factory_->NewWellKnownSymbolWithChar("Symbol.hasInstance"));
+    JSHandle<JSTaggedValue> hasInstanceSymbol(factory_->NewSWellKnownSymbolWithChar("Symbol.hasInstance"));
     SetNoneAttributeProperty(symbolFunction, "hasInstance", hasInstanceSymbol);
     JSHandle<JSTaggedValue> isConcatSpreadableSymbol(factory_->NewWellKnownSymbolWithChar("Symbol.isConcatSpreadable"));
     SetNoneAttributeProperty(symbolFunction, "isConcatSpreadable", isConcatSpreadableSymbol);

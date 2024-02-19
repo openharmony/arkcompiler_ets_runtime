@@ -20,11 +20,21 @@
 #include "ecmascript/ecma_context.h"
 #include "ecmascript/global_env_constants-inl.h"
 #include "ecmascript/js_function.h"
+#include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/layout_info-inl.h"
 #include "ecmascript/mem/heap-inl.h"
-#include "ecmascript/jspandafile/program_object.h"
+#include "ecmascript/symbol_table.h"
 
 namespace panda::ecmascript {
+void ObjectFactory::NewSObjectHook() const
+{
+#ifndef NDEBUG
+    if (vm_->GetJSOptions().EnableForceGC() && vm_->IsInitialized() && thread_->IsAllContextsInitialized()) {
+        sHeap_->CollectGarbage(thread_, TriggerGCType::SHARED_GC, GCReason::OTHER);
+    }
+#endif
+}
+
 JSHandle<JSHClass> ObjectFactory::CreateSFunctionClass(uint32_t size, JSType type,
                                                        const JSHandle<JSTaggedValue> &prototype, bool isAccessor)
 {
@@ -63,7 +73,7 @@ JSHandle<JSHClass> ObjectFactory::NewSEcmaHClass(uint32_t size, JSType type, uin
 
 JSHandle<JSHClass> ObjectFactory::NewSEcmaHClass(JSHClass *hclass, uint32_t size, JSType type, uint32_t inlinedProps)
 {
-    NewObjectHook();
+    NewSObjectHook();
     uint32_t classSize = JSHClass::SIZE;
     auto *newClass = static_cast<JSHClass *>(sHeap_->AllocateNonMovableOrHugeObject(thread_, hclass, classSize));
     newClass->Initialize(thread_, size, type, inlinedProps, thread_->GlobalConstants()->GetHandledEmptySLayoutInfo());
@@ -74,7 +84,7 @@ JSHandle<JSHClass> ObjectFactory::NewSEcmaHClass(JSHClass *hclass, uint32_t size
 JSHandle<JSHClass> ObjectFactory::NewSEcmaHClass(uint32_t size, uint32_t inlinedProps, JSType type,
     const JSHandle<JSTaggedValue> &prototype, const JSHandle<JSTaggedValue> &layout)
 {
-    NewObjectHook();
+    NewSObjectHook();
     uint32_t classSize = JSHClass::SIZE;
     auto *newClass = static_cast<JSHClass *>(sHeap_->AllocateNonMovableOrHugeObject(
         thread_, JSHClass::Cast(thread_->GlobalConstants()->GetHClassClass().GetTaggedObject()), classSize));
@@ -91,7 +101,7 @@ JSHandle<JSHClass> ObjectFactory::NewSEcmaHClass(uint32_t size, uint32_t inlined
 
 JSHandle<JSHClass> ObjectFactory::NewSEcmaHClassClass(JSHClass *hclass, uint32_t size, JSType type)
 {
-    NewObjectHook();
+    NewSObjectHook();
     uint32_t classSize = JSHClass::SIZE;
     auto *newClass = static_cast<JSHClass *>(sHeap_->AllocateClassClass(hclass, classSize));
     newClass->Initialize(thread_, size, type, 0, thread_->GlobalConstants()->GetHandledEmptySLayoutInfo());
@@ -99,9 +109,9 @@ JSHandle<JSHClass> ObjectFactory::NewSEcmaHClassClass(JSHClass *hclass, uint32_t
 }
 
 JSHandle<JSHClass> ObjectFactory::NewSEcmaReadOnlyHClass(JSHClass *hclass, uint32_t size, JSType type,
-                                                        uint32_t inlinedProps)
+                                                         uint32_t inlinedProps)
 {
-    NewObjectHook();
+    NewSObjectHook();
     uint32_t classSize = JSHClass::SIZE;
     auto *newClass = static_cast<JSHClass *>(sHeap_->AllocateReadOnlyOrHugeObject(thread_, hclass, classSize));
     newClass->Initialize(thread_, size, type, inlinedProps, thread_->GlobalConstants()->GetHandledEmptySLayoutInfo());
@@ -118,7 +128,7 @@ JSHandle<JSHClass> ObjectFactory::InitSClassClass()
 
 JSHandle<AccessorData> ObjectFactory::NewSAccessorData()
 {
-    NewObjectHook();
+    NewSObjectHook();
     TaggedObject *header = sHeap_->AllocateOldOrHugeObject(
         thread_, JSHClass::Cast(thread_->GlobalConstants()->GetAccessorDataClass().GetTaggedObject()));
     JSHandle<AccessorData> acc(thread_, AccessorData::Cast(header));
@@ -151,7 +161,7 @@ JSHandle<Method> ObjectFactory::NewSMethod(const JSPandaFile *jsPandaFile, Metho
 JSHandle<Method> ObjectFactory::NewSMethod(const MethodLiteral *methodLiteral, MemSpaceType spaceType)
 {
     ASSERT(spaceType == SHARED_NON_MOVABLE || spaceType == SHARED_OLD_SPACE);
-    NewObjectHook();
+    NewSObjectHook();
     TaggedObject *header = nullptr;
     if (spaceType == SHARED_NON_MOVABLE) {
         header = sHeap_->AllocateNonMovableOrHugeObject(thread_,
@@ -221,7 +231,7 @@ JSHandle<JSFunction> ObjectFactory::NewSFunctionByHClass(const void *func, const
 
 TaggedObject *ObjectFactory::NewSharedOldSpaceObject(const JSHandle<JSHClass> &hclass)
 {
-    NewObjectHook();
+    NewSObjectHook();
     TaggedObject *header = sHeap_->AllocateOldOrHugeObject(thread_, *hclass);
     uint32_t inobjPropCount = hclass->GetInlinedProperties();
     if (inobjPropCount > 0) {
@@ -247,7 +257,7 @@ JSHandle<TaggedArray> ObjectFactory::SharedEmptyArray() const
 
 JSHandle<TaggedArray> ObjectFactory::NewSTaggedArrayWithoutInit(uint32_t length)
 {
-    NewObjectHook();
+    NewSObjectHook();
     size_t size = TaggedArray::ComputeSize(JSTaggedValue::TaggedTypeSize(), length);
     auto arrayClass = JSHClass::Cast(thread_->GlobalConstants()->GetArrayClass().GetTaggedObject());
     TaggedObject *header = sHeap_->AllocateOldOrHugeObject(thread_, arrayClass, size);
@@ -277,7 +287,7 @@ JSHandle<LayoutInfo> ObjectFactory::CopyAndReSortSLayoutInfo(const JSHandle<Layo
 
 JSHandle<TaggedArray> ObjectFactory::NewSDictionaryArray(uint32_t length)
 {
-    NewObjectHook();
+    NewSObjectHook();
     ASSERT(length > 0);
     size_t size = TaggedArray::ComputeSize(JSTaggedValue::TaggedTypeSize(), length);
     auto header = sHeap_->AllocateOldOrHugeObject(
@@ -289,7 +299,7 @@ JSHandle<TaggedArray> ObjectFactory::NewSDictionaryArray(uint32_t length)
 
 JSHandle<TaggedArray> ObjectFactory::NewSEmptyArray()
 {
-    NewObjectHook();
+    NewSObjectHook();
     auto header = sHeap_->AllocateReadOnlyOrHugeObject(thread_,
         JSHClass::Cast(thread_->GlobalConstants()->GetArrayClass().GetTaggedObject()), TaggedArray::SIZE);
     JSHandle<TaggedArray> array(thread_, header);
@@ -300,7 +310,7 @@ JSHandle<TaggedArray> ObjectFactory::NewSEmptyArray()
 
 JSHandle<MutantTaggedArray> ObjectFactory::NewSEmptyMutantArray()
 {
-    NewObjectHook();
+    NewSObjectHook();
     auto header = sHeap_->AllocateReadOnlyOrHugeObject(thread_,
         JSHClass::Cast(thread_->GlobalConstants()->GetMutantTaggedArrayClass().GetTaggedObject()), TaggedArray::SIZE);
     JSHandle<MutantTaggedArray> array(thread_, header);
@@ -315,7 +325,7 @@ JSHandle<JSNativePointer> ObjectFactory::NewSJSNativePointer(void *externalPoint
                                                              size_t nativeBindingsize,
                                                              NativeFlag flag)
 {
-    NewObjectHook();
+    NewSObjectHook();
     TaggedObject *header;
     auto jsNativePointerClass = JSHClass::Cast(thread_->GlobalConstants()->GetJSNativePointerClass().GetTaggedObject());
     if (nonMovable) {
@@ -334,7 +344,7 @@ JSHandle<JSNativePointer> ObjectFactory::NewSJSNativePointer(void *externalPoint
 
 JSHandle<AccessorData> ObjectFactory::NewSInternalAccessor(void *setter, void *getter)
 {
-    NewObjectHook();
+    NewSObjectHook();
     TaggedObject *header = sHeap_->AllocateNonMovableOrHugeObject(thread_,
         JSHClass::Cast(thread_->GlobalConstants()->GetInternalAccessorClass().GetTaggedObject()));
     JSHandle<AccessorData> obj(thread_, AccessorData::Cast(header));
@@ -353,7 +363,7 @@ JSHandle<AccessorData> ObjectFactory::NewSInternalAccessor(void *setter, void *g
 
 JSHandle<ConstantPool> ObjectFactory::NewSConstantPool(uint32_t capacity)
 {
-    NewObjectHook();
+    NewSObjectHook();
     size_t size = ConstantPool::ComputeSize(capacity);
     auto header = sHeap_->AllocateOldOrHugeObject(
         thread_, JSHClass::Cast(sHeap_->GetGlobalConst()->GetConstantPoolClass().GetTaggedObject()), size);
@@ -364,7 +374,7 @@ JSHandle<ConstantPool> ObjectFactory::NewSConstantPool(uint32_t capacity)
 
 JSHandle<COWTaggedArray> ObjectFactory::NewSCOWTaggedArray(uint32_t length, JSTaggedValue initVal)
 {
-    NewObjectHook();
+    NewSObjectHook();
     ASSERT(length > 0);
 
     size_t size = TaggedArray::ComputeSize(JSTaggedValue::TaggedTypeSize(), length);
@@ -377,8 +387,7 @@ JSHandle<COWTaggedArray> ObjectFactory::NewSCOWTaggedArray(uint32_t length, JSTa
 
 JSHandle<ClassLiteral> ObjectFactory::NewSClassLiteral()
 {
-    NewObjectHook();
-
+    NewSObjectHook();
     TaggedObject *header = sHeap_->AllocateOldOrHugeObject(
         thread_, JSHClass::Cast(sHeap_->GetGlobalConst()->GetClassLiteralClass().GetTaggedObject()));
     JSHandle<TaggedArray> emptyArray = EmptyArray();
@@ -393,7 +402,7 @@ JSHandle<ClassLiteral> ObjectFactory::NewSClassLiteral()
 JSHandle<ClassInfoExtractor> ObjectFactory::NewSClassInfoExtractor(
     JSHandle<JSTaggedValue> method)
 {
-    NewObjectHook();
+    NewSObjectHook();
     TaggedObject *header = sHeap_->AllocateOldOrHugeObject(
         thread_, JSHClass::Cast(sHeap_->GetGlobalConst()->GetClassInfoExtractorHClass().GetTaggedObject()));
     JSHandle<ClassInfoExtractor> obj(thread_, header);
@@ -416,7 +425,7 @@ JSHandle<TaggedArray> ObjectFactory::NewSOldSpaceTaggedArray(uint32_t length, JS
 
 JSHandle<TaggedArray> ObjectFactory::NewSTaggedArray(uint32_t length, JSTaggedValue initVal, MemSpaceType spaceType)
 {
-    NewObjectHook();
+    NewSObjectHook();
     if (length == 0) {
         return EmptyArray();
     }
@@ -439,5 +448,24 @@ JSHandle<TaggedArray> ObjectFactory::NewSTaggedArray(uint32_t length, JSTaggedVa
     JSHandle<TaggedArray> array(thread_, header);
     array->InitializeWithSpecialValue(initVal, length);
     return array;
+}
+
+JSHandle<JSSymbol> ObjectFactory::NewSWellKnownSymbol(const JSHandle<JSTaggedValue> &name)
+{
+    NewSObjectHook();
+    TaggedObject *header = sHeap_->AllocateNonMovableOrHugeObject(
+        thread_, JSHClass::Cast(thread_->GlobalConstants()->GetSymbolClass().GetTaggedObject()));
+    JSHandle<JSSymbol> obj(thread_, JSSymbol::Cast(header));
+    obj->SetFlags(0);
+    obj->SetWellKnownSymbol();
+    obj->SetDescription(thread_, name);
+    obj->SetHashField(SymbolTable::Hash(name.GetTaggedValue()));
+    return obj;
+}
+
+JSHandle<JSSymbol> ObjectFactory::NewSWellKnownSymbolWithChar(std::string_view description)
+{
+    JSHandle<EcmaString> string = NewFromUtf8(description);
+    return NewSWellKnownSymbol(JSHandle<JSTaggedValue>(string));
 }
 }  // namespace panda::ecmascript

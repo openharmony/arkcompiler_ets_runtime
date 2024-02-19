@@ -421,7 +421,7 @@ void JSHClass::OptimizePrototypeForIC(const JSThread *thread, const JSHandle<JST
     JSHandle<JSHClass> hclass(thread, proto->GetTaggedObject()->GetClass());
     ASSERT(!Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(*hclass))->InReadOnlySpace());
     if (!hclass->IsPrototype()) {
-        if (!hclass->IsTS()) {
+        if (!hclass->IsTS() && !hclass->IsJSShared()) {
             // The local IC and on-proto IC are different, because the former don't need to notify the whole
             // prototype-chain or listen the changes of prototype chain, but the latter do. Therefore, when
             // an object becomes a prototype object at the first time, we need to copy its hidden class in

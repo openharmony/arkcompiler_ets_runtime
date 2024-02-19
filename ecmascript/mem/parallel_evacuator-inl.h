@@ -98,6 +98,9 @@ void ParallelEvacuator::UpdateObjectSlot(ObjectSlot &slot)
 {
     JSTaggedValue value(slot.GetTaggedType());
     if (value.IsHeapObject()) {
+        if (value.IsInSharedHeap()) {
+            return;
+        }
         if (value.IsWeakForHeapObject()) {
             return UpdateWeakObjectSlot(value.GetTaggedWeakRef(), slot);
         }
@@ -129,12 +132,45 @@ void ParallelEvacuator::UpdateWeakObjectSlot(TaggedObject *value, ObjectSlot &sl
             slot.Clear();
         }
         return;
+    } else if (objectRegion->InSharedHeap()) {
+        return;
     }
 
     if (heap_->IsConcurrentFullMark()) {
+        ASSERT(!objectRegion->InSharedHeap());
         if (!objectRegion->Test(value)) {
             slot.Clear();
         }
+    }
+}
+
+void ParallelEvacuator::UpdateLocalToShareRSet(TaggedObject *object, JSHClass *cls)
+{
+    Region *region = Region::ObjectAddressToRange(object);
+    ASSERT(!region->InSharedHeap());
+    auto callbackWithCSet = [this, region](TaggedObject *root, ObjectSlot start, ObjectSlot end, VisitObjectArea area) {
+        if (area == VisitObjectArea::IN_OBJECT) {
+            if (VisitBodyInObj(root, start, end, [&](ObjectSlot slot) { SetLocalToShareRSet(slot, region); })) {
+                return;
+            };
+        }
+        for (ObjectSlot slot = start; slot < end; slot++) {
+            SetLocalToShareRSet(slot, region);
+        }
+    };
+    ObjectXRay::VisitObjectBody<VisitType::OLD_GC_VISIT>(object, cls, callbackWithCSet);
+}
+
+void ParallelEvacuator::SetLocalToShareRSet(ObjectSlot slot, Region *region)
+{
+    ASSERT(!region->InSharedHeap());
+    JSTaggedType value = slot.GetTaggedType();
+    if (!JSTaggedValue(value).IsHeapObject()) {
+        return;
+    }
+    Region *valueRegion = Region::ObjectAddressToRange(value);
+    if (valueRegion->InSharedSweepableSpace()) {
+        region->InsertLocalToShareRSet(slot.SlotAddress());
     }
 }
 
@@ -151,7 +187,7 @@ void ParallelEvacuator::SetObjectFieldRSet(TaggedObject *object, JSHClass *cls)
             SetObjectRSet(slot, region);
         }
     };
-    objXRay_.VisitObjectBody<VisitType::OLD_GC_VISIT>(object, cls, callbackWithCSet);
+    ObjectXRay::VisitObjectBody<VisitType::OLD_GC_VISIT>(object, cls, callbackWithCSet);
 }
 
 void ParallelEvacuator::SetObjectRSet(ObjectSlot slot, Region *region)

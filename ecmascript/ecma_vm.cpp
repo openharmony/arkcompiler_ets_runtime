@@ -446,8 +446,6 @@ void EcmaVM::ProcessNativeDelete(const WeakRootVisitor &visitor)
             }
         }
     }
-
-    thread_->GetCurrentEcmaContext()->ProcessNativeDelete(visitor);
 }
 
 void EcmaVM::ProcessReferences(const WeakRootVisitor &visitor)
@@ -475,12 +473,12 @@ void EcmaVM::ProcessReferences(const WeakRootVisitor &visitor)
             ++iter;
         }
     }
-    thread_->GetCurrentEcmaContext()->ProcessReferences(visitor);
     GetPGOProfiler()->ProcessReferences(visitor);
 }
 
 void EcmaVM::PushToNativePointerList(JSNativePointer *pointer)
 {
+    ASSERT(!JSTaggedValue(pointer).IsInSharedHeap());
     nativePointerList_.emplace_back(pointer);
 }
 

@@ -66,6 +66,7 @@ void Space::ClearAndFreeRegion(Region *region, size_t cachedSize)
     LOG_ECMA_MEM(DEBUG) << "Clear region from:" << region << " to " << ToSpaceTypeName(spaceType_);
     region->DeleteCrossRegionRSet();
     region->DeleteOldToNewRSet();
+    region->DeleteLocalToShareRSet();
     region->DeleteSweepingRSet();
     DecreaseCommitted(region->GetCapacity());
     DecreaseObjectSize(region->GetSize());

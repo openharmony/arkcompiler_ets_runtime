@@ -455,6 +455,14 @@ JSTaggedValue EcmaContext::FindUnsharedConstpool(JSTaggedValue sharedConstpool)
     return unsharedConstpool;
 }
 
+void EcmaContext::EraseUnsharedConstpool(JSTaggedValue sharedConstpool)
+{
+    int32_t index = ConstantPool::Cast(sharedConstpool.GetTaggedObject())->GetUnsharedConstpoolIndex().GetInt();
+    // unshared constpool index is default INT32_MAX.
+    ASSERT(0 <= index && index != ConstantPool::CONSTPOOL_TYPE_FLAG && index < UNSHARED_CONSTANTPOOL_COUNT);
+    (*unsharedConstpools_)[index] = JSTaggedValue::Hole();
+}
+
 std::optional<std::reference_wrapper<CMap<int32_t, JSTaggedValue>>> EcmaContext::FindConstpools(
     const JSPandaFile *jsPandaFile)
 {
@@ -559,6 +567,7 @@ void EcmaContext::ProcessNativeDelete(const WeakRootVisitor &visitor)
                 auto fwd = visitor(obj);
                 if (fwd == nullptr) {
                     constpoolIter = constpools.erase(constpoolIter);
+                    EraseUnsharedConstpool(constpoolVal);
                     continue;
                 }
             }

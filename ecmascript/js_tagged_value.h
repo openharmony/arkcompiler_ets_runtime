@@ -654,7 +654,8 @@ public:
     bool IsJSSharedObject() const;
     bool IsJSSharedFunction() const;
     bool IsJSShared() const;
-    bool IsInSharedSpace() const;
+    bool IsInSharedHeap() const;
+    bool IsInSharedSweepableSpace() const;
     static bool IsSameTypeOrHClass(JSTaggedValue x, JSTaggedValue y);
 
     static ComparisonResult Compare(JSThread *thread, const JSHandle<JSTaggedValue> &x,
