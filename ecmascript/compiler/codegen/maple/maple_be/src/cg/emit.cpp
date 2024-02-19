@@ -426,7 +426,7 @@ void Emitter::EmitAsmLabel(const MIRSymbol &mirSymbol, AsmLabel label)
             MIRTypeKind kind = mirSymbol.GetType()->GetKind();
             MIRStorageClass storage = mirSymbol.GetStorageClass();
             if (symName.find("classInitProtectRegion") == 0) {
-                Emit(4096); // symbol name begin with "classInitProtectRegion" align is 4096
+                Emit(4096);  // symbol name begin with "classInitProtectRegion" align is 4096
             } else if (((kind == kTypeStruct) || (kind == kTypeClass) || (kind == kTypeArray) ||
                         (kind == kTypeUnion)) &&
                        ((storage == kScGlobal) || (storage == kScPstatic) || (storage == kScFstatic))) {
@@ -609,6 +609,78 @@ void Emitter::EmitBitFieldConstant(StructEmitInfo &structEmitInfo, MIRConst &mir
     if ((nextType == nullptr) || (kTypeBitField != nextType->GetKind())) {
         /* emit structEmitInfo->combineBitFieldValue */
         EmitCombineBfldValue(structEmitInfo);
+    }
+}
+
+void Emitter::EmitFunctionSymbolTable(FuncEmitInfo &funcEmitInfo)
+{
+    CGFunc &cgFunc = funcEmitInfo.GetCGFunc();
+    MIRFunction *func = &cgFunc.GetFunction();
+
+    size_t size =
+        (func == nullptr) ? GlobalTables::GetGsymTable().GetTable().size() : func->GetSymTab()->GetTable().size();
+    for (size_t i = 0; i < size; ++i) {
+        const MIRSymbol *st = nullptr;
+        if (func == nullptr) {
+            auto &symTab = GlobalTables::GetGsymTable();
+            st = symTab.GetSymbol(i);
+        } else {
+            auto &symTab = *func->GetSymTab();
+            st = symTab.GetSymbolAt(i);
+        }
+        if (st == nullptr) {
+            continue;
+        }
+        MIRStorageClass storageClass = st->GetStorageClass();
+        MIRSymKind symKind = st->GetSKind();
+        Emitter *emitter = this;
+        if (storageClass == kScPstatic && symKind == kStConst) {
+            // align
+            emitter->Emit("\t.align 2 \n" + st->GetName() + ":\n");
+            if (st->GetKonst()->GetKind() == kConstStr16Const) {
+                MIRStr16Const *str16Const = safe_cast<MIRStr16Const>(st->GetKonst());
+                emitter->EmitStr16Constant(*str16Const);
+                emitter->Emit("\n");
+                continue;
+            }
+
+            if (st->GetKonst()->GetKind() == kConstStrConst) {
+                MIRStrConst *strConst = safe_cast<MIRStrConst>(st->GetKonst());
+                emitter->EmitStrConstant(*strConst);
+                emitter->Emit("\n");
+                continue;
+            }
+
+            switch (st->GetKonst()->GetType().GetPrimType()) {
+                case PTY_u32: {
+                    MIRIntConst *intConst = safe_cast<MIRIntConst>(st->GetKonst());
+                    uint32 value = static_cast<uint32>(intConst->GetValue().GetExtValue());
+                    emitter->Emit("\t.long").Emit(value).Emit("\n");
+                    emitter->IncreaseJavaInsnCount();
+                    break;
+                }
+                case PTY_f32: {
+                    MIRFloatConst *floatConst = safe_cast<MIRFloatConst>(st->GetKonst());
+                    uint32 value = static_cast<uint32>(floatConst->GetIntValue());
+                    emitter->Emit("\t.word").Emit(value).Emit("\n");
+                    emitter->IncreaseJavaInsnCount();
+                    break;
+                }
+                case PTY_f64: {
+                    MIRDoubleConst *doubleConst = safe_cast<MIRDoubleConst>(st->GetKonst());
+                    uint32 value = doubleConst->GetIntLow32();
+                    emitter->Emit("\t.word").Emit(value).Emit("\n");
+                    emitter->IncreaseJavaInsnCount();
+                    value = doubleConst->GetIntHigh32();
+                    emitter->Emit("\t.word").Emit(value).Emit("\n");
+                    emitter->IncreaseJavaInsnCount();
+                    break;
+                }
+                default:
+                    DEBUG_ASSERT(false, "NYI");
+                    break;
+            }
+        }
     }
 }
 
@@ -2618,7 +2690,7 @@ void Emitter::EmitGlobalVariable()
                 }
                 std::string secName = stName.substr(0, stName.find(delimiter));
                 /* remove leading "__" in sec name. */
-                secName.erase(0, 2); // remove 2 chars "__"
+                secName.erase(0, 2);  // remove 2 chars "__"
                 Emit("\t.section\t." + secName + ",\"a\",%progbits\n");
             } else {
                 bool isThreadLocal = mirSymbol->IsThreadLocal();
