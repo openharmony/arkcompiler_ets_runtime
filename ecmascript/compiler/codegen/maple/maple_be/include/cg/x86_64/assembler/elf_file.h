@@ -294,9 +294,9 @@ public:
         return symbols.size() * sizeof(Symbol);
     }
 
-    const char* GetAddr()
+    const char *GetAddr()
     {
-        return reinterpret_cast<const char *>(symbols.data());
+        return reinterpret_cast<const char*>(symbols.data());
     }
 
 private:
