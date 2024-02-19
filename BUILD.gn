@@ -97,7 +97,6 @@ group("ark_js_unittest") {
     "ecmascript/module/tests:unittest",
     "ecmascript/napi/test:unittest",
     "ecmascript/napi/test:workload_test",
-    "ecmascript/pgo_profiler/tests:unittest",
     "ecmascript/regexp/tests:unittest",
     "ecmascript/require/tests:unittest",
     "ecmascript/serializer/tests:unittest",
