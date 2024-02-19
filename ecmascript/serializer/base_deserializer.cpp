@@ -441,7 +441,7 @@ uintptr_t BaseDeserializer::RelocateObjectAddr(SerializedObjectSpace space, size
         }
         default:
             // no gc for this allocate
-            res = heap_->GetHugeObjectSpace()->Allocate(objSize);
+            res = heap_->GetHugeObjectSpace()->Allocate(objSize, thread_);
             break;
     }
     return res;

@@ -30,7 +30,7 @@ public:
     HeapRegionAllocator() = default;
     virtual ~HeapRegionAllocator() = default;
 
-    Region *AllocateAlignedRegion(Space *space, size_t capacity, BaseHeap *heap);
+    Region *AllocateAlignedRegion(Space *space, size_t capacity, JSThread* thread, BaseHeap *heap);
     void FreeRegion(Region *region, size_t cachedSize);
 
     void IncreaseAnnoMemoryUsage(size_t bytes)

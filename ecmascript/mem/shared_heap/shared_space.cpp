@@ -31,15 +31,6 @@ SharedSparseSpace::SharedSparseSpace(SharedHeap *heap, MemSpaceType type, size_t
     allocator_ = new FreeListAllocator(heap);
 }
 
-void SharedSparseSpace::Initialize()
-{
-    Region *region = heapRegionAllocator_->AllocateAlignedRegion(this, DEFAULT_REGION_SIZE, sHeap_);
-    region->InitializeFreeObjectSets();
-    AddRegion(region);
-
-    allocator_->Initialize(region);
-}
-
 void SharedSparseSpace::Reset()
 {
     allocator_->RebuildFreeList();
@@ -52,7 +43,7 @@ uintptr_t SharedSparseSpace::AllocateWithoutGC(size_t size)
 {
     uintptr_t object = TryAllocate(size);
     CHECK_SOBJECT_AND_INC_OBJ_SIZE(size);
-    object = AllocateWithExpand(size);
+    object = AllocateWithExpand(nullptr, size);
     CHECK_SOBJECT_AND_INC_OBJ_SIZE(size);
     return object;
 }
@@ -70,7 +61,7 @@ uintptr_t SharedSparseSpace::Allocate(JSThread *thread, size_t size, bool allowG
         object = TryAllocate(size);
         CHECK_SOBJECT_AND_INC_OBJ_SIZE(size);
     }
-    object = AllocateWithExpand(size);
+    object = AllocateWithExpand(thread, size);
     CHECK_SOBJECT_AND_INC_OBJ_SIZE(size);
     if (allowGC) {
         sHeap_->CollectGarbage(thread, TriggerGCType::SHARED_GC, GCReason::ALLOCATION_FAILED);
@@ -85,24 +76,24 @@ uintptr_t SharedSparseSpace::TryAllocate(size_t size)
     return allocator_->Allocate(size);
 }
 
-uintptr_t SharedSparseSpace::AllocateWithExpand(size_t size)
+uintptr_t SharedSparseSpace::AllocateWithExpand(JSThread *thread, size_t size)
 {
     LockHolder lock(allocateLock_);
     // In order to avoid expand twice by different threads, try allocate first.
     auto object = allocator_->Allocate(size);
-    if (Expand()) {
+    if (Expand(thread)) {
         object = allocator_->Allocate(size);
     }
     return object;
 }
 
-bool SharedSparseSpace::Expand()
+bool SharedSparseSpace::Expand(JSThread *thread)
 {
     if (committedSize_ >= maximumCapacity_ + outOfMemoryOvershootSize_) {
         LOG_ECMA_MEM(INFO) << "Expand::Committed size " << committedSize_ << " of Sparse Space is too big. ";
         return false;
     }
-    Region *region = heapRegionAllocator_->AllocateAlignedRegion(this, DEFAULT_REGION_SIZE, sHeap_);
+    Region *region = heapRegionAllocator_->AllocateAlignedRegion(this, DEFAULT_REGION_SIZE, thread, sHeap_);
     region->InitializeFreeObjectSets();
     AddRegion(region);
     allocator_->AddFree(region);
@@ -291,7 +282,7 @@ SharedOldSpace::SharedOldSpace(SharedHeap *heap, size_t initialCapacity, size_t 
 SharedReadOnlySpace::SharedReadOnlySpace(SharedHeap *heap, size_t initialCapacity, size_t maximumCapacity)
     : Space(heap, heap->GetHeapRegionAllocator(), MemSpaceType::SHARED_READ_ONLY_SPACE, initialCapacity, maximumCapacity) {}
 
-bool SharedReadOnlySpace::Expand()
+bool SharedReadOnlySpace::Expand(JSThread *thread)
 {
     if (committedSize_ >= initialCapacity_ + outOfMemoryOvershootSize_ &&
         !heap_->NeedStopCollection()) {
@@ -302,22 +293,99 @@ bool SharedReadOnlySpace::Expand()
     if (currentRegion != nullptr) {
         currentRegion->SetHighWaterMark(top);
     }
-    Region *region = heapRegionAllocator_->AllocateAlignedRegion(this, DEFAULT_REGION_SIZE, heap_);
+    Region *region = heapRegionAllocator_->AllocateAlignedRegion(this, DEFAULT_REGION_SIZE, thread, heap_);
     allocator_.Reset(region->GetBegin(), region->GetEnd());
     AddRegion(region);
     return true;
 }
 
-uintptr_t SharedReadOnlySpace::Allocate([[maybe_unused]]JSThread *thread, size_t size)
+uintptr_t SharedReadOnlySpace::Allocate(JSThread *thread, size_t size)
 {
     LockHolder holder(allocateLock_);
     auto object = allocator_.Allocate(size);
     if (object != 0) {
         return object;
     }
-    if (Expand()) {
+    if (Expand(thread)) {
         object = allocator_.Allocate(size);
     }
     return object;
+}
+
+SharedHugeObjectSpace::SharedHugeObjectSpace(BaseHeap *heap, HeapRegionAllocator *heapRegionAllocator,
+                                             size_t initialCapacity, size_t maximumCapacity)
+    : Space(heap, heapRegionAllocator, MemSpaceType::SHARED_HUGE_OBJECT_SPACE, initialCapacity, maximumCapacity)
+{
+}
+
+
+uintptr_t SharedHugeObjectSpace::Allocate(JSThread *thread, size_t objectSize)
+{
+    LockHolder lock(allocateLock_);
+    // In HugeObject allocation, we have a revervation of 8 bytes for markBitSet in objectSize.
+    // In case Region is not aligned by 16 bytes, HUGE_OBJECT_BITSET_SIZE is 8 bytes more.
+    size_t alignedSize = AlignUp(objectSize + sizeof(Region) + HUGE_OBJECT_BITSET_SIZE, PANDA_POOL_ALIGNMENT_IN_BYTES);
+    if (heap_->OldSpaceExceedCapacity(alignedSize)) {
+        LOG_ECMA_MEM(INFO) << "Committed size " << committedSize_ << " of huge object space is too big.";
+        return 0;
+    }
+    Region *region = heapRegionAllocator_->AllocateAlignedRegion(this, alignedSize, thread, heap_);
+    AddRegion(region);
+    // It need to mark unpoison when huge object being allocated.
+    ASAN_UNPOISON_MEMORY_REGION(reinterpret_cast<void *>(region->GetBegin()), objectSize);
+#ifdef ECMASCRIPT_SUPPORT_HEAPSAMPLING
+    InvokeAllocationInspector(region->GetBegin(), objectSize);
+#endif
+    return region->GetBegin();
+}
+
+void SharedHugeObjectSpace::Sweep()
+{
+    Region *currentRegion = GetRegionList().GetFirst();
+    while (currentRegion != nullptr) {
+        Region *next = currentRegion->GetNext();
+        bool isMarked = false;
+        currentRegion->IterateAllMarkedBits([&isMarked]([[maybe_unused]] void *mem) { isMarked = true; });
+        if (!isMarked) {
+            GetRegionList().RemoveNode(currentRegion);
+            hugeNeedFreeList_.AddNode(currentRegion);
+        }
+        currentRegion = next;
+    }
+}
+
+size_t SharedHugeObjectSpace::GetHeapObjectSize() const
+{
+    return committedSize_;
+}
+
+void SharedHugeObjectSpace::IterateOverObjects(const std::function<void(TaggedObject *object)> &objectVisitor) const
+{
+    EnumerateRegions([&](Region *region) {
+        uintptr_t curPtr = region->GetBegin();
+        objectVisitor(reinterpret_cast<TaggedObject *>(curPtr));
+    });
+}
+
+void SharedHugeObjectSpace::ReclaimHugeRegion()
+{
+    if (hugeNeedFreeList_.IsEmpty()) {
+        return;
+    }
+    do {
+        Region *last = hugeNeedFreeList_.PopBack();
+        ClearAndFreeRegion(last);
+    } while (!hugeNeedFreeList_.IsEmpty());
+}
+
+void SharedHugeObjectSpace::InvokeAllocationInspector(Address object, size_t objectSize)
+{
+    if (LIKELY(!allocationCounter_.IsActive())) {
+        return;
+    }
+    if (objectSize >= allocationCounter_.NextBytes()) {
+        allocationCounter_.InvokeAllocationInspector(object, objectSize, objectSize);
+    }
+    allocationCounter_.AdvanceAllocationInspector(objectSize);
 }
 }  // namespace panda::ecmascript

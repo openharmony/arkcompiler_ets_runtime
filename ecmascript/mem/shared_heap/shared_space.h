@@ -53,7 +53,6 @@ public:
     NO_COPY_SEMANTIC(SharedSparseSpace);
     NO_MOVE_SEMANTIC(SharedSparseSpace);
 
-    void Initialize() override;
     void Reset();
 
     uintptr_t AllocateWithoutGC(size_t size);
@@ -101,9 +100,9 @@ protected:
     SweepState sweepState_ = SweepState::NO_SWEEP;
 
 private:
-    uintptr_t AllocateWithExpand(size_t size);
+    uintptr_t AllocateWithExpand(JSThread *thread, size_t size);
     uintptr_t TryAllocate(size_t size);
-    bool Expand();
+    bool Expand(JSThread *thread);
     // For sweeping
     uintptr_t AllocateAfterSweepingCompleted(size_t size);
 
@@ -151,7 +150,7 @@ public:
         EnumerateRegions(cb);
     }
 
-    bool Expand();
+    bool Expand(JSThread *thread);
 
     uintptr_t Allocate(JSThread *thread, size_t size);
 
@@ -161,6 +160,28 @@ public:
 private:
     Mutex allocateLock_;
     BumpPointerAllocator allocator_;
+};
+
+class SharedHugeObjectSpace : public Space {
+public:
+    SharedHugeObjectSpace(BaseHeap *heap, HeapRegionAllocator *regionAllocator, size_t initialCapacity,
+                    size_t maximumCapacity);
+    ~SharedHugeObjectSpace() override = default;
+    NO_COPY_SEMANTIC(SharedHugeObjectSpace);
+    NO_MOVE_SEMANTIC(SharedHugeObjectSpace);
+    uintptr_t Allocate(JSThread *thread, size_t objectSize);
+    void Sweep();
+    size_t GetHeapObjectSize() const;
+    void IterateOverObjects(const std::function<void(TaggedObject *object)> &objectVisitor) const;
+
+    void ReclaimHugeRegion();
+
+    void InvokeAllocationInspector(Address object, size_t objectSize);
+
+private:
+    static constexpr size_t HUGE_OBJECT_BITSET_SIZE = 16;
+    EcmaList<Region> hugeNeedFreeList_ {};
+    Mutex allocateLock_;
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_MEM_SHARED_SHARED_SPACE_H

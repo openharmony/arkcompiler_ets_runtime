@@ -96,7 +96,8 @@ bool LinearSpace::Expand(bool isPromoted)
         }
         currentRegion->SetHighWaterMark(top);
     }
-    Region *region = heapRegionAllocator_->AllocateAlignedRegion(this, DEFAULT_REGION_SIZE, localHeap_);
+    JSThread *thread = localHeap_->GetJSThread();
+    Region *region = heapRegionAllocator_->AllocateAlignedRegion(this, DEFAULT_REGION_SIZE, thread, localHeap_);
     allocator_.Reset(region->GetBegin(), region->GetEnd());
 
     AddRegion(region);
@@ -170,7 +171,8 @@ SemiSpace::SemiSpace(Heap *heap, size_t initialCapacity, size_t maximumCapacity)
 
 void SemiSpace::Initialize()
 {
-    Region *region = heapRegionAllocator_->AllocateAlignedRegion(this, DEFAULT_REGION_SIZE, localHeap_);
+    JSThread *thread = localHeap_->GetJSThread();
+    Region *region = heapRegionAllocator_->AllocateAlignedRegion(this, DEFAULT_REGION_SIZE, thread, localHeap_);
     AddRegion(region);
     allocator_.Reset(region->GetBegin(), region->GetEnd());
 }

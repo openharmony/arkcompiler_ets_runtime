@@ -67,15 +67,15 @@ inline void SharedGCMarker::HandleRangeRoots(uint32_t threadId, [[maybe_unused]]
 }
 
 inline void SharedGCMarker::HandleDerivedRoots([[maybe_unused]] Root type, [[maybe_unused]] ObjectSlot base,
-                                              [[maybe_unused]] ObjectSlot derived,
-                                              [[maybe_unused]] uintptr_t baseOldObject)
+                                               [[maybe_unused]] ObjectSlot derived,
+                                               [[maybe_unused]] uintptr_t baseOldObject)
 {
     // It is only used to update the derived value. The mark of share GC does not need to update slot
 }
 
 template <typename Callback>
 ARK_INLINE bool SharedGCMarker::VisitBodyInObj(TaggedObject *root, ObjectSlot start, ObjectSlot end,
-                                              Callback callback)
+                                               Callback callback)
 {
     auto hclass = root->SynchronizedGetClass();
     int index = 0;

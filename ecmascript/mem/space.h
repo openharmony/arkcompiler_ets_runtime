@@ -259,15 +259,14 @@ protected:
 
 class HugeObjectSpace : public Space {
 public:
-    HugeObjectSpace(BaseHeap *heap, HeapRegionAllocator *regionAllocator, size_t initialCapacity,
+    HugeObjectSpace(Heap *heap, HeapRegionAllocator *regionAllocator, size_t initialCapacity,
                     size_t maximumCapacity);
-    HugeObjectSpace(BaseHeap *heap, HeapRegionAllocator *regionAllocator, size_t initialCapacity,
+    HugeObjectSpace(Heap *heap, HeapRegionAllocator *regionAllocator, size_t initialCapacity,
                     size_t maximumCapacity, MemSpaceType spaceType);
     ~HugeObjectSpace() override = default;
     NO_COPY_SEMANTIC(HugeObjectSpace);
     NO_MOVE_SEMANTIC(HugeObjectSpace);
-    uintptr_t Allocate(size_t objectSize);
-    uintptr_t ConcurrentAllocate(size_t objectSize);
+    uintptr_t Allocate(size_t objectSize, JSThread *thread);
     void Sweep();
     size_t GetHeapObjectSize() const;
     void IterateOverObjects(const std::function<void(TaggedObject *object)> &objectVisitor) const;
@@ -279,12 +278,11 @@ public:
 private:
     static constexpr size_t HUGE_OBJECT_BITSET_SIZE = 16;
     EcmaList<Region> hugeNeedFreeList_ {};
-    Mutex allocateLock_;
 };
 
 class HugeMachineCodeSpace : public HugeObjectSpace {
 public:
-    HugeMachineCodeSpace(BaseHeap *heap, HeapRegionAllocator *regionAllocator, size_t initialCapacity,
+    HugeMachineCodeSpace(Heap *heap, HeapRegionAllocator *regionAllocator, size_t initialCapacity,
                          size_t maximumCapacity);
 };
 

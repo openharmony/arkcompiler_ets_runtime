@@ -35,7 +35,8 @@ SparseSpace::SparseSpace(Heap *heap, MemSpaceType type, size_t initialCapacity, 
 
 void SparseSpace::Initialize()
 {
-    Region *region = heapRegionAllocator_->AllocateAlignedRegion(this, DEFAULT_REGION_SIZE, localHeap_);
+    JSThread *thread = localHeap_->GetJSThread();
+    Region *region = heapRegionAllocator_->AllocateAlignedRegion(this, DEFAULT_REGION_SIZE, thread, localHeap_);
     region->InitializeFreeObjectSets();
     AddRegion(region);
 
@@ -89,8 +90,8 @@ bool SparseSpace::Expand()
         LOG_ECMA_MEM(INFO) << "Expand::Committed size " << committedSize_ << " of Sparse Space is too big. ";
         return false;
     }
-
-    Region *region = heapRegionAllocator_->AllocateAlignedRegion(this, DEFAULT_REGION_SIZE, localHeap_);
+    JSThread *thread = localHeap_->GetJSThread();
+    Region *region = heapRegionAllocator_->AllocateAlignedRegion(this, DEFAULT_REGION_SIZE, thread, localHeap_);
     region->InitializeFreeObjectSets();
     AddRegion(region);
     allocator_->AddFree(region);
