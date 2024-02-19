@@ -1850,10 +1850,11 @@ inline void StubBuilder::SetProtoChangeDetailsToHClass(VariableType type, GateRe
     Store(type, glue, hClass, offset, protoChange);
 }
 
-inline void StubBuilder::SetLayoutToHClass(VariableType type, GateRef glue, GateRef hClass, GateRef attr)
+inline void StubBuilder::SetLayoutToHClass(
+    VariableType type, GateRef glue, GateRef hClass, GateRef attr, MemoryOrder order)
 {
     GateRef offset = IntPtr(JSHClass::LAYOUT_OFFSET);
-    Store(type, glue, hClass, offset, attr);
+    Store(type, glue, hClass, offset, attr, order);
 }
 
 inline void StubBuilder::SetEnumCacheToHClass(VariableType type, GateRef glue, GateRef hClass, GateRef key)

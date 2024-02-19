@@ -156,7 +156,12 @@ public:
     // memory
     GateRef Load(VariableType type, GateRef base, GateRef offset);
     GateRef Load(VariableType type, GateRef base);
-    void Store(VariableType type, GateRef glue, GateRef base, GateRef offset, GateRef value);
+    void Store(VariableType type,
+               GateRef glue,
+               GateRef base,
+               GateRef offset,
+               GateRef value,
+               MemoryOrder order = MemoryOrder::Default());
     // arithmetic
     GateRef TaggedCastToIntPtr(GateRef x);
     GateRef Int16Add(GateRef x, GateRef y);
@@ -442,7 +447,8 @@ public:
     void SetPrototypeToHClass(VariableType type, GateRef glue, GateRef hClass, GateRef proto);
     void SetProtoChangeDetailsToHClass(VariableType type, GateRef glue, GateRef hClass,
                                        GateRef protoChange);
-    void SetLayoutToHClass(VariableType type, GateRef glue, GateRef hClass, GateRef attr);
+    void SetLayoutToHClass(
+        VariableType type, GateRef glue, GateRef hClass, GateRef attr, MemoryOrder order = MemoryOrder::Default());
     void SetHClassTypeIDToHClass(GateRef glue, GateRef hClass, GateRef id);
     void SetEnumCacheToHClass(VariableType type, GateRef glue, GateRef hClass, GateRef key);
     void SetTransitionsToHClass(VariableType type, GateRef glue, GateRef hClass, GateRef transition);

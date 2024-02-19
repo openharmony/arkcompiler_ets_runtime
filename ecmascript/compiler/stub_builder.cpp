@@ -1116,14 +1116,14 @@ GateRef StubBuilder::TaggedToElementKind(GateRef value)
     return ret;
 }
 
-void StubBuilder::Store(VariableType type, GateRef glue, GateRef base, GateRef offset, GateRef value)
+void StubBuilder::Store(VariableType type, GateRef glue, GateRef base, GateRef offset, GateRef value, MemoryOrder order)
 {
     if (!env_->IsAsmInterp()) {
-        env_->GetBuilder()->Store(type, glue, base, offset, value);
+        env_->GetBuilder()->Store(type, glue, base, offset, value, order);
     } else {
         auto depend = env_->GetCurrentLabel()->GetDepend();
         GateRef ptr = PtrAdd(base, offset);
-        auto bit = LoadStoreAccessor::ToValue(MemoryOrder::Default());
+        auto bit = LoadStoreAccessor::ToValue(order);
         GateRef result = env_->GetCircuit()->NewGate(
             env_->GetCircuit()->Store(bit), MachineType::NOVALUE,
             { depend, value, ptr }, type.GetGateType());
@@ -2913,7 +2913,11 @@ void StubBuilder::CopyAllHClass(GateRef glue, GateRef dstHClass, GateRef srcHCla
     SetParentToHClass(VariableType::INT64(), glue, dstHClass, Undefined());
     SetProtoChangeDetailsToHClass(VariableType::INT64(), glue, dstHClass, Null());
     SetEnumCacheToHClass(VariableType::INT64(), glue, dstHClass, Null());
-    SetLayoutToHClass(VariableType::JS_POINTER(), glue, dstHClass, GetLayoutFromHClass(srcHClass));
+    SetLayoutToHClass(VariableType::JS_POINTER(),
+                      glue,
+                      dstHClass,
+                      GetLayoutFromHClass(srcHClass),
+                      MemoryOrder::Create(MemoryOrder::MEMORY_ORDER_RELEASE));
     Branch(IsTSHClass(srcHClass), &isTS, &isNotTS);
     Bind(&isTS);
     {
