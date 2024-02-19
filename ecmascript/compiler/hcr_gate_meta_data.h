@@ -112,6 +112,25 @@ public:
         return elementsKinds_;
     }
 
+    void SetTransitionElementsKind(ElementsKind kind)
+    {
+        transitionElementsKinds_.emplace_back(kind);
+    }
+
+    ElementsKind GetTransitionElementsKind() const
+    {
+        auto size = transitionElementsKinds_.size();
+        if (size == 0) {
+            return ElementsKind::GENERIC;
+        }
+        return transitionElementsKinds_[0];
+    }
+
+    std::vector<ElementsKind> GetTransitionElementsKinds() const
+    {
+        return transitionElementsKinds_;
+    }
+
     void SetElementsLength(uint32_t length)
     {
         elementsLength_ = length;
@@ -145,6 +164,7 @@ private:
     uint32_t elementsLength_ { 0 };
     PGOTypeRef type_;
     std::vector<ElementsKind> elementsKinds_ {};
+    std::vector<ElementsKind> transitionElementsKinds_ {};
     OnHeapMode onHeapMode_ {OnHeapMode::NONE};
 };
 

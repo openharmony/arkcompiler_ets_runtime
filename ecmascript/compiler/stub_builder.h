@@ -479,6 +479,7 @@ public:
     GateRef GetTaggedValueWithElementsKind(GateRef receiver, GateRef index);
     GateRef SetValueWithElementsKind(GateRef glue, GateRef receiver, GateRef rawValue, GateRef index,
                                      GateRef needTransition, GateRef extraKind);
+    GateRef CopyJSArrayToTaggedArrayArgs(GateRef glue, GateRef srcObj);
     void SetValueToTaggedArrayWithAttr(
         GateRef glue, GateRef array, GateRef index, GateRef key, GateRef val, GateRef attr);
     void SetValueToTaggedArrayWithRep(
@@ -720,6 +721,17 @@ public:
     // Exception handle
     GateRef HasPendingException(GateRef glue);
     void ReturnExceptionIfAbruptCompletion(GateRef glue);
+
+    // ElementsKind Operations
+    GateRef ValueIsSpecialHole(GateRef x);
+    GateRef elementsKindIsIntOrHoleInt(GateRef kind);
+    GateRef elementsKindIsNumOrHoleNum(GateRef kind);
+    GateRef elementsKindIsHeapKind(GateRef kind);
+    void MigrateArrayWithKind(GateRef glue, GateRef object, GateRef oldKind, GateRef newKind);
+    GateRef MigrateFromRawValueToHeapValues(GateRef glue, GateRef object, GateRef needCOW, GateRef isIntKind);
+    GateRef MigrateFromHeapValueToRawValue(GateRef glue, GateRef object, GateRef needCOW, GateRef isIntKind);
+    void MigrateFromHoleIntToHoleNumber(GateRef glue, GateRef object);
+    void MigrateFromHoleNumberToHoleInt(GateRef glue, GateRef object);
 
     // method operator
     GateRef IsJSFunction(GateRef obj);

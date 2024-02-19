@@ -31,8 +31,10 @@ inline void ElementAccessor::Set(const JSThread *thread, JSHandle<JSObject> rece
 {
     // Change elementsKind
     ElementsKind oldKind = receiver->GetClass()->GetElementsKind();
-    if (needTransition && JSHClass::TransitToElementsKind(thread, receiver, value, extraKind)) {
+    if (needTransition && JSHClass::TransitToElementsKind(thread, receiver,
+                                                          JSHandle<JSTaggedValue>(value), extraKind)) {
         ElementsKind newKind = receiver->GetClass()->GetElementsKind();
+        // GC might happen when migrating Array
         Elements::MigrateArrayWithKind(thread, receiver, oldKind, newKind);
     }
     
@@ -48,36 +50,6 @@ inline void ElementAccessor::Set(const JSThread *thread, JSHandle<JSObject> rece
     JSTaggedType convertedValue = ConvertTaggedValueWithElementsKind(value.GetTaggedValue(), kind);
     // NOLINTNEXTLINE(readability-braces-around-statements, bugprone-suspicious-semicolon)
     if (value.GetTaggedValue().IsHeapObject()) {
-        Barriers::SetObject<true>(thread, elements->GetData(), offset, convertedValue);
-    } else {  // NOLINTNEXTLINE(readability-misleading-indentation)
-        Barriers::SetPrimitive<JSTaggedType>(elements->GetData(), offset, convertedValue);
-    }
-}
-
-template <bool needBarrier>
-inline void ElementAccessor::Set(const JSThread *thread, JSHandle<JSObject> receiver, uint32_t idx,
-                                 const JSTaggedValue &value, bool needTransition, ElementsKind extraKind)
-{
-    // Change elementsKind
-    ElementsKind oldKind = receiver->GetClass()->GetElementsKind();
-    if (needTransition &&
-        JSHClass::TransitToElementsKind(thread, receiver, JSHandle<JSTaggedValue>(thread, value), extraKind)) {
-        ElementsKind newKind = receiver->GetClass()->GetElementsKind();
-        Elements::MigrateArrayWithKind(thread, receiver, oldKind, newKind);
-    }
-
-    TaggedArray *elements = TaggedArray::Cast(receiver->GetElements());
-    ASSERT(idx < elements->GetLength());
-    size_t offset = JSTaggedValue::TaggedTypeSize() * idx;
-
-    ElementsKind kind = receiver->GetClass()->GetElementsKind();
-    if (!elements->GetClass()->IsMutantTaggedArray()) {
-        kind = ElementsKind::GENERIC;
-    }
-
-    JSTaggedType convertedValue = ConvertTaggedValueWithElementsKind(value, kind);
-    // NOLINTNEXTLINE(readability-braces-around-statements, bugprone-suspicious-semicolon)
-    if (needBarrier && value.IsHeapObject()) {
         Barriers::SetObject<true>(thread, elements->GetData(), offset, convertedValue);
     } else {  // NOLINTNEXTLINE(readability-misleading-indentation)
         Barriers::SetPrimitive<JSTaggedType>(elements->GetData(), offset, convertedValue);

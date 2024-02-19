@@ -2116,7 +2116,7 @@ JSTaggedValue BuiltinsString::StringToList(JSThread *thread, JSHandle<EcmaString
     while (index < totalElements) {
         uint16_t c = EcmaStringAccessor(iteratedString).Get(index);
         JSHandle<EcmaString> newStr = factory->NewFromUtf16Literal(&c, 1);
-        ElementAccessor::Set(thread, newArrayHandle, index, newStr.GetTaggedValue(), true);
+        ElementAccessor::Set(thread, newArrayHandle, index, newStr, true);
         index++;
     }
     JSHandle<JSArray>(newArrayHandle)->SetArrayLength(thread, totalElements);

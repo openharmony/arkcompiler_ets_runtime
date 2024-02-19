@@ -545,6 +545,25 @@ JSHClass* JSHClass::GetInitialArrayHClassWithElementsKind(const JSThread *thread
     return nullptr;
 }
 
+bool JSHClass::TransitToElementsKindUncheck(const JSThread *thread, const JSHandle<JSObject> &obj,
+                                            ElementsKind newKind)
+{
+    ElementsKind current = obj->GetJSHClass()->GetElementsKind();
+    // currently we only support initial array hclass
+    if (obj->GetClass() == GetInitialArrayHClassWithElementsKind(thread, current)) {
+        const auto &arrayHClassIndexMap = thread->GetArrayHClassIndexMap();
+        auto newKindIter = arrayHClassIndexMap.find(newKind);
+        if (newKindIter != arrayHClassIndexMap.end()) {
+            auto index = static_cast<size_t>(newKindIter->second);
+            auto hclassVal = thread->GlobalConstants()->GetGlobalConstantObject(index);
+            JSHClass *hclass = JSHClass::Cast(hclassVal.GetTaggedObject());
+            obj->SynchronizedSetClass(thread, hclass);
+            return true;
+        }
+    }
+    return false;
+}
+
 void JSHClass::TransitToElementsKind(const JSThread *thread, const JSHandle<JSArray> &array,
                                      ElementsKind newKind)
 {
@@ -594,12 +613,16 @@ bool JSHClass::TransitToElementsKind(const JSThread *thread, const JSHandle<JSOb
         auto hclassVal = thread->GlobalConstants()->GetGlobalConstantObject(index);
         JSHClass *hclass = JSHClass::Cast(hclassVal.GetTaggedObject());
         object->SynchronizedSetClass(thread, hclass);
-        // Update TrackInfo
-        if (!thread->IsPGOProfilerEnable()) {
+
+        if (!thread->GetEcmaVM()->IsEnableElementsKind()) {
+            // Update TrackInfo
+            if (!thread->IsPGOProfilerEnable()) {
+                return true;
+            }
+            auto trackInfoVal = JSHandle<JSArray>(object)->GetTrackInfo();
+            thread->GetEcmaVM()->GetPGOProfiler()->UpdateTrackElementsKind(trackInfoVal, newKind);
             return true;
         }
-        auto trackInfoVal = JSHandle<JSArray>(object)->GetTrackInfo();
-        thread->GetEcmaVM()->GetPGOProfiler()->UpdateTrackElementsKind(trackInfoVal, newKind);
         return true;
     }
     return false;

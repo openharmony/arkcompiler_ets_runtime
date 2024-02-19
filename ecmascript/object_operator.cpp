@@ -843,9 +843,15 @@ bool ObjectOperator::AddProperty(const JSHandle<JSObject> &receiver, const JSHan
                                  PropertyAttributes attr)
 {
     if (IsElement()) {
+        ElementsKind oldKind = receiver->GetClass()->GetElementsKind();
         bool ret = JSObject::AddElementInternal(thread_, receiver, elementIndex_, value, attr);
+        ElementsKind newKind = receiver->GetClass()->GetElementsKind();
+        bool isTransited = false;
+        if (receiver.GetTaggedValue().IsJSArray() && (newKind != oldKind)) {
+            isTransited = true;
+        }
         bool isDict = receiver->GetJSHClass()->IsDictionaryElement();
-        SetFound(elementIndex_, value.GetTaggedValue(), attr.GetValue(), !isDict);
+        SetFound(elementIndex_, value.GetTaggedValue(), attr.GetValue(), !isDict, isTransited);
         return ret;
     }
 
@@ -856,7 +862,7 @@ bool ObjectOperator::AddProperty(const JSHandle<JSObject> &receiver, const JSHan
     return true;
 }
 
-void ObjectOperator::WriteElement(const JSHandle<JSObject> &receiver, JSTaggedValue value) const
+void ObjectOperator::WriteElement(const JSHandle<JSObject> &receiver, JSHandle<JSTaggedValue> value) const
 {
     ASSERT(IsElement() && GetIndex() < JSObject::MAX_ELEMENT_INDEX);
 
@@ -867,15 +873,16 @@ void ObjectOperator::WriteElement(const JSHandle<JSObject> &receiver, JSTaggedVa
 
     TaggedArray *elements = TaggedArray::Cast(receiver->GetElements().GetTaggedObject());
     NumberDictionary *dictionary = NumberDictionary::Cast(elements);
-    dictionary->UpdateValue(thread_, GetIndex(), value);
+    dictionary->UpdateValue(thread_, GetIndex(), value.GetTaggedValue());
 }
 
 void ObjectOperator::DeleteElementInHolder() const
 {
     JSHandle<JSObject> obj(holder_);
 
+    JSHandle<JSTaggedValue> holeHandle(thread_, JSTaggedValue::Hole());
     if (!ElementAccessor::IsDictionaryMode(obj)) {
-        ElementAccessor::Set(thread_, obj, index_, JSTaggedValue::Hole(), true, ElementsKind::HOLE);
+        ElementAccessor::Set(thread_, obj, index_, holeHandle, true, ElementsKind::HOLE);
         JSObject::ElementsToDictionary(thread_, JSHandle<JSObject>(holder_));
     } else {
         TaggedArray *elements = TaggedArray::Cast(obj->GetElements().GetTaggedObject());

@@ -71,6 +71,8 @@ namespace panda::ecmascript::kungfu {
     V(ARRAY_LOAD_OBJECT_ELEMENT)        \
     V(ARRAY_LOAD_TAGGED_ELEMENT)        \
     V(ARRAY_LOAD_HOLE_TAGGED_ELEMENT)   \
+    V(ARRAY_LOAD_HOLE_INT_ELEMENT)      \
+    V(ARRAY_LOAD_HOLE_DOUBLE_ELEMENT)   \
     V(INT8ARRAY_LOAD_ELEMENT)           \
     V(UINT8ARRAY_LOAD_ELEMENT)          \
     V(UINT8CLAMPEDARRAY_LOAD_ELEMENT)   \
@@ -84,6 +86,8 @@ namespace panda::ecmascript::kungfu {
 
 #define TYPED_STORE_OP_LIST(V)          \
     V(ARRAY_STORE_ELEMENT)              \
+    V(ARRAY_STORE_INT_ELEMENT)          \
+    V(ARRAY_STORE_DOUBLE_ELEMENT)       \
     V(INT8ARRAY_STORE_ELEMENT)          \
     V(UINT8ARRAY_STORE_ELEMENT)         \
     V(UINT8CLAMPEDARRAY_STORE_ELEMENT)  \

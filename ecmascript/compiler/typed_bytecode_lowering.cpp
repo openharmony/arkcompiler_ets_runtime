@@ -1022,8 +1022,10 @@ GateRef TypedBytecodeLowering::LoadJSArrayByIndex(const LoadBulitinObjTypeInfoAc
 
     GateRef result = Circuit::NullGate();
     if (Elements::IsInt(kind)) {
+        // When elementskind switch on, need to add retype for loadInt
         result = builder_.LoadElement<TypedLoadOp::ARRAY_LOAD_INT_ELEMENT>(receiver, propKey);
     } else if (Elements::IsNumber(kind)) {
+        // When elementskind switch on, need to add retype for loadNumber
         result = builder_.LoadElement<TypedLoadOp::ARRAY_LOAD_DOUBLE_ELEMENT>(receiver, propKey);
     } else if (Elements::IsObject(kind)) {
         result = builder_.LoadElement<TypedLoadOp::ARRAY_LOAD_OBJECT_ELEMENT>(receiver, propKey);

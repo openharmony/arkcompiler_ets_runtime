@@ -21,6 +21,7 @@
 #include "ecmascript/js_hclass.h"
 #include "ecmascript/js_tagged_number.h"
 #include "ecmascript/js_tagged_value-inl.h"
+#include "ecmascript/tagged_array-inl.h"
 
 namespace panda::ecmascript {
 JSTaggedValue ElementAccessor::Get(JSHandle<JSObject> receiver, uint32_t idx)
@@ -94,6 +95,8 @@ JSTaggedValue ElementAccessor::GetTaggedValueWithElementsKind(JSTaggedType rawVa
         case ElementsKind::HOLE_NUMBER:
             convertedValue = JSTaggedValue(base::bit_cast<double>(rawValue));
             break;
+        case ElementsKind::HOLE:
+        case ElementsKind::NONE:
         case ElementsKind::TAGGED:
         case ElementsKind::STRING:
         case ElementsKind::HOLE_TAGGED:
@@ -128,6 +131,8 @@ JSTaggedType ElementAccessor::ConvertTaggedValueWithElementsKind(JSTaggedValue r
                 convertedValue = base::bit_cast<JSTaggedType>(rawValue.GetDouble());
             }
             break;
+        case ElementsKind::HOLE:
+        case ElementsKind::NONE:
         case ElementsKind::TAGGED:
         case ElementsKind::STRING:
         case ElementsKind::HOLE_TAGGED:
@@ -140,5 +145,27 @@ JSTaggedType ElementAccessor::ConvertTaggedValueWithElementsKind(JSTaggedValue r
             break;
     }
     return convertedValue;
+}
+
+void ElementAccessor::CopyJSArrayObject(const JSThread *thread, JSHandle<JSObject>srcObj, JSHandle<JSObject>dstObj,
+                                        uint32_t effectiveLength)
+{
+    ASSERT(effectiveLength <= GetElementsLength(srcObj));
+    ASSERT(effectiveLength <= GetElementsLength(dstObj));
+    for (uint32_t i = 0; i < effectiveLength; i++) {
+        JSHandle<JSTaggedValue> value(thread, Get(srcObj, i));
+        Set(thread, dstObj, i, value, true);
+    }
+}
+
+void ElementAccessor::CopyJSArrayToTaggedArray(const JSThread *thread, JSHandle<JSObject>srcObj,
+                                               JSHandle<TaggedArray>dstElements, uint32_t effectiveLength)
+{
+    ASSERT(effectiveLength <= GetElementsLength(srcObj));
+    ASSERT(effectiveLength <= dstElements->GetLength());
+    for (uint32_t i = 0; i < effectiveLength; i++) {
+        JSHandle<JSTaggedValue> value(thread, Get(srcObj, i));
+        dstElements->Set(thread, i, value);
+    }
 }
 }  // namespace panda::ecmascript

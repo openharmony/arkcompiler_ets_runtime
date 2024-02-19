@@ -340,7 +340,7 @@ void BuiltinsObjectStubBuilder::AssignEnumElementProperty(Variable *result, Labe
         {
             Branch(Int32LessThan(*idx, len), &next, &loopExit);
             Bind(&next);
-            GateRef value = GetValueFromTaggedArray(elements, *idx);
+            GateRef value = GetTaggedValueWithElementsKind(source, *idx);
             Label notHole(env);
             Branch(TaggedIsHole(value), &loopEnd, &notHole);
             Bind(&notHole);
@@ -748,7 +748,7 @@ void BuiltinsObjectStubBuilder::HasOwnProperty(Variable *result, Label *exit, La
                         Bind(&lessThanLength);
                         {
                             Label notHole(env);
-                            GateRef value = GetValueFromTaggedArray(elements, index);
+                            GateRef value = GetTaggedValueWithElementsKind(thisValue_, index);
                             Branch(TaggedIsNotHole(value), &notHole, exit);
                             Bind(&notHole);
                             {
@@ -1199,7 +1199,7 @@ GateRef BuiltinsObjectStubBuilder::GetEnumElementKeys(GateRef glue, GateRef obj)
                 Branch(Int32UnsignedLessThan(*j, elementsLen), &iLessLength, &afterLoop);
                 Bind(&iLessLength);
                 {
-                    GateRef element = GetValueFromTaggedArray(elements, *j);
+                    GateRef element = GetTaggedValueWithElementsKind(obj, *j);
                     Branch(TaggedIsHole(element), &loopEnd, &notHole);
                     Bind(&notHole);
                     GateRef str = IntToEcmaString(glue, *j);

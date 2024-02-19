@@ -641,6 +641,26 @@ inline GateRef StubBuilder::TaggedIsNotHole(GateRef x)
     return env_->GetBuilder()->TaggedIsNotHole(x);
 }
 
+inline GateRef StubBuilder::ValueIsSpecialHole(GateRef x)
+{
+    return env_->GetBuilder()->IsSpecialHole(x);
+}
+
+inline GateRef StubBuilder::elementsKindIsIntOrHoleInt(GateRef kind)
+{
+    return env_->GetBuilder()->elementsKindIsIntOrHoleInt(kind);
+}
+
+inline GateRef StubBuilder::elementsKindIsNumOrHoleNum(GateRef kind)
+{
+    return env_->GetBuilder()->elementsKindIsNumOrHoleNum(kind);
+}
+
+inline GateRef StubBuilder::elementsKindIsHeapKind(GateRef kind)
+{
+    return env_->GetBuilder()->elementsKindIsHeapKind(kind);
+}
+
 inline GateRef StubBuilder::TaggedIsUndefined(GateRef x)
 {
     return env_->GetBuilder()->TaggedIsUndefined(x);

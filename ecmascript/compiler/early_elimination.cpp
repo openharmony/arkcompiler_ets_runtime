@@ -75,6 +75,7 @@ GateRef EarlyElimination::VisitGate(GateRef gate)
         case OpCode::OBJECT_TYPE_COMPARE:
         case OpCode::STABLE_ARRAY_CHECK:
         case OpCode::INDEX_CHECK:
+        case OpCode::ELEMENTSKIND_CHECK:
         case OpCode::TYPED_CALL_CHECK:
         case OpCode::LOAD_CONST_OFFSET:
         case OpCode::LOAD_HCLASS_FROM_CONSTPOOL:
@@ -235,6 +236,7 @@ DependInfoNode* EarlyElimination::UpdateWrite(GateRef gate, DependInfoNode* depe
         case OpCode::STORE_CONST_OFFSET:
         case OpCode::STORE_ELEMENT:
         case OpCode::STORE_MEMORY:
+        case OpCode::MIGRATE_ARRAY_WITH_KIND:
         case OpCode::MONO_STORE_PROPERTY_LOOK_UP_PROTO:
         case OpCode::MONO_STORE_PROPERTY:
             return dependInfo->UpdateStoreProperty(this, gate);
@@ -251,6 +253,14 @@ bool EarlyElimination::MayAccessOneMemory(GateRef lhs, GateRef rhs)
         case OpCode::STORE_MEMORY:
             ASSERT(acc_.GetMemoryType(rhs) == MemoryType::ELEMENT_TYPE);
             return acc_.GetOpCode(lhs) == OpCode::LOAD_ELEMENT;
+        case OpCode::MIGRATE_ARRAY_WITH_KIND: {
+            if (lop == OpCode::LOAD_ELEMENT) {
+                GateRef lopValueIn = acc_.GetValueIn(lhs, 0); // loadelement receiver
+                GateRef ropValueIn = acc_.GetValueIn(rhs, 0); // migrate receiver
+                return lopValueIn == ropValueIn;
+            }
+            return false;
+        }
         case OpCode::STORE_ELEMENT: {
             if (lop == OpCode::LOAD_ELEMENT) {
                 bool lopIsTypedArray = acc_.TypedOpIsTypedArray(lhs, TypedOpKind::TYPED_LOAD_OP);

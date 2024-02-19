@@ -201,6 +201,25 @@ void GateAccessor::SetArraySize(GateRef gate, uint32_t size)
     }
 }
 
+ElementsKind GateAccessor::GetElementsKind(GateRef gate) const
+{
+    ASSERT(GetOpCode(gate) == OpCode::CREATE_ARRAY ||
+           GetOpCode(gate) == OpCode::CREATE_ARRAY_WITH_BUFFER);
+    Gate *gatePtr = circuit_->LoadGatePtr(gate);
+    auto array = gatePtr->GetOneParameterMetaData()->GetValue();
+    return ArrayMetaDataAccessor(array).GetElementsKind();
+}
+
+void GateAccessor::SetElementsKind(GateRef gate, ElementsKind kind)
+{
+    ASSERT(GetOpCode(gate) == OpCode::CREATE_ARRAY ||
+           GetOpCode(gate) == OpCode::CREATE_ARRAY_WITH_BUFFER);
+    Gate *gatePtr = circuit_->LoadGatePtr(gate);
+    ArrayMetaDataAccessor accessor(gatePtr->GetOneParameterMetaData()->GetValue());
+    accessor.SetElementsKind(kind);
+    const_cast<OneParameterMetaData *>(gatePtr->GetOneParameterMetaData())->SetValue(accessor.ToValue());
+}
+
 uint32_t GateAccessor::GetStringStatus(GateRef gate) const
 {
     ASSERT(GetOpCode(gate) == OpCode::STRING_ADD);
@@ -244,6 +263,7 @@ ArrayMetaDataAccessor GateAccessor::GetArrayMetaDataAccessor(GateRef gate) const
 {
     ASSERT(GetOpCode(gate) == OpCode::STABLE_ARRAY_CHECK ||
            GetOpCode(gate) == OpCode::HCLASS_STABLE_ARRAY_CHECK ||
+           GetOpCode(gate) == OpCode::ELEMENTSKIND_CHECK ||
            GetOpCode(gate) == OpCode::CREATE_ARRAY ||
            GetOpCode(gate) == OpCode::CREATE_ARRAY_WITH_BUFFER);
     Gate *gatePtr = circuit_->LoadGatePtr(gate);
@@ -686,6 +706,7 @@ ElementsKind GateAccessor::TryGetElementsKind(GateRef gate) const
     return ElementsKind::GENERIC;
 }
 
+// Default is getting elementsKind before possible transition
 ElementsKind GateAccessor::TryGetArrayElementsKind(GateRef gate) const
 {
     Gate *gatePtr = circuit_->LoadGatePtr(gate);
@@ -704,12 +725,39 @@ ElementsKind GateAccessor::TryGetArrayElementsKind(GateRef gate) const
     return ElementsKind::GENERIC;
 }
 
+ElementsKind GateAccessor::TryGetArrayElementsKindAfterTransition(GateRef gate) const
+{
+    Gate *gatePtr = circuit_->LoadGatePtr(gate);
+    OpCode op = GetOpCode(gate);
+    if (op == OpCode::JS_BYTECODE) {
+        ElementsKind kind = gatePtr->GetJSBytecodeMetaData()->GetTransitionElementsKind();
+        if (Elements::IsGeneric(kind)) {
+            return kind;
+        }
+        std::vector<ElementsKind> kinds = gatePtr->GetJSBytecodeMetaData()->GetTransitionElementsKinds();
+        for (auto &x : kinds) {
+            kind = Elements::MergeElementsKind(kind, x);
+        }
+        return kind;
+    }
+    return ElementsKind::GENERIC;
+}
+
 void GateAccessor::TrySetElementsKind(GateRef gate, ElementsKind kind)
 {
     Gate *gatePtr = circuit_->LoadGatePtr(gate);
     OpCode op = GetOpCode(gate);
     if (op == OpCode::JS_BYTECODE) {
         const_cast<JSBytecodeMetaData *>(gatePtr->GetJSBytecodeMetaData())->SetElementsKind(kind);
+    }
+}
+
+void GateAccessor::TrySetTransitionElementsKind(GateRef gate, ElementsKind kind)
+{
+    Gate *gatePtr = circuit_->LoadGatePtr(gate);
+    OpCode op = GetOpCode(gate);
+    if (op == OpCode::JS_BYTECODE) {
+        const_cast<JSBytecodeMetaData *>(gatePtr->GetJSBytecodeMetaData())->SetTransitionElementsKind(kind);
     }
 }
 

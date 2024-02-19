@@ -91,8 +91,12 @@ protected:
         auto vm = thread_->GetEcmaVM();
         factory_ = vm->GetFactory();
         env_ = *vm->GetGlobalEnv();
-        JSHandle<JSFunction> arrayFunc(env_->GetArrayFunction());
-        initialJSArrayClass_ = JSHandle<JSHClass>(thread_, JSFunction::GetOrCreateInitialJSHClass(thread_, arrayFunc));
+
+        // For Json, we do not support ElementsKind
+        auto index = static_cast<size_t>(ConstantIndex::ELEMENT_HOLE_TAGGED_HCLASS_INDEX);
+        auto globalConstant = const_cast<GlobalEnvConstants *>(thread_->GlobalConstants());
+        auto hclassVal = globalConstant->GetGlobalConstantObject(index);
+        initialJSArrayClass_ = JSHandle<JSHClass>(thread_, hclassVal);
         JSHandle<JSFunction> objectFunc(env_->GetObjectFunction());
         initialJSObjectClass_ =
             JSHandle<JSHClass>(thread_, JSFunction::GetOrCreateInitialJSHClass(thread_, objectFunc));
