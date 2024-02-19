@@ -38,9 +38,7 @@ LiteCG::LiteCG(Module &mirModule) : module(mirModule)
     cgOptions->EnableLiteCG();
     cgOptions->SetEmitFileType("obj");
     cgOptions->SetQuiet(true);
-#if TARGAARCH64
-    Triple::GetTriple().Init();
-#endif
+    Triple::GetTriple().Init(module.IsAArch64());
     // module information prepare
     std::string moduleName = module.GetFileName();
     GStrIdx fileNameStrIdx = GlobalTables::GetStrTable().GetOrCreateStrIdxFromName(moduleName);

@@ -429,6 +429,7 @@ bool JsonStringifier::SerializeJSONObject(const JSHandle<JSTaggedValue> &value, 
             JSTaggedValue tagVal =
                 ObjectFastOperator::FastGetPropertyByValue(thread_, obj.GetTaggedValue(),
                                                            propList_[i].GetTaggedValue());
+            RETURN_VALUE_IF_ABRUPT_COMPLETION(thread_, false);
             handleValue_.Update(tagVal);
             JSTaggedValue serializeValue = GetSerializeValue(value, propList_[i], handleValue_, replacer);
             RETURN_VALUE_IF_ABRUPT_COMPLETION(thread_, false);
@@ -531,6 +532,7 @@ bool JsonStringifier::SerializeJSArray(const JSHandle<JSTaggedValue> &value, con
             RETURN_VALUE_IF_ABRUPT_COMPLETION(thread_, false);
             if (UNLIKELY(tagVal.IsAccessor())) {
                 tagVal = JSObject::CallGetter(thread_, AccessorData::Cast(tagVal.GetTaggedObject()), value);
+                RETURN_VALUE_IF_ABRUPT_COMPLETION(thread_, false);
             }
             handleKey_.Update(JSTaggedValue(i));
             handleValue_.Update(tagVal);
@@ -625,6 +627,7 @@ bool JsonStringifier::SerializeElements(const JSHandle<JSObject> &obj, const JSH
             if (UNLIKELY(value.IsAccessor())) {
                 value = JSObject::CallGetter(thread_, AccessorData::Cast(value.GetTaggedObject()),
                                              JSHandle<JSTaggedValue>(obj));
+                RETURN_VALUE_IF_ABRUPT_COMPLETION(thread_, false);
             }
             handleValue_.Update(value);
             hasContent = JsonStringifier::AppendJsonString(obj, replacer, hasContent);
@@ -637,11 +640,51 @@ bool JsonStringifier::SerializeElements(const JSHandle<JSObject> &obj, const JSH
 bool JsonStringifier::SerializeKeys(const JSHandle<JSObject> &obj, const JSHandle<JSTaggedValue> &replacer,
                                     bool hasContent)
 {
+    enum ServType : uint8_t {
+        Num_Zero,
+        Num_one,
+        Num_two,
+        Num_Three,
+        Num_Four,
+        Num_Five,
+        Num_Six,
+        Num_Seven,
+        Num_Eight,
+        Num_Nine,
+        Num_Ten
+    };
     JSHandle<TaggedArray> propertiesArr(thread_, obj->GetProperties());
     if (!propertiesArr->IsDictionaryMode()) {
         bool hasChangedToDictionaryMode = false;
         JSHandle<JSHClass> jsHclass(thread_, obj->GetJSHClass());
         JSTaggedValue enumCache = jsHclass->GetEnumCache();
+        if (enumCache.GetRawData() > 0x1000000000000000) {
+            LOG_DEBUGGER(FATAL) << "[wxj]JsonStringifier::SerializeKeys, jsHclass addr = " << *jsHclass
+            << ", [wxj] obj addr:" << *obj
+            << ", [wxj] Type = " << JSHClass::DumpJSType(jsHclass->GetObjectType())
+            << ", [wxj] enumCache = " << std::hex << enumCache.GetRawData()
+            << ", [wxj] before1:" <<  *(reinterpret_cast<void **>(*jsHclass) - ServType::Num_one)
+            << ", [wxj] before2:" <<  *(reinterpret_cast<void **>(*jsHclass) - ServType::Num_two)
+            << ", [wxj] before3:" <<  *(reinterpret_cast<void **>(*jsHclass) - ServType::Num_Three)
+            << ", [wxj] before4:" <<  *(reinterpret_cast<void **>(*jsHclass) - ServType::Num_Four)
+            << ", [wxj] before5:" <<  *(reinterpret_cast<void **>(*jsHclass) - ServType::Num_Five)
+            << ", [wxj] before6:" <<  *(reinterpret_cast<void **>(*jsHclass) - ServType::Num_Six)
+            << ", [wxj] before7:" <<  *(reinterpret_cast<void **>(*jsHclass) - ServType::Num_Seven)
+            << ", [wxj] before8:" <<  *(reinterpret_cast<void **>(*jsHclass) - ServType::Num_Eight)
+            << ", [wxj] before9:" <<  *(reinterpret_cast<void **>(*jsHclass) - ServType::Num_Nine)
+            << ", [wxj] before10:" <<  *(reinterpret_cast<void **>(*jsHclass) - ServType::Num_Ten)
+            << ", [wxj] after0:" <<  *(reinterpret_cast<void **>(*jsHclass) + ServType::Num_Zero)
+            << ", [wxj] after1:" <<  *(reinterpret_cast<void **>(*jsHclass) + ServType::Num_one)
+            << ", [wxj] after2:" <<  *(reinterpret_cast<void **>(*jsHclass) + ServType::Num_two)
+            << ", [wxj] after3:" <<  *(reinterpret_cast<void **>(*jsHclass) + ServType::Num_Three)
+            << ", [wxj] after4:" <<  *(reinterpret_cast<void **>(*jsHclass) + ServType::Num_Four)
+            << ", [wxj] after5:" <<  *(reinterpret_cast<void **>(*jsHclass) + ServType::Num_Five)
+            << ", [wxj] after6:" <<  *(reinterpret_cast<void **>(*jsHclass) + ServType::Num_Six)
+            << ", [wxj] after7:" <<  *(reinterpret_cast<void **>(*jsHclass) + ServType::Num_Seven)
+            << ", [wxj] after8:" <<  *(reinterpret_cast<void **>(*jsHclass) + ServType::Num_Eight)
+            << ", [wxj] after9:" <<  *(reinterpret_cast<void **>(*jsHclass) + ServType::Num_Nine)
+            << ", [wxj] after10:" <<  *(reinterpret_cast<void **>(*jsHclass) + ServType::Num_Ten);
+        }
         if (JSObject::GetEnumCacheKind(thread_, enumCache) == EnumCacheKind::ONLY_OWN_KEYS) {
             JSHandle<TaggedArray> cache(thread_, enumCache);
             uint32_t length = cache->GetLength();
@@ -665,6 +708,7 @@ bool JsonStringifier::SerializeKeys(const JSHandle<JSObject> &obj, const JSHandl
                 if (UNLIKELY(value.IsAccessor())) {
                     value = JSObject::CallGetter(thread_, AccessorData::Cast(value.GetTaggedObject()),
                                                  JSHandle<JSTaggedValue>(obj));
+                    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread_, false);
                 }
                 handleValue_.Update(value);
                 hasContent = JsonStringifier::AppendJsonString(obj, replacer, hasContent);
@@ -695,6 +739,7 @@ bool JsonStringifier::SerializeKeys(const JSHandle<JSObject> &obj, const JSHandl
                     if (UNLIKELY(value.IsAccessor())) {
                         value = JSObject::CallGetter(thread_, AccessorData::Cast(value.GetTaggedObject()),
                             JSHandle<JSTaggedValue>(obj));
+                        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread_, false);
                     }
                     handleValue_.Update(value);
                     hasContent = JsonStringifier::AppendJsonString(obj, replacer, hasContent);
@@ -720,6 +765,7 @@ bool JsonStringifier::SerializeKeys(const JSHandle<JSObject> &obj, const JSHandl
                     if (UNLIKELY(value.IsAccessor())) {
                         value = JSObject::CallGetter(thread_, AccessorData::Cast(value.GetTaggedObject()),
                             JSHandle<JSTaggedValue>(obj));
+                        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread_, false);
                         jsHclass = JSHandle<JSHClass>(thread_, obj->GetJSHClass());
                     }
                     handleValue_.Update(value);
@@ -757,6 +803,7 @@ bool JsonStringifier::SerializeKeys(const JSHandle<JSObject> &obj, const JSHandl
             if (UNLIKELY(value.IsAccessor())) {
                 value = JSObject::CallGetter(thread_, AccessorData::Cast(value.GetTaggedObject()),
                                              JSHandle<JSTaggedValue>(obj));
+                RETURN_VALUE_IF_ABRUPT_COMPLETION(thread_, false);
             }
             handleValue_.Update(value);
             hasContent = JsonStringifier::AppendJsonString(obj, replacer, hasContent);
@@ -791,6 +838,7 @@ bool JsonStringifier::SerializeKeys(const JSHandle<JSObject> &obj, const JSHandl
         if (UNLIKELY(value.IsAccessor())) {
             value = JSObject::CallGetter(thread_, AccessorData::Cast(value.GetTaggedObject()),
                                          JSHandle<JSTaggedValue>(obj));
+            RETURN_VALUE_IF_ABRUPT_COMPLETION(thread_, false);
         }
         handleValue_.Update(value);
         hasContent = JsonStringifier::AppendJsonString(obj, replacer, hasContent);

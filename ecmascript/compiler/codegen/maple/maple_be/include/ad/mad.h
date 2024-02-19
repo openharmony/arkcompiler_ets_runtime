@@ -16,11 +16,13 @@
 #ifndef MAPLEBE_INCLUDE_AD_MAD_H
 #define MAPLEBE_INCLUDE_AD_MAD_H
 #include <vector>
+#include <bitset>
 #include "types_def.h"
 #include "mpl_logging.h"
 #include "insn.h"
 
 namespace maplebe {
+constexpr int kOccupyWidth = 32;
 enum UnitId : maple::uint32 {
 #include "mplad_unit_id.def"
     kUnitIdLast
@@ -68,16 +70,16 @@ public:
     const std::vector<Unit *> &GetCompositeUnits() const;
 
     std::string GetName() const;
-    bool IsFree(maple::uint32 cycle) const;
-    void Occupy(const Insn &insn, maple::uint32 cycle);
+    bool IsIdle(uint32 cycle) const;
+    void Occupy(uint32 cycle);
     void Release();
-    void AdvanceCycle();
+    void AdvanceOneCycle();
     void Dump(int indent = 0) const;
-    maple::uint32 GetOccupancyTable() const;
+    std::bitset<kOccupyWidth> GetOccupancyTable() const;
 
-    void SetOccupancyTable(maple::uint32 table)
+    void SetOccupancyTable(const std::bitset<kOccupyWidth> value)
     {
-        occupancyTable = table;
+        occupancyTable = value;
     }
 
 private:
@@ -85,7 +87,8 @@ private:
 
     enum UnitId unitId;
     enum UnitType unitType;
-    maple::uint32 occupancyTable;
+    // using 32-bit vector simulating resource occupation, the LSB always indicates the current cycle by AdvanceOneCycle
+    std::bitset<kOccupyWidth> occupancyTable;
     std::vector<Unit *> compositeUnits;
 };
 
@@ -178,15 +181,14 @@ public:
     void InitParallelism() const;
     void InitReservation() const;
     void InitBypass() const;
-    bool IsSlot0Free() const;
     bool IsFullIssued() const;
     int GetLatency(const Insn &def, const Insn &use) const;
     int DefaultLatency(const Insn &insn) const;
     Reservation *FindReservation(const Insn &insn) const;
-    void AdvanceCycle() const;
+    void AdvanceOneCycleForAll() const;
     void ReleaseAllUnits() const;
-    void SaveStates(std::vector<maple::uint32> &occupyTable, int size) const;
-    void RestoreStates(std::vector<maple::uint32> &occupyTable, int size) const;
+    void SaveStates(std::vector<std::bitset<kOccupyWidth>> &occupyTable, int size) const;
+    void RestoreStates(std::vector<std::bitset<kOccupyWidth>> &occupyTable, int size) const;
 
     int GetMaxParallelism() const
     {
@@ -252,10 +254,10 @@ public:
     bool CanBypass(const Insn &defInsn, const Insn &useInsn) const override;
 };
 
-class StoreBypass : public Bypass {
+class StoreAddrBypass : public Bypass {
 public:
-    StoreBypass(LatencyType d, LatencyType u, int l) : Bypass(d, u, l) {}
-    ~StoreBypass() override = default;
+    StoreAddrBypass(LatencyType d, LatencyType u, int l) : Bypass(d, u, l) {}
+    ~StoreAddrBypass() override = default;
 
     bool CanBypass(const Insn &defInsn, const Insn &useInsn) const override;
 };

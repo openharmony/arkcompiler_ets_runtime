@@ -37,31 +37,21 @@ WorkManagerBase::WorkManagerBase(NativeAreaAllocator *allocator)
 
 WorkNode *WorkManagerBase::AllocateWorkNode()
 {
-    size_t totalSize = sizeof(WorkNode) + sizeof(Stack) + STACK_AREA_SIZE;
-    ASSERT(totalSize < WORKNODE_SPACE_SIZE);
+    LockHolder lock(mtx_);
+    size_t allocatedSize = sizeof(WorkNode) + sizeof(Stack) + STACK_AREA_SIZE;
+    ASSERT(allocatedSize < WORKNODE_SPACE_SIZE);
 
-    // CAS
-    volatile auto atomicField = reinterpret_cast<volatile std::atomic<uintptr_t> *>(&spaceStart_);
-    bool result = false;
-    uintptr_t begin = 0;
-    do {
-        begin = atomicField->load(std::memory_order_acquire);
-        if (begin + totalSize >= spaceEnd_) {
-            LockHolder lock(mtx_);
-            begin = atomicField->load(std::memory_order_acquire);
-            if (begin + totalSize >= spaceEnd_) {
-                agedSpaces_.emplace_back(workSpace_);
-                workSpace_ = ToUintPtr(GetSpaceChunk()->Allocate(WORKNODE_SPACE_SIZE));
-                spaceStart_ = workSpace_;
-                spaceEnd_ = workSpace_ + WORKNODE_SPACE_SIZE;
-                begin = spaceStart_;
-            }
-        }
-        result = std::atomic_compare_exchange_strong_explicit(atomicField, &begin, begin + totalSize,
-                                                              std::memory_order_release, std::memory_order_relaxed);
-    } while (!result);
+    uintptr_t begin = spaceStart_;
+    if (begin + allocatedSize >= spaceEnd_) {
+        agedSpaces_.emplace_back(workSpace_);
+        workSpace_ = ToUintPtr(GetSpaceChunk()->Allocate(WORKNODE_SPACE_SIZE));
+        spaceStart_ = workSpace_;
+        spaceEnd_ = workSpace_ + WORKNODE_SPACE_SIZE;
+        begin = spaceStart_;
+    }
+    spaceStart_ = begin + allocatedSize;
     Stack *stack = reinterpret_cast<Stack *>(begin + sizeof(WorkNode));
-    stack->ResetBegin(begin + sizeof(WorkNode) + sizeof(Stack), begin + totalSize);
+    stack->ResetBegin(begin + sizeof(WorkNode) + sizeof(Stack), begin + allocatedSize);
     WorkNode *work = reinterpret_cast<WorkNode *>(begin);
     return new (work) WorkNode(stack);
 }

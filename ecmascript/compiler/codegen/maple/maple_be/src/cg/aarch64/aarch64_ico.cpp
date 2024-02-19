@@ -310,7 +310,8 @@ bool AArch64ICOIfThenElsePattern::BuildCondMovInsn(BB &cmpBB, const BB &bb,
                                                    bool elseBBIsProcessed, std::vector<Insn *> &generateInsn)
 {
     Insn *branchInsn = cgFunc->GetTheCFG()->FindLastCondBrInsn(cmpBB);
-    FOR_BB_INSNS_CONST(insn, (&bb)) {
+    FOR_BB_INSNS_CONST(insn, (&bb))
+    {
         if (!insn->IsMachineInstruction() || insn->IsBranch()) {
             continue;
         }
@@ -468,7 +469,8 @@ bool AArch64ICOIfThenElsePattern::CheckCondMoveBB(BB *bb, std::map<Operand *, st
     if (bb == nullptr) {
         return false;
     }
-    FOR_BB_INSNS(insn, bb) {
+    FOR_BB_INSNS(insn, bb)
+    {
         if (!insn->IsMachineInstruction() || insn->IsBranch()) {
             continue;
         }
@@ -649,7 +651,7 @@ bool AArch64ICOIfThenElsePattern::DoOpt(BB &cmpBB, BB *ifBB, BB *elseBB, BB &joi
     }
 
     if (cmpBB.GetKind() != BB::kBBIf && cmpBB.GetNext() == &joinBB &&
-        !maplebe::CGCFG::InLSDA(joinBB.GetLabIdx(), *cgFunc->GetEHFunc()) &&
+        !maplebe::CGCFG::InLSDA(joinBB.GetLabIdx(), cgFunc->GetEHFunc()) &&
         cgFunc->GetTheCFG()->CanMerge(cmpBB, joinBB)) {
         maplebe::CGCFG::MergeBB(cmpBB, joinBB, *cgFunc);
         keepPosition = true;
@@ -690,13 +692,12 @@ bool AArch64ICOIfThenElsePattern::Optimize(BB &curBB)
         return false;
     }
     DEBUG_ASSERT(elseBB != nullptr, "elseBB should not be nullptr");
-    if (CGCFG::InLSDA(elseBB->GetLabIdx(), *cgFunc->GetEHFunc()) ||
-        CGCFG::InSwitchTable(elseBB->GetLabIdx(), *cgFunc)) {
+    if (CGCFG::InLSDA(elseBB->GetLabIdx(), cgFunc->GetEHFunc()) || CGCFG::InSwitchTable(elseBB->GetLabIdx(), *cgFunc)) {
         return false;
     }
 
     if (ifBB != nullptr &&
-        (CGCFG::InLSDA(ifBB->GetLabIdx(), *cgFunc->GetEHFunc()) || CGCFG::InSwitchTable(ifBB->GetLabIdx(), *cgFunc))) {
+        (CGCFG::InLSDA(ifBB->GetLabIdx(), cgFunc->GetEHFunc()) || CGCFG::InSwitchTable(ifBB->GetLabIdx(), *cgFunc))) {
         return false;
     }
     return DoOpt(curBB, ifBB, elseBB, *joinBB);
@@ -776,7 +777,8 @@ bool AArch64ICOSameCondPattern::DoOpt(BB *firstIfBB, BB &secondIfBB)
     }
 
     /* secondifBB only has branchInsn and cmpInsn */
-    FOR_BB_INSNS_REV(insn, &secondIfBB) {
+    FOR_BB_INSNS_REV(insn, &secondIfBB)
+    {
         if (!insn->IsMachineInstruction()) {
             continue;
         }
@@ -847,7 +849,8 @@ bool AArch64ICOMorePredsPattern::Optimize(BB &curBB)
 /* this BBGoto only has mov Insn and Branch */
 bool AArch64ICOMorePredsPattern::CheckGotoBB(BB &gotoBB, std::vector<Insn *> &movInsn) const
 {
-    FOR_BB_INSNS(insn, &gotoBB) {
+    FOR_BB_INSNS(insn, &gotoBB)
+    {
         if (!insn->IsMachineInstruction()) {
             continue;
         }

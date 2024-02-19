@@ -170,25 +170,24 @@ inline JSHandle<TaggedArray> TaggedArray::SetCapacityInOldSpace(const JSThread *
 }
 
 void TaggedArray::RemoveElementByIndex(const JSThread *thread, JSHandle<TaggedArray> &srcArray,
-                                       uint32_t index, uint32_t effectiveLength)
+                                       uint32_t index, uint32_t effectiveLength, bool noNeedBarrier)
 {
     ASSERT(0 <= index || index < effectiveLength);
-    // Region *region = Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(*srcArray));
-    // if (region->InYoungSpace() && !thread->IsConcurrentMarkingOrFinished()) {
-    //     size_t taggedTypeSize = JSTaggedValue::TaggedTypeSize();
-    //     size_t offset = taggedTypeSize * index;
-    //     auto *addr = reinterpret_cast<JSTaggedType *>(ToUintPtr(srcArray->GetData()) + offset);
-    //     while (index < effectiveLength - 1) {
-    //         *addr = *(addr + 1);
-    //         addr++;
-    //         index++;
-    //     }
-    // } else {
+    if (noNeedBarrier) {
+        size_t taggedTypeSize = JSTaggedValue::TaggedTypeSize();
+        size_t offset = taggedTypeSize * index;
+        auto *addr = reinterpret_cast<JSTaggedType *>(ToUintPtr(srcArray->GetData()) + offset);
+        while (index < effectiveLength - 1) {
+            *addr = *(addr + 1);
+            addr++;
+            index++;
+        }
+    } else {
         while (index < effectiveLength - 1) {
             srcArray->Set(thread, index, srcArray->Get(index + 1));
             index++;
         }
-    // }
+    }
     srcArray->Set(thread, effectiveLength - 1, JSTaggedValue::Hole());
 }
 
@@ -197,23 +196,11 @@ void TaggedArray::InsertElementByIndex(const JSThread *thread, JSHandle<TaggedAr
 {
     ASSERT(0 <= index || index <= effectiveLength);
     ASSERT(effectiveLength < srcArray->GetLength());
-    // Region *region = Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(*srcArray));
-    // if (region->InYoungSpace() && !thread->IsConcurrentMarkingOrFinished()) {
-    //     size_t taggedTypeSize = JSTaggedValue::TaggedTypeSize();
-    //     size_t offset = taggedTypeSize * effectiveLength;
-    //     auto *addr = reinterpret_cast<JSTaggedType *>(ToUintPtr(srcArray->GetData()) + offset);
-    //     while (effectiveLength != index && effectiveLength > 0) {
-    //         *addr = *(addr - 1);
-    //         addr--;
-    //         effectiveLength--;
-    //     }
-    // } else {
-        while (effectiveLength != index && effectiveLength > 0) {
-            JSTaggedValue oldValue = srcArray->Get(effectiveLength - 1);
-            srcArray->Set(thread, effectiveLength, oldValue);
-            effectiveLength--;
-        }
-    // }
+    while (effectiveLength != index && effectiveLength > 0) {
+        JSTaggedValue oldValue = srcArray->Get(effectiveLength - 1);
+        srcArray->Set(thread, effectiveLength, oldValue);
+        effectiveLength--;
+    }
     srcArray->Set(thread, index, value.GetTaggedValue());
 }
 
@@ -230,6 +217,12 @@ void TaggedArray::CopyTaggedArrayElement(const JSThread *thread, JSHandle<Tagged
 inline bool TaggedArray::IsDictionaryMode() const
 {
     return GetClass()->IsDictionary();
+}
+
+inline bool TaggedArray::IsYoungAndNotMarking(const JSThread *thread)
+{
+    Region *region = Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(this));
+    return region->InYoungSpace() && !thread->IsConcurrentMarkingOrFinished();
 }
 
 void TaggedArray::Trim(const JSThread *thread, uint32_t newLength)

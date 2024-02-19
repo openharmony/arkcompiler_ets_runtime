@@ -30,6 +30,7 @@
 #include "ecmascript/js_function.h"
 #include "ecmascript/js_proxy.h"
 #include "ecmascript/js_handle.h"
+#include "ecmascript/js_tagged_value.h"
 #include "ecmascript/object_factory-inl.h"
 #include "ecmascript/runtime_call_id.h"
 
@@ -220,9 +221,20 @@ ARK_INLINE JSTaggedValue ICRuntimeStub::StoreICWithHandler(JSThread *thread, JST
     INTERPRETER_TRACE(thread, StoreICWithHandler);
     if (handler.IsInt()) {
         auto handlerInfo = static_cast<uint32_t>(handler.GetInt());
-        if (HandlerBase::IsField(handlerInfo)) {
+        if (HandlerBase::IsNonSharedStoreField(handlerInfo)) {
             StoreField(thread, JSObject::Cast(receiver.GetTaggedObject()), value, handlerInfo);
             return JSTaggedValue::Undefined();
+        }
+        bool isShared = HandlerBase::IsStoreShared(handlerInfo);
+        if (isShared) {
+            TrackType trackType { HandlerBase::GetTrackType(handlerInfo) };
+            if (!ClassHelper::MatchTrackType(trackType, value)) {
+                THROW_TYPE_ERROR_AND_RETURN((thread), GET_MESSAGE_STRING(SetTypeMismatchedSharedProperty),
+                                            JSTaggedValue::Exception());
+            }
+            HandlerBase::ClearSharedStoreKind(handlerInfo);
+            return StoreICWithHandler(thread, receiver, holder, value,
+                                      JSTaggedValue(static_cast<int32_t>(handlerInfo)));
         }
         ASSERT(HandlerBase::IsAccessor(handlerInfo) || HandlerBase::IsInternalAccessor(handlerInfo));
         auto accessor = LoadFromField(JSObject::Cast(holder.GetTaggedObject()), handlerInfo);

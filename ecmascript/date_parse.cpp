@@ -428,9 +428,9 @@ bool DateParse::DayValue::SetDayValue(int *time)
     }
     if (!IsIso()) {
         if (IsBetween(year, 1, 49)) { // if year is between 1-49
-            year += 2000; // it means 2001-2049
+            year += 2000; // 2000 : it means 2001-2049
         } else if (IsBetween(year, 50, 99)) { // if year is between 50-99
-            year += 1900; // it may means 1950-1999
+            year += 1900; // 1900 : it may means 1950-1999
         }
     }
     if (!MonthIsValid(mon) || !DayIsValid(day)) {

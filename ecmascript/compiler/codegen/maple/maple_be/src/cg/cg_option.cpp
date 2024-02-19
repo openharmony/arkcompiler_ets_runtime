@@ -62,6 +62,7 @@ uint32 CGOptions::alignMaxBBSize = 96;
 uint32 CGOptions::loopAlignPow = 4;
 uint32 CGOptions::jumpAlignPow = 5;
 uint32 CGOptions::funcAlignPow = 5;
+bool CGOptions::doOptimizedFrameLayout = true;
 #if TARGAARCH64 || TARGRISCV64
 bool CGOptions::useBarriersForVolatile = false;
 #else
@@ -121,6 +122,7 @@ bool CGOptions::doCondBrAlign = false;
 bool CGOptions::cgBigEndian = false;
 bool CGOptions::arm64ilp32 = false;
 bool CGOptions::noCommon = false;
+bool CGOptions::doCgirVerify = false;
 
 CGOptions &CGOptions::GetInstance()
 {
@@ -611,6 +613,10 @@ bool CGOptions::SolveOptions(bool isDebug)
         SetFuncAlignPow(opts::cg::funcAlignPow);
     }
 
+    if (opts::cg::optimizedFrameLayout.IsEnabledByUser()) {
+        opts::cg::optimizedFrameLayout ? EnableOptimizedFrameLayout() : DisableOptimizedFrameLayout();
+    }
+
     /* override some options when loc, dwarf is generated */
     if (WithLoc()) {
         DisableSchedule();
@@ -796,16 +802,20 @@ void CGOptions::EnableLiteCG()
     ClearOption(kConstFold);
     ClearOption(kProEpilogueOpt);
     ClearOption(kTailCallOpt);
+    ClearOption(kDoColorRegAlloc);
+    SetOption(kDoLinearScanRegAlloc);
 }
 
 void CGOptions::SetTargetMachine(const std::string &str)
 {
-    if (str == "aarch64") {
+    // this is a temporary plan, all ilp32 logic follow the same path with aarch64
+    if (str == "aarch64" || str == "aarch64_be-linux-gnu_ilp32" || str == "aarch64_be-linux-gnu") {
         targetArch = "aarch64";
     } else if (str == "x86_64") {
         targetArch = "x86_64";
+    } else {
+        CHECK_FATAL_FALSE("unsupported target!!");
     }
-    CHECK_FATAL(false, "unknown target. not implement yet");
 }
 
 void CGOptions::SplitPhases(const std::string &str, std::unordered_set<std::string> &set)

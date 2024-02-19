@@ -2131,6 +2131,9 @@ GateRef StubBuilder::StoreICWithHandler(GateRef glue, GateRef receiver, GateRef 
     Label handlerNotInt(env);
     Label handlerInfoIsField(env);
     Label handlerInfoNotField(env);
+    Label isShared(env);
+    Label notShared(env);
+    Label prepareIntHandlerLoop(env);
     Label handlerIsTransitionHandler(env);
     Label handlerNotTransitionHandler(env);
     Label handlerIsTransWithProtoHandler(env);
@@ -2148,6 +2151,7 @@ GateRef StubBuilder::StoreICWithHandler(GateRef glue, GateRef receiver, GateRef 
     Label aotCellNotChanged(env);
     Label loopHead(env);
     Label loopEnd(env);
+    Label JumpLoopHead(env);
     Label cellNotNull(env);
     DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
     DEFVARIABLE(holder, VariableType::JS_ANY(), argHolder);
@@ -2159,7 +2163,7 @@ GateRef StubBuilder::StoreICWithHandler(GateRef glue, GateRef receiver, GateRef 
         Bind(&handlerIsInt);
         {
             GateRef handlerInfo = GetInt32OfTInt(*handler);
-            Branch(IsField(handlerInfo), &handlerInfoIsField, &handlerInfoNotField);
+            Branch(IsNonSharedStoreField(handlerInfo), &handlerInfoIsField, &handlerInfoNotField);
             Bind(&handlerInfoIsField);
             {
                 result = StoreField(glue, receiver, value, handlerInfo, callback);
@@ -2167,6 +2171,18 @@ GateRef StubBuilder::StoreICWithHandler(GateRef glue, GateRef receiver, GateRef 
             }
             Bind(&handlerInfoNotField);
             {
+                Branch(IsStoreShared(handlerInfo), &isShared, &notShared);
+                Bind(&isShared);
+                {
+                    GateRef trackType = GetTrackTypeFromHandler(handlerInfo);
+                    MatchTrackType(&result, glue, trackType, value, &prepareIntHandlerLoop, &exit);
+                    Bind(&prepareIntHandlerLoop);
+                    {
+                        handler = IntToTaggedPtr(ClearSharedStoreKind(handlerInfo));
+                        Jump(&JumpLoopHead);
+                    }
+                }
+                Bind(&notShared);
                 GateRef accessor = LoadFromField(*holder, handlerInfo);
                 result = CallSetterHelper(glue, receiver, accessor, value, callback);
                 Jump(&exit);
@@ -2219,7 +2235,7 @@ GateRef StubBuilder::StoreICWithHandler(GateRef glue, GateRef receiver, GateRef 
             {
                 holder = GetPrototypeHandlerHolder(*handler);
                 handler = GetPrototypeHandlerHandlerInfo(*handler);
-                LoopEnd(&loopHead);
+                Jump(&JumpLoopHead);
             }
         }
         Bind(&handlerNotPropertyBox);
@@ -2255,6 +2271,10 @@ GateRef StubBuilder::StoreICWithHandler(GateRef glue, GateRef receiver, GateRef 
         {
             result = Hole();
             Jump(&exit);
+        }
+        Bind(&JumpLoopHead);
+        {
+            LoopEnd(&loopHead);
         }
     }
     Bind(&exit);
@@ -3709,7 +3729,7 @@ GateRef StubBuilder::SetPropertyByName(GateRef glue, GateRef receiver, GateRef k
                             Bind(&executeSetProp);
                             JSObjectSetProperty(glue, *holder, hclass, attr, key, value);
                             ProfilerStubBuilder(env).UpdatePropAttrWithValue(
-                                glue, layOutInfo, attr, entry, value, callback);
+                                glue, jsType, layOutInfo, attr, entry, value, callback);
                             result = Undefined();
                             Jump(&exit);
                         }
@@ -3810,7 +3830,7 @@ GateRef StubBuilder::SetPropertyByName(GateRef glue, GateRef receiver, GateRef k
         GateRef holeAttr = GetInt32OfTInt(holePropAttr);
         JSObjectSetProperty(glue, receiver, receiverHClass, holeAttr, key, value);
         ProfilerStubBuilder(env).UpdatePropAttrWithValue(
-            glue, receiverLayoutInfo, holeAttr, *receiverHoleEntry, value, callback);
+            glue, jsType, receiverLayoutInfo, holeAttr, *receiverHoleEntry, value, callback);
         result = Undefined();
         Jump(&exit);
     }
@@ -4147,6 +4167,8 @@ GateRef StubBuilder::InstanceOf(
     Bind(&targetNotEcmaObject);
     {
         GateRef taggedId = Int32(GET_MESSAGE_STRING_ID(TargetTypeNotObject));
+        // stability testing log 20240127
+        CallRuntime(glue, RTSTUB_ID(DumpObject), { target, IntToTaggedInt(taggedId) });
         CallRuntime(glue, RTSTUB_ID(ThrowTypeError), { IntToTaggedInt(taggedId) });
         result = Exception();
         Jump(&exit);
@@ -4188,6 +4210,8 @@ GateRef StubBuilder::InstanceOf(
             Bind(&targetNotCallable);
             {
                 GateRef taggedId = Int32(GET_MESSAGE_STRING_ID(InstanceOfErrorTargetNotCallable));
+                // stability testing log 20240127
+                CallRuntime(glue, RTSTUB_ID(DumpObject), { target, IntToTaggedInt(taggedId) });
                 CallRuntime(glue, RTSTUB_ID(ThrowTypeError), { IntToTaggedInt(taggedId) });
                 result = Exception();
                 Jump(&exit);

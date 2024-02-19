@@ -25,6 +25,7 @@
 #include "ecmascript/mem/tagged_object-inl.h"
 #include "ecmascript/napi/include/dfx_jsnapi.h"
 #include "ecmascript/mem/clock_scope.h"
+#include "ecmascript/module/js_module_source_text.h"
 #include "ecmascript/property_detector-inl.h"
 #include "ecmascript/js_arraybuffer.h"
 #include "ecmascript/interpreter/fast_runtime_stub-inl.h"
@@ -226,6 +227,25 @@ JSTaggedValue BuiltinsArkTools::RemoveAOTFlag(EcmaRuntimeCallInfo *info)
         method->SetAotCodeBit(false);
     }
 
+    return JSTaggedValue::Undefined();
+}
+
+JSTaggedValue BuiltinsArkTools::CheckCircularImport(EcmaRuntimeCallInfo *info)
+{
+    ASSERT(info);
+    JSThread *thread = info->GetThread();
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+    JSHandle<EcmaString> str = JSTaggedValue::ToString(thread, GetCallArg(info, 0));
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    bool printOtherCircular = false;
+    if (info->GetArgsNumber() == 2) { // 2: input number
+        printOtherCircular = GetCallArg(info, 1).GetTaggedValue().ToBoolean();
+    }
+    CList<CString> referenceList;
+    // str: bundleName/moduleName/xxx/xxx
+    CString string = ConvertToString(str.GetTaggedValue());
+    LOG_ECMA(INFO) << "checkCircularImport begin with: "<< string;
+    SourceTextModule::CheckCircularImportTool(thread, string, referenceList, printOtherCircular);
     return JSTaggedValue::Undefined();
 }
 
@@ -728,6 +748,7 @@ JSTaggedValue BuiltinsArkTools::CreateDataProperty([[maybe_unused]] EcmaRuntimeC
     JSHandle<JSTaggedValue> value = GetCallArg(info, secondArg);
     JSHandle<JSObject> obj = JSHandle<JSObject>::Cast(GetCallArg(info, 0));
     JSObject::CreateDataPropertyOrThrow(thread, obj, key, value);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     return value.GetTaggedValue();
 }
 

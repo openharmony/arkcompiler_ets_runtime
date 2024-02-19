@@ -38,7 +38,7 @@ public:
     static constexpr uint8_t INVALID_IC_SLOT = 0xFFU;
     static constexpr uint16_t MAX_SLOT_SIZE = 0xFFFFU;
 
-    explicit MethodLiteral(EntityId methodId);
+    PUBLIC_API explicit MethodLiteral(EntityId methodId);
     MethodLiteral() = delete;
     ~MethodLiteral() = default;
 
@@ -72,7 +72,7 @@ public:
         callField_ = IsAotCodeBit::Update(callField_, isCompiled);
     }
 
-    void Initialize(const JSPandaFile *jsPandaFile);
+    void PUBLIC_API Initialize(const JSPandaFile *jsPandaFile);
 
     bool HaveThisWithCallField() const
     {
@@ -315,8 +315,8 @@ public:
     static std::string PUBLIC_API ParseFunctionName(const JSPandaFile *jsPandaFile, EntityId methodId);
     static CString PUBLIC_API ParseFunctionNameToCString(const JSPandaFile *jsPandaFile, EntityId methodId);
 
-    static uint32_t GetCodeSize(const JSPandaFile *jsPandaFile, EntityId methodId);
-    static CString GetRecordName(const JSPandaFile *jsPandaFile, EntityId methodId);
+    static uint32_t PUBLIC_API GetCodeSize(const JSPandaFile *jsPandaFile, EntityId methodId);
+    static CString PUBLIC_API GetRecordName(const JSPandaFile *jsPandaFile, EntityId methodId);
     static const char PUBLIC_API *GetRecordNameWithSymbol(const JSPandaFile *jsPandaFile, EntityId methodId);
 
     const uint8_t *GetBytecodeArray() const

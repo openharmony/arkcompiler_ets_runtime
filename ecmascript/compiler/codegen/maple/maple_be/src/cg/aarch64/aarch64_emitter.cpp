@@ -81,13 +81,13 @@ void AArch64AsmEmitter::EmitMethodDesc(FuncEmitInfo &funcEmitInfo, Emitter &emit
     /* local reference area */
     AArch64MemLayout *memLayout = static_cast<AArch64MemLayout *>(cgFunc.GetMemlayout());
     int32 refOffset = memLayout->GetRefLocBaseLoc();
-    uint32 refNum = memLayout->GetSizeOfRefLocals() / kOffsetAlign;
+    uint32 refNum = memLayout->GetSizeOfRefLocals() / kAarch64OffsetAlign;
     /* for ea usage */
     AArch64CGFunc &aarchCGFunc = static_cast<AArch64CGFunc &>(cgFunc);
     IntrinsiccallNode *cleanEANode = aarchCGFunc.GetCleanEANode();
     if (cleanEANode != nullptr) {
         refNum += static_cast<uint32>(cleanEANode->NumOpnds());
-        refOffset -= static_cast<int32>(cleanEANode->NumOpnds() * kIntregBytelen);
+        refOffset -= static_cast<int32>(cleanEANode->NumOpnds() * kAarch64IntregBytelen);
     }
     (void)emitter.Emit("\t.short ").Emit(refOffset).Emit("\n");
     (void)emitter.Emit("\t.short ").Emit(refNum).Emit("\n");
@@ -2074,24 +2074,4 @@ bool AArch64AsmEmitter::CheckInsnRefField(const Insn &insn, size_t opndIndex) co
     }
     return false;
 }
-
-/* new phase manager */
-bool CgEmission::PhaseRun(maplebe::CGFunc &f)
-{
-    Emitter *emitter = f.GetCG()->GetEmitter();
-    CHECK_NULL_FATAL(emitter);
-    if (CGOptions::GetEmitFileType() == CGOptions::kAsm) {
-        AsmFuncEmitInfo funcEmitInfo(f);
-        emitter->EmitLocalVariable(f);
-        static_cast<AArch64AsmEmitter *>(emitter)->Run(funcEmitInfo);
-        emitter->EmitHugeSoRoutines();
-    } else {
-        FuncEmitInfo &funcEmitInfo = static_cast<AArch64ObjEmitter *>(emitter)->CreateFuncEmitInfo(f);
-        static_cast<AArch64ObjEmitter *>(emitter)->Run(funcEmitInfo);
-        f.SetFuncEmitInfo(&funcEmitInfo);
-    }
-
-    return false;
-}
-MAPLE_TRANSFORM_PHASE_REGISTER(CgEmission, cgemit)
 } /* namespace maplebe */

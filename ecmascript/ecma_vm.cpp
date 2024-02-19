@@ -92,7 +92,7 @@
 #include "ecmascript/taskpool/taskpool.h"
 #include "ecmascript/ts_types/ts_manager.h"
 
-#include "ecmascript/ohos/white_list_helper.h"
+#include "ecmascript/ohos/enable_aot_list_helper.h"
 
 namespace panda::ecmascript {
 using RandomGenerator = base::RandomGenerator;
@@ -151,8 +151,10 @@ void EcmaVM::PostFork()
     GetAssociatedJSThread()->PostFork();
     heap_->EnableParallelGC();
     std::string bundleName = PGOProfilerManager::GetInstance()->GetBundleName();
-    if (!WhiteListHelper::GetInstance()->IsEnable(bundleName)) {
+    if (ohos::EnableAotListHelper::GetInstance()->IsDisableBlackList(bundleName)) {
         options_.SetEnablePGOProfiler(false);
+    } else if (ohos::EnableAotListHelper::GetInstance()->IsEnableList(bundleName)) {
+        options_.SetEnablePGOProfiler(true);
     }
     ResetPGOProfiler();
 #ifdef ENABLE_POSTFORK_FORCEEXPAND
@@ -749,7 +751,7 @@ void EcmaVM::ResumeWorkerVm(uint32_t tid)
 }
 
 /*  This moduleName is a readOnly variable for napi, represent which abc is running in current vm.
-*   Get Current recordName: bundleName/ets/xxx/xxx
+*   Get Current recordName: bundleName/moduleName/ets/xxx/xxx
 *                           pkg_modules@xxx/xxx/xxx
 *   Get Current fileName: /data/storage/el1/bundle/moduleName/ets/modules.abc
 *   output: moduleName: moduleName

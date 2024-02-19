@@ -23,6 +23,8 @@
 namespace panda::ecmascript {
 class Region;
 
+enum class WriteBarrierType : size_t { NORMAL, DESERIALIZE };
+
 class Barriers {
 public:
     template<class T>
@@ -34,11 +36,12 @@ public:
     }
 
     template<class T>
-    static inline bool AtomicSetPrimitive(volatile void *obj, size_t offset, T oldValue, T value)
+    static inline T AtomicSetPrimitive(volatile void *obj, size_t offset, T oldValue, T value)
     {
         volatile auto atomicField = reinterpret_cast<volatile std::atomic<T> *>(ToUintPtr(obj) + offset);
-        return std::atomic_compare_exchange_strong_explicit(atomicField, &oldValue, value, std::memory_order_release,
-                                                            std::memory_order_relaxed);
+        std::atomic_compare_exchange_strong_explicit(atomicField, &oldValue, value, std::memory_order_release,
+                                                     std::memory_order_relaxed);
+        return oldValue;
     }
 
     template<bool need_write_barrier = true>
@@ -56,7 +59,10 @@ public:
     }
 
     static void PUBLIC_API Update(const JSThread *thread, uintptr_t slotAddr, Region *objectRegion,
-                                  TaggedObject *value, Region *valueRegion, bool onDeserialize = false);
+                                  TaggedObject *value, Region *valueRegion,
+                                  WriteBarrierType writeType = WriteBarrierType::NORMAL);
+    // For work deserialize, push deserialize result to mark stack if thread IsConcurrentMarkingOrFinished
+    static void MarkAndPushForDeserialize(const JSThread *thread, TaggedObject *object);
 };
 }  // namespace panda::ecmascript
 

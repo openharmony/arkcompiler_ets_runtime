@@ -169,11 +169,20 @@ public:
     BaseNode *LowerCArray(ArrayNode &array);
 
     DassignNode *SaveReturnValueInLocal(StIdx, uint16);
+    BaseNode *NeedRetypeWhenLowerCallAssigned(PrimType pType);
     void LowerCallStmt(StmtNode &, StmtNode *&, BlockNode &, MIRType *retty = nullptr, bool uselvar = false,
                        bool isIntrinAssign = false);
     BlockNode *LowerIntrinsiccallAassignedToAssignStmt(IntrinsiccallNode &intrinsicCall);
     BlockNode *LowerCallAssignedStmt(StmtNode &stmt, bool uselvar = false);
-    bool LowerStructReturn(BlockNode &blk, StmtNode *stmt, StmtNode *&nextStmt, bool &lvar, BlockNode *oldblk);
+    /* Intrinsiccall will processe return and vector as a call separately.
+     * To be able to handle them in a unified manner, we lower intrinsiccall to Intrinsicsicop.
+     */
+    BlockNode *LowerIntrinsiccallToIntrinsicop(StmtNode &stmt);
+    bool LowerStructReturnInRegs(BlockNode &newBlk, StmtNode &stmt, const MIRSymbol &retSym);
+    void LowerStructReturnInGpRegs(BlockNode &newBlk, const StmtNode &stmt, const MIRSymbol &symbol);
+    void LowerStructReturnInFpRegs(BlockNode &newBlk, const StmtNode &stmt, const MIRSymbol &symbol, PrimType primType,
+                                   size_t elemNum);
+    bool LowerStructReturn(BlockNode &newBlk, StmtNode &stmt, bool &lvar);
     BlockNode *LowerMemop(StmtNode &);
 
     BaseNode *LowerRem(BaseNode &rem, BlockNode &block);

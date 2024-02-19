@@ -81,6 +81,10 @@ bool Insn::IsCall() const
     DEBUG_ASSERT(md, " set insnDescription for insn ");
     return md->IsCall();
 }
+bool Insn::IsSpecialCall() const
+{
+    return md ? md->IsSpecialCall() : false;
+}
 bool Insn::IsTailCall() const
 {
     DEBUG_ASSERT(md, " set insnDescription for insn ");
@@ -204,6 +208,18 @@ Operand *Insn::GetMemOpnd() const
     }
     return nullptr;
 }
+
+uint32 Insn::GetMemOpndIdx() const
+{
+    uint32 opndIdx = kInsnMaxOpnd;
+    for (uint32 i = 0; i < static_cast<uint32>(opnds.size()); ++i) {
+        Operand &opnd = GetOperand(i);
+        if (opnd.IsMemoryAccessOperand()) {
+            return i;
+        }
+    }
+    return opndIdx;
+}
 void Insn::SetMemOpnd(MemOperand *memOpnd)
 {
     for (uint32 i = 0; i < static_cast<uint32>(opnds.size()); ++i) {
@@ -253,26 +269,30 @@ std::set<uint32> Insn::GetDefRegs() const
     return defRegNOs;
 }
 
-#if DEBUG
-void Insn::Check() const
+bool Insn::CheckMD() const
 {
     if (!md) {
-        CHECK_FATAL(false, " need machine description for target insn ");
+        LogInfo::MapleLogger() << " need machine description for target insn\n";
+        return false;
     }
     /* check if the number of operand(s) matches */
     uint32 insnOperandSize = GetOperandSize();
     if (insnOperandSize != md->GetOpndMDLength()) {
-        CHECK_FATAL(false, " the number of operands in instruction does not match machine description ");
+        LogInfo::MapleLogger() << " need machine description for target insn\n";
+        return false;
     }
     /* check if the type of each operand  matches */
     for (uint32 i = 0; i < insnOperandSize; ++i) {
         Operand &opnd = GetOperand(i);
-        if (opnd.GetKind() != md->GetOpndDes(i)->GetOperandType()) {
-            CHECK_FATAL(false, " operand type does not match machine description ");
+        auto *opndDesc = md->GetOpndDes(i);
+        if (opnd.IsImmediate()) {
+            return opndDesc->IsImm();
+        } else {
+            return (opnd.GetKind() == opndDesc->GetOperandType());
         }
     }
+    return true;
 }
-#endif
 
 Insn *Insn::Clone(MemPool &memPool) const
 {

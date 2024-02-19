@@ -273,6 +273,12 @@ class ObjectFactory;
     V(NumericString,                  NUMERIC_STRING_CLASS_INDEX,            "numeric")                     \
     V(NumberingSystemString,          NUMBERING_SYSTEM_STRING_CLASS_INDEX,   "numberingSystem")             \
     V(TypeString,                     TYPE_STRING_INDEX,                     "type")                        \
+    V(GranularityString,              GRANULARITY_STRING_INDEX,              "granularity")                 \
+    V(GraphemeString,                 GRAPHEME_STRING_INDEX,                 "grapheme")                    \
+    V(WordString,                     WORD_STRING_INDEX,                     "word")                        \
+    V(SentenceString,                 SENTENCE_STRING_INDEX,                 "sentence")                    \
+    V(SegmentString,                  SEGMENT_STRING_INDEX,                  "segment")                     \
+    V(IsWordLikeString,               ISWORDLIKE_STRING_INDEX,               "isWordLike")                  \
     V(LocaleMatcherString,            LOCALE_MATCHER_STRING_INDEX,           "localeMatcher")               \
     V(FormatMatcherString,            FORMAT_MATCHER_STRING_INDEX,           "formatMatcher")               \
     V(Hour12String,                   HOUR12_STRING_INDEX,                   "hour12")                      \
@@ -631,6 +637,16 @@ public:
     size_t GetJSAPIContainersEnd() const
     {
         return static_cast<size_t>(ConstantIndex::JSAPI_CONTAINERS_END);
+    }
+
+    size_t GetLineStringClassIndex() const
+    {
+        return static_cast<size_t>(ConstantIndex::LINE_STRING_CLASS_INDEX);
+    }
+
+    size_t GetConstStringClassIndex() const
+    {
+        return static_cast<size_t>(ConstantIndex::CONSTANT_STRING_CLASS_INDEX);
     }
 
     bool IsSpecialOrUndefined(size_t index) const

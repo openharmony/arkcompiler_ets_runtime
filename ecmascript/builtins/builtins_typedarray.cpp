@@ -196,6 +196,7 @@ JSTaggedValue BuiltinsTypedArray::From(EcmaRuntimeCallInfo *argv)
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         JSHandle<JSTaggedValue> nextKey(thread->GlobalConstants()->GetHandledNextString());
         JSHandle<JSTaggedValue> typedArrIterNext(JSObject::GetMethod(thread, typedArrIterator, nextKey));
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         if (typedArrIterNext->IsJSFunction()) {
             JSTaggedValue method = JSHandle<JSFunction>::Cast(typedArrIterNext)->GetMethod();
             Method *target = Method::Cast(method.GetTaggedObject());
@@ -1752,6 +1753,7 @@ JSTaggedValue BuiltinsTypedArray::ToSorted(EcmaRuntimeCallInfo* argv)
     if (len > 0) {
         previousValue.Update(
             ObjectFastOperator::FastGetPropertyByValue(thread, thisHandle.GetTaggedValue(), JSTaggedValue(0)));
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         ObjectFastOperator::FastSetPropertyByIndex(
             thread, newArrObj.GetTaggedValue(), 0, previousValue.GetTaggedValue());
     }

@@ -35,16 +35,17 @@ public:
     static void ExtractObjectDatas(JSThread *thread, const JSPandaFile *jsPandaFile, size_t index,
                                    JSMutableHandle<TaggedArray> elements, JSMutableHandle<TaggedArray> properties,
                                    JSHandle<ConstantPool> constpool, const CString &entryPoint = "");
-    static void ExtractObjectDatas(JSThread *thread, const JSPandaFile *jsPandaFile, EntityId id,
-                                   JSMutableHandle<TaggedArray> elements, JSMutableHandle<TaggedArray> properties,
-                                   JSHandle<ConstantPool> constpool, const CString &entryPoint = "",
-                                   bool isLoadedAOT = false,
-                                   JSHandle<AOTLiteralInfo> entryIndexes = JSHandle<AOTLiteralInfo>());
+    static PUBLIC_API void ExtractObjectDatas(JSThread *thread, const JSPandaFile *jsPandaFile, EntityId id,
+                                              JSMutableHandle<TaggedArray> elements,
+                                              JSMutableHandle<TaggedArray> properties,
+                                              JSHandle<ConstantPool> constpool, const CString &entryPoint = "",
+                                              bool isLoadedAOT = false,
+                                              JSHandle<AOTLiteralInfo> entryIndexes = JSHandle<AOTLiteralInfo>());
 
     static JSHandle<TaggedArray> GetDatasIgnoreType(JSThread *thread, const JSPandaFile *jsPandaFile, size_t index,
                                                     JSHandle<ConstantPool> constpool, const CString &entryPoint = "");
-    static JSHandle<TaggedArray> GetDatasIgnoreType(JSThread *thread, const JSPandaFile *jsPandaFile, EntityId id,
-        JSHandle<ConstantPool> constpool, const CString &entryPoint = "",
+    static PUBLIC_API JSHandle<TaggedArray> GetDatasIgnoreType(JSThread *thread, const JSPandaFile *jsPandaFile,
+        EntityId id, JSHandle<ConstantPool> constpool, const CString &entryPoint = "",
         bool isLoadedAOT = false, JSHandle<AOTLiteralInfo> entryIndexes = JSHandle<AOTLiteralInfo>(),
         ElementsKind *newKind = nullptr, ClassKind classKind = ClassKind::NON_SENDABLE);
     static JSHandle<TaggedArray> GetDatasIgnoreTypeForClass(JSThread *thread, const JSPandaFile *jsPandaFile,

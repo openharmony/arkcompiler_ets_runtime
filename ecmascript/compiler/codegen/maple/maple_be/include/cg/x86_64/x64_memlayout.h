@@ -103,7 +103,7 @@ public:
 
     uint64 StackFrameSize() const;
 
-    const MemSegment &locals() const
+    const MemSegment &Locals() const
     {
         return segLocals;
     }

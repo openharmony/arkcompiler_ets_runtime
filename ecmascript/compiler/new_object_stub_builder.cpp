@@ -1252,6 +1252,16 @@ GateRef NewObjectStubBuilder::CreateEmptyArrayCommon(GateRef glue, GateRef hclas
     return ret;
 }
 
+GateRef NewObjectStubBuilder::CreateEmptyObject(GateRef glue)
+{
+    auto env = GetEnvironment();
+    GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
+    GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
+    GateRef objectFunc = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv, GlobalEnv::OBJECT_FUNCTION_INDEX);
+    GateRef hclass = Load(VariableType::JS_POINTER(), objectFunc, IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
+    return NewJSObject(glue, hclass);
+}
+
 GateRef NewObjectStubBuilder::CreateEmptyArray(GateRef glue)
 {
     auto env = GetEnvironment();

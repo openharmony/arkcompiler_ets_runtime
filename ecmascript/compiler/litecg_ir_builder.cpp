@@ -177,6 +177,57 @@ void LiteCGIRBuilder::AddFunc()
     lmirModule_->SetFunction(offsetInPandaFile, funcName, methodLiteral_->IsFastCall());
 }
 
+// deal with derived reference
+void LiteCGIRBuilder::CollectDerivedRefInfo()
+{
+    auto GetPregFromGate = [&](GateRef gate)->PregIdx {
+        LiteCGValue value = gate2Expr_[gate];
+        ASSERT(value.kind == LiteCGValueKind::kPregKind);
+        return value.pregIdx;
+    };
+
+    // collect base references for derived phi reference
+    for (auto &pair : bbID2basePhis_) {
+        for (auto &desc : pair.second) {
+            Expr expr = GetExprFromGate(desc.operand);
+            if (derivedPhiGate2BasePhiPreg_.find(desc.operand) != derivedPhiGate2BasePhiPreg_.end()) {
+                expr = lmirBuilder_->Regread(derivedPhiGate2BasePhiPreg_[desc.operand]);
+            }
+            Stmt &tmpPhiAssign = lmirBuilder_->Regassign(expr, desc.phi);
+            lmirBuilder_->AppendStmtBeforeBranch(GetOrCreateBB(desc.predBBId), tmpPhiAssign);
+        }
+    }
+
+    std::set<PregIdx> baseRefSet;
+    // set common derived reference
+    for (auto it : derivedGate2BaseGate_) {
+        if (acc_.GetOpCode(it.second) == OpCode::CONSTANT) {
+            continue;
+        }
+        ASSERT(!GetExprFromGate(it.second).IsDread());
+        PregIdx derivedIdx = GetPregFromGate(it.first);
+        PregIdx baseIdx = GetPregFromGate(it.second);
+        baseRefSet.insert(baseIdx);
+        lmirBuilder_->SetFunctionDerived2BaseRef(derivedIdx, baseIdx);
+    }
+
+    // set phi derived reference
+    for (auto it : derivedPhiGate2BasePhiPreg_) {
+        PregIdx derivedIdx = GetPregFromGate(it.first);
+        PregIdx baseIdx = it.second;
+        if (baseRefSet.find(derivedIdx) != baseRefSet.end()) {
+            LOG_COMPILER(FATAL) << "shouldn't occur nested derived reference" << std::endl;
+            UNREACHABLE();
+        }
+        lmirBuilder_->SetFunctionDerived2BaseRef(derivedIdx, baseIdx);
+    }
+
+    bbID2basePhis_.clear();
+    derivedPhiGate2BasePhiPreg_.clear();
+    derivedGate2BaseGate_.clear();
+    derivedGateCache_.clear();
+}
+
 void LiteCGIRBuilder::Build()
 {
     BuildInstID2BBIDMap();
@@ -206,6 +257,8 @@ void LiteCGIRBuilder::Build()
             LOG_COMPILER(INFO) << "OPCODE: " << opcode << std::endl;
         }
     }
+
+    CollectDerivedRefInfo();
 
     std::map<int, std::vector<std::pair<PregIdx, PregIdx>>> bbID2phiAssign;
     for (auto &pair : bbID2unmergedPhis_) {
@@ -399,6 +452,7 @@ void LiteCGIRBuilder::InitializeHandlers()
         {OpCode::ORDINARY_BLOCK, &LiteCGIRBuilder::HandleGoto},
         {OpCode::IF_TRUE, &LiteCGIRBuilder::HandleGoto},
         {OpCode::IF_FALSE, &LiteCGIRBuilder::HandleGoto},
+        {OpCode::SWITCH_BRANCH, &LiteCGIRBuilder::HandleSwitch},
         {OpCode::SWITCH_CASE, &LiteCGIRBuilder::HandleGoto},
         {OpCode::MERGE, &LiteCGIRBuilder::HandleGoto},
         {OpCode::DEFAULT_CASE, &LiteCGIRBuilder::HandleGoto},
@@ -454,6 +508,7 @@ void LiteCGIRBuilder::InitializeHandlers()
         {OpCode::EXTRACT_VALUE, &LiteCGIRBuilder::HandleExtractValue},
         {OpCode::SQRT, &LiteCGIRBuilder::HandleSqrt},
         {OpCode::READSP, &LiteCGIRBuilder::HandleReadSp},
+        {OpCode::FINISH_ALLOCATE, &LiteCGIRBuilder::HandleFinishAllocate},
     };
     illegalOpHandlers_ = {OpCode::NOP,
                           OpCode::CIRCUIT_ROOT,
@@ -580,10 +635,9 @@ void LiteCGIRBuilder::VisitAdd(GateRef gate, GateRef e1, GateRef e2)
             result = lmirBuilder_->Cvt(lmirBuilder_->i64Type, returnType, tmp3);
             SaveGate2Expr(gate, result);
             // set the base reference of derived reference
-            LiteCGValue resultValue = gate2Expr_[gate];
-            if ((e1Type == lmirBuilder_->i64RefType) && (acc_.GetOpCode(e1) != OpCode::CONSTANT)) {
-                lmirBuilder_->SetFunctionDerived2BaseRef(resultValue.pregIdx,
-                                                         lmirBuilder_->GetPregIdxFromExpr(e1Value));
+            if (e1Type == lmirBuilder_->i64RefType) {
+                ASSERT(!e1Value.IsDread());
+                derivedGate2BaseGate_[gate] = e1;
             }
             return;
         } else {
@@ -592,7 +646,7 @@ void LiteCGIRBuilder::VisitAdd(GateRef gate, GateRef e1, GateRef e2)
             result = lmirBuilder_->Add(returnType, tmp1Expr, tmp2Expr);
         }
     } else if (machineType == MachineType::F64) {
-        result = lmirBuilder_->Add(returnType, e1Value, e2Value);
+        result = lmirBuilder_->Add(lmirBuilder_->f64Type, e1Value, e2Value);
     } else {
         LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
@@ -1407,6 +1461,18 @@ void LiteCGIRBuilder::VisitMod(GateRef gate, GateRef e1, GateRef e2)
     SaveGate2Expr(gate, result);
 }
 
+void LiteCGIRBuilder::HandleFinishAllocate(GateRef gate)
+{
+    GateRef g0 = acc_.GetValueIn(gate, 0);
+    VisitFinishAllocate(gate, g0);
+}
+
+void LiteCGIRBuilder::VisitFinishAllocate(GateRef gate, GateRef e1)
+{
+    Expr result = GetExprFromGate(e1);
+    SaveGate2Expr(gate, result);
+}
+
 void LiteCGIRBuilder::HandleCastIntXToIntY(GateRef gate)
 {
     VisitCastIntXToIntY(gate, acc_.GetIn(gate, 0));
@@ -1444,10 +1510,10 @@ void LiteCGIRBuilder::VisitChangeUInt32ToDouble(GateRef gate, GateRef e1)
 {
     Expr e1Value = GetExprFromGate(e1);
     auto e1Type = ConvertLiteCGTypeFromGate(e1);
-    if (e1Type == lmirBuilder_->i32Type) {
+    if (e1Type != lmirBuilder_->u32Type) {
         e1Value = lmirBuilder_->Cvt(e1Type, lmirBuilder_->u32Type, e1Value);
     }
-    Expr result = lmirBuilder_->Cvt(e1Type, ConvertLiteCGTypeFromGate(gate), e1Value);
+    Expr result = lmirBuilder_->Cvt(lmirBuilder_->u32Type, ConvertLiteCGTypeFromGate(gate), e1Value);
     SaveGate2Expr(gate, result);
 }
 
@@ -1832,15 +1898,132 @@ void LiteCGIRBuilder::HandlePhi(GateRef gate)
     VisitPhi(gate, ins);
 }
 
-void LiteCGIRBuilder::AddPhiDesc(int bbID, PhiDesc &desc)
+void LiteCGIRBuilder::AddPhiDesc(int bbID, PhiDesc &desc, std::map<int, std::vector<PhiDesc>> &bbID2Phis)
 {
-    auto it = bbID2unmergedPhis_.find(bbID);
-    if (it == bbID2unmergedPhis_.end()) {
+    auto it = bbID2Phis.find(bbID);
+    if (it == bbID2Phis.end()) {
         std::vector<PhiDesc> vec;
         vec.push_back(std::move(desc));
-        bbID2unmergedPhis_.insert(std::make_pair(bbID, vec));
+        bbID2Phis.insert(std::make_pair(bbID, vec));
     } else {
         it->second.push_back(std::move(desc));
+    }
+}
+
+LiteCGIRBuilder::DerivedStatus LiteCGIRBuilder::CheckDerivedPhi(GateRef gate, std::set<GateRef> &vis)
+{
+    // if the gate status is cached with derived or base, doesn't need to go forward
+    if (derivedGateCache_.find(gate) != derivedGateCache_.end()) {
+        if (derivedGateCache_[gate]) {
+            return DerivedStatus::IS_DERIVED;
+        } else {
+            return DerivedStatus::IS_BASE;
+        }
+    }
+    // for the visited gate in the dfs, if not cached, its status is unknow
+    if (vis.find(gate) != vis.end()) {
+        return DerivedStatus::UNKNOW;
+    }
+    // cached gate doesn't need insert to visited set
+    vis.insert(gate);
+    DerivedStatus derivedStatus = DerivedStatus::IS_BASE;
+    std::vector<GateRef> phiIns;
+    acc_.GetIns(gate, phiIns);
+    std::vector<GateRef> phiStates;
+    acc_.GetIns(phiIns[0], phiStates);
+    ASSERT(phiStates.size() + 1 == phiIns.size());
+    for (int i = 1; i < static_cast<int>(phiIns.size()); i++) {
+        auto op = acc_.GetOpCode(phiIns[i]);
+        if (op == OpCode::ADD) {
+            derivedStatus = DerivedStatus::IS_DERIVED;
+            break;
+        } else if (op == OpCode::VALUE_SELECTOR) {
+            DerivedStatus status = CheckDerivedPhi(phiIns[i], vis);
+            if (status == DerivedStatus::IS_DERIVED) {
+                derivedStatus = DerivedStatus::IS_DERIVED;
+                break;
+            }
+            if (status == DerivedStatus::UNKNOW) {
+                derivedStatus = DerivedStatus::UNKNOW;
+            }
+        }
+    }
+    if (derivedStatus == DerivedStatus::IS_DERIVED) {
+        derivedGateCache_[gate] = true;
+    } else if (derivedStatus == DerivedStatus::IS_BASE) {
+        derivedGateCache_[gate] = false;
+    }
+
+    return derivedStatus;
+}
+
+void LiteCGIRBuilder::FindBaseRefForPhi(GateRef gate, const std::vector<GateRef> &phiIns)
+{
+    int curBBId = instID2bbID_[acc_.GetId(gate)];
+    LiteCGType *type = ConvertLiteCGTypeFromGate(gate);
+    PregIdx basePregIdx = 0;
+    bool isDerived = false;
+    std::set<GateRef> baseIns;
+    std::vector<PhiDesc> phiDescs;
+    std::vector<GateRef> phiStates;
+    acc_.GetIns(phiIns[0], phiStates);
+    ASSERT(phiStates.size() + 1 == phiIns.size());
+    for (int i = 1; i < static_cast<int>(phiIns.size()); i++) {
+        int preBBId = LookupPredBB(phiStates[i - 1], curBBId);
+        if (bbID2BB_.count(preBBId) != 0) {
+            BB *preBB = bbID2BB_[preBBId];
+            if (preBB == nullptr) {
+                OPTIONAL_LOG_COMPILER(ERROR) << "FindBaseRef failed BasicBlock nullptr";
+                return;
+            }
+        }
+        auto op = acc_.GetOpCode(phiIns[i]);
+        if (op == OpCode::ADD) {
+            auto g0 = acc_.GetIn(phiIns[i], 0);
+            baseIns.insert(g0);
+            PhiDesc desc = {preBBId, g0, basePregIdx};
+            phiDescs.push_back(desc);
+            isDerived = true;
+            ASSERT(ConvertLiteCGTypeFromGate(g0) == lmirBuilder_->i64RefType);
+        } else if (op == OpCode::VALUE_SELECTOR) {
+            std::set<GateRef> vis;
+            if (CheckDerivedPhi(phiIns[i], vis) == DerivedStatus::IS_DERIVED) {
+                isDerived = true;
+            }
+            baseIns.insert(phiIns[i]);
+            PhiDesc desc = {preBBId, phiIns[i], basePregIdx};
+            phiDescs.push_back(desc);
+            ASSERT(ConvertLiteCGTypeFromGate(phiIns[i]) == lmirBuilder_->i64RefType);
+        } else {
+            baseIns.insert(phiIns[i]);
+            PhiDesc desc = {preBBId, phiIns[i], basePregIdx};
+            phiDescs.push_back(desc);
+            ASSERT(ConvertLiteCGTypeFromGate(phiIns[i]) == lmirBuilder_->i64RefType);
+        }
+    }
+
+    // use to catch the situation that the phi is derived
+    if (isDerived) {
+        LOG_COMPILER(FATAL) << "catch derived case!" << phiDescs.size() << std::endl;
+        UNREACHABLE();
+    }
+
+    derivedGateCache_[gate] = isDerived;
+
+    if (!isDerived) {
+        return;
+    }
+
+    if (baseIns.size() == 1) {
+        // only one base gate for the derived phi reference, doesn't need to insert a new phi
+        derivedGate2BaseGate_[gate] = *baseIns.begin();
+    } else {
+        basePregIdx = lmirBuilder_->CreatePreg(type);
+        derivedPhiGate2BasePhiPreg_[gate] = basePregIdx;
+        for (PhiDesc desc : phiDescs) {
+            desc.phi = basePregIdx;
+            AddPhiDesc(curBBId, desc, bbID2basePhis_);
+        }
     }
 }
 
@@ -1867,11 +2050,15 @@ void LiteCGIRBuilder::VisitPhi(GateRef gate, const std::vector<GateRef> &phiIns)
                 return;
             }
             PhiDesc desc = {preBBId, phiIns[i], phiPregIdx};
-            AddPhiDesc(curBBId, desc);
+            AddPhiDesc(curBBId, desc, bbID2unmergedPhis_);
         } else {
             PhiDesc desc = {preBBId, phiIns[i], phiPregIdx};
-            AddPhiDesc(curBBId, desc);
+            AddPhiDesc(curBBId, desc, bbID2unmergedPhis_);
         }
+    }
+
+    if (type == lmirBuilder_->i64RefType) {
+        FindBaseRefForPhi(gate, phiIns);
     }
 }
 
@@ -1902,7 +2089,7 @@ void LiteCGIRBuilder::VisitSwitch(GateRef gate, GateRef input, const std::vector
             continue;
         }
         BB &curOutBB = GetOrCreateBB(instID2bbID_[acc_.GetId(outList[i])]);
-        builder.Case(i, curOutBB);
+        builder.Case(acc_.TryGetValue(outList[i]), curOutBB);
     }
     Stmt &switchStmt = builder.Done();
     lmirBuilder_->AppendStmt(GetOrCreateBB(instID2bbID_[acc_.GetId(gate)]), switchStmt);

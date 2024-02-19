@@ -594,6 +594,24 @@ DEF_RUNTIME_STUBS(NewMutantTaggedArray)
     return factory->NewMutantTaggedArray(length.GetInt()).GetTaggedValue().GetRawData();
 }
 
+DEF_RUNTIME_STUBS(RuntimeDump)
+{
+    RUNTIME_STUBS_HEADER(RuntimeDump);
+    JSHandle<JSTaggedValue> obj = JSHandle<JSTaggedValue>(GetHArg<JSTaggedValue>(argv, argc, 0));
+    {
+        std::ostringstream oss;
+        obj->Dump(oss);
+        LOG_ECMA(ERROR) << "RuntimeDump: " << oss.str();
+    }
+
+    LOG_ECMA(ERROR) << "---------- before force gc ---------------";
+    {
+        thread->GetEcmaVM()->CollectGarbage(TriggerGCType::FULL_GC);
+    }
+    LOG_ECMA(ERROR) << "---------- end force gc ---------------";
+    return JSTaggedValue::Hole().GetRawData();
+}
+
 void RuntimeStubs::Dump(JSTaggedType rawValue)
 {
     LOG_ECMA(INFO) << "[ECMAObject?] " << rawValue;
@@ -833,6 +851,18 @@ DEF_RUNTIME_STUBS(InstanceOf)
     JSHandle<JSTaggedValue> obj = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
     JSHandle<JSTaggedValue> target = GetHArg<JSTaggedValue>(argv, argc, 1);  // 1: means the first parameter
     return RuntimeInstanceof(thread, obj, target).GetRawData();
+}
+
+DEF_RUNTIME_STUBS(DumpObject)
+{
+    RUNTIME_STUBS_HEADER(DumpObject);
+    JSHandle<JSTaggedValue> target = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
+    JSHandle<JSTaggedValue> targetId = GetHArg<JSTaggedValue>(argv, argc, 1);  // 1: means the first parameter
+    LOG_ECMA(INFO) << "InstanceOf Stability Testing Num: " << targetId->GetInt();
+    std::ostringstream oss;
+    target->Dump(oss);
+    LOG_ECMA(INFO) << "dump log for instance of target: " << oss.str();
+    return JSTaggedValue::True().GetRawData();
 }
 
 DEF_RUNTIME_STUBS(CreateGeneratorObj)
@@ -2519,6 +2549,7 @@ DEF_RUNTIME_STUBS(VerifyVTableLoading)
     JSHandle<JSTaggedValue> typedPathValue = GetHArg<JSTaggedValue>(argv, argc, 2);  // 2: means the second parameter
 
     JSHandle<JSTaggedValue> verifiedPathValue = JSTaggedValue::GetProperty(thread, receiver, key).GetValue();
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception().GetRawData());
     if (UNLIKELY(!JSTaggedValue::SameValue(typedPathValue, verifiedPathValue))) {
         std::ostringstream oss;
         receiver->Dump(oss);
@@ -2546,6 +2577,7 @@ DEF_RUNTIME_STUBS(VerifyVTableStoring)
     JSHandle<JSTaggedValue> storeValue = GetHArg<JSTaggedValue>(argv, argc, 2);  // 2: means the second parameter
 
     JSHandle<JSTaggedValue> verifiedValue = JSTaggedValue::GetProperty(thread, receiver, key).GetValue();
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception().GetRawData());
     if (UNLIKELY(!JSTaggedValue::SameValue(storeValue, verifiedValue))) {
         std::ostringstream oss;
         receiver->Dump(oss);
@@ -2571,6 +2603,7 @@ DEF_RUNTIME_STUBS(JSObjectGetMethod)
     JSHandle<JSTaggedValue> obj(thread, GetArg(argv, argc, 0));
     JSHandle<JSTaggedValue> key(thread, GetArg(argv, argc, 1));
     JSHandle<JSTaggedValue> result = JSObject::GetMethod(thread, obj, key);
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception().GetRawData());
     return result->GetRawData();
 }
 
@@ -3082,6 +3115,7 @@ DEF_RUNTIME_STUBS(LocaleCompare)
     JSHandle<JSTaggedValue> options = GetHArg<JSTaggedValue>(argv, argc, 3);  // 3: means the third parameter
 
     JSHandle<JSTaggedValue> thisObj(JSTaggedValue::RequireObjectCoercible(thread, thisTag));
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception().GetRawData());
     [[maybe_unused]] JSHandle<EcmaString> thisHandle = JSTaggedValue::ToString(thread, thisObj);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception().GetRawData());
     [[maybe_unused]] JSHandle<EcmaString> thatHandle = JSTaggedValue::ToString(thread, thatTag);
@@ -3160,6 +3194,7 @@ JSTaggedValue RuntimeStubs::RuntimeArraySort(JSThread *thread, JSHandle<JSTagged
 
     JSHandle<JSTaggedValue> callbackFnHandle(thread, JSTaggedValue::Undefined());
     JSArray::Sort(thread, JSHandle<JSTaggedValue>::Cast(thisObjHandle), callbackFnHandle);
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception());
     return thisObjHandle.GetTaggedValue();
 }
 

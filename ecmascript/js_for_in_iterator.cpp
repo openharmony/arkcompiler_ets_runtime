@@ -65,10 +65,12 @@ bool JSForInIterator::HasProperty(JSThread *thread, JSHandle<JSTaggedValue> rece
     while (current->IsHeapObject()) {
         PropertyDescriptor desc(thread);
         bool has = JSTaggedValue::GetOwnProperty(thread, current, key, desc);
+        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
         if (has && desc.IsEnumerable()) {
             return true;
         }
         current.Update(JSTaggedValue::GetPrototype(thread, current));
+        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
     }
     return false;
 }

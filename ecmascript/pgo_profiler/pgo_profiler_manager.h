@@ -29,7 +29,7 @@ namespace panda::ecmascript::pgo {
 class PGOProfilerManager {
 public:
     using ApGenMode = PGOProfilerEncoder::ApGenMode;
-    static PGOProfilerManager *GetInstance();
+    static PGOProfilerManager *PUBLIC_API GetInstance();
 
     static void SavingSignalHandler(int signo);
 
@@ -232,9 +232,9 @@ public:
         return ret;
     }
 
-    static bool MergeApFiles(const std::string &inFiles, const std::string &outPath, uint32_t hotnessThreshold,
-                             ApGenMode mode);
-    static bool MergeApFiles(uint32_t checksum, PGOProfilerDecoder &merger);
+    static bool PUBLIC_API MergeApFiles(const std::string &inFiles, const std::string &outPath,
+                                        uint32_t hotnessThreshold, ApGenMode mode);
+    static bool PUBLIC_API MergeApFiles(uint32_t checksum, PGOProfilerDecoder &merger);
 
 private:
     bool InitializeData()

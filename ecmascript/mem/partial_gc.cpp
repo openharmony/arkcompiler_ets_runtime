@@ -30,6 +30,7 @@
 #include "ecmascript/mem/gc_stats.h"
 #include "ecmascript/ecma_string_table.h"
 #include "ecmascript/runtime_call_id.h"
+#include "ecmascript/mem/verification.h"
 
 namespace panda::ecmascript {
 PartialGC::PartialGC(Heap *heap) : heap_(heap), workManager_(heap->GetWorkManager()) {}
@@ -37,7 +38,7 @@ PartialGC::PartialGC(Heap *heap) : heap_(heap), workManager_(heap->GetWorkManage
 void PartialGC::RunPhases()
 {
     GCStats *gcStats = heap_->GetEcmaVM()->GetEcmaGCStats();
-    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "PartialGC::RunPhases" + std::to_string(heap_->IsFullMark())
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "PartialGC::RunPhases" + std::to_string(heap_->IsConcurrentFullMark())
         + ";Reason" + std::to_string(static_cast<int>(gcStats->GetGCReason()))
         + ";Sensitive" + std::to_string(static_cast<int>(heap_->GetSensitiveStatus()))
         + ";Startup" + std::to_string(heap_->onStartUpEvent())
@@ -52,13 +53,25 @@ void PartialGC::RunPhases()
     LOG_GC(DEBUG) << "markingInProgress_" << markingInProgress_;
     Initialize();
     Mark();
+    if (UNLIKELY(heap_->ShouldVerifyHeap())) {
+        // verify mark
+        LOG_ECMA(DEBUG) << "start verify mark";
+        Verification(heap_, heap_->IsConcurrentFullMark() ?
+            VerifyKind::VERIFY_CONCURRENT_MARK_FULL : VerifyKind::VERIFY_CONCURRENT_MARK_YOUNG).VerifyAll();
+    }
     Sweep();
     Evacuate();
-    if (heap_->IsFullMark()) {
+    if (heap_->IsConcurrentFullMark()) {
         heap_->GetSweeper()->PostTask();
     }
+    if (UNLIKELY(heap_->ShouldVerifyHeap())) {
+        // verify evacuate and sweep
+        LOG_ECMA(DEBUG) << "start verify evacuate and sweep";
+        Verification(heap_, heap_->IsConcurrentFullMark() ?
+            VerifyKind::VERIFY_EVACUATE_OLD : VerifyKind::VERIFY_EVACUATE_YOUNG).VerifyAll();
+    }
     Finish();
-    if (heap_->IsFullMark()) {
+    if (heap_->IsConcurrentFullMark()) {
         heap_->NotifyHeapAliveSizeAfterGC(heap_->GetHeapObjectSize());
     }
 }
@@ -70,7 +83,7 @@ void PartialGC::Initialize()
     if (!markingInProgress_ && !heap_->GetIncrementalMarker()->IsTriggeredIncrementalMark()) {
         LOG_GC(DEBUG) << "No ongoing Concurrent marking. Initializing...";
         heap_->Prepare();
-        if (heap_->IsFullMark()) {
+        if (heap_->IsConcurrentFullMark()) {
             heap_->GetOldSpace()->SelectCSet();
             heap_->GetAppSpawnSpace()->EnumerateRegions([](Region *current) {
                 current->ClearMarkGCBitset();
@@ -102,7 +115,7 @@ void PartialGC::Finish()
     } else {
         workManager_->Finish();
     }
-    if (heap_->IsFullMark()) {
+    if (heap_->IsConcurrentFullMark()) {
         heap_->GetSweeper()->TryFillSweptRegion();
     }
 }
@@ -116,7 +129,7 @@ void PartialGC::Mark()
         return;
     }
     heap_->GetNonMovableMarker()->MarkRoots(MAIN_THREAD_INDEX);
-    if (heap_->IsFullMark()) {
+    if (heap_->IsConcurrentFullMark()) {
         heap_->GetNonMovableMarker()->ProcessMarkStack(MAIN_THREAD_INDEX);
     } else {
         {
@@ -132,7 +145,7 @@ void PartialGC::Sweep()
 {
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "PartialGC::Sweep");
     ProcessNativeDelete();
-    if (heap_->IsFullMark()) {
+    if (heap_->IsConcurrentFullMark()) {
         heap_->GetOldSpace()->EnumerateRegions([](Region *current) {
             current->SetRegionAliveSize();
         });
@@ -148,7 +161,7 @@ void PartialGC::ProcessNativeDelete()
     WeakRootVisitor gcUpdateWeak = [this](TaggedObject *header) {
         Region *objectRegion = Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(header));
         ASSERT(!objectRegion->InSharedHeap());
-        if (!objectRegion->InYoungSpaceOrCSet() && !heap_->IsFullMark()) {
+        if (!objectRegion->InYoungSpaceOrCSet() && !heap_->IsConcurrentFullMark()) {
             return header;
         }
         if (!objectRegion->Test(header)) {

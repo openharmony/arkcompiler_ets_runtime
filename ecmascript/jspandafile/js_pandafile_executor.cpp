@@ -33,14 +33,14 @@
 namespace panda::ecmascript {
 using PathHelper = base::PathHelper;
 Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromAbcFile(JSThread *thread, const CString &filename,
-    std::string_view entryPoint, bool needUpdate, bool excuteFromJob)
+    std::string_view entryPoint, bool needUpdate, bool executeFromJob)
 {
     LOG_ECMA(DEBUG) << "JSPandaFileExecutor::ExecuteFromFile filename " << filename;
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "JSPandaFileExecutor::ExecuteFromFile");
     CString entry;
     CString name;
     EcmaVM *vm = thread->GetEcmaVM();
-    if (!vm->IsBundlePack() && !excuteFromJob) {
+    if (!vm->IsBundlePack() && !executeFromJob) {
 #if defined(PANDA_TARGET_LINUX) || defined(OHOS_UNIT_TEST) || defined(PANDA_TARGET_MACOS)
         name = filename;
         entry = entryPoint.data();
@@ -74,7 +74,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromAbcFile(JSThread *
     // realEntry is used to record the original record, which is easy to throw when there are exceptions
     const CString realEntry = entry;
     // If it is an old record, delete the bundleName and moduleName
-    if (!jsPandaFile->IsBundlePack() && !excuteFromJob && !vm->GetBundleName().empty()) {
+    if (!jsPandaFile->IsBundlePack() && !executeFromJob && !vm->GetBundleName().empty()) {
         jsPandaFile->CheckIsRecordWithBundleName(entry);
         if (!jsPandaFile->IsRecordWithBundleName()) {
             PathHelper::AdaptOldIsaRecord(entry);
@@ -93,25 +93,25 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromAbcFile(JSThread *
         ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
         JSHandle<JSTaggedValue> moduleRecord(thread->GlobalConstants()->GetHandledUndefined());
         if (jsPandaFile->IsBundlePack()) {
-            moduleRecord = moduleManager->HostResolveImportedModule(name, excuteFromJob);
+            moduleRecord = moduleManager->HostResolveImportedModule(name, executeFromJob);
         } else {
-            moduleRecord = moduleManager->HostResolveImportedModuleWithMerge(name, entry, excuteFromJob);
+            moduleRecord = moduleManager->HostResolveImportedModuleWithMerge(name, entry, executeFromJob);
         }
-        SourceTextModule::Instantiate(thread, moduleRecord, excuteFromJob);
+        SourceTextModule::Instantiate(thread, moduleRecord, executeFromJob);
         if (thread->HasPendingException()) {
-            if (!excuteFromJob) {
-                thread->GetCurrentEcmaContext()->HandleUncaughtException(thread->GetException());
-            }
             return Unexpected(false);
         }
         JSHandle<SourceTextModule> module = JSHandle<SourceTextModule>::Cast(moduleRecord);
         module->SetStatus(ModuleStatus::INSTANTIATED);
         BindPandaFilesForAot(vm, jsPandaFile.get());
-        SourceTextModule::Evaluate(thread, module, nullptr, 0, excuteFromJob);
+        SourceTextModule::Evaluate(thread, module, nullptr, 0, executeFromJob);
+        if (thread->HasPendingException()) {
+            return Unexpected(false);
+        }
         return JSTaggedValue::Undefined();
     }
     BindPandaFilesForAot(vm, jsPandaFile.get());
-    return JSPandaFileExecutor::Execute(thread, jsPandaFile.get(), entry.c_str(), excuteFromJob);
+    return JSPandaFileExecutor::Execute(thread, jsPandaFile.get(), entry.c_str(), executeFromJob);
 }
 
 // The security interface needs to be modified accordingly.
@@ -212,7 +212,6 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::CommonExecuteBuffer(JSThread 
 
     SourceTextModule::Instantiate(thread, moduleRecord);
     if (thread->HasPendingException()) {
-        thread->GetCurrentEcmaContext()->HandleUncaughtException(thread->GetException());
         return Unexpected(false);
     }
 
@@ -223,7 +222,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::CommonExecuteBuffer(JSThread 
 }
 
 Expected<JSTaggedValue, bool> JSPandaFileExecutor::Execute(JSThread *thread, const JSPandaFile *jsPandaFile,
-                                                           std::string_view entryPoint, bool excuteFromJob)
+                                                           std::string_view entryPoint, bool executeFromJob)
 {
     // For Ark application startup
     EcmaContext *context = thread->GetCurrentEcmaContext();
@@ -231,12 +230,12 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::Execute(JSThread *thread, con
     Expected<JSTaggedValue, bool> result;
 
     if (context->GetStageOfHotReload() == StageOfHotReload::BEGIN_EXECUTE_PATCHMAIN) {
-        result = context->InvokeEcmaEntrypointForHotReload(jsPandaFile, entryPoint, excuteFromJob);
+        result = context->InvokeEcmaEntrypointForHotReload(jsPandaFile, entryPoint, executeFromJob);
     } else {
         QuickFixManager *quickFixManager = thread->GetEcmaVM()->GetQuickFixManager();
         quickFixManager->LoadPatchIfNeeded(thread, jsPandaFile);
 
-        result = context->InvokeEcmaEntrypoint(jsPandaFile, entryPoint, excuteFromJob);
+        result = context->InvokeEcmaEntrypoint(jsPandaFile, entryPoint, executeFromJob);
     }
     return result;
 }
@@ -298,7 +297,6 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::CommonExecuteBuffer(JSThread 
 
     SourceTextModule::Instantiate(thread, moduleRecord);
     if (thread->HasPendingException()) {
-        thread->GetCurrentEcmaContext()->HandleUncaughtException(thread->GetException());
         return Unexpected(false);
     }
 

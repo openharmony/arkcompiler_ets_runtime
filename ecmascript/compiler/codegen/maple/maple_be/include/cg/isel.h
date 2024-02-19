@@ -78,8 +78,8 @@ public:
     virtual void SelectRangeGoto(RangeGotoNode &rangeGotoNode, Operand &srcOpnd) = 0;
     virtual void SelectIgoto(Operand &opnd0) = 0;
     virtual void SelectCall(CallNode &callNode) = 0;
-    virtual void SelectIcall(IcallNode &icallNode, Operand &opnd0) = 0;
-    virtual void SelectIntrinCall(IntrinsiccallNode &intrinsiccallNode) = 0;
+    virtual void SelectIcall(IcallNode &icallNode) = 0;
+    virtual void SelectIntrinsicCall(IntrinsiccallNode &intrinsiccallNode) = 0;
     virtual Operand *SelectBswap(IntrinsicopNode &node, Operand &opnd0, const BaseNode &parent) = 0;
     virtual Operand *SelectFloatingConst(MIRConst &floatingConst, PrimType primType) const = 0;
     virtual Operand *SelectAddrof(AddrofNode &expr, const BaseNode &parent) = 0;

@@ -24,17 +24,41 @@ namespace panda::ecmascript {
 class JSAPIList : public JSObject {
 public:
     static constexpr uint32_t DEFAULT_CAPACITY_LENGTH = 10;
+    static constexpr uint32_t UNUSED_BIT_FILEDS_NUM = 31;
+    using IsOrderedListBit = BitField<uint32_t, 0, UNUSED_BIT_FILEDS_NUM>::NextFlag;
+
     static JSAPIList *Cast(TaggedObject *object)
     {
         ASSERT(JSTaggedValue(object).IsJSAPIList());
         return static_cast<JSAPIList *>(object);
     }
 
+    inline void SetIsOrderedList(bool flag) const
+    {
+        IsOrderedListBit::Set<uint32_t>(flag, GetBitFieldAddr());
+    }
+
+    inline bool IsOrderedList() const
+    {
+        uint32_t bits = GetBitField();
+        return IsOrderedListBit::Decode(bits);
+    }
+
+    uint32_t *GetBitFieldAddr() const
+    {
+        return reinterpret_cast<uint32_t *>(ToUintPtr(this) + BIT_FIELD_OFFSET);
+    }
+
+    inline void ClearBitField()
+    {
+        SetBitField(0UL);
+    }
+
     static void Add(JSThread *thread, const JSHandle<JSAPIList> &list, const JSHandle<JSTaggedValue> &value);
     static JSTaggedValue Insert(JSThread *thread, const JSHandle<JSAPIList> &list,
                                 const JSHandle<JSTaggedValue> &value, const int index);
-    static JSTaggedValue Set(JSThread *thread, const JSHandle<JSAPIList> &list,
-                             const int index, const JSHandle<JSTaggedValue> &value);
+    static JSTaggedValue PUBLIC_API Set(JSThread *thread, const JSHandle<JSAPIList> &list,
+                                        const int index, const JSHandle<JSTaggedValue> &value);
     static JSTaggedValue ReplaceAllElements(JSThread *thread, const JSHandle<JSTaggedValue> &thisHandle,
                                             const JSHandle<JSTaggedValue> &callbackFn,
                                             const JSHandle<JSTaggedValue> &thisArg);
@@ -52,6 +76,7 @@ public:
     static bool SetProperty(JSThread *thread, const JSHandle<JSAPIList> &obj,
                             const JSHandle<JSTaggedValue> &key,
                             const JSHandle<JSTaggedValue> &value);
+    static JSTaggedValue FastGet(JSThread *thread, const int index, const JSHandle<JSAPIList> &list);
 
     JSTaggedValue GetFirst();
     JSTaggedValue GetLast();
@@ -69,8 +94,10 @@ public:
     }
 
     static constexpr size_t SINGLY_LIST_OFFSET = JSObject::SIZE;
-    ACCESSORS(SingleList, SINGLY_LIST_OFFSET, SIZE);
-    DECL_VISIT_OBJECT_FOR_JS_OBJECT(JSObject, SINGLY_LIST_OFFSET, SIZE)
+    ACCESSORS(SingleList, SINGLY_LIST_OFFSET, BIT_FIELD_OFFSET)
+    ACCESSORS_PRIMITIVE_FIELD(BitField, uint32_t, BIT_FIELD_OFFSET, LAST_OFFSET)
+    DEFINE_ALIGN_SIZE(LAST_OFFSET);
+    DECL_VISIT_OBJECT_FOR_JS_OBJECT(JSObject, SINGLY_LIST_OFFSET, BIT_FIELD_OFFSET)
     DECL_DUMP()
 };
 }  // namespace panda::ecmascript

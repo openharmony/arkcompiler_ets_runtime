@@ -30,8 +30,8 @@ public:
 
     CAST_CHECK(JSArray, IsJSArray);
 
-    static JSHandle<JSTaggedValue> ArrayCreate(JSThread *thread, JSTaggedNumber length,
-                                               ArrayMode mode = ArrayMode::UNDEFINED);
+    static PUBLIC_API JSHandle<JSTaggedValue> ArrayCreate(JSThread *thread, JSTaggedNumber length,
+                                                          ArrayMode mode = ArrayMode::UNDEFINED);
     static JSHandle<JSTaggedValue> ArrayCreate(JSThread *thread, JSTaggedNumber length,
                                                const JSHandle<JSTaggedValue> &newTarget,
                                                ArrayMode mode = ArrayMode::UNDEFINED);
@@ -105,7 +105,7 @@ public:
     static bool IncludeInSortedValue(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
                                      const JSHandle<JSTaggedValue> &value);
     static JSHandle<TaggedArray> ToTaggedArray(JSThread *thread, const JSHandle<JSTaggedValue> &obj);
-    static void CheckAndCopyArray(const JSThread *thread, JSHandle<JSArray> obj);
+    static void PUBLIC_API CheckAndCopyArray(const JSThread *thread, JSHandle<JSArray> obj);
     static void SetCapacity(JSThread *thread, const JSHandle<JSObject> &array, uint32_t oldLen, uint32_t newLen,
                             bool isNew = false);
     static void SortElements(JSThread *thread, const JSHandle<TaggedArray> &elements,

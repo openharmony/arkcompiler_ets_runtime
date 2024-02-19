@@ -16,12 +16,38 @@
 #ifndef MAPLEBE_INCLUDE_CG_REG_INFO_H
 #define MAPLEBE_INCLUDE_CG_REG_INFO_H
 
-#include <map>
-#include <stack>
 #include "isa.h"
 #include "insn.h"
 
 namespace maplebe {
+class VirtualRegNode {
+public:
+    VirtualRegNode() = default;
+
+    VirtualRegNode(RegType type, uint32 size) : regType(type), size(size), regNO(kInvalidRegNO) {}
+
+    virtual ~VirtualRegNode() = default;
+
+    void AssignPhysicalRegister(regno_t phyRegNO)
+    {
+        regNO = phyRegNO;
+    }
+
+    RegType GetType() const
+    {
+        return regType;
+    }
+
+    uint32 GetSize() const
+    {
+        return size;
+    }
+
+private:
+    RegType regType = kRegTyUndef;
+    uint32 size = 0;               /* size in bytes */
+    regno_t regNO = kInvalidRegNO; /* physical register assigned by register allocation */
+};
 
 class RegisterInfo {
 public:
@@ -69,18 +95,24 @@ public:
     {
         return cgFunc;
     }
+    // When some registers are allocated to the callee, the caller stores a part of the registers
+    // and the callee stores another part of the registers.
+    // For these registers, it is a better choice to assign them as caller-save registers.
+    virtual bool IsPrefCallerSaveRegs(RegType type, uint32 size) const
+    {
+        return false;
+    }
+    virtual bool IsCallerSavePartRegister(regno_t regNO,  uint32 size) const
+    {
+        return false;
+    }
     virtual RegOperand *GetOrCreatePhyRegOperand(regno_t regNO, uint32 size, RegType kind, uint32 flag = 0) = 0;
-    virtual ListOperand *CreateListOperand() = 0;
-    virtual Insn *BuildMovInstruction(Operand &opnd0, Operand &opnd1) = 0;
     virtual bool IsGPRegister(regno_t regNO) const = 0;
-    virtual bool IsPreAssignedReg(regno_t regNO) const = 0;
     virtual uint32 GetIntParamRegIdx(regno_t regNO) const = 0;
     virtual uint32 GetFpParamRegIdx(regno_t regNO) const = 0;
-    virtual bool IsSpecialReg(regno_t regno) const = 0;
     virtual bool IsAvailableReg(regno_t regNO) const = 0;
     virtual bool IsCalleeSavedReg(regno_t regno) const = 0;
     virtual bool IsYieldPointReg(regno_t regNO) const = 0;
-    virtual bool IsUntouchableReg(uint32 regNO) const = 0;
     virtual bool IsUnconcernedReg(regno_t regNO) const = 0;
     virtual bool IsUnconcernedReg(const RegOperand &regOpnd) const = 0;
     virtual bool IsVirtualRegister(const RegOperand &regOpnd) = 0;
@@ -102,7 +134,6 @@ public:
     virtual bool IsSpillRegInRA(regno_t regNO, bool has3RegOpnd) = 0;
     virtual Insn *BuildStrInsn(uint32 regSize, PrimType stype, RegOperand &phyOpnd, MemOperand &memOpnd) = 0;
     virtual Insn *BuildLdrInsn(uint32 regSize, PrimType stype, RegOperand &phyOpnd, MemOperand &memOpnd) = 0;
-    virtual Insn *BuildCommentInsn(const std::string &comment) = 0;
     virtual MemOperand *GetOrCreatSpillMem(regno_t vrNum, uint32 bitSize) = 0;
     virtual MemOperand *AdjustMemOperandIfOffsetOutOfRange(MemOperand *memOpnd, regno_t vrNum, bool isDest, Insn &insn,
                                                            regno_t regNum, bool &isOutOfRange) = 0;

@@ -20,6 +20,11 @@ namespace maplebe {
 using namespace maple;
 
 namespace AArch64Abi {
+std::vector<AArch64reg> intReturnRegs = {R0, R1, R2, R3, R4, R5, R6, R7};
+std::vector<AArch64reg> floatReturnRegs = {V0, V1, V2, V3, V4, V5, V6, V7};
+std::vector<AArch64reg> intParmRegs = {R0, R1, R2, R3, R4, R5, R6, R7};
+std::vector<AArch64reg> floatParmRegs = {V0, V1, V2, V3, V4, V5, V6, V7};
+
 bool IsAvailableReg(AArch64reg reg)
 {
     switch (reg) {
@@ -68,32 +73,6 @@ bool IsCalleeSavedReg(AArch64reg reg)
 #define FP_SIMD_REG(ID, PV, P8, P16, P32, P64, P128, canBeAssigned, isCalleeSave, isParam, isSpill, isExtraSpill) \
     case V##ID: {                                                                                                 \
         return isCalleeSave;                                                                                      \
-    }
-#define FP_SIMD_REG_ALIAS(ID)
-#include "aarch64_fp_simd_regs.def"
-#undef FP_SIMD_REG
-#undef FP_SIMD_REG_ALIAS
-        default:
-            return false;
-    }
-}
-
-bool IsParamReg(AArch64reg reg)
-{
-    switch (reg) {
-/* integer registers */
-#define INT_REG(ID, PREF32, PREF64, canBeAssigned, isCalleeSave, isParam, isSpill, isExtraSpill) \
-    case R##ID: {                                                                                \
-        return isParam;                                                                          \
-    }
-#define INT_REG_ALIAS(ALIAS, ID, PREF32, PREF64)
-#include "aarch64_int_regs.def"
-#undef INT_REG
-#undef INT_REG_ALIAS
-/* fp-simd registers */
-#define FP_SIMD_REG(ID, PV, P8, P16, P32, P64, P128, canBeAssigned, isCalleeSave, isParam, isSpill, isExtraSpill) \
-    case V##ID: {                                                                                                 \
-        return isParam;                                                                                           \
     }
 #define FP_SIMD_REG_ALIAS(ID)
 #include "aarch64_fp_simd_regs.def"

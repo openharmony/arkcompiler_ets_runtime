@@ -93,8 +93,8 @@ public:
     static bool IsValidIntegerIndex(const JSHandle<JSTaggedValue> &typedArray, JSTaggedValue index);
     static JSTaggedValue FastGetPropertyByIndex(JSThread *thread, const JSTaggedValue typedarray, uint32_t index,
                                                 JSType jsType);
-    static JSTaggedValue FastSetPropertyByIndex(JSThread *thread, const JSTaggedValue typedarray, uint32_t index,
-                                                JSTaggedValue value, JSType jsType);
+    static JSTaggedValue PUBLIC_API FastSetPropertyByIndex(JSThread *thread, const JSTaggedValue typedarray,
+                                                           uint32_t index, JSTaggedValue value, JSType jsType);
     // only use in TypeArray fast set property
     static JSTaggedNumber NonEcmaObjectToNumber(JSThread *thread, const JSTaggedValue tagged);
     static JSTaggedValue GetOffHeapBuffer(JSThread *thread, JSHandle<JSTypedArray> &typedArray);

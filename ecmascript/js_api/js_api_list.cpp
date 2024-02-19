@@ -67,6 +67,9 @@ JSTaggedValue JSAPIList::Insert(JSThread *thread, const JSHandle<JSAPIList> &lis
     }
     JSTaggedValue newList = TaggedSingleList::Insert(thread, singleList, value, index);
     list->SetSingleList(thread, newList);
+    if (index != nodeLength) {
+        list->SetIsOrderedList(false);
+    }
     return JSTaggedValue::True();
 }
 
@@ -108,6 +111,26 @@ JSTaggedValue JSAPIList::Get(const int index)
     return singleList->Get(index);
 }
 
+JSTaggedValue JSAPIList::FastGet(JSThread *thread, const int index, const JSHandle<JSAPIList> &list)
+{
+    JSHandle<TaggedSingleList> singleList(thread, list->GetSingleList());
+    if (index < 0 || index >= singleList->Length()) {
+        return JSTaggedValue::Undefined();
+    }
+    int dataIndex = TaggedSingleList::ELEMENTS_START_INDEX + (index + 1) * TaggedSingleList::ENTRY_SIZE;
+    if (!list->IsOrderedList()) {
+        auto newSingleList = TaggedSingleList::SortByNodeOrder(thread, singleList);
+        TaggedSingleList *newList = TaggedSingleList::Cast(newSingleList.GetTaggedObject());
+        if (newList == nullptr) {
+            return JSTaggedValue::Undefined();
+        }
+        list->SetSingleList(thread, newSingleList);
+        list->SetIsOrderedList(true);
+        return newList->GetElement(dataIndex);
+    }
+    return singleList->GetElement(dataIndex);
+}
+
 JSTaggedValue JSAPIList::GetIndexOf(const JSTaggedValue &element)
 {
     TaggedSingleList *singleList = TaggedSingleList::Cast(GetSingleList().GetTaggedObject());
@@ -126,6 +149,7 @@ void JSAPIList::Clear(JSThread *thread)
     if (singleList->NumberOfNodes() > 0) {
         singleList->Clear(thread);
     }
+    SetIsOrderedList(true);
 }
 
 JSTaggedValue JSAPIList::RemoveByIndex(JSThread *thread, const JSHandle<JSAPIList> &list, const int &index)
@@ -140,12 +164,16 @@ JSTaggedValue JSAPIList::RemoveByIndex(JSThread *thread, const JSHandle<JSAPILis
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::RANGE_ERROR, oss.str().c_str());
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
+    if (index != (nodeLength - 1)) {
+        list->SetIsOrderedList(false);
+    }
     return singleList->RemoveByIndex(thread, index);
 }
 
 JSTaggedValue JSAPIList::Remove(JSThread *thread, const JSTaggedValue &element)
 {
     TaggedSingleList *singleList = TaggedSingleList::Cast(GetSingleList().GetTaggedObject());
+    SetIsOrderedList(false);
     return singleList->Remove(thread, element);
 }
 
@@ -163,6 +191,7 @@ JSTaggedValue JSAPIList::Sort(JSThread *thread, const JSHandle<JSTaggedValue> &t
 {
     JSHandle<JSAPIList> list = JSHandle<JSAPIList>::Cast(thisHandle);
     JSHandle<TaggedSingleList> singleList(thread, list->GetSingleList());
+    list->SetIsOrderedList(false);
     return TaggedSingleList::Sort(thread, callbackFn, singleList);
 }
 
@@ -204,6 +233,7 @@ JSTaggedValue JSAPIList::GetSubList(JSThread *thread, const JSHandle<JSAPIList> 
     JSHandle<JSAPIList> sublist = thread->GetEcmaVM()->GetFactory()->NewJSAPIList();
     TaggedSingleList::GetSubList(thread, singleList, fromIndex, toIndex, subSingleList);
     sublist->SetSingleList(thread, subSingleList);
+    sublist->SetIsOrderedList(true);
     return sublist.GetTaggedValue();
 }
 

@@ -136,7 +136,7 @@ void ParallelEvacuator::UpdateWeakObjectSlot(TaggedObject *value, ObjectSlot &sl
         return;
     }
 
-    if (heap_->IsFullMark()) {
+    if (heap_->IsConcurrentFullMark()) {
         ASSERT(!objectRegion->InSharedHeap());
         if (!objectRegion->Test(value)) {
             slot.Clear();
@@ -239,7 +239,7 @@ TaggedObject* ParallelEvacuator::UpdateAddressAfterEvacation(TaggedObject *oldAd
         }
         return nullptr;
     }
-    if (heap_->IsFullMark()) {
+    if (heap_->IsConcurrentFullMark()) {
         if (objectRegion->GetMarkGCBitset() == nullptr || !objectRegion->Test(oldAddress)) {
             return nullptr;
         }

@@ -129,7 +129,7 @@ public:
         *(&methodName_ + len) = '\0';
     }
 
-    static uint32_t CalcChecksum(const char *name, const uint8_t *byteCodeArray, uint32_t byteCodeLength);
+    static uint32_t PUBLIC_API CalcChecksum(const char *name, const uint8_t *byteCodeArray, uint32_t byteCodeLength);
 
     static uint32_t CalcOpCodeChecksum(const uint8_t *byteCodeArray, uint32_t byteCodeLength);
 

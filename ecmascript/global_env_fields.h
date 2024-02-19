@@ -106,6 +106,7 @@
     V(JSTaggedValue, SyntaxErrorFunction, SYNTAX_ERROR_FUNCTION_INDEX)                              \
     V(JSTaggedValue, EvalErrorFunction, EVAL_ERROR_FUNCTION_INDEX)                                  \
     V(JSTaggedValue, OOMErrorFunction, OOM_ERROR_FUNCTION_INDEX)                                    \
+    V(JSTaggedValue, OOMErrorObject, OOM_ERROR_Object_INDEX)                                        \
     V(JSTaggedValue, TerminationErrorFunction, TERMINATION_ERROR_FUNCTION_INDEX)                    \
     V(JSTaggedValue, IntlFunction, INTL_FUNCTION_INDEX)                                             \
     V(JSTaggedValue, LocaleFunction, LOCALE_FUNCTION_INDEX)                                         \
@@ -115,6 +116,10 @@
     V(JSTaggedValue, CollatorFunction, COLLATOR_FUNCTION_INDEX)                                     \
     V(JSTaggedValue, PluralRulesFunction, PLURAL_RULES_FUNCTION_INDEX)                              \
     V(JSTaggedValue, DisplayNamesFunction, DISPLAY_NAMES_FUNCTION_INDEX)                            \
+    V(JSTaggedValue, SegmenterFunction, SEGMENTER_FUNCTION_INDEX)                                   \
+    V(JSTaggedValue, SegmentsFunction, SEGMENTS_FUNCTION_INDEX)                                     \
+    V(JSTaggedValue, SegmentIterator, SEGMENT_ITERATOR_INDEX)                                       \
+    V(JSTaggedValue, SegmentIteratorPrototype, SEGMENT_ITERATOR_PROTOTYPE_INDEX)                    \
     V(JSTaggedValue, ListFormatFunction, LIST_FORMAT_FUNCTION_INDEX)                                \
     V(JSTaggedValue, RegExpFunction, REGEXP_FUNCTION_INDEX)                                         \
     V(JSTaggedValue, RegExpExecFunction, REGEXP_EXEC_FUNCTION_INDEX)                                \
@@ -155,7 +160,6 @@
     V(JSTaggedValue, MatchSymbol, MATCH_SYMBOL_INDEX)                                               \
     V(JSTaggedValue, MatchAllSymbol, MATCH_All_SYMBOL_INDEX)                                        \
     V(JSTaggedValue, SearchSymbol, SEARCH_SYMBOL_INDEX)                                             \
-    V(JSTaggedValue, SpeciesSymbol, SPECIES_SYMBOL_INDEX)                                           \
     V(JSTaggedValue, ToPrimitiveSymbol, TOPRIMITIVE_SYMBOL_INDEX)                                   \
     V(JSTaggedValue, UnscopablesSymbol, UNSCOPABLES_SYMBOL_INDEX)                                   \
     V(JSTaggedValue, HoleySymbol, HOLEY_SYMBOL_OFFSET)                                              \
@@ -233,7 +237,8 @@
 #define GLOBAL_ENV_DETECTOR_SYMBOL_FIELDS(V)                                                        \
     V(JSTaggedValue, ReplaceSymbol, REPLACE_SYMBOL_INDEX)                                           \
     V(JSTaggedValue, SplitSymbol, SPLIT_SYMBOL_INDEX)                                               \
-    V(JSTaggedValue, IteratorSymbol, ITERATOR_SYMBOL_INDEX)
+    V(JSTaggedValue, IteratorSymbol, ITERATOR_SYMBOL_INDEX)                                         \
+    V(JSTaggedValue, SpeciesSymbol, SPECIES_SYMBOL_INDEX)
 
 #define GLOBAL_ENV_FIELDS(V)                                \
     GLOBAL_ENV_COMMON_FIELDS(V)                             \

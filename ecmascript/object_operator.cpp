@@ -49,6 +49,7 @@ void ObjectOperator::HandleKey(const JSHandle<JSTaggedValue> &key)
     }
 
     if (key->IsString()) {
+        keyFromStringType_ = true;
         uint32_t index = 0;
         if (JSTaggedValue::ToElementIndex(key.GetTaggedValue(), &index)) {
             ASSERT(index < JSObject::MAX_ELEMENT_INDEX);
@@ -82,6 +83,7 @@ void ObjectOperator::HandleKey(const JSHandle<JSTaggedValue> &key)
     }
 
     JSHandle<JSTaggedValue> keyHandle(thread_, JSTaggedValue::ToPrimitive(thread_, key, PREFER_STRING));
+    RETURN_IF_ABRUPT_COMPLETION(thread_);
     if (key->IsSymbol()) {
         key_ = keyHandle;
         return;
@@ -274,6 +276,9 @@ void ObjectOperator::UpdateDetectorOnSetPrototype(const JSThread *thread, JSTagg
             if (PropertyDetector::IsTypedArrayIteratorDetectorValid(env)) {
                 PropertyDetector::InvalidateTypedArrayIteratorDetector(env);
             }
+            if (PropertyDetector::IsTypedArraySpeciesProtectDetectorValid(env)) {
+                PropertyDetector::InvalidateTypedArraySpeciesProtectDetector(env);
+            }
             return;
         }
         default:
@@ -373,6 +378,13 @@ void ObjectOperator::UpdateDetector(const JSThread *thread, JSTaggedValue receiv
                 return;
             }
             PropertyDetector::InvalidateTypedArrayIteratorDetector(env);
+        }
+    } else if (key == env->GetTaggedSpeciesSymbol()) {
+        if (receiver.IsJSObject()) {
+            if (!PropertyDetector::IsTypedArraySpeciesProtectDetectorValid(env)) {
+                return;
+            }
+            PropertyDetector::InvalidateTypedArraySpeciesProtectDetector(env);
         }
     }
 }
@@ -641,6 +653,7 @@ bool ObjectOperator::UpdateDataValue(const JSHandle<JSObject> &receiver, const J
                 JSType jsType = holder.GetTaggedObject()->GetClass()->GetObjectType();
                 JSTaggedValue typedArrayProperty = JSTypedArray::FastSetPropertyByIndex(thread_,
                     receiver.GetTaggedValue(), GetIndex(), value.GetTaggedValue(), jsType);
+                RETURN_VALUE_IF_ABRUPT_COMPLETION(thread_, false);
                 if (typedArrayProperty.IsHole()) {
                     return false;
                 }
@@ -705,16 +718,17 @@ bool ObjectOperator::UpdateDataValue(const JSHandle<JSObject> &receiver, const J
         attributes_.SetRepresentation(attr.GetRepresentation());
 
         if (attr.IsInlinedProps()) {
-            receiver->SetPropertyInlinedPropsWithRep(thread_, GetIndex(), std::get<2>(actualValue));
+            receiver->SetPropertyInlinedPropsWithRep(thread_, GetIndex(),
+                std::get<2>(actualValue)); // 2 : Gets the third value
         } else {
             if (receiver.GetTaggedValue().IsJSCOWArray()) {
                 JSArray::CheckAndCopyArray(thread_, JSHandle<JSArray>(receiver));
                 properties.Update(JSHandle<JSArray>(receiver)->GetProperties());
             }
             if (std::get<0>(actualValue)) {
-                properties->Set<true>(thread_, GetIndex(), std::get<2>(actualValue));
+                properties->Set<true>(thread_, GetIndex(), std::get<2>(actualValue)); // 2 : Gets the third value
             } else {
-                properties->Set<false>(thread_, GetIndex(), std::get<2>(actualValue));
+                properties->Set<false>(thread_, GetIndex(), std::get<2>(actualValue)); // 2 : Gets the third value
             }
         }
     } else {
@@ -924,6 +938,7 @@ void ObjectOperator::LookupElementInlinedProps(const JSHandle<JSObject> &obj)
         if (obj->IsTypedArray()) {
             JSTaggedValue val = JSTypedArray::FastElementGet(thread_,
                 JSHandle<JSTaggedValue>::Cast(obj), elementIndex_).GetValue().GetTaggedValue();
+            RETURN_IF_ABRUPT_COMPLETION(thread_);
             if (!val.IsHole()) {
                 SetFound(elementIndex_, val, PropertyAttributes::GetDefaultAttributes(), true);
             }
@@ -995,9 +1010,11 @@ void ObjectOperator::AddPropertyInternal(const JSHandle<JSTaggedValue> &value)
         attributes_.SetRepresentation(attr.GetRepresentation());
         auto *hclass = receiver_->GetTaggedObject()->GetClass();
         if (std::get<0>(actualValue)) {
-            JSObject::Cast(receiver_.GetTaggedValue())->SetProperty<true>(thread_, hclass, attr, std::get<2>(actualValue));
+            JSObject::Cast(receiver_.GetTaggedValue())->SetProperty<true>(thread_,
+                hclass, attr, std::get<2>(actualValue)); // 2 : Gets the third value
         } else {
-            JSObject::Cast(receiver_.GetTaggedValue())->SetProperty<false>(thread_, hclass, attr, std::get<2>(actualValue));
+            JSObject::Cast(receiver_.GetTaggedValue())->SetProperty<false>(thread_,
+                hclass, attr, std::get<2>(actualValue)); // 2 : Gets the third value
         }
         uint32_t index = attr.IsInlinedProps() ? attr.GetOffset() :
                 attr.GetOffset() - obj->GetJSHClass()->GetInlinedProperties();

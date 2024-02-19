@@ -29,6 +29,8 @@
 #include "aarch64_validbit_opt.h"
 #include "aarch64_reg_coalesce.h"
 #include "aarch64_cfgo.h"
+#include "aarch64_peep.h"
+#include "aarch64_proepilog.h"
 
 namespace maplebe {
 constexpr int64 kShortBRDistance = (8 * 1024);
@@ -37,98 +39,6 @@ constexpr int32 kIntRegTypeNum = 5;
 constexpr uint32 kAlignPseudoSize = 3;
 constexpr uint32 kInsnSize = 4;
 constexpr uint32 kAlignMovedFlag = 31;
-
-/* Supporting classes for GCTIB merging */
-class GCTIBKey {
-public:
-    GCTIBKey(MapleAllocator &allocator, uint32 rcHeader, std::vector<uint64> &patternWords)
-        : header(rcHeader), bitMapWords(allocator.Adapter())
-    {
-        (void)bitMapWords.insert(bitMapWords.begin(), patternWords.begin(), patternWords.end());
-    }
-
-    ~GCTIBKey() = default;
-
-    uint32 GetHeader() const
-    {
-        return header;
-    }
-
-    const MapleVector<uint64> &GetBitmapWords() const
-    {
-        return bitMapWords;
-    }
-
-private:
-    uint32 header;
-    MapleVector<uint64> bitMapWords;
-};
-
-class Hasher {
-public:
-    size_t operator()(const GCTIBKey *key) const
-    {
-        CHECK_NULL_FATAL(key);
-        size_t hash = key->GetHeader();
-        return hash;
-    }
-};
-
-class EqualFn {
-public:
-    bool operator()(const GCTIBKey *firstKey, const GCTIBKey *secondKey) const
-    {
-        CHECK_NULL_FATAL(firstKey);
-        CHECK_NULL_FATAL(secondKey);
-        const MapleVector<uint64> &firstWords = firstKey->GetBitmapWords();
-        const MapleVector<uint64> &secondWords = secondKey->GetBitmapWords();
-
-        if ((firstKey->GetHeader() != secondKey->GetHeader()) || (firstWords.size() != secondWords.size())) {
-            return false;
-        }
-
-        for (size_t i = 0; i < firstWords.size(); ++i) {
-            if (firstWords[i] != secondWords[i]) {
-                return false;
-            }
-        }
-        return true;
-    }
-};
-
-class GCTIBPattern {
-public:
-    GCTIBPattern(GCTIBKey &patternKey, MemPool &mp) : name(&mp)
-    {
-        key = &patternKey;
-        id = GetId();
-        name = GCTIB_PREFIX_STR + std::string("PTN_") + std::to_string(id);
-    }
-
-    ~GCTIBPattern() = default;
-
-    int GetId() const
-    {
-        static int id = 0;
-        return id++;
-    }
-
-    std::string GetName() const
-    {
-        DEBUG_ASSERT(!name.empty(), "null name check!");
-        return std::string(name.c_str());
-    }
-
-    void SetName(const std::string &ptnName)
-    {
-        name = ptnName;
-    }
-
-private:
-    int id;
-    MapleString name;
-    GCTIBKey *key;
-};
 
 /* sub Target info & implement */
 class AArch64CG : public CG {
@@ -179,6 +89,14 @@ public:
     ReachingDefinition *CreateReachingDefinition(MemPool &mp, CGFunc &f) const override
     {
         return mp.New<AArch64ReachingDefinition>(f, mp);
+    }
+    GenProEpilog *CreateGenProEpilog(CGFunc &f, MemPool &mp, MemPool *tempMemPool = nullptr) const override
+    {
+        return mp.New<AArch64GenProEpilog>(f, *tempMemPool);
+    }
+    CGPeepHole *CreateCGPeepHole(MemPool &mp, CGFunc &f) const override
+    {
+        return mp.New<AArch64CGPeepHole>(f, &mp);
     }
     MoveRegArgs *CreateMoveRegArgs(MemPool &mp, CGFunc &f) const override
     {

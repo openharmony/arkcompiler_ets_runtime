@@ -114,6 +114,7 @@ extern maplecl::Option<bool> bruteforceSchedule;
 extern maplecl::Option<bool> simulateSchedule;
 extern maplecl::Option<bool> crossLoc;
 extern maplecl::Option<std::string> floatAbi;
+extern maplecl::Option<std::string> archType;
 extern maplecl::Option<std::string> filetype;
 extern maplecl::Option<bool> longCalls;
 extern maplecl::Option<bool> functionSections;
@@ -129,6 +130,7 @@ extern maplecl::Option<uint32_t> alignMaxBbSize;
 extern maplecl::Option<uint32_t> loopAlignPow;
 extern maplecl::Option<uint32_t> jumpAlignPow;
 extern maplecl::Option<uint32_t> funcAlignPow;
+extern maplecl::Option<bool> optimizedFrameLayout;
 
 }  // namespace opts::cg
 

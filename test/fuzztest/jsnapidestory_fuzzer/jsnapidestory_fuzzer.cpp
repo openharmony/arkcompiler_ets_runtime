@@ -44,6 +44,8 @@ void JSNApiDestroyPGOProfilerFuzzTest([[maybe_unused]]const uint8_t *data, size_
     if (size <= 0) {
         return;
     }
+    JSRuntimeOptions runtimeOptions;
+    JSNApi::InitializePGOProfiler(runtimeOptions);
     JSNApi::DestroyPGOProfiler();
     JSNApi::DestroyJSVM(vm);
 }

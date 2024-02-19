@@ -89,8 +89,8 @@ public:
 
     uint32_t GetPGOExtendGTCount(const CString &recordName) const;
 
-    void Record(const BytecodeInstruction &bcIns, int32_t bcIndex,
-                const CString &recordName, const MethodLiteral *method);
+    void PUBLIC_API Record(const BytecodeInstruction &bcIns, int32_t bcIndex,
+                           const CString &recordName, const MethodLiteral *method);
 
     template <class Callback>
     void IterateInfoAndType(uint32_t methodOffset, const Callback &cb) const

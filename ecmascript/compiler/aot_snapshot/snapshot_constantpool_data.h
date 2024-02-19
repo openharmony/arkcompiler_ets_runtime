@@ -85,7 +85,7 @@ protected:
 };
 
 #define DEFINE_INFO_CLASS(V, name)                                          \
-    class name##Info final : public BaseSnapshotInfo {                      \
+    class PUBLIC_API name##Info final : public BaseSnapshotInfo {           \
     public:                                                                 \
         name##Info(EcmaVM *vm,                                              \
                    const JSPandaFile *jsPandaFile,                          \
@@ -111,8 +111,8 @@ public:
     }
     ~SnapshotConstantPoolData() = default;
 
-    void Record(const BytecodeInstruction &bcIns, int32_t bcIndex,
-                const CString &recordName, const MethodLiteral *method);
+    void PUBLIC_API Record(const BytecodeInstruction &bcIns, int32_t bcIndex,
+                           const CString &recordName, const MethodLiteral *method);
 
     void StoreDataToGlobalData(SnapshotGlobalData &snapshotData, const std::set<uint32_t> &skippedMethods) const;
 

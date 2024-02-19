@@ -71,8 +71,7 @@ inline void NonMovableMarker::MarkValue(uint32_t threadId, ObjectSlot &slot, Reg
 inline void NonMovableMarker::MarkObject(uint32_t threadId, TaggedObject *object)
 {
     Region *objectRegion = Region::ObjectAddressToRange(object);
-
-    if ((!heap_->IsFullMark() && !objectRegion->InYoungSpace()) ||
+    if ((!heap_->IsConcurrentFullMark() && !objectRegion->InYoungSpace()) ||
         objectRegion->InSharedHeap()) {
         return;
     }
@@ -335,9 +334,10 @@ inline SlotStatus SemiGCMarker::EvacuateObject(uint32_t threadId, TaggedObject *
     bool isPromoted = ShouldBePromoted(object);
 
     uintptr_t forwardAddress = AllocateDstSpace(threadId, size, isPromoted);
-    bool result = Barriers::AtomicSetPrimitive(object, 0, markWord.GetValue(),
+    auto oldValue = markWord.GetValue();
+    auto result = Barriers::AtomicSetPrimitive(object, 0, oldValue,
                                                MarkWord::FromForwardingAddress(forwardAddress));
-    if (result) {
+    if (result == oldValue) {
         UpdateForwardAddressIfSuccess(threadId, object, klass, forwardAddress, size, markWord, slot, isPromoted);
         return isPromoted ? SlotStatus::CLEAR_SLOT : SlotStatus::KEEP_SLOT;
     }
@@ -423,9 +423,10 @@ inline SlotStatus CompressGCMarker::EvacuateObject(uint32_t threadId, TaggedObje
     JSHClass *klass = markWord.GetJSHClass();
     size_t size = klass->SizeFromJSHClass(object);
     uintptr_t forwardAddress = AllocateForwardAddress(threadId, size, klass, object);
-    bool result = Barriers::AtomicSetPrimitive(object, 0, markWord.GetValue(),
+    auto oldValue = markWord.GetValue();
+    auto result = Barriers::AtomicSetPrimitive(object, 0, oldValue,
                                                MarkWord::FromForwardingAddress(forwardAddress));
-    if (result) {
+    if (result == oldValue) {
         UpdateForwardAddressIfSuccess(threadId, object, klass, forwardAddress, size, markWord, slot);
         Region *region = Region::ObjectAddressToRange(object);
         if (region->HasLocalToShareRememberedSet()) {

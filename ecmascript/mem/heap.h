@@ -16,6 +16,7 @@
 #ifndef ECMASCRIPT_MEM_HEAP_H
 #define ECMASCRIPT_MEM_HEAP_H
 
+#include <signal.h>
 #include "ecmascript/base/config.h"
 #include "ecmascript/frames.h"
 #include "ecmascript/js_thread.h"
@@ -27,6 +28,7 @@
 #include "ecmascript/taskpool/taskpool.h"
 
 namespace panda::ecmascript {
+struct JsHeapDumpWork;
 class ConcurrentMarker;
 class ConcurrentSweeper;
 class EcmaVM;
@@ -51,7 +53,6 @@ class SharedGCMarker;
 class STWYoungGC;
 
 using IdleNotifyStatusCallback = std::function<void(bool)>;
-
 enum class IdleTaskType : uint8_t {
     NO_TASK,
     YOUNG_GC,
@@ -82,6 +83,16 @@ enum AppSensitiveStatus : uint8_t {
     EXIT_HIGH_SENSITIVE,
 };
 
+enum class VerifyKind {
+    VERIFY_PRE_GC,
+    VERIFY_POST_GC,
+    VERIFY_CONCURRENT_MARK_YOUNG,
+    VERIFY_EVACUATE_YOUNG,
+    VERIFY_CONCURRENT_MARK_FULL,
+    VERIFY_EVACUATE_OLD,
+    VERIFY_EVACUATE_FULL
+};
+
 class BaseHeap {
 public:
     BaseHeap(const EcmaParamConfiguration &config) : config_(config) {}
@@ -96,6 +107,10 @@ public:
     virtual bool NeedStopCollection() = 0;
 
     virtual void TryTriggerConcurrentMarking() = 0;
+
+    virtual void TryTriggerIdleCollection() = 0;
+
+    virtual void TryTriggerIncrementalMarking() = 0;
 
     virtual bool OldSpaceExceedCapacity(size_t size) const = 0;
 
@@ -121,9 +136,19 @@ public:
         return markType_ == MarkType::MARK_FULL;
     }
 
+    bool IsConcurrentFullMark() const
+    {
+        return markType_ == MarkType::MARK_FULL;
+    }
+
     void SetOnSerializeEvent(bool isSerialize)
     {
         onSerializeEvent_ = isSerialize;
+        if (!onSerializeEvent_ && !InSensitiveStatus()) {
+            TryTriggerIncrementalMarking();
+            TryTriggerIdleCollection();
+            TryTriggerConcurrentMarking();
+        }
     }
 
     bool GetOnSerializeEvent() const
@@ -170,7 +195,49 @@ public:
     {
         return heapAliveSizeAfterGC_;
     }
-    
+
+    bool InSensitiveStatus() const
+    {
+        return sensitiveStatus_.load(std::memory_order_relaxed) == AppSensitiveStatus::ENTER_HIGH_SENSITIVE
+            || onStartupEvent_;
+    }
+
+    AppSensitiveStatus GetSensitiveStatus() const
+    {
+        return sensitiveStatus_.load(std::memory_order_relaxed);
+    }
+
+    bool onStartUpEvent() const
+    {
+        return onStartupEvent_;
+    }
+
+    void SetSensitiveStatus(AppSensitiveStatus status)
+    {
+        sensitiveStatus_.store(status, std::memory_order_release);;
+    }
+
+    bool CASSensitiveStatus(AppSensitiveStatus expect, AppSensitiveStatus status)
+    {
+        return sensitiveStatus_.compare_exchange_strong(expect, status, std::memory_order_seq_cst);
+    }
+
+    void NotifyPostFork()
+    {
+        LockHolder holder(finishColdStartMutex_);
+        onStartupEvent_ = true;
+        LOG_GC(INFO) << "SmartGC: enter app cold start";
+    }
+
+    // Whether should verify heap during gc.
+    bool ShouldVerifyHeap() const
+    {
+        return shouldVerifyHeap_;
+    }
+
+    void ThrowOutOfMemoryErrorForDefault(JSThread *thread, size_t size, std::string functionName,
+        bool NonMovableObjNearOOM = false);
+
     uint32_t GetMaxMarkTaskCount() const
     {
         return maxMarkTaskCount_;
@@ -181,6 +248,7 @@ public:
     void ReduceTaskCount();
     void WaitRunningTaskFinished();
     void WaitClearTaskFinished();
+
 protected:
     void ThrowOutOfMemoryError(JSThread *thread, size_t size, std::string functionName,
         bool NonMovableObjNearOOM = false);
@@ -206,6 +274,11 @@ protected:
     bool shouldThrowOOMError_ {false};
     bool oldGCRequested_ {false};
     bool onSerializeEvent_ {false};
+    std::atomic<AppSensitiveStatus> sensitiveStatus_ {AppSensitiveStatus::NORMAL_SCENE};
+    bool onStartupEvent_ {false};
+    Mutex finishColdStartMutex_;
+    // ONLY used for heap verification.
+    bool shouldVerifyHeap_ {false};
 };
 
 class SharedHeap : public BaseHeap {
@@ -273,6 +346,18 @@ public:
     void TryTriggerConcurrentMarking() override
     {
         LOG_FULL(ERROR) << "SharedHeap TryTriggerConcurrentMarking() not support yet";
+        return;
+    }
+
+    void TryTriggerIdleCollection() override
+    {
+        LOG_FULL(ERROR) << "SharedHeap TryTriggerIdleCollection() not support yet";
+        return;
+    }
+
+    void TryTriggerIncrementalMarking() override
+    {
+        LOG_FULL(ERROR) << "SharedHeap TryTriggerIncrementalMarking() not support yet";
         return;
     }
 
@@ -593,39 +678,6 @@ public:
         return thread_->GlobalConstants();
     }
 
-    bool InSensitiveStatus() const
-    {
-        return sensitiveStatus_.load(std::memory_order_relaxed) == AppSensitiveStatus::ENTER_HIGH_SENSITIVE
-            || onStartupEvent_;
-    }
-
-    AppSensitiveStatus GetSensitiveStatus() const
-    {
-        return sensitiveStatus_.load(std::memory_order_relaxed);
-    }
-
-    bool onStartUpEvent() const
-    {
-        return onStartupEvent_;
-    }
-
-    void SetSensitiveStatus(AppSensitiveStatus status)
-    {
-        sensitiveStatus_.store(status, std::memory_order_release);;
-    }
-
-    bool CASSensitiveStatus(AppSensitiveStatus expect, AppSensitiveStatus status)
-    {
-        return sensitiveStatus_.compare_exchange_strong(expect, status, std::memory_order_seq_cst);
-    }
-
-    void NotifyPostFork()
-    {
-        LockHolder holder(finishColdStartMutex_);
-        onStartupEvent_ = true;
-        LOG_GC(INFO) << "SmartGC: enter app cold start";
-    }
-
     MemController *GetMemController() const
     {
         return memController_;
@@ -690,8 +742,8 @@ public:
     void TriggerConcurrentMarking();
     bool CheckCanTriggerConcurrentMarking();
 
-    void TryTriggerIdleCollection();
-    void TryTriggerIncrementalMarking();
+    void TryTriggerIdleCollection() override;
+    void TryTriggerIncrementalMarking() override;
     void CalculateIdleDuration();
     void UpdateWorkManager(WorkManager *workManager);
     /*
@@ -849,8 +901,8 @@ public:
     bool IsAlive(TaggedObject *object) const;
     bool ContainObject(TaggedObject *object) const;
 
-    size_t VerifyHeapObjects() const;
-    size_t VerifyOldToNewRSet() const;
+    size_t VerifyHeapObjects(VerifyKind verifyKind = VerifyKind::VERIFY_PRE_GC) const;
+    size_t VerifyOldToNewRSet(VerifyKind verifyKind = VerifyKind::VERIFY_PRE_GC) const;
     void StatisticHeapObject(TriggerGCType gcType) const;
     void StatisticHeapDetail() const;
     void PrintHeapInfo(TriggerGCType gcType) const;
@@ -869,12 +921,19 @@ public:
     }
 
     void AdjustSpaceSizeForAppSpawn();
-#if ECMASCRIPT_ENABLE_HEAP_VERIFY
+
+    // ONLY used for heap verification.
     bool IsVerifying() const
     {
         return isVerifying_;
     }
-#endif
+
+    // ONLY used for heap verification.
+    void SetVerifying(bool verifying)
+    {
+        isVerifying_ = verifying;
+    }
+
     static bool ShouldMoveToRoSpace(JSHClass *hclass, TaggedObject *object)
     {
         return hclass->IsString() && !Region::ObjectAddressToRange(object)->InHugeObjectSpace();
@@ -934,6 +993,11 @@ public:
         return gcType_ == TriggerGCType::YOUNG_GC;
     }
 
+    TriggerGCType GetGCType() const
+    {
+        return gcType_;
+    }
+
     void CheckNonMovableSpaceOOM();
     std::tuple<uint64_t, uint8_t *, int, kungfu::CalleeRegAndOffsetVec> CalCallSiteInfo(uintptr_t retAddr) const;
 
@@ -949,7 +1013,7 @@ private:
     // record lastRegion for each space, which will be used in ReclaimRegions()
     void PrepareRecordRegionsForReclaim();
     void InvokeWeakNodeNativeFinalizeCallback();
-    void DumpHeapSnapshotBeforeOOM(bool isFullGC = true);
+    void DumpHeapSnapshotBeforeOOM(bool isFullGC, size_t size, std::string functionName, bool NonMovableObjNearOOM);
     inline void ReclaimRegions(TriggerGCType gcType);
     inline size_t CalculateCommittedCacheSize();
     class ParallelGCTask : public Task {
@@ -1103,22 +1167,19 @@ private:
 
     // parallel evacuator task number.
     uint32_t maxEvacuateTaskCount_ {0};
-    Mutex finishColdStartMutex_;
+    Mutex waitTaskFinishedMutex_;
+    ConditionVariable waitTaskFinishedCV_;
 
     // Application status
 
     IdleNotifyStatusCallback notifyIdleStatusCallback {nullptr};
-    std::atomic<AppSensitiveStatus> sensitiveStatus_ {AppSensitiveStatus::NORMAL_SCENE};
-    bool onStartupEvent_ {false};
 
     IdleTaskType idleTask_ {IdleTaskType::NO_TASK};
     float idlePredictDuration_ {0.0f};
     double idleTaskFinishTime_ {0.0};
     int32_t recursionDepth_ {0};
 
-#if ECMASCRIPT_ENABLE_HEAP_VERIFY
     bool isVerifying_ {false};
-#endif
 };
 }  // namespace panda::ecmascript
 

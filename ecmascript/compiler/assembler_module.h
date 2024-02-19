@@ -82,6 +82,11 @@ public:
         return asmCallSigns_[i];
     }
 
+    const std::vector<size_t> &GetStubsOffset() const
+    {
+        return stubsOffset_;
+    }
+
     void GenerateStubsX64(Chunk* chunk);
     void GenerateStubsAarch64(Chunk* chunk);
 
@@ -93,6 +98,7 @@ public:
 private:
     std::vector<const CallSignature *> asmCallSigns_;
     std::map<int, panda::ecmascript::Label *> symbolTable_;
+    std::vector<size_t> stubsOffset_;
     uint8_t* buffer_ {nullptr};
     size_t bufferSize_ {0};
 };

@@ -114,7 +114,7 @@ public:
                                                        const JSHandle<JSTaggedValue> &ihclass,
                                                        const JSHandle<JSHClass> &constructorHClass);
 
-    static bool MatchTrackType(TrackType trackType, JSTaggedValue value);
+    static bool PUBLIC_API MatchTrackType(TrackType trackType, JSTaggedValue value);
 private:
     static JSHandle<NameDictionary> BuildDictionaryProperties(JSThread *thread, const JSHandle<JSObject> &object,
                                                               JSHandle<TaggedArray> &keys,

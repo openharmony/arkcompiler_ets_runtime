@@ -94,7 +94,7 @@ ElfChecker::ElfChecker(const std::string& path) : elfErrorCode_(0), fromMmap_(fa
         elfLen_ = 0;
         return;
     }
-    elfLen_ = file.tellg();
+    elfLen_ = static_cast<size_t>(file.tellg());
     file.seekg(0, std::ios::beg);
     if (elfLen_ <= 0) {
         elfData_ = nullptr;
@@ -364,7 +364,8 @@ ElfChecker::Elf* ElfChecker::GetElfItem(ElfItemField& elfItemField, void* mapAdd
                index.  */
             if (elfItemField.shdr[cnt].sh_type == llvm::ELF::SHT_SYMTAB_SHNDX &&
                 elfItemField.shdr[cnt].sh_link < scnCnt) {
-                elfItemField.sections.data()[elfItemField.shdr[cnt].sh_link].extendSectionHeaderIndex = cnt;
+                elfItemField.sections.data()[elfItemField.shdr[cnt].sh_link]
+                    .extendSectionHeaderIndex = static_cast<int>(cnt);
             }
             /* Set the own extendSectionHeaderIndex field in case it has not yet
                been set.  */

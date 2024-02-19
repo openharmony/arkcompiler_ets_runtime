@@ -48,6 +48,15 @@ using SamplingInfo = ecmascript::SamplingInfo;
 using DebuggerPostTask = std::function<void(std::function<void()> &&)>;
 using TraceEvent = ecmascript::TraceEvent;
 
+struct DumpForSnapShotStruct {
+    const EcmaVM *vm;
+    int dumpFormat;
+    bool isVmMode = true;
+    bool isPrivate = false;
+    bool captureNumericValue = false;
+    bool isFullGC = true;
+};
+
 class PUBLIC_API DFXJSNApi {
 public:
     // progress pointer is used to report the object number for IDE.
@@ -59,6 +68,8 @@ public:
                                  bool isFullGC = true);
     static void DumpHeapSnapshot(const EcmaVM *vm, int dumpFormat, bool isVmMode = true, bool isPrivate = false,
                                  bool captureNumericValue = false, bool isFullGC = true);
+    static void DumpHeapSnapshotAllVMs(const EcmaVM *vm, int dumpFormat, bool isVmMode = true, bool isPrivate = false,
+                                       bool captureNumericValue = false, bool isFullGC = true);
     static void DestroyHeapProfiler(const EcmaVM *vm);
 
     static bool BuildNativeAndJsStackTrace(const EcmaVM *vm, std::string &stackTraceStr);

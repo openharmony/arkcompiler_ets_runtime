@@ -274,7 +274,7 @@ JSTaggedValue EcmaContext::ExecuteAot(size_t actualNumArgs, JSTaggedType *args,
 }
 
 Expected<JSTaggedValue, bool> EcmaContext::CommonInvokeEcmaEntrypoint(const JSPandaFile *jsPandaFile,
-    std::string_view entryPoint, JSHandle<JSFunction> &func)
+    std::string_view entryPoint, JSHandle<JSFunction> &func, bool executeFromJob)
 {
     JSHandle<Method> method(thread_, func->GetMethod());
     JSHandle<JSTaggedValue> global = GlobalEnv::Cast(globalEnv_.GetTaggedObject())->GetJSGlobalObject();
@@ -321,7 +321,10 @@ Expected<JSTaggedValue, bool> EcmaContext::CommonInvokeEcmaEntrypoint(const JSPa
             result = EcmaInterpreter::Execute(info);
         }
     }
-    if (!thread_->HasPendingException()) {
+    if (thread_->HasPendingException()) {
+        return Unexpected(false);
+    }
+    if (!executeFromJob) {
         job::MicroJobQueue::ExecutePendingJob(thread_, GetMicroJobQueue());
     }
 
@@ -329,7 +332,7 @@ Expected<JSTaggedValue, bool> EcmaContext::CommonInvokeEcmaEntrypoint(const JSPa
 }
 
 Expected<JSTaggedValue, bool> EcmaContext::InvokeEcmaEntrypoint(const JSPandaFile *jsPandaFile,
-                                                                std::string_view entryPoint, bool excuteFromJob)
+                                                                std::string_view entryPoint, bool executeFromJob)
 {
     [[maybe_unused]] EcmaHandleScope scope(thread_);
     JSHandle<Program> program = JSPandaFileManager::GetInstance()->GenerateProgram(vm_, jsPandaFile, entryPoint);
@@ -342,23 +345,19 @@ Expected<JSTaggedValue, bool> EcmaContext::InvokeEcmaEntrypoint(const JSPandaFil
         jsPandaFile->GetJSPandaFileDesc(), entryPoint);
 
     JSHandle<JSFunction> func(thread_, program->GetMainFunction());
-    Expected<JSTaggedValue, bool> result = CommonInvokeEcmaEntrypoint(jsPandaFile, entryPoint, func);
+    Expected<JSTaggedValue, bool> result = CommonInvokeEcmaEntrypoint(jsPandaFile, entryPoint, func, executeFromJob);
 
-    // print exception information
-    if (!excuteFromJob && thread_->HasPendingException()) {
-        HandleUncaughtException(thread_->GetException());
-    }
     return result;
 }
 
 Expected<JSTaggedValue, bool> EcmaContext::InvokeEcmaEntrypointForHotReload(
-    const JSPandaFile *jsPandaFile, std::string_view entryPoint, bool excuteFromJob)
+    const JSPandaFile *jsPandaFile, std::string_view entryPoint, bool executeFromJob)
 {
     [[maybe_unused]] EcmaHandleScope scope(thread_);
     JSHandle<Program> program = JSPandaFileManager::GetInstance()->GenerateProgram(vm_, jsPandaFile, entryPoint);
 
     JSHandle<JSFunction> func(thread_, program->GetMainFunction());
-    Expected<JSTaggedValue, bool> result = CommonInvokeEcmaEntrypoint(jsPandaFile, entryPoint, func);
+    Expected<JSTaggedValue, bool> result = CommonInvokeEcmaEntrypoint(jsPandaFile, entryPoint, func, executeFromJob);
 
     JSHandle<JSTaggedValue> finalModuleRecord(thread_, func->GetModule());
     // avoid GC problems.
@@ -369,9 +368,9 @@ Expected<JSTaggedValue, bool> EcmaContext::InvokeEcmaEntrypointForHotReload(
     AddPatchModule(recordName, moduleRecordHandle);
 
     // print exception information
-    if (!excuteFromJob && thread_->HasPendingException() &&
+    if (thread_->HasPendingException() &&
         Method::Cast(func->GetMethod())->GetMethodName() != JSPandaFile::PATCH_FUNCTION_NAME_0) {
-        HandleUncaughtException(thread_->GetException());
+        return Unexpected(false);
     }
     return result;
 }
@@ -656,11 +655,18 @@ void EcmaContext::HandleUncaughtException(JSTaggedValue exception)
     LOG_NO_TAG(ERROR) << string;
 }
 
+void EcmaContext::HandleUncaughtException()
+{
+    JSTaggedValue exception = thread_->GetException();
+    HandleUncaughtException(exception);
+}
+
 // static
 void EcmaContext::PrintJSErrorInfo(JSThread *thread, const JSHandle<JSTaggedValue> &exceptionInfo)
 {
     JSHandle<JSTaggedValue> nameKey = thread->GlobalConstants()->GetHandledNameString();
     JSHandle<JSTaggedValue> nameValue = JSObject::GetProperty(thread, exceptionInfo, nameKey).GetValue();
+    RETURN_IF_ABRUPT_COMPLETION(thread);
     JSHandle<EcmaString> name = JSTaggedValue::ToString(thread, nameValue);
     // JSTaggedValue::ToString may cause exception. In this case, do not return, use "<error>" instead.
     if (thread->HasPendingException()) {
@@ -669,6 +675,7 @@ void EcmaContext::PrintJSErrorInfo(JSThread *thread, const JSHandle<JSTaggedValu
     }
     JSHandle<JSTaggedValue> msgKey = thread->GlobalConstants()->GetHandledMessageString();
     JSHandle<JSTaggedValue> msgValue = JSObject::GetProperty(thread, exceptionInfo, msgKey).GetValue();
+    RETURN_IF_ABRUPT_COMPLETION(thread);
     JSHandle<EcmaString> msg = JSTaggedValue::ToString(thread, msgValue);
     // JSTaggedValue::ToString may cause exception. In this case, do not return, use "<error>" instead.
     if (thread->HasPendingException()) {
@@ -677,6 +684,7 @@ void EcmaContext::PrintJSErrorInfo(JSThread *thread, const JSHandle<JSTaggedValu
     }
     JSHandle<JSTaggedValue> stackKey = thread->GlobalConstants()->GetHandledStackString();
     JSHandle<JSTaggedValue> stackValue = JSObject::GetProperty(thread, exceptionInfo, stackKey).GetValue();
+    RETURN_IF_ABRUPT_COMPLETION(thread);
     JSHandle<EcmaString> stack = JSTaggedValue::ToString(thread, stackValue);
     // JSTaggedValue::ToString may cause exception. In this case, do not return, use "<error>" instead.
     if (thread->HasPendingException()) {
@@ -687,7 +695,11 @@ void EcmaContext::PrintJSErrorInfo(JSThread *thread, const JSHandle<JSTaggedValu
     CString nameBuffer = ConvertToString(*name);
     CString msgBuffer = ConvertToString(*msg);
     CString stackBuffer = ConvertToString(*stack);
-    LOG_NO_TAG(ERROR) << panda::ecmascript::previewerTag << nameBuffer << ": " << msgBuffer << "\n" << stackBuffer;
+    LOG_NO_TAG(ERROR) << panda::ecmascript::previewerTag << nameBuffer << ": " << msgBuffer << "\n"
+                      << (panda::ecmascript::previewerTag.empty()
+                              ? stackBuffer
+                              : std::regex_replace(stackBuffer, std::regex(".+(\n|$)"),
+                                                   panda::ecmascript::previewerTag + "$0"));
 }
 
 bool EcmaContext::HasPendingJob()
@@ -901,9 +913,11 @@ void EcmaContext::ShrinkHandleStorage(int prevIndex)
     int32_t lastIndex = static_cast<int32_t>(handleStorageNodes_.size() - 1);
 #if ECMASCRIPT_ENABLE_ZAP_MEM
     uintptr_t size = ToUintPtr(handleScopeStorageEnd_) - ToUintPtr(handleScopeStorageNext_);
-    if (memset_s(handleScopeStorageNext_, size, 0, size) != EOK) {
-        LOG_FULL(FATAL) << "memset_s failed";
-        UNREACHABLE();
+    if (currentHandleStorageIndex_ != -1) {
+        if (memset_s(handleScopeStorageNext_, size, 0, size) != EOK) {
+            LOG_FULL(FATAL) << "memset_s failed";
+            UNREACHABLE();
+        }
     }
     for (int32_t i = currentHandleStorageIndex_ + 1; i < lastIndex; i++) {
         if (memset_s(handleStorageNodes_[i],
@@ -927,7 +941,10 @@ void EcmaContext::ShrinkHandleStorage(int prevIndex)
 
 void EcmaContext::LoadStubFile()
 {
-    std::string stubFile = vm_->GetJSOptions().GetStubFile();
+    std::string stubFile = "";
+    if (vm_->GetJSOptions().WasStubFileSet()) {
+        stubFile = vm_->GetJSOptions().GetStubFile();
+    }
     aotFileManager_->LoadStubFile(stubFile);
 }
 

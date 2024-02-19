@@ -39,3 +39,4 @@ parent.field = 0
 Parent.sField = 0
 child.a1017 = a1017
 child.childField = 0
+[IC] Fail to assign member in dict mode with mismatched value. err: TypeError: Cannot set sendable property with mismatched type, loopIndex: 1000

@@ -197,6 +197,7 @@ public:
     void CheckOverlappingInnerLoops(const MapleVector<CGFuncLoops *> &iLoops, const MapleVector<BB *> &loopMem) const;
     void CheckLoops() const;
     void PrintLoops(const CGFuncLoops &funcLoop) const;
+    bool IsBBLoopMember(const BB *bb);
 
     const BB *GetHeader() const
     {

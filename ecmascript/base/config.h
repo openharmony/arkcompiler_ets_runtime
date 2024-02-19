@@ -61,7 +61,7 @@ namespace panda::ecmascript {
     #define ECMASCRIPT_SWITCH_GC_MODE_TO_FULL_GC 1
     #define ECMASCRIPT_ENABLE_CAST_CHECK 1
     #define ECMASCRIPT_ENABLE_NEW_HANDLE_CHECK 1
-    #define ECMASCRIPT_ENABLE_HEAP_VERIFY 1
+    #define ECMASCRIPT_ENABLE_HEAP_VERIFY 1                 // use jsoption instead
     #define ECMASCRIPT_ENABLE_BARRIER_CHECK 1
     #define ECMASCRIPT_ENABLE_NAPI_SPECIAL_CHECK 1
 #elif defined(ECMASCRIPT_ENABLE_DFX_CONFIG)
@@ -70,7 +70,7 @@ namespace panda::ecmascript {
     #define ECMASCRIPT_SWITCH_GC_MODE_TO_FULL_GC 0
     #define ECMASCRIPT_ENABLE_CAST_CHECK 0
     #define ECMASCRIPT_ENABLE_NEW_HANDLE_CHECK 0
-    #define ECMASCRIPT_ENABLE_HEAP_VERIFY 1
+    #define ECMASCRIPT_ENABLE_HEAP_VERIFY 1                 // use jsoption instead
     #define ECMASCRIPT_ENABLE_BARRIER_CHECK 0
     #define ECMASCRIPT_ENABLE_NAPI_SPECIAL_CHECK 1
 #else
@@ -79,7 +79,7 @@ namespace panda::ecmascript {
     #define ECMASCRIPT_SWITCH_GC_MODE_TO_FULL_GC 0
     #define ECMASCRIPT_ENABLE_CAST_CHECK 0
     #define ECMASCRIPT_ENABLE_NEW_HANDLE_CHECK 0
-    #define ECMASCRIPT_ENABLE_HEAP_VERIFY 0
+    #define ECMASCRIPT_ENABLE_HEAP_VERIFY 0                 // use jsoption instead
     #define ECMASCRIPT_ENABLE_BARRIER_CHECK 0
     #define ECMASCRIPT_ENABLE_NAPI_SPECIAL_CHECK 0
 #endif

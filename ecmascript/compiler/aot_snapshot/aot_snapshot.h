@@ -53,7 +53,7 @@ public:
 
     void InitSnapshot(uint32_t compileFilesCount);
 
-    void StoreConstantPoolInfo(BytecodeInfoCollector *bcInfoCollector);
+    void PUBLIC_API StoreConstantPoolInfo(BytecodeInfoCollector *bcInfoCollector);
 
     void ResolveSnapshotData(const CMap<std::pair<std::string, uint32_t>, uint32_t> &methodToEntryIndexMap)
     {

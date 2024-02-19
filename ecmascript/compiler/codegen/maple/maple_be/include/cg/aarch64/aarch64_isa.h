@@ -33,10 +33,10 @@ namespace maplebe {
  */
 constexpr int kAarch64StackPtrAlignment = 16;
 
-constexpr int32 kOffsetAlign = 8;
-constexpr uint32 kIntregBytelen = 8; /* 64-bit */
-constexpr uint32 kFpregBytelen = 8;  /* only lower 64 bits are used */
-constexpr int kSizeOfFplr = 16;
+constexpr int32 kAarch64OffsetAlign = 8;
+constexpr uint32 kAarch64IntregBytelen = 8; /* 64-bit */
+constexpr uint32 kAarch64FpregBytelen = 8;  /* only lower 64 bits are used */
+constexpr int kAarch64SizeOfFplr = 16;
 
 enum StpLdpImmBound : int {
     kStpLdpImm64LowerBound = -512,
@@ -162,7 +162,24 @@ static inline bool IsPseudoInstruction(MOperator mOp)
  */
 uint32 GetJumpTargetIdx(const Insn &insn);
 
+bool IsSub(const Insn &insn);
+
+MOperator GetMopSub2Subs(const Insn &insn);
+
 MOperator FlipConditionOp(MOperator flippedOp);
+
+// Function: for immediate verification, memopnd ofstvalue is returned from opnd input.
+// It's worth noting that 0 will be returned when kBOR memopnd is input.
+int64 GetMemOpndOffsetValue(Operand *o);
+
+int32 GetTail0BitNum(int64 val);
+
+int32 GetHead0BitNum(int64 val);
+
+inline void GetNextOffsetCalleeSaved(int &offset)
+{
+    offset += (kAarch64IntregBytelen  << 1);
+}
 } /* namespace AArch64isa */
 
 /*
@@ -171,12 +188,8 @@ MOperator FlipConditionOp(MOperator flippedOp);
  * The Stack Pointer has to be aligned at 16-byte boundary.
  * On AArch64, kIntregBytelen == 8 (see the above)
  */
-inline void GetNextOffsetCalleeSaved(int &offset)
-{
-    offset += (kIntregBytelen << 1);
-}
 
-MOperator GetMopPair(MOperator mop);
+MOperator GetMopPair(MOperator mop, bool isIncludeStrbStrh);
 } /* namespace maplebe */
 
 #endif /* MAPLEBE_INCLUDE_CG_AARCH64_AARCH64_ISA_H */

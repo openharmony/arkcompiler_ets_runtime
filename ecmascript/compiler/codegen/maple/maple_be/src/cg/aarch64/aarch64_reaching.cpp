@@ -32,7 +32,7 @@ void AArch64ReachingDefinition::InitStartGen()
     CCLocInfo pLoc;
     for (uint32 i = 0; i < cgFunc->GetFunction().GetFormalCount(); ++i) {
         MIRType *type = cgFunc->GetFunction().GetNthParamType(i);
-        (void)parmLocator.LocateNextParm(*type, pLoc, i == 0, &cgFunc->GetFunction());
+        (void)parmLocator.LocateNextParm(*type, pLoc, i == 0, cgFunc->GetFunction().GetMIRFuncType());
         if (pLoc.reg0 == 0) {
             /* If is a large frame, parameter addressing mode is based vreg:Vra. */
             continue;
@@ -325,7 +325,8 @@ void AArch64ReachingDefinition::FindRegDefInBB(uint32 regNO, BB &bb, InsnSet &de
         return;
     }
 
-    FOR_BB_INSNS(insn, (&bb)) {
+    FOR_BB_INSNS(insn, (&bb))
+    {
         if (!insn->IsMachineInstruction()) {
             continue;
         }
@@ -438,7 +439,8 @@ void AArch64ReachingDefinition::FindMemDefInBB(uint32 offset, BB &bb, InsnSet &d
         return;
     }
 
-    FOR_BB_INSNS(insn, (&bb)) {
+    FOR_BB_INSNS(insn, (&bb))
+    {
         if (!insn->IsMachineInstruction()) {
             continue;
         }
@@ -601,7 +603,8 @@ InsnSet AArch64ReachingDefinition::FindDefForRegOpnd(Insn &insn, uint32 indexOrR
     if (insn.GetBB()->IsCleanup()) {
         DFSFindDefForRegOpnd(*insn.GetBB(), regNO, visitedBB, defInsnSet);
         if (defInsnSet.empty()) {
-            FOR_ALL_BB(bb, cgFunc) {
+            FOR_ALL_BB(bb, cgFunc)
+            {
                 if (bb->IsCleanup()) {
                     continue;
                 }
@@ -1030,7 +1033,8 @@ InsnSet AArch64ReachingDefinition::FindDefForMemOpnd(Insn &insn, uint32 indexOrO
     if (insn.GetBB()->IsCleanup()) {
         DFSFindDefForMemOpnd(*insn.GetBB(), memOffSet, visitedBB, defInsnSet);
         if (defInsnSet.empty()) {
-            FOR_ALL_BB(bb, cgFunc) {
+            FOR_ALL_BB(bb, cgFunc)
+            {
                 if (bb->IsCleanup()) {
                     continue;
                 }
@@ -1113,7 +1117,8 @@ void AArch64ReachingDefinition::InitGenUse(BB &bb, bool firstTime)
         return;
     }
 
-    FOR_BB_INSNS(insn, (&bb)) {
+    FOR_BB_INSNS(insn, (&bb))
+    {
         if (!insn->IsMachineInstruction()) {
             continue;
         }
@@ -1243,7 +1248,7 @@ void AArch64ReachingDefinition::InitInfoForRegOpnd(const BB &bb, Operand &opnd, 
 
 int32 AArch64ReachingDefinition::GetStackSize() const
 {
-    const int sizeofFplr = kDivide2 * kIntregBytelen;
+    const int sizeofFplr = kDivide2 * kAarch64IntregBytelen;
     return static_cast<int32>(static_cast<AArch64MemLayout *>(cgFunc->GetMemlayout())->RealStackFrameSize() +
                               sizeofFplr);
 }

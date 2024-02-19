@@ -176,7 +176,8 @@ bool LMIRBuilder::IsHeapPointerType(Type *mirType) const
 
 ArrayType *LMIRBuilder::CreateArrayType(Type *elemType, std::vector<uint32_t> &dimSize)
 {
-    auto type = GlobalTables::GetTypeTable().GetOrCreateArrayType(*elemType, dimSize.size(), dimSize.data());
+    auto type = GlobalTables::GetTypeTable().GetOrCreateArrayType(*elemType, dimSize.size(),
+        reinterpret_cast<uint64*>(dimSize.data()));
     return static_cast<ArrayType *>(type);
 }
 
@@ -545,6 +546,9 @@ Stmt &LMIRBuilder::CreateSwitchInternal(Type *type, Expr cond, BB &defaultBB,
                                         std::vector<std::pair<int64_t, BB *>> &cases)
 {
     CaseVector switchTable(mirBuilder.GetCurrentFuncCodeMpAllocator()->Adapter());
+    for (auto caseBranch : cases) {
+        switchTable.push_back({caseBranch.first, GetBBLabelIdx(*caseBranch.second)});
+    }
     return *mirBuilder.CreateStmtSwitch(cond.GetNode(), GetBBLabelIdx(defaultBB), switchTable);
 }
 

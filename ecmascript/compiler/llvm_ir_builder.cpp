@@ -59,10 +59,11 @@ namespace panda::ecmascript::kungfu {
 LLVMIRBuilder::LLVMIRBuilder(const std::vector<std::vector<GateRef>> *schedule, Circuit *circuit,
                              LLVMModule *module, LLVMValueRef function, const CompilationConfig *cfg,
                              CallSignature::CallConv callConv, bool enableLog, bool isFastCallAot,
-                             const std::string &funcName, bool enableOptInlining)
+                             const std::string &funcName, bool enableOptInlining, bool enableBranchProfiling)
     : compCfg_(cfg), scheduledGates_(schedule), circuit_(circuit), acc_(circuit), module_(module->GetModule()),
       function_(function), llvmModule_(module), callConv_(callConv), enableLog_(enableLog),
-      isFastCallAot_(isFastCallAot), enableOptInlining_(enableOptInlining)
+      isFastCallAot_(isFastCallAot), enableOptInlining_(enableOptInlining),
+      enableOptBranchProfiling_(enableBranchProfiling)
 {
     ASSERT(compCfg_->Is64Bit());
     context_ = module->GetContext();
@@ -1383,7 +1384,7 @@ void LLVMIRBuilder::VisitBranch(GateRef gate, GateRef cmp, int btrue, int bfalse
     LLVMValueRef result = LLVMBuildCondBr(builder_, cond, llvmTrueBB, llvmFalseBB);
     EndCurrentBlock();
 
-    if (acc_.HasBranchWeight(gate)) {
+    if (enableOptBranchProfiling_ && acc_.HasBranchWeight(gate)) {
         auto trueWeight = acc_.GetTrueWeight(gate);
         auto falseWeight = acc_.GetFalseWeight(gate);
         LLVMMetadataRef branch_weights = LLVMMDStringInContext2(context_, "branch_weights", 14);
@@ -2390,13 +2391,15 @@ void LLVMIRBuilder::HandleDeoptCheck(GateRef gate)
     LLVMValueRef cond = GetLValue(cmp);
     LLVMValueRef result = LLVMBuildCondBr(builder_, cond, llvmTrueBB, llvmFalseBB);
 
-    LLVMMetadataRef branch_weights = LLVMMDStringInContext2(context_, "branch_weights", 14);
-    LLVMMetadataRef weight1 = LLVMValueAsMetadata(LLVMConstInt(LLVMIntType(32), BranchWeight::DEOPT_WEIGHT, 0));
-    LLVMMetadataRef weight2 = LLVMValueAsMetadata(LLVMConstInt(LLVMIntType(32), BranchWeight::ONE_WEIGHT, 0));
-    LLVMMetadataRef mds[] = {branch_weights, weight1, weight2};
-    LLVMMetadataRef metadata = LLVMMDNodeInContext2(context_, mds, 3);  // 3: size of mds
-    LLVMValueRef metadata_value = LLVMMetadataAsValue(context_, metadata);
-    LLVMSetMetadata(result, LLVMGetMDKindID("prof", 4), metadata_value);    // 4: length of "prof"
+    if (enableOptBranchProfiling_) {
+        LLVMMetadataRef branch_weights = LLVMMDStringInContext2(context_, "branch_weights", 14);
+        LLVMMetadataRef weight1 = LLVMValueAsMetadata(LLVMConstInt(LLVMIntType(32), BranchWeight::DEOPT_WEIGHT, 0));
+        LLVMMetadataRef weight2 = LLVMValueAsMetadata(LLVMConstInt(LLVMIntType(32), BranchWeight::ONE_WEIGHT, 0));
+        LLVMMetadataRef mds[] = {branch_weights, weight1, weight2};
+        LLVMMetadataRef metadata = LLVMMDNodeInContext2(context_, mds, 3);  // 3: size of mds
+        LLVMValueRef metadata_value = LLVMMetadataAsValue(context_, metadata);
+        LLVMSetMetadata(result, LLVMGetMDKindID("prof", 4), metadata_value);    // 4: length of "prof"
+    }
 
     EndCurrentBlock();
 

@@ -23,7 +23,7 @@ class TypeLiteralExtractor {
 using TypeLiteralValue = std::variant<uint32_t, CString>;
 
 public:
-    explicit TypeLiteralExtractor(const JSPandaFile *jsPandaFile, const uint32_t typeOffset);
+    explicit PUBLIC_API TypeLiteralExtractor(const JSPandaFile *jsPandaFile, const uint32_t typeOffset);
     ~TypeLiteralExtractor() = default;
     NO_COPY_SEMANTIC(TypeLiteralExtractor);
     NO_MOVE_SEMANTIC(TypeLiteralExtractor);
@@ -166,7 +166,7 @@ class TypeAnnotationExtractor {
 using LiteralTag = panda_file::LiteralTag;
 
 public:
-    explicit TypeAnnotationExtractor(const JSPandaFile *jsPandaFile, const uint32_t methodOffset);
+    explicit PUBLIC_API TypeAnnotationExtractor(const JSPandaFile *jsPandaFile, const uint32_t methodOffset);
     ~TypeAnnotationExtractor() = default;
     NO_COPY_SEMANTIC(TypeAnnotationExtractor);
     NO_MOVE_SEMANTIC(TypeAnnotationExtractor);
@@ -191,7 +191,7 @@ public:
         return isNamespace_;
     }
 
-    void Print() const;
+    void PUBLIC_API Print() const;
 
 private:
     static constexpr const char *TYPE_ANNO_ELEMENT_NAME = "_TypeOfInstruction";

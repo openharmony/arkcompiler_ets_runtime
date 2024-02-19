@@ -53,10 +53,11 @@ float CStringToF(const CString &str);
 double CStringToD(const CString &str);
 
 CString ConvertToString(const std::string &str);
-std::string ConvertToStdString(const CString &str);
+std::string PUBLIC_API ConvertToStdString(const CString &str);
 
 // '\u0000' is skip according to holdZero
-CString ConvertToString(const ecmascript::EcmaString *s, StringConvertedUsage usage = StringConvertedUsage::PRINT);
+CString PUBLIC_API ConvertToString(const ecmascript::EcmaString *s,
+    StringConvertedUsage usage = StringConvertedUsage::PRINT);
 CString ConvertToString(ecmascript::JSTaggedValue key);
 
 template<class T>

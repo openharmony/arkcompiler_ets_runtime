@@ -55,10 +55,6 @@ void X64CGFunc::MergeReturn()
 {
     CHECK_FATAL(false, "NIY");
 }
-void X64CGFunc::DetermineReturnTypeofCall()
-{
-    CHECK_FATAL(false, "NIY");
-}
 void X64CGFunc::HandleRCCall(bool begin, const MIRSymbol *retRef)
 {
     CHECK_FATAL(false, "NIY");
@@ -151,11 +147,11 @@ void X64CGFunc::SelectCall(CallNode &callNode)
 {
     CHECK_FATAL(false, "NIY");
 }
-void X64CGFunc::SelectIcall(IcallNode &icallNode, Operand &fptrOpnd)
+void X64CGFunc::SelectIcall(IcallNode &icallNode)
 {
     CHECK_FATAL(false, "NIY");
 }
-void X64CGFunc::SelectIntrinCall(IntrinsiccallNode &intrinsiccallNode)
+void X64CGFunc::SelectIntrinsicCall(IntrinsiccallNode &intrinsiccallNode)
 {
     CHECK_FATAL(false, "NIY");
 }
@@ -239,7 +235,7 @@ Operand *X64CGFunc::SelectCAtomicLoadN(IntrinsicopNode &intrinsicopNode)
     CHECK_FATAL(false, "NIY");
     return nullptr;
 }
-Operand *X64CGFunc::SelectCAtomicExchangeN(IntrinsicopNode &intrinsicopNode)
+Operand *X64CGFunc::SelectCAtomicExchangeN(const IntrinsiccallNode &intrinsicopNode)
 {
     CHECK_FATAL(false, "NIY");
     return nullptr;
@@ -310,7 +306,7 @@ Operand *X64CGFunc::SelectIreadfpoff(const BaseNode &parent, IreadFPoffNode &ire
     CHECK_FATAL(false, "NIY");
     return nullptr;
 }
-Operand *X64CGFunc::SelectIntConst(const MIRIntConst &intConst)
+Operand *X64CGFunc::SelectIntConst(const MIRIntConst &intConst, const BaseNode &parent)
 {
     CHECK_FATAL(false, "NIY");
     return nullptr;
@@ -591,12 +587,6 @@ Operand *X64CGFunc::SelectLoadArrayClassCache(MIRSymbol &st, int64 offset, PrimT
 void X64CGFunc::GenerateYieldpoint(BB &bb)
 {
     CHECK_FATAL(false, "NIY");
-}
-Operand &X64CGFunc::ProcessReturnReg(PrimType primType, int32 sReg)
-{
-    CHECK_FATAL(false, "NIY");
-    Operand *a;
-    return *a;
 }
 Operand &X64CGFunc::GetOrCreateRflag()
 {
@@ -883,7 +873,7 @@ int32 X64CGFunc::GetBaseOffset(const SymbolAlloc &symbolAlloc)
      * Spill            |
      * ArgsStk        --
      */
-    constexpr const int32 sizeofFplr = 2 * kIntregBytelen;
+    constexpr const int32 sizeofFplr = 2 * kX64IntregBytelen;
     // baseOffset is the offset of this symbol based on the rbp position.
     int32 baseOffset = symAlloc->GetOffset();
     MemSegmentKind sgKind = symAlloc->GetMemSegment()->GetMemSegmentKind();
@@ -969,7 +959,7 @@ MemOperand *X64CGFunc::GetOrCreatSpillMem(regno_t vrNum, uint32 memSize)
         if (it != reuseSpillLocMem.end()) {
             MemOperand *memOpnd = it->second->GetOne();
             if (memOpnd != nullptr) {
-                spillRegMemOperands.emplace(std::pair<regno_t, MemOperand*>(vrNum, memOpnd));
+                spillRegMemOperands.emplace(std::pair<regno_t, MemOperand *>(vrNum, memOpnd));
                 return memOpnd;
             }
         }
@@ -977,7 +967,7 @@ MemOperand *X64CGFunc::GetOrCreatSpillMem(regno_t vrNum, uint32 memSize)
         RegOperand &baseOpnd = GetOrCreateStackBaseRegOperand();
         int32 offset = GetOrCreatSpillRegLocation(vrNum, memBitSize / kBitsPerByte);
         MemOperand *memOpnd = &GetOpndBuilder()->CreateMem(baseOpnd, offset, memBitSize);
-        spillRegMemOperands.emplace(std::pair<regno_t, MemOperand*>(vrNum, memOpnd));
+        spillRegMemOperands.emplace(std::pair<regno_t, MemOperand *>(vrNum, memOpnd));
         return memOpnd;
     } else {
         return p->second;
@@ -994,10 +984,10 @@ void X64OpndDumpVisitor::Visit(maplebe::RegOperand *v)
     const OpndDesc *regDesc = GetOpndDesc();
     LogInfo::MapleLogger() << " [";
     if (regDesc->IsRegDef()) {
-        LogInfo::MapleLogger() << "DEF,";
+        LogInfo::MapleLogger() << "DEF ";
     }
     if (regDesc->IsRegUse()) {
-        LogInfo::MapleLogger() << "USE,";
+        LogInfo::MapleLogger() << "USE ";
     }
     LogInfo::MapleLogger() << "]";
     DumpOpndSuffix();

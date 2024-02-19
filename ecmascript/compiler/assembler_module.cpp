@@ -46,6 +46,7 @@ void AssemblerModule::GenerateStubsX64(Chunk* chunk)
         auto cs = asmCallSigns_[i];
         ASSERT(cs->HasConstructor());
         LOG_COMPILER(INFO) << "Stub Name: " << cs->GetName();
+        stubsOffset_.emplace_back(assembler.GetCurrentPosition());
         AssemblerStub *stub = static_cast<AssemblerStub*>(
             cs->GetConstructor()(nullptr));
         stub->GenerateX64(&assembler);
@@ -53,6 +54,7 @@ void AssemblerModule::GenerateStubsX64(Chunk* chunk)
     }
     buffer_ = assembler.GetBegin();
     bufferSize_ = assembler.GetCurrentPosition();
+    stubsOffset_.emplace_back(static_cast<uint32_t>(bufferSize_));
 }
 
 void AssemblerModule::GenerateStubsAarch64(Chunk* chunk)
@@ -63,6 +65,7 @@ void AssemblerModule::GenerateStubsAarch64(Chunk* chunk)
         auto cs = asmCallSigns_[i];
         ASSERT(cs->HasConstructor());
         LOG_COMPILER(INFO) << "Stub Name: " << cs->GetName();
+        stubsOffset_.emplace_back(assembler.GetCurrentPosition());
         AssemblerStub *stub = static_cast<AssemblerStub*>(
             cs->GetConstructor()(nullptr));
         stub->GenerateAarch64(&assembler);
@@ -70,6 +73,7 @@ void AssemblerModule::GenerateStubsAarch64(Chunk* chunk)
     }
     buffer_ = assembler.GetBegin();
     bufferSize_ = assembler.GetCurrentPosition();
+    stubsOffset_.emplace_back(static_cast<uint32_t>(bufferSize_));
 }
 
 void AssemblerModule::SetUpForAsmStubs()

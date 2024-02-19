@@ -26,7 +26,8 @@ namespace maplebe {
 using namespace maple;
 
 /*
- * We use the names used in ARM IHI 0055C_beta. $ 5.4.2.
+ * We use the names used in Procedure Call Standard for the Arm 64-bit
+ * Architecture (AArch64) 2022Q3.  $6.8.2
  * nextGeneralRegNO (= _int_parm_num)  : Next General-purpose Register number
  * nextFloatRegNO (= _float_parm_num): Next SIMD and Floating-point Register Number
  * nextStackArgAdress (= _last_memOffset): Next Stacked Argument Address
@@ -40,15 +41,13 @@ public:
     ~AArch64CallConvImpl() = default;
 
     /* Return size of aggregate structure copy on stack. */
-    int32 LocateNextParm(MIRType &mirType, CCLocInfo &pLoc, bool isFirst = false, MIRFunction *func = nullptr) override;
+    uint64 LocateNextParm(const MIRType &mirType, CCLocInfo &pLoc, bool isFirst = false,
+                          MIRFuncType *tFunc = nullptr) override;
 
-    int32 LocateRetVal(MIRType &retType, CCLocInfo &ploc) override;
+    void LocateRetVal(const MIRType &retType, CCLocInfo &ploc) override;
 
     /* for lmbc */
-    uint32 FloatParamRegRequired(MIRStructType &structType, uint32 &fpSize);
-
-    /*  return value related  */
-    void InitReturnInfo(MIRType &retTy, CCLocInfo &pLoc) override;
+    uint32 FloatParamRegRequired(const MIRStructType &structType, uint32 &fpSize);
 
     void SetupSecondRetReg(const MIRType &retTy2, CCLocInfo &pLoc) const override;
 
@@ -56,12 +55,11 @@ public:
     {
         pLoc.regCount = 1;
         pLoc.reg0 = R8;
-        pLoc.primTypeOfReg0 = PTY_u64;
+        pLoc.primTypeOfReg0 = GetExactPtrPrimType();
     }
 
     void Init() override
     {
-        paramNum = 0;
         nextGeneralRegNO = 0;
         nextFloatRegNO = 0;
         nextStackArgAdress = 0;
@@ -69,9 +67,8 @@ public:
 
 private:
     BECommon &beCommon;
-    uint64 paramNum = 0;        /* number of all types of parameters processed so far */
-    int32 nextGeneralRegNO = 0; /* number of integer parameters processed so far */
-    uint32 nextFloatRegNO = 0;  /* number of float parameters processed so far */
+    uint32 nextGeneralRegNO = 0; /* number of integer parameters processed so far */
+    uint32 nextFloatRegNO = 0;   /* number of float parameters processed so far */
 
     AArch64reg AllocateGPRegister()
     {
@@ -80,15 +77,7 @@ private:
                                                                 : kRinvalid;
     }
 
-    void AllocateTwoGPRegisters(CCLocInfo &pLoc)
-    {
-        if ((nextGeneralRegNO + 1) < AArch64Abi::kNumIntParmRegs) {
-            pLoc.reg0 = AArch64Abi::intParmRegs[nextGeneralRegNO++];
-            pLoc.reg1 = AArch64Abi::intParmRegs[nextGeneralRegNO++];
-        } else {
-            pLoc.reg0 = kRinvalid;
-        }
-    }
+    void AllocateGPRegister(const MIRType &mirType, CCLocInfo &pLoc, uint64 size, uint64 align);
 
     AArch64reg AllocateSIMDFPRegister()
     {
@@ -96,42 +85,7 @@ private:
                                                                 : kRinvalid;
     }
 
-    void AllocateNSIMDFPRegisters(CCLocInfo &ploc, uint32 num)
-    {
-        if ((nextFloatRegNO + num - 1) < AArch64Abi::kNumFloatParmRegs) {
-            switch (num) {
-                case kOneRegister:
-                    ploc.reg0 = AArch64Abi::floatParmRegs[nextFloatRegNO++];
-                    break;
-                case kTwoRegister:
-                    ploc.reg0 = AArch64Abi::floatParmRegs[nextFloatRegNO++];
-                    ploc.reg1 = AArch64Abi::floatParmRegs[nextFloatRegNO++];
-                    break;
-                case kThreeRegister:
-                    ploc.reg0 = AArch64Abi::floatParmRegs[nextFloatRegNO++];
-                    ploc.reg1 = AArch64Abi::floatParmRegs[nextFloatRegNO++];
-                    ploc.reg2 = AArch64Abi::floatParmRegs[nextFloatRegNO++];
-                    break;
-                case kFourRegister:
-                    ploc.reg0 = AArch64Abi::floatParmRegs[nextFloatRegNO++];
-                    ploc.reg1 = AArch64Abi::floatParmRegs[nextFloatRegNO++];
-                    ploc.reg2 = AArch64Abi::floatParmRegs[nextFloatRegNO++];
-                    ploc.reg3 = AArch64Abi::floatParmRegs[nextFloatRegNO++];
-                    break;
-                default:
-                    CHECK_FATAL(0, "AllocateNSIMDFPRegisters: unsupported");
-            }
-        } else {
-            ploc.reg0 = kRinvalid;
-        }
-    }
-
-    void RoundNGRNUpToNextEven()
-    {
-        nextGeneralRegNO = static_cast<int32>((nextGeneralRegNO + 1) & ~static_cast<int32>(1));
-    }
-
-    int32 ProcessPtyAggWhenLocateNextParm(MIRType &mirType, CCLocInfo &pLoc, uint64 &typeSize, int32 typeAlign);
+    uint64 AllocateRegisterForAgg(const MIRType &mirType, CCLocInfo &pLoc, uint64 size, uint64 &align);
 };
 
 class AArch64WebKitJSCC : public CCImpl {
@@ -141,12 +95,13 @@ public:
     ~AArch64WebKitJSCC() = default;
 
     /* Return size of aggregate structure copy on stack. */
-    int32 LocateNextParm(MIRType &mirType, CCLocInfo &pLoc, bool isFirst = false, MIRFunction *func = nullptr) override;
+    uint64 LocateNextParm(const MIRType &mirType, CCLocInfo &pLoc, bool isFirst = false,
+                          MIRFuncType *func = nullptr) override;
 
-    int32 LocateRetVal(MIRType &retType, CCLocInfo &ploc) override;
+    void LocateRetVal(const MIRType &retType, CCLocInfo &ploc) override;
 
     /*  return value related  */
-    void InitReturnInfo(MIRType &retTy, CCLocInfo &pLoc) override;
+    void InitReturnInfo(MIRType &retTy, CCLocInfo &pLoc);
 
     // invalid interface
     void SetupSecondRetReg(const MIRType &retTy2, CCLocInfo &pLoc) const override;
@@ -171,9 +126,9 @@ private:
     static constexpr AArch64reg intParmRegs[kNumIntParmRegs] = {R0};
     static constexpr AArch64reg floatParmRegs[kNumFloatParmRegs] = {};
 
-    int32 ClassificationArg(const BECommon &be, MIRType &mirType, std::vector<ArgumentClass> &classes) const;
+    int32 ClassificationArg(const BECommon &be, const MIRType &mirType, std::vector<ArgumentClass> &classes) const;
 
-    int32 ClassificationRet(const BECommon &be, MIRType &mirType, std::vector<ArgumentClass> &classes) const;
+    int32 ClassificationRet(const BECommon &be, const MIRType &mirType, std::vector<ArgumentClass> &classes) const;
 
     AArch64reg AllocateGPParmRegister()
     {
@@ -193,7 +148,7 @@ private:
 
     AArch64reg AllocateSIMDFPRetRegister()
     {
-        return (nextFloatRegNO < AArch64WebKitJSCC::kNumFloatParmRegs)
+        return (nextFloatRegNO < AArch64WebKitJSCC::kNumFloatRetRegs)
                    ? AArch64WebKitJSCC::floatReturnRegs[nextFloatRegNO++]
                    : kRinvalid;
     }
@@ -206,12 +161,13 @@ public:
     ~GHCCC() = default;
 
     /* Return size of aggregate structure copy on stack. */
-    int32 LocateNextParm(MIRType &mirType, CCLocInfo &pLoc, bool isFirst = false, MIRFunction *func = nullptr) override;
+    uint64 LocateNextParm(const MIRType &mirType, CCLocInfo &pLoc, bool isFirst = false,
+                          MIRFuncType *func = nullptr) override;
 
-    int32 LocateRetVal(MIRType &retType, CCLocInfo &ploc) override;
+    void LocateRetVal(const MIRType &retType, CCLocInfo &ploc) override;
 
     /*  return value related  */
-    void InitReturnInfo(MIRType &retTy, CCLocInfo &pLoc) override;
+    void InitReturnInfo(MIRType &retTy, CCLocInfo &pLoc);
 
     // invalid interface
     void SetupSecondRetReg(const MIRType &retTy2, CCLocInfo &pLoc) const override;
@@ -240,7 +196,7 @@ private:
     static constexpr AArch64reg floatParmRegsF64[kNumFloatParmRegsF64] = {V12, V13, V14, V15};
     static constexpr AArch64reg floatParmRegsF128[kNumFloatParmRegsF128] = {V4, V5};
 
-    int32 ClassificationArg(const BECommon &be, MIRType &mirType, std::vector<ArgumentClass> &classes) const;
+    int32 ClassificationArg(const BECommon &be, const MIRType &mirType, std::vector<ArgumentClass> &classes) const;
 
     AArch64reg AllocateGPParmRegister()
     {

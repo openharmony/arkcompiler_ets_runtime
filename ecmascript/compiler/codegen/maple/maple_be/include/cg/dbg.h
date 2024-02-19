@@ -40,6 +40,8 @@ class DbgInsn : public maplebe::Insn {
 public:
     DbgInsn(MemPool &memPool, maplebe::MOperator op) : Insn(memPool, op) {}
 
+    DbgInsn(const DbgInsn &other) : maplebe::Insn(other) {}
+
     DbgInsn(MemPool &memPool, maplebe::MOperator op, maplebe::Operand &opnd0) : Insn(memPool, op, opnd0) {}
 
     DbgInsn(MemPool &memPool, maplebe::MOperator op, maplebe::Operand &opnd0, maplebe::Operand &opnd1)
@@ -55,6 +57,13 @@ public:
 
     ~DbgInsn() = default;
 
+    DbgInsn *CloneTree(MapleAllocator &allocator) const override
+    {
+        auto *insn = allocator.GetMemPool()->New<DbgInsn>(*this);
+        insn->DeepClone(*this, allocator);
+        return insn;
+    }
+
     bool IsMachineInstruction() const override
     {
         return false;
@@ -62,9 +71,7 @@ public:
 
     void Dump() const override;
 
-#if DEBUG
-    void Check() const override;
-#endif
+    bool CheckMD() const override;
 
     bool IsTargetInsn() const override
     {
@@ -74,6 +81,11 @@ public:
     bool IsDbgInsn() const override
     {
         return true;
+    }
+
+    bool IsDbgLine() const override
+    {
+        return mOp == OP_DBG_loc;
     }
 
     bool IsRegDefined(maplebe::regno_t regNO) const override
@@ -105,6 +117,12 @@ public:
 
     ~ImmOperand() = default;
     using OperandVisitable<ImmOperand>::OperandVisitable;
+
+    ImmOperand *CloneTree(MapleAllocator &allocator) const override
+    {
+        // const MIRSymbol is not changed in cg, so we can do shallow copy
+        return allocator.GetMemPool()->New<ImmOperand>(*this);
+    }
 
     Operand *Clone(MemPool &memPool) const override
     {

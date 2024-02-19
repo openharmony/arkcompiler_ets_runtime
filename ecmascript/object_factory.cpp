@@ -138,6 +138,9 @@
 #include "ecmascript/js_number_format.h"
 #include "ecmascript/js_plural_rules.h"
 #include "ecmascript/js_relative_time_format.h"
+#include "ecmascript/js_segmenter.h"
+#include "ecmascript/js_segments.h"
+#include "ecmascript/js_segment_iterator.h"
 #endif
 namespace panda::ecmascript {
 using Error = builtins::BuiltinsError;
@@ -919,6 +922,7 @@ JSHandle<JSObject> ObjectFactory::NewJSError(const ErrorType &errorType, const J
     JSHandle<JSTaggedValue> nativePrototype(thread_, nativeFunc->GetFunctionPrototype());
     JSHandle<JSTaggedValue> ctorKey = globalConst->GetHandledConstructorString();
     JSHandle<JSTaggedValue> ctor(JSTaggedValue::GetProperty(thread_, nativePrototype, ctorKey).GetValue());
+    RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSObject, thread_);
     JSHandle<JSTaggedValue> undefined = thread_->GlobalConstants()->GetHandledUndefined();
     EcmaRuntimeCallInfo *info =
         EcmaInterpreter::NewRuntimeCallInfo(thread_, ctor, nativePrototype, undefined, 1, needCheckStack);
@@ -1124,6 +1128,26 @@ void ObjectFactory::InitializeJSObject(const JSHandle<JSObject> &obj, const JSHa
             JSDisplayNames::Cast(*obj)->SetIcuLDN(thread_, JSTaggedValue::Undefined());
             break;
         }
+        case JSType::JS_SEGMENTER: {
+            JSSegmenter::Cast(*obj)->SetLocale(thread_, JSTaggedValue::Undefined());
+            JSSegmenter::Cast(*obj)->SetGranularity(GranularityOption::EXCEPTION);
+            JSSegmenter::Cast(*obj)->SetIcuField(thread_, JSTaggedValue::Undefined());
+            break;
+        }
+        case JSType::JS_SEGMENTS: {
+            JSSegments::Cast(*obj)->SetIcuField(thread_, JSTaggedValue::Undefined());
+            JSSegments::Cast(*obj)->SetSegmentsString(thread_, JSTaggedValue::Undefined());
+            JSSegments::Cast(*obj)->SetUnicodeString(thread_, JSTaggedValue::Undefined());
+            JSSegments::Cast(*obj)->SetGranularity(GranularityOption::EXCEPTION);
+            break;
+        }
+        case JSType::JS_SEGMENT_ITERATOR: {
+            JSSegmentIterator::Cast(*obj)->SetIcuField(thread_, JSTaggedValue::Undefined());
+            JSSegmentIterator::Cast(*obj)->SetIteratedString(thread_, JSTaggedValue::Undefined());
+            JSSegmentIterator::Cast(*obj)->SetUnicodeString(thread_, JSTaggedValue::Undefined());
+            JSSegmentIterator::Cast(*obj)->SetGranularity(GranularityOption::EXCEPTION);
+            break;
+        }
         case JSType::JS_LIST_FORMAT: {
             JSListFormat::Cast(*obj)->SetLocale(thread_, JSTaggedValue::Undefined());
             JSListFormat::Cast(*obj)->SetType(ListTypeOption::EXCEPTION);
@@ -1140,6 +1164,9 @@ void ObjectFactory::InitializeJSObject(const JSHandle<JSObject> &obj, const JSHa
         case JSType::JS_COLLATOR:
         case JSType::JS_PLURAL_RULES:
         case JSType::JS_DISPLAYNAMES:
+        case JSType::JS_SEGMENTER:
+        case JSType::JS_SEGMENTS:
+        case JSType::JS_SEGMENT_ITERATOR:
         case JSType::JS_LIST_FORMAT: {
             break;
         }
@@ -1318,6 +1345,7 @@ void ObjectFactory::InitializeJSObject(const JSHandle<JSObject> &obj, const JSHa
         }
         case JSType::JS_API_LIST: {
             JSAPIList::Cast(*obj)->SetSingleList(thread_, JSTaggedValue::Undefined());
+            JSAPIList::Cast(*obj)->SetBitField(0UL);
             break;
         }
         case JSType::JS_API_LINKED_LIST: {
@@ -1462,6 +1490,9 @@ FreeObject *ObjectFactory::FillFreeObject(uintptr_t address, size_t size, Remove
             JSHClass::Cast(globalConst->GetFreeObjectWithTwoFieldClass().GetTaggedObject()));
         object->SetAvailable(size);
         object->SetNext(INVALID_OBJECT);
+        if (UNLIKELY(heap_->ShouldVerifyHeap())) {
+            FillFreeMemoryRange(address + FreeObject::SIZE, address + size);
+        }
     } else if (size == FreeObject::NEXT_OFFSET) {
         object = reinterpret_cast<FreeObject *>(address);
         object->SetClassWithoutBarrier(
@@ -2188,11 +2219,14 @@ JSHandle<AccessorData> ObjectFactory::NewInternalAccessor(void *setter, void *ge
     TaggedObject *header = heap_->AllocateNonMovableOrHugeObject(
         JSHClass::Cast(thread_->GlobalConstants()->GetInternalAccessorClass().GetTaggedObject()));
     JSHandle<AccessorData> obj(thread_, AccessorData::Cast(header));
+    obj->SetGetter(thread_, JSTaggedValue::Undefined());
+    obj->SetSetter(thread_, JSTaggedValue::Undefined());
     if (setter != nullptr) {
         JSHandle<JSNativePointer> setFunc = NewJSNativePointer(setter, nullptr, nullptr, true);
         obj->SetSetter(thread_, setFunc.GetTaggedValue());
     } else {
-        obj->SetSetter(thread_, JSTaggedValue::Undefined());
+        JSTaggedValue setFunc = JSTaggedValue::Undefined();
+        obj->SetSetter(thread_, setFunc);
         ASSERT(!obj->HasSetter());
     }
     JSHandle<JSNativePointer> getFunc = NewJSNativePointer(getter, nullptr, nullptr, true);
@@ -2424,6 +2458,7 @@ JSHandle<TaggedArray> ObjectFactory::NewAndCopyTaggedArrayByObject(JSHandle<JSOb
     if (newLength == 0) {
         return dstElements;
     }
+
     for (uint32_t i = 0; i < oldLength; i++) {
         dstElements->Set(thread_, i, ElementAccessor::Get(thisObjHandle, i + k));
     }
@@ -4795,5 +4830,16 @@ JSHandle<JSTaggedValue> ObjectFactory::CreateDictionaryJSObjectWithNamedProperti
     }
     object->SetProperties(thread_, dict);
     return JSHandle<JSTaggedValue>(object);
+}
+
+void ObjectFactory::FillFreeMemoryRange(uintptr_t start, uintptr_t end)
+{
+    ASSERT(start < end);
+    ASSERT(start % static_cast<uint8_t>(MemAlignment::MEM_ALIGN_OBJECT) == 0);
+    ASSERT(end % static_cast<uint8_t>(MemAlignment::MEM_ALIGN_OBJECT) == 0);
+    while (start < end) {
+        Barriers::SetPrimitive<JSTaggedType>(reinterpret_cast<void*>(start), 0, FREE_MEMMORY_ADDRESS_ZAM_VALUE);
+        start += sizeof(JSTaggedType);
+    }
 }
 }  // namespace panda::ecmascript

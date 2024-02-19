@@ -108,7 +108,7 @@ JSHandle<JSObject> JSFunction::NewJSFunctionPrototype(JSThread *thread, const JS
     const GlobalEnvConstants *globalConst = thread->GlobalConstants();
     JSHandle<JSFunction> objFun(env->GetObjectFunction());
     JSHandle<JSObject> funPro = thread->GetEcmaVM()->GetFactory()->NewJSObjectByConstructor(objFun);
-    SetFunctionPrototype(thread, func, funPro.GetTaggedValue());
+    SetFunctionPrototypeOrInstanceHClass(thread, func, funPro.GetTaggedValue());
 
     // set "constructor" in prototype
     JSHandle<JSTaggedValue> constructorKey = globalConst->GetHandledConstructorString();
@@ -165,16 +165,27 @@ bool JSFunction::PrototypeSetter(JSThread *thread, const JSHandle<JSObject> &sel
     JSTaggedValue protoOrHClass = func->GetProtoOrHClass();
     if (protoOrHClass.IsJSHClass()) {
         // need transition
-        JSHandle<JSHClass> hclass(thread, protoOrHClass);
-        JSHandle<JSHClass> newClass = JSHClass::TransitionProto(thread, hclass, value);
-        if (value->IsECMAObject()) {
-            JSObject::Cast(value->GetTaggedObject())->GetJSHClass()->SetIsPrototype(true);
-        }
+        JSHandle<JSTaggedValue> hclass(thread, protoOrHClass);
+        JSHandle<JSTaggedValue> newClass = JSHClass::SetPrototypeWithNotification(thread, hclass, value);
         func->SetProtoOrHClass(thread, newClass);
     } else {
-        SetFunctionPrototype(thread, func, value.GetTaggedValue());
+        SetFunctionPrototypeOrInstanceHClass(thread, func, value.GetTaggedValue());
     }
     return true;
+}
+
+void JSFunction::SetFunctionPrototypeOrInstanceHClass(const JSThread *thread, const JSHandle<JSFunction> &fun,
+                                                      JSTaggedValue protoOrHClass)
+{
+    JSHandle<JSTaggedValue> protoHandle(thread, protoOrHClass);
+    fun->SetProtoOrHClass(thread, protoHandle.GetTaggedValue());
+    if (protoHandle->IsJSHClass()) {
+        protoHandle = JSHandle<JSTaggedValue>(thread,
+                                              JSHClass::Cast(protoHandle->GetTaggedObject())->GetPrototype());
+    }
+    if (protoHandle->IsECMAObject()) {
+        JSHClass::OptimizePrototypeForIC(thread, protoHandle);
+    }
 }
 
 JSTaggedValue JSFunction::NameGetter(JSThread *thread, const JSHandle<JSObject> &self)
@@ -188,7 +199,8 @@ JSTaggedValue JSFunction::NameGetter(JSThread *thread, const JSHandle<JSObject> 
         JSHandle<JSTaggedValue> nameKey = globalConst->GetHandledNameString();
         JSHandle<JSTaggedValue> boundName = thread->GlobalConstants()->GetHandledBoundString();
         JSHandle<JSTaggedValue> targetName = JSObject::GetProperty(thread, target, nameKey).GetValue();
-
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        
         JSHandle<EcmaString> handlePrefixString = JSTaggedValue::ToString(thread, boundName);
         JSHandle<EcmaString> spaceString(globalConst->GetHandledSpaceString());
         JSHandle<EcmaString> concatString = factory->ConcatFromString(handlePrefixString, spaceString);
@@ -254,6 +266,7 @@ JSTaggedValue JSFunction::LengthGetter(JSThread *thread, const JSHandle<JSObject
                 lengthValue =
                     std::max(0u, static_cast<uint32_t>(JSTaggedValue::ToNumber(thread, targetLength).GetNumber()) -
                              argsLength);
+                RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
             }
         }
         return JSTaggedValue(lengthValue);
@@ -275,6 +288,7 @@ bool JSFunction::OrdinaryHasInstance(JSThread *thread, const JSHandle<JSTaggedVa
     //    a. Let BC be the value of C's [[BoundTargetFunction]] internal slot.
     //    b. Return InstanceofOperator(O,BC)  (see 12.9.4).
     if (constructor->IsBoundFunction()) {
+        STACK_LIMIT_CHECK(thread, false);
         JSHandle<JSBoundFunction> boundFunction(thread, JSBoundFunction::Cast(constructor->GetTaggedObject()));
         JSTaggedValue boundTarget = boundFunction->GetBoundTarget();
         return JSObject::InstanceOf(thread, obj, JSHandle<JSTaggedValue>(thread, boundTarget));
@@ -361,7 +375,7 @@ bool JSFunction::MakeConstructor(JSThread *thread, const JSHandle<JSFunction> &f
     // func.prototype = proto
     // Let status be DefinePropertyOrThrow(F, "prototype", PropertyDescriptor{[[Value]]:
     // prototype, [[Writable]]: writablePrototype, [[Enumerable]]: false, [[Configurable]]: false}).
-    SetFunctionPrototype(thread, func, proto.GetTaggedValue());
+    SetFunctionPrototypeOrInstanceHClass(thread, func, proto.GetTaggedValue());
 
     ASSERT_PRINT(status, "DefineProperty proto_type failed");
     return status;
@@ -773,6 +787,7 @@ JSHandle<JSHClass> JSFunction::GetInstanceJSHClass(JSThread *thread, JSHandle<JS
             JSMutableHandle<JSTaggedValue> mutableNewTargetProto(thread, JSTaggedValue::Undefined());
             while (!mutableNewTargetProto->IsNull()) {
                 mutableNewTargetProto.Update(JSTaggedValue::GetPrototype(thread, mutableNewTarget));
+                RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSHClass, thread);
                 if (mutableNewTargetProto.GetTaggedValue() == constructor.GetTaggedValue()) {
                     return GetOrCreateDerivedJSHClass(thread, newTargetFunc, ctorInitialJSHClass);
                 }
@@ -962,6 +977,7 @@ void JSFunction::InitializeForConcurrentFunction(JSThread *thread)
         LOG_ECMA(DEBUG) << "CompileMode is esmodule";
         moduleRecord = moduleManager->HostResolveImportedModuleWithMerge(moduleName, recordName);
     }
+    RETURN_IF_ABRUPT_COMPLETION(thread);
     ecmascript::SourceTextModule::Instantiate(thread, moduleRecord);
     JSHandle<ecmascript::SourceTextModule> module = JSHandle<ecmascript::SourceTextModule>::Cast(moduleRecord);
     module->SetStatus(ecmascript::ModuleStatus::INSTANTIATED);

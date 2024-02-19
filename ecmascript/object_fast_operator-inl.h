@@ -270,7 +270,7 @@ JSTaggedValue ObjectFastOperator::SetPropertyByName(JSThread *thread, JSTaggedVa
                 if (UNLIKELY(holder != receiver)) {
                     break;
                 }
-                if (!sCheckMode && holder.IsJSShared()) {
+                if ((sCheckMode == SCheckMode::CHECK) && holder.IsJSShared()) {
                     if (!ClassHelper::MatchTrackType(attr.GetDictTrackType(), value)) {
                         THROW_TYPE_ERROR_AND_RETURN((thread), GET_MESSAGE_STRING(SetTypeMismatchedSharedProperty),
                                                     JSTaggedValue::Exception());
@@ -559,6 +559,7 @@ JSTaggedValue ObjectFastOperator::FastGetPropertyByIndex(JSThread *thread, JSTag
 {
     INTERPRETER_TRACE(thread, FastGetPropertyByIndex);
     JSTaggedValue result = ObjectFastOperator::GetPropertyByIndex(thread, receiver, index);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     if (result.IsHole()) {
         return JSTaggedValue::GetProperty(thread,
             JSHandle<JSTaggedValue>(thread, receiver), index).GetValue().GetTaggedValue();
@@ -615,9 +616,11 @@ PropertyAttributes ObjectFastOperator::AddPropertyByName(JSThread *thread, JSHan
         JSHClass::AddProperty(thread, objHandle, keyHandle, attr);
         auto actualValue = JSHClass::ConvertOrTransitionWithRep(thread, objHandle, keyHandle, valueHandle, attr);
         if (std::get<0>(actualValue)) {
-            objHandle->SetPropertyInlinedProps<true>(thread, nextInlinedPropsIndex, std::get<2>(actualValue));
+            objHandle->SetPropertyInlinedProps<true>(thread, nextInlinedPropsIndex,
+                std::get<2>(actualValue)); // 2 : Gets the third value
         } else {
-            objHandle->SetPropertyInlinedProps<false>(thread, nextInlinedPropsIndex, std::get<2>(actualValue));
+            objHandle->SetPropertyInlinedProps<false>(thread, nextInlinedPropsIndex,
+                std::get<2>(actualValue)); // 2 : Gets the third value
         }
         return attr;
     }

@@ -27,6 +27,8 @@
 #include "cgfunc.h"
 #include "cg_phase.h"
 #include "cg_option.h"
+#include "target_select.h"
+#include "target_registry.h"
 namespace maplebe {
 using cgFuncOptTy = MapleFunctionPhase<CGFunc>;
 
@@ -64,7 +66,7 @@ public:
 private:
     bool FuncLevelRun(CGFunc &cgFunc, AnalysisDataManager &serialADM);
     void GenerateOutPutFile(MIRModule &m);
-    void CreateCGAndBeCommon(MIRModule &m);
+    void CreateCGAndBeCommon(MIRModule &m, const Target *T);
     void PrepareLower(MIRModule &m);
     void PostOutPut(MIRModule &m);
     void DoFuncCGLower(const MIRModule &m, MIRFunction &mirFunc);

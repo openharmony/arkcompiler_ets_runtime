@@ -27,8 +27,6 @@ class Heap;
 class Region;
 class TaggedObject;
 
-static constexpr uint32_t MAIN_THREAD_INDEX = 0;
-
 class Marker {
 public:
     explicit Marker(Heap *heap);

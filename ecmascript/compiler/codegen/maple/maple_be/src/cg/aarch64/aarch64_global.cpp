@@ -453,7 +453,8 @@ void ForwardPropPattern::Run()
 {
     bool secondTime = false;
     do {
-        FOR_ALL_BB(bb, &cgFunc) {
+        FOR_ALL_BB(bb, &cgFunc)
+        {
             if (bb->IsUnreachable() || (secondTime && modifiedBB.find(bb) == modifiedBB.end())) {
                 continue;
             }
@@ -462,7 +463,8 @@ void ForwardPropPattern::Run()
                 modifiedBB.erase(bb);
             }
 
-            FOR_BB_INSNS(insn, bb) {
+            FOR_BB_INSNS(insn, bb)
+            {
                 Init();
                 if (!CheckCondition(*insn)) {
                     if (insn->GetMachineOpcode() == MOP_xmovrr_uxtw) {
@@ -842,7 +844,8 @@ void BackPropPattern::Run()
     bool secondTime = false;
     std::set<BB *, BBIdCmp> modifiedBB;
     do {
-        FOR_ALL_BB(bb, &cgFunc) {
+        FOR_ALL_BB(bb, &cgFunc)
+        {
             if (bb->IsUnreachable() || (secondTime && modifiedBB.find(bb) == modifiedBB.end())) {
                 continue;
             }
@@ -851,7 +854,8 @@ void BackPropPattern::Run()
                 modifiedBB.erase(bb);
             }
 
-            FOR_BB_INSNS_REV(insn, bb) {
+            FOR_BB_INSNS_REV(insn, bb)
+            {
                 Init();
                 if (!CheckCondition(*insn)) {
                     continue;
@@ -940,8 +944,10 @@ void CmpCsetPattern::Init()
 
 void CmpCsetPattern::Run()
 {
-    FOR_ALL_BB(bb, &cgFunc) {
-        FOR_BB_INSNS(insn, bb) {
+    FOR_ALL_BB(bb, &cgFunc)
+    {
+        FOR_BB_INSNS(insn, bb)
+        {
             Init();
             if (!CheckCondition(*insn)) {
                 continue;
@@ -989,8 +995,10 @@ void CselPattern::Optimize(Insn &insn)
 
 void CselPattern::Run()
 {
-    FOR_ALL_BB(bb, &cgFunc) {
-        FOR_BB_INSNS_SAFE(insn, bb, nextInsn) {
+    FOR_ALL_BB(bb, &cgFunc)
+    {
+        FOR_BB_INSNS_SAFE(insn, bb, nextInsn)
+        {
             if (!CheckCondition(*insn)) {
                 continue;
             }
@@ -1137,11 +1145,13 @@ void RedundantUxtPattern::Init()
 
 void RedundantUxtPattern::Run()
 {
-    FOR_ALL_BB(bb, &cgFunc) {
+    FOR_ALL_BB(bb, &cgFunc)
+    {
         if (bb->IsUnreachable()) {
             continue;
         }
-        FOR_BB_INSNS_SAFE(insn, bb, nextInsn) {
+        FOR_BB_INSNS_SAFE(insn, bb, nextInsn)
+        {
             Init();
             if (!CheckCondition(*insn)) {
                 continue;
@@ -1294,11 +1304,13 @@ void LocalVarSaveInsnPattern::Init()
 
 void LocalVarSaveInsnPattern::Run()
 {
-    FOR_ALL_BB(bb, &cgFunc) {
+    FOR_ALL_BB(bb, &cgFunc)
+    {
         if (bb->IsCleanup()) {
             continue;
         }
-        FOR_BB_INSNS(insn, bb) {
+        FOR_BB_INSNS(insn, bb)
+        {
             if (!insn->IsMachineInstruction()) {
                 continue;
             }
@@ -1765,8 +1777,10 @@ void ExtendShiftOptPattern::Run()
     if (!cgFunc.GetMirModule().IsCModule()) {
         return;
     }
-    FOR_ALL_BB_REV(bb, &cgFunc) {
-        FOR_BB_INSNS_REV(insn, bb) {
+    FOR_ALL_BB_REV(bb, &cgFunc)
+    {
+        FOR_BB_INSNS_REV(insn, bb)
+        {
             if (!insn->IsMachineInstruction()) {
                 continue;
             }
@@ -1780,8 +1794,10 @@ void ExtenToMovPattern::Run()
     if (!cgFunc.GetMirModule().IsCModule()) {
         return;
     }
-    FOR_ALL_BB(bb, &cgFunc) {
-        FOR_BB_INSNS(insn, bb) {
+    FOR_ALL_BB(bb, &cgFunc)
+    {
+        FOR_BB_INSNS(insn, bb)
+        {
             if (!insn->IsMachineInstruction()) {
                 continue;
             }
@@ -1948,8 +1964,10 @@ void ExtenToMovPattern::Optimize(Insn &insn)
 
 void SameDefPattern::Run()
 {
-    FOR_ALL_BB_REV(bb, &cgFunc) {
-        FOR_BB_INSNS_REV(insn, bb) {
+    FOR_ALL_BB_REV(bb, &cgFunc)
+    {
+        FOR_BB_INSNS_REV(insn, bb)
+        {
             if (!CheckCondition(*insn) || !bb->GetEhPreds().empty()) {
                 continue;
             }
@@ -2060,7 +2078,8 @@ bool SameDefPattern::SrcRegIsRedefined(regno_t regNo)
 {
     AArch64ReachingDefinition *a64RD = static_cast<AArch64ReachingDefinition *>(cgFunc.GetRD());
     if (currInsn->GetBB() == sameInsn->GetBB()) {
-        FOR_BB_INSNS(insn, currInsn->GetBB()) {
+        FOR_BB_INSNS(insn, currInsn->GetBB())
+        {
             if (insn->GetMachineOpcode() == MOP_xbl) {
                 return true;
             }
@@ -2160,6 +2179,9 @@ void AndCbzPattern::Optimize(Insn &insn)
     auto &label = static_cast<LabelOperand &>(insn.GetOperand(kInsnSecondOpnd));
     ImmOperand &tbzImm = aarchFunc.CreateImmOperand(tbzVal, k8BitSize, false);
     Insn &newInsn = cgFunc.GetInsnBuilder()->BuildInsn(newMop, prevInsn->GetOperand(kInsnSecondOpnd), tbzImm, label);
+    if (!VERIFY_INSN(&newInsn)) {
+        return;
+    }
     newInsn.SetId(insn.GetId());
     bb->ReplaceInsn(insn, newInsn);
     if (GLOBAL_DUMP) {
@@ -2176,8 +2198,10 @@ void AndCbzPattern::Optimize(Insn &insn)
 void AndCbzPattern::Run()
 {
     Init();
-    FOR_ALL_BB_REV(bb, &cgFunc) {
-        FOR_BB_INSNS_REV(insn, bb) {
+    FOR_ALL_BB_REV(bb, &cgFunc)
+    {
+        FOR_BB_INSNS_REV(insn, bb)
+        {
             if (!insn->IsMachineInstruction() || !CheckCondition(*insn)) {
                 continue;
             }
@@ -2324,8 +2348,10 @@ void SameRHSPropPattern::Optimize(Insn &insn)
 void SameRHSPropPattern::Run()
 {
     Init();
-    FOR_ALL_BB_REV(bb, &cgFunc) {
-        FOR_BB_INSNS_REV(insn, bb) {
+    FOR_ALL_BB_REV(bb, &cgFunc)
+    {
+        FOR_BB_INSNS_REV(insn, bb)
+        {
             if (!CheckCondition(*insn)) {
                 continue;
             }

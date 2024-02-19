@@ -36,6 +36,7 @@ void StubFileInfo::Save(const std::string &filename, Triple triple)
     ASSERT(GetCodeUnitsNum() == ASMSTUB_MODULE_NUM);
     SetStubNum(entries_.size());
     ModuleSectionDes &des = des_[0];
+    size_t lastModuleSectionIdx = ASMSTUB_MODULE_NUM - 1;
     // add section
     uint64_t funcEntryAddr = reinterpret_cast<uint64_t>(entries_.data());
     uint32_t funcEntrySize = sizeof(FuncEntryDes) * entryNum_;
@@ -46,6 +47,7 @@ void StubFileInfo::Save(const std::string &filename, Triple triple)
     std::vector<uint32_t> moduleInfo = {1};
     uint64_t secSizeInfoAddr = reinterpret_cast<uint64_t>(moduleInfo.data());
     des.SetSecAddrAndSize(ElfSecName::ARK_MODULEINFO, secSizeInfoAddr, sizeof(uint32_t));
+    des_[lastModuleSectionIdx].AddAsmStubELFInfo(asmStubELFInfo_);
 
     ElfBuilder builder(des_, GetDumpSectionNames());
     llvm::ELF::Elf64_Ehdr header;
@@ -56,9 +58,14 @@ void StubFileInfo::Save(const std::string &filename, Triple triple)
     file.close();
 }
 
-bool StubFileInfo::MmapLoad()
+bool StubFileInfo::MmapLoad(const std::string &fileName)
 {
-    std::string filename = STUB_AN_FILE;
+    std::string filename = "";
+    if (fileName.empty()) {
+        filename = STUB_AN_FILE;
+    } else {
+        filename = fileName;
+    }
     std::string realPath;
     if (!RealPath(filename, realPath, false)) {
         LOG_COMPILER(ERROR) << "Can not load stub file from path [ " << filename << " ], "

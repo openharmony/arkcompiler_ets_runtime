@@ -72,17 +72,33 @@ public:
         SetAsmStubSize(bufferSize);
     }
 
+    void AddAsmStubELFInfo(const std::vector<const CallSignature*> &asmCallSigns,
+                           const std::vector<size_t> &stubsOffset)
+    {
+        if (asmCallSigns.size() != stubsOffset.size() - 1) {
+            return;
+        }
+        size_t stubsNum = asmCallSigns.size();
+        for (size_t i = 0; i < stubsNum; i++) {
+            std::string name = asmCallSigns[i]->GetName();
+            uint32_t offset = static_cast<uint32_t>(stubsOffset[i]);
+            asmStubELFInfo_.emplace_back(std::make_pair(name, offset));
+        }
+        asmStubELFInfo_.emplace_back(std::make_pair("asm_stub", static_cast<uint32_t>(stubsOffset[stubsNum])));
+    }
+
     void Dump() const DUMP_API_ATTR;
 
 private:
     static constexpr uint32_t ASMSTUB_MODULE_NUM = 3;
 
-    bool MmapLoad();
+    bool MmapLoad(const std::string &fileName);
     bool Load();
     const std::vector<ElfSecName> &GetDumpSectionNames();
     void *asmStubAddr_ {nullptr};
     size_t asmStubSize_ {0};
     std::vector<int> asmStubTempHolder_ {};
+    std::vector<std::pair<std::string, uint32_t>> asmStubELFInfo_ {};
 
     friend class AnFileDataManager;
 };

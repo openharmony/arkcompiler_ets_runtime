@@ -93,10 +93,20 @@ ImmOperand &OperandBuilder::CreateImm(uint32 size, int64 value, MemPool *mp)
     return mp ? *mp->New<ImmOperand>(value, size, false) : *alloc.New<ImmOperand>(value, size, false);
 }
 
+ImmOperand &OperandBuilder::CreateImm(uint32 size, int64 value, bool isSigned, MemPool *mp)
+{
+    return mp ? *mp->New<ImmOperand>(value, size, isSigned) : *alloc.New<ImmOperand>(value, size, isSigned);
+}
+
 ImmOperand &OperandBuilder::CreateImm(const MIRSymbol &symbol, int64 offset, int32 relocs, MemPool *mp)
 {
     return mp ? *mp->New<ImmOperand>(symbol, offset, relocs, false)
               : *alloc.New<ImmOperand>(symbol, offset, relocs, false);
+}
+
+OfstOperand &OperandBuilder::CreateOfst(int64 offset, uint32 size, MemPool *mp)
+{
+    return mp ? *mp->New<OfstOperand>(offset, size) : *alloc.New<OfstOperand>(offset, size);
 }
 
 MemOperand &OperandBuilder::CreateMem(uint32 size, MemPool *mp)
@@ -104,12 +114,38 @@ MemOperand &OperandBuilder::CreateMem(uint32 size, MemPool *mp)
     return mp ? *mp->New<MemOperand>(size) : *alloc.New<MemOperand>(size);
 }
 
-MemOperand &OperandBuilder::CreateMem(RegOperand &baseOpnd, int64 offset, uint32 size)
+MemOperand &OperandBuilder::CreateMem(RegOperand &baseOpnd, int64 offset, uint32 size, MemPool *mp)
 {
-    MemOperand *memOprand = &CreateMem(size);
-    memOprand->SetBaseRegister(baseOpnd);
-    memOprand->SetOffsetOperand(CreateImm(baseOpnd.GetSize(), offset));
-    return *memOprand;
+    OfstOperand &ofstOperand = CreateOfst(offset, baseOpnd.GetSize());
+    if (mp != nullptr) {
+        return *mp->New<MemOperand>(&baseOpnd, &ofstOperand, size);
+    }
+    return *alloc.New<MemOperand>(&baseOpnd, &ofstOperand, size);
+}
+
+MemOperand &OperandBuilder::CreateMem(uint32 size, RegOperand &baseOpnd, ImmOperand &ofstOperand, MemPool *mp)
+{
+    if (mp != nullptr) {
+        return *mp->New<MemOperand>(size, &baseOpnd, nullptr, &ofstOperand, nullptr);
+    }
+    return *alloc.New<MemOperand>(size, &baseOpnd, nullptr, &ofstOperand, nullptr);
+}
+
+MemOperand &OperandBuilder::CreateMem(uint32 size, RegOperand &baseOpnd, ImmOperand &ofstOperand,
+                                      const MIRSymbol &symbol, MemPool *mp)
+{
+    if (mp != nullptr) {
+        return *mp->New<MemOperand>(MemOperand::kAddrModeLo12Li, size, baseOpnd, nullptr, &ofstOperand, &symbol);
+    }
+    return *alloc.New<MemOperand>(MemOperand::kAddrModeLo12Li, size, baseOpnd, nullptr, &ofstOperand, &symbol);
+}
+
+BitShiftOperand &OperandBuilder::CreateBitShift(BitShiftOperand::ShiftOp op, uint32 amount, uint32 bitLen, MemPool *mp)
+{
+    if (mp != nullptr) {
+        return *mp->New<BitShiftOperand>(op, amount, bitLen);
+    }
+    return *alloc.New<BitShiftOperand>(op, amount, bitLen);
 }
 
 RegOperand &OperandBuilder::CreateVReg(uint32 size, RegType type, MemPool *mp)
@@ -141,17 +177,17 @@ FuncNameOperand &OperandBuilder::CreateFuncNameOpnd(MIRSymbol &symbol, MemPool *
 
 LabelOperand &OperandBuilder::CreateLabel(const char *parent, LabelIdx idx, MemPool *mp)
 {
-    return mp ? *mp->New<LabelOperand>(parent, idx) : *alloc.New<LabelOperand>(parent, idx);
+    return mp ? *mp->New<LabelOperand>(parent, idx, *mp) : *alloc.New<LabelOperand>(parent, idx, *alloc.GetMemPool());
 }
 
 CommentOperand &OperandBuilder::CreateComment(const std::string &s, MemPool *mp)
 {
-    return mp ? *mp->New<CommentOperand>(s, *mp) : *alloc.New<CommentOperand>(s, *mp);
+    return mp ? *mp->New<CommentOperand>(s, *mp) : *alloc.New<CommentOperand>(s, *alloc.GetMemPool());
 }
 
 CommentOperand &OperandBuilder::CreateComment(const MapleString &s, MemPool *mp)
 {
-    return mp ? *mp->New<CommentOperand>(s.c_str(), *mp) : *alloc.New<CommentOperand>(s.c_str(), *mp);
+    return mp ? *mp->New<CommentOperand>(s.c_str(), *mp) : *alloc.New<CommentOperand>(s.c_str(), *alloc.GetMemPool());
 }
 
 }  // namespace maplebe

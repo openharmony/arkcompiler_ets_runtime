@@ -44,7 +44,7 @@ declare function print(...args: any[]): void;
 // Expects AOT typed path.
 {
     print("Testing Date:");
-    let date = new Date(2023, 8, 26, 9, 45, 30); // 2023/9/26 9:45:30
+    let date = new Date("Sep 26 2023 9:45:30 GMT+0800"); // 2023/9/26 9:45:30
     print("  - Date.prototype.setFullYear:  ", date.setFullYear(2022)); // return: 1664156730000
     print("  - Date.prototype.toDateString: ", date.toDateString()); // return: 'Mon Sep 26 2022'
 }

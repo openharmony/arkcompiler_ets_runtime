@@ -771,9 +771,9 @@ void CreateArrayWithBufferStubBuilder::GenerateCircuit()
 void NewJSObjectStubBuilder::GenerateCircuit()
 {
     GateRef glue = PtrArgument(0);
-    GateRef hclass = TaggedArgument(1);
+    GateRef ctor = TaggedArgument(1);
     NewObjectStubBuilder newBuilder(this);
-    Return(newBuilder.NewJSObject(glue, hclass));
+    Return(newBuilder.FastNewThisObject(glue, ctor));
 }
 
 void JsBoundCallInternalStubBuilder::GenerateCircuit()

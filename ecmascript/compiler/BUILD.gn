@@ -384,6 +384,12 @@ ohos_source_set("libark_jsoptimizer_set_with_maple") {
 
 ohos_source_set("libark_stub_set") {
   stack_protector_ret = false
+  if (is_ohos && is_standard_system && current_toolchain != host_toolchain &&
+      !ark_standalone_build) {
+    sanitize = {
+      ubsan = true
+    }
+  }
   deps = [ ":build_stub_to_cpp" ]
 
   sources = [ "$root_gen_dir/arkcompiler/ets_runtime/stub_an.cpp" ]
@@ -460,7 +466,7 @@ ohos_executable("ark_stub_compiler") {
     defines = [ "RUN_WITH_ASAN" ]
   }
 
-  if (target_os == "ios") {
+  if (defined(is_arkui_x) && is_arkui_x) {
     deps += [
       "$ark_third_party_root/icu/icu4c:static_icui18n",
       "$ark_third_party_root/icu/icu4c:static_icuuc",
@@ -478,6 +484,12 @@ ohos_executable("ark_stub_compiler") {
 }
 
 ohos_executable("ark_aot_compiler") {
+  if (is_ohos && is_standard_system && current_toolchain != host_toolchain &&
+      !ark_standalone_build) {
+    sanitize = {
+      ubsan = true
+    }
+  }
   sources = [ "aot_compiler.cpp" ]
   configs = [
     ":include_llvm",
@@ -509,7 +521,7 @@ ohos_executable("ark_aot_compiler") {
     ]
   }
 
-  if (target_os == "ios") {
+  if (defined(is_arkui_x) && is_arkui_x) {
     deps += [
       "$ark_third_party_root/icu/icu4c:static_icui18n",
       "$ark_third_party_root/icu/icu4c:static_icuuc",
