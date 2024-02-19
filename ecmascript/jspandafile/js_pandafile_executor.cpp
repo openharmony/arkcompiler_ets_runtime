@@ -357,4 +357,42 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteModuleBufferSecure(JST
     }
     return CommonExecuteBuffer(thread, name, entry, jsPandaFile.get());
 }
+
+// RecordName is the ohmurl-path of js files.
+// The first js file waiting be executed should use ES Module format.
+Expected<JSTaggedValue, bool> JSPandaFileExecutor::LazyExecuteModule(
+    JSThread *thread, const CString &recordName, const CString &filename, bool isMergedAbc)
+{
+    LOG_FULL(INFO) << "recordName : " << recordName << ", in abc : " << filename;
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "JSPandaFileExecutor::LazyExecuteModule");
+    std::shared_ptr<JSPandaFile> jsPandaFile =
+        JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, filename, recordName);
+    if (jsPandaFile == nullptr) {
+        LOG_FULL(FATAL) << "Load file with filename '" << filename << "' failed, ";
+    }
+
+    if (isMergedAbc) {
+        if (!jsPandaFile->HasRecord(recordName)) {
+            CString msg = "cannot find record '" + recordName + "', in lazy load abc: " + filename;
+            THROW_REFERENCE_ERROR_AND_RETURN(thread, msg.c_str(), Unexpected(false));   
+        }
+        // [[TODO::DaiHN]]check is es module
+    }
+
+    [[maybe_unused]] EcmaHandleScope scope(thread);
+    // The first js file should execute at current vm.
+    ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
+    JSHandle<JSTaggedValue> moduleRecord(thread->GlobalConstants()->GetHandledUndefined());
+    if (isMergedAbc) {
+        moduleRecord = moduleManager->HostResolveImportedModuleWithMerge(filename, recordName);
+    } else {
+        moduleRecord = moduleManager->HostResolveImportedModule(filename);
+    }
+    SourceTextModule::Instantiate(thread, moduleRecord);
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, Unexpected(false));
+    JSHandle<SourceTextModule> module = JSHandle<SourceTextModule>::Cast(moduleRecord);
+    BindPandaFilesForAot(thread->GetEcmaVM(), jsPandaFile.get());
+    SourceTextModule::Evaluate(thread, module, nullptr, 0);
+    return JSTaggedValue::Undefined();
+}
 }  // namespace panda::ecmascript

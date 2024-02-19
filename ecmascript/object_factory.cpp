@@ -114,6 +114,7 @@
 #include "ecmascript/mem/space.h"
 #include "ecmascript/module/js_module_namespace.h"
 #include "ecmascript/module/js_module_source_text.h"
+#include "ecmascript/module/js_shared_module.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/record.h"
 #include "ecmascript/require/js_cjs_exports.h"
@@ -4351,6 +4352,7 @@ JSHandle<SourceTextModule> ObjectFactory::NewSourceTextModule()
     obj->SetTypes(ModuleTypes::UNKNOWN);
     obj->SetIsNewBcVersion(false);
     obj->SetRegisterCounts(UINT16_MAX);
+    obj->SetSharedType(SharedTypes::UNSENDABLE_MODULE);
     return obj;
 }
 

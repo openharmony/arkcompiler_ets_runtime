@@ -530,6 +530,8 @@ CString *HeapSnapshot::GenerateNodeName(TaggedObject *entry)
             return GetString("ResolvedBinding");
         case JSType::RESOLVEDINDEXBINDING_RECORD:
             return GetString("ResolvedIndexBinding");
+        case JSType::RESOLVEDRECORDBINDING_RECORD:
+            return GetString("ResolvedRecordBinding");
         case JSType::JS_MODULE_NAMESPACE:
             return GetString("ModuleNamespace");
         case JSType::JS_API_PLAIN_ARRAY:

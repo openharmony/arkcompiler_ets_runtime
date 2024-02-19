@@ -237,6 +237,7 @@ private:
     void LowerLdLocalModuleVarByIndex(GateRef gate);
     void LowerExternalModule(GateRef gate);
     void LowerGetModuleNamespace(GateRef gate);
+    void LowerSendableExternalModule(GateRef gate);
     void LowerSuperCall(GateRef gate);
     void LowerSuperCallArrow(GateRef gate);
     void LowerSuperCallSpread(GateRef gate);

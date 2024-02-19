@@ -70,6 +70,8 @@ public:
     JSHandle<JSTaggedValue> LoadNativeModule(JSThread *thread, const std::string &key);
 
     JSTaggedValue GetCurrentModule();
+    JSHandle<JSTaggedValue> GenerateSendableFuncModule(const JSPandaFile *jsPandaFile, const CString &entryPoint);
+    JSHandle<JSTaggedValue> GenerateSendableFuncModule(const JSHandle<JSTaggedValue> &module);
     JSTaggedValue GetNativeModuleValue(JSThread *thread, JSTaggedValue currentModule,
         JSTaggedValue resolvedModule, ResolvedIndexBinding *binding);
     JSTaggedValue GetNativeModuleValue(JSThread *thread, JSTaggedValue currentModule,

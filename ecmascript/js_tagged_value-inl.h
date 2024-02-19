@@ -1457,6 +1457,11 @@ inline bool JSTaggedValue::IsResolvedIndexBinding() const
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsResolvedIndexBinding();
 }
 
+inline bool JSTaggedValue::IsResolvedRecordBinding() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsResolvedRecordBinding();
+}
+
 inline bool JSTaggedValue::IsModuleNamespace() const
 {
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsModuleNamespace();

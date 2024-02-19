@@ -470,9 +470,11 @@ CString JSHClass::DumpJSType(JSType type)
         case JSType::SOURCE_TEXT_MODULE_RECORD:
             return "SourceTextModuleRecord";
         case JSType::RESOLVEDBINDING_RECORD:
-            return "ResolvedBingingRecord";
+            return "ResolvedBindingRecord";
         case JSType::RESOLVEDINDEXBINDING_RECORD:
-            return "ResolvedIndexBingingRecord";
+            return "ResolvedIndexBindingRecord";
+        case JSType::RESOLVEDRECORDBINDING_RECORD:
+            return "ResolvedRecordBindingRecord";
         case JSType::IMPORTENTRY_RECORD:
             return "ImportEntry";
         case JSType::LOCAL_EXPORTENTRY_RECORD:
@@ -1193,6 +1195,9 @@ static void DumpObject(TaggedObject *obj, std::ostream &os)
             break;
         case JSType::RESOLVEDINDEXBINDING_RECORD:
             ResolvedIndexBinding::Cast(obj)->Dump(os);
+            break;
+        case JSType::RESOLVEDRECORDBINDING_RECORD:
+            ResolvedRecordBinding::Cast(obj)->Dump(os);
             break;
         case JSType::JS_MODULE_NAMESPACE:
             ModuleNamespace::Cast(obj)->Dump(os);
@@ -3748,6 +3753,16 @@ void ResolvedIndexBinding::Dump(std::ostream &os) const
     os << "\n";
 }
 
+void ResolvedRecordBinding::Dump(std::ostream &os) const
+{
+    os << " - Module: ";
+    GetModuleRecord().Dump(os);
+    os << "\n";
+    os << " - Index: ";
+    GetIndex();
+    os << "\n";
+}
+
 void ModuleNamespace::Dump(std::ostream &os) const
 {
     os << " - Exports: ";
@@ -4323,6 +4338,9 @@ static void DumpObject(TaggedObject *obj, std::vector<Reference> &vec, bool isVm
             ResolvedBinding::Cast(obj)->DumpForSnapshot(vec);
             return;
         case JSType::RESOLVEDINDEXBINDING_RECORD:
+            ResolvedIndexBinding::Cast(obj)->DumpForSnapshot(vec);
+            return;
+        case JSType::RESOLVEDRECORDBINDING_RECORD:
             ResolvedIndexBinding::Cast(obj)->DumpForSnapshot(vec);
             return;
         case JSType::JS_MODULE_NAMESPACE:
@@ -5770,6 +5788,12 @@ void ResolvedBinding::DumpForSnapshot(std::vector<Reference> &vec) const
 void ResolvedIndexBinding::DumpForSnapshot(std::vector<Reference> &vec) const
 {
     vec.emplace_back(CString("Module"), GetModule());
+    vec.emplace_back(CString("Index"), JSTaggedValue(GetIndex()));
+}
+
+void ResolvedRecordBinding::DumpForSnapshot(std::vector<Reference> &vec) const
+{
+    vec.emplace_back(CString("ModuleRecord"), GetModuleRecord());
     vec.emplace_back(CString("Index"), JSTaggedValue(GetIndex()));
 }
 

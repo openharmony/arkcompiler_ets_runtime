@@ -171,6 +171,7 @@ group("ark_js_moduletest") {
     "sharedcheck",
     "definesendableclass",
     "sendablecontext",
+    "sendableclassuseimport",
   ]
 
   deps = []
@@ -327,6 +328,7 @@ group("ark_asm_test") {
     "sharedcheck",
     "definesendableclass",
     "sendablecontext",
+    "sendableclassuseimport",
   ]
 
   deps = []
@@ -459,6 +461,7 @@ group("ark_asm_single_step_test") {
     "sharedcheck",
     "definesendableclass",
     "sendablecontext",
+    "sendableclassuseimport",
   ]
 
   deps = []

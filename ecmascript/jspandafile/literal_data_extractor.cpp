@@ -22,6 +22,7 @@
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/module/js_module_manager.h"
+#include "ecmascript/module/js_shared_module.h"
 #include "ecmascript/patch/quick_fix_manager.h"
 #include "ecmascript/tagged_array-inl.h"
 
@@ -286,26 +287,13 @@ JSHandle<JSFunction> LiteralDataExtractor::DefineMethodInLiteral(JSThread *threa
         kind = literalKind;
     }
     bool canFastCall = false;
-
-    CString moduleName = jsPandaFile->GetJSPandaFileDesc();
-    CString entry = JSPandaFile::ENTRY_FUNCTION_NAME;
-    if (!entryPoint.empty()) {
-        moduleName = entryPoint;
-        entry = entryPoint;
-    }
-    JSRecordInfo recordInfo;
-    bool hasRecord = jsPandaFile->CheckAndGetRecordInfo(entry, recordInfo);
-    if (!hasRecord) {
-        LOG_ECMA(FATAL) << "cannot find record '" + entry + "', please check the request path.";
-    }
-    JSMutableHandle<JSTaggedValue> module(thread, JSTaggedValue::Undefined());
-    if (jsPandaFile->IsModule(recordInfo)) {
-        module.Update(thread->GetCurrentEcmaContext()->GetModuleManager()->HostGetImportedModule(moduleName));
-    } else {
-        module.Update(factory->NewFromUtf8(moduleName));
-    }
     JSHandle<Method> method;
-    method = factory->NewSMethod(jsPandaFile, methodLiteral, constpool, module, entryIndex, isLoadedAOT, &canFastCall);
+    ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
+    // esm -> SourceTextModule; cjs or script -> string of recordName
+    JSHandle<JSTaggedValue> module = moduleManager->GenerateSendableFuncModule(jsPandaFile, entryPoint);
+    method = factory->NewSMethod(jsPandaFile, methodLiteral, constpool, module, entryIndex,
+    isLoadedAOT, &canFastCall);
+
     
     JSHandle<JSHClass> functionClass;
     JSHandle<JSFunction> jsFunc = CreateJSFunctionInLiteral(vm, method, kind, classKind);

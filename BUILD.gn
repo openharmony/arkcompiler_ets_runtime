@@ -786,6 +786,8 @@ ecma_source = [
   "ecmascript/module/js_module_record.cpp",
   "ecmascript/module/js_module_source_text.cpp",
   "ecmascript/module/js_module_deregister.cpp",
+  "ecmascript/module/js_shared_module.cpp",
+  "ecmascript/module/js_shared_module_manager.cpp",
   "ecmascript/module/module_data_extractor.cpp",
   "ecmascript/module/module_path_helper.cpp",
   "ecmascript/mutator_lock.cpp",
