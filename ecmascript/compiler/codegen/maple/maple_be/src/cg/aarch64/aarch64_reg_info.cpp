@@ -125,12 +125,12 @@ MemOperand *AArch64RegInfo::GetOrCreatSpillMem(regno_t vrNum, uint32 bitSize)
     AArch64CGFunc *a64CGFunc = static_cast<AArch64CGFunc *>(GetCurrFunction());
     return a64CGFunc->GetOrCreatSpillMem(vrNum, bitSize);
 }
-MemOperand *AArch64RegInfo::AdjustMemOperandIfOffsetOutOfRange(MemOperand *memOpnd, regno_t vrNum, bool isDest,
-                                                               Insn &insn, regno_t regNum, bool &isOutOfRange)
+MemOperand *AArch64RegInfo::AdjustMemOperandIfOffsetOutOfRange(MemOperand *memOpnd, const RegNoPair &regNoPair,
+                                                               bool isDest, Insn &insn, bool &isOutOfRange)
 {
     AArch64CGFunc *a64CGFunc = static_cast<AArch64CGFunc *>(GetCurrFunction());
-    return a64CGFunc->AdjustMemOperandIfOffsetOutOfRange(memOpnd, static_cast<AArch64reg>(vrNum), isDest, insn,
-                                                         static_cast<AArch64reg>(regNum), isOutOfRange);
+    return a64CGFunc->AdjustMemOperandIfOffsetOutOfRange(memOpnd, static_cast<AArch64reg>(regNoPair.first), isDest,
+                                                         insn, static_cast<AArch64reg>(regNoPair.second), isOutOfRange);
 }
 void AArch64RegInfo::FreeSpillRegMem(regno_t vrNum)
 {

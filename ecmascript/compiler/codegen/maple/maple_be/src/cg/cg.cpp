@@ -21,6 +21,16 @@ using namespace maple;
 
 #define JAVALANG (mirModule->IsJavaModule())
 
+uint32 VregInfo::virtualRegCount = kBaseVirtualRegNO;
+uint32 VregInfo::maxRegCount = 0;
+std::vector<VirtualRegNode> VregInfo::vRegTable;
+std::unordered_map<regno_t, RegOperand *> VregInfo::vRegOperandTable;
+/*  There are two builders, cgfunc builder (original code selector) and irbuilder (abstract).
+ *  This is to prevent conflict between the two for VregInfo as for arm64 both co-exists.
+ *  When switching to irbuilder completely, then this bool can go away.
+ */
+bool VregInfo::initialized = false;
+
 void Globals::SetTarget(CG &target)
 {
     cg = &target;

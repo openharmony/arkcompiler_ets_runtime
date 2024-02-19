@@ -61,7 +61,8 @@ DEFINE_MOP(MOP_xaddrrr, {&OpndDesc::Reg64ID,&OpndDesc::Reg64IS,&OpndDesc::Reg64I
 DEFINE_MOP(MOP_xaddsrrr, {&OpndDesc::CCD, &OpndDesc::Reg64ID, &OpndDesc::Reg64IS, &OpndDesc::Reg64IS}, 0, kLtAlu, "adds", "1,2,3", 1)
 /* MOP_xaddrrrs */
 DEFINE_MOP(MOP_xaddrrrs, {&OpndDesc::Reg64ID,&OpndDesc::Reg64IS,&OpndDesc::Reg64IS,&OpndDesc::Bitshift64},0,kLtAluShift,"add","0,1,2,3",1,MOP_xaddrrrsValid,kAddSubShiftReg,0x8B000000)
-
+/* MOP_xaddsrrrs */
+DEFINE_MOP(MOP_xaddsrrrs, {&OpndDesc::CCD,&OpndDesc::Reg64ID,&OpndDesc::Reg64IS,&OpndDesc::Reg64IS,&OpndDesc::Bitshift64},0,kLtAluShift,"adds","1,2,3,4",1,MOP_xaddsrrrsValid,kAddSubExtendReg,0x8b200000)
 /* MOP_xxwaddrrre */
 DEFINE_MOP(MOP_xxwaddrrre, {&OpndDesc::Reg64ID,&OpndDesc::Reg64IS,&OpndDesc::Reg32IS,&OpndDesc::Extendshift64},0,kLtAluShift,"add","0,1,2,3",1,MOP_xxwaddrrreValid,kAddSubExtendReg,0x8B200000)
 /* MOP_xaddrri24 */
@@ -76,6 +77,8 @@ DEFINE_MOP(MOP_waddrrr, {&OpndDesc::Reg32ID,&OpndDesc::Reg32IS,&OpndDesc::Reg32I
 DEFINE_MOP(MOP_waddrrrs, {&OpndDesc::Reg32ID,&OpndDesc::Reg32IS,&OpndDesc::Reg32IS,&OpndDesc::Bitshift32},0,kLtAluShift,"add","0,1,2,3",1,MOP_waddrrrsValid, kAddSubShiftReg,0xb000000)
 /* MOP_waddsrrr */
 DEFINE_MOP(MOP_waddsrrr, {&OpndDesc::CCD,&OpndDesc::Reg32ID,&OpndDesc::Reg32IS,&OpndDesc::Reg32IS},0,kLtAlu,"adds","1,2,3",1, kAddSubReg, 0x2b000000)
+/* MOP_waddsrrrs */
+DEFINE_MOP(MOP_waddsrrrs, {&OpndDesc::CCD,&OpndDesc::Reg32ID,&OpndDesc::Reg32IS,&OpndDesc::Reg32IS,&OpndDesc::Bitshift32},0,kLtAluShift,"adds","1,2,3,4",1,MOP_waddsrrrsValid,kAddSubExtendReg, 0xb200000)
 /* MOP_xxwaddrrre */
 DEFINE_MOP(MOP_wwwaddrrre, {&OpndDesc::Reg32ID,&OpndDesc::Reg32IS,&OpndDesc::Reg32IS,&OpndDesc::Extendshift64},0,kLtAluShift,"add","0,1,2,3",1,MOP_wwwaddrrreValid,kAddSubExtendReg, 0xB200000)
 /* MOP_waddrri24 */
@@ -250,6 +253,13 @@ DEFINE_MOP(MOP_xcselrrrc, {&OpndDesc::Reg64ID,&OpndDesc::Reg64IS,&OpndDesc::Reg6
 /* MOP_xcset -- all conditions minus AL & NV */
 DEFINE_MOP(MOP_wcsetrc, {&OpndDesc::Reg32ID,&OpndDesc::Cond,&OpndDesc::CCS},ISCONDDEF,kLtAlu,"cset","0,1",1,kConditionalSelect,0x1a9f07e0)
 DEFINE_MOP(MOP_xcsetrc, {&OpndDesc::Reg64ID,&OpndDesc::Cond,&OpndDesc::CCS},ISCONDDEF,kLtAlu,"cset","0,1",1,kConditionalSelect,0x9a9f07e0)
+
+/* MOP_xcsetm -- all conditions minus AL & NV */
+DEFINE_MOP(MOP_wcsetmrc, {&OpndDesc::Reg32ID,&OpndDesc::Cond,&OpndDesc::CCS},ISCONDDEF,kLtAlu,"csetm","0,1",1)
+DEFINE_MOP(MOP_xcsetmrc, {&OpndDesc::Reg64ID,&OpndDesc::Cond,&OpndDesc::CCS},ISCONDDEF,kLtAlu,"csetm","0,1",1)
+
+DEFINE_MOP(MOP_wcincrc, {&OpndDesc::Reg32ID,&OpndDesc::Cond,&OpndDesc::CCS},ISCONDDEF,kLtAlu,"cinc","0,1,2",1)
+DEFINE_MOP(MOP_xcincrc, {&OpndDesc::Reg64ID,&OpndDesc::Cond,&OpndDesc::CCS},ISCONDDEF,kLtAlu,"cinc","0,1,2",1)
 
 /* MOP_xcsinc */
 DEFINE_MOP(MOP_wcsincrrrc, {&OpndDesc::Reg32ID,&OpndDesc::Reg32IS,&OpndDesc::Reg32IS,&OpndDesc::Cond,&OpndDesc::CCS},ISCONDDEF,kLtAlu,"csinc","0,1,2,3",1,kConditionalSelect,0x1a800400)
@@ -810,8 +820,7 @@ DEFINE_MOP(MOP_wstlxp, {&OpndDesc::Reg32ID,&OpndDesc::Reg32IS,&OpndDesc::Reg32IS
 DEFINE_MOP(MOP_xstlxp, {&OpndDesc::Reg32ID,&OpndDesc::Reg64IS,&OpndDesc::Reg64IS,&OpndDesc::Mem64D},ISSTORE|ISSTOREPAIR|ISATOMIC|HASRELEASE|CANTHROW,kLtStore1,"stlxp","0,1,2,3",1,MOP_xstlxpValid,kStoreExclusivePair,0xc8208000)
 
 /* Generate a breakpoint instruction exception */
-/* FIXME: DEFINE_MOP(MOP_brk, {OpndDesc::Imm16}, 0, kLtAlu, "brk", "0", 1, Imm16BitValid) */
-DEFINE_MOP(MOP_brk,  {&OpndDesc::Reg64VD,&OpndDesc::Imm8},ISVECTOR,kLtFpalu,"brk","0,1",1)
+DEFINE_MOP(MOP_brk, {&OpndDesc::Imm16},0, kLtAlu,"brk","0",1,MOP_brkValid,kBrkInsn,0xd4200000)
 
 /* Memory barriers */
 /* MOP_dmb_ishld */
@@ -1189,8 +1198,7 @@ DEFINE_MOP(MOP_pseudo_dependence_seperator, {},0,kLtUndef,"//MOP_pseudo_dependen
 DEFINE_MOP(MOP_pseudo_none, {},0,kLtUndef,"//MOP_pseudo_none","0", 0)
 
 /* MOP_ret_assert_nonnull*/
-/* FIXME: DEFINE_MOP(MOP_assert_nonnull, {&OpndDesc::Reg32ID, &OpndDesc::Mem32S},ISLOAD | CANTHROW | ISCALL,kLtUndef,"ldr","0,1", 1, MOP_wldrValid, MOP_wldrSplit) */
-DEFINE_MOP(MOP_assert_nonnull, {&OpndDesc::Reg32ID,&OpndDesc::Mem32S},ISLOAD|CANTHROW,kLtLoad1,"ldr","0,1",1,MOP_wldrValid, MOP_wldrSplit,kLoadStoreReg,0xb8400000)
+DEFINE_MOP(MOP_assert_nonnull, {&OpndDesc::Reg32ID,&OpndDesc::Mem32S},ISLOAD|CANTHROW|ISCALL,kLtUndef,"ldr","0,1",1,MOP_assert_nonnullValid,MOP_assert_nonnullSplit,kLoadStoreReg,0xb8400000)
 
 /*MOP_nop */
 DEFINE_MOP(MOP_nop, {},ISNOP,kLtAlu,"nop","", 1, kSystemInsn, 0xd503201f)

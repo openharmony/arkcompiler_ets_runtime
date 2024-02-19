@@ -48,6 +48,7 @@ public:
 private:
     void EmitVectorOperand(const RegOperand &v);
     void EmitIntReg(const RegOperand &v, uint8 opndSz = kMaxSimm32);
+    void Visit(const MIRSymbol &symbol, int64 offset);
 
     const OpndDesc *opndProp;
 };

@@ -20,6 +20,10 @@
 #include "insn.h"
 
 namespace maplebe {
+constexpr size_t kSpillMemOpndNum = 4;
+constexpr uint32 kBaseVirtualRegNO = 200; /* avoid conflicts between virtual and physical */
+constexpr uint32 kRegIncrStepLen = 80;    /* reg number increate step length */
+
 class VirtualRegNode {
 public:
     VirtualRegNode() = default;
@@ -48,6 +52,126 @@ private:
     uint32 size = 0;               /* size in bytes */
     regno_t regNO = kInvalidRegNO; /* physical register assigned by register allocation */
 };
+
+class VregInfo {
+public:
+    /* Only one place to allocate vreg within cg.
+       'static' can be removed and initialized here if only allocation is from only one source.  */
+    static uint32 virtualRegCount;
+    static uint32 maxRegCount;
+    static std::vector<VirtualRegNode> vRegTable;
+    static std::unordered_map<regno_t, RegOperand *> vRegOperandTable;
+    static bool initialized;
+
+    VregInfo()
+    {
+        if (initialized) {
+            initialized = false;
+            return;
+        }
+        initialized = true;
+        virtualRegCount = kBaseVirtualRegNO;
+        maxRegCount = kBaseVirtualRegNO;
+        vRegTable.clear();
+        vRegOperandTable.clear();
+    }
+
+    ~VregInfo() = default;
+
+    uint32 GetNextVregNO(RegType type, uint32 size)
+    {
+        /* when vReg reach to maxRegCount, maxRegCount limit adds 80 every time */
+        /* and vRegTable increases 80 elements. */
+        if (virtualRegCount >= maxRegCount) {
+            DEBUG_ASSERT(virtualRegCount < maxRegCount + 1, "MAINTAIN FAILED");
+            maxRegCount += kRegIncrStepLen;
+            VRegTableResize(maxRegCount);
+        }
+#if TARGAARCH64 || TARGX86_64 || TARGRISCV64
+        if (size < k4ByteSize) {
+            size = k4ByteSize;
+        }
+        if (Triple::GetTriple().IsAarch64BeOrLe()) {
+            /* cannot handle 128 size register */
+            if (type == kRegTyInt && size > k8ByteSize) {
+                size = k8ByteSize;
+            }
+        }
+        DEBUG_ASSERT(size == k4ByteSize || size == k8ByteSize || size == k16ByteSize, "check size");
+#endif
+        VRegTableValuesSet(virtualRegCount, type, size);
+
+        uint32 temp = virtualRegCount;
+        ++virtualRegCount;
+        return temp;
+    }
+    void Inc(uint32 v) const
+    {
+        virtualRegCount += v;
+    }
+    uint32 GetCount() const
+    {
+        return virtualRegCount;
+    }
+    void SetCount(uint32 v) const
+    {
+        /* Vreg number can only increase. */
+        if (virtualRegCount < v) {
+            virtualRegCount = v;
+        }
+    }
+
+    /* maxRegCount related stuff */
+    uint32 GetMaxRegCount() const
+    {
+        return maxRegCount;
+    }
+    void SetMaxRegCount(uint32 num)
+    {
+        maxRegCount = num;
+    }
+    void IncMaxRegCount(uint32 num) const
+    {
+        maxRegCount += num;
+    }
+
+    /* vRegTable related stuff */
+    void VRegTableResize(uint32 sz)
+    {
+        vRegTable.resize(sz);
+    }
+    uint32 VRegTableSize() const
+    {
+        return static_cast<uint32>(vRegTable.size());
+    }
+    uint32 VRegTableGetSize(uint32 idx) const
+    {
+        return vRegTable[idx].GetSize();
+    }
+    RegType VRegTableGetType(uint32 idx) const
+    {
+        return vRegTable[idx].GetType();
+    }
+    VirtualRegNode &VRegTableElementGet(uint32 idx) const
+    {
+        return vRegTable[idx];
+    }
+    void VRegTableElementSet(uint32 idx, VirtualRegNode *node)
+    {
+        vRegTable[idx] = *node;
+    }
+    void VRegTableValuesSet(uint32 idx, RegType rt, uint32 sz) const
+    {
+        new (&vRegTable[idx]) VirtualRegNode(rt, sz);
+    }
+    void VRegOperandTableSet(regno_t regNO, RegOperand *rp) const
+    {
+        vRegOperandTable[regNO] = rp;
+    }
+};
+using VRegNo = regno_t;
+using PRegNo = regno_t;
+using RegNoPair = std::pair<VRegNo, PRegNo>;
 
 class RegisterInfo {
 public:
@@ -102,7 +226,7 @@ public:
     {
         return false;
     }
-    virtual bool IsCallerSavePartRegister(regno_t regNO,  uint32 size) const
+    virtual bool IsCallerSavePartRegister(regno_t regNO, uint32 size) const
     {
         return false;
     }
@@ -135,8 +259,8 @@ public:
     virtual Insn *BuildStrInsn(uint32 regSize, PrimType stype, RegOperand &phyOpnd, MemOperand &memOpnd) = 0;
     virtual Insn *BuildLdrInsn(uint32 regSize, PrimType stype, RegOperand &phyOpnd, MemOperand &memOpnd) = 0;
     virtual MemOperand *GetOrCreatSpillMem(regno_t vrNum, uint32 bitSize) = 0;
-    virtual MemOperand *AdjustMemOperandIfOffsetOutOfRange(MemOperand *memOpnd, regno_t vrNum, bool isDest, Insn &insn,
-                                                           regno_t regNum, bool &isOutOfRange) = 0;
+    virtual MemOperand *AdjustMemOperandIfOffsetOutOfRange(MemOperand *memOpnd, const RegNoPair &regNoPair, bool isDest,
+                                                           Insn &insn, bool &isOutOfRange) = 0;
     virtual void FreeSpillRegMem(regno_t vrNum) = 0;
 
 private:
