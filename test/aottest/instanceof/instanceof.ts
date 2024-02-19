@@ -82,3 +82,11 @@ print(ArkTools.isAOTCompiled(test2));
 print(ArkTools.isAOTCompiled(test3));
 print(ArkTools.isAOTCompiled(test4));
 print(ArkTools.isAOTCompiled(test5));
+
+function test6() {
+    const target = new A();
+    const proxy = new Proxy( target, {});
+    print(proxy instanceof A);
+}
+test6();
+print(ArkTools.isAOTCompiled(test6));
