@@ -393,4 +393,12 @@ bool AOTFileManager::GetAbsolutePath(const CString &relativePathCstr, CString &a
     }
     return false;
 }
+
+const Heap *AOTFileManager::GetHeap()
+{
+    if (vm_ == nullptr) {
+        return nullptr;
+    }
+    return vm_->GetHeap();
+}
 }  // namespace panda::ecmascript
