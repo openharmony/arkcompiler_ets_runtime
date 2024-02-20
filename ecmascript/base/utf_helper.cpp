@@ -125,14 +125,23 @@ bool IsValidUTF8(const std::vector<uint8_t> &data)
             if ((data.at(0) & BIT_MASK_3) != BIT_MASK_2) {
                 return false;
             }
+            if (data.at(0) < UTF8_2B_FIRST_MIN) {
+                return false;
+            }
             break;
         case UtfLength::THREE:
             if ((data.at(0) & BIT_MASK_4) != BIT_MASK_3) {
                 return false;
             }
+            if (data.at(0) == UTF8_3B_FIRST && data.at(1) < UTF8_3B_SECOND_MIN) {
+                return false;
+            }
             break;
         case UtfLength::FOUR:
             if ((data.at(0) & BIT_MASK_5) != BIT_MASK_4) {
+                return false;
+            }
+            if (data.at(0) == UTF8_4B_FIRST && data.at(1) < UTF8_4B_SECOND_MIN) {
                 return false;
             }
             break;

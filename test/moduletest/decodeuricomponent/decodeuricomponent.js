@@ -27,3 +27,10 @@ print(encodeURIComponent(uri_encode));
 let uri1="%00";
 let uri_encode1=decodeURIComponent(uri1);
 print(encodeURIComponent(uri_encode1));
+
+try {
+    let invalidURI = "%c0%80";
+    decodeURIComponent(invalidURI);
+} catch(err) {
+    print(err.name);
+}
