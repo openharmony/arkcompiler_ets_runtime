@@ -37,6 +37,4 @@ try {
 } catch (err) {
     err.constructor.prototype.name = 123456789;
 }
-try {
-    0();
-} catch (e) {}
+0();
