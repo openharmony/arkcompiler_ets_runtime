@@ -26,6 +26,7 @@
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/jspandafile/literal_data_extractor.h"
 #include "ecmascript/module/js_module_manager.h"
+#include "ecmascript/module/js_shared_module.h"
 #include "ecmascript/patch/quick_fix_manager.h"
 #include "ecmascript/pgo_profiler/pgo_profiler.h"
 
@@ -309,8 +310,14 @@ public:
         ASSERT(methodLiteral != nullptr);
         ObjectFactory *factory = vm->GetFactory();
         JSHandle<Method> method;
-        method = factory->NewSMethod(jsPandaFile, methodLiteral, constpoolHandle, moduleHandle,
-                                         entryIndex, isLoadedAOT && hasEntryIndex);
+
+        // [[TODO::DaiHN]] Sendable class defined in Shared Module would set Shared Module directly.
+        // Clone isolate module at shared-heap to mark sendable class.
+        ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
+        JSHandle<JSTaggedValue> sendableClsModule = moduleManager->GenerateSendableFuncModule(moduleHandle);
+        method = factory->NewSMethod(jsPandaFile, methodLiteral, constpoolHandle, sendableClsModule,
+                                     entryIndex, isLoadedAOT && hasEntryIndex);
+
         constpoolHandle->SetObjectToCache(thread, index, method.GetTaggedValue());
         return method.GetTaggedValue();
     }

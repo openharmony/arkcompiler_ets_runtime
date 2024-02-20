@@ -650,6 +650,7 @@ public:
     bool IsStarExportEntry() const;
     bool IsResolvedBinding() const;
     bool IsResolvedIndexBinding() const;
+    bool IsResolvedRecordBinding() const;
     bool IsModuleNamespace() const;
     bool IsJSSharedObject() const;
     bool IsJSSharedFunction() const;

@@ -3280,6 +3280,20 @@ void InterpreterAssembly::HandleWideLdexternalmodulevarPrefImm16(
     DISPATCH(WIDE_LDEXTERNALMODULEVAR_PREF_IMM16);
 }
 
+void InterpreterAssembly::HandleCallRuntimeWideLdsendableexternalmodulevarPrefImm16(
+    JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
+    JSTaggedValue acc, int16_t hotnessCounter)
+{
+    int32_t index = READ_INST_16_1();
+    JSTaggedValue thisFunc = GetFunction(sp);
+    LOG_INST() << "intrinsics::ldsendableexternalmodulevar index:" << index;
+
+    JSTaggedValue moduleVar = SlowRuntimeStub::LdSendableExternalModuleVar(thread, index, thisFunc);
+    INTERPRETER_RETURN_IF_ABRUPT(moduleVar);
+    SET_ACC(moduleVar);
+    DISPATCH(CALLRUNTIME_WIDELDSENDABLEEXTERNALMODULEVAR_PREF_IMM16);
+}
+
 void InterpreterAssembly::HandleWideLdlocalmodulevarPrefImm16(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
@@ -6593,6 +6607,20 @@ void InterpreterAssembly::HandleLdexternalmodulevarImm8(
     INTERPRETER_RETURN_IF_ABRUPT(moduleVar);
     SET_ACC(moduleVar);
     DISPATCH(LDEXTERNALMODULEVAR_IMM8);
+}
+
+void InterpreterAssembly::HandleCallRuntimeLdsendableexternalmodulevarImm8(
+    JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
+    JSTaggedValue acc, int16_t hotnessCounter)
+{
+    int32_t index = READ_INST_8_1();
+    JSTaggedValue thisFunc = GetFunction(sp);
+    LOG_INST() << "intrinsics::ldsendableexternalmodulevar index:" << index;
+
+    JSTaggedValue moduleVar = SlowRuntimeStub::LdSendableExternalModuleVar(thread, index, thisFunc);
+    INTERPRETER_RETURN_IF_ABRUPT(moduleVar);
+    SET_ACC(moduleVar);
+    DISPATCH(CALLRUNTIME_LDSENDABLEEXTERNALMODULEVAR_PREF_IMM8);
 }
 
 void InterpreterAssembly::HandleDefinemethodImm16Id16Imm8(

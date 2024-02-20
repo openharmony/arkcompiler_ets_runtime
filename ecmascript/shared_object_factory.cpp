@@ -24,6 +24,9 @@
 #include "ecmascript/layout_info-inl.h"
 #include "ecmascript/mem/heap-inl.h"
 #include "ecmascript/symbol_table.h"
+#include "ecmascript/jspandafile/program_object.h"
+#include "ecmascript/module/js_module_source_text.h"
+#include "ecmascript/module/js_shared_module.h"
 
 namespace panda::ecmascript {
 void ObjectFactory::NewSObjectHook() const
@@ -467,5 +470,100 @@ JSHandle<JSSymbol> ObjectFactory::NewSWellKnownSymbolWithChar(std::string_view d
 {
     JSHandle<EcmaString> string = NewFromUtf8(description);
     return NewSWellKnownSymbol(JSHandle<JSTaggedValue>(string));
+}
+
+JSHandle<SourceTextModule> ObjectFactory::NewSModule()
+{
+    NewObjectHook();
+    TaggedObject *header = sHeap_->AllocateOldOrHugeObject(thread_,
+        JSHClass::Cast(thread_->GlobalConstants()->GetSourceTextModuleClass().GetTaggedObject()));
+    JSHandle<SourceTextModule> obj(thread_, header);
+    JSTaggedValue undefinedValue = thread_->GlobalConstants()->GetUndefined();
+    obj->SetEnvironment(thread_, undefinedValue);
+    obj->SetNamespace(thread_, undefinedValue);
+    obj->SetEcmaModuleFilename(thread_, undefinedValue);
+    obj->SetEcmaModuleRecordName(thread_, undefinedValue);
+    obj->SetRequestedModules(thread_, undefinedValue);
+    obj->SetImportEntries(thread_, undefinedValue);
+    obj->SetLocalExportEntries(thread_, undefinedValue);
+    obj->SetIndirectExportEntries(thread_, undefinedValue);
+    obj->SetStarExportEntries(thread_, undefinedValue);
+    obj->SetNameDictionary(thread_, undefinedValue);
+    // [[CycleRoot]]: For a module not in a cycle, this would be the module itself.
+    obj->SetCycleRoot(thread_, obj);
+    obj->SetTopLevelCapability(thread_, undefinedValue);
+    obj->SetAsyncParentModules(thread_, undefinedValue);
+    obj->SetHasTLA(false);
+    obj->SetAsyncEvaluatingOrdinal(SourceTextModule::NOT_ASYNC_EVALUATED);
+    obj->SetPendingAsyncDependencies(SourceTextModule::UNDEFINED_INDEX);
+    obj->SetDFSIndex(SourceTextModule::UNDEFINED_INDEX);
+    obj->SetDFSAncestorIndex(SourceTextModule::UNDEFINED_INDEX);
+    obj->SetEvaluationError(SourceTextModule::UNDEFINED_INDEX);
+    obj->SetStatus(ModuleStatus::UNINSTANTIATED);
+    obj->SetTypes(ModuleTypes::UNKNOWN);
+    obj->SetIsNewBcVersion(false);
+    obj->SetRegisterCounts(UINT16_MAX);
+    obj->SetSharedType(SharedTypes::UNSENDABLE_MODULE);
+    return obj;
+}
+
+JSHandle<ResolvedIndexBinding> ObjectFactory::NewSResolvedIndexBindingRecord()
+{
+    JSHandle<JSTaggedValue> undefinedValue = thread_->GlobalConstants()->GetHandledUndefined();
+    JSHandle<SourceTextModule> ecmaModule(undefinedValue);
+    int32_t index = 0;
+    return NewSResolvedIndexBindingRecord(ecmaModule, index);
+}
+
+JSHandle<ResolvedIndexBinding> ObjectFactory::NewSResolvedIndexBindingRecord(const JSHandle<SourceTextModule> &module,
+                                                                             int32_t index)
+{
+    NewObjectHook();
+    TaggedObject *header = sHeap_->AllocateOldOrHugeObject(thread_,
+        JSHClass::Cast(thread_->GlobalConstants()->GetResolvedIndexBindingClass().GetTaggedObject()));
+    JSHandle<ResolvedIndexBinding> obj(thread_, header);
+    obj->SetModule(thread_, module);
+    obj->SetIndex(index);
+    return obj;
+}
+
+JSHandle<ResolvedBinding> ObjectFactory::NewSResolvedBindingRecord()
+{
+    JSHandle<JSTaggedValue> undefinedValue = thread_->GlobalConstants()->GetHandledUndefined();
+    JSHandle<SourceTextModule> ecmaModule(undefinedValue);
+    JSHandle<JSTaggedValue> bindingName(undefinedValue);
+    return NewSResolvedBindingRecord(ecmaModule, bindingName);
+}
+
+JSHandle<ResolvedBinding> ObjectFactory::NewSResolvedBindingRecord(const JSHandle<SourceTextModule> &module,
+                                                                   const JSHandle<JSTaggedValue> &bindingName)
+{
+    NewObjectHook();
+    TaggedObject *header = sHeap_->AllocateOldOrHugeObject(thread_,
+        JSHClass::Cast(thread_->GlobalConstants()->GetResolvedBindingClass().GetTaggedObject()));
+    JSHandle<ResolvedBinding> obj(thread_, header);
+    obj->SetModule(thread_, module);
+    obj->SetBindingName(thread_, bindingName);
+    return obj;
+}
+
+JSHandle<ResolvedRecordBinding> ObjectFactory::NewSResolvedRecordBindingRecord()
+{
+    JSHandle<JSTaggedValue> undefinedValue = thread_->GlobalConstants()->GetHandledUndefined();
+    JSHandle<EcmaString> ecmaModule(undefinedValue);
+    int32_t index = 0;
+    return NewSResolvedRecordBindingRecord(ecmaModule, index);
+}
+
+JSHandle<ResolvedRecordBinding> ObjectFactory::NewSResolvedRecordBindingRecord(
+    const JSHandle<EcmaString> &moduleRecord, int32_t index)
+{
+    NewObjectHook();
+    TaggedObject *header = sHeap_->AllocateOldOrHugeObject(thread_,
+        JSHClass::Cast(thread_->GlobalConstants()->GetResolvedRecordBindingClass().GetTaggedObject()));
+    JSHandle<ResolvedRecordBinding> obj(thread_, header);
+    obj->SetModuleRecord(thread_, moduleRecord);
+    obj->SetIndex(index);
+    return obj;
 }
 }  // namespace panda::ecmascript

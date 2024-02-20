@@ -21,6 +21,7 @@
 #include "ecmascript/ecma_string_table.h"
 #include "ecmascript/log_wrapper.h"
 #include "ecmascript/mem/mem_map_allocator.h"
+#include "ecmascript/module/js_module_manager.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
 
 namespace panda::ecmascript {
@@ -80,6 +81,8 @@ void Runtime::PostInitialization(const EcmaVM *vm)
     // and copy shared parts to other thread's later.
     globalConstants_ = mainThread_->GlobalConstants();
     SharedHeap::GetInstance()->PostInitialization(globalConstants_, const_cast<EcmaVM*>(vm)->GetJSOptions());
+    // [[TODO::DaiHN]] need adding root iterate.
+    SharedModuleManager::GetInstance()->Initialize(vm);
 }
 
 void Runtime::DestroyIfLastVm()

@@ -19,6 +19,7 @@
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/jspandafile/literal_data_extractor.h"
 #include "ecmascript/mem/c_string.h"
+#include "ecmascript/module/js_shared_module.h"
 #include "ecmascript/napi/include/jsnapi.h"
 
 namespace panda::ecmascript {
@@ -129,7 +130,9 @@ void PatchLoader::ReplaceModuleOfMethod(JSThread *thread, const JSPandaFile *bas
         Method *patchMethod = GetPatchMethod(thread, methodIndex, baseConstpool);
 
         JSHandle<JSTaggedValue> moduleRecord = context->FindPatchModule(patchMethod->GetRecordNameStr());
-        patchMethod->SetModule(thread, moduleRecord.GetTaggedValue());
+        ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
+        JSHandle<JSTaggedValue> sendableClsRecord = moduleManager->GenerateSendableFuncModule(moduleRecord);
+        patchMethod->SetModule(thread, sendableClsRecord.GetTaggedValue());
         LOG_ECMA(DEBUG) << "Replace base method module: "
                        << patchMethod->GetRecordNameStr()
                        << ":" << patchMethod->GetMethodName();

@@ -22,6 +22,7 @@
 #include "ecmascript/js_thread.h"
 #include "ecmascript/platform/mutex.h"
 #include "ecmascript/mem/heap.h"
+#include "ecmascript/module/js_shared_module_manager.h"
 #include "ecmascript/mutator_lock.h"
 
 #include "libpandabase/macros.h"
