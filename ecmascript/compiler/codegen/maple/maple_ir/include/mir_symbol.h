@@ -582,8 +582,7 @@ public:
             if (GetType()->GetKind() == kTypeStruct || GetType()->GetKind() == kTypeClass ||
                 GetType()->GetKind() == kTypeArray || GetType()->GetKind() == kTypeUnion) {
                 // when x64 does not driver, there is no triple init, this is a temporary plan
-                if (Triple::GetTriple().GetArch() == Triple::ArchType::X64 ||
-                    Triple::GetTriple().GetArch() == Triple::ArchType::UnknownArch) {
+                if (Triple::GetTriple().GetArch() == Triple::ArchType::x64) {
                     return align;
                 }
                 uint8 alignMin = 0;

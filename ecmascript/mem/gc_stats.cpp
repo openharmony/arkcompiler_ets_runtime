@@ -58,22 +58,6 @@ void GCStats::PrintGCStatistic()
     InitializeRecordList();
 }
 
-const char *GCStats::GetGCTypeName()
-{
-    switch (gcType_) {
-        case GCType::STW_YOUNG_GC:
-            return "STWYoungGC";
-        case GCType::PARTIAL_YOUNG_GC:
-            return "HPP YoungGC";
-        case GCType::PARTIAL_OLD_GC:
-            return "HPP OldGC";
-        case GCType::COMPRESS_GC:
-            return "CompressGC";
-        default:
-            return "UnknownType";
-    }
-}
-
 const char *GCStats::GCReasonToString()
 {
     switch (reason_) {
@@ -552,7 +536,7 @@ void GCStats::RecordGCSpeed()
 GCType GCStats::GetGCType(TriggerGCType gcType)
 {
     if (!heap_->GetJSThread()->IsReadyToMark()) {
-        return heap_->IsFullMark() ? GCType::PARTIAL_OLD_GC : GCType::PARTIAL_YOUNG_GC;
+        return heap_->IsConcurrentFullMark() ? GCType::PARTIAL_OLD_GC : GCType::PARTIAL_YOUNG_GC;
     }
     switch (gcType) {
         case TriggerGCType::YOUNG_GC:

@@ -27,10 +27,10 @@ private:
     void DoLocalCopyProp() override;
 };
 
-class CopyRegProp : public LocalPropOptimizePattern {
+class LocalCopyRegProp  : public LocalPropOptimizePattern {
 public:
-    CopyRegProp(CGFunc &cgFunc, ReachingDefinition &rd) : LocalPropOptimizePattern(cgFunc, rd) {}
-    ~CopyRegProp() override = default;
+    LocalCopyRegProp (CGFunc &cgFunc, ReachingDefinition &rd) : LocalPropOptimizePattern(cgFunc, rd) {}
+    ~LocalCopyRegProp () override = default;
     bool CheckCondition(Insn &insn) final;
     void Optimize(BB &bb, Insn &insn) final;
 

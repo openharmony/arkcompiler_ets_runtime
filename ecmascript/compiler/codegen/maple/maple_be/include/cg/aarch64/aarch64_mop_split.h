@@ -740,8 +740,8 @@ inline void MOP_qstpSplit(Insn *insn, bool isAfterRegAlloc, InsnBuilder *insnBui
     LoadStoreInsnSplit(insn, kInsnThirdOpnd, true, isAfterRegAlloc, insnBuilder, opndBuilder);
 }
 
-inline void MOP_DEBUG_ASSERT_nonnullSplit(Insn *insn, bool isAfterRegAlloc, InsnBuilder *insnBuilder,
-                                          OperandBuilder *opndBuilder)
+inline void MOP_assert_nonnullSplit(Insn *insn, bool isAfterRegAlloc, InsnBuilder *insnBuilder,
+                                    OperandBuilder *opndBuilder)
 {
     MOP_wldrSplit(insn, isAfterRegAlloc, insnBuilder, opndBuilder);
 }

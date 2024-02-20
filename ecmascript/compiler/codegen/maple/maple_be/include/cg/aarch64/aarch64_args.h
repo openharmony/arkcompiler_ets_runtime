@@ -22,44 +22,31 @@
 namespace maplebe {
 using namespace maple;
 
-struct ArgInfo {
-    AArch64reg reg;
-    MIRType *mirTy;
-    uint32 symSize;
-    uint32 stkSize;
-    RegType regType;
-    MIRSymbol *sym;
-    const AArch64SymbolAlloc *symLoc;
-    uint8 memPairSecondRegSize; /* struct arg requiring two regs, size of 2nd reg */
-    bool doMemPairOpt;
-    bool createTwoStores;
-    bool isTwoRegParm;
-};
-
 class AArch64MoveRegArgs : public MoveRegArgs {
 public:
-    explicit AArch64MoveRegArgs(CGFunc &func) : MoveRegArgs(func) {}
-    ~AArch64MoveRegArgs() override = default;
+    explicit AArch64MoveRegArgs(CGFunc &func) : MoveRegArgs(func)
+    {
+        aarFunc = static_cast<AArch64CGFunc *>(&func);
+    }
+    ~AArch64MoveRegArgs() override
+    {
+        aarFunc = nullptr;
+    }
     void Run() override;
 
 private:
-    RegOperand *baseReg = nullptr;
-    const MemSegment *lastSegment = nullptr;
-    void CollectRegisterArgs(std::map<uint32, AArch64reg> &argsList, std::vector<uint32> &indexList,
-                             std::map<uint32, AArch64reg> &pairReg, std::vector<uint32> &numFpRegs,
-                             std::vector<uint32> &fpSize) const;
-    ArgInfo GetArgInfo(std::map<uint32, AArch64reg> &argsList, std::vector<uint32> &numFpRegs,
-                       std::vector<uint32> &fpSize, uint32 argIndex) const;
-    bool IsInSameSegment(const ArgInfo &firstArgInfo, const ArgInfo &secondArgInfo) const;
-    void GenOneInsn(const ArgInfo &argInfo, RegOperand &baseOpnd, uint32 stBitSize, AArch64reg dest,
-                    int32 offset) const;
-    void GenerateStpInsn(const ArgInfo &firstArgInfo, const ArgInfo &secondArgInfo);
-    void GenerateStrInsn(const ArgInfo &argInfo, AArch64reg reg2, uint32 numFpRegs, uint32 fpSize);
-    void MoveRegisterArgs();
+    // gen param to stack
+    // call foo(var $a) -> str X0, [memOpnd]
+    void MoveRegisterArgs() const;
+    // gen param to preg
+    // call foo(%1) -> mov V201, X0
     void MoveVRegisterArgs();
     void MoveLocalRefVarToRefLocals(MIRSymbol &mirSym) const;
     void LoadStackArgsToVReg(MIRSymbol &mirSym) const;
     void MoveArgsToVReg(const CCLocInfo &ploc, MIRSymbol &mirSym) const;
+    Insn &CreateMoveArgsToVRegInsn(MOperator mOp, RegOperand &destOpnd, RegOperand &srcOpnd, PrimType primType) const;
+
+    AArch64CGFunc *aarFunc = nullptr;
 };
 } /* namespace maplebe */
 

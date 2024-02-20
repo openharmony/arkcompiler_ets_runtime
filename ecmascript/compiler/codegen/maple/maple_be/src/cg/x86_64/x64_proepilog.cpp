@@ -21,16 +21,6 @@
 
 namespace maplebe {
 using namespace maple;
-/*
- *  If a function without callee-saved register, and end with a function call,
- *  then transfer bl/blr to b/br.
- *  Return value: true if function do not need Prologue/Epilogue. false otherwise.
- */
-bool X64GenProEpilog::TailCallOpt()
-{
-    return false;
-}
-
 bool X64GenProEpilog::NeedProEpilog()
 {
     return true;
@@ -50,7 +40,7 @@ void X64GenProEpilog::GenerateCalleeSavedRegs(bool isPush)
     std::vector<std::pair<uint16, int32>> calleeRegAndOffsetVec;
     for (const auto &reg : calleeSavedRegs) {
         RegType regType = IsGPRegister(reg) ? kRegTyInt : kRegTyFloat;
-        uint32 regByteSize = IsGPRegister(reg) ? kIntregBytelen : kFpregBytelen;
+        uint32 regByteSize = IsGPRegister(reg) ? kX64IntregBytelen : kX64FpregBytelen;
         uint32 regSize = regByteSize * kBitsPerByte;
         DEBUG_ASSERT((regSize == k32BitSize || regSize == k64BitSize), "only supported 32/64-bits");
         RegOperand &calleeReg = cgFunc.GetOpndBuilder()->CreatePReg(reg, regSize, regType);

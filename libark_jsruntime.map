@@ -347,6 +347,9 @@
       get_ark_js_heap_crash_info;
       step_ark_managed_native_frame;
       get_ark_native_frame_info;
+      ark_parse_js_frame_info;
+      ark_translate_js_frame_info;
+      step_ark;
     };
   local:
     *;

@@ -42,14 +42,17 @@ Triple::EnvironmentType Triple::ParseEnvironment(std::string_view archStr)
     return Triple::UnknownEnvironment;
 }
 
-void Triple::Init()
+void Triple::Init(bool isAArch64)
 {
     /* Currently Triple is used only to configure aarch64: be/le, ILP32/LP64
      * Other architectures (TARGX86_64, TARGX86, TARGARM32, TARGVM) are configured with compiler build config */
-#if TARGAARCH64
-    arch = Triple::ArchType::aarch64;
-    environment = Triple::EnvironmentType::GNU;
-#endif
+    if (isAArch64) {
+        arch = Triple::ArchType::aarch64;
+        environment = Triple::EnvironmentType::GNU;
+    } else {
+        arch = Triple::ArchType::x64;
+        environment = Triple::EnvironmentType::GNU;
+    }
 }
 
 void Triple::Init(const std::string &target)
@@ -59,7 +62,7 @@ void Triple::Init(const std::string &target)
     /* Currently Triple is used only to configure aarch64: be/le, ILP32/LP64.
      * Other architectures (TARGX86_64, TARGX86, TARGARM32, TARGVM) are configured with compiler build config */
 #if TARGAARCH64
-    Init();
+    Init(true);
 
     std::vector<std::string_view> components;
     maple::StringUtils::SplitSV(data, components, '-');

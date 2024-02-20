@@ -30,6 +30,70 @@ namespace maplebe {
 using namespace maple;
 
 #define JAVALANG (GetMirModule().IsJavaModule())
+// deal mem read/write node base info
+void MemRWNodeHelper::GetMemRWNodeBaseInfo(const BaseNode &node, MIRFunction &mirFunc)
+{
+    if (node.GetOpCode() == maple::OP_iread) {
+        auto &iread = static_cast<const IreadNode &>(node);
+        fieldId = iread.GetFieldID();
+        auto *type = GlobalTables::GetTypeTable().GetTypeFromTyIdx(iread.GetTyIdx());
+        DEBUG_ASSERT(type->IsMIRPtrType(), "expect a pointer type at iread node");
+        auto *pointerType = static_cast<MIRPtrType *>(type);
+        mirType = GlobalTables::GetTypeTable().GetTypeFromTyIdx(pointerType->GetPointedTyIdx());
+        if (mirType->GetKind() == kTypeArray) {
+            auto *arrayType = static_cast<MIRArrayType *>(mirType);
+            mirType = GlobalTables::GetTypeTable().GetTypeFromTyIdx(arrayType->GetElemTyIdx());
+        }
+    } else if (node.GetOpCode() == maple::OP_dassign) {
+        auto &dassign = static_cast<const DassignNode &>(node);
+        fieldId = dassign.GetFieldID();
+        symbol = mirFunc.GetLocalOrGlobalSymbol(dassign.GetStIdx());
+        CHECK_FATAL(symbol != nullptr, "symbol should not be nullptr");
+        mirType = symbol->GetType();
+    } else if (node.GetOpCode() == maple::OP_dread) {
+        auto &dread = static_cast<const AddrofNode &>(node);
+        fieldId = dread.GetFieldID();
+        symbol = mirFunc.GetLocalOrGlobalSymbol(dread.GetStIdx());
+        CHECK_FATAL(symbol != nullptr, "symbol should not be nullptr");
+        mirType = symbol->GetType();
+    } else {
+        CHECK_FATAL(node.GetOpCode() == maple::OP_iassign, "unsupported OpCode");
+        auto &iassign = static_cast<const IassignNode &>(node);
+        fieldId = iassign.GetFieldID();
+        auto &addrofNode = static_cast<AddrofNode &>(iassign.GetAddrExprBase());
+        auto *iassignMirType = GlobalTables::GetTypeTable().GetTypeFromTyIdx(iassign.GetTyIdx());
+        MIRPtrType *pointerType = nullptr;
+        if (iassignMirType->GetPrimType() == PTY_agg) {
+            auto *addrSym = mirFunc.GetLocalOrGlobalSymbol(addrofNode.GetStIdx());
+            auto *addrMirType = GlobalTables::GetTypeTable().GetTypeFromTyIdx(addrSym->GetTyIdx());
+            addrMirType = GlobalTables::GetTypeTable().GetTypeFromTyIdx(addrMirType->GetTypeIndex());
+            DEBUG_ASSERT(addrMirType->GetKind() == kTypePointer, "non-pointer");
+            pointerType = static_cast<MIRPtrType *>(addrMirType);
+        } else {
+            DEBUG_ASSERT(iassignMirType->GetKind() == kTypePointer, "non-pointer");
+            pointerType = static_cast<MIRPtrType *>(iassignMirType);
+        }
+        mirType = GlobalTables::GetTypeTable().GetTypeFromTyIdx(pointerType->GetPointedTyIdx());
+    }
+}
+
+void MemRWNodeHelper::GetTrueMirInfo(const BECommon &beCommon)
+{
+    // fixup mirType, primType and offset
+    if (fieldId != 0) {  // get true field type
+        DEBUG_ASSERT((mirType->IsMIRStructType() || mirType->IsMIRUnionType() || mirType->IsMIRClassType()),
+                     "non-structure");
+        auto *structType = static_cast<MIRStructType *>(mirType);
+        mirType = structType->GetFieldType(fieldId);
+        byteOffset = mirType->IsMIRClassType()
+                         ? static_cast<int32>(beCommon.GetJClassFieldOffset(*structType, fieldId).byteOffset)
+                         : static_cast<int32>(structType->GetFieldOffsetFromBaseAddr(fieldId).byteOffset);
+        isRefField = beCommon.IsRefField(*structType, fieldId);
+    }
+    primType = mirType->GetPrimType();
+    // get mem size
+    memSize = static_cast<uint32>(mirType->GetSize());
+}
 
 Operand *HandleDread(const BaseNode &parent, BaseNode &expr, CGFunc &cgFunc)
 {
@@ -41,9 +105,6 @@ Operand *HandleRegread(const BaseNode &parent, BaseNode &expr, CGFunc &cgFunc)
 {
     (void)parent;
     auto &regReadNode = static_cast<RegreadNode &>(expr);
-    if (regReadNode.GetRegIdx() == -kSregRetval0 || regReadNode.GetRegIdx() == -kSregRetval1) {
-        return &cgFunc.ProcessReturnReg(regReadNode.GetPrimType(), -(regReadNode.GetRegIdx()));
-    }
     return cgFunc.SelectRegread(regReadNode);
 }
 
@@ -1613,9 +1674,7 @@ void InitHandleStmtFactory()
 
 CGFunc::CGFunc(MIRModule &mod, CG &cg, MIRFunction &mirFunc, BECommon &beCommon, MemPool &memPool,
                StackMemPool &stackMp, MapleAllocator &allocator, uint32 funcId)
-    : vRegTable(allocator.Adapter()),
-      bbVec(allocator.Adapter()),
-      vRegOperandTable(allocator.Adapter()),
+    : bbVec(allocator.Adapter()),
       referenceVirtualRegs(allocator.Adapter()),
       referenceStackSlots(allocator.Adapter()),
       pregIdx2Opnd(mirFunc.GetPregTab()->Size(), nullptr, allocator.Adapter()),
@@ -1651,15 +1710,17 @@ CGFunc::CGFunc(MIRModule &mod, CG &cg, MIRFunction &mirFunc, BECommon &beCommon,
 {
     mirModule.SetCurFunction(&func);
     dummyBB = CreateNewBB();
-    vRegCount = firstMapleIrVRegNO + func.GetPregTab()->Size();
-    firstNonPregVRegNO = vRegCount;
+    vReg.SetCount(static_cast<uint32>(kBaseVirtualRegNO + func.GetPregTab()->Size()));
+    firstNonPregVRegNO = vReg.GetCount();
     /* maximum register count initial be increased by 1024 */
-    maxRegCount = vRegCount + 1024;
+    SetMaxRegNum(vReg.GetCount() + 1024);
+
+    maplebe::VregInfo::vRegOperandTable.clear();
 
     insnBuilder = memPool.New<InsnBuilder>(memPool);
     opndBuilder = memPool.New<OperandBuilder>(memPool, func.GetPregTab()->Size());
 
-    vRegTable.resize(maxRegCount);
+    vReg.VRegTableResize(GetMaxRegNum());
     /* func.GetPregTab()->_preg_table[0] is nullptr, so skip it */
     DEBUG_ASSERT(func.GetPregTab()->PregFromPregIdx(0) == nullptr, "PregFromPregIdx(0) must be nullptr");
     for (size_t i = 1; i < func.GetPregTab()->Size(); ++i) {
@@ -2448,12 +2509,13 @@ void CGFunc::VerifyAllInsn()
     {
         FOR_BB_INSNS(insn, bb)
         {
-            if (!VERIFY_INSN(insn)) {
-                LogInfo::MapleLogger() << "Illegal insn is:\n";
-                insn->Dump();
-                LogInfo::MapleLogger() << "Function name is:\n" << GetName() << "\n";
-                CHECK_FATAL_FALSE("The problem is illegal insn, info is above.");
+            if (VERIFY_INSN(insn) && insn->CheckMD()) {
+                continue;
             }
+            LogInfo::MapleLogger() << "Illegal insn is:\n";
+            insn->Dump();
+            LogInfo::MapleLogger() << "Function name is:\n" << GetName() << "\n";
+            CHECK_FATAL_FALSE("The problem is illegal insn, info is above.");
         }
     }
 }

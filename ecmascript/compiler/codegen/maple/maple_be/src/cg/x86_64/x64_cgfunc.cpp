@@ -588,12 +588,6 @@ void X64CGFunc::GenerateYieldpoint(BB &bb)
 {
     CHECK_FATAL(false, "NIY");
 }
-Operand &X64CGFunc::ProcessReturnReg(PrimType primType, int32 sReg)
-{
-    CHECK_FATAL(false, "NIY");
-    Operand *a;
-    return *a;
-}
 Operand &X64CGFunc::GetOrCreateRflag()
 {
     CHECK_FATAL(false, "NIY");
@@ -879,7 +873,7 @@ int32 X64CGFunc::GetBaseOffset(const SymbolAlloc &symbolAlloc)
      * Spill            |
      * ArgsStk        --
      */
-    constexpr const int32 sizeofFplr = 2 * kIntregBytelen;
+    constexpr const int32 sizeofFplr = 2 * kX64IntregBytelen;
     // baseOffset is the offset of this symbol based on the rbp position.
     int32 baseOffset = symAlloc->GetOffset();
     MemSegmentKind sgKind = symAlloc->GetMemSegment()->GetMemSegmentKind();

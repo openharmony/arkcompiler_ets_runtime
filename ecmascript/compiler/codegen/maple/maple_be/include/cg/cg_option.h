@@ -997,6 +997,11 @@ public:
         return targetArch == "x86_64";
     };
 
+    static bool IsTargetAArch64()
+    {
+        return targetArch == "aarch64";
+    };
+
     static void EnableVregRename()
     {
         doVregRename = true;
@@ -1576,6 +1581,25 @@ public:
         return funcAlignPow;
     }
 
+    static void EnableOptimizedFrameLayout()
+    {
+        doOptimizedFrameLayout = true;
+    }
+
+    static void DisableOptimizedFrameLayout()
+    {
+        doOptimizedFrameLayout = false;
+    }
+
+    static bool DoOptimizedFrameLayout()
+    {
+        return doOptimizedFrameLayout;
+    }
+
+    static bool DoCGIRVerify()
+    {
+        return doCgirVerify;
+    }
 private:
     std::vector<std::string> phaseSequence;
     EmitMemoryManager emitMemoryManager;
@@ -1685,6 +1709,8 @@ private:
     static uint32 loopAlignPow;
     static uint32 jumpAlignPow;
     static uint32 funcAlignPow;
+    static bool doOptimizedFrameLayout;
+    static bool doCgirVerify;
 };
 } /* namespace maplebe */
 

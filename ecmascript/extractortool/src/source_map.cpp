@@ -47,6 +47,7 @@ constexpr int32_t DIGIT_NUM = 64;
 const std::string MEGER_SOURCE_MAP_PATH = "ets/sourceMaps.map";
 } // namespace
 
+#if defined(PANDA_TARGET_OHOS)
 bool SourceMap::ReadSourceMapData(const std::string& hapPath, std::string& content)
 {
     if (hapPath.empty()) {
@@ -66,6 +67,7 @@ bool SourceMap::ReadSourceMapData(const std::string& hapPath, std::string& conte
     content.assign(dataPtr.get(), dataPtr.get() + len);
     return true;
 }
+#endif
 
 int32_t StringToInt(const std::string& value)
 {
@@ -100,12 +102,21 @@ uint32_t Base64CharToInt(char charCode)
     return DIGIT_NUM;
 };
 
+#if defined(PANDA_TARGET_OHOS)
 void SourceMap::Init(const std::string& url, const std::string& hapPath)
 {
     std::string sourceMapData;
     if (ReadSourceMapData(hapPath, sourceMapData)) {
         SplitSourceMap(url, sourceMapData);
     }
+}
+#endif
+
+void SourceMap::Init(uint8_t *data, size_t dataSize, const std::string& url)
+{
+    std::string content;
+    content.assign(data, data + dataSize);
+    SplitSourceMap(url, content);
 }
 
 void SourceMap::SplitSourceMap(const std::string& url, const std::string& sourceMapData)

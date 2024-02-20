@@ -164,7 +164,6 @@ public:
     Operand *SelectLazyLoadStatic(MIRSymbol &st, int64 offset, PrimType primType) override;
     Operand *SelectLoadArrayClassCache(MIRSymbol &st, int64 offset, PrimType primType) override;
     void GenerateYieldpoint(BB &bb) override;
-    Operand &ProcessReturnReg(PrimType primType, int32 sReg) override;
     Operand &GetOrCreateRflag() override;
     const Operand *GetRflag() const override;
     const Operand *GetFloatRflag() const override;
@@ -228,7 +227,7 @@ public:
     MemOperand *GetPseudoRegisterSpillMemoryOperand(PregIdx idx) override;
 
     int32 GetBaseOffset(const SymbolAlloc &symbolAlloc) override;
-    RegOperand *GetBaseReg(const SymbolAlloc &symAlloc);
+    RegOperand *GetBaseReg(const SymbolAlloc &symAlloc) override;
 
     void AddtoCalleeSaved(regno_t reg) override
     {
@@ -251,7 +250,7 @@ public:
 
     uint32 SizeOfCalleeSaved() const
     {
-        uint32 size = numIntregToCalleeSave * kIntregBytelen + numFpregToCalleeSave * kFpregBytelen;
+        uint32 size = numIntregToCalleeSave * kX64IntregBytelen + numFpregToCalleeSave * kX64FpregBytelen;
         return RoundUp(size, GetMemlayout()->GetStackPtrAlignment());
     }
 

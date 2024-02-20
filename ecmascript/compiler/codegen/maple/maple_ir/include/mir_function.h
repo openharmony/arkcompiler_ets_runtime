@@ -65,6 +65,7 @@ public:
 
 class MeFunction;         // circular dependency exists, no other choice
 class EAConnectionGraph;  // circular dependency exists, no other choice
+class MemReferenceTable;
 class MIRFunction {
 public:
     MIRFunction(MIRModule *mod, StIdx idx) : module(mod), symbolTableIdx(idx)
@@ -1526,10 +1527,34 @@ public:
         funcProfData->SetStmtFreq(stmtID, static_cast<int64_t>(freq));
     }
 
+    void SetWithSrc(bool var)
+    {
+        withSrc = var;
+    }
+
+    bool GetWithSrc() const
+    {
+        return withSrc;
+    }
+
     uint8 GetFrameReseverdSlot()
     {
         return funcAttrs.GetFrameResverdSlot();
     }
+
+    MemReferenceTable *GetMemReferenceTable()
+    {
+        return memReferenceTable;
+    }
+
+    void DiscardMemReferenceTable()
+    {
+        memReferenceTable = nullptr;
+    }
+
+    void CreateMemReferenceTable();
+
+    MemReferenceTable *GetOrCreateMemReferenceTable();
 
 private:
     MIRModule *module;      // the module that owns this function
@@ -1572,6 +1597,7 @@ private:
     bool referedRegsValid = false;
     bool hasVlaOrAlloca = false;
     bool withLocInfo = true;
+    bool withSrc = true;
     bool isVisited = false;  // only used in inline phase.
     bool isDirty = false;
     bool fromMpltInline = false;  // Whether this function is imported from mplt_inline file or not.
@@ -1634,6 +1660,7 @@ private:
     uint64 fileLinenoChksum = 0;
     uint64 cfgChksum = 0;
     GcovFuncInfo *funcProfData = nullptr;
+    MemReferenceTable *memReferenceTable = nullptr;
     void DumpFlavorLoweredThanMmpl() const;
     MIRFuncType *ReconstructFormals(const std::vector<MIRSymbol *> &symbols, bool clearOldArgs);
 };

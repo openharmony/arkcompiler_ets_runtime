@@ -1066,5 +1066,7 @@
         print("boom");
         throw "boom";
     }
-    var a = fun();
+    try {
+        var a = fun();
+    } catch (e) {}
 }

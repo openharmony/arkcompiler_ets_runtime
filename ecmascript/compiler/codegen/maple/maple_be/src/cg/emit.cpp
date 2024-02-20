@@ -14,6 +14,14 @@
  */
 
 #include "emit.h"
+#include "asm_emit.h"
+#if TARGAARCH64
+#include "aarch64_obj_emitter.h"
+#include "aarch64_emitter.h"
+#endif
+#if TARGX86_64
+#include "x64_emitter.h"
+#endif
 #include <unistd.h>
 #ifdef _WIN32
 #include <direct.h>
@@ -165,11 +173,11 @@ AsmLabel Emitter::GetTypeAsmInfoName(PrimType primType) const
         case k1ByteSize:
             return kAsmByte;
         case k2ByteSize:
-#if TARGAARCH64 || TARGRISCV64
-            return kAsmShort;
-#else
-            return kAsmValue;
-#endif
+            if (GetCG()->GetTargetMachine()->isAArch64() || GetCG()->GetTargetMachine()->isRiscV()) {
+                return kAsmShort;
+            } else {
+                return kAsmValue;
+            }
         case k4ByteSize:
             return kAsmLong;
         case k8ByteSize:
@@ -402,20 +410,23 @@ void Emitter::EmitAsmLabel(const MIRSymbol &mirSymbol, AsmLabel label)
             }
             (void)Emit(asmInfo->GetComm()).Emit(symName).Emit(", ").Emit(size).Emit(", ");
 #if PECOFF
-#if TARGARM || TARGAARCH64 || TARGARK || TARGRISCV64
-            std::string align = std::to_string(
-                static_cast<int>(log2(Globals::GetInstance()->GetBECommon()->GetTypeAlign(mirType->GetTypeIndex()))));
-#else
-            std::string align =
-                std::to_string(Globals::GetInstance()->GetBECommon()->GetTypeAlign(mirType->GetTypeIndex()));
-#endif
+            if (GetCG()->GetTargetMachine()->isAArch64() ||
+                GetCG()->GetTargetMachine()->isRiscV() || GetCG()->GetTargetMachine()->isArm32() ||
+                GetCG()->GetTargetMachine()->isArk()) {
+                std::string align = std::to_string(
+                    static_cast<int>(
+                        log2(Globals::GetInstance()->GetBECommon()->GetTypeAlign(mirType->GetTypeIndex()))));
+            else {
+                std::string align =
+                    std::to_string(Globals::GetInstance()->GetBECommon()->GetTypeAlign(mirType->GetTypeIndex()));
+            }
             emit(align.c_str());
 #else /* ELF */
             /* output align, symbol name begin with "classInitProtectRegion" align is 4096 */
             MIRTypeKind kind = mirSymbol.GetType()->GetKind();
             MIRStorageClass storage = mirSymbol.GetStorageClass();
             if (symName.find("classInitProtectRegion") == 0) {
-                Emit(4096); // symbol name begin with "classInitProtectRegion" align is 4096
+                Emit(4096);  // symbol name begin with "classInitProtectRegion" align is 4096
             } else if (((kind == kTypeStruct) || (kind == kTypeClass) || (kind == kTypeArray) ||
                         (kind == kTypeUnion)) &&
                        ((storage == kScGlobal) || (storage == kScPstatic) || (storage == kScFstatic))) {
@@ -438,20 +449,21 @@ void Emitter::EmitAsmLabel(const MIRSymbol &mirSymbol, AsmLabel label)
             if (align == 0) {
                 if (mirSymbol.GetType()->GetKind() == kTypeStruct || mirSymbol.GetType()->GetKind() == kTypeClass ||
                     mirSymbol.GetType()->GetKind() == kTypeArray || mirSymbol.GetType()->GetKind() == kTypeUnion) {
-#if TARGX86 || TARGX86_64
-                    return;
-#else
-                    align = kAlignOfU8;
-#endif
+                    if (GetCG()->GetTargetMachine()->isX8664()) {
+                        return;
+                    } else {
+                        align = kAlignOfU8;
+                    }
                 } else {
                     align = Globals::GetInstance()->GetBECommon()->GetTypeAlign(mirSymbol.GetType()->GetTypeIndex());
-#if TARGARM32 || TARGAARCH64 || TARGARK || TARGRISCV64
-                    if (CGOptions::IsArm64ilp32() && mirSymbol.GetType()->GetPrimType() == PTY_a32) {
-                        align = kAlignOfU8;
-                    } else {
-                        align = static_cast<uint8>(log2(align));
+                    if (GetCG()->GetTargetMachine()->isAArch64() || GetCG()->GetTargetMachine()->isRiscV() ||
+                        GetCG()->GetTargetMachine()->isArm32() || GetCG()->GetTargetMachine()->isArk()) {
+                        if (CGOptions::IsArm64ilp32() && mirSymbol.GetType()->GetPrimType() == PTY_a32) {
+                            align = kAlignOfU8;
+                        } else {
+                            align = static_cast<uint8>(log2(align));
+                        }
                     }
-#endif
                 }
             }
             Emit(asmInfo->GetAlign());
@@ -468,19 +480,19 @@ void Emitter::EmitAsmLabel(const MIRSymbol &mirSymbol, AsmLabel label)
             Emit(asmInfo->GetSize());
             Emit(symName);
             Emit(", ");
-#if TARGX86 || TARGX86_64
-            Emit(".-");
-            Emit(symName);
-#else
-            std::string size;
-            if (isFlexibleArray) {
-                size = std::to_string(Globals::GetInstance()->GetBECommon()->GetTypeSize(mirType->GetTypeIndex()) +
-                                      arraySize);
+            if (GetCG()->GetTargetMachine()->isX8664()) {
+                Emit(".-");
+                Emit(symName);
             } else {
-                size = std::to_string(Globals::GetInstance()->GetBECommon()->GetTypeSize(mirType->GetTypeIndex()));
+                std::string size;
+                if (isFlexibleArray) {
+                    size = std::to_string(Globals::GetInstance()->GetBECommon()->GetTypeSize(mirType->GetTypeIndex()) +
+                                        arraySize);
+                } else {
+                    size = std::to_string(Globals::GetInstance()->GetBECommon()->GetTypeSize(mirType->GetTypeIndex()));
+                }
+                Emit(size);
             }
-            Emit(size);
-#endif
             Emit("\n");
             return;
         }
@@ -597,6 +609,78 @@ void Emitter::EmitBitFieldConstant(StructEmitInfo &structEmitInfo, MIRConst &mir
     if ((nextType == nullptr) || (kTypeBitField != nextType->GetKind())) {
         /* emit structEmitInfo->combineBitFieldValue */
         EmitCombineBfldValue(structEmitInfo);
+    }
+}
+
+void Emitter::EmitFunctionSymbolTable(FuncEmitInfo &funcEmitInfo)
+{
+    CGFunc &cgFunc = funcEmitInfo.GetCGFunc();
+    MIRFunction *func = &cgFunc.GetFunction();
+
+    size_t size =
+        (func == nullptr) ? GlobalTables::GetGsymTable().GetTable().size() : func->GetSymTab()->GetTable().size();
+    for (size_t i = 0; i < size; ++i) {
+        const MIRSymbol *st = nullptr;
+        if (func == nullptr) {
+            auto &symTab = GlobalTables::GetGsymTable();
+            st = symTab.GetSymbol(i);
+        } else {
+            auto &symTab = *func->GetSymTab();
+            st = symTab.GetSymbolAt(i);
+        }
+        if (st == nullptr) {
+            continue;
+        }
+        MIRStorageClass storageClass = st->GetStorageClass();
+        MIRSymKind symKind = st->GetSKind();
+        Emitter *emitter = this;
+        if (storageClass == kScPstatic && symKind == kStConst) {
+            // align
+            emitter->Emit("\t.align 2 \n" + st->GetName() + ":\n");
+            if (st->GetKonst()->GetKind() == kConstStr16Const) {
+                MIRStr16Const *str16Const = safe_cast<MIRStr16Const>(st->GetKonst());
+                emitter->EmitStr16Constant(*str16Const);
+                emitter->Emit("\n");
+                continue;
+            }
+
+            if (st->GetKonst()->GetKind() == kConstStrConst) {
+                MIRStrConst *strConst = safe_cast<MIRStrConst>(st->GetKonst());
+                emitter->EmitStrConstant(*strConst);
+                emitter->Emit("\n");
+                continue;
+            }
+
+            switch (st->GetKonst()->GetType().GetPrimType()) {
+                case PTY_u32: {
+                    MIRIntConst *intConst = safe_cast<MIRIntConst>(st->GetKonst());
+                    uint32 value = static_cast<uint32>(intConst->GetValue().GetExtValue());
+                    emitter->Emit("\t.long").Emit(value).Emit("\n");
+                    emitter->IncreaseJavaInsnCount();
+                    break;
+                }
+                case PTY_f32: {
+                    MIRFloatConst *floatConst = safe_cast<MIRFloatConst>(st->GetKonst());
+                    uint32 value = static_cast<uint32>(floatConst->GetIntValue());
+                    emitter->Emit("\t.word").Emit(value).Emit("\n");
+                    emitter->IncreaseJavaInsnCount();
+                    break;
+                }
+                case PTY_f64: {
+                    MIRDoubleConst *doubleConst = safe_cast<MIRDoubleConst>(st->GetKonst());
+                    uint32 value = doubleConst->GetIntLow32();
+                    emitter->Emit("\t.word").Emit(value).Emit("\n");
+                    emitter->IncreaseJavaInsnCount();
+                    value = doubleConst->GetIntHigh32();
+                    emitter->Emit("\t.word").Emit(value).Emit("\n");
+                    emitter->IncreaseJavaInsnCount();
+                    break;
+                }
+                default:
+                    DEBUG_ASSERT(false, "NYI");
+                    break;
+            }
+        }
     }
 }
 
@@ -1909,11 +1993,11 @@ void Emitter::EmitBlockMarker(const std::string &markerName, const std::string &
         EmitAsmLabel(kAsmData);
     }
     Emit(asmInfo->GetAlign());
-#if TARGX86 || TARGX86_64
-    Emit("8\n" + markerName + ":\n");
-#else
-    Emit("3\n" + markerName + ":\n");
-#endif
+    if (GetCG()->GetTargetMachine()->isX8664()) {
+        Emit("8\n" + markerName + ":\n");
+    } else {
+        Emit("3\n" + markerName + ":\n");
+    }
     EmitAsmLabel(kAsmQuad);
     if (withAddr) {
         Emit(addrName + "\n");
@@ -1985,13 +2069,13 @@ void Emitter::EmitFuncLayoutInfo(const MIRSymbol &layout)
         Emit(asmInfo->GetGlobal());
         Emit(markerName + "\n");
         EmitAsmLabel(kAsmData);
-#if TARGX86 || TARGX86_64
-        EmitAsmLabel(layout, kAsmAlign);
-        Emit(markerName + ":\n");
-#else
-        Emit(asmInfo->GetAlign());
-        Emit("3\n" + markerName + ":\n");
-#endif
+        if (GetCG()->GetTargetMachine()->isX8664()) {
+            EmitAsmLabel(layout, kAsmAlign);
+            Emit(markerName + ":\n");
+        } else {
+            Emit(asmInfo->GetAlign());
+            Emit("3\n" + markerName + ":\n");
+        }
 
 #if TARGAARCH64 || TARGRISCV64 || TARGX86_64
         EmitAsmLabel(kAsmQuad);
@@ -2151,11 +2235,11 @@ void Emitter::EmitStringPointers()
 {
     if (CGOptions::OptimizeForSize()) {
         (void)Emit(asmInfo->GetSection()).Emit(".rodata,\"aMS\",@progbits,1").Emit("\n");
-#if TARGX86 || TARGX86_64
-        Emit("\t.align 8\n");
-#else
-        Emit("\t.align 3\n");
-#endif
+        if (GetCG()->GetTargetMachine()->isX8664()) {
+            Emit("\t.align 8\n");
+        } else {
+            Emit("\t.align 3\n");
+        }
     } else {
         (void)Emit(asmInfo->GetSection()).Emit(".rodata").Emit("\n");
     }
@@ -2164,11 +2248,11 @@ void Emitter::EmitStringPointers()
             continue;
         }
         if (!CGOptions::OptimizeForSize()) {
-#if TARGX86 || TARGX86_64
-            Emit("\t.align 8\n");
-#else
-            Emit("\t.align 3\n");
-#endif
+            if (GetCG()->GetTargetMachine()->isX8664()) {
+                Emit("\t.align 8\n");
+            } else {
+                Emit("\t.align 3\n");
+            }
         }
         uint32 strId = idx.GetIdx();
         std::string str = GlobalTables::GetUStrTable().GetStringFromStrIdx(idx);
@@ -2181,20 +2265,20 @@ void Emitter::EmitStringPointers()
             continue;
         }
         if (!CGOptions::OptimizeForSize()) {
-#if TARGX86 || TARGX86_64
-            Emit("\t.align 8\n");
-#else
-            Emit("\t.align 3\n");
-#endif
+            if (GetCG()->GetTargetMachine()->isX8664()) {
+                Emit("\t.align 8\n");
+            } else {
+                Emit("\t.align 3\n");
+            }
         }
         uint32 strId = idx.GetIdx();
         std::string str = GlobalTables::GetUStrTable().GetStringFromStrIdx(idx);
         Emit(asmInfo->GetAlign());
-#if TARGX86 || TARGX86_64
-        Emit("8\n");
-#else
-        Emit("3\n");
-#endif
+        if (GetCG()->GetTargetMachine()->isX8664()) {
+            Emit("8\n");
+        } else {
+            Emit("3\n");
+        }
         Emit(".LSTR__").Emit(strId).Emit(":\n");
         std::string mplstr(str);
         EmitStr(mplstr, false, true);
@@ -2418,7 +2502,7 @@ void Emitter::EmitGlobalVariable()
         if (mirSymbol == nullptr || mirSymbol->IsDeleted() || mirSymbol->GetStorageClass() == kScUnused) {
             continue;
         }
-        if (mirSymbol->GetSKind() == kStFunc) {
+        if (mirSymbol->GetSKind() == maple::MIRSymKind::kStFunc) {
             EmitAliasAndRef(*mirSymbol);
         }
 
@@ -2509,7 +2593,7 @@ void Emitter::EmitGlobalVariable()
             continue;
         }
         /* symbols we do not emit here. */
-        if (mirSymbol->GetSKind() == kStFunc || mirSymbol->GetSKind() == kStJavaClass ||
+        if (mirSymbol->GetSKind() == maple::MIRSymKind::kStFunc || mirSymbol->GetSKind() == kStJavaClass ||
             mirSymbol->GetSKind() == kStJavaInterface) {
             continue;
         }
@@ -2606,7 +2690,7 @@ void Emitter::EmitGlobalVariable()
                 }
                 std::string secName = stName.substr(0, stName.find(delimiter));
                 /* remove leading "__" in sec name. */
-                secName.erase(0, 2); // remove 2 chars "__"
+                secName.erase(0, 2);  // remove 2 chars "__"
                 Emit("\t.section\t." + secName + ",\"a\",%progbits\n");
             } else {
                 bool isThreadLocal = mirSymbol->IsThreadLocal();
@@ -2639,11 +2723,11 @@ void Emitter::EmitGlobalVariable()
             }
             if (mirSymbol->IsReflectionStrTab()) { /* reflection-string-tab also aligned to 8B boundaries. */
                 Emit(asmInfo->GetAlign());
-#if TARGX86 || TARGX86_64
-                Emit("8\n");
-#else
-                Emit("3\n");
-#endif
+                if (GetCG()->GetTargetMachine()->isX8664()) {
+                    Emit("8\n");
+                } else {
+                    Emit("3\n");
+                }
             } else {
                 EmitAsmLabel(*mirSymbol, kAsmAlign);
             }
@@ -3074,19 +3158,19 @@ void Emitter::EmitDWRef(const std::string &name)
     Emit("\t.section .data.DW.ref." + name + ",\"awG\",%progbits,DW.ref.");
     Emit(name + ",comdat\n");
     Emit(asmInfo->GetAlign());
-#if TARGX86 || TARGX86_64
-    Emit("8\n");
-#else
-    Emit("3\n");
-#endif
+    if (GetCG()->GetTargetMachine()->isX8664()) {
+        Emit("8\n");
+    } else {
+        Emit("3\n");
+    }
     Emit("\t.type DW.ref." + name + ", \%object\n");
     Emit("\t.size DW.ref." + name + ",8\n");
     Emit("DW.ref." + name + ":\n");
-#if TARGAARCH64 || TARGRISCV64
-    Emit("\t.xword " + name + "\n");
-#else
-    Emit("\t.word " + name + "\n");
-#endif
+    if (GetCG()->GetTargetMachine()->isAArch64()) {
+        Emit("\t.xword " + name + "\n");
+    } else {
+        Emit("\t.word " + name + "\n");
+    }
 }
 
 void Emitter::EmitDecSigned(int64 num)
@@ -3110,7 +3194,9 @@ void Emitter::EmitHexUnsigned(uint64 num)
     fileStream.flags(flag);
 }
 
+#ifndef TARGX86_64
 #define XSTR(s) str(s)
+#endif
 #define str(s) #s
 
 void Emitter::EmitDIHeader()
@@ -3731,11 +3817,11 @@ void Emitter::EmitHugeSoRoutines(bool lastRoutine)
     }
     for (auto &target : hugeSoTargets) {
         (void)Emit("\t.section\t." + std::string(namemangler::kMuidJavatextPrefixStr) + ",\"ax\"\n");
-#if TARGX86 || TARGX86_64
+if (GetCG()->GetTargetMachine()->isX8664()) {
         Emit("\t.align\t8\n");
-#else
+} else {
         Emit("\t.align 3\n");
-#endif
+}
         std::string routineName = target + HugeSoPostFix();
         Emit("\t.type\t" + routineName + ", %function\n");
         Emit(routineName + ":\n");
@@ -3757,4 +3843,31 @@ void LabelOperand::Dump() const
 {
     LogInfo::MapleLogger() << "label:" << labelIndex;
 }
+
+/* new phase manager */
+bool CgEmission::PhaseRun(maplebe::CGFunc &f) {
+    Emitter *emitter = f.GetCG()->GetEmitter();
+    CHECK_NULL_FATAL(emitter);
+
+    if (Triple::GetTriple().IsAarch64BeOrLe()) {
+        if (CGOptions::GetEmitFileType() == CGOptions::kAsm) {
+            AsmFuncEmitInfo funcEmitInfo(f);
+            emitter->EmitLocalVariable(f);
+            static_cast<AArch64AsmEmitter *>(emitter)->Run(funcEmitInfo);
+            emitter->EmitHugeSoRoutines();
+        } else {
+            FuncEmitInfo &funcEmitInfo = static_cast<AArch64ObjEmitter *>(emitter)->CreateFuncEmitInfo(f);
+            static_cast<AArch64ObjEmitter *>(emitter)->Run(funcEmitInfo);
+            f.SetFuncEmitInfo(&funcEmitInfo);
+        }
+    } else if (Triple::GetTriple().GetArch() == Triple::ArchType::x64) {
+        Emitter *emitter = f.GetCG()->GetEmitter();
+        CHECK_NULL_FATAL(emitter);
+        static_cast<X64Emitter *>(emitter)->Run(f);
+    } else {
+        CHECK_FATAL(false, "unsupportted");
+    }
+    return false;
+}
+MAPLE_TRANSFORM_PHASE_REGISTER(CgEmission, cgemit)
 } /* namespace maplebe */

@@ -41,7 +41,7 @@ void X64MoveRegArgs::CollectRegisterArgs(std::map<uint32, X64reg> &argsList, std
         MIRFunction *func = const_cast<MIRFunction *>(x64CGFunc->GetBecommon().GetMIRModule().CurFunction());
         if (x64CGFunc->GetBecommon().HasFuncReturnType(*func)) {
             TyIdx tyIdx = x64CGFunc->GetBecommon().GetFuncReturnType(*func);
-            if (x64CGFunc->GetBecommon().GetTypeSize(tyIdx) <= k16ByteSize) {
+            if (GlobalTables::GetTypeTable().GetTypeFromTyIdx(tyIdx)->GetSize() <= k16ByteSize) {
                 start = 1;
             }
         }
@@ -72,14 +72,14 @@ void X64MoveRegArgs::CollectRegisterArgs(std::map<uint32, X64reg> &argsList, std
     }
 }
 
-ArgInfo X64MoveRegArgs::GetArgInfo(std::map<uint32, X64reg> &argsList, uint32 argIndex, std::vector<uint32> &numFpRegs,
-                                   std::vector<uint32> &fpSize) const
+X64ArgInfo X64MoveRegArgs::GetArgInfo(std::map<uint32, X64reg> &argsList, uint32 argIndex,
+                                      std::vector<uint32> &numFpRegs, std::vector<uint32> &fpSize) const
 {
     X64CGFunc *x64CGFunc = static_cast<X64CGFunc *>(cgFunc);
-    ArgInfo argInfo;
+    X64ArgInfo argInfo;
     argInfo.reg = argsList[argIndex];
     argInfo.mirTy = x64CGFunc->GetFunction().GetNthParamType(argIndex);
-    argInfo.symSize = x64CGFunc->GetBecommon().GetTypeSize(argInfo.mirTy->GetTypeIndex());
+    argInfo.symSize = argInfo.mirTy->GetSize();
     argInfo.memPairSecondRegSize = 0;
     argInfo.doMemPairOpt = false;
     argInfo.createTwoStores = false;
@@ -87,7 +87,7 @@ ArgInfo X64MoveRegArgs::GetArgInfo(std::map<uint32, X64reg> &argsList, uint32 ar
     if ((argInfo.symSize > k8ByteSize) && (argInfo.symSize <= k16ByteSize)) {
         argInfo.isTwoRegParm = true;
         if (numFpRegs[argIndex] > kOneRegister) {
-            argInfo.symSize = fpSize[argIndex];
+            argInfo.symSize = argInfo.stkSize = fpSize[argIndex];
         } else {
             if (argInfo.symSize > k12ByteSize) {
                 argInfo.memPairSecondRegSize = k8ByteSize;
@@ -96,12 +96,15 @@ ArgInfo X64MoveRegArgs::GetArgInfo(std::map<uint32, X64reg> &argsList, uint32 ar
                 argInfo.memPairSecondRegSize = k4ByteSize;
             }
             argInfo.doMemPairOpt = true;
-            argInfo.symSize = GetPointerSize();
+            argInfo.symSize = argInfo.stkSize = GetPointerSize();
         }
     } else if (argInfo.symSize > k16ByteSize) {
         /* For large struct passing, a pointer to the copy is used. */
-        argInfo.symSize = GetPointerSize();
+        argInfo.symSize = argInfo.stkSize = GetPointerSize();
+    } else if ((argInfo.mirTy->GetPrimType() == PTY_agg) && (argInfo.symSize < k8ByteSize)) {
+        argInfo.symSize = argInfo.stkSize = k8ByteSize;
     } else {
+        argInfo.stkSize = (argInfo.symSize < k4ByteSize) ? k4ByteSize : argInfo.symSize;
         if (argInfo.symSize > k4ByteSize) {
             argInfo.symSize = k8ByteSize;
         } else if ((argInfo.mirTy->GetPrimType() == PTY_agg) && (argInfo.symSize <= k4ByteSize)) {
@@ -123,12 +126,12 @@ ArgInfo X64MoveRegArgs::GetArgInfo(std::map<uint32, X64reg> &argsList, uint32 ar
     return argInfo;
 }
 
-void X64MoveRegArgs::GenerateMovInsn(ArgInfo &argInfo, X64reg reg2)
+void X64MoveRegArgs::GenerateMovInsn(X64ArgInfo &argInfo, X64reg reg2)
 {
     /* reg2 is required when the struct size is between 8-16 bytes */
     X64CGFunc *x64CGFunc = static_cast<X64CGFunc *>(cgFunc);
     int32 stOffset = x64CGFunc->GetBaseOffset(*argInfo.symLoc);
-    RegOperand *baseOpnd = static_cast<RegOperand *>(x64CGFunc->GetBaseReg(*argInfo.symLoc));
+    RegOperand *baseOpnd = x64CGFunc->GetBaseReg(*argInfo.symLoc);
     uint32 opndSize = argInfo.symSize * kBitsPerByte;
     RegOperand &regOpnd = x64CGFunc->GetOpndBuilder()->CreatePReg(argInfo.reg, opndSize, argInfo.regType);
     MemOperand *memOpnd = &x64CGFunc->GetOpndBuilder()->CreateMem(*baseOpnd, stOffset, opndSize);
@@ -176,7 +179,7 @@ void X64MoveRegArgs::MoveRegisterArgs()
 
     for (auto indexItem = moveParaIndex.begin(); indexItem != moveParaIndex.end(); ++indexItem) {
         uint32 index = *indexItem;
-        ArgInfo argInfo = GetArgInfo(movePara, index, numFpRegs, fpSize);
+        X64ArgInfo argInfo = GetArgInfo(movePara, index, numFpRegs, fpSize);
         GenerateMovInsn(argInfo, pairReg[index]);
     }
 
@@ -193,17 +196,17 @@ void X64MoveRegArgs::LoadStackArgsToVReg(MIRSymbol &mirSym)
     RegType regType = cgFunc->GetRegTyFromPrimTy(stype);
     auto symLoc = static_cast<const X64SymbolAlloc *>(x64CGFunc->GetMemlayout()->GetSymAllocInfo(mirSym.GetStIndex()));
     int32 stOffset = x64CGFunc->GetBaseOffset(*symLoc);
-    RegOperand *baseOpnd = static_cast<RegOperand *>(x64CGFunc->GetBaseReg(*symLoc));
+    RegOperand *baseOpnd = x64CGFunc->GetBaseReg(*symLoc);
     MemOperand &memOpnd = x64CGFunc->GetOpndBuilder()->CreateMem(*baseOpnd, stOffset, opndSize);
     PregIdx pregIdx = x64CGFunc->GetFunction().GetPregTab()->GetPregIdxFromPregno(mirSym.GetPreg()->GetPregNo());
     RegOperand &dstRegOpnd = x64CGFunc->GetOpndBuilder()->CreateVReg(
-        x64CGFunc->GetVirtualRegNOFromPseudoRegIdx(pregIdx), opndSize, regType);
+        x64CGFunc->GetVirtualRegNOFromPseudoRegIdx(pregIdx), opndSize, cgFunc->GetRegTyFromPrimTy(stype));
 
     MOperator mOp;
     if (opndSize == k64BitSize) {
         mOp = regType == kRegTyInt ? x64::MOP_movq_m_r : x64::MOP_movfd_m_r;
     } else if (opndSize == k32BitSize) {
-        mOp = regType == kRegTyInt ? x64::MOP_movl_m_r  : x64::MOP_movfs_m_r;
+        mOp = regType == kRegTyInt ? x64::MOP_movl_m_r : x64::MOP_movfs_m_r;
     } else if (opndSize == k16BitSize) {
         mOp = regType == kRegTyInt ? x64::MOP_movw_m_r : x64::MOP_begin;
     } else if (opndSize == k8BitSize) {

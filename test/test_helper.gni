@@ -640,13 +640,9 @@ template("host_moduletest_assert_action") {
     if (_is_merge_abc_) {
       extra_dependencies = [ ":gen_${_target_name_}_merge_file" ]
       src_js = "@" + rebase_path(merge_file)
-      in_puts = [
-        merge_file,
-      ]
+      in_puts = [ merge_file ]
     } else {
-      in_puts = [
-        _test_js_path_,
-      ]
+      in_puts = [ _test_js_path_ ]
     }
     out_puts = [ _test_abc_path_ ]
   }
@@ -1366,9 +1362,7 @@ template("host_aot_js_assert_test_action") {
     }
     dst_file = rebase_path(_test_abc_path_)
 
-    in_puts = [
-      _test_ts_path_,
-    ]
+    in_puts = [ _test_ts_path_ ]
     out_puts = [ _test_abc_path_ ]
   }
 
@@ -1704,6 +1698,9 @@ template("host_aot_test_action") {
   _test_aot_log_level = "info"
   _test_expect_path_ = "${_src_dir_}/expect_output.txt"
   _test_pgo_expect_path_ = "${_src_dir_}/pgo_expect_output.txt"
+  if (defined(invoker.use_one_expect_path) && invoker.use_one_expect_path) {
+    _test_pgo_expect_path_ = _test_expect_path_
+  }
 
   es2abc_gen_abc("gen_${_target_name_}_abc") {
     extra_visibility = [ ":*" ]  # Only targets in this file can depend on this.
@@ -2225,9 +2222,7 @@ template("host_aot_assert_test_action") {
     if (defined(invoker.is_debug_abc) && invoker.is_debug_abc) {
       extra_args += [ "--debug" ]
     }
-    in_puts = [
-      _test_ts_path_,
-    ]
+    in_puts = [ _test_ts_path_ ]
     out_puts = [ _test_abc_path_ ]
   }
 

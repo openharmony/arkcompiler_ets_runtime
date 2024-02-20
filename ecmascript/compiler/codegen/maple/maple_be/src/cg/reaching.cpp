@@ -82,9 +82,11 @@ void ReachingDefinition::ClearDefUseInfo()
          * Backward propagation can move the return register definition far from the return.
          */
 #ifndef TARGX86_64
+    if (Triple::GetTriple().GetArch() == Triple::ArchType::x64) {
         if (insn->GetMachineOpcode() == MOP_pseudo_ret_int || insn->GetMachineOpcode() == MOP_pseudo_ret_float) {
             continue;
         }
+    }
 #endif
         insn->GetBB()->RemoveInsn(*insn);
     }

@@ -855,6 +855,16 @@ public:
         return lastModulePC;
     }
 
+    void SetIsAArch64(bool isAArch)
+    {
+        isAArch64 = isAArch;
+    }
+
+    bool IsAArch64() const
+    {
+        return isAArch64;
+    }
+
     bool HasNotWarned(uint32 postion, uint32 stmtOriginalID);
 
 private:
@@ -954,6 +964,7 @@ private:
     std::map<PUIdx, std::vector<ImpExpr>> funcImportantExpr;
     uint32 lastModulePC = 0;
     uint32 curModulePC = 0;
+    bool isAArch64 = false;
 };
 #endif  // MIR_FEATURE_FULL
 }  // namespace maple

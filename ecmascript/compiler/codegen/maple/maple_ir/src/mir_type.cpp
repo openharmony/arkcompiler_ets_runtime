@@ -206,13 +206,15 @@ uint8 GetPointerSize()
 {
 #if TARGX86 || TARGARM32 || TARGVM
     return k4ByteSize;
-#elif TARGX86_64
-    return k8ByteSize;
-#elif TARGAARCH64
-    DEBUG_ASSERT(Triple::GetTriple().GetEnvironment() != Triple::UnknownEnvironment,
-                 "Triple must be initialized before using");
-    uint8 size = (Triple::GetTriple().GetEnvironment() == Triple::GNUILP32) ? k4ByteSize : k8ByteSize;
-    return size;
+#elif TARGX86_64 || TARGAARCH64
+    if (Triple::GetTriple().GetArch() == Triple::ArchType::x64) {
+        return k8ByteSize;
+    } else if (Triple::GetTriple().GetArch() == Triple::ArchType::aarch64) {
+        uint8 size = (Triple::GetTriple().GetEnvironment() == Triple::GNUILP32) ? k4ByteSize : k8ByteSize;
+        return size;
+    } else {
+        CHECK_FATAL(false, "Unsupported target");
+    }
 #else
 #error "Unsupported target"
 #endif
@@ -222,13 +224,15 @@ uint8 GetP2Size()
 {
 #if TARGX86 || TARGARM32 || TARGVM
     return k2ByteSize;
-#elif TARGX86_64
-    return k3ByteSize;
-#elif TARGAARCH64
-    DEBUG_ASSERT(Triple::GetTriple().GetEnvironment() != Triple::UnknownEnvironment,
-                 "Triple must be initialized before using");
-    uint8 size = (Triple::GetTriple().GetEnvironment() == Triple::GNUILP32) ? k2ByteSize : k3ByteSize;
-    return size;
+#elif TARGX86_64 || TARGAARCH64
+    if (Triple::GetTriple().GetArch() == Triple::ArchType::x64) {
+        return k3ByteSize;
+    } else if (Triple::GetTriple().GetArch() == Triple::ArchType::aarch64) {
+        uint8 size = (Triple::GetTriple().GetEnvironment() == Triple::GNUILP32) ? k2ByteSize : k3ByteSize;
+        return size;
+    } else {
+        CHECK_FATAL(false, "Unsupported target");
+    }
 #else
 #error "Unsupported target"
 #endif
@@ -238,13 +242,15 @@ PrimType GetLoweredPtrType()
 {
 #if TARGX86 || TARGARM32 || TARGVM
     return PTY_a32;
-#elif TARGX86_64
-    return PTY_a64;
-#elif TARGAARCH64
-    DEBUG_ASSERT(Triple::GetTriple().GetEnvironment() != Triple::UnknownEnvironment,
-                 "Triple must be initialized before using");
-    auto pty = (Triple::GetTriple().GetEnvironment() == Triple::GNUILP32) ? PTY_a32 : PTY_a64;
-    return pty;
+#elif TARGX86_64 || TARGAARCH64
+    if (Triple::GetTriple().GetArch() == Triple::ArchType::x64) {
+        return PTY_a64;
+    } else if (Triple::GetTriple().GetArch() == Triple::ArchType::aarch64) {
+        auto pty = (Triple::GetTriple().GetEnvironment() == Triple::GNUILP32) ? PTY_a32 : PTY_a64;
+        return pty;
+    } else {
+        CHECK_FATAL(false, "Unsupported target");
+    }
 #else
 #error "Unsupported target"
 #endif
@@ -1419,24 +1425,93 @@ size_t MIRStructType::GetSize() const
 
 uint32 MIRStructType::GetAlign() const
 {
+    return GetAlignAux(false);
+}
+
+// return original align for typedef struct
+uint32 MIRStructType::GetTypedefOriginalAlign() const
+{
+    return GetAlignAux(true);
+}
+
+uint32 MIRStructType::GetAlignAux(bool toGetOriginal) const
+{
     if (fields.size() == 0) {
-        return 0;
+        return std::max(1u, GetTypeAttrs().GetAlign());
     }
     uint32 maxAlign = 1;
+    uint32 maxZeroBitFieldAlign = 1;
+    auto structPack = GetTypeAttrs().GetPack();
+    auto packed = GetTypeAttrs().IsPacked();
     for (size_t i = 0; i < fields.size(); ++i) {
         TyIdxFieldAttrPair tfap = GetTyidxFieldAttrPair(i);
         MIRType *fieldType = GlobalTables::GetTypeTable().GetTypeFromTyIdx(tfap.first);
-        uint32 algn = fieldType->GetAlign();
-        if (fieldType->GetKind() == kTypeBitField) {
-            algn = GetPrimTypeSize(fieldType->GetPrimType());
-        } else {
-            algn = std::max(algn, tfap.second.GetAlign());
-        }
-        if (maxAlign < algn) {
-            maxAlign = algn;
+        auto originAlign =
+            fieldType->GetKind() != kTypeBitField ? fieldType->GetAlign() : GetPrimTypeSize(fieldType->GetPrimType());
+        uint32 fieldAlign =
+            (packed || tfap.second.IsPacked()) ? static_cast<uint32>(1U) : std::min(originAlign, structPack);
+        fieldAlign = tfap.second.HasAligned() ? std::max(fieldAlign, tfap.second.GetAlign()) : fieldAlign;
+        fieldAlign = GetTypeAttrs().HasPack() ? std::min(GetTypeAttrs().GetPack(), fieldAlign) : fieldAlign;
+        CHECK_FATAL(fieldAlign != 0, "expect fieldAlign not equal 0");
+        maxAlign = std::max(maxAlign, fieldAlign);
+        if (fieldType->IsMIRBitFieldType() && static_cast<MIRBitFieldType *>(fieldType)->GetFieldSize() == 0) {
+            maxZeroBitFieldAlign = std::max(maxZeroBitFieldAlign, GetPrimTypeSize(fieldType->GetPrimType()));
         }
     }
-    return std::min(maxAlign, GetTypeAttrs().GetPack());
+    uint32 attrAlign = GetTypeAttrs().GetAlign();
+    if (GetTypeAttrs().IsTypedef()) {
+        // when calculating typedef's own size, we need to use its original align
+        if (toGetOriginal) {
+            // anonymous struct type def
+            if (GetTypeAttrs().GetOriginType() == nullptr) {
+                attrAlign = GetTypeAttrs().GetAlign();
+                // unanonymous struct type def
+            } else {
+                attrAlign = static_cast<MIRStructType *>(GetTypeAttrs().GetOriginType())->GetTypeAttrs().GetAlign();
+            }
+            // when calculating typedef struct is a field of another struct, we need to use its typealign.
+        } else {
+            attrAlign = GetTypeAttrs().GetTypeAlign();
+        }
+    }
+    if (HasZeroWidthBitField()) {
+        return std::max(attrAlign, std::max(maxZeroBitFieldAlign, maxAlign));
+    }
+    return std::max(attrAlign, maxAlign);
+}
+
+// Used to determine date alignment in ABI.
+// In fact, this alignment of type should be in the context of language/ABI, not MIRType.
+// For simplicity, we implement it in MIRType now.
+// Need check why "packed" is within the context of ABI.
+uint32 MIRStructType::GetUnadjustedAlign() const
+{
+    if (fields.size() == 0) {
+        return 1u;
+    }
+    uint32 maxAlign = 1;
+    uint32 maxZeroBitFieldAlign = 1;
+    auto structPack = GetTypeAttrs().GetPack();
+    auto packed = GetTypeAttrs().IsPacked();
+    for (size_t i = 0; i < fields.size(); ++i) {
+        TyIdxFieldAttrPair tfap = GetTyidxFieldAttrPair(i);
+        MIRType *fieldType = GlobalTables::GetTypeTable().GetTypeFromTyIdx(tfap.first);
+        auto originAlign =
+            fieldType->GetKind() != kTypeBitField ? fieldType->GetAlign() : GetPrimTypeSize(fieldType->GetPrimType());
+        uint32 fieldAlign =
+            (packed || tfap.second.IsPacked()) ? static_cast<uint32>(1U) : std::min(originAlign, structPack);
+        fieldAlign = tfap.second.HasAligned() ? std::max(fieldAlign, tfap.second.GetAlign()) : fieldAlign;
+        fieldAlign = GetTypeAttrs().HasPack() ? std::min(GetTypeAttrs().GetPack(), fieldAlign) : fieldAlign;
+        CHECK_FATAL(fieldAlign != 0, "expect fieldAlign not equal 0");
+        maxAlign = std::max(maxAlign, fieldAlign);
+        if (fieldType->IsMIRBitFieldType() && static_cast<MIRBitFieldType *>(fieldType)->GetFieldSize() == 0) {
+            maxZeroBitFieldAlign = std::max(maxZeroBitFieldAlign, GetPrimTypeSize(fieldType->GetPrimType()));
+        }
+    }
+    if (HasZeroWidthBitField()) {
+        return std::max(maxZeroBitFieldAlign, maxAlign);
+    }
+    return maxAlign;
 }
 
 void MIRStructType::DumpFieldsAndMethods(int indent, bool hasMethod) const
@@ -1728,7 +1803,7 @@ int64 MIRArrayType::GetBitOffsetFromArrayAddress(std::vector<int64> &indexArray)
     return offset;
 }
 
-size_t MIRArrayType::ElemNumber()
+size_t MIRArrayType::ElemNumber() const
 {
     size_t elemNum = 1;
     for (uint16 id = 0; id < dim; ++id) {
@@ -2290,6 +2365,23 @@ int64 MIRStructType::GetBitOffsetFromBaseAddr(FieldID fieldID)
     return kOffsetUnknown;
 }
 
+// compute the offset of the field given by fieldID within the structure type
+// structy; it returns the answer in the pair (byteoffset, bitoffset) such that
+// if it is a bitfield, byteoffset gives the offset of the container for
+// extracting the bitfield and bitoffset is with respect to the current byte
+FieldInfo MIRStructType::GetFieldOffsetFromBaseAddr(FieldID fieldID) const
+{
+    CHECK_FATAL(fieldID <= static_cast<FieldID>(NumberOfFieldIDs()), "GetBitOffsetFromBaseAddr: fieldID too large");
+    if (GetKind() == kTypeClass || fieldID == 0) {
+        return {0, 0};
+    }
+    if (GetKind() == kTypeUnion || GetKind() == kTypeStruct) {
+        return const_cast<MIRStructType *>(this)->GetFieldLayout()[fieldID - 1];
+    }
+    CHECK_FATAL(false, "Should never reach here!");
+    return {0, 0};
+}
+
 // Whether the memory layout of struct has paddings
 bool MIRStructType::HasPadding() const
 {
@@ -2306,6 +2398,166 @@ bool MIRStructType::HasPadding() const
         return true;
     }
     return false;
+}
+
+// On the ARM platform, when using both zero-sized bitfields and the pack attribute simultaneously,
+// the size of a struct should be calculated according to the default alignment without the pack attribute.
+bool MIRStructType::HasZeroWidthBitField() const
+{
+#ifndef TARGAARCH64
+    return false;
+#endif
+    for (FieldPair field : fields) {
+        TyIdx fieldTyIdx = field.second.first;
+        MIRType *fieldType = GlobalTables::GetTypeTable().GetTypeFromTyIdx(fieldTyIdx);
+        if (fieldType->GetKind() == kTypeBitField && fieldType->GetSize() == 0) {
+            return true;
+        }
+    }
+    return false;
+}
+
+uint32 MIRStructType::GetFieldTypeAlignByFieldPair(const FieldPair &fieldPair)
+{
+    MIRType *fieldType = GlobalTables::GetTypeTable().GetTypeFromTyIdx(fieldPair.second.first);
+    auto fieldAttr = fieldPair.second.second;
+    auto fieldTypeAlign =
+        fieldType->GetKind() == kTypeBitField ? GetPrimTypeSize(fieldType->GetPrimType()) : fieldType->GetAlign();
+    auto fieldPacked = GetTypeAttrs().IsPacked() || fieldAttr.IsPacked();
+    auto fieldAlign = fieldPacked ? 1u : fieldTypeAlign;
+    fieldAlign = fieldAttr.HasAligned() ? std::max(fieldAlign, fieldAttr.GetAlign()) : fieldAlign;
+    return GetTypeAttrs().HasPack() ? std::min(GetTypeAttrs().GetPack(), fieldAlign) : fieldAlign;
+}
+
+void MIRStructType::ComputeUnionLayout()
+{
+    size = 0;
+    for (FieldPair &field : fields) {
+        TyIdx fieldTyIdx = field.second.first;
+        MIRType *fieldType = GlobalTables::GetTypeTable().GetTypeFromTyIdx(fieldTyIdx);
+        MIRStructType *subStructType = fieldType->EmbeddedStructType();
+        size = std::max(fieldType->GetSize(), size);
+        AddFieldLayout({0, 0, field});
+        if (subStructType != nullptr) {
+            // if target field id is in the embedded structure, we should go into it by recursively call
+            // otherwise, just add the field-id number of the embedded structure, and continue to next field
+            auto &subStructFieldLayout = subStructType->GetFieldLayout();
+            (void)fieldLayout.insert(fieldLayout.end(), subStructFieldLayout.begin(), subStructFieldLayout.end());
+        }
+    }
+    if (GetTypeAttrs().IsTypedef()) {
+        size = RoundUp(size, GetTypedefOriginalAlign());
+    } else {
+        size = RoundUp(size, GetAlign());
+    }
+    CHECK_FATAL(fieldLayout.size() == NumberOfFieldIDs(), "fields layout != fieldID size");
+    layoutComputed = true;
+}
+
+void MIRStructType::ComputeLayout()
+{
+    if (layoutComputed) {
+        return;
+    }
+    if (GetKind() == kTypeUnion) {
+        ComputeUnionLayout();
+        return;
+    }
+    uint32 allocedSize = 0;  // space need for all fields before currentField
+    uint32 allocedBitSize = 0;
+    auto hasPack = GetTypeAttrs().HasPack();
+    auto packed = GetTypeAttrs().IsPacked();
+    constexpr uint8 bitsPerByte = 8;  // 8 bits per byte
+    for (FieldPair &fieldPair : fields) {
+        auto tyIdxFieldAttrPair = fieldPair.second;
+        TyIdx fieldTyIdx = tyIdxFieldAttrPair.first;
+        auto fieldAttr = tyIdxFieldAttrPair.second;
+        MIRType *fieldType = GlobalTables::GetTypeTable().GetTypeFromTyIdx(fieldTyIdx);
+        auto fieldPacked = packed || fieldAttr.IsPacked();
+        uint32 fieldAlign = GetFieldTypeAlignByFieldPair(fieldPair);
+        uint32 fieldAlignBits = fieldAlign * bitsPerByte;
+        uint32 fieldBitSize;
+        uint32 fieldTypeSize = static_cast<uint32>(fieldType->GetSize());
+        uint32 fieldTypeSizeBits = fieldTypeSize * bitsPerByte;
+        // case 1 : bitfield (including zero-width bitfield);
+        if (fieldType->GetKind() == kTypeBitField) {
+            fieldBitSize = static_cast<MIRBitFieldType *>(fieldType)->GetFieldSize();
+            fieldTypeSizeBits = static_cast<uint32>(GetPrimTypeSize(fieldType->GetPrimType())) * bitsPerByte;
+            // zero bit field
+            if (fieldAttr.HasAligned()) {
+                if ((fieldAttr.GetAlign() < fieldAlign &&
+                     fieldAttr.GetAlign() <= ((fieldTypeSizeBits - fieldBitSize) / bitsPerByte))) {
+                    allocedBitSize = RoundUp(allocedBitSize, fieldAttr.GetAlign() * bitsPerByte);
+                } else {
+                    allocedBitSize = RoundUp(allocedBitSize, fieldAlignBits);
+                }
+            } else if ((!hasPack && !fieldPacked &&
+                        ((allocedBitSize / fieldTypeSizeBits) !=
+                         ((allocedBitSize + fieldBitSize - 1u) / fieldTypeSizeBits))) ||
+                       fieldBitSize == 0) {
+                // the field is crossing the align boundary of its base type;
+                // align alloced_size_in_bits to fieldAlign
+                allocedBitSize = RoundUp(allocedBitSize, fieldTypeSizeBits);
+            }
+            auto info =
+                FieldInfo((allocedBitSize / fieldAlignBits) * fieldAlign, allocedBitSize % fieldAlignBits, fieldPair);
+            AddFieldLayout(info);
+            allocedBitSize += fieldBitSize;
+            fieldAlignBits = (fieldAlignBits) != 0 ? fieldAlignBits : fieldTypeSizeBits;
+            allocedSize =
+                std::max(allocedSize, static_cast<uint32>(RoundUp(allocedBitSize, fieldAlignBits) / bitsPerByte));
+            continue;
+        }  // case 1 end
+
+        bool leftOverBits = false;
+        uint32 offset = 0;
+        // no bit field before current field
+        if (allocedBitSize == allocedSize * bitsPerByte) {
+            allocedSize = RoundUp(allocedSize, fieldAlign);
+            offset = allocedSize;
+        } else {
+            // still some leftover bits on allocated words, we calculate things based on bits then.
+            if ((allocedBitSize / fieldAlignBits != (allocedBitSize + fieldTypeSizeBits - 1) / fieldAlignBits) ||
+                fieldTypeSize == 0) {
+                // the field is crossing the align boundary of its base type
+                allocedBitSize = RoundUp(allocedBitSize, static_cast<uint32>(fieldAlignBits));
+            }
+            allocedSize = RoundUp(allocedSize, fieldAlign);
+            offset = (allocedBitSize / fieldAlignBits) * fieldAlign;
+            leftOverBits = true;
+        }
+        // target field id is found
+        MIRStructType *subStructType = fieldType->EmbeddedStructType();
+        // case 2 : primitive field;
+        AddFieldLayout({offset, 0, fieldPair});
+        if (subStructType != nullptr) {
+            // case 3 : normal (empty/non-empty) structure(struct/union) field;
+            // if target field id is in the embedded structure, we should go into it by recursively call
+            // otherwise, just add the field-id number of the embedded structure, and continue to next field
+            auto &subStructFieldOffsets = subStructType->GetFieldLayout();
+            for (FieldInfo layout : subStructFieldOffsets) {
+                auto convertedLayout = layout;
+                convertedLayout.byteOffset += offset;
+                AddFieldLayout(convertedLayout);
+            }
+        }
+        if (leftOverBits) {
+            allocedBitSize += fieldTypeSizeBits;
+            allocedSize =
+                std::max(allocedSize, static_cast<uint32>(RoundUp(allocedBitSize, fieldAlignBits) / bitsPerByte));
+        } else if (!static_cast<MIRArrayType *>(fieldType)->IsIncompleteArray()) {
+            allocedSize += fieldTypeSize;
+            allocedBitSize = allocedSize * bitsPerByte;
+        }
+    }
+    if (GetTypeAttrs().IsTypedef()) {
+        allocedSize = RoundUp(allocedSize, GetTypedefOriginalAlign());
+    } else {
+        allocedSize = RoundUp(allocedSize, GetAlign());
+    }
+    size = allocedSize;
+    CHECK_FATAL(fieldLayout.size() == NumberOfFieldIDs(), "fields layout != fieldID size");
+    layoutComputed = true;
 }
 
 // set hasVolatileField to true if parent type has volatile field, otherwise flase.
@@ -2546,5 +2798,159 @@ MIRType *GetElemType(const MIRType &arrayType)
     }
     return nullptr;
 }
+
+#ifdef TARGAARCH64
+static constexpr size_t kMaxHfaOrHvaElemNumber = 4;
+
+bool CheckHomogeneousAggregatesBaseType(PrimType type)
+{
+    if (type == PTY_f32 || type == PTY_f64 || type == PTY_f128 || IsPrimitiveVector(type)) {
+        return true;
+    }
+    return false;
+}
+
+bool IsSameHomogeneousAggregatesBaseType(PrimType type, PrimType nextType)
+{
+    if ((type == PTY_f32 || type == PTY_f64 || type == PTY_f128) && type == nextType) {
+        return true;
+    } else if (IsPrimitiveVector(type) && IsPrimitiveVector(nextType) &&
+               GetPrimTypeSize(type) == GetPrimTypeSize(nextType)) {
+        return true;
+    }
+    return false;
+}
+
+bool IsUnionHomogeneousAggregates(const MIRStructType &ty, PrimType &primType, size_t &elemNum)
+{
+    primType = PTY_begin;
+    elemNum = 0;
+    for (const auto &field : ty.GetFields()) {
+        MIRType *filedType = GlobalTables::GetTypeTable().GetTypeFromTyIdx(field.second.first);
+        if (filedType->GetSize() == 0) {
+            continue;
+        }
+        PrimType filedPrimType = PTY_begin;
+        size_t filedElemNum = 0;
+        if (!IsHomogeneousAggregates(*filedType, filedPrimType, filedElemNum, false)) {
+            return false;
+        }
+        primType = (primType == PTY_begin) ? filedPrimType : primType;
+        if (!IsSameHomogeneousAggregatesBaseType(primType, filedPrimType)) {
+            return false;
+        }
+        elemNum = std::max(elemNum, filedElemNum);
+    }
+    return (ty.GetSize() == static_cast<uint32>(GetPrimTypeSize(primType) * elemNum));
+}
+
+bool IsStructHomogeneousAggregates(const MIRStructType &ty, PrimType &primType, size_t &elemNum)
+{
+    primType = PTY_begin;
+    elemNum = 0;
+    FieldID fieldsNum = 0;
+
+    for (const auto &field : ty.GetFields()) {
+        ++fieldsNum;
+        MIRType *filedType = GlobalTables::GetTypeTable().GetTypeFromTyIdx(field.second.first);
+        if (elemNum != 0 && primType != PTY_begin) {
+            uint32 curOffset = static_cast<uint32>(GetPrimTypeSize(primType) * elemNum);
+            if (curOffset != ty.GetFieldOffsetFromBaseAddr(fieldsNum).byteOffset) {
+                return false;
+            }
+        }
+        fieldsNum += static_cast<FieldID>(filedType->NumberOfFieldIDs());
+        if (filedType->GetSize() == 0) {
+            continue;
+        }
+        PrimType filedPrimType = PTY_begin;
+        size_t filedElemNum = 0;
+        if (!IsHomogeneousAggregates(*filedType, filedPrimType, filedElemNum, false)) {
+            return false;
+        }
+        elemNum += filedElemNum;
+        primType = (primType == PTY_begin) ? filedPrimType : primType;
+        if (elemNum > kMaxHfaOrHvaElemNumber || !IsSameHomogeneousAggregatesBaseType(primType, filedPrimType)) {
+            return false;
+        }
+    }
+    return (ty.GetSize() == static_cast<uint32>(GetPrimTypeSize(primType) * elemNum));
+}
+
+bool IsArrayHomogeneousAggregates(const MIRArrayType &ty, PrimType &primType, size_t &elemNum)
+{
+    primType = PTY_begin;
+    elemNum = 0;
+    MIRType *elemMirType = GlobalTables::GetTypeTable().GetTypeFromTyIdx(ty.GetElemTyIdx());
+    if (!IsHomogeneousAggregates(*elemMirType, primType, elemNum, false)) {
+        return false;
+    }
+    elemNum *= ty.ElemNumber();
+    if (elemNum > kMaxHfaOrHvaElemNumber) {
+        return false;
+    }
+    uint32 needSize = static_cast<uint32>(GetPrimTypeSize(primType) * elemNum);
+    return (ty.GetSize() == needSize);
+}
+
+bool IsHomogeneousAggregates(const MIRType &ty, PrimType &primType, size_t &elemNum, bool firstDepth)
+{
+    if (firstDepth && ty.GetKind() == kTypeUnion) {
+        return IsUnionHomogeneousAggregates(static_cast<const MIRStructType &>(ty), primType, elemNum);
+    }
+    if (firstDepth && ty.GetKind() != kTypeStruct) {
+        return false;
+    }
+    primType = PTY_begin;
+    elemNum = 0;
+    if (ty.GetKind() == kTypeStruct) {
+        auto &structType = static_cast<const MIRStructType &>(ty);
+        return IsStructHomogeneousAggregates(structType, primType, elemNum);
+    } else if (ty.GetKind() == kTypeUnion) {
+        auto &unionType = static_cast<const MIRStructType &>(ty);
+        return IsUnionHomogeneousAggregates(unionType, primType, elemNum);
+    } else if (ty.GetKind() == kTypeArray) {
+        auto &arrType = static_cast<const MIRArrayType &>(ty);
+        return IsArrayHomogeneousAggregates(arrType, primType, elemNum);
+    } else {
+        primType = ty.GetPrimType();
+        elemNum = 1;
+        if (!CheckHomogeneousAggregatesBaseType(primType)) {
+            return false;
+        }
+    }
+    return (elemNum != 0);
+}
+
+bool IsParamStructCopyToMemory(const MIRType &ty)
+{
+    if (ty.GetPrimType() == PTY_agg) {
+        PrimType primType = PTY_begin;
+        size_t elemNum = 0;
+        return !IsHomogeneousAggregates(ty, primType, elemNum) && ty.GetSize() > k16BitSize;
+    }
+    return false;
+}
+
+bool IsReturnInMemory(const MIRType &ty)
+{
+    if (ty.GetPrimType() == PTY_agg) {
+        PrimType primType = PTY_begin;
+        size_t elemNum = 0;
+        return !IsHomogeneousAggregates(ty, primType, elemNum) && ty.GetSize() > k16BitSize;
+    }
+    return false;
+}
+#else
+bool IsParamStructCopyToMemory(const MIRType &ty)
+{
+    return ty.GetPrimType() == PTY_agg && ty.GetSize() > k16BitSize;
+}
+
+bool IsReturnInMemory(const MIRType &ty)
+{
+    return ty.GetPrimType() == PTY_agg && ty.GetSize() > k16BitSize;
+}
+#endif  // TARGAARCH64
 }  // namespace maple
 #endif  // MIR_FEATURE_FULL

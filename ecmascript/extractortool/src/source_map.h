@@ -68,7 +68,10 @@ public:
     SourceMap() = default;
     ~SourceMap() = default;
 
+#if defined(PANDA_TARGET_OHOS)
     void Init(const std::string& url, const std::string& hapPath);
+#endif
+    void Init(uint8_t *data, size_t dataSize, const std::string& url);
     bool TranslateUrlPositionBySourceMap(std::string& url, int& line, int& column);
     static void ExtractStackInfo(const std::string& stackStr, std::vector<std::string>& res);
     
@@ -81,8 +84,9 @@ private:
     MappingInfo Find(int32_t row, int32_t col, const SourceMapData& targetMap, const std::string& key);
     void GetPosInfo(const std::string& temp, int32_t start, std::string& line, std::string& column);
     bool GetLineAndColumnNumbers(int& line, int& column, SourceMapData& targetMap, std::string& key);
+#if defined(PANDA_TARGET_OHOS)
     bool ReadSourceMapData(const std::string& hapPath, std::string& content);
-
+#endif
 private:
     std::unordered_map<std::string, std::shared_ptr<SourceMapData>> sourceMaps_;
 };

@@ -16,4 +16,6 @@ import("//arkcompiler/ets_runtime/test/test_helper.gni")
 host_aot_test_action("definesendableclass") {
   deps = []
   src_dir = "$js_root/test/sharedtest/definesendableclass"
+  is_enable_pgo = true
+  use_one_expect_path = true
 }

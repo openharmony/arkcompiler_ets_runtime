@@ -241,10 +241,6 @@ uint32 X64Emitter::TransferFuncName(Operand *opnd)
 
 void X64Emitter::EmitInsn(Insn &insn, uint32 funcUniqueId)
 {
-#if DEBUG
-    insn.Check();
-#endif
-
     MOperator mop = insn.GetMachineOpcode();
     const InsnDesc &curMd = X64CG::kMd[mop];
     uint32 opndNum = curMd.GetOpndMDLength(); /* Get operands Number */
@@ -2196,14 +2192,6 @@ void X64Emitter::Run(CGFunc &cgFunc)
     assmbler.ClearLocalSymMap();
 }
 
-bool CgEmission::PhaseRun(CGFunc &f)
-{
-    Emitter *emitter = f.GetCG()->GetEmitter();
-    CHECK_NULL_FATAL(emitter);
-    static_cast<X64Emitter *>(emitter)->Run(f);
-    return false;
-}
-
 void X64Emitter::EmitDwFormAddr(const DBGDie &die, const DBGDieAttr &attr, DwAt attrName, DwTag tagName, DebugInfo &di)
 {
     MapleVector<DBGDieAttr *> attrvec = die.GetAttrVec();
@@ -2552,5 +2540,4 @@ void X64Emitter::EmitDebugInfo(CG &cg)
     EmitDIDebugStrSection();
 }
 
-MAPLE_TRANSFORM_PHASE_REGISTER(CgEmission, cgemit)
 } /* namespace maplebe */

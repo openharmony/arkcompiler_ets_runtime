@@ -28,12 +28,14 @@ constexpr int32 kNumIntParmRegs = 8;
 constexpr int32 kNumFloatParmRegs = 8;
 constexpr int32 kYieldPointReservedReg = 19;
 constexpr uint32 kNormalUseOperandNum = 3;
+constexpr uint32 kMaxInstrForTbnz = 8000;      // approximately less than (2^13);
 constexpr uint32 kMaxInstrForCondBr = 260000;  // approximately less than (2^18);
+constexpr uint32 kMaxInstrForLdr = 260000;     // approximately less than (2^18);
 
-constexpr AArch64reg intReturnRegs[kNumIntParmRegs] = {R0, R1, R2, R3, R4, R5, R6, R7};
-constexpr AArch64reg floatReturnRegs[kNumFloatParmRegs] = {V0, V1, V2, V3, V4, V5, V6, V7};
-constexpr AArch64reg intParmRegs[kNumIntParmRegs] = {R0, R1, R2, R3, R4, R5, R6, R7};
-constexpr AArch64reg floatParmRegs[kNumFloatParmRegs] = {V0, V1, V2, V3, V4, V5, V6, V7};
+extern std::vector<AArch64reg> intReturnRegs;
+extern std::vector<AArch64reg> floatReturnRegs;
+extern std::vector<AArch64reg> intParmRegs;
+extern std::vector<AArch64reg> floatParmRegs;
 
 /*
  * Refer to ARM IHI 0055C_beta: Procedure Call Standard  for

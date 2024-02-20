@@ -20,6 +20,11 @@ namespace maplebe {
 using namespace maple;
 
 namespace AArch64Abi {
+std::vector<AArch64reg> intReturnRegs = {R0, R1, R2, R3, R4, R5, R6, R7};
+std::vector<AArch64reg> floatReturnRegs = {V0, V1, V2, V3, V4, V5, V6, V7};
+std::vector<AArch64reg> intParmRegs = {R0, R1, R2, R3, R4, R5, R6, R7};
+std::vector<AArch64reg> floatParmRegs = {V0, V1, V2, V3, V4, V5, V6, V7};
+
 bool IsAvailableReg(AArch64reg reg)
 {
     switch (reg) {

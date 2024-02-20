@@ -21,8 +21,7 @@
 namespace assembler {
 void AsmAssembler::InitialFileInfo(const std::string &inputFileName)
 {
-    std::string curDirName = get_current_dir_name();
-    assert(curDirName != "" && "InitialFileInfo: curDirName is nullptr");
+    std::string curDirName = ".";
     std::string path(curDirName);
     std::string cgFile(path.append("/mplcg"));
     EmitComment(cgFile);
@@ -1896,7 +1895,7 @@ void AsmAssembler::Cvttsd2si(InsnSize insnSize, Reg srcReg, Reg destReg)
 
 void AsmAssembler::Cvttss2si(InsnSize insnSize, Reg srcReg, Reg destReg)
 {
-    Emit("\tcvtss2si");
+    Emit("\tcvttss2si");
     EmitInsnSuffix(insnSize);
     Emit("\t");
     EmitRegReg(srcReg, destReg);

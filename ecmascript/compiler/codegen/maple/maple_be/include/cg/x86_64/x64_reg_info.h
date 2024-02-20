@@ -42,8 +42,8 @@ public:
     Insn *BuildLdrInsn(uint32 regSize, PrimType stype, RegOperand &phyOpnd, MemOperand &memOpnd) override;
     void FreeSpillRegMem(regno_t vrNum) override;
     MemOperand *GetOrCreatSpillMem(regno_t vrNum, uint32 bitSize) override;
-    MemOperand *AdjustMemOperandIfOffsetOutOfRange(MemOperand *memOpnd, regno_t vrNum, bool isDest, Insn &insn,
-                                                   regno_t regNum, bool &isOutOfRange) override;
+    MemOperand *AdjustMemOperandIfOffsetOutOfRange(MemOperand *memOpnd, const RegNoPair &regNoPair, bool isDest,
+                                                   Insn &insn, bool &isOutOfRange) override;
     bool IsGPRegister(regno_t regNO) const override
     {
         return x64::IsGPRegister(static_cast<X64reg>(regNO));
@@ -116,11 +116,11 @@ public:
     }
     bool IsVirtualRegister(const RegOperand &regOpnd) override
     {
-        return regOpnd.GetRegisterNumber() > kAllRegNum;
+        return regOpnd.GetRegisterNumber() > x64::kAllRegNum;
     }
     bool IsVirtualRegister(regno_t regno) override
     {
-        return regno > kAllRegNum;
+        return regno > x64::kAllRegNum;
     }
     uint32 GetReservedSpillReg() override
     {

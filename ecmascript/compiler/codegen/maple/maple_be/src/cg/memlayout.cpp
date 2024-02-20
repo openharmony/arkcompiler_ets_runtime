@@ -53,7 +53,7 @@ uint32 MemLayout::FindLargestActualArea(int32 &aggCopySize)
             continue;
         }
         /*
-         * if the following check fails, most likely bytecode has invoke-custom etc
+         * if the following check fails, most likely it has invoke-custom etc
          * that is not supported yet
          */
         DCHECK((opCode == OP_call || opCode == OP_icall || opCode == OP_icallproto), "Not lowered to call or icall?");

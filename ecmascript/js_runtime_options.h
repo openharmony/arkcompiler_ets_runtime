@@ -47,7 +47,8 @@ enum ArkProperties {
     ENABLE_GC_TRACER = 1 << 15,
     CPU_PROFILER_COLD_START_WORKER_THREAD = 1 << 16,
     CPU_PROFILER_ANY_TIME_MAIN_THREAD = 1 << 17,
-    CPU_PROFILER_ANY_TIME_WORKER_THREAD = 1 << 18
+    CPU_PROFILER_ANY_TIME_WORKER_THREAD = 1 << 18,
+    ENABLE_HEAP_VERIFY = 1 << 19
 };
 
 // asm interpreter control parsed option
@@ -484,6 +485,11 @@ public:
         return (static_cast<uint32_t>(arkProperties_) & ArkProperties::ENABLE_SNAPSHOT_DESERIALIZE) != 0;
     }
 
+    bool EnableHeapVerify() const
+    {
+        return (static_cast<uint32_t>(arkProperties_) & ArkProperties::ENABLE_HEAP_VERIFY) != 0;
+    }
+
     void DisableReportModuleResolvingFailure()
     {
         reportModuleResolvingFailure_ = false;
@@ -911,7 +917,7 @@ public:
         enableContext_ = value;
     }
 
-    bool IsEnableContext()
+    bool IsEnableContext() const
     {
         return enableContext_;
     }
@@ -921,7 +927,7 @@ public:
         enablePrintExecuteTime_ = value;
     }
 
-    bool IsEnablePrintExecuteTime()
+    bool IsEnablePrintExecuteTime() const
     {
         return enablePrintExecuteTime_;
     }

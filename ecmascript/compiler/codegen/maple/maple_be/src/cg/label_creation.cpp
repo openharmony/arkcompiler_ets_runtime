@@ -21,30 +21,40 @@
 namespace maplebe {
 using namespace maple;
 
-void LabelCreation::Run()
+void LabelCreation::Run() const
 {
     CreateStartEndLabel();
 }
 
-void LabelCreation::CreateStartEndLabel()
+void LabelCreation::CreateStartEndLabel() const
 {
     DEBUG_ASSERT(cgFunc != nullptr, "expect a cgfunc before CreateStartEndLabel");
-    LabelIdx startLblIdx = cgFunc->CreateLabel();
     MIRBuilder *mirBuilder = cgFunc->GetFunction().GetModule()->GetMIRBuilder();
     DEBUG_ASSERT(mirBuilder != nullptr, "get mirbuilder failed in CreateStartEndLabel");
+    /* create start label */
+    LabelIdx startLblIdx = cgFunc->CreateLabel();
     LabelNode *startLabel = mirBuilder->CreateStmtLabel(startLblIdx);
     cgFunc->SetStartLabel(*startLabel);
     cgFunc->GetFunction().GetBody()->InsertFirst(startLabel);
+    /* creat return label */
+    LabelIdx returnLblIdx = cgFunc->CreateLabel();
+    LabelNode *returnLabel = mirBuilder->CreateStmtLabel(returnLblIdx);
+    cgFunc->SetReturnLabel(*returnLabel);
+    cgFunc->GetFunction().GetBody()->InsertLast(returnLabel);
+
+    /* create end label */
     LabelIdx endLblIdx = cgFunc->CreateLabel();
     LabelNode *endLabel = mirBuilder->CreateStmtLabel(endLblIdx);
     cgFunc->SetEndLabel(*endLabel);
     cgFunc->GetFunction().GetBody()->InsertLast(endLabel);
     DEBUG_ASSERT(cgFunc->GetFunction().GetBody()->GetLast() == endLabel, "last stmt must be a endLabel");
+
+    /* create function's low/high pc if dwarf enabled */
     MIRFunction *func = &cgFunc->GetFunction();
     CG *cg = cgFunc->GetCG();
-    if (cg->GetCGOptions().WithDwarf()) {
+    if (cg->GetCGOptions().WithDwarf() && cgFunc->GetWithSrc()) {
         DebugInfo *di = cg->GetMIRModule()->GetDbgInfo();
-        DBGDie *fdie = di->GetDie(func);
+        DBGDie *fdie = di->GetFuncDie(*func);
         fdie->SetAttr(DW_AT_low_pc, startLblIdx);
         fdie->SetAttr(DW_AT_high_pc, endLblIdx);
     }

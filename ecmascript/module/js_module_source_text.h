@@ -231,6 +231,8 @@ public:
                                      const JSHandle<Method> &method);
     static int ModuleEvaluation(JSThread *thread, const JSHandle<ModuleRecord> &moduleRecord,
                                 int index, const JSHandle<Method> &method);
+    static void CheckCircularImportTool(JSThread *thread, const CString &circularModuleRecordName,
+                                        CList<CString> &referenceList, bool printOtherCircular = false);
 
 private:
     static void SetExportName(JSThread *thread,
@@ -277,6 +279,11 @@ private:
     static void HandleConcurrentEvaluateResult(JSThread *thread, JSHandle<SourceTextModule> &module,
                                      const CVector<JSHandle<SourceTextModule>> &stack, int result);
     bool IsAsyncEvaluating();
+    static void SearchCircularImport(JSThread *thread, const CString &circularModuleRecordName,
+                                     const JSHandle<SourceTextModule> &module, CList<CString> &referenceList,
+                                     CString &requiredModuleName, bool printOtherCircular);
+    static bool IsCircular(const CList<CString> &referenceList, const CString &requiredModuleName);
+    static void PrintCircular(const CList<CString> &referenceList, Level level);
 };
 
 class ResolvedBinding final : public Record {

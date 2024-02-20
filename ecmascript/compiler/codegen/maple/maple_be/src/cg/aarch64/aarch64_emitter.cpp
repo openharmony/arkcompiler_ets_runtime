@@ -81,13 +81,13 @@ void AArch64AsmEmitter::EmitMethodDesc(FuncEmitInfo &funcEmitInfo, Emitter &emit
     /* local reference area */
     AArch64MemLayout *memLayout = static_cast<AArch64MemLayout *>(cgFunc.GetMemlayout());
     int32 refOffset = memLayout->GetRefLocBaseLoc();
-    uint32 refNum = memLayout->GetSizeOfRefLocals() / kOffsetAlign;
+    uint32 refNum = memLayout->GetSizeOfRefLocals() / kAarch64OffsetAlign;
     /* for ea usage */
     AArch64CGFunc &aarchCGFunc = static_cast<AArch64CGFunc &>(cgFunc);
     IntrinsiccallNode *cleanEANode = aarchCGFunc.GetCleanEANode();
     if (cleanEANode != nullptr) {
         refNum += static_cast<uint32>(cleanEANode->NumOpnds());
-        refOffset -= static_cast<int32>(cleanEANode->NumOpnds() * kIntregBytelen);
+        refOffset -= static_cast<int32>(cleanEANode->NumOpnds() * kAarch64IntregBytelen);
     }
     (void)emitter.Emit("\t.short ").Emit(refOffset).Emit("\n");
     (void)emitter.Emit("\t.short ").Emit(refNum).Emit("\n");
@@ -327,8 +327,10 @@ void AArch64AsmEmitter::RecordRegInfo(FuncEmitInfo &funcEmitInfo) const
 
     std::set<regno_t> referedRegs;
     MIRFunction &mirFunc = cgFunc.GetFunction();
-    FOR_ALL_BB_REV(bb, &aarchCGFunc) {
-        FOR_BB_INSNS_REV(insn, bb) {
+    FOR_ALL_BB_REV(bb, &aarchCGFunc)
+    {
+        FOR_BB_INSNS_REV(insn, bb)
+        {
             if (!insn->IsMachineInstruction()) {
                 continue;
             }
@@ -492,8 +494,10 @@ void AArch64AsmEmitter::Run(FuncEmitInfo &funcEmitInfo)
 
     /* if the last  insn is call, then insert nop */
     bool found = false;
-    FOR_ALL_BB_REV(bb, &aarchCGFunc) {
-        FOR_BB_INSNS_REV(insn, bb) {
+    FOR_ALL_BB_REV(bb, &aarchCGFunc)
+    {
+        FOR_BB_INSNS_REV(insn, bb)
+        {
             if (insn->IsMachineInstruction()) {
                 if (insn->IsCall()) {
                     Insn &newInsn = aarchCGFunc.GetInsnBuilder()->BuildInsn<AArch64CG>(MOP_nop);
@@ -511,7 +515,8 @@ void AArch64AsmEmitter::Run(FuncEmitInfo &funcEmitInfo)
     RecordRegInfo(funcEmitInfo);
 
     /* emit instructions */
-    FOR_ALL_BB(bb, &aarchCGFunc) {
+    FOR_ALL_BB(bb, &aarchCGFunc)
+    {
         if (bb->IsUnreachable()) {
             continue;
         }
@@ -528,7 +533,8 @@ void AArch64AsmEmitter::Run(FuncEmitInfo &funcEmitInfo)
             EmitBBHeaderLabel(funcEmitInfo, funcName, bb->GetLabIdx());
         }
 
-        FOR_BB_INSNS(insn, bb) {
+        FOR_BB_INSNS(insn, bb)
+        {
             if (insn->IsCfiInsn()) {
                 EmitAArch64CfiInsn(emitter, *insn);
             } else if (insn->IsDbgInsn()) {
@@ -569,6 +575,8 @@ void AArch64AsmEmitter::Run(FuncEmitInfo &funcEmitInfo)
             EmitFastLSDA(funcEmitInfo);
         }
     }
+
+    EmitFunctionSymbolTable(funcEmitInfo);
 
     for (auto &it : cgFunc.GetEmitStVec()) {
         /* emit switch table only here */
@@ -2074,24 +2082,4 @@ bool AArch64AsmEmitter::CheckInsnRefField(const Insn &insn, size_t opndIndex) co
     }
     return false;
 }
-
-/* new phase manager */
-bool CgEmission::PhaseRun(maplebe::CGFunc &f)
-{
-    Emitter *emitter = f.GetCG()->GetEmitter();
-    CHECK_NULL_FATAL(emitter);
-    if (CGOptions::GetEmitFileType() == CGOptions::kAsm) {
-        AsmFuncEmitInfo funcEmitInfo(f);
-        emitter->EmitLocalVariable(f);
-        static_cast<AArch64AsmEmitter *>(emitter)->Run(funcEmitInfo);
-        emitter->EmitHugeSoRoutines();
-    } else {
-        FuncEmitInfo &funcEmitInfo = static_cast<AArch64ObjEmitter *>(emitter)->CreateFuncEmitInfo(f);
-        static_cast<AArch64ObjEmitter *>(emitter)->Run(funcEmitInfo);
-        f.SetFuncEmitInfo(&funcEmitInfo);
-    }
-
-    return false;
-}
-MAPLE_TRANSFORM_PHASE_REGISTER(CgEmission, cgemit)
 } /* namespace maplebe */

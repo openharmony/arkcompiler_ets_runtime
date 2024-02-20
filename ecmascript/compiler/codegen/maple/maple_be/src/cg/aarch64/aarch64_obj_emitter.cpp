@@ -494,7 +494,8 @@ uint32 AArch64ObjEmitter::GetBinaryCodeForInsn(const Insn &insn, const std::vect
 
         case kUnknownEncodeType:
             break;
-
+        case kBrkInsn:
+            return binInsn | ((GetOpndMachineValue(insn.GetOperand(kInsnFirstOpnd)) & 0xFFFF) << kShiftFive);
         default:
             break;
     }
@@ -716,7 +717,7 @@ uint32 AArch64ObjEmitter::GenMovImm(const Insn &insn) const
             auto &md = isMovz ? AArch64CG::kMd[MOP_xmovzri16] : AArch64CG::kMd[MOP_xmovnri16];
             opnd |= md.GetMopEncode();
             uint64 bitFieldValue = 0xFFFF;
-            for (hwFlag = 0; hwFlag <= 3; ++hwFlag) { // hwFlag is just from 0(00b) to 3(11b)
+            for (hwFlag = 0; hwFlag <= 3; ++hwFlag) {  // hwFlag is just from 0(00b) to 3(11b)
                 if (immValue & (bitFieldValue << (k16BitSize * hwFlag))) {
                     break;
                 }
@@ -806,7 +807,7 @@ uint32 AArch64ObjEmitter::GenAddSubShiftImmInsn(const Insn &insn) const
 
 uint32 AArch64ObjEmitter::GenAddSubRegInsn(const Insn &insn) const
 {
-    int32 index = insn.GetOperandSize() == k4ByteSize ? 1 : 0; // subs insn
+    int32 index = insn.GetOperandSize() == k4ByteSize ? 1 : 0;  // subs insn
     /* Rd */
     uint32 opnd = GetOpndMachineValue(insn.GetOperand(kInsnFirstOpnd + index));
     if (insn.GetOperandSize() == k2ByteSize) {  // neg, cmp or cmn insn
@@ -880,7 +881,7 @@ uint32 AArch64ObjEmitter::GenBitfieldInsn(const Insn &insn) const
     uint32 operandSize = 4;
     if (insn.GetMachineOpcode() == MOP_wubfizrri5i5 || insn.GetMachineOpcode() == MOP_xubfizrri6i6 ||
         insn.GetMachineOpcode() == MOP_wbfirri5i5 || insn.GetMachineOpcode() == MOP_xbfirri6i6) {
-        uint32 mod = insn.GetOperand(kInsnFirstOpnd).GetSize(); /* 64 & 32 from ARMv8 manual C5.6.114 */
+        uint32 mod = insn.GetDesc()->GetOpndDes(kInsnFirstOpnd)->GetSize(); /* 64 & 32 from ARMv8 manual C5.6.114 */
         CHECK_FATAL(mod == 64 || mod == 32, "mod must be 64/32");
         uint32 shift = GetOpndMachineValue(insn.GetOperand(kInsnThirdOpnd));
         uint32 immr = -shift % mod;
@@ -894,7 +895,7 @@ uint32 AArch64ObjEmitter::GenBitfieldInsn(const Insn &insn) const
         uint32 width = GetOpndMachineValue(insn.GetOperand(kInsnFourthOpnd));
         opnd |= (lab + width - 1) << kShiftTen;
     } else if (insn.GetMachineOpcode() == MOP_xlslrri6 || insn.GetMachineOpcode() == MOP_wlslrri5) {
-        uint32 mod = insn.GetOperand(kInsnFirstOpnd).GetSize(); /* 64 & 32 from ARMv8 manual C5.6.114 */
+        uint32 mod = insn.GetDesc()->GetOpndDes(kInsnFirstOpnd)->GetSize(); /* 64 & 32 from ARMv8 manual C5.6.114 */
         CHECK_FATAL(mod == 64 || mod == 32, "mod must be 64/32");
         uint32 shift = GetOpndMachineValue(insn.GetOperand(kInsnThirdOpnd));
         uint32 immr = -shift % mod;
@@ -903,7 +904,7 @@ uint32 AArch64ObjEmitter::GenBitfieldInsn(const Insn &insn) const
         opnd |= imms << kShiftTen;
     } else if (insn.GetMachineOpcode() == MOP_xlsrrri6 || insn.GetMachineOpcode() == MOP_wlsrrri5 ||
                insn.GetMachineOpcode() == MOP_xasrrri6 || insn.GetMachineOpcode() == MOP_wasrrri5) {
-        uint32 mod = insn.GetOperand(kInsnFirstOpnd).GetSize(); /* 64 & 32 from ARMv8 manual C5.6.114 */
+        uint32 mod = insn.GetDesc()->GetOpndDes(kInsnFirstOpnd)->GetSize(); /* 64 & 32 from ARMv8 manual C5.6.114 */
         CHECK_FATAL(mod == 64 || mod == 32, "mod must be 64/32");
         uint32 immr = GetOpndMachineValue(insn.GetOperand(kInsnThirdOpnd));
         opnd |= immr << kShiftSixteen;
@@ -1195,8 +1196,9 @@ uint32 AArch64ObjEmitter::GenLoadStoreModeBOrX(const Insn &insn) const
         // lsl extend insn shift amount can only be 0 or 1(16-bit def opnd) or 2(32-bit def opnd) or
         // 3(64-bit def opnd) or 4(128-bit def opnd) in ldr/str insn
         CHECK_FATAL((shift == k0BitSize) || (regSize == k16BitSize && shift == k1BitSize) ||
-                    (regSize == k32BitSize && shift == k2BitSize) || (regSize == k64BitSize && shift == k3BitSize) ||
-                    (regSize == k128BitSize && shift == k4BitSize), "unsupport LSL amount");
+                        (regSize == k32BitSize && shift == k2BitSize) ||
+                        (regSize == k64BitSize && shift == k3BitSize) || (regSize == k128BitSize && shift == k4BitSize),
+                    "unsupport LSL amount");
     } else if (extend == "SXTW") {
         option = 0x6;
     } else {
@@ -1379,7 +1381,7 @@ uint32 AArch64ObjEmitter::GenLoadPairInsn(const Insn &insn) const
     OfstOperand *ofstOpnd = static_cast<OfstOperand *>(memOpnd.GetOffsetImmediate());
     int32 offsetValue = ofstOpnd->GetOffsetValue();
     uint32 divisor = 0;
-    if (memOpnd.GetSize() == k64BitSize) {
+    if (insn.GetDesc()->GetOpndDes(kInsnThirdOpnd)->GetSize() == k64BitSize) {
         divisor = k8ByteSize;
     } else {
         divisor = k4ByteSize;
@@ -1416,7 +1418,7 @@ uint32 AArch64ObjEmitter::GenStorePairInsn(const Insn &insn) const
     OfstOperand *ofstOpnd = static_cast<OfstOperand *>(memOpnd.GetOffsetImmediate());
     int32 offsetValue = ofstOpnd->GetOffsetValue();
     uint32 divisor = 0;
-    if (memOpnd.GetSize() == k64BitSize) {
+    if (insn.GetDesc()->GetOpndDes(kInsnThirdOpnd)->GetSize() == k64BitSize) {
         divisor = k8ByteSize;
     } else {
         divisor = k4ByteSize;
@@ -1458,7 +1460,7 @@ uint32 AArch64ObjEmitter::GenLoadPairFloatInsn(const Insn &insn) const
     OfstOperand *ofstOpnd = static_cast<OfstOperand *>(memOpnd.GetOffsetImmediate());
     int32 offsetValue = ofstOpnd->GetOffsetValue();
     uint32 divisor = 0;
-    if (memOpnd.GetSize() == k64BitSize) {
+    if (insn.GetDesc()->GetOpndDes(kInsnThirdOpnd)->GetSize() == k64BitSize) {
         divisor = k8ByteSize;
     } else {
         divisor = k4ByteSize;
@@ -1495,7 +1497,7 @@ uint32 AArch64ObjEmitter::GenStorePairFloatInsn(const Insn &insn) const
     OfstOperand *ofstOpnd = static_cast<OfstOperand *>(memOpnd.GetOffsetImmediate());
     int32 offsetValue = ofstOpnd->GetOffsetValue();
     uint32 divisor = 0;
-    if (memOpnd.GetSize() == k64BitSize) {
+    if (insn.GetDesc()->GetOpndDes(kInsnThirdOpnd)->GetSize() == k64BitSize) {
         divisor = k8ByteSize;
     } else {
         divisor = k4ByteSize;
@@ -1650,8 +1652,10 @@ void AArch64ObjEmitter::InsertNopInsn(ObjFuncEmitInfo &objFuncEmitInfo) const
 {
     AArch64CGFunc &cgFunc = static_cast<AArch64CGFunc &>(objFuncEmitInfo.GetCGFunc());
     bool found = false;
-    FOR_ALL_BB_REV(bb, &cgFunc) {
-        FOR_BB_INSNS_REV(insn, bb) {
+    FOR_ALL_BB_REV(bb, &cgFunc)
+    {
+        FOR_BB_INSNS_REV(insn, bb)
+        {
             if (insn->IsMachineInstruction()) {
                 if (insn->IsCall()) {
                     Insn &newInsn = cgFunc.GetInsnBuilder()->BuildInsn<AArch64CG>(MOP_nop);

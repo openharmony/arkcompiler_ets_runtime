@@ -2068,4 +2068,81 @@ JSTaggedValue SourceTextModule::AsyncModuleRejectedFunc(EcmaRuntimeCallInfo *arg
     AsyncModuleExecutionRejected(thread, module, value.GetTaggedValue());
     return JSTaggedValue::Undefined();
 }
+
+void SourceTextModule::CheckCircularImportTool(JSThread *thread, const CString &circularModuleRecordName,
+                                               CList<CString> &referenceList, bool printOtherCircular)
+{
+    referenceList.push_back(circularModuleRecordName);
+    JSMutableHandle<SourceTextModule> moduleRecord(thread, thread->GlobalConstants()->GetUndefined());
+    auto moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
+    JSHandle<EcmaString> moduleRecordNameVal =
+        thread->GetEcmaVM()->GetFactory()->NewFromUtf8(circularModuleRecordName.c_str());
+    if (moduleManager->IsImportedModuleLoaded(moduleRecordNameVal.GetTaggedValue())) {
+        moduleRecord.Update(moduleManager->HostGetImportedModule(moduleRecordNameVal.GetTaggedValue()));
+    } else {
+        moduleRecord.Update(moduleManager->HostResolveImportedModule(circularModuleRecordName));
+        RETURN_IF_ABRUPT_COMPLETION(thread);
+    }
+    CString requiredModuleName;
+    SourceTextModule::SearchCircularImport(
+        thread, circularModuleRecordName, moduleRecord, referenceList, requiredModuleName, printOtherCircular);
+}
+
+void SourceTextModule::SearchCircularImport(JSThread *thread, const CString &circularModuleRecordName,
+                                            const JSHandle<SourceTextModule> &module,
+                                            CList<CString> &referenceList,
+                                            CString &requiredModuleName, bool printOtherCircular)
+{
+    if (module->GetRequestedModules().IsUndefined()) {
+        return;
+    }
+    auto globalConstants = thread->GlobalConstants();
+    JSHandle<TaggedArray> requestedModules(thread, module->GetRequestedModules());
+    size_t requestedModulesLen = requestedModules->GetLength();
+    JSMutableHandle<JSTaggedValue> required(thread, globalConstants->GetUndefined());
+    JSMutableHandle<SourceTextModule> requiredModule(thread, globalConstants->GetUndefined());
+    for (size_t idx = 0; idx < requestedModulesLen; idx++) {
+        required.Update(requestedModules->Get(idx));
+        requiredModule.Update(JSHandle<SourceTextModule>::Cast(
+            SourceTextModule::HostResolveImportedModuleWithMerge(thread, module, required)));
+        RETURN_IF_ABRUPT_COMPLETION(thread);
+        requiredModuleName = ConvertToString(requiredModule->GetEcmaModuleRecordName());
+        referenceList.push_back(requiredModuleName);
+        if (requiredModuleName == circularModuleRecordName) {
+            PrintCircular(referenceList, ERROR);
+        } else if (printOtherCircular && IsCircular(referenceList, requiredModuleName)) {
+            PrintCircular(referenceList, WARN);
+        } else {
+            SourceTextModule::SearchCircularImport(thread, circularModuleRecordName,
+                requiredModule, referenceList, requiredModuleName, printOtherCircular);
+        }
+        referenceList.pop_back();
+    }
+}
+
+bool SourceTextModule::IsCircular(const CList<CString> &referenceList,
+                                  const CString &requiredModuleName)
+{
+    for (auto iter = referenceList.begin(), end = --referenceList.end(); iter != end; ++iter) {
+        if (requiredModuleName == *iter) {
+            return true;
+        }
+    }
+    return false;
+}
+
+void SourceTextModule::PrintCircular(const CList<CString> &referenceList, Level level)
+{
+    LOG_ECMA(INFO) << "checkCircularImport begin ----------------------------------------";
+    if (level == Level::ERROR) {
+        for (auto iter : referenceList) {
+            LOG_ECMA(ERROR) << "checkCircularImport record: " << iter;
+        }
+    } else {
+        for (auto iter : referenceList) {
+            LOG_ECMA(WARN) << "checkCircularImport record: " << iter;
+        }
+    }
+    LOG_ECMA(INFO) << "checkCircularImport end ------------------------------------------";
+}
 } // namespace panda::ecmascript

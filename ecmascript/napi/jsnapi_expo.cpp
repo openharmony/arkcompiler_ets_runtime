@@ -3114,6 +3114,63 @@ bool JSNApi::NotifyDebugMode([[maybe_unused]] int tid,
     if (vm == nullptr) {
         return false;
     }
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, false);
+
+    bool ret = false;
+    if (!debugApp) {
+        return false;
+    }
+    JsDebuggerManager *jsDebuggerManager = vm->GetJsDebuggerManager();
+    auto handle = panda::os::library_loader::Load(std::string(option.libraryPath));
+    if (!handle) {
+        LOG_ECMA(ERROR) << "[NotifyDebugMode] Load library fail: " << option.libraryPath << " " << errno;
+        return false;
+    }
+    JsDebuggerManager::AddJsDebuggerManager(tid, jsDebuggerManager);
+    jsDebuggerManager->SetDebugLibraryHandle(std::move(handle.Value()));
+    jsDebuggerManager->SetDebugMode(option.isDebugMode && debugApp);
+    jsDebuggerManager->SetIsDebugApp(debugApp);
+    ret = StartDebuggerForOldProcess(vm, option, instanceId, debuggerPostTask);
+
+    // store debugger postTask in inspector.
+    using StoreDebuggerInfo = void (*)(int, EcmaVM *, const DebuggerPostTask &);
+    auto symOfStoreDebuggerInfo = panda::os::library_loader::ResolveSymbol(
+        jsDebuggerManager->GetDebugLibraryHandle(), "StoreDebuggerInfo");
+    if (!symOfStoreDebuggerInfo) {
+        LOG_ECMA(ERROR) << "[NotifyDebugMode] Resolve StoreDebuggerInfo symbol fail: " <<
+            symOfStoreDebuggerInfo.Error().ToString();
+        return false;
+    }
+    reinterpret_cast<StoreDebuggerInfo>(symOfStoreDebuggerInfo.Value())(tid, vm, debuggerPostTask);
+    if (option.isDebugMode) {
+        using WaitForDebugger = void (*)(EcmaVM *);
+        auto symOfWaitForDebugger = panda::os::library_loader::ResolveSymbol(
+            jsDebuggerManager->GetDebugLibraryHandle(), "WaitForDebugger");
+        if (!symOfWaitForDebugger) {
+            LOG_ECMA(ERROR) << "[NotifyDebugMode] Resolve symbol WaitForDebugger fail: " <<
+                symOfWaitForDebugger.Error().ToString();
+            return false;
+        }
+        reinterpret_cast<WaitForDebugger>(symOfWaitForDebugger.Value())(vm);
+    }
+    return ret;
+
+#else
+    LOG_ECMA(ERROR) << "Not support arkcompiler debugger";
+    return false;
+#endif // ECMASCRIPT_SUPPORT_DEBUGGER
+}
+
+bool JSNApi::StoreDebugInfo([[maybe_unused]] int tid,
+                            [[maybe_unused]] EcmaVM *vm,
+                            [[maybe_unused]] const DebugOption &option,
+                            [[maybe_unused]] const DebuggerPostTask &debuggerPostTask,
+                            [[maybe_unused]] bool debugApp)
+{
+#if defined(ECMASCRIPT_SUPPORT_DEBUGGER)
+    if (vm == nullptr) {
+        return false;
+    }
 
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, false);
     JsDebuggerManager *jsDebuggerManager = vm->GetJsDebuggerManager();
@@ -3131,11 +3188,6 @@ bool JSNApi::NotifyDebugMode([[maybe_unused]] int tid,
     jsDebuggerManager->SetDebugLibraryHandle(std::move(handle.Value()));
     jsDebuggerManager->SetDebugMode(option.isDebugMode && debugApp);
     jsDebuggerManager->SetIsDebugApp(debugApp);
-    bool ret = false;
-    if (debugApp) {
-        ret = StartDebuggerForOldProcess(vm, option, instanceId, debuggerPostTask);
-    }
-
     // store debugger postTask in inspector.
     using StoreDebuggerInfo = void (*)(int, EcmaVM *, const DebuggerPostTask &);
     auto symOfStoreDebuggerInfo = panda::os::library_loader::ResolveSymbol(
@@ -3146,6 +3198,7 @@ bool JSNApi::NotifyDebugMode([[maybe_unused]] int tid,
         return false;
     }
     reinterpret_cast<StoreDebuggerInfo>(symOfStoreDebuggerInfo.Value())(tid, vm, debuggerPostTask);
+    bool ret = false;
     using InitializeDebuggerForSocketpair = bool(*)(void*);
     auto sym = panda::os::library_loader::ResolveSymbol(handler, "InitializeDebuggerForSocketpair");
     if (!sym) {
@@ -3157,17 +3210,6 @@ bool JSNApi::NotifyDebugMode([[maybe_unused]] int tid,
     // Reset the config
         vm->GetJsDebuggerManager()->SetDebugMode(false);
         return false;
-    }
-    if (option.isDebugMode) {
-        using WaitForDebugger = void (*)(EcmaVM *);
-        auto symOfWaitForDebugger = panda::os::library_loader::ResolveSymbol(
-            jsDebuggerManager->GetDebugLibraryHandle(), "WaitForDebugger");
-        if (!symOfWaitForDebugger) {
-            LOG_ECMA(ERROR) << "[NotifyDebugMode] Resolve symbol WaitForDebugger fail: " <<
-                symOfWaitForDebugger.Error().ToString();
-            return false;
-        }
-        reinterpret_cast<WaitForDebugger>(symOfWaitForDebugger.Value())(vm);
     }
     return ret;
 #else
@@ -3302,6 +3344,10 @@ void JSNApi::LoadAotFile(EcmaVM *vm, const std::string &moduleName)
     }  else {
         aotFileName = ecmascript::AnFileDataManager::GetInstance()->GetDir() + moduleName;
     }
+    if (ecmascript::pgo::PGOProfilerManager::GetInstance()->IsDisableAot()) {
+        LOG_ECMA(INFO) << "can't load disable aot file: " << aotFileName;
+        return;
+    }
     LOG_ECMA(INFO) << "start to load aot file: " << aotFileName;
     thread->GetCurrentEcmaContext()->LoadAOTFiles(aotFileName);
 }
@@ -3312,6 +3358,9 @@ bool JSNApi::ExecuteInContext(EcmaVM *vm, const std::string &fileName, const std
     LOG_ECMA(DEBUG) << "start to execute ark file in context: " << fileName;
     EcmaContext::MountContext(thread);
     if (!ecmascript::JSPandaFileExecutor::ExecuteFromAbcFile(thread, fileName.c_str(), entry, needUpdate)) {
+        if (thread->HasPendingException()) {
+            thread->GetCurrentEcmaContext()->HandleUncaughtException();
+        }
         LOG_ECMA(ERROR) << "Cannot execute ark file '" << fileName
                         << "' with entry '" << entry << "'" << std::endl;
         return false;
@@ -3325,6 +3374,9 @@ bool JSNApi::Execute(EcmaVM *vm, const std::string &fileName, const std::string 
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, false);
     LOG_ECMA(DEBUG) << "start to execute ark file: " << fileName;
     if (!ecmascript::JSPandaFileExecutor::ExecuteFromAbcFile(thread, fileName.c_str(), entry, needUpdate)) {
+        if (thread->HasPendingException()) {
+            thread->GetCurrentEcmaContext()->HandleUncaughtException();
+        }
         LOG_ECMA(ERROR) << "Cannot execute ark file '" << fileName
                         << "' with entry '" << entry << "'" << std::endl;
         return false;
@@ -3339,6 +3391,9 @@ bool JSNApi::Execute(EcmaVM *vm, const uint8_t *data, int32_t size, const std::s
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, false);
     LOG_ECMA(DEBUG) << "start to execute ark buffer: " << filename;
     if (!ecmascript::JSPandaFileExecutor::ExecuteFromBuffer(thread, data, size, entry, filename.c_str(), needUpdate)) {
+        if (thread->HasPendingException()) {
+            thread->GetCurrentEcmaContext()->HandleUncaughtException();
+        }
         LOG_ECMA(ERROR) << "Cannot execute ark buffer file '" << filename
                         << "' with entry '" << entry << "'" << std::endl;
         return false;
@@ -3353,6 +3408,9 @@ bool JSNApi::ExecuteModuleBuffer(EcmaVM *vm, const uint8_t *data, int32_t size, 
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, false);
     LOG_ECMA(DEBUG) << "start to execute module buffer: " << filename;
     if (!ecmascript::JSPandaFileExecutor::ExecuteModuleBuffer(thread, data, size, filename.c_str(), needUpdate)) {
+        if (thread->HasPendingException()) {
+            thread->GetCurrentEcmaContext()->HandleUncaughtException();
+        }
         LOG_ECMA(ERROR) << "Cannot execute module buffer file '" << filename;
         return false;
     }
@@ -3370,6 +3428,9 @@ bool JSNApi::ExecuteSecure(EcmaVM *vm, uint8_t *data, int32_t size, const std::s
     }
     if (!ecmascript::JSPandaFileExecutor::ExecuteFromBufferSecure(thread, data, size, entry, filename.c_str(),
                                                                   needUpdate)) {
+        if (thread->HasPendingException()) {
+            thread->GetCurrentEcmaContext()->HandleUncaughtException();
+        }
         LOG_ECMA(ERROR) << "Cannot execute ark buffer file '" << filename
                         << "' with entry '" << entry << "'" << std::endl;
         return false;
@@ -3388,6 +3449,9 @@ bool JSNApi::ExecuteModuleBufferSecure(EcmaVM *vm, uint8_t* data, int32_t size, 
     }
     if (!ecmascript::JSPandaFileExecutor::ExecuteModuleBufferSecure(thread, data, size, filename.c_str(),
                                                                     needUpdate)) {
+        if (thread->HasPendingException()) {
+            thread->GetCurrentEcmaContext()->HandleUncaughtException();
+        }
         LOG_ECMA(ERROR) << "Cannot execute module buffer file '" << filename;
         return false;
     }
@@ -3745,13 +3809,18 @@ Local<ObjectRef> JSNApi::ExecuteNativeModule(EcmaVM *vm, const std::string &key)
     return JSNApiHelper::ToLocal<ObjectRef>(exportObj);
 }
 
-Local<ObjectRef> JSNApi::GetModuleNameSpaceFromFile(EcmaVM *vm, const std::string &file)
+Local<ObjectRef> JSNApi::GetModuleNameSpaceFromFile(EcmaVM *vm, const std::string &file, const std::string &module_path)
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
     // need get moduleName from stack
     std::pair<std::string, std::string> moduleInfo = vm->GetCurrentModuleInfo(false);
-    std::string recordNameStr = std::string(vm->GetBundleName().c_str()) + PathHelper::SLASH_TAG +
-        moduleInfo.first + PathHelper::SLASH_TAG + file;
+    std::string recordNameStr;
+    if (module_path.size() != 0) {
+        recordNameStr = module_path + PathHelper::SLASH_TAG + file;
+    } else {
+        recordNameStr = std::string(vm->GetBundleName().c_str()) + PathHelper::SLASH_TAG +
+            moduleInfo.first + PathHelper::SLASH_TAG + file;
+    }
     LOG_ECMA(DEBUG) << "JSNApi::LoadModuleNameSpaceFromFile: Concated recordName " << recordNameStr.c_str();
     ecmascript::ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
     JSHandle<JSTaggedValue> moduleNamespace = moduleManager->

@@ -26,7 +26,7 @@ namespace maplebe {
 class LiveAnalysis : public AnalysisResult {
 public:
     LiveAnalysis(CGFunc &func, MemPool &memPool)
-        : AnalysisResult(&memPool), cgFunc(&func), memPool(&memPool), alloc(&memPool), stackMp(func.GetStackMemPool())
+        : AnalysisResult(&memPool), cgFunc(&func), alloc(&memPool), stackMp(func.GetStackMemPool())
     {
     }
     ~LiveAnalysis() override = default;
@@ -36,51 +36,50 @@ public:
     void DumpInfo(const SparseDataInfo &info) const;
     void InitBB(BB &bb);
     void InitAndGetDefUse();
-    bool GenerateLiveOut(BB &bb);
+    bool GenerateLiveOut(BB &bb) const;
     bool GenerateLiveIn(BB &bb);
     void BuildInOutforFunc();
     void DealWithInOutOfCleanupBB();
     void InsertInOutOfCleanupBB();
     void ResetLiveSet();
     void ClearInOutDataInfo();
-    void EnlargeSpaceForLiveAnalysis(BB &currBB);
-    void GetBBDefUse(BB &bb);
+    void GetBBDefUse(BB &bb) const;
     void ProcessAsmListOpnd(BB &bb, Operand &opnd, uint32 idx) const;
     void ProcessListOpnd(BB &bb, Operand &opnd, bool isDef) const;
     void ProcessMemOpnd(BB &bb, Operand &opnd) const;
     void ProcessCondOpnd(BB &bb) const;
     void CollectLiveInfo(BB &bb, const Operand &opnd, bool isDef, bool isUse) const;
-    void MarkStackMapInsn(Insn &insn, BB &bb);
+    void MarkStackMapInsn(Insn &insn, BB &bb) const;
     void GenerateStackMapLiveIn();
     SparseDataInfo *GenerateLiveInByDefUse(SparseDataInfo &liveOut, SparseDataInfo &use, SparseDataInfo &def,
                                            const MapleList<BB *> &ehSuccs);
 
-    SparseDataInfo *NewLiveIn(uint32 maxRegCount)
+    SparseDataInfo *NewLiveIn(uint32 maxRegCount) const
     {
         return memPool->New<SparseDataInfo>(maxRegCount, alloc);
     }
 
-    SparseDataInfo *NewLiveOut(uint32 maxRegCount)
+    SparseDataInfo *NewLiveOut(uint32 maxRegCount) const
     {
         return memPool->New<SparseDataInfo>(maxRegCount, alloc);
     }
 
-    SparseDataInfo *NewDef(uint32 maxRegCount)
+    SparseDataInfo *NewDef(uint32 maxRegCount) const
     {
         return memPool->New<SparseDataInfo>(maxRegCount, alloc);
     }
 
-    SparseDataInfo *NewDef(const SparseDataInfo &def)
+    SparseDataInfo *NewDef(const SparseDataInfo &def) const
     {
         return memPool->New<SparseDataInfo>(def, alloc);
     }
 
-    SparseDataInfo *NewUse(uint32 maxRegCount)
+    SparseDataInfo *NewUse(uint32 maxRegCount) const
     {
         return memPool->New<SparseDataInfo>(maxRegCount, alloc);
     }
 
-    SparseDataInfo *NewUse(const SparseDataInfo &use)
+    SparseDataInfo *NewUse(const SparseDataInfo &use) const
     {
         return memPool->New<SparseDataInfo>(use, alloc);
     }
@@ -93,9 +92,11 @@ public:
 protected:
     int iteration = 0;
     CGFunc *cgFunc;
-    MemPool *memPool;
     MapleAllocator alloc;
     StackMemPool &stackMp;
+
+private:
+    void RemovePhiLiveInFromSuccNotFromThisBB(BB &curBB, BB &succBB) const;
 };
 
 MAPLE_FUNC_PHASE_DECLARE_BEGIN(CgLiveAnalysis, maplebe::CGFunc)

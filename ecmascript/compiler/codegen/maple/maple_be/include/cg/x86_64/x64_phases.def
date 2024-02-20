@@ -18,11 +18,13 @@
  ADDTARGETPHASE("buildehfunc", GetMIRModule()->GetSrcLang() != kSrcLangC && false);
  ADDTARGETPHASE("instructionselector", true);
  ADDTARGETPHASE("moveargs", true);
+ ADDTARGETPHASE("stackmapcomputation", false);
  ADDTARGETPHASE("cfgo", false);
  ADDTARGETPHASE("localcopyprop", false);
  ADDTARGETPHASE("regalloc", true);
  ADDTARGETPHASE("postcfgo", false);
  ADDTARGETPHASE("cgpostpeephole", false);
  ADDTARGETPHASE("generateproepilog", true);
- /* ASM EMIT */
+ ADDTARGETPHASE("cgirverify", CGOptions::DoCGIRVerify());
+ /* ASM or OBJ EMIT */
  ADDTARGETPHASE("cgemit", true);

@@ -121,9 +121,9 @@ HWTEST_F_L0(ICHandlerTest, StoreElement)
     JSHandle<JSTaggedValue> handleReceiver2(factory->NewJSArray());
     JSHandle<JSTaggedValue> handleValue(thread, JSTaggedValue(1));
 
-    JSHandle<JSTaggedValue> handlerInfo1 = StoreHandler::StoreElement(thread, handleReceiver1);
-    JSHandle<JSTaggedValue> handlerInfo2 = StoreHandler::StoreElement(thread, handleReceiver2);
-    JSHandle<JSTaggedValue> handlerInfo3 = StoreHandler::StoreElement(thread, handleValue);
+    JSHandle<JSTaggedValue> handlerInfo1 = StoreHandler::StoreElement(thread, handleReceiver1, 0);
+    JSHandle<JSTaggedValue> handlerInfo2 = StoreHandler::StoreElement(thread, handleReceiver2, 0);
+    JSHandle<JSTaggedValue> handlerInfo3 = StoreHandler::StoreElement(thread, handleValue, 0);
 
     EXPECT_EQ(HandlerBase::GetKind(handlerInfo1->GetInt()), HandlerKind::ELEMENT);
     EXPECT_EQ(HandlerBase::GetKind(handlerInfo2->GetInt()), HandlerKind::ELEMENT);

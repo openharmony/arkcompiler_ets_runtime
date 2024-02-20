@@ -19,9 +19,11 @@
 #include "common_utils.h"
 #if TARGAARCH64
 #include "aarch64_peep.h"
-#elif TARGRISCV64
+#endif
+#if TARGRISCV64
 #include "riscv64_peep.h"
-#elif defined TARGX86_64
+#endif
+#if defined TARGX86_64
 #include "x64_peep.h"
 #endif
 #if TARGARM32
@@ -707,11 +709,7 @@ MAPLE_TRANSFORM_PHASE_REGISTER_CANSKIP(CgPeepHole, cgpeephole)
 bool CgPrePeepHole::PhaseRun(maplebe::CGFunc &f)
 {
     MemPool *mp = GetPhaseMemPool();
-#if defined TARGAARCH64
-    auto *cgpeep = mp->New<AArch64CGPeepHole>(f, mp);
-#elif defined TARGX86_64
-    auto *cgpeep = mp->New<X64CGPeepHole>(f, mp);
-#endif
+    CGPeepHole *cgpeep = f.GetCG()->CreateCGPeepHole(*mp, f);
     CHECK_FATAL(cgpeep != nullptr, "PeepHoleOptimizer instance create failure");
     cgpeep->Run();
     return false;
@@ -722,11 +720,7 @@ MAPLE_TRANSFORM_PHASE_REGISTER_CANSKIP(CgPrePeepHole, cgprepeephole)
 bool CgPostPeepHole::PhaseRun(maplebe::CGFunc &f)
 {
     MemPool *mp = GetPhaseMemPool();
-#if defined TARGAARCH64
-    auto *cgpeep = mp->New<AArch64CGPeepHole>(f, mp);
-#elif defined TARGX86_64
-    auto *cgpeep = mp->New<X64CGPeepHole>(f, mp);
-#endif
+    CGPeepHole *cgpeep = f.GetCG()->CreateCGPeepHole(*mp, f);
     CHECK_FATAL(cgpeep != nullptr, "PeepHoleOptimizer instance create failure");
     cgpeep->Run();
     return false;

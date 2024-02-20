@@ -377,9 +377,7 @@ public:
 
     virtual void Dump() const;
 
-#if DEBUG
-    virtual void Check() const;
-#endif
+    virtual bool CheckMD() const;
 
     void SetComment(const std::string &str)
     {

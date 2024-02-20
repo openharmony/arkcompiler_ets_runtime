@@ -21,6 +21,8 @@
  */
 import data from "./1.json"
 import { fun } from "./cjsImportJson";
+import {a} from './moduleCircularCheck'
 
 print(data.name);
 fun();
+print(a);

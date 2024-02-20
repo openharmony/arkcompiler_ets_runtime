@@ -87,6 +87,9 @@ void Heap::Initialize()
     auto endAddress = activeSemiSpace_->GetAllocationEndAddress();
     thread_->ReSetNewSpaceAllocationAddress(topAddress, endAddress);
     inactiveSemiSpace_ = new SemiSpace(this, minSemiSpaceCapacity, maxSemiSpaceCapacity);
+
+    // whether should verify heap duration gc
+    shouldVerifyHeap_ = ecmaVm_->GetJSOptions().EnableHeapVerify();
     // not set up from space
 
     size_t readOnlySpaceCapacity = config.GetDefaultReadOnlySpaceSize();
@@ -384,17 +387,11 @@ void Heap::CollectGarbage(TriggerGCType gcType, GCReason reason)
 #endif
         CHECK_NO_GC
 
-#if ECMASCRIPT_ENABLE_HEAP_VERIFY
-        LOG_ECMA(DEBUG) << "Enable heap verify";
-        isVerifying_ = true;
-        // pre gc heap verify
-        sweeper_->EnsureAllTaskFinished();
-        auto failCount = Verification(this).VerifyAll();
-        if (failCount > 0) {
-            LOG_GC(FATAL) << "Before gc heap corrupted and " << failCount << " corruptions";
+        if (UNLIKELY(ShouldVerifyHeap())) {
+            // pre gc heap verify
+            LOG_ECMA(DEBUG) << "pre gc heap verify";
+            Verification(this, VerifyKind::VERIFY_PRE_GC).VerifyAll();
         }
-        isVerifying_ = false;
-#endif
 
 #if ECMASCRIPT_SWITCH_GC_MODE_TO_FULL_GC
         gcType = TriggerGCType::FULL_GC;
@@ -491,11 +488,11 @@ void Heap::CollectGarbage(TriggerGCType gcType, GCReason reason)
         // Trigger full mark next time if the current survival rate is much less than half the average survival rates.
         AdjustBySurvivalRate(originalNewSpaceSize);
         memController_->StopCalculationAfterGC(gcType);
-        if (gcType == TriggerGCType::FULL_GC || IsFullMark()) {
+        if (gcType == TriggerGCType::FULL_GC || IsConcurrentFullMark()) {
             // Only when the gc type is not semiGC and after the old space sweeping has been finished,
             // the limits of old space and global space can be recomputed.
             RecomputeLimits();
-            OPTIONAL_LOG(ecmaVm_, INFO) << " GC after: is full mark" << IsFullMark()
+            OPTIONAL_LOG(ecmaVm_, INFO) << " GC after: is full mark" << IsConcurrentFullMark()
                                         << " global object size " << GetHeapObjectSize()
                                         << " global committed size " << GetCommittedSize()
                                         << " global limit " << globalSpaceAllocLimit_;
@@ -520,16 +517,11 @@ void Heap::CollectGarbage(TriggerGCType gcType, GCReason reason)
     // even lead to another GC, so this have to invoke after this GC process.
     InvokeWeakNodeNativeFinalizeCallback();
 
-#if ECMASCRIPT_ENABLE_HEAP_VERIFY
-    // post gc heap verify
-    isVerifying_ = true;
-    sweeper_->EnsureAllTaskFinished();
-    auto failCount = Verification(this).VerifyAll();
-    if (failCount > 0) {
-        LOG_GC(FATAL) << "After gc heap corrupted and " << failCount << " corruptions";
+    if (UNLIKELY(ShouldVerifyHeap())) {
+        // verify post gc heap verify
+        LOG_ECMA(DEBUG) << "post gc heap verify";
+        Verification(this, VerifyKind::VERIFY_POST_GC).VerifyAll();
     }
-    isVerifying_ = false;
-#endif
     JSFinalizationRegistry::CheckAndCall(thread_);
 #if defined(ECMASCRIPT_SUPPORT_TRACING)
     auto tracing = GetEcmaVM()->GetTracing();
@@ -552,6 +544,25 @@ void Heap::ThrowOutOfMemoryError(size_t size, std::string functionName, bool Non
     }
     LOG_ECMA_MEM(ERROR) << oss.str().c_str();
     THROW_OOM_ERROR(thread_, oss.str().c_str());
+}
+
+void Heap::ThrowOutOfMemoryErrorForDefault(size_t size, std::string functionName, bool NonMovableObjNearOOM)
+{
+    ecmaVm_->GetEcmaGCStats()->PrintGCMemoryStatistic();
+    std::ostringstream oss;
+    if (NonMovableObjNearOOM) {
+        oss << "OutOfMemory when nonmovable live obj size: " << size << " bytes"
+            << " function name: " << functionName.c_str();
+    } else {
+        oss << "OutOfMemory when trying to allocate " << size << " bytes" << " function name: " << functionName.c_str();
+    }
+    LOG_ECMA_MEM(ERROR) << oss.str().c_str();
+    EcmaVM *ecmaVm = (thread_)->GetEcmaVM();
+    JSHandle<GlobalEnv> env = ecmaVm->GetGlobalEnv();
+    JSHandle<JSObject> error = JSHandle<JSObject>::Cast(env->GetOOMErrorObject());
+
+    (thread_)->SetException(error.GetTaggedValue());
+    ecmaVm->HandleUncatchableError();
 }
 
 void Heap::FatalOutOfMemoryError(size_t size, std::string functionName)
@@ -603,52 +614,63 @@ void Heap::AdjustBySurvivalRate(size_t originalNewSpaceSize)
     }
 }
 
-size_t Heap::VerifyHeapObjects() const
+size_t Heap::VerifyHeapObjects(VerifyKind verifyKind) const
 {
     size_t failCount = 0;
     {
-        VerifyObjectVisitor verifier(this, &failCount);
+        VerifyObjectVisitor verifier(this, &failCount, verifyKind);
         activeSemiSpace_->IterateOverObjects(verifier);
     }
 
     {
-        VerifyObjectVisitor verifier(this, &failCount);
+        if (verifyKind == VerifyKind::VERIFY_EVACUATE_YOUNG ||
+            verifyKind == VerifyKind::VERIFY_EVACUATE_OLD ||
+            verifyKind == VerifyKind::VERIFY_EVACUATE_FULL) {
+                inactiveSemiSpace_->EnumerateRegions([this](Region *region) {
+                    region->IterateAllMarkedBits(std::bind(&VerifyObjectVisitor::VerifyInactiveSemiSpaceMarkedObject,
+                        this, std::placeholders::_1));
+                });
+            }
+    }
+
+    {
+        VerifyObjectVisitor verifier(this, &failCount, verifyKind);
         oldSpace_->IterateOverObjects(verifier);
     }
 
     {
-        VerifyObjectVisitor verifier(this, &failCount);
+        VerifyObjectVisitor verifier(this, &failCount, verifyKind);
         appSpawnSpace_->IterateOverMarkedObjects(verifier);
     }
 
     {
-        VerifyObjectVisitor verifier(this, &failCount);
+        VerifyObjectVisitor verifier(this, &failCount, verifyKind);
         nonMovableSpace_->IterateOverObjects(verifier);
     }
 
     {
-        VerifyObjectVisitor verifier(this, &failCount);
+        VerifyObjectVisitor verifier(this, &failCount, verifyKind);
         hugeObjectSpace_->IterateOverObjects(verifier);
     }
     {
-        VerifyObjectVisitor verifier(this, &failCount);
+        VerifyObjectVisitor verifier(this, &failCount, verifyKind);
         hugeMachineCodeSpace_->IterateOverObjects(verifier);
     }
     {
-        VerifyObjectVisitor verifier(this, &failCount);
+        VerifyObjectVisitor verifier(this, &failCount, verifyKind);
         machineCodeSpace_->IterateOverObjects(verifier);
     }
     {
-        VerifyObjectVisitor verifier(this, &failCount);
+        VerifyObjectVisitor verifier(this, &failCount, verifyKind);
         snapshotSpace_->IterateOverObjects(verifier);
     }
     return failCount;
 }
 
-size_t Heap::VerifyOldToNewRSet() const
+size_t Heap::VerifyOldToNewRSet(VerifyKind verifyKind) const
 {
     size_t failCount = 0;
-    VerifyObjectVisitor verifier(this, &failCount);
+    VerifyObjectVisitor verifier(this, &failCount, verifyKind);
     oldSpace_->IterateOldToNewOverObjects(verifier);
     appSpawnSpace_->IterateOldToNewOverObjects(verifier);
     nonMovableSpace_->IterateOldToNewOverObjects(verifier);
@@ -897,7 +919,7 @@ void Heap::RecomputeLimits()
 
 bool Heap::CheckAndTriggerOldGC(size_t size)
 {
-    bool isFullMarking = IsFullMark() && GetJSThread()->IsMarking();
+    bool isFullMarking = IsConcurrentFullMark() && GetJSThread()->IsMarking();
     bool isNativeSizeLargeTrigger = isFullMarking ? false : GlobalNativeSizeLargerThanLimit();
     if (isFullMarking && oldSpace_->GetOvershootSize() == 0) {
         oldSpace_->SetOvershootSize(GetEcmaVM()->GetEcmaParamConfiguration().GetOldSpaceOvershootSize());
@@ -942,7 +964,7 @@ bool Heap::CheckOngoingConcurrentMarking()
         } else {
             WaitRunningTaskFinished();
         }
-        memController_->RecordAfterConcurrentMark(IsFullMark(), concurrentMarker_);
+        memController_->RecordAfterConcurrentMark(IsConcurrentFullMark(), concurrentMarker_);
         return true;
     }
     return false;
@@ -1193,7 +1215,7 @@ void Heap::PrepareRecordRegionsForReclaim()
 void Heap::TriggerConcurrentMarking()
 {
     ASSERT(idleTask_ != IdleTaskType::INCREMENTAL_MARK);
-    if (idleTask_ == IdleTaskType::YOUNG_GC && IsFullMark()) {
+    if (idleTask_ == IdleTaskType::YOUNG_GC && IsConcurrentFullMark()) {
         ClearIdleTask();
         DisableNotifyIdle();
     }
@@ -1576,7 +1598,7 @@ void Heap::PrintHeapInfo(TriggerGCType gcType) const
                                 << ";OnHighSensitive:" << static_cast<int>(GetSensitiveStatus())
                                 << ";ConcurrentMark Status:" << static_cast<int>(thread_->GetMarkStatus());
     OPTIONAL_LOG(ecmaVm_, INFO) << "Heap::CollectGarbage, gcType(" << gcType << "), Concurrent Mark("
-                                << concurrentMarker_->IsEnabled() << "), Full Mark(" << IsFullMark() << ")";
+                                << concurrentMarker_->IsEnabled() << "), Full Mark(" << IsConcurrentFullMark() << ")";
     OPTIONAL_LOG(ecmaVm_, INFO) << "ActiveSemi(" << activeSemiSpace_->GetHeapObjectSize()
                    << "/" << activeSemiSpace_->GetInitialCapacity() << "), NonMovable("
                    << nonMovableSpace_->GetHeapObjectSize() << "/" << nonMovableSpace_->GetCommittedSize()

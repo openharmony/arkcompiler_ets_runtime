@@ -44,26 +44,18 @@ deps_libcg = [
 
 deps_libmplbe = [ ":libcglowerer" ]
 
-if (TARGET == "aarch64") {
+if (TARGET == "aarch64" || TARGET == "x86_64") {
   include_directories += [
+    "${MAPLEALL_ROOT}/maple_be/include/cg/x86_64",
+    "${MAPLEALL_ROOT}/maple_be/include/be/x86_64",
     "${MAPLEALL_ROOT}/maple_be/include/cg/aarch64",
     "${MAPLEALL_ROOT}/maple_be/include/be/aarch64",
   ]
   deps_libcg += [
+    ":libcgx8664",
     ":libcgaarch64",
     ":libcgphases",
     "${MAPLEALL_ROOT}/maple_driver:libmaple_driver",
-  ]
-}
-
-if (TARGET == "x86_64") {
-  include_directories += [
-    "${MAPLEALL_ROOT}/maple_be/include/cg/x86_64",
-    "${MAPLEALL_ROOT}/maple_be/include/be/x86_64",
-  ]
-  deps_libcg += [
-    ":libcgx8664",
-    ":libcgx86phases",
   ]
 }
 
@@ -98,6 +90,7 @@ src_libmplbe = [
 ]
 
 src_libcgaarch64 = [
+  "src/cg/aarch64/aarch64_targetinfo.cpp",
   "src/cg/aarch64/aarch64_abi.cpp",
   "src/cg/aarch64/aarch64_call_conv.cpp",
   "src/cg/aarch64/mpl_atomic.cpp",
@@ -148,9 +141,11 @@ src_libcgx86phases = [
   "src/cg/local_opt.cpp",
   "src/cg/cfgo.cpp",
   "src/cg/cg_dominance.cpp",
+  "src/cg/cg_stackmap_computation.cpp",
 ]
 
 src_libcgx8664 = [
+  "src/cg/x86_64/x64_targetinfo.cpp",
   "src/cg/x86_64/x64_cg.cpp",
   "src/cg/x86_64/x64_MPIsel.cpp",
   "src/cg/x86_64/x64_cgfunc.cpp",
@@ -234,6 +229,7 @@ src_libcgphases = [
   "src/cg/cg_critical_edge.cpp",
   "src/cg/alignment.cpp",
   "src/cg/cg_validbit_opt.cpp",
+  "src/cg/cg_stackmap_computation.cpp",
 ]
 
 src_libcg = [
@@ -270,6 +266,8 @@ src_libcg = [
   "src/cg/cg_phasemanager.cpp",
   "src/litecg/litecg.cpp",
   "src/litecg/lmir_builder.cpp",
+  "src/cg/target_registry.cpp",
+  "src/cg/target_select.cpp",
 ]
 
 ohos_static_library("libmplad") {

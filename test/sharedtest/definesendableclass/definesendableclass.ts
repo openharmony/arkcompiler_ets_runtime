@@ -1124,6 +1124,18 @@ function testChildExtendsDict(child: ChildExtendsDict) {
     print("child.childField = " + child.childField);
 }
 
+function testICChecking(child: ChildToDict) {
+    let loopIndex: number = 0;
+    try {
+        for (loopIndex = 0; loopIndex < 2000; loopIndex++) {
+            child.a999 = loopIndex < 1000 ? "hi" : 1;
+        }
+        print("[IC] Success to assign member in dict mode times with mismatched value");
+    } catch (error) {
+        print("[IC] Fail to assign member in dict mode with mismatched value. err: " + error + ", loopIndex: " + loopIndex);
+    }
+}
+
 let parent = new Parent;
 let child = new Child;
 let childToDict = new ChildToDict;
@@ -1133,3 +1145,4 @@ testParent(parent);
 testChild(child);
 testChildToDict(childToDict);
 testChildExtendsDict(childExtendsDict);
+testICChecking(childToDict);

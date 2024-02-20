@@ -276,7 +276,8 @@ bool AArch64AlignAnalysis::MarkShortBranchSplit()
                     continue;
                 }
                 auto &labelOpnd = static_cast<LabelOperand &>(insn->GetOperand(kInsnThirdOpnd));
-                if (aarFunc->DistanceCheck(*bb, labelOpnd.GetLabelIndex(), insn->GetId())) {
+                if (aarFunc->DistanceCheck(*bb, labelOpnd.GetLabelIndex(), insn->GetId(),
+                                           AArch64Abi::kMaxInstrForTbnz)) {
                     continue;
                 }
                 split = true;

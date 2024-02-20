@@ -17,7 +17,6 @@
 #define MAPLEBE_INCLUDE_CG_MEMLAYOUT_H
 
 /* C++ headers. */
-#include <cstddef>
 #include <utility>
 #include "becommon.h"
 #include "mir_function.h"

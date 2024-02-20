@@ -41,7 +41,7 @@ bool X64CGPeepHole::DoSSAOptimize(BB &bb, Insn &insn)
     return false;
 }
 
-bool RemoveMovingtoSameRegPattern::CheckCondition(Insn &insn)
+bool X64RemoveMovingtoSameRegPattern::CheckCondition(Insn &insn)
 {
     DEBUG_ASSERT(insn.GetOperand(kInsnFirstOpnd).IsRegister(), "expects registers");
     DEBUG_ASSERT(insn.GetOperand(kInsnSecondOpnd).IsRegister(), "expects registers");
@@ -54,7 +54,7 @@ bool RemoveMovingtoSameRegPattern::CheckCondition(Insn &insn)
     return false;
 }
 
-void RemoveMovingtoSameRegPattern::Run(BB &bb, Insn &insn)
+void X64RemoveMovingtoSameRegPattern::Run(BB &bb, Insn &insn)
 {
     /* remove mov x0,x0 when it cast i32 to i64 */
     if (CheckCondition(insn)) {
@@ -71,7 +71,7 @@ void X64CGPeepHole::DoNormalOptimize(BB &bb, Insn &insn)
         case MOP_movw_r_r:
         case MOP_movl_r_r:
         case MOP_movq_r_r: {
-            manager->NormalPatternOpt<RemoveMovingtoSameRegPattern>(true);
+            manager->NormalPatternOpt<X64RemoveMovingtoSameRegPattern>(true);
             break;
         }
         default:

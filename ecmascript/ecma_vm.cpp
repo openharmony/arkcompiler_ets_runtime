@@ -152,6 +152,7 @@ void EcmaVM::PostFork()
     std::string bundleName = PGOProfilerManager::GetInstance()->GetBundleName();
     if (ohos::EnableAotListHelper::GetInstance()->IsDisableBlackList(bundleName)) {
         options_.SetEnablePGOProfiler(false);
+        PGOProfilerManager::GetInstance()->SetDisableAot(true);
     } else if (ohos::EnableAotListHelper::GetInstance()->IsEnableList(bundleName)) {
         options_.SetEnablePGOProfiler(true);
     }

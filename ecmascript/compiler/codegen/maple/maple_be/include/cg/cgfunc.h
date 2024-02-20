@@ -36,6 +36,7 @@
 
 /* Maple MP header */
 #include "mempool_allocator.h"
+#include "triple.h"
 
 namespace maplebe {
 constexpr int32 kBBLimit = 100000;
@@ -80,6 +81,74 @@ public:
 
 private:
     MapleSet<MemOperand *, MemOpndCmp> reuseSpillLocMem;
+};
+
+// Memory read/write node helper - such as: iread, dread, iassign, dassign
+class MemRWNodeHelper {
+public:
+    MemRWNodeHelper(const BaseNode &node, MIRFunction &mirFunc, const BECommon &beCommon)
+    {
+        GetMemRWNodeBaseInfo(node, mirFunc);
+        GetTrueMirInfo(beCommon);
+    }
+    ~MemRWNodeHelper() = default;
+
+    FieldID GetFieldID() const
+    {
+        return fieldId;
+    }
+
+    const MIRType *GetMIRType() const
+    {
+        return mirType;
+    }
+
+    MIRType *GetMIRType()
+    {
+        return mirType;
+    }
+
+    int32 GetByteOffset() const
+    {
+        return byteOffset;
+    }
+
+    uint32 GetMemSize() const
+    {
+        return memSize;
+    }
+
+    PrimType GetPrimType() const
+    {
+        return primType;
+    }
+
+    bool IsRefField() const
+    {
+        return isRefField;
+    }
+
+    const MIRSymbol *GetSymbol() const
+    {
+        return symbol;
+    }
+
+    MIRSymbol *GetSymbol()
+    {
+        return symbol;
+    }
+
+private:
+    FieldID fieldId = FieldID(0);  // fieldId from node
+    MIRType *mirType = nullptr;    // true mirType
+    MIRSymbol *symbol = nullptr;   // date sym, for dread/dassign
+    int32 byteOffset = 0;
+    uint32 memSize = 0;
+    PrimType primType = PTY_unknown;
+    bool isRefField = false;  // for java
+
+    void GetMemRWNodeBaseInfo(const BaseNode &node, MIRFunction &mirFunc);
+    void GetTrueMirInfo(const BECommon &beCommon);
 };
 
 #if TARGARM32
@@ -191,8 +260,21 @@ public:
     void MarkCatchBBs();
     uint32 GetMaxRegNum() const
     {
-        return maxRegCount;
+        return vReg.GetMaxRegCount();
     };
+    void SetMaxRegNum(uint32 num)
+    {
+        vReg.SetMaxRegCount(num);
+    }
+    void IncMaxRegNum(uint32 num) const
+    {
+        vReg.IncMaxRegCount(num);
+    }
+    // Attention! Do not invoke this interface in other processes except unit-test
+    void SetMaxVReg(uint32 num) const
+    {
+        vReg.SetCount(num);
+    }
     void DumpCFG() const;
     void DumpCGIR() const;
     void DumpLoop() const;
@@ -322,7 +404,6 @@ public:
     virtual Operand *SelectLazyLoadStatic(MIRSymbol &st, int64 offset, PrimType primType) = 0;
     virtual Operand *SelectLoadArrayClassCache(MIRSymbol &st, int64 offset, PrimType primType) = 0;
     virtual void GenerateYieldpoint(BB &bb) = 0;
-    virtual Operand &ProcessReturnReg(PrimType primType, int32 sReg) = 0;
 
     virtual Operand &GetOrCreateRflag() = 0;
     virtual const Operand *GetRflag() const = 0;
@@ -335,6 +416,7 @@ public:
     virtual RegOperand &GetOrCreateVirtualRegisterOperand(RegOperand &regOpnd) = 0;
     virtual RegOperand &GetOrCreateFramePointerRegOperand() = 0;
     virtual RegOperand &GetOrCreateStackBaseRegOperand() = 0;
+    virtual RegOperand *GetBaseReg(const SymbolAlloc &symAlloc) = 0;
     virtual int32 GetBaseOffset(const SymbolAlloc &symbolAlloc) = 0;
     virtual RegOperand &GetZeroOpnd(uint32 size) = 0;
     virtual Operand &CreateCfiRegOperand(uint32 reg, uint32 size) = 0;
@@ -425,6 +507,7 @@ public:
 
     RegOperand *GetVirtualRegisterOperand(regno_t vRegNO) const
     {
+        std::unordered_map<regno_t, RegOperand *> &vRegOperandTable = VregInfo::vRegOperandTable;
         auto it = vRegOperandTable.find(vRegNO);
         return it == vRegOperandTable.end() ? nullptr : it->second;
     }
@@ -499,27 +582,7 @@ public:
         if (CGOptions::UseGeneralRegOnly()) {
             CHECK_FATAL(regType != kRegTyFloat, "cannot use float | SIMD register with --general-reg-only");
         }
-        /* when vRegCount reach to maxRegCount, maxRegCount limit adds 80 every time */
-        /* and vRegTable increases 80 elements. */
-        if (vRegCount >= maxRegCount) {
-            DEBUG_ASSERT(vRegCount < maxRegCount + 1, "MAINTIAN FAILED");
-            maxRegCount += kRegIncrStepLen;
-            vRegTable.resize(maxRegCount);
-        }
-#if TARGAARCH64 || TARGX86_64 || TARGRISCV64
-        if (size < k4ByteSize) {
-            size = k4ByteSize;
-        }
-#if TARGAARCH64
-        /* cannot handle 128 size register */
-        if (regType == kRegTyInt && size > k8ByteSize) {
-            size = k8ByteSize;
-        }
-#endif
-        DEBUG_ASSERT(size == k4ByteSize || size == k8ByteSize || size == k16ByteSize, "check size");
-#endif
-        new (&vRegTable[vRegCount]) VirtualRegNode(regType, size);
-        return vRegCount++;
+        return vReg.GetNextVregNO(regType, size);
     }
 
     virtual regno_t NewVRflag()
@@ -576,19 +639,19 @@ public:
     /* return Register Type */
     virtual RegType GetRegisterType(regno_t rNum) const
     {
-        CHECK(rNum < vRegTable.size(), "index out of range in GetVRegSize");
-        return vRegTable[rNum].GetType();
+        CHECK(rNum < vReg.VRegTableSize(), "index out of range in GetVRegSize");
+        return vReg.VRegTableGetType(rNum);
     }
 
-#if TARGX86_64
+#if defined(TARGX86_64) && TARGX86_64
     uint32 GetMaxVReg() const
     {
-        return vRegCount + opndBuilder->GetCurrentVRegNum();
+        return vReg.GetCount() + opndBuilder->GetCurrentVRegNum();
     }
 #else
     uint32 GetMaxVReg() const
     {
-        return vRegCount;
+        return vReg.GetCount();
     }
 #endif
 
@@ -604,7 +667,7 @@ public:
 
     uint32 GetVRegSize(regno_t vregNum)
     {
-        CHECK(vregNum < vRegTable.size(), "index out of range in GetVRegSize");
+        CHECK(vregNum < vReg.VRegTableSize(), "index out of range in GetVRegSize");
         return GetOrCreateVirtualRegisterOperand(vregNum).GetSize() / kBitsPerByte;
     }
 
@@ -802,6 +865,16 @@ public:
     void SetCleanupLabel(LabelNode &node)
     {
         cleanupLabel = &node;
+    }
+
+    const LabelNode *GetReturnLabel() const
+    {
+        return returnLabel;
+    }
+
+    void SetReturnLabel(LabelNode &label)
+    {
+        returnLabel = &label;
     }
 
     BB *GetFirstBB()
@@ -1194,6 +1267,16 @@ public:
         lmbcTotalArgs = 0;
     }
 
+    void SetSpSaveReg(regno_t reg)
+    {
+        spSaveReg = reg;
+    }
+
+    regno_t GetSpSaveReg() const
+    {
+        return spSaveReg;
+    }
+
     MapleVector<BB *> &GetAllBBs()
     {
         return bbVec;
@@ -1392,6 +1475,16 @@ public:
         hasTakenLabel = true;
     }
 
+    bool HasLaidOutByPgoUse() const
+    {
+        return hasLaidOutByPgoUse;
+    }
+
+    void SetHasLaidOutByPgoUse()
+    {
+        hasLaidOutByPgoUse = true;
+    }
+
     virtual InsnVisitor *NewInsnModifier() = 0;
 
     bool GenCfi() const
@@ -1451,6 +1544,16 @@ public:
         stackMapInsns.emplace_back(&insn);
     }
 
+    bool IsStackMapComputed()
+    {
+        return isStackMapComputed;
+    }
+
+    void SetStackMapComputed()
+    {
+        isStackMapComputed = true;
+    }
+
     void EraseUnreachableStackMapInsns()
     {
         for (auto it = stackMapInsns.begin(); it != stackMapInsns.end();) {
@@ -1482,6 +1585,16 @@ public:
         return stackProtectInfo;
     }
 
+    void SetNeedStackProtect(bool val)
+    {
+        needStackProtect = val;
+    }
+
+    bool GetNeedStackProtect() const
+    {
+        return needStackProtect;
+    }
+
     CallConvKind GetCurCallConvKind() const
     {
         return callingConventionKind;
@@ -1506,16 +1619,18 @@ public:
         return exitBBLost;
     }
 
+    bool GetWithSrc() const
+    {
+        return withSrc;
+    }
+
 protected:
     uint32 firstMapleIrVRegNO = 200; /* positioned after physical regs */
     uint32 firstNonPregVRegNO;
-    uint32 vRegCount;                      /* for assigning a number for each CG virtual register */
-    uint32 ssaVRegCount = 0;               /* vreg  count in ssa */
-    uint32 maxRegCount;                    /* for the current virtual register number limit */
-    size_t lSymSize;                       /* size of local symbol table imported */
-    MapleVector<VirtualRegNode> vRegTable; /* table of CG's virtual registers indexed by v_reg no */
+    VregInfo vReg;           /* for assigning a number for each CG virtual register */
+    uint32 ssaVRegCount = 0; /* vreg  count in ssa */
+    size_t lSymSize;         /* size of local symbol table imported */
     MapleVector<BB *> bbVec;
-    MapleUnorderedMap<regno_t, RegOperand *> vRegOperandTable;
     MapleUnorderedSet<regno_t> referenceVirtualRegs;
     MapleSet<int64> referenceStackSlots;
     MapleVector<Operand *> pregIdx2Opnd;
@@ -1542,6 +1657,8 @@ protected:
     bool isAfterRegAlloc = false;
     bool isAggParamInReg = false;
     bool hasTakenLabel = false;
+    bool hasLaidOutByPgoUse = false;
+    bool withSrc = true;
     uint32 frequency = 0;
     DebugInfo *debugInfo = nullptr; /* debugging info */
     MapleVector<DBGExprLoc *> dbgParamCallFrameLocations;
@@ -1581,7 +1698,7 @@ protected:
 
     VirtualRegNode &GetVirtualRegNodeFromPseudoRegIdx(PregIdx idx)
     {
-        return vRegTable.at(GetVirtualRegNOFromPseudoRegIdx(idx));
+        return vReg.VRegTableElementGet(GetVirtualRegNOFromPseudoRegIdx(idx));
     }
 
     PrimType GetTypeFromPseudoRegIdx(PregIdx idx)
@@ -1590,9 +1707,8 @@ protected:
         RegType regType = vRegNode.GetType();
         DEBUG_ASSERT(regType == kRegTyInt || regType == kRegTyFloat, "");
         uint32 size = vRegNode.GetSize(); /* in bytes */
-        DEBUG_ASSERT(size == sizeof(int32) || size == sizeof(int64), "");
-        return (regType == kRegTyInt ? (size == sizeof(int32) ? PTY_i32 : PTY_i64)
-                                     : (size == sizeof(float) ? PTY_f32 : PTY_f64));
+        return (regType == kRegTyInt ? (size <= sizeof(int32) ? PTY_i32 : PTY_i64)
+                                     : (size <= sizeof(float) ? PTY_f32 : PTY_f64));
     }
 
     int64 GetPseudoRegisterSpillLocation(PregIdx idx)
@@ -1617,10 +1733,10 @@ protected:
     }
 
     /* See if the symbol is a structure parameter that requires a copy. */
-    bool IsParamStructCopy(const MIRSymbol &symbol)
+    bool IsParamStructCopy(const MIRSymbol &symbol) const
     {
-        if (symbol.GetStorageClass() == kScFormal &&
-            GetBecommon().GetTypeSize(symbol.GetTyIdx().GetIdx()) > k16ByteSize) {
+        auto *mirType = GlobalTables::GetTypeTable().GetTypeFromTyIdx(symbol.GetTyIdx());
+        if (symbol.GetStorageClass() == kScFormal && IsParamStructCopyToMemory(*mirType)) {
             return true;
         }
         return false;
@@ -1682,8 +1798,10 @@ private:
     uint32 bbCnt = 0;
     uint32 labelIdx = 0;               /* local label index number */
     LabelNode *startLabel = nullptr;   /* start label of the function */
-    LabelNode *endLabel = nullptr;     /* end label of the function */
+    LabelNode *returnLabel = nullptr;  /* return label of the function */
     LabelNode *cleanupLabel = nullptr; /* label to indicate the entry of cleanup code. */
+    LabelNode *endLabel = nullptr;     /* end label of the function */
+
     BB *firstBB = nullptr;
     BB *cleanupBB = nullptr;
     BB *cleanupEntryBB = nullptr;
@@ -1717,14 +1835,18 @@ private:
     CGCFG *theCFG = nullptr;
     FuncEmitInfo *funcEmitInfo = nullptr;
     uint32 nextSpillLocation = 0;
+    regno_t spSaveReg = 0;
 
     const MapleString shortFuncName;
     bool hasAsm = false;
     bool useFP = true;
     bool seenFP = true;
 
+    bool isStackMapComputed = false;
+
     /* save stack protect kinds which can trigger stack protect */
     uint8 stackProtectInfo = 0;
+    bool needStackProtect = false;
 
     // mark exitBB is unreachable
     bool exitBBLost = false;

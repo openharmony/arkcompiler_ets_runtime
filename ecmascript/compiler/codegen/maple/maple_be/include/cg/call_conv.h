@@ -37,6 +37,24 @@ struct CCLocInfo {
     PrimType primTypeOfReg1; /* the primitive type stored in reg1 */
     PrimType primTypeOfReg2;
     PrimType primTypeOfReg3;
+
+    void Clear()
+    {
+        reg0 = kInvalidRegNO;
+        reg1 = kInvalidRegNO;
+        reg2 = kInvalidRegNO;
+        reg3 = kInvalidRegNO;
+        memOffset = 0;
+        memSize = 0;
+        fpSize = 0;
+        numFpPureRegs = 0;
+        regCount = 0;
+        primTypeOfReg0 = PTY_begin;
+        primTypeOfReg1 = PTY_begin;
+        primTypeOfReg2 = PTY_begin;
+        primTypeOfReg3 = PTY_begin;
+    }
+
     uint8 GetRegCount() const
     {
         return regCount;
@@ -243,10 +261,10 @@ public:
 
     ~CCImpl() = default;
 
-    virtual int32 LocateNextParm(MIRType &mirType, CCLocInfo &pLoc, bool isFirst = false,
-                                 MIRFunction *func = nullptr) = 0;
+    virtual uint64 LocateNextParm(const MIRType &mirType, CCLocInfo &pLoc, bool isFirst = false,
+                                  MIRFuncType *tFunc = nullptr) = 0;
 
-    virtual int32 LocateRetVal(MIRType &retType, CCLocInfo &ploc) = 0;
+    virtual void LocateRetVal(const MIRType &retType, CCLocInfo &ploc) = 0;
 
     void InitCCLocInfo(CCLocInfo &pLoc) const
     {
@@ -259,8 +277,6 @@ public:
         pLoc.numFpPureRegs = 0;
         return;
     };
-
-    virtual void InitReturnInfo(MIRType &retTy, CCLocInfo &pLoc) = 0;
 
     virtual void SetupSecondRetReg(const MIRType &retTy2, CCLocInfo &pLoc) const = 0;
 

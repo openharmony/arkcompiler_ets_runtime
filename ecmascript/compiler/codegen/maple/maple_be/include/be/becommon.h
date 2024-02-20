@@ -100,6 +100,8 @@ public:
 
     std::pair<int32, int32> GetFieldOffset(MIRStructType &structType, FieldID fieldID);
 
+    FieldInfo GetJClassFieldOffset(MIRStructType &classType, FieldID fieldID) const;
+
     bool IsRefField(MIRStructType &structType, FieldID fieldID) const;
 
     /* some class may has incomplete type definition. provide an interface to check them. */

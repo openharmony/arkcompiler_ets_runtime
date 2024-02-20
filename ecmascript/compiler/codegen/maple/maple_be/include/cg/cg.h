@@ -29,6 +29,8 @@
 #include "global_tables.h"
 #include "mir_function.h"
 #include "mad.h"
+#include "target_machine.h"
+#include "proepilog.h"
 
 namespace maplebe {
 #define ADDTARGETPHASE(PhaseName, condition)  \
@@ -50,6 +52,8 @@ class ValidBitOpt;
 class CG;
 class LocalOpt;
 class CFGOptimizer;
+class CGPeepHole;
+class GenProEpilog;
 
 class Globals {
 public:
@@ -110,6 +114,98 @@ private:
     int32 optimLevel = 0;
     CG *cg = nullptr;
     Globals() = default;
+};
+
+class GCTIBKey {
+public:
+    GCTIBKey(MapleAllocator &allocator, uint32 rcHeader, const std::vector<uint64> &patternWords)
+        : header(rcHeader),
+          bitMapWords(allocator.Adapter())
+    {
+        (void)bitMapWords.insert(bitMapWords.cbegin(), patternWords.cbegin(), patternWords.cend());
+    }
+
+    ~GCTIBKey() = default;
+
+    uint32 GetHeader() const
+    {
+        return header;
+    }
+
+    const MapleVector<uint64> &GetBitmapWords() const
+    {
+        return bitMapWords;
+    }
+
+private:
+    uint32 header;
+    MapleVector<uint64> bitMapWords;
+};
+
+class Hasher {
+public:
+    size_t operator()(const GCTIBKey *key) const
+    {
+        CHECK_NULL_FATAL(key);
+        size_t hash = key->GetHeader();
+        return hash;
+    }
+};
+
+class EqualFn {
+public:
+    bool operator()(const GCTIBKey *firstKey, const GCTIBKey *secondKey) const
+    {
+        CHECK_NULL_FATAL(firstKey);
+        CHECK_NULL_FATAL(secondKey);
+        const MapleVector<uint64> &firstWords = firstKey->GetBitmapWords();
+        const MapleVector<uint64> &secondWords = secondKey->GetBitmapWords();
+
+        if ((firstKey->GetHeader() != secondKey->GetHeader()) || (firstWords.size() != secondWords.size())) {
+            return false;
+        }
+
+        for (size_t i = 0; i < firstWords.size(); ++i) {
+            if (firstWords[i] != secondWords[i]) {
+                return false;
+            }
+        }
+        return true;
+    }
+};
+
+class GCTIBPattern {
+public:
+    GCTIBPattern(GCTIBKey &patternKey, MemPool &mp)
+        : name(&mp)
+    {
+        key = &patternKey;
+        id = GetId();
+        name = GCTIB_PREFIX_STR + std::string("PTN_") + std::to_string(id);
+    }
+
+    ~GCTIBPattern() = default;
+
+    int GetId() const
+    {
+        static int createNum = 0;
+        return createNum++;
+    }
+
+    std::string GetName() const
+    {
+        return std::string(name.c_str());
+    }
+
+    void SetName(const std::string &ptnName)
+    {
+        name = ptnName;
+    }
+
+private:
+    int id = 0;
+    MapleString name;
+    GCTIBKey *key = nullptr;
 };
 
 class CG {
@@ -285,6 +381,16 @@ public:
         return mirModule;
     }
 
+    void SetTargetMachine(TargetMachine &targetMachine)
+    {
+        this->targetMachine = &targetMachine;
+    }
+	
+    TargetMachine *GetTargetMachine() const
+    {
+        return targetMachine;
+    }
+	
     void IncreaseLabelOrderCnt()
     {
         labelOrderCnt++;
@@ -349,6 +455,8 @@ public:
     {
         return nullptr;
     };
+    virtual GenProEpilog *CreateGenProEpilog(CGFunc &func, MemPool &mp, MemPool *tempMemPool = nullptr) const = 0;
+    virtual CGPeepHole *CreateCGPeepHole(MemPool &mp, CGFunc &f) const = 0;
     virtual MoveRegArgs *CreateMoveRegArgs(MemPool &mp, CGFunc &f) const
     {
         return nullptr;
@@ -457,6 +565,7 @@ protected:
 private:
     MIRModule *mirModule;
     Emitter *emitter;
+    TargetMachine *targetMachine = nullptr;
     LabelIDOrder labelOrderCnt;
     static CGFunc *currentCGFunction; /* current cg function being compiled */
     CGOptions cgOption;

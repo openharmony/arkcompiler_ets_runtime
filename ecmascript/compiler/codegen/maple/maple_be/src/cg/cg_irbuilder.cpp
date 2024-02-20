@@ -150,14 +150,17 @@ BitShiftOperand &OperandBuilder::CreateBitShift(BitShiftOperand::ShiftOp op, uin
 
 RegOperand &OperandBuilder::CreateVReg(uint32 size, RegType type, MemPool *mp)
 {
-    virtualRegNum++;
-    regno_t vRegNO = baseVirtualRegNO + virtualRegNum;
-    return mp ? *mp->New<RegOperand>(vRegNO, size, type) : *alloc.New<RegOperand>(vRegNO, size, type);
+    regno_t vRegNO = virtualReg.GetNextVregNO(type, size / k8BitSize);
+    RegOperand &rp = mp ? *mp->New<RegOperand>(vRegNO, size, type) : *alloc.New<RegOperand>(vRegNO, size, type);
+    maplebe::VregInfo::vRegOperandTable[vRegNO] = &rp;
+    return rp;
 }
 
 RegOperand &OperandBuilder::CreateVReg(regno_t vRegNO, uint32 size, RegType type, MemPool *mp)
 {
-    return mp ? *mp->New<RegOperand>(vRegNO, size, type) : *alloc.New<RegOperand>(vRegNO, size, type);
+    RegOperand &rp = mp ? *mp->New<RegOperand>(vRegNO, size, type) : *alloc.New<RegOperand>(vRegNO, size, type);
+    maplebe::VregInfo::vRegOperandTable[vRegNO] = &rp;
+    return rp;
 }
 
 RegOperand &OperandBuilder::CreatePReg(regno_t pRegNO, uint32 size, RegType type, MemPool *mp)

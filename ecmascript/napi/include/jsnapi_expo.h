@@ -1188,7 +1188,8 @@ public:
     static Local<ObjectRef> GetExportObject(EcmaVM *vm, const std::string &file, const std::string &key);
     static Local<ObjectRef> GetExportObjectFromBuffer(EcmaVM *vm, const std::string &file, const std::string &key);
     static Local<ObjectRef> ExecuteNativeModule(EcmaVM *vm, const std::string &key);
-    static Local<ObjectRef> GetModuleNameSpaceFromFile(EcmaVM *vm, const std::string &file);
+    static Local<ObjectRef> GetModuleNameSpaceFromFile(EcmaVM *vm, const std::string &file,
+                                                       const std::string &module_path);
     // secure memory check
     static bool CheckSecureMem(uintptr_t mem);
 
@@ -1237,6 +1238,8 @@ public:
     static bool StopDebugger(int tid);
     static bool NotifyDebugMode(int tid, EcmaVM *vm, const DebugOption &option, int32_t instanceId = 0,
                                 const DebuggerPostTask &debuggerPostTask = {}, bool debugApp = false);
+    static bool StoreDebugInfo(
+        int tid, EcmaVM *vm, const DebugOption &option, const DebuggerPostTask &debuggerPostTask, bool debugApp);
     static bool StopDebugger(EcmaVM *vm);
     static bool IsMixedDebugEnabled(const EcmaVM *vm);
     static void NotifyNativeCalling(const EcmaVM *vm, const void *nativeAddress);

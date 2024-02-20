@@ -161,7 +161,8 @@ void LSRALinearScanRegAllocator::PrintLiveRangesGraph() const
         }
 
         for (auto *bb : bfs->sortedBBs) {
-            FOR_BB_INSNS(insn, bb) {
+            FOR_BB_INSNS(insn, bb)
+            {
                 const InsnDesc *md = insn->GetDesc();
                 uint32 opndNum = insn->GetOperandSize();
                 for (uint32 iSecond = 0; iSecond < opndNum; ++iSecond) {
@@ -221,6 +222,8 @@ void LSRALinearScanRegAllocator::PrintLiveRangesGraph() const
 
 void LSRALinearScanRegAllocator::SpillStackMapInfo()
 {
+    SetStackMapDerivedInfo();
+
     RA_TIMER_REGISTER(lsra, "LSRA SpillStackMapInfo");
     const auto &referenceMapInsns = cgFunc->GetStackMapInsns();
 
@@ -253,14 +256,15 @@ void LSRALinearScanRegAllocator::SpillStackMapInfo()
             if (li == nullptr) {
                 continue;
             }
-            auto itr = dereivedRef2Base.find(regNO);
-            if (itr != dereivedRef2Base.end()) {
-                DEBUG_ASSERT(liveIntervalsArray[itr->second] != nullptr, "empty li");
+            auto itr = derivedRef2Base.find(regNO);
+            if (itr != derivedRef2Base.end()) {
+                auto baseRegNum = (itr->second)->GetRegisterNumber();
+                DEBUG_ASSERT(liveIntervalsArray[baseRegNum] != nullptr, "empty li");
                 if (needDump) {
-                    PrintLiveInterval(*liveIntervalsArray[itr->second], "Spill StackMap dereivedRef:");
+                    PrintLiveInterval(*liveIntervalsArray[baseRegNum], "Spill StackMap derivedRef:");
                 }
-                liveIntervalsArray[itr->second]->SetStackSlot(kSpilled);
-                liveIntervalsArray[itr->second]->SetShouldSave(false);
+                liveIntervalsArray[baseRegNum]->SetStackSlot(kSpilled);
+                liveIntervalsArray[baseRegNum]->SetShouldSave(false);
             }
             if (needDump) {
                 PrintLiveInterval(*li, "Spill StackMap:");
@@ -843,7 +847,9 @@ void LSRALinearScanRegAllocator::ComputeLiveOut(BB &bb, uint32 insnNum)
 
 struct RegOpndInfo {
     RegOpndInfo(RegOperand &opnd, uint32 size, uint32 idx, bool def)
-        : regOpnd(opnd), regSize(size), opndIdx(idx), isDef(def) {}
+        : regOpnd(opnd), regSize(size), opndIdx(idx), isDef(def)
+    {
+    }
     RegOperand &regOpnd;
     uint32 regSize = 0;
     uint32 opndIdx = -1;
@@ -859,15 +865,22 @@ void LSRALinearScanRegAllocator::ComputeLiveIntervalForEachOperand(Insn &insn)
         const OpndDesc *opndDesc = md->GetOpndDes(i);
         DEBUG_ASSERT(opndDesc != nullptr, "ptr null check.");
         if (opnd.IsRegister()) {
-            auto &regOpnd = static_cast<RegOperand&>(opnd);
+            auto &regOpnd = static_cast<RegOperand &>(opnd);
             // Specifically, the "use-def" opnd is treated as a "use" opnd
             bool isUse = opndDesc->IsRegUse();
             // Fixup: The size in the insn md of x64 is not accurate, and the size in the fload opnd
             //        does not change, so we use the size in the opnd first.
             auto regSize = (regOpnd.GetRegisterType() == kRegTyInt ? opndDesc->GetSize() : regOpnd.GetSize());
             allRegOpndInfo.emplace_back(regOpnd, regSize, i, !isUse);
+
+            if (opndDesc->IsRegDef() && !cgFunc->IsStackMapComputed() &&
+                regOpnd.GetBaseRefOpnd() != nullptr) {
+                uint32 regNO = regOpnd.GetRegisterNumber();
+                // set the base reference of derived reference for stackmap
+                derivedRef2Base[regNO] = regOpnd.GetBaseRefOpnd();
+            }
         } else if (opnd.IsMemoryAccessOperand()) {
-            auto &memOpnd = static_cast<MemOperand&>(opnd);
+            auto &memOpnd = static_cast<MemOperand &>(opnd);
             RegOperand *base = memOpnd.GetBaseRegister();
             RegOperand *offset = memOpnd.GetIndexRegister();
             if (base != nullptr) {
@@ -877,7 +890,7 @@ void LSRALinearScanRegAllocator::ComputeLiveIntervalForEachOperand(Insn &insn)
                 allRegOpndInfo.emplace_back(*offset, k64BitSize, i, false);
             }
         } else if (opnd.IsList()) {
-            auto &listOpnd = static_cast<ListOperand&>(opnd);
+            auto &listOpnd = static_cast<ListOperand &>(opnd);
             for (auto op : listOpnd.GetOperands()) {
                 allRegOpndInfo.emplace_back(*op, op->GetSize(), i, opndDesc->IsDef());
             }
@@ -912,7 +925,8 @@ void LSRALinearScanRegAllocator::ComputeLoopLiveIntervalPriority(const CGFuncLoo
         if (bb->IsEmpty()) {
             continue;
         }
-        FOR_BB_INSNS(insn, bb) {
+        FOR_BB_INSNS(insn, bb)
+        {
             ComputeLoopLiveIntervalPriorityInInsn(*insn);
         }
         loopBBRegSet.clear();
@@ -942,6 +956,29 @@ void LSRALinearScanRegAllocator::ComputeLoopLiveIntervalPriorityInInsn(const Ins
     return;
 }
 
+void LSRALinearScanRegAllocator::ComputeLiveIntervalForCall(Insn &insn)
+{
+    uint32 cnt = 0;
+    // referencemap info
+    auto *stackMapLiveIn = insn.GetStackMapLiveIn();
+    std::set<uint32> setInfo;
+    stackMapLiveIn->GetInfo().ConvertToSet(setInfo);
+    for (auto regNO : setInfo) {
+        if (derivedRef2Base.find(regNO) != derivedRef2Base.end()) {
+            auto baseOpnd = derivedRef2Base[regNO];
+            auto regSize = baseOpnd->GetSize();
+            SetupLiveInterval(*baseOpnd, insn, false, cnt, regSize);
+        }
+    }
+    // deoptinfo
+    if (insn.GetStackMap() != nullptr) {
+        for (auto [_, opnd] : insn.GetStackMap()->GetDeoptInfo().GetDeoptBundleInfo()) {
+            auto regSize = opnd->GetSize();
+            SetupLiveInterval(*opnd, insn, false, cnt, regSize);
+        }
+    }
+}
+
 void LSRALinearScanRegAllocator::ComputeLiveInterval()
 {
     RA_TIMER_REGISTER(lsra, "LSRA ComputeLiveInterval");
@@ -951,7 +988,8 @@ void LSRALinearScanRegAllocator::ComputeLiveInterval()
     uint32 insnNum = 1;
     for (BB *bb : bfs->sortedBBs) {
         ComputeLiveIn(*bb, insnNum);
-        FOR_BB_INSNS(insn, bb) {
+        FOR_BB_INSNS(insn, bb)
+        {
             insn->SetId(insnNum);
             /* skip comment and debug insn */
             if (!insn->IsMachineInstruction()) {
@@ -963,6 +1001,9 @@ void LSRALinearScanRegAllocator::ComputeLiveInterval()
                 if (!insn->GetIsThrow() || !bb->GetEhSuccs().empty()) {
                     callQueue.emplace_back(insn->GetId());
                 }
+                if (!cgFunc->IsStackMapComputed()) {
+                    ComputeLiveIntervalForCall(*insn);
+                }
             }
 
             ComputeLiveIntervalForEachOperand(*insn);
@@ -973,15 +1014,13 @@ void LSRALinearScanRegAllocator::ComputeLiveInterval()
                  * and then their live begins.
                  * next optimization, you can determine which registers are actually used.
                  */
-                    for (uint32 i = 0; i < regInfo->GetIntRetRegsNum(); i++) {
-                        auto *retReg = regInfo->GetOrCreatePhyRegOperand(regInfo->GetIntRetReg(i),
-                                                                         k64BitSize, kRegTyInt);
-                        RecordPhysRegs(*retReg, insnNum, true);
-                    }
-                    for (uint32 i = 0; i < regInfo->GetFpRetRegsNum(); i++) {
-                        auto *retReg = regInfo->GetOrCreatePhyRegOperand(regInfo->GetFpRetReg(i),
-                                                                         k64BitSize, kRegTyFloat);
-                        RecordPhysRegs(*retReg, insnNum, true);
+                for (uint32 i = 0; i < regInfo->GetIntRetRegsNum(); i++) {
+                    auto *retReg = regInfo->GetOrCreatePhyRegOperand(regInfo->GetIntRetReg(i), k64BitSize, kRegTyInt);
+                    RecordPhysRegs(*retReg, insnNum, true);
+                }
+                for (uint32 i = 0; i < regInfo->GetFpRetRegsNum(); i++) {
+                    auto *retReg = regInfo->GetOrCreatePhyRegOperand(regInfo->GetFpRetReg(i), k64BitSize, kRegTyFloat);
+                    RecordPhysRegs(*retReg, insnNum, true);
                 }
             }
             ++insnNum;
@@ -1028,7 +1067,8 @@ void LSRALinearScanRegAllocator::LiveIntervalAnalysis()
     for (uint32 bbIdx = 0; bbIdx < bfs->sortedBBs.size(); ++bbIdx) {
         BB *bb = bfs->sortedBBs[bbIdx];
 
-        FOR_BB_INSNS(insn, bb) {
+        FOR_BB_INSNS(insn, bb)
+        {
             /* 1 calculate live interfere */
             if (!insn->IsMachineInstruction() || insn->GetId() == 0) {
                 /* New instruction inserted by reg alloc (ie spill) */
@@ -1056,11 +1096,7 @@ void LSRALinearScanRegAllocator::LiveIntervalAnalysis()
                         /* 1.2 simple insert to active */
                         uint32 regNO = regOpnd.GetRegisterNumber();
                         LiveInterval *li = liveIntervalsArray[regNO];
-                        // set the base reference of derived reference for stackmap
-                        if (regOpnd.GetBaseRefOpnd() != nullptr) {
-                            dereivedRef2Base[regNO] = regOpnd.GetBaseRefOpnd()->GetRegisterNumber();
-                        }
-                        if (li->GetFirstDef() == insn->GetId()) {
+                        if (li->GetFirstDef() == insn->GetId() && li->GetStackSlot() != kSpilled) {
                             (void)active.insert(li);
                         }
                     }
@@ -1344,8 +1380,8 @@ void LSRALinearScanRegAllocator::InsertCallerSave(Insn &insn, Operand &opnd, boo
 
     if (!isDef && rli->IsNoNeedReloadPosition(insn.GetId())) {
         if (needDump) {
-            LogInfo::MapleLogger() << "InsertCallerSave R" << rli->GetRegNO() << " assigned "
-                                    << rli->GetAssignedReg() << " skipping\n";
+            LogInfo::MapleLogger() << "InsertCallerSave R" << rli->GetRegNO() << " assigned " << rli->GetAssignedReg()
+                                   << " skipping\n";
         }
         return;
     }
@@ -1417,7 +1453,8 @@ MemOperand *LSRALinearScanRegAllocator::GetSpillMem(uint32 vRegNO, bool isDest, 
                                                     bool &isOutOfRange, uint32 bitSize) const
 {
     MemOperand *memOpnd = regInfo->GetOrCreatSpillMem(vRegNO, bitSize);
-    return regInfo->AdjustMemOperandIfOffsetOutOfRange(memOpnd, vRegNO, isDest, insn, regNO, isOutOfRange);
+    return regInfo->AdjustMemOperandIfOffsetOutOfRange(memOpnd, std::make_pair(vRegNO, regNO), isDest, insn,
+                                                       isOutOfRange);
 }
 
 /*
@@ -1514,7 +1551,7 @@ void LSRALinearScanRegAllocator::SpillOperand(Insn &insn, Operand &opnd, bool is
         if (li->GetLastUse() == insn.GetId() && !cgFunc->IsRegReference(regNO)) {
             regInfo->FreeSpillRegMem(regNO);
         }
-        if (CGOptions::kVerboseCG) {
+        if (CGOptions::GetInstance().GenerateVerboseCG()) {
             std::string comment = " SPILL vreg:" + std::to_string(regNO);
             stInsn->SetComment(comment);
         }
@@ -1540,7 +1577,7 @@ void LSRALinearScanRegAllocator::SpillOperand(Insn &insn, Operand &opnd, bool is
         if (li->GetLastUse() == insn.GetId() && !cgFunc->IsRegReference(regNO)) {
             regInfo->FreeSpillRegMem(regNO);
         }
-        if (CGOptions::kVerboseCG) {
+        if (CGOptions::GetInstance().GenerateVerboseCG()) {
             std::string comment = " RELOAD vreg" + std::to_string(regNO);
             ldInsn->SetComment(comment);
         }
@@ -1728,8 +1765,8 @@ uint32 LSRALinearScanRegAllocator::AssignPhysRegs(LiveInterval &li)
         li.SetAssignedReg(regNO);
         if (regInfo->IsCalleeSavedReg(regNO)) {
             if (needDump) {
-                LogInfo::MapleLogger()
-                    << "\tCallee-save register for save/restore in prologue/epilogue: " << regNO << "\n";
+                LogInfo::MapleLogger() << "\tCallee-save register for save/restore in prologue/epilogue: " << regNO
+                                       << "\n";
             }
             cgFunc->AddtoCalleeSaved(regNO);
         }
@@ -1833,7 +1870,6 @@ RegOperand *LSRALinearScanRegAllocator::GetReplaceOpnd(Insn &insn, Operand &opnd
     return phyOpnd;
 }
 
-
 bool LSRALinearScanRegAllocator::CallerSaveOpt::UpdateLocalDefWithBBLiveIn(const BB &bb)
 {
     bool changed = false;
@@ -1908,7 +1944,8 @@ void LSRALinearScanRegAllocator::CallerSaveOpt::Run()
                 continue;
             }
             changed = true;
-            FOR_BB_INSNS(insn, bb) {
+            FOR_BB_INSNS(insn, bb)
+            {
                 if (!insn->IsMachineInstruction() || insn->GetId() == 0) {
                     continue;
                 }
@@ -1926,7 +1963,8 @@ void LSRALinearScanRegAllocator::FinalizeRegisters()
     CallerSaveOpt opt(liveIntervalsArray, bfs);
     opt.Run();
     for (BB *bb : bfs->sortedBBs) {
-        FOR_BB_INSNS(insn, bb) {
+        FOR_BB_INSNS(insn, bb)
+        {
             if (!insn->IsMachineInstruction() || insn->GetId() == 0) {
                 continue;
             }
@@ -1960,7 +1998,7 @@ void LSRALinearScanRegAllocator::FinalizeRegisters()
                     insn->SetOperand(i, *newList);
                 } else if (opnd.IsMemoryAccessOperand()) {
                     auto *memOpnd =
-                        static_cast<MemOperand*>(static_cast<MemOperand&>(opnd).Clone(*cgFunc->GetMemoryPool()));
+                        static_cast<MemOperand *>(static_cast<MemOperand &>(opnd).Clone(*cgFunc->GetMemoryPool()));
                     DEBUG_ASSERT(memOpnd != nullptr,
                                  "memopnd is null in LSRALinearScanRegAllocator::FinalizeRegisters");
                     insn->SetOperand(i, *memOpnd);
@@ -2035,6 +2073,34 @@ void LSRALinearScanRegAllocator::FinalizeRegisters()
     }
 }
 
+void LSRALinearScanRegAllocator::SetStackMapDerivedInfo()
+{
+    for (BB *bb : bfs->sortedBBs) {
+        FOR_BB_INSNS(insn, bb) {
+            if (!insn->IsMachineInstruction() || insn->GetId() == 0) {
+                continue;
+            }
+            const InsnDesc *md = insn->GetDesc();
+            uint32 opndNum = insn->GetOperandSize();
+            for (uint32 i = 0; i < opndNum; ++i) {
+                const OpndDesc *regProp = md->GetOpndDes(i);
+                DEBUG_ASSERT(regProp != nullptr,
+                    "pointer is null in LSRALinearScanRegAllocator::SetStackMapDerivedInfo");
+                bool isDef = regProp->IsRegDef();
+                Operand &opnd = insn->GetOperand(i);
+                if (isDef) {
+                    auto &regOpnd = static_cast<RegOperand &>(opnd);
+                    uint32 regNO = regOpnd.GetRegisterNumber();
+                    if (regOpnd.GetBaseRefOpnd() != nullptr) {
+                        // set the base reference of derived reference for stackmap
+                        derivedRef2Base[regNO] = regOpnd.GetBaseRefOpnd();
+                    }
+                }
+            }
+        }
+    }
+}
+
 void LSRALinearScanRegAllocator::CollectReferenceMap()
 {
     RA_TIMER_REGISTER(lsra, "LSRA CollectReferenceMap");
@@ -2058,25 +2124,27 @@ void LSRALinearScanRegAllocator::CollectReferenceMap()
             }
 
             if (li->IsShouldSave() || li->GetStackSlot() == kSpilled) {
-                auto itr = dereivedRef2Base.find(regNO);
-                if (itr != dereivedRef2Base.end()) {
-                    MemOperand *baseRegMemOpnd = cgFunc->GetOrCreatSpillMem(itr->second, k64BitSize);
+                auto itr = derivedRef2Base.find(regNO);
+                if (itr != derivedRef2Base.end()) {
+                    auto baseRegNum = (itr->second)->GetRegisterNumber();
+                    MemOperand *baseRegMemOpnd = cgFunc->GetOrCreatSpillMem(baseRegNum, k64BitSize);
                     int64 baseRefMemoffset = baseRegMemOpnd->GetOffsetImmediate()->GetOffsetValue();
                     insn->GetStackMap()->GetReferenceMap().ReocordStackRoots(baseRefMemoffset);
                     if (needDump) {
-                        LogInfo::MapleLogger() << "--------insn id: " << insn->GetId() << " base regNO: " << itr->second
-                                               << " offset: " << baseRefMemoffset << std::endl;
+                        LogInfo::MapleLogger() << "--------insn id: " << insn->GetId()
+                                               << " base regNO: " << baseRegNum << " offset: "
+                                               << baseRefMemoffset << std::endl;
                     }
                 }
                 MemOperand *memOperand = cgFunc->GetOrCreatSpillMem(regNO, k64BitSize);
                 int64 offset = memOperand->GetOffsetImmediate()->GetOffsetValue();
                 insn->GetStackMap()->GetReferenceMap().ReocordStackRoots(offset);
-                if (itr == dereivedRef2Base.end()) {
+                if (itr == derivedRef2Base.end()) {
                     insn->GetStackMap()->GetReferenceMap().ReocordStackRoots(offset);
                 }
                 if (needDump) {
-                    LogInfo::MapleLogger() << "--------insn id: " << insn->GetId() << " regNO: " << regNO << " offset: "
-                                           << offset << std::endl;
+                    LogInfo::MapleLogger() << "--------insn id: " << insn->GetId() << " regNO: " << regNO
+                                           << " offset: " << offset << std::endl;
                 }
             } else {
                 // li->GetAssignedReg - R0/RAX?
@@ -2128,7 +2196,7 @@ void LSRALinearScanRegAllocator::SolveMemOpndDeoptInfo(const MemOperand &memOpnd
 
 void LSRALinearScanRegAllocator::CollectDeoptInfo()
 {
-    RA_TIMER_REGISTER(lsra, "LSRA CollectReferenceMap");
+    RA_TIMER_REGISTER(lsra, "LSRA CollectDeoptInfo");
     const auto referenceMapInsns = cgFunc->GetStackMapInsns();
     for (auto *insn : referenceMapInsns) {
         auto &deoptInfo = insn->GetStackMap()->GetDeoptInfo();
@@ -2231,6 +2299,12 @@ void LSRALinearScanRegAllocator::LinearScanRegAllocator()
     }
 }
 
+void LSRALinearScanRegAllocator::CollectStackMapInfo()
+{
+    CollectReferenceMap();
+    CollectDeoptInfo();
+}
+
 /* Main entrance for the LSRA register allocator */
 bool LSRALinearScanRegAllocator::AllocateRegisters()
 {
@@ -2244,7 +2318,12 @@ bool LSRALinearScanRegAllocator::AllocateRegisters()
         DotGenerator::GenerateDot("RAe", *cgFunc, mirModule, true);
         LogInfo::MapleLogger() << "Entering LinearScanRegAllocator: " << cgFunc->GetName() << "\n";
     }
+
     ComputeLiveInterval();
+
+    if (!cgFunc->IsStackMapComputed()) {
+        SpillStackMapInfo();
+    }
 
     if (needDump) {
         PrintLiveRangesGraph();
@@ -2255,7 +2334,6 @@ bool LSRALinearScanRegAllocator::AllocateRegisters()
         LiveIntervalAnalysis();
     }
 
-    SpillStackMapInfo();
     InitFreeRegPool();
 
     LinearScanRegAllocator();
@@ -2266,8 +2344,9 @@ bool LSRALinearScanRegAllocator::AllocateRegisters()
 
     FinalizeRegisters();
 
-    CollectReferenceMap();
-    CollectDeoptInfo();
+    if (!cgFunc->IsStackMapComputed()) {
+        CollectStackMapInfo();
+    }
 
     if (needDump) {
         LogInfo::MapleLogger() << "Total " << spillCount << " spillCount in " << cgFunc->GetName() << " \n";

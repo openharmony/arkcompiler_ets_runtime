@@ -156,7 +156,12 @@ public:
     // memory
     GateRef Load(VariableType type, GateRef base, GateRef offset);
     GateRef Load(VariableType type, GateRef base);
-    void Store(VariableType type, GateRef glue, GateRef base, GateRef offset, GateRef value);
+    void Store(VariableType type,
+               GateRef glue,
+               GateRef base,
+               GateRef offset,
+               GateRef value,
+               MemoryOrder order = MemoryOrder::Default());
     // arithmetic
     GateRef TaggedCastToIntPtr(GateRef x);
     GateRef Int16Add(GateRef x, GateRef y);
@@ -355,6 +360,8 @@ public:
     GateRef IsAccessor(GateRef attr);
     GateRef IsInlinedProperty(GateRef attr);
     GateRef IsField(GateRef attr);
+    GateRef IsNonSharedStoreField(GateRef attr);
+    GateRef IsStoreShared(GateRef attr);
     GateRef IsElement(GateRef attr);
     GateRef IsStringElement(GateRef attr);
     GateRef IsStringLength(GateRef attr);
@@ -440,7 +447,8 @@ public:
     void SetPrototypeToHClass(VariableType type, GateRef glue, GateRef hClass, GateRef proto);
     void SetProtoChangeDetailsToHClass(VariableType type, GateRef glue, GateRef hClass,
                                        GateRef protoChange);
-    void SetLayoutToHClass(VariableType type, GateRef glue, GateRef hClass, GateRef attr);
+    void SetLayoutToHClass(
+        VariableType type, GateRef glue, GateRef hClass, GateRef attr, MemoryOrder order = MemoryOrder::Default());
     void SetHClassTypeIDToHClass(GateRef glue, GateRef hClass, GateRef id);
     void SetEnumCacheToHClass(VariableType type, GateRef glue, GateRef hClass, GateRef key);
     void SetTransitionsToHClass(VariableType type, GateRef glue, GateRef hClass, GateRef transition);
@@ -470,6 +478,10 @@ public:
     GateRef GetValueFromMutantTaggedArray(GateRef elements, GateRef index);
     void CheckUpdateSharedType(bool isDicMode, Variable *result, GateRef glue, GateRef jsType, GateRef attr,
                                GateRef value, Label *executeSetProp, Label *exit);
+    void MatchTrackType(Variable *result, GateRef glue, GateRef trackType, GateRef value, Label *executeSetProp,
+                               Label *exit);
+    GateRef GetTrackTypeFromHandler(GateRef attr);
+    GateRef ClearSharedStoreKind(GateRef handlerInfo);
     GateRef GetTaggedValueWithElementsKind(GateRef receiver, GateRef index);
     GateRef SetValueWithElementsKind(GateRef glue, GateRef receiver, GateRef rawValue, GateRef index,
                                      GateRef needTransition, GateRef extraKind);
