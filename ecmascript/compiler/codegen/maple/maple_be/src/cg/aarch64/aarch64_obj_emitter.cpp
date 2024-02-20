@@ -284,13 +284,6 @@ void AArch64ObjEmitter::AppendGlobalLabel()
 
 void AArch64ObjEmitter::AppendSymsToSymTabSec()
 {
-    // section symbol
-    AddSymbol(".text", textSection->GetDataSize(), *textSection, 0);
-    /* Indexed by the inverse of the section index. */
-    symbolTabSection->AppendIdxInSymbols(~textSection->GetIndex() + 1);
-    AddSymbol(".data", dataSection->GetDataSize(), *dataSection, 0);
-    symbolTabSection->AppendIdxInSymbols(~dataSection->GetIndex() + 1);
-
     Address offset = 0;
     auto &contents = GetContents();
     for (auto *content : contents) {

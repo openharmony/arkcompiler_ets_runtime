@@ -289,6 +289,16 @@ public:
         return symbolIdxMap.count(symIdx) != 0;
     }
 
+    uint32 GetDataSize() const
+    {
+        return symbols.size() * sizeof(Symbol);
+    }
+
+    const char *GetAddr()
+    {
+        return reinterpret_cast<const char*>(symbols.data());
+    }
+
 private:
     std::vector<Symbol> symbols;
     std::unordered_map<int64, uint64> symbolIdxMap;
