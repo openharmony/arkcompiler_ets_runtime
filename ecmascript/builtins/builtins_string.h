@@ -46,7 +46,7 @@
     /* String.prototype.charCodeAt ( pos ) */                                       \
     V("charCodeAt",        CharCodeAt,        1, StringCharCodeAt)                  \
     /* String.prototype.codePointAt ( pos ) */                                      \
-    V("codePointAt",       CodePointAt,       1, INVALID)                           \
+    V("codePointAt",       CodePointAt,       1, StringCodePointAt)                 \
     /* String.prototype.concat ( ...args ) */                                       \
     V("concat",            Concat,            1, INVALID)                           \
     /* String.prototype.endsWith ( searchString [ , endPosition ] ) */              \

@@ -41,3 +41,15 @@ print(str4.charAt(4));
 print(str5.charAt(4));
 obj[str5.charAt(4)] = 'jjj4';
 print(obj.k);
+
+
+var str6 = "wojjj*432$@#$";
+var str7 = "Π我的gljds&(%怕jfd"
+print(str6.codePointAt(3));
+print(str6.codePointAt(9));
+print(str6.codePointAt(12));
+print(str6.codePointAt(28));
+print(str7.codePointAt(0));
+print(str6.codePointAt(1));
+print(str6.codePointAt(12));
+print(str6.codePointAt(284));

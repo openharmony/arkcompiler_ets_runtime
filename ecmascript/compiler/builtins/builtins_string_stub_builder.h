@@ -35,6 +35,7 @@ public:
     void FromCharCode(GateRef glue, GateRef thisValue, GateRef numArgs, Variable* res, Label *exit, Label *slowPath);
     void CharAt(GateRef glue, GateRef thisValue, GateRef numArgs, Variable* res, Label *exit, Label *slowPath);
     void CharCodeAt(GateRef glue, GateRef thisValue, GateRef numArgs, Variable* res, Label *exit, Label *slowPath);
+    void CodePointAt(GateRef glue, GateRef thisValue, GateRef numArgs, Variable* res, Label *exit, Label *slowPath);
     void IndexOf(GateRef glue, GateRef thisValue, GateRef numArgs, Variable* res, Label *exit, Label *slowPath);
     void Substring(GateRef glue, GateRef thisValue, GateRef numArgs, Variable* res, Label *exit, Label *slowPath);
     void Replace(GateRef glue, GateRef thisValue, GateRef numArgs, Variable *res, Label *exit, Label *slowPath);
@@ -81,6 +82,8 @@ private:
     GateRef GetSingleCharCodeFromLineString(GateRef str, GateRef index);
     GateRef GetSingleCharCodeFromSlicedString(GateRef str, GateRef index);
     GateRef GetSubString(GateRef glue, GateRef thisValue, GateRef from, GateRef len);
+    void CheckParamsAndGetPosition(GateRef glue, GateRef thisValue, GateRef numArgs,
+        Variable* pos, Label *exit, Label *slowPath, Label *posIsValid);
 };
 
 class FlatStringStubBuilder : public StubBuilder {
