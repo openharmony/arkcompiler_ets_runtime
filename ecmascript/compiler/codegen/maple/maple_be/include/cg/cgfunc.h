@@ -1619,11 +1619,20 @@ public:
         return exitBBLost;
     }
 
+    void SetHasBuiltCfg(bool hasBuilt)
+    {
+        hasBuiltCfg = hasBuilt;
+    }
+
+    bool HasBuiltCfg() const
+    {
+        return hasBuiltCfg;
+    }
+
     bool GetWithSrc() const
     {
         return withSrc;
     }
-
 protected:
     uint32 firstMapleIrVRegNO = 200; /* positioned after physical regs */
     uint32 firstNonPregVRegNO;
@@ -1841,7 +1850,7 @@ private:
     bool hasAsm = false;
     bool useFP = true;
     bool seenFP = true;
-
+    bool hasBuiltCfg = false;
     bool isStackMapComputed = false;
 
     /* save stack protect kinds which can trigger stack protect */

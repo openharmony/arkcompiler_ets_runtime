@@ -63,6 +63,7 @@ uint32 CGOptions::loopAlignPow = 4;
 uint32 CGOptions::jumpAlignPow = 5;
 uint32 CGOptions::funcAlignPow = 5;
 bool CGOptions::doOptimizedFrameLayout = true;
+bool CGOptions::supportFuncSymbol = false;
 #if TARGAARCH64 || TARGRISCV64
 bool CGOptions::useBarriersForVolatile = false;
 #else
@@ -176,6 +177,10 @@ bool CGOptions::SolveOptions(bool isDebug)
             }
             LogInfo::MapleLogger() << "cg options: " << printOpt << '\n';
         }
+    }
+
+    if (opts::cg::supportFuncSymbol.IsEnabledByUser()) {
+        opts::cg::supportFuncSymbol ? EnableSupportFuncSymbol() : DisableSupportFuncSymbol();
     }
 
     if (opts::cg::quiet.IsEnabledByUser()) {
@@ -796,7 +801,8 @@ void CGOptions::EnableLiteCG()
     doWriteRefFieldOpt = false;
     doAlignAnalysis = false;
     doCondBrAlign = false;
-
+    supportFuncSymbol = false;
+    
     ClearOption(kUseStackProtectorStrong);
     ClearOption(kUseStackProtectorAll);
     ClearOption(kConstFold);

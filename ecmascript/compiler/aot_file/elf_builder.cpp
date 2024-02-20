@@ -101,7 +101,7 @@ void ElfBuilder::DumpSection() const
 }
 
 ElfBuilder::ElfBuilder(const std::vector<ModuleSectionDes> &des,
-                       const std::vector<ElfSecName> &sections): des_(des), sections_(sections)
+    const std::vector<ElfSecName> &sections): des_(des), sections_(sections)
 {
     Initialize();
     AddShStrTabSection();

@@ -25,13 +25,14 @@ class CompilerLog;
 
 class LiteCGAssembler : public Assembler {
 public:
-    explicit LiteCGAssembler(LMIRModule &module);
+    explicit LiteCGAssembler(LMIRModule &module, const std::vector<std::string> &litecgOptions);
     virtual ~LiteCGAssembler() = default;
     void Run(const CompilerLog &log, bool fastCompileMode) override;
     void CollectAnStackMap(CGStackMapInfo &stackMapInfo);
 
 private:
     LMIRModule &lmirModule;
+    const std::vector<std::string> &litecgOptions;
 };
 
 class LiteCGIRGeneratorImpl : public CodeGeneratorImpl {
