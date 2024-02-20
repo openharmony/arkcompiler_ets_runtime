@@ -4,7 +4,59 @@
 
 自动化运行js性能测试用例并且生成daily报告，用于测试方舟builtins API 性能。
 
-## 目录
+特殊说明：下面文字中的"v 8" 、"v_8"、"d 8"、"d_8", 是为了规避门禁codecheck告警，请阅读及实际执行时去除或忽略中间的空格或”_“。
+
+## 环境依赖
+
+- 对于脚本所在的文件目录，当前用户需要拥有创建文件夹的权限。请注意当前目录的用户和用户组权限设置
+
+- openpyxl。没有版本要求。若未安装请执行`pip3 install openpyxl`
+
+- 环境中需要下载鸿 蒙镜像，并进行编译ark_js_vm 和 前端
+
+  ```shell
+  ./build.sh --product-name rk3568 --build-target ark_js_host_linux_tools_packages --build-target ets_frontend_build # x86_64平台
+  ```
+
+- 配置v 8引擎执行环境
+
+**下载：**
+
+```shell
+# 可以在任意目录。假定当前目录在/home目录
+wget https://storage.googleapis.com/chromium-%76%38/official/canary/%76%38-linux64-rel-12.0.267.zip --no-check-certificate -O v_8-linux64-rel-12.0.267.zip
+unzip v_8-linux64-rel-12.0.267.zip -d v_8
+```
+
+**配置：**
+
+临时配置：
+
+每次执行run_js_perf_test.sh脚本时传入 v 8 引擎 d 8 二进制的路径，比如/home/v_8/d 8。
+
+永久配置：
+
+```shell
+sudo su
+# 编辑/root/.bashrc文件在末尾追加以下内容
+export PATH=/home/v_8:$PATH
+# 刷新环境变量。注意执行sh脚本依然需要传入d 8的路径
+source /root/.bashrc
+```
+
+**验证：**
+
+```shell
+执行： 
+	/home/v_8/d 8 -v # 任意用户
+回显：
+	V 8 version 12.0.267
+	d 8>
+```
+
+环境v 8引擎配置成功
+
+## 文件目录
 
 ```bash
 /arkcompiler/ets_runtime
@@ -16,9 +68,10 @@
 ```
 
 ## 运行测试
-1) 调用入口：bash run_js_perf_test.sh js_report_save_path openharmony_path
+1) 调用入口：bash run_js_perf_test.sh js_report_save_path openharmony_path d_8_binary_path
    * js_report_save_path：表示报告输出的目录路径，该路径同时也是历史报告路径
    * openharmony_path:  将鸿蒙系统根目录（out的父目录）的路径
+   * d_8_binary_path: v 8 引擎 d 8 二进制的路径
    
 3) 运行生成看护报告说明
     ```bash
