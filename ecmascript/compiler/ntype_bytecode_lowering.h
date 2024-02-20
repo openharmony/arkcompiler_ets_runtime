@@ -48,6 +48,8 @@ private:
     void Lower(GateRef gate);
     void LowerNTypedCreateEmptyArray(GateRef gate);
     void LowerNTypedCreateArrayWithBuffer(GateRef gate);
+    void LowerNTypedCopyRestArgs(GateRef gate);
+    void LowerNTypedGetUnmappedArgs(GateRef gate);
     void LowerNTypedStownByIndex(GateRef gate);
     void LowerLdLexVar(GateRef gate);
     void LowerStLexVar(GateRef gate);

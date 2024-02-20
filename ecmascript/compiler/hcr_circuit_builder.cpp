@@ -437,6 +437,22 @@ GateRef CircuitBuilder::CreateArrayWithBuffer(ElementsKind kind, ArrayMetaDataAc
     return newGate;
 }
 
+GateRef CircuitBuilder::CreateArguments(ElementsKind kind, CreateArgumentsAccessor::Mode mode, GateRef restIdx)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    auto frameState = acc_.FindNearestFrameState(currentDepend);
+    CreateArgumentsAccessor accessor(kind, mode);
+    GateRef newGate = GetCircuit()->NewGate(circuit_->CreateArguments(accessor.ToValue()),
+                                            MachineType::I64,
+                                            { currentControl, currentDepend, restIdx, frameState },
+                                            GateType::NJSValue());
+    currentLabel->SetControl(newGate);
+    currentLabel->SetDepend(newGate);
+    return newGate;
+}
+
 void CircuitBuilder::SetPropertyInlinedProps(GateRef glue, GateRef obj, GateRef hClass,
     GateRef value, GateRef attrOffset, VariableType type)
 {

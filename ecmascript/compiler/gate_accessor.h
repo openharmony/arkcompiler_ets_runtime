@@ -414,6 +414,7 @@ public:
     TypedBinaryAccessor GetTypedBinaryAccessor(GateRef gate) const;
     TypedJumpAccessor GetTypedJumpAccessor(GateRef gate) const;
     ArrayMetaDataAccessor GetArrayMetaDataAccessor(GateRef gate) const;
+    CreateArgumentsAccessor GetCreateArgumentsAccessor(GateRef gate) const;
     ObjectTypeAccessor GetObjectTypeAccessor(GateRef gate) const;
     BuiltinPrototypeHClassAccessor GetBuiltinHClassAccessor(GateRef gate) const;
     TypedArrayMetaDateAccessor GetTypedArrayMetaDateAccessor(GateRef gate) const;

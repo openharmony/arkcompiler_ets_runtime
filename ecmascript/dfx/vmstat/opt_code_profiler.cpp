@@ -108,7 +108,8 @@ void OptCodeProfiler::FilterMethodToPrint()
 
 void OptCodeProfiler::PrintMethodRecord(Key key, std::string methodName)
 {
-    LOG_ECMA(INFO) << "==== methodId: " << key.GetMehodId() << ", methodName: " << methodName.c_str()
+    LOG_ECMA(INFO) << "==== methodId: " << key.GetMethodId()
+                   << ", methodName: " << methodName.c_str()
                    << ", abcName: " << abcNames_[key.GetAbcId()] << " ====";
 
     static constexpr int nameRightAdjustment = 46;
