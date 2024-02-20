@@ -2653,6 +2653,12 @@ inline void StubBuilder::SetHomeObjectToFunction(GateRef glue, GateRef function,
     Store(VariableType::JS_ANY(), glue, function, offset, value);
 }
 
+inline void StubBuilder::SetModuleToFunction(GateRef glue, GateRef function, GateRef value)
+{
+    GateRef offset = IntPtr(JSFunction::ECMA_MODULE_OFFSET);
+    Store(VariableType::JS_POINTER(), glue, function, offset, value);
+}
+
 inline void StubBuilder::SetWorkNodePointerToFunction(GateRef glue, GateRef function, GateRef value)
 {
     GateRef offset = IntPtr(JSFunction::WORK_NODE_POINTER_OFFSET);

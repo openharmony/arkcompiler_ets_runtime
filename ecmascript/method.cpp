@@ -104,22 +104,4 @@ JSHandle<Method> Method::Create(JSThread *thread, const JSPandaFile *jsPandaFile
     method->SetConstantPool(thread, newConstpool);
     return method;
 }
-
-const JSTaggedValue Method::GetRecordName() const
-{
-    JSTaggedValue module = GetModule();
-    if (module.IsSourceTextModule()) {
-        JSTaggedValue recordName = SourceTextModule::Cast(module.GetTaggedObject())->GetEcmaModuleRecordName();
-        if (!recordName.IsString()) {
-            LOG_INTERPRETER(DEBUG) << "module record name is undefined";
-            return JSTaggedValue::Hole();
-        }
-        return recordName;
-    }
-    if (module.IsString()) {
-        return module;
-    }
-    LOG_INTERPRETER(DEBUG) << "record name is undefined";
-    return JSTaggedValue::Hole();
-}
 } // namespace panda::ecmascript

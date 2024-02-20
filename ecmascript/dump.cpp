@@ -1695,6 +1695,9 @@ void JSFunction::Dump(std::ostream &os) const
     os << " - Method: ";
     GetMethod().Dump(os);
     os << "\n";
+    os << " - Module: ";
+    GetModule().Dump(os);
+    os << "\n";
     JSObject::Dump(os);
 }
 
@@ -3899,9 +3902,6 @@ void Method::Dump(std::ostream &os) const
     os << " - ConstantPool: ";
     GetConstantPool().Dump(os);
     os << "\n";
-    os << " - Module: ";
-    GetModule().Dump(os);
-    os << "\n";
     os << " - FunctionKind: " << static_cast<int>(GetFunctionKind());
     os << "\n";
     os << " - CodeEntryOrLiteral: " << std::hex << GetCodeEntryOrLiteral() << "\n";
@@ -4772,6 +4772,8 @@ void JSFunction::DumpForSnapshot(std::vector<Reference> &vec) const
     vec.emplace_back(CString("LexicalEnv"), GetLexicalEnv());
     vec.emplace_back(CString("ProfileTypeInfo"), GetProfileTypeInfo());
     vec.emplace_back(CString("HomeObject"), GetHomeObject());
+    vec.emplace_back(CString("Module"), GetModule());
+    vec.emplace_back(CString("Method"), GetMethod());
     vec.emplace_back(CString("FunctionKind"), JSTaggedValue(static_cast<int>(GetFunctionKind())));
     vec.emplace_back(CString("FunctionExtraInfo"), GetFunctionExtraInfo());
     JSObject::DumpForSnapshot(vec);
@@ -4780,7 +4782,6 @@ void JSFunction::DumpForSnapshot(std::vector<Reference> &vec) const
 void Method::DumpForSnapshot(std::vector<Reference> &vec) const
 {
     vec.emplace_back(CString("ConstantPool"), GetConstantPool());
-    vec.emplace_back(CString("Module"), GetModule());
 }
 
 void Program::DumpForSnapshot(std::vector<Reference> &vec) const

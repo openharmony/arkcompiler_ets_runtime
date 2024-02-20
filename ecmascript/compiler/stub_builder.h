@@ -643,6 +643,7 @@ public:
     void SetProtoOrHClassToFunction(GateRef glue, GateRef function, GateRef value);
     void SetWorkNodePointerToFunction(GateRef glue, GateRef function, GateRef value);
     void SetHomeObjectToFunction(GateRef glue, GateRef function, GateRef value);
+    void SetModuleToFunction(GateRef glue, GateRef function, GateRef value);
     void SetMethodToFunction(GateRef glue, GateRef function, GateRef value);
     void SetCodeEntryToFunction(GateRef glue, GateRef function, GateRef value);
     void SetLengthToFunction(GateRef glue, GateRef function, GateRef value);
@@ -667,7 +668,7 @@ public:
     inline GateRef GetObjectFromConstPool(GateRef constpool, GateRef index);
     GateRef GetConstPoolFromFunction(GateRef jsFunc);
     GateRef GetStringFromConstPool(GateRef glue, GateRef constpool, GateRef index);
-    GateRef GetMethodFromConstPool(GateRef glue, GateRef constpool, GateRef index, GateRef module);
+    GateRef GetMethodFromConstPool(GateRef glue, GateRef constpool, GateRef index);
     GateRef GetArrayLiteralFromConstPool(GateRef glue, GateRef constpool, GateRef index, GateRef module);
     GateRef GetObjectLiteralFromConstPool(GateRef glue, GateRef constpool, GateRef index, GateRef module);
     void SetExtensibleToBitfield(GateRef glue, GateRef obj, bool isExtensible);

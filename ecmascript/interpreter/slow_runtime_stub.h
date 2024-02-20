@@ -152,7 +152,7 @@ public:
                                          JSTaggedValue array);
     static JSTaggedValue DynamicImport(JSThread *thread, JSTaggedValue specifier, JSTaggedValue func);
     static JSTaggedValue DefineMethod(JSThread *thread, Method *method, JSTaggedValue homeObject,
-                                      uint16_t length, JSTaggedValue env);
+                                      uint16_t length, JSTaggedValue env, JSTaggedValue module);
     static JSTaggedValue LdSendableClass(JSThread *thread, JSTaggedValue env, uint16_t level);
     static JSTaggedValue LdSuperByValue(JSThread *thread, JSTaggedValue obj, JSTaggedValue key, JSTaggedValue thisFunc);
     static JSTaggedValue StSuperByValue(JSThread *thread, JSTaggedValue obj, JSTaggedValue key, JSTaggedValue value,

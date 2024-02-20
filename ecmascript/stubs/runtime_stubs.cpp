@@ -1208,9 +1208,8 @@ DEF_RUNTIME_STUBS(GetMethodFromCache)
     RUNTIME_STUBS_HEADER(GetMethodFromCache);
     JSHandle<JSTaggedValue> constpool = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
     JSTaggedValue index = GetArg(argv, argc, 1);  // 1: means the first parameter
-    JSHandle<JSTaggedValue> module = GetHArg<JSTaggedValue>(argv, argc, 2); // 2: means the second parameter
     return ConstantPool::GetMethodFromCache(
-        thread, constpool.GetTaggedValue(), module.GetTaggedValue(), index.GetInt()).GetRawData();
+        thread, constpool.GetTaggedValue(), index.GetInt()).GetRawData();
 }
 
 DEF_RUNTIME_STUBS(GetStringFromCache)
@@ -2279,7 +2278,8 @@ DEF_RUNTIME_STUBS(DefineMethod)
     JSHandle<JSTaggedValue> homeObject = GetHArg<JSTaggedValue>(argv, argc, 1);  // 1: means the first parameter
     uint16_t length = static_cast<uint16_t>(GetArg(argv, argc, 2).GetInt()); // 2: means the second parameter
     JSHandle<JSTaggedValue> env = GetHArg<JSTaggedValue>(argv, argc, 3); // 3: means the third parameter
-    return RuntimeDefineMethod(thread, method, homeObject, length, env).GetRawData();
+    JSHandle<JSTaggedValue> module = GetHArg<JSTaggedValue>(argv, argc, 4); // 4: means the fourth parameter
+    return RuntimeDefineMethod(thread, method, homeObject, length, env, module).GetRawData();
 }
 
 DEF_RUNTIME_STUBS(CallSpread)

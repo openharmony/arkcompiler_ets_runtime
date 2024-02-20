@@ -2649,7 +2649,7 @@ void SlowPathLowering::LowerDefineMethod(GateRef gate)
     Label successExit(&builder_);
     Label exceptionExit(&builder_);
     GateRef result = LowerCallRuntime(gate, RTSTUB_ID(DefineMethod),
-        {method, homeObject, builder_.ToTaggedInt(length), env}, true);
+        {method, homeObject, builder_.ToTaggedInt(length), env, builder_.GetModuleFromFunction(jsFunc)}, true);
     builder_.Branch(builder_.IsSpecial(result, JSTaggedValue::VALUE_EXCEPTION),
         &exceptionExit, &successExit);
     CREATE_DOUBLE_EXIT(successExit, exceptionExit)

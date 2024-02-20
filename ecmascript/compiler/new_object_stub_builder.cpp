@@ -496,7 +496,7 @@ GateRef NewObjectStubBuilder::LoadHClassFromMethod(GateRef glue, GateRef method)
     return ret;
 }
 
-GateRef NewObjectStubBuilder::NewJSFunction(GateRef glue, GateRef constpool, GateRef module, GateRef index)
+GateRef NewObjectStubBuilder::NewJSFunction(GateRef glue, GateRef constpool, GateRef index)
 {
     auto env = GetEnvironment();
     Label subentry(env);
@@ -519,7 +519,7 @@ GateRef NewObjectStubBuilder::NewJSFunction(GateRef glue, GateRef constpool, Gat
         }
     }
     Bind(&afterAOTLiteral);
-    GateRef method = GetMethodFromConstPool(glue, constpool, module, index);
+    GateRef method = GetMethodFromConstPool(glue, constpool, index);
     GateRef hclass = LoadHClassFromMethod(glue, method);
     result = NewJSObject(glue, hclass);
     SetExtensibleToBitfield(glue, hclass, true);
@@ -558,8 +558,7 @@ void NewObjectStubBuilder::NewJSFunction(GateRef glue, GateRef jsFunc, GateRef i
     Label hasException(env);
     Label notException(env);
     GateRef constPool = GetConstPoolFromFunction(jsFunc);
-    GateRef module = GetModuleFromFunction(jsFunc);
-    result->WriteVariable(NewJSFunction(glue, constPool, module, index));
+    result->WriteVariable(NewJSFunction(glue, constPool, index));
     Branch(HasPendingException(glue), &hasException, &notException);
     Bind(&hasException);
     {
@@ -570,6 +569,7 @@ void NewObjectStubBuilder::NewJSFunction(GateRef glue, GateRef jsFunc, GateRef i
         SetLengthToFunction(glue_, result->ReadVariable(), length);
         SetLexicalEnvToFunction(glue_, result->ReadVariable(), lexEnv);
         SetHomeObjectToFunction(glue_, result->ReadVariable(), GetHomeObjectFromFunction(jsFunc));
+        SetModuleToFunction(glue_, result->ReadVariable(), GetModuleFromFunction(jsFunc));
         Jump(success);
     }
 }

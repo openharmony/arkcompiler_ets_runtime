@@ -393,7 +393,7 @@ void PGOProfiler::HandlePGOPreDump()
         if (!methodValue.IsMethod()) {
             return;
         }
-        JSTaggedValue recordNameValue = Method::Cast(methodValue)->GetRecordName();
+        JSTaggedValue recordNameValue = func->GetRecordName();
         if (!recordNameValue.IsString()) {
             return;
         }
@@ -435,7 +435,7 @@ void PGOProfiler::HandlePGODump(bool force)
             current = PopFromProfileQueue();
             continue;
         }
-        JSTaggedValue recordNameValue = Method::Cast(methodValue)->GetRecordName();
+        JSTaggedValue recordNameValue = func->GetRecordName();
         if (!recordNameValue.IsString()) {
             current = PopFromProfileQueue();
             continue;

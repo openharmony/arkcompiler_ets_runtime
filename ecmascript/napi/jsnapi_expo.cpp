@@ -2345,7 +2345,8 @@ Local<StringRef> FunctionRef::GetSourceCode(const EcmaVM *vm, int lineNumber)
     DebugInfoExtractor *debugExtractor = JSPandaFileManager::GetInstance()->GetJSPtExtractor(jsPandaFile);
     ecmascript::CString entry = JSPandaFile::ENTRY_FUNCTION_NAME;
     if (!jsPandaFile->IsBundlePack()) {
-        JSTaggedValue recordName = method->GetRecordName();
+        JSFunction *function = JSFunction::Cast(func.GetTaggedValue().GetTaggedObject());
+        JSTaggedValue recordName = function->GetRecordName();
         ASSERT(!recordName.IsHole());
         entry = ConvertToString(recordName);
     }

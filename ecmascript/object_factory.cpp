@@ -611,6 +611,7 @@ JSHandle<JSFunction> ObjectFactory::CloneJSFunction(JSHandle<JSFunction> func)
     JSTaggedValue length = func->GetPropertyInlinedProps(JSFunction::LENGTH_INLINE_PROPERTY_INDEX);
     cloneFunc->SetPropertyInlinedProps(thread_, JSFunction::LENGTH_INLINE_PROPERTY_INDEX, length);
     cloneFunc->SetLength(func->GetLength());
+    cloneFunc->SetModule(thread_, func->GetModule());
     return cloneFunc;
 }
 
@@ -623,6 +624,7 @@ JSHandle<JSFunction> ObjectFactory::CloneSFunction(JSHandle<JSFunction> func)
     JSTaggedValue length = func->GetPropertyInlinedProps(JSFunction::LENGTH_INLINE_PROPERTY_INDEX);
     cloneFunc->SetPropertyInlinedProps(thread_, JSFunction::LENGTH_INLINE_PROPERTY_INDEX, length);
     cloneFunc->SetLength(func->GetLength());
+    cloneFunc->SetModule(thread_, func->GetModule());
     return cloneFunc;
 }
 
@@ -1791,7 +1793,6 @@ void ObjectFactory::InitializeMethod(const MethodLiteral *methodLiteral, JSHandl
     }
     method->SetCodeEntryOrLiteral(reinterpret_cast<uintptr_t>(methodLiteral));
     method->SetConstantPool(thread_, JSTaggedValue::Undefined());
-    method->SetModule(thread_, JSTaggedValue::Undefined());
 }
 
 JSHandle<Method> ObjectFactory::NewMethod(const MethodLiteral *methodLiteral, MemSpaceType spaceType)
@@ -1811,8 +1812,8 @@ JSHandle<Method> ObjectFactory::NewMethod(const MethodLiteral *methodLiteral, Me
 }
 
 JSHandle<Method> ObjectFactory::NewMethod(const JSPandaFile *jsPandaFile, MethodLiteral *methodLiteral,
-                                          JSHandle<ConstantPool> constpool, JSHandle<JSTaggedValue> module,
-                                          uint32_t entryIndex, bool needSetAotFlag, bool *canFastCall)
+                                          JSHandle<ConstantPool> constpool, uint32_t entryIndex,
+                                          bool needSetAotFlag, bool *canFastCall)
 {
     JSHandle<Method> method;
     if (jsPandaFile->IsNewVersion()) {
@@ -1820,9 +1821,6 @@ JSHandle<Method> ObjectFactory::NewMethod(const JSPandaFile *jsPandaFile, Method
     } else {
         method = NewMethod(methodLiteral);
         method->SetConstantPool(thread_, constpool);
-    }
-    if (method->GetModule().IsUndefined()) {
-        method->SetModule(thread_, module);
     }
     if (needSetAotFlag) {
         thread_->GetCurrentEcmaContext()->GetAOTFileManager()->

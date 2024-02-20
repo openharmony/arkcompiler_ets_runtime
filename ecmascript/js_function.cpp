@@ -99,6 +99,7 @@ void JSFunction::InitializeWithDefaultValue(JSThread *thread, const JSHandle<JSF
     func->SetMachineCode(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
     func->SetProfileTypeInfo(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
     func->SetMethod(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
+    func->SetModule(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
     func->SetCodeEntry(reinterpret_cast<uintptr_t>(nullptr));
 }
 
@@ -849,6 +850,24 @@ JSHandle<JSHClass> JSFunction::GetOrCreateDerivedJSHClass(JSThread *thread, JSHa
     return newJSHClass;
 }
 
+JSTaggedValue JSFunction::GetRecordName() const
+{
+    JSTaggedValue module = GetModule();
+    if (module.IsSourceTextModule()) {
+        JSTaggedValue recordName = SourceTextModule::Cast(module.GetTaggedObject())->GetEcmaModuleRecordName();
+        if (!recordName.IsString()) {
+            LOG_INTERPRETER(DEBUG) << "module record name is undefined";
+            return JSTaggedValue::Hole();
+        }
+        return recordName;
+    }
+    if (module.IsString()) {
+        return module;
+    }
+    LOG_INTERPRETER(DEBUG) << "record name is undefined";
+    return JSTaggedValue::Hole();
+}
+
 // Those interface below is discarded
 void JSFunction::InitializeJSFunction(JSThread *thread, [[maybe_unused]] const JSHandle<GlobalEnv> &env,
                                       const JSHandle<JSFunction> &func, FunctionKind kind)
@@ -982,7 +1001,7 @@ void JSFunction::InitializeForConcurrentFunction(JSThread *thread)
     JSHandle<ecmascript::SourceTextModule> module = JSHandle<ecmascript::SourceTextModule>::Cast(moduleRecord);
     module->SetStatus(ecmascript::ModuleStatus::INSTANTIATED);
     ecmascript::SourceTextModule::EvaluateForConcurrent(thread, module, method);
-    method->SetModule(thread, module);
+    this->SetModule(thread, module);
 }
 
 void JSFunctionBase::SetCompiledFuncEntry(uintptr_t codeEntry, bool isFastCall)

@@ -1022,14 +1022,15 @@ JSTaggedValue SlowRuntimeStub::SuperCallSpread(JSThread *thread, JSTaggedValue f
 }
 
 JSTaggedValue SlowRuntimeStub::DefineMethod(JSThread *thread, Method *method, JSTaggedValue homeObject,
-                                            uint16_t length, JSTaggedValue env)
+                                            uint16_t length, JSTaggedValue env, JSTaggedValue module)
 {
     INTERPRETER_TRACE(thread, DefineMethod);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<Method> methodHandle(thread, method);
     JSHandle<JSTaggedValue> homeObjectHandle(thread, homeObject);
     JSHandle<JSTaggedValue> envHandle(thread, env);
-    return RuntimeStubs::RuntimeDefineMethod(thread, methodHandle, homeObjectHandle, length, envHandle);
+    JSHandle<JSTaggedValue> moduleHandle(thread, module);
+    return RuntimeStubs::RuntimeDefineMethod(thread, methodHandle, homeObjectHandle, length, envHandle, moduleHandle);
 }
 
 JSTaggedValue SlowRuntimeStub::LdSendableClass(JSThread *thread, JSTaggedValue env, uint16_t level)

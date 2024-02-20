@@ -273,8 +273,7 @@ public:
         return Get(index);
     }
 
-    static JSTaggedValue GetMethodFromCache(
-        JSThread *thread, JSTaggedValue constpool, JSTaggedValue module, uint32_t index)
+    static JSTaggedValue GetMethodFromCache(JSThread *thread, JSTaggedValue constpool, uint32_t index)
     {
         const ConstantPool *taggedPool = ConstantPool::Cast(constpool.GetTaggedObject());
         auto val = taggedPool->GetObjectFromCache(index);
@@ -301,16 +300,14 @@ public:
         [[maybe_unused]] EcmaHandleScope handleScope(thread);
         ASSERT(jsPandaFile->IsNewVersion());
         JSHandle<ConstantPool> constpoolHandle(thread, constpool);
-        JSHandle<JSTaggedValue> moduleHandle(thread, module);
         EcmaVM *vm = thread->GetEcmaVM();
 
         EntityId id = constpoolHandle->GetEntityId(index);
         MethodLiteral *methodLiteral = jsPandaFile->FindMethodLiteral(id.GetOffset());
         ASSERT(methodLiteral != nullptr);
         ObjectFactory *factory = vm->GetFactory();
-        JSHandle<Method> method;
-        method = factory->NewSMethod(jsPandaFile, methodLiteral, constpoolHandle, moduleHandle,
-                                         entryIndex, isLoadedAOT && hasEntryIndex);
+        JSHandle<Method> method = factory->NewSMethod(
+            jsPandaFile, methodLiteral, constpoolHandle, entryIndex, isLoadedAOT && hasEntryIndex);
         constpoolHandle->SetObjectToCache(thread, index, method.GetTaggedValue());
         return method.GetTaggedValue();
     }

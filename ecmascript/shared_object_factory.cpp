@@ -138,8 +138,8 @@ JSHandle<AccessorData> ObjectFactory::NewSAccessorData()
 }
 
 JSHandle<Method> ObjectFactory::NewSMethod(const JSPandaFile *jsPandaFile, MethodLiteral *methodLiteral,
-                                           JSHandle<ConstantPool> constpool, JSHandle<JSTaggedValue> module,
-                                           uint32_t entryIndex, bool needSetAotFlag, bool *canFastCall)
+                                           JSHandle<ConstantPool> constpool, uint32_t entryIndex,
+                                           bool needSetAotFlag, bool *canFastCall)
 {
     JSHandle<Method> method;
     if (jsPandaFile->IsNewVersion()) {
@@ -147,9 +147,6 @@ JSHandle<Method> ObjectFactory::NewSMethod(const JSPandaFile *jsPandaFile, Metho
     } else {
         method = NewSMethod(methodLiteral);
         method->SetConstantPool(thread_, constpool);
-    }
-    if (method->GetModule().IsUndefined()) {
-        method->SetModule(thread_, module);
     }
     if (needSetAotFlag) {
         auto aotFileManager = thread_->GetCurrentEcmaContext()->GetAOTFileManager();

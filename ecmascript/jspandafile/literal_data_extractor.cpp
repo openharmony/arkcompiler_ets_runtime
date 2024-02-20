@@ -304,12 +304,13 @@ JSHandle<JSFunction> LiteralDataExtractor::DefineMethodInLiteral(JSThread *threa
     } else {
         module.Update(factory->NewFromUtf8(moduleName));
     }
-    JSHandle<Method> method;
-    method = factory->NewSMethod(jsPandaFile, methodLiteral, constpool, module, entryIndex, isLoadedAOT, &canFastCall);
+    JSHandle<Method> method =
+        factory->NewSMethod(jsPandaFile, methodLiteral, constpool, entryIndex, isLoadedAOT, &canFastCall);
     
     JSHandle<JSHClass> functionClass;
     JSHandle<JSFunction> jsFunc = CreateJSFunctionInLiteral(vm, method, kind, classKind);
     jsFunc->SetLength(length);
+    jsFunc->SetModule(thread, module.GetTaggedValue());
     return jsFunc;
 }
 

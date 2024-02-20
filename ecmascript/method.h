@@ -413,8 +413,6 @@ public:
 
     uint32_t FindCatchBlock(uint32_t pc) const;
 
-    const JSTaggedValue GetRecordName() const;
-
     /* callfield */
     static constexpr size_t VREGS_ARGS_NUM_BITS = 28; // 28: maximum 268,435,455
     static constexpr uint64_t AOT_FASTCALL_BITS = 0x5; // 0x5LU: aot and fastcall bit field
@@ -441,8 +439,7 @@ public:
     using IsCallNapiBit = DeoptTypeBits::NextFlag; // offset 28
 
     static constexpr size_t CONSTANT_POOL_OFFSET = TaggedObjectSize();
-    ACCESSORS(ConstantPool, CONSTANT_POOL_OFFSET, ECMA_MODULE_OFFSET)
-    ACCESSORS(Module, ECMA_MODULE_OFFSET, CALL_FIELD_OFFSET)
+    ACCESSORS(ConstantPool, CONSTANT_POOL_OFFSET, CALL_FIELD_OFFSET)
     ACCESSORS_PRIMITIVE_FIELD(CallField, uint64_t, CALL_FIELD_OFFSET, NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET)
     // Native method decides this filed is NativePointer or BytecodeArray pointer.
     ACCESSORS_NATIVE_FIELD(
