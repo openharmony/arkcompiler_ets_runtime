@@ -2569,7 +2569,7 @@ void TypedHCRLowering::LowerOrdinaryHasInstance(GateRef gate, GateRef glue)
     GateRef obj = acc_.GetValueIn(gate, 0);
     GateRef target = acc_.GetValueIn(gate, 1);
 
-    DEFVALUE(result, (&builder_), VariableType::JS_NOT_POINTER(), builder_.TaggedFalse());
+    DEFVALUE(result, (&builder_), VariableType::JS_ANY(), builder_.TaggedFalse());
     DEFVALUE(object, (&builder_), VariableType::JS_ANY(), obj);
     Label exit(&builder_);
 
@@ -2677,7 +2677,7 @@ void TypedHCRLowering::LowerOrdinaryHasInstance(GateRef gate, GateRef glue)
                     builder_.Branch(builder_.IsJsProxy(*object), &objectIsJsProxy, &objectNotIsJsProxy);
                     builder_.Bind(&objectIsJsProxy);
                     {
-                        result = builder_.CallRuntime(glue, RTSTUB_ID(CallGetPrototype), Gate::InvalidGateRef,
+                        object = builder_.CallRuntime(glue, RTSTUB_ID(CallGetPrototype), Gate::InvalidGateRef,
                                                       { *object }, gate);
                         builder_.Jump(&shouldContinue);
                     }
@@ -2701,7 +2701,7 @@ void TypedHCRLowering::LowerOrdinaryHasInstance(GateRef gate, GateRef glue)
         }
     }
     builder_.Bind(&exit);
-    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
+    ReplaceGateWithPendingException(glue, gate, builder_.GetState(), builder_.GetDepend(), *result);
 }
 
 void TypedHCRLowering::LowerProtoChangeMarkerCheck(GateRef gate)
