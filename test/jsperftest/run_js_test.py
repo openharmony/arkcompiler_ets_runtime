@@ -239,10 +239,11 @@ def run_js_case_via_ark(binary_path, js_file_path, class_name, api_name, report_
         append_row_data(report_file, case_test_data)
         return case_test_data
 
-    cmd2 = ["/usr/bin/cp", cur_abc_file, abc_file_path]
+    cmd2 = ["cp", cur_abc_file, abc_file_path]
     ret = subprocess.run(cmd2)
     if ret.returncode != 0:
-        logger.error("ret.returncode = %s, %s generate abc file failed. cmd: %s", str(ret.returncode), js_file_name, cmd2)
+        logger.error("ret.returncode = %s, %s generate abc file failed. cmd: %s", str(ret.returncode), js_file_name,
+                     cmd2)
         append_row_data(report_file, case_test_data)
         return case_test_data
     # execute abc
@@ -448,10 +449,17 @@ def get_args():
         default=None,
         help="output folder for executing js cases, default current folder",
     )
+    parser.add_argument(
+        "--d_8_binary_path",
+        "-v",
+        default=None,
+        required=True,
+        help="v 8 engine d 8 binary path",
+    )
     args = parser.parse_args()
 
     if not os.path.exists(args.binarypath):
-        logger.error("parameter --binarypath is not exit. Please check it! binary path: %s", args.binarypath)
+        logger.error("parameter --binarypath is not exist. Please check it! binary path: %s", args.binarypath)
         raise RuntimeError("error bad  parameters  --binarypath")
 
     if args.output_folder_path is None:
@@ -459,6 +467,11 @@ def get_args():
 
     if not os.path.isabs(args.output_folder_path):
         args.output_folder_path = os.path.abspath(args.output_folder_path)
+
+    if not os.path.exists(args.d_8_binary_path):
+        logger.error("parameter --d_8_binary_path is not exist. Please check it! d 8  binary path: %s",
+                     args.d_8_binary_path)
+        raise RuntimeError("error bad  parameters  --d_8_binary_path: {}".format(args.d_8_binary_path))
 
     return args
 
@@ -685,6 +698,7 @@ if __name__ == "__main__":
     BINARY_PATH = paras.binarypath
     ICU_DATA_PATH = os.path.join(BINARY_PATH, "third_party/icu/ohos_icu4j/data/")
     OUTPUT_PATH = Constants.CUR_PATH
+    Constants.V_8_ENGINED_PATH = paras.d_8_binary_path
     if paras.output_folder_path is not None:
         OUTPUT_PATH = paras.output_folder_path
 
@@ -714,4 +728,4 @@ if __name__ == "__main__":
     append_summary_info(TODAY_EXCEL_PATH, totol_time)
 
     logger.info("run js perf test finished. Please check details in report.")
-    shutil.rmtree(TMP_PATH)
+    shutil.rmtree(Constants.TMP_PATH)
