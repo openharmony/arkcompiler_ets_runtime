@@ -46,6 +46,7 @@ struct CompilationOptions {
     size_t maxMethodsInModule_;
     uint32_t hotnessThreshold_;
     std::string profilerIn_;
+    std::string optBCRange_;
     bool needMerge_ {false};
     bool isEnableArrayBoundsCheckElimination_;
     bool isEnableTypeLowering_;
