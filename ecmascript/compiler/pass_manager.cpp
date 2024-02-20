@@ -50,7 +50,8 @@ bool JitPassManager::Compile(JSHandle<JSFunction> &jsFunction, AOTFileGenerator 
                                           lOptions_,
                                           log_,
                                           log_->OutputASM(),
-                                          maxMethodsInModule_);
+                                          maxMethodsInModule_,
+                                          vm_->GetJSOptions().GetCompilerMethodsRange());
     cmpDriver_->CompileMethod(jsFunction, [this, &fileName] (const CString recordName,
                                                              const std::string &methodName,
                                                              MethodLiteral *methodLiteral,
@@ -211,7 +212,8 @@ bool PassManager::Compile(JSPandaFile *jsPandaFile, const std::string &fileName,
                                 &lOptions,
                                 log_,
                                 log_->OutputASM(),
-                                maxMethodsInModule_);
+                                maxMethodsInModule_,
+                                vm_->GetJSOptions().GetCompilerMethodsRange());
 
     cmpDriver.Run([this, &fileName, &collector](const CString recordName,
                                                 const std::string &methodName,

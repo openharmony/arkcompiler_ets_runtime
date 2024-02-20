@@ -22,7 +22,7 @@
 #include "maple_phase.h"
 #include "cg_phasemanager.h"
 #include "triple.h"
-#include <string>
+#include "driver_options.h"
 
 namespace maple {
 
@@ -30,11 +30,15 @@ namespace litecg {
 
 using namespace maplebe;
 
-LiteCG::LiteCG(Module &mirModule) : module(mirModule)
+LiteCG::LiteCG(Module &mirModule, const std::vector<std::string> &litecgOptions) : module(mirModule)
 {
     // Create CGOption: set up default options
     // should we make CGOptions local?
     cgOptions = &CGOptions::GetInstance();
+    if (!litecgOptions.empty()) {
+        maplecl::CommandLine::GetCommandLine().Parse(litecgOptions, cgCategory);
+        cgOptions->SolveOptions(false);
+    }
     cgOptions->EnableLiteCG();
     cgOptions->SetEmitFileType("obj");
     cgOptions->SetQuiet(true);
@@ -107,7 +111,7 @@ LiteCG &LiteCG::SetupLiteCGEmitMemoryManager(
 
 void LiteCG::DoCG()
 {
-    bool timePhases = false;
+    bool timePhases = cgOptions->IsEnableTimePhases();
     MPLTimer timer;
     if (timePhases) {
         timer.Start();

@@ -49,6 +49,9 @@ bool CanBBThrow(const BB &bb)
 namespace maplebe {
 void CGCFG::BuildCFG()
 {
+    if (cgFunc->HasBuiltCfg()) {
+        return;
+    }
     /*
      * Second Pass:
      * Link preds/succs in the BBs
@@ -161,6 +164,7 @@ void CGCFG::BuildCFG()
         }
     }
     FindAndMarkUnreachable(*cgFunc);
+    cgFunc->SetHasBuiltCfg(true);
 }
 
 void CGCFG::CheckCFG()

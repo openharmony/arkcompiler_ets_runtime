@@ -39,7 +39,8 @@ class CompilerLog;
 
 using namespace panda::ecmascript;
 
-LiteCGAssembler::LiteCGAssembler(LMIRModule &module) : lmirModule(module) {}
+LiteCGAssembler::LiteCGAssembler(LMIRModule &module, const std::vector<std::string> &litecgOptions)
+    : lmirModule(module), litecgOptions(litecgOptions) {}
 
 static uint8_t *AllocateCodeSection(void *object, uint32_t size, [[maybe_unused]] uint32_t alignment,
                                     const std::string &sectionName)
@@ -80,7 +81,7 @@ void SavePC2CallSiteInfo(void *object, uint64_t pc, std::vector<uint64_t> callSi
 
 void LiteCGAssembler::Run(const CompilerLog &log, [[maybe_unused]] bool fastCompileMode)
 {
-    maple::litecg::LiteCG liteCG(*lmirModule.GetModule());
+    maple::litecg::LiteCG liteCG(*lmirModule.GetModule(), litecgOptions);
     if (log.OutputLLIR()) {
         std::string irFileName = lmirModule.GetModule()->GetFileName() + ".mpl";
         liteCG.DumpIRToFile(irFileName);

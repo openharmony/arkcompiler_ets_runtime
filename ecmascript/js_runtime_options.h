@@ -163,6 +163,8 @@ enum CommandValues {
     OPTION_ENABLE_ELEMENTSKIND,
     OPTION_COMPILER_TYPED_OP_PROFILER,
     OPTION_COMPILER_OPT_BRANCH_PROFILING,
+    OPTION_COMPILER_METHODS_RANGE,
+    OPTION_COMPILER_CODEGEN_OPT,
 };
 
 class PUBLIC_API JSRuntimeOptions {
@@ -1451,6 +1453,26 @@ public:
         enableBranchProfiling_ = value;
     }
 
+    void SetCompilerMethodsRange(arg_list_t *argListStr)
+    {
+        compileMethodsRange_.first = std::stoull((*argListStr)[0]);
+        compileMethodsRange_.second = std::stoull((*argListStr)[1]);
+    }
+
+    const std::pair<uint32_t, uint32_t> &GetCompilerMethodsRange() const
+    {
+        return compileMethodsRange_;
+    }
+
+    void SetCompilerCodegenOptions(arg_list_t argListStr)
+    {
+        compileCodegenOption_ = std::move(argListStr);
+    }
+
+    const arg_list_t &GetCompilerCodegenOptions() const
+    {
+        return compileCodegenOption_;
+    }
 private:
     static bool StartsWith(const std::string &haystack, const std::string &needle)
     {
@@ -1570,6 +1592,8 @@ private:
     bool enableLiteCG_ {false};
     bool enableTypedOpProfiler_ {false};
     bool enableBranchProfiling_ {true};
+    std::pair<uint32_t, uint32_t> compileMethodsRange_ {0, UINT32_MAX};
+    arg_list_t compileCodegenOption_ {{""}};
 };
 }  // namespace panda::ecmascript
 

@@ -10820,7 +10820,6 @@ void AArch64CGFunc::InsertJumpPad(Insn *insn)
     if (bb->GetKind() == BB::kBBGoto) {
         return;
     }
-    bb->UniqueSuccs();
     DEBUG_ASSERT(bb->NumSuccs() == k2ByteSize, "if bb should have 2 successors");
 
     BB *longBrBB = CreateNewBB();
