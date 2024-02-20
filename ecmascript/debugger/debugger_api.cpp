@@ -319,16 +319,14 @@ void DebuggerApi::GetObjectClassName(const EcmaVM *ecmaVM, Local<JSValueRef> &ta
     Local<JSValueRef> prototype = Local<ObjectRef>(tagged)->GetPrototype(ecmaVM);
     Local<StringRef> key = StringRef::NewFromUtf8(ecmaVM, "constructor");
     PropertyAttribute protoProperty = PropertyAttribute::Default();
-
     if (!Local<ObjectRef>(prototype)->GetOwnProperty(ecmaVM, key, protoProperty)) {
-        LOG_DEBUGGER(ERROR) << "DebuggerApi::GetObjectClassName get property [constructor] failed";
+        LOG_DEBUGGER(DEBUG) << "DebuggerApi::GetObjectClassName get property [constructor] failed";
         return;
     }
     Local<JSValueRef> constructor = protoProperty.GetValue(ecmaVM);
     if (!constructor->IsNull()) {
         Local<StringRef> constructorFuncName = Local<FunctionRef>(constructor)->GetName(ecmaVM);
         className = constructorFuncName->ToString();
-        LOG_ECMA(INFO) << "DebuggerApi::GetObjectClassName: " << className;
     }
 }
 
