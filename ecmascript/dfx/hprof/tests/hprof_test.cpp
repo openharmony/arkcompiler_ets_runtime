@@ -374,7 +374,6 @@ HWTEST_F_L0(HProfTest, DumpNativeSize)
         instance->GetFactory()->NewJSArrayBuffer(20);
     }
     HProfTestHelper tester(instance);
-    std::cout<<"after size1:"<<instance->GetNativePointerListSize()<<", size2:"<<std::endl;
     tester.GenerateSnapShot("test10.heapsnapshot");
 
     ASSERT_TRUE(tester.ContrastJSONPayloadCntAndHitStrField("test10.heapsnapshot", "{\"node_fields\":",
