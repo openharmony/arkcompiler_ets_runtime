@@ -612,12 +612,20 @@ HWTEST_F_L0(NumberHelperTest, DoubleToASCII_001)
     EXPECT_EQ(EcmaStringAccessor::Compare(instance, handleEcmaStr5, resultStr), 0);
 
     digit = 1;
+#ifdef _WIN32
+    resultStr = factory->NewFromASCII("1.2");
+#else
     resultStr = factory->NewFromASCII("1.3");
+#endif
     JSHandle<EcmaString> handleEcmaStr6(thread, NumberHelper::DoubleToASCII(thread, 1.25, digit, flags));
     EXPECT_EQ(EcmaStringAccessor::Compare(instance, handleEcmaStr6, resultStr), 0);
     
     digit = 1;
+#ifdef _WIN32
+    resultStr = factory->NewFromASCII("-1.2");
+#else
     resultStr = factory->NewFromASCII("-1.3");
+#endif
     JSHandle<EcmaString> handleEcmaStr7(thread, NumberHelper::DoubleToASCII(thread, -1.25, digit, flags));
     EXPECT_EQ(EcmaStringAccessor::Compare(instance, handleEcmaStr7, resultStr), 0);
 }
@@ -646,7 +654,11 @@ HWTEST_F_L0(NumberHelperTest, DoubleToASCII_002)
     
     digit = 2;
     flags = 1;
+#ifdef _WIN32
+    resultStr = factory->NewFromASCII("1.2");
+#else
     resultStr = factory->NewFromASCII("1.3");
+#endif
     JSHandle<EcmaString> handleEcmaStr2(thread, NumberHelper::DoubleToASCII(thread, 1.25, digit, flags));
     EXPECT_EQ(EcmaStringAccessor::Compare(instance, handleEcmaStr2, resultStr), 0);
 
