@@ -16,6 +16,7 @@
 #ifndef ECMASCRIPT_PGO_PROFILER_ENCODER_H
 #define ECMASCRIPT_PGO_PROFILER_ENCODER_H
 
+#include <atomic>
 #include <memory>
 #include <utility>
 
@@ -87,6 +88,8 @@ public:
 
     bool PUBLIC_API LoadAPTextFile(const std::string &inPath);
 
+    void PostResetOutPathTask(const std::string &moduleName);
+
     bool ResetOutPathByModuleName(const std::string &moduleName);
 
 protected:
@@ -110,6 +113,7 @@ private:
     std::shared_ptr<PGORecordDetailInfos> globalRecordInfos_;
     Mutex mutex_;
     RWLock rwLock_;
+    std::atomic_bool hasPostModuleName_ {false};
     std::string moduleName_;
     std::string bundleName_;
     ApGenMode mode_ {OVERWRITE};
@@ -136,6 +140,31 @@ public:
     NO_MOVE_SEMANTIC(SaveTask);
 private:
     PGOProfilerEncoder *encoder_;
+};
+
+class ResetOutPathTask : public Task {
+public:
+    ResetOutPathTask(PGOProfilerEncoder *encoder, std::string moduleName, int32_t id)
+        : Task(id), encoder_(encoder), moduleName_(std::move(moduleName)) {};
+    virtual ~ResetOutPathTask() override = default;
+
+    bool Run([[maybe_unused]] uint32_t threadIndex) override
+    {
+        encoder_->ResetOutPathByModuleName(moduleName_);
+        return true;
+    }
+
+    TaskType GetTaskType() const override
+    {
+        return TaskType::PGO_RESET_OUT_PATH_TASK;
+    }
+
+    NO_COPY_SEMANTIC(ResetOutPathTask);
+    NO_MOVE_SEMANTIC(ResetOutPathTask);
+
+private:
+    PGOProfilerEncoder *encoder_;
+    std::string moduleName_;
 };
 } // namespace panda::ecmascript::pgo
 #endif  // ECMASCRIPT_PGO_PROFILER_ENCODER_H

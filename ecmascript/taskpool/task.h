@@ -21,6 +21,7 @@
 namespace panda::ecmascript {
 enum class TaskType : uint8_t {
     PGO_SAVE_TASK,
+    PGO_RESET_OUT_PATH_TASK,
     ALL,
 };
 
