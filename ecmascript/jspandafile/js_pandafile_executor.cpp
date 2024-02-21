@@ -218,6 +218,9 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::CommonExecuteBuffer(JSThread 
     JSHandle<SourceTextModule> module = JSHandle<SourceTextModule>::Cast(moduleRecord);
     module->SetStatus(ModuleStatus::INSTANTIATED);
     SourceTextModule::Evaluate(thread, module, buffer, size);
+    if (thread->HasPendingException()) {
+        return Unexpected(false);
+    }
     return JSTaggedValue::Undefined();
 }
 
@@ -303,6 +306,9 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::CommonExecuteBuffer(JSThread 
     JSHandle<SourceTextModule> module = JSHandle<SourceTextModule>::Cast(moduleRecord);
     module->SetStatus(ModuleStatus::INSTANTIATED);
     SourceTextModule::Evaluate(thread, module, nullptr, 0);
+    if (thread->HasPendingException()) {
+        return Unexpected(false);
+    }
     return JSTaggedValue::Undefined();
 }
 
