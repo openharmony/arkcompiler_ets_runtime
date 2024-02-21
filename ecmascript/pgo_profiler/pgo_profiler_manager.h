@@ -145,7 +145,7 @@ public:
     void SetModuleName(const std::string &moduleName)
     {
         if (encoder_) {
-            encoder_->ResetOutPathByModuleName(moduleName);
+            encoder_->PostResetOutPathTask(moduleName);
         }
     }
 
