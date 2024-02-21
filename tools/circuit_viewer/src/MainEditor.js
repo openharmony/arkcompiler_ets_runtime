@@ -56,7 +56,7 @@ class MainEditor {
     }
   }
   onDrop(files, x, y) {
-    if (files.length == 1) {
+    if (files.length === 1) {
       let reader = new FileReader();
       reader.readAsDataURL(files[0]);
       reader.onload = (e) => {
@@ -78,7 +78,7 @@ class MainEditor {
     }
 
     for (let v in this.viewer_) {
-      if (this.filePoint_ == v) {
+      if (this.filePoint_ === v) {
         this.viewer_[v].onDraw();
       }
     }
@@ -98,7 +98,7 @@ class MainEditor {
       return true;
     }
     for (let v in this.viewer_) {
-      if (this.filePoint_ == v) {
+      if (this.filePoint_ === v) {
         if (this.viewer_[v].onTouch(msg, x, y)) {
           return true;
         }
@@ -109,7 +109,7 @@ class MainEditor {
 
   onKey(k) {
     for (let v in this.viewer_) {
-      if (this.filePoint_ == v) {
+      if (this.filePoint_ === v) {
         if (this.viewer_[v].onKey(k)) {
           return true;
         }

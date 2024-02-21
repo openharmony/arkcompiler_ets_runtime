@@ -153,7 +153,7 @@ function keyDown(e) {
   GLFrame.pinstance_.callbackKey(1, ret);
   if (!CanvasInput.FOCUS) {
   }
-  if (ret == 'ctrl+z' || ret == 'ctrl+f' || ret == 'Enter') {
+  if (ret === 'ctrl+z' || ret === 'ctrl+f' || ret === 'Enter') {
     e.preventDefault();
   }
 }

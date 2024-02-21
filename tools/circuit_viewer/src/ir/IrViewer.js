@@ -75,7 +75,7 @@ class IrViewer {
       btn.inTypeMask_ = 1;
       btn.onClicked_ = () => {
         btn.inTypeMask_ = 1 - btn.inTypeMask_;
-        btn.name_ = INTYPE_STR[btn.inTypeId_] + (btn.inTypeMask_ == 1 ? "✔️" : "❌");
+        btn.name_ = INTYPE_STR[btn.inTypeId_] + (btn.inTypeMask_ === 1 ? "✔️" : "❌");
         this.mask_ = (this.mask_ & ~(1 << btn.inTypeId_)) | (btn.inTypeMask_ << btn.inTypeId_);
         this.changeVisable();
       }
@@ -118,10 +118,10 @@ class IrViewer {
     IrToPicture.resetPicture(this.visable_.nodes, this.direct_.type.startsWith("block:"));
   }
   hideNode(type) {
-    if (type == 0) {//隐藏选中
+    if (type === 0) {//隐藏选中
       this.hideNodeIds_ = this.hideNodeIds_.concat(this.selectPoint_);
     }
-    else if (type == 1) {//隐藏未选中
+    else if (type === 1) {//隐藏未选中
       let nodes = this.visable_.nodes;
       for (let k in nodes) {
         if (this.selectPoint_.indexOf(parseInt(nodes[k].ir.id)) >= 0) {
@@ -147,11 +147,11 @@ class IrViewer {
       let id1 = parseInt(n1.ir.id);
       let id2 = parseInt(n2.ir.id);
       let idx = -1;
-      if (type == 0 && (n1.mask & this.mask_) != 0 && this.selectPoint_.indexOf(id2) >= 0) {//选中前继
+      if (type === 0 && (n1.mask & this.mask_) !== 0 && this.selectPoint_.indexOf(id2) >= 0) {//选中前继
         idx = this.hideNodeIds_.indexOf(id1);
         sel.add(id1);
       }
-      if (type == 1 && (n2.mask & this.mask_) != 0 && this.selectPoint_.indexOf(id1) >= 0) {//选中后继
+      if (type === 1 && (n2.mask & this.mask_) !== 0 && this.selectPoint_.indexOf(id1) >= 0) {//选中后继
         idx = this.hideNodeIds_.indexOf(id2);
         sel.add(id2);
       }
@@ -198,7 +198,7 @@ class IrViewer {
         }
       }
     }
-    if (loadonce == 0) {
+    if (loadonce === 0) {
       XTools.PROC_TO = 20 + procto / total * 80;
       return true;
     }
@@ -241,7 +241,7 @@ class IrViewer {
         n.hide = true;
       }
       else {
-        n.hide = (n.mask & this.mask_) == 0;
+        n.hide = (n.mask & this.mask_) === 0;
         if (!n.hide) {
           showNodes.push(k);
         }
@@ -250,7 +250,7 @@ class IrViewer {
     for (let k of showNodes) {
       let n = nodes[k];
       for (let i = 0; i < 5; i++) {
-        if ((this.mask_ & (1 << i) != 0) && (n.mask & (1 << i) != 0)) {//进入点也加进来
+        if ((this.mask_ & (1 << i) !== 0) && (n.mask & (1 << i) !== 0)) {//进入点也加进来
           for (let id of n.ir.in[i]) {
             nodes[id].hide = false;
           }
@@ -273,14 +273,14 @@ class IrViewer {
       if (n.hide) {
         continue;
       }
-      if (n.deep != IrToPicture.INVALID_DEEP) {
+      if (n.deep !== IrToPicture.INVALID_DEEP) {
         levely.add(n.pos.y);
       }
     }
     return Array.from(levely).sort((a, b) => { return parseInt(a) - parseInt(b) });
   }
   drawSmallMap(nodes, x1, x2, y1, y2) {
-    if (x1 == x2 || y2 == y1) {
+    if (x1 === x2 || y2 === y1) {
       return;
     }
     let [tx, ty, w, h] = this.smallMapRect;
@@ -355,7 +355,7 @@ class IrViewer {
         continue;
       }
       collect.showCount++;
-      if (n.deep != IrToPicture.INVALID_DEEP) {
+      if (n.deep !== IrToPicture.INVALID_DEEP) {
         collect.singleCount++;
         if (maxx < n.pos.x + n.nameWidth + this.offx_) {
           maxx = n.pos.x + n.nameWidth + this.offx_;
@@ -373,8 +373,8 @@ class IrViewer {
     let mmx1 = this.drawLines(this.offx_, this.offy_, nodes, lines, levely, [minx - 20, maxx + 20], false);//未选中的线
     for (let k in nodes) {//画节点
       let n = nodes[k];
-      if (n.deep == IrToPicture.INVALID_DEEP) {
-        if (n.pos.x == IrToPicture.INVALID_DEEP) {
+      if (n.deep === IrToPicture.INVALID_DEEP) {
+        if (n.pos.x === IrToPicture.INVALID_DEEP) {
           n.pos.x = mmx1[1] - this.offx_ + 20;
         }
       }
@@ -502,7 +502,7 @@ class IrViewer {
       X2DFast.gi().fillRect(x, y, w, h, 0x80000000);
 
       let searchResultTxt =
-        this.searchInput.result.length == 0
+        this.searchInput.result.length === 0
           ? '0/0'
           : this.searchInput.point + 1 + '/' + this.searchInput.result.length;
 
@@ -528,7 +528,7 @@ class IrViewer {
   checkLevel(levely, n1, n2) {
     let i1 = levely.indexOf(n1.pos.y);
     let i2 = levely.indexOf(n2.pos.y);
-    return i1 + 1 == i2;
+    return i1 + 1 === i2;
   }
   drawLines(offx, offy, nodes, lines, levely, mmx, select) {
     let aaa = 5;
@@ -545,7 +545,7 @@ class IrViewer {
         if (this.checkLevel(levely, n1, n2)) { }
         else {
           if (!(n1.outh[l.outNum] in n1.outhx)) {
-            mmx[lor] += lor == 0 ? aaa : -aaa;
+            mmx[lor] += lor === 0 ? aaa : -aaa;
             n1.outhx[n1.outh[l.outNum]] = mmx[lor];
           }
         }
@@ -580,10 +580,10 @@ class IrViewer {
         }
       }
 
-      if (select != selected) {
+      if (select !== selected) {
         if (this.checkLevel(levely, n1, n2)) { }
         else {
-          mmx[lor] += lor == 0 ? -aaa : aaa;
+          mmx[lor] += lor === 0 ? -aaa : aaa;
         }
         continue;
       }
@@ -610,7 +610,7 @@ class IrViewer {
         ls.push([lx, y1 + n1.outh[l.outNum], lx, y2 - ly, c, lw]);
         ls.push([lx, y2 - ly, x2, y2 - ly, c, lw]);
         ls.push([x2, y2 - ly, x2, y2, c, lw]);
-        mmx[lor] += lor == 0 ? -aaa : aaa;
+        mmx[lor] += lor === 0 ? -aaa : aaa;
       }
       let mouseOn = false;
       for (let ln of ls) {
@@ -623,7 +623,7 @@ class IrViewer {
     return [Math.min(mmx1[0], mmx[0]), Math.max(mmx1[1], mmx[1])];
   }
   drawLine(x1, y1, x2, y2, c, lw = 1) {
-    if (x1 == x2) {
+    if (x1 === x2) {
       if (y1 > y2) {
         [y1, y2] = [y2, y1];
       }
@@ -632,7 +632,7 @@ class IrViewer {
         return true;
       }
     }
-    else if (y1 == y2) {
+    else if (y1 === y2) {
       if (x1 > x2) {
         [x1, x2] = [x2, x1];
       }
@@ -670,7 +670,7 @@ class IrViewer {
   resetOffset(x, y) {
     let [tx, ty, w, h] = this.smallMapRect;
     let [x1, y1, x2, y2] = [this.dragScoll.x1, this.dragScoll.y1, this.dragScoll.x2, this.dragScoll.y2];
-    if (x1 == x2 || y1 == y2) {
+    if (x1 === x2 || y1 === y2) {
       return;
     }
     let sw = w / (x2 - x1);
@@ -687,18 +687,18 @@ class IrViewer {
       return true;
     }
     if (this.smallMapLocked_) {
-      if (msg == 2) {
+      if (msg === 2) {
         this.resetOffset(x, y);
       }
-      if (msg == 3) {
+      if (msg === 3) {
         this.smallMapLocked_ = false;
       }
       return true;
     }
-    if (msg == 6) {
+    if (msg === 6) {
       this.drapBackground_ = null;
     }
-    if (msg == 3 && this.drapSelect_) {
+    if (msg === 3 && this.drapSelect_) {
       let nodes = this.visable_.nodes;
       for (let k of this.selectPoint_) {
         nodes[k].pos.x += this.drapSelect_.dx;
@@ -707,7 +707,7 @@ class IrViewer {
       this.drapSelect_ = null;
     }
     if (this.drapBackground_) {
-      if (msg == 2) {
+      if (msg === 2) {
         this.offx_ -= this.drapBackground_.x - x;
         this.offy_ -= this.drapBackground_.y - y;
         this.drapBackground_.x = x;
@@ -716,11 +716,11 @@ class IrViewer {
       return true;
     }
     if (this.drapSelect_) {
-      if (msg == 2) {
+      if (msg === 2) {
         if (Math.abs(this.drapSelect_.x - x) > 10 ||
           Math.abs(this.drapSelect_.y - y) > 10 ||
-          this.drapSelect_.dx != 0 ||
-          this.drapSelect_.dy != 0) {
+          this.drapSelect_.dx !== 0 ||
+          this.drapSelect_.dy !== 0) {
           this.drapSelect_.dx -= this.drapSelect_.x - x;
           this.drapSelect_.dy -= this.drapSelect_.y - y;
           this.drapSelect_.x = x;
@@ -736,7 +736,7 @@ class IrViewer {
       return true;
     }
     if (XTools.InRect(x, y, ...this.smallMapRect)) {
-      if (msg == 1) {
+      if (msg === 1) {
         this.resetOffset(x, y);
         this.smallMapLocked_ = true;
       }
@@ -772,7 +772,7 @@ class IrViewer {
         return true;
       }
     }
-    if (msg == 1) {
+    if (msg === 1) {
       let nodes = this.visable_.nodes;
       for (let k in nodes) {
         let n = nodes[k];
@@ -800,7 +800,7 @@ class IrViewer {
       this.selectPoint_ = [];
     }
 
-    if (msg == 4) {
+    if (msg === 4) {
       this.drapBackground_ = {
         x: x,
         y: y,
@@ -837,7 +837,7 @@ class IrViewer {
         this.freshNode();
         return true;
     }
-    if (k == 'ctrl+f' || k == 'ctrl+F') {
+    if (k === 'ctrl+f' || k === 'ctrl+F') {
       this.searchInput = {
         pos: [(Scr.logicw - 300), Scr.logich / 2, 200, 80],
         result: [],
@@ -867,12 +867,12 @@ class IrViewer {
             for (let i in nodes) {
               let n = nodes[i];
               if (XTools.CONFIG.OpTypeJsBytecode.indexOf(n.ir.op) >= 0) {
-                if (n.ir.id == v || n.ir.bytecode.indexOf(v) >= 0 || (isRegExp(v) && n.ir.bytecode.match(v))) {
+                if (n.ir.id === v || n.ir.bytecode.indexOf(v) >= 0 || (isRegExp(v) && n.ir.bytecode.match(v))) {
                   this.searchInput.result.push(i);
                 }
               }
               else {
-                if (n.ir.id == v || n.ir.op.indexOf(v) >= 0 || (isRegExp(v) && n.ir.op.match(v))) {
+                if (n.ir.id === v || n.ir.op.indexOf(v) >= 0 || (isRegExp(v) && n.ir.op.match(v))) {
                   this.searchInput.result.push(i);
                 }
               }
