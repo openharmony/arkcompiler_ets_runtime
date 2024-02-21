@@ -890,6 +890,11 @@ bool JSObject::SetPropertyForDataDescriptor(ObjectOperator *op, const JSHandle<J
     bool hasReceiver = false;
     if (op->HasReceiver()) {
         op->ReLookupPropertyInReceiver();
+        isInternalAccessor = false;
+        if (op->IsAccessorDescriptor()) {
+            JSTaggedValue ret = ShouldGetValueFromBox(op);
+            isInternalAccessor = AccessorData::Cast(ret.GetTaggedObject())->IsInternal();
+        }
         hasReceiver = true;
     }
     bool isSuccess = true;
