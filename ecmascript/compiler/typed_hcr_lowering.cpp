@@ -121,11 +121,8 @@ GateRef TypedHCRLowering::VisitGate(GateRef gate)
         case OpCode::COW_ARRAY_CHECK:
             LowerCowArrayCheck(gate, glue);
             break;
-        case OpCode::LOAD_GETTER:
-            LowerLoadGetter(gate);
-            break;
-        case OpCode::LOAD_SETTER:
-            LowerLoadSetter(gate);
+        case OpCode::LOOK_UP_HOLDER:
+            LowerLookupHolder(gate);
             break;
         case OpCode::PROTOTYPE_CHECK:
             LowerPrototypeCheck(gate);
@@ -1658,82 +1655,31 @@ void TypedHCRLowering::ReplaceHirWithPendingException(GateRef hirGate, GateRef g
     acc_.ReplaceHirWithIfBranch(hirGate, success, exception, value);
 }
 
-void TypedHCRLowering::LowerLoadGetter(GateRef gate)
+void TypedHCRLowering::LowerLookupHolder(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
-    ASSERT(acc_.GetNumValueIn(gate) == 3);  // 3: receiver, holderHC, plr
+    ASSERT(acc_.GetNumValueIn(gate) == 3);  // 3: receiver, holderHC, jsFunc
     GateRef receiver = acc_.GetValueIn(gate, 0);
-    GateRef holderHC = acc_.GetValueIn(gate, 1);
-    GateRef propertyLookupResult = acc_.GetValueIn(gate, 2);
-
-    PropertyLookupResult plr(acc_.TryGetValue(propertyLookupResult));
-    ASSERT(plr.IsAccessor());
+    GateRef holderHCIndex = acc_.GetValueIn(gate, 1);
+    GateRef jsFunc = acc_.GetValueIn(gate, 2);
+    GateRef constPool = builder_.GetConstPool(jsFunc);
+    GateRef holderHC = builder_.LoadHClassFromConstpool(constPool, acc_.GetConstantValue(holderHCIndex));
     DEFVALUE(holder, (&builder_), VariableType::JS_ANY(), receiver);
-    // lookup from receiver for holder
     Label loopHead(&builder_);
-    Label loadHolder(&builder_);
+    Label exit(&builder_);
     Label lookUpProto(&builder_);
     builder_.Jump(&loopHead);
 
     builder_.LoopBegin(&loopHead);
     auto curHC = builder_.LoadHClass(*holder);
-    builder_.Branch(builder_.Equal(curHC, holderHC), &loadHolder, &lookUpProto);
+    builder_.Branch(builder_.Equal(curHC, holderHC), &exit, &lookUpProto);
 
     builder_.Bind(&lookUpProto);
     holder = builder_.LoadConstOffset(VariableType::JS_ANY(), curHC, JSHClass::PROTOTYPE_OFFSET);
     builder_.LoopEnd(&loopHead);
 
-    builder_.Bind(&loadHolder);
-
-    GateRef getter;
-    if (plr.IsInlinedProps()) {
-        auto acceessorData = builder_.LoadConstOffset(VariableType::JS_ANY(), *holder, plr.GetOffset());
-        getter = builder_.LoadConstOffset(VariableType::JS_ANY(), acceessorData, AccessorData::GETTER_OFFSET);
-    } else {
-        auto properties = builder_.LoadConstOffset(VariableType::JS_ANY(), *holder, JSObject::PROPERTIES_OFFSET);
-        auto acceessorData = builder_.GetValueFromTaggedArray(properties, builder_.Int32(plr.GetOffset()));
-        getter = builder_.LoadConstOffset(VariableType::JS_ANY(), acceessorData, AccessorData::GETTER_OFFSET);
-    }
-    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), getter);
-}
-
-void TypedHCRLowering::LowerLoadSetter(GateRef gate)
-{
-    Environment env(gate, circuit_, &builder_);
-    ASSERT(acc_.GetNumValueIn(gate) == 3);  // 3: receiver, holderHC, plr
-    GateRef receiver = acc_.GetValueIn(gate, 0);
-    GateRef holderHC = acc_.GetValueIn(gate, 1);
-    GateRef propertyLookupResult = acc_.GetValueIn(gate, 2);
-
-    PropertyLookupResult plr(acc_.TryGetValue(propertyLookupResult));
-    ASSERT(plr.IsAccessor());
-    DEFVALUE(holder, (&builder_), VariableType::JS_ANY(), receiver);
-    // lookup from receiver for holder
-    Label loopHead(&builder_);
-    Label loadHolder(&builder_);
-    Label lookUpProto(&builder_);
-    builder_.Jump(&loopHead);
-
-    builder_.LoopBegin(&loopHead);
-    auto curHC = builder_.LoadHClass(*holder);
-    builder_.Branch(builder_.Equal(curHC, holderHC), &loadHolder, &lookUpProto);
-
-    builder_.Bind(&lookUpProto);
-    holder = builder_.LoadConstOffset(VariableType::JS_ANY(), curHC, JSHClass::PROTOTYPE_OFFSET);
-    builder_.LoopEnd(&loopHead);
-
-    builder_.Bind(&loadHolder);
-
-    GateRef setter;
-    if (plr.IsInlinedProps()) {
-        auto acceessorData = builder_.LoadConstOffset(VariableType::JS_ANY(), *holder, plr.GetOffset());
-        setter = builder_.LoadConstOffset(VariableType::JS_ANY(), acceessorData, AccessorData::SETTER_OFFSET);
-    } else {
-        auto properties = builder_.LoadConstOffset(VariableType::JS_ANY(), *holder, JSObject::PROPERTIES_OFFSET);
-        auto acceessorData = builder_.GetValueFromTaggedArray(properties, builder_.Int32(plr.GetOffset()));
-        setter = builder_.LoadConstOffset(VariableType::JS_ANY(), acceessorData, AccessorData::SETTER_OFFSET);
-    }
-    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), setter);
+    builder_.Bind(&exit);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *holder);
 }
 
 void TypedHCRLowering::LowerPrototypeCheck(GateRef gate)

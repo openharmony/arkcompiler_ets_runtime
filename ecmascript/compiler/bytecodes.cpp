@@ -468,12 +468,28 @@ BytecodeMetaData BytecodeMetaData::InitBytecodeMetaData(const uint8_t *pc)
             break;
     }
 
+    switch (inst.GetOpcode()) {
+        case EcmaOpcode::LDOBJBYNAME_IMM8_ID16:
+        case EcmaOpcode::LDOBJBYNAME_IMM16_ID16:
+        case EcmaOpcode::LDTHISBYNAME_IMM8_ID16:
+        case EcmaOpcode::LDTHISBYNAME_IMM16_ID16:
+        case EcmaOpcode::STOBJBYNAME_IMM8_ID16_V8:
+        case EcmaOpcode::STOBJBYNAME_IMM16_ID16_V8:
+        case EcmaOpcode::STTHISBYNAME_IMM8_ID16:
+        case EcmaOpcode::STTHISBYNAME_IMM16_ID16:
+            kind = BytecodeKind::ACCESSOR_BC;
+            break;
+        default:
+            break;
+    }
+
     if (kind == BytecodeKind::GENERAL ||
         kind == BytecodeKind::THROW_BC ||
         kind == BytecodeKind::RESUME ||
         kind == BytecodeKind::SUSPEND ||
         kind == BytecodeKind::GENERATOR_RESOLVE ||
-        kind == BytecodeKind::CALL_BC) {
+        kind == BytecodeKind::CALL_BC ||
+        kind == BytecodeKind::ACCESSOR_BC) {
         flags |= BytecodeFlags::GENERAL_BC;
     }
     auto size = inst.GetSize();
