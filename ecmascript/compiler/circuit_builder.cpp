@@ -436,6 +436,14 @@ GateRef CircuitBuilder::GetConstPool(GateRef jsFunc)
 {
     auto currentLabel = env_->GetCurrentLabel();
     auto currentDepend = currentLabel->GetDepend();
+    // In an inline accessor scenario, if the accessor function and the caller function have the same constpool, then
+    // the caller function is used to load accessor, which avoids the dependency on the accessor.
+    if (acc_.GetOpCode(jsFunc) == OpCode::LOAD_GETTER || acc_.GetOpCode(jsFunc) == OpCode::LOAD_SETTER) {
+        GateRef frameState = acc_.GetFrameState(jsFunc);
+        if (acc_.GetOpCode(frameState) != OpCode::FRAME_STATE) {
+            jsFunc = frameState;
+        }
+    }
     auto newGate = GetCircuit()->NewGate(circuit_->GetConstPool(), MachineType::I64,
                                          { currentDepend, jsFunc },
                                          GateType::AnyType());

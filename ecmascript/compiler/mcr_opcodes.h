@@ -40,8 +40,9 @@ namespace panda::ecmascript::kungfu {
     V(FlattenTreeStringCheck, FLATTEN_TREE_STRING_CHECK, GateFlags::CHECKABLE, 1, 1, 1)         \
     V(HeapObjectCheck, HEAP_OBJECT_CHECK, GateFlags::CHECKABLE, 1, 1, 1)                        \
     V(ProtoChangeMarkerCheck, PROTO_CHANGE_MARKER_CHECK, GateFlags::CHECKABLE, 1, 1, 1)         \
-    V(LoadGetter, LOAD_GETTER, GateFlags::NO_WRITE, 1, 1, 3)                                    \
-    V(LoadSetter, LOAD_SETTER, GateFlags::NO_WRITE, 1, 1, 3)                                    \
+    V(LookUpHolder, LOOK_UP_HOLDER, GateFlags::NO_WRITE, 1, 1, 3)                               \
+    V(LoadGetter, LOAD_GETTER, GateFlags::CHECKABLE, 0, 1, 2)                                   \
+    V(LoadSetter, LOAD_SETTER, GateFlags::CHECKABLE, 0, 1, 2)                                   \
     V(LoadArrayLength, LOAD_ARRAY_LENGTH, GateFlags::NO_WRITE, 1, 1, 1)                         \
     V(LoadStringLength, LOAD_STRING_LENGTH, GateFlags::NO_WRITE, 1, 1, 1)                       \
     V(StartAllocate, START_ALLOCATE, GateFlags::NONE_FLAG, 0, 1, 0)                             \
