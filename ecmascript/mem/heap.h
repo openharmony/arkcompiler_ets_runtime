@@ -248,10 +248,10 @@ public:
     void ReduceTaskCount();
     void WaitRunningTaskFinished();
     void WaitClearTaskFinished();
-
-protected:
     void ThrowOutOfMemoryError(JSThread *thread, size_t size, std::string functionName,
         bool NonMovableObjNearOOM = false);
+
+protected:
     void FatalOutOfMemoryError(size_t size, std::string functionName);
 
     const EcmaParamConfiguration config_;
