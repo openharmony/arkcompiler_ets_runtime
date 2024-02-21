@@ -65,6 +65,10 @@
     V("matchAll",          MatchAll,          1, INVALID)                           \
     /* String.prototype.normalize ( [ form ] ) */                                   \
     V("normalize",         Normalize,         0, INVALID)                           \
+    /* String.prototype.isWellFormed ( ) */                                         \
+    V("isWellFormed",      IsWellFormed,      0, INVALID)                           \
+    /* String.prototype.toWellFormed ( ) */                                         \
+    V("toWellFormed",      ToWellFormed,      0, INVALID)                           \
     /* String.prototype.padEnd ( maxLength [ , fillString ] ) */                    \
     V("padEnd",            PadEnd,            1, INVALID)                           \
     /* String.prototype.padStart ( maxLength [ , fillString ] ) */                  \
@@ -169,6 +173,10 @@ public:
     // 21.1.3.12
     static JSTaggedValue Normalize(EcmaRuntimeCallInfo *argv);
 
+    static JSTaggedValue IsWellFormed(EcmaRuntimeCallInfo *argv);
+
+    static JSTaggedValue ToWellFormed(EcmaRuntimeCallInfo *argv);
+
     static JSTaggedValue PadStart(EcmaRuntimeCallInfo *argv);
 
     static JSTaggedValue PadEnd(EcmaRuntimeCallInfo *argv);
@@ -270,6 +278,15 @@ private:
         JSThread *thread, EcmaVM *ecmaVm,
         const JSHandle<EcmaString> &thisString, const JSHandle<EcmaString> &seperatorString,
         uint32_t thisLength, uint32_t seperatorLength, uint32_t lim = UINT32_MAX - 1);
+    static bool IsUTF16HighSurrogate(uint16_t ch)
+    {
+        return base::utf_helper::DECODE_LEAD_LOW <= ch && ch <= base::utf_helper::DECODE_LEAD_HIGH;
+    }
+    static bool IsUTF16LowSurrogate(uint16_t ch)
+    {
+        return base::utf_helper::DECODE_TRAIL_LOW <= ch && ch <= base::utf_helper::DECODE_TRAIL_HIGH;
+    }
+    static uint32_t UTF16SurrogatePairToCodePoint(uint16_t lead, uint16_t trail);
     // 21.1.3.17.1
 };
 

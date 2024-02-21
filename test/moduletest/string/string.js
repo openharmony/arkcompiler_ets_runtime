@@ -203,3 +203,29 @@ try {
 print("abc".startsWith("a", Infinity))
 print("abc".startsWith("a", -Infinity))
 print("abc".endsWith("c", Infinity))
+
+const strings = [
+    "ab\uD800",
+    "ab\uD800c",
+    "\uDFFFab",
+    "c\uDFFFab",
+    "abc",
+    "ab\uD83D\uDE04c",
+];
+
+for (const str of strings) {
+    print(str.isWellFormed());
+}
+
+const strings2 = [
+    "ab\uD800",
+    "ab\uD800c",
+    "\uDFFFab",
+    "c\uDFFFab",
+    "abc",
+    "ab\uD83D\uDE04c",
+];
+
+for (const str of strings2) {
+    print(str.toWellFormed());
+}
