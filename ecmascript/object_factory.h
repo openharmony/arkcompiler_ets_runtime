@@ -768,7 +768,7 @@ public:
 
     JSHandle<MutantTaggedArray> NewSEmptyMutantArray();
 
-    JSHandle<TaggedArray> NewSDictionaryArray(uint32_t length);
+    JSHandle<TaggedArray> PUBLIC_API NewSDictionaryArray(uint32_t length);
 
     JSHandle<TaggedArray> NewSTaggedArrayWithoutInit(uint32_t length);
 

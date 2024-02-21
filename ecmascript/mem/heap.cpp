@@ -883,7 +883,7 @@ static void JsOOMThreadStart(EcmaVM *ecmaVm, size_t size, std::string functionNa
         int status = 0;
         pid_t p = waitpid(pid, &status, 0);
         if (p < 0 || p == pid) {
-        const_cast<Heap *>((ecmaVm)->GetHeap())->ThrowOutOfMemoryError(size, functionName, NonMovableObjNearOOM);
+        const_cast<Heap *>((ecmaVm)->GetHeap())->ThrowOutOfMemoryError(ecmaVm->GetJSThread(), size, functionName, NonMovableObjNearOOM);
             break;
         }
         if (time(nullptr) > startTime + DUMP_TIME_OUT) {

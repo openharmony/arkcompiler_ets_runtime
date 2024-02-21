@@ -261,7 +261,7 @@ public:
     JSTaggedValue PUBLIC_API FindConstpool(const JSPandaFile *jsPandaFile, int32_t index);
     // For new version instruction.
     JSTaggedValue PUBLIC_API FindConstpool(const JSPandaFile *jsPandaFile, panda_file::File::EntityId id);
-    JSTaggedValue FindUnsharedConstpool(JSTaggedValue sharedConstpool);
+    JSTaggedValue PUBLIC_API FindUnsharedConstpool(JSTaggedValue sharedConstpool);
     JSTaggedValue FindConstpoolWithAOT(const JSPandaFile *jsPandaFile, int32_t index);
     void EraseUnsharedConstpool(JSTaggedValue sharedConstpool);
     std::optional<std::reference_wrapper<CMap<int32_t, JSTaggedValue>>> FindConstpools(

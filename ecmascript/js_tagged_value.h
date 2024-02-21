@@ -655,7 +655,7 @@ public:
     bool IsJSSharedObject() const;
     bool IsJSSharedFunction() const;
     bool IsJSShared() const;
-    bool IsInSharedHeap() const;
+    bool PUBLIC_API IsInSharedHeap() const;
     bool IsInSharedSweepableSpace() const;
     static bool IsSameTypeOrHClass(JSTaggedValue x, JSTaggedValue y);
 
