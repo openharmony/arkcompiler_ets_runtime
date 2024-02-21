@@ -380,8 +380,11 @@ public:
         if (op.IsFound()) {
             handler->SetHolder(thread, op.GetHolder());
         }
-        auto result = JSHClass::EnableProtoChangeMarker(thread, hclass);
-        handler->SetProtoCell(thread, result);
+        // ShareToLocal is prohibited
+        if (!hclass->IsJSShared()) {
+            auto result = JSHClass::EnableProtoChangeMarker(thread, hclass);
+            handler->SetProtoCell(thread, result);
+        }
         return JSHandle<JSTaggedValue>::Cast(handler);
     }
     static inline JSHandle<JSTaggedValue> StorePrototype(const JSThread *thread, const ObjectOperator &op,
@@ -392,6 +395,7 @@ public:
         JSHandle<JSTaggedValue> handlerInfo = StoreHandler::StoreProperty(thread, op);
         handler->SetHandlerInfo(thread, handlerInfo);
         handler->SetHolder(thread, op.GetHolder());
+        ASSERT(!hclass->IsJSShared());
         auto result = JSHClass::EnableProtoChangeMarker(thread, hclass);
         handler->SetProtoCell(thread, result);
         return JSHandle<JSTaggedValue>::Cast(handler);
