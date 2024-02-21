@@ -19,6 +19,7 @@
 #include "mir_builder.h"
 #include "mir_nodes.h"
 #include "scc.h"
+#include "base_graph_node.h"
 namespace maple {
 enum CallType {
     kCallTypeInvalid,
@@ -114,14 +115,6 @@ private:
     StmtNode *callStmt;    // Call statement
     uint32 loopDepth;
     uint32 id;
-};
-
-class BaseGraphNode {
-public:
-    virtual void GetOutNodes(std::vector<BaseGraphNode *> &outNodes) = 0;
-    virtual void GetInNodes(std::vector<BaseGraphNode *> &outNodes) = 0;
-    virtual const std::string GetIdentity() = 0;
-    virtual uint32 GetID() const = 0;
 };
 
 // Node in callgraph
@@ -369,9 +362,9 @@ public:
         addrTaken = true;
     }
 
-    void GetOutNodes(std::vector<BaseGraphNode *> &outNodes) override
+    void GetOutNodes(std::vector<BaseGraphNode *> &outNodes) final
     {
-        for (auto &callSite : GetCallee()) {
+        for (auto &callSite : std::as_const(GetCallee())) {
             for (auto &cgIt : *callSite.second) {
                 CGNode *calleeNode = cgIt;
                 outNodes.emplace_back(calleeNode);
@@ -379,9 +372,27 @@ public:
         }
     }
 
-    void GetInNodes(std::vector<BaseGraphNode *> &inNodes) override
+    void GetOutNodes(std::vector<BaseGraphNode *> &outNodes) const final
     {
-        for (auto pair : GetCaller()) {
+        for (auto &callSite : std::as_const(GetCallee())) {
+            for (auto &cgIt : *callSite.second) {
+                CGNode *calleeNode = cgIt;
+                outNodes.emplace_back(calleeNode);
+            }
+        }
+    }
+
+    void GetInNodes(std::vector<BaseGraphNode *> &inNodes) final
+    {
+        for (auto pair : std::as_const(GetCaller())) {
+            CGNode *callerNode = pair.first;
+            inNodes.emplace_back(callerNode);
+        }
+    }
+
+    void GetInNodes(std::vector<BaseGraphNode *> &inNodes) const final
+    {
+        for (auto pair : std::as_const(GetCaller())) {
             CGNode *callerNode = pair.first;
             inNodes.emplace_back(callerNode);
         }

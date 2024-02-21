@@ -813,6 +813,21 @@ public:
         return doCGSSA;
     }
 
+    static void DisableLocalSchedule()
+    {
+        doLocalSchedule = false;
+    }
+
+    static void EnableLocalSchedule()
+    {
+        doLocalSchedule = true;
+    }
+
+    static bool DoLocalSchedule()
+    {
+        return doLocalSchedule;
+    }
+
     static bool DoCGRegCoalecse()
     {
         return doCGRegCoalesce;
@@ -1651,6 +1666,7 @@ private:
     static bool cgBigEndian;
     static bool doEBO;
     static bool doCGSSA;
+    static bool doLocalSchedule;
     static bool doCGRegCoalesce;
     static bool doIPARA;
     static bool doCFGO;

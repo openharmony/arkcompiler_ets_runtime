@@ -119,6 +119,12 @@ void LiteCG::DoCG()
 
     Globals::GetInstance()->SetOptimLevel(cgOptions->GetOptimizeLevel());
 
+    MAD *mad;
+    if (cgOptions->DoLocalSchedule()) {
+        mad = new MAD();
+        Globals::GetInstance()->SetMAD(*mad);
+    }
+
     // not sure how to do this.
     auto cgPhaseManager = std::make_unique<ThreadLocalMemPool>(memPoolCtrler, "cg function phasemanager");
     const MaplePhaseInfo *cgPMInfo = MaplePhaseRegister::GetMaplePhaseRegister()->GetPhaseByID(&CgFuncPM::id);
@@ -137,6 +143,11 @@ void LiteCG::DoCG()
         cgfuncPhaseManager->DumpPhaseTime();
         timer.Stop();
         LogInfo::MapleLogger() << "Mplcg consumed " << timer.ElapsedMilliseconds() << "ms" << '\n';
+    }
+
+    if (cgOptions->DoLocalSchedule()) {
+        Globals::GetInstance()->ClearMAD();
+        delete mad;
     }
 }
 

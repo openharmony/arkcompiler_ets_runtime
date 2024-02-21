@@ -72,6 +72,7 @@ bool CGOptions::useBarriersForVolatile = true;
 bool CGOptions::exclusiveEH = false;
 bool CGOptions::doEBO = false;
 bool CGOptions::doCGSSA = false;
+bool CGOptions::doLocalSchedule = false;
 bool CGOptions::doCGRegCoalesce = false;
 bool CGOptions::doIPARA = true;
 bool CGOptions::doCFGO = false;
@@ -706,6 +707,7 @@ void CGOptions::EnableO0()
     optimizeLevel = kLevel0;
     doEBO = false;
     doCGSSA = false;
+    doLocalSchedule = false;
     doCFGO = false;
     doICO = false;
     doPrePeephole = false;
@@ -751,6 +753,7 @@ void CGOptions::EnableO2()
     optimizeLevel = kLevel2;
     doEBO = true;
     doCGSSA = true;
+    doLocalSchedule = true;
     doCFGO = true;
     doICO = true;
     doPrePeephole = true;
@@ -785,6 +788,7 @@ void CGOptions::EnableLiteCG()
     optimizeLevel = kLevelLiteCG;
     doEBO = false;
     doCGSSA = false;
+    doLocalSchedule = false;
     doCGRegCoalesce = false;
     doCFGO = true;
     doICO = false;
