@@ -101,6 +101,20 @@ GateRef CircuitBuilder::StableArrayCheck(GateRef gate, ElementsKind kind, ArrayM
     return ret;
 }
 
+GateRef CircuitBuilder::ElementsKindCheck(GateRef receiver, ElementsKind kind, ArrayMetaDataAccessor::Mode mode)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    auto frameState = acc_.FindNearestFrameState(currentDepend);
+    ArrayMetaDataAccessor accessor(kind, mode);
+    GateRef ret = GetCircuit()->NewGate(circuit_->ElementsKindCheck(accessor.ToValue()),
+        MachineType::I1, {currentControl, currentDepend, receiver, frameState}, GateType::NJSValue());
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
+}
+
 GateRef CircuitBuilder::COWArrayCheck(GateRef gate)
 {
     auto currentLabel = env_->GetCurrentLabel();
@@ -392,9 +406,29 @@ GateRef CircuitBuilder::CheckTaggedNumberAndConvertToBool(GateRef gate)
     return CheckAndConvert(gate, ValueType::TAGGED_NUMBER, ValueType::BOOL);
 }
 
+GateRef CircuitBuilder::CheckHoleIntAndConvertToTaggedInt(GateRef gate)
+{
+    return CheckAndConvert(gate, ValueType::HOLE_INT, ValueType::TAGGED_INT);
+}
+
+GateRef CircuitBuilder::CheckHoleDoubleAndConvertToTaggedDouble(GateRef gate)
+{
+    return CheckAndConvert(gate, ValueType::HOLE_DOUBLE, ValueType::TAGGED_DOUBLE);
+}
+
 GateRef CircuitBuilder::ConvertFloat64ToTaggedDouble(GateRef gate)
 {
     return Convert(gate, ValueType::FLOAT64, ValueType::TAGGED_DOUBLE);
+}
+
+GateRef CircuitBuilder::ConvertSpecialHoleIntToTagged(GateRef gate)
+{
+    return Convert(gate, ValueType::HOLE_INT, ValueType::TAGGED_INT);
+}
+
+GateRef CircuitBuilder::ConvertSpecialHoleDoubleToTagged(GateRef gate)
+{
+    return Convert(gate, ValueType::HOLE_DOUBLE, ValueType::TAGGED_DOUBLE);
 }
 
 GateRef CircuitBuilder::CheckUInt32AndConvertToInt32(GateRef gate)
@@ -470,6 +504,26 @@ GateRef CircuitBuilder::CheckNullAndConvertToBool(GateRef gate)
 GateRef CircuitBuilder::CheckUndefinedAndConvertToInt32(GateRef gate)
 {
     return CheckAndConvert(gate, ValueType::UNDEFINED, ValueType::INT32);
+}
+
+GateRef CircuitBuilder::CheckHoleIntAndConvertToInt32(GateRef gate)
+{
+    return CheckAndConvert(gate, ValueType::HOLE_INT, ValueType::INT32);
+}
+
+GateRef CircuitBuilder::CheckHoleDoubleAndConvertToInt32(GateRef gate)
+{
+    return CheckAndConvert(gate, ValueType::HOLE_DOUBLE, ValueType::INT32);
+}
+
+GateRef CircuitBuilder::CheckHoleIntAndConvertToFloat64(GateRef gate)
+{
+    return CheckAndConvert(gate, ValueType::HOLE_INT, ValueType::FLOAT64);
+}
+
+GateRef CircuitBuilder::CheckHoleDoubleAndConvertToFloat64(GateRef gate)
+{
+    return CheckAndConvert(gate, ValueType::HOLE_DOUBLE, ValueType::FLOAT64);
 }
 
 GateRef CircuitBuilder::TryPrimitiveTypeCheck(GateType type, GateRef gate)
@@ -1489,5 +1543,61 @@ GateRef CircuitBuilder::StringFromSingleCharCode(GateRef gate)
 GateRef CircuitBuilder::IsASCIICharacter(GateRef gate)
 {
     return Int32UnsignedLessThan(Int32Sub(gate, Int32(1)), Int32(base::utf_helper::UTF8_1B_MAX));
+}
+
+GateRef CircuitBuilder::MigrateFromRawValueToHeapValues(GateRef object, GateRef needCOW, GateRef isIntKind)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    auto ret = GetCircuit()->NewGate(circuit_->MigrateFromRawValueToHeapValues(),
+                                     MachineType::I64,
+                                     { currentControl, currentDepend, object, needCOW, isIntKind },
+                                     GateType::TaggedValue());
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
+}
+
+GateRef CircuitBuilder::MigrateFromHeapValueToRawValue(GateRef object, GateRef needCOW, GateRef isIntKind)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    auto ret = GetCircuit()->NewGate(circuit_->MigrateFromHeapValueToRawValue(),
+                                     MachineType::I64,
+                                     { currentControl, currentDepend, object, needCOW, isIntKind },
+                                     GateType::TaggedValue());
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
+}
+
+GateRef CircuitBuilder::MigrateFromHoleIntToHoleNumber(GateRef object)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    auto ret = GetCircuit()->NewGate(circuit_->MigrateFromHoleIntToHoleNumber(),
+                                     MachineType::I64,
+                                     { currentControl, currentDepend, object },
+                                     GateType::NJSValue());
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
+}
+
+GateRef CircuitBuilder::MigrateFromHoleNumberToHoleInt(GateRef object)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    auto ret = GetCircuit()->NewGate(circuit_->MigrateFromHoleNumberToHoleInt(),
+                                     MachineType::I64,
+                                     { currentControl, currentDepend, object },
+                                     GateType::NJSValue());
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
 }
 }

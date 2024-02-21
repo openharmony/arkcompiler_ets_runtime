@@ -15,6 +15,7 @@
 
 #include "ecmascript/compiler/typed_hcr_lowering.h"
 #include "ecmascript/compiler/builtins_lowering.h"
+#include "ecmascript/compiler/mcr_gate_meta_data.h"
 #include "ecmascript/compiler/new_object_stub_builder.h"
 #include "ecmascript/compiler/builtins/builtins_string_stub_builder.h"
 #include "ecmascript/compiler/rt_call_signature.h"
@@ -177,6 +178,9 @@ GateRef TypedHCRLowering::VisitGate(GateRef gate)
             break;
         case OpCode::STRING_FROM_SINGLE_CHAR_CODE:
             LowerStringFromSingleCharCode(gate, glue);
+            break;
+        case OpCode::MIGRATE_ARRAY_WITH_KIND:
+            LowerMigrateArrayWithKind(gate);
             break;
         default:
             break;
@@ -941,10 +945,12 @@ void TypedHCRLowering::LowerLoadElement(GateRef gate)
         case TypedLoadOp::ARRAY_LOAD_DOUBLE_ELEMENT:
         case TypedLoadOp::ARRAY_LOAD_OBJECT_ELEMENT:
         case TypedLoadOp::ARRAY_LOAD_TAGGED_ELEMENT:
-            LowerArrayLoadElement(gate, ArrayState::PACKED);
+            LowerArrayLoadElement(gate, ArrayState::PACKED, op);
             break;
         case TypedLoadOp::ARRAY_LOAD_HOLE_TAGGED_ELEMENT:
-            LowerArrayLoadElement(gate, ArrayState::HOLEY);
+        case TypedLoadOp::ARRAY_LOAD_HOLE_INT_ELEMENT:
+        case TypedLoadOp::ARRAY_LOAD_HOLE_DOUBLE_ELEMENT:
+            LowerArrayLoadElement(gate, ArrayState::HOLEY, op);
             break;
         case TypedLoadOp::INT8ARRAY_LOAD_ELEMENT:
             LowerTypedArrayLoadElement(gate, BuiltinTypeId::INT8_ARRAY);
@@ -1000,15 +1006,24 @@ void TypedHCRLowering::LowerCowArrayCheck(GateRef gate, GateRef glue)
 }
 
 // for JSArray
-void TypedHCRLowering::LowerArrayLoadElement(GateRef gate, ArrayState arrayState)
+void TypedHCRLowering::LowerArrayLoadElement(GateRef gate, ArrayState arrayState, TypedLoadOp op)
 {
     Environment env(gate, circuit_, &builder_);
     GateRef receiver = acc_.GetValueIn(gate, 0);
     GateRef index = acc_.GetValueIn(gate, 1);
     GateRef element = builder_.LoadConstOffset(VariableType::JS_POINTER(), receiver, JSObject::ELEMENTS_OFFSET);
-    GateRef result = builder_.GetValueFromTaggedArray(element, index);
+    GateRef result = Circuit::NullGate();
     if (arrayState == ArrayState::HOLEY) {
-        result = builder_.ConvertHoleAsUndefined(result);
+        if (op == TypedLoadOp::ARRAY_LOAD_HOLE_INT_ELEMENT ||
+            op == TypedLoadOp::ARRAY_LOAD_HOLE_DOUBLE_ELEMENT) {
+            result = builder_.GetValueFromJSArrayWithElementsKind(VariableType::INT64(), element, index);
+        } else {
+            result = builder_.GetValueFromTaggedArray(element, index);
+            result = builder_.ConvertHoleAsUndefined(result);
+        }
+    } else {
+        // When elementsKind swith on, we should get corresponding raw value for Int and Double kind.
+        result = builder_.GetValueFromTaggedArray(element, index);
     }
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
 }
@@ -1139,7 +1154,9 @@ void TypedHCRLowering::LowerStoreElement(GateRef gate, GateRef glue)
     TypedStoreOp op = accessor.GetTypedStoreOp();
     switch (op) {
         case TypedStoreOp::ARRAY_STORE_ELEMENT:
-            LowerArrayStoreElement(gate, glue);
+        case TypedStoreOp::ARRAY_STORE_INT_ELEMENT:
+        case TypedStoreOp::ARRAY_STORE_DOUBLE_ELEMENT:
+            LowerArrayStoreElement(gate, glue, op);
             break;
         case TypedStoreOp::INT8ARRAY_STORE_ELEMENT:
             LowerTypedArrayStoreElement(gate, BuiltinTypeId::INT8_ARRAY);
@@ -1175,7 +1192,7 @@ void TypedHCRLowering::LowerStoreElement(GateRef gate, GateRef glue)
 }
 
 // for JSArray
-void TypedHCRLowering::LowerArrayStoreElement(GateRef gate, GateRef glue)
+void TypedHCRLowering::LowerArrayStoreElement(GateRef gate, GateRef glue, TypedStoreOp op)
 {
     Environment env(gate, circuit_, &builder_);
     GateRef receiver = acc_.GetValueIn(gate, 0);  // 0: receiver
@@ -1183,7 +1200,16 @@ void TypedHCRLowering::LowerArrayStoreElement(GateRef gate, GateRef glue)
     GateRef value = acc_.GetValueIn(gate, 2);     // 2: value
 
     GateRef element = builder_.LoadConstOffset(VariableType::JS_POINTER(), receiver, JSObject::ELEMENTS_OFFSET);
-    builder_.SetValueToTaggedArray(VariableType::JS_ANY(), glue, element, index, value);
+    // Because at retype stage, we have set output according to op
+    // there is not need to consider about the convertion here.
+    if (op == TypedStoreOp::ARRAY_STORE_INT_ELEMENT) {
+        GateRef convertedValue = builder_.ZExtInt32ToInt64(value);
+        builder_.SetValueToTaggedArray(VariableType::INT64(), glue, element, index, convertedValue);
+    } else if (op == TypedStoreOp::ARRAY_STORE_DOUBLE_ELEMENT) {
+        builder_.SetValueToTaggedArray(VariableType::FLOAT64(), glue, element, index, value);
+    } else {
+        builder_.SetValueToTaggedArray(VariableType::JS_ANY(), glue, element, index, value);
+    }
 
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
@@ -3122,5 +3148,117 @@ void TypedHCRLowering::LowerStringFromSingleCharCode(GateRef gate, GateRef glue)
     }
     builder_.Bind(&exit);
     ReplaceGateWithPendingException(glue, gate, builder_.GetState(), builder_.GetDepend(), *res);
+}
+
+void TypedHCRLowering::LowerMigrateArrayWithKind(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    Label exit(&builder_);
+    GateRef object = acc_.GetValueIn(gate, 0);
+    GateRef oldKind = acc_.GetValueIn(gate, 1); // 1: objSize
+    GateRef newKind = acc_.GetValueIn(gate, 2); // 2: index
+
+    DEFVALUE(newElements, (&builder_), VariableType::JS_ANY(), builder_.Undefined());
+    Label doMigration(&builder_);
+    Label migrateFromInt(&builder_);
+    Label migrateOtherKinds(&builder_);
+    GateRef oldKindIsInt = builder_.Int32Equal(oldKind, builder_.Int32(static_cast<uint32_t>(ElementsKind::INT)));
+    GateRef newKindIsHoleInt = builder_.Int32Equal(newKind,
+                                                   builder_.Int32(static_cast<uint32_t>(ElementsKind::HOLE_INT)));
+    GateRef oldKindIsNum = builder_.Int32Equal(oldKind, builder_.Int32(static_cast<uint32_t>(ElementsKind::NUMBER)));
+    GateRef newKindIsHoleNum = builder_.Int32Equal(newKind,
+                                                   builder_.Int32(static_cast<uint32_t>(ElementsKind::HOLE_NUMBER)));
+    GateRef isTransitToHoleKind = builder_.BoolOr(builder_.BoolAnd(oldKindIsInt, newKindIsHoleInt),
+                                                  builder_.BoolAnd(oldKindIsNum, newKindIsHoleNum));
+    GateRef sameKinds = builder_.Int32Equal(oldKind, newKind);
+    GateRef noNeedMigration = builder_.BoolOr(sameKinds, isTransitToHoleKind);
+    builder_.Branch(noNeedMigration, &exit, &doMigration);
+    builder_.Bind(&doMigration);
+
+    GateRef needCOW = builder_.IsJsCOWArray(object);
+    builder_.Branch(builder_.elementsKindIsIntOrHoleInt(oldKind), &migrateFromInt, &migrateOtherKinds);
+    builder_.Bind(&migrateFromInt);
+    {
+        Label migrateToHeapValuesFromInt(&builder_);
+        Label migrateToRawValuesFromInt(&builder_);
+        Label migrateToNumbersFromInt(&builder_);
+        builder_.Branch(builder_.elementsKindIsHeapKind(newKind),
+                        &migrateToHeapValuesFromInt, &migrateToRawValuesFromInt);
+        builder_.Bind(&migrateToHeapValuesFromInt);
+        {
+            newElements = builder_.MigrateFromRawValueToHeapValues(object, needCOW, builder_.True());
+            builder_.StoreConstOffset(VariableType::JS_ANY(), object, JSObject::ELEMENTS_OFFSET, *newElements);
+            builder_.Jump(&exit);
+        }
+        builder_.Bind(&migrateToRawValuesFromInt);
+        {
+            builder_.Branch(builder_.elementsKindIsNumOrHoleNum(newKind), &migrateToNumbersFromInt, &exit);
+            builder_.Bind(&migrateToNumbersFromInt);
+            {
+                builder_.MigrateFromHoleIntToHoleNumber(object);
+                builder_.Jump(&exit);
+            }
+        }
+    }
+    builder_.Bind(&migrateOtherKinds);
+    {
+        Label migrateFromNumber(&builder_);
+        Label migrateToHeapValuesFromNum(&builder_);
+        Label migrateToRawValuesFromNum(&builder_);
+        Label migrateToIntFromNum(&builder_);
+        Label migrateToRawValueFromTagged(&builder_);
+        builder_.Branch(builder_.elementsKindIsNumOrHoleNum(oldKind), &migrateFromNumber, &migrateToRawValueFromTagged);
+        builder_.Bind(&migrateFromNumber);
+        {
+            builder_.Branch(builder_.elementsKindIsHeapKind(newKind),
+                            &migrateToHeapValuesFromNum, &migrateToRawValuesFromNum);
+            builder_.Bind(&migrateToHeapValuesFromNum);
+            {
+                Label migrateToTaggedFromNum(&builder_);
+                builder_.Branch(builder_.elementsKindIsHeapKind(newKind), &migrateToTaggedFromNum, &exit);
+                builder_.Bind(&migrateToTaggedFromNum);
+                {
+                    newElements = builder_.MigrateFromRawValueToHeapValues(object, needCOW, builder_.False());
+                    builder_.StoreConstOffset(VariableType::JS_ANY(), object, JSObject::ELEMENTS_OFFSET, *newElements);
+                    builder_.Jump(&exit);
+                }
+            }
+            builder_.Bind(&migrateToRawValuesFromNum);
+            {
+                builder_.Branch(builder_.elementsKindIsIntOrHoleInt(newKind), &migrateToIntFromNum, &exit);
+                builder_.Bind(&migrateToIntFromNum);
+                {
+                    builder_.MigrateFromHoleNumberToHoleInt(object);
+                    builder_.Jump(&exit);
+                }
+            }
+        }
+        builder_.Bind(&migrateToRawValueFromTagged);
+        {
+            Label migrateToIntFromTagged(&builder_);
+            Label migrateToOthersFromTagged(&builder_);
+            builder_.Branch(builder_.elementsKindIsIntOrHoleInt(newKind),
+                            &migrateToIntFromTagged, &migrateToOthersFromTagged);
+            builder_.Bind(&migrateToIntFromTagged);
+            {
+                newElements = builder_.MigrateFromHeapValueToRawValue(object, needCOW, builder_.True());
+                builder_.StoreConstOffset(VariableType::JS_ANY(), object, JSObject::ELEMENTS_OFFSET, *newElements);
+                builder_.Jump(&exit);
+            }
+            builder_.Bind(&migrateToOthersFromTagged);
+            {
+                Label migrateToNumFromTagged(&builder_);
+                builder_.Branch(builder_.elementsKindIsNumOrHoleNum(newKind), &migrateToNumFromTagged, &exit);
+                builder_.Bind(&migrateToNumFromTagged);
+                {
+                    newElements = builder_.MigrateFromHeapValueToRawValue(object, needCOW, builder_.False());
+                    builder_.StoreConstOffset(VariableType::JS_ANY(), object, JSObject::ELEMENTS_OFFSET, *newElements);
+                    builder_.Jump(&exit);
+                }
+            }
+        }
+    }
+    builder_.Bind(&exit);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 }  // namespace panda::ecmascript::kungfu

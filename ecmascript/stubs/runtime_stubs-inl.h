@@ -420,6 +420,7 @@ JSTaggedValue RuntimeStubs::RuntimeStArraySpread(JSThread *thread, const JSHandl
                                                  JSTaggedValue index, const JSHandle<JSTaggedValue> &src)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<JSTaggedValue> undefinedHandle(thread, JSTaggedValue::Undefined());
     ASSERT(dst->IsJSArray());
     if (dst->IsJSArray()) {
         if (src->IsNull() || src->IsUndefined()) {
@@ -456,19 +457,21 @@ JSTaggedValue RuntimeStubs::RuntimeStArraySpread(JSThread *thread, const JSHandl
         JSHandle<JSArray> dstArray = JSHandle<JSArray>::Cast(dst);
         dstArray->SetElements(thread, dstElements);
         dstArray->SetArrayLength(thread, length);
-        TaggedArray::CopyTaggedArrayElement(thread, srcElements, dstElements, length);
+        JSHandle<JSObject> srcObj(src);
+        JSHandle<JSObject> dstObj(dst);
+        ElementAccessor::CopyJSArrayObject(thread, srcObj, dstObj, length);
         for (uint32_t i = 0; i < length; i++) {
-            JSTaggedValue reg = srcElements->Get(thread, i);
-            if (reg.IsHole()) {
-                JSTaggedValue reg2 = JSArray::FastGetPropertyByValue(thread, src, i).GetTaggedValue();
+            JSHandle<JSTaggedValue> reg(thread, ElementAccessor::Get(srcObj, i));
+            if (reg->IsHole()) {
+                JSHandle<JSTaggedValue> reg2(thread, JSArray::FastGetPropertyByValue(thread, src, i).GetTaggedValue());
                 RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-                if (reg2.IsHole()) {
-                    dstElements->Set(thread, i, JSTaggedValue::Undefined());
+                if (reg2->IsHole()) {
+                    ElementAccessor::Set(thread, dstObj, i, undefinedHandle, true);
                 } else {
-                    dstElements->Set(thread, i, reg2);
+                    ElementAccessor::Set(thread, dstObj, i, reg2, true);
                 }
             } else {
-                dstElements->Set(thread, i, reg);
+                ElementAccessor::Set(thread, dstObj, i, reg, true);
             }
         }
         return JSTaggedValue(length);
@@ -2409,8 +2412,8 @@ JSTaggedValue RuntimeStubs::RuntimeGetCallSpreadArgs(JSThread *thread, const JSH
 
     // Fast path when array is stablearray and Iterator not change.
     if (jsArray->IsStableJSArray(thread) && itor->IsJSArrayIterator()) {
-        JSHandle<TaggedArray> srcElements(thread, JSHandle<JSObject>::Cast(jsArray)->GetElements());
-        TaggedArray::CopyTaggedArrayElement(thread, srcElements, argv, argvMayMaxLength);
+        JSHandle<JSObject> jsArrayObj(jsArray);
+        ElementAccessor::CopyJSArrayToTaggedArray(thread, jsArrayObj, argv, argvMayMaxLength);
         return argv.GetTaggedValue();
     }
 

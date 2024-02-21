@@ -156,8 +156,8 @@ void OptCodeProfiler::Update(JSHandle<JSTaggedValue> &func, int bcIndex, EcmaOpc
         if (itr != abcNames_.end()) {
             index = static_cast<uint32_t>(std::distance(abcNames_.begin(), itr));
         } else {
-            abcNames_.emplace_back(pfName);
             index = abcNames_.size();
+            abcNames_.emplace_back(pfName);
         }
 
         Key key(index, methodId);

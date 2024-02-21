@@ -1530,6 +1530,7 @@ void SlowPathLowering::LowerCreateArrayWithBuffer(GateRef gate)
     GateRef jsFunc = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
     GateRef index = builder_.TruncInt64ToInt32(acc_.GetValueIn(gate, 0));
     GateRef result = builder_.CallStub(glue_, gate, CommonStubCSigns::CreateArrayWithBuffer, { glue_, index, jsFunc });
+    // when elementsKind switch on, we should not update arrayHClass here.
     GateRef newRes = LowerUpdateArrayHClass(gate, result);
     ReplaceHirWithValue(gate, newRes, true);
 }

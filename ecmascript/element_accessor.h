@@ -32,10 +32,6 @@ public:
     static void Set(const JSThread *thread, JSHandle<JSObject> receiver, uint32_t idx, const JSHandle<T> &value,
                     bool needTransition, ElementsKind extraKind = ElementsKind::NONE);
 
-    template <bool needBarrier = true>
-    static void Set(const JSThread *thread, JSHandle<JSObject> receiver, uint32_t idx, const JSTaggedValue &value,
-                    bool needTransition, ElementsKind extraKind = ElementsKind::NONE);
-
     static bool IsDictionaryMode(JSHandle<JSObject> receiver);
     static bool IsDictionaryMode(JSObject *receiver);
 
@@ -44,6 +40,11 @@ public:
 
     static JSTaggedValue GetTaggedValueWithElementsKind(JSTaggedType rawValue, ElementsKind kind);
     static JSTaggedType PUBLIC_API ConvertTaggedValueWithElementsKind(JSTaggedValue rawValue, ElementsKind kind);
+
+    static void CopyJSArrayObject(const JSThread *thread, JSHandle<JSObject>srcObj, JSHandle<JSObject>dstObj,
+                                  uint32_t effectiveLength);
+    static void CopyJSArrayToTaggedArray(const JSThread *thread, JSHandle<JSObject>srcObj,
+                                         JSHandle<TaggedArray>dstElements, uint32_t effectiveLength);
 private:
 };
 }  // namespace ecmascript

@@ -777,8 +777,8 @@ JSTaggedValue BuiltinsArrayBuffer::TypedArrayToList(JSThread *thread, JSHandle<J
     uint32_t index = 0;
     while (index < arrayLen) {
         uint32_t byteIndex = index * elementSize + offset;
-        JSTaggedValue result = GetValueFromBuffer(thread, bufferHandle.GetTaggedValue(),
-                                                  byteIndex, elementType, true);
+        JSHandle<JSTaggedValue> result(thread, GetValueFromBuffer(thread, bufferHandle.GetTaggedValue(),
+                                       byteIndex, elementType, true));
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         ElementAccessor::Set(thread, newArrayHandle, index, result, true);
         index++;

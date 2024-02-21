@@ -588,6 +588,21 @@ GateRef CircuitBuilder::OrdinaryHasInstance(GateRef obj, GateRef target)
     return ret;
 }
 
+GateRef CircuitBuilder::MigrateArrayWithKind(GateRef receiver, GateRef oldElementsKind,
+                                             GateRef newElementsKind)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    GateRef newGate = GetCircuit()->NewGate(circuit_->MigrateArrayWithKind(), MachineType::I64,
+                                            { currentControl, currentDepend, receiver, oldElementsKind,
+                                              newElementsKind },
+                                            GateType::TaggedValue());
+    currentLabel->SetControl(newGate);
+    currentLabel->SetDepend(newGate);
+    return newGate;
+}
+
 GateRef CircuitBuilder::IsLiteralString(GateRef string)
 {
     return BoolOr(IsLineString(string), IsConstantString(string));

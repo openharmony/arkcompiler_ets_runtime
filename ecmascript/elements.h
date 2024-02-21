@@ -65,15 +65,34 @@ public:
 
     static bool IsInNumbers(ElementsKind kind)
     {
-        return (static_cast<uint32_t>(kind) >= static_cast<uint32_t>(ElementsKind::HOLE) &&
+        return (static_cast<uint32_t>(kind) > static_cast<uint32_t>(ElementsKind::HOLE) &&
                 static_cast<uint32_t>(kind) < static_cast<uint32_t>(ElementsKind::STRING));
     }
 
+    static bool IsHoleInt(ElementsKind kind)
+    {
+        return kind == ElementsKind::HOLE_INT;
+    }
+
+    static bool IsHoleNumber(ElementsKind kind)
+    {
+        return kind == ElementsKind::HOLE_NUMBER;
+    }
+
+    static ConstantIndex GetGlobalContantIndexByKind(ElementsKind kind);
     static ElementsKind MergeElementsKind(ElementsKind curKind, ElementsKind newKind);
     static ElementsKind FixElementsKind(ElementsKind oldKind);
     static ElementsKind ToElementsKind(JSTaggedValue value, ElementsKind kind);
     static void MigrateArrayWithKind(const JSThread *thread, const JSHandle<JSObject> &object,
                                      const ElementsKind oldKind, const ElementsKind newKind);
+private:
+    static JSTaggedValue MigrateFromRawValueToHeapValue(const JSThread *thread, const JSHandle<JSObject> object,
+                                                         bool needCOW, bool isIntKind);
+    static JSTaggedValue MigrateFromHeapValueToRawValue(const JSThread *thread, const JSHandle<JSObject> object,
+                                                        bool needCOW, bool isIntKind);
+    static void MigrateFromHoleIntToHoleNumber(const JSThread *thread, const JSHandle<JSObject> object);
+    static void MigrateFromHoleNumberToHoleInt(const JSThread *thread, const JSHandle<JSObject> object);
+
 };
 }  // namespace panda::ecmascript
 #endif // ECMASCRIPT_ELEMENTS_H

@@ -50,6 +50,7 @@ class JSThread;
  *      |      AOT Instance Hclass (IHC)    |
  *      |   AOT Constructor Hclass (CHC)    |
  *      |   AOT ElementIndex (ElementIndex) |
+ *      |   AOT ElementKind  (ElementKind)  |
  *      +-----------------------------------+
  */
 class AOTLiteralInfo : public TaggedArray {
@@ -58,7 +59,8 @@ public:
     static constexpr size_t AOT_CHC_INDEX = 1;
     static constexpr size_t AOT_IHC_INDEX = 2;
     static constexpr size_t AOT_ELEMENT_INDEX = 3;
-    static constexpr size_t RESERVED_LENGTH = AOT_ELEMENT_INDEX;
+    static constexpr size_t AOT_ELEMENTS_KIND_INDEX = 4;
+    static constexpr size_t RESERVED_LENGTH = AOT_ELEMENTS_KIND_INDEX;
 
     static AOTLiteralInfo *Cast(TaggedObject *object)
     {
@@ -77,6 +79,7 @@ public:
         SetIhc(JSTaggedValue::Undefined());
         SetChc(JSTaggedValue::Undefined());
         SetElementIndex(JSTaggedValue(kungfu::BaseSnapshotInfo::AOT_ELEMENT_INDEX_DEFAULT_VALUE));
+        SetElementsKind(ElementsKind::GENERIC);
     }
 
     inline uint32_t GetCacheLength() const
@@ -114,6 +117,19 @@ public:
         return JSTaggedValue(Barriers::GetValue<JSTaggedType>(GetData(), GetElementIndexOffset())).GetInt();
     }
 
+    inline void SetElementsKind(ElementsKind kind)
+    {
+        JSTaggedValue value(static_cast<int>(kind));
+        Barriers::SetPrimitive(GetData(), GetElementsKindOffset(), value.GetRawData());
+    }
+
+    inline ElementsKind GetElementsKind() const
+    {
+        JSTaggedValue value = JSTaggedValue(Barriers::GetValue<JSTaggedType>(GetData(), GetElementsKindOffset()));
+        ElementsKind kind = static_cast<ElementsKind>(value.GetInt());
+        return kind;
+    }
+
     inline void SetObjectToCache(JSThread *thread, uint32_t index, JSTaggedValue value)
     {
         Set(thread, index, value);
@@ -138,6 +154,11 @@ private:
     inline size_t GetElementIndexOffset() const
     {
         return JSTaggedValue::TaggedTypeSize() * (GetLength() - AOT_ELEMENT_INDEX);
+    }
+
+    inline size_t GetElementsKindOffset() const
+    {
+        return JSTaggedValue::TaggedTypeSize() * (GetLength() - AOT_ELEMENTS_KIND_INDEX);
     }
 };
 

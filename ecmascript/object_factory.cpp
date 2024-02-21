@@ -2481,16 +2481,17 @@ JSHandle<JSObject> ObjectFactory::NewAndCopyJSArrayObject(JSHandle<JSObject> thi
 {
     ASSERT(oldLength <= newLength);
     JSHandle<TaggedArray> dstElements(NewTaggedArray(newLength));
+    JSHandle<JSTaggedValue> holeHandle(thread_, JSTaggedValue::Hole());
     JSHandle<JSObject> arrayObj = JSHandle<JSObject>(NewJSStableArrayWithElements(dstElements));
     if (newLength == 0) {
         return JSHandle<JSObject>(arrayObj);
     }
     for (uint32_t i = 0; i < oldLength; i++) {
-        JSTaggedValue value = ElementAccessor::Get(thisObjHandle, i + k);
+        JSHandle<JSTaggedValue> value(thread_, ElementAccessor::Get(thisObjHandle, i + k));
         ElementAccessor::Set(thread_, arrayObj, i, value, true);
     }
     for (uint32_t i = oldLength; i < newLength; i++) {
-        ElementAccessor::Set(thread_, arrayObj, i, JSTaggedValue::Hole(), true);
+        ElementAccessor::Set(thread_, arrayObj, i, holeHandle, true);
     }
     return arrayObj;
 }
@@ -2654,7 +2655,7 @@ JSHandle<MutantTaggedArray> ObjectFactory::NewMutantTaggedArray(uint32_t length,
     ASSERT(length > 0);
 
     size_t size = TaggedArray::ComputeSize(JSTaggedValue::TaggedTypeSize(), length);
-    auto header = heap_->AllocateNonMovableOrHugeObject(
+    auto header = heap_->AllocateYoungOrHugeObject(
         JSHClass::Cast(thread_->GlobalConstants()->GetMutantTaggedArrayClass().GetTaggedObject()), size);
     JSHandle<MutantTaggedArray> mutantTaggedArray(thread_, header);
     mutantTaggedArray->InitializeWithSpecialValue(initVal, length);

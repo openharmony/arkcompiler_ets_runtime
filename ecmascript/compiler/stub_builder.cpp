@@ -2976,8 +2976,7 @@ void StubBuilder::TransitToElementsKind(GateRef glue, GateRef receiver, GateRef 
         Bind(&change);
         {
             CallRuntime(glue, RTSTUB_ID(UpdateHClassForElementsKind), { receiver, newKind });
-            CallRuntime(glue, RTSTUB_ID(MigrateArrayWithKind),
-                        { receiver, IntToTaggedInt(elementsKind), IntToTaggedInt(newKind) });
+            MigrateArrayWithKind(glue, receiver, elementsKind, newKind);
             Jump(&exit);
         }
     }
@@ -6384,7 +6383,7 @@ GateRef StubBuilder::GetNumberOfElements(GateRef obj)
             Branch(Int32UnsignedLessThan(*i, elementsLen), &iLessLength, &exit);
             Bind(&iLessLength);
             {
-                GateRef element = GetValueFromTaggedArray(elements, *i);
+                GateRef element = GetTaggedValueWithElementsKind(obj, *i);
                 Branch(TaggedIsHole(element), &loopEnd, &notHole);
                 Bind(&notHole);
                 numOfElements = Int32Add(*numOfElements, Int32(1));
@@ -7991,7 +7990,7 @@ GateRef StubBuilder::GetCallSpreadArgs(GateRef glue, GateRef array, ProfileOpera
     Bind(&fastPath);
     {
         // copy operation is omitted
-        result = GetElementsArray(array);
+        result = CopyJSArrayToTaggedArrayArgs(glue, array);
         Jump(&exit);
     }
     Bind(&noCopyPath);
@@ -8334,5 +8333,443 @@ GateRef StubBuilder::SetValueWithElementsKind(GateRef glue, GateRef receiver, Ga
     auto ret = *result;
     env->SubCfgExit();
     return ret;
+}
+
+GateRef StubBuilder::CopyJSArrayToTaggedArrayArgs(GateRef glue, GateRef srcObj)
+{
+    auto env = GetEnvironment();
+    Label entryPass(env);
+    env->SubCfgEntry(&entryPass);
+    DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
+    Label exit(env);
+
+    Label isMutantTaggedArray(env);
+    result = GetElementsArray(srcObj);
+    Branch(IsMutantTaggedArray(*result), &isMutantTaggedArray, &exit);
+    Bind(&isMutantTaggedArray);
+    {
+        GateRef argvLength = GetLengthOfTaggedArray(*result);
+        NewObjectStubBuilder newBuilder(this);
+        GateRef argv = newBuilder.NewTaggedArray(glue, argvLength);
+        DEFVARIABLE(index, VariableType::INT32(), Int32(0));
+        Label loopHead(env);
+        Label loopEnd(env);
+        Label afterLoop(env);
+        Label storeValue(env);
+        Jump(&loopHead);
+        LoopBegin(&loopHead);
+        {
+            Branch(Int32UnsignedLessThan(*index, argvLength), &storeValue, &afterLoop);
+            Bind(&storeValue);
+            {
+                GateRef value = GetTaggedValueWithElementsKind(srcObj, *index);
+                SetValueToTaggedArray(VariableType::JS_ANY(), glue, argv, *index, value);
+                index = Int32Add(*index, Int32(1));
+                Jump(&loopEnd);
+            }
+        }
+        Bind(&loopEnd);
+        LoopEnd(&loopHead);
+        Bind(&afterLoop);
+        {
+            result = argv;
+            Jump(&exit);
+        }
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+void StubBuilder::MigrateArrayWithKind(GateRef glue, GateRef object, GateRef oldKind, GateRef newKind)
+{
+    auto env = GetEnvironment();
+    Label entryPass(env);
+    env->SubCfgEntry(&entryPass);
+    Label exit(env);
+
+    Label elementsKindOn(env);
+    GateRef isElementsKindSwitchOn = CallRuntime(glue, RTSTUB_ID(IsElementsKindSwitchOn), {});
+    Branch(TaggedIsTrue(isElementsKindSwitchOn), &elementsKindOn, &exit);
+    Bind(&elementsKindOn);
+
+    DEFVARIABLE(newElements, VariableType::JS_ANY(), Undefined());
+    Label doMigration(env);
+    Label migrateFromInt(env);
+    Label migrateOtherKinds(env);
+    GateRef oldKindIsInt = Int32Equal(oldKind, Int32(static_cast<uint32_t>(ElementsKind::INT)));
+    GateRef newKindIsHoleInt = Int32Equal(newKind, Int32(static_cast<uint32_t>(ElementsKind::HOLE_INT)));
+    GateRef oldKindIsNum = Int32Equal(oldKind, Int32(static_cast<uint32_t>(ElementsKind::NUMBER)));
+    GateRef newKindIsHoleNum = Int32Equal(newKind, Int32(static_cast<uint32_t>(ElementsKind::HOLE_NUMBER)));
+    GateRef isTransitToHoleKind = BoolOr(BoolAnd(oldKindIsInt, newKindIsHoleInt),
+                                         BoolAnd(oldKindIsNum, newKindIsHoleNum));
+    GateRef sameKinds = Int32Equal(oldKind, newKind);
+    GateRef noNeedMigration = BoolOr(sameKinds, isTransitToHoleKind);
+    Branch(noNeedMigration, &exit, &doMigration);
+    Bind(&doMigration);
+    GateRef needCOW = IsJsCOWArray(object);
+    Branch(elementsKindIsIntOrHoleInt(oldKind), &migrateFromInt, &migrateOtherKinds);
+    Bind(&migrateFromInt);
+    {
+        Label migrateToHeapValuesFromInt(env);
+        Label migrateToRawValuesFromInt(env);
+        Label migrateToNumbersFromInt(env);
+        Branch(elementsKindIsHeapKind(newKind), &migrateToHeapValuesFromInt, &migrateToRawValuesFromInt);
+        Bind(&migrateToHeapValuesFromInt);
+        {
+            newElements = MigrateFromRawValueToHeapValues(glue, object, needCOW, True());
+            SetElementsArray(VariableType::JS_ANY(), glue, object, *newElements);
+            Jump(&exit);
+        }
+        Bind(&migrateToRawValuesFromInt);
+        {
+            Branch(elementsKindIsNumOrHoleNum(newKind), &migrateToNumbersFromInt, &exit);
+            Bind(&migrateToNumbersFromInt);
+            {
+                MigrateFromHoleIntToHoleNumber(glue, object);
+                Jump(&exit);
+            }
+        }
+    }
+    Bind(&migrateOtherKinds);
+    {
+        Label migrateFromNumber(env);
+        Label migrateToHeapValuesFromNum(env);
+        Label migrateToRawValuesFromNum(env);
+        Label migrateToIntFromNum(env);
+        Label migrateToRawValueFromTagged(env);
+        Branch(elementsKindIsNumOrHoleNum(oldKind), &migrateFromNumber, &migrateToRawValueFromTagged);
+        Bind(&migrateFromNumber);
+        {
+            Branch(elementsKindIsHeapKind(newKind), &migrateToHeapValuesFromNum, &migrateToRawValuesFromNum);
+            Bind(&migrateToHeapValuesFromNum);
+            {
+                Label migrateToTaggedFromNum(env);
+                Branch(elementsKindIsHeapKind(newKind), &migrateToTaggedFromNum, &exit);
+                Bind(&migrateToTaggedFromNum);
+                {
+                    newElements = MigrateFromRawValueToHeapValues(glue, object, needCOW, False());
+                    SetElementsArray(VariableType::JS_ANY(), glue, object, *newElements);
+                    Jump(&exit);
+                }
+            }
+            Bind(&migrateToRawValuesFromNum);
+            {
+                Branch(elementsKindIsIntOrHoleInt(newKind), &migrateToIntFromNum, &exit);
+                Bind(&migrateToIntFromNum);
+                {
+                    MigrateFromHoleNumberToHoleInt(glue, object);
+                    Jump(&exit);
+                }
+            }
+        }
+        Bind(&migrateToRawValueFromTagged);
+        {
+            Label migrateToIntFromTagged(env);
+            Label migrateToOthersFromTagged(env);
+            Branch(elementsKindIsIntOrHoleInt(newKind), &migrateToIntFromTagged, &migrateToOthersFromTagged);
+            Bind(&migrateToIntFromTagged);
+            {
+                newElements = MigrateFromHeapValueToRawValue(glue, object, needCOW, True());
+                SetElementsArray(VariableType::JS_ANY(), glue, object, *newElements);
+                Jump(&exit);
+            }
+            Bind(&migrateToOthersFromTagged);
+            {
+                Label migrateToNumFromTagged(env);
+                Branch(elementsKindIsNumOrHoleNum(newKind), &migrateToNumFromTagged, &exit);
+                Bind(&migrateToNumFromTagged);
+                {
+                    newElements = MigrateFromHeapValueToRawValue(glue, object, needCOW, False());
+                    SetElementsArray(VariableType::JS_ANY(), glue, object, *newElements);
+                    Jump(&exit);
+                }
+            }
+        }
+    }
+    Bind(&exit);
+    env->SubCfgExit();
+}
+
+GateRef StubBuilder::MigrateFromRawValueToHeapValues(GateRef glue, GateRef object, GateRef needCOW, GateRef isIntKind)
+{
+    auto env = GetEnvironment();
+    Label entryPass(env);
+    env->SubCfgEntry(&entryPass);
+    DEFVARIABLE(newElements, VariableType::JS_ANY(), Undefined());
+    Label exit(env);
+
+    GateRef elements = GetElementsArray(object);
+    GateRef length = GetLengthOfTaggedArray(elements);
+    Label createCOW(env);
+    Label createNormal(env);
+    Label finishElementsInit(env);
+    Branch(needCOW, &createCOW, &createNormal);
+    Bind(&createCOW);
+    {
+        newElements = CallRuntime(glue, RTSTUB_ID(NewCOWTaggedArray), { IntToTaggedPtr(length) });
+        Jump(&finishElementsInit);
+    }
+    Bind(&createNormal);
+    {
+        newElements = CallRuntime(glue, RTSTUB_ID(NewTaggedArray), { IntToTaggedPtr(length) });
+        Jump(&finishElementsInit);
+    }
+    Bind(&finishElementsInit);
+
+    DEFVARIABLE(index, VariableType::INT32(), Int32(0));
+    Label loopHead(env);
+    Label loopEnd(env);
+    Label afterLoop(env);
+    Label storeValue(env);
+    Jump(&loopHead);
+    LoopBegin(&loopHead);
+    {
+        Label storeHole(env);
+        Label storeNormalValue(env);
+        Label finishStore(env);
+        Branch(Int32UnsignedLessThan(*index, length), &storeValue, &afterLoop);
+        Bind(&storeValue);
+        {
+            Label rawValueIsInt(env);
+            Label rawValueIsNumber(env);
+            GateRef value = GetValueFromMutantTaggedArray(elements, *index);
+            Branch(ValueIsSpecialHole(value), &storeHole, &storeNormalValue);
+            Bind(&storeHole);
+            {
+                SetValueToTaggedArray(VariableType::JS_ANY(), glue, *newElements, *index, Hole());
+                Jump(&finishStore);
+            }
+            Bind(&storeNormalValue);
+            {
+                Branch(isIntKind, &rawValueIsInt, &rawValueIsNumber);
+                Bind(&rawValueIsInt);
+                {
+                    GateRef convertedInt = Int64ToTaggedIntPtr(value);
+                    SetValueToTaggedArray(VariableType::JS_ANY(), glue, *newElements, *index, convertedInt);
+                    Jump(&finishStore);
+                }
+                Bind(&rawValueIsNumber);
+                {
+                    GateRef tmpDouble = CastInt64ToFloat64(value);
+                    GateRef convertedDouble = DoubleToTaggedDoublePtr(tmpDouble);
+                    SetValueToTaggedArray(VariableType::JS_ANY(), glue, *newElements, *index, convertedDouble);
+                    Jump(&finishStore);
+                }
+            }
+            Bind(&finishStore);
+            {
+                index = Int32Add(*index, Int32(1));
+                Jump(&loopEnd);
+            }
+        }
+    }
+    Bind(&loopEnd);
+    LoopEnd(&loopHead);
+    Bind(&afterLoop);
+    {
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *newElements;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef StubBuilder::MigrateFromHeapValueToRawValue(GateRef glue, GateRef object, GateRef needCOW, GateRef isIntKind)
+{
+    auto env = GetEnvironment();
+    Label entryPass(env);
+    env->SubCfgEntry(&entryPass);
+    DEFVARIABLE(newElements, VariableType::JS_ANY(), Undefined());
+    Label exit(env);
+
+    GateRef elements = GetElementsArray(object);
+    GateRef length = GetLengthOfTaggedArray(elements);
+    Label createCOW(env);
+    Label createNormal(env);
+    Label finishElementsInit(env);
+    Branch(needCOW, &createCOW, &createNormal);
+    Bind(&createCOW);
+    {
+        newElements = CallRuntime(glue, RTSTUB_ID(NewCOWMutantTaggedArray), { IntToTaggedPtr(length) });
+        Jump(&finishElementsInit);
+    }
+    Bind(&createNormal);
+    {
+        newElements = CallRuntime(glue, RTSTUB_ID(NewMutantTaggedArray), { IntToTaggedPtr(length) });
+        Jump(&finishElementsInit);
+    }
+    Bind(&finishElementsInit);
+
+    DEFVARIABLE(index, VariableType::INT32(), Int32(0));
+    Label loopHead(env);
+    Label loopEnd(env);
+    Label afterLoop(env);
+    Label storeValue(env);
+    Jump(&loopHead);
+    LoopBegin(&loopHead);
+    {
+        Label storeSpecialHole(env);
+        Label storeNormalValue(env);
+        Label finishStore(env);
+        Branch(Int32UnsignedLessThan(*index, length), &storeValue, &afterLoop);
+        Bind(&storeValue);
+        {
+            Label convertToInt(env);
+            Label convertToDouble(env);
+            GateRef value = GetValueFromTaggedArray(elements, *index);
+            Branch(TaggedIsHole(value), &storeSpecialHole, &storeNormalValue);
+            Bind(&storeSpecialHole);
+            {
+                SetValueToTaggedArray(VariableType::INT64(), glue, *newElements, *index, SpecialHole());
+                Jump(&finishStore);
+            }
+            Bind(&storeNormalValue);
+            {
+                Label valueIsInt(env);
+                Label valueIsDouble(env);
+                Branch(isIntKind, &convertToInt, &convertToDouble);
+                Bind(&convertToInt);
+                {
+                    GateRef convertedInt = GetInt64OfTInt(value);
+                    SetValueToTaggedArray(VariableType::INT64(), glue, *newElements, *index, convertedInt);
+                    Jump(&finishStore);
+                }
+                Bind(&convertToDouble);
+                {
+                    Branch(TaggedIsInt(value), &valueIsInt, &valueIsDouble);
+                    Bind(&valueIsInt);
+                    {
+                        GateRef convertedDoubleFromTInt = CastDoubleToInt64(GetDoubleOfTInt(value));
+                        SetValueToTaggedArray(VariableType::INT64(), glue, *newElements, *index,
+                                              convertedDoubleFromTInt);
+                        Jump(&finishStore);
+                    }
+                    Bind(&valueIsDouble);
+                    {
+                        GateRef convertedDoubleFromTDouble = CastDoubleToInt64(GetDoubleOfTDouble(value));
+                        SetValueToTaggedArray(VariableType::INT64(), glue, *newElements, *index,
+                                              convertedDoubleFromTDouble);
+                        Jump(&finishStore);
+                    }
+                }
+            }
+            Bind(&finishStore);
+            {
+                index = Int32Add(*index, Int32(1));
+                Jump(&loopEnd);
+            }
+        }
+    }
+    Bind(&loopEnd);
+    LoopEnd(&loopHead);
+    Bind(&afterLoop);
+    {
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *newElements;
+    env->SubCfgExit();
+    return ret;
+}
+
+void StubBuilder::MigrateFromHoleIntToHoleNumber(GateRef glue, GateRef object)
+{
+    auto env = GetEnvironment();
+    Label entryPass(env);
+    env->SubCfgEntry(&entryPass);
+    Label exit(env);
+
+    GateRef elements = GetElementsArray(object);
+    GateRef length = GetLengthOfTaggedArray(elements);
+    DEFVARIABLE(index, VariableType::INT32(), Int32(0));
+    Label loopHead(env);
+    Label loopEnd(env);
+    Label afterLoop(env);
+    Label storeValue(env);
+    Jump(&loopHead);
+    LoopBegin(&loopHead);
+    {
+        Label storeNormalValue(env);
+        Label finishStore(env);
+        Branch(Int32UnsignedLessThan(*index, length), &storeValue, &afterLoop);
+        Bind(&storeValue);
+        {
+            GateRef value = GetValueFromMutantTaggedArray(elements, *index);
+            Branch(ValueIsSpecialHole(value), &finishStore, &storeNormalValue);
+            Bind(&storeNormalValue);
+            {
+                GateRef intVal = TruncInt64ToInt32(value);
+                GateRef convertedValue = CastDoubleToInt64(ChangeInt32ToFloat64(intVal));
+                SetValueToTaggedArray(VariableType::INT64(), glue, elements, *index,
+                                      convertedValue);
+                Jump(&finishStore);
+            }
+            Bind(&finishStore);
+            {
+                index = Int32Add(*index, Int32(1));
+                Jump(&loopEnd);
+            }
+        }
+    }
+    Bind(&loopEnd);
+    LoopEnd(&loopHead);
+    Bind(&afterLoop);
+    {
+        Jump(&exit);
+    }
+    Bind(&exit);
+    env->SubCfgExit();
+}
+
+void StubBuilder::MigrateFromHoleNumberToHoleInt(GateRef glue, GateRef object)
+{
+    auto env = GetEnvironment();
+    Label entryPass(env);
+    env->SubCfgEntry(&entryPass);
+    Label exit(env);
+
+    GateRef elements = GetElementsArray(object);
+    GateRef length = GetLengthOfTaggedArray(elements);
+    DEFVARIABLE(index, VariableType::INT32(), Int32(0));
+    Label loopHead(env);
+    Label loopEnd(env);
+    Label afterLoop(env);
+    Label storeValue(env);
+    Jump(&loopHead);
+    LoopBegin(&loopHead);
+    {
+        Label storeNormalValue(env);
+        Label finishStore(env);
+        Branch(Int32UnsignedLessThan(*index, length), &storeValue, &afterLoop);
+        Bind(&storeValue);
+        {
+            GateRef value = GetValueFromMutantTaggedArray(elements, *index);
+            Branch(ValueIsSpecialHole(value), &finishStore, &storeNormalValue);
+            Bind(&storeNormalValue);
+            {
+                GateRef doubleVal = CastInt64ToFloat64(value);
+                GateRef convertedValue = SExtInt32ToInt64(ChangeFloat64ToInt32(doubleVal));
+                SetValueToTaggedArray(VariableType::INT64(), glue, elements, *index,
+                                      convertedValue);
+                Jump(&finishStore);
+            }
+            Bind(&finishStore);
+            {
+                index = Int32Add(*index, Int32(1));
+                Jump(&loopEnd);
+            }
+        }
+    }
+    Bind(&loopEnd);
+    LoopEnd(&loopHead);
+    Bind(&afterLoop);
+    {
+        Jump(&exit);
+    }
+    Bind(&exit);
+    env->SubCfgExit();
 }
 }  // namespace panda::ecmascript::kungfu

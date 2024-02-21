@@ -43,6 +43,9 @@ GateRef MCRLowering::VisitGate(GateRef gate)
         case OpCode::HEAP_OBJECT_CHECK:
             LowerHeapObjectCheck(gate);
             break;
+        case OpCode::ELEMENTSKIND_CHECK:
+            LowerElementskindCheck(gate);
+            break;
         case OpCode::LOAD_CONST_OFFSET:
             LowerLoadConstOffset(gate);
             break;
@@ -108,6 +111,18 @@ GateRef MCRLowering::VisitGate(GateRef gate)
             break;
         case OpCode::IS_SPECIFIC_OBJECT_TYPE:
             LowerIsSpecificObjectType(gate);
+            break;
+        case OpCode::MIGRATE_FROM_HEAPVALUE_TO_RAWVALUE:
+            LowerMigrateFromHeapValueToRawValue(gate);
+            break;
+        case OpCode::MIGRATE_FROM_RAWVALUE_TO_HEAPVALUES:
+            LowerMigrateFromRawValueToHeapValues(gate);
+            break;
+        case OpCode::MIGRATE_FROM_HOLEINT_TO_HOLENUMBER:
+            LowerMigrateFromHoleIntToHoleNumber(gate);
+            break;
+        case OpCode::MIGRATE_FROM_HOLENUMBER_TO_HOLEINT:
+            LowerMigrateFromHoleNumberToHoleInt(gate);
             break;
         default:
             break;
@@ -291,6 +306,25 @@ void MCRLowering::LowerHClassStableArrayCheck(GateRef gate)
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 
+void MCRLowering::LowerElementskindCheck(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    GateRef frameState = acc_.GetFrameState(gate);
+    GateRef hclass = acc_.GetValueIn(gate, 0);
+    ArrayMetaDataAccessor accessor = acc_.GetArrayMetaDataAccessor(gate);
+    ElementsKind kind = accessor.GetElementsKind();
+    GateRef check = builder_.Equal(builder_.Int32(static_cast<int32_t>(kind)),
+                                   builder_.GetElementsKindByHClass(hclass));
+
+    if (accessor.IsLoadElement()) {
+        builder_.DeoptCheck(check, frameState, DeoptType::ELEMENSKINDMISMATCHEDATLOAD);
+    } else {
+        builder_.DeoptCheck(check, frameState, DeoptType::ELEMENSKINDMISMATCHEDATSTORE);
+    }
+
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
+}
+
 StateDepend MCRLowering::LowerConvert(StateDepend stateDepend, GateRef gate)
 {
     Environment env(stateDepend.State(), stateDepend.Depend(), {}, circuit_, &builder_);
@@ -351,12 +385,66 @@ StateDepend MCRLowering::LowerConvert(StateDepend stateDepend, GateRef gate)
             result = builder_.CallStub(glue, gate, CommonStubCSigns::CreateStringBySingleCharCode, { glue, value });
             break;
         }
+        case ValueType::HOLE_INT:
+            if (dstType == ValueType::TAGGED_INT) {
+                result = ConvertSpecialHoleIntToTagged(value, &exit);
+            }
+            break;
+        case ValueType::HOLE_DOUBLE:
+            if (dstType == ValueType::TAGGED_DOUBLE) {
+                result = ConvertSpecialHoleDoubleToTagged(value, &exit);
+            }
+            break;
         default:
             LOG_COMPILER(FATAL) << "this branch is unreachable";
             break;
     }
     acc_.ReplaceGate(gate, Circuit::NullGate(), Circuit::NullGate(), result);
     return builder_.GetStateDepend();
+}
+
+GateRef MCRLowering::ConvertSpecialHoleIntToTagged(GateRef gate, Label* exit)
+{
+    Label returnUndefined(&builder_);
+    Label returnTaggedInt(&builder_);
+    DEFVALUE(result, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
+
+    builder_.Branch(builder_.IsSpecialHole(gate), &returnUndefined, &returnTaggedInt, 1, BranchWeight::DEOPT_WEIGHT);
+    builder_.Bind(&returnUndefined);
+    {
+        result = builder_.UndefineConstant();
+        builder_.Jump(exit);
+    }
+    builder_.Bind(&returnTaggedInt);
+    {
+        GateRef rawInt = builder_.TruncInt64ToInt32(gate);
+        result = ConvertInt32ToTaggedInt(rawInt);
+        builder_.Jump(exit);
+    }
+    builder_.Bind(exit);
+    return *result;
+}
+
+GateRef MCRLowering::ConvertSpecialHoleDoubleToTagged(GateRef gate, Label* exit)
+{
+    Label returnUndefined(&builder_);
+    Label returnTaggedDouble(&builder_);
+    DEFVALUE(result, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
+
+    builder_.Branch(builder_.IsSpecialHole(gate), &returnUndefined, &returnTaggedDouble, 1, BranchWeight::DEOPT_WEIGHT);
+    builder_.Bind(&returnUndefined);
+    {
+        result = builder_.UndefineConstant();
+        builder_.Jump(exit);
+    }
+    builder_.Bind(&returnTaggedDouble);
+    {
+        GateRef rawDouble = builder_.CastInt64ToFloat64(gate);
+        result = ConvertFloat64ToTaggedDouble(rawDouble);
+        builder_.Jump(exit);
+    }
+    builder_.Bind(exit);
+    return *result;
 }
 
 GateRef MCRLowering::ConvertTaggedNumberToBool(GateRef gate, Label *exit)
@@ -446,9 +534,38 @@ void MCRLowering::LowerCheckAndConvert(GateRef gate)
         case ValueType::UNDEFINED:
             LowerUndefinedAndConvert(gate, frameState);
             break;
+        case ValueType::HOLE_INT:
+            LowerCheckSpecialHoleAndConvert(gate, frameState);
+            break;
+        case ValueType::HOLE_DOUBLE:
+            LowerCheckSpecialHoleAndConvert(gate, frameState);
+            break;
         default:
             UNREACHABLE();
     }
+}
+
+void MCRLowering::LowerCheckSpecialHoleAndConvert(GateRef gate, GateRef frameState)
+{
+    GateRef value = acc_.GetValueIn(gate, 0);
+    GateRef typeCheck = builder_.IsNotSpecialHole(value);
+    builder_.DeoptCheck(typeCheck, frameState, DeoptType::CANNOTSTORESPECAILHOLE);
+    GateRef result = Circuit::NullGate();
+    ValueType dst = acc_.GetDstType(gate);
+    if (dst == ValueType::INT32) {
+        result = builder_.TruncInt64ToInt32(value);
+    } else if (dst == ValueType::FLOAT64) {
+        result = builder_.CastInt64ToFloat64(value);
+    } else if (dst == ValueType::TAGGED_INT) {
+        GateRef rawInt = builder_.TruncInt64ToInt32(gate);
+        result = ConvertInt32ToTaggedInt(rawInt);
+    } else if (dst == ValueType::TAGGED_DOUBLE) {
+        GateRef rawDouble = builder_.CastInt64ToFloat64(value);
+        result = ConvertFloat64ToTaggedDouble(rawDouble);
+    } else {
+        UNREACHABLE();
+    }
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
 }
 
 void MCRLowering::LowerCheckUInt32AndConvert(GateRef gate, GateRef frameState)
@@ -879,5 +996,289 @@ void MCRLowering::InitializeWithSpeicalValue(Label *exit, GateRef object, GateRe
         builder_.Bind(&endLoop);
         builder_.LoopEnd(&begin);
     }
+}
+
+void MCRLowering::LowerMigrateFromRawValueToHeapValues(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    DEFVALUE(newElements, (&builder_), VariableType::JS_ANY(), builder_.Undefined());
+    Label exit(&builder_);
+    GateRef object = acc_.GetValueIn(gate, 0);
+    GateRef needCOW = acc_.GetValueIn(gate, 1);
+    GateRef isIntKind = acc_.GetValueIn(gate, 2);
+    GateRef elements = builder_.GetElementsArray(object);
+    GateRef length = builder_.GetLengthOfTaggedArray(elements);
+    Label createCOW(&builder_);
+    Label createNormal(&builder_);
+    Label finishElementsInit(&builder_);
+    builder_.Branch(needCOW, &createCOW, &createNormal);
+    builder_.Bind(&createCOW);
+    {
+        newElements = builder_.CallRuntime(glue_, RTSTUB_ID(NewCOWTaggedArray), acc_.GetDep(gate),
+                                           { builder_.Int32ToTaggedPtr(length) }, gate);
+        builder_.Jump(&finishElementsInit);
+    }
+    builder_.Bind(&createNormal);
+    {
+        newElements = builder_.CallRuntime(glue_, RTSTUB_ID(NewTaggedArray), acc_.GetDep(gate),
+                                           { builder_.Int32ToTaggedPtr(length) }, gate);
+        builder_.Jump(&finishElementsInit);
+    }
+    builder_.Bind(&finishElementsInit);
+
+    DEFVALUE(index, (&builder_), VariableType::INT32(), builder_.Int32(0));
+    Label loopHead(&builder_);
+    Label loopEnd(&builder_);
+    Label afterLoop(&builder_);
+    Label storeValue(&builder_);
+    builder_.Jump(&loopHead);
+    builder_.LoopBegin(&loopHead);
+    {
+        Label storeHole(&builder_);
+        Label storeNormalValue(&builder_);
+        Label finishStore(&builder_);
+        builder_.Branch(builder_.Int32UnsignedLessThan(*index, length), &storeValue, &afterLoop);
+        builder_.Bind(&storeValue);
+        {
+            Label rawValueIsInt(&builder_);
+            Label rawValueIsNumber(&builder_);
+            GateRef value = builder_.GetValueFromJSArrayWithElementsKind(VariableType::INT64(), elements, *index);
+            builder_.Branch(builder_.IsSpecialHole(value), &storeHole, &storeNormalValue);
+            builder_.Bind(&storeHole);
+            {
+                builder_.SetValueToTaggedArray(VariableType::JS_ANY(), glue_, *newElements, *index, builder_.Hole());
+                builder_.Jump(&finishStore);
+            }
+            builder_.Bind(&storeNormalValue);
+            {
+                builder_.Branch(isIntKind, &rawValueIsInt, &rawValueIsNumber);
+                builder_.Bind(&rawValueIsInt);
+                {
+                    GateRef convertedInt = builder_.ToTaggedIntPtr(value);
+                    builder_.SetValueToTaggedArray(VariableType::JS_ANY(), glue_, *newElements, *index, convertedInt);
+                    builder_.Jump(&finishStore);
+                }
+                builder_.Bind(&rawValueIsNumber);
+                {
+                    GateRef tmpDouble = builder_.CastInt64ToFloat64(value);
+                    GateRef convertedDouble = builder_.DoubleToTaggedDoublePtr(tmpDouble);
+                    builder_.SetValueToTaggedArray(VariableType::JS_ANY(), glue_, *newElements,
+                                                   *index, convertedDouble);
+                    builder_.Jump(&finishStore);
+                }
+            }
+            builder_.Bind(&finishStore);
+            {
+                index = builder_.Int32Add(*index, builder_.Int32(1));
+                builder_.Jump(&loopEnd);
+            }
+        }
+    }
+    builder_.Bind(&loopEnd);
+    builder_.LoopEnd(&loopHead);
+    builder_.Bind(&afterLoop);
+    {
+        builder_.Jump(&exit);
+    }
+    builder_.Bind(&exit);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *newElements);
+}
+
+void MCRLowering::LowerMigrateFromHeapValueToRawValue(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    DEFVALUE(newElements, (&builder_), VariableType::JS_ANY(), builder_.Undefined());
+    Label exit(&builder_);
+    GateRef object = acc_.GetValueIn(gate, 0);
+    GateRef needCOW = acc_.GetValueIn(gate, 1);
+    GateRef isIntKind = acc_.GetValueIn(gate, 2);
+
+    GateRef elements = builder_.GetElementsArray(object);
+    GateRef length = builder_.GetLengthOfTaggedArray(elements);
+    Label createCOW(&builder_);
+    Label createNormal(&builder_);
+    Label finishElementsInit(&builder_);
+    builder_.Branch(needCOW, &createCOW, &createNormal);
+    builder_.Bind(&createCOW);
+    {
+        newElements = builder_.CallRuntime(glue_, RTSTUB_ID(NewCOWMutantTaggedArray), acc_.GetDep(gate),
+                                           { builder_.Int32ToTaggedPtr(length) }, gate);
+        builder_.Jump(&finishElementsInit);
+    }
+    builder_.Bind(&createNormal);
+    {
+        newElements = builder_.CallRuntime(glue_, RTSTUB_ID(NewMutantTaggedArray), acc_.GetDep(gate),
+                                           { builder_.Int32ToTaggedPtr(length) }, gate);
+        builder_.Jump(&finishElementsInit);
+    }
+    builder_.Bind(&finishElementsInit);
+
+    DEFVALUE(index, (&builder_), VariableType::INT32(), builder_.Int32(0));
+    Label loopHead(&builder_);
+    Label loopEnd(&builder_);
+    Label afterLoop(&builder_);
+    Label storeValue(&builder_);
+    builder_.Jump(&loopHead);
+    builder_.LoopBegin(&loopHead);
+    {
+        Label storeSpecialHole(&builder_);
+        Label storeNormalValue(&builder_);
+        Label finishStore(&builder_);
+        builder_.Branch(builder_.Int32UnsignedLessThan(*index, length), &storeValue, &afterLoop);
+        builder_.Bind(&storeValue);
+        {
+            Label convertToInt(&builder_);
+            Label convertToDouble(&builder_);
+            GateRef value = builder_.GetValueFromTaggedArray(elements, *index);
+            builder_.Branch(builder_.TaggedIsHole(value), &storeSpecialHole, &storeNormalValue);
+            builder_.Bind(&storeSpecialHole);
+            {
+                builder_.SetValueToTaggedArray(VariableType::INT64(), glue_, *newElements,
+                                               *index, builder_.SpecialHoleConstant());
+                builder_.Jump(&finishStore);
+            }
+            builder_.Bind(&storeNormalValue);
+            {
+                Label valueIsInt(&builder_);
+                Label valueIsDouble(&builder_);
+                builder_.Branch(isIntKind, &convertToInt, &convertToDouble);
+                builder_.Bind(&convertToInt);
+                {
+                    GateRef convertedInt = builder_.GetInt64OfTInt(value);
+                    builder_.SetValueToTaggedArray(VariableType::INT64(), glue_, *newElements, *index, convertedInt);
+                    builder_.Jump(&finishStore);
+                }
+                builder_.Bind(&convertToDouble);
+                {
+                    builder_.Branch(builder_.TaggedIsInt(value), &valueIsInt, &valueIsDouble);
+                    builder_.Bind(&valueIsInt);
+                    {
+                        GateRef convertedDoubleFromTInt = builder_.CastDoubleToInt64(builder_.GetDoubleOfTInt(value));
+                        builder_.SetValueToTaggedArray(VariableType::INT64(), glue_, *newElements, *index,
+                                                       convertedDoubleFromTInt);
+                        builder_.Jump(&finishStore);
+                    }
+                    builder_.Bind(&valueIsDouble);
+                    {
+                        GateRef doubleValue = builder_.GetDoubleOfTDouble(value);
+                        GateRef convertedDoubleFromTDouble = builder_.CastDoubleToInt64(doubleValue);
+                        builder_.SetValueToTaggedArray(VariableType::INT64(), glue_, *newElements, *index,
+                                                       convertedDoubleFromTDouble);
+                        builder_.Jump(&finishStore);
+                    }
+                }
+            }
+            builder_.Bind(&finishStore);
+            {
+                index = builder_.Int32Add(*index, builder_.Int32(1));
+                builder_.Jump(&loopEnd);
+            }
+        }
+    }
+    builder_.Bind(&loopEnd);
+    builder_.LoopEnd(&loopHead);
+    builder_.Bind(&afterLoop);
+    {
+        builder_.Jump(&exit);
+    }
+
+    builder_.Bind(&exit);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *newElements);
+}
+
+void MCRLowering::LowerMigrateFromHoleIntToHoleNumber(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    GateRef object = acc_.GetValueIn(gate, 0);
+    Label exit(&builder_);
+    GateRef elements = builder_.GetElementsArray(object);
+    GateRef length = builder_.GetLengthOfTaggedArray(elements);
+    DEFVALUE(index, (&builder_), VariableType::INT32(), builder_.Int32(0));
+    Label loopHead(&builder_);
+    Label loopEnd(&builder_);
+    Label afterLoop(&builder_);
+    Label storeValue(&builder_);
+    builder_.Jump(&loopHead);
+    builder_.LoopBegin(&loopHead);
+    {
+        Label storeNormalValue(&builder_);
+        Label finishStore(&builder_);
+        builder_.Branch(builder_.Int32UnsignedLessThan(*index, length), &storeValue, &afterLoop);
+        builder_.Bind(&storeValue);
+        {
+            GateRef value = builder_.GetValueFromTaggedArray(VariableType::INT64(), elements, *index);
+            builder_.Branch(builder_.IsSpecialHole(value), &finishStore, &storeNormalValue);
+            builder_.Bind(&storeNormalValue);
+            {
+                GateRef intVal = builder_.TruncInt64ToInt32(value);
+                GateRef convertedValue = builder_.CastDoubleToInt64(builder_.ChangeInt32ToFloat64(intVal));
+                builder_.SetValueToTaggedArray(VariableType::INT64(), glue_, elements, *index,
+                                               convertedValue);
+                builder_.Jump(&finishStore);
+            }
+            builder_.Bind(&finishStore);
+            {
+                index = builder_.Int32Add(*index, builder_.Int32(1));
+                builder_.Jump(&loopEnd);
+            }
+        }
+    }
+    builder_.Bind(&loopEnd);
+    builder_.LoopEnd(&loopHead);
+    builder_.Bind(&afterLoop);
+    {
+        builder_.Jump(&exit);
+    }
+
+    builder_.Bind(&exit);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
+}
+
+void MCRLowering::LowerMigrateFromHoleNumberToHoleInt(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    GateRef object = acc_.GetValueIn(gate, 0);
+    Label exit(&builder_);
+    GateRef elements = builder_.GetElementsArray(object);
+    GateRef length = builder_.GetLengthOfTaggedArray(elements);
+    DEFVALUE(index, (&builder_), VariableType::INT32(), builder_.Int32(0));
+    Label loopHead(&builder_);
+    Label loopEnd(&builder_);
+    Label afterLoop(&builder_);
+    Label storeValue(&builder_);
+    builder_.Jump(&loopHead);
+    builder_.LoopBegin(&loopHead);
+    {
+        Label storeNormalValue(&builder_);
+        Label finishStore(&builder_);
+        builder_.Branch(builder_.Int32UnsignedLessThan(*index, length), &storeValue, &afterLoop);
+        builder_.Bind(&storeValue);
+        {
+            GateRef value = builder_.GetValueFromTaggedArray(VariableType::INT64(), elements, *index);
+            builder_.Branch(builder_.IsSpecialHole(value), &finishStore, &storeNormalValue);
+            builder_.Bind(&storeNormalValue);
+            {
+                GateRef doubleVal = builder_.CastInt64ToFloat64(value);
+                GateRef convertedValue = builder_.SExtInt32ToInt64(builder_.ChangeFloat64ToInt32(doubleVal));
+                builder_.SetValueToTaggedArray(VariableType::INT64(), glue_, elements, *index,
+                                               convertedValue);
+                builder_.Jump(&finishStore);
+            }
+            builder_.Bind(&finishStore);
+            {
+                index = builder_.Int32Add(*index, builder_.Int32(1));
+                builder_.Jump(&loopEnd);
+            }
+        }
+    }
+    builder_.Bind(&loopEnd);
+    builder_.LoopEnd(&loopHead);
+    builder_.Bind(&afterLoop);
+    {
+        builder_.Jump(&exit);
+    }
+
+    builder_.Bind(&exit);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 }  // namespace panda::ecmascript

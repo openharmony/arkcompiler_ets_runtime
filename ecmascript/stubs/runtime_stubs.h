@@ -157,6 +157,9 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(GetTaggedArrayPtrTest)              \
     V(NewInternalString)                  \
     V(NewTaggedArray)                     \
+    V(NewCOWTaggedArray)                  \
+    V(NewMutantTaggedArray)               \
+    V(NewCOWMutantTaggedArray)            \
     V(CopyArray)                          \
     V(IntToString)                        \
     V(RTSubstitution)                     \
@@ -172,11 +175,12 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(UpdateLayOutAndAddTransition)       \
     V(CopyAndUpdateObjLayout)             \
     V(UpdateHClassForElementsKind)        \
+    V(IsElementsKindSwitchOn)             \
     V(SetValueWithElementsKind)           \
+    V(UpdateArrayHClassAndMigrateArrayWithKind) \
     V(MigrateArrayWithKind)               \
     V(GetTaggedValueWithElementsKind)     \
     V(TryRestoreElementsKind)             \
-    V(NewMutantTaggedArray)               \
     V(RuntimeDump)                        \
     V(NoticeThroughChainAndRefreshUser)   \
     V(JumpToCInterpreter)                 \

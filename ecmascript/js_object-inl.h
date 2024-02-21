@@ -50,9 +50,10 @@ inline void JSObject::FillElementsWithHoles(const JSThread *thread, uint32_t sta
         return;
     }
 
+    JSHandle<JSTaggedValue> holeHandle(thread, JSTaggedValue::Hole());
     JSHandle<JSObject> thisObj(thread, this);
     for (uint32_t i = start; i < end; i++) {
-        ElementAccessor::Set(thread, thisObj, i, JSTaggedValue::Hole(), false);
+        ElementAccessor::Set(thread, thisObj, i, holeHandle, false);
     }
 }
 

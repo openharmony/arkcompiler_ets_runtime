@@ -102,6 +102,13 @@ JSHandle<JSTaggedValue> JSArray::ArrayCreate(JSThread *thread, JSTaggedNumber le
         JSArray::SetCapacity(thread, obj, 0, normalArrayLength, true);
     }
 
+    JSHandle<JSArray> newArray(obj);
+    // For new Array(Len), the elementsKind should be Hole
+    if (thread->GetEcmaVM()->IsEnableElementsKind() && (newTarget.GetTaggedValue() == arrayFunc.GetTaggedValue()) &&
+        normalArrayLength != 0) {
+        JSHClass::TransitToElementsKind(thread, newArray, ElementsKind::HOLE);
+    }
+
     return JSHandle<JSTaggedValue>(obj);
 }
 
@@ -242,6 +249,34 @@ void JSArray::SetCapacity(JSThread *thread, const JSHandle<JSObject> &array, uin
         JSObject::GrowElementsCapacity(thread, array, newLen, isNew);
     }
     JSArray::Cast(*array)->SetArrayLength(thread, newLen);
+
+    // Update ElementsKind after reset array length.
+    // Add this switch because we do not support ElementsKind for instance from new Array
+    if (thread->GetEcmaVM()->IsEnableElementsKind() && !array->IsElementDict()) {
+        ElementsKind oldKind = array->GetClass()->GetElementsKind();
+        ElementsKind newKind = ElementsKind::NONE;
+        for (uint32_t i = 0; i < newLen; ++i) {
+            JSTaggedValue val = ElementAccessor::Get(array, i);
+            newKind = Elements::ToElementsKind(val, newKind);
+        }
+        // elements length might not be zero when newLen is zero
+        uint32_t oldElementsLength = ElementAccessor::GetElementsLength(array);
+        if (newKind == ElementsKind::NONE && oldElementsLength != 0) {
+            JSHandle<TaggedArray> newTaggedArray = thread->GetEcmaVM()->GetFactory()->NewTaggedArray(oldElementsLength);
+            array->SetElements(thread, newTaggedArray);
+            if (!JSHClass::TransitToElementsKindUncheck(thread, array, newKind)) {
+                ASSERT(array->GetClass()->GetElementsKind() == ElementsKind::GENERIC);
+            }
+        } else if (newKind != oldKind) {
+            if (JSHClass::TransitToElementsKindUncheck(thread, array, newKind)) {
+                Elements::MigrateArrayWithKind(thread, array, oldKind, newKind);
+            } else {
+                // For the case that array has property transition,
+                // Its elementsKind should be GENERIC for now.
+                ASSERT(array->GetClass()->GetElementsKind() == ElementsKind::GENERIC);
+            }
+        }
+    }
 }
 
 bool JSArray::ArraySetLength(JSThread *thread, const JSHandle<JSObject> &array, const PropertyDescriptor &desc)

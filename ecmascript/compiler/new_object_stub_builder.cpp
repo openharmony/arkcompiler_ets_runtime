@@ -73,6 +73,24 @@ GateRef NewObjectStubBuilder::NewJSArrayWithSize(GateRef hclass, GateRef size)
     env->SubCfgEntry(&entry);
 
     GateRef result = NewJSObject(glue_, hclass);
+    Label enabledElementsKind(env);
+    Label notEmptyArray(env);
+    Label initObj(env);
+    GateRef isElementsKindEnabled = CallRuntime(glue_, RTSTUB_ID(IsElementsKindSwitchOn), {});
+    Branch(TaggedIsTrue(isElementsKindEnabled), &enabledElementsKind, &initObj);
+    Bind(&enabledElementsKind);
+    {
+        // For new Array(Len), the elementsKind should be Hole
+        Branch(Equal(TruncInt64ToInt32(size), Int32(0)), &initObj, &notEmptyArray);
+        Bind(&notEmptyArray);
+        {
+            GateRef holeKindArrayClass = GetGlobalConstantValue(VariableType::JS_ANY(), glue_,
+                                                                ConstantIndex::ELEMENT_HOLE_HCLASS_INDEX);
+            StoreHClass(glue_, result, holeKindArrayClass);
+            Jump(&initObj);
+        }
+    }
+    Bind(&initObj);
     DEFVARIABLE(array, VariableType::JS_ANY(), Undefined());
     NewTaggedArrayChecked(&array, TruncInt64ToInt32(size), &exit);
     Bind(&exit);
@@ -179,6 +197,29 @@ void NewObjectStubBuilder::NewTaggedArrayChecked(Variable *result, GateRef len, 
     }
 }
 
+void NewObjectStubBuilder::NewMutantTaggedArrayChecked(Variable *result, GateRef len, Label *exit)
+{
+    auto env = GetEnvironment();
+    size_ = ComputeTaggedArraySize(ZExtInt32ToPtr(len));
+    Label afterAllocate(env);
+    // Be careful. NO GC is allowed when initization is not complete.
+    AllocateInYoung(result, &afterAllocate);
+    Bind(&afterAllocate);
+    Label noException(env);
+    Branch(TaggedIsException(result->ReadVariable()), exit, &noException);
+    Bind(&noException);
+    {
+        auto hclass = GetGlobalConstantValue(
+            VariableType::JS_POINTER(), glue_, ConstantIndex::MUTANT_TAGGED_ARRAY_CLASS_INDEX);
+        StoreHClass(glue_, result->ReadVariable(), hclass);
+        Label afterInitialize(env);
+        InitializeTaggedArrayWithSpeicalValue(&afterInitialize,
+            result->ReadVariable(), SpecialHole(), Int32(0), len);
+        Bind(&afterInitialize);
+        Jump(exit);
+    }
+}
+
 GateRef NewObjectStubBuilder::NewTaggedArray(GateRef glue, GateRef len)
 {
     auto env = GetEnvironment();
@@ -209,6 +250,46 @@ GateRef NewObjectStubBuilder::NewTaggedArray(GateRef glue, GateRef len)
         Bind(&slowPath);
         {
             result = CallRuntime(glue_, RTSTUB_ID(NewTaggedArray), { IntToTaggedInt(len) });
+            Jump(&exit);
+        }
+    }
+
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef NewObjectStubBuilder::NewMutantTaggedArray(GateRef glue, GateRef len)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    Label exit(env);
+    Label isEmpty(env);
+    Label notEmpty(env);
+
+    DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
+    SetGlue(glue);
+    Branch(Int32Equal(len, Int32(0)), &isEmpty, &notEmpty);
+    Bind(&isEmpty);
+    {
+        result = GetGlobalConstantValue(
+            VariableType::JS_POINTER(), glue_, ConstantIndex::EMPTY_ARRAY_OBJECT_INDEX);
+        Jump(&exit);
+    }
+    Bind(&notEmpty);
+    {
+        Label next(env);
+        Label slowPath(env);
+        Branch(Int32LessThan(len, Int32(MAX_TAGGED_ARRAY_LENGTH)), &next, &slowPath);
+        Bind(&next);
+        {
+            NewMutantTaggedArrayChecked(&result, len, &exit);
+        }
+        Bind(&slowPath);
+        {
+            result = CallRuntime(glue_, RTSTUB_ID(NewMutantTaggedArray), { IntToTaggedInt(len) });
             Jump(&exit);
         }
     }
@@ -361,10 +442,26 @@ GateRef NewObjectStubBuilder::CopyArray(GateRef glue, GateRef elements, GateRef 
         }
         Bind(&notExtendArray);
         {
-            GateRef array = newBuilder.NewTaggedArray(glue, newLen);
-            Store(VariableType::INT32(), glue, array, IntPtr(TaggedArray::LENGTH_OFFSET), newLen);
+            DEFVARIABLE(array, VariableType::JS_ANY(), Undefined());
+            Label isMutantTaggedArray(env);
+            Label isNotMutantTaggedArray(env);
+            Label afterInitializeElements(env);
+            GateRef checkIsMutantTaggedArray = IsMutantTaggedArray(*array);
+            Branch(checkIsMutantTaggedArray, &isMutantTaggedArray, &isNotMutantTaggedArray);
+            Bind(&isMutantTaggedArray);
+            {
+                array = newBuilder.NewMutantTaggedArray(glue, newLen);
+                Jump(&afterInitializeElements);
+            }
+            Bind(&isNotMutantTaggedArray);
+            {
+                array = newBuilder.NewTaggedArray(glue, newLen);
+                Jump(&afterInitializeElements);
+            }
+            Bind(&afterInitializeElements);
+            Store(VariableType::INT32(), glue, *array, IntPtr(TaggedArray::LENGTH_OFFSET), newLen);
             GateRef oldExtractLen = GetExtractLengthOfTaggedArray(elements);
-            Store(VariableType::INT32(), glue, array, IntPtr(TaggedArray::EXTRA_LENGTH_OFFSET), oldExtractLen);
+            Store(VariableType::INT32(), glue, *array, IntPtr(TaggedArray::EXTRA_LENGTH_OFFSET), oldExtractLen);
             Label loopHead(env);
             Label loopEnd(env);
             Label afterLoop(env);
@@ -375,8 +472,23 @@ GateRef NewObjectStubBuilder::CopyArray(GateRef glue, GateRef elements, GateRef 
                 Branch(Int32UnsignedLessThan(*index, newLen), &storeValue, &afterLoop);
                 Bind(&storeValue);
                 {
-                    GateRef value = GetValueFromTaggedArray(elements, *index);
-                    SetValueToTaggedArray(VariableType::JS_ANY(), glue, array, *index, value);
+                    Label storeToTaggedArray(env);
+                    Label storeToMutantTaggedArray(env);
+                    Label finishStore(env);
+                    Branch(checkIsMutantTaggedArray, &storeToMutantTaggedArray, &storeToTaggedArray);
+                    Bind(&storeToMutantTaggedArray);
+                    {
+                        GateRef value = GetValueFromMutantTaggedArray(elements, *index);
+                        SetValueToTaggedArray(VariableType::INT64(), glue, *array, *index, value);
+                        Jump(&finishStore);
+                    }
+                    Bind(&storeToTaggedArray);
+                    {
+                        GateRef value = GetValueFromTaggedArray(elements, *index);
+                        SetValueToTaggedArray(VariableType::JS_ANY(), glue, *array, *index, value);
+                        Jump(&finishStore);
+                    }
+                    Bind(&finishStore);
                     index = Int32Add(*index, Int32(1));
                     Jump(&loopEnd);
                 }
@@ -385,7 +497,7 @@ GateRef NewObjectStubBuilder::CopyArray(GateRef glue, GateRef elements, GateRef 
             LoopEnd(&loopHead);
             Bind(&afterLoop);
             {
-                result = array;
+                result = *array;
                 Jump(&exit);
             }
         }

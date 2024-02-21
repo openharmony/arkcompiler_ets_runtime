@@ -75,7 +75,8 @@ protected:
     void CollectLiteralInfo(JSHandle<TaggedArray> array, uint32_t constantPoolIndex,
                             JSHandle<ConstantPool> snapshotConstantPool, const std::set<uint32_t> &skippedMethods,
                             JSHandle<JSTaggedValue> ihc, JSHandle<JSTaggedValue> chc,
-                            int32_t elementIndex = AOT_ELEMENT_INDEX_DEFAULT_VALUE);
+                            int32_t elementIndex = AOT_ELEMENT_INDEX_DEFAULT_VALUE,
+                            ElementsKind kind = ElementsKind::GENERIC);
 
     CUnorderedMap<ItemKey, ItemData> info_ {};
     EcmaVM *vm_ {nullptr};

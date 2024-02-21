@@ -400,11 +400,11 @@ JSTaggedValue ObjectFastOperator::SetPropertyByIndex(JSThread *thread, JSTaggedV
                         JSHandle<JSTaggedValue> valueHandle(thread, value);
                         // CheckAndCopyArray may cause gc.
                         JSArray::CheckAndCopyArray(thread, holderHandler);
-                        ElementAccessor::Set(thread, obj, index, valueHandle.GetTaggedValue(), true);
+                        ElementAccessor::Set(thread, obj, index, valueHandle, true);
                         return JSTaggedValue::Undefined();
                     }
                     JSHandle<JSTaggedValue> valueHandle(thread, value);
-                    ElementAccessor::Set(thread, arrayHandler, index, valueHandle.GetTaggedValue(), true);
+                    ElementAccessor::Set(thread, arrayHandler, index, valueHandle, true);
                     return JSTaggedValue::Undefined();
                 }
             }

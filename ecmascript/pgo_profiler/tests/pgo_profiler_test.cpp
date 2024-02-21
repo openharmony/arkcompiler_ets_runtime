@@ -892,25 +892,29 @@ HWTEST_F_L0(PGOProfilerTest, ArrayProfileTest)
                     ASSERT_TRUE(pgoRWOpType.GetCount() == 3);
                     auto classType = pgoRWOpType.GetObjectInfo(0).GetProfileType();
                     ASSERT_TRUE(classType.IsBuiltinsArray());
-                    ASSERT_EQ(classType.GetElementsKind(), ElementsKind::NUMBER);
+                    ASSERT_EQ(classType.GetElementsKindBeforeTransition(), ElementsKind::NUMBER);
 
                     classType = pgoRWOpType.GetObjectInfo(1).GetProfileType();
                     ASSERT_TRUE(classType.IsBuiltinsArray());
-                    ASSERT_EQ(classType.GetElementsKind(), ElementsKind::HOLE_INT);
+                    ASSERT_EQ(classType.GetElementsKindBeforeTransition(), ElementsKind::HOLE_INT);
 
                     classType = pgoRWOpType.GetObjectInfo(2).GetProfileType();
                     ASSERT_TRUE(classType.IsBuiltinsArray());
-                    ASSERT_EQ(classType.GetElementsKind(), ElementsKind::TAGGED);
+                    ASSERT_EQ(classType.GetElementsKindBeforeTransition(), ElementsKind::TAGGED);
                 } else if (std::string(methodName) == "foo1") {
-                    ASSERT_TRUE(pgoRWOpType.GetCount() == 1);
+                    ASSERT_TRUE(pgoRWOpType.GetCount() == 2);
                     auto classType = pgoRWOpType.GetObjectInfo(0).GetProfileType();
                     ASSERT_TRUE(classType.IsBuiltinsArray());
-                    ASSERT_EQ(classType.GetElementsKind(), ElementsKind::TAGGED);
+                    ASSERT_EQ(classType.GetElementsKindBeforeTransition(), ElementsKind::NUMBER);
+
+                    classType = pgoRWOpType.GetObjectInfo(1).GetProfileType();
+                    ASSERT_TRUE(classType.IsBuiltinsArray());
+                    ASSERT_EQ(classType.GetElementsKindBeforeTransition(), ElementsKind::TAGGED);
                 } else if (std::string(methodName) == "foo2") {
                     ASSERT_TRUE(pgoRWOpType.GetCount() == 1);
                     auto classType = pgoRWOpType.GetObjectInfo(0).GetProfileType();
                     ASSERT_TRUE(classType.IsBuiltinsArray());
-                    ASSERT_EQ(classType.GetElementsKind(), ElementsKind::HOLE_TAGGED);
+                    ASSERT_EQ(classType.GetElementsKindBeforeTransition(), ElementsKind::HOLE_TAGGED);
                 }
             }
         };
