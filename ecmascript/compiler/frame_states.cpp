@@ -1180,7 +1180,7 @@ void FrameStateBuilder::BindStateSplitBefore(const BytecodeInfo &bytecodeInfo, F
     if (!bcBuilder_->IsTypeLoweringEnabled()) {
         return;
     }
-    if (bytecodeInfo.IsCall()) {
+    if (bytecodeInfo.IsCall() || bytecodeInfo.IsAccessorBC()) {
         frameStateCache_ = BuildFrameState(liveContext_, liveout, bcId);
     }
     ASSERT(!liveContext_->needStateSplit_);
@@ -1192,7 +1192,7 @@ void FrameStateBuilder::BindStateSplitAfter(const BytecodeInfo &bytecodeInfo,
     if (!bcBuilder_->IsTypeLoweringEnabled()) {
         return;
     }
-    if (bytecodeInfo.IsCall()) {
+    if (bytecodeInfo.IsCall() || bytecodeInfo.IsAccessorBC()) {
         auto frameState = GetBcFrameStateCache();
         acc_.ReplaceFrameStateIn(gate, frameState);
     }

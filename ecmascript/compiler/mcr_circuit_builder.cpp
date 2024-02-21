@@ -25,12 +25,15 @@
 
 namespace panda::ecmascript::kungfu {
 
-GateRef CircuitBuilder::ObjectTypeCheck(GateType type, bool isHeapObject, GateRef gate, GateRef hclassIndex)
+GateRef CircuitBuilder::ObjectTypeCheck(GateType type, bool isHeapObject, GateRef gate, GateRef hclassIndex,
+                                        GateRef frameState)
 {
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
-    auto frameState = acc_.FindNearestFrameState(currentDepend);
+    if (frameState == Circuit::NullGate()) {
+        frameState = acc_.FindNearestFrameState(currentDepend);
+    }
     ObjectTypeAccessor accessor(type, isHeapObject);
     GateRef ret = GetCircuit()->NewGate(circuit_->ObjectTypeCheck(accessor.ToValue()), MachineType::I1,
         {currentControl, currentDepend, gate, hclassIndex, frameState}, GateType::NJSValue());
@@ -67,12 +70,14 @@ GateRef CircuitBuilder::HeapObjectCheck(GateRef gate, GateRef frameState)
     return ret;
 }
 
-GateRef CircuitBuilder::ProtoChangeMarkerCheck(GateRef gate)
+GateRef CircuitBuilder::ProtoChangeMarkerCheck(GateRef gate, GateRef frameState)
 {
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
-    auto frameState = acc_.FindNearestFrameState(currentDepend);
+    if (frameState == Circuit::NullGate()) {
+        frameState = acc_.FindNearestFrameState(currentDepend);
+    }
     GateRef ret = GetCircuit()->NewGate(circuit_->ProtoChangeMarkerCheck(),
                                         MachineType::I1,
                                         {currentControl, currentDepend, gate, frameState},

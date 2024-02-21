@@ -196,6 +196,7 @@ private:
     void LowerJSInlineTargetTypeCheck(GateRef gate);
     void SetDeoptTypeInfo(BuiltinTypeId id, DeoptType &type, size_t &typedArrayRootHclassIndex,
         size_t &typedArrayRootHclassOnHeapIndex);
+    void LowerLookupHolder(GateRef gate);
     void LowerLoadGetter(GateRef gate);
     void LowerLoadSetter(GateRef gate);
     void LowerPrototypeCheck(GateRef gate);
