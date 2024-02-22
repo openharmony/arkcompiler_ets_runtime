@@ -109,18 +109,7 @@ bool ValueSerializer::WriteValue(JSThread *thread,
         data_->SetIncompleteData(true);
         return false;
     }
-    if (value->IsHeapObject()) {
-        // Add fast path for string
-        if (value->IsString()) {
-            vm_->GetSnapshotEnv()->InitializeStringClass();
-        } else {
-            vm_->GetSnapshotEnv()->Initialize();
-        }
-    }
     SerializeJSTaggedValue(value.GetTaggedValue());
-    if (value->IsHeapObject()) {
-        vm_->GetSnapshotEnv()->ClearEnvMap();
-    }
     if (notSupport_) {
         LOG_ECMA(ERROR) << "ValueSerialize: serialize data is incomplete";
         data_->SetIncompleteData(true);

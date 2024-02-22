@@ -19,49 +19,50 @@
 #include "ecmascript/global_env.h"
 
 namespace panda::ecmascript {
-void SnapshotEnv::Initialize()
-{
-    InitGlobalConst();
-    InitGlobalEnv();
-}
 
-void SnapshotEnv::InitializeStringClass()
-{
-    auto globalConst = const_cast<GlobalEnvConstants *>(vm_->GetJSThread()->GlobalConstants());
-    auto lineStringClass = globalConst->GetLineStringClass();
-    rootObjectMap_.emplace(ToUintPtr(lineStringClass.GetTaggedObject()), globalConst->GetLineStringClassIndex());
-    auto constStringClass = globalConst->GetConstantStringClass();
-    rootObjectMap_.emplace(ToUintPtr(constStringClass.GetTaggedObject()), globalConst->GetConstStringClassIndex());
-}
-
-void SnapshotEnv::InitGlobalConst()
+void SnapshotEnv::AddGlobalConstToMap()
 {
     auto globalConst = const_cast<GlobalEnvConstants *>(vm_->GetJSThread()->GlobalConstants());
     for (size_t index = 0; index < globalConst->GetConstantCount(); index++) {
         JSTaggedValue objectValue = globalConst->GetGlobalConstantObject(index);
-        if (objectValue.IsHeapObject()) {
-            rootObjectMap_.emplace(ToUintPtr(objectValue.GetTaggedObject()), index);
+        if (objectValue.IsHeapObject() && !objectValue.IsString()) {
+            rootObjectMap_.emplace(objectValue.GetRawData(), index);
         }
     }
 }
 
-void SnapshotEnv::InitGlobalEnv()
+JSTaggedType SnapshotEnv::RelocateRootObjectAddr(uint32_t index)
 {
-    auto globalEnv = vm_->GetGlobalEnv();
     auto globalConst = const_cast<GlobalEnvConstants *>(vm_->GetJSThread()->GlobalConstants());
-    size_t globalEnvIndexStart = globalConst->GetConstantCount();
-    for (size_t index = 0; index < globalEnv->GetGlobalEnvFieldSize(); index++) {
-        JSHandle<JSTaggedValue> objectValue = globalEnv->GetGlobalEnvObjectByIndex(index);
-        if (objectValue->IsHeapObject() && !objectValue->IsInternalAccessor()) {
-            rootObjectMap_.emplace(ToUintPtr(objectValue->GetTaggedObject()), index + globalEnvIndexStart);
-        }
+    size_t globalConstCount = globalConst->GetConstantCount();
+    if (index < globalConstCount) {
+        JSTaggedValue obj = globalConst->GetGlobalConstantObject(index);
+        return obj.GetRawData();
     }
+    JSHandle<JSTaggedValue> value = vm_->GetGlobalEnv()->GetNoLazyEnvObjectByIndex(index - globalConstCount);
+    return value->GetRawData();
 }
 
 void SnapshotEnv::Iterate(const RootVisitor &v)
 {
+    std::vector<std::pair<JSTaggedType, JSTaggedType>> updatedObjPair;
     for (auto &it : rootObjectMap_) {
-        v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&(it.first))));
+        auto objectAddr = it.first;
+        ObjectSlot slot(reinterpret_cast<uintptr_t>(&objectAddr));
+        v(Root::ROOT_VM, slot);
+        // Record updated obj addr after gc
+        if (slot.GetTaggedType() != it.first) {
+            updatedObjPair.emplace_back(std::make_pair(it.first, slot.GetTaggedType()));
+        }
+    }
+    // Update hashmap, erase old objAddr, emplace updated objAddr
+    while (!updatedObjPair.empty()) {
+        auto pair = updatedObjPair.back();
+        ASSERT(rootObjectMap_.find(pair.first) != rootObjectMap_.end());
+        uint32_t index = rootObjectMap_.find(pair.first)->second;
+        rootObjectMap_.erase(pair.first);
+        rootObjectMap_.emplace(pair.second, index);
+        updatedObjPair.pop_back();
     }
 }
 }  // namespace panda::ecmascript

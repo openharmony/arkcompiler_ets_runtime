@@ -232,14 +232,15 @@ bool EcmaVM::Initialize()
     auto context = new EcmaContext(thread_);
     thread_->PushContext(context);
     [[maybe_unused]] EcmaHandleScope scope(thread_);
+    snapshotEnv_ = new SnapshotEnv(this);
     context->Initialize();
+    snapshotEnv_->AddGlobalConstToMap();
     thread_->SetGlueGlobalEnv(reinterpret_cast<GlobalEnv *>(context->GetGlobalEnv().GetTaggedType()));
     thread_->SetGlobalObject(GetGlobalEnv()->GetGlobalObject());
     thread_->SetCurrentEcmaContext(context);
     SingleCharTable::CreateSingleCharTable(thread_);
     GenerateInternalNativeMethods();
     quickFixManager_ = new QuickFixManager();
-    snapshotEnv_ = new SnapshotEnv(this);
     if (options_.GetEnableAsmInterpreter()) {
         thread_->GetCurrentEcmaContext()->LoadStubFile();
     }
@@ -343,6 +344,7 @@ EcmaVM::~EcmaVM()
     }
 
     if (snapshotEnv_ != nullptr) {
+        snapshotEnv_->ClearEnvMap();
         delete snapshotEnv_;
         snapshotEnv_ = nullptr;
     }
