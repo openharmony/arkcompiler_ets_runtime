@@ -43,7 +43,7 @@
 #include "ecmascript/message_string.h"
 #include "ecmascript/snapshot/mem/snapshot.h"
 #include "ecmascript/stackmap/ark_stackmap_parser.h"
-#include "ecmascript/stackmap/llvm_stackmap_parser.h"
+#include "ecmascript/stackmap/llvm/llvm_stackmap_parser.h"
 
 namespace panda::ecmascript {
 using CommonStubCSigns = kungfu::CommonStubCSigns;

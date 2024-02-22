@@ -18,8 +18,8 @@
 
 #include <cstring>
 
+#include "ecmascript/compiler/codegen/llvm/llvm_ir_builder.h"
 #include "ecmascript/compiler/compiler_log.h"
-#include "ecmascript/compiler/llvm_ir_builder.h"
 
 namespace panda::ecmascript::kungfu {
 class StubCompiler {

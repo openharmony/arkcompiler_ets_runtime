@@ -20,7 +20,7 @@
 #include "ecmascript/js_function.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/mem/heap.h"
-#include "ecmascript/stackmap/llvm_stackmap_parser.h"
+#include "ecmascript/stackmap/llvm/llvm_stackmap_parser.h"
 
 namespace panda::ecmascript {
 FrameHandler::FrameHandler(const JSThread *thread)

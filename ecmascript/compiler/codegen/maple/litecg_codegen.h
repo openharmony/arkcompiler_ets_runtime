@@ -17,8 +17,8 @@
 #define ECMASCRIPT_COMPILER_LITECG_CODEGEN_H
 
 #include "ecmascript/compiler/binary_section.h"
+#include "ecmascript/compiler/codegen/maple/litecg_ir_builder.h"
 #include "ecmascript/compiler/code_generator.h"
-#include "ecmascript/compiler/litecg_ir_builder.h"
 
 namespace panda::ecmascript::kungfu {
 class CompilerLog;

@@ -14,6 +14,7 @@
  */
 
 #include "ecmascript/compiler/assembler/assembler.h"
+#include "ecmascript/compiler/codegen/llvm/llvm_ir_builder.h"
 #include "ecmascript/compiler/circuit_builder_helper.h"
 #include "ecmascript/compiler/share_gate_meta_data.h"
 #include "ecmascript/compiler/stub_builder-inl.h"
@@ -21,7 +22,6 @@
 #include "ecmascript/compiler/access_object_stub_builder.h"
 #include "ecmascript/compiler/builtins/builtins_string_stub_builder.h"
 #include "ecmascript/compiler/interpreter_stub.h"
-#include "ecmascript/compiler/llvm_ir_builder.h"
 #include "ecmascript/compiler/new_object_stub_builder.h"
 #include "ecmascript/compiler/profiler_stub_builder.h"
 #include "ecmascript/compiler/rt_call_signature.h"

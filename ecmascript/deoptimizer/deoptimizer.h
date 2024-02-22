@@ -21,7 +21,7 @@
 #include "ecmascript/deoptimizer/calleeReg.h"
 #include "ecmascript/js_handle.h"
 #include "ecmascript/js_tagged_value.h"
-#include "ecmascript/stackmap/llvm_stackmap_type.h"
+#include "ecmascript/stackmap/llvm/llvm_stackmap_type.h"
 
 namespace panda::ecmascript {
 class JSThread;

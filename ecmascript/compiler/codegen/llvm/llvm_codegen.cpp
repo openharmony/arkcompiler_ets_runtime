@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "ecmascript/compiler/llvm_codegen.h"
+#include "ecmascript/compiler/codegen/llvm/llvm_codegen.h"
 #if defined(PANDA_TARGET_MACOS) || defined(PANDA_TARGET_IOS)
 #include "ecmascript/base/llvm_helper.h"
 #endif
@@ -54,13 +54,13 @@
 #include "llvm/Transforms/Scalar.h"
 
 #include "ecmascript/compiler/call_signature.h"
+#include "ecmascript/compiler/codegen/llvm/llvm_ir_builder.h"
 #include "ecmascript/compiler/compiler_log.h"
 #include "ecmascript/compiler/debug_info.h"
-#include "ecmascript/compiler/llvm_ir_builder.h"
 #include "ecmascript/ecma_macros.h"
 #include "ecmascript/mem/region.h"
 #include "ecmascript/object_factory.h"
-#include "ecmascript/stackmap/llvm_stackmap_parser.h"
+#include "ecmascript/stackmap/llvm/llvm_stackmap_parser.h"
 
 #if defined(__clang__)
 #pragma clang diagnostic pop
