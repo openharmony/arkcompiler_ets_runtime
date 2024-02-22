@@ -197,6 +197,7 @@ group("ark_aot_ts_test") {
     "pgo_class_operation",
     "pgo_class_prototype",
     "pgo_constructor_number",
+    "pgo_elimination_loadconstoffset",
     "pgo_forof_array",
     "pgo_forof_map",
     "pgo_forof_set",
