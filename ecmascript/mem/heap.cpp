@@ -141,10 +141,21 @@ bool SharedHeap::AsyncClearTask::Run([[maybe_unused]] uint32_t threadIndex)
 void SharedHeap::CollectGarbage(JSThread *thread, [[maybe_unused]]TriggerGCType gcType, [[maybe_unused]]GCReason reason)
 {
     ASSERT(gcType == TriggerGCType::SHARED_GC);
+    gcType_ = gcType;
     {
         SuspendAllScope scope(thread);
         Prepare();
+        if (UNLIKELY(ShouldVerifyHeap())) {
+            // pre gc heap verify
+            LOG_ECMA(DEBUG) << "pre gc shared heap verify";
+            SharedHeapVerification(this, VerifyKind::VERIFY_PRE_SHARED_GC).VerifyAll();
+        }
         sharedGC_->RunPhases();
+        if (UNLIKELY(ShouldVerifyHeap())) {
+            // pre gc heap verify
+            LOG_ECMA(DEBUG) << "after gc shared heap verify";
+            SharedHeapVerification(this, VerifyKind::VERIFY_POST_SHARED_GC).VerifyAll();
+        }
     }
     // Don't process weak node nativeFinalizeCallback here. These callbacks would be called after localGC.
 }
@@ -213,6 +224,24 @@ void SharedHeap::EnableParallelGC(JSRuntimeOptions &option)
         sharedGC_->ResetWorkManager(sWorkManager_);
     }
     sSweeper_->ConfigConcurrentSweep(option.EnableConcurrentSweep());
+}
+
+size_t SharedHeap::VerifyHeapObjects(VerifyKind verifyKind) const
+{
+    size_t failCount = 0;
+    {
+        VerifyObjectVisitor verifier(this, &failCount, verifyKind);
+        sOldSpace_->IterateOverObjects(verifier);
+    }
+    {
+        VerifyObjectVisitor verifier(this, &failCount, verifyKind);
+        sNonMovableSpace_->IterateOverObjects(verifier);
+    }
+    {
+        VerifyObjectVisitor verifier(this, &failCount, verifyKind);
+        sHugeObjectSpace_->IterateOverObjects(verifier);
+    }
+    return failCount;
 }
 
 Heap::Heap(EcmaVM *ecmaVm)
@@ -1663,7 +1692,7 @@ size_t Heap::GetHeapLimitSize() const
     return config_.GetMaxHeapSize();
 }
 
-bool Heap::IsAlive(TaggedObject *object) const
+bool BaseHeap::IsAlive(TaggedObject *object) const
 {
     if (!ContainObject(object)) {
         LOG_GC(ERROR) << "The region is already free";
@@ -1680,7 +1709,7 @@ bool Heap::IsAlive(TaggedObject *object) const
     return !isFree;
 }
 
-bool Heap::ContainObject(TaggedObject *object) const
+bool BaseHeap::ContainObject(TaggedObject *object) const
 {
     /*
      * fixme: There's no absolutely safe appraoch to doing this, given that the region object is currently

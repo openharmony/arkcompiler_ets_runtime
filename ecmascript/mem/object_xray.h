@@ -123,7 +123,7 @@ public:
         const RootBaseAndDerivedVisitor &derivedVisitor)
     {
         vm->Iterate(visitor, rangeVisitor);
-        vm->GetJSThread()->Iterate(visitor, rangeVisitor, derivedVisitor);
+        vm->GetAssociatedJSThread()->Iterate(visitor, rangeVisitor, derivedVisitor);
     }
     template<VisitType visitType>
     static inline void VisitObjectBody(TaggedObject *object, JSHClass *klass, const EcmaObjectRangeVisitor &visitor)

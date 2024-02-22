@@ -69,6 +69,7 @@ enum CommandValues {
     OPTION_STUB_FILE,
     OPTION_ENABLE_FORCE_GC,
     OPTION_FORCE_FULL_GC,
+    OPTION_ENABLE_FORCE_SHARED_GC_FREQUENCY,
     OPTION_ARK_PROPERTIES,
     OPTION_ARK_BUNDLENAME,
     OPTION_GC_THREADNUM,
@@ -323,6 +324,16 @@ public:
     void SetForceFullGC(bool value)
     {
         forceFullGc_ = value;
+    }
+
+    void SetForceSharedGCFrequency(size_t frequency)
+    {
+        forceSharedGc_ = frequency;
+    }
+
+    uint32_t GetForceSharedGCFrequency() const
+    {
+        return forceSharedGc_;
     }
 
     void SetGcThreadNum(size_t num)
@@ -1476,6 +1487,7 @@ private:
     bool compilerEnableExternalPkg_ {true};
     bool enableForceGc_ {true};
     bool forceFullGc_ {true};
+    uint32_t forceSharedGc_ {1};
     int arkProperties_ = GetDefaultProperties();
     std::string arkBundleName_ = {""};
     uint32_t gcThreadNum_ {7}; // 7: default thread num

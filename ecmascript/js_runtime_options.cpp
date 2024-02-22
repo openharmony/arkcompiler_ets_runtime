@@ -76,6 +76,7 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
     "--compiler-stress-deopt:              Enable stress deopt for aot compiler. Default: 'false'\n"
     "--compiler-opt-code-profiler:         Enable opt code Bytecode Statistics for aot runtime. Default: 'false'\n"
     "--enable-force-gc:                    Enable force gc when allocating object. Default: 'true'\n"
+    "--force-shared-gc-frequency:          How frequency force shared gc . Default: '1'\n"
     "--enable-ic:                          Switch of inline cache. Default: 'true'\n"
     "--enable-runtime-stat:                Enable statistics of runtime state. Default: 'false'\n"
     "--compiler-opt-array-bounds-check-elimination: Enable Index Check elimination. Default: 'true'\n"
@@ -214,6 +215,7 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"compiler-opt-track-field", required_argument, nullptr, OPTION_COMPILER_OPT_TRACK_FIELD},
         {"entry-point", required_argument, nullptr, OPTION_ENTRY_POINT},
         {"force-full-gc", required_argument, nullptr, OPTION_FORCE_FULL_GC},
+        {"force-shared-gc-frequency", required_argument, nullptr, OPTION_ENABLE_FORCE_SHARED_GC_FREQUENCY},
         {"gc-thread-num", required_argument, nullptr, OPTION_GC_THREADNUM},
         {"heap-size-limit", required_argument, nullptr, OPTION_HEAP_SIZE_LIMIT},
         {"help", no_argument, nullptr, OPTION_HELP},
@@ -471,6 +473,14 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                 ret = ParseBoolParam(&argBool);
                 if (ret) {
                     SetForceFullGC(argBool);
+                } else {
+                    return false;
+                }
+                break;
+            case OPTION_ENABLE_FORCE_SHARED_GC_FREQUENCY:
+                ret = ParseUint32Param("force-shared-gc-frequency", &argUint32);
+                if (ret) {
+                    SetForceSharedGCFrequency(argUint32);
                 } else {
                     return false;
                 }

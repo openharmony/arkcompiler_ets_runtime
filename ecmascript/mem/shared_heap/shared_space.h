@@ -83,6 +83,8 @@ public:
     void FreeRegion(Region *current, bool isMain = true);
     void FreeLiveRange(uintptr_t freeStart, uintptr_t freeEnd, bool isMain);
 
+    void IterateOverObjects(const std::function<void(TaggedObject *object)> &objectVisitor) const;
+
     size_t GetHeapObjectSize() const;
 
     void IncreaseAllocatedSize(size_t size);

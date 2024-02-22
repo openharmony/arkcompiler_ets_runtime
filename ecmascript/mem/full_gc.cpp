@@ -25,6 +25,7 @@
 #include "ecmascript/mem/mem.h"
 #include "ecmascript/mem/parallel_marker-inl.h"
 #include "ecmascript/mem/space-inl.h"
+#include "ecmascript/mem/verification.h"
 #include "ecmascript/mem/visitor.h"
 #include "ecmascript/mem/gc_stats.h"
 #include "ecmascript/ecma_string_table.h"
@@ -56,6 +57,11 @@ void FullGC::RunPhases()
     Mark();
     Sweep();
     Finish();
+    if (UNLIKELY(heap_->ShouldVerifyHeap())) {
+        // verify mark
+        LOG_ECMA(DEBUG) << "start verify post fullgc";
+        Verification(heap_, VerifyKind::VERIFY_SHARED_RSET_POST_FULL_GC).VerifyAll();
+    }
     heap_->NotifyHeapAliveSizeAfterGC(heap_->GetHeapObjectSize());
 }
 

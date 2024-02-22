@@ -1304,8 +1304,6 @@ public:
                     int32_t triggerMode)> &cb);
     static void SetSearchHapPathTracker(EcmaVM *vm, std::function<bool(const std::string moduleName,
                     std::string &hapPath)> cb);
-    // only for test
-    static void TransitionToWaitForTesting(EcmaVM *vm);
 private:
     static int vmCount_;
     static bool initialize_;

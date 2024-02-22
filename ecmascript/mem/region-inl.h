@@ -125,6 +125,17 @@ inline bool Region::TestOldToNew(uintptr_t addr)
     return set->TestBit(ToUintPtr(this), addr);
 }
 
+// ONLY used for heap verification.
+inline bool Region::TestLocalToShare(uintptr_t addr)
+{
+    ASSERT(InRange(addr));
+    // Only used for heap verification, so donot need to use lock
+    if (localToShareSet_ == nullptr) {
+        return false;
+    }
+    return localToShareSet_->TestBit(ToUintPtr(this), addr);
+}
+
 template <typename Visitor>
 inline void Region::IterateAllMarkedBits(Visitor visitor) const
 {
