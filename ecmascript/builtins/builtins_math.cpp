@@ -41,7 +41,11 @@ JSTaggedValue BuiltinsMath::Abs(EcmaRuntimeCallInfo *argv)
         return GetTaggedDouble(std::fabs(numberValue.GetDouble()));
     }
     // if number_value is int,boolean,null, deal in this case
-    return GetTaggedInt(std::abs(numberValue.GetInt()));
+    int value = numberValue.GetInt();
+    if (value == INT_MIN) {
+        return GetTaggedDouble(-static_cast<int64_t>(INT_MIN));
+    }
+    return GetTaggedInt(std::abs(value));
 }
 
 // 20.2.2.2

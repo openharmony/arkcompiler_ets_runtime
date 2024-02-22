@@ -2839,89 +2839,75 @@ JSTaggedType RuntimeStubs::FloatSqrt(double x)
     return JSTaggedValue(result).GetRawData();
 }
 
-JSTaggedType RuntimeStubs::FloatAcos(double x)
+double RuntimeStubs::FloatAcos(double x)
 {
-    double result = std::acos(x);
-    return JSTaggedValue(result).GetRawData();
+    return std::acos(x);
 }
 
-JSTaggedType RuntimeStubs::FloatAcosh(double x)
+double RuntimeStubs::FloatAcosh(double x)
 {
-    double result = std::acosh(x);
-    return JSTaggedValue(result).GetRawData();
+    return std::acosh(x);
 }
 
-JSTaggedType RuntimeStubs::FloatAsin(double x)
+double RuntimeStubs::FloatAsin(double x)
 {
-    double result = std::asin(x);
-    return JSTaggedValue(result).GetRawData();
+    return std::asin(x);
 }
 
-JSTaggedType RuntimeStubs::FloatAsinh(double x)
+double RuntimeStubs::FloatAsinh(double x)
 {
-    double result = std::asinh(x);
-    return JSTaggedValue(result).GetRawData();
+    return std::asinh(x);
 }
 
-JSTaggedType RuntimeStubs::FloatAtan(double x)
+double RuntimeStubs::FloatAtan(double x)
 {
-    double result = std::atan(x);
-    return JSTaggedValue(result).GetRawData();
+    return std::atan(x);
 }
 
-JSTaggedType RuntimeStubs::FloatAtan2(double y, double x)
+double RuntimeStubs::FloatAtan2(double y, double x)
 {
-    double result = std::atan2(y, x);
-    return JSTaggedValue(result).GetRawData();
+    return std::atan2(y, x);
 }
 
-JSTaggedType RuntimeStubs::FloatAtanh(double x)
+double RuntimeStubs::FloatAtanh(double x)
 {
-    double result = std::atanh(x);
-    return JSTaggedValue(result).GetRawData();
+    return std::atanh(x);
 }
 
-JSTaggedType RuntimeStubs::FloatCos(double x)
+double RuntimeStubs::FloatCos(double x)
 {
-    double result = std::cos(x);
-    return JSTaggedValue(result).GetRawData();
+    return std::cos(x);
 }
 
-JSTaggedType RuntimeStubs::FloatCosh(double x)
+double RuntimeStubs::FloatCosh(double x)
 {
-    double result = std::cosh(x);
-    return JSTaggedValue(result).GetRawData();
+    return std::cosh(x);
 }
 
-JSTaggedType RuntimeStubs::FloatSin(double x)
+double RuntimeStubs::FloatSin(double x)
 {
-    double result = std::sin(x);
-    return JSTaggedValue(result).GetRawData();
+    return std::sin(x);
 }
 
-JSTaggedType RuntimeStubs::FloatSinh(double x)
+double RuntimeStubs::FloatSinh(double x)
 {
-    double result = std::sinh(x);
-    return JSTaggedValue(result).GetRawData();
+    return std::sinh(x);
 }
 
-JSTaggedType RuntimeStubs::FloatTan(double x)
+double RuntimeStubs::FloatTan(double x)
 {
-    double result = std::tan(x);
-    return JSTaggedValue(result).GetRawData();
+    return std::tan(x);
 }
 
-JSTaggedType RuntimeStubs::FloatTanh(double x)
+double RuntimeStubs::FloatTanh(double x)
 {
-    double result = std::tanh(x);
-    return JSTaggedValue(result).GetRawData();
+    return std::tanh(x);
 }
 
-JSTaggedType RuntimeStubs::FloatFloor(double x)
+double RuntimeStubs::FloatFloor(double x)
 {
     ASSERT(!std::isnan(x));
-    double result = std::floor(x);
-    return JSTaggedValue(result).GetRawData();
+    return std::floor(x);
 }
 
 int32_t RuntimeStubs::DoubleToInt(double x, size_t bits)

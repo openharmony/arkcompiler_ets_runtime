@@ -20,5 +20,5 @@ NaN
 1
 1
 111
-[trace] Check Type: BuiltinInliningTypeGuard
+[trace] Check Type: NotNumber1
 1

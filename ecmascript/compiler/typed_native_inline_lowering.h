@@ -40,6 +40,7 @@ private:
     template <MathTrigonometricCheck CHECK = MathTrigonometricCheck::NOT_NAN>
     void LowerMathTrigonometric(GateRef gate, RuntimeStubCSigns::ID stub_id);
     void LowerMathAtan2(GateRef gate);
+    void LowerAbs(GateRef gate);
 
 private:
     Circuit* circuit_ {nullptr};

@@ -101,6 +101,9 @@ void NativeInlineLowering::RunNativeInlineLowering()
             case BuiltinsStubCSigns::ID::MathTanh:
                 TryInlineMathUnaryBuiltin(gate, argc, id, circuit_->MathTanh());
                 break;
+            case BuiltinsStubCSigns::ID::MathAbs:
+                TryInlineMathUnaryBuiltin(gate, argc, id, circuit_->MathAbs());
+                break;
             default:
                 break;
         }
@@ -146,8 +149,6 @@ void NativeInlineLowering::TryInlineMathUnaryBuiltin(GateRef gate, size_t argc, 
         acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), builder_.NanValue());
         return;
     }
-    auto param_check = builder_.TaggedIsNumber(acc_.GetValueIn(gate, 1));
-    builder_.DeoptCheck(param_check, acc_.GetFrameState(gate), DeoptType::BUILTIN_INLINING_TYPE_GUARD);
     GateRef ret = builder_.BuildMathBuiltinOp(op, {acc_.GetValueIn(gate, 1)});
     acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), ret);
 }
@@ -164,10 +165,6 @@ void NativeInlineLowering::TryInlineMathBinaryBuiltin(GateRef gate, size_t argc,
         acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), builder_.NanValue());
         return;
     }
-    auto param_check1 = builder_.TaggedIsNumber(acc_.GetValueIn(gate, 1));
-    auto param_check2 = builder_.TaggedIsNumber(acc_.GetValueIn(gate, 2));
-    auto check = builder_.BoolAnd(param_check1, param_check2); 
-    builder_.DeoptCheck(check, acc_.GetFrameState(gate), DeoptType::BUILTIN_INLINING_TYPE_GUARD);
     GateRef ret = builder_.BuildMathBuiltinOp(op, {acc_.GetValueIn(gate, 1), acc_.GetValueIn(gate, 2)});
     acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), ret);
     return;

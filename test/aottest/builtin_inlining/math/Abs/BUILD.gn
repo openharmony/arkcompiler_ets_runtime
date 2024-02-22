@@ -11,12 +11,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-NaN
-NaN
-0
--0.7853981633974483
-0.7853981633974483
-1.4711276743037347
-111
-[trace] Check Type: NotNumber1
-NaN
+import("//arkcompiler/ets_runtime/test/test_helper.gni")
+
+host_aot_test_action("builtinMathAbs") {
+  is_enable_pgo = true
+  is_only_typed_path = true
+  is_enable_opt_inlining = true
+  is_enable_trace_deopt = true
+  is_enable_enableArkTools = true
+  log_option = " --log-info=trace"
+  deps = []
+}

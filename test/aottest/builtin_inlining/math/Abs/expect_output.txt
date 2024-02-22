@@ -12,11 +12,43 @@
 # limitations under the License.
 
 NaN
-NaN
 0
--0.7853981633974483
-0.7853981633974483
-1.4711276743037347
-111
-[trace] Check Type: NotNumber1
+3
+5
+1.5
+3.141592653589793
+3.141592653589793
+1.9e+80
+1.9e+80
+1.9e-80
+1.9e-80
+Infinity
+Infinity
 NaN
+1/x: Infinity
+3
+3
+4
+4
+-1.001
+2147483647
+2147483648
+2147483647
+2147483648
+2147483649
+3
+NaN
+NaN
+12
+NaN
+12
+[trace] Check Type: NotCallTarget1
+-12
+[trace] Check Type: NotCallTarget1
+abc
+12
+NaN
+23
+14
+Error: already positive
+23

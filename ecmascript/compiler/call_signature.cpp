@@ -1883,7 +1883,7 @@ DEF_CALL_SIGNATURE(FloatSqrt)
     DEF_CALL_SIGNATURE(NAME)                                                                       \
     {                                                                                              \
         /* 1 : 1 input parameters */                                                               \
-        CallSignature index(#NAME, 0, 1, ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());   \
+        CallSignature index(#NAME, 0, 1, ArgumentsOrder::DEFAULT_ORDER, VariableType::FLOAT64());  \
         *callSign = index;                                                                         \
         /* 1 : 1 input parameters */                                                               \
         std::array<VariableType, 1> params = {                                                     \
@@ -1913,7 +1913,7 @@ DEF_FLOAT_UNARY_CALL_SIGNATURE_BY_NAME(FloatFloor)
 DEF_CALL_SIGNATURE(FloatAtan2)
 {
     // 2 : 2 input parameters
-    CallSignature index("FloatAtan2", 0, 2, ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
+    CallSignature index("FloatAtan2", 0, 2, ArgumentsOrder::DEFAULT_ORDER, VariableType::FLOAT64());
     *callSign = index;
     // 2 : 2 input parameters
     std::array<VariableType, 2> params = {

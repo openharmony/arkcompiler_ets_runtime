@@ -18,5 +18,5 @@ NaN
 1.5707963267948966
 NaN
 111
-[trace] Check Type: BuiltinInliningTypeGuard
+[trace] Check Type: NotNumber1
 NaN

@@ -25,11 +25,8 @@ void BuiltinLowering::LowerTypedCallBuitin(GateRef gate)
     auto idGate = acc_.GetValueIn(gate, valuesIn - 1);
     auto id = static_cast<BuiltinsStubCSigns::ID>(acc_.GetConstantValue(idGate));
     switch (id) {
-        case BUILTINS_STUB_ID(ABS):
-            LowerTypedAbs(gate);
-            break;
         case BUILTINS_STUB_ID(FLOOR):
-            LowerTypedTrigonometric(gate, id);
+            LowerTypedFloor(gate);
             break;
         case BUILTINS_STUB_ID(LocaleCompare):
             LowerTypedLocaleCompare(gate);
@@ -64,13 +61,13 @@ void BuiltinLowering::LowerTypedCallBuitin(GateRef gate)
     }
 }
 
-void BuiltinLowering::LowerTypedTrigonometric(GateRef gate, BuiltinsStubCSigns::ID id)
+void BuiltinLowering::LowerTypedFloor(GateRef gate)
 {
-    auto ret = TypedTrigonometric(gate, id);
+    auto ret = TypedFloor(gate);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), ret);
 }
 
-GateRef BuiltinLowering::TypedTrigonometric(GateRef gate, BuiltinsStubCSigns::ID id)
+GateRef BuiltinLowering::TypedFloor(GateRef gate)
 {
     auto env = builder_.GetCurrentEnvironment();
     Label entry(&builder_);
@@ -94,9 +91,9 @@ GateRef BuiltinLowering::TypedTrigonometric(GateRef gate, BuiltinsStubCSigns::ID
         builder_.Bind(&NotNan);
         {
             GateRef glue = acc_.GetGlueFromArgList();
-            ASSERT(id == BUILTINS_STUB_ID(FLOOR));
             int index = RTSTUB_ID(FloatFloor);
-            result = builder_.CallNGCRuntime(glue, index, Gate::InvalidGateRef, {value}, gate);
+            GateRef floor = builder_.CallNGCRuntime(glue, index, Gate::InvalidGateRef, {value}, gate);
+            result = builder_.DoubleToTaggedDoublePtr(floor);
             builder_.Jump(&exit);
         }
         builder_.Bind(&IsNan);
@@ -129,58 +126,10 @@ void BuiltinLowering::LowerTypedSqrt(GateRef gate)
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), ret);
 }
 
-void BuiltinLowering::LowerTypedAbs(GateRef gate)
-{
-    auto ret = TypedAbs(gate);
-    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), ret);
-}
-
 GateRef BuiltinLowering::IntToTaggedIntPtr(GateRef x)
 {
     GateRef val = builder_.SExtInt32ToInt64(x);
     return builder_.ToTaggedIntPtr(val);
-}
-
-//  Int abs : The internal representation of an integer is inverse code,
-//  The absolute value of a negative number can be found by inverting it by adding one.
-
-//  Float abs : A floating-point number is composed of mantissa and exponent.
-//  The length of mantissa will affect the precision of the number, and its sign will determine the sign of the number.
-//  The absolute value of a floating-point number can be found by setting mantissa sign bit to 0.
-GateRef BuiltinLowering::TypedAbs(GateRef gate)
-{
-    auto env = builder_.GetCurrentEnvironment();
-    Label entry(&builder_);
-    env->SubCfgEntry(&entry);
-
-    Label exit(&builder_);
-    GateRef para1 = acc_.GetValueIn(gate, 0);
-    DEFVALUE(result, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
-
-    Label isInt(&builder_);
-    Label notInt(&builder_);
-    builder_.Branch(builder_.TaggedIsInt(para1), &isInt, &notInt);
-    builder_.Bind(&isInt);
-    {
-        auto value = builder_.GetInt32OfTInt(para1);
-        auto temp = builder_.Int32ASR(value, builder_.Int32(JSTaggedValue::INT_SIGN_BIT_OFFSET));
-        auto res = builder_.Int32Xor(value, temp);
-        result = IntToTaggedIntPtr(builder_.Int32Sub(res, temp));
-        builder_.Jump(&exit);
-    }
-    builder_.Bind(&notInt);
-    {
-        auto value = builder_.GetDoubleOfTDouble(para1);
-        // set the sign bit to 0 by shift left then right.
-        auto temp = builder_.Int64LSL(builder_.CastDoubleToInt64(value), builder_.Int64(1));
-        auto res = builder_.Int64LSR(temp, builder_.Int64(1));
-        result = builder_.DoubleToTaggedDoublePtr(builder_.CastInt64ToFloat64(res));
-        builder_.Jump(&exit);
-    }
-    builder_.Bind(&exit);
-    auto ret = *result;
-    env->SubCfgExit();
-    return ret;
 }
 
 GateRef BuiltinLowering::LowerCallRuntime(GateRef glue, GateRef gate, int index, const std::vector<GateRef> &args,
@@ -340,7 +289,6 @@ GateRef BuiltinLowering::CheckPara(GateRef gate, GateRef funcCheck)
         return funcCheck;
     }
     switch (id) {
-        case BuiltinsStubCSigns::ID::ABS:
         case BuiltinsStubCSigns::ID::FLOOR: {
             if (acc_.GetNumValueIn(gate) <= 2U) {
                 return funcCheck;

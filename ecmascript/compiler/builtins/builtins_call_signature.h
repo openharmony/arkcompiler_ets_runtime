@@ -114,7 +114,6 @@ namespace panda::ecmascript::kungfu {
 
 #define AOT_BUILTINS_STUB_LIST(V)                   \
     V(SQRT)  /* list start and math list start */   \
-    V(ABS)                                          \
     V(FLOOR)  /* math list end */                   \
     V(STRINGIFY)                                    \
     V(MAP_PROTO_ITERATOR)                           \
@@ -143,8 +142,9 @@ namespace panda::ecmascript::kungfu {
     V(MathSinh)                                     \
     V(MathTan)                                      \
     V(MathTanh)                                     \
+    V(MathAbs)                                      \
     V(TYPED_BUILTINS_INLINE_FIRST = MathAcos)       \
-    V(TYPED_BUILTINS_INLINE_LAST = MathTanh)
+    V(TYPED_BUILTINS_INLINE_LAST = MathAbs)
 
 class BuiltinsStubCSigns {
 public:
@@ -283,8 +283,8 @@ public:
                 return ConstantIndex::MATH_TAN_INDEX;
             case BuiltinsStubCSigns::ID::MathTanh:
                 return ConstantIndex::MATH_TANH_INDEX;
-            case BuiltinsStubCSigns::ID::ABS:
-                return ConstantIndex::MATH_ABS_FUNCTION_INDEX;
+            case BuiltinsStubCSigns::ID::MathAbs:
+                return ConstantIndex::MATH_ABS_INDEX;
             case BuiltinsStubCSigns::ID::FLOOR:
                 return ConstantIndex::MATH_FLOOR_FUNCTION_INDEX;
             case BuiltinsStubCSigns::ID::SQRT:
@@ -332,7 +332,7 @@ public:
             {"Tan", MathTan},
             {"Tanh", MathTanh},
             {"sqrt", SQRT},
-            {"abs", ABS},
+            {"abs", MathAbs},
             {"floor", FLOOR},
             {"localeCompare", LocaleCompare},
             {"sort", SORT},

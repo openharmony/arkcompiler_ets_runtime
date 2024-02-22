@@ -34,7 +34,7 @@
 // where BuiltinsMath::func refers to the native implementation of Math[name].
 //       kungfu::BuiltinsStubCSigns::stubIndex refers to the builtin stub index, or INVALID if no stub available.
 #define BUILTIN_MATH_FUNCTIONS(V)                                           \
-    V("abs",    Abs,    1, ABS)         /* Math.abs ( x ) */                \
+    V("abs",    Abs,    1, MathAbs)     /* Math.abs ( x ) */                \
     V("acos",   Acos,   1, MathAcos)    /* Math.acos ( x ) */               \
     V("acosh",  Acosh,  1, MathAcosh)   /* Math.acosh ( x ) */              \
     V("asin",   Asin,   1, MathAsin)    /* Math.asin ( x ) */               \
