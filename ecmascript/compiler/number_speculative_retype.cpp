@@ -157,6 +157,7 @@ GateRef NumberSpeculativeRetype::VisitGate(GateRef gate)
         case OpCode::STRING_FROM_SINGLE_CHAR_CODE:
         case OpCode::ORDINARY_HAS_INSTANCE:
         case OpCode::ECMA_STRING_CHECK:
+        case OpCode::CREATE_ARGUMENTS:
             return VisitOthers(gate);
         default:
             return Circuit::NullGate();
@@ -890,6 +891,12 @@ GateRef NumberSpeculativeRetype::CheckAndConvertToInt32(GateRef gate, GateType g
         case TypeInfo::FLOAT64:
             result = builder_.ConvertFloat64ToInt32(gate);
             break;
+        case TypeInfo::HOLE_INT:
+            result = builder_.CheckHoleIntAndConvertToInt32(gate);
+            break;
+        case TypeInfo::HOLE_DOUBLE:
+            result = builder_.CheckHoleDoubleAndConvertToInt32(gate);
+            break;
         case TypeInfo::NONE:
         case TypeInfo::TAGGED: {
             if (gateType.IsIntType()) {
@@ -943,6 +950,12 @@ GateRef NumberSpeculativeRetype::CheckAndConvertToFloat64(GateRef gate, GateType
             break;
         case TypeInfo::FLOAT64:
             return gate;
+        case TypeInfo::HOLE_INT:
+            result = builder_.CheckHoleIntAndConvertToFloat64(gate);
+            break;
+        case TypeInfo::HOLE_DOUBLE:
+            result = builder_.CheckHoleDoubleAndConvertToFloat64(gate);
+            break;
         case TypeInfo::NONE:
         case TypeInfo::TAGGED: {
             if (gateType.IsIntType()) {
@@ -983,6 +996,10 @@ GateRef NumberSpeculativeRetype::CheckAndConvertToTagged(GateRef gate, GateType 
             return builder_.ConvertUInt32ToTaggedNumber(gate);
         case TypeInfo::FLOAT64:
             return builder_.ConvertFloat64ToTaggedDouble(gate);
+        case TypeInfo::HOLE_INT:
+            return builder_.CheckHoleIntAndConvertToTaggedInt(gate);
+        case TypeInfo::HOLE_DOUBLE:
+            return builder_.CheckHoleDoubleAndConvertToTaggedDouble(gate);
         case TypeInfo::NONE:
         case TypeInfo::TAGGED: {
             ASSERT(gateType.IsNumberType() || gateType.IsBooleanType());
@@ -1010,6 +1027,10 @@ GateRef NumberSpeculativeRetype::ConvertToTagged(GateRef gate)
             return builder_.ConvertFloat64ToTaggedDouble(gate);
         case TypeInfo::CHAR:
             return builder_.ConvertCharToEcmaString(gate);
+        case TypeInfo::HOLE_INT:
+            return builder_.ConvertSpecialHoleIntToTagged(gate);
+        case TypeInfo::HOLE_DOUBLE:
+            return builder_.ConvertSpecialHoleDoubleToTagged(gate);
         case TypeInfo::NONE:
         case TypeInfo::TAGGED: {
             return gate;
@@ -1102,6 +1123,10 @@ GateRef NumberSpeculativeRetype::VisitLoadElement(GateRef gate)
                 return SetOutputType(gate, GateType::DoubleType());
             case TypedLoadOp::STRING_LOAD_ELEMENT:
                 return SetOutputType(gate, TypeInfo::CHAR);
+            case TypedLoadOp::ARRAY_LOAD_HOLE_INT_ELEMENT:
+                return SetOutputType(gate, TypeInfo::HOLE_INT);
+            case TypedLoadOp::ARRAY_LOAD_HOLE_DOUBLE_ELEMENT:
+                return SetOutputType(gate, TypeInfo::HOLE_DOUBLE);
             default:
                 return SetOutputType(gate, GateType::AnyType());
         }
@@ -1140,10 +1165,12 @@ GateRef NumberSpeculativeRetype::VisitStoreElement(GateRef gate)
             case TypedStoreOp::UINT16ARRAY_STORE_ELEMENT:
             case TypedStoreOp::INT32ARRAY_STORE_ELEMENT:
             case TypedStoreOp::UINT32ARRAY_STORE_ELEMENT:
+            case TypedStoreOp::ARRAY_STORE_INT_ELEMENT:
                 acc_.ReplaceValueIn(gate, CheckAndConvertToInt32(value, GateType::NumberType()), 2);   // 2: value idx
                 break;
             case TypedStoreOp::FLOAT32ARRAY_STORE_ELEMENT:
             case TypedStoreOp::FLOAT64ARRAY_STORE_ELEMENT:
+            case TypedStoreOp::ARRAY_STORE_DOUBLE_ELEMENT:
                 acc_.ReplaceValueIn(gate, CheckAndConvertToFloat64(value, GateType::NumberType()), 2);  // 2: value idx
                 break;
             default:

@@ -147,7 +147,7 @@ void MeExprUseInfo::CollectUseInfoInFunc(IRMap *irMap, Dominance *domTree, MeExp
     useInfoState = state;
 
     for (auto bb : domTree->GetReversePostOrder()) {
-        CollectUseInfoInBB(bb);
+        CollectUseInfoInBB(irMap->GetBB(BBId(bb->GetID())));
     }
 }
 }  // namespace maple

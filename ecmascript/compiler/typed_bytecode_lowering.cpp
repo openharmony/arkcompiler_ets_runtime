@@ -472,14 +472,15 @@ void TypedBytecodeLowering::LowerTypedLdObjByName(GateRef gate)
     }
     Label exit(&builder_);
     AddProfiling(gate);
+    GateRef frameState = acc_.GetFrameState(gate);
     if (tacc.IsMono()) {
         GateRef receiver = tacc.GetReceiver();
         builder_.ObjectTypeCheck(acc_.GetGateType(gate), true, receiver,
-                                 builder_.Int32(tacc.GetExpectedHClassIndex(0)));
+                                 builder_.Int32(tacc.GetExpectedHClassIndex(0)), frameState);
         if (tacc.IsReceiverEqHolder(0)) {
             result = BuildNamedPropertyAccess(gate, receiver, receiver, tacc.GetAccessInfo(0).Plr());
         } else {
-            builder_.ProtoChangeMarkerCheck(receiver);
+            builder_.ProtoChangeMarkerCheck(receiver, frameState);
             PropertyLookupResult plr = tacc.GetAccessInfo(0).Plr();
             GateRef plrGate = builder_.Int32(plr.GetData());
             GateRef jsFunc = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
@@ -503,8 +504,7 @@ void TypedBytecodeLowering::LowerTypedLdObjByName(GateRef gate)
             builder_.Bind(&loaders[i]);
         } else {
             // Deopt if fails at last hclass compare
-            builder_.DeoptCheck(builder_.Equal(receiverHC, expected),
-                acc_.FindNearestFrameState(builder_.GetDepend()), DeoptType::INCONSISTENTHCLASS1);
+            builder_.DeoptCheck(builder_.Equal(receiverHC, expected), frameState, DeoptType::INCONSISTENTHCLASS1);
         }
 
         if (tacc.IsReceiverEqHolder(i)) {
@@ -513,7 +513,7 @@ void TypedBytecodeLowering::LowerTypedLdObjByName(GateRef gate)
             builder_.Jump(&exit);
         } else {
             // prototype change marker check
-            builder_.ProtoChangeMarkerCheck(tacc.GetReceiver());
+            builder_.ProtoChangeMarkerCheck(tacc.GetReceiver(), frameState);
             // lookup from receiver for holder
             auto prototype = builder_.LoadConstOffset(VariableType::JS_ANY(), receiverHC, JSHClass::PROTOTYPE_OFFSET);
             // lookup from receiver for holder
@@ -526,8 +526,7 @@ void TypedBytecodeLowering::LowerTypedLdObjByName(GateRef gate)
             builder_.Jump(&loopHead);
 
             builder_.LoopBegin(&loopHead);
-            builder_.DeoptCheck(builder_.TaggedIsNotNull(*current), acc_.FindNearestFrameState(builder_.GetDepend()),
-                                DeoptType::INCONSISTENTHCLASS2);
+            builder_.DeoptCheck(builder_.TaggedIsNotNull(*current), frameState, DeoptType::INCONSISTENTHCLASS2);
             auto curHC = builder_.LoadConstOffset(VariableType::JS_POINTER(), *current, TaggedObject::HCLASS_OFFSET);
             builder_.Branch(builder_.Equal(curHC, holderHC), &loadHolder, &lookUpProto);
 
@@ -564,13 +563,30 @@ void TypedBytecodeLowering::LowerTypedStObjByName(GateRef gate)
     }
     Label exit(&builder_);
     AddProfiling(gate);
+    GateRef frameState = Circuit::NullGate();
+    auto opcode = acc_.GetByteCodeOpcode(gate);
+
+    // The framestate of Call and Accessor related instructions directives is placed on IR. Using the depend edge to
+    // climb up and find the nearest framestate for other instructions
+    if (opcode == EcmaOpcode::DEFINEFIELDBYNAME_IMM8_ID16_V8 ||
+        opcode == EcmaOpcode::STOWNBYNAME_IMM8_ID16_V8 ||
+        opcode == EcmaOpcode::STOWNBYNAME_IMM16_ID16_V8) {
+        frameState = acc_.FindNearestFrameState(builder_.GetDepend());
+    } else if (opcode == EcmaOpcode::STOBJBYNAME_IMM8_ID16_V8 ||
+               opcode == EcmaOpcode::STOBJBYNAME_IMM16_ID16_V8 ||
+               opcode == EcmaOpcode::STTHISBYNAME_IMM8_ID16 ||
+               opcode == EcmaOpcode::STTHISBYNAME_IMM16_ID16) {
+        frameState = acc_.GetFrameState(gate);
+    } else {
+        UNREACHABLE();
+    }
 
     if (tacc.IsMono()) {
         GateRef receiver = tacc.GetReceiver();
         builder_.ObjectTypeCheck(acc_.GetGateType(gate), true, receiver,
-                                 builder_.Int32(tacc.GetExpectedHClassIndex(0)));
+                                 builder_.Int32(tacc.GetExpectedHClassIndex(0)), frameState);
         if (tacc.IsReceiverNoEqNewHolder(0)) {
-            builder_.ProtoChangeMarkerCheck(tacc.GetReceiver());
+            builder_.ProtoChangeMarkerCheck(tacc.GetReceiver(), frameState);
             PropertyLookupResult plr = tacc.GetAccessInfo(0).Plr();
             GateRef plrGate = builder_.Int32(plr.GetData());
             GateRef jsFunc = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
@@ -602,11 +618,10 @@ void TypedBytecodeLowering::LowerTypedStObjByName(GateRef gate)
                 &loaders[i], &fails[i]);
             builder_.Bind(&loaders[i]);
         } else {
-            builder_.DeoptCheck(builder_.Equal(receiverHC, expected),
-                acc_.FindNearestFrameState(builder_.GetDepend()), DeoptType::INCONSISTENTHCLASS3);
+            builder_.DeoptCheck(builder_.Equal(receiverHC, expected), frameState, DeoptType::INCONSISTENTHCLASS3);
         }
         if (tacc.IsReceiverNoEqNewHolder(i)) {
-            builder_.ProtoChangeMarkerCheck(tacc.GetReceiver());
+            builder_.ProtoChangeMarkerCheck(tacc.GetReceiver(), frameState);
             auto prototype = builder_.LoadConstOffset(VariableType::JS_ANY(), receiverHC, JSHClass::PROTOTYPE_OFFSET);
             if (tacc.IsHolderEqNewHolder(i)) {
                 // lookup from receiver for holder
@@ -618,8 +633,7 @@ void TypedBytecodeLowering::LowerTypedStObjByName(GateRef gate)
                 builder_.Jump(&loopHead);
 
                 builder_.LoopBegin(&loopHead);
-                builder_.DeoptCheck(builder_.TaggedIsNotNull(*current),
-                                    acc_.FindNearestFrameState(builder_.GetDepend()), DeoptType::INCONSISTENTHCLASS4);
+                builder_.DeoptCheck(builder_.TaggedIsNotNull(*current), frameState, DeoptType::INCONSISTENTHCLASS4);
                 auto curHC = builder_.LoadConstOffset(VariableType::JS_POINTER(), *current,
                                                       TaggedObject::HCLASS_OFFSET);
                 builder_.Branch(builder_.Equal(curHC, holderHC), &loadHolder, &lookUpProto);
@@ -1022,8 +1036,10 @@ GateRef TypedBytecodeLowering::LoadJSArrayByIndex(const LoadBulitinObjTypeInfoAc
 
     GateRef result = Circuit::NullGate();
     if (Elements::IsInt(kind)) {
+        // When elementskind switch on, need to add retype for loadInt
         result = builder_.LoadElement<TypedLoadOp::ARRAY_LOAD_INT_ELEMENT>(receiver, propKey);
     } else if (Elements::IsNumber(kind)) {
+        // When elementskind switch on, need to add retype for loadNumber
         result = builder_.LoadElement<TypedLoadOp::ARRAY_LOAD_DOUBLE_ELEMENT>(receiver, propKey);
     } else if (Elements::IsObject(kind)) {
         result = builder_.LoadElement<TypedLoadOp::ARRAY_LOAD_OBJECT_ELEMENT>(receiver, propKey);

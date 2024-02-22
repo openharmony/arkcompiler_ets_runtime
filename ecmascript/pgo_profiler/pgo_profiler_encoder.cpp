@@ -286,6 +286,20 @@ void PGOProfilerEncoder::PostSaveTask()
     Taskpool::GetCurrentTaskpool()->PostTask(std::make_unique<SaveTask>(this, GLOBAL_TASK_ID));
 }
 
+void PGOProfilerEncoder::PostResetOutPathTask(const std::string &moduleName)
+{
+    if (moduleName.empty()) {
+        LOG_ECMA(ERROR) << "PostSetModuleNameTask: moduleName is empty.";
+        return;
+    }
+    // only post moduleName once
+    bool hasPost = false;
+    if (!hasPostModuleName_.compare_exchange_strong(hasPost, true)) {
+        return;
+    }
+    Taskpool::GetCurrentTaskpool()->PostTask(std::make_unique<ResetOutPathTask>(this, moduleName, GLOBAL_TASK_ID));
+}
+
 void PGOProfilerEncoder::StartSaveTask(const SaveTask *task)
 {
     if (task == nullptr) {

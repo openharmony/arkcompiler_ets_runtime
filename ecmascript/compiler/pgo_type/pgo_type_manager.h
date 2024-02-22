@@ -60,9 +60,13 @@ public:
     // array
     void PUBLIC_API RecordElements(panda_file::File::EntityId id, JSTaggedValue elements);
 
+    void UpdateRecordedElements(panda_file::File::EntityId id, JSTaggedValue elements, ElementsKind kind);
+
     void RecordConstantIndex(uint32_t bcAbsoluteOffset, uint32_t index);
 
     int PUBLIC_API GetElementsIndexByEntityId(panda_file::File::EntityId id);
+
+    ElementsKind GetElementsKindByEntityId(panda_file::File::EntityId id);
 
     // hclass
     void RecordHClass(ProfileType rootType, ProfileType childType, JSTaggedType hclass);
@@ -116,6 +120,7 @@ private:
     CUnorderedMap<PGOTypeLocation, ElementsKind, HashPGOTypeLocation> locToElmsKindMap_ {};
     CMap<ProfileTyper, uint32_t> profileTyperToHClassIndex_ {};
     std::map<panda_file::File::EntityId, uint32_t> idElmsIdxMap_ {};
+    std::map<panda_file::File::EntityId, ElementsKind> idElmsKindMap_ {};
     AOTSnapshot aotSnapshot_;
 
     // When the passmanager iterates each method, the curCP_ and curCPID_ should be updated,

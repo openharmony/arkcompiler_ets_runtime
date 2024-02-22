@@ -69,6 +69,33 @@ void LoopHierarchy::PrintLoops(const std::string &name) const
     }
 }
 
+void LoopDesc::Dump() const
+{
+    LogInfo::MapleLogger() << "LoopDesc:" << header.GetId() << ", nest depth:" << nestDepth;
+    if (parentLoop != nullptr) {
+        LogInfo::MapleLogger() << ", parent:" << parentLoop->GetHeader().GetId();
+    }
+    LogInfo::MapleLogger() << "\n\tbackedge:";
+    for (auto bbId : backEdges) {
+        LogInfo::MapleLogger() << bbId << " ";
+    }
+    LogInfo::MapleLogger() << "\n\tmembers:";
+    for (auto bbId : loopBBs) {
+        LogInfo::MapleLogger() << bbId << " ";
+    }
+    LogInfo::MapleLogger() << "\n\texitBB:";
+    for (auto bbId : exitBBs) {
+        LogInfo::MapleLogger() << bbId << " ";
+    }
+    if (!childLoops.empty()) {
+        LogInfo::MapleLogger() << "\n\tchild loops:";
+        for (auto *childLoop : childLoops) {
+            LogInfo::MapleLogger() << childLoop->GetHeader().GetId() << " ";
+        }
+    }
+    LogInfo::MapleLogger() << "\n\n";
+}
+
 bool CGFuncLoops::IsBBLoopMember(const BB *bb)
 {
     return (*(std::find(loopMembers.begin(), loopMembers.end(), bb)) == bb);
@@ -678,6 +705,102 @@ void LoopFinder::FormLoopHierarchy()
     UpdateCGFunc();
 }
 
+LoopDesc *LoopAnalysis::GetOrCreateLoopDesc(BB &headBB)
+{
+    auto *loop = bbLoopParent[headBB.GetId()];
+    if (loop == nullptr || loop->GetHeader().GetId() != headBB.GetId()) {
+        // If the headBB is not in loop or loop's header is not the headBB, create a new loop.
+        loop = alloc.New<LoopDesc>(alloc, headBB);
+        loops.push_back(loop);
+    }
+    return loop;
+}
+
+void LoopAnalysis::SetLoopParent4BB(const BB &bb, LoopDesc &loopDesc)
+{
+    if (bbLoopParent[bb.GetId()] != nullptr && bbLoopParent[bb.GetId()] != &loopDesc) {
+        if (loopDesc.GetParentLoop() == nullptr) {
+            loopDesc.SetParentLoop(*bbLoopParent[bb.GetId()]);
+            ASSERT_NOT_NULL(loopDesc.GetParentLoop());
+            loopDesc.GetParentLoop()->InsertChildLoops(loopDesc);
+            loopDesc.SetNestDepth(loopDesc.GetParentLoop()->GetNestDepth() + 1);
+        }
+    }
+    loopDesc.InsertLoopBBs(bb);
+    bbLoopParent[bb.GetId()] = &loopDesc;
+}
+
+void LoopAnalysis::SetExitBBs(LoopDesc &loop) const
+{
+    // if loopBBs succs not in the loop, the succs is the loop's exitBB
+    for (auto bbId : loop.GetLoopBBs()) {
+        auto *bb = cgFunc.GetBBFromID(bbId);
+        for (auto *succ : bb->GetAllSuccs()) {
+            if (loop.Has(*succ)) {
+                continue;
+            }
+            loop.InsertExitBBs(*succ);
+        }
+    }
+}
+
+void LoopAnalysis::ProcessBB(BB &bb)
+{
+    if (&bb == cgFunc.GetCommonExitBB()) {
+        return;
+    }
+
+    // generate loop based on the dom information
+    for (auto *pred : bb.GetAllPreds()) {
+        if (!dom.Dominate(bb, *pred)) {
+            continue;
+        }
+        auto *loop = GetOrCreateLoopDesc(bb);
+        loop->InsertBackEdges(*pred);
+        std::list<BB *> bodyList;
+        bodyList.push_back(pred);
+        while (!bodyList.empty()) {
+            auto *curBB = bodyList.front();
+            bodyList.pop_front();
+            // skip bb or if it has already been dealt with
+            if (curBB == &bb || loop->Has(*curBB)) {
+                continue;
+            }
+            SetLoopParent4BB(*curBB, *loop);
+            for (auto *curPred : curBB->GetAllPreds()) {
+                bodyList.push_back(curPred);
+            }
+        }
+        SetLoopParent4BB(bb, *loop);
+        SetExitBBs(*loop);
+    }
+
+    // process dom tree
+    for (auto domChildBBId : dom.GetDomChildren(bb.GetId())) {
+        ProcessBB(*cgFunc.GetBBFromID(domChildBBId));
+    }
+}
+
+void LoopAnalysis::Analysis()
+{
+    std::vector<BB *> entryBBs;
+    FOR_ALL_BB(bb, (&cgFunc))
+    {
+        if (bb->GetAllPreds().size() == 0) {
+            entryBBs.push_back(bb);
+        }
+    }
+
+    for (auto *bb : entryBBs) {
+        ProcessBB(*bb);
+    }
+}
+
+void CgLoopAnalysis::GetAnalysisDependence(AnalysisDep &aDep) const
+{
+    aDep.AddRequired<CgDomAnalysis>();
+    aDep.SetPreservedAll();
+}
 bool CgLoopAnalysis::PhaseRun(maplebe::CGFunc &f)
 {
     f.ClearLoopInfo();

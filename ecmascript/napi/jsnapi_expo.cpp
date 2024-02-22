@@ -198,9 +198,8 @@ constexpr std::string_view ENTRY_POINTER = "_GLOBAL::func_main_0";
 int JSNApi::vmCount_ = 0;
 bool JSNApi::initialize_ = false;
 static Mutex *mutex = new panda::Mutex();
-#define XPM_PROC_PREFIX "/proc/"
-#define XPM_PROC_SUFFIX "/xpm_region"
 #define XPM_PROC_LENGTH 50
+#define PROC_SELF_XPM_REGION_PATH "/proc/self/xpm_region"
 
 // ----------------------------------- JSValueRef --------------------------------------
 Local<PrimitiveRef> JSValueRef::Undefined(const EcmaVM *vm)
@@ -2747,14 +2746,7 @@ bool JSNApi::CheckSecureMem(uintptr_t mem)
     static uintptr_t secureMemStart = 0;
     static uintptr_t secureMemEnd = 0;
     if (!hasOpen) {
-        char procPath[XPM_PROC_LENGTH] = {0};
-        pid_t pid = getpid();
-        LOG_ECMA(DEBUG) << "Check secure memory in : " << pid << " with mem: " << std::hex << mem;
-        if (sprintf_s(procPath, XPM_PROC_LENGTH, "%s%d%s", XPM_PROC_PREFIX, pid, XPM_PROC_SUFFIX) <= 0) {
-            LOG_ECMA(ERROR) << "sprintf proc path failed";
-            return false;
-        }
-        int fd = open(procPath, O_RDONLY);
+        int fd = open(PROC_SELF_XPM_REGION_PATH, O_RDONLY);
         if (fd < 0) {
             LOG_ECMA(ERROR) << "Can not open xpm proc file, do not check secure memory anymore.";
             // No verification is performed when a file fails to be opened.

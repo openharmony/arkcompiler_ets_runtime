@@ -436,6 +436,14 @@ GateRef CircuitBuilder::GetConstPool(GateRef jsFunc)
 {
     auto currentLabel = env_->GetCurrentLabel();
     auto currentDepend = currentLabel->GetDepend();
+    // In an inline accessor scenario, if the accessor function and the caller function have the same constpool, then
+    // the caller function is used to load accessor, which avoids the dependency on the accessor.
+    if (acc_.GetOpCode(jsFunc) == OpCode::LOAD_GETTER || acc_.GetOpCode(jsFunc) == OpCode::LOAD_SETTER) {
+        GateRef frameState = acc_.GetFrameState(jsFunc);
+        if (acc_.GetOpCode(frameState) != OpCode::FRAME_STATE) {
+            jsFunc = frameState;
+        }
+    }
     auto newGate = GetCircuit()->NewGate(circuit_->GetConstPool(), MachineType::I64,
                                          { currentDepend, jsFunc },
                                          GateType::AnyType());
@@ -895,6 +903,27 @@ GateRef Variable::TryRemoveTrivialPhi(GateRef phi)
         }
     }
     return same;
+}
+
+GateRef CircuitBuilder::elementsKindIsIntOrHoleInt(GateRef kind)
+{
+    GateRef kindIsInt = Int32Equal(kind, Int32(static_cast<uint32_t>(ElementsKind::INT)));
+    GateRef kindIsHoleInt = Int32Equal(kind, Int32(static_cast<uint32_t>(ElementsKind::HOLE_INT)));
+    return BoolOr(kindIsInt, kindIsHoleInt);
+}
+
+GateRef CircuitBuilder::elementsKindIsNumOrHoleNum(GateRef kind)
+{
+    GateRef kindIsNum = Int32Equal(kind, Int32(static_cast<uint32_t>(ElementsKind::NUMBER)));
+    GateRef kindIsHoleNum = Int32Equal(kind, Int32(static_cast<uint32_t>(ElementsKind::HOLE_NUMBER)));
+    return BoolOr(kindIsNum, kindIsHoleNum);
+}
+
+GateRef CircuitBuilder::elementsKindIsHeapKind(GateRef kind)
+{
+    GateRef overString = Int32GreaterThanOrEqual(kind, Int32(static_cast<uint32_t>(ElementsKind::STRING)));
+    GateRef isHoleOrNone = Int32LessThanOrEqual(kind, Int32(static_cast<uint32_t>(ElementsKind::HOLE)));
+    return BoolOr(overString, isHoleOrNone);
 }
 
 GateRef CircuitBuilder::LoadBuiltinObject(size_t offset)

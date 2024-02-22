@@ -59,7 +59,7 @@ void BaseSnapshotInfo::CollectLiteralInfo(JSHandle<TaggedArray> array, uint32_t 
                                           JSHandle<ConstantPool> snapshotConstantPool,
                                           const std::set<uint32_t> &skippedMethods,
                                           JSHandle<JSTaggedValue> ihc, JSHandle<JSTaggedValue> chc,
-                                          int32_t elementIndex)
+                                          int32_t elementIndex, ElementsKind kind)
 {
     ObjectFactory *factory = vm_->GetFactory();
     JSMutableHandle<JSTaggedValue> valueHandle(thread_, JSTaggedValue::Undefined());
@@ -94,6 +94,10 @@ void BaseSnapshotInfo::CollectLiteralInfo(JSHandle<TaggedArray> array, uint32_t 
 
     if (elementIndex != AOT_ELEMENT_INDEX_DEFAULT_VALUE) {
         aotLiteralInfo->SetElementIndex(JSTaggedValue(elementIndex));
+    }
+
+    if (kind != ElementsKind::GENERIC) {
+        aotLiteralInfo->SetElementsKind(kind);
     }
 
     snapshotConstantPool->SetObjectToCache(thread_, constantPoolIndex, aotLiteralInfo.GetTaggedValue());
@@ -176,7 +180,8 @@ void ClassLiteralSnapshotInfo::StoreDataToGlobalData(SnapshotGlobalData &globalD
             chc = TryGetHClass(ctorPt, ctorPt);
         }
 
-        CollectLiteralInfo(arrayHandle, data.constantPoolIdx_, snapshotCp, skippedMethods, ihc, chc);
+        CollectLiteralInfo(arrayHandle, data.constantPoolIdx_, snapshotCp, skippedMethods, ihc, chc,
+                           AOT_ELEMENT_INDEX_DEFAULT_VALUE, ElementsKind::GENERIC);
         globalData.RecordReviseData(
             ReviseData::ItemData {globalData.GetCurDataIdx(), snapshotCpArrIdx, data.constantPoolIdx_});
     }
@@ -215,7 +220,8 @@ void ObjectLiteralSnapshotInfo::StoreDataToGlobalData(SnapshotGlobalData &global
             }
         }
 
-        CollectLiteralInfo(properties, data.constantPoolIdx_, snapshotCp, skippedMethods, ihc, chc);
+        CollectLiteralInfo(properties, data.constantPoolIdx_, snapshotCp, skippedMethods, ihc, chc,
+                           AOT_ELEMENT_INDEX_DEFAULT_VALUE, ElementsKind::GENERIC);
         globalData.RecordReviseData(
             ReviseData::ItemData {globalData.GetCurDataIdx(), snapshotCpArrIdx, data.constantPoolIdx_});
     }
@@ -233,13 +239,15 @@ void ArrayLiteralSnapshotInfo::StoreDataToGlobalData(SnapshotGlobalData &globalD
         JSHandle<TaggedArray> literal = LiteralDataExtractor::GetDatasIgnoreType(
             thread_, jsPandaFile_, id, cp, data.recordName_);
         int32_t elementIndex = ptManager->GetElementsIndexByEntityId(id);
+        ElementsKind kind = ptManager->GetElementsKindByEntityId(id);
 
         uint32_t snapshotCpArrIdx = globalData.GetCpArrIdxByConstanPoolId(data.constantPoolId_);
         JSHandle<TaggedArray> snapshotCpArr(thread_, globalData.GetCurSnapshotCpArray());
         JSHandle<ConstantPool> snapshotCp(thread_, snapshotCpArr->Get(snapshotCpArrIdx));
         JSHandle<JSTaggedValue> ihc = thread_->GlobalConstants()->GetHandledUndefined();
         JSHandle<JSTaggedValue> chc = thread_->GlobalConstants()->GetHandledUndefined();
-        CollectLiteralInfo(literal, data.constantPoolIdx_, snapshotCp, skippedMethods, ihc, chc, elementIndex);
+        CollectLiteralInfo(literal, data.constantPoolIdx_, snapshotCp, skippedMethods, ihc, chc,
+                           elementIndex, kind);
         globalData.RecordReviseData(
             ReviseData::ItemData {globalData.GetCurDataIdx(), snapshotCpArrIdx, data.constantPoolIdx_});
     }

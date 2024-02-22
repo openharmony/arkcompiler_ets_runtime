@@ -165,7 +165,7 @@ private:
         PACKED = 0,
         HOLEY,
     };
-    void LowerArrayLoadElement(GateRef gate, ArrayState arrayState);
+    void LowerArrayLoadElement(GateRef gate, ArrayState arrayState, TypedLoadOp op);
     void LowerCowArrayCheck(GateRef gate, GateRef glue);
     void LowerTypedArrayLoadElement(GateRef gate, BuiltinTypeId id);
     void LowerStringLoadElement(GateRef gate);
@@ -173,7 +173,7 @@ private:
     GateRef BuildNotOnHeapTypedArrayLoadElement(GateRef receiver, GateRef offset, VariableType type);
     GateRef BuildTypedArrayLoadElement(GateRef receiver, GateRef offset, VariableType type, Label *isByteArray,
                                        Label *isArrayBuffer, Label *exit);
-    void LowerArrayStoreElement(GateRef gate, GateRef glue);
+    void LowerArrayStoreElement(GateRef gate, GateRef glue, TypedStoreOp kind);
     void LowerTypedArrayStoreElement(GateRef gate, BuiltinTypeId id);
     void BuildOnHeapTypedArrayStoreElement(GateRef receiver, GateRef offset, GateRef value);
     void BuildNotOnHeapTypedArrayStoreElement(GateRef receiver, GateRef offset, GateRef value);
@@ -196,6 +196,7 @@ private:
     void LowerJSInlineTargetTypeCheck(GateRef gate);
     void SetDeoptTypeInfo(BuiltinTypeId id, DeoptType &type, size_t &typedArrayRootHclassIndex,
         size_t &typedArrayRootHclassOnHeapIndex);
+    void LowerLookupHolder(GateRef gate);
     void LowerLoadGetter(GateRef gate);
     void LowerLoadSetter(GateRef gate);
     void LowerPrototypeCheck(GateRef gate);
@@ -217,6 +218,7 @@ private:
     void LowerMonoStorePropertyLookUpProto(GateRef gate, GateRef glue);
     void LowerMonoStoreProperty(GateRef gate, GateRef glue);
     void LowerStringFromSingleCharCode(GateRef gate, GateRef glue);
+    void LowerMigrateArrayWithKind(GateRef gate);
 
     GateRef LowerCallRuntime(GateRef glue, GateRef hirGate, int index, const std::vector<GateRef> &args,
                              bool useLabel = false);

@@ -77,6 +77,12 @@ void SlowPathLowering::CallRuntimeLowering()
             case OpCode::LOOP_EXIT_VALUE:
                 DeleteLoopExitValue(gate);
                 break;
+            case OpCode::LOAD_GETTER:
+                LowerLoadGetter(gate);
+                break;
+            case OpCode::LOAD_SETTER:
+                LowerLoadSetter(gate);
+                break;
             default:
                 break;
         }
@@ -1524,6 +1530,7 @@ void SlowPathLowering::LowerCreateArrayWithBuffer(GateRef gate)
     GateRef jsFunc = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
     GateRef index = builder_.TruncInt64ToInt32(acc_.GetValueIn(gate, 0));
     GateRef result = builder_.CallStub(glue_, gate, CommonStubCSigns::CreateArrayWithBuffer, { glue_, index, jsFunc });
+    // when elementsKind switch on, we should not update arrayHClass here.
     GateRef newRes = LowerUpdateArrayHClass(gate, result);
     ReplaceHirWithValue(gate, newRes, true);
 }
@@ -3271,5 +3278,49 @@ void SlowPathLowering::LowerLdStr(GateRef gate)
     GateRef jsFunc = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
     GateRef res = builder_.GetObjectFromConstPool(glue_, gate, jsFunc, stringId, ConstPoolType::STRING);
     ReplaceHirWithValue(gate, res);
+}
+
+void SlowPathLowering::LowerLoadGetter(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    ASSERT(acc_.GetNumValueIn(gate) == 2);  // 2: holder, plr
+    GateRef holder = acc_.GetValueIn(gate, 0);
+    GateRef propertyLookupResult = acc_.GetValueIn(gate, 1);
+    PropertyLookupResult plr(acc_.TryGetValue(propertyLookupResult));
+    ASSERT(plr.IsAccessor());
+
+    GateRef getter;
+    if (plr.IsInlinedProps()) {
+        GateRef acceessorData = builder_.Load(VariableType::JS_ANY(), holder, builder_.IntPtr(plr.GetOffset()));
+        getter = builder_.Load(VariableType::JS_ANY(), acceessorData, builder_.IntPtr(AccessorData::GETTER_OFFSET));
+    } else {
+        GateRef properties =
+            builder_.Load(VariableType::JS_ANY(), holder, builder_.IntPtr(JSObject::PROPERTIES_OFFSET));
+        GateRef acceessorData = GetValueFromTaggedArray(properties, builder_.IntPtr(plr.GetOffset()));
+        getter = builder_.Load(VariableType::JS_ANY(), acceessorData, builder_.IntPtr(AccessorData::GETTER_OFFSET));
+    }
+    acc_.ReplaceGate(gate, Circuit::NullGate(), builder_.GetDepend(), getter);
+}
+
+void SlowPathLowering::LowerLoadSetter(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    ASSERT(acc_.GetNumValueIn(gate) == 2);  // 2: holder, plr
+    GateRef holder = acc_.GetValueIn(gate, 0);
+    GateRef propertyLookupResult = acc_.GetValueIn(gate, 1);
+    PropertyLookupResult plr(acc_.TryGetValue(propertyLookupResult));
+    ASSERT(plr.IsAccessor());
+
+    GateRef setter;
+    if (plr.IsInlinedProps()) {
+        GateRef acceessorData = builder_.Load(VariableType::JS_ANY(), holder, builder_.IntPtr(plr.GetOffset()));
+        setter = builder_.Load(VariableType::JS_ANY(), acceessorData, builder_.IntPtr(AccessorData::SETTER_OFFSET));
+    } else {
+        GateRef properties =
+            builder_.Load(VariableType::JS_ANY(), holder, builder_.IntPtr(JSObject::PROPERTIES_OFFSET));
+        GateRef acceessorData = GetValueFromTaggedArray(properties, builder_.IntPtr(plr.GetOffset()));
+        setter = builder_.Load(VariableType::JS_ANY(), acceessorData, builder_.IntPtr(AccessorData::SETTER_OFFSET));
+    }
+    acc_.ReplaceGate(gate, Circuit::NullGate(), builder_.GetDepend(), setter);
 }
 }  // namespace panda::ecmascript

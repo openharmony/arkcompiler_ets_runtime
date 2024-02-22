@@ -437,6 +437,22 @@ GateRef CircuitBuilder::CreateArrayWithBuffer(ElementsKind kind, ArrayMetaDataAc
     return newGate;
 }
 
+GateRef CircuitBuilder::CreateArguments(ElementsKind kind, CreateArgumentsAccessor::Mode mode, GateRef restIdx)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    auto frameState = acc_.FindNearestFrameState(currentDepend);
+    CreateArgumentsAccessor accessor(kind, mode);
+    GateRef newGate = GetCircuit()->NewGate(circuit_->CreateArguments(accessor.ToValue()),
+                                            MachineType::I64,
+                                            { currentControl, currentDepend, restIdx, frameState },
+                                            GateType::NJSValue());
+    currentLabel->SetControl(newGate);
+    currentLabel->SetDepend(newGate);
+    return newGate;
+}
+
 void CircuitBuilder::SetPropertyInlinedProps(GateRef glue, GateRef obj, GateRef hClass,
     GateRef value, GateRef attrOffset, VariableType type)
 {
@@ -570,6 +586,21 @@ GateRef CircuitBuilder::OrdinaryHasInstance(GateRef obj, GateRef target)
     currentLabel->SetControl(ret);
     currentLabel->SetDepend(ret);
     return ret;
+}
+
+GateRef CircuitBuilder::MigrateArrayWithKind(GateRef receiver, GateRef oldElementsKind,
+                                             GateRef newElementsKind)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    GateRef newGate = GetCircuit()->NewGate(circuit_->MigrateArrayWithKind(), MachineType::I64,
+                                            { currentControl, currentDepend, receiver, oldElementsKind,
+                                              newElementsKind },
+                                            GateType::TaggedValue());
+    currentLabel->SetControl(newGate);
+    currentLabel->SetDepend(newGate);
+    return newGate;
 }
 
 GateRef CircuitBuilder::IsLiteralString(GateRef string)

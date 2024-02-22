@@ -48,6 +48,7 @@ public:
     GateRef NewJSObject(GateRef glue, GateRef hclass);
     GateRef NewJSArray(GateRef glue, GateRef hclass);
     GateRef NewTaggedArray(GateRef glue, GateRef len);
+    GateRef NewMutantTaggedArray(GateRef glue, GateRef len);
     GateRef CopyArray(GateRef glue, GateRef elements, GateRef oldLen, GateRef newLen);
     GateRef ExtendArray(GateRef glue, GateRef elements, GateRef newLen);
     GateRef NewJSArrayWithSize(GateRef hclass, GateRef size);
@@ -81,6 +82,7 @@ public:
     GateRef CreateArrayWithBuffer(GateRef glue, GateRef index, GateRef jsFunc, GateRef pc,
                                   GateRef profileTypeInfo, GateRef slotId, ProfileOperation callback);
     void NewTaggedArrayChecked(Variable *result, GateRef len, Label *exit);
+    void NewMutantTaggedArrayChecked(Variable *result, GateRef len, Label *exit);
     template <typename IteratorType, typename CollectionType>
     void CreateJSCollectionIterator(Variable *result, Label *exit, GateRef set, GateRef kind);
     GateRef NewTaggedSubArray(GateRef glue, GateRef srcTypedArray, GateRef elementSize, GateRef newLength,

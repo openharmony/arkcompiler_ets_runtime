@@ -17,6 +17,7 @@ include_directories = [
   "${MAPLEALL_ROOT}/maple_be/include/cg",
   "${MAPLEALL_ROOT}/maple_be/include/litecg",
   "${MAPLEALL_ROOT}/maple_be/include/ad",
+  "${MAPLEALL_ROOT}/maple_pgo/include",
   "${MAPLEALL_ROOT}/maple_be/include/ad/target",
   "${MAPLEALL_ROOT}/maple_be/include/be",
   "${MAPLEALL_ROOT}/maple_driver/include",
@@ -40,6 +41,7 @@ deps_libcg = [
   "${MAPLEALL_ROOT}/maple_ir:libmplir",
   "${MAPLEALL_ROOT}/maple_util:libmplutil",
   "${MAPLEALL_ROOT}/maple_me:libmplme",
+  "${MAPLEALL_ROOT}/maple_pgo:libmplpgo",
 ]
 
 deps_libmplbe = [ ":libcglowerer" ]
@@ -97,6 +99,7 @@ src_libcgaarch64 = [
   "src/cg/aarch64/aarch64_cfi_generator.cpp",
   "src/cg/aarch64/aarch64_cgfunc.cpp",
   "src/cg/aarch64/aarch64_dependence.cpp",
+  "src/cg/aarch64/aarch64_data_dep_base.cpp",
   "src/cg/aarch64/aarch64_ebo.cpp",
   "src/cg/aarch64/aarch64_emitter.cpp",
   "src/cg/aarch64/aarch64_obj_emitter.cpp",
@@ -132,6 +135,7 @@ src_libcgaarch64 = [
   "src/cg/aarch64/aarch64_validbit_opt.cpp",
   "src/cg/aarch64/aarch64_cfgo.cpp",
   "src/cg/aarch64/aarch64_imm_valid.cpp",
+  "src/cg/aarch64/aarch64_local_schedule.cpp",
 ]
 
 src_libcgx86phases = [
@@ -230,6 +234,12 @@ src_libcgphases = [
   "src/cg/alignment.cpp",
   "src/cg/cg_validbit_opt.cpp",
   "src/cg/cg_stackmap_computation.cpp",
+  "src/cg/control_dep_analysis.cpp",
+  "src/cg/data_dep_base.cpp",
+  "src/cg/data_dep_analysis.cpp",
+  "src/cg/base_schedule.cpp",
+  "src/cg/list_scheduler.cpp",
+  "src/cg/local_schedule.cpp",
 ]
 
 src_libcg = [

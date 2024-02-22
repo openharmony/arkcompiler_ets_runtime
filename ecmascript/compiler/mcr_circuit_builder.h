@@ -328,6 +328,16 @@ GateRef CircuitBuilder::TaggedIsNullPtr(GateRef x)
     return Equal(x, NullPtrConstant());
 }
 
+GateRef CircuitBuilder::IsSpecialHole(GateRef x)
+{
+    return Equal(x, SpecialHoleConstant());
+}
+
+GateRef CircuitBuilder::IsNotSpecialHole(GateRef x)
+{
+    return NotEqual(x, SpecialHoleConstant());
+}
+
 GateRef CircuitBuilder::TaggedIsNotHole(GateRef x)
 {
     return NotEqual(x, HoleConstant());
@@ -689,6 +699,13 @@ GateRef CircuitBuilder::GetValueFromTaggedArray(VariableType valType, GateRef ar
     GateRef offset = PtrMul(ZExtInt32ToPtr(index), IntPtr(JSTaggedValue::TaggedTypeSize()));
     GateRef dataOffset = PtrAdd(offset, IntPtr(TaggedArray::DATA_OFFSET));
     return Load(valType, array, dataOffset);
+}
+
+GateRef CircuitBuilder::GetValueFromJSArrayWithElementsKind(VariableType type, GateRef array, GateRef index)
+{
+    GateRef offset = PtrMul(ZExtInt32ToPtr(index), IntPtr(JSTaggedValue::TaggedTypeSize()));
+    GateRef dataOffset = PtrAdd(offset, IntPtr(TaggedArray::DATA_OFFSET));
+    return Load(type, array, dataOffset);
 }
 
 void CircuitBuilder::SetValueToTaggedArray(VariableType valType, GateRef glue,

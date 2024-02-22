@@ -801,6 +801,7 @@ JSHandle<JSHClass> JSFunction::GetInstanceJSHClass(JSThread *thread, JSHandle<JS
     }
 
     JSHandle<JSHClass> newJSHClass = JSHClass::Clone(thread, ctorInitialJSHClass);
+    newJSHClass->SetElementsKind(ElementsKind::GENERIC);
     newJSHClass->SetPrototype(thread, prototype);
 
     return newJSHClass;
@@ -816,6 +817,7 @@ JSHandle<JSHClass> JSFunction::GetOrCreateDerivedJSHClass(JSThread *thread, JSHa
     }
 
     JSHandle<JSHClass> newJSHClass = JSHClass::Clone(thread, ctorInitialJSHClass);
+    newJSHClass->SetElementsKind(ElementsKind::GENERIC);
     // guarante derived has function prototype
     JSHandle<JSTaggedValue> prototype(thread, derived->GetProtoOrHClass());
     ASSERT(!prototype->IsHole());

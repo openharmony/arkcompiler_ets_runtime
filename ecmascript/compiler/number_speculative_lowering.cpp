@@ -625,15 +625,21 @@ void NumberSpeculativeLowering::VisitLoadElement(GateRef gate)
         case TypedLoadOp::UINT16ARRAY_LOAD_ELEMENT:
         case TypedLoadOp::INT32ARRAY_LOAD_ELEMENT:
             acc_.SetMachineType(gate, MachineType::I32);
+            acc_.SetGateType(gate, GateType::NJSValue());
+            break;
+        case TypedLoadOp::ARRAY_LOAD_HOLE_INT_ELEMENT:
+        case TypedLoadOp::ARRAY_LOAD_HOLE_DOUBLE_ELEMENT:
+            acc_.SetMachineType(gate, MachineType::I64);
+            acc_.SetGateType(gate, GateType::NJSValue());
             break;
         case TypedLoadOp::FLOAT32ARRAY_LOAD_ELEMENT:
         case TypedLoadOp::FLOAT64ARRAY_LOAD_ELEMENT:
             acc_.SetMachineType(gate, MachineType::F64);
+            acc_.SetGateType(gate, GateType::NJSValue());
             break;
         default:
             break;
     }
-    acc_.SetGateType(gate, GateType::NJSValue());
 }
 
 void NumberSpeculativeLowering::VisitLoadProperty(GateRef gate)

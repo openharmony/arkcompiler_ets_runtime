@@ -103,6 +103,11 @@ GateRef CircuitBuilder::TaggedCastToIntPtr(GateRef x)
     return cmpCfg_->Is32Bit() ? GetInt32OfTInt(x) : GetInt64OfTInt(x);
 }
 
+GateRef CircuitBuilder::GetDoubleOfTInt(GateRef x)
+{
+    return ChangeInt32ToFloat64(GetInt32OfTInt(x));
+}
+
 GateRef CircuitBuilder::GetDoubleOfTDouble(GateRef x)
 {
     GateRef tagged = ChangeTaggedPointerToInt64(x);

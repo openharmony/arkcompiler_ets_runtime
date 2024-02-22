@@ -1964,11 +1964,6 @@ void JSAPIPlainArray::Dump(std::ostream &os) const
     JSObject::Dump(os);
 }
 
-void JSAPIPlainArray::DumpForSnapshot(std::vector<Reference> &vec) const
-{
-    JSObject::DumpForSnapshot(vec);
-}
-
 void JSAPIPlainArrayIterator::Dump(std::ostream &os) const
 {
     JSAPIPlainArray *array = JSAPIPlainArray::Cast(GetIteratedPlainArray().GetTaggedObject());
@@ -4536,6 +4531,21 @@ static void KeyToStd(CString &res, JSTaggedValue key)
     }
 }
 
+void JSAPIPlainArray::DumpForSnapshot(std::vector<Reference> &vec) const
+{
+    DISALLOW_GARBAGE_COLLECTION;
+    TaggedArray *keys = TaggedArray::Cast(GetKeys().GetTaggedObject());
+    TaggedArray *values = TaggedArray::Cast(GetValues().GetTaggedObject());
+    uint32_t len = static_cast<uint32_t>(GetLength());
+    vec.reserve(vec.size() + len);
+    for (uint32_t i = 0; i < len; i++) {
+        CString str;
+        KeyToStd(str, keys->Get(i));
+        vec.emplace_back(str, values->Get(i));
+    }
+    JSObject::DumpForSnapshot(vec);
+}
+
 void JSTaggedValue::DumpForSnapshot(std::vector<Reference> &vec, bool isVmMode) const
 {
     if (IsHeapObject()) {
@@ -5014,9 +5024,17 @@ void JSAPIArrayListIterator::DumpForSnapshot(std::vector<Reference> &vec) const
 
 void JSAPILightWeightMap::DumpForSnapshot(std::vector<Reference> &vec) const
 {
+    DISALLOW_GARBAGE_COLLECTION;
     vec.emplace_back("Hashes", GetHashes());
-    vec.emplace_back("Keys", GetKeys());
-    vec.emplace_back("Values", GetValues());
+    TaggedArray *keys = TaggedArray::Cast(GetKeys().GetTaggedObject());
+    TaggedArray *values = TaggedArray::Cast(GetValues().GetTaggedObject());
+    uint32_t len = static_cast<uint32_t>(GetLength());
+    vec.reserve(vec.size() + len);
+    for (uint32_t i = 0; i < len; i++) {
+        CString str;
+        KeyToStd(str, keys->Get(i));
+        vec.emplace_back(str, values->Get(i));
+    }
     JSObject::DumpForSnapshot(vec);
 }
 
@@ -5063,8 +5081,16 @@ void JSAPIDequeIterator::DumpForSnapshot(std::vector<Reference> &vec) const
 
 void JSAPILightWeightSet::DumpForSnapshot(std::vector<Reference> &vec) const
 {
-    vec.emplace_back("Hashes", GetHashes());
-    vec.emplace_back("Values", GetValues());
+    DISALLOW_GARBAGE_COLLECTION;
+    TaggedArray *hashes = TaggedArray::Cast(GetHashes().GetTaggedObject());
+    TaggedArray *values = TaggedArray::Cast(GetValues().GetTaggedObject());
+    uint32_t len = GetLength();
+    vec.reserve(vec.size() + len);
+    for (uint32_t i = 0; i < len; i++) {
+        CString str;
+        KeyToStd(str, hashes->Get(i));
+        vec.emplace_back(str, values->Get(i));
+    }
     JSObject::DumpForSnapshot(vec);
 }
 

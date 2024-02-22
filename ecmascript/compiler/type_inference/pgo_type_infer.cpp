@@ -57,6 +57,10 @@ void PGOTypeInfer::RunTypeInfer(GateRef gate)
         case EcmaOpcode::STOWNBYNAME_IMM16_ID16_V8:
             InferStOwnByName(gate);
             break;
+        case EcmaOpcode::STOWNBYINDEX_IMM8_V8_IMM16:
+        case EcmaOpcode::STOWNBYINDEX_IMM16_V8_IMM16:
+            InferStOwnByIndex(gate);
+            break;
         case EcmaOpcode::LDOBJBYVALUE_IMM8_V8:
         case EcmaOpcode::LDOBJBYVALUE_IMM16_V8:
         case EcmaOpcode::LDTHISBYVALUE_IMM8:
@@ -173,6 +177,21 @@ void PGOTypeInfer::InferStOwnByName(GateRef gate)
     UpdateTypeForRWOp(gate, receiver, propIndex);
 }
 
+void PGOTypeInfer::InferStOwnByIndex(GateRef gate)
+{
+    if (!builder_->ShouldPGOTypeInfer(gate)) {
+        return;
+    }
+    // 3: number of value inputs
+    ASSERT(acc_.GetNumValueIn(gate) == 3);
+    GateRef receiver = acc_.GetValueIn(gate, 0);
+
+    UpdateTypeForRWOp(gate, receiver);
+    TrySetElementsKind(gate);
+    TrySetTransitionElementsKind(gate);
+    TrySetOnHeapMode(gate);
+}
+
 void PGOTypeInfer::InferCreateArray(GateRef gate)
 {
     if (!builder_->ShouldPGOTypeInfer(gate)) {
@@ -218,6 +237,7 @@ void PGOTypeInfer::InferAccessObjByValue(GateRef gate)
     UpdateTypeForRWOp(gate, receiver);
     TrySetPropKeyKind(gate, propKey);
     TrySetElementsKind(gate);
+    TrySetTransitionElementsKind(gate);
     TrySetOnHeapMode(gate);
 }
 
@@ -259,6 +279,18 @@ void PGOTypeInfer::TrySetElementsKind(GateRef gate)
     }
     for (auto kind : kinds) {
         acc_.TrySetElementsKind(gate, kind);
+    }
+}
+
+void PGOTypeInfer::TrySetTransitionElementsKind(GateRef gate)
+{
+    // The kinds array here has [transitioned elementsKind] stored.
+    auto kinds = builder_->GetTransitionElementsKindsForUser(gate);
+    if (kinds.empty()) {
+        return;
+    }
+    for (auto kind : kinds) {
+        acc_.TrySetTransitionElementsKind(gate, kind);
     }
 }
 

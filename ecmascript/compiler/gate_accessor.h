@@ -393,6 +393,8 @@ public:
     void SetArraySize(GateRef gate, uint32_t size);
     uint32_t GetStringStatus(GateRef gate) const;
     void SetStringStatus(GateRef gate, uint32_t type);
+    ElementsKind GetElementsKind(GateRef gate) const;
+    void SetElementsKind(GateRef gate, ElementsKind kind);
     size_t GetVirtualRegisterIndex(GateRef gate) const;
     bool TypedOpIsTypedArray(GateRef gate, TypedOpKind kind) const;
     GateType GetReceiverType(GateRef gate) const;
@@ -414,6 +416,7 @@ public:
     TypedBinaryAccessor GetTypedBinaryAccessor(GateRef gate) const;
     TypedJumpAccessor GetTypedJumpAccessor(GateRef gate) const;
     ArrayMetaDataAccessor GetArrayMetaDataAccessor(GateRef gate) const;
+    CreateArgumentsAccessor GetCreateArgumentsAccessor(GateRef gate) const;
     ObjectTypeAccessor GetObjectTypeAccessor(GateRef gate) const;
     BuiltinPrototypeHClassAccessor GetBuiltinHClassAccessor(GateRef gate) const;
     TypedArrayMetaDateAccessor GetTypedArrayMetaDateAccessor(GateRef gate) const;
@@ -436,7 +439,9 @@ public:
     void TrySetArrayElementsLength(GateRef gate, uint32_t length);
     ElementsKind TryGetElementsKind(GateRef gate) const;
     ElementsKind TryGetArrayElementsKind(GateRef gate) const;
+    ElementsKind TryGetArrayElementsKindAfterTransition(GateRef gate) const;
     void TrySetElementsKind(GateRef gate, ElementsKind kind);
+    void TrySetTransitionElementsKind(GateRef gate, ElementsKind kind);
     void TrySetOnHeapMode(GateRef gate, OnHeapMode onHeapMode) const;
     OnHeapMode TryGetOnHeapMode(GateRef gate) const;
     EcmaOpcode GetByteCodeOpcode(GateRef gate) const;

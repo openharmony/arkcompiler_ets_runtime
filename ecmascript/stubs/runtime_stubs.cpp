@@ -499,6 +499,15 @@ DEF_RUNTIME_STUBS(CopyAndUpdateObjLayout)
     return JSTaggedValue::Hole().GetRawData();
 }
 
+DEF_RUNTIME_STUBS(IsElementsKindSwitchOn)
+{
+    RUNTIME_STUBS_HEADER(IsElementsKindSwitchOn);
+    if (thread->GetEcmaVM()->IsEnableElementsKind()) {
+        return JSTaggedValue::True().GetRawData();
+    }
+    return JSTaggedValue::False().GetRawData();
+}
+
 DEF_RUNTIME_STUBS(UpdateHClassForElementsKind)
 {
     RUNTIME_STUBS_HEADER(UpdateHClassForElementsKind);
@@ -514,13 +523,26 @@ DEF_RUNTIME_STUBS(UpdateHClassForElementsKind)
         auto hclass = JSHClass::Cast(targetHClassValue.GetTaggedObject());
         auto array = JSHandle<JSArray>(receiver);
         array->SynchronizedSetClass(thread, hclass);
-        // Update TrackInfo
-        if (!thread->IsPGOProfilerEnable()) {
-            return JSTaggedValue::Hole().GetRawData();
+        if (!thread->GetEcmaVM()->IsEnableElementsKind()) {
+            // Update TrackInfo
+            if (!thread->IsPGOProfilerEnable()) {
+                return JSTaggedValue::Hole().GetRawData();
+            }
+            auto trackInfoVal = array->GetTrackInfo();
+            thread->GetEcmaVM()->GetPGOProfiler()->UpdateTrackElementsKind(trackInfoVal, kind);
         }
-        auto trackInfoVal = array->GetTrackInfo();
-        thread->GetEcmaVM()->GetPGOProfiler()->UpdateTrackElementsKind(trackInfoVal, kind);
     }
+    return JSTaggedValue::Hole().GetRawData();
+}
+
+DEF_RUNTIME_STUBS(UpdateArrayHClassAndMigrateArrayWithKind)
+{
+    RUNTIME_STUBS_HEADER(UpdateArrayHClassAndMigrateArrayWithKind);
+    JSHandle<JSObject> object = JSHandle<JSObject>(GetHArg<JSTaggedValue>(argv, argc, 0));
+    ElementsKind oldKind = static_cast<ElementsKind>(GetTArg(argv, argc, 1));
+    ElementsKind newKind = static_cast<ElementsKind>(GetTArg(argv, argc, 2));
+    JSHClass::TransitToElementsKindUncheck(thread, object, newKind);
+    Elements::MigrateArrayWithKind(thread, object, oldKind, newKind);
     return JSTaggedValue::Hole().GetRawData();
 }
 
@@ -575,6 +597,24 @@ DEF_RUNTIME_STUBS(NewMutantTaggedArray)
 
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     return factory->NewMutantTaggedArray(length.GetInt()).GetTaggedValue().GetRawData();
+}
+
+DEF_RUNTIME_STUBS(NewCOWMutantTaggedArray)
+{
+    RUNTIME_STUBS_HEADER(NewCOWMutantTaggedArray);
+    JSTaggedValue length = GetArg(argv, argc, 0);  // 0: means the zeroth parameter
+
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    return factory->NewCOWMutantTaggedArray(length.GetInt()).GetTaggedValue().GetRawData();
+}
+
+DEF_RUNTIME_STUBS(NewCOWTaggedArray)
+{
+    RUNTIME_STUBS_HEADER(NewCOWTaggedArray);
+    JSTaggedValue length = GetArg(argv, argc, 0);  // 0: means the zeroth parameter
+
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    return factory->NewCOWMutantTaggedArray(length.GetInt()).GetTaggedValue().GetRawData();
 }
 
 DEF_RUNTIME_STUBS(RuntimeDump)

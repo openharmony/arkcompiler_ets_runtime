@@ -375,10 +375,9 @@ DECLARE_ASM_HANDLER(HandleCopyrestargsImm8)
     GateRef numArgs = TruncInt64ToInt32(startIdxAndNumArgs);
     Label dispatch(env);
     Label slowPath(env);
-    GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
-    GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
-    auto arrayFunc = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv, GlobalEnv::ARRAY_FUNCTION_INDEX);
-    GateRef intialHClass = Load(VariableType::JS_ANY(), arrayFunc, IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
+    // For the args, we use ElementsKind::GENERIC as the kind
+    GateRef intialHClass = GetGlobalConstantValue(VariableType::JS_ANY(), glue,
+                                                  ConstantIndex::ELEMENT_HOLE_TAGGED_HCLASS_INDEX);
     NewObjectStubBuilder newBuilder(this);
     newBuilder.SetParameters(glue, 0);
     res = newBuilder.NewJSArrayWithSize(intialHClass, numArgs);

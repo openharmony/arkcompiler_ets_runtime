@@ -27,6 +27,7 @@
 /* Maple MP header */
 #include "mempool_allocator.h"
 #include "maple_phase_manager.h"
+#include "base_graph_node.h"
 
 namespace maplebe {
 /* For get bb */
@@ -72,10 +73,11 @@ namespace maplebe {
 
 class CGFuncLoops;
 class CGFunc;
+class CDGNode;
 
 using BBID = uint32;
 
-class BB {
+class BB : public maple::BaseGraphNode {
 public:
     static constexpr int32 kUnknownProb = -1;
     static constexpr uint32 kBBIfSuccsSize = 2;
@@ -295,6 +297,10 @@ public:
     {
         return id;
     }
+    uint32 GetID() const
+    {
+        return id;
+    }
     uint32 GetLevel() const
     {
         return level;
@@ -468,6 +474,59 @@ public:
     std::size_t GetSuccsSize() const
     {
         return succs.size();
+    }
+
+    // get curBB's all preds
+    std::vector<BB *> GetAllPreds() const
+    {
+        std::vector<BB *> allPreds;
+        for (auto *pred : preds) {
+            allPreds.push_back(pred);
+        }
+        for (auto *pred : ehPreds) {
+            allPreds.push_back(pred);
+        }
+        return allPreds;
+    }
+
+    // get curBB's all succs
+    std::vector<BB *> GetAllSuccs() const
+    {
+        std::vector<BB *> allSuccs;
+        for (auto *suc : succs) {
+            allSuccs.push_back(suc);
+        }
+        for (auto *suc : ehSuccs) {
+            allSuccs.push_back(suc);
+        }
+        return allSuccs;
+    }
+
+    // override interface of BaseGraphNode
+    const std::string GetIdentity() final
+    {
+        return "BBId: " + std::to_string(GetID());
+    }
+    void GetOutNodes(std::vector<BaseGraphNode *> &outNodes) const final
+    {
+        outNodes.resize(succs.size(), nullptr);
+        std::copy(succs.begin(), succs.end(), outNodes.begin());
+    }
+
+    void GetOutNodes(std::vector<BaseGraphNode *> &outNodes) final
+    {
+        static_cast<const BB *>(this)->GetOutNodes(outNodes);
+    }
+
+    void GetInNodes(std::vector<BaseGraphNode *> &inNodes) const final
+    {
+        inNodes.resize(preds.size(), nullptr);
+        std::copy(preds.begin(), preds.end(), inNodes.begin());
+    }
+
+    void GetInNodes(std::vector<BaseGraphNode *> &inNodes) final
+    {
+        static_cast<const BB *>(this)->GetInNodes(inNodes);
     }
     const MapleList<BB *> &GetEhPreds() const
     {
@@ -984,6 +1043,15 @@ public:
         return alignNopNum;
     }
 
+    CDGNode *GetCDGNode()
+    {
+        return cdgNode;
+    }
+    void SetCDGNode(CDGNode *node)
+    {
+        cdgNode = node;
+    }
+
     // Check if a given BB mergee can be merged into this BB in the sense of control flow
     // The condition is looser than CanMerge, since we only need this for debug info.
     bool MayFoldInCfg(const BB &mergee) const
@@ -1023,6 +1091,15 @@ public:
     void SetIsAdrpLabel()
     {
         isAdrpLabel = true;
+    }
+
+    SCCNode<BB> *GetSCCNode()
+    {
+        return sccNode;
+    }
+    void SetSCCNode(SCCNode<BB> *scc)
+    {
+        sccNode = scc;
     }
 
 private:
@@ -1114,6 +1191,9 @@ private:
     bool needAlign = false;
     uint32 alignPower = 0;
     uint32 alignNopNum = 0;
+
+    CDGNode *cdgNode = nullptr;
+    SCCNode<BB> *sccNode = nullptr;
 
     bool isAdrpLabel = false;  // Indicate whether the address of this BB is referenced by adrp_label insn
 };                             /* class BB */

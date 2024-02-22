@@ -16,6 +16,7 @@
 #include "ecmascript/compiler/builtins/builtins_function_stub_builder.h"
 
 #include "ecmascript/compiler/builtins/builtins_object_stub_builder.h"
+#include "ecmascript/compiler/new_object_stub_builder.h"
 #include "ecmascript/compiler/stub_builder-inl.h"
 #include "ecmascript/js_arguments.h"
 
@@ -144,7 +145,38 @@ GateRef BuiltinsFunctionStubBuilder::BuildArgumentsListFastElements(GateRef glue
                 Bind(&targetIsInt);
                 {
                     res = GetElementsArray(arrayObj);
-                    Jump(&exit);
+                    Label isMutantTaggedArray(env);
+                    Branch(IsMutantTaggedArray(*res), &isMutantTaggedArray, &exit);
+                    Bind(&isMutantTaggedArray);
+                    {
+                        NewObjectStubBuilder newBuilder(this);
+                        GateRef elementsLength = GetLengthOfTaggedArray(*res);
+                        GateRef newTaggedArgList = newBuilder.NewTaggedArray(glue, elementsLength);
+                        DEFVARIABLE(index, VariableType::INT32(), Int32(0));
+                        Label loopHead(env);
+                        Label loopEnd(env);
+                        Label afterLoop(env);
+                        Label storeValue(env);
+                        Jump(&loopHead);
+                        LoopBegin(&loopHead);
+                        {
+                            Branch(Int32UnsignedLessThan(*index, elementsLength), &storeValue, &afterLoop);
+                            Bind(&storeValue);
+                            {
+                                GateRef value = GetTaggedValueWithElementsKind(arrayObj, *index);
+                                SetValueToTaggedArray(VariableType::JS_ANY(), glue, newTaggedArgList, *index, value);
+                                index = Int32Add(*index, Int32(1));
+                                Jump(&loopEnd);
+                            }
+                        }
+                        Bind(&loopEnd);
+                        LoopEnd(&loopHead);
+                        Bind(&afterLoop);
+                        {
+                            res = newTaggedArgList;
+                            Jump(&exit);
+                        }
+                    }
                 }
             }
         }
@@ -154,7 +186,38 @@ GateRef BuiltinsFunctionStubBuilder::BuildArgumentsListFastElements(GateRef glue
             Bind(&targetIsStableJSArray);
             {
                 res = GetElementsArray(arrayObj);
-                Jump(&exit);
+                Label isMutantTaggedArray(env);
+                Branch(IsMutantTaggedArray(*res), &isMutantTaggedArray, &exit);
+                Bind(&isMutantTaggedArray);
+                {
+                    NewObjectStubBuilder newBuilder(this);
+                    GateRef elementsLength = GetLengthOfTaggedArray(*res);
+                    GateRef newTaggedArgList = newBuilder.NewTaggedArray(glue, elementsLength);
+                    DEFVARIABLE(index, VariableType::INT32(), Int32(0));
+                    Label loopHead(env);
+                    Label loopEnd(env);
+                    Label afterLoop(env);
+                    Label storeValue(env);
+                    Jump(&loopHead);
+                    LoopBegin(&loopHead);
+                    {
+                        Branch(Int32UnsignedLessThan(*index, elementsLength), &storeValue, &afterLoop);
+                        Bind(&storeValue);
+                        {
+                            GateRef value = GetTaggedValueWithElementsKind(arrayObj, *index);
+                            SetValueToTaggedArray(VariableType::JS_ANY(), glue, newTaggedArgList, *index, value);
+                            index = Int32Add(*index, Int32(1));
+                            Jump(&loopEnd);
+                        }
+                    }
+                    Bind(&loopEnd);
+                    LoopEnd(&loopHead);
+                    Bind(&afterLoop);
+                    {
+                        res = newTaggedArgList;
+                        Jump(&exit);
+                    }
+                }
             }
             Bind(&targetNotStableJSArray);
             {

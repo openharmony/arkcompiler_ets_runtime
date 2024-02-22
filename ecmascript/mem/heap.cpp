@@ -961,9 +961,8 @@ bool Heap::CheckOngoingConcurrentMarking()
             MEM_ALLOCATE_AND_GC_TRACE(ecmaVm_, WaitConcurrentMarkingFinished);
             GetNonMovableMarker()->ProcessMarkStack(MAIN_THREAD_INDEX);
             WaitConcurrentMarkingFinished();
-        } else {
-            WaitRunningTaskFinished();
         }
+        WaitRunningTaskFinished();
         memController_->RecordAfterConcurrentMark(IsConcurrentFullMark(), concurrentMarker_);
         return true;
     }

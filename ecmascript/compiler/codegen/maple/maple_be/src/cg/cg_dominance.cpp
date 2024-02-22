@@ -474,6 +474,67 @@ void PostDomAnalysis::Dump()
     LogInfo::MapleLogger() << "\n\n";
 }
 
+void PostDomAnalysis::GeneratePdomTreeDot()
+{
+    std::streambuf *coutBuf = std::cout.rdbuf();
+    std::ofstream pdomFile;
+    std::streambuf *fileBuf = pdomFile.rdbuf();
+    (void)std::cout.rdbuf(fileBuf);
+
+    std::string fileName;
+    (void)fileName.append("pdom_tree_");
+    (void)fileName.append(cgFunc.GetName());
+    (void)fileName.append(".dot");
+
+    pdomFile.open(fileName.c_str(), std::ios::trunc);
+    if (!pdomFile.is_open()) {
+        LogInfo::MapleLogger(kLlWarn) << "fileName:" << fileName << " open failed.\n";
+        return;
+    }
+    pdomFile << "digraph Pdom_" << cgFunc.GetName() << " {\n\n";
+    pdomFile << "  node [shape=box];\n\n";
+
+    FOR_ALL_BB_CONST(bb, &cgFunc)
+    {
+        if (bb->IsUnreachable()) {
+            continue;
+        }
+        pdomFile << "  BB_" << bb->GetId();
+        pdomFile << "[label= \"";
+        if (bb == cgFunc.GetCommonEntryBB()) {
+            pdomFile << "ENTRY\n";
+        }
+        pdomFile << "BB_" << bb->GetId() << "\"];\n";
+    }
+    BB *exitBB = cgFunc.GetCommonExitBB();
+    pdomFile << "  BB_" << exitBB->GetId();
+    pdomFile << "[label= \"EXIT\n";
+    pdomFile << "BB_" << exitBB->GetId() << "\"];\n";
+    pdomFile << "\n";
+
+    for (uint32 bbId = 0; bbId < pdomChildren.size(); ++bbId) {
+        if (pdomChildren[bbId].empty()) {
+            continue;
+        }
+        BB *parent = cgFunc.GetBBFromID(bbId);
+        CHECK_FATAL(parent != nullptr, "get pdom parent-node failed");
+        for (auto childId : pdomChildren[bbId]) {
+            BB *child = cgFunc.GetBBFromID(childId);
+            CHECK_FATAL(child != nullptr, "get pdom child-node failed");
+            pdomFile << "  BB_" << parent->GetId() << " -> "
+                     << "BB_" << child->GetId();
+            pdomFile << " [dir=none]"
+                     << ";\n";
+        }
+    }
+    pdomFile << "\n";
+
+    pdomFile << "}\n";
+    (void)pdomFile.flush();
+    pdomFile.close();
+    (void)std::cout.rdbuf(coutBuf);
+}
+
 void PostDomAnalysis::Compute()
 {
     PdomGenPostOrderID();

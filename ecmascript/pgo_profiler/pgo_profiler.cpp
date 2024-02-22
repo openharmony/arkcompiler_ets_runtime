@@ -572,6 +572,7 @@ void PGOProfiler::ProfileBytecode(ApEntityId abcId, const CString &recordName, J
                 break;
             }
             case EcmaOpcode::STOBJBYVALUE_IMM8_V8_V8:
+            case EcmaOpcode::STOWNBYINDEX_IMM8_V8_IMM16:
             case EcmaOpcode::STTHISBYVALUE_IMM8_V8: {
                 uint8_t slotId = READ_INST_8_0();
                 CHECK_SLOTID_BREAK(slotId);
@@ -579,6 +580,7 @@ void PGOProfiler::ProfileBytecode(ApEntityId abcId, const CString &recordName, J
                 break;
             }
             case EcmaOpcode::STOBJBYVALUE_IMM16_V8_V8:
+            case EcmaOpcode::STOWNBYINDEX_IMM16_V8_IMM16:
             case EcmaOpcode::STTHISBYVALUE_IMM16_V8: {
                 uint16_t slotId = READ_INST_16_0();
                 DumpICByValue(abcId, recordName, methodId, bcOffset, slotId, profileTypeInfo, BCType::STORE);

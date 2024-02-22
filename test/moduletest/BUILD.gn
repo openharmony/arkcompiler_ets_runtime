@@ -245,7 +245,6 @@ group("ark_asm_test") {
     "arrayprotochange",
     "arrayshift",
     "arrayslice",
-    "asmstackoverflow",
     "assignproxy",
     "async",
     "bigint",
@@ -360,6 +359,7 @@ group("ark_asm_test") {
 
   if (!is_debug) {
     release_test_list = [
+      "asmstackoverflow",
       "multiconstpoolclass",
       "multiconstpoolconstructor",
       "multiconstpoolfunc",
@@ -421,7 +421,6 @@ group("ark_asm_single_step_test") {
     "arrayshift",
     "arrayslice",
     "arrayspread",
-    "asmstackoverflow",
     "assignproxy",
     "async",
     "bigint",
@@ -514,6 +513,7 @@ group("ark_asm_single_step_test") {
   }
   if (!is_debug) {
     release_test_list = [
+      "asmstackoverflow",
       "multiconstpoolclass",
       "multiconstpoolconstructor",
       "multiconstpoolfunc",
