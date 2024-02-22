@@ -74,12 +74,13 @@ bool CgGlobalOpt::PhaseRun(maplebe::CGFunc &f)
         return false;
     }
     reachingDef->SetAnalysisMode(kRDAllAnalysis);
+    auto *loopInfo = GET_ANALYSIS(CgLoopAnalysis, f);
     GlobalOpt *globalOpt = nullptr;
 #if TARGAARCH64 || TARGRISCV64
-    globalOpt = GetPhaseAllocator()->New<AArch64GlobalOpt>(f);
+    globalOpt = GetPhaseAllocator()->New<AArch64GlobalOpt>(f, *loopInfo);
 #endif
 #if TARGARM32
-    globalOpt = GetPhaseAllocator()->New<Arm32GlobalOpt>(f);
+    globalOpt = GetPhaseAllocator()->New<Arm32GlobalOpt>(f, *loopInfo);
 #endif
     globalOpt->Run();
     if (live != nullptr) {
@@ -92,6 +93,7 @@ void CgGlobalOpt::GetAnalysisDependence(maple::AnalysisDep &aDep) const
 {
     aDep.AddRequired<CgReachingDefinition>();
     aDep.AddRequired<CgLiveAnalysis>();
+    aDep.AddRequired<CgLoopAnalysis>();
     aDep.PreservedAllExcept<CgLiveAnalysis>();
 }
 MAPLE_TRANSFORM_PHASE_REGISTER_CANSKIP(CgGlobalOpt, globalopt)

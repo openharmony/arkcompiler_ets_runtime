@@ -39,7 +39,6 @@ public:
 
 protected:
     void InitStartGen() final;
-    void InitEhDefine(BB &bb) final;
     void InitGenUse(BB &bb, bool firstTime = true) final;
     void GenAllAsmDefRegs(BB &bb, Insn &insn, uint32 index) final;
     void GenAllAsmUseRegs(BB &bb, Insn &insn, uint32 index) final;

@@ -18,6 +18,7 @@
 #include "reg_alloc.h"
 #include "cgfunc.h"
 #include "optimize_common.h"
+#include "loop.h"
 
 namespace maplebe {
 class LSRALinearScanRegAllocator : public RegAllocator {
@@ -689,9 +690,11 @@ class LSRALinearScanRegAllocator : public RegAllocator {
         bool UpdateLocalDefWithBBLiveIn(const BB &bb);
         void CollectCallerNoNeedReloadByInsn(const Insn &insn);
     };
+
 public:
-    LSRALinearScanRegAllocator(CGFunc &cgFunc, MemPool &memPool, Bfs *bbSort)
+    LSRALinearScanRegAllocator(CGFunc &cgFunc, MemPool &memPool, Bfs *bbSort, LoopAnalysis &loop)
         : RegAllocator(cgFunc, memPool),
+          loopInfo(loop),
           liveIntervalsArray(alloc.Adapter()),
           initialQue(alloc.Adapter()),
           intParamQueue(alloc.Adapter()),
@@ -774,7 +777,7 @@ public:
     uint32 GetRegFromMask(uint32 mask, regno_t offset, const LiveInterval &li);
     uint32 FindAvailablePhyReg(LiveInterval &li);
     uint32 AssignPhysRegs(LiveInterval &li);
-    void ComputeLoopLiveIntervalPriority(const CGFuncLoops &loop);
+    void ComputeLoopLiveIntervalPriority(const LoopDesc &loop);
     void ComputeLoopLiveIntervalPriorityInInsn(const Insn &insn);
     void SetLiSpill(LiveInterval &li);
     void SetStackMapDerivedInfo();
@@ -786,6 +789,7 @@ private:
     uint32 FindAvailablePhyRegAcrossCall(LiveInterval &li, bool isIntReg);
     uint32 FindAvailablePhyReg(LiveInterval &li, bool isIntReg);
 
+    LoopAnalysis &loopInfo;
     regno_t firstIntReg = 0;
     regno_t firstFpReg = 0;
 

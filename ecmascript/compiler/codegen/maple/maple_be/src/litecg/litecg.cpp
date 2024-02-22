@@ -41,6 +41,7 @@ LiteCG::LiteCG(Module &mirModule, const std::vector<std::string> &litecgOptions)
     }
     cgOptions->EnableLiteCG();
     cgOptions->SetEmitFileType("obj");
+    cgOptions->SetOption(CGOptions::kDoCg);
     cgOptions->SetQuiet(true);
     Triple::GetTriple().Init(module.IsAArch64());
     // module information prepare

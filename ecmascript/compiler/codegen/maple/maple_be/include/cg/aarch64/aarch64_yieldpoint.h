@@ -23,7 +23,7 @@ using namespace maple;
 
 class AArch64YieldPointInsertion : public YieldPointInsertion {
 public:
-    explicit AArch64YieldPointInsertion(CGFunc &func) : YieldPointInsertion(func) {}
+    explicit AArch64YieldPointInsertion(CGFunc &func, LoopAnalysis &loop) : YieldPointInsertion(func, loop) {}
 
     ~AArch64YieldPointInsertion() override = default;
 

@@ -4635,7 +4635,7 @@ bool CbnzToCbzPattern::CheckCondition(Insn &insn)
     }
     nextBB = insn.GetBB()->GetNext();
     /* Make sure nextBB can only be reached by bb */
-    if (nextBB->GetPreds().size() > 1 || nextBB->GetEhPreds().empty()) {
+    if (nextBB->GetPreds().size() > 1) {
         return false;
     }
     /* Next insn should be a mov R0 = 0 */

@@ -77,10 +77,6 @@ void DataDepAnalysis::InitInfoInCDGNode(MemPool &regionMp, MapleAllocator &regio
 {
     ddb.SetCDGNode(&cdgNode);
     ddb.InitCDGNodeDataInfo(regionMp, regionAlloc, cdgNode);
-    if (cgFunc.GetMirModule().IsJavaModule()) {
-        // Analysis live-in registers in catch BB
-        ddb.AnalysisAmbiInsns(bb);
-    }
 }
 
 void DataDepAnalysis::BuildDepsForPrevSeparator(CDGNode &cdgNode, DepNode &depNode, CDGRegion &curRegion)

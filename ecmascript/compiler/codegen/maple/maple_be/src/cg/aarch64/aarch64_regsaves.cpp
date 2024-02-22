@@ -301,7 +301,7 @@ void AArch64RegSavesOpt::DetermineCalleeSaveLocationsDoms()
                 if (liveIn.find(reg) == liveIn.end()) { /* not livein */
                     BB *bbDom = bb;                     /* start from current BB */
                     bool done = false;
-                    while (bbDom->GetLoop() != nullptr) {
+                    while (loopInfo.GetBBLoopParent(bbDom->GetId()) != nullptr) {
                         bbDom = GetDomInfo()->GetDom(bbDom->GetId());
                         if (CheckCriteria(bbDom, reg)) {
                             done = true;
@@ -388,7 +388,7 @@ void AArch64RegSavesOpt::DetermineCalleeSaveLocationsPre()
                 (void)wkCand.occBBs.insert(bid);
             }
         }
-        DoSavePlacementOpt(cgFunc, GetDomInfo(), &wkCand);
+        DoSavePlacementOpt(cgFunc, GetDomInfo(), &loopInfo, &wkCand);
         if (wkCand.saveAtEntryBBs.empty()) {
             /* something gone wrong, skip this reg */
             wkCand.saveAtProlog = true;

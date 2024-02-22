@@ -32,21 +32,6 @@ void AArch64LiveAnalysis::GenerateReturnBBDefUse(BB &bb) const
     }
 }
 
-void AArch64LiveAnalysis::InitEhDefine(BB &bb)
-{
-    AArch64CGFunc *aarchCGFunc = static_cast<AArch64CGFunc *>(cgFunc);
-
-    /* Insert MOP_pseudo_eh_def_x R1. */
-    RegOperand &regR1 = aarchCGFunc->GetOrCreatePhysicalRegisterOperand(R1, k64BitSize, kRegTyInt);
-    Insn &pseudoInsn1 = cgFunc->GetInsnBuilder()->BuildInsn(MOP_pseudo_eh_def_x, regR1);
-    bb.InsertInsnBegin(pseudoInsn1);
-
-    /* Insert MOP_pseudo_eh_def_x R0. */
-    RegOperand &regR0 = aarchCGFunc->GetOrCreatePhysicalRegisterOperand(R0, k64BitSize, kRegTyInt);
-    Insn &pseudoInsn2 = cgFunc->GetInsnBuilder()->BuildInsn(MOP_pseudo_eh_def_x, regR0);
-    bb.InsertInsnBegin(pseudoInsn2);
-}
-
 bool AArch64LiveAnalysis::CleanupBBIgnoreReg(regno_t reg)
 {
     regno_t regNO = reg + R0;

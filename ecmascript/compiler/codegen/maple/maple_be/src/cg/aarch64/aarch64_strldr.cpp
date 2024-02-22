@@ -367,14 +367,10 @@ bool AArch64StoreLoadOpt::CheckReplaceReg(Insn &defInsn, Insn &currInsn, InsnSet
     } else {
         regno_t defRegno = static_cast<RegOperand &>(defInsn.GetOperand(kInsnFirstOpnd)).GetRegisterNumber();
         if (defRegno == replaceRegNo) {
-            uint32 defLoopId = 0;
-            uint32 curLoopId = 0;
-            if (defInsn.GetBB()->GetLoop()) {
-                defLoopId = defInsn.GetBB()->GetLoop()->GetHeader()->GetId();
-            }
-            if (currInsn.GetBB()->GetLoop()) {
-                curLoopId = currInsn.GetBB()->GetLoop()->GetHeader()->GetId();
-            }
+            auto *defLoop = loopInfo.GetBBLoopParent(defInsn.GetBB()->GetId());
+            auto defLoopId = defLoop ? defLoop->GetHeader().GetId() : 0;
+            auto *curLoop = loopInfo.GetBBLoopParent(currInsn.GetBB()->GetId());
+            auto curLoopId = curLoop ? curLoop->GetHeader().GetId() : 0;
             if (defLoopId != curLoopId) {
                 return false;
             }

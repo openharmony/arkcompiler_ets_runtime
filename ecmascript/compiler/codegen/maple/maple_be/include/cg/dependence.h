@@ -56,7 +56,6 @@ protected:
 
     virtual void Init(BB &bb, MapleVector<DepNode *> &nodes) = 0;
     virtual void ClearAllDepData() = 0;
-    virtual void AnalysisAmbiInsns(BB &bb) = 0;
     virtual void AppendRegUseList(Insn &insn, regno_t regNO) = 0;
     virtual void AddDependence(DepNode &fromNode, DepNode &toNode, DepType depType) = 0;
     virtual void RemoveSelfDeps(Insn &insn) = 0;

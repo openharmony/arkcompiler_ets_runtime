@@ -13,12 +13,12 @@
  * limitations under the License.
  */
 
+#include "ra_opt.h"
 #include "cgfunc.h"
-#if TARGAARCH64
+#include "loop.h"
+#include "cg.h"
+#include "optimize_common.h"
 #include "aarch64_ra_opt.h"
-#elif TARGRISCV64
-#include "riscv64_ra_opt.h"
-#endif
 
 namespace maplebe {
 using namespace maple;
@@ -27,16 +27,23 @@ bool CgRaOpt::PhaseRun(maplebe::CGFunc &f)
 {
     MemPool *memPool = GetPhaseMemPool();
     RaOpt *raOpt = nullptr;
-#if TARGAARCH64
-    raOpt = memPool->New<AArch64RaOpt>(f, *memPool);
-#elif || TARGRISCV64
-    raOpt = memPool->New<Riscv64RaOpt>(f, *memPool);
-#endif
-
+    auto *dom = GET_ANALYSIS(CgDomAnalysis, f);
+    CHECK_FATAL(dom != nullptr, "null ptr check");
+    auto *loop = GET_ANALYSIS(CgLoopAnalysis, f);
+    CHECK_FATAL(loop != nullptr, "null ptr check");
+    raOpt = memPool->New<AArch64RaOpt>(f, *memPool, *dom, *loop);
     if (raOpt) {
         raOpt->Run();
     }
     return false;
 }
-MAPLE_TRANSFORM_PHASE_REGISTER(CgRaOpt, raopt)
+
+void CgRaOpt::GetAnalysisDependence(maple::AnalysisDep &aDep) const
+{
+    aDep.AddRequired<CgDomAnalysis>();
+    aDep.AddRequired<CgPostDomAnalysis>();
+    aDep.AddRequired<CgLoopAnalysis>();
+    aDep.SetPreservedAll();
+}
+MAPLE_TRANSFORM_PHASE_REGISTER_CANSKIP(CgRaOpt, raopt)
 } /* namespace maplebe */

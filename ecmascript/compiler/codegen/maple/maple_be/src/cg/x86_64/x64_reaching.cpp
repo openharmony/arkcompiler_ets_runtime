@@ -165,12 +165,6 @@ void X64ReachingDefinition::InitStartGen()
     return;
 }
 
-void X64ReachingDefinition::InitEhDefine(BB &bb)
-{
-    CHECK_FATAL(false, "x64_reaching analysis not implemented yet!");
-    return;
-}
-
 void X64ReachingDefinition::InitGenUse(BB &bb, bool firstTime)
 {
     CHECK_FATAL(false, "x64_reaching analysis not implemented yet!");

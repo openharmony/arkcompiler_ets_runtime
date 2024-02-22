@@ -314,36 +314,6 @@ void AArch64DataDepBase::BuildDepsDirtyHeap(Insn &insn)
     curCDGNode->AddHeapDefInsn(&insn);
 }
 
-// Analysis live-in registers in catch bb and cleanup bb
-void AArch64DataDepBase::AnalysisAmbiInsns(BB &bb)
-{
-    curCDGNode->SetHasAmbiRegs(false);
-    if (bb.GetEhSuccs().empty()) {
-        return;
-    }
-    MapleSet<regno_t> &ehInRegs = curCDGNode->GetEhInRegs();
-
-    // Union all catch bb
-    for (auto succBB : bb.GetEhSuccs()) {
-        const MapleSet<regno_t> &liveInRegSet = succBB->GetLiveInRegNO();
-        (void)set_union(liveInRegSet.begin(), liveInRegSet.end(), ehInRegs.begin(), ehInRegs.end(),
-                        inserter(ehInRegs, ehInRegs.begin()));
-    }
-
-    // Union cleanup entry bb
-    const MapleSet<regno_t> &regNOSet = cgFunc.GetCleanupBB()->GetLiveInRegNO();
-    (void)std::set_union(regNOSet.begin(), regNOSet.end(), ehInRegs.begin(), ehInRegs.end(),
-                         inserter(ehInRegs, ehInRegs.begin()));
-
-    // Subtract R0 and R1, that is defined by eh runtime
-    (void)ehInRegs.erase(R0);
-    (void)ehInRegs.erase(R1);
-    if (ehInRegs.empty()) {
-        return;
-    }
-    curCDGNode->SetHasAmbiRegs(true);
-}
-
 // Build data dependence of memory operand.
 // insn : an instruction with the memory access operand.
 // opnd : the memory access operand.

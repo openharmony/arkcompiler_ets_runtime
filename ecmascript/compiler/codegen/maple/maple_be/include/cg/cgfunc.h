@@ -276,9 +276,8 @@ public:
         vReg.SetCount(num);
     }
     void DumpCFG() const;
+    void DumpBBInfo(const BB *bb) const;
     void DumpCGIR() const;
-    void DumpLoop() const;
-    void ClearLoopInfo();
     Operand *HandleExpr(const BaseNode &parent, BaseNode &expr);
     /* handle rc reset */
     virtual void HandleRCCall(bool begin, const MIRSymbol *retRef = nullptr) = 0;
@@ -715,11 +714,6 @@ public:
     void IncTotalNumberOfInstructions()
     {
         totalInsns++;
-    }
-
-    void DecTotalNumberOfInstructions()
-    {
-        totalInsns--;
     }
 
     uint32 GetTotalNumberOfInstructions() const
@@ -1216,21 +1210,6 @@ public:
     void SetLocalSymLabelIndex(const MIRSymbol &mirSymbol, LabelIdx labelIndex)
     {
         funcLocalSym2Label[&mirSymbol] = labelIndex;
-    }
-
-    MapleVector<CGFuncLoops *> &GetLoops()
-    {
-        return loops;
-    }
-
-    const MapleVector<CGFuncLoops *> GetLoops() const
-    {
-        return loops;
-    }
-
-    void PushBackLoops(CGFuncLoops &loop)
-    {
-        loops.emplace_back(&loop);
     }
 
     MapleVector<LmbcFormalParamInfo *> &GetLmbcParamVec()
@@ -1847,7 +1826,6 @@ private:
     MapleVector<BB *> sortedBBs;
     MapleVector<LiveRange *> lrVec;
 #endif /* TARGARM32 */
-    MapleVector<CGFuncLoops *> loops;
     MapleVector<LmbcFormalParamInfo *> lmbcParamVec;
     int32 lmbcIntArgs = 0;
     int32 lmbcFpArgs = 0;

@@ -112,7 +112,6 @@ public:
 
 protected:
     virtual void InitStartGen() = 0;
-    virtual void InitEhDefine(BB &bb) = 0;
     virtual void GenAllAsmDefRegs(BB &bb, Insn &insn, uint32 index) = 0;
     virtual void GenAllAsmUseRegs(BB &bb, Insn &insn, uint32 index) = 0;
     virtual void GenAllCallerSavedRegs(BB &bb, Insn &insn) = 0;

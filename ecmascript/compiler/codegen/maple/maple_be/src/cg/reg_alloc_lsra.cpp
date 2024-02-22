@@ -784,15 +784,7 @@ void LSRALinearScanRegAllocator::ComputeLiveIn(BB &bb, uint32 insnNum)
     if (bb.GetFirstInsn() == nullptr) {
         return;
     }
-    if (!bb.GetEhPreds().empty()) {
-        bb.InsertLiveInRegNO(firstIntReg);
-        bb.InsertLiveInRegNO(firstIntReg + 1);
-    }
     UpdateParamLiveIntervalByLiveIn(bb, insnNum);
-    if (!bb.GetEhPreds().empty()) {
-        bb.EraseLiveInRegNO(firstIntReg);
-        bb.EraseLiveInRegNO(firstIntReg + 1);
-    }
 }
 
 void LSRALinearScanRegAllocator::ComputeLiveOut(BB &bb, uint32 insnNum)
@@ -915,13 +907,14 @@ void LSRALinearScanRegAllocator::ComputeLiveIntervalForEachOperand(Insn &insn)
     }
 }
 
-void LSRALinearScanRegAllocator::ComputeLoopLiveIntervalPriority(const CGFuncLoops &loop)
+void LSRALinearScanRegAllocator::ComputeLoopLiveIntervalPriority(const LoopDesc &loop)
 {
-    for (const auto *lp : loop.GetInnerLoops()) {
+    for (const auto *lp : loop.GetChildLoops()) {
         /* handle nested Loops */
         ComputeLoopLiveIntervalPriority(*lp);
     }
-    for (auto *bb : loop.GetLoopMembers()) {
+    for (auto bbId : loop.GetLoopBBs()) {
+        auto *bb = cgFunc->GetBBFromID(bbId);
         if (bb->IsEmpty()) {
             continue;
         }
@@ -998,7 +991,7 @@ void LSRALinearScanRegAllocator::ComputeLiveInterval()
 
             /* RecordCall, remember calls for caller/callee allocation. */
             if (insn->IsCall()) {
-                if (!insn->GetIsThrow() || !bb->GetEhSuccs().empty()) {
+                if (!insn->GetIsThrow()) {
                     callQueue.emplace_back(insn->GetId());
                 }
                 if (!cgFunc->IsStackMapComputed()) {
@@ -1048,11 +1041,9 @@ void LSRALinearScanRegAllocator::ComputeLiveInterval()
         }
     }
 
-    /* enhance loop Live Interval Priority */
-    if (!cgFunc->GetLoops().empty()) {
-        for (const auto *lp : cgFunc->GetLoops()) {
-            ComputeLoopLiveIntervalPriority(*lp);
-        }
+    // enhance loop Live Interval Priority
+    for (const auto *lp : loopInfo.GetLoops()) {
+        ComputeLoopLiveIntervalPriority(*lp);
     }
 
     if (needDump) {
@@ -2315,7 +2306,7 @@ bool LSRALinearScanRegAllocator::AllocateRegisters()
     if (needDump) {
         const MIRModule &mirModule = cgFunc->GetMirModule();
         DotGenerator::GenerateDot("RA", *cgFunc, mirModule);
-        DotGenerator::GenerateDot("RAe", *cgFunc, mirModule, true);
+        DotGenerator::GenerateDot("RAe", *cgFunc, mirModule);
         LogInfo::MapleLogger() << "Entering LinearScanRegAllocator: " << cgFunc->GetName() << "\n";
     }
 

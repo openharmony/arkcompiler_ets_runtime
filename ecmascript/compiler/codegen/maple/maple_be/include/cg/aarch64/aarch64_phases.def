@@ -35,6 +35,7 @@
  ADDTARGETPHASE("cgprepeephole", CGOptions::DoPrePeephole());
  ADDTARGETPHASE("ebo", CGOptions::DoEBO());
  ADDTARGETPHASE("prepeephole", CGOptions::DoPrePeephole())
+ ADDTARGETPHASE("precfgo", false);
  ADDTARGETPHASE("ico", CGOptions::DoICO())
  ADDTARGETPHASE("cfgo", !GetMIRModule()->IsCModule() && CGOptions::DoCFGO());
 

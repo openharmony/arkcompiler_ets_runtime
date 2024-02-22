@@ -71,7 +71,6 @@ namespace maplebe {
     for (Insn * (INSN) = LAST_INSN(BLOCK), *(NEXT) = (INSN) ? PREV_INSN(INSN) : nullptr; (INSN) != nullptr; \
          (INSN) = (NEXT), (NEXT) = (INSN) ? PREV_INSN(INSN) : nullptr)
 
-class CGFuncLoops;
 class CGFunc;
 class CDGNode;
 
@@ -100,10 +99,6 @@ public:
           labIdx(MIRLabelTable::GetDummyLabel()),
           preds(mallocator.Adapter()),
           succs(mallocator.Adapter()),
-          ehPreds(mallocator.Adapter()),
-          ehSuccs(mallocator.Adapter()),
-          loopPreds(mallocator.Adapter()),
-          loopSuccs(mallocator.Adapter()),
           succsProb(mallocator.Adapter()),
           liveInRegNO(mallocator.Adapter()),
           liveOutRegNO(mallocator.Adapter()),
@@ -246,11 +241,6 @@ public:
             }
         }
         return false;
-    }
-
-    bool IsBackEdgeDest() const
-    {
-        return !loopPreds.empty();
     }
 
     void RemoveFromPredecessorList(const BB &bb)
@@ -476,32 +466,6 @@ public:
         return succs.size();
     }
 
-    // get curBB's all preds
-    std::vector<BB *> GetAllPreds() const
-    {
-        std::vector<BB *> allPreds;
-        for (auto *pred : preds) {
-            allPreds.push_back(pred);
-        }
-        for (auto *pred : ehPreds) {
-            allPreds.push_back(pred);
-        }
-        return allPreds;
-    }
-
-    // get curBB's all succs
-    std::vector<BB *> GetAllSuccs() const
-    {
-        std::vector<BB *> allSuccs;
-        for (auto *suc : succs) {
-            allSuccs.push_back(suc);
-        }
-        for (auto *suc : ehSuccs) {
-            allSuccs.push_back(suc);
-        }
-        return allSuccs;
-    }
-
     // override interface of BaseGraphNode
     const std::string GetIdentity() final
     {
@@ -528,26 +492,6 @@ public:
     {
         static_cast<const BB *>(this)->GetInNodes(inNodes);
     }
-    const MapleList<BB *> &GetEhPreds() const
-    {
-        return ehPreds;
-    }
-    const MapleList<BB *> &GetEhSuccs() const
-    {
-        return ehSuccs;
-    }
-    const MapleList<BB *> &GetLoopPreds() const
-    {
-        return loopPreds;
-    }
-    MapleList<BB *> &GetLoopSuccs()
-    {
-        return loopSuccs;
-    }
-    const MapleList<BB *> &GetLoopSuccs() const
-    {
-        return loopSuccs;
-    }
     MapleList<BB *>::iterator GetPredsBegin()
     {
         return preds.begin();
@@ -555,14 +499,6 @@ public:
     MapleList<BB *>::iterator GetSuccsBegin()
     {
         return succs.begin();
-    }
-    MapleList<BB *>::iterator GetEhPredsBegin()
-    {
-        return ehPreds.begin();
-    }
-    MapleList<BB *>::iterator GetLoopSuccsBegin()
-    {
-        return loopSuccs.begin();
     }
     MapleList<BB *>::iterator GetPredsEnd()
     {
@@ -572,14 +508,6 @@ public:
     {
         return succs.end();
     }
-    MapleList<BB *>::iterator GetEhPredsEnd()
-    {
-        return ehPreds.end();
-    }
-    MapleList<BB *>::iterator GetLoopSuccsEnd()
-    {
-        return loopSuccs.end();
-    }
     void PushBackPreds(BB &bb)
     {
         preds.push_back(&bb);
@@ -588,22 +516,6 @@ public:
     {
         succs.push_back(&bb);
         succsProb[&bb] = prob;
-    }
-    void PushBackEhPreds(BB &bb)
-    {
-        ehPreds.push_back(&bb);
-    }
-    void PushBackEhSuccs(BB &bb)
-    {
-        ehSuccs.push_back(&bb);
-    }
-    void PushBackLoopPreds(BB &bb)
-    {
-        loopPreds.push_back(&bb);
-    }
-    void PushBackLoopSuccs(BB &bb)
-    {
-        loopSuccs.push_back(&bb);
     }
     void PushFrontPreds(BB &bb)
     {
@@ -644,14 +556,6 @@ public:
         RemoveSuccs(oldBB);
         PushBackSuccs(newBB, prob);
     }
-    void RemoveEhPreds(BB &bb)
-    {
-        ehPreds.remove(&bb);
-    }
-    void RemoveEhSuccs(BB &bb)
-    {
-        ehSuccs.remove(&bb);
-    }
     void ClearPreds()
     {
         preds.clear();
@@ -660,22 +564,6 @@ public:
     {
         succs.clear();
         succsProb.clear();
-    }
-    void ClearEhPreds()
-    {
-        ehPreds.clear();
-    }
-    void ClearEhSuccs()
-    {
-        ehSuccs.clear();
-    }
-    void ClearLoopPreds()
-    {
-        loopPreds.clear();
-    }
-    void ClearLoopSuccs()
-    {
-        loopSuccs.clear();
     }
     const MapleSet<regno_t> &GetLiveInRegNO() const
     {
@@ -720,14 +608,6 @@ public:
     void ClearLiveOutRegNO()
     {
         liveOutRegNO.clear();
-    }
-    CGFuncLoops *GetLoop() const
-    {
-        return loop;
-    }
-    void SetLoop(CGFuncLoops *arg)
-    {
-        loop = arg;
     }
     bool GetLiveInChange() const
     {
@@ -1119,17 +999,12 @@ private:
     Insn *lastInsn = nullptr;  /* the last instruction */
     MapleList<BB *> preds;     /* preds, succs represent CFG */
     MapleList<BB *> succs;
-    MapleList<BB *> ehPreds;
-    MapleList<BB *> ehSuccs;
-    MapleList<BB *> loopPreds;
-    MapleList<BB *> loopSuccs;
     MapleMap<const BB *, int32> succsProb;
     bool inColdSection = false; /* for bb splitting */
 
     /* this is for live in out analysis */
     MapleSet<regno_t> liveInRegNO;
     MapleSet<regno_t> liveOutRegNO;
-    CGFuncLoops *loop = nullptr;
     bool liveInChange = false;
     bool isCritical = false;
     bool insertUse = false;
