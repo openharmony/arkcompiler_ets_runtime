@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "ecmascript/compiler/litecg_ir_builder.h"
+#include "ecmascript/compiler/codegen/maple/litecg_ir_builder.h"
 
 #include <cmath>
 #include <cstdint>

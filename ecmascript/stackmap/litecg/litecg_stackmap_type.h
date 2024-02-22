@@ -19,7 +19,7 @@
 #include <map>
 #include <vector>
 #include "ecmascript/stackmap/cg_stackmap.h"
-#include "ecmascript/stackmap/llvm_stackmap_type.h"
+#include "ecmascript/stackmap/llvm/llvm_stackmap_type.h"
 
 namespace panda::ecmascript::kungfu {
 class LiteCGStackMapType {

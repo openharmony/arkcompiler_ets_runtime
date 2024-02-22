@@ -38,7 +38,7 @@
 #include "ecmascript/mem/mark_word.h"
 #include "ecmascript/napi/include/dfx_jsnapi.h"
 #include "ecmascript/platform/file.h"
-#include "ecmascript/stackmap/llvm_stackmap_parser.h"
+#include "ecmascript/stackmap/llvm/llvm_stackmap_parser.h"
 #include "ecmascript/builtin_entries.h"
 
 namespace panda::ecmascript {

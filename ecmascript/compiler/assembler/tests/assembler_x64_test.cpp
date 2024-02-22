@@ -19,7 +19,7 @@
 
 #include "ecmascript/compiler/assembler/aarch64/assembler_aarch64.h"
 #include "ecmascript/compiler/assembler/x64/extended_assembler_x64.h"
-#include "ecmascript/compiler/llvm_codegen.h"
+#include "ecmascript/compiler/codegen/llvm/llvm_codegen.h"
 #include "ecmascript/compiler/trampoline/x64/common_call.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/mem/dyn_chunk.h"

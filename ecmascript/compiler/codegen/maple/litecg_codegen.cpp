@@ -23,16 +23,16 @@
 #include <vector>
 
 #include "ecmascript/compiler/call_signature.h"
+#include "ecmascript/compiler/codegen/maple/litecg_ir_builder.h"
+#include "ecmascript/compiler/codegen/maple/maple_be/include/litecg/litecg.h"
+#include "ecmascript/compiler/codegen/maple/maple_be/include/litecg/lmir_builder.h"
 #include "ecmascript/compiler/compiler_log.h"
 #include "ecmascript/compiler/debug_info.h"
-#include "ecmascript/compiler/litecg_ir_builder.h"
 #include "ecmascript/ecma_macros.h"
 #include "ecmascript/mem/region.h"
 #include "ecmascript/object_factory.h"
-#include "ecmascript/stackmap/litecg_stackmap_type.h"
-#include "ecmascript/stackmap/llvm_stackmap_parser.h"
-#include "ecmascript/compiler/codegen/maple/maple_be/include/litecg/lmir_builder.h"
-#include "ecmascript/compiler/codegen/maple/maple_be/include/litecg/litecg.h"
+#include "ecmascript/stackmap/litecg/litecg_stackmap_type.h"
+#include "ecmascript/stackmap/llvm/llvm_stackmap_parser.h"
 
 namespace panda::ecmascript::kungfu {
 class CompilerLog;

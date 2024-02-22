@@ -12,7 +12,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "ecmascript/stackmap/litecg_stackmap_type.h"
+#include "ecmascript/stackmap/litecg/litecg_stackmap_type.h"
 
 namespace panda::ecmascript::kungfu {
 void LiteCGStackMapInfo::ConvertToLLVMStackMapInfo(

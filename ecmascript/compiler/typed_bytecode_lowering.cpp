@@ -22,7 +22,7 @@
 #include "ecmascript/enum_conversion.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/jspandafile/program_object.h"
-#include "ecmascript/stackmap/llvm_stackmap_parser.h"
+#include "ecmascript/stackmap/llvm/llvm_stackmap_parser.h"
 
 namespace panda::ecmascript::kungfu {
 bool TypedBytecodeLowering::RunTypedBytecodeLowering()

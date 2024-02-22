@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "ecmascript/compiler/llvm_ir_builder.h"
+#include "ecmascript/compiler/codegen/llvm/llvm_ir_builder.h"
 
 #include <cmath>
 
@@ -30,7 +30,7 @@
 #include "ecmascript/frames.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/method.h"
-#include "ecmascript/stackmap/llvm_stackmap_parser.h"
+#include "ecmascript/stackmap/llvm/llvm_stackmap_parser.h"
 
 #if defined(__clang__)
 #pragma clang diagnostic push

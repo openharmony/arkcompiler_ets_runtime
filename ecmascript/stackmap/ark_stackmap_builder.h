@@ -25,7 +25,7 @@
 
 #include "ecmascript/frames.h"
 #include "ecmascript/stackmap/ark_stackmap.h"
-#include "ecmascript/stackmap/llvm_stackmap_type.h"
+#include "ecmascript/stackmap/llvm/llvm_stackmap_type.h"
 
 #include "libpandabase/utils/leb128.h"
 namespace panda::ecmascript {

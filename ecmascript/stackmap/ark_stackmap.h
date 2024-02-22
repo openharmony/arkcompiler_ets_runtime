@@ -16,7 +16,7 @@
 #ifndef ECMASCRIPT_ARK_STACKMAP_H
 #define ECMASCRIPT_ARK_STACKMAP_H
 
-#include "ecmascript/stackmap/llvm_stackmap_type.h"
+#include "ecmascript/stackmap/llvm/llvm_stackmap_type.h"
 
 namespace panda::ecmascript::kungfu {
 struct ARKConst {

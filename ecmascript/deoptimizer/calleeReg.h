@@ -18,7 +18,7 @@
 
 #include <map>
 #include "ecmascript/common.h"
-#include "ecmascript/stackmap/llvm_stackmap_type.h"
+#include "ecmascript/stackmap/llvm/llvm_stackmap_type.h"
 namespace panda::ecmascript::kungfu {
 #if defined(PANDA_TARGET_AMD64)
 static const int MAX_CALLEE_SAVE_REIGISTER_NUM = 32;

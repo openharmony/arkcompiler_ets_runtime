@@ -12,7 +12,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "ecmascript/stackmap/llvm_stackmap_type.h"
+#include "ecmascript/stackmap/llvm/llvm_stackmap_type.h"
 
 namespace panda::ecmascript::kungfu {
 void LLVMStackMapType::EncodeRegAndOffset(std::vector<uint8_t> &regOffset, size_t &regOffsetSize,
