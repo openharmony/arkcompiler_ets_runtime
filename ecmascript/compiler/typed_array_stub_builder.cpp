@@ -420,6 +420,7 @@ void TypedArrayStubBuilder::SubArray(GateRef glue, GateRef thisValue, GateRef re
     auto env = GetEnvironment();
     Label ecmaObj(env);
     Label typedArray(env);
+    Label isNotZero(env);
     DEFVARIABLE(beginIndex, VariableType::INT32(), Int32(0));
     DEFVARIABLE(endIndex, VariableType::INT32(), Int32(0));
     DEFVARIABLE(newLength, VariableType::INT32(), Int32(0));
@@ -483,6 +484,8 @@ void TypedArrayStubBuilder::SubArray(GateRef glue, GateRef thisValue, GateRef re
     }
     Bind(&newArray);
     GateRef oldByteLength = Load(VariableType::INT32(), thisValue, IntPtr(JSTypedArray::BYTE_LENGTH_OFFSET));
+    Branch(Int32Equal(arrayLen, Int32(0)), slowPath, &isNotZero);
+    Bind(&isNotZero);
     GateRef elementSize = Int32Div(oldByteLength, arrayLen);
     NewObjectStubBuilder newBuilder(this);
     *result = newBuilder.NewTaggedSubArray(glue, thisValue, elementSize, *newLength, *beginIndex, objHclass, buffer);
