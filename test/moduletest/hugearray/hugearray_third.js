@@ -24,4 +24,4 @@ let arr2 = [].slice.call(bytes);
 while (arr2.length) {
     arr2.pop();
 }
-print(arr2.length);
+assert_equal(arr2.length, 0);

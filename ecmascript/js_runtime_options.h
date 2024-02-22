@@ -163,6 +163,7 @@ enum CommandValues {
     OPTION_ENABLE_ELEMENTSKIND,
     OPTION_COMPILER_TYPED_OP_PROFILER,
     OPTION_COMPILER_OPT_BRANCH_PROFILING,
+    OPTION_TEST_ASSERT,
     OPTION_COMPILER_METHODS_RANGE,
     OPTION_COMPILER_CODEGEN_OPT,
 };
@@ -1453,6 +1454,16 @@ public:
         enableBranchProfiling_ = value;
     }
 
+    void SetTestAssert(bool value)
+    {
+        testAssert_ = value;
+    }
+
+    bool GetTestAssert() const
+    {
+        return testAssert_;
+    }
+
     void SetCompilerMethodsRange(arg_list_t *argListStr)
     {
         compileMethodsRange_.first = std::stoull((*argListStr)[0]);
@@ -1592,6 +1603,7 @@ private:
     bool enableLiteCG_ {false};
     bool enableTypedOpProfiler_ {false};
     bool enableBranchProfiling_ {true};
+    bool testAssert_ {false};
     std::pair<uint32_t, uint32_t> compileMethodsRange_ {0, UINT32_MAX};
     arg_list_t compileCodegenOption_ {{""}};
 };

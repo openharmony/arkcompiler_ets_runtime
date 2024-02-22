@@ -13,19 +13,19 @@
 
 import("//arkcompiler/ets_runtime/test/test_helper.gni")
 
-host_moduletest_action("hugearray_first") {
+host_moduletest_assert_action("hugearray_first") {
   deps = []
 }
 
-host_moduletest_action("hugearray_second") {
+host_moduletest_assert_action("hugearray_second") {
   deps = []
 }
 
-host_moduletest_action("hugearray_third") {
+host_moduletest_assert_action("hugearray_third") {
   deps = []
 }
 
-host_moduletest_action("hugearray") {
+host_moduletest_assert_action("hugearray") {
   extra_modules = [
     "hugearray_first",
     "hugearray_second",

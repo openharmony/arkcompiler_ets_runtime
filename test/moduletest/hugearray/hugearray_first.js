@@ -27,4 +27,4 @@ for (let i = 0; i < 100000; i++) {
         arr.push({val : i});
     }
 }
-print(arr.length);
+assert_equal(arr.length, 33333);

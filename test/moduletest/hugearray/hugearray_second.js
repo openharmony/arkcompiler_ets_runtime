@@ -26,4 +26,4 @@ do {
         v2["lastIndexOf"](...16);
     } catch (e) {}
 } while (t++ < 18000)
-print(t);
+assert_equal(t, 18001);
