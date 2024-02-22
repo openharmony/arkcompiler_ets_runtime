@@ -58,7 +58,6 @@ group("ark_aot_ts_test") {
   testonly = true
   test_list = [
     "array",
-    "array_bounds_check_elimination",
     "array_foreach_inline",
     "ashr",
     "asyncgenerator",
@@ -334,6 +333,7 @@ group("ark_aot_ts_assert_test") {
   assert_test_list = [
     "add",
     "and",
+    "array_bounds_check_elimination",
   ]
   foreach(test, assert_test_list) {
     deps += [ "${test}:${test}AotAssertAction" ]
