@@ -424,7 +424,7 @@ public:
     static void TransitionForElementsKindChange(const JSThread *thread, const JSHandle<JSObject> &receiver,
                                          const ElementsKind newKind);
     static JSHClass* GetInitialArrayHClassWithElementsKind(const JSThread *thread, const ElementsKind kind);
-    static bool TransitToElementsKindUncheck(const JSThread *thread, const JSHandle<JSObject> &obj,
+    static bool PUBLIC_API TransitToElementsKindUncheck(const JSThread *thread, const JSHandle<JSObject> &obj,
                                              ElementsKind newKind);
     static void PUBLIC_API TransitToElementsKind(const JSThread *thread, const JSHandle<JSArray> &array,
                                                  ElementsKind newKind = ElementsKind::NONE);
