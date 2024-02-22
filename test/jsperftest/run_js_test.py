@@ -77,6 +77,9 @@ class Constants:
     ICU_DATA_PATH = ""
     FIX_STR = "8/d"
     V_8_ENGINED_PATH = '/usr/bin/v{}8'.format(FIX_STR)
+    VER_PLATFORM = "full_x86_64"
+    ES2ABC_PATH = ""
+    ARK_JS_VM_PATH = ""
     CaseTestDataType = namedtuple('test', ['exec_status', 'exec_time'])
 
 
@@ -211,7 +214,7 @@ def run_js_case_via_ark(binary_path, js_file_path, class_name, api_name, report_
     execute_status = Constants.FAIL
     execute_time = ' '
 
-    for composite_scene in enumerate(composite_scenes):
+    for _, composite_scene in enumerate(composite_scenes):
         case_test_data[composite_scene] = Constants.CaseTestDataType(execute_status, execute_time)
 
     js_file_name = class_name + '/' + api_name + '.js'
@@ -228,7 +231,7 @@ def run_js_case_via_ark(binary_path, js_file_path, class_name, api_name, report_
     cur_abc_file = os.path.join(Constants.CUR_PATH, api_name + ".abc")
     api_log_path = os.path.join(class_folder_path, api_name + ".log")
 
-    es2abc_path = "{}/out/rk3568/clang_x64/arkcompiler/ets_frontend/es2abc".format(BINARY_PATH)
+    es2abc_path = Constants.ES2ABC_PATH
     # tranmit abc
     cmd = [es2abc_path, js_file_path]
 
@@ -247,7 +250,7 @@ def run_js_case_via_ark(binary_path, js_file_path, class_name, api_name, report_
         append_row_data(report_file, case_test_data)
         return case_test_data
     # execute abc
-    ark_js_vm_path = "{}/out/rk3568/clang_x64/arkcompiler/ets_runtime/ark_js_vm".format(binary_path)
+    ark_js_vm_path = Constants.ARK_JS_VM_PATH
     cmd = [ark_js_vm_path, "--log-level=info", "--enable-runtime-stat=true", "--icu-data-path",
            ICU_DATA_PATH, cur_abc_file]
 
@@ -290,6 +293,8 @@ def run_via_ark(jspath, report_file):
         logger.error("js perf cases path is not exist. jspath: %s", jspath)
     logger.info("begin to run js perf test via ark. js perf cases path: %s", jspath)
     for root, _, files in os.walk(jspath):
+        if "TestCaseError" in root:
+            continue
         for file in files:
             if not file.endswith('.js'):
                 continue
@@ -453,8 +458,13 @@ def get_args():
         "--d_8_binary_path",
         "-v",
         default=None,
-        required=True,
         help="v 8 engine d 8 binary path",
+    )
+    parser.add_argument(
+        "--ver_platform",
+        "-e",
+        default="full_x86_64",
+        help="Code repository version and platform",
     )
     args = parser.parse_args()
 
@@ -681,9 +691,27 @@ def get_v_8_jitless_excute_times(jspath, v_8_based_report_file_path):
     return Constants.RET_OK
 
 
+def get_config():
+    config_json_path = os.path.join(Constants.CUR_PATH, "config.json")
+    with open(config_json_path, 'r', encoding='UTF-8') as f:
+        json_data = json.load(f)
+
+    Constants.ES2ABC_PATH = os.path.join(BINARY_PATH, json_data[Constants.VER_PLATFORM]["ES2ABC"])
+    Constants.ARK_JS_VM_PATH = os.path.join(BINARY_PATH, json_data[Constants.VER_PLATFORM]["ETS_RUNTIME_PATH"],
+                                            "ark_js_vm")
+    ETS_RUNTIME_PATH = os.path.join(BINARY_PATH, json_data[Constants.VER_PLATFORM]["ETS_RUNTIME_PATH"])
+    ICU_PATH = os.path.join(BINARY_PATH, json_data[Constants.VER_PLATFORM]["ICU_PATH"])
+    ZLIB_PATH = os.path.join(BINARY_PATH, json_data[Constants.VER_PLATFORM]["ZLIB_PATH"])
+    LIB_PATH = os.path.join(BINARY_PATH, json_data[Constants.VER_PLATFORM]["LIB_PATH"])
+    old_ld_library_path = os.environ.get('LD_LIBRARY_PATH', '')
+    os.environ['LD_LIBRARY_PATH'] = f'{ETS_RUNTIME_PATH}:' + f'{ICU_PATH}:' + f'{ZLIB_PATH}:' + f'{LIB_PATH}:'\
+                                    + old_ld_library_path
+
+
 if __name__ == "__main__":
     """
         command format: python3  run_js_test.py  -bp /home/out -p /home/arkjs-perf-test/js-perf-test -o output_path
+            -v d_8_binary_path -e ver_platform
         notes: all paths must be absolute path
     """
     LOG_PATH = os.path.join(Constants.TMP_PATH, "test.log")
@@ -699,6 +727,9 @@ if __name__ == "__main__":
     ICU_DATA_PATH = os.path.join(BINARY_PATH, "third_party/icu/ohos_icu4j/data/")
     OUTPUT_PATH = Constants.CUR_PATH
     Constants.V_8_ENGINED_PATH = paras.d_8_binary_path
+    Constants.VER_PLATFORM = paras.ver_platform
+    get_config()
+
     if paras.output_folder_path is not None:
         OUTPUT_PATH = paras.output_folder_path
 
