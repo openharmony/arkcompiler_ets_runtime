@@ -148,11 +148,27 @@ UnOpTypeInfoAccessor::UnOpTypeInfoAccessor(const JSThread *thread, Circuit *circ
 bool UnOpTypeInfoAccessor::ValueIsNumberType() const
 {
     const PGOSampleType *sampleType = acc_.TryGetPGOType(gate_).GetPGOSampleType();
-    if (sampleType->IsNumber() ||
-        (sampleType->IsNone() && ValueIsPrimitiveNumberType())) {
+    if (sampleType->IsNumber()) {
         return true;
     }
     return false;
+}
+
+GateType  UnOpTypeInfoAccessor::FetchNumberType() const
+{
+    const PGOSampleType *sampleType = acc_.TryGetPGOType(gate_).GetPGOSampleType();
+    if (sampleType->IsNumber()) {
+        if (sampleType->IsInt()) {
+            return GateType::IntType();
+        } else if (sampleType->IsDouble()) {
+            return GateType::DoubleType();
+        } else {
+            return GateType::NumberType();
+        }
+    } else {
+        LOG_COMPILER(FATAL) << "this branch is unreachable";
+        UNREACHABLE();
+    }
 }
 
 bool NewObjRangeTypeInfoAccessor::FindHClass()

@@ -308,7 +308,7 @@ void TypedBytecodeLowering::LowerTypedUnOp(GateRef gate)
 {
     UnOpTypeInfoAccessor tacc(thread_, circuit_, gate);
     if (tacc.ValueIsNumberType()) {
-        SpeculateNumber<Op>(gate);
+        SpeculateNumber<Op>(tacc);
     }
 }
 
@@ -374,29 +374,14 @@ void TypedBytecodeLowering::SpeculateNumbers(GateRef gate)
 }
 
 template<TypedUnOp Op>
-void TypedBytecodeLowering::SpeculateNumber(GateRef gate)
+void TypedBytecodeLowering::SpeculateNumber(const UnOpTypeInfoAccessor &tacc)
 {
-    AddProfiling(gate);
-    GateRef value = acc_.GetValueIn(gate, 0);
-    GateType valueType = acc_.GetGateType(value);
-    GateType gateType = acc_.GetGateType(gate);
-    pgoTypeLog_.CollectGateTypeLogInfo(gate, false);
-
-    const PGOSampleType *sampleType = acc_.TryGetPGOType(gate).GetPGOSampleType();
-    if (sampleType->IsNumber()) {
-        if (sampleType->IsInt()) {
-            gateType = GateType::IntType();
-        } else if (sampleType->IsDouble()) {
-            gateType = GateType::DoubleType();
-        } else {
-            gateType = GateType::NumberType();
-        }
-        valueType = gateType;
-    }
-
-    GateRef result = builder_.TypedUnaryOp<Op>(value, valueType, gateType);
-
-    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
+    AddProfiling(tacc.GetGate());
+    pgoTypeLog_.CollectGateTypeLogInfo(tacc.GetGate(), false);
+    GateRef value = tacc.GetValue();
+    GateType valueType = tacc.FetchNumberType();
+    GateRef result = builder_.TypedUnaryOp<Op>(value, valueType, valueType);
+    acc_.ReplaceHirAndDeleteIfException(tacc.GetGate(), builder_.GetStateDepend(), result);
 }
 
 void TypedBytecodeLowering::LowerTypeToNumeric(GateRef gate)
@@ -410,8 +395,11 @@ void TypedBytecodeLowering::LowerTypeToNumeric(GateRef gate)
 
 void TypedBytecodeLowering::LowerPrimitiveTypeToNumber(const UnOpTypeInfoAccessor &tacc)
 {
-    GateRef result = builder_.PrimitiveToNumber(tacc.GetValue(),
-                                                VariableType(MachineType::I64, tacc.GetValueGateType()));
+    GateRef value = tacc.GetValue();
+    GateType valueType = tacc.FetchNumberType();
+    acc_.SetGateType(value, valueType);
+    GateRef result = builder_.PrimitiveToNumber(value,
+                                                VariableType(MachineType::I64, valueType));
     acc_.ReplaceHirAndDeleteIfException(tacc.GetGate(), builder_.GetStateDepend(), result);
 }
 

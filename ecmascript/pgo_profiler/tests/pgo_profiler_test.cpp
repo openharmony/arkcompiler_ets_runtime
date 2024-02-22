@@ -820,7 +820,7 @@ HWTEST_F_L0(PGOProfilerTest, OpTypeTest)
     PGOProfilerDecoder decoder("ark-profiler16/modules.ap", 1);
     ASSERT_TRUE(decoder.LoadAndVerify(checksum));
     std::string types[17] =
-        { "1", "5", "4", "4", "4", "4", "4", "4", "5", "4", "4", "1", "4", "5", "1" };
+        { "1", "5", "4", "4", "4", "4", "4", "4", "5", "4", "4", "1", "1", "4", "5", "1", "1" };
     int index = 0;
     auto methodLiterals = pf_->GetMethodLiteralMap();
     for (auto iter : methodLiterals) {

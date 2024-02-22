@@ -1762,7 +1762,7 @@ DECLARE_ASM_HANDLER(HandleStownbyindexImm8V8Imm16)
     GateRef result = builder.StoreOwnByIndex(glue, receiver, index, value, profileTypeInfo, slotId, callback);
     CHECK_EXCEPTION(result, INT_PTR(STOWNBYINDEX_IMM8_V8_IMM16));
 }
- 
+
 DECLARE_ASM_HANDLER(HandleStownbyindexImm16V8Imm16)
 {
     GateRef v0 = ReadInst8_2(pc);
@@ -2945,6 +2945,28 @@ DECLARE_ASM_HANDLER(HandleTonumericImm8)
     Branch(TaggedIsNumeric(value), &valueIsNumeric, &valueNotNumeric);
     Bind(&valueIsNumeric);
     {
+        if (!callback.IsEmpty()) {
+            Label valueIsNumber(env);
+            Label profilerEnd(env);
+            Branch(TaggedIsNumber(value), &valueIsNumber, &profilerEnd);
+            Bind(&valueIsNumber);
+            {
+                Label valueIsInt(env);
+                Label valueIsDouble(env);
+                Branch(TaggedIsInt(value), &valueIsInt, &valueIsDouble);
+                Bind(&valueIsInt);
+                {
+                    callback.ProfileOpType(Int32(PGOSampleType::IntType()));
+                    Jump(&profilerEnd);
+                }
+                Bind(&valueIsDouble);
+                {
+                    callback.ProfileOpType(Int32(PGOSampleType::DoubleType()));
+                    Jump(&profilerEnd);
+                }
+            }
+            Bind(&profilerEnd);
+        }
         varAcc = value;
         DISPATCH_WITH_ACC(TONUMERIC_IMM8);
     }
