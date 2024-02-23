@@ -810,10 +810,8 @@ DECLARE_BUILTINS(type##method)                                                  
     DEFVARIABLE(res, retType, retDefaultValue);                                                     \
     Label slowPath(env);                                                                            \
     Label exit(env);                                                                                \
-    GateRef begin = GetCallArg0(numArgs);                                                           \
-    GateRef end = GetCallArg1(numArgs);                                                             \
     TypedArrayStubBuilder builder(this);                                                            \
-    builder.method(glue, thisValue, begin, end, &res, &exit, &slowPath);                            \
+    builder.method(glue, thisValue, numArgs, &res, &exit, &slowPath);                               \
     Bind(&slowPath);                                                                                \
     {                                                                                               \
         auto name = BuiltinsStubCSigns::GetName(BUILTINS_STUB_ID(type##method));                    \
@@ -826,5 +824,7 @@ DECLARE_BUILTINS(type##method)                                                  
 
 // TypedArray.Subarray
 DECLARE_BUILTINS_TYPEDARRAY_STUB_BUILDER(TypedArray, SubArray, VariableType::JS_ANY(), Undefined());
+DECLARE_BUILTINS_TYPEDARRAY_STUB_BUILDER(TypedArray, GetByteLength, VariableType::JS_ANY(), Undefined());
+DECLARE_BUILTINS_TYPEDARRAY_STUB_BUILDER(TypedArray, GetByteOffset, VariableType::JS_ANY(), Undefined());
 #undef DECLARE_BUILTINS_TYPEDARRAY_STUB_BUILDER
 }  // namespace panda::ecmascript::kungfu

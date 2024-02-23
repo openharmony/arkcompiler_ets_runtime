@@ -414,7 +414,7 @@ GateRef TypedArrayStubBuilder::GetValueFromBuffer(GateRef buffer, GateRef index,
     return ret;
 }
 
-void TypedArrayStubBuilder::SubArray(GateRef glue, GateRef thisValue, GateRef relativeBegin, GateRef end,
+void TypedArrayStubBuilder::SubArray(GateRef glue, GateRef thisValue, GateRef numArgs,
     Variable *result, Label *exit, Label *slowPath)
 {
     auto env = GetEnvironment();
@@ -445,6 +445,8 @@ void TypedArrayStubBuilder::SubArray(GateRef glue, GateRef thisValue, GateRef re
     Bind(&notDetached);
 
     Label intIndex(env);
+    GateRef relativeBegin = GetCallArg0(numArgs);
+    GateRef end = GetCallArg1(numArgs);
     Branch(TaggedIsInt(relativeBegin), &intIndex, slowPath);
     Bind(&intIndex);
     GateRef relativeBeginInt = GetInt32OfTInt(relativeBegin);
@@ -491,4 +493,57 @@ void TypedArrayStubBuilder::SubArray(GateRef glue, GateRef thisValue, GateRef re
     *result = newBuilder.NewTaggedSubArray(glue, thisValue, elementSize, *newLength, *beginIndex, objHclass, buffer);
     Jump(exit);
 }
+
+void TypedArrayStubBuilder::GetByteLength([[maybe_unused]] GateRef glue, GateRef thisValue,
+    [[maybe_unused]] GateRef numArgs, Variable *result, Label *exit, Label *slowPath)
+{
+    auto env = GetEnvironment();
+    Label ecmaObj(env);
+    Label typedArray(env);
+    Label Detached(env);
+    Label notDetached(env);
+    Branch(IsEcmaObject(thisValue), &ecmaObj, slowPath);
+    Bind(&ecmaObj);
+    Branch(IsTypedArray(thisValue), &typedArray, slowPath);
+    Bind(&typedArray);
+    GateRef buffer = GetViewedArrayBuffer(thisValue);
+    Branch(IsDetachedBuffer(buffer), &Detached, &notDetached);
+    Bind(&Detached);
+    {
+        *result = IntToTaggedPtr(Int32(0));
+        Jump(exit);
+    }
+    Bind(&notDetached);
+    {
+        *result = IntToTaggedPtr(GetArrayLength(thisValue));
+    }
+    Jump(exit);
+}
+
+void TypedArrayStubBuilder::GetByteOffset([[maybe_unused]] GateRef glue, GateRef thisValue,
+    [[maybe_unused]] GateRef numArgs, Variable *result, Label *exit, Label *slowPath)
+{
+    auto env = GetEnvironment();
+    Label ecmaObj(env);
+    Label typedArray(env);
+    Label Detached(env);
+    Label notDetached(env);
+    Branch(IsEcmaObject(thisValue), &ecmaObj, slowPath);
+    Bind(&ecmaObj);
+    Branch(IsTypedArray(thisValue), &typedArray, slowPath);
+    Bind(&typedArray);
+    GateRef buffer = GetViewedArrayBuffer(thisValue);
+    Branch(IsDetachedBuffer(buffer), &Detached, &notDetached);
+    Bind(&Detached);
+    {
+        *result = IntToTaggedPtr(Int32(0));
+        Jump(exit);
+    }
+    Bind(&notDetached);
+    {
+        *result = IntToTaggedPtr(GetByteOffset(thisValue));
+    }
+    Jump(exit);
+}
+
 }  // namespace panda::ecmascript::kungfu
