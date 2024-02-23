@@ -82,7 +82,7 @@ class LogParser {
     //========= After inlining [OthreMath@test@arkcompiler/ets_runtime/sd_test/test.abc] Caller method [func_main_0@641@arkcompiler/ets_runtime/sd_test/test.abc]====================[0m
     const regexStart2 = /=+ *After ([a-zA-Z0-9_ ]+) \[([a-zA-Z0-9_@/.]+)\] *Caller method \[([#a-zA-Z0-9_@/.]+)\] *=+/g
 
-    if (l[11] != '=') {
+    if (l[11] !== '=') {
       return;
     }
     let ret = regexStart.exec(l);
@@ -140,7 +140,7 @@ class LogParser {
         }
         cutPos.push(ir.MType.length);
         cutPos.sort((a, b) => { return parseInt(a) - parseInt(b) });
-        if (cutPos[0] == 0) {
+        if (cutPos[0] === 0) {
           cutPos.shift();
         }
         let p = 0;
@@ -287,7 +287,7 @@ class LogParser {
     ]
     let ret;
     let pb = this.procBlock_;
-    if (pb.blockStat == 0) {
+    if (pb.blockStat === 0) {
       ret = regexBlock[0].exec(l);
       if (ret) {
         pb.oneBlock = {
@@ -320,9 +320,9 @@ class LogParser {
         return false;
       }
     }
-    else if (pb.blockStat == 1) {//开始记录bytecode，直到空行，结束这个block
+    else if (pb.blockStat === 1) {//开始记录bytecode，直到空行，结束这个block
       if (/^\[compiler\] *$/g.test(l)) {//遇到空行，完成block
-        if (pb.oneBlock.maxDetailWidth == 0) {
+        if (pb.oneBlock.maxDetailWidth === 0) {
           pb.oneBlock.maxDetailWidth = X2DFast.gi().getTextWidth("Empty", 14);
           pb.oneBlock.detailList.push("Empty");
         }
@@ -396,7 +396,7 @@ class LogParser {
         break;
       case 3://开始记录bytecode，直到空行，结束这个block
         if (/^\[compiler\] *$/g.test(l)) {//遇到空行，完成block
-          if (pb.oneBlock.maxDetailWidth == 0) {
+          if (pb.oneBlock.maxDetailWidth === 0) {
             pb.oneBlock.maxDetailWidth = X2DFast.gi().getTextWidth("Empty", 14);
             pb.oneBlock.detailList.push("Empty");
           }

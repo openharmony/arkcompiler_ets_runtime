@@ -43,7 +43,7 @@ class IrToPicture {
     if (XTools.CONFIG.OpTypeControl.indexOf(ir.op) >= 0) {
       return "control";
     }
-    if (ir.in[INTYPE.state].length > 0 && XTools.CONFIG.OpNotControl.indexOf(ir.op) == -1) {
+    if (ir.in[INTYPE.state].length > 0 && XTools.CONFIG.OpNotControl.indexOf(ir.op) === -1) {
       return "control";
     }
     if (XTools.CONFIG.OpTypeDepend.indexOf(ir.op) >= 0 || ir.in[INTYPE.depend].length > 0) {
@@ -59,7 +59,7 @@ class IrToPicture {
     if (XTools.CONFIG.OpTypeControl.indexOf(ir.op) >= 0) {
       mask |= NODE_TYPE_MASK.CONTROL;
     }
-    if (ir.in[INTYPE.state].length > 0 && XTools.CONFIG.OpNotControl.indexOf(ir.op) == -1) {
+    if (ir.in[INTYPE.state].length > 0 && XTools.CONFIG.OpNotControl.indexOf(ir.op) === -1) {
       mask |= NODE_TYPE_MASK.CONTROL;
     }
     if (XTools.CONFIG.OpTypeDepend.indexOf(ir.op) >= 0 || ir.in[INTYPE.depend].length > 0) {
@@ -74,19 +74,19 @@ class IrToPicture {
     if (XTools.CONFIG.OpTypeCircuitRoot.indexOf(ir.op) >= 0 || ir.in[INTYPE.root].length > 0) {
       mask |= NODE_TYPE_MASK.ROOT;
     }
-    if (mask == NODE_TYPE_MASK.NONE) {
+    if (mask === NODE_TYPE_MASK.NONE) {
       mask = NODE_TYPE_MASK.OTHER;
     }
     return mask;
   }
   static isLoopBack(l, nodes) {
-    if (XTools.CONFIG.OpTypeLoopBegin.indexOf(nodes[l.toId].ir.op) >= 0 && l.fromId == nodes[l.toId].ir.in[0][1]) {
+    if (XTools.CONFIG.OpTypeLoopBegin.indexOf(nodes[l.toId].ir.op) >= 0 && l.fromId === nodes[l.toId].ir.in[0][1]) {
       return true;
     }
-    if (XTools.CONFIG.OpTypeDependSelector.indexOf(nodes[l.toId].ir.op) >= 0 && l.fromId == nodes[l.toId].ir.in[1][1]) {
+    if (XTools.CONFIG.OpTypeDependSelector.indexOf(nodes[l.toId].ir.op) >= 0 && l.fromId === nodes[l.toId].ir.in[1][1]) {
       return true;
     }
-    if (XTools.CONFIG.OpTypeValueSelector.indexOf(nodes[l.toId].ir.op) >= 0 && l.fromId == nodes[l.toId].ir.in[2][1]) {
+    if (XTools.CONFIG.OpTypeValueSelector.indexOf(nodes[l.toId].ir.op) >= 0 && l.fromId === nodes[l.toId].ir.in[2][1]) {
       return true;
     }
     return false;
@@ -95,8 +95,8 @@ class IrToPicture {
     let nodes = {};
     let entry = -1;
     for (let ir of irList) {//用于生成图的所有节点
-      if (type == 0) {//仅控制流
-        if (this.nodeType(ir) != "control") continue;
+      if (type === 0) {//仅控制流
+        if (this.nodeType(ir) !== "control") continue;
       }
       let name = ir.id + "," + ir.op;
       if (XTools.CONFIG.OpTypeJsBytecode.indexOf(ir.op) >= 0) {
@@ -118,7 +118,7 @@ class IrToPicture {
         nameWidth: X2DFast.gi().getTextWidth(name, 14),
         ir: ir,
       }
-      if (entry == -1) {
+      if (entry === -1) {
         entry = ir.id;
       }
     }
@@ -170,13 +170,13 @@ class IrToPicture {
     if (stack.length > Object.keys(nodes).length * 2) {
       return true;
     }
-    if (stack.length > 1 && n.ir.id == dist) {
+    if (stack.length > 1 && n.ir.id === dist) {
       return true;
     }
     for (let i = 0; i < n.out.length; i++) {
       let nout = nodes[n.out[i].toId];
-      if (n.deep != this.INVALID_DEEP) {
-        if (nout.deep == this.INVALID_DEEP) {
+      if (n.deep !== this.INVALID_DEEP) {
+        if (nout.deep === this.INVALID_DEEP) {
           nout.deep = n.deep + 1;
           if (this.deepTest(nout, nodes, isBlock, stack, dist)) {
             return true;
@@ -212,7 +212,7 @@ class IrToPicture {
   static resetPicture(nodes, isBlock) {
     if (this.TEST_LOOP && Object.keys(nodes).length > 0) {
       for (let k in nodes) {
-        if (k == 0) {
+        if (k === 0) {
           nodes[k].deep = 0;
         }
         else {
@@ -255,8 +255,8 @@ class IrToPicture {
         }
         for (let i = 0; i < n.out.length; i++) {
           let nout = nodes[n.out[i].toId];
-          if (n.deep != this.INVALID_DEEP) {
-            if (nout.deep == this.INVALID_DEEP) {
+          if (n.deep !== this.INVALID_DEEP) {
+            if (nout.deep === this.INVALID_DEEP) {
               nout.deep = n.deep + 1;
               nextenums.push(nout.ir.id);
             }
@@ -270,8 +270,8 @@ class IrToPicture {
         }
         for (let i = 0; i < n.in.length; i++) {
           let nin = nodes[n.in[i].fromId];
-          if (n.deep != this.INVALID_DEEP) {
-            if (nin.deep == this.INVALID_DEEP) {
+          if (n.deep !== this.INVALID_DEEP) {
+            if (nin.deep === this.INVALID_DEEP) {
               nin.deep = n.deep - 1;
               nextenums.push(nin.ir.id);
             }
@@ -313,7 +313,7 @@ class IrToPicture {
       if (n.hide) {
         continue;
       }
-      if (n.deep == this.INVALID_DEEP) {
+      if (n.deep === this.INVALID_DEEP) {
         n.pos.x = this.INVALID_DEEP;//Scr.logicw - 100;
         n.pos.y = ty;
         ty += 50;
@@ -323,7 +323,7 @@ class IrToPicture {
     let ks = Object.keys(levels).sort((a, b) => { return parseInt(a) - parseInt(b) });
     for (let k of ks) {
       k = parseInt(k);
-      if (k == this.INVALID_DEEP) {
+      if (k === this.INVALID_DEEP) {
         continue;
       }
       let inCount = 0;
