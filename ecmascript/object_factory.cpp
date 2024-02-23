@@ -618,6 +618,7 @@ JSHandle<JSFunction> ObjectFactory::CloneJSFunction(JSHandle<JSFunction> func)
 
 JSHandle<JSFunction> ObjectFactory::CloneSFunction(JSHandle<JSFunction> func)
 {
+    ASSERT(func.GetTaggedValue().IsJSSharedFunction());
     JSHandle<JSHClass> jshclass(thread_, func->GetJSHClass());
     JSHandle<Method> method(thread_, func->GetMethod());
     JSHandle<JSFunction> cloneFunc = NewSFunctionByHClass(method, jshclass);

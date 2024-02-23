@@ -226,13 +226,7 @@ JSTaggedValue QuickFixManager::CheckAndGetPatch(JSThread *thread, const JSPandaF
             return method.GetTaggedValue();
         }
     }
-<<<<<<< HEAD
     PatchLoader::UpdateModuleForColdPatch(thread, methodId, recordName);
-=======
-    ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
-    JSHandle<JSTaggedValue> sendableClsRecord = moduleManager->GenerateSendableFuncModule(moduleRecord);
-    method->SetModule(thread, sendableClsRecord.GetTaggedValue());
->>>>>>> origin/dev_shareheap
     return method.GetTaggedValue();
 }
 

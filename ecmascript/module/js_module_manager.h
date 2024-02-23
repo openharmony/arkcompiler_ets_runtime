@@ -72,7 +72,8 @@ public:
         JSThread *thread, std::string &recordNameStr, std::string &baseFileName);
 
     JSTaggedValue GetCurrentModule();
-    JSHandle<JSTaggedValue> GenerateSendableFuncModule(const JSPandaFile *jsPandaFile, const CString &entryPoint);
+    JSHandle<JSTaggedValue> GenerateFuncModule(const JSPandaFile *jsPandaFile, const CString &entryPoint,
+                                               ClassKind classKind = ClassKind::NON_SENDABLE);
     JSHandle<JSTaggedValue> GenerateSendableFuncModule(const JSHandle<JSTaggedValue> &module);
     JSTaggedValue GetNativeModuleValue(JSThread *thread, JSTaggedValue currentModule,
         JSTaggedValue resolvedModule, ResolvedIndexBinding *binding);

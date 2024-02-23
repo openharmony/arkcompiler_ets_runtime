@@ -568,8 +568,8 @@ void NewObjectStubBuilder::NewJSFunction(GateRef glue, GateRef jsFunc, GateRef i
     {
         SetLengthToFunction(glue_, result->ReadVariable(), length);
         SetLexicalEnvToFunction(glue_, result->ReadVariable(), lexEnv);
-        SetHomeObjectToFunction(glue_, result->ReadVariable(), GetHomeObjectFromFunction(jsFunc));
         SetModuleToFunction(glue_, result->ReadVariable(), GetModuleFromFunction(jsFunc));
+        SetHomeObjectToFunction(glue_, result->ReadVariable(), GetHomeObjectFromFunction(jsFunc));
         Jump(success);
     }
 }

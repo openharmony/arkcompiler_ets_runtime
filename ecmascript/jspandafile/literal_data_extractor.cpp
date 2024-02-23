@@ -287,41 +287,14 @@ JSHandle<JSFunction> LiteralDataExtractor::DefineMethodInLiteral(JSThread *threa
         kind = literalKind;
     }
     bool canFastCall = false;
-<<<<<<< HEAD
-
-    CString moduleName = jsPandaFile->GetJSPandaFileDesc();
-    CString entry = JSPandaFile::ENTRY_FUNCTION_NAME;
-    if (!entryPoint.empty()) {
-        moduleName = entryPoint;
-        entry = entryPoint;
-    }
-    JSRecordInfo recordInfo;
-    bool hasRecord = jsPandaFile->CheckAndGetRecordInfo(entry, recordInfo);
-    if (!hasRecord) {
-        LOG_ECMA(FATAL) << "cannot find record '" + entry + "', please check the request path.";
-    }
-    JSMutableHandle<JSTaggedValue> module(thread, JSTaggedValue::Undefined());
-    if (jsPandaFile->IsModule(recordInfo)) {
-        module.Update(thread->GetCurrentEcmaContext()->GetModuleManager()->HostGetImportedModule(moduleName));
-    } else {
-        module.Update(factory->NewFromUtf8(moduleName));
-    }
     JSHandle<Method> method =
         factory->NewSMethod(jsPandaFile, methodLiteral, constpool, entryIndex, isLoadedAOT, &canFastCall);
-=======
-    JSHandle<Method> method;
-    ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
-    // esm -> SourceTextModule; cjs or script -> string of recordName
-    JSHandle<JSTaggedValue> module = moduleManager->GenerateSendableFuncModule(jsPandaFile, entryPoint);
-    method = factory->NewSMethod(jsPandaFile, methodLiteral, constpool, module, entryIndex,
-    isLoadedAOT, &canFastCall);
-
->>>>>>> origin/dev_shareheap
-    
     JSHandle<JSHClass> functionClass;
     JSHandle<JSFunction> jsFunc = CreateJSFunctionInLiteral(vm, method, kind, classKind);
-    jsFunc->SetLength(length);
+    ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
+    JSHandle<JSTaggedValue> module = moduleManager->GenerateFuncModule(jsPandaFile, entryPoint, classKind);
     jsFunc->SetModule(thread, module.GetTaggedValue());
+    jsFunc->SetLength(length);
     return jsFunc;
 }
 

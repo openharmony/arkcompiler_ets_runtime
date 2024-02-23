@@ -140,6 +140,7 @@ void PGOProfiler::ProfileDefineGetterSetter(
     if (!methodValue.IsMethod()) {
         return;
     }
+
     auto function = JSFunction::Cast(funcValue);
     WorkNode* workNode = reinterpret_cast<WorkNode*>(function->GetWorkNodePointer());
     if (workNode != nullptr) {

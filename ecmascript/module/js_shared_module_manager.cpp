@@ -98,8 +98,10 @@ JSTaggedValue SharedModuleManager::GetSendableModuleValueImpl(
         // [[TODO::DaiHN should consider json, cjs and native module later]]
         ASSERT(resolvedModule->GetTypes() == ModuleTypes::ECMA_MODULE);
         return resolvedModule->GetModuleValue(thread, binding->GetIndex(), false);
-    } else {
-        LOG_ECMA(FATAL) << "Get module value failed, mistaken ResolvedBinding";
+    } else if (resolvedBinding.IsResolvedIndexBinding()) {
+        ResolvedIndexBinding *binding = ResolvedIndexBinding::Cast(resolvedBinding.GetTaggedObject());
+        SourceTextModule *resolvedModule = SourceTextModule::Cast(binding->GetModule().GetTaggedObject());
+        return resolvedModule->GetModuleValue(thread, binding->GetIndex(), false);
     }
     UNREACHABLE();
 }

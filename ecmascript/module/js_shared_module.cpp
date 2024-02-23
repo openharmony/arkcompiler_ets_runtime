@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 #include "ecmascript/module/js_shared_module.h"
-
+#include "ecmascript/tagged_array-inl.h"
 namespace panda::ecmascript {
 JSHandle<JSTaggedValue> SendableClassModule::GenerateSendableFuncModule(JSThread *thread,
                                                                         const JSHandle<JSTaggedValue> &module)

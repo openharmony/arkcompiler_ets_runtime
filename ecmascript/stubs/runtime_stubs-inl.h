@@ -958,7 +958,9 @@ JSTaggedValue RuntimeStubs::RuntimeCreateSharedClass(JSThread *thread,
     JSHandle<TaggedArray> staticFieldArray = SendableClassDefiner::ExtractStaticFieldTypeArray(thread, fieldTypeArray);
     JSHandle<JSFunction> cls =
         SendableClassDefiner::DefineSendableClassFromExtractor(thread, extractor, staticFieldArray);
-    cls->SetModule(thread, module.GetTaggedValue());
+    ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
+    JSHandle<JSTaggedValue> sendableClsModule = moduleManager->GenerateSendableFuncModule(module);
+    cls->SetModule(thread, sendableClsModule.GetTaggedValue());
     RuntimeSetClassConstructorLength(thread, cls.GetTaggedValue(), JSTaggedValue(length));
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     RuntimeSetClassInheritanceRelationship(thread, JSHandle<JSTaggedValue>(cls), base, ClassKind::SENDABLE);

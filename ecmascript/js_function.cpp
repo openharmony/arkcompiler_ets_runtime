@@ -855,12 +855,7 @@ JSTaggedValue JSFunction::GetRecordName() const
 {
     JSTaggedValue module = GetModule();
     if (module.IsSourceTextModule()) {
-        JSTaggedValue recordName = SourceTextModule::Cast(module.GetTaggedObject())->GetEcmaModuleRecordName();
-        if (!recordName.IsString()) {
-            LOG_INTERPRETER(DEBUG) << "module record name is undefined";
-            return JSTaggedValue::Hole();
-        }
-        return recordName;
+        return SourceTextModule::GetModuleName(module);
     }
     if (module.IsString()) {
         return module;
@@ -1002,12 +997,7 @@ void JSFunction::InitializeForConcurrentFunction(JSThread *thread)
     JSHandle<ecmascript::SourceTextModule> module = JSHandle<ecmascript::SourceTextModule>::Cast(moduleRecord);
     module->SetStatus(ecmascript::ModuleStatus::INSTANTIATED);
     ecmascript::SourceTextModule::EvaluateForConcurrent(thread, module, method);
-<<<<<<< HEAD
-    this->SetModule(thread, module);
-=======
-    JSHandle<JSTaggedValue> sendableClsRecord = moduleManager->GenerateSendableFuncModule(moduleRecord);
-    method->SetModule(thread, sendableClsRecord);
->>>>>>> origin/dev_shareheap
+    this->SetModule(thread, moduleRecord);
 }
 
 void JSFunctionBase::SetCompiledFuncEntry(uintptr_t codeEntry, bool isFastCall)

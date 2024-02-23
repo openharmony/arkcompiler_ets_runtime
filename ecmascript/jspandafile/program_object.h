@@ -307,20 +307,9 @@ public:
         MethodLiteral *methodLiteral = jsPandaFile->FindMethodLiteral(id.GetOffset());
         ASSERT(methodLiteral != nullptr);
         ObjectFactory *factory = vm->GetFactory();
-<<<<<<< HEAD
         JSHandle<Method> method = factory->NewSMethod(
             jsPandaFile, methodLiteral, constpoolHandle, entryIndex, isLoadedAOT && hasEntryIndex);
-=======
-        JSHandle<Method> method;
 
-        // [[TODO::DaiHN]] Sendable class defined in Shared Module would set Shared Module directly.
-        // Clone isolate module at shared-heap to mark sendable class.
-        ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
-        JSHandle<JSTaggedValue> sendableClsModule = moduleManager->GenerateSendableFuncModule(moduleHandle);
-        method = factory->NewSMethod(jsPandaFile, methodLiteral, constpoolHandle, sendableClsModule,
-                                     entryIndex, isLoadedAOT && hasEntryIndex);
-
->>>>>>> origin/dev_shareheap
         constpoolHandle->SetObjectToCache(thread, index, method.GetTaggedValue());
         return method.GetTaggedValue();
     }
