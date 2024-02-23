@@ -796,8 +796,8 @@ JSTaggedValue RuntimeStubs::RuntimeResolveClass(JSThread *thread, const JSHandle
     ASSERT(ctor.GetTaggedValue().IsClassConstructor());
 
     FrameHandler frameHandler(thread);
-    Method *currentMethod = frameHandler.GetMethod();
-    JSHandle<JSTaggedValue> ecmaModule(thread, currentMethod->GetModule());
+    JSTaggedValue currentFunc = frameHandler.GetFunction();
+    JSHandle<JSTaggedValue> ecmaModule(thread, JSFunction::Cast(currentFunc.GetTaggedObject())->GetModule());
 
     RuntimeSetClassInheritanceRelationship(thread, JSHandle<JSTaggedValue>(ctor), base);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -810,7 +810,7 @@ JSTaggedValue RuntimeStubs::RuntimeResolveClass(JSThread *thread, const JSHandle
         if (LIKELY(value.IsJSFunction())) {
             JSFunction *func = JSFunction::Cast(value.GetTaggedObject());
             func->SetLexicalEnv(thread, lexenv.GetTaggedValue());
-            Method::Cast(func->GetMethod())->SetModule(thread, ecmaModule);
+            func->SetModule(thread, ecmaModule);
         }
     }
 
@@ -876,8 +876,7 @@ JSTaggedValue RuntimeStubs::RuntimeCreateClassWithBuffer(JSThread *thread,
     CString entry = ModuleManager::GetRecordName(module.GetTaggedValue());
 
     // For class constructor.
-    auto methodObj = ConstantPool::GetMethodFromCache(
-        thread, constpool.GetTaggedValue(), module.GetTaggedValue(), methodId);
+    auto methodObj = ConstantPool::GetMethodFromCache(thread, constpool.GetTaggedValue(), methodId);
     JSHandle<JSTaggedValue> method(thread, methodObj);
     JSHandle<ConstantPool> constpoolHandle = JSHandle<ConstantPool>::Cast(constpool);
     JSHandle<JSFunction> cls;
@@ -920,6 +919,7 @@ JSTaggedValue RuntimeStubs::RuntimeCreateClassWithBuffer(JSThread *thread,
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
     cls->SetLexicalEnv(thread, lexenv.GetTaggedValue());
+    cls->SetModule(thread, module.GetTaggedValue());
     RuntimeSetClassConstructorLength(thread, cls.GetTaggedValue(), length.GetTaggedValue());
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
@@ -939,8 +939,7 @@ JSTaggedValue RuntimeStubs::RuntimeCreateSharedClass(JSThread *thread,
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     CString entry = ModuleManager::GetRecordName(module.GetTaggedValue());
 
-    auto methodObj = ConstantPool::GetMethodFromCache(
-        thread, constpool.GetTaggedValue(), module.GetTaggedValue(), methodId);
+    auto methodObj = ConstantPool::GetMethodFromCache(thread, constpool.GetTaggedValue(), methodId);
     JSHandle<JSTaggedValue> method(thread, methodObj);
     JSHandle<ConstantPool> constpoolHandle = JSHandle<ConstantPool>::Cast(constpool);
 
@@ -959,6 +958,9 @@ JSTaggedValue RuntimeStubs::RuntimeCreateSharedClass(JSThread *thread,
     JSHandle<TaggedArray> staticFieldArray = SendableClassDefiner::ExtractStaticFieldTypeArray(thread, fieldTypeArray);
     JSHandle<JSFunction> cls =
         SendableClassDefiner::DefineSendableClassFromExtractor(thread, extractor, staticFieldArray);
+    ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
+    JSHandle<JSTaggedValue> sendableClsModule = moduleManager->GenerateSendableFuncModule(module);
+    cls->SetModule(thread, sendableClsModule.GetTaggedValue());
     RuntimeSetClassConstructorLength(thread, cls.GetTaggedValue(), JSTaggedValue(length));
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     RuntimeSetClassInheritanceRelationship(thread, JSHandle<JSTaggedValue>(cls), base, ClassKind::SENDABLE);
@@ -1601,8 +1603,8 @@ JSTaggedValue RuntimeStubs::RuntimeDynamicImport(JSThread *thread, const JSHandl
     ObjectFactory *factory = ecmaVm->GetFactory();
 
     // get current filename
-    Method *method = JSFunction::Cast(func->GetTaggedObject())->GetCallTarget();
-    const JSPandaFile *jsPandaFile = method->GetJSPandaFile();
+    JSFunction *function = JSFunction::Cast(func->GetTaggedObject());
+    const JSPandaFile *jsPandaFile = function->GetCallTarget()->GetJSPandaFile();
     CString currentfilename = jsPandaFile->GetJSPandaFileDesc();
 
     JSMutableHandle<JSTaggedValue> dirPath(thread, thread->GlobalConstants()->GetUndefined());
@@ -1610,7 +1612,7 @@ JSTaggedValue RuntimeStubs::RuntimeDynamicImport(JSThread *thread, const JSHandl
     if (jsPandaFile->IsBundlePack()) {
         dirPath.Update(factory->NewFromUtf8(currentfilename).GetTaggedValue());
     } else {
-        recordName.Update(method->GetRecordName());
+        recordName.Update(function->GetRecordName());
         dirPath.Update(factory->NewFromUtf8(currentfilename).GetTaggedValue());
     }
 
@@ -2125,8 +2127,7 @@ JSTaggedValue RuntimeStubs::RuntimeDefinefunc(JSThread *thread, const JSHandle<J
         JSHandle<AOTLiteralInfo> aotLiteralInfo(thread, val);
         ihc.Update(aotLiteralInfo->GetIhc());
     }
-    JSTaggedValue method = ConstantPool::GetMethodFromCache(thread, constpool.GetTaggedValue(),
-                                                            module.GetTaggedValue(), methodId);
+    JSTaggedValue method = ConstantPool::GetMethodFromCache(thread, constpool.GetTaggedValue(), methodId);
     const JSHandle<Method> methodHandle(thread, method);
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSFunction> result = factory->NewJSFunction(methodHandle);
@@ -2135,6 +2136,7 @@ JSTaggedValue RuntimeStubs::RuntimeDefinefunc(JSThread *thread, const JSHandle<J
     result->SetLength(length);
     result->SetLexicalEnv(thread, envHandle.GetTaggedValue());
     result->SetHomeObject(thread, homeObject.GetTaggedValue());
+    result->SetModule(thread, module.GetTaggedValue());
 
     return result.GetTaggedValue();
 }
@@ -2258,12 +2260,14 @@ JSTaggedValue RuntimeStubs::RuntimeCreateObjectWithExcludedKeys(JSThread *thread
 
 JSTaggedValue RuntimeStubs::RuntimeDefineMethod(JSThread *thread, const JSHandle<Method> &methodHandle,
                                                 const JSHandle<JSTaggedValue> &homeObject, uint16_t length,
-                                                const JSHandle<JSTaggedValue> &env)
+                                                const JSHandle<JSTaggedValue> &env,
+                                                const JSHandle<JSTaggedValue> &module)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSFunction> func = factory->NewJSFunction(methodHandle, homeObject);
     func->SetLength(length);
     func->SetLexicalEnv(thread, env);
+    func->SetModule(thread, module);
     return func.GetTaggedValue();
 }
 
@@ -3038,7 +3042,7 @@ JSTaggedValue RuntimeStubs::RuntimeCreatePrivateProperty(JSThread *thread, JSTag
             JSFunction *func = JSFunction::Cast(literalValue.GetTaggedObject());
             func->SetLexicalEnv(thread, handleLexicalEnv.GetTaggedValue());
             func->GetClass()->SetExtensible(false);
-            Method::Cast(func->GetMethod())->SetModule(thread, handleModule.GetTaggedValue());
+            func->SetModule(thread, handleModule.GetTaggedValue());
         }
         handleLexicalEnv->SetProperties(thread, startIndex + count + i, literalValue);
     }

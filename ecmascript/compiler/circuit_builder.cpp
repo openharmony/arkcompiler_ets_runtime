@@ -525,9 +525,8 @@ GateRef CircuitBuilder::GetMethodFromFunction(GateRef function)
 
 GateRef CircuitBuilder::GetModuleFromFunction(GateRef function)
 {
-    GateRef method = GetMethodFromFunction(function);
-    GateRef offset = IntPtr(Method::ECMA_MODULE_OFFSET);
-    return Load(VariableType::JS_POINTER(), method, offset);
+    GateRef offset = IntPtr(JSFunction::ECMA_MODULE_OFFSET);
+    return Load(VariableType::JS_POINTER(), function, offset);
 }
 
 GateRef CircuitBuilder::GetHomeObjectFromFunction(GateRef function)
@@ -744,7 +743,7 @@ GateRef CircuitBuilder::GetObjectFromConstPool(GateRef glue, GateRef hirGate, Ga
                 { constPool, Int32ToTaggedInt(index), module }, hirGate);
         } else {
             result = CallRuntime(glue, RTSTUB_ID(GetMethodFromCache), Gate::InvalidGateRef,
-                { constPool, Int32ToTaggedInt(index), module }, hirGate);
+                { constPool, Int32ToTaggedInt(index) }, hirGate);
         }
         Jump(&exit);
     }
@@ -756,7 +755,7 @@ GateRef CircuitBuilder::GetObjectFromConstPool(GateRef glue, GateRef hirGate, Ga
             Bind(&isAOTLiteralInfo);
             {
                 result = CallRuntime(glue, RTSTUB_ID(GetMethodFromCache), Gate::InvalidGateRef,
-                    { constPool, Int32ToTaggedInt(index), module }, hirGate);
+                    { constPool, Int32ToTaggedInt(index) }, hirGate);
                 Jump(&exit);
             }
         } else if (type == ConstPoolType::ARRAY_LITERAL) {
@@ -808,6 +807,12 @@ void CircuitBuilder::SetHomeObjectToFunction(GateRef glue, GateRef function, Gat
 {
     GateRef offset = IntPtr(JSFunction::HOME_OBJECT_OFFSET);
     Store(VariableType::JS_ANY(), glue, function, offset, value);
+}
+
+void CircuitBuilder::SetModuleToFunction(GateRef glue, GateRef function, GateRef value)
+{
+    GateRef offset = IntPtr(JSFunction::ECMA_MODULE_OFFSET);
+    Store(VariableType::JS_POINTER(), glue, function, offset, value);
 }
 
 GateRef CircuitBuilder::GetGlobalEnvValue(VariableType type, GateRef env, size_t index)

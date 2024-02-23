@@ -2151,6 +2151,7 @@ GateRef StubBuilder::StoreICWithHandler(GateRef glue, GateRef receiver, GateRef 
     Label aotHandlerInfoNotField(env);
     Label cellHasChanged(env);
     Label cellNotChanged(env);
+    Label cellNotUndefined(env);
     Label aotCellNotChanged(env);
     Label loopHead(env);
     Label loopEnd(env);
@@ -2229,6 +2230,8 @@ GateRef StubBuilder::StoreICWithHandler(GateRef glue, GateRef receiver, GateRef 
         Bind(&handlerIsPrototypeHandler);
         {
             GateRef cellValue = GetProtoCell(*handler);
+            Branch(TaggedIsUndefined(cellValue), &loopEnd, &cellNotUndefined);
+            Bind(&cellNotUndefined);
             Branch(TaggedIsNull(cellValue), &cellHasChanged, &cellNotNull);
             Bind(&cellNotNull);
             {
@@ -5944,8 +5947,9 @@ GateRef StubBuilder::GetStringFromConstPool(GateRef glue, GateRef constpool, Gat
     return env_->GetBuilder()->GetObjectFromConstPool(glue, hirGate, constpool, module, index, ConstPoolType::STRING);
 }
 
-GateRef StubBuilder::GetMethodFromConstPool(GateRef glue, GateRef constpool, GateRef module, GateRef index)
+GateRef StubBuilder::GetMethodFromConstPool(GateRef glue, GateRef constpool, GateRef index)
 {
+    GateRef module = Circuit::NullGate();
     GateRef hirGate = Circuit::NullGate();
     return env_->GetBuilder()->GetObjectFromConstPool(glue, hirGate, constpool, module, index, ConstPoolType::METHOD);
 }

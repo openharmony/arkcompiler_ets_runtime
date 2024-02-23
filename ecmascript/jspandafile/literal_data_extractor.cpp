@@ -287,16 +287,13 @@ JSHandle<JSFunction> LiteralDataExtractor::DefineMethodInLiteral(JSThread *threa
         kind = literalKind;
     }
     bool canFastCall = false;
-    JSHandle<Method> method;
-    ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
-    // esm -> SourceTextModule; cjs or script -> string of recordName
-    JSHandle<JSTaggedValue> module = moduleManager->GenerateSendableFuncModule(jsPandaFile, entryPoint);
-    method = factory->NewSMethod(jsPandaFile, methodLiteral, constpool, module, entryIndex,
-    isLoadedAOT, &canFastCall);
-
-    
+    JSHandle<Method> method =
+        factory->NewSMethod(jsPandaFile, methodLiteral, constpool, entryIndex, isLoadedAOT, &canFastCall);
     JSHandle<JSHClass> functionClass;
     JSHandle<JSFunction> jsFunc = CreateJSFunctionInLiteral(vm, method, kind, classKind);
+    ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
+    JSHandle<JSTaggedValue> module = moduleManager->GenerateFuncModule(jsPandaFile, entryPoint, classKind);
+    jsFunc->SetModule(thread, module.GetTaggedValue());
     jsFunc->SetLength(length);
     return jsFunc;
 }

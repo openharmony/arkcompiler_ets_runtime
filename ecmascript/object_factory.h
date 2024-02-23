@@ -523,8 +523,8 @@ public:
     JSHandle<Method> NewMethod(const MethodLiteral *methodLiteral, MemSpaceType spaceType = OLD_SPACE);
 
     JSHandle<Method> NewMethod(const JSPandaFile *jsPandaFile, MethodLiteral *methodLiteral,
-                               JSHandle<ConstantPool> constpool, JSHandle<JSTaggedValue> module,
-                               uint32_t entryIndex, bool needSetAotFlag, bool *canFastCall = nullptr);
+                               JSHandle<ConstantPool> constpool, uint32_t entryIndex,
+                               bool needSetAotFlag, bool *canFastCall = nullptr);
 
     // used for creating jsobject by constructor
     JSHandle<JSObject> NewJSObjectByConstructor(const JSHandle<JSFunction> &constructor,
@@ -726,8 +726,8 @@ public:
     JSHandle<Method> NewSMethod(const MethodLiteral *methodLiteral, MemSpaceType methodSpaceType = SHARED_OLD_SPACE);
 
     JSHandle<Method> NewSMethod(const JSPandaFile *jsPandaFile, MethodLiteral *methodLiteral,
-                                JSHandle<ConstantPool> constpool, JSHandle<JSTaggedValue> module,
-                                uint32_t entryIndex, bool needSetAotFlag, bool *canFastCall = nullptr);
+                                JSHandle<ConstantPool> constpool,uint32_t entryIndex,
+                                bool needSetAotFlag, bool *canFastCall = nullptr);
 
     JSHandle<ConstantPool> NewSConstantPool(uint32_t capacity);
 

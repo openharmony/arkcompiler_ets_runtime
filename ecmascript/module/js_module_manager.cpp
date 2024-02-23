@@ -48,24 +48,30 @@ ModuleManager::ModuleManager(EcmaVM *vm) : vm_(vm)
 JSTaggedValue ModuleManager::GetCurrentModule()
 {
     FrameHandler frameHandler(vm_->GetJSThread());
-    Method *currentMethod = frameHandler.GetMethod();
-    JSTaggedValue sharedModule = currentMethod->GetModule();
-    // [[TODO::DaiHN "use share" module could return directly]]
-    JSTaggedValue recordName = SourceTextModule::GetModuleName(sharedModule);
-    return HostGetImportedModule(recordName).GetTaggedValue();
+    JSTaggedValue currentFunc = frameHandler.GetFunction();
+    JSTaggedValue module = JSFunction::Cast(currentFunc.GetTaggedObject())->GetModule();
+    if (SourceTextModule::IsSendableFunctionModule(module)) {
+        JSTaggedValue recordName = SourceTextModule::GetModuleName(module);
+        return HostGetImportedModule(recordName).GetTaggedValue();
+    }
+    return module;
 }
 
-JSHandle<JSTaggedValue> ModuleManager::GenerateSendableFuncModule(const JSPandaFile *jsPandaFile, const CString &entryPoint)
+JSHandle<JSTaggedValue> ModuleManager::GenerateFuncModule(const JSPandaFile *jsPandaFile,
+                                                          const CString &entryPoint, ClassKind classKind)
 {
     CString recordName = jsPandaFile->GetRecordName(entryPoint);
-
     JSRecordInfo recordInfo;
     jsPandaFile->CheckAndGetRecordInfo(recordName, recordInfo);
     if (jsPandaFile->IsModule(recordInfo)) {
         JSHandle<JSTaggedValue> module(HostGetImportedModule(recordName));
-        // [[TODO::DaiHN]] Sendable class defined in Shared Module would set Shared Module directly.
-        // Clone isolate module at shared-heap to mark sendable class.
-        return SendableClassModule::GenerateSendableFuncModule(vm_->GetJSThread(), module);
+        if (classKind == ClassKind::NON_SENDABLE) {
+            return module;
+        } else {
+            // [[TODO::DaiHN]] Sendable class defined in Shared Module would set Shared Module directly.
+            // Clone isolate module at shared-heap to mark sendable class.
+            return SendableClassModule::GenerateSendableFuncModule(vm_->GetJSThread(), module);
+        }
     }
     return JSHandle<JSTaggedValue>(vm_->GetFactory()->NewFromUtf8(recordName));
 }

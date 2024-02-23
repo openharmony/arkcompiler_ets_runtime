@@ -216,18 +216,17 @@ JSTaggedValue QuickFixManager::CheckAndGetPatch(JSThread *thread, const JSPandaF
     CString recordName = MethodLiteral::GetRecordName(baseFile, baseMethodId);
     EcmaContext *context = thread->GetCurrentEcmaContext();
     JSHandle<JSTaggedValue> moduleRecord = context->FindPatchModule(recordName);
+    EntityId methodId = method->GetMethodId();
     if (moduleRecord->IsHole()) {
         PatchLoader::ExecuteFuncOrPatchMain(thread, patchFile.get(), patchInfo);
         moduleRecord = context->FindPatchModule(recordName);
         if (moduleRecord->IsHole()) {
             LOG_ECMA(ERROR) << "cold patch: moduleRecord is still hole after regeneration";
-            method->SetModule(thread, JSTaggedValue::Undefined());
+            PatchLoader::UpdateModuleForColdPatch(thread, methodId, recordName, false);
             return method.GetTaggedValue();
         }
     }
-    ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
-    JSHandle<JSTaggedValue> sendableClsRecord = moduleManager->GenerateSendableFuncModule(moduleRecord);
-    method->SetModule(thread, sendableClsRecord.GetTaggedValue());
+    PatchLoader::UpdateModuleForColdPatch(thread, methodId, recordName);
     return method.GetTaggedValue();
 }
 

@@ -726,7 +726,8 @@ private:
                                                                     uint16_t firstArgRegIdx);
     static inline JSTaggedValue RuntimeDefineMethod(JSThread *thread, const JSHandle<Method> &methodHandle,
                                                     const JSHandle<JSTaggedValue> &homeObject, uint16_t length,
-                                                    const JSHandle<JSTaggedValue> &env);
+                                                    const JSHandle<JSTaggedValue> &env,
+                                                    const JSHandle<JSTaggedValue> &module);
     static inline JSTaggedValue RuntimeCallSpread(JSThread *thread, const JSHandle<JSTaggedValue> &func,
                                                      const JSHandle<JSTaggedValue> &obj,
                                                      const JSHandle<JSTaggedValue> &array);

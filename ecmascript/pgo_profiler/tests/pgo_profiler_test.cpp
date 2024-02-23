@@ -252,7 +252,8 @@ HWTEST_F_L0(PGOProfilerTest, Sample)
     JSHandle<Method> method = vm_->GetFactory()->NewSMethod(methodLiterals[0]);
     method->SetConstantPool(vm_->GetJSThread(), constPool.GetTaggedValue());
     JSHandle<JSTaggedValue> recordName(vm_->GetFactory()->NewFromStdString("test"));
-    method->SetModule(vm_->GetJSThread(), recordName);
+    JSHandle<JSFunction> func = vm_->GetFactory()->NewJSFunction(vm_->GetGlobalEnv(), method);
+    func->SetModule(vm_->GetJSThread(), recordName);
     vm_->GetPGOProfiler()->SetSaveTimestamp(std::chrono::system_clock::now());
     JSNApi::DestroyJSVM(vm_);
     // Loader
@@ -293,10 +294,13 @@ HWTEST_F_L0(PGOProfilerTest, Sample1)
     method1->SetConstantPool(vm_->GetJSThread(), constPool.GetTaggedValue());
     method2->SetConstantPool(vm_->GetJSThread(), constPool.GetTaggedValue());
 
+    JSHandle<JSFunction> func = vm_->GetFactory()->NewJSFunction(vm_->GetGlobalEnv(), method);
+    JSHandle<JSFunction> func1 = vm_->GetFactory()->NewJSFunction(vm_->GetGlobalEnv(), method1);
+    JSHandle<JSFunction> func2 = vm_->GetFactory()->NewJSFunction(vm_->GetGlobalEnv(), method2);
     JSHandle<JSTaggedValue> recordName(vm_->GetFactory()->NewFromStdString("test"));
-    method->SetModule(vm_->GetJSThread(), recordName);
-    method1->SetModule(vm_->GetJSThread(), recordName);
-    method2->SetModule(vm_->GetJSThread(), recordName);
+    func->SetModule(vm_->GetJSThread(), recordName);
+    func1->SetModule(vm_->GetJSThread(), recordName);
+    func2->SetModule(vm_->GetJSThread(), recordName);
     JSNApi::DestroyJSVM(vm_);
 
     // Loader
@@ -342,10 +346,12 @@ HWTEST_F_L0(PGOProfilerTest, Sample2)
 
     method->SetConstantPool(vm_->GetJSThread(), constPool.GetTaggedValue());
     method1->SetConstantPool(vm_->GetJSThread(), constPool.GetTaggedValue());
+    JSHandle<JSFunction> func = vm_->GetFactory()->NewJSFunction(vm_->GetGlobalEnv(), method);
     JSHandle<JSTaggedValue> recordName(vm_->GetFactory()->NewFromStdString("test"));
-    method->SetModule(vm_->GetJSThread(), recordName);
+    func->SetModule(vm_->GetJSThread(), recordName);
+    JSHandle<JSFunction> func1 = vm_->GetFactory()->NewJSFunction(vm_->GetGlobalEnv(), method1);
     JSHandle<JSTaggedValue> recordName1(vm_->GetFactory()->NewFromStdString("test1"));
-    method1->SetModule(vm_->GetJSThread(), recordName1);
+    func1->SetModule(vm_->GetJSThread(), recordName1);
     JSNApi::DestroyJSVM(vm_);
 
     // Loader
@@ -393,8 +399,9 @@ HWTEST_F_L0(PGOProfilerTest, DisEnableSample)
     JSHandle<Method> method = vm_->GetFactory()->NewSMethod(methodLiterals[0]);
 
     method->SetConstantPool(vm_->GetJSThread(), constPool.GetTaggedValue());
+    JSHandle<JSFunction> func = vm_->GetFactory()->NewJSFunction(vm_->GetGlobalEnv(), method);
     JSHandle<JSTaggedValue> recordName(vm_->GetFactory()->NewFromStdString("sample_test"));
-    method->SetModule(vm_->GetJSThread(), recordName);
+    func->SetModule(vm_->GetJSThread(), recordName);
     JSNApi::DestroyJSVM(vm_);
 
     // Loader
@@ -446,7 +453,8 @@ HWTEST_F_L0(PGOProfilerTest, PGOProfilerManagerSample)
     // RecordName is hole
     MethodLiteral *methodLiteral = new MethodLiteral(EntityId(61));
     JSHandle<Method> method = vm_->GetFactory()->NewSMethod(methodLiteral);
-    method->SetModule(vm_->GetJSThread(), JSTaggedValue::Hole());
+    JSHandle<JSFunction> func = vm_->GetFactory()->NewJSFunction(vm_->GetGlobalEnv(), method);
+    func->SetModule(vm_->GetJSThread(), JSTaggedValue::Hole());
     JSNApi::DestroyJSVM(vm_);
 
     PGOProfilerDecoder loader("", DECODER_THRESHOLD);
@@ -486,16 +494,19 @@ HWTEST_F_L0(PGOProfilerTest, PGOProfilerDoubleVM)
 
     JSHandle<Method> method = vm2->GetFactory()->NewSMethod(methodLiterals[0]);
     method->SetConstantPool(vm2->GetJSThread(), constPool2.GetTaggedValue());
+    JSHandle<JSFunction> func = vm2->GetFactory()->NewJSFunction(vm_->GetGlobalEnv(), method);
     JSHandle<JSTaggedValue> recordName(vm_->GetFactory()->NewFromStdString("sample_test"));
-    method->SetModule(vm2->GetJSThread(), recordName);
+    func->SetModule(vm2->GetJSThread(), recordName);
 
     JSHandle<Method> method1 = vm_->GetFactory()->NewSMethod(methodLiterals[0]);
     JSHandle<Method> method2 = vm_->GetFactory()->NewSMethod(methodLiterals[1]);
     method1->SetConstantPool(vm_->GetJSThread(), constPool.GetTaggedValue());
     method2->SetConstantPool(vm_->GetJSThread(), constPool.GetTaggedValue());
+    JSHandle<JSFunction> func1 = vm_->GetFactory()->NewJSFunction(vm_->GetGlobalEnv(), method1);
+    JSHandle<JSFunction> func2 = vm_->GetFactory()->NewJSFunction(vm_->GetGlobalEnv(), method2);
     JSHandle<JSTaggedValue> recordName1(vm_->GetFactory()->NewFromStdString("sample_test"));
-    method1->SetModule(vm_->GetJSThread(), recordName);
-    method2->SetModule(vm_->GetJSThread(), recordName);
+    func1->SetModule(vm_->GetJSThread(), recordName);
+    func2->SetModule(vm_->GetJSThread(), recordName);
 
     JSNApi::DestroyJSVM(vm2);
     JSNApi::DestroyJSVM(vm_);
@@ -539,8 +550,9 @@ HWTEST_F_L0(PGOProfilerTest, PGOProfilerDecoderNoHotMethod)
     JSHandle<Method> method = vm_->GetFactory()->NewSMethod(methodLiterals[0]);
 
     method->SetConstantPool(vm_->GetJSThread(), constPool.GetTaggedValue());
+    JSHandle<JSFunction> func = vm_->GetFactory()->NewJSFunction(vm_->GetGlobalEnv(), method);
     JSHandle<JSTaggedValue> recordName(vm_->GetFactory()->NewFromStdString("sample_test"));
-    method->SetModule(vm_->GetJSThread(), recordName);
+    func->SetModule(vm_->GetJSThread(), recordName);
     JSNApi::DestroyJSVM(vm_);
 
     PGOProfilerDecoder loader("ark-profiler8/modules.ap", DECODER_THRESHOLD);
@@ -583,7 +595,8 @@ HWTEST_F_L0(PGOProfilerTest, PGOProfilerPostTask)
     for (int i = 61; i < 91; i++) {
         JSHandle<Method> method = vm_->GetFactory()->NewSMethod(methodLiterals[i]);
         method->SetConstantPool(vm_->GetJSThread(), constPool.GetTaggedValue());
-        method->SetModule(vm_->GetJSThread(), recordName);
+        JSHandle<JSFunction> func = vm_->GetFactory()->NewJSFunction(vm_->GetGlobalEnv(), method);
+        func->SetModule(vm_->GetJSThread(), recordName);
     }
 
     JSNApi::DestroyJSVM(vm_);
@@ -667,8 +680,9 @@ HWTEST_F_L0(PGOProfilerTest, FailResetProfilerInWorker)
     JSHandle<ConstantPool> constPool = vm_->GetFactory()->NewSConstantPool(4);
     constPool->SetJSPandaFile(pf_.get());
     method->SetConstantPool(vm_->GetJSThread(), constPool.GetTaggedValue());
+    JSHandle<JSFunction> func = vm_->GetFactory()->NewJSFunction(vm_->GetGlobalEnv(), method);
     JSHandle<JSTaggedValue> recordName(vm_->GetFactory()->NewFromStdString("sample_test"));
-    method->SetModule(vm_->GetJSThread(), recordName);
+    func->SetModule(vm_->GetJSThread(), recordName);
     JSNApi::DestroyJSVM(vm_);
 
     // Loader

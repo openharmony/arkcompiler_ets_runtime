@@ -3993,7 +3993,7 @@ void InterpreterAssembly::HandleDeprecatedCreateobjecthavingmethodPrefImm16(
     SAVE_ACC();
     constpool = GetConstantPool(sp);
     JSObject *result =
-        JSObject::Cast(ConstantPool::GetMethodFromCache(thread, constpool, GetModule(sp), imm).GetTaggedObject());
+        JSObject::Cast(ConstantPool::GetMethodFromCache(thread, constpool, imm).GetTaggedObject());
     RESTORE_ACC();
     JSTaggedValue env = GET_ACC();
 
@@ -4784,7 +4784,7 @@ void InterpreterAssembly::HandleDeprecatedCreateobjectwithbufferPrefImm16(
                << " imm:" << imm;
     constpool = GetConstantPool(sp);
     JSObject *result =
-        JSObject::Cast(ConstantPool::GetMethodFromCache(thread, constpool, GetModule(sp), imm).GetTaggedObject());
+        JSObject::Cast(ConstantPool::GetMethodFromCache(thread, constpool, imm).GetTaggedObject());
 
     SAVE_PC();
     EcmaVM *ecmaVm = thread->GetEcmaVM();
@@ -4804,7 +4804,7 @@ void InterpreterAssembly::HandleDeprecatedCreatearraywithbufferPrefImm16(
                << " imm:" << imm;
     constpool = GetConstantPool(sp);
     JSArray *result =
-        JSArray::Cast(ConstantPool::GetMethodFromCache(thread, constpool, GetModule(sp), imm).GetTaggedObject());
+        JSArray::Cast(ConstantPool::GetMethodFromCache(thread, constpool, imm).GetTaggedObject());
     SAVE_PC();
     EcmaVM *ecmaVm = thread->GetEcmaVM();
     ObjectFactory *factory = ecmaVm->GetFactory();
@@ -6633,7 +6633,7 @@ void InterpreterAssembly::HandleDefinemethodImm16Id16Imm8(
     SAVE_ACC();
     constpool = GetConstantPool(sp);
     Method *method =
-        Method::Cast(ConstantPool::GetMethodFromCache(thread, constpool, GetModule(sp), methodId).GetTaggedObject());
+        Method::Cast(ConstantPool::GetMethodFromCache(thread, constpool, methodId).GetTaggedObject());
     ASSERT(method != nullptr);
     RESTORE_ACC();
 
@@ -6642,7 +6642,7 @@ void InterpreterAssembly::HandleDefinemethodImm16Id16Imm8(
     InterpretedFrame *state = (reinterpret_cast<InterpretedFrame *>(sp) - 1);
     JSTaggedValue taggedCurEnv = state->env;
 
-    auto res = SlowRuntimeStub::DefineMethod(thread, method, homeObject, length, taggedCurEnv);
+    auto res = SlowRuntimeStub::DefineMethod(thread, method, homeObject, length, taggedCurEnv, GetModule(sp));
     INTERPRETER_RETURN_IF_ABRUPT(res);
     JSFunction *result = JSFunction::Cast(res.GetTaggedObject());
 
@@ -6743,7 +6743,7 @@ void InterpreterAssembly::HandleDefinemethodImm8Id16Imm8(
     SAVE_ACC();
     constpool = GetConstantPool(sp);
     Method *method =
-        Method::Cast(ConstantPool::GetMethodFromCache(thread, constpool, GetModule(sp), methodId).GetTaggedObject());
+        Method::Cast(ConstantPool::GetMethodFromCache(thread, constpool, methodId).GetTaggedObject());
     ASSERT(method != nullptr);
     RESTORE_ACC();
 
@@ -6751,7 +6751,7 @@ void InterpreterAssembly::HandleDefinemethodImm8Id16Imm8(
     JSTaggedValue homeObject = GET_ACC();
     InterpretedFrame *state = (reinterpret_cast<InterpretedFrame *>(sp) - 1);
     JSTaggedValue taggedCurEnv = state->env;
-    auto res = SlowRuntimeStub::DefineMethod(thread, method, homeObject, length, taggedCurEnv);
+    auto res = SlowRuntimeStub::DefineMethod(thread, method, homeObject, length, taggedCurEnv, GetModule(sp));
     INTERPRETER_RETURN_IF_ABRUPT(res);
     JSFunction *result = JSFunction::Cast(res.GetTaggedObject());
 
@@ -7671,8 +7671,7 @@ JSTaggedValue InterpreterAssembly::GetModule(JSTaggedType *sp)
 {
     // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
     AsmInterpretedFrame *state = reinterpret_cast<AsmInterpretedFrame *>(sp) - 1;
-    Method *method = JSFunction::Cast(state->function.GetTaggedObject())->GetCallTarget();
-    return method->GetModule();
+    return JSFunction::Cast(state->function.GetTaggedObject())->GetModule();
 }
 
 JSTaggedValue InterpreterAssembly::GetProfileTypeInfo(JSTaggedType *sp)

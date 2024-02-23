@@ -164,6 +164,12 @@ public:
         return currentModule->GetSharedType() > SharedTypes::UNSENDABLE_MODULE;
     }
 
+    inline static bool IsSendableFunctionModule(JSTaggedValue currentModule)
+    {
+        return SourceTextModule::Cast(currentModule.GetTaggedObject())->GetSharedType() ==
+            SharedTypes::SENDABLE_FUNCTION_MODULE;
+    }
+
     static constexpr size_t SOURCE_TEXT_MODULE_OFFSET = ModuleRecord::SIZE;
     ACCESSORS(Environment, SOURCE_TEXT_MODULE_OFFSET, NAMESPACE_OFFSET);
     ACCESSORS(Namespace, NAMESPACE_OFFSET, ECMA_MODULE_FILENAME);
