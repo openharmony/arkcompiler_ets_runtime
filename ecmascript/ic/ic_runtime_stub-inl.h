@@ -264,16 +264,17 @@ JSTaggedValue ICRuntimeStub::StorePrototype(JSThread *thread, JSTaggedValue rece
 {
     INTERPRETER_TRACE(thread, StorePrototype);
     ASSERT(handler.IsPrototypeHandler());
-    ASSERT(!receiver.IsJSShared());
     PrototypeHandler *prototypeHandler = PrototypeHandler::Cast(handler.GetTaggedObject());
-    auto cellValue = prototypeHandler->GetProtoCell();
-    if (cellValue.IsNull()) {
-        return JSTaggedValue::Hole();
-    }
-    ASSERT(cellValue.IsProtoChangeMarker());
-    ProtoChangeMarker *cell = ProtoChangeMarker::Cast(cellValue.GetTaggedObject());
-    if (cell->GetHasChanged()) {
-        return JSTaggedValue::Hole();
+    if (!receiver.IsJSShared()) {
+        auto cellValue = prototypeHandler->GetProtoCell();
+        if (cellValue.IsNull()) {
+            return JSTaggedValue::Hole();
+        }
+        ASSERT(cellValue.IsProtoChangeMarker());
+        ProtoChangeMarker *cell = ProtoChangeMarker::Cast(cellValue.GetTaggedObject());
+        if (cell->GetHasChanged()) {
+            return JSTaggedValue::Hole();
+        }
     }
     auto holder = prototypeHandler->GetHolder();
     JSTaggedValue handlerInfo = prototypeHandler->GetHandlerInfo();

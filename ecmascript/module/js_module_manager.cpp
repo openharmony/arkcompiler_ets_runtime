@@ -54,7 +54,7 @@ JSTaggedValue ModuleManager::GetCurrentModule()
         JSTaggedValue recordName = SourceTextModule::GetModuleName(module);
         return HostGetImportedModule(recordName).GetTaggedValue();
     }
-    return module
+    return module;
 }
 
 JSHandle<JSTaggedValue> ModuleManager::GenerateFuncModule(const JSPandaFile *jsPandaFile,

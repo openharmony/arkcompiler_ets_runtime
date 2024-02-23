@@ -2151,6 +2151,7 @@ GateRef StubBuilder::StoreICWithHandler(GateRef glue, GateRef receiver, GateRef 
     Label aotHandlerInfoNotField(env);
     Label cellHasChanged(env);
     Label cellNotChanged(env);
+    Label cellNotUndefined(env);
     Label aotCellNotChanged(env);
     Label loopHead(env);
     Label loopEnd(env);
@@ -2229,6 +2230,8 @@ GateRef StubBuilder::StoreICWithHandler(GateRef glue, GateRef receiver, GateRef 
         Bind(&handlerIsPrototypeHandler);
         {
             GateRef cellValue = GetProtoCell(*handler);
+            Branch(TaggedIsUndefined(cellValue), &loopEnd, &cellNotUndefined);
+            Bind(&cellNotUndefined);
             Branch(TaggedIsNull(cellValue), &cellHasChanged, &cellNotNull);
             Bind(&cellNotNull);
             {
