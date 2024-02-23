@@ -108,6 +108,8 @@
 #include "ecmascript/require/js_cjs_module_cache.h"
 #include "ecmascript/require/js_cjs_require.h"
 #include "ecmascript/require/js_cjs_exports.h"
+#include "ecmascript/shared_objects/js_shared_set.h"
+#include "ecmascript/shared_objects/js_shared_set_iterator.h"
 #include "ecmascript/tagged_array.h"
 #include "ecmascript/tagged_dictionary.h"
 #include "ecmascript/tagged_hash_array.h"
@@ -200,6 +202,8 @@ CString JSHClass::DumpJSType(JSType type)
             return "Regexp";
         case JSType::JS_SET:
             return "Set";
+        case JSType::JS_SHARED_SET:
+            return "SharedSet";
         case JSType::JS_MAP:
             return "Map";
         case JSType::JS_WEAK_SET:
@@ -264,6 +268,8 @@ CString JSHClass::DumpJSType(JSType type)
             return "MapIterator";
         case JSType::JS_SET_ITERATOR:
             return "SetIterator";
+        case JSType::JS_SHARED_SET_ITERATOR:
+            return "SharedSetIterator";
         case JSType::JS_ARRAY_ITERATOR:
             return "ArrayIterator";
         case JSType::JS_STRING_ITERATOR:
@@ -790,6 +796,10 @@ static void DumpObject(TaggedObject *obj, std::ostream &os)
             needDumpHClass = true;
             JSSet::Cast(obj)->Dump(os);
             break;
+        case JSType::JS_SHARED_SET:
+            needDumpHClass = true;
+            JSSharedSet::Cast(obj)->Dump(os);
+            break;
         case JSType::JS_MAP:
             needDumpHClass = true;
             JSMap::Cast(obj)->Dump(os);
@@ -966,6 +976,9 @@ static void DumpObject(TaggedObject *obj, std::ostream &os)
             break;
         case JSType::JS_SET_ITERATOR:
             JSSetIterator::Cast(obj)->Dump(os);
+            break;
+        case JSType::JS_SHARED_SET_ITERATOR:
+            JSSharedSetIterator::Cast(obj)->Dump(os);
             break;
         case JSType::JS_REG_EXP_ITERATOR:
             JSRegExpIterator::Cast(obj)->Dump(os);
@@ -2035,6 +2048,19 @@ void JSSet::Dump(std::ostream &os) const
     set->Dump(os);
 }
 
+void JSSharedSet::Dump(std::ostream &os) const
+{
+    LinkedHashSet *set = LinkedHashSet::Cast(GetLinkedSet().GetTaggedObject());
+    os << " - modRecord: " << std::dec << GetModRecord() << "\n";
+    os << " - elements: " << std::dec << set->NumberOfElements() << "\n";
+    os << " - deleted-elements: " << std::dec << set->NumberOfDeletedElements() << "\n";
+    os << " - capacity: " << std::dec << set->Capacity() << "\n";
+    JSObject::Dump(os);
+
+    os << " <NameDictionary[" << set->NumberOfElements() << "]>\n";
+    set->Dump(os);
+}
+
 void JSWeakMap::Dump(std::ostream &os) const
 {
     LinkedHashMap *map = LinkedHashMap::Cast(GetLinkedMap().GetTaggedObject());
@@ -2098,6 +2124,21 @@ void CellRecord::Dump(std::ostream &os) const
 void JSSetIterator::Dump(std::ostream &os) const
 {
     LinkedHashSet *set = LinkedHashSet::Cast(GetIteratedSet().GetTaggedObject());
+    os << " - elements: " << std::dec << set->NumberOfElements() << "\n";
+    os << " - deleted-elements: " << std::dec << set->NumberOfDeletedElements() << "\n";
+    os << " - capacity: " << std::dec << set->Capacity() << "\n";
+    os << " - nextIndex: " << std::dec << GetNextIndex() << "\n";
+    os << " - IterationKind: " << std::dec << static_cast<int>(GetIterationKind()) << "\n";
+    JSObject::Dump(os);
+
+    os << " <NameDictionary[" << set->NumberOfElements() << "]>\n";
+    set->Dump(os);
+}
+
+void JSSharedSetIterator::Dump(std::ostream &os) const
+{
+    JSSharedSet *iteratedSet = JSSharedSet::Cast(GetIteratedSet().GetTaggedObject());
+    LinkedHashSet *set = LinkedHashSet::Cast(iteratedSet->GetLinkedSet().GetTaggedObject());
     os << " - elements: " << std::dec << set->NumberOfElements() << "\n";
     os << " - deleted-elements: " << std::dec << set->NumberOfDeletedElements() << "\n";
     os << " - capacity: " << std::dec << set->Capacity() << "\n";
@@ -4071,6 +4112,9 @@ static void DumpObject(TaggedObject *obj, std::vector<Reference> &vec, bool isVm
         case JSType::JS_SET:
             JSSet::Cast(obj)->DumpForSnapshot(vec);
             return;
+        case JSType::JS_SHARED_SET:
+            JSSharedSet::Cast(obj)->DumpForSnapshot(vec);
+            return;
         case JSType::JS_MAP:
             JSMap::Cast(obj)->DumpForSnapshot(vec);
             return;
@@ -4208,6 +4252,7 @@ static void DumpObject(TaggedObject *obj, std::vector<Reference> &vec, bool isVm
         case JSType::JS_FORIN_ITERATOR:
         case JSType::JS_MAP_ITERATOR:
         case JSType::JS_SET_ITERATOR:
+        case JSType::JS_SHARED_SET_ITERATOR:
         case JSType::JS_ARRAY_ITERATOR:
         case JSType::JS_STRING_ITERATOR:
         case JSType::JS_REG_EXP_ITERATOR:
@@ -4973,6 +5018,16 @@ void JSSet::DumpForSnapshot(std::vector<Reference> &vec) const
     JSObject::DumpForSnapshot(vec);
 }
 
+void JSSharedSet::DumpForSnapshot(std::vector<Reference> &vec) const
+{
+    LinkedHashSet *set = LinkedHashSet::Cast(GetLinkedSet().GetTaggedObject());
+    vec.emplace_back("linkedset", GetLinkedSet());
+    vec.emplace_back("ModRecord", JSTaggedValue(GetModRecord()));
+    set->DumpForSnapshot(vec);
+
+    JSObject::DumpForSnapshot(vec);
+}
+
 void JSWeakMap::DumpForSnapshot(std::vector<Reference> &vec) const
 {
     LinkedHashMap *map = LinkedHashMap::Cast(GetLinkedMap().GetTaggedObject());
@@ -5017,6 +5072,17 @@ void CellRecord::DumpForSnapshot(std::vector<Reference> &vec) const
 void JSSetIterator::DumpForSnapshot(std::vector<Reference> &vec) const
 {
     LinkedHashSet *set = LinkedHashSet::Cast(GetIteratedSet().GetTaggedObject());
+    vec.emplace_back("iteratedset", GetIteratedSet());
+    set->DumpForSnapshot(vec);
+    vec.emplace_back(CString("NextIndex"), JSTaggedValue(GetNextIndex()));
+    vec.emplace_back(CString("IterationKind"), JSTaggedValue(static_cast<int>(GetIterationKind())));
+    JSObject::DumpForSnapshot(vec);
+}
+
+void JSSharedSetIterator::DumpForSnapshot(std::vector<Reference> &vec) const
+{
+    JSSharedSet *iteratedSet = JSSharedSet::Cast(GetIteratedSet().GetTaggedObject());
+    LinkedHashSet *set = LinkedHashSet::Cast(iteratedSet->GetLinkedSet().GetTaggedObject());
     vec.emplace_back("iteratedset", GetIteratedSet());
     set->DumpForSnapshot(vec);
     vec.emplace_back(CString("NextIndex"), JSTaggedValue(GetNextIndex()));

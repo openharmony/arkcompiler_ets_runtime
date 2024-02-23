@@ -92,6 +92,7 @@
 #include "ecmascript/require/js_cjs_module_cache.h"
 #include "ecmascript/require/js_cjs_require.h"
 #include "ecmascript/require/js_cjs_exports.h"
+#include "ecmascript/shared_objects/js_shared_set_iterator.h"
 #include "ecmascript/symbol_table.h"
 #include "ecmascript/marker_cell.h"
 #include "ecmascript/napi/include/jsnapi.h"
@@ -1768,6 +1769,7 @@ void Builtins::InitializeIterator(const JSHandle<GlobalEnv> &env, const JSHandle
 
     InitializeForinIterator(env, iteratorFuncClass);
     InitializeSetIterator(env, iteratorFuncClass);
+    InitializeSSetIterator(env, iteratorFuncClass);
     InitializeMapIterator(env, iteratorFuncClass);
     InitializeArrayIterator(env, iteratorFuncClass, iteratorPrototypeHClass);
     InitializeStringIterator(env, iteratorFuncClass);
@@ -1833,6 +1835,23 @@ void Builtins::InitializeSetIterator(const JSHandle<GlobalEnv> &env,
     hclassHandle->SetPrototype(thread_, protoValue);
     hclassHandle->SetExtensible(true);
 }
+
+void Builtins::InitializeSSetIterator(const JSHandle<GlobalEnv> &env,
+                                     const JSHandle<JSHClass> &iteratorFuncClass) const
+{
+    // SetIterator.prototype
+    JSHandle<JSObject> setIteratorPrototype(factory_->NewJSObjectWithInit(iteratorFuncClass));
+    // Iterator.prototype.next()
+    SetFunction(env, setIteratorPrototype, "next", JSSharedSetIterator::Next, FunctionLength::ZERO);
+    SetStringTagSymbol(env, setIteratorPrototype, "SharedSet Iterator");
+    env->SetSharedSetIteratorPrototype(thread_, setIteratorPrototype);
+    JSHandle<JSTaggedValue> protoValue = env->GetSharedSetIteratorPrototype();
+    const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
+    JSHandle<JSHClass> hclassHandle(globalConst->GetHandledJSSharedSetIteratorClass());
+    hclassHandle->SetPrototype(thread_, protoValue);
+    hclassHandle->SetExtensible(true);
+}
+
 
 void Builtins::InitializeMapIterator(const JSHandle<GlobalEnv> &env,
                                      const JSHandle<JSHClass> &iteratorFuncClass) const

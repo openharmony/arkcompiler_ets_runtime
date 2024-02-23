@@ -449,6 +449,7 @@ public:
     // Type
     bool IsJSMap() const;
     bool IsJSSet() const;
+    bool IsJSSharedSet() const;
     bool IsJSWeakMap() const;
     bool IsJSWeakSet() const;
     bool IsJSWeakRef() const;
@@ -530,6 +531,7 @@ public:
     bool IsSharedArrayBuffer() const;
 
     bool IsJSSetIterator() const;
+    bool IsJSSharedSetIterator() const;
     bool IsJSRegExpIterator() const;
     bool IsJSMapIterator() const;
     bool IsJSArrayIterator() const;

@@ -123,6 +123,8 @@
 #include "ecmascript/require/js_cjs_module.h"
 #include "ecmascript/require/js_cjs_require.h"
 #include "ecmascript/shared_mm/shared_mm.h"
+#include "ecmascript/shared_objects/js_shared_set.h"
+#include "ecmascript/shared_objects/js_shared_set_iterator.h"
 #include "ecmascript/symbol_table.h"
 #include "ecmascript/tagged_hash_array.h"
 #include "ecmascript/tagged_list.h"
@@ -998,7 +1000,7 @@ JSHandle<JSObject> ObjectFactory::NewJSObjectByConstructor(const JSHandle<JSFunc
     // Check this exception elsewhere
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSObject, thread_);
     JSHandle<JSObject> obj;
-    if (jshclass->IsJSSharedObject()) {
+    if (jshclass->IsJSSharedObject() || jshclass->IsJSSharedSet()) {
         obj = NewSharedOldSpaceJSObject(jshclass);
         if (jshclass->IsDictionaryMode()) {
             auto fieldLayout = jshclass->GetLayout();
@@ -1007,6 +1009,7 @@ JSHandle<JSObject> ObjectFactory::NewJSObjectByConstructor(const JSHandle<JSFunc
             auto properties = NewAndCopySNameDictionary(dict, dict->GetLength());
             obj->SetProperties(thread_, properties);
         }
+        InitializeJSObject(obj, jshclass);
     } else {
         obj = NewJSObjectWithInit(jshclass);
     }
@@ -1216,6 +1219,10 @@ void ObjectFactory::InitializeJSObject(const JSHandle<JSObject> &obj, const JSHa
             break;
         case JSType::JS_SET:
             JSSet::Cast(*obj)->SetLinkedSet(thread_, JSTaggedValue::Undefined());
+            break;
+        case JSType::JS_SHARED_SET:
+            JSSharedSet::Cast(*obj)->SetLinkedSet(thread_, JSTaggedValue::Undefined());
+            JSSharedSet::Cast(*obj)->SetModRecord(0);
             break;
         case JSType::JS_MAP:
             JSMap::Cast(*obj)->SetLinkedMap(thread_, JSTaggedValue::Undefined());
@@ -3130,6 +3137,22 @@ JSHandle<TaggedQueue> ObjectFactory::NewTaggedQueue(uint32_t length)
 JSHandle<TaggedQueue> ObjectFactory::GetEmptyTaggedQueue() const
 {
     return JSHandle<TaggedQueue>(thread_->GlobalConstants()->GetHandledEmptyTaggedQueue());
+}
+
+JSHandle<JSSharedSetIterator> ObjectFactory::NewJSSetIterator(const JSHandle<JSSharedSet> &set, IterationKind kind)
+{
+    JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
+    JSHandle<JSTaggedValue> protoValue = env->GetSharedSetIteratorPrototype();
+    const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
+    JSHandle<JSHClass> hclassHandle(globalConst->GetHandledJSSharedSetIteratorClass());
+    hclassHandle->SetPrototype(thread_, protoValue);
+    JSHandle<JSSharedSetIterator> iter(NewJSObject(hclassHandle));
+    iter->GetJSHClass()->SetExtensible(true);
+    iter->SetIteratedSet(thread_, set.GetTaggedValue());
+    iter->SetNextIndex(0);
+    iter->SetIterationKind(kind);
+    ASSERT(iter.GetTaggedValue().IsJSSharedSetIterator());
+    return iter;
 }
 
 JSHandle<JSSetIterator> ObjectFactory::NewJSSetIterator(const JSHandle<JSSet> &set, IterationKind kind)

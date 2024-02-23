@@ -711,6 +711,16 @@ namespace panda::ecmascript {
     V(Set, GetSize)                           \
     V(Set, Values)                            \
     V(Set, ForEach)                           \
+    V(SharedSet, Constructor)                 \
+    V(SharedSet, Species)                     \
+    V(SharedSet, Add)                         \
+    V(SharedSet, Clear)                       \
+    V(SharedSet, Delete)                      \
+    V(SharedSet, Entries)                     \
+    V(SharedSet, Has)                         \
+    V(SharedSet, GetSize)                     \
+    V(SharedSet, Values)                      \
+    V(SharedSet, ForEach)                     \
     V(StringIterator, Next)                   \
     V(String, Constructor)                    \
     V(String, FromCharCode)                   \

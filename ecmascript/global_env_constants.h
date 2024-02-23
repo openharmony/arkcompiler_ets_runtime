@@ -109,6 +109,7 @@ class ObjectFactory;
     V(JSTaggedValue, JSRegExpClass, JS_REGEXP_CLASS_INDEX, ecma_roots_class)                                          \
     V(JSTaggedValue, JSProxyOrdinaryClass, JS_PROXY_ORDINARY_CLASS_INDEX, ecma_roots_class)                           \
     V(JSTaggedValue, JSSetIteratorClass, JS_SET_ITERATOR_CLASS_INDEX, ecma_roots_class)                               \
+    V(JSTaggedValue, JSSharedSetIteratorClass, JS_SHARED_SET_ITERATOR_CLASS_INDEX, ecma_roots_class)                  \
     V(JSTaggedValue, JSRegExpIteratorClass, JS_REGEXP_ITERATOR_CLASS_INDEX, ecma_roots_class)                         \
     V(JSTaggedValue, JSMapIteratorClass, JS_MAP_ITERATOR_CLASS_INDEX, ecma_roots_class)                               \
     V(JSTaggedValue, JSArrayIteratorClass, JS_ARRAY_ITERATOR_CLASS_INDEX, ecma_roots_class)                           \

@@ -169,6 +169,7 @@
     V(JSTaggedValue, AsyncFromSyncIterator, ASYNC_FROM_SYNC_ITERATOR_INDEX)                         \
     V(JSTaggedValue, MapIteratorPrototype, MAP_ITERATOR_PROTOTYPE_INDEX)                            \
     V(JSTaggedValue, SetIteratorPrototype, SET_ITERATOR_PROTOTYPE_INDEX)                            \
+    V(JSTaggedValue, SharedSetIteratorPrototype, SHARED_SET_ITERATOR_PROTOTYPE_INDEX)               \
     V(JSTaggedValue, RegExpIteratorPrototype, REGEXP_ITERATOR_PROTOTYPE_INDEX)                      \
     V(JSTaggedValue, ArrayIteratorPrototype, ARRAY_ITERATOR_PROTOTYPE_INDEX)                        \
     V(JSTaggedValue, StringIteratorPrototype, STRING_ITERATOR_PROTOTYPE_INDEX)                      \

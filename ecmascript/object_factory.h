@@ -23,12 +23,12 @@
 #include "ecmascript/js_handle.h"
 #include "ecmascript/js_hclass.h"
 #include "ecmascript/js_native_pointer.h"
-#include "ecmascript/js_shared_object.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/mem/heap_region_allocator.h"
 #include "ecmascript/mem/machine_code.h"
 #include "ecmascript/mem/native_area_allocator.h"
 #include "ecmascript/mem/space.h"
+#include "ecmascript/shared_objects/js_shared_object.h"
 #include "ecmascript/tagged_array.h"
 #include "ecmascript/byte_array.h"
 
@@ -57,9 +57,11 @@ class JSArguments;
 class TaggedQueue;
 class JSForInIterator;
 class JSSet;
+class JSSharedSet;
 class JSMap;
 class JSRegExp;
 class JSSetIterator;
+class JSSharedSetIterator;
 class JSRegExpIterator;
 class JSMapIterator;
 class JSArrayIterator;
@@ -433,6 +435,7 @@ public:
     JSHandle<TaggedQueue> GetEmptyTaggedQueue() const;
 
     JSHandle<JSSetIterator> NewJSSetIterator(const JSHandle<JSSet> &set, IterationKind kind);
+    JSHandle<JSSharedSetIterator> NewJSSetIterator(const JSHandle<JSSharedSet> &set, IterationKind kind);
 
     JSHandle<JSRegExpIterator> NewJSRegExpIterator(const JSHandle<JSTaggedValue> &matcher,
                                                    const JSHandle<EcmaString> &inputStr, bool global,
@@ -696,6 +699,7 @@ public:
 
     // -----------------------------------shared object-----------------------------------------
     JSHandle<JSObject> NewSharedOldSpaceJSObject(const JSHandle<JSHClass> &jshclass);
+    JSHandle<JSObject> NewSharedOldSpaceJSObjectWithInit(const JSHandle<JSHClass> &jshclass);
 
     TaggedObject *NewSharedOldSpaceObject(const JSHandle<JSHClass> &hclass);
 

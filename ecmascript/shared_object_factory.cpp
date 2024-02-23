@@ -248,6 +248,13 @@ TaggedObject *ObjectFactory::NewSharedOldSpaceObject(const JSHandle<JSHClass> &h
     return header;
 }
 
+JSHandle<JSObject> ObjectFactory::NewSharedOldSpaceJSObjectWithInit(const JSHandle<JSHClass> &jshclass)
+{
+    auto obj = NewSharedOldSpaceJSObject(jshclass);
+    InitializeJSObject(obj, jshclass);
+    return obj;
+}
+
 JSHandle<JSObject> ObjectFactory::NewSharedOldSpaceJSObject(const JSHandle<JSHClass> &jshclass)
 {
     JSHandle<JSObject> obj(thread_, JSObject::Cast(NewSharedOldSpaceObject(jshclass)));

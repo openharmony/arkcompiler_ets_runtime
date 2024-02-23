@@ -112,6 +112,8 @@
 #include "ecmascript/mem/machine_code.h"
 #include "ecmascript/module/js_module_source_text.h"
 #include "ecmascript/object_factory.h"
+#include "ecmascript/shared_objects/js_shared_set.h"
+#include "ecmascript/shared_objects/js_shared_set_iterator.h"
 #include "ecmascript/tagged_array.h"
 #include "ecmascript/tagged_dictionary.h"
 #include "ecmascript/tagged_hash_array.h"
@@ -197,6 +199,21 @@ static JSHandle<JSSet> NewJSSet(JSThread *thread, ObjectFactory *factory, JSHand
     JSHandle<JSSet> jsSet = JSHandle<JSSet>::Cast(factory->NewJSObjectWithInit(setClass));
     JSHandle<LinkedHashSet> linkedSet(LinkedHashSet::Create(thread));
     jsSet->SetLinkedSet(thread, linkedSet);
+    return jsSet;
+}
+
+static JSHandle<JSSharedSet> NewJSSharedSet(JSThread *thread, ObjectFactory *factory)
+{
+    auto globalEnv = thread->GetEcmaVM()->GetGlobalEnv();
+    JSHandle<JSTaggedValue> proto = globalEnv->GetSFunctionPrototype();
+    auto emptySLayout = thread->GlobalConstants()->GetHandledEmptySLayoutInfo();
+    JSHandle<JSHClass> setClass = factory->NewSEcmaHClass(JSSharedSet::SIZE, 0,
+        JSType::JS_SHARED_SET, proto, emptySLayout);
+    JSHandle<JSSharedSet> jsSet = JSHandle<JSSharedSet>::Cast(factory->NewJSObjectWithInit(setClass));
+    JSHandle<LinkedHashSet> linkedSet(
+        LinkedHashSet::Create(thread, LinkedHashSet::MIN_CAPACITY, MemSpaceKind::SHARED));
+    jsSet->SetLinkedSet(thread, linkedSet);
+    jsSet->SetModRecord(0);
     return jsSet;
 }
 
@@ -590,6 +607,12 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 DUMP_FOR_HANDLE(jsSet);
                 break;
             }
+            case JSType::JS_SHARED_SET: {
+                CHECK_DUMP_FIELDS(JSObject::SIZE, JSSharedSet::SIZE, 2U);
+                JSHandle<JSSharedSet> jsSet = NewJSSharedSet(thread, factory);
+                DUMP_FOR_HANDLE(jsSet);
+                break;
+            }
             case JSType::JS_MAP: {
                 CHECK_DUMP_FIELDS(JSObject::SIZE, JSMap::SIZE, 1U);
                 JSHandle<JSMap> jsMap = NewJSMap(thread, factory, proto);
@@ -668,6 +691,13 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 CHECK_DUMP_FIELDS(JSObject::SIZE, JSSetIterator::SIZE, 2U);
                 JSHandle<JSSetIterator> jsSetIter =
                     factory->NewJSSetIterator(NewJSSet(thread, factory, proto), IterationKind::KEY);
+                DUMP_FOR_HANDLE(jsSetIter);
+                break;
+            }
+            case JSType::JS_SHARED_SET_ITERATOR: {
+                CHECK_DUMP_FIELDS(JSObject::SIZE, JSSharedSetIterator::SIZE, 2U);
+                JSHandle<JSSharedSetIterator> jsSetIter =
+                    factory->NewJSSetIterator(NewJSSharedSet(thread, factory), IterationKind::KEY);
                 DUMP_FOR_HANDLE(jsSetIter);
                 break;
             }

@@ -1027,6 +1027,11 @@ inline bool JSTaggedValue::IsJSSet() const
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSSet();
 }
 
+inline bool JSTaggedValue::IsJSSharedSet() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSSharedSet();
+}
+
 inline bool JSTaggedValue::IsJSWeakRef() const
 {
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSWeakRef();
@@ -1180,6 +1185,11 @@ inline bool JSTaggedValue::IsForinIterator() const
 inline bool JSTaggedValue::IsJSSetIterator() const
 {
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSSetIterator();
+}
+
+inline bool JSTaggedValue::IsJSSharedSetIterator() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSSharedSetIterator();
 }
 
 inline bool JSTaggedValue::IsJSRegExpIterator() const

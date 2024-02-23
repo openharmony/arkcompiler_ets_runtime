@@ -220,6 +220,7 @@ private:
     void InitializeMapIterator(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &iteratorFuncClass) const;
 
     void InitializeSetIterator(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &iteratorFuncClass) const;
+    void InitializeSSetIterator(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &iteratorFuncClass) const;
 
     void InitializeArrayIterator(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &iteratorFuncClass,
                                  const JSHandle<JSHClass> &iteratorPrototypeClass) const;
@@ -351,15 +352,19 @@ private:
     void InitializeSObjectAndSFunction(const JSHandle<GlobalEnv> &env) const;
     void CopySObjectAndSFunction(const JSHandle<GlobalEnv> &env, const JSTaggedValue &srcEnv) const;
     void InitializeSObject(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &sObjIHClass,
-                           const JSHandle<JSObject> &sObjFuncPrototype,
+                           const JSHandle<JSObject> &sObjPrototype,
                            const JSHandle<JSFunction> &sFuncPrototype) const;
     void InitializeSFunction(const JSHandle<GlobalEnv> &env,
                              const JSHandle<JSFunction> &sFuncPrototype) const;
+    void InitializeSSet(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &sObjPrototype,
+                        const JSHandle<JSFunction> &sFuncPrototype) const;
 
     JSHandle<JSHClass> CreateSObjectFunctionHClass(const JSHandle<JSFunction> &sFuncPrototype) const;
     JSHandle<JSHClass> CreateSObjectPrototypeHClass() const;
     JSHandle<JSHClass> CreateSFunctionHClass(const JSHandle<JSFunction> &sFuncPrototype) const;
-    JSHandle<JSHClass> CreateSFunctionPrototypeHClass(const JSHandle<JSTaggedValue> &sObjFuncPrototypeVal) const;
+    JSHandle<JSHClass> CreateSFunctionPrototypeHClass(const JSHandle<JSTaggedValue> &sObjPrototypeVal) const;
+    JSHandle<JSHClass> CreateSSetPrototypeHClass(const JSHandle<JSObject> &sObjPrototype) const;
+    JSHandle<JSHClass> CreateSSetFunctionHClass(const JSHandle<JSFunction> &sFuncPrototype) const;
 
     void InitializeSCtor(const JSHandle<JSHClass> &protoHClass, const JSHandle<JSFunction> &ctor,
                          std::string_view name, int length) const;

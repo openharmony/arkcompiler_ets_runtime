@@ -171,6 +171,7 @@ group("ark_js_moduletest") {
     "definesendableclass",
     "sendablecontext",
     "sendableclassuseimport",
+    "sharedset",
     "sharedic",
   ]
 
@@ -352,6 +353,7 @@ group("ark_asm_test") {
     "definesendableclass",
     "sendablecontext",
     "sendableclassuseimport",
+    "sharedset",
     "sharedic",
   ]
 
@@ -511,6 +513,7 @@ group("ark_asm_single_step_test") {
     "sendablecontext",
     "sendableclassuseimport",
     "sharedic",
+    "sharedset",
   ]
 
   deps = []

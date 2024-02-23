@@ -312,6 +312,8 @@ CString *HeapSnapshot::GenerateNodeName(TaggedObject *entry)
             return GetString("Regexp");
         case JSType::JS_SET:
             return GetString("Set");
+        case JSType::JS_SHARED_SET:
+            return GetString("SharedSet");
         case JSType::JS_MAP:
             return GetString("Map");
         case JSType::JS_WEAK_SET:
@@ -366,6 +368,8 @@ CString *HeapSnapshot::GenerateNodeName(TaggedObject *entry)
             return GetString("MapIterator");
         case JSType::JS_SET_ITERATOR:
             return GetString("SetIterator");
+        case JSType::JS_SHARED_SET_ITERATOR:
+            return GetString("SharedSetIterator");
         case JSType::JS_REG_EXP_ITERATOR:
             return GetString("RegExpIterator");
         case JSType::JS_ARRAY_ITERATOR:

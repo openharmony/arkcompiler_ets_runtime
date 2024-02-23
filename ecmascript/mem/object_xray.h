@@ -106,6 +106,8 @@
 #include "ecmascript/module/js_module_namespace.h"
 #include "ecmascript/module/js_module_source_text.h"
 #include "ecmascript/module/js_shared_module.h"
+#include "ecmascript/shared_objects/js_shared_set.h"
+#include "ecmascript/shared_objects/js_shared_set_iterator.h"
 #include "ecmascript/tagged_node.h"
 #include "ecmascript/ts_types/ts_type.h"
 #include "ecmascript/ts_types/ts_type_table.h"
@@ -258,6 +260,9 @@ public:
             case JSType::JS_SET:
                 JSSet::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
+            case JSType::JS_SHARED_SET:
+                JSSharedSet::Cast(object)->VisitRangeSlot<visitType>(visitor);
+                break;
             case JSType::JS_MAP:
                 JSMap::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
@@ -287,6 +292,9 @@ public:
                 break;
             case JSType::JS_SET_ITERATOR:
                 JSSetIterator::Cast(object)->VisitRangeSlot<visitType>(visitor);
+                break;
+            case JSType::JS_SHARED_SET_ITERATOR:
+                JSSharedSetIterator::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::JS_REG_EXP_ITERATOR:
                 JSRegExpIterator::Cast(object)->VisitRangeSlot<visitType>(visitor);
