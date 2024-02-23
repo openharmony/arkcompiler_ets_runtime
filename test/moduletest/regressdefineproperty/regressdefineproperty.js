@@ -49,3 +49,12 @@ try {
 } catch {
     print("true")
 }
+
+Object.defineProperty(this, 'x', {
+  configurable: true,
+  get: function () {return 100}
+});
+Object.defineProperty(this, 'x', {
+  value: 10
+});
+print(JSON.stringify(Object.getOwnPropertyDescriptor(this, 'x')));
