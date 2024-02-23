@@ -60,13 +60,13 @@ public:
     // array
     void PUBLIC_API RecordElements(panda_file::File::EntityId id, JSTaggedValue elements);
 
-    void UpdateRecordedElements(panda_file::File::EntityId id, JSTaggedValue elements, ElementsKind kind);
+    void PUBLIC_API UpdateRecordedElements(panda_file::File::EntityId id, JSTaggedValue elements, ElementsKind kind);
 
     void RecordConstantIndex(uint32_t bcAbsoluteOffset, uint32_t index);
 
     int PUBLIC_API GetElementsIndexByEntityId(panda_file::File::EntityId id);
 
-    ElementsKind GetElementsKindByEntityId(panda_file::File::EntityId id);
+    ElementsKind PUBLIC_API GetElementsKindByEntityId(panda_file::File::EntityId id);
 
     // hclass
     void RecordHClass(ProfileType rootType, ProfileType childType, JSTaggedType hclass);

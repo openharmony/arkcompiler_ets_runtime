@@ -34,7 +34,7 @@ public:
     ~PGOTypeRecorder() = default;
 
     std::vector<ElementsKind> PUBLIC_API GetElementsKindsForUser(int32_t offset) const;
-    std::vector<ElementsKind> GetTransitionElementsKindsForUser(int32_t offset) const;
+    std::vector<ElementsKind> PUBLIC_API GetTransitionElementsKindsForUser(int32_t offset) const;
     ElementsKind PUBLIC_API GetElementsKindForCreater(int32_t offset) const;
     uint32_t PUBLIC_API GetElementsLength(int32_t offset) const;
 

@@ -413,7 +413,7 @@ public:
         return val;
     }
 
-    bool TryGetAOTArrayLiteral(JSThread *thread, bool loadAOT, JSHandle<AOTLiteralInfo> entryIndexes,
+    bool PUBLIC_API TryGetAOTArrayLiteral(JSThread *thread, bool loadAOT, JSHandle<AOTLiteralInfo> entryIndexes,
                                JSMutableHandle<TaggedArray> literal, ElementsKind *dataKind)
     {
         if (loadAOT) {
