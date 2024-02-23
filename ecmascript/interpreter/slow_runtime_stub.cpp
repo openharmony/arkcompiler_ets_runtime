@@ -1041,6 +1041,14 @@ JSTaggedValue SlowRuntimeStub::LdSendableClass(JSThread *thread, JSTaggedValue e
     return RuntimeStubs::RuntimeLdSendableClass(envHandle, level);
 }
 
+JSTaggedValue SlowRuntimeStub::LdSendableExternalModuleVar(JSThread *thread, int32_t index, JSTaggedValue thisFunc)
+{
+    RUNTIME_TRACE(thread, LdSendableExternalModuleVarByIndex);
+    [[maybe_unused]] EcmaHandleScope scope(thread);
+
+    return RuntimeStubs::RuntimeLdSendableExternalModuleVar(thread, index, thisFunc);
+}
+
 JSTaggedValue SlowRuntimeStub::LdSuperByValue(JSThread *thread, JSTaggedValue obj, JSTaggedValue key,
                                               JSTaggedValue thisFunc)
 {

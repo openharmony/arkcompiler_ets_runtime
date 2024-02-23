@@ -42,6 +42,7 @@
 #include "ecmascript/module/js_module_manager.h"
 #include "ecmascript/module/js_module_source_text.h"
 #include "ecmascript/platform/file.h"
+#include "ecmascript/runtime.h"
 #include "ecmascript/stackmap/llvm_stackmap_parser.h"
 #include "ecmascript/template_string.h"
 #include "ecmascript/ts_types/ts_manager.h"
@@ -1284,6 +1285,11 @@ JSTaggedValue RuntimeStubs::RuntimeLdLocalModuleVar(JSThread *thread, int32_t in
 JSTaggedValue RuntimeStubs::RuntimeLdExternalModuleVar(JSThread *thread, int32_t index)
 {
     return thread->GetCurrentEcmaContext()->GetModuleManager()->GetModuleValueOutter(index);
+}
+
+JSTaggedValue RuntimeStubs::RuntimeLdSendableExternalModuleVar(JSThread *thread, int32_t index, JSTaggedValue jsFunc)
+{
+    return SharedModuleManager::GetInstance()->GetSendableModuleValue(thread, index, jsFunc);
 }
 
 JSTaggedValue RuntimeStubs::RuntimeLdExternalModuleVar(JSThread *thread, int32_t index, JSTaggedValue jsFunc)

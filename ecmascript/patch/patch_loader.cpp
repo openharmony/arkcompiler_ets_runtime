@@ -19,6 +19,7 @@
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/jspandafile/literal_data_extractor.h"
 #include "ecmascript/mem/c_string.h"
+#include "ecmascript/module/js_shared_module.h"
 #include "ecmascript/napi/include/jsnapi.h"
 
 namespace panda::ecmascript {
@@ -111,6 +112,35 @@ void PatchLoader::ExecuteFuncOrPatchMain(
     LOG_ECMA(DEBUG) << "execute main end";
 }
 
+<<<<<<< HEAD
+=======
+void PatchLoader::ReplaceModuleOfMethod(JSThread *thread, const JSPandaFile *baseFile, PatchInfo &patchInfo)
+{
+    EcmaContext *context = thread->GetCurrentEcmaContext();
+    auto baseConstpoolValues = context->FindConstpools(baseFile);
+    if (!baseConstpoolValues.has_value()) {
+        LOG_ECMA(ERROR) << "replace module :base constpool is empty";
+        return;
+    }
+
+    const auto &baseMethodInfo = patchInfo.baseMethodInfo;
+    for (const auto &item : baseMethodInfo) {
+        const auto &methodIndex = item.first;
+        JSTaggedValue baseConstpool = baseConstpoolValues.value().get()[methodIndex.constpoolNum];
+
+        Method *patchMethod = GetPatchMethod(thread, methodIndex, baseConstpool);
+
+        JSHandle<JSTaggedValue> moduleRecord = context->FindPatchModule(patchMethod->GetRecordNameStr());
+        ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
+        JSHandle<JSTaggedValue> sendableClsRecord = moduleManager->GenerateSendableFuncModule(moduleRecord);
+        patchMethod->SetModule(thread, sendableClsRecord.GetTaggedValue());
+        LOG_ECMA(DEBUG) << "Replace base method module: "
+                       << patchMethod->GetRecordNameStr()
+                       << ":" << patchMethod->GetMethodName();
+    }
+}
+
+>>>>>>> origin/dev_shareheap
 PatchErrorCode PatchLoader::UnloadPatchInternal(JSThread *thread, const CString &patchFileName,
                                                 const CString &baseFileName, PatchInfo &patchInfo)
 {

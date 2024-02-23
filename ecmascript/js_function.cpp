@@ -28,6 +28,7 @@
 #include "ecmascript/js_tagged_value-inl.h"
 #include "ecmascript/mem/c_containers.h"
 #include "ecmascript/module/js_module_source_text.h"
+#include "ecmascript/module/js_shared_module.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/tagged_array.h"
 #include "ecmascript/require/js_require_manager.h"
@@ -1001,7 +1002,12 @@ void JSFunction::InitializeForConcurrentFunction(JSThread *thread)
     JSHandle<ecmascript::SourceTextModule> module = JSHandle<ecmascript::SourceTextModule>::Cast(moduleRecord);
     module->SetStatus(ecmascript::ModuleStatus::INSTANTIATED);
     ecmascript::SourceTextModule::EvaluateForConcurrent(thread, module, method);
+<<<<<<< HEAD
     this->SetModule(thread, module);
+=======
+    JSHandle<JSTaggedValue> sendableClsRecord = moduleManager->GenerateSendableFuncModule(moduleRecord);
+    method->SetModule(thread, sendableClsRecord);
+>>>>>>> origin/dev_shareheap
 }
 
 void JSFunctionBase::SetCompiledFuncEntry(uintptr_t codeEntry, bool isFastCall)

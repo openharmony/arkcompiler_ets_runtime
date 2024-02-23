@@ -1,0 +1,3 @@
+sendableclassuseimport.ts;sendableclassuseimport;esm;sendableclassuseimport.ts;xxsendableclassuseimportxx
+func.ts;func;esm;func.ts;xxfuncxx
+string.ts;string;esm;string.ts;xxstringxx

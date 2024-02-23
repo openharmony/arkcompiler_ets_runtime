@@ -22,6 +22,7 @@
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/module/js_module_manager.h"
+#include "ecmascript/module/js_shared_module.h"
 #include "ecmascript/patch/quick_fix_manager.h"
 #include "ecmascript/tagged_array-inl.h"
 
@@ -286,6 +287,7 @@ JSHandle<JSFunction> LiteralDataExtractor::DefineMethodInLiteral(JSThread *threa
         kind = literalKind;
     }
     bool canFastCall = false;
+<<<<<<< HEAD
 
     CString moduleName = jsPandaFile->GetJSPandaFileDesc();
     CString entry = JSPandaFile::ENTRY_FUNCTION_NAME;
@@ -306,6 +308,15 @@ JSHandle<JSFunction> LiteralDataExtractor::DefineMethodInLiteral(JSThread *threa
     }
     JSHandle<Method> method =
         factory->NewSMethod(jsPandaFile, methodLiteral, constpool, entryIndex, isLoadedAOT, &canFastCall);
+=======
+    JSHandle<Method> method;
+    ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
+    // esm -> SourceTextModule; cjs or script -> string of recordName
+    JSHandle<JSTaggedValue> module = moduleManager->GenerateSendableFuncModule(jsPandaFile, entryPoint);
+    method = factory->NewSMethod(jsPandaFile, methodLiteral, constpool, module, entryIndex,
+    isLoadedAOT, &canFastCall);
+
+>>>>>>> origin/dev_shareheap
     
     JSHandle<JSHClass> functionClass;
     JSHandle<JSFunction> jsFunc = CreateJSFunctionInLiteral(vm, method, kind, classKind);

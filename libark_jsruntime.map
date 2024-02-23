@@ -114,6 +114,7 @@
       panda::ecmascript::DynChunk::EmitChar*;
       panda::ecmascript::EcmaContext::FindConstpool*;
       panda::ecmascript::EcmaContext::FindOrCreateConstPool*;
+      panda::ecmascript::EcmaContext::FindUnsharedConstpool*;
       panda::ecmascript::EcmaContext::SetTSManager*;
       panda::ecmascript::EcmaString::ComputeHashcode*;
       panda::ecmascript::EcmaString::GetUtf16DataFlat*;
@@ -167,6 +168,7 @@
       panda::ecmascript::JSPandaFile::GetNormalizedFileDesc*;
       panda::ecmascript::JSProxy::IsArray*;
       panda::ecmascript::JSTaggedValue::IsJSCOWArray*;
+      panda::ecmascript::JSTaggedValue::IsInSharedHeap*;
       panda::ecmascript::JSTaggedValue::SetProperty*;
       panda::ecmascript::JSTaggedValue::ToString*;
       panda::ecmascript::JSTypedArray::FastSetPropertyByIndex*;
@@ -204,6 +206,7 @@
       panda::ecmascript::ObjectFactory::NewCompressedUtf8*;
       panda::ecmascript::ObjectFactory::NewDictionaryArray*;
       panda::ecmascript::ObjectFactory::NewEcmaHClass*;
+      panda::ecmascript::ObjectFactory::NewSDictionaryArray*;
       panda::ecmascript::ObjectFactory::NewFromASCII*;
       panda::ecmascript::ObjectFactory::NewFromUtf16*;
       panda::ecmascript::ObjectFactory::NewFromUtf8*;
@@ -215,6 +218,7 @@
       panda::ecmascript::ObjectOperator::UpdateDetector*;
       panda::ecmascript::PageMap*;
       panda::ecmascript::PageUnmap*;
+      panda::ecmascript::PageSize*;
       panda::ecmascript::RealPath*;
       panda::ecmascript::SetDirModeAsDefault*;
       panda::ecmascript::SetFileModeAsDefault*;

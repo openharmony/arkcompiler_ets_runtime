@@ -152,6 +152,7 @@ class CjsRequire;
 class CjsExports;
 class ResolvedBinding;
 class ResolvedIndexBinding;
+class ResolvedRecordBinding;
 class BigInt;
 class AsyncGeneratorRequest;
 class AsyncIteratorRecord;
@@ -650,8 +651,8 @@ public:
     JSHandle<ResolvedBinding> NewResolvedBindingRecord(const JSHandle<SourceTextModule> &module,
                                                        const JSHandle<JSTaggedValue> &bindingName);
     JSHandle<ResolvedIndexBinding> NewResolvedIndexBindingRecord();
-    JSHandle<ResolvedIndexBinding> NewResolvedIndexBindingRecord(const JSHandle<SourceTextModule> &module,
-                                                                           int32_t index);
+    JSHandle<ResolvedIndexBinding> NewResolvedIndexBindingRecord(
+        const JSHandle<SourceTextModule> &module, int32_t index);
 
     JSHandle<CellRecord> NewCellRecord();
     JSHandle<JSFunction> NewJSAsyncGeneratorFunction(const JSHandle<Method> &method);
@@ -742,6 +743,23 @@ public:
 
     JSHandle<AccessorData> NewSAccessorData();
 
+    JSHandle<SourceTextModule> NewSModule();
+
+    JSHandle<ResolvedIndexBinding> NewSResolvedIndexBindingRecord();
+
+    JSHandle<ResolvedIndexBinding> NewSResolvedIndexBindingRecord(const JSHandle<SourceTextModule> &module,
+        int32_t index);
+
+    JSHandle<ResolvedBinding> NewSResolvedBindingRecord();
+
+    JSHandle<ResolvedBinding> NewSResolvedBindingRecord(const JSHandle<SourceTextModule> &module,
+        const JSHandle<JSTaggedValue> &bindingName);
+
+    JSHandle<ResolvedRecordBinding> NewSResolvedRecordBindingRecord();
+
+    JSHandle<ResolvedRecordBinding> NewSResolvedRecordBindingRecord(const JSHandle<EcmaString> &moduleRecord,
+                                                                    int32_t index);
+
     JSHandle<LayoutInfo> CopyAndReSortSLayoutInfo(const JSHandle<LayoutInfo> &old, int end, int capacity);
 
     JSHandle<LayoutInfo> CreateSLayoutInfo(uint32_t properties);
@@ -750,7 +768,7 @@ public:
 
     JSHandle<MutantTaggedArray> NewSEmptyMutantArray();
 
-    JSHandle<TaggedArray> NewSDictionaryArray(uint32_t length);
+    JSHandle<TaggedArray> PUBLIC_API NewSDictionaryArray(uint32_t length);
 
     JSHandle<TaggedArray> NewSTaggedArrayWithoutInit(uint32_t length);
 

@@ -19,6 +19,8 @@
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/js_tagged_value-inl.h"
 #include "ecmascript/mem/c_string.h"
+#include "ecmascript/module/js_module_manager.h"
+#include "ecmascript/module/js_shared_module.h"
 #include "ecmascript/napi/include/jsnapi.h"
 #include "ecmascript/object_factory.h"
 
@@ -224,7 +226,13 @@ JSTaggedValue QuickFixManager::CheckAndGetPatch(JSThread *thread, const JSPandaF
             return method.GetTaggedValue();
         }
     }
+<<<<<<< HEAD
     PatchLoader::UpdateModuleForColdPatch(thread, methodId, recordName);
+=======
+    ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
+    JSHandle<JSTaggedValue> sendableClsRecord = moduleManager->GenerateSendableFuncModule(moduleRecord);
+    method->SetModule(thread, sendableClsRecord.GetTaggedValue());
+>>>>>>> origin/dev_shareheap
     return method.GetTaggedValue();
 }
 

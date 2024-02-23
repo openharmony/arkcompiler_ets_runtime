@@ -1747,6 +1747,7 @@ GateRef StubBuilder::LoadICWithHandler(
     Label handlerIsPrototypeHandler(env);
     Label handlerNotPrototypeHandler(env);
     Label cellHasChanged(env);
+    Label cellNotUndefined(env);
     Label loopHead(env);
     Label loopEnd(env);
     DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
@@ -1850,6 +1851,8 @@ GateRef StubBuilder::LoadICWithHandler(
         Bind(&handlerIsPrototypeHandler);
         {
             GateRef cellValue = GetProtoCell(*handler);
+            Branch(TaggedIsUndefined(cellValue), &loopEnd, &cellNotUndefined);
+            Bind(&cellNotUndefined);
             Branch(GetHasChanged(cellValue), &cellHasChanged, &loopEnd);
             Bind(&cellHasChanged);
             {

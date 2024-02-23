@@ -36,6 +36,7 @@
 #include "ecmascript/js_thread.h"
 #include "ecmascript/log.h"
 #include "ecmascript/module/module_path_helper.h"
+#include "ecmascript/module/js_shared_module.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
 #include "ecmascript/require/js_cjs_module_cache.h"
@@ -292,9 +293,17 @@ Expected<JSTaggedValue, bool> EcmaContext::CommonInvokeEcmaEntrypoint(const JSPa
         if (!jsPandaFile->IsBundlePack()) {
             moduleName = entry;
         }
+<<<<<<< HEAD
         JSHandle<SourceTextModule> module = moduleManager_->HostGetImportedModule(moduleName);
         func->SetModule(thread_, module);
     } else {  
+=======
+        JSHandle<JSTaggedValue> module(moduleManager_->HostGetImportedModule(moduleName));
+        // esm -> SourceTextModule; cjs or script -> string of recordName
+        JSHandle<JSTaggedValue> sendableClsRecord = moduleManager_->GenerateSendableFuncModule(module);
+        method->SetModule(thread_, sendableClsRecord);
+    } else {
+>>>>>>> origin/dev_shareheap
         // if it is Cjs at present, the module slot of the function is not used. We borrow it to store the recordName,
         // which can avoid the problem of larger memory caused by the new slot
         JSHandle<EcmaString> recordName = factory_->NewFromUtf8(entry);

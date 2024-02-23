@@ -105,6 +105,7 @@
 #include "ecmascript/mem/slots.h"
 #include "ecmascript/module/js_module_namespace.h"
 #include "ecmascript/module/js_module_source_text.h"
+#include "ecmascript/module/js_shared_module.h"
 #include "ecmascript/tagged_node.h"
 #include "ecmascript/ts_types/ts_type.h"
 #include "ecmascript/ts_types/ts_type_table.h"
@@ -681,6 +682,9 @@ public:
                 break;
             case JSType::RESOLVEDINDEXBINDING_RECORD:
                 ResolvedIndexBinding::Cast(object)->VisitRangeSlot<visitType>(visitor);
+                break;
+            case JSType::RESOLVEDRECORDBINDING_RECORD:
+                ResolvedRecordBinding::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::JS_MODULE_NAMESPACE:
                 ModuleNamespace::Cast(object)->VisitRangeSlot<visitType>(visitor);

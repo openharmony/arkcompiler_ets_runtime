@@ -844,7 +844,9 @@ void PGOProfiler::DumpICByNameWithHandler(ApEntityId abcId, const CString &recor
         } else if (secondValue.IsPrototypeHandler()) {
             auto prototypeHandler = PrototypeHandler::Cast(secondValue.GetTaggedObject());
             auto cellValue = prototypeHandler->GetProtoCell();
-            ASSERT(cellValue.IsProtoChangeMarker());
+            if (cellValue.IsUndefined()) {
+                return;
+            }
             ProtoChangeMarker *cell = ProtoChangeMarker::Cast(cellValue.GetTaggedObject());
             if (cell->GetHasChanged()) {
                 return;
@@ -889,7 +891,9 @@ void PGOProfiler::DumpICByNameWithHandler(ApEntityId abcId, const CString &recor
     } else if (secondValue.IsPrototypeHandler()) {
         auto prototypeHandler = PrototypeHandler::Cast(secondValue.GetTaggedObject());
         auto cellValue = prototypeHandler->GetProtoCell();
-        ASSERT(cellValue.IsProtoChangeMarker());
+        if (cellValue.IsUndefined()) {
+            return;
+        }
         ProtoChangeMarker *cell = ProtoChangeMarker::Cast(cellValue.GetTaggedObject());
         if (cell->GetHasChanged()) {
             return;

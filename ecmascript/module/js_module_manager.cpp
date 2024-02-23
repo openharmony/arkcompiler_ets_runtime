@@ -26,6 +26,7 @@
 #include "ecmascript/linked_hash_table.h"
 #include "ecmascript/module/js_module_deregister.h"
 #include "ecmascript/module/js_module_source_text.h"
+#include "ecmascript/module/js_shared_module.h"
 #include "ecmascript/module/module_data_extractor.h"
 #include "ecmascript/module/module_path_helper.h"
 #include "ecmascript/require/js_cjs_module.h"
@@ -47,8 +48,38 @@ ModuleManager::ModuleManager(EcmaVM *vm) : vm_(vm)
 JSTaggedValue ModuleManager::GetCurrentModule()
 {
     FrameHandler frameHandler(vm_->GetJSThread());
+<<<<<<< HEAD
     JSTaggedValue currentFunc = frameHandler.GetFunction();
     return JSFunction::Cast(currentFunc.GetTaggedObject())->GetModule();
+=======
+    Method *currentMethod = frameHandler.GetMethod();
+    JSTaggedValue sharedModule = currentMethod->GetModule();
+    // [[TODO::DaiHN "use share" module could return directly]]
+    JSTaggedValue recordName = SourceTextModule::GetModuleName(sharedModule);
+    return HostGetImportedModule(recordName).GetTaggedValue();
+}
+
+JSHandle<JSTaggedValue> ModuleManager::GenerateSendableFuncModule(const JSPandaFile *jsPandaFile, const CString &entryPoint)
+{
+    CString recordName = jsPandaFile->GetRecordName(entryPoint);
+
+    JSRecordInfo recordInfo;
+    jsPandaFile->CheckAndGetRecordInfo(recordName, recordInfo);
+    if (jsPandaFile->IsModule(recordInfo)) {
+        JSHandle<JSTaggedValue> module(HostGetImportedModule(recordName));
+        // [[TODO::DaiHN]] Sendable class defined in Shared Module would set Shared Module directly.
+        // Clone isolate module at shared-heap to mark sendable class.
+        return SendableClassModule::GenerateSendableFuncModule(vm_->GetJSThread(), module);
+    }
+    return JSHandle<JSTaggedValue>(vm_->GetFactory()->NewFromUtf8(recordName));
+}
+
+JSHandle<JSTaggedValue> ModuleManager::GenerateSendableFuncModule(const JSHandle<JSTaggedValue> &module)
+{
+    // [[TODO::DaiHN]] Sendable class defined in Shared Module would set Shared Module directly.
+    // Clone isolate module at shared-heap to mark sendable class.
+    return SendableClassModule::GenerateSendableFuncModule(vm_->GetJSThread(), module);
+>>>>>>> origin/dev_shareheap
 }
 
 JSTaggedValue ModuleManager::GetModuleValueInner(int32_t index)
