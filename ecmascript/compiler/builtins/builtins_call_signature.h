@@ -34,6 +34,7 @@ namespace panda::ecmascript::kungfu {
 
 #define BUILTINS_METHOD_STUB_LIST(V)                \
     V(StringCharCodeAt)                             \
+    V(StringCodePointAt)                            \
     V(StringIndexOf)                                \
     V(StringSubstring)                              \
     V(StringReplace)                                \

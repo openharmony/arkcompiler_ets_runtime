@@ -172,6 +172,7 @@ DECLARE_BUILTINS(String##method)                                                
     V(CharAt,       JS_POINTER, Hole())                                             \
     V(FromCharCode, JS_ANY,     Hole())                                             \
     V(CharCodeAt,   JS_ANY,     DoubleToTaggedDoublePtr(Double(base::NAN_VALUE)))   \
+    V(CodePointAt,  JS_ANY,     Undefined())                                        \
     V(IndexOf,      JS_ANY,     IntToTaggedPtr(Int32(-1)))                          \
     V(Substring,    JS_ANY,     IntToTaggedPtr(Int32(-1)))                          \
     V(Replace,      JS_ANY,     Undefined())                                        \

@@ -171,6 +171,58 @@ void BuiltinsStringStubBuilder::CharCodeAt(GateRef glue, GateRef thisValue, Gate
 {
     auto env = GetEnvironment();
     DEFVARIABLE(pos, VariableType::INT32(), Int32(0));
+    Label posIsValid(env);
+    Label flattenFastPath(env);
+    Label returnFirst(env);
+    Label getNextChar(env);
+    CheckParamsAndGetPosition(glue, thisValue, numArgs, &pos, exit, slowPath, &posIsValid);
+    Bind(&posIsValid);
+    {
+        FlatStringStubBuilder thisFlat(this);
+        thisFlat.FlattenString(glue, thisValue, &flattenFastPath);
+        Bind(&flattenFastPath);
+        StringInfoGateRef stringInfoGate(&thisFlat);
+        res->WriteVariable(IntToTaggedPtr(StringAt(stringInfoGate, *pos)));
+        Jump(exit);
+    }
+}
+
+void BuiltinsStringStubBuilder::CodePointAt(GateRef glue, GateRef thisValue, GateRef numArgs,
+    Variable* res, Label *exit, Label *slowPath)
+{
+    auto env = GetEnvironment();
+    DEFVARIABLE(pos, VariableType::INT32(), Int32(0));
+    Label posIsValid(env);
+    Label flattenFastPath(env);
+    Label returnFirst(env);
+    Label getNextChar(env);
+    CheckParamsAndGetPosition(glue, thisValue, numArgs, &pos, exit, slowPath, &posIsValid);
+    Bind(&posIsValid);
+    {
+        FlatStringStubBuilder thisFlat(this);
+        thisFlat.FlattenString(glue, thisValue, &flattenFastPath);
+        Bind(&flattenFastPath);
+        StringInfoGateRef stringInfoGate(&thisFlat);
+        GateRef first = StringAt(stringInfoGate, *pos);
+        GateRef firstIsValid = BoolOr(Int32UnsignedLessThan(first, Int32(base::utf_helper::DECODE_LEAD_LOW)),
+            Int32UnsignedGreaterThan(first, Int32(base::utf_helper::DECODE_LEAD_HIGH)));
+        Branch(BoolOr(firstIsValid, Int32Equal(Int32Add(*pos, Int32(1)), GetLengthFromString(thisValue))),
+            &returnFirst, &getNextChar);
+        Bind(&getNextChar);
+        GateRef second = StringAt(stringInfoGate, Int32Add(*pos, Int32(1)));
+        GateRef secondIsValid = BoolOr(Int32UnsignedLessThan(second, Int32(base::utf_helper::DECODE_TRAIL_LOW)),
+            Int32UnsignedGreaterThan(second, Int32(base::utf_helper::DECODE_TRAIL_HIGH)));
+        Branch(secondIsValid, &returnFirst, slowPath);
+        Bind(&returnFirst);
+        res->WriteVariable(IntToTaggedPtr(first));
+        Jump(exit);
+    }
+}
+
+void BuiltinsStringStubBuilder::CheckParamsAndGetPosition(GateRef glue, GateRef thisValue, GateRef numArgs,
+    Variable* pos, Label *exit, Label *slowPath, Label *posIsValid)
+{
+    auto env = GetEnvironment();
     DEFVARIABLE(doubleValue, VariableType::FLOAT64(), Double(0));
     Label objNotUndefinedAndNull(env);
     Label isString(env);
@@ -184,7 +236,6 @@ void BuiltinsStringStubBuilder::CharCodeAt(GateRef glue, GateRef thisValue, Gate
     Label posNotLessZero(env);
     Label posTagIsDouble(env);
     Label thisIsHeapobject(env);
-    Label flattenFastPath(env);
 
     Branch(TaggedIsUndefinedOrNull(thisValue), slowPath, &objNotUndefinedAndNull);
     Bind(&objNotUndefinedAndNull);
@@ -194,9 +245,6 @@ void BuiltinsStringStubBuilder::CharCodeAt(GateRef glue, GateRef thisValue, Gate
         Branch(IsString(thisValue), &isString, slowPath);
         Bind(&isString);
         {
-            FlatStringStubBuilder thisFlat(this);
-            thisFlat.FlattenString(glue, thisValue, &flattenFastPath);
-            Bind(&flattenFastPath);
             GateRef thisLen = GetLengthFromString(thisValue);
             Branch(Int64GreaterThanOrEqual(IntPtr(0), numArgs), &next, &posTagNotUndefined);
             Bind(&posTagNotUndefined);
@@ -205,7 +253,7 @@ void BuiltinsStringStubBuilder::CharCodeAt(GateRef glue, GateRef thisValue, Gate
                 Branch(TaggedIsInt(posTag), &posTagIsInt, &posTagNotInt);
                 Bind(&posTagIsInt);
                 {
-                    pos = GetInt32OfTInt(posTag);
+                    pos->WriteVariable(GetInt32OfTInt(posTag));
                     Jump(&next);
                 }
                 Bind(&posTagNotInt);
@@ -215,22 +263,16 @@ void BuiltinsStringStubBuilder::CharCodeAt(GateRef glue, GateRef thisValue, Gate
                     doubleValue = GetDoubleOfTDouble(posTag);
                     Branch(DoubleIsINF(*doubleValue), exit, &isNotINF);
                     Bind(&isNotINF);
-                    pos = DoubleToInt(glue, GetDoubleOfTDouble(posTag));
+                    pos->WriteVariable(DoubleToInt(glue, GetDoubleOfTDouble(posTag)));
                     Jump(&next);
                 }
             }
             Bind(&next);
             {
-                Branch(Int32GreaterThanOrEqual(*pos, thisLen), exit, &posNotGreaterLen);
+                Branch(Int32GreaterThanOrEqual(pos->ReadVariable(), thisLen), exit, &posNotGreaterLen);
                 Bind(&posNotGreaterLen);
                 {
-                    Branch(Int32LessThan(*pos, Int32(0)), exit, &posNotLessZero);
-                    Bind(&posNotLessZero);
-                    {
-                        StringInfoGateRef stringInfoGate(&thisFlat);
-                        res->WriteVariable(IntToTaggedPtr(StringAt(stringInfoGate, *pos)));
-                        Jump(exit);
-                    }
+                    Branch(Int32LessThan(pos->ReadVariable(), Int32(0)), exit, posIsValid);
                 }
             }
         }
