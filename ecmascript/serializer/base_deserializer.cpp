@@ -23,6 +23,7 @@
 #include "ecmascript/js_thread.h"
 #include "ecmascript/mem/mem.h"
 #include "ecmascript/mem/sparse_space.h"
+#include "ecmascript/shared_mm/shared_mm.h"
 
 namespace panda::ecmascript {
 
@@ -185,6 +186,7 @@ void BaseDeserializer::HandleNewObjectEncodeFlag(SerializedObjectSpace space,  u
     // deserialize object prologue
     bool isWeak = GetAndResetWeak();
     bool isTransferBuffer = GetAndResetTransferBuffer();
+    bool isSharedArrayBuffer = GetAndResetSharedArrayBuffer();
     void *bufferPointer = GetAndResetBufferPointer();
     ConstantPool *constpool = GetAndResetConstantPool();
     bool needNewConstPool = GetAndResetNeedNewConstPool();
@@ -203,6 +205,8 @@ void BaseDeserializer::HandleNewObjectEncodeFlag(SerializedObjectSpace space,  u
 
     if (isTransferBuffer) {
         TransferArrayBufferAttach(addr);
+    } else if (isSharedArrayBuffer) {
+        IncreaseSharedArrayBufferReference(addr);
     } else if (bufferPointer != nullptr) {
         ResetNativePointerBuffer(addr, bufferPointer);
     } else if (constpool != nullptr) {
@@ -262,6 +266,18 @@ void BaseDeserializer::TransferArrayBufferAttach(uintptr_t objAddr)
     bool withNativeAreaAllocator = arrayBuffer->GetWithNativeAreaAllocator();
     JSNativePointer *np = reinterpret_cast<JSNativePointer *>(arrayBuffer->GetArrayBufferData().GetTaggedObject());
     arrayBuffer->Attach(thread_, arrayLength, JSTaggedValue(np), withNativeAreaAllocator);
+}
+
+void BaseDeserializer::IncreaseSharedArrayBufferReference(uintptr_t objAddr)
+{
+    ASSERT(JSTaggedValue(static_cast<JSTaggedType>(objAddr)).IsSharedArrayBuffer());
+    JSArrayBuffer *arrayBuffer = reinterpret_cast<JSArrayBuffer *>(objAddr);
+    size_t arrayLength = arrayBuffer->GetArrayBufferByteLength();
+    JSNativePointer *np = reinterpret_cast<JSNativePointer *>(arrayBuffer->GetArrayBufferData().GetTaggedObject());
+    void *buffer = np->GetExternalPointer();
+    if (JSSharedMemoryManager::GetInstance()->CreateOrLoad(&buffer, arrayLength)) {
+        LOG_ECMA(FATAL) << "BaseDeserializer::IncreaseSharedArrayBufferReference failed";
+    }
 }
 
 void BaseDeserializer::ResetNativePointerBuffer(uintptr_t objAddr, void *bufferPointer)
@@ -350,6 +366,11 @@ size_t BaseDeserializer::ReadSingleEncodeData(uint8_t encodeFlag, uintptr_t objA
         }
         case (uint8_t)EncodeFlag::TRANSFER_ARRAY_BUFFER: {
             isTransferArrayBuffer_ = true;
+            handledFieldSize = 0;
+            break;
+        }
+        case (uint8_t)EncodeFlag::SHARED_ARRAY_BUFFER: {
+            isSharedArrayBuffer_ = true;
             handledFieldSize = 0;
             break;
         }
