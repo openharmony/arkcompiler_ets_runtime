@@ -35,27 +35,6 @@ function check_pip_component()
     return $?
 }
 
-function check_fangzhou_binary_path()
-{
-    ETS_RUNTIME_PATH="$OPENHARMONY_OUT_PATH/out/rk3568/clang_x64/arkcompiler/ets_runtime/"
-    ICU_PATH="$OPENHARMONY_OUT_PATH/out/rk3568/clang_x64/thirdparty/icu/"
-    ZLIB_PATH="$OPENHARMONY_OUT_PATH/out/rk3568/clang_x64/thirdparty/zlib/"
-    LIB_PATH="$OPENHARMONY_OUT_PATH/prebuilts/clang/ohos/linux-x86_64/llvm/lib/"
-    [ -d "$ETS_RUNTIME_PATH" ] || { echo "wrong  ets_runtime folder path: $ETS_RUNTIME_PATH, please check it ";return $ret_error; }
-    [ -d "$ICU_PATH" ] || { echo "wrong icu folder path: $ICU_PATH, please check";return $ret_error; }
-    [ -d "$ZLIB_PATH" ] || { echo "wrong zlib folder path: $ZLIB_PATH, please check it";return $ret_error; }
-    [ -d "$LIB_PATH" ] || { echo "wrong lib folder path: $LIB_PATH, please check it";return $ret_error; }
-}
-
-function export_fangzhou_env()
-{
-    export LD_LIBRARY_PATH=$ETS_RUNTIME_PATH
-    export LD_LIBRARY_PATH=$ICU_PATH:$LD_LIBRARY_PATH
-    export LD_LIBRARY_PATH=$ZLIB_PATH:$LD_LIBRARY_PATH
-    export LD_LIBRARY_PATH=$LIB_PATH:$LD_LIBRARY_PATH
-}
-
-
 function download_js_test_files()
 {
     code_path="$TMP_PATH"/code/arkjs-perf-test
@@ -76,6 +55,10 @@ main()
     js_perf_test_archive_path=$1
     OPENHARMONY_OUT_PATH=$2
     D8_BINARY_PATH=$3
+    VER_PLATFORM="full_x86_64"
+    if [ $# == 4 ]; then
+        VER_PLATFORM=$4
+    fi
     cur_path=$(dirname "$(readlink -f "$0")")
     
     if [ ! -d "$js_perf_test_archive_path" ];then
@@ -84,11 +67,9 @@ main()
 
     check_command_exist git || { echo "git is not available"; return $ret_error; }
     check_command_exist unzip || { echo "unzip is not available"; return $ret_error; }
+    check_command_exist jq || { echo "jq is not available"; return $ret_error; }
     check_command_exist python3 || { echo "python3 is not available"; return $ret_error; }
-    check_fangzhou_binary_path
     check_pip_component "openpyxl"  || { pip3 install openpyxl; }
-
-    export_fangzhou_env
     
     [ -f "$cur_path/run_js_test.py" ] || { echo "no run_js_test.py, please check it";return $ret_error;}
    
@@ -96,7 +77,7 @@ main()
 
     echo "LD_LIBRARY_PATH:$LD_LIBRARY_PATH"
     python3  "$cur_path"/run_js_test.py -bp "$OPENHARMONY_OUT_PATH" -p "$JS_TEST_PATH" -o "$js_perf_test_archive_path"\
-        -v "$D8_BINARY_PATH"
+        -v "$D8_BINARY_PATH" -e "$VER_PLATFORM"
 }
 
 main "$@"
