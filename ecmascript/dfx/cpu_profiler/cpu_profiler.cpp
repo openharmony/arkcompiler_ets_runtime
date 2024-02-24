@@ -416,7 +416,7 @@ void CpuProfiler::GetStackSignalHandler(int signal, [[maybe_unused]] siginfo_t *
         // If the attempt fails, the callback will be terminated directly to avoid the reentrancy deadlock,
         // and a sampling will be abandoned. Failures are rare, so the impact on the overall sampling results
         // is very limited.
-        if (!thread->GetCurrentEcmaContext()->GetAOTFileManager()->TryReadLock()) {
+        if (!thread->GetEcmaVM()->GetAOTFileManager()->TryReadLock()) {
             if (profiler->generator_->SemPost(0) != 0) {
                 LOG_ECMA(ERROR) << "sem_[0] post failed";
             }
@@ -519,7 +519,7 @@ uint64_t CpuProfiler::GetPcFromContext(void *context)
 
 bool CpuProfiler::IsAddrAtStubOrAot(uint64_t pc) const
 {
-    AOTFileManager *loader = vm_->GetJSThread()->GetCurrentEcmaContext()->GetAOTFileManager();
+    AOTFileManager *loader = vm_->GetAOTFileManager();
     return loader->InsideStub(pc) || loader->InsideAOT(pc);
 }
 

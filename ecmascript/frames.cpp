@@ -28,7 +28,7 @@ FrameIterator::FrameIterator(JSTaggedType *sp, const JSThread *thread) : current
 {
     if (thread != nullptr) {
         arkStackMapParser_ =
-            const_cast<JSThread *>(thread)->GetCurrentEcmaContext()->GetAOTFileManager()->GetStackMapParser();
+            const_cast<JSThread *>(thread)->GetEcmaVM()->GetAOTFileManager()->GetStackMapParser();
     }
 }
 

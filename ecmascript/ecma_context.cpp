@@ -50,7 +50,8 @@ using PathHelper = base::PathHelper;
 EcmaContext::EcmaContext(JSThread *thread)
     : thread_(thread),
       vm_(thread->GetEcmaVM()),
-      factory_(vm_->GetFactory())
+      factory_(vm_->GetFactory()),
+      aotFileManager_(vm_->GetAOTFileManager())
 {
 }
 
@@ -90,7 +91,6 @@ bool EcmaContext::Initialize()
     LOG_ECMA(DEBUG) << "EcmaContext::Initialize";
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "EcmaContext::Initialize");
     [[maybe_unused]] EcmaHandleScope scope(thread_);
-    aotFileManager_ = new AOTFileManager(vm_);
     propertiesCache_ = new PropertiesCache();
     regExpParserCache_ = new RegExpParserCache();
 
@@ -234,7 +234,6 @@ EcmaContext::~EcmaContext()
         regExpParserCache_ = nullptr;
     }
     if (aotFileManager_ != nullptr) {
-        delete aotFileManager_;
         aotFileManager_ = nullptr;
     }
     if (propertiesCache_ != nullptr) {
@@ -479,7 +478,7 @@ JSTaggedValue EcmaContext::FindConstpoolWithAOT(const JSPandaFile *jsPandaFile, 
     // A constpool is created when a Function is serialized. Slowpath, the default deserialized constpool,
     // string is non-lazy load mode. A hole is returned if you access the constpool of the serialized Function
     if (constpool.IsHole() && ecmascript::AnFileDataManager::GetInstance()->IsEnable()) {
-        bool result = GetAOTFileManager()->LoadAiFile(jsPandaFile);
+        bool result = aotFileManager_->LoadAiFile(jsPandaFile);
         if (result) {
             constpool = FindConstpool(jsPandaFile, index);
         }
@@ -1001,7 +1000,7 @@ void EcmaContext::JoinStackPop(JSHandle<JSTaggedValue> receiver)
 std::tuple<uint64_t, uint8_t *, int, kungfu::CalleeRegAndOffsetVec> EcmaContext::CalCallSiteInfo(
     uintptr_t retAddr) const
 {
-    auto loader = GetAOTFileManager();
+    auto loader = aotFileManager_;
     auto callSiteInfo = loader->CalCallSiteInfo(retAddr);
     if (std::get<1>(callSiteInfo) != nullptr) {
         return callSiteInfo;

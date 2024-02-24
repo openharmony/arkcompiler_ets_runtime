@@ -247,7 +247,7 @@ void JSPandaFileExecutor::BindPandaFilesForAot(EcmaVM *vm, [[maybe_unused]]JSPan
 {
     if (vm->GetJSOptions().GetEnableAsmInterpreter()) {
         std::string aotFileBaseName(vm->GetModuleName());
-        auto *aotFM = vm->GetJSThread()->GetCurrentEcmaContext()->GetAOTFileManager();
+        auto *aotFM = vm->GetAOTFileManager();
         if (vm->GetJSOptions().WasAOTOutputFileSet()) {
             std::string aotFilename = vm->GetJSOptions().GetAOTOutputFile();
             aotFileBaseName = JSFilePath::GetBaseName(aotFilename);

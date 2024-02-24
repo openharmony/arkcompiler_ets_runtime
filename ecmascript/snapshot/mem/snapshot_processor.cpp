@@ -1453,7 +1453,7 @@ void SnapshotProcessor::AddRootObjectToAOTFileManager(SnapshotType type, const C
 {
     if (type == SnapshotType::AI) {
         ASSERT(!root_.IsHole());
-        AOTFileManager *aotFileManager = vm_->GetJSThread()->GetCurrentEcmaContext()->GetAOTFileManager();
+        AOTFileManager *aotFileManager = vm_->GetAOTFileManager();
         aotFileManager->ParseDeserializedData(fileName, root_);
     }
 }
