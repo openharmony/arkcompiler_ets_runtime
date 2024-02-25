@@ -22,40 +22,52 @@ GateRef TypedNativeInlineLowering::VisitGate(GateRef gate)
     auto op = acc_.GetOpCode(gate);
     switch (op) {
         case OpCode::MATH_COS:
-            LowerMathTrigonometric(gate, RTSTUB_ID(FloatCos));
+            LowerGeneralUnaryMath(gate, RTSTUB_ID(FloatCos));
             break;
         case OpCode::MATH_COSH:
-            LowerMathTrigonometric(gate, RTSTUB_ID(FloatCosh));
+            LowerGeneralUnaryMath(gate, RTSTUB_ID(FloatCosh));
             break;
         case OpCode::MATH_SIN:
-            LowerMathTrigonometric(gate, RTSTUB_ID(FloatSin));
+            LowerGeneralUnaryMath(gate, RTSTUB_ID(FloatSin));
+            break;
+        case OpCode::MATH_LOG:
+            LowerGeneralUnaryMath(gate, RTSTUB_ID(FloatLog));
+            break;
+        case OpCode::MATH_LOG2:
+            LowerGeneralUnaryMath(gate, RTSTUB_ID(FloatLog2));
+            break;
+        case OpCode::MATH_LOG10:
+            LowerGeneralUnaryMath(gate, RTSTUB_ID(FloatLog10));
+            break;
+        case OpCode::MATH_LOG1P:
+            LowerGeneralUnaryMath(gate, RTSTUB_ID(FloatLog1p));
             break;
         case OpCode::MATH_SINH:
-            LowerMathTrigonometric(gate, RTSTUB_ID(FloatSinh));
+            LowerGeneralUnaryMath(gate, RTSTUB_ID(FloatSinh));
             break;
         case OpCode::MATH_ASINH:
-            LowerMathTrigonometric(gate, RTSTUB_ID(FloatAsinh));
+            LowerGeneralUnaryMath(gate, RTSTUB_ID(FloatAsinh));
             break;
         case OpCode::MATH_TAN:
-            LowerMathTrigonometric(gate, RTSTUB_ID(FloatTan));
+            LowerGeneralUnaryMath(gate, RTSTUB_ID(FloatTan));
             break;
         case OpCode::MATH_ATAN:
-            LowerMathTrigonometric(gate, RTSTUB_ID(FloatAtan));
+            LowerGeneralUnaryMath(gate, RTSTUB_ID(FloatAtan));
             break;
         case OpCode::MATH_TANH:
-            LowerMathTrigonometric(gate, RTSTUB_ID(FloatTanh));
+            LowerGeneralUnaryMath(gate, RTSTUB_ID(FloatTanh));
             break;
         case OpCode::MATH_ACOS:
-            LowerMathTrigonometric<TypedNativeInlineLowering::MathTrigonometricCheck::ABS_GT_ONE>(gate, RTSTUB_ID(FloatAcos));
+            LowerGeneralUnaryMath<MathTrigonometricCheck::ABS_GT_ONE>(gate, RTSTUB_ID(FloatAcos));
             break;
         case OpCode::MATH_ASIN:
-            LowerMathTrigonometric<TypedNativeInlineLowering::MathTrigonometricCheck::ABS_GT_ONE>(gate, RTSTUB_ID(FloatAsin));
+            LowerGeneralUnaryMath<MathTrigonometricCheck::ABS_GT_ONE>(gate, RTSTUB_ID(FloatAsin));
             break;
         case OpCode::MATH_ATANH:
-            LowerMathTrigonometric<TypedNativeInlineLowering::MathTrigonometricCheck::ABS_GT_ONE>(gate, RTSTUB_ID(FloatAtanh));
+            LowerGeneralUnaryMath<MathTrigonometricCheck::ABS_GT_ONE>(gate, RTSTUB_ID(FloatAtanh));
             break;
         case OpCode::MATH_ACOSH:
-            LowerMathTrigonometric<TypedNativeInlineLowering::MathTrigonometricCheck::LT_ONE>(gate, RTSTUB_ID(FloatAcosh));
+            LowerGeneralUnaryMath<MathTrigonometricCheck::LT_ONE>(gate, RTSTUB_ID(FloatAcosh));
             break;
         case OpCode::MATH_ATAN2:
             LowerMathAtan2(gate);
@@ -70,7 +82,7 @@ GateRef TypedNativeInlineLowering::VisitGate(GateRef gate)
 }
 
 template <TypedNativeInlineLowering::MathTrigonometricCheck CHECK>
-void TypedNativeInlineLowering::LowerMathTrigonometric(GateRef gate, RuntimeStubCSigns::ID stub_id)
+void TypedNativeInlineLowering::LowerGeneralUnaryMath(GateRef gate, RuntimeStubCSigns::ID stub_id)
 {
     Environment env(gate, circuit_, &builder_);
     builder_.SetEnvironment(&env);

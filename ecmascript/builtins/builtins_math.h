@@ -53,10 +53,10 @@
     V("fround", Fround, 1, INVALID)     /* Math.fround ( x ) */             \
     V("hypot",  Hypot,  2, INVALID)     /* Math.hypot ( ...args ) */        \
     V("imul",   Imul,   2, INVALID)     /* Math.imul ( x, y ) */            \
-    V("log",    Log,    1, INVALID)     /* Math.log ( x ) */                \
-    V("log10",  Log10,  1, INVALID)     /* Math.log10 ( x ) */              \
-    V("log1p",  Log1p,  1, INVALID)     /* Math.log1p ( x ) */              \
-    V("log2",   Log2,   1, INVALID)     /* Math.log2 ( x ) */               \
+    V("log",    Log,    1, MathLog)     /* Math.log ( x ) */                \
+    V("log10",  Log10,  1, MathLog10)   /* Math.log10 ( x ) */              \
+    V("log1p",  Log1p,  1, MathLog1p)   /* Math.log1p ( x ) */              \
+    V("log2",   Log2,   1, MathLog2)    /* Math.log2 ( x ) */               \
     V("max",    Max,    2, INVALID)     /* Math.max ( ...args ) */          \
     V("min",    Min,    2, INVALID)     /* Math.min ( ...args ) */          \
     V("pow",    Pow,    2, INVALID)     /* Math.pow ( base, exponent ) */   \

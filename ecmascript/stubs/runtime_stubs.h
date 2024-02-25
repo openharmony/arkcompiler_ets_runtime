@@ -129,6 +129,10 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(FloatSinh)                               \
     V(FloatTan)                                \
     V(FloatTanh)                               \
+    V(FloatLog)                                \
+    V(FloatLog2)                               \
+    V(FloatLog10)                              \
+    V(FloatLog1p)                              \
     V(FloatFloor)                              \
     V(FindElementWithCache)                    \
     V(TryToElementsIndexOrFindInStringTable)   \
@@ -481,6 +485,10 @@ public:
     static double FloatTan(double x);
     static double FloatTanh(double x);
     static double FloatFloor(double x);
+    static double FloatLog(double x);
+    static double FloatLog2(double x);
+    static double FloatLog10(double x);
+    static double FloatLog1p(double x);
     static int32_t FindElementWithCache(uintptr_t argGlue, JSTaggedType hclass,
                                         JSTaggedType key, int32_t num);
     static bool StringsAreEquals(EcmaString *str1, EcmaString *str2);

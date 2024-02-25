@@ -454,6 +454,10 @@ private:
     V(FloatSinh)                                \
     V(FloatTan)                                 \
     V(FloatTanh)                                \
+    V(FloatLog)                                 \
+    V(FloatLog2)                                \
+    V(FloatLog10)                               \
+    V(FloatLog1p)                               \
     V(FloatFloor)                               \
     V(FindElementWithCache)                     \
     V(MarkingBarrier)                           \

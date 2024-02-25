@@ -133,6 +133,10 @@ GateRef NumberSpeculativeRetype::VisitGate(GateRef gate)
             return VisitIntermediateValue(gate);
         case OpCode::NUMBER_TO_STRING:
             return VisitNumberToString(gate);
+        case OpCode::MATH_LOG:
+        case OpCode::MATH_LOG2:
+        case OpCode::MATH_LOG10:
+        case OpCode::MATH_LOG1P:
         case OpCode::MATH_ACOS:
         case OpCode::MATH_ACOSH:
         case OpCode::MATH_ASIN:

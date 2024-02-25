@@ -104,6 +104,18 @@ void NativeInlineLowering::RunNativeInlineLowering()
             case BuiltinsStubCSigns::ID::MathAbs:
                 TryInlineMathUnaryBuiltin(gate, argc, id, circuit_->MathAbs());
                 break;
+            case BuiltinsStubCSigns::ID::MathLog:
+                TryInlineMathUnaryBuiltin(gate, argc, id, circuit_->MathLog());
+                break;
+            case BuiltinsStubCSigns::ID::MathLog2:
+                TryInlineMathUnaryBuiltin(gate, argc, id, circuit_->MathLog2());
+                break;
+            case BuiltinsStubCSigns::ID::MathLog10:
+                TryInlineMathUnaryBuiltin(gate, argc, id, circuit_->MathLog10());
+                break;
+            case BuiltinsStubCSigns::ID::MathLog1p:
+                TryInlineMathUnaryBuiltin(gate, argc, id, circuit_->MathLog1p());
+                break;
             default:
                 break;
         }

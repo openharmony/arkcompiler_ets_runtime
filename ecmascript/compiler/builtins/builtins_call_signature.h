@@ -142,6 +142,10 @@ namespace panda::ecmascript::kungfu {
     V(MathSinh)                                     \
     V(MathTan)                                      \
     V(MathTanh)                                     \
+    V(MathLog)                                      \
+    V(MathLog2)                                     \
+    V(MathLog10)                                    \
+    V(MathLog1p)                                    \
     V(MathAbs)                                      \
     V(TYPED_BUILTINS_INLINE_FIRST = MathAcos)       \
     V(TYPED_BUILTINS_INLINE_LAST = MathAbs)
@@ -285,6 +289,14 @@ public:
                 return ConstantIndex::MATH_TANH_INDEX;
             case BuiltinsStubCSigns::ID::MathAbs:
                 return ConstantIndex::MATH_ABS_INDEX;
+            case BuiltinsStubCSigns::ID::MathLog:
+                return ConstantIndex::MATH_LOG_INDEX;
+            case BuiltinsStubCSigns::ID::MathLog2:
+                return ConstantIndex::MATH_LOG2_INDEX;
+            case BuiltinsStubCSigns::ID::MathLog10:
+                return ConstantIndex::MATH_LOG10_INDEX;
+            case BuiltinsStubCSigns::ID::MathLog1p:
+                return ConstantIndex::MATH_LOG1P_INDEX;
             case BuiltinsStubCSigns::ID::FLOOR:
                 return ConstantIndex::MATH_FLOOR_FUNCTION_INDEX;
             case BuiltinsStubCSigns::ID::SQRT:
@@ -331,6 +343,10 @@ public:
             {"Sinh", MathSinh},
             {"Tan", MathTan},
             {"Tanh", MathTanh},
+            {"Log", MathLog},
+            {"Log2", MathLog2},
+            {"Log10", MathLog10},
+            {"Log1p", MathLog1p},
             {"sqrt", SQRT},
             {"abs", MathAbs},
             {"floor", FLOOR},

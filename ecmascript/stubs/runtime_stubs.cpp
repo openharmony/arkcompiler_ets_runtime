@@ -2910,6 +2910,26 @@ double RuntimeStubs::FloatFloor(double x)
     return std::floor(x);
 }
 
+double RuntimeStubs::FloatLog(double x)
+{
+    return std::log(x);
+}
+
+double RuntimeStubs::FloatLog2(double x)
+{
+    return std::log2(x);
+}
+
+double RuntimeStubs::FloatLog10(double x)
+{
+    return std::log10(x);
+}
+
+double RuntimeStubs::FloatLog1p(double x)
+{
+    return std::log1p(x);
+}
+
 int32_t RuntimeStubs::DoubleToInt(double x, size_t bits)
 {
     return base::NumberHelper::DoubleToInt(x, bits);
