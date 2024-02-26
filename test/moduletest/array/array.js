@@ -418,3 +418,33 @@ print(params, [0]);
 var arr25 = []
 arr25[1025] = 0;
 print(arr25.includes({}, 414));
+
+function fun1(obj, name, type) {
+    return typeof type === 'undefined' || typeof desc.value === type;
+  }
+  function fun2(obj, type) {
+    let properties = [];
+    let proto = Object.getPrototypeOf(obj);
+    while (proto && proto != Object.prototype) {
+      Object.getOwnPropertyNames(proto).forEach(name => {
+        if (name !== 'constructor') {
+          if (fun1(proto, name, type)) properties.push(name);
+        }
+      });
+      proto = Object.getPrototypeOf(proto);
+    }
+    return properties;
+  }
+  function fun4(seed) {
+    let objects = [Object, Error, AggregateError, EvalError, RangeError, ReferenceError, SyntaxError, TypeError, URIError, String, BigInt, Function, Number, Boolean, Date, RegExp, Array, ArrayBuffer, DataView, Int8Array, Int16Array, Int32Array, Uint8Array, Uint8ClampedArray, Uint16Array, Uint32Array, Float32Array, Float64Array, BigInt64Array, BigUint64Array, Set, Map, WeakMap, WeakSet, Symbol, Proxy];
+    return objects[seed % objects.length];
+  }
+  function fun8(obj, seed) {
+    let properties = fun2(obj);
+  }
+
+  fun4(694532)[fun8(fun4(694532), 527224)];
+  Object.freeze(Object.prototype);
+
+  Array.prototype.length = 3000;
+  print(Array.prototype.length)
