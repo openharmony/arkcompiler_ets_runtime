@@ -49,6 +49,29 @@ std::string GetHelper()
     return str;
 }
 
+bool IsEqual(EcmaVM *vm, Local<JSValueRef> jsArg0, Local<JSValueRef> jsArg1)
+{
+    if (jsArg0->IsStrictEquals(vm, jsArg1)) {
+        return true;
+    } else if ((jsArg0->IsJSArray(vm) && jsArg1->IsJSArray(vm))) {
+        Local<ArrayRef> arr0(jsArg0);
+        Local<ArrayRef> arr1(jsArg1);
+        uint32_t length = arr0->Length(vm);
+        if (length != arr1->Length(vm)) {
+            return false;
+        }
+        for (uint32_t i = 0; i < length; i++) {
+            Local<JSValueRef> arg0 = ArrayRef::GetValueAt(vm, arr0, i);
+            Local<JSValueRef> arg1 = ArrayRef::GetValueAt(vm, arr1, i);
+            if (!IsEqual(vm, arg0, arg1)) {
+                return false;
+            }
+        }
+        return true;
+    }
+    return false;
+}
+
 Local<JSValueRef> AssertEqual(JsiRuntimeCallInfo *runtimeInfo)
 {
     EcmaVM *vm = runtimeInfo->GetVM();
@@ -64,7 +87,7 @@ Local<JSValueRef> AssertEqual(JsiRuntimeCallInfo *runtimeInfo)
     Local<JSValueRef> jsArg0 = runtimeInfo->GetCallArgRef(0);
     Local<JSValueRef> jsArg1 = runtimeInfo->GetCallArgRef(1);
 
-    if (!jsArg0->IsStrictEquals(vm, jsArg1)) {
+    if (!IsEqual(vm, jsArg0, jsArg1)) {
         std::string errStr = std::string("Assertion failed: ").append(jsArg0->ToString(vm)->ToString())
             .append(" != ").append(jsArg1->ToString(vm)->ToString());
         auto error = panda::Exception::TypeError(vm, StringRef::NewFromUtf8(vm, errStr.c_str()));
@@ -98,6 +121,14 @@ Local<JSValueRef> AssertTrue(JsiRuntimeCallInfo *runtimeInfo)
     return JSValueRef::Undefined(vm);
 }
 
+Local<JSValueRef> AssertUnreachable(JsiRuntimeCallInfo *runtimeInfo)
+{
+    EcmaVM *vm = runtimeInfo->GetVM();
+
+    LOG_ECMA(FATAL) << "this test is unreachable";
+    return JSValueRef::Undefined(vm);
+}
+
 bool ExecutePandaFile(EcmaVM *vm, JSRuntimeOptions &runtimeOptions, std::string &files)
 {
     bool ret = true;
@@ -119,6 +150,8 @@ bool ExecutePandaFile(EcmaVM *vm, JSRuntimeOptions &runtimeOptions, std::string 
         globalObj->Set(vm, StringRef::NewFromUtf8(vm, "assert_equal"), assertEqual);
         Local<FunctionRef> assertTrue = FunctionRef::New(vm, AssertTrue);
         globalObj->Set(vm, StringRef::NewFromUtf8(vm, "assert_true"), assertTrue);
+        Local<FunctionRef> assertUnreachable = FunctionRef::New(vm, AssertUnreachable);
+        globalObj->Set(vm, StringRef::NewFromUtf8(vm, "assert_unreachable"), assertUnreachable);
     }
     if (runtimeOptions.WasAOTOutputFileSet()) {
         JSNApi::LoadAotFile(vm, "");
