@@ -172,7 +172,9 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
     "--test-assert:                        Set Assert Model. Default: 'false'\n"
     "--compiler-methods-range:             Enable aot compiler to compile only in-range methods."
     "                                      Default: '0:4294967295'\n"
-    "--compiler-codegen-options:           Compile options passed to codegen. Default: ''\n\n";
+    "--compiler-codegen-options:           Compile options passed to codegen. Default: ''\n\n"
+    "--compiler-opt-escape-analysis:       Enable escape analysis for aot compiler. Default: 'true'\n"
+    "--compiler-trace-escape-analysis:     Enable tracing escape analysis for aot compiler. Default: 'false'\n";
 
 bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
 {
@@ -284,6 +286,8 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"test-assert", required_argument, nullptr, OPTION_TEST_ASSERT},
         {"compiler-methods-range", required_argument, nullptr, OPTION_COMPILER_METHODS_RANGE},
         {"compiler-codegen-options", required_argument, nullptr, OPTION_COMPILER_CODEGEN_OPT},
+        {"compiler-opt-escape-analysis", required_argument, nullptr, OPTION_COMPILER_OPT_ESCAPE_ANALYSIS},
+        {"compiler-trace-escape-analysis", required_argument, nullptr, OPTION_COMPILER_TRACE_ESCAPE_ANALYSIS},
         {nullptr, 0, nullptr, 0},
     };
 
@@ -1002,6 +1006,22 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
             case OPTION_COMPILER_CODEGEN_OPT:
                 ParseListArgParam(optarg, &argListStr, " ");
                 SetCompilerCodegenOptions(argListStr);
+                break;
+            case OPTION_COMPILER_OPT_ESCAPE_ANALYSIS:
+                ret = ParseBoolParam(&argBool);
+                if (ret) {
+                    SetEnableEscapeAnalysis(argBool);
+                } else {
+                    return false;
+                }
+                break;
+            case OPTION_COMPILER_TRACE_ESCAPE_ANALYSIS:
+                ret = ParseBoolParam(&argBool);
+                if (ret) {
+                    SetEnableTraceEscapeAnalysis(argBool);
+                } else {
+                    return false;
+                }
                 break;
             default:
                 LOG_ECMA(ERROR) << "Invalid option\n";

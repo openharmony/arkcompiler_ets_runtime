@@ -117,6 +117,8 @@ libark_jsoptimizer_sources = [
   "dead_code_elimination.cpp",
   "debug_info.cpp",
   "early_elimination.cpp",
+  "escape_analysis.cpp",
+  "escape_analysis_editor.cpp",
   "file_generators.cpp",
   "frame_states.cpp",
   "gate.cpp",

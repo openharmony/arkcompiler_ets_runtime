@@ -1996,7 +1996,20 @@ void TypedBytecodeLowering::LowerCreateObjectWithBuffer(GateRef gate)
     valueIn.emplace_back(builder_.Int64(newClass.GetTaggedValue().GetRawData()));
     valueIn.emplace_back(acc_.GetValueIn(gate, 1));
     for (uint32_t i = 0; i < newClass->GetInlinedProperties(); i++) {
-        valueIn.emplace_back(builder_.Int64(inlinedProps.at(i)));
+        auto attr = layout->GetAttr(i);
+        GateRef prop;
+        if (attr.IsIntRep()) {
+            prop = builder_.Int32(inlinedProps.at(i));
+        } else if (attr.IsTaggedRep()) {
+            prop = circuit_->NewGate(circuit_->GetMetaBuilder()->Constant(inlinedProps.at(i)),
+                                     MachineType::I64, GateType::AnyType());
+        } else if (attr.IsDoubleRep()) {
+            prop = circuit_->NewGate(circuit_->GetMetaBuilder()->Constant(inlinedProps.at(i)),
+                                     MachineType::F64, GateType::NJSValue());
+        } else {
+            prop = builder_.Int64(inlinedProps.at(i));
+        }
+        valueIn.emplace_back(prop);
         valueIn.emplace_back(builder_.Int32(newClass->GetInlinedPropertiesOffset(i)));
     }
     GateRef ret = builder_.TypedCreateObjWithBuffer(valueIn);

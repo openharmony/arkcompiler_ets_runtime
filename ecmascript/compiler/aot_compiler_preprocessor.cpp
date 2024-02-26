@@ -62,6 +62,7 @@ CompilationOptions::CompilationOptions(EcmaVM *vm, JSRuntimeOptions &runtimeOpti
     isEnableLoweringBuiltin_ = runtimeOptions.IsEnableLoweringBuiltin();
     isEnableOptBranchProfiling_ = runtimeOptions.IsEnableBranchProfiling();
     optBCRange_ = runtimeOptions.GetOptCodeRange();
+    isEnableEscapeAnalysis_ = runtimeOptions.IsEnableEscapeAnalysis();
 }
 
 bool AotCompilerPreprocessor::HandleTargetCompilerMode(CompilationOptions &cOptions)

@@ -91,6 +91,7 @@ void NumberSpeculativeRunner::Run()
 
     maxId = circuit_->GetMaxGateId();
     rangeInfos_.resize(maxId + 1, RangeInfo::NONE());
+    typeInfos_.resize(maxId + 1, TypeInfo::NONE);
     CombinedPassVisitor rangeAnalysisVisitor(circuit_, enableLog_, methodName_, chunk_);
     RangeAnalysis rangeAnalysis(circuit_, &rangeAnalysisVisitor, chunk_, typeInfos_, rangeInfos_);
     rangeAnalysisVisitor.AddPass(&rangeAnalysis);

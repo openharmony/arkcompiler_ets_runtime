@@ -29,6 +29,8 @@ public:
     virtual void SetGateOrder(GateRef gate, int32_t orderId) = 0;
     virtual void Resize(int32_t size, int32_t num) = 0;
     virtual void ReVisitGate(GateRef gate) = 0;
+    virtual void LogicallyReplaceGate(GateRef gate, GateRef replacement) = 0;
+    virtual void RelaxStateAndDepend(GateRef gate) = 0;
     virtual void ReplaceGate(GateRef gate, GateRef replacement) = 0;
     virtual void ReplaceGate(GateRef gate, StateDepend stateDepend, GateRef replacement) = 0;
 };
@@ -65,15 +67,17 @@ public:
     virtual ~CombinedPassVisitor() = default;
     void AddPass(PassVisitor* pass);
     
-    int32_t GetGateOrder(GateRef gate);
-    void SetGateOrder(GateRef gate, int32_t orderId);
-    void Resize(int32_t size, int32_t num);
+    int32_t GetGateOrder(GateRef gate) override;
+    void SetGateOrder(GateRef gate, int32_t orderId) override;
+    void Resize(int32_t size, int32_t num) override;
     
     void VisitGraph();
     GateRef VisitGate(GateRef gate);
-    void ReVisitGate(GateRef gate);
-    void ReplaceGate(GateRef gate, GateRef replacement);
-    void ReplaceGate(GateRef gate, StateDepend stateDepend, GateRef replacement);
+    void ReVisitGate(GateRef gate) override;
+    void LogicallyReplaceGate(GateRef gate, GateRef replacement) override;
+    void RelaxStateAndDepend(GateRef gate) override;
+    void ReplaceGate(GateRef gate, GateRef replacement) override;
+    void ReplaceGate(GateRef gate, StateDepend stateDepend, GateRef replacement) override;
     void PrintLog(const std::string& phaseName);
 
 protected:
