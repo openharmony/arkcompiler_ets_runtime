@@ -1772,10 +1772,10 @@ function test129() {
     // Array.prototype.toSpliced(start, deleteCount, item1, item2, ..., itemN)
     let a = [0, 1, 2, 3, 4, 5, 6];
     let b = a.toSpliced(2, 2, 3, 3);
-    if (b.length == 7 && ArkTools.getElementsKind(b) == HOLEINT) {
+    if (b.length == 7 && ArkTools.getElementsKind(b) == PACKEDINT) {
         print("test129 - success");
     } else {
-        print("test129 - failed, expected: " + HOLEINT + " , but get: " + ArkTools.getElementsKind(b));
+        print("test129 - failed, expected: " + PACKEDINT + " , but get: " + ArkTools.getElementsKind(b));
     }
 }
 
@@ -1783,10 +1783,10 @@ function test130() {
     // Array.prototype.toSpliced(start, deleteCount, item1, item2, ..., itemN)
     let a = [0, 1, 2, , 4, 5, 6];
     let b = a.toSpliced(2, 1, 3);
-    if (b.length == 7 && ArkTools.getElementsKind(b) == GENERIC) {
+    if (b.length == 7 && ArkTools.getElementsKind(b) == PACKEDTAGGED) {
         print("test130 - success");
     } else {
-        print("test130 - failed, expected: " + GENERIC + " , but get: " + ArkTools.getElementsKind(b));
+        print("test130 - failed, expected: " + PACKEDTAGGED + " , but get: " + ArkTools.getElementsKind(b));
     }
 }
 
@@ -1794,10 +1794,10 @@ function test131() {
     // Array.prototype.toSpliced(start, deleteCount, item1, item2, ..., itemN)
     let a = [0, 1, 2, 3, 4, 5, 6];
     let b = a.toSpliced(2, 1, 3.1);
-    if (b.length == 7 && ArkTools.getElementsKind(b) == HOLENUMBER) {
+    if (b.length == 7 && ArkTools.getElementsKind(b) == PACKEDNUMBER) {
         print("test131 - success");
     } else {
-        print("test131 - failed, expected: " + HOLENUMBER + " , but get: " + ArkTools.getElementsKind(b));
+        print("test131 - failed, expected: " + PACKEDNUMBER + " , but get: " + ArkTools.getElementsKind(b));
     }
 }
 
@@ -1805,10 +1805,10 @@ function test132() {
     // Array.prototype.toReversed()
     let a = [0, 1, 2, 4, 5, 6];
     let b = a.toReversed();
-    if (b.length == 6 && ArkTools.getElementsKind(b) == HOLEINT) {
+    if (b.length == 6 && ArkTools.getElementsKind(b) == PACKEDINT) {
         print("test132 - success");
     } else {
-        print("test132 - failed, expected: " + HOLEINT + " , but get: " + ArkTools.getElementsKind(b));
+        print("test132 - failed, expected: " + PACKEDINT + " , but get: " + ArkTools.getElementsKind(b));
     }
 }
 
@@ -1816,10 +1816,10 @@ function test133() {
     // Array.prototype.toReversed()
     let a = [0, 1, 2, , 4, 5, 6];
     let b = a.toReversed();
-    if (b.length == 7 && ArkTools.getElementsKind(b) == GENERIC) {
+    if (b.length == 7 && ArkTools.getElementsKind(b) == PACKEDTAGGED) {
         print("test133 - success");
     } else {
-        print("test133 - failed, expected: " + GENERIC + " , but get: " + ArkTools.getElementsKind(b));
+        print("test133 - failed, expected: " + PACKEDTAGGED + " , but get: " + ArkTools.getElementsKind(b));
     }
 }
 
@@ -1837,10 +1837,10 @@ function test135() {
     // Array.prototype.with(index, value)
     let a = [0, 1, 2, ,4, 5, 6];
     let b = a.with(3, 6);
-    if (b.length == 7 && b[3] == 6 && ArkTools.getElementsKind(b) == HOLEINT) {
+    if (b.length == 7 && b[3] == 6 && ArkTools.getElementsKind(b) == PACKEDINT) {
         print("test135 - success");
     } else {
-        print("test135 - failed, expected: " + HOLEINT + " , but get: " + ArkTools.getElementsKind(b));
+        print("test135 - failed, expected: " + PACKEDINT + " , but get: " + ArkTools.getElementsKind(b));
     }
 }
 
