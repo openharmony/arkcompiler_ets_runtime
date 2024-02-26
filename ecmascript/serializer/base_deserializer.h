@@ -108,7 +108,6 @@ public:
         : thread_(thread), heap_(const_cast<Heap *>(thread->GetEcmaVM()->GetHeap())), data_(data), engine_(hint) {}
     ~BaseDeserializer()
     {
-        data_->ResetPosition();
         objectVector_.clear();
         regionVector_.clear();
     }
@@ -247,6 +246,7 @@ private:
     CVector<NativeBindingInfo *> nativeBindingInfos_;
     CVector<JSErrorInfo *> jsErrorInfos_;
     CVector<JSFunction *> concurrentFunctions_;
+    size_t position_ {0};
 };
 }
 
