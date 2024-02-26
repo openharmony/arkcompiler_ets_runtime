@@ -15,6 +15,7 @@
 
 #include "ecmascript/ecma_string-inl.h"
 
+#include "ecmascript/ecma_string_table.h"
 #include "ecmascript/js_symbol.h"
 #include "ecmascript/mem/c_containers.h"
 
@@ -157,6 +158,14 @@ EcmaString *EcmaString::GetSubString(const EcmaVM *vm,
     const JSHandle<EcmaString> &src, uint32_t start, uint32_t length)
 {
     ASSERT((start + length) <= src->GetLength());
+    if (length == 1) {
+        JSThread *thread = vm->GetJSThread();
+        uint16_t res = EcmaStringAccessor(src).Get<false>(start);
+        if (EcmaStringAccessor::CanBeCompressed(&res, 1)) {
+            JSHandle<SingleCharTable> singleCharTable(thread, thread->GetSingleCharTable());
+            return EcmaString::Cast(singleCharTable->GetStringFromSingleCharTable(res).GetTaggedObject());
+        }
+    }
     if (static_cast<uint32_t>(length) >= SlicedString::MIN_SLICED_ECMASTRING_LENGTH) {
         if (start == 0 && length == src->GetLength()) {
             return *src;

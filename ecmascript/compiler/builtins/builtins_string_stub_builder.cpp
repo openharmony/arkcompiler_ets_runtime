@@ -536,10 +536,28 @@ GateRef BuiltinsStringStubBuilder::GetSubString(GateRef glue, GateRef thisValue,
     Label isUtf16(env);
     Label isUtf8(env);
     Label afterNew(env);
+    Label isSingleChar(env);
+    Label notSingleChar(env);
+    Label getStringFromSingleCharTable(env);
     FlatStringStubBuilder thisFlat(this);
     thisFlat.FlattenString(glue, thisValue, &flattenFastPath);
     Bind(&flattenFastPath);
     {
+        Branch(Int32Equal(len, Int32(1)), &isSingleChar, &notSingleChar);
+        Bind(&isSingleChar);
+        {
+            StringInfoGateRef stringInfoGate1(&thisFlat);
+            GateRef charCode = StringAt(stringInfoGate1, from);
+            GateRef canStoreAsUtf8 = IsASCIICharacter(charCode);
+            Branch(canStoreAsUtf8, &getStringFromSingleCharTable, &fastSubstring);
+            Bind(&getStringFromSingleCharTable);
+            {
+                GateRef singleCharTable = GetSingleCharTable(glue);
+                result = GetValueFromTaggedArray(singleCharTable, ZExtInt16ToInt32(charCode));
+                Jump(&exit);
+            }
+        }
+        Bind(&notSingleChar);
         Branch(Int32GreaterThanOrEqual(len, Int32(SlicedString::MIN_SLICED_ECMASTRING_LENGTH)),
             &mayGetSliceString, &fastSubstring);
         Bind(&mayGetSliceString);
