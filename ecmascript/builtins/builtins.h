@@ -346,6 +346,7 @@ private:
 
     // For SharedObject/SharedFunction
     void InitializeSObjectAndSFunction(const JSHandle<GlobalEnv> &env) const;
+    void CopySObjectAndSFunction(const JSHandle<GlobalEnv> &env, const JSTaggedValue &srcEnv) const;
     void InitializeSObject(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &sObjIHClass,
                            const JSHandle<JSObject> &sObjFuncPrototype,
                            const JSHandle<JSFunction> &sFuncPrototype) const;

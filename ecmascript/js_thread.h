@@ -520,6 +520,16 @@ public:
         return enableLazyBuiltins_;
     }
 
+    void SetReadyForGCIterating()
+    {
+        readyForGCIterating_ = true;
+    }
+
+    bool ReadyForGCIterating() const
+    {
+        return readyForGCIterating_;
+    }
+
     static constexpr size_t GetGlueDataOffset()
     {
         return MEMBER_OFFSET(JSThread, glueData_);
@@ -1054,8 +1064,8 @@ public:
         alignas(EAS) JSTaggedType *frameBase_ {nullptr};
         alignas(EAS) uint64_t stackStart_ {0};
         alignas(EAS) uint64_t stackLimit_ {0};
-        alignas(EAS) GlobalEnv *glueGlobalEnv_;
-        alignas(EAS) GlobalEnvConstants *globalConst_;
+        alignas(EAS) GlobalEnv *glueGlobalEnv_ {nullptr};
+        alignas(EAS) GlobalEnvConstants *globalConst_ {nullptr};
         alignas(EAS) bool allowCrossThreadExecution_ {false};
         alignas(EAS) volatile uint64_t interruptVector_ {0};
         alignas(EAS) JSTaggedValue isStartHeapSampling_ {JSTaggedValue::False()};
@@ -1112,6 +1122,12 @@ public:
     {
         return ReadFlag(ThreadFlag::SUSPEND_REQUEST);
     }
+
+    bool InRunningState()
+    {
+        return GetState() == ThreadState::RUNNING;
+    }
+
     ThreadState GetState()
     {
         uint32_t stateAndFlags = stateAndFlags_.asAtomicInt.load(std::memory_order_acquire);
@@ -1198,7 +1214,7 @@ private:
     VmThreadControl *vmThreadControl_ {nullptr};
     bool enableStackSourceFile_ {true};
     bool enableLazyBuiltins_ {false};
-
+    bool readyForGCIterating_ {false};
     // CpuProfiler
     bool isProfiling_ {false};
     bool gcState_ {false};

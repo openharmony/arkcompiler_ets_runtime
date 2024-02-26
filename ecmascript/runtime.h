@@ -56,17 +56,24 @@ public:
     }
 
     template<class Callback>
-    void IterateThreadList(const Callback &cb)
+    void GCIterateThreadList(const Callback &cb)
     {
         LockHolder lock(threadsLock_);
         for (auto thread : threads_) {
-            cb(thread);
+            if (thread->ReadyForGCIterating()) {
+                cb(thread);
+            }
         }
     }
 
     inline const GlobalEnvConstants *GetGlobalEnvConstants()
     {
         return globalConstants_;
+    }
+
+    JSTaggedValue GetGlobalEnv() const
+    {
+        return globalEnv_;
     }
 
     inline EcmaStringTable *GetEcmaStringTable() const
@@ -89,6 +96,7 @@ private:
     MutatorLock mutatorLock_;
 
     const GlobalEnvConstants *globalConstants_ {nullptr};
+    JSTaggedValue globalEnv_ {JSTaggedValue::Hole()};
     JSThread *mainThread_ {nullptr};
     // for shared heap.
     std::unique_ptr<NativeAreaAllocator> nativeAreaAllocator_;

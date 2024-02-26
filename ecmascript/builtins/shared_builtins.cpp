@@ -51,6 +51,17 @@ void Builtins::InitializeSObjectAndSFunction(const JSHandle<GlobalEnv> &env) con
     env->SetSObjectFunctionPrototype(thread_, sObjFuncPrototype);
 }
 
+void Builtins::CopySObjectAndSFunction(const JSHandle<GlobalEnv> &env, const JSTaggedValue &srcEnv) const
+{
+    // Copy shareds.
+    ASSERT(srcEnv.IsJSGlobalEnv());
+    auto sGlobalEnv = reinterpret_cast<GlobalEnv*>(srcEnv.GetTaggedObject());
+#define COPY_ENV_SHARED_FIELDS(Type, Name, INDEX)    \
+    env->Set##Name(thread_, sGlobalEnv->Get##Name());
+    GLOBAL_ENV_SHARED_FIELDS(COPY_ENV_SHARED_FIELDS)
+#undef COPY_ENV_SHARED_FIELDS
+}
+
 void Builtins::InitializeSObject(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &sObjIHClass,
                                  const JSHandle<JSObject> &sObjFuncPrototype,
                                  const JSHandle<JSFunction> &sFuncPrototype) const

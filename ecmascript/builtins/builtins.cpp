@@ -96,6 +96,7 @@
 #include "ecmascript/marker_cell.h"
 #include "ecmascript/napi/include/jsnapi.h"
 #include "ecmascript/object_factory.h"
+#include "ecmascript/runtime.h"
 #ifdef ARK_SUPPORT_INTL
 #include "ecmascript/builtins/builtins_collator.h"
 #include "ecmascript/builtins/builtins_date_time_format.h"
@@ -325,7 +326,12 @@ void Builtins::Initialize(const JSHandle<GlobalEnv> &env, JSThread *thread, bool
     InitializeBoolean(env, primRefObjHClass);
     InitializeRegExp(env);
     InitializeString(env, objFuncPrototypeVal);
-    InitializeSObjectAndSFunction(env);
+    auto runtimeGlobalEnv = Runtime::GetInstance()->GetGlobalEnv();
+    if (runtimeGlobalEnv.IsHole()) {
+        InitializeSObjectAndSFunction(env);
+    } else {
+        CopySObjectAndSFunction(env, runtimeGlobalEnv);
+    }
     JSHandle<JSHClass> argumentsClass = factory_->CreateJSArguments(env);
     env->SetArgumentsClass(thread_, argumentsClass);
     SetArgumentsSharedAccessor(env);

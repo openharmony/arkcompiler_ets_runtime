@@ -19,11 +19,9 @@
 
 namespace panda::ecmascript {
 RuntimeLockHolder::RuntimeLockHolder(JSThread *thread, Mutex &mtx)
-    : thread_(thread), mtx_(mtx), should_lock_(!thread->IsThreadSafe())
+    : thread_(thread), mtx_(mtx)
 {
-    if (should_lock_) {
-        ThreadStateTransitionScope ts(thread_, ThreadState::WAIT);
-        mtx.Lock();
-    }
+    ThreadStateTransitionScope ts(thread_, ThreadState::WAIT);
+    mtx.Lock();
 }
 }  // namespace panda::ecmascript

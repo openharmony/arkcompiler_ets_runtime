@@ -638,7 +638,6 @@ JSTaggedValue EcmaInterpreter::ExecuteNative(EcmaRuntimeCallInfo *info)
     JSTaggedValue tagged;
     {
         ASSERT(thread == JSThread::GetCurrent());
-        ThreadNativeScope nativeScope(thread);
         tagged = reinterpret_cast<EcmaEntrypoint>(const_cast<void *>(method->GetNativePointer()))(info);
     }
     LOG_INST() << "Exit: Runtime Call.";

@@ -232,6 +232,7 @@ bool EcmaVM::Initialize()
     auto context = new EcmaContext(thread_);
     thread_->PushContext(context);
     [[maybe_unused]] EcmaHandleScope scope(thread_);
+    thread_->SetReadyForGCIterating();
     context->Initialize();
     thread_->SetGlueGlobalEnv(reinterpret_cast<GlobalEnv *>(context->GetGlobalEnv().GetTaggedType()));
     thread_->SetGlobalObject(GetGlobalEnv()->GetGlobalObject());
@@ -533,10 +534,12 @@ void EcmaVM::Iterate(const RootVisitor &v, const RootRangeVisitor &rv)
 {
     rv(Root::ROOT_VM, ObjectSlot(ToUintPtr(&internalNativeMethods_.front())),
         ObjectSlot(ToUintPtr(&internalNativeMethods_.back()) + JSTaggedValue::TaggedTypeSize()));
-    if (!WIN_OR_MAC_OR_IOS_PLATFORM) {
+    if (!WIN_OR_MAC_OR_IOS_PLATFORM && snapshotEnv_!= nullptr) {
         snapshotEnv_->Iterate(v);
     }
-    pgoProfiler_->Iterate(v);
+    if (pgoProfiler_ != nullptr) {
+        pgoProfiler_->Iterate(v);
+    }
 }
 
 #if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
