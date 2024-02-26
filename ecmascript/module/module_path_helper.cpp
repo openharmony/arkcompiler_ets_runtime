@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023 Huawei Device Co., Ltd.
+ * Copyright (c) 2024 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -589,5 +589,38 @@ void ModulePathHelper::ParseCrossModuleFile(const JSPandaFile *jsPandaFile, CStr
         }
         requestPath = outEntryPoint.substr(0, index) + requestPath.substr(pos);
     }
+}
+
+CString ModulePathHelper::ParseFileNameToVMAName(const CString &filename)
+{
+    CString tag = VMA_NAME_ARKTS_CODE;
+    size_t pos = CString::npos;
+    if (filename.empty()) {
+        return tag;
+    }
+
+    if (filename.find(EXT_NAME_JS) != CString::npos) {
+        pos = filename.find(EXT_NAME_Z_SO);
+        if (pos == CString::npos) {
+            return tag;
+        }
+        CString moduleName = filename.substr(0, pos);
+        pos = moduleName.rfind(PathHelper::POINT_TAG);
+        if (pos == CString::npos) {
+            return tag + PathHelper::COLON_TAG + filename;
+        }
+        CString realModuleName = moduleName.substr(pos + 1);
+        CString realFileName = realModuleName;
+        std::transform(realFileName.begin(), realFileName.end(), realFileName.begin(), ::tolower);
+        CString file = PREFIX_LIB + realFileName + EXT_NAME_Z_SO + PathHelper::SLASH_TAG + realModuleName + EXT_NAME_JS;
+        return tag + PathHelper::COLON_TAG + file;
+    }
+
+    if (filename.find(EXT_NAME_ABC) != CString::npos) {
+        CString file = filename.substr(BUNDLE_INSTALL_PATH_LEN);
+        return tag + PathHelper::COLON_TAG + file;
+    }
+
+    return tag;
 }
 }  // namespace panda::ecmascript
