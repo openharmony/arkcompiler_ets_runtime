@@ -486,6 +486,8 @@ static uintptr_t g_nativeTable[] = {
     reinterpret_cast<uintptr_t>(BuiltinsString::CharAt),
     reinterpret_cast<uintptr_t>(BuiltinsString::CharCodeAt),
     reinterpret_cast<uintptr_t>(BuiltinsString::CodePointAt),
+    reinterpret_cast<uintptr_t>(BuiltinsString::IsWellFormed),
+    reinterpret_cast<uintptr_t>(BuiltinsString::ToWellFormed),
     reinterpret_cast<uintptr_t>(BuiltinsString::Concat),
     reinterpret_cast<uintptr_t>(BuiltinsString::EndsWith),
     reinterpret_cast<uintptr_t>(BuiltinsString::Includes),

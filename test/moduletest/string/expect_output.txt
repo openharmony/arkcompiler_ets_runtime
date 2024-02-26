@@ -64,3 +64,15 @@ RangeError: Invalid string length
 false
 true
 true
+false
+false
+false
+false
+true
+true
+ab�
+ab�c
+�ab
+c�ab
+abc
+ab😄c

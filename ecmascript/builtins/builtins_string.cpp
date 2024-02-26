@@ -60,6 +60,7 @@
 namespace panda::ecmascript::builtins {
 using ObjectFactory = ecmascript::ObjectFactory;
 using JSArray = ecmascript::JSArray;
+constexpr std::uint16_t CHAR16_LETTER_NULL = u'\0';
 
 // 21.1.1.1 String(value)
 JSTaggedValue BuiltinsString::StringConstructor(EcmaRuntimeCallInfo *argv)
@@ -728,6 +729,170 @@ JSTaggedValue BuiltinsString::MatchAll(EcmaRuntimeCallInfo *argv)
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     info->SetCallArg(thisVal.GetTaggedValue());
     return JSFunction::Invoke(info, matchAllTag);
+}
+
+JSTaggedValue BuiltinsString::IsWellFormed(EcmaRuntimeCallInfo *argv)
+{
+    ASSERT(argv);
+    BUILTINS_API_TRACE(argv->GetThread(), String, IsWellFormed);
+    JSThread *thread = argv->GetThread();
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+
+    // 1. Let O be ? RequireObjectCoercible(this value).
+    JSHandle<JSTaggedValue> obj(JSTaggedValue::RequireObjectCoercible(thread, GetThis(argv)));
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+
+    // 2. Let S be ? ToString(O).
+    JSHandle<EcmaString> string = JSTaggedValue::ToString(thread, obj);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+
+    // 3. Return IsStringWellFormedUnicode(S).
+    uint32_t size = EcmaStringAccessor(string).GetLength();
+    uint32_t position = 0;
+    while (position < size) {
+        // i.Let first be the code unit at index position within string.
+        uint16_t first = EcmaStringAccessor(string).Get(position);
+        uint32_t cp = first - CHAR16_LETTER_NULL;
+        uint8_t codeUnitCount = 0;
+        bool isUnpairedSurrogate = false;
+        // ii. If first is neither a leading surrogate nor a trailing surrogate, then
+        //   a. Return the Record { [[CodePoint]]: cp, [[CodeUnitCount]]: 1, [[IsUnpairedSurrogate]]: false }.
+        if (!IsUTF16HighSurrogate(first) && !IsUTF16LowSurrogate(first)) {
+            codeUnitCount = 1; // 1 means: code unit count
+            isUnpairedSurrogate = false;
+        } else if (IsUTF16HighSurrogate(first) && position + 1 == size) {
+            // iii. If first is a trailing surrogate or position + 1 = size, then
+            //   a. Return the Record { [[CodePoint]]: cp, [[CodeUnitCount]]: 1, [[IsUnpairedSurrogate]]: true }.
+            codeUnitCount = 1;
+            isUnpairedSurrogate = true;
+        } else {
+            // iv. Let second be the code unit at index position + 1 within string.
+            uint16_t second = EcmaStringAccessor(string).Get(position + 1);
+            // v. If second is not a trailing surrogate, then
+            //   a. Return the Record { [[CodePoint]]: cp, [[CodeUnitCount]]: 1, [[IsUnpairedSurrogate]]: true }.
+            if (!IsUTF16LowSurrogate(second)) {
+                codeUnitCount = 1; // 1 means: code unit count
+                isUnpairedSurrogate = true;
+            } else {
+            // vi. Set cp to UTF16SurrogatePairToCodePoint(first, second).
+            // vii. Return the Record { [[CodePoint]]: cp, [[CodeUnitCount]]: 2, [[IsUnpairedSurrogate]]: false }.
+                cp = UTF16SurrogatePairToCodePoint(first, second);
+                codeUnitCount = 2; // 2 means: code unit count
+                isUnpairedSurrogate = false;
+            }
+        }
+        if (isUnpairedSurrogate) {
+            return JSTaggedValue::False();
+        } else {
+            position = position + codeUnitCount;
+        }
+    }
+    return JSTaggedValue::True();
+}
+
+JSTaggedValue BuiltinsString::ToWellFormed(EcmaRuntimeCallInfo *argv)
+{
+    ASSERT(argv);
+    BUILTINS_API_TRACE(argv->GetThread(), String, ToWellFormed);
+    JSThread *thread = argv->GetThread();
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+
+    // 1. Let O be ? RequireObjectCoercible(this value).
+    JSHandle<JSTaggedValue> obj(JSTaggedValue::RequireObjectCoercible(thread, GetThis(argv)));
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+
+    // 2. Let S be ? ToString(O).
+    JSHandle<EcmaString> string = JSTaggedValue::ToString(thread, obj);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+
+    // 3. Let strLen be the length of S.
+    // 4. Let k be 0.
+    uint32_t size = EcmaStringAccessor(string).GetLength();
+    uint32_t position = 0;
+
+    // 5. Let result be the empty String.
+    std::u16string r;
+
+    // Repeat, while k < strLen,
+    //     a. Let cp be CodePointAt(S, k).
+    //     b. If cp.[[IsUnpairedSurrogate]] is true, then
+    //         i. Set result to the string-concatenation of result and 0xFFFD (REPLACEMENT CHARACTER).
+    //     c. Else,
+    //         i. Set result to the string-concatenation of result and UTF16EncodeCodePoint(cp.[[CodePoint]]).
+    //     d. Set k to k + cp.[[CodeUnitCount]].
+    while (position < size) {
+        // i.Let first be the code unit at index position within string.
+        uint16_t first = EcmaStringAccessor(string).Get(position);
+        uint32_t cp = first - CHAR16_LETTER_NULL;
+        uint8_t codeUnitCount = 0;
+        bool isUnpairedSurrogate = false;
+        // ii. If first is neither a leading surrogate nor a trailing surrogate, then
+        //   a. Return the Record { [[CodePoint]]: cp, [[CodeUnitCount]]: 1, [[IsUnpairedSurrogate]]: false }.
+        if (!IsUTF16HighSurrogate(first) && !IsUTF16LowSurrogate(first)) {
+            codeUnitCount = 1; // 1 means: code unit count
+            isUnpairedSurrogate = false;
+        } else if (IsUTF16HighSurrogate(first) && position + 1 == size) {
+            // iii. If first is a trailing surrogate or position + 1 = size, then
+            //   a. Return the Record { [[CodePoint]]: cp, [[CodeUnitCount]]: 1, [[IsUnpairedSurrogate]]: true }.
+            codeUnitCount = 1;
+            isUnpairedSurrogate = true;
+        } else {
+            // iv. Let second be the code unit at index position + 1 within string.
+            uint16_t second = EcmaStringAccessor(string).Get(position + 1);
+            // v. If second is not a trailing surrogate, then
+            //   a. Return the Record { [[CodePoint]]: cp, [[CodeUnitCount]]: 1, [[IsUnpairedSurrogate]]: true }.
+            if (!IsUTF16LowSurrogate(second)) {
+                codeUnitCount = 1; // 1 means: code unit count
+                isUnpairedSurrogate = true;
+            } else {
+            // vi. Set cp to UTF16SurrogatePairToCodePoint(first, second).
+            // vii. Return the Record { [[CodePoint]]: cp, [[CodeUnitCount]]: 2, [[IsUnpairedSurrogate]]: false }.
+                cp = UTF16SurrogatePairToCodePoint(first, second);
+                codeUnitCount = 2; // 2 means: code unit count
+                isUnpairedSurrogate = false;
+            }
+        }
+        if (isUnpairedSurrogate) {
+            r.push_back(0xFFFD);
+        } else {
+            if (cp < 0 || cp > ENCODE_MAX_UTF16) {
+                THROW_RANGE_ERROR_AND_RETURN(thread, "CodePoint < 0 or CodePoint > 0x10FFFF",
+                                             JSTaggedValue::Exception());
+            }
+            if (cp > UINT16_MAX) {
+                uint16_t cu1 = std::floor((static_cast<uint32_t>(cp) - ENCODE_SECOND_FACTOR) /
+                                           ENCODE_FIRST_FACTOR) + ENCODE_LEAD_LOW;
+                uint16_t cu2 = ((static_cast<uint32_t>(cp) - ENCODE_SECOND_FACTOR) %
+                                 ENCODE_FIRST_FACTOR) + ENCODE_TRAIL_LOW;
+                std::u16string nextU16str1 = base::StringHelper::Utf16ToU16String(&cu1, 1);
+                std::u16string nextU16str2 = base::StringHelper::Utf16ToU16String(&cu2, 1);
+                base::StringHelper::InplaceAppend(r, nextU16str1);
+                base::StringHelper::InplaceAppend(r, nextU16str2);
+            } else {
+                auto u16tCp = static_cast<uint16_t>(cp);
+                std::u16string nextU16str = base::StringHelper::Utf16ToU16String(&u16tCp, 1);
+                base::StringHelper::InplaceAppend(r, nextU16str);
+            }
+        }
+        position = position + codeUnitCount;
+    }
+    const char16_t *constChar16tData = r.data();
+    auto *char16tData = const_cast<char16_t *>(constChar16tData);
+    auto *uint16tData = reinterpret_cast<uint16_t *>(char16tData);
+    uint32_t u16strSize = r.size();
+    return factory->NewFromUtf16Literal(uint16tData, u16strSize).GetTaggedValue();
+}
+
+// Static Semantics: UTF16SurrogatePairToCodePoint ( lead, trail )
+uint32_t BuiltinsString::UTF16SurrogatePairToCodePoint(uint16_t lead, uint16_t trail)
+{
+    // 1. Assert: lead is a leading surrogate and trail is a trailing surrogate.
+    ASSERT(IsUTF16HighSurrogate(lead) && IsUTF16LowSurrogate(trail));
+    // 2. Let cp be (lead - 0xD800) × 0x400 + (trail - 0xDC00) + 0x10000.
+    uint32_t cp = ((lead - 0xD800) << 10UL) + (trail - 0xDC00) + 0x10000;
+    // 3. Return the code point cp.
+    return cp;
 }
 
 // 21.1.3.12
