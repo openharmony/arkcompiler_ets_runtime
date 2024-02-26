@@ -137,4 +137,10 @@ get [Symbol.species]
 constructor
 1 1
 0 0
+constructor
+constructor
+constructor
+n
+100
+0
 false
