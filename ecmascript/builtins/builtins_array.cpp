@@ -1490,10 +1490,17 @@ JSTaggedValue BuiltinsArray::Map(EcmaRuntimeCallInfo *argv)
     //   e. Increase k by 1.
     uint32_t k = 0;
     uint32_t len = static_cast<uint32_t>(rawLen);
-    if (thisObjVal->IsStableJSArray(thread)) {
+    if (thisObjVal->IsStableJSArray(thread) && !thisObjHandle->GetJSHClass()->HasConstructor()) {
         JSStableArray::Map(newArrayHandle, thisObjHandle, argv, k, len);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     }
+    return MapUnStableJSArray(thread, thisArgHandle, thisObjVal, k, len, newArrayHandle, callbackFnHandle);
+}
+
+JSTaggedValue BuiltinsArray::MapUnStableJSArray(JSThread *thread, JSHandle<JSTaggedValue> &thisArgHandle,
+    JSHandle<JSTaggedValue> &thisObjVal, int64_t k, int64_t len, JSHandle<JSObject> newArrayHandle,
+    JSHandle<JSTaggedValue> &callbackFnHandle)
+{
     JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
     JSMutableHandle<JSTaggedValue> mapResultHandle(thread, JSTaggedValue::Undefined());
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();

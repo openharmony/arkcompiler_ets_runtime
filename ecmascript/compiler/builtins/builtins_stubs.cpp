@@ -294,7 +294,8 @@ DECLARE_BUILTINS(Array##Method)                                                 
     V(Reverse,      JS_POINTER)             \
     V(Push,         JS_ANY)                 \
     V(Values,       JS_POINTER)             \
-    V(Includes,     JS_ANY)
+    V(Includes,     JS_ANY)                 \
+    V(Map,          JS_ANY)
 
 DECLARE_BUILTINS(SORT)
 {

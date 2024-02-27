@@ -73,7 +73,7 @@
     /* Array.prototype.lastIndexOf ( searchElement [ , fromIndex ] ) */     \
     V("lastIndexOf",    LastIndexOf,      1, ArrayLastIndexOf)              \
     /* Array.prototype.map ( callbackfn [ , thisArg ] ) */                  \
-    V("map",            Map,              1, INVALID)                       \
+    V("map",            Map,              1, ArrayMap)                      \
     /* Array.prototype.pop ( ) */                                           \
     V("pop",            Pop,              0, ArrayPop)                      \
     /* Array.prototype.push ( ...items ) */                                 \
@@ -238,6 +238,9 @@ public:
         JSHandle<JSTaggedValue> &thisObjVal, int64_t k, int64_t len, uint32_t toIndex,
         JSHandle<JSObject> newArrayHandle, JSHandle<JSTaggedValue> &callbackFnHandle);
 
+    static JSTaggedValue MapUnStableJSArray(JSThread *thread, JSHandle<JSTaggedValue> &thisArgHandle,
+        JSHandle<JSTaggedValue> &thisObjVal, int64_t k, int64_t len, JSHandle<JSObject> newArrayHandle,
+        JSHandle<JSTaggedValue> &callbackFnHandle);
 private:
 #define BUILTIN_ARRAY_FUNCTION_ENTRY(name, method, length, id) \
     base::BuiltinFunctionEntry::Create(name, BuiltinsArray::method, length, kungfu::BuiltinsStubCSigns::id),

@@ -456,6 +456,24 @@ DEF_RUNTIME_STUBS(JSArrayFilterUnStable)
     return ret.GetRawData();
 }
 
+DEF_RUNTIME_STUBS(JSArrayMapUnStable)
+{
+    RUNTIME_STUBS_HEADER(JSArrayMapUnStable);
+    JSHandle<JSTaggedValue> thisArgHandle = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
+    JSHandle<JSTaggedValue> thisObjVal = GetHArg<JSTaggedValue>(argv, argc, 1);  // 1: means the one parameter
+    JSTaggedType taggedValueK = GetTArg(argv, argc, 2);  // 2: means the two parameter
+    int64_t k = JSTaggedNumber(JSTaggedValue(taggedValueK)).GetNumber();
+    JSTaggedType taggedValueLen = GetTArg(argv, argc, 3);  // 3: means the three parameter
+    int64_t len = JSTaggedNumber(JSTaggedValue(taggedValueLen)).GetNumber();
+    JSHandle<JSObject> newArrayHandle =
+        JSMutableHandle<JSObject>(thread, GetHArg<JSObject>(argv, argc, 4));  // 4: means the four parameter
+    JSHandle<JSTaggedValue> callbackFnHandle = GetHArg<JSTaggedValue>(argv, argc, 5);  // 5: means the five parameter
+
+    JSTaggedValue ret = builtins::BuiltinsArray::MapUnStableJSArray(thread, thisArgHandle, thisObjVal, k, len,
+        newArrayHandle, callbackFnHandle);
+    return ret.GetRawData();
+}
+
 DEF_RUNTIME_STUBS(UpdateLayOutAndAddTransition)
 {
     RUNTIME_STUBS_HEADER(UpdateLayOutAndAddTransition);
