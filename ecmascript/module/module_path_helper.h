@@ -192,7 +192,9 @@ public:
             pos1++;
             size_t pos2 = recordName.find(PathHelper::SLASH_TAG, pos1);
             if (pos2 != CString::npos) {
-                return recordName.substr(pos1, pos2 - pos1);
+                CString moduleName = recordName.substr(pos1, pos2 - pos1);
+                PathHelper::DeleteNamespace(moduleName);
+                return moduleName;
             }
         }
         return CString();

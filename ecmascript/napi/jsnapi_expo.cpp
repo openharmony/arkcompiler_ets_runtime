@@ -2566,10 +2566,19 @@ void JSNApi::SetModuleInfo(EcmaVM *vm, const std::string &assetPath, const std::
 {
     SetAssetPath(vm, assetPath);
     size_t pos = entryPoint.find_first_of("/");
-    SetBundleName(vm, entryPoint.substr(0, pos));
-    std::string subStr = entryPoint.substr(pos + 1); // 1: remove /
-    pos = subStr.find_first_of("/");
-    SetModuleName(vm, subStr.substr(0, pos));
+    if (pos != std::string::npos) {
+        SetBundleName(vm, entryPoint.substr(0, pos));
+        ecmascript::CString moduleName = ModulePathHelper::GetModuleName(entryPoint.c_str());
+        if (!moduleName.empty()) {
+            SetModuleName(vm, moduleName.c_str());
+            return;
+        }
+    }
+    std::string errmsg = "SetModuleInfo: entryPoint:" + entryPoint + "is invalid.";
+    LOG_ECMA(ERROR) << errmsg;
+    Local<StringRef> message = StringRef::NewFromUtf8(vm, errmsg.c_str());
+    Local<JSValueRef> error = Exception::Error(vm, message);
+    JSNApi::ThrowException(vm, error);
 }
 
 // note: The function SetAssetPath is a generic interface for previewing and physical machines.
