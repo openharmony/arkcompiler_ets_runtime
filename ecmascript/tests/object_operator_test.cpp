@@ -383,7 +383,7 @@ HWTEST_F_L0(ObjectOperatorTest, ReLookupPropertyInReceiver_001)
     EXPECT_TRUE(objectOperator1.IsFastMode());
     // Receiver is not DictionaryMode
     JSHandle<JSObject> handleObject = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(objFunc), objFunc);
-    for (int i = 0; i< 3; i++) {
+    for (int i = 0; i < 3; i++) {
         JSHandle<JSTaggedValue> newKey(thread, JSTaggedValue(i));
         JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(handleObject), newKey, newKey);
     }
@@ -624,7 +624,7 @@ HWTEST_F_L0(ObjectOperatorTest, UpdateDateValue_001)
 
     // object is not DictionaryMode
     JSHandle<JSObject> handleObject = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(objFunc), objFunc);
-    for (int i = 0; i< 3; i++) {
+    for (int i = 0; i < 3; i++) {
         JSHandle<JSTaggedValue> newKey(thread, JSTaggedValue(i));
         JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(handleObject), newKey, newKey);
     }
@@ -732,7 +732,7 @@ HWTEST_F_L0(ObjectOperatorTest, WriteDataProperty_001)
     objectOperator.SetIndex(index);
     // object class is not DictionaryElement and object is Element
     JSHandle<JSObject> handleObject = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(objFunc), objFunc);
-    for (int i = 0; i< 3; i++) {
+    for (int i = 0; i < 3; i++) {
         JSHandle<JSTaggedValue> newKey(thread, JSTaggedValue(i));
         JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(handleObject), newKey, newKey);
     }
@@ -798,7 +798,7 @@ HWTEST_F_L0(ObjectOperatorTest, WriteDataProperty_003)
     handleDesc.SetGetter(handleValue);
     // object is not DictionaryMode and not Element
     JSHandle<JSObject> handleObject = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(objFunc), objFunc);
-    for (int i = 0; i< 3; i++) {
+    for (int i = 0; i < 3; i++) {
         JSHandle<JSTaggedValue> newKey(thread, JSTaggedValue(i));
         JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(handleObject), newKey, newKey);
     }
@@ -842,7 +842,7 @@ HWTEST_F_L0(ObjectOperatorTest, Property_Add_001)
     EXPECT_EQ(handleArr->GetArrayLength(), 3U); // (elementIndex - 1) + 2
     // object is DictionaryElement and Element
     JSHandle<JSObject> handleObject = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(objFunc), objFunc);
-    for (int i = 0; i< 3; i++) {
+    for (int i = 0; i < 3; i++) {
         JSHandle<JSTaggedValue> newKey(thread, JSTaggedValue(i));
         JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(handleObject), newKey, newKey);
     }
@@ -867,7 +867,7 @@ HWTEST_F_L0(ObjectOperatorTest, Property_Add_002)
     handleDefaultAttr.SetDefaultAttributes();
     // object is not DictionaryMode and DefaultAttr
     JSHandle<JSObject> handleObject1 = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(objFunc), objFunc);
-    for (int i = 0; i< 3; i++) {
+    for (int i = 0; i < 3; i++) {
         JSHandle<JSTaggedValue> newKey(thread, JSTaggedValue(i));
         JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(handleObject1), newKey, newKey);
     }
@@ -878,7 +878,7 @@ HWTEST_F_L0(ObjectOperatorTest, Property_Add_002)
     EXPECT_EQ(resultArray->GetLength(), 7U);
     // object is not DictionaryMode and not DefaultAttr
     JSHandle<JSObject> handleObject2 = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(objFunc), objFunc);
-    for (int i = 0; i< 4; i++) {
+    for (int i = 0; i < 4; i++) {
         JSHandle<JSTaggedValue> newKey(thread, JSTaggedValue(i));
         JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(handleObject2), newKey, newKey);
     }
@@ -924,7 +924,7 @@ HWTEST_F_L0(ObjectOperatorTest, Property_Add_004)
     handleAttr.SetOffset(handleAttrOffset);
     // object is not DictionaryMode and not Element
     JSHandle<JSObject> handleObject = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(objFunc), objFunc);
-    for (int i = 0; i< 4; i++) {
+    for (int i = 0; i < 4; i++) {
         JSHandle<JSTaggedValue> newKey(thread, JSTaggedValue(i));
         JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(handleObject), newKey, newKey);
     }

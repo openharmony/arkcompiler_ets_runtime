@@ -45,7 +45,7 @@
 
 namespace panda::ecmascript {
 JSTaggedValue SlowRuntimeStub::CallSpread(JSThread *thread, JSTaggedValue func, JSTaggedValue obj,
-                                             JSTaggedValue array)
+                                          JSTaggedValue array)
 {
     INTERPRETER_TRACE(thread, CallSpread);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);

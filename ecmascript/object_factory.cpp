@@ -195,7 +195,7 @@ JSHandle<JSHClass> ObjectFactory::NewEcmaHClass(JSHClass *hclass, uint32_t size,
 }
 
 JSHandle<JSHClass> ObjectFactory::NewEcmaReadOnlyHClass(JSHClass *hclass, uint32_t size, JSType type,
-                                                          uint32_t inlinedProps)
+                                                        uint32_t inlinedProps)
 {
     NewObjectHook();
     uint32_t classSize = JSHClass::SIZE;
@@ -208,7 +208,7 @@ JSHandle<JSHClass> ObjectFactory::NewEcmaReadOnlyHClass(JSHClass *hclass, uint32
 JSHandle<JSHClass> ObjectFactory::NewEcmaHClass(uint32_t size, JSType type, uint32_t inlinedProps)
 {
     return NewEcmaHClass(JSHClass::Cast(thread_->GlobalConstants()->GetHClassClass().GetTaggedObject()),
-                           size, type, inlinedProps);
+        size, type, inlinedProps);
 }
 
 void ObjectFactory::InitObjectFields(const TaggedObject *object)
@@ -1760,7 +1760,7 @@ JSHandle<JSAsyncGeneratorObject> ObjectFactory::NewJSAsyncGeneratorObject(JSHand
         proto = realmHandle->GetAsyncGeneratorPrototype();
     }
     JSHandle<JSHClass> hclass = NewEcmaHClass(JSAsyncGeneratorObject::SIZE,
-                                                  JSType::JS_ASYNC_GENERATOR_OBJECT, proto);
+                                              JSType::JS_ASYNC_GENERATOR_OBJECT, proto);
     JSHandle<JSAsyncGeneratorObject> generatorObject =
         JSHandle<JSAsyncGeneratorObject>::Cast(NewJSObjectWithInit(hclass));
     return generatorObject;

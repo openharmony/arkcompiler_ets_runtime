@@ -65,7 +65,8 @@ public:
         auto objCallInfo = CreateEcmaRuntimeCallInfo(thread, 6); // 6 : means the argv length
         objCallInfo->SetFunction(JSTaggedValue::Undefined());
         objCallInfo->SetThis(value.GetTaggedValue());
-        objCallInfo->SetCallArg(0, JSTaggedValue(static_cast<int>(containers::ContainerTag::Vector))); // 0 means the argument
+        objCallInfo->SetCallArg(0,
+            JSTaggedValue(static_cast<int>(containers::ContainerTag::Vector))); // 0 means the argument
         JSTaggedValue result = containers::ContainersPrivate::Load(objCallInfo);
 
         JSHandle<JSFunction> newTarget(thread, result);
@@ -844,7 +845,6 @@ public:
 
             result.Update(JSAPIVectorIterator::Next(callInfo));
         }
-
         JSNApi::DestroyJSVM(vm);
     }
 

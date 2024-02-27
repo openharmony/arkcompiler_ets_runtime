@@ -29,7 +29,7 @@ class NumberSpeculativeLowering {
 public:
     NumberSpeculativeLowering(Circuit* circuit, Chunk* chunk, ChunkVector<TypeInfo>& typeInfos,
         ChunkVector<RangeInfo>& rangeInfos)
-        : circuit_(circuit), acc_(circuit), builder_(circuit), typeInfos_(typeInfos), 
+        : circuit_(circuit), acc_(circuit), builder_(circuit), typeInfos_(typeInfos),
           rangeInfos_(rangeInfos), rangeGuardGates_(chunk) {}
     void Run();
 

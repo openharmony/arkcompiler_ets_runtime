@@ -295,7 +295,7 @@ void BytecodeCircuitBuilder::ComputeDominatorTree()
                     semiDom[idx] = std::min(semiDom[idx], semiDom[minIdx[bbDfsTimestampToIdx[preBlock->id]]]);
                 }
             }
-            for (const auto & succDomIdx : semiDomTree[idx]) {
+            for (const auto &succDomIdx : semiDomTree[idx]) {
                 unionFind(succDomIdx);
                 if (idx == semiDom[minIdx[succDomIdx]]) {
                     immDom[succDomIdx] = idx;
