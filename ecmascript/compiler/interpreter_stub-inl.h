@@ -321,7 +321,7 @@ void InterpreterStubBuilder::SetModuleToFunction(GateRef glue, GateRef function,
 }
 
 void InterpreterStubBuilder::SetFrameState(GateRef glue, GateRef sp, GateRef function, GateRef acc,
-                                    GateRef env, GateRef pc, GateRef prev, GateRef type)
+    GateRef env, GateRef pc, GateRef prev, GateRef type)
 {
     GateRef state = GetFrame(sp);
     SetFunctionToFrame(glue, state, function);
@@ -548,7 +548,7 @@ void InterpreterStubBuilder::DispatchBase(GateRef target, GateRef glue, Args... 
 }
 
 void InterpreterStubBuilder::Dispatch(GateRef glue, GateRef sp, GateRef pc, GateRef constpool, GateRef profileTypeInfo,
-                               GateRef acc, GateRef hotnessCounter, GateRef format)
+    GateRef acc, GateRef hotnessCounter, GateRef format)
 {
     GateRef newPc = PtrAdd(pc, format);
     GateRef opcode = Load(VariableType::INT8(), newPc);
@@ -558,7 +558,7 @@ void InterpreterStubBuilder::Dispatch(GateRef glue, GateRef sp, GateRef pc, Gate
 }
 
 void InterpreterStubBuilder::DispatchLast(GateRef glue, GateRef sp, GateRef pc, GateRef constpool,
-                                   GateRef profileTypeInfo, GateRef acc, GateRef hotnessCounter)
+    GateRef profileTypeInfo, GateRef acc, GateRef hotnessCounter)
 {
     GateRef target = PtrMul(IntPtr(BytecodeStubCSigns::ID_ExceptionHandler), IntPtrSize());
     DispatchBase(target, glue, sp, pc, constpool, profileTypeInfo, acc, hotnessCounter);
@@ -566,7 +566,7 @@ void InterpreterStubBuilder::DispatchLast(GateRef glue, GateRef sp, GateRef pc, 
 }
 
 void InterpreterStubBuilder::DispatchDebugger(GateRef glue, GateRef sp, GateRef pc, GateRef constpool,
-                                       GateRef profileTypeInfo, GateRef acc, GateRef hotnessCounter)
+    GateRef profileTypeInfo, GateRef acc, GateRef hotnessCounter)
 {
     GateRef opcode = Load(VariableType::INT8(), pc);
     GateRef target = PtrMul(ZExtInt32ToPtr(ZExtInt8ToInt32(opcode)), IntPtrSize());
@@ -576,7 +576,7 @@ void InterpreterStubBuilder::DispatchDebugger(GateRef glue, GateRef sp, GateRef 
 }
 
 void InterpreterStubBuilder::DispatchDebuggerLast(GateRef glue, GateRef sp, GateRef pc, GateRef constpool,
-                                           GateRef profileTypeInfo, GateRef acc, GateRef hotnessCounter)
+    GateRef profileTypeInfo, GateRef acc, GateRef hotnessCounter)
 {
     GateRef target = PtrMul(IntPtr(BytecodeStubCSigns::ID_ExceptionHandler), IntPtrSize());
     auto args = { glue, sp, pc, constpool, profileTypeInfo, acc, hotnessCounter };

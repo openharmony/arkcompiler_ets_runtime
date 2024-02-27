@@ -1546,7 +1546,8 @@ inline void StubBuilder::SetPrototypeToHClass(VariableType type, GateRef glue, G
     Store(type, glue, hClass, offset, proto);
 }
 
-inline void StubBuilder::SetProtoChangeDetailsToHClass(VariableType type, GateRef glue, GateRef hClass, GateRef protoChange)
+inline void StubBuilder::SetProtoChangeDetailsToHClass(VariableType type,
+    GateRef glue, GateRef hClass, GateRef protoChange)
 {
     GateRef offset = IntPtr(JSHClass::PROTO_CHANGE_DETAILS_OFFSET);
     Store(type, glue, hClass, offset, protoChange);
@@ -1735,8 +1736,8 @@ inline GateRef StubBuilder::IsSpecialContainer(GateRef jsType)
 inline GateRef StubBuilder::IsFastTypeArray(GateRef jsType)
 {
     return BoolAnd(
-            Int32GreaterThanOrEqual(jsType, Int32(static_cast<int32_t>(JSType::JS_TYPED_ARRAY_FIRST))),
-            Int32LessThanOrEqual(jsType, Int32(static_cast<int32_t>(JSType::JS_FLOAT64_ARRAY))));
+        Int32GreaterThanOrEqual(jsType, Int32(static_cast<int32_t>(JSType::JS_TYPED_ARRAY_FIRST))),
+        Int32LessThanOrEqual(jsType, Int32(static_cast<int32_t>(JSType::JS_FLOAT64_ARRAY))));
 }
 
 inline GateRef StubBuilder::IsAccessorInternal(GateRef value)

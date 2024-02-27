@@ -970,12 +970,8 @@ HWTEST_F_L0(PGOProfilerTest, MergeApSelfTwice)
 
     auto doubleCount =
         decoder.GetRecordDetailInfos().GetRecordInfos().begin()->second->GetMethodInfos().begin()->second->GetCount();
-    auto singleCount = decoderSingle.GetRecordDetailInfos()
-                           .GetRecordInfos()
-                           .begin()
-                           ->second->GetMethodInfos()
-                           .begin()
-                           ->second->GetCount();
+    auto singleCount = decoderSingle.GetRecordDetailInfos().GetRecordInfos().begin()->second->
+        GetMethodInfos().begin()->second->GetCount();
     ASSERT_EQ(doubleCount, singleCount + singleCount);
 
     unlink("ark-profiler18/modules.ap");

@@ -2490,9 +2490,8 @@ DECLARE_ASM_HANDLER(HandleSuspendgeneratorV8)
         varProfileTypeInfo = GetProfileTypeInfoFromMethod(method);
         varHotnessCounter = GetHotnessCounterFromMethod(method);
         GateRef jumpSize = GetCallSizeFromFrame(prevState);
-        CallNGCRuntime(glue, RTSTUB_ID(ResumeRspAndDispatch),
-                    { glue, currentSp, *varPc, *varConstpool, *varProfileTypeInfo,
-                      *varAcc, *varHotnessCounter, jumpSize });
+        CallNGCRuntime(glue, RTSTUB_ID(ResumeRspAndDispatch), { glue, currentSp, *varPc, *varConstpool,
+            *varProfileTypeInfo, *varAcc, *varHotnessCounter, jumpSize });
         Return();
     }
 }
@@ -2565,9 +2564,8 @@ DECLARE_ASM_HANDLER(HandleDeprecatedSuspendgeneratorPrefV8V8)
         varProfileTypeInfo = GetProfileTypeInfoFromMethod(method);
         varHotnessCounter = GetHotnessCounterFromMethod(method);
         GateRef jumpSize = GetCallSizeFromFrame(prevState);
-        CallNGCRuntime(glue, RTSTUB_ID(ResumeRspAndDispatch),
-                    { glue, currentSp, *varPc, *varConstpool, *varProfileTypeInfo,
-                      *varAcc, *varHotnessCounter, jumpSize });
+        CallNGCRuntime(glue, RTSTUB_ID(ResumeRspAndDispatch), { glue, currentSp, *varPc, *varConstpool,
+            *varProfileTypeInfo, *varAcc, *varHotnessCounter, jumpSize });
         Return();
     }
 }
@@ -2898,9 +2896,8 @@ DECLARE_ASM_HANDLER(HandleAsyncgeneratorresolveV8V8V8)
         varProfileTypeInfo = GetProfileTypeInfoFromMethod(method);
         varHotnessCounter = GetHotnessCounterFromMethod(method);
         GateRef jumpSize = GetCallSizeFromFrame(prevState);
-        CallNGCRuntime(glue, RTSTUB_ID(ResumeRspAndDispatch),
-                    { glue, currentSp, *varPc, *varConstpool, *varProfileTypeInfo,
-                      *varAcc, *varHotnessCounter, jumpSize });
+        CallNGCRuntime(glue, RTSTUB_ID(ResumeRspAndDispatch), { glue, currentSp, *varPc, *varConstpool,
+            *varProfileTypeInfo, *varAcc, *varHotnessCounter, jumpSize });
         Return();
     }
 }

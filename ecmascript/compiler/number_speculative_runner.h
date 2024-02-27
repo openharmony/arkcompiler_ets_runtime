@@ -26,7 +26,7 @@ namespace panda::ecmascript::kungfu {
 class NumberSpeculativeRunner {
 public:
     NumberSpeculativeRunner(Circuit *circuit, bool enableLog, const std::string& name, Chunk* chunk)
-        : circuit_(circuit), acc_(circuit), enableLog_(enableLog), methodName_(name), 
+        : circuit_(circuit), acc_(circuit), enableLog_(enableLog), methodName_(name),
           chunk_(chunk), typeInfos_(chunk), rangeInfos_(chunk) {}
 
     ~NumberSpeculativeRunner() = default;

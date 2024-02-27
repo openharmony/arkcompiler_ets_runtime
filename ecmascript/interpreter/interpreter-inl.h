@@ -2617,9 +2617,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         if (!profileTypeInfo.IsUndefined()) {
             uint16_t slotId = READ_INST_8_0();
             JSTaggedValue res = ICRuntimeStub::LoadGlobalICByName(thread,
-                                                                  ProfileTypeInfo::Cast(
-                                                                  profileTypeInfo.GetTaggedObject()),
-                                                                  globalObj, prop, slotId, true);
+                ProfileTypeInfo::Cast(profileTypeInfo.GetTaggedObject()), globalObj, prop, slotId, true);
             INTERPRETER_RETURN_IF_ABRUPT(res);
             SET_ACC(res);
             DISPATCH(TRYLDGLOBALBYNAME_IMM8_ID16);
@@ -2702,9 +2700,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
             JSTaggedValue value = GET_ACC();
             SAVE_ACC();
             JSTaggedValue res = ICRuntimeStub::StoreGlobalICByName(thread,
-                                                                   ProfileTypeInfo::Cast(
-                                                                   profileTypeInfo.GetTaggedObject()),
-                                                                   globalObj, propKey, value, slotId, true);
+                ProfileTypeInfo::Cast(profileTypeInfo.GetTaggedObject()), globalObj, propKey, value, slotId, true);
             INTERPRETER_RETURN_IF_ABRUPT(res);
             RESTORE_ACC();
             DISPATCH(TRYSTGLOBALBYNAME_IMM8_ID16);
@@ -2823,9 +2819,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         if (!profileTypeInfo.IsUndefined()) {
             uint16_t slotId = READ_INST_16_0();
             JSTaggedValue res = ICRuntimeStub::LoadGlobalICByName(thread,
-                                                                  ProfileTypeInfo::Cast(
-                                                                  profileTypeInfo.GetTaggedObject()),
-                                                                  globalObj, propKey, slotId, false);
+                ProfileTypeInfo::Cast(profileTypeInfo.GetTaggedObject()), globalObj, propKey, slotId, false);
             INTERPRETER_RETURN_IF_ABRUPT(res);
             SET_ACC(res);
             DISPATCH(LDGLOBALVAR_IMM16_ID16);
@@ -3031,9 +3025,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
             uint16_t slotId = READ_INST_16_0();
             SAVE_ACC();
             JSTaggedValue res = ICRuntimeStub::StoreGlobalICByName(thread,
-                                                                   ProfileTypeInfo::Cast(
-                                                                   profileTypeInfo.GetTaggedObject()),
-                                                                   globalObj, prop, value, slotId, false);
+                ProfileTypeInfo::Cast(profileTypeInfo.GetTaggedObject()), globalObj, prop, value, slotId, false);
             INTERPRETER_RETURN_IF_ABRUPT(res);
             RESTORE_ACC();
             DISPATCH(STGLOBALVAR_IMM16_ID16);
@@ -3941,7 +3933,6 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         uint16_t firstArgRegIdx = READ_INST_8_2();
         LOG_INST() << "intrinsics::newobjRange " << numArgs << " v" << firstArgRegIdx;
         JSTaggedValue ctor = GET_VREG_VALUE(firstArgRegIdx);
-
         if (ctor.IsJSFunction() && ctor.IsConstructor()) {
             JSFunction *ctorFunc = JSFunction::Cast(ctor.GetTaggedObject());
             methodHandle.Update(ctorFunc->GetMethod());
@@ -4076,7 +4067,6 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         uint16_t firstArgRegIdx = READ_INST_8_3();
         LOG_INST() << "intrinsics::newobjRange " << numArgs << " v" << firstArgRegIdx;
         JSTaggedValue ctor = GET_VREG_VALUE(firstArgRegIdx);
-
         if (ctor.IsJSFunction() && ctor.IsConstructor()) {
             JSFunction *ctorFunc = JSFunction::Cast(ctor.GetTaggedObject());
             methodHandle.Update(ctorFunc->GetMethod());
@@ -4109,7 +4099,6 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
                     // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
                     newSp[index++] = GET_VREG(firstArgRegIdx + i);
                 }
-
                 InterpretedBuiltinFrame *state = GET_BUILTIN_FRAME(newSp);
                 state->base.prev = sp;
                 state->base.type = FrameType::INTERPRETER_BUILTIN_FRAME;
@@ -5027,7 +5016,6 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         LOG_INST() << "intrinsics::getresumemode";
         uint16_t vs = READ_INST_8_1();
         JSTaggedValue objVal = GET_VREG_VALUE(vs);
-
         if (objVal.IsAsyncGeneratorObject()) {
             JSAsyncGeneratorObject *obj = JSAsyncGeneratorObject::Cast(objVal.GetTaggedObject());
             SET_ACC(JSTaggedValue(static_cast<int>(obj->GetResumeMode())));
@@ -5039,7 +5027,6 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
     }
     HANDLE_OPCODE(GETTEMPLATEOBJECT_IMM8) {
         LOG_INST() << "intrinsic::gettemplateobject";
-
         JSTaggedValue literal = GET_ACC();
         SAVE_PC();
         JSTaggedValue res = SlowRuntimeStub::GetTemplateObject(thread, literal);
@@ -5049,7 +5036,6 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
     }
     HANDLE_OPCODE(GETTEMPLATEOBJECT_IMM16) {
         LOG_INST() << "intrinsic::gettemplateobject";
-
         JSTaggedValue literal = GET_ACC();
         SAVE_PC();
         JSTaggedValue res = SlowRuntimeStub::GetTemplateObject(thread, literal);

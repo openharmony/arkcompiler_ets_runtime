@@ -1031,13 +1031,13 @@ int RegExpParser::ParseAtomEscape(bool isBackward)
             Advance();
             break;
         }
-        parseLookBehind: {
-            if (isBackward) {
-                prevOp.EmitOpCode(&buffer_, 0);
+            parseLookBehind: {
+                if (isBackward) {
+                    prevOp.EmitOpCode(&buffer_, 0);
+                }
+                Advance();
+                break;
             }
-            Advance();
-            break;
-        }
         default:
             result = ParseCharacterEscape();
             break;
