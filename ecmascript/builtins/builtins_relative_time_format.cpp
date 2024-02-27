@@ -37,9 +37,9 @@ JSTaggedValue BuiltinsRelativeTimeFormat::RelativeTimeFormatConstructor(EcmaRunt
     // (NewTarget, "%RelativeTimeFormatPrototype%", « [[InitializedRelativeTimeFormat]],
     // [[Locale]], [[DataLocale]], [[Style]], [[Numeric]], [[NumberFormat]], [[NumberingSystem]], [[PluralRules]] »).
     JSHandle<JSTaggedValue> constructor = GetConstructor(argv);
-    JSHandle<JSRelativeTimeFormat> relativeTimeFormat = JSHandle<JSRelativeTimeFormat>::Cast(
-        factory->NewJSObjectByConstructor(JSHandle<JSFunction>(constructor), newTarget));
+    JSHandle<JSObject> newObject = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(constructor), newTarget);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    JSHandle<JSRelativeTimeFormat> relativeTimeFormat = JSHandle<JSRelativeTimeFormat>::Cast(newObject);
 
     // 3. Perform ? InitializeRelativeTimeFormat(relativeTimeFormat, locales, options).
     JSHandle<JSTaggedValue> locales = GetCallArg(argv, 0);

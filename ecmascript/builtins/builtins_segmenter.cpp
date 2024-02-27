@@ -44,9 +44,9 @@ JSTaggedValue BuiltinsSegmenter::SegmenterConstructor(EcmaRuntimeCallInfo *argv)
     // 2. Let internalSlotsList be « [[InitializedSegmenter]], [[Locale]], [[SegmenterGranularity]] ».
     // 3. Let segmenter be ? OrdinaryCreateFromConstructor(NewTarget, "%Segmenter.prototype%", internalSlotsList).
     JSHandle<JSTaggedValue> constructor = GetConstructor(argv);
-    JSHandle<JSSegmenter> segmenter =
-        JSHandle<JSSegmenter>::Cast(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(constructor), newTarget));
+    JSHandle<JSObject> newObject = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(constructor), newTarget);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    JSHandle<JSSegmenter> segmenter = JSHandle<JSSegmenter>::Cast(newObject);
 
     // 3. Perform ? InitializeSegmenter(segmenter, locales, options).
     JSHandle<JSTaggedValue> locales = GetCallArg(argv, 0);

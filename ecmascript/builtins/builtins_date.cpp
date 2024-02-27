@@ -79,9 +79,9 @@ JSTaggedValue BuiltinsDate::DateConstructor(EcmaRuntimeCallInfo *argv)
 
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSFunction> constructor(GetConstructor(argv));
-    JSHandle<JSDate> dateObject =
-        JSHandle<JSDate>::Cast(factory->NewJSObjectByConstructor(constructor, newTarget));
+    JSHandle<JSObject> obj = factory->NewJSObjectByConstructor(constructor, newTarget);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    JSHandle<JSDate> dateObject = JSHandle<JSDate>::Cast(obj);
     dateObject->SetTimeValue(thread, timeValue);
     return dateObject.GetTaggedValue();
 }
