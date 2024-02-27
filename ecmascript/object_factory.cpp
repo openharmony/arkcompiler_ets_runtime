@@ -123,6 +123,8 @@
 #include "ecmascript/require/js_cjs_module.h"
 #include "ecmascript/require/js_cjs_require.h"
 #include "ecmascript/shared_mm/shared_mm.h"
+#include "ecmascript/shared_objects/js_shared_map.h"
+#include "ecmascript/shared_objects/js_shared_map_iterator.h"
 #include "ecmascript/shared_objects/js_shared_set.h"
 #include "ecmascript/shared_objects/js_shared_set_iterator.h"
 #include "ecmascript/symbol_table.h"
@@ -1000,7 +1002,7 @@ JSHandle<JSObject> ObjectFactory::NewJSObjectByConstructor(const JSHandle<JSFunc
     // Check this exception elsewhere
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSObject, thread_);
     JSHandle<JSObject> obj;
-    if (jshclass->IsJSSharedObject() || jshclass->IsJSSharedSet()) {
+    if (jshclass->IsJSSharedObject() || jshclass->IsJSSharedSet() || jshclass->IsJSSharedMap()) {
         obj = NewSharedOldSpaceJSObject(jshclass);
         if (jshclass->IsDictionaryMode()) {
             auto fieldLayout = jshclass->GetLayout();
@@ -1226,6 +1228,10 @@ void ObjectFactory::InitializeJSObject(const JSHandle<JSObject> &obj, const JSHa
             break;
         case JSType::JS_MAP:
             JSMap::Cast(*obj)->SetLinkedMap(thread_, JSTaggedValue::Undefined());
+            break;
+      case JSType::JS_SHARED_MAP:
+            JSSharedMap::Cast(*obj)->SetLinkedMap(thread_, JSTaggedValue::Undefined());
+            JSSharedMap::Cast(*obj)->SetModRecord(0);
             break;
         case JSType::JS_WEAK_MAP:
             JSWeakMap::Cast(*obj)->SetLinkedMap(thread_, JSTaggedValue::Undefined());
@@ -3201,6 +3207,22 @@ JSHandle<JSMapIterator> ObjectFactory::NewJSMapIterator(const JSHandle<JSMap> &m
     iter->SetIteratedMap(thread_, map->GetLinkedMap());
     iter->SetNextIndex(0);
     iter->SetIterationKind(kind);
+    return iter;
+}
+
+JSHandle<JSSharedMapIterator> ObjectFactory::NewJSMapIterator(const JSHandle<JSSharedMap> &map, IterationKind kind)
+{
+    JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
+    JSHandle<JSTaggedValue> protoValue = env->GetSharedMapIteratorPrototype();
+    const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
+    JSHandle<JSHClass> hclassHandle(globalConst->GetHandledJSSharedMapIteratorClass());
+    hclassHandle->SetPrototype(thread_, protoValue);
+    JSHandle<JSSharedMapIterator> iter(NewJSObject(hclassHandle));
+    iter->GetJSHClass()->SetExtensible(true);
+    iter->SetIteratedMap(thread_, map.GetTaggedValue());
+    iter->SetNextIndex(0);
+    iter->SetIterationKind(kind);
+    ASSERT(iter.GetTaggedValue().IsJSSharedMapIterator());
     return iter;
 }
 

@@ -489,6 +489,19 @@ namespace panda::ecmascript {
     V(Map, Values)                            \
     V(Map, ForEach)                           \
     V(Map, AddEntriesFromIterable)            \
+    V(SharedMap, Constructor)               \
+    V(SharedMap, Species)                   \
+    V(SharedMap, Clear)                     \
+    V(SharedMap, Delete)                    \
+    V(SharedMap, Entries)                   \
+    V(SharedMap, Get)                       \
+    V(SharedMap, Has)                       \
+    V(SharedMap, Keys)                      \
+    V(SharedMap, Set)                       \
+    V(SharedMap, GetSize)                   \
+    V(SharedMap, Values)                    \
+    V(SharedMap, ForEach)                   \
+    V(SharedMap, AddEntriesFromIterable)    \
     V(Math, Abs)                              \
     V(Math, Acos)                             \
     V(Math, Acosh)                            \

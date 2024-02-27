@@ -74,6 +74,8 @@
 #include "ecmascript/module/js_module_source_text.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/runtime.h"
+#include "ecmascript/shared_objects/js_shared_map.h"
+#include "ecmascript/shared_objects/js_shared_map_iterator.h"
 #include "ecmascript/shared_objects/js_shared_set.h"
 #include "ecmascript/shared_objects/js_shared_set_iterator.h"
 #include "ecmascript/subtyping_operator.h"
@@ -303,6 +305,9 @@ void GlobalEnvConstants::InitRootsClasses(ObjectFactory *factory)
                 JSType::JS_SHARED_SET_ITERATOR, 0)); // 0: no inlined props
     SetConstant(ConstantIndex::JS_MAP_ITERATOR_CLASS_INDEX,
                 factory->NewEcmaHClass(hClass, JSMapIterator::SIZE, JSType::JS_MAP_ITERATOR, 0)); // 0: no inlined props
+    SetConstant(ConstantIndex::JS_SHARED_MAP_ITERATOR_CLASS_INDEX,
+                factory->NewEcmaHClass(hClass, JSSharedMapIterator::SIZE,
+                JSType::JS_SHARED_MAP_ITERATOR, 0)); // 0: no inlined props
     SetConstant(ConstantIndex::JS_ARRAY_ITERATOR_CLASS_INDEX,
                 factory->NewEcmaHClass(hClass, JSArrayIterator::SIZE, JSType::JS_ARRAY_ITERATOR, 0));
     SetConstant(ConstantIndex::JS_API_ARRAYLIST_ITERATOR_CLASS_INDEX,

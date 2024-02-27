@@ -108,6 +108,8 @@
 #include "ecmascript/require/js_cjs_module_cache.h"
 #include "ecmascript/require/js_cjs_require.h"
 #include "ecmascript/require/js_cjs_exports.h"
+#include "ecmascript/shared_objects/js_shared_map.h"
+#include "ecmascript/shared_objects/js_shared_map_iterator.h"
 #include "ecmascript/shared_objects/js_shared_set.h"
 #include "ecmascript/shared_objects/js_shared_set_iterator.h"
 #include "ecmascript/tagged_array.h"
@@ -206,6 +208,8 @@ CString JSHClass::DumpJSType(JSType type)
             return "SharedSet";
         case JSType::JS_MAP:
             return "Map";
+        case JSType::JS_SHARED_MAP:
+            return "SharedMap";
         case JSType::JS_WEAK_SET:
             return "WeakSet";
         case JSType::JS_WEAK_MAP:
@@ -266,6 +270,8 @@ CString JSHClass::DumpJSType(JSType type)
             return "ForinInterator";
         case JSType::JS_MAP_ITERATOR:
             return "MapIterator";
+        case JSType::JS_SHARED_MAP_ITERATOR:
+            return "SharedMapIterator";
         case JSType::JS_SET_ITERATOR:
             return "SetIterator";
         case JSType::JS_SHARED_SET_ITERATOR:
@@ -804,6 +810,10 @@ static void DumpObject(TaggedObject *obj, std::ostream &os)
             needDumpHClass = true;
             JSMap::Cast(obj)->Dump(os);
             break;
+        case JSType::JS_SHARED_MAP:
+            needDumpHClass = true;
+            JSSharedMap::Cast(obj)->Dump(os);
+            break;
         case JSType::JS_WEAK_SET:
             needDumpHClass = true;
             JSWeakSet::Cast(obj)->Dump(os);
@@ -973,6 +983,9 @@ static void DumpObject(TaggedObject *obj, std::ostream &os)
             break;
         case JSType::JS_MAP_ITERATOR:
             JSMapIterator::Cast(obj)->Dump(os);
+            break;
+        case JSType::JS_SHARED_MAP_ITERATOR:
+            JSSharedMapIterator::Cast(obj)->Dump(os);
             break;
         case JSType::JS_SET_ITERATOR:
             JSSetIterator::Cast(obj)->Dump(os);
@@ -1775,6 +1788,19 @@ void JSMap::Dump(std::ostream &os) const
     map->Dump(os);
 }
 
+void JSSharedMap::Dump(std::ostream &os) const
+{
+    LinkedHashMap *map = LinkedHashMap::Cast(GetLinkedMap().GetTaggedObject());
+    os << " - modRecord: " << std::dec << GetModRecord() << "\n";
+    os << " - elements: " << std::dec << map->NumberOfElements() << "\n";
+    os << " - deleted-elements: " << std::dec << map->NumberOfDeletedElements() << "\n";
+    os << " - capacity: " << std::dec << map->Capacity() << "\n";
+    JSObject::Dump(os);
+
+    os << " <NameDictionary[" << map->NumberOfElements() << "]>\n";
+    map->Dump(os);
+}
+
 void JSAPITreeMap::Dump(std::ostream &os) const
 {
     TaggedTreeMap *map = TaggedTreeMap::Cast(GetTreeMap().GetTaggedObject());
@@ -2025,6 +2051,21 @@ void JSForInIterator::Dump(std::ostream &os) const
 void JSMapIterator::Dump(std::ostream &os) const
 {
     LinkedHashMap *map = LinkedHashMap::Cast(GetIteratedMap().GetTaggedObject());
+    os << " - elements: " << std::dec << map->NumberOfElements() << "\n";
+    os << " - deleted-elements: " << std::dec << map->NumberOfDeletedElements() << "\n";
+    os << " - capacity: " << std::dec << map->Capacity() << "\n";
+    os << " - nextIndex: " << std::dec << GetNextIndex() << "\n";
+    os << " - IterationKind: " << std::dec << static_cast<int>(GetIterationKind()) << "\n";
+    JSObject::Dump(os);
+
+    os << " <NameDictionary[" << map->NumberOfElements() << "]>\n";
+    map->Dump(os);
+}
+
+void JSSharedMapIterator::Dump(std::ostream &os) const
+{
+    JSSharedMap *iteratedMap = JSSharedMap::Cast(GetIteratedMap().GetTaggedObject());
+    LinkedHashMap *map = LinkedHashMap::Cast(iteratedMap->GetLinkedMap().GetTaggedObject());
     os << " - elements: " << std::dec << map->NumberOfElements() << "\n";
     os << " - deleted-elements: " << std::dec << map->NumberOfDeletedElements() << "\n";
     os << " - capacity: " << std::dec << map->Capacity() << "\n";
@@ -4118,6 +4159,9 @@ static void DumpObject(TaggedObject *obj, std::vector<Reference> &vec, bool isVm
         case JSType::JS_MAP:
             JSMap::Cast(obj)->DumpForSnapshot(vec);
             return;
+        case JSType::JS_SHARED_MAP:
+            JSSharedMap::Cast(obj)->DumpForSnapshot(vec);
+            return;
         case JSType::JS_WEAK_SET:
             JSWeakSet::Cast(obj)->DumpForSnapshot(vec);
             return;
@@ -4251,6 +4295,7 @@ static void DumpObject(TaggedObject *obj, std::vector<Reference> &vec, bool isVm
         case JSType::JS_ASYNCITERATOR:
         case JSType::JS_FORIN_ITERATOR:
         case JSType::JS_MAP_ITERATOR:
+        case JSType::JS_SHARED_MAP_ITERATOR:
         case JSType::JS_SET_ITERATOR:
         case JSType::JS_SHARED_SET_ITERATOR:
         case JSType::JS_ARRAY_ITERATOR:
@@ -4989,6 +5034,16 @@ void JSMap::DumpForSnapshot(std::vector<Reference> &vec) const
     JSObject::DumpForSnapshot(vec);
 }
 
+void JSSharedMap::DumpForSnapshot(std::vector<Reference> &vec) const
+{
+    LinkedHashMap *map = LinkedHashMap::Cast(GetLinkedMap().GetTaggedObject());
+    vec.emplace_back("linkedmap", GetLinkedMap());
+    vec.emplace_back("ModRecord", JSTaggedValue(GetModRecord()));
+    map->DumpForSnapshot(vec);
+
+    JSObject::DumpForSnapshot(vec);
+}
+
 void JSForInIterator::DumpForSnapshot(std::vector<Reference> &vec) const
 {
     vec.emplace_back(CString("Object"), GetObject());
@@ -5002,6 +5057,17 @@ void JSForInIterator::DumpForSnapshot(std::vector<Reference> &vec) const
 void JSMapIterator::DumpForSnapshot(std::vector<Reference> &vec) const
 {
     LinkedHashMap *map = LinkedHashMap::Cast(GetIteratedMap().GetTaggedObject());
+    vec.emplace_back("iteratedmap", GetIteratedMap());
+    map->DumpForSnapshot(vec);
+    vec.emplace_back(CString("NextIndex"), JSTaggedValue(GetNextIndex()));
+    vec.emplace_back(CString("IterationKind"), JSTaggedValue(static_cast<int>(GetIterationKind())));
+    JSObject::DumpForSnapshot(vec);
+}
+
+void JSSharedMapIterator::DumpForSnapshot(std::vector<Reference> &vec) const
+{
+    JSSharedMap *iteratedMap = JSSharedMap::Cast(GetIteratedMap().GetTaggedObject());
+    LinkedHashMap *map = LinkedHashMap::Cast(iteratedMap->GetLinkedMap().GetTaggedObject());
     vec.emplace_back("iteratedmap", GetIteratedMap());
     map->DumpForSnapshot(vec);
     vec.emplace_back(CString("NextIndex"), JSTaggedValue(GetNextIndex()));

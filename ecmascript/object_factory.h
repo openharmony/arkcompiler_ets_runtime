@@ -59,11 +59,13 @@ class JSForInIterator;
 class JSSet;
 class JSSharedSet;
 class JSMap;
+class JSSharedMap;
 class JSRegExp;
 class JSSetIterator;
 class JSSharedSetIterator;
 class JSRegExpIterator;
 class JSMapIterator;
+class JSSharedMapIterator;
 class JSArrayIterator;
 class JSAPIPlainArrayIterator;
 class JSStringIterator;
@@ -442,6 +444,8 @@ public:
                                                    bool fullUnicode);
 
     JSHandle<JSMapIterator> NewJSMapIterator(const JSHandle<JSMap> &map, IterationKind kind);
+
+    JSHandle<JSSharedMapIterator> NewJSMapIterator(const JSHandle<JSSharedMap> &map, IterationKind kind);
 
     JSHandle<JSArrayIterator> NewJSArrayIterator(const JSHandle<JSObject> &array, IterationKind kind);
 

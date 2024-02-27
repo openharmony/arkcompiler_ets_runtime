@@ -1012,6 +1012,11 @@ inline bool JSTaggedValue::IsJSMap() const
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSMap();
 }
 
+inline bool JSTaggedValue::IsJSSharedMap() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSSharedMap();
+}
+
 inline bool JSTaggedValue::IsJSWeakMap() const
 {
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSWeakMap();
@@ -1200,6 +1205,11 @@ inline bool JSTaggedValue::IsJSRegExpIterator() const
 inline bool JSTaggedValue::IsJSMapIterator() const
 {
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSMapIterator();
+}
+
+inline bool JSTaggedValue::IsJSSharedMapIterator() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSSharedMapIterator();
 }
 
 inline bool JSTaggedValue::IsJSAPIHashMapIterator() const

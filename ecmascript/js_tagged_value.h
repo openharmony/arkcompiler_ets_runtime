@@ -448,6 +448,7 @@ public:
 
     // Type
     bool IsJSMap() const;
+    bool IsJSSharedMap() const;
     bool IsJSSet() const;
     bool IsJSSharedSet() const;
     bool IsJSWeakMap() const;
@@ -534,6 +535,7 @@ public:
     bool IsJSSharedSetIterator() const;
     bool IsJSRegExpIterator() const;
     bool IsJSMapIterator() const;
+    bool IsJSSharedMapIterator() const;
     bool IsJSArrayIterator() const;
     bool IsIterator() const;
     bool IsAsyncIterator() const;

@@ -92,6 +92,7 @@
 #include "ecmascript/require/js_cjs_module_cache.h"
 #include "ecmascript/require/js_cjs_require.h"
 #include "ecmascript/require/js_cjs_exports.h"
+#include "ecmascript/shared_objects/js_shared_map_iterator.h"
 #include "ecmascript/shared_objects/js_shared_set_iterator.h"
 #include "ecmascript/symbol_table.h"
 #include "ecmascript/marker_cell.h"
@@ -1771,6 +1772,7 @@ void Builtins::InitializeIterator(const JSHandle<GlobalEnv> &env, const JSHandle
     InitializeSetIterator(env, iteratorFuncClass);
     InitializeSSetIterator(env, iteratorFuncClass);
     InitializeMapIterator(env, iteratorFuncClass);
+    InitializeSMapIterator(env, iteratorFuncClass);
     InitializeArrayIterator(env, iteratorFuncClass, iteratorPrototypeHClass);
     InitializeStringIterator(env, iteratorFuncClass);
     InitializeRegexpIterator(env, iteratorFuncClass);
@@ -1852,7 +1854,6 @@ void Builtins::InitializeSSetIterator(const JSHandle<GlobalEnv> &env,
     hclassHandle->SetExtensible(true);
 }
 
-
 void Builtins::InitializeMapIterator(const JSHandle<GlobalEnv> &env,
                                      const JSHandle<JSHClass> &iteratorFuncClass) const
 {
@@ -1866,6 +1867,22 @@ void Builtins::InitializeMapIterator(const JSHandle<GlobalEnv> &env,
     JSHandle<JSTaggedValue> protoValue = env->GetMapIteratorPrototype();
     const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
     JSHandle<JSHClass> hclassHandle(globalConst->GetHandledJSMapIteratorClass());
+    hclassHandle->SetPrototype(thread_, protoValue);
+    hclassHandle->SetExtensible(true);
+}
+
+void Builtins::InitializeSMapIterator(const JSHandle<GlobalEnv> &env,
+                                      const JSHandle<JSHClass> &iteratorFuncClass) const
+{
+    // MapIterator.prototype
+    JSHandle<JSObject> mapIteratorPrototype(factory_->NewJSObjectWithInit(iteratorFuncClass));
+    // Iterator.prototype.next()
+    SetFunction(env, mapIteratorPrototype, "next", JSSharedMapIterator::Next, FunctionLength::ZERO);
+    SetStringTagSymbol(env, mapIteratorPrototype, "SharedMap Iterator");
+    env->SetSharedMapIteratorPrototype(thread_, mapIteratorPrototype);
+    JSHandle<JSTaggedValue> protoValue = env->GetSharedMapIteratorPrototype();
+    const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
+    JSHandle<JSHClass> hclassHandle(globalConst->GetHandledJSSharedMapIteratorClass());
     hclassHandle->SetPrototype(thread_, protoValue);
     hclassHandle->SetExtensible(true);
 }

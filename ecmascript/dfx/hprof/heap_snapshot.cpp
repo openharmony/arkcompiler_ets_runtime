@@ -316,6 +316,8 @@ CString *HeapSnapshot::GenerateNodeName(TaggedObject *entry)
             return GetString("SharedSet");
         case JSType::JS_MAP:
             return GetString("Map");
+        case JSType::JS_SHARED_MAP:
+            return GetString("SharedMap");
         case JSType::JS_WEAK_SET:
             return GetString("WeakSet");
         case JSType::JS_WEAK_MAP:
@@ -366,6 +368,8 @@ CString *HeapSnapshot::GenerateNodeName(TaggedObject *entry)
             return GetString("ForinInterator");
         case JSType::JS_MAP_ITERATOR:
             return GetString("MapIterator");
+        case JSType::JS_SHARED_MAP_ITERATOR:
+            return GetString("SharedMapIterator");
         case JSType::JS_SET_ITERATOR:
             return GetString("SetIterator");
         case JSType::JS_SHARED_SET_ITERATOR:

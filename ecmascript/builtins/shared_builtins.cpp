@@ -19,7 +19,9 @@
 #include "ecmascript/builtins/builtins_object.h"
 #include "ecmascript/builtins/builtins_shared_function.h"
 #include "ecmascript/builtins/builtins_shared_object.h"
+#include "ecmascript/builtins/builtins_shared_map.h"
 #include "ecmascript/builtins/builtins_shared_set.h"
+#include "ecmascript/shared_objects/js_shared_map.h"
 #include "ecmascript/shared_objects/js_shared_set.h"
 
 namespace panda::ecmascript {
@@ -28,6 +30,7 @@ using BuiltinsSharedFunction = builtins::BuiltinsSharedFunction;
 using Function = builtins::BuiltinsFunction;
 using Object = builtins::BuiltinsObject;
 using BuiltinsSharedSet = builtins::BuiltinsSharedSet;
+using BuiltinsSharedMap = builtins::BuiltinsSharedMap;
 
 void Builtins::InitializeSObjectAndSFunction(const JSHandle<GlobalEnv> &env) const
 {
@@ -52,6 +55,7 @@ void Builtins::InitializeSObjectAndSFunction(const JSHandle<GlobalEnv> &env) con
     InitializeSFunction(env, sFuncPrototype);
     InitializeSObject(env, sObjIHClass, sObjPrototype, sFuncPrototype);
     InitializeSSet(env, sObjPrototype, sFuncPrototype);
+    InitializeSMap(env, sObjPrototype, sFuncPrototype);
     env->SetSObjectFunctionPrototype(thread_, sObjPrototype);
 }
 
@@ -163,6 +167,64 @@ void Builtins::InitializeSSet(const JSHandle<GlobalEnv> &env, const JSHandle<JSO
     JSHandle<JSTaggedValue> speciesGetter =
         CreateSGetterSetter(env, BuiltinsSharedSet::Species, "[Symbol.species]", FunctionLength::ZERO);
     SetSAccessor(JSHandle<JSObject>(setFunction), fieldIndex, speciesGetter, globalConst->GetHandledUndefined());
+}
+
+void Builtins::InitializeSMap(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &sObjPrototype,
+    const JSHandle<JSFunction> &sFuncPrototype) const
+{
+    [[maybe_unused]] EcmaHandleScope scope(thread_);
+    const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
+    // SharedMap.prototype
+    JSHandle<JSHClass> mapPrototypeHClass = CreateSMapPrototypeHClass(sObjPrototype);
+    JSHandle<JSObject> mapPrototype =
+        factory_->NewSharedOldSpaceJSObjectWithInit(mapPrototypeHClass);
+    JSHandle<JSTaggedValue> mapPrototypeValue(mapPrototype);
+    // SharedMap.prototype_or_hclass
+    auto emptySLayout = globalConst->GetHandledEmptySLayoutInfo();
+    JSHandle<JSHClass> mapIHClass =
+        factory_->NewSEcmaHClass(JSSharedMap::SIZE, 0, JSType::JS_SHARED_MAP, mapPrototypeValue, emptySLayout);
+    // SharedMap.hclass
+    JSHandle<JSHClass> mapFuncHClass = CreateSMapFunctionHClass(sFuncPrototype);
+    // SharedMap() = new Function()
+    JSHandle<JSFunction> mapFunction =
+        factory_->NewSFunctionByHClass(reinterpret_cast<void *>(BuiltinsSharedMap::Constructor),
+                                       mapFuncHClass, FunctionKind::BUILTIN_CONSTRUCTOR);
+    InitializeSCtor(mapIHClass, mapFunction, "SharedMap", FunctionLength::ZERO);
+    JSHandle<JSObject> globalObject(thread_, env->GetGlobalObject());
+    JSHandle<JSTaggedValue> nameString(factory_->NewFromUtf8("SharedMap"));
+    PropertyDescriptor desc(thread_, JSHandle<JSTaggedValue>::Cast(mapFunction), true, false, true);
+    JSObject::DefineOwnProperty(thread_, globalObject, nameString, desc);
+    RETURN_IF_ABRUPT_COMPLETION(thread_);
+
+    // "constructor" property on the prototype
+    uint32_t fieldIndex = 0; // constructor
+    mapPrototype->SetPropertyInlinedProps(thread_, fieldIndex++, mapFunction.GetTaggedValue());
+    // SharedMap.prototype functions
+    for (const base::BuiltinFunctionEntry &entry: BuiltinsSharedMap::GetMapPrototypeFunctions()) {
+        SetSFunction(env, mapPrototype, entry.GetName(), entry.GetEntrypoint(), fieldIndex++,
+                    entry.GetLength(), entry.GetBuiltinStubId());
+    }
+    // @@ToStringTag
+    JSHandle<JSTaggedValue> strTag(factory_->NewFromUtf8("SharedMap"));
+    mapPrototype->SetPropertyInlinedProps(thread_, fieldIndex++, strTag.GetTaggedValue());
+
+    // 23.1.3.10get SharedMap.prototype.size
+    JSHandle<JSTaggedValue> sizeGetter = CreateSGetterSetter(env, BuiltinsSharedMap::GetSize, "size",
+        FunctionLength::ZERO);
+    SetSAccessor(mapPrototype, fieldIndex++, sizeGetter, globalConst->GetHandledUndefined());
+
+    // %MapPrototype% [ @@iterator ]
+    JSHandle<JSTaggedValue> entries(factory_->NewFromASCII("entries"));
+    JSHandle<JSTaggedValue> entriesFunc =
+        JSObject::GetMethod(thread_, JSHandle<JSTaggedValue>::Cast(mapPrototype), entries);
+    RETURN_IF_ABRUPT_COMPLETION(thread_);
+    mapPrototype->SetPropertyInlinedProps(thread_, fieldIndex++, entriesFunc.GetTaggedValue());
+
+    fieldIndex = JSFunction::PROTOTYPE_INLINE_PROPERTY_INDEX + 1;
+    // 23.1.2.2get SharedMap [ @@species ]
+    JSHandle<JSTaggedValue> speciesGetter =
+        CreateSGetterSetter(env, BuiltinsSharedMap::Species, "[Symbol.species]", FunctionLength::ZERO);
+    SetSAccessor(JSHandle<JSObject>(mapFunction), fieldIndex, speciesGetter, globalConst->GetHandledUndefined());
 }
 
 void Builtins::InitializeSFunction(const JSHandle<GlobalEnv> &env,
@@ -317,6 +379,36 @@ JSHandle<JSHClass> Builtins::CreateSSetFunctionHClass(const JSHandle<JSFunction>
     return sobjPrototypeHClass;
 }
 
+JSHandle<JSHClass> Builtins::CreateSMapFunctionHClass(const JSHandle<JSFunction> &sFuncPrototype) const
+{
+    uint32_t index = 0;
+    auto env = vm_->GetGlobalEnv();
+    PropertyAttributes attributes = PropertyAttributes::Default(false, false, false);
+    attributes.SetIsInlinedProps(true);
+    attributes.SetRepresentation(Representation::TAGGED);
+    auto properties = BuiltinsSharedMap::GetFunctionProperties();
+    uint32_t length = properties.size();
+    JSHandle<JSTaggedValue> keyString;
+    JSHandle<LayoutInfo> layout = factory_->CreateSLayoutInfo(length);
+    for (const auto &[key, isAccessor] : properties) {
+        attributes.SetOffset(index);
+        attributes.SetIsAccessor(isAccessor);
+        if (key == "[Symbol.species]") {
+            // TODO(Gymee) globalruntime.env
+            keyString = env->GetSpeciesSymbol();
+        } else {
+            keyString = JSHandle<JSTaggedValue>(factory_->NewFromUtf8(key));
+        }
+        layout->AddKey(thread_, index++, keyString.GetTaggedValue(), attributes);
+    }
+    JSHandle<JSHClass> sobjPrototypeHClass =
+        factory_->NewSEcmaHClass(JSSharedFunction::SIZE, length, JSType::JS_SHARED_FUNCTION,
+                                 JSHandle<JSTaggedValue>(sFuncPrototype), JSHandle<JSTaggedValue>(layout));
+    sobjPrototypeHClass->SetConstructor(true);
+    sobjPrototypeHClass->SetCallable(true);
+    return sobjPrototypeHClass;
+}
+
 JSHandle<JSHClass> Builtins::CreateSFunctionPrototypeHClass(const JSHandle<JSTaggedValue> &sObjPrototypeVal) const
 {
     uint32_t index = 0;
@@ -376,6 +468,39 @@ JSHandle<JSHClass> Builtins::CreateSSetPrototypeHClass(const JSHandle<JSObject> 
                                  JSHandle<JSTaggedValue>(sObjPrototype),
                                  JSHandle<JSTaggedValue>(layout));
     return sSetPrototypeHClass;
+}
+
+JSHandle<JSHClass> Builtins::CreateSMapPrototypeHClass(const JSHandle<JSObject> &sObjPrototype) const
+{
+    uint32_t index = 0;
+    auto env = vm_->GetGlobalEnv();
+    PropertyAttributes attributes = PropertyAttributes::Default(false, false, false);
+    attributes.SetIsInlinedProps(true);
+    attributes.SetRepresentation(Representation::TAGGED);
+    auto properties = BuiltinsSharedMap::GetPrototypeProperties();
+    uint32_t length = properties.size();
+    ASSERT(length == BuiltinsSharedMap::GetNumPrototypeInlinedProperties());
+    JSHandle<LayoutInfo> layout = factory_->CreateSLayoutInfo(length);
+    JSHandle<JSTaggedValue> keyString;
+    for (const auto &[key, isAccessor] : properties) {
+        attributes.SetOffset(index);
+        attributes.SetIsAccessor(isAccessor);
+        if (key == "[Symbol.iterator]") {
+            // TODO(Gymee) globalruntime.env
+            keyString = env->GetIteratorSymbol();
+        } else if(key == "[Symbol.toStringTag]") {
+            // TODO(Gymee) globalruntime.env
+            keyString = env->GetToStringTagSymbol();
+        } else {
+            keyString = JSHandle<JSTaggedValue>(factory_->NewFromUtf8(key));
+        }
+        layout->AddKey(thread_, index++, keyString.GetTaggedValue(), attributes);
+    }
+    JSHandle<JSHClass> sMapPrototypeHClass =
+        factory_->NewSEcmaHClass(JSSharedObject::SIZE, length, JSType::JS_SHARED_OBJECT,
+                                 JSHandle<JSTaggedValue>(sObjPrototype),
+                                 JSHandle<JSTaggedValue>(layout));
+    return sMapPrototypeHClass;
 }
 
 void Builtins::SetSFunctionName(const JSHandle<JSFunction> &ctor, std::string_view name) const

@@ -112,6 +112,8 @@
 #include "ecmascript/mem/machine_code.h"
 #include "ecmascript/module/js_module_source_text.h"
 #include "ecmascript/object_factory.h"
+#include "ecmascript/shared_objects/js_shared_map.h"
+#include "ecmascript/shared_objects/js_shared_map_iterator.h"
 #include "ecmascript/shared_objects/js_shared_set.h"
 #include "ecmascript/shared_objects/js_shared_set_iterator.h"
 #include "ecmascript/tagged_array.h"
@@ -190,6 +192,21 @@ static JSHandle<JSMap> NewJSMap(JSThread *thread, ObjectFactory *factory, JSHand
     JSHandle<JSMap> jsMap = JSHandle<JSMap>::Cast(factory->NewJSObjectWithInit(mapClass));
     JSHandle<LinkedHashMap> linkedMap(LinkedHashMap::Create(thread));
     jsMap->SetLinkedMap(thread, linkedMap);
+    return jsMap;
+}
+
+static JSHandle<JSSharedMap> NewJSSharedMap(JSThread *thread, ObjectFactory *factory)
+{
+    auto globalEnv = thread->GetEcmaVM()->GetGlobalEnv();
+    JSHandle<JSTaggedValue> proto = globalEnv->GetSFunctionPrototype();
+    auto emptySLayout = thread->GlobalConstants()->GetHandledEmptySLayoutInfo();
+    JSHandle<JSHClass> mapClass = factory->NewSEcmaHClass(JSSharedMap::SIZE, 0,
+        JSType::JS_SHARED_MAP, proto, emptySLayout);
+    JSHandle<JSSharedMap> jsMap = JSHandle<JSSharedMap>::Cast(factory->NewJSObjectWithInit(mapClass));
+    JSHandle<LinkedHashMap> linkedMap(
+        LinkedHashMap::Create(thread, LinkedHashMap::MIN_CAPACITY, MemSpaceKind::SHARED));
+    jsMap->SetLinkedMap(thread, linkedMap);
+    jsMap->SetModRecord(0);
     return jsMap;
 }
 
@@ -619,6 +636,12 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 DUMP_FOR_HANDLE(jsMap);
                 break;
             }
+            case JSType::JS_SHARED_MAP: {
+                CHECK_DUMP_FIELDS(JSObject::SIZE, JSSharedMap::SIZE, 2U);
+                JSHandle<JSSharedMap> jsMap = NewJSSharedMap(thread, factory);
+                DUMP_FOR_HANDLE(jsMap);
+                break;
+            }
             case JSType::JS_WEAK_MAP: {
                 CHECK_DUMP_FIELDS(JSObject::SIZE, JSWeakMap::SIZE, 1U);
                 JSHandle<JSHClass> weakMapClass = factory->NewEcmaHClass(JSWeakMap::SIZE, JSType::JS_WEAK_MAP, proto);
@@ -684,6 +707,13 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 CHECK_DUMP_FIELDS(JSObject::SIZE, JSMapIterator::SIZE, 2U);
                 JSHandle<JSMapIterator> jsMapIter =
                     factory->NewJSMapIterator(NewJSMap(thread, factory, proto), IterationKind::KEY);
+                DUMP_FOR_HANDLE(jsMapIter);
+                break;
+            }
+            case JSType::JS_SHARED_MAP_ITERATOR: {
+                CHECK_DUMP_FIELDS(JSObject::SIZE, JSSharedMapIterator::SIZE, 2U);
+                JSHandle<JSSharedMapIterator> jsMapIter =
+                    factory->NewJSMapIterator(NewJSSharedMap(thread, factory), IterationKind::KEY);
                 DUMP_FOR_HANDLE(jsMapIter);
                 break;
             }

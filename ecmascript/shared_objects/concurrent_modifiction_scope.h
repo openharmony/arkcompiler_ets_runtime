@@ -120,7 +120,7 @@ private:
     uint32_t expectModRecord_ {0};
     uint32_t desiredModRecord_ {0};
 
-    static_assert(std::is_same_v<Container, JSSharedSet>);
+    static_assert(std::is_same_v<Container, JSSharedSet> || std::is_same_v<Container, JSSharedMap>);
 };
 } // namespace panda::ecmascript
 #endif  // ECMASCRIPT_SHARED_OBJECTS_CONCURENT_MODICTION_SCOPE_H
