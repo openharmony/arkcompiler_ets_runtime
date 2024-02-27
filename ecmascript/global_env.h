@@ -22,6 +22,7 @@
 #include "ecmascript/js_handle.h"
 #include "ecmascript/global_env_constants-inl.h"
 #include "ecmascript/global_env_fields.h"
+#include "ecmascript/snapshot/mem/snapshot_env.h"
 
 namespace panda::ecmascript {
 class JSThread;
@@ -94,6 +95,33 @@ public:
         *reinterpret_cast<JSThread**>(address) = thread;
     }
 
+    // For work serialize, add initialized global env object to snapshot env map
+    void AddValueToSnapshotEnv(const JSThread *thread, JSTaggedValue value, uint8_t index, uint32_t offset)
+    {
+        if (!value.IsInternalAccessor()) {
+            SnapshotEnv *snapshotEnv = thread->GetEcmaVM()->GetSnapshotEnv();
+            if (!RemoveValueFromSnapshotEnv(snapshotEnv, value, offset)) {
+                return;
+            }
+            size_t globalConstCount = thread->GlobalConstants()->GetConstantCount();
+            snapshotEnv->Push(value.GetRawData(), index + globalConstCount);
+        }
+    }
+
+    // For work serialize, remove old value from snapshot env map
+    bool RemoveValueFromSnapshotEnv(SnapshotEnv *snapshotEnv, JSTaggedValue value, uint32_t offset)
+    {
+        JSTaggedValue oldValue(Barriers::GetValue<JSTaggedType>(this, offset));
+        if (oldValue == value) {
+            return false;
+        }
+        if (oldValue.IsHeapObject() && !oldValue.IsInternalAccessor()) {
+            // Remove old value
+            snapshotEnv->Remove(oldValue.GetRawData());
+        }
+        return true;
+    }
+
     JSHandle<JSTaggedValue> GetSymbol(JSThread *thread, const JSHandle<JSTaggedValue> &string);
     JSHandle<JSTaggedValue> GetStringFunctionByName(JSThread *thread, const char *name);
     JSHandle<JSTaggedValue> GetStringPrototypeFunctionByName(JSThread *thread, const char *name);
@@ -142,8 +170,11 @@ public:
     {                                                                                                   \
         uint32_t offset = HEADER_SIZE + index * JSTaggedValue::TaggedTypeSize();                        \
         if (mode == WRITE_BARRIER && value.GetTaggedValue().IsHeapObject()) {                           \
+            AddValueToSnapshotEnv(thread, value.GetTaggedValue(), index, offset);                       \
             Barriers::SetObject<true>(thread, this, offset, value.GetTaggedValue().GetRawData());       \
         } else {                                                                                        \
+            SnapshotEnv *snapshotEnv = thread->GetEcmaVM()->GetSnapshotEnv();                           \
+            RemoveValueFromSnapshotEnv(snapshotEnv, value.GetTaggedValue(), offset);                    \
             Barriers::SetPrimitive<JSTaggedType>(this, offset, value.GetTaggedValue().GetRawData());    \
         }                                                                                               \
     }                                                                                                   \
@@ -151,8 +182,11 @@ public:
     {                                                                                                   \
         uint32_t offset = HEADER_SIZE + index * JSTaggedValue::TaggedTypeSize();                        \
         if (mode == WRITE_BARRIER && value.IsHeapObject()) {                                            \
+            AddValueToSnapshotEnv(thread, value, index, offset);                                        \
             Barriers::SetObject<true>(thread, this, offset, value.GetRawData());                        \
         } else {                                                                                        \
+            SnapshotEnv *snapshotEnv = thread->GetEcmaVM()->GetSnapshotEnv();                           \
+            RemoveValueFromSnapshotEnv(snapshotEnv, value, offset);                                     \
             Barriers::SetPrimitive<JSTaggedType>(this, offset, value.GetRawData());                     \
         }                                                                                               \
     }

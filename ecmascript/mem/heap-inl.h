@@ -284,9 +284,9 @@ TaggedObject *Heap::AllocateHugeObject(size_t size)
             // if allocate huge object OOM, temporarily increase space size to avoid vm crash
             size_t oomOvershootSize = GetEcmaVM()->GetEcmaParamConfiguration().GetOutOfMemoryOvershootSize();
             oldSpace_->IncreaseOutOfMemoryOvershootSize(oomOvershootSize);
-            object = reinterpret_cast<TaggedObject *>(hugeObjectSpace_->Allocate(size, thread_));
             DumpHeapSnapshotBeforeOOM(true, size, "Heap::AllocateHugeObject", false);
             StatisticHeapDetail();
+            object = reinterpret_cast<TaggedObject *>(hugeObjectSpace_->Allocate(size, thread_));
 #ifndef ENABLE_DUMP_IN_FAULTLOG
             ThrowOutOfMemoryError(size, "Heap::AllocateHugeObject");
 #endif
