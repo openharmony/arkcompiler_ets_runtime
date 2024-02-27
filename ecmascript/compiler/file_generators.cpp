@@ -435,7 +435,9 @@ Module* AOTFileGenerator::AddModule(const std::string &name, const std::string &
                                     [[maybe_unused]] LOptions option, bool logDebug, [[maybe_unused]] bool isJit)
 {
 #ifdef COMPILE_MAPLE
-    if (useLiteCG_) {
+    std::ifstream infile;
+    infile.open("/data/local/ark-cache/litecg.use");
+    if (useLiteCG_ || infile.good()) {
         LMIRModule *irModule = new LMIRModule(vm_->GetNativeAreaAllocator(), name, logDebug, triple, isJit);
         LiteCGAssembler *ass = new LiteCGAssembler(*irModule, vm_->GetJSOptions().GetCompilerCodegenOptions());
         modulePackage_.emplace_back(Module(irModule, ass));
