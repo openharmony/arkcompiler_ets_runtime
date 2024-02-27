@@ -664,6 +664,7 @@ public:
     inline GateRef ComputeSizeUtf8(GateRef length);
     inline GateRef ComputeSizeUtf16(GateRef length);
     inline GateRef AlignUp(GateRef x, GateRef alignment);
+    GateRef NumberToString(GateRef number);
     GateRef TaggedPointerToInt64(GateRef x);
     GateRef GetLengthFromString(GateRef value);
     GateRef GetHashcodeFromString(GateRef glue, GateRef value);

@@ -620,4 +620,16 @@ GateRef CircuitBuilder::CanBackStore(GateRef rightString, GateRef isValidOpt)
 {
     return BoolAnd(isValidOpt, IsLiteralString(rightString));
 }
+
+GateRef CircuitBuilder::NumberToString(GateRef number)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    GateRef newGate = GetCircuit()->NewGate(circuit_->NumberToString(), MachineType::I64,
+                                            { currentControl, currentDepend, number }, GateType::StringType());
+    currentLabel->SetControl(newGate);
+    currentLabel->SetDepend(newGate);
+    return newGate;
+}
 }

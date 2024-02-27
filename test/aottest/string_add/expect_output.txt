@@ -33,3 +33,15 @@ Hello,
 BUGBUG
 BUGfull of bug
 full of bugfull of bug
+string0123456789
+9876543210string
+true
+false
+undefined
+null
+true
+false
+undefined
+null
+6
+120123456789

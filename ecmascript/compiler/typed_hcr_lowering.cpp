@@ -182,6 +182,9 @@ GateRef TypedHCRLowering::VisitGate(GateRef gate)
         case OpCode::MIGRATE_ARRAY_WITH_KIND:
             LowerMigrateArrayWithKind(gate);
             break;
+        case OpCode::NUMBER_TO_STRING:
+            LowerNumberToString(gate, glue);
+            break;
         default:
             break;
     }
@@ -3260,5 +3263,15 @@ void TypedHCRLowering::LowerMigrateArrayWithKind(GateRef gate)
     }
     builder_.Bind(&exit);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
+}
+
+void TypedHCRLowering::LowerNumberToString(GateRef gate, GateRef glue)
+{
+    Environment env(gate, circuit_, &builder_);
+    DEFVALUE(result, (&builder_), VariableType::JS_ANY(), builder_.Undefined());
+    GateRef number = acc_.GetValueIn(gate, 0);
+    result = builder_.CallRuntime(glue, RTSTUB_ID(NumberToString),
+        Gate::InvalidGateRef, { number }, gate);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
 }
 }  // namespace panda::ecmascript::kungfu

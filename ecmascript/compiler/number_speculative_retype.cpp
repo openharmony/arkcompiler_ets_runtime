@@ -131,6 +131,8 @@ GateRef NumberSpeculativeRetype::VisitGate(GateRef gate)
         case OpCode::LOOP_EXIT_VALUE:
         case OpCode::RANGE_GUARD:
             return VisitIntermediateValue(gate);
+        case OpCode::NUMBER_TO_STRING:
+            return VisitNumberToString(gate);
         case OpCode::JS_BYTECODE:
         case OpCode::PRIMITIVE_TYPE_CHECK:
         case OpCode::STABLE_ARRAY_CHECK:
@@ -244,6 +246,21 @@ GateRef NumberSpeculativeRetype::VisitIntermediateValue(GateRef gate)
         TypeInfo oldType = GetOutputTypeInfo(gate);
         SetOutputTypeInfo(gate, valueInfo);
         return oldType == valueInfo ? Circuit::NullGate() : gate;
+    }
+    return Circuit::NullGate();
+}
+
+GateRef NumberSpeculativeRetype::VisitNumberToString(GateRef gate)
+{
+    if (IsRetype()) {
+        return SetOutputType(gate, GateType::StringType());
+    }
+    if (IsConvert()) {
+        size_t valueNum = acc_.GetNumValueIn(gate);
+        for (size_t i = 0; i < valueNum; ++i) {
+            GateRef input = acc_.GetValueIn(gate, i);
+            acc_.ReplaceValueIn(gate, ConvertToTagged(input), i);
+        }
     }
     return Circuit::NullGate();
 }
