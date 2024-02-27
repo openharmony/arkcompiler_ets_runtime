@@ -777,7 +777,6 @@ std::pair<std::string, std::string> EcmaVM::GetCurrentModuleInfo(bool needRecord
         return std::make_pair(recordName.c_str(), fileName.c_str());
     }
     CString moduleName = ModulePathHelper::GetModuleName(recordName);
-    PathHelper::DeleteNamespace(moduleName);
     if (moduleName.empty()) {
         LOG_FULL(ERROR) << " GetCurrentModuleName Fail, recordName is " << recordName;
     }
