@@ -31,7 +31,7 @@ using namespace maple;
 bool CgStoreLoadOpt::PhaseRun(maplebe::CGFunc &f)
 {
     if (SCHD_DUMP_NEWPM) {
-        DotGenerator::GenerateDot("storeloadopt", f, f.GetMirModule(), true);
+        DotGenerator::GenerateDot("storeloadopt", f, f.GetMirModule());
     }
     ReachingDefinition *reachingDef = nullptr;
     if (Globals::GetInstance()->GetOptimLevel() >= CGOptions::kLevel2) {
@@ -41,11 +41,10 @@ bool CgStoreLoadOpt::PhaseRun(maplebe::CGFunc &f)
         GetAnalysisInfoHook()->ForceEraseAnalysisPhase(f.GetUniqueID(), &CgReachingDefinition::id);
         return false;
     }
-    (void)GetAnalysisInfoHook()->ForceRunAnalysisPhase<MapleFunctionPhase<CGFunc>, CGFunc>(&CgLoopAnalysis::id, f);
-
+    auto *loopInfo = GET_ANALYSIS(CgLoopAnalysis, f);
     StoreLoadOpt *storeLoadOpt = nullptr;
 #if TARGAARCH64 || TARGRISCV64
-    storeLoadOpt = GetPhaseMemPool()->New<AArch64StoreLoadOpt>(f, *GetPhaseMemPool());
+    storeLoadOpt = GetPhaseMemPool()->New<AArch64StoreLoadOpt>(f, *GetPhaseMemPool(), *loopInfo);
 #endif
 #if TARGARM32
     storeLoadOpt = GetPhaseMemPool()->New<Arm32StoreLoadOpt>(f, *GetPhaseMemPool());
@@ -56,6 +55,7 @@ bool CgStoreLoadOpt::PhaseRun(maplebe::CGFunc &f)
 void CgStoreLoadOpt::GetAnalysisDependence(maple::AnalysisDep &aDep) const
 {
     aDep.AddRequired<CgReachingDefinition>();
+    aDep.AddRequired<CgLoopAnalysis>();
     aDep.SetPreservedAll();
 }
 MAPLE_TRANSFORM_PHASE_REGISTER_CANSKIP(CgStoreLoadOpt, storeloadopt)

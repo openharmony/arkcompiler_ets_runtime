@@ -25,7 +25,7 @@ void LocalSchedule::Run()
     FCDG *fcdg = cda.GetFCDG();
     CHECK_FATAL(fcdg != nullptr, "control dependence analysis failed");
     if (LOCAL_SCHEDULE_DUMP) {
-        DotGenerator::GenerateDot("localsched", cgFunc, cgFunc.GetMirModule(), true, cgFunc.GetName());
+        DotGenerator::GenerateDot("localsched", cgFunc, cgFunc.GetMirModule(), cgFunc.GetName());
     }
     InitInsnIdAndLocInsn();
     for (auto region : fcdg->GetAllRegions()) {

@@ -35,18 +35,8 @@ void LiveAnalysis::InitAndGetDefUse()
 {
     FOR_ALL_BB(bb, cgFunc)
     {
-        if (!bb->GetEhPreds().empty()) {
-            InitEhDefine(*bb);
-        }
         InitBB(*bb);
         GetBBDefUse(*bb);
-        if (bb->GetEhPreds().empty()) {
-            continue;
-        }
-        bb->RemoveInsn(*bb->GetFirstInsn()->GetNext());
-        cgFunc->DecTotalNumberOfInstructions();
-        bb->RemoveInsn(*bb->GetFirstInsn());
-        cgFunc->DecTotalNumberOfInstructions();
     }
 }
 
@@ -85,16 +75,6 @@ bool LiveAnalysis::GenerateLiveOut(BB &bb) const
             bb.LiveOutOrBits(*succBB->GetLiveIn());
             RemovePhiLiveInFromSuccNotFromThisBB(bb, *succBB);
         }
-        if (!succBB->GetEhSuccs().empty()) {
-            for (auto ehSuccBB : succBB->GetEhSuccs()) {
-                bb.LiveOutOrBits(*ehSuccBB->GetLiveIn());
-            }
-        }
-    }
-    for (auto ehSuccBB : bb.GetEhSuccs()) {
-        if (ehSuccBB->GetLiveInChange() && !ehSuccBB->GetLiveIn()->NoneBit()) {
-            bb.LiveOutOrBits(*ehSuccBB->GetLiveIn());
-        }
     }
     return !bb.GetLiveOut()->IsEqual(bbLiveOutBak);
 }
@@ -114,24 +94,13 @@ bool LiveAnalysis::GenerateLiveIn(BB &bb)
         bb.LiveInOrBits(bbLiveOut);
     }
 
-    if (!bb.GetEhSuccs().empty()) {
-        /* If bb has eh successors, check if multi-gen exists. */
-        SparseDataInfo allInOfEhSuccs(cgFunc->GetMaxVReg(), allocator);
-        for (auto ehSucc : bb.GetEhSuccs()) {
-            allInOfEhSuccs.OrBits(*ehSucc->GetLiveIn());
-        }
-        allInOfEhSuccs.AndBits(*bb.GetDef());
-        bb.LiveInOrBits(allInOfEhSuccs);
-    }
-
     if (!bb.GetLiveIn()->IsEqual(bbLiveInBak)) {
         return true;
     }
     return false;
 }
 
-SparseDataInfo *LiveAnalysis::GenerateLiveInByDefUse(SparseDataInfo &liveOut, SparseDataInfo &use, SparseDataInfo &def,
-                                                     const MapleList<BB *> &ehSuccs)
+SparseDataInfo *LiveAnalysis::GenerateLiveInByDefUse(SparseDataInfo &liveOut, SparseDataInfo &use, SparseDataInfo &def)
 {
     const uint32 maxRegCount =
         cgFunc->GetSSAvRegCount() > cgFunc->GetMaxVReg() ? cgFunc->GetSSAvRegCount() : cgFunc->GetMaxVReg();
@@ -142,15 +111,6 @@ SparseDataInfo *LiveAnalysis::GenerateLiveInByDefUse(SparseDataInfo &liveOut, Sp
         tmpLiveOut->Difference(def);
         liveIn->OrBits(*tmpLiveOut);
     }
-    if (!ehSuccs.empty()) {
-        /* if bb has eh successors, check if multi-gen exists. */
-        SparseDataInfo allInOfEhSuccs(maxRegCount, alloc);
-        for (auto ehSucc : ehSuccs) {
-            allInOfEhSuccs.OrBits(*ehSucc->GetLiveIn());
-        }
-        allInOfEhSuccs.AndBits(def);
-        liveIn->OrBits(allInOfEhSuccs);
-    }
     return liveIn;
 }
 
@@ -159,8 +119,8 @@ void LiveAnalysis::GenerateStackMapLiveIn()
     const auto &stackMapInsns = cgFunc->GetStackMapInsns();
     for (auto *insn : stackMapInsns) {
         BB *curBB = insn->GetBB();
-        SparseDataInfo *liveIn = GenerateLiveInByDefUse(*curBB->GetLiveOut(), *insn->GetStackMapUse(),
-                                                        *insn->GetStackMapDef(), curBB->GetEhSuccs());
+        SparseDataInfo *liveIn =
+            GenerateLiveInByDefUse(*curBB->GetLiveOut(), *insn->GetStackMapUse(), *insn->GetStackMapDef());
         insn->SetStackMapLiveIn(*liveIn);
     }
 }

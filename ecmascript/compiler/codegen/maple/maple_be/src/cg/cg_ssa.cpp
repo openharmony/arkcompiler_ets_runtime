@@ -305,12 +305,6 @@ void CGSSAInfo::DumpFuncCGIRinSSAForm() const
                 LogInfo::MapleLogger() << succBB->GetId() << " ";
             }
         }
-        if (!bb->GetEhSuccs().empty()) {
-            LogInfo::MapleLogger() << "eh_succs: ";
-            for (auto *ehSuccBB : bb->GetEhSuccs()) {
-                LogInfo::MapleLogger() << ehSuccBB->GetId() << " ";
-            }
-        }
         LogInfo::MapleLogger() << "===\n";
         LogInfo::MapleLogger() << "frequency:" << bb->GetFrequency() << "\n";
 
@@ -365,7 +359,7 @@ void CgSSAConstruct::GetAnalysisDependence(maple::AnalysisDep &aDep) const
 bool CgSSAConstruct::PhaseRun(maplebe::CGFunc &f)
 {
     if (CG_DEBUG_FUNC(f)) {
-        DotGenerator::GenerateDot("beforessa", f, f.GetMirModule(), true);
+        DotGenerator::GenerateDot("beforessa", f, f.GetMirModule());
     }
     MemPool *ssaMemPool = GetPhaseMemPool();
     MemPool *ssaTempMp = ApplyTempMemPool();

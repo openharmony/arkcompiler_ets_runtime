@@ -24,29 +24,30 @@ using namespace maple;
 
 class AArch64GlobalOpt : public GlobalOpt {
 public:
-    explicit AArch64GlobalOpt(CGFunc &func) : GlobalOpt(func) {}
+    explicit AArch64GlobalOpt(CGFunc &func, LoopAnalysis &loop) : GlobalOpt(func, loop) {}
     ~AArch64GlobalOpt() override = default;
     void Run() override;
 };
 
 class OptimizeManager {
 public:
-    explicit OptimizeManager(CGFunc &cgFunc) : cgFunc(cgFunc) {}
+    explicit OptimizeManager(CGFunc &cgFunc, LoopAnalysis &loop) : cgFunc(cgFunc), loopInfo(loop) {}
     ~OptimizeManager() = default;
     template <typename OptimizePattern>
     void Optimize()
     {
-        OptimizePattern optPattern(cgFunc);
+        OptimizePattern optPattern(cgFunc, loopInfo);
         optPattern.Run();
     }
 
 private:
     CGFunc &cgFunc;
+    LoopAnalysis &loopInfo;
 };
 
 class OptimizePattern {
 public:
-    explicit OptimizePattern(CGFunc &cgFunc) : cgFunc(cgFunc) {}
+    explicit OptimizePattern(CGFunc &cgFunc, LoopAnalysis &loop) : cgFunc(cgFunc), loopInfo(loop) {}
     virtual ~OptimizePattern() = default;
     virtual bool CheckCondition(Insn &insn) = 0;
     virtual void Optimize(Insn &insn) = 0;
@@ -69,6 +70,7 @@ public:
 protected:
     virtual void Init() = 0;
     CGFunc &cgFunc;
+    LoopAnalysis &loopInfo;
 };
 
 /*
@@ -84,7 +86,7 @@ protected:
  */
 class ForwardPropPattern : public OptimizePattern {
 public:
-    explicit ForwardPropPattern(CGFunc &cgFunc) : OptimizePattern(cgFunc) {}
+    explicit ForwardPropPattern(CGFunc &cgFunc, LoopAnalysis &loop) : OptimizePattern(cgFunc, loop) {}
     ~ForwardPropPattern() override = default;
     bool CheckCondition(Insn &insn) final;
     void Optimize(Insn &insn) final;
@@ -108,7 +110,7 @@ private:
  */
 class BackPropPattern : public OptimizePattern {
 public:
-    explicit BackPropPattern(CGFunc &cgFunc) : OptimizePattern(cgFunc) {}
+    explicit BackPropPattern(CGFunc &cgFunc, LoopAnalysis &loop) : OptimizePattern(cgFunc, loop) {}
     ~BackPropPattern() override
     {
         firstRegOpnd = nullptr;
@@ -125,7 +127,6 @@ protected:
 private:
     bool CheckAndGetOpnd(const Insn &insn);
     bool DestOpndHasUseInsns(Insn &insn);
-    bool DestOpndLiveOutToEHSuccs(Insn &insn) const;
     bool CheckSrcOpndDefAndUseInsns(Insn &insn);
     bool CheckSrcOpndDefAndUseInsnsGlobal(Insn &insn);
     bool CheckPredefineInsn(Insn &insn);
@@ -167,7 +168,7 @@ private:
  */
 class CmpCsetPattern : public OptimizePattern {
 public:
-    explicit CmpCsetPattern(CGFunc &cgFunc) : OptimizePattern(cgFunc) {}
+    explicit CmpCsetPattern(CGFunc &cgFunc, LoopAnalysis &loop) : OptimizePattern(cgFunc, loop) {}
     ~CmpCsetPattern() override
     {
         nextInsn = nullptr;
@@ -208,7 +209,7 @@ private:
  */
 class CselPattern : public OptimizePattern {
 public:
-    explicit CselPattern(CGFunc &cgFunc) : OptimizePattern(cgFunc) {}
+    explicit CselPattern(CGFunc &cgFunc, LoopAnalysis &loop) : OptimizePattern(cgFunc, loop) {}
     ~CselPattern() override = default;
     bool CheckCondition(Insn &insn) final;
     void Optimize(Insn &insn) final;
@@ -235,7 +236,7 @@ protected:
  */
 class RedundantUxtPattern : public OptimizePattern {
 public:
-    explicit RedundantUxtPattern(CGFunc &cgFunc) : OptimizePattern(cgFunc) {}
+    explicit RedundantUxtPattern(CGFunc &cgFunc, LoopAnalysis &loop) : OptimizePattern(cgFunc, loop) {}
     ~RedundantUxtPattern() override
     {
         secondOpnd = nullptr;
@@ -265,7 +266,7 @@ private:
  */
 class LocalVarSaveInsnPattern : public OptimizePattern {
 public:
-    explicit LocalVarSaveInsnPattern(CGFunc &cgFunc) : OptimizePattern(cgFunc) {}
+    explicit LocalVarSaveInsnPattern(CGFunc &cgFunc, LoopAnalysis &loop) : OptimizePattern(cgFunc, loop) {}
     ~LocalVarSaveInsnPattern() override
     {
         firstInsnSrcOpnd = nullptr;
@@ -297,7 +298,7 @@ private:
 
 class ExtendShiftOptPattern : public OptimizePattern {
 public:
-    explicit ExtendShiftOptPattern(CGFunc &cgFunc) : OptimizePattern(cgFunc) {}
+    explicit ExtendShiftOptPattern(CGFunc &cgFunc, LoopAnalysis &loop) : OptimizePattern(cgFunc, loop) {}
     ~ExtendShiftOptPattern() override
     {
         defInsn = nullptr;
@@ -386,7 +387,7 @@ private:
  */
 class ExtenToMovPattern : public OptimizePattern {
 public:
-    explicit ExtenToMovPattern(CGFunc &cgFunc) : OptimizePattern(cgFunc) {}
+    explicit ExtenToMovPattern(CGFunc &cgFunc, LoopAnalysis &loop) : OptimizePattern(cgFunc, loop) {}
     ~ExtenToMovPattern() override = default;
     bool CheckCondition(Insn &insn) final;
     void Optimize(Insn &insn) final;
@@ -406,7 +407,7 @@ private:
 
 class SameDefPattern : public OptimizePattern {
 public:
-    explicit SameDefPattern(CGFunc &cgFunc) : OptimizePattern(cgFunc) {}
+    explicit SameDefPattern(CGFunc &cgFunc, LoopAnalysis &loop) : OptimizePattern(cgFunc, loop) {}
     ~SameDefPattern() override
     {
         currInsn = nullptr;
@@ -441,7 +442,7 @@ private:
  */
 class AndCbzPattern : public OptimizePattern {
 public:
-    explicit AndCbzPattern(CGFunc &cgFunc) : OptimizePattern(cgFunc) {}
+    explicit AndCbzPattern(CGFunc &cgFunc, LoopAnalysis &loop) : OptimizePattern(cgFunc, loop) {}
     ~AndCbzPattern() override
     {
         prevInsn = nullptr;
@@ -481,7 +482,7 @@ private:
  */
 class SameRHSPropPattern : public OptimizePattern {
 public:
-    explicit SameRHSPropPattern(CGFunc &cgFunc) : OptimizePattern(cgFunc) {}
+    explicit SameRHSPropPattern(CGFunc &cgFunc, LoopAnalysis &loop) : OptimizePattern(cgFunc, loop) {}
     ~SameRHSPropPattern() override
     {
         prevInsn = nullptr;

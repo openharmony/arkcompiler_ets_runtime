@@ -936,7 +936,7 @@ bool CgPreScheduling::PhaseRun(maplebe::CGFunc &f)
     }
     if (LIST_SCHED_DUMP_NEWPM) {
         LogInfo::MapleLogger() << "Before CgDoPreScheduling : " << f.GetName() << "\n";
-        DotGenerator::GenerateDot("preschedule", f, f.GetMirModule(), true);
+        DotGenerator::GenerateDot("preschedule", f, f.GetMirModule());
     }
     auto *live = GET_ANALYSIS(CgLiveAnalysis, f);
     /* revert liveanalysis result container. */
@@ -970,7 +970,7 @@ bool CgScheduling::PhaseRun(maplebe::CGFunc &f)
     }
     if (LIST_SCHED_DUMP_NEWPM) {
         LogInfo::MapleLogger() << "Before CgDoScheduling : " << f.GetName() << "\n";
-        DotGenerator::GenerateDot("scheduling", f, f.GetMirModule(), true);
+        DotGenerator::GenerateDot("scheduling", f, f.GetMirModule());
     }
     auto *live = GET_ANALYSIS(CgLiveAnalysis, f);
     /* revert liveanalysis result container. */

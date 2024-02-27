@@ -35,7 +35,6 @@ public:
 protected:
     void Init(BB &bb, MapleVector<DepNode *> &nodes) override;
     void ClearAllDepData() override;
-    void AnalysisAmbiInsns(BB &bb) override;
     void AppendRegUseList(Insn &insn, regno_t regNO) override;
     void AddDependence(DepNode &fromNode, DepNode &toNode, DepType depType) override;
     void RemoveSelfDeps(Insn &insn) override;

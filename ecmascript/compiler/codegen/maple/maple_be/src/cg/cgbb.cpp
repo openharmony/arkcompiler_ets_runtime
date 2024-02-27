@@ -381,23 +381,10 @@ void Bfs::SeekCycles()
 {
     MapleVector<bool> visited(cgfunc->NumBBs(), false, alloc.Adapter());
     MapleVector<bool> onPath(cgfunc->NumBBs(), false, alloc.Adapter());
-    MapleStack<BB *> workStack(alloc.Adapter());
-
-    // searching for succsBB in the same cycle as BB
-    auto seekCycleSuccs = [this, &visited, &onPath, &workStack](const BB &bb, const MapleList<BB *> succs) {
-        for (auto *succBB : succs) {
-            if (!visited[succBB->GetId()]) {
-                workStack.push(succBB);
-            } else {
-                if (onPath[succBB->GetId()]) {
-                    (void)cycleSuccs[bb.GetId()].insert(succBB->GetId());
-                }
-            }
-        }
-    };
+    MapleStack<BB*> workStack(alloc.Adapter());
 
     // searhing workStack BBs cycle
-    auto seekCycles = [&visited, &onPath, &workStack, &seekCycleSuccs]() {
+    auto seekCycles = [this, &visited, &onPath, &workStack]() {
         while (!workStack.empty()) {
             auto *bb = workStack.top();
             if (visited[bb->GetId()]) {
@@ -408,8 +395,13 @@ void Bfs::SeekCycles()
 
             visited[bb->GetId()] = true;
             onPath[bb->GetId()] = true;
-            seekCycleSuccs(*bb, bb->GetSuccs());
-            seekCycleSuccs(*bb, bb->GetEhSuccs());
+            for (auto *succBB : bb->GetSuccs()) {
+                if (!visited[succBB->GetId()]) {
+                    workStack.push(succBB);
+                } else if (onPath[succBB->GetId()]) {
+                    (void)cycleSuccs[bb->GetId()].insert(succBB->GetId());
+                }
+            }
         }
     };
 
@@ -447,13 +439,6 @@ bool Bfs::AllPredBBVisited(const BB &bb, long &level) const
         }
         level = std::max(level, predBB->GetInternalFlag2());
     }
-    for (const auto *predEhBB : bb.GetEhPreds()) {
-        if (!predBBInCycle(bb, *predEhBB) && !visitedBBs[predEhBB->GetId()]) {
-            isAllPredsVisited = false;
-            break;
-        }
-        level = std::max(level, predEhBB->GetInternalFlag2());
-    }
     return isAllPredsVisited;
 }
 
@@ -466,14 +451,14 @@ bool Bfs::AllPredBBVisited(const BB &bb, long &level) const
 BB *Bfs::MarkStraightLineBBInBFS(BB *bb)
 {
     while (true) {
-        if ((bb->GetSuccs().size() != 1) || !bb->GetEhSuccs().empty()) {
+        if (bb->GetSuccs().size() != 1) {
             break;
         }
         BB *sbb = bb->GetSuccs().front();
         if (visitedBBs[sbb->GetId()]) {
             break;
         }
-        if ((sbb->GetPreds().size() != 1) || !sbb->GetEhPreds().empty()) {
+        if (sbb->GetPreds().size() != 1) {
             break;
         }
         sortedBBs.push_back(sbb);
@@ -486,7 +471,7 @@ BB *Bfs::MarkStraightLineBBInBFS(BB *bb)
 
 BB *Bfs::SearchForStraightLineBBs(BB &bb)
 {
-    if ((bb.GetSuccs().size() != kCondBrNum) || bb.GetEhSuccs().empty()) {
+    if ((bb.GetSuccs().size() != kCondBrNum)) {
         return &bb;
     }
     BB *sbb1 = bb.GetSuccs().front();
@@ -503,9 +488,6 @@ BB *Bfs::SearchForStraightLineBBs(BB &bb)
     }
     DEBUG_ASSERT(candidateBB->GetId() < visitedBBs.size(), "index out of range in RA::SearchForStraightLineBBs");
     if (visitedBBs[candidateBB->GetId()]) {
-        return &bb;
-    }
-    if (!candidateBB->GetEhPreds().empty()) {
         return &bb;
     }
     if (candidateBB->GetSuccs().size() != 1) {

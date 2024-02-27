@@ -82,11 +82,11 @@ void ReachingDefinition::ClearDefUseInfo()
          * Backward propagation can move the return register definition far from the return.
          */
 #ifndef TARGX86_64
-    if (Triple::GetTriple().GetArch() == Triple::ArchType::x64) {
-        if (insn->GetMachineOpcode() == MOP_pseudo_ret_int || insn->GetMachineOpcode() == MOP_pseudo_ret_float) {
-            continue;
+        if (Triple::GetTriple().GetArch() == Triple::ArchType::x64) {
+            if (insn->GetMachineOpcode() == MOP_pseudo_ret_int || insn->GetMachineOpcode() == MOP_pseudo_ret_float) {
+                continue;
+            }
         }
-    }
 #endif
         insn->GetBB()->RemoveInsn(*insn);
     }
@@ -148,11 +148,7 @@ InsnSet ReachingDefinition::FindUseForRegOpnd(Insn &insn, uint32 indexOrRegNO, b
     /* register may be redefined in current bb */
     bool findFinish = FindRegUseBetweenInsn(regNO, insn.GetNext(), insn.GetBB()->GetLastInsn(), useInsnSet);
     std::vector<bool> visitedBB(kMaxBBNum, false);
-    if (findFinish || !regOut[insn.GetBB()->GetId()]->TestBit(regNO)) {
-        if (!insn.GetBB()->GetEhSuccs().empty()) {
-            DFSFindUseForRegOpnd(*insn.GetBB(), regNO, visitedBB, useInsnSet, true);
-        }
-    } else {
+    if (!findFinish && regOut[insn.GetBB()->GetId()]->TestBit(regNO)) {
         DFSFindUseForRegOpnd(*insn.GetBB(), regNO, visitedBB, useInsnSet, false);
     }
 
@@ -199,26 +195,6 @@ void ReachingDefinition::DFSFindUseForRegOpnd(const BB &startBB, uint32 regNO, s
             if (!findFinish && regOut[succBB->GetId()]->TestBit(regNO)) {
                 DFSFindUseForRegOpnd(*succBB, regNO, visitedBB, useInsnSet, false);
             }
-        }
-    }
-
-    for (auto ehSuccBB : startBB.GetEhSuccs()) {
-        if (!regIn[ehSuccBB->GetId()]->TestBit(regNO)) {
-            continue;
-        }
-        if (visitedBB[ehSuccBB->GetId()]) {
-            continue;
-        }
-        visitedBB[ehSuccBB->GetId()] = true;
-
-        bool findFinish = false;
-        if (regUse[ehSuccBB->GetId()]->TestBit(regNO)) {
-            findFinish = FindRegUseBetweenInsn(regNO, ehSuccBB->GetFirstInsn(), ehSuccBB->GetLastInsn(), useInsnSet);
-        } else if (regGen[ehSuccBB->GetId()]->TestBit(regNO)) {
-            findFinish = true;
-        }
-        if (!findFinish && regOut[ehSuccBB->GetId()]->TestBit(regNO)) {
-            DFSFindUseForRegOpnd(*ehSuccBB, regNO, visitedBB, useInsnSet, false);
         }
     }
 }
@@ -269,36 +245,6 @@ bool ReachingDefinition::RegIsUsedInOtherBB(const BB &startBB, uint32 regNO, std
             }
         }
     }
-
-    for (auto ehSuccBB : startBB.GetEhSuccs()) {
-        if (!regIn[ehSuccBB->GetId()]->TestBit(regNO)) {
-            continue;
-        }
-        if (visitedBB[ehSuccBB->GetId()]) {
-            continue;
-        }
-        visitedBB[ehSuccBB->GetId()] = true;
-
-        bool findFinish = false;
-        if (regUse[ehSuccBB->GetId()]->TestBit(regNO)) {
-            if (!regGen[ehSuccBB->GetId()]->TestBit(regNO)) {
-                return true;
-            }
-            useInsnSet.clear();
-            findFinish = FindRegUseBetweenInsn(regNO, ehSuccBB->GetFirstInsn(), ehSuccBB->GetLastInsn(), useInsnSet);
-            if (!useInsnSet.empty()) {
-                return true;
-            }
-        } else if (regGen[ehSuccBB->GetId()]->TestBit(regNO)) {
-            findFinish = true;
-        }
-        if (!findFinish && regOut[ehSuccBB->GetId()]->TestBit(regNO)) {
-            if (RegIsUsedInOtherBB(*ehSuccBB, regNO, visitedBB)) {
-                return true;
-            }
-        }
-    }
-
     return false;
 }
 
@@ -357,25 +303,6 @@ void ReachingDefinition::DFSFindUseForMemOpnd(const BB &startBB, uint32 offset, 
             if (!findFinish && memOut[succBB->GetId()]->TestBit(offset / kMemZoomSize)) {
                 DFSFindUseForMemOpnd(*succBB, offset, visitedBB, useInsnSet);
             }
-        }
-    }
-
-    for (auto ehSuccBB : startBB.GetEhSuccs()) {
-        if (!memIn[ehSuccBB->GetId()]->TestBit(offset / kMemZoomSize)) {
-            continue;
-        }
-        if (visitedBB[ehSuccBB->GetId()]) {
-            continue;
-        }
-        visitedBB[ehSuccBB->GetId()] = true;
-        bool findFinish = false;
-        if (memUse[ehSuccBB->GetId()]->TestBit(offset / kMemZoomSize)) {
-            findFinish = FindMemUseBetweenInsn(offset, ehSuccBB->GetFirstInsn(), ehSuccBB->GetLastInsn(), useInsnSet);
-        } else if (memGen[ehSuccBB->GetId()]->TestBit(offset / kMemZoomSize)) {
-            findFinish = true;
-        }
-        if (!findFinish && memOut[ehSuccBB->GetId()]->TestBit(offset / kMemZoomSize)) {
-            DFSFindUseForMemOpnd(*ehSuccBB, offset, visitedBB, useInsnSet);
         }
     }
 }
@@ -441,9 +368,6 @@ bool ReachingDefinition::GenerateIn(const BB &bb)
         for (auto predBB : bb.GetPreds()) {
             regIn[bb.GetId()]->OrBits(*regOut[predBB->GetId()]);
         }
-        for (auto predEhBB : bb.GetEhPreds()) {
-            regIn[bb.GetId()]->OrBits(*regOut[predEhBB->GetId()]);
-        }
 
         if (!regIn[bb.GetId()]->IsEqual(bbRegInBak)) {
             inInfoChanged = true;
@@ -454,9 +378,6 @@ bool ReachingDefinition::GenerateIn(const BB &bb)
         DataInfo &memInBak = memIn[bb.GetId()]->Clone(alloc);
         for (auto predBB : bb.GetPreds()) {
             memIn[bb.GetId()]->OrBits(*memOut[predBB->GetId()]);
-        }
-        for (auto predEhBB : bb.GetEhPreds()) {
-            memIn[bb.GetId()]->OrBits(*memOut[predEhBB->GetId()]);
         }
 
         if (!memIn[bb.GetId()]->IsEqual(memInBak)) {
@@ -478,9 +399,6 @@ bool ReachingDefinition::GenerateIn(const BB &bb, const std::set<uint32> &infoIn
             for (auto predBB : bb.GetPreds()) {
                 regIn[bb.GetId()]->OrDesignateBits(*regOut[predBB->GetId()], index);
             }
-            for (auto predEhBB : bb.GetEhPreds()) {
-                regIn[bb.GetId()]->OrDesignateBits(*regOut[predEhBB->GetId()], index);
-            }
 
             if (bbRegInBak != regIn[bb.GetId()]->GetElem(index)) {
                 inInfoChanged = true;
@@ -492,9 +410,6 @@ bool ReachingDefinition::GenerateIn(const BB &bb, const std::set<uint32> &infoIn
             memIn[bb.GetId()]->SetElem(index, 0ULL);
             for (auto predBB : bb.GetPreds()) {
                 memIn[bb.GetId()]->OrDesignateBits(*memOut[predBB->GetId()], index);
-            }
-            for (auto predEhBB : bb.GetEhPreds()) {
-                memIn[bb.GetId()]->OrDesignateBits(*memOut[predEhBB->GetId()], index);
             }
 
             if (bbMemInBak != memIn[bb.GetId()]->GetElem(index)) {
@@ -592,9 +507,6 @@ void ReachingDefinition::Initialize()
         if (bb == cgFunc->GetFirstBB()) {
             InitStartGen();
         }
-        if (!bb->GetEhPreds().empty()) {
-            InitEhDefine(*bb);
-        }
         InitGenUse(*bb);
         InitOut(*bb);
 
@@ -646,10 +558,6 @@ void ReachingDefinition::BuildInOutForFuncBody()
                 for (auto succ : bb->GetSuccs()) {
                     (void)normalBBSetBak.insert(succ);
                 }
-
-                for (auto ehSucc : bb->GetEhSuccs()) {
-                    (void)normalBBSetBak.insert(ehSucc);
-                }
             }
         }
     }
@@ -671,10 +579,6 @@ void ReachingDefinition::UpdateInOut(BB &changedBB)
         (void)bbSet.insert(succ);
     }
 
-    for (auto ehSucc : changedBB.GetEhSuccs()) {
-        (void)bbSet.insert(ehSucc);
-    }
-
     while (!bbSet.empty()) {
         setItr = bbSet.begin();
         BB *bb = *setItr;
@@ -685,10 +589,6 @@ void ReachingDefinition::UpdateInOut(BB &changedBB)
             if (GenerateOut(*bb)) {
                 for (auto succ : bb->GetSuccs()) {
                     (void)bbSet.insert(succ);
-                }
-
-                for (auto ehSucc : bb->GetEhSuccs()) {
-                    (void)bbSet.insert(ehSucc);
                 }
             }
         }
@@ -726,10 +626,6 @@ void ReachingDefinition::UpdateInOut(BB &changedBB, bool isReg)
     for (auto &succ : changedBB.GetSuccs()) {
         (void)bbSet.insert(succ);
     }
-
-    for (auto &ehSucc : changedBB.GetEhSuccs()) {
-        (void)bbSet.insert(ehSucc);
-    }
     while (!bbSet.empty()) {
         setItr = bbSet.begin();
         BB *bb = *setItr;
@@ -738,9 +634,6 @@ void ReachingDefinition::UpdateInOut(BB &changedBB, bool isReg)
             if (GenerateOut(*bb, changedInfoIndex, isReg)) {
                 for (auto &succ : bb->GetSuccs()) {
                     (void)bbSet.insert(succ);
-                }
-                for (auto &ehSucc : bb->GetEhSuccs()) {
-                    (void)bbSet.insert(ehSucc);
                 }
             }
         }
@@ -770,9 +663,6 @@ void ReachingDefinition::BuildInOutForCleanUpBB()
                 for (auto succ : bb->GetSuccs()) {
                     (void)cleanupBBSetBak.insert(succ);
                 }
-                for (auto ehSucc : bb->GetEhSuccs()) {
-                    (void)cleanupBBSetBak.insert(ehSucc);
-                }
             }
         }
     }
@@ -795,9 +685,6 @@ void ReachingDefinition::BuildInOutForCleanUpBB(bool isReg, const std::set<uint3
             if (GenerateOut(*bb, index, isReg)) {
                 for (auto &succ : bb->GetSuccs()) {
                     (void)cleanupBBSetBak.insert(succ);
-                }
-                for (auto &ehSucc : bb->GetEhSuccs()) {
-                    (void)cleanupBBSetBak.insert(ehSucc);
                 }
             }
         }
@@ -840,18 +727,6 @@ bool ReachingDefinition::CanReachEndBBFromCurrentBB(const BB &currentBB, const B
             return true;
         }
     }
-    for (auto ehPredBB : endBB.GetEhPreds()) {
-        if (traversedBBSet[ehPredBB->GetId()]) {
-            continue;
-        }
-        traversedBBSet[ehPredBB->GetId()] = true;
-        if (ehPredBB == &currentBB) {
-            return true;
-        }
-        if (CanReachEndBBFromCurrentBB(currentBB, *ehPredBB, traversedBBSet)) {
-            return true;
-        }
-    }
     return false;
 }
 
@@ -884,30 +759,6 @@ bool ReachingDefinition::IsLiveInAllPathBB(uint32 regNO, const BB &startBB, cons
         }
     }
 
-    for (auto ehSucc : startBB.GetEhSuccs()) {
-        if (visitedBB[ehSucc->GetId()]) {
-            continue;
-        }
-        visitedBB[ehSucc->GetId()] = true;
-        if (isFirstNo && CheckRegLiveinReturnBB(regNO, *ehSucc)) {
-            return false;
-        }
-        std::vector<bool> traversedPathSet(kMaxBBNum, false);
-        bool canReachEndBB = true;
-        if (regGen[ehSucc->GetId()]->TestBit(regNO)) {
-            canReachEndBB = CanReachEndBBFromCurrentBB(*ehSucc, endBB, traversedPathSet);
-            if (canReachEndBB) {
-                return false;
-            }
-        }
-        if (!canReachEndBB) {
-            continue;
-        }
-        bool isLive = IsLiveInAllPathBB(regNO, *ehSucc, endBB, visitedBB, isFirstNo);
-        if (!isLive) {
-            return false;
-        }
-    }
     return true;
 }
 
@@ -1182,27 +1033,6 @@ bool ReachingDefinition::IsUseOrDefInAllPathBB(uint32 regNO, const BB &startBB, 
         }
     }
 
-    for (auto ehSucc : startBB.GetEhSuccs()) {
-        if (visitedBB[ehSucc->GetId()]) {
-            continue;
-        }
-        visitedBB[ehSucc->GetId()] = true;
-        std::vector<bool> traversedPathSet(kMaxBBNum, false);
-        bool canReachEndBB = true;
-        if (regGen[ehSucc->GetId()]->TestBit(regNO) || regUse[ehSucc->GetId()]->TestBit(regNO)) {
-            canReachEndBB = CanReachEndBBFromCurrentBB(*ehSucc, endBB, traversedPathSet);
-            if (canReachEndBB) {
-                return false;
-            }
-        }
-        if (!canReachEndBB) {
-            continue;
-        }
-        bool isLive = IsUseOrDefInAllPathBB(regNO, *ehSucc, endBB, visitedBB);
-        if (!isLive) {
-            return false;
-        }
-    }
     return true;
 }
 
@@ -1240,16 +1070,6 @@ bool ReachingDefinition::HasCallInPath(const BB &startBB, const BB &endBB, std::
             }
             visitedBB[predBB->GetId()] = true;
             bbQueue.push(predBB);
-        }
-        for (auto ehPredBB : bb->GetEhPreds()) {
-            if (ehPredBB == &startBB || visitedBB[ehPredBB->GetId()]) {
-                continue;
-            }
-            if (ehPredBB->HasCall()) {
-                return true;
-            }
-            visitedBB[ehPredBB->GetId()] = true;
-            bbQueue.push(ehPredBB);
         }
     }
     return false;
@@ -1366,12 +1186,6 @@ void ReachingDefinition::DumpBBCGIR(const BB &bb) const
         LogInfo::MapleLogger() << "      succs: ";
         for (auto *succBB : bb.GetSuccs()) {
             LogInfo::MapleLogger() << succBB->GetId() << " ";
-        }
-    }
-    if (bb.GetEhSuccs().size()) {
-        LogInfo::MapleLogger() << "      eh_succs: ";
-        for (auto *ehSuccBB : bb.GetEhSuccs()) {
-            LogInfo::MapleLogger() << ehSuccBB->GetId() << " ";
         }
     }
     LogInfo::MapleLogger() << "\n";

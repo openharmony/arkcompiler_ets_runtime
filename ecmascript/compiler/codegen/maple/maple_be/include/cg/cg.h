@@ -57,6 +57,7 @@ class ControlDepAnalysis;
 class DataDepAnalysis;
 class CGPeepHole;
 class GenProEpilog;
+class LoopAnalysis;
 
 class Globals {
 public:
@@ -469,7 +470,7 @@ public:
     {
         return nullptr;
     };
-    virtual AlignAnalysis *CreateAlignAnalysis(MemPool &mp, CGFunc &f) const
+    virtual AlignAnalysis *CreateAlignAnalysis(MemPool &mp, CGFunc &f, LoopAnalysis &loop) const
     {
         return nullptr;
     };
@@ -516,7 +517,7 @@ public:
     {
         return nullptr;
     };
-    virtual CFGOptimizer *CreateCFGOptimizer(MemPool &mp, CGFunc &f) const
+    virtual CFGOptimizer *CreateCFGOptimizer(MemPool &mp, CGFunc &f, LoopAnalysis &loop) const
     {
         return nullptr;
     }

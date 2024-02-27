@@ -100,7 +100,6 @@ public:
 
     virtual void InitCDGNodeDataInfo(MemPool &mp, MapleAllocator &alloc, CDGNode &cdgNode) = 0;
     virtual bool IsFrameReg(const RegOperand &) const = 0;
-    virtual void AnalysisAmbiInsns(BB &bb) = 0;
     virtual void BuildDepsMemBar(Insn &insn) = 0;
     virtual void BuildDepsUseMem(Insn &insn, MemOperand &memOpnd) = 0;
     virtual void BuildDepsDefMem(Insn &insn, MemOperand &memOpnd) = 0;

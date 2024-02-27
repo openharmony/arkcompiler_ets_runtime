@@ -25,16 +25,27 @@ namespace maplebe {
 constexpr uint32 kBBVectorInitialSize = 2;
 void DomAnalysis::PostOrderWalk(const BB &bb, int32 &pid, MapleVector<bool> &visitedMap)
 {
-    DEBUG_ASSERT(bb.GetId() < visitedMap.size(), "index out of range in Dominance::PostOrderWalk");
-    if (visitedMap[bb.GetId()]) {
-        return;
-    }
+    std::stack<const BB*> s;
+    s.push(&bb);
     visitedMap[bb.GetId()] = true;
-    for (const BB *suc : bb.GetSuccs()) {
-        PostOrderWalk(*suc, pid, visitedMap);
+    while (!s.empty()) {
+        auto node = s.top();
+        auto nodeId = node->GetId();
+        DEBUG_ASSERT(nodeId < visitedMap.size() && nodeId < postOrderIDVec.size(), "index out of range");
+        bool tail = true;
+        for (auto succ : node->GetSuccs()) {
+            if (!visitedMap[succ->GetId()]) {
+                tail = false;
+                visitedMap[succ->GetId()] = true;
+                s.push(succ);
+                break;
+            }
+        }
+        if (tail) {
+            s.pop();
+            postOrderIDVec[nodeId] = pid++;
+        }
     }
-    DEBUG_ASSERT(bb.GetId() < postOrderIDVec.size(), "index out of range in Dominance::PostOrderWalk");
-    postOrderIDVec[bb.GetId()] = pid++;
 }
 
 void DomAnalysis::GenPostOrderID()
@@ -183,7 +194,7 @@ void DomAnalysis::ComputeDomChildren()
 
 // bbidMarker indicates that the iterDomFrontier results for bbid < bbidMarker
 // have been computed
-void DomAnalysis::GetIterDomFrontier(const BB *bb, MapleSet<uint32> *dfset, uint32 bbidMarker,
+void DomAnalysis::GetIterDomFrontier(const BB *bb, MapleUnorderedSet<uint32> *dfset, uint32 bbidMarker,
                                      std::vector<bool> &visitedMap)
 {
     if (visitedMap[bb->GetId()]) {
@@ -272,19 +283,31 @@ void DomAnalysis::Dump()
 /* ================= for PostDominance ================= */
 void PostDomAnalysis::PdomPostOrderWalk(const BB &bb, int32 &pid, MapleVector<bool> &visitedMap)
 {
-    DEBUG_ASSERT(bb.GetId() < visitedMap.size(), "index out of range in  Dominance::PdomPostOrderWalk");
-    if (bbVec[bb.GetId()] == nullptr) {
-        return;
-    }
-    if (visitedMap[bb.GetId()]) {
-        return;
-    }
+    std::stack<const BB*> s;
+    s.push(&bb);
     visitedMap[bb.GetId()] = true;
-    for (BB *pre : bb.GetPreds()) {
-        PdomPostOrderWalk(*pre, pid, visitedMap);
+    while (!s.empty()) {
+        auto node = s.top();
+        auto nodeId = node->GetId();
+        if (bbVec[nodeId] == nullptr) {
+            s.pop();
+            continue;
+        }
+        DEBUG_ASSERT(nodeId < visitedMap.size() && nodeId < pdomPostOrderIDVec.size(), "index out of range");
+        bool tail = true;
+        for (auto pred : node->GetPreds()) {
+            if (!visitedMap[pred->GetId()]) {
+                tail = false;
+                visitedMap[pred->GetId()] = true;
+                s.push(pred);
+                break;
+            }
+        }
+        if (tail) {
+            s.pop();
+            pdomPostOrderIDVec[nodeId] = pid++;
+        }
     }
-    DEBUG_ASSERT(bb.GetId() < pdomPostOrderIDVec.size(), "index out of range in  Dominance::PdomPostOrderWalk");
-    pdomPostOrderIDVec[bb.GetId()] = pid++;
 }
 
 void PostDomAnalysis::PdomGenPostOrderID()
@@ -399,7 +422,7 @@ void PostDomAnalysis::ComputePdomChildren()
 
 // bbidMarker indicates that the iterPdomFrontier results for bbid < bbidMarker
 // have been computed
-void PostDomAnalysis::GetIterPdomFrontier(const BB *bb, MapleSet<uint32> *dfset, uint32 bbidMarker,
+void PostDomAnalysis::GetIterPdomFrontier(const BB *bb, MapleUnorderedSet<uint32> *dfset, uint32 bbidMarker,
                                           std::vector<bool> &visitedMap)
 {
     if (visitedMap[bb->GetId()]) {

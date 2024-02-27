@@ -69,7 +69,7 @@ public:
           doms(bbVec.size() + 1, nullptr, domAllocator.Adapter()),
           domFrontier(bbVec.size() + 1, MapleVector<uint32>(domAllocator.Adapter()), domAllocator.Adapter()),
           domChildren(bbVec.size() + 1, MapleVector<uint32>(domAllocator.Adapter()), domAllocator.Adapter()),
-          iterDomFrontier(bbVec.size() + 1, MapleSet<uint32>(domAllocator.Adapter()), domAllocator.Adapter()),
+          iterDomFrontier(bbVec.size() + 1, MapleUnorderedSet<uint32>(domAllocator.Adapter()), domAllocator.Adapter()),
           dtPreOrder(bbVec.size() + 1, 0, domAllocator.Adapter()),
           dtDfn(bbVec.size() + 1, -1, domAllocator.Adapter()),
           dtDfnOut(bbVec.size() + 1, -1, domAllocator.Adapter())
@@ -84,7 +84,8 @@ public:
     void ComputeDominance();
     void ComputeDomFrontiers();
     void ComputeDomChildren();
-    void GetIterDomFrontier(const BB *bb, MapleSet<uint32> *dfset, uint32 bbidMarker, std::vector<bool> &visitedMap);
+    void GetIterDomFrontier(const BB *bb, MapleUnorderedSet<uint32> *dfset, uint32 bbidMarker,
+                            std::vector<bool> &visitedMap);
     void ComputeIterDomFrontiers();
     uint32 ComputeDtPreorder(const BB &bb, uint32 &num);
     bool Dominate(const BB &bb1, const BB &bb2);  // true if bb1 dominates bb2
@@ -177,7 +178,7 @@ private:
     MapleVector<BB *> doms;                        // index is bb id; immediate dominator for each BB
     MapleVector<MapleVector<uint32>> domFrontier;  // index is bb id
     MapleVector<MapleVector<uint32>> domChildren;  // index is bb id; for dom tree
-    MapleVector<MapleSet<uint32>> iterDomFrontier;
+    MapleVector<MapleUnorderedSet<uint32>> iterDomFrontier;
     MapleVector<uint32> dtPreOrder;  // ordering of the BBs in a preorder traversal of the dominator tree
     MapleVector<uint32> dtDfn;       // gives position of each BB in dt_preorder
     MapleVector<uint32> dtDfnOut;    // max position of all nodes in the sub tree of each BB in dt_preorder
@@ -193,7 +194,7 @@ public:
           pdoms(bbVec.size() + 1, nullptr, domAllocator.Adapter()),
           pdomFrontier(bbVec.size() + 1, MapleVector<uint32>(domAllocator.Adapter()), domAllocator.Adapter()),
           pdomChildren(bbVec.size() + 1, MapleVector<uint32>(domAllocator.Adapter()), domAllocator.Adapter()),
-          iterPdomFrontier(bbVec.size() + 1, MapleSet<uint32>(domAllocator.Adapter()), domAllocator.Adapter()),
+          iterPdomFrontier(bbVec.size() + 1, MapleUnorderedSet<uint32>(domAllocator.Adapter()), domAllocator.Adapter()),
           pdtPreOrder(bbVec.size() + 1, 0, domAllocator.Adapter()),
           pdtDfn(bbVec.size() + 1, -1, domAllocator.Adapter()),
           pdtDfnOut(bbVec.size() + 1, -1, domAllocator.Adapter())
@@ -206,7 +207,8 @@ public:
     void ComputePostDominance();
     void ComputePdomFrontiers();
     void ComputePdomChildren();
-    void GetIterPdomFrontier(const BB *bb, MapleSet<uint32> *dfset, uint32 bbidMarker, std::vector<bool> &visitedMap);
+    void GetIterPdomFrontier(const BB *bb, MapleUnorderedSet<uint32> *dfset, uint32 bbidMarker,
+                             std::vector<bool> &visitedMap);
     void ComputeIterPdomFrontiers();
     uint32 ComputePdtPreorder(const BB &bb, uint32 &num);
     bool PostDominate(const BB &bb1, const BB &bb2);  // true if bb1 postdominates bb2
@@ -298,7 +300,7 @@ private:
     MapleVector<BB *> pdoms;                        // index is bb id; immediate dominator for each BB
     MapleVector<MapleVector<uint32>> pdomFrontier;  // index is bb id
     MapleVector<MapleVector<uint32>> pdomChildren;  // index is bb id; for pdom tree
-    MapleVector<MapleSet<uint32>> iterPdomFrontier;
+    MapleVector<MapleUnorderedSet<uint32>> iterPdomFrontier;
     MapleVector<uint32> pdtPreOrder;  // ordering of the BBs in a preorder traversal of the post-dominator tree
     MapleVector<uint32> pdtDfn;       // gives position of each BB in pdt_preorder
     MapleVector<uint32> pdtDfnOut;    // max position of all nodes in the sub tree of each BB in pdt_preorder

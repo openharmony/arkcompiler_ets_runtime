@@ -66,7 +66,7 @@ static bool IsZeroRegister(const Operand &opnd)
 
 void AArch64GlobalOpt::Run()
 {
-    OptimizeManager optManager(cgFunc);
+    OptimizeManager optManager(cgFunc, loopInfo);
     bool hasSpillBarrier = (cgFunc.NumBBs() > kMaxBBNum) || (cgFunc.GetRD()->GetMaxInsnNO() > kMaxInsnNum);
     if (cgFunc.IsAfterRegAlloc()) {
         optManager.Optimize<SameRHSPropPattern>();
@@ -531,17 +531,6 @@ bool BackPropPattern::DestOpndHasUseInsns(Insn &insn)
     return true;
 }
 
-bool BackPropPattern::DestOpndLiveOutToEHSuccs(Insn &insn) const
-{
-    BB &bb = *insn.GetBB();
-    for (auto ehSucc : bb.GetEhSuccs()) {
-        if (ehSucc->GetLiveIn()->TestBit(firstRegNO)) {
-            return true;
-        }
-    }
-    return false;
-}
-
 bool BackPropPattern::CheckSrcOpndDefAndUseInsns(Insn &insn)
 {
     BB &bb = *insn.GetBB();
@@ -739,10 +728,6 @@ bool BackPropPattern::CheckCondition(Insn &insn)
     }
     /* Unless there is a reason that dest can not live out the current BB */
     if (cgFunc.HasAsm() && !DestOpndHasUseInsns(insn)) {
-        return false;
-    }
-    /* first register must not be live out to eh_succs */
-    if (DestOpndLiveOutToEHSuccs(insn)) {
         return false;
     }
     if (globalProp) {
@@ -1968,7 +1953,7 @@ void SameDefPattern::Run()
     {
         FOR_BB_INSNS_REV(insn, bb)
         {
-            if (!CheckCondition(*insn) || !bb->GetEhPreds().empty()) {
+            if (!CheckCondition(*insn)) {
                 continue;
             }
             Optimize(*insn);

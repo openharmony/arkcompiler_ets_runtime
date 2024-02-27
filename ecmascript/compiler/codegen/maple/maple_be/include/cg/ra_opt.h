@@ -18,11 +18,15 @@
 
 #include "cgfunc.h"
 #include "cg_phase.h"
+#include "loop.h"
 
 namespace maplebe {
 class RaOpt {
 public:
-    RaOpt(CGFunc &func, MemPool &pool) : cgFunc(&func), memPool(&pool) {}
+    RaOpt(CGFunc &func, MemPool &pool, DomAnalysis &dom, LoopAnalysis &loop)
+        : cgFunc(&func), memPool(&pool), domInfo(dom), loopInfo(loop)
+    {
+    }
 
     virtual ~RaOpt() = default;
 
@@ -45,9 +49,12 @@ public:
 protected:
     CGFunc *cgFunc;
     MemPool *memPool;
+    DomAnalysis &domInfo;
+    LoopAnalysis &loopInfo;
 };
 
 MAPLE_FUNC_PHASE_DECLARE_BEGIN(CgRaOpt, maplebe::CGFunc)
+OVERRIDE_DEPENDENCE
 MAPLE_FUNC_PHASE_DECLARE_END
 } /* namespace maplebe */
 

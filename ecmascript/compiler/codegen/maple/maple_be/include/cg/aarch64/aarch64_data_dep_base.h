@@ -29,8 +29,6 @@ public:
     bool IsFrameReg(const RegOperand &opnd) const override;
     Insn *GetMemBaseDefInsn(const Insn &memInsn) const;
 
-    void AnalysisAmbiInsns(BB &bb) override;
-
     void BuildDepsForMemDefCommon(Insn &insn, CDGNode &cdgNode);
     void BuildDepsForMemUseCommon(Insn &insn, CDGNode &cdgNode);
     void BuildDepsAccessStImmMem(Insn &insn) override;
