@@ -8409,13 +8409,13 @@ void StubBuilder::MigrateArrayWithKind(GateRef glue, GateRef object, GateRef old
     Branch(noNeedMigration, &exit, &doMigration);
     Bind(&doMigration);
     GateRef needCOW = IsJsCOWArray(object);
-    Branch(elementsKindIsIntOrHoleInt(oldKind), &migrateFromInt, &migrateOtherKinds);
+    Branch(ElementsKindIsIntOrHoleInt(oldKind), &migrateFromInt, &migrateOtherKinds);
     Bind(&migrateFromInt);
     {
         Label migrateToHeapValuesFromInt(env);
         Label migrateToRawValuesFromInt(env);
         Label migrateToNumbersFromInt(env);
-        Branch(elementsKindIsHeapKind(newKind), &migrateToHeapValuesFromInt, &migrateToRawValuesFromInt);
+        Branch(ElementsKindIsHeapKind(newKind), &migrateToHeapValuesFromInt, &migrateToRawValuesFromInt);
         Bind(&migrateToHeapValuesFromInt);
         {
             newElements = MigrateFromRawValueToHeapValues(glue, object, needCOW, True());
@@ -8424,7 +8424,7 @@ void StubBuilder::MigrateArrayWithKind(GateRef glue, GateRef object, GateRef old
         }
         Bind(&migrateToRawValuesFromInt);
         {
-            Branch(elementsKindIsNumOrHoleNum(newKind), &migrateToNumbersFromInt, &exit);
+            Branch(ElementsKindIsNumOrHoleNum(newKind), &migrateToNumbersFromInt, &exit);
             Bind(&migrateToNumbersFromInt);
             {
                 MigrateFromHoleIntToHoleNumber(glue, object);
@@ -8439,14 +8439,14 @@ void StubBuilder::MigrateArrayWithKind(GateRef glue, GateRef object, GateRef old
         Label migrateToRawValuesFromNum(env);
         Label migrateToIntFromNum(env);
         Label migrateToRawValueFromTagged(env);
-        Branch(elementsKindIsNumOrHoleNum(oldKind), &migrateFromNumber, &migrateToRawValueFromTagged);
+        Branch(ElementsKindIsNumOrHoleNum(oldKind), &migrateFromNumber, &migrateToRawValueFromTagged);
         Bind(&migrateFromNumber);
         {
-            Branch(elementsKindIsHeapKind(newKind), &migrateToHeapValuesFromNum, &migrateToRawValuesFromNum);
+            Branch(ElementsKindIsHeapKind(newKind), &migrateToHeapValuesFromNum, &migrateToRawValuesFromNum);
             Bind(&migrateToHeapValuesFromNum);
             {
                 Label migrateToTaggedFromNum(env);
-                Branch(elementsKindIsHeapKind(newKind), &migrateToTaggedFromNum, &exit);
+                Branch(ElementsKindIsHeapKind(newKind), &migrateToTaggedFromNum, &exit);
                 Bind(&migrateToTaggedFromNum);
                 {
                     newElements = MigrateFromRawValueToHeapValues(glue, object, needCOW, False());
@@ -8456,7 +8456,7 @@ void StubBuilder::MigrateArrayWithKind(GateRef glue, GateRef object, GateRef old
             }
             Bind(&migrateToRawValuesFromNum);
             {
-                Branch(elementsKindIsIntOrHoleInt(newKind), &migrateToIntFromNum, &exit);
+                Branch(ElementsKindIsIntOrHoleInt(newKind), &migrateToIntFromNum, &exit);
                 Bind(&migrateToIntFromNum);
                 {
                     MigrateFromHoleNumberToHoleInt(glue, object);
@@ -8468,7 +8468,7 @@ void StubBuilder::MigrateArrayWithKind(GateRef glue, GateRef object, GateRef old
         {
             Label migrateToIntFromTagged(env);
             Label migrateToOthersFromTagged(env);
-            Branch(elementsKindIsIntOrHoleInt(newKind), &migrateToIntFromTagged, &migrateToOthersFromTagged);
+            Branch(ElementsKindIsIntOrHoleInt(newKind), &migrateToIntFromTagged, &migrateToOthersFromTagged);
             Bind(&migrateToIntFromTagged);
             {
                 newElements = MigrateFromHeapValueToRawValue(glue, object, needCOW, True());
@@ -8478,7 +8478,7 @@ void StubBuilder::MigrateArrayWithKind(GateRef glue, GateRef object, GateRef old
             Bind(&migrateToOthersFromTagged);
             {
                 Label migrateToNumFromTagged(env);
-                Branch(elementsKindIsNumOrHoleNum(newKind), &migrateToNumFromTagged, &exit);
+                Branch(ElementsKindIsNumOrHoleNum(newKind), &migrateToNumFromTagged, &exit);
                 Bind(&migrateToNumFromTagged);
                 {
                     newElements = MigrateFromHeapValueToRawValue(glue, object, needCOW, False());

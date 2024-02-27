@@ -730,9 +730,9 @@ public:
 
     // ElementsKind Operations
     GateRef ValueIsSpecialHole(GateRef x);
-    GateRef elementsKindIsIntOrHoleInt(GateRef kind);
-    GateRef elementsKindIsNumOrHoleNum(GateRef kind);
-    GateRef elementsKindIsHeapKind(GateRef kind);
+    GateRef ElementsKindIsIntOrHoleInt(GateRef kind);
+    GateRef ElementsKindIsNumOrHoleNum(GateRef kind);
+    GateRef ElementsKindIsHeapKind(GateRef kind);
     void MigrateArrayWithKind(GateRef glue, GateRef object, GateRef oldKind, GateRef newKind);
     GateRef MigrateFromRawValueToHeapValues(GateRef glue, GateRef object, GateRef needCOW, GateRef isIntKind);
     GateRef MigrateFromHeapValueToRawValue(GateRef glue, GateRef object, GateRef needCOW, GateRef isIntKind);

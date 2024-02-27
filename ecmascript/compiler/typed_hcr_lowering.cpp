@@ -3176,13 +3176,13 @@ void TypedHCRLowering::LowerMigrateArrayWithKind(GateRef gate)
     builder_.Bind(&doMigration);
 
     GateRef needCOW = builder_.IsJsCOWArray(object);
-    builder_.Branch(builder_.elementsKindIsIntOrHoleInt(oldKind), &migrateFromInt, &migrateOtherKinds);
+    builder_.Branch(builder_.ElementsKindIsIntOrHoleInt(oldKind), &migrateFromInt, &migrateOtherKinds);
     builder_.Bind(&migrateFromInt);
     {
         Label migrateToHeapValuesFromInt(&builder_);
         Label migrateToRawValuesFromInt(&builder_);
         Label migrateToNumbersFromInt(&builder_);
-        builder_.Branch(builder_.elementsKindIsHeapKind(newKind),
+        builder_.Branch(builder_.ElementsKindIsHeapKind(newKind),
                         &migrateToHeapValuesFromInt, &migrateToRawValuesFromInt);
         builder_.Bind(&migrateToHeapValuesFromInt);
         {
@@ -3192,7 +3192,7 @@ void TypedHCRLowering::LowerMigrateArrayWithKind(GateRef gate)
         }
         builder_.Bind(&migrateToRawValuesFromInt);
         {
-            builder_.Branch(builder_.elementsKindIsNumOrHoleNum(newKind), &migrateToNumbersFromInt, &exit);
+            builder_.Branch(builder_.ElementsKindIsNumOrHoleNum(newKind), &migrateToNumbersFromInt, &exit);
             builder_.Bind(&migrateToNumbersFromInt);
             {
                 builder_.MigrateFromHoleIntToHoleNumber(object);
@@ -3207,15 +3207,15 @@ void TypedHCRLowering::LowerMigrateArrayWithKind(GateRef gate)
         Label migrateToRawValuesFromNum(&builder_);
         Label migrateToIntFromNum(&builder_);
         Label migrateToRawValueFromTagged(&builder_);
-        builder_.Branch(builder_.elementsKindIsNumOrHoleNum(oldKind), &migrateFromNumber, &migrateToRawValueFromTagged);
+        builder_.Branch(builder_.ElementsKindIsNumOrHoleNum(oldKind), &migrateFromNumber, &migrateToRawValueFromTagged);
         builder_.Bind(&migrateFromNumber);
         {
-            builder_.Branch(builder_.elementsKindIsHeapKind(newKind),
+            builder_.Branch(builder_.ElementsKindIsHeapKind(newKind),
                             &migrateToHeapValuesFromNum, &migrateToRawValuesFromNum);
             builder_.Bind(&migrateToHeapValuesFromNum);
             {
                 Label migrateToTaggedFromNum(&builder_);
-                builder_.Branch(builder_.elementsKindIsHeapKind(newKind), &migrateToTaggedFromNum, &exit);
+                builder_.Branch(builder_.ElementsKindIsHeapKind(newKind), &migrateToTaggedFromNum, &exit);
                 builder_.Bind(&migrateToTaggedFromNum);
                 {
                     newElements = builder_.MigrateFromRawValueToHeapValues(object, needCOW, builder_.False());
@@ -3225,7 +3225,7 @@ void TypedHCRLowering::LowerMigrateArrayWithKind(GateRef gate)
             }
             builder_.Bind(&migrateToRawValuesFromNum);
             {
-                builder_.Branch(builder_.elementsKindIsIntOrHoleInt(newKind), &migrateToIntFromNum, &exit);
+                builder_.Branch(builder_.ElementsKindIsIntOrHoleInt(newKind), &migrateToIntFromNum, &exit);
                 builder_.Bind(&migrateToIntFromNum);
                 {
                     builder_.MigrateFromHoleNumberToHoleInt(object);
@@ -3237,7 +3237,7 @@ void TypedHCRLowering::LowerMigrateArrayWithKind(GateRef gate)
         {
             Label migrateToIntFromTagged(&builder_);
             Label migrateToOthersFromTagged(&builder_);
-            builder_.Branch(builder_.elementsKindIsIntOrHoleInt(newKind),
+            builder_.Branch(builder_.ElementsKindIsIntOrHoleInt(newKind),
                             &migrateToIntFromTagged, &migrateToOthersFromTagged);
             builder_.Bind(&migrateToIntFromTagged);
             {
@@ -3248,7 +3248,7 @@ void TypedHCRLowering::LowerMigrateArrayWithKind(GateRef gate)
             builder_.Bind(&migrateToOthersFromTagged);
             {
                 Label migrateToNumFromTagged(&builder_);
-                builder_.Branch(builder_.elementsKindIsNumOrHoleNum(newKind), &migrateToNumFromTagged, &exit);
+                builder_.Branch(builder_.ElementsKindIsNumOrHoleNum(newKind), &migrateToNumFromTagged, &exit);
                 builder_.Bind(&migrateToNumFromTagged);
                 {
                     newElements = builder_.MigrateFromHeapValueToRawValue(object, needCOW, builder_.False());

@@ -231,9 +231,9 @@ public:
     inline GateRef Undefined();
     inline GateRef Hole();
 
-    GateRef elementsKindIsIntOrHoleInt(GateRef kind);
-    GateRef elementsKindIsNumOrHoleNum(GateRef kind);
-    GateRef elementsKindIsHeapKind(GateRef kind);
+    GateRef ElementsKindIsIntOrHoleInt(GateRef kind);
+    GateRef ElementsKindIsNumOrHoleNum(GateRef kind);
+    GateRef ElementsKindIsHeapKind(GateRef kind);
 
     GateRef LoadBuiltinObject(size_t offset);
 
