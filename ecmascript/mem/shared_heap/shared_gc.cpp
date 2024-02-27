@@ -51,7 +51,7 @@ void SharedGC::Mark()
 {
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "SharedGC::Mark");
     Runtime::GetInstance()->GCIterateThreadList([&](JSThread *thread) {
-        ASSERT(!thread->InRunningState());
+        ASSERT(!thread->IsInRunningState());
         auto vm = thread->GetEcmaVM();
         vm->GetHeap()->GetSweeper()->EnsureAllTaskFinished();
         sHeap_->GetSharedGCMarker()->MarkRoots(MAIN_THREAD_INDEX, vm);
@@ -79,7 +79,7 @@ void SharedGC::Sweep()
     Runtime::GetInstance()->GetEcmaStringTable()->SweepWeakReference(gcUpdateWeak);
 
     Runtime::GetInstance()->GCIterateThreadList([&](JSThread *thread) {
-        ASSERT(!thread->InRunningState());
+        ASSERT(!thread->IsInRunningState());
         thread->GetCurrentEcmaContext()->ProcessNativeDelete(gcUpdateWeak);
         thread->IterateWeakEcmaGlobalStorage(gcUpdateWeak);
     });

@@ -117,14 +117,14 @@ void Runtime::RegisterThread(JSThread* newThread)
 void Runtime::UnregisterThread(JSThread* thread)
 {
     LockHolder lock(threadsLock_);
-    ASSERT(!thread->InRunningState());
+    ASSERT(!thread->IsInRunningState());
     threads_.remove(thread);
 }
 
 void Runtime::SuspendAll(JSThread *current)
 {
     ASSERT(current != nullptr);
-    ASSERT(!current->InRunningState());
+    ASSERT(!current->IsInRunningState());
     ASSERT(!mutatorLock_.HasLock());
     SuspendAllThreadsImpl(current);
     mutatorLock_.WriteLock();
@@ -133,7 +133,7 @@ void Runtime::SuspendAll(JSThread *current)
 void Runtime::ResumeAll(JSThread *current)
 {
     ASSERT(current != nullptr);
-    ASSERT(!current->InRunningState());
+    ASSERT(!current->IsInRunningState());
     ASSERT(mutatorLock_.HasLock());
     mutatorLock_.Unlock();
     ResumeAllThreadsImpl(current);

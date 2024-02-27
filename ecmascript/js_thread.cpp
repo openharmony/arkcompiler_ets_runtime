@@ -115,6 +115,7 @@ JSThread::JSThread(EcmaVM *vm) : id_(os::thread::GetCurrentThreadId()), vm_(vm)
 
 JSThread::~JSThread()
 {
+    readyForGCIterating_ = false;
     if (globalStorage_ != nullptr) {
         GetEcmaVM()->GetChunk()->Delete(globalStorage_);
         globalStorage_ = nullptr;
@@ -961,7 +962,7 @@ void JSThread::StoreState(ThreadState newState, bool lockMutatorLock)
         oldStateAndFlags.asInt = stateAndFlags_.asInt;
         if (lockMutatorLock && oldStateAndFlags.asStruct.flags != ThreadFlag::NO_FLAGS) {
             // Someone requested smth from this thread. Go to safepoint
-            if (InRunningState()) {
+            if (GetState() == ThreadState::RUNNING) {
                 CheckSafepoint();
             } else {
                 WaitSuspension();

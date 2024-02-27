@@ -1123,12 +1123,12 @@ public:
         return ReadFlag(ThreadFlag::SUSPEND_REQUEST);
     }
 
-    bool InRunningState()
+    bool IsInRunningState() const
     {
         return GetState() == ThreadState::RUNNING;
     }
 
-    ThreadState GetState()
+    ThreadState GetState() const
     {
         uint32_t stateAndFlags = stateAndFlags_.asAtomicInt.load(std::memory_order_acquire);
         return static_cast<enum ThreadState>(stateAndFlags >> THREAD_STATE_OFFSET);

@@ -1371,14 +1371,17 @@ HWTEST_F_L0(JSNApiTests, TriggerGC_OLD_GC)
  */
 HWTEST_F_L0(JSNApiTests, addWorker_DeleteWorker)
 {
-    JSRuntimeOptions option;
-    EcmaVM *workerVm = JSNApi::CreateEcmaVM(option);
-    JSNApi::AddWorker(vm_, workerVm);
-    bool hasDeleted = JSNApi::DeleteWorker(vm_, workerVm);
-    JSNApi::DestroyJSVM(workerVm);
-    EXPECT_TRUE(hasDeleted);
+    std::thread t1([&](){
+        JSRuntimeOptions option;
+        EcmaVM *workerVm = JSNApi::CreateEcmaVM(option);
+        JSNApi::AddWorker(vm_, workerVm);
+        bool hasDeleted = JSNApi::DeleteWorker(vm_, workerVm);
+        JSNApi::DestroyJSVM(workerVm);
+        EXPECT_TRUE(hasDeleted);
+    });
+    t1.join();
 
-    hasDeleted = JSNApi::DeleteWorker(vm_, nullptr);
+    bool hasDeleted = JSNApi::DeleteWorker(vm_, nullptr);
     EXPECT_FALSE(hasDeleted);
 }
 
@@ -2038,12 +2041,15 @@ HWTEST_F_L0(JSNApiTests, FunctionRef_New_GetFunctionPrototype)
 HWTEST_F_L0(JSNApiTests, PrintExceptionInfo)
 {
     LocalScope scope(vm_);
-    RuntimeOption option;
-    option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
-    auto *vm = JSNApi::CreateJSVM(option);
-    ASSERT_TRUE(vm != nullptr) << "Cannot create Runtime";
-    JSNApi::PrintExceptionInfo(vm);
-    JSNApi::DestroyJSVM(vm);
+    std::thread t1([&](){
+        RuntimeOption option;
+        option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
+        auto *vm = JSNApi::CreateJSVM(option);
+        ASSERT_TRUE(vm != nullptr) << "Cannot create Runtime";
+        JSNApi::PrintExceptionInfo(vm);
+        JSNApi::DestroyJSVM(vm);
+    });
+    t1.join();
 }
 
 /*

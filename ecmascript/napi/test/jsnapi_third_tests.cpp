@@ -356,14 +356,17 @@ HWTEST_F_L0(JSNApiTests, JSNApi_SwitchCurrentContext_DestroyJSContext)
 HWTEST_F_L0(JSNApiTests, JSNApi_CreateJSVM_DestroyJSVM)
 {
     LocalScope scope(vm_);
-    EcmaVM *vm1_ = nullptr;
-    RuntimeOption option;
-    option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
-    vm1_ = JSNApi::CreateJSVM(option);
-    ASSERT_TRUE(vm1_ != nullptr) << "Cannot create Runtime";
-    vm1_->SetEnableForceGC(true);
-    vm1_->SetEnableForceGC(false);
-    JSNApi::DestroyJSVM(vm1_);
+    std::thread t1([&](){
+        EcmaVM *vm1_ = nullptr;
+        RuntimeOption option;
+        option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
+        vm1_ = JSNApi::CreateJSVM(option);
+        ASSERT_TRUE(vm1_ != nullptr) << "Cannot create Runtime";
+        vm1_->SetEnableForceGC(true);
+        vm1_->SetEnableForceGC(false);
+        JSNApi::DestroyJSVM(vm1_);
+    });
+    t1.join();
 }
 
 /**
@@ -597,11 +600,14 @@ HWTEST_F_L0(JSNApiTests, Is32Arraytest)
 HWTEST_F_L0(JSNApiTests, SynchronizVMInfo)
 {
     LocalScope scope(vm_);
-    JSRuntimeOptions option;
-    EcmaVM *hostVM = JSNApi::CreateEcmaVM(option);
-    LocalScope scope2(hostVM);
-    JSNApi::SynchronizVMInfo(vm_, hostVM);
-    JSNApi::DestroyJSVM(hostVM);
+    std::thread t1([&](){
+        JSRuntimeOptions option;
+        EcmaVM *hostVM = JSNApi::CreateEcmaVM(option);
+        LocalScope scope2(hostVM);
+        JSNApi::SynchronizVMInfo(vm_, hostVM);
+        JSNApi::DestroyJSVM(hostVM);
+    });
+    t1.join();
 }
 
 /*

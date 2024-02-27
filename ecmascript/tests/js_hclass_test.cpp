@@ -86,7 +86,7 @@ HWTEST_F_L0(JSHClassTest, SizeFromJSHClass)
     objectSize = objectClass->SizeFromJSHClass(*objectClass);
     EXPECT_EQ(objectSize, 40U);
 #endif
-    EcmaString *string = factory->AllocLineStringObject(EcmaString::SIZE);
+    EcmaString *string = EcmaStringAccessor::CreateEmptyString(vm);
     objectSize = string->GetClass()->SizeFromJSHClass(string);
     EXPECT_EQ(objectSize, 16U);
     string = factory->AllocTreeStringObject();

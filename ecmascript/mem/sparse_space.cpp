@@ -57,7 +57,7 @@ void SparseSpace::ResetTopPointer(uintptr_t top)
 
 uintptr_t SparseSpace::Allocate(size_t size, bool allowGC)
 {
-    ASSERT(localHeap_->GetJSThread()->InRunningState());
+    ASSERT(localHeap_->GetJSThread()->IsInRunningState());
     auto object = allocator_->Allocate(size);
     CHECK_OBJECT_AND_INC_OBJ_SIZE(size);
 

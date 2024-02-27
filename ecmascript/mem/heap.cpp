@@ -501,7 +501,7 @@ TriggerGCType Heap::SelectGCType() const
 void Heap::CollectGarbage(TriggerGCType gcType, GCReason reason)
 {
     {
-        ASSERT(thread_->InRunningState());
+        ASSERT(thread_->IsInRunningState());
         RecursionScope recurScope(this);
         if (thread_->IsCrossThreadExecutionEnable() || (InSensitiveStatus() && !ObjectExceedMaxHeapSize())) {
             return;
