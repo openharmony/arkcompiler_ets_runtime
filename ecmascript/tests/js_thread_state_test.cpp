@@ -61,6 +61,7 @@ public:
     {
         panda::RuntimeOption postOption;
         JSNApi::PostFork(newVm, postOption);
+        ThreadManagedScope managedScope(JSThread::GetCurrent());
         activeThreadCount->fetch_add(1);
         if (nativeState) {
             ThreadNativeScope nativeScope(JSThread::GetCurrent());
@@ -80,7 +81,10 @@ public:
             RuntimeOption options;
             EcmaVM *newVm = JSNApi::CreateJSVM(options);
             vms.push_back(newVm);
-            JSNApi::PreFork(newVm);
+            {
+                ThreadManagedScope managedScope(newVm->GetJSThread());
+                JSNApi::PreFork(newVm);
+            }
             size_t oldCount = activeThreadCount;
             // This case isn't a really fork which causes JSThread::GetCurrentThread() equals nullptr in worker_thread.
             // So reset the threadState as CREATED to skip the check.
@@ -114,13 +118,10 @@ public:
 
 HWTEST_F_L0(StateTransitioningTest, ChangeStateTest)
 {
+    ASSERT(Runtime::GetInstance()->GetMutatorLock()->HasLock());
     {
         ThreadNativeScope nativeScope(thread);
         ASSERT(!Runtime::GetInstance()->GetMutatorLock()->HasLock());
-    }
-    {
-        ThreadManagedScope managedScope(thread);
-        ASSERT(Runtime::GetInstance()->GetMutatorLock()->HasLock());
     }
     {
         ThreadNativeScope nativeScope(thread);

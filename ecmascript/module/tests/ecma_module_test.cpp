@@ -28,6 +28,7 @@
 #include "ecmascript/module/module_path_helper.h"
 #include "ecmascript/tests/test_helper.h"
 #include "ecmascript/linked_hash_table.h"
+#include "ecmascript/checkpoint/thread_state_transition.h"
 
 
 using namespace panda::ecmascript;
@@ -222,6 +223,7 @@ HWTEST_F_L0(EcmaModuleTest, GetRecordName2)
 
 HWTEST_F_L0(EcmaModuleTest, GetExportObjectIndex)
 {
+    ThreadNativeScope nativeScope(thread);
     std::string baseFileName = MODULE_ABC_PATH "module_test_module_test_C.abc";
 
     JSNApi::EnableUserUncaughtErrorHandler(instance);

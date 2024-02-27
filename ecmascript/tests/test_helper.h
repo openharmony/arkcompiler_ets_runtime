@@ -22,6 +22,7 @@
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/js_function.h"
 #include "ecmascript/js_handle.h"
+#include "ecmascript/js_thread.h"
 #include "ecmascript/mem/mem_common.h"
 #include "ecmascript/napi/include/jsnapi.h"
 #include "ecmascript/object_factory-inl.h"
@@ -102,7 +103,7 @@ public:
 
     // If you want to call once create, you can refer to BuiltinsMathTest for detail.
     static void CreateEcmaVMWithScope(EcmaVM *&instance, JSThread *&thread, EcmaHandleScope *&scope,
-        bool tryLoadStubFile = false, bool useCInterpreter = false)
+        bool tryLoadStubFile = false, bool useCInterpreter = false, bool startManagedCode = true)
     {
         JSRuntimeOptions options;
         options.SetEnableForceGC(true);
@@ -116,11 +117,17 @@ public:
         instance->SetEnableForceGC(true);
         ASSERT_TRUE(instance != nullptr) << "Cannot create EcmaVM";
         thread = instance->GetJSThread();
+        if (startManagedCode) {
+            thread->ManagedCodeBegin();
+        }
         scope = new EcmaHandleScope(thread);
     }
 
-    static inline void DestroyEcmaVMWithScope(EcmaVM *instance, EcmaHandleScope *scope)
+    static inline void DestroyEcmaVMWithScope(EcmaVM *instance, EcmaHandleScope *scope, bool exitManagedCode = true)
     {
+        if (exitManagedCode) {
+            instance->GetJSThread()->ManagedCodeEnd();
+        }
         delete scope;
         scope = nullptr;
         instance->SetEnableForceGC(false);

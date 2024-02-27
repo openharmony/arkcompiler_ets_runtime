@@ -80,7 +80,7 @@ JSThread *JSThread::Create(EcmaVM *vm)
     // If it is not true, we created a new thread for future fork
     if (currentThread == nullptr) {
         currentThread = jsThread;
-        jsThread->UpdateState(ThreadState::RUNNING);
+        jsThread->UpdateState(ThreadState::NATIVE);
     }
     return jsThread;
 }
@@ -941,6 +941,18 @@ void JSThread::WaitSuspension()
     UpdateState(oldState);
 }
 
+void JSThread::ManagedCodeBegin()
+{
+    ASSERT(!IsInManagedState());
+    UpdateState(ThreadState::RUNNING);
+}
+
+void JSThread::ManagedCodeEnd()
+{
+    ASSERT(IsInManagedState());
+    UpdateState(ThreadState::NATIVE);
+}
+
 void JSThread::TransferFromRunningToSuspended(ThreadState newState)
 {
     ASSERT(currentThread == this);
@@ -996,14 +1008,20 @@ void JSThread::PostFork()
     if (currentThread == nullptr) {
         currentThread = this;
         ASSERT(GetState() == ThreadState::CREATED);
-        UpdateState(ThreadState::RUNNING);
+        UpdateState(ThreadState::NATIVE);
     } else {
         // We tried to call fork in the same thread
         ASSERT(currentThread == this);
-        ASSERT(GetState() != ThreadState::CREATED);
+        ASSERT(GetState() == ThreadState::NATIVE);
     }
 }
 #ifndef NDEBUG
+bool JSThread::IsInManagedState() const
+{
+    ASSERT(this == JSThread::GetCurrent());
+    return GetMutatorLockState() == MutatorLock::MutatorLockState::RDLOCK && GetState() == ThreadState::RUNNING;
+}
+
 MutatorLock::MutatorLockState JSThread::GetMutatorLockState() const
 {
     return mutatorLockState_;

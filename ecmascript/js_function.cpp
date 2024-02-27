@@ -454,6 +454,7 @@ JSTaggedValue JSFunction::Invoke(EcmaRuntimeCallInfo *info, const JSHandle<JSTag
 JSTaggedValue JSFunction::InvokeOptimizedEntrypoint(JSThread *thread, JSHandle<JSFunction> mainFunc,
     JSHandle<JSTaggedValue> &thisArg, std::string_view entryPoint, CJSInfo* cjsInfo)
 {
+    ASSERT(thread->IsInManagedState());
     if (mainFunc->IsClassConstructor()) {
         {
             ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
@@ -525,6 +526,7 @@ std::vector<JSTaggedType> JSFunction::GetArgsData(bool isFastCall, JSHandle<JSTa
 JSTaggedValue JSFunction::InvokeOptimizedEntrypoint(JSThread *thread, JSHandle<JSFunction> func,
     EcmaRuntimeCallInfo *info)
 {
+    ASSERT(thread->IsInManagedState());
     Method *method = func->GetCallTarget();
     JSTaggedValue resultValue;
     uint32_t numArgs = method->GetNumArgsWithCallField();

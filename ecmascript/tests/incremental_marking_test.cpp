@@ -43,6 +43,7 @@ public:
         instance = JSNApi::CreateEcmaVM(options);
         ASSERT_TRUE(instance != nullptr) << "Cannot create EcmaVM";
         thread = instance->GetJSThread();
+        thread->ManagedCodeBegin();
         scope = new EcmaHandleScope(thread);
         instance->SetEnableForceGC(false);
     }

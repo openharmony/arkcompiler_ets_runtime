@@ -34,6 +34,7 @@
 #include "ecmascript/dfx/cpu_profiler/cpu_profiler.h"
 #endif
 #include "ecmascript/byte_array.h"
+#include "ecmascript/checkpoint/thread_state_transition.h"
 #include "ecmascript/compiler/aot_file/an_file_data_manager.h"
 #include "ecmascript/compiler/aot_file/aot_file_manager.h"
 #include "ecmascript/debugger/js_debugger_manager.h"
@@ -201,6 +202,7 @@ using ModulePathHelper = ecmascript::ModulePathHelper;
         const EcmaVM *vm, Local<ArrayBufferRef> buffer, int32_t byteOffset, int32_t length)               \
     {                                                                                                     \
         CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));                      \
+        ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());                                   \
         JSHandle<GlobalEnv> env = vm->GetGlobalEnv();                                                     \
                                                                                                           \
         JSHandle<JSTaggedValue> func = env->Get##Type##Function();                                        \
@@ -225,6 +227,7 @@ TYPED_ARRAY_ALL(TYPED_ARRAY_NEW)
 Local<JSValueRef> JSON::Parse(const EcmaVM *vm, Local<StringRef> string)
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     auto ecmaStr = EcmaString::Cast(JSNApiHelper::ToJSTaggedValue(*string).GetTaggedObject());
     JSHandle<JSTaggedValue> result;
     if (EcmaStringAccessor(ecmaStr).IsUtf8()) {
@@ -241,6 +244,7 @@ Local<JSValueRef> JSON::Parse(const EcmaVM *vm, Local<StringRef> string)
 Local<JSValueRef> JSON::Stringify(const EcmaVM *vm, Local<JSValueRef> json)
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     auto constants = thread->GlobalConstants();
     JsonStringifier stringifier(thread);
     JSHandle<JSTaggedValue> str = stringifier.Stringify(

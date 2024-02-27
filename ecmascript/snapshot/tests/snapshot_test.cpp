@@ -48,11 +48,13 @@ public:
         ecmaVm = JSNApi::CreateEcmaVM(options);
         ASSERT_TRUE(ecmaVm != nullptr) << "Cannot create EcmaVM";
         thread = ecmaVm->GetJSThread();
+        thread->ManagedCodeBegin();
         scope = new EcmaHandleScope(thread);
     }
 
     void TearDown() override
     {
+        thread->ManagedCodeEnd();
         delete scope;
         scope = nullptr;
         ecmaVm->SetEnableForceGC(false);

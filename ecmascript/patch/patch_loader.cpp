@@ -21,6 +21,7 @@
 #include "ecmascript/mem/c_string.h"
 #include "ecmascript/module/js_shared_module.h"
 #include "ecmascript/napi/include/jsnapi.h"
+#include "ecmascript/checkpoint/thread_state_transition.h"
 
 namespace panda::ecmascript {
 PatchErrorCode PatchLoader::LoadPatchInternal(JSThread *thread, const JSPandaFile *baseFile,
@@ -74,6 +75,11 @@ PatchErrorCode PatchLoader::LoadPatchInternal(JSThread *thread, const JSPandaFil
 void PatchLoader::ExecuteFuncOrPatchMain(
     JSThread *thread, const JSPandaFile *jsPandaFile, const PatchInfo &patchInfo, bool loadPatch)
 {
+    bool needToFinishManagedCode = false;
+    if (thread->GetState() != ThreadState::RUNNING) {
+        needToFinishManagedCode = true;
+        thread->ManagedCodeBegin();
+    }
     LOG_ECMA(DEBUG) << "execute main begin";
     EcmaContext *context = thread->GetCurrentEcmaContext();
     context->SetStageOfHotReload(StageOfHotReload::BEGIN_EXECUTE_PATCHMAIN);
@@ -110,6 +116,9 @@ void PatchLoader::ExecuteFuncOrPatchMain(
         context->SetStageOfHotReload(StageOfHotReload::UNLOAD_END_EXECUTE_PATCHMAIN);
     }
     LOG_ECMA(DEBUG) << "execute main end";
+    if (needToFinishManagedCode) {
+        thread->ManagedCodeEnd();
+    }
 }
 
 PatchErrorCode PatchLoader::UnloadPatchInternal(JSThread *thread, const CString &patchFileName,

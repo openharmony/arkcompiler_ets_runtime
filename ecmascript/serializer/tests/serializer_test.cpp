@@ -61,9 +61,11 @@ public:
         EXPECT_TRUE(ecmaVm != nullptr) << "Cannot create Runtime";
         thread = ecmaVm->GetJSThread();
         scope = new EcmaHandleScope(thread);
+        thread->ManagedCodeBegin();
     }
     void Destroy()
     {
+        thread->ManagedCodeEnd();
         delete scope;
         scope = nullptr;
         ecmaVm->SetEnableForceGC(false);
