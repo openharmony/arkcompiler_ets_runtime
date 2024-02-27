@@ -271,7 +271,7 @@ GateRef LinkedHashTableStubBuilder<LinkedHashTableType, LinkedHashTableObject>::
 
 template <typename LinkedHashTableType, typename LinkedHashTableObject>
 GateRef LinkedHashTableStubBuilder<LinkedHashTableType, LinkedHashTableObject>::FindElement(
-    GateRef linkedTable, GateRef key)
+    GateRef linkedTable, GateRef key, GateRef hash)
 {
     auto env = GetEnvironment();
     Label entryLabel(env);
@@ -283,7 +283,6 @@ GateRef LinkedHashTableStubBuilder<LinkedHashTableType, LinkedHashTableObject>::
     Branch(IsKey(key), &isKey, &exit);
     Bind(&isKey);
     {
-        GateRef hash = GetHash(key);
         GateRef bucket = HashToBucket(linkedTable, hash);
         GateRef index = BucketToIndex(bucket);
         DEFVARIABLE(entry, VariableType::JS_ANY(), GetElement(linkedTable, index));
@@ -547,7 +546,8 @@ GateRef LinkedHashTableStubBuilder<LinkedHashTableType, LinkedHashTableObject>::
     env->SubCfgEntry(&cfgEntry);
     Label exit(env);
     DEFVARIABLE(res, VariableType::JS_ANY(), linkedTable);
-    GateRef entry = FindElement(linkedTable, key);
+    GateRef hash = GetHash(key);
+    GateRef entry = FindElement(linkedTable, key, hash);
     Label findEntry(env);
     Label notFind(env);
     Branch(Int32Equal(entry, Int32(-1)), &notFind, &findEntry);
@@ -560,7 +560,6 @@ GateRef LinkedHashTableStubBuilder<LinkedHashTableType, LinkedHashTableObject>::
     {
         GateRef newTable = GrowCapacity(linkedTable, Int32(1));
         res = newTable;
-        GateRef hash = GetHash(key);
         GateRef bucket = HashToBucket(newTable, hash);
         GateRef numberOfElements = GetNumberOfElements(newTable);
 
@@ -593,7 +592,8 @@ GateRef LinkedHashTableStubBuilder<LinkedHashTableType, LinkedHashTableObject>::
     env->SubCfgEntry(&cfgEntry);
     Label exit(env);
     DEFVARIABLE(res, VariableType::JS_ANY(), TaggedFalse());
-    GateRef entry = FindElement(linkedTable, key);
+    GateRef hash = GetHash(key);
+    GateRef entry = FindElement(linkedTable, key, hash);
     Label findEntry(env);
     Branch(Int32Equal(entry, Int32(-1)), &exit, &findEntry);
     Bind(&findEntry);
@@ -623,7 +623,8 @@ GateRef LinkedHashTableStubBuilder<LinkedHashTableType, LinkedHashTableObject>::
     env->SubCfgEntry(&cfgEntry);
     Label exit(env);
     DEFVARIABLE(res, VariableType::JS_ANY(), TaggedFalse());
-    GateRef entry = FindElement(linkedTable, key);
+    GateRef hash = GetHash(key);
+    GateRef entry = FindElement(linkedTable, key, hash);
     Label findEntry(env);
     Branch(Int32Equal(entry, Int32(-1)), &exit, &findEntry);
     Bind(&findEntry);
