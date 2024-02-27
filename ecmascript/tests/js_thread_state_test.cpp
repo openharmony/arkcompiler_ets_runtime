@@ -76,14 +76,21 @@ public:
 
     void CreateNewVMInSeparateThread(bool nativeState)
     {
-        RuntimeOption options;
-        EcmaVM *newVm = JSNApi::CreateJSVM(options);
-        vms.push_back(newVm);
-        JSNApi::PreFork(newVm);
-        size_t oldCount = activeThreadCount;
-        std::thread *worker_thread = new std::thread(StateTransitioningTest::NewVMThreadEntry, newVm, nativeState, &isTestEnded, &activeThreadCount);
-        threads.push_back(worker_thread);
-        while (activeThreadCount == oldCount) {}
+        std::thread t1([&](){
+            RuntimeOption options;
+            EcmaVM *newVm = JSNApi::CreateJSVM(options);
+            vms.push_back(newVm);
+            JSNApi::PreFork(newVm);
+            size_t oldCount = activeThreadCount;
+            // This case isn't a really fork which causes JSThread::GetCurrentThread() equals nullptr in worker_thread.
+            // So reset the threadState as CREATED to skip the check.
+            newVm->GetAssociatedJSThread()->UpdateState(ThreadState::CREATED);
+            std::thread *worker_thread =new std::thread(StateTransitioningTest::NewVMThreadEntry, newVm, nativeState,
+                                                        &isTestEnded, &activeThreadCount);
+            threads.push_back(worker_thread);
+            while (activeThreadCount == oldCount) {}
+        });
+        t1.join();
     }
 
     void DestroyAllVMs()

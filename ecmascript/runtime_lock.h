@@ -25,15 +25,12 @@ public:
 
     ~RuntimeLockHolder()
     {
-        if (should_lock_) {
-            mtx_.Unlock();
-        }
+        mtx_.Unlock();
     }
 
 private:
     JSThread *thread_;
     Mutex &mtx_;
-    bool should_lock_ {false};
 
     NO_COPY_SEMANTIC(RuntimeLockHolder);
     NO_MOVE_SEMANTIC(RuntimeLockHolder);

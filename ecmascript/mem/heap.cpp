@@ -77,6 +77,7 @@ void SharedHeap::Initialize(NativeAreaAllocator *nativeAreaAllocator, HeapRegion
 {
     nativeAreaAllocator_ = nativeAreaAllocator;
     heapRegionAllocator_ = heapRegionAllocator;
+    shouldVerifyHeap_ = option.EnableHeapVerify();
     parallelGC_ = option.EnableParallelGC();
     size_t maxHeapSize = config_.GetMaxHeapSize();
     size_t nonmovableSpaceCapacity = config_.GetDefaultNonMovableSpaceSize();
@@ -140,9 +141,9 @@ bool SharedHeap::AsyncClearTask::Run([[maybe_unused]] uint32_t threadIndex)
 void SharedHeap::CollectGarbage(JSThread *thread, [[maybe_unused]]TriggerGCType gcType, [[maybe_unused]]GCReason reason)
 {
     ASSERT(gcType == TriggerGCType::SHARED_GC);
-    Prepare();
     {
         SuspendAllScope scope(thread);
+        Prepare();
         sharedGC_->RunPhases();
     }
     // Don't process weak node nativeFinalizeCallback here. These callbacks would be called after localGC.
@@ -500,6 +501,7 @@ TriggerGCType Heap::SelectGCType() const
 void Heap::CollectGarbage(TriggerGCType gcType, GCReason reason)
 {
     {
+        ASSERT(thread_->IsInRunningState());
         RecursionScope recurScope(this);
         if (thread_->IsCrossThreadExecutionEnable() || (InSensitiveStatus() && !ObjectExceedMaxHeapSize())) {
             return;
@@ -508,7 +510,6 @@ void Heap::CollectGarbage(TriggerGCType gcType, GCReason reason)
         [[maybe_unused]] GcStateScope scope(thread_);
 #endif
         CHECK_NO_GC
-
         if (UNLIKELY(ShouldVerifyHeap())) {
             // pre gc heap verify
             LOG_ECMA(DEBUG) << "pre gc heap verify";

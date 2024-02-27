@@ -4427,7 +4427,7 @@ static void DumpObject(TaggedObject *obj, std::vector<Reference> &vec, bool isVm
             ResolvedIndexBinding::Cast(obj)->DumpForSnapshot(vec);
             return;
         case JSType::RESOLVEDRECORDBINDING_RECORD:
-            ResolvedIndexBinding::Cast(obj)->DumpForSnapshot(vec);
+            ResolvedRecordBinding::Cast(obj)->DumpForSnapshot(vec);
             return;
         case JSType::JS_MODULE_NAMESPACE:
             ModuleNamespace::Cast(obj)->DumpForSnapshot(vec);

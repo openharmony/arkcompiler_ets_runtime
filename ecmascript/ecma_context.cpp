@@ -745,8 +745,11 @@ void EcmaContext::ClearBufferData()
 
 void EcmaContext::SetGlobalEnv(GlobalEnv *global)
 {
-    ASSERT(global != nullptr);
-    globalEnv_ = JSTaggedValue(global);
+    // In jsthread iteration, SwitchCurrentContext is called to iterate each context.
+    // If the target context is not fully initialized, the variable "global" will be nullptr.
+    if (global != nullptr) {
+        globalEnv_ = JSTaggedValue(global);
+    }
 }
 
 void EcmaContext::SetMicroJobQueue(job::MicroJobQueue *queue)
@@ -826,13 +829,27 @@ void EcmaContext::Iterate(const RootVisitor &v, const RootRangeVisitor &rv)
     globalConst_.VisitRangeSlot(rv);
 
     v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&globalEnv_)));
-    v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&regexpCache_)));
-    v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&regexpGlobal_)));
-    v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&numberToStringResultCache_)));
-    v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&stringSplitResultCache_)));
-    v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&stringToListResultCache_)));
-    v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&microJobQueue_)));
-    v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&pointerToIndexDictionary_)));
+    if (!regexpCache_.IsHole()) {
+        v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&regexpCache_)));
+    }
+    if (!regexpGlobal_.IsHole()) {
+        v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&regexpGlobal_)));
+    }
+    if (!numberToStringResultCache_.IsHole()) {
+        v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&numberToStringResultCache_)));
+    }
+    if (!stringSplitResultCache_.IsHole()) {
+        v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&stringSplitResultCache_)));
+    }
+    if (!stringToListResultCache_.IsHole()) {
+        v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&stringToListResultCache_)));
+    }
+    if (!microJobQueue_.IsHole()) {
+        v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&microJobQueue_)));
+    }
+    if (!pointerToIndexDictionary_.IsHole()) {
+        v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&pointerToIndexDictionary_)));
+    }
 
     if (moduleManager_) {
         moduleManager_->Iterate(v);

@@ -1266,7 +1266,6 @@ public:
     static bool DeleteWorker(EcmaVM *hostVm, EcmaVM *workerVm);
     static void GetStackBeforeCallNapiSuccess(EcmaVM *vm, bool &getStackBeforeCallNapiSuccess);
     static void GetStackAfterCallNapi(EcmaVM *vm);
-
     static PatchErrorCode LoadPatch(EcmaVM *vm, const std::string &patchFileName, const std::string &baseFileName);
     static PatchErrorCode LoadPatch(EcmaVM *vm,
                                     const std::string &patchFileName, const void *patchBuffer, size_t patchSize,
@@ -1305,7 +1304,8 @@ public:
                     int32_t triggerMode)> &cb);
     static void SetSearchHapPathTracker(EcmaVM *vm, std::function<bool(const std::string moduleName,
                     std::string &hapPath)> cb);
-
+    // only for test
+    static void TransitionToWaitForTesting(EcmaVM *vm);
 private:
     static int vmCount_;
     static bool initialize_;

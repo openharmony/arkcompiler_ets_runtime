@@ -55,12 +55,15 @@ void Runtime::CreateIfFirstVm(const JSRuntimeOptions &options)
 
 void Runtime::InitializeIfFirstVm(EcmaVM *vm)
 {
-    LockHolder lock(*vmCreationLock_);
-    if (++vmCount_ == 1) {
-        PreInitialization(vm);
-        vm->Initialize();
-        PostInitialization(vm);
-    } else {
+    {
+        LockHolder lock(*vmCreationLock_);
+        if (++vmCount_ == 1) {
+            PreInitialization(vm);
+            vm->Initialize();
+            PostInitialization(vm);
+        }
+    }
+    if (!vm->IsInitialized()) {
         vm->Initialize();
     }
 }
@@ -80,6 +83,7 @@ void Runtime::PostInitialization(const EcmaVM *vm)
     // Use the main thread's globalconst after it has initialized,
     // and copy shared parts to other thread's later.
     globalConstants_ = mainThread_->GlobalConstants();
+    globalEnv_ = vm->GetGlobalEnv().GetTaggedValue();
     SharedHeap::GetInstance()->PostInitialization(globalConstants_, const_cast<EcmaVM*>(vm)->GetJSOptions());
     // [[TODO::DaiHN]] need adding root iterate.
     SharedModuleManager::GetInstance()->Initialize(vm);
@@ -113,14 +117,14 @@ void Runtime::RegisterThread(JSThread* newThread)
 void Runtime::UnregisterThread(JSThread* thread)
 {
     LockHolder lock(threadsLock_);
-    ASSERT(thread->GetState() != ThreadState::RUNNING);
+    ASSERT(!thread->IsInRunningState());
     threads_.remove(thread);
 }
 
 void Runtime::SuspendAll(JSThread *current)
 {
     ASSERT(current != nullptr);
-    ASSERT(current->GetState() != ThreadState::RUNNING);
+    ASSERT(!current->IsInRunningState());
     ASSERT(!mutatorLock_.HasLock());
     SuspendAllThreadsImpl(current);
     mutatorLock_.WriteLock();
@@ -129,7 +133,7 @@ void Runtime::SuspendAll(JSThread *current)
 void Runtime::ResumeAll(JSThread *current)
 {
     ASSERT(current != nullptr);
-    ASSERT(current->GetState() != ThreadState::RUNNING);
+    ASSERT(!current->IsInRunningState());
     ASSERT(mutatorLock_.HasLock());
     mutatorLock_.Unlock();
     ResumeAllThreadsImpl(current);

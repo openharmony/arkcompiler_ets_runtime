@@ -183,7 +183,7 @@ void VerifyObjectVisitor::VerifyMarkYoung(TaggedObject *object, ObjectSlot slot,
                 object, slot, value);
         }
         if (valueRegion->Test(value) && !(valueRegion->InYoungSpace() || valueRegion->InAppSpawnSpace() ||
-                                          valueRegion->InReadOnlySpace())) {
+                                          valueRegion->InReadOnlySpace() || valueRegion->InSharedHeap())) {
             LogErrorForObjSlot(heap_, "Verify MarkYoung: Marked object, slot marked, but NOT in "
                 "Young/AppSpawn/ReadOnly Space.", object, slot, value);
         }

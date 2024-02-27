@@ -115,6 +115,7 @@ JSThread::JSThread(EcmaVM *vm) : id_(os::thread::GetCurrentThreadId()), vm_(vm)
 
 JSThread::~JSThread()
 {
+    readyForGCIterating_ = false;
     if (globalStorage_ != nullptr) {
         GetEcmaVM()->GetChunk()->Delete(globalStorage_);
         globalStorage_ = nullptr;
@@ -767,7 +768,11 @@ void JSThread::SwitchCurrentContext(EcmaContext *currentContext, bool isInIterat
     glueData_.currentContext_->SetStackLimit(GetStackLimit());
     glueData_.currentContext_->SetStackStart(GetStackStart());
     glueData_.currentContext_->SetGlobalEnv(GetGlueGlobalEnv());
-    glueData_.currentContext_->GetGlobalEnv()->SetJSGlobalObject(this, glueData_.globalObject_);
+    // When the glueData_.currentContext_ is not fully initialized，glueData_.globalObject_ will be hole.
+    // Assigning hole to JSGlobalObject could cause a mistake at builtins initalization.
+    if (!glueData_.globalObject_.IsHole()) {
+        glueData_.currentContext_->GetGlobalEnv()->SetJSGlobalObject(this, glueData_.globalObject_);
+    }
 
     SetCurrentSPFrame(currentContext->GetCurrentFrame());
     SetLastLeaveFrame(currentContext->GetLeaveFrame());
@@ -957,7 +962,11 @@ void JSThread::StoreState(ThreadState newState, bool lockMutatorLock)
         oldStateAndFlags.asInt = stateAndFlags_.asInt;
         if (lockMutatorLock && oldStateAndFlags.asStruct.flags != ThreadFlag::NO_FLAGS) {
             // Someone requested smth from this thread. Go to safepoint
-            CheckSafepoint();
+            if (GetState() == ThreadState::RUNNING) {
+                CheckSafepoint();
+            } else {
+                WaitSuspension();
+            }
             continue;
         }
         ThreadStateAndFlags newStateAndFlags;

@@ -98,7 +98,6 @@ void ConcurrentSweeper::WaitAllTaskFinished()
 
 void ConcurrentSweeper::EnsureAllTaskFinished()
 {
-    CHECK_JS_THREAD(heap_->GetEcmaVM());
     if (!isSweeping_) {
         return;
     }
