@@ -97,6 +97,12 @@ GateRef MCRLowering::VisitGate(GateRef gate)
         case OpCode::LEX_VAR_IS_HOLE_CHECK:
             LowerLexVarIsHoleCheck(gate);
             break;
+        case OpCode::IS_UNDEFINED_OR_HOLE_CHECK:
+            LowerIsUndefinedOrHoleCheck(gate);
+            break;
+        case OpCode::IS_NOT_UNDEFINED_OR_HOLE_CHECK:
+            LowerIsNotUndefinedOrHoleCheck(gate);
+            break;
         case OpCode::STORE_MEMORY:
             LowerStoreMemory(gate);
             break;
@@ -911,6 +917,26 @@ void MCRLowering::LowerLexVarIsHoleCheck(GateRef gate)
     GateRef value = acc_.GetValueIn(gate, 0);
     GateRef valueIsNotHole = builder_.TaggedIsNotHole(value);
     builder_.DeoptCheck(valueIsNotHole, frameState, DeoptType::LEXVARISHOLE1);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
+}
+
+void MCRLowering::LowerIsUndefinedOrHoleCheck(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    GateRef frameState = acc_.GetFrameState(gate);
+    GateRef value = acc_.GetValueIn(gate, 0);
+    GateRef isNotUndefinedorHole = builder_.BoolNot(builder_.TaggedIsUndefinedOrHole(value));
+    builder_.DeoptCheck(isNotUndefinedorHole, frameState, DeoptType::ISUNDEFINEDORHOLE);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
+}
+
+void MCRLowering::LowerIsNotUndefinedOrHoleCheck(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    GateRef frameState = acc_.GetFrameState(gate);
+    GateRef value = acc_.GetValueIn(gate, 0);
+    GateRef isUndefinedorHole = builder_.TaggedIsUndefinedOrHole(value);
+    builder_.DeoptCheck(isUndefinedorHole, frameState, DeoptType::ISNOTUNDEFINEDORHOLE);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 

@@ -666,6 +666,32 @@ GateRef CircuitBuilder::LexVarIsHoleCheck(GateRef value)
     return ret;
 }
 
+GateRef CircuitBuilder::IsUndefinedOrHoleCheck(GateRef value)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    auto frameState = acc_.FindNearestFrameState(currentDepend);
+    GateRef ret = GetCircuit()->NewGate(circuit_->IsUndefinedOrHoleCheck(),
+        MachineType::I1, {currentControl, currentDepend, value, frameState}, GateType::NJSValue());
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
+}
+
+GateRef CircuitBuilder::IsNotUndefinedOrHoleCheck(GateRef value)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    auto frameState = acc_.FindNearestFrameState(currentDepend);
+    GateRef ret = GetCircuit()->NewGate(circuit_->IsNotUndefinedOrHoleCheck(),
+        MachineType::I1, {currentControl, currentDepend, value, frameState}, GateType::NJSValue());
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
+}
+
 GateRef CircuitBuilder::ValueCheckNegOverflow(GateRef value)
 {
     auto currentLabel = env_->GetCurrentLabel();

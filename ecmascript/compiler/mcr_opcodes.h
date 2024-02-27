@@ -18,17 +18,19 @@
 
 namespace panda::ecmascript::kungfu {
 
-#define MCR_BINARY_GATE_META_DATA_CACHE_LIST(V)                                                      \
-    V(Int32CheckRightIsZero, INT32_CHECK_RIGHT_IS_ZERO, GateFlags::CHECKABLE, 1, 1, 1)               \
-    V(RemainderIsNegativeZero, REMAINDER_IS_NEGATIVE_ZERO, GateFlags::CHECKABLE, 1, 1, 2)            \
-    V(Float64CheckRightIsZero, FLOAT64_CHECK_RIGHT_IS_ZERO, GateFlags::CHECKABLE, 1, 1, 1)           \
-    V(ValueCheckNegOverflow, VALUE_CHECK_NEG_OVERFLOW, GateFlags::CHECKABLE, 1, 1, 1)                \
-    V(OverflowCheck, OVERFLOW_CHECK, GateFlags::CHECKABLE, 1, 1, 1)                                  \
-    V(Int32UnsignedUpperBoundCheck, INT32_UNSIGNED_UPPER_BOUND_CHECK, GateFlags::CHECKABLE, 1, 1, 2) \
-    V(Int32DivWithCheck, INT32_DIV_WITH_CHECK, GateFlags::CHECKABLE, 1, 1, 2)                        \
-    V(LexVarIsHoleCheck, LEX_VAR_IS_HOLE_CHECK, GateFlags::CHECKABLE, 1, 1, 1)                       \
-    V(TaggedIsHeapObject, TAGGED_IS_HEAP_OBJECT, GateFlags::NO_WRITE, 1, 1, 1)                       \
-    V(IsMarkerCellValid, IS_MARKER_CELL_VALID, GateFlags::NO_WRITE, 1, 1, 1)                         \
+#define MCR_BINARY_GATE_META_DATA_CACHE_LIST(V)                                                             \
+    V(Int32CheckRightIsZero, INT32_CHECK_RIGHT_IS_ZERO, GateFlags::CHECKABLE, 1, 1, 1)                      \
+    V(RemainderIsNegativeZero, REMAINDER_IS_NEGATIVE_ZERO, GateFlags::CHECKABLE, 1, 1, 2)                   \
+    V(Float64CheckRightIsZero, FLOAT64_CHECK_RIGHT_IS_ZERO, GateFlags::CHECKABLE, 1, 1, 1)                  \
+    V(ValueCheckNegOverflow, VALUE_CHECK_NEG_OVERFLOW, GateFlags::CHECKABLE, 1, 1, 1)                       \
+    V(OverflowCheck, OVERFLOW_CHECK, GateFlags::CHECKABLE, 1, 1, 1)                                         \
+    V(Int32UnsignedUpperBoundCheck, INT32_UNSIGNED_UPPER_BOUND_CHECK, GateFlags::CHECKABLE, 1, 1, 2)        \
+    V(Int32DivWithCheck, INT32_DIV_WITH_CHECK, GateFlags::CHECKABLE, 1, 1, 2)                               \
+    V(LexVarIsHoleCheck, LEX_VAR_IS_HOLE_CHECK, GateFlags::CHECKABLE, 1, 1, 1)                              \
+    V(IsUndefinedOrHoleCheck, IS_UNDEFINED_OR_HOLE_CHECK, GateFlags::CHECKABLE, 1, 1, 1)                    \
+    V(IsNotUndefinedOrHoleCheck, IS_NOT_UNDEFINED_OR_HOLE_CHECK, GateFlags::CHECKABLE, 1, 1, 1)             \
+    V(TaggedIsHeapObject, TAGGED_IS_HEAP_OBJECT, GateFlags::NO_WRITE, 1, 1, 1)                              \
+    V(IsMarkerCellValid, IS_MARKER_CELL_VALID, GateFlags::NO_WRITE, 1, 1, 1)                                \
     V(StringEqual, STRING_EQUAL, GateFlags::NO_WRITE, 1, 1, 2)
 
 #define MCR_IMMUTABLE_META_DATA_CACHE_LIST(V)                                                   \
