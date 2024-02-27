@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+declare function assert_equal(a: Object, b: Object):void;
 assert_equal(1 + 1, 2);
 
 assert_equal(1 + 1.1, 2.1);
