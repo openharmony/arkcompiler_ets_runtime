@@ -365,6 +365,7 @@ bool MethodTypeInfer::Infer(GateRef gate)
             return InferLdExternalModuleVar(gate);
         case EcmaOpcode::STOBJBYNAME_IMM8_ID16_V8:
         case EcmaOpcode::STOBJBYNAME_IMM16_ID16_V8:
+        case EcmaOpcode::DEFINEFIELDBYNAME_IMM8_ID16_V8:
             return InferStObjByName(gate);
         default:
             break;

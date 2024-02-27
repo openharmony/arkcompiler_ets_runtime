@@ -82,6 +82,7 @@ void TSInlineLowering::CandidateInlineCall(GateRef gate, ChunkQueue<InlineTypeIn
             break;
         case EcmaOpcode::STOBJBYNAME_IMM8_ID16_V8:
         case EcmaOpcode::STOBJBYNAME_IMM16_ID16_V8:
+        case EcmaOpcode::DEFINEFIELDBYNAME_IMM8_ID16_V8:
         case EcmaOpcode::STTHISBYNAME_IMM8_ID16:
         case EcmaOpcode::STTHISBYNAME_IMM16_ID16:
             CandidateAccessor(gate, workList, CallKind::CALL_SETTER);

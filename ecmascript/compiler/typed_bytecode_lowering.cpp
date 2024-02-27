@@ -568,14 +568,14 @@ void TypedBytecodeLowering::LowerTypedStObjByName(GateRef gate)
 
     // The framestate of Call and Accessor related instructions directives is placed on IR. Using the depend edge to
     // climb up and find the nearest framestate for other instructions
-    if (opcode == EcmaOpcode::DEFINEFIELDBYNAME_IMM8_ID16_V8 ||
-        opcode == EcmaOpcode::STOWNBYNAME_IMM8_ID16_V8 ||
+    if (opcode == EcmaOpcode::STOWNBYNAME_IMM8_ID16_V8 ||
         opcode == EcmaOpcode::STOWNBYNAME_IMM16_ID16_V8) {
         frameState = acc_.FindNearestFrameState(builder_.GetDepend());
     } else if (opcode == EcmaOpcode::STOBJBYNAME_IMM8_ID16_V8 ||
                opcode == EcmaOpcode::STOBJBYNAME_IMM16_ID16_V8 ||
                opcode == EcmaOpcode::STTHISBYNAME_IMM8_ID16 ||
-               opcode == EcmaOpcode::STTHISBYNAME_IMM16_ID16) {
+               opcode == EcmaOpcode::STTHISBYNAME_IMM16_ID16 ||
+               opcode == EcmaOpcode::DEFINEFIELDBYNAME_IMM8_ID16_V8) {
         frameState = acc_.GetFrameState(gate);
     } else {
         UNREACHABLE();

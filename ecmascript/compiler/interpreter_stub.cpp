@@ -1936,7 +1936,7 @@ DECLARE_ASM_HANDLER(HandleStownbyvaluewithnamesetImm16V8V8)
             Branch(IsClassPrototype(receiver), &slowPath, &notClassPrototype);
             Bind(&notClassPrototype);
             {
-                GateRef res = SetPropertyByValue(glue, receiver, propKey, acc, true, callback);
+                GateRef res = SetPropertyByValue(glue, receiver, propKey, acc, true, callback, true);
                 Branch(TaggedIsHole(res), &slowPath, &notHole);
                 Bind(&notHole);
                 {
@@ -1979,7 +1979,7 @@ DECLARE_ASM_HANDLER(HandleStownbyvaluewithnamesetImm8V8V8)
             Branch(IsClassPrototype(receiver), &slowPath, &notClassPrototype);
             Bind(&notClassPrototype);
             {
-                GateRef res = SetPropertyByValue(glue, receiver, propKey, acc, true, callback);
+                GateRef res = SetPropertyByValue(glue, receiver, propKey, acc, true, callback, true);
                 Branch(TaggedIsHole(res), &slowPath, &notHole);
                 Bind(&notHole);
                 {
@@ -2098,7 +2098,7 @@ DECLARE_ASM_HANDLER(HandleStownbynamewithnamesetImm8Id16V8)
             Branch(IsClassPrototype(receiver), &notJSObject, &notClassPrototype);
             Bind(&notClassPrototype);
             {
-                GateRef res = SetPropertyByName(glue, receiver, propKey, acc, true, True(), callback);
+                GateRef res = SetPropertyByName(glue, receiver, propKey, acc, true, True(), callback, false, true);
                 Branch(TaggedIsHole(res), &notJSObject, &notHole);
                 Bind(&notHole);
                 {
@@ -2140,7 +2140,7 @@ DECLARE_ASM_HANDLER(HandleStownbynamewithnamesetImm16Id16V8)
             Branch(IsClassPrototype(receiver), &notJSObject, &notClassPrototype);
             Bind(&notClassPrototype);
             {
-                GateRef res = SetPropertyByName(glue, receiver, propKey, acc, true, True(), callback);
+                GateRef res = SetPropertyByName(glue, receiver, propKey, acc, true, True(), callback, false, true);
                 Branch(TaggedIsHole(res), &notJSObject, &notHole);
                 Bind(&notHole);
                 {
