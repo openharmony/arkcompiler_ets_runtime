@@ -809,6 +809,7 @@ public:
     JSHandle<AccessorData> NewSInternalAccessor(void *setter, void *getter);
 
     JSHandle<JSSymbol> NewSWellKnownSymbol(const JSHandle<JSTaggedValue> &name);
+    JSHandle<JSSymbol> NewSEmptySymbol();
     JSHandle<JSSymbol> NewSWellKnownSymbolWithChar(std::string_view description);
 private:
     friend class GlobalEnv;

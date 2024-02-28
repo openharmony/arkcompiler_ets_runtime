@@ -607,7 +607,7 @@ void Builtins::InitializeSymbol(const JSHandle<GlobalEnv> &env, const JSHandle<J
     SetNoneAttributeProperty(symbolFunction, "hasInstance", hasInstanceSymbol);
     JSHandle<JSTaggedValue> isConcatSpreadableSymbol(factory_->NewWellKnownSymbolWithChar("Symbol.isConcatSpreadable"));
     SetNoneAttributeProperty(symbolFunction, "isConcatSpreadable", isConcatSpreadableSymbol);
-    JSHandle<JSTaggedValue> toStringTagSymbol(factory_->NewWellKnownSymbolWithChar("Symbol.toStringTag"));
+    JSHandle<JSTaggedValue> toStringTagSymbol(factory_->NewSWellKnownSymbolWithChar("Symbol.toStringTag"));
     SetNoneAttributeProperty(symbolFunction, "toStringTag", toStringTagSymbol);
     JSHandle<JSTaggedValue> asyncIteratorSymbol(factory_->NewPublicSymbolWithChar("Symbol.asyncIterator"));
     SetNoneAttributeProperty(symbolFunction, "asyncIterator", asyncIteratorSymbol);
@@ -637,7 +637,7 @@ DETECTOR_SYMBOL_LIST(INIT_SYMBOL_STRING)
 #undef INIT_SYMBOL_STRING
 
 #define INIT_PUBLIC_SYMBOL(name, description, key)                                \
-    JSHandle<JSSymbol> key##Symbol = factory_->NewEmptySymbol();                  \
+    JSHandle<JSSymbol> key##Symbol = factory_->NewSEmptySymbol();                 \
     JSHandle<EcmaString> key##String = factory_->NewFromUtf8(description);        \
     key##Symbol->SetDescription(thread_, key##String.GetTaggedValue());           \
     key##Symbol->SetHashField(SymbolTable::Hash(key##String.GetTaggedValue()));   \

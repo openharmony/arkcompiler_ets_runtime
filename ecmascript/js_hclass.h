@@ -373,7 +373,8 @@ public:
     using LevelBit = IsTSBit::NextField<uint32_t, LEVEL_BTTFIELD_NUM>;                            // 25-29
     using IsJSFunctionBit = LevelBit::NextFlag;                                                   // 30
     using IsOnHeap = IsJSFunctionBit::NextFlag;                                                   // 31
-    using BitFieldLastBit = IsOnHeap;
+    using IsJSSharedBit = IsOnHeap::NextFlag;                                                     // 32
+    using BitFieldLastBit = IsJSSharedBit;
     static_assert(BitFieldLastBit::START_BIT + BitFieldLastBit::SIZE <= sizeof(uint32_t) * BITS_PER_BYTE, "Invalid");
 
     static constexpr int DEFAULT_CAPACITY_OF_IN_OBJECTS = 4;
@@ -928,12 +929,13 @@ public:
 
     bool IsJSShared() const
     {
-        return IsJSSharedType(GetObjectType());
+        uint32_t bits = GetBitField();
+        return IsJSSharedBit::Decode(bits);
     }
 
-    static inline bool IsJSSharedType(JSType jsType)
+    inline void SetIsJSShared(bool flag) const
     {
-        return (jsType == JSType::JS_SHARED_OBJECT || jsType == JSType::JS_SHARED_FUNCTION);
+        IsJSSharedBit::Set<uint32_t>(flag, GetBitFieldAddr());
     }
 
     inline bool IsJSError() const
@@ -1211,6 +1213,7 @@ public:
         return GetObjectType() == JSType::JS_SET_ITERATOR;
     }
 
+    // iterator of shared set
     inline bool IsJSSharedSetIterator() const
     {
         return GetObjectType() == JSType::JS_SHARED_SET_ITERATOR;
@@ -1226,6 +1229,7 @@ public:
         return GetObjectType() == JSType::JS_MAP_ITERATOR;
     }
 
+    // iterator of shared map
     inline bool IsJSSharedMapIterator() const
     {
         return GetObjectType() == JSType::JS_SHARED_MAP_ITERATOR;

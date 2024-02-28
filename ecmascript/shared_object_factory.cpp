@@ -485,6 +485,18 @@ JSHandle<JSSymbol> ObjectFactory::NewSWellKnownSymbol(const JSHandle<JSTaggedVal
     return obj;
 }
 
+JSHandle<JSSymbol> ObjectFactory::NewSEmptySymbol()
+{
+    NewObjectHook();
+    TaggedObject *header = sHeap_->AllocateNonMovableOrHugeObject(
+        thread_, JSHClass::Cast(thread_->GlobalConstants()->GetSymbolClass().GetTaggedObject()));
+    JSHandle<JSSymbol> obj(thread_, JSSymbol::Cast(header));
+    obj->SetDescription(thread_, JSTaggedValue::Undefined());
+    obj->SetFlags(0);
+    obj->SetHashField(0);
+    return obj;
+}
+
 JSHandle<JSSymbol> ObjectFactory::NewSWellKnownSymbolWithChar(std::string_view description)
 {
     JSHandle<EcmaString> string = NewFromUtf8(description);

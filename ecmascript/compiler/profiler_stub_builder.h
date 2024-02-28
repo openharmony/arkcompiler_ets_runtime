@@ -51,7 +51,7 @@ public:
 
     GateRef UpdateTrackTypeInPropAttr(GateRef attr, GateRef value, ProfileOperation callback);
     void UpdatePropAttrIC(GateRef glue, GateRef receiver, GateRef value, GateRef handler, ProfileOperation callback);
-    void UpdatePropAttrWithValue(GateRef glue, GateRef jsType, GateRef layout, GateRef attr, GateRef attrIndex,
+    void UpdatePropAttrWithValue(GateRef glue, GateRef receiver, GateRef layout, GateRef attr, GateRef attrIndex,
                                  GateRef value, ProfileOperation callback);
 
     GateRef IsProfileTypeInfoDumped(GateRef profileTypeInfo, ProfileOperation callback);

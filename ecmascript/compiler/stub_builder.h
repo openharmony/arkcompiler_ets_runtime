@@ -495,7 +495,7 @@ public:
     GateRef GetUnsharedConstpoolIndex(GateRef constpool);
     GateRef GetUnsharedConstpool(GateRef array, GateRef index);
     GateRef GetValueFromMutantTaggedArray(GateRef elements, GateRef index);
-    void CheckUpdateSharedType(bool isDicMode, Variable *result, GateRef glue, GateRef jsType, GateRef attr,
+    void CheckUpdateSharedType(bool isDicMode, Variable *result, GateRef glue, GateRef receiver, GateRef attr,
                                GateRef value, Label *executeSetProp, Label *exit);
     void MatchFieldType(Variable *result, GateRef glue, GateRef fieldType, GateRef value, Label *executeSetProp,
                                Label *exit);
@@ -512,7 +512,6 @@ public:
     void SetValueToTaggedArray(VariableType valType, GateRef glue, GateRef array, GateRef index, GateRef val);
     void UpdateValueAndAttributes(GateRef glue, GateRef elements, GateRef index, GateRef value, GateRef attr);
     GateRef IsSpecialIndexedObj(GateRef jsType);
-    GateRef IsJSSharedType(GateRef jsType);
     GateRef IsSpecialContainer(GateRef jsType);
     GateRef IsAccessorInternal(GateRef value);
     template<typename DictionaryT>

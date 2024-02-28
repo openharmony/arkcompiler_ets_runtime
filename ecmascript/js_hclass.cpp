@@ -179,6 +179,16 @@ void JSHClass::Initialize(const JSThread *thread, uint32_t size, JSType type,
     if (JSType::JS_OBJECT_FIRST <= type && type <= JSType::JS_OBJECT_LAST) {
         SetLayout(thread, layout);
     }
+    switch (type) {
+        case JSType::JS_SHARED_OBJECT:
+        case JSType::JS_SHARED_FUNCTION:
+        case JSType::JS_SHARED_SET:
+        case JSType::JS_SHARED_MAP:
+            SetIsJSShared(true);
+            break;
+        default:
+            break;
+    }
 }
 
 void JSHClass::InitTSInheritInfo(const JSThread *thread)

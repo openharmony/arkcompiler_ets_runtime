@@ -2326,7 +2326,6 @@ JSHandle<JSHClass> CreateInlinedSendableHClass(JSThread *thread,
                                                     ecmascript::JSType::JS_SHARED_FUNCTION, length);
     hclass->SetLayout(thread, layout);
     hclass->SetNumberOfProps(length);
-
     return hclass;
 }
 
@@ -2363,7 +2362,6 @@ JSHandle<JSHClass> CreateDictSendableHClass(JSThread *thread,
     hclass->SetLayout(thread, dict);
     hclass->SetNumberOfProps(0);
     hclass->SetIsDictionaryMode(true);
-
     return hclass;
 }
 

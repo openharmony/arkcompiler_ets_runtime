@@ -1265,8 +1265,11 @@ inline GateRef StubBuilder::IsJsProxy(GateRef obj)
 
 inline GateRef StubBuilder::IsJSShared(GateRef obj)
 {
-    GateRef objectType = GetObjectType(LoadHClass(obj));
-    return IsJSSharedType(objectType);
+    GateRef bitfield = Load(VariableType::INT32(), LoadHClass(obj), IntPtr(JSHClass::BIT_FIELD_OFFSET));
+    return Int32NotEqual(
+        Int32And(Int32LSR(bitfield, Int32(JSHClass::IsJSSharedBit::START_BIT)),
+                 Int32((1LU << JSHClass::IsJSSharedBit::SIZE) - 1)),
+        Int32(0));
 }
 
 inline GateRef StubBuilder::IsJSGlobalObject(GateRef obj)
@@ -2132,13 +2135,13 @@ inline GateRef StubBuilder::IsSpecialIndexedObj(GateRef jsType)
     return Int32GreaterThan(jsType, Int32(static_cast<int32_t>(JSType::JS_ARRAY)));
 }
 
-inline void StubBuilder::CheckUpdateSharedType(bool isDicMode, Variable *result, GateRef glue, GateRef jsType,
+inline void StubBuilder::CheckUpdateSharedType(bool isDicMode, Variable *result, GateRef glue, GateRef receiver,
                                                GateRef attr, GateRef value, Label *executeSetProp, Label *exit)
 {
     auto *env = GetEnvironment();
-    Label isSharedObj(env);
-    BRANCH(IsJSSharedType(jsType), &isSharedObj, executeSetProp);
-    Bind(&isSharedObj);
+    Label isJSShared(env);
+    BRANCH(IsJSShared(receiver), &isJSShared, executeSetProp);
+    Bind(&isJSShared);
     {
         Label typeMismatch(env);
         GateRef fieldType = isDicMode ? GetDictSharedFieldTypeInPropAttr(attr) : GetSharedFieldTypeInPropAttr(attr);
@@ -2178,12 +2181,6 @@ inline GateRef StubBuilder::GetFieldTypeFromHandler(GateRef attr)
 inline GateRef StubBuilder::ClearSharedStoreKind(GateRef handlerInfo)
 {
     return Int32And(handlerInfo, Int32Not(Int32(HandlerBase::SSharedBit::Mask())));
-}
-
-inline GateRef StubBuilder::IsJSSharedType(GateRef jsType)
-{
-    return BoolOr(Int32Equal(jsType, Int32(static_cast<int32_t>(JSType::JS_SHARED_OBJECT))),
-                  Int32Equal(jsType, Int32(static_cast<int32_t>(JSType::JS_SHARED_FUNCTION))));
 }
 
 inline GateRef StubBuilder::IsSpecialContainer(GateRef jsType)

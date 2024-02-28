@@ -1002,7 +1002,7 @@ JSHandle<JSObject> ObjectFactory::NewJSObjectByConstructor(const JSHandle<JSFunc
     // Check this exception elsewhere
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSObject, thread_);
     JSHandle<JSObject> obj;
-    if (jshclass->IsJSSharedObject() || jshclass->IsJSSharedSet() || jshclass->IsJSSharedMap()) {
+    if (jshclass->IsJSShared()) {
         obj = NewSharedOldSpaceJSObject(jshclass);
         if (jshclass->IsDictionaryMode()) {
             auto fieldLayout = jshclass->GetLayout();
