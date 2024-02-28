@@ -735,7 +735,8 @@ void TypeMCRLowering::LowerLoadElement(GateRef gate)
     }
 }
 
-void TypeMCRLowering::LowerCowArrayCheck(GateRef gate, GateRef glue) {
+void TypeMCRLowering::LowerCowArrayCheck(GateRef gate, GateRef glue)
+{
     Environment env(gate, circuit_, &builder_);
     GateRef receiver = acc_.GetValueIn(gate, 0);
     Label notCOWArray(&builder_);

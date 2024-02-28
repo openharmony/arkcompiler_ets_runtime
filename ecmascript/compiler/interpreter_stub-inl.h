@@ -99,9 +99,8 @@ GateRef InterpreterStubBuilder::ReadInst4_2(GateRef pc)
 
 GateRef InterpreterStubBuilder::ReadInst4_3(GateRef pc)
 {
-    // 2 : skip 1 byte of bytecode
-    return Int8And(
-        Int8LSR(Load(VariableType::INT8(), pc, IntPtr(2)), Int8(4)), Int8(0xf));  // 4 : read 4 byte of bytecode
+    return Int8And(Int8LSR(Load(VariableType::INT8(), pc, IntPtr(2)), // 2 : skip 1 byte of bytecode
+        Int8(4)), Int8(0xf));  // 4 : read 4 byte of bytecode
 }
 
 GateRef InterpreterStubBuilder::ReadInstSigned8_0(GateRef pc)

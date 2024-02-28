@@ -2656,9 +2656,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         if (!profileTypeInfo.IsUndefined()) {
             uint16_t slotId = READ_INST_16_0();
             JSTaggedValue res = ICRuntimeStub::LoadGlobalICByName(thread,
-                                                                  ProfileTypeInfo::Cast(
-                                                                  profileTypeInfo.GetTaggedObject()),
-                                                                  globalObj, prop, slotId, true);
+                ProfileTypeInfo::Cast(profileTypeInfo.GetTaggedObject()), globalObj, prop, slotId, true);
             INTERPRETER_RETURN_IF_ABRUPT(res);
             SET_ACC(res);
             DISPATCH(TRYLDGLOBALBYNAME_IMM16_ID16);
@@ -4201,7 +4199,6 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         uint16_t firstArgRegIdx = READ_INST_8_3();
         LOG_INST() << "intrinsics::newobjRange " << numArgs << " v" << firstArgRegIdx;
         JSTaggedValue ctor = GET_VREG_VALUE(firstArgRegIdx);
-
         if (ctor.IsJSFunction() && ctor.IsConstructor()) {
             JSFunction *ctorFunc = JSFunction::Cast(ctor.GetTaggedObject());
             methodHandle.Update(ctorFunc->GetMethod());
@@ -4989,7 +4986,6 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         LOG_INST() << "intrinsics::resumegenerator";
         uint16_t vs = READ_INST_8_1();
         JSTaggedValue objVal = GET_VREG_VALUE(vs);
-
         if (objVal.IsAsyncGeneratorObject()) {
             JSAsyncGeneratorObject *obj = JSAsyncGeneratorObject::Cast(objVal.GetTaggedObject());
             SET_ACC(obj->GetResumeResult());
