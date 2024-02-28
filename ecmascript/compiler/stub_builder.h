@@ -162,6 +162,7 @@ public:
                GateRef offset,
                GateRef value,
                MemoryOrder order = MemoryOrder::Default());
+    void StoreWithBarrier(VariableType type, GateRef glue, GateRef base, GateRef offset, GateRef value);
     // arithmetic
     GateRef TaggedCastToIntPtr(GateRef x);
     GateRef Int16Add(GateRef x, GateRef y);
@@ -313,6 +314,7 @@ public:
     GateRef IsJSHClass(GateRef obj);
     GateRef LoadHClass(GateRef object);
     void StoreHClass(GateRef glue, GateRef object, GateRef hClass);
+    void StoreBuiltinHClass(GateRef object, GateRef hClass);
     void StorePrototype(GateRef glue, GateRef hclass, GateRef prototype);
     void CopyAllHClass(GateRef glue, GateRef dstHClass, GateRef scrHClass);
     GateRef GetObjectType(GateRef hClass);

@@ -424,6 +424,7 @@ public:
     inline GateRef IsJsProxy(GateRef obj);
     GateRef IsJSHClass(GateRef obj);
     inline void StoreHClass(GateRef glue, GateRef object, GateRef hClass);
+    inline void StoreHClassWithoutBarrier(GateRef object, GateRef hClass);
     GateRef IsStabelArray(GateRef glue, GateRef obj);
     inline void StorePrototype(GateRef glue, GateRef hclass, GateRef prototype);
     void SetExtensibleToBitfield(GateRef glue, GateRef obj, bool isExtensible);
@@ -723,6 +724,8 @@ public:
     GateRef Load(VariableType type, GateRef base, GateRef offset, GateRef depend,
         MemoryOrder order = MemoryOrder::Default());
     void Store(VariableType type, GateRef glue, GateRef base, GateRef offset, GateRef value,
+        MemoryOrder order = MemoryOrder::Default());
+    void StoreWithBarrier(VariableType type, GateRef glue, GateRef base, GateRef offset, GateRef value,
         MemoryOrder order = MemoryOrder::Default());
     void StoreWithNoBarrier(VariableType type, GateRef base, GateRef offset, GateRef value,
         MemoryOrder order = MemoryOrder::Default());
