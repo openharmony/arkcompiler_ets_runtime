@@ -4002,7 +4002,6 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         uint16_t firstArgRegIdx = READ_INST_8_2();
         LOG_INST() << "intrinsics::newobjRange " << numArgs << " v" << firstArgRegIdx;
         JSTaggedValue ctor = GET_VREG_VALUE(firstArgRegIdx);
-
         if (ctor.IsJSFunction() && ctor.IsConstructor()) {
             JSFunction *ctorFunc = JSFunction::Cast(ctor.GetTaggedObject());
             methodHandle.Update(ctorFunc->GetMethod());
@@ -4138,7 +4137,6 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         uint16_t firstArgRegIdx = READ_INST_8_3();
         LOG_INST() << "intrinsics::newobjRange " << numArgs << " v" << firstArgRegIdx;
         JSTaggedValue ctor = GET_VREG_VALUE(firstArgRegIdx);
-
         if (ctor.IsJSFunction() && ctor.IsConstructor()) {
             JSFunction *ctorFunc = JSFunction::Cast(ctor.GetTaggedObject());
             methodHandle.Update(ctorFunc->GetMethod());
@@ -4275,7 +4273,6 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         uint16_t firstArgRegIdx = READ_INST_8_3();
         LOG_INST() << "intrinsics::newobjRange " << numArgs << " v" << firstArgRegIdx;
         JSTaggedValue ctor = GET_VREG_VALUE(firstArgRegIdx);
-
         if (ctor.IsJSFunction() && ctor.IsConstructor()) {
             JSFunction *ctorFunc = JSFunction::Cast(ctor.GetTaggedObject());
             methodHandle.Update(ctorFunc->GetMethod());
@@ -5074,7 +5071,6 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         LOG_INST() << "intrinsics::resumegenerator";
         uint16_t vs = READ_INST_8_1();
         JSTaggedValue objVal = GET_VREG_VALUE(vs);
-
         if (objVal.IsAsyncGeneratorObject()) {
             JSAsyncGeneratorObject *obj = JSAsyncGeneratorObject::Cast(objVal.GetTaggedObject());
             SET_ACC(obj->GetResumeResult());
@@ -5101,7 +5097,6 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         LOG_INST() << "intrinsics::getresumemode";
         uint16_t vs = READ_INST_8_1();
         JSTaggedValue objVal = GET_VREG_VALUE(vs);
-
         if (objVal.IsAsyncGeneratorObject()) {
             JSAsyncGeneratorObject *obj = JSAsyncGeneratorObject::Cast(objVal.GetTaggedObject());
             SET_ACC(JSTaggedValue(static_cast<int>(obj->GetResumeMode())));

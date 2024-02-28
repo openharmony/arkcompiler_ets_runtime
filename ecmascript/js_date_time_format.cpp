@@ -1206,8 +1206,8 @@ JSHandle<JSArray> JSDateTimeFormat::ConstructFDateIntervalToJSArray(JSThread *th
     int index = 0;
     int32_t preEndPos = 0;
     // 2: number of elements
-    std::array<int32_t, 2> begin {};
-    std::array<int32_t, 2> end {};
+    std::array<int32_t, 2> begin {}; // 2 : array size
+    std::array<int32_t, 2> end {}; // 2 : array size
     begin[0] = begin[1] = end[0] = end[1] = 0;
     std::vector<CommonDateFormatPart> parts;
 

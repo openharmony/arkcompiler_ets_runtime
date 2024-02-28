@@ -35,14 +35,14 @@ LogicalImmediate LogicalImmediate::Create(uint64_t imm, int width)
     // First, determine the element size.
     unsigned int size = static_cast<uint32_t>(width);
     do {
-        size /= 2;
+        size /= 2; // 2 : Divide by 2
         uint64_t mask = (1ULL << size) - 1;
 
         if ((imm & mask) != ((imm >> size) & mask)) {
-            size *= 2;
+            size *= 2; // 2 : Multiply by 2
             break;
         }
-    } while (size > 2);
+    } while (size > 2); // 2 : Greater than 2
 
     // Second, determine the rotation to make the element be: 0^m 1^n.
     unsigned int cto = 0;
@@ -408,7 +408,8 @@ void AssemblerAarch64::Mov(const Register &rd, const Immediate &imm)
         return;
     }
     // One to up three instruction sequence.
-    if (allOneHalfWords >= (halfWords - 2) || allZeroHalfWords >= (halfWords - 2)) {
+    if (allOneHalfWords >= (halfWords - 2) || // 2 : Must be greater than or equal to (halfWords -2)
+        allZeroHalfWords >= (halfWords - 2)) { // 2 : Must be greater than or equal to (halfWords -2)
         EmitMovInstruct(rd, immValue, allOneHalfWords, allZeroHalfWords);
         return;
     }
@@ -755,12 +756,12 @@ void AssemblerAarch64::Lsr(const Register &rd, const Register &rn, unsigned shif
         // 31 : 31 32-bit variant Applies when sf == 0 && N == 0 && imms == 011111
         // LSR <Wd>, <Wn>, #<shift> is equivalent to UBFM <Wd>, <Wn>, #<shift>, #31
         // and is always the preferred disassembly
-        imms = 31;
+        imms = 31; // 31 : 32-bit variant Applies
     } else {
         // 63 : 63 64-bit variant Applies when sf == 1 && N == 1 && imms == 111111
         // LSR <Xd>, <Xn>, #<shift> is equivalent to UBFM <Xd>, <Xn>, #<shift>, #63
         // and is always the preferred disassembly
-        imms = 63;
+        imms = 63; // 63 : 64-bit variant Applies
     }
     Ubfm(rd, rn, shift, imms);
 }
