@@ -327,11 +327,6 @@ public:
         }
     }
 
-    AOTFileManager *GetAOTFileManager() const
-    {
-        return aotFileManager_;
-    }
-
     EcmaRuntimeStat *GetRuntimeStat() const
     {
         return runtimeStat_;

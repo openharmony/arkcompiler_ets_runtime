@@ -1840,7 +1840,7 @@ JSHandle<Method> ObjectFactory::NewMethod(const JSPandaFile *jsPandaFile, Method
         method->SetModule(thread_, module);
     }
     if (needSetAotFlag) {
-        thread_->GetCurrentEcmaContext()->GetAOTFileManager()->
+        thread_->GetEcmaVM()->GetAOTFileManager()->
             SetAOTFuncEntry(jsPandaFile, *method, entryIndex, canFastCall);
     }
     return method;

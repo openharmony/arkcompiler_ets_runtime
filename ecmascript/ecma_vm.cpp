@@ -114,7 +114,7 @@ EcmaVM *EcmaVM::Create(const JSRuntimeOptions &options, EcmaParamConfiguration &
     vm->thread_ = jsThread;
     vm->Initialize();
     if (JsStackInfo::loader == nullptr) {
-        JsStackInfo::loader = vm->GetJSThread()->GetCurrentEcmaContext()->GetAOTFileManager();
+        JsStackInfo::loader = vm->GetAOTFileManager();
     }
 #if defined(__aarch64__) && !defined(PANDA_TARGET_MACOS) && !defined(PANDA_TARGET_IOS)
     if (SetThreadInfoCallback != nullptr) {
@@ -229,6 +229,7 @@ bool EcmaVM::Initialize()
         UNREACHABLE();
     }
     debuggerManager_ = chunk_.New<tooling::JsDebuggerManager>(this);
+    aotFileManager_ = new AOTFileManager(this);
     auto context = new EcmaContext(thread_);
     thread_->PushContext(context);
     [[maybe_unused]] EcmaHandleScope scope(thread_);
@@ -313,7 +314,7 @@ EcmaVM::~EcmaVM()
         gcStats_ = nullptr;
     }
 
-    if (JsStackInfo::loader == GetJSThread()->GetCurrentEcmaContext()->GetAOTFileManager()) {
+    if (JsStackInfo::loader == aotFileManager_) {
         JsStackInfo::loader = nullptr;
     }
 
@@ -326,6 +327,11 @@ EcmaVM::~EcmaVM()
     if (debuggerManager_ != nullptr) {
         chunk_.Delete(debuggerManager_);
         debuggerManager_ = nullptr;
+    }
+
+    if (aotFileManager_ != nullptr) {
+        delete aotFileManager_;
+        aotFileManager_ = nullptr;
     }
 
     if (factory_ != nullptr) {

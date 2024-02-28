@@ -589,6 +589,11 @@ public:
     {
         overLimit_ = state;
     }
+
+    AOTFileManager *GetAOTFileManager() const
+    {
+        return aotFileManager_;
+    }
 protected:
 
     void PrintJSErrorInfo(const JSHandle<JSTaggedValue> &exceptionInfo) const;
@@ -675,6 +680,10 @@ private:
 
     // PGO Profiler
     std::shared_ptr<PGOProfiler> pgoProfiler_ {nullptr};
+
+    //AOT File Manager
+    AOTFileManager *aotFileManager_ {nullptr};
+
     // c++ call js
     size_t callDepth_ {0};
 
