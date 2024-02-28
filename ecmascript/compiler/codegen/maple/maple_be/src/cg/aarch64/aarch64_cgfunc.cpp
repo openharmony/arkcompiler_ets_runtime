@@ -9859,7 +9859,7 @@ void AArch64CGFunc::SelectOverFlowCall(const IntrinsiccallNode &intrnNode)
     PrimType type = intrnNode.Opnd(0)->GetPrimType();
     PrimType type2 = intrnNode.Opnd(1)->GetPrimType();
     CHECK_FATAL(type == PTY_i32 || type == PTY_u32, "only support i32 or u32 here");
-    CHECK_FATAL(type2 == PTY_i32 || type == PTY_u32, "only support i32 or u32 here");
+    CHECK_FATAL(type2 == PTY_i32 || type2 == PTY_u32, "only support i32 or u32 here");
     // deal with parms
     RegOperand &opnd0 = LoadIntoRegister(*HandleExpr(intrnNode, *intrnNode.Opnd(0)),
                                          intrnNode.Opnd(0)->GetPrimType()); /* first argument of intrinsic */
