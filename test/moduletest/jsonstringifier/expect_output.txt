@@ -26,3 +26,9 @@ test successful
 {"a":"delete","b":{}}
 {"a":"delete","b":{}}
 end JSON.stringify(globalThis)
+{"\ud83d":"\ud83d","\ude0e":"\ude0e","\ude0e\"测试":"\ude0e\"测试","\ude0e\"测试2":"\ude0e\"测试2","😎":"😎"}
+"😎"
+"\ud83d"
+"\ude0e"
+"\ude0e\"测试"
+"\ude0e\"测试2"
