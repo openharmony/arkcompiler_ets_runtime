@@ -847,7 +847,6 @@ public:
         }
         JSNApi::DestroyJSVM(vm);
     }
-
 };
 }
 #endif
