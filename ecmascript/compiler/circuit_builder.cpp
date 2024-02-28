@@ -905,21 +905,21 @@ GateRef Variable::TryRemoveTrivialPhi(GateRef phi)
     return same;
 }
 
-GateRef CircuitBuilder::elementsKindIsIntOrHoleInt(GateRef kind)
+GateRef CircuitBuilder::ElementsKindIsIntOrHoleInt(GateRef kind)
 {
     GateRef kindIsInt = Int32Equal(kind, Int32(static_cast<uint32_t>(ElementsKind::INT)));
     GateRef kindIsHoleInt = Int32Equal(kind, Int32(static_cast<uint32_t>(ElementsKind::HOLE_INT)));
     return BoolOr(kindIsInt, kindIsHoleInt);
 }
 
-GateRef CircuitBuilder::elementsKindIsNumOrHoleNum(GateRef kind)
+GateRef CircuitBuilder::ElementsKindIsNumOrHoleNum(GateRef kind)
 {
     GateRef kindIsNum = Int32Equal(kind, Int32(static_cast<uint32_t>(ElementsKind::NUMBER)));
     GateRef kindIsHoleNum = Int32Equal(kind, Int32(static_cast<uint32_t>(ElementsKind::HOLE_NUMBER)));
     return BoolOr(kindIsNum, kindIsHoleNum);
 }
 
-GateRef CircuitBuilder::elementsKindIsHeapKind(GateRef kind)
+GateRef CircuitBuilder::ElementsKindIsHeapKind(GateRef kind)
 {
     GateRef overString = Int32GreaterThanOrEqual(kind, Int32(static_cast<uint32_t>(ElementsKind::STRING)));
     GateRef isHoleOrNone = Int32LessThanOrEqual(kind, Int32(static_cast<uint32_t>(ElementsKind::HOLE)));
