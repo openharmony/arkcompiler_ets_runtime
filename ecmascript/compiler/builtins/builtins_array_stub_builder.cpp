@@ -1392,8 +1392,7 @@ void BuiltinsArrayStubBuilder::Push(GateRef glue, GateRef thisValue,
     Branch(Int32GreaterThan(newLength, capacity), &grow, &setValue);
     Bind(&grow);
     {
-        elements =
-            CallRuntime(glue, RTSTUB_ID(JSObjectGrowElementsCapacity), { thisValue, IntToTaggedInt(newLength) });
+        elements = GrowElementsCapacity(glue, thisValue, newLength);
         Jump(&setValue);
     }
     Bind(&setValue);
@@ -1835,8 +1834,7 @@ void BuiltinsArrayStubBuilder::Splice(GateRef glue, GateRef thisValue, GateRef n
         Branch(Int32GreaterThan(newCapacity, oldCapacity), &grow, &copy);
         Bind(&grow);
         {
-            srcElements =
-                CallRuntime(glue, RTSTUB_ID(JSObjectGrowElementsCapacity), { thisValue, IntToTaggedInt(newCapacity) });
+            srcElements = GrowElementsCapacity(glue, thisValue, newCapacity);
             Jump(&copy);
         }
         Bind(&copy);

@@ -77,7 +77,7 @@
     /* Array.prototype.pop ( ) */                                           \
     V("pop",            Pop,              0, ArrayPop)                      \
     /* Array.prototype.push ( ...items ) */                                 \
-    V("push",           Push,             1, INVALID)                       \
+    V("push",           Push,             1, ArrayPush)                     \
     /* Array.prototype.reduce ( callbackfn [ , initialValue ] ) */          \
     V("reduce",         Reduce,           1, ArrayReduce)                   \
     /* Array.prototype.reduceRight ( callbackfn [ , initialValue ] ) */     \
