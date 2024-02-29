@@ -16,7 +16,6 @@
 #ifndef ECMASCRIPT_MEM_HEAP_H
 #define ECMASCRIPT_MEM_HEAP_H
 
-#include <signal.h>
 #include "ecmascript/base/config.h"
 #include "ecmascript/frames.h"
 #include "ecmascript/js_thread.h"
@@ -27,7 +26,6 @@
 #include "ecmascript/taskpool/taskpool.h"
 
 namespace panda::ecmascript {
-struct JsHeapDumpWork;
 class ConcurrentMarker;
 class ConcurrentSweeper;
 class EcmaVM;
@@ -48,6 +46,7 @@ class PartialGC;
 class STWYoungGC;
 
 using IdleNotifyStatusCallback = std::function<void(bool)>;
+
 enum class IdleTaskType : uint8_t {
     NO_TASK,
     YOUNG_GC,
@@ -670,7 +669,7 @@ private:
     void ReduceTaskCount();
     void WaitClearTaskFinished();
     void InvokeWeakNodeNativeFinalizeCallback();
-    void DumpHeapSnapshotBeforeOOM(bool isFullGC, size_t size, std::string functionName, bool NonMovableObjNearOOM);
+    void DumpHeapSnapshotBeforeOOM(bool isFullGC = true);
     inline void ReclaimRegions(TriggerGCType gcType);
     inline size_t CalculateCommittedCacheSize();
     class ParallelGCTask : public Task {
