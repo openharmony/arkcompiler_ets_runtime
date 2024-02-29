@@ -242,3 +242,9 @@ print(text_str2.startsWith(search_str1));
 print(text_str2.startsWith(search_str1, 10));
 print(text_str2.startsWith(search_str2, 42));
 print(text_str2.startsWith(search_str1, text_str.length - 1));
+
+const str7 = "测试"
+const iter = str7[Symbol.iterator]();
+print(iter.next().value);
+print(iter.next().value);
+print(iter.next().done);

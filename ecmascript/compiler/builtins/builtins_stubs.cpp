@@ -200,6 +200,24 @@ DECLARE_BUILTINS(LocaleCompare)
     Return(*res);
 }
 
+DECLARE_BUILTINS(GetStringIterator)
+{
+    auto env = GetEnvironment();
+    DEFVARIABLE(res, VariableType::JS_ANY(), Undefined());
+    Label exit(env);
+    Label slowPath(env);
+    BuiltinsStringStubBuilder stringStubBuilder(this);
+    stringStubBuilder.GetStringIterator(glue, thisValue, numArgs, &res, &exit, &slowPath);
+    Bind(&slowPath);
+    {
+        auto name = BuiltinsStubCSigns::GetName(BUILTINS_STUB_ID(GetStringIterator));
+        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func, newTarget, name.c_str());
+        Jump(&exit);
+    }
+    Bind(&exit);
+    Return(*res);
+}
+
 BUILTINS_WITH_STRING_STUB_BUILDER(DECLARE_BUILTINS_WITH_STRING_STUB_BUILDER)
 
 #undef DECLARE_BUILTINS_WITH_STRING_STUB_BUILDER
