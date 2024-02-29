@@ -422,7 +422,6 @@ static uintptr_t g_nativeTable[] = {
     reinterpret_cast<uintptr_t>(BuiltinsArray::IsArray),
     reinterpret_cast<uintptr_t>(BuiltinsArray::Of),
     reinterpret_cast<uintptr_t>(BuiltinsArray::Species),
-    reinterpret_cast<uintptr_t>(BuiltinsArray::Unscopables),
     reinterpret_cast<uintptr_t>(BuiltinsArray::Includes),
     reinterpret_cast<uintptr_t>(BuiltinsArray::Flat),
     reinterpret_cast<uintptr_t>(BuiltinsArray::FlatMap),

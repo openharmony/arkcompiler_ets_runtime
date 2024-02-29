@@ -2721,68 +2721,6 @@ JSTaggedValue BuiltinsArray::Values(EcmaRuntimeCallInfo *argv)
     JSHandle<JSArrayIterator> iter(factory->NewJSArrayIterator(self, IterationKind::VALUE));
     return iter.GetTaggedValue();
 }
-// 22.1.3.31 Array.prototype [ @@unscopables ]
-JSTaggedValue BuiltinsArray::Unscopables(EcmaRuntimeCallInfo *argv)
-{
-    JSThread *thread = argv->GetThread();
-    BUILTINS_API_TRACE(thread, Array, Unscopables);
-    [[maybe_unused]] EcmaHandleScope handleScope(thread);
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    const GlobalEnvConstants *globalConst = thread->GlobalConstants();
-
-    JSHandle<JSObject> unscopableList = factory->CreateNullJSObject();
-
-    JSHandle<JSTaggedValue> trueVal(thread, JSTaggedValue::True());
-
-    JSHandle<JSTaggedValue> atKey((factory->NewFromASCII("at")));
-    JSObject::CreateDataProperty(thread, unscopableList, atKey, trueVal);
-
-    JSHandle<JSTaggedValue> copyWithKey = globalConst->GetHandledCopyWithinString();
-    JSObject::CreateDataProperty(thread, unscopableList, copyWithKey, trueVal);
-
-    JSHandle<JSTaggedValue> entriesKey = globalConst->GetHandledEntriesString();
-    JSObject::CreateDataProperty(thread, unscopableList, entriesKey, trueVal);
-
-    JSHandle<JSTaggedValue> fillKey = globalConst->GetHandledFillString();
-    JSObject::CreateDataProperty(thread, unscopableList, fillKey, trueVal);
-
-    JSHandle<JSTaggedValue> findKey = globalConst->GetHandledFindString();
-    JSObject::CreateDataProperty(thread, unscopableList, findKey, trueVal);
-
-    JSHandle<JSTaggedValue> findIndexKey = globalConst->GetHandledFindIndexString();
-    JSObject::CreateDataProperty(thread, unscopableList, findIndexKey, trueVal);
-
-    JSHandle<JSTaggedValue> findLastKey((factory->NewFromASCII("findLast")));
-    JSObject::CreateDataProperty(thread, unscopableList, findLastKey, trueVal);
-
-    JSHandle<JSTaggedValue> findLastIndexKey((factory->NewFromASCII("findLastIndex")));
-    JSObject::CreateDataProperty(thread, unscopableList, findLastIndexKey, trueVal);
-
-    JSHandle<JSTaggedValue> flatKey = globalConst->GetHandledFlatString();
-    JSObject::CreateDataProperty(thread, unscopableList, flatKey, trueVal);
-
-    JSHandle<JSTaggedValue> flatMapKey = globalConst->GetHandledFlatMapString();
-    JSObject::CreateDataProperty(thread, unscopableList, flatMapKey, trueVal);
-
-    JSHandle<JSTaggedValue> includesKey = globalConst->GetHandledIncludesString();
-    JSObject::CreateDataProperty(thread, unscopableList, includesKey, trueVal);
-
-    JSHandle<JSTaggedValue> keysKey = globalConst->GetHandledKeysString();
-    JSObject::CreateDataProperty(thread, unscopableList, keysKey, trueVal);
-
-    JSHandle<JSTaggedValue> valuesKey = globalConst->GetHandledValuesString();
-    JSObject::CreateDataProperty(thread, unscopableList, valuesKey, trueVal);
-    
-    JSHandle<JSTaggedValue> toReversedKey((factory->NewFromASCII("toReversed")));
-    JSObject::CreateDataProperty(thread, unscopableList, toReversedKey, trueVal);
-    
-    JSHandle<JSTaggedValue> toSortedKey((factory->NewFromASCII("toSorted")));
-    JSObject::CreateDataProperty(thread, unscopableList, toSortedKey, trueVal);
-    
-    JSHandle<JSTaggedValue> toSplicedKey((factory->NewFromASCII("toSpliced")));
-    JSObject::CreateDataProperty(thread, unscopableList, toSplicedKey, trueVal);
-    return unscopableList.GetTaggedValue();
-}
 
 // es12 23.1.3.10
 JSTaggedValue BuiltinsArray::Flat(EcmaRuntimeCallInfo *argv)
