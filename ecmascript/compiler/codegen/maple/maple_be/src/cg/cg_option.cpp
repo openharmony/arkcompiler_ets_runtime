@@ -805,7 +805,7 @@ void CGOptions::EnableLiteCG()
     doWriteRefFieldOpt = false;
     doAlignAnalysis = false;
     doCondBrAlign = false;
-    supportFuncSymbol = false;
+    supportFuncSymbol = true;
     
     ClearOption(kUseStackProtectorStrong);
     ClearOption(kUseStackProtectorAll);
