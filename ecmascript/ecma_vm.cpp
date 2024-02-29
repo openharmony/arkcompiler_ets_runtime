@@ -142,6 +142,7 @@ void EcmaVM::PreFork()
     heap_->CompactHeapBeforeFork();
     heap_->AdjustSpaceSizeForAppSpawn();
     heap_->GetReadOnlySpace()->SetReadOnly();
+    SharedHeap::GetInstance()->DisableParallelGC();
     heap_->DisableParallelGC();
 }
 
@@ -150,6 +151,8 @@ void EcmaVM::PostFork()
     RandomGenerator::InitRandom();
     heap_->SetHeapMode(HeapMode::SHARE);
     GetAssociatedJSThread()->PostFork();
+    Taskpool::GetCurrentTaskpool()->Initialize();
+    SharedHeap::GetInstance()->EnableParallelGC(GetJSOptions());
     heap_->EnableParallelGC();
     std::string bundleName = PGOProfilerManager::GetInstance()->GetBundleName();
     if (ohos::EnableAotListHelper::GetInstance()->IsDisableBlackList(bundleName)) {

@@ -33,6 +33,7 @@ public:
     NO_MOVE_SEMANTIC(SharedGC);
 
     void RunPhases() override;
+    void ResetWorkManager(SharedGCWorkManager *workManager);
 protected:
     void Initialize() override;
     void Mark() override;

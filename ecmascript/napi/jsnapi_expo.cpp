@@ -2261,6 +2261,7 @@ JSValueRef* FunctionRef::CallForNapi(const EcmaVM *vm, JSValueRef *thisObj,
     FunctionCallScope callScope(EcmaVM::ConstCast(vm));
     ASSERT(IsFunction()); // IsFunction check has been done in napi.
     {
+        ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
         LocalScope scope(vm);
         ecmascript::tooling::JsDebuggerManager *dm = vm->GetJsDebuggerManager();
         if (dm->IsDebugApp()) {
@@ -2551,6 +2552,7 @@ FunctionCallScope::~FunctionCallScope()
     vm_->DecreaseCallDepth();
     if (vm_->IsTopLevelCallDepth()) {
         JSThread *thread = vm_->GetJSThread();
+        ecmascript::ThreadManagedScope managedScope(vm_->GetJSThread());
         thread->GetCurrentEcmaContext()->ExecutePromisePendingJob();
     }
 }
@@ -3473,6 +3475,7 @@ bool JSNApi::ExecuteModuleBufferSecure(EcmaVM *vm, uint8_t* data, int32_t size, 
         LOG_ECMA(ERROR) << "Secure memory check failed, please execute in srcure memory.";
         return false;
     }
+    ecmascript::ThreadManagedScope scope(vm->GetJSThread());
     if (!ecmascript::JSPandaFileExecutor::ExecuteModuleBufferSecure(thread, data, size, filename.c_str(),
                                                                     needUpdate)) {
         if (thread->HasPendingException()) {
@@ -3486,6 +3489,7 @@ bool JSNApi::ExecuteModuleBufferSecure(EcmaVM *vm, uint8_t* data, int32_t size, 
 
 void JSNApi::PreFork(EcmaVM *vm)
 {
+    ecmascript::ThreadManagedScope scope(vm->GetJSThread());
     vm->PreFork();
 }
 
@@ -3783,6 +3787,7 @@ void JSNApi::SetHostEnqueueJob(const EcmaVM *vm, Local<JSValueRef> cb)
 bool JSNApi::ExecuteModuleFromBuffer(EcmaVM *vm, const void *data, int32_t size, const std::string &file)
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, false);
+    ecmascript::ThreadManagedScope scope(vm->GetJSThread());
     if (!ecmascript::JSPandaFileExecutor::ExecuteFromBuffer(thread, data, size, ENTRY_POINTER, file.c_str())) {
         std::cerr << "Cannot execute panda file from memory" << std::endl;
         return false;

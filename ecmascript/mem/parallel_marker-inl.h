@@ -288,7 +288,7 @@ void MovableMarker::SetLocalToShareRSet(ObjectSlot slot, Region *region)
     }
     Region *valueRegion = Region::ObjectAddressToRange(value);
     if (valueRegion->InSharedSweepableSpace()) {
-        region->InsertLocalToShareRSet(slot.SlotAddress());
+        region->AtomicInsertLocalToShareRSet(slot.SlotAddress());
     }
 }
 
