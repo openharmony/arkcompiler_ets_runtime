@@ -4,7 +4,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,6 +23,11 @@ namespace panda::ecmascript::base {
 constexpr unsigned char CODE_SPACE = 0x20;
 constexpr int FOUR_HEX = 4;
 constexpr char ZERO_FIRST = static_cast<char>(0xc0); // \u0000 => c0 80
+constexpr char ALONE_SURROGATE_3B_FIRST = static_cast<char>(0xed);
+constexpr char ALONE_SURROGATE_3B_SECOND_START = static_cast<char>(0xa0);
+constexpr char ALONE_SURROGATE_3B_SECOND_END = static_cast<char>(0xbf);
+constexpr char ALONE_SURROGATE_3B_THIRD_START = static_cast<char>(0x80);
+constexpr char ALONE_SURROGATE_3B_THIRD_END = static_cast<char>(0xbf);
 
 bool JsonHelper::IsFastValueToQuotedString(const char *value)
 {
@@ -30,7 +35,7 @@ bool JsonHelper::IsFastValueToQuotedString(const char *value)
         return false;
     }
     while (*value != '\0') {
-        if ((*value > 0 && *value < CODE_SPACE) || *value == ZERO_FIRST) {
+        if ((*value > 0 && *value < CODE_SPACE) || *value == ZERO_FIRST || *value == ALONE_SURROGATE_3B_FIRST) {
             return false;
         }
         value++;
@@ -97,6 +102,19 @@ CString JsonHelper::ValueToQuotedString(CString str)
                 product += "\\u0000";
                 ++c;
                 break;
+            case ALONE_SURROGATE_3B_FIRST:
+                if (*(c + 1) && *(c + 1) >= ALONE_SURROGATE_3B_SECOND_START &&
+                    *(c + 1) <= ALONE_SURROGATE_3B_SECOND_END &&
+                    *(c + 2) >= ALONE_SURROGATE_3B_THIRD_START && // 2 : The third character after c
+                    *(c + 2) <= ALONE_SURROGATE_3B_THIRD_END) {   // 2 : The third character after c
+                    auto unicodeRes = utf_helper::ConvertUtf8ToUnicodeChar((uint8_t *)c, 3);
+                    std::ostringstream oss;
+                    oss << "\\u" << std::hex << std::setfill('0') << std::setw(FOUR_HEX) <<
+                        static_cast<int>(unicodeRes.first);
+                    product += oss.str();
+                    c += 2; // 2 : Skip 2 characters
+                    break;
+                }
             default:
                 // c. Else if C has a code unit value less than 0x0020 (SPACE), then
                 if (*c > 0 && *c < CODE_SPACE) {
@@ -122,4 +140,4 @@ CString JsonHelper::ValueToQuotedString(CString str)
     // Return product.
     return product;
 }
-}  // namespace panda::ecmascript::base
+} // namespace panda::ecmascript::base
