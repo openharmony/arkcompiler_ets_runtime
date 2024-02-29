@@ -30,29 +30,17 @@
 #include "ecmascript/mem/mem_map_allocator.h"
 
 namespace panda::ecmascript {
-#if defined(__clang__)
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wshadow"
-#pragma clang diagnostic ignored "-Wunused-parameter"
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
-#elif defined(__GNUC__)
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wshadow"
-#pragma GCC diagnostic ignored "-Wunused-parameter"
-#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
-#endif
 #define CHECK_OBJ_AND_THROW_OOM_ERROR(object, size, space, message)                                         \
     if (UNLIKELY((object) == nullptr)) {                                                                    \
         EcmaVM *vm = GetEcmaVM();                                                                           \
         size_t oomOvershootSize = vm->GetEcmaParamConfiguration().GetOutOfMemoryOvershootSize();            \
         (space)->IncreaseOutOfMemoryOvershootSize(oomOvershootSize);                                        \
+        if ((space)->IsOOMDumpSpace()) {                                                                    \
+            DumpHeapSnapshotBeforeOOM();                                                                    \
+        }                                                                                                   \
         StatisticHeapDetail();                                                                              \
         (object) = reinterpret_cast<TaggedObject *>((space)->Allocate(size));                               \
-        if ((space)->IsOOMDumpSpace() && (object) != nullptr) {                                             \
-            DumpHeapSnapshotBeforeOOM(true, size, message, false);                                          \
-        } else {                                                                                            \
-            ThrowOutOfMemoryError(size, message);                                                           \
-        }                                                                                                   \
+        ThrowOutOfMemoryError(size, message);                                                               \
     }
 
 template<class Callback>
@@ -284,12 +272,10 @@ TaggedObject *Heap::AllocateHugeObject(size_t size)
             // if allocate huge object OOM, temporarily increase space size to avoid vm crash
             size_t oomOvershootSize = GetEcmaVM()->GetEcmaParamConfiguration().GetOutOfMemoryOvershootSize();
             oldSpace_->IncreaseOutOfMemoryOvershootSize(oomOvershootSize);
-            DumpHeapSnapshotBeforeOOM(true, size, "Heap::AllocateHugeObject", false);
+            DumpHeapSnapshotBeforeOOM();
             StatisticHeapDetail();
             object = reinterpret_cast<TaggedObject *>(hugeObjectSpace_->Allocate(size, thread_));
-#ifndef ENABLE_DUMP_IN_FAULTLOG
             ThrowOutOfMemoryError(size, "Heap::AllocateHugeObject");
-#endif
             if (UNLIKELY(object == nullptr)) {
                 FatalOutOfMemoryError(size, "Heap::AllocateHugeObject");
             }
