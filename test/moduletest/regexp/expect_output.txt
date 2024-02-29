@@ -73,3 +73,12 @@ TypeError
 g
 \/vedio\/av(uuu)(uuu)
 beep, ,boop,   ,afff测试样本one1
+true
+false
+true
+false
+true
+true
+true
+true
+true

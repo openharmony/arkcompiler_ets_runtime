@@ -401,3 +401,23 @@ print(replacedString);
 
 let str = "beep boop   afff测试样本one1";
 print(str.split(/([{}:;,]|\s+)/));
+
+//regexp unicode property
+const ans1 = /\p{Alphabetic}/u.test("æ");
+const ans2 = /\p{Alpha}/u.test("2");
+const ans3 = /^[\p{Lu}\p{Ll}]+$/u.test("ASDFasdf");
+const ans4 = /^[\P{Lu}\p{Ll}]+$/u.test("ASDFasdf");
+const ans5 = /\P{Ll}/iu.test("b");
+const ans6 = /\p{Ll}/iu.test("b");
+const ans7 = /[^\P{Any}]+/u.test(456);
+const ans8 = /\p{Assigned}+/u.test("🄰🄱🄲");
+const ans9 = /[\p{P}\p{S}]/u.test("!");
+print(ans1);
+print(ans2);
+print(ans3);
+print(ans4);
+print(ans5);
+print(ans6);
+print(ans7);
+print(ans8);
+print(ans9);

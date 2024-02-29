@@ -21,7 +21,7 @@
 #include "libpandabase/utils/utils.h"
 #include "securec.h"
 #include "unicode/uchar.h"
-#include "unicode/uniset.h"
+#include "unicode/usetiter.h"
 #define _NO_DEBUG_
 
 namespace panda::ecmascript {
@@ -996,10 +996,18 @@ int RegExpParser::ParseAtomEscape(bool isBackward)
             rangeOp.InsertOpCode(&buffer_, atomRange);
             goto parseLookBehind;
         }
-        // P{UnicodePropertyValueExpression}
-        // p{UnicodePropertyValueExpression}
         case 'P':
-        case 'p':
+        case 'p': {
+            //CharacterClassStrings
+            RangeSet atomRange;
+            Range32OpCode rangeOp;
+            ParseClassEscape(&atomRange);
+            if (isBackward) {
+                prevOp.EmitOpCode(&buffer_, 0);
+            }
+            rangeOp.InsertOpCode(&buffer_, atomRange);
+            break;
+        }
         // [+N]kGroupName[?U]
         case 'k': {
             Advance();
@@ -1071,7 +1079,7 @@ int RegExpParser::ParseCharacterEscape()
     // CharacterEscape[U]::
     //     ControlEscape
     //     c ControlLetter
-    //     0 [lookahead ∉ DecimalDigit]
+    //     0 [lookahead ? DecimalDigit]
     //     HexEscapeSequence
     //     RegExpUnicodeEscapeSequence[?U]
     //     IdentityEscape[?U]
@@ -1130,7 +1138,7 @@ int RegExpParser::ParseCharacterEscape()
         }
         case '0': {
             // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg)
-            PrintF("CharacterEscape 0 [lookahead ∉ DecimalDigit]\n");
+            PrintF("CharacterEscape 0 [lookahead ? DecimalDigit]\n");
             if (IsUtf16() && !(*pc_ >= '0' && *pc_ <= '9')) {  // NOLINTNEXTLINE(readability-magic-numbers)
                 Advance();
                 result = 0;
@@ -1378,35 +1386,21 @@ int RegExpParser::ParseClassEscape(RangeSet *atom)
             }
             Advance();
             break;
-        // P{UnicodePropertyValueExpression}
-        // p{UnicodePropertyValueExpression}
         case 'P':
-        case 'p':
-            PrintF("Warning: \\p is not supported in ECMA 2015!");
-            Advance();
-            if (c0_ == '{') {
-                Advance();
-                if (c0_ == '}') {
-                    break;  // p{}, invalid
-                }
-                bool isValue = false;
-                ParseUnicodePropertyValueCharacters(&isValue);
-                if (!isValue && c0_ == '=') {
-                    // UnicodePropertyName = UnicodePropertyValue
-                    Advance();
-                    if (c0_ == '}') {
-                        break;  // p{xxx=}, invalid
-                    }
-                    ParseUnicodePropertyValueCharacters(&isValue);
-                }
-                if (c0_ != '}') {
-                    break;  // p{xxx, invalid
-                }
-                // should do atom->Invert() here after ECMA 9.0
-                Advance();
-                result = CLASS_RANGE_BASE;
+        case 'p': {
+            bool negate = (c0_ == 'P');
+            CString propertyName;
+            CString valueName;
+            if (!ParseUnicodePropertyValueCharacters(propertyName, valueName) ||
+                !ParseUnicodePropertyClassRange(propertyName, valueName, atom, negate)) {
+                char *originExpression = (char *)base_;
+                CString expression(originExpression);
+                CString msg = "Invalid regular expression :" + expression;
+                ParseError(msg.c_str());
             }
+            result = CLASS_RANGE_BASE;
             break;
+        }
         default:
             result = ParseCharacterEscape();
             int value = result;
@@ -1419,23 +1413,52 @@ int RegExpParser::ParseClassEscape(RangeSet *atom)
     return result;
 }
 
-void RegExpParser::ParseUnicodePropertyValueCharacters(bool *isValue)
+bool RegExpParser::ParseUnicodePropertyValueCharacters(CString &propertyName, CString &valueName)
 {
-    if ((c0_ >= 'A' && c0_ <= 'Z') || (c0_ >= 'a' && c0_ <= 'z')) {
-        // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg)
-        PrintF("UnicodePropertyCharacter::ControlLetter %c\n", c0_);
-    } else if (c0_ == '_') {
-        // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg)
-        PrintF("UnicodePropertyCharacter:: _ \n");
-    } else if (c0_ >= '0' && c0_ <= '9') {
-        *isValue = true;
-        // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg)
-        PrintF("UnicodePropertyValueCharacter::DecimalDigit %c\n", c0_);
+    Advance();
+    if (c0_ == '{') {
+        if (!GetUnicodePropertyName(propertyName)) {
+            return false;
+        }
+
+        if (!GetUnicodePropertyValueName(valueName)) {
+            return false;
+        }
     } else {
-        return;
+        return false;
     }
     Advance();
-    ParseUnicodePropertyValueCharacters(isValue);
+    return true;
+}
+
+bool RegExpParser::GetUnicodePropertyName(CString &propertyName)
+{
+    Advance();
+    while (c0_ != '}' && c0_ != '=') {
+        if (IsUnicodePropertyValueCharacter(c0_)) {
+            propertyName += c0_;
+        } else {
+            return false;
+        }
+        Advance();
+    }
+    return true;
+}
+
+bool RegExpParser::GetUnicodePropertyValueName(CString &valueName)
+{
+    if (c0_ == '=') {
+        Advance();
+        while (c0_ != '}') {
+            if (IsUnicodePropertyValueCharacter(c0_)) {
+                valueName += c0_;
+            } else {
+                return false;
+            }
+            Advance();
+        }
+    }
+    return true;
 }
 
 // NOLINTNEXTLINE(cert-dcl50-cpp)
@@ -1513,5 +1536,224 @@ void RegExpParser::DoParserStackOverflowCheck(const char *errorMessage)
         ParseError(errorMessage);
         return;
     }
+}
+
+bool RegExpParser::ParseUnicodePropertyClassRange(CString &propertyName, CString &valueName,
+                                                  RangeSet *atom, bool negate)
+{
+    const char *name = propertyName.c_str();
+    if (valueName.size() == 0) {
+        if (MatchUnicodeProperty(UCHAR_GENERAL_CATEGORY_MASK, name, atom, negate)) {
+            return true;
+        }
+        if (MatchSepcialUnicodeProperty(propertyName, negate, atom)) {
+            return true;
+        }
+        UProperty property = u_getPropertyEnum(name);
+        if (!IsSupportedBinaryProperty(property)) {
+            return false;
+        }
+        if (!IsExactPropertyAlias(name, property)) {
+            return false;
+        }
+        if (negate && IsBinaryPropertyOfStrings(property)) {
+            return false;
+        }
+        return MatchUnicodeProperty(property, negate ? "N" : "Y", atom, false);
+    } else {
+        const char *propertyNameC = propertyName.c_str();
+        const char *valueNameC = valueName.c_str();
+        UProperty property = u_getPropertyEnum(propertyNameC);
+        if (property == UCHAR_GENERAL_CATEGORY) {
+            property = UCHAR_GENERAL_CATEGORY_MASK;
+        } else if (property != UCHAR_SCRIPT && property != UCHAR_SCRIPT_EXTENSIONS) {
+            return false;
+        }
+        return MatchUnicodeProperty(property, valueNameC, atom, negate);
+    }
+}
+
+bool RegExpParser::MatchUnicodeProperty(UProperty property, const char* propertyName, RangeSet *atom, bool negate)
+{
+    UProperty propertyForMatch = property;
+    if (propertyForMatch == UCHAR_SCRIPT_EXTENSIONS) {
+        propertyForMatch = UCHAR_SCRIPT;
+    }
+    int32_t propertyValue = u_getPropertyValueEnum(propertyForMatch, propertyName);
+    if (propertyValue == UCHAR_INVALID_CODE) {
+        return false;
+    }
+    if (!IsExactPropertyValueAlis(propertyName, propertyForMatch, propertyValue)) {
+        return false;
+    }
+    UErrorCode ec = U_ZERO_ERROR;
+    icu::UnicodeSet set;
+    set.applyIntPropertyValue(property, propertyValue, ec);
+    bool success = ec == U_ZERO_ERROR && !set.isEmpty();
+    if (success) {
+        const bool caseFolding = IsIgnoreCase();
+        if (negate) {
+            set.complement();
+        }
+        if (caseFolding) {
+            set.closeOver(USET_CASE_INSENSITIVE);
+        }
+        set.removeAllStrings();
+        for (int i = 0; i < set.getRangeCount(); i++) {
+            atom->Insert(set.getRangeStart(i),  set.getRangeEnd(i));
+        }
+    }
+    return success;
+}
+
+bool RegExpParser::IsExactPropertyValueAlis(const char *valueName, UProperty property, int32_t propertyValue)
+{
+    const char *shortName = u_getPropertyValueName(property, propertyValue, U_SHORT_PROPERTY_NAME);
+    if (shortName != nullptr && strcmp(valueName, shortName) == 0) {
+        return true;
+    }
+    int i = 0;
+    bool flag = true;
+    while (flag) {
+        const char *longName = u_getPropertyValueName(property, propertyValue,
+            static_cast<UPropertyNameChoice>(U_LONG_PROPERTY_NAME + i));
+        if (longName == nullptr) {
+            flag = false;
+            break;
+        }
+        if (strcmp(valueName, longName) == 0) {
+            return true;
+        }
+        i++;
+    }
+    return false;
+}
+
+bool RegExpParser::IsExactPropertyAlias(const char* propertyName, UProperty property)
+{
+    const char* shortName = u_getPropertyName(property, U_SHORT_PROPERTY_NAME);
+    if (shortName != nullptr && strcmp(propertyName, shortName) == 0) {
+        return true;
+    }
+    int i = 0;
+    bool flag = true;
+    while (flag) {
+        const char* longName = u_getPropertyName(property,
+            static_cast<UPropertyNameChoice>(U_LONG_PROPERTY_NAME + i));
+        if (longName == nullptr) {
+            flag = false;
+            break;
+        }
+        if (strcmp(propertyName, longName) == 0) {
+            return true;
+        }
+        i++;
+    }
+    return false;
+}
+
+bool RegExpParser::MatchSepcialUnicodeProperty(CString &name, bool negate, RangeSet *atom)
+{
+    if (name == "Any") {
+        if (!negate) {
+            atom->Insert(0, 0x10FFFF);
+        }
+    } else if (name == "ASCII") {
+        if (negate) {
+            atom->Insert(0x80, 0x10FFFF);
+        } else {
+            atom->Insert(0x0, 0x7F);
+        }
+    } else if (name == "Assigned") {
+        return MatchUnicodeProperty(UCHAR_GENERAL_CATEGORY, "Unassigned", atom, !negate);
+    } else {
+        return false;
+    }
+    return true;
+}
+
+bool RegExpParser::IsSupportedBinaryProperty(UProperty property)
+{
+    switch (property) {
+        case UCHAR_ALPHABETIC:
+        case UCHAR_ASCII_HEX_DIGIT:
+        case UCHAR_BIDI_CONTROL:
+        case UCHAR_BIDI_MIRRORED:
+        case UCHAR_CASE_IGNORABLE:
+        case UCHAR_CASED:
+        case UCHAR_CHANGES_WHEN_CASEFOLDED:
+        case UCHAR_CHANGES_WHEN_CASEMAPPED:
+        case UCHAR_CHANGES_WHEN_LOWERCASED:
+        case UCHAR_CHANGES_WHEN_NFKC_CASEFOLDED:
+        case UCHAR_CHANGES_WHEN_TITLECASED:
+        case UCHAR_CHANGES_WHEN_UPPERCASED:
+        case UCHAR_DASH:
+        case UCHAR_DEFAULT_IGNORABLE_CODE_POINT:
+        case UCHAR_DEPRECATED:
+        case UCHAR_DIACRITIC:
+        case UCHAR_EMOJI:
+        case UCHAR_EMOJI_COMPONENT:
+        case UCHAR_EMOJI_MODIFIER_BASE:
+        case UCHAR_EMOJI_MODIFIER:
+        case UCHAR_EMOJI_PRESENTATION:
+        case UCHAR_EXTENDED_PICTOGRAPHIC:
+        case UCHAR_EXTENDER:
+        case UCHAR_GRAPHEME_BASE:
+        case UCHAR_GRAPHEME_EXTEND:
+        case UCHAR_HEX_DIGIT:
+        case UCHAR_ID_CONTINUE:
+        case UCHAR_ID_START:
+        case UCHAR_IDEOGRAPHIC:
+        case UCHAR_IDS_BINARY_OPERATOR:
+        case UCHAR_IDS_TRINARY_OPERATOR:
+        case UCHAR_JOIN_CONTROL:
+        case UCHAR_LOGICAL_ORDER_EXCEPTION:
+        case UCHAR_LOWERCASE:
+        case UCHAR_MATH:
+        case UCHAR_NONCHARACTER_CODE_POINT:
+        case UCHAR_PATTERN_SYNTAX:
+        case UCHAR_PATTERN_WHITE_SPACE:
+        case UCHAR_QUOTATION_MARK:
+        case UCHAR_RADICAL:
+        case UCHAR_REGIONAL_INDICATOR:
+        case UCHAR_S_TERM:
+        case UCHAR_SOFT_DOTTED:
+        case UCHAR_TERMINAL_PUNCTUATION:
+        case UCHAR_UNIFIED_IDEOGRAPH:
+        case UCHAR_UPPERCASE:
+        case UCHAR_VARIATION_SELECTOR:
+        case UCHAR_WHITE_SPACE:
+        case UCHAR_XID_CONTINUE:
+        case UCHAR_XID_START:
+            return true;
+        case UCHAR_BASIC_EMOJI:
+        case UCHAR_EMOJI_KEYCAP_SEQUENCE:
+        case UCHAR_RGI_EMOJI_MODIFIER_SEQUENCE:
+        case UCHAR_RGI_EMOJI_FLAG_SEQUENCE:
+        case UCHAR_RGI_EMOJI_TAG_SEQUENCE:
+        case UCHAR_RGI_EMOJI_ZWJ_SEQUENCE:
+        case UCHAR_RGI_EMOJI:
+            return false;
+        default:
+            break;
+    }
+    return false;
+}
+
+bool RegExpParser::IsBinaryPropertyOfStrings(UProperty property)
+{
+    switch (property) {
+        case UCHAR_BASIC_EMOJI:
+        case UCHAR_EMOJI_KEYCAP_SEQUENCE:
+        case UCHAR_RGI_EMOJI_MODIFIER_SEQUENCE:
+        case UCHAR_RGI_EMOJI_FLAG_SEQUENCE:
+        case UCHAR_RGI_EMOJI_TAG_SEQUENCE:
+        case UCHAR_RGI_EMOJI_ZWJ_SEQUENCE:
+        case UCHAR_RGI_EMOJI:
+            return true;
+        default:
+            break;
+    }
+    return false;
 }
 }  // namespace panda::ecmascript
