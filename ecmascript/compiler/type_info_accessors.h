@@ -93,6 +93,8 @@ public:
 
     bool ValueIsNumberType() const;
 
+    GateType FetchNumberType() const;
+
     bool ValueIsPrimitiveNumberType() const
     {
         return GetValueGateType().IsPrimitiveNumberType();

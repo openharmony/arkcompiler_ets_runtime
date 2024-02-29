@@ -197,7 +197,7 @@ private:
     template<TypedBinOp Op>
     void SpeculateNumbers(GateRef gate);
     template<TypedUnOp Op>
-    void SpeculateNumber(GateRef gate);
+    void SpeculateNumber(const UnOpTypeInfoAccessor& tacc);
     void SpeculateConditionJump(const ConditionJumpTypeInfoAccessor &tacc, bool flag);
     void SpeculateCallBuiltin(GateRef gate, GateRef func, const std::vector<GateRef> &args,
                               BuiltinsStubCSigns::ID id, bool isThrow);
