@@ -256,8 +256,8 @@ EcmaString *EcmaStringTable::GetOrInternStringWithSpaceType(EcmaVM *vm, const ui
 {
     ASSERT(IsSMemSpace(type));
     type = (type == MemSpaceType::SHARED_NON_MOVABLE) ? type : MemSpaceType::SHARED_OLD_SPACE;
-    EcmaString *str = EcmaStringAccessor::CreateUtf16StringFromUtf8(vm, utf8Data, utf16Len, type);
     RuntimeLockHolder locker(vm->GetJSThread(), mutex_);
+    EcmaString *str = EcmaStringAccessor::CreateUtf16StringFromUtf8(vm, utf8Data, utf16Len, type);
     EcmaString *result = GetStringThreadUnsafe(str);
     if (result != nullptr) {
         return result;

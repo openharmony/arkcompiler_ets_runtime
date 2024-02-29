@@ -63,4 +63,9 @@ void SharedGCMarker::ProcessMarkStack(uint32_t threadId)
         ObjectXRay::VisitObjectBody<VisitType::OLD_GC_VISIT>(obj, hclass, visitor);
     }
 }
+
+void SharedGCMarker::ResetWorkManager(SharedGCWorkManager *workManager)
+{
+    sWorkManager_ = workManager;
+}
 }  // namespace panda::ecmascript

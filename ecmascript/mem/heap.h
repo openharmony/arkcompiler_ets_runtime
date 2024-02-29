@@ -298,6 +298,8 @@ public:
 
     void PostInitialization(const GlobalEnvConstants *globalEnvConstants, const JSRuntimeOptions &option);
 
+    void EnableParallelGC(JSRuntimeOptions &option);
+    void DisableParallelGC();
     class ParallelMarkTask : public Task {
     public:
         ParallelMarkTask(int32_t id, SharedHeap *heap)

@@ -70,8 +70,7 @@ void SharedGC::Sweep()
             LOG_GC(ERROR) << "SharedGC updateWeakReference: region is nullptr, header is " << header;
             return reinterpret_cast<TaggedObject *>(ToUintPtr(nullptr));
         }
-        ASSERT(objectRegion->InSharedSweepableSpace());
-        if (objectRegion->Test(header)) {
+        if (!objectRegion->InSharedSweepableSpace() || objectRegion->Test(header)) {
             return header;
         }
         return reinterpret_cast<TaggedObject *>(ToUintPtr(nullptr));
@@ -118,5 +117,10 @@ void SharedGC::UpdateRecordWeakReference()
             }
         }
     }
+}
+
+void SharedGC::ResetWorkManager(SharedGCWorkManager *workManager)
+{
+    sWorkManager_ = workManager;
 }
 }  // namespace panda::ecmascript

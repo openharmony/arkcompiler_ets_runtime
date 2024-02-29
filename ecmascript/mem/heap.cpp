@@ -191,6 +191,31 @@ void SharedHeap::ReclaimRegions()
     }
 }
 
+void SharedHeap::DisableParallelGC()
+{
+    Prepare();
+    parallelGC_ = false;
+    maxMarkTaskCount_ = 0;
+    sSweeper_->ConfigConcurrentSweep(false);
+}
+
+void SharedHeap::EnableParallelGC(JSRuntimeOptions &option)
+{
+    uint32_t totalThreadNum = Taskpool::GetCurrentTaskpool()->GetTotalThreadNum();
+    maxMarkTaskCount_ = totalThreadNum - 1;
+    parallelGC_ = option.EnableParallelGC();
+    if (auto workThreadNum = sWorkManager_->GetTotalThreadNum();
+        workThreadNum != totalThreadNum + 1) {
+        LOG_ECMA_MEM(ERROR) << "TheadNum mismatch, totalThreadNum(sWorkerManager): " << workThreadNum << ", "
+                            << "totalThreadNum(taskpool): " << totalThreadNum + 1;
+        delete sWorkManager_;
+        sWorkManager_ = new SharedGCWorkManager(this, totalThreadNum + 1);
+        sharedGCMarker_->ResetWorkManager(sWorkManager_);
+        sharedGC_->ResetWorkManager(sWorkManager_);
+    }
+    sSweeper_->ConfigConcurrentSweep(option.EnableConcurrentSweep());
+}
+
 Heap::Heap(EcmaVM *ecmaVm)
     : BaseHeap(ecmaVm->GetEcmaParamConfiguration()),
       ecmaVm_(ecmaVm), thread_(ecmaVm->GetJSThread()) {}
@@ -462,7 +487,6 @@ void Heap::DisableParallelGC()
 
 void Heap::EnableParallelGC()
 {
-    Taskpool::GetCurrentTaskpool()->Initialize();
     parallelGC_ = ecmaVm_->GetJSOptions().EnableParallelGC();
     maxEvacuateTaskCount_ = Taskpool::GetCurrentTaskpool()->GetTotalThreadNum();
     if (auto totalThreadNum = workManager_->GetTotalThreadNum();

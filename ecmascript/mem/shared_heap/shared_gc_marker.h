@@ -29,6 +29,7 @@ public:
     explicit SharedGCMarker(SharedGCWorkManager *workManger) : sWorkManager_(workManger) {}
     ~SharedGCMarker() = default;
 
+    void ResetWorkManager(SharedGCWorkManager *workManager);
     void MarkRoots(uint32_t threadId, EcmaVM *localVm);
     void ProcessMarkStack(uint32_t threadId);
     template <typename Callback>
