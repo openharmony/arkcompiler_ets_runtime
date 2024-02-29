@@ -17,12 +17,14 @@
 
 #include "ecmascript/builtins/builtins_function.h"
 #include "ecmascript/builtins/builtins_object.h"
+#include "ecmascript/builtins/builtins_symbol.h"
 #include "ecmascript/builtins/builtins_shared_function.h"
 #include "ecmascript/builtins/builtins_shared_object.h"
 #include "ecmascript/builtins/builtins_shared_map.h"
 #include "ecmascript/builtins/builtins_shared_set.h"
 #include "ecmascript/shared_objects/js_shared_map.h"
 #include "ecmascript/shared_objects/js_shared_set.h"
+#include "ecmascript/symbol_table.h"
 
 namespace panda::ecmascript {
 using BuiltinsSharedObject = builtins::BuiltinsSharedObject;
@@ -167,6 +169,8 @@ void Builtins::InitializeSSet(const JSHandle<GlobalEnv> &env, const JSHandle<JSO
     JSHandle<JSTaggedValue> speciesGetter =
         CreateSGetterSetter(env, BuiltinsSharedSet::Species, "[Symbol.species]", FunctionLength::ZERO);
     SetSAccessor(JSHandle<JSObject>(setFunction), fieldIndex, speciesGetter, globalConst->GetHandledUndefined());
+
+    env->SetSBuiltininSetFunction(thread_, setFunction);
 }
 
 void Builtins::InitializeSMap(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &sObjPrototype,
@@ -225,6 +229,8 @@ void Builtins::InitializeSMap(const JSHandle<GlobalEnv> &env, const JSHandle<JSO
     JSHandle<JSTaggedValue> speciesGetter =
         CreateSGetterSetter(env, BuiltinsSharedMap::Species, "[Symbol.species]", FunctionLength::ZERO);
     SetSAccessor(JSHandle<JSObject>(mapFunction), fieldIndex, speciesGetter, globalConst->GetHandledUndefined());
+
+    env->SetSBuiltininMapFunction(thread_, mapFunction);
 }
 
 void Builtins::InitializeSFunction(const JSHandle<GlobalEnv> &env,
@@ -364,7 +370,6 @@ JSHandle<JSHClass> Builtins::CreateSSetFunctionHClass(const JSHandle<JSFunction>
         attributes.SetOffset(index);
         attributes.SetIsAccessor(isAccessor);
         if (key == "[Symbol.species]") {
-            // TODO(Gymee) globalruntime.env
             keyString = env->GetSpeciesSymbol();
         } else {
             keyString = JSHandle<JSTaggedValue>(factory_->NewFromUtf8(key));
@@ -394,7 +399,6 @@ JSHandle<JSHClass> Builtins::CreateSMapFunctionHClass(const JSHandle<JSFunction>
         attributes.SetOffset(index);
         attributes.SetIsAccessor(isAccessor);
         if (key == "[Symbol.species]") {
-            // TODO(Gymee) globalruntime.env
             keyString = env->GetSpeciesSymbol();
         } else {
             keyString = JSHandle<JSTaggedValue>(factory_->NewFromUtf8(key));
@@ -453,10 +457,8 @@ JSHandle<JSHClass> Builtins::CreateSSetPrototypeHClass(const JSHandle<JSObject> 
         attributes.SetOffset(index);
         attributes.SetIsAccessor(isAccessor);
         if (key == "[Symbol.iterator]") {
-            // TODO(Gymee) globalruntime.env
             keyString = env->GetIteratorSymbol();
-        } else if(key == "[Symbol.toStringTag]") {
-            // TODO(Gymee) globalruntime.env
+        } else if (key == "[Symbol.toStringTag]") {
             keyString = env->GetToStringTagSymbol();
         } else {
             keyString = JSHandle<JSTaggedValue>(factory_->NewFromUtf8(key));
@@ -486,10 +488,8 @@ JSHandle<JSHClass> Builtins::CreateSMapPrototypeHClass(const JSHandle<JSObject> 
         attributes.SetOffset(index);
         attributes.SetIsAccessor(isAccessor);
         if (key == "[Symbol.iterator]") {
-            // TODO(Gymee) globalruntime.env
             keyString = env->GetIteratorSymbol();
-        } else if(key == "[Symbol.toStringTag]") {
-            // TODO(Gymee) globalruntime.env
+        } else if (key == "[Symbol.toStringTag]") {
             keyString = env->GetToStringTagSymbol();
         } else {
             keyString = JSHandle<JSTaggedValue>(factory_->NewFromUtf8(key));
@@ -595,5 +595,54 @@ void Builtins::SharedStrictModeForbiddenAccessCallerArguments(const JSHandle<Glo
     SetSAccessor(prototype, index++, JSHandle<JSTaggedValue>(func), JSHandle<JSTaggedValue>(func));
     // "arguments"
     SetSAccessor(prototype, index++, JSHandle<JSTaggedValue>(func), JSHandle<JSTaggedValue>(func));
+}
+
+void Builtins::InitializeSSymbolAttributes(const JSHandle<GlobalEnv> &env)
+{
+    JSHandle<JSTaggedValue> hasInstanceSymbol(
+        factory_->NewSWellKnownSymbolWithChar("Symbol.hasInstance"));
+    JSHandle<JSTaggedValue> isConcatSpreadableSymbol(
+        factory_->NewSWellKnownSymbolWithChar("Symbol.isConcatSpreadable"));
+    JSHandle<JSTaggedValue> toStringTagSymbol(
+        factory_->NewSWellKnownSymbolWithChar("Symbol.toStringTag"));
+    JSHandle<JSTaggedValue> asyncIteratorSymbol(
+        factory_->NewSPublicSymbolWithChar("Symbol.asyncIterator"));
+    JSHandle<JSTaggedValue> matchSymbol(
+        factory_->NewSPublicSymbolWithChar("Symbol.match"));
+    JSHandle<JSTaggedValue> matchAllSymbol(
+        factory_->NewSPublicSymbolWithChar("Symbol.matchAll"));
+    JSHandle<JSTaggedValue> searchSymbol(
+        factory_->NewSPublicSymbolWithChar("Symbol.search"));
+    JSHandle<JSTaggedValue> toPrimitiveSymbol(
+        factory_->NewSPublicSymbolWithChar("Symbol.toPrimitive"));
+    JSHandle<JSTaggedValue> unscopablesSymbol(
+        factory_->NewSPublicSymbolWithChar("Symbol.unscopables"));
+    JSHandle<JSTaggedValue> nativeBindingSymbol(
+        factory_->NewSPublicSymbolWithChar("Symbol.nativeBinding"));
+
+    // Symbol attributes with detectors
+    // Create symbol string before create symbol to allocate symbol continuously
+    // Attention: Symbol serialization & deserialization are not supported now and
+    // the order of symbols and symbol-strings must be maintained too when
+    // Symbol serialization & deserialization are ready.
+#define INIT_SYMBOL_STRING(name, description, key)                                         \
+    {                                                                                      \
+        [[maybe_unused]] JSHandle<EcmaString> string = factory_->NewFromUtf8(description); \
+    }
+DETECTOR_SYMBOL_LIST(INIT_SYMBOL_STRING)
+#undef INIT_SYMBOL_STRING
+
+#define INIT_PUBLIC_SYMBOL(name, description, key)                                 \
+    JSHandle<JSSymbol> key##Symbol = factory_->NewSEmptySymbol();                  \
+    JSHandle<EcmaString> key##String = factory_->NewFromUtf8(description);         \
+    key##Symbol->SetDescription(thread_, key##String.GetTaggedValue());            \
+    key##Symbol->SetHashField(SymbolTable::Hash(key##String.GetTaggedValue()));
+DETECTOR_SYMBOL_LIST(INIT_PUBLIC_SYMBOL)
+#undef INIT_PUBLIC_SYMBOL
+
+#define REGISTER_SYMBOL(name, Name)                                                \
+    env->Set##Name##Symbol(thread_, name##Symbol);
+BUILTIN_ALL_SYMBOLS(REGISTER_SYMBOL)
+#undef REGISTER_SYMBOL
 }
 }  // namespace panda::ecmascript

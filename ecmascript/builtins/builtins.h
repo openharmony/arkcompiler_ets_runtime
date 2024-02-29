@@ -348,6 +348,7 @@ private:
                            EcmaEntrypoint func, int length) const;
     void SetNonConstantObject(const JSHandle<JSObject> &obj, std::string_view key,
                               JSHandle<JSTaggedValue> &value) const;
+    void RegisterSendableContainers(const JSHandle<GlobalEnv> &env) const;
 
     // For SharedObject/SharedFunction
     void InitializeSObjectAndSFunction(const JSHandle<GlobalEnv> &env) const;
@@ -399,6 +400,7 @@ private:
     void SharedStrictModeForbiddenAccessCallerArguments(const JSHandle<GlobalEnv> &env, uint32_t &index,
                                                         const JSHandle<JSObject> &prototype) const;
     JSHandle<JSTaggedValue> CreateArrayUnscopables(JSThread *thread) const;
+    void InitializeSSymbolAttributes(const JSHandle<GlobalEnv> &env);
     friend class builtins::BuiltinsLazyCallback;
 };
 }  // namespace panda::ecmascript

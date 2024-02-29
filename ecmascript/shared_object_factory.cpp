@@ -485,6 +485,18 @@ JSHandle<JSSymbol> ObjectFactory::NewSWellKnownSymbol(const JSHandle<JSTaggedVal
     return obj;
 }
 
+JSHandle<JSSymbol> ObjectFactory::NewSPublicSymbol(const JSHandle<JSTaggedValue> &name)
+{
+    NewObjectHook();
+    TaggedObject *header = sHeap_->AllocateNonMovableOrHugeObject(
+        thread_, JSHClass::Cast(thread_->GlobalConstants()->GetSymbolClass().GetTaggedObject()));
+    JSHandle<JSSymbol> obj(thread_, JSSymbol::Cast(header));
+    obj->SetFlags(0);
+    obj->SetDescription(thread_, name);
+    obj->SetHashField(SymbolTable::Hash(name.GetTaggedValue()));
+    return obj;
+}
+
 JSHandle<JSSymbol> ObjectFactory::NewSEmptySymbol()
 {
     NewObjectHook();
@@ -501,6 +513,12 @@ JSHandle<JSSymbol> ObjectFactory::NewSWellKnownSymbolWithChar(std::string_view d
 {
     JSHandle<EcmaString> string = NewFromUtf8(description);
     return NewSWellKnownSymbol(JSHandle<JSTaggedValue>(string));
+}
+
+JSHandle<JSSymbol> ObjectFactory::NewSPublicSymbolWithChar(std::string_view description)
+{
+    JSHandle<EcmaString> string = NewFromUtf8(description);
+    return NewSPublicSymbol(JSHandle<JSTaggedValue>(string));
 }
 
 JSHandle<SourceTextModule> ObjectFactory::NewSModule()
