@@ -464,3 +464,7 @@ function fun1(obj, name, type) {
 
   Array.prototype.length = 3000;
   print(Array.prototype.length)
+
+let unscopables1 = Array.prototype[Symbol.unscopables];
+let unscopables2 = Array.prototype[Symbol.unscopables];
+print(unscopables1 == unscopables2)

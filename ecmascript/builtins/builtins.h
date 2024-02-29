@@ -373,6 +373,7 @@ private:
                                                 std::string_view name, int length) const;
     void SharedStrictModeForbiddenAccessCallerArguments(const JSHandle<GlobalEnv> &env,
                                                         const JSHandle<JSObject> &prototype) const;
+    JSHandle<JSTaggedValue> CreateArrayUnscopables(JSThread *thread) const;
     friend class builtins::BuiltinsLazyCallback;
 };
 }  // namespace panda::ecmascript

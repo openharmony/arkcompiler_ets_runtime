@@ -186,8 +186,6 @@ public:
     static JSTaggedValue Unshift(EcmaRuntimeCallInfo *argv); // done
     // 22.1.3.29
     static JSTaggedValue Values(EcmaRuntimeCallInfo *argv); // no change
-    // 22.1.3.31
-    static JSTaggedValue Unscopables(EcmaRuntimeCallInfo *argv); // no change
     // es12 23.1.3.13
     static JSTaggedValue Includes(EcmaRuntimeCallInfo *argv); // no change
     // es12 23.1.3.10
