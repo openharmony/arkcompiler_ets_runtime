@@ -123,48 +123,123 @@ void DFXJSNApi::DumpHeapSnapshot([[maybe_unused]] const EcmaVM *vm, [[maybe_unus
 #endif // ECMASCRIPT_SUPPORT_SNAPSHOT
 }
 
-void DFXJSNApi::DumpHeapSnapshotAllVMs([[maybe_unused]] const EcmaVM *vm, [[maybe_unused]] int dumpFormat,
-                                       [[maybe_unused]] bool isVmMode, [[maybe_unused]] bool isPrivate,
-                                       [[maybe_unused]] bool captureNumericValue, [[maybe_unused]] bool isFullGC)
+// tid = 0: dump all vm; tid != 0: dump tid vm
+void DFXJSNApi::DumpHeapSnapshot([[maybe_unused]] const EcmaVM *vm, [[maybe_unused]] int dumpFormat,
+                                 [[maybe_unused]] bool isVmMode, [[maybe_unused]] bool isPrivate,
+                                 [[maybe_unused]] bool captureNumericValue, [[maybe_unused]] bool isFullGC,
+                                 [[maybe_unused]] uint32_t tid)
 {
-#if defined(ENABLE_DUMP_IN_FAULTLOG)
     if (vm->IsWorkerThread()) {
         LOG_ECMA(ERROR) << "this is a workthread!";
         return;
     }
-    // dump host vm.
-    DumpHeapSnapshot(vm, dumpFormat, isVmMode, isPrivate, captureNumericValue, isFullGC);
+    // dump host vm
+    uint32_t curTid = vm->GetTid();
+    LOG_ECMA(INFO) << "DumpHeapSnapshot tid " << tid << " curTid " << curTid;
+    if ((tid == 0) || ((tid != 0) && (tid == curTid))) {
+        DumpHeapSnapshotWithVm(vm, dumpFormat, isVmMode, isPrivate, captureNumericValue, isFullGC);
+    }
+    // dump worker vm
     const_cast<EcmaVM *>(vm)->EnumerateWorkerVm([&](const EcmaVM *workerVm) -> void {
-        uv_loop_t *loop = reinterpret_cast<uv_loop_t *>(workerVm->GetLoop());
-        if (loop == nullptr) {
-            LOG_ECMA(ERROR) << "loop is nullptr";
+        curTid = workerVm->GetTid();
+        LOG_ECMA(INFO) << "DumpHeapSnapshot tid " << tid << " curTid " << curTid;
+        if ((tid == 0) || ((tid != 0) && (tid == curTid))) {
+            DumpHeapSnapshotWithVm(workerVm, dumpFormat, isVmMode, isPrivate, captureNumericValue, isFullGC);
             return;
         }
-        struct DumpForSnapShotStruct *dumpStruct = new DumpForSnapShotStruct();
-        dumpStruct->vm = workerVm;
-        dumpStruct->dumpFormat = dumpFormat;
-        dumpStruct->isVmMode = isVmMode;
-        dumpStruct->isPrivate = isPrivate;
-        dumpStruct->captureNumericValue = captureNumericValue;
-        dumpStruct->isFullGC = isFullGC;
-        uv_work_t *work = new uv_work_t;
-        work->data = (void *)dumpStruct;
-        if (uv_loop_alive(loop) == 0) {
-            LOG_ECMA(ERROR) << "uv_loop_alive is dead";
-            return;
-        }
-        uv_queue_work(
-            loop,
-            work,
-            [](uv_work_t *) {},
-            [](uv_work_t *work, int32_t) {
-                struct DumpForSnapShotStruct *dump = (struct DumpForSnapShotStruct *)(work->data);
-                DumpHeapSnapshot(dump->vm, dump->dumpFormat, dump->isVmMode,
-                                 dump->isPrivate, dump->captureNumericValue, dump->isFullGC);
-                delete dump;
-                delete work;
-        });
     });
+}
+
+void DFXJSNApi::DumpHeapSnapshotWithVm([[maybe_unused]] const EcmaVM *vm, [[maybe_unused]] int dumpFormat,
+                                       [[maybe_unused]] bool isVmMode, [[maybe_unused]] bool isPrivate,
+                                       [[maybe_unused]] bool captureNumericValue, [[maybe_unused]] bool isFullGC)
+{
+#if defined(ECMASCRIPT_SUPPORT_SNAPSHOT)
+#if defined(ENABLE_DUMP_IN_FAULTLOG)
+    struct DumpForSnapShotStruct *dumpStruct = new DumpForSnapShotStruct();
+    dumpStruct->vm = vm;
+    dumpStruct->dumpFormat = dumpFormat;
+    dumpStruct->isVmMode = isVmMode;
+    dumpStruct->isPrivate = isPrivate;
+    dumpStruct->captureNumericValue = captureNumericValue;
+    dumpStruct->isFullGC = isFullGC;
+    uv_work_t *work = new uv_work_t;
+    work->data = static_cast<void *>(dumpStruct);
+    uv_loop_t *loop = reinterpret_cast<uv_loop_t *>(vm->GetLoop());
+    if (loop == nullptr) {
+        LOG_ECMA(ERROR) << "loop nullptr";
+        return;
+    }
+    if (uv_loop_alive(loop) == 0) {
+        LOG_ECMA(ERROR) << "uv_loop_alive dead";
+        return;
+    }
+    int ret = uv_queue_work(loop, work, [](uv_work_t *) {}, [](uv_work_t *work, int32_t) {
+        struct DumpForSnapShotStruct *dump = static_cast<struct DumpForSnapShotStruct *>(work->data);
+        DFXJSNApi::GetHeapPrepare(dump->vm);
+        DumpHeapSnapshot(dump->vm, dump->dumpFormat, dump->isVmMode, dump->isPrivate,
+            dump->captureNumericValue, dump->isFullGC);
+        delete dump;
+        delete work;
+    });
+    if (ret != 0) {
+        LOG_ECMA(ERROR) << "uv_queue_work fail ret " << ret;
+        delete dumpStruct;
+        delete work;
+    }
+#endif
+#endif
+}
+
+// tid = 0: TriggerGC all vm; tid != 0: TriggerGC tid vm
+void DFXJSNApi::TriggerGC([[maybe_unused]] const EcmaVM *vm, [[maybe_unused]] uint32_t tid)
+{
+    if (vm->IsWorkerThread()) {
+        LOG_ECMA(ERROR) << "this is a workthread!";
+        return;
+    }
+    // triggerGC host vm
+    uint32_t curTid = vm->GetTid();
+    LOG_ECMA(INFO) << "TriggerGC tid " << tid << " curTid " << curTid;
+    if ((tid == 0) || ((tid != 0) && (tid == curTid))) {
+        TriggerGCWithVm(vm);
+    }
+    // triggerGC worker vm
+    const_cast<EcmaVM *>(vm)->EnumerateWorkerVm([&](const EcmaVM *workerVm) -> void {
+        curTid = workerVm->GetTid();
+        LOG_ECMA(INFO) << "TriggerGC tid " << tid << " curTid " << curTid;
+        if ((tid == 0) || ((tid != 0) && (tid == curTid))) {
+            TriggerGCWithVm(workerVm);
+            return;
+        }
+    });
+}
+
+void DFXJSNApi::TriggerGCWithVm([[maybe_unused]] const EcmaVM *vm)
+{
+#if defined(ECMASCRIPT_SUPPORT_SNAPSHOT)
+#if defined(ENABLE_DUMP_IN_FAULTLOG)
+    uv_work_t *work = new uv_work_t;
+    work->data = static_cast<void *>(const_cast<EcmaVM *>(vm));
+    uv_loop_t *loop = reinterpret_cast<uv_loop_t *>(vm->GetLoop());
+    if (loop == nullptr) {
+        LOG_ECMA(ERROR) << "loop nullptr";
+        return;
+    }
+    if (uv_loop_alive(loop) == 0) {
+        LOG_ECMA(ERROR) << "uv_loop_alive dead";
+        return;
+    }
+    int ret = uv_queue_work(loop, work, [](uv_work_t *) {}, [](uv_work_t *work, int32_t) {
+        EcmaVM *vm = static_cast<EcmaVM *>(work->data);
+        vm->CollectGarbage(ecmascript::TriggerGCType::FULL_GC, ecmascript::GCReason::EXTERNAL_TRIGGER);
+        delete work;
+    });
+    if (ret != 0) {
+        LOG_ECMA(ERROR) << "uv_queue_work fail ret " << ret;
+        delete work;
+    }
+#endif
 #endif
 }
 
