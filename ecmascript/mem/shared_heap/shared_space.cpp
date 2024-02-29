@@ -38,6 +38,11 @@ void SharedSparseSpace::Reset()
     liveObjectSize_ = 0;
 }
 
+void SharedSparseSpace::ResetTopPointer(uintptr_t top)
+{
+    allocator_->ResetTopPointer(top);
+}
+
 // only used in share heap initialize before first vmThread created.
 uintptr_t SharedSparseSpace::AllocateWithoutGC(size_t size)
 {
@@ -71,6 +76,18 @@ uintptr_t SharedSparseSpace::Allocate(JSThread *thread, size_t size, bool allowG
     return object;
 }
 
+uintptr_t SharedSparseSpace::AllocateNoGCAndExpand([[maybe_unused]] JSThread *thread, size_t size)
+{
+    ASSERT(thread->IsInRunningState());
+    uintptr_t object = TryAllocate(size);
+    CHECK_SOBJECT_AND_INC_OBJ_SIZE(size);
+    if (sweepState_ == SweepState::SWEEPING) {
+        object = AllocateAfterSweepingCompleted(size);
+        CHECK_SOBJECT_AND_INC_OBJ_SIZE(size);
+    }
+    return object;
+}
+
 uintptr_t SharedSparseSpace::TryAllocate(size_t size)
 {
     LockHolder lock(allocateLock_);
@@ -90,7 +107,7 @@ uintptr_t SharedSparseSpace::AllocateWithExpand(JSThread *thread, size_t size)
 
 bool SharedSparseSpace::Expand(JSThread *thread)
 {
-    if (committedSize_ >= maximumCapacity_ + outOfMemoryOvershootSize_) {
+    if (CommittedSizeExceed()) {
         LOG_ECMA_MEM(INFO) << "Expand::Committed size " << committedSize_ << " of Sparse Space is too big. ";
         return false;
     }
@@ -99,6 +116,24 @@ bool SharedSparseSpace::Expand(JSThread *thread)
     AddRegion(region);
     allocator_->AddFree(region);
     return true;
+}
+
+Region *SharedSparseSpace::AllocateDeserializeRegion(JSThread *thread)
+{
+    Region *region = heapRegionAllocator_->AllocateAlignedRegion(this, DEFAULT_REGION_SIZE, thread, sHeap_);
+    region->InitializeFreeObjectSets();
+    return region;
+}
+
+void SharedSparseSpace::MergeDeserializeAllocateRegions(const std::vector<Region *> &allocateRegions)
+{
+    LockHolder lock(allocateLock_);
+    for (auto region : allocateRegions) {
+        AddRegion(region);
+        allocator_->AddFree(region);
+        allocator_->ResetTopPointer(region->GetHighWaterMark());
+        region->SetHighWaterMark(region->GetEnd());
+    }
 }
 
 uintptr_t SharedSparseSpace::AllocateAfterSweepingCompleted(size_t size)

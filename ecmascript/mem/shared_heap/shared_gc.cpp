@@ -50,6 +50,7 @@ void SharedGC::Initialize()
 void SharedGC::Mark()
 {
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "SharedGC::Mark");
+    sHeap_->GetSharedGCMarker()->MarkSerializeRoots(MAIN_THREAD_INDEX);
     Runtime::GetInstance()->GCIterateThreadList([&](JSThread *thread) {
         ASSERT(!thread->IsInRunningState());
         auto vm = thread->GetEcmaVM();

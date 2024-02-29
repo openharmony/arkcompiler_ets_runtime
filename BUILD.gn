@@ -137,7 +137,7 @@ group("ark_unittest") {
     "ecmascript/pgo_profiler/tests:host_unittest",
     "ecmascript/regexp/tests:host_unittest",
     "ecmascript/require/tests:host_unittest",
-   # "ecmascript/serializer/tests:host_unittest",
+    "ecmascript/serializer/tests:host_unittest",
     "ecmascript/snapshot/tests:host_unittest",
     "ecmascript/tests:host_unittest",
     "ecmascript/ts_types/tests:host_unittest",

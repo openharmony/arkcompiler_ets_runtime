@@ -33,7 +33,10 @@ namespace panda::ecmascript {
     (uint8_t)SerializedObjectSpace::OLD_SPACE:                            \
     case (uint8_t)SerializedObjectSpace::NON_MOVABLE_SPACE:               \
     case (uint8_t)SerializedObjectSpace::MACHINE_CODE_SPACE:              \
-    case (uint8_t)SerializedObjectSpace::HUGE_SPACE
+    case (uint8_t)SerializedObjectSpace::HUGE_SPACE:                      \
+    case (uint8_t)SerializedObjectSpace::SHARED_OLD_SPACE:                \
+    case (uint8_t)SerializedObjectSpace::SHARED_NON_MOVABLE_SPACE:        \
+    case (uint8_t)SerializedObjectSpace::SHARED_HUGE_SPACE
 
 JSHandle<JSTaggedValue> BaseDeserializer::ReadValue()
 {
@@ -400,6 +403,12 @@ size_t BaseDeserializer::ReadSingleEncodeData(uint8_t encodeFlag, uintptr_t objA
             handledFieldSize = 0;
             break;
         }
+        case (uint8_t)EncodeFlag::SHARED_OBJECT: {
+            JSTaggedType value = data_->ReadJSTaggedType();
+            objectVector_.push_back(value);
+            UpdateMaybeWeak(slot, value, GetAndResetWeak());
+            break;
+        }
         default:
             LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
@@ -435,14 +444,41 @@ uintptr_t BaseDeserializer::RelocateObjectAddr(SerializedObjectSpace space, size
                 ASSERT(machineCodeRegionIndex_ < regionVector_.size());
                 machineCodeSpaceBeginAddr_ = regionVector_[machineCodeRegionIndex_++]->GetBegin();
             }
-            res = nonMovableSpaceBeginAddr_;
-            nonMovableSpaceBeginAddr_ += objSize;
+            res = machineCodeSpaceBeginAddr_;
+            machineCodeSpaceBeginAddr_ += objSize;
             break;
         }
-        default:
+        case SerializedObjectSpace::HUGE_SPACE: {
             // no gc for this allocate
             res = heap_->GetHugeObjectSpace()->Allocate(objSize, thread_);
             break;
+        }
+        case SerializedObjectSpace::SHARED_OLD_SPACE: {
+            if (sOldSpaceBeginAddr_ + objSize > AlignUp(sOldSpaceBeginAddr_, DEFAULT_REGION_SIZE)) {
+                ASSERT(sOldRegionIndex_ < regionVector_.size());
+                sOldSpaceBeginAddr_ = regionVector_[sOldRegionIndex_++]->GetBegin();
+            }
+            res = sOldSpaceBeginAddr_;
+            sOldSpaceBeginAddr_ += objSize;
+            break;
+        }
+        case SerializedObjectSpace::SHARED_NON_MOVABLE_SPACE: {
+            if (sNonMovableSpaceBeginAddr_ + objSize > AlignUp(sNonMovableSpaceBeginAddr_, DEFAULT_REGION_SIZE)) {
+                ASSERT(sNonMovableRegionIndex_ < regionVector_.size());
+                sNonMovableSpaceBeginAddr_ = regionVector_[sNonMovableRegionIndex_++]->GetBegin();
+            }
+            res = sNonMovableSpaceBeginAddr_;
+            sNonMovableSpaceBeginAddr_ += objSize;
+            break;
+        }
+        case SerializedObjectSpace::SHARED_HUGE_SPACE: {
+            // no gc for this allocate
+            res = sheap_->GetHugeObjectSpace()->Allocate(thread_, objSize);
+            break;
+        }
+        default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
+            UNREACHABLE();
     }
     return res;
 }
@@ -538,6 +574,16 @@ void BaseDeserializer::AllocateToDifferentSpaces()
         heap_->GetMachineCodeSpace()->IncreaseLiveObjectSize(machineCodeSpaceSize);
         AllocateToMachineCodeSpace(machineCodeSpaceSize);
     }
+    size_t sOldSpaceSize = data_->GetSharedOldSpaceSize();
+    if (sOldSpaceSize > 0) {
+        sheap_->GetOldSpace()->IncreaseLiveObjectSize(sOldSpaceSize);
+        AllocateToSharedOldSpace(sOldSpaceSize);
+    }
+    size_t sNonMovableSpaceSize = data_->GetSharedNonMovableSpaceSize();
+    if (sNonMovableSpaceSize > 0) {
+        sheap_->GetNonMovableSpace()->IncreaseLiveObjectSize(sNonMovableSpaceSize);
+        AllocateToSharedNonMovableSpace(sNonMovableSpaceSize);
+    }
 }
 
 void BaseDeserializer::AllocateMultiRegion(SparseSpace *space, size_t spaceObjSize, size_t &regionIndex)
@@ -556,6 +602,32 @@ void BaseDeserializer::AllocateMultiRegion(SparseSpace *space, size_t spaceObjSi
     }
     size_t lastRegionRemainSize = regionAlignedSize - spaceObjSize;
     space->ResetTopPointer(space->GetCurrentRegion()->GetEnd() - lastRegionRemainSize);
+}
+
+Region *BaseDeserializer::AllocateMultiSharedRegion(SharedSparseSpace *space, size_t spaceObjSize, size_t &regionIndex)
+{
+    regionIndex = regionVector_.size();
+    size_t regionAlignedSize = SerializeData::AlignUpRegionAvailableSize(spaceObjSize);
+    size_t regionNum = regionAlignedSize / Region::GetRegionAvailableSize();
+    std::vector<size_t> regionRemainSizeVector = data_->GetRegionRemainSizeVector();
+    std::vector<Region *> allocateRegions;
+    while (regionNum > 0) {
+        if (space->CommittedSizeExceed()) {
+            LOG_ECMA(FATAL) << "BaseDeserializer::OutOfMemory when deserialize";
+        }
+        Region *region = space->AllocateDeserializeRegion(thread_);
+        if (regionNum == 1) { // 1: Last allocate region
+            size_t lastRegionRemainSize = regionAlignedSize - spaceObjSize;
+            region->SetHighWaterMark(space->GetCurrentRegion()->GetEnd() - lastRegionRemainSize);
+        } else {
+            region->SetHighWaterMark(region->GetEnd() - regionRemainSizeVector[regionRemainSizeIndex_++]);
+        }
+        regionVector_.push_back(region);
+        allocateRegions.push_back(region);
+        regionNum--;
+    }
+    space->MergeDeserializeAllocateRegions(allocateRegions);
+    return allocateRegions.front();
 }
 
 void BaseDeserializer::AllocateToOldSpace(size_t oldSpaceSize)
@@ -600,6 +672,30 @@ void BaseDeserializer::AllocateToMachineCodeSpace(size_t machineCodeSpaceSize)
         AllocateMultiRegion(space, machineCodeSpaceSize, machineCodeRegionIndex_);
     } else {
         machineCodeSpaceBeginAddr_ = object;
+    }
+}
+
+void BaseDeserializer::AllocateToSharedOldSpace(size_t sOldSpaceSize)
+{
+    SharedSparseSpace *space = sheap_->GetOldSpace();
+    uintptr_t object = space->AllocateNoGCAndExpand(thread_, sOldSpaceSize);
+    if (UNLIKELY(object == 0U)) {
+        Region *region = AllocateMultiSharedRegion(space, sOldSpaceSize, sOldRegionIndex_);
+        sOldSpaceBeginAddr_ = region->GetBegin();
+    } else {
+        sOldSpaceBeginAddr_ = object;
+    }
+}
+
+void BaseDeserializer::AllocateToSharedNonMovableSpace(size_t sNonMovableSpaceSize)
+{
+    SharedNonMovableSpace *space = sheap_->GetNonMovableSpace();
+    uintptr_t object = space->AllocateNoGCAndExpand(thread_, sNonMovableSpaceSize);
+    if (UNLIKELY(object == 0U)) {
+        Region *region = AllocateMultiSharedRegion(space, sNonMovableSpaceSize, sNonMovableRegionIndex_);
+        sNonMovableSpaceBeginAddr_ = region->GetBegin();
+    } else {
+        sNonMovableSpaceBeginAddr_ = object;
     }
 }
 

@@ -59,6 +59,12 @@ public:
 
     uintptr_t Allocate(JSThread *thread, size_t size, bool allowGC = true);
 
+    // For work deserialize
+    void ResetTopPointer(uintptr_t top);
+    uintptr_t AllocateNoGCAndExpand(JSThread *thread, size_t size);
+    Region *AllocateDeserializeRegion(JSThread *thread);
+    void MergeDeserializeAllocateRegions(const std::vector<Region *> &allocateRegions);
+
     // For sweeping
     void PrepareSweeping();
     void AsyncSweep(bool isMain);
@@ -89,6 +95,11 @@ public:
     void DecreaseLiveObjectSize(size_t size)
     {
         liveObjectSize_ -= size;
+    }
+
+    bool CommittedSizeExceed()
+    {
+        return committedSize_ >= maximumCapacity_ + outOfMemoryOvershootSize_;
     }
 
     size_t GetTotalAllocatedSize() const;

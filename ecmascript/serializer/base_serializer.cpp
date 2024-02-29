@@ -24,8 +24,7 @@ namespace panda::ecmascript {
 SerializedObjectSpace BaseSerializer::GetSerializedObjectSpace(TaggedObject *object) const
 {
     auto region = Region::ObjectAddressToRange(object);
-    // TODO(lukai) allocateToSharedSpace please!
-    if (region->InYoungOrOldSpace() || region->InAppSpawnSpace() || region->InSharedHeap()) {
+    if (region->InYoungOrOldSpace() || region->InAppSpawnSpace()) {
         return SerializedObjectSpace::OLD_SPACE;
     }
     if (region->InNonMovableSpace() || region->InReadOnlySpace()) {
@@ -36,6 +35,15 @@ SerializedObjectSpace BaseSerializer::GetSerializedObjectSpace(TaggedObject *obj
     }
     if (region->InHugeObjectSpace()) {
         return SerializedObjectSpace::HUGE_SPACE;
+    }
+    if (region->InSharedOldSpace()) {
+        return SerializedObjectSpace::SHARED_OLD_SPACE;
+    }
+    if (region->InSharedNonMovableSpace()) {
+        return SerializedObjectSpace::SHARED_NON_MOVABLE_SPACE;
+    }
+    if (region->InSharedHugeObjectSpace()) {
+        return SerializedObjectSpace::SHARED_HUGE_SPACE;
     }
     LOG_ECMA(FATAL) << "this branch is unreachable";
     UNREACHABLE();
@@ -86,6 +94,14 @@ bool BaseSerializer::SerializeRootObject(TaggedObject *object)
     }
 
     return false;
+}
+
+void BaseSerializer::SerializeSharedObject(TaggedObject *object)
+{
+    data_->WriteEncodeFlag(EncodeFlag::SHARED_OBJECT);
+    data_->WriteJSTaggedType(reinterpret_cast<JSTaggedType>(object));
+    referenceMap_.emplace(object, objectIndex_++);
+    sharedObjects_.emplace_back(object);
 }
 
 bool BaseSerializer::SerializeSpecialObjIndividually(JSType objectType, TaggedObject *root,

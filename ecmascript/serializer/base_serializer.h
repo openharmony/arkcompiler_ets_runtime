@@ -50,6 +50,7 @@ protected:
     void SerializeTaggedObject(TaggedObject *object);
     bool SerializeReference(TaggedObject *object);
     bool SerializeRootObject(TaggedObject *object);
+    void SerializeSharedObject(TaggedObject *object);
     template<SerializeType serializeType>
     void SerializeObjectField(TaggedObject *object);
     bool SerializeSpecialObjIndividually(JSType objectType, TaggedObject *root, ObjectSlot start, ObjectSlot end);
@@ -68,6 +69,7 @@ protected:
     EcmaVM *vm_;
     std::unique_ptr<SerializeData> data_;
     CUnorderedMap<TaggedObject *, uint32_t> referenceMap_;
+    std::vector<TaggedObject *> sharedObjects_;
     size_t objectIndex_ {0};
     static constexpr size_t PARENT_ENV_SLOT = sizeof(TaggedObject);
     static constexpr size_t SCOPE_INFO_SLOT = PARENT_ENV_SLOT * 2; // 2: the second object slot of lexical env
