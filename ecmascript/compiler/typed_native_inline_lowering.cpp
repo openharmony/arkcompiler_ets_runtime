@@ -75,10 +75,45 @@ GateRef TypedNativeInlineLowering::VisitGate(GateRef gate)
         case OpCode::MATH_ABS:
             LowerAbs(gate);
             break;
+        case OpCode::MATH_POW:
+            LowerMathPow(gate);
+            break;
         default:
             break;
     }
     return Circuit::NullGate();
+}
+
+void TypedNativeInlineLowering::LowerMathPow(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    builder_.SetEnvironment(&env);
+    GateRef base = acc_.GetValueIn(gate, 0);
+    GateRef exp = acc_.GetValueIn(gate, 1);
+
+    Label exit(&builder_);
+    Label notNan(&builder_);
+
+    auto nanValue = builder_.NanValue();
+    DEFVALUE(result, (&builder_), VariableType::FLOAT64(), nanValue);
+
+    const double doubleOne = 1.0;
+    GateRef baseIsOne = builder_.DoubleEqual(base, builder_.Double(doubleOne));
+    // Base is 1.0, exponent is inf => NaN
+    // Exponent is not finit, if is NaN or is Inf
+    GateRef tempIsNan = builder_.BoolAnd(baseIsOne, builder_.DoubleIsINF(exp));
+    GateRef resultIsNan = builder_.BoolOr(builder_.DoubleIsNAN(exp), tempIsNan);
+
+    builder_.Branch(resultIsNan, &exit, &notNan);
+    builder_.Bind(&notNan);
+    {
+        GateRef glue = acc_.GetGlueFromArgList();
+        result = builder_.CallNGCRuntime(glue, RTSTUB_ID(FloatPow), Gate::InvalidGateRef, {base, exp}, gate);
+        builder_.Jump(&exit);
+    }
+
+    builder_.Bind(&exit);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
 }
 
 template <TypedNativeInlineLowering::MathTrigonometricCheck CHECK>

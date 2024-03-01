@@ -146,6 +146,7 @@ namespace panda::ecmascript::kungfu {
     V(MathLog2)                                     \
     V(MathLog10)                                    \
     V(MathLog1p)                                    \
+    V(MathPow)                                      \
     V(MathAbs)                                      \
     V(TYPED_BUILTINS_INLINE_FIRST = MathAcos)       \
     V(TYPED_BUILTINS_INLINE_LAST = MathAbs)
@@ -297,6 +298,8 @@ public:
                 return ConstantIndex::MATH_LOG10_INDEX;
             case BuiltinsStubCSigns::ID::MathLog1p:
                 return ConstantIndex::MATH_LOG1P_INDEX;
+            case BuiltinsStubCSigns::ID::MathPow:
+                return ConstantIndex::MATH_POW_INDEX;
             case BuiltinsStubCSigns::ID::FLOOR:
                 return ConstantIndex::MATH_FLOOR_FUNCTION_INDEX;
             case BuiltinsStubCSigns::ID::SQRT:
@@ -349,6 +352,7 @@ public:
             {"Log1p", MathLog1p},
             {"sqrt", SQRT},
             {"abs", MathAbs},
+            {"pow", MathPow},
             {"floor", FLOOR},
             {"localeCompare", LocaleCompare},
             {"sort", SORT},

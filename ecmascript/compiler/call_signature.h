@@ -459,6 +459,7 @@ private:
     V(FloatLog10)                               \
     V(FloatLog1p)                               \
     V(FloatFloor)                               \
+    V(FloatPow)                                 \
     V(FindElementWithCache)                     \
     V(MarkingBarrier)                           \
     V(StoreBarrier)                             \

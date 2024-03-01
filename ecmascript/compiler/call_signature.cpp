@@ -1929,6 +1929,21 @@ DEF_CALL_SIGNATURE(FloatAtan2)
     callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
 }
 
+DEF_CALL_SIGNATURE(FloatPow)
+{
+    // 2 : 2 input parameters
+    CallSignature index("FloatPow", 0, 2, ArgumentsOrder::DEFAULT_ORDER, VariableType::FLOAT64());
+    *callSign = index;
+    // 2 : 2 input parameters
+    std::array<VariableType, 2> params = {
+        VariableType::FLOAT64(),
+        VariableType::FLOAT64(),
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetGCLeafFunction(true);
+    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
+}
+
 DEF_CALL_SIGNATURE(FindElementWithCache)
 {
     // 4 : 4 input parameters

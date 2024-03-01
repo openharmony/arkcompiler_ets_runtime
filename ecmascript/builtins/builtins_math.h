@@ -59,7 +59,7 @@
     V("log2",   Log2,   1, MathLog2)    /* Math.log2 ( x ) */               \
     V("max",    Max,    2, INVALID)     /* Math.max ( ...args ) */          \
     V("min",    Min,    2, INVALID)     /* Math.min ( ...args ) */          \
-    V("pow",    Pow,    2, INVALID)     /* Math.pow ( base, exponent ) */   \
+    V("pow",    Pow,    2, MathPow)     /* Math.pow ( base, exponent ) */   \
     V("random", Random, 0, INVALID)     /* Math.random ( ) */               \
     V("round",  Round,  1, INVALID)     /* Math.round ( x ) */              \
     V("sign",   Sign,   1, INVALID)     /* Math.sign ( x ) */               \

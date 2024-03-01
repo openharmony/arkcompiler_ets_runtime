@@ -41,6 +41,7 @@ private:
     void LowerGeneralUnaryMath(GateRef gate, RuntimeStubCSigns::ID stub_id);
     void LowerMathAtan2(GateRef gate);
     void LowerAbs(GateRef gate);
+    void LowerMathPow(GateRef gate);
 
 private:
     Circuit* circuit_ {nullptr};

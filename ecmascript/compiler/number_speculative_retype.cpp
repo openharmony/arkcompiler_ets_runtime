@@ -150,6 +150,7 @@ GateRef NumberSpeculativeRetype::VisitGate(GateRef gate)
         case OpCode::MATH_SINH:
         case OpCode::MATH_TAN:
         case OpCode::MATH_TANH:
+        case OpCode::MATH_POW:
             return VisitMathBuiltin(gate);
         case OpCode::MATH_ABS:
             return VisitMathAbs(gate);
