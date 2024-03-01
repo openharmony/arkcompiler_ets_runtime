@@ -3322,6 +3322,14 @@ DEF_RUNTIME_STUBS(NumberDictionaryGetAllEnumKeys)
     return JSTaggedValue::Undefined().GetRawData();
 }
 
+DEF_RUNTIME_STUBS(NumberToString)
+{
+    RUNTIME_STUBS_HEADER(NumberToString);
+    JSTaggedValue argKeys = GetArg(argv, argc, 0);
+    return JSHandle<JSTaggedValue>::Cast(base::NumberHelper::NumberToString(thread,
+        argKeys)).GetTaggedValue().GetRawData();
+}
+
 DEF_RUNTIME_STUBS(IntToString)
 {
     RUNTIME_STUBS_HEADER(IntToString);

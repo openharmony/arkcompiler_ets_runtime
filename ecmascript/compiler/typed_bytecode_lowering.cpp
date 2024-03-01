@@ -337,21 +337,34 @@ template<TypedBinOp Op>
 void TypedBytecodeLowering::SpeculateStrings(GateRef gate)
 {
     if (Op == TypedBinOp::TYPED_EQ || Op == TypedBinOp::TYPED_ADD) {
-        AddProfiling(gate);
         GateRef left = acc_.GetValueIn(gate, 0);
         GateRef right = acc_.GetValueIn(gate, 1);
+        GateType leftType = acc_.GetGateType(left);
+        GateType rightType = acc_.GetGateType(right);
+        // Only support type is "number" or "string"
+        if ((!leftType.IsNumberType() && !leftType.IsStringType()) ||
+            (!rightType.IsNumberType() && !rightType.IsStringType())) {
+            return ;
+        }
+        if (leftType.IsNumberType()) {
+            left = builder_.NumberToString(left);
+            leftType = acc_.GetGateType(left);
+            acc_.ReplaceValueIn(gate, left, 0);
+        } else if (rightType.IsNumberType()) {
+            right = builder_.NumberToString(right);
+            rightType = acc_.GetGateType(right);
+            acc_.ReplaceValueIn(gate, right, 1);
+        }
+        AddProfiling(gate);
         if (!TypeInfoAccessor::IsTrustedStringType(thread_, circuit_, chunk_, acc_, left)) {
             builder_.EcmaStringCheck(left);
         }
         if (!TypeInfoAccessor::IsTrustedStringType(thread_, circuit_, chunk_, acc_, right)) {
             builder_.EcmaStringCheck(right);
         }
-        GateType leftType = acc_.GetGateType(left);
-        GateType rightType = acc_.GetGateType(right);
         GateType gateType = acc_.GetGateType(gate);
         PGOTypeRef pgoType = acc_.TryGetPGOType(gate);
         pgoTypeLog_.CollectGateTypeLogInfo(gate, true);
-
         GateRef result = builder_.TypedBinaryOp<Op>(left, right, leftType, rightType, gateType, pgoType);
         acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
     }

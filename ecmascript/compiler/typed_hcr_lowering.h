@@ -160,6 +160,7 @@ private:
     void LowerBuiltinPrototypeHClassCheck(GateRef gate);
     void LowerLoadBuiltinObject(GateRef gate);
     void LowerTypedCreateObjWithBuffer(GateRef gate, GateRef glue);
+    void LowerNumberToString(GateRef gate, GateRef glue);
 
     enum class ArrayState : uint8_t {
         PACKED = 0,

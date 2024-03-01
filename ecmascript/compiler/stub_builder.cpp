@@ -5540,33 +5540,25 @@ GateRef StubBuilder::FastDiv(GateRef left, GateRef right, ProfileOperation callb
     return ret;
 }
 
-template<OpCode Op>
-GateRef StubBuilder::FastBinaryOp(GateRef glue, GateRef left, GateRef right,
-                                  const BinaryOperation& intOp,
-                                  const BinaryOperation& floatOp,
-                                  ProfileOperation callback)
+GateRef StubBuilder::NumberOperation(Environment *env, GateRef left, GateRef right,
+                                     const BinaryOperation& intOp,
+                                     const BinaryOperation& floatOp,
+                                     ProfileOperation callback)
 {
-    auto env = GetEnvironment();
     Label entry(env);
     env->SubCfgEntry(&entry);
     DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
     DEFVARIABLE(doubleLeft, VariableType::FLOAT64(), Double(0));
     DEFVARIABLE(doubleRight, VariableType::FLOAT64(), Double(0));
-
     Label exit(env);
     Label doFloatOp(env);
     Label doIntOp(env);
     Label leftIsNumber(env);
-    Label rightIsNumber(env);
     Label leftIsIntRightIsDouble(env);
-    Label rightIsInt(env);
     Label rightIsDouble(env);
-    Label checkString(env);
-    if (Op == OpCode::ADD) {
-        Branch(TaggedIsNumber(left), &leftIsNumber, &checkString);
-    } else {
-        Branch(TaggedIsNumber(left), &leftIsNumber, &exit);
-    }
+    Label rightIsInt(env);
+    Label rightIsNumber(env);
+    Branch(TaggedIsNumber(left), &leftIsNumber, &exit);
     Bind(&leftIsNumber);
     {
         Branch(TaggedIsNumber(right), &rightIsNumber, &exit);
@@ -5606,25 +5598,6 @@ GateRef StubBuilder::FastBinaryOp(GateRef glue, GateRef left, GateRef right,
             }
         }
     }
-    if (Op == OpCode::ADD) {
-        Bind(&checkString);
-        {
-            Label stringAdd(env);
-            Label hasPendingException(env);
-            GateRef bothString = BoolAnd(TaggedIsString(left), TaggedIsString(right));
-            Branch(bothString, &stringAdd, &exit);
-            Bind(&stringAdd);
-            {
-                callback.ProfileOpType(Int32(PGOSampleType::StringType()));
-                BuiltinsStringStubBuilder builtinsStringStubBuilder(this);
-                result = builtinsStringStubBuilder.StringConcat(glue, left, right);
-                Branch(HasPendingException(glue), &hasPendingException, &exit);
-                Bind(&hasPendingException);
-                result = Exception();
-                Jump(&exit);
-            }
-        }
-    }
     Bind(&doIntOp);
     {
         result = intOp(env, left, right);
@@ -5636,6 +5609,117 @@ GateRef StubBuilder::FastBinaryOp(GateRef glue, GateRef left, GateRef right,
         Jump(&exit);
     }
     Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef StubBuilder::TryStringAdd(Environment *env, GateRef glue, GateRef left, GateRef right,
+                                  const BinaryOperation& intOp,
+                                  const BinaryOperation& floatOp,
+                                  ProfileOperation callback)
+{
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
+    Label exit(env);
+    Label leftIsNotSpecial(env);
+    Label leftIsNotString(env);
+    Label leftIsString(env);
+    Label rightIsNotSpecial(env);
+    Label rightIsNotString(env);
+    Label rightIsString(env);
+    Label stringLeftAddNumberRight(env);
+    Label numberLeftAddStringRight(env);
+    Label stringLeftAddStringRight(env);
+    Label notStringAdd(env);
+    Branch(TaggedIsString(left), &leftIsString, &leftIsNotString);
+    Bind(&leftIsString);
+    {
+        Branch(TaggedIsString(right), &stringLeftAddStringRight, &rightIsNotString);
+        Bind(&rightIsNotString);
+        {
+            Branch(TaggedIsSpecial(right), &notStringAdd, &rightIsNotSpecial);
+            Bind(&rightIsNotSpecial);
+            {
+                Branch(TaggedIsNumber(right), &stringLeftAddNumberRight, &notStringAdd);
+            }
+        }
+    }
+    Bind(&leftIsNotString);
+    {
+        Branch(TaggedIsString(right), &rightIsString, &notStringAdd);
+        Bind(&rightIsString);
+        {
+            Branch(TaggedIsSpecial(left), &notStringAdd, &leftIsNotSpecial);
+            Bind(&leftIsNotSpecial);
+            {
+                Branch(TaggedIsNumber(left), &numberLeftAddStringRight, &notStringAdd);
+            }
+        }
+    }
+    Bind(&stringLeftAddNumberRight);
+    {
+        Label hasPendingException(env);
+        callback.ProfileOpType(Int32(PGOSampleType::StringType()));
+        BuiltinsStringStubBuilder builtinsStringStubBuilder(this);
+        result = builtinsStringStubBuilder.StringConcat(glue, left, NumberToString(glue, right));
+        Branch(HasPendingException(glue), &hasPendingException, &exit);
+        Bind(&hasPendingException);
+        result = Exception();
+        Jump(&exit);
+    }
+    Bind(&numberLeftAddStringRight);
+    {
+        Label hasPendingException(env);
+        callback.ProfileOpType(Int32(PGOSampleType::StringType()));
+        BuiltinsStringStubBuilder builtinsStringStubBuilder(this);
+        result = builtinsStringStubBuilder.StringConcat(glue, NumberToString(glue, left), right);
+        Branch(HasPendingException(glue), &hasPendingException, &exit);
+        Bind(&hasPendingException);
+        result = Exception();
+        Jump(&exit);
+    }
+    Bind(&stringLeftAddStringRight);
+    {
+        Label hasPendingException(env);
+        callback.ProfileOpType(Int32(PGOSampleType::StringType()));
+        BuiltinsStringStubBuilder builtinsStringStubBuilder(this);
+        result = builtinsStringStubBuilder.StringConcat(glue, left, right);
+        Branch(HasPendingException(glue), &hasPendingException, &exit);
+        Bind(&hasPendingException);
+        result = Exception();
+        Jump(&exit);
+    }
+    Bind(&notStringAdd);
+    {
+        result = NumberOperation(env, left, right, intOp, floatOp, callback);
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+template<OpCode Op>
+GateRef StubBuilder::FastBinaryOp(GateRef glue, GateRef left, GateRef right,
+                                  const BinaryOperation& intOp,
+                                  const BinaryOperation& floatOp,
+                                  ProfileOperation callback)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
+    DEFVARIABLE(doubleLeft, VariableType::FLOAT64(), Double(0));
+    DEFVARIABLE(doubleRight, VariableType::FLOAT64(), Double(0));
+    
+    if (Op == OpCode::ADD) { // Try string Add
+        result = TryStringAdd(env, glue, left, right, intOp, floatOp, callback);
+    } else {
+        result = NumberOperation(env, left, right, intOp, floatOp, callback);
+    }
     auto ret = *result;
     env->SubCfgExit();
     return ret;
@@ -8166,6 +8250,13 @@ GateRef StubBuilder::IntToEcmaString(GateRef glue, GateRef number)
     auto ret = *result;
     env->SubCfgExit();
     return ret;
+}
+
+GateRef StubBuilder::NumberToString(GateRef glue, GateRef number)
+{
+    DEFVARIABLE(res, VariableType::JS_ANY(), Hole());
+    res = CallRuntime(glue, RTSTUB_ID(NumberToString), { number });
+    return *res;
 }
 
 GateRef StubBuilder::GetTaggedValueWithElementsKind(GateRef receiver, GateRef index)

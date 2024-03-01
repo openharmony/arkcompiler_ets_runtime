@@ -816,6 +816,7 @@ public:
     GateRef CalArrayRelativePos(GateRef index, GateRef arrayLen);
     GateRef AppendSkipHole(GateRef glue, GateRef first, GateRef second, GateRef copyLength);
     GateRef IntToEcmaString(GateRef glue, GateRef number);
+    GateRef NumberToString(GateRef glue, GateRef number);
 
 private:
     using BinaryOperation = std::function<GateRef(Environment*, GateRef, GateRef)>;
@@ -826,6 +827,12 @@ private:
     template<OpCode Op>
     GateRef FastBinaryOp(GateRef glue, GateRef left, GateRef right,
                          const BinaryOperation& intOp, const BinaryOperation& floatOp, ProfileOperation callback);
+    GateRef TryStringAdd(Environment *env, GateRef glue, GateRef left, GateRef right,
+                         const BinaryOperation& intOp, const BinaryOperation& floatOp, ProfileOperation callback);
+    GateRef NumberOperation(Environment *env, GateRef left, GateRef right,
+                            const BinaryOperation& intOp,
+                            const BinaryOperation& floatOp,
+                            ProfileOperation callback);
     void InitializeArguments();
     void CheckDetectorName(GateRef glue, GateRef key, Label *fallthrough, Label *slow);
     bool IsCallModeSupportPGO(JSCallMode mode);

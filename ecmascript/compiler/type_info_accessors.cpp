@@ -79,6 +79,9 @@ bool TypeInfoAccessor::IsTrustedStringType(
     if (op == OpCode::LOAD_ELEMENT) {
         return acc.GetTypedLoadOp(gate) == TypedLoadOp::STRING_LOAD_ELEMENT;
     }
+    if (op == OpCode::NUMBER_TO_STRING) {
+        return true;
+    }
     if (op == OpCode::JS_BYTECODE) {
         EcmaOpcode ecmaOpcode = acc.GetByteCodeOpcode(gate);
         switch (ecmaOpcode) {
@@ -128,15 +131,8 @@ bool BinOpTypeInfoAccessor::HasNumberType() const
 
 bool BinOpTypeInfoAccessor::HasStringType() const
 {
-    GateType leftType = acc_.GetGateType(left_);
-    GateType rightType = acc_.GetGateType(right_);
     const PGOSampleType *sampleType = acc_.TryGetPGOType(gate_).GetPGOSampleType();
-    if (sampleType->IsString()) {
-        return true;
-    } else if (sampleType->IsNone() && leftType.IsStringType() && rightType.IsStringType()) {
-        return true;
-    }
-    return false;
+    return sampleType->IsString();
 }
 
 UnOpTypeInfoAccessor::UnOpTypeInfoAccessor(const JSThread *thread, Circuit *circuit, GateRef gate)

@@ -153,9 +153,10 @@ void ArgumentAccessor::CollectArgs()
 GateRef ArgumentAccessor::GetFrameArgsIn(GateRef gate, FrameArgIdx idx)
 {
     GateAccessor gateAcc(circuit_);
-    ASSERT(gateAcc.GetOpCode(gate) == OpCode::JS_BYTECODE || gateAcc.GetOpCode(gate) == OpCode::FRAME_STATE);
+    OpCode opCode = gateAcc.GetOpCode(gate);
+    ASSERT(opCode == OpCode::JS_BYTECODE || opCode == OpCode::FRAME_STATE);
     GateRef frameArgs = Circuit::NullGate();
-    if (gateAcc.GetOpCode(gate) == OpCode::JS_BYTECODE) {
+    if (opCode == OpCode::JS_BYTECODE) {
         GateRef frameState = gateAcc.GetFrameState(gate);
         OpCode op = gateAcc.GetOpCode(frameState);
         if (op == OpCode::FRAME_STATE) {
