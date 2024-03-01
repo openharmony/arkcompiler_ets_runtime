@@ -633,7 +633,7 @@ JSTaggedValue BuiltinsString::Match(EcmaRuntimeCallInfo *argv)
         JSHandle<JSRegExp> re(regexp);
         JSHandle<JSTaggedValue> pattern(thread, re->GetOriginalSource());
         JSHandle<JSTaggedValue> flags(thread, re->GetOriginalFlags());
-        JSTaggedValue cacheResult = cacheTable->FindCachedResult(thread, pattern, flags, thisTag,
+        JSTaggedValue cacheResult = cacheTable->FindCachedResult(thread, thisTag,
                                                                  RegExpExecResultCache::MATCH_TYPE, regexp,
                                                                  JSTaggedValue(0));
         if (!cacheResult.IsUndefined()) {
@@ -1028,14 +1028,11 @@ JSTaggedValue BuiltinsString::Replace(EcmaRuntimeCallInfo *argv)
     ObjectFactory *factory = ecmaVm->GetFactory();
 
     if (searchTag->IsJSRegExp() && replaceTag->IsString()) {
-        if (BuiltinsRegExp::IsValidRegularExpression(thread, searchTag) == JSTaggedValue::False()) {
-            THROW_SYNTAX_ERROR_AND_RETURN(thread, "Regular expression too large", JSTaggedValue::Exception());
-        }
         JSHandle<RegExpExecResultCache> cacheTable(thread->GetCurrentEcmaContext()->GetRegExpCache());
         JSHandle<JSRegExp> re(searchTag);
         JSHandle<JSTaggedValue> pattern(thread, re->GetOriginalSource());
         JSHandle<JSTaggedValue> flags(thread, re->GetOriginalFlags());
-        JSTaggedValue cacheResult = cacheTable->FindCachedResult(thread, pattern, flags, thisTag,
+        JSTaggedValue cacheResult = cacheTable->FindCachedResult(thread, thisTag,
                                                                  RegExpExecResultCache::REPLACE_TYPE, searchTag,
                                                                  replaceTag.GetTaggedValue());
         if (!cacheResult.IsUndefined()) {
@@ -1481,6 +1478,11 @@ JSTaggedValue BuiltinsString::Search(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> thisTag(JSTaggedValue::RequireObjectCoercible(thread, GetThis(argv)));
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSHandle<JSTaggedValue> regexp = BuiltinsString::GetCallArg(argv, 0);
+    if (thisTag->IsString() && regexp->IsECMAObject()) {
+        if (BuiltinsRegExp::IsFastRegExp(thread, regexp)) {
+            return BuiltinsRegExp::RegExpSearchFast(thread, regexp, thisTag);
+        }
+    }
     JSHandle<JSTaggedValue> searchTag = thread->GetEcmaVM()->GetGlobalEnv()->GetSearchSymbol();
     JSHandle<JSTaggedValue> undefined = globalConst->GetHandledUndefined();
     if (!regexp->IsUndefined() && !regexp->IsNull()) {
@@ -1563,6 +1565,13 @@ JSTaggedValue BuiltinsString::Split(EcmaRuntimeCallInfo *argv)
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSHandle<JSTaggedValue> seperatorTag = BuiltinsString::GetCallArg(argv, 0);
     JSHandle<JSTaggedValue> limitTag = BuiltinsString::GetCallArg(argv, 1);
+
+    if (thisTag->IsString() && seperatorTag->IsECMAObject()) {
+        // this condition need change, all regexp should use RegExpSplit
+        if (BuiltinsRegExp::IsFastRegExp(thread, seperatorTag)) {
+            return BuiltinsRegExp::RegExpSplit(thread, seperatorTag, thisTag, limitTag, true);
+        }
+    }
     if (thisTag->IsString() && seperatorTag->IsString()) {
         JSHandle<EcmaString> thisString(thisTag);
         JSHandle<EcmaString> seperatorString(seperatorTag);

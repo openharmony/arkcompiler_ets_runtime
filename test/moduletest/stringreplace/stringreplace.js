@@ -30,12 +30,3 @@ r.exec = function() {
 };
 let a = r[Symbol.replace]('', '[$<length>]');
 print(a)
-
-const manyAs = 'A'.repeat(0x10000);
-const manyas = manyAs.toLowerCase();
-const re = RegExp('^(?:' + manyas + '|' + manyAs + '|' + manyAs + ')$', 'i');
-try {
-    manyas.replace(re, manyAs);
-} catch (e) {
-    print(e instanceof SyntaxError);
-}

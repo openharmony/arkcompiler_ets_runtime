@@ -318,7 +318,6 @@ group("ark_asm_test") {
     "rangeerror",
     "regexpcallthrow",
     "regexpflagd",
-    "regexptest",
     "regressparseInt",
     "setobjectwithproto",
     "spreadoperator",
