@@ -171,10 +171,9 @@ void DFXJSNApi::DumpHeapSnapshotAllVMs([[maybe_unused]] const EcmaVM *vm, [[mayb
 void DFXJSNApi::DestroyHeapProfiler([[maybe_unused]] const EcmaVM *vm)
 {
 #if defined(ECMASCRIPT_SUPPORT_SNAPSHOT)
-    LOG_ECMA(ERROR) << "DestroyHeapProfiler start";
     ecmascript::HeapProfilerInterface::Destroy(const_cast<EcmaVM *>(vm));
 #else
-    LOG_ECMA(ERROR) << "Not support arkcompiler heap profiler";
+    LOG_ECMA(ERROR) << "Not support arkcompiler heap snapshot";
 #endif
 }
 
