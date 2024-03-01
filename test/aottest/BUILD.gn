@@ -64,11 +64,6 @@ group("ark_aot_ts_test") {
     "async_env",
     "await",
     "await_loop",
-    "bc_builder",
-    "builtinmath",
-    "call_same_bytecode_func",
-    "callithisrange",
-    "calls",
     "classstatic",
     "class_method_signature",
     "closeiterator",
@@ -334,6 +329,11 @@ group("ark_aot_ts_assert_test") {
     "ashr",
     "bind",
     "binaryop_special_value",
+    "bc_builder",
+    "builtinmath",
+    "call_same_bytecode_func",
+    "callithisrange",
+    "calls",
   ]
   foreach(test, assert_test_list) {
     deps += [ "${test}:${test}AotAssertAction" ]
