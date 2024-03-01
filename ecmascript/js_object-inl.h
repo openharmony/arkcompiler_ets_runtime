@@ -65,9 +65,6 @@ inline JSHClass *JSObject::GetJSHClass() const
 inline uint32_t JSObject::GetNonInlinedFastPropsCapacity() const
 {
     uint32_t inlineProps = GetJSHClass()->GetInlinedProperties();
-    if (inlineProps < JSHClass::DEFAULT_CAPACITY_OF_IN_OBJECTS) {
-        return PropertyAttributes::MAX_FAST_PROPS_CAPACITY - JSHClass::DEFAULT_CAPACITY_OF_IN_OBJECTS;
-    }
     return PropertyAttributes::MAX_FAST_PROPS_CAPACITY - inlineProps;
 }
 

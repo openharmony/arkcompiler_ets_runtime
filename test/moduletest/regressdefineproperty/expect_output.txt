@@ -18,3 +18,4 @@ true
 0
 true
 {"value":10,"writable":false,"enumerable":false,"configurable":true}
+{"k":1}
