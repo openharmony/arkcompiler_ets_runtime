@@ -1515,6 +1515,8 @@ void Heap::InvokeWeakNodeNativeFinalizeCallback()
     }
     runningNativeFinalizeCallbacks_ = true;
     auto weakNodeNativeFinalizeCallBacks = thread_->GetWeakNodeNativeFinalizeCallbacks();
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "InvokeNativeFinalizeCallbacks num:"
+        + std::to_string(weakNodeNativeFinalizeCallBacks->size()));
     while (!weakNodeNativeFinalizeCallBacks->empty()) {
         auto callbackPair = weakNodeNativeFinalizeCallBacks->back();
         weakNodeNativeFinalizeCallBacks->pop_back();
