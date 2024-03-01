@@ -57,6 +57,9 @@ void BuiltinLowering::LowerTypedCallBuitin(GateRef gate)
         case BUILTINS_STUB_ID(ARRAY_ITERATOR_PROTO_NEXT):
             LowerIteratorNext(gate, id);
             break;
+        case BUILTINS_STUB_ID(ITERATOR_PROTO_RETURN):
+            LowerIteratorReturn(gate, id);
+            break;
         case BUILTINS_STUB_ID(NumberConstructor):
             LowerNumberConstructor(gate);
             break;
@@ -381,6 +384,7 @@ GateRef BuiltinLowering::CheckPara(GateRef gate, GateRef funcCheck)
         case BuiltinsStubCSigns::ID::SET_ITERATOR_PROTO_NEXT:
         case BuiltinsStubCSigns::ID::STRING_ITERATOR_PROTO_NEXT:
         case BuiltinsStubCSigns::ID::ARRAY_ITERATOR_PROTO_NEXT:
+        case BuiltinsStubCSigns::ID::ITERATOR_PROTO_RETURN:
         case BuiltinsStubCSigns::ID::NumberConstructor:
         case BuiltinsStubCSigns::ID::StringFromCharCode:
             // Don't need check para
@@ -454,6 +458,22 @@ void BuiltinLowering::LowerIteratorNext(GateRef gate, BuiltinsStubCSigns::ID id)
         }
         case BUILTINS_STUB_ID(ARRAY_ITERATOR_PROTO_NEXT): {
             result = LowerCallRuntime(glue, gate, RTSTUB_ID(ArrayIteratorNext), { thisObj }, true);
+            break;
+        }
+        default:
+            UNREACHABLE();
+    }
+    ReplaceHirWithValue(gate, result);
+}
+
+void BuiltinLowering::LowerIteratorReturn(GateRef gate, BuiltinsStubCSigns::ID id)
+{
+    GateRef glue = acc_.GetGlueFromArgList();
+    GateRef thisObj = acc_.GetValueIn(gate, 0);
+    GateRef result = Circuit::NullGate();
+    switch (id) {
+        case BUILTINS_STUB_ID(ITERATOR_PROTO_RETURN): {
+            result = LowerCallRuntime(glue, gate, RTSTUB_ID(IteratorReturn), { thisObj }, true);
             break;
         }
         default:

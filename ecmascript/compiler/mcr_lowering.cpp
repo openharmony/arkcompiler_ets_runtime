@@ -40,6 +40,9 @@ GateRef MCRLowering::VisitGate(GateRef gate)
         case OpCode::HEAP_OBJECT_CHECK:
             LowerHeapObjectCheck(gate);
             break;
+        case OpCode::ECMA_OBJECT_CHECK:
+            LowerEcmaObjectCheck(gate);
+            break;
         case OpCode::ELEMENTSKIND_CHECK:
             LowerElementskindCheck(gate);
             break;
@@ -195,6 +198,17 @@ void MCRLowering::LowerHeapObjectCheck(GateRef gate)
     GateRef heapObjectCheck = builder_.TaggedIsHeapObject(receiver);
     builder_.DeoptCheck(heapObjectCheck, frameState, DeoptType::NOTHEAPOBJECT1);
 
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
+}
+
+void MCRLowering::LowerEcmaObjectCheck(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    GateRef frameState = acc_.GetFrameState(gate);
+    GateRef value = acc_.GetValueIn(gate, 0);
+    GateRef condition = builder_.BoolAnd(builder_.TaggedIsHeapObject(value),
+                                         builder_.TaggedObjectIsEcmaObject(value));
+    builder_.DeoptCheck(condition, frameState, DeoptType::NOTECMAOBJECT1);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 

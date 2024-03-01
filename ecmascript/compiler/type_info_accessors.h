@@ -72,9 +72,9 @@ public:
 
     bool HasStringType() const;
 
-    bool LeftOrRightIsUndefinedOrNull() const
+    bool LeftOrRightIsUndefinedOrNullOrHole() const
     {
-        return acc_.IsUndefinedOrNull(left_) || acc_.IsUndefinedOrNull(right_);
+        return acc_.IsUndefinedOrNullOrHole(left_) || acc_.IsUndefinedOrNullOrHole(right_);
     }
 
 private:

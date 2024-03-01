@@ -1841,7 +1841,8 @@ void Builtins::InitializeIterator(const JSHandle<GlobalEnv> &env, const JSHandle
     // Iterator.prototype.next()
     SetFunction(env, iteratorPrototype, "next", BuiltinsIterator::Next, FunctionLength::ONE);
     // Iterator.prototype.return()
-    SetFunction(env, iteratorPrototype, "return", BuiltinsIterator::Return, FunctionLength::ONE);
+    SetFunction(env, iteratorPrototype, "return", BuiltinsIterator::Return, FunctionLength::ONE,
+        BUILTINS_STUB_ID(ITERATOR_PROTO_RETURN));
     // Iterator.prototype.throw()
     SetFunction(env, iteratorPrototype, "throw", BuiltinsIterator::Throw, FunctionLength::ONE);
     // %IteratorPrototype% [ @@iterator ]

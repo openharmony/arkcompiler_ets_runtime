@@ -77,6 +77,9 @@ void NTypeBytecodeLowering::Lower(GateRef gate)
         case EcmaOpcode::THROW_IFSUPERNOTCORRECTCALL_PREF_IMM16:
             LowerThrowIfSuperNotCorrectCall(gate);
             break;
+        case EcmaOpcode::THROW_IFNOTOBJECT_PREF_V8:
+            LowerThrowIfNotObject(gate);
+            break;
         case EcmaOpcode::LDLEXVAR_IMM4_IMM4:
         case EcmaOpcode::LDLEXVAR_IMM8_IMM8:
         case EcmaOpcode::WIDE_LDLEXVAR_PREF_IMM16_IMM16:
@@ -126,6 +129,14 @@ void NTypeBytecodeLowering::LowerThrowIfSuperNotCorrectCall(GateRef gate)
         UNREACHABLE();
     }
     acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), builder_.TaggedTrue());
+}
+
+void NTypeBytecodeLowering::LowerThrowIfNotObject(GateRef gate)
+{
+    AddProfiling(gate);
+    GateRef value = acc_.GetValueIn(gate, 0); // 0: the first parameter
+    builder_.EcmaObjectCheck(value);
+    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), Circuit::NullGate());
 }
 
 void NTypeBytecodeLowering::LowerLdLexVar(GateRef gate)
