@@ -62,7 +62,7 @@ public:
         JSHClass *receverHClass, JSHClass *holderHClass, const JSHandle<JSTaggedValue> &func, int32_t pcOffset);
     void ProfileClassRootHClass(JSTaggedType ctor, JSTaggedType rootHcValue,
                                 ProfileType::Kind kind = ProfileType::Kind::ClassId);
-    void UpdateRootProfileType(JSHClass *oldHClass, JSHClass *newHClass);
+    void UpdateRootProfileTypeSafe(JSHClass* oldHClass, JSHClass* newHClass);
 
     void SetSaveTimestamp(std::chrono::system_clock::time_point timestamp)
     {
@@ -154,8 +154,9 @@ private:
         JSHClass *transitionHClass, OnHeapMode onHeap = OnHeapMode::NONE);
 
     ProfileType GetProfileType(JSTaggedType root, JSTaggedType child);
-    ProfileType GetOrInsertProfileType(JSTaggedType root, JSTaggedType child);
-    void InsertProfileType(JSTaggedType root, JSTaggedType child, ProfileType traceType);
+    ProfileType GetProfileTypeSafe(JSTaggedType root, JSTaggedType child);
+    ProfileType GetOrInsertProfileTypeSafe(JSTaggedType root, JSTaggedType child);
+    void InsertProfileTypeSafe(JSTaggedType root, JSTaggedType child, ProfileType traceType);
 
     class WorkNode;
     void UpdateExtraProfileTypeInfo(ApEntityId abcId, const CString& recordName, EntityId methodId, WorkNode* current);
@@ -443,6 +444,7 @@ private:
     ConditionVariable condition_;
     WorkList dumpWorkList_;
     WorkList preDumpWorkList_;
+    Mutex tracedProfilesMutex_;
     CMap<JSTaggedType, PGOTypeGenerator *> tracedProfiles_;
     std::unique_ptr<PGORecordDetailInfos> recordInfos_;
     friend class PGOProfilerManager;
