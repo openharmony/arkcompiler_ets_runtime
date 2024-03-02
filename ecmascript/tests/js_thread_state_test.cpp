@@ -61,14 +61,16 @@ public:
     {
         panda::RuntimeOption postOption;
         JSNApi::PostFork(newVm, postOption);
-        ThreadManagedScope managedScope(JSThread::GetCurrent());
-        activeThreadCount->fetch_add(1);
-        if (nativeState) {
-            ThreadNativeScope nativeScope(JSThread::GetCurrent());
-            while (!isTestEnded->load()) {}
-        } else {
-            while (!isTestEnded->load()) {
-                JSThread::GetCurrent()->CheckSafepoint();
+        {
+            ThreadManagedScope managedScope(JSThread::GetCurrent());
+            activeThreadCount->fetch_add(1);
+            if (nativeState) {
+                ThreadNativeScope nativeScope(JSThread::GetCurrent());
+                while (!isTestEnded->load()) {}
+            } else {
+                while (!isTestEnded->load()) {
+                    JSThread::GetCurrent()->CheckSafepoint();
+                }
             }
         }
         JSNApi::DestroyJSVM(newVm);

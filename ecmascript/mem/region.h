@@ -325,6 +325,11 @@ public:
         return packedData_.flags_.spaceFlag_ == RegionSpaceFlag::IN_READ_ONLY_SPACE;
     }
 
+    bool InSharedHugeObjectSpace() const
+    {
+        return packedData_.flags_.spaceFlag_ == RegionSpaceFlag::IN_SHARED_HUGE_OBJECT_SPACE;
+    }
+
     bool InSharedReadOnlySpace() const
     {
         return packedData_.flags_.spaceFlag_ == RegionSpaceFlag::IN_SHARED_READ_ONLY_SPACE;

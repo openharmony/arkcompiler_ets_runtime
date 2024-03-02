@@ -165,8 +165,8 @@ void SharedHeap::PrepareRecordRegionsForReclaim()
 
 void SharedHeap::Reclaim()
 {
-    sHugeObjectSpace_->ReclaimHugeRegion();
     PrepareRecordRegionsForReclaim();
+    sHugeObjectSpace_->ReclaimHugeRegion();
     if (parallelGC_) {
         clearTaskFinished_ = false;
         Taskpool::GetCurrentTaskpool()->PostTask(
@@ -181,7 +181,6 @@ void SharedHeap::ReclaimRegions()
     sSweeper_->WaitAllTaskFinished();
     EnumerateOldSpaceRegionsWithRecord([] (Region *region) {
         region->ClearMarkGCBitset();
-        region->ClearCrossRegionRSet();
         region->ResetAliveObject();
     });
     if (!clearTaskFinished_) {
