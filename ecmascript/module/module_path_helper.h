@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023 Huawei Device Co., Ltd.
+ * Copyright (c) 2024 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -64,10 +64,12 @@ public:
     static constexpr char EXT_NAME_TS[] = ".ts";
     static constexpr char EXT_NAME_JS[] = ".js";
     static constexpr char EXT_NAME_JSON[] = ".json";
+    static constexpr char EXT_NAME_Z_SO[] = ".z.so";
     static constexpr char PREFIX_BUNDLE[] = "@bundle:";
     static constexpr char PREFIX_MODULE[] = "@module:";
     static constexpr char PREFIX_PACKAGE[] = "@package:";
     static constexpr char PREFIX_ETS[] = "ets/";
+    static constexpr char PREFIX_LIB[] = "lib";
     static constexpr char REQUIRE_NAITVE_MODULE_PREFIX[] = "@native:";
     static constexpr char REQUIRE_NAPI_OHOS_PREFIX[] = "@ohos:";
     static constexpr char REQUIRE_NAPI_APP_PREFIX[] = "@app:";
@@ -82,6 +84,7 @@ public:
     static constexpr char PREVIEW_OF_ACROSS_HAP_FLAG[] = "[preview]";
     static constexpr char PREVIER_TEST_DIR[] = ".test";
     static constexpr char PHYCICAL_FILE_PATH[] = "/src/main";
+    static constexpr char VMA_NAME_ARKTS_CODE[] = "ArkTS Code";
 
     static constexpr size_t MAX_PACKAGE_LEVEL = 1;
     static constexpr size_t SEGMENTS_LIMIT_TWO = 2;
@@ -135,6 +138,7 @@ public:
      * Before: data/storage/el1/bundle/moduleName/ets/modules.abc
      * After:  bundle/moduleName
      */
+    static CString ParseFileNameToVMAName(const CString &filename);
     inline static std::string ParseHapPath(const CString &baseFileName)
     {
         CString bundleSubInstallName(BUNDLE_SUB_INSTALL_PATH);
