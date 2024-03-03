@@ -225,7 +225,7 @@ void VerifyObjectVisitor::VerifyMarkFull(TaggedObject *object, ObjectSlot slot, 
         }
     }
     if (objectRegion->Test(object)) {
-        if (!valueRegion->Test(value)) {
+        if (!valueRegion->InSharedHeap() && !valueRegion->Test(value)) {
             LogErrorForObjSlot(heap_, "Verify MarkFull: Marked object, slot miss gc_mark bit.", object, slot, value);
         }
     }

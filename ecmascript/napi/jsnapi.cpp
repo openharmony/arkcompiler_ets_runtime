@@ -468,7 +468,11 @@ JSTaggedValue Callback::RegisterCallback(ecmascript::EcmaRuntimeCallInfo *ecmaRu
         getStackBeforeCallNapiSuccess = thread->GetEcmaVM()->GetProfiler()->GetStackBeforeCallNapi(thread);
     }
 #endif
-    Local<JSValueRef> result = nativeFunc(jsiRuntimeCallInfo);
+    Local<JSValueRef> result;
+    {
+        ecmascript::ThreadNativeScope nativeScope(thread);
+        result = nativeFunc(jsiRuntimeCallInfo);
+    }
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
     if (thread->GetIsProfiling() && function->IsCallNapi() && getStackBeforeCallNapiSuccess) {
         thread->GetEcmaVM()->GetProfiler()->GetStackAfterCallNapi(thread);

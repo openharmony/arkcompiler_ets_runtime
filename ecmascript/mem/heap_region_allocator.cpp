@@ -75,7 +75,8 @@ Region *HeapRegionAllocator::AllocateAlignedRegion(Space *space, size_t capacity
 void HeapRegionAllocator::FreeRegion(Region *region, size_t cachedSize)
 {
     auto size = region->GetCapacity();
-    bool isRegular = !region->InHugeObjectSpace() && !region->InHugeMachineCodeSpace();
+    bool isRegular = !region->InHugeObjectSpace() && !region->InHugeMachineCodeSpace() &&
+        !region->InSharedHugeObjectSpace();
     auto allocateBase = region->GetAllocateBase();
 
     DecreaseAnnoMemoryUsage(size);

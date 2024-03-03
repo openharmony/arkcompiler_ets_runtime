@@ -1436,6 +1436,7 @@ Local<BigIntRef> BigIntRef::New(const EcmaVM *vm, uint64_t input)
     // Omit exception check because ark calls here may not
     // cause side effect even pending exception exists.
     CROSS_THREAD_CHECK(vm);
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     JSHandle<BigInt> big = BigInt::Uint64ToBigInt(thread, input);
     JSHandle<JSTaggedValue> bigint = JSHandle<JSTaggedValue>::Cast(big);
     return JSNApiHelper::ToLocal<BigIntRef>(bigint);
@@ -1446,6 +1447,7 @@ Local<BigIntRef> BigIntRef::New(const EcmaVM *vm, int64_t input)
     // Omit exception check because ark calls here may not
     // cause side effect even pending exception exists.
     CROSS_THREAD_CHECK(vm);
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     JSHandle<BigInt> big = BigInt::Int64ToBigInt(thread, input);
     JSHandle<JSTaggedValue> bigint = JSHandle<JSTaggedValue>::Cast(big);
     return JSNApiHelper::ToLocal<BigIntRef>(bigint);
@@ -1456,6 +1458,7 @@ Local<JSValueRef> BigIntRef::CreateBigWords(const EcmaVM *vm, bool sign, uint32_
     // Omit exception check because ark calls here may not
     // cause side effect even pending exception exists.
     CROSS_THREAD_CHECK(vm);
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     JSHandle<BigInt> big = BigInt::CreateBigWords(thread, sign, size, words);
     JSHandle<JSTaggedValue> bigint = JSHandle<JSTaggedValue>::Cast(big);
     return JSNApiHelper::ToLocal<JSValueRef>(bigint);
@@ -1466,6 +1469,7 @@ void BigIntRef::BigIntToInt64(const EcmaVM *vm, int64_t *value, bool *lossless)
     // Omit exception check because ark calls here may not
     // cause side effect even pending exception exists.
     CROSS_THREAD_CHECK(vm);
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     JSHandle<JSTaggedValue> bigintVal(JSNApiHelper::ToJSHandle(this));
     LOG_IF_SPECIAL(bigintVal, ERROR);
     BigInt::BigIntToInt64(thread, bigintVal, value, lossless);
@@ -1476,6 +1480,7 @@ void BigIntRef::BigIntToUint64(const EcmaVM *vm, uint64_t *value, bool *lossless
     // Omit exception check because ark calls here may not
     // cause side effect even pending exception exists.
     CROSS_THREAD_CHECK(vm);
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     JSHandle<JSTaggedValue> bigintVal(JSNApiHelper::ToJSHandle(this));
     LOG_IF_SPECIAL(bigintVal, ERROR);
     BigInt::BigIntToUint64(thread, bigintVal, value, lossless);
@@ -2166,7 +2171,6 @@ Local<FunctionRef> FunctionRef::New(EcmaVM *vm, InternalFunctionCallback nativeF
 static void InitClassFunction(EcmaVM *vm, JSHandle<JSFunction> &func, bool callNapi)
 {
     CROSS_THREAD_CHECK(vm);
-    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     JSHandle<GlobalEnv> env = vm->GetGlobalEnv();
     auto globalConst = thread->GlobalConstants();
     JSHandle<JSTaggedValue> accessor = globalConst->GetHandledFunctionPrototypeAccessor();
@@ -2701,6 +2705,7 @@ bool JSNApi::InitForConcurrentThread(EcmaVM *vm, ConcurrentCallback cb, void *da
 bool JSNApi::InitForConcurrentFunction(EcmaVM *vm, Local<JSValueRef> function, void *taskInfo)
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, false);
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     [[maybe_unused]] LocalScope scope(vm);
     JSHandle<JSTaggedValue> funcVal = JSNApiHelper::ToJSHandle(function);
     JSHandle<JSFunction> transFunc = JSHandle<JSFunction>::Cast(funcVal);
@@ -2946,6 +2951,7 @@ void JSNApi::DestroyJSVM(EcmaVM *ecmaVm)
     if (UNLIKELY(ecmaVm == nullptr)) {
         return;
     }
+    ecmaVm->GetJSThread()->ManagedCodeBegin();
     auto &config = ecmaVm->GetEcmaParamConfiguration();
     MemMapAllocator::GetInstance()->DecreaseReserved(config.GetMaxHeapSize());
     EcmaVM::Destroy(ecmaVm);
@@ -3384,6 +3390,7 @@ bool JSNApi::ExecuteInContext(EcmaVM *vm, const std::string &fileName, const std
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, false);
     LOG_ECMA(DEBUG) << "start to execute ark file in context: " << fileName;
+    ecmascript::ThreadManagedScope scope(thread);
     EcmaContext::MountContext(thread);
     if (!ecmascript::JSPandaFileExecutor::ExecuteFromAbcFile(thread, fileName.c_str(), entry, needUpdate)) {
         if (thread->HasPendingException()) {
@@ -3401,6 +3408,7 @@ bool JSNApi::Execute(EcmaVM *vm, const std::string &fileName, const std::string 
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, false);
     LOG_ECMA(DEBUG) << "start to execute ark file: " << fileName;
+    ecmascript::ThreadManagedScope scope(thread);
     if (!ecmascript::JSPandaFileExecutor::ExecuteFromAbcFile(thread, fileName.c_str(), entry, needUpdate)) {
         if (thread->HasPendingException()) {
             thread->GetCurrentEcmaContext()->HandleUncaughtException();
@@ -3418,6 +3426,7 @@ bool JSNApi::Execute(EcmaVM *vm, const uint8_t *data, int32_t size, const std::s
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, false);
     LOG_ECMA(DEBUG) << "start to execute ark buffer: " << filename;
+    ecmascript::ThreadManagedScope scope(thread);
     if (!ecmascript::JSPandaFileExecutor::ExecuteFromBuffer(thread, data, size, entry, filename.c_str(), needUpdate)) {
         if (thread->HasPendingException()) {
             thread->GetCurrentEcmaContext()->HandleUncaughtException();
@@ -3435,6 +3444,7 @@ bool JSNApi::ExecuteModuleBuffer(EcmaVM *vm, const uint8_t *data, int32_t size, 
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, false);
     LOG_ECMA(DEBUG) << "start to execute module buffer: " << filename;
+    ecmascript::ThreadManagedScope scope(thread);
     if (!ecmascript::JSPandaFileExecutor::ExecuteModuleBuffer(thread, data, size, filename.c_str(), needUpdate)) {
         if (thread->HasPendingException()) {
             thread->GetCurrentEcmaContext()->HandleUncaughtException();
@@ -3454,6 +3464,7 @@ bool JSNApi::ExecuteSecure(EcmaVM *vm, uint8_t *data, int32_t size, const std::s
         LOG_ECMA(ERROR) << "Secure memory check failed, please execute in srcure memory.";
         return false;
     }
+    ecmascript::ThreadManagedScope scope(thread);
     if (!ecmascript::JSPandaFileExecutor::ExecuteFromBufferSecure(thread, data, size, entry, filename.c_str(),
                                                                   needUpdate)) {
         if (thread->HasPendingException()) {
@@ -3475,7 +3486,7 @@ bool JSNApi::ExecuteModuleBufferSecure(EcmaVM *vm, uint8_t* data, int32_t size, 
         LOG_ECMA(ERROR) << "Secure memory check failed, please execute in srcure memory.";
         return false;
     }
-    ecmascript::ThreadManagedScope scope(vm->GetJSThread());
+    ecmascript::ThreadManagedScope scope(thread);
     if (!ecmascript::JSPandaFileExecutor::ExecuteModuleBufferSecure(thread, data, size, filename.c_str(),
                                                                     needUpdate)) {
         if (thread->HasPendingException()) {
@@ -3570,6 +3581,7 @@ Local<ObjectRef> JSNApi::GetGlobalObject(const EcmaVM *vm)
 void JSNApi::ExecutePendingJob(const EcmaVM *vm)
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK(vm);
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     EcmaVM::ConstCast(vm)->GetJSThread()->GetCurrentEcmaContext()->ExecutePromisePendingJob();
 }
 
