@@ -999,6 +999,9 @@ void PGOProfiler::DumpICByValueWithHandler(ApEntityId abcId, const CString &reco
         ASSERT(secondValue.IsPrototypeHandler());
         PrototypeHandler *prototypeHandler = PrototypeHandler::Cast(secondValue.GetTaggedObject());
         auto cellValue = prototypeHandler->GetProtoCell();
+        if (!cellValue.IsProtoChangeMarker()) {
+            return;
+        }
         ASSERT(cellValue.IsProtoChangeMarker());
         ProtoChangeMarker *cell = ProtoChangeMarker::Cast(cellValue.GetTaggedObject());
         if (cell->GetHasChanged()) {

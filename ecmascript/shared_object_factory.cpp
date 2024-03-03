@@ -13,6 +13,10 @@
  * limitations under the License.
  */
 
+#include "ecmascript/js_handle.h"
+#include "ecmascript/js_object.h"
+#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/log_wrapper.h"
 #include "ecmascript/object_factory.h"
 
 #include "ecmascript/accessor_data.h"
@@ -28,6 +32,7 @@
 #include "ecmascript/module/js_module_source_text.h"
 #include "ecmascript/module/js_shared_module.h"
 
+// class Object;
 namespace panda::ecmascript {
 void ObjectFactory::NewSObjectHook() const
 {

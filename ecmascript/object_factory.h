@@ -67,6 +67,7 @@ class JSRegExpIterator;
 class JSMapIterator;
 class JSSharedMapIterator;
 class JSArrayIterator;
+class JSSharedArrayIterator;
 class JSAPIPlainArrayIterator;
 class JSStringIterator;
 class JSGeneratorObject;
@@ -332,6 +333,7 @@ public:
     JSHandle<job::PendingJob> NewPendingJob(const JSHandle<JSFunction> &func, const JSHandle<TaggedArray> &argv);
 
     JSHandle<JSArray> NewJSArray();
+    JSHandle<JSSharedArray> NewJSSArray();
     JSHandle<JSArray> PUBLIC_API NewJSArray(size_t length, JSHandle<JSHClass> &hclass);
     JSHandle<TaggedArray> PUBLIC_API NewJsonFixedArray(size_t start, size_t length,
                                                        const std::vector<JSHandle<JSTaggedValue>> &vec);
@@ -448,6 +450,7 @@ public:
     JSHandle<JSSharedMapIterator> NewJSMapIterator(const JSHandle<JSSharedMap> &map, IterationKind kind);
 
     JSHandle<JSArrayIterator> NewJSArrayIterator(const JSHandle<JSObject> &array, IterationKind kind);
+    JSHandle<JSSharedArrayIterator> NewJSSharedArrayIterator(const JSHandle<JSObject> &array, IterationKind kind);
 
     JSHandle<CompletionRecord> NewCompletionRecord(CompletionRecordType type, JSHandle<JSTaggedValue> value);
 

@@ -65,6 +65,7 @@ bool ValueSerializer::CheckObjectCanSerialize(TaggedObject *object, bool &findSh
             return true;
         case JSType::JS_SHARED_SET:
         case JSType::JS_SHARED_MAP:
+        case JSType::JS_SHARED_ARRAY:
         case JSType::JS_SHARED_OBJECT:
         case JSType::JS_SHARED_FUNCTION: {
             if (serializeSharedEvent_ > 0) {
@@ -420,7 +421,7 @@ bool ValueSerializer::PrepareClone(JSThread *thread, const JSHandle<JSTaggedValu
 bool ValueSerializer::IsSharedContainer(TaggedObject *object)
 {
     auto hclass = object->GetClass();
-    return hclass->IsJSSharedSet() || hclass->IsJSSharedMap();
+    return hclass->IsJSSharedSet() || hclass->IsJSSharedMap() || hclass->IsJSSharedArray();
 }
 }  // namespace panda::ecmascript
 

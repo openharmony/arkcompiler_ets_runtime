@@ -14,6 +14,7 @@
  */
 
 #include "ecmascript/js_function_kind.h"
+#include "ecmascript/js_tagged_value.h"
 #include "ecmascript/mem/heap.h"
 #include "ecmascript/object_factory-inl.h"
 
@@ -72,7 +73,9 @@
 #include "ecmascript/js_api/js_api_vector_iterator.h"
 #include "ecmascript/js_arguments.h"
 #include "ecmascript/js_array.h"
+#include "ecmascript/js_shared_array.h"
 #include "ecmascript/js_array_iterator.h"
+#include "ecmascript/js_shared_array_iterator.h"
 #include "ecmascript/js_arraybuffer.h"
 #include "ecmascript/js_async_from_sync_iterator.h"
 #include "ecmascript/js_async_function.h"
@@ -696,6 +699,13 @@ JSHandle<JSPrimitiveRef> ObjectFactory::NewJSPrimitiveRef(const JSHandle<JSHClas
     return obj;
 }
 
+JSHandle<JSSharedArray> ObjectFactory::NewJSSArray()
+{
+    JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
+    JSHandle<JSFunction> function(env->GetSharedArrayFunction());
+    return JSHandle<JSSharedArray>(NewJSObjectByConstructor(function));
+}
+
 JSHandle<JSArray> ObjectFactory::NewJSArray()
 {
     JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
@@ -1184,6 +1194,15 @@ void ObjectFactory::InitializeJSObject(const JSHandle<JSObject> &obj, const JSHa
             ASSERT(!obj->GetJSHClass()->IsDictionaryMode());
             auto accessor = thread_->GlobalConstants()->GetArrayLengthAccessor();
             JSArray::Cast(*obj)->SetPropertyInlinedProps(thread_, JSArray::LENGTH_INLINE_PROPERTY_INDEX, accessor);
+            break;
+        }
+        case JSType::JS_SHARED_ARRAY: {
+            JSSharedArray::Cast(*obj)->SetLength(0);
+            JSSharedArray::Cast(*obj)->SetTrackInfo(thread_, JSTaggedValue::Undefined());
+            ASSERT(!obj->GetJSHClass()->IsDictionaryMode());
+            auto accessor = thread_->GlobalConstants()->GetSharedArrayLengthAccessor();
+            JSSharedArray::Cast(*obj)->SetPropertyInlinedProps(thread_, JSArray::LENGTH_INLINE_PROPERTY_INDEX,
+                                                               accessor);
             break;
         }
         case JSType::JS_DATE:
@@ -3279,6 +3298,23 @@ JSHandle<JSArrayIterator> ObjectFactory::NewJSArrayIterator(const JSHandle<JSObj
     JSHandle<JSArrayIterator> iter(NewJSObject(hclassHandle));
     iter->GetJSHClass()->SetExtensible(true);
     iter->SetIteratedArray(thread_, array);
+    iter->SetNextIndex(0);
+    iter->SetIterationKind(kind);
+    return iter;
+}
+
+JSHandle<JSSharedArrayIterator> ObjectFactory::NewJSSharedArrayIterator(const JSHandle<JSObject> &array,
+                                                                        IterationKind kind)
+{
+    JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
+    JSHandle<JSTaggedValue> protoValue = env->GetSharedArrayIteratorPrototype();
+    const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
+    JSHandle<JSHClass> hclassHandle(globalConst->GetHandledJSSharedArrayIteratorClass());
+    hclassHandle->SetPrototype(thread_, protoValue);
+    JSHandle<JSSharedArrayIterator> iter(NewJSObject(hclassHandle));
+    iter->GetJSHClass()->SetExtensible(true);
+    iter->SetIteratedArray(thread_, array);
+    iter->SetExpectedModCount(JSHandle<JSSharedArray>::Cast(array)->GetModCount());
     iter->SetNextIndex(0);
     iter->SetIterationKind(kind);
     return iter;

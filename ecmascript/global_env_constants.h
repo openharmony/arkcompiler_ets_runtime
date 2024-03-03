@@ -114,6 +114,7 @@ class ObjectFactory;
     V(JSTaggedValue, JSMapIteratorClass, JS_MAP_ITERATOR_CLASS_INDEX, ecma_roots_class)                               \
     V(JSTaggedValue, JSSharedMapIteratorClass, JS_SHARED_MAP_ITERATOR_CLASS_INDEX, ecma_roots_class)                  \
     V(JSTaggedValue, JSArrayIteratorClass, JS_ARRAY_ITERATOR_CLASS_INDEX, ecma_roots_class)                           \
+    V(JSTaggedValue, JSSharedArrayIteratorClass, JS_SHARED_ARRAY_ITERATOR_CLASS_INDEX, ecma_roots_class)              \
     V(JSTaggedValue, JSAPIArrayListIteratorClass, JS_API_ARRAYLIST_ITERATOR_CLASS_INDEX, ecma_roots_class)            \
     V(JSTaggedValue, JSAPIDequeIteratorClass, JS_API_DEQUE_ITERATOR_CLASS_INDEX, ecma_roots_class)                    \
     V(JSTaggedValue, JSAPILightWeightMapIteratorClass, JS_API_LIGHTWEIGHTMAP_ITERATOR_CLASS_INDEX, ecma_roots_class)  \
@@ -519,7 +520,8 @@ class ObjectFactory;
     V(JSTaggedValue, FunctionPrototypeAccessor, FUNCTION_PROTOTYPE_ACCESSOR, ecma_roots_accessor) \
     V(JSTaggedValue, FunctionNameAccessor, FUNCTION_NAME_ACCESSOR, ecma_roots_accessor)           \
     V(JSTaggedValue, FunctionLengthAccessor, FUNCTION_LENGTH_ACCESSOR, ecma_roots_accessor)       \
-    V(JSTaggedValue, ArrayLengthAccessor, ARRAY_LENGTH_ACCESSOR, ecma_roots_accessor)
+    V(JSTaggedValue, ArrayLengthAccessor, ARRAY_LENGTH_ACCESSOR, ecma_roots_accessor)             \
+    V(JSTaggedValue, SharedArrayLengthAccessor, SHARED_ARRAY_LENGTH_ACCESSOR, ecma_roots_accessor)
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define SHARED_GLOBAL_ENV_CONSTANT_SPECIAL(V)                                                     \

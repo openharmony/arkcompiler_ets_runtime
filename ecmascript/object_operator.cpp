@@ -24,9 +24,11 @@
 #include "ecmascript/ic/property_box.h"
 #include "ecmascript/js_array.h"
 #include "ecmascript/js_function.h"
+#include "ecmascript/js_handle.h"
 #include "ecmascript/js_hclass-inl.h"
 #include "ecmascript/js_object-inl.h"
 #include "ecmascript/js_primitive_ref.h"
+#include "ecmascript/js_shared_array.h"
 #include "ecmascript/layout_info.h"
 #include "ecmascript/mem/c_string.h"
 #include "ecmascript/object_factory.h"
@@ -896,7 +898,11 @@ void ObjectOperator::WriteElement(const JSHandle<JSObject> &receiver, JSHandle<J
 void ObjectOperator::DeleteElementInHolder() const
 {
     JSHandle<JSObject> obj(holder_);
-
+    if (obj->IsJSSArray()) {
+        auto arrayHandler = JSHandle<JSSharedArray>::Cast(obj);
+        JSSharedArray::DeleteInElementMode(thread_, arrayHandler);
+        return;
+    }
     JSHandle<JSTaggedValue> holeHandle(thread_, JSTaggedValue::Hole());
     if (!ElementAccessor::IsDictionaryMode(obj)) {
         ElementAccessor::Set(thread_, obj, index_, holeHandle, true, ElementsKind::HOLE);

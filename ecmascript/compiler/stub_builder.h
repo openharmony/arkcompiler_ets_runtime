@@ -365,6 +365,7 @@ public:
     GateRef IsConstructor(GateRef object);
     GateRef IsBase(GateRef func);
     GateRef IsJsArray(GateRef obj);
+    GateRef IsJsSArray(GateRef obj);
     GateRef IsByteArray(GateRef obj);
     GateRef IsJsCOWArray(GateRef obj);
     GateRef IsMutantTaggedArray(GateRef elements);

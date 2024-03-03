@@ -63,6 +63,7 @@ namespace panda::ecmascript {
 class ProtoChangeDetails;
 class PropertyLookupResult;
 class SharedHeap;
+class JSSharedArray;
 namespace pgo {
     class HClassLayoutDesc;
     class PGOHClassTreeDesc;
@@ -145,6 +146,7 @@ struct Reference;
         JS_API_LINKED_LIST_ITERATOR, /* ///////////////////////////////////////////////////////////////////-PADDING */ \
         JS_API_LIST_ITERATOR,    /* ///////////////////////////////////////////////////////////////////////-PADDING */ \
         JS_ARRAY_ITERATOR,       /* ///////////////////////////////////////////////////////////////////////-PADDING */ \
+        JS_SHARED_ARRAY_ITERATOR, /* //////////////////////////////////////////////////////////////////////-PADDING */ \
         JS_SEGMENT_ITERATOR,       /* /////////////////////////////////////////////////////////////////////-PADDING */ \
         JS_STRING_ITERATOR,      /* ///////////////////////////////////////////////////////////////////////-PADDING */ \
         JS_INTL, /* ///////////////////////////////////////////////////////////////////////////////////////-PADDING */ \
@@ -169,6 +171,7 @@ struct Reference;
         JS_ASYNC_FUNC_OBJECT, /* //////////////////////////////////////////////////////////////////////////-PADDING */ \
                                                                                                                        \
         /* SPECIAL indexed objects begin, DON'T CHANGE HERE ///////////////////////////////////////////////-PADDING */ \
+        JS_SHARED_ARRAY, /* ///////////////////////////////////////////////////////////////////////////////-PADDING */ \
         JS_ARRAY,       /* ////////////////////////////////////////////////////////////////////////////////-PADDING */ \
         JS_API_ARRAY_LIST, /* /////////////////////////////////////////////////////////////////////////////-PADDING */ \
         JS_API_LIGHT_WEIGHT_MAP,      /* //////////////////////////////////////////////////////////////////-PADDING */ \
@@ -1240,6 +1243,11 @@ public:
         return GetObjectType() == JSType::JS_ARRAY_ITERATOR;
     }
 
+    inline bool IsJSSharedArrayIterator() const
+    {
+        return GetObjectType() == JSType::JS_SHARED_ARRAY_ITERATOR;
+    }
+
     inline bool IsJSAPIPlainArrayIterator() const
     {
         return GetObjectType() == JSType::JS_API_PLAIN_ARRAY_ITERATOR;
@@ -1653,6 +1661,11 @@ public:
     inline bool IsJSSharedObject() const
     {
         return GetObjectType() == JSType::JS_SHARED_OBJECT;
+    }
+
+    inline bool IsJSSharedArray() const
+    {
+        return GetObjectType() == JSType::JS_SHARED_ARRAY;
     }
 
     inline void SetElementsKind(ElementsKind kind)

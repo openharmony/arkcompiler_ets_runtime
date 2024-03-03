@@ -23,6 +23,7 @@
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/global_dictionary-inl.h"
 #include "ecmascript/global_env.h"
+#include "ecmascript/js_hclass.h"
 #include "ecmascript/vtable.h"
 #include "ecmascript/ic/ic_handler.h"
 #include "ecmascript/ic/profile_type_info.h"
@@ -63,7 +64,9 @@
 #include "ecmascript/js_api/js_api_vector.h"
 #include "ecmascript/js_api/js_api_vector_iterator.h"
 #include "ecmascript/js_array.h"
+#include "ecmascript/js_shared_array.h"
 #include "ecmascript/js_array_iterator.h"
+#include "ecmascript/js_shared_array_iterator.h"
 #include "ecmascript/js_arraybuffer.h"
 #include "ecmascript/js_async_from_sync_iterator.h"
 #include "ecmascript/js_async_function.h"
@@ -226,6 +229,8 @@ CString JSHClass::DumpJSType(JSType type)
             return "Bound Function";
         case JSType::JS_ARRAY:
             return "Array";
+        case JSType::JS_SHARED_ARRAY:
+            return "SharedArray";
         case JSType::JS_TYPED_ARRAY:
             return "Typed Array";
         case JSType::JS_INT8_ARRAY:
@@ -504,7 +509,7 @@ CString JSHClass::DumpJSType(JSType type)
             return "StarExportEntry";
         default: {
             CString ret = "unknown type ";
-            return ret + static_cast<char>(type);
+            return ret.append(std::to_string(static_cast<char>(type)));
         }
     }
 }
@@ -844,6 +849,10 @@ static void DumpObject(TaggedObject *obj, std::ostream &os)
             needDumpHClass = true;
             JSArray::Cast(obj)->Dump(os);
             break;
+        case JSType::JS_SHARED_ARRAY:
+            needDumpHClass = true;
+            JSSharedArray::Cast(obj)->Dump(os);
+            break;
         case JSType::JS_TYPED_ARRAY:
         case JSType::JS_INT8_ARRAY:
         case JSType::JS_UINT8_ARRAY:
@@ -998,6 +1007,9 @@ static void DumpObject(TaggedObject *obj, std::ostream &os)
             break;
         case JSType::JS_ARRAY_ITERATOR:
             JSArrayIterator::Cast(obj)->Dump(os);
+            break;
+        case JSType::JS_SHARED_ARRAY_ITERATOR:
+            JSSharedArrayIterator::Cast(obj)->Dump(os);
             break;
         case JSType::JS_STRING_ITERATOR:
             JSStringIterator::Cast(obj)->Dump(os);
@@ -2211,10 +2223,26 @@ void JSArray::Dump(std::ostream &os) const
     JSObject::Dump(os);
 }
 
+void JSSharedArray::Dump(std::ostream &os) const
+{
+    os << " - length: " << std::dec << GetArrayLength() << "\n";
+    JSObject::Dump(os);
+}
+
 void JSArrayIterator::Dump(std::ostream &os) const
 {
     JSArray *array = JSArray::Cast(GetIteratedArray().GetTaggedObject());
     os << " - length: " << std::dec << array->GetArrayLength() << "\n";
+    os << " - nextIndex: " << std::dec << GetNextIndex() << "\n";
+    os << " - IterationKind: " << std::dec << static_cast<int>(GetIterationKind()) << "\n";
+    JSObject::Dump(os);
+}
+
+void JSSharedArrayIterator::Dump(std::ostream &os) const
+{
+    JSSharedArray *array = JSSharedArray::Cast(GetIteratedArray().GetTaggedObject());
+    os << " - length: " << std::dec << array->GetArrayLength() << "\n";
+    os << " - expectedModCount: " << std::dec << GetExpectedModCount() << "\n";
     os << " - nextIndex: " << std::dec << GetNextIndex() << "\n";
     os << " - IterationKind: " << std::dec << static_cast<int>(GetIterationKind()) << "\n";
     JSObject::Dump(os);
@@ -4186,6 +4214,9 @@ static void DumpObject(TaggedObject *obj, std::vector<Reference> &vec, bool isVm
         case JSType::JS_ARRAY:
             JSArray::Cast(obj)->DumpForSnapshot(vec);
             return;
+        case JSType::JS_SHARED_ARRAY:
+            JSSharedArray::Cast(obj)->DumpForSnapshot(vec);
+            return;
         case JSType::JS_TYPED_ARRAY:
         case JSType::JS_INT8_ARRAY:
         case JSType::JS_UINT8_ARRAY:
@@ -4299,6 +4330,7 @@ static void DumpObject(TaggedObject *obj, std::vector<Reference> &vec, bool isVm
         case JSType::JS_SET_ITERATOR:
         case JSType::JS_SHARED_SET_ITERATOR:
         case JSType::JS_ARRAY_ITERATOR:
+        case JSType::JS_SHARED_ARRAY_ITERATOR:
         case JSType::JS_STRING_ITERATOR:
         case JSType::JS_REG_EXP_ITERATOR:
         case JSType::JS_ARRAY_BUFFER:
@@ -5162,6 +5194,12 @@ void JSArray::DumpForSnapshot(std::vector<Reference> &vec) const
     JSObject::DumpForSnapshot(vec);
 }
 
+void JSSharedArray::DumpForSnapshot(std::vector<Reference> &vec) const
+{
+    vec.emplace_back("ModCount: ", JSTaggedValue(GetModCount()));
+    JSObject::DumpForSnapshot(vec);
+}
+
 void JSAPIArrayList::DumpForSnapshot(std::vector<Reference> &vec) const
 {
     vec.emplace_back(CString("Length"), JSTaggedValue(GetLength()));
@@ -5284,6 +5322,17 @@ void JSArrayIterator::DumpForSnapshot(std::vector<Reference> &vec) const
     vec.emplace_back(CString("NextIndex"), JSTaggedValue(GetNextIndex()));
     vec.emplace_back(CString("IterationKind"), JSTaggedValue(static_cast<int>(GetIterationKind())));
     vec.emplace_back(CString("BitField"), JSTaggedValue(GetBitField()));
+    JSObject::DumpForSnapshot(vec);
+}
+
+void JSSharedArrayIterator::DumpForSnapshot(std::vector<Reference> &vec) const
+{
+    JSSharedArray *array = JSSharedArray::Cast(GetIteratedArray().GetTaggedObject());
+    vec.emplace_back("iteratedarray", GetIteratedArray());
+    array->DumpForSnapshot(vec);
+    vec.emplace_back(CString("expectedModCount"), JSTaggedValue(GetExpectedModCount()));
+    vec.emplace_back(CString("NextIndex"), JSTaggedValue(GetNextIndex()));
+    vec.emplace_back(CString("IterationKind"), JSTaggedValue(static_cast<int>(GetIterationKind())));
     JSObject::DumpForSnapshot(vec);
 }
 

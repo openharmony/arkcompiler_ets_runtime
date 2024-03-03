@@ -20,6 +20,7 @@
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_function.h"
 #include "ecmascript/js_handle.h"
+#include "ecmascript/js_hclass.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/object_factory.h"
@@ -98,6 +99,8 @@ private:
     void InitializeSymbolWithRealm(const JSHandle<GlobalEnv> &realm, const JSHandle<JSHClass> &objFuncInstanceHClass);
 
     void InitializeArray(const JSHandle<GlobalEnv> &env, const JSHandle<JSTaggedValue> &objFuncPrototypeVal) const;
+
+    void InitializeSharedArray(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &sObjIHClass, JSHandle<JSFunction> &sFuncPrototype) const;
 
     void InitializeTypedArray(const JSHandle<GlobalEnv> &env, JSHandle<JSTaggedValue> objFuncPrototypeVal) const;
     void LazyInitializeTypedArray(const JSHandle<GlobalEnv> &env) const;
@@ -225,6 +228,7 @@ private:
 
     void InitializeArrayIterator(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &iteratorFuncClass,
                                  const JSHandle<JSHClass> &iteratorPrototypeClass) const;
+    void InitializeSArrayIterator(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &iteratorFuncClass) const;
 
     void InitializeArrayBuffer(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &objFuncClass) const;
     void LazyInitializeArrayBuffer(const JSHandle<GlobalEnv> &env) const;
@@ -371,6 +375,8 @@ private:
     JSHandle<JSHClass> CreateSSetFunctionHClass(const JSHandle<JSFunction> &sFuncPrototype) const;
     JSHandle<JSHClass> CreateSMapPrototypeHClass(const JSHandle<JSObject> &sObjPrototype) const;
     JSHandle<JSHClass> CreateSMapFunctionHClass(const JSHandle<JSFunction> &sFuncPrototype) const;
+    JSHandle<JSHClass> CreateSArrayPrototypeHClass(const JSHandle<JSObject> &sObjPrototype) const;
+    JSHandle<JSHClass> CreateSArrayFunctionHClass(const JSHandle<JSFunction> &sFuncPrototype) const;
 
     void InitializeSCtor(const JSHandle<JSHClass> &protoHClass, const JSHandle<JSFunction> &ctor,
                          std::string_view name, int length) const;

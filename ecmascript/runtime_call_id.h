@@ -297,6 +297,50 @@ namespace panda::ecmascript {
     V(Array, With)                            \
     V(Array, ToSorted)                        \
     V(Array, ToSpliced)                       \
+    V(SharedArray, Constructor)               \
+    V(SharedArray, From)                      \
+    V(SharedArray, Of)                        \
+    V(SharedArray, IsArray)                   \
+    V(SharedArray, Entries)                   \
+    V(SharedArray, Species)                   \
+    V(SharedArray, Concat)                    \
+    V(SharedArray, CopyWithin)                \
+    V(SharedArray, Every)                     \
+    V(SharedArray, Fill)                      \
+    V(SharedArray, Filter)                    \
+    V(SharedArray, Find)                      \
+    V(SharedArray, FindIndex)                 \
+    V(SharedArray, FindLast)                  \
+    V(SharedArray, FindLastIndex)             \
+    V(SharedArray, ForEach)                   \
+    V(SharedArray, IndexOf)                   \
+    V(SharedArray, Join)                      \
+    V(SharedArray, Keys)                      \
+    V(SharedArray, LastIndexOf)               \
+    V(SharedArray, Map)                       \
+    V(SharedArray, Pop)                       \
+    V(SharedArray, Push)                      \
+    V(SharedArray, Reduce)                    \
+    V(SharedArray, ReduceRight)               \
+    V(SharedArray, Reverse)                   \
+    V(SharedArray, Shift)                     \
+    V(SharedArray, Slice)                     \
+    V(SharedArray, Some)                      \
+    V(SharedArray, Sort)                      \
+    V(SharedArray, Splice)                    \
+    V(SharedArray, ToLocaleString)            \
+    V(SharedArray, ToString)                  \
+    V(SharedArray, Unscopables)               \
+    V(SharedArray, Unshift)                   \
+    V(SharedArray, Values)                    \
+    V(SharedArray, Includes)                  \
+    V(SharedArray, Flat)                      \
+    V(SharedArray, FlatMap)                   \
+    V(SharedArray, At)                        \
+    V(SharedArray, ToReversed)                \
+    V(SharedArray, With)                      \
+    V(SharedArray, ToSorted)                  \
+    V(SharedArray, ToSpliced)                 \
     V(ArrayBuffer, Constructor)               \
     V(ArrayBuffer, Slice)                     \
     V(ArrayBuffer, Species)                   \

@@ -909,6 +909,22 @@ inline bool JSTaggedValue::IsArray(JSThread *thread) const
     return false;
 }
 
+inline bool JSTaggedValue::IsSArray(JSThread *thread) const
+{
+    if (!IsHeapObject()) {
+        return false;
+    }
+    JSHClass *jsHclass = GetTaggedObject()->GetClass();
+    if (jsHclass->IsJSSharedArray()) {
+        return true;
+    }
+
+    if (jsHclass->IsJSProxy()) {
+        return JSProxy::Cast(GetTaggedObject())->IsArray(thread);
+    }
+    return false;
+}
+
 inline bool JSTaggedValue::IsCOWArray() const
 {
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsCOWArray();
@@ -922,6 +938,11 @@ inline bool JSTaggedValue::IsMutantTaggedArray() const
 inline bool JSTaggedValue::IsJSArray() const
 {
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSArray();
+}
+
+inline bool JSTaggedValue::IsJSSharedArray() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSSharedArray();
 }
 
 inline bool JSTaggedValue::IsStableJSArray(JSThread *thread) const
@@ -1235,6 +1256,11 @@ inline bool JSTaggedValue::IsJSAPITreeSetIterator() const
 inline bool JSTaggedValue::IsJSArrayIterator() const
 {
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSArrayIterator();
+}
+
+inline bool JSTaggedValue::IsJSSharedArrayIterator() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSSharedArrayIterator();
 }
 
 inline bool JSTaggedValue::IsJSAPIArrayListIterator() const

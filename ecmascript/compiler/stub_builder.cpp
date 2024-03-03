@@ -3497,7 +3497,13 @@ GateRef StubBuilder::SetPropertyByIndex(GateRef glue, GateRef receiver, GateRef 
     }
     Label isExtensible(env);
     Label notExtensible(env);
+    Label throwNotExtensible(env);
     BRANCH(IsExtensible(receiver), &isExtensible, &notExtensible);
+    Bind(&notExtensible);
+    {
+        // fixme(hzzhouzebin) this makes SharedArray's frozen no sense.
+        BRANCH(IsJsSArray(receiver), &isExtensible, &throwNotExtensible);
+    }
     Bind(&isExtensible);
     {
         Label success(env);
@@ -3515,7 +3521,7 @@ GateRef StubBuilder::SetPropertyByIndex(GateRef glue, GateRef receiver, GateRef 
             Jump(&exit);
         }
     }
-    Bind(&notExtensible);
+    Bind(&throwNotExtensible);
     {
         GateRef taggedId = Int32(GET_MESSAGE_STRING_ID(SetPropertyWhenNotExtensible));
         CallRuntime(glue, RTSTUB_ID(ThrowTypeError), { IntToTaggedInt(taggedId) });

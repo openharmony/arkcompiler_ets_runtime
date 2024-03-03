@@ -27,6 +27,8 @@
 #include "ecmascript/ic/proto_change_details.h"
 #include "ecmascript/jobs/micro_job_queue.h"
 #include "ecmascript/jobs/pending_job.h"
+#include "ecmascript/js_shared_array.h"
+#include "ecmascript/js_shared_array_iterator.h"
 #include "ecmascript/jspandafile/class_info_extractor.h"
 #include "ecmascript/jspandafile/class_literal.h"
 #include "ecmascript/jspandafile/program_object.h"
@@ -747,6 +749,13 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 DUMP_FOR_HANDLE(arrayIter);
                 break;
             }
+            case JSType::JS_SHARED_ARRAY_ITERATOR: {
+                CHECK_DUMP_FIELDS(JSObject::SIZE, JSArrayIterator::SIZE, 2U);
+                JSHandle<JSSharedArrayIterator> arrayIter = factory->NewJSSharedArrayIterator(
+                    JSHandle<JSObject>::Cast(factory->NewJSSArray()), IterationKind::KEY);
+                DUMP_FOR_HANDLE(arrayIter);
+                break;
+            }
             case JSType::JS_STRING_ITERATOR: {
                 CHECK_DUMP_FIELDS(JSObject::SIZE, JSStringIterator::SIZE, 2U);
                 JSHandle<JSTaggedValue> stringIter = globalEnv->GetStringIterator();
@@ -848,6 +857,12 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
             case JSType::JS_ARRAY: {
                 CHECK_DUMP_FIELDS(JSObject::SIZE, JSArray::SIZE, 2U);
                 JSHandle<JSArray> jsArray = factory->NewJSArray();
+                DUMP_FOR_HANDLE(jsArray);
+                break;
+            }
+            case JSType::JS_SHARED_ARRAY: {
+                CHECK_DUMP_FIELDS(JSObject::SIZE, JSArray::SIZE, 2U);
+                JSHandle<JSSharedArray> jsArray = factory->NewJSSArray();
                 DUMP_FOR_HANDLE(jsArray);
                 break;
             }

@@ -142,6 +142,7 @@ private:
     static JSTaggedValue TypedArrayToList(JSThread *thread, JSHandle<JSTypedArray>& items);
 
     friend class BuiltinsArray;
+    friend class BuiltinsSharedArray;
 };
 }  // namespace panda::ecmascript::builtins
 

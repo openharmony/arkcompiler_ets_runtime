@@ -63,6 +63,7 @@
 #include "ecmascript/js_array.h"
 #include "ecmascript/js_arraybuffer.h"
 #include "ecmascript/js_array_iterator.h"
+#include "ecmascript/js_shared_array_iterator.h"
 #include "ecmascript/js_async_function.h"
 #include "ecmascript/js_async_generator_object.h"
 #include "ecmascript/js_dataview.h"
@@ -1722,6 +1723,7 @@ void Builtins::InitializeIterator(const JSHandle<GlobalEnv> &env, const JSHandle
     InitializeMapIterator(env, iteratorFuncClass);
     InitializeSMapIterator(env, iteratorFuncClass);
     InitializeArrayIterator(env, iteratorFuncClass, iteratorPrototypeHClass);
+    InitializeSArrayIterator(env, iteratorFuncClass);
     InitializeStringIterator(env, iteratorFuncClass);
     InitializeRegexpIterator(env, iteratorFuncClass);
 #ifdef ARK_SUPPORT_INTL
@@ -1786,8 +1788,7 @@ void Builtins::InitializeSetIterator(const JSHandle<GlobalEnv> &env,
     hclassHandle->SetExtensible(true);
 }
 
-void Builtins::InitializeSSetIterator(const JSHandle<GlobalEnv> &env,
-                                     const JSHandle<JSHClass> &iteratorFuncClass) const
+void Builtins::InitializeSSetIterator(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &iteratorFuncClass) const
 {
     // SetIterator.prototype
     JSHandle<JSObject> setIteratorPrototype(factory_->NewJSObjectWithInit(iteratorFuncClass));
@@ -1852,6 +1853,17 @@ void Builtins::InitializeArrayIterator(const JSHandle<GlobalEnv> &env,
     thread_->SetInitialBuiltinHClass(BuiltinTypeId::ARRAY_ITERATOR, nullptr,
         *arrayIteratorInstanceHClass, arrayIteratorPrototype->GetJSHClass(), *iteratorPrototypeClass);
     env->SetArrayIteratorPrototype(thread_, arrayIteratorPrototype);
+}
+
+void Builtins::InitializeSArrayIterator(const JSHandle<GlobalEnv> &env,
+                                        const JSHandle<JSHClass> &iteratorFuncClass) const
+{
+    // ArrayIterator.prototype
+    JSHandle<JSObject> arrayIteratorPrototype(factory_->NewJSObjectWithInit(iteratorFuncClass));
+    // Iterator.prototype.next()
+    SetFunction(env, arrayIteratorPrototype, "next", JSSharedArrayIterator::Next, FunctionLength::ZERO);
+    SetStringTagSymbol(env, arrayIteratorPrototype, "SharedArray Iterator");
+    env->SetSharedArrayIteratorPrototype(thread_, arrayIteratorPrototype);
 }
 
 void Builtins::InitializeRegexpIterator(const JSHandle<GlobalEnv> &env,
@@ -3794,6 +3806,11 @@ void Builtins::RegisterSendableContainers(const JSHandle<GlobalEnv> &env) const
     {
         JSHandle<JSTaggedValue> nameString(factory_->NewFromUtf8("SharedSet"));
         PropertyDescriptor desc(thread_, env->GetSBuiltininSetFunction(), true, false, true);
+        JSObject::DefineOwnProperty(thread_, globalObject, nameString, desc);
+    }
+    {
+        JSHandle<JSTaggedValue> nameString(factory_->NewFromUtf8("SharedArray"));
+        PropertyDescriptor desc(thread_, env->GetSharedArrayFunction(), true, false, true);
         JSObject::DefineOwnProperty(thread_, globalObject, nameString, desc);
     }
 }
