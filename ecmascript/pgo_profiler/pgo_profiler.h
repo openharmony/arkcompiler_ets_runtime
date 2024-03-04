@@ -89,6 +89,11 @@ public:
 
     JSTaggedValue TryFindKeyInPrototypeChain(TaggedObject *currObj, JSHClass *currHC, JSTaggedValue key);
 
+    void InsertSkipCtorMethodId(EntityId ctorMethodId)
+    {
+        skipCtorMethodId_.insert(ctorMethodId.GetOffset());
+    }
+
 private:
     static constexpr uint32_t MERGED_EVERY_COUNT = 50;
     static constexpr uint32_t MS_PRE_SECOND = 1000;
@@ -434,6 +439,15 @@ private:
 
     void Reset(bool isEnable);
 
+    bool IsSkippableObjectType(ProfileType type)
+    {
+        if (type.IsClassType() || type.IsConstructor() || type.IsPrototype()) {
+            uint32_t ctorId = type.GetId();
+            return skipCtorMethodId_.find(ctorId) != skipCtorMethodId_.end();
+        }
+        return false;
+    }
+
     EcmaVM *vm_ { nullptr };
     bool isEnable_ { false };
     bool isForce_ {false};
@@ -447,6 +461,7 @@ private:
     Mutex tracedProfilesMutex_;
     CMap<JSTaggedType, PGOTypeGenerator *> tracedProfiles_;
     std::unique_ptr<PGORecordDetailInfos> recordInfos_;
+    CUnorderedSet<uint32_t> skipCtorMethodId_;
     friend class PGOProfilerManager;
 };
 } // namespace pgo

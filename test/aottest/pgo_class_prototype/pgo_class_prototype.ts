@@ -15,24 +15,44 @@
 
 declare function print(arg:any):string;
 
-var fromA, fromB;
-class A {}
-class B extends A {}
-class C extends B {
-  method() {
-    fromA = super['fromA'];
-    fromB = super['fromB'];
-  }
+function test1() {
+    var fromA, fromB;
+    class A {}
+    class B extends A {}
+    class C extends B {
+        method() {
+            fromA = super['fromA'];
+            fromB = super['fromB'];
+        }
+    }
+
+    A.prototype.fromA = 'a';
+    A.prototype.fromB = 'a';
+    B.prototype.fromB = 'b';
+    C.prototype.fromA = 'c';
+    C.prototype.fromB = 'c';
+
+    print(fromA);
+    print(fromB);
+    C.prototype.method();
+    print(fromA);
+    print(fromB);
 }
 
-A.prototype.fromA = 'a';
-A.prototype.fromB = 'a';
-B.prototype.fromB = 'b';
-C.prototype.fromA = 'c';
-C.prototype.fromB = 'c';
+test1();
 
-print(fromA);
-print(fromB);
-C.prototype.method();
-print(fromA);
-print(fromB);
+function test2()
+{
+    function A() {
+        this.x = 1;
+    }
+
+    function B() {}
+    A.prototype = B.prototype;
+    let a = new A();
+    a.x;
+}
+
+test2();
+print(ArkTools.isAOTDeoptimized(test2));
+
