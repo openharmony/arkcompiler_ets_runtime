@@ -25,6 +25,8 @@
 #include "ecmascript/compiler/builtins/builtins_call_signature.h"
 #include "ecmascript/ecma_macros.h"
 #include "ecmascript/ecma_string_table.h"
+#include "ecmascript/ecma_string.h"
+#include "ecmascript/ecma_string-inl.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/element_accessor.h"
 #include "ecmascript/element_accessor-inl.h"
@@ -3016,6 +3018,15 @@ JSHandle<EcmaString> ObjectFactory::GetStringFromStringTable(const uint8_t *utf8
     return JSHandle<EcmaString>(thread_, stringTable->GetOrInternString(utf8Data, utf8Len, canBeCompress));
 }
 
+JSHandle<EcmaString> ObjectFactory::GetCompressedSubStringFromStringTable(const JSHandle<EcmaString> &string,
+                                                                          uint32_t offset, uint32_t utf8Len) const
+{
+    NewObjectHook();
+    ASSERT(utf8Len != 0);
+    auto *stringTable = vm_->GetEcmaStringTable();
+    return JSHandle<EcmaString>(thread_, stringTable->GetOrInternCompressedSubString(string, offset, utf8Len));
+}
+
 JSHandle<EcmaString> ObjectFactory::GetStringFromStringTableNonMovable(const uint8_t *utf8Data, uint32_t utf8Len) const
 {
     NewObjectHook();
@@ -4015,11 +4026,28 @@ JSHandle<EcmaString> ObjectFactory::NewFromUtf8LiteralCompress(const uint8_t *ut
     return JSHandle<EcmaString>(thread_, EcmaStringAccessor::CreateFromUtf8(vm_, utf8Data, utf8Len, true));
 }
 
+JSHandle<EcmaString> ObjectFactory::NewFromUtf8LiteralCompressSubString(const JSHandle<EcmaString> &string,
+                                                                        uint32_t offset, uint32_t utf8Len)
+{
+    NewObjectHook();
+    ASSERT(EcmaStringAccessor::CanBeCompressed(EcmaStringAccessor(string).GetDataUtf8() + offset, utf8Len));
+    return JSHandle<EcmaString>(thread_, EcmaStringAccessor::CreateFromUtf8CompressedSubString(vm_, string,
+        offset, utf8Len));
+}
+
 JSHandle<EcmaString> ObjectFactory::NewCompressedUtf8(const uint8_t *utf8Data, uint32_t utf8Len)
 {
     NewObjectHook();
     ASSERT(EcmaStringAccessor::CanBeCompressed(utf8Data, utf8Len));
     return GetStringFromStringTable(utf8Data, utf8Len, true);
+}
+
+JSHandle<EcmaString> ObjectFactory::NewCompressedUtf8SubString(const JSHandle<EcmaString> &string,
+                                                               uint32_t offset, uint32_t utf8Len)
+{
+    NewObjectHook();
+    ASSERT(EcmaStringAccessor::CanBeCompressed(EcmaStringAccessor(string).GetDataUtf8() + offset, utf8Len));
+    return GetCompressedSubStringFromStringTable(string, offset, utf8Len);
 }
 
 JSHandle<EcmaString> ObjectFactory::NewFromUtf16Literal(const uint16_t *utf16Data, uint32_t utf16Len)

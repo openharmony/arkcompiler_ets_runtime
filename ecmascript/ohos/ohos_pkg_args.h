@@ -168,7 +168,7 @@ public:
         ecmascript::base::Utf8JsonParser parser(jsThread);
 
         JSHandle<EcmaString> handleStr = factory->NewFromASCII(jsonInfo.c_str());  // JSON Object
-        JSHandle<JSTaggedValue> result = parser.Parse(*handleStr);
+        JSHandle<JSTaggedValue> result = parser.Parse(handleStr);
         JSTaggedValue resultValue(static_cast<JSTaggedType>(result->GetRawData()));
         if (!resultValue.IsArray(jsThread)) {
             LOG_COMPILER(ERROR) << "Pkg list info parse failed. result is not an array. jsonData: " << jsonInfo.c_str();
@@ -203,7 +203,7 @@ public:
         ecmascript::base::Utf8JsonParser parser(jsThread);
 
         JSHandle<EcmaString> handleStr(factory->NewFromASCII(jsonInfo.c_str()));  // JSON Object
-        JSHandle<JSTaggedValue> result = parser.Parse(*handleStr);
+        JSHandle<JSTaggedValue> result = parser.Parse(handleStr);
         JSTaggedValue resultValue(static_cast<JSTaggedType>(result->GetRawData()));
         if (!resultValue.IsECMAObject()) {
             LOG_COMPILER(ERROR) << "Pkg info parse failed. result is not an object. jsonData: " << jsonInfo.c_str();
