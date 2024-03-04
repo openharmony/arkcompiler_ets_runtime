@@ -304,13 +304,10 @@ void Builtins::InitializeSFunciton(const JSHandle<GlobalEnv> &env,
     JSHandle<JSObject> sFuncPrototypeObj(sFuncPrototype);
     SharedStrictModeForbiddenAccessCallerArguments(env, sFuncPrototypeObj);
     // Function.prototype method
-    // 19.2.3.1 Function.prototype.apply ( thisArg, argArray )
-    SetSFunction(env, sFuncPrototypeObj, "apply", Function::FunctionPrototypeApply, FunctionLength::TWO,
-        BUILTINS_STUB_ID(FunctionPrototypeApply));
-    // 19.2.3.2 Function.prototype.bind ( thisArg , ...args)
-    SetSFunction(env, sFuncPrototypeObj, "bind", Function::FunctionPrototypeBind, FunctionLength::ONE);
-    // 19.2.3.3 Function.prototype.call (thisArg , ...args)
-    SetSFunction(env, sFuncPrototypeObj, "call", Function::FunctionPrototypeCall, FunctionLength::ONE);
+    for (const base::BuiltinFunctionEntry &entry: Function::GetFunctionPrototypeFunctions()) {
+        SetSFunction(env, sFuncPrototypeObj, entry.GetName(), entry.GetEntrypoint(),
+                     entry.GetLength(), entry.GetBuiltinStubId());
+    }
     // 19.2.3.5 Function.prototype.toString ( )
     SetSFunction(env, sFuncPrototypeObj, thread_->GlobalConstants()->GetHandledToStringString(),
         Function::FunctionPrototypeToString, FunctionLength::ZERO);
@@ -653,13 +650,10 @@ void Builtins::InitializeFunction(const JSHandle<GlobalEnv> &env, const JSHandle
     StrictModeForbiddenAccessCallerArguments(env, funcFuncPrototypeObj);
 
     // Function.prototype method
-    // 19.2.3.1 Function.prototype.apply ( thisArg, argArray )
-    SetFunction(env, funcFuncPrototypeObj, "apply", Function::FunctionPrototypeApply, FunctionLength::TWO,
-        BUILTINS_STUB_ID(FunctionPrototypeApply));
-    // 19.2.3.2 Function.prototype.bind ( thisArg , ...args)
-    SetFunction(env, funcFuncPrototypeObj, "bind", Function::FunctionPrototypeBind, FunctionLength::ONE);
-    // 19.2.3.3 Function.prototype.call (thisArg , ...args)
-    SetFunction(env, funcFuncPrototypeObj, "call", Function::FunctionPrototypeCall, FunctionLength::ONE);
+    for (const base::BuiltinFunctionEntry &entry: Function::GetFunctionPrototypeFunctions()) {
+        SetFunction(env, funcFuncPrototypeObj, entry.GetName(), entry.GetEntrypoint(),
+                    entry.GetLength(), entry.GetBuiltinStubId());
+    }
     // 19.2.3.5 Function.prototype.toString ( )
     SetFunction(env, funcFuncPrototypeObj, thread_->GlobalConstants()->GetHandledToStringString(),
                 Function::FunctionPrototypeToString, FunctionLength::ZERO);

@@ -42,6 +42,7 @@ public:
     void Trim(GateRef glue, GateRef thisValue, GateRef numArgs, Variable *res, Label *exit, Label *slowPath);
     void Slice(GateRef glue, GateRef thisValue, GateRef numArgs, Variable *res, Label *exit, Label *slowPath);
     void LocaleCompare(GateRef glue, GateRef thisValue, GateRef numArgs, Variable *res, Label *exit, Label *slowPath);
+    void Concat(GateRef glue, GateRef thisValue, GateRef numArgs, Variable *res, Label *exit, Label *slowPath);
 
     GateRef ConvertAndClampRelativeIndex(GateRef index, GateRef length);
     GateRef StringAt(const StringInfoGateRef &stringInfoGate, GateRef index);
