@@ -257,7 +257,8 @@ bool PassManager::Compile(JSPandaFile *jsPandaFile, const std::string &fileName,
         }
 
         PassData data(&builder, &circuit, &ctx, log_, fullName, &methodInfo, hasTypes, recordName,
-                      methodLiteral, methodOffset, vm_->GetNativeAreaAllocator(), decoder, passOptions_);
+                      methodLiteral, methodOffset, vm_->GetNativeAreaAllocator(), decoder, passOptions_,
+                      optBCRange_);
         PassRunner<PassData> pipeline(&data);
         if (data.GetMethodLiteral()->HasDebuggerStmt()) {
             data.AbortCompilation();

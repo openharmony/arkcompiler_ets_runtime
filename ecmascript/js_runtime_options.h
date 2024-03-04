@@ -103,6 +103,7 @@ enum CommandValues {
     OPTION_COMPILER_DEOPT_THRESHOLD,
     OPTION_COMPILER_STRESS_DEOPT,
     OPTION_COMPILER_OPT_CODE_PROFILER,
+    OPTION_COMPILER_OPT_BC_RANGE,
     OPTION_LOG_LEVEL,
     OPTION_LOG_DEBUG,
     OPTION_LOG_INFO,
@@ -166,6 +167,7 @@ enum CommandValues {
     OPTION_TEST_ASSERT,
     OPTION_COMPILER_METHODS_RANGE,
     OPTION_COMPILER_CODEGEN_OPT,
+    OPTION_COMPILER_OPT_BC_RANGE_HELP,
 };
 
 class PUBLIC_API JSRuntimeOptions {
@@ -1484,6 +1486,16 @@ public:
     {
         return compileCodegenOption_;
     }
+
+    void SetOptCodeRange(std::string value)
+    {
+        optBCRange_ = std::move(value);
+    }
+
+    std::string GetOptCodeRange() const
+    {
+        return optBCRange_;
+    }
 private:
     static bool StartsWith(const std::string &haystack, const std::string &needle)
     {
@@ -1591,6 +1603,7 @@ private:
     std::string hapPath_ {""};
     uint32_t hapAbcOffset_ {0};
     uint32_t hapAbcSize_ {0};
+    std::string optBCRange_ {""};
     bool compilerNoCheck_ {false};
     bool fastAOTCompileMode_ {false};
     bool enableOptLoopPeeling_ {true};
