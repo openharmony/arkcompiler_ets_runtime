@@ -885,7 +885,6 @@ JSHandle<JSObject> ObjectFactory::NewJSError(const ErrorType &errorType, const J
     }
 
     JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
-    const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
     JSHandle<JSTaggedValue> nativeConstructor;
     switch (errorType) {
         case ErrorType::RANGE_ERROR:
@@ -918,15 +917,12 @@ JSHandle<JSObject> ObjectFactory::NewJSError(const ErrorType &errorType, const J
     }
     JSHandle<JSFunction> nativeFunc = JSHandle<JSFunction>::Cast(nativeConstructor);
     JSHandle<JSTaggedValue> nativePrototype(thread_, nativeFunc->GetFunctionPrototype());
-    JSHandle<JSTaggedValue> ctorKey = globalConst->GetHandledConstructorString();
-    JSHandle<JSTaggedValue> ctor(JSTaggedValue::GetProperty(thread_, nativePrototype, ctorKey).GetValue());
-    RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSObject, thread_);
     JSHandle<JSTaggedValue> undefined = thread_->GlobalConstants()->GetHandledUndefined();
     EcmaRuntimeCallInfo *info =
-        EcmaInterpreter::NewRuntimeCallInfo(thread_, ctor, nativePrototype, undefined, 1, needCheckStack);
+        EcmaInterpreter::NewRuntimeCallInfo(thread_, nativeConstructor, nativePrototype, undefined, 1, needCheckStack);
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSObject, thread_);
     info->SetCallArg(message.GetTaggedValue());
-    Method *method = JSHandle<ECMAObject>::Cast(ctor)->GetCallTarget();
+    Method *method = JSHandle<ECMAObject>::Cast(nativeConstructor)->GetCallTarget();
     JSTaggedValue obj = reinterpret_cast<EcmaEntrypoint>(const_cast<void *>(method->GetNativePointer()))(info);
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSObject, thread_);
     JSHandle<JSObject> handleNativeInstanceObj(thread_, obj);
