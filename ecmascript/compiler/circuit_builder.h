@@ -489,6 +489,8 @@ public:
     GateRef ValueCheckNegOverflow(GateRef value);
     GateRef OverflowCheck(GateRef value);
     GateRef LexVarIsHoleCheck(GateRef value);
+    GateRef IsUndefinedOrHoleCheck(GateRef value);
+    GateRef IsNotUndefinedOrHoleCheck(GateRef value);
     GateRef Int32UnsignedUpperBoundCheck(GateRef value, GateRef upperBound);
     GateRef Int32DivWithCheck(GateRef left, GateRef right);
     GateType GetGateTypeOfValueType(ValueType type);
@@ -627,6 +629,7 @@ public:
     inline GateRef TaggedIsTransWithProtoHandler(GateRef x);
     inline GateRef TaggedIsUndefinedOrNull(GateRef x);
     inline GateRef TaggedIsNotUndefinedAndNull(GateRef x);
+    inline GateRef TaggedIsUndefinedOrHole(GateRef x);
     inline GateRef TaggedIsTrue(GateRef x);
     inline GateRef TaggedIsFalse(GateRef x);
     inline GateRef TaggedIsNull(GateRef x);
