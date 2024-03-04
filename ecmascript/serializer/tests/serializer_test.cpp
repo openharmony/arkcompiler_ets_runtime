@@ -120,7 +120,7 @@ public:
         ecmaVm->CollectGarbage(TriggerGCType::OLD_GC);
 
         EXPECT_FALSE(res.IsEmpty());
-        EXPECT_TRUE(res->IsLineString());
+        EXPECT_TRUE(res->IsTreeString());
 
         Destroy();
     }
@@ -134,7 +134,7 @@ public:
         ecmaVm->CollectGarbage(TriggerGCType::OLD_GC);
 
         EXPECT_FALSE(res.IsEmpty());
-        EXPECT_TRUE(res->IsLineString());
+        EXPECT_TRUE(res->IsSlicedString());
 
         Destroy();
     }

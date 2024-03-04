@@ -126,6 +126,11 @@ bool ValueSerializer::WriteValue(JSThread *thread,
         data_->SetIncompleteData(true);
         return false;
     }
+    // Push share root object to runtime map
+    if (!sharedObjects_.empty()) {
+        uint32_t index = Runtime::GetInstance()->PushSerializationRoot(thread_, sharedObjects_);
+        data_->SetDataIndex(index);
+    }
     size_t maxSerializerSize = vm_->GetEcmaParamConfiguration().GetMaxJSSerializerSize();
     if (data_->Size() > maxSerializerSize) {
         LOG_ECMA(ERROR) << "The serialization data size has exceed limit Size, current size is: " << data_->Size()
@@ -149,6 +154,12 @@ void ValueSerializer::SerializeObjectImpl(TaggedObject *object, bool isWeak)
         data_->WriteEncodeFlag(EncodeFlag::WEAK);
     }
     if (SerializeReference(object) || SerializeRootObject(object)) {
+        return;
+    }
+    Region *region = Region::ObjectAddressToRange(object);
+    if (object->GetClass()->IsString() || region->InSharedReadOnlySpace() ||
+        (serializeSharedEvent_ == 0 && region->InSharedHeap())) {
+        SerializeSharedObject(object);
         return;
     }
     if (object->GetClass()->IsNativeBindingObject()) {
@@ -180,10 +191,6 @@ void ValueSerializer::SerializeObjectImpl(TaggedObject *object, bool isWeak)
             array->SetTrackInfo(thread_, JSTaggedValue::Undefined());
             break;
         }
-        case JSType::TREE_STRING:
-        case JSType::SLICED_STRING:
-            object = EcmaStringAccessor::FlattenNoGC(vm_, EcmaString::Cast(object));
-            break;
         case JSType::JS_REG_EXP:
             SerializeJSRegExpPrologue(reinterpret_cast<JSRegExp *>(object));
             break;

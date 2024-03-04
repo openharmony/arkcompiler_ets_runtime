@@ -44,6 +44,7 @@ public:
 
     void SuspendAll(JSThread *current);
     void ResumeAll(JSThread *current);
+    void IterateSerializeRoot(const RootVisitor &v);
 
     MutatorLock *GetMutatorLock()
     {
@@ -81,6 +82,25 @@ public:
         return stringTable_.get();
     }
 
+    uint32_t PushSerializationRoot([[maybe_unused]] JSThread *thread, std::vector<TaggedObject *> &rootSet)
+    {
+        ASSERT(thread->IsInManagedState());
+        LockHolder lock(serializeLock_);
+        uint32_t index = GetSerializeDataIndex();
+        ASSERT(serializeRootMap_.find(index) == serializeRootMap_.end());
+        serializeRootMap_.emplace(index, rootSet);
+        return index;
+    }
+
+    void RemoveSerializationRoot([[maybe_unused]] JSThread *thread, uint32_t index)
+    {
+        ASSERT(thread->IsInManagedState());
+        LockHolder lock(serializeLock_);
+        ASSERT(serializeRootMap_.find(index) != serializeRootMap_.end());
+        serializeRootMap_.erase(index);
+        serializeDataIndexVector_.emplace_back(index);
+    }
+
 private:
     Runtime() = default;
     ~Runtime() = default;
@@ -90,9 +110,21 @@ private:
     void PreInitialization(const EcmaVM *vm);
     void PostInitialization(const EcmaVM *vm);
 
+    uint32_t GetSerializeDataIndex()
+    {
+        if (!serializeDataIndexVector_.empty()) {
+            uint32_t index = serializeDataIndexVector_.back();
+            serializeDataIndexVector_.pop_back();
+            return index;
+        }
+        return ++serializeDataIndex_;
+    }
+
     Mutex threadsLock_;
+    Mutex serializeLock_;
     std::list<JSThread*> threads_;
     uint32_t suspendNewCount_ {0};
+    uint32_t serializeDataIndex_ {0};
     MutatorLock mutatorLock_;
 
     const GlobalEnvConstants *globalConstants_ {nullptr};
@@ -103,6 +135,8 @@ private:
     std::unique_ptr<HeapRegionAllocator> heapRegionAllocator_;
     // for stringTable.
     std::unique_ptr<EcmaStringTable> stringTable_;
+    std::unordered_map<uint32_t, std::vector<TaggedObject *>> serializeRootMap_;
+    std::vector<uint32_t> serializeDataIndexVector_;
 
     // Runtime instance and VMs creation.
     static int32_t vmCount_;
