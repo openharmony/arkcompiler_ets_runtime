@@ -576,6 +576,7 @@ public:
     JSHandle<EcmaString> PUBLIC_API NewFromUtf16LiteralNotCompress(const uint16_t *utf16Data, uint32_t utf16Len);
 
     inline EcmaString *AllocLineStringObject(size_t size);
+    inline EcmaString *AllocLineStringObjectNoGC(size_t size);
     inline EcmaString *AllocOldSpaceLineStringObject(size_t size);
     inline EcmaString *AllocNonMovableLineStringObject(size_t size);
     inline EcmaString *AllocSlicedStringObject(MemSpaceType type);
