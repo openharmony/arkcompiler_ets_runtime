@@ -477,6 +477,7 @@ BytecodeMetaData BytecodeMetaData::InitBytecodeMetaData(const uint8_t *pc)
         case EcmaOpcode::STOBJBYNAME_IMM16_ID16_V8:
         case EcmaOpcode::STTHISBYNAME_IMM8_ID16:
         case EcmaOpcode::STTHISBYNAME_IMM16_ID16:
+        case EcmaOpcode::DEFINEFIELDBYNAME_IMM8_ID16_V8:
             kind = BytecodeKind::ACCESSOR_BC;
             break;
         default:

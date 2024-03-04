@@ -47,6 +47,7 @@ void PGOTypeInfer::RunTypeInfer(GateRef gate)
             break;
         case EcmaOpcode::STOBJBYNAME_IMM8_ID16_V8:
         case EcmaOpcode::STOBJBYNAME_IMM16_ID16_V8:
+        case EcmaOpcode::DEFINEFIELDBYNAME_IMM8_ID16_V8:
             InferStObjByName(gate, false);
             break;
         case EcmaOpcode::STTHISBYNAME_IMM8_ID16:

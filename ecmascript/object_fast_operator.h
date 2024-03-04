@@ -29,6 +29,7 @@ public:
         None = 0x00UL,
         UseOwn = 0x01UL,
         GetInternal = 0x1UL << 1,
+        DefineSemantics = 0x1UL << 2,
     };
 
     static inline bool UseOwn(Status status)
@@ -39,6 +40,11 @@ public:
     static inline bool GetInternal(Status status)
     {
         return (static_cast<int32_t>(status) & static_cast<int32_t>(Status::GetInternal)) > 0;
+    }
+
+    static inline bool DefineSemantics(Status status)
+    {
+        return (static_cast<int32_t>(status) & static_cast<int32_t>(Status::DefineSemantics)) > 0;
     }
 
     static inline std::pair<JSTaggedValue, bool> HasOwnProperty(JSThread *thread,

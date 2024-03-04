@@ -45,7 +45,8 @@ void InitializationAnalysis::Analyse(GateRef gate)
     EcmaOpcode ecmaOpcode = acc_.GetByteCodeOpcode(gate);
     switch (ecmaOpcode) {
         case EcmaOpcode::STOBJBYNAME_IMM8_ID16_V8:
-        case EcmaOpcode::STOBJBYNAME_IMM16_ID16_V8: {
+        case EcmaOpcode::STOBJBYNAME_IMM16_ID16_V8:
+        case EcmaOpcode::DEFINEFIELDBYNAME_IMM8_ID16_V8: {
             CollectInitializationType(gate, ThisUsage::INDEFINITE_THIS);
             CollectInitializationInfo(gate, ThisUsage::INDEFINITE_THIS);
             break;
@@ -203,6 +204,7 @@ bool InitializationAnalysis::CheckSimpleJSGate(GateRef gate, const uint16_t inde
         }
         case EcmaOpcode::STOBJBYNAME_IMM8_ID16_V8:
         case EcmaOpcode::STOBJBYNAME_IMM16_ID16_V8:
+        case EcmaOpcode::DEFINEFIELDBYNAME_IMM8_ID16_V8:
         case EcmaOpcode::STTHISBYNAME_IMM8_ID16:
         case EcmaOpcode::STTHISBYNAME_IMM16_ID16:
         case EcmaOpcode::THROW_IFSUPERNOTCORRECTCALL_PREF_IMM8:
@@ -288,6 +290,7 @@ bool InitializationAnalysis::HasEscapedThis(GateRef gate) const
     switch (ecmaOpcode) {
         case EcmaOpcode::STOBJBYNAME_IMM8_ID16_V8:
         case EcmaOpcode::STOBJBYNAME_IMM16_ID16_V8:
+        case EcmaOpcode::DEFINEFIELDBYNAME_IMM8_ID16_V8:
         case EcmaOpcode::STTHISBYNAME_IMM8_ID16:
         case EcmaOpcode::STTHISBYNAME_IMM16_ID16:
         case EcmaOpcode::THROW_IFSUPERNOTCORRECTCALL_PREF_IMM8:

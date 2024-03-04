@@ -634,12 +634,12 @@ public:
         ProfileOperation callback = ProfileOperation());
     void FastSetPropertyByIndex(GateRef glue, GateRef obj, GateRef index, GateRef value);
     GateRef SetPropertyByIndex(GateRef glue, GateRef receiver, GateRef index,
-        GateRef value, bool useOwn, ProfileOperation callback = ProfileOperation());
+        GateRef value, bool useOwn, ProfileOperation callback = ProfileOperation(), bool defineSemantics = false);
     GateRef SetPropertyByName(GateRef glue, GateRef receiver, GateRef key,
         GateRef value, bool useOwn, GateRef isInternal, ProfileOperation callback = ProfileOperation(),
-        bool canUseIsInternal = false); // Crawl prototype chain
+        bool canUseIsInternal = false, bool defineSemantics = false); // Crawl prototype chain
     GateRef SetPropertyByValue(GateRef glue, GateRef receiver, GateRef key, GateRef value, bool useOwn,
-        ProfileOperation callback = ProfileOperation());
+        ProfileOperation callback = ProfileOperation(), bool defineSemantics = false);
     GateRef GetParentEnv(GateRef object);
     GateRef GetPropertiesFromLexicalEnv(GateRef object, GateRef index);
     void SetPropertiesToLexicalEnv(GateRef glue, GateRef object, GateRef index, GateRef value);
