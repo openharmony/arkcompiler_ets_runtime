@@ -144,9 +144,12 @@ std::shared_ptr<JSPandaFile> JSPandaFileManager::LoadJSPandaFile(JSThread *threa
             return jsPandaFile;
         }
     }
-
+#if defined(PANDA_TARGET_PREVIEW)
+    auto pf = panda_file::OpenPandaFileFromMemory(buffer, size);
+#else
     CString tag = ModulePathHelper::ParseFileNameToVMAName(filename);
     auto pf = panda_file::OpenPandaFileFromMemory(buffer, size, tag.c_str());
+#endif
     if (pf == nullptr) {
         LOG_ECMA(ERROR) << "open file " << filename << " error";
         return nullptr;
