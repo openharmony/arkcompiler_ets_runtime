@@ -1318,6 +1318,7 @@ DECLARE_ASM_HANDLER(HandleSupercallspreadImm8V8)
     Label ctorIsConstructor(env);
     Label threadCheck(env);
     Label isException(env);
+    Label noException(env);
 
     Branch(TaggedIsHeapObject(superCtor), &ctorIsHeapObject, &slowPath);
     Bind(&ctorIsHeapObject);
@@ -1336,6 +1337,8 @@ DECLARE_ASM_HANDLER(HandleSupercallspreadImm8V8)
         Bind(&ctorNotBase);
         GateRef argvLen = Load(VariableType::INT32(), array, IntPtr(JSArray::LENGTH_OFFSET));
         GateRef srcElements = GetCallSpreadArgs(glue, array, callback);
+        Branch(TaggedIsException(srcElements), &isException, &noException);
+        Bind(&noException);
         GateRef jumpSize = IntPtr(-BytecodeInstruction::Size(BytecodeInstruction::Format::IMM8_V8));
         METHOD_ENTRY_ENV_DEFINED(superCtor);
         GateRef elementsPtr = PtrAdd(srcElements, IntPtr(TaggedArray::DATA_OFFSET));

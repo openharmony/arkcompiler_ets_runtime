@@ -24,3 +24,4 @@ newobj 2
 newobj native
 setter 555
 getter 555
+undefined

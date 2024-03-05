@@ -8044,8 +8044,17 @@ GateRef StubBuilder::GetCallSpreadArgs(GateRef glue, GateRef array, ProfileOpera
     Label fastPath(env);
     Label noCopyPath(env);
     Label exit(env);
+    Label noException(env);
+    Label isException(env);
 
     GateRef itor = GetIterator(glue, array, callBack);
+    Branch(TaggedIsException(itor), &isException, &noException);
+    Bind(&isException);
+    {
+        result = Exception();
+        Jump(&exit);
+    }
+    Bind(&noException);
     GateRef iterHClass = LoadHClass(itor);
     GateRef isJSArrayIter = Int32Equal(GetObjectType(iterHClass),
                                        Int32(static_cast<int32_t>(JSType::JS_ARRAY_ITERATOR)));
