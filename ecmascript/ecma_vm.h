@@ -583,6 +583,11 @@ public:
     {
         return aotFileManager_;
     }
+
+    uint32_t GetTid() const
+    {
+        return thread_->GetThreadId();
+    }
 protected:
 
     void PrintJSErrorInfo(const JSHandle<JSTaggedValue> &exceptionInfo) const;
