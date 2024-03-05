@@ -17,14 +17,11 @@
 [trace] aot inline function name: foo1@pgo_call_recursive_js caller function name: foo@pgo_call_recursive_js
 [trace] aot inline function name: foo2@pgo_call_recursive_js caller function name: foo1@pgo_call_recursive_js
 [trace] aot inline function name: foo2@pgo_call_recursive_js caller function name: foo@pgo_call_recursive_js
-[trace] aot inline function name: foo@pgo_call_recursive_js caller function name: foo2@pgo_call_recursive_js
-[trace] aot inline function name: foo2@pgo_call_recursive_js caller function name: foo@pgo_call_recursive_js
-[trace] aot inline function name: foo@pgo_call_recursive_js caller function name: foo2@pgo_call_recursive_js
-[trace] aot inline function name: foo1@pgo_call_recursive_js caller function name: foo@pgo_call_recursive_js
-[trace] aot inline function name: foo@pgo_call_recursive_js caller function name: foo2@pgo_call_recursive_js
 [trace] aot inline function name: foo2@pgo_call_recursive_js caller function name: foo@pgo_call_recursive_js
 [trace] aot inline function name: foo1@pgo_call_recursive_js caller function name: foo@pgo_call_recursive_js
 [trace] aot inline function name: foo2@pgo_call_recursive_js caller function name: foo1@pgo_call_recursive_js
 [trace] aot inline function name: foo2@pgo_call_recursive_js caller function name: foo@pgo_call_recursive_js
-[trace] aot inline function name: foo@pgo_call_recursive_js caller function name: foo2@pgo_call_recursive_js
+[trace] aot inline function name: foo1@pgo_call_recursive_js caller function name: foo@pgo_call_recursive_js
+[trace] aot inline function name: foo2@pgo_call_recursive_js caller function name: foo1@pgo_call_recursive_js
+[trace] aot inline function name: foo2@pgo_call_recursive_js caller function name: foo@pgo_call_recursive_js
 13

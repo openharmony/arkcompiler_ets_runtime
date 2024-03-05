@@ -410,9 +410,8 @@ GateRef CircuitBuilder::NanValue()
     return Double(std::numeric_limits<double>::quiet_NaN());
 }
 
-GateRef CircuitBuilder::LoadObjectFromConstPool(GateRef jsFunc, GateRef index)
+GateRef CircuitBuilder::LoadObjectFromConstPool(GateRef constPool, GateRef index)
 {
-    GateRef constPool = GetConstPoolFromFunction(jsFunc);
     return GetValueFromTaggedArray(constPool, TruncInt64ToInt32(index));
 }
 
@@ -430,25 +429,6 @@ void CircuitBuilder::AppendFrameArgs(std::vector<GateRef> &args, GateRef hirGate
     } else {
         args.emplace_back(frameArgs);
     }
-}
-
-GateRef CircuitBuilder::GetConstPool(GateRef jsFunc)
-{
-    auto currentLabel = env_->GetCurrentLabel();
-    auto currentDepend = currentLabel->GetDepend();
-    // In an inline accessor scenario, if the accessor function and the caller function have the same constpool, then
-    // the caller function is used to load accessor, which avoids the dependency on the accessor.
-    if (acc_.GetOpCode(jsFunc) == OpCode::LOAD_GETTER || acc_.GetOpCode(jsFunc) == OpCode::LOAD_SETTER) {
-        GateRef frameState = acc_.GetFrameState(jsFunc);
-        if (acc_.GetOpCode(frameState) != OpCode::FRAME_STATE) {
-            jsFunc = frameState;
-        }
-    }
-    auto newGate = GetCircuit()->NewGate(circuit_->GetConstPool(), MachineType::I64,
-                                         { currentDepend, jsFunc },
-                                         GateType::AnyType());
-    currentLabel->SetDepend(newGate);
-    return newGate;
 }
 
 GateRef CircuitBuilder::GetGlobalEnv()
@@ -548,14 +528,6 @@ GateRef CircuitBuilder::GetConstPoolFromFunction(GateRef jsFunc)
 {
     GateRef method = GetMethodFromFunction(jsFunc);
     return Load(VariableType::JS_ANY(), method, IntPtr(Method::CONSTANT_POOL_OFFSET));
-}
-
-GateRef CircuitBuilder::GetObjectFromConstPool(GateRef glue, GateRef hirGate, GateRef jsFunc, GateRef index,
-                                               ConstPoolType type)
-{
-    GateRef constPool = GetConstPoolFromFunction(jsFunc);
-    GateRef module = GetModuleFromFunction(jsFunc);
-    return GetObjectFromConstPool(glue, hirGate, constPool, module, index, type);
 }
 
 GateRef CircuitBuilder::GetEmptyArray(GateRef glue)
@@ -833,8 +805,7 @@ GateRef CircuitBuilder::GetCodeAddr(GateRef method)
 GateRef CircuitBuilder::GetHClassGateFromIndex(GateRef gate, int32_t index)
 {
     ArgumentAccessor argAcc(circuit_);
-    GateRef jsFunc = argAcc.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
-    GateRef constPool = GetConstPool(jsFunc);
+    GateRef constPool = argAcc.GetFrameArgsIn(gate, FrameArgIdx::CONST_POOL);
     return LoadHClassFromConstpool(constPool, index);
 }
 

@@ -42,20 +42,6 @@ GateRef CircuitBuilder::ObjectTypeCheck(GateType type, bool isHeapObject, GateRe
     return ret;
 }
 
-GateRef CircuitBuilder::ObjectTypeCompare(GateType type, bool isHeapObject, GateRef gate, GateRef hclassIndex)
-{
-    auto currentLabel = env_->GetCurrentLabel();
-    auto currentControl = currentLabel->GetControl();
-    auto currentDepend = currentLabel->GetDepend();
-    auto frameState = acc_.FindNearestFrameState(currentDepend);
-    ObjectTypeAccessor accessor(type, isHeapObject);
-    GateRef ret = GetCircuit()->NewGate(circuit_->ObjectTypeCompare(accessor.ToValue()), MachineType::I1,
-        {currentControl, currentDepend, gate, hclassIndex, frameState}, GateType::NJSValue());
-    currentLabel->SetControl(ret);
-    currentLabel->SetDepend(ret);
-    return ret;
-}
-
 GateRef CircuitBuilder::HeapObjectCheck(GateRef gate, GateRef frameState)
 {
     auto currentLabel = env_->GetCurrentLabel();
@@ -1519,8 +1505,10 @@ GateRef CircuitBuilder::TypedCreateObjWithBuffer(std::vector<GateRef> &valueIn)
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
+    auto frameState = acc_.FindNearestFrameState(currentDepend);
     std::vector<GateRef> vec { currentControl, currentDepend };
     vec.insert(vec.end(), valueIn.begin(), valueIn.end());
+    vec.emplace_back(frameState);
     GateRef ret = GetCircuit()->NewGate(circuit_->TypedCreateObjWithBuffer(valueIn.size()),
         MachineType::I64, vec, GateType::AnyType());
     currentLabel->SetControl(ret);

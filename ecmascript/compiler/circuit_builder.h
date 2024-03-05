@@ -238,10 +238,8 @@ public:
     GateRef LoadBuiltinObject(size_t offset);
 
     // Get
-    GateRef GetConstPool(GateRef jsFunc);
     GateRef GetConstPoolFromFunction(GateRef jsFunc);
     GateRef GetCodeAddr(GateRef method);
-    GateRef GetObjectFromConstPool(GateRef glue, GateRef hirGate, GateRef jsFunc, GateRef index, ConstPoolType type);
     GateRef GetObjectFromConstPool(GateRef glue, GateRef hirGate, GateRef constPool, GateRef module, GateRef index,
                                    ConstPoolType type);
     GateRef GetFunctionLexicalEnv(GateRef function);
@@ -292,7 +290,7 @@ public:
     GateRef HasPendingException(GateRef glue); // shareir
     GateRef IsUtf8String(GateRef string);
     GateRef IsUtf16String(GateRef string);
-    GateRef LoadObjectFromConstPool(GateRef jsFunc, GateRef index);
+    GateRef LoadObjectFromConstPool(GateRef constPool, GateRef index);
     GateRef IsAccessorInternal(GateRef accessor);
 
     // label related
@@ -468,7 +466,6 @@ public:
     GateRef IndexCheck(GateRef gate, GateRef index);
     GateRef ObjectTypeCheck(GateType type, bool isHeapObject, GateRef gate, GateRef hclassIndex,
                             GateRef frameState = Gate::InvalidGateRef);
-    GateRef ObjectTypeCompare(GateType type, bool isHeapObject, GateRef gate, GateRef hclassIndex);
     GateRef TryPrimitiveTypeCheck(GateType type, GateRef gate);
     GateRef CallTargetCheck(GateRef gate, GateRef function, GateRef id, GateRef param, const char* comment = nullptr);
     GateRef JSCallTargetFromDefineFuncCheck(GateType type, GateRef func, GateRef gate);

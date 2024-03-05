@@ -544,12 +544,12 @@ void TypedBytecodeLowering::LowerTypedLdObjByName(GateRef gate)
             builder_.ProtoChangeMarkerCheck(receiver, frameState);
             PropertyLookupResult plr = tacc.GetAccessInfo(0).Plr();
             GateRef plrGate = builder_.Int32(plr.GetData());
-            GateRef jsFunc = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
+            GateRef constpoool = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::CONST_POOL);
             size_t holderHClassIndex = tacc.GetAccessInfo(0).HClassIndex();
             if (LIKELY(!plr.IsAccessor())) {
-                result = builder_.MonoLoadPropertyOnProto(receiver, plrGate, jsFunc, holderHClassIndex);
+                result = builder_.MonoLoadPropertyOnProto(receiver, plrGate, constpoool, holderHClassIndex);
             } else {
-                result = builder_.MonoCallGetterOnProto(gate, receiver, plrGate, jsFunc, holderHClassIndex);
+                result = builder_.MonoCallGetterOnProto(gate, receiver, plrGate, constpoool, holderHClassIndex);
             }
         }
         acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), *result);
@@ -650,15 +650,15 @@ void TypedBytecodeLowering::LowerTypedStObjByName(GateRef gate)
             builder_.ProtoChangeMarkerCheck(tacc.GetReceiver(), frameState);
             PropertyLookupResult plr = tacc.GetAccessInfo(0).Plr();
             GateRef plrGate = builder_.Int32(plr.GetData());
-            GateRef jsFunc = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
+            GateRef constpool = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::CONST_POOL);
             size_t holderHClassIndex = tacc.GetAccessInfo(0).HClassIndex();
             GateRef value = tacc.GetValue();
             if (tacc.IsHolderEqNewHolder(0)) {
-                builder_.MonoStorePropertyLookUpProto(tacc.GetReceiver(), plrGate, jsFunc, holderHClassIndex, value);
+                builder_.MonoStorePropertyLookUpProto(tacc.GetReceiver(), plrGate, constpool, holderHClassIndex, value);
             } else {
-                auto propKey = builder_.LoadObjectFromConstPool(argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC),
+                auto propKey = builder_.LoadObjectFromConstPool(argAcc_.GetFrameArgsIn(gate, FrameArgIdx::CONST_POOL),
                                                                 tacc.GetKey());
-                builder_.MonoStoreProperty(tacc.GetReceiver(), plrGate, jsFunc, holderHClassIndex, value,
+                builder_.MonoStoreProperty(tacc.GetReceiver(), plrGate, constpool, holderHClassIndex, value,
                                            propKey);
             }
         } else if (tacc.IsReceiverEqHolder(0)) {
@@ -716,7 +716,7 @@ void TypedBytecodeLowering::LowerTypedStObjByName(GateRef gate)
                 builder_.Branch(builder_.IsProtoTypeHClass(receiverHC), &isProto, &notProto,
                     BranchWeight::ONE_WEIGHT, BranchWeight::DEOPT_WEIGHT);
                 builder_.Bind(&isProto);
-                auto propKey = builder_.LoadObjectFromConstPool(argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC),
+                auto propKey = builder_.LoadObjectFromConstPool(argAcc_.GetFrameArgsIn(gate, FrameArgIdx::CONST_POOL),
                                                                 tacc.GetKey());
                 builder_.CallRuntime(glue_, RTSTUB_ID(UpdateAOTHClass), Gate::InvalidGateRef,
                     { receiverHC, newHolderHC, propKey }, gate);
@@ -1987,10 +1987,8 @@ void TypedBytecodeLowering::LowerCreateObjectWithBuffer(GateRef gate)
     }
 
     AddProfiling(gate);
-    GateRef jsFunc = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
     auto size = newClass->GetObjectSize();
     std::vector<GateRef> valueIn;
-    valueIn.emplace_back(jsFunc);
     valueIn.emplace_back(builder_.IntPtr(size));
     valueIn.emplace_back(index);
     valueIn.emplace_back(builder_.Int64(newClass.GetTaggedValue().GetRawData()));
