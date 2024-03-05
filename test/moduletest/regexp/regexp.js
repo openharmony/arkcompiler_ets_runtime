@@ -401,3 +401,18 @@ print(replacedString);
 
 let str = "beep boop   afff测试样本one1";
 print(str.split(/([{}:;,]|\s+)/));
+
+function verifyRegExp(text) {
+  text = text.replace(new RegExp('[\\s]', 'g'), ' ');
+  let emRegExp = new RegExp('<em>.*?</em>', 'ig');
+  let results = text.split(emRegExp);
+  text.match(emRegExp);
+  return results;
+}
+
+const srcTextA = '<em>a</em>bcdefghijklmnopqrstuvwxyz<em>a</em>bcdefghijklmnopqrstuvwxyz<em>a</em>bcdefghijklmnopqrstuvwxyz<em>a</em>bcdefghijklmnopqrstuvwxyz'
+const srcTextAbcd = '<em>abcd</em>efghijklmnopqrstuvwxyz<em>abcd</em>efghijklmnopqrstuvwxyz<em>abcd</em>efghijklmnopqrstuvwxyz<em>abcd</em>efghijklmnopqrstuvwxyz'
+
+print(`verifyRegExp_1: ${verifyRegExp(srcTextA)}`);
+print(`verifyRegExp_2: ${verifyRegExp(srcTextAbcd)}`);
+print(`verifyRegExp_3: ${verifyRegExp(srcTextAbcd)}`);

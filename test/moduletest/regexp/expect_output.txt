@@ -73,3 +73,6 @@ TypeError
 g
 \/vedio\/av(uuu)(uuu)
 beep, ,boop,   ,afff测试样本one1
+verifyRegExp_1: ,bcdefghijklmnopqrstuvwxyz,bcdefghijklmnopqrstuvwxyz,bcdefghijklmnopqrstuvwxyz,bcdefghijklmnopqrstuvwxyz
+verifyRegExp_2: ,efghijklmnopqrstuvwxyz,efghijklmnopqrstuvwxyz,efghijklmnopqrstuvwxyz,efghijklmnopqrstuvwxyz
+verifyRegExp_3: ,efghijklmnopqrstuvwxyz,efghijklmnopqrstuvwxyz,efghijklmnopqrstuvwxyz,efghijklmnopqrstuvwxyz
