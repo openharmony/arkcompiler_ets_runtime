@@ -120,6 +120,9 @@ GateRef TypedNativeInlineLowering::VisitGate(GateRef gate)
         case OpCode::MATH_CLZ32_INT32:
             LowerClz32Int32(gate);
             break;
+        case OpCode::MATH_SQRT:
+            LowerMathSqrt(gate);
+            break;
         default:
             break;
     }
@@ -657,6 +660,20 @@ void TypedNativeInlineLowering::LowerTrunc(GateRef gate)
     }
     builder_.Bind(&exit);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
+}
+
+void TypedNativeInlineLowering::LowerMathSqrt(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    builder_.SetEnvironment(&env);
+    GateRef param = acc_.GetValueIn(gate, 0);
+    // 20.2.2.32
+    // If value is NAN or negative, include -NaN and -Infinity but not -0.0, the result is NaN
+    // Assembly instruction support NAN and negative
+    auto ret = builder_.Sqrt(param);
+    acc_.SetMachineType(ret, MachineType::F64);
+    acc_.SetGateType(ret, GateType::NJSValue());
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), ret);
 }
 
 }

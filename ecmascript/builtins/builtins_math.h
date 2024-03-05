@@ -65,7 +65,7 @@
     V("sign",   Sign,   1, INVALID)     /* Math.sign ( x ) */               \
     V("sin",    Sin,    1, MathSin)     /* Math.sin ( x ) */                \
     V("sinh",   Sinh,   1, MathSinh)    /* Math.sinh ( x ) */               \
-    V("sqrt",   Sqrt,   1, SQRT)        /* Math.sqrt ( x ) */               \
+    V("sqrt",   Sqrt,   1, MathSqrt)    /* Math.sqrt ( x ) */               \
     V("tan",    Tan,    1, MathTan)     /* Math.tan ( x ) */                \
     V("tanh",   Tanh,   1, MathTanh)    /* Math.tanh ( x ) */               \
     V("trunc",  Trunc,  1, MathTrunc)   /* Math.trunc ( x ) */

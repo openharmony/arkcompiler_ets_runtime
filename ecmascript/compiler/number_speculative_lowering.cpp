@@ -73,11 +73,6 @@ void NumberSpeculativeLowering::VisitGate(GateRef gate)
             VisitConstant(gate);
             break;
         }
-        case OpCode::TYPED_CALL_BUILTIN:
-        case OpCode::TYPED_CALL_BUILTIN_SIDE_EFFECT:{
-            VisitCallBuiltins(gate);
-            break;
-        }
         case OpCode::LOAD_ELEMENT: {
             VisitLoadElement(gate);
             break;
@@ -527,19 +522,6 @@ void NumberSpeculativeLowering::VisitUndefinedEqOrUndefinedNotEq(GateRef gate)
         result = builder_.TaggedIsNotUndefinedAndNullAndHole(valueGate);
     }
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
-}
-
-void NumberSpeculativeLowering::VisitCallBuiltins(GateRef gate)
-{
-    auto valuesIn = acc_.GetNumValueIn(gate);
-    auto idGate = acc_.GetValueIn(gate, valuesIn - 1);
-    auto id = static_cast<BuiltinsStubCSigns::ID>(acc_.GetConstantValue(idGate));
-    if (id != BUILTINS_STUB_ID(SQRT)) {
-        return;
-    }
-
-    BuiltinLowering lowering(circuit_);
-    lowering.LowerTypedSqrt(gate);
 }
 
 void NumberSpeculativeLowering::VisitConstant(GateRef gate)

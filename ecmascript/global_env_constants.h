@@ -154,7 +154,7 @@ class ObjectFactory;
     V(JSTaggedValue, DefaultSupers, DEFAULT_SUPERS_INDEX, ecma_roots_special)                          \
     V(JSTaggedValue, EmptyTaggedQueue, EMPTY_TAGGED_QUEUE_OBJECT_INDEX, ecma_roots_special)            \
     V(JSTaggedValue, UndefinedCompletionRecord, UNDEFINED_COMPLRTION_RECORD_INDEX, ecma_roots_special) \
-    V(JSTaggedValue, MathSqrtFunction, MATH_SQRT_FUNCTION_INDEX, ecma_roots_special)                   \
+    V(JSTaggedValue, MathSqrt, MATH_SQRT_INDEX, ecma_roots_special)                                    \
     V(JSTaggedValue, MathAcos, MATH_ACOS_INDEX, ecma_roots_special)                                    \
     V(JSTaggedValue, MathAcosh, MATH_ACOSH_INDEX, ecma_roots_special)                                  \
     V(JSTaggedValue, MathAsin, MATH_ASIN_INDEX, ecma_roots_special)                                    \

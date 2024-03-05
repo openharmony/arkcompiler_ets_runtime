@@ -158,9 +158,6 @@ GateRef NumberSpeculativeRetype::VisitGate(GateRef gate)
             return VisitPhi(gate);
         case OpCode::CONSTANT:
             return VisitConstant(gate);
-        case OpCode::TYPED_CALL_BUILTIN:
-        case OpCode::TYPED_CALL_BUILTIN_SIDE_EFFECT:
-            return VisitCallBuiltins(gate);
         case OpCode::TYPE_CONVERT:
             return VisitTypeConvert(gate);
         case OpCode::FRAME_STATE:
@@ -194,6 +191,7 @@ GateRef NumberSpeculativeRetype::VisitGate(GateRef gate)
         case OpCode::MATH_COSH:
         case OpCode::MATH_SIN:
         case OpCode::MATH_SINH:
+        case OpCode::MATH_SQRT:
         case OpCode::MATH_TAN:
         case OpCode::MATH_TANH:
         case OpCode::MATH_POW:
@@ -236,6 +234,8 @@ GateRef NumberSpeculativeRetype::VisitGate(GateRef gate)
         case OpCode::ECMA_STRING_CHECK:
         case OpCode::CREATE_ARGUMENTS:
         case OpCode::TAGGED_TO_INT64:
+        case OpCode::TYPED_CALL_BUILTIN:
+        case OpCode::TYPED_CALL_BUILTIN_SIDE_EFFECT:
             return VisitOthers(gate);
         default:
             return Circuit::NullGate();
@@ -722,32 +722,6 @@ GateRef NumberSpeculativeRetype::VisitNumberRelated(GateRef gate)
             if (inputType.IsNumberType() || inputType.IsBooleanType()) {
                 acc_.ReplaceValueIn(gate, CheckAndConvertToTagged(input, inputType, ConvertToNumber::BOOL_ONLY), i);
             }
-        }
-        acc_.ReplaceStateIn(gate, builder_.GetState());
-        acc_.ReplaceDependIn(gate, builder_.GetDepend());
-    }
-    return Circuit::NullGate();
-}
-
-GateRef NumberSpeculativeRetype::VisitCallBuiltins(GateRef gate)
-{
-    auto valuesIn = acc_.GetNumValueIn(gate);
-    auto idGate = acc_.GetValueIn(gate, valuesIn - 1);
-    auto id = static_cast<BuiltinsStubCSigns::ID>(acc_.GetConstantValue(idGate));
-    if (id != BUILTINS_STUB_ID(SQRT)) {
-        return VisitOthers(gate);
-    }
-
-    if (IsRetype()) {
-        // Sqrt output is double
-        return SetOutputType(gate, GateType::DoubleType());
-    }
-    if (IsConvert()) {
-        Environment env(gate, circuit_, &builder_);
-        acc_.ReplaceValueIn(gate, ConvertToTagged(idGate), valuesIn - 1);
-        for (size_t i = 0; i < valuesIn - 1; ++i) {
-            GateRef input = acc_.GetValueIn(gate, i);
-            acc_.ReplaceValueIn(gate, CheckAndConvertToFloat64(input, GateType::NumberType()), i);
         }
         acc_.ReplaceStateIn(gate, builder_.GetState());
         acc_.ReplaceDependIn(gate, builder_.GetDepend());

@@ -49,6 +49,7 @@ private:
     void LowerMathExp(GateRef gate);
     void LowerClz32Float64(GateRef gate);
     void LowerClz32Int32(GateRef gate);
+    void LowerMathSqrt(GateRef gate);
 
     GateRef BuildIntAbs(GateRef value);
     GateRef BuildDoubleAbs(GateRef value);

@@ -2879,12 +2879,6 @@ double RuntimeStubs::FloatMod(double x, double y)
     return std::fmod(x, y);
 }
 
-JSTaggedType RuntimeStubs::FloatSqrt(double x)
-{
-    double result = std::sqrt(x);
-    return JSTaggedValue(result).GetRawData();
-}
-
 double RuntimeStubs::FloatAcos(double x)
 {
     return std::acos(x);

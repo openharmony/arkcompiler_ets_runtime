@@ -441,7 +441,6 @@ private:
     V(DoubleToInt)                              \
     V(DoubleToLength)                           \
     V(FloatMod)                                 \
-    V(FloatSqrt)                                \
     V(FloatAcos)                                \
     V(FloatAcosh)                               \
     V(FloatAsin)                                \

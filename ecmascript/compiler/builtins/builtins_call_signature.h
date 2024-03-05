@@ -127,8 +127,7 @@ namespace panda::ecmascript::kungfu {
     V(SORT)
 
 #define AOT_BUILTINS_STUB_LIST(V)                   \
-    V(SQRT)  /* list start and math list start */   \
-    V(FLOOR)  /* math list end */                   \
+    V(FLOOR)  /* math  */                           \
     V(STRINGIFY)                                    \
     V(MAP_PROTO_ITERATOR)                           \
     V(SET_PROTO_ITERATOR)                           \
@@ -153,6 +152,7 @@ namespace panda::ecmascript::kungfu {
     V(MathCosh)                                     \
     V(MathSin)                                      \
     V(MathSinh)                                     \
+    V(MathSqrt)                                     \
     V(MathTan)                                      \
     V(MathCbrt)                                     \
     V(MathTanh)                                     \
@@ -182,9 +182,9 @@ public:
         AOT_BUILTINS_INLINE_LIST(DEF_STUB_ID)
 #undef DEF_STUB_ID
         BUILTINS_CONSTRUCTOR_STUB_FIRST = BooleanConstructor,
-        TYPED_BUILTINS_FIRST = SQRT,
+        TYPED_BUILTINS_FIRST = FLOOR,
         TYPED_BUILTINS_LAST = ITERATOR_PROTO_RETURN,
-        TYPED_BUILTINS_MATH_FIRST = SQRT,
+        TYPED_BUILTINS_MATH_FIRST = FLOOR,
         TYPED_BUILTINS_MATH_LAST = FLOOR,
         INVALID = 0xFF,
     };
@@ -333,12 +333,12 @@ public:
                 return ConstantIndex::MATH_TRUNC_INDEX;
             case BuiltinsStubCSigns::ID::FLOOR:
                 return ConstantIndex::MATH_FLOOR_FUNCTION_INDEX;
-            case BuiltinsStubCSigns::ID::SQRT:
-                return ConstantIndex::MATH_SQRT_FUNCTION_INDEX;
             case BuiltinsStubCSigns::ID::MathMin:
                 return ConstantIndex::MATH_MIN_INDEX;
             case BuiltinsStubCSigns::ID::MathMax:
                 return ConstantIndex::MATH_MAX_INDEX;
+            case BuiltinsStubCSigns::ID::MathSqrt:
+                return ConstantIndex::MATH_SQRT_INDEX;
             case BuiltinsStubCSigns::ID::LocaleCompare:
                 return ConstantIndex::LOCALE_COMPARE_FUNCTION_INDEX;
             case BuiltinsStubCSigns::ID::SORT:
@@ -388,7 +388,7 @@ public:
             {"Exp", MathExp},
             {"Expm1", MathExpm1},
             {"Clz32", MathClz32},
-            {"sqrt", SQRT},
+            {"Sqrt", MathSqrt},
             {"cbrt", MathCbrt},
             {"abs", MathAbs},
             {"pow", MathPow},

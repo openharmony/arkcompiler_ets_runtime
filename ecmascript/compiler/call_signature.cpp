@@ -1866,20 +1866,6 @@ DEF_CALL_SIGNATURE(InsertLocalToShareRSet)
     callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
 }
 
-DEF_CALL_SIGNATURE(FloatSqrt)
-{
-    // 1 : 1 input parameters
-    CallSignature index("FloatSqrt", 0, 1, ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
-    *callSign = index;
-    // 1 : 1 input parameters
-    std::array<VariableType, 1> params = {
-        VariableType::FLOAT64(),
-    };
-    callSign->SetParameters(params.data());
-    callSign->SetGCLeafFunction(true);
-    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
-}
-
 #define DEF_FLOAT_UNARY_CALL_SIGNATURE_BY_NAME(NAME)                                               \
     DEF_CALL_SIGNATURE(NAME)                                                                       \
     {                                                                                              \

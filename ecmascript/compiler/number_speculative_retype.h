@@ -105,7 +105,6 @@ private:
     GateRef VisitStoreProperty(GateRef gate);
     GateRef VisitLoadProperty(GateRef gate);
     GateRef VisitNumberRelated(GateRef gate);
-    GateRef VisitCallBuiltins(GateRef gate);
     GateRef VisitOthers(GateRef gate);
     GateRef VisitTypeConvert(GateRef gate);
     GateRef VisitFrameState(GateRef gate);

@@ -116,7 +116,6 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(DoubleToInt)                             \
     V(DoubleToLength)                          \
     V(FloatMod)                                \
-    V(FloatSqrt)                               \
     V(FloatAcos)                               \
     V(FloatAcosh)                              \
     V(FloatAsin)                               \
@@ -478,7 +477,6 @@ public:
     static int32_t DoubleToInt(double x, size_t bits);
     static JSTaggedType DoubleToLength(double x);
     static double FloatMod(double x, double y);
-    static JSTaggedType FloatSqrt(double x);
     static double FloatAcos(double x);
     static double FloatAcosh(double x);
     static double FloatAsin(double x);

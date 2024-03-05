@@ -31,6 +31,7 @@ group("ark_aot_builtin_inlining_math_test") {
     "Expm1",
     "Sin",
     "Sinh",
+    "Sqrt",
     "Tan",
     "Tanh",
     "Trunc",
