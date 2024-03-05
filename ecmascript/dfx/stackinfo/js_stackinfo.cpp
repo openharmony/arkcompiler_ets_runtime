@@ -613,7 +613,11 @@ bool StepArk(void *ctx, ReadMemFunc readMem, uintptr_t *fp, uintptr_t *sp, uintp
             *sp = currentPtr;
             *isJsFrame = true;
         }
+    } else {
+        LOG_ECMA(ERROR) << "ArkGetNextFrame failed, currentPtr: " << currentPtr << ", frameType: " << frameType;
+        return false;
     }
+
     return true;
 }
 
