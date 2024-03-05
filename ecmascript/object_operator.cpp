@@ -99,6 +99,9 @@ void ObjectOperator::UpdateHolder()
         JSHandle<JSTaggedValue> undefined = thread_->GlobalConstants()->GetHandledUndefined();
         holder_.Update(JSPrimitiveRef::StringCreate(thread_, holder_, undefined).GetTaggedValue());
     } else {
+        if (holder_->IsString() || holder_->IsNumber()) {
+            SetIsOnPrototype(true);
+        }
         holder_.Update(JSTaggedValue::ToPrototypeOrObj(thread_, holder_).GetTaggedValue());
     }
 }

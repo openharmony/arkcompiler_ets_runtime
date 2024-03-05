@@ -1745,8 +1745,8 @@ GateRef StubBuilder::LoadICWithHandler(
     Label handlerInfoNotField(env);
     Label handlerInfoIsNonExist(env);
     Label handlerInfoNotNonExist(env);
-    Label handlerInfoIsString(env);
-    Label handlerInfoNotString(env);
+    Label handlerInfoIsPrimitive(env);
+    Label handlerInfoNotPrimitive(env);
     Label handlerInfoIsStringLength(env);
     Label handlerInfoNotStringLength(env);
     Label handlerIsPrototypeHandler(env);
@@ -1768,37 +1768,19 @@ GateRef StubBuilder::LoadICWithHandler(
             Branch(IsField(handlerInfo), &handlerInfoIsField, &handlerInfoNotField);
             Bind(&handlerInfoIsField);
             {
-                Label receiverIsNumber(env);
-                Label receiverNotNumber(env);
-                Branch(TaggedIsNumber(receiver), &receiverIsNumber, &receiverNotNumber);
-                Bind(&receiverIsNumber);
-                {
-                    GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
-                    GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
-                    auto numberProto = GetGlobalEnvValue(VariableType::JS_ANY(),
-                        glueGlobalEnv, GlobalEnv::NUMBER_PROTOTYPE_INDEX);
-                    result = LoadFromField(numberProto, handlerInfo);
-                    Jump(&exit);
-                }
-                Bind(&receiverNotNumber);
+                result = LoadFromField(*holder, handlerInfo);
+                Jump(&exit);
+            }
+            Bind(&handlerInfoNotField);
+            {
+                Branch(BoolOr(IsStringElement(handlerInfo), IsNumber(handlerInfo)),
+                    &handlerInfoIsPrimitive, &handlerInfoNotPrimitive);
+                Bind(&handlerInfoIsPrimitive);
                 {
                     result = LoadFromField(*holder, handlerInfo);
                     Jump(&exit);
                 }
-            }
-            Bind(&handlerInfoNotField);
-            {
-                Branch(IsStringElement(handlerInfo), &handlerInfoIsString, &handlerInfoNotString);
-                Bind(&handlerInfoIsString);
-                {
-                    GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
-                    GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
-                    auto stringProto = GetGlobalEnvValue(VariableType::JS_ANY(),
-                        glueGlobalEnv, GlobalEnv::STRING_PROTOTYPE_INDEX);
-                    result = LoadFromField(stringProto, handlerInfo);
-                    Jump(&exit);
-                }
-                Bind(&handlerInfoNotString);
+                Bind(&handlerInfoNotPrimitive);
                 {
                     Branch(IsNonExist(handlerInfo), &handlerInfoIsNonExist, &handlerInfoNotNonExist);
                     Bind(&handlerInfoIsNonExist);
@@ -1808,35 +1790,6 @@ GateRef StubBuilder::LoadICWithHandler(
                         Branch(IsStringLength(handlerInfo), &handlerInfoIsStringLength, &handlerInfoNotStringLength);
                         Bind(&handlerInfoNotStringLength);
                         {
-                            // string or number hasaccessor
-                            Label holderIsString(env);
-                            Label holderNotString(env);
-                            Label holderIsNumber(env);
-                            Label holderNotNumber(env);
-                            Branch(TaggedIsString(*holder), &holderIsString, &holderNotString);
-                            Bind(&holderIsString);
-                            {
-                                GateRef glueGlobalEnvOffset =
-                                    IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
-                                GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(),
-                                    glue, glueGlobalEnvOffset);
-                                holder = GetGlobalEnvValue(VariableType::JS_ANY(),
-                                    glueGlobalEnv, GlobalEnv::STRING_PROTOTYPE_INDEX);
-                                Jump(&exit);
-                            }
-                            Bind(&holderNotString);
-                            Branch(TaggedIsNumber(*holder), &holderIsNumber, &holderNotNumber);
-                            Bind(&holderIsNumber);
-                            {
-                                GateRef glueGlobalEnvOffset =
-                                    IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
-                                GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(),
-                                    glue, glueGlobalEnvOffset);
-                                holder = GetGlobalEnvValue(VariableType::JS_ANY(),
-                                    glueGlobalEnv, GlobalEnv::NUMBER_PROTOTYPE_INDEX);
-                                Jump(&exit);
-                            }
-                            Bind(&holderNotNumber);
                             GateRef accessor = LoadFromField(*holder, handlerInfo);
                             result = CallGetterHelper(glue, receiver, *holder, accessor, callback);
                             Jump(&exit);

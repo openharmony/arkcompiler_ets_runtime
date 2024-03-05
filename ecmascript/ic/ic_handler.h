@@ -24,7 +24,7 @@
 namespace panda::ecmascript {
 class HandlerBase {
 public:
-    static constexpr uint32_t KIND_BIT_LENGTH = 3;
+    static constexpr uint32_t KIND_BIT_LENGTH = 4;
     static constexpr uint32_t STORE_KIND_BIT_LENGTH = 2;
     enum HandlerKind {
         NONE = 0,
@@ -34,6 +34,7 @@ public:
         STRING,
         STRING_LENGTH,
         TYPED_ARRAY,
+        NUMBER,
         NON_EXIST,
         TOTAL_KINDS,
     };
@@ -47,16 +48,17 @@ public:
     };
 
     // For Load
-    using KindBit = BitField<HandlerKind, 0, KIND_BIT_LENGTH>;
-    using InlinedPropsBit = KindBit::NextFlag;
-    using AccessorBit = InlinedPropsBit::NextFlag;
-    using InternalAccessorBit = AccessorBit::NextFlag;
-    using IsJSArrayBit = InternalAccessorBit::NextFlag;
-    using OffsetBit = IsJSArrayBit::NextField<uint32_t, PropertyAttributes::OFFSET_BITFIELD_NUM>;
-    using RepresentationBit = OffsetBit::NextField<Representation, PropertyAttributes::REPRESENTATION_NUM>;
-    using AttrIndexBit = RepresentationBit::NextField<uint32_t, PropertyAttributes::OFFSET_BITFIELD_NUM>;
-    using IsOnHeapBit = AttrIndexBit::NextFlag;
-    using NeedSkipInPGODumpBit = IsOnHeapBit::NextFlag;
+    using KindBit = BitField<HandlerKind, 0, KIND_BIT_LENGTH>;                                              // 4
+    using InlinedPropsBit = KindBit::NextFlag;                                                              // 5
+    using AccessorBit = InlinedPropsBit::NextFlag;                                                          // 6
+    using IsJSArrayBit = AccessorBit::NextFlag;                                                             // 7
+    using OffsetBit = IsJSArrayBit::NextField<uint32_t, PropertyAttributes::OFFSET_BITFIELD_NUM>;           // 17
+    using RepresentationBit = OffsetBit::NextField<Representation, PropertyAttributes::REPRESENTATION_NUM>; // 19
+    using AttrIndexBit = RepresentationBit::NextField<uint32_t, PropertyAttributes::OFFSET_BITFIELD_NUM>;   // 29
+    using IsOnHeapBit = AttrIndexBit::NextFlag;                                                             // 30
+    using NeedSkipInPGODumpBit  = IsOnHeapBit::NextFlag;                                                    // 31
+    static_assert(
+        NeedSkipInPGODumpBit::START_BIT + NeedSkipInPGODumpBit::SIZE <= sizeof(uint32_t) * BITS_PER_BYTE, "Invalid");
     static_assert(static_cast<size_t>(HandlerKind::TOTAL_KINDS) <= (1 << KIND_BIT_LENGTH));
 
     // For Store
@@ -74,11 +76,6 @@ public:
     static inline bool IsAccessor(uint32_t handler)
     {
         return AccessorBit::Get(handler);
-    }
-
-    static inline bool IsInternalAccessor(uint32_t handler)
-    {
-        return InternalAccessorBit::Get(handler);
     }
 
     static inline TrackType GetTrackType(uint32_t handler)
@@ -114,6 +111,11 @@ public:
     static inline bool IsString(uint32_t handler)
     {
         return GetKind(handler) == HandlerKind::STRING;
+    }
+
+    static inline bool IsNumber(uint32_t handler)
+    {
+        return GetKind(handler) == HandlerKind::NUMBER;
     }
 
     static inline bool IsStringLength(uint32_t handler)
@@ -208,6 +210,8 @@ public:
                 } else {
                     KindBit::Set<uint32_t>(HandlerKind::STRING, &handler);
                 }
+            } else if (op.GetReceiver()->IsNumber()) {
+                KindBit::Set<uint32_t>(HandlerKind::NUMBER, &handler);
             } else {
                 KindBit::Set<uint32_t>(HandlerKind::FIELD, &handler);
             }

@@ -2033,9 +2033,8 @@ JSHandle<JSPrimitiveRef> ObjectFactory::NewJSPrimitiveRef(const JSHandle<JSFunct
     obj->SetValue(thread_, object);
 
     JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
-    const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
     if (function.GetTaggedValue() == env->GetStringFunction().GetTaggedValue()) {
-        JSHandle<JSTaggedValue> lengthStr = globalConst->GetHandledLengthString();
+        JSHandle<JSTaggedValue> lengthStr = thread_->GlobalConstants()->GetHandledLengthString();
         uint32_t length = EcmaStringAccessor(object.GetTaggedValue()).GetLength();
         PropertyDescriptor desc(thread_, JSHandle<JSTaggedValue>(thread_, JSTaggedValue(length)), false, false, false);
         JSTaggedValue::DefinePropertyOrThrow(thread_, JSHandle<JSTaggedValue>(obj), lengthStr, desc);

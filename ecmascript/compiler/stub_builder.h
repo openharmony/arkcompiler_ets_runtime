@@ -366,6 +366,7 @@ public:
     GateRef IsStoreShared(GateRef attr);
     GateRef IsElement(GateRef attr);
     GateRef IsStringElement(GateRef attr);
+    GateRef IsNumber(GateRef attr);
     GateRef IsStringLength(GateRef attr);
     GateRef IsTypedArrayElement(GateRef attr);
     GateRef IsNonExist(GateRef attr);
@@ -399,7 +400,6 @@ public:
     GateRef GetTransitionHandlerInfo(GateRef obj);
     GateRef GetTransWithProtoHClass(GateRef obj);
     GateRef GetTransWithProtoHandlerInfo(GateRef obj);
-    GateRef IsInternalAccessor(GateRef attr);
     GateRef GetProtoCell(GateRef object);
     GateRef GetPrototypeHandlerHolder(GateRef object);
     GateRef GetPrototypeHandlerHandlerInfo(GateRef object);
