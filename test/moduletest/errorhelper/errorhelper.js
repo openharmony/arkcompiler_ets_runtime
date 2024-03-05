@@ -40,3 +40,12 @@ try {
 try {
     0();
 } catch (e) {}
+
+Object.defineProperty(ReferenceError.prototype, "constructor", {
+    value: "x"
+})
+try {
+    print(x13)
+} catch (e) {
+    print(e.name)
+}
