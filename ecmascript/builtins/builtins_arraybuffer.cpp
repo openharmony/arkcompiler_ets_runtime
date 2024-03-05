@@ -764,9 +764,8 @@ JSTaggedValue BuiltinsArrayBuffer::TypedArrayToList(JSThread *thread, JSHandle<J
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSTaggedValue> bufferHandle(thread, items->GetViewedArrayBufferOrByteArray());
     uint32_t arrayLen = items->GetArrayLength();
-    JSTaggedValue newArray = JSArray::ArrayCreate(thread, JSTaggedNumber(0)).GetTaggedValue();
+    JSHandle<JSObject> newArrayHandle(thread, JSArray::ArrayCreate(thread, JSTaggedNumber(0)).GetTaggedValue());
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    JSHandle<JSObject> newArrayHandle(thread, newArray);
     JSHandle<TaggedArray> oldElements(thread, newArrayHandle->GetElements());
     JSHandle<TaggedArray> elements = (oldElements->GetLength() < arrayLen) ?
         factory->ExtendArray(oldElements, arrayLen) : oldElements;
