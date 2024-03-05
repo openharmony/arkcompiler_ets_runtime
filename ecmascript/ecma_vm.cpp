@@ -174,7 +174,6 @@ EcmaVM::EcmaVM(JSRuntimeOptions options, EcmaParamConfiguration config)
     icEnabled_ = options_.EnableIC();
     optionalLogEnabled_ = options_.EnableOptionalLog();
     options_.ParseAsmInterOption();
-    SetEnableJit(options_.IsEnableJIT() && options_.GetEnableAsmInterpreter());
 }
 
 void EcmaVM::InitializePGOProfiler()
@@ -210,6 +209,25 @@ bool EcmaVM::IsEnableElementsKind() const
         return false;
     }
     return options_.GetEnableAsmInterpreter() && options_.IsEnableElementsKind();
+}
+
+bool EcmaVM::IsEnableJit() const
+{
+    if (options_.IsWorker()) {
+        return GetJit()->IsEnable();
+    }
+    return options_.GetEnableAsmInterpreter() && options_.IsEnableJIT();
+}
+
+void EcmaVM::EnableJit() const
+{
+    Jit::GetInstance()->SetEnable(this);
+    GetJSThread()->SwitchJitProfileStubs();
+}
+
+Jit *EcmaVM::GetJit() const
+{
+    return Jit::GetInstance();
 }
 
 bool EcmaVM::Initialize()
@@ -248,10 +266,8 @@ bool EcmaVM::Initialize()
 
     callTimer_ = new FunctionCallTimer();
     strategy_ = new ThroughputJSObjectResizingStrategy();
-
     if (IsEnableJit()) {
-        jit_ = new Jit(this);
-        jit_->Initialize();
+        EnableJit();
     }
     initialized_ = true;
     return true;
@@ -296,13 +312,6 @@ EcmaVM::~EcmaVM()
         std::shared_ptr<JSPandaFile> jsPandaFile = JSPandaFileManager::GetInstance()->FindJSPandaFile(assetPath_);
         if (jsPandaFile != nullptr) {
             jsPandaFile->DeleteParsedConstpoolVM(this);
-        }
-    }
-
-    if (IsEnableJit()) {
-        if (jit_ != nullptr) {
-            delete jit_;
-            jit_ = nullptr;
         }
     }
 

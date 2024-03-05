@@ -504,15 +504,12 @@ void JSThread::CheckOrSwitchPGOStubs()
     }
 }
 
-void JSThread::SwitchJitProfileStubsIfNeeded()
+void JSThread::SwitchJitProfileStubs()
 {
     bool isSwitch = false;
-    bool isEnableJit = vm_->IsEnableJit();
-    if (isEnableJit) {
-        if (GetBCStubStatus() == BCStubStatus::NORMAL_BC_STUB) {
-            SetBCStubStatus(BCStubStatus::JIT_PROFILE_BC_STUB);
-            isSwitch = true;
-        }
+    if (GetBCStubStatus() == BCStubStatus::NORMAL_BC_STUB) {
+        SetBCStubStatus(BCStubStatus::JIT_PROFILE_BC_STUB);
+        isSwitch = true;
     }
     if (isSwitch) {
         Address curAddress;
@@ -544,18 +541,17 @@ bool JSThread::CheckSafepoint()
         SetTerminationRequestWithoutLock(false);
     }
 
-    if (vm_->IsEnableJit() && HasInstallMachineCodeWithoutLock()) {
-        vm_->GetJit()->InstallTasksWithoutClearFlag();
-        // jit 's thread_ is current JSThread's this.
-        SetInstallMachineCodeWithoutLock(false);
-    }
-
     // vmThreadControl_ 's thread_ is current JSThread's this.
     if (VMNeedSuspensionWithoutLock()) {
         interruptMutex_.Unlock();
         vmThreadControl_->SuspendVM();
     } else {
         interruptMutex_.Unlock();
+    }
+
+    if (vm_->IsEnableJit() && HasInstallMachineCode()) {
+        vm_->GetJit()->InstallTasks(GetThreadId());
+        SetInstallMachineCode(false);
     }
 
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)

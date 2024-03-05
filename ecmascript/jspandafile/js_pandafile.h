@@ -124,6 +124,7 @@ public:
     const char *GetMethodName(EntityId methodId);
     const char *GetCpuProfilerMethodName(EntityId methodId);
     CString GetRecordName(EntityId methodId);
+    CString PUBLIC_API GetRecordNameWithBundlePack(EntityId methodIdx);
 
     MethodLiteral* GetMethodLiterals() const
     {
