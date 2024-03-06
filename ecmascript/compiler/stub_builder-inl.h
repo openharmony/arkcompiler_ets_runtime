@@ -1060,6 +1060,11 @@ inline GateRef StubBuilder::GetLengthOfTaggedArray(GateRef array)
     return Load(VariableType::INT32(), array, IntPtr(TaggedArray::LENGTH_OFFSET));
 }
 
+inline GateRef StubBuilder::GetLengthOfJSTypedArray(GateRef array)
+{
+    return Load(VariableType::INT32(), array, IntPtr(JSTypedArray::ARRAY_LENGTH_OFFSET));
+}
+
 inline GateRef StubBuilder::GetExtractLengthOfTaggedArray(GateRef array)
 {
     return Load(VariableType::INT32(), array, IntPtr(TaggedArray::EXTRA_LENGTH_OFFSET));

@@ -183,6 +183,7 @@ public:
     GateRef DeoptCheck(GateRef condition, GateRef frameState, DeoptType type);
     GateRef GetElementsArray(GateRef object);
     GateRef GetLengthOfTaggedArray(GateRef array);
+    GateRef GetLengthOfJSTypedArray(GateRef array);
     GateRef GetSuperConstructor(GateRef ctor);
     GateRef Merge(const std::vector<GateRef> &inList);
     GateRef Selector(OpCode opcode, MachineType machineType, GateRef control, const std::vector<GateRef> &values,

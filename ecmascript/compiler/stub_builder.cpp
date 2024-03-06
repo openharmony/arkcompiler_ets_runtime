@@ -7926,7 +7926,6 @@ GateRef StubBuilder::HasStableElements(GateRef glue, GateRef obj)
     Label exit(env);
     Label targetIsHeapObject(env);
     Label targetIsStableElements(env);
-
     Branch(TaggedIsHeapObject(obj), &targetIsHeapObject, &exit);
     Bind(&targetIsHeapObject);
     {
