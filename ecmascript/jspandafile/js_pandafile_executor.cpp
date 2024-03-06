@@ -99,15 +99,15 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromAbcFile(JSThread *
         }
         SourceTextModule::Instantiate(thread, moduleRecord, executeFromJob);
         if (thread->HasPendingException()) {
+            if (!executeFromJob) {
+                thread->GetCurrentEcmaContext()->HandleUncaughtException(thread->GetException());
+            }
             return Unexpected(false);
         }
         JSHandle<SourceTextModule> module = JSHandle<SourceTextModule>::Cast(moduleRecord);
         module->SetStatus(ModuleStatus::INSTANTIATED);
         BindPandaFilesForAot(vm, jsPandaFile.get());
         SourceTextModule::Evaluate(thread, module, nullptr, 0, executeFromJob);
-        if (thread->HasPendingException()) {
-            return Unexpected(false);
-        }
         return JSTaggedValue::Undefined();
     }
     BindPandaFilesForAot(vm, jsPandaFile.get());
@@ -212,15 +212,13 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::CommonExecuteBuffer(JSThread 
 
     SourceTextModule::Instantiate(thread, moduleRecord);
     if (thread->HasPendingException()) {
+        thread->GetCurrentEcmaContext()->HandleUncaughtException(thread->GetException());
         return Unexpected(false);
     }
 
     JSHandle<SourceTextModule> module = JSHandle<SourceTextModule>::Cast(moduleRecord);
     module->SetStatus(ModuleStatus::INSTANTIATED);
     SourceTextModule::Evaluate(thread, module, buffer, size);
-    if (thread->HasPendingException()) {
-        return Unexpected(false);
-    }
     return JSTaggedValue::Undefined();
 }
 
@@ -300,15 +298,13 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::CommonExecuteBuffer(JSThread 
 
     SourceTextModule::Instantiate(thread, moduleRecord);
     if (thread->HasPendingException()) {
+        thread->GetCurrentEcmaContext()->HandleUncaughtException(thread->GetException());
         return Unexpected(false);
     }
 
     JSHandle<SourceTextModule> module = JSHandle<SourceTextModule>::Cast(moduleRecord);
     module->SetStatus(ModuleStatus::INSTANTIATED);
     SourceTextModule::Evaluate(thread, module, nullptr, 0);
-    if (thread->HasPendingException()) {
-        return Unexpected(false);
-    }
     return JSTaggedValue::Undefined();
 }
 
