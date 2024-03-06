@@ -61,5 +61,7 @@ print(len); // 111
 
 // Call standart builtin with non-number param
 Math.cos = true_cos
-len = Math.cos("0"); // deopt
+len = Math.cos("0");
+print(len); // 1
+len = Math.cos("0.5");
 print(len); // 1

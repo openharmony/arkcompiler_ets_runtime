@@ -18,5 +18,4 @@ NaN
 0
 NaN
 111
-[trace] Check Type: NotNumber1
 NaN

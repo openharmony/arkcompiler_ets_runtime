@@ -661,7 +661,7 @@ GateRef NumberSpeculativeRetype::VisitNumberRelated(GateRef gate)
             GateRef input = acc_.GetValueIn(gate, i);
             GateType inputType = acc_.GetGateType(input);
             if (inputType.IsNumberType() || inputType.IsBooleanType()) {
-                acc_.ReplaceValueIn(gate, CheckAndConvertToTagged(input, inputType), i);
+                acc_.ReplaceValueIn(gate, CheckAndConvertToTagged(input, inputType, ConvertToNumber::BOOL_ONLY), i);
             }
         }
         acc_.ReplaceStateIn(gate, builder_.GetState());
@@ -961,7 +961,7 @@ GateRef NumberSpeculativeRetype::CheckAndConvertToInt32(GateRef gate, GateType g
     return result;
 }
 
-GateRef NumberSpeculativeRetype::CheckAndConvertToFloat64(GateRef gate, GateType gateType, ConvertSupport support)
+GateRef NumberSpeculativeRetype::CheckAndConvertToFloat64(GateRef gate, GateType gateType, ConvertToNumber convert)
 {
     auto result = TryConvertConstant(gate, false);
     if (result != Circuit::NullGate()) {
@@ -972,7 +972,7 @@ GateRef NumberSpeculativeRetype::CheckAndConvertToFloat64(GateRef gate, GateType
     TypeInfo output = GetOutputTypeInfo(gate);
     switch (output) {
         case TypeInfo::INT1:
-            result = builder_.ConvertBoolToFloat64(gate, support);
+            result = builder_.ConvertBoolToFloat64(gate, ToConvertSupport(convert));
             break;
         case TypeInfo::INT32:
             result = builder_.ConvertInt32ToFloat64(gate);
@@ -1002,7 +1002,14 @@ GateRef NumberSpeculativeRetype::CheckAndConvertToFloat64(GateRef gate, GateType
                 result = builder_.CheckUndefinedAndConvertToFloat64(gate);
             } else {
                 ASSERT(gateType.IsNumberType());
-                result = builder_.CheckTaggedNumberAndConvertToFloat64(gate);
+                if (convert == ConvertToNumber::ALL) {
+                    GateRef glue = acc_.GetGlueFromArgList();
+                    GateRef number = builder_.ToNumber(glue, gate, glue);
+                    ResizeAndSetTypeInfo(number, TypeInfo::TAGGED);
+                    result = builder_.GetDoubleOfTNumber(number);
+                } else {
+                    result = builder_.CheckTaggedNumberAndConvertToFloat64(gate);
+                }
             }
             break;
         }
@@ -1016,7 +1023,7 @@ GateRef NumberSpeculativeRetype::CheckAndConvertToFloat64(GateRef gate, GateType
     return result;
 }
 
-GateRef NumberSpeculativeRetype::CheckAndConvertToTagged(GateRef gate, GateType gateType, bool isForce)
+GateRef NumberSpeculativeRetype::CheckAndConvertToTagged(GateRef gate, GateType gateType, ConvertToNumber convert)
 {
     TypeInfo output = GetOutputTypeInfo(gate);
     switch (output) {
@@ -1034,7 +1041,7 @@ GateRef NumberSpeculativeRetype::CheckAndConvertToTagged(GateRef gate, GateType 
             return builder_.CheckHoleDoubleAndConvertToTaggedDouble(gate);
         case TypeInfo::NONE:
         case TypeInfo::TAGGED: {
-            if (isForce) {
+            if (convert == ConvertToNumber::ALL) {
                 // Convert if not number
                 ASSERT(gateType.IsNumberType());
                 GateRef glue = acc_.GetGlueFromArgList();
@@ -1239,7 +1246,7 @@ GateRef NumberSpeculativeRetype::VisitStoreProperty(GateRef gate)
     if (plr.GetRepresentation() == Representation::DOUBLE) {
         acc_.SetMetaData(gate, circuit_->StorePropertyNoBarrier());
         acc_.ReplaceValueIn(
-            gate, CheckAndConvertToFloat64(value, GateType::NumberType(), ConvertSupport::DISABLE), 2); // 2: value
+            gate, CheckAndConvertToFloat64(value, GateType::NumberType(), ConvertToNumber::DISABLE), 2); // 2: value
     } else if (plr.GetRepresentation() == Representation::INT) {
         acc_.SetMetaData(gate, circuit_->StorePropertyNoBarrier());
         acc_.ReplaceValueIn(
@@ -1318,7 +1325,7 @@ GateRef NumberSpeculativeRetype::VisitMathBuiltin(GateRef gate)
     size_t valueNum = acc_.GetNumValueIn(gate);
     for (size_t i = 0; i < valueNum; ++i) {
         GateRef input = acc_.GetValueIn(gate, i);
-        acc_.ReplaceValueIn(gate, CheckAndConvertToFloat64(input, GateType::NumberType()), i);
+        acc_.ReplaceValueIn(gate, CheckAndConvertToFloat64(input, GateType::NumberType(), ConvertToNumber::ALL), i);
     }
     acc_.ReplaceStateIn(gate, builder_.GetState());
     acc_.ReplaceDependIn(gate, builder_.GetDepend());
@@ -1334,7 +1341,7 @@ GateRef NumberSpeculativeRetype::VisitMathAbs(GateRef gate)
     Environment env(gate, circuit_, &builder_);
     ASSERT(acc_.GetNumValueIn(gate) == 1);
     GateRef input = acc_.GetValueIn(gate, 0);
-    acc_.ReplaceValueIn(gate, CheckAndConvertToTagged(input, GateType::NumberType(), true), 0);
+    acc_.ReplaceValueIn(gate, CheckAndConvertToTagged(input, GateType::NumberType(), ConvertToNumber::ALL), 0);
     acc_.ReplaceStateIn(gate, builder_.GetState());
     acc_.ReplaceDependIn(gate, builder_.GetDepend());
     return Circuit::NullGate();
@@ -1406,7 +1413,7 @@ GateRef NumberSpeculativeRetype::VisitMonoStoreProperty(GateRef gate)
     if (plr.GetRepresentation() == Representation::DOUBLE) {
         acc_.SetStoreNoBarrier(gate, true);
         acc_.ReplaceValueIn(
-            gate, CheckAndConvertToFloat64(value, GateType::NumberType(), ConvertSupport::DISABLE), 4); // 4: value
+            gate, CheckAndConvertToFloat64(value, GateType::NumberType(), ConvertToNumber::DISABLE), 4); // 4: value
     } else if (plr.GetRepresentation() == Representation::INT) {
         acc_.SetStoreNoBarrier(gate, true);
         acc_.ReplaceValueIn(
