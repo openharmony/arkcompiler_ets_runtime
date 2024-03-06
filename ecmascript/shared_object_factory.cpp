@@ -32,7 +32,14 @@ namespace panda::ecmascript {
 void ObjectFactory::NewSObjectHook() const
 {
 #ifndef NDEBUG
-    if (vm_->GetJSOptions().EnableForceGC() && vm_->IsInitialized() && thread_->IsAllContextsInitialized()) {
+    // static Mutex lock;
+    static std::atomic<uint32_t> count = 0;
+    static uint32_t frequency = vm_->GetJSOptions().GetForceSharedGCFrequency();
+    if (frequency == 0 || !vm_->GetJSOptions().EnableForceGC() || !vm_->IsInitialized() ||
+        !thread_->IsAllContextsInitialized()) {
+        return;
+    }
+    if (count++ % frequency == 0) {
         sHeap_->CollectGarbage(thread_, TriggerGCType::SHARED_GC, GCReason::OTHER);
     }
 #endif

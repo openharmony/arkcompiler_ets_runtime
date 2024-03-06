@@ -90,7 +90,10 @@ enum class VerifyKind {
     VERIFY_EVACUATE_YOUNG,
     VERIFY_CONCURRENT_MARK_FULL,
     VERIFY_EVACUATE_OLD,
-    VERIFY_EVACUATE_FULL
+    VERIFY_EVACUATE_FULL,
+    VERIFY_SHARED_RSET_POST_FULL_GC,
+    VERIFY_PRE_SHARED_GC,
+    VERIFY_POST_SHARED_GC
 };
 
 class BaseHeap {
@@ -141,6 +144,15 @@ public:
         return markType_ == MarkType::MARK_FULL;
     }
 
+    TriggerGCType GetGCType() const
+    {
+        return gcType_;
+    }
+
+    bool IsAlive(TaggedObject *object) const;
+
+    bool ContainObject(TaggedObject *object) const;
+
     void SetOnSerializeEvent(bool isSerialize)
     {
         onSerializeEvent_ = isSerialize;
@@ -184,6 +196,18 @@ public:
     bool IsInBackground() const
     {
         return inBackground_;
+    }
+
+    // ONLY used for heap verification.
+    bool IsVerifying() const
+    {
+        return isVerifying_;
+    }
+
+    // ONLY used for heap verification.
+    void SetVerifying(bool verifying)
+    {
+        isVerifying_ = verifying;
     }
 
     void NotifyHeapAliveSizeAfterGC(size_t size)
@@ -256,6 +280,7 @@ protected:
 
     const EcmaParamConfiguration config_;
     MarkType markType_ {MarkType::MARK_YOUNG};
+    TriggerGCType gcType_ {TriggerGCType::YOUNG_GC};
     // Region allocators.
     NativeAreaAllocator *nativeAreaAllocator_ {nullptr};
     HeapRegionAllocator *heapRegionAllocator_ {nullptr};
@@ -279,6 +304,7 @@ protected:
     Mutex finishColdStartMutex_;
     // ONLY used for heap verification.
     bool shouldVerifyHeap_ {false};
+    bool isVerifying_ {false};
 };
 
 class SharedHeap : public BaseHeap {
@@ -507,6 +533,8 @@ public:
     inline TaggedObject *AllocateReadOnlyOrHugeObject(JSThread *thread, JSHClass *hclass);
 
     inline TaggedObject *AllocateReadOnlyOrHugeObject(JSThread *thread, JSHClass *hclass, size_t size);
+
+    size_t VerifyHeapObjects(VerifyKind verifyKind) const;
 private:
     void ReclaimRegions();
 
@@ -900,9 +928,6 @@ public:
     template<class Callback>
     void IterateOverObjects(const Callback &cb) const;
 
-    bool IsAlive(TaggedObject *object) const;
-    bool ContainObject(TaggedObject *object) const;
-
     size_t VerifyHeapObjects(VerifyKind verifyKind = VerifyKind::VERIFY_PRE_GC) const;
     size_t VerifyOldToNewRSet(VerifyKind verifyKind = VerifyKind::VERIFY_PRE_GC) const;
     void StatisticHeapObject(TriggerGCType gcType) const;
@@ -923,18 +948,6 @@ public:
     }
 
     void AdjustSpaceSizeForAppSpawn();
-
-    // ONLY used for heap verification.
-    bool IsVerifying() const
-    {
-        return isVerifying_;
-    }
-
-    // ONLY used for heap verification.
-    void SetVerifying(bool verifying)
-    {
-        isVerifying_ = verifying;
-    }
 
     static bool ShouldMoveToRoSpace(JSHClass *hclass, TaggedObject *object)
     {
@@ -993,11 +1006,6 @@ public:
     bool IsYoungGC() const
     {
         return gcType_ == TriggerGCType::YOUNG_GC;
-    }
-
-    TriggerGCType GetGCType() const
-    {
-        return gcType_;
     }
 
     void CheckNonMovableSpaceOOM();
@@ -1165,7 +1173,6 @@ private:
     size_t nativeBindingSize_{0};
     size_t globalSpaceNativeLimit_ {0};
     MemGrowingType memGrowingtype_ {MemGrowingType::HIGH_THROUGHPUT};
-    TriggerGCType gcType_ {TriggerGCType::YOUNG_GC};
 
     // parallel evacuator task number.
     uint32_t maxEvacuateTaskCount_ {0};
@@ -1180,8 +1187,6 @@ private:
     float idlePredictDuration_ {0.0f};
     double idleTaskFinishTime_ {0.0};
     int32_t recursionDepth_ {0};
-
-    bool isVerifying_ {false};
 };
 }  // namespace panda::ecmascript
 

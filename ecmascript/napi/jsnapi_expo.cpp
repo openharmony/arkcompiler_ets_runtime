@@ -3726,12 +3726,6 @@ void JSNApi::DeleteSerializationData(void *data)
 #endif
 }
 
-// only for test
-void JSNApi::TransitionToWaitForTesting(EcmaVM *vm)
-{
-    vm->GetJSThread()->UpdateState(ecmascript::ThreadState::WAIT);
-}
-
 void HostPromiseRejectionTracker(const EcmaVM *vm,
                                  const JSHandle<JSPromise> promise,
                                  const JSHandle<JSTaggedValue> reason,

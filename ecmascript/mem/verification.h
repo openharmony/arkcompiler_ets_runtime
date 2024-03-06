@@ -29,7 +29,7 @@ static constexpr uint32_t INVALID_THRESHOLD = 0x40000;
 
 class VerifyScope {
 public:
-    VerifyScope(Heap *heap) : heap_(heap)
+    VerifyScope(BaseHeap *heap) : heap_(heap)
     {
         heap_->SetVerifying(true);
     }
@@ -39,7 +39,7 @@ public:
         heap_->SetVerifying(false);
     }
 private:
-    Heap *heap_ {nullptr};
+    BaseHeap *heap_ {nullptr};
 };
 
 // Verify the object body
@@ -47,9 +47,9 @@ private:
 class VerifyObjectVisitor {
 public:
     // Only used for verify InactiveSemiSpace
-    static void VerifyInactiveSemiSpaceMarkedObject(const Heap *heap, void *addr);
+    static void VerifyInactiveSemiSpaceMarkedObject(const BaseHeap *heap, void *addr);
 
-    VerifyObjectVisitor(const Heap *heap, size_t *failCount,
+    VerifyObjectVisitor(const BaseHeap *heap, size_t *failCount,
                         VerifyKind verifyKind = VerifyKind::VERIFY_PRE_GC)
         : heap_(heap), failCount_(failCount), verifyKind_(verifyKind)
     {
@@ -76,8 +76,10 @@ private:
     void VerifyMarkFull(TaggedObject *obj, ObjectSlot slot, TaggedObject *value) const;
     void VerifyEvacuateOld(TaggedObject *obj, ObjectSlot slot, TaggedObject *value) const;
     void VerifyEvacuateFull(TaggedObject *obj, ObjectSlot slot, TaggedObject *value) const;
+    void VerifySharedRSetPostFullGC(TaggedObject *obj, ObjectSlot slot, TaggedObject *value) const;
+    void VerifySharedObjectReference(TaggedObject *obj, ObjectSlot slot, TaggedObject *value) const;
 
-    const Heap* const heap_ {nullptr};
+    const BaseHeap* const heap_ {nullptr};
     size_t* const failCount_ {nullptr};
     VerifyKind verifyKind_;
 };
@@ -100,6 +102,26 @@ private:
     NO_MOVE_SEMANTIC(Verification);
 
     Heap *heap_ {nullptr};
+    VerifyKind verifyKind_;
+};
+
+class SharedHeapVerification {
+public:
+    explicit SharedHeapVerification(SharedHeap *heap, VerifyKind verifyKind)
+        : sHeap_(heap), verifyKind_(verifyKind) {}
+    ~SharedHeapVerification() = default;
+
+    void VerifyAll() const;
+
+    size_t VerifyRoot() const;
+    size_t VerifyHeap() const;
+private:
+    void VerifyObjectSlot(const ObjectSlot &slot, size_t *failCount) const;
+
+    NO_COPY_SEMANTIC(SharedHeapVerification);
+    NO_MOVE_SEMANTIC(SharedHeapVerification);
+
+    SharedHeap *sHeap_ {nullptr};
     VerifyKind verifyKind_;
 };
 }  // namespace panda::ecmascript

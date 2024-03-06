@@ -60,21 +60,21 @@ void Runtime::InitializeIfFirstVm(EcmaVM *vm)
     {
         LockHolder lock(*vmCreationLock_);
         if (++vmCount_ == 1) {
-            ThreadManagedScope managedScope(vm->GetJSThread());
+            ThreadManagedScope managedScope(vm->GetAssociatedJSThread());
             PreInitialization(vm);
             vm->Initialize();
             PostInitialization(vm);
         }
     }
     if (!vm->IsInitialized()) {
-        ThreadManagedScope managedScope(vm->GetJSThread());
+        ThreadManagedScope managedScope(vm->GetAssociatedJSThread());
         vm->Initialize();
     }
 }
 
 void Runtime::PreInitialization(const EcmaVM *vm)
 {
-    mainThread_ = vm->GetJSThread();
+    mainThread_ = vm->GetAssociatedJSThread();
     nativeAreaAllocator_ = std::make_unique<NativeAreaAllocator>();
     heapRegionAllocator_ = std::make_unique<HeapRegionAllocator>();
     stringTable_ = std::make_unique<EcmaStringTable>();

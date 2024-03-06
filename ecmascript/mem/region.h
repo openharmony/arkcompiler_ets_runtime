@@ -212,6 +212,7 @@ public:
     bool Test(void *addr) const;
     // ONLY used for heap verification.
     bool TestOldToNew(uintptr_t addr);
+    bool TestLocalToShare(uintptr_t addr);
     template <typename Visitor>
     void IterateAllMarkedBits(Visitor visitor) const;
     void ClearMarkGCBitset();

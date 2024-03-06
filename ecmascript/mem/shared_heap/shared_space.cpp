@@ -99,7 +99,7 @@ uintptr_t SharedSparseSpace::AllocateWithExpand(JSThread *thread, size_t size)
     LockHolder lock(allocateLock_);
     // In order to avoid expand twice by different threads, try allocate first.
     auto object = allocator_->Allocate(size);
-    if (Expand(thread)) {
+    if (object == 0 && Expand(thread)) {
         object = allocator_->Allocate(size);
     }
     return object;
@@ -275,6 +275,33 @@ void SharedSparseSpace::FreeLiveRange(uintptr_t freeStart, uintptr_t freeEnd, bo
 {
     // No need to clear rememberset here, because shared region has no remember set now.
     allocator_->Free(freeStart, freeEnd - freeStart, isMain);
+}
+
+void SharedSparseSpace::IterateOverObjects(const std::function<void(TaggedObject *object)> &visitor) const
+{
+    allocator_->FillBumpPointer();
+    EnumerateRegions([&](Region *region) {
+        uintptr_t curPtr = region->GetBegin();
+        uintptr_t endPtr = region->GetEnd();
+        while (curPtr < endPtr) {
+            auto freeObject = FreeObject::Cast(curPtr);
+            size_t objSize;
+            // If curPtr is freeObject, It must to mark unpoison first.
+            ASAN_UNPOISON_MEMORY_REGION(freeObject, TaggedObject::TaggedObjectSize());
+            if (!freeObject->IsFreeObject()) {
+                auto obj = reinterpret_cast<TaggedObject *>(curPtr);
+                visitor(obj);
+                objSize = obj->GetClass()->SizeFromJSHClass(obj);
+            } else {
+                freeObject->AsanUnPoisonFreeObject();
+                objSize = freeObject->Available();
+                freeObject->AsanPoisonFreeObject();
+            }
+            curPtr += objSize;
+            CHECK_OBJECT_SIZE(objSize);
+        }
+        CHECK_REGION_END(curPtr, endPtr);
+    });
 }
 
 size_t SharedSparseSpace::GetHeapObjectSize() const

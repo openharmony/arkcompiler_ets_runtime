@@ -406,6 +406,10 @@ size_t BaseDeserializer::ReadSingleEncodeData(uint8_t encodeFlag, uintptr_t objA
         case (uint8_t)EncodeFlag::SHARED_OBJECT: {
             JSTaggedType value = data_->ReadJSTaggedType();
             objectVector_.push_back(value);
+            if (!isRoot) {
+                WriteBarrier<WriteBarrierType::DESERIALIZE>(thread_, reinterpret_cast<void *>(objAddr), fieldOffset,
+                                                            value);
+            }
             UpdateMaybeWeak(slot, value, GetAndResetWeak());
             break;
         }
