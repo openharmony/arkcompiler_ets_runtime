@@ -203,7 +203,20 @@ public:
         }
         return CString();
     }
-
+    
+    /*
+     * Before: bundleName/moduleName
+     * After:  moduleName
+     */
+    inline static CString GetModuleNameWithPath(const CString modulePath)
+    {
+        size_t pos1 = modulePath.find(PathHelper::SLASH_TAG);
+        if (pos1 != CString::npos) {
+            pos1++;
+            return modulePath.substr(pos1, modulePath.size() - pos1 + 1);
+        }
+        return CString();
+    }
     /*
      * Before: @xxx.
      * After:  @xxx:
@@ -218,6 +231,18 @@ public:
             }
         }
         return false;
+    }
+
+    /*
+     * Before: moduleName
+     * After:  data/storage/el1/bundle/moduleName/ets/modules.abc
+     */
+    inline static CString ConcatPandaFilePath(CString &moduleName)
+    {
+        if (moduleName.size() == 0) {
+            return CString();
+        }
+        return BUNDLE_INSTALL_PATH + moduleName + MERGE_ABC_ETS_MODULES;
     }
 };
 } // namespace panda::ecmascript
