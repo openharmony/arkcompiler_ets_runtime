@@ -30,10 +30,7 @@ enum JitCompileMode {
 };
 class Jit {
 public:
-    Jit()
-    {
-        Initialize();
-    }
+    Jit() {}
     ~Jit();
     static Jit *GetInstance();
     void SetEnable(const EcmaVM *vm);
