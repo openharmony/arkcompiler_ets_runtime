@@ -514,9 +514,10 @@ void AsmInterpreterCall::CallNativeWithArgv(ExtendedAssembler *assembler, bool c
         if (hasNewTarget) {
             // 16: this & newTarget
             __ Stp(newTarget, thisObj, MemoryOperand(currentSlotRegister, -DOUBLE_SLOT_SIZE, AddrMode::PREINDEX));
+        } else {
+            // 16: this & newTarget
+            __ Stp(callTarget, thisObj, MemoryOperand(currentSlotRegister, -DOUBLE_SLOT_SIZE, AddrMode::PREINDEX));
         }
-        // 16: this & newTarget
-        __ Stp(callTarget, thisObj, MemoryOperand(currentSlotRegister, -DOUBLE_SLOT_SIZE, AddrMode::PREINDEX));
     } else {
         __ Mov(temp, Immediate(JSTaggedValue::VALUE_UNDEFINED));
         // 16: this & newTarget

@@ -981,6 +981,7 @@ void BytecodeInfo::InitBytecodeInfo(BytecodeCircuitBuilder *builder,
         case EcmaOpcode::SUSPENDGENERATOR_V8: {
             uint16_t v0 = READ_INST_8_0();
             uint32_t offset = builder->GetPcOffset(pc);
+            offset += BytecodeInstruction::Size(EcmaOpcode::SUSPENDGENERATOR_V8); // skip suspend bc
             info.inputs.emplace_back(Immediate(offset)); // Save the pc offset when suspend
             info.inputs.emplace_back(VirtualRegister(v0));
             break;
@@ -1525,6 +1526,7 @@ void BytecodeInfo::InitBytecodeInfo(BytecodeCircuitBuilder *builder,
             uint16_t v1 = READ_INST_8_1();
             uint16_t v2 = READ_INST_8_2();
             uint32_t offset = builder->GetPcOffset(pc);
+            offset += BytecodeInstruction::Size(EcmaOpcode::ASYNCGENERATORRESOLVE_V8_V8_V8); // skip suspend bc
             info.inputs.emplace_back(Immediate(offset)); // Save the pc offset
             info.inputs.emplace_back(VirtualRegister(v0));
             info.inputs.emplace_back(VirtualRegister(v1));
