@@ -1781,6 +1781,90 @@ GateRef BuiltinsStringStubBuilder::GetStringDataFromLineOrConstantString(GateRef
     return ret;
 }
 
+void BuiltinsStringStubBuilder::Concat(GateRef glue, GateRef thisValue, GateRef numArgs,
+    Variable *res, Label *exit, Label *slowPath)
+{
+    auto env = GetEnvironment();
+    DEFVARIABLE(result, VariableType::JS_POINTER(), Undefined());
+
+    Label objNotUndefinedAndNull(env);
+
+    Branch(TaggedIsUndefinedOrNull(thisValue), slowPath, &objNotUndefinedAndNull);
+    Bind(&objNotUndefinedAndNull);
+    {
+        Label thisIsHeapObj(env);
+        Label isString(env);
+
+        Branch(TaggedIsHeapObject(thisValue), &thisIsHeapObj, slowPath);
+        Bind(&thisIsHeapObj);
+        Branch(IsString(thisValue), &isString, slowPath);
+        Bind(&isString);
+        {
+            Label noPara(env);
+            Label hasPara(env);
+            Branch(Int64GreaterThanOrEqual(IntPtr(0), numArgs), &noPara, &hasPara);
+            Bind(&noPara);
+            {
+                res->WriteVariable(thisValue);
+                Jump(exit);
+            }
+            Bind(&hasPara);
+            {
+                Label argc1(env);
+                Label notArgc1(env);
+                Label argc2(env);
+                Label notArgc2(env);
+                Label argc3(env);
+                Label notArgc3(env);
+                Label arg0IsValid(env);
+                Label arg1IsValid(env);
+                Label arg2IsValid(env);
+                Label next(env);
+                Label next1(env);
+                GateRef arg0 = TaggedArgument(static_cast<size_t>(BuiltinsArgs::ARG0_OR_ARGV));
+                Branch(TaggedIsString(arg0), &arg0IsValid, slowPath);
+                Bind(&arg0IsValid);
+                {
+                    Branch(Int64Equal(IntPtr(1), numArgs), &argc1, &notArgc1);
+                    Bind(&argc1);
+                    {
+                        res->WriteVariable(StringConcat(glue, thisValue, arg0));
+                        Jump(exit);
+                    }
+                    Bind(&notArgc1);
+                    {
+                        result = StringConcat(glue, thisValue, arg0);
+                        Branch(TaggedIsException(*result), slowPath, &next);
+                        Bind(&next);
+                        GateRef arg1 = TaggedArgument(static_cast<size_t>(BuiltinsArgs::ARG1));
+                        Branch(TaggedIsString(arg1), &arg1IsValid, slowPath);
+                        Bind(&arg1IsValid);
+                        Branch(Int64Equal(IntPtr(2), numArgs), &argc2, &notArgc2); // 2: number of parameters.
+                        Bind(&argc2);
+                        {
+                            res->WriteVariable(StringConcat(glue, *result, arg1));
+                            Jump(exit);
+                        }
+                        Bind(&notArgc2);
+                        result = StringConcat(glue, *result, arg1);
+                        Branch(TaggedIsException(*result), slowPath, &next1);
+                        Bind(&next1);
+                        GateRef arg2 = TaggedArgument(static_cast<size_t>(BuiltinsArgs::ARG2));
+                        Branch(TaggedIsString(arg2), &arg2IsValid, slowPath);
+                        Bind(&arg2IsValid);
+                        Branch(Int64Equal(IntPtr(3), numArgs), &argc3, slowPath); // 3: number of parameters.
+                        Bind(&argc3);
+                        {
+                            res->WriteVariable(StringConcat(glue, *result, arg2));
+                            Jump(exit);
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 GateRef BuiltinsStringStubBuilder::StringConcat(GateRef glue, GateRef leftString, GateRef rightString)
 {
     auto env = GetEnvironment();

@@ -48,7 +48,7 @@
     /* String.prototype.codePointAt ( pos ) */                                      \
     V("codePointAt",       CodePointAt,       1, StringCodePointAt)                 \
     /* String.prototype.concat ( ...args ) */                                       \
-    V("concat",            Concat,            1, INVALID)                           \
+    V("concat",            Concat,            1, StringConcat)                      \
     /* String.prototype.endsWith ( searchString [ , endPosition ] ) */              \
     V("endsWith",          EndsWith,          1, INVALID)                           \
     /* String.prototype.includes ( searchString [ , position ] ) */                 \

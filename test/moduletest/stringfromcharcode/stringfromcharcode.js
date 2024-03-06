@@ -53,3 +53,10 @@ print(str7.codePointAt(0));
 print(str6.codePointAt(1));
 print(str6.codePointAt(12));
 print(str6.codePointAt(284));
+
+var str8 = "meiyou";
+var str9 = "haodeha";
+var str10 = "wodeyisishi";
+print(str8.concat(str9));
+print(str8.concat(str9, str10));
+print(str8.concat(str9, '  hh ', str10));
