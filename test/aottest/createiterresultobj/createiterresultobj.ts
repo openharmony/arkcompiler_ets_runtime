@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-declare function print(str:any):string;
+declare function assert_equal(a: Object, b: Object):void;
 function* foo(){
     let index = 0;
     while(index < 2) {
@@ -23,6 +23,6 @@ function* foo(){
 
 let gen = foo();
 
-print(gen.next().value);
-print(gen.next().value);
-print(gen.next().value);
+assert_equal(gen.next().value, 0);
+assert_equal(gen.next().value, 1);
+assert_equal(gen.next().value, undefined);

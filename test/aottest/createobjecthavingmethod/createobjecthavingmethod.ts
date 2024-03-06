@@ -13,10 +13,10 @@
  * limitations under the License.
  */
 
-declare function print(arg:any):string;
+declare function assert_equal(a: Object, b: Object):void;
 var obj = {
     value: 1,
-    fun (a:number) {print(this.value + a)},
+    fun (a:number) {assert_equal(this.value + a, 2)},
 };
 
 obj.fun(1);
