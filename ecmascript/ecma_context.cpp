@@ -321,11 +321,7 @@ Expected<JSTaggedValue, bool> EcmaContext::CommonInvokeEcmaEntrypoint(const JSPa
         }
     }
     if (thread_->HasPendingException()) {
-#ifdef PANDA_TARGET_OHOS
-        return result;
-#else
         return Unexpected(false);
-#endif
     }
     if (!executeFromJob) {
         job::MicroJobQueue::ExecutePendingJob(thread_, GetMicroJobQueue());
@@ -348,12 +344,6 @@ Expected<JSTaggedValue, bool> EcmaContext::InvokeEcmaEntrypoint(const JSPandaFil
 
     JSHandle<JSFunction> func(thread_, program->GetMainFunction());
     Expected<JSTaggedValue, bool> result = CommonInvokeEcmaEntrypoint(jsPandaFile, entryPoint, func, executeFromJob);
-
-#ifdef PANDA_TARGET_OHOS
-    if (thread_->HasPendingException()) {
-        HandleUncaughtException();
-    }
-#endif
 
     return result;
 }
@@ -633,9 +623,6 @@ void EcmaContext::HandleUncaughtException(JSTaggedValue exception)
 
 void EcmaContext::HandleUncaughtException()
 {
-    if (!thread_->HasPendingException()) {
-        return;
-    }
     JSTaggedValue exception = thread_->GetException();
     HandleUncaughtException(exception);
 }
