@@ -1755,15 +1755,21 @@ void Builtins::InitializeIterator(const JSHandle<GlobalEnv> &env, const JSHandle
     JSHandle<JSHClass> iterResultHClass = factory_->CreateIteratorResultInstanceClass(env);
     globalConst->SetConstant(ConstantIndex::ITERATOR_RESULT_CLASS, iterResultHClass);
 
-    // ues for CloseIterator
+    // use for CloseIterator
     JSHandle<CompletionRecord> record =
         factory_->NewCompletionRecord(CompletionRecordType::NORMAL, globalConst->GetHandledUndefined());
     globalConst->SetConstant(ConstantIndex::UNDEFINED_COMPLRTION_RECORD_INDEX, record);
 
+    thread_->SetInitialBuiltinHClass(BuiltinTypeId::ITERATOR, nullptr,
+        *iteratorFuncClass, iteratorPrototype->GetJSHClass());
+    
+    // iteratorPrototype hclass
+    JSHandle<JSHClass> iteratorPrototypeHClass(thread_, iteratorPrototype->GetJSHClass());
+
     InitializeForinIterator(env, iteratorFuncClass);
     InitializeSetIterator(env, iteratorFuncClass);
     InitializeMapIterator(env, iteratorFuncClass);
-    InitializeArrayIterator(env, iteratorFuncClass);
+    InitializeArrayIterator(env, iteratorFuncClass, iteratorPrototypeHClass);
     InitializeStringIterator(env, iteratorFuncClass);
     InitializeRegexpIterator(env, iteratorFuncClass);
 #ifdef ARK_SUPPORT_INTL
@@ -1846,14 +1852,21 @@ void Builtins::InitializeMapIterator(const JSHandle<GlobalEnv> &env,
 }
 
 void Builtins::InitializeArrayIterator(const JSHandle<GlobalEnv> &env,
-                                       const JSHandle<JSHClass> &iteratorFuncClass) const
+                                       const JSHandle<JSHClass> &iteratorFuncClass,
+                                       const JSHandle<JSHClass> &iteratorPrototypeClass) const
 {
     // ArrayIterator.prototype
     JSHandle<JSObject> arrayIteratorPrototype(factory_->NewJSObjectWithInit(iteratorFuncClass));
+    JSHandle<JSTaggedValue> arrayIteratorPrototypeValue(arrayIteratorPrototype);
+    auto globalConst = const_cast<GlobalEnvConstants *>(thread_->GlobalConstants());
+    JSHandle<JSHClass> arrayIteratorInstanceHClass(globalConst->GetHandledJSArrayIteratorClass());
     // Iterator.prototype.next()
     SetFunction(env, arrayIteratorPrototype, "next", JSArrayIterator::Next, FunctionLength::ZERO,
                 BUILTINS_STUB_ID(ARRAY_ITERATOR_PROTO_NEXT));
+    arrayIteratorInstanceHClass->SetPrototype(thread_, arrayIteratorPrototypeValue);
     SetStringTagSymbol(env, arrayIteratorPrototype, "Array Iterator");
+    thread_->SetInitialBuiltinHClass(BuiltinTypeId::ARRAY_ITERATOR, nullptr,
+        *arrayIteratorInstanceHClass, arrayIteratorPrototype->GetJSHClass(), *iteratorPrototypeClass);
     env->SetArrayIteratorPrototype(thread_, arrayIteratorPrototype);
 }
 

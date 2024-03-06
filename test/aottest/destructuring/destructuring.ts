@@ -48,3 +48,11 @@ print(b); // 1
 const arr = [1, 2, 3];
 [arr[2], arr[1]] = [arr[1], arr[2]];
 print(arr); // [1, 3, 2]
+
+let x, y;
+function fn() {
+  for ([...[x, y]] of [[null]]) {
+    print(x);
+  }
+}
+fn();

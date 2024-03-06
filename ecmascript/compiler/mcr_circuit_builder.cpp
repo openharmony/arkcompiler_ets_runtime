@@ -243,13 +243,14 @@ GateRef CircuitBuilder::RangeGuard(GateRef gate, uint32_t left, uint32_t right)
     return ret;
 }
 
-GateRef CircuitBuilder::BuiltinPrototypeHClassCheck(GateRef gate, BuiltinTypeId type, ElementsKind kind)
+GateRef CircuitBuilder::BuiltinPrototypeHClassCheck(GateRef gate, BuiltinTypeId type,
+                                                    ElementsKind kind, bool isPrototypeOfPrototype)
 {
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
     auto frameState = acc_.FindNearestFrameState(currentDepend);
-    BuiltinPrototypeHClassAccessor accessor(type, kind);
+    BuiltinPrototypeHClassAccessor accessor(type, kind, isPrototypeOfPrototype);
     GateRef ret = GetCircuit()->NewGate(circuit_->BuiltinPrototypeHClassCheck(accessor.ToValue()),
         MachineType::I1, {currentControl, currentDepend, gate, frameState}, GateType::NJSValue());
     currentLabel->SetControl(ret);
@@ -591,16 +592,20 @@ GateRef CircuitBuilder::JSCallTargetFromDefineFuncCheck(GateType type, GateRef f
     currentLabel->SetDepend(ret);
     return ret;
 }
-GateRef CircuitBuilder::TypedCallOperator(GateRef hirGate, MachineType type, const std::vector<GateRef> &inList)
+GateRef CircuitBuilder::TypedCallOperator(GateRef hirGate, MachineType type, const std::vector<GateRef> &inList,
+                                          bool isSideEffect)
 {
     ASSERT(acc_.GetOpCode(hirGate) == OpCode::JS_BYTECODE);
     auto numValueIn = inList.size() - 3; // 3: state & depend & frame state
     uint64_t pcOffset = acc_.TryGetPcOffset(hirGate);
     ASSERT(pcOffset != 0);
-    return GetCircuit()->NewGate(circuit_->TypedCallBuiltin(numValueIn, pcOffset), type, inList.size(), inList.data(),
-                                 GateType::AnyType());
+    if (!isSideEffect) {
+        return GetCircuit()->NewGate(circuit_->TypedCallBuiltin(numValueIn, pcOffset), type,
+                                     inList.size(), inList.data(), GateType::AnyType());
+    }
+    return GetCircuit()->NewGate(circuit_->TypedCallBuiltinSideEffect(numValueIn, pcOffset), type,
+                                 inList.size(), inList.data(), GateType::AnyType());
 }
-
 
 GateRef CircuitBuilder::TypedNewAllocateThis(GateRef ctor, GateRef hclassIndex, GateRef frameState)
 {

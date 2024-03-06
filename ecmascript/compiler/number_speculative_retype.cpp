@@ -116,6 +116,7 @@ GateRef NumberSpeculativeRetype::VisitGate(GateRef gate)
         case OpCode::CONSTANT:
             return VisitConstant(gate);
         case OpCode::TYPED_CALL_BUILTIN:
+        case OpCode::TYPED_CALL_BUILTIN_SIDE_EFFECT:
             return VisitCallBuiltins(gate);
         case OpCode::TYPE_CONVERT:
             return VisitTypeConvert(gate);

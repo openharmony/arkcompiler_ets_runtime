@@ -551,7 +551,7 @@ GateRef CircuitBuilder::TaggedGetInt(GateRef x)
 }
 
 inline GateRef CircuitBuilder::TypedCallBuiltin(GateRef hirGate, const std::vector<GateRef> &args,
-                                                BuiltinsStubCSigns::ID id)
+                                                BuiltinsStubCSigns::ID id, bool isSideEffect)
 {
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
@@ -562,7 +562,7 @@ inline GateRef CircuitBuilder::TypedCallBuiltin(GateRef hirGate, const std::vect
     inList.push_back(Int8(static_cast<int8_t>(id)));
     AppendFrameArgs(inList, hirGate);
 
-    auto builtinOp = TypedCallOperator(hirGate, MachineType::I64, inList);
+    auto builtinOp = TypedCallOperator(hirGate, MachineType::I64, inList, isSideEffect);
     currentLabel->SetControl(builtinOp);
     currentLabel->SetDepend(builtinOp);
     return builtinOp;

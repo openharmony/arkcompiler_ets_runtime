@@ -80,6 +80,8 @@
     V(PROMISE)                      \
     V(PROXY)                        \
     V(GENERATOR_FUNCTION)           \
+    V(ITERATOR)                     \
+    V(ARRAY_ITERATOR)               \
     V(INTL)
 
 namespace panda::ecmascript {

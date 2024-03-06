@@ -106,6 +106,7 @@ GateRef TypedHCRLowering::VisitGate(GateRef gate)
             LowerStoreElement(gate, glue);
             break;
         case OpCode::TYPED_CALL_BUILTIN:
+        case OpCode::TYPED_CALL_BUILTIN_SIDE_EFFECT:
             LowerTypedCallBuitin(gate);
             break;
         case OpCode::TYPED_NEW_ALLOCATE_THIS:
@@ -535,6 +536,7 @@ void TypedHCRLowering::LowerBuiltinPrototypeHClassCheck(GateRef gate)
     BuiltinPrototypeHClassAccessor accessor = acc_.GetBuiltinHClassAccessor(gate);
     BuiltinTypeId type = accessor.GetBuiltinTypeId();
     ElementsKind kind = accessor.GetElementsKind();
+    bool isPrototypeOfPrototype = accessor.IsPrototypeOfPrototype();
     GateRef frameState = GetFrameState(gate);
     GateRef glue = acc_.GetGlueFromArgList();
 
@@ -577,6 +579,16 @@ void TypedHCRLowering::LowerBuiltinPrototypeHClassCheck(GateRef gate)
     GateRef phcMatches = builder_.Equal(receiverPhcAddress, initialPhcAddress);
     // De-opt if HClass of X.prototype changed where X is the current builtin object.
     builder_.DeoptCheck(phcMatches, frameState, DeoptType::BUILTINPROTOHCLASSMISMATCH1);
+
+    // array.Iterator should compare PrototypeOfPrototypeHClass.
+    if (isPrototypeOfPrototype) {
+        size_t pphcOffset = JSThread::GlueData::GetBuiltinPrototypeOfPrototypeHClassOffset(type, env.IsArch32Bit());
+        GateRef receiverPPhcAddress = builder_.LoadPrototypeOfPrototypeHClass(receiver);
+        GateRef initialPPhcAddress = builder_.LoadConstOffset(VariableType::JS_POINTER(), glue, pphcOffset);
+        GateRef pphcMatches = builder_.Equal(receiverPPhcAddress, initialPPhcAddress);
+        // De-opt if HClass of X.prototype.prototype changed where X is the current builtin object.
+        builder_.DeoptCheck(pphcMatches, frameState, DeoptType::BUILTINPROTOHCLASSMISMATCH2);
+    }
 
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
