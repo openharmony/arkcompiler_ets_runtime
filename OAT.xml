@@ -59,6 +59,26 @@ Note:If the text contains special characters, please escape them according to th
         <policylist>
             <policy name="projectPolicy" desc="">
                 <policyitem type="copyright" name="Copyright (c) 2023 Shenzhen Kaihong Digital Industry Development Co., Ltd." path=".*" rule="may" group="defaultGroup" filefilter="copyrightPolicyFilter" desc=""/>
+                <policyitem type="copyright" name="Copyright (c) 2022 Shenzhen Kaihong Digital Industry Development Co., Ltd. " path="tools/circuit_viewer/webpack.dist.config.js" rule="may" group="defaultGroup" filefilter="copyrightPolicyFilter" desc="代码owner为共建方"/>
+                <policyitem type="copyright" name="Copyright (c) 2022 Shenzhen Kaihong Digital Industry Development Co., Ltd. " path="tools/circuit_viewer/webpack.debug.config.js" rule="may" group="defaultGroup" filefilter="copyrightPolicyFilter" desc="代码owner为共建方"/>
+                <policyitem type="copyright" name="Copyright (c) 2022-2023 Shenzhen Kaihong Digital Industry Development Co., Ltd." path="tools/circuit_viewer/src/ir/NapiLog.js" rule="may" group="defaultGroup" filefilter="copyrightPolicyFilter" desc="代码owner为共建方"/>
+                <policyitem type="copyright" name="Copyright (c) 2022-2023 Shenzhen Kaihong Digital Industry Development Co., Ltd." path="tools/circuit_viewer/src/ir/CanvasInput.js" rule="may" group="defaultGroup" filefilter="copyrightPolicyFilter" desc="代码owner为共建方"/>
+                <policyitem type="copyright" name="Copyright (c) 2022-2023 Shenzhen Kaihong Digital Industry Development Co., Ltd." path="tools/circuit_viewer/src/index.js" rule="may" group="defaultGroup" filefilter="copyrightPolicyFilter" desc="代码owner为共建方"/>
+                <policyitem type="copyright" name="Copyright (c) 2022-2023 Shenzhen Kaihong Digital Industry Development Co., Ltd." path="tools/circuit_viewer/src/engine/XTools.js" rule="may" group="defaultGroup" filefilter="copyrightPolicyFilter" desc="代码owner为共建方"/>
+                <policyitem type="copyright" name="Copyright (c) 2022-2023 Shenzhen Kaihong Digital Industry Development Co., Ltd." path="tools/circuit_viewer/src/engine/XDefine.js" rule="may" group="defaultGroup" filefilter="copyrightPolicyFilter" desc="代码owner为共建方"/>
+                <policyitem type="copyright" name="Copyright (c) 2022-2023 Shenzhen Kaihong Digital Industry Development Co., Ltd." path="tools/circuit_viewer/src/engine/RightMenu.js" rule="may" group="defaultGroup" filefilter="copyrightPolicyFilter" desc="代码owner为共建方"/>
+                <policyitem type="copyright" name="Copyright (c) 2022-2023 Shenzhen Kaihong Digital Industry Development Co., Ltd." path="tools/circuit_viewer/src/engine/graphics/XTexture.js" rule="may" group="defaultGroup" filefilter="copyrightPolicyFilter" desc="代码owner为共建方"/>
+                <policyitem type="copyright" name="Copyright (c) 2022-2023 Shenzhen Kaihong Digital Industry Development Co., Ltd." path="tools/circuit_viewer/src/engine/graphics/XShader.js" rule="may" group="defaultGroup" filefilter="copyrightPolicyFilter" desc="代码owner为共建方"/>
+                <policyitem type="copyright" name="Copyright (c) 2022-2023 Shenzhen Kaihong Digital Industry Development Co., Ltd." path="tools/circuit_viewer/src/engine/graphics/XMat4.js" rule="may" group="defaultGroup" filefilter="copyrightPolicyFilter" desc="代码owner为共建方"/>
+                <policyitem type="copyright" name="Copyright (c) 2022-2023 Shenzhen Kaihong Digital Industry Development Co., Ltd." path="tools/circuit_viewer/src/engine/graphics/X2DFast.js" rule="may" group="defaultGroup" filefilter="copyrightPolicyFilter" desc="代码owner为共建方"/>
+                <policyitem type="copyright" name="Copyright (c) 2022-2023 Shenzhen Kaihong Digital Industry Development Co., Ltd." path="tools/circuit_viewer/src/engine/graphics/shaders/shader_fast.js" rule="may" group="defaultGroup" filefilter="copyrightPolicyFilter" desc="代码owner为共建方"/>
+                <policyitem type="copyright" name="Copyright (c) 2022-2023 Shenzhen Kaihong Digital Industry Development Co., Ltd." path="tools/circuit_viewer/src/engine/GLFrame.js" rule="may" group="defaultGroup" filefilter="copyrightPolicyFilter" desc="代码owner为共建方"/>
+                <policyitem type="copyright" name="Copyright (c) 2022-2023 Shenzhen Kaihong Digital Industry Development Co., Ltd." path="tools/circuit_viewer/src/engine/control/XSelect.js" rule="may" group="defaultGroup" filefilter="copyrightPolicyFilter" desc="代码owner为共建方"/>
+                <policyitem type="copyright" name="Copyright (c) 2022-2023 Shenzhen Kaihong Digital Industry Development Co., Ltd." path="tools/circuit_viewer/src/engine/control/XButton.js" rule="may" group="defaultGroup" filefilter="copyrightPolicyFilter" desc="代码owner为共建方"/>
+                <policyitem type="copyright" name="*" path="test/typeinfer/automatedcases/parserSbp_7.9_A9_T3.ts" rule="may" group="defaultGroup" filefilter="copyrightPolicyFilter" desc="代码源于第三方"/>
+                <policyitem type="copyright" name="*" path="test/typeinfer/automatedcases/parserS7.6.1.1_A1.10.ts" rule="may" group="defaultGroup" filefilter="copyrightPolicyFilter" desc="代码源于第三方"/>
+                <policyitem type="copyright" name="*" path="test/typeinfer/automatedcases/declarationEmitDetachedComment2/test1.ts" rule="may" group="defaultGroup" filefilter="copyrightPolicyFilter" desc="代码源于第三方"/>
+                <policyitem type="copyright" name="*" path="test/typeinfer/automatedcases/declarationEmitDetachedComment1/test1.ts" rule="may" group="defaultGroup" filefilter="copyrightPolicyFilter" desc="代码源于第三方"/>
             </policy>
         </policylist>
         <filefilterlist>
@@ -71,10 +91,21 @@ Note:If the text contains special characters, please escape them according to th
                 <filteritem type="filepath" name="docs/figures/zh-cn_image_0000001197967897.png" desc="自造的二进制图片"/>
                 <filteritem type="filepath" name="docs/figures/zh-cn_image_ark-js-arch.png" desc="自造的二进制图片"/>
                 <filteritem type="filepath" name="docs/figures/en-us_image_ark-js-arch.png" desc="自造的二进制图片"/>
+                <filteritem type="filepath" name="docs/figures/zh-cn_image_ark-ts-arch.png" desc="自造的二进制图片"/>
+                <filteritem type="filepath" name="tools/circuit_viewer/figures/vscode_task.png" desc="合作共建方自造的二进制图片"/>
+                <filteritem type="filepath" name="tools/circuit_viewer/figures/vscode_launch.png" desc="合作共建方自造的二进制图片"/>
+                <filteritem type="filepath" name="tools/circuit_viewer/figures/start_web.png" desc="合作共建方自造的二进制图片"/>
+                <filteritem type="filepath" name="tools/circuit_viewer/figures/run.png" desc="合作共建方自造的二进制图片"/>
+                <filteritem type="filepath" name="tools/circuit_viewer/figures/operate.png" desc="合作共建方自造的二进制图片"/>
+                <filteritem type="filepath" name="tools/circuit_viewer/figures/install.png" desc="合作共建方自造的二进制图片"/>
+                <filteritem type="filepath" name="tools/circuit_viewer/figures/example.png" desc="合作共建方自造的二进制图片"/>
+                <filteritem type="filepath" name="tools/circuit_viewer/figures/dist.png" desc="合作共建方自造的二进制图片"/>
+                <filteritem type="filepath" name="tools/circuit_viewer/dist/favicon.ico" desc="合作共建方自造的二进制图片"/>
             </filefilter>
             <filefilter name="copyrightPolicyFilter" desc="copyright文件头校验策略的过滤条件" >
             </filefilter>
-            <filefilter name="defaultPolicyFilter" desc="根目录LICENSE文件校验策略的过滤条件xxx" >
+            <filefilter name="defaultPolicyFilter" desc="根目录LICENSE文件校验策略的过滤条件xxx">
+                <filteritem type="filename" name="*" path="tools/circuit_viewer/test/test_viewer.py" rule="may" group="defaultGroup" desc="代码own为共建方"/>
             </filefilter>
         </filefilterlist>
     </oatconfig>
