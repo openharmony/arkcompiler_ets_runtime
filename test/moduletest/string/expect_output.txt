@@ -76,3 +76,11 @@ ab�c
 c�ab
 abc
 ab😄c
+true
+false
+true
+false
+true
+false
+true
+false

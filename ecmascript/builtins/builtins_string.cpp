@@ -1778,11 +1778,10 @@ JSTaggedValue BuiltinsString::StartsWith(EcmaRuntimeCallInfo *argv)
     if (static_cast<uint32_t>(pos) + searchLen > thisLen) {
         return BuiltinsString::GetTaggedBoolean(false);
     }
-    int32_t res = EcmaStringAccessor::IndexOf(thread->GetEcmaVM(), thisHandle, searchHandle, pos);
-    if (res == pos) {
-        return BuiltinsString::GetTaggedBoolean(true);
-    }
-    return BuiltinsString::GetTaggedBoolean(false);
+
+    bool result = EcmaStringAccessor::IsSubStringAt(thread->GetEcmaVM(), thisHandle, searchHandle, pos);
+
+    return BuiltinsString::GetTaggedBoolean(result);
 }
 
 // 21.1.3.19
