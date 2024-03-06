@@ -184,7 +184,9 @@ JSTaggedValue ContainersLinkedList::Insert(EcmaRuntimeCallInfo *argv)
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
-
+    if (index->IsDouble()) {
+        index = JSHandle<JSTaggedValue>(thread, JSTaggedValue::TryCastDoubleToInt32(index->GetDouble()));
+    }
     JSHandle<JSAPILinkedList> jsAPILinkedList = JSHandle<JSAPILinkedList>::Cast(self);
     JSTaggedValue result =
         JSAPILinkedList::Insert(thread, jsAPILinkedList, value, index->GetInt());
@@ -282,6 +284,9 @@ JSTaggedValue ContainersLinkedList::Get(EcmaRuntimeCallInfo *argv)
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
+    if (index->IsDouble()) {
+        index = JSHandle<JSTaggedValue>(thread, JSTaggedValue::TryCastDoubleToInt32(index->GetDouble()));
+    }
     return jsAPILinkedList->Get(index->GetInt());
 }
 
@@ -351,6 +356,9 @@ JSTaggedValue ContainersLinkedList::RemoveByIndex(EcmaRuntimeCallInfo *argv)
             "The type of \"index\" must be number. Received value is: " + ConvertToString(*result);
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
+    }
+    if (index->IsDouble()) {
+        index = JSHandle<JSTaggedValue>(thread, JSTaggedValue::TryCastDoubleToInt32(index->GetDouble()));
     }
     JSHandle<JSAPILinkedList> jsAPILinkedList = JSHandle<JSAPILinkedList>::Cast(self);
     JSTaggedValue nodeData =
