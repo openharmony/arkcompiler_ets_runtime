@@ -146,6 +146,9 @@ public:
     void Switch(GateRef index, Label *defaultLabel, int64_t *keysValue, Label *keysLabel, int numberOfKeys);
     void LoopBegin(Label *loopHead);
     void LoopEnd(Label *loopHead);
+    /// LoopEnd with safepoint
+    void LoopEnd(Label *loopHead, Environment *env, GateRef glue);
+    GateRef CheckSuspend(GateRef glue);
     // call operation
     GateRef CallRuntime(GateRef glue, int index, const std::initializer_list<GateRef>& args);
     GateRef CallRuntime(GateRef glue, int index, GateRef argc, GateRef argv);

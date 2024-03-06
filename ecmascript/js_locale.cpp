@@ -21,6 +21,7 @@
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/object_factory-inl.h"
+#include "ecmascript/checkpoint/thread_state_transition.h"
 
 #if defined(__clang__)
 #pragma clang diagnostic push
@@ -838,6 +839,7 @@ bool InsertOptions(JSThread *thread, const JSHandle<JSObject> &options, icu::Loc
         if (!uloc_toLegacyType(uloc_toLegacyKey("ca"), strResult.c_str())) {
             return false;
         }
+        ThreadNativeScope nativeScope(thread);
         builder->setUnicodeLocaleKeyword("ca", strResult.c_str());
     }
 
@@ -848,6 +850,7 @@ bool InsertOptions(JSThread *thread, const JSHandle<JSObject> &options, icu::Loc
         if (!uloc_toLegacyType(uloc_toLegacyKey("co"), strResult.c_str())) {
             return false;
         }
+        ThreadNativeScope nativeScope(thread);
         builder->setUnicodeLocaleKeyword("co", strResult.c_str());
     }
 
@@ -858,6 +861,7 @@ bool InsertOptions(JSThread *thread, const JSHandle<JSObject> &options, icu::Loc
         if (!uloc_toLegacyType(uloc_toLegacyKey("hc"), strResult.c_str())) {
             return false;
         }
+        ThreadNativeScope nativeScope(thread);
         builder->setUnicodeLocaleKeyword("hc", strResult.c_str());
     }
 
@@ -868,6 +872,7 @@ bool InsertOptions(JSThread *thread, const JSHandle<JSObject> &options, icu::Loc
         if (!uloc_toLegacyType(uloc_toLegacyKey("kf"), strResult.c_str())) {
             return false;
         }
+        ThreadNativeScope nativeScope(thread);
         builder->setUnicodeLocaleKeyword("kf", strResult.c_str());
     }
 
@@ -879,6 +884,7 @@ bool InsertOptions(JSThread *thread, const JSHandle<JSObject> &options, icu::Loc
         if (!uloc_toLegacyType(uloc_toLegacyKey("kn"), strResult.c_str())) {
             return false;
         }
+        ThreadNativeScope nativeScope(thread);
         builder->setUnicodeLocaleKeyword("kn", strResult.c_str());
     }
 
@@ -890,6 +896,7 @@ bool InsertOptions(JSThread *thread, const JSHandle<JSObject> &options, icu::Loc
         if (!uloc_toLegacyType(uloc_toLegacyKey("nu"), strResult.c_str())) {
             return false;
         }
+        ThreadNativeScope nativeScope(thread);
         builder->setUnicodeLocaleKeyword("nu", strResult.c_str());
     }
     return true;

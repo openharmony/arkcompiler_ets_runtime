@@ -29,6 +29,10 @@ public:
             oldState_ = self_->GetState();
             if (oldState_ != newState) {
                 self_->UpdateState(newState);
+            } else {
+                if (oldState_ == ThreadState::RUNNING) {
+                    self_->CheckSafepointIfSuspended();
+                }
             }
         }
 
@@ -36,6 +40,10 @@ public:
     {
         if (oldState_ != self_->GetState()) {
             self_->UpdateState(oldState_);
+        } else {
+            if (oldState_ == ThreadState::RUNNING) {
+                self_->CheckSafepointIfSuspended();
+            }
         }
     }
 

@@ -129,7 +129,7 @@ void ContainersStubBuilder::ContainersCommonFuncCall(GateRef glue, GateRef thisV
         }
         Bind(&loopEnd);
         k = Int32Add(*k, Int32(1));
-        LoopEnd(&loopHead);
+        LoopEnd(&loopHead, env, glue);
     }
     Bind(&afterLoop);
     Jump(exit);
@@ -235,7 +235,7 @@ void ContainersStubBuilder::QueueCommonFuncCall(GateRef glue, GateRef thisValue,
         }
         Bind(&loopEnd);
         k = Int32Add(*k, Int32(1));
-        LoopEnd(&loopHead);
+        LoopEnd(&loopHead, env, glue);
     }
     Bind(&afterLoop);
     Jump(exit);
@@ -344,7 +344,7 @@ void ContainersStubBuilder::DequeCommonFuncCall(GateRef glue, GateRef thisValue,
         Bind(&loopEnd);
         first = Int32Mod(Int32Add(*first, Int32(1)), capacity);
         index = Int32Add(*index, Int32(1));
-        LoopEnd(&loopHead);
+        LoopEnd(&loopHead, env, glue);
     }
     Bind(&afterLoop);
     Jump(exit);
@@ -451,7 +451,7 @@ void ContainersStubBuilder::ContainersLightWeightCall(GateRef glue, GateRef this
         }
         Bind(&loopEnd);
         index = Int32Add(*index, Int32(1));
-        LoopEnd(&loopHead);
+        LoopEnd(&loopHead, env, glue);
     }
     Bind(&afterLoop);
     Jump(exit);
@@ -586,7 +586,7 @@ void ContainersStubBuilder::ContainersHashCall(GateRef glue, GateRef thisValue,
         }
         Bind(&loopEnd);
         index = Int32Add(*index, Int32(1));
-        LoopEnd(&loopHead);
+        LoopEnd(&loopHead, env, glue);
     }
     Bind(&afterLoop);
     Jump(exit);
@@ -695,7 +695,7 @@ void ContainersStubBuilder::ContainersLinkedListCall(GateRef glue, GateRef thisV
         }
         Bind(&loopEnd);
         index = Int32Add(*index, Int32(1));
-        LoopEnd(&loopHead);
+        LoopEnd(&loopHead, env, glue);
     }
     Bind(&afterLoop);
     Jump(exit);

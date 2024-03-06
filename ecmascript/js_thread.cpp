@@ -1040,7 +1040,7 @@ void JSThread::StoreState(ThreadState newState, bool lockMutatorLock)
 {
     while (true) {
         ThreadStateAndFlags oldStateAndFlags;
-        oldStateAndFlags.asInt = stateAndFlags_.asInt;
+        oldStateAndFlags.asInt = glueData_.stateAndFlags_.asInt;
         if (lockMutatorLock && oldStateAndFlags.asStruct.flags != ThreadFlag::NO_FLAGS) {
             WaitSuspension();
             continue;
@@ -1053,7 +1053,7 @@ void JSThread::StoreState(ThreadState newState, bool lockMutatorLock)
             Runtime::GetInstance()->GetMutatorLock()->ReadLock();
         }
 
-        if (stateAndFlags_.asAtomicInt.compare_exchange_weak(oldStateAndFlags.asNonvolatileInt,
+        if (glueData_.stateAndFlags_.asAtomicInt.compare_exchange_weak(oldStateAndFlags.asNonvolatileInt,
             newStateAndFlags.asNonvolatileInt, std::memory_order_release)) {
             break;
         }
