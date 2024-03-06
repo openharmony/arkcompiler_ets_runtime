@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+declare function assert_unreachable():void;
 declare function assert_true(condition: boolean):void;
 declare function assert_equal(a: Object, b: Object):void;
 declare function print(arg:any):string;

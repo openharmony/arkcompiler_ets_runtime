@@ -13,24 +13,28 @@
  * limitations under the License.
  */
 declare function print(arg:any, arg1?:any):string;
+declare function assert_unreachable():void;
+declare function assert_equal(a: Object, b: Object):void;
 
+var cpuTestNum1 = -1;
+var cpuTestNum2 = -1;
 class cpu {
     public mode: number = 1;
     constructor() {
         this.mode = 4;
     }
     public static add(a: number, b: number): number {
-        print(a);
+        cpuTestNum1 = a;
         cpu.sub(a, b);
         var out : number = a + b;
         return out;
     }
     get kind() { 
-        print(this.mode);
+        assert_equal(this.mode, 4);
         return this.mode;
     }
     public static sub(a: number, b: number): number {
-        print(b);
+        cpuTestNum2 = b;
         var out : number = a + b;
         return out;
     }
@@ -185,7 +189,6 @@ class cpu1 {
     }
 
     get kind() { 
-        print(this.mode);
         return this.mode;
     }
     static Constant = 1;
@@ -196,19 +199,23 @@ class cpu1 {
 function foo():number {
 	return cpu.Curve;
 }
-print(foo());
+assert_equal(foo(), 2);
 cpu.add(1, 3);
+assert_equal(cpuTestNum1, 1);
+assert_equal(cpuTestNum2, 3);
 var systems: cpu = new cpu();
-print(systems.kind);
+assert_equal(systems.kind, 4);
 cpu.sub(1, 4);
-print(cpu1.TwoC);
-print(cpu1.length);
+assert_equal(cpuTestNum2, 4);
+assert_equal(cpu1.TwoC, 3);
+assert_equal(cpu1.length, 0);
 cpu1.color();
 
 try {
     cpu1.length = 4;
+    assert_unreachable();
 } catch (e) {
-    print(e)
+    assert_equal(e.message, "Cannot assign to read only property")
 }
 
 class Info {
@@ -231,7 +238,7 @@ class Shape {
     }
     func1(a:any,...A:any) : void {
         for (let p in A) {
-            print(A[p]);
+            assert_equal(A[p], 2);
         }
     }
 }
@@ -306,11 +313,11 @@ class Node{
         while (el) {
             var map = el.map;
             if (map == names) {
-                print(map)
+                assert_equal(map, "hh")
             }
             el = el.nodeType == 1 ? el.childNode : el.parentNode;
             const tmp = Node.Constant;
-            print(el);
+            assert_equal(el, null);
         }
     }
 
