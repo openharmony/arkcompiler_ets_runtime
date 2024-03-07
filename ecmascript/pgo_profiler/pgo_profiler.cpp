@@ -1435,18 +1435,17 @@ ProfileType PGOProfiler::GetProfileType(JSTaggedType root, JSTaggedType child)
         return ProfileType::PROFILE_TYPE_NONE;
     }
     auto generator = iter->second;
-    return generator->GetProfileType(child);
+    auto result = generator->GetProfileType(child);
+    if (IsSkippableObjectType(result)) {
+        return ProfileType::PROFILE_TYPE_NONE;
+    }
+    return result;
 }
 
 ProfileType PGOProfiler::GetProfileTypeSafe(JSTaggedType root, JSTaggedType child)
 {
     LockHolder lock(tracedProfilesMutex_);
-    auto iter = tracedProfiles_.find(root);
-    if (iter == tracedProfiles_.end()) {
-        return ProfileType::PROFILE_TYPE_NONE;
-    }
-    auto generator = iter->second;
-    return generator->GetProfileType(child);
+    return GetProfileType(root, child);
 }
 
 ProfileType PGOProfiler::GetOrInsertProfileTypeSafe(JSTaggedType root, JSTaggedType child)
