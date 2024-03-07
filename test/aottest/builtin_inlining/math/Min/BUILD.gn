@@ -11,50 +11,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-NaN
-0
-3
-5
-1.5
-3.141592653589793
-3.141592653589793
-1.9e+80
-1.9e+80
-1.9e-80
-1.9e-80
-Infinity
-Infinity
-NaN
-1/x: Infinity
-3
-3
-4
-4
--1.001
-2147483647
-2147483648
-2147483647
-2147483648
-2147483649
-3
-[trace] Check Type: NotNumber2
-NaN
-[trace] Check Type: NotNumber2
-NaN
-12
-[trace] Check Type: NotNumber2
-NaN
-[trace] Check Type: NotNumber2
-12
-[trace] Check Type: NotCallTarget1
--12
-[trace] Check Type: NotCallTarget1
-abc
-12
-[trace] Check Type: NotNumber2
-NaN
-[trace] Check Type: NotNumber2
-23
-14
-Error: already positive
-23
+import("//arkcompiler/ets_runtime/test/test_helper.gni")
+
+host_aot_test_action("builtinMathMin") {
+  is_enable_pgo = true
+  is_only_typed_path = true
+  is_enable_opt_inlining = true
+  is_enable_trace_deopt = true
+  is_enable_enableArkTools = true
+  gen_expect_output = true
+  log_option = " --log-info=trace"
+  deps = []
+}

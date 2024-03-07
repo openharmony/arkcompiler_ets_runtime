@@ -81,11 +81,35 @@ GateRef TypedNativeInlineLowering::VisitGate(GateRef gate)
         case OpCode::MATH_ABS:
             LowerAbs(gate);
             break;
+        case OpCode::MATH_ABS_INT32:
+            LowerIntAbs(gate);
+            break;
+        case OpCode::MATH_ABS_DOUBLE:
+            LowerDoubleAbs(gate);
+            break;
         case OpCode::MATH_POW:
             LowerMathPow(gate);
             break;
         case OpCode::MATH_CBRT:
             LowerGeneralUnaryMath(gate, RTSTUB_ID(FloatCbrt));
+            break;
+        case OpCode::MATH_MIN:
+            LowerMinMax<false>(gate);
+            break;
+        case OpCode::MATH_MAX:
+            LowerMinMax<true>(gate);
+            break;
+        case OpCode::MATH_MIN_INT32:
+            LowerIntMinMax<false>(gate);
+            break;
+        case OpCode::MATH_MAX_INT32:
+            LowerIntMinMax<true>(gate);
+            break;
+        case OpCode::MATH_MIN_DOUBLE:
+            LowerDoubleMinMax<false>(gate);
+            break;
+        case OpCode::MATH_MAX_DOUBLE:
+            LowerDoubleMinMax<true>(gate);
             break;
         default:
             break;
@@ -239,17 +263,38 @@ void TypedNativeInlineLowering::LowerMathAtan2(GateRef gate)
 
 //  Int abs : The internal representation of an integer is inverse code,
 //  The absolute value of a negative number can be found by inverting it by adding one.
+GateRef TypedNativeInlineLowering::BuildIntAbs(GateRef value)
+{
+    ASSERT(acc_.GetMachineType(value) == MachineType::I32);
+    if (isLiteCG_) {
+        auto temp = builder_.Int32ASR(value, builder_.Int32(JSTaggedValue::INT_SIGN_BIT_OFFSET));
+        auto res = builder_.Int32Xor(value, temp);
+        return builder_.Int32Sub(res, temp);
+    }
+    return builder_.Abs(value);
+}
 
 //  Float abs : A floating-point number is composed of mantissa and exponent.
 //  The length of mantissa will affect the precision of the number, and its sign will determine the sign of the number.
 //  The absolute value of a floating-point number can be found by setting mantissa sign bit to 0.
-void TypedNativeInlineLowering::LowerAbs(GateRef gate)
+GateRef TypedNativeInlineLowering::BuildDoubleAbs(GateRef value)
 {
-    Environment env(gate, circuit_, &builder_);
-    Label exit(&builder_);
-    GateRef param = acc_.GetValueIn(gate, 0);
+    ASSERT(acc_.GetMachineType(value) == MachineType::F64);
+    if (isLiteCG_) {
+        // set the sign bit to 0 by shift left then right.
+        auto temp = builder_.Int64LSL(builder_.CastDoubleToInt64(value), builder_.Int64(1));
+        auto res = builder_.Int64LSR(temp, builder_.Int64(1));
+        return builder_.CastInt64ToFloat64(res);
+    }
+    return builder_.FAbs(value);
+}
+
+GateRef TypedNativeInlineLowering::BuildTNumberAbs(GateRef param)
+{
+    ASSERT(!acc_.GetGateType(param).IsNJSValueType());
     DEFVALUE(result, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
 
+    Label exit(&builder_);
     Label isInt(&builder_);
     Label notInt(&builder_);
     Label isIntMin(&builder_);
@@ -262,9 +307,7 @@ void TypedNativeInlineLowering::LowerAbs(GateRef gate)
         BRANCH_CIR(builder_.Equal(value, builder_.Int32(INT32_MIN)), &isIntMin, &isResultInt);
         builder_.Bind(&isResultInt);
         {
-            auto temp = builder_.Int32ASR(value, builder_.Int32(JSTaggedValue::INT_SIGN_BIT_OFFSET));
-            auto res = builder_.Int32Xor(value, temp);
-            result = builder_.Int32ToTaggedPtr(builder_.Int32Sub(res, temp));
+            result = builder_.Int32ToTaggedPtr(BuildIntAbs(value));
             builder_.Jump(&intExit);
         }
         builder_.Bind(&isIntMin);
@@ -279,15 +322,262 @@ void TypedNativeInlineLowering::LowerAbs(GateRef gate)
     builder_.Bind(&notInt);
     {
         auto value = builder_.GetDoubleOfTDouble(param);
-        // set the sign bit to 0 by shift left then right.
-        auto temp = builder_.Int64LSL(builder_.CastDoubleToInt64(value), builder_.Int64(1));
-        auto res = builder_.Int64LSR(temp, builder_.Int64(1));
-        result = builder_.DoubleToTaggedDoublePtr(builder_.CastInt64ToFloat64(res));
+        result = builder_.DoubleToTaggedDoublePtr(BuildDoubleAbs(value));
         builder_.Jump(&exit);
     }
     builder_.Bind(&exit);
-    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
+    return *result;
+}
+
+void TypedNativeInlineLowering::LowerAbs(GateRef gate)
+{
+    GateRef value = acc_.GetValueIn(gate, 0);
+    Environment env(gate, circuit_, &builder_);
+    GateRef res = BuildTNumberAbs(value);
+    acc_.ReplaceGate(gate, builder_.GetStateDepend(), res);
+}
+
+void TypedNativeInlineLowering::LowerIntAbs(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    GateRef value = acc_.GetValueIn(gate, 0);
+    auto frameState = FindFrameState(gate);
+    builder_.DeoptCheck(builder_.NotEqual(value, builder_.Int32(INT32_MIN)), frameState, DeoptType::NOTINT3);
+    GateRef res = BuildIntAbs(value);
+    acc_.ReplaceGate(gate, builder_.GetStateDepend(), res);
+}
+
+void TypedNativeInlineLowering::LowerDoubleAbs(GateRef gate)
+{
+    GateRef value = acc_.GetValueIn(gate, 0);
+    Environment env(gate, circuit_, &builder_);
+    GateRef res = BuildDoubleAbs(value);
+    acc_.ReplaceGate(gate, builder_.GetStateDepend(), res);
+}
+
+// for min select in1 if int1 < int2, in2 otherwise
+template<bool IS_MAX>
+GateRef TypedNativeInlineLowering::BuildIntMinMax(GateRef int1, GateRef int2, GateRef in1, GateRef in2)
+{
+    Label entry(&builder_);
+    builder_.SubCfgEntry(&entry);
+    // int or tagged
+    VariableType type {acc_.GetMachineType(in1), acc_.GetGateType(in1)};
+    DEFVALUE(result, (&builder_), type, (IS_MAX ? in1 : in2));
+    Label left(&builder_);
+    Label exit(&builder_);
+    builder_.Branch(builder_.Int32LessThan(int1, int2), &left, &exit);
+    builder_.Bind(&left);
+    {
+        result = IS_MAX ? in2 : in1;
+        builder_.Jump(&exit);
+    }
+    builder_.Bind(&exit);
+    GateRef res = *result;
+    builder_.SubCfgExit();
+    return res;
+}
+
+template<bool IS_MAX>
+GateRef TypedNativeInlineLowering::BuildIntMinMax(GateRef in1, GateRef in2)
+{
+    ASSERT(acc_.GetMachineType(in1) == MachineType::I32);
+    ASSERT(acc_.GetMachineType(in2) == MachineType::I32);
+    if (isLiteCG_) {
+        return BuildIntMinMax<IS_MAX>(in1, in2, in1, in2);
+    }
+    return IS_MAX ? builder_.Int32Max(in1, in2) : builder_.Int32Min(in1, in2);
+}
+
+/* for min select:
+ * NaN if double1 or double2 is NaN
+ * in1 if double1 and double2 are equal and in1 is negative zero
+ * in1 if double1 < double2, in2 otherwise */
+template<bool IS_MAX>
+GateRef TypedNativeInlineLowering::BuildDoubleMinMax(GateRef double1, GateRef double2, GateRef in1, GateRef in2)
+{
+    Label entry(&builder_);
+    builder_.SubCfgEntry(&entry);
+    GateRef nanValue = builder_.NanValue();
+    if (in1 != double1) { // case when in1 and in2 are tagged
+        nanValue = builder_.DoubleToTaggedDoublePtr(nanValue);
+    }
+    // double or tagged
+    VariableType type {acc_.GetMachineType(in1), acc_.GetGateType(in1)};
+    DEFVALUE(result, (&builder_), type, nanValue);
+    Label left(&builder_);
+    Label rightOrZeroOrNan(&builder_);
+    Label right(&builder_);
+    Label exit(&builder_);
+    Label equal(&builder_);
+    Label equalOrNan(&builder_);
+    builder_.Branch(builder_.DoubleLessThan(double1, double2), &left, &rightOrZeroOrNan);
+    builder_.Bind(&rightOrZeroOrNan);
+    {
+        builder_.Branch(builder_.DoubleGreaterThan(double1, double2), &right, &equalOrNan);
+        builder_.Bind(&equalOrNan);
+        {
+            builder_.Branch(builder_.DoubleEqual(double1, double2), &equal, &exit);
+            builder_.Bind(&equal);
+            {
+                // Whether to return in1 or in2 matters only in case of 0, -0
+                const double negZero = -0.0;
+                GateRef negZeroValue = builder_.CastDoubleToInt64(builder_.Double(negZero));
+                builder_.Branch(builder_.Equal(builder_.CastDoubleToInt64(double1), negZeroValue), &left, &right);
+            }
+        }
+        builder_.Bind(&right);
+        {
+            result = IS_MAX ? in1 : in2;
+            builder_.Jump(&exit);
+        }
+    }
+    builder_.Bind(&left);
+    {
+        result = IS_MAX ? in2 : in1;
+        builder_.Jump(&exit);
+    }
+    builder_.Bind(&exit);
+    GateRef res = *result;
+    builder_.SubCfgExit();
+    return res;
+}
+
+template<bool IS_MAX>
+GateRef TypedNativeInlineLowering::BuildDoubleMinMax(GateRef in1, GateRef in2)
+{
+    ASSERT(acc_.GetMachineType(in1) == MachineType::F64);
+    ASSERT(acc_.GetMachineType(in2) == MachineType::F64);
+    if (!isLiteCG_ && builder_.GetCompilationConfig()->IsAArch64()) {
+        return IS_MAX ? builder_.DoubleMax(in1, in2) : builder_.DoubleMin(in1, in2);
+    }
+    return BuildDoubleMinMax<IS_MAX>(in1, in2, in1, in2);
+}
+
+template<bool IS_MAX>
+void TypedNativeInlineLowering::LowerTNumberMinMax(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    GateRef in1 = acc_.GetValueIn(gate, 0);
+    GateRef in2 = acc_.GetValueIn(gate, 1);
+    GateRef nanValue = builder_.DoubleToTaggedDoublePtr(builder_.NanValue());
+    DEFVALUE(result, (&builder_), VariableType::JS_ANY(), nanValue);
+    DEFVALUE(double1, (&builder_), VariableType::FLOAT64(), builder_.Double(0));
+    DEFVALUE(double2, (&builder_), VariableType::FLOAT64(), builder_.Double(0));
+
+    Label isInt1(&builder_);
+    Label isInt2(&builder_);
+    Label isDouble1(&builder_);
+    Label isDouble2(&builder_);
+    Label doubleExit(&builder_);
+    Label exit(&builder_);
+    builder_.Branch(builder_.TaggedIsInt(in1), &isInt1, &isDouble1);
+    {
+        builder_.Bind(&isInt1);
+        GateRef int1 = builder_.GetInt32OfTInt(in1);
+        builder_.Branch(builder_.TaggedIsInt(in2), &isInt2, &isDouble2);
+        {
+            builder_.Bind(&isInt2);
+            GateRef int2 = builder_.GetInt32OfTInt(in2);
+            result = BuildIntMinMax<IS_MAX>(int1, int2, in1, in2);
+            builder_.Jump(&exit);
+        }
+        builder_.Bind(&isDouble2);
+        double1 = builder_.ChangeInt32ToFloat64(int1);
+        double2 = builder_.GetDoubleOfTDouble(in2);
+        builder_.Jump(&doubleExit);
+    }
+    {
+        builder_.Bind(&isDouble1);
+        double1 = builder_.GetDoubleOfTDouble(in1);
+        double2 = builder_.GetDoubleOfTNumber(in2);
+        builder_.Jump(&doubleExit);
+    }
+    builder_.Bind(&doubleExit);
+    result = BuildDoubleMinMax<IS_MAX>(*double1, *double2, in1, in2);
+    builder_.Jump(&exit);
+
+    builder_.Bind(&exit);
+    acc_.ReplaceGate(gate, builder_.GetStateDepend(), *result);
+}
+
+template<bool IS_MAX>
+void TypedNativeInlineLowering::LowerMathMinMaxWithIntrinsic(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    GateRef in1 = acc_.GetValueIn(gate, 0);
+    GateRef in2 = acc_.GetValueIn(gate, 1);
+    GateRef nanValue = builder_.DoubleToTaggedDoublePtr(builder_.NanValue());
+    DEFVALUE(result, (&builder_), VariableType::JS_ANY(), nanValue);
+
+    Label intRes(&builder_);
+    Label doubleRes(&builder_);
+    Label exit(&builder_);
+
+    builder_.Branch(builder_.BoolAnd(builder_.TaggedIsInt(in1), builder_.TaggedIsInt(in2)), &intRes, &doubleRes);
+    builder_.Bind(&intRes);
+    {
+        GateRef int1 = builder_.GetInt32OfTInt(in1);
+        GateRef int2 = builder_.GetInt32OfTInt(in2);
+        GateRef intRet = BuildIntMinMax<IS_MAX>(int1, int2);
+        result = builder_.Int32ToTaggedPtr(intRet);
+        builder_.Jump(&exit);
+    }
+    builder_.Bind(&doubleRes);
+    {
+        GateRef double1 = builder_.GetDoubleOfTNumber(in1);
+        GateRef double2 = builder_.GetDoubleOfTNumber(in2);
+        // LLVM supports lowering of `minimum/maximum` intrinsics on X86 only since version 17
+        // see https://github.com/llvm/llvm-project/commit/a82d27a9a6853c96f857ba0f514a78cd03bc5c35
+        if (builder_.GetCompilationConfig()->IsAArch64()) {
+            GateRef doubleRet = IS_MAX ? builder_.DoubleMax(double1, double2) : builder_.DoubleMin(double1, double2);
+            result = builder_.DoubleToTaggedDoublePtr(doubleRet);
+        } else {
+            result = BuildDoubleMinMax<IS_MAX>(double1, double2, in1, in2);
+        }
+        builder_.Jump(&exit);
+    }
+    builder_.Bind(&exit);
+    acc_.ReplaceGate(gate, builder_.GetStateDepend(), *result);
+}
+
+template<bool IS_MAX>
+void TypedNativeInlineLowering::LowerMinMax(GateRef gate)
+{
+    if (isLiteCG_) {
+        LowerTNumberMinMax<IS_MAX>(gate);
+    } else {
+        LowerMathMinMaxWithIntrinsic<IS_MAX>(gate);
+    }
+}
+
+template<bool IS_MAX>
+void TypedNativeInlineLowering::LowerIntMinMax(GateRef gate)
+{
+    GateRef in1 = acc_.GetValueIn(gate, 0);
+    GateRef in2 = acc_.GetValueIn(gate, 1);
+    Environment env(gate, circuit_, &builder_);
+    GateRef res = BuildIntMinMax<IS_MAX>(in1, in2);
+    acc_.ReplaceGate(gate, builder_.GetStateDepend(), res);
+}
+
+template<bool IS_MAX>
+void TypedNativeInlineLowering::LowerDoubleMinMax(GateRef gate)
+{
+    GateRef in1 = acc_.GetValueIn(gate, 0);
+    GateRef in2 = acc_.GetValueIn(gate, 1);
+    Environment env(gate, circuit_, &builder_);
+    GateRef res = BuildDoubleMinMax<IS_MAX>(in1, in2);
+    acc_.ReplaceGate(gate, builder_.GetStateDepend(), res);
+}
+
+GateRef TypedNativeInlineLowering::FindFrameState(GateRef gate)
+{
+    while (!acc_.HasFrameState(gate)) {
+        ASSERT(acc_.GetDependCount(gate) > 0);
+        gate = acc_.GetDep(gate);
+    }
+    return acc_.GetFrameState(gate);
 }
 
 }
-

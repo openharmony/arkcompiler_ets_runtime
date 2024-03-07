@@ -33,84 +33,103 @@ function printAbs(x: any) {
     }
 }
 
+function printAbs2() {
+    try {
+        const INT_MAX: number = 2147483647;
+        const INT_MIN: number = -INT_MAX - 1;
+        print(Math.abs(INT_MIN));
+    } finally {
+    }
+}
+
 // Check without params
-print(Math.abs()); // NaN
+print(Math.abs()); //: NaN
 
 // Check with single int param
-print(Math.abs(0)); // 0
-print(Math.abs(3)); // 3
-print(Math.abs(-5)); // 5
+print(Math.abs(0)); //: 0
+print(Math.abs(3)); //: 3
+print(Math.abs(-5)); //: 5
 
 // Check with single float param
-print(Math.abs(-1.5));
-print(Math.abs(Math.PI));
-print(Math.abs(-Math.PI));
-print(Math.abs(-1.9e80));
-print(Math.abs(1.9e80));
-print(Math.abs(-1.9e-80));
-print(Math.abs(1.9e-80));
+print(Math.abs(-1.5)); //: 1.5
+print(Math.abs(Math.PI)); //: 3.141592653589793
+print(Math.abs(-Math.PI)); //: 3.141592653589793
+print(Math.abs(-1.9e80)); //: 1.9e+80
+print(Math.abs(1.9e80)); //: 1.9e+80
+print(Math.abs(-1.9e-80)); //: 1.9e-80
+print(Math.abs(1.9e-80)); //: 1.9e-80
 
 // Check with special float params
-print(Math.abs(Infinity)); // Infinity
-print(Math.abs(-Infinity)); // Infinity
-print(Math.abs(NaN)); // NaN
+print(Math.abs(Infinity)); //: Infinity
+print(Math.abs(-Infinity)); //: Infinity
+print(Math.abs(NaN)); //: NaN
 
-print("1/x: " + 1 / Math.abs(-0));
+print(1 / Math.abs(-0)); //: Infinity
 
 // Check with 2 params
-print(Math.abs(3, 0)); // 3
+print(Math.abs(3, 0)); //: 3
 
 // Check with 3 params
-print(Math.abs(-3, 0, 0)); // 3
+print(Math.abs(-3, 0, 0)); //: 3
 
 // Check with 4 params
-print(Math.abs(4, 0, 0, 0)); // 4
+print(Math.abs(4, 0, 0, 0)); //: 4
 
 // Check with 5 params
-print(Math.abs(-4, 0, 0, 0, 0)); // 4
+print(Math.abs(-4, 0, 0, 0, 0)); //: 4
 
 // Replace standard builtin
 let true_abs = Math.abs
 Math.abs = replace
-print(Math.abs(-1.001)); // -1.001, no deopt
+
+// no deopt
+print(Math.abs(-1.001)); //: -1.001
 Math.abs = true_abs
 
 // Check edge cases
 const INT_MAX: number = 2147483647;
 const INT_MIN: number = -INT_MAX - 1;
-print(Math.abs(INT_MAX)); // INT_MAX
-print(Math.abs(2147483648)); // INT_MAX + 1
-print(Math.abs(-INT_MAX)); // INT_MAX
-print(Math.abs(INT_MIN)); // -INT_MIN
-print(Math.abs(INT_MIN - 1)); // -INT_MIN + 1
+print(Math.abs(INT_MAX)); //: 2147483647
+print(Math.abs(2147483648)); //: 2147483648
+print(Math.abs(-INT_MAX)); //: 2147483647
+//aot: [trace] Check Type: NotInt3
+printAbs2(); //: 2147483648
+print(Math.abs(INT_MIN - 1)); //: 2147483649
 
-printAbs(-3);
-printAbs("abc");
-printAbs("abc");
-
-printAbs(-12); // 12
+printAbs(-12); //: 12
 // Call standard builtin with non-number param
-printAbs("abc"); // NaN
-printAbs("-12"); // 12
+//aot: [trace] Check Type: NotNumber2
+printAbs("abc"); //: NaN
+//aot: [trace] Check Type: NotNumber2
+printAbs("-12"); //: 12
 
 if (ArkTools.isAOTCompiled(printAbs)) {
     // Replace standard builtin after call to standard builtin was profiled
     Math.abs = replace
 }
-printAbs(-12); // 12; or -12, deopt
-printAbs("abc"); // NaN; or abc, deopt
+printAbs(-12); //pgo: 12
+//aot: [trace] Check Type: NotCallTarget1
+//aot: -12
+
+printAbs("abc"); //pgo: NaN
+//aot: [trace] Check Type: NotCallTarget1
+//aot: abc
+
 Math.abs = true_abs
 
 // Check IR correctness inside try-block
 try {
-    printAbs(-12); // 12
-    printAbs("abc"); // NaN
+    printAbs(-12); //: 12
+    //aot: [trace] Check Type: NotNumber2
+    printAbs("abc"); //: NaN
 } catch (e) {
 }
 
-let obj = {};
-obj.valueOf = (() => { return -23; })
-print(Math.abs(obj)); // 23
+let obj = {
+    valueOf: () => { return -23; }
+};
+//aot: [trace] Check Type: NotNumber2
+print(Math.abs(obj)); //: 23
 
 function Throwing() {
     this.value = -14;
@@ -124,11 +143,11 @@ Throwing.prototype.valueOf = function() {
 let throwingObj = new Throwing();
 
 try {
-    print(Math.abs(throwingObj)); // 14
+    print(Math.abs(throwingObj)); //: 14
     throwingObj.value = 10;
-    print(Math.abs(throwingObj)); // exception
+    print(Math.abs(throwingObj)); //: Error: already positive
 } catch(e) {
     print(e);
 } finally {
-    print(Math.abs(obj)); // 23
+    print(Math.abs(obj)); //: 23
 }

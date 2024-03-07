@@ -103,6 +103,9 @@ enum class CallExceptionKind : bool {
     V(ExtractValue, (GateRef gate, GateRef e1, GateRef e2))                               \
     V(Sqrt, (GateRef gate, GateRef e1))                                                   \
     V(Exp, (GateRef gate, GateRef e1, GateRef e2))                                        \
+    V(Abs, (GateRef gate, GateRef e1))                                                    \
+    V(Min, (GateRef gate, GateRef e1, GateRef e2))                                        \
+    V(Max, (GateRef gate, GateRef e1, GateRef e2))                                        \
     V(ReadSp, (GateRef gate))                                                             \
     V(FinishAllocate, (GateRef gate, GateRef e1))
 

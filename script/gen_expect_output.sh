@@ -1,3 +1,4 @@
+#!/bin/bash
 # Copyright (c) 2024 Huawei Device Co., Ltd.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,42 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-NaN
-0
-3
-5
-1.5
-3.141592653589793
-3.141592653589793
-1.9e+80
-1.9e+80
-1.9e-80
-1.9e-80
-Infinity
-Infinity
-NaN
-1/x: Infinity
-3
-3
-4
-4
--1.001
-2147483647
-2147483648
-2147483647
-2147483648
-2147483649
-3
-NaN
-NaN
-12
-NaN
-12
-12
-NaN
-12
-NaN
-23
-14
-Error: already positive
-23
+MODE=$1
+if [ $# -ne 3 ] || ([ $MODE != "pgo" ] && [ $MODE != "aot" ]); then
+    echo "Usage: $0 [pgo|aot] <inputs.ts> <expect_output.txt>"
+    exit 1
+fi
+
+INPUT=$2
+OUTPUT=$3
+
+# copy license from this file
+tail -n +2 $0 | head -n 13  > $OUTPUT
+grep -Po "//($MODE)?: \K.*$" $INPUT >> $OUTPUT

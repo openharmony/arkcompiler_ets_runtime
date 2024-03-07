@@ -70,6 +70,7 @@ private:
     GateRef SetOutputType(GateRef gate, GateType type);
     GateRef SetOutputType(GateRef gate, Representation rep);
     GateRef SetOutputType(GateRef gate, TypeInfo type);
+    TypeInfo GetNumberTypeInfo(GateRef gate);
     GateRef VisitPhi(GateRef gate);
     GateRef VisitConstant(GateRef gate);
     GateRef VisitTypedBinaryOp(GateRef gate);
@@ -89,8 +90,9 @@ private:
     GateRef VisitNumberCompare(GateRef gate);
     GateRef VisitNumberShiftAndLogical(GateRef gate);
     GateRef VisitNumberToString(GateRef gate);
-    GateRef VisitMathBuiltin(GateRef gate);
-    GateRef VisitMathAbs(GateRef gate);
+    GateRef VisitMathDoubleParamsBuiltin(GateRef gate);
+    const GateMetaData *GetNewMeta(OpCode op, TypeInfo type);
+    GateRef VisitMathTaggedNumberParamsBuiltin(GateRef gate);
     GateRef VisitBooleanJump(GateRef gate);
     GateRef VisitRangeCheckPredicate(GateRef gate);
     GateRef VisitIndexCheck(GateRef gate);

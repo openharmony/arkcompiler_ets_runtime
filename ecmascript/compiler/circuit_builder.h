@@ -93,7 +93,11 @@ class PostSchedule;
     V(Int32LSR, Lsr, MachineType::I32)                                    \
     V(Int64LSR, Lsr, MachineType::I64)                                    \
     V(Int32ASR, Asr, MachineType::I32)                                    \
-    V(Int64ASR, Asr, MachineType::I64)
+    V(Int64ASR, Asr, MachineType::I64)                                    \
+    V(Int32Min, Min, MachineType::I32)                                    \
+    V(DoubleMin, Min, MachineType::F64)                                   \
+    V(Int32Max, Max, MachineType::I32)                                    \
+    V(DoubleMax, Max, MachineType::F64)
 
 #define UNARY_ARITHMETIC_METHOD_LIST_WITH_BITWIDTH(V)                  \
     V(BoolNot, Rev, MachineType::I1)                                   \
@@ -136,7 +140,9 @@ class PostSchedule;
     V(SExtInt16ToInt64, Sext, MachineType::I64)                        \
     V(SExtInt16ToInt32, Sext, MachineType::I32)                        \
     V(SExtInt8ToInt32, Sext, MachineType::I32)                         \
-    V(SExtInt8ToInt64, Sext, MachineType::I64)
+    V(SExtInt8ToInt64, Sext, MachineType::I64)                         \
+    V(Abs, Abs, MachineType::I32)                                      \
+    V(FAbs, Abs, MachineType::F64)
 
 #define UNARY_ARITHMETIC_METHOD_LIST_WITH_BITWIDTH_PRIVATE(V)          \
     V(ChangeTaggedPointerToInt64, TaggedToInt64, MachineType::I64)

@@ -17,17 +17,21 @@
 #define ECMASCRIPT_COMPILER_TYPED_NATIVE_INLINE_LOWERING_H
 
 #include "ecmascript/compiler/combined_pass_visitor.h"
+#include "ecmascript/compiler/pass_manager.h"
+
 namespace panda::ecmascript::kungfu {
 class TypedNativeInlineLowering : public PassVisitor {
 public:
     TypedNativeInlineLowering(Circuit* circuit,
                               RPOVisitor* visitor,
+                              PassContext *ctx,
                               CompilationConfig* cmpCfg,
                               Chunk* chunk)
         : PassVisitor(circuit, chunk, visitor),
           circuit_(circuit),
           acc_(circuit),
-          builder_(circuit, cmpCfg) {}
+          builder_(circuit, cmpCfg),
+          isLiteCG_(ctx->GetEcmaVM()->GetJSOptions().IsCompilerEnableLiteCG()) {}
     ~TypedNativeInlineLowering() = default;
     GateRef VisitGate(GateRef gate) override;
 private:
@@ -40,14 +44,42 @@ private:
     template <MathTrigonometricCheck CHECK = MathTrigonometricCheck::NOT_NAN>
     void LowerGeneralUnaryMath(GateRef gate, RuntimeStubCSigns::ID stubId);
     void LowerMathAtan2(GateRef gate);
-    void LowerAbs(GateRef gate);
     void LowerMathPow(GateRef gate);
     void LowerMathExp(GateRef gate);
+
+    GateRef BuildIntAbs(GateRef value);
+    GateRef BuildDoubleAbs(GateRef value);
+    GateRef BuildTNumberAbs(GateRef param);
+    void LowerAbs(GateRef gate);
+    void LowerIntAbs(GateRef gate);
+    void LowerDoubleAbs(GateRef gate);
+
+    template<bool IS_MAX>
+    GateRef BuildIntMinMax(GateRef int1, GateRef int2, GateRef in1, GateRef in2);
+    template<bool IS_MAX>
+    GateRef BuildIntMinMax(GateRef in1, GateRef in2);
+    template<bool IS_MAX>
+    GateRef BuildDoubleMinMax(GateRef double1, GateRef double2, GateRef in1, GateRef in2);
+    template<bool IS_MAX>
+    GateRef BuildDoubleMinMax(GateRef in1, GateRef in2);
+    template<bool IS_MAX>
+    void LowerTNumberMinMax(GateRef gate);
+    template<bool IS_MAX>
+    void LowerMathMinMaxWithIntrinsic(GateRef gate);
+    template<bool IS_MAX>
+    void LowerMinMax(GateRef gate);
+    template<bool IS_MAX>
+    void LowerIntMinMax(GateRef gate);
+    template<bool IS_MAX>
+    void LowerDoubleMinMax(GateRef gate);
+
+    GateRef FindFrameState(GateRef gate);
 
 private:
     Circuit* circuit_ {nullptr};
     GateAccessor acc_;
     CircuitBuilder builder_;
+    bool isLiteCG_ {false};
 };
 }
 #endif  // ECMASCRIPT_COMPILER_TYPED_HCR_LOWERING_H

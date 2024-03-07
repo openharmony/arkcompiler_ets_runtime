@@ -164,8 +164,10 @@ namespace panda::ecmascript::kungfu {
     V(MathExpm1)                                    \
     V(MathPow)                                      \
     V(MathAbs)                                      \
+    V(MathMin)                                      \
+    V(MathMax)                                      \
     V(TYPED_BUILTINS_INLINE_FIRST = MathAcos)       \
-    V(TYPED_BUILTINS_INLINE_LAST = MathAbs)
+    V(TYPED_BUILTINS_INLINE_LAST = MathMax)
 
 class BuiltinsStubCSigns {
 public:
@@ -327,6 +329,10 @@ public:
                 return ConstantIndex::MATH_FLOOR_FUNCTION_INDEX;
             case BuiltinsStubCSigns::ID::SQRT:
                 return ConstantIndex::MATH_SQRT_FUNCTION_INDEX;
+            case BuiltinsStubCSigns::ID::MathMin:
+                return ConstantIndex::MATH_MIN_INDEX;
+            case BuiltinsStubCSigns::ID::MathMax:
+                return ConstantIndex::MATH_MAX_INDEX;
             case BuiltinsStubCSigns::ID::LocaleCompare:
                 return ConstantIndex::LOCALE_COMPARE_FUNCTION_INDEX;
             case BuiltinsStubCSigns::ID::SORT:

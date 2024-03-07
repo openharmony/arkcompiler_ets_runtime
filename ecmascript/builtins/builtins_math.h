@@ -57,8 +57,8 @@
     V("log10",  Log10,  1, MathLog10)   /* Math.log10 ( x ) */              \
     V("log1p",  Log1p,  1, MathLog1p)   /* Math.log1p ( x ) */              \
     V("log2",   Log2,   1, MathLog2)    /* Math.log2 ( x ) */               \
-    V("max",    Max,    2, INVALID)     /* Math.max ( ...args ) */          \
-    V("min",    Min,    2, INVALID)     /* Math.min ( ...args ) */          \
+    V("max",    Max,    2, MathMax)     /* Math.max ( ...args ) */          \
+    V("min",    Min,    2, MathMin)     /* Math.min ( ...args ) */          \
     V("pow",    Pow,    2, MathPow)     /* Math.pow ( base, exponent ) */   \
     V("random", Random, 0, INVALID)     /* Math.random ( ) */               \
     V("round",  Round,  1, INVALID)     /* Math.round ( x ) */              \

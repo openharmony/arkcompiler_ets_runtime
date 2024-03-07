@@ -128,6 +128,12 @@ void NativeInlineLowering::RunNativeInlineLowering()
             case BuiltinsStubCSigns::ID::MathCbrt:
                 TryInlineMathUnaryBuiltin(gate, argc, id, circuit_->MathCbrt());
                 break;
+            case BuiltinsStubCSigns::ID::MathMin:
+                TryInlineMathMinMaxBuiltin(gate, argc, id, circuit_->MathMin(), base::POSITIVE_INFINITY);
+                break;
+            case BuiltinsStubCSigns::ID::MathMax:
+                TryInlineMathMinMaxBuiltin(gate, argc, id, circuit_->MathMax(), -base::POSITIVE_INFINITY);
+                break;
             default:
                 break;
         }
@@ -193,6 +199,36 @@ void NativeInlineLowering::TryInlineMathBinaryBuiltin(GateRef gate, size_t argc,
     GateRef ret = builder_.BuildMathBuiltinOp(op, {acc_.GetValueIn(gate, 1), acc_.GetValueIn(gate, 2)});
     acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), ret);
     return;
+}
+
+void NativeInlineLowering::TryInlineMathMinMaxBuiltin(GateRef gate, size_t argc, BuiltinsStubCSigns::ID id,
+                                                      const GateMetaData* op, double defaultValue)
+{
+    Environment env(gate, circuit_, &builder_);
+    if (!Uncheck()) {
+        builder_.CallTargetCheck(gate, acc_.GetValueIn(gate, argc + 1),
+                                 builder_.IntPtr(static_cast<int64_t>(id)));
+    }
+    if (argc == 0) {
+        GateRef ret = builder_.DoubleToTaggedDoublePtr(builder_.Double(defaultValue));
+        acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), ret);
+        return;
+    }
+    GateRef ret = acc_.GetValueIn(gate, 1);
+    if (argc == 1) {
+        auto param_check = builder_.TaggedIsNumber(ret);
+        builder_.DeoptCheck(param_check, acc_.GetFrameState(gate), DeoptType::BUILTIN_INLINING_TYPE_GUARD);
+        if (acc_.GetGateType(ret).IsAnyType()) {
+            acc_.SetGateType(ret, GateType::NumberType());
+        }
+        acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), ret);
+        return;
+    }
+    for (size_t i = 2; i <= argc; i++) {
+        auto param = acc_.GetValueIn(gate, i);
+        ret = builder_.BuildMathBuiltinOp(op, {ret, param});
+    }
+    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), ret);
 }
 
 }  // namespace panda::ecmascript
