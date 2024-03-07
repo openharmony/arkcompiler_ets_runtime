@@ -170,17 +170,12 @@ bool LinkedHashMap::Has(const JSThread *thread, JSTaggedValue key) const
 
 JSHandle<LinkedHashMap> LinkedHashMap::Clear(const JSThread *thread, const JSHandle<LinkedHashMap> &table)
 {
-    int oldCapacity = table->Capacity();
-    table->SetNumberOfElements(thread, 0);
-    table->SetNumberOfDeletedElements(thread, 0);
-    table->SetCapacity(thread, MIN_CAPACITY);
-    table->FillRangeWithSpecialValue(JSTaggedValue::Hole(), ELEMENTS_START_INDEX,
-        ELEMENTS_START_INDEX + MIN_CAPACITY);
-    if (oldCapacity > MIN_CAPACITY) {
-        int length = ELEMENTS_START_INDEX + MIN_CAPACITY + MIN_CAPACITY * (LinkedHashSetObject::ENTRY_SIZE + 1);
-        table->Trim(thread, length);
+    JSHandle<LinkedHashMap> newMap = LinkedHashMap::Create(thread);
+    if (table->Capacity() > 0) {
+        table->SetNextTable(thread, newMap.GetTaggedValue());
+        table->SetNumberOfDeletedElements(thread, -1);
     }
-    return table;
+    return newMap;
 }
 
 JSHandle<LinkedHashMap> LinkedHashMap::Shrink(const JSThread *thread, const JSHandle<LinkedHashMap> &table,

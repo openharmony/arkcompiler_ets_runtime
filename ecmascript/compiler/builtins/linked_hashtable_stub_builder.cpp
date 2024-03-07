@@ -20,7 +20,6 @@
 #include "ecmascript/linked_hash_table.h"
 #include "ecmascript/js_set.h"
 #include "ecmascript/js_map.h"
-#include "ecmascript/free_object.h"
 
 namespace panda::ecmascript::kungfu {
 template <typename LinkedHashTableType, typename LinkedHashTableObject>
@@ -408,33 +407,30 @@ GateRef LinkedHashTableStubBuilder<LinkedHashTableType, LinkedHashTableObject>::
 {
     auto env = GetEnvironment();
     Label entry(env);
-    Label exit(env);
     env->SubCfgEntry(&entry);
+    Label exit(env);
+    Label setLinked(env);
+
+    GateRef newTable = Create(Int32(LinkedHashTableType::MIN_CAPACITY));
+    Label noException(env);
+    Branch(TaggedIsException(newTable), &exit, &noException);
+    Bind(&noException);
 
     GateRef cap = GetCapacity(linkedTable);
-    size_t newLength = LinkedHashTableType::GetLengthOfTable(LinkedHashTableType::MIN_CAPACITY);
-    // Fill by Hole()
-    DEFVARIABLE(index, VariableType::INT32(), Int32(LinkedHashTableType::ELEMENTS_START_INDEX));
-    for (size_t i = LinkedHashTableType::ELEMENTS_START_INDEX; i < newLength; ++i) {
-        SetValueToTaggedArray(VariableType::JS_NOT_POINTER(), glue_, linkedTable, *index, Hole());
-        index = Int32Add(*index, Int32(1));
+    Label capGreaterZero(env);
+    Branch(Int32GreaterThan(cap, Int32(0)), &capGreaterZero, &exit);
+    Bind(&capGreaterZero);
+    {
+        // NextTable
+        SetNextTable(linkedTable, newTable);
+        // SetNumberOfDeletedElements
+        SetNumberOfDeletedElements(linkedTable, Int32(-1));
+        Jump(&exit);
     }
-
-    SetNumberOfElements(linkedTable, Int32(0));
-    SetNumberOfDeletedElements(linkedTable, Int32(0));
-    SetCapacity(linkedTable, Int32(LinkedHashTableType::MIN_CAPACITY));
-    Label shrinkLabel(env);
-    // if capacity equals to MIN_CAPACITY do nothing
-    Branch(Int32Equal(cap, Int32(LinkedHashTableType::MIN_CAPACITY)), &exit, &shrinkLabel);
-    Bind(&shrinkLabel);
-    // Get here if capacity > MIN_CAPACITY.
-    // Call Array::Trim
-    CallNGCRuntime(glue_, RTSTUB_ID(ArrayTrim), {glue_, linkedTable, Int32(newLength)});
-    Jump(&exit);
 
     Bind(&exit);
     env->SubCfgExit();
-    return linkedTable;
+    return newTable;
 }
 
 template GateRef LinkedHashTableStubBuilder<LinkedHashMap, LinkedHashMapObject>::Clear(GateRef);
