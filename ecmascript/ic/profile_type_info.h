@@ -239,6 +239,11 @@ public:
         return kind_;
     }
 
+    bool IsICSlotValid() const
+    {
+        return slotId_ + 1 < profileTypeInfo_->GetLength(); // slotId_ + 1 need to be valid
+    }
+
 private:
     JSThread* thread_;
     JSHandle<ProfileTypeInfo> profileTypeInfo_;
