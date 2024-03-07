@@ -425,14 +425,23 @@ CMap<uint32_t, CString> PatchLoader::CollectClassInfo(const JSPandaFile *jsPanda
                 BytecodeInstruction::Opcode opcode = static_cast<BytecodeInstruction::Opcode>(bcIns.GetOpcode());
                 if (opcode == BytecodeInstruction::Opcode::DEFINECLASSWITHBUFFER_IMM8_ID16_ID16_IMM16_V8 ||
                     opcode == BytecodeInstruction::Opcode::DEFINECLASSWITHBUFFER_IMM16_ID16_ID16_IMM16_V8) {
-                    auto entityId = jsPandaFile->ResolveMethodIndex(methodLiteral->GetMethodId(),
-                        (bcIns.GetId <BytecodeInstruction::Format::IMM8_ID16_ID16_IMM16_V8, 0>()).AsRawValue());
+                    EntityId entityId;
+                    EntityId literalId;
+                    if (opcode == BytecodeInstruction::Opcode::DEFINECLASSWITHBUFFER_IMM8_ID16_ID16_IMM16_V8) {
+                        entityId = jsPandaFile->ResolveMethodIndex(methodLiteral->GetMethodId(),
+                            (bcIns.GetId <BytecodeInstruction::Format::IMM8_ID16_ID16_IMM16_V8, 0>()).AsRawValue());
+                        literalId = jsPandaFile->ResolveMethodIndex(methodLiteral->GetMethodId(),
+                            (bcIns.GetId <BytecodeInstruction::Format::IMM8_ID16_ID16_IMM16_V8, 1>()).AsRawValue());
+                    } else if (opcode == BytecodeInstruction::Opcode::DEFINECLASSWITHBUFFER_IMM16_ID16_ID16_IMM16_V8) {
+                        entityId = jsPandaFile->ResolveMethodIndex(methodLiteral->GetMethodId(),
+                            (bcIns.GetId <BytecodeInstruction::Format::IMM16_ID16_ID16_IMM16_V8, 0>()).AsRawValue());
+                        literalId = jsPandaFile->ResolveMethodIndex(methodLiteral->GetMethodId(),
+                            (bcIns.GetId <BytecodeInstruction::Format::IMM16_ID16_ID16_IMM16_V8, 1>()).AsRawValue());
+                    }
                     CString className = "";
                     className = GetRealName(jsPandaFile, entityId, className);
                     CString recordName = MethodLiteral::GetRecordName(jsPandaFile, methodId);
 
-                    auto literalId = jsPandaFile->ResolveMethodIndex(methodLiteral->GetMethodId(),
-                        (bcIns.GetId <BytecodeInstruction::Format::IMM8_ID16_ID16_IMM16_V8, 1>()).AsRawValue());
                     LiteralDataAccessor lda = jsPandaFile->GetLiteralDataAccessor();
                     lda.EnumerateLiteralVals(literalId, [&classInfo, className]
                         (const LiteralValue &value, const LiteralTag &tag) {
