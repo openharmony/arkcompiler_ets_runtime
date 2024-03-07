@@ -229,3 +229,16 @@ const strings2 = [
 for (const str of strings2) {
     print(str.toWellFormed());
 }
+
+const text_str = "So we beat on, boats against the current, borne back ceaselessly into the past."
+const search_str1 = "So we"
+const search_str2 = "borne back"
+print(text_str.startsWith(search_str1));
+print(text_str.startsWith(search_str1, 10));
+print(text_str.startsWith(search_str2, 42));
+print(text_str.startsWith(search_str1, text_str.length - 1));
+const text_str2 = "So we beat on, boats against the current," + " borne back ceaselessly into the past."
+print(text_str2.startsWith(search_str1));
+print(text_str2.startsWith(search_str1, 10));
+print(text_str2.startsWith(search_str2, 42));
+print(text_str2.startsWith(search_str1, text_str.length - 1));

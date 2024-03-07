@@ -43,6 +43,7 @@ namespace panda::ecmascript::kungfu {
     V(StringTrim)                                   \
     V(StringSlice)                                  \
     V(StringConcat)                                 \
+    V(StringStartsWith)                             \
     V(ObjectToString)                               \
     V(ObjectCreate)                                 \
     V(ObjectAssign)                                 \

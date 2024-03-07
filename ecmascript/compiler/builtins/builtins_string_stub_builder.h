@@ -43,6 +43,7 @@ public:
     void Slice(GateRef glue, GateRef thisValue, GateRef numArgs, Variable *res, Label *exit, Label *slowPath);
     void LocaleCompare(GateRef glue, GateRef thisValue, GateRef numArgs, Variable *res, Label *exit, Label *slowPath);
     void Concat(GateRef glue, GateRef thisValue, GateRef numArgs, Variable *res, Label *exit, Label *slowPath);
+    void StartsWith(GateRef glue, GateRef thisValue, GateRef numArgs, Variable *res, Label *exit, Label *slowPath);
 
     GateRef ConvertAndClampRelativeIndex(GateRef index, GateRef length);
     GateRef StringAt(const StringInfoGateRef &stringInfoGate, GateRef index);
@@ -69,6 +70,10 @@ public:
     void StoreParent(GateRef glue, GateRef object, GateRef parent);
     void StoreStartIndex(GateRef glue, GateRef object, GateRef startIndex);
     void StoreHasBackingStore(GateRef glue, GateRef object, GateRef hasBackingStore);
+    GateRef IsSubStringAt(GateRef lhsData, bool lhsIsUtf8, GateRef rhsData, bool rhsIsUtf8,
+        GateRef pos, GateRef rhsCount);
+    GateRef IsSubStringAt(const StringInfoGateRef &lStringInfoGate,
+        const StringInfoGateRef &rStringInfoGate, GateRef pos);
 private:
     GateRef ChangeStringTaggedPointerToInt64(GateRef x)
     {

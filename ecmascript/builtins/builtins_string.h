@@ -86,7 +86,7 @@
     /* String.prototype.split ( separator, limit ) */                               \
     V("split",             Split,             2, INVALID)                           \
     /* String.prototype.startsWith ( searchString [ , position ] ) */               \
-    V("startsWith",        StartsWith,        1, INVALID)                           \
+    V("startsWith",        StartsWith,        1, StringStartsWith)                  \
     /* In Annex B.2.2: Additional Properties of the String.prototype Object */      \
     /* String.prototype.substr ( start, length ) */                                 \
     V("substr",            SubStr,            2, INVALID)                           \

@@ -322,6 +322,9 @@ private:
     // can change left and right data structure
     static int32_t Compare(const EcmaVM *vm, const JSHandle<EcmaString> &left, const JSHandle<EcmaString> &right);
 
+    static bool IsSubStringAt(const EcmaVM *vm, const JSHandle<EcmaString>& left,
+        const JSHandle<EcmaString>& right, uint32_t offset);
+
     // Check that two spans are equal. Should have the same length.
     /* static */
     template<typename T, typename T1>
@@ -1321,6 +1324,14 @@ public:
     static int32_t Compare(const EcmaVM *vm, const JSHandle<EcmaString>& left, const JSHandle<EcmaString>& right)
     {
         return EcmaString::Compare(vm, left, right);
+    }
+
+    
+    // can change receiver and search data structure
+    static bool IsSubStringAt(const EcmaVM *vm, const JSHandle<EcmaString>& left,
+        const JSHandle<EcmaString>& right, uint32_t offset = 0)
+    {
+        return EcmaString::IsSubStringAt(vm, left, right, offset);
     }
 
     // can change str1 and str2 data structure
