@@ -171,7 +171,7 @@ private:
 // The value is used in xorshift64* random generator to generate result.
 class RandomGenerator {
 public:
-    static void InitRandom();
+    static void InitRandom(JSThread *thread);
     static double NextDouble();
     static int32_t GenerateIdentityHash();
     static int32_t Next(int bits);

@@ -32,3 +32,9 @@ for (let i = 0; i < 4; ++i) {
     let value = map.get(i);
     print(value);
 }
+
+map = new Map();
+let key = Number.parseFloat("1392210229");
+map.set(key, "success");
+let value = map.get(key);
+print(value);

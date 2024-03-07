@@ -149,7 +149,7 @@ void EcmaVM::PreFork()
 
 void EcmaVM::PostFork()
 {
-    RandomGenerator::InitRandom();
+    RandomGenerator::InitRandom(GetAssociatedJSThread());
     heap_->SetHeapMode(HeapMode::SHARE);
     GetAssociatedJSThread()->PostFork();
     Taskpool::GetCurrentTaskpool()->Initialize();

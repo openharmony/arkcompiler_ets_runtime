@@ -1549,7 +1549,7 @@ void Builtins::InitializeMath(const JSHandle<GlobalEnv> &env, const JSHandle<JST
     [[maybe_unused]] EcmaHandleScope scope(thread_);
     JSHandle<JSHClass> mathClass = factory_->NewEcmaHClass(JSObject::SIZE, JSType::JS_OBJECT, objFuncPrototypeVal);
     JSHandle<JSObject> mathObject = factory_->NewJSObjectWithInit(mathClass);
-    RandomGenerator::InitRandom();
+    RandomGenerator::InitRandom(thread_);
 
     for (const base::BuiltinFunctionEntry &entry: Math::GetMathFunctions()) {
         SetFunction(env, mathObject, entry.GetName(), entry.GetEntrypoint(),
