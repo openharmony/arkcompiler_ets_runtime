@@ -12,7 +12,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-declare function print(str:any):string;
+declare function assert_equal(a: Object, b: Object):void;
 
 function foo1(a:number, b:number)
 {
@@ -36,7 +36,7 @@ function foo2(a:number, b:number)
 
 var obj1 = new Obj1();
 
-print(foo1(1, 1));
-print(foo2(2, 2));
-print(obj.fun(3, 3));
-print(obj1.fun(4, 4));
+assert_equal(foo1(1, 1), 2);
+assert_equal(foo2(2, 2), 4);
+assert_equal(obj.fun(3, 3), 6);
+assert_equal(obj1.fun(4, 4), 8);

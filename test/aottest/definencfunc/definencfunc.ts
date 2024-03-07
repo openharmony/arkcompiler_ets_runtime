@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-declare function print(str:any):string;
+declare function assert_equal(a: Object, b: Object):void;
 
 var arrow_func = ():string => "arrow function";
 
@@ -21,5 +21,5 @@ var arrow_sum = (arg1:number, arg2:number):number => {
     return arg1 + arg2;
 }
 
-print(arrow_func());
-print(arrow_sum(2, 3));
+assert_equal(arrow_func(), "arrow function");
+assert_equal(arrow_sum(2, 3), 5);
