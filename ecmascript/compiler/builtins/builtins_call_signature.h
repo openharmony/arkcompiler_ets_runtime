@@ -106,7 +106,9 @@ namespace panda::ecmascript::kungfu {
     V(BooleanConstructor)                           \
     V(NumberConstructor)                            \
     V(DateConstructor)                              \
-    V(ArrayConstructor)
+    V(ArrayConstructor)                             \
+    V(SetConstructor)                               \
+    V(MapConstructor)
 
 #define AOT_AND_BUILTINS_STUB_LIST(V)               \
     V(LocaleCompare)                                \

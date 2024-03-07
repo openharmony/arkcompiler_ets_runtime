@@ -34,6 +34,9 @@
 #include "ecmascript/compiler/variable_type.h"
 #include "ecmascript/js_date.h"
 #include "ecmascript/js_primitive_ref.h"
+#include "ecmascript/linked_hash_table.h"
+#include "ecmascript/js_set.h"
+#include "ecmascript/js_map.h"
 
 namespace panda::ecmascript::kungfu {
 #if ECMASCRIPT_ENABLE_BUILTIN_LOG
@@ -749,6 +752,18 @@ DECLARE_BUILTINS_OBJECT_STUB_BUILDER(Object, HasOwnProperty, VariableType::JS_AN
 // Object.protetype.Keys
 DECLARE_BUILTINS_OBJECT_STUB_BUILDER(Object, Keys, VariableType::JS_ANY(), Undefined());
 #undef DECLARE_BUILTINS_OBJECT_STUB_BUILDER
+
+DECLARE_BUILTINS(MapConstructor)
+{
+    LinkedHashTableStubBuilder<LinkedHashMap, LinkedHashMapObject> hashTableBuilder(this, glue);
+    hashTableBuilder.GenMapSetConstructor(nativeCode, func, newTarget, thisValue, numArgs);
+}
+
+DECLARE_BUILTINS(SetConstructor)
+{
+    LinkedHashTableStubBuilder<LinkedHashSet, LinkedHashSetObject> hashTableBuilder(this, glue);
+    hashTableBuilder.GenMapSetConstructor(nativeCode, func, newTarget, thisValue, numArgs);
+}
 
 #define DECLARE_BUILTINS_COLLECTION_STUB_BUILDER(type, method, retType, retDefaultValue)            \
 DECLARE_BUILTINS(type##method)                                                                      \
