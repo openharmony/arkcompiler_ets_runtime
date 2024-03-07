@@ -231,3 +231,25 @@ const v22 = new BigInt64Array(v21);
 Atomics.or(v22, Int16Array, false);
 print(v22);
 print(Atomics.wait(v22, false, true));
+
+try {
+    const v17 = new Int16Array(5);
+    const v20 = new Int16Array(5);
+    v17.set(v20, 4294967295);
+} catch (error) {
+    print(error)
+}
+
+try {
+    const v17 = new Int16Array(5);
+    const v20 = new Int16Array(5);
+    v17.set(v20, 4294967296);
+} catch (error) {
+    print(error)
+}
+
+try {
+    new BigUint64Array(new ArrayBuffer(256), 256, 0x1fffffff)
+} catch (error) {
+    print(error)
+}

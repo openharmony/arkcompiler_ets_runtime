@@ -1018,13 +1018,13 @@ JSTaggedValue BuiltinsTypedArray::Set(EcmaRuntimeCallInfo *argv)
     // 5. Assert: target has a [[ViewedArrayBuffer]] internal slot.
     // 6. Let targetOffset be ToInteger (offset).
     const JSHandle<JSTaggedValue> srcOffset = GetCallArg(argv, 1);
-    uint32_t targetOffset = 0;
+    uint64_t targetOffset = 0;
     if (srcOffset->IsInt()) {
         if (srcOffset->GetInt() < 0) {
             THROW_RANGE_ERROR_AND_RETURN(thread, "The targetOffset of This value is less than 0.",
                                          JSTaggedValue::Exception());
         }
-        targetOffset = static_cast<uint32_t>(srcOffset->GetInt());
+        targetOffset = static_cast<uint64_t>(srcOffset->GetInt());
     } else {
         JSTaggedNumber tTargetOffset = JSTaggedValue::ToInteger(thread, srcOffset);
         // 7. ReturnIfAbrupt(targetOffset).
@@ -1038,7 +1038,7 @@ JSTaggedValue BuiltinsTypedArray::Set(EcmaRuntimeCallInfo *argv)
             THROW_RANGE_ERROR_AND_RETURN(thread, "The targetOffset is infinty, which is greater than targetLength.",
                                          JSTaggedValue::Exception());
         } else {
-            targetOffset = static_cast<uint32_t>(rawTargetOffset);
+            targetOffset = static_cast<uint64_t>(rawTargetOffset);
         }
     }
     // 9. Let targetBuffer be the value of target’s [[ViewedArrayBuffer]] internal slot.
@@ -1093,7 +1093,7 @@ JSTaggedValue BuiltinsTypedArray::Set(EcmaRuntimeCallInfo *argv)
                                          JSTaggedValue::Exception());
         }
         // 21. Let targetByteIndex be targetOffset × targetElementSize + targetByteOffset.
-        ASSERT((static_cast<uint64_t>(targetOffset) * static_cast<uint64_t>(targetElementSize) +
+        ASSERT((targetOffset * static_cast<uint64_t>(targetElementSize) +
             static_cast<uint64_t>(targetByteOffset)) <= static_cast<uint64_t>(UINT32_MAX));
         uint32_t targetByteIndex = static_cast<uint32_t>(targetOffset * targetElementSize + targetByteOffset);
         // 22. Let k be 0.
@@ -1192,9 +1192,9 @@ JSTaggedValue BuiltinsTypedArray::Set(EcmaRuntimeCallInfo *argv)
         srcByteIndex = srcByteOffset;
     }
     // 26. Let targetByteIndex be targetOffset × targetElementSize + targetByteOffset.
-    ASSERT((static_cast<uint64_t>(targetOffset) * static_cast<uint64_t>(targetElementSize) +
+    ASSERT((targetOffset * static_cast<uint64_t>(targetElementSize) +
             static_cast<uint64_t>(targetByteOffset)) <= static_cast<uint64_t>(UINT32_MAX));
-    uint32_t targetByteIndex = targetOffset * targetElementSize + targetByteOffset;
+    uint32_t targetByteIndex = static_cast<uint32_t>(targetOffset) * targetElementSize + targetByteOffset;
     // 27. Let limit be targetByteIndex + targetElementSize × srcLength.
     ASSERT((static_cast<uint64_t>(targetElementSize) * static_cast<uint64_t>(srcLength) +
             static_cast<uint64_t>(targetByteIndex)) <= static_cast<uint64_t>(UINT32_MAX));

@@ -324,11 +324,11 @@ JSTaggedValue TypedArrayHelper::CreateFromArrayBuffer(EcmaRuntimeCallInfo *argv,
     // 8. If length is not undefined, then
     //   a. Let newLength be ? ToIndex(length).
     JSHandle<JSTaggedValue> length = BuiltinsBase::GetCallArg(argv, BuiltinsBase::ArgsPosition::THIRD);
-    int32_t newLength = 0;
+    uint64_t newLength = 0;
     if (!length->IsUndefined()) {
         index = JSTaggedValue::ToIndex(thread, length);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-        newLength = static_cast<int32_t>(index.GetNumber());
+        newLength = static_cast<uint64_t>(index.GetNumber());
     }
     // 9. If IsDetachedBuffer(buffer) is true, throw a TypeError exception.
     JSHandle<JSTaggedValue> buffer = BuiltinsBase::GetCallArg(argv, 0);
@@ -341,7 +341,7 @@ JSTaggedValue TypedArrayHelper::CreateFromArrayBuffer(EcmaRuntimeCallInfo *argv,
     //   a. If bufferByteLength modulo elementSize ≠ 0, throw a RangeError exception.
     //   b. Let newByteLength be bufferByteLength - offset.
     //   c. If newByteLength < 0, throw a RangeError exception.
-    uint32_t newByteLength = 0;
+    uint64_t newByteLength = 0;
     if (length->IsUndefined()) {
         if (bufferByteLength % elementSize != 0) {
             THROW_RANGE_ERROR_AND_RETURN(thread, "The bufferByteLength cannot be an integral multiple of elementSize.",
@@ -355,9 +355,7 @@ JSTaggedValue TypedArrayHelper::CreateFromArrayBuffer(EcmaRuntimeCallInfo *argv,
         // 12. Else,
         //   a. Let newByteLength be newLength × elementSize.
         //   b. If offset + newByteLength > bufferByteLength, throw a RangeError exception.
-        ASSERT((static_cast<size_t>(newLength) * static_cast<size_t>(elementSize)) <=
-            static_cast<size_t>(INT32_MAX));
-        newByteLength = static_cast<uint32_t>(newLength) * elementSize;
+        newByteLength = newLength * elementSize;
         if (offset + newByteLength > bufferByteLength) {
             THROW_RANGE_ERROR_AND_RETURN(thread, "The newByteLength is out of range.", JSTaggedValue::Exception());
         }
