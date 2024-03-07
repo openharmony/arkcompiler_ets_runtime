@@ -13,6 +13,8 @@
  * limitations under the License.
  */
 
+#include "libpandabase/utils/hash.h"
+
 #include "ecmascript/compiler/mcr_circuit_builder.h"
 #include "ecmascript/message_string.h"
 #include "ecmascript/stubs/runtime_stubs-inl.h"
@@ -1159,6 +1161,43 @@ GateRef CircuitBuilder::GetLengthFromString(GateRef value)
 {
     GateRef len = Load(VariableType::INT32(), value, IntPtr(EcmaString::MIX_LENGTH_OFFSET));
     return Int32LSR(len, Int32(EcmaString::STRING_LENGTH_SHIFT_COUNT));
+}
+
+GateRef CircuitBuilder::Rotl(GateRef word, uint32_t shift)
+{
+    static constexpr uint32_t MAX_BITS = 32;
+    return Int32Or(Int32LSL(word, Int32(shift)), Int32LSR(word, Int32(MAX_BITS - shift)));
+}
+
+GateRef CircuitBuilder::CalcHashcodeForInt(GateRef value)
+{
+    GateRef rawVal = ChangeTaggedPointerToInt64(value);
+    GateRef low = TruncInt64ToInt32(rawVal);
+    GateRef k1 = Int32Mul(low, Int32(MurmurHash32Const::C1));
+    GateRef k2 = Rotl(k1, MurmurHash32Const::MAIN_FIRST_SHIFT);
+    GateRef k3 = Int32Mul(k2, Int32(MurmurHash32Const::C2));
+    GateRef hash1 = Int32Xor(Int32(DEFAULT_SEED), k3);
+    GateRef hash2 = Rotl(hash1, MurmurHash32Const::MAIN_SECOND_SHIFT);
+    GateRef hash3 = Int32Add(Int32Mul(hash2, Int32(MurmurHash32Const::MAIN_MULTIPLICATOR)),
+        Int32(MurmurHash32Const::MAIN_CONSTANT));
+
+    GateRef high = TruncInt64ToInt32(Int64LSR(rawVal, Int64(32U)));
+    GateRef k4 = Int32Mul(high, Int32(MurmurHash32Const::C1));
+    GateRef k5 = Rotl(k4, MurmurHash32Const::MAIN_FIRST_SHIFT);
+    GateRef k6 = Int32Mul(k5, Int32(MurmurHash32Const::C2));
+    GateRef hash4 = Int32Xor(hash3, k6);
+    GateRef hash5 = Rotl(hash4, MurmurHash32Const::MAIN_SECOND_SHIFT);
+    GateRef hash6 = Int32Add(Int32Mul(hash5, Int32(MurmurHash32Const::MAIN_MULTIPLICATOR)),
+        Int32(MurmurHash32Const::MAIN_CONSTANT));
+
+    GateRef hash7 = Int32Xor(hash6, Int32(8U));
+    // Finalize
+    GateRef hash8 = Int32Xor(hash7, Int32LSR(hash7, Int32(MurmurHash32Const::FINALIZE_FIRST_SHIFT)));
+    GateRef hash9 = Int32Mul(hash8, Int32(MurmurHash32Const::FINALIZE_FIRST_MULTIPLICATOR));
+    GateRef hash10 = Int32Xor(hash9, Int32LSR(hash9, Int32(MurmurHash32Const::FINALIZE_SECOND_SHIFT)));
+    GateRef hash11 = Int32Mul(hash10, Int32(MurmurHash32Const::FINALIZE_SECOND_MULTIPLICATOR));
+    GateRef hash12 = Int32Xor(hash11, Int32LSR(hash11, Int32(MurmurHash32Const::FINALIZE_THIRD_SHIFT)));
+    return hash12;
 }
 
 GateRef CircuitBuilder::GetHashcodeFromString(GateRef glue, GateRef value)

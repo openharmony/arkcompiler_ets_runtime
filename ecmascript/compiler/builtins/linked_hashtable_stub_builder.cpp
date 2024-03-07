@@ -231,34 +231,68 @@ GateRef LinkedHashTableStubBuilder<LinkedHashTableType, LinkedHashTableObject>::
     env->SubCfgEntry(&entryLabel);
     DEFVARIABLE(res, VariableType::INT32(), Int32(0));
 
+    Label slowGetHash(env);
     Label symbolKey(env);
     Label stringCheck(env);
     BRANCH(TaggedIsSymbol(key), &symbolKey, &stringCheck);
+
     Bind(&symbolKey);
-    {
-        res = Load(VariableType::INT32(), key, IntPtr(JSSymbol::HASHFIELD_OFFSET));
-        Jump(&exit);
-    }
+    res = Load(VariableType::INT32(), key, IntPtr(JSSymbol::HASHFIELD_OFFSET));
+    Jump(&exit);
+
     Bind(&stringCheck);
     Label stringKey(env);
-    Label slowGetHash(env);
-    BRANCH(TaggedIsString(key), &stringKey, &slowGetHash);
+    Label objectCheck(env);
+    BRANCH(TaggedIsString(key), &stringKey, &objectCheck);
     Bind(&stringKey);
-    {
-        res = GetHashcodeFromString(glue_, key);
-        Jump(&exit);
-    }
+    res = GetHashcodeFromString(glue_, key);
+    Jump(&exit);
+
+    Bind(&objectCheck);
+    Label heapObjectKey(env);
+    Label numberCheck(env);
+    BRANCH(TaggedIsHeapObject(key), &heapObjectKey, &numberCheck);
+
+    Bind(&heapObjectKey);
+    Label ecmaObjectKey(env);
+    BRANCH(TaggedObjectIsEcmaObject(key), &ecmaObjectKey, &slowGetHash);
+    Bind(&ecmaObjectKey);
+    CalcHashcodeForObject(glue_, key, &res, &exit);
+
+    Bind(&numberCheck);
+    Label numberKey(env);
+    BRANCH(TaggedIsNumber(key), &numberKey, &slowGetHash);
+
+    Bind(&numberKey);
+    CalcHashcodeForNumber(key, &res, &exit);
+
     Bind(&slowGetHash);
-    {
-        // GetHash();
-        GateRef hash = CallRuntime(glue_, RTSTUB_ID(GetLinkedHash), { key });
-        res = GetInt32OfTInt(hash);
-        Jump(&exit);
-    }
+    res = GetInt32OfTInt(CallRuntime(glue_, RTSTUB_ID(GetLinkedHash), { key }));
+    Jump(&exit);
+
     Bind(&exit);
     auto ret = *res;
     env->SubCfgExit();
     return ret;
+}
+
+template <typename LinkedHashTableType, typename LinkedHashTableObject>
+void LinkedHashTableStubBuilder<LinkedHashTableType, LinkedHashTableObject>::CalcHashcodeForNumber(
+    GateRef key, Variable *res, Label *exit)
+{
+    auto env = GetEnvironment();
+    Label doubleKey(env);
+    Label intKey(env);
+    BRANCH(TaggedIsDouble(key), &doubleKey, &intKey);
+    Bind(&doubleKey);
+    {
+        CalcHashcodeForDouble(key, res, exit);
+    }
+    Bind(&intKey);
+    {
+        *res = CalcHashcodeForInt(key);
+        Jump(exit);
+    }
 }
 
 template <typename LinkedHashTableType, typename LinkedHashTableObject>
@@ -624,6 +658,7 @@ GateRef LinkedHashTableStubBuilder<LinkedHashTableType, LinkedHashTableObject>::
     BRANCH(Int32Equal(size, Int32(0)), &exit, &nonEmpty);
     Bind(&nonEmpty);
     GateRef hash = GetHash(key);
+
     GateRef entry = FindElement(linkedTable, key, hash);
     Label findEntry(env);
     BRANCH(Int32Equal(entry, Int32(-1)), &exit, &findEntry);

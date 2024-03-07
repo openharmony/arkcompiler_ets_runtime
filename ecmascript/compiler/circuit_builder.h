@@ -699,6 +699,8 @@ public:
     GateRef NumberToString(GateRef number);
     GateRef TaggedPointerToInt64(GateRef x);
     GateRef GetLengthFromString(GateRef value);
+    GateRef Rotl(GateRef word, uint32_t shift);
+    GateRef CalcHashcodeForInt(GateRef value);
     GateRef GetHashcodeFromString(GateRef glue, GateRef value);
     GateRef TryGetHashcodeFromString(GateRef string);
     GateRef IsIntegerString(GateRef string);
