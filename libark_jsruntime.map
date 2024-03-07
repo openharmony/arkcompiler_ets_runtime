@@ -126,6 +126,7 @@
       panda::ecmascript::EcmaVM::GetGlobalEnv*;
       panda::ecmascript::EcmaVM::IsEnableElementsKind*;
       panda::ecmascript::EcmaVM::IsEnablePGOProfiler*;
+      panda::ecmascript::EcmaVM::IsEnableJit*;
       panda::ecmascript::ElementAccessor::ConvertTaggedValueWithElementsKind*;
       panda::ecmascript::ElementAccessor::Get*;
       panda::ecmascript::Elements::FixElementsKind*;

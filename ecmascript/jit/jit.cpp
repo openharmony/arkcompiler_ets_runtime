@@ -36,6 +36,9 @@ Jit *Jit::GetInstance()
 
 void Jit::SetEnable(const EcmaVM *vm)
 {
+    if (!initialized_) {
+        Initialize();
+    }
     if (initialized_ && !jitEnable_) {
         jitEnable_ = true;
         initJitCompiler_(const_cast<EcmaVM*>(vm));

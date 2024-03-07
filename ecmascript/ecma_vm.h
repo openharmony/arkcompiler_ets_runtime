@@ -566,7 +566,7 @@ public:
     }
 
     Jit *GetJit() const;
-    bool IsEnableJit() const;
+    bool PUBLIC_API IsEnableJit() const;
     void EnableJit() const;
 
     bool isOverLimit() const
