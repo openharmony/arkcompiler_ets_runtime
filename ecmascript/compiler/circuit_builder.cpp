@@ -199,6 +199,11 @@ GateRef CircuitBuilder::GetLengthOfTaggedArray(GateRef array)
     return Load(VariableType::INT32(), array, IntPtr(TaggedArray::LENGTH_OFFSET));
 }
 
+GateRef CircuitBuilder::GetLengthOfJSTypedArray(GateRef array)
+{
+    return Load(VariableType::INT32(), array, IntPtr(JSTypedArray::ARRAY_LENGTH_OFFSET));
+}
+
 void CircuitBuilder::Jump(Label *label)
 {
     ASSERT(label);
