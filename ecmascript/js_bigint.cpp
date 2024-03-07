@@ -843,9 +843,7 @@ bool BigInt::LessThan(const BigInt *x, const BigInt *y)
 
 JSHandle<BigInt> BigInt::SignedRightShift(JSThread *thread, JSHandle<BigInt> x, JSHandle<BigInt> y)
 {
-    bool xIsNull = x->GetDigit(0);
-    bool yIsNull = y->GetDigit(0);
-    if (!xIsNull || !yIsNull) {
+    if (x->IsZero() || y->IsZero()) {
         return x;
     }
     if (y->GetSign()) {
