@@ -83,9 +83,9 @@ void DFXJSNApi::DumpHeapSnapshot([[maybe_unused]] const EcmaVM *vm, [[maybe_unus
 
 [[maybe_unused]] static uint8_t killCount = 0;
 
-void DFXJSNApi::DumpHeapSnapshot([[maybe_unused]] const EcmaVM *vm, [[maybe_unused]] int dumpFormat,
-                                 [[maybe_unused]] bool isVmMode, [[maybe_unused]] bool isPrivate,
-                                 [[maybe_unused]] bool captureNumericValue, [[maybe_unused]] bool isFullGC)
+void DFXJSNApi::DumpCpuProfile([[maybe_unused]] const EcmaVM *vm, [[maybe_unused]] int dumpFormat,
+                               [[maybe_unused]] bool isVmMode, [[maybe_unused]] bool isPrivate,
+                               [[maybe_unused]] bool captureNumericValue, [[maybe_unused]] bool isFullGC)
 {
 #if defined(ECMASCRIPT_SUPPORT_SNAPSHOT)
 #if defined(ENABLE_DUMP_IN_FAULTLOG)
@@ -101,6 +101,16 @@ void DFXJSNApi::DumpHeapSnapshot([[maybe_unused]] const EcmaVM *vm, [[maybe_unus
         return;
     }
 #endif // ECMASCRIPT_SUPPORT_CPUPROFILER
+#endif // ENABLE_DUMP_IN_FAULTLOG
+#endif // ECMASCRIPT_SUPPORT_SNAPSHOT
+}
+
+void DFXJSNApi::DumpHeapSnapshot([[maybe_unused]] const EcmaVM *vm, [[maybe_unused]] int dumpFormat,
+                                 [[maybe_unused]] bool isVmMode, [[maybe_unused]] bool isPrivate,
+                                 [[maybe_unused]] bool captureNumericValue, [[maybe_unused]] bool isFullGC)
+{
+#if defined(ECMASCRIPT_SUPPORT_SNAPSHOT)
+#if defined(ENABLE_DUMP_IN_FAULTLOG)
     auto &options = const_cast<EcmaVM *>(vm)->GetJSOptions();
     options.SwitchStartGlobalLeakCheck();
     if (options.EnableGlobalLeakCheck() && options.IsStartGlobalLeakCheck()) {
