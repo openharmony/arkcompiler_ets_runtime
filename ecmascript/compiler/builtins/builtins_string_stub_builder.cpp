@@ -1866,6 +1866,81 @@ void BuiltinsStringStubBuilder::Concat(GateRef glue, GateRef thisValue, GateRef 
     }
 }
 
+void BuiltinsStringStubBuilder::ToLowerCase(GateRef glue, GateRef thisValue, [[maybe_unused]] GateRef numArgs,
+    Variable *res, Label *exit, Label *slowPath)
+{
+    auto env = GetEnvironment();
+    Label objNotUndefinedAndNull(env);
+    Branch(TaggedIsUndefinedOrNull(thisValue), slowPath, &objNotUndefinedAndNull);
+    Bind(&objNotUndefinedAndNull);
+    {
+        Label thisIsHeapObj(env);
+        Label isString(env);
+
+        Branch(TaggedIsHeapObject(thisValue), &thisIsHeapObj, slowPath);
+        Bind(&thisIsHeapObj);
+        Branch(IsString(thisValue), &isString, slowPath);
+        Bind(&isString);
+        {
+            Label isUtf8(env);
+            Label hasPara(env);
+            Label isUtf8Next(env);
+            Label flattenFastPath(env);
+            Branch(IsUtf8String(thisValue), &isUtf8, slowPath);
+            Bind(&isUtf8);
+            {
+                GateRef srcLength = GetLengthFromString(thisValue);
+                DEFVARIABLE(len, VariableType::INT32(), srcLength);
+                NewObjectStubBuilder newBuilder(this);
+                newBuilder.SetParameters(glue, 0);
+                newBuilder.AllocLineStringObject(res, &isUtf8Next, srcLength, true);
+                Bind(&isUtf8Next);
+                {
+                    FlatStringStubBuilder thisFlat(this);
+                    thisFlat.FlattenString(glue, thisValue, &flattenFastPath);
+                    Bind(&flattenFastPath);
+                    StringInfoGateRef stringInfoGate(&thisFlat);
+                    GateRef dataUtf8 = GetNormalStringData(stringInfoGate);
+                    GateRef dst = ChangeStringTaggedPointerToInt64(PtrAdd(res->ReadVariable(),
+                        IntPtr(LineEcmaString::DATA_OFFSET)));
+                    DEFVARIABLE(dstTmp, VariableType::NATIVE_POINTER(), dst);
+                    DEFVARIABLE(sourceTmp, VariableType::NATIVE_POINTER(), dataUtf8);
+                    Label loopHead(env);
+                    Label loopEnd(env);
+                    Label next(env);
+                    Label toLower(env);
+                    Label notLower(env);
+                    Jump(&loopHead);
+                    LoopBegin(&loopHead);
+                    {
+                        Branch(Int32GreaterThan(*len, Int32(0)), &next, exit);
+                        Bind(&next);
+                        {
+                            len = Int32Sub(*len, Int32(1));
+                            GateRef i = Load(VariableType::INT8(), *sourceTmp);
+                            // 65: means 'A', 90: means 'Z'
+                            GateRef needLower = BoolAnd(Int8GreaterThanOrEqual(i, Int8(65)),
+                                Int8GreaterThanOrEqual(Int8(90), i));
+                            Branch(needLower, &toLower, &notLower);
+                            Bind(&toLower);
+                            GateRef j = Int8Xor(i, Int8(1 << 5));
+                            Store(VariableType::INT8(), glue, *dstTmp, IntPtr(0), j);
+                            Jump(&loopEnd);
+                            Bind(&notLower);
+                            Store(VariableType::INT8(), glue, *dstTmp, IntPtr(0), i);
+                            Jump(&loopEnd);
+                        }
+                    }
+                    Bind(&loopEnd);
+                    sourceTmp = PtrAdd(*sourceTmp, IntPtr(sizeof(uint8_t)));
+                    dstTmp = PtrAdd(*dstTmp, IntPtr(sizeof(uint8_t)));
+                    LoopEnd(&loopHead);
+                }
+            }
+        }
+    }
+}
+
 GateRef BuiltinsStringStubBuilder::StringConcat(GateRef glue, GateRef leftString, GateRef rightString)
 {
     auto env = GetEnvironment();
