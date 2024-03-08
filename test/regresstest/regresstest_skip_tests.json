@@ -1557,5 +1557,12 @@
         "README.en.md",
         "README.md"
       ]
+    },
+    {
+      "reason": "Too long regular expression",
+      "files": [
+        "mjsunit/regress/regress-1166138.js",
+        "mjsunit/regress/regress-v8-12472.js"
+      ]
     }
 ]

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022 Huawei Device Co., Ltd.
+ * Copyright (c) 2024 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -144,8 +144,12 @@ std::shared_ptr<JSPandaFile> JSPandaFileManager::LoadJSPandaFile(JSThread *threa
             return jsPandaFile;
         }
     }
-
+#if defined(PANDA_TARGET_PREVIEW)
     auto pf = panda_file::OpenPandaFileFromMemory(buffer, size);
+#else
+    CString tag = ModulePathHelper::ParseFileNameToVMAName(filename);
+    auto pf = panda_file::OpenPandaFileFromMemory(buffer, size, tag.c_str());
+#endif
     if (pf == nullptr) {
         LOG_ECMA(ERROR) << "open file " << filename << " error";
         return nullptr;

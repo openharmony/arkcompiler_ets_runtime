@@ -14,40 +14,12 @@
  */
 
 /*
- * @tc.name:loadicbyname
- * @tc.desc:test loadicbyname
+ * @tc.name:primitiveic
+ * @tc.desc:test primitiveic
  * @tc.type: FUNC
- * @tc.require: issueI5NO8G
  */
-class C14 {
-  constructor() {
-      function F21() {
-          return 0x4242424242424242n;
-      }
-      function F26() {
-          try {
-              this.toString();
-          } catch(e30) {
-          }
-      }
-      const v35 = new F26();
-      const v38 = v35.constructor;
-      v38.prototype = 0x4141414141414141n;
-      Object.defineProperty(v38, 0x4343434343434343n, { writable: true, configurable: true, value: F21 });
-      new v38(F26);
-  }
-}
 
-new C14();
-let flag1 = false;
-try {
-  new C14();
-} catch (e) {
-  flag1 = true;
-}
-print(flag1);
-
-// for number inline cache
+// for number_ic
 const numObj1 = 10928;
 const numObj2 = 123.456;
 const numObj3 = new Number(42);
@@ -57,33 +29,39 @@ for (let i = 0; i < 100; i++) {
    let res3 = numObj3.valueOf();
 }
 
-function foo() { return -4096;}
-Object.defineProperty(Number.prototype, "h", {get:foo});
-for (let i = 0; i < 50; i++)
+// for number_ic & string_ic hasAccessor
 {
-    const num = 123456;
-    num.h;
-}
-Object.defineProperty(Number.prototype, "a", {
-  configurable:true,
-  enumerable:false,
-  value:"ggg",
-  writable:true
-});
-
-for (let i = 0; i < 50; i++)
-{
-    const num = 123456;
-    num.h;
-}
-
-// for string inline cache
-function func() { return -4096;}
-Object.defineProperty(String.prototype, "h", {get:func});
-for (let i = 0; i < 50; i++)
-{
-    const str = "normallize";
-    str.h;
+  function foo() { return -4096;}
+  Object.defineProperty(String.prototype, "a", {get:foo});
+  Object.defineProperty(Number.prototype, "b", {get:foo});
+  for (let i = 0; i < 50; i++)
+  {
+      const num = 123456;
+      const str = "normallize";
+      num.a;
+      str.b;
+  }
+  Object.defineProperty(Number.prototype, "c", {value:"123"});
+  for (let i = 0; i < 50; i++)
+  {
+      const num = 123456;
+      const str = "normallize";
+      num.a;
+      str.b;
+  }
 }
 
-print("number ic load success")
+// for number_ic & string_ic notHasAccessor
+{
+  Object.defineProperty(String.prototype, "d", {value:"456"});
+  Object.defineProperty(Number.prototype, "e", {value:"789"});
+  for (let i = 0; i < 50; i++)
+  {
+      const num = 123456;
+      const str = "normallize";
+      num.d;
+      str.e;
+  }
+}
+
+print("primitiveic load success")

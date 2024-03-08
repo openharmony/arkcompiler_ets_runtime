@@ -87,6 +87,8 @@ protected:
         }
         end_ = end - 1;
         current_ = begin;
+        SkipEndWhiteSpace();
+        range_ = end_;
 
         auto vm = thread_->GetEcmaVM();
         factory_ = vm->GetFactory();
@@ -101,8 +103,6 @@ protected:
         initialJSObjectClass_ =
             JSHandle<JSHClass>(thread_, JSFunction::GetOrCreateInitialJSHClass(thread_, objectFunc));
 
-        SkipEndWhiteSpace();
-        range_ = end_;
         JSTaggedValue result = ParseJSONText();
         RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread_);
         return JSHandle<JSTaggedValue>(thread_, result);
@@ -282,24 +282,43 @@ protected:
     }
 
     JSHandle<JSTaggedValue> CreateJsonObject(JsonContinuation continuation,
-                                            std::vector<JSHandle<JSTaggedValue>> &propertyList)
+                                             std::vector<JSHandle<JSTaggedValue>> &propertyList)
     {
         size_t start = continuation.index_;
         size_t size = propertyList.size() - start;
-        JSHandle<JSObject> obj = factory_->NewJSObject(initialJSObjectClass_);
+        auto obj = JSHandle<JSTaggedValue>(factory_->NewJSObject(initialJSObjectClass_));
         for (size_t i = 0; i < size; i += 2) { // 2: prop name and value
-            JSHandle<JSTaggedValue> keyHandle = propertyList[start + i];
-            JSHandle<JSTaggedValue> valueHandle = propertyList[start + i + 1];
-            JSTaggedValue res = ObjectFastOperator::SetPropertyByValue<ObjectFastOperator::Status::UseOwn>
-                (thread_, obj.GetTaggedValue(), keyHandle.GetTaggedValue(), valueHandle.GetTaggedValue());
+            auto &keyHandle = propertyList[start + i];
+            auto &valueHandle = propertyList[start + i + 1];
+            auto res = SetPropertyByValue(obj, keyHandle, valueHandle);
             RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread_);
             if (res.IsHole()) {
                 // slow path
-                JSTaggedValue::SetProperty(thread_, JSHandle<JSTaggedValue>(obj), keyHandle, valueHandle, true);
+                JSTaggedValue::SetProperty(thread_, obj, keyHandle, valueHandle, true);
                 RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread_);
             }
         }
-        return JSHandle<JSTaggedValue>(obj);
+        return obj;
+    }
+
+    JSTaggedValue SetPropertyByValue(const JSHandle<JSTaggedValue> &receiver, const JSHandle<JSTaggedValue> &key,
+                                     const JSHandle<JSTaggedValue> &value)
+    {
+        ASSERT(key->IsString());
+        auto newKey = key.GetTaggedValue();
+        auto stringAccessor = EcmaStringAccessor(newKey);
+        if (!stringAccessor.IsLineString() || IsNumberCharacter(*stringAccessor.GetDataUtf8())) {
+            uint32_t index = 0;
+            if (stringAccessor.ToElementIndex(&index)) {
+                return ObjectFastOperator::SetPropertyByIndex<ObjectFastOperator::Status::UseOwn>(thread_,
+                    receiver.GetTaggedValue(), index, value.GetTaggedValue());
+            }
+        }
+        if (!stringAccessor.IsInternString()) {
+            newKey = JSTaggedValue(thread_->GetEcmaVM()->GetFactory()->InternString(key));
+        }
+        return ObjectFastOperator::SetPropertyByName<ObjectFastOperator::Status::UseOwn>(thread_,
+            receiver.GetTaggedValue(), newKey, value.GetTaggedValue());
     }
 
     JSTaggedValue ParseNumber(bool inObjorArr = false)
@@ -781,22 +800,52 @@ public:
     NO_COPY_SEMANTIC(Utf8JsonParser);
     NO_MOVE_SEMANTIC(Utf8JsonParser);
 
-    JSHandle<JSTaggedValue> Parse(EcmaString *str)
+    JSHandle<JSTaggedValue> Parse(const JSHandle<EcmaString> &strHandle)
     {
-        ASSERT(str != nullptr);
-        auto stringAccessor = EcmaStringAccessor(str);
+        ASSERT(*strHandle != nullptr);
+        auto stringAccessor = EcmaStringAccessor(strHandle);
         uint32_t len = stringAccessor.GetLength();
         ASSERT(len != UINT32_MAX);
-        CVector<uint8_t> buf(len + 1);
-        stringAccessor.WriteToFlatUtf8(buf.data(), len);
-        Text begin = buf.data();
-        return Launch(begin, begin + len);
+
+        uint32_t slicedOffset = 0;
+        if (LIKELY(stringAccessor.IsLineOrConstantString())) {
+            sourceString_ = strHandle;
+            begin_ = stringAccessor.GetDataUtf8();
+        } else if (stringAccessor.IsSlicedString()) {
+            auto *sliced = static_cast<SlicedString *>(*strHandle);
+            slicedOffset = sliced->GetStartIndex();
+            sourceString_ = JSHandle<EcmaString>(thread_, EcmaString::Cast(sliced->GetParent()));
+        } else {
+            auto *flatten = EcmaStringAccessor::Flatten(thread_->GetEcmaVM(), strHandle);
+            sourceString_ = JSHandle<EcmaString>(thread_, flatten);
+        }
+        begin_ = EcmaStringAccessor(sourceString_).GetDataUtf8();
+        auto *heap = const_cast<Heap *>(thread_->GetEcmaVM()->GetHeap());
+        auto listenerId = heap->AddGCListener(UpdatePointersListener, this);
+        auto res = Launch(begin_ + slicedOffset, begin_ + slicedOffset + len);
+        heap->RemoveGCListener(listenerId);
+        return res;
     }
 
 private:
     void ParticalParseString(std::string& str, Text current, Text nextCurrent) override
     {
         str += std::string_view(reinterpret_cast<const char *>(current), nextCurrent - current);
+    }
+
+    static void UpdatePointersListener(void *utf8Parser)
+    {
+        auto *parser = reinterpret_cast<Utf8JsonParser *>(utf8Parser);
+        auto *begin = EcmaStringAccessor(parser->sourceString_).GetDataUtf8();
+        if (parser->begin_ != begin) {
+            uint32_t currentOffset = parser->current_ - parser->begin_;
+            uint32_t endOffset = parser->end_ - parser->begin_;
+            uint32_t rangeOffset = parser->range_ - parser->begin_;
+            parser->current_ = reinterpret_cast<uint8_t *>(ToUintPtr(begin) + currentOffset);
+            parser->end_ = reinterpret_cast<uint8_t *>(ToUintPtr(begin) + endOffset);
+            parser->range_ = reinterpret_cast<uint8_t *>(ToUintPtr(begin) + rangeOffset);
+            parser->begin_ = begin;
+        }
     }
 
     JSTaggedValue ParseString(bool inObjorArr = false) override
@@ -809,12 +858,11 @@ private:
                 THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected end Text in JSON", JSTaggedValue::Exception());
             }
             if (isFastString) {
-                size_t strLength = end_ - current_;
+                uint32_t offset = current_ - begin_;
+                uint32_t strLength = end_ - current_;
                 ASSERT(strLength <= static_cast<size_t>(UINT32_MAX));
-                JSTaggedValue res = factory_->NewCompressedUtf8(
-                    reinterpret_cast<const uint8_t *>(current_), strLength).GetTaggedValue();
                 current_ = end_ + 1;
-                return res;
+                return factory_->NewCompressedUtf8SubString(sourceString_, offset, strLength).GetTaggedValue();
             }
         } else {
             if (*end_ != '"' || current_ == end_) {
@@ -825,11 +873,12 @@ private:
                 THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected end Text in JSON", JSTaggedValue::Exception());
             }
             if (LIKELY(isFastString)) {
-                std::string_view value(reinterpret_cast<const char *>(current_), end_ - current_);
+                uint32_t offset = current_ - begin_;
+                uint32_t strLength = end_ - current_;
+                ASSERT(strLength <= static_cast<size_t>(UINT32_MAX));
                 current_ = end_ + 1;
-                ASSERT(value.size() <= static_cast<size_t>(UINT32_MAX));
-                return factory_->NewFromUtf8LiteralCompress(
-                    reinterpret_cast<const uint8_t *>(value.data()), value.size()).GetTaggedValue();
+                return factory_->NewFromUtf8LiteralCompressSubString(
+                    sourceString_, offset, strLength).GetTaggedValue();
             }
         }
         return SlowParseString();
@@ -867,6 +916,9 @@ private:
         }
         return true;
     }
+
+    const uint8_t *begin_;
+    JSHandle<EcmaString> sourceString_;
 };
 
 class Utf16JsonParser : public JsonParser<uint16_t> {

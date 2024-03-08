@@ -560,25 +560,14 @@ public:
         return strategy_;
     }
 
-    Jit *GetJit()
-    {
-        return jit_;
-    }
-
-    bool IsEnableJit() const
-    {
-        return isEnableJit_;
-    }
-
     CMap<uint32_t, EcmaVM *> GetWorkList() const
     {
         return workerList_;
     }
 
-    void SetEnableJit(bool state)
-    {
-        isEnableJit_ = state;
-    }
+    Jit *GetJit() const;
+    bool PUBLIC_API IsEnableJit() const;
+    void EnableJit() const;
 
     bool isOverLimit() const
     {
@@ -593,6 +582,11 @@ public:
     AOTFileManager *GetAOTFileManager() const
     {
         return aotFileManager_;
+    }
+
+    uint32_t GetTid() const
+    {
+        return thread_->GetThreadId();
     }
 protected:
 
@@ -702,8 +696,6 @@ private:
     friend class EcmaContext;
     CMap<uint32_t, EcmaVM *> workerList_ {};
     Mutex mutex_;
-    Jit *jit_ {nullptr};
-    bool isEnableJit_ {false};
     bool overLimit_ {false};
 };
 }  // namespace ecmascript

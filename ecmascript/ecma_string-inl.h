@@ -48,11 +48,7 @@ inline EcmaString *EcmaString::CreateFromUtf8(const EcmaVM *vm, const uint8_t *u
         } else {
             string = CreateLineStringWithSpaceType(vm, utf8Len, true, type);
             ASSERT(string != nullptr);
-
-            if (memcpy_s(string->GetDataUtf8Writable(), utf8Len, utf8Data, utf8Len) != EOK) {
-                LOG_FULL(FATAL) << "memcpy_s failed";
-                UNREACHABLE();
-            }
+            std::copy(utf8Data, utf8Data + utf8Len, string->GetDataUtf8Writable());
         }
     } else {
         auto utf16Len = base::utf_helper::Utf8ToUtf16Size(utf8Data, utf8Len);
@@ -66,6 +62,20 @@ inline EcmaString *EcmaString::CreateFromUtf8(const EcmaVM *vm, const uint8_t *u
 
     ASSERT_PRINT(canBeCompress == CanBeCompressed(string), "Bad input canBeCompress!");
     return string;
+}
+
+/* static */
+inline EcmaString *EcmaString::CreateFromUtf8CompressedSubString(const EcmaVM *vm, const JSHandle<EcmaString> &string,
+                                                                 uint32_t offset, uint32_t utf8Len, MemSpaceType type)
+{
+    ASSERT(utf8Len != 0);
+    EcmaString *subString = CreateLineStringWithSpaceType(vm, utf8Len, true, type);
+    ASSERT(subString != nullptr);
+
+    auto *utf8Data = string->GetDataUtf8() + offset;
+    std::copy(utf8Data, utf8Data + utf8Len, subString->GetDataUtf8Writable());
+    ASSERT_PRINT(CanBeCompressed(subString), "String cannot be compressed!");
+    return subString;
 }
 
 inline EcmaString *EcmaString::CreateUtf16StringFromUtf8(const EcmaVM *vm, const uint8_t *utf8Data, uint32_t utf16Len,
@@ -135,10 +145,7 @@ inline EcmaString *EcmaString::CreateLineStringNoGC(const EcmaVM *vm, size_t len
 {
     size_t size = compressed ? LineEcmaString::ComputeSizeUtf8(length) : LineEcmaString::ComputeSizeUtf16(length);
     size = AlignUp(size, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
-    auto object = reinterpret_cast<TaggedObject *>(vm->GetHeap()->GetOldSpace()->Allocate(size, false));
-    auto thread = vm->GetJSThread();
-    object->SetClass(thread, JSHClass::Cast(thread->GlobalConstants()->GetLineStringClass().GetTaggedObject()));
-    auto string = EcmaString::Cast(object);
+    auto string = vm->GetFactory()->AllocLineStringObjectNoGC(size);
     string->SetLength(length, compressed);
     string->SetRawHashcode(0);
     return string;

@@ -3119,7 +3119,7 @@ bool JSNApi::NotifyDebugMode([[maybe_unused]] int tid,
 
     bool ret = false;
     if (!debugApp) {
-        return false;
+        return true;
     }
     JsDebuggerManager *jsDebuggerManager = vm->GetJsDebuggerManager();
     auto handle = panda::os::library_loader::Load(std::string(option.libraryPath));

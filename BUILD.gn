@@ -329,6 +329,7 @@ config("ark_jsruntime_common_config") {
   ldflags = []
   if (is_linux) {
     defines += [
+      "PANDA_TARGET_PREVIEW",
       "PANDA_TARGET_UNIX",
       "PANDA_TARGET_LINUX",
       "PANDA_USE_FUTEX",
@@ -339,6 +340,7 @@ config("ark_jsruntime_common_config") {
       "-Wno-ignored-attributes",
     ]
     defines += [
+      "PANDA_TARGET_PREVIEW",
       "PANDA_TARGET_WINDOWS",
       "_CRTBLD",
       "__LIBMSVCRT__",
@@ -353,6 +355,7 @@ config("ark_jsruntime_common_config") {
   } else if (is_mac) {
     cflags_cc += [ "-std=c++17" ]
     defines += [
+      "PANDA_TARGET_PREVIEW",
       "PANDA_TARGET_UNIX",
       "PANDA_TARGET_MACOS",
     ]

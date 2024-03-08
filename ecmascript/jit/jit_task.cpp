@@ -19,9 +19,15 @@
 #include "ecmascript/compiler/aot_file/func_entry_des.h"
 
 namespace panda::ecmascript {
+void JitTask::PrepareCompile()
+{
+    PersistentHandle();
+    compilerTask_ = jit_->CreateJitCompilerTask(this);
+}
+
 void JitTask::Optimize()
 {
-    bool res = jit_->JitCompile(compiler_, this);
+    bool res = jit_->JitCompile(compilerTask_, this);
     if (!res) {
         SetCompileFailed();
     }
@@ -33,7 +39,7 @@ void JitTask::Finalize()
         return;
     }
 
-    bool res = jit_->JitFinalize(compiler_, this);
+    bool res = jit_->JitFinalize(compilerTask_, this);
     if (!res) {
         SetCompileFailed();
     }
@@ -46,7 +52,7 @@ void JitTask::InstallCode()
     }
     JSHandle<Method> methodHandle(vm_->GetJSThread(), Method::Cast(jsFunction_->GetMethod().GetTaggedObject()));
 
-    size_t funcEntryDesSizeAlign = AlignUp(codeDesc_.funcEntryDesSize, MachineCode::DATA_ALIGN);
+    size_t funcEntryDesSizeAlign = AlignUp(codeDesc_.funcEntryDesSize, MachineCode::TEXT_ALIGN);
 
     size_t rodataSizeBeforeTextAlign = AlignUp(codeDesc_.rodataSizeBeforeText, MachineCode::TEXT_ALIGN);
     size_t codeSizeAlign = AlignUp(codeDesc_.codeSize, MachineCode::DATA_ALIGN);
@@ -86,7 +92,7 @@ void JitTask::ReleasePersistentHandle()
 JitTask::~JitTask()
 {
     ReleasePersistentHandle();
-    jit_->DeleteJitCompile(compiler_);
+    jit_->DeleteJitCompile(compilerTask_);
 }
 
 bool JitTask::AsyncTask::Run([[maybe_unused]] uint32_t threadIndex)

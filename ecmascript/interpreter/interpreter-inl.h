@@ -2797,7 +2797,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
             JSTaggedValue propKey = GET_VREG_VALUE(v1);
             JSTaggedValue value = GET_ACC();
             // fast path
-            JSTaggedValue res = FastRuntimeStub::SetPropertyByValue<ObjectFastOperator::Status::UseOwn>
+            JSTaggedValue res = FastRuntimeStub::SetPropertyByValue<ObjectFastOperator::Status::DefineSemantics>
                                 (thread, receiver, propKey, value);
 
             // SetPropertyByValue maybe gc need update the value
@@ -2838,7 +2838,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
             JSTaggedValue value = GET_ACC();
             // fast path
             SAVE_ACC();
-            JSTaggedValue res = FastRuntimeStub::SetPropertyByName<ObjectFastOperator::Status::UseOwn>
+            JSTaggedValue res = FastRuntimeStub::SetPropertyByName<ObjectFastOperator::Status::DefineSemantics>
                                 (thread, receiver, propKey, value);
             if (!res.IsHole()) {
                 INTERPRETER_RETURN_IF_ABRUPT(res);
@@ -6655,7 +6655,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
             JSTaggedValue propKey = GET_VREG_VALUE(v1);
             JSTaggedValue value = GET_ACC();
             // fast path
-            JSTaggedValue res = FastRuntimeStub::SetPropertyByValue<ObjectFastOperator::Status::UseOwn>
+            JSTaggedValue res = FastRuntimeStub::SetPropertyByValue<ObjectFastOperator::Status::DefineSemantics>
                                 (thread, receiver, propKey, value);
 
             // SetPropertyByValue maybe gc need update the value
@@ -6697,7 +6697,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
             JSTaggedValue value = GET_ACC();
             // fast path
             SAVE_ACC();
-            JSTaggedValue res = FastRuntimeStub::SetPropertyByName<ObjectFastOperator::Status::UseOwn>
+            JSTaggedValue res = FastRuntimeStub::SetPropertyByName<ObjectFastOperator::Status::DefineSemantics>
                                 (thread, receiver, propKey, value);
             if (!res.IsHole()) {
                 INTERPRETER_RETURN_IF_ABRUPT(res);

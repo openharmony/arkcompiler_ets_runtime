@@ -22,6 +22,7 @@
 
 #include "ecmascript/compiler/aot_file/an_file_data_manager.h"
 #include "ecmascript/mem/mem_common.h"
+#include "ecmascript/compiler/ecma_opcode_des.h"
 
 namespace panda::ecmascript {
 const std::string PUBLIC_API COMMON_HELP_HEAD_MSG =
@@ -75,6 +76,8 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
     "--compiler-deopt-threshold:           Set max count which aot function can occur deoptimization. Default: '10'\n"
     "--compiler-stress-deopt:              Enable stress deopt for aot compiler. Default: 'false'\n"
     "--compiler-opt-code-profiler:         Enable opt code Bytecode Statistics for aot runtime. Default: 'false'\n"
+    "--compiler-opt-bc-range:              Range list for EcmaOpCode range Example '1:2,5:8'\n"
+    "--compiler-opt-bc-range-help:         Range list for EcmaOpCode range help. Default: 'false''\n"
     "--enable-force-gc:                    Enable force gc when allocating object. Default: 'true'\n"
     "--enable-ic:                          Switch of inline cache. Default: 'true'\n"
     "--enable-runtime-stat:                Enable statistics of runtime state. Default: 'false'\n"
@@ -198,6 +201,8 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"compiler-deopt-threshold", required_argument, nullptr, OPTION_COMPILER_DEOPT_THRESHOLD},
         {"compiler-stress-deopt", required_argument, nullptr, OPTION_COMPILER_STRESS_DEOPT},
         {"compiler-opt-code-profiler", required_argument, nullptr, OPTION_COMPILER_OPT_CODE_PROFILER},
+        {"compiler-opt-bc-range", required_argument, nullptr, OPTION_COMPILER_OPT_BC_RANGE},
+        {"compiler-opt-bc-range-help", required_argument, nullptr, OPTION_COMPILER_OPT_BC_RANGE_HELP},
         {"enable-force-gc", required_argument, nullptr, OPTION_ENABLE_FORCE_GC},
         {"enable-ic", required_argument, nullptr, OPTION_ENABLE_IC},
         {"enable-runtime-stat", required_argument, nullptr, OPTION_ENABLE_RUNTIME_STAT},
@@ -464,6 +469,17 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                     SetOptCodeProfiler(argBool);
                 } else {
                     return false;
+                }
+                break;
+            case OPTION_COMPILER_OPT_BC_RANGE:
+                SetOptCodeRange(optarg);
+                break;
+            case OPTION_COMPILER_OPT_BC_RANGE_HELP:
+                ret = ParseBoolParam(&argBool);
+                if (ret) {
+                    std::string helpInfo = kungfu::GetHelpForEcmaCodeListForRange();
+                    LOG_COMPILER(ERROR) << helpInfo.c_str();
+                    exit(1);
                 }
                 break;
             case OPTION_ENABLE_FORCE_GC:

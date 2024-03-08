@@ -89,3 +89,35 @@ print(b);
 
 obj.type = 555;
 print("getter", obj.type);
+
+function test_func7(f) {
+    function t() {
+        try {
+            t();
+        } catch (e) {
+            return f();
+        }
+    }
+    return t();
+}
+class c0 {
+}
+class c1 extends c0 {
+}
+function f1(v5, v6) {
+    return new c1(v5, v6)
+}
+
+Object.defineProperty(Array.prototype, Symbol.iterator, {
+    value: function* () { },
+    configurable: true
+});
+
+try {
+    var v1 = test_func7(() => {
+        return f1(1, 2);
+    });
+    print(v1);
+} catch (e) {
+    print(e);
+}

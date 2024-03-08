@@ -70,6 +70,8 @@ private:
     void LowerInt32UnsignedUpperBoundCheck(GateRef gate);
     void LowerInt32DivWithCheck(GateRef gate);
     void LowerLexVarIsHoleCheck(GateRef gate);
+    void LowerIsUndefinedOrHoleCheck(GateRef gate);
+    void LowerIsNotUndefinedOrHoleCheck(GateRef gate);
     void LowerStoreMemory(GateRef gate);
     void LowerCheckNullAndConvert(GateRef gate, GateRef frameState);
     void LowerUndefinedAndConvert(GateRef gate, GateRef frameState);

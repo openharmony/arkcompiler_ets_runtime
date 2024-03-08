@@ -19,6 +19,7 @@
 namespace panda::ecmascript::kungfu {
 
 #define HCR_IMMUTABLE_META_DATA_CACHE_LIST(V)                                                   \
+    V(NumberToString, NUMBER_TO_STRING, GateFlags::NONE_FLAG, 1, 1, 1)                          \
     V(ToLength, TO_LENGTH, GateFlags::NONE_FLAG, 1, 1, 1)                                       \
     V(StoreModuleVar, STORE_MODULE_VAR, GateFlags::NONE_FLAG, 1, 1, 3)                          \
     V(OrdinaryHasInstance, ORDINARY_HAS_INSTANCE, GateFlags::CHECKABLE, 1, 1, 2)                \

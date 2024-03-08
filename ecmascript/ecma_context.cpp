@@ -533,6 +533,7 @@ JSHandle<JSTaggedValue> EcmaContext::GetAndClearEcmaUncaughtException() const
 void EcmaContext::ProcessNativeDelete(const WeakRootVisitor &visitor)
 {
     auto iterator = cachedConstpools_.begin();
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "Constpools:" + std::to_string(cachedConstpools_.size()));
     while (iterator != cachedConstpools_.end()) {
         auto &constpools = iterator->second;
         auto constpoolIter = constpools.begin();

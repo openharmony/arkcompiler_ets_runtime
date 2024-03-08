@@ -183,6 +183,7 @@ public:
     GateRef DeoptCheck(GateRef condition, GateRef frameState, DeoptType type);
     GateRef GetElementsArray(GateRef object);
     GateRef GetLengthOfTaggedArray(GateRef array);
+    GateRef GetLengthOfJSTypedArray(GateRef array);
     GateRef GetSuperConstructor(GateRef ctor);
     GateRef Merge(const std::vector<GateRef> &inList);
     GateRef Selector(OpCode opcode, MachineType machineType, GateRef control, const std::vector<GateRef> &values,
@@ -489,6 +490,8 @@ public:
     GateRef ValueCheckNegOverflow(GateRef value);
     GateRef OverflowCheck(GateRef value);
     GateRef LexVarIsHoleCheck(GateRef value);
+    GateRef IsUndefinedOrHoleCheck(GateRef value);
+    GateRef IsNotUndefinedOrHoleCheck(GateRef value);
     GateRef Int32UnsignedUpperBoundCheck(GateRef value, GateRef upperBound);
     GateRef Int32DivWithCheck(GateRef left, GateRef right);
     GateType GetGateTypeOfValueType(ValueType type);
@@ -627,6 +630,7 @@ public:
     inline GateRef TaggedIsTransWithProtoHandler(GateRef x);
     inline GateRef TaggedIsUndefinedOrNull(GateRef x);
     inline GateRef TaggedIsNotUndefinedAndNull(GateRef x);
+    inline GateRef TaggedIsUndefinedOrHole(GateRef x);
     inline GateRef TaggedIsTrue(GateRef x);
     inline GateRef TaggedIsFalse(GateRef x);
     inline GateRef TaggedIsNull(GateRef x);
@@ -665,6 +669,7 @@ public:
     inline GateRef ComputeSizeUtf8(GateRef length);
     inline GateRef ComputeSizeUtf16(GateRef length);
     inline GateRef AlignUp(GateRef x, GateRef alignment);
+    GateRef NumberToString(GateRef number);
     GateRef TaggedPointerToInt64(GateRef x);
     GateRef GetLengthFromString(GateRef value);
     GateRef GetHashcodeFromString(GateRef glue, GateRef value);

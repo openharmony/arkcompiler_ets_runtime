@@ -2574,9 +2574,9 @@ void RegExpExecResultCache::AddResultInCache(JSThread *thread, JSHandle<RegExpEx
             cache->SetConflictCount(thread, cache->GetConflictCount() > 1 ? (cache->GetConflictCount() - 1) : 0);
             cache->SetCacheCount(thread, cache->GetCacheCount() - 1);
             cache->ClearEntry(thread, entry2);
-            cache->SetEntry(thread, entry, patternValue, flagsValue, inputValue,
+            cache->SetEntry(thread, entry2, patternValue, flagsValue, inputValue,
                             lastIndexInputValue, lastIndexValue, extendValue);
-            cache->UpdateResultArray(thread, entry, resultArrayCopy.GetTaggedValue(), type);
+            cache->UpdateResultArray(thread, entry2, resultArrayCopy.GetTaggedValue(), type);
         }
     }
 }

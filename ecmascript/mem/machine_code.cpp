@@ -29,7 +29,7 @@ void MachineCode::SetData(const MachineCodeDesc *desc, JSHandle<Method> &method,
     size_t codeSizeAlign = AlignUp(desc->codeSize, MachineCode::DATA_ALIGN);
     size_t rodataSizeAfterTextAlign = AlignUp(desc->rodataSizeAfterText, MachineCode::DATA_ALIGN);
 
-    size_t funcEntryDesSizeAlign = desc->funcEntryDesSize;
+    size_t funcEntryDesSizeAlign = AlignUp(desc->funcEntryDesSize, MachineCode::TEXT_ALIGN);
     SetFuncEntryDesSize(funcEntryDesSizeAlign);
 
     size_t instrSize = rodataSizeBeforeTextAlign + codeSizeAlign + rodataSizeAfterTextAlign;

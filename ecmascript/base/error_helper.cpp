@@ -195,11 +195,20 @@ JSTaggedValue ErrorHelper::ErrorCommonConstructor(EcmaRuntimeCallInfo *argv,
         ASSERT_PRINT(status == true, "return result exception!");
     }
 
-    JSHandle<EcmaString> handleStack = BuildEcmaStackTrace(thread);
+    std::string stack;
+    JSHandle<EcmaString> handleStack = BuildEcmaStackTrace(thread, stack);
     JSHandle<JSTaggedValue> stackkey = globalConst->GetHandledStackString();
     PropertyDescriptor stackDesc(thread, JSHandle<JSTaggedValue>::Cast(handleStack), true, false, true);
     [[maybe_unused]] bool status = JSObject::DefineOwnProperty(thread, nativeInstanceObj, stackkey, stackDesc);
     ASSERT_PRINT(status == true, "return result exception!");
+
+    // Uncaught exception parsing source code
+    JSHandle<JSTaggedValue> topStackkey = globalConst->GetHandledTopStackString();
+    PropertyDescriptor topStackDesc(thread, JSHandle<JSTaggedValue>::Cast(factory->NewFromStdString(stack)),
+                                                                          true, false, true);
+    [[maybe_unused]] bool topStackstatus = JSObject::DefineOwnProperty(thread, nativeInstanceObj,
+                                                                       topStackkey, topStackDesc);
+    ASSERT_PRINT(topStackstatus == true, "return result exception!");
 
     // 5. Return O.
     return nativeInstanceObj.GetTaggedValue();
@@ -224,7 +233,7 @@ JSHandle<JSTaggedValue> ErrorHelper::GetErrorJSFunction(JSThread *thread)
     return thread->GlobalConstants()->GetHandledUndefined();
 }
 
-JSHandle<EcmaString> ErrorHelper::BuildEcmaStackTrace(JSThread *thread)
+JSHandle<EcmaString> ErrorHelper::BuildEcmaStackTrace(JSThread *thread, std::string &stack)
 {
     std::string data = JsStackInfo::BuildJsStackTrace(thread, false);
     if (data.size() > MAX_ERROR_SIZE) {
@@ -234,8 +243,16 @@ JSHandle<EcmaString> ErrorHelper::BuildEcmaStackTrace(JSThread *thread)
             data = data.substr(0, pos);
         }
     }
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     LOG_ECMA(DEBUG) << data;
+    // unconverted stack
+    stack = data;
+    // sourceMap callback
+    auto cb = thread->GetEcmaVM()->GetSourceMapCallback();
+    if (cb != nullptr) {
+        data = cb(data.c_str());
+    }
+
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     return factory->NewFromStdString(data);
 }
 }  // namespace panda::ecmascript::base

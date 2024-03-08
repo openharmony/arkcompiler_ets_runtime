@@ -414,15 +414,8 @@ bool GateAccessor::HasNumberType(GateRef gate) const
 
 bool GateAccessor::HasStringType(GateRef gate) const
 {
-    GateType leftType = GetLeftType(gate);
-    GateType rightType = GetRightType(gate);
     const PGOSampleType *sampleType = TryGetPGOType(gate).GetPGOSampleType();
-    if (sampleType->IsString()) {
-        return true;
-    } else if (sampleType->IsNone() && leftType.IsStringType() && rightType.IsStringType()) {
-        return true;
-    }
-    return false;
+    return sampleType->IsString();
 }
 
 // Include number, undefined, null and boolean type.

@@ -22,3 +22,9 @@ let a2 = createArray();
 print(arr);
 print(a1);
 print(a2.length);
+const v1 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+const v4 = Int8Array.from(v1, v5 => v5.charCodeAt(0));
+Object.defineProperty(v4, "length", {
+    value:0
+});
+print(String.fromCharCode.apply(null, v4));

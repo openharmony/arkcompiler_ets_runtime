@@ -68,8 +68,12 @@ public:
                                  bool isFullGC = true);
     static void DumpHeapSnapshot(const EcmaVM *vm, int dumpFormat, bool isVmMode = true, bool isPrivate = false,
                                  bool captureNumericValue = false, bool isFullGC = true);
-    static void DumpHeapSnapshotAllVMs(const EcmaVM *vm, int dumpFormat, bool isVmMode = true, bool isPrivate = false,
-                                       bool captureNumericValue = false, bool isFullGC = true);
+    static void DumpHeapSnapshot(const EcmaVM *vm, int dumpFormat, bool isVmMode, bool isPrivate,
+                                 bool captureNumericValue, bool isFullGC, uint32_t tid);
+    static void DumpHeapSnapshotWithVm(const EcmaVM *vm, int dumpFormat, bool isVmMode, bool isPrivate,
+                                 bool captureNumericValue, bool isFullGC);
+    static void TriggerGC(const EcmaVM *vm, uint32_t tid);
+    static void TriggerGCWithVm(const EcmaVM *vm);
     static void DestroyHeapProfiler(const EcmaVM *vm);
 
     static bool BuildNativeAndJsStackTrace(const EcmaVM *vm, std::string &stackTraceStr);

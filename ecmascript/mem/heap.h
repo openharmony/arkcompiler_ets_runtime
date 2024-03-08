@@ -16,7 +16,6 @@
 #ifndef ECMASCRIPT_MEM_HEAP_H
 #define ECMASCRIPT_MEM_HEAP_H
 
-#include <signal.h>
 #include "ecmascript/base/config.h"
 #include "ecmascript/frames.h"
 #include "ecmascript/js_thread.h"
@@ -27,7 +26,6 @@
 #include "ecmascript/taskpool/taskpool.h"
 
 namespace panda::ecmascript {
-struct JsHeapDumpWork;
 class ConcurrentMarker;
 class ConcurrentSweeper;
 class EcmaVM;
@@ -48,6 +46,9 @@ class PartialGC;
 class STWYoungGC;
 
 using IdleNotifyStatusCallback = std::function<void(bool)>;
+using FinishGCListener = void (*)(void *);
+using GCListenerId = std::vector<std::pair<FinishGCListener, void *>>::const_iterator;
+
 enum class IdleTaskType : uint8_t {
     NO_TASK,
     YOUNG_GC,
@@ -654,6 +655,8 @@ public:
     void CheckNonMovableSpaceOOM();
     std::tuple<uint64_t, uint8_t *, int, kungfu::CalleeRegAndOffsetVec> CalCallSiteInfo(uintptr_t retAddr) const;
 
+    GCListenerId AddGCListener(FinishGCListener listener, void *data);
+    void RemoveGCListener(GCListenerId listenerId);
 private:
     static constexpr int IDLE_TIME_LIMIT = 10;  // if idle time over 10ms we can do something
     static constexpr int ALLOCATE_SIZE_LIMIT = 100_KB;
@@ -670,9 +673,10 @@ private:
     void ReduceTaskCount();
     void WaitClearTaskFinished();
     void InvokeWeakNodeNativeFinalizeCallback();
-    void DumpHeapSnapshotBeforeOOM(bool isFullGC, size_t size, std::string functionName, bool NonMovableObjNearOOM);
+    void DumpHeapSnapshotBeforeOOM(bool isFullGC = true);
     inline void ReclaimRegions(TriggerGCType gcType);
     inline size_t CalculateCommittedCacheSize();
+    void ProcessGCListeners();
     class ParallelGCTask : public Task {
     public:
         ParallelGCTask(int32_t id, Heap *heap, ParallelGCTaskPhase taskPhase)
@@ -861,6 +865,11 @@ private:
     // ONLY used for heap verification.
     bool shouldVerifyHeap_ {false};
     bool isVerifying_ {false};
+
+    /*
+     * The listeners which are called at the end of GC
+     */
+    std::vector<std::pair<FinishGCListener, void *>> gcListeners_;
 };
 }  // namespace panda::ecmascript
 

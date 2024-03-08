@@ -13,11 +13,12 @@
  * limitations under the License.
  */
 
-declare function print(str:boolean):boolean;
+declare function assert_true(condition: boolean):void;
+declare function assert_equal(a: Object, b: Object):void;
 var re = /abc+/;
 var str1 = "abcc";
 var str2 = "ac";
 var res1 = re.test(str1);
 var res2 = re.test(str2);
-print(res1);
-print(res2);
+assert_true(res1);
+assert_equal(res2, false);

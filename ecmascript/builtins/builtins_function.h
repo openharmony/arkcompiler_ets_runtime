@@ -19,6 +19,14 @@
 #include "ecmascript/base/builtins_base.h"
 #include "ecmascript/js_tagged_value-inl.h"
 
+#define BUILTIN_FUNCTION_PROTOTYPE_FUNCTIONS(V)                                     \
+    /* Function.prototype.apply ( thisArg, argArray ) */                            \
+    V("apply",           FunctionPrototypeApply,      2, FunctionPrototypeApply)    \
+    /* Function.prototype.bind ( thisArg , ...args) */                              \
+    V("bind",            FunctionPrototypeBind,       1, INVALID)                   \
+    /* Function.prototype.call (thisArg , ...args) */                               \
+    V("call",            FunctionPrototypeCall,       1, INVALID)
+
 namespace panda::ecmascript::builtins {
 class BuiltinsFunction : public base::BuiltinsBase {
 public:
@@ -42,6 +50,20 @@ public:
 
     // ecma 19.2.3.6 Function.prototype[@@hasInstance] (V)
     static JSTaggedValue FunctionPrototypeHasInstance(EcmaRuntimeCallInfo *argv);
+
+    static Span<const base::BuiltinFunctionEntry> GetFunctionPrototypeFunctions()
+    {
+        return Span<const base::BuiltinFunctionEntry>(FUNCTION_PROTOTYPE_FUNCTIONS);
+    }
+
+private:
+#define BUILTIN_FUNCTION_FUNCTION_ENTRY(name, func, length, id) \
+    base::BuiltinFunctionEntry::Create(name, BuiltinsFunction::func, length, kungfu::BuiltinsStubCSigns::id),
+
+    static constexpr std::array FUNCTION_PROTOTYPE_FUNCTIONS = {
+        BUILTIN_FUNCTION_PROTOTYPE_FUNCTIONS(BUILTIN_FUNCTION_FUNCTION_ENTRY)
+    };
+#undef BUILTIN_FUNCTION_FUNCTION_ENTRY
 };
 }  // namespace panda::ecmascript::builtins
 #endif  // ECMASCRIPT_BUILTINS_BUILTINS_FUNCTION_H

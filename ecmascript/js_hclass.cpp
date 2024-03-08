@@ -426,7 +426,7 @@ void JSHClass::OptimizePrototypeForIC(const JSThread *thread, const JSHandle<JST
 #endif
             JSObject::Cast(proto->GetTaggedObject())->SynchronizedSetClass(thread, *newProtoClass);
             newProtoClass->SetIsPrototype(true);
-            thread->GetEcmaVM()->GetPGOProfiler()->UpdateRootProfileType(*hclass, *newProtoClass);
+            thread->GetEcmaVM()->GetPGOProfiler()->UpdateRootProfileTypeSafe(*hclass, *newProtoClass);
         } else {
             // There is no sharing in AOT hclass. Therefore, it is not necessary or possible to clone here.
             hclass->SetIsPrototype(true);

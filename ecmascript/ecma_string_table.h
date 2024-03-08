@@ -40,6 +40,7 @@ public:
     EcmaString *CreateAndInternStringNonMovable(const uint8_t *utf8Data, uint32_t utf8Len);
     EcmaString *GetOrInternString(const uint16_t *utf16Data, uint32_t utf16Len, bool canBeCompress);
     EcmaString *GetOrInternString(EcmaString *string);
+    EcmaString *GetOrInternCompressedSubString(const JSHandle<EcmaString> &string, uint32_t offset, uint32_t utf8Len);
     EcmaString *GetOrInternStringWithSpaceType(const uint8_t *utf8Data, uint32_t utf8Len, bool canBeCompress,
                                                MemSpaceType type, bool isConstantString, uint32_t idOffset);
     EcmaString *GetOrInternStringWithSpaceType(const uint8_t *utf8Data, uint32_t utf16Len,

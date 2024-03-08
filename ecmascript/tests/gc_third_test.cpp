@@ -103,7 +103,7 @@ HWTEST_F_L0(GCTest, HighSensitiveExceedMaxHeapSize)
     // Continue allocate about 250M TaggedArray, now reach max heap size, must trigger gc to avoid OOM
     {
         [[maybe_unused]] ecmascript::EcmaHandleScope baseScope(thread);
-        for (int i = 0; i < 16 * 1000; i++) {
+        for (int i = 0; i < 10 * 1000; i++) {
             [[maybe_unused]] JSHandle<TaggedArray> array = thread->GetEcmaVM()->GetFactory()->NewTaggedArray(
                 1024, JSTaggedValue::Hole(), MemSpaceType::SEMI_SPACE);
         }
@@ -157,6 +157,7 @@ HWTEST_F_L0(GCTest, ArkToolsHintGC)
         [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
         JSTaggedValue result = builtins::BuiltinsArkTools::HintGC(ecmaRuntimeCallInfo);
         finalSize = heap->GetCommittedSize();
+        TestHelper::TearDownFrame(thread, prev);
 
         return result.ToBoolean();
     };

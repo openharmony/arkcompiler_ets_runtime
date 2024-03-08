@@ -471,6 +471,14 @@ GateRef CircuitBuilder::TaggedIsNotUndefinedAndNull(GateRef x)
     return result;
 }
 
+GateRef CircuitBuilder::TaggedIsUndefinedOrHole(GateRef x)
+{
+    GateRef isUndefined = TaggedIsUndefined(x);
+    GateRef isHole = TaggedIsHole(x);
+    GateRef result = BoolOr(isHole, isUndefined);
+    return result;
+}
+
 GateRef CircuitBuilder::TaggedTrue()
 {
     return GetCircuit()->GetConstantGate(MachineType::I64, JSTaggedValue::VALUE_TRUE, GateType::TaggedValue());

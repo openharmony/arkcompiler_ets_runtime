@@ -177,7 +177,9 @@ DECLARE_BUILTINS(String##method)                                                
     V(Substring,    JS_ANY,     IntToTaggedPtr(Int32(-1)))                          \
     V(Replace,      JS_ANY,     Undefined())                                        \
     V(Trim,         JS_ANY,     Undefined())                                        \
-    V(Slice,        JS_ANY,     Undefined())
+    V(Concat,       JS_ANY,     Undefined())                                        \
+    V(Slice,        JS_ANY,     Undefined())                                        \
+    V(StartsWith,   JS_ANY,     TaggedFalse())
 
 DECLARE_BUILTINS(LocaleCompare)
 {

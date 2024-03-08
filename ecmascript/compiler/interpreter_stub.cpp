@@ -1318,6 +1318,7 @@ DECLARE_ASM_HANDLER(HandleSupercallspreadImm8V8)
     Label ctorIsConstructor(env);
     Label threadCheck(env);
     Label isException(env);
+    Label noException(env);
 
     Branch(TaggedIsHeapObject(superCtor), &ctorIsHeapObject, &slowPath);
     Bind(&ctorIsHeapObject);
@@ -1336,6 +1337,8 @@ DECLARE_ASM_HANDLER(HandleSupercallspreadImm8V8)
         Bind(&ctorNotBase);
         GateRef argvLen = Load(VariableType::INT32(), array, IntPtr(JSArray::LENGTH_OFFSET));
         GateRef srcElements = GetCallSpreadArgs(glue, array, callback);
+        Branch(TaggedIsException(srcElements), &isException, &noException);
+        Bind(&noException);
         GateRef jumpSize = IntPtr(-BytecodeInstruction::Size(BytecodeInstruction::Format::IMM8_V8));
         METHOD_ENTRY_ENV_DEFINED(superCtor);
         GateRef elementsPtr = PtrAdd(srcElements, IntPtr(TaggedArray::DATA_OFFSET));
@@ -1936,7 +1939,7 @@ DECLARE_ASM_HANDLER(HandleStownbyvaluewithnamesetImm16V8V8)
             Branch(IsClassPrototype(receiver), &slowPath, &notClassPrototype);
             Bind(&notClassPrototype);
             {
-                GateRef res = SetPropertyByValue(glue, receiver, propKey, acc, true, callback);
+                GateRef res = SetPropertyByValue(glue, receiver, propKey, acc, true, callback, true);
                 Branch(TaggedIsHole(res), &slowPath, &notHole);
                 Bind(&notHole);
                 {
@@ -1979,7 +1982,7 @@ DECLARE_ASM_HANDLER(HandleStownbyvaluewithnamesetImm8V8V8)
             Branch(IsClassPrototype(receiver), &slowPath, &notClassPrototype);
             Bind(&notClassPrototype);
             {
-                GateRef res = SetPropertyByValue(glue, receiver, propKey, acc, true, callback);
+                GateRef res = SetPropertyByValue(glue, receiver, propKey, acc, true, callback, true);
                 Branch(TaggedIsHole(res), &slowPath, &notHole);
                 Bind(&notHole);
                 {
@@ -2098,7 +2101,7 @@ DECLARE_ASM_HANDLER(HandleStownbynamewithnamesetImm8Id16V8)
             Branch(IsClassPrototype(receiver), &notJSObject, &notClassPrototype);
             Bind(&notClassPrototype);
             {
-                GateRef res = SetPropertyByName(glue, receiver, propKey, acc, true, True(), callback);
+                GateRef res = SetPropertyByName(glue, receiver, propKey, acc, true, True(), callback, false, true);
                 Branch(TaggedIsHole(res), &notJSObject, &notHole);
                 Bind(&notHole);
                 {
@@ -2140,7 +2143,7 @@ DECLARE_ASM_HANDLER(HandleStownbynamewithnamesetImm16Id16V8)
             Branch(IsClassPrototype(receiver), &notJSObject, &notClassPrototype);
             Bind(&notClassPrototype);
             {
-                GateRef res = SetPropertyByName(glue, receiver, propKey, acc, true, True(), callback);
+                GateRef res = SetPropertyByName(glue, receiver, propKey, acc, true, True(), callback, false, true);
                 Branch(TaggedIsHole(res), &notJSObject, &notHole);
                 Bind(&notHole);
                 {

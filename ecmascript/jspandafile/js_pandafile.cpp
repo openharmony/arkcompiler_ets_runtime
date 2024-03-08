@@ -414,6 +414,14 @@ CString JSPandaFile::GetRecordName(EntityId methodId)
     return name;
 }
 
+CString JSPandaFile::GetRecordNameWithBundlePack(EntityId methodIdx)
+{
+    CString recordName = IsBundlePack() ? ENTRY_FUNCTION_NAME : GetRecordName(methodIdx);
+    ASSERT(HasRecord(recordName));
+    return recordName;
+}
+
+
 void JSPandaFile::ClearNameMap()
 {
     {

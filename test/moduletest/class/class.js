@@ -118,3 +118,11 @@ class Class2024 {
 }
 var class2024 = new Class2024();
 print("test successful!");
+
+class StaticTest {
+    static set a(a) {
+        print(a);
+    }
+    static a = 1;  // expect no print
+    static length = 1;  // expect no TypeError
+}

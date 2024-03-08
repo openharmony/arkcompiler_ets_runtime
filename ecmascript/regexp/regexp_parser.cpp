@@ -1561,15 +1561,13 @@ bool RegExpParser::ParseUnicodePropertyClassRange(CString &propertyName, CString
         }
         return MatchUnicodeProperty(property, negate ? "N" : "Y", atom, false);
     } else {
-        const char *propertyNameC = propertyName.c_str();
-        const char *valueNameC = valueName.c_str();
-        UProperty property = u_getPropertyEnum(propertyNameC);
+        UProperty property = u_getPropertyEnum(propertyName.c_str());
         if (property == UCHAR_GENERAL_CATEGORY) {
             property = UCHAR_GENERAL_CATEGORY_MASK;
         } else if (property != UCHAR_SCRIPT && property != UCHAR_SCRIPT_EXTENSIONS) {
             return false;
         }
-        return MatchUnicodeProperty(property, valueNameC, atom, negate);
+        return MatchUnicodeProperty(property, valueName.c_str(), atom, negate);
     }
 }
 

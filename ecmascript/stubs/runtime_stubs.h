@@ -161,6 +161,7 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(NewMutantTaggedArray)               \
     V(NewCOWMutantTaggedArray)            \
     V(CopyArray)                          \
+    V(NumberToString)                     \
     V(IntToString)                        \
     V(RTSubstitution)                     \
     V(NameDictPutIfAbsent)                \
