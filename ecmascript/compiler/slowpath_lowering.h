@@ -318,8 +318,7 @@ private:
     void DeleteLoopExit(GateRef gate);
     void DeleteLoopExitValue(GateRef gate);
     void LowerLdStr(GateRef gate);
-    void LowerLoadGetter(GateRef gate);
-    void LowerLoadSetter(GateRef gate);
+    void LowerGetConstPool(GateRef gate);
 
     TSManager *tsManager_ {nullptr};
     const MethodLiteral *methodLiteral_ {nullptr};

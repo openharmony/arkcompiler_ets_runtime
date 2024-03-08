@@ -134,13 +134,7 @@ private:
     void LowerIndexCheck(GateRef gate);
     void LowerObjectTypeCheck(GateRef gate);
     void LowerSimpleHClassCheck(GateRef gate);
-    void LowerTSSubtypingCheck(GateRef gate);
-    void LowerObjectTypeCompare(GateRef gate);
-    void LowerSimpleHClassCompare(GateRef gate);
-    void LowerTSSubtypingCompare(GateRef gate);
-    GateRef BuildCompareSubTyping(GateRef gate, GateRef frameState, Label *levelValid, Label *exit);
     GateRef BuildCompareHClass(GateRef gate, GateRef frameState);
-    void BuildCompareSubTyping(GateRef gate);
     void LowerStableArrayCheck(GateRef gate);
     void LowerTypedArrayCheck(GateRef gate);
     void LowerEcmaStringCheck(GateRef gate);
@@ -239,7 +233,6 @@ private:
     GateRef IntToTaggedIntPtr(GateRef x);
     GateType GetLeftType(GateRef gate);
     GateType GetRightType(GateRef gate);
-    GateRef GetObjectFromConstPool(GateRef jsFunc, GateRef index);
     GateRef GetElementSize(BuiltinTypeId id);
     VariableType GetVariableType(BuiltinTypeId id);
     GateRef AllocateLineString(GateRef length, GateRef canBeCompressed);
@@ -257,7 +250,7 @@ private:
     GateRef GetLengthFromSupers(GateRef supers);
     GateRef GetValueFromSupers(GateRef supers, size_t index);
     GateRef LoadFromTaggedArray(GateRef array, size_t index);
-    GateRef LoadFromConstPool(GateRef jsFunc, size_t index, size_t valVecType);
+    GateRef LoadFromConstPool(GateRef constpool, size_t index, size_t valVecType);
     GateRef LoadFromVTable(GateRef receiver, size_t index);
     GateRef GetLengthFromString(GateRef gate);
     GateRef LoadPropertyFromHolder(GateRef holder, PropertyLookupResult plr);

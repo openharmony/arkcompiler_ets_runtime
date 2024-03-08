@@ -348,32 +348,21 @@ GateRef TSInlineLowering::BuildAccessor(InlineTypeInfoAccessor &info)
     int holderHCIndex = static_cast<int>(ptManager->GetHClassIndexByProfileType(holderType));
     ASSERT(ptManager->QueryHClass(holderType.first, holderType.second).IsJSHClass());
     ArgumentAccessor argAcc(circuit_);
-    GateRef jsFunc = argAcc.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
+    GateRef constpool = argAcc.GetFrameArgsIn(gate, FrameArgIdx::CONST_POOL);
 
     auto currentLabel = env.GetCurrentLabel();
     auto state = currentLabel->GetControl();
     auto depend = currentLabel->GetDepend();
     GateRef holder = circuit_->NewGate(circuit_->LookUpHolder(), MachineType::I64,
-                                       { state, depend, receiver, builder_.Int32(holderHCIndex), jsFunc},
+                                       { state, depend, receiver, builder_.Int32(holderHCIndex), constpool},
                                        GateType::AnyType());
 
-    GateRef frameState = acc_.GetFrameState(gate);
-    // Check whether constpool ids of caller functions and callee functions are consistent. If they are consistent,
-    // the caller function is used in get constpool. It avoids a depend dependence on the accessor function, and thus a
-    // load accessor.
-    // Example:
-    // function A inline Accessor B, if A.constpoolId == B.constpoolId, Use A.GetConstpool to replace B.GetConstpool
-    if (initConstantPoolId_ == GetAccessorConstpoolId(info)) {
-        frameState = initCallTarget_;
-    }
     if (info.IsCallGetter()) {
         accessor = circuit_->NewGate(circuit_->LoadGetter(), MachineType::I64,
-                                     { holder, holder, builder_.Int32(plrData), frameState },
-                                     GateType::AnyType());
+                                     { holder, holder, builder_.Int32(plrData) }, GateType::AnyType());
     } else {
         accessor = circuit_->NewGate(circuit_->LoadSetter(), MachineType::I64,
-                                     { holder, holder, builder_.Int32(plrData), frameState },
-                                     GateType::AnyType());
+                                     { holder, holder, builder_.Int32(plrData) }, GateType::AnyType());
     }
     acc_.ReplaceDependIn(gate, holder);
     acc_.ReplaceStateIn(gate, holder);
@@ -564,9 +553,9 @@ void TSInlineLowering::InlineAccessorCheck(const InlineTypeInfoAccessor &info)
     auto callDepend = currentLabel->GetDepend();
     auto frameState = acc_.GetFrameState(gate);
     ArgumentAccessor argAcc(circuit_);
-    GateRef jsFunc = argAcc.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
+    GateRef constpool = argAcc.GetFrameArgsIn(gate, FrameArgIdx::CONST_POOL);
     GateRef ret = circuit_->NewGate(circuit_->PrototypeCheck(receiverHCIndex), MachineType::I1,
-        {callState, callDepend, jsFunc, frameState}, GateType::NJSValue());
+        {callState, callDepend, constpool, frameState}, GateType::NJSValue());
     acc_.ReplaceStateIn(gate, ret);
     acc_.ReplaceDependIn(gate, ret);
 }
@@ -647,9 +636,14 @@ size_t TSInlineLowering::GetOrInitialInlineCounts(GateRef frameArgs)
 bool TSInlineLowering::IsRecursiveFunc(InlineTypeInfoAccessor &info, size_t calleeMethodOffset)
 {
     GateRef caller = info.GetCallGate();
+    auto callerMethodOffset = acc_.TryGetMethodOffset(caller);
+    if (callerMethodOffset == calleeMethodOffset) {
+        return true;
+    }
     GateRef frameArgs = GetFrameArgs(info);
+    caller = acc_.GetValueIn(frameArgs);
     while (acc_.GetOpCode(caller) == OpCode::JS_BYTECODE) {
-        auto callerMethodOffset = acc_.TryGetMethodOffset(caller);
+        callerMethodOffset = acc_.TryGetMethodOffset(caller);
         if (callerMethodOffset == calleeMethodOffset) {
             return true;
         }

@@ -334,7 +334,7 @@ void NTypeBytecodeLowering::LowerNTypedStOwnByName(GateRef gate)
         return;
     }
 
-    GateRef hclassGate = acc_.GetValueIn(receiver, 3); // 3: hclass offset
+    GateRef hclassGate = acc_.GetValueIn(receiver, 2); // 2: hclass offset
     JSTaggedValue taggedHClass(acc_.GetConstantValue(hclassGate));
     GateRef stringId = acc_.GetValueIn(gate, 0);
     JSTaggedValue key = TypeInfoAccessor::GetStringFromConstantPool(thread_, acc_.TryGetMethodOffset(gate),

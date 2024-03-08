@@ -72,7 +72,6 @@ GateRef EarlyElimination::VisitGate(GateRef gate)
         case OpCode::LOAD_TYPED_ARRAY_LENGTH:
         case OpCode::TYPED_ARRAY_CHECK:
         case OpCode::OBJECT_TYPE_CHECK:
-        case OpCode::OBJECT_TYPE_COMPARE:
         case OpCode::STABLE_ARRAY_CHECK:
         case OpCode::INDEX_CHECK:
         case OpCode::ELEMENTSKIND_CHECK:
@@ -362,8 +361,7 @@ bool EarlyElimination::CheckReplacement(GateRef lhs, GateRef rhs)
             }
             break;
         }
-        case OpCode::OBJECT_TYPE_CHECK:
-        case OpCode::OBJECT_TYPE_COMPARE: {
+        case OpCode::OBJECT_TYPE_CHECK: {
             if (acc_.GetObjectTypeAccessor(lhs).GetType() != acc_.GetObjectTypeAccessor(rhs).GetType()) {
                 return false;
             }

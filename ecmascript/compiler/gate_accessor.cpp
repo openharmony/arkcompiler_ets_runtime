@@ -280,8 +280,7 @@ CreateArgumentsAccessor GateAccessor::GetCreateArgumentsAccessor(GateRef gate) c
 
 ObjectTypeAccessor GateAccessor::GetObjectTypeAccessor(GateRef gate) const
 {
-    ASSERT(GetOpCode(gate) == OpCode::OBJECT_TYPE_CHECK ||
-           GetOpCode(gate) == OpCode::OBJECT_TYPE_COMPARE);
+    ASSERT(GetOpCode(gate) == OpCode::OBJECT_TYPE_CHECK);
     Gate *gatePtr = circuit_->LoadGatePtr(gate);
     return ObjectTypeAccessor(gatePtr->GetOneParameterMetaData()->GetValue());
 }
@@ -1950,5 +1949,12 @@ bool GateAccessor::IsNoBarrier(GateRef gate) const
            GetOpCode(gate) == OpCode::MONO_STORE_PROPERTY);
     Gate *gatePtr = circuit_->LoadGatePtr(gate);
     return gatePtr->GetBoolMetaData()->GetBool();
+}
+
+uint32_t GateAccessor::GetConstpoolId(GateRef gate) const
+{
+    ASSERT(GetOpCode(gate) == OpCode::GET_CONSTPOOL);
+    Gate *gatePtr = circuit_->LoadGatePtr(gate);
+    return gatePtr->GetOneParameterMetaData()->GetValue();
 }
 }  // namespace panda::ecmascript::kungfu

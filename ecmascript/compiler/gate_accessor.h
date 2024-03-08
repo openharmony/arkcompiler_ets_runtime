@@ -564,6 +564,7 @@ public:
     bool IsSingleCharGate(GateRef gate);
     uint32_t GetStringIdFromLdaStrGate(GateRef gate);
     bool IsIfOrSwitchRelated(GateRef gate) const;
+    uint32_t GetConstpoolId(GateRef gate) const;
 
     GateRef GetCircuitRoot() const
     {
