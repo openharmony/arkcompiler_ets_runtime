@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-declare function print(arg:any):string;
+declare function assert_equal(a: Object, b: Object):void;
 
 interface objInterface {
     [key: string]: any
@@ -22,5 +22,5 @@ let obj:objInterface = {};
 obj.a = 100;
 obj.b = "helloworld";
 delete obj.a;
-print(obj.a)
-print(obj.b);
+assert_equal(obj.a, undefined);
+assert_equal(obj.b, "helloworld");
