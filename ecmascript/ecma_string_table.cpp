@@ -110,7 +110,7 @@ EcmaString *EcmaStringTable::GetOrInternString(const JSHandle<EcmaString> &first
     }
     JSHandle<EcmaString> concatHandle(vm_->GetJSThread(),
         EcmaStringAccessor::Concat(vm_, firstFlat, secondFlat, MemSpaceType::OLD_SPACE));
-    concatString = EcmaStringAccessor::FlattenNoGC(vm_, *concatHandle);
+    concatString = EcmaStringAccessor::Flatten(vm_, concatHandle, MemSpaceType::OLD_SPACE);
     InternString(concatString);
     return concatString;
 }
@@ -162,7 +162,7 @@ EcmaString *EcmaStringTable::GetOrInternString(EcmaString *string)
     }
     JSHandle<EcmaString> strHandle(vm_->GetJSThread(), string);
     // may gc
-    auto strFlat = EcmaStringAccessor::FlattenNoGC(vm_, *strHandle);
+    auto strFlat = EcmaStringAccessor::Flatten(vm_, strHandle, MemSpaceType::OLD_SPACE);
     if (EcmaStringAccessor(strFlat).IsInternString()) {
         return strFlat;
     }
