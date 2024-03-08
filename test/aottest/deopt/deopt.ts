@@ -19,9 +19,13 @@ function tryHello(v: number): void {
     let ret: number = a + v;
     assert_equal(ret, "1a");
 }
-
+assert_equal(ArkTools.checkDeoptStatus(tryHello, false), true);
 tryHello(<number><Object>'a');
-
+assert_equal(ArkTools.checkDeoptStatus(tryHello, true), true);
+for (let i = 0; i < 25; i++) {
+    tryHello(<number><Object>'a');
+}
+assert_equal(ArkTools.checkDeoptStatus(tryHello, true), true);
 
 function tryIf(v: number, b: number): void {
     let a : number = 1;

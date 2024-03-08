@@ -281,7 +281,7 @@ void AOTFileManager::SetAOTMainFuncEntry(JSHandle<JSFunction> mainFunc, const JS
     mainMethod->SetNativeBit(false);
     Method *method = mainFunc->GetCallTarget();
     method->SetDeoptThreshold(vm_->GetJSOptions().GetDeoptThreshold());
-    method->SetCodeEntryAndMarkAOT(static_cast<uintptr_t>(mainEntry));
+    method->SetCodeEntryAndMarkAOTWhenBinding(static_cast<uintptr_t>(mainEntry));
     method->SetIsFastCall(isFastCall);
 #ifndef NDEBUG
     PrintAOTEntry(jsPandaFile, method, mainEntry);
@@ -307,7 +307,7 @@ void AOTFileManager::SetAOTFuncEntry(const JSPandaFile *jsPandaFile, Method *met
         return;
     }
     method->SetDeoptThreshold(vm_->GetJSOptions().GetDeoptThreshold());
-    method->SetCodeEntryAndMarkAOT(codeEntry);
+    method->SetCodeEntryAndMarkAOTWhenBinding(codeEntry);
     method->SetIsFastCall(entry.isFastCall_);
     if (canFastCall != nullptr) {
         *canFastCall = entry.isFastCall_;
