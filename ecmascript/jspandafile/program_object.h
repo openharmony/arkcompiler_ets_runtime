@@ -16,6 +16,7 @@
 #ifndef ECMASCRIPT_JSPANDAFILE_PROGRAM_OBJECT_H
 #define ECMASCRIPT_JSPANDAFILE_PROGRAM_OBJECT_H
 
+#include <atomic>
 #include "ecmascript/compiler/aot_file/aot_file_manager.h"
 #include "ecmascript/ecma_macros.h"
 #include "ecmascript/global_env.h"
@@ -105,6 +106,33 @@ public:
             panda_file::IndexAccessor indexAccessor(*jsPandaFile->GetPandaFile(), id);
             int32_t index = static_cast<int32_t>(indexAccessor.GetHeaderIndex());
             // TODO(aot) aot need to adapt. deserialize share constpool.
+            constpool = GetDeserializedConstantPool(vm, jsPandaFile, index);
+#else
+            LOG_FULL(FATAL) << "Aot don't support Windows and MacOS platform";
+            UNREACHABLE();
+#endif
+        }
+        if (constpool.GetTaggedValue().IsHole()) {
+            ObjectFactory *factory = vm->GetFactory();
+            constpool = factory->NewConstantPool(constpoolSize);
+        }
+
+        constpool->SetJSPandaFile(jsPandaFile);
+        constpool->SetIndexHeader(mainIndex);
+
+        return constpool;
+    }
+
+    static JSHandle<ConstantPool> CreateUnSharedConstPoolBySharedConstpool(
+        EcmaVM *vm, const JSPandaFile *jsPandaFile, ConstantPool *shareCp, int32_t index)
+    {
+        const panda_file::File::IndexHeader *mainIndex = shareCp->GetIndexHeader();
+        auto constpoolSize = mainIndex->method_idx_size;
+
+        JSHandle<ConstantPool> constpool(vm->GetJSThread(), JSTaggedValue::Hole());
+        bool isLoadedAOT = jsPandaFile->IsLoadedAOT();
+        if (isLoadedAOT) {
+#if !defined(PANDA_TARGET_WINDOWS) && !defined(PANDA_TARGET_MACOS)
             constpool = GetDeserializedConstantPool(vm, jsPandaFile, index);
 #else
             LOG_FULL(FATAL) << "Aot don't support Windows and MacOS platform";
@@ -269,6 +297,24 @@ public:
         Set(thread, index, value);
     }
 
+    static void CASSetObjectToCache(
+        JSThread *thread, const JSTaggedValue constpool, uint32_t index, JSTaggedValue value)
+    {
+        const ConstantPool *taggedPool = ConstantPool::Cast(constpool.GetTaggedObject());
+        JSHandle<ConstantPool> constpoolHandle(thread, constpool);
+        std::atomic<JSTaggedValue> *atomicVal = reinterpret_cast<std::atomic<JSTaggedValue> *>(
+            reinterpret_cast<uintptr_t>(taggedPool) + DATA_OFFSET + index * JSTaggedValue::TaggedTypeSize());
+        JSTaggedValue tempVal = taggedPool->GetObjectFromCache(index);
+        JSTaggedValue expected = taggedPool->GetJSPandaFile()->IsLoadedAOT() && tempVal.IsAOTLiteralInfo() ?
+            tempVal : JSTaggedValue::Hole();
+        JSTaggedValue desired = value;
+        if (std::atomic_compare_exchange_strong_explicit(atomicVal, &expected, desired,
+            std::memory_order_release, std::memory_order_relaxed)) {
+            // set val by Barrier.
+            constpoolHandle->SetObjectToCache(thread, index, value);
+        }
+    }
+
     inline JSTaggedValue GetObjectFromCache(uint32_t index) const
     {
         return Get(index);
@@ -310,7 +356,7 @@ public:
         JSHandle<Method> method = factory->NewSMethod(
             jsPandaFile, methodLiteral, constpoolHandle, entryIndex, isLoadedAOT && hasEntryIndex);
 
-        constpoolHandle->SetObjectToCache(thread, index, method.GetTaggedValue());
+        CASSetObjectToCache(thread, constpool, index, method.GetTaggedValue());
         return method.GetTaggedValue();
     }
 
@@ -347,7 +393,11 @@ public:
             }
             classLiteral->SetArray(thread, literalArray);
             val = classLiteral.GetTaggedValue();
-            constpool->SetObjectToCache(thread, literal, val);
+            if (kind == ClassKind::SENDABLE) {
+                CASSetObjectToCache(thread, constpool.GetTaggedValue(), literal, val);
+            } else {
+                constpool->SetObjectToCache(thread, literal, val);
+            }
         }
 
         return val;
@@ -516,7 +566,7 @@ public:
                 jsPandaFile->IsFirstMergedAbc(), id.GetOffset());
 
             val = JSTaggedValue(string);
-            constpoolHandle->SetObjectToCache(thread, index, val);
+            CASSetObjectToCache(thread, constpool, index, val);
         }
 
         return val;
