@@ -319,14 +319,7 @@ Expected<JSTaggedValue, bool> EcmaContext::CommonInvokeEcmaEntrypoint(const JSPa
             result = EcmaInterpreter::Execute(info);
         }
     }
-    if (thread_->HasPendingException()) {
-#ifdef PANDA_TARGET_OHOS
-        return result;
-#else
-        return Unexpected(false);
-#endif
-    }
-    if (!executeFromJob) {
+    if (!executeFromJob && !thread_->HasPendingException()) {
         job::MicroJobQueue::ExecutePendingJob(thread_, GetMicroJobQueue());
     }
     return result;
@@ -348,12 +341,10 @@ Expected<JSTaggedValue, bool> EcmaContext::InvokeEcmaEntrypoint(const JSPandaFil
     JSHandle<JSFunction> func(thread_, program->GetMainFunction());
     Expected<JSTaggedValue, bool> result = CommonInvokeEcmaEntrypoint(jsPandaFile, entryPoint, func, executeFromJob);
 
-#ifdef PANDA_TARGET_OHOS
-    if (thread_->HasPendingException()) {
-        HandleUncaughtException();
+    // print exception information
+    if (!executeFromJob && thread_->HasPendingException()) {
+        HandleUncaughtException(thread_->GetException());
     }
-#endif
-
     return result;
 }
 
@@ -375,9 +366,9 @@ Expected<JSTaggedValue, bool> EcmaContext::InvokeEcmaEntrypointForHotReload(
     AddPatchModule(recordName, moduleRecordHandle);
 
     // print exception information
-    if (thread_->HasPendingException() &&
+    if (!executeFromJob && thread_->HasPendingException() &&
         Method::Cast(func->GetMethod())->GetMethodName() != JSPandaFile::PATCH_FUNCTION_NAME_0) {
-        return Unexpected(false);
+        HandleUncaughtException(thread_->GetException());
     }
     return result;
 }
@@ -628,15 +619,6 @@ void EcmaContext::HandleUncaughtException(JSTaggedValue exception)
     JSHandle<EcmaString> result = JSTaggedValue::ToString(thread_, exceptionHandle);
     CString string = ConvertToString(*result);
     LOG_NO_TAG(ERROR) << string;
-}
-
-void EcmaContext::HandleUncaughtException()
-{
-    if (!thread_->HasPendingException()) {
-        return;
-    }
-    JSTaggedValue exception = thread_->GetException();
-    HandleUncaughtException(exception);
 }
 
 // static
