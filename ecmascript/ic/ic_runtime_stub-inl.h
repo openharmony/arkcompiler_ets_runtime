@@ -97,7 +97,10 @@ ARK_INLINE JSTaggedValue ICRuntimeStub::TryLoadICByName(JSThread *thread, JSTagg
             return LoadICWithHandler(thread, receiver, receiver, cachedHandler);
         }
     } else if (receiver.IsNumber()) {
-        return LoadICWithHandler(thread, receiver, receiver, secondValue);
+        auto hclass = thread->GetEcmaVM()->GetGlobalEnv()->GetNumberFunction()->GetTaggedObject()->GetClass();
+        if (firstValue.GetWeakReferentUnChecked() == hclass) {
+            return LoadICWithHandler(thread, receiver, receiver, secondValue);
+        }
     }
     return JSTaggedValue::Hole();
 }
