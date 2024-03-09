@@ -405,8 +405,10 @@ void ObjectOperator::TransitionForAttributeChanged(const JSHandle<JSObject> &rec
         // update found result
         UpdateFound(index, attr.GetValue(), false, true);
     } else if (receiver->IsJSGlobalObject()) {
+        uint32_t index = GetIndex();
         JSHandle<GlobalDictionary> dictHandle(thread_, receiver->GetProperties());
-        GlobalDictionary::InvalidatePropertyBox(thread_, dictHandle, GetIndex(), attr);
+        dictHandle->SetAttributes(thread_, index, attr);
+        GlobalDictionary::InvalidatePropertyBox(thread_, dictHandle, index, attr);
     } else {
         uint32_t index = GetIndex();
         if (!receiver->GetJSHClass()->IsDictionaryMode()) {
@@ -583,7 +585,15 @@ bool ObjectOperator::WriteDataProperty(const JSHandle<JSObject> &receiver, const
         }
 
         if (IsAccessorDescriptor()) {
-            auto accessor = AccessorData::Cast(GetValue().GetTaggedObject());
+            TaggedObject *obj = GetValue().GetTaggedObject();
+            if (receiver->IsJSGlobalObject()) {
+                JSTaggedValue val = GetValue();
+                if (val.IsPropertyBox()) {
+                    PropertyBox *cell = PropertyBox::Cast(val.GetTaggedObject());
+                    obj = cell->GetValue().GetTaggedObject();
+                }
+            }
+            auto accessor = AccessorData::Cast(obj);
             if (!accessor->IsInternal() || !accessor->HasSetter()) {
                 attr.SetIsAccessor(false);
                 attrChanged = true;
