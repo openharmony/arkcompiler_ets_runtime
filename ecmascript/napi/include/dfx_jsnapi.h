@@ -66,6 +66,8 @@ public:
     static void DumpHeapSnapshot(const EcmaVM *vm, int dumpFormat, Stream *stream, Progress *progress = nullptr,
                                  bool isVmMode = true, bool isPrivate = false, bool captureNumericValue = false,
                                  bool isFullGC = true);
+    static void DumpCpuProfile(const EcmaVM *vm, int dumpFormat, bool isVmMode = true, bool isPrivate = false,
+                               bool captureNumericValue = false, bool isFullGC = true);
     static void DumpHeapSnapshot(const EcmaVM *vm, int dumpFormat, bool isVmMode = true, bool isPrivate = false,
                                  bool captureNumericValue = false, bool isFullGC = true);
     static void DumpHeapSnapshot(const EcmaVM *vm, int dumpFormat, bool isVmMode, bool isPrivate,
