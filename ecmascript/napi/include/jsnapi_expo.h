@@ -1190,6 +1190,8 @@ public:
     static Local<ObjectRef> ExecuteNativeModule(EcmaVM *vm, const std::string &key);
     static Local<ObjectRef> GetModuleNameSpaceFromFile(EcmaVM *vm, const std::string &file,
                                                        const std::string &module_path);
+    static Local<ObjectRef> GetModuleNameSpaceWithModuleInfo(EcmaVM *vm, const std::string &file,
+                                                             const std::string &module_path);
     // secure memory check
     static bool CheckSecureMem(uintptr_t mem);
 
