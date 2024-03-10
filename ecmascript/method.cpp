@@ -125,11 +125,33 @@ const JSTaggedValue Method::GetRecordName() const
 void Method::SetCompiledFuncEntry(uintptr_t codeEntry, bool isFastCall)
 {
     ASSERT(codeEntry != 0);
-    SetCodeEntryAndMarkAOT(codeEntry);
+    SetCodeEntryAndMarkAOTWhenBinding(codeEntry);
 
     SetIsFastCall(isFastCall);
     MethodLiteral *methodLiteral = GetMethodLiteral();
     methodLiteral->SetAotCodeBit(true);
     methodLiteral->SetIsFastCall(isFastCall);
+}
+
+void Method::SetCodeEntryAndMarkAOTWhenBinding(uintptr_t codeEntry)
+{
+    SetAotCodeBit(true);
+    SetNativeBit(false);
+    SetCodeEntryOrLiteral(codeEntry);
+}
+
+void Method::ClearAOTStatusWhenDeopt()
+{
+    ClearAOTFlagsWhenInit();
+    SetDeoptType(kungfu::DeoptType::NOTCHECK);
+    const JSPandaFile *jsPandaFile = GetJSPandaFile();
+    MethodLiteral *methodLiteral = jsPandaFile->FindMethodLiteral(GetMethodId().GetOffset());
+    SetCodeEntryOrLiteral(reinterpret_cast<uintptr_t>(methodLiteral));
+}
+
+void Method::ClearAOTFlagsWhenInit()
+{
+    SetAotCodeBit(false);
+    SetIsFastCall(false);
 }
 } // namespace panda::ecmascript

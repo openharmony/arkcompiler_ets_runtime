@@ -3025,7 +3025,7 @@ void RuntimeStubs::SaveFrameToContext(JSThread *thread, JSHandle<GeneratorContex
     JSTaggedValue function = frameHandler.GetFunction();
     Method *method = JSFunction::Cast(function.GetTaggedObject())->GetCallTarget();
     if (method->IsAotWithCallField()) {
-        method->ClearAOTFlags();
+        method->ClearAOTStatusWhenDeopt();
     }
     context->SetMethod(thread, function);
     context->SetThis(thread, frameHandler.GetThis());

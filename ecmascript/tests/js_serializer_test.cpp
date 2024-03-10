@@ -1957,7 +1957,7 @@ HWTEST_F_L0(JSSerializerTest, SerializeAOTMethod)
     method->SetConstantPool(thread, constPool.GetTaggedValue());
 
     uintptr_t codeEntry = 0x1234;
-    method->SetCodeEntryAndMarkAOT(codeEntry);
+    method->SetCodeEntryAndMarkAOTWhenBinding(codeEntry);
 
     JSSerializer *serializer = new JSSerializer(thread);
     bool success = serializer->SerializeJSTaggedValue(JSHandle<JSTaggedValue>::Cast(method));

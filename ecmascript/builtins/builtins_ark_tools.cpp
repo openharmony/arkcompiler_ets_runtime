@@ -405,6 +405,38 @@ JSTaggedValue BuiltinsArkTools::IsAOTDeoptimized(EcmaRuntimeCallInfo *info)
     return JSTaggedValue(false);
 }
 
+JSTaggedValue BuiltinsArkTools::CheckDeoptStatus(EcmaRuntimeCallInfo *info)
+{
+    ASSERT(info);
+    JSThread *thread = info->GetThread();
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+
+    JSHandle<JSTaggedValue> obj = GetCallArg(info, 0);
+    JSHandle<JSFunction> func(thread, obj.GetTaggedValue());
+    Method *method = func->GetCallTarget();
+    bool isAotCompiled = method->IsAotWithCallField();
+    uint16_t threshold = method->GetDeoptThreshold();
+    if (threshold > 0) {
+        return JSTaggedValue(isAotCompiled);
+    }
+    // check status before deopt
+    JSHandle<JSTaggedValue> hasDeopt = GetCallArg(info, 1);
+    if (hasDeopt->IsFalse()) {
+        return JSTaggedValue(!isAotCompiled);
+    }
+    if (!hasDeopt->IsTrue()) {
+        return JSTaggedValue(false);
+    }
+    // check status after deopt
+    if (isAotCompiled ||
+        method->IsFastCall() ||
+        method->GetDeoptType() != kungfu::DeoptType::NOTCHECK ||
+        method->GetCodeEntryOrLiteral() == 0) {
+        return JSTaggedValue(false);
+    }
+    return JSTaggedValue(true);
+}
+
 JSTaggedValue BuiltinsArkTools::PrintTypedOpProfilerAndReset(EcmaRuntimeCallInfo *info)
 {
     ASSERT(info);

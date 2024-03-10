@@ -48,6 +48,7 @@
     V("isAOTDeoptimized",               IsAOTDeoptimized,               1, INVALID)       \
     V("printTypedOpProfilerAndReset",   PrintTypedOpProfilerAndReset,   1, INVALID)       \
     V("isOnHeap",                       IsOnHeap,                       1, INVALID)       \
+    V("checkDeoptStatus",               CheckDeoptStatus,               2, INVALID)       \
     V("checkCircularImport",            CheckCircularImport,            2, INVALID)
 
 #define BUILTIN_ARK_TOOLS_FUNCTIONS_REGRESS(V)                                                                \
@@ -186,6 +187,9 @@ public:
 
     // ArkTools.isAOTCompiledAssert(func)
     static JSTaggedValue IsAOTDeoptimized(EcmaRuntimeCallInfo *info);
+
+    // ArkTools.CheckDeoptStatus(func, deopt?)
+    static JSTaggedValue CheckDeoptStatus(EcmaRuntimeCallInfo *info);
 
     // ArkTools.isOnHeap(object)
     static JSTaggedValue IsOnHeap(EcmaRuntimeCallInfo *info);
