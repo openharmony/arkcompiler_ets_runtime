@@ -449,13 +449,52 @@ JSTaggedValue EcmaContext::FindConstpool(const JSPandaFile *jsPandaFile, int32_t
     return constpoolIter->second;
 }
 
+int32_t EcmaContext::FindIndexofSharedConstpool(JSTaggedValue sharedConstpool)
+{
+    ConstantPool *shareCp = ConstantPool::Cast(sharedConstpool.GetTaggedObject());
+    auto iter = cachedSharedConstpools_.find(shareCp->GetJSPandaFile());
+    ASSERT(iter != cachedSharedConstpools_.end());
+    auto cpMap = iter->second;
+    if (cpMap.size() == 1) { // 1 :only a constpool.
+        return cpMap.begin()->first;
+    }
+    for (const auto &item : cpMap) {
+        if (item.second == sharedConstpool) {
+            return item.first;
+        }
+    }
+    return SHARED_CONSTPOOL_KEY_NOT_FOUND;
+}
+
 JSTaggedValue EcmaContext::FindUnsharedConstpool(JSTaggedValue sharedConstpool)
 {
-    int32_t index = ConstantPool::Cast(sharedConstpool.GetTaggedObject())->GetUnsharedConstpoolIndex().GetInt();
+    ConstantPool *shareCp = ConstantPool::Cast(sharedConstpool.GetTaggedObject());
+    int32_t index = shareCp->GetUnsharedConstpoolIndex().GetInt();
     // unshared constpool index is default INT32_MAX.
     ASSERT(0 <= index && index != ConstantPool::CONSTPOOL_TYPE_FLAG && index < UNSHARED_CONSTANTPOOL_COUNT);
     JSTaggedValue unsharedConstpool = (*unsharedConstpools_)[index];
+    if (unsharedConstpool.IsHole()) {
+        int32_t cpId = FindIndexofSharedConstpool(sharedConstpool);
+        ASSERT(index != INT32_MAX);
+        JSHandle<ConstantPool> unshareCp =
+            ConstantPool::CreateUnSharedConstPoolBySharedConstpool(vm_, shareCp->GetJSPandaFile(), shareCp, cpId);
+        SetUnsharedConstpool(index, unshareCp.GetTaggedValue());
+    }
     return unsharedConstpool;
+}
+
+JSHandle<ConstantPool> EcmaContext::CreateConstpoolPair(JSPandaFile *jsPandaFile, EntityId methodId)
+{
+    JSHandle<ConstantPool> sconstpool = ConstantPool::CreateSharedConstPool(
+        thread_->GetEcmaVM(), jsPandaFile, methodId, GetUnsharedConstpoolCount());
+    panda_file::IndexAccessor indexAccessor(*jsPandaFile->GetPandaFile(), methodId);
+    int32_t index = static_cast<int32_t>(indexAccessor.GetHeaderIndex());
+    AddConstpool(jsPandaFile, sconstpool.GetTaggedValue(), index);
+    JSHandle<ConstantPool> constpool =
+        ConstantPool::CreateUnSharedConstPool(thread_->GetEcmaVM(), jsPandaFile, methodId);
+    SetUnsharedConstpool(GetUnsharedConstpoolCount(), constpool.GetTaggedValue());
+    IncreaseUnsharedConstpoolCount();
+    return sconstpool;
 }
 
 void EcmaContext::EraseUnsharedConstpool(JSTaggedValue sharedConstpool)
