@@ -950,7 +950,8 @@ void JSFunction::InitializeForConcurrentFunction(JSThread *thread)
     ecmascript::JSRecordInfo recordInfo;
     bool hasRecord = jsPandaFile->CheckAndGetRecordInfo(recordName, recordInfo);
     if (!hasRecord) {
-        LOG_ECMA(ERROR) << "cannot find record '" << recordName << "', please check the request path.";
+        CString msg = "Cannot find module '" + recordName + "' , which is application Entry Point";
+        LOG_ECMA(ERROR) << msg;
         return;
     }
     if (!jsPandaFile->IsModule(recordInfo)) {

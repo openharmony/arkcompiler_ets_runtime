@@ -194,20 +194,19 @@ JSTaggedValue BuiltinsPromiseJob::DynamicImportJob(EcmaRuntimeCallInfo *argv)
     std::shared_ptr<JSPandaFile> jsPandaFile =
         JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, fileNameStr, entryPoint);
     if (jsPandaFile == nullptr) {
-        CString msg = "Load file with filename '" + fileNameStr + "' failed, recordName '" + entryPoint + "'";
-        JSTaggedValue error = factory->GetJSError(ErrorType::REFERENCE_ERROR, msg.c_str()).GetTaggedValue();
-        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, CatchException(thread, reject));
+        LOG_FULL(FATAL) << "Load current file's panda file failed. Current file is " << fileNameStr;
     }
 
     JSRecordInfo recordInfo;
     bool hasRecord = jsPandaFile->CheckAndGetRecordInfo(entryPoint, recordInfo);
     if (!hasRecord) {
-        LOG_FULL(ERROR) << "cannot find record '" << entryPoint <<"' in basefileName " << fileNameStr << ".";
-        CString msg = "DynamicImport: cannot find record '" + entryPoint + "' in basefileName " + fileNameStr + ".";
-        THROW_REFERENCE_ERROR_AND_RETURN(thread, msg.c_str(), CatchException(thread, reject));
+        CString normalizeStr = ModulePathHelper::ReformatPath(entryPoint);
+        CString msg =  "Cannot find dynamic-import module '" + normalizeStr;
+        JSTaggedValue error = factory->GetJSError(ErrorType::REFERENCE_ERROR, msg.c_str()).GetTaggedValue();
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, CatchException(thread, reject));
     }
     if (jsPandaFile->IsJson(recordInfo)) {
-        JSHandle<EcmaString> jsonRecordName = thread->GetEcmaVM()->GetFactory()->NewFromUtf8(entryPoint);
+        JSHandle<EcmaString> jsonRecordName = factory->NewFromUtf8(entryPoint);
         return DynamicImport::ExecuteNativeOrJsonModule(
             thread, jsonRecordName, ModuleTypes::JSON_MODULE, resolve, reject, jsPandaFile.get());
     }
