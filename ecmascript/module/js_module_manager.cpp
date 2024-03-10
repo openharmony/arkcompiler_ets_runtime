@@ -446,8 +446,7 @@ JSHandle<JSTaggedValue> ModuleManager::CommonResolveImportedModuleWithMerge(cons
         // which may cause wrong recordName parsing and we also can't load files not in this app hap. But in static
         // phase, these should not be an error, just skip it is ok.
         if (vm_->EnableReportModuleResolvingFailure()) {
-            CString msg = "Load file with filename '" + moduleFileName + "' failed, recordName '" + recordName + "'";
-            THROW_NEW_ERROR_AND_RETURN_HANDLE(thread, ErrorType::REFERENCE_ERROR, JSTaggedValue, msg.c_str());
+            LOG_FULL(FATAL) << "Load current file's panda file failed. Current file is " << moduleFileName;
         }
     }
     JSHandle<JSTaggedValue> moduleRecord = ResolveModuleInMergedABC(thread,
@@ -500,8 +499,7 @@ JSHandle<JSTaggedValue> ModuleManager::HostResolveImportedModule(const CString &
     std::shared_ptr<JSPandaFile> jsPandaFile =
         JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, moduleFileName, JSPandaFile::ENTRY_MAIN_FUNCTION);
     if (jsPandaFile == nullptr) {
-        CString msg = "Load file with filename '" + moduleFileName + "' failed";
-        THROW_NEW_ERROR_AND_RETURN_HANDLE(thread, ErrorType::REFERENCE_ERROR, JSTaggedValue, msg.c_str());
+        LOG_FULL(FATAL) << "Load current file's panda file failed. Current file is " << moduleFileName;
     }
 
     return ResolveModule(thread, jsPandaFile.get(), executeFromJob);
@@ -525,8 +523,7 @@ JSHandle<JSTaggedValue> ModuleManager::HostResolveImportedModule(const void *buf
         JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, filename,
                                                            JSPandaFile::ENTRY_MAIN_FUNCTION, buffer, size);
     if (jsPandaFile == nullptr) {
-        CString msg = "Load file with filename '" + filename + "' failed";
-        THROW_NEW_ERROR_AND_RETURN_HANDLE(thread, ErrorType::REFERENCE_ERROR, JSTaggedValue, msg.c_str());
+        LOG_FULL(FATAL) << "Load current file's panda file failed. Current file is " << filename;
     }
 
     return ResolveModule(thread, jsPandaFile.get());
@@ -579,10 +576,8 @@ JSHandle<JSTaggedValue> ModuleManager::ResolveModuleWithMerge(
     JSRecordInfo recordInfo;
     bool hasRecord = jsPandaFile->CheckAndGetRecordInfo(recordName, recordInfo);
     if (!hasRecord) {
-        CString msg = "cannot find record '" + recordName + "', please check the request path.'"
-                      + moduleFileName + "'.";
-        LOG_FULL(ERROR) << msg;
-        THROW_NEW_ERROR_AND_RETURN_HANDLE(thread, ErrorType::REFERENCE_ERROR, JSTaggedValue, msg.c_str());
+        JSHandle<JSTaggedValue> exp(thread, JSTaggedValue::Exception());
+        THROW_MODULE_NOT_FOUND_ERROR_WITH_RETURN_VALUE(thread, recordName, moduleFileName, exp);
     }
     if (jsPandaFile->IsModule(recordInfo)) {
         RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
@@ -768,8 +763,7 @@ JSHandle<JSTaggedValue> ModuleManager::HostResolveImportedModule(const JSPandaFi
     }
 
     if (jsPandaFile == nullptr) {
-        CString msg = "Faild to resolve file '" + filename + "', please check the request path.";
-        THROW_NEW_ERROR_AND_RETURN_HANDLE(thread, ErrorType::REFERENCE_ERROR, JSTaggedValue, msg.c_str());
+        LOG_FULL(FATAL) << "Load current file's panda file failed. Current file is " << filename;
     }
     return ResolveModule(thread, jsPandaFile);
 }

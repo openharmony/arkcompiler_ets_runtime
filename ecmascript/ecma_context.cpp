@@ -281,8 +281,7 @@ Expected<JSTaggedValue, bool> EcmaContext::CommonInvokeEcmaEntrypoint(const JSPa
     JSRecordInfo recordInfo;
     bool hasRecord = jsPandaFile->CheckAndGetRecordInfo(entry, recordInfo);
     if (!hasRecord) {
-        CString msg = "cannot find record '" + entry + "', please check the request path.";
-        LOG_FULL(ERROR) << msg;
+        CString msg = "Cannot find module '" + entry + "' , which is application Entry Point";
         THROW_REFERENCE_ERROR_AND_RETURN(thread_, msg.c_str(), Unexpected(false));
     }
     if (jsPandaFile->IsModule(recordInfo)) {

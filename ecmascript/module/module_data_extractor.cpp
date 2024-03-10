@@ -159,12 +159,8 @@ JSTaggedValue ModuleDataExtractor::JsonParse(JSThread *thread, const JSPandaFile
             thread, undefined, undefined, undefined, 1); // 1 : argument numbers
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSRecordInfo recordInfo;
-    bool hasRecord = jsPandaFile->CheckAndGetRecordInfo(entryPoint, recordInfo);
-    if (!hasRecord) {
-        CString msg = "cannot find record '" + entryPoint + "', please check the request path.";
-        LOG_FULL(ERROR) << msg;
-        THROW_REFERENCE_ERROR_AND_RETURN(thread, msg.c_str(), JSTaggedValue::Exception());
-    }
+    [[maybe_unused]] bool hasRecord = jsPandaFile->CheckAndGetRecordInfo(entryPoint, recordInfo);
+    ASSERT(hasRecord);
     StringData sd = jsPandaFile->GetStringData(EntityId(recordInfo.jsonStringId));
     JSTaggedValue value(thread->GetEcmaVM()->GetFactory()->GetRawStringFromStringTable(sd));
     info->SetCallArg(value);

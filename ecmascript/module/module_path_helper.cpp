@@ -21,36 +21,49 @@ namespace panda::ecmascript {
 CString ModulePathHelper::ConcatFileNameWithMerge(JSThread *thread, const JSPandaFile *jsPandaFile,
     CString &baseFileName, CString recordName, CString requestName)
 {
-    CString entryPoint;
     if (StringHelper::StringStartWith(requestName, PREFIX_BUNDLE)) {
-        // requestName: @bundle:bundleName/moduleName@namespace/ets/xxx/xxx
-        entryPoint = ParsePrefixBundle(thread, jsPandaFile, baseFileName, requestName, recordName);
+        return ParsePrefixBundle(thread, jsPandaFile, baseFileName, requestName, recordName);
     } else if (StringHelper::StringStartWith(requestName, PREFIX_PACKAGE)) {
-        // requestName: @package:pkg_modules@namespace/xxx/Index
-        entryPoint = requestName.substr(PREFIX_PACKAGE_LEN);
+        return requestName.substr(PREFIX_PACKAGE_LEN);
     } else if (IsImportFile(requestName)) {
         // this branch save for require/dynamic import/old version sdk
         // load a relative pathName.
         // requestName: ./ || ./xxx/xxx.js || ../xxx/xxx.js || ./xxx/xxx
-        entryPoint = MakeNewRecord(jsPandaFile, baseFileName, recordName, requestName);
+        return MakeNewRecord(jsPandaFile, baseFileName, recordName, requestName);
     } else if (StringHelper::StringStartWith(requestName, PREFIX_ETS)) {
-        // requestName: ets/xxx/xxx
-        entryPoint = TranslateExpressionInputWithEts(thread, jsPandaFile, baseFileName, requestName);
+        CString entryPoint = TranslateExpressionInputWithEts(thread, jsPandaFile, baseFileName, requestName);
+        if (entryPoint.empty()) {
+            THROW_MODULE_NOT_FOUND_ERROR_WITH_RETURN_VALUE(thread, requestName, recordName, entryPoint);
+        }
+        return entryPoint;
     } else {
         // this branch save for require/dynamic import/old version sdk
         // requestName: requestPkgName
-        entryPoint = ParseThirdPartyPackage(jsPandaFile, recordName, requestName);
+        CString entryPoint = ParseThirdPartyPackage(jsPandaFile, recordName, requestName);
+        if (entryPoint.empty()) {
+            THROW_MODULE_NOT_FOUND_ERROR_WITH_RETURN_VALUE(thread, requestName, recordName, entryPoint);
+        }
+        return entryPoint;
     }
-    if (entryPoint.empty() && thread->GetEcmaVM()->EnableReportModuleResolvingFailure()) {
-        LOG_ECMA(ERROR) << "Failed to resolve the requested entryPoint. baseFileName : '" << baseFileName <<
-            "'. RecordName : '" <<  recordName << "'. RequestName : '" <<  requestName << "'.";
-        ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-        CString msg = "failed to load module'" + requestName + "' which imported by '" +
-            recordName + "'. Please check the target path.";
-        JSTaggedValue error = factory->GetJSError(ErrorType::REFERENCE_ERROR, msg.c_str()).GetTaggedValue();
-        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, entryPoint);
+    LOG_FULL(FATAL) << "this branch is unreachable";
+    UNREACHABLE();
+}
+
+CString ModulePathHelper::ReformatPath(CString requestName)
+{
+    CString normalizeStr;
+    if (StringHelper::StringStartWith(requestName, PACKAGE_PATH_SEGMENT) ||
+        StringHelper::StringStartWith(requestName, PREFIX_PACKAGE)) {
+        auto pos = requestName.rfind(PACKAGE_PATH_SEGMENT);
+        ASSERT(pos != CString::npos);
+        normalizeStr = requestName.substr(pos + 1);
+    } else if (StringHelper::StringStartWith(requestName, REQUIRE_NAPI_APP_PREFIX)) {
+        auto pos = requestName.find(PathHelper::SLASH_TAG);
+        pos = requestName.find(PathHelper::SLASH_TAG, pos + 1);
+        ASSERT(pos != CString::npos);
+        normalizeStr = requestName.substr(pos + 1);
     }
-    return entryPoint;
+    return normalizeStr;
 }
 
 /*
@@ -155,8 +168,7 @@ CString ModulePathHelper::ParsePrefixBundle(JSThread *thread, const JSPandaFile 
         CVector<CString> vec;
         StringHelper::SplitString(moduleRequestName, vec, 0, SEGMENTS_LIMIT_TWO);
         if (vec.size() < SEGMENTS_LIMIT_TWO) {
-            LOG_ECMA(INFO) << "SplitString filed, please check moduleRequestName";
-            return CString();
+            LOG_ECMA(FATAL) << " Exceptional module path : " << moduleRequestName;
         }
         CString bundleName = vec[0];
         CString moduleName = vec[1];
@@ -176,8 +188,7 @@ CString ModulePathHelper::ParsePrefixBundle(JSThread *thread, const JSPandaFile 
         CVector<CString> currentVec;
         StringHelper::SplitString(moduleRequestName, currentVec, 0, SEGMENTS_LIMIT_TWO);
         if (currentVec.size() < SEGMENTS_LIMIT_TWO) {
-            LOG_ECMA(INFO) << "SplitString filed, please check recordName";
-            return CString();
+            LOG_ECMA(FATAL) << " Exceptional module path : " << moduleRequestName;
         }
         CString currentModuleName = currentVec[1];
         PathHelper::DeleteNamespace(currentModuleName);
@@ -557,12 +568,7 @@ CString ModulePathHelper::TranslateExpressionInputWithEts(JSThread *thread, cons
     CString moduleName = GetModuleNameWithBaseFile(baseFileName);
     entryPoint = vm->GetBundleName() + PathHelper::SLASH_TAG + moduleName + PathHelper::SLASH_TAG + requestName;
     if (!jsPandaFile->HasRecord(entryPoint)) {
-        LOG_FULL(ERROR) << "cannot find record '" << entryPoint <<"' from request path '" << requestName << "'.";
-        CString msg = "cannot find record '" + entryPoint + "' from request path'" + requestName +
-            "', please check the request path";
-        ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-        JSTaggedValue error = factory->GetJSError(ErrorType::REFERENCE_ERROR, msg.c_str()).GetTaggedValue();
-        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, entryPoint);
+        return CString();
     }
     return entryPoint;
 }

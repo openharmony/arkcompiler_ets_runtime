@@ -71,12 +71,12 @@ std::shared_ptr<JSPandaFile> JSPandaFileManager::LoadJSPandaFile(JSThread *threa
     if (!vm->IsBundlePack() && moduleManager->GetExecuteMode()) {
         ResolveBufferCallback resolveBufferCallback = vm->GetResolveBufferCallback();
         if (resolveBufferCallback == nullptr) {
-            LOG_ECMA(ERROR) << "resolveBufferCallback is nullptr";
 #if defined(PANDA_TARGET_WINDOWS) || defined(PANDA_TARGET_MACOS)
             if (vm->EnableReportModuleResolvingFailure()) {
                 LOG_NO_TAG(ERROR) << "[ArkRuntime Log] Importing shared package is not supported in the Previewer.";
             }
 #endif
+            LOG_FULL(FATAL) << "resolveBufferCallback is nullptr";
             return nullptr;
         }
         uint8_t *data = nullptr;
@@ -88,11 +88,11 @@ std::shared_ptr<JSPandaFile> JSPandaFileManager::LoadJSPandaFile(JSThread *threa
                 LOG_NO_TAG(INFO) << "[ArkRuntime Log] Importing shared package in the Previewer.";
             }
 #endif
-            LOG_ECMA(ERROR) << "resolveBufferCallback get buffer failed";
+            LOG_FULL(FATAL) << "resolveBufferCallback get buffer failed";
             return nullptr;
         }
         if (!JSNApi::CheckSecureMem(reinterpret_cast<uintptr_t>(data))) {
-            LOG_ECMA(ERROR) << "Hsp secure memory check failed, please execute in secure memory.";
+            LOG_FULL(FATAL) << "Hsp secure memory check failed, please execute in secure memory.";
             return nullptr;
         }
 #if defined(PANDA_TARGET_ANDROID) || defined(PANDA_TARGET_IOS)
