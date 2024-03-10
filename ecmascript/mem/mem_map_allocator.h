@@ -252,19 +252,8 @@ public:
     {
         AdapterSuitablePoolCapacity();
         memMapTotalSize_ = 0;
-        size_t initialHugeObjectCapacity = std::min(capacity_ / 2, INITIAL_HUGE_OBJECT_CAPACITY);
-        MemMap hugeMemMap = PageMap(initialHugeObjectCapacity, PAGE_PROT_NONE, alignment);
-        PageTag(hugeMemMap.GetMem(), hugeMemMap.GetSize(), PageTagType::MEMPOOL_CACHE);
-        PageRelease(hugeMemMap.GetMem(), hugeMemMap.GetSize());
-        memMapFreeList_.Initialize(hugeMemMap, capacity_);
-#if defined(PANDA_TARGET_64) && !WIN_OR_MAC_OR_IOS_PLATFORM
-        size_t initialRegularObjectCapacity = std::min(capacity_ / 2, INITIAL_REGULAR_OBJECT_CAPACITY);
-        MemMap memMap = PageMap(initialRegularObjectCapacity, PAGE_PROT_NONE, alignment, RandomGenerateBigAddr());
-        PageTag(memMap.GetMem(), memMap.GetSize(), PageTagType::MEMPOOL_CACHE);
-        PageRelease(memMap.GetMem(), memMap.GetSize());
-        memMapPool_.InsertMemMap(memMap);
-        memMapPool_.SplitMemMapToCache(memMap);
-#endif
+        InitializeHugeRegionMap(alignment);
+        InitializeRegularRegionMap(alignment);
     }
 
     void Finalize()
@@ -304,8 +293,10 @@ public:
     void CacheOrFree(void *mem, size_t size, bool isRegular, size_t cachedSize);
 
 private:
+    void InitializeRegularRegionMap(size_t alignment);
+    void InitializeHugeRegionMap(size_t alignment);
     // Random generate big mem map addr to avoid js heap is written by others
-    void *RandomGenerateBigAddr()
+    void *RandomGenerateBigAddr(uint64_t addr)
     {
         // Use the current time as the seed
         unsigned seed = static_cast<unsigned>(std::chrono::system_clock::now().time_since_epoch().count());
@@ -315,14 +306,17 @@ private:
         std::uniform_int_distribution<uint64_t> distribution(0, RANDOM_NUM_MAX);
         uint64_t randomNum = distribution(generator);
 
-        // Big addr random change in 0x10000000000 ~ 0x1FF00000000
-        return reinterpret_cast<void *>(BIG_MEM_MAP_BEGIN_ADDR + (randomNum << UINT32_BIT));
+        // Big addr random change in 0x2000000000 ~ 0x2FF0000000
+        return reinterpret_cast<void *>(addr + (randomNum << RANDOM_SHIFT_BIT));
     }
 
     static constexpr size_t REGULAR_REGION_MMAP_SIZE = 4_MB;
-    static constexpr uint64_t BIG_MEM_MAP_BEGIN_ADDR = 0x10000000000;
+    static constexpr uint64_t HUGE_OBJECT_MEM_MAP_BEGIN_ADDR = 0x1000000000;
+    static constexpr uint64_t REGULAR_OBJECT_MEM_MAP_BEGIN_ADDR = 0x2000000000;
+    static constexpr uint64_t STEP_INCREASE_MEM_MAP_ADDR = 0x1000000000;
     static constexpr size_t RANDOM_NUM_MAX = 0xFF;
-    static constexpr size_t UINT32_BIT = 32;
+    static constexpr size_t RANDOM_SHIFT_BIT = 28;
+    static constexpr size_t MEM_MAP_RETRY_NUM = 10;
 
     void AdapterSuitablePoolCapacity();
     void Free(void *mem, size_t size, bool isRegular);
