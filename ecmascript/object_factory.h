@@ -731,6 +731,8 @@ public:
 
     JSHandle<ConstantPool> NewSConstantPool(uint32_t capacity);
 
+    JSHandle<AOTLiteralInfo> NewSAOTLiteralInfo(uint32_t length, JSTaggedValue initVal = JSTaggedValue::Hole());
+
     JSHandle<COWTaggedArray> NewSCOWTaggedArray(uint32_t length, JSTaggedValue initVal = JSTaggedValue::Hole());
 
     JSHandle<ClassLiteral> NewSClassLiteral();

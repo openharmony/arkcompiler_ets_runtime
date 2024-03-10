@@ -30,6 +30,9 @@ GateRef MCRLowering::VisitGate(GateRef gate)
         case OpCode::GET_CONSTPOOL:
             LowerGetConstPool(gate);
             break;
+        case OpCode::GET_UNSHARED_CONSTPOOL:
+            LowerGetUnsharedConstPool(gate);
+            break;
         case OpCode::STATE_SPLIT:
             DeleteStateSplit(gate);
             break;
@@ -235,6 +238,18 @@ void MCRLowering::LowerGetConstPool(GateRef gate)
     Environment env(gate, circuit_, &builder_);
     GateRef jsFunc = acc_.GetValueIn(gate, 0); // 0: this object
     GateRef newGate = builder_.GetConstPoolFromFunction(jsFunc);
+
+    acc_.UpdateAllUses(gate, newGate);
+
+    // delete old gate
+    acc_.DeleteGate(gate);
+}
+
+void MCRLowering::LowerGetUnsharedConstPool(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    GateRef jsFunc = acc_.GetValueIn(gate, 0); // 0: this object
+    GateRef newGate = builder_.GetUnsharedConstPoolFromGlue(glue_, jsFunc);
 
     acc_.UpdateAllUses(gate, newGate);
 

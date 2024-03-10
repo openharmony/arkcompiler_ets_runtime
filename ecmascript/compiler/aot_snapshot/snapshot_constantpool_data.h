@@ -76,6 +76,7 @@ protected:
                             JSHandle<ConstantPool> snapshotConstantPool, const std::set<uint32_t> &skippedMethods,
                             JSHandle<JSTaggedValue> ihc, JSHandle<JSTaggedValue> chc,
                             int32_t elementIndex = AOT_ELEMENT_INDEX_DEFAULT_VALUE);
+    JSHandle<ConstantPool> GetConstpool(const ItemData &data);
 
     CUnorderedMap<ItemKey, ItemData> info_ {};
     EcmaVM *vm_ {nullptr};

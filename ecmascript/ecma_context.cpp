@@ -23,6 +23,7 @@
 #include "ecmascript/builtins/builtins_string.h"
 #include "ecmascript/compiler/aot_file/an_file_data_manager.h"
 #include "ecmascript/compiler/common_stubs.h"
+#include "ecmascript/ecma_string.h"
 #include "ecmascript/ecma_string_table.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/global_env.h"
@@ -38,6 +39,7 @@
 #include "ecmascript/module/module_path_helper.h"
 #include "ecmascript/module/js_shared_module.h"
 #include "ecmascript/object_factory.h"
+#include "ecmascript/patch/patch_loader.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
 #include "ecmascript/require/js_cjs_module_cache.h"
 #include "ecmascript/require/js_require_manager.h"
@@ -96,7 +98,7 @@ bool EcmaContext::Initialize()
     regExpParserCache_ = new RegExpParserCache();
     unsharedConstpools_ = new std::array<JSTaggedValue, UNSHARED_CONSTANTPOOL_COUNT>();
     unsharedConstpools_->fill(JSTaggedValue::Hole());
-    thread_->SetUnsharedConstpools(reinterpret_cast<uintptr_t>(unsharedConstpools_));
+    thread_->SetUnsharedConstpools(reinterpret_cast<uintptr_t>(unsharedConstpools_->data()));
 
     thread_->SetGlobalConst(&globalConst_);
     globalConst_.Init(thread_);
@@ -485,13 +487,18 @@ JSTaggedValue EcmaContext::FindUnsharedConstpool(JSTaggedValue sharedConstpool)
 
 JSHandle<ConstantPool> EcmaContext::CreateConstpoolPair(JSPandaFile *jsPandaFile, EntityId methodId)
 {
-    JSHandle<ConstantPool> sconstpool = ConstantPool::CreateSharedConstPool(
-        thread_->GetEcmaVM(), jsPandaFile, methodId, GetUnsharedConstpoolCount());
+    JSHandle<ConstantPool> constpool =
+        ConstantPool::CreateUnSharedConstPool(thread_->GetEcmaVM(), jsPandaFile, methodId);
+    JSHandle<ConstantPool> sconstpool;
+    if (jsPandaFile->IsLoadedAOT()) {
+        sconstpool = ConstantPool::CreateSharedConstPoolForAOT(vm_, constpool, GetUnsharedConstpoolCount());
+    } else {
+        sconstpool = ConstantPool::CreateSharedConstPool(
+            thread_->GetEcmaVM(), jsPandaFile, methodId, GetUnsharedConstpoolCount());
+    }
     panda_file::IndexAccessor indexAccessor(*jsPandaFile->GetPandaFile(), methodId);
     int32_t index = static_cast<int32_t>(indexAccessor.GetHeaderIndex());
     AddConstpool(jsPandaFile, sconstpool.GetTaggedValue(), index);
-    JSHandle<ConstantPool> constpool =
-        ConstantPool::CreateUnSharedConstPool(thread_->GetEcmaVM(), jsPandaFile, methodId);
     SetUnsharedConstpool(GetUnsharedConstpoolCount(), constpool.GetTaggedValue());
     IncreaseUnsharedConstpoolCount();
     return sconstpool;
@@ -544,15 +551,16 @@ JSHandle<ConstantPool> EcmaContext::FindOrCreateConstPool(const JSPandaFile *jsP
     int32_t index = static_cast<int32_t>(indexAccessor.GetHeaderIndex());
     JSTaggedValue constpool = FindConstpoolWithAOT(jsPandaFile, index);
     if (constpool.IsHole()) {
-        JSHandle<ConstantPool> newSConstpool =
-            ConstantPool::CreateSharedConstPool(vm_, jsPandaFile, id, GetUnsharedConstpoolCount());
-        AddConstpool(jsPandaFile, newSConstpool.GetTaggedValue(), index);
-        // TODO(aot) delete if after aot dapting share heap. now use fake share constpool to pass aot UT.
-        if (!jsPandaFile->IsLoadedAOT()) {
-            JSHandle<ConstantPool> newConstpool = ConstantPool::CreateUnSharedConstPool(vm_, jsPandaFile, id);
-            SetUnsharedConstpool(GetUnsharedConstpoolCount(), newConstpool.GetTaggedValue());
-            IncreaseUnsharedConstpoolCount();
+        JSHandle<ConstantPool> newConstpool = ConstantPool::CreateUnSharedConstPool(vm_, jsPandaFile, id);
+        JSHandle<ConstantPool> newSConstpool;
+        if (jsPandaFile->IsLoadedAOT()) {
+            newSConstpool = ConstantPool::CreateSharedConstPoolForAOT(vm_, newConstpool, GetUnsharedConstpoolCount());
+        } else {
+            newSConstpool = ConstantPool::CreateSharedConstPool(vm_, jsPandaFile, id, GetUnsharedConstpoolCount());
         }
+        AddConstpool(jsPandaFile, newSConstpool.GetTaggedValue(), index);
+        SetUnsharedConstpool(GetUnsharedConstpoolCount(), newConstpool.GetTaggedValue());
+        IncreaseUnsharedConstpoolCount();
         return newSConstpool;
     }
     return JSHandle<ConstantPool>(thread_, constpool);

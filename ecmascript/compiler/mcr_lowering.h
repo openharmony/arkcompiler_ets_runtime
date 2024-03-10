@@ -44,6 +44,7 @@ private:
     void LowerIsSpecificObjectType(GateRef gate);
     void LowerHClassStableArrayCheck(GateRef gate);
     void LowerGetConstPool(GateRef gate);
+    void LowerGetUnsharedConstPool(GateRef gate);
     void LowerLoadConstOffset(GateRef gate);
     void LowerLoadHClassFromConstpool(GateRef gate);
     void LowerStoreConstOffset(GateRef gate);

@@ -570,4 +570,16 @@ JSHandle<ResolvedRecordBinding> ObjectFactory::NewSResolvedRecordBindingRecord(
     obj->SetIndex(index);
     return obj;
 }
+
+JSHandle<AOTLiteralInfo> ObjectFactory::NewSAOTLiteralInfo(uint32_t length, JSTaggedValue initVal)
+{
+    NewObjectHook();
+    size_t size = AOTLiteralInfo::ComputeSize(length);
+    auto header = sHeap_->AllocateOldOrHugeObject(thread_,
+        JSHClass::Cast(sHeap_->GetGlobalConst()->GetAOTLiteralInfoClass().GetTaggedObject()), size);
+
+    JSHandle<AOTLiteralInfo> aotLiteralInfo(thread_, header);
+    aotLiteralInfo->InitializeWithSpecialValue(initVal, length);
+    return aotLiteralInfo;
+}
 }  // namespace panda::ecmascript

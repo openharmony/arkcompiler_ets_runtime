@@ -86,7 +86,7 @@ void NTypeHCRLowering::LowerCreateArrayWithBuffer(GateRef gate, GateRef glue)
     ArgumentAccessor argAcc(circuit_);
     GateRef frameState = GetFrameState(gate);
     GateRef jsFunc = argAcc.GetFrameArgsIn(frameState, FrameArgIdx::FUNC);
-    GateRef literialElements = LoadFromConstPool(jsFunc, elementIndex, ConstantPool::AOT_ARRAY_INFO_INDEX);
+    GateRef literialElements = LoadFromUnsharedConstPool(jsFunc, elementIndex, ConstantPool::AOT_ARRAY_INFO_INDEX);
     uint32_t cpIdVal = static_cast<uint32_t>(acc_.GetConstantValue(cpId));
     JSTaggedValue arr = GetArrayLiteralValue(cpIdVal, constPoolIndex);
     JSHandle<JSArray> arrayHandle(thread_, arr);
@@ -114,6 +114,15 @@ void NTypeHCRLowering::LowerCreateArrayWithBuffer(GateRef gate, GateRef glue)
 GateRef NTypeHCRLowering::LoadFromConstPool(GateRef jsFunc, size_t index, size_t valVecType)
 {
     GateRef constPool = builder_.GetConstPool(jsFunc);
+    GateRef constPoolSize = builder_.GetLengthOfTaggedArray(constPool);
+    GateRef valVecIndex = builder_.Int32Sub(constPoolSize, builder_.Int32(valVecType));
+    GateRef valVec = builder_.GetValueFromTaggedArray(constPool, valVecIndex);
+    return builder_.LoadFromTaggedArray(valVec, index);
+}
+
+GateRef NTypeHCRLowering::LoadFromUnsharedConstPool(GateRef jsFunc, size_t index, size_t valVecType)
+{
+    GateRef constPool = builder_.GetUnsharedConstPool(jsFunc);
     GateRef constPoolSize = builder_.GetLengthOfTaggedArray(constPool);
     GateRef valVecIndex = builder_.Int32Sub(constPoolSize, builder_.Int32(valVecType));
     GateRef valVec = builder_.GetValueFromTaggedArray(constPool, valVecIndex);

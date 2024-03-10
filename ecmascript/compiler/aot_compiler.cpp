@@ -20,6 +20,7 @@
 #include <vector>
 
 #include "ecmascript/base/string_helper.h"
+#include "ecmascript/checkpoint/thread_state_transition.h"
 #include "ecmascript/compiler/aot_compiler_preprocessor.h"
 #include "ecmascript/compiler/aot_file/aot_file_manager.h"
 #include "ecmascript/compiler/pass_manager.h"
@@ -90,6 +91,7 @@ int Main(const int argc, const char **argv)
     }
 
     {
+        ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
         LocalScope scope(vm);
         arg_list_t pandaFileNames {};
         std::map<std::string, std::shared_ptr<OhosPkgArgs>> pkgArgsMap;
