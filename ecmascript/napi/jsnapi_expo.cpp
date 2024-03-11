@@ -797,6 +797,11 @@ bool JSValueRef::IsSharedObject()
     return JSNApiHelper::ToJSTaggedValue(this).IsJSSharedObject();
 }
 
+bool JSValueRef::IsJSShared()
+{
+    return JSNApiHelper::ToJSTaggedValue(this).IsJSShared();
+}
+
 // ---------------------------------- DataView -----------------------------------
 Local<DataViewRef> DataViewRef::New(
     const EcmaVM *vm, Local<ArrayBufferRef> arrayBuffer, uint32_t byteOffset, uint32_t byteLength)
