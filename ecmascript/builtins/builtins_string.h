@@ -97,7 +97,7 @@
     /* String.prototype.toLocaleUpperCase ( [ reserved1 [ , reserved2 ] ] ) */      \
     V("toLocaleUpperCase", ToLocaleUpperCase, 0, INVALID)                           \
     /* String.prototype.toLowerCase ( ) */                                          \
-    V("toLowerCase",       ToLowerCase,       0, INVALID)                           \
+    V("toLowerCase",       ToLowerCase,       0, StringToLowerCase)                 \
     /* String.prototype.toString ( ) */                                             \
     V("toString",          ToString,          0, INVALID)                           \
     /* String.prototype.toUpperCase ( ) */                                          \

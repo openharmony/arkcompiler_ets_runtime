@@ -76,6 +76,7 @@ class StringBuilderOptimizer;
     V(DoubleMod, Smod, MachineType::F64)                                  \
     V(BoolAnd, And, MachineType::I1)                                      \
     V(Int8And, And, MachineType::I8)                                      \
+    V(Int8Xor, Xor, MachineType::I8)                                      \
     V(Int32And, And, MachineType::I32)                                    \
     V(Int64And, And, MachineType::I64)                                    \
     V(BoolOr, Or, MachineType::I1)                                        \
@@ -145,6 +146,7 @@ class StringBuilderOptimizer;
     V(DoubleGreaterThanOrEqual, Fcmp, static_cast<BitField>(FCmpCondition::OGE))        \
     V(DoubleEqual, Fcmp, static_cast<BitField>(FCmpCondition::OEQ))                     \
     V(DoubleNotEqual, Fcmp, static_cast<BitField>(FCmpCondition::ONE))                  \
+    V(Int8GreaterThanOrEqual, Icmp, static_cast<BitField>(ICmpCondition::SGE))          \
     V(Int32LessThan, Icmp, static_cast<BitField>(ICmpCondition::SLT))                   \
     V(Int32LessThanOrEqual, Icmp, static_cast<BitField>(ICmpCondition::SLE))            \
     V(Int32GreaterThan, Icmp, static_cast<BitField>(ICmpCondition::SGT))                \

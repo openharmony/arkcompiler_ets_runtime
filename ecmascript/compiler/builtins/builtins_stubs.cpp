@@ -179,6 +179,7 @@ DECLARE_BUILTINS(String##method)                                                
     V(Trim,         JS_ANY,     Undefined())                                        \
     V(Concat,       JS_ANY,     Undefined())                                        \
     V(Slice,        JS_ANY,     Undefined())                                        \
+    V(ToLowerCase,  JS_ANY,     Undefined())                                        \
     V(StartsWith,   JS_ANY,     TaggedFalse())
 
 DECLARE_BUILTINS(LocaleCompare)

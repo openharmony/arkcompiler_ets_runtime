@@ -189,6 +189,7 @@ public:
     // bit operation
     GateRef Int32Or(GateRef x, GateRef y);
     GateRef Int8And(GateRef x, GateRef y);
+    GateRef Int8Xor(GateRef x, GateRef y);
     GateRef Int32And(GateRef x, GateRef y);
     GateRef IntPtrAnd(GateRef x, GateRef y);
     GateRef BoolAnd(GateRef x, GateRef y);
@@ -268,6 +269,7 @@ public:
     GateRef TaggedUndefined();
     // compare operation
     GateRef Int8Equal(GateRef x, GateRef y);
+    GateRef Int8GreaterThanOrEqual(GateRef x, GateRef y);
     GateRef Equal(GateRef x, GateRef y);
     GateRef Int32Equal(GateRef x, GateRef y);
     GateRef Int32NotEqual(GateRef x, GateRef y);

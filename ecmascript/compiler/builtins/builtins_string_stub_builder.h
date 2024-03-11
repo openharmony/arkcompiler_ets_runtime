@@ -44,6 +44,7 @@ public:
     void LocaleCompare(GateRef glue, GateRef thisValue, GateRef numArgs, Variable *res, Label *exit, Label *slowPath);
     void Concat(GateRef glue, GateRef thisValue, GateRef numArgs, Variable *res, Label *exit, Label *slowPath);
     void StartsWith(GateRef glue, GateRef thisValue, GateRef numArgs, Variable *res, Label *exit, Label *slowPath);
+    void ToLowerCase(GateRef glue, GateRef thisValue, GateRef numArgs, Variable *res, Label *exit, Label *slowPath);
 
     GateRef ConvertAndClampRelativeIndex(GateRef index, GateRef length);
     GateRef StringAt(const StringInfoGateRef &stringInfoGate, GateRef index);

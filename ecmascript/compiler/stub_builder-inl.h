@@ -462,6 +462,11 @@ inline GateRef StubBuilder::Int8And(GateRef x, GateRef y)
     return env_->GetBuilder()->Int8And(x, y);
 }
 
+inline GateRef StubBuilder::Int8Xor(GateRef x, GateRef y)
+{
+    return env_->GetBuilder()->Int8Xor(x, y);
+}
+
 inline GateRef StubBuilder::Int32And(GateRef x, GateRef y)
 {
     return env_->GetBuilder()->Int32And(x, y);
@@ -852,6 +857,11 @@ inline GateRef StubBuilder::TaggedUndefined()
 inline GateRef StubBuilder::Int8Equal(GateRef x, GateRef y)
 {
     return env_->GetBuilder()->Int8Equal(x, y);
+}
+
+inline GateRef StubBuilder::Int8GreaterThanOrEqual(GateRef x, GateRef y)
+{
+    return env_->GetBuilder()->Int8GreaterThanOrEqual(x, y);
 }
 
 inline GateRef StubBuilder::Equal(GateRef x, GateRef y)
