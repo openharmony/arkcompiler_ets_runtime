@@ -18,6 +18,7 @@
 #include "ecmascript/builtins/builtins_number.h"
 #include "ecmascript/compiler/builtins/builtins_stubs.h"
 #include "ecmascript/compiler/new_object_stub_builder.h"
+#include "ecmascript/js_string_iterator.h"
 
 namespace panda::ecmascript::kungfu {
 void BuiltinsStringStubBuilder::FromCharCode(GateRef glue, [[maybe_unused]] GateRef thisValue,
@@ -2136,6 +2137,36 @@ void BuiltinsStringStubBuilder::LocaleCompare([[maybe_unused]] GateRef glue, Gat
 #else
     Jump(slowPath);
 #endif
+    }
+}
+
+void BuiltinsStringStubBuilder::GetStringIterator(GateRef glue, GateRef thisValue, [[maybe_unused]] GateRef numArgs,
+                                                  Variable *res, Label *exit, Label *slowPath)
+{
+    auto env = GetEnvironment();
+    DEFVARIABLE(result, VariableType::JS_POINTER(), Undefined());
+
+    Label thisIsHeapObj(env);
+    Branch(TaggedIsHeapObject(thisValue), &thisIsHeapObj, slowPath);
+    Bind(&thisIsHeapObj);
+    {
+        Label thisValueIsString(env);
+        Branch(IsString(thisValue), &thisValueIsString, slowPath);
+        Bind(&thisValueIsString);
+        GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
+        GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
+        GateRef strIterClass = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv,
+                                                 GlobalEnv::STRING_ITERATOR_CLASS_INDEX);
+        Label afterNew(env);
+        NewObjectStubBuilder newBuilder(this);
+        newBuilder.SetParameters(glue, 0);
+        newBuilder.NewJSObject(&result, &afterNew, strIterClass);
+        Bind(&afterNew);
+        Store(VariableType::JS_POINTER(), glue, *result, IntPtr(JSStringIterator::ITERATED_STRING_OFFSET), thisValue);
+        Store(VariableType::INT32(), glue, *result, IntPtr(JSStringIterator::STRING_ITERATOR_NEXT_INDEX_OFFSET),
+              Int32(0));
+        res->WriteVariable(*result);
+        Jump(exit);
     }
 }
 

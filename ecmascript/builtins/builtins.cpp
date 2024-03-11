@@ -1760,7 +1760,8 @@ void Builtins::InitializeString(const JSHandle<GlobalEnv> &env, JSHandle<JSTagge
                     entry.GetLength(), entry.GetBuiltinStubId());
     }
     JSHandle<JSTaggedValue> stringIter = SetAndReturnFunctionAtSymbol(env, stringFuncPrototype,
-        env->GetIteratorSymbol(), "[Symbol.iterator]", BuiltinsString::GetStringIterator, FunctionLength::ZERO);
+        env->GetIteratorSymbol(), "[Symbol.iterator]", BuiltinsString::GetStringIterator, FunctionLength::ZERO,
+        BUILTINS_STUB_ID(GetStringIterator));
 
     // String method
     for (const base::BuiltinFunctionEntry &entry: BuiltinsString::GetStringFunctions()) {
@@ -1801,6 +1802,7 @@ void Builtins::InitializeStringIterator(const JSHandle<GlobalEnv> &env,
     SetStringTagSymbol(env, strIterPrototype, "String Iterator");
 
     env->SetStringIterator(thread_, strIterFunction);
+    env->SetStringIteratorClass(thread_, strIterFuncInstanceHClass);
     env->SetStringIteratorPrototype(thread_, strIterPrototype);
 }
 
@@ -2767,9 +2769,11 @@ JSHandle<JSTaggedValue> Builtins::SetAndReturnFunctionAtSymbol(const JSHandle<Gl
                                                                const JSHandle<JSTaggedValue> &symbol,
                                                                std::string_view name,
                                                                EcmaEntrypoint func,
-                                                               int length) const
+                                                               int length,
+                                                               kungfu::BuiltinsStubCSigns::ID builtinId) const
 {
-    JSHandle<JSFunction> function = factory_->NewJSFunction(env, reinterpret_cast<void *>(func));
+    JSHandle<JSFunction> function = factory_->NewJSFunction(env, reinterpret_cast<void *>(func),
+        FunctionKind::NORMAL_FUNCTION, builtinId);
     JSFunction::SetFunctionLength(thread_, function, JSTaggedValue(length));
     JSHandle<JSTaggedValue> nameString(factory_->NewFromUtf8(name));
     JSHandle<JSFunctionBase> baseFunction(function);
