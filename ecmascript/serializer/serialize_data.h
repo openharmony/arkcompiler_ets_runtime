@@ -24,6 +24,7 @@
 namespace panda::ecmascript {
 constexpr size_t INITIAL_CAPACITY = 64;
 constexpr int CAPACITY_INCREASE_RATE = 2;
+constexpr uint32_t RESERVED_INDEX = 0;
 enum class EncodeFlag : uint8_t {
     // 0x00~0x06 represent new object to different space:
     // 0x00: old space
@@ -73,7 +74,7 @@ public:
     {
         regionRemainSizeVector_.clear();
         free(buffer_);
-        if (!incompleteData_) {
+        if (!incompleteData_ && dataIndex_ != RESERVED_INDEX) {
             Runtime::GetInstance()->RemoveSerializationRoot(thread_, dataIndex_);
         }
     }
@@ -361,11 +362,11 @@ private:
     static constexpr size_t U32_SIZE = 4;
     static constexpr size_t U64_SIZE = 8;
     JSThread *thread_;
-    uint32_t dataIndex_;
-    uint8_t *buffer_ = nullptr;
-    uint64_t sizeLimit_ = 0;
-    size_t bufferSize_ = 0;
-    size_t bufferCapacity_ = 0;
+    uint32_t dataIndex_ {RESERVED_INDEX};
+    uint8_t *buffer_ {nullptr};
+    uint64_t sizeLimit_ {0};
+    size_t bufferSize_ {0};
+    size_t bufferCapacity_ {0};
     size_t oldSpaceSize_ {0};
     size_t nonMovableSpaceSize_ {0};
     size_t machineCodeSpaceSize_ {0};
