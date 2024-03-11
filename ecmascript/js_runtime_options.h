@@ -168,6 +168,8 @@ enum CommandValues {
     OPTION_COMPILER_METHODS_RANGE,
     OPTION_COMPILER_CODEGEN_OPT,
     OPTION_COMPILER_OPT_BC_RANGE_HELP,
+    OPTION_COMPILER_OPT_ESCAPE_ANALYSIS,
+    OPTION_COMPILER_TRACE_ESCAPE_ANALYSIS,
 };
 
 class PUBLIC_API JSRuntimeOptions {
@@ -1496,6 +1498,27 @@ public:
     {
         return optBCRange_;
     }
+    
+    void SetEnableEscapeAnalysis(bool value)
+    {
+        enableEscapeAnalysis_ = value;
+    }
+
+    bool IsEnableEscapeAnalysis() const
+    {
+        return enableEscapeAnalysis_;
+    }
+
+    void SetEnableTraceEscapeAnalysis(bool value)
+    {
+        traceEscapeAnalysis_ = value;
+    }
+
+    bool GetTraceEscapeAnalysis() const
+    {
+        return traceEscapeAnalysis_;
+    }
+
 private:
     static bool StartsWith(const std::string &haystack, const std::string &needle)
     {
@@ -1619,6 +1642,8 @@ private:
     bool testAssert_ {false};
     std::pair<uint32_t, uint32_t> compileMethodsRange_ {0, UINT32_MAX};
     arg_list_t compileCodegenOption_ {{""}};
+    bool enableEscapeAnalysis_ {false};
+    bool traceEscapeAnalysis_ {false};
 };
 }  // namespace panda::ecmascript
 
