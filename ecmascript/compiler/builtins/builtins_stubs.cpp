@@ -816,6 +816,8 @@ DECLARE_BUILTINS_COLLECTION_STUB_BUILDER(Map, Set, VariableType::JS_ANY(), Undef
 DECLARE_BUILTINS_COLLECTION_STUB_BUILDER(Map, Delete, VariableType::JS_ANY(), Undefined());
 // Map.protetype.Has
 DECLARE_BUILTINS_COLLECTION_STUB_BUILDER(Map, Has, VariableType::JS_ANY(), Undefined());
+// Map.protetype.Get
+DECLARE_BUILTINS_COLLECTION_STUB_BUILDER(Map, Get, VariableType::JS_ANY(), Undefined());
 #undef DECLARE_BUILTINS_COLLECTION_STUB_BUILDER
 
 #define DECLARE_BUILTINS_NUMBER_STUB_BUILDER(type, method, retType, retDefaultValue)                \
