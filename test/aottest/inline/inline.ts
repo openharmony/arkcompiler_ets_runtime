@@ -41,7 +41,5 @@ function f523() {
     throw "error";
     function f537() {}
 }
-try {
-    f523();
-    f523();
-} catch (e) {}
+f523();
+f523();
