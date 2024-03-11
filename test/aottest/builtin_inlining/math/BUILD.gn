@@ -32,7 +32,7 @@ group("ark_aot_builtin_inlining_math_test") {
     "Tan",
     "Tanh",
     "Abs",
-    "Pow"
+    "Pow",
   ]
 
   deps = []

@@ -38,7 +38,7 @@ private:
     };
 
     template <MathTrigonometricCheck CHECK = MathTrigonometricCheck::NOT_NAN>
-    void LowerGeneralUnaryMath(GateRef gate, RuntimeStubCSigns::ID stub_id);
+    void LowerGeneralUnaryMath(GateRef gate, RuntimeStubCSigns::ID stubId);
     void LowerMathAtan2(GateRef gate);
     void LowerAbs(GateRef gate);
     void LowerMathPow(GateRef gate);

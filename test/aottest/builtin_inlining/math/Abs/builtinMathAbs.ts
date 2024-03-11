@@ -108,9 +108,8 @@ try {
 } catch (e) {
 }
 
-let obj = {
-    valueOf: () => { return -23; }
-};
+let obj = {};
+obj.valueOf = (() => { return -23; })
 print(Math.abs(obj)); // 23
 
 function Throwing() {

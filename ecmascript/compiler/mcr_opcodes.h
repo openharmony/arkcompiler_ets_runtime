@@ -87,7 +87,7 @@ namespace panda::ecmascript::kungfu {
 
 #define MCR_GATE_META_DATA_LIST_FOR_CALL(V)                                    \
     V(TypedCall, TYPEDCALL, GateFlags::HAS_FRAME_STATE, 1, 1, value)           \
-    V(TypedFastCall, TYPEDFASTCALL, GateFlags::HAS_FRAME_STATE, 1, 1, value)   \
+    V(TypedFastCall, TYPEDFASTCALL, GateFlags::HAS_FRAME_STATE, 1, 1, value)
 
 #define MCR_GATE_META_DATA_LIST_WITH_VALUE(V)                                                           \
     V(LoadConstOffset,             LOAD_CONST_OFFSET,              GateFlags::NO_WRITE,  0, 1, 1)       \
@@ -142,16 +142,8 @@ namespace panda::ecmascript::kungfu {
 }
 
 #define MCR_GATE_META_DATA_LIST_WITH_VALUE_IN(V)                                                 \
-<<<<<<< HEAD
-    V(TypedCreateObjWithBuffer, TYPED_CREATE_OBJ_WITH_BUFFER, GateFlags::CHECKABLE, 1, 1, value)
-=======
-    V(TypedCreateObjWithBuffer, TYPED_CREATE_OBJ_WITH_BUFFER, GateFlags::NONE_FLAG, 1, 1, value) \
-<<<<<<< HEAD
+    V(TypedCreateObjWithBuffer, TYPED_CREATE_OBJ_WITH_BUFFER, GateFlags::CHECKABLE, 1, 1, value) \
     V(TypedCallCheck, TYPED_CALL_CHECK, GateFlags::CHECKABLE, 1, 1, value)  
->>>>>>> bf72f67fb (Initial support of builtin inlining)
-=======
-    V(TypedCallCheck, TYPED_CALL_CHECK, GateFlags::CHECKABLE, 1, 1, value)
->>>>>>> 4e2d019da (Implement inlining of trigonometric builtins)
 
 #define MCR_GATE_META_DATA_LIST_WITH_SIZE(V)                                       \
     MCR_GATE_META_DATA_LIST_WITH_VALUE_IN(V)

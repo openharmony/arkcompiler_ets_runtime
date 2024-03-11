@@ -51,7 +51,8 @@ private:
         ALL
     };
 
-    ConvertSupport ToConvertSupport(ConvertToNumber convert) {
+    ConvertSupport ToConvertSupport(ConvertToNumber convert)
+    {
         return convert == ConvertToNumber::DISABLE ? ConvertSupport::DISABLE : ConvertSupport::ENABLE;
     }
 
@@ -123,7 +124,8 @@ private:
 
     GateRef CheckAndConvertToInt32(GateRef gate, GateType gateType, ConvertSupport support = ConvertSupport::ENABLE,
                                    OpType type = OpType::NORMAL);
-    GateRef CheckAndConvertToFloat64(GateRef gate, GateType gateType, ConvertToNumber convert = ConvertToNumber::BOOL_ONLY);
+    GateRef CheckAndConvertToFloat64(GateRef gate, GateType gateType,
+                                    ConvertToNumber convert = ConvertToNumber::BOOL_ONLY);
     GateRef CheckAndConvertToTagged(GateRef gate, GateType gateType, ConvertToNumber convert);
     GateRef CheckAndConvertToBool(GateRef gate, GateType gateType);
     GateRef ConvertToTagged(GateRef gate);

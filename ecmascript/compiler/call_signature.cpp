@@ -1850,21 +1850,6 @@ DEF_CALL_SIGNATURE(InsertOldToNewRSet)
     callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
 }
 
-DEF_CALL_SIGNATURE(FloatMod)
-{
-    // 2 : 2 input parameters
-    CallSignature index("FloatMod", 0, 2, ArgumentsOrder::DEFAULT_ORDER, VariableType::FLOAT64());
-    *callSign = index;
-    // 2 : 2 input parameters
-    std::array<VariableType, 2> params = {
-        VariableType::FLOAT64(),
-        VariableType::FLOAT64(),
-    };
-    callSign->SetParameters(params.data());
-    callSign->SetGCLeafFunction(true);
-    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
-}
-
 DEF_CALL_SIGNATURE(FloatSqrt)
 {
     // 1 : 1 input parameters
@@ -1914,35 +1899,27 @@ DEF_FLOAT_UNARY_CALL_SIGNATURE_BY_NAME(FloatLog1p)
 
 #undef DEF_FLOAT_UNARY_CALL_SIGNATURE_BY_NAME
 
-DEF_CALL_SIGNATURE(FloatAtan2)
-{
-    // 2 : 2 input parameters
-    CallSignature index("FloatAtan2", 0, 2, ArgumentsOrder::DEFAULT_ORDER, VariableType::FLOAT64());
-    *callSign = index;
-    // 2 : 2 input parameters
-    std::array<VariableType, 2> params = {
-        VariableType::FLOAT64(),
-        VariableType::FLOAT64(),
-    };
-    callSign->SetParameters(params.data());
-    callSign->SetGCLeafFunction(true);
-    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
-}
+#define DEF_FLOAT_BINARY_CALL_SIGNATURE_BY_NAME(NAME)                                              \
+    DEF_CALL_SIGNATURE(NAME)                                                                       \
+    {                                                                                              \
+        /* 2 : 2 input parameters */                                                               \
+        CallSignature index(#NAME, 0, 2, ArgumentsOrder::DEFAULT_ORDER, VariableType::FLOAT64());  \
+        *callSign = index;                                                                         \
+        /* 2 : 2 input parameters */                                                               \
+        std::array<VariableType, 2> params = {                                                     \
+            VariableType::FLOAT64(),                                                               \
+            VariableType::FLOAT64(),                                                               \
+        };                                                                                         \
+        callSign->SetParameters(params.data());                                                    \
+        callSign->SetGCLeafFunction(true);                                                         \
+        callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);                    \
+    }
 
-DEF_CALL_SIGNATURE(FloatPow)
-{
-    // 2 : 2 input parameters
-    CallSignature index("FloatPow", 0, 2, ArgumentsOrder::DEFAULT_ORDER, VariableType::FLOAT64());
-    *callSign = index;
-    // 2 : 2 input parameters
-    std::array<VariableType, 2> params = {
-        VariableType::FLOAT64(),
-        VariableType::FLOAT64(),
-    };
-    callSign->SetParameters(params.data());
-    callSign->SetGCLeafFunction(true);
-    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
-}
+DEF_FLOAT_BINARY_CALL_SIGNATURE_BY_NAME(FloatMod)
+DEF_FLOAT_BINARY_CALL_SIGNATURE_BY_NAME(FloatAtan2)
+DEF_FLOAT_BINARY_CALL_SIGNATURE_BY_NAME(FloatPow)
+
+#undef DEF_FLOAT_BINARY_CALL_SIGNATURE_BY_NAME
 
 DEF_CALL_SIGNATURE(FindElementWithCache)
 {

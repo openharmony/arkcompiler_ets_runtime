@@ -966,7 +966,8 @@ GateRef NumberSpeculativeRetype::CheckAndConvertToInt32(GateRef gate, GateType g
     return result;
 }
 
-GateRef NumberSpeculativeRetype::CheckAndConvertToFloat64(GateRef gate, GateType gateType, ConvertToNumber convert)
+GateRef NumberSpeculativeRetype::CheckAndConvertToFloat64(GateRef gate, GateType gateType,
+                                                          ConvertToNumber convert)
 {
     auto result = TryConvertConstant(gate, false);
     if (result != Circuit::NullGate()) {

@@ -87,7 +87,6 @@ GateRef TypedNativeInlineLowering::VisitGate(GateRef gate)
 void TypedNativeInlineLowering::LowerMathPow(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
-    builder_.SetEnvironment(&env);
     GateRef base = acc_.GetValueIn(gate, 0);
     GateRef exp = acc_.GetValueIn(gate, 1);
 
@@ -117,10 +116,9 @@ void TypedNativeInlineLowering::LowerMathPow(GateRef gate)
 }
 
 template <TypedNativeInlineLowering::MathTrigonometricCheck CHECK>
-void TypedNativeInlineLowering::LowerGeneralUnaryMath(GateRef gate, RuntimeStubCSigns::ID stub_id)
+void TypedNativeInlineLowering::LowerGeneralUnaryMath(GateRef gate, RuntimeStubCSigns::ID stubId)
 {
     Environment env(gate, circuit_, &builder_);
-    builder_.SetEnvironment(&env);
 
     Label exit(&builder_);
     Label checkNotPassed(&builder_);
@@ -129,13 +127,14 @@ void TypedNativeInlineLowering::LowerGeneralUnaryMath(GateRef gate, RuntimeStubC
     DEFVALUE(result, (&builder_), VariableType::FLOAT64(), builder_.Double(base::NAN_VALUE));
 
     GateRef check;
+    const double doubleOne = 1.0;
     if constexpr (CHECK == TypedNativeInlineLowering::MathTrigonometricCheck::NOT_NAN) {
         check = builder_.DoubleIsNAN(value);
     } else if constexpr (CHECK == TypedNativeInlineLowering::MathTrigonometricCheck::LT_ONE) {
-        check = builder_.DoubleLessThan(value, builder_.Double(1.));
+        check = builder_.DoubleLessThan(value, builder_.Double(doubleOne));
     } else if constexpr (CHECK == TypedNativeInlineLowering::MathTrigonometricCheck::ABS_GT_ONE) {
-        auto gt = builder_.DoubleGreaterThan(value, builder_.Double(1.));
-        auto lt = builder_.DoubleLessThan(value, builder_.Double(-1.));
+        auto gt = builder_.DoubleGreaterThan(value, builder_.Double(doubleOne));
+        auto lt = builder_.DoubleLessThan(value, builder_.Double(-doubleOne));
         check = builder_.BoolOr(gt, lt);
     }
 
@@ -143,7 +142,7 @@ void TypedNativeInlineLowering::LowerGeneralUnaryMath(GateRef gate, RuntimeStubC
     builder_.Bind(&checkNotPassed);
     {
         GateRef glue = acc_.GetGlueFromArgList();
-        result = builder_.CallNGCRuntime(glue, stub_id, Gate::InvalidGateRef, {value}, gate);
+        result = builder_.CallNGCRuntime(glue, stubId, Gate::InvalidGateRef, {value}, gate);
         builder_.Jump(&exit);
     }
     builder_.Bind(&exit);
@@ -153,8 +152,6 @@ void TypedNativeInlineLowering::LowerGeneralUnaryMath(GateRef gate, RuntimeStubC
 void TypedNativeInlineLowering::LowerMathAtan2(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
-    builder_.SetEnvironment(&env);
-
     GateRef y = acc_.GetValueIn(gate, 0);
     GateRef x = acc_.GetValueIn(gate, 1);
 
@@ -195,12 +192,12 @@ void TypedNativeInlineLowering::LowerMathAtan2(GateRef gate)
             builder_.Branch(yPositiveCheck, &label6, &label7);
             builder_.Bind(&label6);
             {
-                result = builder_.Double(+0.);
+                result = builder_.Double(0.0);
                 builder_.Jump(&exit);
             }
             builder_.Bind(&label7);
             {
-                result = builder_.Double(-0.);
+                result = builder_.Double(-0.0);
                 builder_.Jump(&exit);
             }
         }
@@ -225,8 +222,6 @@ void TypedNativeInlineLowering::LowerMathAtan2(GateRef gate)
 void TypedNativeInlineLowering::LowerAbs(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
-    builder_.SetEnvironment(&env);
-
     Label exit(&builder_);
     GateRef param = acc_.GetValueIn(gate, 0);
     DEFVALUE(result, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());

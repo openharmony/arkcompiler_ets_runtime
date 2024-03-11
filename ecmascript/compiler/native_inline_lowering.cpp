@@ -168,7 +168,8 @@ void NativeInlineLowering::TryInlineMathUnaryBuiltin(GateRef gate, size_t argc, 
     acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), ret);
 }
 
-void NativeInlineLowering::TryInlineMathBinaryBuiltin(GateRef gate, size_t argc, BuiltinsStubCSigns::ID id, const GateMetaData* op)
+void NativeInlineLowering::TryInlineMathBinaryBuiltin(GateRef gate, size_t argc, BuiltinsStubCSigns::ID id,
+                                                      const GateMetaData* op)
 {
     Environment env(gate, circuit_, &builder_);
     if (!Uncheck()) {
@@ -176,7 +177,7 @@ void NativeInlineLowering::TryInlineMathBinaryBuiltin(GateRef gate, size_t argc,
                                  builder_.IntPtr(static_cast<int64_t>(id)));
     }
     // NOTE(schernykh): Add tracing
-    if (argc < 2) {
+    if (argc < 2U) {
         acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), builder_.NanValue());
         return;
     }
