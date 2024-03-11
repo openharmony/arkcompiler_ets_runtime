@@ -722,7 +722,7 @@ void TypedBytecodeLowering::LowerTypedStObjByName(GateRef gate)
                     { receiverHC, newHolderHC, propKey }, gate);
                 builder_.Jump(&notProto);
                 builder_.Bind(&notProto);
-                MemoryOrder order = MemoryOrder::Create(MemoryOrder::MEMORY_ORDER_RELEASE);
+                MemoryOrder order = MemoryOrder::NeedBarrierAndAtomic();
                 builder_.StoreConstOffset(VariableType::JS_ANY(), tacc.GetReceiver(),
                     TaggedObject::HCLASS_OFFSET, newHolderHC, order);
                 if (!tacc.GetAccessInfo(i).Plr().IsInlinedProps()) {
@@ -1933,20 +1933,23 @@ void TypedBytecodeLowering::LowerCreateEmptyObject(GateRef gate)
     GateRef size = builder_.IntPtr(objectHC->GetObjectSize());
 
     builder_.StartAllocate();
-    GateRef object = builder_.HeapAlloc(size, GateType::TaggedValue(), RegionSpaceFlag::IN_YOUNG_SPACE);
+    GateRef object = builder_.HeapAlloc(glue_, size, GateType::TaggedValue(), RegionSpaceFlag::IN_YOUNG_SPACE);
 
     // initialization
     for (size_t offset = JSObject::SIZE; offset < objectSize; offset += JSTaggedValue::TaggedTypeSize()) {
         builder_.StoreConstOffset(VariableType::INT64(), object, offset, builder_.Undefined());
     }
-    builder_.StoreConstOffset(VariableType::JS_POINTER(), object, JSObject::HCLASS_OFFSET, hclass);
+    builder_.StoreConstOffset(VariableType::JS_POINTER(), object, JSObject::HCLASS_OFFSET, hclass,
+        MemoryOrder::NeedBarrierAndAtomic());
     builder_.StoreConstOffset(VariableType::INT64(), object, JSObject::HASH_OFFSET,
                               builder_.Int64(JSTaggedValue(0).GetRawData()));
-    builder_.StoreConstOffset(VariableType::JS_POINTER(), object, JSObject::PROPERTIES_OFFSET, emptyArray);
-    builder_.StoreConstOffset(VariableType::JS_POINTER(), object, JSObject::ELEMENTS_OFFSET, emptyArray);
-    builder_.FinishAllocate(object);
+    builder_.StoreConstOffset(VariableType::JS_POINTER(), object, JSObject::PROPERTIES_OFFSET, emptyArray,
+        MemoryOrder::NoBarrier());
+    builder_.StoreConstOffset(VariableType::JS_POINTER(), object, JSObject::ELEMENTS_OFFSET, emptyArray,
+        MemoryOrder::NoBarrier());
+    GateRef result = builder_.FinishAllocate(object);
 
-    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), object);
+    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
 }
 
 void TypedBytecodeLowering::LowerTypedStOwnByValue(GateRef gate)

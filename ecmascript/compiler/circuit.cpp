@@ -459,6 +459,12 @@ GateRef Circuit::GetConstantGate(MachineType machineType, uint64_t value,
     return gate;
 }
 
+GateRef Circuit::GetConstantGateWithoutCache(MachineType machineType, uint64_t value, GateType type)
+{
+    auto gate = NewGate(metaBuilder_.Constant(value), machineType, type);
+    return gate;
+}
+
 void Circuit::ClearConstantCache(MachineType machineType, uint64_t value, GateType type)
 {
     auto search = constantCache_.find({machineType, value, type});

@@ -73,7 +73,7 @@ namespace panda::ecmascript::kungfu {
 #define MCR_GATE_META_DATA_LIST_WITH_VALUE(V)                                                           \
     V(LoadConstOffset,             LOAD_CONST_OFFSET,              GateFlags::NO_WRITE,  0, 1, 1)       \
     V(LoadHClassFromConstpool,     LOAD_HCLASS_FROM_CONSTPOOL,     GateFlags::NO_WRITE,  0, 1, 1)       \
-    V(StoreConstOffset,            STORE_CONST_OFFSET,             GateFlags::NONE_FLAG, 1, 1, 2)       \
+    V(StoreConstOffset,            STORE_CONST_OFFSET,             GateFlags::NONE_FLAG, 0, 1, 2)       \
     V(LoadElement,                 LOAD_ELEMENT,                   GateFlags::NO_WRITE,  1, 1, 2)       \
     V(StoreElement,                STORE_ELEMENT,                  GateFlags::NONE_FLAG, 1, 1, 3)       \
     V(StoreMemory,                 STORE_MEMORY,                   GateFlags::NONE_FLAG, 1, 1, 3)       \
@@ -87,7 +87,7 @@ namespace panda::ecmascript::kungfu {
     V(GetGlobalEnvObjHClass,       GET_GLOBAL_ENV_OBJ_HCLASS,      GateFlags::NO_WRITE,  0, 1, 1)       \
     V(GetGlobalConstantValue,      GET_GLOBAL_CONSTANT_VALUE,      GateFlags::NO_WRITE,  0, 1, 0)       \
     V(HClassStableArrayCheck,      HCLASS_STABLE_ARRAY_CHECK,      GateFlags::CHECKABLE, 1, 1, 1)       \
-    V(HeapAlloc,                   HEAP_ALLOC,                     GateFlags::NONE_FLAG, 1, 1, 1)       \
+    V(HeapAlloc,                   HEAP_ALLOC,                     GateFlags::NONE_FLAG, 0, 1, 2)       \
     V(RangeCheckPredicate,         RANGE_CHECK_PREDICATE,          GateFlags::CHECKABLE, 1, 1, 2)       \
     V(BuiltinPrototypeHClassCheck, BUILTIN_PROTOTYPE_HCLASS_CHECK, GateFlags::CHECKABLE, 1, 1, 1)       \
     V(IsSpecificObjectType,        IS_SPECIFIC_OBJECT_TYPE,        GateFlags::NO_WRITE,  1, 1, 1)       \

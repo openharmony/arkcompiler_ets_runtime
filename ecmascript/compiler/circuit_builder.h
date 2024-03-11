@@ -53,6 +53,7 @@ class Variable;
 class NativeInlineLowering;
 class TypedHCRLowering;
 class StringBuilderOptimizer;
+class PostSchedule;
 
 #define BINARY_ARITHMETIC_METHOD_LIST_WITH_BITWIDTH(V)                    \
     V(Int16Add, Add, MachineType::I16)                                    \
@@ -192,6 +193,7 @@ public:
         int valueCounts, VariableType type = VariableType::VOID());
     GateRef Selector(OpCode opcode, GateRef control, const std::vector<GateRef> &values,
         int valueCounts, VariableType type = VariableType::VOID());
+    GateRef Nop();
     GateRef Return(GateRef state, GateRef depend, GateRef value);
     GateRef ReturnVoid(GateRef state, GateRef depend);
     GateRef Goto(GateRef state);
@@ -425,7 +427,7 @@ public:
     inline GateRef IsJsProxy(GateRef obj);
     GateRef IsJSHClass(GateRef obj);
     inline void StoreHClass(GateRef glue, GateRef object, GateRef hClass);
-    inline void StoreHClassWithoutBarrier(GateRef object, GateRef hClass);
+    inline void StoreHClassWithoutBarrier(GateRef glue, GateRef object, GateRef hClass);
     GateRef IsStabelArray(GateRef glue, GateRef obj);
     inline void StorePrototype(GateRef glue, GateRef hclass, GateRef prototype);
     void SetExtensibleToBitfield(GateRef glue, GateRef obj, bool isExtensible);
@@ -589,7 +591,7 @@ public:
     inline GateRef JudgeAotAndFastCall(GateRef jsFunc, JudgeMethodType type);
     inline GateRef JudgeAotAndFastCallWithMethod(GateRef method, JudgeMethodType type);
     GateRef ComputeTaggedArraySize(GateRef length);
-    GateRef HeapAlloc(GateRef size, GateType type, RegionSpaceFlag flag);
+    GateRef HeapAlloc(GateRef glue, GateRef size, GateType type, RegionSpaceFlag flag);
     GateRef TaggedIsHeapObjectOp(GateRef value);
     GateRef IsSpecificObjectType(GateRef obj, JSType type);
     GateRef IsMarkerCellValid(GateRef cell);
@@ -727,11 +729,10 @@ public:
     GateRef Load(VariableType type, GateRef base, GateRef offset, MemoryOrder order = MemoryOrder::Default());
     GateRef Load(VariableType type, GateRef base, GateRef offset, GateRef depend,
         MemoryOrder order = MemoryOrder::Default());
+    GateRef Load(VariableType type, GateRef addr, MemoryOrder order = MemoryOrder::Default());
     void Store(VariableType type, GateRef glue, GateRef base, GateRef offset, GateRef value,
         MemoryOrder order = MemoryOrder::Default());
-    void StoreWithBarrier(VariableType type, GateRef glue, GateRef base, GateRef offset, GateRef value,
-        MemoryOrder order = MemoryOrder::Default());
-    void StoreWithNoBarrier(VariableType type, GateRef base, GateRef offset, GateRef value,
+    void StoreWithoutBarrier(VariableType type, GateRef addr, GateRef value,
         MemoryOrder order = MemoryOrder::Default());
 
     // cast operation
@@ -824,6 +825,7 @@ private:
     friend SlowPathLowering;
     friend NativeInlineLowering;
     friend TypedHCRLowering;
+    friend PostSchedule;
 };
 
 }  // namespace panda::ecmascript::kungfu

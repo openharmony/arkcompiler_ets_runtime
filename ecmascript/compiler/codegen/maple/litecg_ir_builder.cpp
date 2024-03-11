@@ -489,7 +489,7 @@ void LiteCGIRBuilder::InitializeHandlers()
         {OpCode::ICMP, &LiteCGIRBuilder::HandleCmp},
         {OpCode::FCMP, &LiteCGIRBuilder::HandleCmp},
         {OpCode::LOAD, &LiteCGIRBuilder::HandleLoad},
-        {OpCode::STORE, &LiteCGIRBuilder::HandleStore},
+        {OpCode::STORE_WITHOUT_BARRIER, &LiteCGIRBuilder::HandleStore},
         {OpCode::SIGNED_INT_TO_FLOAT, &LiteCGIRBuilder::HandleChangeInt32ToDouble},
         {OpCode::UNSIGNED_INT_TO_FLOAT, &LiteCGIRBuilder::HandleChangeUInt32ToDouble},
         {OpCode::FLOAT_TO_SIGNED_INT, &LiteCGIRBuilder::HandleChangeDoubleToInt32},
@@ -1873,7 +1873,9 @@ void LiteCGIRBuilder::VisitExtractValue(GateRef gate, GateRef e1, GateRef e2)
 
 void LiteCGIRBuilder::HandleStore(GateRef gate)
 {
-    VisitStore(gate, acc_.GetIn(gate, 2), acc_.GetIn(gate, 1));  // 2:baseAddr gate, 1:data gate
+    GateRef addr = acc_.GetValueIn(gate, 0);
+    GateRef value = acc_.GetValueIn(gate, 1);
+    VisitStore(gate, addr, value);
 }
 
 void LiteCGIRBuilder::VisitStore(GateRef gate, GateRef base, GateRef value)

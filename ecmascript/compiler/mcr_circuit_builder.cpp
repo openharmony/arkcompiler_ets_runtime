@@ -836,12 +836,10 @@ GateRef CircuitBuilder::StoreConstOffset(VariableType type,
     GateRef receiver, size_t offset, GateRef value, MemoryOrder order)
 {
     auto currentLabel = env_->GetCurrentLabel();
-    auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
     auto bits = LoadStoreConstOffsetAccessor::ToValue(offset, order);
     auto ret = GetCircuit()->NewGate(circuit_->StoreConstOffset(bits), type.GetMachineType(),
-        { currentControl, currentDepend, receiver, value }, type.GetGateType());
-    currentLabel->SetControl(ret);
+        { currentDepend, receiver, value }, type.GetGateType());
     currentLabel->SetDepend(ret);
     return ret;
 }
@@ -953,14 +951,12 @@ GateRef CircuitBuilder::FinishAllocate(GateRef value)
     return newGate;
 }
 
-GateRef CircuitBuilder::HeapAlloc(GateRef size, GateType type, RegionSpaceFlag flag)
+GateRef CircuitBuilder::HeapAlloc(GateRef glue, GateRef size, GateType type, RegionSpaceFlag flag)
 {
     auto currentLabel = env_->GetCurrentLabel();
-    auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
     auto ret = GetCircuit()->NewGate(circuit_->HeapAlloc(flag), MachineType::I64,
-                                     { currentControl, currentDepend, size }, type);
-    currentLabel->SetControl(ret);
+                                     { currentDepend, glue, size }, type);
     currentLabel->SetDepend(ret);
     return ret;
 }

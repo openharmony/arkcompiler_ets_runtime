@@ -37,6 +37,7 @@
 #include "ecmascript/compiler/ntype_bytecode_lowering.h"
 #include "ecmascript/compiler/ntype_hcr_lowering.h"
 #include "ecmascript/compiler/number_speculative_runner.h"
+#include "ecmascript/compiler/post_schedule.h"
 #include "ecmascript/compiler/scheduler.h"
 #include "ecmascript/compiler/string_builder_optimizer.h"
 #include "ecmascript/compiler/slowpath_lowering.h"
@@ -702,6 +703,8 @@ public:
         TimeScope timescope("SchedulingPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
         bool enableLog = data->GetLog()->EnableMethodCIRLog();
         Scheduler::Run(data->GetCircuit(), data->GetCfg(), data->GetMethodName(), enableLog);
+        Chunk chunk(data->GetNativeAreaAllocator());
+        PostSchedule(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk).Run(data->GetCfg());
         return true;
     }
 };
@@ -735,6 +738,7 @@ public:
         bool liteCG = data->GetTSManager()->GetEcmaVM()->GetJSOptions().IsCompilerEnableLiteCG();
         GraphLinearizer(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk, false, licm, liteCG)
             .Run(data->GetCfg());
+        PostSchedule(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk).Run(data->GetCfg());
         return true;
     }
 };
