@@ -50,7 +50,8 @@ bool JitPassManager::Compile(JSHandle<JSFunction> &jsFunction, AOTFileGenerator 
                                           lOptions_,
                                           log_,
                                           log_->OutputASM(),
-                                          maxMethodsInModule_);
+                                          maxMethodsInModule_,
+                                          vm_->GetJSOptions().GetCompilerMethodsRange());
     cmpDriver_->CompileMethod(jsFunction, [this, &fileName] (const CString recordName,
                                                              const std::string &methodName,
                                                              MethodLiteral *methodLiteral,
@@ -211,7 +212,8 @@ bool PassManager::Compile(JSPandaFile *jsPandaFile, const std::string &fileName,
                                 &lOptions,
                                 log_,
                                 log_->OutputASM(),
-                                maxMethodsInModule_);
+                                maxMethodsInModule_,
+                                vm_->GetJSOptions().GetCompilerMethodsRange());
 
     cmpDriver.Run([this, &fileName, &collector](const CString recordName,
                                                 const std::string &methodName,
@@ -255,7 +257,8 @@ bool PassManager::Compile(JSPandaFile *jsPandaFile, const std::string &fileName,
         }
 
         PassData data(&builder, &circuit, &ctx, log_, fullName, &methodInfo, hasTypes, recordName,
-                      methodLiteral, methodOffset, vm_->GetNativeAreaAllocator(), decoder, passOptions_);
+                      methodLiteral, methodOffset, vm_->GetNativeAreaAllocator(), decoder, passOptions_,
+                      optBCRange_);
         PassRunner<PassData> pipeline(&data);
         if (data.GetMethodLiteral()->HasDebuggerStmt()) {
             data.AbortCompilation();

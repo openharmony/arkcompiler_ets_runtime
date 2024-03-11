@@ -46,9 +46,9 @@
     /* String.prototype.charCodeAt ( pos ) */                                       \
     V("charCodeAt",        CharCodeAt,        1, StringCharCodeAt)                  \
     /* String.prototype.codePointAt ( pos ) */                                      \
-    V("codePointAt",       CodePointAt,       1, INVALID)                           \
+    V("codePointAt",       CodePointAt,       1, StringCodePointAt)                 \
     /* String.prototype.concat ( ...args ) */                                       \
-    V("concat",            Concat,            1, INVALID)                           \
+    V("concat",            Concat,            1, StringConcat)                      \
     /* String.prototype.endsWith ( searchString [ , endPosition ] ) */              \
     V("endsWith",          EndsWith,          1, INVALID)                           \
     /* String.prototype.includes ( searchString [ , position ] ) */                 \
@@ -65,6 +65,10 @@
     V("matchAll",          MatchAll,          1, INVALID)                           \
     /* String.prototype.normalize ( [ form ] ) */                                   \
     V("normalize",         Normalize,         0, INVALID)                           \
+    /* String.prototype.isWellFormed ( ) */                                         \
+    V("isWellFormed",      IsWellFormed,      0, INVALID)                           \
+    /* String.prototype.toWellFormed ( ) */                                         \
+    V("toWellFormed",      ToWellFormed,      0, INVALID)                           \
     /* String.prototype.padEnd ( maxLength [ , fillString ] ) */                    \
     V("padEnd",            PadEnd,            1, INVALID)                           \
     /* String.prototype.padStart ( maxLength [ , fillString ] ) */                  \
@@ -82,7 +86,7 @@
     /* String.prototype.split ( separator, limit ) */                               \
     V("split",             Split,             2, INVALID)                           \
     /* String.prototype.startsWith ( searchString [ , position ] ) */               \
-    V("startsWith",        StartsWith,        1, INVALID)                           \
+    V("startsWith",        StartsWith,        1, StringStartsWith)                  \
     /* In Annex B.2.2: Additional Properties of the String.prototype Object */      \
     /* String.prototype.substr ( start, length ) */                                 \
     V("substr",            SubStr,            2, INVALID)                           \
@@ -93,7 +97,7 @@
     /* String.prototype.toLocaleUpperCase ( [ reserved1 [ , reserved2 ] ] ) */      \
     V("toLocaleUpperCase", ToLocaleUpperCase, 0, INVALID)                           \
     /* String.prototype.toLowerCase ( ) */                                          \
-    V("toLowerCase",       ToLowerCase,       0, INVALID)                           \
+    V("toLowerCase",       ToLowerCase,       0, StringToLowerCase)                 \
     /* String.prototype.toString ( ) */                                             \
     V("toString",          ToString,          0, INVALID)                           \
     /* String.prototype.toUpperCase ( ) */                                          \
@@ -168,6 +172,10 @@ public:
     static JSTaggedValue MatchAll(EcmaRuntimeCallInfo *argv);
     // 21.1.3.12
     static JSTaggedValue Normalize(EcmaRuntimeCallInfo *argv);
+
+    static JSTaggedValue IsWellFormed(EcmaRuntimeCallInfo *argv);
+
+    static JSTaggedValue ToWellFormed(EcmaRuntimeCallInfo *argv);
 
     static JSTaggedValue PadStart(EcmaRuntimeCallInfo *argv);
 
@@ -270,6 +278,15 @@ private:
         JSThread *thread, EcmaVM *ecmaVm,
         const JSHandle<EcmaString> &thisString, const JSHandle<EcmaString> &seperatorString,
         uint32_t thisLength, uint32_t seperatorLength, uint32_t lim = UINT32_MAX - 1);
+    static bool IsUTF16HighSurrogate(uint16_t ch)
+    {
+        return base::utf_helper::DECODE_LEAD_LOW <= ch && ch <= base::utf_helper::DECODE_LEAD_HIGH;
+    }
+    static bool IsUTF16LowSurrogate(uint16_t ch)
+    {
+        return base::utf_helper::DECODE_TRAIL_LOW <= ch && ch <= base::utf_helper::DECODE_TRAIL_HIGH;
+    }
+    static uint32_t UTF16SurrogatePairToCodePoint(uint16_t lead, uint16_t trail);
     // 21.1.3.17.1
 };
 

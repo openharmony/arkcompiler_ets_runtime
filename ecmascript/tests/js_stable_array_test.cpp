@@ -13,6 +13,8 @@
  * limitations under the License.
  */
 
+#include "ecmascript/element_accessor.h"
+#include "ecmascript/element_accessor-inl.h"
 #include "ecmascript/js_stable_array.h"
 #include "ecmascript/tests/test_helper.h"
 
@@ -86,10 +88,10 @@ HWTEST_F_L0(JSStableArrayTest, Push)
               JSTaggedValue(lengthArr + numElementsPush));
     TestHelper::TearDownFrame(thread, prev);
 
-    JSHandle<TaggedArray> handleTagArr(thread, TaggedArray::Cast(handleArr->GetElements().GetTaggedObject()));
+    JSHandle<JSObject> arrObjHandle(handleArr);
     EXPECT_EQ(handleArr->GetArrayLength(), static_cast<size_t>(lengthArr + numElementsPush));
     for (int32_t i = lengthArr; i < lengthArr + numElementsPush; i++) {
-        EXPECT_EQ(handleTagArr->Get(i).GetNumber(), i - lengthArr);
+        EXPECT_EQ(ElementAccessor::Get(arrObjHandle, i).GetNumber(), i - lengthArr);
     }
 }
 
@@ -176,11 +178,9 @@ HWTEST_F_L0(JSStableArrayTest, Splice)
     JSHandle<JSArray> handleArrCombinedOfDeletedElements(handleTagValArrCombinedOfDeletedElements);
     EXPECT_EQ(handleArrCombinedOfDeletedElements->GetArrayLength(), actualDeleteCount);
     JSHandle<JSObject> handleObjArrCombinedOfDeletedElements(handleTagValArrCombinedOfDeletedElements);
-    JSHandle<JSTaggedValue> handleTagValTagArrCombinedOfDeletedElements(thread,
-        handleObjArrCombinedOfDeletedElements->GetElements());
-    JSHandle<TaggedArray> handleTagArrCombinedOfDeletedElements(handleTagValTagArrCombinedOfDeletedElements);
     for (int32_t i = 0; i < actualDeleteCount; i++) {
-        EXPECT_EQ(handleTagArrCombinedOfDeletedElements->Get(i).GetNumber(), (offsetStartInsert + i) * 10);
+        EXPECT_EQ(ElementAccessor::Get(handleObjArrCombinedOfDeletedElements, i).GetNumber(),
+                  (offsetStartInsert + i) * 10);
     }
 
     // Check the JSArray(in-out-parameter) changed through calling the Splice function.
@@ -452,22 +452,18 @@ HWTEST_F_L0(JSStableArrayTest, With)
     JSHandle<JSTaggedValue> destTaggedValue(thread, resultArr);
     JSHandle<JSArray> destArr(destTaggedValue);
     JSHandle<TaggedArray> destTaggedArr(thread, TaggedArray::Cast(destArr->GetElements().GetTaggedObject()));
-    EXPECT_EQ(handleTagArr->Get(
-        static_cast<uint32_t>(StableArrayIndex::STABLE_ARRAY_INDEX_0)).GetNumber(), INT_VALUE_0);
-    EXPECT_EQ(handleTagArr->Get(
-        static_cast<uint32_t>(StableArrayIndex::STABLE_ARRAY_INDEX_1)).GetNumber(), INT_VALUE_1);
-    EXPECT_EQ(handleTagArr->Get(
-        static_cast<uint32_t>(StableArrayIndex::STABLE_ARRAY_INDEX_2)).GetNumber(), INT_VALUE_2);
-    EXPECT_EQ(handleTagArr->Get(
-        static_cast<uint32_t>(StableArrayIndex::STABLE_ARRAY_INDEX_3)).GetNumber(), INT_VALUE_3);
-    EXPECT_EQ(destTaggedArr->Get(
-        static_cast<uint32_t>(StableArrayIndex::STABLE_ARRAY_INDEX_0)).GetNumber(), INT_VALUE_0);
-    EXPECT_EQ(destTaggedArr->Get(
-        static_cast<uint32_t>(StableArrayIndex::STABLE_ARRAY_INDEX_1)).GetNumber(), INT_VALUE_1);
-    EXPECT_EQ(destTaggedArr->Get(
-        static_cast<uint32_t>(StableArrayIndex::STABLE_ARRAY_INDEX_2)).GetNumber(), INT_VALUE_666);
-    EXPECT_EQ(destTaggedArr->Get(
-        static_cast<uint32_t>(StableArrayIndex::STABLE_ARRAY_INDEX_3)).GetNumber(), INT_VALUE_3);
+    for (uint32_t i = 0; i < ARRAY_LENGTH_4; ++i) {
+        JSHandle<JSObject> arrObjHandle(handleArr);
+        EXPECT_EQ(ElementAccessor::Get(arrObjHandle, i).GetNumber(), i);
+    }
+    for (uint32_t i = 0; i < ARRAY_LENGTH_4; ++i) {
+        JSHandle<JSObject> arrObjHandle(destArr);
+        if (i == 2) {
+            EXPECT_EQ(ElementAccessor::Get(arrObjHandle, i).GetNumber(), INT_VALUE_666);
+        } else {
+            EXPECT_EQ(ElementAccessor::Get(arrObjHandle, i).GetNumber(), i);
+        }
+    }
 }
 
 /**
@@ -486,27 +482,27 @@ HWTEST_F_L0(JSStableArrayTest, ToReversed)
         handleTagArr->Set(thread, i, JSTaggedValue(i));
     }
     JSHandle<JSArray> handleArr(JSArray::CreateArrayFromList(thread, handleTagArr));
+    JSHandle<JSObject> handleArrObj(handleArr);
     JSTaggedValue resultArr =
         JSStableArray::ToReversed(thread, handleArr, ARRAY_LENGTH_4);
-    JSHandle<JSTaggedValue> destTaggedValue(thread, resultArr);
-    JSHandle<JSArray> destArr(destTaggedValue);
-    JSHandle<TaggedArray> destTaggedArr(thread, TaggedArray::Cast(destArr->GetElements().GetTaggedObject()));
+    JSHandle<JSObject> dstArrObj(thread, resultArr);
 
-    EXPECT_EQ(handleTagArr->Get(
+    EXPECT_EQ(ElementAccessor::Get(handleArrObj,
         static_cast<uint32_t>(StableArrayIndex::STABLE_ARRAY_INDEX_0)).GetNumber(), INT_VALUE_0);
-    EXPECT_EQ(handleTagArr->Get(
+    EXPECT_EQ(ElementAccessor::Get(handleArrObj,
         static_cast<uint32_t>(StableArrayIndex::STABLE_ARRAY_INDEX_1)).GetNumber(), INT_VALUE_1);
-    EXPECT_EQ(handleTagArr->Get(
+    EXPECT_EQ(ElementAccessor::Get(handleArrObj,
         static_cast<uint32_t>(StableArrayIndex::STABLE_ARRAY_INDEX_2)).GetNumber(), INT_VALUE_2);
-    EXPECT_EQ(handleTagArr->Get(
+    EXPECT_EQ(ElementAccessor::Get(handleArrObj,
         static_cast<uint32_t>(StableArrayIndex::STABLE_ARRAY_INDEX_3)).GetNumber(), INT_VALUE_3);
-    EXPECT_EQ(destTaggedArr->Get(
+
+    EXPECT_EQ(ElementAccessor::Get(dstArrObj,
         static_cast<uint32_t>(StableArrayIndex::STABLE_ARRAY_INDEX_0)).GetNumber(), INT_VALUE_3);
-    EXPECT_EQ(destTaggedArr->Get(
+    EXPECT_EQ(ElementAccessor::Get(dstArrObj,
         static_cast<uint32_t>(StableArrayIndex::STABLE_ARRAY_INDEX_1)).GetNumber(), INT_VALUE_2);
-    EXPECT_EQ(destTaggedArr->Get(
+    EXPECT_EQ(ElementAccessor::Get(dstArrObj,
         static_cast<uint32_t>(StableArrayIndex::STABLE_ARRAY_INDEX_2)).GetNumber(), INT_VALUE_1);
-    EXPECT_EQ(destTaggedArr->Get(
+    EXPECT_EQ(ElementAccessor::Get(dstArrObj,
         static_cast<uint32_t>(StableArrayIndex::STABLE_ARRAY_INDEX_3)).GetNumber(), INT_VALUE_0);
 }
 }  // namespace panda::test

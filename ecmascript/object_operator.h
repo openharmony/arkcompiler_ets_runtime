@@ -342,7 +342,7 @@ private:
     void LookupPropertyInlinedProps(const JSHandle<JSObject> &obj);
     void LookupElementInlinedProps(const JSHandle<JSObject> &obj);
     void WriteElement(const JSHandle<JSObject> &receiver, const PropertyDescriptor &desc);
-    void WriteElement(const JSHandle<JSObject> &receiver, JSTaggedValue value) const;
+    void WriteElement(const JSHandle<JSObject> &receiver, JSHandle<JSTaggedValue> value) const;
     void DeleteElementInHolder() const;
     bool UpdateValueAndDetails(const JSHandle<JSObject> &receiver, const JSHandle<JSTaggedValue> &value,
                                PropertyAttributes attr, bool attrChanged);

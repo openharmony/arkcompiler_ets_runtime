@@ -31,7 +31,7 @@ void JSNApiDestoryAnDataManagerFuzzTest([[maybe_unused]]const uint8_t *data, siz
         return;
     }
     JSRuntimeOptions runtimeOptions;
-    JSNApi::InitializeIcuData(runtimeOptions);
+    EcmaVM::InitializeIcuData(runtimeOptions);
     JSNApi::DestroyAnDataManager();
     JSNApi::DestroyJSVM(vm);
 }

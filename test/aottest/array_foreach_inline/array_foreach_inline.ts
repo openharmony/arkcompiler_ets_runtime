@@ -13,21 +13,30 @@
  * limitations under the License.
  */
 
+declare function assert_equal(a: Object, b: Object):void;
 let array1:numeber[] = [4, 5, 6];
 
+const expectedArray1 = [4, 5, 6];
+let i = 0;
 array1.forEach((element) => {
-        print(element)
+    assert_equal(element, expectedArray1[i]);
+    i++;
 });
 
+i = 0;
 array1.forEach((element) => {
     array1[array1.length] = array1.length
-    print(element)
+    assert_equal(element, expectedArray1[i]);
+    i++;
 });
 
+const expectedArray2 = [4, 6, 3, 4, 5];
+i = 0;
 array1.forEach((element) => {
     delete array1[1];
-    print(element)
+    assert_equal(element, expectedArray2[i]);
+    i++;
 });
 
-print(array1.length)
+assert_equal(array1.length, 6)
 

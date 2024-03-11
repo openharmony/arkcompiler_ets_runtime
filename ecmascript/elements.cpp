@@ -14,6 +14,7 @@
  */
 
 #include "ecmascript/elements.h"
+#include "ecmascript/base/bit_helper.h"
 #include "ecmascript/global_env_constants.h"
 #include "ecmascript/js_tagged_value-inl.h"
 #include "ecmascript/tagged_array-inl.h"
@@ -66,6 +67,38 @@ bool Elements::IsHole(ElementsKind kind)
 {
     static constexpr uint8_t EVEN_NUMBER = 2;
     return static_cast<uint8_t>(kind) % EVEN_NUMBER == 1;
+}
+
+ConstantIndex Elements::GetGlobalContantIndexByKind(ElementsKind kind)
+{
+    switch (kind) {
+        case ElementsKind::NONE:
+            return ConstantIndex::ELEMENT_NONE_HCLASS_INDEX;
+        case ElementsKind::INT:
+            return ConstantIndex::ELEMENT_INT_HCLASS_INDEX;
+        case ElementsKind::NUMBER:
+            return ConstantIndex::ELEMENT_NUMBER_HCLASS_INDEX;
+        case ElementsKind::STRING:
+            return ConstantIndex::ELEMENT_STRING_HCLASS_INDEX;
+        case ElementsKind::OBJECT:
+            return ConstantIndex::ELEMENT_OBJECT_HCLASS_INDEX;
+        case ElementsKind::TAGGED:
+            return ConstantIndex::ELEMENT_TAGGED_HCLASS_INDEX;
+        case ElementsKind::HOLE:
+            return ConstantIndex::ELEMENT_HOLE_HCLASS_INDEX;
+        case ElementsKind::HOLE_INT:
+            return ConstantIndex::ELEMENT_HOLE_INT_HCLASS_INDEX;
+        case ElementsKind::HOLE_NUMBER:
+            return ConstantIndex::ELEMENT_HOLE_NUMBER_HCLASS_INDEX;
+        case ElementsKind::HOLE_STRING:
+            return ConstantIndex::ELEMENT_HOLE_STRING_HCLASS_INDEX;
+        case ElementsKind::HOLE_OBJECT:
+            return ConstantIndex::ELEMENT_HOLE_OBJECT_HCLASS_INDEX;
+        case ElementsKind::HOLE_TAGGED:
+            return ConstantIndex::ELEMENT_HOLE_TAGGED_HCLASS_INDEX;
+        default:
+            LOG_ECMA(FATAL) << "Unknown elementsKind when getting constantIndx: " << static_cast<int32_t>(kind);
+    }
 }
 
 ElementsKind Elements::MergeElementsKind(ElementsKind curKind, ElementsKind newKind)
@@ -127,7 +160,6 @@ void Elements::MigrateArrayWithKind(const JSThread *thread, const JSHandle<JSObj
     if (!thread->GetEcmaVM()->IsEnableElementsKind()) {
         return;
     }
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     if (oldKind == newKind) {
         return;
     }
@@ -138,108 +170,119 @@ void Elements::MigrateArrayWithKind(const JSThread *thread, const JSHandle<JSObj
         (oldKind == ElementsKind::NUMBER && newKind == ElementsKind::HOLE_NUMBER)) {
         return;
     } else if (oldKind == ElementsKind::INT || oldKind == ElementsKind::HOLE_INT) {
-        JSHandle<MutantTaggedArray> elements = JSHandle<MutantTaggedArray>(thread, object->GetElements());
-        uint32_t length = elements->GetLength();
-        if (static_cast<uint32_t>(newKind) >= static_cast<uint32_t>(ElementsKind::STRING)) {
-            JSMutableHandle<TaggedArray> newElements(thread, JSTaggedValue::Undefined());
-            if (needCOW) {
-                newElements.Update(factory->NewCOWTaggedArray(length));
-            } else {
-                newElements.Update(factory->NewTaggedArray(length));
-            }
-            for (uint32_t i = 0; i < length; i++) {
-                JSTaggedType value = elements->Get(i).GetRawData();
-                if (value == base::SPECIAL_HOLE) {
-                    newElements->Set(thread, i, JSTaggedValue::Hole());
-                } else {
-                    int convertedValue = static_cast<int>(value);
-                    newElements->Set(thread, i, JSTaggedValue(convertedValue));
-                }
-            }
+        if (static_cast<uint32_t>(newKind) >= static_cast<uint32_t>(ElementsKind::STRING) ||
+            newKind == ElementsKind::NONE || newKind == ElementsKind::HOLE) {
+            JSTaggedValue newElements = MigrateFromRawValueToHeapValue(thread, object, needCOW, true);
             object->SetElements(thread, newElements);
-        } else {
-            for (uint32_t i = 0; i < length; i++) {
-                JSTaggedType value = elements->Get(i).GetRawData();
-                if (value == base::SPECIAL_HOLE) {
-                    continue;
-                }
-                int intValue = static_cast<int>(elements->Get(i).GetRawData());
-                double convertedValue = static_cast<double>(intValue);
-                elements->Set<false>(thread, i, JSTaggedValue(base::bit_cast<JSTaggedType>(convertedValue)));
-            }
+        } else if (newKind == ElementsKind::NUMBER || newKind == ElementsKind::HOLE_NUMBER) {
+            MigrateFromHoleIntToHoleNumber(thread, object);
         }
     } else if (static_cast<uint32_t>(oldKind) >= static_cast<uint32_t>(ElementsKind::NUMBER) &&
                static_cast<uint32_t>(oldKind) <= static_cast<uint32_t>(ElementsKind::HOLE_NUMBER)) {
-        JSHandle<MutantTaggedArray> elements = JSHandle<MutantTaggedArray>(thread, object->GetElements());
-        uint32_t length = elements->GetLength();
-        if (static_cast<uint32_t>(newKind) >= static_cast<uint32_t>(ElementsKind::STRING)) {
-            JSMutableHandle<TaggedArray> newElements(thread, JSTaggedValue::Undefined());
-            if (needCOW) {
-                newElements.Update(factory->NewCOWTaggedArray(length));
-            } else {
-                newElements.Update(factory->NewTaggedArray(length));
-            }
-            for (uint32_t i = 0; i < length; i++) {
-                JSTaggedType value = elements->Get(i).GetRawData();
-                if (value == base::SPECIAL_HOLE) {
-                    newElements->Set(thread, i, JSTaggedValue::Hole());
-                } else {
-                    double convertedValue = base::bit_cast<double>(value);
-                    newElements->Set(thread, i, JSTaggedValue(convertedValue));
-                }
-            }
+        if (static_cast<uint32_t>(newKind) >= static_cast<uint32_t>(ElementsKind::STRING) ||
+            newKind == ElementsKind::NONE || newKind == ElementsKind::HOLE) {
+            JSTaggedValue newElements = MigrateFromRawValueToHeapValue(thread, object, needCOW, false);
             object->SetElements(thread, newElements);
-        } else {
-            LOG_ECMA(FATAL) << "This Branch is Unreachable in ConvertArray" << static_cast<uint32_t>(newKind);
+        } else if (newKind == ElementsKind::INT || newKind == ElementsKind::HOLE_INT) {
+            MigrateFromHoleNumberToHoleInt(thread, object);
         }
     } else {
-        JSHandle<TaggedArray> elements = JSHandle<TaggedArray>(thread, object->GetElements());
-        uint32_t length = elements->GetLength();
         if (newKind == ElementsKind::INT || newKind == ElementsKind::HOLE_INT) {
-            JSMutableHandle<MutantTaggedArray> newElements(thread, JSTaggedValue::Undefined());
-            if (needCOW) {
-                newElements.Update(factory->NewCOWMutantTaggedArray(length));
-            } else {
-                newElements.Update(factory->NewMutantTaggedArray(length));
-            }
-            for (uint32_t i = 0; i < length; i++) {
-                JSTaggedValue value = elements->Get(i);
-                JSTaggedType convertedValue = 0;
-                // To distinguish Hole (0x5) in taggedvalue with Interger 5
-                if (value.IsHole()) {
-                    convertedValue = base::SPECIAL_HOLE;
-                } else {
-                    convertedValue = static_cast<JSTaggedType>(value.GetInt());
-                }
-                newElements->Set<false>(thread, i, JSTaggedValue(convertedValue));
-            }
+            JSTaggedValue newElements = MigrateFromHeapValueToRawValue(thread, object, needCOW, true);
             object->SetElements(thread, newElements);
         } else if (static_cast<uint32_t>(newKind) >= static_cast<uint32_t>(ElementsKind::NUMBER) &&
                    static_cast<uint32_t>(newKind) <= static_cast<uint32_t>(ElementsKind::HOLE_NUMBER)) {
-            JSMutableHandle<MutantTaggedArray> newElements(thread, JSTaggedValue::Undefined());
-            if (needCOW) {
-                newElements.Update(factory->NewCOWMutantTaggedArray(length));
-            } else {
-                newElements.Update(factory->NewMutantTaggedArray(length));
-            }
-            for (uint32_t i = 0; i < length; i++) {
-                JSTaggedValue value = elements->Get(i);
-                JSTaggedType convertedValue = 0;
-                // To distinguish Hole (0x5) in taggedvalue with Interger 5
-                if (value.IsHole()) {
-                    convertedValue = base::SPECIAL_HOLE;
-                } else {
-                    if (value.IsInt()) {
-                        int intValue = value.GetInt();
-                        convertedValue = base::bit_cast<JSTaggedType>(static_cast<double>(intValue));
-                    } else {
-                        convertedValue = base::bit_cast<JSTaggedType>(value.GetDouble());
-                    }
-                }
-                newElements->Set<false>(thread, i, JSTaggedValue(convertedValue));
-            }
+            JSTaggedValue newElements = MigrateFromHeapValueToRawValue(thread, object, needCOW, false);
             object->SetElements(thread, newElements);
         }
+    }
+}
+
+JSTaggedValue Elements::MigrateFromRawValueToHeapValue(const JSThread *thread, const JSHandle<JSObject> object,
+                                                       bool needCOW, bool isIntKind)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<MutantTaggedArray> elements = JSHandle<MutantTaggedArray>(thread, object->GetElements());
+    uint32_t length = elements->GetLength();
+    JSMutableHandle<TaggedArray> newElements(thread, JSTaggedValue::Undefined());
+    if (needCOW) {
+        newElements.Update(factory->NewCOWTaggedArray(length));
+    } else {
+        newElements.Update(factory->NewTaggedArray(length));
+    }
+    for (uint32_t i = 0; i < length; i++) {
+        JSTaggedType value = elements->Get(i).GetRawData();
+        if (value == base::SPECIAL_HOLE) {
+            newElements->Set(thread, i, JSTaggedValue::Hole());
+        } else if (isIntKind) {
+            int convertedValue = static_cast<int>(value);
+            newElements->Set(thread, i, JSTaggedValue(convertedValue));
+        } else {
+            double convertedValue = base::bit_cast<double>(value);
+            newElements->Set(thread, i, JSTaggedValue(convertedValue));
+        }
+    }
+    return newElements.GetTaggedValue();
+}
+
+JSTaggedValue Elements::MigrateFromHeapValueToRawValue(const JSThread *thread, const JSHandle<JSObject> object,
+                                                       bool needCOW, bool isIntKind)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<TaggedArray> elements = JSHandle<TaggedArray>(thread, object->GetElements());
+    uint32_t length = elements->GetLength();
+    JSMutableHandle<MutantTaggedArray> newElements(thread, JSTaggedValue::Undefined());
+    if (needCOW) {
+        newElements.Update(factory->NewCOWMutantTaggedArray(length));
+    } else {
+        newElements.Update(factory->NewMutantTaggedArray(length));
+    }
+    for (uint32_t i = 0; i < length; i++) {
+        JSTaggedValue value = elements->Get(i);
+        JSTaggedType convertedValue = 0;
+        // To distinguish Hole (0x5) in taggedvalue with Interger 5
+        if (value.IsHole()) {
+            convertedValue = base::SPECIAL_HOLE;
+        } else if (isIntKind) {
+            convertedValue = static_cast<JSTaggedType>(value.GetInt());
+        } else if (value.IsInt()) {
+            int intValue = value.GetInt();
+            convertedValue = base::bit_cast<JSTaggedType>(static_cast<double>(intValue));
+        } else {
+            convertedValue = base::bit_cast<JSTaggedType>(value.GetDouble());
+        }
+        newElements->Set<false>(thread, i, JSTaggedValue(convertedValue));
+    }
+    return newElements.GetTaggedValue();
+}
+
+void Elements::MigrateFromHoleIntToHoleNumber(const JSThread *thread, const JSHandle<JSObject> object)
+{
+    JSHandle<MutantTaggedArray> elements = JSHandle<MutantTaggedArray>(thread, object->GetElements());
+    uint32_t length = elements->GetLength();
+    for (uint32_t i = 0; i < length; i++) {
+        JSTaggedType value = elements->Get(i).GetRawData();
+        if (value == base::SPECIAL_HOLE) {
+            continue;
+        }
+        int intValue = static_cast<int>(elements->Get(i).GetRawData());
+        double convertedValue = static_cast<double>(intValue);
+        elements->Set<false>(thread, i, JSTaggedValue(base::bit_cast<JSTaggedType>(convertedValue)));
+    }
+}
+
+void Elements::MigrateFromHoleNumberToHoleInt(const JSThread *thread, const JSHandle<JSObject> object)
+{
+    JSHandle<MutantTaggedArray> elements = JSHandle<MutantTaggedArray>(thread, object->GetElements());
+    uint32_t length = elements->GetLength();
+    for (uint32_t i = 0; i < length; i++) {
+        JSTaggedType value = elements->Get(i).GetRawData();
+        if (value == base::SPECIAL_HOLE) {
+            continue;
+        }
+        double intValue = base::bit_cast<double>(elements->Get(i).GetRawData());
+        int64_t convertedValue = static_cast<int64_t>(intValue);
+        elements->Set<false>(thread, i, JSTaggedValue(base::bit_cast<JSTaggedType>(convertedValue)));
     }
 }
 }  // namespace panda::ecmascript

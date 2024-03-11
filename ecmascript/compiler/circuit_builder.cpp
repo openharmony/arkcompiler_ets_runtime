@@ -199,6 +199,11 @@ GateRef CircuitBuilder::GetLengthOfTaggedArray(GateRef array)
     return Load(VariableType::INT32(), array, IntPtr(TaggedArray::LENGTH_OFFSET));
 }
 
+GateRef CircuitBuilder::GetLengthOfJSTypedArray(GateRef array)
+{
+    return Load(VariableType::INT32(), array, IntPtr(JSTypedArray::ARRAY_LENGTH_OFFSET));
+}
+
 void CircuitBuilder::Jump(Label *label)
 {
     ASSERT(label);
@@ -410,9 +415,8 @@ GateRef CircuitBuilder::NanValue()
     return Double(std::numeric_limits<double>::quiet_NaN());
 }
 
-GateRef CircuitBuilder::LoadObjectFromConstPool(GateRef jsFunc, GateRef index)
+GateRef CircuitBuilder::LoadObjectFromConstPool(GateRef constPool, GateRef index)
 {
-    GateRef constPool = GetConstPoolFromFunction(jsFunc);
     return GetValueFromTaggedArray(constPool, TruncInt64ToInt32(index));
 }
 
@@ -430,17 +434,6 @@ void CircuitBuilder::AppendFrameArgs(std::vector<GateRef> &args, GateRef hirGate
     } else {
         args.emplace_back(frameArgs);
     }
-}
-
-GateRef CircuitBuilder::GetConstPool(GateRef jsFunc)
-{
-    auto currentLabel = env_->GetCurrentLabel();
-    auto currentDepend = currentLabel->GetDepend();
-    auto newGate = GetCircuit()->NewGate(circuit_->GetConstPool(), MachineType::I64,
-                                         { currentDepend, jsFunc },
-                                         GateType::AnyType());
-    currentLabel->SetDepend(newGate);
-    return newGate;
 }
 
 GateRef CircuitBuilder::GetGlobalEnv()
@@ -539,14 +532,6 @@ GateRef CircuitBuilder::GetConstPoolFromFunction(GateRef jsFunc)
 {
     GateRef method = GetMethodFromFunction(jsFunc);
     return Load(VariableType::JS_ANY(), method, IntPtr(Method::CONSTANT_POOL_OFFSET));
-}
-
-GateRef CircuitBuilder::GetObjectFromConstPool(GateRef glue, GateRef hirGate, GateRef jsFunc, GateRef index,
-                                               ConstPoolType type)
-{
-    GateRef constPool = GetConstPoolFromFunction(jsFunc);
-    GateRef module = GetModuleFromFunction(jsFunc);
-    return GetObjectFromConstPool(glue, hirGate, constPool, module, index, type);
 }
 
 GateRef CircuitBuilder::GetEmptyArray(GateRef glue)
@@ -830,8 +815,7 @@ GateRef CircuitBuilder::GetCodeAddr(GateRef jsFunc)
 GateRef CircuitBuilder::GetHClassGateFromIndex(GateRef gate, int32_t index)
 {
     ArgumentAccessor argAcc(circuit_);
-    GateRef jsFunc = argAcc.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
-    GateRef constPool = GetConstPool(jsFunc);
+    GateRef constPool = argAcc.GetFrameArgsIn(gate, FrameArgIdx::CONST_POOL);
     return LoadHClassFromConstpool(constPool, index);
 }
 
@@ -900,6 +884,27 @@ GateRef Variable::TryRemoveTrivialPhi(GateRef phi)
         }
     }
     return same;
+}
+
+GateRef CircuitBuilder::ElementsKindIsIntOrHoleInt(GateRef kind)
+{
+    GateRef kindIsInt = Int32Equal(kind, Int32(static_cast<uint32_t>(ElementsKind::INT)));
+    GateRef kindIsHoleInt = Int32Equal(kind, Int32(static_cast<uint32_t>(ElementsKind::HOLE_INT)));
+    return BoolOr(kindIsInt, kindIsHoleInt);
+}
+
+GateRef CircuitBuilder::ElementsKindIsNumOrHoleNum(GateRef kind)
+{
+    GateRef kindIsNum = Int32Equal(kind, Int32(static_cast<uint32_t>(ElementsKind::NUMBER)));
+    GateRef kindIsHoleNum = Int32Equal(kind, Int32(static_cast<uint32_t>(ElementsKind::HOLE_NUMBER)));
+    return BoolOr(kindIsNum, kindIsHoleNum);
+}
+
+GateRef CircuitBuilder::ElementsKindIsHeapKind(GateRef kind)
+{
+    GateRef overString = Int32GreaterThanOrEqual(kind, Int32(static_cast<uint32_t>(ElementsKind::STRING)));
+    GateRef isHoleOrNone = Int32LessThanOrEqual(kind, Int32(static_cast<uint32_t>(ElementsKind::HOLE)));
+    return BoolOr(overString, isHoleOrNone);
 }
 
 GateRef CircuitBuilder::LoadBuiltinObject(size_t offset)

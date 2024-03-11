@@ -58,6 +58,13 @@ void NTypeBytecodeLowering::Lower(GateRef gate)
         case EcmaOpcode::CREATEARRAYWITHBUFFER_IMM16_ID16:
             LowerNTypedCreateArrayWithBuffer(gate);
             break;
+        case EcmaOpcode::COPYRESTARGS_IMM8:
+        case EcmaOpcode::WIDE_COPYRESTARGS_PREF_IMM16:
+            LowerNTypedCopyRestArgs(gate);
+            break;
+        case EcmaOpcode::GETUNMAPPEDARGS:
+            LowerNTypedGetUnmappedArgs(gate);
+            break;
         case EcmaOpcode::STOWNBYINDEX_IMM8_V8_IMM16:
         case EcmaOpcode::STOWNBYINDEX_IMM16_V8_IMM16:
         case EcmaOpcode::WIDE_STOWNBYINDEX_PREF_V8_IMM32:
@@ -65,6 +72,10 @@ void NTypeBytecodeLowering::Lower(GateRef gate)
             break;
         case EcmaOpcode::THROW_UNDEFINEDIFHOLEWITHNAME_PREF_ID16:
             LowerThrowUndefinedIfHoleWithName(gate);
+            break;
+        case EcmaOpcode::THROW_IFSUPERNOTCORRECTCALL_PREF_IMM8:
+        case EcmaOpcode::THROW_IFSUPERNOTCORRECTCALL_PREF_IMM16:
+            LowerThrowIfSuperNotCorrectCall(gate);
             break;
         case EcmaOpcode::LDLEXVAR_IMM4_IMM4:
         case EcmaOpcode::LDLEXVAR_IMM8_IMM8:
@@ -99,6 +110,22 @@ void NTypeBytecodeLowering::LowerThrowUndefinedIfHoleWithName(GateRef gate)
     GateRef value = acc_.GetValueIn(gate, 1); // 1: the second parameter
     builder_.LexVarIsHoleCheck(value);
     acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), Circuit::NullGate());
+}
+
+void NTypeBytecodeLowering::LowerThrowIfSuperNotCorrectCall(GateRef gate)
+{
+    AddProfiling(gate);
+    GateRef index = acc_.GetValueIn(gate, 0);
+    GateRef value = acc_.GetValueIn(gate, 1);
+    uint32_t indexValue = static_cast<uint32_t>(acc_.GetConstantValue(index));
+    if (indexValue == CALL_SUPER_BEFORE_THIS_CHECK) {
+        builder_.IsUndefinedOrHoleCheck(value);
+    } else if (indexValue == FORBIDDEN_SUPER_REBIND_THIS_CHECK) {
+        builder_.IsNotUndefinedOrHoleCheck(value);
+    } else {
+        UNREACHABLE();
+    }
+    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), builder_.TaggedTrue());
 }
 
 void NTypeBytecodeLowering::LowerLdLexVar(GateRef gate)
@@ -182,6 +209,28 @@ void NTypeBytecodeLowering::LowerNTypedCreateArrayWithBuffer(GateRef gate)
     GateRef array =
         builder_.CreateArrayWithBuffer(kind, ArrayMetaDataAccessor::Mode::CREATE, cpIdGr, index, elementIndexGate);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), array);
+}
+
+void NTypeBytecodeLowering::LowerNTypedCopyRestArgs(GateRef gate)
+{
+    ASSERT(acc_.GetNumValueIn(gate) == 1);
+    GateRef restIdx = acc_.GetValueIn(gate, 0);
+    AddProfiling(gate);
+    ElementsKind kind = acc_.TryGetElementsKind(gate);
+    GateRef arguments =
+        builder_.CreateArguments(kind, CreateArgumentsAccessor::Mode::REST_ARGUMENTS, restIdx);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), arguments);
+}
+
+void NTypeBytecodeLowering::LowerNTypedGetUnmappedArgs(GateRef gate)
+{
+    ASSERT(acc_.GetNumValueIn(gate) == 0);
+    GateRef restIdx = builder_.Int32(0);
+    AddProfiling(gate);
+    ElementsKind kind = acc_.TryGetElementsKind(gate);
+    GateRef arguments =
+        builder_.CreateArguments(kind, CreateArgumentsAccessor::Mode::UNMAPPED_ARGUMENTS, restIdx);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), arguments);
 }
 
 void NTypeBytecodeLowering::LowerNTypedStownByIndex(GateRef gate)
@@ -285,7 +334,7 @@ void NTypeBytecodeLowering::LowerNTypedStOwnByName(GateRef gate)
         return;
     }
 
-    GateRef hclassGate = acc_.GetValueIn(receiver, 3); // 3: hclass offset
+    GateRef hclassGate = acc_.GetValueIn(receiver, 2); // 2: hclass offset
     JSTaggedValue taggedHClass(acc_.GetConstantValue(hclassGate));
     GateRef stringId = acc_.GetValueIn(gate, 0);
     JSTaggedValue key = TypeInfoAccessor::GetStringFromConstantPool(thread_, acc_.TryGetMethodOffset(gate),

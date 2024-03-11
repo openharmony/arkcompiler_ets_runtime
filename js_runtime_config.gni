@@ -191,7 +191,8 @@ template("libark_jsruntime_common_set") {
     }
 
     if (is_ohos && is_standard_system && !is_arkui_x &&
-        defined(global_parts_info) && defined(global_parts_info.qos_manager)) {
+        defined(global_parts_info) &&
+        defined(global_parts_info.resourceschedule_qos_manager)) {
       defines += [ "ENABLE_QOS" ]
       external_deps += [ "qos_manager:qos" ]
     }

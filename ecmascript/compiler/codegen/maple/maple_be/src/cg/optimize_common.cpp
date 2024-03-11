@@ -121,56 +121,12 @@ std::string DotGenerator::GetFileName(const MIRModule &mirModule, const std::str
     return fileName;
 }
 
-static bool IsBackEdgeForLoop(const CGFuncLoops &loop, const BB &from, const BB &to)
-{
-    const BB *header = loop.GetHeader();
-    if (header->GetId() == to.GetId()) {
-        for (auto *be : loop.GetBackedge()) {
-            if (be->GetId() == from.GetId()) {
-                return true;
-            }
-        }
-    }
-    for (auto *inner : loop.GetInnerLoops()) {
-        if (IsBackEdgeForLoop(*inner, from, to)) {
-            return true;
-        }
-    }
-    return false;
-}
-bool DotGenerator::IsBackEdge(const CGFunc &cgFunction, const BB &from, const BB &to)
-{
-    for (const auto *loop : cgFunction.GetLoops()) {
-        if (IsBackEdgeForLoop(*loop, from, to)) {
-            return true;
-        }
-    }
-    return false;
-}
-
-void DotGenerator::DumpEdge(const CGFunc &cgFunction, std::ofstream &cfgFileOfStream, bool isIncludeEH)
+void DotGenerator::DumpEdge(const CGFunc &cgFunction, std::ofstream &cfgFileOfStream)
 {
     FOR_ALL_BB_CONST(bb, &cgFunction)
     {
         for (auto *succBB : bb->GetSuccs()) {
-            cfgFileOfStream << "BB" << bb->GetId();
-            cfgFileOfStream << " -> "
-                            << "BB" << succBB->GetId();
-            if (IsBackEdge(cgFunction, *bb, *succBB)) {
-                cfgFileOfStream << " [color=red]";
-            } else {
-                cfgFileOfStream << " [color=green]";
-            }
-            cfgFileOfStream << ";\n";
-        }
-        if (isIncludeEH) {
-            for (auto *ehSuccBB : bb->GetEhSuccs()) {
-                cfgFileOfStream << "BB" << bb->GetId();
-                cfgFileOfStream << " -> "
-                                << "BB" << ehSuccBB->GetId();
-                cfgFileOfStream << "[color=red]";
-                cfgFileOfStream << ";\n";
-            }
+            cfgFileOfStream << "BB" << bb->GetId() << " -> " << "BB" << succBB->GetId() << " [color=green];\n";
         }
     }
 }
@@ -273,7 +229,7 @@ void DotGenerator::DumpBBInstructions(const CGFunc &cgFunction, regno_t vReg, st
 }
 
 /* Generate dot file for cfg */
-void DotGenerator::GenerateDot(const std::string &preFix, const CGFunc &cgFunc, const MIRModule &mod, bool includeEH,
+void DotGenerator::GenerateDot(const std::string &preFix, const CGFunc &cgFunc, const MIRModule &mod,
                                const std::string fname, regno_t vReg)
 {
     std::ofstream cfgFile;
@@ -286,7 +242,7 @@ void DotGenerator::GenerateDot(const std::string &preFix, const CGFunc &cgFunc, 
     CHECK_FATAL(cfgFile.is_open(), "Failed to open output file: %s", fileName.c_str());
     cfgFile << "digraph {\n";
     /* dump edge */
-    DumpEdge(cgFunc, cfgFile, includeEH);
+    DumpEdge(cgFunc, cfgFile);
 
     /* dump instruction in each BB */
     DumpBBInstructions(cgFunc, vReg, cfgFile);

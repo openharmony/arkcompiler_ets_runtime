@@ -145,7 +145,7 @@ public:
     void SetModuleName(const std::string &moduleName)
     {
         if (encoder_) {
-            encoder_->ResetOutPathByModuleName(moduleName);
+            encoder_->PostResetOutPathTask(moduleName);
         }
     }
 
@@ -187,6 +187,16 @@ public:
         if (encoder_) {
             encoder_->PostSaveTask();
         }
+    }
+
+    bool IsDisableAot() const
+    {
+        return disableAot_;
+    }
+
+    void SetDisableAot(bool state)
+    {
+        disableAot_ = state;
     }
 
     void ForceSave()
@@ -249,6 +259,7 @@ private:
         return initializedResult;
     }
 
+    bool disableAot_ {false};
     std::unique_ptr<PGOProfilerEncoder> encoder_;
     RequestAotCallback requestAotCallback_;
     std::atomic_bool enableSignalSaving_ { false };

@@ -61,6 +61,7 @@ CompilationOptions::CompilationOptions(EcmaVM *vm, JSRuntimeOptions &runtimeOpti
     isEnableNativeInline_ = runtimeOptions.IsEnableNativeInline();
     isEnableLoweringBuiltin_ = runtimeOptions.IsEnableLoweringBuiltin();
     isEnableOptBranchProfiling_ = runtimeOptions.IsEnableBranchProfiling();
+    optBCRange_ = runtimeOptions.GetOptCodeRange();
 }
 
 bool AotCompilerPreprocessor::HandleTargetCompilerMode(CompilationOptions &cOptions)

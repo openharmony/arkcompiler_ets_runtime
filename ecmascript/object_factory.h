@@ -568,13 +568,17 @@ public:
 
     JSHandle<EcmaString> NewFromUtf8Literal(const uint8_t *utf8Data, uint32_t utf8Len);
     JSHandle<EcmaString> PUBLIC_API NewFromUtf8LiteralCompress(const uint8_t *utf8Data, uint32_t utf8Len);
+    JSHandle<EcmaString> PUBLIC_API NewFromUtf8LiteralCompressSubString(const JSHandle<EcmaString> &string,
+                                                                        uint32_t offset, uint32_t utf8Len);
     JSHandle<EcmaString> PUBLIC_API NewCompressedUtf8(const uint8_t *utf8Data, uint32_t utf8Len);
-
+    JSHandle<EcmaString> PUBLIC_API NewCompressedUtf8SubString(const JSHandle<EcmaString> &string,
+                                                               uint32_t offset, uint32_t utf8Len);
     JSHandle<EcmaString> NewFromUtf16Literal(const uint16_t *utf16Data, uint32_t utf16Len);
     JSHandle<EcmaString> NewFromUtf16LiteralCompress(const uint16_t *utf16Data, uint32_t utf16Len);
     JSHandle<EcmaString> PUBLIC_API NewFromUtf16LiteralNotCompress(const uint16_t *utf16Data, uint32_t utf16Len);
 
     inline EcmaString *AllocLineStringObject(size_t size);
+    inline EcmaString *AllocLineStringObjectNoGC(size_t size);
     inline EcmaString *AllocOldSpaceLineStringObject(size_t size);
     inline EcmaString *AllocNonMovableLineStringObject(size_t size);
     inline EcmaString *AllocSlicedStringObject(MemSpaceType type);
@@ -838,6 +842,8 @@ private:
                                                const JSHandle<JSTaggedValue> &object);
 
     JSHandle<EcmaString> GetStringFromStringTable(const uint8_t *utf8Data, uint32_t utf8Len, bool canBeCompress) const;
+    JSHandle<EcmaString> GetCompressedSubStringFromStringTable(const JSHandle<EcmaString> &string, uint32_t offset,
+                                                               uint32_t utf8Len) const;
     JSHandle<EcmaString> GetStringFromStringTableNonMovable(const uint8_t *utf8Data, uint32_t utf8Len) const;
     // For MUtf-8 string data
     EcmaString *PUBLIC_API GetRawStringFromStringTable(StringData sd,

@@ -77,6 +77,7 @@ namespace panda::ecmascript::kungfu {
     V(TryStoreICByValue)              \
     V(SetValueWithBarrier)            \
     V(NewLexicalEnv)                  \
+    V(CopyRestArgs)                   \
     V(GetUnmapedArgs)                 \
     V(NewThisObjectChecked)           \
     V(ConstructorCheck)               \

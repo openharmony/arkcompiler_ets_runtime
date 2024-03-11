@@ -13,9 +13,10 @@
  * limitations under the License.
  */
 
-declare function print(str:any):string;
+declare function assert_true(condition: boolean):void;
+declare function assert_equal(a: Object, b: Object):void;
 var empObj : {[key:string]:any} = {};
 var isObj = typeof empObj == "object";
 var keyNums = Object.keys(empObj).length;
-print(keyNums);
-print(isObj);
+assert_equal(keyNums, 0);
+assert_true(isObj);

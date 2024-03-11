@@ -18,17 +18,19 @@
 
 namespace panda::ecmascript::kungfu {
 
-#define MCR_BINARY_GATE_META_DATA_CACHE_LIST(V)                                                      \
-    V(Int32CheckRightIsZero, INT32_CHECK_RIGHT_IS_ZERO, GateFlags::CHECKABLE, 1, 1, 1)               \
-    V(RemainderIsNegativeZero, REMAINDER_IS_NEGATIVE_ZERO, GateFlags::CHECKABLE, 1, 1, 2)            \
-    V(Float64CheckRightIsZero, FLOAT64_CHECK_RIGHT_IS_ZERO, GateFlags::CHECKABLE, 1, 1, 1)           \
-    V(ValueCheckNegOverflow, VALUE_CHECK_NEG_OVERFLOW, GateFlags::CHECKABLE, 1, 1, 1)                \
-    V(OverflowCheck, OVERFLOW_CHECK, GateFlags::CHECKABLE, 1, 1, 1)                                  \
-    V(Int32UnsignedUpperBoundCheck, INT32_UNSIGNED_UPPER_BOUND_CHECK, GateFlags::CHECKABLE, 1, 1, 2) \
-    V(Int32DivWithCheck, INT32_DIV_WITH_CHECK, GateFlags::CHECKABLE, 1, 1, 2)                        \
-    V(LexVarIsHoleCheck, LEX_VAR_IS_HOLE_CHECK, GateFlags::CHECKABLE, 1, 1, 1)                       \
-    V(TaggedIsHeapObject, TAGGED_IS_HEAP_OBJECT, GateFlags::NO_WRITE, 1, 1, 1)                       \
-    V(IsMarkerCellValid, IS_MARKER_CELL_VALID, GateFlags::NO_WRITE, 1, 1, 1)                         \
+#define MCR_BINARY_GATE_META_DATA_CACHE_LIST(V)                                                             \
+    V(Int32CheckRightIsZero, INT32_CHECK_RIGHT_IS_ZERO, GateFlags::CHECKABLE, 1, 1, 1)                      \
+    V(RemainderIsNegativeZero, REMAINDER_IS_NEGATIVE_ZERO, GateFlags::CHECKABLE, 1, 1, 2)                   \
+    V(Float64CheckRightIsZero, FLOAT64_CHECK_RIGHT_IS_ZERO, GateFlags::CHECKABLE, 1, 1, 1)                  \
+    V(ValueCheckNegOverflow, VALUE_CHECK_NEG_OVERFLOW, GateFlags::CHECKABLE, 1, 1, 1)                       \
+    V(OverflowCheck, OVERFLOW_CHECK, GateFlags::CHECKABLE, 1, 1, 1)                                         \
+    V(Int32UnsignedUpperBoundCheck, INT32_UNSIGNED_UPPER_BOUND_CHECK, GateFlags::CHECKABLE, 1, 1, 2)        \
+    V(Int32DivWithCheck, INT32_DIV_WITH_CHECK, GateFlags::CHECKABLE, 1, 1, 2)                               \
+    V(LexVarIsHoleCheck, LEX_VAR_IS_HOLE_CHECK, GateFlags::CHECKABLE, 1, 1, 1)                              \
+    V(IsUndefinedOrHoleCheck, IS_UNDEFINED_OR_HOLE_CHECK, GateFlags::CHECKABLE, 1, 1, 1)                    \
+    V(IsNotUndefinedOrHoleCheck, IS_NOT_UNDEFINED_OR_HOLE_CHECK, GateFlags::CHECKABLE, 1, 1, 1)             \
+    V(TaggedIsHeapObject, TAGGED_IS_HEAP_OBJECT, GateFlags::NO_WRITE, 1, 1, 1)                              \
+    V(IsMarkerCellValid, IS_MARKER_CELL_VALID, GateFlags::NO_WRITE, 1, 1, 1)                                \
     V(StringEqual, STRING_EQUAL, GateFlags::NO_WRITE, 1, 1, 2)
 
 #define MCR_IMMUTABLE_META_DATA_CACHE_LIST(V)                                                   \
@@ -40,8 +42,9 @@ namespace panda::ecmascript::kungfu {
     V(FlattenTreeStringCheck, FLATTEN_TREE_STRING_CHECK, GateFlags::CHECKABLE, 1, 1, 1)         \
     V(HeapObjectCheck, HEAP_OBJECT_CHECK, GateFlags::CHECKABLE, 1, 1, 1)                        \
     V(ProtoChangeMarkerCheck, PROTO_CHANGE_MARKER_CHECK, GateFlags::CHECKABLE, 1, 1, 1)         \
-    V(LoadGetter, LOAD_GETTER, GateFlags::NO_WRITE, 1, 1, 3)                                    \
-    V(LoadSetter, LOAD_SETTER, GateFlags::NO_WRITE, 1, 1, 3)                                    \
+    V(LookUpHolder, LOOK_UP_HOLDER, GateFlags::NO_WRITE, 1, 1, 3)                               \
+    V(LoadGetter, LOAD_GETTER, GateFlags::NO_WRITE, 0, 1, 2)                                   \
+    V(LoadSetter, LOAD_SETTER, GateFlags::NO_WRITE, 0, 1, 2)                                   \
     V(LoadArrayLength, LOAD_ARRAY_LENGTH, GateFlags::NO_WRITE, 1, 1, 1)                         \
     V(LoadStringLength, LOAD_STRING_LENGTH, GateFlags::NO_WRITE, 1, 1, 1)                       \
     V(StartAllocate, START_ALLOCATE, GateFlags::NONE_FLAG, 0, 1, 0)                             \
@@ -54,6 +57,10 @@ namespace panda::ecmascript::kungfu {
     V(IndexCheck, INDEX_CHECK, GateFlags::CHECKABLE, 1, 1, 2)                                   \
     V(MonoLoadPropertyOnProto, MONO_LOAD_PROPERTY_ON_PROTO, GateFlags::CHECKABLE, 1, 1, 4)      \
     V(StringFromSingleCharCode, STRING_FROM_SINGLE_CHAR_CODE, GateFlags::NO_WRITE, 1, 1, 1)     \
+    V(MigrateFromRawValueToHeapValues, MIGRATE_FROM_RAWVALUE_TO_HEAPVALUES, GateFlags::NONE_FLAG, 1, 1, 3)   \
+    V(MigrateFromHeapValueToRawValue, MIGRATE_FROM_HEAPVALUE_TO_RAWVALUE, GateFlags::NONE_FLAG, 1, 1, 3)     \
+    V(MigrateFromHoleIntToHoleNumber, MIGRATE_FROM_HOLEINT_TO_HOLENUMBER, GateFlags::NONE_FLAG, 1, 1, 1)     \
+    V(MigrateFromHoleNumberToHoleInt, MIGRATE_FROM_HOLENUMBER_TO_HOLEINT, GateFlags::NONE_FLAG, 1, 1, 1)     \
     MCR_BINARY_GATE_META_DATA_CACHE_LIST(V)
 
 #define MCR_GATE_META_DATA_LIST_WITH_PC_OFFSET(V)                              \
@@ -70,9 +77,9 @@ namespace panda::ecmascript::kungfu {
     V(LoadElement,                 LOAD_ELEMENT,                   GateFlags::NO_WRITE,  1, 1, 2)       \
     V(StoreElement,                STORE_ELEMENT,                  GateFlags::NONE_FLAG, 1, 1, 3)       \
     V(StoreMemory,                 STORE_MEMORY,                   GateFlags::NONE_FLAG, 1, 1, 3)       \
-    V(ObjectTypeCompare,           OBJECT_TYPE_COMPARE,            GateFlags::CHECKABLE, 1, 1, 2)       \
     V(ObjectTypeCheck,             OBJECT_TYPE_CHECK,              GateFlags::CHECKABLE, 1, 1, 2)       \
     V(StableArrayCheck,            STABLE_ARRAY_CHECK,             GateFlags::CHECKABLE, 1, 1, 1)       \
+    V(ElementsKindCheck,           ELEMENTSKIND_CHECK,             GateFlags::CHECKABLE, 1, 1, 1)       \
     V(StoreProperty,               STORE_PROPERTY,                 GateFlags::NONE_FLAG, 1, 1, 3)       \
     V(PrototypeCheck,              PROTOTYPE_CHECK,                GateFlags::CHECKABLE, 1, 1, 1)       \
     V(RangeGuard,                  RANGE_GUARD,                    GateFlags::NO_WRITE,  1, 1, 1)       \
@@ -116,7 +123,7 @@ namespace panda::ecmascript::kungfu {
 }
 
 #define MCR_GATE_META_DATA_LIST_WITH_VALUE_IN(V)                                                 \
-    V(TypedCreateObjWithBuffer, TYPED_CREATE_OBJ_WITH_BUFFER, GateFlags::NONE_FLAG, 1, 1, value)
+    V(TypedCreateObjWithBuffer, TYPED_CREATE_OBJ_WITH_BUFFER, GateFlags::CHECKABLE, 1, 1, value)
 
 #define MCR_GATE_META_DATA_LIST_WITH_SIZE(V)                                       \
     MCR_GATE_META_DATA_LIST_WITH_VALUE_IN(V)

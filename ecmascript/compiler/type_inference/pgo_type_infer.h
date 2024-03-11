@@ -71,11 +71,13 @@ private:
     void InferLdObjByName(GateRef gate);
     void InferStObjByName(GateRef gate, bool isThis);
     void InferStOwnByName(GateRef gate);
+    void InferStOwnByIndex(GateRef gate);
     void InferAccessObjByValue(GateRef gate);
     void InferCreateArray(GateRef gate);
 
     void UpdateTypeForRWOp(GateRef gate, GateRef receiver, uint32_t propIdx = INVALID_INDEX);
     void TrySetElementsKind(GateRef gate);
+    void TrySetTransitionElementsKind(GateRef gate);
     void TrySetPropKeyKind(GateRef gate, GateRef propKey);
     void TrySetOnHeapMode(GateRef gate);
 

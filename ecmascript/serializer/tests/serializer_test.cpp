@@ -521,8 +521,7 @@ public:
         Destroy();
     }
 
-    void JSSharedArrayBufferTest(SerializeData *data,
-                           const JSHandle<JSArrayBuffer> &originArrayBuffer, int32_t byteLength, const char *msg)
+    void JSSharedArrayBufferTest(SerializeData *data, int32_t byteLength, const char *msg)
     {
         Init();
         BaseDeserializer deserializer(thread, data);
@@ -532,18 +531,10 @@ public:
         JSHandle<JSArrayBuffer> resJSArrayBuffer = JSHandle<JSArrayBuffer>::Cast(res);
         int32_t resByteLength = static_cast<int32_t>(resJSArrayBuffer->GetArrayBufferByteLength());
         EXPECT_TRUE(resByteLength == byteLength) << "Not Same ByteLength";
-        JSHandle<JSTaggedValue> bufferData(thread, originArrayBuffer->GetArrayBufferData());
-        auto np = JSHandle<JSNativePointer>::Cast(bufferData);
-        void *buffer = np->GetExternalPointer();
-        ASSERT_NE(buffer, nullptr);
         JSHandle<JSTaggedValue> resBufferData(thread, resJSArrayBuffer->GetArrayBufferData());
         JSHandle<JSNativePointer> resNp = JSHandle<JSNativePointer>::Cast(resBufferData);
         void *resBuffer = resNp->GetExternalPointer();
         ASSERT_NE(resBuffer, nullptr);
-        EXPECT_TRUE(buffer == resBuffer) << "Not Same pointer!";
-        for (int32_t i = 0; i < resByteLength; i++) {
-            EXPECT_TRUE(static_cast<char *>(resBuffer)[i] == static_cast<char *>(buffer)[i]) << "Not Same Buffer";
-        }
 
         if (msg != nullptr) {
             if (memcpy_s(resBuffer, byteLength, msg, byteLength) != EOK) {
@@ -876,6 +867,7 @@ HWTEST_F_L0(JSSerializerTest, SerializeLineString)
     std::unique_ptr<SerializeData> data = serializer->Release();
     JSDeserializerTest jsDeserializerTest;
     std::thread t1(&JSDeserializerTest::LineStringTest, jsDeserializerTest, data.release());
+    ThreadSuspensionScope scope(thread);
     t1.join();
     delete serializer;
 };
@@ -896,6 +888,7 @@ HWTEST_F_L0(JSSerializerTest, SerializeTreeString)
     std::unique_ptr<SerializeData> data = serializer->Release();
     JSDeserializerTest jsDeserializerTest;
     std::thread t1(&JSDeserializerTest::TreeStringTest, jsDeserializerTest, data.release());
+    ThreadSuspensionScope scope(thread);
     t1.join();
     delete serializer;
 };
@@ -916,6 +909,7 @@ HWTEST_F_L0(JSSerializerTest, SerializeSlicedString)
     std::unique_ptr<SerializeData> data = serializer->Release();
     JSDeserializerTest jsDeserializerTest;
     std::thread t1(&JSDeserializerTest::SlicedStringTest, jsDeserializerTest, data.release());
+    ThreadSuspensionScope scope(thread);
     t1.join();
     delete serializer;
 };
@@ -1652,6 +1646,30 @@ HWTEST_F_L0(JSSerializerTest, TransferJSArrayBuffer3)
     EXPECT_FALSE(arrBuf->IsDetach());
 };
 
+// Test serialize JSArrayBuffer with external native buffer that not transfer
+HWTEST_F_L0(JSSerializerTest, TransferJSArrayBuffer4)
+{
+    ObjectFactory *factory = ecmaVm->GetFactory();
+
+    // create a JSArrayBuffer
+    size_t length = 5;
+    uint8_t value = 100;
+    void *buffer = reinterpret_cast<void *>(malloc(length));
+    if (memset_s(buffer, length, value, length) != EOK) {
+        LOG_ECMA(FATAL) << "this branch is unreachable";
+        UNREACHABLE();
+    }
+    JSHandle<JSArrayBuffer> arrBuf = factory->NewJSArrayBuffer(buffer, length, nullptr, nullptr);
+    JSHandle<JSTaggedValue> arrBufTag = JSHandle<JSTaggedValue>::Cast(arrBuf);
+
+    ValueSerializer *serializer = new ValueSerializer(thread);
+    bool res = serializer->WriteValue(thread, arrBufTag,
+                                          JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()),
+                                          JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
+    EXPECT_FALSE(res) << "serialize JSArrayBuffer with external native shall not clone it";
+    free(buffer);
+};
+
 HWTEST_F_L0(JSSerializerTest, SerializeJSArrayBufferShared2)
 {
     std::string msg = "hello world";
@@ -1674,11 +1692,56 @@ HWTEST_F_L0(JSSerializerTest, SerializeJSArrayBufferShared2)
     JSDeserializerTest jsDeserializerTest;
     std::string changeStr = "world hello";
     std::thread t1(&JSDeserializerTest::JSSharedArrayBufferTest,
-                   jsDeserializerTest, data.release(), jsArrayBuffer, 12, changeStr.c_str());
+                   jsDeserializerTest, data.release(), 12, changeStr.c_str());
     ThreadSuspensionScope scope(thread);
     t1.join();
     EXPECT_TRUE(strcmp((char *)buffer, "world hello") == 0) << "Serialize JSArrayBuffer fail";
     delete serializer;
+};
+
+HWTEST_F_L0(JSSerializerTest, SerializeJSArrayBufferShared3)
+{
+    std::string msg = "hello world";
+    int msgBufferLen = static_cast<int>(msg.length()) + 1;
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<JSArrayBuffer> jsArrayBuffer = factory->NewJSSharedArrayBuffer(msgBufferLen);
+    JSHandle<JSTaggedValue> BufferData(thread, jsArrayBuffer->GetArrayBufferData());
+    JSHandle<JSNativePointer> resNp = JSHandle<JSNativePointer>::Cast(BufferData);
+    void *buffer = resNp->GetExternalPointer();
+    if (memcpy_s(buffer, msgBufferLen, msg.c_str(), msgBufferLen) != EOK) {
+        EXPECT_TRUE(false) << " memcpy error";
+    }
+
+    ValueSerializer *serializer = new ValueSerializer(thread);
+    bool success = serializer->WriteValue(thread, JSHandle<JSTaggedValue>(jsArrayBuffer),
+                                          JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()),
+                                          JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
+    EXPECT_TRUE(success) << "Serialize JSSharedArrayBuffer fail";
+    std::unique_ptr<SerializeData> data = serializer->Release();
+    JSDeserializerTest jsDeserializerTest;
+    std::string changeStr = "world hello";
+    std::thread t1(&JSDeserializerTest::JSSharedArrayBufferTest,
+                   jsDeserializerTest, data.get(), 12, changeStr.c_str());
+    {
+        ThreadSuspensionScope scope(thread);
+        t1.join();
+        EXPECT_TRUE(strcmp((char *)buffer, "world hello") == 0) << "Serialize JSArrayBuffer fail";
+        changeStr = "world hella";
+        JSDeserializerTest jsDeserializerTest1;
+        std::thread t2(&JSDeserializerTest::JSSharedArrayBufferTest,
+                    jsDeserializerTest1, data.get(), 12, changeStr.c_str());
+        t2.join();
+        EXPECT_TRUE(strcmp((char *)buffer, "world hella") == 0) << "Serialize JSArrayBuffer fail";
+        changeStr = "world hellb";
+        JSDeserializerTest jsDeserializerTest2;
+        std::thread t3(&JSDeserializerTest::JSSharedArrayBufferTest,
+                    jsDeserializerTest2, data.get(), 12, changeStr.c_str());
+        t3.join();
+        EXPECT_TRUE(strcmp((char *)buffer, "world hellb") == 0) << "Serialize JSArrayBuffer fail";
+    }
+    delete serializer;
+    data.reset();
+    EXPECT_TRUE(JSHandle<JSTaggedValue>(jsArrayBuffer)->IsSharedArrayBuffer());
 };
 
 JSArrayBuffer *CreateTestJSArrayBuffer(JSThread *thread)

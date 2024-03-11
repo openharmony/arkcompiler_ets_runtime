@@ -23,7 +23,7 @@ void AArch64CFGOptimizer::InitOptimizePatterns()
     if (cgFunc->GetMirModule().IsCModule()) {
         diffPassPatterns.emplace_back(memPool->New<SequentialJumpPattern>(*cgFunc));
     }
-    auto *brOpt = memPool->New<AArch64FlipBRPattern>(*cgFunc);
+    auto *brOpt = memPool->New<AArch64FlipBRPattern>(*cgFunc, loopInfo);
     if (GetPhase() == kCfgoPostRegAlloc) {
         brOpt->SetPhase(kCfgoPostRegAlloc);
     }

@@ -764,9 +764,8 @@ JSTaggedValue BuiltinsArrayBuffer::TypedArrayToList(JSThread *thread, JSHandle<J
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSTaggedValue> bufferHandle(thread, items->GetViewedArrayBufferOrByteArray());
     uint32_t arrayLen = items->GetArrayLength();
-    JSTaggedValue newArray = JSArray::ArrayCreate(thread, JSTaggedNumber(0)).GetTaggedValue();
+    JSHandle<JSObject> newArrayHandle(thread, JSArray::ArrayCreate(thread, JSTaggedNumber(0)).GetTaggedValue());
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    JSHandle<JSObject> newArrayHandle(thread, newArray);
     JSHandle<TaggedArray> oldElements(thread, newArrayHandle->GetElements());
     JSHandle<TaggedArray> elements = (oldElements->GetLength() < arrayLen) ?
         factory->ExtendArray(oldElements, arrayLen) : oldElements;
@@ -777,8 +776,8 @@ JSTaggedValue BuiltinsArrayBuffer::TypedArrayToList(JSThread *thread, JSHandle<J
     uint32_t index = 0;
     while (index < arrayLen) {
         uint32_t byteIndex = index * elementSize + offset;
-        JSTaggedValue result = GetValueFromBuffer(thread, bufferHandle.GetTaggedValue(),
-                                                  byteIndex, elementType, true);
+        JSHandle<JSTaggedValue> result(thread, GetValueFromBuffer(thread, bufferHandle.GetTaggedValue(),
+                                       byteIndex, elementType, true));
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         ElementAccessor::Set(thread, newArrayHandle, index, result, true);
         index++;

@@ -53,11 +53,15 @@ enum class TypedCallTargetCheckOp : uint8_t;
     V(NotDouble3,                      NOTDOUBLE3)                    \
     V(NotNumber1,                      NOTNUMBER1)                    \
     V(NotNumber2,                      NOTNUMBER2)                    \
+    V(CannotStoreSpecailHole,          CANNOTSTORESPECAILHOLE)        \
     V(NotBool1,                        NOTBOOL1)                      \
     V(NotBool2,                        NOTBOOL2)                      \
     V(NotHeapObject1,                  NOTHEAPOBJECT1)                \
     V(NotStableArray1,                 NOTSARRAY1)                    \
     V(NotStableArray2,                 NOTSARRAY2)                    \
+    V(ElementsKindMismatchedAtLoad,    ELEMENSKINDMISMATCHEDATLOAD)   \
+    V(ElementsKindMismatchedAtStore,   ELEMENSKINDMISMATCHEDATSTORE)  \
+    V(InconsistentElementsKind,        INCONSISTENTELEMENTSKIND)      \
     V(NotArray1,                       NOTARRAY1)                     \
     V(NotArray2,                       NOTARRAY2)                     \
     V(InconsistentOnHeap1,             INCONSISTENTONHEAP1)           \
@@ -70,7 +74,7 @@ enum class TypedCallTargetCheckOp : uint8_t;
     V(InconsistentHClass7,             INCONSISTENTHCLASS7)           \
     V(InconsistentHClass8,             INCONSISTENTHCLASS8)           \
     V(InconsistentHClass9,             INCONSISTENTHCLASS9)           \
-    V(InconsistentHClass10,             INCONSISTENTHCLASS10)           \
+    V(InconsistentHClass10,            INCONSISTENTHCLASS10)          \
     V(NotNewObj1,                      NOTNEWOBJ1)                    \
     V(NotNewObj2,                      NOTNEWOBJ2)                    \
     V(NotNewObj3,                      NOTNEWOBJ3)                    \
@@ -102,6 +106,8 @@ enum class TypedCallTargetCheckOp : uint8_t;
     V(BuiltinIsHole1,                  BUILTINISHOLE1)                \
     V(NewBuiltinCtorFail1,             NEWBUILTINCTORFAIL1)           \
     V(NewBuiltinCtorFail2,             NEWBUILTINCTORFAIL2)           \
+    V(IsUndefinedOrHole,               ISUNDEFINEDORHOLE)             \
+    V(IsNotUndefinedOrHole,            ISNOTUNDEFINEDORHOLE)          \
 
 enum class DeoptType : uint8_t {
     NOTCHECK = 0,
@@ -577,6 +583,11 @@ public:
         return ElementsKindBits::Get(bitField_);
     }
 
+    void SetElementsKind(ElementsKind kind)
+    {
+        bitField_ = ElementsKindBits::Update(bitField_, kind);
+    }
+
     void SetArrayLength(uint32_t length)
     {
         bitField_ = ArrayLengthBits::Update(bitField_, length);
@@ -590,6 +601,11 @@ public:
     bool IsLoadElement() const
     {
         return GetMode() == Mode::LOAD_ELEMENT;
+    }
+
+    bool IsStoreElement() const
+    {
+        return GetMode() == Mode::STORE_ELEMENT;
     }
 
     uint64_t ToValue() const
@@ -606,6 +622,35 @@ private:
     using ElementsKindBits = panda::BitField<ElementsKind, 0, BITS_SIZE>;
     using ModeBits = ElementsKindBits::NextField<Mode, BITS_SIZE>;
     using ArrayLengthBits = ModeBits::NextField<uint32_t, ARRAY_LENGTH_BITS_SIZE>;
+
+    uint64_t bitField_;
+};
+
+class CreateArgumentsAccessor {
+public:
+    enum Mode : uint8_t {
+        REST_ARGUMENTS,
+        UNMAPPED_ARGUMENTS,
+        INVALID,
+    };
+
+    static constexpr int BITS_SIZE = 8;
+    explicit CreateArgumentsAccessor(uint64_t value) : bitField_(value) {}
+    explicit CreateArgumentsAccessor(ElementsKind kind, Mode mode)
+    {
+        bitField_ = ElementsKindBits::Encode(kind) | ModeBits::Encode(mode);
+    }
+    Mode GetMode() const
+    {
+        return ModeBits::Get(bitField_);
+    }
+    uint64_t ToValue() const
+    {
+        return bitField_;
+    }
+private:
+    using ElementsKindBits = panda::BitField<ElementsKind, 0, BITS_SIZE>;
+    using ModeBits = ElementsKindBits::NextField<Mode, BITS_SIZE>;
 
     uint64_t bitField_;
 };

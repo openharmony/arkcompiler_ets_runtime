@@ -796,6 +796,22 @@ DEF_CALL_SIGNATURE(CreateArrayWithBuffer)
     callSign->SetCallConv(CallSignature::CallConv::CCallConv);
 }
 
+DEF_CALL_SIGNATURE(CopyRestArgs)
+{
+    // 3 : 3 input parameters
+    CallSignature signature("CopyRestArgs", 0, 3,
+        ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
+    *callSign = signature;
+    // 3 : 3 input parameters
+    std::array<VariableType, 3> params = {
+        VariableType::NATIVE_POINTER(),  // glue
+        VariableType::INT32(),           // startIdx
+        VariableType::INT32(),           // numArgs
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetCallConv(CallSignature::CallConv::CCallConv);
+}
+
 DEF_CALL_SIGNATURE(NewJSObject)
 {
     // 2 : 2 input parameters

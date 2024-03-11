@@ -18,9 +18,7 @@
 
 #include <unordered_map>
 
-#include "ecmascript/mem/object_xray.h"
 #include "ecmascript/mem/visitor.h"
-#include "libpandabase/macros.h"
 
 namespace panda::ecmascript {
 class EcmaVM;
@@ -30,8 +28,7 @@ public:
     explicit SnapshotEnv(EcmaVM *vm) : vm_(vm) {}
     ~SnapshotEnv() = default;
 
-    void Initialize();
-    void InitializeStringClass();
+    void AddGlobalConstToMap();
 
     void ClearEnvMap()
     {
@@ -40,7 +37,17 @@ public:
 
     void Iterate(const RootVisitor &v);
 
-    uint32_t FindEnvObjectIndex(uintptr_t objectAddr) const
+    void Push(JSTaggedType objectAddr, uint32_t index)
+    {
+        rootObjectMap_.emplace(objectAddr, index);
+    }
+
+    void Remove(JSTaggedType objectAddr)
+    {
+        rootObjectMap_.erase(objectAddr);
+    }
+
+    uint32_t FindEnvObjectIndex(JSTaggedType objectAddr) const
     {
         if (rootObjectMap_.find(objectAddr) != rootObjectMap_.end()) {
             return rootObjectMap_.find(objectAddr)->second;
@@ -48,17 +55,7 @@ public:
         return MAX_UINT_32;
     }
 
-    JSTaggedType RelocateRootObjectAddr(uint32_t index)
-    {
-        auto globalConst = const_cast<GlobalEnvConstants *>(vm_->GetJSThread()->GlobalConstants());
-        size_t globalConstCount = globalConst->GetConstantCount();
-        if (index < globalConstCount) {
-            JSTaggedValue obj = globalConst->GetGlobalConstantObject(index);
-            return obj.GetRawData();
-        }
-        JSHandle<JSTaggedValue> value = vm_->GetGlobalEnv()->GetNoLazyEnvObjectByIndex(index - globalConstCount);
-        return value->GetRawData();
-    }
+    JSTaggedType RelocateRootObjectAddr(uint32_t index);
 
     static constexpr size_t MAX_UINT_32 = 0xFFFFFFFF;
 
@@ -70,7 +67,7 @@ private:
     void InitGlobalEnv();
 
     EcmaVM *vm_;
-    CUnorderedMap<uintptr_t, uint32_t> rootObjectMap_;
+    std::unordered_map<JSTaggedType, uint32_t> rootObjectMap_;
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_SNAPSHOT_MEM_SNAPSHOT_ENV_H

@@ -21,14 +21,14 @@
 #include "ecmascript/interpreter/frame_handler.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/stackmap/ark_stackmap_parser.h"
-#include "ecmascript/stackmap/llvm_stackmap_parser.h"
+#include "ecmascript/stackmap/llvm/llvm_stackmap_parser.h"
 
 namespace panda::ecmascript {
 FrameIterator::FrameIterator(JSTaggedType *sp, const JSThread *thread) : current_(sp), thread_(thread)
 {
     if (thread != nullptr) {
         arkStackMapParser_ =
-            const_cast<JSThread *>(thread)->GetCurrentEcmaContext()->GetAOTFileManager()->GetStackMapParser();
+            const_cast<JSThread *>(thread)->GetEcmaVM()->GetAOTFileManager()->GetStackMapParser();
     }
 }
 

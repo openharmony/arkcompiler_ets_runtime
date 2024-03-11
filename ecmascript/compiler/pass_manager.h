@@ -142,10 +142,10 @@ class PassManager {
 public:
     explicit PassManager(EcmaVM* vm, std::string &triple, size_t optLevel, size_t relocMode,
         CompilerLog *log, AotMethodLogList *logList, size_t maxAotMethodSize, size_t maxMethodsInModule,
-        PGOProfilerDecoder &profilerDecoder, PassOptions *passOptions)
+        PGOProfilerDecoder &profilerDecoder, PassOptions *passOptions, std::string optBCRange)
         : vm_(vm), triple_(triple), optLevel_(optLevel), relocMode_(relocMode), log_(log),
           logList_(logList), maxAotMethodSize_(maxAotMethodSize), maxMethodsInModule_(maxMethodsInModule),
-          profilerDecoder_(profilerDecoder), passOptions_(passOptions) {
+          profilerDecoder_(profilerDecoder), passOptions_(passOptions), optBCRange_(optBCRange) {
                 enableJITLog_ =  vm_->GetJSOptions().GetTraceJIT();
             };
 
@@ -165,6 +165,7 @@ protected:
     size_t maxMethodsInModule_ {0};
     PGOProfilerDecoder &profilerDecoder_;
     PassOptions *passOptions_ {nullptr};
+    std::string optBCRange_ {};
     bool enableJITLog_ {false};
 };
 
@@ -173,7 +174,7 @@ public:
     JitPassManager(EcmaVM* vm, std::string &triple, size_t optLevel, size_t relocMode,
         CompilerLog *log, AotMethodLogList *logList,
         PGOProfilerDecoder &profilerDecoder, PassOptions *passOptions)
-        : PassManager(vm, triple, optLevel, relocMode, log, logList, 1, 1, profilerDecoder, passOptions) { };
+        : PassManager(vm, triple, optLevel, relocMode, log, logList, 1, 1, profilerDecoder, passOptions, "") { };
 
     bool Compile(JSHandle<JSFunction> &jsFunction, AOTFileGenerator &gen);
     bool RunCg();

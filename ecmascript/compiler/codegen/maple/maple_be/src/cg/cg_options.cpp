@@ -60,6 +60,11 @@ maplecl::Option<bool> replaceAsm({"--replaceasm"},
                                  "  --no-replaceasm\n",
                                  {cgCategory}, maplecl::DisableWith("--no-replaceasm"));
 
+maplecl::Option<bool> supportFuncSymbol({"--enable-func-symbol"},
+                                "  --enable-func-symbol               \tenable function symbols in symbol table\n"
+                                "  --disable-func-symbol\n",
+                                {cgCategory}, maplecl::DisableWith("--disable-func-symbol"));
+
 maplecl::Option<bool> generalRegOnly(
     {"--general-reg-only"},
     " --general-reg-only           \tdisable floating-point or Advanced SIMD registers\n"

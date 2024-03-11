@@ -40,3 +40,15 @@ function testTypeArrayAt1(ctor) {
     print(result1.length);
 }
 
+var v0 = new Uint8Array(64);
+try {
+  v0 = v0.subarray(64);
+} catch (e) {
+  print(e);
+}
+try {
+  v0 = v0.subarray(64);
+} catch (e) {
+  print(e);
+}
+print(v0);

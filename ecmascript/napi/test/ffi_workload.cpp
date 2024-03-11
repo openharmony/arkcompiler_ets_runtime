@@ -3595,7 +3595,7 @@ HWTEST_F_L0(JSNApiSplTest, JSNApi_InitializeIcuData)
     JSRuntimeOptions runtimeOptions;
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        JSNApi::InitializeIcuData(runtimeOptions);
+        EcmaVM::InitializeIcuData(runtimeOptions);
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(JSNApi_InitializeIcuData);

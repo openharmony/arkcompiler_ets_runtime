@@ -14,6 +14,7 @@
  */
 
 declare function print(str:string):string;
+declare function assert_equal(a: Object, b: Object):void;
 
 function getHelloWorld():string
 {
@@ -26,4 +27,4 @@ function printArg(a:any, b:any)
     print(b);
 }
 
-print(getHelloWorld());
+assert_equal(getHelloWorld(), "hello world");

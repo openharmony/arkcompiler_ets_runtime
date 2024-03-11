@@ -94,7 +94,7 @@ Insn *X64RegInfo::BuildStrInsn(uint32 regSize, PrimType stype, RegOperand &phyOp
     X64MOP_t mOp = x64::MOP_begin;
     switch (regSize) {
         case k8BitSize:
-            mOp = (phyOpnd.GetRegisterType() == kRegTyInt) ? x64::MOP_movb_r_m: x64::MOP_begin;
+            mOp = (phyOpnd.GetRegisterType() == kRegTyInt) ? x64::MOP_movb_r_m : x64::MOP_begin;
             break;
         case k16BitSize:
             mOp = (phyOpnd.GetRegisterType() == kRegTyInt) ? x64::MOP_movw_r_m : x64::MOP_begin;
@@ -153,8 +153,8 @@ MemOperand *X64RegInfo::GetOrCreatSpillMem(regno_t vrNum, uint32 bitSize)
     return x64CGFunc->GetOrCreatSpillMem(vrNum, bitSize);
 }
 
-MemOperand *X64RegInfo::AdjustMemOperandIfOffsetOutOfRange(MemOperand *memOpnd, regno_t vrNum, bool isDest, Insn &insn,
-                                                           regno_t regNum, bool &isOutOfRange)
+MemOperand *X64RegInfo::AdjustMemOperandIfOffsetOutOfRange(MemOperand *memOpnd, const RegNoPair &regNoPair, bool isDest,
+                                                           Insn &insn, bool &isOutOfRange)
 {
     isOutOfRange = false;
     return memOpnd;

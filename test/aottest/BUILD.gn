@@ -21,7 +21,6 @@ group("ark_aot_js_test") {
     "tryldglobalbyname",
 
     # "dynamicimport", TODO(aot) wait for aot adapt
-    "emptyif",
     "formatrangetoparts",
     "module",
     "undefined",
@@ -33,6 +32,7 @@ group("ark_aot_js_test") {
     "js_string_add",
     "regressioncase",
     "definefieldbyname",
+    "definefieldbyname2",
   ]
 
   deps = []
@@ -44,15 +44,21 @@ group("ark_aot_js_test") {
   }
 }
 
+group("ark_aot_js_assert_test") {
+  testonly = true
+  deps = []
+  test_assert_list = [ "emptyif" ]
+  foreach(test, test_assert_list) {
+    deps += [ "${test}:${test}AotAssertAction" ]
+    if (!is_debug) {
+      deps += [ "${test}:${test}AotContextAssertAction" ]
+    }
+  }
+}
+
 group("ark_aot_ts_test") {
   testonly = true
   test_list = [
-    "add",
-    "and",
-    "array",
-    "array_bounds_check_elimination",
-    "array_foreach_inline",
-    "ashr",
     "asyncgenerator",
     "asyncgeneratormultiloop",
     "asyncgeneratorrest",
@@ -60,49 +66,7 @@ group("ark_aot_ts_test") {
     "async_env",
     "await",
     "await_loop",
-    "bc_builder",
-    "bind",
-    "binaryop_special_value",
-    "builtinmath",
-    "call_same_bytecode_func",
-    "callithisrange",
-    "calls",
-    "classstatic",
-    "class_method_signature",
-    "closeiterator",
-    "compiler_test",
-    "constpool",
-    "continue_from_finally",
-    "copyrestargs",
-    "createarray_meta_data",
-    "createarrayimm16",
-    "createarraywithbuffer",
-    "createemptyarray",
-    "createemptyobject",
-    "creategeneratorobj",
-    "createiterresultobj",
-    "createobjecthavingmethod",
-    "createobjectwithbuffer",
-    "createobjectwithexcludedkeys",
-    "createregexpwithliteral",
-    "dec",
-    "default_supers",
-    "defineasyncfunc",
-    "defineclasswithbuffer",
-    "defineclass",
-    "definefunc",
-    "definefunc_variable_args",
-    "definegeneratorfunc",
-    "definegettersetterbyvalue",
-    "definemethod",
-    "definencfunc",
-    "delobjprop",
-    "deopt",
     "deopt_clear_aotflags",
-    "destructuring",
-    "div",
-    "duplicatefunctions",
-    "duplicatekey",
     "elements_kind",
     "equal_nan",
     "exception_case1",
@@ -198,6 +162,7 @@ group("ark_aot_ts_test") {
     "pgo_class_operation",
     "pgo_class_prototype",
     "pgo_constructor_number",
+    "pgo_elimination_loadconstoffset",
     "pgo_forof_array",
     "pgo_forof_map",
     "pgo_forof_set",
@@ -318,10 +283,74 @@ group("ark_aot_ts_test") {
   }
 }
 
+group("ark_aot_ts_assert_test") {
+  testonly = true
+
+  deps = []
+  assert_test_list = [
+    "add",
+    "and",
+    "array_bounds_check_elimination",
+    "array",
+    "array_foreach_inline",
+    "ashr",
+    "bind",
+    "binaryop_special_value",
+    "bc_builder",
+    "builtinmath",
+    "call_same_bytecode_func",
+    "callithisrange",
+    "calls",
+    "classstatic",
+    "class_method_signature",
+    "closeiterator",
+    "compiler_test",
+    "constpool",
+    "continue_from_finally",
+    "copyrestargs",
+    "createarray_meta_data",
+    "createarrayimm16",
+    "createarraywithbuffer",
+    "createemptyarray",
+    "createemptyobject",
+    "creategeneratorobj",
+    "createiterresultobj",
+    "createobjecthavingmethod",
+    "createobjectwithbuffer",
+    "createobjectwithexcludedkeys",
+    "createregexpwithliteral",
+    "dec",
+    "default_supers",
+    "defineasyncfunc",
+    "defineclasswithbuffer",
+    "defineclass",
+    "definefunc",
+    "definefunc_variable_args",
+    "definegeneratorfunc",
+    "definegettersetterbyvalue",
+    "definemethod",
+    "definencfunc",
+    "delobjprop",
+    "deopt",
+    "destructuring",
+    "div",
+    "duplicatefunctions",
+    "duplicatekey",
+  ]
+  foreach(test, assert_test_list) {
+    deps += [ "${test}:${test}AotAssertAction" ]
+    if (!is_debug) {
+      deps += [ "${test}:${test}AotContextAssertAction" ]
+    }
+  }
+}
+
 group("ark_aot_test") {
   testonly = true
   deps = [
+    ":ark_aot_js_assert_test",
     ":ark_aot_js_test",
+    ":ark_aot_ts_assert_test",
     ":ark_aot_ts_test",
     "analyze_property:analyze_property_test",
     "aot_compatibility_test:aot_compatibility_test",
@@ -333,7 +362,9 @@ group("ark_aot_test") {
 
   if (is_mac) {
     deps -= [
+      ":ark_aot_js_assert_test",
       ":ark_aot_js_test",
+      ":ark_aot_ts_assert_test",
       ":ark_aot_ts_test",
       "aot_type_test:aot_type_test",
     ]

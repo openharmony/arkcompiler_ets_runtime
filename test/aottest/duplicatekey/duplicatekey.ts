@@ -12,7 +12,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-declare function print(str:any):string;
+declare function assert_true(condition: boolean):void;
+declare function assert_equal(a: Object, b: Object):void;
 declare var ArkTools:any;
 {
     var hca;
@@ -37,15 +38,15 @@ declare var ArkTools:any;
 
     let a = new A(123);
     let hc1 = ArkTools.getHClass(a);
-    print(hca === hc1);
-    print(ArkTools.isTSHClass(a));
+    assert_equal(hca === hc1, false);
+    assert_equal(ArkTools.isTSHClass(a), false);
 
     let b = new B(456, "abc");
     let hc2 = ArkTools.getHClass(b);
-    print(hcb === hc2);
-    print(ArkTools.isTSHClass(b));
+    assert_true(hcb === hc2);
+    assert_equal(ArkTools.isTSHClass(a), false);
 
-    print(a.value);
-    print(b.value);
-    print(b.name);
+    assert_equal(a.value, 123);
+    assert_equal(b.value, 456);
+    assert_equal(b.name, "abc");
 }

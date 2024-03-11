@@ -335,26 +335,26 @@ bool VregRename::IsProfitableToRename(const VregRenameInfo *info) const
     return false;
 }
 
-void VregRename::RenameProfitableVreg(RegOperand *ropnd, const CGFuncLoops *loop)
+void VregRename::RenameProfitableVreg(RegOperand &ropnd, const LoopDesc &loop)
 {
-    regno_t vreg = ropnd->GetRegisterNumber();
+    regno_t vreg = ropnd.GetRegisterNumber();
     VregRenameInfo *info = (vreg <= maxRegnoSeen) ? renameInfo[vreg] : nullptr;
-    if ((info == nullptr) || loop->GetMultiEntries().size() || (!IsProfitableToRename(info))) {
+    if ((info == nullptr) || (!IsProfitableToRename(info))) {
         return;
     }
 
-    uint32 size = (ropnd->GetSize() == k64BitSize) ? k8ByteSize : k4ByteSize;
-    regno_t newRegno = cgFunc->NewVReg(ropnd->GetRegisterType(), size);
+    uint32 size = (ropnd.GetSize() == k64BitSize) ? k8ByteSize : k4ByteSize;
+    regno_t newRegno = cgFunc->NewVReg(ropnd.GetRegisterType(), size);
     RegOperand *renameVreg = &cgFunc->CreateVirtualRegisterOperand(newRegno);
 
-    const BB *header = loop->GetHeader();
-    for (auto pred : header->GetPreds()) {
-        if (find(loop->GetBackedge().begin(), loop->GetBackedge().end(), pred) != loop->GetBackedge().end()) {
+    const BB &header = loop.GetHeader();
+    for (auto pred : header.GetPreds()) {
+        if (loop.IsBackEdge(*pred, loop.GetHeader())) {
             continue;
         }
-        MOperator mOp = (ropnd->GetRegisterType() == kRegTyInt) ? ((size == k8BitSize) ? MOP_xmovrr : MOP_wmovrr)
-                                                                : ((size == k8BitSize) ? MOP_xvmovd : MOP_xvmovs);
-        Insn &newInsn = cgFunc->GetInsnBuilder()->BuildInsn(mOp, *renameVreg, *ropnd);
+        MOperator mOp = (ropnd.GetRegisterType() == kRegTyInt) ? ((size == k8BitSize) ? MOP_xmovrr : MOP_wmovrr)
+                                                               : ((size == k8BitSize) ? MOP_xvmovd : MOP_xvmovs);
+        Insn &newInsn = cgFunc->GetInsnBuilder()->BuildInsn(mOp, *renameVreg, ropnd);
         Insn *last = pred->GetLastInsn();
         if (last) {
             if (last->IsBranch()) {
@@ -367,7 +367,8 @@ void VregRename::RenameProfitableVreg(RegOperand *ropnd, const CGFuncLoops *loop
         }
     }
 
-    for (auto bb : loop->GetLoopMembers()) {
+    for (auto bbId : loop.GetLoopBBs()) {
+        auto *bb = cgFunc->GetBBFromID(bbId);
         FOR_BB_INSNS(insn, bb) {
             if (insn->IsImmaterialInsn() || !insn->IsMachineInstruction()) {
                 continue;
@@ -402,9 +403,10 @@ void VregRename::RenameProfitableVreg(RegOperand *ropnd, const CGFuncLoops *loop
     }
 }
 
-void VregRename::RenameFindLoopVregs(const CGFuncLoops *loop)
+void VregRename::RenameFindLoopVregs(const LoopDesc &loop)
 {
-    for (auto *bb : loop->GetLoopMembers()) {
+    for (auto bbId : loop.GetLoopBBs()) {
+        auto *bb = cgFunc->GetBBFromID(bbId);
         FOR_BB_INSNS(insn, bb) {
             if (insn->IsImmaterialInsn() || !insn->IsMachineInstruction()) {
                 continue;
@@ -417,15 +419,15 @@ void VregRename::RenameFindLoopVregs(const CGFuncLoops *loop)
                     MemOperand *memopnd = static_cast<MemOperand *>(opnd);
                     RegOperand *base = static_cast<RegOperand *>(memopnd->GetBaseRegister());
                     if (base != nullptr && base->IsVirtualRegister()) {
-                        RenameProfitableVreg(base, loop);
+                        RenameProfitableVreg(*base, loop);
                     }
                     RegOperand *offset = static_cast<RegOperand *>(memopnd->GetIndexRegister());
                     if (offset != nullptr && offset->IsVirtualRegister()) {
-                        RenameProfitableVreg(offset, loop);
+                        RenameProfitableVreg(*offset, loop);
                     }
                 } else if (opnd->IsRegister() && static_cast<RegOperand *>(opnd)->IsVirtualRegister() &&
                            static_cast<RegOperand *>(opnd)->GetRegisterNumber() != ccRegno) {
-                    RenameProfitableVreg(static_cast<RegOperand *>(opnd), loop);
+                    RenameProfitableVreg(static_cast<RegOperand &>(*opnd), loop);
                 }
             }
         }
@@ -475,7 +477,8 @@ void VregRename::UpdateVregInfo(regno_t vreg, BB *bb, bool isInner, bool isDef)
 void VregRename::RenameGetFuncVregInfo()
 {
     FOR_ALL_BB(bb, cgFunc) {
-        bool isInner = bb->GetLoop() ? bb->GetLoop()->GetInnerLoops().empty() : false;
+        auto *loop = loopInfo.GetBBLoopParent(bb->GetId());
+        bool isInner = loop ? loop->GetChildLoops().empty() : false;
         FOR_BB_INSNS(insn, bb) {
             if (insn->IsImmaterialInsn() || !insn->IsMachineInstruction()) {
                 continue;
@@ -508,25 +511,25 @@ void VregRename::RenameGetFuncVregInfo()
     }
 }
 
-void VregRename::RenameFindVregsToRename(const CGFuncLoops *loop)
+void VregRename::RenameFindVregsToRename(const LoopDesc &loop)
 {
-    if (loop->GetInnerLoops().empty()) {
+    if (loop.GetChildLoops().empty()) {
         RenameFindLoopVregs(loop);
         return;
     }
-    for (auto inner : loop->GetInnerLoops()) {
-        RenameFindVregsToRename(inner);
+    for (const auto inner : loop.GetChildLoops()) {
+        RenameFindVregsToRename(*inner);
     }
 }
 
 void VregRename::VregLongLiveRename()
 {
-    if (cgFunc->GetLoops().size() == 0) {
+    if (loopInfo.GetLoops().empty()) {
         return;
     }
     RenameGetFuncVregInfo();
-    for (const auto *lp : cgFunc->GetLoops()) {
-        RenameFindVregsToRename(lp);
+    for (const auto *loop : loopInfo.GetLoops()) {
+        RenameFindVregsToRename(*loop);
     }
 }
 
@@ -537,14 +540,13 @@ void AArch64RaOpt::Run()
 
     if (cgFunc->GetMirModule().GetSrcLang() == kSrcLangC && CGOptions::DoVregRename()) {
         /* loop detection considers EH bb.  That is not handled.  So C only for now. */
-        LoopFinder *lf = memPool->New<LoopFinder>(*cgFunc, *memPool);
-        lf->FormLoopHierarchy();
-        VregRename rename(cgFunc, memPool);
+        auto *loop = memPool->New<LoopAnalysis>(*cgFunc, *memPool, domInfo);
+        loop->Analysis();
+        VregRename rename(cgFunc, memPool, *loop);
         Bfs localBfs(*cgFunc, *memPool);
         rename.bfs = &localBfs;
         rename.bfs->ComputeBlockOrder();
         rename.VregLongLiveRename();
-        cgFunc->ClearLoopInfo();
     }
 }
 } /* namespace maplebe */

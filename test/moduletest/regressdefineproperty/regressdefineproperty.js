@@ -49,3 +49,23 @@ try {
 } catch {
     print("true")
 }
+
+Object.defineProperty(this, 'x', {
+  configurable: true,
+  get: function () {return 100}
+});
+Object.defineProperty(this, 'x', {
+  value: 10
+});
+print(JSON.stringify(Object.getOwnPropertyDescriptor(this, 'x')));
+
+const o1 = {
+  k: 1
+};
+for (let i = 0; i < 1100; i++) {
+  Object.defineProperty(o1, "k" + i, {
+    value: 0,
+    enumerable: false
+  });
+}
+print(JSON.stringify(o1))

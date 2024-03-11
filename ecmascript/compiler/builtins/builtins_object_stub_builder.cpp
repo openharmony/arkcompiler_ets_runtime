@@ -49,6 +49,31 @@ GateRef BuiltinsObjectStubBuilder::CreateListFromArrayLike(GateRef glue, GateRef
     }
     Bind(&targetIsEcmaObject);
     {
+        Label targetIsTypeArray(env);
+        Label targetNotTypeArray(env);
+        Branch(IsTypedArray(arrayObj), &targetIsTypeArray, &targetNotTypeArray);
+        Bind(&targetIsTypeArray);
+        {
+            GateRef int32Len = GetLengthOfJSTypedArray(arrayObj);
+            NewObjectStubBuilder newBuilder(this);
+            GateRef array = newBuilder.NewTaggedArray(glue, int32Len);
+            TypedArrayStubBuilder arrayStubBuilder(this);
+            arrayStubBuilder.FastCopyElementToArray(glue, arrayObj, array);
+            // c. ReturnIfAbrupt(next).
+            Label isPendingException2(env);
+            Label noPendingException2(env);
+            Branch(HasPendingException(glue), &isPendingException2, &noPendingException2);
+            Bind(&isPendingException2);
+            {
+                Jump(&exit);
+            }
+            Bind(&noPendingException2);
+            {
+                res = array;
+                Jump(&exit);
+            }
+        }
+        Bind(&targetNotTypeArray);
         // 4. Let len be ToLength(Get(obj, "length")).
         GateRef lengthString = GetGlobalConstantValue(VariableType::JS_POINTER(), glue,
                                                       ConstantIndex::LENGTH_STRING_INDEX);
@@ -77,33 +102,10 @@ GateRef BuiltinsObjectStubBuilder::CreateListFromArrayLike(GateRef glue, GateRef
             }
             Bind(&indexInRange);
             {
-                GateRef int32Len = DoubleToInt(glue, doubleLen);
-                // 6. Let list be an empty List.
-                NewObjectStubBuilder newBuilder(this);
-                GateRef array = newBuilder.NewTaggedArray(glue, int32Len);
-                Label targetIsTypeArray(env);
-                Label targetNotTypeArray(env);
-                Branch(IsTypedArray(arrayObj), &targetIsTypeArray, &targetNotTypeArray);
-                Bind(&targetIsTypeArray);
-                {
-                    TypedArrayStubBuilder arrayStubBuilder(this);
-                    arrayStubBuilder.FastCopyElementToArray(glue, arrayObj, array);
-                    // c. ReturnIfAbrupt(next).
-                    Label isPendingException2(env);
-                    Label noPendingException2(env);
-                    Branch(HasPendingException(glue), &isPendingException2, &noPendingException2);
-                    Bind(&isPendingException2);
-                    {
-                        Jump(&exit);
-                    }
-                    Bind(&noPendingException2);
-                    {
-                        res = array;
-                        Jump(&exit);
-                    }
-                }
-                Bind(&targetNotTypeArray);
                 // 8. Repeat while index < len
+                GateRef int32Length = DoubleToInt(glue, doubleLen);
+                NewObjectStubBuilder newBuilder(this);
+                GateRef array = newBuilder.NewTaggedArray(glue, int32Length);
                 Label loopHead(env);
                 Label loopEnd(env);
                 Label afterLoop(env);
@@ -113,7 +115,7 @@ GateRef BuiltinsObjectStubBuilder::CreateListFromArrayLike(GateRef glue, GateRef
                 Jump(&loopHead);
                 LoopBegin(&loopHead);
                 {
-                    Branch(Int32UnsignedLessThan(*index, int32Len), &storeValue, &afterLoop);
+                    Branch(Int32UnsignedLessThan(*index, int32Length), &storeValue, &afterLoop);
                     Bind(&storeValue);
                     {
                         GateRef next = FastGetPropertyByIndex(glue, arrayObj, *index, ProfileOperation());
@@ -144,7 +146,6 @@ GateRef BuiltinsObjectStubBuilder::CreateListFromArrayLike(GateRef glue, GateRef
     env->SubCfgExit();
     return ret;
 }
-
 GateRef BuiltinsObjectStubBuilder::CreateArrayFromList(GateRef glue, GateRef elements)
 {
     auto env = GetEnvironment();
@@ -340,7 +341,7 @@ void BuiltinsObjectStubBuilder::AssignEnumElementProperty(Variable *result, Labe
         {
             Branch(Int32LessThan(*idx, len), &next, &loopExit);
             Bind(&next);
-            GateRef value = GetValueFromTaggedArray(elements, *idx);
+            GateRef value = GetTaggedValueWithElementsKind(source, *idx);
             Label notHole(env);
             Branch(TaggedIsHole(value), &loopEnd, &notHole);
             Bind(&notHole);
@@ -748,7 +749,7 @@ void BuiltinsObjectStubBuilder::HasOwnProperty(Variable *result, Label *exit, La
                         Bind(&lessThanLength);
                         {
                             Label notHole(env);
-                            GateRef value = GetValueFromTaggedArray(elements, index);
+                            GateRef value = GetTaggedValueWithElementsKind(thisValue_, index);
                             Branch(TaggedIsNotHole(value), &notHole, exit);
                             Bind(&notHole);
                             {
@@ -1199,7 +1200,7 @@ GateRef BuiltinsObjectStubBuilder::GetEnumElementKeys(GateRef glue, GateRef obj)
                 Branch(Int32UnsignedLessThan(*j, elementsLen), &iLessLength, &afterLoop);
                 Bind(&iLessLength);
                 {
-                    GateRef element = GetValueFromTaggedArray(elements, *j);
+                    GateRef element = GetTaggedValueWithElementsKind(obj, *j);
                     Branch(TaggedIsHole(element), &loopEnd, &notHole);
                     Bind(&notHole);
                     GateRef str = IntToEcmaString(glue, *j);

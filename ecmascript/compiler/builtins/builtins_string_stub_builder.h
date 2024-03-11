@@ -35,12 +35,16 @@ public:
     void FromCharCode(GateRef glue, GateRef thisValue, GateRef numArgs, Variable* res, Label *exit, Label *slowPath);
     void CharAt(GateRef glue, GateRef thisValue, GateRef numArgs, Variable* res, Label *exit, Label *slowPath);
     void CharCodeAt(GateRef glue, GateRef thisValue, GateRef numArgs, Variable* res, Label *exit, Label *slowPath);
+    void CodePointAt(GateRef glue, GateRef thisValue, GateRef numArgs, Variable* res, Label *exit, Label *slowPath);
     void IndexOf(GateRef glue, GateRef thisValue, GateRef numArgs, Variable* res, Label *exit, Label *slowPath);
     void Substring(GateRef glue, GateRef thisValue, GateRef numArgs, Variable* res, Label *exit, Label *slowPath);
     void Replace(GateRef glue, GateRef thisValue, GateRef numArgs, Variable *res, Label *exit, Label *slowPath);
     void Trim(GateRef glue, GateRef thisValue, GateRef numArgs, Variable *res, Label *exit, Label *slowPath);
     void Slice(GateRef glue, GateRef thisValue, GateRef numArgs, Variable *res, Label *exit, Label *slowPath);
     void LocaleCompare(GateRef glue, GateRef thisValue, GateRef numArgs, Variable *res, Label *exit, Label *slowPath);
+    void Concat(GateRef glue, GateRef thisValue, GateRef numArgs, Variable *res, Label *exit, Label *slowPath);
+    void StartsWith(GateRef glue, GateRef thisValue, GateRef numArgs, Variable *res, Label *exit, Label *slowPath);
+    void ToLowerCase(GateRef glue, GateRef thisValue, GateRef numArgs, Variable *res, Label *exit, Label *slowPath);
 
     GateRef ConvertAndClampRelativeIndex(GateRef index, GateRef length);
     GateRef StringAt(const StringInfoGateRef &stringInfoGate, GateRef index);
@@ -67,6 +71,10 @@ public:
     void StoreParent(GateRef glue, GateRef object, GateRef parent);
     void StoreStartIndex(GateRef glue, GateRef object, GateRef startIndex);
     void StoreHasBackingStore(GateRef glue, GateRef object, GateRef hasBackingStore);
+    GateRef IsSubStringAt(GateRef lhsData, bool lhsIsUtf8, GateRef rhsData, bool rhsIsUtf8,
+        GateRef pos, GateRef rhsCount);
+    GateRef IsSubStringAt(const StringInfoGateRef &lStringInfoGate,
+        const StringInfoGateRef &rStringInfoGate, GateRef pos);
 private:
     GateRef ChangeStringTaggedPointerToInt64(GateRef x)
     {
@@ -81,6 +89,8 @@ private:
     GateRef GetSingleCharCodeFromLineString(GateRef str, GateRef index);
     GateRef GetSingleCharCodeFromSlicedString(GateRef str, GateRef index);
     GateRef GetSubString(GateRef glue, GateRef thisValue, GateRef from, GateRef len);
+    void CheckParamsAndGetPosition(GateRef glue, GateRef thisValue, GateRef numArgs,
+        Variable* pos, Label *exit, Label *slowPath, Label *posIsValid);
 };
 
 class FlatStringStubBuilder : public StubBuilder {

@@ -17,7 +17,6 @@
 
 #include <functional>
 
-#include "ecmascript/base/block_hook_scope.h"
 #include "ecmascript/dfx/hprof/heap_root_visitor.h"
 #include "ecmascript/ecma_string-inl.h"
 #include "ecmascript/global_dictionary.h"
@@ -126,7 +125,6 @@ void HeapSnapshot::PrepareSnapshot()
 
 void HeapSnapshot::UpdateNodes(bool isInFinish)
 {
-    base::BlockHookScope blockScope;
     for (Node *node : nodes_) {
         node->SetLive(false);
     }

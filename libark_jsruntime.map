@@ -127,6 +127,7 @@
       panda::ecmascript::EcmaVM::GetGlobalEnv*;
       panda::ecmascript::EcmaVM::IsEnableElementsKind*;
       panda::ecmascript::EcmaVM::IsEnablePGOProfiler*;
+      panda::ecmascript::EcmaVM::IsEnableJit*;
       panda::ecmascript::ElementAccessor::ConvertTaggedValueWithElementsKind*;
       panda::ecmascript::ElementAccessor::Get*;
       panda::ecmascript::Elements::FixElementsKind*;
@@ -166,6 +167,7 @@
       panda::ecmascript::JSPandaFile::FindMethodLiteral*;
       panda::ecmascript::JSPandaFile::GetFunctionKind*;
       panda::ecmascript::JSPandaFile::GetNormalizedFileDesc*;
+      panda::ecmascript::JSPandaFile::GetRecordNameWithBundlePack*;
       panda::ecmascript::JSProxy::IsArray*;
       panda::ecmascript::JSTaggedValue::IsJSCOWArray*;
       panda::ecmascript::JSTaggedValue::IsInSharedHeap*;
@@ -318,6 +320,7 @@
       panda::ecmascript::kungfu::PGOTypeManager::GetHClassIndexByProfileType*;
       panda::ecmascript::kungfu::PGOTypeManager::InitAOTSnapshot*;
       panda::ecmascript::kungfu::PGOTypeManager::QueryHClass*;
+      panda::ecmascript::kungfu::PGOTypeManager::UpdateRecordElements*;
       panda::ecmascript::kungfu::PGOTypeManager::RecordElements*;
       panda::ecmascript::kungfu::PGOTypeManager::SetCurConstantPool*;
       panda::ecmascript::kungfu::PGOTypeParser::CreatePGOType*;
@@ -326,6 +329,7 @@
       panda::ecmascript::kungfu::PGOTypeRecorder::GetElementsKindsForUser*;
       panda::ecmascript::kungfu::PGOTypeRecorder::GetElementsLength*;
       panda::ecmascript::kungfu::PGOTypeRecorder::GetPGOType*;
+      panda::ecmascript::kungfu::PGOTypeRecorder::GetTransitionElementsKindForUser*;
       panda::ecmascript::kungfu::PGOTypeRecorder::PGOTypeRecorder*;
       panda::ecmascript::kungfu::ReviseData::Resolve*;
       panda::ecmascript::kungfu::SnapshotConstantPoolData::Record*;

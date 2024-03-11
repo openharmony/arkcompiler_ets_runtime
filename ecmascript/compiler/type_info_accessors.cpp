@@ -79,6 +79,9 @@ bool TypeInfoAccessor::IsTrustedStringType(
     if (op == OpCode::LOAD_ELEMENT) {
         return acc.GetTypedLoadOp(gate) == TypedLoadOp::STRING_LOAD_ELEMENT;
     }
+    if (op == OpCode::NUMBER_TO_STRING) {
+        return true;
+    }
     if (op == OpCode::JS_BYTECODE) {
         EcmaOpcode ecmaOpcode = acc.GetByteCodeOpcode(gate);
         switch (ecmaOpcode) {
@@ -128,15 +131,8 @@ bool BinOpTypeInfoAccessor::HasNumberType() const
 
 bool BinOpTypeInfoAccessor::HasStringType() const
 {
-    GateType leftType = acc_.GetGateType(left_);
-    GateType rightType = acc_.GetGateType(right_);
     const PGOSampleType *sampleType = acc_.TryGetPGOType(gate_).GetPGOSampleType();
-    if (sampleType->IsString()) {
-        return true;
-    } else if (sampleType->IsNone() && leftType.IsStringType() && rightType.IsStringType()) {
-        return true;
-    }
-    return false;
+    return sampleType->IsString();
 }
 
 UnOpTypeInfoAccessor::UnOpTypeInfoAccessor(const JSThread *thread, Circuit *circuit, GateRef gate)
@@ -148,11 +144,27 @@ UnOpTypeInfoAccessor::UnOpTypeInfoAccessor(const JSThread *thread, Circuit *circ
 bool UnOpTypeInfoAccessor::ValueIsNumberType() const
 {
     const PGOSampleType *sampleType = acc_.TryGetPGOType(gate_).GetPGOSampleType();
-    if (sampleType->IsNumber() ||
-        (sampleType->IsNone() && ValueIsPrimitiveNumberType())) {
+    if (sampleType->IsNumber()) {
         return true;
     }
     return false;
+}
+
+GateType  UnOpTypeInfoAccessor::FetchNumberType() const
+{
+    const PGOSampleType *sampleType = acc_.TryGetPGOType(gate_).GetPGOSampleType();
+    if (sampleType->IsNumber()) {
+        if (sampleType->IsInt()) {
+            return GateType::IntType();
+        } else if (sampleType->IsDouble()) {
+            return GateType::DoubleType();
+        } else {
+            return GateType::NumberType();
+        }
+    } else {
+        LOG_COMPILER(FATAL) << "this branch is unreachable";
+        UNREACHABLE();
+    }
 }
 
 bool NewObjRangeTypeInfoAccessor::FindHClass()
@@ -706,6 +718,7 @@ bool AccBuiltinObjTypeInfoAccessor::CheckDuplicatedBuiltinType(ProfileType newTy
 {
     for (auto &type : types_) {
         if (type.GetBuiltinsId() == newType.GetBuiltinsId()) {
+            // When elementsKind switch on, we should check elementsKind too.
             return true;
         }
     }
@@ -718,6 +731,8 @@ StoreBulitinObjTypeInfoAccessor::StoreBulitinObjTypeInfoAccessor(const JSThread 
 {
     EcmaOpcode ecmaOpcode = acc_.GetByteCodeOpcode(gate);
     switch (ecmaOpcode) {
+        case EcmaOpcode::STOWNBYINDEX_IMM8_V8_IMM16:
+        case EcmaOpcode::STOWNBYINDEX_IMM16_V8_IMM16:
         case EcmaOpcode::STOBJBYINDEX_IMM8_V8_IMM16:
         case EcmaOpcode::STOBJBYINDEX_IMM16_V8_IMM16:
         case EcmaOpcode::WIDE_STOBJBYINDEX_PREF_V8_IMM32: {

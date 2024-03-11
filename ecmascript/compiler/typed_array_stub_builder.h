@@ -21,10 +21,10 @@
 #include "ecmascript/js_typed_array.h"
 
 namespace panda::ecmascript::kungfu {
-class TypedArrayStubBuilder : public StubBuilder {
+class TypedArrayStubBuilder : public BuiltinsStubBuilder {
 public:
     explicit TypedArrayStubBuilder(StubBuilder *parent)
-        : StubBuilder(parent) {}
+        : BuiltinsStubBuilder(parent) {}
     ~TypedArrayStubBuilder() override = default;
     NO_MOVE_SEMANTIC(TypedArrayStubBuilder);
     NO_COPY_SEMANTIC(TypedArrayStubBuilder);
@@ -37,7 +37,11 @@ public:
     GateRef GetValueFromBuffer(GateRef buffer, GateRef index, GateRef offset, GateRef jsType);
     GateRef IsDetachedBuffer(GateRef buffer);
     GateRef GetDataPointFromBuffer(GateRef arrBuf);
-    void SubArray(GateRef glue, GateRef thisValue, GateRef relativeBegin, GateRef end,
+    void SubArray(GateRef glue, GateRef numArgs, GateRef end,
+        Variable *result, Label *exit, Label *slowPath);
+    void GetByteLength(GateRef glue, GateRef numArgs, GateRef end,
+        Variable *result, Label *exit, Label *slowPath);
+    void GetByteOffset(GateRef glue, GateRef numArgs, GateRef end,
         Variable *result, Label *exit, Label *slowPath);
     GateRef GetViewedArrayBuffer(GateRef array)
     {

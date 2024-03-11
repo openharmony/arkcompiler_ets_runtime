@@ -571,49 +571,49 @@ void BuiltinsArrayStubBuilder::Slice(GateRef glue, GateRef thisValue, GateRef nu
             Branch(TaggedIsUndefined(msg1), &endDone, &msg1Def);
             Bind(&msg1Def);
             {
-            Label msg1Int(env);
-            Branch(TaggedIsInt(msg1), &msg1Int, slowPath);
-            Bind(&msg1Int);
-            {
-                GateRef argEnd = SExtInt32ToInt64(TaggedGetInt(msg1));
-                Label arg1LessZero(env);
-                Label arg1NotLessZero(env);
-                Branch(Int64LessThan(argEnd, Int64(0)), &arg1LessZero, &arg1NotLessZero);
-                Bind(&arg1LessZero);
+                Label msg1Int(env);
+                Branch(TaggedIsInt(msg1), &msg1Int, slowPath);
+                Bind(&msg1Int);
                 {
-                    Label tempGreaterZero(env);
-                    Label tempNotGreaterZero(env);
-                    GateRef tempEnd = Int64Add(argEnd, thisArrLen);
-                    Branch(Int64GreaterThan(tempEnd, Int64(0)), &tempGreaterZero, &tempNotGreaterZero);
-                    Bind(&tempGreaterZero);
+                    GateRef argEnd = SExtInt32ToInt64(TaggedGetInt(msg1));
+                    Label arg1LessZero(env);
+                    Label arg1NotLessZero(env);
+                    Branch(Int64LessThan(argEnd, Int64(0)), &arg1LessZero, &arg1NotLessZero);
+                    Bind(&arg1LessZero);
                     {
-                        end = tempEnd;
-                        Jump(&endDone);
+                        Label tempGreaterZero(env);
+                        Label tempNotGreaterZero(env);
+                        GateRef tempEnd = Int64Add(argEnd, thisArrLen);
+                        Branch(Int64GreaterThan(tempEnd, Int64(0)), &tempGreaterZero, &tempNotGreaterZero);
+                        Bind(&tempGreaterZero);
+                        {
+                            end = tempEnd;
+                            Jump(&endDone);
+                        }
+                        Bind(&tempNotGreaterZero);
+                        {
+                            end = Int64(0);
+                            Jump(&endDone);
+                        }
                     }
-                    Bind(&tempNotGreaterZero);
+                    Bind(&arg1NotLessZero);
                     {
-                        end = Int64(0);
-                        Jump(&endDone);
-                    }
-                }
-                Bind(&arg1NotLessZero);
-                {
-                    Label argLessLen(env);
-                    Label argNotLessLen(env);
-                    Branch(Int64LessThan(argEnd, thisArrLen), &argLessLen, &argNotLessLen);
-                    Bind(&argLessLen);
-                    {
-                        end = argEnd;
-                        Jump(&endDone);
-                    }
-                    Bind(&argNotLessLen);
-                    {
-                        end = thisArrLen;
-                        Jump(&endDone);
+                        Label argLessLen(env);
+                        Label argNotLessLen(env);
+                        Branch(Int64LessThan(argEnd, thisArrLen), &argLessLen, &argNotLessLen);
+                        Bind(&argLessLen);
+                        {
+                            end = argEnd;
+                            Jump(&endDone);
+                        }
+                        Bind(&argNotLessLen);
+                        {
+                            end = thisArrLen;
+                            Jump(&endDone);
+                        }
                     }
                 }
             }
-        }
             Bind(&endDone);
             {
                 DEFVARIABLE(count, VariableType::INT64(), Int64(0));
@@ -632,80 +632,80 @@ void BuiltinsArrayStubBuilder::Slice(GateRef glue, GateRef thisValue, GateRef nu
                     Branch(Int64GreaterThan(*count, Int64(JSObject::MAX_GAP)), slowPath, &notOverFlow);
                     Bind(&notOverFlow);
                     {
-            GateRef newArray = NewArray(glue, *count);
-            GateRef thisEles = GetElementsArray(thisValue);
-            GateRef thisElesLen = ZExtInt32ToInt64(GetLengthOfTaggedArray(thisEles));
+                        GateRef newArray = NewArray(glue, *count);
+                        GateRef thisEles = GetElementsArray(thisValue);
+                        GateRef thisElesLen = ZExtInt32ToInt64(GetLengthOfTaggedArray(thisEles));
 
-            Label inThisEles(env);
-            Label outThisEles(env);
-            Branch(Int64GreaterThan(thisElesLen, Int64Add(*start, *count)), &inThisEles, &outThisEles);
-            Bind(&inThisEles);
-            {
-                DEFVARIABLE(idx, VariableType::INT64(), Int64(0));
-                Label loopHead(env);
-                Label loopEnd(env);
-                Label next(env);
-                Label loopExit(env);
-                Jump(&loopHead);
-                LoopBegin(&loopHead);
-                {
-                    Branch(Int64LessThan(*idx, *count), &next, &loopExit);
-                    Bind(&next);
+                        Label inThisEles(env);
+                        Label outThisEles(env);
+                        Branch(Int64GreaterThan(thisElesLen, Int64Add(*start, *count)), &inThisEles, &outThisEles);
+                        Bind(&inThisEles);
+                        {
+                            DEFVARIABLE(idx, VariableType::INT64(), Int64(0));
+                            Label loopHead(env);
+                            Label loopEnd(env);
+                            Label next(env);
+                            Label loopExit(env);
+                            Jump(&loopHead);
+                            LoopBegin(&loopHead);
+                            {
+                                Branch(Int64LessThan(*idx, *count), &next, &loopExit);
+                                Bind(&next);
 
-                    GateRef ele = GetTaggedValueWithElementsKind(thisValue, Int64Add(*idx, *start));
-                    SetValueWithElementsKind(glue, newArray, ele, *idx, Boolean(true),
-                                             Int32(static_cast<uint32_t>(ElementsKind::NONE)));
-                    Jump(&loopEnd);
-                }
-                Bind(&loopEnd);
-                idx = Int64Add(*idx, Int64(1));
-                LoopEnd(&loopHead);
-                Bind(&loopExit);
-                result->WriteVariable(newArray);
-                Jump(exit);
-            }
-            Bind(&outThisEles);
-            {
-                DEFVARIABLE(idx, VariableType::INT64(), Int64(0));
-                Label loopHead(env);
-                Label loopEnd(env);
-                Label next(env);
-                Label loopExit(env);
-                Jump(&loopHead);
-                LoopBegin(&loopHead);
-                {
-                    Branch(Int64LessThan(*idx, *count), &next, &loopExit);
-                    Bind(&next);
-                    GateRef index = Int64Add(*idx, *start);
-                    DEFVARIABLE(ele, VariableType::JS_ANY(), Hole());
+                                GateRef ele = GetTaggedValueWithElementsKind(thisValue, Int64Add(*idx, *start));
+                                SetValueWithElementsKind(glue, newArray, ele, *idx, Boolean(true),
+                                                         Int32(static_cast<uint32_t>(ElementsKind::NONE)));
+                                Jump(&loopEnd);
+                            }
+                            Bind(&loopEnd);
+                            idx = Int64Add(*idx, Int64(1));
+                            LoopEnd(&loopHead);
+                            Bind(&loopExit);
+                            result->WriteVariable(newArray);
+                            Jump(exit);
+                        }
+                        Bind(&outThisEles);
+                        {
+                            DEFVARIABLE(idx, VariableType::INT64(), Int64(0));
+                            Label loopHead(env);
+                            Label loopEnd(env);
+                            Label next(env);
+                            Label loopExit(env);
+                            Jump(&loopHead);
+                            LoopBegin(&loopHead);
+                            {
+                                Branch(Int64LessThan(*idx, *count), &next, &loopExit);
+                                Bind(&next);
+                                GateRef index = Int64Add(*idx, *start);
+                                DEFVARIABLE(ele, VariableType::JS_ANY(), Hole());
 
-                    Label indexOutRange(env);
-                    Label indexInRange(env);
-                    Label setEle(env);
-                    Branch(Int64GreaterThan(thisElesLen, index), &indexInRange, &indexOutRange);
-                    Bind(&indexInRange);
-                    {
-                        ele = GetTaggedValueWithElementsKind(thisValue, index);
-                        Jump(&setEle);
+                                Label indexOutRange(env);
+                                Label indexInRange(env);
+                                Label setEle(env);
+                                Branch(Int64GreaterThan(thisElesLen, index), &indexInRange, &indexOutRange);
+                                Bind(&indexInRange);
+                                {
+                                    ele = GetTaggedValueWithElementsKind(thisValue, index);
+                                    Jump(&setEle);
+                                }
+                                Bind(&indexOutRange);
+                                {
+                                    ele = Hole();
+                                    Jump(&setEle);
+                                }
+                                Bind(&setEle);
+                                SetValueWithElementsKind(glue, newArray, *ele, *idx, Boolean(true),
+                                                         Int32(static_cast<uint32_t>(ElementsKind::NONE)));
+                                Jump(&loopEnd);
+                            }
+                            Bind(&loopEnd);
+                            idx = Int64Add(*idx, Int64(1));
+                            LoopEnd(&loopHead);
+                            Bind(&loopExit);
+                            result->WriteVariable(newArray);
+                            Jump(exit);
+                        }
                     }
-                    Bind(&indexOutRange);
-                    {
-                        ele = Hole();
-                        Jump(&setEle);
-                    }
-                    Bind(&setEle);
-                    SetValueWithElementsKind(glue, newArray, *ele, *idx, Boolean(true),
-                                             Int32(static_cast<uint32_t>(ElementsKind::NONE)));
-                    Jump(&loopEnd);
-                }
-                Bind(&loopEnd);
-                idx = Int64Add(*idx, Int64(1));
-                LoopEnd(&loopHead);
-                Bind(&loopExit);
-                result->WriteVariable(newArray);
-                Jump(exit);
-            }
-        }
                 }
             }
         }
@@ -1392,8 +1392,7 @@ void BuiltinsArrayStubBuilder::Push(GateRef glue, GateRef thisValue,
     Branch(Int32GreaterThan(newLength, capacity), &grow, &setValue);
     Bind(&grow);
     {
-        elements =
-            CallRuntime(glue, RTSTUB_ID(JSObjectGrowElementsCapacity), { thisValue, IntToTaggedInt(newLength) });
+        elements = GrowElementsCapacity(glue, thisValue, newLength);
         Jump(&setValue);
     }
     Bind(&setValue);
@@ -1835,8 +1834,7 @@ void BuiltinsArrayStubBuilder::Splice(GateRef glue, GateRef thisValue, GateRef n
         Branch(Int32GreaterThan(newCapacity, oldCapacity), &grow, &copy);
         Bind(&grow);
         {
-            srcElements =
-                CallRuntime(glue, RTSTUB_ID(JSObjectGrowElementsCapacity), { thisValue, IntToTaggedInt(newCapacity) });
+            srcElements = GrowElementsCapacity(glue, thisValue, newCapacity);
             Jump(&copy);
         }
         Bind(&copy);

@@ -20,4 +20,4 @@
  * @tc.require: issueI5NO8G
  */
 var string = "hugearray test start"
-print(string)
+assert_equal(string, "hugearray test start")

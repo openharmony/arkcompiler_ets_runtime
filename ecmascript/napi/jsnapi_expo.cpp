@@ -81,6 +81,7 @@
 #include "ecmascript/module/js_module_manager.h"
 #include "ecmascript/module/js_module_source_text.h"
 #include "ecmascript/module/module_path_helper.h"
+#include "ecmascript/module/napi_module_loader.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/patch/quick_fix_manager.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
@@ -198,9 +199,12 @@ namespace {
 constexpr std::string_view ENTRY_POINTER = "_GLOBAL::func_main_0";
 }
 
-#define XPM_PROC_PREFIX "/proc/"
-#define XPM_PROC_SUFFIX "/xpm_region"
+int JSNApi::vmCount_ = 0;
+bool JSNApi::initialize_ = false;
+static Mutex *mutex = new panda::Mutex();
+
 #define XPM_PROC_LENGTH 50
+#define PROC_SELF_XPM_REGION_PATH "/proc/self/xpm_region"
 
 // ----------------------------------- JSValueRef --------------------------------------
 Local<PrimitiveRef> JSValueRef::Undefined(const EcmaVM *vm)
@@ -2662,10 +2666,19 @@ void JSNApi::SetModuleInfo(EcmaVM *vm, const std::string &assetPath, const std::
 {
     SetAssetPath(vm, assetPath);
     size_t pos = entryPoint.find_first_of("/");
-    SetBundleName(vm, entryPoint.substr(0, pos));
-    std::string subStr = entryPoint.substr(pos + 1); // 1: remove /
-    pos = subStr.find_first_of("/");
-    SetModuleName(vm, subStr.substr(0, pos));
+    if (pos != std::string::npos) {
+        SetBundleName(vm, entryPoint.substr(0, pos));
+        ecmascript::CString moduleName = ModulePathHelper::GetModuleName(entryPoint.c_str());
+        if (!moduleName.empty()) {
+            SetModuleName(vm, moduleName.c_str());
+            return;
+        }
+    }
+    std::string errmsg = "SetModuleInfo: entryPoint:" + entryPoint + "is invalid.";
+    LOG_ECMA(ERROR) << errmsg;
+    Local<StringRef> message = StringRef::NewFromUtf8(vm, errmsg.c_str());
+    Local<JSValueRef> error = Exception::Error(vm, message);
+    JSNApi::ThrowException(vm, error);
 }
 
 // note: The function SetAssetPath is a generic interface for previewing and physical machines.
@@ -2843,14 +2856,7 @@ bool JSNApi::CheckSecureMem(uintptr_t mem)
     static uintptr_t secureMemStart = 0;
     static uintptr_t secureMemEnd = 0;
     if (!hasOpen) {
-        char procPath[XPM_PROC_LENGTH] = {0};
-        pid_t pid = getpid();
-        LOG_ECMA(DEBUG) << "Check secure memory in : " << pid << " with mem: " << std::hex << mem;
-        if (sprintf_s(procPath, XPM_PROC_LENGTH, "%s%d%s", XPM_PROC_PREFIX, pid, XPM_PROC_SUFFIX) <= 0) {
-            LOG_ECMA(ERROR) << "sprintf proc path failed";
-            return false;
-        }
-        int fd = open(procPath, O_RDONLY);
+        int fd = open(PROC_SELF_XPM_REGION_PATH, O_RDONLY);
         if (fd < 0) {
             LOG_ECMA(ERROR) << "Can not open xpm proc file, do not check secure memory anymore.";
             // No verification is performed when a file fails to be opened.
@@ -3194,6 +3200,63 @@ bool JSNApi::NotifyDebugMode([[maybe_unused]] int tid,
     if (vm == nullptr) {
         return false;
     }
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, false);
+
+    bool ret = false;
+    if (!debugApp) {
+        return true;
+    }
+    JsDebuggerManager *jsDebuggerManager = vm->GetJsDebuggerManager();
+    auto handle = panda::os::library_loader::Load(std::string(option.libraryPath));
+    if (!handle) {
+        LOG_ECMA(ERROR) << "[NotifyDebugMode] Load library fail: " << option.libraryPath << " " << errno;
+        return false;
+    }
+    JsDebuggerManager::AddJsDebuggerManager(tid, jsDebuggerManager);
+    jsDebuggerManager->SetDebugLibraryHandle(std::move(handle.Value()));
+    jsDebuggerManager->SetDebugMode(option.isDebugMode && debugApp);
+    jsDebuggerManager->SetIsDebugApp(debugApp);
+    ret = StartDebuggerForOldProcess(vm, option, instanceId, debuggerPostTask);
+
+    // store debugger postTask in inspector.
+    using StoreDebuggerInfo = void (*)(int, EcmaVM *, const DebuggerPostTask &);
+    auto symOfStoreDebuggerInfo = panda::os::library_loader::ResolveSymbol(
+        jsDebuggerManager->GetDebugLibraryHandle(), "StoreDebuggerInfo");
+    if (!symOfStoreDebuggerInfo) {
+        LOG_ECMA(ERROR) << "[NotifyDebugMode] Resolve StoreDebuggerInfo symbol fail: " <<
+            symOfStoreDebuggerInfo.Error().ToString();
+        return false;
+    }
+    reinterpret_cast<StoreDebuggerInfo>(symOfStoreDebuggerInfo.Value())(tid, vm, debuggerPostTask);
+    if (option.isDebugMode) {
+        using WaitForDebugger = void (*)(EcmaVM *);
+        auto symOfWaitForDebugger = panda::os::library_loader::ResolveSymbol(
+            jsDebuggerManager->GetDebugLibraryHandle(), "WaitForDebugger");
+        if (!symOfWaitForDebugger) {
+            LOG_ECMA(ERROR) << "[NotifyDebugMode] Resolve symbol WaitForDebugger fail: " <<
+                symOfWaitForDebugger.Error().ToString();
+            return false;
+        }
+        reinterpret_cast<WaitForDebugger>(symOfWaitForDebugger.Value())(vm);
+    }
+    return ret;
+
+#else
+    LOG_ECMA(ERROR) << "Not support arkcompiler debugger";
+    return false;
+#endif // ECMASCRIPT_SUPPORT_DEBUGGER
+}
+
+bool JSNApi::StoreDebugInfo([[maybe_unused]] int tid,
+                            [[maybe_unused]] EcmaVM *vm,
+                            [[maybe_unused]] const DebugOption &option,
+                            [[maybe_unused]] const DebuggerPostTask &debuggerPostTask,
+                            [[maybe_unused]] bool debugApp)
+{
+#if defined(ECMASCRIPT_SUPPORT_DEBUGGER)
+    if (vm == nullptr) {
+        return false;
+    }
 
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, false);
     JsDebuggerManager *jsDebuggerManager = vm->GetJsDebuggerManager();
@@ -3211,11 +3274,6 @@ bool JSNApi::NotifyDebugMode([[maybe_unused]] int tid,
     jsDebuggerManager->SetDebugLibraryHandle(std::move(handle.Value()));
     jsDebuggerManager->SetDebugMode(option.isDebugMode && debugApp);
     jsDebuggerManager->SetIsDebugApp(debugApp);
-    bool ret = false;
-    if (debugApp) {
-        ret = StartDebuggerForOldProcess(vm, option, instanceId, debuggerPostTask);
-    }
-
     // store debugger postTask in inspector.
     using StoreDebuggerInfo = void (*)(int, EcmaVM *, const DebuggerPostTask &);
     auto symOfStoreDebuggerInfo = panda::os::library_loader::ResolveSymbol(
@@ -3226,6 +3284,7 @@ bool JSNApi::NotifyDebugMode([[maybe_unused]] int tid,
         return false;
     }
     reinterpret_cast<StoreDebuggerInfo>(symOfStoreDebuggerInfo.Value())(tid, vm, debuggerPostTask);
+    bool ret = false;
     using InitializeDebuggerForSocketpair = bool(*)(void*);
     auto sym = panda::os::library_loader::ResolveSymbol(handler, "InitializeDebuggerForSocketpair");
     if (!sym) {
@@ -3237,17 +3296,6 @@ bool JSNApi::NotifyDebugMode([[maybe_unused]] int tid,
     // Reset the config
         vm->GetJsDebuggerManager()->SetDebugMode(false);
         return false;
-    }
-    if (option.isDebugMode) {
-        using WaitForDebugger = void (*)(EcmaVM *);
-        auto symOfWaitForDebugger = panda::os::library_loader::ResolveSymbol(
-            jsDebuggerManager->GetDebugLibraryHandle(), "WaitForDebugger");
-        if (!symOfWaitForDebugger) {
-            LOG_ECMA(ERROR) << "[NotifyDebugMode] Resolve symbol WaitForDebugger fail: " <<
-                symOfWaitForDebugger.Error().ToString();
-            return false;
-        }
-        reinterpret_cast<WaitForDebugger>(symOfWaitForDebugger.Value())(vm);
     }
     return ret;
 #else
@@ -3381,6 +3429,10 @@ void JSNApi::LoadAotFile(EcmaVM *vm, const std::string &moduleName)
         aotFileName = vm->GetJSOptions().GetAOTOutputFile();
     }  else {
         aotFileName = ecmascript::AnFileDataManager::GetInstance()->GetDir() + moduleName;
+    }
+    if (ecmascript::pgo::PGOProfilerManager::GetInstance()->IsDisableAot()) {
+        LOG_ECMA(INFO) << "can't load disable aot file: " << aotFileName;
+        return;
     }
     LOG_ECMA(INFO) << "start to load aot file: " << aotFileName;
     thread->GetCurrentEcmaContext()->LoadAOTFiles(aotFileName);
@@ -3869,20 +3921,42 @@ Local<ObjectRef> JSNApi::ExecuteNativeModule(EcmaVM *vm, const std::string &key)
 Local<ObjectRef> JSNApi::GetModuleNameSpaceFromFile(EcmaVM *vm, const std::string &file, const std::string &module_path)
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
-    // need get moduleName from stack
-    std::pair<std::string, std::string> moduleInfo = vm->GetCurrentModuleInfo(false);
     std::string recordNameStr;
+    std::string abcFilePath;
     if (module_path.size() != 0) {
         recordNameStr = module_path + PathHelper::SLASH_TAG + file;
+        ecmascript::CString moduleName = ModulePathHelper::GetModuleNameWithPath(module_path.c_str());
+        abcFilePath = ModulePathHelper::ConcatPandaFilePath(moduleName);
     } else {
+        // need get moduleName from stack
+        std::pair<std::string, std::string> moduleInfo = vm->GetCurrentModuleInfo(false);
         recordNameStr = std::string(vm->GetBundleName().c_str()) + PathHelper::SLASH_TAG +
             moduleInfo.first + PathHelper::SLASH_TAG + file;
+        abcFilePath = moduleInfo.second;
     }
     LOG_ECMA(DEBUG) << "JSNApi::LoadModuleNameSpaceFromFile: Concated recordName " << recordNameStr.c_str();
     ecmascript::ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
     JSHandle<JSTaggedValue> moduleNamespace = moduleManager->
-        GetModuleNameSpaceFromFile(thread, recordNameStr, moduleInfo.second);
+        GetModuleNameSpaceFromFile(thread, recordNameStr, abcFilePath);
     return JSNApiHelper::ToLocal<ObjectRef>(moduleNamespace);
+}
+
+Local<ObjectRef> JSNApi::GetModuleNameSpaceWithModuleInfo(EcmaVM *vm, const std::string &file,
+                                                          const std::string &module_path)
+{
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
+    ecmascript::CString moduleStr = ModulePathHelper::GetModuleNameWithPath(module_path.c_str());
+    ecmascript::CString srcPrefix = moduleStr + ModulePathHelper::PHYCICAL_FILE_PATH;
+    std::string prefix = ConvertToStdString(srcPrefix);
+    if (file.find(srcPrefix) == 0)  {
+        std::string fileName = file.substr(prefix.size() + 1);
+        return GetModuleNameSpaceFromFile(vm, fileName, module_path);
+    }
+    ecmascript::CString requestPath = file.c_str();
+    ecmascript::CString modulePath = module_path.c_str();
+    JSHandle<JSTaggedValue> nameSp = ecmascript::NapiModuleLoader::LoadModuleNameSpaceWithModuleInfo(vm,
+        requestPath, modulePath);
+    return JSNApiHelper::ToLocal<ObjectRef>(nameSp);
 }
 
 // ---------------------------------- Promise -------------------------------------

@@ -404,6 +404,7 @@ void BytecodeCircuitBuilder::BuildFrameArgs()
     args[idx++] = argAcc_.GetCommonArgGate(CommonArgIdx::NEW_TARGET);
     args[idx++] = argAcc_.GetCommonArgGate(CommonArgIdx::THIS_OBJECT);
     args[idx++] = argAcc_.GetCommonArgGate(CommonArgIdx::ACTUAL_ARGC);
+    args[idx++] = GetCurrentConstpool(argAcc_.GetCommonArgGate(CommonArgIdx::FUNC));
     args[idx++] = GetPreFrameArgs();
     GateRef frameArgs = circuit_->NewGate(metaData, args);
     argAcc_.SetFrameArgs(frameArgs);

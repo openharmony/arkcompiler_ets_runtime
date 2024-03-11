@@ -37,7 +37,8 @@ public:
                          bool enableTypeLog,
                          const std::string& name,
                          bool enableLoweringBuiltin,
-                         const CString& recordName)
+                         const CString& recordName,
+                         const std::string optBCRange)
         : circuit_(circuit),
           acc_(circuit),
           builder_(circuit, ctx->GetCompilerConfig()),
@@ -56,7 +57,8 @@ public:
           noCheck_(ctx->GetEcmaVM()->GetJSOptions().IsCompilerNoCheck()),
           thread_(ctx->GetEcmaVM()->GetJSThread()),
           enableLoweringBuiltin_(enableLoweringBuiltin),
-          recordName_(recordName)
+          recordName_(recordName),
+          optBCRange_(optBCRange)
     {
     }
 
@@ -197,14 +199,16 @@ private:
     template<TypedBinOp Op>
     void SpeculateNumbers(GateRef gate);
     template<TypedUnOp Op>
-    void SpeculateNumber(GateRef gate);
+    void SpeculateNumber(const UnOpTypeInfoAccessor& tacc);
     void SpeculateConditionJump(const ConditionJumpTypeInfoAccessor &tacc, bool flag);
     void SpeculateCallBuiltin(GateRef gate, GateRef func, const std::vector<GateRef> &args,
                               BuiltinsStubCSigns::ID id, bool isThrow);
     void DeleteConstDataIfNoUser(GateRef gate);
     bool TryLowerNewBuiltinConstructor(GateRef gate);
     bool TryLowerTypedLdobjBynameFromGloablBuiltin(GateRef gate);
-
+    bool CheckIsInOptBCIgnoreRange(int32_t index, EcmaOpcode ecmaOpcode);
+    int32_t GetEcmaOpCodeListIndex(EcmaOpcode ecmaOpCode);
+    void ParseOptBytecodeRange();
     void AddProfiling(GateRef gate);
 
     bool Uncheck() const
@@ -237,6 +241,8 @@ private:
     const JSThread *thread_ {nullptr};
     bool enableLoweringBuiltin_ {false};
     const CString &recordName_;
+    std::string optBCRange_;
+    std::vector<std::vector<int32_t>> optBCRangeList_;
 };
 }  // panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_TYPED_BYTECODE_LOWERING_H

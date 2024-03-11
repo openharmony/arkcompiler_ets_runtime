@@ -98,7 +98,7 @@ public:
             return (uint32_t) (abcAndMethodId_ >> 32); // 32: 32bit
         }
 
-        uint32_t GetMehodId() const
+        uint32_t GetMethodId() const
         {
             return (uint32_t) abcAndMethodId_;
         }

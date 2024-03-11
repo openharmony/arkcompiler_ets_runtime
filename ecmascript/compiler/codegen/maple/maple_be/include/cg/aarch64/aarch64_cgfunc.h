@@ -94,13 +94,13 @@ public:
 
     regno_t NewVRflag() override
     {
-        DEBUG_ASSERT(maxRegCount > kRFLAG, "CG internal error.");
+        DEBUG_ASSERT(GetMaxRegNum() > kRFLAG, "CG internal error.");
         constexpr uint8 size = 4;
-        if (maxRegCount <= kRFLAG) {
-            maxRegCount += (kRFLAG + kVRegisterNumber);
-            vRegTable.resize(maxRegCount);
+        if (GetMaxRegNum() <= kRFLAG) {
+            IncMaxRegNum(kRFLAG + kVRegisterNumber);
+            vReg.VRegTableResize(GetMaxRegNum());
         }
-        new (&vRegTable[kRFLAG]) VirtualRegNode(kRegTyCc, size);
+        vReg.VRegTableValuesSet(kRFLAG, kRegTyCc, size);
         return kRFLAG;
     }
 
@@ -462,6 +462,8 @@ public:
 
     void SetMemReferenceOfInsn(Insn &insn, BaseNode *baseNode);
     struct SplittedInt128 SplitInt128(Operand &opnd);
+    RegOperand &CombineInt128(const SplittedInt128 parts);
+    void CombineInt128(Operand &resOpnd, const SplittedInt128 parts);
     RegOperand &GenStructParamIndex(RegOperand &base, const BaseNode &indexExpr, int shift, PrimType baseType);
     void SelectParmListForInt128(Operand &opnd, ListOperand &srcOpnds, const CCLocInfo &ploc, bool isSpecialArg,
                                  std::vector<RegMapForPhyRegCpy> &regMapForTmpBB);

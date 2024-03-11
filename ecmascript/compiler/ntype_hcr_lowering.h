@@ -47,12 +47,13 @@ private:
     void Lower(GateRef gate);
     void LowerCreateArray(GateRef gate, GateRef glue);
     void LowerCreateArrayWithBuffer(GateRef gate, GateRef glue);
+    void LowerCreateArguments(GateRef gate, GateRef glue);
     void LowerCreateEmptyArray(GateRef gate);
     void LowerCreateArrayWithOwn(GateRef gate, GateRef glue);
     void LowerStoreModuleVar(GateRef gate, GateRef glue);
     void LowerLdLocalModuleVar(GateRef gate);
 
-    GateRef LoadFromConstPool(GateRef jsFunc, size_t index, size_t valVecType);
+    GateRef LoadFromConstPool(GateRef constPool, size_t index, size_t valVecType);
     GateRef NewJSArrayLiteral(GateRef gate, GateRef elements, GateRef length, uint32_t hintLength = 0);
     GateRef NewTaggedArray(size_t length);
     GateRef NewTaggedArray(GateRef length);

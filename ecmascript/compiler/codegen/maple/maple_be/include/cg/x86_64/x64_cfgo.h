@@ -21,14 +21,14 @@
 namespace maplebe {
 class X64CFGOptimizer : public CFGOptimizer {
 public:
-    X64CFGOptimizer(CGFunc &func, MemPool &memPool) : CFGOptimizer(func, memPool) {}
+    X64CFGOptimizer(CGFunc &func, MemPool &memPool, LoopAnalysis &loop) : CFGOptimizer(func, memPool, loop) {}
     ~X64CFGOptimizer() = default;
     void InitOptimizePatterns() override;
 };
 
 class X64FlipBRPattern : public FlipBRPattern {
 public:
-    explicit X64FlipBRPattern(CGFunc &func) : FlipBRPattern(func) {}
+    explicit X64FlipBRPattern(CGFunc &func, LoopAnalysis &loop) : FlipBRPattern(func, loop) {}
     ~X64FlipBRPattern() = default;
 
 private:

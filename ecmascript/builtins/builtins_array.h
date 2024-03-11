@@ -47,7 +47,7 @@
     /* Array.prototype.fill ( value [ , start [ , end ] ] ) */              \
     V("fill",           Fill,             1, INVALID)                       \
     /* Array.prototype.filter ( callbackfn [ , thisArg ] ) */               \
-    V("filter",         Filter,           1, ArrayFilter)                   \
+    V("filter",         Filter,           1, INVALID)                       \
     /* Array.prototype.find ( predicate [ , thisArg ] ) */                  \
     V("find",           Find,             1, ArrayFind)                     \
     /* Array.prototype.findIndex ( predicate [ , thisArg ] ) */             \
@@ -77,7 +77,7 @@
     /* Array.prototype.pop ( ) */                                           \
     V("pop",            Pop,              0, ArrayPop)                      \
     /* Array.prototype.push ( ...items ) */                                 \
-    V("push",           Push,             1, INVALID)                       \
+    V("push",           Push,             1, ArrayPush)                     \
     /* Array.prototype.reduce ( callbackfn [ , initialValue ] ) */          \
     V("reduce",         Reduce,           1, ArrayReduce)                   \
     /* Array.prototype.reduceRight ( callbackfn [ , initialValue ] ) */     \
@@ -186,8 +186,6 @@ public:
     static JSTaggedValue Unshift(EcmaRuntimeCallInfo *argv); // done
     // 22.1.3.29
     static JSTaggedValue Values(EcmaRuntimeCallInfo *argv); // no change
-    // 22.1.3.31
-    static JSTaggedValue Unscopables(EcmaRuntimeCallInfo *argv); // no change
     // es12 23.1.3.13
     static JSTaggedValue Includes(EcmaRuntimeCallInfo *argv); // no change
     // es12 23.1.3.10

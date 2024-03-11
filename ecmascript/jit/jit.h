@@ -30,14 +30,17 @@ enum JitCompileMode {
 };
 class Jit {
 public:
-    Jit(EcmaVM *vm) : vm_(vm), initialized_(false), jitCompile_(nullptr), jitFinalize_(nullptr),
-        createJitCompiler_(nullptr), deleteJitCompile_(nullptr), libHandle_(nullptr) {};
+    Jit() {}
     ~Jit();
+    static Jit *GetInstance();
+    void SetEnable(const EcmaVM *vm);
+    bool IsEnable();
     void Initialize();
 
     static void Compile(EcmaVM *vm, JSHandle<JSFunction> &jsFunction, JitCompileMode mode = SYNC);
     bool JitCompile(void *compiler, JitTask *jitTask);
     bool JitFinalize(void *compiler, JitTask *jitTask);
+    void *CreateJitCompilerTask(JitTask *jitTask);
     bool IsInitialized() const
     {
         return initialized_;
@@ -46,11 +49,7 @@ public:
     void DeleteJitCompile(void *compiler);
 
     void RequestInstallCode(JitTask *jitTask);
-    void InstallTasks();
-    void InstallTasksWithoutClearFlag();
-    bool IsCompiling(JSHandle<JSFunction> &jsFunction);
-    void AddCompilingTask(JitTask *jitTask);
-    void RemoveCompilingTask(JitTask *jitTask);
+    void InstallTasks(uint32_t threadId);
 
     JitTask *GetAsyncCompileTask();
     void AddAsyncCompileTask(JitTask *jitTask);
@@ -69,19 +68,20 @@ public:
 
 private:
     bool SupportJIT(Method *method);
-    EcmaVM *vm_;
-    bool initialized_;
-    bool(*jitCompile_)(void*, JitTask*);
-    bool(*jitFinalize_)(void*, JitTask*);
-    void*(*createJitCompiler_)(EcmaVM*, JitTask*);
-    void(*deleteJitCompile_)(void*);
-    void *libHandle_;
+    bool initialized_ { false };
+    bool jitEnable_ { false };
 
-    std::deque<JitTask*> compilingJitTasks_;
-    std::deque<JitTask*> installJitTasks_;
+    std::unordered_map<uint32_t, std::deque<JitTask*>> installJitTasks_;
     static std::deque<JitTask*> asyncCompileJitTasks_;
     Mutex installJitTasksDequeMtx_;
     static Mutex asyncCompileJitTasksMtx_;
+
+    static void (*initJitCompiler_)(EcmaVM *vm);
+    static bool(*jitCompile_)(void*, JitTask*);
+    static bool(*jitFinalize_)(void*, JitTask*);
+    static void*(*createJitCompilerTask_)(JitTask*);
+    static void(*deleteJitCompile_)(void*);
+    static void *libHandle_;
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_JIT_H

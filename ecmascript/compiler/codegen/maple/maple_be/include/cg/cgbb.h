@@ -27,6 +27,7 @@
 /* Maple MP header */
 #include "mempool_allocator.h"
 #include "maple_phase_manager.h"
+#include "base_graph_node.h"
 
 namespace maplebe {
 /* For get bb */
@@ -70,12 +71,12 @@ namespace maplebe {
     for (Insn * (INSN) = LAST_INSN(BLOCK), *(NEXT) = (INSN) ? PREV_INSN(INSN) : nullptr; (INSN) != nullptr; \
          (INSN) = (NEXT), (NEXT) = (INSN) ? PREV_INSN(INSN) : nullptr)
 
-class CGFuncLoops;
 class CGFunc;
+class CDGNode;
 
 using BBID = uint32;
 
-class BB {
+class BB : public maple::BaseGraphNode {
 public:
     static constexpr int32 kUnknownProb = -1;
     static constexpr uint32 kBBIfSuccsSize = 2;
@@ -98,10 +99,6 @@ public:
           labIdx(MIRLabelTable::GetDummyLabel()),
           preds(mallocator.Adapter()),
           succs(mallocator.Adapter()),
-          ehPreds(mallocator.Adapter()),
-          ehSuccs(mallocator.Adapter()),
-          loopPreds(mallocator.Adapter()),
-          loopSuccs(mallocator.Adapter()),
           succsProb(mallocator.Adapter()),
           liveInRegNO(mallocator.Adapter()),
           liveOutRegNO(mallocator.Adapter()),
@@ -246,11 +243,6 @@ public:
         return false;
     }
 
-    bool IsBackEdgeDest() const
-    {
-        return !loopPreds.empty();
-    }
-
     void RemoveFromPredecessorList(const BB &bb)
     {
         for (auto i = preds.begin(); i != preds.end(); ++i) {
@@ -279,21 +271,6 @@ public:
         return static_cast<uint32>(succs.size());
     }
 
-    void UniqueSuccs()
-    {
-        for (auto i = succs.begin(); i != succs.end(); ++i) {
-            auto j = ++i;
-            --i;
-            while (j != succs.end()) {
-                if (*i == *j) {
-                    j = succs.erase(j);
-                } else {
-                    ++j;
-                }
-            }
-        }
-    }
-
     bool HasCall() const
     {
         return hasCall;
@@ -307,6 +284,10 @@ public:
     /* Number of instructions excluding DbgInsn and comments */
     int32 NumInsn() const;
     uint32 GetId() const
+    {
+        return id;
+    }
+    uint32 GetID() const
     {
         return id;
     }
@@ -484,25 +465,32 @@ public:
     {
         return succs.size();
     }
-    const MapleList<BB *> &GetEhPreds() const
+
+    // override interface of BaseGraphNode
+    const std::string GetIdentity() final
     {
-        return ehPreds;
+        return "BBId: " + std::to_string(GetID());
     }
-    const MapleList<BB *> &GetEhSuccs() const
+    void GetOutNodes(std::vector<BaseGraphNode *> &outNodes) const final
     {
-        return ehSuccs;
+        outNodes.resize(succs.size(), nullptr);
+        std::copy(succs.begin(), succs.end(), outNodes.begin());
     }
-    const MapleList<BB *> &GetLoopPreds() const
+
+    void GetOutNodes(std::vector<BaseGraphNode *> &outNodes) final
     {
-        return loopPreds;
+        static_cast<const BB *>(this)->GetOutNodes(outNodes);
     }
-    MapleList<BB *> &GetLoopSuccs()
+
+    void GetInNodes(std::vector<BaseGraphNode *> &inNodes) const final
     {
-        return loopSuccs;
+        inNodes.resize(preds.size(), nullptr);
+        std::copy(preds.begin(), preds.end(), inNodes.begin());
     }
-    const MapleList<BB *> &GetLoopSuccs() const
+
+    void GetInNodes(std::vector<BaseGraphNode *> &inNodes) final
     {
-        return loopSuccs;
+        static_cast<const BB *>(this)->GetInNodes(inNodes);
     }
     MapleList<BB *>::iterator GetPredsBegin()
     {
@@ -512,14 +500,6 @@ public:
     {
         return succs.begin();
     }
-    MapleList<BB *>::iterator GetEhPredsBegin()
-    {
-        return ehPreds.begin();
-    }
-    MapleList<BB *>::iterator GetLoopSuccsBegin()
-    {
-        return loopSuccs.begin();
-    }
     MapleList<BB *>::iterator GetPredsEnd()
     {
         return preds.end();
@@ -527,14 +507,6 @@ public:
     MapleList<BB *>::iterator GetSuccsEnd()
     {
         return succs.end();
-    }
-    MapleList<BB *>::iterator GetEhPredsEnd()
-    {
-        return ehPreds.end();
-    }
-    MapleList<BB *>::iterator GetLoopSuccsEnd()
-    {
-        return loopSuccs.end();
     }
     void PushBackPreds(BB &bb)
     {
@@ -544,22 +516,6 @@ public:
     {
         succs.push_back(&bb);
         succsProb[&bb] = prob;
-    }
-    void PushBackEhPreds(BB &bb)
-    {
-        ehPreds.push_back(&bb);
-    }
-    void PushBackEhSuccs(BB &bb)
-    {
-        ehSuccs.push_back(&bb);
-    }
-    void PushBackLoopPreds(BB &bb)
-    {
-        loopPreds.push_back(&bb);
-    }
-    void PushBackLoopSuccs(BB &bb)
-    {
-        loopSuccs.push_back(&bb);
     }
     void PushFrontPreds(BB &bb)
     {
@@ -600,14 +556,6 @@ public:
         RemoveSuccs(oldBB);
         PushBackSuccs(newBB, prob);
     }
-    void RemoveEhPreds(BB &bb)
-    {
-        ehPreds.remove(&bb);
-    }
-    void RemoveEhSuccs(BB &bb)
-    {
-        ehSuccs.remove(&bb);
-    }
     void ClearPreds()
     {
         preds.clear();
@@ -616,22 +564,6 @@ public:
     {
         succs.clear();
         succsProb.clear();
-    }
-    void ClearEhPreds()
-    {
-        ehPreds.clear();
-    }
-    void ClearEhSuccs()
-    {
-        ehSuccs.clear();
-    }
-    void ClearLoopPreds()
-    {
-        loopPreds.clear();
-    }
-    void ClearLoopSuccs()
-    {
-        loopSuccs.clear();
     }
     const MapleSet<regno_t> &GetLiveInRegNO() const
     {
@@ -676,14 +608,6 @@ public:
     void ClearLiveOutRegNO()
     {
         liveOutRegNO.clear();
-    }
-    CGFuncLoops *GetLoop() const
-    {
-        return loop;
-    }
-    void SetLoop(CGFuncLoops *arg)
-    {
-        loop = arg;
     }
     bool GetLiveInChange() const
     {
@@ -999,6 +923,15 @@ public:
         return alignNopNum;
     }
 
+    CDGNode *GetCDGNode()
+    {
+        return cdgNode;
+    }
+    void SetCDGNode(CDGNode *node)
+    {
+        cdgNode = node;
+    }
+
     // Check if a given BB mergee can be merged into this BB in the sense of control flow
     // The condition is looser than CanMerge, since we only need this for debug info.
     bool MayFoldInCfg(const BB &mergee) const
@@ -1040,6 +973,15 @@ public:
         isAdrpLabel = true;
     }
 
+    SCCNode<BB> *GetSCCNode()
+    {
+        return sccNode;
+    }
+    void SetSCCNode(SCCNode<BB> *scc)
+    {
+        sccNode = scc;
+    }
+
 private:
     static const std::string bbNames[kBBLast];
     uint32 id;
@@ -1057,17 +999,12 @@ private:
     Insn *lastInsn = nullptr;  /* the last instruction */
     MapleList<BB *> preds;     /* preds, succs represent CFG */
     MapleList<BB *> succs;
-    MapleList<BB *> ehPreds;
-    MapleList<BB *> ehSuccs;
-    MapleList<BB *> loopPreds;
-    MapleList<BB *> loopSuccs;
     MapleMap<const BB *, int32> succsProb;
     bool inColdSection = false; /* for bb splitting */
 
     /* this is for live in out analysis */
     MapleSet<regno_t> liveInRegNO;
     MapleSet<regno_t> liveOutRegNO;
-    CGFuncLoops *loop = nullptr;
     bool liveInChange = false;
     bool isCritical = false;
     bool insertUse = false;
@@ -1129,6 +1066,9 @@ private:
     bool needAlign = false;
     uint32 alignPower = 0;
     uint32 alignNopNum = 0;
+
+    CDGNode *cdgNode = nullptr;
+    SCCNode<BB> *sccNode = nullptr;
 
     bool isAdrpLabel = false;  // Indicate whether the address of this BB is referenced by adrp_label insn
 };                             /* class BB */

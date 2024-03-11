@@ -66,6 +66,7 @@ enum BytecodeKind : uint32_t {
     GENERATOR_RESOLVE,
     DISCARDED,
     CALL_BC,
+    ACCESSOR_BC,
 };
 
 class BytecodeMetaData {
@@ -220,6 +221,11 @@ public:
     bool IsCall() const
     {
         return GetKind() == BytecodeKind::CALL_BC;
+    }
+
+    bool IsAccessorBC() const
+    {
+        return GetKind() == BytecodeKind::ACCESSOR_BC;
     }
 
     bool HasDebuggerStmt() const
@@ -431,6 +437,7 @@ public:
             case EcmaOpcode::LDTHISBYNAME_IMM16_ID16:
             case EcmaOpcode::STOBJBYNAME_IMM8_ID16_V8:
             case EcmaOpcode::STOBJBYNAME_IMM16_ID16_V8:
+            case EcmaOpcode::DEFINEFIELDBYNAME_IMM8_ID16_V8:
             case EcmaOpcode::STTHISBYNAME_IMM8_ID16:
             case EcmaOpcode::STTHISBYNAME_IMM16_ID16:
             case EcmaOpcode::CALLRUNTIME_CALLINIT_PREF_IMM8_V8:
@@ -787,6 +794,11 @@ public:
     bool IsCall() const
     {
         return metaData_.IsCall();
+    }
+
+    bool IsAccessorBC() const
+    {
+        return metaData_.IsAccessorBC();
     }
 
     bool HasDebuggerStmt() const

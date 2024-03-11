@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023 Huawei Device Co., Ltd.
+ * Copyright (c) 2024 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -456,6 +456,10 @@ std::optional<CodeInfo> TranslateByteCodePc(uintptr_t realPc, const std::vector<
 bool ArkParseJsFrameInfo(uintptr_t byteCodePc, uintptr_t mapBase, uintptr_t loadOffset,
                          uint8_t *data, uint64_t dataSize, JsFunction *jsFunction)
 {
+    if (data == nullptr) {
+        LOG_ECMA(ERROR) << "JSpandafile buffer from dfx is nullptr.";
+        return false;
+    }
     loadOffset = loadOffset % PageSize();
     auto pf = panda_file::OpenPandaFileFromSecureMemory(data, dataSize);
     CString fileName = "";
@@ -609,7 +613,11 @@ bool StepArk(void *ctx, ReadMemFunc readMem, uintptr_t *fp, uintptr_t *sp, uintp
             *sp = currentPtr;
             *isJsFrame = true;
         }
+    } else {
+        LOG_ECMA(ERROR) << "ArkGetNextFrame failed, currentPtr: " << currentPtr << ", frameType: " << frameType;
+        return false;
     }
+
     return true;
 }
 

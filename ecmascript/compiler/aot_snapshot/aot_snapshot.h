@@ -46,6 +46,11 @@ public:
         snapshotData_.StoreArrayInfo(info);
     }
 
+    JSTaggedValue GetArrayInfo()
+    {
+        return snapshotData_.GetArrayInfo();
+    }
+
     void StoreConstantIndexInfo(JSHandle<TaggedArray> info)
     {
         snapshotData_.StoreConstantIndexInfo(info);

@@ -13,6 +13,7 @@
 
 import("//arkcompiler/ets_runtime/test/test_helper.gni")
 
-host_aot_test_action("deopt") {
+host_aot_assert_test_action("deopt") {
   deps = []
+  is_only_typed_path = true
 }

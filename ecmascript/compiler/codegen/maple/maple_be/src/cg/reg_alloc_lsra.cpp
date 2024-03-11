@@ -161,7 +161,8 @@ void LSRALinearScanRegAllocator::PrintLiveRangesGraph() const
         }
 
         for (auto *bb : bfs->sortedBBs) {
-            FOR_BB_INSNS(insn, bb) {
+            FOR_BB_INSNS(insn, bb)
+            {
                 const InsnDesc *md = insn->GetDesc();
                 uint32 opndNum = insn->GetOperandSize();
                 for (uint32 iSecond = 0; iSecond < opndNum; ++iSecond) {
@@ -783,15 +784,7 @@ void LSRALinearScanRegAllocator::ComputeLiveIn(BB &bb, uint32 insnNum)
     if (bb.GetFirstInsn() == nullptr) {
         return;
     }
-    if (!bb.GetEhPreds().empty()) {
-        bb.InsertLiveInRegNO(firstIntReg);
-        bb.InsertLiveInRegNO(firstIntReg + 1);
-    }
     UpdateParamLiveIntervalByLiveIn(bb, insnNum);
-    if (!bb.GetEhPreds().empty()) {
-        bb.EraseLiveInRegNO(firstIntReg);
-        bb.EraseLiveInRegNO(firstIntReg + 1);
-    }
 }
 
 void LSRALinearScanRegAllocator::ComputeLiveOut(BB &bb, uint32 insnNum)
@@ -846,7 +839,9 @@ void LSRALinearScanRegAllocator::ComputeLiveOut(BB &bb, uint32 insnNum)
 
 struct RegOpndInfo {
     RegOpndInfo(RegOperand &opnd, uint32 size, uint32 idx, bool def)
-        : regOpnd(opnd), regSize(size), opndIdx(idx), isDef(def) {}
+        : regOpnd(opnd), regSize(size), opndIdx(idx), isDef(def)
+    {
+    }
     RegOperand &regOpnd;
     uint32 regSize = 0;
     uint32 opndIdx = -1;
@@ -862,7 +857,7 @@ void LSRALinearScanRegAllocator::ComputeLiveIntervalForEachOperand(Insn &insn)
         const OpndDesc *opndDesc = md->GetOpndDes(i);
         DEBUG_ASSERT(opndDesc != nullptr, "ptr null check.");
         if (opnd.IsRegister()) {
-            auto &regOpnd = static_cast<RegOperand&>(opnd);
+            auto &regOpnd = static_cast<RegOperand &>(opnd);
             // Specifically, the "use-def" opnd is treated as a "use" opnd
             bool isUse = opndDesc->IsRegUse();
             // Fixup: The size in the insn md of x64 is not accurate, and the size in the fload opnd
@@ -877,7 +872,7 @@ void LSRALinearScanRegAllocator::ComputeLiveIntervalForEachOperand(Insn &insn)
                 derivedRef2Base[regNO] = regOpnd.GetBaseRefOpnd();
             }
         } else if (opnd.IsMemoryAccessOperand()) {
-            auto &memOpnd = static_cast<MemOperand&>(opnd);
+            auto &memOpnd = static_cast<MemOperand &>(opnd);
             RegOperand *base = memOpnd.GetBaseRegister();
             RegOperand *offset = memOpnd.GetIndexRegister();
             if (base != nullptr) {
@@ -887,7 +882,7 @@ void LSRALinearScanRegAllocator::ComputeLiveIntervalForEachOperand(Insn &insn)
                 allRegOpndInfo.emplace_back(*offset, k64BitSize, i, false);
             }
         } else if (opnd.IsList()) {
-            auto &listOpnd = static_cast<ListOperand&>(opnd);
+            auto &listOpnd = static_cast<ListOperand &>(opnd);
             for (auto op : listOpnd.GetOperands()) {
                 allRegOpndInfo.emplace_back(*op, op->GetSize(), i, opndDesc->IsDef());
             }
@@ -912,17 +907,19 @@ void LSRALinearScanRegAllocator::ComputeLiveIntervalForEachOperand(Insn &insn)
     }
 }
 
-void LSRALinearScanRegAllocator::ComputeLoopLiveIntervalPriority(const CGFuncLoops &loop)
+void LSRALinearScanRegAllocator::ComputeLoopLiveIntervalPriority(const LoopDesc &loop)
 {
-    for (const auto *lp : loop.GetInnerLoops()) {
+    for (const auto *lp : loop.GetChildLoops()) {
         /* handle nested Loops */
         ComputeLoopLiveIntervalPriority(*lp);
     }
-    for (auto *bb : loop.GetLoopMembers()) {
+    for (auto bbId : loop.GetLoopBBs()) {
+        auto *bb = cgFunc->GetBBFromID(bbId);
         if (bb->IsEmpty()) {
             continue;
         }
-        FOR_BB_INSNS(insn, bb) {
+        FOR_BB_INSNS(insn, bb)
+        {
             ComputeLoopLiveIntervalPriorityInInsn(*insn);
         }
         loopBBRegSet.clear();
@@ -984,7 +981,8 @@ void LSRALinearScanRegAllocator::ComputeLiveInterval()
     uint32 insnNum = 1;
     for (BB *bb : bfs->sortedBBs) {
         ComputeLiveIn(*bb, insnNum);
-        FOR_BB_INSNS(insn, bb) {
+        FOR_BB_INSNS(insn, bb)
+        {
             insn->SetId(insnNum);
             /* skip comment and debug insn */
             if (!insn->IsMachineInstruction()) {
@@ -993,7 +991,7 @@ void LSRALinearScanRegAllocator::ComputeLiveInterval()
 
             /* RecordCall, remember calls for caller/callee allocation. */
             if (insn->IsCall()) {
-                if (!insn->GetIsThrow() || !bb->GetEhSuccs().empty()) {
+                if (!insn->GetIsThrow()) {
                     callQueue.emplace_back(insn->GetId());
                 }
                 if (!cgFunc->IsStackMapComputed()) {
@@ -1043,11 +1041,9 @@ void LSRALinearScanRegAllocator::ComputeLiveInterval()
         }
     }
 
-    /* enhance loop Live Interval Priority */
-    if (!cgFunc->GetLoops().empty()) {
-        for (const auto *lp : cgFunc->GetLoops()) {
-            ComputeLoopLiveIntervalPriority(*lp);
-        }
+    // enhance loop Live Interval Priority
+    for (const auto *lp : loopInfo.GetLoops()) {
+        ComputeLoopLiveIntervalPriority(*lp);
     }
 
     if (needDump) {
@@ -1062,7 +1058,8 @@ void LSRALinearScanRegAllocator::LiveIntervalAnalysis()
     for (uint32 bbIdx = 0; bbIdx < bfs->sortedBBs.size(); ++bbIdx) {
         BB *bb = bfs->sortedBBs[bbIdx];
 
-        FOR_BB_INSNS(insn, bb) {
+        FOR_BB_INSNS(insn, bb)
+        {
             /* 1 calculate live interfere */
             if (!insn->IsMachineInstruction() || insn->GetId() == 0) {
                 /* New instruction inserted by reg alloc (ie spill) */
@@ -1374,8 +1371,8 @@ void LSRALinearScanRegAllocator::InsertCallerSave(Insn &insn, Operand &opnd, boo
 
     if (!isDef && rli->IsNoNeedReloadPosition(insn.GetId())) {
         if (needDump) {
-            LogInfo::MapleLogger() << "InsertCallerSave R" << rli->GetRegNO() << " assigned "
-                                    << rli->GetAssignedReg() << " skipping\n";
+            LogInfo::MapleLogger() << "InsertCallerSave R" << rli->GetRegNO() << " assigned " << rli->GetAssignedReg()
+                                   << " skipping\n";
         }
         return;
     }
@@ -1447,7 +1444,8 @@ MemOperand *LSRALinearScanRegAllocator::GetSpillMem(uint32 vRegNO, bool isDest, 
                                                     bool &isOutOfRange, uint32 bitSize) const
 {
     MemOperand *memOpnd = regInfo->GetOrCreatSpillMem(vRegNO, bitSize);
-    return regInfo->AdjustMemOperandIfOffsetOutOfRange(memOpnd, vRegNO, isDest, insn, regNO, isOutOfRange);
+    return regInfo->AdjustMemOperandIfOffsetOutOfRange(memOpnd, std::make_pair(vRegNO, regNO), isDest, insn,
+                                                       isOutOfRange);
 }
 
 /*
@@ -1758,8 +1756,8 @@ uint32 LSRALinearScanRegAllocator::AssignPhysRegs(LiveInterval &li)
         li.SetAssignedReg(regNO);
         if (regInfo->IsCalleeSavedReg(regNO)) {
             if (needDump) {
-                LogInfo::MapleLogger()
-                    << "\tCallee-save register for save/restore in prologue/epilogue: " << regNO << "\n";
+                LogInfo::MapleLogger() << "\tCallee-save register for save/restore in prologue/epilogue: " << regNO
+                                       << "\n";
             }
             cgFunc->AddtoCalleeSaved(regNO);
         }
@@ -1863,7 +1861,6 @@ RegOperand *LSRALinearScanRegAllocator::GetReplaceOpnd(Insn &insn, Operand &opnd
     return phyOpnd;
 }
 
-
 bool LSRALinearScanRegAllocator::CallerSaveOpt::UpdateLocalDefWithBBLiveIn(const BB &bb)
 {
     bool changed = false;
@@ -1938,7 +1935,8 @@ void LSRALinearScanRegAllocator::CallerSaveOpt::Run()
                 continue;
             }
             changed = true;
-            FOR_BB_INSNS(insn, bb) {
+            FOR_BB_INSNS(insn, bb)
+            {
                 if (!insn->IsMachineInstruction() || insn->GetId() == 0) {
                     continue;
                 }
@@ -1956,7 +1954,8 @@ void LSRALinearScanRegAllocator::FinalizeRegisters()
     CallerSaveOpt opt(liveIntervalsArray, bfs);
     opt.Run();
     for (BB *bb : bfs->sortedBBs) {
-        FOR_BB_INSNS(insn, bb) {
+        FOR_BB_INSNS(insn, bb)
+        {
             if (!insn->IsMachineInstruction() || insn->GetId() == 0) {
                 continue;
             }
@@ -1990,7 +1989,7 @@ void LSRALinearScanRegAllocator::FinalizeRegisters()
                     insn->SetOperand(i, *newList);
                 } else if (opnd.IsMemoryAccessOperand()) {
                     auto *memOpnd =
-                        static_cast<MemOperand*>(static_cast<MemOperand&>(opnd).Clone(*cgFunc->GetMemoryPool()));
+                        static_cast<MemOperand *>(static_cast<MemOperand &>(opnd).Clone(*cgFunc->GetMemoryPool()));
                     DEBUG_ASSERT(memOpnd != nullptr,
                                  "memopnd is null in LSRALinearScanRegAllocator::FinalizeRegisters");
                     insn->SetOperand(i, *memOpnd);
@@ -2135,8 +2134,8 @@ void LSRALinearScanRegAllocator::CollectReferenceMap()
                     insn->GetStackMap()->GetReferenceMap().ReocordStackRoots(offset);
                 }
                 if (needDump) {
-                    LogInfo::MapleLogger() << "--------insn id: " << insn->GetId() << " regNO: " << regNO << " offset: "
-                                           << offset << std::endl;
+                    LogInfo::MapleLogger() << "--------insn id: " << insn->GetId() << " regNO: " << regNO
+                                           << " offset: " << offset << std::endl;
                 }
             } else {
                 // li->GetAssignedReg - R0/RAX?
@@ -2307,7 +2306,7 @@ bool LSRALinearScanRegAllocator::AllocateRegisters()
     if (needDump) {
         const MIRModule &mirModule = cgFunc->GetMirModule();
         DotGenerator::GenerateDot("RA", *cgFunc, mirModule);
-        DotGenerator::GenerateDot("RAe", *cgFunc, mirModule, true);
+        DotGenerator::GenerateDot("RAe", *cgFunc, mirModule);
         LogInfo::MapleLogger() << "Entering LinearScanRegAllocator: " << cgFunc->GetName() << "\n";
     }
 

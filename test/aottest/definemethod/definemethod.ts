@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-declare function print(str: any): string;
+declare function assert_equal(a: Object, b: Object):void;
 
 var obj = {
   get method(): string {
@@ -21,7 +21,7 @@ var obj = {
   },
 };
 
-print(obj.method);
+assert_equal(obj.method, "define method");
 
 function f45() {
   return 0;

@@ -19,6 +19,7 @@
 #include "mempool.h"
 #include "mempool_allocator.h"
 #include "cg_dominance.h"
+#include "loop.h"
 
 // Use SSAPRE to determine where to insert saves for callee-saved registers.
 // The external interface is DoSavePlacementOpt(). Class SsaPreWorkCand is used
@@ -43,7 +44,7 @@ public:
                                     // the other outputs can be ignored
 };
 
-extern void DoSavePlacementOpt(CGFunc *f, DomAnalysis *dom, SsaPreWorkCand *workCand);
+extern void DoSavePlacementOpt(CGFunc *f, DomAnalysis *dom, LoopAnalysis *loop, SsaPreWorkCand *workCand);
 
 enum AOccType {
     kAOccUndef,
@@ -143,9 +144,11 @@ public:
 
 class SSAPre {
 public:
-    SSAPre(CGFunc *cgfunc, DomAnalysis *dm, MemPool *memPool, SsaPreWorkCand *wkcand, bool aeap, bool enDebug)
+    SSAPre(CGFunc *cgfunc, DomAnalysis *dm, LoopAnalysis *loop, MemPool *memPool, SsaPreWorkCand *wkcand,
+           bool aeap, bool enDebug)
         : cgFunc(cgfunc),
           dom(dm),
+          loop(loop),
           preMp(memPool),
           preAllocator(memPool),
           workCand(wkcand),
@@ -194,6 +197,7 @@ private:
 
     CGFunc *cgFunc;
     DomAnalysis *dom;
+    LoopAnalysis *loop;
     MemPool *preMp;
     MapleAllocator preAllocator;
     SsaPreWorkCand *workCand;

@@ -50,9 +50,10 @@ inline void JSObject::FillElementsWithHoles(const JSThread *thread, uint32_t sta
         return;
     }
 
+    JSHandle<JSTaggedValue> holeHandle(thread, JSTaggedValue::Hole());
     JSHandle<JSObject> thisObj(thread, this);
     for (uint32_t i = start; i < end; i++) {
-        ElementAccessor::Set(thread, thisObj, i, JSTaggedValue::Hole(), false);
+        ElementAccessor::Set(thread, thisObj, i, holeHandle, false);
     }
 }
 
@@ -64,9 +65,6 @@ inline JSHClass *JSObject::GetJSHClass() const
 inline uint32_t JSObject::GetNonInlinedFastPropsCapacity() const
 {
     uint32_t inlineProps = GetJSHClass()->GetInlinedProperties();
-    if (inlineProps < JSHClass::DEFAULT_CAPACITY_OF_IN_OBJECTS) {
-        return PropertyAttributes::MAX_FAST_PROPS_CAPACITY - JSHClass::DEFAULT_CAPACITY_OF_IN_OBJECTS;
-    }
     return PropertyAttributes::MAX_FAST_PROPS_CAPACITY - inlineProps;
 }
 
@@ -409,6 +407,14 @@ JSHandle<JSTaggedValue> JSObject::CreateListFromArrayLike(JSThread *thread, cons
         THROW_TYPE_ERROR_AND_RETURN(thread, "CreateListFromArrayLike must accept object",
                                     JSHandle<JSTaggedValue>(thread, JSTaggedValue::Exception()));
     }
+    if (obj->IsTypedArray()) {
+        uint32_t len = JSHandle<JSTypedArray>::Cast(obj)->GetArrayLength();
+        JSHandle<TaggedArray> array = thread->GetEcmaVM()->GetFactory()->NewTaggedArray(len);
+        JSTypedArray::FastCopyElementToArray(thread, obj, array);
+        // c. ReturnIfAbrupt(next).
+        RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
+        return JSHandle<JSTaggedValue>(array);
+    }
     // 4. Let len be ToLength(Get(obj, "length")).
     JSHandle<JSTaggedValue> lengthKeyHandle = thread->GlobalConstants()->GetHandledLengthString();
 
@@ -424,13 +430,6 @@ JSHandle<JSTaggedValue> JSObject::CreateListFromArrayLike(JSThread *thread, cons
     uint32_t len = number.ToUint32();
     // 6. Let list be an empty List.
     JSHandle<TaggedArray> array = thread->GetEcmaVM()->GetFactory()->NewTaggedArray(len);
-
-    if (obj->IsTypedArray()) {
-        JSTypedArray::FastCopyElementToArray(thread, obj, array);
-        // c. ReturnIfAbrupt(next).
-        RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
-        return JSHandle<JSTaggedValue>(array);
-    }
     // 8. Repeat while index < len
     for (uint32_t i = 0; i < len; i++) {
         JSTaggedValue next = JSTaggedValue::GetProperty(thread, obj, i).GetValue().GetTaggedValue();

@@ -190,7 +190,7 @@ private:
     void LowerThrowPatternNonCoercible(GateRef gate);
     void LowerThrowIfNotObject(GateRef gate);
     void LowerThrowUndefinedIfHole(GateRef gate);
-    void LowerThrowUndefinedIfHoleWithName(GateRef gate);
+    void LowerThrowUndefinedIfHoleWithName(GateRef Getgate);
     void LowerThrowIfSuperNotCorrectCall(GateRef gate);
     void LowerThrowDeleteSuperProperty(GateRef gate);
     void LowerLdSymbol(GateRef gate);
@@ -319,6 +319,7 @@ private:
     void DeleteLoopExit(GateRef gate);
     void DeleteLoopExitValue(GateRef gate);
     void LowerLdStr(GateRef gate);
+    void LowerGetConstPool(GateRef gate);
 
     TSManager *tsManager_ {nullptr};
     const MethodLiteral *methodLiteral_ {nullptr};

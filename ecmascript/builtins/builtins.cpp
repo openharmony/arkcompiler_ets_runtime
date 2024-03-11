@@ -539,13 +539,10 @@ void Builtins::InitializeFunction(const JSHandle<GlobalEnv> &env, const JSHandle
     StrictModeForbiddenAccessCallerArguments(env, funcFuncPrototypeObj);
 
     // Function.prototype method
-    // 19.2.3.1 Function.prototype.apply ( thisArg, argArray )
-    SetFunction(env, funcFuncPrototypeObj, "apply", Function::FunctionPrototypeApply, FunctionLength::TWO,
-        BUILTINS_STUB_ID(FunctionPrototypeApply));
-    // 19.2.3.2 Function.prototype.bind ( thisArg , ...args)
-    SetFunction(env, funcFuncPrototypeObj, "bind", Function::FunctionPrototypeBind, FunctionLength::ONE);
-    // 19.2.3.3 Function.prototype.call (thisArg , ...args)
-    SetFunction(env, funcFuncPrototypeObj, "call", Function::FunctionPrototypeCall, FunctionLength::ONE);
+    for (const base::BuiltinFunctionEntry &entry: Function::GetFunctionPrototypeFunctions()) {
+        SetFunction(env, funcFuncPrototypeObj, entry.GetName(), entry.GetEntrypoint(),
+                    entry.GetLength(), entry.GetBuiltinStubId());
+    }
     // 19.2.3.5 Function.prototype.toString ( )
     SetFunction(env, funcFuncPrototypeObj, thread_->GlobalConstants()->GetHandledToStringString(),
                 Function::FunctionPrototypeToString, FunctionLength::ZERO);
@@ -2053,9 +2050,9 @@ void Builtins::InitializeArray(const JSHandle<GlobalEnv> &env, const JSHandle<JS
 
     // Array.prototype [ @@unscopables ]
     JSHandle<JSTaggedValue> unscopablesSymbol = env->GetUnscopablesSymbol();
-    JSHandle<JSTaggedValue> unscopablesGetter =
-        CreateGetter(env, BuiltinsArray::Unscopables, "[Symbol.unscopables]", FunctionLength::ZERO);
-    SetGetter(JSHandle<JSObject>(arrFuncPrototype), unscopablesSymbol, unscopablesGetter);
+    JSHandle<JSTaggedValue> unscopables = CreateArrayUnscopables(thread_);
+    PropertyDescriptor unscopablesDesc(thread_, unscopables, false, false, true);
+    JSObject::DefineOwnProperty(thread_, arrFuncPrototype, unscopablesSymbol, unscopablesDesc);
 
     env->SetArrayProtoValuesFunction(thread_, desc.GetValue());
     env->SetArrayFunction(thread_, arrayFunction);
@@ -3715,5 +3712,64 @@ void Builtins::InitializeDefaultExportOfScript(const JSHandle<GlobalEnv> &env) c
     obj->SetPropertyInlinedProps(thread_, 0, props->Get(1));
     env->SetExportOfScript(thread_, obj);
     return;
+}
+
+JSHandle<JSTaggedValue> Builtins::CreateArrayUnscopables(JSThread *thread) const
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    const GlobalEnvConstants *globalConst = thread->GlobalConstants();
+
+    JSHandle<JSObject> unscopableList = factory->CreateNullJSObject();
+
+    JSHandle<JSTaggedValue> trueVal(thread, JSTaggedValue::True());
+
+    JSHandle<JSTaggedValue> atKey((factory->NewFromASCII("at")));
+    JSObject::CreateDataProperty(thread, unscopableList, atKey, trueVal);
+
+    JSHandle<JSTaggedValue> copyWithKey = globalConst->GetHandledCopyWithinString();
+    JSObject::CreateDataProperty(thread, unscopableList, copyWithKey, trueVal);
+
+    JSHandle<JSTaggedValue> entriesKey = globalConst->GetHandledEntriesString();
+    JSObject::CreateDataProperty(thread, unscopableList, entriesKey, trueVal);
+
+    JSHandle<JSTaggedValue> fillKey = globalConst->GetHandledFillString();
+    JSObject::CreateDataProperty(thread, unscopableList, fillKey, trueVal);
+
+    JSHandle<JSTaggedValue> findKey = globalConst->GetHandledFindString();
+    JSObject::CreateDataProperty(thread, unscopableList, findKey, trueVal);
+
+    JSHandle<JSTaggedValue> findIndexKey = globalConst->GetHandledFindIndexString();
+    JSObject::CreateDataProperty(thread, unscopableList, findIndexKey, trueVal);
+
+    JSHandle<JSTaggedValue> findLastKey((factory->NewFromASCII("findLast")));
+    JSObject::CreateDataProperty(thread, unscopableList, findLastKey, trueVal);
+
+    JSHandle<JSTaggedValue> findLastIndexKey((factory->NewFromASCII("findLastIndex")));
+    JSObject::CreateDataProperty(thread, unscopableList, findLastIndexKey, trueVal);
+
+    JSHandle<JSTaggedValue> flatKey = globalConst->GetHandledFlatString();
+    JSObject::CreateDataProperty(thread, unscopableList, flatKey, trueVal);
+
+    JSHandle<JSTaggedValue> flatMapKey = globalConst->GetHandledFlatMapString();
+    JSObject::CreateDataProperty(thread, unscopableList, flatMapKey, trueVal);
+
+    JSHandle<JSTaggedValue> includesKey = globalConst->GetHandledIncludesString();
+    JSObject::CreateDataProperty(thread, unscopableList, includesKey, trueVal);
+
+    JSHandle<JSTaggedValue> keysKey = globalConst->GetHandledKeysString();
+    JSObject::CreateDataProperty(thread, unscopableList, keysKey, trueVal);
+
+    JSHandle<JSTaggedValue> valuesKey = globalConst->GetHandledValuesString();
+    JSObject::CreateDataProperty(thread, unscopableList, valuesKey, trueVal);
+
+    JSHandle<JSTaggedValue> toReversedKey((factory->NewFromASCII("toReversed")));
+    JSObject::CreateDataProperty(thread, unscopableList, toReversedKey, trueVal);
+
+    JSHandle<JSTaggedValue> toSortedKey((factory->NewFromASCII("toSorted")));
+    JSObject::CreateDataProperty(thread, unscopableList, toSortedKey, trueVal);
+
+    JSHandle<JSTaggedValue> toSplicedKey((factory->NewFromASCII("toSpliced")));
+    JSObject::CreateDataProperty(thread, unscopableList, toSplicedKey, trueVal);
+    return JSHandle<JSTaggedValue>::Cast(unscopableList);
 }
 }  // namespace panda::ecmascript

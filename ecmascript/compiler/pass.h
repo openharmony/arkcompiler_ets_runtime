@@ -19,6 +19,7 @@
 #include "ecmascript/compiler/array_bounds_check_elimination.h"
 #include "ecmascript/compiler/async_function_lowering.h"
 #include "ecmascript/compiler/bytecode_circuit_builder.h"
+#include "ecmascript/compiler/codegen/llvm/llvm_codegen.h"
 #include "ecmascript/compiler/combined_pass_visitor.h"
 #include "ecmascript/compiler/common_stubs.h"
 #include "ecmascript/compiler/compiler_log.h"
@@ -30,7 +31,6 @@
 #include "ecmascript/compiler/later_elimination.h"
 #include "ecmascript/compiler/mcr_lowering.h"
 #include "ecmascript/compiler/lexical_env_specialization_pass.h"
-#include "ecmascript/compiler/llvm_codegen.h"
 #include "ecmascript/compiler/loop_analysis.h"
 #include "ecmascript/compiler/loop_peeling.h"
 #include "ecmascript/compiler/native_inline_lowering.h"
@@ -69,10 +69,12 @@ public:
              std::string methodName, MethodInfo *methodInfo = nullptr, bool hasTypes = false,
              const CString &recordName = "", MethodLiteral *methodLiteral = nullptr,
              uint32_t methodOffset = 0, NativeAreaAllocator *allocator = nullptr,
-             PGOProfilerDecoder *decoder = nullptr, PassOptions *passOptions = nullptr)
+             PGOProfilerDecoder *decoder = nullptr, PassOptions *passOptions = nullptr,
+             std::string optBCRange = "")
         : builder_(builder), circuit_(circuit), ctx_(ctx), log_(log), methodName_(methodName),
           methodInfo_(methodInfo), hasTypes_(hasTypes), recordName_(recordName), methodLiteral_(methodLiteral),
-          methodOffset_(methodOffset), allocator_(allocator), decoder_(decoder), passOptions_(passOptions)
+          methodOffset_(methodOffset), allocator_(allocator), decoder_(decoder), passOptions_(passOptions),
+          optBCRange_(optBCRange)
     {
     }
 
@@ -183,6 +185,11 @@ public:
         return passOptions_;
     }
 
+    std::string GetOptBCRange() const
+    {
+        return optBCRange_;
+    }
+
     bool IsTypeAbort() const
     {
         if (hasTypes_) {
@@ -233,6 +240,7 @@ private:
     NativeAreaAllocator *allocator_ {nullptr};
     PGOProfilerDecoder *decoder_ {nullptr};
     PassOptions *passOptions_ {nullptr};
+    std::string optBCRange_;
 };
 
 template<typename T1>
@@ -312,7 +320,8 @@ public:
                                       enableTypeLog,
                                       data->GetMethodName(),
                                       passOptions->EnableLoweringBuiltin(),
-                                      data->GetRecordName());
+                                      data->GetRecordName(),
+                                      data->GetOptBCRange());
         bool success = lowering.RunTypedBytecodeLowering();
         if (!success) {
             data->MarkAsTypeAbort();

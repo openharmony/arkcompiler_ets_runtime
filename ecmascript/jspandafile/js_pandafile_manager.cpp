@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022 Huawei Device Co., Ltd.
+ * Copyright (c) 2024 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -71,12 +71,12 @@ std::shared_ptr<JSPandaFile> JSPandaFileManager::LoadJSPandaFile(JSThread *threa
     if (!vm->IsBundlePack() && moduleManager->GetExecuteMode()) {
         ResolveBufferCallback resolveBufferCallback = vm->GetResolveBufferCallback();
         if (resolveBufferCallback == nullptr) {
-            LOG_ECMA(ERROR) << "resolveBufferCallback is nullptr";
 #if defined(PANDA_TARGET_WINDOWS) || defined(PANDA_TARGET_MACOS)
             if (vm->EnableReportModuleResolvingFailure()) {
                 LOG_NO_TAG(ERROR) << "[ArkRuntime Log] Importing shared package is not supported in the Previewer.";
             }
 #endif
+            LOG_FULL(FATAL) << "resolveBufferCallback is nullptr";
             return nullptr;
         }
         uint8_t *data = nullptr;
@@ -88,11 +88,11 @@ std::shared_ptr<JSPandaFile> JSPandaFileManager::LoadJSPandaFile(JSThread *threa
                 LOG_NO_TAG(INFO) << "[ArkRuntime Log] Importing shared package in the Previewer.";
             }
 #endif
-            LOG_ECMA(ERROR) << "resolveBufferCallback get buffer failed";
+            LOG_FULL(FATAL) << "resolveBufferCallback get buffer failed";
             return nullptr;
         }
         if (!JSNApi::CheckSecureMem(reinterpret_cast<uintptr_t>(data))) {
-            LOG_ECMA(ERROR) << "Hsp secure memory check failed, please execute in secure memory.";
+            LOG_FULL(FATAL) << "Hsp secure memory check failed, please execute in secure memory.";
             return nullptr;
         }
 #if defined(PANDA_TARGET_ANDROID) || defined(PANDA_TARGET_IOS)
@@ -144,8 +144,12 @@ std::shared_ptr<JSPandaFile> JSPandaFileManager::LoadJSPandaFile(JSThread *threa
             return jsPandaFile;
         }
     }
-
+#if defined(PANDA_TARGET_PREVIEW)
     auto pf = panda_file::OpenPandaFileFromMemory(buffer, size);
+#else
+    CString tag = ModulePathHelper::ParseFileNameToVMAName(filename);
+    auto pf = panda_file::OpenPandaFileFromMemory(buffer, size, tag.c_str());
+#endif
     if (pf == nullptr) {
         LOG_ECMA(ERROR) << "open file " << filename << " error";
         return nullptr;

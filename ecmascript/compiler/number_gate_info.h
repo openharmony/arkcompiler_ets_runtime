@@ -29,6 +29,8 @@ enum class TypeInfo {
     FLOAT64,
     TAGGED,
     CHAR,
+    HOLE_INT,
+    HOLE_DOUBLE,
 };
 
 class UseInfo {

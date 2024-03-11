@@ -19,6 +19,7 @@
 #include "ecmascript/js_tagged_value-inl.h"
 #include "ecmascript/mem/dyn_chunk.h"
 #include "ecmascript/runtime.h"
+#include "ecmascript/shared_mm/shared_mm.h"
 #include "ecmascript/snapshot/mem/snapshot_env.h"
 
 namespace panda::ecmascript {
@@ -42,6 +43,7 @@ enum class EncodeFlag : uint8_t {
     OBJECT_PROTO,
     ARRAY_BUFFER,
     TRANSFER_ARRAY_BUFFER,
+    SHARED_ARRAY_BUFFER,
     METHOD,
     NATIVE_BINDING_OBJECT,
     JS_ERROR,
@@ -72,8 +74,12 @@ public:
     ~SerializeData()
     {
         regionRemainSizeVector_.clear();
+        // decrease sharedArrayBuffer reference
+        if (sharedArrayBufferSet_.size() > 0) {
+            DecreaseSharedArrayBufferReference();
+        }
         free(buffer_);
-        if (!incompleteData_) {
+        if (!incompleteData_ && dataIndex_ != 0) {
             Runtime::GetInstance()->RemoveSerializationRoot(thread_, dataIndex_);
         }
     }
@@ -194,10 +200,10 @@ public:
         RawDataEmit(&data, 1);
     }
 
-    uint8_t ReadUint8()
+    uint8_t ReadUint8(size_t &position)
     {
-        ASSERT(position_ < Size());
-        return *(buffer_ + (position_++));
+        ASSERT(position < Size());
+        return *(buffer_ + (position++));
     }
 
     void WriteEncodeFlag(EncodeFlag flag)
@@ -210,11 +216,11 @@ public:
         RawDataEmit(reinterpret_cast<uint8_t *>(&data), U32_SIZE);
     }
 
-    uint32_t ReadUint32()
+    uint32_t ReadUint32(size_t &position)
     {
-        ASSERT(position_ < Size());
-        uint32_t value = *reinterpret_cast<uint32_t *>(buffer_ + position_);
-        position_ += sizeof(uint32_t);
+        ASSERT(position < Size());
+        uint32_t value = *reinterpret_cast<uint32_t *>(buffer_ + position);
+        position += sizeof(uint32_t);
         return value;
     }
 
@@ -233,22 +239,22 @@ public:
         EmitU64(value);
     }
 
-    JSTaggedType ReadJSTaggedType()
+    JSTaggedType ReadJSTaggedType(size_t &position)
     {
-        ASSERT(position_ < Size());
-        JSTaggedType value = *reinterpret_cast<uint64_t *>(buffer_ + position_);
-        position_ += sizeof(JSTaggedType);
+        ASSERT(position < Size());
+        JSTaggedType value = *reinterpret_cast<uint64_t *>(buffer_ + position);
+        position += sizeof(JSTaggedType);
         return value;
     }
 
-    void ReadRawData(uintptr_t addr, size_t len)
+    void ReadRawData(uintptr_t addr, size_t len, size_t &position)
     {
-        ASSERT(position_ + len <= Size());
-        if (memcpy_s(reinterpret_cast<void *>(addr), len, buffer_ + position_, len) != EOK) {
+        ASSERT(position + len <= Size());
+        if (memcpy_s(reinterpret_cast<void *>(addr), len, buffer_ + position, len) != EOK) {
             LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
         }
-        position_ += len;
+        position += len;
     }
 
     uint8_t* Data() const
@@ -259,11 +265,6 @@ public:
     size_t Size() const
     {
         return bufferSize_;
-    }
-
-    size_t GetPosition() const
-    {
-        return position_;
     }
 
     void SetIncompleteData(bool incomplete)
@@ -340,9 +341,18 @@ public:
         ASSERT(spaceSize <= SnapshotEnv::MAX_UINT_32);
     }
 
-    void ResetPosition()
+    void DecreaseSharedArrayBufferReference()
     {
-        position_ = 0;
+        auto manager = JSSharedMemoryManager::GetInstance();
+        for (auto iter = sharedArrayBufferSet_.begin(); iter != sharedArrayBufferSet_.end(); iter++) {
+            JSSharedMemoryManager::RemoveSharedMemory(reinterpret_cast<void *>(*iter), manager);
+        }
+        sharedArrayBufferSet_.clear();
+    }
+
+    void insertSharedArrayBuffer(uintptr_t ptr)
+    {
+        sharedArrayBufferSet_.insert(ptr);
     }
 
     void SetDataIndex(uint32_t dataIndex)
@@ -361,7 +371,7 @@ private:
     static constexpr size_t U32_SIZE = 4;
     static constexpr size_t U64_SIZE = 8;
     JSThread *thread_;
-    uint32_t dataIndex_;
+    uint32_t dataIndex_ = 0;
     uint8_t *buffer_ = nullptr;
     uint64_t sizeLimit_ = 0;
     size_t bufferSize_ = 0;
@@ -371,9 +381,9 @@ private:
     size_t machineCodeSpaceSize_ {0};
     size_t sharedOldSpaceSize_ {0};
     size_t sharedNonMovableSpaceSize_ {0};
-    size_t position_ {0};
     bool incompleteData_ {false};
     std::vector<size_t> regionRemainSizeVector_;
+    std::set<uintptr_t> sharedArrayBufferSet_;
 };
 }
 

@@ -15,7 +15,6 @@
 
 #include "ecmascript/mem/heap-inl.h"
 
-#include <cerrno>
 #include <chrono>
 #include <thread>
 
@@ -50,14 +49,11 @@
 #include "ecmascript/dfx/hprof/heap_profiler_interface.h"
 #include "ecmascript/dfx/hprof/heap_profiler.h"
 #endif
-#include "ecmascript/napi/include/jsnapi.h"
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
 #include "ecmascript/dfx/cpu_profiler/cpu_profiler.h"
 #endif
 #include "ecmascript/dfx/tracing/tracing.h"
 #if defined(ENABLE_DUMP_IN_FAULTLOG)
-#include <sys/wait.h>
-#include "uv.h"
 #include "syspara/parameter.h"
 #endif
 
@@ -328,6 +324,7 @@ void Heap::Initialize()
     compressGCMarker_ = new CompressGCMarker(this);
     evacuator_ = new ParallelEvacuator(this);
     incrementalMarker_ = new IncrementalMarker(this);
+    gcListeners_.reserve(16U);
 }
 
 void Heap::Destroy()
@@ -556,6 +553,7 @@ void Heap::CollectGarbage(TriggerGCType gcType, GCReason reason)
         ASSERT(thread_->IsInRunningState());
         RecursionScope recurScope(this);
         if (thread_->IsCrossThreadExecutionEnable() || (InSensitiveStatus() && !ObjectExceedMaxHeapSize())) {
+            ProcessGCListeners();
             return;
         }
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
@@ -623,6 +621,7 @@ void Heap::CollectGarbage(TriggerGCType gcType, GCReason reason)
                     oldSpace_->SetOvershootSize(config_.GetOldSpaceOvershootSize());
                     TriggerConcurrentMarking();
                     oldGCRequested_ = true;
+                    ProcessGCListeners();
                     return;
                 }
                 partialGC_->RunPhases();
@@ -649,11 +648,9 @@ void Heap::CollectGarbage(TriggerGCType gcType, GCReason reason)
         // OOMError object is not allowed to be allocated during gc process, so throw OOMError after gc
         if (shouldThrowOOMError_) {
             sweeper_->EnsureAllTaskFinished();
-            DumpHeapSnapshotBeforeOOM(false, oldSpace_->GetMergeSize(), " OldSpace::Merge", false);
+            DumpHeapSnapshotBeforeOOM(false);
             StatisticHeapDetail();
-#ifndef ENABLE_DUMP_IN_FAULTLOG
             ThrowOutOfMemoryError(thread_, oldSpace_->GetMergeSize(), " OldSpace::Merge");
-#endif
             oldSpace_->ResetMergeSize();
             shouldThrowOOMError_ = false;
         }
@@ -705,6 +702,7 @@ void Heap::CollectGarbage(TriggerGCType gcType, GCReason reason)
     }
 #endif
     ASSERT(thread_->IsPropertyCacheCleared());
+    ProcessGCListeners();
 }
 
 void BaseHeap::ThrowOutOfMemoryError(JSThread *thread, size_t size, std::string functionName,
@@ -758,11 +756,9 @@ void Heap::CheckNonMovableSpaceOOM()
 {
     if (nonMovableSpace_->GetHeapObjectSize() > MAX_NONMOVABLE_LIVE_OBJ_SIZE) {
         sweeper_->EnsureAllTaskFinished();
-        DumpHeapSnapshotBeforeOOM(false, nonMovableSpace_->GetHeapObjectSize(), "Heap::CheckNonMovableSpaceOOM", true);
+        DumpHeapSnapshotBeforeOOM(false);
         StatisticHeapDetail();
-#ifndef ENABLE_DUMP_IN_FAULTLOG
         ThrowOutOfMemoryError(thread_, nonMovableSpace_->GetHeapObjectSize(), "Heap::CheckNonMovableSpaceOOM", true);
-#endif
     }
 }
 
@@ -927,29 +923,7 @@ std::string GetProcessName(int32_t pid)
     }
 }
 
-#if defined(ENABLE_DUMP_IN_FAULTLOG)
-static void JsOOMThreadStart(EcmaVM *ecmaVm, size_t size, std::string functionName,
-                             bool NonMovableObjNearOOM, int32_t pid)
-{
-    time_t startTime = time(nullptr);
-    while (true) {
-        int status = 0;
-        pid_t p = waitpid(pid, &status, 0);
-        if (p < 0 || p == pid) {
-        const_cast<Heap *>((ecmaVm)->GetHeap())->ThrowOutOfMemoryError(ecmaVm->GetJSThread(), size, functionName, NonMovableObjNearOOM);
-            break;
-        }
-        if (time(nullptr) > startTime + DUMP_TIME_OUT) {
-            LOG_GC(ERROR) << "JsOOMThreadStart wait " << DUMP_TIME_OUT << " s";
-            kill(pid, SIGTERM);
-            break;
-        }
-        usleep(DEFAULT_SLEEP_TIME);
-    }
-}
-#endif
-
-void Heap::DumpHeapSnapshotBeforeOOM(bool isFullGC, size_t size, std::string functionName, bool NonMovableObjNearOOM)
+void Heap::DumpHeapSnapshotBeforeOOM([[maybe_unused]] bool isFullGC)
 {
 #if defined(ECMASCRIPT_SUPPORT_SNAPSHOT)
 #if defined(ENABLE_DUMP_IN_FAULTLOG)
@@ -957,6 +931,7 @@ void Heap::DumpHeapSnapshotBeforeOOM(bool isFullGC, size_t size, std::string fun
         return;
     }
     // Filter appfreeze when dump.
+    LOG_ECMA(INFO) << " DumpHeapSnapshotBeforeOOM, isFullGC" << isFullGC;
     base::BlockHookScope blockScope;
     HeapProfilerInterface *heapProfile = HeapProfilerInterface::GetInstance(ecmaVm_);
     int32_t pid = getpid();
@@ -965,33 +940,9 @@ void Heap::DumpHeapSnapshotBeforeOOM(bool isFullGC, size_t size, std::string fun
         LOG_ECMA(INFO) << " DumpHeapSnapshotBeforeOOM, propertyName:" << propertyName
             << " value:" << std::to_string(pid);
     }
-    LOG_ECMA(ERROR) << "DumpHeapSnapshotBeforeOOM Start" << isFullGC;
-#if defined IOS_PLATFORM || defined MAC_PLATFORM
-    pthread_setname_np("JsOOMThreadStart");
-#else
-    pthread_setname_np(pthread_self(), "JsOOMThreadStart");
-#endif
-    pid = -1;
-    if ((pid = fork()) < 0) {
-        LOG_GC(ERROR) << "JsOOMThreadStart fork error, err: " << errno;
-        return;
-    }
-    if (pid == 0) {
-        struct JsHeapDumpWork *dumpWork = new(std::nothrow) JsHeapDumpWork;
-        dumpWork->vm = ecmaVm_;
-        dumpWork->size = size;
-        dumpWork->functionName = functionName;
-        dumpWork->NonMovableObjNearOOM = NonMovableObjNearOOM;
-        dumpWork->work.data = dumpWork;
-        JSNApi::AllowCrossThreadExecution(ecmaVm_);
-        heapProfile->DumpHeapSnapshot(DumpFormat::JSON, true, false, false, isFullGC);
-        HeapProfilerInterface::Destroy(dumpWork->vm);
-        delete dumpWork;
-        _exit(0);
-    } else {
-        std::thread threadJsOOM(&JsOOMThreadStart, ecmaVm_, size, functionName, NonMovableObjNearOOM, pid);
-        threadJsOOM.detach();
-    }
+    // Vm should always allocate young space successfully. Really OOM will occur in the non-young spaces.
+    heapProfile->DumpHeapSnapshot(DumpFormat::JSON, true, false, false, isFullGC);
+    HeapProfilerInterface::Destroy(ecmaVm_);
 #endif // ENABLE_DUMP_IN_FAULTLOG
 #endif // ECMASCRIPT_SUPPORT_SNAPSHOT
 }
@@ -1142,9 +1093,8 @@ bool Heap::CheckOngoingConcurrentMarking()
             MEM_ALLOCATE_AND_GC_TRACE(ecmaVm_, WaitConcurrentMarkingFinished);
             GetNonMovableMarker()->ProcessMarkStack(MAIN_THREAD_INDEX);
             WaitConcurrentMarkingFinished();
-        } else {
-            WaitRunningTaskFinished();
         }
+        WaitRunningTaskFinished();
         memController_->RecordAfterConcurrentMark(IsConcurrentFullMark(), concurrentMarker_);
         return true;
     }
@@ -1732,6 +1682,8 @@ void Heap::InvokeWeakNodeNativeFinalizeCallback()
     }
     runningNativeFinalizeCallbacks_ = true;
     auto weakNodeNativeFinalizeCallBacks = thread_->GetWeakNodeNativeFinalizeCallbacks();
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "InvokeNativeFinalizeCallbacks num:"
+        + std::to_string(weakNodeNativeFinalizeCallBacks->size()));
     while (!weakNodeNativeFinalizeCallBacks->empty()) {
         auto callbackPair = weakNodeNativeFinalizeCallBacks->back();
         weakNodeNativeFinalizeCallBacks->pop_back();
@@ -1858,6 +1810,24 @@ std::tuple<uint64_t, uint8_t *, int, kungfu::CalleeRegAndOffsetVec> Heap::CalCal
     }
     return code->CalCallSiteInfo(retAddr);
 };
+
+GCListenerId Heap::AddGCListener(FinishGCListener listener, void *data)
+{
+    gcListeners_.emplace_back(std::make_pair(listener, data));
+    return std::prev(gcListeners_.cend());
+}
+
+void Heap::ProcessGCListeners()
+{
+    for (auto &&[listener, data] : gcListeners_) {
+        listener(data);
+    }
+}
+
+void Heap::RemoveGCListener(GCListenerId listenerId)
+{
+    gcListeners_.erase(listenerId);
+}
 
 void BaseHeap::IncreaseTaskCount()
 {

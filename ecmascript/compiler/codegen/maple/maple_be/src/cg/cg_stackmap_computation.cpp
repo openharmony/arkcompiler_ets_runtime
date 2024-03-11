@@ -21,8 +21,10 @@ namespace maplebe {
 
 void StackmapComputation::SetStackmapDerivedInfo()
 {
-    FOR_ALL_BB(bb, &cgFunc) {
-        FOR_BB_INSNS(insn, bb) {
+    FOR_ALL_BB(bb, &cgFunc)
+    {
+        FOR_BB_INSNS(insn, bb)
+        {
             if (!insn->IsMachineInstruction()) {
                 continue;
             }
@@ -50,7 +52,8 @@ MemOperand *StackmapComputation::GetSpillMem(uint32 vRegNO, bool isDest, Insn &i
                                              bool &isOutOfRange, uint32 bitSize)
 {
     MemOperand *memOpnd = regInfo->GetOrCreatSpillMem(vRegNO, bitSize);
-    return regInfo->AdjustMemOperandIfOffsetOutOfRange(memOpnd, vRegNO, isDest, insn, regNO, isOutOfRange);
+    return regInfo->AdjustMemOperandIfOffsetOutOfRange(memOpnd, std::make_pair(vRegNO, regNO), isDest, insn,
+                                                       isOutOfRange);
 }
 
 void StackmapComputation::SpillOperand(Insn &insn, regno_t regNO)
@@ -165,8 +168,8 @@ void StackmapComputation::CollectReferenceMap()
                 insn->GetStackMap()->GetReferenceMap().ReocordStackRoots(offset);
             }
             if (needDump) {
-                LogInfo::MapleLogger() << "--------insn num: " << insnNum << " regNO: " << regNO << " offset: "
-                                        << offset << std::endl;
+                LogInfo::MapleLogger() << "--------insn num: " << insnNum << " regNO: " << regNO
+                                       << " offset: " << offset << std::endl;
             }
         }
     }

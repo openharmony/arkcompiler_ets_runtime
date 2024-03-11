@@ -292,17 +292,17 @@ bool CgFuncPM::PhaseRun(MIRModule &m)
 {
     // registry target based on build, cgfunc, emitter need to be registried.
     InitializeAllTargetInfos(m.GetMemPool());
+    theMIRModule = &m;
     std::string compileTarget = "";
     if (Triple::GetTriple().IsAarch64BeOrLe()) {
         compileTarget = "aarch64";
     } else if (Triple::GetTriple().GetArch() == Triple::ArchType::x64) {
-        compileTarget =  "x86";
+        compileTarget = "x86";
     } else {
         CHECK_FATAL(false, "unsupport");
     }
     const Target *TheTarget = nullptr;
-    TheTarget =
-        TargetRegistry::lookupTarget(compileTarget);
+    TheTarget = TargetRegistry::lookupTarget(compileTarget);
     // get target based on option
     CreateCGAndBeCommon(m, TheTarget);
     bool changed = false;

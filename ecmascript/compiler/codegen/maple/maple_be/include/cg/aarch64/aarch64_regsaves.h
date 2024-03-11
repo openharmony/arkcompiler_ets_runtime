@@ -124,10 +124,11 @@ private:
 
 class AArch64RegSavesOpt : public RegSavesOpt {
 public:
-    AArch64RegSavesOpt(CGFunc &func, MemPool &pool, DomAnalysis &dom, PostDomAnalysis &pdom)
+    AArch64RegSavesOpt(CGFunc &func, MemPool &pool, DomAnalysis &dom, PostDomAnalysis &pdom, LoopAnalysis &loop)
         : RegSavesOpt(func, pool),
           domInfo(&dom),
           pDomInfo(&pdom),
+          loopInfo(loop),
           bbSavedRegs(alloc.Adapter()),
           regSavedBBs(alloc.Adapter()),
           regOffset(alloc.Adapter()),
@@ -262,6 +263,7 @@ public:
 private:
     DomAnalysis *domInfo;
     PostDomAnalysis *pDomInfo;
+    LoopAnalysis &loopInfo;
     Bfs *bfs = nullptr;
     CalleeBitsType *calleeBitsDef = nullptr;
     CalleeBitsType *calleeBitsUse = nullptr;

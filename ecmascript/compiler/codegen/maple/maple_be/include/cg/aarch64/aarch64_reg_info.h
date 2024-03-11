@@ -37,7 +37,7 @@ public:
     // Additionally, only the bottom 64 bits of each value stored in virturl reg 8-15 need to be
     // preserved 8; it is the responsibility of the caller to preserve larger values.
     // Refer to Procedure Call Standard for the Arm 64-bit Architecture (AArch64) 2022Q3.  $6.1.2
-    bool IsCallerSavePartRegister(regno_t regNO,  uint32 size) const override
+    bool IsCallerSavePartRegister(regno_t regNO, uint32 size) const override
     {
         return (regNO >= V8 && regNO <= V15) && size == k128BitSize;
     }
@@ -134,8 +134,8 @@ public:
     Insn *BuildStrInsn(uint32 regSize, PrimType stype, RegOperand &phyOpnd, MemOperand &memOpnd) override;
     Insn *BuildLdrInsn(uint32 regSize, PrimType stype, RegOperand &phyOpnd, MemOperand &memOpnd) override;
     MemOperand *GetOrCreatSpillMem(regno_t vrNum, uint32 bitSize) override;
-    MemOperand *AdjustMemOperandIfOffsetOutOfRange(MemOperand *memOpnd, regno_t vrNum, bool isDest, Insn &insn,
-                                                   regno_t regNum, bool &isOutOfRange) override;
+    MemOperand *AdjustMemOperandIfOffsetOutOfRange(MemOperand *memOpnd, const RegNoPair &regNoPair, bool isDest,
+                                                   Insn &insn, bool &isOutOfRange) override;
     void FreeSpillRegMem(regno_t vrNum) override;
 };
 } /* namespace maplebe */

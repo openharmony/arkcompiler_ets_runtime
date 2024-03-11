@@ -20,7 +20,7 @@
 #include "ecmascript/frames.h"
 #include "ecmascript/mem/visitor.h"
 #include "ecmascript/stackmap/ark_stackmap.h"
-#include "ecmascript/stackmap/llvm_stackmap_type.h"
+#include "ecmascript/stackmap/llvm/llvm_stackmap_type.h"
 
 namespace panda::ecmascript {
     class BinaryBufferParser;

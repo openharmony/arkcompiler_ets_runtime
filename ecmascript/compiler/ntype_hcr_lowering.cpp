@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include "ecmascript/js_arguments.h"
 #include "ecmascript/compiler/ntype_hcr_lowering.h"
 #include "ecmascript/dfx/vmstat/opt_code_profiler.h"
 #include "ecmascript/compiler/new_object_stub_builder.h"
@@ -29,6 +30,9 @@ GateRef NTypeHCRLowering::VisitGate(GateRef gate)
             break;
         case OpCode::CREATE_ARRAY_WITH_BUFFER:
             LowerCreateArrayWithBuffer(gate, glue);
+            break;
+        case OpCode::CREATE_ARGUMENTS:
+            LowerCreateArguments(gate, glue);
             break;
         case OpCode::STORE_MODULE_VAR:
             LowerStoreModuleVar(gate, glue);
@@ -85,8 +89,8 @@ void NTypeHCRLowering::LowerCreateArrayWithBuffer(GateRef gate, GateRef glue)
     uint32_t constPoolIndex = static_cast<uint32_t>(acc_.GetConstantValue(index));
     ArgumentAccessor argAcc(circuit_);
     GateRef frameState = GetFrameState(gate);
-    GateRef jsFunc = argAcc.GetFrameArgsIn(frameState, FrameArgIdx::FUNC);
-    GateRef literialElements = LoadFromConstPool(jsFunc, elementIndex, ConstantPool::AOT_ARRAY_INFO_INDEX);
+    GateRef constpool = argAcc.GetFrameArgsIn(frameState, FrameArgIdx::CONST_POOL);
+    GateRef literialElements = LoadFromConstPool(constpool, elementIndex, ConstantPool::AOT_ARRAY_INFO_INDEX);
     uint32_t cpIdVal = static_cast<uint32_t>(acc_.GetConstantValue(cpId));
     JSTaggedValue arr = GetArrayLiteralValue(cpIdVal, constPoolIndex);
     JSHandle<JSArray> arrayHandle(thread_, arr);
@@ -111,9 +115,38 @@ void NTypeHCRLowering::LowerCreateArrayWithBuffer(GateRef gate, GateRef glue)
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), array);
 }
 
-GateRef NTypeHCRLowering::LoadFromConstPool(GateRef jsFunc, size_t index, size_t valVecType)
+void NTypeHCRLowering::LowerCreateArguments(GateRef gate, GateRef glue)
 {
-    GateRef constPool = builder_.GetConstPool(jsFunc);
+    CreateArgumentsAccessor accessor = acc_.GetCreateArgumentsAccessor(gate);
+    CreateArgumentsAccessor::Mode mode = accessor.GetMode();
+    Environment env(gate, circuit_, &builder_);
+    ArgumentAccessor argAcc(circuit_);
+    GateRef frameState = GetFrameState(gate);
+    GateRef actualArgc = argAcc.GetFrameArgsIn(frameState, FrameArgIdx::ACTUAL_ARGC);
+    GateRef startIdx = acc_.GetValueIn(gate, 0);
+
+    switch (mode) {
+        case CreateArgumentsAccessor::Mode::REST_ARGUMENTS: {
+            GateRef newGate = builder_.CallStub(glue, gate, CommonStubCSigns::CopyRestArgs,
+                { glue, startIdx, builder_.TruncInt64ToInt32(actualArgc) });
+            acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), newGate);
+            break;
+        }
+        case CreateArgumentsAccessor::Mode::UNMAPPED_ARGUMENTS: {
+            GateRef newGate = builder_.CallStub(glue, gate, CommonStubCSigns::GetUnmapedArgs,
+                { glue, builder_.TruncInt64ToInt32(actualArgc) });
+            acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), newGate);
+            break;
+        }
+        default: {
+            LOG_ECMA(FATAL) << "this branch is unreachable";
+            UNREACHABLE();
+        }
+    }
+}
+
+GateRef NTypeHCRLowering::LoadFromConstPool(GateRef constPool, size_t index, size_t valVecType)
+{
     GateRef constPoolSize = builder_.GetLengthOfTaggedArray(constPool);
     GateRef valVecIndex = builder_.Int32Sub(constPoolSize, builder_.Int32(valVecType));
     GateRef valVec = builder_.GetValueFromTaggedArray(constPool, valVecIndex);

@@ -43,7 +43,7 @@
 #include "ecmascript/message_string.h"
 #include "ecmascript/snapshot/mem/snapshot.h"
 #include "ecmascript/stackmap/ark_stackmap_parser.h"
-#include "ecmascript/stackmap/llvm_stackmap_parser.h"
+#include "ecmascript/stackmap/llvm/llvm_stackmap_parser.h"
 
 namespace panda::ecmascript {
 using CommonStubCSigns = kungfu::CommonStubCSigns;
@@ -281,7 +281,7 @@ void AOTFileManager::SetAOTMainFuncEntry(JSHandle<JSFunction> mainFunc, const JS
     mainMethod->SetNativeBit(false);
     Method *method = mainFunc->GetCallTarget();
     method->SetDeoptThreshold(vm_->GetJSOptions().GetDeoptThreshold());
-    method->SetCodeEntryAndMarkAOT(static_cast<uintptr_t>(mainEntry));
+    method->SetCodeEntryAndMarkAOTWhenBinding(static_cast<uintptr_t>(mainEntry));
     mainFunc->SetCodeEntry(static_cast<uintptr_t>(mainEntry));
     method->SetIsFastCall(isFastCall);
 #ifndef NDEBUG
@@ -313,7 +313,7 @@ void AOTFileManager::SetAOTFuncEntry(const JSPandaFile *jsPandaFile, JSFunction 
         return;
     }
     method->SetDeoptThreshold(vm_->GetJSOptions().GetDeoptThreshold());
-    method->SetCodeEntryAndMarkAOT(codeEntry);
+    method->SetCodeEntryAndMarkAOTWhenBinding(codeEntry);
     method->SetIsFastCall(entry.isFastCall_);
     if (canFastCall != nullptr) {
         *canFastCall = entry.isFastCall_;

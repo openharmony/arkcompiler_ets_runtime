@@ -13,10 +13,10 @@
  * limitations under the License.
  */
 
-declare function print(arg:any):string;
+declare function assert_equal(a: Object, b: Object):void;
 function foo({x = 11, y = 22})
 {
     return x + y;
 }
 
-print(foo({}));
+assert_equal(foo({}), 33);

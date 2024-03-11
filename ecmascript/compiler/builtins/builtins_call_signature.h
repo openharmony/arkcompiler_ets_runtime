@@ -34,6 +34,7 @@ namespace panda::ecmascript::kungfu {
 
 #define BUILTINS_METHOD_STUB_LIST(V)                \
     V(StringCharCodeAt)                             \
+    V(StringCodePointAt)                            \
     V(StringIndexOf)                                \
     V(StringSubstring)                              \
     V(StringReplace)                                \
@@ -41,6 +42,9 @@ namespace panda::ecmascript::kungfu {
     V(StringFromCharCode)                           \
     V(StringTrim)                                   \
     V(StringSlice)                                  \
+    V(StringConcat)                                 \
+    V(StringStartsWith)                             \
+    V(StringToLowerCase)                            \
     V(ObjectToString)                               \
     V(ObjectCreate)                                 \
     V(ObjectAssign)                                 \
@@ -93,7 +97,9 @@ namespace panda::ecmascript::kungfu {
     V(MapDelete)                                    \
     V(MapHas)                                       \
     V(NumberParseFloat)                             \
-    V(TypedArraySubArray)
+    V(TypedArraySubArray)                           \
+    V(TypedArrayGetByteLength)                      \
+    V(TypedArrayGetByteOffset)
 
 #define BUILTINS_CONSTRUCTOR_STUB_LIST(V)           \
     V(BooleanConstructor)                           \

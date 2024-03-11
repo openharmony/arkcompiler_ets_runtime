@@ -18,11 +18,12 @@
 
 #include "cg_phase.h"
 #include "maple_phase.h"
+#include "loop.h"
 
 namespace maplebe {
 class GlobalOpt {
 public:
-    explicit GlobalOpt(CGFunc &func) : cgFunc(func) {}
+    explicit GlobalOpt(CGFunc &func, LoopAnalysis &loop) : cgFunc(func), loopInfo(loop) {}
     virtual ~GlobalOpt() = default;
     virtual void Run() {}
     std::string PhaseName() const
@@ -35,6 +36,7 @@ protected:
     static constexpr uint32 kMaxBBNum = 500;
     static constexpr uint32 kMaxInsnNum = 9000;
     CGFunc &cgFunc;
+    LoopAnalysis &loopInfo;
 };
 
 MAPLE_FUNC_PHASE_DECLARE(CgGlobalOpt, maplebe::CGFunc)

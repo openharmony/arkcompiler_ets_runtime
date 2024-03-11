@@ -41,9 +41,9 @@ JSTaggedValue BuiltinsPluralRules::PluralRulesConstructor(EcmaRuntimeCallInfo *a
     // 2. Let pluralRules be ? OrdinaryCreateFromConstructor(NewTarget, "%PluralRulesPrototype%",
     // « [[InitializedPluralRules]], [[Locale]], [[Type]], [[MinimumIntegerDigits]], [[MinimumFractionDigits]],
     // [[MaximumFractionDigits]], [[MinimumSignificantDigits]], [[MaximumSignificantDigits]], [[RoundingType]] »).
-    JSHandle<JSPluralRules> pluralRules =
-        JSHandle<JSPluralRules>::Cast(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(constructor), newTarget));
+    JSHandle<JSObject> newObject = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(constructor), newTarget);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    JSHandle<JSPluralRules> pluralRules = JSHandle<JSPluralRules>::Cast(newObject);
 
     // 3. Return ? InitializePluralRules(pluralRules, locales, options).
     JSHandle<JSTaggedValue> locales = GetCallArg(argv, 0);

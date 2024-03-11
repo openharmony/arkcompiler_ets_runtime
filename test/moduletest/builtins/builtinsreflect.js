@@ -23,10 +23,16 @@ print("builtins reflect start");
 
 // test1 -- reflect set length
 var y = [];
-Object.defineProperty(y, 1, {value : 42, configurable : false});
+Object.defineProperty(y, 1, { value: 42, configurable: false });
 var tag1 = Reflect.set(y, 'length', 0);
 var tag2 = Reflect.set(y, 'length', 5);
 print(tag1);
 print(tag2);
 
+const v0 = 102630708;
+let v55 = [];
+let v56 = Object.create(v55)
+Reflect.set(v56, "length", v0)
+Reflect.set(v55, "length", v0, v56)
+print("v56.length",v56.length)
 print("builtins reflect end");

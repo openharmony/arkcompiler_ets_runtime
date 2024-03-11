@@ -17,9 +17,9 @@
 #include "ecmascript/base/number_helper.h"
 #include "ecmascript/compiler/access_object_stub_builder.h"
 #include "ecmascript/compiler/bc_call_signature.h"
+#include "ecmascript/compiler/codegen/llvm/llvm_ir_builder.h"
 #include "ecmascript/compiler/ic_stub_builder.h"
 #include "ecmascript/compiler/interpreter_stub-inl.h"
-#include "ecmascript/compiler/llvm_ir_builder.h"
 #include "ecmascript/compiler/new_object_stub_builder.h"
 #include "ecmascript/compiler/operations_stub_builder.h"
 #include "ecmascript/compiler/profiler_stub_builder.h"
@@ -375,10 +375,9 @@ DECLARE_ASM_HANDLER(HandleCopyrestargsImm8)
     GateRef numArgs = TruncInt64ToInt32(startIdxAndNumArgs);
     Label dispatch(env);
     Label slowPath(env);
-    GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
-    GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
-    auto arrayFunc = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv, GlobalEnv::ARRAY_FUNCTION_INDEX);
-    GateRef intialHClass = Load(VariableType::JS_ANY(), arrayFunc, IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
+    // For the args, we use ElementsKind::GENERIC as the kind
+    GateRef intialHClass = GetGlobalConstantValue(VariableType::JS_ANY(), glue,
+                                                  ConstantIndex::ELEMENT_HOLE_TAGGED_HCLASS_INDEX);
     NewObjectStubBuilder newBuilder(this);
     newBuilder.SetParameters(glue, 0);
     res = newBuilder.NewJSArrayWithSize(intialHClass, numArgs);
@@ -1319,6 +1318,7 @@ DECLARE_ASM_HANDLER(HandleSupercallspreadImm8V8)
     Label ctorIsConstructor(env);
     Label threadCheck(env);
     Label isException(env);
+    Label noException(env);
 
     Branch(TaggedIsHeapObject(superCtor), &ctorIsHeapObject, &slowPath);
     Bind(&ctorIsHeapObject);
@@ -1337,6 +1337,8 @@ DECLARE_ASM_HANDLER(HandleSupercallspreadImm8V8)
         Bind(&ctorNotBase);
         GateRef argvLen = Load(VariableType::INT32(), array, IntPtr(JSArray::LENGTH_OFFSET));
         GateRef srcElements = GetCallSpreadArgs(glue, array, callback);
+        Branch(TaggedIsException(srcElements), &isException, &noException);
+        Bind(&noException);
         GateRef jumpSize = IntPtr(-BytecodeInstruction::Size(BytecodeInstruction::Format::IMM8_V8));
         METHOD_ENTRY_ENV_DEFINED(superCtor);
         GateRef elementsPtr = PtrAdd(srcElements, IntPtr(TaggedArray::DATA_OFFSET));
@@ -1763,7 +1765,7 @@ DECLARE_ASM_HANDLER(HandleStownbyindexImm8V8Imm16)
     GateRef result = builder.StoreOwnByIndex(glue, receiver, index, value, profileTypeInfo, slotId, callback);
     CHECK_EXCEPTION(result, INT_PTR(STOWNBYINDEX_IMM8_V8_IMM16));
 }
- 
+
 DECLARE_ASM_HANDLER(HandleStownbyindexImm16V8Imm16)
 {
     GateRef v0 = ReadInst8_2(pc);
@@ -1937,7 +1939,7 @@ DECLARE_ASM_HANDLER(HandleStownbyvaluewithnamesetImm16V8V8)
             Branch(IsClassPrototype(receiver), &slowPath, &notClassPrototype);
             Bind(&notClassPrototype);
             {
-                GateRef res = SetPropertyByValue(glue, receiver, propKey, acc, true, callback);
+                GateRef res = SetPropertyByValue(glue, receiver, propKey, acc, true, callback, true);
                 Branch(TaggedIsHole(res), &slowPath, &notHole);
                 Bind(&notHole);
                 {
@@ -1980,7 +1982,7 @@ DECLARE_ASM_HANDLER(HandleStownbyvaluewithnamesetImm8V8V8)
             Branch(IsClassPrototype(receiver), &slowPath, &notClassPrototype);
             Bind(&notClassPrototype);
             {
-                GateRef res = SetPropertyByValue(glue, receiver, propKey, acc, true, callback);
+                GateRef res = SetPropertyByValue(glue, receiver, propKey, acc, true, callback, true);
                 Branch(TaggedIsHole(res), &slowPath, &notHole);
                 Bind(&notHole);
                 {
@@ -2099,7 +2101,7 @@ DECLARE_ASM_HANDLER(HandleStownbynamewithnamesetImm8Id16V8)
             Branch(IsClassPrototype(receiver), &notJSObject, &notClassPrototype);
             Bind(&notClassPrototype);
             {
-                GateRef res = SetPropertyByName(glue, receiver, propKey, acc, true, True(), callback);
+                GateRef res = SetPropertyByName(glue, receiver, propKey, acc, true, True(), callback, false, true);
                 Branch(TaggedIsHole(res), &notJSObject, &notHole);
                 Bind(&notHole);
                 {
@@ -2141,7 +2143,7 @@ DECLARE_ASM_HANDLER(HandleStownbynamewithnamesetImm16Id16V8)
             Branch(IsClassPrototype(receiver), &notJSObject, &notClassPrototype);
             Bind(&notClassPrototype);
             {
-                GateRef res = SetPropertyByName(glue, receiver, propKey, acc, true, True(), callback);
+                GateRef res = SetPropertyByName(glue, receiver, propKey, acc, true, True(), callback, false, true);
                 Branch(TaggedIsHole(res), &notJSObject, &notHole);
                 Bind(&notHole);
                 {
@@ -2946,6 +2948,28 @@ DECLARE_ASM_HANDLER(HandleTonumericImm8)
     Branch(TaggedIsNumeric(value), &valueIsNumeric, &valueNotNumeric);
     Bind(&valueIsNumeric);
     {
+        if (!callback.IsEmpty()) {
+            Label valueIsNumber(env);
+            Label profilerEnd(env);
+            Branch(TaggedIsNumber(value), &valueIsNumber, &profilerEnd);
+            Bind(&valueIsNumber);
+            {
+                Label valueIsInt(env);
+                Label valueIsDouble(env);
+                Branch(TaggedIsInt(value), &valueIsInt, &valueIsDouble);
+                Bind(&valueIsInt);
+                {
+                    callback.ProfileOpType(Int32(PGOSampleType::IntType()));
+                    Jump(&profilerEnd);
+                }
+                Bind(&valueIsDouble);
+                {
+                    callback.ProfileOpType(Int32(PGOSampleType::DoubleType()));
+                    Jump(&profilerEnd);
+                }
+            }
+            Bind(&profilerEnd);
+        }
         varAcc = value;
         DISPATCH_WITH_ACC(TONUMERIC_IMM8);
     }

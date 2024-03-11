@@ -35,10 +35,6 @@ namespace {
 constexpr uint32 kSecondToLastNode = 2;
 }  // namespace
 
-constexpr uint32 kClinitAdvanceCycle = 12;
-constexpr uint32 kAdrpLdrAdvanceCycle = 4;
-constexpr uint32 kClinitTailAdvanceCycle = 6;
-
 uint32 AArch64Schedule::maxUnitIndex = 0;
 /* reserve two register for special purpose */
 int AArch64Schedule::intRegPressureThreshold = static_cast<int>(R27 - R0);

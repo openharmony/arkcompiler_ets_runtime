@@ -30,13 +30,18 @@ enum CompileState : uint8_t {
 
 class JitTask {
 public:
-    JitTask(EcmaVM *vm, Jit *jit, JSHandle<JSFunction> &jsFunction) : vm_(vm), jit_(jit),
-        jsFunction_(jsFunction), compiler_(nullptr), state_(CompileState::SUCCESS) {
-            PersistentHandle();
-        }
+    JitTask(EcmaVM *vm, Jit *jit, JSHandle<JSFunction> &jsFunction, CString &methodName, uint32_t taskThreadId)
+        : vm_(vm),
+        jit_(jit),
+        jsFunction_(jsFunction),
+        compilerTask_(nullptr),
+        state_(CompileState::SUCCESS),
+        methodInfo_(methodName),
+        taskThreadId_(taskThreadId) { }
     ~JitTask();
     void Optimize();
     void Finalize();
+    void PrepareCompile();
 
     void InstallCode();
     MachineCodeDesc *GetMachineCodeDesc()
@@ -47,11 +52,6 @@ public:
     JSHandle<JSFunction> GetJsFunction() const
     {
         return jsFunction_;
-    }
-
-    void SetCompiler(void *compiler)
-    {
-        compiler_ = compiler;
     }
 
     void RequestInstallCode()
@@ -89,6 +89,10 @@ public:
         methodInfo_ = methodInfo;
     }
 
+    uint32_t GetTaskThreadId() const
+    {
+        return taskThreadId_;
+    }
     class AsyncTask : public Task {
     public:
         explicit AsyncTask(JitTask *jitTask, int32_t id) : Task(id), jitTask_(jitTask) { }
@@ -109,10 +113,11 @@ private:
     EcmaVM *vm_;
     Jit *jit_;
     JSHandle<JSFunction> jsFunction_;
-    void *compiler_;
+    void *compilerTask_;
     MachineCodeDesc codeDesc_;
     CompileState state_;
     CString methodInfo_;
+    uint32_t taskThreadId_;
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_JIT_TASK_H

@@ -28,6 +28,18 @@
 #include "ecmascript/tagged_array-inl.h"
 
 namespace panda::ecmascript {
+EcmaString *ObjectFactory::AllocLineStringObjectNoGC(size_t size)
+{
+    TaggedObject *object = nullptr;
+    if (size > MAX_REGULAR_HEAP_OBJECT_SIZE) {
+        object = reinterpret_cast<TaggedObject *>(sHeap_->GetHugeObjectSpace()->Allocate(thread_, size));
+    } else {
+        object = reinterpret_cast<TaggedObject *>(sHeap_->GetOldSpace()->Allocate(thread_, size, false));
+    }
+    object->SetClass(thread_, JSHClass::Cast(thread_->GlobalConstants()->GetLineStringClass().GetTaggedObject()));
+    return EcmaString::Cast(object);
+}
+
 EcmaString *ObjectFactory::AllocNonMovableLineStringObject(size_t size)
 {
     NewSObjectHook();

@@ -232,7 +232,8 @@ Local<JSValueRef> JSON::Parse(const EcmaVM *vm, Local<StringRef> string)
     JSHandle<JSTaggedValue> result;
     if (EcmaStringAccessor(ecmaStr).IsUtf8()) {
         Utf8JsonParser parser(thread);
-        result = parser.Parse(EcmaString::Cast(JSNApiHelper::ToJSTaggedValue(*string).GetTaggedObject()));
+        JSHandle<EcmaString> str(thread, JSNApiHelper::ToJSTaggedValue(*string));
+        result = parser.Parse(str);
     } else {
         Utf16JsonParser parser(thread);
         result = parser.Parse(EcmaString::Cast(JSNApiHelper::ToJSTaggedValue(*string).GetTaggedObject()));

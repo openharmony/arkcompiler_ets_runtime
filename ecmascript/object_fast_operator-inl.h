@@ -214,12 +214,18 @@ JSTaggedValue ObjectFastOperator::SetPropertyByName(JSThread *thread, JSTaggedVa
                 PropertyAttributes attr(layoutInfo->GetAttr(entry));
                 ASSERT(static_cast<int>(attr.GetOffset()) == entry);
                 if (UNLIKELY(attr.IsAccessor())) {
+                    if (DefineSemantics(status) && sCheckMode == SCheckMode::CHECK) {
+                        return JSTaggedValue::Hole();
+                    }
                     auto accessor = JSObject::Cast(holder)->GetProperty(hclass, attr);
                     if (ShouldCallSetter(receiver, holder, accessor, attr)) {
                         return CallSetter(thread, receiver, value, accessor);
                     }
                 }
                 if (UNLIKELY(!attr.IsWritable())) {
+                    if (DefineSemantics(status) && sCheckMode == SCheckMode::CHECK) {
+                        return JSTaggedValue::Hole();
+                    }
                     [[maybe_unused]] EcmaHandleScope handleScope(thread);
                     THROW_TYPE_ERROR_AND_RETURN(thread, GET_MESSAGE_STRING(SetReadOnlyProperty),
                                                 JSTaggedValue::Exception());
@@ -257,12 +263,18 @@ JSTaggedValue ObjectFastOperator::SetPropertyByName(JSThread *thread, JSTaggedVa
             if (entry != -1) {
                 auto attr = dict->GetAttributes(entry);
                 if (UNLIKELY(attr.IsAccessor())) {
+                    if (DefineSemantics(status) && sCheckMode == SCheckMode::CHECK) {
+                        return JSTaggedValue::Hole();
+                    }
                     auto accessor = dict->GetValue(entry);
                     if (ShouldCallSetter(receiver, holder, accessor, attr)) {
                         return CallSetter(thread, receiver, value, accessor);
                     }
                 }
                 if (UNLIKELY(!attr.IsWritable())) {
+                    if (DefineSemantics(status) && sCheckMode == SCheckMode::CHECK) {
+                        return JSTaggedValue::Hole();
+                    }
                     [[maybe_unused]] EcmaHandleScope handleScope(thread);
                     THROW_TYPE_ERROR_AND_RETURN(thread, GET_MESSAGE_STRING(SetReadOnlyProperty),
                                                 JSTaggedValue::Exception());
@@ -280,7 +292,7 @@ JSTaggedValue ObjectFastOperator::SetPropertyByName(JSThread *thread, JSTaggedVa
                 return JSTaggedValue::Undefined();
             }
         }
-        if (UseOwn(status)) {
+        if (UseOwn(status) || DefineSemantics(status)) {
             break;
         }
         holder = hclass->GetPrototype();
@@ -400,11 +412,11 @@ JSTaggedValue ObjectFastOperator::SetPropertyByIndex(JSThread *thread, JSTaggedV
                         JSHandle<JSTaggedValue> valueHandle(thread, value);
                         // CheckAndCopyArray may cause gc.
                         JSArray::CheckAndCopyArray(thread, holderHandler);
-                        ElementAccessor::Set(thread, obj, index, valueHandle.GetTaggedValue(), true);
+                        ElementAccessor::Set(thread, obj, index, valueHandle, true);
                         return JSTaggedValue::Undefined();
                     }
                     JSHandle<JSTaggedValue> valueHandle(thread, value);
-                    ElementAccessor::Set(thread, arrayHandler, index, valueHandle.GetTaggedValue(), true);
+                    ElementAccessor::Set(thread, arrayHandler, index, valueHandle, true);
                     return JSTaggedValue::Undefined();
                 }
             }
@@ -420,6 +432,9 @@ JSTaggedValue ObjectFastOperator::SetPropertyByIndex(JSThread *thread, JSTaggedV
                     break;
                 }
                 if (UNLIKELY(attr.IsAccessor())) {
+                    if (DefineSemantics(status)) {
+                        return JSTaggedValue::Hole();
+                    }
                     auto accessor = dict->GetValue(entry);
                     if (ShouldCallSetter(receiver, holder, accessor, attr)) {
                         return CallSetter(thread, receiver, value, accessor);
@@ -430,7 +445,7 @@ JSTaggedValue ObjectFastOperator::SetPropertyByIndex(JSThread *thread, JSTaggedV
             }
             return JSTaggedValue::Hole();
         }
-        if (UseOwn(status)) {
+        if (UseOwn(status) || DefineSemantics(status)) {
             break;
         }
         holder = JSObject::Cast(holder)->GetJSHClass()->GetPrototype();

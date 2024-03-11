@@ -29,7 +29,8 @@ void SSAPre::CodeMotion()
         }
         PhiOpndOcc *phiOpndOcc = static_cast<PhiOpndOcc *>(occ);
         if (phiOpndOcc->insertHere) {
-            DEBUG_ASSERT(phiOpndOcc->cgbb->GetLoop() == nullptr, "cg_ssapre: save inserted inside loop");
+            DEBUG_ASSERT(loop->GetBBLoopParent(phiOpndOcc->cgbb->GetId()) == nullptr,
+                         "cg_ssapre: save inserted inside loop");
             workCand->saveAtEntryBBs.insert(phiOpndOcc->cgbb->GetId());
         }
     }
@@ -40,7 +41,8 @@ void SSAPre::CodeMotion()
         }
         RealOcc *realOcc = static_cast<RealOcc *>(occ);
         if (!realOcc->redundant) {
-            DEBUG_ASSERT(realOcc->cgbb->GetLoop() == nullptr, "cg_ssapre: save in place inside loop");
+            DEBUG_ASSERT(loop->GetBBLoopParent(realOcc->cgbb->GetId()) == nullptr,
+                         "cg_ssapre: save in place inside loop");
             workCand->saveAtEntryBBs.insert(realOcc->cgbb->GetId());
         }
     }
@@ -268,7 +270,7 @@ void SSAPre::ComputeDownsafe() const
 }
 
 // ================ Step 2: rename ================
-static void PropagateSpeculativeDownsafe(PhiOcc *phiOcc)
+static void PropagateSpeculativeDownsafe(const LoopAnalysis &loop, PhiOcc *phiOcc)
 {
     if (phiOcc->speculativeDownsafe) {
         return;
@@ -278,8 +280,8 @@ static void PropagateSpeculativeDownsafe(PhiOcc *phiOcc)
     for (PhiOpndOcc *phiOpndOcc : phiOcc->phiOpnds) {
         if (phiOpndOcc->def != nullptr && phiOpndOcc->def->occTy == kAOccPhi) {
             PhiOcc *nextPhiOcc = static_cast<PhiOcc *>(phiOpndOcc->def);
-            if (nextPhiOcc->cgbb->GetLoop() != nullptr) {
-                PropagateSpeculativeDownsafe(nextPhiOcc);
+            if (loop.GetBBLoopParent(nextPhiOcc->cgbb->GetId()) != nullptr) {
+                PropagateSpeculativeDownsafe(loop, nextPhiOcc);
             }
         }
     }
@@ -323,7 +325,7 @@ void SSAPre::Rename()
                 occ->classId = topOcc->classId;
                 if (topOcc->occTy == kAOccPhi) {
                     occStack.push(occ);
-                    if (occ->cgbb->GetLoop() != nullptr) {
+                    if (loop->GetBBLoopParent(occ->cgbb->GetId()) != nullptr) {
                         static_cast<PhiOcc *>(topOcc)->isDownsafe = true;
                         static_cast<PhiOcc *>(topOcc)->speculativeDownsafe = true;
                     }
@@ -354,8 +356,8 @@ void SSAPre::Rename()
             for (PhiOpndOcc *phiOpndOcc : phiOcc->phiOpnds) {
                 if (phiOpndOcc->def != nullptr && phiOpndOcc->def->occTy == kAOccPhi) {
                     PhiOcc *nextPhiOcc = static_cast<PhiOcc *>(phiOpndOcc->def);
-                    if (nextPhiOcc->cgbb->GetLoop() != nullptr) {
-                        PropagateSpeculativeDownsafe(nextPhiOcc);
+                    if (loop->GetBBLoopParent(nextPhiOcc->cgbb->GetId()) != nullptr) {
+                        PropagateSpeculativeDownsafe(*loop, nextPhiOcc);
                     }
                 }
             }
@@ -607,10 +609,10 @@ void SSAPre::ApplySSAPre()
     }
 }
 
-void DoSavePlacementOpt(CGFunc *f, DomAnalysis *dom, SsaPreWorkCand *workCand)
+void DoSavePlacementOpt(CGFunc *f, DomAnalysis *dom, LoopAnalysis *loop, SsaPreWorkCand *workCand)
 {
     MemPool *tempMP = memPoolCtrler.NewMemPool("cg_ssa_pre", true);
-    SSAPre cgssapre(f, dom, tempMP, workCand, false /*asEarlyAsPossible*/, false /*enabledDebug*/);
+    SSAPre cgssapre(f, dom, loop, tempMP, workCand, false /*asEarlyAsPossible*/, false /*enabledDebug*/);
 
     cgssapre.ApplySSAPre();
 

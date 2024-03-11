@@ -33,7 +33,7 @@ void GlobalIndexMap::InitGlobalIndexMap(const JSThread *thread,
                                         JSMutableHandle<PointerToIndexDictionary> globalIndexMap)
 {
     if (globalIndexMap.GetTaggedValue().IsHeapObject()) {
-        return ;
+        return;
     }
     globalIndexMap.Update(PointerToIndexDictionary::Create(thread));
 }

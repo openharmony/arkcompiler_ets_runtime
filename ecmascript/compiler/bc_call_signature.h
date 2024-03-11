@@ -454,7 +454,8 @@ namespace panda::ecmascript::kungfu {
     APPEND_SUFFIX(HandleGreaterImm8V8, V)             \
     APPEND_SUFFIX(HandleGreatereqImm8V8, V)           \
     APPEND_SUFFIX(HandleStrictnoteqImm8V8, V)         \
-    APPEND_SUFFIX(HandleStricteqImm8V8, V)
+    APPEND_SUFFIX(HandleStricteqImm8V8, V)            \
+    APPEND_SUFFIX(HandleTonumericImm8, V)
 
 #define ASM_INTERPRETER_BC_FUNC_HOT_PROFILER_STUB_LIST(V) \
     APPEND_SUFFIX(HandleJmpImm8, V)                       \

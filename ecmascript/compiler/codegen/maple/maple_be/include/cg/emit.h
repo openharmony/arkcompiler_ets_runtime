@@ -192,6 +192,7 @@ public:
     void EmitBitFieldConstant(StructEmitInfo &structEmitInfo, MIRConst &mirConst, const MIRType *nextType,
                               uint64 fieldOffset);
     void EmitScalarConstant(MIRConst &mirConst, bool newLine = true, bool flag32 = false, bool isIndirect = false);
+    void EmitFunctionSymbolTable(FuncEmitInfo &funcEmitInfo);
     void EmitStr(const std::string &mplStr, bool emitAscii = false, bool emitNewline = false);
     void EmitStrConstant(const MIRStrConst &mirStrConst, bool isIndirect = false);
     void EmitStr16Constant(const MIRStr16Const &mirStr16Const);

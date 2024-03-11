@@ -14,7 +14,6 @@
 
 set -e
 
-declare -i ret_ok=0
 declare -i ret_error=1
 
 function init()
@@ -26,11 +25,8 @@ function init()
 function check_command_exist()
 {
     command=$1
-    if type "$command" >/dev/null 2>&1; then
-        return $ret_ok
-    else
-        return $ret_error
-    fi
+    type "$command" >/dev/null 2>&1
+    echo  $?
 }
 
 function check_pip_component()
@@ -38,41 +34,6 @@ function check_pip_component()
     pip3 list|grep "$1"
     return $?
 }
-
-function check_fangzhou_binary_path()
-{
-    ETS_RUNTIME_PATH="$OPENHARMONY_OUT_PATH/out/rk3568/clang_x64/arkcompiler/ets_runtime/"
-    ICU_PATH="$OPENHARMONY_OUT_PATH/out/rk3568/clang_x64/thirdparty/icu/"
-    ZLIB_PATH="$OPENHARMONY_OUT_PATH/out/rk3568/clang_x64/thirdparty/zlib/"
-    LIB_PATH="$OPENHARMONY_OUT_PATH/prebuilts/clang/ohos/linux-x86_64/llvm/lib/"
-    [ -d "$ETS_RUNTIME_PATH" ] || { echo "wrong  ets_runtime folder path: $ETS_RUNTIME_PATH, please check it ";return $ret_error; }
-    [ -d "$ICU_PATH" ] || { echo "wrong icu folder path: $ICU_PATH, please check";return $ret_error; }
-    [ -d "$ZLIB_PATH" ] || { echo "wrong zlib folder path: $ZLIB_PATH, please check it";return $ret_error; }
-    [ -d "$LIB_PATH" ] || { echo "wrong lib folder path: $LIB_PATH, please check it";return $ret_error; }          
-}
-
-function check_and_config_v8_binary_path()
-{
-    ret=$(check_command_exist "/usr/bin/v8/d8")
-    if [ "$ret" == "$ret_error" ];then
-        wget -P "$TMP_PATH" https://storage.googleapis.com/chromium-v8/official/canary/v8-linux64-rel-12.0.267.zip\
-            --no-check-certificate
-        unzip "$TMP_PATH"/v8-linux64-rel-12.0.267.zip -d "$TMP_PATH"/v8
-        cp -r "$TMP_PATH"/v8 /usr/bin
-        echo "export PATH=/usr/bin/v8/:$PATH" >> /root/.bashrc
-        # shellcheck disable=SC1091
-        source /root/.bashrc
-    fi
-}
-
-function export_fangzhou_env()
-{
-    export LD_LIBRARY_PATH=$ETS_RUNTIME_PATH
-    export LD_LIBRARY_PATH=$ICU_PATH:$LD_LIBRARY_PATH
-    export LD_LIBRARY_PATH=$ZLIB_PATH:$LD_LIBRARY_PATH
-    export LD_LIBRARY_PATH=$LIB_PATH:$LD_LIBRARY_PATH
-}
-
 
 function download_js_test_files()
 {
@@ -93,28 +54,30 @@ main()
     init
     js_perf_test_archive_path=$1
     OPENHARMONY_OUT_PATH=$2
+    D8_BINARY_PATH=$3
+    VER_PLATFORM="full_x86_64"
+    if [ $# == 4 ]; then
+        VER_PLATFORM=$4
+    fi
     cur_path=$(dirname "$(readlink -f "$0")")
     
     if [ ! -d "$js_perf_test_archive_path" ];then
         mkdir -p "js_perf_test_archive_path"
     fi
 
-    # execute cmd format: bash_test.sh
     check_command_exist git || { echo "git is not available"; return $ret_error; }
     check_command_exist unzip || { echo "unzip is not available"; return $ret_error; }
+    check_command_exist jq || { echo "jq is not available"; return $ret_error; }
     check_command_exist python3 || { echo "python3 is not available"; return $ret_error; }
-    check_fangzhou_binary_path
-    check_and_config_v8_binary_path
     check_pip_component "openpyxl"  || { pip3 install openpyxl; }
-
-    export_fangzhou_env
     
     [ -f "$cur_path/run_js_test.py" ] || { echo "no run_js_test.py, please check it";return $ret_error;}
    
     download_js_test_files || { return $ret_error; } 
 
     echo "LD_LIBRARY_PATH:$LD_LIBRARY_PATH"
-    python3  "$cur_path"/run_js_test.py -bp "$OPENHARMONY_OUT_PATH" -p "$JS_TEST_PATH" -o "$js_perf_test_archive_path"
+    python3  "$cur_path"/run_js_test.py -bp "$OPENHARMONY_OUT_PATH" -p "$JS_TEST_PATH" -o "$js_perf_test_archive_path"\
+        -v "$D8_BINARY_PATH" -e "$VER_PLATFORM"
 }
 
 main "$@"

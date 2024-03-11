@@ -354,7 +354,7 @@ public:
 
     void PUBLIC_API CheckSwitchDebuggerBCStub();
     void CheckOrSwitchPGOStubs();
-    void SwitchJitProfileStubsIfNeeded();
+    void SwitchJitProfileStubs();
 
     ThreadId GetThreadId() const
     {

@@ -17,6 +17,7 @@
 #define MAPLEBE_INCLUDE_CG_CFGO_H
 #include "cg_cfg.h"
 #include "optimize_common.h"
+#include "loop.h"
 
 namespace maplebe {
 
@@ -68,7 +69,7 @@ protected:
 
 class FlipBRPattern : public OptimizationPattern {
 public:
-    explicit FlipBRPattern(CGFunc &func) : OptimizationPattern(func)
+    explicit FlipBRPattern(CGFunc &func, LoopAnalysis &loop) : OptimizationPattern(func), loopInfo(loop)
     {
         patternName = "Condition Flip";
         dotColor = kCfgoFlipCond;
@@ -89,6 +90,7 @@ public:
 
 protected:
     void RelocateThrowBB(BB &curBB);
+    LoopAnalysis &loopInfo;
 
 private:
     virtual uint32 GetJumpTargetIdx(const Insn &insn) = 0;
@@ -195,7 +197,7 @@ private:
 
 class CFGOptimizer : public Optimizer {
 public:
-    CFGOptimizer(CGFunc &func, MemPool &memPool) : Optimizer(func, memPool)
+    CFGOptimizer(CGFunc &func, MemPool &memPool, LoopAnalysis &loop) : Optimizer(func, memPool), loopInfo(loop)
     {
         name = "CFGO";
     }
@@ -212,13 +214,17 @@ public:
 
 protected:
     CfgoPhase phase = kCfgoDefault;
+    LoopAnalysis &loopInfo;
 };
 
 MAPLE_FUNC_PHASE_DECLARE_BEGIN(CgPreCfgo, maplebe::CGFunc)
+OVERRIDE_DEPENDENCE
 MAPLE_FUNC_PHASE_DECLARE_END
 MAPLE_FUNC_PHASE_DECLARE_BEGIN(CgCfgo, maplebe::CGFunc)
+OVERRIDE_DEPENDENCE
 MAPLE_FUNC_PHASE_DECLARE_END
 MAPLE_FUNC_PHASE_DECLARE_BEGIN(CgPostCfgo, maplebe::CGFunc)
+OVERRIDE_DEPENDENCE
 MAPLE_FUNC_PHASE_DECLARE_END
 }  // namespace maplebe
 

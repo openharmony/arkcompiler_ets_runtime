@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-declare function print(str:any):string;
+declare function assert_equal(a: Object, b: Object):void;
 
 class A {
     constructor() {}
@@ -30,9 +30,9 @@ class A {
 }
 
 let a = new A();
-print(a.bar());
-print(a.bar2());
-print(Reflect.ownKeys(A.prototype)); //constructor,bar,bar2
+assert_equal(a.bar(), "bar");
+assert_equal(a.bar2(), "bar2");
+assert_equal(Reflect.ownKeys(A.prototype), ["constructor", "bar", "bar2"]); //constructor,bar,bar2
 
 class A2 {
     constructor() {}
@@ -52,10 +52,10 @@ class A2 {
 }
 
 let a2 = new A2();
-print(a2.foo());
-print(a2.bar());
-print(a2.bar2());
-print(Reflect.ownKeys(A2.prototype)); //constructor,foo,bar,bar2
+assert_equal(a2.foo(), "foo");
+assert_equal(a2.bar(), "bar");
+assert_equal(a2.bar2(), "bar2");
+assert_equal(Reflect.ownKeys(A2.prototype), ["constructor", "foo", "bar", "bar2"]); //constructor,foo,bar,bar2
 
 
 class B {
@@ -73,9 +73,9 @@ class B {
 }
 
 let b = new B();
-print(b.bar());
-print(b.bar2());
-print(Reflect.ownKeys(B.prototype)); //constructor,bar,bar2
+assert_equal(b.bar(), "bar");
+assert_equal(b.bar2(), "bar2");
+assert_equal(Reflect.ownKeys(B.prototype), ["constructor", "bar", "bar2"]); //constructor,bar,bar2
 
 class B2 {
     constructor() {}
@@ -95,10 +95,10 @@ class B2 {
 }
 
 let b2 = new B2();
-print(b2.foo());
-print(b2.bar());
-print(b2.bar2());
-print(Reflect.ownKeys(B2.prototype)); //constructor,bar,foo,bar2
+assert_equal(b2.foo(), "foo");
+assert_equal(b2.bar(), "bar");
+assert_equal(b2.bar2(), "bar2");
+assert_equal(Reflect.ownKeys(B2.prototype), ["constructor", "bar", "foo", "bar2"]); //constructor,bar,foo,bar2
 
 // one signature but no body
 class C {
@@ -112,7 +112,7 @@ class C {
 }
 
 let c = new C();
-print(c.bar());
+assert_equal(c.bar(), "test one signature but no body");
 
 // multi-signatures but one body
 class D {
@@ -132,8 +132,8 @@ class D {
 }
 
 let d = new D();
-print(d.foo!("D"));
-print(d.bar());
+assert_equal(d.foo!("D"), "D");
+assert_equal(d.bar(), "test multi-signatures but one body");
 
 // multi-signature but no body.
 class E {
@@ -155,6 +155,6 @@ E.prototype.foo = function(): string {
 }
 
 let e = new E();
-print(e.foo!());
-print(e.bar());
+assert_equal(e.foo!(), "E");
+assert_equal(e.bar(), "test multi-signatures but no body");
 

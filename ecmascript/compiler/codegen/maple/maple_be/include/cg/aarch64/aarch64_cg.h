@@ -32,6 +32,8 @@
 #include "aarch64_peep.h"
 #include "aarch64_proepilog.h"
 
+#include "aarch64_local_schedule.h"
+
 namespace maplebe {
 constexpr int64 kShortBRDistance = (8 * 1024);
 constexpr int64 kNegativeImmLowerLimit = -4096;
@@ -102,9 +104,9 @@ public:
     {
         return mp.New<AArch64MoveRegArgs>(f);
     }
-    AlignAnalysis *CreateAlignAnalysis(MemPool &mp, CGFunc &f) const override
+    AlignAnalysis *CreateAlignAnalysis(MemPool &mp, CGFunc &f, LoopAnalysis &loop) const override
     {
-        return mp.New<AArch64AlignAnalysis>(f, mp);
+        return mp.New<AArch64AlignAnalysis>(f, mp, loop);
     }
     CGSSAInfo *CreateCGSSAInfo(MemPool &mp, CGFunc &f, DomAnalysis &da, MemPool &tmp) const override
     {
@@ -130,9 +132,14 @@ public:
     {
         return mp.New<AArch64ValidBitOpt>(f, ssaInfo);
     }
-    CFGOptimizer *CreateCFGOptimizer(MemPool &mp, CGFunc &f) const override
+    LocalSchedule *CreateLocalSchedule(MemPool &mp, CGFunc &f, ControlDepAnalysis &cda,
+                                       DataDepAnalysis &dda) const override
     {
-        return mp.New<AArch64CFGOptimizer>(f, mp);
+        return mp.New<AArch64LocalSchedule>(mp, f, cda, dda);
+    }
+    CFGOptimizer *CreateCFGOptimizer(MemPool &mp, CGFunc &f, LoopAnalysis &loop) const override
+    {
+        return mp.New<AArch64CFGOptimizer>(f, mp, loop);
     }
 
     /* Return the copy operand id of reg1 if it is an insn who just do copy from reg1 to reg2.

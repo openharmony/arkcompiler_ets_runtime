@@ -45,7 +45,6 @@ namespace panda::ecmascript::kungfu {
     V(IfSuccess, IF_SUCCESS, GateFlags::CONTROL, 1, 0, 0)                                       \
     V(IfException, IF_EXCEPTION, GateFlags::CONTROL, 1, 1, 0)                                   \
     V(GetException, GET_EXCEPTION, GateFlags::NONE_FLAG, 1, 1, 0)                               \
-    V(GetConstPool, GET_CONSTPOOL, GateFlags::NO_WRITE, 0, 1, 1)                                \
     V(GetGlobalEnv, GET_GLOBAL_ENV, GateFlags::NO_WRITE, 0, 1, 0)                               \
     V(GetSuperConstructor, GET_SUPER_CONSTRUCTOR, GateFlags::NO_WRITE, 1, 1, 1)                 \
     V(CheckSafePointAndStackOver, CHECK_SAFEPOINT_AND_STACKOVER, GateFlags::NO_WRITE, 1, 1, 0)  \
@@ -68,12 +67,13 @@ namespace panda::ecmascript::kungfu {
 
 #define SHARE_GATE_META_DATA_LIST_WITH_VALUE(V)                                         \
     V(Constant, CONSTANT, GateFlags::NONE_FLAG, 0, 0, 0)                                \
-    V(FrameArgs, FRAME_ARGS, GateFlags::HAS_FRAME_STATE, 0, 0, 4)                       \
+    V(FrameArgs, FRAME_ARGS, GateFlags::HAS_FRAME_STATE, 0, 0, 5)                       \
     V(FrameState, FRAME_STATE, GateFlags::HAS_FRAME_STATE, 0, 0, 2)                     \
     V(IfBranch, IF_BRANCH, GateFlags::CONTROL, 1, 0, 1)                                 \
     V(RelocatableData, RELOCATABLE_DATA, GateFlags::NONE_FLAG, 0, 0, 0)                 \
     V(SwitchBranch, SWITCH_BRANCH, GateFlags::CONTROL, 1, 0, 1)                         \
-    V(SwitchCase, SWITCH_CASE, GateFlags::CONTROL, 1, 0, 0)
+    V(SwitchCase, SWITCH_CASE, GateFlags::CONTROL, 1, 0, 0)                             \
+    V(GetConstPool, GET_CONSTPOOL, GateFlags::NO_WRITE, 0, 0, 1)
 
 #define SHARE_GATE_OPCODE_LIST(V)     \
     V(CONSTSTRING)

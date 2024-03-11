@@ -280,6 +280,9 @@ bool StringBuilderOptimizer::LoopContains(GateRef loopPhi, GateRef gate)
         if (gate == loopPhi) {
             return true;
         } else {
+            if (acc_.GetStateCount(gate) == 0) {
+                return false;
+            }
             gate = acc_.GetState(gate, 0);
         }
     }

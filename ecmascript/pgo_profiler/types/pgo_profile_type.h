@@ -100,7 +100,7 @@ public:
         static constexpr uint32_t OLD_ELEMENTS_KIND_BITFIELD_NUM = 5;
         static constexpr uint32_t NEW_ELEMENTS_KIND_BITFIELD_NUM = 5;
         using OldElementsKindBits = BuiltinsIdBits::NextField<ElementsKind, OLD_ELEMENTS_KIND_BITFIELD_NUM>;
-        using NewElementsKindBits = BuiltinsIdBits::NextField<ElementsKind, NEW_ELEMENTS_KIND_BITFIELD_NUM>;
+        using NewElementsKindBits = OldElementsKindBits::NextField<ElementsKind, NEW_ELEMENTS_KIND_BITFIELD_NUM>;
 
         explicit BuiltinsArrayId() = default;
         explicit BuiltinsArrayId(uint32_t id) : BuiltinsId(id) {}
@@ -132,7 +132,7 @@ public:
     public:
         // BuilitinsTypedArray second bit field
         static constexpr uint8_t ON_HEAP_MODE_BITFIELD_NUM = 2;
-        using OnHeapModeBits = BuiltinsIdBits::NextField<OnHeapMode, ON_HEAP_MODE_BITFIELD_NUM>;
+        using OnHeapModeBits = BuiltinsArrayId::NewElementsKindBits::NextField<OnHeapMode, ON_HEAP_MODE_BITFIELD_NUM>;
 
         explicit BuiltinsTypedArrayId() = default;
         explicit BuiltinsTypedArrayId(uint32_t id) : BuiltinsId(id) {}
@@ -328,11 +328,18 @@ public:
         return builtinsId.GetBuiltinsId();
     }
 
-    ElementsKind GetElementsKind() const
+    ElementsKind GetElementsKindBeforeTransition() const
     {
         ASSERT(IsBuiltinsArray());
         auto builtinsArrayId = BuiltinsArrayId(GetId());
         return builtinsArrayId.GetElementsKind();
+    }
+
+    ElementsKind GetElementsKindAfterTransition() const
+    {
+        ASSERT(IsBuiltinsArray());
+        auto builtinsArrayId = BuiltinsArrayId(GetId());
+        return builtinsArrayId.GetTransitionElementsKind();
     }
 
     bool IsBuiltinsString() const

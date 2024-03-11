@@ -51,8 +51,7 @@ public:
     void CollectLiveInfo(BB &bb, const Operand &opnd, bool isDef, bool isUse) const;
     void MarkStackMapInsn(Insn &insn, BB &bb) const;
     void GenerateStackMapLiveIn();
-    SparseDataInfo *GenerateLiveInByDefUse(SparseDataInfo &liveOut, SparseDataInfo &use, SparseDataInfo &def,
-                                           const MapleList<BB *> &ehSuccs);
+    SparseDataInfo *GenerateLiveInByDefUse(SparseDataInfo &liveOut, SparseDataInfo &use, SparseDataInfo &def);
 
     SparseDataInfo *NewLiveIn(uint32 maxRegCount) const
     {
@@ -87,7 +86,6 @@ public:
     virtual void GenerateReturnBBDefUse(BB &bb) const = 0;
     virtual void ProcessCallInsnParam(BB &bb, const Insn &insn) const = 0;
     virtual bool CleanupBBIgnoreReg(regno_t reg) = 0;
-    virtual void InitEhDefine(BB &bb) = 0;
 
 protected:
     int iteration = 0;

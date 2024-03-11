@@ -56,8 +56,9 @@ void AArch64YieldPointInsertion::InsertYieldPoint()
      * for BBs after firstbb.
      */
     for (BB *bb = aarchCGFunc->GetFirstBB()->GetNext(); bb != nullptr; bb = bb->GetNext()) {
-        /* insert a yieldpoint at beginning if BB is BackEdgeDest. */
-        if (bb->IsBackEdgeDest()) {
+        // insert a yieldpoint at loop header bb
+        auto *loop = loopInfo.GetBBLoopParent(bb->GetId());
+        if (loop != nullptr && loop->GetHeader().GetId() == bb->GetId()) {
             aarchCGFunc->GetDummyBB()->ClearInsns();
             aarchCGFunc->GenerateYieldpoint(*aarchCGFunc->GetDummyBB());
             bb->InsertAtBeginning(*aarchCGFunc->GetDummyBB());

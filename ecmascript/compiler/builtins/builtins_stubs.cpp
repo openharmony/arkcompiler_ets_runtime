@@ -25,9 +25,9 @@
 #include "ecmascript/compiler/builtins/containers_stub_builder.h"
 #include "ecmascript/compiler/builtins/builtins_collection_stub_builder.h"
 #include "ecmascript/compiler/builtins/builtins_object_stub_builder.h"
+#include "ecmascript/compiler/codegen/llvm/llvm_ir_builder.h"
 #include "ecmascript/compiler/typed_array_stub_builder.h"
 #include "ecmascript/compiler/interpreter_stub-inl.h"
-#include "ecmascript/compiler/llvm_ir_builder.h"
 #include "ecmascript/compiler/new_object_stub_builder.h"
 #include "ecmascript/compiler/stub_builder-inl.h"
 #include "ecmascript/compiler/stub_builder.h"
@@ -172,11 +172,15 @@ DECLARE_BUILTINS(String##method)                                                
     V(CharAt,       JS_POINTER, Hole())                                             \
     V(FromCharCode, JS_ANY,     Hole())                                             \
     V(CharCodeAt,   JS_ANY,     DoubleToTaggedDoublePtr(Double(base::NAN_VALUE)))   \
+    V(CodePointAt,  JS_ANY,     Undefined())                                        \
     V(IndexOf,      JS_ANY,     IntToTaggedPtr(Int32(-1)))                          \
     V(Substring,    JS_ANY,     IntToTaggedPtr(Int32(-1)))                          \
     V(Replace,      JS_ANY,     Undefined())                                        \
     V(Trim,         JS_ANY,     Undefined())                                        \
-    V(Slice,        JS_ANY,     Undefined())
+    V(Concat,       JS_ANY,     Undefined())                                        \
+    V(Slice,        JS_ANY,     Undefined())                                        \
+    V(ToLowerCase,  JS_ANY,     Undefined())                                        \
+    V(StartsWith,   JS_ANY,     TaggedFalse())
 
 DECLARE_BUILTINS(LocaleCompare)
 {
@@ -809,10 +813,8 @@ DECLARE_BUILTINS(type##method)                                                  
     DEFVARIABLE(res, retType, retDefaultValue);                                                     \
     Label slowPath(env);                                                                            \
     Label exit(env);                                                                                \
-    GateRef begin = GetCallArg0(numArgs);                                                           \
-    GateRef end = GetCallArg1(numArgs);                                                             \
     TypedArrayStubBuilder builder(this);                                                            \
-    builder.method(glue, thisValue, begin, end, &res, &exit, &slowPath);                            \
+    builder.method(glue, thisValue, numArgs, &res, &exit, &slowPath);                               \
     Bind(&slowPath);                                                                                \
     {                                                                                               \
         auto name = BuiltinsStubCSigns::GetName(BUILTINS_STUB_ID(type##method));                    \
@@ -825,5 +827,7 @@ DECLARE_BUILTINS(type##method)                                                  
 
 // TypedArray.Subarray
 DECLARE_BUILTINS_TYPEDARRAY_STUB_BUILDER(TypedArray, SubArray, VariableType::JS_ANY(), Undefined());
+DECLARE_BUILTINS_TYPEDARRAY_STUB_BUILDER(TypedArray, GetByteLength, VariableType::JS_ANY(), Undefined());
+DECLARE_BUILTINS_TYPEDARRAY_STUB_BUILDER(TypedArray, GetByteOffset, VariableType::JS_ANY(), Undefined());
 #undef DECLARE_BUILTINS_TYPEDARRAY_STUB_BUILDER
 }  // namespace panda::ecmascript::kungfu

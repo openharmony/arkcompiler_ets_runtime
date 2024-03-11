@@ -43,6 +43,7 @@ private:
     void LowerIsMarkerCellValid(GateRef gate);
     void LowerIsSpecificObjectType(GateRef gate);
     void LowerHClassStableArrayCheck(GateRef gate);
+    void LowerElementskindCheck(GateRef gate);
     void LowerGetConstPool(GateRef gate);
     void LowerLoadConstOffset(GateRef gate);
     void LowerLoadHClassFromConstpool(GateRef gate);
@@ -54,6 +55,7 @@ private:
     void LowerCheckTaggedDoubleAndConvert(GateRef gate, GateRef frameState, Label *exit);
     void LowerCheckTaggedNumberAndConvert(GateRef gate, GateRef frameState, Label *exit);
     void LowerCheckTaggedBoolAndConvert(GateRef gate, GateRef frameState);
+    void LowerCheckSpecialHoleAndConvert(GateRef gate, GateRef frameState);
     void LowerCheckSupportAndConvert(GateRef gate, GateRef frameState);
     void LowerGetGlobalEnv(GateRef gate);
     void LowerGetGlobalEnvObj(GateRef gate);
@@ -68,10 +70,18 @@ private:
     void LowerInt32UnsignedUpperBoundCheck(GateRef gate);
     void LowerInt32DivWithCheck(GateRef gate);
     void LowerLexVarIsHoleCheck(GateRef gate);
+    void LowerIsUndefinedOrHoleCheck(GateRef gate);
+    void LowerIsNotUndefinedOrHoleCheck(GateRef gate);
     void LowerStoreMemory(GateRef gate);
     void LowerCheckNullAndConvert(GateRef gate, GateRef frameState);
     void LowerUndefinedAndConvert(GateRef gate, GateRef frameState);
+    void LowerMigrateFromRawValueToHeapValues(GateRef gate);
+    void LowerMigrateFromHeapValueToRawValue(GateRef gate);
+    void LowerMigrateFromHoleIntToHoleNumber(GateRef gate);
+    void LowerMigrateFromHoleNumberToHoleInt(GateRef gate);
 
+    GateRef ConvertSpecialHoleIntToTagged(GateRef gate, Label* exit);
+    GateRef ConvertSpecialHoleDoubleToTagged(GateRef gate, Label* exit);
     GateRef ConvertBoolToTaggedBoolean(GateRef gate);
     GateRef ConvertInt32ToFloat64(GateRef gate);
     GateRef ConvertUInt32ToFloat64(GateRef gate);
