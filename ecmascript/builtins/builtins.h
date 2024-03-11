@@ -301,7 +301,9 @@ private:
                                                          const JSHandle<JSTaggedValue> &symbol,
                                                          std::string_view name,
                                                          EcmaEntrypoint func,
-                                                         int length) const;
+                                                         int length,
+                                                         kungfu::BuiltinsStubCSigns::ID builtinId =
+                                                         kungfu::BuiltinsStubCSigns::INVALID) const;
 
     void SetStringTagSymbol(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &obj,
                             std::string_view key) const;

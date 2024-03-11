@@ -23,9 +23,11 @@
 #include "ecmascript/compiler/combined_pass_visitor.h"
 #include "ecmascript/compiler/common_stubs.h"
 #include "ecmascript/compiler/compiler_log.h"
-#include "ecmascript/compiler/dead_code_elimination.h"
 #include "ecmascript/compiler/constant_folding.h"
+#include "ecmascript/compiler/dead_code_elimination.h"
 #include "ecmascript/compiler/early_elimination.h"
+#include "ecmascript/compiler/escape_analysis.h"
+#include "ecmascript/compiler/escape_analysis_editor.h"
 #include "ecmascript/compiler/graph_editor.h"
 #include "ecmascript/compiler/graph_linearizer.h"
 #include "ecmascript/compiler/later_elimination.h"
@@ -298,6 +300,32 @@ public:
         TimeScope timescope("TSClassAnalysisPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
         TSClassAnalysis analyzer(data->GetPassContext()->GetTSManager());
         analyzer.Run();
+        return true;
+    }
+};
+
+class EscapeAnalysisPass {
+public:
+    bool Run(PassData *data)
+    {
+        PassOptions *passOptions = data->GetPassOptions();
+        if (!passOptions->EnableEscapeAnalysis()) {
+            return false;
+        }
+        TimeScope timescope("EscapeAnalysisPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
+        bool enableLog = data->GetLog()->EnableMethodCIRLog();
+        JSRuntimeOptions runtimeOption = data->GetPassContext()->GetEcmaVM()->GetJSOptions();
+        Chunk chunk(data->GetNativeAreaAllocator());
+        CombinedPassVisitor visitor(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk);
+        EscapeAnalysis escapeAnalysis(data->GetCircuit(), &visitor, &chunk, runtimeOption.GetTraceEscapeAnalysis());
+        visitor.AddPass(&escapeAnalysis);
+        visitor.VisitGraph();
+        CombinedPassVisitor Editvisitor(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk);
+        EscapeAnalysisEditor escapeAnalysisEditor(data->GetCircuit(), &visitor, &chunk,
+                                                  &escapeAnalysis, runtimeOption.GetTraceEscapeAnalysis());
+        Editvisitor.AddPass(&escapeAnalysisEditor);
+        Editvisitor.VisitGraph();
+        visitor.PrintLog("escape Analysis");
         return true;
     }
 };

@@ -45,6 +45,7 @@ namespace panda::ecmascript::kungfu {
     V(StringConcat)                                 \
     V(StringStartsWith)                             \
     V(StringToLowerCase)                            \
+    V(GetStringIterator)                            \
     V(ObjectToString)                               \
     V(ObjectCreate)                                 \
     V(ObjectAssign)                                 \

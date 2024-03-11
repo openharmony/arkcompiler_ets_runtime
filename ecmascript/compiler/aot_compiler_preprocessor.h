@@ -67,6 +67,7 @@ struct CompilationOptions {
     bool isEnablePGOHCRLowering_;
     bool isEnableLoweringBuiltin_;
     bool isEnableOptBranchProfiling_;
+    bool isEnableEscapeAnalysis_;
 };
 
 class AotCompilerPreprocessor {
