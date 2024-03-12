@@ -13,7 +13,7 @@
 
 import("//arkcompiler/ets_runtime/test/test_helper.gni")
 
-host_aot_test_action("equal_nan") {
+host_aot_assert_test_action("equal_nan") {
   deps = []
   is_enable_pgo = true
 }

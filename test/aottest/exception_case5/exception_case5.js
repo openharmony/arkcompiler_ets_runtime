@@ -16,15 +16,16 @@
 try {
     var foo = 1;
     foo();
+    assert_unreachable();
 } catch (e) {
-    print(e)
+    assert_equal(e.message, "CallObj is NonCallable");
     let stack = e.stack
     let array = stack.split('\n')
     for (let line of array) {
         let start = line.lastIndexOf('/') + 1
         let end = line.length - 1
         if (start < end) {
-            print(line.slice(start, end))
+            assert_equal(line.slice(start, end), "exception_case5.js:18:1")
         } else {
             print(line)
         }
