@@ -70,7 +70,9 @@ inline EcmaString *EcmaString::CreateFromUtf8(const EcmaVM *vm, const uint8_t *u
 inline EcmaString *EcmaString::CreateFromUtf8CompressedSubString(const EcmaVM *vm, const JSHandle<EcmaString> &string,
                                                                  uint32_t offset, uint32_t utf8Len, MemSpaceType type)
 {
-    ASSERT(utf8Len != 0);
+    if (utf8Len == 0) {
+        return vm->GetFactory()->GetEmptyString().GetObject<EcmaString>();
+    }
     EcmaString *subString = CreateLineStringWithSpaceType(vm, utf8Len, true, type);
     ASSERT(subString != nullptr);
 
