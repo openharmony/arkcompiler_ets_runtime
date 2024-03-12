@@ -1670,7 +1670,8 @@ void GateAccessor::GetFrameStateDependIn(GateRef gate, GateRef &dependIn)
 
 void GateAccessor::GetStateInAndDependIn(GateRef insertAfter, GateRef &stateIn, GateRef &dependIn)
 {
-    if (GetOpCode(insertAfter) == OpCode::IF_TRUE || GetOpCode(insertAfter) == OpCode::IF_FALSE) {
+    if (GetOpCode(insertAfter) == OpCode::IF_TRUE || GetOpCode(insertAfter) == OpCode::IF_FALSE
+        || GetOpCode(insertAfter) == OpCode::IF_SUCCESS) {
         auto uses = Uses(insertAfter);
         for (auto it = uses.begin(); it != uses.end();) {
             if (GetOpCode(*it) == OpCode::DEPEND_RELAY) {
