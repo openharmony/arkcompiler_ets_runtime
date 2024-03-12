@@ -66,6 +66,7 @@ MachineType CircuitBuilder::GetMachineTypeOfValueType(ValueType type)
         case ValueType::BOOL:
             return MachineType::I1;
         case ValueType::INT32:
+        case ValueType::UINT32:
             return MachineType::I32;
         case ValueType::FLOAT64:
             return MachineType::F64;
@@ -73,10 +74,18 @@ MachineType CircuitBuilder::GetMachineTypeOfValueType(ValueType type)
         case ValueType::TAGGED_INT:
         case ValueType::TAGGED_DOUBLE:
         case ValueType::TAGGED_NUMBER:
+        case ValueType::TAGGED_NULL:
+        case ValueType::CHAR:
+        case ValueType::ECMA_STRING:
+        case ValueType::UNDEFINED:
+        case ValueType::HOLE_INT:
+        case ValueType::HOLE_DOUBLE:
             return MachineType::I64;
         default:
-            return MachineType::NOVALUE;
+            UNREACHABLE();
+            break;
     }
+    return MachineType::NOVALUE;
 }
 
 GateRef CircuitBuilder::BinaryArithmetic(const GateMetaData* meta, MachineType machineType,
