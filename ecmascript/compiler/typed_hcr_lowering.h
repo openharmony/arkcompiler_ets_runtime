@@ -235,8 +235,8 @@ private:
     GateType GetRightType(GateRef gate);
     GateRef GetElementSize(BuiltinTypeId id);
     VariableType GetVariableType(BuiltinTypeId id);
-    GateRef AllocateLineString(GateRef length, GateRef canBeCompressed);
-    GateRef AllocateSlicedString(GateRef flatString, GateRef length, GateRef canBeCompressed);
+    GateRef AllocateLineString(GateRef glue, GateRef length, GateRef canBeCompressed);
+    GateRef AllocateSlicedString(GateRef glue, GateRef flatString, GateRef length, GateRef canBeCompressed);
     bool IsFirstConcatInStringAdd(GateRef gate) const;
     bool ConcatIsInStringAdd(GateRef gate) const;
 

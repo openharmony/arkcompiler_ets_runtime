@@ -1100,9 +1100,9 @@ inline void StubBuilder::StoreHClass(GateRef glue, GateRef object, GateRef hClas
     return env_->GetBuilder()->StoreHClass(glue, object, hClass);
 }
 
-inline void StubBuilder::StoreBuiltinHClass(GateRef object, GateRef hClass)
+inline void StubBuilder::StoreBuiltinHClass(GateRef glue, GateRef object, GateRef hClass)
 {
-    return env_->GetBuilder()->StoreHClassWithoutBarrier(object, hClass);
+    return env_->GetBuilder()->StoreHClassWithoutBarrier(glue, object, hClass);
 }
 
 inline void StubBuilder::StorePrototype(GateRef glue, GateRef hclass, GateRef prototype)

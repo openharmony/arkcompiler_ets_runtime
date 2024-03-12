@@ -130,6 +130,7 @@ MemoryOrder GateAccessor::GetMemoryOrder(GateRef gate) const
     Gate *gatePtr = circuit_->LoadGatePtr(gate);
     switch (op) {
         case OpCode::LOAD:
+        case OpCode::STORE_WITHOUT_BARRIER:
         case OpCode::STORE: {
             auto accessor = LoadStoreAccessor(gatePtr->GetOneParameterMetaData()->GetValue());
             return accessor.GetMemoryOrder();
@@ -956,6 +957,18 @@ void GateAccessor::GetValueUses(GateRef gate, std::vector<GateRef> &valueUses)
     }
 }
 
+size_t GateAccessor::GetValueUsesCount(GateRef gate)
+{
+    size_t count = 0;
+    auto uses = Uses(gate);
+    for (auto it = uses.begin(); it != uses.end(); it++) {
+        if (IsValueIn(it)) {
+            count++;
+        }
+    }
+    return count;
+}
+
 void GateAccessor::GetAllGates(std::vector<GateRef>& gates) const
 {
     circuit_->GetAllGates(gates);
@@ -1579,6 +1592,24 @@ void GateAccessor::ReplaceGate(GateRef gate, StateDepend stateDepend, GateRef re
     DeleteGate(gate);
 }
 
+void GateAccessor::ReplaceControlGate(GateRef gate, GateRef newState)
+{
+    auto uses = Uses(gate);
+    for (auto useIt = uses.begin(); useIt != uses.end();) {
+        if (IsStateIn(useIt)) {
+            OpCode opcode = GetOpCode(*useIt);
+            if (opcode == OpCode::VALUE_SELECTOR || opcode == OpCode::DEPEND_SELECTOR) {
+                useIt++;
+            } else {
+                useIt = ReplaceIn(useIt, newState);
+            }
+        } else {
+            LOG_ECMA(FATAL) << "this branch is unreachable";
+            UNREACHABLE();
+        }
+    }
+    // Do not delete this gate
+}
 
 // When Insert newGate, all the stateIn from state and dependIn from depend can be replaced to newGate
 void GateAccessor::ReplaceInAfterInsert(GateRef state, GateRef depend, GateRef newGate)

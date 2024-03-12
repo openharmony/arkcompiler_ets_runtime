@@ -476,6 +476,7 @@ public:
     size_t GetInValueCount(GateRef gate) const;
     size_t GetInValueStarts(GateRef gate) const;
     void UpdateAllUses(GateRef gate, GateRef replaceValueIn);
+    void ReplaceControlGate(GateRef gate, GateRef newState);
     void ReplaceInAfterInsert(GateRef state, GateRef depend, GateRef newGate);
     void GetFrameStateDependIn(GateRef gate, GateRef &dependIn);
     void GetStateInAndDependIn(GateRef insertAfter, GateRef &stateIn, GateRef &dependIn);
@@ -535,6 +536,7 @@ public:
     void GetStateUses(GateRef gate, std::vector<GateRef> &stateUses);
     void GetDependUses(GateRef gate, std::vector<GateRef> &dependUses);
     void GetValueUses(GateRef gate, std::vector<GateRef> &valueUses);
+    size_t GetValueUsesCount(GateRef gate);
     bool IsFrameStateIn(GateRef gate, size_t index) const;
     void EliminateRedundantPhi();
     void ReplaceGate(GateRef gate, GateRef state, GateRef depend, GateRef value);
@@ -681,6 +683,7 @@ private:
     Circuit *circuit_;
 
     friend class Circuit;
+    friend class CircuitBuilder;
     friend class LLVMIRBuilder;
     friend class LiteCGIRBuilder;
     friend class Scheduler;

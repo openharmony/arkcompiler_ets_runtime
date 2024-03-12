@@ -152,6 +152,7 @@ libark_jsoptimizer_sources = [
   "object_access_helper.cpp",
   "operations_stub_builder.cpp",
   "pass_manager.cpp",
+  "post_schedule.cpp",
   "profiler_stub_builder.cpp",
   "range_analysis.cpp",
   "range_guard.cpp",
