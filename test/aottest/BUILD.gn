@@ -146,7 +146,6 @@ group("ark_aot_ts_test") {
     "pgo_ldobjbyvalue_string",
     "pgo_length",
     "pgo_objectliteral_operation",
-    "pgo_call_deopt",
     "pgo_call_deopt_js",
     "pgo_call_recursive_js",
     "pgo_on_heap",
@@ -185,7 +184,6 @@ group("ark_aot_ts_test") {
     "supercallspread",
     "suspendgenerator",
     "suspendgeneratorbranch",
-
     "suspendgeneratorfor",
     "suspendgeneratorphi",
     "suspendgeneratorreturn",
@@ -226,6 +224,10 @@ group("ark_aot_ts_test") {
     "definesendableclass",
     "sendablecontext",
   ]
+
+  if (!is_debug) {
+    test_list += [ "pgo_call_deopt" ]
+  }
 
   deps = []
   foreach(test, test_list) {
