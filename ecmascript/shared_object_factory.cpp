@@ -32,7 +32,6 @@ namespace panda::ecmascript {
 void ObjectFactory::NewSObjectHook() const
 {
 #ifndef NDEBUG
-    // static Mutex lock;
     static std::atomic<uint32_t> count = 0;
     static uint32_t frequency = vm_->GetJSOptions().GetForceSharedGCFrequency();
     if (frequency == 0 || !vm_->GetJSOptions().EnableForceGC() || !vm_->IsInitialized() ||
