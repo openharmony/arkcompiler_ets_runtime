@@ -38,6 +38,7 @@ private:
 
     void DeleteStateSplit(GateRef gate);
     void LowerArrayGuardianCheck(GateRef gate);
+    void LowerEcmaObjectCheck(GateRef gate);
     void LowerHeapObjectCheck(GateRef gate);
     void LowerTaggedIsHeapObject(GateRef gate);
     void LowerIsMarkerCellValid(GateRef gate);

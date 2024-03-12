@@ -453,6 +453,7 @@ public:
     GateRef MigrateArrayWithKind(GateRef receiver, GateRef oldElementsKind, GateRef newElementsKind);
 
     // **************************** Middle IR ****************************
+    GateRef EcmaObjectCheck(GateRef gate);
     GateRef HeapObjectCheck(GateRef gate, GateRef frameState);
     GateRef ProtoChangeMarkerCheck(GateRef gate, GateRef frameState = Gate::InvalidGateRef);
     GateRef StableArrayCheck(GateRef gate, ElementsKind kind, ArrayMetaDataAccessor::Mode mode);
@@ -630,6 +631,8 @@ public:
     inline GateRef TaggedIsStoreTSHandler(GateRef x);
     inline GateRef TaggedIsTransWithProtoHandler(GateRef x);
     inline GateRef TaggedIsUndefinedOrNull(GateRef x);
+    inline GateRef TaggedIsUndefinedOrNullOrHole(GateRef x);
+    inline GateRef TaggedIsNotUndefinedAndNullAndHole(GateRef x);
     inline GateRef TaggedIsNotUndefinedAndNull(GateRef x);
     inline GateRef TaggedIsUndefinedOrHole(GateRef x);
     inline GateRef TaggedIsTrue(GateRef x);

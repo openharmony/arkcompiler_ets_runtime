@@ -30,6 +30,8 @@ public:
 
     static JSTaggedValue Return(EcmaRuntimeCallInfo *argv);
 
+    static JSTaggedValue ReturnInternal(JSThread *thread, JSHandle<JSTaggedValue> thisValue);
+
     static JSTaggedValue GetIteratorObj(EcmaRuntimeCallInfo *argv);
 };
 }  // namespace panda::ecmascript::builtins

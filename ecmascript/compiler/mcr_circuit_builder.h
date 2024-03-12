@@ -461,6 +461,11 @@ GateRef CircuitBuilder::TaggedIsUndefinedOrNull(GateRef x)
     return result;
 }
 
+GateRef CircuitBuilder::TaggedIsUndefinedOrNullOrHole(GateRef x)
+{
+    return BoolOr(TaggedIsUndefinedOrNull(x), TaggedIsHole(x));
+}
+
 GateRef CircuitBuilder::TaggedIsNotUndefinedAndNull(GateRef x)
 {
     x = ChangeTaggedPointerToInt64(x);
@@ -469,6 +474,11 @@ GateRef CircuitBuilder::TaggedIsNotUndefinedAndNull(GateRef x)
     GateRef andGate = Int64And(x, heapObjMask);
     GateRef result = NotEqual(andGate, tagSpecial);
     return result;
+}
+
+GateRef CircuitBuilder::TaggedIsNotUndefinedAndNullAndHole(GateRef x)
+{
+    return BoolAnd(TaggedIsNotUndefinedAndNull(x), TaggedIsNotHole(x));
 }
 
 GateRef CircuitBuilder::TaggedIsUndefinedOrHole(GateRef x)

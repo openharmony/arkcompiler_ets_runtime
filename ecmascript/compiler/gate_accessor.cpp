@@ -1079,10 +1079,11 @@ bool GateAccessor::IsConstantUndefined(GateRef gate) const
     return IsConstantValue(gate, JSTaggedValue::VALUE_UNDEFINED);
 }
 
-bool GateAccessor::IsUndefinedOrNull(GateRef gate) const
+bool GateAccessor::IsUndefinedOrNullOrHole(GateRef gate) const
 {
     return IsConstantValue(gate, JSTaggedValue::VALUE_UNDEFINED) ||
-           IsConstantValue(gate, JSTaggedValue::VALUE_NULL);
+           IsConstantValue(gate, JSTaggedValue::VALUE_NULL) ||
+           IsConstantValue(gate, JSTaggedValue::VALUE_HOLE);
 }
 
 bool GateAccessor::IsTypedOperator(GateRef gate) const

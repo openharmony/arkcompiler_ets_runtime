@@ -383,7 +383,7 @@ void TypedBytecodeLowering::LowerTypedEqOrNotEq(GateRef gate)
     PGOTypeRef pgoType = acc_.TryGetPGOType(gate);
 
     BinOpTypeInfoAccessor tacc(thread_, circuit_, gate);
-    if (tacc.LeftOrRightIsUndefinedOrNull() || tacc.HasNumberType()) {
+    if (tacc.LeftOrRightIsUndefinedOrNullOrHole() || tacc.HasNumberType()) {
         AddProfiling(gate);
         GateRef result = builder_.TypedBinaryOp<Op>(
             left, right, leftType, rightType, gateType, pgoType);
