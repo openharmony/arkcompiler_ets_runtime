@@ -134,6 +134,8 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(FloatLog2)                               \
     V(FloatLog10)                              \
     V(FloatLog1p)                              \
+    V(FloatExp)                                \
+    V(FloatExpm1)                              \
     V(FloatFloor)                              \
     V(FloatPow)                                \
     V(FindElementWithCache)                    \
@@ -493,6 +495,8 @@ public:
     static double FloatLog2(double x);
     static double FloatLog10(double x);
     static double FloatLog1p(double x);
+    static double FloatExp(double x);
+    static double FloatExpm1(double x);
     static double FloatPow(double base, double exp);
     static int32_t FindElementWithCache(uintptr_t argGlue, JSTaggedType hclass,
                                         JSTaggedType key, int32_t num);

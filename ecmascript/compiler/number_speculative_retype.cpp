@@ -137,6 +137,8 @@ GateRef NumberSpeculativeRetype::VisitGate(GateRef gate)
         case OpCode::MATH_LOG2:
         case OpCode::MATH_LOG10:
         case OpCode::MATH_LOG1P:
+        case OpCode::MATH_EXP:
+        case OpCode::MATH_EXPM1:
         case OpCode::MATH_ACOS:
         case OpCode::MATH_ACOSH:
         case OpCode::MATH_ASIN:

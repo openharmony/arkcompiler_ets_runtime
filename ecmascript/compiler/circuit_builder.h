@@ -61,6 +61,7 @@ class PostSchedule;
     V(Int64Add, Add, MachineType::I64)                                    \
     V(DoubleAdd, Add, MachineType::F64)                                   \
     V(PtrAdd, Add, MachineType::ARCH)                                     \
+    V(DoubleExp, Exp, MachineType::F64)                                   \
     V(Int16Sub, Sub, MachineType::I16)                                    \
     V(Int32Sub, Sub, MachineType::I32)                                    \
     V(Int64Sub, Sub, MachineType::I64)                                    \

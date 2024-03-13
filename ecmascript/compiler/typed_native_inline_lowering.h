@@ -42,6 +42,7 @@ private:
     void LowerMathAtan2(GateRef gate);
     void LowerAbs(GateRef gate);
     void LowerMathPow(GateRef gate);
+    void LowerMathExp(GateRef gate);
 
 private:
     Circuit* circuit_ {nullptr};

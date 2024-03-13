@@ -47,8 +47,8 @@
     V("clz32",  Clz32,  1, INVALID)     /* Math.clz32 ( x ) */              \
     V("cos",    Cos,    1, MathCos)     /* Math.cos ( x ) */                \
     V("cosh",   Cosh,   1, MathCosh)    /* Math.cosh ( x ) */               \
-    V("exp",    Exp,    1, INVALID)     /* Math.exp ( x ) */                \
-    V("expm1",  Expm1,  1, INVALID)     /* Math.expm1 ( x ) */              \
+    V("exp",    Exp,    1, MathExp)     /* Math.exp ( x ) */                \
+    V("expm1",  Expm1,  1, MathExpm1)   /* Math.expm1 ( x ) */              \
     V("floor",  Floor,  1, FLOOR)       /* Math.floor ( x ) */              \
     V("fround", Fround, 1, INVALID)     /* Math.fround ( x ) */             \
     V("hypot",  Hypot,  2, INVALID)     /* Math.hypot ( ...args ) */        \
