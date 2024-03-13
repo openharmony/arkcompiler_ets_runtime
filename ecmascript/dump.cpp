@@ -2281,9 +2281,10 @@ void JSAPIList::Dump(std::ostream &os) const
 
 void JSAPIList::DumpForSnapshot(std::vector<Reference> &vec) const
 {
-    TaggedSingleList *list = TaggedSingleList::Cast(GetSingleList().GetTaggedObject());
-    list->DumpForSnapshot(vec);
-
+    if (!(GetSingleList().IsInvalidValue())) {
+        TaggedSingleList *list = TaggedSingleList::Cast(GetSingleList().GetTaggedObject());
+        list->DumpForSnapshot(vec);
+    }
     JSObject::DumpForSnapshot(vec);
 }
 
@@ -2300,9 +2301,11 @@ void JSAPIListIterator::Dump(std::ostream &os) const
 
 void JSAPIListIterator::DumpForSnapshot(std::vector<Reference> &vec) const
 {
-    TaggedSingleList *list = TaggedSingleList::Cast(GetIteratedList().GetTaggedObject());
-    vec.emplace_back("iteratedlist", GetIteratedList());
-    list->DumpForSnapshot(vec);
+    if (!(GetIteratedList().IsInvalidValue())) {
+        TaggedSingleList *list = TaggedSingleList::Cast(GetIteratedList().GetTaggedObject());
+        vec.emplace_back("iteratedlist", GetIteratedList());
+        list->DumpForSnapshot(vec);
+    }
     vec.emplace_back(CString("NextIndex"), JSTaggedValue(GetNextIndex()));
     JSObject::DumpForSnapshot(vec);
 }
@@ -5015,9 +5018,11 @@ void JSAPIArrayList::DumpForSnapshot(std::vector<Reference> &vec) const
 
 void JSAPIArrayListIterator::DumpForSnapshot(std::vector<Reference> &vec) const
 {
-    JSAPIArrayList *arraylist = JSAPIArrayList::Cast(GetIteratedArrayList().GetTaggedObject());
-    vec.emplace_back("iteratedlist", GetIteratedArrayList());
-    arraylist->DumpForSnapshot(vec);
+    if (!(GetIteratedArrayList().IsInvalidValue())) {
+        JSAPIArrayList *arraylist = JSAPIArrayList::Cast(GetIteratedArrayList().GetTaggedObject());
+        vec.emplace_back("iteratedlist", GetIteratedArrayList());
+        arraylist->DumpForSnapshot(vec);
+    }
     vec.emplace_back(CString("NextIndex"), JSTaggedValue(GetNextIndex()));
     JSObject::DumpForSnapshot(vec);
 }
