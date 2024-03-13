@@ -129,7 +129,8 @@ namespace panda::ecmascript::kungfu {
     V(MAP_ITERATOR_PROTO_NEXT)                      \
     V(SET_ITERATOR_PROTO_NEXT)                      \
     V(STRING_ITERATOR_PROTO_NEXT)                   \
-    V(ARRAY_ITERATOR_PROTO_NEXT)
+    V(ARRAY_ITERATOR_PROTO_NEXT)                    \
+    V(ITERATOR_PROTO_RETURN)
 
 class BuiltinsStubCSigns {
 public:
@@ -144,7 +145,7 @@ public:
 #undef DEF_STUB_ID
         BUILTINS_CONSTRUCTOR_STUB_FIRST = BooleanConstructor,
         TYPED_BUILTINS_FIRST = SQRT,
-        TYPED_BUILTINS_LAST = ARRAY_ITERATOR_PROTO_NEXT,
+        TYPED_BUILTINS_LAST = ITERATOR_PROTO_RETURN,
         TYPED_BUILTINS_MATH_FIRST = SQRT,
         TYPED_BUILTINS_MATH_LAST = FLOOR,
         INVALID = 0xFF,
@@ -213,6 +214,7 @@ public:
             case BuiltinsStubCSigns::ID::SET_ITERATOR_PROTO_NEXT:
             case BuiltinsStubCSigns::ID::STRING_ITERATOR_PROTO_NEXT:
             case BuiltinsStubCSigns::ID::ARRAY_ITERATOR_PROTO_NEXT:
+            case BuiltinsStubCSigns::ID::ITERATOR_PROTO_RETURN:
                 return true;
             default:
                 return false;
@@ -260,6 +262,8 @@ public:
                 return ConstantIndex::STRING_ITERATOR_PROTO_NEXT_INDEX;
             case BuiltinsStubCSigns::ID::ARRAY_ITERATOR_PROTO_NEXT:
                 return ConstantIndex::ARRAY_ITERATOR_PROTO_NEXT_INDEX;
+            case BuiltinsStubCSigns::ID::ITERATOR_PROTO_RETURN:
+                return ConstantIndex::ITERATOR_PROTO_RETURN_INDEX;
             case BuiltinsStubCSigns::ID::StringFromCharCode:
                 return ConstantIndex::STRING_FROM_CHAR_CODE_INDEX;
             default:

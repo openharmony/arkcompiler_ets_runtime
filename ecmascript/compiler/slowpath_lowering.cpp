@@ -1205,7 +1205,7 @@ void SlowPathLowering::LowerExceptionHandler(GateRef hirGate)
     acc_.SetDep(loadException, depend);
     GateRef holeCst = builder_.HoleConstant();
     GateRef clearException = circuit_->NewGate(circuit_->Store(bit), MachineType::NOVALUE,
-        { loadException, holeCst, val }, VariableType::INT64().GetGateType());
+        { loadException, glue_, glue_, exceptionOffset, holeCst }, VariableType::INT64().GetGateType());
     auto uses = acc_.Uses(hirGate);
     for (auto it = uses.begin(); it != uses.end();) {
         if (acc_.GetOpCode(*it) != OpCode::VALUE_SELECTOR && acc_.IsDependIn(it)) {

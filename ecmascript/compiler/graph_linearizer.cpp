@@ -702,7 +702,11 @@ public:
                 upperRegion = GetUpperBoundRegion(region);
             }
         }
-        ScheduleGate(curGate, region);
+        if (acc_.GetOpCode(curGate) == OpCode::FINISH_ALLOCATE) {
+            ScheduleAllocRegion(curGate, region);
+        } else {
+            ScheduleGate(curGate, region);
+        }
     }
 
     GateRegion* GetUpperBoundRegion(GateRegion* region)
@@ -718,6 +722,31 @@ public:
             return loopInfo->loopHead->iDominator_;
         }
         return nullptr;
+    }
+
+    void ScheduleAllocRegion(GateRef gate, GateRegion* region)
+    {
+        ASSERT(acc_.GetOpCode(gate) == OpCode::FINISH_ALLOCATE);
+        // 1. schedule FINISH_ALLOCATE first
+        ScheduleGate(gate, region);
+        GateRef curGate = acc_.GetDep(gate);
+        [[maybe_unused]]GateRef output = acc_.GetValueIn(gate, 0);
+        // 2. schedule all gates from end to start
+        while (acc_.GetOpCode(curGate) != OpCode::START_ALLOCATE) {
+            [[maybe_unused]] auto& curInfo = linearizer_->GetGateInfo(curGate);
+            ASSERT(curInfo.IsSchedulable());
+            ASSERT(curInfo.schedulableUseCount == 0);
+            ASSERT(curInfo.region == nullptr);
+            ASSERT(acc_.GetStateCount(curGate) == 0);
+            ASSERT(acc_.GetDependCount(curGate) == 1);
+            ASSERT(acc_.GetValueUsesCount(curGate) == 0 || curGate == output);
+
+            ScheduleGate(curGate, region);
+            curGate = acc_.GetDep(curGate);
+        }
+        // 3. schedule START_ALLOCATE
+        ASSERT(linearizer_->GetGateInfo(curGate).schedulableUseCount == 0);
+        ScheduleGate(curGate, region);
     }
 
     bool CheckRegionDomLoopExist(GateRegion* region, GraphLinearizer::LoopInfo* loopInfo)

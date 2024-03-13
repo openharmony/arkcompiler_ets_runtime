@@ -38,6 +38,7 @@ private:
 
     void DeleteStateSplit(GateRef gate);
     void LowerArrayGuardianCheck(GateRef gate);
+    void LowerEcmaObjectCheck(GateRef gate);
     void LowerHeapObjectCheck(GateRef gate);
     void LowerTaggedIsHeapObject(GateRef gate);
     void LowerIsMarkerCellValid(GateRef gate);
@@ -61,7 +62,6 @@ private:
     void LowerGetGlobalEnvObj(GateRef gate);
     void LowerGetGlobalEnvObjHClass(GateRef gate);
     void LowerGetGlobalConstantValue(GateRef gate);
-    void LowerHeapAllocate(GateRef gate);
     void LowerInt32CheckRightIsZero(GateRef gate);
     void LowerRemainderIsNegativeZero(GateRef gate);
     void LowerFloat64CheckRightIsZero(GateRef gate);
@@ -98,7 +98,6 @@ private:
     GateRef ConvertTaggedNumberToInt32(GateRef gate, Label *exit);
     GateRef ConvertTaggedNumberToFloat64(GateRef gate, Label *exit);
     GateRef ConvertTaggedBooleanToBool(GateRef gate);
-    void HeapAllocateInYoung(GateRef gate);
     void InitializeWithSpeicalValue(Label *exit, GateRef object, GateRef glue, GateRef value,
                                     GateRef start, GateRef end);
 

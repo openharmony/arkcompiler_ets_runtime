@@ -327,6 +327,9 @@ MethodLiteral* PatchLoader::FindSameMethod(PatchInfo &patchInfo, const JSPandaFi
 {
     const CUnorderedMap<PatchMethodIndex, MethodLiteral*, PatchMethodIndex::Hash> &patchMethodLiterals =
         patchInfo.patchMethodLiterals;
+    if (!baseMethodId.IsValid() || baseMethodId.GetOffset() >= baseFile->GetFileSize()) {
+        return nullptr;
+    }
     CString baseRecordName = MethodLiteral::GetRecordName(baseFile, baseMethodId);
     CString baseClassName = "default";
     auto iter = baseClassInfo.find(baseMethodId.GetOffset());

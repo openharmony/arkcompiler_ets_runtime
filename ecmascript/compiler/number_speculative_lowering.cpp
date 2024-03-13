@@ -498,7 +498,7 @@ void NumberSpeculativeLowering::VisitUndefinedStrictEqOrUndefinedStrictNotEq(Gat
            acc_.GetTypedBinaryOp(gate) == TypedBinOp::TYPED_STRICTNOTEQ);
     GateRef left = acc_.GetValueIn(gate, 0);
     GateRef right = acc_.GetValueIn(gate, 1);
-    ASSERT(acc_.IsUndefinedOrNull(left) || acc_.IsUndefinedOrNull(right));
+    ASSERT(acc_.IsUndefinedOrNullOrHole(left) || acc_.IsUndefinedOrNullOrHole(right));
     GateRef result = Circuit::NullGate();
     if (acc_.GetTypedBinaryOp(gate) == TypedBinOp::TYPED_STRICTEQ) {
         result = builder_.Equal(left, right);
@@ -517,13 +517,13 @@ void NumberSpeculativeLowering::VisitUndefinedEqOrUndefinedNotEq(GateRef gate)
            acc_.GetTypedBinaryOp(gate) == TypedBinOp::TYPED_NOTEQ);
     GateRef left = acc_.GetValueIn(gate, 0);
     GateRef right = acc_.GetValueIn(gate, 1);
-    ASSERT(acc_.IsUndefinedOrNull(left) || acc_.IsUndefinedOrNull(right));
-    GateRef valueGate =  acc_.IsUndefinedOrNull(left) ? right : left;
+    ASSERT(acc_.IsUndefinedOrNullOrHole(left) || acc_.IsUndefinedOrNullOrHole(right));
+    GateRef valueGate =  acc_.IsUndefinedOrNullOrHole(left) ? right : left;
     GateRef result = Circuit::NullGate();
     if (acc_.GetTypedBinaryOp(gate) == TypedBinOp::TYPED_EQ) {
-        result = builder_.TaggedIsUndefinedOrNull(valueGate);
+        result = builder_.TaggedIsUndefinedOrNullOrHole(valueGate);
     } else {
-        result = builder_.TaggedIsNotUndefinedAndNull(valueGate);
+        result = builder_.TaggedIsNotUndefinedAndNullAndHole(valueGate);
     }
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
 }

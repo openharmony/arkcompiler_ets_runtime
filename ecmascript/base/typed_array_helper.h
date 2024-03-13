@@ -60,6 +60,7 @@ public:
     inline static JSHandle<JSHClass> GetNotOnHeapHclassFromType(
         JSThread *thread, const JSHandle<JSTypedArray> &obj, const DataViewType arrayType);
     inline static uint32_t GetSizeFromType(const DataViewType arrayType);
+    inline static bool IsAccessorHasChanged(const JSHandle<JSTaggedValue> &obj);
     static int32_t SortCompare(JSThread *thread, const JSHandle<JSTaggedValue> &callbackfnHandle,
                                const JSHandle<JSTaggedValue> &buffer, const JSHandle<JSTaggedValue> &firstValue,
                                const JSHandle<JSTaggedValue> &secondValue);

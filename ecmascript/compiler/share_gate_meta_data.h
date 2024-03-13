@@ -75,6 +75,7 @@ enum class TypedCallTargetCheckOp : uint8_t;
     V(InconsistentHClass8,             INCONSISTENTHCLASS8)           \
     V(InconsistentHClass9,             INCONSISTENTHCLASS9)           \
     V(InconsistentHClass10,            INCONSISTENTHCLASS10)          \
+    V(NotEcmaObject1,                  NOTECMAOBJECT1)                \
     V(NotNewObj1,                      NOTNEWOBJ1)                    \
     V(NotNewObj2,                      NOTNEWOBJ2)                    \
     V(NotNewObj3,                      NOTNEWOBJ3)                    \

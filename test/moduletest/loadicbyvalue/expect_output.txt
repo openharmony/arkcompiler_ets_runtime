@@ -18,4 +18,5 @@ test successful !!!
 2147483648 2
 4294967295 3
 4294967296 4
+load ic by COWArray Success
 ic load success

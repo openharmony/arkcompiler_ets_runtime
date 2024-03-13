@@ -14,6 +14,10 @@
  */
 
 declare function print(str:any):string;
+declare function assert_unreachable():void;
+declare function assert_equal(a: Object, b: Object):void;
+var testTxt = ["exception_case11.ts:26:26", "exception_case11.ts:29:1"];
+var i = 0;
 try {
     class Student {
         name : string;
@@ -23,16 +27,18 @@ try {
         }
     }
     let stu = new Student("xiaoming");
-    let ans = stu.name
+    let ans = stu.name;
+    assert_unreachable();
 } catch (e) {
-    print(e)
+    assert_equal(e.message, "Unexpected Number in JSON Array Or Object");
     let stack = e.stack
     let array = stack.split('\n')
     for (let line of array) {
         let start = line.lastIndexOf('/') + 1
         let end = line.length - 1
         if (start < end) {
-            print(line.slice(start, end))
+            assert_equal(line.slice(start, end), testTxt[i]);
+            i++;
         } else {
             print(line)
         }

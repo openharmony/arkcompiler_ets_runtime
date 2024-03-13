@@ -48,6 +48,7 @@ private:
     void LowerTypedStringify(GateRef gate);
     void LowerBuiltinIterator(GateRef gate, BuiltinsStubCSigns::ID id);
     void LowerIteratorNext(GateRef gate, BuiltinsStubCSigns::ID id);
+    void LowerIteratorReturn(GateRef gate, BuiltinsStubCSigns::ID id);
     void LowerNumberConstructor(GateRef gate);
 
     Circuit *circuit_ {nullptr};

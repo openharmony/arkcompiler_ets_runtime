@@ -12,11 +12,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-print(NaN == NaN);
-print(NaN === NaN);
-print(NaN != NaN);
-print(NaN !== NaN);
-print(Number.NaN == Number.NaN);
-print(Number.NaN === Number.NaN);
-print(Number.NaN != Number.NaN);
-print(Number.NaN !== Number.NaN);
+declare function assert_equal(a: Object, b: Object):void;
+assert_equal(NaN == NaN, false);
+assert_equal(NaN === NaN, false);
+assert_equal(NaN != NaN, true);
+assert_equal(NaN !== NaN, true);
+assert_equal(Number.NaN == Number.NaN, false);
+assert_equal(Number.NaN === Number.NaN, false);
+assert_equal(Number.NaN != Number.NaN, true);
+assert_equal(Number.NaN !== Number.NaN, true);

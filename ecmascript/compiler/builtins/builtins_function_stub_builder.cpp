@@ -240,9 +240,16 @@ GateRef BuiltinsFunctionStubBuilder::MakeArgListWithHole(GateRef glue, GateRef a
     DEFVARIABLE(res, VariableType::INT32(), length);
     DEFVARIABLE(i, VariableType::INT32(), Int32(0));
     Label exit(env);
-
+    Label greatThanZero(env);
+    Label lessThanZero(env);
+    Branch(Int32GreaterThan(length, Int32(0)), &greatThanZero, &lessThanZero);
+    Bind(&lessThanZero);
+    {
+        res = Int32(0);
+        Jump(&exit);
+    }
+    Bind(&greatThanZero);
     GateRef argsLength = GetLengthOfTaggedArray(argv);
-
     Label lengthGreaterThanArgsLength(env);
     Label lengthLessThanArgsLength(env);
     Branch(Int32GreaterThan(length, argsLength), &lengthGreaterThanArgsLength, &lengthLessThanArgsLength);
