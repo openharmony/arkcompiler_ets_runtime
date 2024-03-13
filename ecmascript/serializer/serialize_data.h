@@ -46,7 +46,6 @@ enum class EncodeFlag : uint8_t {
     NATIVE_BINDING_OBJECT,
     JS_ERROR,
     JS_REG_EXP,
-    JS_FUNCTION_IN_SHARED,
     SHARED_OBJECT,
     LAST
 };

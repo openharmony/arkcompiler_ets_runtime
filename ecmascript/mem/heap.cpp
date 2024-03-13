@@ -555,7 +555,8 @@ void Heap::CollectGarbage(TriggerGCType gcType, GCReason reason)
     {
         ASSERT(thread_->IsInRunningState());
         RecursionScope recurScope(this);
-        if (thread_->IsCrossThreadExecutionEnable() || (InSensitiveStatus() && !ObjectExceedMaxHeapSize())) {
+        if (thread_->IsCrossThreadExecutionEnable() || GetOnSerializeEvent() ||
+            (InSensitiveStatus() && !ObjectExceedMaxHeapSize())) {
             return;
         }
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
