@@ -24,6 +24,7 @@
 #include "ecmascript/ecma_macros.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/global_env.h"
+#include "ecmascript/ic/proto_change_details.h"
 #include "ecmascript/js_array_iterator.h"
 #include "ecmascript/js_arraybuffer.h"
 #include "ecmascript/js_hclass.h"
@@ -299,6 +300,17 @@ uint32_t TypedArrayHelper::GetSizeFromType(const DataViewType arrayType)
     }
 
     return ElementSize::EIGHT;
+}
+
+bool TypedArrayHelper::IsAccessorHasChanged(const JSHandle<JSTaggedValue> &obj)
+{
+    if (obj->IsHeapObject()) {
+        JSTaggedValue markerValue = obj->GetTaggedObject()->GetClass()->GetProtoChangeMarker();
+        if (markerValue.IsProtoChangeMarker()) {
+            return ProtoChangeMarker::Cast(markerValue.GetTaggedObject())->GetAccessorHasChanged();
+        }
+    }
+    return false;
 }
 }  // namespace panda::ecmascript::base
 #endif  // ECMASCRIPT_BASE_TYPED_ARRAY_HELPER_INL_H
