@@ -1206,7 +1206,9 @@ template("host_aot_js_test_action") {
       _host_jsvm_target_,
     ]
     deps += _deps_
-    if (!TEST_LLVM_ONLY) {
+    _is_test_llvm_only_ =
+        defined(invoker.is_test_llvm_only) && invoker.is_test_llvm_only
+    if (!_is_test_llvm_only_) {
       if (target_cpu == "x64") {
         deps += [ ":${_target_name_}AotActionWithLiteCG" ]
       } else if (ark_standalone_build && run_with_qemu && host_os == "linux" &&
@@ -1287,7 +1289,9 @@ template("host_aot_js_test_action") {
     ]
     deps += _deps_
 
-    if (!TEST_LLVM_ONLY) {
+    _is_test_llvm_only_ =
+        defined(invoker.is_test_llvm_only) && invoker.is_test_llvm_only
+    if (!_is_test_llvm_only_) {
       if (target_cpu == "x64") {
         deps += [ ":${_target_name_}AotContextActionWithLiteCG" ]
       } else if (ark_standalone_build && run_with_qemu && host_os == "linux" &&
@@ -2222,6 +2226,11 @@ template("host_aot_test_action") {
   _test_aot_log_level = "info"
   _test_expect_path_ = "${_src_dir_}/expect_output.txt"
   _test_pgo_expect_path_ = "${_src_dir_}/pgo_expect_output.txt"
+  _is_test_llvm_only_ = TEST_LLVM_ONLY
+  if (!TEST_LLVM_ONLY && defined(invoker.is_test_llvm_only) &&
+      invoker.is_test_llvm_only) {
+    _is_test_llvm_only_ = true
+  }
   if (defined(invoker.use_one_expect_path) && invoker.use_one_expect_path) {
     _test_pgo_expect_path_ = _test_expect_path_
   }
@@ -2522,7 +2531,9 @@ template("host_aot_test_action") {
     }
     deps += _deps_
 
-    if (!TEST_LLVM_ONLY) {
+    _is_test_llvm_only_ =
+        defined(invoker.is_test_llvm_only) && invoker.is_test_llvm_only
+    if (!_is_test_llvm_only_) {
       if (target_cpu == "x64") {
         deps += [ ":${_target_name_}AotActionWithLiteCG" ]
       } else if (ark_standalone_build && run_with_qemu && host_os == "linux" &&
@@ -2606,7 +2617,9 @@ template("host_aot_test_action") {
     }
     deps += _deps_
 
-    if (!TEST_LLVM_ONLY) {
+    _is_test_llvm_only_ =
+        defined(invoker.is_test_llvm_only) && invoker.is_test_llvm_only
+    if (!_is_test_llvm_only_) {
       if (target_cpu == "x64") {
         deps += [ ":${_target_name_}AotContextActionWithLiteCG" ]
       } else if (ark_standalone_build && run_with_qemu && host_os == "linux" &&

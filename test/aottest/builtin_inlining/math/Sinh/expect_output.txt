@@ -18,4 +18,5 @@ NaN
 1.1752011936438014
 11013.232874703393
 111
+[trace] Check Type: NotNumber1
 NaN

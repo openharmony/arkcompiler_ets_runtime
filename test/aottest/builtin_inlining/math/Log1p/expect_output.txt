@@ -23,4 +23,5 @@ NaN
 1
 1
 111
+[trace] Check Type: NotNumber1
 -Infinity

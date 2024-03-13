@@ -33,4 +33,5 @@ NaN
 0
 NaN
 Infinity
+[trace] Check Type: NotNumber1
 NaN

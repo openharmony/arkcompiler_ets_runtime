@@ -20,4 +20,5 @@ host_aot_test_action("builtinMathCos") {
   is_enable_trace_deopt = true
   log_option = " --log-info=trace"
   deps = []
+  is_test_llvm_only = true
 }

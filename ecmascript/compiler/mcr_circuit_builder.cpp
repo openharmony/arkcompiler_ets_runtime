@@ -543,11 +543,11 @@ GateRef CircuitBuilder::TryPrimitiveTypeCheck(GateType type, GateRef gate)
 
 std::vector<GateRef> CircuitBuilder::ConcatParams(const std::vector<std::vector<GateRef>>& params)
 {
-    std::vector<GateRef> union_params;
+    std::vector<GateRef> unionParams;
     for (auto param: params) {
-        union_params.insert(union_params.end(), param.begin(), param.end());
+        unionParams.insert(unionParams.end(), param.begin(), param.end());
     }
-    return union_params;
+    return unionParams;
 }
 
 GateRef CircuitBuilder::CallTargetCheck(GateRef gate, GateRef function, GateRef id, const char* comment)

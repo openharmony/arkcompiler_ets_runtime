@@ -1331,7 +1331,7 @@ GateRef NumberSpeculativeRetype::VisitMathBuiltin(GateRef gate)
     size_t valueNum = acc_.GetNumValueIn(gate);
     for (size_t i = 0; i < valueNum; ++i) {
         GateRef input = acc_.GetValueIn(gate, i);
-        acc_.ReplaceValueIn(gate, CheckAndConvertToFloat64(input, GateType::NumberType(), ConvertToNumber::ALL), i);
+        acc_.ReplaceValueIn(gate, CheckAndConvertToFloat64(input, GateType::NumberType(), ConvertToNumber::BOOL_ONLY), i);
     }
     acc_.ReplaceStateIn(gate, builder_.GetState());
     acc_.ReplaceDependIn(gate, builder_.GetDepend());
@@ -1347,7 +1347,7 @@ GateRef NumberSpeculativeRetype::VisitMathAbs(GateRef gate)
     Environment env(gate, circuit_, &builder_);
     ASSERT(acc_.GetNumValueIn(gate) == 1);
     GateRef input = acc_.GetValueIn(gate, 0);
-    acc_.ReplaceValueIn(gate, CheckAndConvertToTagged(input, GateType::NumberType(), ConvertToNumber::ALL), 0);
+    acc_.ReplaceValueIn(gate, CheckAndConvertToTagged(input, GateType::NumberType(), ConvertToNumber::BOOL_ONLY), 0);
     acc_.ReplaceStateIn(gate, builder_.GetState());
     acc_.ReplaceDependIn(gate, builder_.GetDepend());
     return Circuit::NullGate();

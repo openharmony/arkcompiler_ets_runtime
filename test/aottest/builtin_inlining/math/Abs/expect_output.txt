@@ -37,17 +37,23 @@ NaN
 2147483648
 2147483649
 3
+[trace] Check Type: NotNumber2
 NaN
+[trace] Check Type: NotNumber2
 NaN
 12
+[trace] Check Type: NotNumber2
 NaN
+[trace] Check Type: NotNumber2
 12
 [trace] Check Type: NotCallTarget1
 -12
 [trace] Check Type: NotCallTarget1
 abc
 12
+[trace] Check Type: NotNumber2
 NaN
+[trace] Check Type: NotNumber2
 23
 14
 Error: already positive
