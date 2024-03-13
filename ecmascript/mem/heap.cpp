@@ -89,18 +89,6 @@ void SharedHeap::Initialize(NativeAreaAllocator *nativeAreaAllocator, HeapRegion
     sHugeObjectSpace_ = new SharedHugeObjectSpace(this, heapRegionAllocator_, oldSpaceCapacity, oldSpaceCapacity);
 }
 
-#if defined(ENABLE_DUMP_IN_FAULTLOG)
-struct JsHeapDumpWork {
-    EcmaVM *vm;
-    size_t size;
-    std::string functionName;
-    bool NonMovableObjNearOOM;
-    uv_work_t work;
-};
-static constexpr int DUMP_TIME_OUT = 30;
-static constexpr int DEFAULT_SLEEP_TIME = 100000;
-#endif
-
 void SharedHeap::PostInitialization(const GlobalEnvConstants *globalEnvConstants, const JSRuntimeOptions &option)
 {
     globalEnvConstants_ = globalEnvConstants;
