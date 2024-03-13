@@ -63,8 +63,6 @@ bool CgRegAlloc::PhaseRun(maplebe::CGFunc &f)
             CHECK_FATAL(bfs != nullptr, "null ptr check");
             live = GET_ANALYSIS(CgLiveAnalysis, f);
             CHECK_FATAL(live != nullptr, "null ptr check");
-            // revert liveanalysis result container.
-            live->ResetLiveSet();
             LoopAnalysis *loop = GET_ANALYSIS(CgLoopAnalysis, f);
             CHECK_FATAL(loop != nullptr, "null ptr check");
             regAllocator = phaseMp->New<LSRALinearScanRegAllocator>(f, *phaseMp, bfs, *loop);
@@ -75,8 +73,6 @@ bool CgRegAlloc::PhaseRun(maplebe::CGFunc &f)
                     &CgLiveAnalysis::id, f);
                 live = static_cast<CgLiveAnalysis*>(it)->GetResult();
                 CHECK_FATAL(live != nullptr, "null ptr check");
-                /* revert liveanalysis result container. */
-                live->ResetLiveSet();
                 DomAnalysis *dom = GET_ANALYSIS(CgDomAnalysis, f);
                 CHECK_FATAL(dom != nullptr, "null ptr check");
                 LoopAnalysis *loop = GET_ANALYSIS(CgLoopAnalysis, f);
