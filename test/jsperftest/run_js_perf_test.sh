@@ -59,7 +59,7 @@ function init()
                 ITERATIONS=$1
                 ;;
             *)
-                JS_PERF_RESULT_PATH="$(realpath "$1")"
+                JS_PERF_RESULT_PATH="$1"
                 OPENHARMONY_ROOT_PATH="$2"
                 break
                 ;;
@@ -88,6 +88,7 @@ function init()
     then
         mkdir -p "${JS_PERF_RESULT_PATH}"
     fi
+    JS_PERF_RESULT_PATH="$(realpath "${JS_PERF_RESULT_PATH}")"
     WORKDIR_PATH="${JS_PERF_RESULT_PATH}/workdir"
     if [[ -d "${WORKDIR_PATH}" ]]
     then
@@ -192,15 +193,17 @@ main()
     prepare_js_test_files || { return $ret_error; }
 
     cd "${WORKDIR_PATH}"
-    if [[ -n ${BENCH_MULTIPLIER} ]]
+    if [[ -n "${BENCH_MULTIPLIER}" ]]
     then
         for js_test in $(find ${JS_TEST_PATH} -name "*js")
         do
-            python3 ${cur_path}/prerun_proc.py __MULTIPLIER__=${BENCH_MULTIPLIER} "${js_test}"
+            python3 "${cur_path}"/prerun_proc.py __MULTIPLIER__="${BENCH_MULTIPLIER}" "${js_test}"
         done
     fi
     mkdir -p "${WORKDIR_PATH}/tmp"
     echo "LD_LIBRARY_PATH=${LD_LIBRARY_PATH}"
+    local -i benchs_time_start benchs_time benchs_minutes
+    benchs_time_start=$(date +%s)
     python3  "${cur_path}"/run_js_test.py \
                         -bp "${OPENHARMONY_ROOT_PATH}" \
                         -p "${JS_TEST_PATH}" \
@@ -208,6 +211,9 @@ main()
                         -v "${D8_BINARY_PATH}" \
                         -e "${VER_PLATFORM}" \
                         -n "${ITERATIONS}"
+    benchs_time=$(($(date +%s) - benchs_time_start))
+    benchs_minutes=$((benchs_time / 60))
+    echo "Benchmark script time: ${benchs_minutes} min $((benchs_time - benchs_minutes * 60)) sec"
 }
 
 main "$@"
