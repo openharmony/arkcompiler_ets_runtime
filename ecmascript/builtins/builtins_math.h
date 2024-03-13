@@ -42,7 +42,7 @@
     V("atan",   Atan,   1, MathAtan)    /* Math.atan ( x ) */               \
     V("atan2",  Atan2,  2, MathAtan2)   /* Math.atan2 ( y, x ) */           \
     V("atanh",  Atanh,  1, MathAtanh)   /* Math.atanh ( x ) */              \
-    V("cbrt",   Cbrt,   1, INVALID)     /* Math.cbrt ( x ) */               \
+    V("cbrt",   Cbrt,   1, MathCbrt)     /* Math.cbrt ( x ) */              \
     V("ceil",   Ceil,   1, INVALID)     /* Math.ceil ( x ) */               \
     V("clz32",  Clz32,  1, INVALID)     /* Math.clz32 ( x ) */              \
     V("cos",    Cos,    1, MathCos)     /* Math.cos ( x ) */                \

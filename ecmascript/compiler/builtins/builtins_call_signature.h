@@ -147,6 +147,7 @@ namespace panda::ecmascript::kungfu {
     V(MathSin)                                      \
     V(MathSinh)                                     \
     V(MathTan)                                      \
+    V(MathCbrt)                                     \
     V(MathTanh)                                     \
     V(MathLog)                                      \
     V(MathLog2)                                     \
@@ -313,6 +314,8 @@ public:
                 return ConstantIndex::MATH_EXPM1_INDEX;
             case BuiltinsStubCSigns::ID::MathPow:
                 return ConstantIndex::MATH_POW_INDEX;
+            case BuiltinsStubCSigns::ID::MathCbrt:
+                return ConstantIndex::MATH_CBRT_INDEX;
             case BuiltinsStubCSigns::ID::FLOOR:
                 return ConstantIndex::MATH_FLOOR_FUNCTION_INDEX;
             case BuiltinsStubCSigns::ID::SQRT:
@@ -366,6 +369,7 @@ public:
             {"Exp", MathExp},
             {"Expm1", MathExpm1},
             {"sqrt", SQRT},
+            {"cbrt", MathCbrt},
             {"abs", MathAbs},
             {"pow", MathPow},
             {"floor", FLOOR},

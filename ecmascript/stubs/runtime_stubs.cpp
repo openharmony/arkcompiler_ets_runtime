@@ -2950,6 +2950,11 @@ double RuntimeStubs::FloatTanh(double x)
     return std::tanh(x);
 }
 
+double RuntimeStubs::FloatCbrt(double x)
+{
+    return std::cbrt(x);
+}
+
 double RuntimeStubs::FloatFloor(double x)
 {
     ASSERT(!std::isnan(x));

@@ -125,6 +125,9 @@ void NativeInlineLowering::RunNativeInlineLowering()
             case BuiltinsStubCSigns::ID::MathPow:
                 TryInlineMathBinaryBuiltin(gate, argc, id, circuit_->MathPow());
                 break;
+            case BuiltinsStubCSigns::ID::MathCbrt:
+                TryInlineMathUnaryBuiltin(gate, argc, id, circuit_->MathCbrt());
+                break;
             default:
                 break;
         }

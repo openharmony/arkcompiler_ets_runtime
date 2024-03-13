@@ -11,38 +11,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-group("ark_aot_builtin_inlining_math_test") {
-  testonly = true
-  test_list = [
-    "Acos",
-    "Acosh",
-    "Asin",
-    "Asinh",
-    "Atan",
-    "Atan2",
-    "Atanh",
-    "Cos",
-    "Cosh",
-    "Log",
-    "Log2",
-    "Log10",
-    "Log1p",
-    "Exp",
-    "Expm1",
-    "Sin",
-    "Sinh",
-    "Tan",
-    "Tanh",
-    "Abs",
-    "Pow",
-    "Cbrt",
-  ]
+import("//arkcompiler/ets_runtime/test/test_helper.gni")
 
+host_aot_test_action("builtinMathCbrt") {
+  is_enable_pgo = true
+  is_only_typed_path = true
+  is_enable_opt_inlining = true
+  is_enable_trace_deopt = true
+  log_option = " --log-info=trace"
   deps = []
-  foreach(test, test_list) {
-    deps += [ "${test}:builtinMath${test}AotAction" ]
-    if (!is_debug) {
-      deps += [ "${test}:builtinMath${test}AotContextAction" ]
-    }
-  }
 }

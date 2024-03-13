@@ -84,6 +84,9 @@ GateRef TypedNativeInlineLowering::VisitGate(GateRef gate)
         case OpCode::MATH_POW:
             LowerMathPow(gate);
             break;
+        case OpCode::MATH_CBRT:
+            LowerGeneralUnaryMath(gate, RTSTUB_ID(FloatCbrt));
+            break;
         default:
             break;
     }
