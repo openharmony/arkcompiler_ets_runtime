@@ -21,6 +21,7 @@
  */
 
 declare function print(str:any):string;
+declare function assert_equal(a: Object, b: Object):void;
 
 var arr = new Array(10)
 for (let i = 0; i < 5; i++) {
@@ -33,12 +34,18 @@ let self = {
     8: []
 }
 self.__proto__ = parent
+var testArrary = ["2", "8", "a", "0", "1", "3", "4", "5", "6", "7", "9"];
+var j = 0;
 for (let i in self) {
-    print(i)
+    assert_equal(i, testArrary[j]);
+    j++;
 }
 print("===============")
+testArrary = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"];
+j = 0;
 for (let i in parent) {
-    print(i)
+    assert_equal(i, testArrary[j]);
+    j++;
 }
 print("===============")
 const targetObj = {
@@ -53,6 +60,9 @@ const proxy_has = new Proxy(targetObj, {
     }
 })
 
+testArrary = ["_secret", "test", "eyeCount"];
+j = 0;
 for (const key in proxy_has) {
-    print(key);
+    assert_equal(key, testArrary[j]);
+    j++;
 }
