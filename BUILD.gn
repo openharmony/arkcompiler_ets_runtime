@@ -1026,10 +1026,13 @@ libark_jsruntime_common_set("libark_jsruntime_set") {
 }
 
 libark_jsruntime_common_set("libark_jsruntime_arm_set") {
-  if (is_ohos && is_standard_system && current_toolchain != host_toolchain &&
-      !ark_standalone_build) {
+  if (enable_sanitize) {
     sanitize = {
       ubsan = true
+      cfi = true
+      cfi_cross_dso = true
+      debug = false
+      blocklist = "./cfi_blocklist.txt"
     }
   }
 }
@@ -1038,10 +1041,12 @@ libark_jsruntime_intl_common_set("libark_js_intl_set") {
 }
 
 libark_jsruntime_intl_common_set("libark_js_intl_arm_set") {
-  if (is_ohos && is_standard_system && current_toolchain != host_toolchain &&
-      !ark_standalone_build) {
+  if (enable_sanitize) {
     sanitize = {
       ubsan = true
+      cfi = true
+      cfi_cross_dso = true
+      debug = false
     }
   }
 }
@@ -1051,7 +1056,10 @@ config("ark_jsruntime_test_nolto") {
 }
 
 ohos_source_set("libark_jsruntime_test_set") {
-  stack_protector_ret = false
+  if (enable_sanitize) {
+    branch_protector_ret = "pac_ret"
+  }
+
   sources = ecma_source
   sources += intl_sources
   sources += ecma_profiler_source
@@ -1138,11 +1146,13 @@ ohos_source_set("libark_jsruntime_test_set") {
 }
 
 ohos_source_set("libark_jsruntime_static") {
-  stack_protector_ret = false
-  if (is_ohos && is_standard_system && current_toolchain != host_toolchain &&
-      !ark_standalone_build) {
+  if (enable_sanitize) {
+    branch_protector_ret = "pac_ret"
     sanitize = {
       ubsan = true
+      cfi = true
+      cfi_cross_dso = true
+      debug = false
     }
   }
 
@@ -1173,11 +1183,13 @@ ohos_source_set("libark_jsruntime_static") {
 }
 
 ohos_shared_library("libark_jsruntime") {
-  stack_protector_ret = false
-  if (is_ohos && is_standard_system && current_toolchain != host_toolchain &&
-      !ark_standalone_build) {
+  if (enable_sanitize) {
+    branch_protector_ret = "pac_ret"
     sanitize = {
       ubsan = true
+      cfi = true
+      cfi_cross_dso = true
+      debug = false
     }
   }
 
@@ -1236,7 +1248,9 @@ ohos_shared_library("libark_jsruntime") {
 }
 
 ohos_shared_library("libark_jsruntime_test") {
-  stack_protector_ret = false
+  if (enable_sanitize) {
+    branch_protector_ret = "pac_ret"
+  }
   deps = [
     ":libark_jsruntime_test_set",
     "$ark_root/libpandafile:libarkfile_static",

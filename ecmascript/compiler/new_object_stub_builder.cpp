@@ -179,7 +179,7 @@ void NewObjectStubBuilder::NewTaggedArrayChecked(Variable *result, GateRef len, 
     {
         auto hclass = GetGlobalConstantValue(
             VariableType::JS_POINTER(), glue_, ConstantIndex::ARRAY_CLASS_INDEX);
-        StoreBuiltinHClass(result->ReadVariable(), hclass);
+        StoreBuiltinHClass(glue_, result->ReadVariable(), hclass);
         Label afterInitialize(env);
         InitializeTaggedArrayWithSpeicalValue(&afterInitialize,
             result->ReadVariable(), Hole(), Int32(0), len);
@@ -1497,7 +1497,7 @@ void NewObjectStubBuilder::CreateJSCollectionIterator(
     AllocateInYoung(result, exit, &noException);
     Bind(&noException);
     {
-        StoreBuiltinHClass(result->ReadVariable(), iteratorHClass);
+        StoreBuiltinHClass(glue_, result->ReadVariable(), iteratorHClass);
         SetHash(glue_, result->ReadVariable(), Int64(JSTaggedValue(0).GetRawData()));
         auto emptyArray = GetGlobalConstantValue(
             VariableType::JS_POINTER(), glue_, ConstantIndex::EMPTY_ARRAY_OBJECT_INDEX);
@@ -1508,7 +1508,8 @@ void NewObjectStubBuilder::CreateJSCollectionIterator(
         GateRef linked = Load(VariableType::JS_ANY(), thisValue, IntPtr(linkedOffset));
         // SetIterated
         GateRef iteratorOffset = IntPtr(iterOffset);
-        StoreWithBarrier(VariableType::JS_POINTER(), glue_, result->ReadVariable(), iteratorOffset, linked);
+        Store(VariableType::JS_POINTER(), glue_, result->ReadVariable(), iteratorOffset, linked,
+              MemoryOrder::NeedBarrier());
 
         // SetIteratorNextIndex
         GateRef nextIndexOffset = IntPtr(IteratorType::NEXT_INDEX_OFFSET);

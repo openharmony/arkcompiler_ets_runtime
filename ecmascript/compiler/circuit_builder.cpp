@@ -68,6 +68,11 @@ GateRef CircuitBuilder::Selector(OpCode opcode, GateRef control,
     return Selector(opcode, machineType, control, values, valueCounts, type);
 }
 
+GateRef CircuitBuilder::Nop()
+{
+    return circuit_->NewGate(circuit_->Nop(), {});
+}
+
 GateRef CircuitBuilder::UndefineConstant()
 {
     auto type = GateType::TaggedValue();
@@ -314,7 +319,7 @@ GateRef CircuitBuilder::DeoptCheck(GateRef condition, GateRef frameState, DeoptT
     auto currentDepend = currentLabel->GetDepend();
     ASSERT(acc_.GetOpCode(frameState) == OpCode::FRAME_STATE);
     GateRef ret = GetCircuit()->NewGate(circuit_->DeoptCheck(),
-        MachineType::I1, { currentControl, condition,
+        MachineType::I1, { currentControl, currentDepend, condition,
         frameState, Int64(static_cast<int64_t>(type))}, GateType::NJSValue(), comment.c_str());
     auto dependRelay = DependRelay(ret, currentDepend);
     currentLabel->SetControl(ret);

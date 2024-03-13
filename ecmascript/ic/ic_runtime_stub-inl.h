@@ -553,6 +553,7 @@ JSTaggedValue ICRuntimeStub::StoreElement(JSThread *thread, JSObject *receiver, 
         auto handlerInfo = static_cast<uint32_t>(handler.GetInt());
         [[maybe_unused]] EcmaHandleScope handleScope(thread);
         JSHandle<JSObject> receiverHandle(thread, receiver);
+        JSHandle<JSTaggedValue> valueHandle(thread, value);
         if (HandlerBase::IsTypedArrayElement(handlerInfo)) {
             return StoreTypedArrayElement(thread, JSTaggedValue::Cast(receiver), key, value);
         } else if (HandlerBase::IsJSArray(handlerInfo)) {
@@ -573,13 +574,12 @@ JSTaggedValue ICRuntimeStub::StoreElement(JSThread *thread, JSObject *receiver, 
             if (JSObject::ShouldTransToDict(capacity, elementIndex)) {
                 return JSTaggedValue::Hole();
             }
-            JSHandle<JSTaggedValue> valueHandle(thread, value);
             elements = *JSObject::GrowElementsCapacity(thread, receiverHandle, elementIndex + 1);
             receiverHandle->SetElements(thread, JSTaggedValue(elements));
             elements->Set(thread, elementIndex, valueHandle);
             return JSTaggedValue::Undefined();
         }
-        elements->Set(thread, elementIndex, value);
+        elements->Set(thread, elementIndex, valueHandle);
     } else {
         ASSERT(handler.IsPrototypeHandler());
         if (receiver->GetClass()->IsJSShared()) {

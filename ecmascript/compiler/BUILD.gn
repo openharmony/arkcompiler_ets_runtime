@@ -152,6 +152,7 @@ libark_jsoptimizer_sources = [
   "object_access_helper.cpp",
   "operations_stub_builder.cpp",
   "pass_manager.cpp",
+  "post_schedule.cpp",
   "profiler_stub_builder.cpp",
   "range_analysis.cpp",
   "range_guard.cpp",
@@ -297,7 +298,15 @@ config("libark_jsoptimizer_set_config") {
 }
 
 ohos_source_set("libark_jsoptimizer_set") {
-  stack_protector_ret = false
+  if (enable_sanitize) {
+    branch_protector_ret = "pac_ret"
+    sanitize = {
+      cfi = true
+      cfi_cross_dso = true
+      debug = false
+    }
+  }
+
   sources = libark_jsoptimizer_sources
   if (enable_local_code_sign) {
     sources += [ "$js_root/ecmascript/platform/unix/ohos/code_sign.cpp" ]
@@ -385,11 +394,13 @@ ohos_source_set("libark_jsoptimizer_set_with_maple") {
 }
 
 ohos_source_set("libark_stub_set") {
-  stack_protector_ret = false
-  if (is_ohos && is_standard_system && current_toolchain != host_toolchain &&
-      !ark_standalone_build) {
+  if (enable_sanitize) {
+    branch_protector_ret = "pac_ret"
     sanitize = {
       ubsan = true
+      cfi = true
+      cfi_cross_dso = true
+      debug = false
     }
   }
   deps = [ ":build_stub_to_cpp" ]
@@ -406,7 +417,10 @@ ohos_source_set("libark_stub_set") {
 }
 
 ohos_source_set("libark_mock_stub_set") {
-  stack_protector_ret = false
+  if (enable_sanitize) {
+    branch_protector_ret = "pac_ret"
+  }
+
   sources = [ "mock/mock_stub_an.cpp" ]
 
   public_configs = [
@@ -416,7 +430,15 @@ ohos_source_set("libark_mock_stub_set") {
 }
 
 ohos_shared_library("libark_jsoptimizer") {
-  stack_protector_ret = false
+  if (enable_sanitize) {
+    branch_protector_ret = "pac_ret"
+    sanitize = {
+      cfi = true
+      cfi_cross_dso = true
+      debug = false
+    }
+  }
+
   deps = [
     ":libark_jsoptimizer_set_with_maple",
     "$ark_third_party_root/bounds_checking_function:libsec_shared",
@@ -438,6 +460,14 @@ ohos_shared_library("libark_jsoptimizer") {
 }
 
 ohos_executable("ark_stub_compiler") {
+  if (enable_sanitize) {
+    branch_protector_ret = "pac_ret"
+    sanitize = {
+      cfi = true
+      cfi_cross_dso = true
+      debug = false
+    }
+  }
   sources = [ "stub_compiler.cpp" ]
   include_dirs = [ "$target_gen_dir" ]
 
@@ -486,8 +516,8 @@ ohos_executable("ark_stub_compiler") {
 }
 
 ohos_executable("ark_aot_compiler") {
-  if (is_ohos && is_standard_system && current_toolchain != host_toolchain &&
-      !ark_standalone_build) {
+  if (enable_sanitize) {
+    branch_protector_ret = "pac_ret"
     sanitize = {
       ubsan = true
     }

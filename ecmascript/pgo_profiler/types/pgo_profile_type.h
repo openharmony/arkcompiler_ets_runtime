@@ -321,7 +321,7 @@ public:
         return GetId();
     }
 
-    JSType GetBuiltinsId() const
+    JSType GetBuiltinsType() const
     {
         ASSERT(IsBuiltinsType());
         auto builtinsId = BuiltinsId(GetId());
@@ -345,7 +345,7 @@ public:
     bool IsBuiltinsString() const
     {
         if (IsBuiltinsType()) {
-            JSType type = GetBuiltinsId();
+            JSType type = GetBuiltinsType();
             return type >= JSType::STRING_FIRST && type <= JSType::STRING_LAST;
         }
         return false;
@@ -354,7 +354,7 @@ public:
     bool IsBuiltinsArray() const
     {
         if (IsBuiltinsType()) {
-            JSType type = GetBuiltinsId();
+            JSType type = GetBuiltinsType();
             return type == JSType::JS_ARRAY;
         }
         return false;
@@ -363,7 +363,7 @@ public:
     bool IsBuiltinsTypeArray() const
     {
         if (IsBuiltinsType()) {
-            JSType type = GetBuiltinsId();
+            JSType type = GetBuiltinsType();
             return type > JSType::JS_TYPED_ARRAY_FIRST && type <= JSType::JS_TYPED_ARRAY_LAST;
         }
         return false;

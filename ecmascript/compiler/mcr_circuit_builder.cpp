@@ -56,6 +56,19 @@ GateRef CircuitBuilder::HeapObjectCheck(GateRef gate, GateRef frameState)
     return ret;
 }
 
+GateRef CircuitBuilder::EcmaObjectCheck(GateRef value)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    auto frameState = acc_.FindNearestFrameState(currentDepend);
+    GateRef ret = GetCircuit()->NewGate(circuit_->EcmaObjectCheck(),
+        MachineType::I1, {currentControl, currentDepend, value, frameState}, GateType::NJSValue());
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
+}
+
 GateRef CircuitBuilder::ProtoChangeMarkerCheck(GateRef gate, GateRef frameState)
 {
     auto currentLabel = env_->GetCurrentLabel();
@@ -230,13 +243,13 @@ GateRef CircuitBuilder::RangeGuard(GateRef gate, uint32_t left, uint32_t right)
     return ret;
 }
 
-GateRef CircuitBuilder::BuiltinPrototypeHClassCheck(GateRef gate, BuiltinTypeId type)
+GateRef CircuitBuilder::BuiltinPrototypeHClassCheck(GateRef gate, BuiltinTypeId type, ElementsKind kind)
 {
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
     auto frameState = acc_.FindNearestFrameState(currentDepend);
-    BuiltinPrototypeHClassAccessor accessor(type);
+    BuiltinPrototypeHClassAccessor accessor(type, kind);
     GateRef ret = GetCircuit()->NewGate(circuit_->BuiltinPrototypeHClassCheck(accessor.ToValue()),
         MachineType::I1, {currentControl, currentDepend, gate, frameState}, GateType::NJSValue());
     currentLabel->SetControl(ret);
@@ -836,12 +849,10 @@ GateRef CircuitBuilder::StoreConstOffset(VariableType type,
     GateRef receiver, size_t offset, GateRef value, MemoryOrder order)
 {
     auto currentLabel = env_->GetCurrentLabel();
-    auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
     auto bits = LoadStoreConstOffsetAccessor::ToValue(offset, order);
     auto ret = GetCircuit()->NewGate(circuit_->StoreConstOffset(bits), type.GetMachineType(),
-        { currentControl, currentDepend, receiver, value }, type.GetGateType());
-    currentLabel->SetControl(ret);
+        { currentDepend, receiver, value }, type.GetGateType());
     currentLabel->SetDepend(ret);
     return ret;
 }
@@ -953,14 +964,12 @@ GateRef CircuitBuilder::FinishAllocate(GateRef value)
     return newGate;
 }
 
-GateRef CircuitBuilder::HeapAlloc(GateRef size, GateType type, RegionSpaceFlag flag)
+GateRef CircuitBuilder::HeapAlloc(GateRef glue, GateRef size, GateType type, RegionSpaceFlag flag)
 {
     auto currentLabel = env_->GetCurrentLabel();
-    auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
     auto ret = GetCircuit()->NewGate(circuit_->HeapAlloc(flag), MachineType::I64,
-                                     { currentControl, currentDepend, size }, type);
-    currentLabel->SetControl(ret);
+                                     { currentDepend, glue, size }, type);
     currentLabel->SetDepend(ret);
     return ret;
 }

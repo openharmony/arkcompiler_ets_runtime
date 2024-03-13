@@ -58,6 +58,7 @@ private:
     void LowerStModuleVar(GateRef gate);
     void LowerNTypedStOwnByName(GateRef gate);
     void LowerThrowIfSuperNotCorrectCall(GateRef gate);
+    void LowerThrowIfNotObject(GateRef gate);
 
     bool IsLogEnabled() const
     {

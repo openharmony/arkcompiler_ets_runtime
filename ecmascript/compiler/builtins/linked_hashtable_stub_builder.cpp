@@ -618,7 +618,11 @@ GateRef LinkedHashTableStubBuilder<LinkedHashTableType, LinkedHashTableObject>::
     Label cfgEntry(env);
     env->SubCfgEntry(&cfgEntry);
     Label exit(env);
+    Label nonEmpty(env);
     DEFVARIABLE(res, VariableType::JS_ANY(), TaggedFalse());
+    GateRef size = GetNumberOfElements(linkedTable);
+    Branch(Int32Equal(size, Int32(0)), &exit, &nonEmpty);
+    Bind(&nonEmpty);
     GateRef hash = GetHash(key);
     GateRef entry = FindElement(linkedTable, key, hash);
     Label findEntry(env);

@@ -186,7 +186,7 @@ void LLVMIRBuilder::InitializeHandlers()
         {OpCode::ICMP, &LLVMIRBuilder::HandleCmp},
         {OpCode::FCMP, &LLVMIRBuilder::HandleCmp},
         {OpCode::LOAD, &LLVMIRBuilder::HandleLoad},
-        {OpCode::STORE, &LLVMIRBuilder::HandleStore},
+        {OpCode::STORE_WITHOUT_BARRIER, &LLVMIRBuilder::HandleStore},
         {OpCode::SIGNED_INT_TO_FLOAT, &LLVMIRBuilder::HandleChangeInt32ToDouble},
         {OpCode::UNSIGNED_INT_TO_FLOAT, &LLVMIRBuilder::HandleChangeUInt32ToDouble},
         {OpCode::FLOAT_TO_SIGNED_INT, &LLVMIRBuilder::HandleChangeDoubleToInt32},
@@ -1161,17 +1161,17 @@ void LLVMIRBuilder::HandleGoto(GateRef gate)
     std::vector<GateRef> outs;
     acc_.GetOutStates(gate, outs);
     int block = instID2bbID_[acc_.GetId(gate)];
-    int bbOut = instID2bbID_[acc_.GetId(outs[0])];
     switch (acc_.GetOpCode(gate)) {
         case OpCode::MERGE:
         case OpCode::LOOP_BEGIN: {
             for (const auto &out : outs) {
-                bbOut = instID2bbID_[acc_.GetId(out)];
+                int bbOut = instID2bbID_[acc_.GetId(out)];
                 VisitGoto(block, bbOut);
             }
             break;
         }
         default: {
+            int bbOut = instID2bbID_[acc_.GetId(outs[0])];
             VisitGoto(block, bbOut);
             break;
         }
@@ -2072,7 +2072,9 @@ void LLVMIRBuilder::HandleLoad(GateRef gate)
 
 void LLVMIRBuilder::HandleStore(GateRef gate)
 {
-    VisitStore(gate, acc_.GetIn(gate, 2), acc_.GetIn(gate, 1));  // 2:baseAddr gate, 1:data gate
+    GateRef addr = acc_.GetValueIn(gate, 0);
+    GateRef value = acc_.GetValueIn(gate, 1);
+    VisitStore(gate, addr, value);
 }
 
 void LLVMIRBuilder::HandleChangeInt32ToDouble(GateRef gate)

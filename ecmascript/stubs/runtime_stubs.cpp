@@ -28,6 +28,7 @@
 #include "ecmascript/js_stable_array.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/base/typed_array_helper.h"
+#include "ecmascript/builtins/builtins_iterator.h"
 #include "ecmascript/builtins/builtins_string_iterator.h"
 #include "ecmascript/compiler/builtins/containers_stub_builder.h"
 #include "ecmascript/builtins/builtins_array.h"
@@ -978,6 +979,13 @@ DEF_RUNTIME_STUBS(ArrayIteratorNext)
     RUNTIME_STUBS_HEADER(ArrayIteratorNext);
     JSHandle<JSTaggedValue> thisObj = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
     return JSArrayIterator::NextInternal(thread, thisObj).GetRawData();
+}
+
+DEF_RUNTIME_STUBS(IteratorReturn)
+{
+    RUNTIME_STUBS_HEADER(IteratorReturn);
+    JSHandle<JSTaggedValue> thisObj = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
+    return builtins::BuiltinsIterator::ReturnInternal(thread, thisObj).GetRawData();
 }
 
 DEF_RUNTIME_STUBS(GetNextPropName)

@@ -1038,6 +1038,7 @@ void HeapSnapshot::FillEdges()
                 continue;
             }
             Node *entryTo = nullptr;
+            EdgeType type = toValue.IsWeak() ? EdgeType::WEAK : (EdgeType)it.type_;
             if (toValue.IsWeak()) {
                 toValue.RemoveWeakTag();
             }
@@ -1050,8 +1051,8 @@ void HeapSnapshot::FillEdges()
             }
             if (entryTo != nullptr) {
                 Edge *edge = (it.type_ == Reference::ReferenceType::ELEMENT) ?
-                    Edge::NewEdge(chunk_, edgeCount_, (EdgeType)it.type_, entryFrom, entryTo, it.index_) :
-                    Edge::NewEdge(chunk_, edgeCount_, (EdgeType)it.type_, entryFrom, entryTo, GetString(it.name_));
+                    Edge::NewEdge(chunk_, edgeCount_, type, entryFrom, entryTo, it.index_) :
+                    Edge::NewEdge(chunk_, edgeCount_, type, entryFrom, entryTo, GetString(it.name_));
                 RenameFunction(it.name_, entryFrom, entryTo);
                 InsertEdgeUnique(edge);
                 (*iter)->IncEdgeCount();  // Update Node's edgeCount_ here

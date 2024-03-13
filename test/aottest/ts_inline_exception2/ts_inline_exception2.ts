@@ -14,6 +14,8 @@
  */
 
 declare function print(arg:any):string;
+declare function assert_equal(a: Object, b: Object):void;
+declare function assert_unreachable():void;
 declare class ArkTools {
     static hiddenStackSourceFile(): boolean;
 }
@@ -47,7 +49,8 @@ try {
         foo7()
     }
     foo8()
+    assert_unreachable()
 } catch (e) {
-    print(e)
+    assert_equal(e.message, "CallObj is NonCallable")
     print(e.stack)
 }

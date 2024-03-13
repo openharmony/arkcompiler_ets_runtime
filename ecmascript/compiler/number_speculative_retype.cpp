@@ -201,7 +201,7 @@ GateRef NumberSpeculativeRetype::VisitUndefinedEqualCompareOrUndefinedNotEqualCo
            acc_.GetTypedBinaryOp(gate) == TypedBinOp::TYPED_NOTEQ);
     GateRef left = acc_.GetValueIn(gate, 0);
     GateRef right = acc_.GetValueIn(gate, 1);
-    ASSERT((acc_.IsUndefinedOrNull(left)) || (acc_.IsUndefinedOrNull(right)));
+    ASSERT((acc_.IsUndefinedOrNullOrHole(left)) || (acc_.IsUndefinedOrNullOrHole(right)));
     if (IsRetype()) {
         return SetOutputType(gate, GateType::BooleanType());
     }

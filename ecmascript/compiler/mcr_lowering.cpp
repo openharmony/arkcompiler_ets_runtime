@@ -40,6 +40,9 @@ GateRef MCRLowering::VisitGate(GateRef gate)
         case OpCode::HEAP_OBJECT_CHECK:
             LowerHeapObjectCheck(gate);
             break;
+        case OpCode::ECMA_OBJECT_CHECK:
+            LowerEcmaObjectCheck(gate);
+            break;
         case OpCode::ELEMENTSKIND_CHECK:
             LowerElementskindCheck(gate);
             break;
@@ -66,9 +69,6 @@ GateRef MCRLowering::VisitGate(GateRef gate)
             break;
         case OpCode::GET_GLOBAL_CONSTANT_VALUE:
             LowerGetGlobalConstantValue(gate);
-            break;
-        case OpCode::HEAP_ALLOC:
-            LowerHeapAllocate(gate);
             break;
         case OpCode::INT32_CHECK_RIGHT_IS_ZERO:
             LowerInt32CheckRightIsZero(gate);
@@ -195,6 +195,17 @@ void MCRLowering::LowerHeapObjectCheck(GateRef gate)
     GateRef heapObjectCheck = builder_.TaggedIsHeapObject(receiver);
     builder_.DeoptCheck(heapObjectCheck, frameState, DeoptType::NOTHEAPOBJECT1);
 
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
+}
+
+void MCRLowering::LowerEcmaObjectCheck(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    GateRef frameState = acc_.GetFrameState(gate);
+    GateRef value = acc_.GetValueIn(gate, 0);
+    GateRef condition = builder_.BoolAnd(builder_.TaggedIsHeapObject(value),
+                                         builder_.TaggedObjectIsEcmaObject(value));
+    builder_.DeoptCheck(condition, frameState, DeoptType::NOTECMAOBJECT1);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 
@@ -809,55 +820,6 @@ void MCRLowering::LowerGetGlobalConstantValue(GateRef gate)
     GateRef constantIndex = builder_.IntPtr(JSTaggedValue::TaggedTypeSize() * index);
     GateRef result = builder_.Load(VariableType::JS_POINTER(), gConstAddr, constantIndex);
     acc_.ReplaceGate(gate, Circuit::NullGate(), builder_.GetDepend(), result);
-}
-
-void MCRLowering::LowerHeapAllocate(GateRef gate)
-{
-    Environment env(gate, circuit_, &builder_);
-    auto flag = acc_.TryGetValue(gate);
-    switch (flag) {
-        case RegionSpaceFlag::IN_YOUNG_SPACE:
-            HeapAllocateInYoung(gate);
-            break;
-        default:
-            LOG_ECMA(FATAL) << "this branch is unreachable";
-            UNREACHABLE();
-    }
-}
-
-void MCRLowering::HeapAllocateInYoung(GateRef gate)
-{
-    Label exit(&builder_);
-    GateRef size = acc_.GetValueIn(gate, 0);
-    DEFVALUE(result, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
-#ifndef ARK_ASAN_ON
-    Label success(&builder_);
-    Label callRuntime(&builder_);
-    size_t topOffset = JSThread::GlueData::GetNewSpaceAllocationTopAddressOffset(false);
-    size_t endOffset = JSThread::GlueData::GetNewSpaceAllocationEndAddressOffset(false);
-    GateRef topAddress = builder_.Load(VariableType::NATIVE_POINTER(), glue_, builder_.IntPtr(topOffset));
-    GateRef endAddress = builder_.Load(VariableType::NATIVE_POINTER(), glue_, builder_.IntPtr(endOffset));
-    GateRef top = builder_.Load(VariableType::JS_POINTER(), topAddress, builder_.IntPtr(0));
-    GateRef end = builder_.Load(VariableType::JS_POINTER(), endAddress, builder_.IntPtr(0));
-
-    GateRef newTop = builder_.PtrAdd(top, size);
-    builder_.Branch(builder_.IntPtrGreaterThan(newTop, end), &callRuntime, &success);
-    builder_.Bind(&success);
-    {
-        builder_.Store(VariableType::NATIVE_POINTER(), glue_, topAddress, builder_.IntPtr(0), newTop);
-        result = top;
-        builder_.Jump(&exit);
-    }
-    builder_.Bind(&callRuntime);
-#endif
-    {
-        result = builder_.CallRuntime(glue_, RTSTUB_ID(AllocateInYoung), Gate::InvalidGateRef,
-                                      {builder_.ToTaggedInt(size)}, gate);
-        builder_.Jump(&exit);
-    }
-    builder_.Bind(&exit);
-
-    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
 }
 
 void MCRLowering::LowerInt32CheckRightIsZero(GateRef gate)

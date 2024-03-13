@@ -217,6 +217,7 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(SetIteratorNext)                    \
     V(StringIteratorNext)                 \
     V(ArrayIteratorNext)                  \
+    V(IteratorReturn)                     \
     V(GetNextPropName)                    \
     V(GetNextPropNameSlowpath)            \
     V(ThrowIfNotObject)                   \

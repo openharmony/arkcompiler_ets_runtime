@@ -22,6 +22,7 @@
 #include "ecmascript/compiler/share_gate_meta_data.h"
 #include "ecmascript/compiler/variable_type.h"
 #include "ecmascript/deoptimizer/deoptimizer.h"
+#include "ecmascript/elements.h"
 #include "ecmascript/enum_conversion.h"
 #include "ecmascript/js_arraybuffer.h"
 #include "ecmascript/js_native_pointer.h"
@@ -533,6 +534,7 @@ void TypedHCRLowering::LowerBuiltinPrototypeHClassCheck(GateRef gate)
     Environment env(gate, circuit_, &builder_);
     BuiltinPrototypeHClassAccessor accessor = acc_.GetBuiltinHClassAccessor(gate);
     BuiltinTypeId type = accessor.GetBuiltinTypeId();
+    ElementsKind kind = accessor.GetElementsKind();
     GateRef frameState = GetFrameState(gate);
     GateRef glue = acc_.GetGlueFromArgList();
 
@@ -543,6 +545,30 @@ void TypedHCRLowering::LowerBuiltinPrototypeHClassCheck(GateRef gate)
     // Only HClasses recorded in the JSThread during builtin initialization are available
     [[maybe_unused]] JSHClass *initialPrototypeHClass = thread->GetBuiltinPrototypeHClass(type);
     ASSERT(initialPrototypeHClass != nullptr);
+
+    GateRef ihcMatches = Circuit::NullGate();
+    if (type == BuiltinTypeId::ARRAY) {
+        if (Elements::IsGeneric(kind)) {
+            auto arrayHClassIndexMap = thread->GetArrayHClassIndexMap();
+            auto iter = arrayHClassIndexMap.find(kind);
+            ASSERT(iter != arrayHClassIndexMap.end());
+            GateRef initialIhcAddress = builder_.GetGlobalConstantValue(iter->second);
+            GateRef receiverHClass = builder_.LoadHClassByConstOffset(receiver);
+            ihcMatches = builder_.Equal(receiverHClass, initialIhcAddress);
+        } else {
+            GateRef receiverHClass = builder_.LoadHClassByConstOffset(receiver);
+            GateRef elementsKind = builder_.GetElementsKindByHClass(receiverHClass);
+            ihcMatches =
+                builder_.NotEqual(elementsKind, builder_.Int32(static_cast<size_t>(ElementsKind::GENERIC)));
+        }
+    } else {
+        size_t ihcOffset = JSThread::GlueData::GetBuiltinInstanceHClassOffset(type, env.IsArch32Bit());
+        GateRef initialIhcAddress = builder_.LoadConstOffset(VariableType::JS_POINTER(), glue, ihcOffset);
+        GateRef receiverHClass = builder_.LoadHClassByConstOffset(receiver);
+        ihcMatches = builder_.Equal(receiverHClass, initialIhcAddress);
+    }
+    // De-opt if HClass of x changed where X is the current builtin object.
+    builder_.DeoptCheck(ihcMatches, frameState, DeoptType::BUILTININSTANCEHCLASSMISMATCH);
 
     // Phc = PrototypeHClass
     size_t phcOffset = JSThread::GlueData::GetBuiltinPrototypeHClassOffset(type, env.IsArch32Bit());
@@ -1779,7 +1805,7 @@ void TypedHCRLowering::LowerStringAdd(GateRef gate, GateRef glue)
                             &canBeConcat, &slowPath);
                         builder_.Bind(&canBeConcat);
                         {
-                            lineString = AllocateLineString(backStoreLength, canBeCompressed);
+                            lineString = AllocateLineString(glue, backStoreLength, canBeCompressed);
                             builder_.Branch(canBeCompressed, &canBeCompress, &canNotBeCompress);
                             builder_.Bind(&canBeCompress);
                             {
@@ -1832,7 +1858,7 @@ void TypedHCRLowering::LowerStringAdd(GateRef gate, GateRef glue)
                                 }
                             }
                             builder_.Bind(&newSlicedStr);
-                            slicedString = AllocateSlicedString(*lineString, newLength, canBeCompressed);
+                            slicedString = AllocateSlicedString(glue, *lineString, newLength, canBeCompressed);
                             result = *slicedString;
                             builder_.Jump(&exit);
                         }
@@ -1867,7 +1893,8 @@ void TypedHCRLowering::LowerStringAdd(GateRef gate, GateRef glue)
                                 builder_.Branch(canBeCompressed, &canBeCompress, &canNotBeCompress);
                                 builder_.Bind(&canBeCompress);
                                 {
-                                    GateRef newBackingStore = AllocateLineString(newBackStoreLength, canBeCompressed);
+                                    GateRef newBackingStore = AllocateLineString(glue, newBackStoreLength,
+                                                                                 canBeCompressed);
                                     GateRef len = builder_.Int32LSL(newLength,
                                         builder_.Int32(EcmaString::STRING_LENGTH_SHIFT_COUNT));
                                     GateRef mixLength = builder_.Int32Or(len,
@@ -1893,7 +1920,8 @@ void TypedHCRLowering::LowerStringAdd(GateRef gate, GateRef glue)
                                 }
                                 builder_.Bind(&canNotBeCompress);
                                 {
-                                    GateRef newBackingStore = AllocateLineString(newBackStoreLength, canBeCompressed);
+                                    GateRef newBackingStore = AllocateLineString(glue, newBackStoreLength,
+                                                                                 canBeCompressed);
                                     GateRef len = builder_.Int32LSL(newLength,
                                         builder_.Int32(EcmaString::STRING_LENGTH_SHIFT_COUNT));
                                     GateRef mixLength = builder_.Int32Or(len,
@@ -1982,7 +2010,7 @@ void TypedHCRLowering::LowerStringAdd(GateRef gate, GateRef glue)
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
 }
 
-GateRef TypedHCRLowering::AllocateLineString(GateRef length, GateRef canBeCompressed)
+GateRef TypedHCRLowering::AllocateLineString(GateRef glue, GateRef length, GateRef canBeCompressed)
 {
     Label subentry(&builder_);
     builder_.SubCfgEntry(&subentry);
@@ -2014,8 +2042,9 @@ GateRef TypedHCRLowering::AllocateLineString(GateRef length, GateRef canBeCompre
     GateRef stringClass = builder_.GetGlobalConstantValue(ConstantIndex::LINE_STRING_CLASS_INDEX);
 
     builder_.StartAllocate();
-    GateRef lineString = builder_.HeapAlloc(*size, GateType::TaggedValue(), RegionSpaceFlag::IN_YOUNG_SPACE);
-    builder_.StoreConstOffset(VariableType::JS_POINTER(), lineString, 0, stringClass); // StoreHClass
+    GateRef lineString = builder_.HeapAlloc(glue, *size, GateType::TaggedValue(), RegionSpaceFlag::IN_YOUNG_SPACE);
+    builder_.StoreConstOffset(VariableType::JS_POINTER(), lineString, 0, stringClass,
+        MemoryOrder::NeedBarrierAndAtomic());
     builder_.StoreConstOffset(VariableType::INT32(), lineString, EcmaString::MIX_LENGTH_OFFSET, *mixLength);
     builder_.StoreConstOffset(VariableType::INT32(), lineString, EcmaString::MIX_HASHCODE_OFFSET, builder_.Int32(0));
     auto ret = builder_.FinishAllocate(lineString);
@@ -2023,7 +2052,8 @@ GateRef TypedHCRLowering::AllocateLineString(GateRef length, GateRef canBeCompre
     return ret;
 }
 
-GateRef TypedHCRLowering::AllocateSlicedString(GateRef flatString, GateRef length, GateRef canBeCompressed)
+GateRef TypedHCRLowering::AllocateSlicedString(GateRef glue, GateRef flatString, GateRef length,
+                                               GateRef canBeCompressed)
 {
     Label subentry(&builder_);
     builder_.SubCfgEntry(&subentry);
@@ -2051,8 +2081,9 @@ GateRef TypedHCRLowering::AllocateSlicedString(GateRef flatString, GateRef lengt
     GateRef size = builder_.IntPtr(AlignUp(SlicedString::SIZE, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT)));
 
     builder_.StartAllocate();
-    GateRef slicedString = builder_.HeapAlloc(size, GateType::TaggedValue(), RegionSpaceFlag::IN_YOUNG_SPACE);
-    builder_.StoreConstOffset(VariableType::JS_POINTER(), slicedString, 0, stringClass); // StoreHClass
+    GateRef slicedString = builder_.HeapAlloc(glue, size, GateType::TaggedValue(), RegionSpaceFlag::IN_YOUNG_SPACE);
+    builder_.StoreConstOffset(VariableType::JS_POINTER(), slicedString, 0, stringClass,
+        MemoryOrder::NeedBarrierAndAtomic());
     builder_.StoreConstOffset(VariableType::INT32(), slicedString, EcmaString::MIX_LENGTH_OFFSET, *mixLength);
     builder_.StoreConstOffset(VariableType::INT32(), slicedString, EcmaString::MIX_HASHCODE_OFFSET, builder_.Int32(0));
     builder_.StoreConstOffset(VariableType::JS_POINTER(), slicedString, SlicedString::PARENT_OFFSET, flatString);
@@ -2871,7 +2902,7 @@ void TypedHCRLowering::LowerMonoStoreProperty(GateRef gate, GateRef glue)
         { receiverHC, newHolderHC, key }, gate);
     builder_.Jump(&notProto);
     builder_.Bind(&notProto);
-    MemoryOrder order = MemoryOrder::Create(MemoryOrder::MEMORY_ORDER_RELEASE);
+    MemoryOrder order = MemoryOrder::NeedBarrierAndAtomic();
     builder_.StoreConstOffset(VariableType::JS_ANY(), receiver, TaggedObject::HCLASS_OFFSET, newHolderHC, order);
     if (!plr.IsInlinedProps()) {
         auto properties =
@@ -3016,8 +3047,9 @@ void TypedHCRLowering::LowerTypedCreateObjWithBuffer(GateRef gate, GateRef glue)
     builder_.Bind(&equal);
     {
         builder_.StartAllocate();
-        GateRef newObj = builder_.HeapAlloc(objSize, GateType::TaggedValue(), RegionSpaceFlag::IN_YOUNG_SPACE);
-        builder_.StoreConstOffset(VariableType::JS_POINTER(), newObj, JSObject::HCLASS_OFFSET, hclass);
+        GateRef newObj = builder_.HeapAlloc(glue, objSize, GateType::TaggedValue(), RegionSpaceFlag::IN_YOUNG_SPACE);
+        builder_.StoreConstOffset(VariableType::JS_POINTER(), newObj, JSObject::HCLASS_OFFSET, hclass,
+            MemoryOrder::NeedBarrierAndAtomic());
         builder_.StoreConstOffset(VariableType::INT64(), newObj,
             JSObject::HASH_OFFSET, builder_.Int64(JSTaggedValue(0).GetRawData()));
         builder_.StoreConstOffset(VariableType::INT64(), newObj, JSObject::PROPERTIES_OFFSET, emptyArray);

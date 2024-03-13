@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-declare function print(str:any):string;
+declare function assert_true(condition: boolean):void;
 
 class MyBoolean extends Boolean {
     constructor(arg:boolean) {
@@ -21,8 +21,8 @@ class MyBoolean extends Boolean {
     }
 }
 let b = new MyBoolean(true);
-print(b instanceof MyBoolean);
-print(b instanceof Boolean);
+assert_true(b instanceof MyBoolean);
+assert_true(b instanceof Boolean);
 
 
 class MyNumber extends Number {
@@ -32,8 +32,8 @@ class MyNumber extends Number {
 }
 
 let n = new MyNumber(1)
-print(n instanceof MyNumber);
-print(n instanceof Number);
+assert_true(n instanceof MyNumber);
+assert_true(n instanceof Number);
 
 
 class MyDate extends Date {
@@ -43,8 +43,8 @@ class MyDate extends Date {
 }
 
 let d = new MyDate(16455456000)
-print(d instanceof MyDate);
-print(d instanceof Date);
+assert_true(d instanceof MyDate);
+assert_true(d instanceof Date);
 
 
 class MyArray extends Array {
@@ -54,6 +54,6 @@ class MyArray extends Array {
 }
 
 let a = new MyArray(1);
-print(a instanceof MyArray);
-print(a instanceof Array);
+assert_true(a instanceof MyArray);
+assert_true(a instanceof Array);
 

@@ -517,6 +517,7 @@ void BytecodeCircuitBuilder::MergeThrowGate(BytecodeRegion &bb, uint32_t bcIndex
     auto depend = frameStateBuilder_.GetCurrentDepend();
     if (!bb.catches.empty()) {
         auto ifSuccess = circuit_->NewGate(circuit_->IfSuccess(), {state});
+        auto dependRelay = circuit_->NewGate(circuit_->DependRelay(), {ifSuccess, depend});
         auto ifException = circuit_->NewGate(circuit_->IfException(), {state, depend});
         frameStateBuilder_.UpdateStateDepend(ifException, ifException);
         ASSERT(bb.catches.size() == 1); // 1: one catch
@@ -524,6 +525,7 @@ void BytecodeCircuitBuilder::MergeThrowGate(BytecodeRegion &bb, uint32_t bcIndex
         frameStateBuilder_.MergeIntoSuccessor(bb, *bbNext);
         bbNext->expandedPreds.push_back({bb.id, bcIndex, true});
         state = ifSuccess;
+        depend = dependRelay;
     }
     auto constant = circuit_->GetConstantGate(MachineType::I64,
                                               JSTaggedValue::VALUE_EXCEPTION,
@@ -538,6 +540,7 @@ void BytecodeCircuitBuilder::MergeExceptionGete(BytecodeRegion &bb,
     auto state = frameStateBuilder_.GetCurrentState();
     auto depend = frameStateBuilder_.GetCurrentDepend();
     auto ifSuccess = circuit_->NewGate(circuit_->IfSuccess(), {state});
+    auto dependRelay = circuit_->NewGate(circuit_->DependRelay(), {ifSuccess, depend});
     ASSERT(bb.catches.size() == 1); // 1: one catch
     auto bbNext = bb.catches.at(0);
     auto ifException = circuit_->NewGate(circuit_->IfException(), {state, depend});
@@ -548,6 +551,7 @@ void BytecodeCircuitBuilder::MergeExceptionGete(BytecodeRegion &bb,
     } else {
         bbNext->expandedPreds.push_back({bb.id, bcIndex, true});
     }
+    depend = dependRelay;
     frameStateBuilder_.UpdateStateDepend(ifSuccess, depend);
 }
 

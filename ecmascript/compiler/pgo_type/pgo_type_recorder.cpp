@@ -96,13 +96,6 @@ std::vector<ElementsKind> PGOTypeRecorder::GetTransitionElementsKindsForUser(int
         }
     }
 
-    // fiterate ElementsKind::None
-    for (uint32_t i = 0; i < elementsKinds.size(); i++) {
-        if (elementsKinds[i] == ElementsKind::NONE) {
-            elementsKinds[i] = ElementsKind::GENERIC;
-        }
-    }
-
     return elementsKinds;
 }
 

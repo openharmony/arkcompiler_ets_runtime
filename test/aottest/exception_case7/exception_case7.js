@@ -13,6 +13,8 @@
  * limitations under the License.
  */
 
+var testTxt = ["exception_case7.js:21:21", "exception_case7.js:25:1"];
+var i = 0;
 try {
     const handler = {
         get: function(obj, prop) {
@@ -20,16 +22,18 @@ try {
         }
     }
     const p = new Proxy({}, handler)
-    p.c
+    p.c;
+    assert_unreachable();
 } catch (e) {
-    print(e)
+    assert_equal(e.message, "a is not defined");
     let stack = e.stack
     let array = stack.split('\n')
     for (let line of array) {
         let start = line.lastIndexOf('/') + 1
         let end = line.length - 1
         if (start < end) {
-            print(line.slice(start, end))
+            assert_equal(line.slice(start, end), testTxt[i]);
+            i++;
         } else {
             print(line)
         }

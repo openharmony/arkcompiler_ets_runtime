@@ -1122,44 +1122,11 @@ void StubBuilder::Store(VariableType type, GateRef glue, GateRef base, GateRef o
         env_->GetBuilder()->Store(type, glue, base, offset, value, order);
     } else {
         auto depend = env_->GetCurrentLabel()->GetDepend();
-        GateRef ptr = PtrAdd(base, offset);
         auto bit = LoadStoreAccessor::ToValue(order);
         GateRef result = env_->GetCircuit()->NewGate(
             env_->GetCircuit()->Store(bit), MachineType::NOVALUE,
-            { depend, value, ptr }, type.GetGateType());
+            { depend, glue, base, offset, value }, type.GetGateType());
         env_->GetCurrentLabel()->SetDepend(result);
-        if (type == VariableType::JS_POINTER() || type == VariableType::JS_ANY()) {
-            auto env = GetEnvironment();
-            Label entry(env);
-            env->SubCfgEntry(&entry);
-            Label exit(env);
-            Label isHeapObject(env);
-
-            Branch(TaggedIsHeapObject(value), &isHeapObject, &exit);
-            Bind(&isHeapObject);
-            {
-                CallNGCRuntime(glue, RTSTUB_ID(StoreBarrier), { glue, base, offset, value });
-                Jump(&exit);
-            }
-            Bind(&exit);
-            env->SubCfgExit();
-        }
-    }
-}
-
-void StubBuilder::StoreWithBarrier(VariableType type, GateRef glue, GateRef base, GateRef offset, GateRef value)
-{
-    if (!env_->IsAsmInterp()) {
-        env_->GetBuilder()->Store(type, glue, base, offset, value);
-    } else {
-        auto depend = env_->GetCurrentLabel()->GetDepend();
-        GateRef ptr = PtrAdd(base, offset);
-        auto bit = LoadStoreAccessor::ToValue(MemoryOrder::Default());
-        GateRef result = env_->GetCircuit()->NewGate(
-            env_->GetCircuit()->Store(bit), MachineType::NOVALUE,
-            { depend, value, ptr }, type.GetGateType());
-        env_->GetCurrentLabel()->SetDepend(result);
-        CallNGCRuntime(glue, RTSTUB_ID(StoreBarrier), { glue, base, offset, value });
     }
 }
 
@@ -2903,7 +2870,7 @@ void StubBuilder::CopyAllHClass(GateRef glue, GateRef dstHClass, GateRef srcHCla
                       glue,
                       dstHClass,
                       GetLayoutFromHClass(srcHClass),
-                      MemoryOrder::Create(MemoryOrder::MEMORY_ORDER_RELEASE));
+                      MemoryOrder::NeedBarrierAndAtomic());
     Branch(IsTSHClass(srcHClass), &isTS, &isNotTS);
     Bind(&isTS);
     {
