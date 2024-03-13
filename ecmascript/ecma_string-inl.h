@@ -182,6 +182,7 @@ inline SlicedString *EcmaString::CreateSlicedString(const EcmaVM *vm, MemSpaceTy
 {
     auto slicedString = SlicedString::Cast(vm->GetFactory()->AllocSlicedStringObject(type));
     slicedString->SetRawHashcode(0);
+    slicedString->SetParent(vm->GetJSThread(), JSTaggedValue::Undefined(), BarrierMode::SKIP_BARRIER);
     return slicedString;
 }
 
