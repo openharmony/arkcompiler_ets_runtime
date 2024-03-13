@@ -141,6 +141,7 @@ void PGOTypeInfer::InferLdObjByName(GateRef gate)
     GateRef receiver = acc_.GetValueIn(gate, 2); // 2: acc or this object
 
     UpdateTypeForRWOp(gate, receiver, propIndex);
+    TrySetElementsKind(gate);
 }
 
 void PGOTypeInfer::InferStObjByName(GateRef gate, bool isThis)

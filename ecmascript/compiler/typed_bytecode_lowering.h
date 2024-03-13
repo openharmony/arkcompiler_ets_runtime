@@ -122,7 +122,7 @@ private:
     void LowerTypedLdArrayLength(const LoadBulitinObjTypeInfoAccessor &tacc);
     void LowerTypedLdTypedArrayLength(const LoadBulitinObjTypeInfoAccessor &tacc);
     void LowerTypedLdStringLength(const LoadBulitinObjTypeInfoAccessor &tacc);
-    bool TryLowerTypedLdObjByNameForBuiltinMethod(GateRef gate, JSTaggedValue key, BuiltinTypeId type);
+    bool TryLowerTypedLdObjByNameForBuiltinMethod(const LoadBulitinObjTypeInfoAccessor &tacc, BuiltinTypeId type);
 
     void LowerTypedLdObjByIndex(GateRef gate);
     bool TryLowerTypedLdObjByIndexForBuiltin(GateRef gate);

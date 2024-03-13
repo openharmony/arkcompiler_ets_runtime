@@ -22,6 +22,7 @@
 #include "ecmascript/compiler/builtins_lowering.h"
 #include "ecmascript/compiler/bytecodes.h"
 #include "ecmascript/compiler/circuit.h"
+#include "ecmascript/compiler/type_info_accessors.h"
 #include "ecmascript/dfx/vmstat/opt_code_profiler.h"
 #include "ecmascript/enum_conversion.h"
 #include "ecmascript/js_tagged_value.h"
@@ -813,11 +814,9 @@ bool TypedBytecodeLowering::TryLowerTypedLdObjByNameForBuiltin(GateRef gate)
     LoadBulitinObjTypeInfoAccessor tacc(thread_, circuit_, gate, chunk_);
     // Just supported mono.
     if (tacc.IsMono()) {
-        if (tacc.IsBuiltinsString()) {
-            return TryLowerTypedLdObjByNameForBuiltin(tacc, BuiltinTypeId::STRING);
-        }
-        if (tacc.IsBuiltinsArray()) {
-            return TryLowerTypedLdObjByNameForBuiltin(tacc, BuiltinTypeId::ARRAY);
+        auto builtinsId = tacc.GetBuiltinsTypeId();
+        if (builtinsId.has_value()) {
+            return TryLowerTypedLdObjByNameForBuiltin(tacc, builtinsId.value());
         }
     }
 
@@ -868,7 +867,7 @@ bool TypedBytecodeLowering::TryLowerTypedLdObjByNameForBuiltin(const LoadBulitin
         }
     }
     // (2) other functions
-    return false;
+    return TryLowerTypedLdObjByNameForBuiltinMethod(tacc, type);
 }
 
 bool TypedBytecodeLowering::TryLowerTypedLdobjBynameFromGloablBuiltin(GateRef gate)
@@ -941,10 +940,11 @@ void TypedBytecodeLowering::LowerTypedLdStringLength(const LoadBulitinObjTypeInf
     acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
 }
 
-bool TypedBytecodeLowering::TryLowerTypedLdObjByNameForBuiltinMethod(
-    GateRef gate, JSTaggedValue key, BuiltinTypeId type)
+bool TypedBytecodeLowering::TryLowerTypedLdObjByNameForBuiltinMethod(const LoadBulitinObjTypeInfoAccessor &tacc,
+                                                                     BuiltinTypeId type)
 {
-    AddProfiling(gate);
+    GateRef gate = tacc.GetGate();
+    JSTaggedValue key = tacc.GetKeyTaggedValue();
     std::optional<GlobalEnvField> protoField = ToGlobelEnvPrototypeField(type);
     if (!protoField.has_value()) {
         return false;
@@ -957,15 +957,19 @@ bool TypedBytecodeLowering::TryLowerTypedLdObjByNameForBuiltinMethod(
     if (!plr.IsFound() || plr.IsAccessor()) {
         return false;
     }
+    AddProfiling(gate);
     GateRef receiver = acc_.GetValueIn(gate, 2);
     if (!Uncheck()) {
         // For Array type only: array stability shall be ensured.
+        ElementsKind kind = ElementsKind::NONE;
         if (type == BuiltinTypeId::ARRAY) {
             builder_.StableArrayCheck(receiver, ElementsKind::GENERIC, ArrayMetaDataAccessor::CALL_BUILTIN_METHOD);
+            kind = tacc.TryGetArrayElementsKind();
         }
+
         // This check is not required by String, since string is a primitive type.
         if (type != BuiltinTypeId::STRING) {
-            builder_.BuiltinPrototypeHClassCheck(receiver, type);
+            builder_.BuiltinPrototypeHClassCheck(receiver, type, kind);
         }
     }
     // Successfully goes to typed path
