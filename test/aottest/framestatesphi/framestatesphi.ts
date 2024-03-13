@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-declare function print(arg:any):string;
+declare function assert_equal(a: Object, b: Object):void;
 class B {
     constructor() {
     }
@@ -28,8 +28,8 @@ class B {
 }
 
 let b = new B()
-print(b.choice)
+assert_equal(b.choice, 0);
 b.f(true);
-print(b.choice)
+assert_equal(b.choice, 1);
 b.f(false);
-print(b.choice)
+assert_equal(b.choice, 2);
