@@ -14,10 +14,13 @@
 import("//arkcompiler/ets_runtime/js_runtime_config.gni")
 
 ohos_executable("quick_fix") {
-  if (is_ohos && is_standard_system && current_toolchain != host_toolchain &&
-      !ark_standalone_build) {
+  if (enable_sanitize) {
+    branch_protector_ret = "pac_ret"
     sanitize = {
       ubsan = true
+      cfi = true
+      cfi_cross_dso = true
+      debug = false
     }
   }
 

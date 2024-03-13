@@ -96,6 +96,8 @@ enable_bytrace =
 enable_hitrace =
     !ark_standalone_build && !(defined(is_arkui_x) && is_arkui_x) && is_ohos &&
     is_standard_system
+enable_sanitize = !ark_standalone_build && is_ohos && is_standard_system &&
+                  current_toolchain != host_toolchain
 
 hiviewdfx_deps = []
 hiviewdfx_ext_deps = []
@@ -136,8 +138,9 @@ template("libark_jsruntime_common_set") {
   forward_variables_from(invoker, "*")
 
   ohos_source_set(target_name) {
-    stack_protector_ret = false
-
+    if (enable_sanitize) {
+      branch_protector_ret = "pac_ret"
+    }
     if (is_ohos && is_standard_system) {
       stub_an_file_path =
           "/system/lib64/${arkcompiler_relative_lib_path}/stub.an"
@@ -220,7 +223,9 @@ template("libark_jsruntime_intl_common_set") {
   forward_variables_from(invoker, "*")
 
   ohos_source_set(target_name) {
-    stack_protector_ret = false
+    if (enable_sanitize) {
+      branch_protector_ret = "pac_ret"
+    }
     sources = invoker.intl_sources
 
     public_configs = [ "$js_root:ark_jsruntime_public_config" ]
