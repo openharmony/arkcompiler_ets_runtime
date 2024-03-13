@@ -46,6 +46,7 @@
 #include "ecmascript/mem/work_manager.h"
 #include "ecmascript/mem/gc_stats.h"
 #include "ecmascript/runtime_call_id.h"
+#include "ecmascript/runtime_lock.h"
 #if !WIN_OR_MAC_OR_IOS_PLATFORM
 #include "ecmascript/dfx/hprof/heap_profiler_interface.h"
 #include "ecmascript/dfx/hprof/heap_profiler.h"
@@ -140,6 +141,8 @@ bool SharedHeap::AsyncClearTask::Run([[maybe_unused]] uint32_t threadIndex)
 
 void SharedHeap::CollectGarbage(JSThread *thread, [[maybe_unused]]TriggerGCType gcType, [[maybe_unused]]GCReason reason)
 {
+    // This lock can be removed after Shared Heap GC starts to run only in a special daemon thread
+    RuntimeLockHolder gcLockHolder(thread, gcCollectGarbageMutex_);
     ASSERT(gcType == TriggerGCType::SHARED_GC);
     gcType_ = gcType;
     {
