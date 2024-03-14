@@ -1164,8 +1164,10 @@ bool JSHClass::DumpForChildHClass(const JSHClass *hclass, HClassLayoutDesc *desc
     if (hclass->IsDictionaryMode()) {
         return false;
     }
-
-    uint32_t last = hclass->NumberOfProps() - 1;
+    if (hclass->PropsIsEmpty()) {
+        return false;
+    }
+    uint32_t last = hclass->LastPropIndex();
     LayoutInfo *layoutInfo = LayoutInfo::Cast(hclass->GetLayout().GetTaggedObject());
     layoutInfo->DumpFieldIndex(last, desc);
     return true;
@@ -1177,8 +1179,10 @@ bool JSHClass::UpdateChildLayoutDesc(const JSHClass *hclass, HClassLayoutDesc *c
     if (hclass->IsDictionaryMode()) {
         return false;
     }
-
-    uint32_t last = hclass->NumberOfProps() - 1;
+    if (hclass->PropsIsEmpty()) {
+        return false;
+    }
+    uint32_t last = hclass->LastPropIndex();
     LayoutInfo *layoutInfo = LayoutInfo::Cast(hclass->GetLayout().GetTaggedObject());
     return layoutInfo->UpdateFieldIndex(last, childDesc);
 }
