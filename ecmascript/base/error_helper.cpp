@@ -246,10 +246,15 @@ JSHandle<EcmaString> ErrorHelper::BuildEcmaStackTrace(JSThread *thread, std::str
     LOG_ECMA(DEBUG) << data;
     // unconverted stack
     stack = data;
+    auto ecmaVm = thread->GetEcmaVM();
     // sourceMap callback
-    auto cb = thread->GetEcmaVM()->GetSourceMapCallback();
-    if (cb != nullptr) {
-        data = cb(data.c_str());
+    auto sourceMapcb = ecmaVm->GetSourceMapCallback();
+    if (sourceMapcb != nullptr && !data.empty()) {
+        data = sourceMapcb(data.c_str());
+    }
+    auto nativeStackcb = ecmaVm->GetNativeStackCallback();
+    if (nativeStackcb != nullptr && data.empty()) {
+        data = nativeStackcb();
     }
 
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();

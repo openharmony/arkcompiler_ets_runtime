@@ -27,9 +27,6 @@
 #if defined(PANDA_TARGET_OHOS)
 #include "ecmascript/extractortool/src/extractor.h"
 #endif
-#if defined(ENABLE_EXCEPTION_BACKTRACE)
-#include "ecmascript/platform/backtrace.h"
-#endif
 
 namespace panda::ecmascript {
 std::string JsStackInfo::BuildMethodTrace(Method *method, uint32_t pcOffset, bool enableStackSourceFile)
@@ -128,13 +125,6 @@ std::string JsStackInfo::BuildJsStackTrace(JSThread *thread, bool needNative)
             strm << addr;
             data.append("    at native method (").append(strm.str()).append(")\n");
         }
-    }
-    if (data.empty()) {
-#if defined(ENABLE_EXCEPTION_BACKTRACE)
-        std::ostringstream stack;
-        Backtrace(stack, false, true);
-        data = stack.str();
-#endif
     }
     return data;
 }
@@ -1075,19 +1065,17 @@ bool GetArkNativeFrameInfo(int pid, uintptr_t *pc, uintptr_t *fp, uintptr_t *sp,
         }
     }
     currentPtr += sizeof(FrameType);
-    *fp = currentPtr;
+    bool ret = ReadUintptrFromAddr(pid, currentPtr, *fp, true);
     currentPtr += FP_SIZE;
-    if (!ReadUintptrFromAddr(pid, currentPtr, *pc, true)) {
-        return false;
-    }
+    ret &= ReadUintptrFromAddr(pid, currentPtr, *pc, true);
     currentPtr += LR_SIZE;
-    *sp = currentPtr;
+    ret &= ReadUintptrFromAddr(pid, currentPtr, *sp, true);
 
     size = frames.size() > size ? size : frames.size();
     for (size_t i = 0; i < size ; ++i) {
         jsFrame[i] = frames[i];
     }
-    return true;
+    return ret;
 }
 #endif
 

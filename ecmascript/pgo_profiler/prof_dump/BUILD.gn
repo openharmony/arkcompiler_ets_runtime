@@ -14,8 +14,8 @@
 import("//arkcompiler/ets_runtime/js_runtime_config.gni")
 
 ohos_executable("profdump") {
-  if (enable_sanitize) {
-    branch_protector_ret = "pac_ret"
+  if (is_ohos && is_standard_system && current_toolchain != host_toolchain &&
+      !ark_standalone_build) {
     sanitize = {
       ubsan = true
     }

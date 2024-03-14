@@ -43,13 +43,15 @@ void JSHClass::AddTransitions(const JSThread *thread, const JSHandle<JSHClass> &
     JSMutableHandle<TransitionsDictionary> dict(thread, JSTaggedValue::Undefined());
     if (transitions.IsWeak()) {
         auto cachedHClass = JSHClass::Cast(transitions.GetTaggedWeakRef());
-        uint32_t last = cachedHClass->NumberOfProps() - 1;
-        LayoutInfo *layoutInfo = LayoutInfo::Cast(cachedHClass->GetLayout().GetTaggedObject());
-        auto attr = JSHandle<JSTaggedValue>(thread, JSTaggedValue(layoutInfo->GetAttr(last).GetPropertyMetaData()));
-        auto lastKey = JSHandle<JSTaggedValue>(thread, layoutInfo->GetKey(last));
-        auto lastHClass = JSHandle<JSTaggedValue>(thread, cachedHClass);
-        dict.Update(TransitionsDictionary::Create(thread));
-        transitions = TransitionsDictionary::PutIfAbsent(thread, dict, lastKey, lastHClass, attr).GetTaggedValue();
+        if (cachedHClass->HasProps()) {
+            uint32_t last = cachedHClass->LastPropIndex();
+            LayoutInfo* layoutInfo = LayoutInfo::Cast(cachedHClass->GetLayout().GetTaggedObject());
+            auto attr = JSHandle<JSTaggedValue>(thread, JSTaggedValue(layoutInfo->GetAttr(last).GetPropertyMetaData()));
+            auto lastKey = JSHandle<JSTaggedValue>(thread, layoutInfo->GetKey(last));
+            auto lastHClass = JSHandle<JSTaggedValue>(thread, cachedHClass);
+            dict.Update(TransitionsDictionary::Create(thread));
+            transitions = TransitionsDictionary::PutIfAbsent(thread, dict, lastKey, lastHClass, attr).GetTaggedValue();
+        }
     }
     auto attr = JSHandle<JSTaggedValue>(thread, JSTaggedValue(attributes.GetPropertyMetaData()));
     dict.Update(transitions);
@@ -76,15 +78,16 @@ void JSHClass::AddProtoTransitions(const JSThread *thread, const JSHandle<JSHCla
         transitions = TransitionsDictionary::Create(thread).GetTaggedValue();
     } else if (transitions.IsWeak()) {
         auto cachedHClass = JSHClass::Cast(transitions.GetTaggedWeakRef());
-        uint32_t last = cachedHClass->NumberOfProps() - 1;
-        LayoutInfo *layoutInfo = LayoutInfo::Cast(cachedHClass->GetLayout().GetTaggedObject());
-        auto attr = JSHandle<JSTaggedValue>(thread, JSTaggedValue(layoutInfo->GetAttr(last).GetPropertyMetaData()));
-        auto lastKey = JSHandle<JSTaggedValue>(thread, layoutInfo->GetKey(last));
-        auto lastHClass = JSHandle<JSTaggedValue>(thread, cachedHClass);
-        dict.Update(TransitionsDictionary::Create(thread));
-        transitions = TransitionsDictionary::PutIfAbsent(thread, dict, lastKey, lastHClass, attr).GetTaggedValue();
+        if (cachedHClass->HasProps()) {
+            uint32_t last = cachedHClass->LastPropIndex();
+            LayoutInfo* layoutInfo = LayoutInfo::Cast(cachedHClass->GetLayout().GetTaggedObject());
+            auto attr = JSHandle<JSTaggedValue>(thread, JSTaggedValue(layoutInfo->GetAttr(last).GetPropertyMetaData()));
+            auto lastKey = JSHandle<JSTaggedValue>(thread, layoutInfo->GetKey(last));
+            auto lastHClass = JSHandle<JSTaggedValue>(thread, cachedHClass);
+            dict.Update(TransitionsDictionary::Create(thread));
+            transitions = TransitionsDictionary::PutIfAbsent(thread, dict, lastKey, lastHClass, attr).GetTaggedValue();
+        }
     }
-
     dict.Update(transitions);
     transitions =
         TransitionsDictionary::PutIfAbsent(thread, dict, key, JSHandle<JSTaggedValue>(child), proto).GetTaggedValue();
@@ -100,7 +103,10 @@ inline JSHClass *JSHClass::FindTransitions(const JSTaggedValue &key, const JSTag
     }
     if (transitions.IsWeak()) {
         auto cachedHClass = JSHClass::Cast(transitions.GetTaggedWeakRef());
-        int last = static_cast<int>(cachedHClass->NumberOfProps()) - 1;
+        if (cachedHClass->PropsIsEmpty()) {
+            return nullptr;
+        }
+        int last = static_cast<int>(cachedHClass->LastPropIndex());
         LayoutInfo *layoutInfo = LayoutInfo::Cast(cachedHClass->GetLayout().GetTaggedObject());
         auto attr = layoutInfo->GetAttr(last).GetPropertyMetaData();
         auto cachedKey = layoutInfo->GetKey(last);
