@@ -137,3 +137,7 @@ try {
     result.push(err.name == "TypeError");
 }
 print(result)
+
+let arr=[];
+print([,...arr].length)
+print([,...''].length)

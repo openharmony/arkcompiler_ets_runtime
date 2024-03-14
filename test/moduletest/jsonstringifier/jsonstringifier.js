@@ -84,3 +84,14 @@ var obj={
     3:3,
 }
 print(JSON.stringify(obj))
+
+Reflect.defineProperty(globalThis,"c",{
+    get:()=>{
+        delete this["d"];
+        return "c";
+    },
+    enumerable:true,
+});
+Reflect.set(globalThis,"d","d");
+JSON.stringify(globalThis);
+print("end JSON.stringify(globalThis)")
