@@ -1075,19 +1075,17 @@ bool GetArkNativeFrameInfo(int pid, uintptr_t *pc, uintptr_t *fp, uintptr_t *sp,
         }
     }
     currentPtr += sizeof(FrameType);
-    *fp = currentPtr;
+    bool ret = ReadUintptrFromAddr(pid, currentPtr, *fp, true);
     currentPtr += FP_SIZE;
-    if (!ReadUintptrFromAddr(pid, currentPtr, *pc, true)) {
-        return false;
-    }
+    ret &= ReadUintptrFromAddr(pid, currentPtr, *pc, true);
     currentPtr += LR_SIZE;
-    *sp = currentPtr;
+    ret &= ReadUintptrFromAddr(pid, currentPtr, *sp, true);
 
     size = frames.size() > size ? size : frames.size();
     for (size_t i = 0; i < size ; ++i) {
         jsFrame[i] = frames[i];
     }
-    return true;
+    return ret;
 }
 #endif
 
