@@ -5093,8 +5093,8 @@ DECLARE_ASM_HANDLER(HandleCallRuntimeCreatePrivatePropertyPrefImm16Id16)
     GateRef lexicalEnv = GetEnvFromFrame(GetFrame(sp));
     GateRef currentFunc = GetFunctionFromFrame(GetFrame(sp));
     GateRef module = GetModuleFromFunction(currentFunc);
-    GateRef count = ReadInst16_1(pc);
-    GateRef literalId = ReadInst16_3(pc);
+    GateRef count = ZExtInt16ToInt32(ReadInst16_1(pc));
+    GateRef literalId = ZExtInt16ToInt32(ReadInst16_3(pc));
     GateRef res = CallRuntime(glue, RTSTUB_ID(CreatePrivateProperty), {lexicalEnv,
         IntToTaggedInt(count), constpool, IntToTaggedInt(literalId), module});
     CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(CALLRUNTIME_CREATEPRIVATEPROPERTY_PREF_IMM16_ID16));
