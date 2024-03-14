@@ -1377,6 +1377,7 @@ private:
     static uintptr_t ClearWeak(const EcmaVM *vm, uintptr_t localAddress);
     static bool IsWeak(const EcmaVM *vm, uintptr_t localAddress);
     static void DisposeGlobalHandleAddr(const EcmaVM *vm, uintptr_t addr);
+    static bool IsAotCrash();
     template<typename T>
     friend class Global;
     template<typename T>

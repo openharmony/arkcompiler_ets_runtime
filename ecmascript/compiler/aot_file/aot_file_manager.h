@@ -197,6 +197,7 @@ public:
     static bool TryReadLock();
     static bool InsideStub(uintptr_t pc);
     static bool InsideAOT(uintptr_t pc);
+    bool IsEnableAOT() const;
     void Iterate(const RootVisitor &v);
 
     const std::shared_ptr<AnFileInfo> GetAnFileInfo(const JSPandaFile *jsPandaFile) const;

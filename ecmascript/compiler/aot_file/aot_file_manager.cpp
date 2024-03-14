@@ -228,6 +228,12 @@ bool AOTFileManager::TryReadLock()
     return anFileDataManager->SafeTryReadLock();
 }
 
+bool AOTFileManager::IsEnableAOT() const
+{
+    AnFileDataManager *anFileDataManager = AnFileDataManager::GetInstance();
+    return anFileDataManager->IsEnable();
+}
+
 bool AOTFileManager::InsideStub(uintptr_t pc)
 {
     AnFileDataManager *anFileDataManager = AnFileDataManager::GetInstance();
