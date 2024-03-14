@@ -100,6 +100,8 @@ namespace panda::ecmascript::kungfu {
     V(MathRound, MATH_ROUND, GateFlags::NO_WRITE, 1, 1, 1)                                      \
     V(MathRoundDouble, MATH_ROUND_DOUBLE, GateFlags::NO_WRITE, 1, 1, 1)                         \
     V(MathFRound, MATH_FROUND, GateFlags::NO_WRITE, 1, 1, 1)                                    \
+    V(MathCeil, MATH_CEIL, GateFlags::NO_WRITE, 1, 1, 1)                                        \
+    V(MathFloor, MATH_FLOOR, GateFlags::NO_WRITE, 1, 1, 1)                                      \
     MCR_BINARY_GATE_META_DATA_CACHE_LIST(V)
 
 #define MCR_GATE_META_DATA_LIST_WITH_PC_OFFSET(V)                                                            \

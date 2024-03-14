@@ -133,10 +133,57 @@ GateRef TypedNativeInlineLowering::VisitGate(GateRef gate)
         case OpCode::MATH_FROUND:
             LowerDoubleRounding(gate);
             break;
+        case OpCode::MATH_CEIL:
+            LowerMathCeilFloor<true>(gate);
+            break;
+        case OpCode::MATH_FLOOR:
+            LowerMathCeilFloor<false>(gate);
+            break;
         default:
             break;
     }
     return Circuit::NullGate();
+}
+
+template <bool IS_CEIL>
+void TypedNativeInlineLowering::LowerMathCeilFloor(GateRef gate)
+{
+    if (builder_.GetCompilationConfig()->IsAArch64()) {
+        LowerMathCeilFloorWithIntrinsic<IS_CEIL>(gate);
+    } else {
+        LowerMathCeilFloorWithRuntimeCall<IS_CEIL>(gate);
+    }
+}
+
+template <bool IS_CEIL>
+void TypedNativeInlineLowering::LowerMathCeilFloorWithIntrinsic(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    DEFVALUE(result, (&builder_), VariableType::FLOAT64(), builder_.NanValue());
+    GateRef arg = acc_.GetValueIn(gate, 0);
+
+    if constexpr (IS_CEIL) {
+        result = builder_.DoubleCeil(arg);
+    } else {
+        result = builder_.DoubleFloor(arg);
+    }
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
+}
+
+template <bool IS_CEIL>
+void TypedNativeInlineLowering::LowerMathCeilFloorWithRuntimeCall(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    DEFVALUE(result, (&builder_), VariableType::FLOAT64(), builder_.NanValue());
+    GateRef arg = acc_.GetValueIn(gate, 0);
+    GateRef glue = acc_.GetGlueFromArgList();
+
+    if constexpr (IS_CEIL) {
+        result = builder_.CallNGCRuntime(glue, RTSTUB_ID(FloatCeil), Gate::InvalidGateRef, {arg}, gate);
+    } else {
+        result = builder_.CallNGCRuntime(glue, RTSTUB_ID(FloatFloor), Gate::InvalidGateRef, {arg}, gate);
+    }
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
 }
 
 void TypedNativeInlineLowering::LowerMathPow(GateRef gate)
@@ -282,28 +329,33 @@ void TypedNativeInlineLowering::LowerAbs(GateRef gate)
 GateRef TypedNativeInlineLowering::BuildRounding(GateRef gate, GateRef value, OpCode op)
 {
     if (op == OpCode::MATH_ROUND || op == OpCode::MATH_ROUND_DOUBLE) {
+        Label entry(&builder_);
+        builder_.SubCfgEntry(&entry);
         const double diff = 0.5;
-        GateRef rounded = BuildRounding(gate, value, OpCode::FLOOR);
+        GateRef rounded;
+        if (builder_.GetCompilationConfig()->IsAArch64()) {
+            rounded = builder_.DoubleCeil(value);
+        } else {
+            GateRef glue = acc_.GetGlueFromArgList();
+            rounded = builder_.CallNGCRuntime(glue, RTSTUB_ID(FloatCeil), Gate::InvalidGateRef, {value}, gate);
+        }
+
         Label sub(&builder_);
-        Label ret(&builder_);
+        Label exit(&builder_);
         DEFVALUE(result, (&builder_), VariableType::FLOAT64(), rounded);
-        BRANCH_CIR(builder_.DoubleGreaterThan(builder_.DoubleSub(rounded, value), builder_.Double(diff)), &sub, &exit);
+        GateRef compare = builder_.DoubleGreaterThan(builder_.DoubleSub(rounded, value), builder_.Double(diff));
+        BRANCH_CIR(compare, &sub, &exit);
         builder_.Bind(&sub);
         {
-            result = builder_.DoubleSub(builder_.Double(1U));
-            builder_.Branch(&exit);
+            result = builder_.DoubleSub(rounded, builder_.Double(1U));
+            builder_.Jump(&exit);
         }
         builder_.Bind(&exit);
         GateRef res = *result;
+        builder_.SubCfgExit();
         return res;
     } else if (op == OpCode::MATH_FROUND) {
         return builder_.ExtFloat32ToDouble(builder_.TruncDoubleToFloat32(value));
-    } else if (op == OpCode::CEIL) {
-        if (builder_.GetCompilationConfig()->IsAArch64() && !isLiteCG_) {
-            return builder_.Ceil(value);
-        }
-        GateRef glue = acc_.GetGlueFromArgList();
-        return builder_.CallNGCRuntime(glue, RTSTUB_ID(FloatCeil), Gate::InvalidGateRef, {value}, gate);
     } else {
         UNREACHABLE();
     }

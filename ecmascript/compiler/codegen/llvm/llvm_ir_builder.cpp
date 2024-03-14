@@ -212,6 +212,7 @@ void LLVMIRBuilder::InitializeHandlers()
         {OpCode::MAX, &LLVMIRBuilder::HandleMax},
         {OpCode::CLZ32, &LLVMIRBuilder::HandleClz32},
         {OpCode::DOUBLE_TRUNC, &LLVMIRBuilder::HandleDoubleTrunc},
+        {OpCode::CEIL, &LLVMIRBuilder::HandleCeil},
         {OpCode::FLOOR, &LLVMIRBuilder::HandleFloor},
         {OpCode::READSP, &LLVMIRBuilder::HandleReadSp},
         {OpCode::FINISH_ALLOCATE, &LLVMIRBuilder::HandleFinishAllocate},
@@ -2018,15 +2019,28 @@ void LLVMIRBuilder::VisitExp([[maybe_unused]] GateRef gate, [[maybe_unused]] Gat
         llvm::Intrinsic::ID llvmId = llvm::Intrinsic::pow;
         result = llvm::unwrap(builder_)->CreateBinaryIntrinsic(llvmId, e1Value, e2Value);
     }
+#else
+    UNREACHABLE();
+#endif
+}
 
+void LLVMIRBuilder::HandleCeil(GateRef gate)
+{
+    GateRef param = acc_.GetIn(gate, 0);
+    VisitCeil(gate, param);
+}
+
+void LLVMIRBuilder::VisitCeil(GateRef gate, GateRef e1)
+{
+    llvm::Value *e1Value = llvm::unwrap(GetLValue(e1));
+    ASSERT(acc_.GetMachineType(e1) == acc_.GetMachineType(gate));
+    llvm::Intrinsic::ID llvmId = llvm::Intrinsic::ceil;
+    llvm::Value *result = llvm::unwrap(builder_)->CreateUnaryIntrinsic(llvmId, e1Value);
     Bind(gate, llvm::wrap(result));
 
     if (IsLogEnabled()) {
         SetDebugInfo(gate, llvm::wrap(result));
     }
-#else
-    UNREACHABLE();
-#endif
 }
 
 template<typename... Ts>

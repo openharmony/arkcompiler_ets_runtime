@@ -25,9 +25,6 @@ void BuiltinLowering::LowerTypedCallBuitin(GateRef gate)
     auto idGate = acc_.GetValueIn(gate, valuesIn - 1);
     auto id = static_cast<BuiltinsStubCSigns::ID>(acc_.GetConstantValue(idGate));
     switch (id) {
-        case BUILTINS_STUB_ID(FLOOR):
-            LowerTypedFloor(gate);
-            break;
         case BUILTINS_STUB_ID(LocaleCompare):
             LowerTypedLocaleCompare(gate);
             break;
@@ -276,14 +273,6 @@ GateRef BuiltinLowering::CheckPara(GateRef gate, GateRef funcCheck)
         return funcCheck;
     }
     switch (id) {
-        case BuiltinsStubCSigns::ID::FLOOR: {
-            if (acc_.GetNumValueIn(gate) <= 2U) {
-                return funcCheck;
-            }
-            GateRef para = acc_.GetValueIn(gate, 2);
-            GateRef paracheck = builder_.TaggedIsNumber(para);
-            return builder_.BoolAnd(paracheck, funcCheck);
-        }
         case BuiltinsStubCSigns::ID::LocaleCompare:
         case BuiltinsStubCSigns::ID::SORT:
         case BuiltinsStubCSigns::ID::STRINGIFY:

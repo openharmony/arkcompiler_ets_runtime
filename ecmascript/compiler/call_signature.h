@@ -465,6 +465,7 @@ private:
     V(FloatClz32)                               \
     V(FloatFloor)                               \
     V(FloatPow)                                 \
+    V(FloatCeil)                                \
     V(FindElementWithCache)                     \
     V(MarkingBarrier)                           \
     V(StoreBarrier)                             \

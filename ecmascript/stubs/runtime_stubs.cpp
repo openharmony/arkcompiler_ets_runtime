@@ -2955,6 +2955,11 @@ double RuntimeStubs::FloatTrunc(double x)
     return std::trunc(x);
 }
 
+double RuntimeStubs::FloatCeil(double x)
+{
+    return std::ceil(x);
+}
+
 double RuntimeStubs::FloatFloor(double x)
 {
     return std::floor(x);

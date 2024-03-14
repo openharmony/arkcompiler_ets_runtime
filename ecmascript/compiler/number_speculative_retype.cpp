@@ -197,6 +197,8 @@ GateRef NumberSpeculativeRetype::VisitGate(GateRef gate)
         case OpCode::MATH_POW:
         case OpCode::MATH_CBRT:
         case OpCode::MATH_FROUND:
+        case OpCode::MATH_CEIL:
+        case OpCode::MATH_FLOOR:
             return VisitMathDoubleParamsBuiltin(gate);
         case OpCode::MATH_CLZ32:
             return VisitClz32Builtin(gate);
