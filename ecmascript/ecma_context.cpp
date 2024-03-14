@@ -478,7 +478,8 @@ JSTaggedValue EcmaContext::FindUnsharedConstpool(JSTaggedValue sharedConstpool)
         ASSERT(index != INT32_MAX);
         JSHandle<ConstantPool> unshareCp =
             ConstantPool::CreateUnSharedConstPoolBySharedConstpool(vm_, shareCp->GetJSPandaFile(), shareCp, cpId);
-        SetUnsharedConstpool(index, unshareCp.GetTaggedValue());
+        unsharedConstpool = unshareCp.GetTaggedValue();
+        SetUnsharedConstpool(index, unsharedConstpool);
     }
     return unsharedConstpool;
 }
