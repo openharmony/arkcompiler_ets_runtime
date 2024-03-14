@@ -464,8 +464,7 @@ public:
 
     GCStats *GetEcmaGCStats() override
     {
-        LOG_FULL(ERROR) << "SharedHeap GetEcmaGCStats() not support yet";
-        return nullptr;
+        return sGCStats_;
     }
 
     inline void SetGlobalEnvConstants(const GlobalEnvConstants *globalEnvConstants)
@@ -539,6 +538,7 @@ private:
     void ReclaimRegions();
 
     bool parallelGC_ {true};
+    GCStats *sGCStats_ {nullptr};
     const GlobalEnvConstants *globalEnvConstants_ {nullptr};
     SharedOldSpace *sOldSpace_ {nullptr};
     SharedNonMovableSpace *sNonMovableSpace_ {nullptr};

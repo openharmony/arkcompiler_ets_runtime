@@ -91,7 +91,8 @@ enum class RequestAotMode : uint8_t {
     V(COLLECT_REGION_SET_SIZE)           \
     SEMI_RECORD_DATA(V)                  \
     PARTIAL_RECORD_DATA(V)               \
-    FULL_RECORD_DATA(V)
+    FULL_RECORD_DATA(V)                  \
+    SHARED_RECORD_DATA(V)
 
 #define RECORD_DURATION(V)               \
     V(SEMI_MIN_PAUSE)                    \
@@ -105,7 +106,10 @@ enum class RequestAotMode : uint8_t {
     V(OLD_TOTAL_PAUSE)                   \
     V(COMPRESS_MIN_PAUSE)                \
     V(COMPRESS_MAX_PAUSE)                \
-    V(COMPRESS_TOTAL_PAUSE)
+    V(COMPRESS_TOTAL_PAUSE)              \
+    V(SHARED_MIN_PAUSE)                  \
+    V(SHARED_MAX_PAUSE)                  \
+    V(SHARED_TOTAL_PAUSE)
 
 #define SEMI_RECORD_DATA(V)              \
     V(SEMI_COUNT)                        \
@@ -126,6 +130,13 @@ enum class RequestAotMode : uint8_t {
     V(COMPRESS_COUNT)                    \
     V(COMPRESS_TOTAL_ALIVE)              \
     V(COMPRESS_TOTAL_COMMIT)
+
+#define SHARED_RECORD_DATA(V)            \
+    V(SHARED_COUNT)                      \
+    V(SHARED_ALIVE_SIZE)                 \
+    V(SHARED_TOTAL_ALIVE)                \
+    V(SHARED_COMMIT_SIZE)                \
+    V(SHARED_TOTAL_COMMIT)
 
 #define TRACE_GC_SPEED(V)                \
     V(UPDATE_REFERENCE_SPEED)            \
