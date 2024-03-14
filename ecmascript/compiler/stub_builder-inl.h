@@ -2060,6 +2060,19 @@ inline GateRef StubBuilder::GetValueFromTaggedArray(GateRef array, GateRef index
     return Load(VariableType::JS_ANY(), array, dataOffset);
 }
 
+inline GateRef StubBuilder::GetUnsharedConstpoolIndex(GateRef constpool)
+{
+    GateRef constPoolSize = GetLengthOfTaggedArray(constpool);
+    GateRef unshareIdx = Int32Sub(constPoolSize, Int32(ConstantPool::UNSHARED_CONSTPOOL_INDEX));
+    return GetValueFromTaggedArray(constpool, unshareIdx);
+}
+
+inline GateRef StubBuilder::GetUnsharedConstpool(GateRef arrayAddr, GateRef index)
+{
+    GateRef dataOffset = PtrAdd(arrayAddr, ZExtInt32ToPtr(TaggedGetInt(index)));
+    return Load(VariableType::JS_ANY(), dataOffset);
+}
+
 inline GateRef StubBuilder::GetValueFromMutantTaggedArray(GateRef elements, GateRef index)
 {
     GateRef offset = PtrMul(ZExtInt32ToPtr(index), IntPtr(sizeof(int64_t)));

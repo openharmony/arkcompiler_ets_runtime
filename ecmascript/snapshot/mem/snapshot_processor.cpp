@@ -1828,16 +1828,17 @@ uintptr_t SnapshotProcessor::GetNewObj(size_t objectSize, TaggedObject *objectHe
         return AllocateObjectToLocalSpace(snapshotLocalSpace_, objectSize);
     }
     auto region = Region::ObjectAddressToRange(objectHeader);
-    if (region->InYoungOrOldSpace()) {
+    if (region->InYoungOrOldSpace() || region->InSharedOldSpace()) {
         return AllocateObjectToLocalSpace(oldLocalSpace_, objectSize);
     }
     if (region->InMachineCodeSpace()) {
         return AllocateObjectToLocalSpace(machineCodeLocalSpace_, objectSize);
     }
-    if (region->InNonMovableSpace() || region->InReadOnlySpace()) {
+    if (region->InNonMovableSpace() || region->InReadOnlySpace() ||
+        region->InSharedNonMovableSpace() || region->InSharedReadOnlySpace()) {
         return AllocateObjectToLocalSpace(nonMovableLocalSpace_, objectSize);
     }
-    if (region->InHugeObjectSpace()) {
+    if (region->InHugeObjectSpace() || region->InSharedHugeObjectSpace()) {
         return AllocateObjectToLocalSpace(hugeObjectLocalSpace_, objectSize);
     }
     return AllocateObjectToLocalSpace(snapshotLocalSpace_, objectSize);

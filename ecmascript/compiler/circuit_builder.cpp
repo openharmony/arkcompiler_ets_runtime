@@ -443,6 +443,17 @@ GateRef CircuitBuilder::GetConstPool(GateRef jsFunc)
     return newGate;
 }
 
+GateRef CircuitBuilder::GetUnsharedConstPool(GateRef jsFunc)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentDepend = currentLabel->GetDepend();
+    auto newGate = GetCircuit()->NewGate(circuit_->GetUnsharedConstPool(), MachineType::I64,
+                                         { currentDepend, jsFunc },
+                                         GateType::AnyType());
+    currentLabel->SetDepend(newGate);
+    return newGate;
+}
+
 GateRef CircuitBuilder::GetGlobalEnv()
 {
     auto currentLabel = env_->GetCurrentLabel();
@@ -539,6 +550,29 @@ GateRef CircuitBuilder::GetConstPoolFromFunction(GateRef jsFunc)
 {
     GateRef method = GetMethodFromFunction(jsFunc);
     return Load(VariableType::JS_ANY(), method, IntPtr(Method::CONSTANT_POOL_OFFSET));
+}
+
+GateRef CircuitBuilder::GetUnsharedConstPoolFromGlue(GateRef glue, GateRef jsFunc)
+{
+    GateRef method = GetMethodFromFunction(jsFunc);
+    GateRef constpool = Load(VariableType::JS_ANY(), method, IntPtr(Method::CONSTANT_POOL_OFFSET));
+    GateRef unshareIdx = GetUnsharedConstpoolIndex(constpool);
+    GateRef unshareCpOffset = JSThread::GlueData::GetUnSharedConstpoolsOffset(env_->Is32Bit());
+    GateRef unshareCpAddr = Load(VariableType::NATIVE_POINTER(), glue, IntPtr(unshareCpOffset));
+    return GetUnsharedConstpool(unshareCpAddr, unshareIdx);
+}
+
+GateRef CircuitBuilder::GetUnsharedConstpoolIndex(GateRef constpool)
+{
+    GateRef constPoolSize = GetLengthOfTaggedArray(constpool);
+    GateRef unshareIdx = Int32Sub(constPoolSize, Int32(ConstantPool::UNSHARED_CONSTPOOL_INDEX));
+    return GetValueFromTaggedArray(constpool, unshareIdx);
+}
+
+GateRef CircuitBuilder::GetUnsharedConstpool(GateRef arrayAddr, GateRef index)
+{
+    GateRef dataOffset = PtrAdd(arrayAddr, ZExtInt32ToPtr(TaggedGetInt(index)));
+    return Load(VariableType::JS_ANY(), dataOffset, IntPtr(0));
 }
 
 GateRef CircuitBuilder::GetObjectFromConstPool(GateRef glue, GateRef hirGate, GateRef jsFunc, GateRef index,
@@ -831,7 +865,7 @@ GateRef CircuitBuilder::GetHClassGateFromIndex(GateRef gate, int32_t index)
 {
     ArgumentAccessor argAcc(circuit_);
     GateRef jsFunc = argAcc.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
-    GateRef constPool = GetConstPool(jsFunc);
+    GateRef constPool = GetUnsharedConstPool(jsFunc);
     return LoadHClassFromConstpool(constPool, index);
 }
 

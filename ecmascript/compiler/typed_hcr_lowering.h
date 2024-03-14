@@ -255,6 +255,7 @@ private:
     GateRef GetValueFromSupers(GateRef supers, size_t index);
     GateRef LoadFromTaggedArray(GateRef array, size_t index);
     GateRef LoadFromConstPool(GateRef jsFunc, size_t index, size_t valVecType);
+    GateRef LoadFromUnsharedConstPool(GateRef jsFunc, size_t index, size_t valVecType);
     GateRef LoadFromVTable(GateRef receiver, size_t index);
     GateRef GetLengthFromString(GateRef gate);
     GateRef LoadPropertyFromHolder(GateRef holder, PropertyLookupResult plr);

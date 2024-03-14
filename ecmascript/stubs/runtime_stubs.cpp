@@ -1227,15 +1227,9 @@ DEF_RUNTIME_STUBS(GetObjectLiteralFromCache)
     JSHandle<JSTaggedValue> constpool = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
     JSTaggedValue index = GetArg(argv, argc, 1);  // 1: means the first parameter
     JSHandle<JSTaggedValue> module = GetHArg<JSTaggedValue>(argv, argc, 2);  // 2: means the second parameter
-    // TODO(aot) delete if content after aot adapting share heap. now aot and asm-interpreter all enter.
-    if (JSHandle<ConstantPool>(constpool)->GetJSPandaFile()->IsLoadedAOT()) {
-        return ConstantPool::GetLiteralFromCache<ConstPoolType::OBJECT_LITERAL>(
-            thread, constpool.GetTaggedValue(), index.GetInt(), module.GetTaggedValue()).GetRawData();
-    } else {
-        JSTaggedValue cp = thread->GetCurrentEcmaContext()->FindUnsharedConstpool(constpool.GetTaggedValue());
-        return ConstantPool::GetLiteralFromCache<ConstPoolType::OBJECT_LITERAL>(
-            thread, cp, index.GetInt(), module.GetTaggedValue()).GetRawData();
-    }
+    JSTaggedValue cp = thread->GetCurrentEcmaContext()->FindUnsharedConstpool(constpool.GetTaggedValue());
+    return ConstantPool::GetLiteralFromCache<ConstPoolType::OBJECT_LITERAL>(
+        thread, cp, index.GetInt(), module.GetTaggedValue()).GetRawData();
 }
 
 DEF_RUNTIME_STUBS(GetArrayLiteralFromCache)
@@ -1244,15 +1238,9 @@ DEF_RUNTIME_STUBS(GetArrayLiteralFromCache)
     JSHandle<JSTaggedValue> constpool = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
     JSTaggedValue index = GetArg(argv, argc, 1);  // 1: means the first parameter
     JSHandle<JSTaggedValue> module = GetHArg<JSTaggedValue>(argv, argc, 2);  // 2: means the second parameter
-    // TODO(aot) delete if content after aot adapting share heap. now aot and asm-interpreter all enter.
-    if (JSHandle<ConstantPool>(constpool)->GetJSPandaFile()->IsLoadedAOT()) {
-        return ConstantPool::GetLiteralFromCache<ConstPoolType::ARRAY_LITERAL>(
-            thread, constpool.GetTaggedValue(), index.GetInt(), module.GetTaggedValue()).GetRawData();
-    } else {
-        JSTaggedValue cp = thread->GetCurrentEcmaContext()->FindUnsharedConstpool(constpool.GetTaggedValue());
-        return ConstantPool::GetLiteralFromCache<ConstPoolType::ARRAY_LITERAL>(
-            thread, cp, index.GetInt(), module.GetTaggedValue()).GetRawData();
-    }
+    JSTaggedValue cp = thread->GetCurrentEcmaContext()->FindUnsharedConstpool(constpool.GetTaggedValue());
+    return ConstantPool::GetLiteralFromCache<ConstPoolType::ARRAY_LITERAL>(
+        thread, cp, index.GetInt(), module.GetTaggedValue()).GetRawData();
 }
 
 DEF_RUNTIME_STUBS(LdObjByIndex)

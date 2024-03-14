@@ -235,7 +235,11 @@ public:
 
     // Get
     GateRef GetConstPool(GateRef jsFunc);
+    GateRef GetUnsharedConstPool(GateRef jsFunc);
     GateRef GetConstPoolFromFunction(GateRef jsFunc);
+    GateRef GetUnsharedConstPoolFromGlue(GateRef glue, GateRef jsFunc);
+    GateRef GetUnsharedConstpoolIndex(GateRef constpool);
+    GateRef GetUnsharedConstpool(GateRef arrayAddr, GateRef index);
     GateRef GetCodeAddr(GateRef jsFunc);
     GateRef GetObjectFromConstPool(GateRef glue, GateRef hirGate, GateRef jsFunc, GateRef index, ConstPoolType type);
     GateRef GetObjectFromConstPool(GateRef glue, GateRef hirGate, GateRef constPool, GateRef module, GateRef index,
