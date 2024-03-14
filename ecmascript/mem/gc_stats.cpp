@@ -535,7 +535,7 @@ void GCStats::RecordGCSpeed()
 
 GCType GCStats::GetGCType(TriggerGCType gcType)
 {
-    if (!heap_->IsReadyToMark()) {
+    if (heap_ && !heap_->IsReadyToMark()) {
         return heap_->IsConcurrentFullMark() ? GCType::PARTIAL_OLD_GC : GCType::PARTIAL_YOUNG_GC;
     }
     switch (gcType) {
@@ -545,6 +545,8 @@ GCType GCStats::GetGCType(TriggerGCType gcType)
             return GCType::PARTIAL_OLD_GC;
         case TriggerGCType::FULL_GC:
             return GCType::COMPRESS_GC;
+        case TriggerGCType::SHARED_GC:
+            return GCType::SHARED_GC;
         default:
             return GCType::OTHER;
     }
@@ -565,5 +567,124 @@ bool GCStats::CheckIfLongTimePause()
         return true;
     }
     return false;
+}
+
+void SharedGCStats::PrintStatisticResult()
+{
+    LOG_GC(INFO) << "/******************* SharedGCStats statistic: *******************/";
+    PrintSharedGCSummaryStatistic();
+    PrintGCMemoryStatistic();
+}
+
+void SharedGCStats::PrintGCStatistic()
+{
+    if (enableGCTracer_) {
+        LOG_GC(INFO) << " [ " << GetGCTypeName() << " ] "
+                     << sizeToMB(recordData_[(uint8_t)RecordData::START_OBJ_SIZE]) << " ("
+                     << sizeToMB(recordData_[(uint8_t)RecordData::START_COMMIT_SIZE]) << ") -> "
+                     << sizeToMB(recordData_[(uint8_t)RecordData::END_OBJ_SIZE]) << " ("
+                     << sizeToMB(recordData_[(uint8_t)RecordData::END_COMMIT_SIZE]) << ") MB, "
+                     << scopeDuration_[Scope::ScopeId::TotalGC] << "ms, " << GCReasonToString();
+        PrintSharedGCDuration();
+        PrintGCMemoryStatistic();
+        PrintSharedGCSummaryStatistic();
+    }
+    InitializeRecordList();
+}
+
+void SharedGCStats::PrintSharedGCSummaryStatistic()
+{
+    LOG_GC(INFO) << "/***************** GC summary statistic: *****************/";
+    LOG_GC(INFO) << STATS_DESCRIPTION_FORMAT("SharedGC occurs count")
+                 << STATS_DATA_FORMAT(GetRecordData(RecordData::SHARED_COUNT)) << "\n"
+                 << STATS_DESCRIPTION_FORMAT("SharedGC max pause:")
+                 << STATS_DATA_FORMAT(GetRecordDuration(RecordDuration::SHARED_MAX_PAUSE)) << "ms\n"
+                 << STATS_DESCRIPTION_FORMAT("SharedGC min pause:")
+                 << STATS_DATA_FORMAT(GetRecordDuration(RecordDuration::SHARED_MIN_PAUSE)) << "ms\n"
+                 << STATS_DESCRIPTION_FORMAT("SharedGC average pause:")
+                 << STATS_DATA_FORMAT(GetRecordDuration(RecordDuration::SHARED_TOTAL_PAUSE) /
+                                      GetRecordData(RecordData::SHARED_COUNT)) << "ms\n"
+                 << STATS_DESCRIPTION_FORMAT("SharedHeap average alive rate:")
+                 << STATS_DATA_FORMAT(double(GetRecordData(RecordData::SHARED_TOTAL_ALIVE)) /
+                                      GetRecordData(RecordData::SHARED_TOTAL_COMMIT));
+}
+
+void SharedGCStats::PrintGCMemoryStatistic()
+{
+    NativeAreaAllocator *nativeAreaAllocator = sHeap_->GetNativeAreaAllocator();
+    HeapRegionAllocator *heapRegionAllocator = sHeap_->GetHeapRegionAllocator();
+    LOG_GC(INFO) << "/****************** GC Memory statistic: *****************/";
+    LOG_GC(INFO) << "AllSpaces         used:"
+                 << STATS_DATA_FORMAT(sizeToKB(sHeap_->GetHeapObjectSize())) << "KB"
+                 << "     committed:"
+                 << STATS_DATA_FORMAT(sizeToKB(sHeap_->GetCommittedSize())) << "KB\n"
+                 << "SharedOldSpace         used:"
+                 << STATS_DATA_FORMAT(sizeToKB(sHeap_->GetOldSpace()->GetHeapObjectSize())) << "KB"
+                 << "     committed:"
+                 << STATS_DATA_FORMAT(sizeToKB(sHeap_->GetOldSpace()->GetCommittedSize())) << "KB\n"
+                 << "SharedNonMovableSpace  used:"
+                 << STATS_DATA_FORMAT(sizeToKB(sHeap_->GetNonMovableSpace()->GetHeapObjectSize())) << "KB"
+                 << "     committed:"
+                 << STATS_DATA_FORMAT(sizeToKB(sHeap_->GetNonMovableSpace()->GetCommittedSize())) << "KB\n"
+                 << "SharedHugeObjectSpace  used:"
+                 << STATS_DATA_FORMAT(sizeToKB(sHeap_->GetHugeObjectSpace()->GetHeapObjectSize())) << "KB"
+                 << "     committed:"
+                 << STATS_DATA_FORMAT(sizeToKB(sHeap_->GetHugeObjectSpace()->GetCommittedSize())) << "KB\n";
+
+    LOG_GC(INFO) << STATS_DESCRIPTION_FORMAT("Anno memory usage size:")
+                 << STATS_DATA_FORMAT(sizeToMB(heapRegionAllocator->GetAnnoMemoryUsage())) << "MB\n"
+                 << STATS_DESCRIPTION_FORMAT("Native memory usage size:")
+                 << STATS_DATA_FORMAT(sizeToMB(nativeAreaAllocator->GetNativeMemoryUsage())) << "MB\n";
+
+    LOG_GC(INFO) << STATS_DESCRIPTION_FORMAT("Heap alive rate:")
+        << STATS_DATA_FORMAT(double(GetRecordData(RecordData::SHARED_ALIVE_SIZE)) /
+                                    GetRecordData(RecordData::SHARED_COMMIT_SIZE));
+}
+
+void SharedGCStats::PrintSharedGCDuration()
+{
+    LOG_GC(INFO) << STATS_DESCRIPTION_FORMAT("TotalGC:")
+        << STATS_DATA_FORMAT(scopeDuration_[Scope::ScopeId::TotalGC]) << "ms\n"
+        << STATS_DESCRIPTION_FORMAT("Initialize:")
+        << STATS_DATA_FORMAT(scopeDuration_[Scope::ScopeId::Initialize]) << "ms\n"
+        << STATS_DESCRIPTION_FORMAT("Mark:")
+        << STATS_DATA_FORMAT(scopeDuration_[Scope::ScopeId::Mark]) << "ms\n"
+        << STATS_DESCRIPTION_FORMAT("Sweep:")
+        << STATS_DATA_FORMAT(scopeDuration_[Scope::ScopeId::Sweep]) << "ms\n"
+        << STATS_DESCRIPTION_FORMAT("Finish:")
+        << STATS_DATA_FORMAT(scopeDuration_[Scope::ScopeId::Finish]) << "ms";
+}
+
+void SharedGCStats::RecordStatisticBeforeGC(TriggerGCType gcType, GCReason reason)
+{
+    size_t commitSize = sHeap_->GetCommittedSize();
+    SetRecordData(RecordData::START_OBJ_SIZE, sHeap_->GetHeapObjectSize());
+    SetRecordData(RecordData::START_COMMIT_SIZE, commitSize);
+    SetRecordData(RecordData::SHARED_COMMIT_SIZE, commitSize);
+    IncreaseRecordData(RecordData::SHARED_TOTAL_COMMIT, commitSize);
+    gcType_ = GetGCType(gcType);
+    reason_ = reason;
+}
+
+void SharedGCStats::RecordStatisticAfterGC()
+{
+    SetRecordData(RecordData::END_OBJ_SIZE, sHeap_->GetHeapObjectSize());
+    SetRecordData(RecordData::END_COMMIT_SIZE, sHeap_->GetCommittedSize());
+
+    float duration = scopeDuration_[Scope::ScopeId::TotalGC];
+    if (GetRecordData(RecordData::SHARED_COUNT) == 0) {
+        SetRecordDuration(RecordDuration::SHARED_MIN_PAUSE, duration);
+        SetRecordDuration(RecordDuration::SHARED_MAX_PAUSE, duration);
+    } else {
+        SetRecordDuration(RecordDuration::SHARED_MIN_PAUSE,
+            std::min(GetRecordDuration(RecordDuration::SHARED_MIN_PAUSE), duration));
+        SetRecordDuration(RecordDuration::SHARED_MAX_PAUSE,
+            std::max(GetRecordDuration(RecordDuration::SHARED_MAX_PAUSE), duration));
+    }
+    IncreaseRecordData(RecordData::SHARED_COUNT);
+    IncreaseRecordDuration(RecordDuration::SHARED_TOTAL_PAUSE, duration);
+    size_t heapAliveSize = sHeap_->GetHeapObjectSize();
+    SetRecordData(RecordData::SHARED_ALIVE_SIZE, heapAliveSize);
+    IncreaseRecordData(RecordData::SHARED_TOTAL_ALIVE, heapAliveSize);
 }
 }  // namespace panda::ecmascript

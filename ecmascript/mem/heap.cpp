@@ -75,6 +75,7 @@ bool SharedHeap::CheckAndTriggerOldGC(JSThread *thread, size_t size)
 void SharedHeap::Initialize(NativeAreaAllocator *nativeAreaAllocator, HeapRegionAllocator *heapRegionAllocator,
     const JSRuntimeOptions &option)
 {
+    sGCStats_ = new SharedGCStats(this, option.EnableGCTracer());
     nativeAreaAllocator_ = nativeAreaAllocator;
     heapRegionAllocator_ = heapRegionAllocator;
     shouldVerifyHeap_ = option.EnableHeapVerify();
@@ -145,6 +146,7 @@ void SharedHeap::CollectGarbage(JSThread *thread, [[maybe_unused]]TriggerGCType 
     {
         SuspendAllScope scope(thread);
         Prepare();
+        GetEcmaGCStats()->RecordStatisticBeforeGC(gcType, reason);
         if (UNLIKELY(ShouldVerifyHeap())) {
             // pre gc heap verify
             LOG_ECMA(DEBUG) << "pre gc shared heap verify";
@@ -156,6 +158,8 @@ void SharedHeap::CollectGarbage(JSThread *thread, [[maybe_unused]]TriggerGCType 
             LOG_ECMA(DEBUG) << "after gc shared heap verify";
             SharedHeapVerification(this, VerifyKind::VERIFY_POST_SHARED_GC).VerifyAll();
         }
+        GetEcmaGCStats()->RecordStatisticAfterGC();
+        GetEcmaGCStats()->PrintGCStatistic();
     }
     // Don't process weak node nativeFinalizeCallback here. These callbacks would be called after localGC.
 }
@@ -710,9 +714,7 @@ void Heap::CollectGarbage(TriggerGCType gcType, GCReason reason)
 void BaseHeap::ThrowOutOfMemoryError(JSThread *thread, size_t size, std::string functionName,
     bool NonMovableObjNearOOM)
 {
-    if (GetEcmaGCStats() != nullptr) {
-        GetEcmaGCStats()->PrintGCMemoryStatistic();
-    }
+    GetEcmaGCStats()->PrintGCMemoryStatistic();
     std::ostringstream oss;
     if (NonMovableObjNearOOM) {
         oss << "OutOfMemory when nonmovable live obj size: " << size << " bytes"
@@ -728,8 +730,7 @@ void BaseHeap::ThrowOutOfMemoryError(JSThread *thread, size_t size, std::string 
 void BaseHeap::ThrowOutOfMemoryErrorForDefault(JSThread *thread, size_t size, std::string functionName,
     bool NonMovableObjNearOOM)
 {
-    EcmaVM *ecmaVm = thread->GetEcmaVM();
-    ecmaVm->GetEcmaGCStats()->PrintGCMemoryStatistic();
+    GetEcmaGCStats()->PrintGCMemoryStatistic();
     std::ostringstream oss;
     if (NonMovableObjNearOOM) {
         oss << "OutOfMemory when nonmovable live obj size: " << size << " bytes"
@@ -738,6 +739,7 @@ void BaseHeap::ThrowOutOfMemoryErrorForDefault(JSThread *thread, size_t size, st
         oss << "OutOfMemory when trying to allocate " << size << " bytes" << " function name: " << functionName.c_str();
     }
     LOG_ECMA_MEM(ERROR) << oss.str().c_str();
+    EcmaVM *ecmaVm = thread->GetEcmaVM();
     JSHandle<GlobalEnv> env = ecmaVm->GetGlobalEnv();
     JSHandle<JSObject> error = JSHandle<JSObject>::Cast(env->GetOOMErrorObject());
 
@@ -747,9 +749,7 @@ void BaseHeap::ThrowOutOfMemoryErrorForDefault(JSThread *thread, size_t size, st
 
 void BaseHeap::FatalOutOfMemoryError(size_t size, std::string functionName)
 {
-    if (GetEcmaGCStats() != nullptr) {
-        GetEcmaGCStats()->PrintGCMemoryStatistic();
-    }
+    GetEcmaGCStats()->PrintGCMemoryStatistic();
     LOG_ECMA_MEM(FATAL) << "OOM fatal when trying to allocate " << size << " bytes"
                         << " function name: " << functionName.c_str();
 }

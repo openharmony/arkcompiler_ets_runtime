@@ -89,6 +89,7 @@ public:
     explicit SuspendAllScope(JSThread* self)
         : self_(self), scope_(self, ThreadState::IS_SUSPENDED)
     {
+        ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "SuspendAll");
         Runtime::GetInstance()->SuspendAll(self_);
     }
     ~SuspendAllScope()

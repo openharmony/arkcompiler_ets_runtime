@@ -27,12 +27,14 @@
 
 namespace panda::ecmascript {
 class Heap;
+class SharedHeap;
 
 enum class GCType : int {
     STW_YOUNG_GC = 0,
     PARTIAL_YOUNG_GC,
     PARTIAL_OLD_GC,
     COMPRESS_GC,
+    SHARED_GC,
     OTHER,
     START,
 };
@@ -71,12 +73,12 @@ public:
     explicit GCStats(const Heap *heap) : heap_(heap) {}
     GCStats(const Heap *heap, size_t longPuaseTime) : heap_(heap),
         longPauseTime_(longPuaseTime) {}
-    ~GCStats() = default;
+    virtual ~GCStats() = default;
 
-    void PrintStatisticResult();
-    void PrintGCMemoryStatistic();
+    virtual void PrintStatisticResult();
+    virtual void PrintGCMemoryStatistic();
     bool CheckIfLongTimePause();
-    void PrintGCStatistic();
+    virtual void PrintGCStatistic();
 
     float GetGCSpeed(SpeedData data)
     {
@@ -114,6 +116,8 @@ public:
                 return "HPP OldGC";
             case GCType::COMPRESS_GC:
                 return "CompressGC";
+            case GCType::SHARED_GC:
+                return "SharedGC";
             default:
                 return "UnknownType";
         }
@@ -130,9 +134,9 @@ public:
         return std::min(copiedRate + promotedRate, 1.0);
     }
 
-    void RecordGCSpeed();
-    void RecordStatisticBeforeGC(TriggerGCType gcType, GCReason reason);
-    void RecordStatisticAfterGC();
+    virtual void RecordGCSpeed();
+    virtual void RecordStatisticBeforeGC(TriggerGCType gcType, GCReason reason);
+    virtual void RecordStatisticAfterGC();
 
     class Scope : public ClockScope {
     public:
@@ -160,7 +164,7 @@ public:
         GCStats* stats_;
     };
 
-private:
+protected:
     bool CheckIfNeedPrint(GCType type);
     void PrintVerboseGCStatistic();
     void PrintGCDurationStatistic();
@@ -251,6 +255,29 @@ private:
 
     NO_COPY_SEMANTIC(GCStats);
     NO_MOVE_SEMANTIC(GCStats);
+};
+
+class SharedGCStats : public GCStats {
+public:
+    SharedGCStats(const SharedHeap *sHeap, bool enableGCTracer)
+        : GCStats(nullptr), sHeap_(sHeap), enableGCTracer_(enableGCTracer)
+    {
+        SetRecordData(RecordData::SHARED_COUNT, 0);
+    }
+    ~SharedGCStats() = default;
+
+    void PrintStatisticResult() override;
+    void PrintGCMemoryStatistic() override;
+    void PrintGCStatistic() override;
+
+    void RecordStatisticBeforeGC(TriggerGCType gcType, GCReason reason) override;
+    void RecordStatisticAfterGC() override;
+private:
+    void PrintSharedGCDuration();
+    void PrintSharedGCSummaryStatistic();
+
+    const SharedHeap *sHeap_ {nullptr};
+    bool enableGCTracer_ {false};
 };
 }  // namespace panda::ecmascript
 

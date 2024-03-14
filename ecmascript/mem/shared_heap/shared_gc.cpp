@@ -32,6 +32,7 @@ namespace panda::ecmascript {
 void SharedGC::RunPhases()
 {
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "SharedGC::RunPhases");
+    TRACE_GC(GCStats::Scope::ScopeId::TotalGC, sHeap_->GetEcmaGCStats());
     Initialize();
     Mark();
     Sweep();
@@ -41,6 +42,7 @@ void SharedGC::RunPhases()
 void SharedGC::Initialize()
 {
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "SharedGC::Initialize");
+    TRACE_GC(GCStats::Scope::ScopeId::Initialize,sHeap_->GetEcmaGCStats());
     sHeap_->EnumerateOldSpaceRegions([](Region *current) {
         ASSERT(current->InSharedSweepableSpace());
         current->ResetAliveObject();
@@ -50,6 +52,7 @@ void SharedGC::Initialize()
 void SharedGC::Mark()
 {
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "SharedGC::Mark");
+    TRACE_GC(GCStats::Scope::ScopeId::Mark, sHeap_->GetEcmaGCStats());
     sHeap_->GetSharedGCMarker()->MarkSerializeRoots(MAIN_THREAD_INDEX);
     Runtime::GetInstance()->GCIterateThreadList([&](JSThread *thread) {
         ASSERT(!thread->IsInRunningState());
@@ -64,6 +67,7 @@ void SharedGC::Mark()
 void SharedGC::Sweep()
 {
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "SharedGC::Sweep");
+    TRACE_GC(GCStats::Scope::ScopeId::Sweep, sHeap_->GetEcmaGCStats());
     UpdateRecordWeakReference();
     WeakRootVisitor gcUpdateWeak = [](TaggedObject *header) {
         Region *objectRegion = Region::ObjectAddressToRange(header);
@@ -91,6 +95,7 @@ void SharedGC::Sweep()
 void SharedGC::Finish()
 {
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "SharedGC::Finish");
+    TRACE_GC(GCStats::Scope::ScopeId::Finish, sHeap_->GetEcmaGCStats());
     sHeap_->Reclaim();
     sWorkManager_->Finish();
     sHeap_->GetSweeper()->TryFillSweptRegion();
