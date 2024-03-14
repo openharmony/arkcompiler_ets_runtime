@@ -96,6 +96,9 @@ GateRef TypedNativeInlineLowering::VisitGate(GateRef gate)
         case OpCode::MATH_CBRT:
             LowerGeneralUnaryMath(gate, RTSTUB_ID(FloatCbrt));
             break;
+        case OpCode::MATH_SIGN:
+            LowerMathSign(gate);
+            break;
         case OpCode::MATH_MIN:
             LowerMinMax<false>(gate);
             break;
@@ -674,6 +677,99 @@ void TypedNativeInlineLowering::LowerMathSqrt(GateRef gate)
     acc_.SetMachineType(ret, MachineType::F64);
     acc_.SetGateType(ret, GateType::NJSValue());
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), ret);
+}
+
+static void LowerMathSignDouble(Variable *resVarPtr, CircuitBuilder *builder, GateRef param,
+                                std::vector<Label> *labelsForFloatCase);
+
+void TypedNativeInlineLowering::LowerMathSign(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    Label exit(&builder_);
+    GateRef param = acc_.GetValueIn(gate, 0);
+    DEFVALUE(taggedRes, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
+
+    std::vector<Label> labelsForFloatCase;
+    constexpr auto FLOAT_CASE_LABELS_COUNT = 9;
+    labelsForFloatCase.reserve(FLOAT_CASE_LABELS_COUNT);
+    for (auto i = 0; i < FLOAT_CASE_LABELS_COUNT; i++) {
+        labelsForFloatCase.emplace_back(&builder_);
+    }
+
+    Label isInt(&builder_);
+    Label notInt(&builder_);
+    builder_.Branch(builder_.TaggedIsInt(param), &isInt, &notInt);
+    builder_.Bind(&isInt);
+    {
+        auto value = builder_.GetInt32OfTInt(param);
+        auto nz = builder_.BooleanToInt32(builder_.Int32NotEqual(value, builder_.Int32(0)));
+        auto valueShifted = builder_.Int32ASR(value, builder_.Int32(JSTaggedValue::INT_SIGN_BIT_OFFSET));
+        auto res = builder_.Int32Or(valueShifted, nz);
+        taggedRes = builder_.Int32ToTaggedPtr(res);
+        builder_.Jump(&exit);
+    }
+    builder_.Bind(&notInt);
+    {
+        LowerMathSignDouble(&taggedRes, &builder_, param, &labelsForFloatCase);
+        builder_.Jump(&exit);
+    }
+    builder_.Bind(&exit);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *taggedRes);
+}
+
+static void LowerMathSignDouble(Variable *resVarPtr, CircuitBuilder *builder, GateRef param,
+                                std::vector<Label> *labelsForFloatCase)
+{
+    auto &taggedRes = *resVarPtr;
+    auto &labelsForFloatCaseRef = *labelsForFloatCase;
+    auto labelsIdx = 0;
+    Label *isNan = &labelsForFloatCaseRef.at(labelsIdx++);
+    Label *notNan = &labelsForFloatCaseRef.at(labelsIdx++);
+    Label *exitNan = &labelsForFloatCaseRef.at(labelsIdx++);
+
+    auto value = builder->GetDoubleOfTDouble(param);
+    builder->Branch(builder->DoubleIsNAN(value), isNan, notNan);
+    builder->Bind(isNan);
+    {
+        taggedRes = builder->DoubleToTaggedDoublePtr(builder->NanValue());
+        builder->Jump(exitNan);
+    }
+    builder->Bind(notNan);
+    {
+        Label *isZero = &labelsForFloatCaseRef.at(labelsIdx++);
+        Label *notZero = &labelsForFloatCaseRef.at(labelsIdx++);
+        Label *exitZero = &labelsForFloatCaseRef.at(labelsIdx++);
+
+        builder->Branch(builder->DoubleEqual(value, builder->Double(0)), isZero, notZero);
+        builder->Bind(isZero);
+        {
+            taggedRes = param;
+            builder->Jump(exitZero);
+        }
+        builder->Bind(notZero);
+        {
+            Label *isNegative = &labelsForFloatCaseRef.at(labelsIdx++);
+            Label *notNegative = &labelsForFloatCaseRef.at(labelsIdx++);
+            Label *exitNegative = &labelsForFloatCaseRef.at(labelsIdx);
+
+            builder->Branch(builder->DoubleLessThan(value, builder->Double(0)), isNegative, notNegative);
+            builder->Bind(isNegative);
+            {
+                taggedRes = builder->Int32ToTaggedPtr(builder->Int32(-1));
+                builder->Jump(exitNegative);
+            }
+            builder->Bind(notNegative);
+            {
+                taggedRes = builder->Int32ToTaggedPtr(builder->Int32(1));
+                builder->Jump(exitNegative);
+            }
+            builder->Bind(exitNegative);
+            builder->Jump(exitZero);
+        }
+        builder->Bind(exitZero);
+        builder->Jump(exitNan);
+    }
+    builder->Bind(exitNan);
 }
 
 }

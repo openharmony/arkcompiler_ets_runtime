@@ -150,6 +150,7 @@ namespace panda::ecmascript::kungfu {
     V(MathAtanh)                                    \
     V(MathCos)                                      \
     V(MathCosh)                                     \
+    V(MathSign)                                     \
     V(MathSin)                                      \
     V(MathSinh)                                     \
     V(MathSqrt)                                     \
@@ -301,6 +302,8 @@ public:
                 return ConstantIndex::MATH_COS_INDEX;
             case BuiltinsStubCSigns::ID::MathCosh:
                 return ConstantIndex::MATH_COSH_INDEX;
+            case BuiltinsStubCSigns::ID::MathSign:
+                return ConstantIndex::MATH_SIGN_INDEX;
             case BuiltinsStubCSigns::ID::MathSin:
                 return ConstantIndex::MATH_SIN_INDEX;
             case BuiltinsStubCSigns::ID::MathSinh:
@@ -377,6 +380,7 @@ public:
             {"Atanh", MathAtanh},
             {"Cos", MathCos},
             {"Cosh", MathCosh},
+            {"Sign", MathSign},
             {"Sin", MathSin},
             {"Sinh", MathSinh},
             {"Tan", MathTan},

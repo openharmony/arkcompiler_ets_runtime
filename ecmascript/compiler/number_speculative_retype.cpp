@@ -202,6 +202,7 @@ GateRef NumberSpeculativeRetype::VisitGate(GateRef gate)
         case OpCode::MATH_ABS:
         case OpCode::MATH_MIN:
         case OpCode::MATH_MAX:
+        case OpCode::MATH_SIGN:
             return VisitMathTaggedNumberParamsBuiltin(gate);
         case OpCode::MATH_TRUNC:
             return VisitMathTrunc(gate);
@@ -1363,8 +1364,8 @@ GateRef NumberSpeculativeRetype::VisitMathDoubleParamsBuiltin(GateRef gate)
     size_t valueNum = acc_.GetNumValueIn(gate);
     for (size_t i = 0; i < valueNum; ++i) {
         GateRef input = acc_.GetValueIn(gate, i);
-        acc_.ReplaceValueIn(gate, CheckAndConvertToFloat64(input, GateType::NumberType(),
-            ConvertToNumber::BOOL_ONLY), i);
+        GateRef convertedInput = CheckAndConvertToFloat64(input, GateType::NumberType(), ConvertToNumber::BOOL_ONLY);
+        acc_.ReplaceValueIn(gate, convertedInput, i);
     }
     acc_.ReplaceStateIn(gate, builder_.GetState());
     acc_.ReplaceDependIn(gate, builder_.GetDepend());

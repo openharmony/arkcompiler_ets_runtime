@@ -164,6 +164,7 @@ class ObjectFactory;
     V(JSTaggedValue, MathAtanh, MATH_ATANH_INDEX, ecma_roots_special)                                  \
     V(JSTaggedValue, MathCos, MATH_COS_INDEX, ecma_roots_special)                                      \
     V(JSTaggedValue, MathCosh, MATH_COSH_INDEX, ecma_roots_special)                                    \
+    V(JSTaggedValue, MathSign, MATH_SIGN_INDEX, ecma_roots_special)                                    \
     V(JSTaggedValue, MathSin, MATH_SIN_INDEX, ecma_roots_special)                                      \
     V(JSTaggedValue, MathSinh, MATH_SINH_INDEX, ecma_roots_special)                                    \
     V(JSTaggedValue, MathTan, MATH_TAN_INDEX, ecma_roots_special)                                      \

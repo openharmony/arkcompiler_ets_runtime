@@ -62,7 +62,7 @@
     V("pow",    Pow,    2, MathPow)     /* Math.pow ( base, exponent ) */   \
     V("random", Random, 0, INVALID)     /* Math.random ( ) */               \
     V("round",  Round,  1, INVALID)     /* Math.round ( x ) */              \
-    V("sign",   Sign,   1, INVALID)     /* Math.sign ( x ) */               \
+    V("sign",   Sign,   1, MathSign)    /* Math.sign ( x ) */               \
     V("sin",    Sin,    1, MathSin)     /* Math.sin ( x ) */                \
     V("sinh",   Sinh,   1, MathSinh)    /* Math.sinh ( x ) */               \
     V("sqrt",   Sqrt,   1, MathSqrt)    /* Math.sqrt ( x ) */               \
