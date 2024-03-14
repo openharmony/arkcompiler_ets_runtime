@@ -350,4 +350,46 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteModuleBufferSecure(JST
     }
     return CommonExecuteBuffer(thread, name, entry, jsPandaFile.get());
 }
+
+Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteAbcFileWithFlag(JSThread *thread, const CString &bundleName,
+    const CString &moduleName, const CString &entry, bool flag)
+{
+    CString modulePath = bundleName + PathHelper::SLASH_TAG + moduleName;
+    CString abcFilePath = ModulePathHelper::ConcatPandaFilePath(moduleName);
+    std::shared_ptr<JSPandaFile> jsPandaFile =
+        JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, abcFilePath, entry);
+    if (jsPandaFile == nullptr) {
+        LOG_FULL(FATAL) << "When the route jump, loading panda file failed. Current file is " << abcFilePath;
+    }
+    CString entryPoint = ModulePathHelper::ConcatFileNameWithMerge(thread, jsPandaFile.get(),
+        abcFilePath, modulePath, entry);
+    JSRecordInfo recordInfo;
+    bool hasRecord = jsPandaFile->CheckAndGetRecordInfo(entryPoint, recordInfo);
+    if (!hasRecord) {
+        CString msg = "When the route jump, Cannot find module '" + entryPoint + "'";
+        THROW_REFERENCE_ERROR_AND_RETURN(thread, msg.c_str(), Unexpected(false));
+    }
+    ASSERT(jsPandaFile->IsModule(recordInfo));
+    [[maybe_unused]] EcmaHandleScope scope(thread);
+    ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
+    JSHandle<JSTaggedValue> moduleRecord(thread->GlobalConstants()->GetHandledUndefined());
+    ASSERT(!jsPandaFile->IsBundlePack());
+    moduleRecord = moduleManager->HostResolveImportedModuleWithMerge(abcFilePath, entryPoint);
+    SourceTextModule::Instantiate(thread, moduleRecord);
+    if (thread->HasPendingException()) {
+        return Unexpected(false);
+    }
+    JSHandle<SourceTextModule> module = JSHandle<SourceTextModule>::Cast(moduleRecord);
+    if (!flag) {
+        LOG_ECMA(INFO) << "Route jump to non-singleton page: " << entryPoint;
+        module->SetStatus(ModuleStatus::INSTANTIATED);
+    } else {
+        LOG_ECMA(INFO) << "Route jump to singleton page: " << entryPoint;
+    }
+    SourceTextModule::Evaluate(thread, module, nullptr, 0);
+    if (thread->HasPendingException()) {
+        return Unexpected(false);
+    }
+    return JSTaggedValue::Undefined();
+}
 }  // namespace panda::ecmascript

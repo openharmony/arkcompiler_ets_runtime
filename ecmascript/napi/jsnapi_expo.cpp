@@ -3403,6 +3403,23 @@ bool JSNApi::Execute(EcmaVM *vm, const uint8_t *data, int32_t size, const std::s
     return true;
 }
 
+bool JSNApi::ExecuteWithStatus(EcmaVM *vm, const std::string &bundleName, const std::string &moduleName,
+    const std::string &ohmurl, bool flag)
+{
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, false);
+    if (!ecmascript::JSPandaFileExecutor::ExecuteAbcFileWithFlag(thread, bundleName.c_str(), moduleName.c_str(),
+        ohmurl.c_str(), flag)) {
+        if (thread->HasPendingException()) {
+            thread->GetCurrentEcmaContext()->HandleUncaughtException();
+        }
+        LOG_ECMA(ERROR) << "Cannot execute ark file with bundle name is'" << bundleName
+                        << "' and module name is '" << moduleName
+                        << "', entry is'" << ohmurl << "'" << std::endl;
+        return false;
+    }
+    return true;
+}
+
 // The security interface needs to be modified accordingly.
 bool JSNApi::ExecuteModuleBuffer(EcmaVM *vm, const uint8_t *data, int32_t size, const std::string &filename,
                                  bool needUpdate)
