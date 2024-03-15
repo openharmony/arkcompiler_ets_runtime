@@ -282,6 +282,7 @@ protected:
     const EcmaParamConfiguration config_;
     MarkType markType_ {MarkType::MARK_YOUNG};
     TriggerGCType gcType_ {TriggerGCType::YOUNG_GC};
+    Mutex gcCollectGarbageMutex_;
     // Region allocators.
     NativeAreaAllocator *nativeAreaAllocator_ {nullptr};
     HeapRegionAllocator *heapRegionAllocator_ {nullptr};
