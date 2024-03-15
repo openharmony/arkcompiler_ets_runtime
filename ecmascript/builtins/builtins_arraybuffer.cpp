@@ -275,7 +275,7 @@ JSTaggedValue BuiltinsArrayBuffer::CloneArrayBuffer(JSThread *thread, const JSHa
 {
     BUILTINS_API_TRACE(thread, ArrayBuffer, CloneArrayBuffer);
     // 1. Assert: Type(srcBuffer) is Object and it has an [[ArrayBufferData]] internal slot.
-    ASSERT(srcBuffer->IsArrayBuffer() || srcBuffer->IsSharedArrayBuffer());
+    ASSERT(srcBuffer->IsArrayBuffer() || srcBuffer->IsSharedArrayBuffer() || srcBuffer->IsByteArray());
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     // 2. If cloneConstructor is not present
     if (constructor->IsUndefined()) {
