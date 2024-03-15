@@ -2469,4 +2469,139 @@ void BuiltinsStringStubBuilder::StartsWith(GateRef glue, GateRef thisValue, Gate
         }
     }
 }
+
+void BuiltinsStringStubBuilder::EndsWith(GateRef glue, GateRef thisValue, GateRef numArgs,
+    Variable *res, Label *exit, Label *slowPath)
+{
+    auto env = GetEnvironment();
+    DEFVARIABLE(searchPos, VariableType::INT32(), Int32(0));
+    DEFVARIABLE(startPos, VariableType::INT32(), Int32(0));
+    DEFVARIABLE(endPos, VariableType::INT32(), Int32(0));
+    Label thisExists(env);
+    Label thisIsHeapObject(env);
+    Label thisIsString(env);
+    Label searchTagExists(env);
+    Label searchTagIsHeapObject(env);
+    Label searchTagIsString(env);
+    Label posTagExists(env);
+    Label posTagNotExists(env);
+    Label posTagIsNumber(env);
+    Label posTagIsInt(env);
+    Label posTagIsDouble(env);
+    Label afterCallArg(env);
+    Label endPosLessThanZero(env);
+    Label endPosNotLessThanZero(env);
+    Label endPosMoreThanThisLen(env);
+    Label endPosNotMoreThanThisLen(env);
+    Label startPosLessThanZero(env);
+    Label startPosNotLessThanZero(env);
+    Label flattenFastPath1(env);
+    Label flattenFastPath2(env);
+    Label resultIndexEqualStartPos(env);
+
+    Branch(TaggedIsUndefinedOrNull(thisValue), slowPath, &thisExists);
+    Bind(&thisExists);
+    {
+        Branch(TaggedIsHeapObject(thisValue), &thisIsHeapObject, slowPath);
+        Bind(&thisIsHeapObject);
+        Branch(IsString(thisValue), &thisIsString, slowPath);
+        Bind(&thisIsString);
+        Branch(Int64GreaterThanOrEqual(IntPtr(0), numArgs), slowPath, &searchTagExists);
+        Bind(&searchTagExists);
+        {
+            GateRef searchTag = GetCallArg0(numArgs);
+            Branch(TaggedIsHeapObject(searchTag), &searchTagIsHeapObject, slowPath);
+            Bind(&searchTagIsHeapObject);
+            Branch(IsString(searchTag), &searchTagIsString, slowPath);
+            Bind(&searchTagIsString);
+            {
+                GateRef thisLen = GetLengthFromString(thisValue);
+                GateRef searchLen = GetLengthFromString(searchTag);
+                Branch(Int64GreaterThanOrEqual(IntPtr(1), numArgs), &posTagNotExists, &posTagExists);
+                Bind(&posTagExists);
+                {
+                    GateRef posTag = GetCallArg1(numArgs);
+                    Branch(TaggedIsNumber(posTag), &posTagIsNumber, slowPath);
+                    Bind(&posTagIsNumber);
+                    Branch(TaggedIsInt(posTag), &posTagIsInt, &posTagIsDouble);
+                    Bind(&posTagIsInt);
+                    {
+                        searchPos = GetInt32OfTInt(posTag);
+                        Jump(&afterCallArg);
+                    }
+                    Bind(&posTagIsDouble);
+                    {
+                        Label posTagIsPositiveInfinity(env);
+                        Label posTagNotPositiveInfinity(env);
+                        GateRef doubleVal = GetDoubleOfTDouble(posTag);
+                        Branch(DoubleEqual(doubleVal, Double(builtins::BuiltinsNumber::POSITIVE_INFINITY)),
+                            &posTagIsPositiveInfinity, &posTagNotPositiveInfinity);
+                        Bind(&posTagIsPositiveInfinity);
+                        {
+                            searchPos = thisLen;
+                            Jump(&afterCallArg);
+                        }
+                        Bind(&posTagNotPositiveInfinity);
+                        {
+                            searchPos = DoubleToInt(glue, doubleVal);
+                            Jump(&afterCallArg);
+                        }
+                    }
+                }
+                Bind(&posTagNotExists);
+                {
+                    searchPos = thisLen;
+                    Jump(&afterCallArg);
+                }
+                Bind(&afterCallArg);
+                {
+                    endPos = *searchPos;
+                    Branch(Int32GreaterThanOrEqual(*endPos, Int32(0)), &endPosNotLessThanZero, &endPosLessThanZero);
+                    Bind(&endPosLessThanZero);
+                    {
+                        endPos = Int32(0);
+                        Jump(&endPosNotLessThanZero);
+                    }
+                    Bind(&endPosNotLessThanZero);
+                    {
+                        Branch(Int32LessThanOrEqual(*endPos, thisLen), &endPosNotMoreThanThisLen,
+                            &endPosMoreThanThisLen);
+                        Bind(&endPosMoreThanThisLen);
+                        {
+                            endPos = thisLen;
+                            Jump(&endPosNotMoreThanThisLen);
+                        }
+                        Bind(&endPosNotMoreThanThisLen);
+                        {
+                            startPos = Int32Sub(*endPos, searchLen);
+                            Branch(Int32LessThan(*startPos, Int32(0)), &startPosLessThanZero,
+                                &startPosNotLessThanZero);
+                            Bind(&startPosNotLessThanZero);
+                            {
+                                FlatStringStubBuilder thisFlat(this);
+                                thisFlat.FlattenString(glue, thisValue, &flattenFastPath1);
+                                Bind(&flattenFastPath1);
+                                FlatStringStubBuilder searchFlat(this);
+                                searchFlat.FlattenString(glue, searchTag, &flattenFastPath2);
+                                Bind(&flattenFastPath2);
+                                {
+                                    StringInfoGateRef thisStringInfoGate(&thisFlat);
+                                    StringInfoGateRef searchStringInfoGate(&searchFlat);
+                                    GateRef result = IsSubStringAt(thisStringInfoGate, searchStringInfoGate, *startPos);
+                                    res->WriteVariable(result);
+                                    Jump(exit);
+                                }
+                            }
+                            Bind(&startPosLessThanZero);
+                            {
+                                res->WriteVariable(TaggedFalse());
+                                Jump(exit);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
 }  // namespace panda::ecmascript::kungfu

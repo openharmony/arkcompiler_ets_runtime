@@ -50,7 +50,7 @@
     /* String.prototype.concat ( ...args ) */                                       \
     V("concat",            Concat,            1, StringConcat)                      \
     /* String.prototype.endsWith ( searchString [ , endPosition ] ) */              \
-    V("endsWith",          EndsWith,          1, INVALID)                           \
+    V("endsWith",          EndsWith,          1, StringEndsWith)                    \
     /* String.prototype.includes ( searchString [ , position ] ) */                 \
     V("includes",          Includes,          1, INVALID)                           \
     /* String.prototype.indexOf ( searchString [ , position ] ) */                  \
