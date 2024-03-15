@@ -514,6 +514,9 @@ bool PGOProfiler::PausePGODump()
 void PGOProfiler::ProfileBytecode(ApEntityId abcId, const CString &recordName, JSTaggedValue funcValue)
 {
     JSFunction *function = JSFunction::Cast(funcValue);
+    if (function->GetClass()->IsJSSharedFunction()) {
+        return;
+    }
     Method *method = Method::Cast(function->GetMethod());
     JSTaggedValue profileTypeInfoVal = function->GetProfileTypeInfo();
     ASSERT(!profileTypeInfoVal.IsUndefined());

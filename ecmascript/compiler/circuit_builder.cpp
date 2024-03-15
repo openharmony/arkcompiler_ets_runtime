@@ -571,7 +571,8 @@ GateRef CircuitBuilder::GetUnsharedConstpoolIndex(GateRef constpool)
 
 GateRef CircuitBuilder::GetUnsharedConstpool(GateRef arrayAddr, GateRef index)
 {
-    GateRef dataOffset = PtrAdd(arrayAddr, ZExtInt32ToPtr(TaggedGetInt(index)));
+    GateRef dataOffset = PtrAdd(arrayAddr,
+                                PtrMul(IntPtr(JSTaggedValue::TaggedTypeSize()), ZExtInt32ToPtr(TaggedGetInt(index))));
     return Load(VariableType::JS_ANY(), dataOffset, IntPtr(0));
 }
 
