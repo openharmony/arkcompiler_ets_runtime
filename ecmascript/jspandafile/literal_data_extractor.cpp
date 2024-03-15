@@ -95,6 +95,11 @@ void LiteralDataExtractor::ExtractObjectDatas(JSThread *thread, const JSPandaFil
                 kind = FunctionKind::GENERATOR_FUNCTION;
                 break;
             }
+            case LiteralTag::ASYNCGENERATORMETHOD: {
+                methodId = std::get<uint32_t>(value);
+                kind = FunctionKind::ASYNC_GENERATOR_FUNCTION;
+                break;
+            }
             case LiteralTag::METHODAFFILIATE: {
                 uint16_t length = std::get<uint16_t>(value);
                 JSHandle<JSFunction> jsFunc =
@@ -117,7 +122,7 @@ void LiteralDataExtractor::ExtractObjectDatas(JSThread *thread, const JSPandaFil
             }
         }
         if (tag != LiteralTag::METHOD && tag != LiteralTag::GETTER && tag != LiteralTag::SETTER &&
-            tag != LiteralTag::GENERATORMETHOD) {
+            tag != LiteralTag::GENERATORMETHOD && tag != LiteralTag::ASYNCGENERATORMETHOD) {
             if (epos % pairSize == 0 && !flag) {
                 properties->Set(thread, ppos++, jt);
             } else {
@@ -200,6 +205,11 @@ JSHandle<TaggedArray> LiteralDataExtractor::EnumerateLiteralVals(JSThread *threa
                     kind = FunctionKind::GENERATOR_FUNCTION;
                     break;
                 }
+                case LiteralTag::ASYNCGENERATORMETHOD: {
+                    methodId = std::get<uint32_t>(value);
+                    kind = FunctionKind::ASYNC_GENERATOR_FUNCTION;
+                    break;
+                }
                 case LiteralTag::METHODAFFILIATE: {
                     uint16_t length = std::get<uint16_t>(value);
                     JSHandle<JSFunction> jsFunc =
@@ -222,7 +232,7 @@ JSHandle<TaggedArray> LiteralDataExtractor::EnumerateLiteralVals(JSThread *threa
                 }
             }
             if (tag != LiteralTag::METHOD && tag != LiteralTag::GETTER && tag != LiteralTag::SETTER &&
-                tag != LiteralTag::GENERATORMETHOD) {
+                tag != LiteralTag::GENERATORMETHOD && tag != LiteralTag::ASYNCGENERATORMETHOD) {
                 literals->Set(thread, pos++, jt);
             } else {
                 uint32_t oldLength = literals->GetLength();
@@ -320,6 +330,7 @@ void LiteralDataExtractor::GetMethodOffsets(const JSPandaFile *jsPandaFile, size
             case LiteralTag::METHOD:
             case LiteralTag::GETTER:
             case LiteralTag::SETTER:
+            case LiteralTag::ASYNCGENERATORMETHOD:
             case LiteralTag::GENERATORMETHOD: {
                 methodOffsets.emplace_back(std::get<uint32_t>(value));
                 break;
@@ -340,6 +351,7 @@ void LiteralDataExtractor::GetMethodOffsets(const JSPandaFile *jsPandaFile, Enti
             case LiteralTag::METHOD:
             case LiteralTag::GETTER:
             case LiteralTag::SETTER:
+            case LiteralTag::ASYNCGENERATORMETHOD:
             case LiteralTag::GENERATORMETHOD: {
                 methodOffsets.emplace_back(std::get<uint32_t>(value));
                 break;
@@ -416,6 +428,13 @@ void LiteralDataExtractor::ExtractObjectDatas(JSThread *thread, const JSPandaFil
                 kind = FunctionKind::GENERATOR_FUNCTION;
                 break;
             }
+
+            case LiteralTag::ASYNCGENERATORMETHOD: {
+                methodId = std::get<uint32_t>(value);
+                kind = FunctionKind::ASYNC_GENERATOR_FUNCTION;
+                break;
+            }
+            
             case LiteralTag::METHODAFFILIATE: {
                 uint16_t length = std::get<uint16_t>(value);
                 int entryIndex = 0;
@@ -448,7 +467,7 @@ void LiteralDataExtractor::ExtractObjectDatas(JSThread *thread, const JSPandaFil
             }
         }
         if (tag != LiteralTag::METHOD && tag != LiteralTag::GETTER && tag != LiteralTag::SETTER &&
-            tag != LiteralTag::GENERATORMETHOD) {
+            tag != LiteralTag::GENERATORMETHOD && tag != LiteralTag::ASYNCGENERATORMETHOD) {
             if ((epos % pairSize == 0) && !flag) {
                 properties->Set(thread, ppos++, jt);
             } else {
@@ -516,6 +535,11 @@ JSHandle<TaggedArray> LiteralDataExtractor::GetDatasIgnoreType(JSThread *thread,
                     kind = FunctionKind::GENERATOR_FUNCTION;
                     break;
                 }
+                case LiteralTag::ASYNCGENERATORMETHOD: {
+                    methodId = std::get<uint32_t>(value);
+                    kind = FunctionKind::ASYNC_GENERATOR_FUNCTION;
+                    break;
+                }
                 case LiteralTag::METHODAFFILIATE: {
                     uint16_t length = std::get<uint16_t>(value);
                     int entryIndex = 0;
@@ -551,7 +575,7 @@ JSHandle<TaggedArray> LiteralDataExtractor::GetDatasIgnoreType(JSThread *thread,
                 }
             }
             if (tag != LiteralTag::METHOD && tag != LiteralTag::GETTER && tag != LiteralTag::SETTER &&
-                tag != LiteralTag::GENERATORMETHOD) {
+                tag != LiteralTag::GENERATORMETHOD && tag != LiteralTag::ASYNCGENERATORMETHOD) {
                 if (newKind != nullptr) {
                     *newKind = Elements::ToElementsKind(jt, *newKind);
                 }
