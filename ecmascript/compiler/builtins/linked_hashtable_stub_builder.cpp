@@ -643,4 +643,98 @@ template GateRef LinkedHashTableStubBuilder<LinkedHashMap, LinkedHashMapObject>:
     GateRef linkedTable, GateRef key);
 template GateRef LinkedHashTableStubBuilder<LinkedHashSet, LinkedHashSetObject>::Has(
     GateRef linkedTable, GateRef key);
+
+template <typename LinkedHashTableType, typename LinkedHashTableObject>
+void LinkedHashTableStubBuilder<LinkedHashTableType, LinkedHashTableObject>::StoreHashTableToNewObject(
+    GateRef newTargetHClass, Variable& returnValue)
+{
+    NewObjectStubBuilder newBuilder(this);
+    GateRef res = newBuilder.NewJSObject(glue_, newTargetHClass);
+    returnValue.WriteVariable(res);
+    GateRef table;
+    if constexpr (std::is_same_v<LinkedHashTableType, LinkedHashMap>) {
+        table = Create(Int32(LinkedHashMap::MIN_CAPACITY));
+        Store(VariableType::JS_ANY(), glue_, *returnValue, Int32(JSMap::LINKED_MAP_OFFSET), table);
+    } else if constexpr (std::is_same_v<LinkedHashTableType, LinkedHashSet>) {
+        table = Create(Int32(LinkedHashSet::MIN_CAPACITY));
+        Store(VariableType::JS_ANY(), glue_, *returnValue, Int32(JSSet::LINKED_SET_OFFSET), table);
+    }
+}
+
+template void LinkedHashTableStubBuilder<LinkedHashMap, LinkedHashMapObject>::StoreHashTableToNewObject(
+    GateRef newTargetHClass, Variable& returnValue);
+template void LinkedHashTableStubBuilder<LinkedHashSet, LinkedHashSetObject>::StoreHashTableToNewObject(
+    GateRef newTargetHClass, Variable& returnValue);
+
+template <typename LinkedHashTableType, typename LinkedHashTableObject>
+void LinkedHashTableStubBuilder<LinkedHashTableType, LinkedHashTableObject>::GenMapSetConstructor(
+    GateRef nativeCode, GateRef func, GateRef newTarget, GateRef thisValue, GateRef numArgs)
+{
+    auto env = GetEnvironment();
+    DEFVARIABLE(returnValue, VariableType::JS_ANY(), Undefined());
+
+    Label newTargetObject(env);
+    Label newTargetNotObject(env);
+    Label newTargetFunction(env);
+    Label slowPath(env);
+    Label exit(env);
+
+    // 1.If NewTarget is undefined, throw a TypeError exception
+    Branch(TaggedIsHeapObject(newTarget), &newTargetObject, &newTargetNotObject);
+
+    Bind(&newTargetObject);
+    Branch(IsJSFunction(newTarget), &newTargetFunction, &slowPath);
+
+    Bind(&newTargetFunction);
+    Label fastGetHClass(env);
+    Label intialHClassIsHClass(env);
+    GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
+    GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue_, glueGlobalEnvOffset);
+    GateRef mapOrSetFunc;
+    if constexpr (std::is_same_v<LinkedHashTableType, LinkedHashMap>) {
+        mapOrSetFunc = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv,
+                                         GlobalEnv::BUILTINS_MAP_FUNCTION_INDEX);
+    } else if constexpr (std::is_same_v<LinkedHashTableType, LinkedHashSet>) {
+        mapOrSetFunc = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv,
+                                         GlobalEnv::BUILTINS_SET_FUNCTION_INDEX);
+    }
+    GateRef funcEq = Equal(mapOrSetFunc, newTarget);
+    GateRef newTargetHClass = Load(VariableType::JS_ANY(), newTarget, IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
+    GateRef isHClass = IsJSHClass(newTargetHClass);
+    Branch(BoolAnd(funcEq, isHClass), &fastGetHClass, &slowPath);
+
+    Bind(&fastGetHClass);
+    Label isUndefinedOrNull(env);
+    Branch(TaggedIsUndefinedOrNull(GetCallArg0(numArgs)), &isUndefinedOrNull, &slowPath);
+
+    Bind(&isUndefinedOrNull);
+    StoreHashTableToNewObject(newTargetHClass, returnValue);
+    Jump(&exit);
+
+    Bind(&newTargetNotObject);
+    GateRef taggedId = Int32(GET_MESSAGE_STRING_ID(InvalidNewTarget));
+    CallRuntime(glue_, RTSTUB_ID(ThrowTypeError), { IntToTaggedInt(taggedId) });
+    returnValue = Exception();
+    Jump(&exit);
+
+    Bind(&slowPath);
+    std::string name;
+    if constexpr (std::is_same_v<LinkedHashTableType, LinkedHashMap>) {
+        name = BuiltinsStubCSigns::GetName(BUILTINS_STUB_ID(MapConstructor));
+    } else if constexpr (std::is_same_v<LinkedHashTableType, LinkedHashSet>) {
+        name = BuiltinsStubCSigns::GetName(BUILTINS_STUB_ID(SetConstructor));
+    }
+    returnValue = CallBuiltinRuntimeWithNewTarget(glue_, {glue_, nativeCode, func, thisValue,
+        numArgs, GetArgv(), newTarget}, name.c_str());
+    Jump(&exit);
+
+    Bind(&exit);
+    Return(*returnValue);
+}
+
+template void LinkedHashTableStubBuilder<LinkedHashMap, LinkedHashMapObject>::GenMapSetConstructor(
+    GateRef nativeCode, GateRef func, GateRef newTarget, GateRef thisValue, GateRef numArgs);
+template void LinkedHashTableStubBuilder<LinkedHashSet, LinkedHashSetObject>::GenMapSetConstructor(
+    GateRef nativeCode, GateRef func, GateRef newTarget, GateRef thisValue, GateRef numArgs);
+
 }  // namespace panda::ecmascript::kungfu
