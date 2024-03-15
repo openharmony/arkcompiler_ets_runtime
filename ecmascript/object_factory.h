@@ -232,6 +232,11 @@ public:
                                        FunctionKind kind = FunctionKind::NORMAL_FUNCTION,
                                        kungfu::BuiltinsStubCSigns::ID builtinId = kungfu::BuiltinsStubCSigns::INVALID,
                                        MemSpaceType methodSpaceType = SHARED_OLD_SPACE);
+    JSHandle<JSFunction> NewSFunction(const JSHandle<GlobalEnv> &env,
+                                      const void *nativeFunc = nullptr,
+                                      FunctionKind kind = FunctionKind::NORMAL_FUNCTION,
+                                      kungfu::BuiltinsStubCSigns::ID builtinId = kungfu::BuiltinsStubCSigns::INVALID,
+                                      MemSpaceType spaceType = SHARED_OLD_SPACE);
     void InitializeMethod(const MethodLiteral *methodLiteral, JSHandle<Method> &method);
     // use for method
     JSHandle<JSFunction> NewJSFunction(const JSHandle<GlobalEnv> &env, const JSHandle<Method> &method);
@@ -891,6 +896,7 @@ private:
     friend class ConstantPool;
     friend class EcmaContext;
     friend class kungfu::TSHClassGenerator;
+    friend class panda::FunctionRef;
 };
 
 class ClassLinkerFactory {
