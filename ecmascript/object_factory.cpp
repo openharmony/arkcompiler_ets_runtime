@@ -2957,7 +2957,9 @@ JSHandle<EcmaString> ObjectFactory::GetCompressedSubStringFromStringTable(const 
                                                                           uint32_t offset, uint32_t utf8Len) const
 {
     NewObjectHook();
-    ASSERT(utf8Len != 0);
+    if (UNLIKELY(utf8Len == 0)) {
+        return GetEmptyString();
+    }
     auto *stringTable = vm_->GetEcmaStringTable();
     return JSHandle<EcmaString>(thread_, stringTable->GetOrInternCompressedSubString(vm_, string, offset, utf8Len));
 }

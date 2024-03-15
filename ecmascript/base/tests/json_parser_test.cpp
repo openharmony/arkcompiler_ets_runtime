@@ -201,4 +201,20 @@ HWTEST_F_L0(JsonParserTest, Parser_006)
     JSHandle<JSTaggedValue> result = parser.Parse(emptyString);
     EXPECT_TRUE(result->IsException());
 }
+
+/**
+ * @tc.name: Parser_007
+ * @tc.desc: Try to parse a string containing an empty string.
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F_L0(JsonParserTest, Parser_007)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    Utf8JsonParser parser(thread);
+
+    JSHandle<EcmaString> handleStr(factory->NewFromASCII("\"\""));
+    JSHandle<JSTaggedValue> result = parser.Parse(handleStr);
+    EXPECT_FALSE(result->IsException());
+}
 } // namespace panda::test

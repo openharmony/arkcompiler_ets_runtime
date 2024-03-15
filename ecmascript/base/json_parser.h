@@ -150,20 +150,18 @@ protected:
                         continuation = JsonContinuation(ContType::OBJECT, propertyList.size());
 
                         SkipStartWhiteSpace();
-                        if (*current_ == '"') {
-                            propertyList.emplace_back(JSHandle<JSTaggedValue>(thread_, ParseString(true)));
-                            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
-                        } else {
+                        if (UNLIKELY(*current_ != '"')) {
                             THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected Object Prop in JSON",
                                                           JSTaggedValue::Exception());
                         }
+                        propertyList.emplace_back(ParseString(true));
+                        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
                         SkipStartWhiteSpace();
-                        if (*current_ == ':') {
-                            Advance();
-                        } else {
+                        if (UNLIKELY(*current_ != ':')) {
                             THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected Object in JSON",
                                                           JSTaggedValue::Exception());
                         }
+                        Advance();
                         continue;
                     case Tokens::ARRAY:
                         if (EmptyArrayCheck()) {
@@ -191,7 +189,7 @@ protected:
                         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
                         break;
                     case Tokens::STRING:
-                        parseValue = JSHandle<JSTaggedValue>(thread_, ParseString(IsInObjOrArray(continuation.type_)));
+                        parseValue = ParseString(IsInObjOrArray(continuation.type_));
                         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
                         break;
                     default:
@@ -234,30 +232,27 @@ protected:
                         SkipStartWhiteSpace();
                         if (*current_ == ',') {
                             GetNextNonSpaceChar();
-                            if (*current_ == '"') {
-                                propertyList.emplace_back(JSHandle<JSTaggedValue>(thread_, ParseString(true)));
-                                RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
-                            } else {
+                            if (UNLIKELY(*current_ != '"')) {
                                 THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected Object Prop in JSON",
                                                               JSTaggedValue::Exception());
                             }
+                            propertyList.emplace_back(ParseString(true));
+                            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
                             SkipStartWhiteSpace();
-                            if (*current_ == ':') {
-                                Advance();
-                            } else {
+                            if (UNLIKELY(*current_ != ':')) {
                                 THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected Object in JSON",
                                                               JSTaggedValue::Exception());
                             }
+                            Advance();
                             break;
                         }
 
                         parseValue = CreateJsonObject(continuation, propertyList);
-                        if (*current_ == '}') {
-                            Advance();
-                        } else {
+                        if (UNLIKELY(*current_ != '}')) {
                             THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected Object in JSON",
                                                           JSTaggedValue::Exception());
                         }
+                        Advance();
                         propertyList.resize(continuation.index_);
                         continuation = std::move(continuationList.back());
                         continuationList.pop_back();
@@ -412,16 +407,16 @@ protected:
         return true;
     }
 
-    JSTaggedValue SlowParseString()
+    JSHandle<JSTaggedValue> SlowParseString()
     {
         end_--;
         std::u16string res;
         res.reserve(end_ - current_);
         while (current_ <= end_) {
             if (*current_ == '\\') {
-                bool isLegalChar = ParseBackslash(res);
-                if (!isLegalChar) {
-                    THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected string in JSON", JSTaggedValue::Exception());
+                if (UNLIKELY(!ParseBackslash(res))) {
+                    THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected string in JSON",
+                        JSHandle<JSTaggedValue>(thread_, JSTaggedValue::Exception()));
                 }
                 Advance();
             } else {
@@ -435,13 +430,13 @@ protected:
         }
         ASSERT(res.size() <= static_cast<size_t>(UINT32_MAX));
         Advance();
-        return factory_->NewFromUtf16(
-            reinterpret_cast<const uint16_t *>(res.data()), res.size()).GetTaggedValue();
+        return JSHandle<JSTaggedValue>::Cast(factory_->NewFromUtf16(
+            reinterpret_cast<const uint16_t *>(res.data()), res.size()));
     }
 
     virtual void ParticalParseString(std::string& str, Text current, Text nextCurrent) = 0;
 
-    virtual JSTaggedValue ParseString(bool inObjorArr = false) = 0;
+    virtual JSHandle<JSTaggedValue> ParseString(bool inObjorArr = false) = 0;
 
     void SkipEndWhiteSpace()
     {
@@ -810,7 +805,6 @@ public:
         uint32_t slicedOffset = 0;
         if (LIKELY(stringAccessor.IsLineOrConstantString())) {
             sourceString_ = strHandle;
-            begin_ = stringAccessor.GetDataUtf8();
         } else if (stringAccessor.IsSlicedString()) {
             auto *sliced = static_cast<SlicedString *>(*strHandle);
             slicedOffset = sliced->GetStartIndex();
@@ -848,37 +842,34 @@ private:
         }
     }
 
-    JSTaggedValue ParseString(bool inObjorArr = false) override
+    JSHandle<JSTaggedValue> ParseString(bool inObjorArr = false) override
     {
         bool isFastString = true;
-        bool isLegal = true;
         if (inObjorArr) {
-            isLegal = ReadJsonStringRange(isFastString);
-            if (!isLegal) {
-                THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected end Text in JSON", JSTaggedValue::Exception());
+            if (UNLIKELY(!ReadJsonStringRange(isFastString))) {
+                THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected end Text in JSON",
+                    JSHandle<JSTaggedValue>(thread_, JSTaggedValue::Exception()));
             }
             if (isFastString) {
                 uint32_t offset = current_ - begin_;
                 uint32_t strLength = end_ - current_;
                 ASSERT(strLength <= static_cast<size_t>(UINT32_MAX));
                 current_ = end_ + 1;
-                return factory_->NewCompressedUtf8SubString(sourceString_, offset, strLength).GetTaggedValue();
+                return JSHandle<JSTaggedValue>::Cast(factory_->NewCompressedUtf8SubString(
+                    sourceString_, offset, strLength));
             }
         } else {
-            if (*end_ != '"' || current_ == end_) {
-                THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected end Text in JSON", JSTaggedValue::Exception());
-            }
-            isLegal = IsFastParseJsonString(isFastString);
-            if (!isLegal) {
-                THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected end Text in JSON", JSTaggedValue::Exception());
+            if (UNLIKELY(*end_ != '"' || current_ == end_ || !IsFastParseJsonString(isFastString))) {
+                THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected end Text in JSON",
+                    JSHandle<JSTaggedValue>(thread_, JSTaggedValue::Exception()));
             }
             if (LIKELY(isFastString)) {
                 uint32_t offset = current_ - begin_;
                 uint32_t strLength = end_ - current_;
                 ASSERT(strLength <= static_cast<size_t>(UINT32_MAX));
                 current_ = end_ + 1;
-                return factory_->NewFromUtf8LiteralCompressSubString(
-                    sourceString_, offset, strLength).GetTaggedValue();
+                return JSHandle<JSTaggedValue>::Cast(factory_->NewFromUtf8LiteralCompressSubString(
+                    sourceString_, offset, strLength));
             }
         }
         return SlowParseString();
@@ -945,51 +936,47 @@ private:
         str += StringHelper::U16stringToString(std::u16string(current, nextCurrent));
     }
 
-    JSTaggedValue ParseString(bool inObjorArr = false) override
+    JSHandle<JSTaggedValue> ParseString(bool inObjorArr = false) override
     {
         bool isFastString = true;
         bool isAscii = true;
-        bool isLegal = true;
         if (inObjorArr) {
-            isLegal = ReadJsonStringRange(isFastString, isAscii);
-            if (!isLegal) {
-                THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected end Text in JSON", JSTaggedValue::Exception());
+            if (UNLIKELY(!ReadJsonStringRange(isFastString, isAscii))) {
+                THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected end Text in JSON",
+                    JSHandle<JSTaggedValue>(thread_, JSTaggedValue::Exception()));
             }
             if (isFastString) {
                 if (isAscii) {
                     std::string value(current_, end_); // from uint16_t* to std::string, can't use std::string_view
                     current_ = end_ + 1;
                     ASSERT(value.size() <= static_cast<size_t>(UINT32_MAX));
-                    return factory_->NewFromUtf8LiteralCompress(
-                        reinterpret_cast<const uint8_t *>(value.c_str()), value.size()).GetTaggedValue();
+                    return JSHandle<JSTaggedValue>::Cast(factory_->NewFromUtf8LiteralCompress(
+                        reinterpret_cast<const uint8_t *>(value.c_str()), value.size()));
                 }
                 std::u16string_view value(reinterpret_cast<const char16_t *>(current_), end_ - current_);
                 current_ = end_ + 1;
                 ASSERT(value.size() <= static_cast<size_t>(UINT32_MAX));
-                return factory_->NewFromUtf16LiteralNotCompress(
-                    reinterpret_cast<const uint16_t *>(value.data()), value.size()).GetTaggedValue();
+                return JSHandle<JSTaggedValue>::Cast(factory_->NewFromUtf16LiteralNotCompress(
+                    reinterpret_cast<const uint16_t *>(value.data()), value.size()));
             }
         } else {
-            if (*end_ != '"' || current_ == end_) {
-                THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected end Text in JSON", JSTaggedValue::Exception());
-            }
-            isLegal = IsFastParseJsonString(isFastString, isAscii);
-            if (!isLegal) {
-                THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected end Text in JSON", JSTaggedValue::Exception());
+            if (UNLIKELY(*end_ != '"' || current_ == end_ || !IsFastParseJsonString(isFastString, isAscii))) {
+                THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected end Text in JSON",
+                    JSHandle<JSTaggedValue>(thread_, JSTaggedValue::Exception()));
             }
             if (LIKELY(isFastString)) {
                 if (isAscii) {
                     std::string value(current_, end_);  // from uint16_t* to std::string, can't use std::string_view
                     ASSERT(value.size() <= static_cast<size_t>(UINT32_MAX));
                     current_ = end_ + 1;
-                    return factory_->NewFromUtf8LiteralCompress(
-                        reinterpret_cast<const uint8_t *>(value.c_str()), value.size()).GetTaggedValue();
+                    return JSHandle<JSTaggedValue>::Cast(factory_->NewFromUtf8LiteralCompress(
+                        reinterpret_cast<const uint8_t *>(value.c_str()), value.size()));
                 }
                 std::u16string_view value(reinterpret_cast<const char16_t *>(current_), end_ - current_);
                 ASSERT(value.size() <= static_cast<size_t>(UINT32_MAX));
                 current_ = end_ + 1;
-                return factory_->NewFromUtf16LiteralNotCompress(
-                    reinterpret_cast<const uint16_t *>(value.data()), value.size()).GetTaggedValue();
+                return JSHandle<JSTaggedValue>::Cast(factory_->NewFromUtf16LiteralNotCompress(
+                    reinterpret_cast<const uint16_t *>(value.data()), value.size()));
             }
         }
         return SlowParseString();

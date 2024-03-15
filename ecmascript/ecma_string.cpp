@@ -1143,17 +1143,14 @@ EcmaString *EcmaString::SlowFlatten(const EcmaVM *vm, const JSHandle<EcmaString>
 EcmaString *EcmaString::Flatten(const EcmaVM *vm, const JSHandle<EcmaString> &string, MemSpaceType type)
 {
     EcmaString *s = *string;
-    if (s->IsLineOrConstantString() || s->IsSlicedString()) {
+    if (!s->IsTreeString()) {
         return s;
     }
-    if (s->IsTreeString()) {
-        JSHandle<TreeEcmaString> tree = JSHandle<TreeEcmaString>::Cast(string);
-        if (!tree->IsFlat()) {
-            return SlowFlatten(vm, string, type);
-        }
-        s = EcmaString::Cast(tree->GetFirst());
+    JSHandle<TreeEcmaString> tree = JSHandle<TreeEcmaString>::Cast(string);
+    if (!tree->IsFlat()) {
+        return SlowFlatten(vm, string, type);
     }
-    return s;
+    return EcmaString::Cast(tree->GetFirst());
 }
 
 FlatStringInfo EcmaString::FlattenAllString(const EcmaVM *vm, const JSHandle<EcmaString> &string, MemSpaceType type)
