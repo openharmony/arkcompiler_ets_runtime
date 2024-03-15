@@ -63,7 +63,8 @@ bool ValueSerializer::CheckObjectCanSerialize(TaggedObject *object, bool &findSh
         case JSType::JS_OBJECT:
         case JSType::JS_ASYNC_FUNCTION:  // means CONCURRENT_FUNCTION
             return true;
-        case JSType::JS_SHARED_OBJECT: {
+        case JSType::JS_SHARED_OBJECT:
+        case JSType::JS_SHARED_FUNCTION: {
             if (serializeSharedEvent_ > 0) {
                 return true;
             }
@@ -72,12 +73,6 @@ bool ValueSerializer::CheckObjectCanSerialize(TaggedObject *object, bool &findSh
                 serializeSharedEvent_++;
             }
             return true;
-        }
-        case JSType::JS_SHARED_FUNCTION: {
-            if (serializeSharedEvent_ > 0) {
-                return true;
-            }
-            break;
         }
         default:
             break;
@@ -409,7 +404,7 @@ bool ValueSerializer::PrepareClone(JSThread *thread, const JSHandle<JSTaggedValu
             JSHandle<JSTaggedValue> element = JSArray::FastGetPropertyByValue(thread, cloneList, index);
             if (element->IsArrayBuffer()) {
                 cloneArrayBufferSet_.insert(static_cast<uintptr_t>(element.GetTaggedType()));
-            } else if (element->IsJSSharedObject()) {
+            } else if (element->IsJSShared()) {
                 cloneSharedSet_.insert(static_cast<uintptr_t>(element.GetTaggedType()));
             } else {
                 return false;
