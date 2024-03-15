@@ -90,6 +90,7 @@ private:
     GateRef ConvertTaggedNumberToFloat64(GateRef gate, Label *exit);
     GateRef ConvertTaggedBooleanToBool(GateRef gate);
     void HeapAllocateInYoung(GateRef gate);
+    void HeapAllocateInSOld(GateRef gate);
     void InitializeWithSpeicalValue(Label *exit, GateRef object, GateRef glue, GateRef value,
                                     GateRef start, GateRef end);
 
