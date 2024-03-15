@@ -441,7 +441,7 @@ void BuiltinsObjectStubBuilder::LayoutInfoAssignAllEnumProperty(Variable *result
         Bind(&next);
 
         GateRef key = GetKeyFromLayoutInfo(layout, *idx);
-        GateRef attr = TruncInt64ToInt32(GetPropAttrFromLayoutInfo(layout, *idx));
+        GateRef attr = GetPropAttrFromLayoutInfo(layout, *idx);
         Label stringKey(env);
         Branch(TaggedIsString(key), &stringKey, &loopEnd);
         Bind(&stringKey);

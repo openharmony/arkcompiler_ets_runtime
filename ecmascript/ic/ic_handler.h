@@ -65,7 +65,7 @@ public:
     using SWholeKindBit = KindBit;
     static_assert(SKindBit::START_BIT == SWholeKindBit::START_BIT);
     static_assert(SSharedBit::Mask() || SKindBit::Mask() == KindBit::Mask());
-    using STrackTypeBit = AttrIndexBit::NextField<uint32_t, PropertyAttributes::TRACK_TYPE_NUM>;
+    using SFieldTypeBit = AttrIndexBit::NextField<SharedFieldType, PropertyAttributes::FIELD_TYPE_NUM>;
     static_assert(static_cast<size_t>(StoreHandlerKind::S_TOTAL_KINDS) <= (1 << STORE_KIND_BIT_LENGTH));
 
     HandlerBase() = default;
@@ -81,9 +81,9 @@ public:
         return InternalAccessorBit::Get(handler);
     }
 
-    static inline TrackType GetTrackType(uint32_t handler)
+    static inline SharedFieldType GetFieldType(uint32_t handler)
     {
-        return static_cast<TrackType>(STrackTypeBit::Get(handler));
+        return static_cast<SharedFieldType>(SFieldTypeBit::Get(handler));
     }
 
     static inline bool IsNonExist(uint32_t handler)
@@ -283,9 +283,9 @@ public:
         SSharedBit::Set<uint32_t>(op.GetReceiver()->IsJSShared(), &handler);
         TaggedArray *array = TaggedArray::Cast(receiver->GetProperties().GetTaggedObject());
         if (!array->IsDictionaryMode()) {
-            STrackTypeBit::Set(static_cast<uint32_t>(op.GetAttr().GetTrackType()), &handler);
+            SFieldTypeBit::Set(op.GetAttr().GetSharedFieldType(), &handler);
         } else {
-            STrackTypeBit::Set(static_cast<uint32_t>(op.GetAttr().GetDictTrackType()), &handler);
+            SFieldTypeBit::Set(op.GetAttr().GetDictSharedFieldType(), &handler);
         }
         if (op.IsElement()) {
             return StoreElement(thread, op.GetReceiver(), handler);

@@ -874,7 +874,7 @@ bool JSObject::SetPropertyForDataDescriptor(ObjectOperator *op, const JSHandle<J
         return false;
     }
     if (op->IsFound() && receiver->IsJSShared()) {
-        if (!ClassHelper::MatchTrackType(op->GetTrackType(), value.GetTaggedValue())) {
+        if (!ClassHelper::MatchFieldType(op->GetSharedFieldType(), value.GetTaggedValue())) {
             if (mayThrow) {
                 THROW_TYPE_ERROR_AND_RETURN(thread, GET_MESSAGE_STRING(SetTypeMismatchedSharedProperty), false);
             }
@@ -907,7 +907,7 @@ bool JSObject::SetPropertyForDataDescriptor(ObjectOperator *op, const JSHandle<J
             return false;
         }
         if (hasReceiver && receiver->IsJSShared() &&
-            !ClassHelper::MatchTrackType(op->GetTrackType(), value.GetTaggedValue())) {
+            !ClassHelper::MatchFieldType(op->GetSharedFieldType(), value.GetTaggedValue())) {
             if (mayThrow) {
                 THROW_TYPE_ERROR_AND_RETURN(thread, GET_MESSAGE_STRING(SetTypeMismatchedSharedProperty), false);
             }
@@ -1250,7 +1250,7 @@ bool JSObject::ValidateDataDescriptorWhenConfigurable(ObjectOperator *op, const 
         if (!desc.HasValue()) {
             THROW_TYPE_ERROR_AND_RETURN(op->GetThread(), GET_MESSAGE_STRING(UpdateSendableAttributes), false);
         }
-        if (!ClassHelper::MatchTrackType(current.GetTrackType(), desc.GetValue().GetTaggedValue())) {
+        if (!ClassHelper::MatchFieldType(current.GetSharedFieldType(), desc.GetValue().GetTaggedValue())) {
             THROW_TYPE_ERROR_AND_RETURN(op->GetThread(), GET_MESSAGE_STRING(SetTypeMismatchedSharedProperty), false);
         }
     }

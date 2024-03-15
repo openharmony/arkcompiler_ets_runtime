@@ -476,9 +476,9 @@ public:
     GateRef GetValueFromMutantTaggedArray(GateRef elements, GateRef index);
     void CheckUpdateSharedType(bool isDicMode, Variable *result, GateRef glue, GateRef jsType, GateRef attr,
                                GateRef value, Label *executeSetProp, Label *exit);
-    void MatchTrackType(Variable *result, GateRef glue, GateRef trackType, GateRef value, Label *executeSetProp,
+    void MatchFieldType(Variable *result, GateRef glue, GateRef fieldType, GateRef value, Label *executeSetProp,
                                Label *exit);
-    GateRef GetTrackTypeFromHandler(GateRef attr);
+    GateRef GetFieldTypeFromHandler(GateRef attr);
     GateRef ClearSharedStoreKind(GateRef handlerInfo);
     GateRef GetTaggedValueWithElementsKind(GateRef receiver, GateRef index);
     GateRef SetValueWithElementsKind(GateRef glue, GateRef receiver, GateRef rawValue, GateRef index,
@@ -504,7 +504,7 @@ public:
     GateRef GetPropertiesAddrFromLayoutInfo(GateRef layout);
     GateRef GetPropertyMetaDataFromAttr(GateRef attr);
     GateRef GetKeyFromLayoutInfo(GateRef layout, GateRef entry);
-    void MatchTrackType(GateRef trackType, GateRef value, Label *executeSetProp, Label *typeMismatch);
+    void MatchFieldType(GateRef fieldType, GateRef value, Label *executeSetProp, Label *typeMismatch);
     GateRef FindElementWithCache(GateRef glue, GateRef layoutInfo, GateRef hClass,
         GateRef key, GateRef propsNum);
     GateRef FindElementFromNumberDictionary(GateRef glue, GateRef elements, GateRef index);
@@ -606,7 +606,8 @@ public:
     GateRef SetIsInlinePropsFieldInPropAttr(GateRef attr, GateRef value);
     GateRef SetTrackTypeInPropAttr(GateRef attr, GateRef type);
     GateRef GetTrackTypeInPropAttr(GateRef attr);
-    GateRef GetDictTrackTypeInPropAttr(GateRef attr);
+    GateRef GetSharedFieldTypeInPropAttr(GateRef attr);
+    GateRef GetDictSharedFieldTypeInPropAttr(GateRef attr);
     GateRef GetRepInPropAttr(GateRef attr);
     GateRef IsIntRepInPropAttr(GateRef attr);
     GateRef IsDoubleRepInPropAttr(GateRef attr);

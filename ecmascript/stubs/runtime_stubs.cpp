@@ -112,9 +112,9 @@ DEF_RUNTIME_STUBS(AddElementInternal)
     JSHandle<JSObject> receiver = GetHArg<JSObject>(argv, argc, 0);  // 0: means the zeroth parameter
     JSTaggedValue argIndex = GetArg(argv, argc, 1);  // 1: means the first parameter
     JSHandle<JSTaggedValue> value = GetHArg<JSTaggedValue>(argv, argc, 2);  // 2: means the second parameter
-    JSTaggedValue argAttr = GetArg(argv, argc, 3);  // 3: means the third parameter
-    auto attr = static_cast<PropertyAttributes>(argAttr.GetInt());
-    auto result = JSObject::AddElementInternal(thread, receiver, argIndex.GetInt(), value, attr);
+    JSTaggedValue attr = GetArg(argv, argc, 3);  // 3: means the third parameter
+    PropertyAttributes attrValue(attr);
+    auto result = JSObject::AddElementInternal(thread, receiver, argIndex.GetInt(), value, attrValue);
     return JSTaggedValue(result).GetRawData();
 }
 
@@ -317,7 +317,7 @@ DEF_RUNTIME_STUBS(NameDictPutIfAbsent)
     JSTaggedValue attr = GetArg(argv, argc, 4);   // 4: means the fourth parameter
     JSTaggedValue needTransToDict = GetArg(argv, argc, 5);  // 5: means the fifth parameter
 
-    PropertyAttributes propAttr(attr.GetInt());
+    PropertyAttributes propAttr(attr);
     if (needTransToDict.IsTrue()) {
         JSHandle<JSObject> objHandle(thread, JSTaggedValue(reinterpret_cast<TaggedObject *>(receiver)));
         JSHandle<NameDictionary> dictHandle(JSObject::TransitionToDictionary(thread, objHandle));
@@ -341,7 +341,7 @@ DEF_RUNTIME_STUBS(NumberDictionaryPut)
     JSTaggedValue needTransToDict = GetArg(argv, argc, 5);  // 5: means the fifth parameter
 
     JSHandle<JSTaggedValue> keyHandle(thread, key);
-    PropertyAttributes propAttr(attr.GetInt());
+    PropertyAttributes propAttr(attr);
     JSHandle<JSObject> objHandle(thread, JSTaggedValue(reinterpret_cast<TaggedObject *>(receiver)));
     if (needTransToDict.IsTrue()) {
         JSObject::ElementsToDictionary(thread, objHandle);
@@ -481,7 +481,7 @@ DEF_RUNTIME_STUBS(UpdateLayOutAndAddTransition)
     JSHandle<JSTaggedValue> keyHandle = GetHArg<JSTaggedValue>(argv, argc, 2);  // 2: means the second parameter
     JSTaggedValue attr = GetArg(argv, argc, 3);  // 3: means the third parameter
 
-    PropertyAttributes attrValue(attr.GetInt());
+    PropertyAttributes attrValue(attr);
 
     JSHClass::AddPropertyToNewHClass(thread, oldHClassHandle, newHClassHandle, keyHandle, attrValue);
 
@@ -499,7 +499,7 @@ DEF_RUNTIME_STUBS(CopyAndUpdateObjLayout)
     JSTaggedValue attr = GetArg(argv, argc, 3);  // 3: means the third parameter
 
     auto factory = thread->GetEcmaVM()->GetFactory();
-    PropertyAttributes attrValue(attr.GetInt());
+    PropertyAttributes attrValue(attr);
 
     // 1. Copy
     JSHandle<LayoutInfo> oldLayout(thread, newHClassHandle->GetLayout());
