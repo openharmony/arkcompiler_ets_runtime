@@ -58,8 +58,8 @@ JSHandle<JSTaggedValue> BaseDeserializer::DeserializeJSTaggedValue()
     heap_->SetOnSerializeEvent(true);
 
     uint8_t encodeFlag = data_->ReadUint8(position_);
-    JSTaggedType result = 0U;
-    while (ReadSingleEncodeData(encodeFlag, ToUintPtr(&result), 0, true) == 0) { // 0: root object offset
+    JSHandle<JSTaggedValue> resHandle(thread_, JSTaggedValue::Undefined());
+    while (ReadSingleEncodeData(encodeFlag, resHandle.GetAddress(), 0, true) == 0) { // 0: root object offset
         encodeFlag = data_->ReadUint8(position_);
     }
     // now new constpool here if newConstPoolInfos_ is not empty
@@ -93,11 +93,11 @@ JSHandle<JSTaggedValue> BaseDeserializer::DeserializeJSTaggedValue()
     heap_->SetOnSerializeEvent(false);
 
     // If is on concurrent mark, mark push root object to stack for mark
-    if (JSTaggedValue(result).IsHeapObject() && thread_->IsConcurrentMarkingOrFinished()) {
-        Barriers::MarkAndPushForDeserialize(thread_, JSTaggedValue(result).GetHeapObject());
+    if (resHandle->IsHeapObject() && thread_->IsConcurrentMarkingOrFinished()) {
+        Barriers::MarkAndPushForDeserialize(thread_, resHandle->GetHeapObject());
     }
 
-    return JSHandle<JSTaggedValue>(thread_, JSTaggedValue(result));
+    return resHandle;
 }
 
 uintptr_t BaseDeserializer::DeserializeTaggedObject(SerializedObjectSpace space)
@@ -105,22 +105,7 @@ uintptr_t BaseDeserializer::DeserializeTaggedObject(SerializedObjectSpace space)
     size_t objSize = data_->ReadUint32(position_);
     uintptr_t res = RelocateObjectAddr(space, objSize);
     objectVector_.push_back(res);
-    size_t resIndex = objectVector_.size() - 1;
     DeserializeObjectField(res, res + objSize);
-    JSType type = reinterpret_cast<TaggedObject *>(res)->GetClass()->GetObjectType();
-    // String need remove duplicates if string table can find
-    if (type == JSType::LINE_STRING || type == JSType::CONSTANT_STRING) {
-        EcmaStringTable *stringTable = thread_->GetEcmaVM()->GetEcmaStringTable();
-        RuntimeLockHolder locker(thread_, stringTable->mutex_);
-        EcmaString *str = stringTable->GetStringThreadUnsafe(reinterpret_cast<EcmaString *>(res));
-        if (str) {
-            res = ToUintPtr(str);
-            objectVector_[resIndex] = res;
-        } else {
-            EcmaStringAccessor(reinterpret_cast<EcmaString *>(res)).ClearInternString();
-            stringTable->InternStringThreadUnsafe(reinterpret_cast<EcmaString *>(res));
-        }
-    }
     return res;
 }
 
@@ -195,19 +180,10 @@ void BaseDeserializer::HandleNewObjectEncodeFlag(SerializedObjectSpace space,  u
     void *bufferPointer = GetAndResetBufferPointer();
     ConstantPool *constpool = GetAndResetConstantPool();
     bool needNewConstPool = GetAndResetNeedNewConstPool();
-    bool isErrorMsg = GetAndResetIsErrorMsg();
-    bool functionInShared = GetAndResetFunctionInShared();
-
     // deserialize object here
     uintptr_t addr = DeserializeTaggedObject(space);
 
     // deserialize object epilogue
-    if (isErrorMsg) {
-        // defer new js error
-        jsErrorInfos_.back()->errorMsg_ = JSTaggedValue(static_cast<JSTaggedType>(addr));
-        return;
-    }
-
     if (isTransferBuffer) {
         TransferArrayBufferAttach(addr);
     } else if (isSharedArrayBuffer) {
@@ -220,9 +196,6 @@ void BaseDeserializer::HandleNewObjectEncodeFlag(SerializedObjectSpace space,  u
         // defer new constpool
         newConstPoolInfos_.back()->objAddr_ = addr;
         newConstPoolInfos_.back()->offset_ = Method::CONSTANT_POOL_OFFSET;
-    }
-    if (functionInShared) {
-        concurrentFunctions_.push_back(reinterpret_cast<JSFunction *>(addr));
     }
     TaggedObject *object = reinterpret_cast<TaggedObject *>(addr);
     if (object->GetClass()->IsJSNativePointer()) {
@@ -406,6 +379,7 @@ size_t BaseDeserializer::ReadSingleEncodeData(uint8_t encodeFlag, uintptr_t objA
             break;
         }
         case (uint8_t)EncodeFlag::JS_ERROR: {
+            slot.Update(JSTaggedValue::Undefined().GetRawData());
             uint8_t type = data_->ReadUint8(position_);
             ASSERT(type >= static_cast<uint8_t>(JSType::JS_ERROR_FIRST)
                 && type <= static_cast<uint8_t>(JSType::JS_ERROR_LAST));
@@ -417,14 +391,15 @@ size_t BaseDeserializer::ReadSingleEncodeData(uint8_t encodeFlag, uintptr_t objA
             }
             break;
         }
-        case (uint8_t)EncodeFlag::JS_FUNCTION_IN_SHARED: {
-            functionInShared_ = true;
-            handledFieldSize = 0;
-            break;
-        }
         case (uint8_t)EncodeFlag::SHARED_OBJECT: {
             JSTaggedType value = data_->ReadJSTaggedType(position_);
             objectVector_.push_back(value);
+            bool isErrorMsg = GetAndResetIsErrorMsg();
+            if (isErrorMsg) {
+                // defer new js error
+                jsErrorInfos_.back()->errorMsg_ = JSTaggedValue(value);
+                break;
+            }
             if (!isRoot) {
                 WriteBarrier<WriteBarrierType::DESERIALIZE>(thread_, reinterpret_cast<void *>(objAddr), fieldOffset,
                                                             value);
@@ -641,7 +616,7 @@ Region *BaseDeserializer::AllocateMultiSharedRegion(SharedSparseSpace *space, si
         Region *region = space->AllocateDeserializeRegion(thread_);
         if (regionNum == 1) { // 1: Last allocate region
             size_t lastRegionRemainSize = regionAlignedSize - spaceObjSize;
-            region->SetHighWaterMark(space->GetCurrentRegion()->GetEnd() - lastRegionRemainSize);
+            region->SetHighWaterMark(region->GetEnd() - lastRegionRemainSize);
         } else {
             region->SetHighWaterMark(region->GetEnd() - regionRemainSizeVector[regionRemainSizeIndex_++]);
         }

@@ -70,9 +70,8 @@ bool ValueSerializer::CheckObjectCanSerialize(TaggedObject *object, bool &findSh
             if (defaultCloneShared_ || cloneSharedSet_.find(ToUintPtr(object)) != cloneSharedSet_.end()) {
                 findSharedObject = true;
                 serializeSharedEvent_++;
-                return true;
             }
-            break;
+            return true;
         }
         case JSType::JS_SHARED_FUNCTION: {
             if (serializeSharedEvent_ > 0) {
@@ -183,12 +182,6 @@ void ValueSerializer::SerializeObjectImpl(TaggedObject *object, bool isWeak)
         case JSType::JS_REG_EXP:
             SerializeJSRegExpPrologue(reinterpret_cast<JSRegExp *>(object));
             break;
-        case JSType::JS_SHARED_FUNCTION: {
-            if (serializeSharedEvent_ > 0) {
-                data_->WriteEncodeFlag(EncodeFlag::JS_FUNCTION_IN_SHARED);
-            }
-            break;
-        }
         case JSType::JS_OBJECT:
             hashfield = Barriers::GetValue<JSTaggedType>(object, JSObject::HASH_OFFSET);
             Barriers::SetPrimitive<JSTaggedType>(object, JSObject::HASH_OFFSET, JSTaggedValue::VALUE_ZERO);
@@ -233,9 +226,9 @@ void ValueSerializer::SerializeJSError(TaggedObject *object)
     JSHandle<JSTaggedValue> msg =
         JSObject::GetProperty(thread_, JSHandle<JSTaggedValue>(thread_, object), handleMsg).GetValue();
     if (msg->IsString()) {
-        EcmaString *str = EcmaStringAccessor::FlattenNoGC(vm_, EcmaString::Cast(msg->GetTaggedObject()));
         data_->WriteUint8(1); // 1: msg is string
-        SerializeTaggedObject<SerializeType::VALUE_SERIALIZE>(str);
+        // string must be shared
+        SerializeSharedObject(msg->GetTaggedObject());
     } else {
         data_->WriteUint8(0); // 0: msg is undefined
     }

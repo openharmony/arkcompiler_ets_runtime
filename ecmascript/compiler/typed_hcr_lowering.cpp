@@ -656,11 +656,12 @@ void TypedHCRLowering::LowerPrimitiveToNumber(GateRef dst, GateRef src, GateType
     acc_.ReplaceGate(dst, builder_.GetState(), builder_.GetDepend(), *result);
 }
 
-GateRef TypedHCRLowering::LoadFromConstPool(GateRef constPool, size_t index, size_t valVecType)
+GateRef TypedHCRLowering::LoadFromConstPool(GateRef constpool, size_t index, size_t valVecType)
 {
-    GateRef constPoolSize = builder_.GetLengthOfTaggedArray(constPool);
+    GateRef unsharedConstpool = builder_.GetUnsharedConstpool(constpool);
+    GateRef constPoolSize = builder_.GetLengthOfTaggedArray(unsharedConstpool);
     GateRef valVecIndex = builder_.Int32Sub(constPoolSize, builder_.Int32(valVecType));
-    GateRef valVec = builder_.GetValueFromTaggedArray(constPool, valVecIndex);
+    GateRef valVec = builder_.GetValueFromTaggedArray(unsharedConstpool, valVecIndex);
     return builder_.LoadFromTaggedArray(valVec, index);
 }
 
@@ -1697,7 +1698,8 @@ void TypedHCRLowering::LowerPrototypeCheck(GateRef gate)
     GateRef frameState = acc_.GetFrameState(gate);
 
     uint32_t hclassIndex = acc_.GetHClassIndex(gate);
-    auto expectedReceiverHC = builder_.LoadHClassFromConstpool(constPool, hclassIndex);
+    GateRef unsharedConstpool = builder_.GetUnsharedConstpool(constPool);
+    auto expectedReceiverHC = builder_.LoadHClassFromConstpool(unsharedConstpool, hclassIndex);
 
     auto prototype = builder_.LoadConstOffset(VariableType::JS_ANY(), expectedReceiverHC, JSHClass::PROTOTYPE_OFFSET);
     auto protoHClass = builder_.LoadHClass(prototype);
@@ -2694,6 +2696,7 @@ void TypedHCRLowering::LowerMonoLoadPropertyOnProto(GateRef gate)
     auto prototype = builder_.LoadConstOffset(VariableType::JS_ANY(), receiverHC, JSHClass::PROTOTYPE_OFFSET);
 
     // lookup from receiver for holder
+    GateRef unsharedConstpool = builder_.GetUnsharedConstpool(constPool);
     auto holderHC = builder_.LoadHClassFromConstpool(constPool, acc_.GetConstantValue(hclassIndex));
     DEFVALUE(current, (&builder_), VariableType::JS_ANY(), prototype);
     Label exit(&builder_);
@@ -2734,7 +2737,8 @@ void TypedHCRLowering::LowerMonoCallGetterOnProto(GateRef gate, GateRef glue)
     auto prototype = builder_.LoadConstOffset(VariableType::JS_ANY(), receiverHC, JSHClass::PROTOTYPE_OFFSET);
 
     // lookup from receiver for holder
-    auto holderHC = builder_.LoadHClassFromConstpool(constPool, acc_.GetConstantValue(hclassIndex));
+    GateRef unsharedConstpool = builder_.GetUnsharedConstpool(constPool);
+    auto holderHC = builder_.LoadHClassFromConstpool(unsharedConstpool, acc_.GetConstantValue(hclassIndex));
     DEFVALUE(current, (&builder_), VariableType::JS_ANY(), prototype);
     Label exitLoad(&builder_);
     Label loopHead(&builder_);
@@ -2824,7 +2828,8 @@ void TypedHCRLowering::LowerMonoStorePropertyLookUpProto(GateRef gate, GateRef g
     auto receiverHC = builder_.LoadConstOffset(VariableType::JS_POINTER(), receiver, TaggedObject::HCLASS_OFFSET);
     auto prototype = builder_.LoadConstOffset(VariableType::JS_ANY(), receiverHC, JSHClass::PROTOTYPE_OFFSET);
     // lookup from receiver for holder
-    auto holderHC = builder_.LoadHClassFromConstpool(constpool, acc_.GetConstantValue(hclassIndex));
+    GateRef unsharedConstpool = builder_.GetUnsharedConstpool(constpool);
+    auto holderHC = builder_.LoadHClassFromConstpool(unsharedConstpool, acc_.GetConstantValue(hclassIndex));
     DEFVALUE(current, (&builder_), VariableType::JS_ANY(), prototype);
     Label exit(&builder_);
     Label loopHead(&builder_);
@@ -2893,7 +2898,8 @@ void TypedHCRLowering::LowerMonoStoreProperty(GateRef gate, GateRef glue)
     Label exit(&builder_);
     Label notProto(&builder_);
     Label isProto(&builder_);
-    auto newHolderHC = builder_.LoadHClassFromConstpool(constPool, acc_.GetConstantValue(hclassIndex));
+    GateRef unsharedConstpool = builder_.GetUnsharedConstpool(constPool);
+    auto newHolderHC = builder_.LoadHClassFromConstpool(unsharedConstpool, acc_.GetConstantValue(hclassIndex));
     builder_.StoreConstOffset(VariableType::JS_ANY(), newHolderHC, JSHClass::PROTOTYPE_OFFSET, prototype);
     builder_.Branch(builder_.IsProtoTypeHClass(receiverHC), &isProto, &notProto,
         BranchWeight::ONE_WEIGHT, BranchWeight::DEOPT_WEIGHT);

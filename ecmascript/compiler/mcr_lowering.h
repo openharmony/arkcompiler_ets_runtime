@@ -46,6 +46,7 @@ private:
     void LowerHClassStableArrayCheck(GateRef gate);
     void LowerElementskindCheck(GateRef gate);
     void LowerGetConstPool(GateRef gate);
+    void LowerGetUnsharedConstpool(GateRef gate);
     void LowerLoadConstOffset(GateRef gate);
     void LowerLoadHClassFromConstpool(GateRef gate);
     void LowerStoreConstOffset(GateRef gate);

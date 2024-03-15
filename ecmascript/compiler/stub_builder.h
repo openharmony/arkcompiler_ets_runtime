@@ -481,6 +481,8 @@ public:
     GateRef GetInlinedPropertiesFromHClass(GateRef hClass);
     void ThrowTypeAndReturn(GateRef glue, int messageId, GateRef val);
     GateRef GetValueFromTaggedArray(GateRef elements, GateRef index);
+    GateRef GetUnsharedConstpoolIndex(GateRef constpool);
+    GateRef GetUnsharedConstpool(GateRef array, GateRef index);
     GateRef GetValueFromMutantTaggedArray(GateRef elements, GateRef index);
     void CheckUpdateSharedType(bool isDicMode, Variable *result, GateRef glue, GateRef jsType, GateRef attr,
                                GateRef value, Label *executeSetProp, Label *exit);

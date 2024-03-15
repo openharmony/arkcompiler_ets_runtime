@@ -606,18 +606,27 @@ GateRef NewObjectStubBuilder::NewJSFunction(GateRef glue, GateRef constpool, Gat
     env->SubCfgEntry(&subentry);
     Label exit(env);
     DEFVARIABLE(ihc, VariableType::JS_ANY(), Undefined());
+    DEFVARIABLE(val, VariableType::JS_ANY(), Undefined());
     DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
-    auto val = GetValueFromTaggedArray(constpool, index);
+
+    val = GetValueFromTaggedArray(constpool, index);
+
     Label isHeapObject(env);
     Label afterAOTLiteral(env);
-    Branch(TaggedIsHeapObject(val), &isHeapObject, &afterAOTLiteral);
+    Branch(TaggedIsHeapObject(*val), &isHeapObject, &afterAOTLiteral);
     {
         Bind(&isHeapObject);
         Label isAOTLiteral(env);
-        Branch(IsAOTLiteralInfo(val), &isAOTLiteral, &afterAOTLiteral);
+        Branch(IsAOTLiteralInfo(*val), &isAOTLiteral, &afterAOTLiteral);
         {
             Bind(&isAOTLiteral);
-            ihc = GetIhcFromAOTLiteralInfo(val);
+            // Avoiding shareobj references to unshareobj.
+            GateRef unshareIdx = GetUnsharedConstpoolIndex(constpool);
+            GateRef unshareCpOffset = JSThread::GlueData::GetUnSharedConstpoolsOffset(env->Is32Bit());
+            GateRef unshareCpAddr = Load(VariableType::NATIVE_POINTER(), glue, IntPtr(unshareCpOffset));
+            GateRef unshareCp = GetUnsharedConstpool(unshareCpAddr, unshareIdx);
+            val = GetValueFromTaggedArray(unshareCp, index);
+            ihc = GetIhcFromAOTLiteralInfo(*val);
             Jump(&afterAOTLiteral);
         }
     }

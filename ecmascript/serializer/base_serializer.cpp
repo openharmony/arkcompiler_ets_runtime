@@ -188,10 +188,18 @@ void BaseSerializer::SerializeSFunctionFieldIndividually(TaggedObject *root, Obj
         size_t fieldOffset = slot.SlotAddress() - ToUintPtr(root);
         switch (fieldOffset) {
             case JSFunction::MACHINECODE_OFFSET:
-            case JSFunction::PROFILE_TYPE_INFO_OFFSET:
-            case JSFunction::ECMA_MODULE_OFFSET: {
+            case JSFunction::PROFILE_TYPE_INFO_OFFSET: {
                 data_->WriteEncodeFlag(EncodeFlag::PRIMITIVE);
                 data_->WriteJSTaggedValue(JSTaggedValue::Undefined());
+                slot++;
+                break;
+            }
+            case JSFunction::ECMA_MODULE_OFFSET: {
+                // Module of shared function should write pointer directly when serialize
+                TaggedObject *module = JSFunction::Cast(root)->GetModule().GetTaggedObject();
+                if (!SerializeReference(module)) {
+                    SerializeSharedObject(module);
+                }
                 slot++;
                 break;
             }

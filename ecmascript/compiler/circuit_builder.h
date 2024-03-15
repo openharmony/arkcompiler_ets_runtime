@@ -243,7 +243,11 @@ public:
     GateRef LoadBuiltinObject(size_t offset);
 
     // Get
+    GateRef GetUnsharedConstpool(GateRef constpool);
     GateRef GetConstPoolFromFunction(GateRef jsFunc);
+    GateRef GetUnsharedConstpoolFromGlue(GateRef glue, GateRef constpool);
+    GateRef GetUnsharedConstpoolIndex(GateRef constpool);
+    GateRef GetUnsharedConstpool(GateRef arrayAddr, GateRef index);
     GateRef GetCodeAddr(GateRef jsFunc);
     GateRef GetObjectFromConstPool(GateRef glue, GateRef hirGate, GateRef constPool, GateRef module, GateRef index,
                                    ConstPoolType type);

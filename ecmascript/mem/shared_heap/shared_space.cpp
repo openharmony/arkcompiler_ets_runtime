@@ -331,7 +331,6 @@ void SharedSparseSpace::InvokeAllocationInspector(Address object, size_t size, s
     allocationCounter_.AdvanceAllocationInspector(alignedSize);
 }
 
-
 SharedNonMovableSpace::SharedNonMovableSpace(SharedHeap *heap, size_t initialCapacity, size_t maximumCapacity)
     : SharedSparseSpace(heap, MemSpaceType::SHARED_NON_MOVABLE, initialCapacity, maximumCapacity)
 {

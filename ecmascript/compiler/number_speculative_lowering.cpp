@@ -1007,7 +1007,8 @@ void NumberSpeculativeLowering::VisitLoadPropertyOnProto(GateRef gate)
         auto receiverHC = builder_.LoadConstOffset(VariableType::JS_POINTER(), receiver, TaggedObject::HCLASS_OFFSET);
         auto prototype = builder_.LoadConstOffset(VariableType::JS_ANY(), receiverHC, JSHClass::PROTOTYPE_OFFSET);
 
-        auto holderHC = builder_.LoadHClassFromConstpool(constpool, acc_.GetConstantValue(hclassIndex));
+        GateRef unsharedConstpool = builder_.GetUnsharedConstpool(constpool);
+        auto holderHC = builder_.LoadHClassFromConstpool(unsharedConstpool, acc_.GetConstantValue(hclassIndex));
         DEFVALUE(current, (&builder_), VariableType::JS_ANY(), prototype);
         Label exit(&builder_);
         Label loopHead(&builder_);

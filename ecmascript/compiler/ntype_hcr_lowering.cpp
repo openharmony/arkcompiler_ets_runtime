@@ -145,8 +145,9 @@ void NTypeHCRLowering::LowerCreateArguments(GateRef gate, GateRef glue)
     }
 }
 
-GateRef NTypeHCRLowering::LoadFromConstPool(GateRef constPool, size_t index, size_t valVecType)
+GateRef NTypeHCRLowering::LoadFromConstPool(GateRef constpool, size_t index, size_t valVecType)
 {
+    GateRef constPool = builder_.GetUnsharedConstpool(constpool);
     GateRef constPoolSize = builder_.GetLengthOfTaggedArray(constPool);
     GateRef valVecIndex = builder_.Int32Sub(constPoolSize, builder_.Int32(valVecType));
     GateRef valVec = builder_.GetValueFromTaggedArray(constPool, valVecIndex);

@@ -3426,6 +3426,7 @@ void JSNApi::SetDeviceDisconnectCallback(EcmaVM *vm, DeviceDisconnectCallback cb
 void JSNApi::LoadAotFile(EcmaVM *vm, const std::string &moduleName)
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK(vm);
+    ecmascript::ThreadManagedScope scope(thread);
     if (!ecmascript::AnFileDataManager::GetInstance()->IsEnable()) {
         return;
     }

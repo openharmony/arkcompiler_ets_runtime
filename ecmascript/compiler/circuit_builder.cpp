@@ -441,6 +441,17 @@ void CircuitBuilder::AppendFrameArgs(std::vector<GateRef> &args, GateRef hirGate
     }
 }
 
+GateRef CircuitBuilder::GetUnsharedConstpool(GateRef constpool)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentDepend = currentLabel->GetDepend();
+    auto newGate = GetCircuit()->NewGate(circuit_->GetUnsharedConstpool(), MachineType::I64,
+                                         { currentDepend, constpool },
+                                         GateType::AnyType());
+    currentLabel->SetDepend(newGate);
+    return newGate;
+}
+
 GateRef CircuitBuilder::GetGlobalEnv()
 {
     auto currentLabel = env_->GetCurrentLabel();
@@ -537,6 +548,27 @@ GateRef CircuitBuilder::GetConstPoolFromFunction(GateRef jsFunc)
 {
     GateRef method = GetMethodFromFunction(jsFunc);
     return Load(VariableType::JS_ANY(), method, IntPtr(Method::CONSTANT_POOL_OFFSET));
+}
+
+GateRef CircuitBuilder::GetUnsharedConstpoolFromGlue(GateRef glue, GateRef constpool)
+{
+    GateRef unshareIdx = GetUnsharedConstpoolIndex(constpool);
+    GateRef unshareCpOffset = JSThread::GlueData::GetUnSharedConstpoolsOffset(env_->Is32Bit());
+    GateRef unshareCpAddr = Load(VariableType::NATIVE_POINTER(), glue, IntPtr(unshareCpOffset));
+    return GetUnsharedConstpool(unshareCpAddr, unshareIdx);
+}
+
+GateRef CircuitBuilder::GetUnsharedConstpoolIndex(GateRef constpool)
+{
+    GateRef constPoolSize = GetLengthOfTaggedArray(constpool);
+    GateRef unshareIdx = Int32Sub(constPoolSize, Int32(ConstantPool::UNSHARED_CONSTPOOL_INDEX));
+    return GetValueFromTaggedArray(constpool, unshareIdx);
+}
+
+GateRef CircuitBuilder::GetUnsharedConstpool(GateRef arrayAddr, GateRef index)
+{
+    GateRef dataOffset = PtrAdd(arrayAddr, ZExtInt32ToPtr(TaggedGetInt(index)));
+    return Load(VariableType::JS_ANY(), dataOffset, IntPtr(0));
 }
 
 GateRef CircuitBuilder::GetEmptyArray(GateRef glue)
@@ -820,8 +852,8 @@ GateRef CircuitBuilder::GetCodeAddr(GateRef jsFunc)
 GateRef CircuitBuilder::GetHClassGateFromIndex(GateRef gate, int32_t index)
 {
     ArgumentAccessor argAcc(circuit_);
-    GateRef constPool = argAcc.GetFrameArgsIn(gate, FrameArgIdx::CONST_POOL);
-    return LoadHClassFromConstpool(constPool, index);
+    GateRef unsharedConstpool = GetUnsharedConstpool(constPool);
+    return LoadHClassFromConstpool(unsharedConstpool, index);
 }
 
 GateRef Variable::AddPhiOperand(GateRef val)

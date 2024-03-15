@@ -141,6 +141,7 @@ void MethodSnapshotInfo::StoreDataToGlobalData(SnapshotGlobalData &globalData,
         JSHandle<AOTLiteralInfo> aotLiteralInfo = factory->NewAOTLiteralInfo(1); // 1: only one method
         int initValue = static_cast<int>(AOTLiteralInfo::NO_FUNC_ENTRY_VALUE);
         aotLiteralInfo->SetObjectToCache(thread_, 0, JSTaggedValue(initValue));
+        aotLiteralInfo->SetLiteralType(JSTaggedValue(AOTLiteralInfo::METHOD_LITERAL_TYPE));
         if (!ihc->IsUndefined()) {
             aotLiteralInfo->SetIhc(ihc.GetTaggedValue());
         }
@@ -160,8 +161,7 @@ void ClassLiteralSnapshotInfo::StoreDataToGlobalData(SnapshotGlobalData &globalD
     bool hasAbcId = TryGetABCId(abcId);
     for (auto item : info_) {
         const ItemData &data = item.second;
-        JSHandle<ConstantPool> cp(thread_,
-            thread_->GetCurrentEcmaContext()->FindConstpool(jsPandaFile_, data.constantPoolId_));
+        JSHandle<ConstantPool> cp = GetUnsharedConstpool(data);
         auto literalObj = ConstantPool::GetClassLiteralFromCache(thread_, cp, data.constantPoolIdx_, data.recordName_);
         JSHandle<ClassLiteral> classLiteral(thread_, literalObj);
         JSHandle<TaggedArray> arrayHandle(thread_, classLiteral->GetArray());
@@ -195,8 +195,7 @@ void ObjectLiteralSnapshotInfo::StoreDataToGlobalData(SnapshotGlobalData &global
     bool hasAbcId = TryGetABCId(abcId);
     for (auto item : info_) {
         const ItemData &data = item.second;
-        JSHandle<ConstantPool> cp(thread_,
-            thread_->GetCurrentEcmaContext()->FindConstpool(jsPandaFile_, data.constantPoolId_));
+        JSHandle<ConstantPool> cp = GetUnsharedConstpool(data);
         panda_file::File::EntityId id = cp->GetEntityId(data.constantPoolIdx_);
         JSMutableHandle<TaggedArray> elements(thread_, JSTaggedValue::Undefined());
         JSMutableHandle<TaggedArray> properties(thread_, JSTaggedValue::Undefined());
@@ -233,8 +232,7 @@ void ArrayLiteralSnapshotInfo::StoreDataToGlobalData(SnapshotGlobalData &globalD
     PGOTypeManager *ptManager = thread_->GetCurrentEcmaContext()->GetPTManager();
     for (auto item : info_) {
         const ItemData &data = item.second;
-        JSHandle<ConstantPool> cp(thread_,
-            thread_->GetCurrentEcmaContext()->FindConstpool(jsPandaFile_, data.constantPoolId_));
+        JSHandle<ConstantPool> cp = GetUnsharedConstpool(data);
         panda_file::File::EntityId id = cp->GetEntityId(data.constantPoolIdx_);
         JSHandle<TaggedArray> literal = LiteralDataExtractor::GetDatasIgnoreType(
             thread_, jsPandaFile_, id, cp, data.recordName_);
@@ -251,6 +249,14 @@ void ArrayLiteralSnapshotInfo::StoreDataToGlobalData(SnapshotGlobalData &globalD
         globalData.RecordReviseData(
             ReviseData::ItemData {globalData.GetCurDataIdx(), snapshotCpArrIdx, data.constantPoolIdx_});
     }
+}
+
+JSHandle<ConstantPool> BaseSnapshotInfo::GetUnsharedConstpool(const ItemData &data)
+{
+    EcmaContext *context = thread_->GetCurrentEcmaContext();
+    JSTaggedValue shareCp = context->FindConstpool(jsPandaFile_, data.constantPoolId_);
+    JSHandle<ConstantPool> cp(thread_, context->FindUnsharedConstpool(shareCp));
+    return cp;
 }
 
 void SnapshotConstantPoolData::Record(const BytecodeInstruction &bcIns, int32_t bcIndex,
