@@ -491,6 +491,7 @@ public:
     bool IsTreeSet();
     bool IsVector();
     bool IsSharedObject();
+    bool IsJSShared();
 
 private:
     JSTaggedType value_;
