@@ -837,6 +837,15 @@ void MCRLowering::LowerGetGlobalConstantValue(GateRef gate)
     acc_.ReplaceGate(gate, Circuit::NullGate(), builder_.GetDepend(), result);
 }
 
+void MCRLowering::HeapAllocateInSOld(GateRef gate)
+{
+    GateRef size = acc_.GetValueIn(gate, 0);
+    GateRef ret = builder_.CallRuntime(glue_, RTSTUB_ID(AllocateInSOld), Gate::InvalidGateRef,
+                                        {builder_.ToTaggedInt(size)}, gate);
+
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), ret);
+}
+
 void MCRLowering::LowerInt32CheckRightIsZero(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);

@@ -2045,7 +2045,7 @@ GateRef TypedHCRLowering::AllocateLineString(GateRef glue, GateRef length, GateR
     GateRef stringClass = builder_.GetGlobalConstantValue(ConstantIndex::LINE_STRING_CLASS_INDEX);
 
     builder_.StartAllocate();
-    GateRef lineString = builder_.HeapAlloc(glue, *size, GateType::TaggedValue(), RegionSpaceFlag::IN_YOUNG_SPACE);
+    GateRef lineString = builder_.HeapAlloc(glue, *size, GateType::TaggedValue(), RegionSpaceFlag::IN_SHARED_OLD_SPACE);
     builder_.StoreConstOffset(VariableType::JS_POINTER(), lineString, 0, stringClass,
         MemoryOrder::NeedBarrierAndAtomic());
     builder_.StoreConstOffset(VariableType::INT32(), lineString, EcmaString::MIX_LENGTH_OFFSET, *mixLength);
@@ -2084,7 +2084,7 @@ GateRef TypedHCRLowering::AllocateSlicedString(GateRef glue, GateRef flatString,
     GateRef size = builder_.IntPtr(AlignUp(SlicedString::SIZE, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT)));
 
     builder_.StartAllocate();
-    GateRef slicedString = builder_.HeapAlloc(glue, size, GateType::TaggedValue(), RegionSpaceFlag::IN_YOUNG_SPACE);
+    GateRef slicedString = builder_.HeapAlloc(glue, size, GateType::TaggedValue(), RegionSpaceFlag::IN_SHARED_OLD_SPACE);
     builder_.StoreConstOffset(VariableType::JS_POINTER(), slicedString, 0, stringClass,
         MemoryOrder::NeedBarrierAndAtomic());
     builder_.StoreConstOffset(VariableType::INT32(), slicedString, EcmaString::MIX_LENGTH_OFFSET, *mixLength);

@@ -99,6 +99,7 @@ private:
     GateRef ConvertTaggedNumberToInt32(GateRef gate, Label *exit);
     GateRef ConvertTaggedNumberToFloat64(GateRef gate, Label *exit);
     GateRef ConvertTaggedBooleanToBool(GateRef gate);
+    void HeapAllocateInSOld(GateRef gate);
     void InitializeWithSpeicalValue(Label *exit, GateRef object, GateRef glue, GateRef value,
                                     GateRef start, GateRef end);
 
