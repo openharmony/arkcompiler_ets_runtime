@@ -64,17 +64,6 @@ private:
     bool CalculateStringGap(const JSHandle<EcmaString> &primString);
     bool AppendJsonString(const JSHandle<JSObject> &obj, const JSHandle<JSTaggedValue> &replacer, bool hasContent);
     bool SerializeElements(const JSHandle<JSObject> &obj, const JSHandle<JSTaggedValue> &replacer, bool hasContent);
-    void PrintAddrandValue(JSTaggedValue enumCache, const JSHandle<JSHClass> &jsHclass, const JSHandle<JSObject> &obj);
-    bool SerializeKeysFromEnumCache(JSTaggedValue enumCache, const JSHandle<JSHClass> &jsHclass, const JSHandle<JSObject> &obj,
-                                    const JSHandle<TaggedArray> &propertiesArr, const JSHandle<JSTaggedValue> &replacer,
-                                    bool hasContent);
-    bool SerializeKeysFromProperties(int end, bool hasChangedToDictionaryMode, JSHandle<JSHClass> &jsHclass,
-                                     const JSHandle<JSObject> &obj, JSHandle<TaggedArray> &propertiesArr, 
-                                     const JSHandle<JSTaggedValue> &replacer, bool hasContent);
-    bool SerializeKeysFromGlobalObjects(const JSHandle<TaggedArray> &propertiesArr, const JSHandle<JSObject> &obj,
-                                        const JSHandle<JSTaggedValue> &replacer, bool hasContent);
-    bool SerializeKeysFromNameDic(const JSHandle<TaggedArray> &propertiesArr, const JSHandle<JSObject> &obj, 
-                                  const JSHandle<JSTaggedValue> &replacer, bool hasContent);
     bool SerializeKeys(const JSHandle<JSObject> &obj, const JSHandle<JSTaggedValue> &replacer, bool hasContent);
 
     CString gap_;
