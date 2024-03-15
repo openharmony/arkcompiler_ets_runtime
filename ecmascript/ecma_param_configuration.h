@@ -25,19 +25,31 @@
 namespace panda::ecmascript {
 static constexpr size_t DEFAULT_HEAP_SIZE = 448_MB;                 // Recommended range: 128-448MB
 static constexpr size_t DEFAULT_WORKER_HEAP_SIZE = 768_MB;          // Recommended range: 128_MB, LargeHeap: 768_MB
+static constexpr size_t DEFAULT_SHARED_HEAP_SIZE = 778_MB;
 
 class EcmaParamConfiguration {
 public:
-    EcmaParamConfiguration(bool isWorker, size_t poolSize)
+    enum class HeapType : uint8_t {
+        DEFAULT_HEAP,
+        WORKER_HEAP,
+        SHARED_HEAP
+    };
+
+    EcmaParamConfiguration(HeapType heapType, size_t poolSize)
     {
-        if (isWorker) {
-            maxHeapSize_ = DEFAULT_WORKER_HEAP_SIZE;
-        } else {
-            if (poolSize >= DEFAULT_HEAP_SIZE) {
-                maxHeapSize_ = DEFAULT_HEAP_SIZE;
-            } else {
-                maxHeapSize_ = poolSize; // pool is too small, no memory left for worker
-            }
+        switch (heapType) {
+            case HeapType::WORKER_HEAP:
+                maxHeapSize_ = DEFAULT_WORKER_HEAP_SIZE;
+                break;
+            case HeapType::SHARED_HEAP:
+                maxHeapSize_ = DEFAULT_SHARED_HEAP_SIZE;
+                break;
+            default:
+                if (poolSize >= DEFAULT_HEAP_SIZE) {
+                    maxHeapSize_ = DEFAULT_HEAP_SIZE;
+                } else {
+                    maxHeapSize_ = poolSize; // pool is too small, no memory left for worker
+                }
         }
         Initialize();
     }

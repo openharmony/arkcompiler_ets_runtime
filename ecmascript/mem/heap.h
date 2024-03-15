@@ -312,12 +312,7 @@ public:
     SharedHeap(const EcmaParamConfiguration &config) : BaseHeap(config) {}
     virtual ~SharedHeap() = default;
 
-    static SharedHeap* GetInstance()
-    {
-        EcmaParamConfiguration config(false, DEFAULT_HEAP_SIZE);
-        static SharedHeap *shareHeap = new SharedHeap(config);
-        return shareHeap;
-    }
+    static SharedHeap* GetInstance();
 
     void Initialize(NativeAreaAllocator *nativeAreaAllocator, HeapRegionAllocator *heapRegionAllocator,
         const JSRuntimeOptions &option);
@@ -369,7 +364,9 @@ public:
         return onSerializeEvent_;
     }
 
-    bool CheckAndTriggerOldGC(JSThread *thread, size_t size = 0);
+    bool CheckAndTriggerGC(JSThread *thread, size_t size = 0);
+
+    bool CheckHugeAndTriggerGC(JSThread *thread, size_t size);
 
     void TryTriggerConcurrentMarking() override
     {
@@ -391,14 +388,13 @@ public:
 
     bool OldSpaceExceedCapacity(size_t size) const override
     {
-        size_t totalSize = sOldSpace_->GetCommittedSize() + sHugeObjectSpace_->GetCommittedSize() + size;
+        size_t totalSize = sOldSpace_->GetCommittedSize() + size;
         return totalSize >= sOldSpace_->GetMaximumCapacity() + sOldSpace_->GetOutOfMemoryOvershootSize();
     }
 
     bool OldSpaceExceedLimit() const override
     {
-        size_t totalSize = sOldSpace_->GetHeapObjectSize() + sHugeObjectSpace_->GetHeapObjectSize();
-        return totalSize >= sOldSpace_->GetInitialCapacity();
+        return sOldSpace_->GetHeapObjectSize() >= sOldSpace_->GetInitialCapacity();
     }
 
     SharedConcurrentSweeper *GetSweeper() const

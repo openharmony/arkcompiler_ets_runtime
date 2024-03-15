@@ -545,8 +545,6 @@ TaggedObject *SharedHeap::AllocateOldOrHugeObject(JSThread *thread, size_t size)
 
 TaggedObject *SharedHeap::AllocateHugeObject(JSThread *thread, JSHClass *hclass, size_t size)
 {
-    // Check whether it is necessary to trigger Old GC before expanding to avoid OOM risk.
-    CheckAndTriggerOldGC(thread, size);
     auto object = AllocateHugeObject(thread, size);
     object->SetClass(thread, hclass);
     // TODO(lukai)
@@ -556,9 +554,8 @@ TaggedObject *SharedHeap::AllocateHugeObject(JSThread *thread, JSHClass *hclass,
 
 TaggedObject *SharedHeap::AllocateHugeObject(JSThread *thread, size_t size)
 {
-    // Check whether it is necessary to trigger Old GC before expanding to avoid OOM risk.
-    CheckAndTriggerOldGC(thread, size);
-
+    // Check whether it is necessary to trigger Shared GC before expanding to avoid OOM risk.
+    CheckHugeAndTriggerGC(thread, size);
     auto *object = reinterpret_cast<TaggedObject *>(sHugeObjectSpace_->Allocate(thread, size));
     if (UNLIKELY(object == nullptr)) {
         CollectGarbage(thread, TriggerGCType::SHARED_GC, GCReason::ALLOCATION_LIMIT);
@@ -566,7 +563,7 @@ TaggedObject *SharedHeap::AllocateHugeObject(JSThread *thread, size_t size)
         if (UNLIKELY(object == nullptr)) {
             // if allocate huge object OOM, temporarily increase space size to avoid vm crash
             size_t oomOvershootSize = config_.GetOutOfMemoryOvershootSize();
-            sOldSpace_->IncreaseOutOfMemoryOvershootSize(oomOvershootSize);
+            sHugeObjectSpace_->IncreaseOutOfMemoryOvershootSize(oomOvershootSize);
             // TODO(lukai)
             // DumpHeapSnapshotBeforeOOM();
             ThrowOutOfMemoryError(thread, size, "SharedHeap::AllocateHugeObject");

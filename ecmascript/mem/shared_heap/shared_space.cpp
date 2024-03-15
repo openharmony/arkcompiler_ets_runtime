@@ -62,8 +62,8 @@ uintptr_t SharedSparseSpace::Allocate(JSThread *thread, size_t size, bool allowG
         object = AllocateAfterSweepingCompleted(size);
         CHECK_SOBJECT_AND_INC_OBJ_SIZE(size);
     }
-     // Check whether it is necessary to trigger Old GC before expanding to avoid OOM risk.
-    if (allowGC && sHeap_->CheckAndTriggerOldGC(thread)) {
+    // Check whether it is necessary to trigger Shared GC before expanding to avoid OOM risk.
+    if (allowGC && sHeap_->CheckAndTriggerGC(thread)) {
         object = TryAllocate(size);
         CHECK_SOBJECT_AND_INC_OBJ_SIZE(size);
     }
@@ -389,7 +389,7 @@ uintptr_t SharedHugeObjectSpace::Allocate(JSThread *thread, size_t objectSize)
     // In HugeObject allocation, we have a revervation of 8 bytes for markBitSet in objectSize.
     // In case Region is not aligned by 16 bytes, HUGE_OBJECT_BITSET_SIZE is 8 bytes more.
     size_t alignedSize = AlignUp(objectSize + sizeof(Region) + HUGE_OBJECT_BITSET_SIZE, PANDA_POOL_ALIGNMENT_IN_BYTES);
-    if (heap_->OldSpaceExceedCapacity(alignedSize)) {
+    if (CommittedSizeExceed(alignedSize)) {
         LOG_ECMA_MEM(INFO) << "Committed size " << committedSize_ << " of huge object space is too big.";
         return 0;
     }

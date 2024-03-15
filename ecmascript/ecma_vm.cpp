@@ -103,7 +103,9 @@ AOTFileManager *JsStackInfo::loader = nullptr;
 EcmaVM *EcmaVM::Create(const JSRuntimeOptions &options)
 {
     Runtime::CreateIfFirstVm(options);
-    auto config = EcmaParamConfiguration(options.IsWorker(),
+    auto heapType = options.IsWorker() ? EcmaParamConfiguration::HeapType::WORKER_HEAP :
+        EcmaParamConfiguration::HeapType::DEFAULT_HEAP;
+    auto config = EcmaParamConfiguration(heapType,
                                          MemMapAllocator::GetInstance()->GetCapacity());
     MemMapAllocator::GetInstance()->IncreaseAndCheckReserved(config.GetMaxHeapSize());
     JSRuntimeOptions newOptions = options;

@@ -47,7 +47,8 @@ static constexpr size_t MIN_MEM_POOL_CAPACITY = 64_MB;
 static constexpr size_t WORKER_NUM = 8;
 static constexpr size_t PHY_SIZE_MULTIPLE = WORKER_NUM + 1;
 // todo(Gymee) fix size for shared heap
-static constexpr size_t STANDARD_POOL_SIZE = WORKER_NUM * DEFAULT_WORKER_HEAP_SIZE + DEFAULT_HEAP_SIZE;
+static constexpr size_t STANDARD_POOL_SIZE =
+    WORKER_NUM * DEFAULT_WORKER_HEAP_SIZE + DEFAULT_HEAP_SIZE + DEFAULT_SHARED_HEAP_SIZE;
 
 #if defined(PANDA_TARGET_32)
     static constexpr size_t MAX_GLOBAL_NATIVE_LIMIT = 512_MB;
