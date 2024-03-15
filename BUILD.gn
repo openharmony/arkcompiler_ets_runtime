@@ -144,7 +144,7 @@ group("ark_unittest") {
   if (!run_with_asan) {
     if (!(ark_standalone_build && current_os == "ohos")) {
       deps += [
-        #  "ecmascript/compiler/tests:host_unittest",
+        "ecmascript/compiler/tests:host_unittest",
         "ecmascript/ohos/tests:host_unittest",
       ]
     }

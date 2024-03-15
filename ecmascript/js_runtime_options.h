@@ -65,6 +65,7 @@ extern const std::string PUBLIC_API HELP_OPTION_MSG;
 
 enum CommandValues {
     OPTION_DEFAULT,
+    OPTION_HELP,
     OPTION_ENABLE_ARK_TOOLS,
     OPTION_STUB_FILE,
     OPTION_ENABLE_FORCE_GC,
@@ -126,12 +127,11 @@ enum CommandValues {
     OPTION_COMPILER_OPT_PGOTYPE,
     OPTION_COMPILER_OPT_TRACK_FIELD,
     OPTION_COMPILER_OPT_GLOBAL_TYPEINFER,
-    OPTION_HELP,
     OPTION_COMPILER_PGO_PROFILER_PATH,
+    OPTION_SPLIT_ONE,
     OPTION_COMPILER_PGO_HOTNESS_THRESHOLD,
     OPTION_COMPILER_PGO_SAVE_MIN_INTERVAL,
     OPTION_ENABLE_PGO_PROFILER,
-    OPTION_OPTIONS,
     OPTION_PRINT_EXECUTE_TIME,
     OPTION_COMPILER_VERIFY_VTABLE,
     OPTION_COMPILER_SELECT_METHODS,
@@ -171,7 +171,9 @@ enum CommandValues {
     OPTION_COMPILER_OPT_BC_RANGE_HELP,
     OPTION_COMPILER_OPT_ESCAPE_ANALYSIS,
     OPTION_COMPILER_TRACE_ESCAPE_ANALYSIS,
+    OPTION_LAST,
 };
+static_assert(OPTION_SPLIT_ONE == 64);
 
 class PUBLIC_API JSRuntimeOptions {
 public:
@@ -598,7 +600,7 @@ public:
 
     bool WasSetCompilerLogOption() const
     {
-        return 1ULL << static_cast<uint64_t>(OPTION_COMPILER_LOG_OPT) & wasSet_ &&
+        return WasOptionSet(OPTION_COMPILER_LOG_OPT) &&
             GetCompilerLogOption().find("none") == std::string::npos;
     }
 
@@ -614,7 +616,7 @@ public:
 
     bool WasSetMethodsListForLog() const
     {
-        return 1ULL << static_cast<uint64_t>(OPTION_COMPILER_LOG_METHODS) & wasSet_ &&
+        return WasOptionSet(OPTION_COMPILER_LOG_METHODS)  &&
             GetCompilerLogOption().find("none") == std::string::npos &&
             GetCompilerLogOption().find("all") == std::string::npos;
     }
@@ -1165,11 +1167,6 @@ public:
         compilerModuleMethods_ = compilerModuleMethods;
     }
 
-    void WasSet(int opt)
-    {
-        wasSet_ |= 1ULL << static_cast<uint64_t>(opt);
-    }
-
     void SetTraceDeopt(bool value)
     {
         traceDeopt_ = value;
@@ -1536,9 +1533,22 @@ private:
         return std::equal(needle.begin(), needle.end(), haystack.begin());
     }
 
+    void WasSet(int option)
+    {
+        if (option < OPTION_SPLIT_ONE) {
+            wasSetPartOne_ |= (1ULL << static_cast<uint64_t>(option));
+        } else {
+            wasSetPartTwo_ |= (1ULL << static_cast<uint64_t>(option - OPTION_SPLIT_ONE));
+        }
+    }
+
     bool WasOptionSet(int option) const
     {
-        return ((1ULL << static_cast<uint64_t>(option)) & wasSet_) != 0;
+        if (option < OPTION_SPLIT_ONE) {
+            return ((1ULL << static_cast<uint64_t>(option)) & wasSetPartOne_) != 0;
+        }
+
+        return ((1ULL << static_cast<uint64_t>(option - OPTION_SPLIT_ONE)) & wasSetPartTwo_) != 0;
     }
 
     bool ParseBoolParam(bool* argBool);
@@ -1613,7 +1623,8 @@ private:
     bool enableGlobalTypeInfer_ {false};
     bool enableOptTrackField_ {true};
     uint32_t compilerModuleMethods_ {100};
-    uint64_t wasSet_ {0};
+    uint64_t wasSetPartOne_ {0};
+    uint64_t wasSetPartTwo_ {0};
     bool enableContext_ {false};
     bool enablePrintExecuteTime_ {false};
     bool enablePGOProfiler_ {false};

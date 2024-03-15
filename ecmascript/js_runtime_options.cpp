@@ -210,10 +210,8 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"enable-ic", required_argument, nullptr, OPTION_ENABLE_IC},
         {"enable-runtime-stat", required_argument, nullptr, OPTION_ENABLE_RUNTIME_STAT},
         {"compiler-opt-constant-folding", required_argument, nullptr, OPTION_COMPILER_OPT_CONSTANT_FOLDING},
-        {"compiler-opt-array-bounds-check-elimination",
-         required_argument,
-         nullptr,
-         OPTION_COMPILER_OPT_ARRAY_BOUNDS_CHECK_ELIMINATION},
+        {"compiler-opt-array-bounds-check-elimination", required_argument, nullptr,
+            OPTION_COMPILER_OPT_ARRAY_BOUNDS_CHECK_ELIMINATION},
         {"compiler-opt-type-lowering", required_argument, nullptr, OPTION_COMPILER_OPT_TYPE_LOWERING},
         {"compiler-opt-early-elimination", required_argument, nullptr, OPTION_COMPILER_OPT_EARLY_ELIMINATION},
         {"compiler-opt-later-elimination", required_argument, nullptr, OPTION_COMPILER_OPT_LATER_ELIMINATION},
@@ -246,7 +244,6 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"merge-abc", required_argument, nullptr, OPTION_MERGE_ABC},
         {"enable-context", required_argument, nullptr, OPTION_ENABLE_CONTEXT},
         {"compiler-opt-level", required_argument, nullptr, OPTION_ASM_OPT_LEVEL},
-        {"options", no_argument, nullptr, OPTION_OPTIONS},
         {"compiler-print-type-info", required_argument, nullptr, OPTION_COMPILER_PRINT_TYPE_INFO},
         {"reloc-mode", required_argument, nullptr, OPTION_RELOCATION_MODE},
         {"serializer-buffer-size-limit", required_argument, nullptr, OPTION_SERIALIZER_BUFFER_SIZE_LIMIT},
@@ -273,10 +270,8 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"compiler-pkg-info", required_argument, nullptr, OPTION_COMPILER_PKG_INFO},
         {"compiler-external-pkg-info", required_argument, nullptr, OPTION_COMPILER_EXTERNAL_PKG_INFO},
         {"compiler-enable-external-pkg", required_argument, nullptr, OPTION_COMPILER_ENABLE_EXTERNAL_PKG},
-        {"compiler-enable-lexenv-specialization",
-         required_argument,
-         nullptr,
-         OPTION_COMPILER_ENABLE_LEXENV_SPECIALIZATION},
+        {"compiler-enable-lexenv-specialization", required_argument, nullptr,
+            OPTION_COMPILER_ENABLE_LEXENV_SPECIALIZATION},
         {"compiler-enable-native-inline", required_argument, nullptr, OPTION_COMPILER_ENABLE_NATIVE_INLINE},
         {"compiler-enable-lowering-builtin", required_argument, nullptr, OPTION_COMPILER_ENABLE_LOWERING_BUILTIN},
         {"compiler-enable-litecg", required_argument, nullptr, OPTION_COMPILER_ENABLE_LITECG},
@@ -1049,7 +1044,7 @@ bool JSRuntimeOptions::SetDefaultValue(char* argv)
         return false;
     }
 
-    if (optopt > OPTION_OPTIONS) { // unknown argument
+    if (optopt >= OPTION_LAST) { // unknown argument
         LOG_ECMA(ERROR) << "getopt: \"" << argv <<"\" argument has invalid parameter value \n";
         return false;
     }
