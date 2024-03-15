@@ -53,7 +53,7 @@ GateRef MCRLowering::VisitGate(GateRef gate)
             LowerLoadConstOffset(gate);
             break;
         case OpCode::LOAD_HCLASS_FROM_CONSTPOOL:
-            LowerLoadHClassFromConstpool(gate);
+            LowerLoadHClassFromUnsharedConstpool(gate);
             break;
         case OpCode::STORE_CONST_OFFSET:
             LowerStoreConstOffset(gate);
@@ -165,7 +165,7 @@ void MCRLowering::LowerLoadConstOffset(GateRef gate)
     acc_.ReplaceGate(gate, Circuit::NullGate(), builder_.GetDepend(), result);
 }
 
-void MCRLowering::LowerLoadHClassFromConstpool(GateRef gate)
+void MCRLowering::LowerLoadHClassFromUnsharedConstpool(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
     GateRef constpool = acc_.GetValueIn(gate, 0);

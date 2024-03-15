@@ -48,7 +48,7 @@ private:
     void LowerGetConstPool(GateRef gate);
     void LowerGetUnsharedConstpool(GateRef gate);
     void LowerLoadConstOffset(GateRef gate);
-    void LowerLoadHClassFromConstpool(GateRef gate);
+    void LowerLoadHClassFromUnsharedConstpool(GateRef gate);
     void LowerStoreConstOffset(GateRef gate);
     void LowerConvertHoleAsUndefined(GateRef gate);
     void LowerCheckAndConvert(GateRef gate);

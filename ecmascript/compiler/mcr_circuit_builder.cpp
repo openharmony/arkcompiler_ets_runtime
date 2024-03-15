@@ -835,11 +835,11 @@ GateRef CircuitBuilder::LoadConstOffset(VariableType type, GateRef receiver, siz
     return ret;
 }
 
-GateRef CircuitBuilder::LoadHClassFromConstpool(GateRef constpool, size_t index)
+GateRef CircuitBuilder::LoadHClassFromUnsharedConstpool(GateRef constpool, size_t index)
 {
     auto currentLabel = env_->GetCurrentLabel();
     auto currentDepend = currentLabel->GetDepend();
-    auto ret = GetCircuit()->NewGate(circuit_->LoadHClassFromConstpool(index), MachineType::I64,
+    auto ret = GetCircuit()->NewGate(circuit_->LoadHClassFromUnsharedConstpool(index), MachineType::I64,
                                      { currentDepend, constpool }, GateType::AnyType());
     currentLabel->SetDepend(ret);
     return ret;

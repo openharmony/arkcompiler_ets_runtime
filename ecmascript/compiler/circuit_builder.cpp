@@ -852,8 +852,8 @@ GateRef CircuitBuilder::GetCodeAddr(GateRef jsFunc)
 GateRef CircuitBuilder::GetHClassGateFromIndex(GateRef gate, int32_t index)
 {
     ArgumentAccessor argAcc(circuit_);
-    GateRef unsharedConstpool = GetUnsharedConstpool(constPool);
-    return LoadHClassFromConstpool(unsharedConstpool, index);
+    GateRef constPool = argAcc.GetFrameArgsIn(gate, FrameArgIdx::CONST_POOL);
+    return LoadHClassFromUnsharedConstpool(constPool, index);
 }
 
 GateRef Variable::AddPhiOperand(GateRef val)

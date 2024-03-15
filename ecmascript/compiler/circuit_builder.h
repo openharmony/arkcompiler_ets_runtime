@@ -581,7 +581,7 @@ public:
     GateRef LoadStringLength(GateRef string);
     GateRef LoadConstOffset(VariableType type, GateRef receiver, size_t offset,
         MemoryOrder order = MemoryOrder::Default());
-    GateRef LoadHClassFromConstpool(GateRef constpool, size_t index);
+    GateRef LoadHClassFromUnsharedConstpool(GateRef constpool, size_t index);
     GateRef TypedCall(GateRef hirGate, std::vector<GateRef> args, bool isNoGC);
     GateRef TypedFastCall(GateRef hirGate, std::vector<GateRef> args, bool isNoGC);
     inline void SetValueToTaggedArray(VariableType valType, GateRef glue, GateRef array, GateRef index, GateRef val);
