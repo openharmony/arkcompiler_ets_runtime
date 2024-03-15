@@ -172,6 +172,8 @@ enum CommandValues {
     OPTION_COMPILER_OPT_ESCAPE_ANALYSIS,
     OPTION_COMPILER_TRACE_ESCAPE_ANALYSIS,
     OPTION_LAST,
+    OPTION_COMPILER_OPT_INDUCTION_VARIABLE,
+    OPTION_COMPILER_TRACE_INDUCTION_VARIABLE,
 };
 static_assert(OPTION_SPLIT_ONE == 64);
 
@@ -1537,6 +1539,26 @@ public:
         return traceEscapeAnalysis_;
     }
 
+    void SetEnableInductionVariableAnalysis(bool value)
+    {
+        enableInductionVariableAnalysis_ = value;
+    }
+
+    bool IsEnableInductionVariableAnalysis() const
+    {
+        return enableInductionVariableAnalysis_;
+    }
+
+    void SetEnableTraceInductionVariableAnalysis(bool value)
+    {
+        traceInductionVariableAnalysis_ = value;
+    }
+
+    bool GetTraceInductionVariableAnalysis() const
+    {
+        return traceInductionVariableAnalysis_;
+    }
+    
 private:
     static bool StartsWith(const std::string &haystack, const std::string &needle)
     {
@@ -1678,6 +1700,8 @@ private:
     arg_list_t compileCodegenOption_ {{""}};
     bool enableEscapeAnalysis_ {false};
     bool traceEscapeAnalysis_ {false};
+    bool enableInductionVariableAnalysis_ {false};
+    bool traceInductionVariableAnalysis_ {false};
 };
 }  // namespace panda::ecmascript
 

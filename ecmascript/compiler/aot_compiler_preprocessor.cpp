@@ -63,6 +63,7 @@ CompilationOptions::CompilationOptions(EcmaVM *vm, JSRuntimeOptions &runtimeOpti
     isEnableOptBranchProfiling_ = runtimeOptions.IsEnableBranchProfiling();
     optBCRange_ = runtimeOptions.GetOptCodeRange();
     isEnableEscapeAnalysis_ = runtimeOptions.IsEnableEscapeAnalysis();
+    isEnableInductionVariableAnalysis_ = runtimeOptions.IsEnableInductionVariableAnalysis();
 }
 
 bool AotCompilerPreprocessor::HandleTargetCompilerMode(CompilationOptions &cOptions)

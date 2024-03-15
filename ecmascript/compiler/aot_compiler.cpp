@@ -143,6 +143,7 @@ int Main(const int argc, const char **argv)
                 .EnableLoweringBuiltin(cOptions.isEnableLoweringBuiltin_)
                 .EnableOptBranchProfiling(cOptions.isEnableOptBranchProfiling_)
                 .EnableEscapeAnalysis(cOptions.isEnableEscapeAnalysis_)
+                .EnableInductionVariableAnalysis(cOptions.isEnableInductionVariableAnalysis_)
                 .Build();
 
         PassManager passManager(vm,
