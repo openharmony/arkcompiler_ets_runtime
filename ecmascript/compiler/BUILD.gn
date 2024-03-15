@@ -187,6 +187,7 @@ libark_jsoptimizer_sources = [
   "typed_array_stub_builder.cpp",
   "typed_bytecode_lowering.cpp",
   "typed_hcr_lowering.cpp",
+  "typed_native_inline_lowering.cpp",
   "value_numbering.cpp",
   "verifier.cpp",
 ]

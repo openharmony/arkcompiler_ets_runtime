@@ -116,11 +116,25 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(DoubleToLength)                          \
     V(FloatMod)                                \
     V(FloatSqrt)                               \
+    V(FloatAcos)                               \
+    V(FloatAcosh)                              \
+    V(FloatAsin)                               \
+    V(FloatAsinh)                              \
+    V(FloatAtan)                               \
+    V(FloatAtan2)                              \
+    V(FloatAtanh)                              \
     V(FloatCos)                                \
+    V(FloatCosh)                               \
     V(FloatSin)                                \
-    V(FloatACos)                               \
-    V(FloatATan)                               \
+    V(FloatSinh)                               \
+    V(FloatTan)                                \
+    V(FloatTanh)                               \
+    V(FloatLog)                                \
+    V(FloatLog2)                               \
+    V(FloatLog10)                              \
+    V(FloatLog1p)                              \
     V(FloatFloor)                              \
+    V(FloatPow)                                \
     V(FindElementWithCache)                    \
     V(TryToElementsIndexOrFindInStringTable)   \
     V(TryGetInternString)                      \
@@ -459,11 +473,25 @@ public:
     static JSTaggedType DoubleToLength(double x);
     static double FloatMod(double x, double y);
     static JSTaggedType FloatSqrt(double x);
-    static JSTaggedType FloatCos(double x);
-    static JSTaggedType FloatSin(double x);
-    static JSTaggedType FloatACos(double x);
-    static JSTaggedType FloatATan(double x);
-    static JSTaggedType FloatFloor(double x);
+    static double FloatAcos(double x);
+    static double FloatAcosh(double x);
+    static double FloatAsin(double x);
+    static double FloatAsinh(double x);
+    static double FloatAtan(double x);
+    static double FloatAtan2(double y, double x);
+    static double FloatAtanh(double x);
+    static double FloatCos(double x);
+    static double FloatCosh(double x);
+    static double FloatSin(double x);
+    static double FloatSinh(double x);
+    static double FloatTan(double x);
+    static double FloatTanh(double x);
+    static double FloatFloor(double x);
+    static double FloatLog(double x);
+    static double FloatLog2(double x);
+    static double FloatLog10(double x);
+    static double FloatLog1p(double x);
+    static double FloatPow(double base, double exp);
     static int32_t FindElementWithCache(uintptr_t argGlue, JSTaggedType hclass,
                                         JSTaggedType key, int32_t num);
     static bool StringsAreEquals(EcmaString *str1, EcmaString *str2);

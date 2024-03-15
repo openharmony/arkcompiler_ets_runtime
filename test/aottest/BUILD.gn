@@ -229,7 +229,8 @@ group("ark_aot_ts_test") {
     test_list += [ "pgo_call_deopt" ]
   }
 
-  deps = []
+  deps = [ "builtin_inlining:ark_aot_builtin_inlining_test" ]
+
   foreach(test, test_list) {
     deps += [ "${test}:${test}AotAction" ]
     if (!is_debug) {
