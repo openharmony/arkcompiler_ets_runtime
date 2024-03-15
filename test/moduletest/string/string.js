@@ -248,3 +248,12 @@ const iter = str7[Symbol.iterator]();
 print(iter.next().value);
 print(iter.next().value);
 print(iter.next().done);
+
+const str_endsWith1 = 'this is a test for string endsWith!';
+print(str_endsWith1.endsWith('string', '25'));    // true
+print(str_endsWith1.endsWith('string', 25));      // true
+print(str_endsWith1.endsWith('endsWith!', 25));   // false
+print(str_endsWith1.endsWith('endsWith!'));       // true
+print(str_endsWith1.endsWith('endsWith!', -1));   // false
+print(str_endsWith1.endsWith('endsWith!', 100));  // true
+print(str_endsWith1.endsWith('string', 25.3));    // true

@@ -45,6 +45,7 @@ namespace panda::ecmascript::kungfu {
     V(StringConcat)                                 \
     V(StringStartsWith)                             \
     V(StringToLowerCase)                            \
+    V(StringEndsWith)                               \
     V(GetStringIterator)                            \
     V(ObjectToString)                               \
     V(ObjectCreate)                                 \
@@ -72,6 +73,7 @@ namespace panda::ecmascript::kungfu {
     V(ArrayFindIndex)                               \
     V(ArrayForEach)                                 \
     V(ArrayIndexOf)                                 \
+    V(ArrayMap)                                     \
     V(ArrayLastIndexOf)                             \
     V(ArrayPop)                                     \
     V(ArraySlice)                                   \
