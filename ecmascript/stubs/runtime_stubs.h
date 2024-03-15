@@ -123,8 +123,6 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(FloatATan)                               \
     V(FloatFloor)                              \
     V(FindElementWithCache)                    \
-    V(TryToElementsIndexOrFindInStringTable)   \
-    V(TryGetInternString)                      \
     V(CreateArrayFromList)                     \
     V(StringsAreEquals)                        \
     V(BigIntEquals)                            \
@@ -388,7 +386,9 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(FunctionDefineOwnProperty)          \
     V(AOTEnableProtoChangeMarker)         \
     V(HasProperty)                        \
-    V(DumpObject)
+    V(DumpObject)                         \
+    V(TryGetInternString)                 \
+    V(TryToElementsIndexOrFindInStringTable)
 
 #define RUNTIME_STUB_LIST(V)                     \
     RUNTIME_ASM_STUB_LIST(V)                     \
@@ -446,8 +446,6 @@ public:
         uintptr_t object, size_t offset, TaggedObject *value);
     static void StoreBarrier([[maybe_unused]] uintptr_t argGlue,
         uintptr_t object, size_t offset, TaggedObject *value);
-    static JSTaggedType TryToElementsIndexOrFindInStringTable(uintptr_t argGlue, JSTaggedType ecmaString);
-    static JSTaggedType TryGetInternString(uintptr_t argGlue, JSTaggedType ecmaString);
     static JSTaggedType CreateArrayFromList([[maybe_unused]] uintptr_t argGlue, int32_t argc, JSTaggedValue *argvPtr);
     static JSTaggedType GetActualArgvNoGC(uintptr_t argGlue);
     static void InsertOldToNewRSet([[maybe_unused]] uintptr_t argGlue, uintptr_t object, size_t offset);
@@ -818,7 +816,7 @@ private:
     static inline bool ShouldUseAOTHClass(const JSHandle<JSTaggedValue> &ihc,
                                           const JSHandle<JSTaggedValue> &chc,
                                           const JSHandle<ClassLiteral> &classLiteral);
-    static inline JSTaggedType RuntimeTryGetInternString(uintptr_t argGlue, EcmaString *string);
+    static inline JSTaggedType RuntimeTryGetInternString(uintptr_t argGlue, const JSHandle<EcmaString> &string);
     friend class SlowRuntimeStub;
 };
 }  // namespace panda::ecmascript

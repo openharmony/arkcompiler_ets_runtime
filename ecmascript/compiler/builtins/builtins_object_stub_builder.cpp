@@ -726,7 +726,7 @@ void BuiltinsObjectStubBuilder::HasOwnProperty(Variable *result, Label *exit, La
         Branch(TaggedIsString(prop), &keyIsString, slowPath); // 2 : two args
         Bind(&keyIsString);
         {
-            GateRef res = CallNGCRuntime(glue_, RTSTUB_ID(TryToElementsIndexOrFindInStringTable), { glue_, prop });
+            GateRef res = CallRuntime(glue_, RTSTUB_ID(TryToElementsIndexOrFindInStringTable), { prop });
             Branch(TaggedIsNumber(res), &isIndex, &notIndex);
             Bind(&isIndex);
             {
