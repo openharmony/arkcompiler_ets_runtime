@@ -3588,56 +3588,6 @@ HWTEST_F_L0(JSNApiSplTest, JSNApi_SetHostEnqueueJob)
     TEST_TIME(JSNApi_SetHostEnqueueJob);
 }
 
-HWTEST_F_L0(JSNApiSplTest, JSNApi_InitializeIcuData)
-{
-    LocalScope scope(vm_);
-    CalculateForTime();
-    JSRuntimeOptions runtimeOptions;
-    gettimeofday(&g_beginTime, nullptr);
-    for (int i = 0; i < NUM_COUNT; i++) {
-        JSNApi::InitializeIcuData(runtimeOptions);
-    }
-    gettimeofday(&g_endTime, nullptr);
-    TEST_TIME(JSNApi_InitializeIcuData);
-}
-
-HWTEST_F_L0(JSNApiSplTest, JSNApi_InitializePGOProfiler)
-{
-    LocalScope scope(vm_);
-    CalculateForTime();
-    JSRuntimeOptions runtimeOptions;
-    gettimeofday(&g_beginTime, nullptr);
-    for (int i = 0; i < NUM_COUNT; i++) {
-        JSNApi::InitializePGOProfiler(runtimeOptions);
-    }
-    gettimeofday(&g_endTime, nullptr);
-    TEST_TIME(JSNApi_InitializePGOProfiler);
-}
-
-HWTEST_F_L0(JSNApiSplTest, JSNApi_DestroyAnDataManager)
-{
-    LocalScope scope(vm_);
-    CalculateForTime();
-    gettimeofday(&g_beginTime, nullptr);
-    for (int i = 0; i < NUM_COUNT; i++) {
-        JSNApi::DestroyAnDataManager();
-    }
-    gettimeofday(&g_endTime, nullptr);
-    TEST_TIME(JSNApi_DestroyAnDataManager);
-}
-
-HWTEST_F_L0(JSNApiSplTest, JSNApi_DestroyPGOProfiler)
-{
-    LocalScope scope(vm_);
-    CalculateForTime();
-    gettimeofday(&g_beginTime, nullptr);
-    for (int i = 0; i < NUM_COUNT; i++) {
-        JSNApi::DestroyPGOProfiler();
-    }
-    gettimeofday(&g_endTime, nullptr);
-    TEST_TIME(JSNApi_DestroyPGOProfiler);
-}
-
 HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsMapIterator_True)
 {
     LocalScope scope(vm_);
