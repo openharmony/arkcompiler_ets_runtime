@@ -201,7 +201,7 @@ JSHandle<NameDictionary> NameDictionary::CreateInSharedHeap(const JSThread *thre
 PropertyAttributes NameDictionary::GetAttributes(int entry) const
 {
     int index = GetEntryIndex(entry) + ENTRY_DETAILS_INDEX;
-    return PropertyAttributes(Get(index).GetInt());
+    return PropertyAttributes(Get(index));
 }
 
 void NameDictionary::SetAttributes(const JSThread *thread, int entry, const PropertyAttributes &metaData)
@@ -377,7 +377,7 @@ JSHandle<NumberDictionary> NumberDictionary::Create(const JSThread *thread, int 
 PropertyAttributes NumberDictionary::GetAttributes(int entry) const
 {
     int index = GetEntryIndex(entry) + ENTRY_DETAILS_INDEX;
-    return PropertyAttributes(Get(index).GetInt());
+    return PropertyAttributes(Get(index));
 }
 
 void NumberDictionary::SetAttributes(const JSThread *thread, int entry, const PropertyAttributes &metaData)

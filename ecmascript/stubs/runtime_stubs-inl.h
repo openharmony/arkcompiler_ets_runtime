@@ -2121,6 +2121,9 @@ JSTaggedValue RuntimeStubs::RuntimeDefinefunc(JSThread *thread, const JSHandle<J
     JSMutableHandle<JSTaggedValue> ihc(thread, JSTaggedValue::Undefined());
     JSTaggedValue val = constpoolHandle->GetObjectFromCache(methodId);
     if (val.IsAOTLiteralInfo()) {
+        JSTaggedValue unsharedCp = thread->GetCurrentEcmaContext()->FindUnsharedConstpool(constpool.GetTaggedValue());
+        JSHandle<ConstantPool> unsharedCpHandle(thread, unsharedCp);
+        val = unsharedCpHandle->GetObjectFromCache(methodId);
         JSHandle<AOTLiteralInfo> aotLiteralInfo(thread, val);
         ihc.Update(aotLiteralInfo->GetIhc());
     }

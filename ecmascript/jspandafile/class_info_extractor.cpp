@@ -622,39 +622,34 @@ JSHandle<NameDictionary> ClassHelper::BuildDictionaryProperties(JSThread *thread
     return dict;
 }
 
-bool ClassHelper::MatchTrackType(TrackType trackType, JSTaggedValue value)
+bool ClassHelper::MatchFieldType(SharedFieldType fieldType, JSTaggedValue value)
 {
     bool checkRet = false;
-    switch (trackType) {
-        case TrackType::NUMBER: {
+    switch (fieldType) {
+        case SharedFieldType::NUMBER: {
             checkRet = value.IsNumber();
             break;
         }
-        case TrackType::INT: {
-            checkRet = value.IsInt();
-            break;
-        }
-        case TrackType::DOUBLE: {
-            checkRet = value.IsDouble();
-            break;
-        }
-        case TrackType::BOOLEAN: {
+        case SharedFieldType::BOOLEAN: {
             checkRet = value.IsBoolean();
             break;
         }
-        case TrackType::STRING: {
+        case SharedFieldType::STRING: {
             checkRet = value.IsString() || value.IsNull();
             break;
         }
-        case TrackType::SENDABLE: {
+        case SharedFieldType::BIG_INT: {
+            checkRet = value.IsBigInt();
+            break;
+        }
+        case SharedFieldType::SENDABLE: {
             checkRet = value.IsJSShared() || value.IsNull();
             break;
         }
-        case TrackType::NONE: {
+        case SharedFieldType::NONE: {
             checkRet = true;
             break;
         }
-        case TrackType::TAGGED:
         default:
             break;
     }
@@ -871,16 +866,16 @@ void SendableClassDefiner::AddFieldTypeToHClass(JSThread *thread, const JSHandle
         PropertyAttributes attributes = PropertyAttributes::Default(true, true, false);
         key.Update(fieldTypeArray->Get(i));
         ASSERT(key->IsString());
-        TrackType type = FromFieldType(FieldType(fieldTypeArray->Get(i + 1).GetInt()));
+        SharedFieldType type = FromFieldType(FieldType(fieldTypeArray->Get(i + 1).GetInt()));
         int entry = layout->FindElementWithCache(thread, *hclass, key.GetTaggedValue(), index);
         if (entry != -1) {
             attributes = layout->GetAttr(entry);
-            attributes.SetTrackType(type);
+            attributes.SetSharedFieldType(type);
             layout->SetNormalAttr(thread, entry, attributes);
         } else {
             attributes.SetIsInlinedProps(true);
             attributes.SetRepresentation(Representation::TAGGED);
-            attributes.SetTrackType(type);
+            attributes.SetSharedFieldType(type);
             attributes.SetOffset(index);
             layout->AddKey(thread, index++, key.GetTaggedValue(), attributes);
         }
@@ -905,8 +900,8 @@ void SendableClassDefiner::AddFieldTypeToDict(JSThread *thread, const JSHandle<T
     for (uint32_t i = 0; i < length; i += 2) { // 2: key-value pair;
         key.Update(fieldTypeArray->Get(i));
         ASSERT(key->IsString());
-        TrackType type = FromFieldType(FieldType(fieldTypeArray->Get(i + 1).GetInt()));
-        attributes.SetTrackType(type);
+        SharedFieldType type = FromFieldType(FieldType(fieldTypeArray->Get(i + 1).GetInt()));
+        attributes.SetSharedFieldType(type);
         attributes.SetBoxType(PropertyBoxType::UNDEFINED);
         JSHandle<NameDictionary> newDict = NameDictionary::Put(thread, dict, key, value, attributes);
         dict.Update(newDict);

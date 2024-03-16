@@ -46,17 +46,17 @@ void JSHClass::AddTransitions(const JSThread *thread, const JSHandle<JSHClass> &
         if (cachedHClass->HasProps()) {
             uint32_t last = cachedHClass->LastPropIndex();
             LayoutInfo* layoutInfo = LayoutInfo::Cast(cachedHClass->GetLayout().GetTaggedObject());
-            auto attr = JSHandle<JSTaggedValue>(thread, JSTaggedValue(layoutInfo->GetAttr(last).GetPropertyMetaData()));
+            auto metaData = JSHandle<JSTaggedValue>(thread, JSTaggedValue(layoutInfo->GetAttr(last).GetPropertyMetaData()));
             auto lastKey = JSHandle<JSTaggedValue>(thread, layoutInfo->GetKey(last));
             auto lastHClass = JSHandle<JSTaggedValue>(thread, cachedHClass);
             dict.Update(TransitionsDictionary::Create(thread));
-            transitions = TransitionsDictionary::PutIfAbsent(thread, dict, lastKey, lastHClass, attr).GetTaggedValue();
+            transitions = TransitionsDictionary::PutIfAbsent(thread, dict, lastKey, lastHClass, metaData).GetTaggedValue();
         }
     }
-    auto attr = JSHandle<JSTaggedValue>(thread, JSTaggedValue(attributes.GetPropertyMetaData()));
+    auto metaData = JSHandle<JSTaggedValue>(thread, JSTaggedValue(attributes.GetPropertyMetaData()));
     dict.Update(transitions);
     transitions =
-        TransitionsDictionary::PutIfAbsent(thread, dict, key, JSHandle<JSTaggedValue>(child), attr).GetTaggedValue();
+        TransitionsDictionary::PutIfAbsent(thread, dict, key, JSHandle<JSTaggedValue>(child), metaData).GetTaggedValue();
     parent->SetTransitions(thread, transitions);
 }
 
@@ -81,11 +81,11 @@ void JSHClass::AddProtoTransitions(const JSThread *thread, const JSHandle<JSHCla
         if (cachedHClass->HasProps()) {
             uint32_t last = cachedHClass->LastPropIndex();
             LayoutInfo* layoutInfo = LayoutInfo::Cast(cachedHClass->GetLayout().GetTaggedObject());
-            auto attr = JSHandle<JSTaggedValue>(thread, JSTaggedValue(layoutInfo->GetAttr(last).GetPropertyMetaData()));
+            auto metaData = JSHandle<JSTaggedValue>(thread, JSTaggedValue(layoutInfo->GetAttr(last).GetPropertyMetaData()));
             auto lastKey = JSHandle<JSTaggedValue>(thread, layoutInfo->GetKey(last));
             auto lastHClass = JSHandle<JSTaggedValue>(thread, cachedHClass);
             dict.Update(TransitionsDictionary::Create(thread));
-            transitions = TransitionsDictionary::PutIfAbsent(thread, dict, lastKey, lastHClass, attr).GetTaggedValue();
+            transitions = TransitionsDictionary::PutIfAbsent(thread, dict, lastKey, lastHClass, metaData).GetTaggedValue();
         }
     }
     dict.Update(transitions);
@@ -94,7 +94,7 @@ void JSHClass::AddProtoTransitions(const JSThread *thread, const JSHandle<JSHCla
     parent->SetTransitions(thread, transitions);
 }
 
-inline JSHClass *JSHClass::FindTransitions(const JSTaggedValue &key, const JSTaggedValue &attributes)
+inline JSHClass *JSHClass::FindTransitions(const JSTaggedValue &key, const JSTaggedValue &metaData)
 {
     DISALLOW_GARBAGE_COLLECTION;
     JSTaggedValue transitions = GetTransitions();
@@ -108,9 +108,9 @@ inline JSHClass *JSHClass::FindTransitions(const JSTaggedValue &key, const JSTag
         }
         int last = static_cast<int>(cachedHClass->LastPropIndex());
         LayoutInfo *layoutInfo = LayoutInfo::Cast(cachedHClass->GetLayout().GetTaggedObject());
-        auto attr = layoutInfo->GetAttr(last).GetPropertyMetaData();
-        auto cachedKey = layoutInfo->GetKey(last);
-        if (attr == attributes.GetInt() && key == cachedKey) {
+        auto lastMetaData = layoutInfo->GetAttr(last).GetPropertyMetaData();
+        auto lastKey = layoutInfo->GetKey(last);
+        if (lastMetaData == metaData.GetInt() && key == lastKey) {
             return cachedHClass;
         }
         return nullptr;
@@ -118,7 +118,7 @@ inline JSHClass *JSHClass::FindTransitions(const JSTaggedValue &key, const JSTag
 
     ASSERT(transitions.IsTaggedArray());
     TransitionsDictionary *dict = TransitionsDictionary::Cast(transitions.GetTaggedObject());
-    auto entry = dict->FindEntry(key, attributes);
+    auto entry = dict->FindEntry(key, metaData);
     if (entry == -1) {
         return nullptr;
     }

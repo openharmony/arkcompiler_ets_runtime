@@ -450,7 +450,7 @@ public:
         PropertyAttributes attr(metaData);
         attr.SetDictionaryOrder(enumIndex);
         attr.SetRepresentation(Representation::TAGGED);
-        attr.SetDictTrackType(metaData.GetTrackType());
+        attr.SetDictSharedFieldType(metaData.GetSharedFieldType());
         int entry = table->FindEntry(key.GetTaggedValue());
         if (entry != -1) {
             table->SetEntry(thread, entry, key.GetTaggedValue(), value.GetTaggedValue(), attr);

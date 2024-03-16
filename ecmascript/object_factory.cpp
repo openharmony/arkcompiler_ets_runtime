@@ -4865,7 +4865,7 @@ JSHandle<JSTaggedValue> ObjectFactory::CreateDictionaryJSObjectWithNamedProperti
 
 void ObjectFactory::FillFreeMemoryRange(uintptr_t start, uintptr_t end)
 {
-    ASSERT(start < end);
+    ASSERT(start <= end);
     ASSERT(start % static_cast<uint8_t>(MemAlignment::MEM_ALIGN_OBJECT) == 0);
     ASSERT(end % static_cast<uint8_t>(MemAlignment::MEM_ALIGN_OBJECT) == 0);
     while (start < end) {

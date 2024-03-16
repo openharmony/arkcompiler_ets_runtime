@@ -66,6 +66,8 @@ class SuperClass {
   propString: string = "I'm propString"
   propNumber: number = 5
   propBool: boolean = false
+  propBigInt1: bigint = BigInt(12345678910)
+  propBigInt2: BigInt = BigInt(987654321)
   static staticPropString: string = "I'm staticPropString";
   publicPropString: string = "I'm privatePropString";
 
@@ -223,9 +225,23 @@ function testUpdateInstancePropsToNull(testObj: SubClass) {
 
   try {
     testObj.propBool = null
-    print("Success update propNumber to null with stobjbyname")
+    print("Success update propBool to null with stobjbyname")
   } catch (error) {
-    print("Fail to update propNumber to null with stobjbyname. err: " + error)
+    print("Fail to update propBool to null with stobjbyname. err: " + error)
+  }
+
+  try {
+    testObj.propBigInt1 = null
+    print("Success update propBigInt1 to null with stobjbyname")
+  } catch (error) {
+    print("Fail to update propBigInt1 to null with stobjbyname. err: " + error)
+  }
+
+  try {
+    testObj.propBigInt2 = null
+    print("Success update propBigInt2 to null with stobjbyname")
+  } catch (error) {
+    print("Fail to update propBigInt2 to null with stobjbyname. err: " + error)
   }
 }
 
@@ -254,9 +270,23 @@ function testUpdateInstancePropsToUndefined(testObj: SubClass) {
 
   try {
     testObj.propBool = undefined
-    print("Success update propNumber to undefined with stobjbyname")
+    print("Success update propBool to undefined with stobjbyname")
   } catch (error) {
-    print("Fail to update propNumber to undefined with stobjbyname. err: " + error)
+    print("Fail to update propBool to undefined with stobjbyname. err: " + error)
+  }
+
+  try {
+    testObj.propBigInt1 = undefined
+    print("Success update propBigInt1 to undefined with stobjbyname")
+  } catch (error) {
+    print("Fail to update propBigInt1 to undefined with stobjbyname. err: " + error)
+  }
+  
+  try {
+    testObj.propBigInt2 = undefined
+    print("Success update propBigInt2 to undefined with stobjbyname")
+  } catch (error) {
+    print("Fail to update propBigInt2 to undefined with stobjbyname. err: " + error)
   }
 }
 
@@ -442,6 +472,20 @@ function testUpdateWithType(testObj: SubClass) {
     print("Success update string to int with stobjbynamme.")
   } catch (error) {
     print("Fail to update string to int with stobjbynamme. err: " + error);
+  }
+
+  try {
+    testObj.propBigInt1 = 1;
+    print("Success update bigInt to int with stobjbynamme.")
+  } catch (error) {
+    print("Fail to update bigInt to int with stobjbynamme. err: " + error);
+  }
+
+  try {
+    testObj.propBigInt2 = BigInt(123456789);
+    print("Success update bigInt to bigInt with stobjbynamme.")
+  } catch (error) {
+    print("Fail to update bigInt to int with stobjbynamme. err: " + error);
   }
 
   try {
