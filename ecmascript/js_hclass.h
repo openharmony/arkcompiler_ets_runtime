@@ -1850,7 +1850,7 @@ public:
         return GetProto();
     }
 
-    inline JSHClass *FindTransitions(const JSTaggedValue &key, const JSTaggedValue &attributes);
+    inline JSHClass *FindTransitions(const JSTaggedValue &key, const JSTaggedValue &metaData);
 
     DECL_DUMP()
 

@@ -212,7 +212,7 @@ void JSArray::SetCapacity(JSThread *thread, const JSHandle<JSObject> &array, uin
                 JSTaggedValue::StringToElementIndex(value, &output);
                 JSTaggedValue key(static_cast<int>(output));
                 int entry = dictHandle->FindEntry(key);
-                uint32_t attr = dictHandle->GetAttributes(entry).GetValue();
+                auto attr = dictHandle->GetAttributes(entry).GetValue();
                 PropertyAttributes propAttr(attr);
                 if (propAttr.IsConfigurable()) {
                     JSHandle<NumberDictionary> newDict = NumberDictionary::Remove(thread, dictHandle, entry);

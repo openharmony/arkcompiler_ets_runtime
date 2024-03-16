@@ -33,6 +33,7 @@ enum class FieldType {
     STRING = (1 << 1),
     BOOLEAN = (1 << 2),
     TS_TYPE_REF = (1 << 3),
+    BIG_INT = (1 << 4),
 };
 class ClassInfoExtractor : public TaggedObject {
 public:
@@ -114,7 +115,7 @@ public:
                                                        const JSHandle<JSTaggedValue> &ihclass,
                                                        const JSHandle<JSHClass> &constructorHClass);
 
-    static bool PUBLIC_API MatchTrackType(TrackType trackType, JSTaggedValue value);
+    static bool PUBLIC_API MatchFieldType(SharedFieldType fieldType, JSTaggedValue value);
 private:
     static JSHandle<NameDictionary> BuildDictionaryProperties(JSThread *thread, const JSHandle<JSObject> &object,
                                                               JSHandle<TaggedArray> &keys,
@@ -141,20 +142,23 @@ public:
                                      const JSHandle<TaggedArray> &properties);
 
 private:
-    static TrackType FromFieldType(FieldType type)
+    static SharedFieldType FromFieldType(FieldType type)
     {
         switch (type) {
             case FieldType::NONE:
-                return TrackType::NONE;
+                return SharedFieldType::NONE;
             case FieldType::NUMBER:
-                return TrackType::NUMBER;
+                return SharedFieldType::NUMBER;
             case FieldType::STRING:
-                return TrackType::STRING;
+                return SharedFieldType::STRING;
             case FieldType::BOOLEAN:
-                return TrackType::BOOLEAN;
+                return SharedFieldType::BOOLEAN;
             case FieldType::TS_TYPE_REF:
-                return TrackType::SENDABLE;
+                return SharedFieldType::SENDABLE;
+            case FieldType::BIG_INT:
+                return SharedFieldType::BIG_INT;
             default:
+                LOG_ECMA(FATAL) << "Unsupport fieldType in shared object with type: " << static_cast<uint32_t>(type);
                 UNREACHABLE();
         }
     }

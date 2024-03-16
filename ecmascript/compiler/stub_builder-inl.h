@@ -1390,7 +1390,7 @@ inline GateRef StubBuilder::IsWritable(GateRef attr)
 {
     return Int32NotEqual(
         Int32And(
-            Int32LSR(attr, Int32(PropertyAttributes::WritableField::START_BIT)),
+            TruncInt64ToInt32(Int64LSR(attr, Int64(PropertyAttributes::WritableField::START_BIT))),
             Int32((1LLU << PropertyAttributes::WritableField::SIZE) - 1)),
         Int32(0));
 }
@@ -1399,7 +1399,7 @@ inline GateRef StubBuilder::IsDefaultAttribute(GateRef attr)
 {
     return Int32NotEqual(
         Int32And(
-            Int32LSR(attr, Int32(PropertyAttributes::DefaultAttributesField::START_BIT)),
+            TruncInt64ToInt32(Int64LSR(attr, Int64(PropertyAttributes::DefaultAttributesField::START_BIT))),
             Int32((1LLU << PropertyAttributes::DefaultAttributesField::SIZE) - 1)),
         Int32(0));
 }
@@ -1408,7 +1408,7 @@ inline GateRef StubBuilder::IsConfigable(GateRef attr)
 {
     return Int32NotEqual(
         Int32And(
-            Int32LSR(attr, Int32(PropertyAttributes::ConfigurableField::START_BIT)),
+            TruncInt64ToInt32(Int64LSR(attr, Int64(PropertyAttributes::ConfigurableField::START_BIT))),
             Int32((1LLU << PropertyAttributes::ConfigurableField::SIZE) - 1)),
         Int32(0));
 }
@@ -1416,8 +1416,8 @@ inline GateRef StubBuilder::IsConfigable(GateRef attr)
 inline GateRef StubBuilder::IsAccessor(GateRef attr)
 {
     return Int32NotEqual(
-        Int32And(Int32LSR(attr,
-            Int32(PropertyAttributes::IsAccessorField::START_BIT)),
+        Int32And(
+            TruncInt64ToInt32(Int64LSR(attr, Int64(PropertyAttributes::IsAccessorField::START_BIT))),
             Int32((1LLU << PropertyAttributes::IsAccessorField::SIZE) - 1)),
         Int32(0));
 }
@@ -1425,8 +1425,8 @@ inline GateRef StubBuilder::IsAccessor(GateRef attr)
 inline GateRef StubBuilder::IsEnumerable(GateRef attr)
 {
     return Int32NotEqual(
-        Int32And(Int32LSR(attr,
-            Int32(PropertyAttributes::EnumerableField::START_BIT)),
+        Int32And(
+            TruncInt64ToInt32(Int64LSR(attr, Int64(PropertyAttributes::EnumerableField::START_BIT))),
             Int32((1LLU << PropertyAttributes::EnumerableField::SIZE) - 1)),
         Int32(0));
 }
@@ -1434,8 +1434,8 @@ inline GateRef StubBuilder::IsEnumerable(GateRef attr)
 inline GateRef StubBuilder::IsInlinedProperty(GateRef attr)
 {
     return Int32NotEqual(
-        Int32And(Int32LSR(attr,
-            Int32(PropertyAttributes::IsInlinedPropsField::START_BIT)),
+        Int32And(
+            TruncInt64ToInt32(Int64LSR(attr, Int64(PropertyAttributes::IsInlinedPropsField::START_BIT))),
             Int32((1LLU << PropertyAttributes::IsInlinedPropsField::SIZE) - 1)),
         Int32(0));
 }
@@ -1755,18 +1755,18 @@ inline GateRef StubBuilder::GetTransWithProtoHandlerInfo(GateRef obj)
 inline GateRef StubBuilder::PropAttrGetOffset(GateRef attr)
 {
     return Int32And(
-        Int32LSR(attr, Int32(PropertyAttributes::OffsetField::START_BIT)),
+        TruncInt64ToInt32(Int64LSR(attr, Int64(PropertyAttributes::OffsetField::START_BIT))),
         Int32((1LLU << PropertyAttributes::OffsetField::SIZE) - 1));
 }
 
 // SetDictionaryOrder func in property_attribute.h
 inline GateRef StubBuilder::SetDictionaryOrderFieldInPropAttr(GateRef attr, GateRef value)
 {
-    GateRef mask = Int32LSL(
-        Int32((1LLU << PropertyAttributes::DictionaryOrderField::SIZE) - 1),
-        Int32(PropertyAttributes::DictionaryOrderField::START_BIT));
-    GateRef newVal = Int32Or(Int32And(attr, Int32Not(mask)),
-        Int32LSL(value, Int32(PropertyAttributes::DictionaryOrderField::START_BIT)));
+    GateRef mask = Int64LSL(
+        Int64((1LLU << PropertyAttributes::DictionaryOrderField::SIZE) - 1),
+        Int64(PropertyAttributes::DictionaryOrderField::START_BIT));
+    GateRef newVal = Int64Or(Int64And(attr, Int64Not(mask)),
+        Int64LSL(value, Int64(PropertyAttributes::DictionaryOrderField::START_BIT)));
     return newVal;
 }
 
@@ -2095,8 +2095,8 @@ inline void StubBuilder::CheckUpdateSharedType(bool isDicMode, Variable *result,
     Bind(&isSharedObj);
     {
         Label typeMismatch(env);
-        GateRef trackType = isDicMode ? GetDictTrackTypeInPropAttr(attr) : GetTrackTypeInPropAttr(attr);
-        MatchTrackType(trackType, value, executeSetProp, &typeMismatch);
+        GateRef fieldType = isDicMode ? GetDictSharedFieldTypeInPropAttr(attr) : GetSharedFieldTypeInPropAttr(attr);
+        MatchFieldType(fieldType, value, executeSetProp, &typeMismatch);
         Bind(&typeMismatch);
         {
             GateRef taggedId = Int32(GET_MESSAGE_STRING_ID(SetTypeMismatchedSharedProperty));
@@ -2107,12 +2107,12 @@ inline void StubBuilder::CheckUpdateSharedType(bool isDicMode, Variable *result,
     }
 }
 
-inline void StubBuilder::MatchTrackType(Variable *result, GateRef glue, GateRef trackType, GateRef value,
+inline void StubBuilder::MatchFieldType(Variable *result, GateRef glue, GateRef fieldType, GateRef value,
                                         Label *executeSetProp, Label *exit)
 {
     auto *env = GetEnvironment();
     Label typeMismatch(env);
-    MatchTrackType(trackType, value, executeSetProp, &typeMismatch);
+    MatchFieldType(fieldType, value, executeSetProp, &typeMismatch);
     Bind(&typeMismatch);
     {
         GateRef taggedId = Int32(GET_MESSAGE_STRING_ID(SetTypeMismatchedSharedProperty));
@@ -2122,11 +2122,11 @@ inline void StubBuilder::MatchTrackType(Variable *result, GateRef glue, GateRef 
     }
 }
 
-inline GateRef StubBuilder::GetTrackTypeFromHandler(GateRef attr)
+inline GateRef StubBuilder::GetFieldTypeFromHandler(GateRef attr)
 {
     return Int32And(Int32LSR(attr,
-        Int32(HandlerBase::STrackTypeBit::START_BIT)),
-        Int32((1LLU << HandlerBase::STrackTypeBit::SIZE) - 1));
+        Int32(HandlerBase::SFieldTypeBit::START_BIT)),
+        Int32((1LLU << HandlerBase::SFieldTypeBit::SIZE) - 1));
 }
 
 inline GateRef StubBuilder::ClearSharedStoreKind(GateRef handlerInfo)
@@ -2181,13 +2181,14 @@ inline void StubBuilder::SetPropAttrToLayoutInfo(GateRef glue, GateRef layout, G
 {
     GateRef index = Int32Add(Int32LSL(entry, Int32(LayoutInfo::ELEMENTS_INDEX_LOG2)),
         Int32(LayoutInfo::ATTR_INDEX_OFFSET));
-    GateRef taggedAttr = Int64ToTaggedInt(ZExtInt32ToInt64(attr));
+    GateRef taggedAttr = Int64ToTaggedInt(attr);
     SetValueToTaggedArray(VariableType::JS_ANY(), glue, layout, index, taggedAttr);
 }
 
 inline GateRef StubBuilder::GetPropertyMetaDataFromAttr(GateRef attr)
 {
-    return Int32And(Int32LSR(attr, Int32(PropertyAttributes::PropertyMetaDataField::START_BIT)),
+    return Int32And(
+        TruncInt64ToInt32(Int64LSR(attr, Int64(PropertyAttributes::PropertyMetaDataField::START_BIT))),
         Int32((1LLU << PropertyAttributes::PropertyMetaDataField::SIZE) - 1));
 }
 
@@ -2430,61 +2431,68 @@ inline GateRef StubBuilder::IsCallable(GateRef obj)
 inline GateRef StubBuilder::GetOffsetFieldInPropAttr(GateRef attr)
 {
     return Int32And(
-        Int32LSR(attr, Int32(PropertyAttributes::OffsetField::START_BIT)),
+        TruncInt64ToInt32(Int64LSR(attr, Int64(PropertyAttributes::OffsetField::START_BIT))),
         Int32((1LLU << PropertyAttributes::OffsetField::SIZE) - 1));
 }
 
 // SetOffset func in property_attribute.h
 inline GateRef StubBuilder::SetOffsetFieldInPropAttr(GateRef attr, GateRef value)
 {
-    GateRef mask = Int32LSL(
-        Int32((1LLU << PropertyAttributes::OffsetField::SIZE) - 1),
-        Int32(PropertyAttributes::OffsetField::START_BIT));
-    GateRef newVal = Int32Or(Int32And(attr, Int32Not(mask)),
-        Int32LSL(value, Int32(PropertyAttributes::OffsetField::START_BIT)));
+    GateRef mask = Int64LSL(
+        Int64((1LLU << PropertyAttributes::OffsetField::SIZE) - 1),
+        Int64(PropertyAttributes::OffsetField::START_BIT));
+    GateRef newVal = Int64Or(Int64And(attr, Int64Not(mask)),
+        Int64LSL(ZExtInt32ToInt64(value), Int64(PropertyAttributes::OffsetField::START_BIT)));
     return newVal;
 }
 
 // SetIsInlinedProps func in property_attribute.h
 inline GateRef StubBuilder::SetIsInlinePropsFieldInPropAttr(GateRef attr, GateRef value)
 {
-    GateRef mask = Int32LSL(
-        Int32((1LU << PropertyAttributes::IsInlinedPropsField::SIZE) - 1),
-        Int32(PropertyAttributes::IsInlinedPropsField::START_BIT));
-    GateRef newVal = Int32Or(Int32And(attr, Int32Not(mask)),
-        Int32LSL(value, Int32(PropertyAttributes::IsInlinedPropsField::START_BIT)));
+    GateRef mask = Int64LSL(
+        Int64((1LU << PropertyAttributes::IsInlinedPropsField::SIZE) - 1),
+        Int64(PropertyAttributes::IsInlinedPropsField::START_BIT));
+    GateRef newVal = Int64Or(Int64And(attr, Int64Not(mask)),
+        Int64LSL(ZExtInt32ToInt64(value), Int64(PropertyAttributes::IsInlinedPropsField::START_BIT)));
     return newVal;
 }
 
 
 inline GateRef StubBuilder::SetTrackTypeInPropAttr(GateRef attr, GateRef type)
 {
-    GateRef mask = Int32LSL(
-        Int32((1LU << PropertyAttributes::TrackTypeField::SIZE) - 1),
-        Int32(PropertyAttributes::TrackTypeField::START_BIT));
-    GateRef newVal = Int32Or(Int32And(attr, Int32Not(mask)),
-        Int32LSL(type, Int32(PropertyAttributes::TrackTypeField::START_BIT)));
+    GateRef mask = Int64LSL(
+        Int64((1LU << PropertyAttributes::TrackTypeField::SIZE) - 1),
+        Int64(PropertyAttributes::TrackTypeField::START_BIT));
+    GateRef newVal = Int64Or(Int64And(attr, Int64Not(mask)),
+        Int64LSL(ZExtInt32ToInt64(type), Int64(PropertyAttributes::TrackTypeField::START_BIT)));
     return newVal;
+}
+
+inline GateRef StubBuilder::GetSharedFieldTypeInPropAttr(GateRef attr)
+{
+    return Int32And(
+        TruncInt64ToInt32(Int64LSR(attr, Int64(PropertyAttributes::SharedFieldTypeField::START_BIT))),
+        Int32((1LLU << PropertyAttributes::SharedFieldTypeField::SIZE) - 1));
 }
 
 inline GateRef StubBuilder::GetTrackTypeInPropAttr(GateRef attr)
 {
     return Int32And(
-        Int32LSR(attr, Int32(PropertyAttributes::TrackTypeField::START_BIT)),
+        TruncInt64ToInt32(Int64LSR(attr, Int64(PropertyAttributes::TrackTypeField::START_BIT))),
         Int32((1LLU << PropertyAttributes::TrackTypeField::SIZE) - 1));
 }
 
-inline GateRef StubBuilder::GetDictTrackTypeInPropAttr(GateRef attr)
+inline GateRef StubBuilder::GetDictSharedFieldTypeInPropAttr(GateRef attr)
 {
     return Int32And(
-        Int32LSR(attr, Int32(PropertyAttributes::DictTrackTypeField::START_BIT)),
-        Int32((1LLU << PropertyAttributes::DictTrackTypeField::SIZE) - 1));
+        TruncInt64ToInt32(Int64LSR(attr, Int64(PropertyAttributes::DictSharedFieldTypeField::START_BIT))),
+        Int32((1LLU << PropertyAttributes::DictSharedFieldTypeField::SIZE) - 1));
 }
 
 inline GateRef StubBuilder::GetRepInPropAttr(GateRef attr)
 {
     return Int32And(
-        Int32LSR(attr, Int32(PropertyAttributes::RepresentationField::START_BIT)),
+        TruncInt64ToInt32(Int64LSR(attr, Int64(PropertyAttributes::RepresentationField::START_BIT))),
         Int32((1LLU << PropertyAttributes::RepresentationField::SIZE) - 1));
 }
 
@@ -2500,12 +2508,12 @@ inline GateRef StubBuilder::IsDoubleRepInPropAttr(GateRef rep)
 
 inline GateRef StubBuilder::SetTaggedRepInPropAttr(GateRef attr)
 {
-    GateRef mask = Int32LSL(
-        Int32((1LU << PropertyAttributes::RepresentationField::SIZE) - 1),
-        Int32(PropertyAttributes::RepresentationField::START_BIT));
-    GateRef targetType = Int32(static_cast<int32_t>(Representation::TAGGED));
-    GateRef newVal = Int32Or(Int32And(attr, Int32Not(mask)),
-        Int32LSL(targetType, Int32(PropertyAttributes::RepresentationField::START_BIT)));
+    GateRef mask = Int64LSL(
+        Int64((1LU << PropertyAttributes::RepresentationField::SIZE) - 1),
+        Int64(PropertyAttributes::RepresentationField::START_BIT));
+    GateRef targetType = Int32(static_cast<uint32_t>(Representation::TAGGED));
+    GateRef newVal = Int64Or(Int64And(attr, Int64Not(mask)),
+        Int64LSL(ZExtInt32ToInt64(targetType), Int64(PropertyAttributes::RepresentationField::START_BIT)));
     return newVal;
 }
 
@@ -3145,7 +3153,7 @@ inline GateRef StubBuilder::GetKeyIndex(GateRef index)
 inline GateRef StubBuilder::GetAttr(GateRef layoutInfo, GateRef index)
 {
     GateRef fixedIdx = GetAttrIndex(index);
-    return GetInt32OfTInt(GetValueFromTaggedArray(layoutInfo, fixedIdx));
+    return GetInt64OfTInt(GetValueFromTaggedArray(layoutInfo, fixedIdx));
 }
 
 inline GateRef StubBuilder::GetKey(GateRef layoutInfo, GateRef index)
