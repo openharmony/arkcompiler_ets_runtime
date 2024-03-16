@@ -1022,7 +1022,6 @@ private:
     void AdjustOldSpaceLimit();
     // record lastRegion for each space, which will be used in ReclaimRegions()
     void PrepareRecordRegionsForReclaim();
-    void InvokeWeakNodeNativeFinalizeCallback();
     void DumpHeapSnapshotBeforeOOM(bool isFullGC, size_t size, std::string functionName, bool NonMovableObjNearOOM);
     inline void ReclaimRegions(TriggerGCType gcType);
     inline size_t CalculateCommittedCacheSize();
@@ -1159,7 +1158,6 @@ private:
     bool fullGCRequested_ {false};
     bool fullMarkRequested_ {false};
     bool oldSpaceLimitAdjusted_ {false};
-    bool runningNativeFinalizeCallbacks_ {false};
     bool enableIdleGC_ {false};
     HeapMode mode_ { HeapMode::NORMAL };
 
