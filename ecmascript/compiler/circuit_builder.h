@@ -644,6 +644,7 @@ public:
     inline GateRef TaggedIsBoolean(GateRef x);
     inline GateRef TaggedIsBigInt(GateRef obj);
     inline GateRef TaggedIsString(GateRef obj);
+    inline GateRef TaggedIsStringIterator(GateRef obj);
     inline GateRef TaggedIsShared(GateRef obj);
     inline GateRef TaggedIsStringOrSymbol(GateRef obj);
     inline GateRef TaggedIsSymbol(GateRef obj);
