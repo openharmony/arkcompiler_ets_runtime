@@ -816,7 +816,10 @@ bool TypedBytecodeLowering::TryLowerTypedLdObjByNameForBuiltin(GateRef gate)
     if (tacc.IsMono()) {
         auto builtinsId = tacc.GetBuiltinsTypeId();
         if (builtinsId.has_value()) {
-            return TryLowerTypedLdObjByNameForBuiltin(tacc, builtinsId.value());
+            if (TryLowerTypedLdObjByNameForBuiltin(tacc, builtinsId.value())) {
+                return true;
+            }
+            return TryLowerTypedLdObjByNameForBuiltinMethod(tacc, builtinsId.value());
         }
     }
 
@@ -867,7 +870,7 @@ bool TypedBytecodeLowering::TryLowerTypedLdObjByNameForBuiltin(const LoadBulitin
         }
     }
     // (2) other functions
-    return TryLowerTypedLdObjByNameForBuiltinMethod(tacc, type);
+    return false;
 }
 
 bool TypedBytecodeLowering::TryLowerTypedLdobjBynameFromGloablBuiltin(GateRef gate)
