@@ -714,7 +714,7 @@ void Heap::CollectGarbage(TriggerGCType gcType, GCReason reason)
     }
     // Weak node nativeFinalizeCallback may execute JS and change the weakNodeList status,
     // even lead to another GC, so this have to invoke after this GC process.
-    InvokeWeakNodeNativeFinalizeCallback();
+    thread_->InvokeWeakNodeNativeFinalizeCallback();
 
     if (UNLIKELY(ShouldVerifyHeap())) {
         // verify post gc heap verify
@@ -1742,24 +1742,6 @@ bool BaseHeap::ContainObject(TaggedObject *object) const
      */
     Region *region = Region::ObjectAddressToRange(object);
     return region->InHeapSpace();
-}
-
-void Heap::InvokeWeakNodeNativeFinalizeCallback()
-{
-    // the second callback may lead to another GC, if this, return directly;
-    if (runningNativeFinalizeCallbacks_) {
-        return;
-    }
-    runningNativeFinalizeCallbacks_ = true;
-    auto weakNodeNativeFinalizeCallBacks = thread_->GetWeakNodeNativeFinalizeCallbacks();
-    while (!weakNodeNativeFinalizeCallBacks->empty()) {
-        auto callbackPair = weakNodeNativeFinalizeCallBacks->back();
-        weakNodeNativeFinalizeCallBacks->pop_back();
-        ASSERT(callbackPair.first != nullptr && callbackPair.second != nullptr);
-        auto callback = callbackPair.first;
-        (*callback)(callbackPair.second);
-    }
-    runningNativeFinalizeCallbacks_ = false;
 }
 
 void Heap::PrintHeapInfo(TriggerGCType gcType) const
