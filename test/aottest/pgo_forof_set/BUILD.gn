@@ -17,6 +17,7 @@ host_aot_test_action("pgo_forof_set") {
   deps = []
   is_only_typed_path = true
   is_enable_pgo = true
+
   is_enable_trace_deopt = true
   log_option = " --log-info=trace"
 }

@@ -1369,8 +1369,11 @@ void TypedBytecodeLowering::LowerTypedSuperCall(GateRef gate)
 void TypedBytecodeLowering::SpeculateCallBuiltin(GateRef gate, GateRef func, const std::vector<GateRef> &args,
                                                  BuiltinsStubCSigns::ID id, bool isThrow)
 {
+    if (IS_TYPED_INLINE_BUILTINS_ID(id)) {
+        return;
+    }
     if (!Uncheck()) {
-        builder_.CallTargetCheck(gate, func, builder_.IntPtr(static_cast<int64_t>(id)), args[0]);
+        builder_.CallTargetCheck(gate, func, builder_.IntPtr(static_cast<int64_t>(id)), {args[0]});
     }
 
     GateRef result = builder_.TypedCallBuiltin(gate, args, id);

@@ -52,6 +52,7 @@
 #include "ecmascript/compiler/type_inference/initialization_analysis.h"
 #include "ecmascript/compiler/type_inference/pgo_type_infer.h"
 #include "ecmascript/compiler/typed_hcr_lowering.h"
+#include "ecmascript/compiler/typed_native_inline_lowering.h"
 #include "ecmascript/compiler/value_numbering.h"
 #include "ecmascript/compiler/instruction_combine.h"
 #include "ecmascript/compiler/verifier.h"
@@ -420,19 +421,37 @@ public:
         if (!passOptions->EnableTypeLowering()) {
             return false;
         }
-        TimeScope timescope("TypeHCRLoweringPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
-        bool enableLog = data->GetLog()->EnableMethodCIRLog();
-        Chunk chunk(data->GetNativeAreaAllocator());
-        CombinedPassVisitor visitor(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk);
-        TypedHCRLowering lowering(data->GetCircuit(),
-                                 &visitor,
-                                 data->GetCompilerConfig(),
-                                 data->GetTSManager(),
-                                 &chunk,
-                                 passOptions->EnableLoweringBuiltin());
-        visitor.AddPass(&lowering);
-        visitor.VisitGraph();
-        visitor.PrintLog("TypedHCRLowering");
+        {
+            TimeScope timescope("TypeHCRLoweringPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
+            bool enableLog = data->GetLog()->EnableMethodCIRLog();
+            Chunk chunk(data->GetNativeAreaAllocator());
+            CombinedPassVisitor visitor(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk);
+            TypedHCRLowering lowering(data->GetCircuit(),
+                                    &visitor,
+                                    data->GetCompilerConfig(),
+                                    data->GetTSManager(),
+                                    &chunk,
+                                    passOptions->EnableLoweringBuiltin());
+            visitor.AddPass(&lowering);
+            visitor.VisitGraph();
+            visitor.PrintLog("TypedHCRLowering");
+        }
+
+        {
+            TimeScope timescope("TypedNativeInlineLoweringPass", data->GetMethodName(), data->GetMethodOffset(),
+                                data->GetLog());
+            bool enableLog = data->GetLog()->EnableMethodCIRLog();
+            Chunk chunk(data->GetNativeAreaAllocator());
+            CombinedPassVisitor visitor(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk);
+            TypedNativeInlineLowering lowering(data->GetCircuit(),
+                                               &visitor,
+                                               data->GetCompilerConfig(),
+                                               &chunk);
+            visitor.AddPass(&lowering);
+            visitor.VisitGraph();
+            visitor.PrintLog("TypedNativeInlineLowering");
+        }
+
         return true;
     }
 };

@@ -73,12 +73,15 @@ Environment::~Environment()
 
 Label::Label(Environment *env)
 {
+    ASSERT(env != nullptr);
     impl_ = env->NewLabel(env);
 }
 
 Label::Label(CircuitBuilder *cirBuilder)
 {
+    ASSERT(cirBuilder != nullptr);
     auto env = cirBuilder->GetCurrentEnvironment();
+    ASSERT(env != nullptr);
     impl_ = env->NewLabel(env);
 }
 

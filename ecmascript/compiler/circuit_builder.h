@@ -478,7 +478,9 @@ public:
     GateRef ObjectTypeCheck(GateType type, bool isHeapObject, GateRef gate, GateRef hclassIndex,
                             GateRef frameState = Gate::InvalidGateRef);
     GateRef TryPrimitiveTypeCheck(GateType type, GateRef gate);
-    GateRef CallTargetCheck(GateRef gate, GateRef function, GateRef id, GateRef param, const char* comment = nullptr);
+    GateRef CallTargetCheck(GateRef gate, GateRef function, GateRef id, const char* comment = nullptr);
+    GateRef CallTargetCheck(GateRef gate, GateRef function, GateRef id, std::vector<GateRef> params,
+                            const char* comment = nullptr);
     GateRef JSCallTargetFromDefineFuncCheck(GateType type, GateRef func, GateRef gate);
     template<TypedCallTargetCheckOp Op>
     GateRef JSCallTargetTypeCheck(GateType type, GateRef func, GateRef methodIndex, GateRef gate);
@@ -772,6 +774,7 @@ public:
     static MachineType GetMachineTypeFromVariableType(VariableType type);
 
     // Unary / BinaryOp
+    GateRef BuildMathBuiltinOp(const GateMetaData* op, std::vector<GateRef> args);
     template<OpCode Op, MachineType Type>
     inline GateRef BinaryOp(GateRef x, GateRef y);
     template<OpCode Op, MachineType Type>
@@ -805,6 +808,8 @@ public:
 #undef CMP_BINARY_OP_WITHOUT_BITWIDTH
 
 private:
+
+    std::vector<GateRef> ConcatParams(const std::vector<std::vector<GateRef>>& params);
     static constexpr uint32_t GATE_TWO_VALUESIN = 2;
 
     inline void SetDepend(GateRef depend);

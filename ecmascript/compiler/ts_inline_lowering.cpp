@@ -521,7 +521,7 @@ void TSInlineLowering::InlineFuncCheck(const InlineTypeInfoAccessor &info)
     GateRef frameState = acc_.GetFrameState(gate);
     size_t funcIndex = acc_.GetNumValueIn(gate) - 1;
     GateRef inlineFunc =  acc_.GetValueIn(gate, funcIndex);
-    // Do not load from inlineFunc beacause type in inlineFunc could be modified by others
+    // Do not load from inlineFunc because type in inlineFunc could be modified by others
     uint32_t methodOffset = info.GetCallMethodId();
     GateRef ret = circuit_->NewGate(circuit_->JSInlineTargetTypeCheck(info.GetType()),
         MachineType::I1, {callState, callDepend, inlineFunc, builder_.IntPtr(methodOffset), frameState},
