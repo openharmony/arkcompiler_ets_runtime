@@ -1141,8 +1141,8 @@ public:
     void SuspendThread(bool internalSuspend);
     void ResumeThread(bool internalSuspend);
     void WaitSuspension();
-    void ManagedCodeBegin();
-    void ManagedCodeEnd();
+    PUBLIC_API void ManagedCodeBegin();
+    PUBLIC_API void ManagedCodeEnd();
 #ifndef NDEBUG
     bool IsInManagedState() const;
     MutatorLock::MutatorLockState GetMutatorLockState() const;
