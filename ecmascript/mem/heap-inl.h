@@ -47,20 +47,20 @@ namespace panda::ecmascript {
         size_t oomOvershootSize = vm->GetEcmaParamConfiguration().GetOutOfMemoryOvershootSize();            \
         (space)->IncreaseOutOfMemoryOvershootSize(oomOvershootSize);                                        \
         StatisticHeapDetail();                                                                              \
-        (object) = reinterpret_cast<TaggedObject *>((space)->Allocate(size));                               \
         if ((space)->IsOOMDumpSpace() && (object) != nullptr) {                                             \
             DumpHeapSnapshotBeforeOOM(true, size, message, false);                                          \
         } else {                                                                                            \
             ThrowOutOfMemoryError(GetJSThread(), size, message);                                            \
         }                                                                                                   \
+        (object) = reinterpret_cast<TaggedObject *>((space)->Allocate(size));                               \
     }
 
 #define CHECK_SOBJ_AND_THROW_OOM_ERROR(thread, object, size, space, message)                                \
     if (UNLIKELY((object) == nullptr)) {                                                                    \
         size_t oomOvershootSize = GetEcmaParamConfiguration().GetOutOfMemoryOvershootSize();                \
         (space)->IncreaseOutOfMemoryOvershootSize(oomOvershootSize);                                        \
-        (object) = reinterpret_cast<TaggedObject *>((space)->Allocate(thread, size));                       \
         ThrowOutOfMemoryError(thread, size, message);                                                       \
+        (object) = reinterpret_cast<TaggedObject *>((space)->Allocate(thread, size));                       \
     }
 
 template<class Callback>
@@ -322,12 +322,12 @@ TaggedObject *Heap::AllocateHugeObject(size_t size)
             // if allocate huge object OOM, temporarily increase space size to avoid vm crash
             size_t oomOvershootSize = config_.GetOutOfMemoryOvershootSize();
             oldSpace_->IncreaseOutOfMemoryOvershootSize(oomOvershootSize);
-            object = reinterpret_cast<TaggedObject *>(hugeObjectSpace_->Allocate(size, thread_));
             DumpHeapSnapshotBeforeOOM(true, size, "Heap::AllocateHugeObject", false);
             StatisticHeapDetail();
 #ifndef ENABLE_DUMP_IN_FAULTLOG
             ThrowOutOfMemoryError(thread_, size, "Heap::AllocateHugeObject");
 #endif
+            object = reinterpret_cast<TaggedObject *>(hugeObjectSpace_->Allocate(size, thread_));
             if (UNLIKELY(object == nullptr)) {
                 FatalOutOfMemoryError(size, "Heap::AllocateHugeObject");
             }
@@ -545,8 +545,6 @@ TaggedObject *SharedHeap::AllocateOldOrHugeObject(JSThread *thread, size_t size)
 
 TaggedObject *SharedHeap::AllocateHugeObject(JSThread *thread, JSHClass *hclass, size_t size)
 {
-    // Check whether it is necessary to trigger Old GC before expanding to avoid OOM risk.
-    CheckAndTriggerOldGC(thread, size);
     auto object = AllocateHugeObject(thread, size);
     object->SetClass(thread, hclass);
     // TODO(lukai)
@@ -556,9 +554,8 @@ TaggedObject *SharedHeap::AllocateHugeObject(JSThread *thread, JSHClass *hclass,
 
 TaggedObject *SharedHeap::AllocateHugeObject(JSThread *thread, size_t size)
 {
-    // Check whether it is necessary to trigger Old GC before expanding to avoid OOM risk.
-    CheckAndTriggerOldGC(thread, size);
-
+    // Check whether it is necessary to trigger Shared GC before expanding to avoid OOM risk.
+    CheckHugeAndTriggerGC(thread, size);
     auto *object = reinterpret_cast<TaggedObject *>(sHugeObjectSpace_->Allocate(thread, size));
     if (UNLIKELY(object == nullptr)) {
         CollectGarbage(thread, TriggerGCType::SHARED_GC, GCReason::ALLOCATION_LIMIT);
@@ -566,11 +563,11 @@ TaggedObject *SharedHeap::AllocateHugeObject(JSThread *thread, size_t size)
         if (UNLIKELY(object == nullptr)) {
             // if allocate huge object OOM, temporarily increase space size to avoid vm crash
             size_t oomOvershootSize = config_.GetOutOfMemoryOvershootSize();
-            sOldSpace_->IncreaseOutOfMemoryOvershootSize(oomOvershootSize);
-            object = reinterpret_cast<TaggedObject *>(sHugeObjectSpace_->Allocate(thread, size));
+            sHugeObjectSpace_->IncreaseOutOfMemoryOvershootSize(oomOvershootSize);
             // TODO(lukai)
             // DumpHeapSnapshotBeforeOOM();
             ThrowOutOfMemoryError(thread, size, "SharedHeap::AllocateHugeObject");
+            object = reinterpret_cast<TaggedObject *>(sHugeObjectSpace_->Allocate(thread, size));
             if (UNLIKELY(object == nullptr)) {
                 FatalOutOfMemoryError(size, "SharedHeap::AllocateHugeObject");
             }

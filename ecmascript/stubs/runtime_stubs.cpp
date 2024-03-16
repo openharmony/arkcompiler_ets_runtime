@@ -758,7 +758,7 @@ DEF_RUNTIME_STUBS(RegularJSObjDeletePrototype)
     JSTaggedValue value = GetArg(argv, argc, 1);
     uint32_t index = 0;
     if (value.IsString()) {
-        auto string = reinterpret_cast<EcmaString *>(value.GetTaggedObject());
+        auto string = JSHandle<EcmaString>(thread, value);
         if (EcmaStringAccessor(string).ToElementIndex(&index)) {
             value = JSTaggedValue(index);
         } else if (!EcmaStringAccessor(string).IsInternString()) {
@@ -2746,9 +2746,10 @@ DEF_RUNTIME_STUBS(SlowFlattenString)
     return JSTaggedValue(EcmaStringAccessor::SlowFlatten(thread->GetEcmaVM(), str)).GetRawData();
 }
 
-JSTaggedType RuntimeStubs::TryToElementsIndexOrFindInStringTable(uintptr_t argGlue, JSTaggedType ecmaString)
+DEF_RUNTIME_STUBS(TryToElementsIndexOrFindInStringTable)
 {
-    auto string = reinterpret_cast<EcmaString *>(ecmaString);
+    RUNTIME_STUBS_HEADER(TryToElementsIndexOrFindInStringTable);
+    JSHandle<EcmaString> string = GetHArg<EcmaString>(argv, argc, 0);  // 0: means the zeroth parameter
     uint32_t index = 0;
     if (EcmaStringAccessor(string).ToElementIndex(&index)) {
         return JSTaggedValue(index).GetRawData();
@@ -2756,12 +2757,13 @@ JSTaggedType RuntimeStubs::TryToElementsIndexOrFindInStringTable(uintptr_t argGl
     if (!EcmaStringAccessor(string).IsInternString()) {
         return RuntimeTryGetInternString(argGlue, string);
     }
-    return ecmaString;
+    return string.GetTaggedValue().GetRawData();
 }
 
-JSTaggedType RuntimeStubs::TryGetInternString(uintptr_t argGlue, JSTaggedType ecmaString)
+DEF_RUNTIME_STUBS(TryGetInternString)
 {
-    auto string = reinterpret_cast<EcmaString *>(ecmaString);
+    RUNTIME_STUBS_HEADER(TryGetInternString);
+    JSHandle<EcmaString> string = GetHArg<EcmaString>(argv, argc, 0);  // 0: means the zeroth parameter
     return RuntimeTryGetInternString(argGlue, string);
 }
 

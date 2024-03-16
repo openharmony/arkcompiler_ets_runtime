@@ -461,8 +461,6 @@ private:
     V(JSFunctionEntry)                          \
     V(OptimizedFastCallEntry)                   \
     V(JSProxyCallInternalWithArgV)              \
-    V(TryToElementsIndexOrFindInStringTable)    \
-    V(TryGetInternString)                       \
     V(CreateArrayFromList)                      \
     V(JSObjectGetMethod)                        \
     V(JsProxyCallInternal)                      \

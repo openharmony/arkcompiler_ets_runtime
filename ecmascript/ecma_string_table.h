@@ -48,7 +48,7 @@ public:
                                                uint32_t idOffset);
     EcmaString *GetOrInternStringWithSpaceType(EcmaVM *vm, const uint8_t *utf8Data, uint32_t utf16Len,
                                                MemSpaceType type);
-    EcmaString *TryGetInternString(JSThread *thread, EcmaString *string);
+    EcmaString *TryGetInternString(JSThread *thread, const JSHandle<EcmaString> &string);
     EcmaString *InsertStringToTable(EcmaVM *vm, const JSHandle<EcmaString> &strHandle);
 
     void SweepWeakReference(const WeakRootVisitor &visitor);
