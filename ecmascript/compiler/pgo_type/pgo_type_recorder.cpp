@@ -64,13 +64,6 @@ std::vector<ElementsKind> PGOTypeRecorder::GetElementsKindsForUser(int32_t offse
         }
     }
 
-    // fiterate ElementsKind::None
-    for (uint32_t i = 0; i < elementsKinds.size(); i++) {
-        if (elementsKinds[i] == ElementsKind::NONE) {
-            elementsKinds[i] = ElementsKind::GENERIC;
-        }
-    }
-
     return elementsKinds;
 }
 
