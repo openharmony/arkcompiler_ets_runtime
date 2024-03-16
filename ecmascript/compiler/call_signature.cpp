@@ -2160,38 +2160,6 @@ DEF_CALL_SIGNATURE(JsBoundCallInternal)
     callSign->SetCallConv(CallSignature::CallConv::CCallConv);
 }
 
-DEF_CALL_SIGNATURE(TryToElementsIndexOrFindInStringTable)
-{
-    // 2 : 2 input parameters
-    CallSignature tryToElementsIndexOrFindInStringTable("TryToElementsIndexOrFindInStringTable", 0, 2,
-        ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
-    *callSign = tryToElementsIndexOrFindInStringTable;
-    // 2 : 2 input parameters
-    std::array<VariableType, 2> params = {
-        VariableType::NATIVE_POINTER(),
-        VariableType::JS_POINTER(),
-    };
-    callSign->SetParameters(params.data());
-    callSign->SetGCLeafFunction(true);
-    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
-}
-
-DEF_CALL_SIGNATURE(TryGetInternString)
-{
-    // 2 : 2 input parameters
-    CallSignature tryGetInternString("TryGetInternString", 0, 2,
-        ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
-    *callSign = tryGetInternString;
-    // 2 : 2 input parameters
-    std::array<VariableType, 2> params = {
-        VariableType::NATIVE_POINTER(),
-        VariableType::JS_POINTER(),
-    };
-    callSign->SetParameters(params.data());
-    callSign->SetGCLeafFunction(true);
-    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
-}
-
 DEF_CALL_SIGNATURE(CreateArrayFromList)
 {
     // 3 : 3 input parameters

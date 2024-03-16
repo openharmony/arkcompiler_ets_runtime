@@ -2667,7 +2667,7 @@ GateRef StubBuilder::GetPropertyByValue(GateRef glue, GateRef receiver, GateRef 
                         Label notFind(env);
                         Label find(env);
                         // if key can't find in stringtabele, key is not propertyname for a object
-                        GateRef res = CallNGCRuntime(glue, RTSTUB_ID(TryGetInternString), { glue, *key });
+                        GateRef res = CallRuntime(glue, RTSTUB_ID(TryGetInternString), { *key });
                         Branch(TaggedIsHole(res), &notFind, &find);
                         Bind(&notFind);
                         {
@@ -3881,7 +3881,7 @@ GateRef StubBuilder::SetPropertyByValue(GateRef glue, GateRef receiver, GateRef 
                     {
                         Label notFind(env);
                         Label find(env);
-                        GateRef res = CallNGCRuntime(glue, RTSTUB_ID(TryGetInternString), { glue, *varKey });
+                        GateRef res = CallRuntime(glue, RTSTUB_ID(TryGetInternString), { *varKey });
                         Branch(TaggedIsHole(res), &notFind, &find);
                         Bind(&notFind);
                         {
@@ -4352,7 +4352,7 @@ void StubBuilder::FastSetPropertyByName(GateRef glue, GateRef obj, GateRef key, 
             {
                 Label notFind(env);
                 Label find(env);
-                GateRef res = CallNGCRuntime(glue, RTSTUB_ID(TryGetInternString), { glue, *keyVar });
+                GateRef res = CallRuntime(glue, RTSTUB_ID(TryGetInternString), { *keyVar });
                 Branch(TaggedIsHole(res), &notFind, &find);
                 Bind(&notFind);
                 {

@@ -3176,7 +3176,7 @@ JSTaggedValue RuntimeStubs::ArrayNumberSort(JSThread *thread, JSHandle<JSObject>
     return thisObj.GetTaggedValue();
 }
 
-JSTaggedType RuntimeStubs::RuntimeTryGetInternString(uintptr_t argGlue, EcmaString *string)
+JSTaggedType RuntimeStubs::RuntimeTryGetInternString(uintptr_t argGlue, const JSHandle<EcmaString> &string)
 {
     auto thread = JSThread::GlueToJSThread(argGlue);
     EcmaString *str =

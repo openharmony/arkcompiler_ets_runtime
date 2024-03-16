@@ -191,6 +191,10 @@ public:
 
     void InvokeAllocationInspector(Address object, size_t objectSize);
 
+    bool CommittedSizeExceed(size_t size) const
+    {
+        return committedSize_ + size >= maximumCapacity_ + outOfMemoryOvershootSize_;
+    }
 private:
     static constexpr size_t HUGE_OBJECT_BITSET_SIZE = 16;
     EcmaList<Region> hugeNeedFreeList_ {};

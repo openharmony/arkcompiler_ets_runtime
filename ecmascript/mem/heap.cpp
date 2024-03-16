@@ -59,10 +59,27 @@
 #endif
 
 namespace panda::ecmascript {
-bool SharedHeap::CheckAndTriggerOldGC(JSThread *thread, size_t size)
+SharedHeap* SharedHeap::GetInstance()
+{
+    EcmaParamConfiguration config(EcmaParamConfiguration::HeapType::SHARED_HEAP,
+        MemMapAllocator::GetInstance()->GetCapacity());
+    static SharedHeap *shareHeap = new SharedHeap(config);
+    return shareHeap;
+}
+
+bool SharedHeap::CheckAndTriggerGC(JSThread *thread, size_t size)
 {
     if ((OldSpaceExceedLimit() || OldSpaceExceedCapacity(size) ||
         GetHeapObjectSize() > globalSpaceAllocLimit_ ) && !NeedStopCollection()) {
+        CollectGarbage(thread, TriggerGCType::SHARED_GC, GCReason::ALLOCATION_LIMIT);
+        return true;
+    }
+    return false;
+}
+
+bool SharedHeap::CheckHugeAndTriggerGC(JSThread *thread, size_t size)
+{
+    if (sHugeObjectSpace_->CommittedSizeExceed(size) && !NeedStopCollection()) {
         CollectGarbage(thread, TriggerGCType::SHARED_GC, GCReason::ALLOCATION_LIMIT);
         return true;
     }
@@ -81,12 +98,11 @@ void SharedHeap::Initialize(NativeAreaAllocator *nativeAreaAllocator, HeapRegion
     size_t nonmovableSpaceCapacity = config_.GetDefaultNonMovableSpaceSize();
     sNonMovableSpace_ = new SharedNonMovableSpace(this, nonmovableSpaceCapacity, nonmovableSpaceCapacity);
 
-    size_t oldSpaceCapacity = maxHeapSize - nonmovableSpaceCapacity;
+    size_t readOnlySpaceCapacity = config_.GetDefaultReadOnlySpaceSize();
+    size_t oldSpaceCapacity = (maxHeapSize - nonmovableSpaceCapacity - readOnlySpaceCapacity) / 2; // 2: half
     globalSpaceAllocLimit_ = maxHeapSize;
 
     sOldSpace_ = new SharedOldSpace(this, oldSpaceCapacity, oldSpaceCapacity);
-
-    size_t readOnlySpaceCapacity = config_.GetDefaultReadOnlySpaceSize();
     sReadOnlySpace_ = new SharedReadOnlySpace(this, readOnlySpaceCapacity, readOnlySpaceCapacity);
     sHugeObjectSpace_ = new SharedHugeObjectSpace(this, heapRegionAllocator_, oldSpaceCapacity, oldSpaceCapacity);
 }

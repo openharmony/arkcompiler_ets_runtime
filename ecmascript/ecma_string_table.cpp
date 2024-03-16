@@ -194,13 +194,17 @@ EcmaString *EcmaStringTable::GetOrInternString(EcmaVM *vm, EcmaString *string)
     if (EcmaStringAccessor(string).IsInternString()) {
         return string;
     }
-    JSHandle<EcmaString> strHandle(vm->GetJSThread(), string);
+    auto thread = vm->GetJSThread();
+    JSHandle<EcmaString> strHandle(thread, string);
     // may gc
     auto strFlat = EcmaStringAccessor::Flatten(vm, strHandle, MemSpaceType::SHARED_OLD_SPACE);
     if (EcmaStringAccessor(strFlat).IsInternString()) {
         return strFlat;
     }
-    RuntimeLockHolder locker(vm->GetJSThread(), mutex_);
+    JSHandle<EcmaString> strFlatHandle(thread, strFlat);
+    // may gc
+    RuntimeLockHolder locker(thread, mutex_);
+    strFlat = *strFlatHandle;
     EcmaString *result = GetStringThreadUnsafe(strFlat);
     if (result != nullptr) {
         return result;
@@ -231,16 +235,16 @@ EcmaString *EcmaStringTable::GetOrInternStringThreadUnsafe(EcmaVM *vm, EcmaStrin
 
 EcmaString *EcmaStringTable::InsertStringToTable(EcmaVM *vm, const JSHandle<EcmaString> &strHandle)
 {
-    auto strFlat = EcmaStringAccessor::Flatten(vm, strHandle, MemSpaceType::SHARED_OLD_SPACE);
     RuntimeLockHolder locker(vm->GetJSThread(), mutex_);
+    auto strFlat = EcmaStringAccessor::Flatten(vm, strHandle, MemSpaceType::SHARED_OLD_SPACE);
     InternStringThreadUnsafe(strFlat);
     return strFlat;
 }
 
-EcmaString *EcmaStringTable::TryGetInternString(JSThread *thread, EcmaString *string)
+EcmaString *EcmaStringTable::TryGetInternString(JSThread *thread, const JSHandle<EcmaString> &string)
 {
     RuntimeLockHolder locker(thread, mutex_);
-    return GetStringThreadUnsafe(string);
+    return GetStringThreadUnsafe(*string);
 }
 
 EcmaString *EcmaStringTable::GetOrInternStringWithSpaceType(EcmaVM *vm, const uint8_t *utf8Data, uint32_t utf8Len,
