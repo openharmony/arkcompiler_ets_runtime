@@ -160,6 +160,8 @@ JSHandle<Method> ObjectFactory::NewSMethod(const JSPandaFile *jsPandaFile, Metho
     if (needSetAotFlag) {
         auto aotFileManager = thread_->GetEcmaVM()->GetAOTFileManager();
         aotFileManager->SetAOTFuncEntry(jsPandaFile, nullptr, *method, entryIndex, canFastCall);
+    } else {
+        method->ClearAOTFlagsWhenInit();
     }
     return method;
 }

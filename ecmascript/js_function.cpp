@@ -1018,8 +1018,6 @@ void JSFunctionBase::SetCompiledFuncEntry(uintptr_t codeEntry, bool isFastCall)
     Method* method = Method::Cast(GetMethod());
     method->SetCodeEntryAndMarkAOTWhenBinding(codeEntry);
 
-    method->SetAotCodeBit(true);
-    method->SetNativeBit(false);
     method->SetIsFastCall(isFastCall);
     MethodLiteral *methodLiteral = method->GetMethodLiteral();
     methodLiteral->SetAotCodeBit(true);
