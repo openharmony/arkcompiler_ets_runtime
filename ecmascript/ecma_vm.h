@@ -502,6 +502,7 @@ public:
 
     JSTaggedValue FastCallAot(size_t actualNumArgs, JSTaggedType *args, const JSTaggedType *prevFp);
 
+    void HandleUncaughtException(JSTaggedValue exception);
     void RegisterUncatchableErrorHandler(const UncatchableErrorHandler &uncatchableErrorHandler)
     {
         uncatchableErrorHandler_ = uncatchableErrorHandler;
