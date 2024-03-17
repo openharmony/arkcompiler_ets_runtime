@@ -518,7 +518,8 @@ bool PGOProfiler::PausePGODump()
 void PGOProfiler::ProfileBytecode(ApEntityId abcId, const CString &recordName, JSTaggedValue funcValue)
 {
     JSFunction *function = JSFunction::Cast(funcValue);
-    if (function->GetClass()->IsJSSharedFunction()) {
+    if (function->GetClass()->IsJSSharedFunction() ||
+        function->GetFunctionKind() == ecmascript::FunctionKind::CONCURRENT_FUNCTION) {
         return;
     }
     Method *method = Method::Cast(function->GetMethod());

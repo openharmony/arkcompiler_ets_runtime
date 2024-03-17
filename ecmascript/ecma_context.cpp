@@ -50,6 +50,8 @@
 namespace panda::ecmascript {
 using PathHelper = base::PathHelper;
 
+int32_t EcmaContext::unsharedConstpoolCount_ = 0;
+
 EcmaContext::EcmaContext(JSThread *thread)
     : thread_(thread),
       vm_(thread->GetEcmaVM()),
@@ -470,6 +472,7 @@ JSTaggedValue EcmaContext::FindUnsharedConstpool(JSTaggedValue sharedConstpool)
         JSHandle<ConstantPool> unshareCp =
             ConstantPool::CreateUnSharedConstPoolBySharedConstpool(vm_, shareCp->GetJSPandaFile(), shareCp);
         unsharedConstpool = unshareCp.GetTaggedValue();
+        CheckUnsharedConstpoolArrayLimit(index);
         SetUnsharedConstpool(index, unsharedConstpool);
     }
     return unsharedConstpool;
@@ -482,15 +485,16 @@ JSHandle<ConstantPool> EcmaContext::CreateConstpoolPair(JSPandaFile *jsPandaFile
     JSHandle<ConstantPool> constpool =
         ConstantPool::CreateUnSharedConstPool(thread_->GetEcmaVM(), jsPandaFile, methodId);
     JSHandle<ConstantPool> sconstpool;
+    int32_t count = GetAndIncreaseUnsharedConstpoolCount();
     if (jsPandaFile->IsLoadedAOT()) {
-        sconstpool = ConstantPool::CreateSharedConstPoolForAOT(vm_, constpool, GetUnsharedConstpoolCount(), index);
+        sconstpool = ConstantPool::CreateSharedConstPoolForAOT(vm_, constpool, count, index);
     } else {
         sconstpool = ConstantPool::CreateSharedConstPool(
-            thread_->GetEcmaVM(), jsPandaFile, methodId, GetUnsharedConstpoolCount(), index);
+            thread_->GetEcmaVM(), jsPandaFile, methodId, count, index);
     }
     AddConstpool(jsPandaFile, sconstpool.GetTaggedValue(), index);
-    SetUnsharedConstpool(GetUnsharedConstpoolCount(), constpool.GetTaggedValue());
-    IncreaseUnsharedConstpoolCount();
+    CheckUnsharedConstpoolArrayLimit(count);
+    SetUnsharedConstpool(count, constpool.GetTaggedValue());
     return sconstpool;
 }
 
@@ -543,16 +547,15 @@ JSHandle<ConstantPool> EcmaContext::FindOrCreateConstPool(const JSPandaFile *jsP
     if (constpool.IsHole()) {
         JSHandle<ConstantPool> newConstpool = ConstantPool::CreateUnSharedConstPool(vm_, jsPandaFile, id);
         JSHandle<ConstantPool> newSConstpool;
+        int32_t count = GetAndIncreaseUnsharedConstpoolCount();
         if (jsPandaFile->IsLoadedAOT()) {
-            newSConstpool = ConstantPool::CreateSharedConstPoolForAOT(
-                vm_, newConstpool, GetUnsharedConstpoolCount(), index);
+            newSConstpool = ConstantPool::CreateSharedConstPoolForAOT(vm_, newConstpool, count, index);
         } else {
-            newSConstpool = ConstantPool::CreateSharedConstPool(
-                vm_, jsPandaFile, id, GetUnsharedConstpoolCount(), index);
+            newSConstpool = ConstantPool::CreateSharedConstPool(vm_, jsPandaFile, id, count, index);
         }
         AddConstpool(jsPandaFile, newSConstpool.GetTaggedValue(), index);
-        SetUnsharedConstpool(GetUnsharedConstpoolCount(), newConstpool.GetTaggedValue());
-        IncreaseUnsharedConstpoolCount();
+        CheckUnsharedConstpoolArrayLimit(count);
+        SetUnsharedConstpool(count, newConstpool.GetTaggedValue());
         return newSConstpool;
     }
     return JSHandle<ConstantPool>(thread_, constpool);
@@ -565,9 +568,10 @@ void EcmaContext::CreateAllConstpool(const JSPandaFile *jsPandaFile)
     for (const auto &header : headers) {
         auto constpoolSize = header.method_idx_size;
         JSHandle<ConstantPool> sconstpool = factory_->NewSConstantPool(constpoolSize);
+        int32_t count = GetAndIncreaseUnsharedConstpoolCount();
         sconstpool->SetJSPandaFile(jsPandaFile);
         sconstpool->SetIndexHeader(&header);
-        sconstpool->SetUnsharedConstpoolIndex(JSTaggedValue(GetUnsharedConstpoolCount()));
+        sconstpool->SetUnsharedConstpoolIndex(JSTaggedValue(count));
         sconstpool->SetSharedConstpoolId(JSTaggedValue(index));
         AddConstpool(jsPandaFile, sconstpool.GetTaggedValue(), index);
         index++;
@@ -575,8 +579,8 @@ void EcmaContext::CreateAllConstpool(const JSPandaFile *jsPandaFile)
         JSHandle<ConstantPool> constpool = factory_->NewConstantPool(constpoolSize);
         constpool->SetJSPandaFile(jsPandaFile);
         constpool->SetIndexHeader(&header);
-        SetUnsharedConstpool(GetUnsharedConstpoolCount(), constpool.GetTaggedValue());
-        IncreaseUnsharedConstpoolCount();
+        CheckUnsharedConstpoolArrayLimit(count);
+        SetUnsharedConstpool(count, constpool.GetTaggedValue());
     }
 }
 
@@ -786,7 +790,6 @@ void EcmaContext::ClearBufferData()
         delete unsharedConstpools_;
         unsharedConstpools_ = nullptr;
         thread_->SetUnsharedConstpools(reinterpret_cast<uintptr_t>(nullptr));
-        unsharedConstpoolCount_ = 0;
     }
 }
 

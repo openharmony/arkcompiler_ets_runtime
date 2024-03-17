@@ -506,14 +506,19 @@ public:
         unsharedConstpools_->data()[unsharedConstpoolIndex] = constpool;
     }
 
-    void IncreaseUnsharedConstpoolCount()
+    int32_t GetAndIncreaseUnsharedConstpoolCount()
     {
-        unsharedConstpoolCount_++;
+        static std::mutex unsharedConstpoolCountMutex_;
+        std::lock_guard<std::mutex> guard(unsharedConstpoolCountMutex_);
+        return unsharedConstpoolCount_++;
     }
 
-    int32_t GetUnsharedConstpoolCount() const
+    void CheckUnsharedConstpoolArrayLimit(int32_t index)
     {
-        return unsharedConstpoolCount_;
+        if (index >= UNSHARED_CONSTANTPOOL_COUNT) {
+            LOG_ECMA(FATAL) << "the unshared constpool array need to expanding capacity";
+            UNREACHABLE();
+        }
     }
 
     std::tuple<uint64_t, uint8_t *, int, kungfu::CalleeRegAndOffsetVec> CalCallSiteInfo(uintptr_t retAddr) const;
@@ -557,9 +562,9 @@ private:
 
     CMap<const JSPandaFile *, CMap<int32_t, JSTaggedValue>> cachedSharedConstpools_ {};
     // todo(lijiamin) Consider expanding capacity.
-    static constexpr int32_t UNSHARED_CONSTANTPOOL_COUNT = 1024;
+    static constexpr int32_t UNSHARED_CONSTANTPOOL_COUNT = 10240;
     std::array<JSTaggedValue, UNSHARED_CONSTANTPOOL_COUNT> *unsharedConstpools_ = nullptr;
-    int32_t unsharedConstpoolCount_ = 0; // unshared constpool index.
+    static int32_t unsharedConstpoolCount_; // unshared constpool index.
     static constexpr int32_t SHARED_CONSTPOOL_KEY_NOT_FOUND = INT32_MAX; // INT32_MAX :invalid value.
 
     // for HotReload of module.
