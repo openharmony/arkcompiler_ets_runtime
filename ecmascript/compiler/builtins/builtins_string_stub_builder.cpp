@@ -18,6 +18,7 @@
 #include "ecmascript/builtins/builtins_number.h"
 #include "ecmascript/compiler/builtins/builtins_stubs.h"
 #include "ecmascript/compiler/new_object_stub_builder.h"
+#include "ecmascript/js_iterator.h"
 #include "ecmascript/js_string_iterator.h"
 
 namespace panda::ecmascript::kungfu {
@@ -2165,6 +2166,86 @@ void BuiltinsStringStubBuilder::GetStringIterator(GateRef glue, GateRef thisValu
         Store(VariableType::JS_POINTER(), glue, *result, IntPtr(JSStringIterator::ITERATED_STRING_OFFSET), thisValue);
         Store(VariableType::INT32(), glue, *result, IntPtr(JSStringIterator::STRING_ITERATOR_NEXT_INDEX_OFFSET),
               Int32(0));
+        res->WriteVariable(*result);
+        Jump(exit);
+    }
+}
+
+void BuiltinsStringStubBuilder::StringIteratorNext(GateRef glue, GateRef thisValue, [[maybe_unused]] GateRef numArgs,
+                                                   Variable *res, Label *exit, Label *slowPath)
+{
+    auto env = GetEnvironment();
+    DEFVARIABLE(result, VariableType::JS_POINTER(), Undefined());
+
+    Label thisIsHeapObj(env);
+    Label thisIsStringIterator(env);
+    Label strNotUndefined(env);
+    Label strIsHeapObj(env);
+    Label strIsString(env);
+    Label iterDone(env);
+    Branch(TaggedIsHeapObject(thisValue), &thisIsHeapObj, slowPath);
+    Bind(&thisIsHeapObj);
+    Branch(TaggedIsStringIterator(thisValue), &thisIsStringIterator, slowPath);
+    Bind(&thisIsStringIterator);
+    GateRef str = Load(VariableType::JS_POINTER(), thisValue, IntPtr(JSStringIterator::ITERATED_STRING_OFFSET));
+    Branch(TaggedIsUndefined(str), &iterDone, &strNotUndefined);
+    Bind(&strNotUndefined);
+    Branch(TaggedIsHeapObject(str), &strIsHeapObj, slowPath);
+    Bind(&strIsHeapObj);
+    Branch(TaggedIsString(str), &strIsString, slowPath);
+    Bind(&strIsString);
+    {
+        Label getFirst(env);
+        Label afterFlat(env);
+        Label getStringFromSingleCharTable(env);
+        GateRef position = Load(VariableType::INT32(), thisValue,
+                                IntPtr(JSStringIterator::STRING_ITERATOR_NEXT_INDEX_OFFSET));
+        GateRef len = GetLengthFromString(str);
+        Branch(Int32GreaterThanOrEqual(position, len), &iterDone, &getFirst);
+        Bind(&getFirst);
+        FlatStringStubBuilder strFlat(this);
+        strFlat.FlattenString(glue, str, &afterFlat);
+        Bind(&afterFlat);
+        StringInfoGateRef strInfo(&strFlat);
+        GateRef first = StringAt(strInfo, position);
+        GateRef canStoreAsUtf8 = IsASCIICharacter(first);
+        Branch(canStoreAsUtf8, &getStringFromSingleCharTable, slowPath);
+        Bind(&getStringFromSingleCharTable);
+        GateRef singleCharTable = GetSingleCharTable(glue);
+        GateRef firstStr = GetValueFromTaggedArray(singleCharTable, ZExtInt16ToInt32(first));
+        Store(VariableType::INT32(), glue, thisValue, IntPtr(JSStringIterator::STRING_ITERATOR_NEXT_INDEX_OFFSET),
+              Int32Add(position, Int32(1)));
+        // CreateIterResultObject(firstStr, false)
+        GateRef iterResultClass = GetGlobalConstantValue(VariableType::JS_POINTER(), glue,
+                                                         ConstantIndex::ITERATOR_RESULT_CLASS);
+        Label afterNew(env);
+        NewObjectStubBuilder newBuilder(this);
+        newBuilder.SetParameters(glue, 0);
+        newBuilder.NewJSObject(&result, &afterNew, iterResultClass);
+        Bind(&afterNew);
+        SetPropertyInlinedProps(glue, *result, iterResultClass, firstStr,
+                                Int32(JSIterator::VALUE_INLINE_PROPERTY_INDEX));
+        SetPropertyInlinedProps(glue, *result, iterResultClass, TaggedFalse(),
+                                Int32(JSIterator::DONE_INLINE_PROPERTY_INDEX));
+        res->WriteVariable(*result);
+        Jump(exit);
+    }
+    Bind(&iterDone);
+    {
+        Store(VariableType::JS_POINTER(), glue, thisValue, IntPtr(JSStringIterator::ITERATED_STRING_OFFSET),
+              Undefined());
+        // CreateIterResultObject(undefined, true)
+        GateRef iterResultClass = GetGlobalConstantValue(VariableType::JS_POINTER(), glue,
+                                                         ConstantIndex::ITERATOR_RESULT_CLASS);
+        Label afterNew(env);
+        NewObjectStubBuilder newBuilder(this);
+        newBuilder.SetParameters(glue, 0);
+        newBuilder.NewJSObject(&result, &afterNew, iterResultClass);
+        Bind(&afterNew);
+        SetPropertyInlinedProps(glue, *result, iterResultClass, Undefined(),
+                                Int32(JSIterator::VALUE_INLINE_PROPERTY_INDEX));
+        SetPropertyInlinedProps(glue, *result, iterResultClass, TaggedTrue(),
+                                Int32(JSIterator::DONE_INLINE_PROPERTY_INDEX));
         res->WriteVariable(*result);
         Jump(exit);
     }

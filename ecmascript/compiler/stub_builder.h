@@ -237,6 +237,7 @@ public:
     GateRef TaggedIsTransWithProtoHandler(GateRef x);
     GateRef TaggedIsTransitionHandler(GateRef x);
     GateRef TaggedIsString(GateRef obj);
+    GateRef TaggedIsStringIterator(GateRef obj);
     GateRef TaggedIsShared(GateRef obj);
     GateRef BothAreString(GateRef x, GateRef y);
     GateRef TaggedIsStringOrSymbol(GateRef obj);
