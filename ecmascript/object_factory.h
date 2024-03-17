@@ -792,6 +792,7 @@ public:
                                             const JSHandle<JSTaggedValue> &prototype, bool isAccessor = true);
 
     JSHandle<JSNativePointer> NewSJSNativePointer(void *externalPointer,
+                                                  const DeleteEntryPoint &callBack,
                                                   void *data = nullptr,
                                                   bool nonMovable = false,
                                                   size_t nativeBindingsize = 0,
