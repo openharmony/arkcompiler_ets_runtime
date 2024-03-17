@@ -67,7 +67,7 @@ class SuperClass {
   propNumber: number = 5
   propBool: boolean = false
   propBigInt1: bigint = BigInt(12345678910)
-  propBigInt2: BigInt = BigInt(987654321)
+  propBigInt2: bigint = BigInt(987654321)
   static staticPropString: string = "I'm staticPropString";
   publicPropString: string = "I'm privatePropString";
 

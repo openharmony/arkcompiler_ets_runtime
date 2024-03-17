@@ -2262,7 +2262,7 @@ Local<FunctionRef> FunctionRef::NewClassFunction(EcmaVM *vm, InternalFunctionCal
     return scope.Escape(result);
 }
 
-ecmascript::SharedFieldType GetSharedFieldType(EcmaVM *vm, Local<JSValueRef> value)
+ecmascript::SharedFieldType GetSharedFieldType(Local<JSValueRef> value)
 {
     auto valueHandle = JSNApiHelper::ToJSHandle(value);
     if (valueHandle->IsUndefined()) {
@@ -2302,7 +2302,7 @@ JSHandle<JSHClass> CreateInlinedSendableHClass(JSThread *thread,
     for (uint32_t i = 0; i < length; ++i) {
         key.Update(JSNApiHelper::ToJSHandle(info.keys->Get(vm, i)));
         ASSERT(key->IsString());
-        ecmascript::SharedFieldType type = GetSharedFieldType(vm, info.values->Get(vm, i));
+        ecmascript::SharedFieldType type = GetSharedFieldType(info.values->Get(vm, i));
         ecmascript::PropertyAttributes attr = ecmascript::PropertyAttributes::Default(
             info.attributes[i].IsWritable(), info.attributes[i].IsEnumerable(), info.attributes[i].IsConfigurable());
         if (UNLIKELY(JSNApiHelper::ToJSHandle(info.attributes[i].GetValue(vm))->IsAccessor())) {
@@ -2341,7 +2341,7 @@ JSHandle<JSHClass> CreateDictSendableHClass(JSThread *thread,
     for (uint32_t i = 0; i < length; ++i) {
         key.Update(JSNApiHelper::ToJSHandle(info.keys->Get(vm, i)));
         ASSERT(key->IsString());
-        ecmascript::SharedFieldType type = GetSharedFieldType(vm, info.values->Get(vm, i));
+        ecmascript::SharedFieldType type = GetSharedFieldType(info.values->Get(vm, i));
         ecmascript::PropertyAttributes attr = ecmascript::PropertyAttributes::Default(
             info.attributes[i].IsWritable(), info.attributes[i].IsEnumerable(), info.attributes[i].IsConfigurable());
         attr.SetSharedFieldType(type);
