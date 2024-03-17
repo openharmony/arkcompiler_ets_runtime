@@ -50,6 +50,7 @@ private:
     bool PrepareClone(JSThread *thread, const JSHandle<JSTaggedValue> &cloneList);
     bool CheckObjectCanSerialize(TaggedObject *object, bool &findSharedObject);
 
+    bool IsSharedContainer(TaggedObject *object);
     bool IsInternalJSType(JSType type)
     {
         if (type >= JSType::JS_RECORD_FIRST && type <= JSType::JS_RECORD_LAST) {
