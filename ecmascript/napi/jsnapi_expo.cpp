@@ -2339,9 +2339,9 @@ JSHandle<JSHClass> CreateDictSendableHClass(JSThread *thread,
     JSHandle<JSHClass> hclass;
     uint32_t length = info.keys->Length(vm);
     JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
-    JSMutableHandle<ecmascript::NameDictionary> dict(
-        thread, ecmascript::NameDictionary::CreateInSharedHeap(
-                    thread, ecmascript::NameDictionary::ComputeHashTableSize(length)));
+    JSMutableHandle<ecmascript::NameDictionary> dict(thread,
+        ecmascript::NameDictionary::CreateInSharedHeap(thread,
+        ecmascript::NameDictionary::ComputeHashTableSize(length)));
     auto globalConst = const_cast<GlobalEnvConstants *>(thread->GlobalConstants());
     JSHandle<JSTaggedValue> value = globalConst->GetHandledUndefined();
 
@@ -2407,9 +2407,9 @@ void SetInlinedAndDictProps(JSThread *thread,
             obj->SetPropertyInlinedProps(thread, i, propValue.GetTaggedValue());
         }
     } else {
-        JSMutableHandle<ecmascript::NameDictionary> dict(
-            thread, ecmascript::NameDictionary::CreateInSharedHeap(
-                        thread, ecmascript::NameDictionary::ComputeHashTableSize(length)));
+        JSMutableHandle<ecmascript::NameDictionary> dict(thread,
+            ecmascript::NameDictionary::CreateInSharedHeap(thread,
+            ecmascript::NameDictionary::ComputeHashTableSize(length)));
         for (uint32_t i = 0; i < length; i++) {
             ecmascript::PropertyAttributes attr = ecmascript::PropertyAttributes::Default(
                 info.attributes[i].IsWritable(), info.attributes[i].IsEnumerable(),

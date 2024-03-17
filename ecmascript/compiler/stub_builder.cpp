@@ -485,12 +485,10 @@ GateRef StubBuilder::FindEntryFromTransitionDictionary(GateRef glue, GateRef ele
                     {
                         Label isMatch(env);
                         Label notMatch(env);
-                        Branch(IsMatchInTransitionDictionary(
-                                   element, key, metaData,
-                                   // metaData is int32 type
-                                   TruncInt64ToInt32(
-                                       GetAttributesFromDictionary<TransitionsDictionary>(elements, *entry))),
-                               &isMatch, &notMatch);
+                        Branch(IsMatchInTransitionDictionary(element, key, metaData,
+                            // metaData is int32 type
+                            TruncInt64ToInt32(GetAttributesFromDictionary<TransitionsDictionary>(elements, *entry))),
+                            &isMatch, &notMatch);
                         {
                             Bind(&isMatch);
                             {

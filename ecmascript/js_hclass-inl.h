@@ -46,11 +46,13 @@ void JSHClass::AddTransitions(const JSThread *thread, const JSHandle<JSHClass> &
         if (cachedHClass->HasProps()) {
             uint32_t last = cachedHClass->LastPropIndex();
             LayoutInfo* layoutInfo = LayoutInfo::Cast(cachedHClass->GetLayout().GetTaggedObject());
-            auto metaData = JSHandle<JSTaggedValue>(thread, JSTaggedValue(layoutInfo->GetAttr(last).GetPropertyMetaData()));
+            auto metaData = JSHandle<JSTaggedValue>(thread,
+                JSTaggedValue(layoutInfo->GetAttr(last).GetPropertyMetaData()));
             auto lastKey = JSHandle<JSTaggedValue>(thread, layoutInfo->GetKey(last));
             auto lastHClass = JSHandle<JSTaggedValue>(thread, cachedHClass);
             dict.Update(TransitionsDictionary::Create(thread));
-            transitions = TransitionsDictionary::PutIfAbsent(thread, dict, lastKey, lastHClass, metaData).GetTaggedValue();
+            transitions = TransitionsDictionary::PutIfAbsent(thread, dict, lastKey, lastHClass,
+                metaData).GetTaggedValue();
         }
     }
     auto metaData = JSHandle<JSTaggedValue>(thread, JSTaggedValue(attributes.GetPropertyMetaData()));
