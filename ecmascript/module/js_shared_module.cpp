@@ -24,7 +24,7 @@ JSHandle<JSTaggedValue> SendableClassModule::GenerateSendableFuncModule(JSThread
         return module;
     }
     JSHandle<SourceTextModule> currentModule = JSHandle<SourceTextModule>::Cast(module);
-    // Only clone module in isolate-heap. 
+    // Only clone module in isolate-heap.
     if (SourceTextModule::IsModuleInSharedHeap(currentModule)) {
         return module;
     }
@@ -62,7 +62,7 @@ JSHandle<JSTaggedValue> SendableClassModule::CloneModuleEnvironment(JSThread *th
     JSHandle<TaggedArray> sendableEnvironment = factory->NewSDictionaryArray(enumKeys);
     for (int idx = 0; idx < enumKeys; idx++) {
         JSTaggedValue key = currentEnvironment->Get(idx);
-        // [[TODO::DaiHN will consider ResolvedBinding]]
+        // [[todo::DaiHN will consider ResolvedBinding]]
         if (key.IsResolvedIndexBinding()) {
             JSHandle<JSTaggedValue> recordBinding = SendableClassModule::CloneRecordBinding(thread, key);
             sendableEnvironment->Set(thread, idx, recordBinding);

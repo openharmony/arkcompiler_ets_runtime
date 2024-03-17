@@ -43,22 +43,22 @@ EcmaString *ObjectFactory::AllocLineStringObjectNoGC(size_t size)
 EcmaString *ObjectFactory::AllocNonMovableLineStringObject(size_t size)
 {
     NewSObjectHook();
-    return reinterpret_cast<EcmaString *>(sHeap_->AllocateNonMovableOrHugeObject(thread_, 
-        JSHClass::Cast(thread_->GlobalConstants()->GetLineStringClass().GetTaggedObject()), size));
+    return reinterpret_cast<EcmaString *>(sHeap_->AllocateNonMovableOrHugeObject(
+        thread_, JSHClass::Cast(thread_->GlobalConstants()->GetLineStringClass().GetTaggedObject()), size));
 }
 
 EcmaString *ObjectFactory::AllocLineStringObject(size_t size)
 {
     NewSObjectHook();
-    return reinterpret_cast<EcmaString *>(sHeap_->AllocateOldOrHugeObject(thread_, 
-        JSHClass::Cast(thread_->GlobalConstants()->GetLineStringClass().GetTaggedObject()), size));
+    return reinterpret_cast<EcmaString *>(sHeap_->AllocateOldOrHugeObject(
+        thread_, JSHClass::Cast(thread_->GlobalConstants()->GetLineStringClass().GetTaggedObject()), size));
 }
 
 EcmaString *ObjectFactory::AllocOldSpaceLineStringObject(size_t size)
 {
     NewSObjectHook();
-    return reinterpret_cast<EcmaString *>(sHeap_->AllocateOldOrHugeObject(thread_, 
-        JSHClass::Cast(thread_->GlobalConstants()->GetLineStringClass().GetTaggedObject()), size));
+    return reinterpret_cast<EcmaString *>(sHeap_->AllocateOldOrHugeObject(
+        thread_, JSHClass::Cast(thread_->GlobalConstants()->GetLineStringClass().GetTaggedObject()), size));
 }
 
 EcmaString *ObjectFactory::AllocSlicedStringObject(MemSpaceType type)
@@ -80,8 +80,9 @@ EcmaString *ObjectFactory::AllocConstantStringObject(MemSpaceType type)
 EcmaString *ObjectFactory::AllocTreeStringObject()
 {
     NewSObjectHook();
-    return reinterpret_cast<EcmaString *>(sHeap_->AllocateOldOrHugeObject(thread_, 
-        JSHClass::Cast(thread_->GlobalConstants()->GetTreeStringClass().GetTaggedObject()), TreeEcmaString::SIZE));
+    return reinterpret_cast<EcmaString *>(sHeap_->AllocateOldOrHugeObject(
+        thread_, JSHClass::Cast(thread_->GlobalConstants()->GetTreeStringClass().GetTaggedObject()),
+        TreeEcmaString::SIZE));
 }
 
 JSHandle<JSNativePointer> ObjectFactory::NewJSNativePointer(void *externalPointer,
@@ -105,7 +106,7 @@ JSHandle<JSNativePointer> ObjectFactory::NewJSNativePointer(void *externalPointe
     obj->SetData(data);
     obj->SetBindingSize(nativeBindingsize);
     obj->SetNativeFlag(flag);
-    
+
     if (callBack != nullptr) {
         heap_->IncreaseNativeBindingSize(nativeBindingsize);
         vm_->PushToNativePointerList(static_cast<JSNativePointer *>(header));

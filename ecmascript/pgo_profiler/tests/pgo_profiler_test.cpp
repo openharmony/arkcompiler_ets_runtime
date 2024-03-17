@@ -499,7 +499,7 @@ HWTEST_F_L0(PGOProfilerTest, PGOProfilerDoubleVM)
     // worker vm read profile enable from PGOProfilerManager singleton
     option.SetEnableProfile(false);
 
-    std::thread t1([&](){
+    std::thread t1([&]() {
         auto vm2 = JSNApi::CreateJSVM(option);
         vm2->GetJSThread()->ManagedCodeBegin();
         JSHandle<ConstantPool> constPool2 = vm2->GetFactory()->NewSConstantPool(4);

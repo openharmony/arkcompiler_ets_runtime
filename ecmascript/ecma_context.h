@@ -557,7 +557,7 @@ private:
     EcmaRuntimeStat *runtimeStat_ {nullptr};
 
     CMap<const JSPandaFile *, CMap<int32_t, JSTaggedValue>> cachedSharedConstpools_ {};
-    // TODO(lijiamin) Consider expanding capacity.
+    // todo(lijiamin) Consider expanding capacity.
     static constexpr int32_t UNSHARED_CONSTANTPOOL_COUNT = 1024;
     std::array<JSTaggedValue, UNSHARED_CONSTANTPOOL_COUNT> *unsharedConstpools_ = nullptr;
     int32_t unsharedConstpoolCount_ = 0; // unshared constpool index.

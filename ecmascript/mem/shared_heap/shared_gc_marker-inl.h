@@ -94,8 +94,8 @@ ARK_INLINE bool SharedGCMarker::VisitBodyInObj(TaggedObject *root, ObjectSlot st
 
 inline void SharedGCMarker::ProcessLocalToShare(uint32_t threadId, Heap *localHeap)
 {
-    localHeap->EnumerateRegions(std::bind(&SharedGCMarker::HandleLocalToShareRSet, this, threadId,
-                                std::placeholders::_1));
+    localHeap->EnumerateRegions(
+        std::bind(&SharedGCMarker::HandleLocalToShareRSet, this, threadId, std::placeholders::_1));
     ProcessMarkStack(threadId);
 }
 

@@ -107,7 +107,7 @@ RegionSpaceFlag Space::GetRegionFlag() const
             break;
         case MemSpaceType::SHARED_HUGE_OBJECT_SPACE:
             flags = RegionSpaceFlag::IN_SHARED_HUGE_OBJECT_SPACE;
-            break; 
+            break;
         default:
             LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();

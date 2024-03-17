@@ -5177,7 +5177,7 @@ DECLARE_ASM_HANDLER(HandleCallRuntimeLdsendableexternalmodulevarImm8)
 
     // LdSendableExternalModuleVarByIndex may load uninitialized module lazy. Exception could happened.
     GateRef currentFunc = GetFunctionFromFrame(GetFrame(sp));
-    moduleRef = CallRuntime(glue, RTSTUB_ID(LdSendableExternalModuleVarByIndex), { Int8ToTaggedInt(index), currentFunc });
+    moduleRef = CallRuntime(glue, RTSTUB_ID(LdSendableExternalModuleVarByIndex), {Int8ToTaggedInt(index), currentFunc});
 
     auto env = GetEnvironment();
     Label notException(env);
@@ -5198,7 +5198,8 @@ DECLARE_ASM_HANDLER(HandleCallRuntimeWideLdsendableexternalmodulevarPrefImm16)
 
     // LdSendableExternalModuleVarByIndex may load uninitialized module lazy. Exception could happened.
     GateRef currentFunc = GetFunctionFromFrame(GetFrame(sp));
-    moduleRef = CallRuntime(glue, RTSTUB_ID(LdSendableExternalModuleVarByIndex), { Int16ToTaggedInt(index), currentFunc });
+    moduleRef =
+        CallRuntime(glue, RTSTUB_ID(LdSendableExternalModuleVarByIndex), {Int16ToTaggedInt(index), currentFunc});
 
     auto env = GetEnvironment();
     Label notException(env);

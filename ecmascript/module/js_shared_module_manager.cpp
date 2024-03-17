@@ -94,8 +94,8 @@ JSTaggedValue SharedModuleManager::GetSendableModuleValueImpl(
             }
             LOG_ECMA(FATAL) << "LazyExecuteModule failed";
         }
-        // [[TODO::DaiHN will consider HotReload]]
-        // [[TODO::DaiHN should consider json, cjs and native module later]]
+        // [[todo::DaiHN will consider HotReload]]
+        // [[todo::DaiHN should consider json, cjs and native module later]]
         ASSERT(resolvedModule->GetTypes() == ModuleTypes::ECMA_MODULE);
         return resolvedModule->GetModuleValue(thread, binding->GetIndex(), false);
     } else if (resolvedBinding.IsResolvedIndexBinding()) {

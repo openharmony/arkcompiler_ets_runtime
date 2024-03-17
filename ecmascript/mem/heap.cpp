@@ -69,8 +69,8 @@ SharedHeap* SharedHeap::GetInstance()
 
 bool SharedHeap::CheckAndTriggerGC(JSThread *thread, size_t size)
 {
-    if ((OldSpaceExceedLimit() || OldSpaceExceedCapacity(size) ||
-        GetHeapObjectSize() > globalSpaceAllocLimit_ ) && !NeedStopCollection()) {
+    if ((OldSpaceExceedLimit() || OldSpaceExceedCapacity(size) || GetHeapObjectSize() > globalSpaceAllocLimit_) &&
+        !NeedStopCollection()) {
         CollectGarbage(thread, TriggerGCType::SHARED_GC, GCReason::ALLOCATION_LIMIT);
         return true;
     }

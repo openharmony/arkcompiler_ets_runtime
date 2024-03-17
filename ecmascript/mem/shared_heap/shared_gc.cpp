@@ -42,7 +42,7 @@ void SharedGC::RunPhases()
 void SharedGC::Initialize()
 {
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "SharedGC::Initialize");
-    TRACE_GC(GCStats::Scope::ScopeId::Initialize,sHeap_->GetEcmaGCStats());
+    TRACE_GC(GCStats::Scope::ScopeId::Initialize, sHeap_->GetEcmaGCStats());
     sHeap_->EnumerateOldSpaceRegions([](Region *current) {
         ASSERT(current->InSharedSweepableSpace());
         current->ResetAliveObject();

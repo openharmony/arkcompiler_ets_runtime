@@ -206,7 +206,8 @@ public:
         return sconstpool;
     }
 
-    static JSHandle<AOTLiteralInfo> CopySharedMethodAOTLiteralInfo(EcmaVM *vm, JSHandle<AOTLiteralInfo> methodLiteralInfo)
+    static JSHandle<AOTLiteralInfo> CopySharedMethodAOTLiteralInfo(EcmaVM *vm,
+                                                                   JSHandle<AOTLiteralInfo> methodLiteralInfo)
     {
         ObjectFactory *factory = vm->GetFactory();
         JSHandle<AOTLiteralInfo> SAOTLiteralInfo = factory->NewSAOTLiteralInfo(1);

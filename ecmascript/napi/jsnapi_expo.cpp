@@ -2315,9 +2315,9 @@ JSHandle<JSHClass> CreateInlinedSendableHClass(JSThread *thread,
         layout->AddKey(thread, i, key.GetTaggedValue(), attr);
     }
     hclass = isProtoClass ? factory->NewSEcmaHClass(ecmascript::JSSharedObject::SIZE,
-                                                   ecmascript::JSType::JS_SHARED_OBJECT, length)
+                                                    ecmascript::JSType::JS_SHARED_OBJECT, length)
                           : factory->NewSEcmaHClass(ecmascript::JSSharedFunction::SIZE,
-                                                   ecmascript::JSType::JS_SHARED_FUNCTION, length);
+                                                    ecmascript::JSType::JS_SHARED_FUNCTION, length);
     hclass->SetLayout(thread, layout);
     hclass->SetNumberOfProps(length);
 

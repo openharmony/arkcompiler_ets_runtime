@@ -171,7 +171,7 @@ public:
         JSHandle<JSTaggedValue> objValue = deserializer.ReadValue();
         ecmaVm->CollectGarbage(TriggerGCType::YOUNG_GC);
         ecmaVm->CollectGarbage(TriggerGCType::OLD_GC);
-        
+
         JSHandle<JSObject> retObj = JSHandle<JSObject>::Cast(objValue);
         EXPECT_FALSE(retObj.IsEmpty());
 
@@ -664,7 +664,7 @@ public:
         JSHandle<JSTaggedValue> res = deserializer.ReadValue();
         EXPECT_FALSE(res.IsEmpty());
         EXPECT_TRUE(res->IsJSSharedObject()) << "[NotJSSharedObject] Deserialize SharedObject fail";
-        
+
         JSHandle<JSObject> sObj = JSHandle<JSObject>::Cast(res);
         JSHandle<TaggedArray> array = JSObject::GetOwnPropertyKeys(thread, sObj);
         uint32_t length = array->GetLength();
@@ -1876,7 +1876,6 @@ JSHandle<JSObject> CreateEmptySObject(JSThread *thread)
     JSHandle<JSHClass> hclass = factory->NewSEcmaHClass(JSSharedObject::SIZE, 0, JSType::JS_SHARED_OBJECT, nullHandle,
                                                         JSHandle<JSTaggedValue>(emptyLayout));
     return factory->NewSharedOldSpaceJSObject(hclass);
-
 }
 
 JSHandle<JSObject> CreateSObject(JSThread *thread)
@@ -1904,9 +1903,8 @@ JSHandle<JSObject> CreateSObject(JSThread *thread)
         layout->AddKey(thread, index++, key2.GetTaggedValue(), attributes);
     }
 
-    JSHandle<JSHClass> hclass =
-        factory->NewSEcmaHClass(JSSharedObject::SIZE, length, JSType::JS_SHARED_OBJECT, nullHandle,
-                                 JSHandle<JSTaggedValue>(layout));
+    JSHandle<JSHClass> hclass = factory->NewSEcmaHClass(JSSharedObject::SIZE, length, JSType::JS_SHARED_OBJECT,
+                                                        nullHandle, JSHandle<JSTaggedValue>(layout));
     JSHandle<JSObject> object = factory->NewSharedOldSpaceJSObject(hclass);
     uint32_t fieldIndex = 0;
     while (fieldIndex < length) {

@@ -52,7 +52,7 @@ HWTEST_F_L0(EcmaVMTest, CreateEcmaVMInTwoWays)
     options.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
     EcmaVM *ecmaVm1 = JSNApi::CreateJSVM(options);
 
-    std::thread t1([&](){
+    std::thread t1([&]() {
         JSRuntimeOptions options2;
         options2.SetEnableArkTools(false);
         options2.SetEnableForceGC(false);

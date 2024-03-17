@@ -22,7 +22,10 @@
 #include "ecmascript/mem/shared_heap/shared_concurrent_sweeper.h"
 
 namespace panda::ecmascript {
-SharedSparseSpace::SharedSparseSpace(SharedHeap *heap, MemSpaceType type, size_t initialCapacity, size_t maximumCapacity)
+SharedSparseSpace::SharedSparseSpace(SharedHeap *heap,
+                                     MemSpaceType type,
+                                     size_t initialCapacity,
+                                     size_t maximumCapacity)
     : Space(heap, heap->GetHeapRegionAllocator(), type, initialCapacity, maximumCapacity),
       sweepState_(SweepState::NO_SWEEP),
       sHeap_(heap),
@@ -342,7 +345,10 @@ SharedOldSpace::SharedOldSpace(SharedHeap *heap, size_t initialCapacity, size_t 
 }
 
 SharedReadOnlySpace::SharedReadOnlySpace(SharedHeap *heap, size_t initialCapacity, size_t maximumCapacity)
-    : Space(heap, heap->GetHeapRegionAllocator(), MemSpaceType::SHARED_READ_ONLY_SPACE, initialCapacity, maximumCapacity) {}
+    : Space(
+          heap, heap->GetHeapRegionAllocator(), MemSpaceType::SHARED_READ_ONLY_SPACE, initialCapacity, maximumCapacity)
+{
+}
 
 bool SharedReadOnlySpace::Expand(JSThread *thread)
 {

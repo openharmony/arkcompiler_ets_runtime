@@ -723,20 +723,25 @@ public:
     JSHandle<JSFunction> NewSFunctionByHClass(const JSHandle<Method> &methodHandle,
                                               const JSHandle<JSHClass> &hclass);
     JSHandle<JSFunction> NewSFunctionByHClass(const void *func, const JSHandle<JSHClass> &hclass,
-        FunctionKind kind, 
+        FunctionKind kind,
         kungfu::BuiltinsStubCSigns::ID builtinId = kungfu::BuiltinsStubCSigns::INVALID,
         MemSpaceType spaceType = SHARED_OLD_SPACE);
 
-    JSHandle<JSFunction> NewSFunctionWithAccessor(const void *func, const JSHandle<JSHClass> &hclass,
-        FunctionKind kind, 
+    JSHandle<JSFunction> NewSFunctionWithAccessor(
+        const void *func,
+        const JSHandle<JSHClass> &hclass,
+        FunctionKind kind,
         kungfu::BuiltinsStubCSigns::ID builtinId = kungfu::BuiltinsStubCSigns::INVALID,
         MemSpaceType spaceType = SHARED_OLD_SPACE);
 
     JSHandle<Method> NewSMethod(const MethodLiteral *methodLiteral, MemSpaceType methodSpaceType = SHARED_OLD_SPACE);
 
-    JSHandle<Method> NewSMethod(const JSPandaFile *jsPandaFile, MethodLiteral *methodLiteral,
-                                JSHandle<ConstantPool> constpool,uint32_t entryIndex,
-                                bool needSetAotFlag, bool *canFastCall = nullptr);
+    JSHandle<Method> NewSMethod(const JSPandaFile *jsPandaFile,
+                                MethodLiteral *methodLiteral,
+                                JSHandle<ConstantPool> constpool,
+                                uint32_t entryIndex,
+                                bool needSetAotFlag,
+                                bool *canFastCall = nullptr);
 
     JSHandle<ConstantPool> NewSConstantPool(uint32_t capacity);
 
