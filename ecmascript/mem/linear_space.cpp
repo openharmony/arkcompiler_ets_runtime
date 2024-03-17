@@ -32,7 +32,7 @@ LinearSpace::LinearSpace(Heap *heap, MemSpaceType type, size_t initialCapacity, 
 
 uintptr_t LinearSpace::Allocate(size_t size, bool isPromoted)
 {
-    ASSERT(localHeap_->GetJSThread()->IsInRunningState());
+    ASSERT(localHeap_->GetJSThread()->IsInRunningStateOrProfiling());
     auto object = allocator_.Allocate(size);
     if (object != 0) {
 #ifdef ECMASCRIPT_SUPPORT_HEAPSAMPLING

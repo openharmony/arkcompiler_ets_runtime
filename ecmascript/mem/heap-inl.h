@@ -68,6 +68,14 @@ void SharedHeap::EnumerateOldSpaceRegionsWithRecord(const Callback &cb) const
 }
 
 template<class Callback>
+void SharedHeap::IterateOverObjects(const Callback &cb) const
+{
+    sOldSpace_->IterateOverObjects(cb);
+    sNonMovableSpace_->IterateOverObjects(cb);
+    sHugeObjectSpace_->IterateOverObjects(cb);
+}
+
+template<class Callback>
 void Heap::EnumerateOldSpaceRegions(const Callback &cb, Region *region) const
 {
     oldSpace_->EnumerateRegions(cb, region);

@@ -643,6 +643,12 @@ NodeType HeapSnapshot::GenerateNodeType(TaggedObject *entry)
 
 void HeapSnapshot::FillNodes(bool isInFinish)
 {
+    SharedHeap *sHeap = SharedHeap::GetInstance();
+    if (sHeap != nullptr) {
+        sHeap->IterateOverObjects([this, isInFinish](TaggedObject *obj) {
+            GenerateNode(JSTaggedValue(obj), 0, isInFinish);
+        });
+    }
     // Iterate Heap Object
     auto heap = vm_->GetHeap();
     if (heap != nullptr) {

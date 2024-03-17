@@ -282,7 +282,7 @@ bool EcmaVM::Initialize()
 
 EcmaVM::~EcmaVM()
 {
-    ASSERT(thread_->IsInRunningState());
+    ASSERT(thread_->IsInRunningStateOrProfiling());
     initialized_ = false;
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
     if (thread_->isProfiling_) {

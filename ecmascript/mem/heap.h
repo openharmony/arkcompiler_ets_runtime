@@ -430,6 +430,7 @@ public:
     }
 
     void CollectGarbage(JSThread *thread, TriggerGCType gcType, GCReason reason);
+    void CollectGarbageImpl(TriggerGCType gcType, GCReason reason);
 
     void SetMaxMarkTaskCount(uint32_t maxTaskCount)
     {
@@ -510,6 +511,9 @@ public:
 
     template<class Callback>
     void EnumerateOldSpaceRegionsWithRecord(const Callback &cb) const;
+
+    template<class Callback>
+    void IterateOverObjects(const Callback &cb) const;
 
     inline TaggedObject *AllocateClassClass(JSHClass *hclass, size_t size);
 
