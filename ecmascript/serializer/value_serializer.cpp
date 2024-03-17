@@ -140,7 +140,7 @@ void ValueSerializer::SerializeObjectImpl(TaggedObject *object, bool isWeak)
         return;
     }
     Region *region = Region::ObjectAddressToRange(object);
-    if (object->GetClass()->IsString() || region->InSharedReadOnlySpace() ||
+    if (object->GetClass()->IsString() || object->GetClass()->IsMethod() || region->InSharedReadOnlySpace() ||
         (serializeSharedEvent_ == 0 && region->InSharedHeap())) {
         SerializeSharedObject(object);
         return;
