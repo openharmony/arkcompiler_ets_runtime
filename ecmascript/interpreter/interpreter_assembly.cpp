@@ -7512,7 +7512,7 @@ void InterpreterAssembly::HandleCreatearraywithbufferImm8Id16(
     uint16_t imm = READ_INST_16_1();
     LOG_INST() << "intrinsics::createarraywithbuffer"
                << " imm:" << imm;
-    constpool = GetUnsharedConstpool(thread, sp);;
+    constpool = GetUnsharedConstpool(thread, sp);
     JSArray *result = JSArray::Cast(
         ConstantPool::GetLiteralFromCache<ConstPoolType::ARRAY_LITERAL>(
             thread, constpool, imm, GetModule(sp)).GetTaggedObject());

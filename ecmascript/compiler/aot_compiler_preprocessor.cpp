@@ -228,8 +228,9 @@ void AotCompilerPreprocessor::GenerateGlobalTypes(const CompilationOptions &cOpt
                                             JSTaggedValue unsharedCp = thread->GetCurrentEcmaContext()
                                                 ->FindUnsharedConstpool(constpoolHandle.GetTaggedValue());
                                             ASSERT(ConstantPool::CheckUnsharedConstpool(unsharedCp));
-                                            JSTaggedValue arr = ConstantPool::GetLiteralFromCache<ConstPoolType::ARRAY_LITERAL>(
-                                                thread, unsharedCp, cpIdx, recordName);
+                                            JSTaggedValue arr =
+                                                ConstantPool::GetLiteralFromCache<ConstPoolType::ARRAY_LITERAL>(
+                                                    thread, unsharedCp, cpIdx, recordName);
                                             JSHandle<JSArray> arrayHandle(thread, arr);
                                             panda_file::File::EntityId id =
                                                 ConstantPool::GetIdFromCache(constpoolHandle.GetTaggedValue(), cpIdx);

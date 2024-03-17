@@ -385,9 +385,9 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::LazyExecuteModule(
     if (isMergedAbc) {
         if (!jsPandaFile->HasRecord(recordName)) {
             CString msg = "cannot find record '" + recordName + "', in lazy load abc: " + filename;
-            THROW_REFERENCE_ERROR_AND_RETURN(thread, msg.c_str(), Unexpected(false));   
+            THROW_REFERENCE_ERROR_AND_RETURN(thread, msg.c_str(), Unexpected(false));
         }
-        // [[TODO::DaiHN]]check is es module
+        // [[todo::DaiHN]]check is es module
     }
 
     [[maybe_unused]] EcmaHandleScope scope(thread);

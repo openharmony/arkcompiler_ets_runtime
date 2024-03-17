@@ -157,7 +157,7 @@ void VerifyObjectVisitor::VerifyObjectSlotLegal(ObjectSlot slot, TaggedObject *o
             case VerifyKind::VERIFY_EVACUATE_FULL:
                 VerifyEvacuateFull(object, slot, value.GetTaggedObject());
                 break;
-            case VerifyKind:: VERIFY_SHARED_RSET_POST_FULL_GC:
+            case VerifyKind::VERIFY_SHARED_RSET_POST_FULL_GC:
                 VerifySharedRSetPostFullGC(object, slot, value.GetTaggedObject());
                 break;
             case VerifyKind::VERIFY_PRE_SHARED_GC:
@@ -300,7 +300,6 @@ void VerifyObjectVisitor::VerifySharedRSetPostFullGC(TaggedObject *object, Objec
                 "but SharedHeap object.", object, slot, value);
         }
     }
-
 }
 
 void VerifyObjectVisitor::operator()(TaggedObject *obj, JSTaggedValue value)

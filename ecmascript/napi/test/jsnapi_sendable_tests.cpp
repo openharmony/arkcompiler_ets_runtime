@@ -43,6 +43,7 @@ class JSNApiTests : public testing::Test {
         ASSERT_TRUE(vm_ != nullptr) << "Cannot create Runtime";
         thread_ = vm_->GetJSThread();
         vm_->SetEnableForceGC(true);
+        thread_->ManagedCodeBegin();
         staticKey = StringRef::NewFromUtf8(vm_, "static");
         nonStaticKey = StringRef::NewFromUtf8(vm_, "nonStatic");
         instanceKey = StringRef::NewFromUtf8(vm_, "instance");
@@ -52,6 +53,7 @@ class JSNApiTests : public testing::Test {
 
     void TearDown() override
     {
+        thread_->ManagedCodeEnd();
         vm_->SetEnableForceGC(false);
         JSNApi::DestroyJSVM(vm_);
     }

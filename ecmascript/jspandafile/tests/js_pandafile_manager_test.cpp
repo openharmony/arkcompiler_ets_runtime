@@ -158,7 +158,7 @@ HWTEST_F_L0(JSPandaFileManagerTest, MultiEcmaVM_Add_Find_Remove_JSPandaFile)
     instance->GetJSThread()->GetCurrentEcmaContext()->AddConstpool(pf1.get(), constpool1.GetTaggedValue(), 0);
     instance->GetJSThread()->GetCurrentEcmaContext()->AddConstpool(pf2.get(), constpool2.GetTaggedValue(), 0);
 
-    std::thread t1([&](){
+    std::thread t1([&]() {
         EcmaVM *instance1;
         EcmaHandleScope *scope1;
         JSThread *thread1;

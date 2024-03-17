@@ -55,8 +55,8 @@ void JSHClass::AddTransitions(const JSThread *thread, const JSHandle<JSHClass> &
     }
     auto metaData = JSHandle<JSTaggedValue>(thread, JSTaggedValue(attributes.GetPropertyMetaData()));
     dict.Update(transitions);
-    transitions =
-        TransitionsDictionary::PutIfAbsent(thread, dict, key, JSHandle<JSTaggedValue>(child), metaData).GetTaggedValue();
+    transitions = TransitionsDictionary::PutIfAbsent(thread, dict, key, JSHandle<JSTaggedValue>(child), metaData)
+                      .GetTaggedValue();
     parent->SetTransitions(thread, transitions);
 }
 

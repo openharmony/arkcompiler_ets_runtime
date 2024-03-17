@@ -936,6 +936,49 @@ void JSFunction::SetFunctionExtraInfo(JSThread *thread, void *nativeFunc,
     }
 }
 
+void JSFunction::SetSFunctionExtraInfo(
+    JSThread *thread, void *nativeFunc, const DeleteEntryPoint &deleter, void *data, size_t nativeBindingsize)
+{
+    JSTaggedType hashField = Barriers::GetValue<JSTaggedType>(this, HASH_OFFSET);
+    EcmaVM *vm = thread->GetEcmaVM();
+    JSHandle<JSTaggedValue> value(thread, JSTaggedValue(hashField));
+    JSHandle<ECMAObject> obj(thread, this);
+    JSHandle<JSNativePointer> pointer =
+        vm->GetFactory()->NewSJSNativePointer(nativeFunc, deleter, data, false, nativeBindingsize);
+    if (!obj->HasHash()) {
+        Barriers::SetObject<true>(thread, *obj, HASH_OFFSET, pointer.GetTaggedValue().GetRawData());
+        return;
+    }
+    if (value->IsHeapObject()) {
+        if (value->IsJSNativePointer()) {
+            Barriers::SetObject<true>(thread, *obj, HASH_OFFSET, pointer.GetTaggedValue().GetRawData());
+            return;
+        }
+        JSHandle<TaggedArray> array(value);
+
+        uint32_t nativeFieldCount = array->GetExtraLength();
+        if (array->GetLength() >= nativeFieldCount + RESOLVED_MAX_SIZE) {
+            array->Set(thread, nativeFieldCount + FUNCTION_EXTRA_INDEX, pointer);
+        } else {
+            JSHandle<TaggedArray> newArray =
+                vm->GetFactory()->NewSTaggedArrayWithoutInit(nativeFieldCount + RESOLVED_MAX_SIZE);
+            newArray->SetExtraLength(nativeFieldCount);
+            for (uint32_t i = 0; i < nativeFieldCount; i++) {
+                newArray->Set(thread, i, array->Get(i));
+            }
+            newArray->Set(thread, nativeFieldCount + HASH_INDEX, array->Get(nativeFieldCount + HASH_INDEX));
+            newArray->Set(thread, nativeFieldCount + FUNCTION_EXTRA_INDEX, pointer);
+            Barriers::SetObject<true>(thread, *obj, HASH_OFFSET, newArray.GetTaggedValue().GetRawData());
+        }
+    } else {
+        JSHandle<TaggedArray> newArray = vm->GetFactory()->NewSTaggedArrayWithoutInit(RESOLVED_MAX_SIZE);
+        newArray->SetExtraLength(0);
+        newArray->Set(thread, HASH_INDEX, value);
+        newArray->Set(thread, FUNCTION_EXTRA_INDEX, pointer);
+        Barriers::SetObject<true>(thread, *obj, HASH_OFFSET, newArray.GetTaggedValue().GetRawData());
+    }
+}
+
 JSTaggedValue JSFunction::GetFunctionExtraInfo() const
 {
     JSTaggedType hashField = Barriers::GetValue<JSTaggedType>(this, HASH_OFFSET);

@@ -841,7 +841,7 @@ void MCRLowering::HeapAllocateInSOld(GateRef gate)
 {
     GateRef size = acc_.GetValueIn(gate, 0);
     GateRef ret = builder_.CallRuntime(glue_, RTSTUB_ID(AllocateInSOld), Gate::InvalidGateRef,
-                                        {builder_.ToTaggedInt(size)}, gate);
+                                       {builder_.ToTaggedInt(size)}, gate);
 
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), ret);
 }

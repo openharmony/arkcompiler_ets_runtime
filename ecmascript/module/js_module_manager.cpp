@@ -68,7 +68,7 @@ JSHandle<JSTaggedValue> ModuleManager::GenerateFuncModule(const JSPandaFile *jsP
         if (classKind == ClassKind::NON_SENDABLE) {
             return module;
         } else {
-            // [[TODO::DaiHN]] Sendable class defined in Shared Module would set Shared Module directly.
+            // [[todo::DaiHN]] Sendable class defined in Shared Module would set Shared Module directly.
             // Clone isolate module at shared-heap to mark sendable class.
             return SendableClassModule::GenerateSendableFuncModule(vm_->GetJSThread(), module);
         }
@@ -78,7 +78,7 @@ JSHandle<JSTaggedValue> ModuleManager::GenerateFuncModule(const JSPandaFile *jsP
 
 JSHandle<JSTaggedValue> ModuleManager::GenerateSendableFuncModule(const JSHandle<JSTaggedValue> &module)
 {
-    // [[TODO::DaiHN]] Sendable class defined in Shared Module would set Shared Module directly.
+    // [[todo::DaiHN]] Sendable class defined in Shared Module would set Shared Module directly.
     // Clone isolate module at shared-heap to mark sendable class.
     return SendableClassModule::GenerateSendableFuncModule(vm_->GetJSThread(), module);
 }

@@ -355,7 +355,8 @@ public:
     bool InSharedSweepableSpace() const
     {
         auto flag = packedData_.flags_.spaceFlag_;
-        return flag >= RegionSpaceFlag::SHARED_SWEEPABLE_SPACE_BEGIN && flag <= RegionSpaceFlag::SHARED_SWEEPABLE_SPACE_END;
+        return flag >= RegionSpaceFlag::SHARED_SWEEPABLE_SPACE_BEGIN &&
+               flag <= RegionSpaceFlag::SHARED_SWEEPABLE_SPACE_END;
     }
 
     bool InSharedHeap() const

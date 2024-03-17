@@ -328,6 +328,7 @@ JSHandle<MutantTaggedArray> ObjectFactory::NewSEmptyMutantArray()
 }
 
 JSHandle<JSNativePointer> ObjectFactory::NewSJSNativePointer(void *externalPointer,
+                                                             const DeleteEntryPoint &callBack,
                                                              void *data,
                                                              bool nonMovable,
                                                              size_t nativeBindingsize,
@@ -343,10 +344,18 @@ JSHandle<JSNativePointer> ObjectFactory::NewSJSNativePointer(void *externalPoint
     }
     JSHandle<JSNativePointer> obj(thread_, header);
     obj->SetExternalPointer(externalPointer);
-    obj->SetDeleter(nullptr);
+    obj->SetDeleter(callBack);
     obj->SetData(data);
     obj->SetBindingSize(nativeBindingsize);
     obj->SetNativeFlag(flag);
+
+    if (callBack != nullptr) {
+        // heap_->IncreaseNativeBindingSize(nativeBindingsize);
+        vm_->PushToNativePointerList(static_cast<JSNativePointer *>(header));
+        // In some cases, the size of JS/TS object is too small and the native binding size is too large.
+        // Check and try trigger concurrent mark here.
+        // heap_->TryTriggerFullMarkByNativeSize();
+    }
     return obj;
 }
 
@@ -359,11 +368,11 @@ JSHandle<AccessorData> ObjectFactory::NewSInternalAccessor(void *setter, void *g
     obj->SetGetter(thread_, JSTaggedValue::Undefined());
     obj->SetSetter(thread_, JSTaggedValue::Undefined());
     if (setter != nullptr) {
-        JSHandle<JSNativePointer> setFunc = NewSJSNativePointer(setter, nullptr, true);
+        JSHandle<JSNativePointer> setFunc = NewSJSNativePointer(setter, nullptr, nullptr, true);
         obj->SetSetter(thread_, setFunc.GetTaggedValue());
     }
     if (getter != nullptr) {
-        JSHandle<JSNativePointer> getFunc = NewSJSNativePointer(getter, nullptr, true);
+        JSHandle<JSNativePointer> getFunc = NewSJSNativePointer(getter, nullptr, nullptr, true);
         obj->SetGetter(thread_, getFunc);
     }
     return obj;

@@ -81,7 +81,7 @@ public:
         // serialize in earlier version tag
         snapshotSerialize.Serialize(*array1, nullptr, fileName);
 
-        std::thread t1([&](){
+        std::thread t1([&]() {
             JSRuntimeOptions options;
             EcmaVM *ecmaVm2 = JSNApi::CreateEcmaVM(options);
             // deserialize with last version tag
@@ -89,7 +89,8 @@ public:
             snapshotDeserialize.SetLastVersion(deserializeVersion);
             EXPECT_EQ(snapshotDeserialize.Deserialize(SnapshotType::VM_ROOT, fileName), expected);
 
-            ASSERT_EQ(const_cast<Heap *>(ecmaVm2->GetHeap())->GetHugeObjectSpace()->GetFirstRegion() != nullptr, expected);
+            ASSERT_EQ(const_cast<Heap *>(ecmaVm2->GetHeap())->GetHugeObjectSpace()->GetFirstRegion() != nullptr,
+                      expected);
             JSNApi::DestroyJSVM(ecmaVm2);
         });
         t1.join();
@@ -248,7 +249,7 @@ HWTEST_F_L0(SnapshotTest, SerializeBuiltins)
     CString fileName = "builtins.snapshot";
     std::remove(fileName.c_str());
     // generate builtins.snapshot file
-    std::thread t1([](){
+    std::thread t1([]() {
         JSRuntimeOptions options1;
         options1.SetArkProperties(ArkProperties::ENABLE_SNAPSHOT_SERIALIZE);
         EcmaVM *ecmaVm1 = JSNApi::CreateEcmaVM(options1);
@@ -257,7 +258,7 @@ HWTEST_F_L0(SnapshotTest, SerializeBuiltins)
     t1.join();
 
     // create EcmaVM use builtins deserialzie
-    std::thread t2([&](){
+    std::thread t2([&]() {
         JSRuntimeOptions options2;
         options2.SetArkProperties(ArkProperties::ENABLE_SNAPSHOT_DESERIALIZE);
         EcmaVM *ecmaVm2 = JSNApi::CreateEcmaVM(options2);

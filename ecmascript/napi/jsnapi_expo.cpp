@@ -2208,7 +2208,7 @@ Local<FunctionRef> FunctionRef::NewSendable(EcmaVM *vm,
     ObjectFactory *factory = vm->GetFactory();
     JSHandle<GlobalEnv> env = vm->GetGlobalEnv();
     JSHandle<JSFunction> current(factory->NewSFunction(env, reinterpret_cast<void *>(nativeFunc)));
-    current->SetFunctionExtraInfo(thread, nullptr, deleter, data, nativeBindingsize);
+    current->SetSFunctionExtraInfo(thread, nullptr, deleter, data, nativeBindingsize);
     current->SetCallNapi(callNapi);
     return JSNApiHelper::ToLocal<FunctionRef>(JSHandle<JSTaggedValue>(current));
 }
@@ -2303,8 +2303,7 @@ JSHandle<JSHClass> CreateInlinedSendableHClass(JSThread *thread,
     JSHandle<JSHClass> hclass;
     uint32_t length = info.keys->Length(vm);
     JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
-    JSHandle<ecmascript::LayoutInfo> layout =
-        factory->CreateLayoutInfo(length, ecmascript::MemSpaceType::OLD_SPACE, ecmascript::GrowMode::KEEP);
+    JSHandle<ecmascript::LayoutInfo> layout = factory->CreateSLayoutInfo(length);
 
     for (uint32_t i = 0; i < length; ++i) {
         key.Update(JSNApiHelper::ToJSHandle(info.keys->Get(vm, i)));
@@ -2322,9 +2321,9 @@ JSHandle<JSHClass> CreateInlinedSendableHClass(JSThread *thread,
         layout->AddKey(thread, i, key.GetTaggedValue(), attr);
     }
     hclass = isProtoClass ? factory->NewSEcmaHClass(ecmascript::JSSharedObject::SIZE,
-                                                   ecmascript::JSType::JS_SHARED_OBJECT, length)
+                                                    ecmascript::JSType::JS_SHARED_OBJECT, length)
                           : factory->NewSEcmaHClass(ecmascript::JSSharedFunction::SIZE,
-                                                   ecmascript::JSType::JS_SHARED_FUNCTION, length);
+                                                    ecmascript::JSType::JS_SHARED_FUNCTION, length);
     hclass->SetLayout(thread, layout);
     hclass->SetNumberOfProps(length);
 
@@ -2341,7 +2340,8 @@ JSHandle<JSHClass> CreateDictSendableHClass(JSThread *thread,
     uint32_t length = info.keys->Length(vm);
     JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
     JSMutableHandle<ecmascript::NameDictionary> dict(
-        thread, ecmascript::NameDictionary::Create(thread, ecmascript::NameDictionary::ComputeHashTableSize(length)));
+        thread, ecmascript::NameDictionary::CreateInSharedHeap(
+                    thread, ecmascript::NameDictionary::ComputeHashTableSize(length)));
     auto globalConst = const_cast<GlobalEnvConstants *>(thread->GlobalConstants());
     JSHandle<JSTaggedValue> value = globalConst->GetHandledUndefined();
 
@@ -2408,8 +2408,8 @@ void SetInlinedAndDictProps(JSThread *thread,
         }
     } else {
         JSMutableHandle<ecmascript::NameDictionary> dict(
-            thread,
-            ecmascript::NameDictionary::Create(thread, ecmascript::NameDictionary::ComputeHashTableSize(length)));
+            thread, ecmascript::NameDictionary::CreateInSharedHeap(
+                        thread, ecmascript::NameDictionary::ComputeHashTableSize(length)));
         for (uint32_t i = 0; i < length; i++) {
             ecmascript::PropertyAttributes attr = ecmascript::PropertyAttributes::Default(
                 info.attributes[i].IsWritable(), info.attributes[i].IsEnumerable(),
@@ -2470,9 +2470,9 @@ Local<FunctionRef> FunctionRef::NewSendableClassFunction(const EcmaVM *vm,
     constructor->SetProtoOrHClass(thread, prototype);
     constructor->SetLexicalEnv(thread, constructor);
     constructor->SetCallNapi(callNapi);
-    constructor->SetFunctionExtraInfo(thread, nullptr, deleter, data, nativeBindingSize);
+    constructor->SetSFunctionExtraInfo(thread, nullptr, deleter, data, nativeBindingSize);
 
-    JSHandle<JSHClass> iHClass = CreateSendableHClass(thread, instancePropertiesInfo, false);
+    JSHandle<JSHClass> iHClass = CreateSendableHClass(thread, instancePropertiesInfo, true);
     iHClass->SetPrototype(thread, JSHandle<JSTaggedValue>(prototype));
     iHClass->SetExtensible(false);
     constructor->SetProtoOrHClass(thread, iHClass);

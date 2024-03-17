@@ -1299,7 +1299,7 @@ HWTEST_F_L0(JSNApiTests, ClassFunction)
     JSTaggedValue accessor =
         JSHandle<JSFunction>(clsObj)->GetPropertyInlinedProps(JSFunction::CLASS_PROTOTYPE_INLINE_PROPERTY_INDEX);
     ASSERT_TRUE(accessor.IsInternalAccessor());
-    
+
     accessor = JSHandle<JSFunction>(clsObj)->GetPropertyInlinedProps(JSFunction::LENGTH_INLINE_PROPERTY_INDEX);
     ASSERT_TRUE(!accessor.IsUndefinedOrNull());
 }
@@ -1380,7 +1380,7 @@ HWTEST_F_L0(JSNApiTests, TriggerGC_OLD_GC)
  */
 HWTEST_F_L0(JSNApiTests, addWorker_DeleteWorker)
 {
-    std::thread t1([&](){
+    std::thread t1([&]() {
         JSRuntimeOptions option;
         EcmaVM *workerVm = JSNApi::CreateEcmaVM(option);
         JSNApi::AddWorker(vm_, workerVm);

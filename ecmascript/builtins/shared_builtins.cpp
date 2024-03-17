@@ -337,7 +337,7 @@ void Builtins::SharedStrictModeForbiddenAccessCallerArguments(const JSHandle<Glo
             FunctionKind::NORMAL_FUNCTION);
     // "caller"
     SetSAccessor(prototype, index++, JSHandle<JSTaggedValue>(func), JSHandle<JSTaggedValue>(func));
-    // "arguments";
+    // "arguments"
     SetSAccessor(prototype, index++, JSHandle<JSTaggedValue>(func), JSHandle<JSTaggedValue>(func));
 }
 }  // namespace panda::ecmascript

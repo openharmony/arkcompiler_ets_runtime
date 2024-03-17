@@ -135,7 +135,8 @@ EcmaString *EcmaStringTable::GetOrInternString(EcmaVM *vm, const uint8_t *utf8Da
         return result.first;
     }
 
-    EcmaString *str = EcmaStringAccessor::CreateFromUtf8(vm, utf8Data, utf8Len, canBeCompress, MemSpaceType::SHARED_OLD_SPACE);
+    EcmaString *str =
+        EcmaStringAccessor::CreateFromUtf8(vm, utf8Data, utf8Len, canBeCompress, MemSpaceType::SHARED_OLD_SPACE);
     str->SetMixHashcode(result.second);
     InternStringThreadUnsafe(str);
     return str;
@@ -183,7 +184,8 @@ EcmaString *EcmaStringTable::GetOrInternString(EcmaVM *vm, const uint16_t *utf16
         return result.first;
     }
 
-    EcmaString *str = EcmaStringAccessor::CreateFromUtf16(vm, utf16Data, utf16Len, canBeCompress, MemSpaceType::SHARED_OLD_SPACE);
+    EcmaString *str =
+        EcmaStringAccessor::CreateFromUtf16(vm, utf16Data, utf16Len, canBeCompress, MemSpaceType::SHARED_OLD_SPACE);
     str->SetMixHashcode(result.second);
     InternStringThreadUnsafe(str);
     return str;
@@ -292,7 +294,7 @@ void EcmaStringTable::SweepWeakReference(const WeakRootVisitor &visitor)
         // Strings in string table should not be in the young space. Only old gc will sweep string table.
         auto *object = it->second;
         auto fwd = visitor(object);
-        // TODO(hzzhouzebin) wait for shared-gc
+        // todo(hzzhouzebin) wait for shared-gc
         ASSERT(!Region::ObjectAddressToRange(object)->InYoungSpace());
         if (fwd == nullptr) {
             LOG_ECMA(VERBOSE) << "StringTable: delete string " << std::hex << object;

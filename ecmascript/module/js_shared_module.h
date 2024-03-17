@@ -19,7 +19,7 @@
 #include "ecmascript/module/js_module_source_text.h"
 
 namespace panda::ecmascript {
-class SendableClassModule{
+class SendableClassModule {
 public:
     static JSHandle<JSTaggedValue> GenerateSendableFuncModule(JSThread *thread, const JSHandle<JSTaggedValue> &module);
 

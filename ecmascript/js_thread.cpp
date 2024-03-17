@@ -401,8 +401,7 @@ void JSThread::IterateWeakEcmaGlobalStorage(const WeakRootVisitor &visitor, bool
                 DisposeGlobalHandle(ToUintPtr(node));
             } else if (isSharedGC) {
                 // For shared GC, free global should defer execute in its own thread
-                weakNodeFreeGlobalCallbacks_.push_back(std::make_pair(freeGlobalCallBack,
-                                                       node->GetReference()));
+                weakNodeFreeGlobalCallbacks_.push_back(std::make_pair(freeGlobalCallBack, node->GetReference()));
             } else {
                 node->CallFreeGlobalCallback();
             }

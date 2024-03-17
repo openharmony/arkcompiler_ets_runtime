@@ -175,7 +175,7 @@ void ParallelEvacuator::EvacuateRegion(TlabAllocator *allocator, Region *region,
         if (actualPromoted) {
             SetObjectFieldRSet(reinterpret_cast<TaggedObject *>(address), klass);
         }
-        if(region->HasLocalToShareRememberedSet()) {
+        if (region->HasLocalToShareRememberedSet()) {
             UpdateLocalToShareRSet(reinterpret_cast<TaggedObject *>(address), klass);
         }
     });

@@ -117,7 +117,7 @@ void GlobalEnvConstants::InitSharedRootsClasses(ObjectFactory *factory)
     SetConstant(ConstantIndex::ARRAY_CLASS_INDEX,
         factory->NewSEcmaReadOnlyHClass(hClass, 0, JSType::TAGGED_ARRAY));
     SetConstant(ConstantIndex::FREE_OBJECT_WITH_NONE_FIELD_CLASS_INDEX,
-        factory->NewSEcmaReadOnlyHClass(hClass, FreeObject::NEXT_OFFSET,JSType::FREE_OBJECT_WITH_NONE_FIELD));
+                factory->NewSEcmaReadOnlyHClass(hClass, FreeObject::NEXT_OFFSET, JSType::FREE_OBJECT_WITH_NONE_FIELD));
     SetConstant(ConstantIndex::FREE_OBJECT_WITH_ONE_FIELD_CLASS_INDEX,
         factory->NewSEcmaReadOnlyHClass(hClass, FreeObject::SIZE_OFFSET, JSType::FREE_OBJECT_WITH_ONE_FIELD));
     SetConstant(ConstantIndex::FREE_OBJECT_WITH_TWO_FIELD_CLASS_INDEX,
@@ -279,7 +279,7 @@ void GlobalEnvConstants::InitSharedMiscellanious(JSThread *thread, ObjectFactory
     SetConstant(ConstantIndex::FALSE_INDEX, JSTaggedValue::False());
     // Emptys
     auto vm = thread->GetEcmaVM();
-    SetConstant(ConstantIndex::EMPTY_STRING_OBJECT_INDEX, JSTaggedValue(EcmaStringAccessor::CreateEmptyString(vm)));    
+    SetConstant(ConstantIndex::EMPTY_STRING_OBJECT_INDEX, JSTaggedValue(EcmaStringAccessor::CreateEmptyString(vm)));
     SetConstant(ConstantIndex::SINGLE_CHAR_TABLE_INDEX, SingleCharTable::CreateSingleCharTable(thread));
     SetConstant(ConstantIndex::EMPTY_ARRAY_OBJECT_INDEX, factory->NewSEmptyArray());
     SetConstant(ConstantIndex::EMPTY_MUTANT_ARRAY_OBJECT_INDEX, factory->NewSEmptyMutantArray());
