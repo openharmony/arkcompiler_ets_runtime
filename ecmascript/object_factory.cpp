@@ -1585,6 +1585,18 @@ JSHandle<JSFunction> ObjectFactory::NewJSFunction(const JSHandle<GlobalEnv> &env
     return NewJSFunctionByHClass(method, hclass);
 }
 
+JSHandle<JSFunction> ObjectFactory::NewSFunction(const JSHandle<GlobalEnv> &env,
+                                                 const void *nativeFunc,
+                                                 FunctionKind kind,
+                                                 kungfu::BuiltinsStubCSigns::ID builtinId,
+                                                 MemSpaceType spaceType)
+{
+    JSHandle<Method> method = NewSMethodForNativeFunction(nativeFunc, kind, builtinId, spaceType);
+    JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(env->GetSFunctionClassWithoutProto());
+    JSHandle<JSFunction> sfunc = NewSFunctionByHClass(method, hclass);
+    return sfunc;
+}
+
 JSHandle<JSHClass> ObjectFactory::CreateFunctionClass(FunctionKind kind, uint32_t size, JSType type,
                                                       const JSHandle<JSTaggedValue> &prototype)
 {
@@ -1878,7 +1890,7 @@ JSHandle<JSBoundFunction> ObjectFactory::NewJSBoundFunction(const JSHandle<JSTag
     bundleFunction->SetBoundTarget(thread_, target);
     bundleFunction->SetBoundThis(thread_, boundThis);
     bundleFunction->SetBoundArguments(thread_, args);
-    
+
     if (target.GetTaggedValue().IsConstructor()) {
         bundleFunction->SetConstructor(true);
     }
