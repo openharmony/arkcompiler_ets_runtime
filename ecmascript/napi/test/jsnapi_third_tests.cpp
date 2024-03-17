@@ -606,8 +606,10 @@ HWTEST_F_L0(JSNApiTests, SynchronizVMInfo)
     std::thread t1([&]() {
         JSRuntimeOptions option;
         EcmaVM *hostVM = JSNApi::CreateEcmaVM(option);
-        LocalScope scope2(hostVM);
-        JSNApi::SynchronizVMInfo(vm_, hostVM);
+        {
+            LocalScope scope2(hostVM);
+            JSNApi::SynchronizVMInfo(vm_, hostVM);
+        }
         JSNApi::DestroyJSVM(hostVM);
     });
     t1.join();
