@@ -198,11 +198,10 @@ void CreateJSPandaFileAndConstpool(EcmaVM *vm)
     [[maybe_unused]] EcmaHandleScope handleScope(vm->GetJSThread());
     JSHandle<ConstantPool> constpool = vm->GetFactory()->NewSConstantPool(1);
     auto context = vm->GetJSThread()->GetCurrentEcmaContext();
-    auto unsharedConstpoolIndex = context->GetUnsharedConstpoolCount();
+    auto unsharedConstpoolIndex = context->GetAndIncreaseUnsharedConstpoolCount();
     JSHandle<ConstantPool> newConstpool = vm->GetFactory()->NewConstantPool(1);
     constpool->SetUnsharedConstpoolIndex(JSTaggedValue(unsharedConstpoolIndex));
     context->SetUnsharedConstpool(unsharedConstpoolIndex, newConstpool.GetTaggedValue());
-    context->IncreaseUnsharedConstpoolCount();
     context->AddConstpool(pf.get(), constpool.GetTaggedValue(), 0);
 }
 
