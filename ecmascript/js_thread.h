@@ -1129,6 +1129,8 @@ public:
         return GetState() == ThreadState::RUNNING;
     }
 
+    bool IsInRunningStateOrProfiling() const;
+
     ThreadState GetState() const
     {
         uint32_t stateAndFlags = stateAndFlags_.asAtomicInt.load(std::memory_order_acquire);

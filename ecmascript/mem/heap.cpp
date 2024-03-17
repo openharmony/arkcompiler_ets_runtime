@@ -148,23 +148,28 @@ void SharedHeap::CollectGarbage(JSThread *thread, [[maybe_unused]]TriggerGCType 
     gcType_ = gcType;
     {
         SuspendAllScope scope(thread);
-        Prepare();
-        GetEcmaGCStats()->RecordStatisticBeforeGC(gcType, reason);
-        if (UNLIKELY(ShouldVerifyHeap())) {
-            // pre gc heap verify
-            LOG_ECMA(DEBUG) << "pre gc shared heap verify";
-            SharedHeapVerification(this, VerifyKind::VERIFY_PRE_SHARED_GC).VerifyAll();
-        }
-        sharedGC_->RunPhases();
-        if (UNLIKELY(ShouldVerifyHeap())) {
-            // pre gc heap verify
-            LOG_ECMA(DEBUG) << "after gc shared heap verify";
-            SharedHeapVerification(this, VerifyKind::VERIFY_POST_SHARED_GC).VerifyAll();
-        }
-        GetEcmaGCStats()->RecordStatisticAfterGC();
-        GetEcmaGCStats()->PrintGCStatistic();
+        CollectGarbageImpl(gcType, reason);
     }
     // Don't process weak node nativeFinalizeCallback here. These callbacks would be called after localGC.
+}
+
+void SharedHeap::CollectGarbageImpl(TriggerGCType gcType, GCReason reason)
+{
+    Prepare();
+    GetEcmaGCStats()->RecordStatisticBeforeGC(gcType, reason);
+    if (UNLIKELY(ShouldVerifyHeap())) {
+        // pre gc heap verify
+        LOG_ECMA(DEBUG) << "pre gc shared heap verify";
+        SharedHeapVerification(this, VerifyKind::VERIFY_PRE_SHARED_GC).VerifyAll();
+    }
+    sharedGC_->RunPhases();
+    if (UNLIKELY(ShouldVerifyHeap())) {
+        // pre gc heap verify
+        LOG_ECMA(DEBUG) << "after gc shared heap verify";
+        SharedHeapVerification(this, VerifyKind::VERIFY_POST_SHARED_GC).VerifyAll();
+    }
+    GetEcmaGCStats()->RecordStatisticAfterGC();
+    GetEcmaGCStats()->PrintGCStatistic();
 }
 
 void SharedHeap::Prepare()
@@ -561,7 +566,7 @@ TriggerGCType Heap::SelectGCType() const
 void Heap::CollectGarbage(TriggerGCType gcType, GCReason reason)
 {
     {
-        ASSERT(thread_->IsInRunningState());
+        ASSERT(thread_->IsInRunningStateOrProfiling());
         RecursionScope recurScope(this);
         if (thread_->IsCrossThreadExecutionEnable() || GetOnSerializeEvent() ||
             (InSensitiveStatus() && !ObjectExceedMaxHeapSize())) {

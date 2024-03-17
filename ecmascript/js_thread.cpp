@@ -249,6 +249,11 @@ bool JSThread::EnableGlobalPrimitiveLeakCheck() const
     return GetEcmaVM()->GetJSOptions().EnableGlobalPrimitiveLeakCheck();
 }
 
+bool JSThread::IsInRunningStateOrProfiling() const
+{
+    return IsInRunningState() || vm_->GetHeapProfile() != nullptr;
+}
+
 void JSThread::WriteToStackTraceFd(std::ostringstream &buffer) const
 {
     if (stackTraceFd_ < 0) {

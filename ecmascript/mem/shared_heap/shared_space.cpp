@@ -58,7 +58,7 @@ uintptr_t SharedSparseSpace::AllocateWithoutGC(size_t size)
 
 uintptr_t SharedSparseSpace::Allocate(JSThread *thread, size_t size, bool allowGC)
 {
-    ASSERT(thread->IsInRunningState());
+    ASSERT(thread->IsInRunningStateOrProfiling());
     uintptr_t object = TryAllocate(size);
     CHECK_SOBJECT_AND_INC_OBJ_SIZE(size);
     if (sweepState_ == SweepState::SWEEPING) {
@@ -81,7 +81,7 @@ uintptr_t SharedSparseSpace::Allocate(JSThread *thread, size_t size, bool allowG
 
 uintptr_t SharedSparseSpace::AllocateNoGCAndExpand([[maybe_unused]] JSThread *thread, size_t size)
 {
-    ASSERT(thread->IsInRunningState());
+    ASSERT(thread->IsInRunningStateOrProfiling());
     uintptr_t object = TryAllocate(size);
     CHECK_SOBJECT_AND_INC_OBJ_SIZE(size);
     if (sweepState_ == SweepState::SWEEPING) {
@@ -369,7 +369,7 @@ bool SharedReadOnlySpace::Expand(JSThread *thread)
 
 uintptr_t SharedReadOnlySpace::Allocate(JSThread *thread, size_t size)
 {
-    ASSERT(thread->IsInRunningState());
+    ASSERT(thread->IsInRunningStateOrProfiling());
     LockHolder holder(allocateLock_);
     auto object = allocator_.Allocate(size);
     if (object != 0) {
@@ -390,7 +390,7 @@ SharedHugeObjectSpace::SharedHugeObjectSpace(BaseHeap *heap, HeapRegionAllocator
 
 uintptr_t SharedHugeObjectSpace::Allocate(JSThread *thread, size_t objectSize)
 {
-    ASSERT(thread->IsInRunningState());
+    ASSERT(thread->IsInRunningStateOrProfiling());
     LockHolder lock(allocateLock_);
     // In HugeObject allocation, we have a revervation of 8 bytes for markBitSet in objectSize.
     // In case Region is not aligned by 16 bytes, HUGE_OBJECT_BITSET_SIZE is 8 bytes more.
