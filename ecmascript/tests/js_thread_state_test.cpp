@@ -41,7 +41,6 @@ public:
 
     void SetUp() override
     {
-        // InitializeLogger();
         TestHelper::CreateEcmaVMWithScope(instance, thread, scope);
     }
 
