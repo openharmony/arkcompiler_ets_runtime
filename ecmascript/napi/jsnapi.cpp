@@ -257,6 +257,7 @@ Local<JSValueRef> JSON::Stringify(const EcmaVM *vm, Local<JSValueRef> json)
 Local<StringRef> RegExpRef::GetOriginalSource(const EcmaVM *vm)
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
+    ecmascript::ThreadManagedScope managedScope(thread);
     JSHandle<JSRegExp> regExp(JSNApiHelper::ToJSHandle(this));
     LOG_IF_SPECIAL(regExp, FATAL);
     JSTaggedValue source = regExp->GetOriginalSource();
@@ -384,6 +385,7 @@ Local<JSValueRef> GeneratorObjectRef::GetGeneratorState(const EcmaVM *vm)
 Local<JSValueRef> GeneratorObjectRef::GetGeneratorFunction(const EcmaVM *vm)
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
+    ecmascript::ThreadManagedScope managedScope(thread);
     JSHandle<JSGeneratorObject> jsGenerator(JSNApiHelper::ToJSHandle(this));
     LOG_IF_SPECIAL(jsGenerator, FATAL);
     JSHandle<GeneratorContext> generatorContext(thread, jsGenerator->GetGeneratorContext());
@@ -394,6 +396,7 @@ Local<JSValueRef> GeneratorObjectRef::GetGeneratorFunction(const EcmaVM *vm)
 Local<JSValueRef> GeneratorObjectRef::GetGeneratorReceiver(const EcmaVM *vm)
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
+    ecmascript::ThreadManagedScope managedScope(thread);
     JSHandle<JSGeneratorObject> jsGenerator(JSNApiHelper::ToJSHandle(this));
     LOG_IF_SPECIAL(jsGenerator, FATAL);
     JSHandle<GeneratorContext> generatorContext(thread, jsGenerator->GetGeneratorContext());
@@ -404,6 +407,7 @@ Local<JSValueRef> GeneratorObjectRef::GetGeneratorReceiver(const EcmaVM *vm)
 Local<JSValueRef> CollatorRef::GetCompareFunction(const EcmaVM *vm)
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
+    ecmascript::ThreadManagedScope managedScope(thread);
 #ifdef ARK_SUPPORT_INTL
     JSHandle<JSCollator> jsCollator(JSNApiHelper::ToJSHandle(this));
     LOG_IF_SPECIAL(jsCollator, FATAL);
@@ -418,6 +422,7 @@ Local<JSValueRef> CollatorRef::GetCompareFunction(const EcmaVM *vm)
 Local<JSValueRef> DataTimeFormatRef::GetFormatFunction(const EcmaVM *vm)
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
+    ecmascript::ThreadManagedScope managedScope(thread);
 #ifdef ARK_SUPPORT_INTL
     JSHandle<JSDateTimeFormat> jsDateTimeFormat(JSNApiHelper::ToJSHandle(this));
     LOG_IF_SPECIAL(jsDateTimeFormat, FATAL);
@@ -432,6 +437,7 @@ Local<JSValueRef> DataTimeFormatRef::GetFormatFunction(const EcmaVM *vm)
 Local<JSValueRef> NumberFormatRef::GetFormatFunction(const EcmaVM *vm)
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
+    ecmascript::ThreadManagedScope managedScope(thread);
 #ifdef ARK_SUPPORT_INTL
     JSHandle<JSNumberFormat> jsNumberFormat(JSNApiHelper::ToJSHandle(this));
     LOG_IF_SPECIAL(jsNumberFormat, FATAL);

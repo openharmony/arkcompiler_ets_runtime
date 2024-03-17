@@ -94,6 +94,7 @@ public:
     }
     ~SuspendAllScope()
     {
+        ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "ResumeAll");
         Runtime::GetInstance()->ResumeAll(self_);
     }
 private:
