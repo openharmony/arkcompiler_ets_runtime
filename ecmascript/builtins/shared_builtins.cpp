@@ -144,7 +144,7 @@ void Builtins::InitializeSFunction(const JSHandle<GlobalEnv> &env,
     SetSFunction(env, sFuncPrototypeObj, thread_->GlobalConstants()->GetHandledToStringString(),
         Function::FunctionPrototypeToString, fieldIndex++, FunctionLength::ZERO);
     SetSFunction(env, sFuncPrototypeObj, "[Symbol.hasInstance]",
-        Function::FunctionPrototypeToString, fieldIndex++, FunctionLength::ZERO);
+        Function::FunctionPrototypeHasInstance, fieldIndex++, FunctionLength::ONE);
 }
 
 

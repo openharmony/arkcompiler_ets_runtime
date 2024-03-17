@@ -104,7 +104,7 @@
       panda::ecmascript::AnFileInfo::Save*;
       panda::ecmascript::Barriers::Update*;
       panda::ecmascript::BigInt::SameValue*;
-      panda::ecmascript::ClassHelper::MatchTrackType*;
+      panda::ecmascript::ClassHelper::MatchFieldType*;
       panda::ecmascript::ConvertToStdString*;
       panda::ecmascript::ConvertToString*;
       panda::ecmascript::Deoptimizier::ComputeShift*;

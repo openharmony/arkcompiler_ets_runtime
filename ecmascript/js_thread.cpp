@@ -204,6 +204,36 @@ const JSTaggedType *JSThread::GetCurrentInterpretedFrame() const
     return GetCurrentSPFrame();
 }
 
+void JSThread::InvokeWeakNodeFreeGlobalCallBack()
+{
+    while (!weakNodeFreeGlobalCallbacks_.empty()) {
+        auto callbackPair = weakNodeFreeGlobalCallbacks_.back();
+        weakNodeFreeGlobalCallbacks_.pop_back();
+        ASSERT(callbackPair.first != nullptr && callbackPair.second != nullptr);
+        auto callback = callbackPair.first;
+        (*callback)(callbackPair.second);
+    }
+}
+
+void JSThread::InvokeWeakNodeNativeFinalizeCallback()
+{
+    // the second callback may lead to another GC, if this, return directly;
+    if (runningNativeFinalizeCallbacks_) {
+        return;
+    }
+    runningNativeFinalizeCallbacks_ = true;
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "InvokeNativeFinalizeCallbacks num:"
+        + std::to_string(weakNodeNativeFinalizeCallbacks_->size()));
+    while (!weakNodeNativeFinalizeCallbacks_.empty()) {
+        auto callbackPair = weakNodeNativeFinalizeCallbacks_.back();
+        weakNodeNativeFinalizeCallbacks_.pop_back();
+        ASSERT(callbackPair.first != nullptr && callbackPair.second != nullptr);
+        auto callback = callbackPair.first;
+        (*callback)(callbackPair.second);
+    }
+    runningNativeFinalizeCallbacks_ = false;
+}
+
 bool JSThread::IsStartGlobalLeakCheck() const
 {
     return GetEcmaVM()->GetJSOptions().IsStartGlobalLeakCheck();
@@ -348,9 +378,9 @@ void JSThread::IterateHandleWithCheck(const RootVisitor &visitor, const RootRang
     }
 }
 
-void JSThread::IterateWeakEcmaGlobalStorage(const WeakRootVisitor &visitor)
+void JSThread::IterateWeakEcmaGlobalStorage(const WeakRootVisitor &visitor, bool isSharedGC)
 {
-    auto callBack = [this, visitor](WeakNode *node) {
+    auto callBack = [this, visitor, isSharedGC](WeakNode *node) {
         JSTaggedValue value(node->GetObject());
         if (!value.IsHeapObject()) {
             return;
@@ -365,8 +395,16 @@ void JSThread::IterateWeakEcmaGlobalStorage(const WeakRootVisitor &visitor)
                 weakNodeNativeFinalizeCallbacks_.push_back(std::make_pair(nativeFinalizeCallback,
                                                                           node->GetReference()));
             }
-            if (!node->CallFreeGlobalCallback()) {
+            auto freeGlobalCallBack = node->GetFreeGlobalCallback();
+            if (!freeGlobalCallBack) {
+                // If no callback, dispose global immediately
                 DisposeGlobalHandle(ToUintPtr(node));
+            } else if (isSharedGC) {
+                // For shared GC, free global should defer execute in its own thread
+                weakNodeFreeGlobalCallbacks_.push_back(std::make_pair(freeGlobalCallBack,
+                                                       node->GetReference()));
+            } else {
+                node->CallFreeGlobalCallback();
             }
         } else if (fwd != object) {
             // update
@@ -983,6 +1021,10 @@ void JSThread::TransferToRunning()
 {
     ASSERT(currentThread == this);
     StoreState(ThreadState::RUNNING, true);
+    // Invoke free weak global callback when thread switch to running
+    if (!weakNodeFreeGlobalCallbacks_.empty()) {
+        InvokeWeakNodeFreeGlobalCallBack();
+    }
 }
 
 void JSThread::StoreState(ThreadState newState, bool lockMutatorLock)
@@ -991,12 +1033,7 @@ void JSThread::StoreState(ThreadState newState, bool lockMutatorLock)
         ThreadStateAndFlags oldStateAndFlags;
         oldStateAndFlags.asInt = stateAndFlags_.asInt;
         if (lockMutatorLock && oldStateAndFlags.asStruct.flags != ThreadFlag::NO_FLAGS) {
-            // Someone requested smth from this thread. Go to safepoint
-            if (GetState() == ThreadState::RUNNING) {
-                CheckSafepoint();
-            } else {
-                WaitSuspension();
-            }
+            WaitSuspension();
             continue;
         }
         ThreadStateAndFlags newStateAndFlags;

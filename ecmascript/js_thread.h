@@ -230,11 +230,6 @@ public:
     void PUBLIC_API CheckJSTaggedType(JSTaggedType value) const;
     bool PUBLIC_API CpuProfilerCheckJSTaggedType(JSTaggedType value) const;
 
-    std::vector<std::pair<WeakClearCallback, void *>> *GetWeakNodeNativeFinalizeCallbacks()
-    {
-        return &weakNodeNativeFinalizeCallbacks_;
-    }
-
     void PUBLIC_API SetException(JSTaggedValue exception);
 
     JSTaggedValue GetException() const
@@ -372,7 +367,7 @@ public:
         return os::thread::GetCurrentThreadId();
     }
 
-    void IterateWeakEcmaGlobalStorage(const WeakRootVisitor &visitor);
+    void IterateWeakEcmaGlobalStorage(const WeakRootVisitor &visitor, bool isSharedGC = false);
 
     PUBLIC_API PropertiesCache *GetPropertiesCache() const;
 
@@ -796,6 +791,8 @@ public:
         glueData_.isDebugMode_ = false;
     }
 
+    void InvokeWeakNodeFreeGlobalCallBack();
+    void InvokeWeakNodeNativeFinalizeCallback();
     bool IsStartGlobalLeakCheck() const;
     bool EnableGlobalObjectLeakCheck() const;
     bool EnableGlobalPrimitiveLeakCheck() const;
@@ -1205,6 +1202,8 @@ private:
     int nestedLevel_ = 0;
     NativeAreaAllocator *nativeAreaAllocator_ {nullptr};
     HeapRegionAllocator *heapRegionAllocator_ {nullptr};
+    bool runningNativeFinalizeCallbacks_ {false};
+    std::vector<std::pair<WeakClearCallback, void *>> weakNodeFreeGlobalCallbacks_ {};
     std::vector<std::pair<WeakClearCallback, void *>> weakNodeNativeFinalizeCallbacks_ {};
 
     EcmaGlobalStorage<Node> *globalStorage_ {nullptr};
