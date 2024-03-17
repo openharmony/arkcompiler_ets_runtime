@@ -854,7 +854,8 @@ GateRef CircuitBuilder::GetHClassGateFromIndex(GateRef gate, int32_t index)
 {
     ArgumentAccessor argAcc(circuit_);
     GateRef constPool = argAcc.GetFrameArgsIn(gate, FrameArgIdx::CONST_POOL);
-    return LoadHClassFromUnsharedConstpool(constPool, index);
+    GateRef unsharedConstpool = GetUnsharedConstpool(constPool);
+    return LoadHClassFromUnsharedConstpool(unsharedConstpool, index);
 }
 
 GateRef Variable::AddPhiOperand(GateRef val)
