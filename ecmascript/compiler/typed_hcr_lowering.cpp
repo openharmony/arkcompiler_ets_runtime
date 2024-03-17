@@ -1631,7 +1631,8 @@ void TypedHCRLowering::LowerLookupHolder(GateRef gate)
     GateRef holderHCIndex = acc_.GetValueIn(gate, 1);
     GateRef constPool = acc_.GetValueIn(gate, 2);  // 2: constpool
     GateRef unsharedConstpool = builder_.GetUnsharedConstpool(constPool);
-    GateRef holderHC = builder_.LoadHClassFromUnsharedConstpool(unsharedConstpool, acc_.GetConstantValue(holderHCIndex));
+    GateRef holderHC = builder_.LoadHClassFromUnsharedConstpool(unsharedConstpool,
+        acc_.GetConstantValue(holderHCIndex));
     DEFVALUE(holder, (&builder_), VariableType::JS_ANY(), receiver);
     Label loopHead(&builder_);
     Label exit(&builder_);
@@ -2084,7 +2085,8 @@ GateRef TypedHCRLowering::AllocateSlicedString(GateRef glue, GateRef flatString,
     GateRef size = builder_.IntPtr(AlignUp(SlicedString::SIZE, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT)));
 
     builder_.StartAllocate();
-    GateRef slicedString = builder_.HeapAlloc(glue, size, GateType::TaggedValue(), RegionSpaceFlag::IN_SHARED_OLD_SPACE);
+    GateRef slicedString = builder_.HeapAlloc(glue, size, GateType::TaggedValue(),
+        RegionSpaceFlag::IN_SHARED_OLD_SPACE);
     builder_.StoreConstOffset(VariableType::JS_POINTER(), slicedString, 0, stringClass,
         MemoryOrder::NeedBarrierAndAtomic());
     builder_.StoreConstOffset(VariableType::INT32(), slicedString, EcmaString::MIX_LENGTH_OFFSET, *mixLength);

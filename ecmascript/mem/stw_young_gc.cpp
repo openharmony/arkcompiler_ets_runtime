@@ -117,8 +117,6 @@ void STWYoungGC::Sweep()
             }
         }
     }
-    // todo(hzzhouzebin) wait for shared-gc
-    // auto stringTable = heap_->GetEcmaVM()->GetEcmaStringTable();
     WeakRootVisitor gcUpdateWeak = [](TaggedObject *header) {
         Region *objectRegion = Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(header));
         if (!objectRegion->InYoungSpace()) {
@@ -132,8 +130,6 @@ void STWYoungGC::Sweep()
         }
         return reinterpret_cast<TaggedObject *>(ToUintPtr(nullptr));
     };
-    // todo(hzzhouzebin) wait for shared-gc
-    // stringTable->SweepWeakReference(gcUpdateWeak);
     heap_->GetEcmaVM()->GetJSThread()->IterateWeakEcmaGlobalStorage(gcUpdateWeak);
     heap_->GetEcmaVM()->ProcessReferences(gcUpdateWeak);
 }
