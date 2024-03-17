@@ -223,7 +223,7 @@ void JSThread::InvokeWeakNodeNativeFinalizeCallback()
     }
     runningNativeFinalizeCallbacks_ = true;
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "InvokeNativeFinalizeCallbacks num:"
-        + std::to_string(weakNodeNativeFinalizeCallbacks_->size()));
+        + std::to_string(weakNodeNativeFinalizeCallbacks_.size()));
     while (!weakNodeNativeFinalizeCallbacks_.empty()) {
         auto callbackPair = weakNodeNativeFinalizeCallbacks_.back();
         weakNodeNativeFinalizeCallbacks_.pop_back();
