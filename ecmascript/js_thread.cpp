@@ -251,7 +251,12 @@ bool JSThread::EnableGlobalPrimitiveLeakCheck() const
 
 bool JSThread::IsInRunningStateOrProfiling() const
 {
-    return IsInRunningState() || vm_->GetHeapProfile() != nullptr;
+    bool result = IsInRunningState();
+#if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
+    return result || vm_->GetHeapProfile() != nullptr;
+#else
+    return result;
+#endif
 }
 
 void JSThread::WriteToStackTraceFd(std::ostringstream &buffer) const

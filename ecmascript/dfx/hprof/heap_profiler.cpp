@@ -228,7 +228,6 @@ bool HeapProfiler::UpdateHeapTracking(Stream *stream)
         UpdateHeapObjects(snapshot);
     }
 
-
     if (stream != nullptr) {
         snapshot->PushHeapStat(stream);
     }
