@@ -69,10 +69,8 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromAbcFile(JSThread *
     std::shared_ptr<JSPandaFile> jsPandaFile =
         JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, name, entry, needUpdate);
     if (jsPandaFile == nullptr) {
-        CString msg = "Load file with filename '" + name + "' failed, recordName '" + entry + "'";
-        THROW_REFERENCE_ERROR_AND_RETURN(thread, msg.c_str(), Unexpected(false));
+        LOG_FULL(FATAL) << "Load current file's panda file failed. Current file is " << name;
     }
-
     // realEntry is used to record the original record, which is easy to throw when there are exceptions
     const CString realEntry = entry;
     // If it is an old record, delete the bundleName and moduleName
@@ -86,8 +84,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromAbcFile(JSThread *
     JSRecordInfo recordInfo;
     bool hasRecord = jsPandaFile->CheckAndGetRecordInfo(entry, recordInfo);
     if (!hasRecord) {
-        LOG_FULL(ERROR) << "cannot find record '" << realEntry <<"' in baseFileName " << name << ".";
-        CString msg = "cannot find record '" + realEntry + "', please check the request path.";
+        CString msg = "Cannot find module '" + realEntry + "' , which is application Entry Point";
         THROW_REFERENCE_ERROR_AND_RETURN(thread, msg.c_str(), Unexpected(false));
     }
     if (jsPandaFile->IsModule(recordInfo)) {
@@ -134,8 +131,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromBuffer(JSThread *t
     std::shared_ptr<JSPandaFile> jsPandaFile =
         JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, normalName, entryPoint, buffer, size, needUpdate);
     if (jsPandaFile == nullptr) {
-        CString msg = "Load file with filename '" + normalName + "' failed, recordName '" + entryPoint.data() + "'";
-        THROW_REFERENCE_ERROR_AND_RETURN(thread, msg.c_str(), Unexpected(false));
+        LOG_FULL(FATAL) << "Load current file's panda file failed. Current file is " << normalName;
     }
     auto vm = thread->GetEcmaVM();
     BindPandaFilesForAot(vm, jsPandaFile.get());
@@ -144,8 +140,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromBuffer(JSThread *t
     JSRecordInfo recordInfo;
     bool hasRecord = jsPandaFile->CheckAndGetRecordInfo(entry, recordInfo);
     if (!hasRecord) {
-        LOG_FULL(ERROR) << "cannot find record '" << entry <<"' in baseFileName " << normalName << ".";
-        CString msg = "cannot find record '" + entry + "', please check the request path.";
+        CString msg = "Cannot find module '" + entry + "' , which is application Entry Point";
         THROW_REFERENCE_ERROR_AND_RETURN(thread, msg.c_str(), Unexpected(false));
     }
     if (jsPandaFile->IsModule(recordInfo)) {
@@ -178,8 +173,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteModuleBuffer(
     std::shared_ptr<JSPandaFile> jsPandaFile =
         JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, name, entry, buffer, size, needUpdate);
     if (jsPandaFile == nullptr) {
-        CString msg = "Load file with filename '" + name + "' failed, recordName '" + entry + "'";
-        THROW_REFERENCE_ERROR_AND_RETURN(thread, msg.c_str(), Unexpected(false));
+        LOG_FULL(FATAL) << "Load current file's panda file failed. Current file is " << name;
     }
     BindPandaFilesForAot(vm, jsPandaFile.get());
 
@@ -196,8 +190,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteModuleBuffer(
     JSRecordInfo recordInfo;
     bool hasRecord = jsPandaFile->CheckAndGetRecordInfo(entry, recordInfo);
     if (!hasRecord) {
-        LOG_FULL(ERROR) << "cannot find record '" << realEntry <<"' in baseFileName " << name << ".";
-        CString msg = "cannot find record '" + realEntry + "', please check the request path.";
+        CString msg = "Cannot find module '" + realEntry + "' , which is application Entry Point";
         THROW_REFERENCE_ERROR_AND_RETURN(thread, msg.c_str(), Unexpected(false));
     }
     if (!jsPandaFile->IsModule(recordInfo)) {
@@ -228,6 +221,9 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::CommonExecuteBuffer(JSThread 
     JSHandle<SourceTextModule> module = JSHandle<SourceTextModule>::Cast(moduleRecord);
     module->SetStatus(ModuleStatus::INSTANTIATED);
     SourceTextModule::Evaluate(thread, module, buffer, size);
+    if (thread->HasPendingException()) {
+        return Unexpected(false);
+    }
     return JSTaggedValue::Undefined();
 }
 
@@ -262,7 +258,7 @@ void JSPandaFileExecutor::BindPandaFilesForAot(EcmaVM *vm, [[maybe_unused]]JSPan
 {
     if (vm->GetJSOptions().GetEnableAsmInterpreter()) {
         std::string aotFileBaseName(vm->GetModuleName());
-        auto *aotFM = vm->GetJSThread()->GetCurrentEcmaContext()->GetAOTFileManager();
+        auto *aotFM = vm->GetAOTFileManager();
         if (vm->GetJSOptions().WasAOTOutputFileSet()) {
             std::string aotFilename = vm->GetJSOptions().GetAOTOutputFile();
             aotFileBaseName = JSFilePath::GetBaseName(aotFilename);
@@ -280,8 +276,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromBufferSecure(JSThr
     std::shared_ptr<JSPandaFile> jsPandaFile = JSPandaFileManager::GetInstance()->
         LoadJSPandaFileSecure(thread, normalName, entryPoint, buffer, size, needUpdate);
     if (jsPandaFile == nullptr) {
-        CString msg = "Load file with filename '" + normalName + "' failed, recordName '" + entryPoint.data() + "'";
-        THROW_REFERENCE_ERROR_AND_RETURN(thread, msg.c_str(), Unexpected(false));
+        LOG_FULL(FATAL) << "Load current file's panda file failed. Current file is " << normalName;
     }
     auto vm = thread->GetEcmaVM();
     BindPandaFilesForAot(vm, jsPandaFile.get());
@@ -290,8 +285,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromBufferSecure(JSThr
     JSRecordInfo recordInfo;
     bool hasRecord = jsPandaFile->CheckAndGetRecordInfo(entry, recordInfo);
     if (!hasRecord) {
-        LOG_FULL(ERROR) << "cannot find record '" << entry <<"' in baseFileName " << normalName << ".";
-        CString msg = "cannot find record '" + entry + "', please check the request path.";
+        CString msg = "Cannot find module '" + entry + "' , which is application Entry Point";
         THROW_REFERENCE_ERROR_AND_RETURN(thread, msg.c_str(), Unexpected(false));
     }
     if (jsPandaFile->IsModule(recordInfo)) {
@@ -321,6 +315,9 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::CommonExecuteBuffer(JSThread 
     JSHandle<SourceTextModule> module = JSHandle<SourceTextModule>::Cast(moduleRecord);
     module->SetStatus(ModuleStatus::INSTANTIATED);
     SourceTextModule::Evaluate(thread, module, nullptr, 0);
+    if (thread->HasPendingException()) {
+        return Unexpected(false);
+    }
     return JSTaggedValue::Undefined();
 }
 
@@ -346,8 +343,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteModuleBufferSecure(JST
     std::shared_ptr<JSPandaFile> jsPandaFile = JSPandaFileManager::GetInstance()->
         LoadJSPandaFileSecure(thread, name, entry, buffer, size, needUpdate);
     if (jsPandaFile == nullptr) {
-        CString msg = "Load file with filename '" + name + "' failed, recordName '" + entry + "'";
-        THROW_REFERENCE_ERROR_AND_RETURN(thread, msg.c_str(), Unexpected(false));
+        LOG_FULL(FATAL) << "Load current file's panda file failed. Current file is " << name;
     }
     BindPandaFilesForAot(vm, jsPandaFile.get());
 
@@ -364,8 +360,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteModuleBufferSecure(JST
     JSRecordInfo recordInfo;
     bool hasRecord = jsPandaFile->CheckAndGetRecordInfo(entry, recordInfo);
     if (!hasRecord) {
-        LOG_FULL(ERROR) << "cannot find record '" << realEntry <<"' in baseFileName " << name << ".";
-        CString msg = "cannot find record '" + realEntry + "', please check the request path.";
+        CString msg = "Cannot find module '" + realEntry + "' , which is application Entry Point";
         THROW_REFERENCE_ERROR_AND_RETURN(thread, msg.c_str(), Unexpected(false));
     }
     if (!jsPandaFile->IsModule(recordInfo)) {

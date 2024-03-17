@@ -32,6 +32,7 @@
 #include "unicode/utf8.h"
 #include "unicode/utypes.h"
 #include "unicode/udata.h"
+#include "unicode/uniset.h"
 
 namespace panda::ecmascript {
 class RegExpParser {
@@ -107,7 +108,7 @@ public:
     uint32_t ParseClassAtom(RangeSet *atom);
     int ParseClassEscape(RangeSet *atom);
     void ParseError(const char *errorMessage);
-    void ParseUnicodePropertyValueCharacters(bool *isValue);
+    bool ParseUnicodePropertyValueCharacters(CString &categoryName, CString &valueName);
     int FindGroupName(const CString &name);
     uint32_t ParseOctalLiteral();
     bool ParseHexEscape(int length, uint32_t *value);
@@ -120,7 +121,15 @@ public:
     int IsIdentFirst(uint32_t c);
     bool NeedIntersection(uint32_t c);
     void DoParserStackOverflowCheck(const char *errorMessage);
-
+    bool MatchUnicodeProperty(UProperty property, const char *propertyName, RangeSet *atom, bool negate);
+    bool IsExactPropertyValueAlis(const char *valueName, UProperty property, int32_t propertyValue);
+    bool ParseUnicodePropertyClassRange(CString &propertyName, CString &valueName, RangeSet *atom, bool negate);
+    bool GetUnicodePropertyName(CString &propertyName);
+    bool GetUnicodePropertyValueName(CString &valueName);
+    bool IsExactPropertyAlias(const char *propertyName, UProperty property);
+    bool MatchSepcialUnicodeProperty(CString &name, bool negate, RangeSet *atom);
+    bool IsSupportedBinaryProperty(UProperty property);
+    bool IsBinaryPropertyOfStrings(UProperty property);
     inline CVector<CString> GetGroupNames() const
     {
         return newGroupNames_;
@@ -182,6 +191,20 @@ public:
     inline bool IsStick() const
     {
         return (flags_ & FLAG_STICKY) != 0;
+    }
+
+    inline bool IsUnicodePropertyValueCharacter(char c) const
+    {
+        if (c >= 'a' && c <= 'z') {
+            return true;
+        }
+        if (c >= 'A' && c <= 'Z') {
+            return true;
+        }
+        if (c >= '0' && c <= '9') {
+            return true;
+        }
+        return (c == '_');
     }
 
     inline static int GetcurrentCharNext(int c)

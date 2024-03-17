@@ -70,6 +70,8 @@ private:
         void *externalPointer = GetExternalPointer();
         DeleteEntryPoint deleter = GetDeleter();
         if (deleter != nullptr) {
+            ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "ExternalDelete"
+                              + std::to_string(reinterpret_cast<uintptr_t>(deleter)));
             deleter(externalPointer, GetData());
         }
     }

@@ -1674,9 +1674,7 @@ void InitHandleStmtFactory()
 
 CGFunc::CGFunc(MIRModule &mod, CG &cg, MIRFunction &mirFunc, BECommon &beCommon, MemPool &memPool,
                StackMemPool &stackMp, MapleAllocator &allocator, uint32 funcId)
-    : vRegTable(allocator.Adapter()),
-      bbVec(allocator.Adapter()),
-      vRegOperandTable(allocator.Adapter()),
+    : bbVec(allocator.Adapter()),
       referenceVirtualRegs(allocator.Adapter()),
       referenceStackSlots(allocator.Adapter()),
       pregIdx2Opnd(mirFunc.GetPregTab()->Size(), nullptr, allocator.Adapter()),
@@ -1706,21 +1704,22 @@ CGFunc::CGFunc(MIRModule &mod, CG &cg, MIRFunction &mirFunc, BECommon &beCommon,
       sortedBBs(allocator.Adapter()),
       lrVec(allocator.Adapter()),
 #endif /* TARGARM32 */
-      loops(allocator.Adapter()),
       lmbcParamVec(allocator.Adapter()),
       shortFuncName(cg.ExtractFuncName(mirFunc.GetName()) + "." + std::to_string(funcId), &memPool)
 {
     mirModule.SetCurFunction(&func);
     dummyBB = CreateNewBB();
-    vRegCount = firstMapleIrVRegNO + func.GetPregTab()->Size();
-    firstNonPregVRegNO = vRegCount;
+    vReg.SetCount(static_cast<uint32>(kBaseVirtualRegNO + func.GetPregTab()->Size()));
+    firstNonPregVRegNO = vReg.GetCount();
     /* maximum register count initial be increased by 1024 */
-    maxRegCount = vRegCount + 1024;
+    SetMaxRegNum(vReg.GetCount() + 1024);
+
+    maplebe::VregInfo::vRegOperandTable.clear();
 
     insnBuilder = memPool.New<InsnBuilder>(memPool);
     opndBuilder = memPool.New<OperandBuilder>(memPool, func.GetPregTab()->Size());
 
-    vRegTable.resize(maxRegCount);
+    vReg.VRegTableResize(GetMaxRegNum());
     /* func.GetPregTab()->_preg_table[0] is nullptr, so skip it */
     DEBUG_ASSERT(func.GetPregTab()->PregFromPregIdx(0) == nullptr, "PregFromPregIdx(0) must be nullptr");
     for (size_t i = 1; i < func.GetPregTab()->Size(); ++i) {
@@ -2398,6 +2397,37 @@ void CGFunc::DumpCFG() const
     }
 }
 
+void CGFunc::DumpBBInfo(const BB *bb) const
+{
+    LogInfo::MapleLogger() << "=== BB " << " <" << bb->GetKindName();
+    if (bb->GetLabIdx() != MIRLabelTable::GetDummyLabel()) {
+        LogInfo::MapleLogger() << "[labeled with " << bb->GetLabIdx();
+        LogInfo::MapleLogger() << " ==> @" << func.GetLabelName(bb->GetLabIdx()) << "]";
+    }
+
+    LogInfo::MapleLogger() << "> <" << bb->GetId() << "> ";
+    if (bb->IsCleanup()) {
+        LogInfo::MapleLogger() << "[is_cleanup] ";
+    }
+    if (bb->IsUnreachable()) {
+        LogInfo::MapleLogger() << "[unreachable] ";
+    }
+    if (!bb->GetSuccs().empty()) {
+        LogInfo::MapleLogger() << "succs: ";
+        for (auto *succBB : bb->GetSuccs()) {
+            LogInfo::MapleLogger() << succBB->GetId() << " ";
+        }
+    }
+    if (!bb->GetPreds().empty()) {
+        LogInfo::MapleLogger() << "preds: ";
+        for (auto *predBB : bb->GetPreds()) {
+            LogInfo::MapleLogger() << predBB->GetId() << " ";
+        }
+    }
+    LogInfo::MapleLogger() << "===\n";
+    LogInfo::MapleLogger() << "frequency:" << bb->GetFrequency() << "\n";
+}
+
 void CGFunc::DumpCGIR() const
 {
     MIRSymbol *funcSt = GlobalTables::GetGsymTable().GetSymbolFromStidx(func.GetStIdx().Idx());
@@ -2408,76 +2438,11 @@ void CGFunc::DumpCGIR() const
         if (bb->IsUnreachable()) {
             continue;
         }
-        LogInfo::MapleLogger() << "=== BB "
-                               << " <" << bb->GetKindName();
-        if (bb->GetLabIdx() != MIRLabelTable::GetDummyLabel()) {
-            LogInfo::MapleLogger() << "[labeled with " << bb->GetLabIdx();
-            LogInfo::MapleLogger() << " ==> @" << func.GetLabelName(bb->GetLabIdx()) << "]";
-        }
-
-        LogInfo::MapleLogger() << "> <" << bb->GetId() << "> ";
-        if (bb->GetLoop()) {
-            LogInfo::MapleLogger() << "[Loop level " << bb->GetLoop()->GetLoopLevel();
-            LogInfo::MapleLogger() << ", head BB " << bb->GetLoop()->GetHeader()->GetId() << "]";
-        }
-        if (bb->IsCleanup()) {
-            LogInfo::MapleLogger() << "[is_cleanup] ";
-        }
-        if (bb->IsUnreachable()) {
-            LogInfo::MapleLogger() << "[unreachable] ";
-        }
-        if (bb->GetFirstStmt() == cleanupLabel) {
-            LogInfo::MapleLogger() << "cleanup ";
-        }
-        if (!bb->GetSuccs().empty()) {
-            LogInfo::MapleLogger() << "succs: ";
-            for (auto *succBB : bb->GetSuccs()) {
-                LogInfo::MapleLogger() << succBB->GetId() << " ";
-            }
-        }
-        if (!bb->GetPreds().empty()) {
-            LogInfo::MapleLogger() << "preds: ";
-            for (auto *predBB : bb->GetPreds()) {
-                LogInfo::MapleLogger() << predBB->GetId() << " ";
-            }
-        }
-        if (!bb->GetEhSuccs().empty()) {
-            LogInfo::MapleLogger() << "eh_succs: ";
-            for (auto *ehSuccBB : bb->GetEhSuccs()) {
-                LogInfo::MapleLogger() << ehSuccBB->GetId() << " ";
-            }
-        }
-        if (!bb->GetEhPreds().empty()) {
-            LogInfo::MapleLogger() << "eh_preds: ";
-            for (auto *ehPredBB : bb->GetEhPreds()) {
-                LogInfo::MapleLogger() << ehPredBB->GetId() << " ";
-            }
-        }
-        LogInfo::MapleLogger() << "===\n";
-        LogInfo::MapleLogger() << "frequency:" << bb->GetFrequency() << "\n";
-
+        DumpBBInfo(bb);
         FOR_BB_INSNS_CONST(insn, bb)
         {
             insn->Dump();
         }
-    }
-}
-
-void CGFunc::DumpLoop() const
-{
-    for (const auto *lp : loops) {
-        lp->PrintLoops(*lp);
-    }
-}
-
-void CGFunc::ClearLoopInfo()
-{
-    loops.clear();
-    loops.shrink_to_fit();
-    FOR_ALL_BB(bb, this)
-    {
-        bb->ClearLoopPreds();
-        bb->ClearLoopSuccs();
     }
 }
 

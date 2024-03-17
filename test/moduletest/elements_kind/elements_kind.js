@@ -1189,7 +1189,7 @@ function test83() {
 // BuiltinArray Array.constructor
 function test84() {
     let a = new Array(5);
-    if (ArkTools.getElementsKind(a) == NONE) {
+    if (ArkTools.getElementsKind(a) == HOLE) {
         print("test84 - success");
     } else {
         print("test84 - failed");
@@ -1198,7 +1198,7 @@ function test84() {
 
 function test85() {
     let a = new Array(1, 2, 3);
-    if (ArkTools.getElementsKind(a) == PACKEDINT) {
+    if (ArkTools.getElementsKind(a) == HOLEINT) {
         print("test85 - success");
     } else {
         print("test85 - failed");
@@ -1207,7 +1207,7 @@ function test85() {
 
 function test86() {
     let a = new Array(1, 1.5, 3);
-    if (ArkTools.getElementsKind(a) == PACKEDNUMBER) {
+    if (ArkTools.getElementsKind(a) == HOLENUMBER) {
         print("test86 - success");
     } else {
         print("test86 - failed");
@@ -1216,7 +1216,7 @@ function test86() {
 
 function test87() {
     let a = new Array("1", 1.5, 3);
-    if (ArkTools.getElementsKind(a) == PACKEDTAGGED) {
+    if (ArkTools.getElementsKind(a) == GENERIC) {
         print("test87 - success");
     } else {
         print("test87 - failed");
@@ -1225,7 +1225,7 @@ function test87() {
 
 function test88() {
     let a = new Array("1", "2", "3");
-    if (ArkTools.getElementsKind(a) == PACKEDSTRING) {
+    if (ArkTools.getElementsKind(a) == HOLESTRING) {
         print("test88 - success");
     } else {
         print("test88 - failed");
@@ -1234,7 +1234,7 @@ function test88() {
 
 function test89() {
     let a = Array.of(1, 2, 3);
-    if (a.length == 3 && ArkTools.getElementsKind(a) == PACKEDINT) {
+    if (a.length == 3 && ArkTools.getElementsKind(a) == HOLEINT) {
         print("test89 - success");
     } else {
         print("test89 - failed");
@@ -1243,7 +1243,7 @@ function test89() {
 
 function test90() {
     let a = Array.of(3);
-    if (a.length == 1 && ArkTools.getElementsKind(a) == PACKEDINT) {
+    if (a.length == 1 && ArkTools.getElementsKind(a) == HOLEINT) {
         print("test90 - success");
     } else {
         print("test90 - failed");
@@ -1272,7 +1272,7 @@ function test92() {
     const num2 = [4, 5, 6];
 
     const a = num1.concat(num2);
-    if (a.length == 6 && ArkTools.getElementsKind(a) == PACKEDINT) {
+    if (a.length == 6 && ArkTools.getElementsKind(a) == HOLEINT) {
         print("test92 - success");
     } else {
         print("test92 - failed");
@@ -1284,7 +1284,7 @@ function test93() {
     const num2 = [4.4, 5.5, 6.6];
 
     const a = num1.concat(num2);
-    if (a.length == 6 && ArkTools.getElementsKind(a) == PACKEDNUMBER) {
+    if (a.length == 6 && ArkTools.getElementsKind(a) == HOLENUMBER) {
         print("test93 - success");
     } else {
         print("test93 - failed");
@@ -1691,7 +1691,7 @@ function test122() {
     const map1 = array1.map((x) => x * 2);
     // Expected output: Array [2, 8, 18, 32]
 
-    if (map1.length == 4 && ArkTools.getElementsKind(map1) == PACKEDINT) {
+    if (map1.length == 4 && ArkTools.getElementsKind(map1) == HOLEINT) {
         print("test122 - success");
     } else {
         print("test122 - failed");
@@ -1705,7 +1705,7 @@ function test123() {
     const map1 = array1.map((x) => x * 1.1);
     // Expected output: Array [2, 8, 18, 32]
 
-    if (map1.length == 4 && ArkTools.getElementsKind(map1) == PACKEDNUMBER) {
+    if (map1.length == 4 && ArkTools.getElementsKind(map1) == HOLENUMBER) {
         print("test123 - success");
     } else {
         print("test123 - failed");
@@ -1740,10 +1740,10 @@ function test125() {
 function test126() {
     let a = [6, 5, 4, 3, 2, 1];
     let b = a.toSorted();
-    if (b.length == 6 && ArkTools.getElementsKind(b) == PACKEDINT) {
+    if (b.length == 6 && ArkTools.getElementsKind(b) == HOLEINT) {
         print("test126 - success");
     } else {
-        print("test126 - failed, expected: " + PACKEDTAGGED + " , but get: " + ArkTools.getElementsKind(b));
+        print("test126 - failed, expected: " + HOLEINT + " , but get: " + ArkTools.getElementsKind(b));
     }
 }
 
@@ -2260,3 +2260,12 @@ let index = new Index;
 for (let i = 0; i < 3; i++) {
     index.run();
 }
+
+function testLength() {
+    let a = [0];
+    print(ArkTools.getElementsKind(a));
+    a.length = 3;
+    print(ArkTools.getElementsKind(a));
+}
+
+testLength();

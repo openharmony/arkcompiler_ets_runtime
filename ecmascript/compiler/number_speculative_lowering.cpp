@@ -498,7 +498,7 @@ void NumberSpeculativeLowering::VisitUndefinedStrictEqOrUndefinedStrictNotEq(Gat
            acc_.GetTypedBinaryOp(gate) == TypedBinOp::TYPED_STRICTNOTEQ);
     GateRef left = acc_.GetValueIn(gate, 0);
     GateRef right = acc_.GetValueIn(gate, 1);
-    ASSERT(acc_.IsUndefinedOrNull(left) || acc_.IsUndefinedOrNull(right));
+    ASSERT(acc_.IsUndefinedOrNullOrHole(left) || acc_.IsUndefinedOrNullOrHole(right));
     GateRef result = Circuit::NullGate();
     if (acc_.GetTypedBinaryOp(gate) == TypedBinOp::TYPED_STRICTEQ) {
         result = builder_.Equal(left, right);
@@ -517,13 +517,13 @@ void NumberSpeculativeLowering::VisitUndefinedEqOrUndefinedNotEq(GateRef gate)
            acc_.GetTypedBinaryOp(gate) == TypedBinOp::TYPED_NOTEQ);
     GateRef left = acc_.GetValueIn(gate, 0);
     GateRef right = acc_.GetValueIn(gate, 1);
-    ASSERT(acc_.IsUndefinedOrNull(left) || acc_.IsUndefinedOrNull(right));
-    GateRef valueGate =  acc_.IsUndefinedOrNull(left) ? right : left;
+    ASSERT(acc_.IsUndefinedOrNullOrHole(left) || acc_.IsUndefinedOrNullOrHole(right));
+    GateRef valueGate =  acc_.IsUndefinedOrNullOrHole(left) ? right : left;
     GateRef result = Circuit::NullGate();
     if (acc_.GetTypedBinaryOp(gate) == TypedBinOp::TYPED_EQ) {
-        result = builder_.TaggedIsUndefinedOrNull(valueGate);
+        result = builder_.TaggedIsUndefinedOrNullOrHole(valueGate);
     } else {
-        result = builder_.TaggedIsNotUndefinedAndNull(valueGate);
+        result = builder_.TaggedIsNotUndefinedAndNullAndHole(valueGate);
     }
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
 }
@@ -625,15 +625,21 @@ void NumberSpeculativeLowering::VisitLoadElement(GateRef gate)
         case TypedLoadOp::UINT16ARRAY_LOAD_ELEMENT:
         case TypedLoadOp::INT32ARRAY_LOAD_ELEMENT:
             acc_.SetMachineType(gate, MachineType::I32);
+            acc_.SetGateType(gate, GateType::NJSValue());
+            break;
+        case TypedLoadOp::ARRAY_LOAD_HOLE_INT_ELEMENT:
+        case TypedLoadOp::ARRAY_LOAD_HOLE_DOUBLE_ELEMENT:
+            acc_.SetMachineType(gate, MachineType::I64);
+            acc_.SetGateType(gate, GateType::NJSValue());
             break;
         case TypedLoadOp::FLOAT32ARRAY_LOAD_ELEMENT:
         case TypedLoadOp::FLOAT64ARRAY_LOAD_ELEMENT:
             acc_.SetMachineType(gate, MachineType::F64);
+            acc_.SetGateType(gate, GateType::NJSValue());
             break;
         default:
             break;
     }
-    acc_.SetGateType(gate, GateType::NJSValue());
 }
 
 void NumberSpeculativeLowering::VisitLoadProperty(GateRef gate)
@@ -993,7 +999,7 @@ void NumberSpeculativeLowering::VisitLoadPropertyOnProto(GateRef gate)
         GateRef receiver = acc_.GetValueIn(gate, 0);
         GateRef propertyLookupResult = acc_.GetValueIn(gate, 1); // 1: propertyLookupResult
         GateRef hclassIndex = acc_.GetValueIn(gate, 2); // 2: hclassIndex
-        GateRef jsFunc = acc_.GetValueIn(gate, 3); // 3: jsFunc
+        GateRef constpool = acc_.GetValueIn(gate, 3); // 3: constpool
         PropertyLookupResult plr(acc_.TryGetValue(propertyLookupResult));
         GateRef result = Circuit::NullGate();
         ASSERT(plr.IsLocal() || plr.IsFunction());
@@ -1001,8 +1007,8 @@ void NumberSpeculativeLowering::VisitLoadPropertyOnProto(GateRef gate)
         auto receiverHC = builder_.LoadConstOffset(VariableType::JS_POINTER(), receiver, TaggedObject::HCLASS_OFFSET);
         auto prototype = builder_.LoadConstOffset(VariableType::JS_ANY(), receiverHC, JSHClass::PROTOTYPE_OFFSET);
 
-        GateRef constPool = builder_.GetUnsharedConstPool(jsFunc);
-        auto holderHC = builder_.LoadHClassFromConstpool(constPool, acc_.GetConstantValue(hclassIndex));
+        GateRef unsharedConstpool = builder_.GetUnsharedConstpool(constpool);
+        auto holderHC = builder_.LoadHClassFromUnsharedConstpool(unsharedConstpool, acc_.GetConstantValue(hclassIndex));
         DEFVALUE(current, (&builder_), VariableType::JS_ANY(), prototype);
         Label exit(&builder_);
         Label loopHead(&builder_);

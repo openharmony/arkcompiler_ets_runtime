@@ -206,7 +206,14 @@ GateRef CircuitBuilder::IsDictionaryModeByHClass(GateRef hClass)
 
 void CircuitBuilder::StoreHClass(GateRef glue, GateRef object, GateRef hClass)
 {
-    Store(VariableType::JS_POINTER(), glue, object, IntPtr(TaggedObject::HCLASS_OFFSET), hClass);
+    Store(VariableType::JS_POINTER(), glue, object, IntPtr(TaggedObject::HCLASS_OFFSET), hClass,
+          MemoryOrder::NeedBarrier());
+}
+
+void CircuitBuilder::StoreHClassWithoutBarrier(GateRef glue, GateRef object, GateRef hClass)
+{
+    Store(VariableType::JS_POINTER(), glue, object, IntPtr(TaggedObject::HCLASS_OFFSET), hClass,
+          MemoryOrder::NoBarrier());
 }
 
 void CircuitBuilder::StorePrototype(GateRef glue, GateRef hclass, GateRef prototype)

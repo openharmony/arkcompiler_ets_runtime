@@ -19,6 +19,14 @@
 #include "ecmascript/base/builtins_base.h"
 #include "ecmascript/js_tagged_value-inl.h"
 
+#define BUILTIN_FUNCTION_PROTOTYPE_FUNCTIONS(V)                                     \
+    /* Function.prototype.apply ( thisArg, argArray ) */                            \
+    V("apply",           FunctionPrototypeApply,      2, FunctionPrototypeApply)    \
+    /* Function.prototype.bind ( thisArg , ...args) */                              \
+    V("bind",            FunctionPrototypeBind,       1, INVALID)                   \
+    /* Function.prototype.call (thisArg , ...args) */                               \
+    V("call",            FunctionPrototypeCall,       1, INVALID)
+
 namespace panda::ecmascript::builtins {
 class BuiltinsFunction : public base::BuiltinsBase {
 public:
@@ -52,6 +60,11 @@ public:
     {
         return Span<const std::pair<std::string_view, bool>>(FUNCTION_PROPERTIES);
     }
+
+    static Span<const base::BuiltinFunctionEntry> GetFunctionPrototypeFunctions()
+    {
+        return Span<const base::BuiltinFunctionEntry>(FUNCTION_PROTOTYPE_FUNCTIONS);
+    }
 private:
     static constexpr std::array FUNCTION_PROTOTYPE_PROPERTIES = {
         std::pair<std::string_view, bool>("length", false),
@@ -71,6 +84,14 @@ private:
         std::pair<std::string_view, bool>("name", false),
         std::pair<std::string_view, bool>("prototype", false),
     };
+
+#define BUILTIN_FUNCTION_FUNCTION_ENTRY(name, func, length, id) \
+    base::BuiltinFunctionEntry::Create(name, BuiltinsFunction::func, length, kungfu::BuiltinsStubCSigns::id),
+
+    static constexpr std::array FUNCTION_PROTOTYPE_FUNCTIONS = {
+        BUILTIN_FUNCTION_PROTOTYPE_FUNCTIONS(BUILTIN_FUNCTION_FUNCTION_ENTRY)
+    };
+#undef BUILTIN_FUNCTION_FUNCTION_ENTRY
 };
 }  // namespace panda::ecmascript::builtins
 #endif  // ECMASCRIPT_BUILTINS_BUILTINS_FUNCTION_H

@@ -1593,14 +1593,7 @@ void X64Emitter::EmitFunctionFoot(CGFunc &cgFunc)
 {
     const MIRSymbol *funcSymbol = cgFunc.GetFunction().GetFuncSymbol();
     uint32 symIdx = funcSymbol->GetNameStrIdx().get();
-    SymbolAttr funcAttr = kSALocal;
-    if (funcSymbol->GetFunction()->GetAttr(FUNCATTR_weak)) {
-        funcAttr = kSAWeak;
-    } else if (funcSymbol->GetFunction()->GetAttr(FUNCATTR_local)) {
-        funcAttr = kSALocal;
-    } else if (!funcSymbol->GetFunction()->GetAttr(FUNCATTR_static)) {
-        funcAttr = kSAGlobal;
-    }
+    SymbolAttr funcAttr = kSAGlobal;
     assmbler.EmitFunctionFoot(symIdx, funcAttr);
 }
 

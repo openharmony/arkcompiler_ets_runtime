@@ -425,7 +425,6 @@ static uintptr_t g_nativeTable[] = {
     reinterpret_cast<uintptr_t>(BuiltinsArray::IsArray),
     reinterpret_cast<uintptr_t>(BuiltinsArray::Of),
     reinterpret_cast<uintptr_t>(BuiltinsArray::Species),
-    reinterpret_cast<uintptr_t>(BuiltinsArray::Unscopables),
     reinterpret_cast<uintptr_t>(BuiltinsArray::Includes),
     reinterpret_cast<uintptr_t>(BuiltinsArray::Flat),
     reinterpret_cast<uintptr_t>(BuiltinsArray::FlatMap),
@@ -489,6 +488,8 @@ static uintptr_t g_nativeTable[] = {
     reinterpret_cast<uintptr_t>(BuiltinsString::CharAt),
     reinterpret_cast<uintptr_t>(BuiltinsString::CharCodeAt),
     reinterpret_cast<uintptr_t>(BuiltinsString::CodePointAt),
+    reinterpret_cast<uintptr_t>(BuiltinsString::IsWellFormed),
+    reinterpret_cast<uintptr_t>(BuiltinsString::ToWellFormed),
     reinterpret_cast<uintptr_t>(BuiltinsString::Concat),
     reinterpret_cast<uintptr_t>(BuiltinsString::EndsWith),
     reinterpret_cast<uintptr_t>(BuiltinsString::Includes),
@@ -1459,7 +1460,7 @@ void SnapshotProcessor::AddRootObjectToAOTFileManager(SnapshotType type, const C
 {
     if (type == SnapshotType::AI) {
         ASSERT(!root_.IsHole());
-        AOTFileManager *aotFileManager = vm_->GetJSThread()->GetCurrentEcmaContext()->GetAOTFileManager();
+        AOTFileManager *aotFileManager = vm_->GetAOTFileManager();
         aotFileManager->ParseDeserializedData(fileName, root_);
     }
 }

@@ -48,9 +48,9 @@ JSTaggedValue BuiltinsCollator::CollatorConstructor(EcmaRuntimeCallInfo *argv)
     //    a. Append [[CaseFirst]] as the last element of internalSlotsList.
 
     // 5. Let collator be ? OrdinaryCreateFromConstructor(newTarget, "%CollatorPrototype%", internalSlotsList).
-    JSHandle<JSCollator> collator =
-        JSHandle<JSCollator>::Cast(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(constructor), newTarget));
+    JSHandle<JSObject> newObject = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(constructor), newTarget);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    JSHandle<JSCollator> collator = JSHandle<JSCollator>::Cast(newObject);
 
     // 6. Return ? InitializeCollator(collator, locales, options).
     JSHandle<JSTaggedValue> locales = GetCallArg(argv, 0);

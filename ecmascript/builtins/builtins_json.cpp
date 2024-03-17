@@ -49,7 +49,7 @@ JSTaggedValue BuiltinsJson::Parse(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> result;
     if (EcmaStringAccessor(parseString).IsUtf8()) {
         panda::ecmascript::base::Utf8JsonParser parser(thread);
-        result = parser.Parse(*parseString);
+        result = parser.Parse(parseString);
     } else {
         panda::ecmascript::base::Utf16JsonParser parser(thread);
         result = parser.Parse(*parseString);

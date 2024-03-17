@@ -24,7 +24,6 @@ public:
     X64LiveAnalysis(CGFunc &func, MemPool &memPool) : LiveAnalysis(func, memPool) {}
     ~X64LiveAnalysis() override = default;
     bool CleanupBBIgnoreReg(regno_t reg) override;
-    void InitEhDefine(BB &bb) override {};
     void GenerateReturnBBDefUse(BB &bb) const override {};
     void ProcessCallInsnParam(BB &bb, const Insn &insn) const override {};
 };

@@ -328,6 +328,16 @@ GateRef CircuitBuilder::TaggedIsNullPtr(GateRef x)
     return Equal(x, NullPtrConstant());
 }
 
+GateRef CircuitBuilder::IsSpecialHole(GateRef x)
+{
+    return Equal(x, SpecialHoleConstant());
+}
+
+GateRef CircuitBuilder::IsNotSpecialHole(GateRef x)
+{
+    return NotEqual(x, SpecialHoleConstant());
+}
+
 GateRef CircuitBuilder::TaggedIsNotHole(GateRef x)
 {
     return NotEqual(x, HoleConstant());
@@ -451,6 +461,11 @@ GateRef CircuitBuilder::TaggedIsUndefinedOrNull(GateRef x)
     return result;
 }
 
+GateRef CircuitBuilder::TaggedIsUndefinedOrNullOrHole(GateRef x)
+{
+    return BoolOr(TaggedIsUndefinedOrNull(x), TaggedIsHole(x));
+}
+
 GateRef CircuitBuilder::TaggedIsNotUndefinedAndNull(GateRef x)
 {
     x = ChangeTaggedPointerToInt64(x);
@@ -458,6 +473,19 @@ GateRef CircuitBuilder::TaggedIsNotUndefinedAndNull(GateRef x)
     GateRef tagSpecial = Int64(JSTaggedValue::TAG_SPECIAL);
     GateRef andGate = Int64And(x, heapObjMask);
     GateRef result = NotEqual(andGate, tagSpecial);
+    return result;
+}
+
+GateRef CircuitBuilder::TaggedIsNotUndefinedAndNullAndHole(GateRef x)
+{
+    return BoolAnd(TaggedIsNotUndefinedAndNull(x), TaggedIsNotHole(x));
+}
+
+GateRef CircuitBuilder::TaggedIsUndefinedOrHole(GateRef x)
+{
+    GateRef isUndefined = TaggedIsUndefined(x);
+    GateRef isHole = TaggedIsHole(x);
+    GateRef result = BoolOr(isHole, isUndefined);
     return result;
 }
 
@@ -689,6 +717,13 @@ GateRef CircuitBuilder::GetValueFromTaggedArray(VariableType valType, GateRef ar
     GateRef offset = PtrMul(ZExtInt32ToPtr(index), IntPtr(JSTaggedValue::TaggedTypeSize()));
     GateRef dataOffset = PtrAdd(offset, IntPtr(TaggedArray::DATA_OFFSET));
     return Load(valType, array, dataOffset);
+}
+
+GateRef CircuitBuilder::GetValueFromJSArrayWithElementsKind(VariableType type, GateRef array, GateRef index)
+{
+    GateRef offset = PtrMul(ZExtInt32ToPtr(index), IntPtr(JSTaggedValue::TaggedTypeSize()));
+    GateRef dataOffset = PtrAdd(offset, IntPtr(TaggedArray::DATA_OFFSET));
+    return Load(type, array, dataOffset);
 }
 
 void CircuitBuilder::SetValueToTaggedArray(VariableType valType, GateRef glue,

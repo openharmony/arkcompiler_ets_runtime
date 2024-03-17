@@ -1420,7 +1420,12 @@ JSTaggedValue BuiltinsTypedArray::Slice(EcmaRuntimeCallInfo *argv)
         //     iv. Increase targetByteIndex by 1.
         uint8_t *srcBuf = (uint8_t *)BuiltinsArrayBuffer::GetDataPointFromBuffer(srcBuffer, srcByteIndex);
         uint8_t *targetBuf = (uint8_t *)BuiltinsArrayBuffer::GetDataPointFromBuffer(targetBuffer, targetByteIndex);
-        while (count--) {
+        if (srcBuffer != targetBuffer && memmove_s(
+            targetBuf, elementSize * count, srcBuf, elementSize * count) != EOK) {
+            LOG_FULL(FATAL) << "memcpy_s failed";
+            UNREACHABLE();
+        }
+        while (srcBuffer == targetBuffer && count--) {
             if (memcpy_s(targetBuf, elementSize, srcBuf, elementSize) != EOK) {
                 LOG_FULL(FATAL) << "memcpy_s failed";
                 UNREACHABLE();

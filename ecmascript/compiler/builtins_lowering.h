@@ -34,11 +34,9 @@ public:
     void LowerTypedArraySort(GateRef gate);
 
 private:
-    void LowerTypedTrigonometric(GateRef gate, BuiltinsStubCSigns::ID id);
-    GateRef TypedTrigonometric(GateRef gate, BuiltinsStubCSigns::ID id);
+    void LowerTypedFloor(GateRef gate);
+    GateRef TypedFloor(GateRef gate);
     GateRef IntToTaggedIntPtr(GateRef x);
-    void LowerTypedAbs(GateRef gate);
-    GateRef TypedAbs(GateRef gate);
     GateRef LowerCallRuntime(GateRef glue, GateRef gate, int index, const std::vector<GateRef> &args,
                              bool useLabel = false);
     void ReplaceHirWithValue(GateRef hirGate, GateRef value, bool noThrow = false);
@@ -48,6 +46,7 @@ private:
     void LowerTypedStringify(GateRef gate);
     void LowerBuiltinIterator(GateRef gate, BuiltinsStubCSigns::ID id);
     void LowerIteratorNext(GateRef gate, BuiltinsStubCSigns::ID id);
+    void LowerIteratorReturn(GateRef gate, BuiltinsStubCSigns::ID id);
     void LowerNumberConstructor(GateRef gate);
 
     Circuit *circuit_ {nullptr};

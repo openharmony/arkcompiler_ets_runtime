@@ -92,6 +92,7 @@ class Jit;
 using NativePtrGetter = void* (*)(void* info);
 using SourceMapCallback = std::function<std::string(const std::string& rawStack)>;
 using SourceMapTranslateCallback = std::function<bool(std::string& url, int& line, int& column)>;
+using NativeStackCallback = std::function<std::string()>;
 using ResolveBufferCallback = std::function<bool(std::string dirPath, uint8_t **buff, size_t *buffSize)>;
 using UnloadNativeModuleCallback = std::function<bool(const std::string &moduleKey)>;
 using RequestAotCallback =
@@ -296,6 +297,16 @@ public:
     SourceMapTranslateCallback GetSourceMapTranslateCallback() const
     {
         return sourceMapTranslateCallback_;
+    }
+
+    void SetNativeStackCallback(NativeStackCallback cb)
+    {
+        nativeStackCallback_ = cb;
+    }
+
+    NativeStackCallback GetNativeStackCallback() const
+    {
+        return nativeStackCallback_;
     }
 
     size_t GetNativePointerListSize()
@@ -560,25 +571,14 @@ public:
         return strategy_;
     }
 
-    Jit *GetJit()
-    {
-        return jit_;
-    }
-
-    bool IsEnableJit() const
-    {
-        return isEnableJit_;
-    }
-
     CMap<uint32_t, EcmaVM *> GetWorkList() const
     {
         return workerList_;
     }
 
-    void SetEnableJit(bool state)
-    {
-        isEnableJit_ = state;
-    }
+    Jit *GetJit() const;
+    bool PUBLIC_API IsEnableJit() const;
+    void EnableJit() const;
 
     bool isOverLimit() const
     {
@@ -590,8 +590,17 @@ public:
         overLimit_ = state;
     }
 
-    static void InitializeIcuData(const JSRuntimeOptions &options);
+    AOTFileManager *GetAOTFileManager() const
+    {
+        return aotFileManager_;
+    }
 
+    uint32_t GetTid() const
+    {
+        return thread_->GetThreadId();
+    }
+
+    static void InitializeIcuData(const JSRuntimeOptions &options);
 protected:
 
     void PrintJSErrorInfo(const JSHandle<JSTaggedValue> &exceptionInfo) const;
@@ -643,6 +652,7 @@ private:
     NativePtrGetter nativePtrGetter_ {nullptr};
     SourceMapCallback sourceMapCallback_ {nullptr};
     SourceMapTranslateCallback sourceMapTranslateCallback_ {nullptr};
+    NativeStackCallback nativeStackCallback_ {nullptr};
     void *loop_ {nullptr};
 
     // resolve path to get abc's buffer
@@ -678,6 +688,10 @@ private:
 
     // PGO Profiler
     std::shared_ptr<PGOProfiler> pgoProfiler_ {nullptr};
+
+    //AOT File Manager
+    AOTFileManager *aotFileManager_ {nullptr};
+
     // c++ call js
     size_t callDepth_ {0};
 
@@ -696,8 +710,6 @@ private:
     friend class EcmaContext;
     CMap<uint32_t, EcmaVM *> workerList_ {};
     Mutex mutex_;
-    Jit *jit_ {nullptr};
-    bool isEnableJit_ {false};
     bool overLimit_ {false};
 };
 }  // namespace ecmascript

@@ -147,6 +147,39 @@ print(left + right1);
 print(left + right2);
 print(right2 + right2);
 
+let res1 = `string`;
+for (let i = 0; i < 10; i++) {
+    res1 = res1 + i;
+}
+print(res1);
+
+let res2 = `string`;
+for (let i = 0; i < 10; i++) {
+    res2 = i + res2;
+}
+print(res2);
+
+print(true+"");
+print(false+"");
+print(undefined+"");
+print(null+"");
+
+print(""+true);
+print(""+false);
+print(""+undefined);
+print(""+null);
+
+var obj1 = {
+    number: 6
+}
+print(obj1.number+"");
+
+a = `12`;
+for (let i = 0; i < 10; i++) {
+    a += `${i}`
+}
+print(a);
+
 if (ArkTools.isAOTCompiled(foo)) {
     // assert(strbHasStringAddOpt == true, "Not optimize string add");
     // assert(eHasStringAddOpt == true, "Not optimize string add");

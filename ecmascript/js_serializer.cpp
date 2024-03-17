@@ -1343,7 +1343,7 @@ JSHandle<JSTaggedValue> JSDeserializer::ReadMethod()
         if (!ReadNativePointer(&codeEntry)) {
             return JSHandle<JSTaggedValue>();
         }
-        method->SetCodeEntryAndMarkAOT(codeEntry);
+        method->SetCodeEntryAndMarkAOTWhenBinding(codeEntry);
 
         uint8_t deoptThreshold = thread_->GetEcmaVM()->GetJSOptions().GetDeoptThreshold();
         method->SetDeoptThreshold(deoptThreshold);

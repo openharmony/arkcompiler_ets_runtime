@@ -68,6 +68,11 @@ GateRef CircuitBuilder::Selector(OpCode opcode, GateRef control,
     return Selector(opcode, machineType, control, values, valueCounts, type);
 }
 
+GateRef CircuitBuilder::Nop()
+{
+    return circuit_->NewGate(circuit_->Nop(), {});
+}
+
 GateRef CircuitBuilder::UndefineConstant()
 {
     auto type = GateType::TaggedValue();
@@ -199,6 +204,11 @@ GateRef CircuitBuilder::GetLengthOfTaggedArray(GateRef array)
     return Load(VariableType::INT32(), array, IntPtr(TaggedArray::LENGTH_OFFSET));
 }
 
+GateRef CircuitBuilder::GetLengthOfJSTypedArray(GateRef array)
+{
+    return Load(VariableType::INT32(), array, IntPtr(JSTypedArray::ARRAY_LENGTH_OFFSET));
+}
+
 void CircuitBuilder::Jump(Label *label)
 {
     ASSERT(label);
@@ -309,7 +319,7 @@ GateRef CircuitBuilder::DeoptCheck(GateRef condition, GateRef frameState, DeoptT
     auto currentDepend = currentLabel->GetDepend();
     ASSERT(acc_.GetOpCode(frameState) == OpCode::FRAME_STATE);
     GateRef ret = GetCircuit()->NewGate(circuit_->DeoptCheck(),
-        MachineType::I1, { currentControl, condition,
+        MachineType::I1, { currentControl, currentDepend, condition,
         frameState, Int64(static_cast<int64_t>(type))}, GateType::NJSValue(), comment.c_str());
     auto dependRelay = DependRelay(ret, currentDepend);
     currentLabel->SetControl(ret);
@@ -410,9 +420,8 @@ GateRef CircuitBuilder::NanValue()
     return Double(std::numeric_limits<double>::quiet_NaN());
 }
 
-GateRef CircuitBuilder::LoadObjectFromConstPool(GateRef jsFunc, GateRef index)
+GateRef CircuitBuilder::LoadObjectFromConstPool(GateRef constPool, GateRef index)
 {
-    GateRef constPool = GetConstPoolFromFunction(jsFunc);
     return GetValueFromTaggedArray(constPool, TruncInt64ToInt32(index));
 }
 
@@ -432,23 +441,12 @@ void CircuitBuilder::AppendFrameArgs(std::vector<GateRef> &args, GateRef hirGate
     }
 }
 
-GateRef CircuitBuilder::GetConstPool(GateRef jsFunc)
+GateRef CircuitBuilder::GetUnsharedConstpool(GateRef constpool)
 {
     auto currentLabel = env_->GetCurrentLabel();
     auto currentDepend = currentLabel->GetDepend();
-    auto newGate = GetCircuit()->NewGate(circuit_->GetConstPool(), MachineType::I64,
-                                         { currentDepend, jsFunc },
-                                         GateType::AnyType());
-    currentLabel->SetDepend(newGate);
-    return newGate;
-}
-
-GateRef CircuitBuilder::GetUnsharedConstPool(GateRef jsFunc)
-{
-    auto currentLabel = env_->GetCurrentLabel();
-    auto currentDepend = currentLabel->GetDepend();
-    auto newGate = GetCircuit()->NewGate(circuit_->GetUnsharedConstPool(), MachineType::I64,
-                                         { currentDepend, jsFunc },
+    auto newGate = GetCircuit()->NewGate(circuit_->GetUnsharedConstpool(), MachineType::I64,
+                                         { currentDepend, constpool },
                                          GateType::AnyType());
     currentLabel->SetDepend(newGate);
     return newGate;
@@ -552,10 +550,8 @@ GateRef CircuitBuilder::GetConstPoolFromFunction(GateRef jsFunc)
     return Load(VariableType::JS_ANY(), method, IntPtr(Method::CONSTANT_POOL_OFFSET));
 }
 
-GateRef CircuitBuilder::GetUnsharedConstPoolFromGlue(GateRef glue, GateRef jsFunc)
+GateRef CircuitBuilder::GetUnsharedConstpoolFromGlue(GateRef glue, GateRef constpool)
 {
-    GateRef method = GetMethodFromFunction(jsFunc);
-    GateRef constpool = Load(VariableType::JS_ANY(), method, IntPtr(Method::CONSTANT_POOL_OFFSET));
     GateRef unshareIdx = GetUnsharedConstpoolIndex(constpool);
     GateRef unshareCpOffset = JSThread::GlueData::GetUnSharedConstpoolsOffset(env_->Is32Bit());
     GateRef unshareCpAddr = Load(VariableType::NATIVE_POINTER(), glue, IntPtr(unshareCpOffset));
@@ -574,14 +570,6 @@ GateRef CircuitBuilder::GetUnsharedConstpool(GateRef arrayAddr, GateRef index)
     GateRef dataOffset = PtrAdd(arrayAddr,
                                 PtrMul(IntPtr(JSTaggedValue::TaggedTypeSize()), ZExtInt32ToPtr(TaggedGetInt(index))));
     return Load(VariableType::JS_ANY(), dataOffset, IntPtr(0));
-}
-
-GateRef CircuitBuilder::GetObjectFromConstPool(GateRef glue, GateRef hirGate, GateRef jsFunc, GateRef index,
-                                               ConstPoolType type)
-{
-    GateRef constPool = GetConstPoolFromFunction(jsFunc);
-    GateRef module = GetModuleFromFunction(jsFunc);
-    return GetObjectFromConstPool(glue, hirGate, constPool, module, index, type);
 }
 
 GateRef CircuitBuilder::GetEmptyArray(GateRef glue)
@@ -865,9 +853,9 @@ GateRef CircuitBuilder::GetCodeAddr(GateRef jsFunc)
 GateRef CircuitBuilder::GetHClassGateFromIndex(GateRef gate, int32_t index)
 {
     ArgumentAccessor argAcc(circuit_);
-    GateRef jsFunc = argAcc.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
-    GateRef constPool = GetUnsharedConstPool(jsFunc);
-    return LoadHClassFromConstpool(constPool, index);
+    GateRef constPool = argAcc.GetFrameArgsIn(gate, FrameArgIdx::CONST_POOL);
+    GateRef unsharedConstpool = GetUnsharedConstpool(constPool);
+    return LoadHClassFromUnsharedConstpool(unsharedConstpool, index);
 }
 
 GateRef Variable::AddPhiOperand(GateRef val)
@@ -935,6 +923,27 @@ GateRef Variable::TryRemoveTrivialPhi(GateRef phi)
         }
     }
     return same;
+}
+
+GateRef CircuitBuilder::ElementsKindIsIntOrHoleInt(GateRef kind)
+{
+    GateRef kindIsInt = Int32Equal(kind, Int32(static_cast<uint32_t>(ElementsKind::INT)));
+    GateRef kindIsHoleInt = Int32Equal(kind, Int32(static_cast<uint32_t>(ElementsKind::HOLE_INT)));
+    return BoolOr(kindIsInt, kindIsHoleInt);
+}
+
+GateRef CircuitBuilder::ElementsKindIsNumOrHoleNum(GateRef kind)
+{
+    GateRef kindIsNum = Int32Equal(kind, Int32(static_cast<uint32_t>(ElementsKind::NUMBER)));
+    GateRef kindIsHoleNum = Int32Equal(kind, Int32(static_cast<uint32_t>(ElementsKind::HOLE_NUMBER)));
+    return BoolOr(kindIsNum, kindIsHoleNum);
+}
+
+GateRef CircuitBuilder::ElementsKindIsHeapKind(GateRef kind)
+{
+    GateRef overString = Int32GreaterThanOrEqual(kind, Int32(static_cast<uint32_t>(ElementsKind::STRING)));
+    GateRef isHoleOrNone = Int32LessThanOrEqual(kind, Int32(static_cast<uint32_t>(ElementsKind::HOLE)));
+    return BoolOr(overString, isHoleOrNone);
 }
 
 GateRef CircuitBuilder::LoadBuiltinObject(size_t offset)

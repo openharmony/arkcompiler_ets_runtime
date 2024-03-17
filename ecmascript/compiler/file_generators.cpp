@@ -22,12 +22,12 @@
 #include "ecmascript/platform/directory.h"
 #include "ecmascript/snapshot/mem/snapshot.h"
 #include "ecmascript/stackmap/ark_stackmap_builder.h"
-#include "ecmascript/stackmap/llvm_stackmap_parser.h"
+#include "ecmascript/stackmap/llvm/llvm_stackmap_parser.h"
 #ifdef COMPILE_MAPLE
-#include "ecmascript/compiler/litecg_ir_builder.h"
 #include "ecmascript/compiler/codegen/maple/litecg_codegen.h"
-#include "ecmascript/stackmap/litecg_stackmap_type.h"
+#include "ecmascript/compiler/codegen/maple/litecg_ir_builder.h"
 #include "ecmascript/compiler/codegen/maple/maple_be/include/litecg/litecg.h"
+#include "ecmascript/stackmap/litecg/litecg_stackmap_type.h"
 #endif
 
 namespace panda::ecmascript::kungfu {
@@ -435,9 +435,11 @@ Module* AOTFileGenerator::AddModule(const std::string &name, const std::string &
                                     [[maybe_unused]] LOptions option, bool logDebug, [[maybe_unused]] bool isJit)
 {
 #ifdef COMPILE_MAPLE
-    if (useLiteCG_) {
+    std::ifstream infile;
+    infile.open("/data/local/ark-cache/litecg.use");
+    if (useLiteCG_ || infile.good()) {
         LMIRModule *irModule = new LMIRModule(vm_->GetNativeAreaAllocator(), name, logDebug, triple, isJit);
-        LiteCGAssembler* ass = new LiteCGAssembler(*irModule);
+        LiteCGAssembler *ass = new LiteCGAssembler(*irModule, vm_->GetJSOptions().GetCompilerCodegenOptions());
         modulePackage_.emplace_back(Module(irModule, ass));
         if (stackMapInfo_ == nullptr) {
             stackMapInfo_ = new LiteCGStackMapInfo();
@@ -445,8 +447,8 @@ Module* AOTFileGenerator::AddModule(const std::string &name, const std::string &
         return &modulePackage_.back();
     }
 #endif
-    LLVMModule* m = new LLVMModule(vm_->GetNativeAreaAllocator(), name, logDebug, triple);
-    LLVMAssembler* ass = new LLVMAssembler(m, option);
+    LLVMModule *m = new LLVMModule(vm_->GetNativeAreaAllocator(), name, logDebug, triple);
+    LLVMAssembler *ass = new LLVMAssembler(m, option);
     modulePackage_.emplace_back(Module(m, ass));
     if (stackMapInfo_ == nullptr) {
         stackMapInfo_ = new LLVMStackMapInfo();

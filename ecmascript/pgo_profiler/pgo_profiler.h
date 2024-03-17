@@ -62,7 +62,7 @@ public:
         JSHClass *receverHClass, JSHClass *holderHClass, const JSHandle<JSTaggedValue> &func, int32_t pcOffset);
     void ProfileClassRootHClass(JSTaggedType ctor, JSTaggedType rootHcValue,
                                 ProfileType::Kind kind = ProfileType::Kind::ClassId);
-    void UpdateRootProfileType(JSHClass *oldHClass, JSHClass *newHClass);
+    void UpdateRootProfileTypeSafe(JSHClass* oldHClass, JSHClass* newHClass);
 
     void SetSaveTimestamp(std::chrono::system_clock::time_point timestamp)
     {
@@ -88,6 +88,11 @@ public:
     void UpdateTrackInfo(JSTaggedValue trackInfoVal);
 
     JSTaggedValue TryFindKeyInPrototypeChain(TaggedObject *currObj, JSHClass *currHC, JSTaggedValue key);
+
+    void InsertSkipCtorMethodId(EntityId ctorMethodId)
+    {
+        skipCtorMethodId_.insert(ctorMethodId.GetOffset());
+    }
 
 private:
     static constexpr uint32_t MERGED_EVERY_COUNT = 50;
@@ -142,20 +147,25 @@ private:
 
     void UpdateLayout(JSHClass *hclass);
     void UpdateTranstionLayout(JSHClass *parent, JSHClass *child);
-    void AddTranstionObjectInfo(ProfileType recordType, EntityId methodId, int32_t bcOffset, JSHClass *receiver,
+    bool AddTranstionObjectInfo(ProfileType recordType, EntityId methodId, int32_t bcOffset, JSHClass *receiver,
         JSHClass *hold, JSHClass *holdTra);
     void UpdatePrototypeChainInfo(JSHClass *receiver, JSHClass *holder, PGOObjectInfo &info);
 
-    void AddObjectInfo(ApEntityId abcId, const CString &recordName, EntityId methodId, int32_t bcOffset,
+    bool AddObjectInfo(ApEntityId abcId, const CString &recordName, EntityId methodId, int32_t bcOffset,
                        JSHClass *receiver, JSHClass *hold, JSHClass *holdTra);
     void AddObjectInfoWithMega(ApEntityId abcId, const CString &recordName, EntityId methodId, int32_t bcOffset);
+    void AddBuiltinsInfoByNameInInstance(ApEntityId abcId, const CString &recordName, EntityId methodId,
+        int32_t bcOffset, JSHClass *receiver);
+    void AddBuiltinsInfoByNameInProt(ApEntityId abcId, const CString &recordName, EntityId methodId, int32_t bcOffset,
+        JSHClass *receiver, JSHClass *hold);
     void AddBuiltinsInfo(
         ApEntityId abcId, const CString &recordName, EntityId methodId, int32_t bcOffset, JSHClass *receiver,
         JSHClass *transitionHClass, OnHeapMode onHeap = OnHeapMode::NONE);
 
     ProfileType GetProfileType(JSTaggedType root, JSTaggedType child);
-    ProfileType GetOrInsertProfileType(JSTaggedType root, JSTaggedType child);
-    void InsertProfileType(JSTaggedType root, JSTaggedType child, ProfileType traceType);
+    ProfileType GetProfileTypeSafe(JSTaggedType root, JSTaggedType child);
+    ProfileType GetOrInsertProfileTypeSafe(JSTaggedType root, JSTaggedType child);
+    void InsertProfileTypeSafe(JSTaggedType root, JSTaggedType child, ProfileType traceType);
 
     class WorkNode;
     void UpdateExtraProfileTypeInfo(ApEntityId abcId, const CString& recordName, EntityId methodId, WorkNode* current);
@@ -389,7 +399,7 @@ private:
         {
             if (HasExtraProfileTypeInfo()) {
                 for (auto& iter: map_) {
-                    auto info = iter.second;
+                    auto& info = iter.second;
                     visitor(Root::ROOT_VM, ObjectSlot(info.GetReceiverAddr()));
                     visitor(Root::ROOT_VM, ObjectSlot(info.GetHolderAddr()));
                 }
@@ -433,6 +443,15 @@ private:
 
     void Reset(bool isEnable);
 
+    bool IsSkippableObjectType(ProfileType type)
+    {
+        if (type.IsClassType() || type.IsConstructor() || type.IsPrototype()) {
+            uint32_t ctorId = type.GetId();
+            return skipCtorMethodId_.find(ctorId) != skipCtorMethodId_.end();
+        }
+        return false;
+    }
+
     EcmaVM *vm_ { nullptr };
     bool isEnable_ { false };
     bool isForce_ {false};
@@ -443,8 +462,10 @@ private:
     ConditionVariable condition_;
     WorkList dumpWorkList_;
     WorkList preDumpWorkList_;
+    Mutex tracedProfilesMutex_;
     CMap<JSTaggedType, PGOTypeGenerator *> tracedProfiles_;
     std::unique_ptr<PGORecordDetailInfos> recordInfos_;
+    CUnorderedSet<uint32_t> skipCtorMethodId_;
     friend class PGOProfilerManager;
 };
 } // namespace pgo

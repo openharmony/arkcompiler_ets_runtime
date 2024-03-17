@@ -260,12 +260,24 @@ public:
     void MarkCatchBBs();
     uint32 GetMaxRegNum() const
     {
-        return maxRegCount;
+        return vReg.GetMaxRegCount();
     };
+    void SetMaxRegNum(uint32 num)
+    {
+        vReg.SetMaxRegCount(num);
+    }
+    void IncMaxRegNum(uint32 num) const
+    {
+        vReg.IncMaxRegCount(num);
+    }
+    // Attention! Do not invoke this interface in other processes except unit-test
+    void SetMaxVReg(uint32 num) const
+    {
+        vReg.SetCount(num);
+    }
     void DumpCFG() const;
+    void DumpBBInfo(const BB *bb) const;
     void DumpCGIR() const;
-    void DumpLoop() const;
-    void ClearLoopInfo();
     Operand *HandleExpr(const BaseNode &parent, BaseNode &expr);
     /* handle rc reset */
     virtual void HandleRCCall(bool begin, const MIRSymbol *retRef = nullptr) = 0;
@@ -494,6 +506,7 @@ public:
 
     RegOperand *GetVirtualRegisterOperand(regno_t vRegNO) const
     {
+        std::unordered_map<regno_t, RegOperand *> &vRegOperandTable = VregInfo::vRegOperandTable;
         auto it = vRegOperandTable.find(vRegNO);
         return it == vRegOperandTable.end() ? nullptr : it->second;
     }
@@ -568,29 +581,7 @@ public:
         if (CGOptions::UseGeneralRegOnly()) {
             CHECK_FATAL(regType != kRegTyFloat, "cannot use float | SIMD register with --general-reg-only");
         }
-        /* when vRegCount reach to maxRegCount, maxRegCount limit adds 80 every time */
-        /* and vRegTable increases 80 elements. */
-        if (vRegCount >= maxRegCount) {
-            DEBUG_ASSERT(vRegCount < maxRegCount + 1, "MAINTIAN FAILED");
-            maxRegCount += kRegIncrStepLen;
-            vRegTable.resize(maxRegCount);
-        }
-#if TARGAARCH64 || TARGX86_64 || TARGRISCV64
-        if (size < k4ByteSize) {
-            size = k4ByteSize;
-        }
-#if TARGAARCH64
-        if (Triple::GetTriple().GetArch() == Triple::ArchType::aarch64) {
-            /* cannot handle 128 size register */
-            if (regType == kRegTyInt && size > k8ByteSize) {
-                size = k8ByteSize;
-            }
-        }
-#endif
-        DEBUG_ASSERT(size == k4ByteSize || size == k8ByteSize || size == k16ByteSize, "check size");
-#endif
-        new (&vRegTable[vRegCount]) VirtualRegNode(regType, size);
-        return vRegCount++;
+        return vReg.GetNextVregNO(regType, size);
     }
 
     virtual regno_t NewVRflag()
@@ -647,17 +638,21 @@ public:
     /* return Register Type */
     virtual RegType GetRegisterType(regno_t rNum) const
     {
-        CHECK(rNum < vRegTable.size(), "index out of range in GetVRegSize");
-        return vRegTable[rNum].GetType();
+        CHECK(rNum < vReg.VRegTableSize(), "index out of range in GetVRegSize");
+        return vReg.VRegTableGetType(rNum);
     }
 
+#if defined(TARGX86_64) && TARGX86_64
     uint32 GetMaxVReg() const
     {
-        if (Triple::GetTriple().GetArch() == Triple::ArchType::x64) {
-            return vRegCount + opndBuilder->GetCurrentVRegNum();
-        }
-        return vRegCount;
+        return vReg.GetCount() + opndBuilder->GetCurrentVRegNum();
     }
+#else
+    uint32 GetMaxVReg() const
+    {
+        return vReg.GetCount();
+    }
+#endif
 
     uint32 GetSSAvRegCount() const
     {
@@ -671,7 +666,7 @@ public:
 
     uint32 GetVRegSize(regno_t vregNum)
     {
-        CHECK(vregNum < vRegTable.size(), "index out of range in GetVRegSize");
+        CHECK(vregNum < vReg.VRegTableSize(), "index out of range in GetVRegSize");
         return GetOrCreateVirtualRegisterOperand(vregNum).GetSize() / kBitsPerByte;
     }
 
@@ -719,11 +714,6 @@ public:
     void IncTotalNumberOfInstructions()
     {
         totalInsns++;
-    }
-
-    void DecTotalNumberOfInstructions()
-    {
-        totalInsns--;
     }
 
     uint32 GetTotalNumberOfInstructions() const
@@ -964,6 +954,12 @@ public:
     BB *GetCommonExitBB()
     {
         return commonExitBB;
+    }
+
+    BB *GetCommonEntryBB()
+    {
+        DEBUG_ASSERT(bbVec[0]->GetId() == 0 && bbVec[0] != firstBB, "there is no commonEntryBB");
+        return bbVec[0];
     }
 
     LabelIdx GetFirstCGGenLabelIdx() const
@@ -1216,21 +1212,6 @@ public:
         funcLocalSym2Label[&mirSymbol] = labelIndex;
     }
 
-    MapleVector<CGFuncLoops *> &GetLoops()
-    {
-        return loops;
-    }
-
-    const MapleVector<CGFuncLoops *> GetLoops() const
-    {
-        return loops;
-    }
-
-    void PushBackLoops(CGFuncLoops &loop)
-    {
-        loops.emplace_back(&loop);
-    }
-
     MapleVector<LmbcFormalParamInfo *> &GetLmbcParamVec()
     {
         return lmbcParamVec;
@@ -1284,6 +1265,11 @@ public:
     MapleVector<BB *> &GetAllBBs()
     {
         return bbVec;
+    }
+
+    std::size_t GetAllBBSize() const
+    {
+        return bbVec.size();
     }
 
     BB *GetBBFromID(uint32 id)
@@ -1623,21 +1609,27 @@ public:
         return exitBBLost;
     }
 
+    void SetHasBuiltCfg(bool hasBuilt)
+    {
+        hasBuiltCfg = hasBuilt;
+    }
+
+    bool HasBuiltCfg() const
+    {
+        return hasBuiltCfg;
+    }
+
     bool GetWithSrc() const
     {
         return withSrc;
     }
-
 protected:
     uint32 firstMapleIrVRegNO = 200; /* positioned after physical regs */
     uint32 firstNonPregVRegNO;
-    uint32 vRegCount;                      /* for assigning a number for each CG virtual register */
-    uint32 ssaVRegCount = 0;               /* vreg  count in ssa */
-    uint32 maxRegCount;                    /* for the current virtual register number limit */
-    size_t lSymSize;                       /* size of local symbol table imported */
-    MapleVector<VirtualRegNode> vRegTable; /* table of CG's virtual registers indexed by v_reg no */
+    VregInfo vReg;           /* for assigning a number for each CG virtual register */
+    uint32 ssaVRegCount = 0; /* vreg  count in ssa */
+    size_t lSymSize;         /* size of local symbol table imported */
     MapleVector<BB *> bbVec;
-    MapleUnorderedMap<regno_t, RegOperand *> vRegOperandTable;
     MapleUnorderedSet<regno_t> referenceVirtualRegs;
     MapleSet<int64> referenceStackSlots;
     MapleVector<Operand *> pregIdx2Opnd;
@@ -1705,7 +1697,7 @@ protected:
 
     VirtualRegNode &GetVirtualRegNodeFromPseudoRegIdx(PregIdx idx)
     {
-        return vRegTable.at(GetVirtualRegNOFromPseudoRegIdx(idx));
+        return vReg.VRegTableElementGet(GetVirtualRegNOFromPseudoRegIdx(idx));
     }
 
     PrimType GetTypeFromPseudoRegIdx(PregIdx idx)
@@ -1834,7 +1826,6 @@ private:
     MapleVector<BB *> sortedBBs;
     MapleVector<LiveRange *> lrVec;
 #endif /* TARGARM32 */
-    MapleVector<CGFuncLoops *> loops;
     MapleVector<LmbcFormalParamInfo *> lmbcParamVec;
     int32 lmbcIntArgs = 0;
     int32 lmbcFpArgs = 0;
@@ -1848,7 +1839,7 @@ private:
     bool hasAsm = false;
     bool useFP = true;
     bool seenFP = true;
-
+    bool hasBuiltCfg = false;
     bool isStackMapComputed = false;
 
     /* save stack protect kinds which can trigger stack protect */

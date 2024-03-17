@@ -125,3 +125,22 @@ Reflect.defineProperty(globalThis,"c",{
 Reflect.set(globalThis,"d","d");
 JSON.stringify(globalThis);
 print("end JSON.stringify(globalThis)")
+
+let str1="\uD83D";
+let str2="\uDE0E";
+let str3="\uDE0E\"测试";
+let str4=new String("\uDE0E\"测试2")
+let str=str1+str2
+obj={};
+obj[str1]=str1;
+obj[str2]=str2;
+obj[str3]=str3;
+obj[str4]=str4;
+obj[str]=str
+print(JSON.stringify(obj))
+
+print(JSON.stringify(str))
+print(JSON.stringify(str1))
+print(JSON.stringify(str2))
+print(JSON.stringify(str3))
+print(JSON.stringify(str4))

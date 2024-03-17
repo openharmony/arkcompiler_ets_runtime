@@ -22,6 +22,7 @@
 
 #include "ecmascript/compiler/aot_file/an_file_data_manager.h"
 #include "ecmascript/mem/mem_common.h"
+#include "ecmascript/compiler/ecma_opcode_des.h"
 
 namespace panda::ecmascript {
 const std::string PUBLIC_API COMMON_HELP_HEAD_MSG =
@@ -75,6 +76,8 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
     "--compiler-deopt-threshold:           Set max count which aot function can occur deoptimization. Default: '10'\n"
     "--compiler-stress-deopt:              Enable stress deopt for aot compiler. Default: 'false'\n"
     "--compiler-opt-code-profiler:         Enable opt code Bytecode Statistics for aot runtime. Default: 'false'\n"
+    "--compiler-opt-bc-range:              Range list for EcmaOpCode range Example '1:2,5:8'\n"
+    "--compiler-opt-bc-range-help:         Range list for EcmaOpCode range help. Default: 'false''\n"
     "--enable-force-gc:                    Enable force gc when allocating object. Default: 'true'\n"
     "--force-shared-gc-frequency:          How frequency force shared gc . Default: '1'\n"
     "--enable-ic:                          Switch of inline cache. Default: 'true'\n"
@@ -164,9 +167,15 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
     "--compiler-enable-jit:                Enable jit: Default: 'false'\n"
     "--compiler-jit-hotness-threshold:     Set hotness threshold for jit. Default: '2'\n"
     "--compiler-force-jit-compile-main:    Enable jit compile main function: Default: 'false'\n"
-    "--compiler-trace-jit:                 Enable trace jit: Default: 'false'\n\n"
+    "--compiler-trace-jit:                 Enable trace jit: Default: 'false'\n"
     "--compiler-typed-op-profiler:         Enable Typed Opcode Statistics for aot runtime. Default: 'false'\n"
-    "--compiler-opt-branch-profiling:      Enable branch profiling for aot compiler. Default: 'true'\n";
+    "--compiler-opt-branch-profiling:      Enable branch profiling for aot compiler. Default: 'true'\n"
+    "--test-assert:                        Set Assert Model. Default: 'false'\n"
+    "--compiler-methods-range:             Enable aot compiler to compile only in-range methods."
+    "                                      Default: '0:4294967295'\n"
+    "--compiler-codegen-options:           Compile options passed to codegen. Default: ''\n\n"
+    "--compiler-opt-escape-analysis:       Enable escape analysis for aot compiler. Default: 'true'\n"
+    "--compiler-trace-escape-analysis:     Enable tracing escape analysis for aot compiler. Default: 'false'\n";
 
 bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
 {
@@ -195,14 +204,14 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"compiler-deopt-threshold", required_argument, nullptr, OPTION_COMPILER_DEOPT_THRESHOLD},
         {"compiler-stress-deopt", required_argument, nullptr, OPTION_COMPILER_STRESS_DEOPT},
         {"compiler-opt-code-profiler", required_argument, nullptr, OPTION_COMPILER_OPT_CODE_PROFILER},
+        {"compiler-opt-bc-range", required_argument, nullptr, OPTION_COMPILER_OPT_BC_RANGE},
+        {"compiler-opt-bc-range-help", required_argument, nullptr, OPTION_COMPILER_OPT_BC_RANGE_HELP},
         {"enable-force-gc", required_argument, nullptr, OPTION_ENABLE_FORCE_GC},
         {"enable-ic", required_argument, nullptr, OPTION_ENABLE_IC},
         {"enable-runtime-stat", required_argument, nullptr, OPTION_ENABLE_RUNTIME_STAT},
         {"compiler-opt-constant-folding", required_argument, nullptr, OPTION_COMPILER_OPT_CONSTANT_FOLDING},
-        {"compiler-opt-array-bounds-check-elimination",
-         required_argument,
-         nullptr,
-         OPTION_COMPILER_OPT_ARRAY_BOUNDS_CHECK_ELIMINATION},
+        {"compiler-opt-array-bounds-check-elimination", required_argument, nullptr,
+            OPTION_COMPILER_OPT_ARRAY_BOUNDS_CHECK_ELIMINATION},
         {"compiler-opt-type-lowering", required_argument, nullptr, OPTION_COMPILER_OPT_TYPE_LOWERING},
         {"compiler-opt-early-elimination", required_argument, nullptr, OPTION_COMPILER_OPT_EARLY_ELIMINATION},
         {"compiler-opt-later-elimination", required_argument, nullptr, OPTION_COMPILER_OPT_LATER_ELIMINATION},
@@ -235,7 +244,6 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"merge-abc", required_argument, nullptr, OPTION_MERGE_ABC},
         {"enable-context", required_argument, nullptr, OPTION_ENABLE_CONTEXT},
         {"compiler-opt-level", required_argument, nullptr, OPTION_ASM_OPT_LEVEL},
-        {"options", no_argument, nullptr, OPTION_OPTIONS},
         {"compiler-print-type-info", required_argument, nullptr, OPTION_COMPILER_PRINT_TYPE_INFO},
         {"reloc-mode", required_argument, nullptr, OPTION_RELOCATION_MODE},
         {"serializer-buffer-size-limit", required_argument, nullptr, OPTION_SERIALIZER_BUFFER_SIZE_LIMIT},
@@ -262,10 +270,8 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"compiler-pkg-info", required_argument, nullptr, OPTION_COMPILER_PKG_INFO},
         {"compiler-external-pkg-info", required_argument, nullptr, OPTION_COMPILER_EXTERNAL_PKG_INFO},
         {"compiler-enable-external-pkg", required_argument, nullptr, OPTION_COMPILER_ENABLE_EXTERNAL_PKG},
-        {"compiler-enable-lexenv-specialization",
-         required_argument,
-         nullptr,
-         OPTION_COMPILER_ENABLE_LEXENV_SPECIALIZATION},
+        {"compiler-enable-lexenv-specialization", required_argument, nullptr,
+            OPTION_COMPILER_ENABLE_LEXENV_SPECIALIZATION},
         {"compiler-enable-native-inline", required_argument, nullptr, OPTION_COMPILER_ENABLE_NATIVE_INLINE},
         {"compiler-enable-lowering-builtin", required_argument, nullptr, OPTION_COMPILER_ENABLE_LOWERING_BUILTIN},
         {"compiler-enable-litecg", required_argument, nullptr, OPTION_COMPILER_ENABLE_LITECG},
@@ -274,6 +280,11 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"compiler-force-jit-compile-main", required_argument, nullptr, OPTION_COMPILER_FORCE_JIT_COMPILE_MAIN},
         {"compiler-typed-op-profiler", required_argument, nullptr, OPTION_COMPILER_TYPED_OP_PROFILER},
         {"compiler-opt-branch-profiling", required_argument, nullptr, OPTION_COMPILER_OPT_BRANCH_PROFILING},
+        {"test-assert", required_argument, nullptr, OPTION_TEST_ASSERT},
+        {"compiler-methods-range", required_argument, nullptr, OPTION_COMPILER_METHODS_RANGE},
+        {"compiler-codegen-options", required_argument, nullptr, OPTION_COMPILER_CODEGEN_OPT},
+        {"compiler-opt-escape-analysis", required_argument, nullptr, OPTION_COMPILER_OPT_ESCAPE_ANALYSIS},
+        {"compiler-trace-escape-analysis", required_argument, nullptr, OPTION_COMPILER_TRACE_ESCAPE_ANALYSIS},
         {nullptr, 0, nullptr, 0},
     };
 
@@ -459,6 +470,17 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                     SetOptCodeProfiler(argBool);
                 } else {
                     return false;
+                }
+                break;
+            case OPTION_COMPILER_OPT_BC_RANGE:
+                SetOptCodeRange(optarg);
+                break;
+            case OPTION_COMPILER_OPT_BC_RANGE_HELP:
+                ret = ParseBoolParam(&argBool);
+                if (ret) {
+                    std::string helpInfo = kungfu::GetHelpForEcmaCodeListForRange();
+                    LOG_COMPILER(ERROR) << helpInfo.c_str();
+                    exit(1);
                 }
                 break;
             case OPTION_ENABLE_FORCE_GC:
@@ -974,6 +996,38 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                     return false;
                 }
                 break;
+            case OPTION_TEST_ASSERT:
+                ret = ParseBoolParam(&argBool);
+                if (ret) {
+                    SetTestAssert(argBool);
+                } else {
+                    return false;
+                }
+                break;
+            case OPTION_COMPILER_METHODS_RANGE:
+                ParseListArgParam(optarg, &argListStr, COLON);
+                SetCompilerMethodsRange(&argListStr);
+                break;
+            case OPTION_COMPILER_CODEGEN_OPT:
+                ParseListArgParam(optarg, &argListStr, " ");
+                SetCompilerCodegenOptions(argListStr);
+                break;
+            case OPTION_COMPILER_OPT_ESCAPE_ANALYSIS:
+                ret = ParseBoolParam(&argBool);
+                if (ret) {
+                    SetEnableEscapeAnalysis(argBool);
+                } else {
+                    return false;
+                }
+                break;
+            case OPTION_COMPILER_TRACE_ESCAPE_ANALYSIS:
+                ret = ParseBoolParam(&argBool);
+                if (ret) {
+                    SetEnableTraceEscapeAnalysis(argBool);
+                } else {
+                    return false;
+                }
+                break;
             default:
                 LOG_ECMA(ERROR) << "Invalid option\n";
                 return false;
@@ -990,7 +1044,7 @@ bool JSRuntimeOptions::SetDefaultValue(char* argv)
         return false;
     }
 
-    if (optopt > OPTION_OPTIONS) { // unknown argument
+    if (optopt >= OPTION_LAST) { // unknown argument
         LOG_ECMA(ERROR) << "getopt: \"" << argv <<"\" argument has invalid parameter value \n";
         return false;
     }

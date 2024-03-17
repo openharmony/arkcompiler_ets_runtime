@@ -40,6 +40,9 @@ struct BuiltinHClassEntries {
         // Let X be the builtin object (e.g. X = Array, Object, etc.)
         // builtinHClass = HClass of X
         JSHClass *builtinHClass = nullptr;
+        // Let x be the builtin instance object (e.g. x = new Array(), new Object(), etc.)
+        // instanceHClass = HClass of x
+        JSHClass *instanceHClass = nullptr;
         // prototypeHClass = HClass of X.prototype
         JSHClass *prototypeHClass = nullptr;
     };
@@ -62,6 +65,12 @@ struct BuiltinHClassEntries {
     {
         size_t index = GetEntryIndex(type);
         return sizeof(Entry) * index + MEMBER_OFFSET(Entry, builtinHClass);
+    }
+
+    static size_t GetInstanceHClassOffset(BuiltinTypeId type)
+    {
+        size_t index = GetEntryIndex(type);
+        return sizeof(Entry) * index + MEMBER_OFFSET(Entry, instanceHClass);
     }
 
     static size_t GetPrototypeHClassOffset(BuiltinTypeId type)

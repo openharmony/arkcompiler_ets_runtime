@@ -50,6 +50,7 @@ class JSThread;
  *      |      AOT Instance Hclass (IHC)    |
  *      |   AOT Constructor Hclass (CHC)    |
  *      |   AOT ElementIndex (ElementIndex) |
+ *      |   AOT ElementKind  (ElementKind)  |
  *      +-----------------------------------+
  */
 class AOTLiteralInfo : public TaggedArray {
@@ -58,7 +59,8 @@ public:
     static constexpr size_t AOT_CHC_INDEX = 1;
     static constexpr size_t AOT_IHC_INDEX = 2;
     static constexpr size_t AOT_ELEMENT_INDEX = 3;
-    static constexpr size_t LITERAL_TYPE_INDEX = 4;
+    static constexpr size_t AOT_ELEMENTS_KIND_INDEX = 4;
+    static constexpr size_t LITERAL_TYPE_INDEX = 5;
     static constexpr size_t RESERVED_LENGTH = LITERAL_TYPE_INDEX;
 
     static constexpr int32_t METHOD_LITERAL_TYPE = 1;
@@ -81,6 +83,7 @@ public:
         SetIhc(JSTaggedValue::Undefined());
         SetChc(JSTaggedValue::Undefined());
         SetElementIndex(JSTaggedValue(kungfu::BaseSnapshotInfo::AOT_ELEMENT_INDEX_DEFAULT_VALUE));
+        SetElementsKind(ElementsKind::GENERIC);
         SetLiteralType(JSTaggedValue(INVALID_LITERAL_TYPE));
     }
 
@@ -119,6 +122,19 @@ public:
         return JSTaggedValue(Barriers::GetValue<JSTaggedType>(GetData(), GetElementIndexOffset())).GetInt();
     }
 
+    inline void SetElementsKind(ElementsKind kind)
+    {
+        JSTaggedValue value(static_cast<int>(kind));
+        Barriers::SetPrimitive(GetData(), GetElementsKindOffset(), value.GetRawData());
+    }
+
+    inline ElementsKind GetElementsKind() const
+    {
+        JSTaggedValue value = JSTaggedValue(Barriers::GetValue<JSTaggedType>(GetData(), GetElementsKindOffset()));
+        ElementsKind kind = static_cast<ElementsKind>(value.GetInt());
+        return kind;
+    }
+
     inline void SetLiteralType(JSTaggedValue value)
     {
         Barriers::SetPrimitive(GetData(), GetLiteralTypeOffset(), value.GetRawData());
@@ -155,11 +171,15 @@ private:
         return JSTaggedValue::TaggedTypeSize() * (GetLength() - AOT_ELEMENT_INDEX);
     }
 
+    inline size_t GetElementsKindOffset() const
+    {
+        return JSTaggedValue::TaggedTypeSize() * (GetLength() - AOT_ELEMENTS_KIND_INDEX);
+    }
+
     inline size_t GetLiteralTypeOffset() const
     {
         return JSTaggedValue::TaggedTypeSize() * (GetLength() - LITERAL_TYPE_INDEX);
     }
-
 };
 
 class AOTFileManager {

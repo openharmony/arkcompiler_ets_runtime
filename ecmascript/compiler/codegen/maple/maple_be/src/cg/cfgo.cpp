@@ -273,10 +273,7 @@ bool ChainingPattern::Optimize(BB &curBB)
          *   3. BB2 is of goto kind. Otherwise, the original fall through will be broken
          *   4. BB2 is neither catch BB nor switch case BB
          */
-        if (sucBB == nullptr || curBB.GetEhSuccs().size() != sucBB->GetEhSuccs().size()) {
-            return false;
-        }
-        if (!curBB.GetEhSuccs().empty() && (curBB.GetEhSuccs().front() != sucBB->GetEhSuccs().front())) {
+        if (sucBB == nullptr) {
             return false;
         }
         if (sucBB->GetKind() == BB::kBBGoto && !IsLabelInLSDAOrSwitchTable(sucBB->GetLabIdx()) &&
@@ -292,8 +289,8 @@ bool ChainingPattern::Optimize(BB &curBB)
         } else if (sucBB != &curBB && curBB.GetNext() != sucBB && sucBB != cgFunc->GetLastBB() &&
                    !sucBB->IsPredecessor(*sucBB->GetPrev()) &&
                    !(sucBB->GetNext() != nullptr && sucBB->GetNext()->IsPredecessor(*sucBB)) &&
-                   !IsLabelInLSDAOrSwitchTable(sucBB->GetLabIdx()) && sucBB->GetEhSuccs().empty() &&
-                   sucBB->GetKind() != BB::kBBThrow && curBB.GetNext() != nullptr) {
+                   !IsLabelInLSDAOrSwitchTable(sucBB->GetLabIdx()) && sucBB->GetKind() != BB::kBBThrow &&
+                   curBB.GetNext() != nullptr) {
             return MoveSuccBBAsCurBBNext(curBB, *sucBB);
         }
         /*
@@ -603,8 +600,7 @@ void FlipBRPattern::RelocateThrowBB(BB &curBB)
     BB *retBB = theCFG->FindLastRetBB();
     retBB = (retBB == nullptr ? cgFunc->GetLastBB() : retBB);
     CHECK_FATAL(retBB != nullptr, "must have a return BB");
-    if (ftBB->GetKind() != BB::kBBThrow || !ftBB->GetEhSuccs().empty() ||
-        IsLabelInLSDAOrSwitchTable(ftBB->GetLabIdx()) || !retBB->GetEhSuccs().empty()) {
+    if (ftBB->GetKind() != BB::kBBThrow || IsLabelInLSDAOrSwitchTable(ftBB->GetLabIdx())) {
         return;
     }
     BB *brBB = CGCFG::GetTargetSuc(curBB);
@@ -689,9 +685,6 @@ bool FlipBRPattern::Optimize(BB &curBB)
         DEBUG_ASSERT(brBB != nullptr, "brBB is null in  FlipBRPattern::Optimize");
         /* Check if it can be optimized */
         if (ftBB->GetKind() == BB::kBBGoto && ftBB->GetNext() == brBB) {
-            if (!ftBB->GetEhSuccs().empty()) {
-                return false;
-            }
             Insn *curBBBranchInsn = nullptr;
             for (curBBBranchInsn = curBB.GetLastMachineInsn(); curBBBranchInsn != nullptr;
                  curBBBranchInsn = curBBBranchInsn->GetPrev()) {
@@ -776,11 +769,13 @@ bool FlipBRPattern::Optimize(BB &curBB)
                 ftBB->RemoveInsn(*brInsn);
                 ftBB->SetKind(BB::kBBFallthru);
             }
-        } else if (GetPhase() == kCfgoPostRegAlloc && ftBB->GetKind() == BB::kBBGoto && curBB.GetLoop() != nullptr &&
-                   curBB.GetLoop() == ftBB->GetLoop() && ftBB->IsSoloGoto() &&
-                   ftBB->GetLoop()->GetHeader() == *(ftBB->GetSuccsBegin()) &&
-                   !curBB.GetLoop()->IsBBLoopMember((curBB.GetSuccs().front() == ftBB) ? curBB.GetSuccs().back()
-                                                                                       : curBB.GetSuccs().front())) {
+        } else if (GetPhase() == kCfgoPostRegAlloc && ftBB->GetKind() == BB::kBBGoto &&
+                   loopInfo.GetBBLoopParent(curBB.GetId()) != nullptr &&
+                   loopInfo.GetBBLoopParent(curBB.GetId()) == loopInfo.GetBBLoopParent(ftBB->GetId()) &&
+                   ftBB->IsSoloGoto() &&
+                   &(loopInfo.GetBBLoopParent(ftBB->GetId())->GetHeader()) == *(ftBB->GetSuccsBegin()) &&
+                   !loopInfo.GetBBLoopParent(curBB.GetId())->Has(
+                       (curBB.GetSuccs().front() == ftBB) ? *curBB.GetSuccs().back() : *curBB.GetSuccs().front())) {
             Insn *curBBBranchInsn = nullptr;
             for (curBBBranchInsn = curBB.GetLastMachineInsn(); curBBBranchInsn != nullptr;
                  curBBBranchInsn = curBBBranchInsn->GetPrev()) {
@@ -936,12 +931,7 @@ bool UnreachBBPattern::Optimize(BB &curBB)
             bb->RemovePreds(curBB);
             cgFunc->GetTheCFG()->FlushUnReachableStatusAndRemoveRelations(*bb, *cgFunc);
         }
-        for (BB *bb : curBB.GetEhSuccs()) {
-            bb->RemoveEhPreds(curBB);
-            cgFunc->GetTheCFG()->FlushUnReachableStatusAndRemoveRelations(*bb, *cgFunc);
-        }
         curBB.ClearSuccs();
-        curBB.ClearEhSuccs();
         // return always be false
         if (!isRemoved) {
             return false;
@@ -979,8 +969,7 @@ bool DuplicateBBPattern::Optimize(BB &curBB)
     }
 
     /* curBB can't be in try block */
-    if (curBB.GetKind() != BB::kBBGoto || IsLabelInLSDAOrSwitchTable(curBB.GetLabIdx()) ||
-        !curBB.GetEhSuccs().empty()) {
+    if (curBB.GetKind() != BB::kBBGoto || IsLabelInLSDAOrSwitchTable(curBB.GetLabIdx())) {
         return false;
     }
 
@@ -1020,12 +1009,6 @@ bool DuplicateBBPattern::Optimize(BB &curBB)
             }
             bool changed = false;
             for (BB *bb : candidates) {
-                if (curBB.GetEhSuccs().size() != bb->GetEhSuccs().size()) {
-                    continue;
-                }
-                if (!curBB.GetEhSuccs().empty() && (curBB.GetEhSuccs().front() != bb->GetEhSuccs().front())) {
-                    continue;
-                }
                 bb->RemoveInsn(*bb->GetLastInsn());
                 FOR_BB_INSNS(insn, (&curBB))
                 {
@@ -1357,9 +1340,15 @@ bool CrossJumpBBPattern::Optimize(BB &curBB)
 }
 
 /* === new pm === */
+void CgPreCfgo::GetAnalysisDependence(AnalysisDep &aDep) const
+{
+    aDep.AddRequired<CgLoopAnalysis>();
+}
+
 bool CgPreCfgo::PhaseRun(maplebe::CGFunc &f)
 {
-    CFGOptimizer *cfgOptimizer = f.GetCG()->CreateCFGOptimizer(*GetPhaseMemPool(), f);
+    auto *loopInfo = GET_ANALYSIS(CgLoopAnalysis, f);
+    CFGOptimizer *cfgOptimizer = f.GetCG()->CreateCFGOptimizer(*GetPhaseMemPool(), f, *loopInfo);
     const std::string &funcClass = f.GetFunction().GetBaseClassName();
     const std::string &funcName = f.GetFunction().GetBaseFuncName();
     const std::string &name = funcClass + funcName;
@@ -1375,9 +1364,15 @@ bool CgPreCfgo::PhaseRun(maplebe::CGFunc &f)
 }
 MAPLE_TRANSFORM_PHASE_REGISTER_CANSKIP(CgPreCfgo, precfgo)
 
+void CgCfgo::GetAnalysisDependence(AnalysisDep &aDep) const
+{
+    aDep.AddRequired<CgLoopAnalysis>();
+}
+
 bool CgCfgo::PhaseRun(maplebe::CGFunc &f)
 {
-    CFGOptimizer *cfgOptimizer = f.GetCG()->CreateCFGOptimizer(*GetPhaseMemPool(), f);
+    auto *loopInfo = GET_ANALYSIS(CgLoopAnalysis, f);
+    CFGOptimizer *cfgOptimizer = f.GetCG()->CreateCFGOptimizer(*GetPhaseMemPool(), f, *loopInfo);
     if (f.IsAfterRegAlloc()) {
         cfgOptimizer->SetPhase(kCfgoPostRegAlloc);
     }
@@ -1396,9 +1391,15 @@ bool CgCfgo::PhaseRun(maplebe::CGFunc &f)
 }
 MAPLE_TRANSFORM_PHASE_REGISTER_CANSKIP(CgCfgo, cfgo)
 
+void CgPostCfgo::GetAnalysisDependence(AnalysisDep &aDep) const
+{
+    aDep.AddRequired<CgLoopAnalysis>();
+}
+
 bool CgPostCfgo::PhaseRun(maplebe::CGFunc &f)
 {
-    CFGOptimizer *cfgOptimizer = f.GetCG()->CreateCFGOptimizer(*GetPhaseMemPool(), f);
+    auto *loopInfo = GET_ANALYSIS(CgLoopAnalysis, f);
+    CFGOptimizer *cfgOptimizer = f.GetCG()->CreateCFGOptimizer(*GetPhaseMemPool(), f, *loopInfo);
     const std::string &funcClass = f.GetFunction().GetBaseClassName();
     const std::string &funcName = f.GetFunction().GetBaseFuncName();
     const std::string &name = funcClass + funcName;

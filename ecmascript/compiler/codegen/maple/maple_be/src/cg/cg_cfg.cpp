@@ -32,23 +32,12 @@
 #include "triple.h"
 #include <cstdlib>
 
-namespace {
-using namespace maplebe;
-bool CanBBThrow(const BB &bb)
-{
-    FOR_BB_INSNS_CONST(insn, &bb)
-    {
-        if (insn->IsTargetInsn() && insn->CanThrow()) {
-            return true;
-        }
-    }
-    return false;
-}
-}  // namespace
-
 namespace maplebe {
 void CGCFG::BuildCFG()
 {
+    if (cgFunc->HasBuiltCfg()) {
+        return;
+    }
     /*
      * Second Pass:
      * Link preds/succs in the BBs
@@ -138,29 +127,9 @@ void CGCFG::BuildCFG()
             default:
                 break;
         } /* end switch */
-
-        EHFunc *ehFunc = cgFunc->GetEHFunc();
-        /* Check exception table. If curBB is in a try block, add catch BB to its succs */
-        if (ehFunc != nullptr && ehFunc->GetLSDACallSiteTable() != nullptr) {
-            /* Determine if insn in bb can actually except */
-            if (CanBBThrow(*curBB)) {
-                const MapleVector<LSDACallSite *> &callsiteTable = ehFunc->GetLSDACallSiteTable()->GetCallSiteTable();
-                for (size_t i = 0; i < callsiteTable.size(); ++i) {
-                    LSDACallSite *lsdaCallsite = callsiteTable[i];
-                    BB *endTry = cgFunc->GetBBFromLab2BBMap(lsdaCallsite->csLength.GetEndOffset()->GetLabelIdx());
-                    BB *startTry = cgFunc->GetBBFromLab2BBMap(lsdaCallsite->csLength.GetStartOffset()->GetLabelIdx());
-                    if (curBB->GetId() >= startTry->GetId() && curBB->GetId() <= endTry->GetId() &&
-                        lsdaCallsite->csLandingPad.GetEndOffset() != nullptr) {
-                        BB *landingPad =
-                            cgFunc->GetBBFromLab2BBMap(lsdaCallsite->csLandingPad.GetEndOffset()->GetLabelIdx());
-                        curBB->PushBackEhSuccs(*landingPad);
-                        landingPad->PushBackEhPreds(*curBB);
-                    }
-                }
-            }
-        }
     }
     FindAndMarkUnreachable(*cgFunc);
+    cgFunc->SetHasBuiltCfg(true);
 }
 
 void CGCFG::CheckCFG()
@@ -340,7 +309,7 @@ bool CGCFG::AreCommentAllPreds(const BB &bb)
 /* Merge sucBB into curBB. */
 void CGCFG::MergeBB(BB &merger, BB &mergee, CGFunc &func)
 {
-	BB *prevLast = mergee.GetPrev();
+    BB *prevLast = mergee.GetPrev();
     MergeBB(merger, mergee);
     if (func.GetLastBB()->GetId() == mergee.GetId()) {
         func.SetLastBB(*prevLast);
@@ -391,20 +360,6 @@ void CGCFG::MergeBB(BB &merger, BB &mergee)
         mergee.GetNext()->SetPrev(mergee.GetPrev());
     }
     merger.RemoveSuccs(mergee);
-    if (!merger.GetEhSuccs().empty()) {
-#if DEBUG
-        for (BB *bb : merger.GetEhSuccs()) {
-            DEBUG_ASSERT((bb != &mergee), "CGCFG::MergeBB: Merging of EH bb");
-        }
-#endif
-    }
-    if (!mergee.GetEhSuccs().empty()) {
-        for (BB *bb : mergee.GetEhSuccs()) {
-            bb->RemoveEhPreds(mergee);
-            bb->PushBackEhPreds(merger);
-            merger.PushBackEhSuccs(*bb);
-        }
-    }
     for (BB *bb : mergee.GetSuccs()) {
         bb->RemovePreds(mergee);
         bb->PushBackPreds(merger);
@@ -415,8 +370,6 @@ void CGCFG::MergeBB(BB &merger, BB &mergee)
     mergee.SetPrev(nullptr);
     mergee.ClearPreds();
     mergee.ClearSuccs();
-    mergee.ClearEhPreds();
-    mergee.ClearEhSuccs();
     mergee.SetFirstInsn(nullptr);
     mergee.SetLastInsn(nullptr);
 }
@@ -459,21 +412,10 @@ void CGCFG::FindAndMarkUnreachable(CGFunc &func)
                 (void)instackBBs.insert(succBB->GetId());
             }
         }
-        for (BB *succBB : bb->GetEhSuccs()) {
-            if (instackBBs.count(succBB->GetId()) == 0) {
-                toBeAnalyzedBBs.push(succBB);
-                (void)instackBBs.insert(succBB->GetId());
-            }
-        }
     }
     FOR_ALL_BB(tmpBB, &func)
     {
         for (MapleList<BB *>::iterator predIt = tmpBB->GetPredsBegin(); predIt != tmpBB->GetPredsEnd(); ++predIt) {
-            if ((*predIt)->IsUnreachable()) {
-                tmpBB->ErasePreds(predIt);
-            }
-        }
-        for (MapleList<BB *>::iterator predIt = tmpBB->GetEhPredsBegin(); predIt != tmpBB->GetEhPredsEnd(); ++predIt) {
             if ((*predIt)->IsUnreachable()) {
                 tmpBB->ErasePreds(predIt);
             }
@@ -506,10 +448,9 @@ void CGCFG::FlushUnReachableStatusAndRemoveRelations(BB &bb, const CGFunc &func)
         /* Check if bb is the first or the last BB of the function */
         isFirstBBInfunc = (it == func.GetFirstBB());
         isLastBBInfunc = (it == func.GetLastBB());
-        bool needFlush = !isFirstBBInfunc && !isLastBBInfunc && !it->IsCleanup() &&
-                         (it->GetPreds().empty() || (it->GetPreds().size() == 1 && it->GetEhPreds().front() == it)) &&
-                         it->GetEhPreds().empty() && !InSwitchTable(it->GetLabIdx(), *cgFunc) &&
-                         !cgFunc->IsExitBB(*it) && (it->IsLabelTaken() == false);
+        bool needFlush = !isFirstBBInfunc && !isLastBBInfunc && !it->IsCleanup() && it->GetPreds().empty() &&
+                         !InSwitchTable(it->GetLabIdx(), *cgFunc) && !cgFunc->IsExitBB(*it) &&
+                         (it->IsLabelTaken() == false);
         if (!needFlush) {
             continue;
         }
@@ -522,18 +463,8 @@ void CGCFG::FlushUnReachableStatusAndRemoveRelations(BB &bb, const CGFunc &func)
                 (void)instackBBs.insert(succ->GetId());
             }
             succ->RemovePreds(*it);
-            succ->RemoveEhPreds(*it);
         }
         it->ClearSuccs();
-        for (BB *succ : it->GetEhSuccs()) {
-            if (instackBBs.count(succ->GetId()) == 0) {
-                toBeAnalyzedBBs.push(succ);
-                (void)instackBBs.insert(succ->GetId());
-            }
-            succ->RemoveEhPreds(*it);
-            succ->RemovePreds(*it);
-        }
-        it->ClearEhSuccs();
     }
 }
 
@@ -593,12 +524,6 @@ void CGCFG::RemoveBB(BB &curBB, bool isGotoIf) const
         }
     }
 
-    for (BB *ehSucc : curBB.GetEhSuccs()) {
-        ehSucc->RemoveEhPreds(curBB);
-    }
-    for (BB *ehPred : curBB.GetEhPreds()) {
-        ehPred->RemoveEhSuccs(curBB);
-    }
     if (curBB.GetNext() != nullptr) {
         cgFunc->GetCommonExitBB()->RemovePreds(curBB);
         curBB.GetNext()->RemovePreds(curBB);
@@ -807,10 +732,6 @@ void CGCFG::UnreachCodeAnalysis() const
             toBeAnalyzedBBs.push_front(succBB);
             unreachBBs.erase(succBB);
         }
-        for (BB *succBB : bb->GetEhSuccs()) {
-            toBeAnalyzedBBs.push_front(succBB);
-            unreachBBs.erase(succBB);
-        }
     }
 
     /* remove unreachable bb */
@@ -854,12 +775,8 @@ void CGCFG::UnreachCodeAnalysis() const
         for (BB *sucBB : unreachBB->GetSuccs()) {
             sucBB->RemovePreds(*unreachBB);
         }
-        for (BB *ehSucBB : unreachBB->GetEhSuccs()) {
-            ehSucBB->RemoveEhPreds(*unreachBB);
-        }
 
         unreachBB->ClearSuccs();
-        unreachBB->ClearEhSuccs();
 
         cgFunc->ClearBBInVec(unreachBB->GetId());
 
@@ -946,14 +863,6 @@ void CGCFG::UpdatePredsSuccsAfterSplit(BB &pred, BB &succ, BB &newBB) const
         }
     }
     newBB.PushBackPreds(pred);
-
-    /* maintain eh info */
-    for (auto it = pred.GetEhSuccs().begin(); it != pred.GetEhSuccs().end(); ++it) {
-        newBB.PushBackEhSuccs(**it);
-    }
-    for (auto it = pred.GetEhPredsBegin(); it != pred.GetEhPredsEnd(); ++it) {
-        newBB.PushBackEhPreds(**it);
-    }
 
     /* update phi */
     for (const auto phiInsnIt : succ.GetPhiInsns()) {

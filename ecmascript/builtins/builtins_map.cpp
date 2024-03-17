@@ -151,6 +151,9 @@ JSTaggedValue BuiltinsMap::Get(EcmaRuntimeCallInfo *argv)
         THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSMap", JSTaggedValue::Exception());
     }
     JSMap *jsMap = JSMap::Cast(self.GetTaggedValue().GetTaggedObject());
+    if (jsMap->GetSize() == 0) {
+        return JSTaggedValue::Undefined();
+    }
     JSHandle<JSTaggedValue> key = GetCallArg(argv, 0);
     JSTaggedValue value = jsMap->Get(thread, key.GetTaggedValue());
     return value;

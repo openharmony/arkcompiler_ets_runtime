@@ -106,3 +106,4 @@ try {
 
 print(BigInt.asUintN(2**32, 42n));
 print(BigInt.asIntN(2**32, 42n));
+print((1n)<<(61n)>>(61n));

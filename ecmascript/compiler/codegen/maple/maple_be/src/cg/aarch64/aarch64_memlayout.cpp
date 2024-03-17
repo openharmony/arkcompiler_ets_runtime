@@ -115,7 +115,7 @@ uint32 AArch64MemLayout::ComputeStackSpaceRequirementForCall(StmtNode &stmt, int
 void AArch64MemLayout::SetSizeAlignForTypeIdx(uint32 typeIdx, uint32 &size, uint32 &align) const
 {
     auto *mirType = GlobalTables::GetTypeTable().GetTypeFromTyIdx(typeIdx);
-    if (be.GetTypeSize(typeIdx) > k16ByteSize) {
+    if (IsParamStructCopyToMemory(*mirType)) {
         /* size > 16 is passed on stack, the formal is just a pointer to the copy on stack. */
         if (CGOptions::IsArm64ilp32()) {
             align = k8ByteSize;

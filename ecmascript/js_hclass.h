@@ -428,6 +428,8 @@ public:
     static void TransitionForElementsKindChange(const JSThread *thread, const JSHandle<JSObject> &receiver,
                                          const ElementsKind newKind);
     static JSHClass* GetInitialArrayHClassWithElementsKind(const JSThread *thread, const ElementsKind kind);
+    static bool PUBLIC_API TransitToElementsKindUncheck(const JSThread *thread, const JSHandle<JSObject> &obj,
+                                             ElementsKind newKind);
     static void PUBLIC_API TransitToElementsKind(const JSThread *thread, const JSHandle<JSArray> &array,
                                                  ElementsKind newKind = ElementsKind::NONE);
     static bool PUBLIC_API TransitToElementsKind(const JSThread *thread, const JSHandle<JSObject> &object,
@@ -1708,6 +1710,21 @@ public:
     {
         uint32_t bits = GetBitField1();
         return NumberOfPropsBits::Decode(bits);
+    }
+
+    inline bool HasProps() const
+    {
+        return NumberOfProps() > 0;
+    }
+
+    inline bool PropsIsEmpty() const
+    {
+        return NumberOfProps() == 0;
+    }
+
+    inline uint32_t LastPropIndex() const
+    {
+        return NumberOfProps() - 1;
     }
 
     inline int32_t GetNextInlinedPropsIndex() const

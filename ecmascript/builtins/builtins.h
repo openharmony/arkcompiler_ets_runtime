@@ -301,7 +301,9 @@ private:
                                                          const JSHandle<JSTaggedValue> &symbol,
                                                          std::string_view name,
                                                          EcmaEntrypoint func,
-                                                         int length) const;
+                                                         int length,
+                                                         kungfu::BuiltinsStubCSigns::ID builtinId =
+                                                         kungfu::BuiltinsStubCSigns::INVALID) const;
 
     void SetStringTagSymbol(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &obj,
                             std::string_view key) const;
@@ -385,6 +387,7 @@ private:
                                                 std::string_view name, int length) const;
     void SharedStrictModeForbiddenAccessCallerArguments(const JSHandle<GlobalEnv> &env, uint32_t &index,
                                                         const JSHandle<JSObject> &prototype) const;
+    JSHandle<JSTaggedValue> CreateArrayUnscopables(JSThread *thread) const;
     friend class builtins::BuiltinsLazyCallback;
 };
 }  // namespace panda::ecmascript

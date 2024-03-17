@@ -401,3 +401,46 @@ print(replacedString);
 
 let str = "beep boop   afff测试样本one1";
 print(str.split(/([{}:;,]|\s+)/));
+
+function verifyRegExp(text) {
+  text = text.replace(new RegExp('[\\s]', 'g'), ' ');
+  let emRegExp = new RegExp('<em>.*?</em>', 'ig');
+  let results = text.split(emRegExp);
+  text.match(emRegExp);
+  return results;
+}
+
+const srcTextA = '<em>a</em>bcdefghijklmnopqrstuvwxyz<em>a</em>bcdefghijklmnopqrstuvwxyz<em>a</em>bcdefghijklmnopqrstuvwxyz<em>a</em>bcdefghijklmnopqrstuvwxyz'
+const srcTextAbcd = '<em>abcd</em>efghijklmnopqrstuvwxyz<em>abcd</em>efghijklmnopqrstuvwxyz<em>abcd</em>efghijklmnopqrstuvwxyz<em>abcd</em>efghijklmnopqrstuvwxyz'
+
+print(`verifyRegExp_1: ${verifyRegExp(srcTextA)}`);
+print(`verifyRegExp_2: ${verifyRegExp(srcTextAbcd)}`);
+print(`verifyRegExp_3: ${verifyRegExp(srcTextAbcd)}`);
+
+//regexp unicode property
+const ans1 = /\p{Alphabetic}/u.test("æ");
+const ans2 = /\p{Alpha}/u.test("2");
+const ans3 = /^[\p{Lu}\p{Ll}]+$/u.test("ASDFasdf");
+const ans4 = /^[\P{Lu}\p{Ll}]+$/u.test("ASDFasdf");
+const ans5 = /\P{Ll}/iu.test("b");
+const ans6 = /\p{Ll}/iu.test("b");
+const ans7 = /[^\P{Any}]+/u.test(456);
+const ans8 = /\p{Assigned}+/u.test("🄰🄱🄲");
+const ans9 = /[\p{P}\p{S}]/u.test("!");
+const ans10 = /\p{General_Category=Math_Symbol}/u.test("+");
+print(ans1);
+print(ans2);
+print(ans3);
+print(ans4);
+print(ans5);
+print(ans6);
+print(ans7);
+print(ans8);
+print(ans9);
+print(ans10);
+try {
+  const ans11 = RegExp("/[\\p{}]/u");
+  print(ans11);
+} catch(e) {
+  print(e);
+}

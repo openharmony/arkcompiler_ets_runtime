@@ -1087,26 +1087,7 @@ void Ebo::RemoveUnusedInsns(BB &bb, bool normal)
         optSuccess = true;
         continue;
     insn_is_needed:
-        if (!bb.GetEhSuccs().empty()) {
-            for (uint32 i = 0; i < resNum; i++) {
-                opndInfo = insnInfo->result[i];
-                if ((opndInfo != nullptr) && (opndInfo->opnd != nullptr) && (opndInfo->same != nullptr)) {
-                    UpdateNextInfo(*opndInfo);
-                }
-            }
-        }
-
-        if (!bb.GetEhPreds().empty()) {
-            for (uint32 i = 0; i < insn->GetOperandSize(); ++i) {
-                opndInfo = insnInfo->origOpnd[i];
-                if ((opndInfo != nullptr) && (opndInfo->opnd != nullptr) && (opndInfo->same != nullptr)) {
-                    UpdateNextInfo(*opndInfo);
-                }
-                if ((opndInfo != nullptr) && opndInfo->opnd && (&bb != opndInfo->bb) && opndInfo->opnd->IsRegister()) {
-                    MarkOpndLiveIntoBB(*opndInfo->opnd, bb, *opndInfo->bb);
-                }
-            }
-        }
+        continue;
     } /* end proccess insnInfo in currBB */
 }
 
@@ -1292,7 +1273,7 @@ MAPLE_TRANSFORM_PHASE_REGISTER_CANSKIP(CgEbo0, ebo)
 bool CgEbo1::PhaseRun(maplebe::CGFunc &f)
 {
     if (EBO_DUMP_NEWPM) {
-        DotGenerator::GenerateDot(PhaseName(), f, f.GetMirModule(), true);
+        DotGenerator::GenerateDot(PhaseName(), f, f.GetMirModule());
     }
     LiveAnalysis *live = GET_ANALYSIS(CgLiveAnalysis, f);
     MemPool *eboMp = GetPhaseMemPool();

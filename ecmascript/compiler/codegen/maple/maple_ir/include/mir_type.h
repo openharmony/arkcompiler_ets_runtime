@@ -463,7 +463,7 @@ public:
 
     bool IsPacked() const
     {
-        return GetAttr(ATTR_packed);
+        return GetAttr(ATTR_pack);
     }
 
     bool HasPack() const

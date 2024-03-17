@@ -19,7 +19,14 @@
  * @tc.type: FUNC
  * @tc.require: issueI5NO8G
  */
-let arr = [1,2,3,4];
+let arr = [1, 2, 3, 4];
 arr.fill(42, { toString() { arr.length = 0; } });
 print(arr.length);
 print(arr);
+
+let rawProto = Number.prototype.__proto__;
+Number.prototype.__proto__ = ["tr"];
+let v1 = 1.23;
+v1.fill(7);
+Number.prototype.__proto__ = rawProto
+print("fill Number Obj Success!")

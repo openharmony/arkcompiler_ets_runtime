@@ -118,7 +118,7 @@ EcmaVM *EcmaVM::Create(const JSRuntimeOptions &options)
     vm->thread_ = jsThread;
     Runtime::GetInstance()->InitializeIfFirstVm(vm);
     if (JsStackInfo::loader == nullptr) {
-        JsStackInfo::loader = vm->GetJSThread()->GetCurrentEcmaContext()->GetAOTFileManager();
+        JsStackInfo::loader = vm->GetAOTFileManager();
     }
 #if defined(__aarch64__) && !defined(PANDA_TARGET_MACOS) && !defined(PANDA_TARGET_IOS)
     if (SetThreadInfoCallback != nullptr) {
@@ -159,6 +159,7 @@ void EcmaVM::PostFork()
     std::string bundleName = PGOProfilerManager::GetInstance()->GetBundleName();
     if (ohos::EnableAotListHelper::GetInstance()->IsDisableBlackList(bundleName)) {
         options_.SetEnablePGOProfiler(false);
+        PGOProfilerManager::GetInstance()->SetDisableAot(true);
     } else if (ohos::EnableAotListHelper::GetInstance()->IsEnableList(bundleName)) {
         options_.SetEnablePGOProfiler(true);
     }
@@ -179,7 +180,6 @@ EcmaVM::EcmaVM(JSRuntimeOptions options, EcmaParamConfiguration config)
     icEnabled_ = options_.EnableIC();
     optionalLogEnabled_ = options_.EnableOptionalLog();
     options_.ParseAsmInterOption();
-    SetEnableJit(options_.IsEnableJIT() && options_.GetEnableAsmInterpreter());
 }
 
 void EcmaVM::InitializePGOProfiler()
@@ -217,6 +217,25 @@ bool EcmaVM::IsEnableElementsKind() const
     return options_.GetEnableAsmInterpreter() && options_.IsEnableElementsKind();
 }
 
+bool EcmaVM::IsEnableJit() const
+{
+    if (options_.IsWorker()) {
+        return GetJit()->IsEnable();
+    }
+    return options_.GetEnableAsmInterpreter() && options_.IsEnableJIT();
+}
+
+void EcmaVM::EnableJit() const
+{
+    Jit::GetInstance()->SetEnable(this);
+    GetJSThread()->SwitchJitProfileStubs();
+}
+
+Jit *EcmaVM::GetJit() const
+{
+    return Jit::GetInstance();
+}
+
 bool EcmaVM::Initialize()
 {
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "EcmaVM::Initialize");
@@ -235,27 +254,27 @@ bool EcmaVM::Initialize()
         UNREACHABLE();
     }
     debuggerManager_ = chunk_.New<tooling::JsDebuggerManager>(this);
+    aotFileManager_ = new AOTFileManager(this);
     auto context = new EcmaContext(thread_);
     thread_->PushContext(context);
     [[maybe_unused]] EcmaHandleScope scope(thread_);
     thread_->SetReadyForGCIterating();
+    snapshotEnv_ = new SnapshotEnv(this);
     context->Initialize();
+    snapshotEnv_->AddGlobalConstToMap();
     thread_->SetGlueGlobalEnv(reinterpret_cast<GlobalEnv *>(context->GetGlobalEnv().GetTaggedType()));
     thread_->SetGlobalObject(GetGlobalEnv()->GetGlobalObject());
     thread_->SetCurrentEcmaContext(context);
     GenerateInternalNativeMethods();
     quickFixManager_ = new QuickFixManager();
-    snapshotEnv_ = new SnapshotEnv(this);
     if (options_.GetEnableAsmInterpreter()) {
         thread_->GetCurrentEcmaContext()->LoadStubFile();
     }
 
     callTimer_ = new FunctionCallTimer();
     strategy_ = new ThroughputJSObjectResizingStrategy();
-
     if (IsEnableJit()) {
-        jit_ = new Jit(this);
-        jit_->Initialize();
+        EnableJit();
     }
     initialized_ = true;
     return true;
@@ -304,13 +323,6 @@ EcmaVM::~EcmaVM()
         }
     }
 
-    if (IsEnableJit()) {
-        if (jit_ != nullptr) {
-            delete jit_;
-            jit_ = nullptr;
-        }
-    }
-
     if (gcStats_ != nullptr) {
         if (options_.EnableGCStatsPrint()) {
             gcStats_->PrintStatisticResult();
@@ -319,7 +331,7 @@ EcmaVM::~EcmaVM()
         gcStats_ = nullptr;
     }
 
-    if (JsStackInfo::loader == GetJSThread()->GetCurrentEcmaContext()->GetAOTFileManager()) {
+    if (JsStackInfo::loader == aotFileManager_) {
         JsStackInfo::loader = nullptr;
     }
 
@@ -332,6 +344,11 @@ EcmaVM::~EcmaVM()
     if (debuggerManager_ != nullptr) {
         chunk_.Delete(debuggerManager_);
         debuggerManager_ = nullptr;
+    }
+
+    if (aotFileManager_ != nullptr) {
+        delete aotFileManager_;
+        aotFileManager_ = nullptr;
     }
 
     if (factory_ != nullptr) {
@@ -349,6 +366,7 @@ EcmaVM::~EcmaVM()
     }
 
     if (snapshotEnv_ != nullptr) {
+        snapshotEnv_->ClearEnvMap();
         delete snapshotEnv_;
         snapshotEnv_ = nullptr;
     }
@@ -466,6 +484,7 @@ void EcmaVM::ProcessReferences(const WeakRootVisitor &visitor)
         heap_->ResetNativeBindingSize();
         // array buffer
         auto iter = nativePointerList_.begin();
+        ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "ProcessNativeDeleteNum:" + std::to_string(nativePointerList_.size()));
         while (iter != nativePointerList_.end()) {
             JSNativePointer *object = *iter;
             auto fwd = visitor(reinterpret_cast<TaggedObject *>(object));
@@ -784,7 +803,6 @@ std::pair<std::string, std::string> EcmaVM::GetCurrentModuleInfo(bool needRecord
         return std::make_pair(recordName.c_str(), fileName.c_str());
     }
     CString moduleName = ModulePathHelper::GetModuleName(recordName);
-    PathHelper::DeleteNamespace(moduleName);
     if (moduleName.empty()) {
         LOG_FULL(ERROR) << " GetCurrentModuleName Fail, recordName is " << recordName;
     }

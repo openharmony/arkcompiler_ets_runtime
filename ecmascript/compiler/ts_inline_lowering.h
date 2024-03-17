@@ -98,11 +98,6 @@ private:
         inlinedCallMap_[frameArgs] = ++inlineCallCounts;
     }
 
-    bool EnableFastAccessor() const
-    {
-        return isFastAccessor_ && !traceInline_;
-    }
-
     bool IsCallSetter(CallKind kind) const
     {
         return kind == CallKind::CALL_SETTER;
@@ -143,8 +138,7 @@ private:
     GateRef GetCallSetterValue(GateRef gate);
     GateRef GetFrameState(InlineTypeInfoAccessor &info);
     void SetInitCallTargetAndConstPoolId(InlineTypeInfoAccessor &info);
-    void AnalyseFastAccessor(
-        InlineTypeInfoAccessor &info, std::vector<const uint8_t *> pcOffsets, uint32_t inlineMethodOffset);
+    int32_t GetAccessorConstpoolId(InlineTypeInfoAccessor &info);
 
     Circuit *circuit_ {nullptr};
     JSThread *thread_ {nullptr};
@@ -169,7 +163,6 @@ private:
     uint32_t initMethodOffset_ {0};
     int32_t initConstantPoolId_ {0};
     GateRef initCallTarget_ {Circuit::NullGate()};
-    bool isFastAccessor_ {false};
 };
 }  // panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_TS_INLINE_LOWERING_H

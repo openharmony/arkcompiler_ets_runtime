@@ -17,7 +17,6 @@
 
 #include <functional>
 
-#include "ecmascript/base/block_hook_scope.h"
 #include "ecmascript/dfx/hprof/heap_root_visitor.h"
 #include "ecmascript/ecma_string-inl.h"
 #include "ecmascript/global_dictionary.h"
@@ -126,7 +125,6 @@ void HeapSnapshot::PrepareSnapshot()
 
 void HeapSnapshot::UpdateNodes(bool isInFinish)
 {
-    base::BlockHookScope blockScope;
     for (Node *node : nodes_) {
         node->SetLive(false);
     }
@@ -1040,6 +1038,7 @@ void HeapSnapshot::FillEdges()
                 continue;
             }
             Node *entryTo = nullptr;
+            EdgeType type = toValue.IsWeak() ? EdgeType::WEAK : (EdgeType)it.type_;
             if (toValue.IsWeak()) {
                 toValue.RemoveWeakTag();
             }
@@ -1052,8 +1051,8 @@ void HeapSnapshot::FillEdges()
             }
             if (entryTo != nullptr) {
                 Edge *edge = (it.type_ == Reference::ReferenceType::ELEMENT) ?
-                    Edge::NewEdge(chunk_, edgeCount_, (EdgeType)it.type_, entryFrom, entryTo, it.index_) :
-                    Edge::NewEdge(chunk_, edgeCount_, (EdgeType)it.type_, entryFrom, entryTo, GetString(it.name_));
+                    Edge::NewEdge(chunk_, edgeCount_, type, entryFrom, entryTo, it.index_) :
+                    Edge::NewEdge(chunk_, edgeCount_, type, entryFrom, entryTo, GetString(it.name_));
                 RenameFunction(it.name_, entryFrom, entryTo);
                 InsertEdgeUnique(edge);
                 (*iter)->IncEdgeCount();  // Update Node's edgeCount_ here

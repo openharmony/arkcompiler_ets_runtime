@@ -21,6 +21,8 @@
 #include "orig_symbol.h"
 #include "ver_symbol.h"
 #include "ssa.h"
+#include "scc.h"
+#include "base_graph_node.h"
 
 namespace maple {
 class MeStmt;          // circular dependency exists, no other choice
@@ -59,7 +61,7 @@ constexpr uint32 kBBVectorInitialSize = 2;
 using StmtNodes = PtrListRef<StmtNode>;
 using MeStmts = PtrListRef<MeStmt>;
 
-class BB {
+class BB : public BaseGraphNode {
 public:
     using BBId = utils::Index<BB>;
 
@@ -97,6 +99,41 @@ public:
     }
 
     virtual ~BB() = default;
+    SCCNode<BB> *GetSCCNode()
+    {
+        return sccNode;
+    }
+    void SetSCCNode(SCCNode<BB> *scc)
+    {
+        sccNode = scc;
+    }
+
+    const std::string GetIdentity()
+    {
+        return "BBId: " + std::to_string(GetID());
+    }
+
+    void GetOutNodes(std::vector<BaseGraphNode *> &outNodes) const final
+    {
+        outNodes.resize(succ.size(), nullptr);
+        std::copy(succ.begin(), succ.end(), outNodes.begin());
+    }
+
+    void GetOutNodes(std::vector<BaseGraphNode *> &outNodes) final
+    {
+        static_cast<const BB *>(this)->GetOutNodes(outNodes);
+    }
+
+    void GetInNodes(std::vector<BaseGraphNode *> &inNodes) const final
+    {
+        inNodes.resize(pred.size(), nullptr);
+        std::copy(pred.begin(), pred.end(), inNodes.begin());
+    }
+
+    void GetInNodes(std::vector<BaseGraphNode *> &inNodes) final
+    {
+        static_cast<const BB *>(this)->GetInNodes(inNodes);
+    }
 
     bool GetAttributes(uint32 attrKind) const
     {
@@ -166,6 +203,11 @@ public:
     }
 
     uint32 UintID() const
+    {
+        return static_cast<uint32>(id);
+    }
+
+    uint32 GetID() const
     {
         return static_cast<uint32>(id);
     }
@@ -514,6 +556,7 @@ public:
 private:
     MeStmts meStmtList;
     BB *group;
+    SCCNode<BB> *sccNode = nullptr;
 };
 
 using BBId = BB::BBId;

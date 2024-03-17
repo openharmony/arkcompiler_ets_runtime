@@ -1,0 +1,47 @@
+# Copyright (c) 2023 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//arkcompiler/ets_runtime/js_runtime_config.gni")
+
+include_libmplpgo = [
+  "${MAPLEALL_ROOT}/maple_me/include",
+  "${MAPLEALL_ROOT}/maple_pgo/include",
+  "${MAPLEALL_ROOT}/maple_ipa/include",
+  "${MAPLEALL_ROOT}/maple_ipa/include/old",
+  "${MAPLEALL_ROOT}/maple_util/include",
+  "${MAPLEALL_ROOT}/mempool/include",
+  "${MAPLEALL_ROOT}/maple_ir/include",
+  "${MAPLEALL_ROOT}/mpl2mpl/include",
+  "${MAPLEALL_ROOT}/maple_be/include/cg",
+  "${MAPLEALL_ROOT}/maple_be/include/be",
+  "${MAPLEALL_ROOT}/maple_be/include/ad",
+  "${MAPLEALL_ROOT}/maple_be/include/ad/target",
+  "${MAPLEALL_THIRD_PARTY_ROOT}/bounds_checking_function/include",
+  "${MAPLEALL_ROOT}/maple_driver/include",
+  "${MAPLEALL_ROOT}/maple_phase/include",
+]
+
+src_libmplpgo = [
+  "src/cfg_mst.cpp",
+  "src/instrument.cpp",
+]
+
+ohos_static_library("libmplpgo") {
+  stack_protector_ret = false
+  configs = [ "${MAPLEALL_ROOT}:mapleallcompilecfg" ]
+  sources = src_libmplpgo
+  include_dirs = include_libmplpgo
+  output_dir = "${root_out_dir}/lib/${HOST_ARCH}"
+  part_name = "ets_runtime"
+  subsystem_name = "arkcompiler"
+}

@@ -442,8 +442,7 @@ void GCStats::RecordStatisticAfterGC()
                     std::max(GetRecordDuration(RecordDuration::YOUNG_MAX_PAUSE), duration));
             }
             IncreaseRecordData(RecordData::YOUNG_COUNT);
-            float concurrentMarkDuration = scopeDuration_[Scope::ScopeId::ConcurrentMark];
-            IncreaseRecordDuration(RecordDuration::YOUNG_TOTAL_PAUSE, duration + concurrentMarkDuration);
+            IncreaseRecordDuration(RecordDuration::YOUNG_TOTAL_PAUSE, duration);
             size_t youngAliveSize = heap_->GetNewSpace()->GetHeapObjectSize();
             SetRecordData(RecordData::YOUNG_ALIVE_SIZE, youngAliveSize);
             IncreaseRecordData(RecordData::YOUNG_TOTAL_ALIVE, youngAliveSize);
@@ -463,8 +462,7 @@ void GCStats::RecordStatisticAfterGC()
                     std::max(GetRecordDuration(RecordDuration::OLD_MAX_PAUSE), duration));
             }
             IncreaseRecordData(RecordData::OLD_COUNT);
-            float concurrentMarkDuration = scopeDuration_[Scope::ScopeId::ConcurrentMark];
-            IncreaseRecordDuration(RecordDuration::OLD_TOTAL_PAUSE, duration + concurrentMarkDuration);
+            IncreaseRecordDuration(RecordDuration::OLD_TOTAL_PAUSE, duration);
             size_t oldAliveSize = heap_->GetHeapObjectSize();
             SetRecordData(RecordData::OLD_ALIVE_SIZE, oldAliveSize);
             IncreaseRecordData(RecordData::OLD_TOTAL_ALIVE, oldAliveSize);

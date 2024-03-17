@@ -18,6 +18,7 @@
 
 #include "ecmascript/compiler/argument_accessor.h"
 #include "ecmascript/compiler/pgo_type/pgo_type_manager.h"
+#include "ecmascript/enum_conversion.h"
 #include "ecmascript/ts_types/ts_manager.h"
 
 namespace panda::ecmascript::kungfu {
@@ -72,9 +73,9 @@ public:
 
     bool HasStringType() const;
 
-    bool LeftOrRightIsUndefinedOrNull() const
+    bool LeftOrRightIsUndefinedOrNullOrHole() const
     {
-        return acc_.IsUndefinedOrNull(left_) || acc_.IsUndefinedOrNull(right_);
+        return acc_.IsUndefinedOrNullOrHole(left_) || acc_.IsUndefinedOrNullOrHole(right_);
     }
 
 private:
@@ -92,6 +93,8 @@ public:
     NO_MOVE_SEMANTIC(UnOpTypeInfoAccessor);
 
     bool ValueIsNumberType() const;
+
+    GateType FetchNumberType() const;
 
     bool ValueIsPrimitiveNumberType() const
     {
@@ -852,6 +855,11 @@ public:
                IsAllString();
     }
 
+    size_t GetTypeCount()
+    {
+        return types_.size();
+    }
+
     bool IsBuiltinsString() const
     {
         return types_[0].IsBuiltinsString();
@@ -860,6 +868,37 @@ public:
     bool IsBuiltinsArray() const
     {
         return types_[0].IsBuiltinsArray();
+    }
+
+    bool IsPolyBuiltinsArray() const
+    {
+        if (types_.size() == 0) {
+            return false;
+        }
+        for (size_t i = 0; i < types_.size(); ++i) {
+            if (!types_[i].IsBuiltinsArray()) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    ElementsKind GetElementsKindBeforeTransition(size_t index)
+    {
+        ProfileType currType = types_[index];
+        return currType.GetElementsKindBeforeTransition();
+    }
+
+    ElementsKind GetElementsKindAfterTransition(size_t index)
+    {
+        ProfileType currType = types_[index];
+        return currType.GetElementsKindAfterTransition();
+    }
+
+    std::optional<BuiltinTypeId> GetBuiltinsTypeId() const
+    {
+        auto type = types_[0].GetBuiltinsType();
+        return ToBuiltinsTypeId(type);
     }
 
     bool IsBuiltinInstanceType(BuiltinTypeId type) const
@@ -887,11 +926,19 @@ public:
         return tsManager_->IsArrayTypeKind(GetReceiverGateType());
     }
 
+    // Default get is elementsKind before possible transition
     ElementsKind TryGetArrayElementsKind() const
     {
         [[maybe_unused]] bool condition = IsArrayTypeKind() || (IsMono() && IsBuiltinsArray());
         ASSERT(condition);
         return acc_.TryGetArrayElementsKind(gate_);
+    }
+
+    ElementsKind TryGetArrayElementsKindAfterTransition() const
+    {
+        [[maybe_unused]] bool condition = IsArrayTypeKind() || (IsMono() && IsBuiltinsArray());
+        ASSERT(condition);
+        return acc_.TryGetArrayElementsKindAfterTransition(gate_);
     }
 
     bool IsValidTypedArrayType() const

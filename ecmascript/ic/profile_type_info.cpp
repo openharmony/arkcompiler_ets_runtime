@@ -22,6 +22,10 @@
 namespace panda::ecmascript {
 void ProfileTypeAccessor::AddElementHandler(JSHandle<JSTaggedValue> hclass, JSHandle<JSTaggedValue> handler) const
 {
+    if (!IsICSlotValid()) {
+        return;
+    }
+
     auto profileData = profileTypeInfo_->Get(slotId_);
     ASSERT(!profileData.IsHole());
     auto index = slotId_;
@@ -41,6 +45,10 @@ void ProfileTypeAccessor::AddElementHandler(JSHandle<JSTaggedValue> hclass, JSHa
 
 void ProfileTypeAccessor::AddHandlerWithoutKey(JSHandle<JSTaggedValue> hclass, JSHandle<JSTaggedValue> handler) const
 {
+    if (!IsICSlotValid()) {
+        return;
+    }
+
     auto index = slotId_;
     if (IsNamedGlobalIC(GetKind())) {
         profileTypeInfo_->Set(thread_, index, handler.GetTaggedValue());
@@ -92,6 +100,10 @@ void ProfileTypeAccessor::AddHandlerWithoutKey(JSHandle<JSTaggedValue> hclass, J
 void ProfileTypeAccessor::AddHandlerWithKey(JSHandle<JSTaggedValue> key, JSHandle<JSTaggedValue> hclass,
                                             JSHandle<JSTaggedValue> handler) const
 {
+    if (!IsICSlotValid()) {
+        return;
+    }
+
     if (IsValueGlobalIC(GetKind())) {
         AddGlobalHandlerKey(key, handler);
         return;
@@ -150,6 +162,10 @@ void ProfileTypeAccessor::AddHandlerWithKey(JSHandle<JSTaggedValue> key, JSHandl
 
 void ProfileTypeAccessor::AddGlobalHandlerKey(JSHandle<JSTaggedValue> key, JSHandle<JSTaggedValue> handler) const
 {
+    if (!IsICSlotValid()) {
+        return;
+    }
+
     auto index = slotId_;
     const uint8_t step = 2;  // key and value pair
     JSTaggedValue indexVal = profileTypeInfo_->Get(index);
@@ -188,6 +204,10 @@ void ProfileTypeAccessor::AddGlobalRecordHandler(JSHandle<JSTaggedValue> handler
 
 void ProfileTypeAccessor::SetAsMega() const
 {
+    if (!IsICSlotValid()) {
+        return;
+    }
+
     profileTypeInfo_->Set(thread_, slotId_, JSTaggedValue::Hole());
     profileTypeInfo_->Set(thread_, slotId_ + 1, JSTaggedValue::Hole());
 }
@@ -242,6 +262,10 @@ std::string ProfileTypeAccessor::ICStateToString(ProfileTypeAccessor::ICState st
 
 ProfileTypeAccessor::ICState ProfileTypeAccessor::GetICState() const
 {
+    if (!IsICSlotValid()) {
+        return ICState::UNINIT;
+    }
+
     auto profileData = profileTypeInfo_->Get(slotId_);
     if (profileData.IsUndefined()) {
         return ICState::UNINIT;

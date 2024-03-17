@@ -25,9 +25,23 @@
 #include "ecmascript/platform/file.h"
 
 namespace panda::ecmascript::kungfu {
-JitCompilationOptions::JitCompilationOptions(JSRuntimeOptions &runtimeOptions, EcmaVM *vm)
+JitCompiler *JitCompiler::GetInstance(EcmaVM *vm)
 {
-    triple_ = runtimeOptions.GetTargetTriple();
+    static JitCompiler instance(vm);
+    return &instance;
+}
+
+JitCompilationOptions::JitCompilationOptions(EcmaVM *vm)
+{
+    JSRuntimeOptions &runtimeOptions = vm->GetJSOptions();
+#if defined(PANDA_TARGET_AMD64)
+    triple_ = TARGET_X64;
+#elif defined(PANDA_TARGET_ARM64)
+    triple_ = TARGET_AARCH64;
+#else
+    LOG_JIT(FATAL) << "jit unsupport arch";
+    UNREACHABLE();
+#endif
     optLevel_ = runtimeOptions.GetOptLevel();
     relocMode_ = runtimeOptions.GetRelocMode();
     logOption_ = runtimeOptions.GetCompilerLogOption();
@@ -56,9 +70,14 @@ JitCompilationOptions::JitCompilationOptions(JSRuntimeOptions &runtimeOptions, E
     isEnableLoweringBuiltin_ = runtimeOptions.IsEnableLoweringBuiltin();
 }
 
-void JitCompiler::Init()
+void JitCompiler::Init(EcmaVM *vm)
 {
-    log_.SetEnableCompilerLogTime(jitOptions_.compilerLogTime_);
+    BytecodeStubCSigns::Initialize();
+    CommonStubCSigns::Initialize();
+    RuntimeStubCSigns::Initialize();
+
+    JitCompilationOptions jitOptions(vm);
+    jitOptions_ = jitOptions;
     PassOptions::Builder optionsBuilder;
     passOptions_ =
         optionsBuilder.EnableArrayBoundsCheckElimination(jitOptions_.isEnableArrayBoundsCheckElimination_)
@@ -79,84 +98,96 @@ void JitCompiler::Init()
             .EnableInlineNative(jitOptions_.isEnableNativeInline_)
             .EnableLoweringBuiltin(jitOptions_.isEnableLoweringBuiltin_)
             .Build();
-    passManager_ = new JitPassManager(vm_,
-                                      jitOptions_.triple_,
-                                      jitOptions_.optLevel_,
-                                      jitOptions_.relocMode_,
-                                      &log_,
-                                      &logList_,
-                                      profilerDecoder_,
-                                      &passOptions_);
-    aotFileGenerator_ = new AOTFileGenerator(&log_, &logList_, vm_, jitOptions_.triple_,
-        vm_->GetJSOptions().IsCompilerEnableLiteCG());
 }
 
-JitCompiler *JitCompiler::Create(EcmaVM *vm, JitTask *jitTask)
+JitCompilerTask *JitCompilerTask::CreateJitCompilerTask(JitTask *jitTask)
 {
-    BytecodeStubCSigns::Initialize();
-    CommonStubCSigns::Initialize();
-    RuntimeStubCSigns::Initialize();
-    TSManager *tsm = new TSManager(vm);
-    vm->GetJSThread()->GetCurrentEcmaContext()->SetTSManager(tsm);
-    vm->GetJSThread()->GetCurrentEcmaContext()->GetTSManager()->Initialize();
-
-    auto jitCompiler = new JitCompiler(vm, jitTask->GetJsFunction());
-    return jitCompiler;
+    return new (std::nothrow) JitCompilerTask(jitTask);
 }
 
-JitCompiler::~JitCompiler()
+bool JitCompilerTask::Compile()
 {
-    if (passManager_ != nullptr) {
-        delete passManager_;
-        passManager_ = nullptr;
+    TSManager *tsm = new (std::nothrow) TSManager(vm_);
+    if (tsm == nullptr) {
+        return false;
     }
-    if (aotFileGenerator_ != nullptr) {
-        delete aotFileGenerator_;
-        aotFileGenerator_ = nullptr;
+    vm_->GetJSThread()->GetCurrentEcmaContext()->SetTSManager(tsm);
+    vm_->GetJSThread()->GetCurrentEcmaContext()->GetTSManager()->Initialize();
+
+    JitCompiler *jitCompiler = JitCompiler::GetInstance();
+    auto jitPassManager = new (std::nothrow) JitPassManager(vm_,
+                                                            jitCompiler->GetJitOptions().triple_,
+                                                            jitCompiler->GetJitOptions().optLevel_,
+                                                            jitCompiler->GetJitOptions().relocMode_,
+                                                            &jitCompiler->GetCompilerLog(),
+                                                            &jitCompiler->GetLogList(),
+                                                            jitCompiler->GetProfilerDecoder(),
+                                                            &jitCompiler->GetPassOptions());
+    if (jitPassManager == nullptr) {
+        return false;
     }
+    passManager_.reset(jitPassManager);
+    auto aotFileGenerator = new (std::nothrow) AOTFileGenerator(&jitCompiler->GetCompilerLog(),
+        &jitCompiler->GetLogList(),
+        vm_, jitCompiler->GetJitOptions().triple_, vm_->GetJSOptions().IsCompilerEnableLiteCG());
+    if (aotFileGenerator == nullptr) {
+        return false;
+    }
+    jitCodeGenerator_.reset(aotFileGenerator);
+    return passManager_->Compile(jsFunction_, *jitCodeGenerator_);
 }
 
-bool JitCompiler::Compile()
+bool JitCompilerTask::Finalize(JitTask *jitTask)
 {
-    return passManager_->Compile(jsFunction_, *aotFileGenerator_);
-}
-
-bool JitCompiler::Finalize(JitTask *jitTask)
-{
-    aotFileGenerator_->JitCreateLitecgModule();
+    if (jitTask == nullptr) {
+        return false;
+    }
+    jitCodeGenerator_->JitCreateLitecgModule();
     passManager_->RunCg();
-    aotFileGenerator_->GetMemoryCodeInfos(jitTask->GetMachineCodeDesc());
+    jitCodeGenerator_->GetMemoryCodeInfos(jitTask->GetMachineCodeDesc());
     return true;
 }
 
-void *CreateJitCompiler(EcmaVM *vm, JitTask *jitTask)
+void InitJitCompiler(EcmaVM *vm)
 {
-    auto jitCompiler = JitCompiler::Create(vm, jitTask);
-    return jitCompiler;
+    if (vm == nullptr) {
+        return;
+    }
+    JitCompiler *jitCompiler = JitCompiler::GetInstance(vm);
+    jitCompiler->Init(vm);
 }
 
-bool JitCompile(void *compiler, JitTask *jitTask [[maybe_unused]])
+void *CreateJitCompilerTask(JitTask *jitTask)
 {
-    ASSERT(jitTask != nullptr);
-    ASSERT(compiler != nullptr);
-    auto jitCompiler = reinterpret_cast<JitCompiler *>(compiler);
-    bool ret = jitCompiler->Compile();
-
-    return ret;
+    if (jitTask == nullptr) {
+        return nullptr;
+    }
+    return JitCompilerTask::CreateJitCompilerTask(jitTask);
 }
 
-bool JitFinalize(void *compiler, JitTask *jitTask)
+bool JitCompile(void *compilerTask, JitTask *jitTask)
 {
-    ASSERT(jitTask != nullptr);
-    ASSERT(compiler != nullptr);
-    auto jitCompiler = reinterpret_cast<JitCompiler *>(compiler);
-    bool ret = jitCompiler->Finalize(jitTask);
-    return ret;
+    if (jitTask == nullptr || compilerTask == nullptr) {
+        return false;
+    }
+    auto jitCompilerTask = reinterpret_cast<JitCompilerTask*>(compilerTask);
+    return jitCompilerTask->Compile();
+}
+
+bool JitFinalize(void *compilerTask, JitTask *jitTask)
+{
+    if (jitTask == nullptr || compilerTask == nullptr) {
+        return false;
+    }
+    auto jitCompilerTask = reinterpret_cast<JitCompilerTask*>(compilerTask);
+    return jitCompilerTask->Finalize(jitTask);
 }
 
 void DeleteJitCompile(void *handle)
 {
-    ASSERT(handle != nullptr);
-    delete reinterpret_cast<JitCompiler *>(handle);
+    if (handle == nullptr) {
+        return;
+    }
+    delete reinterpret_cast<JitCompilerTask*>(handle);
 }
 }  // namespace panda::ecmascript::kungfu

@@ -141,6 +141,22 @@ EcmaString *EcmaStringTable::GetOrInternString(EcmaVM *vm, const uint8_t *utf8Da
     return str;
 }
 
+EcmaString *EcmaStringTable::GetOrInternCompressedSubString(EcmaVM *vm, const JSHandle<EcmaString> &string,
+    uint32_t offset, uint32_t utf8Len)
+{
+    auto *utf8Data = EcmaStringAccessor(string).GetDataUtf8() + offset;
+    std::pair<EcmaString *, uint32_t> result = GetStringThreadUnsafe(utf8Data, utf8Len, true);
+    if (result.first != nullptr) {
+        return result.first;
+    }
+
+    EcmaString *str = EcmaStringAccessor::CreateFromUtf8CompressedSubString(
+        vm, string, offset, utf8Len);
+    str->SetMixHashcode(result.second);
+    InternStringThreadUnsafe(str);
+    return str;
+}
+
 /*
     This function is used to create global constant strings from non-movable sapce only.
     It only inserts string into string-table and provides no string-table validity check.

@@ -13,20 +13,24 @@
  * limitations under the License.
  */
 
+var testTxt = ["exception_case1.js:20:20", "exception_case1.js:22:1"];
+var i = 0;
 try {
     function foo() {
         JSON.parse("[1, 2");
     }
     foo();
+    assert_unreachable();
 } catch (e) {
-    print(e)
+    assert_equal(e.message, "Unexpected Number in JSON Array Or Object");
     let stack = e.stack
     let array = stack.split('\n')
     for (let line of array) {
         let start = line.lastIndexOf('/') + 1
         let end = line.length - 1
         if (start < end) {
-            print(line.slice(start, end))
+            assert_equal(line.slice(start, end), testTxt[i]);
+            i++;
         } else {
             print(line)
         }

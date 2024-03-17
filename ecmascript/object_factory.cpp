@@ -26,6 +26,8 @@
 #include "ecmascript/compiler/builtins/builtins_call_signature.h"
 #include "ecmascript/ecma_macros.h"
 #include "ecmascript/ecma_string_table.h"
+#include "ecmascript/ecma_string.h"
+#include "ecmascript/ecma_string-inl.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/element_accessor.h"
 #include "ecmascript/element_accessor-inl.h"
@@ -891,7 +893,6 @@ JSHandle<JSObject> ObjectFactory::NewJSError(const ErrorType &errorType, const J
     }
 
     JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
-    const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
     JSHandle<JSTaggedValue> nativeConstructor;
     switch (errorType) {
         case ErrorType::RANGE_ERROR:
@@ -924,15 +925,12 @@ JSHandle<JSObject> ObjectFactory::NewJSError(const ErrorType &errorType, const J
     }
     JSHandle<JSFunction> nativeFunc = JSHandle<JSFunction>::Cast(nativeConstructor);
     JSHandle<JSTaggedValue> nativePrototype(thread_, nativeFunc->GetFunctionPrototype());
-    JSHandle<JSTaggedValue> ctorKey = globalConst->GetHandledConstructorString();
-    JSHandle<JSTaggedValue> ctor(JSTaggedValue::GetProperty(thread_, nativePrototype, ctorKey).GetValue());
-    RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSObject, thread_);
     JSHandle<JSTaggedValue> undefined = thread_->GlobalConstants()->GetHandledUndefined();
     EcmaRuntimeCallInfo *info =
-        EcmaInterpreter::NewRuntimeCallInfo(thread_, ctor, nativePrototype, undefined, 1, needCheckStack);
+        EcmaInterpreter::NewRuntimeCallInfo(thread_, nativeConstructor, nativePrototype, undefined, 1, needCheckStack);
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSObject, thread_);
     info->SetCallArg(message.GetTaggedValue());
-    Method *method = JSHandle<ECMAObject>::Cast(ctor)->GetCallTarget();
+    Method *method = JSHandle<ECMAObject>::Cast(nativeConstructor)->GetCallTarget();
     JSTaggedValue obj = reinterpret_cast<EcmaEntrypoint>(const_cast<void *>(method->GetNativePointer()))(info);
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSObject, thread_);
     JSHandle<JSObject> handleNativeInstanceObj(thread_, obj);
@@ -1774,7 +1772,7 @@ JSHandle<JSFunction> ObjectFactory::NewJSFunctionByHClass(const JSHandle<Method>
     JSFunction::InitializeJSFunction(thread_, function, method->GetFunctionKind());
     function->SetMethod(thread_, method);
     if (method->IsAotWithCallField()) {
-        thread_->GetCurrentEcmaContext()->GetAOTFileManager()->
+        thread_->GetEcmaVM()->GetAOTFileManager()->
             SetAOTFuncEntry(method->GetJSPandaFile(), *function, *method);
     }
     return function;
@@ -1837,8 +1835,10 @@ JSHandle<Method> ObjectFactory::NewMethod(const JSPandaFile *jsPandaFile, Method
         method->SetConstantPool(thread_, constpool);
     }
     if (needSetAotFlag) {
-        thread_->GetCurrentEcmaContext()->GetAOTFileManager()->
+        thread_->GetEcmaVM()->GetAOTFileManager()->
             SetAOTFuncEntry(jsPandaFile, nullptr, *method, entryIndex, canFastCall);
+    } else {
+        method->ClearAOTFlagsWhenInit();
     }
     return method;
 }
@@ -2028,9 +2028,8 @@ JSHandle<JSPrimitiveRef> ObjectFactory::NewJSPrimitiveRef(const JSHandle<JSFunct
     obj->SetValue(thread_, object);
 
     JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
-    const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
     if (function.GetTaggedValue() == env->GetStringFunction().GetTaggedValue()) {
-        JSHandle<JSTaggedValue> lengthStr = globalConst->GetHandledLengthString();
+        JSHandle<JSTaggedValue> lengthStr = thread_->GlobalConstants()->GetHandledLengthString();
         uint32_t length = EcmaStringAccessor(object.GetTaggedValue()).GetLength();
         PropertyDescriptor desc(thread_, JSHandle<JSTaggedValue>(thread_, JSTaggedValue(length)), false, false, false);
         JSTaggedValue::DefinePropertyOrThrow(thread_, JSHandle<JSTaggedValue>(obj), lengthStr, desc);
@@ -2077,7 +2076,9 @@ JSHandle<JSPrimitiveRef> ObjectFactory::NewJSString(const JSHandle<JSTaggedValue
     if (newTarget->IsUndefined()) {
         obj = JSHandle<JSPrimitiveRef>::Cast(NewJSObjectByConstructor(stringFunc));
     } else {
-        obj = JSHandle<JSPrimitiveRef>::Cast(NewJSObjectByConstructor(stringFunc, newTarget));
+        JSHandle<JSObject> newObject = NewJSObjectByConstructor(stringFunc, newTarget);
+        RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSPrimitiveRef, thread_);
+        obj = JSHandle<JSPrimitiveRef>::Cast(newObject);
     }
     obj->SetValue(thread_, str);
     return obj;
@@ -2446,16 +2447,17 @@ JSHandle<JSObject> ObjectFactory::NewAndCopyJSArrayObject(JSHandle<JSObject> thi
 {
     ASSERT(oldLength <= newLength);
     JSHandle<TaggedArray> dstElements(NewTaggedArray(newLength));
+    JSHandle<JSTaggedValue> holeHandle(thread_, JSTaggedValue::Hole());
     JSHandle<JSObject> arrayObj = JSHandle<JSObject>(NewJSStableArrayWithElements(dstElements));
     if (newLength == 0) {
         return JSHandle<JSObject>(arrayObj);
     }
     for (uint32_t i = 0; i < oldLength; i++) {
-        JSTaggedValue value = ElementAccessor::Get(thisObjHandle, i + k);
+        JSHandle<JSTaggedValue> value(thread_, ElementAccessor::Get(thisObjHandle, i + k));
         ElementAccessor::Set(thread_, arrayObj, i, value, true);
     }
     for (uint32_t i = oldLength; i < newLength; i++) {
-        ElementAccessor::Set(thread_, arrayObj, i, JSTaggedValue::Hole(), true);
+        ElementAccessor::Set(thread_, arrayObj, i, holeHandle, true);
     }
     return arrayObj;
 }
@@ -2604,7 +2606,7 @@ JSHandle<MutantTaggedArray> ObjectFactory::NewMutantTaggedArray(uint32_t length,
     ASSERT(length > 0);
 
     size_t size = TaggedArray::ComputeSize(JSTaggedValue::TaggedTypeSize(), length);
-    auto header = heap_->AllocateNonMovableOrHugeObject(
+    auto header = heap_->AllocateYoungOrHugeObject(
         JSHClass::Cast(thread_->GlobalConstants()->GetMutantTaggedArrayClass().GetTaggedObject()), size);
     JSHandle<MutantTaggedArray> mutantTaggedArray(thread_, header);
     mutantTaggedArray->InitializeWithSpecialValue(initVal, length);
@@ -2961,6 +2963,17 @@ JSHandle<EcmaString> ObjectFactory::GetStringFromStringTable(const uint8_t *utf8
     }
     auto stringTable = vm_->GetEcmaStringTable();
     return JSHandle<EcmaString>(thread_, stringTable->GetOrInternString(vm_, utf8Data, utf8Len, canBeCompress));
+}
+
+JSHandle<EcmaString> ObjectFactory::GetCompressedSubStringFromStringTable(const JSHandle<EcmaString> &string,
+                                                                          uint32_t offset, uint32_t utf8Len) const
+{
+    NewObjectHook();
+    if (UNLIKELY(utf8Len == 0)) {
+        return GetEmptyString();
+    }
+    auto *stringTable = vm_->GetEcmaStringTable();
+    return JSHandle<EcmaString>(thread_, stringTable->GetOrInternCompressedSubString(vm_, string, offset, utf8Len));
 }
 
 JSHandle<EcmaString> ObjectFactory::GetStringFromStringTableNonMovable(const uint8_t *utf8Data, uint32_t utf8Len) const
@@ -3962,11 +3975,28 @@ JSHandle<EcmaString> ObjectFactory::NewFromUtf8LiteralCompress(const uint8_t *ut
     return JSHandle<EcmaString>(thread_, EcmaStringAccessor::CreateFromUtf8(vm_, utf8Data, utf8Len, true));
 }
 
+JSHandle<EcmaString> ObjectFactory::NewFromUtf8LiteralCompressSubString(const JSHandle<EcmaString> &string,
+                                                                        uint32_t offset, uint32_t utf8Len)
+{
+    NewObjectHook();
+    ASSERT(EcmaStringAccessor::CanBeCompressed(EcmaStringAccessor(string).GetDataUtf8() + offset, utf8Len));
+    return JSHandle<EcmaString>(thread_, EcmaStringAccessor::CreateFromUtf8CompressedSubString(vm_, string,
+        offset, utf8Len));
+}
+
 JSHandle<EcmaString> ObjectFactory::NewCompressedUtf8(const uint8_t *utf8Data, uint32_t utf8Len)
 {
     NewObjectHook();
     ASSERT(EcmaStringAccessor::CanBeCompressed(utf8Data, utf8Len));
     return GetStringFromStringTable(utf8Data, utf8Len, true);
+}
+
+JSHandle<EcmaString> ObjectFactory::NewCompressedUtf8SubString(const JSHandle<EcmaString> &string,
+                                                               uint32_t offset, uint32_t utf8Len)
+{
+    NewObjectHook();
+    ASSERT(EcmaStringAccessor::CanBeCompressed(EcmaStringAccessor(string).GetDataUtf8() + offset, utf8Len));
+    return GetCompressedSubStringFromStringTable(string, offset, utf8Len);
 }
 
 JSHandle<EcmaString> ObjectFactory::NewFromUtf16Literal(const uint16_t *utf16Data, uint32_t utf16Len)

@@ -203,3 +203,57 @@ try {
 print("abc".startsWith("a", Infinity))
 print("abc".startsWith("a", -Infinity))
 print("abc".endsWith("c", Infinity))
+
+const strings = [
+    "ab\uD800",
+    "ab\uD800c",
+    "\uDFFFab",
+    "c\uDFFFab",
+    "abc",
+    "ab\uD83D\uDE04c",
+];
+
+for (const str of strings) {
+    print(str.isWellFormed());
+}
+
+const strings2 = [
+    "ab\uD800",
+    "ab\uD800c",
+    "\uDFFFab",
+    "c\uDFFFab",
+    "abc",
+    "ab\uD83D\uDE04c",
+];
+
+for (const str of strings2) {
+    print(str.toWellFormed());
+}
+
+const text_str = "So we beat on, boats against the current, borne back ceaselessly into the past."
+const search_str1 = "So we"
+const search_str2 = "borne back"
+print(text_str.startsWith(search_str1));
+print(text_str.startsWith(search_str1, 10));
+print(text_str.startsWith(search_str2, 42));
+print(text_str.startsWith(search_str1, text_str.length - 1));
+const text_str2 = "So we beat on, boats against the current," + " borne back ceaselessly into the past."
+print(text_str2.startsWith(search_str1));
+print(text_str2.startsWith(search_str1, 10));
+print(text_str2.startsWith(search_str2, 42));
+print(text_str2.startsWith(search_str1, text_str.length - 1));
+
+const str7 = "测试"
+const iter = str7[Symbol.iterator]();
+print(iter.next().value);
+print(iter.next().value);
+print(iter.next().done);
+
+const str_endsWith1 = 'this is a test for string endsWith!';
+print(str_endsWith1.endsWith('string', '25'));    // true
+print(str_endsWith1.endsWith('string', 25));      // true
+print(str_endsWith1.endsWith('endsWith!', 25));   // false
+print(str_endsWith1.endsWith('endsWith!'));       // true
+print(str_endsWith1.endsWith('endsWith!', -1));   // false
+print(str_endsWith1.endsWith('endsWith!', 100));  // true
+print(str_endsWith1.endsWith('string', 25.3));    // true

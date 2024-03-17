@@ -14,12 +14,12 @@
  */
 
 //declare function print(str:string):string;
-declare function print(str:any):number;
+declare function assert_equal(a: Object, b: Object):void;
 
 var num1:number = 99
 var num2:number = 2
 var res:number = num1 / num2
-print(res)
+assert_equal(res, 49.5);
 var num3: number = 50
 var num4: number = 45.5
-print(num3 / num4)
+assert_equal(num3 / num4, 1.098901098901099);

@@ -107,6 +107,8 @@ libark_jsoptimizer_sources = [
   "circuit.cpp",
   "circuit_builder.cpp",
   "circuit_builder_helper.cpp",
+  "codegen/llvm/llvm_codegen.cpp",
+  "codegen/llvm/llvm_ir_builder.cpp",
   "combined_pass_visitor.cpp",
   "common_stubs.cpp",
   "compilation_driver.cpp",
@@ -115,6 +117,8 @@ libark_jsoptimizer_sources = [
   "dead_code_elimination.cpp",
   "debug_info.cpp",
   "early_elimination.cpp",
+  "escape_analysis.cpp",
+  "escape_analysis_editor.cpp",
   "file_generators.cpp",
   "frame_states.cpp",
   "gate.cpp",
@@ -133,8 +137,6 @@ libark_jsoptimizer_sources = [
   "lcr_circuit_builder.cpp",
   "lcr_gate_meta_data.cpp",
   "lexical_env_specialization_pass.cpp",
-  "llvm_codegen.cpp",
-  "llvm_ir_builder.cpp",
   "loop_analysis.cpp",
   "loop_peeling.cpp",
   "mcr_circuit_builder.cpp",
@@ -150,6 +152,7 @@ libark_jsoptimizer_sources = [
   "object_access_helper.cpp",
   "operations_stub_builder.cpp",
   "pass_manager.cpp",
+  "post_schedule.cpp",
   "profiler_stub_builder.cpp",
   "range_analysis.cpp",
   "range_guard.cpp",
@@ -184,6 +187,7 @@ libark_jsoptimizer_sources = [
   "typed_array_stub_builder.cpp",
   "typed_bytecode_lowering.cpp",
   "typed_hcr_lowering.cpp",
+  "typed_native_inline_lowering.cpp",
   "value_numbering.cpp",
   "verifier.cpp",
 ]
@@ -350,7 +354,7 @@ ohos_source_set("libark_jsoptimizer_set_with_maple") {
   }
   sources += [
     "codegen/maple/litecg_codegen.cpp",
-    "litecg_ir_builder.cpp",
+    "codegen/maple/litecg_ir_builder.cpp",
   ]
   public_configs = [
     ":include_llvm",

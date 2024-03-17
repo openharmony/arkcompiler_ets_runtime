@@ -108,7 +108,8 @@ void OptCodeProfiler::FilterMethodToPrint()
 
 void OptCodeProfiler::PrintMethodRecord(Key key, std::string methodName)
 {
-    LOG_ECMA(INFO) << "==== methodId: " << key.GetMehodId() << ", methodName: " << methodName.c_str()
+    LOG_ECMA(INFO) << "==== methodId: " << key.GetMethodId()
+                   << ", methodName: " << methodName.c_str()
                    << ", abcName: " << abcNames_[key.GetAbcId()] << " ====";
 
     static constexpr int nameRightAdjustment = 46;
@@ -155,8 +156,8 @@ void OptCodeProfiler::Update(JSHandle<JSTaggedValue> &func, int bcIndex, EcmaOpc
         if (itr != abcNames_.end()) {
             index = static_cast<uint32_t>(std::distance(abcNames_.begin(), itr));
         } else {
-            abcNames_.emplace_back(pfName);
             index = abcNames_.size();
+            abcNames_.emplace_back(pfName);
         }
 
         Key key(index, methodId);

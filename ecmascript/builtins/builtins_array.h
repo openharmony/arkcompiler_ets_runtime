@@ -47,7 +47,7 @@
     /* Array.prototype.fill ( value [ , start [ , end ] ] ) */              \
     V("fill",           Fill,             1, INVALID)                       \
     /* Array.prototype.filter ( callbackfn [ , thisArg ] ) */               \
-    V("filter",         Filter,           1, ArrayFilter)                   \
+    V("filter",         Filter,           1, INVALID)                       \
     /* Array.prototype.find ( predicate [ , thisArg ] ) */                  \
     V("find",           Find,             1, ArrayFind)                     \
     /* Array.prototype.findIndex ( predicate [ , thisArg ] ) */             \
@@ -73,11 +73,11 @@
     /* Array.prototype.lastIndexOf ( searchElement [ , fromIndex ] ) */     \
     V("lastIndexOf",    LastIndexOf,      1, ArrayLastIndexOf)              \
     /* Array.prototype.map ( callbackfn [ , thisArg ] ) */                  \
-    V("map",            Map,              1, INVALID)                       \
+    V("map",            Map,              1, ArrayMap)                      \
     /* Array.prototype.pop ( ) */                                           \
     V("pop",            Pop,              0, ArrayPop)                      \
     /* Array.prototype.push ( ...items ) */                                 \
-    V("push",           Push,             1, INVALID)                       \
+    V("push",           Push,             1, ArrayPush)                     \
     /* Array.prototype.reduce ( callbackfn [ , initialValue ] ) */          \
     V("reduce",         Reduce,           1, ArrayReduce)                   \
     /* Array.prototype.reduceRight ( callbackfn [ , initialValue ] ) */     \
@@ -186,8 +186,6 @@ public:
     static JSTaggedValue Unshift(EcmaRuntimeCallInfo *argv); // done
     // 22.1.3.29
     static JSTaggedValue Values(EcmaRuntimeCallInfo *argv); // no change
-    // 22.1.3.31
-    static JSTaggedValue Unscopables(EcmaRuntimeCallInfo *argv); // no change
     // es12 23.1.3.13
     static JSTaggedValue Includes(EcmaRuntimeCallInfo *argv); // no change
     // es12 23.1.3.10
@@ -238,6 +236,9 @@ public:
         JSHandle<JSTaggedValue> &thisObjVal, int64_t k, int64_t len, uint32_t toIndex,
         JSHandle<JSObject> newArrayHandle, JSHandle<JSTaggedValue> &callbackFnHandle);
 
+    static JSTaggedValue MapUnStableJSArray(JSThread *thread, JSHandle<JSTaggedValue> &thisArgHandle,
+        JSHandle<JSTaggedValue> &thisObjVal, int64_t k, int64_t len, JSHandle<JSObject> newArrayHandle,
+        JSHandle<JSTaggedValue> &callbackFnHandle);
 private:
 #define BUILTIN_ARRAY_FUNCTION_ENTRY(name, method, length, id) \
     base::BuiltinFunctionEntry::Create(name, BuiltinsArray::method, length, kungfu::BuiltinsStubCSigns::id),

@@ -158,8 +158,10 @@ JSHandle<Method> ObjectFactory::NewSMethod(const JSPandaFile *jsPandaFile, Metho
         method->SetConstantPool(thread_, constpool);
     }
     if (needSetAotFlag) {
-        auto aotFileManager = thread_->GetCurrentEcmaContext()->GetAOTFileManager();
+        auto aotFileManager = thread_->GetEcmaVM()->GetAOTFileManager();
         aotFileManager->SetAOTFuncEntry(jsPandaFile, nullptr, *method, entryIndex, canFastCall);
+    } else {
+        method->ClearAOTFlagsWhenInit();
     }
     return method;
 }
@@ -207,7 +209,7 @@ JSHandle<JSFunction> ObjectFactory::NewSFunctionByHClass(const JSHandle<Method> 
     JSFunction::InitializeSFunction(thread_, function, method->GetFunctionKind());
     function->SetMethod(thread_, method);
     if (method->IsAotWithCallField()) {
-        thread_->GetCurrentEcmaContext()->GetAOTFileManager()->
+        thread_->GetEcmaVM()->GetAOTFileManager()->
             SetAOTFuncEntry(method->GetJSPandaFile(), *function, *method);
     }
     return function;

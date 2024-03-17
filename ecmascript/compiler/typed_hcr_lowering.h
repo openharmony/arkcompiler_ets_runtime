@@ -134,13 +134,7 @@ private:
     void LowerIndexCheck(GateRef gate);
     void LowerObjectTypeCheck(GateRef gate);
     void LowerSimpleHClassCheck(GateRef gate);
-    void LowerTSSubtypingCheck(GateRef gate);
-    void LowerObjectTypeCompare(GateRef gate);
-    void LowerSimpleHClassCompare(GateRef gate);
-    void LowerTSSubtypingCompare(GateRef gate);
-    GateRef BuildCompareSubTyping(GateRef gate, GateRef frameState, Label *levelValid, Label *exit);
     GateRef BuildCompareHClass(GateRef gate, GateRef frameState);
-    void BuildCompareSubTyping(GateRef gate);
     void LowerStableArrayCheck(GateRef gate);
     void LowerTypedArrayCheck(GateRef gate);
     void LowerEcmaStringCheck(GateRef gate);
@@ -160,12 +154,13 @@ private:
     void LowerBuiltinPrototypeHClassCheck(GateRef gate);
     void LowerLoadBuiltinObject(GateRef gate);
     void LowerTypedCreateObjWithBuffer(GateRef gate, GateRef glue);
+    void LowerNumberToString(GateRef gate, GateRef glue);
 
     enum class ArrayState : uint8_t {
         PACKED = 0,
         HOLEY,
     };
-    void LowerArrayLoadElement(GateRef gate, ArrayState arrayState);
+    void LowerArrayLoadElement(GateRef gate, ArrayState arrayState, TypedLoadOp op);
     void LowerCowArrayCheck(GateRef gate, GateRef glue);
     void LowerTypedArrayLoadElement(GateRef gate, BuiltinTypeId id);
     void LowerStringLoadElement(GateRef gate);
@@ -173,7 +168,7 @@ private:
     GateRef BuildNotOnHeapTypedArrayLoadElement(GateRef receiver, GateRef offset, VariableType type);
     GateRef BuildTypedArrayLoadElement(GateRef receiver, GateRef offset, VariableType type, Label *isByteArray,
                                        Label *isArrayBuffer, Label *exit);
-    void LowerArrayStoreElement(GateRef gate, GateRef glue);
+    void LowerArrayStoreElement(GateRef gate, GateRef glue, TypedStoreOp kind);
     void LowerTypedArrayStoreElement(GateRef gate, BuiltinTypeId id);
     void BuildOnHeapTypedArrayStoreElement(GateRef receiver, GateRef offset, GateRef value);
     void BuildNotOnHeapTypedArrayStoreElement(GateRef receiver, GateRef offset, GateRef value);
@@ -196,6 +191,7 @@ private:
     void LowerJSInlineTargetTypeCheck(GateRef gate);
     void SetDeoptTypeInfo(BuiltinTypeId id, DeoptType &type, size_t &typedArrayRootHclassIndex,
         size_t &typedArrayRootHclassOnHeapIndex);
+    void LowerLookupHolder(GateRef gate);
     void LowerLoadGetter(GateRef gate);
     void LowerLoadSetter(GateRef gate);
     void LowerPrototypeCheck(GateRef gate);
@@ -217,6 +213,7 @@ private:
     void LowerMonoStorePropertyLookUpProto(GateRef gate, GateRef glue);
     void LowerMonoStoreProperty(GateRef gate, GateRef glue);
     void LowerStringFromSingleCharCode(GateRef gate, GateRef glue);
+    void LowerMigrateArrayWithKind(GateRef gate);
 
     GateRef LowerCallRuntime(GateRef glue, GateRef hirGate, int index, const std::vector<GateRef> &args,
                              bool useLabel = false);
@@ -236,11 +233,10 @@ private:
     GateRef IntToTaggedIntPtr(GateRef x);
     GateType GetLeftType(GateRef gate);
     GateType GetRightType(GateRef gate);
-    GateRef GetObjectFromConstPool(GateRef jsFunc, GateRef index);
     GateRef GetElementSize(BuiltinTypeId id);
     VariableType GetVariableType(BuiltinTypeId id);
-    GateRef AllocateLineString(GateRef length, GateRef canBeCompressed);
-    GateRef AllocateSlicedString(GateRef flatString, GateRef length, GateRef canBeCompressed);
+    GateRef AllocateLineString(GateRef glue, GateRef length, GateRef canBeCompressed);
+    GateRef AllocateSlicedString(GateRef glue, GateRef flatString, GateRef length, GateRef canBeCompressed);
     bool IsFirstConcatInStringAdd(GateRef gate) const;
     bool ConcatIsInStringAdd(GateRef gate) const;
 
@@ -254,8 +250,7 @@ private:
     GateRef GetLengthFromSupers(GateRef supers);
     GateRef GetValueFromSupers(GateRef supers, size_t index);
     GateRef LoadFromTaggedArray(GateRef array, size_t index);
-    GateRef LoadFromConstPool(GateRef jsFunc, size_t index, size_t valVecType);
-    GateRef LoadFromUnsharedConstPool(GateRef jsFunc, size_t index, size_t valVecType);
+    GateRef LoadFromConstPool(GateRef constpool, size_t index, size_t valVecType);
     GateRef LoadFromVTable(GateRef receiver, size_t index);
     GateRef GetLengthFromString(GateRef gate);
     GateRef LoadPropertyFromHolder(GateRef holder, PropertyLookupResult plr);

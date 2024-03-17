@@ -34,6 +34,7 @@ namespace panda::ecmascript::kungfu {
 
 #define BUILTINS_METHOD_STUB_LIST(V)                \
     V(StringCharCodeAt)                             \
+    V(StringCodePointAt)                            \
     V(StringIndexOf)                                \
     V(StringSubstring)                              \
     V(StringReplace)                                \
@@ -41,6 +42,11 @@ namespace panda::ecmascript::kungfu {
     V(StringFromCharCode)                           \
     V(StringTrim)                                   \
     V(StringSlice)                                  \
+    V(StringConcat)                                 \
+    V(StringStartsWith)                             \
+    V(StringToLowerCase)                            \
+    V(StringEndsWith)                               \
+    V(GetStringIterator)                            \
     V(ObjectToString)                               \
     V(ObjectCreate)                                 \
     V(ObjectAssign)                                 \
@@ -67,6 +73,7 @@ namespace panda::ecmascript::kungfu {
     V(ArrayFindIndex)                               \
     V(ArrayForEach)                                 \
     V(ArrayIndexOf)                                 \
+    V(ArrayMap)                                     \
     V(ArrayLastIndexOf)                             \
     V(ArrayPop)                                     \
     V(ArraySlice)                                   \
@@ -93,13 +100,17 @@ namespace panda::ecmascript::kungfu {
     V(MapDelete)                                    \
     V(MapHas)                                       \
     V(NumberParseFloat)                             \
-    V(TypedArraySubArray)
+    V(TypedArraySubArray)                           \
+    V(TypedArrayGetByteLength)                      \
+    V(TypedArrayGetByteOffset)
 
 #define BUILTINS_CONSTRUCTOR_STUB_LIST(V)           \
     V(BooleanConstructor)                           \
     V(NumberConstructor)                            \
     V(DateConstructor)                              \
-    V(ArrayConstructor)
+    V(ArrayConstructor)                             \
+    V(SetConstructor)                               \
+    V(MapConstructor)
 
 #define AOT_AND_BUILTINS_STUB_LIST(V)               \
     V(LocaleCompare)                                \
@@ -107,11 +118,6 @@ namespace panda::ecmascript::kungfu {
 
 #define AOT_BUILTINS_STUB_LIST(V)                   \
     V(SQRT)  /* list start and math list start */   \
-    V(COS)                                          \
-    V(SIN)                                          \
-    V(ACOS)                                         \
-    V(ATAN)                                         \
-    V(ABS)                                          \
     V(FLOOR)  /* math list end */                   \
     V(STRINGIFY)                                    \
     V(MAP_PROTO_ITERATOR)                           \
@@ -122,7 +128,32 @@ namespace panda::ecmascript::kungfu {
     V(MAP_ITERATOR_PROTO_NEXT)                      \
     V(SET_ITERATOR_PROTO_NEXT)                      \
     V(STRING_ITERATOR_PROTO_NEXT)                   \
-    V(ARRAY_ITERATOR_PROTO_NEXT)
+    V(ARRAY_ITERATOR_PROTO_NEXT)                    \
+    V(ITERATOR_PROTO_RETURN)
+
+// List of builtins which will try to be inlined in TypedNativeInlineLoweringPass
+#define AOT_BUILTINS_INLINE_LIST(V)                 \
+    V(MathAcos)                                     \
+    V(MathAcosh)                                    \
+    V(MathAsin)                                     \
+    V(MathAsinh)                                    \
+    V(MathAtan)                                     \
+    V(MathAtan2)                                    \
+    V(MathAtanh)                                    \
+    V(MathCos)                                      \
+    V(MathCosh)                                     \
+    V(MathSin)                                      \
+    V(MathSinh)                                     \
+    V(MathTan)                                      \
+    V(MathTanh)                                     \
+    V(MathLog)                                      \
+    V(MathLog2)                                     \
+    V(MathLog10)                                    \
+    V(MathLog1p)                                    \
+    V(MathPow)                                      \
+    V(MathAbs)                                      \
+    V(TYPED_BUILTINS_INLINE_FIRST = MathAcos)       \
+    V(TYPED_BUILTINS_INLINE_LAST = MathAbs)
 
 class BuiltinsStubCSigns {
 public:
@@ -130,14 +161,13 @@ public:
 #define DEF_STUB_ID(name) name,
         PADDING_BUILTINS_STUB_LIST(DEF_STUB_ID)
         BUILTINS_STUB_LIST(DEF_STUB_ID)
-#undef DEF_STUB_ID
         NUM_OF_BUILTINS_STUBS,
-#define DEF_STUB_ID(name) name,
         AOT_BUILTINS_STUB_LIST(DEF_STUB_ID)
+        AOT_BUILTINS_INLINE_LIST(DEF_STUB_ID)
 #undef DEF_STUB_ID
         BUILTINS_CONSTRUCTOR_STUB_FIRST = BooleanConstructor,
         TYPED_BUILTINS_FIRST = SQRT,
-        TYPED_BUILTINS_LAST = ARRAY_ITERATOR_PROTO_NEXT,
+        TYPED_BUILTINS_LAST = ITERATOR_PROTO_RETURN,
         TYPED_BUILTINS_MATH_FIRST = SQRT,
         TYPED_BUILTINS_MATH_LAST = FLOOR,
         INVALID = 0xFF,
@@ -185,7 +215,17 @@ public:
 
     static bool IsTypedInlineBuiltin(ID builtinId)
     {
-        return BuiltinsStubCSigns::ID::StringFromCharCode == builtinId;
+        if (TYPED_BUILTINS_INLINE_FIRST <= builtinId && builtinId <= TYPED_BUILTINS_INLINE_LAST) {
+            return true;
+        }
+        // NOTE(schernykh): try to remove this switch and move StringFromCharCode to TYPED_BUILTINS_INLINE list
+        switch (builtinId) {
+            case BuiltinsStubCSigns::ID::StringFromCharCode:
+                return true;
+            default:
+                return false;
+        }
+        return false;
     }
 
     static bool IsTypedBuiltinMath(ID builtinId)
@@ -206,6 +246,7 @@ public:
             case BuiltinsStubCSigns::ID::SET_ITERATOR_PROTO_NEXT:
             case BuiltinsStubCSigns::ID::STRING_ITERATOR_PROTO_NEXT:
             case BuiltinsStubCSigns::ID::ARRAY_ITERATOR_PROTO_NEXT:
+            case BuiltinsStubCSigns::ID::ITERATOR_PROTO_RETURN:
                 return true;
             default:
                 return false;
@@ -225,16 +266,44 @@ public:
     static ConstantIndex GetConstantIndex(ID builtinId)
     {
         switch (builtinId) {
-            case BuiltinsStubCSigns::ID::COS:
-                return ConstantIndex::MATH_COS_FUNCTION_INDEX;
-            case BuiltinsStubCSigns::ID::SIN:
-                return ConstantIndex::MATH_SIN_FUNCTION_INDEX;
-            case BuiltinsStubCSigns::ID::ACOS:
-                return ConstantIndex::MATH_ACOS_FUNCTION_INDEX;
-            case BuiltinsStubCSigns::ID::ATAN:
-                return ConstantIndex::MATH_ATAN_FUNCTION_INDEX;
-            case BuiltinsStubCSigns::ID::ABS:
-                return ConstantIndex::MATH_ABS_FUNCTION_INDEX;
+            case BuiltinsStubCSigns::ID::MathAcos:
+                return ConstantIndex::MATH_ACOS_INDEX;
+            case BuiltinsStubCSigns::ID::MathAcosh:
+                return ConstantIndex::MATH_ACOSH_INDEX;
+            case BuiltinsStubCSigns::ID::MathAsin:
+                return ConstantIndex::MATH_ASIN_INDEX;
+            case BuiltinsStubCSigns::ID::MathAsinh:
+                return ConstantIndex::MATH_ASINH_INDEX;
+            case BuiltinsStubCSigns::ID::MathAtan:
+                return ConstantIndex::MATH_ATAN_INDEX;
+            case BuiltinsStubCSigns::ID::MathAtan2:
+                return ConstantIndex::MATH_ATAN2_INDEX;
+            case BuiltinsStubCSigns::ID::MathAtanh:
+                return ConstantIndex::MATH_ATANH_INDEX;
+            case BuiltinsStubCSigns::ID::MathCos:
+                return ConstantIndex::MATH_COS_INDEX;
+            case BuiltinsStubCSigns::ID::MathCosh:
+                return ConstantIndex::MATH_COSH_INDEX;
+            case BuiltinsStubCSigns::ID::MathSin:
+                return ConstantIndex::MATH_SIN_INDEX;
+            case BuiltinsStubCSigns::ID::MathSinh:
+                return ConstantIndex::MATH_SINH_INDEX;
+            case BuiltinsStubCSigns::ID::MathTan:
+                return ConstantIndex::MATH_TAN_INDEX;
+            case BuiltinsStubCSigns::ID::MathTanh:
+                return ConstantIndex::MATH_TANH_INDEX;
+            case BuiltinsStubCSigns::ID::MathAbs:
+                return ConstantIndex::MATH_ABS_INDEX;
+            case BuiltinsStubCSigns::ID::MathLog:
+                return ConstantIndex::MATH_LOG_INDEX;
+            case BuiltinsStubCSigns::ID::MathLog2:
+                return ConstantIndex::MATH_LOG2_INDEX;
+            case BuiltinsStubCSigns::ID::MathLog10:
+                return ConstantIndex::MATH_LOG10_INDEX;
+            case BuiltinsStubCSigns::ID::MathLog1p:
+                return ConstantIndex::MATH_LOG1P_INDEX;
+            case BuiltinsStubCSigns::ID::MathPow:
+                return ConstantIndex::MATH_POW_INDEX;
             case BuiltinsStubCSigns::ID::FLOOR:
                 return ConstantIndex::MATH_FLOOR_FUNCTION_INDEX;
             case BuiltinsStubCSigns::ID::SQRT:
@@ -253,6 +322,8 @@ public:
                 return ConstantIndex::STRING_ITERATOR_PROTO_NEXT_INDEX;
             case BuiltinsStubCSigns::ID::ARRAY_ITERATOR_PROTO_NEXT:
                 return ConstantIndex::ARRAY_ITERATOR_PROTO_NEXT_INDEX;
+            case BuiltinsStubCSigns::ID::ITERATOR_PROTO_RETURN:
+                return ConstantIndex::ITERATOR_PROTO_RETURN_INDEX;
             case BuiltinsStubCSigns::ID::StringFromCharCode:
                 return ConstantIndex::STRING_FROM_CHAR_CODE_INDEX;
             default:
@@ -266,12 +337,26 @@ public:
     static ID GetBuiltinId(std::string idStr)
     {
         const std::map<std::string, BuiltinsStubCSigns::ID> str2BuiltinId = {
+            {"Acos", MathAcos},
+            {"Acosh", MathAcosh},
+            {"Asin", MathAsin},
+            {"Asinh", MathAsinh},
+            {"Atan", MathAtan},
+            {"Atan2", MathAtan2},
+            {"Atanh", MathAtanh},
+            {"Cos", MathCos},
+            {"Cosh", MathCosh},
+            {"Sin", MathSin},
+            {"Sinh", MathSinh},
+            {"Tan", MathTan},
+            {"Tanh", MathTanh},
+            {"Log", MathLog},
+            {"Log2", MathLog2},
+            {"Log10", MathLog10},
+            {"Log1p", MathLog1p},
             {"sqrt", SQRT},
-            {"cos", COS},
-            {"sin", SIN},
-            {"acos", ACOS},
-            {"atan", ATAN},
-            {"abs", ABS},
+            {"abs", MathAbs},
+            {"pow", MathPow},
             {"floor", FLOOR},
             {"localeCompare", LocaleCompare},
             {"sort", SORT},

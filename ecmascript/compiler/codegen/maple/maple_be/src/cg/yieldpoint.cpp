@@ -14,6 +14,7 @@
  */
 
 #include "yieldpoint.h"
+#include "loop.h"
 #if TARGAARCH64
 #include "aarch64_yieldpoint.h"
 #elif TARGRISCV64
@@ -27,11 +28,19 @@
 namespace maplebe {
 using namespace maple;
 
+void CgYieldPointInsertion::GetAnalysisDependence(AnalysisDep &aDep) const
+{
+    aDep.AddRequired<CgLoopAnalysis>();
+    aDep.SetPreservedAll();
+}
+
 bool CgYieldPointInsertion::PhaseRun(maplebe::CGFunc &f)
 {
     YieldPointInsertion *yieldPoint = nullptr;
+    auto *loopInfo = GET_ANALYSIS(CgLoopAnalysis, f);
+    CHECK_FATAL(loopInfo != nullptr, "get result of LoopAnalysis failed");
 #if TARGAARCH64 || TARGRISCV64
-    yieldPoint = GetPhaseAllocator()->New<AArch64YieldPointInsertion>(f);
+    yieldPoint = GetPhaseAllocator()->New<AArch64YieldPointInsertion>(f, *loopInfo);
 #endif
 #if TARGARM32
     yieldPoint = GetPhaseAllocator()->New<Arm32YieldPointInsertion>(f);

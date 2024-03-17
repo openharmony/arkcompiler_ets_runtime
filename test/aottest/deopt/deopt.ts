@@ -12,23 +12,27 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-declare function print(arg:any):void;
+declare function assert_equal(a: Object, b: Object):void;
 
 function tryHello(v: number): void {
     let a: number = 1;
     let ret: number = a + v;
-    print(ret);
+    assert_equal(ret, "1a");
 }
-
+assert_equal(ArkTools.checkDeoptStatus(tryHello, false), true);
 tryHello(<number><Object>'a');
-
+assert_equal(ArkTools.checkDeoptStatus(tryHello, true), true);
+for (let i = 0; i < 25; i++) {
+    tryHello(<number><Object>'a');
+}
+assert_equal(ArkTools.checkDeoptStatus(tryHello, true), true);
 
 function tryIf(v: number, b: number): void {
     let a : number = 1;
 
     if (b == 1) {
         let ret: number = a + v;
-        print(ret);
+        assert_equal(ret, "1a");
     }
 }
 tryIf(<number><Object>'a', 1);
@@ -39,7 +43,7 @@ function tryPhi(v: number, b: number): void {
     if (b == 1) {
         ret = a + v;
     }
-    print(ret);
+    assert_equal(ret, "1a");
 }
 
 tryPhi(<number><Object>'a', 1);
@@ -51,7 +55,7 @@ function tryLoop(v: number, b: number): void {
     for (var i = 0; i < b; i++) {
         ret = a + v;
     }
-    print(ret);
+    assert_equal(ret, "1a");
 }
 
 tryLoop(<number><Object>'a', 1);

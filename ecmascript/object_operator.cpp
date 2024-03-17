@@ -99,6 +99,9 @@ void ObjectOperator::UpdateHolder()
         JSHandle<JSTaggedValue> undefined = thread_->GlobalConstants()->GetHandledUndefined();
         holder_.Update(JSPrimitiveRef::StringCreate(thread_, holder_, undefined).GetTaggedValue());
     } else {
+        if (holder_->IsString() || holder_->IsNumber()) {
+            SetIsOnPrototype(true);
+        }
         holder_.Update(JSTaggedValue::ToPrototypeOrObj(thread_, holder_).GetTaggedValue());
     }
 }
@@ -597,8 +600,10 @@ void ObjectOperator::TransitionForAttributeChanged(const JSHandle<JSObject> &rec
         // update found result
         UpdateFound(index, attr.GetValue(), false, true);
     } else if (receiver->IsJSGlobalObject()) {
+        uint32_t index = GetIndex();
         JSHandle<GlobalDictionary> dictHandle(thread_, receiver->GetProperties());
-        GlobalDictionary::InvalidatePropertyBox(thread_, dictHandle, GetIndex());
+        dictHandle->SetAttributes(thread_, index, attr);
+        GlobalDictionary::InvalidatePropertyBox(thread_, dictHandle, index);
     } else {
         uint32_t index = GetIndex();
         if (!receiver->GetJSHClass()->IsDictionaryMode()) {
@@ -765,7 +770,15 @@ bool ObjectOperator::WriteDataProperty(const JSHandle<JSObject> &receiver, const
         }
 
         if (IsAccessorDescriptor()) {
-            auto accessor = AccessorData::Cast(GetValue().GetTaggedObject());
+            TaggedObject *obj = GetValue().GetTaggedObject();
+            if (receiver->IsJSGlobalObject()) {
+                JSTaggedValue val = GetValue();
+                if (val.IsPropertyBox()) {
+                    PropertyBox *cell = PropertyBox::Cast(val.GetTaggedObject());
+                    obj = cell->GetValue().GetTaggedObject();
+                }
+            }
+            auto accessor = AccessorData::Cast(obj);
             if (!accessor->IsInternal() || !accessor->HasSetter()) {
                 attr.SetIsAccessor(false);
                 attrChanged = true;
@@ -824,6 +837,10 @@ bool ObjectOperator::WriteDataProperty(const JSHandle<JSObject> &receiver, const
         bool success = UpdateValueAndDetails(receiver, value, attr, attrChanged);
         if (success) {
             JSHandle<JSObject> obj(receiver);
+            if (obj->GetJSHClass()->IsPrototype()) {
+                JSHandle<ProtoChangeMarker> markerHandle = thread_->GetEcmaVM()->GetFactory()->NewProtoChangeMarker();
+                obj->GetJSHClass()->SetProtoChangeMarker(thread_, markerHandle.GetTaggedValue());
+            }
             JSHClass::NotifyAccessorChanged(thread_, JSHandle<JSHClass>(thread_, obj->GetJSHClass()));
         }
         return success;
@@ -843,9 +860,15 @@ bool ObjectOperator::AddProperty(const JSHandle<JSObject> &receiver, const JSHan
                                  PropertyAttributes attr)
 {
     if (IsElement()) {
+        ElementsKind oldKind = receiver->GetClass()->GetElementsKind();
         bool ret = JSObject::AddElementInternal(thread_, receiver, elementIndex_, value, attr);
+        ElementsKind newKind = receiver->GetClass()->GetElementsKind();
+        bool isTransited = false;
+        if (receiver.GetTaggedValue().IsJSArray() && (newKind != oldKind)) {
+            isTransited = true;
+        }
         bool isDict = receiver->GetJSHClass()->IsDictionaryElement();
-        SetFound(elementIndex_, value.GetTaggedValue(), attr.GetValue(), !isDict);
+        SetFound(elementIndex_, value.GetTaggedValue(), attr.GetValue(), !isDict, isTransited);
         return ret;
     }
 
@@ -856,7 +879,7 @@ bool ObjectOperator::AddProperty(const JSHandle<JSObject> &receiver, const JSHan
     return true;
 }
 
-void ObjectOperator::WriteElement(const JSHandle<JSObject> &receiver, JSTaggedValue value) const
+void ObjectOperator::WriteElement(const JSHandle<JSObject> &receiver, JSHandle<JSTaggedValue> value) const
 {
     ASSERT(IsElement() && GetIndex() < JSObject::MAX_ELEMENT_INDEX);
 
@@ -867,15 +890,16 @@ void ObjectOperator::WriteElement(const JSHandle<JSObject> &receiver, JSTaggedVa
 
     TaggedArray *elements = TaggedArray::Cast(receiver->GetElements().GetTaggedObject());
     NumberDictionary *dictionary = NumberDictionary::Cast(elements);
-    dictionary->UpdateValue(thread_, GetIndex(), value);
+    dictionary->UpdateValue(thread_, GetIndex(), value.GetTaggedValue());
 }
 
 void ObjectOperator::DeleteElementInHolder() const
 {
     JSHandle<JSObject> obj(holder_);
 
+    JSHandle<JSTaggedValue> holeHandle(thread_, JSTaggedValue::Hole());
     if (!ElementAccessor::IsDictionaryMode(obj)) {
-        ElementAccessor::Set(thread_, obj, index_, JSTaggedValue::Hole(), true, ElementsKind::HOLE);
+        ElementAccessor::Set(thread_, obj, index_, holeHandle, true, ElementsKind::HOLE);
         JSObject::ElementsToDictionary(thread_, JSHandle<JSObject>(holder_));
     } else {
         TaggedArray *elements = TaggedArray::Cast(obj->GetElements().GetTaggedObject());

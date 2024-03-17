@@ -1975,11 +1975,6 @@ void JSAPIPlainArray::Dump(std::ostream &os) const
     JSObject::Dump(os);
 }
 
-void JSAPIPlainArray::DumpForSnapshot(std::vector<Reference> &vec) const
-{
-    JSObject::DumpForSnapshot(vec);
-}
-
 void JSAPIPlainArrayIterator::Dump(std::ostream &os) const
 {
     JSAPIPlainArray *array = JSAPIPlainArray::Cast(GetIteratedPlainArray().GetTaggedObject());
@@ -2241,6 +2236,10 @@ void JSAPIHashMapIterator::Dump(std::ostream &os) const
 
 void JSAPIHashMapIterator::DumpForSnapshot(std::vector<Reference> &vec) const
 {
+    vec.emplace_back(CString("IteratedHashMap"), JSTaggedValue(GetIteratedHashMap()));
+    vec.emplace_back(CString("TaggedQueue"), JSTaggedValue(GetTaggedQueue()));
+    vec.emplace_back(CString("CurrentNodeResult"), JSTaggedValue(GetCurrentNodeResult()));
+    vec.emplace_back(CString("BitField"), JSTaggedValue(GetBitField()));
     JSObject::DumpForSnapshot(vec);
 }
 
@@ -2293,9 +2292,10 @@ void JSAPIList::Dump(std::ostream &os) const
 
 void JSAPIList::DumpForSnapshot(std::vector<Reference> &vec) const
 {
-    TaggedSingleList *list = TaggedSingleList::Cast(GetSingleList().GetTaggedObject());
-    list->DumpForSnapshot(vec);
-
+    if (!(GetSingleList().IsInvalidValue())) {
+        TaggedSingleList *list = TaggedSingleList::Cast(GetSingleList().GetTaggedObject());
+        list->DumpForSnapshot(vec);
+    }
     JSObject::DumpForSnapshot(vec);
 }
 
@@ -2312,9 +2312,11 @@ void JSAPIListIterator::Dump(std::ostream &os) const
 
 void JSAPIListIterator::DumpForSnapshot(std::vector<Reference> &vec) const
 {
-    TaggedSingleList *list = TaggedSingleList::Cast(GetIteratedList().GetTaggedObject());
-    vec.emplace_back("iteratedlist", GetIteratedList());
-    list->DumpForSnapshot(vec);
+    if (!(GetIteratedList().IsInvalidValue())) {
+        TaggedSingleList *list = TaggedSingleList::Cast(GetIteratedList().GetTaggedObject());
+        vec.emplace_back("iteratedlist", GetIteratedList());
+        list->DumpForSnapshot(vec);
+    }
     vec.emplace_back(CString("NextIndex"), JSTaggedValue(GetNextIndex()));
     JSObject::DumpForSnapshot(vec);
 }
@@ -4002,19 +4004,6 @@ static void DumpStringClass([[maybe_unused]] const EcmaString *str, [[maybe_unus
     // If some properties need be shown, add here.
 }
 
-static void DumpClass(TaggedObject *obj, std::vector<Reference> &vec)
-{
-    JSHClass *jshclass = obj->GetClass();
-    if (!jshclass->GetPrototype().IsNull()) {
-        vec.emplace_back(CString("__proto__"), jshclass->GetPrototype());
-    }
-    auto hclass = JSHClass::Cast(obj);
-    auto parent = hclass->GetParent();
-    if (!parent.IsUndefined()) {
-        vec.emplace_back(CString("Parent"), JSTaggedValue(parent.GetTaggedObject()->GetClass()));
-    }
-}
-
 static void DumpObject(TaggedObject *obj, std::vector<Reference> &vec, bool isVmMode)
 {
     DISALLOW_GARBAGE_COLLECTION;
@@ -4023,7 +4012,7 @@ static void DumpObject(TaggedObject *obj, std::vector<Reference> &vec, bool isVm
     vec.emplace_back("hclass", JSTaggedValue(jsHclass));
     switch (type) {
         case JSType::HCLASS:
-            DumpClass(obj, vec);
+            JSHClass::Cast(obj)->DumpForSnapshot(vec);
             return;
         case JSType::TAGGED_ARRAY:
         case JSType::TAGGED_DICTIONARY:
@@ -4563,6 +4552,21 @@ static void KeyToStd(CString &res, JSTaggedValue key)
     }
 }
 
+void JSAPIPlainArray::DumpForSnapshot(std::vector<Reference> &vec) const
+{
+    DISALLOW_GARBAGE_COLLECTION;
+    TaggedArray *keys = TaggedArray::Cast(GetKeys().GetTaggedObject());
+    TaggedArray *values = TaggedArray::Cast(GetValues().GetTaggedObject());
+    uint32_t len = static_cast<uint32_t>(GetLength());
+    vec.reserve(vec.size() + len);
+    for (uint32_t i = 0; i < len; i++) {
+        CString str;
+        KeyToStd(str, keys->Get(i));
+        vec.emplace_back(str, values->Get(i));
+    }
+    JSObject::DumpForSnapshot(vec);
+}
+
 void JSTaggedValue::DumpForSnapshot(std::vector<Reference> &vec, bool isVmMode) const
 {
     if (IsHeapObject()) {
@@ -4669,9 +4673,28 @@ void TaggedHashArray::DumpForSnapshot(std::vector<Reference> &vec) const
     }
 }
 
+template <typename T>
+void DumpForSnapshotTaggedTreeEntry(T tree, int index, std::vector<Reference> &vec, bool isMap = false)
+{
+    DISALLOW_GARBAGE_COLLECTION;
+    if (isMap) {
+        vec.emplace_back("key", JSTaggedValue(tree->GetKey(index)));
+    }
+    vec.emplace_back("value", JSTaggedValue(tree->GetValue(index)));
+    vec.emplace_back("parent", JSTaggedValue(tree->GetParent(index)));
+    vec.emplace_back("color", JSTaggedValue(static_cast<int>(tree->GetColor(index))));
+    vec.emplace_back("left", tree->GetLeftChild(index));
+    vec.emplace_back("right", tree->GetRightChild(index));
+}
+
 void TaggedTreeMap::DumpForSnapshot(std::vector<Reference> &vec) const
 {
     DISALLOW_GARBAGE_COLLECTION;
+    vec.emplace_back("Elements", TaggedArray::Get(NUMBER_OF_ELEMENTS_INDEX));
+    vec.emplace_back("Delete", TaggedArray::Get(NUMBER_OF_HOLE_ENTRIES_INDEX));
+    vec.emplace_back("Capacity", TaggedArray::Get(CAPACITY_INDEX));
+    vec.emplace_back("RootNode", TaggedArray::Get(ROOT_INDEX));
+    vec.emplace_back("CompareFunction", TaggedArray::Get(COMPARE_FUNCTION_INDEX));
     uint32_t capacity = NumberOfElements() + NumberOfDeletedElements();
     vec.reserve(vec.size() + capacity);
     for (uint32_t index = 0; index < capacity; index++) {
@@ -4681,6 +4704,8 @@ void TaggedTreeMap::DumpForSnapshot(std::vector<Reference> &vec) const
             CString str;
             KeyToStd(str, key);
             vec.emplace_back(str, val);
+        } else {
+            DumpForSnapshotTaggedTreeEntry(const_cast<TaggedTreeMap *>(this), index, vec, true);
         }
     }
 }
@@ -4688,6 +4713,11 @@ void TaggedTreeMap::DumpForSnapshot(std::vector<Reference> &vec) const
 void TaggedTreeSet::DumpForSnapshot(std::vector<Reference> &vec) const
 {
     DISALLOW_GARBAGE_COLLECTION;
+    vec.emplace_back("Elements", TaggedArray::Get(NUMBER_OF_ELEMENTS_INDEX));
+    vec.emplace_back("Delete", TaggedArray::Get(NUMBER_OF_HOLE_ENTRIES_INDEX));
+    vec.emplace_back("Capacity", TaggedArray::Get(CAPACITY_INDEX));
+    vec.emplace_back("RootNode", TaggedArray::Get(ROOT_INDEX));
+    vec.emplace_back("CompareFunction", TaggedArray::Get(COMPARE_FUNCTION_INDEX));
     uint32_t capacity = NumberOfElements() + NumberOfDeletedElements();
     vec.reserve(vec.size() + capacity);
     for (uint32_t index = 0; index < capacity; index++) {
@@ -4696,6 +4726,8 @@ void TaggedTreeSet::DumpForSnapshot(std::vector<Reference> &vec) const
             CString str;
             KeyToStd(str, key);
             vec.emplace_back(str, JSTaggedValue::Hole());
+        } else {
+            DumpForSnapshotTaggedTreeEntry(const_cast<TaggedTreeSet *>(this), index, vec, true);
         }
     }
 }
@@ -4782,6 +4814,17 @@ void JSObject::DumpForSnapshot(std::vector<Reference> &vec) const
 
 void JSHClass::DumpForSnapshot([[maybe_unused]] std::vector<Reference> &vec) const
 {
+    vec.emplace_back(CString("__proto__"), GetPrototype());
+    vec.emplace_back(CString("Layout"), GetLayout());
+    vec.emplace_back(CString("Transitions"), GetTransitions());
+    vec.emplace_back(CString("Parent"), GetParent());
+    vec.emplace_back(CString("ProtoChangeMarker"), GetProtoChangeMarker());
+    vec.emplace_back(CString("ProtoChangeDetails"), GetProtoChangeDetails());
+    vec.emplace_back(CString("EnumCache"), GetEnumCache());
+    vec.emplace_back(CString("Supers"), GetSupers());
+    vec.emplace_back(CString("VTable"), GetVTable());
+    vec.emplace_back(CString("BitField"), JSTaggedValue(GetBitField()));
+    vec.emplace_back(CString("BitField1"), JSTaggedValue(GetBitField1()));
 }
 
 void JSFunction::DumpForSnapshot(std::vector<Reference> &vec) const
@@ -4792,13 +4835,17 @@ void JSFunction::DumpForSnapshot(std::vector<Reference> &vec) const
     vec.emplace_back(CString("HomeObject"), GetHomeObject());
     vec.emplace_back(CString("Module"), GetModule());
     vec.emplace_back(CString("Method"), GetMethod());
-    vec.emplace_back(CString("FunctionKind"), JSTaggedValue(static_cast<int>(GetFunctionKind())));
+    if ((!GetMethod().IsNull()) && (!GetMethod().IsUndefined())) {
+        vec.emplace_back(CString("FunctionKind"), JSTaggedValue(static_cast<int>(GetFunctionKind())));
+    }
     vec.emplace_back(CString("FunctionExtraInfo"), GetFunctionExtraInfo());
+    vec.emplace_back(CString("Method"), GetMethod());
     JSObject::DumpForSnapshot(vec);
 }
 
 void Method::DumpForSnapshot(std::vector<Reference> &vec) const
 {
+    vec.emplace_back(CString("MethodName"), JSTaggedValue(GetMethodName()));
     vec.emplace_back(CString("ConstantPool"), GetConstantPool());
 }
 
@@ -4954,6 +5001,8 @@ void JSFinalizationRegistry::DumpForSnapshot(std::vector<Reference> &vec) const
     LinkedHashMap *map = LinkedHashMap::Cast(GetMaybeUnregister().GetTaggedObject());
     map->DumpForSnapshot(vec);
     vec.emplace_back(CString("MaybeUnregister"), GetMaybeUnregister());
+    vec.emplace_back(CString("Next"), GetNext());
+    vec.emplace_back(CString("Prev"), GetPrev());
     JSObject::DumpForSnapshot(vec);
 }
 
@@ -4975,25 +5024,40 @@ void JSSetIterator::DumpForSnapshot(std::vector<Reference> &vec) const
 
 void JSArray::DumpForSnapshot(std::vector<Reference> &vec) const
 {
+    vec.emplace_back(CString("Length"), JSTaggedValue(GetLength()));
     JSObject::DumpForSnapshot(vec);
 }
 
 void JSAPIArrayList::DumpForSnapshot(std::vector<Reference> &vec) const
 {
+    vec.emplace_back(CString("Length"), JSTaggedValue(GetLength()));
     JSObject::DumpForSnapshot(vec);
 }
 
 void JSAPIArrayListIterator::DumpForSnapshot(std::vector<Reference> &vec) const
 {
-    JSAPIArrayList *arraylist = JSAPIArrayList::Cast(GetIteratedArrayList().GetTaggedObject());
-    vec.emplace_back("iteratedlist", GetIteratedArrayList());
-    arraylist->DumpForSnapshot(vec);
+    if (!(GetIteratedArrayList().IsInvalidValue())) {
+        JSAPIArrayList *arraylist = JSAPIArrayList::Cast(GetIteratedArrayList().GetTaggedObject());
+        vec.emplace_back("iteratedlist", GetIteratedArrayList());
+        arraylist->DumpForSnapshot(vec);
+    }
     vec.emplace_back(CString("NextIndex"), JSTaggedValue(GetNextIndex()));
     JSObject::DumpForSnapshot(vec);
 }
 
 void JSAPILightWeightMap::DumpForSnapshot(std::vector<Reference> &vec) const
 {
+    DISALLOW_GARBAGE_COLLECTION;
+    vec.emplace_back("Hashes", GetHashes());
+    TaggedArray *keys = TaggedArray::Cast(GetKeys().GetTaggedObject());
+    TaggedArray *values = TaggedArray::Cast(GetValues().GetTaggedObject());
+    uint32_t len = static_cast<uint32_t>(GetLength());
+    vec.reserve(vec.size() + len);
+    for (uint32_t i = 0; i < len; i++) {
+        CString str;
+        KeyToStd(str, keys->Get(i));
+        vec.emplace_back(str, values->Get(i));
+    }
     JSObject::DumpForSnapshot(vec);
 }
 
@@ -5005,11 +5069,13 @@ void JSAPILightWeightMapIterator::DumpForSnapshot(std::vector<Reference> &vec) c
     map->DumpForSnapshot(vec);
     vec.emplace_back(CString("NextIndex"), JSTaggedValue(GetNextIndex()));
     vec.emplace_back(CString("IterationKind"), JSTaggedValue(static_cast<int>(GetIterationKind())));
+    vec.emplace_back(CString("BitField"), JSTaggedValue(GetBitField()));
     JSObject::DumpForSnapshot(vec);
 }
 
 void JSAPIQueue::DumpForSnapshot(std::vector<Reference> &vec) const
 {
+    vec.emplace_back(CString("Length"), JSTaggedValue(GetLength()));
     JSObject::DumpForSnapshot(vec);
 }
 
@@ -5038,6 +5104,16 @@ void JSAPIDequeIterator::DumpForSnapshot(std::vector<Reference> &vec) const
 
 void JSAPILightWeightSet::DumpForSnapshot(std::vector<Reference> &vec) const
 {
+    DISALLOW_GARBAGE_COLLECTION;
+    TaggedArray *hashes = TaggedArray::Cast(GetHashes().GetTaggedObject());
+    TaggedArray *values = TaggedArray::Cast(GetValues().GetTaggedObject());
+    uint32_t len = GetLength();
+    vec.reserve(vec.size() + len);
+    for (uint32_t i = 0; i < len; i++) {
+        CString str;
+        KeyToStd(str, hashes->Get(i));
+        vec.emplace_back(str, values->Get(i));
+    }
     JSObject::DumpForSnapshot(vec);
 }
 
@@ -5073,6 +5149,7 @@ void JSArrayIterator::DumpForSnapshot(std::vector<Reference> &vec) const
     array->DumpForSnapshot(vec);
     vec.emplace_back(CString("NextIndex"), JSTaggedValue(GetNextIndex()));
     vec.emplace_back(CString("IterationKind"), JSTaggedValue(static_cast<int>(GetIterationKind())));
+    vec.emplace_back(CString("BitField"), JSTaggedValue(GetBitField()));
     JSObject::DumpForSnapshot(vec);
 }
 
@@ -5107,6 +5184,7 @@ void JSTypedArray::DumpForSnapshot(std::vector<Reference> &vec) const
     vec.emplace_back(CString("byte-length"), JSTaggedValue(GetByteLength()));
     vec.emplace_back(CString("byte-offset"), JSTaggedValue(GetByteOffset()));
     vec.emplace_back(CString("array-length"), JSTaggedValue(GetArrayLength()));
+    JSObject::DumpForSnapshot(vec);
 }
 
 void ByteArray::DumpForSnapshot(std::vector<Reference> &vec) const
@@ -5117,6 +5195,7 @@ void ByteArray::DumpForSnapshot(std::vector<Reference> &vec) const
 
 void JSRegExp::DumpForSnapshot(std::vector<Reference> &vec) const
 {
+    vec.emplace_back(CString("ByteCodeBuffer"), GetByteCodeBuffer());
     vec.emplace_back(CString("originalSource"), GetOriginalSource());
     vec.emplace_back(CString("originalFlags"), GetOriginalFlags());
     vec.emplace_back(CString("groupName"), GetGroupName());
@@ -5137,6 +5216,9 @@ void JSProxy::DumpForSnapshot(std::vector<Reference> &vec) const
 {
     vec.emplace_back(CString("target"), GetTarget());
     vec.emplace_back(CString("handler"), GetHandler());
+    vec.emplace_back(CString("Method"), GetMethod());
+    vec.emplace_back(CString("PrivateField"), GetPrivateField());
+    vec.emplace_back(CString("BitField"), JSTaggedValue(GetBitField()));
 }
 
 void JSSymbol::DumpForSnapshot(std::vector<Reference> &vec) const
@@ -5309,6 +5391,7 @@ void JSDataView::DumpForSnapshot(std::vector<Reference> &vec) const
     vec.emplace_back(CString("buffer"), GetViewedArrayBuffer());
     vec.emplace_back(CString("byte-length"), JSTaggedValue(GetByteLength()));
     vec.emplace_back(CString("byte-offset"), JSTaggedValue(GetByteOffset()));
+    JSObject::DumpForSnapshot(vec);
 }
 
 void JSArrayBuffer::DumpForSnapshot(std::vector<Reference> &vec) const
@@ -5316,6 +5399,7 @@ void JSArrayBuffer::DumpForSnapshot(std::vector<Reference> &vec) const
     vec.emplace_back(CString("buffer-data"), GetArrayBufferData());
     vec.emplace_back(CString("byte-length"), JSTaggedValue(GetArrayBufferByteLength()));
     vec.emplace_back(CString("shared"), JSTaggedValue(GetShared()));
+    JSObject::DumpForSnapshot(vec);
 }
 
 void PromiseReaction::DumpForSnapshot(std::vector<Reference> &vec) const
@@ -5365,11 +5449,13 @@ void AsyncIteratorRecord::DumpForSnapshot(std::vector<Reference> &vec) const
 void JSAsyncFromSyncIterator::DumpForSnapshot(std::vector<Reference> &vec) const
 {
     vec.emplace_back(CString("synciteratorrecord"), GetSyncIteratorRecord());
+    JSObject::DumpForSnapshot(vec);
 }
 
 void JSAsyncFromSyncIterUnwarpFunction::DumpForSnapshot(std::vector<Reference> &vec) const
 {
     vec.emplace_back(CString("done"), JSTaggedValue(GetDone()));
+    JSFunction::DumpForSnapshot(vec);
 }
 
 void JSPromise::DumpForSnapshot(std::vector<Reference> &vec) const
@@ -5386,31 +5472,31 @@ void JSPromiseReactionsFunction::DumpForSnapshot(std::vector<Reference> &vec) co
 {
     vec.emplace_back(CString("promise"), GetPromise());
     vec.emplace_back(CString("already-resolved"), GetAlreadyResolved());
-    JSObject::DumpForSnapshot(vec);
+    JSFunction::DumpForSnapshot(vec);
 }
 
 void JSAsyncGeneratorResNextRetProRstFtn::DumpForSnapshot(std::vector<Reference> &vec) const
 {
     vec.emplace_back(CString("async-generator-object"), GetAsyncGeneratorObject());
-    JSObject::DumpForSnapshot(vec);
+    JSFunction::DumpForSnapshot(vec);
 }
 
 void JSPromiseExecutorFunction::DumpForSnapshot(std::vector<Reference> &vec) const
 {
     vec.emplace_back(CString("capability"), GetCapability());
-    JSObject::DumpForSnapshot(vec);
+    JSFunction::DumpForSnapshot(vec);
 }
 
 void JSAsyncModuleFulfilledFunction::DumpForSnapshot(std::vector<Reference> &vec) const
 {
     vec.emplace_back(CString("module"), GetModule());
-    JSObject::DumpForSnapshot(vec);
+    JSFunction::DumpForSnapshot(vec);
 }
 
 void JSAsyncModuleRejectedFunction::DumpForSnapshot(std::vector<Reference> &vec) const
 {
     vec.emplace_back(CString("module"), GetModule());
-    JSObject::DumpForSnapshot(vec);
+    JSFunction::DumpForSnapshot(vec);
 }
 
 void JSPromiseAllResolveElementFunction::DumpForSnapshot(std::vector<Reference> &vec) const
@@ -5420,7 +5506,7 @@ void JSPromiseAllResolveElementFunction::DumpForSnapshot(std::vector<Reference> 
     vec.emplace_back(CString("capabilities"), GetCapabilities());
     vec.emplace_back(CString("remaining-elements"), GetRemainingElements());
     vec.emplace_back(CString("already-called"), GetAlreadyCalled());
-    JSObject::DumpForSnapshot(vec);
+    JSFunction::DumpForSnapshot(vec);
 }
 
 void JSPromiseAnyRejectElementFunction::DumpForSnapshot(std::vector<Reference> &vec) const
@@ -5430,7 +5516,7 @@ void JSPromiseAnyRejectElementFunction::DumpForSnapshot(std::vector<Reference> &
     vec.emplace_back(CString("capability"), GetCapability());
     vec.emplace_back(CString("remaining-elements"), GetRemainingElements());
     vec.emplace_back(CString("already-called"), GetAlreadyCalled());
-    JSObject::DumpForSnapshot(vec);
+    JSFunction::DumpForSnapshot(vec);
 }
 
 void JSPromiseAllSettledElementFunction::DumpForSnapshot(std::vector<Reference> &vec) const
@@ -5440,20 +5526,20 @@ void JSPromiseAllSettledElementFunction::DumpForSnapshot(std::vector<Reference> 
     vec.emplace_back(CString("values"), GetValues());
     vec.emplace_back(CString("capability"), GetCapability());
     vec.emplace_back(CString("remaining-elements"), GetRemainingElements());
-    JSObject::DumpForSnapshot(vec);
+    JSFunction::DumpForSnapshot(vec);
 }
 
 void JSPromiseFinallyFunction::DumpForSnapshot(std::vector<Reference> &vec) const
 {
     vec.emplace_back(CString("constructor"), GetConstructor());
     vec.emplace_back(CString("onFinally"), GetOnFinally());
-    JSObject::DumpForSnapshot(vec);
+    JSFunction::DumpForSnapshot(vec);
 }
 
 void JSPromiseValueThunkOrThrowerFunction::DumpForSnapshot(std::vector<Reference> &vec) const
 {
     vec.emplace_back(CString("result"), GetResult());
-    JSObject::DumpForSnapshot(vec);
+    JSFunction::DumpForSnapshot(vec);
 }
 
 void MicroJobQueue::DumpForSnapshot(std::vector<Reference> &vec) const
@@ -5477,6 +5563,7 @@ void CompletionRecord::DumpForSnapshot(std::vector<Reference> &vec) const
 void JSProxyRevocFunction::DumpForSnapshot(std::vector<Reference> &vec) const
 {
     vec.emplace_back(CString("RevocableProxy"), GetRevocableProxy());
+    JSFunction::DumpForSnapshot(vec);
 }
 
 void JSAsyncFunction::DumpForSnapshot(std::vector<Reference> &vec) const
@@ -5487,6 +5574,7 @@ void JSAsyncFunction::DumpForSnapshot(std::vector<Reference> &vec) const
 void JSAsyncAwaitStatusFunction::DumpForSnapshot(std::vector<Reference> &vec) const
 {
     vec.emplace_back(CString("AsyncContext"), GetAsyncContext());
+    JSFunction::DumpForSnapshot(vec);
 }
 
 void JSGeneratorFunction::DumpForSnapshot(std::vector<Reference> &vec) const
@@ -5504,7 +5592,7 @@ void JSIntlBoundFunction::DumpForSnapshot(std::vector<Reference> &vec) const
     vec.emplace_back(CString("NumberFormat"), GetNumberFormat());
     vec.emplace_back(CString("DateTimeFormat"), GetDateTimeFormat());
     vec.emplace_back(CString("Collator"), GetCollator());
-    JSObject::DumpForSnapshot(vec);
+    JSFunction::DumpForSnapshot(vec);
 }
 
 void PropertyBox::DumpForSnapshot(std::vector<Reference> &vec) const
@@ -5718,6 +5806,7 @@ void JSAsyncGeneratorObject::DumpForSnapshot(std::vector<Reference> &vec) const
 void JSAsyncFuncObject::DumpForSnapshot(std::vector<Reference> &vec) const
 {
     vec.emplace_back(CString("Promise"), GetPromise());
+    JSObject::DumpForSnapshot(vec);
 }
 
 void GeneratorContext::DumpForSnapshot(std::vector<Reference> &vec) const
@@ -5776,6 +5865,8 @@ void ClassInfoExtractor::DumpForSnapshot(std::vector<Reference> &vec) const
     vec.emplace_back(CString("StaticKeys"), GetStaticKeys());
     vec.emplace_back(CString("StaticProperties"), GetStaticProperties());
     vec.emplace_back(CString("StaticElements"), GetStaticElements());
+    vec.emplace_back(CString("ConstructorMethod"), GetConstructorMethod());
+    vec.emplace_back(CString("BitField"), JSTaggedValue(GetBitField()));
 }
 
 void TSObjectType::DumpForSnapshot(std::vector<Reference> &vec) const
@@ -5794,12 +5885,20 @@ void TSClassType::DumpForSnapshot(std::vector<Reference> &vec) const
     vec.emplace_back(CString("PrototypeType"), GetPrototypeType());
     vec.emplace_back(CString("ExtensionGT"), JSTaggedValue(GetExtensionGT().GetType()));
     vec.emplace_back(CString("HasLinked"), JSTaggedValue(GetHasLinked()));
+    vec.emplace_back(CString("Name"), JSTaggedValue(GetName()));
+    if (!GetIndexSigns().IsUndefined()) {
+        DumpArrayClass(TaggedArray::Cast(GetIndexSigns().GetTaggedObject()), vec);
+    }
 }
 
 void TSInterfaceType::DumpForSnapshot(std::vector<Reference> &vec) const
 {
     vec.emplace_back(CString("Fields"), GetFields());
     vec.emplace_back(CString("Extends"), GetExtends());
+    DumpArrayClass(TaggedArray::Cast(GetExtends().GetTaggedObject()), vec);
+    if (!GetIndexSigns().IsUndefined()) {
+        DumpArrayClass(TaggedArray::Cast(GetIndexSigns().GetTaggedObject()), vec);
+    }
 }
 
 void TSClassInstanceType::DumpForSnapshot(std::vector<Reference> &vec) const
@@ -5810,6 +5909,7 @@ void TSClassInstanceType::DumpForSnapshot(std::vector<Reference> &vec) const
 void TSUnionType::DumpForSnapshot(std::vector<Reference> &vec) const
 {
     vec.emplace_back(CString("ComponentTypes"), GetComponents());
+    DumpArrayClass(TaggedArray::Cast(GetComponents().GetTaggedObject()), vec);
 }
 
 void TSFunctionType::DumpForSnapshot(std::vector<Reference> &vec) const
@@ -5819,9 +5919,10 @@ void TSFunctionType::DumpForSnapshot(std::vector<Reference> &vec) const
     vec.reserve(vec.size() + NUM_OF_ITEMS);
     vec.emplace_back(CString("Name"), GetName());
     vec.emplace_back(CString("ParameterTypes"), GetParameterTypes());
+    DumpArrayClass(TaggedArray::Cast(GetParameterTypes().GetTaggedObject()), vec);
     vec.emplace_back(CString("ReturnGT"), JSTaggedValue(GetReturnGT().GetType()));
     vec.emplace_back(CString("ThisGT"), JSTaggedValue(GetThisGT().GetType()));
-    vec.emplace_back(CString("BitFiled"), JSTaggedValue(GetBitField()));
+    vec.emplace_back(CString("BitField"), JSTaggedValue(GetBitField()));
 }
 
 void TSArrayType::DumpForSnapshot(std::vector<Reference> &vec) const
@@ -5838,6 +5939,7 @@ void TSIteratorInstanceType::DumpForSnapshot(std::vector<Reference> &vec) const
 void TSNamespaceType::DumpForSnapshot(std::vector<Reference> &vec) const
 {
     vec.emplace_back(CString("PropertyType"), GetPropertyType());
+    DumpArrayClass(TaggedArray::Cast(GetPropertyType().GetTaggedObject()), vec);
 }
 
 void SourceTextModule::DumpForSnapshot(std::vector<Reference> &vec) const
@@ -5914,6 +6016,8 @@ void ModuleNamespace::DumpForSnapshot(std::vector<Reference> &vec) const
 {
     vec.emplace_back(CString("Module"), GetModule());
     vec.emplace_back(CString("Exports"), GetExports());
+    vec.emplace_back(CString("DeregisterProcession"), GetDeregisterProcession());
+    JSObject::DumpForSnapshot(vec);
 }
 
 void CjsModule::DumpForSnapshot(std::vector<Reference> &vec) const
@@ -5922,22 +6026,29 @@ void CjsModule::DumpForSnapshot(std::vector<Reference> &vec) const
     vec.emplace_back(CString("Path"), GetPath());
     vec.emplace_back(CString("Exports"), GetExports());
     vec.emplace_back(CString("Filename"), GetFilename());
+    vec.emplace_back(CString("BitField"), JSTaggedValue(GetBitField()));
+    JSObject::DumpForSnapshot(vec);
 }
 
 void CjsExports::DumpForSnapshot(std::vector<Reference> &vec) const
 {
     vec.emplace_back(CString("Exports"), GetExports());
+    JSObject::DumpForSnapshot(vec);
 }
 
 void CjsRequire::DumpForSnapshot(std::vector<Reference> &vec) const
 {
     vec.emplace_back(CString("Cache"), GetCache());
     vec.emplace_back(CString("Parent"), GetParent());
+    JSObject::DumpForSnapshot(vec);
 }
 
 void ClassLiteral::DumpForSnapshot(std::vector<Reference> &vec) const
 {
     vec.emplace_back(CString("Array"), GetArray());
     vec.emplace_back(CString("IsAOTUsed"), JSTaggedValue(GetIsAOTUsed()));
+    if (!GetArray().IsUndefined()) {
+        DumpArrayClass(TaggedArray::Cast(GetArray().GetTaggedObject()), vec);
+    }
 }
 }  // namespace panda::ecmascript

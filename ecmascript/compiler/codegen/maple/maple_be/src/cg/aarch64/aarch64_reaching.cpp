@@ -133,24 +133,6 @@ void AArch64ReachingDefinition::InitStartGen()
     }
 }
 
-/* insert pseudoInsns for ehBB, R0 and R1 are defined in pseudoInsns */
-void AArch64ReachingDefinition::InitEhDefine(BB &bb)
-{
-    AArch64CGFunc *aarchCGFunc = static_cast<AArch64CGFunc *>(cgFunc);
-
-    /* Insert MOP_pseudo_eh_def_x R1. */
-    RegOperand &regOpnd1 = aarchCGFunc->GetOrCreatePhysicalRegisterOperand(R1, k64BitSize, kRegTyInt);
-    Insn &pseudoInsn = cgFunc->GetInsnBuilder()->BuildInsn(MOP_pseudo_eh_def_x, regOpnd1);
-    bb.InsertInsnBegin(pseudoInsn);
-    pseudoInsns.emplace_back(&pseudoInsn);
-
-    /* insert MOP_pseudo_eh_def_x R0. */
-    RegOperand &regOpnd2 = aarchCGFunc->GetOrCreatePhysicalRegisterOperand(R0, k64BitSize, kRegTyInt);
-    Insn &newPseudoInsn = cgFunc->GetInsnBuilder()->BuildInsn(MOP_pseudo_eh_def_x, regOpnd2);
-    bb.InsertInsnBegin(newPseudoInsn);
-    pseudoInsns.emplace_back(&newPseudoInsn);
-}
-
 /* insert pseudoInsns for return value R0/V0 */
 void AArch64ReachingDefinition::AddRetPseudoInsn(BB &bb)
 {
@@ -514,20 +496,6 @@ void AArch64ReachingDefinition::DFSFindDefForRegOpnd(const BB &startBB, uint32 r
             DFSFindDefForRegOpnd(*predBB, regNO, visitedBB, defInsnSet);
         }
     }
-
-    for (auto predEhBB : startBB.GetEhPreds()) {
-        if (visitedBB[predEhBB->GetId()] == kEHVisited) {
-            continue;
-        }
-        visitedBB[predEhBB->GetId()] = kEHVisited;
-        if (regGen[predEhBB->GetId()]->TestBit(regNO) || (regNO == kRFLAG && predEhBB->HasCall())) {
-            FindRegDefInBB(regNO, *predEhBB, defInsnSet);
-        }
-
-        if (regIn[predEhBB->GetId()]->TestBit(regNO)) {
-            DFSFindDefForRegOpnd(*predEhBB, regNO, visitedBB, defInsnSet);
-        }
-    }
 }
 
 /*
@@ -554,20 +522,6 @@ void AArch64ReachingDefinition::DFSFindDefForMemOpnd(const BB &startBB, uint32 o
             defInsnSet.insert(defInsnVec.begin(), defInsnVec.end());
         } else if (memIn[predBB->GetId()]->TestBit(offset / kMemZoomSize)) {
             DFSFindDefForMemOpnd(*predBB, offset, visitedBB, defInsnSet);
-        }
-    }
-
-    for (auto predEhBB : startBB.GetEhPreds()) {
-        if (visitedBB[predEhBB->GetId()] == kEHVisited) {
-            continue;
-        }
-        visitedBB[predEhBB->GetId()] = kEHVisited;
-        if (memGen[predEhBB->GetId()]->TestBit(offset / kMemZoomSize)) {
-            FindMemDefInBB(offset, *predEhBB, defInsnSet);
-        }
-
-        if (memIn[predEhBB->GetId()]->TestBit(offset / kMemZoomSize)) {
-            DFSFindDefForMemOpnd(*predEhBB, offset, visitedBB, defInsnSet);
         }
     }
 }
@@ -723,7 +677,6 @@ bool AArch64ReachingDefinition::DFSFindRegDomianBetweenBB(const BB startBB, uint
             return true;
         }
     }
-    CHECK_FATAL(startBB.GetEhSuccs().empty(), "C Module have no eh");
     return false;
 }
 
@@ -768,7 +721,6 @@ bool AArch64ReachingDefinition::DFSFindRegInfoBetweenBB(const BB startBB, const 
         }
         pathStatus.pop_back();
     }
-    CHECK_FATAL(startBB.GetEhSuccs().empty(), "C Module have no eh");
     return false;
 }
 
@@ -1077,11 +1029,7 @@ InsnSet AArch64ReachingDefinition::FindUseForMemOpnd(Insn &insn, uint8 index, bo
     /* memOperand may be redefined in current BB */
     bool findFinish = FindMemUseBetweenInsn(memOffSet, insn.GetNext(), insn.GetBB()->GetLastInsn(), useInsnSet);
     std::vector<bool> visitedBB(kMaxBBNum, false);
-    if (findFinish || !memOut[insn.GetBB()->GetId()]->TestBit(static_cast<uint32>(memOffSet / kMemZoomSize))) {
-        if (insn.GetBB()->GetEhSuccs().size() != 0) {
-            DFSFindUseForMemOpnd(*insn.GetBB(), memOffSet, visitedBB, useInsnSet, true);
-        }
-    } else {
+    if (!findFinish && memOut[insn.GetBB()->GetId()]->TestBit(static_cast<uint32>(memOffSet / kMemZoomSize))) {
         DFSFindUseForMemOpnd(*insn.GetBB(), memOffSet, visitedBB, useInsnSet, false);
     }
     if (!insn.GetBB()->IsCleanup() && firstCleanUpBB) {

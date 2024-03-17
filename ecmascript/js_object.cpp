@@ -276,9 +276,10 @@ void JSObject::TryOptimizeAsFastElements(const JSThread *thread, JSHandle<JSObje
             if (key.IsUndefined() || key.IsHole()) {
                 continue;
             }
-            ASSERT(key.IsNumber());
-            if (key.GetNumber() < length) {
-                array->Set(thread, key.GetNumber(), value);
+            ASSERT(key.IsInt());
+            uint32_t uintKey = static_cast<uint32_t>(key.GetInt());
+            if (uintKey < length) {
+                array->Set(thread, uintKey, value);
             }
         }
         obj->SetElements(thread, array);
@@ -890,6 +891,11 @@ bool JSObject::SetPropertyForDataDescriptor(ObjectOperator *op, const JSHandle<J
     bool hasReceiver = false;
     if (op->HasReceiver()) {
         op->ReLookupPropertyInReceiver();
+        isInternalAccessor = false;
+        if (op->IsAccessorDescriptor()) {
+            JSTaggedValue ret = ShouldGetValueFromBox(op);
+            isInternalAccessor = AccessorData::Cast(ret.GetTaggedObject())->IsInternal();
+        }
         hasReceiver = true;
     }
     bool isSuccess = true;
@@ -1609,7 +1615,10 @@ bool JSObject::CreateDataProperty(JSThread *thread, const JSHandle<JSObject> &ob
 {
     ASSERT_PRINT(obj->IsECMAObject(), "Obj is not a valid object");
     ASSERT_PRINT(JSTaggedValue::IsPropertyKey(key), "Key is not a property key");
-    auto result = ObjectFastOperator::SetPropertyByValue<ObjectFastOperator::Status::UseOwn>(
+    if (!JSHandle<JSTaggedValue>::Cast(obj)->IsJSShared()) {
+        sCheckMode = SCheckMode::CHECK;
+    }
+    auto result = ObjectFastOperator::SetPropertyByValue<ObjectFastOperator::Status::DefineSemantics>(
         thread, obj.GetTaggedValue(), key.GetTaggedValue(), value.GetTaggedValue(), sCheckMode);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
     if (!result.IsHole()) {
@@ -1623,7 +1632,7 @@ bool JSObject::CreateDataProperty(JSThread *thread, const JSHandle<JSObject> &ob
                                   const JSHandle<JSTaggedValue> &value)
 {
     ASSERT_PRINT(obj->IsECMAObject(), "Obj is not a valid object");
-    auto result = ObjectFastOperator::SetPropertyByIndex<ObjectFastOperator::Status::UseOwn>
+    auto result = ObjectFastOperator::SetPropertyByIndex<ObjectFastOperator::Status::DefineSemantics>
             (thread, obj.GetTaggedValue(), index, value.GetTaggedValue());
     if (!result.IsHole()) {
         return !result.IsException();

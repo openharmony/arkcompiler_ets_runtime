@@ -36,7 +36,7 @@ struct AArch64AlignInfo {
 
 class AArch64AlignAnalysis : public AlignAnalysis {
 public:
-    AArch64AlignAnalysis(CGFunc &func, MemPool &memPool) : AlignAnalysis(func, memPool)
+    AArch64AlignAnalysis(CGFunc &func, MemPool &memPool, LoopAnalysis &loop) : AlignAnalysis(func, memPool, loop)
     {
         aarFunc = static_cast<AArch64CGFunc *>(&func);
     }

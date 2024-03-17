@@ -720,6 +720,8 @@ namespace panda::ecmascript {
     V(String, At)                             \
     V(String, CharAt)                         \
     V(String, CharCodeAt)                     \
+    V(String, IsWellFormed)                   \
+    V(String, ToWellFormed)                   \
     V(String, CodePointAt)                    \
     V(String, Concat)                         \
     V(String, EndsWith)                       \

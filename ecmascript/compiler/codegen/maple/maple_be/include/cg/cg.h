@@ -52,8 +52,12 @@ class ValidBitOpt;
 class CG;
 class LocalOpt;
 class CFGOptimizer;
+class LocalSchedule;
+class ControlDepAnalysis;
+class DataDepAnalysis;
 class CGPeepHole;
 class GenProEpilog;
+class LoopAnalysis;
 
 class Globals {
 public:
@@ -88,6 +92,11 @@ public:
     MAD *GetMAD()
     {
         return mad;
+    }
+
+    void ClearMAD()
+    {
+        mad = nullptr;
     }
 
     const MAD *GetMAD() const
@@ -461,7 +470,7 @@ public:
     {
         return nullptr;
     };
-    virtual AlignAnalysis *CreateAlignAnalysis(MemPool &mp, CGFunc &f) const
+    virtual AlignAnalysis *CreateAlignAnalysis(MemPool &mp, CGFunc &f, LoopAnalysis &loop) const
     {
         return nullptr;
     };
@@ -499,11 +508,16 @@ public:
     {
         return nullptr;
     };
+    virtual LocalSchedule *CreateLocalSchedule(MemPool &mp, CGFunc &f, ControlDepAnalysis &cda,
+                                               DataDepAnalysis &dda) const
+    {
+        return nullptr;
+    }
     virtual LocalOpt *CreateLocalOpt(MemPool &mp, CGFunc &f, ReachingDefinition &) const
     {
         return nullptr;
     };
-    virtual CFGOptimizer *CreateCFGOptimizer(MemPool &mp, CGFunc &f) const
+    virtual CFGOptimizer *CreateCFGOptimizer(MemPool &mp, CGFunc &f, LoopAnalysis &loop) const
     {
         return nullptr;
     }

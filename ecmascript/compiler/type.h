@@ -30,6 +30,8 @@
     V(CHAR)                 \
     V(ECMA_STRING)          \
     V(UNDEFINED)            \
+    V(HOLE_INT)             \
+    V(HOLE_DOUBLE)          \
     V(TAGGED_NULL)
 
 enum class ValueType : uint8_t {

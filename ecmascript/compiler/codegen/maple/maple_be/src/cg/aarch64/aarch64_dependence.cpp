@@ -731,8 +731,6 @@ void AArch64DepAnalysis::Init(BB &bb, MapleVector<DepNode *> &nodes)
     curBB = &bb;
     ClearAllDepData();
     lastComments.clear();
-    /* Analysis live-in registers in catch BB. */
-    AnalysisAmbiInsns(bb);
     /* Clear all dependence nodes and push the first separator node. */
     nodes.clear();
     DepNode *pseudoSepNode = BuildSeparatorNode();
@@ -773,35 +771,6 @@ void AArch64DepAnalysis::ClearAllDepData()
     heapDefs.clear();
     mayThrows.clear();
     ambiInsns.clear();
-}
-
-/* Analysis live-in registers in catch bb and cleanup bb. */
-void AArch64DepAnalysis::AnalysisAmbiInsns(BB &bb)
-{
-    hasAmbiRegs = false;
-    if (bb.GetEhSuccs().empty()) {
-        return;
-    }
-
-    /* Union all catch bb */
-    for (auto succBB : bb.GetEhSuccs()) {
-        const MapleSet<regno_t> &liveInRegSet = succBB->GetLiveInRegNO();
-        set_union(liveInRegSet.begin(), liveInRegSet.end(), ehInRegs.begin(), ehInRegs.end(),
-                  inserter(ehInRegs, ehInRegs.begin()));
-    }
-
-    /* Union cleanup entry bb. */
-    const MapleSet<regno_t> &regNOSet = cgFunc.GetCleanupEntryBB()->GetLiveInRegNO();
-    std::set_union(regNOSet.begin(), regNOSet.end(), ehInRegs.begin(), ehInRegs.end(),
-                   inserter(ehInRegs, ehInRegs.begin()));
-
-    /* Subtract R0 and R1, that is defined by eh runtime. */
-    ehInRegs.erase(R0);
-    ehInRegs.erase(R1);
-    if (ehInRegs.empty()) {
-        return;
-    }
-    hasAmbiRegs = true;
 }
 
 /* Check if regNO is in ehInRegs. */

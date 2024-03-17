@@ -59,15 +59,33 @@ std::vector<ElementsKind> PGOTypeRecorder::GetElementsKindsForUser(int32_t offse
         PGOObjectInfo info = rwType.GetObjectInfo(i);
         auto profileType = info.GetProfileType();
         if (profileType.IsBuiltinsArray()) {
-            elementsKinds.emplace_back(profileType.GetElementsKind());
+            elementsKinds.emplace_back(profileType.GetElementsKindBeforeTransition());
             continue;
         }
     }
 
-    // fiterate ElementsKind::None
-    for (uint32_t i = 0; i < elementsKinds.size(); i++) {
-        if (elementsKinds[i] == ElementsKind::NONE) {
-            elementsKinds[i] = ElementsKind::GENERIC;
+    return elementsKinds;
+}
+
+std::vector<ElementsKind> PGOTypeRecorder::GetTransitionElementsKindsForUser(int32_t offset) const
+{
+    std::vector<ElementsKind> elementsKinds;
+    if (bcOffsetPGORwTypeMap_.find(offset) == bcOffsetPGORwTypeMap_.end()) {
+        elementsKinds.emplace_back(ElementsKind::GENERIC);
+        return elementsKinds;
+    }
+
+    PGORWOpType rwType = *(bcOffsetPGORwTypeMap_.at(offset));
+    if (rwType.GetCount() == 0) {
+        elementsKinds.emplace_back(ElementsKind::GENERIC);
+        return elementsKinds;
+    }
+    for (uint32_t i = 0; i < rwType.GetCount(); i++) {
+        PGOObjectInfo info = rwType.GetObjectInfo(i);
+        auto profileType = info.GetProfileType();
+        if (profileType.IsBuiltinsArray()) {
+            elementsKinds.emplace_back(profileType.GetElementsKindAfterTransition());
+            continue;
         }
     }
 
@@ -80,6 +98,7 @@ ElementsKind PGOTypeRecorder::GetElementsKindForCreater(int32_t offset) const
         const auto iter = bcOffsetPGODefOpTypeMap_.at(offset);
         return iter->GetElementsKind();
     }
+    // When ElementsKind switch turned on, it should be GENERIC
     return ElementsKind::NONE;
 }
 

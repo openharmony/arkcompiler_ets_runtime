@@ -173,10 +173,7 @@ void BytecodeInfoCollector::ProcessMethod(JSHandle<JSFunction> &jsFunction)
     const panda_file::File *pf = jsPandaFile_->GetPandaFile();
     panda_file::File::EntityId methodIdx = method->GetMethodId();
     panda_file::MethodDataAccessor mda(*pf, methodIdx);
-    panda_file::File::EntityId classIdx = panda_file::MethodDataAccessor::GetClassId(*pf, methodIdx);
-    panda_file::ClassDataAccessor cda(*pf, classIdx);
-    CString desc = utf::Mutf8AsCString(cda.GetDescriptor());
-    const CString recordName = JSPandaFile::ParseEntryPoint(desc);
+    const CString recordName = jsPandaFile_->GetRecordNameWithBundlePack(methodIdx);
     recordNames.emplace_back(recordName);
     auto methodId = mda.GetMethodId();
     CollectFunctionTypeId(methodId);

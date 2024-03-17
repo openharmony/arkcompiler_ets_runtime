@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023 Huawei Device Co., Ltd.
+ * Copyright (c) 2024 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -26,9 +26,6 @@
 #include "ecmascript/platform/os.h"
 #if defined(PANDA_TARGET_OHOS)
 #include "ecmascript/extractortool/src/extractor.h"
-#endif
-#if defined(ENABLE_EXCEPTION_BACKTRACE)
-#include "ecmascript/platform/backtrace.h"
 #endif
 
 namespace panda::ecmascript {
@@ -128,13 +125,6 @@ std::string JsStackInfo::BuildJsStackTrace(JSThread *thread, bool needNative)
             strm << addr;
             data.append("    at native method (").append(strm.str()).append(")\n");
         }
-    }
-    if (data.empty()) {
-#if defined(ENABLE_EXCEPTION_BACKTRACE)
-        std::ostringstream stack;
-        Backtrace(stack, false, true);
-        data = stack.str();
-#endif
     }
     return data;
 }
@@ -456,6 +446,10 @@ std::optional<CodeInfo> TranslateByteCodePc(uintptr_t realPc, const std::vector<
 bool ArkParseJsFrameInfo(uintptr_t byteCodePc, uintptr_t mapBase, uintptr_t loadOffset,
                          uint8_t *data, uint64_t dataSize, JsFunction *jsFunction)
 {
+    if (data == nullptr) {
+        LOG_ECMA(ERROR) << "JSpandafile buffer from dfx is nullptr.";
+        return false;
+    }
     loadOffset = loadOffset % PageSize();
     auto pf = panda_file::OpenPandaFileFromSecureMemory(data, dataSize);
     CString fileName = "";
@@ -609,7 +603,11 @@ bool StepArk(void *ctx, ReadMemFunc readMem, uintptr_t *fp, uintptr_t *sp, uintp
             *sp = currentPtr;
             *isJsFrame = true;
         }
+    } else {
+        LOG_ECMA(ERROR) << "ArkGetNextFrame failed, currentPtr: " << currentPtr << ", frameType: " << frameType;
+        return false;
     }
+
     return true;
 }
 
@@ -1067,19 +1065,17 @@ bool GetArkNativeFrameInfo(int pid, uintptr_t *pc, uintptr_t *fp, uintptr_t *sp,
         }
     }
     currentPtr += sizeof(FrameType);
-    *fp = currentPtr;
+    bool ret = ReadUintptrFromAddr(pid, currentPtr, *fp, true);
     currentPtr += FP_SIZE;
-    if (!ReadUintptrFromAddr(pid, currentPtr, *pc, true)) {
-        return false;
-    }
+    ret &= ReadUintptrFromAddr(pid, currentPtr, *pc, true);
     currentPtr += LR_SIZE;
-    *sp = currentPtr;
+    ret &= ReadUintptrFromAddr(pid, currentPtr, *sp, true);
 
     size = frames.size() > size ? size : frames.size();
     for (size_t i = 0; i < size ; ++i) {
         jsFrame[i] = frames[i];
     }
-    return true;
+    return ret;
 }
 #endif
 

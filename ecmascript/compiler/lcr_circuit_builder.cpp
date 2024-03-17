@@ -66,6 +66,7 @@ MachineType CircuitBuilder::GetMachineTypeOfValueType(ValueType type)
         case ValueType::BOOL:
             return MachineType::I1;
         case ValueType::INT32:
+        case ValueType::UINT32:
             return MachineType::I32;
         case ValueType::FLOAT64:
             return MachineType::F64;
@@ -73,10 +74,18 @@ MachineType CircuitBuilder::GetMachineTypeOfValueType(ValueType type)
         case ValueType::TAGGED_INT:
         case ValueType::TAGGED_DOUBLE:
         case ValueType::TAGGED_NUMBER:
+        case ValueType::TAGGED_NULL:
+        case ValueType::CHAR:
+        case ValueType::ECMA_STRING:
+        case ValueType::UNDEFINED:
+        case ValueType::HOLE_INT:
+        case ValueType::HOLE_DOUBLE:
             return MachineType::I64;
         default:
-            return MachineType::NOVALUE;
+            UNREACHABLE();
+            break;
     }
+    return MachineType::NOVALUE;
 }
 
 GateRef CircuitBuilder::BinaryArithmetic(const GateMetaData* meta, MachineType machineType,
@@ -94,37 +103,26 @@ GateRef CircuitBuilder::Alloca(size_t size)
     return GetCircuit()->NewGate(circuit_->Alloca(size), MachineType::ARCH, GateType::NJSValue());
 }
 
-void CircuitBuilder::StoreWithNoBarrier(VariableType type, GateRef base, GateRef offset, GateRef value,
-    MemoryOrder order)
-{
-    auto label = GetCurrentLabel();
-    auto depend = label->GetDepend();
-    GateRef ptr = PtrAdd(base, offset);
-    auto bit = LoadStoreAccessor::ToValue(order);
-    GateRef result = GetCircuit()->NewGate(circuit_->Store(bit),
-        MachineType::NOVALUE, { depend, value, ptr }, type.GetGateType());
-    label->SetDepend(result);
-}
-
 // memory
 void CircuitBuilder::Store(VariableType type, GateRef glue, GateRef base, GateRef offset, GateRef value,
     MemoryOrder order)
 {
-    StoreWithNoBarrier(type, base, offset, value, order);
-    if (type == VariableType::JS_POINTER() || type == VariableType::JS_ANY()) {
-        Label entry(env_);
-        SubCfgEntry(&entry);
-        Label exit(env_);
-        Label isHeapObject(env_);
-        Branch(TaggedIsHeapObject(value), &isHeapObject, &exit);
-        Bind(&isHeapObject);
-        {
-            CallStub(glue, base, CommonStubCSigns::SetValueWithBarrier, { glue, base, offset, value });
-            Jump(&exit);
-        }
-        Bind(&exit);
-        SubCfgExit();
-    }
+    auto label = GetCurrentLabel();
+    auto depend = label->GetDepend();
+    auto bit = LoadStoreAccessor::ToValue(order);
+    GateRef result = GetCircuit()->NewGate(circuit_->Store(bit),
+        MachineType::NOVALUE, { depend, glue, base, offset, value }, type.GetGateType());
+    label->SetDepend(result);
+}
+
+void CircuitBuilder::StoreWithoutBarrier(VariableType type, GateRef addr, GateRef value, MemoryOrder order)
+{
+    auto label = GetCurrentLabel();
+    auto depend = label->GetDepend();
+    auto bit = LoadStoreAccessor::ToValue(order);
+    GateRef result = GetCircuit()->NewGate(circuit_->StoreWithoutBarrier(bit),
+        MachineType::NOVALUE, { depend, addr, value }, type.GetGateType());
+    label->SetDepend(result);
 }
 
 // memory
@@ -147,6 +145,17 @@ GateRef CircuitBuilder::Load(VariableType type, GateRef base, GateRef offset, Ga
     auto bits = LoadStoreAccessor::ToValue(order);
     GateRef result = GetCircuit()->NewGate(GetCircuit()->Load(bits), type.GetMachineType(),
                                            { depend, val }, type.GetGateType());
+    return result;
+}
+
+GateRef CircuitBuilder::Load(VariableType type, GateRef addr, MemoryOrder order)
+{
+    auto label = GetCurrentLabel();
+    auto depend = label->GetDepend();
+    auto bits = LoadStoreAccessor::ToValue(order);
+    GateRef result = GetCircuit()->NewGate(GetCircuit()->Load(bits), type.GetMachineType(),
+                                           { depend, addr }, type.GetGateType());
+    label->SetDepend(result);
     return result;
 }
 }

@@ -15,13 +15,11 @@
 
 #include "ecmascript/dfx/hprof/heap_profiler_interface.h"
 
-#include "ecmascript/base/block_hook_scope.h"
 #include "ecmascript/ecma_vm.h"
 
 namespace panda::ecmascript {
 HeapProfilerInterface *HeapProfilerInterface::GetInstance(EcmaVM *vm)
 {
-    base::BlockHookScope blockScope;
     return vm->GetOrNewHeapProfile();
 }
 

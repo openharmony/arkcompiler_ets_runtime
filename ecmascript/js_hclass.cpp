@@ -447,7 +447,7 @@ void JSHClass::OptimizePrototypeForIC(const JSThread *thread, const JSHandle<JST
 #endif
             JSObject::Cast(proto->GetTaggedObject())->SynchronizedSetClass(thread, *newProtoClass);
             newProtoClass->SetIsPrototype(true);
-            thread->GetEcmaVM()->GetPGOProfiler()->UpdateRootProfileType(*hclass, *newProtoClass);
+            thread->GetEcmaVM()->GetPGOProfiler()->UpdateRootProfileTypeSafe(*hclass, *newProtoClass);
         } else {
             // There is no sharing in AOT hclass. Therefore, it is not necessary or possible to clone here.
             hclass->SetIsPrototype(true);
@@ -566,6 +566,25 @@ JSHClass* JSHClass::GetInitialArrayHClassWithElementsKind(const JSThread *thread
     return nullptr;
 }
 
+bool JSHClass::TransitToElementsKindUncheck(const JSThread *thread, const JSHandle<JSObject> &obj,
+                                            ElementsKind newKind)
+{
+    ElementsKind current = obj->GetJSHClass()->GetElementsKind();
+    // currently we only support initial array hclass
+    if (obj->GetClass() == GetInitialArrayHClassWithElementsKind(thread, current)) {
+        const auto &arrayHClassIndexMap = thread->GetArrayHClassIndexMap();
+        auto newKindIter = arrayHClassIndexMap.find(newKind);
+        if (newKindIter != arrayHClassIndexMap.end()) {
+            auto index = static_cast<size_t>(newKindIter->second);
+            auto hclassVal = thread->GlobalConstants()->GetGlobalConstantObject(index);
+            JSHClass *hclass = JSHClass::Cast(hclassVal.GetTaggedObject());
+            obj->SynchronizedSetClass(thread, hclass);
+            return true;
+        }
+    }
+    return false;
+}
+
 void JSHClass::TransitToElementsKind(const JSThread *thread, const JSHandle<JSArray> &array,
                                      ElementsKind newKind)
 {
@@ -615,12 +634,16 @@ bool JSHClass::TransitToElementsKind(const JSThread *thread, const JSHandle<JSOb
         auto hclassVal = thread->GlobalConstants()->GetGlobalConstantObject(index);
         JSHClass *hclass = JSHClass::Cast(hclassVal.GetTaggedObject());
         object->SynchronizedSetClass(thread, hclass);
-        // Update TrackInfo
-        if (!thread->IsPGOProfilerEnable()) {
+
+        if (!thread->GetEcmaVM()->IsEnableElementsKind()) {
+            // Update TrackInfo
+            if (!thread->IsPGOProfilerEnable()) {
+                return true;
+            }
+            auto trackInfoVal = JSHandle<JSArray>(object)->GetTrackInfo();
+            thread->GetEcmaVM()->GetPGOProfiler()->UpdateTrackElementsKind(trackInfoVal, newKind);
             return true;
         }
-        auto trackInfoVal = JSHandle<JSArray>(object)->GetTrackInfo();
-        thread->GetEcmaVM()->GetPGOProfiler()->UpdateTrackElementsKind(trackInfoVal, newKind);
         return true;
     }
     return false;
@@ -816,7 +839,7 @@ bool JSHClass::UnregisterOnProtoChain(const JSThread *thread, const JSHandle<JSH
     JSTaggedValue proto = jshclass->GetPrototype();
     ASSERT(proto.IsECMAObject());
     JSTaggedValue protoDetailsValue = JSObject::Cast(proto.GetTaggedObject())->GetJSHClass()->GetProtoChangeDetails();
-    if (protoDetailsValue.IsUndefined()) {
+    if (protoDetailsValue.IsUndefined() || protoDetailsValue.IsNull()) {
         return false;
     }
     ASSERT(protoDetailsValue.IsProtoChangeDetails());
@@ -1165,8 +1188,10 @@ bool JSHClass::DumpForChildHClass(const JSHClass *hclass, HClassLayoutDesc *desc
     if (hclass->IsDictionaryMode()) {
         return false;
     }
-
-    uint32_t last = hclass->NumberOfProps() - 1;
+    if (hclass->PropsIsEmpty()) {
+        return false;
+    }
+    uint32_t last = hclass->LastPropIndex();
     LayoutInfo *layoutInfo = LayoutInfo::Cast(hclass->GetLayout().GetTaggedObject());
     layoutInfo->DumpFieldIndex(last, desc);
     return true;
@@ -1178,8 +1203,10 @@ bool JSHClass::UpdateChildLayoutDesc(const JSHClass *hclass, HClassLayoutDesc *c
     if (hclass->IsDictionaryMode()) {
         return false;
     }
-
-    uint32_t last = hclass->NumberOfProps() - 1;
+    if (hclass->PropsIsEmpty()) {
+        return false;
+    }
+    uint32_t last = hclass->LastPropIndex();
     LayoutInfo *layoutInfo = LayoutInfo::Cast(hclass->GetLayout().GetTaggedObject());
     return layoutInfo->UpdateFieldIndex(last, childDesc);
 }

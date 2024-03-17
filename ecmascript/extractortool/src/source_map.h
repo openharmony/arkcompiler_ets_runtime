@@ -50,6 +50,7 @@ public:
     SourceMapData() = default;
     ~SourceMapData() = default;
 
+    std::string url_;
     SourceMapInfo nowPos_;
     std::vector<std::string> files_;
     std::vector<std::string> sources_;
@@ -81,9 +82,9 @@ private:
     void ExtractKeyInfo(const std::string& sourceMap, std::vector<std::string>& sourceKeyInfo);
     std::vector<std::string> HandleMappings(const std::string& mapping);
     bool VlqRevCode(const std::string& vStr, std::vector<int32_t>& ans);
-    MappingInfo Find(int32_t row, int32_t col, const SourceMapData& targetMap, const std::string& key);
+    MappingInfo Find(int32_t row, int32_t col, const SourceMapData& targetMap);
     void GetPosInfo(const std::string& temp, int32_t start, std::string& line, std::string& column);
-    bool GetLineAndColumnNumbers(int& line, int& column, SourceMapData& targetMap, std::string& key);
+    bool GetLineAndColumnNumbers(int& line, int& column, SourceMapData& targetMap);
 #if defined(PANDA_TARGET_OHOS)
     bool ReadSourceMapData(const std::string& hapPath, std::string& content);
 #endif

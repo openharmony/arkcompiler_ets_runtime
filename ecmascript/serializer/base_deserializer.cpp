@@ -26,6 +26,7 @@
 #include "ecmascript/platform/mutex.h"
 #include "ecmascript/runtime.h"
 #include "ecmascript/runtime_lock.h"
+#include "ecmascript/shared_mm/shared_mm.h"
 
 namespace panda::ecmascript {
 
@@ -56,10 +57,10 @@ JSHandle<JSTaggedValue> BaseDeserializer::DeserializeJSTaggedValue()
     // stop gc during deserialize
     heap_->SetOnSerializeEvent(true);
 
-    uint8_t encodeFlag = data_->ReadUint8();
+    uint8_t encodeFlag = data_->ReadUint8(position_);
     JSHandle<JSTaggedValue> resHandle(thread_, JSTaggedValue::Undefined());
     while (ReadSingleEncodeData(encodeFlag, resHandle.GetAddress(), 0, true) == 0) { // 0: root object offset
-        encodeFlag = data_->ReadUint8();
+        encodeFlag = data_->ReadUint8(position_);
     }
     // now new constpool here if newConstPoolInfos_ is not empty
     for (auto newConstpoolInfo : newConstPoolInfos_) {
@@ -101,7 +102,7 @@ JSHandle<JSTaggedValue> BaseDeserializer::DeserializeJSTaggedValue()
 
 uintptr_t BaseDeserializer::DeserializeTaggedObject(SerializedObjectSpace space)
 {
-    size_t objSize = data_->ReadUint32();
+    size_t objSize = data_->ReadUint32(position_);
     uintptr_t res = RelocateObjectAddr(space, objSize);
     objectVector_.push_back(res);
     DeserializeObjectField(res, res + objSize);
@@ -112,7 +113,7 @@ void BaseDeserializer::DeserializeObjectField(uintptr_t start, uintptr_t end)
 {
     size_t offset = 0; // 0: initial offset
     while (start + offset < end) {
-        uint8_t encodeFlag = data_->ReadUint8();
+        uint8_t encodeFlag = data_->ReadUint8(position_);
         offset += ReadSingleEncodeData(encodeFlag, start, offset);
     }
 }
@@ -175,6 +176,7 @@ void BaseDeserializer::HandleNewObjectEncodeFlag(SerializedObjectSpace space,  u
     // deserialize object prologue
     bool isWeak = GetAndResetWeak();
     bool isTransferBuffer = GetAndResetTransferBuffer();
+    bool isSharedArrayBuffer = GetAndResetSharedArrayBuffer();
     void *bufferPointer = GetAndResetBufferPointer();
     ConstantPool *constpool = GetAndResetConstantPool();
     bool needNewConstPool = GetAndResetNeedNewConstPool();
@@ -184,6 +186,8 @@ void BaseDeserializer::HandleNewObjectEncodeFlag(SerializedObjectSpace space,  u
     // deserialize object epilogue
     if (isTransferBuffer) {
         TransferArrayBufferAttach(addr);
+    } else if (isSharedArrayBuffer) {
+        IncreaseSharedArrayBufferReference(addr);
     } else if (bufferPointer != nullptr) {
         ResetNativePointerBuffer(addr, bufferPointer);
     } else if (constpool != nullptr) {
@@ -216,8 +220,8 @@ void BaseDeserializer::HandleNewObjectEncodeFlag(SerializedObjectSpace space,  u
 
 void BaseDeserializer::HandleMethodEncodeFlag()
 {
-    panda_file::File::EntityId methodId = MethodLiteral::GetMethodId(data_->ReadJSTaggedType());
-    JSPandaFile *jsPandaFile = reinterpret_cast<JSPandaFile *>(data_->ReadJSTaggedType());
+    panda_file::File::EntityId methodId = MethodLiteral::GetMethodId(data_->ReadJSTaggedType(position_));
+    JSPandaFile *jsPandaFile = reinterpret_cast<JSPandaFile *>(data_->ReadJSTaggedType(position_));
     panda_file::IndexAccessor indexAccessor(*jsPandaFile->GetPandaFile(), methodId);
     int32_t index = static_cast<int32_t>(indexAccessor.GetHeaderIndex());
     JSTaggedValue constpool = thread_->GetCurrentEcmaContext()->FindConstpoolWithAOT(jsPandaFile, index);
@@ -240,6 +244,18 @@ void BaseDeserializer::TransferArrayBufferAttach(uintptr_t objAddr)
     bool withNativeAreaAllocator = arrayBuffer->GetWithNativeAreaAllocator();
     JSNativePointer *np = reinterpret_cast<JSNativePointer *>(arrayBuffer->GetArrayBufferData().GetTaggedObject());
     arrayBuffer->Attach(thread_, arrayLength, JSTaggedValue(np), withNativeAreaAllocator);
+}
+
+void BaseDeserializer::IncreaseSharedArrayBufferReference(uintptr_t objAddr)
+{
+    ASSERT(JSTaggedValue(static_cast<JSTaggedType>(objAddr)).IsSharedArrayBuffer());
+    JSArrayBuffer *arrayBuffer = reinterpret_cast<JSArrayBuffer *>(objAddr);
+    size_t arrayLength = arrayBuffer->GetArrayBufferByteLength();
+    JSNativePointer *np = reinterpret_cast<JSNativePointer *>(arrayBuffer->GetArrayBufferData().GetTaggedObject());
+    void *buffer = np->GetExternalPointer();
+    if (JSSharedMemoryManager::GetInstance()->CreateOrLoad(&buffer, arrayLength)) {
+        LOG_ECMA(FATAL) << "BaseDeserializer::IncreaseSharedArrayBufferReference failed";
+    }
 }
 
 void BaseDeserializer::ResetNativePointerBuffer(uintptr_t objAddr, void *bufferPointer)
@@ -282,7 +298,7 @@ size_t BaseDeserializer::ReadSingleEncodeData(uint8_t encodeFlag, uintptr_t objA
             break;
         }
         case (uint8_t)EncodeFlag::REFERENCE: {
-            uint32_t valueIndex = data_->ReadUint32();
+            uint32_t valueIndex = data_->ReadUint32(position_);
             uintptr_t valueAddr = objectVector_[valueIndex];
             UpdateMaybeWeak(slot, valueAddr, GetAndResetWeak());
             WriteBarrier<WriteBarrierType::DESERIALIZE>(thread_, reinterpret_cast<void *>(objAddr), fieldOffset,
@@ -296,18 +312,18 @@ size_t BaseDeserializer::ReadSingleEncodeData(uint8_t encodeFlag, uintptr_t objA
             break;
         }
         case (uint8_t)EncodeFlag::PRIMITIVE: {
-            JSTaggedType value = data_->ReadJSTaggedType();
+            JSTaggedType value = data_->ReadJSTaggedType(position_);
             slot.Update(value);
             break;
         }
         case (uint8_t)EncodeFlag::MULTI_RAW_DATA: {
-            uint32_t size = data_->ReadUint32();
-            data_->ReadRawData(objAddr + fieldOffset, size);
+            uint32_t size = data_->ReadUint32(position_);
+            data_->ReadRawData(objAddr + fieldOffset, size, position_);
             handledFieldSize = size;
             break;
         }
         case (uint8_t)EncodeFlag::ROOT_OBJECT: {
-            uint32_t index = data_->ReadUint32();
+            uint32_t index = data_->ReadUint32(position_);
             uintptr_t valueAddr = thread_->GetEcmaVM()->GetSnapshotEnv()->RelocateRootObjectAddr(index);
             if (!isRoot && valueAddr > JSTaggedValue::INVALID_VALUE_LIMIT) {
                 WriteBarrier<WriteBarrierType::DESERIALIZE>(thread_, reinterpret_cast<void *>(objAddr), fieldOffset,
@@ -317,7 +333,7 @@ size_t BaseDeserializer::ReadSingleEncodeData(uint8_t encodeFlag, uintptr_t objA
             break;
         }
         case (uint8_t)EncodeFlag::OBJECT_PROTO: {
-            uint8_t type = data_->ReadUint8();
+            uint8_t type = data_->ReadUint8(position_);
             uintptr_t protoAddr = RelocateObjectProtoAddr(type);
             if (!isRoot && protoAddr > JSTaggedValue::INVALID_VALUE_LIMIT) {
                 WriteBarrier<WriteBarrierType::DESERIALIZE>(thread_, reinterpret_cast<void *>(objAddr), fieldOffset,
@@ -331,12 +347,17 @@ size_t BaseDeserializer::ReadSingleEncodeData(uint8_t encodeFlag, uintptr_t objA
             handledFieldSize = 0;
             break;
         }
+        case (uint8_t)EncodeFlag::SHARED_ARRAY_BUFFER: {
+            isSharedArrayBuffer_ = true;
+            handledFieldSize = 0;
+            break;
+        }
         case (uint8_t)EncodeFlag::ARRAY_BUFFER:
         case (uint8_t)EncodeFlag::JS_REG_EXP: {
-            size_t bufferLength = data_->ReadUint32();
+            size_t bufferLength = data_->ReadUint32(position_);
             auto nativeAreaAllocator = thread_->GetEcmaVM()->GetNativeAreaAllocator();
             bufferPointer_ = nativeAreaAllocator->AllocateBuffer(bufferLength);
-            data_->ReadRawData(ToUintPtr(bufferPointer_), bufferLength);
+            data_->ReadRawData(ToUintPtr(bufferPointer_), bufferLength, position_);
             heap_->IncreaseNativeBindingSize(bufferLength);
             handledFieldSize = 0;
             break;
@@ -348,10 +369,10 @@ size_t BaseDeserializer::ReadSingleEncodeData(uint8_t encodeFlag, uintptr_t objA
         }
         case (uint8_t)EncodeFlag::NATIVE_BINDING_OBJECT: {
             slot.Update(JSTaggedValue::Undefined().GetRawData());
-            AttachFunc af = reinterpret_cast<AttachFunc>(data_->ReadJSTaggedType());
-            void *bufferPointer = reinterpret_cast<void *>(data_->ReadJSTaggedType());
-            void *hint = reinterpret_cast<void *>(data_->ReadJSTaggedType());
-            void *attachData = reinterpret_cast<void *>(data_->ReadJSTaggedType());
+            AttachFunc af = reinterpret_cast<AttachFunc>(data_->ReadJSTaggedType(position_));
+            void *bufferPointer = reinterpret_cast<void *>(data_->ReadJSTaggedType(position_));
+            void *hint = reinterpret_cast<void *>(data_->ReadJSTaggedType(position_));
+            void *attachData = reinterpret_cast<void *>(data_->ReadJSTaggedType(position_));
             // defer new native binding object until deserialize finish
             nativeBindingInfos_.push_back(new NativeBindingInfo(af, bufferPointer, hint, attachData,
                                                                 objAddr, fieldOffset, isRoot));
@@ -359,11 +380,11 @@ size_t BaseDeserializer::ReadSingleEncodeData(uint8_t encodeFlag, uintptr_t objA
         }
         case (uint8_t)EncodeFlag::JS_ERROR: {
             slot.Update(JSTaggedValue::Undefined().GetRawData());
-            uint8_t type = data_->ReadUint8();
+            uint8_t type = data_->ReadUint8(position_);
             ASSERT(type >= static_cast<uint8_t>(JSType::JS_ERROR_FIRST)
                 && type <= static_cast<uint8_t>(JSType::JS_ERROR_LAST));
             jsErrorInfos_.push_back(new JSErrorInfo(type, JSTaggedValue::Undefined(), objAddr, fieldOffset, isRoot));
-            uint8_t flag = data_->ReadUint8();
+            uint8_t flag = data_->ReadUint8(position_);
             if (flag == 1) { // error msg is string
                 isErrorMsg_ = true;
                 handledFieldSize = 0;
@@ -371,7 +392,7 @@ size_t BaseDeserializer::ReadSingleEncodeData(uint8_t encodeFlag, uintptr_t objA
             break;
         }
         case (uint8_t)EncodeFlag::SHARED_OBJECT: {
-            JSTaggedType value = data_->ReadJSTaggedType();
+            JSTaggedType value = data_->ReadJSTaggedType(position_);
             objectVector_.push_back(value);
             bool isErrorMsg = GetAndResetIsErrorMsg();
             if (isErrorMsg) {

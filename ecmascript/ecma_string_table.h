@@ -36,16 +36,16 @@ public:
     {
         table_.clear();
     }
+
     void InternEmptyString(JSThread *thread, EcmaString *emptyStr);
-    EcmaString *GetOrInternString(EcmaVM *vm, const JSHandle<EcmaString> &firstString,
-                                  const JSHandle<EcmaString> &secondString);
+    EcmaString *GetOrInternString(EcmaVM *vm, const JSHandle<EcmaString> &firstString, const JSHandle<EcmaString> &secondString);
     EcmaString *GetOrInternString(EcmaVM *vm, const uint8_t *utf8Data, uint32_t utf8Len, bool canBeCompress);
     EcmaString *CreateAndInternStringNonMovable(EcmaVM *vm, const uint8_t *utf8Data, uint32_t utf8Len);
     EcmaString *GetOrInternString(EcmaVM *vm, const uint16_t *utf16Data, uint32_t utf16Len, bool canBeCompress);
     EcmaString *GetOrInternString(EcmaVM *vm, EcmaString *string);
-    EcmaString *GetOrInternStringWithSpaceType(EcmaVM *vm, const uint8_t *utf8Data, uint32_t utf8Len,
-                                               bool canBeCompress, MemSpaceType type, bool isConstantString,
-                                               uint32_t idOffset);
+    EcmaString *GetOrInternCompressedSubString(EcmaVM *vm, const JSHandle<EcmaString> &string, uint32_t offset, uint32_t utf8Len);
+    EcmaString *GetOrInternStringWithSpaceType(EcmaVM *vm, const uint8_t *utf8Data, uint32_t utf8Len, bool canBeCompress,
+                                               MemSpaceType type, bool isConstantString, uint32_t idOffset);
     EcmaString *GetOrInternStringWithSpaceType(EcmaVM *vm, const uint8_t *utf8Data, uint32_t utf16Len,
                                                MemSpaceType type);
     EcmaString *TryGetInternString(JSThread *thread, const JSHandle<EcmaString> &string);

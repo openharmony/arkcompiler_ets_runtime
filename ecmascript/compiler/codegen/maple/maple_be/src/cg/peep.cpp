@@ -235,24 +235,6 @@ bool CGPeepPattern::CheckOpndLiveinSuccs(const RegOperand &regOpnd, const BB &bb
             continue;
         }
     }
-    for (auto ehSucc : bb.GetEhSuccs()) {
-        DEBUG_ASSERT(ehSucc->GetInternalFlag3() <= PeepOptimizer::index, "internal error.");
-        if (ehSucc->GetInternalFlag3() == PeepOptimizer::index) {
-            continue;
-        }
-        ehSucc->SetInternalFlag3(PeepOptimizer::index);
-        ReturnType result = IsOpndLiveinBB(regOpnd, *ehSucc);
-        if (result == kResNotFind) {
-            if (CheckOpndLiveinSuccs(regOpnd, *ehSucc)) {
-                return true;
-            }
-            continue;
-        } else if (result == kResUseFirst) {
-            return true;
-        } else if (result == kResDefFirst) {
-            continue;
-        }
-    }
     return CheckRegLiveinReturnBB(regOpnd, bb);
 }
 
@@ -448,24 +430,6 @@ bool PeepPattern::CheckOpndLiveinSuccs(const RegOperand &regOpnd, const BB &bb) 
         ReturnType result = IsOpndLiveinBB(regOpnd, *succ);
         if (result == kResNotFind) {
             if (CheckOpndLiveinSuccs(regOpnd, *succ)) {
-                return true;
-            }
-            continue;
-        } else if (result == kResUseFirst) {
-            return true;
-        } else if (result == kResDefFirst) {
-            continue;
-        }
-    }
-    for (auto ehSucc : bb.GetEhSuccs()) {
-        DEBUG_ASSERT(ehSucc->GetInternalFlag3() <= PeepOptimizer::index, "internal error.");
-        if (ehSucc->GetInternalFlag3() == PeepOptimizer::index) {
-            continue;
-        }
-        ehSucc->SetInternalFlag3(PeepOptimizer::index);
-        ReturnType result = IsOpndLiveinBB(regOpnd, *ehSucc);
-        if (result == kResNotFind) {
-            if (CheckOpndLiveinSuccs(regOpnd, *ehSucc)) {
                 return true;
             }
             continue;

@@ -104,4 +104,26 @@ JSHandle<Method> Method::Create(JSThread *thread, const JSPandaFile *jsPandaFile
     method->SetConstantPool(thread, newConstpool);
     return method;
 }
+
+void Method::SetCodeEntryAndMarkAOTWhenBinding(uintptr_t codeEntry)
+{
+    SetAotCodeBit(true);
+    SetNativeBit(false);
+    SetCodeEntryOrLiteral(codeEntry);
+}
+
+void Method::ClearAOTStatusWhenDeopt()
+{
+    ClearAOTFlagsWhenInit();
+    SetDeoptType(kungfu::DeoptType::NOTCHECK);
+    const JSPandaFile *jsPandaFile = GetJSPandaFile();
+    MethodLiteral *methodLiteral = jsPandaFile->FindMethodLiteral(GetMethodId().GetOffset());
+    SetCodeEntryOrLiteral(reinterpret_cast<uintptr_t>(methodLiteral));
+}
+
+void Method::ClearAOTFlagsWhenInit()
+{
+    SetAotCodeBit(false);
+    SetIsFastCall(false);
+}
 } // namespace panda::ecmascript

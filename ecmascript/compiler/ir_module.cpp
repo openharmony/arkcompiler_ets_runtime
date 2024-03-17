@@ -14,16 +14,21 @@
  */
 
 #include "ecmascript/compiler/ir_module.h"
+#include "ecmascript/jspandafile/js_pandafile_manager.h"
+#include "ecmascript/jspandafile/debug_info_extractor.h"
 
 namespace panda::ecmascript::kungfu {
 
 std::string IRModule::GetFuncName(const MethodLiteral *methodLiteral,
                                   const JSPandaFile *jsPandaFile)
 {
-    auto offset = methodLiteral->GetMethodId().GetOffset();
     std::string fileName = jsPandaFile->GetFileName();
     std::string name = MethodLiteral::GetMethodName(jsPandaFile, methodLiteral->GetMethodId());
-    name += std::string("@") + std::to_string(offset) + std::string("@") + fileName;
+    auto methodId = methodLiteral->GetMethodId();
+    DebugInfoExtractor *debugExtractor =
+        JSPandaFileManager::GetInstance()->GetJSPtExtractor(jsPandaFile);
+    std::string url = debugExtractor->GetSourceFile(methodId);
+    name += std::string("@") + url + std::string("@") + fileName;
     return name;
 }
 

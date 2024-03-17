@@ -13,7 +13,8 @@
  * limitations under the License.
  */
 
+declare function assert_equal(a: Object, b: Object):void;
 let k =1;
 let arr:number[] = [-1,-1];
 let a2:number[] = [k];
-print(a2.length)
+assert_equal(a2.length, 1);

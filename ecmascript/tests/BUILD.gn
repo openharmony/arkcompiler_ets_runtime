@@ -333,7 +333,9 @@ host_unittest_action("EcmaVm_011_Test") {
     "js_array_test.cpp",
     "js_async_function_test.cpp",
     "js_bigint_test.cpp",
-    "throw_oom_error_test.cpp",
+
+    # this UT need restore when oom dump is formally launched
+    # "throw_oom_error_test.cpp",
   ]
 
   configs = [

@@ -152,11 +152,25 @@ class ObjectFactory;
     V(JSTaggedValue, EmptyTaggedQueue, EMPTY_TAGGED_QUEUE_OBJECT_INDEX, ecma_roots_special)            \
     V(JSTaggedValue, UndefinedCompletionRecord, UNDEFINED_COMPLRTION_RECORD_INDEX, ecma_roots_special) \
     V(JSTaggedValue, MathSqrtFunction, MATH_SQRT_FUNCTION_INDEX, ecma_roots_special)                   \
-    V(JSTaggedValue, MathCosFunction, MATH_COS_FUNCTION_INDEX, ecma_roots_special)                     \
-    V(JSTaggedValue, MathSinFunction, MATH_SIN_FUNCTION_INDEX, ecma_roots_special)                     \
-    V(JSTaggedValue, MathACosFunction, MATH_ACOS_FUNCTION_INDEX, ecma_roots_special)                   \
-    V(JSTaggedValue, MathATanFunction, MATH_ATAN_FUNCTION_INDEX, ecma_roots_special)                   \
-    V(JSTaggedValue, MathAbsFunction, MATH_ABS_FUNCTION_INDEX, ecma_roots_special)                     \
+    V(JSTaggedValue, MathAcos, MATH_ACOS_INDEX, ecma_roots_special)                                    \
+    V(JSTaggedValue, MathAcosh, MATH_ACOSH_INDEX, ecma_roots_special)                                  \
+    V(JSTaggedValue, MathAsin, MATH_ASIN_INDEX, ecma_roots_special)                                    \
+    V(JSTaggedValue, MathAsinh, MATH_ASINH_INDEX, ecma_roots_special)                                  \
+    V(JSTaggedValue, MathAtan, MATH_ATAN_INDEX, ecma_roots_special)                                    \
+    V(JSTaggedValue, MathAtan2, MATH_ATAN2_INDEX, ecma_roots_special)                                  \
+    V(JSTaggedValue, MathAtanh, MATH_ATANH_INDEX, ecma_roots_special)                                  \
+    V(JSTaggedValue, MathCos, MATH_COS_INDEX, ecma_roots_special)                                      \
+    V(JSTaggedValue, MathCosh, MATH_COSH_INDEX, ecma_roots_special)                                    \
+    V(JSTaggedValue, MathSin, MATH_SIN_INDEX, ecma_roots_special)                                      \
+    V(JSTaggedValue, MathSinh, MATH_SINH_INDEX, ecma_roots_special)                                    \
+    V(JSTaggedValue, MathTan, MATH_TAN_INDEX, ecma_roots_special)                                      \
+    V(JSTaggedValue, MathTanh, MATH_TANH_INDEX, ecma_roots_special)                                    \
+    V(JSTaggedValue, MathLog, MATH_LOG_INDEX, ecma_roots_special)                                      \
+    V(JSTaggedValue, MathLog2, MATH_LOG2_INDEX, ecma_roots_special)                                    \
+    V(JSTaggedValue, MathLog10, MATH_LOG10_INDEX, ecma_roots_special)                                  \
+    V(JSTaggedValue, MathLog1p, MATH_LOG1P_INDEX, ecma_roots_special)                                  \
+    V(JSTaggedValue, MathAbs, MATH_ABS_INDEX, ecma_roots_special)                                      \
+    V(JSTaggedValue, MathPow, MATH_POW_INDEX, ecma_roots_special)                                      \
     V(JSTaggedValue, MathFloorFunction, MATH_FLOOR_FUNCTION_INDEX, ecma_roots_special)                 \
     V(JSTaggedValue, LocaleCompareFunction, LOCALE_COMPARE_FUNCTION_INDEX, ecma_roots_special)         \
     V(JSTaggedValue, ArraySortFunction, ARRAY_SORT_FUNCTION_INDEX, ecma_roots_special)                 \
@@ -165,6 +179,7 @@ class ObjectFactory;
     V(JSTaggedValue, SetIteratorProtoNext, SET_ITERATOR_PROTO_NEXT_INDEX, ecma_roots_special)          \
     V(JSTaggedValue, StringIteratorProtoNext, STRING_ITERATOR_PROTO_NEXT_INDEX, ecma_roots_special)    \
     V(JSTaggedValue, ArrayIteratorProtoNext, ARRAY_ITERATOR_PROTO_NEXT_INDEX, ecma_roots_special)      \
+    V(JSTaggedValue, IteratorProtoReturn, ITERATOR_PROTO_RETURN_INDEX, ecma_roots_special)             \
     V(JSTaggedValue, StringFromCharCode, STRING_FROM_CHAR_CODE_INDEX, ecma_roots_special)
 
 // All of type JSTaggedValue
@@ -260,6 +275,7 @@ class ObjectFactory;
     V(TerminationErrorString,         TERMINATION_ERROR_STRING_INDEX,        "TerminationError")            \
     V(ErrorFuncString,                ERROR_FUNC_STRING_INDEX,               "errorfunc")                   \
     V(StackString,                    STACK_STRING_INDEX,                    "stack")                       \
+    V(TopStackString,                 TOP_STACK_STRING_INDEX,                "topstack")                    \
     V(StackEmptyString,               STACK_EMPTY_STRING_INDEX,              "stackisempty")                \
     V(ObjNotCoercibleString,          OBJ_NOT_COERCIBLE_STRING_INDEX,        "objectnotcoercible")          \
     /* for Intl. */                                                                                         \

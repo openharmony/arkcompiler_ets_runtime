@@ -78,7 +78,7 @@ void LiveUnit::PrintLiveUnit() const
     }
 }
 
-bool LiveRange::IsRematerializable(AArch64CGFunc &cgFunc, uint8 rematLev) const
+bool LiveRange::IsRematerializable(AArch64CGFunc &cgFunc, uint8 rematLev, const LoopAnalysis &loopInfo) const
 {
     if (rematLev == kRematOff)
         return false;
@@ -122,12 +122,12 @@ bool LiveRange::IsRematerializable(AArch64CGFunc &cgFunc, uint8 rematLev) const
                 bool useInLoop = false;
                 bool defOutLoop = false;
                 for (auto luIt : luMap) {
-                    BB *bb = cgFunc.GetBBFromID(luIt.first);
+                    auto *loop = loopInfo.GetBBLoopParent(luIt.first);
                     LiveUnit *curLu = luIt.second;
-                    if (bb->GetLoop() != nullptr && curLu->GetUseNum() != 0) {
+                    if (loop != nullptr && curLu->GetUseNum() != 0) {
                         useInLoop = true;
                     }
-                    if (bb->GetLoop() == nullptr && curLu->GetDefNum() != 0) {
+                    if (loop == nullptr && curLu->GetDefNum() != 0) {
                         defOutLoop = true;
                     }
                 }
@@ -471,13 +471,15 @@ void GraphColorRegAllocator::CalculatePriority(LiveRange &lr) const
     auto *a64CGFunc = static_cast<AArch64CGFunc *>(cgFunc);
     CG *cg = a64CGFunc->GetCG();
 
-    if (cg->GetRematLevel() >= kRematConst && lr.IsRematerializable(*a64CGFunc, kRematConst)) {
+    if (cg->GetRematLevel() >= kRematConst && lr.IsRematerializable(*a64CGFunc, kRematConst, loopInfo)) {
         lr.SetRematLevel(kRematConst);
-    } else if (cg->GetRematLevel() >= kRematAddr && lr.IsRematerializable(*a64CGFunc, kRematAddr)) {
+    } else if (cg->GetRematLevel() >= kRematAddr && lr.IsRematerializable(*a64CGFunc, kRematAddr, loopInfo)) {
         lr.SetRematLevel(kRematAddr);
-    } else if (cg->GetRematLevel() >= kRematDreadLocal && lr.IsRematerializable(*a64CGFunc, kRematDreadLocal)) {
+    } else if (cg->GetRematLevel() >= kRematDreadLocal &&
+               lr.IsRematerializable(*a64CGFunc, kRematDreadLocal, loopInfo)) {
         lr.SetRematLevel(kRematDreadLocal);
-    } else if (cg->GetRematLevel() >= kRematDreadGlobal && lr.IsRematerializable(*a64CGFunc, kRematDreadGlobal)) {
+    } else if (cg->GetRematLevel() >= kRematDreadGlobal &&
+               lr.IsRematerializable(*a64CGFunc, kRematDreadGlobal, loopInfo)) {
         lr.SetRematLevel(kRematDreadGlobal);
     }
 
@@ -494,12 +496,13 @@ void GraphColorRegAllocator::CalculatePriority(LiveRange &lr) const
 #ifdef USE_BB_FREQUENCY
             mult = bb->GetFrequency();
 #else  /* USE_BB_FREQUENCY */
-            if (bb->GetLoop() != nullptr) {
+            auto *loop = loopInfo.GetBBLoopParent(bb->GetId());
+            if (loop != nullptr) {
                 uint32 loopFactor;
                 if (lr.GetNumCall() > 0 && lr.GetRematLevel() == kRematOff) {
-                    loopFactor = bb->GetLoop()->GetLoopLevel() * kAdjustWeight;
+                    loopFactor = loop->GetNestDepth() * kAdjustWeight;
                 } else {
-                    loopFactor = bb->GetLoop()->GetLoopLevel() / kAdjustWeight;
+                    loopFactor = loop->GetNestDepth() / kAdjustWeight;
                 }
                 mult = static_cast<uint32>(pow(kLoopWeight, loopFactor));
             } else {
@@ -544,9 +547,6 @@ void GraphColorRegAllocator::PrintBBs() const
             LogInfo::MapleLogger() << " " << succBB->GetId();
         }
         LogInfo::MapleLogger() << " eh_succs:";
-        for (auto *succBB : bb->GetEhSuccs()) {
-            LogInfo::MapleLogger() << " " << succBB->GetId();
-        }
     }
     LogInfo::MapleLogger() << "\n";
 }
@@ -1842,8 +1842,8 @@ bool GraphColorRegAllocator::AssignColorToLr(LiveRange &lr, bool isDelayed)
 }
 
 void GraphColorRegAllocator::PruneLrForSplit(LiveRange &lr, BB &bb, bool remove,
-                                             std::set<CGFuncLoops *, CGFuncLoopCmp> &candidateInLoop,
-                                             std::set<CGFuncLoops *, CGFuncLoopCmp> &defInLoop)
+                                             std::set<LoopDesc*, LoopDesc::LoopDescCmp> &candidateInLoop,
+                                             std::set<LoopDesc*, LoopDesc::LoopDescCmp> &defInLoop)
 {
     if (bb.GetInternalFlag1()) {
         /* already visited */
@@ -1859,10 +1859,11 @@ void GraphColorRegAllocator::PruneLrForSplit(LiveRange &lr, BB &bb, bool remove,
         useNum = lu->second->GetUseNum();
     }
 
+    auto *loop = loopInfo.GetBBLoopParent(bb.GetId());
     if (remove) {
         /* In removal mode, has not encountered a ref yet. */
         if (defNum == 0 && useNum == 0) {
-            if (bb.GetLoop() != nullptr && FindIn(candidateInLoop, bb.GetLoop())) {
+            if (loop != nullptr && FindIn(candidateInLoop, loop)) {
                 /*
                  * Upward search has found a loop.  Regardless of def/use
                  *  The loop members must be included in the new LR.
@@ -1879,37 +1880,33 @@ void GraphColorRegAllocator::PruneLrForSplit(LiveRange &lr, BB &bb, bool remove,
         }
     }
 
-    if (bb.GetLoop() != nullptr) {
+    if (loop != nullptr) {
         /* With a def in loop, cannot prune that loop */
         if (defNum > 0) {
-            (void)defInLoop.insert(bb.GetLoop());
+            (void)defInLoop.insert(loop);
         }
         /* bb in loop, need to make sure of loop carried dependency */
-        (void)candidateInLoop.insert(bb.GetLoop());
+        (void)candidateInLoop.insert(loop);
     }
     for (auto pred : bb.GetPreds()) {
-        if (FindNotIn(bb.GetLoopPreds(), pred)) {
-            PruneLrForSplit(lr, *pred, remove, candidateInLoop, defInLoop);
-        }
-    }
-    for (auto pred : bb.GetEhPreds()) {
-        if (FindNotIn(bb.GetLoopPreds(), pred)) {
+        if (loop == nullptr || !loop->Has(*pred)) {
             PruneLrForSplit(lr, *pred, remove, candidateInLoop, defInLoop);
         }
     }
 }
 
 void GraphColorRegAllocator::FindBBSharedInSplit(LiveRange &lr,
-                                                 const std::set<CGFuncLoops *, CGFuncLoopCmp> &candidateInLoop,
-                                                 std::set<CGFuncLoops *, CGFuncLoopCmp> &defInLoop)
+                                                 const std::set<LoopDesc*, LoopDesc::LoopDescCmp> &candidateInLoop,
+                                                 std::set<LoopDesc*, LoopDesc::LoopDescCmp> &defInLoop)
 {
     /* A loop might be split into two.  Need to see over the entire LR if there is a def in the loop. */
     auto FindBBSharedFunc = [&lr, &candidateInLoop, &defInLoop, this](uint32 bbID) {
         BB *bb = bbVec[bbID];
-        if (bb->GetLoop() != nullptr && FindIn(candidateInLoop, bb->GetLoop())) {
+        auto *loop = loopInfo.GetBBLoopParent(bb->GetId());
+        if (loop != nullptr && FindIn(candidateInLoop, loop)) {
             auto lu = lr.FindInLuMap(bb->GetId());
             if (lu != lr.EndOfLuMap() && lu->second->GetDefNum() > 0) {
-                (void)defInLoop.insert(bb->GetLoop());
+                (void)defInLoop.insert(loop);
             }
         }
     };
@@ -1931,9 +1928,9 @@ void GraphColorRegAllocator::ComputeBBForNewSplit(LiveRange &newLr, LiveRange &o
      *  If a LR crosses a loop, even if the loop has no def/use, it must
      *  be included in the new LR.
      */
-    std::set<CGFuncLoops *, CGFuncLoopCmp> candidateInLoop;
+    std::set<LoopDesc*, LoopDesc::LoopDescCmp> candidateInLoop;
     /* If a bb has a def and is in a loop, store that info. */
-    std::set<CGFuncLoops *, CGFuncLoopCmp> defInLoop;
+    std::set<LoopDesc*, LoopDesc::LoopDescCmp> defInLoop;
     std::set<BB *, SortedBBCmpFunc> smember;
     ForEachBBArrElem(newLr.GetBBMember(), [this, &smember](uint32 bbID) { (void)smember.insert(bbVec[bbID]); });
     for (auto bbIt = smember.rbegin(); bbIt != smember.rend(); ++bbIt) {
@@ -1947,10 +1944,11 @@ void GraphColorRegAllocator::ComputeBBForNewSplit(LiveRange &newLr, LiveRange &o
     auto pruneTopLr = [this, &newLr, &candidateInLoop, &defInLoop](uint32 bbID) {
         BB *bb = bbVec[bbID];
         if (bb->GetInternalFlag2() != 0) {
-            if (bb->GetLoop() != nullptr && FindIn(candidateInLoop, bb->GetLoop())) {
+            auto *loop = loopInfo.GetBBLoopParent(bb->GetId());
+            if (loop != nullptr && FindIn(candidateInLoop, loop)) {
                 return;
             }
-            if (bb->GetLoop() != nullptr || FindNotIn(defInLoop, bb->GetLoop())) {
+            if (loop != nullptr || FindNotIn(defInLoop, loop)) {
                 /* defInLoop should be a subset of candidateInLoop.  remove. */
                 newLr.UnsetMemberBitArrElem(bbID);
             }
@@ -1974,23 +1972,12 @@ bool GraphColorRegAllocator::UseIsUncovered(const BB &bb, const BB &startBB, std
             return true;
         }
     }
-    for (auto pred : bb.GetEhPreds()) {
-        if (visitedBB[pred->GetId()]) {
-            continue;
-        }
-        if (pred->GetLevel() <= startBB.GetLevel()) {
-            return true;
-        }
-        if (UseIsUncovered(*pred, startBB, visitedBB)) {
-            return true;
-        }
-    }
     return false;
 }
 
 void GraphColorRegAllocator::FindUseForSplit(LiveRange &lr, SplitBBInfo &bbInfo, bool &remove,
-                                             std::set<CGFuncLoops *, CGFuncLoopCmp> &candidateInLoop,
-                                             std::set<CGFuncLoops *, CGFuncLoopCmp> &defInLoop)
+                                             std::set<LoopDesc*, LoopDesc::LoopDescCmp> &candidateInLoop,
+                                             std::set<LoopDesc*, LoopDesc::LoopDescCmp> &defInLoop)
 {
     BB *bb = bbInfo.GetCandidateBB();
     const BB *startBB = bbInfo.GetStartBB();
@@ -1999,11 +1986,6 @@ void GraphColorRegAllocator::FindUseForSplit(LiveRange &lr, SplitBBInfo &bbInfo,
         return;
     }
     for (auto pred : bb->GetPreds()) {
-        if (pred->GetInternalFlag1() == 0) {
-            return;
-        }
-    }
-    for (auto pred : bb->GetEhPreds()) {
         if (pred->GetInternalFlag1() == 0) {
             return;
         }
@@ -2019,14 +2001,15 @@ void GraphColorRegAllocator::FindUseForSplit(LiveRange &lr, SplitBBInfo &bbInfo,
     }
 
     std::vector<bool> visitedBB(cgFunc->GetAllBBs().size(), false);
+    auto *loop = loopInfo.GetBBLoopParent(bb->GetId());
     if (remove) {
         /* In removal mode, has not encountered a ref yet. */
         if (defNum == 0 && useNum == 0) {
             /* No ref in this bb. mark as potential remove. */
             bb->SetInternalFlag2(true);
-            if (bb->GetLoop() != nullptr) {
+            if (loop != nullptr) {
                 /* bb in loop, need to make sure of loop carried dependency */
-                (void)candidateInLoop.insert(bb->GetLoop());
+                (void)candidateInLoop.insert(loop);
             }
         } else {
             /* found a ref, no more removal of bb and preds. */
@@ -2039,18 +2022,12 @@ void GraphColorRegAllocator::FindUseForSplit(LiveRange &lr, SplitBBInfo &bbInfo,
     }
 
     /* With a def in loop, cannot prune that loop */
-    if (bb->GetLoop() != nullptr && defNum > 0) {
-        (void)defInLoop.insert(bb->GetLoop());
+    if (loop != nullptr && defNum > 0) {
+        (void)defInLoop.insert(loop);
     }
 
     for (auto succ : bb->GetSuccs()) {
-        if (FindNotIn(bb->GetLoopSuccs(), succ)) {
-            bbInfo.SetCandidateBB(*succ);
-            FindUseForSplit(lr, bbInfo, remove, candidateInLoop, defInLoop);
-        }
-    }
-    for (auto succ : bb->GetEhSuccs()) {
-        if (FindNotIn(bb->GetLoopSuccs(), succ)) {
+        if (loop && loop->Has(*succ)) {
             bbInfo.SetCandidateBB(*succ);
             FindUseForSplit(lr, bbInfo, remove, candidateInLoop, defInLoop);
         }
@@ -2066,10 +2043,6 @@ void GraphColorRegAllocator::ClearLrBBFlags(const std::set<BB *, SortedBBCmpFunc
             pred->SetInternalFlag1(0);
             pred->SetInternalFlag2(0);
         }
-        for (auto pred : bb->GetEhPreds()) {
-            pred->SetInternalFlag1(0);
-            pred->SetInternalFlag2(0);
-        }
     }
 }
 
@@ -2081,9 +2054,9 @@ void GraphColorRegAllocator::ClearLrBBFlags(const std::set<BB *, SortedBBCmpFunc
 void GraphColorRegAllocator::ComputeBBForOldSplit(LiveRange &newLr, LiveRange &origLr)
 {
     /* The candidate bb to be removed, if in a loop, store that info. */
-    std::set<CGFuncLoops *, CGFuncLoopCmp> candidateInLoop;
+    std::set<LoopDesc*, LoopDesc::LoopDescCmp> candidateInLoop;
     /* If a bb has a def and is in a loop, store that info. */
-    std::set<CGFuncLoops *, CGFuncLoopCmp> defInLoop;
+    std::set<LoopDesc*, LoopDesc::LoopDescCmp> defInLoop;
     SplitBBInfo bbInfo;
     bool remove = true;
 
@@ -2097,9 +2070,6 @@ void GraphColorRegAllocator::ComputeBBForOldSplit(LiveRange &newLr, LiveRange &o
         for (auto pred : bb->GetPreds()) {
             pred->SetInternalFlag1(true);
         }
-        for (auto pred : bb->GetEhPreds()) {
-            pred->SetInternalFlag1(true);
-        }
         bbInfo.SetCandidateBB(*bb);
         bbInfo.SetStartBB(*bb);
         FindUseForSplit(origLr, bbInfo, remove, candidateInLoop, defInLoop);
@@ -2108,7 +2078,8 @@ void GraphColorRegAllocator::ComputeBBForOldSplit(LiveRange &newLr, LiveRange &o
     auto pruneLrFunc = [&origLr, &defInLoop, this](uint32 bbID) {
         BB *bb = bbVec[bbID];
         if (bb->GetInternalFlag2() != 0) {
-            if (bb->GetLoop() != nullptr && FindNotIn(defInLoop, bb->GetLoop())) {
+            auto *loop = loopInfo.GetBBLoopParent(bb->GetId());
+            if (loop != nullptr && FindNotIn(defInLoop, loop)) {
                 origLr.UnsetMemberBitArrElem(bbID);
             }
         }
@@ -2203,25 +2174,24 @@ void GraphColorRegAllocator::MoveLrBBInfo(LiveRange &oldLr, LiveRange &newLr, BB
 }
 
 /* Is the set of loops inside the loop? */
-bool GraphColorRegAllocator::ContainsLoop(const CGFuncLoops &loop,
-                                          const std::set<CGFuncLoops *, CGFuncLoopCmp> &loops) const
+bool GraphColorRegAllocator::ContainsLoop(const LoopDesc &loop,
+                                          const std::set<LoopDesc*, LoopDesc::LoopDescCmp> &loops) const
 {
-    for (const CGFuncLoops *lp : loops) {
+    for (const auto *lp : loops) {
         while (lp != nullptr) {
             if (lp == &loop) {
                 return true;
             }
-            lp = lp->GetOuterLoop();
+            lp = lp->GetParentLoop();
         }
     }
     return false;
 }
 
-void GraphColorRegAllocator::GetAllLrMemberLoops(LiveRange &lr, std::set<CGFuncLoops *, CGFuncLoopCmp> &loops)
+void GraphColorRegAllocator::GetAllLrMemberLoops(LiveRange &lr, std::set<LoopDesc*, LoopDesc::LoopDescCmp> &loops)
 {
     auto GetLrMemberFunc = [&loops, this](uint32 bbID) {
-        BB *bb = bbVec[bbID];
-        CGFuncLoops *loop = bb->GetLoop();
+        auto *loop = loopInfo.GetBBLoopParent(bbID);
         if (loop != nullptr) {
             (void)loops.insert(loop);
         }
@@ -2238,15 +2208,14 @@ bool GraphColorRegAllocator::SplitLrShouldSplit(LiveRange &lr)
     uint32 loopID = 0xFFFFFFFF; /* loopID is initialized the maximum value，and then be assigned in function */
     bool needSplit = true;
     auto setNeedSplit = [&needSplit, &loopID, this](uint32 bbID) -> bool {
-        BB *bb = bbVec[bbID];
+        auto *loop = loopInfo.GetBBLoopParent(bbID);
         if (loopID == 0xFFFFFFFF) {
-            if (bb->GetLoop() != nullptr) {
-                loopID = static_cast<int32>(bb->GetLoop()->GetHeader()->GetId());
+            if (loop != nullptr) {
+                loopID = loop->GetHeader().GetId();
             } else {
                 loopID = 0;
             }
-        } else if ((bb->GetLoop() != nullptr && bb->GetLoop()->GetHeader()->GetId() != loopID) ||
-                   (bb->GetLoop() == nullptr && loopID != 0)) {
+        } else if ((loop != nullptr && loop->GetHeader().GetId() != loopID) || (loop == nullptr && loopID != 0)) {
             needSplit = false;
             return true;
         }
@@ -2287,8 +2256,8 @@ bool GraphColorRegAllocator::SplitLrFindCandidateLr(LiveRange &lr, LiveRange &ne
 }
 
 void GraphColorRegAllocator::SplitLrHandleLoops(LiveRange &lr, LiveRange &newLr,
-                                                const std::set<CGFuncLoops *, CGFuncLoopCmp> &origLoops,
-                                                const std::set<CGFuncLoops *, CGFuncLoopCmp> &newLoops)
+                                                const std::set<LoopDesc*, LoopDesc::LoopDescCmp> &origLoops,
+                                                const std::set<LoopDesc*, LoopDesc::LoopDescCmp> &newLoops)
 {
     /*
      * bb in loops might need a reload due to loop carried dependency.
@@ -2324,11 +2293,11 @@ void GraphColorRegAllocator::SplitLrHandleLoops(LiveRange &lr, LiveRange &newLr,
         if (!ContainsLoop(*loop, origLoops)) {
             continue;
         }
-        for (auto bb : loop->GetLoopMembers()) {
-            if (!IsBitArrElemSet(newLr.GetBBMember(), bb->GetId())) {
+        for (auto bbId : loop->GetLoopBBs()) {
+            if (!IsBitArrElemSet(newLr.GetBBMember(), bbId)) {
                 continue;
             }
-            LiveUnit *lu = newLr.GetLiveUnitFromLuMap(bb->GetId());
+            LiveUnit *lu = newLr.GetLiveUnitFromLuMap(bbId);
             if (lu->GetUseNum() != 0) {
                 lu->SetNeedReload(true);
             }
@@ -2337,14 +2306,14 @@ void GraphColorRegAllocator::SplitLrHandleLoops(LiveRange &lr, LiveRange &newLr,
 }
 
 void GraphColorRegAllocator::SplitLrFixNewLrCallsAndRlod(LiveRange &newLr,
-                                                         const std::set<CGFuncLoops *, CGFuncLoopCmp> &origLoops)
+                                                         const std::set<LoopDesc*, LoopDesc::LoopDescCmp> &origLoops)
 {
     /* If a 2nd split loop is before the bb in 1st split bb. */
     newLr.SetNumCall(0);
     auto fixCallsAndRlod = [&newLr, &origLoops, this](uint32 bbID) {
         BB *bb = bbVec[bbID];
         for (auto loop : origLoops) {
-            if (loop->GetHeader()->GetLevel() >= bb->GetLevel()) {
+            if (loop->GetHeader().GetLevel() >= bb->GetLevel()) {
                 continue;
             }
             LiveUnit *lu = newLr.GetLiveUnitFromLuMap(bbID);
@@ -2445,8 +2414,8 @@ void GraphColorRegAllocator::SplitLr(LiveRange &lr)
     }
 #endif /* REUSE_SPILLMEM */
 
-    std::set<CGFuncLoops *, CGFuncLoopCmp> newLoops;
-    std::set<CGFuncLoops *, CGFuncLoopCmp> origLoops;
+    std::set<LoopDesc*, LoopDesc::LoopDescCmp> newLoops;
+    std::set<LoopDesc*, LoopDesc::LoopDescCmp> origLoops;
     GetAllLrMemberLoops(*newLr, newLoops);
     GetAllLrMemberLoops(lr, origLoops);
     SplitLrHandleLoops(lr, *newLr, origLoops, newLoops);
@@ -4439,7 +4408,8 @@ void CallerSavePre::ComputeAvail()
                         killedCnt = phiOcc->GetPhiOpnds().size();
                         break;
                     }
-                    if (opndOcc->GetBB()->IsSoloGoto() && opndOcc->GetBB()->GetLoop() != nullptr) {
+                    if (opndOcc->GetBB()->IsSoloGoto() &&
+                        loopInfo.GetBBLoopParent(opndOcc->GetBB()->GetId()) != nullptr) {
                         killedCnt = phiOcc->GetPhiOpnds().size();
                         break;
                     }
@@ -4677,12 +4647,12 @@ void CallerSavePre::ApplySSAPRE()
 
 void GraphColorRegAllocator::OptCallerSave()
 {
-    CallerSavePre callerSavePre(this, *cgFunc, domInfo, *memPool, *memPool, kLoadPre, UINT32_MAX);
+    CallerSavePre callerSavePre(this, *cgFunc, domInfo, loopInfo, *memPool, *memPool, kLoadPre, UINT32_MAX);
     callerSavePre.SetDump(needDump);
     callerSavePre.ApplySSAPRE();
 }
 
-void GraphColorRegAllocator::SplitVregAroundLoop(const CGFuncLoops &loop, const std::vector<LiveRange *> &lrs,
+void GraphColorRegAllocator::SplitVregAroundLoop(const LoopDesc &loop, const std::vector<LiveRange *> &lrs,
                                                  BB &headerPred, BB &exitSucc, const std::set<regno_t> &cands)
 {
     size_t maxSplitCount = lrs.size() - intCalleeRegSet.size();
@@ -4699,7 +4669,8 @@ void GraphColorRegAllocator::SplitVregAroundLoop(const CGFuncLoops &loop, const 
             continue;
         }
         bool hasRef = false;
-        for (auto *bb : loop.GetLoopMembers()) {
+        for (auto bbId : loop.GetLoopBBs()) {
+            auto *bb = cgFunc->GetBBFromID(bbId);
             LiveUnit *lu = lr->GetLiveUnitFromLuMap(bb->GetId());
             if (lu != nullptr && (lu->GetDefNum() != 0 || lu->GetUseNum() != 0)) {
                 hasRef = true;
@@ -4744,15 +4715,13 @@ bool GraphColorRegAllocator::LrGetBadReg(const LiveRange &lr) const
     return false;
 }
 
-bool GraphColorRegAllocator::LoopNeedSplit(const CGFuncLoops &loop, std::set<regno_t> &cands)
+bool GraphColorRegAllocator::LoopNeedSplit(const LoopDesc &loop, std::set<regno_t> &cands)
 {
     std::set<regno_t> regPressure;
-    const BB *header = loop.GetHeader();
-    const MapleSet<regno_t> &liveIn = header->GetLiveInRegNO();
-    std::set<BB *> loopBBs;
-    for (auto *bb : loop.GetLoopMembers()) {
-        loopBBs.insert(bb);
-        FOR_BB_INSNS(insn, bb) {
+    const BB &header = loop.GetHeader();
+    const MapleSet<regno_t> &liveIn = header.GetLiveInRegNO();
+    for (auto bbId : loop.GetLoopBBs()) {
+        FOR_BB_INSNS(insn, cgFunc->GetBBFromID(bbId)) {
             if (!insn->IsMachineInstruction()) {
                 continue;
             }
@@ -4806,7 +4775,7 @@ bool GraphColorRegAllocator::LoopNeedSplit(const CGFuncLoops &loop, std::set<reg
                              [this, &smember](uint32 bbID) { (void)smember.emplace_back(bbVec[bbID]); });
             bool liveBeyondLoop = false;
             for (auto bb : smember) {
-                if (loopBBs.find(bb) == loopBBs.end()) {
+                if (loop.GetLoopBBs().count(bb->GetId()) == 0) {
                     liveBeyondLoop = true;
                     break;
                 }
@@ -4824,15 +4793,11 @@ bool GraphColorRegAllocator::LoopNeedSplit(const CGFuncLoops &loop, std::set<reg
     return false;
 }
 
-void GraphColorRegAllocator::AnalysisLoop(const CGFuncLoops &loop)
+void GraphColorRegAllocator::AnalysisLoop(const LoopDesc &loop)
 {
-    const BB *header = loop.GetHeader();
-    const MapleSet<regno_t> &liveIn = header->GetLiveInRegNO();
-    std::vector<LiveRange *> lrs;
+    const MapleSet<regno_t> &liveIn = loop.GetHeader().GetLiveInRegNO();
+    std::vector<LiveRange*> lrs;
     size_t intCalleeNum = intCalleeRegSet.size();
-    if (loop.GetMultiEntries().size() != 0) {
-        return;
-    }
     for (auto regno : liveIn) {
         LiveRange *lr = GetLiveRange(regno);
         if (lr != nullptr && lr->GetRegType() == kRegTyInt && lr->GetNumCall() != 0) {
@@ -4843,69 +4808,87 @@ void GraphColorRegAllocator::AnalysisLoop(const CGFuncLoops &loop)
         return;
     }
     bool hasCall = false;
-    std::set<BB *> loopBBs;
-    for (auto *bb : loop.GetLoopMembers()) {
+    for (auto bbId : loop.GetLoopBBs()) {
+        auto *bb = cgFunc->GetBBFromID(bbId);
         if (bb->HasCall()) {
             hasCall = true;
         }
-        loopBBs.insert(bb);
     }
     if (!hasCall) {
         return;
     }
-    auto comparator = [=](const LiveRange *lr1, const LiveRange *lr2) -> bool {
-        return lr1->GetPriority() < lr2->GetPriority();
-    };
-    std::sort(lrs.begin(), lrs.end(), comparator);
-    const MapleVector<BB *> &exits = loop.GetExits();
-    std::set<BB *> loopExits;
-    for (auto &bb : exits) {
-        for (auto &succ : bb->GetSuccs()) {
-            if (loopBBs.find(succ) != loopBBs.end()) {
-                continue;
-            }
-            if (succ->IsSoloGoto() || succ->IsEmpty()) {
-                BB *realSucc = CGCFG::GetTargetSuc(*succ);
-                if (realSucc != nullptr) {
-                    loopExits.insert(realSucc);
-                }
-            } else {
-                loopExits.insert(succ);
-            }
-        }
-    }
-    std::set<BB *> loopEntra;
-    for (auto &pred : header->GetPreds()) {
-        if (loopBBs.find(pred) != loopBBs.end()) {
+
+    BB *storeBB = nullptr;  // unique loop entrance, which is used to generate storage insn
+    for (auto &pred : loop.GetHeader().GetPreds()) {
+        if (loop.GetBackEdges().count(pred->GetId()) != 0) {
             continue;
         }
-        loopEntra.insert(pred);
+        if (storeBB != nullptr) {
+            return;
+        }
+        storeBB = pred;
     }
-    if (loopEntra.size() != 1 || loopExits.size() != 1) {
+    if (storeBB == nullptr || storeBB->GetKind() != BB::kBBFallthru) {
         return;
     }
-    BB *headerPred = *loopEntra.begin();
-    BB *exitSucc = *loopExits.begin();
-    if (headerPred->GetKind() != BB::kBBFallthru) {
-        return;
+
+    // it is used to generate the reload insn.
+    //  1) when the loop has only one ExitBB, it is the ExitBB.
+    //  2) when there are multiple ExitBBs in the loop, it is the only common successor of ExitBBs.
+    BB *reloadBB = nullptr;
+    if (loop.GetExitBBs().size() == 1) {
+        reloadBB = cgFunc->GetBBFromID(*loop.GetExitBBs().begin());
+    } else {
+        std::set<BB*> loopExitSuccs;
+        for (auto bbId : loop.GetExitBBs()) {
+            for (auto &succ : cgFunc->GetBBFromID(bbId)->GetSuccs()) {
+                if (loop.GetLoopBBs().count(succ->GetId()) != 0) {
+                    continue;
+                }
+                if (succ->IsSoloGoto() || succ->IsEmpty()) {
+                    BB *realSucc = CGCFG::GetTargetSuc(*succ);
+                    if (realSucc != nullptr) {
+                        loopExitSuccs.insert(realSucc);
+                    }
+                } else {
+                    loopExitSuccs.insert(succ);
+                }
+            }
+        }
+        if (loopExitSuccs.size() != 1) {
+            return;
+        }
+        reloadBB = *loopExitSuccs.begin();
+        if (reloadBB->GetPreds().size() != loop.GetExitBBs().size()) {
+            return;
+        }
+        // check reloadBB is the only common successor of ExitBBs
+        for (auto *pred : reloadBB->GetPreds()) {
+            if (loop.GetExitBBs().count(pred->GetId()) == 0) {
+                return;
+            }
+        }
     }
-    if (exitSucc->GetPreds().size() != loop.GetExits().size()) {
-        return;
-    }
+
     std::set<regno_t> cands;
     if (!LoopNeedSplit(loop, cands)) {
         return;
     }
-    SplitVregAroundLoop(loop, lrs, *headerPred, *exitSucc, cands);
+
+    auto comparator = [](const LiveRange *lr1, const LiveRange *lr2) -> bool {
+        return lr1->GetPriority() < lr2->GetPriority();
+    };
+    std::sort(lrs.begin(), lrs.end(), comparator);
+    SplitVregAroundLoop(loop, lrs, *storeBB, *reloadBB, cands);
 }
-void GraphColorRegAllocator::AnalysisLoopPressureAndSplit(const CGFuncLoops &loop)
+void GraphColorRegAllocator::AnalysisLoopPressureAndSplit(const LoopDesc &loop)
 {
-    if (loop.GetInnerLoops().empty()) {
+    if (loop.GetChildLoops().empty()) {
         // only handle inner-most loop
         AnalysisLoop(loop);
         return;
     }
-    for (const auto *lp : loop.GetInnerLoops()) {
+    for (const auto *lp : loop.GetChildLoops()) {
         AnalysisLoopPressureAndSplit(*lp);
     }
 }
@@ -4930,10 +4913,10 @@ void GraphColorRegAllocator::FinalizeRegisters()
         }
     }
     if (CLANG) {
-        if (!cgFunc->GetLoops().empty()) {
+        if (!loopInfo.GetLoops().empty()) {
             cgFunc->GetTheCFG()->InitInsnVisitor(*cgFunc);
-            for (const auto *lp : cgFunc->GetLoops()) {
-                AnalysisLoopPressureAndSplit(*lp);
+            for (const auto *loop : loopInfo.GetLoops()) {
+                AnalysisLoopPressureAndSplit(*loop);
             }
         }
         OptCallerSave();

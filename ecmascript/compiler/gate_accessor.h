@@ -393,6 +393,8 @@ public:
     void SetArraySize(GateRef gate, uint32_t size);
     uint32_t GetStringStatus(GateRef gate) const;
     void SetStringStatus(GateRef gate, uint32_t type);
+    ElementsKind GetElementsKind(GateRef gate) const;
+    void SetElementsKind(GateRef gate, ElementsKind kind);
     size_t GetVirtualRegisterIndex(GateRef gate) const;
     bool TypedOpIsTypedArray(GateRef gate, TypedOpKind kind) const;
     GateType GetReceiverType(GateRef gate) const;
@@ -414,6 +416,7 @@ public:
     TypedBinaryAccessor GetTypedBinaryAccessor(GateRef gate) const;
     TypedJumpAccessor GetTypedJumpAccessor(GateRef gate) const;
     ArrayMetaDataAccessor GetArrayMetaDataAccessor(GateRef gate) const;
+    CreateArgumentsAccessor GetCreateArgumentsAccessor(GateRef gate) const;
     ObjectTypeAccessor GetObjectTypeAccessor(GateRef gate) const;
     BuiltinPrototypeHClassAccessor GetBuiltinHClassAccessor(GateRef gate) const;
     TypedArrayMetaDateAccessor GetTypedArrayMetaDateAccessor(GateRef gate) const;
@@ -436,7 +439,9 @@ public:
     void TrySetArrayElementsLength(GateRef gate, uint32_t length);
     ElementsKind TryGetElementsKind(GateRef gate) const;
     ElementsKind TryGetArrayElementsKind(GateRef gate) const;
+    ElementsKind TryGetArrayElementsKindAfterTransition(GateRef gate) const;
     void TrySetElementsKind(GateRef gate, ElementsKind kind);
+    void TrySetTransitionElementsKind(GateRef gate, ElementsKind kind);
     void TrySetOnHeapMode(GateRef gate, OnHeapMode onHeapMode) const;
     OnHeapMode TryGetOnHeapMode(GateRef gate) const;
     EcmaOpcode GetByteCodeOpcode(GateRef gate) const;
@@ -471,6 +476,7 @@ public:
     size_t GetInValueCount(GateRef gate) const;
     size_t GetInValueStarts(GateRef gate) const;
     void UpdateAllUses(GateRef gate, GateRef replaceValueIn);
+    void ReplaceControlGate(GateRef gate, GateRef newState);
     void ReplaceInAfterInsert(GateRef state, GateRef depend, GateRef newGate);
     void GetFrameStateDependIn(GateRef gate, GateRef &dependIn);
     void GetStateInAndDependIn(GateRef insertAfter, GateRef &stateIn, GateRef &dependIn);
@@ -501,7 +507,7 @@ public:
     bool IsDependSelector(GateRef gate) const;
     bool IsConstantValue(GateRef gate, uint64_t value) const;
     bool IsConstantUndefined(GateRef gate) const;
-    bool IsUndefinedOrNull(GateRef gate) const;
+    bool IsUndefinedOrNullOrHole(GateRef gate) const;
     bool IsConstantNumber(GateRef gate) const;
     bool IsTypedOperator(GateRef gate) const;
     bool IsNotWrite(GateRef gate) const;
@@ -530,6 +536,7 @@ public:
     void GetStateUses(GateRef gate, std::vector<GateRef> &stateUses);
     void GetDependUses(GateRef gate, std::vector<GateRef> &dependUses);
     void GetValueUses(GateRef gate, std::vector<GateRef> &valueUses);
+    size_t GetValueUsesCount(GateRef gate);
     bool IsFrameStateIn(GateRef gate, size_t index) const;
     void EliminateRedundantPhi();
     void ReplaceGate(GateRef gate, GateRef state, GateRef depend, GateRef value);
@@ -559,6 +566,7 @@ public:
     bool IsSingleCharGate(GateRef gate);
     uint32_t GetStringIdFromLdaStrGate(GateRef gate);
     bool IsIfOrSwitchRelated(GateRef gate) const;
+    uint32_t GetConstpoolId(GateRef gate) const;
 
     GateRef GetCircuitRoot() const
     {
@@ -675,6 +683,7 @@ private:
     Circuit *circuit_;
 
     friend class Circuit;
+    friend class CircuitBuilder;
     friend class LLVMIRBuilder;
     friend class LiteCGIRBuilder;
     friend class Scheduler;

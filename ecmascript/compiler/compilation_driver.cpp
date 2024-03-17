@@ -29,7 +29,8 @@ CompilationDriver::CompilationDriver(PGOProfilerDecoder &profilerDecoder,
                                      LOptions *lOptions,
                                      CompilerLog *log,
                                      bool outputAsm,
-                                     size_t maxMethodsInModule)
+                                     size_t maxMethodsInModule,
+                                     const std::pair<uint32_t, uint32_t> &compilerMethodsRange)
     : vm_(collector->GetVM()),
       jsPandaFile_(collector->GetJSPandaFile()),
       pfDecoder_(profilerDecoder),
@@ -41,7 +42,8 @@ CompilationDriver::CompilationDriver(PGOProfilerDecoder &profilerDecoder,
       lOptions_(lOptions),
       log_(log),
       outputAsm_(outputAsm),
-      maxMethodsInModule_(maxMethodsInModule)
+      maxMethodsInModule_(maxMethodsInModule),
+      optionMethodsRange_(compilerMethodsRange)
 {
     vm_->GetJSThread()->GetCurrentEcmaContext()->GetTSManager()->SetCompilationDriver(this);
 

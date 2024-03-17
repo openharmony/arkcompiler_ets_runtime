@@ -16,7 +16,7 @@
 declare function print(arg:any):string;
 
 function foo() {
-    return "a" + 1
+    return "a1"
 }
 
 function callFoo(f: (n: number) => number, a: number): number {

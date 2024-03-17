@@ -667,4 +667,30 @@ HWTEST_F_L0(EcmaModuleTest, IsImportFile)
     outFileName = ModulePathHelper::RemoveSuffix(inputFileName);
     EXPECT_EQ(outFileName, result);
 }
+
+HWTEST_F_L0(EcmaModuleTest, GetModuleNameWithPath)
+{
+    CString inputPath1 = "com.example.application/entry";
+    CString res1 = "entry";
+    CString outFileName1 = ModulePathHelper::GetModuleNameWithPath(inputPath1);
+    EXPECT_EQ(outFileName1, res1);
+
+    CString inputPath2 = "com.example.applicationentry";
+    CString res2 = "";
+    CString outFileName2 = ModulePathHelper::GetModuleNameWithPath(inputPath2);
+    EXPECT_EQ(outFileName2, res2);
+}
+
+HWTEST_F_L0(EcmaModuleTest, ConcatPandaFilePath)
+{
+    CString inputPath1 = "entry";
+    CString res1 = "/data/storage/el1/bundle/entry/ets/modules.abc";
+    CString outFileName1 = ModulePathHelper::ConcatPandaFilePath(inputPath1);
+    EXPECT_EQ(outFileName1, res1);
+
+    CString inputPath2 = "";
+    CString res2 = "";
+    CString outFileName2 = ModulePathHelper::ConcatPandaFilePath(inputPath2);
+    EXPECT_EQ(outFileName2, res2);
+}
 }  // namespace panda::test

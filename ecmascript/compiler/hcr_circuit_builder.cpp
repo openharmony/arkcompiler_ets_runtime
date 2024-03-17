@@ -437,6 +437,22 @@ GateRef CircuitBuilder::CreateArrayWithBuffer(ElementsKind kind, ArrayMetaDataAc
     return newGate;
 }
 
+GateRef CircuitBuilder::CreateArguments(ElementsKind kind, CreateArgumentsAccessor::Mode mode, GateRef restIdx)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    auto frameState = acc_.FindNearestFrameState(currentDepend);
+    CreateArgumentsAccessor accessor(kind, mode);
+    GateRef newGate = GetCircuit()->NewGate(circuit_->CreateArguments(accessor.ToValue()),
+                                            MachineType::I64,
+                                            { currentControl, currentDepend, restIdx, frameState },
+                                            GateType::NJSValue());
+    currentLabel->SetControl(newGate);
+    currentLabel->SetDepend(newGate);
+    return newGate;
+}
+
 void CircuitBuilder::SetPropertyInlinedProps(GateRef glue, GateRef obj, GateRef hClass,
     GateRef value, GateRef attrOffset, VariableType type)
 {
@@ -572,6 +588,21 @@ GateRef CircuitBuilder::OrdinaryHasInstance(GateRef obj, GateRef target)
     return ret;
 }
 
+GateRef CircuitBuilder::MigrateArrayWithKind(GateRef receiver, GateRef oldElementsKind,
+                                             GateRef newElementsKind)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    GateRef newGate = GetCircuit()->NewGate(circuit_->MigrateArrayWithKind(), MachineType::I64,
+                                            { currentControl, currentDepend, receiver, oldElementsKind,
+                                              newElementsKind },
+                                            GateType::TaggedValue());
+    currentLabel->SetControl(newGate);
+    currentLabel->SetDepend(newGate);
+    return newGate;
+}
+
 GateRef CircuitBuilder::IsLiteralString(GateRef string)
 {
     return BoolOr(IsLineString(string), IsConstantString(string));
@@ -588,5 +619,17 @@ GateRef CircuitBuilder::CanBeConcat(GateRef leftString, GateRef rightString, Gat
 GateRef CircuitBuilder::CanBackStore(GateRef rightString, GateRef isValidOpt)
 {
     return BoolAnd(isValidOpt, IsLiteralString(rightString));
+}
+
+GateRef CircuitBuilder::NumberToString(GateRef number)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    GateRef newGate = GetCircuit()->NewGate(circuit_->NumberToString(), MachineType::I64,
+                                            { currentControl, currentDepend, number }, GateType::StringType());
+    currentLabel->SetControl(newGate);
+    currentLabel->SetDepend(newGate);
+    return newGate;
 }
 }

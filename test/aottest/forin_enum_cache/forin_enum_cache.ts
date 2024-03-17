@@ -21,6 +21,7 @@
  */
 
 declare function print(str:any):string;
+declare function assert_equal(a: Object, b: Object):void;
 
 let grandparent = {}
 let parent = {
@@ -37,19 +38,27 @@ parent.__proto__ = grandparent
 
 // generate enum cache
 print("===generate enum cache===")
+var testArrary = ["a", "b", "c"];
+var j = 0;
 for (let i in own) {
-    print(i)
+    assert_equal(i, testArrary[j]);
+    j++;
 }
 // use enum cache
 print("===use enum cache===")
+j = 0;
 for (let i in own) {
-    print(i)
+    assert_equal(i, testArrary[j]);
+    j++;
 }
 // invalid enum cache and re-generate enum cache
 print("===re-generate enum cache===")
 grandparent['e'] = 1
+testArrary = ["a", "b", "c", "e"];
+j = 0;
 for (let i in own) {
-    print(i)
+    assert_equal(i, testArrary[j]);
+    j++;
 }
 // change attribute
 print("===change attribute===")
@@ -59,13 +68,18 @@ Object.defineProperty(grandparent, "e", {
     value:"ggg",
     writable:true
 })
+testArrary = ["a", "b", "c"];
+j = 0;
 for (let i in own) {
-    print(i)
+    assert_equal(i, testArrary[j]);
+    j++;
 }
 // delete property
 print("===delete property===")
 grandparent['f'] = 1
+j = 0;
 for (let i in own) {
-    print(i)
+    assert_equal(i, testArrary[j]);
+    j++;
     delete grandparent['f']
 }

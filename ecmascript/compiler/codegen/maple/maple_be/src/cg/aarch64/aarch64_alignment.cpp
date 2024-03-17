@@ -23,15 +23,15 @@
 namespace maplebe {
 void AArch64AlignAnalysis::FindLoopHeader()
 {
-    MapleVector<CGFuncLoops *> loops = aarFunc->GetLoops();
-    if (loops.empty()) {
+    if (loopInfo.GetLoops().empty()) {
         return;
     }
-    for (const auto *loop : loops) {
-        const BB *header = loop->GetHeader();
-        if (header != nullptr) {
-            InsertLoopHeaderBBs(const_cast<BB &>(*header));
+    for (auto *loop : loopInfo.GetLoops()) {
+        BB &header = loop->GetHeader();
+        if (&header == aarFunc->GetFirstBB() || IsIncludeCall(header) || !IsInSizeRange(header)) {
+            continue;
         }
+        InsertLoopHeaderBBs(header);
     }
 }
 

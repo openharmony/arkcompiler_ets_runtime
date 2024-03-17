@@ -535,8 +535,12 @@ void Deoptimizier::UpdateAndDumpDeoptInfo(kungfu::DeoptType type)
             method->SetDeoptType(type);
             method->SetDeoptThreshold(--deoptThreshold);
         } else {
-            method->ClearAOTFlags();
-            JSFunction::Cast(callTarget.GetTaggedObject())->SetCodeEntry(reinterpret_cast<uintptr_t>(nullptr));
+            method->ClearAOTStatusWhenDeopt();
+            auto func = JSFunction::Cast(callTarget.GetTaggedObject());
+            if (func->GetMachineCode() != JSTaggedValue::Undefined()) {
+                func->SetMachineCode(thread_, JSTaggedValue::Undefined());
+            }
+            func->SetCodeEntry(reinterpret_cast<uintptr_t>(nullptr));
         }
     }
 }

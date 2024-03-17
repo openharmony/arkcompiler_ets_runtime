@@ -18,5 +18,6 @@ host_aot_test_action("pgo_ldobjbyvalue_array") {
   is_only_typed_path = true
   is_enable_pgo = true
   is_enable_typed_op_profiler = true
+  is_enable_trace_deopt = true
   log_option = " --log-info=trace"
 }

@@ -22,15 +22,14 @@
 let a = '*'
 let s = ''
 
-for (let i = 0; i < 10; i++) 
-{ 
+for (let i = 0; i < 10; i++) {
     s += a
     print(s)
 }
 
 let i = 10
 
-while (i > 0) { 
+while (i > 0) {
     print(i);
     i--;
 }
@@ -48,4 +47,39 @@ for (let index = 0; index < 32; index++) {
 }
 for (let k in v5) {
     print(k, v5[k]);
+}
+
+function f0(v1, v2) {
+    try {
+        v1();
+    } catch (v5) {
+        print(v5)
+    }
+}
+
+try {
+    var v0 = function () { }.bind();
+} catch (e) {
+    print(e)
+}
+
+try {
+    Object.defineProperty(v0, "prototype", {
+        get() {
+            throw Error("OK");
+        }
+    });
+} catch (e) {
+    print(e)
+}
+
+try {
+[Array, Date, Boolean, Number, String, RegExp, Error, Uint8Array, ArrayBuffer, Map, WeakMap, Set, WeakSet].
+  forEach(function (v6) {
+    f0(() => {
+      Reflect.construct(v6, [], v0);
+    }, `Error: OK`);
+  });
+} catch (e) {
+    print(e)
 }

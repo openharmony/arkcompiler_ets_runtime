@@ -63,6 +63,7 @@ uint32 CGOptions::loopAlignPow = 4;
 uint32 CGOptions::jumpAlignPow = 5;
 uint32 CGOptions::funcAlignPow = 5;
 bool CGOptions::doOptimizedFrameLayout = true;
+bool CGOptions::supportFuncSymbol = false;
 #if TARGAARCH64 || TARGRISCV64
 bool CGOptions::useBarriersForVolatile = false;
 #else
@@ -71,6 +72,7 @@ bool CGOptions::useBarriersForVolatile = true;
 bool CGOptions::exclusiveEH = false;
 bool CGOptions::doEBO = false;
 bool CGOptions::doCGSSA = false;
+bool CGOptions::doLocalSchedule = false;
 bool CGOptions::doCGRegCoalesce = false;
 bool CGOptions::doIPARA = true;
 bool CGOptions::doCFGO = false;
@@ -176,6 +178,10 @@ bool CGOptions::SolveOptions(bool isDebug)
             }
             LogInfo::MapleLogger() << "cg options: " << printOpt << '\n';
         }
+    }
+
+    if (opts::cg::supportFuncSymbol.IsEnabledByUser()) {
+        opts::cg::supportFuncSymbol ? EnableSupportFuncSymbol() : DisableSupportFuncSymbol();
     }
 
     if (opts::cg::quiet.IsEnabledByUser()) {
@@ -701,6 +707,7 @@ void CGOptions::EnableO0()
     optimizeLevel = kLevel0;
     doEBO = false;
     doCGSSA = false;
+    doLocalSchedule = false;
     doCFGO = false;
     doICO = false;
     doPrePeephole = false;
@@ -746,6 +753,7 @@ void CGOptions::EnableO2()
     optimizeLevel = kLevel2;
     doEBO = true;
     doCGSSA = true;
+    doLocalSchedule = true;
     doCFGO = true;
     doICO = true;
     doPrePeephole = true;
@@ -780,6 +788,7 @@ void CGOptions::EnableLiteCG()
     optimizeLevel = kLevelLiteCG;
     doEBO = false;
     doCGSSA = false;
+    doLocalSchedule = false;
     doCGRegCoalesce = false;
     doCFGO = true;
     doICO = false;
@@ -796,7 +805,8 @@ void CGOptions::EnableLiteCG()
     doWriteRefFieldOpt = false;
     doAlignAnalysis = false;
     doCondBrAlign = false;
-
+    supportFuncSymbol = true;
+    
     ClearOption(kUseStackProtectorStrong);
     ClearOption(kUseStackProtectorAll);
     ClearOption(kConstFold);

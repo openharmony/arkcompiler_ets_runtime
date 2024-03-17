@@ -16,12 +16,22 @@
 declare function print(str:any):string;
 
 try {
-    class A {}
+    class A {
+      constructor(a){
+        this.a = a
+      }
+    }
     class B extends A {
+      constructor(a,b){
+        super(a)
+        this.b = b
+      }
       method() {}
       static method() {}
-      ;
     }
+    let b = new B(1,2)
+    print(b.a)
+    print(b.b)
 }
 catch(ex) {
     print(ex);

@@ -53,7 +53,8 @@ using PathHelper = base::PathHelper;
 EcmaContext::EcmaContext(JSThread *thread)
     : thread_(thread),
       vm_(thread->GetEcmaVM()),
-      factory_(vm_->GetFactory())
+      factory_(vm_->GetFactory()),
+      aotFileManager_(vm_->GetAOTFileManager())
 {
 }
 
@@ -93,7 +94,6 @@ bool EcmaContext::Initialize()
     LOG_ECMA(DEBUG) << "EcmaContext::Initialize";
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "EcmaContext::Initialize");
     [[maybe_unused]] EcmaHandleScope scope(thread_);
-    aotFileManager_ = new AOTFileManager(vm_);
     propertiesCache_ = new PropertiesCache();
     regExpParserCache_ = new RegExpParserCache();
     unsharedConstpools_ = new std::array<JSTaggedValue, UNSHARED_CONSTANTPOOL_COUNT>();
@@ -238,7 +238,6 @@ EcmaContext::~EcmaContext()
         regExpParserCache_ = nullptr;
     }
     if (aotFileManager_ != nullptr) {
-        delete aotFileManager_;
         aotFileManager_ = nullptr;
     }
     if (propertiesCache_ != nullptr) {
@@ -287,8 +286,7 @@ Expected<JSTaggedValue, bool> EcmaContext::CommonInvokeEcmaEntrypoint(const JSPa
     JSRecordInfo recordInfo;
     bool hasRecord = jsPandaFile->CheckAndGetRecordInfo(entry, recordInfo);
     if (!hasRecord) {
-        CString msg = "cannot find record '" + entry + "', please check the request path.";
-        LOG_FULL(ERROR) << msg;
+        CString msg = "Cannot find module '" + entry + "' , which is application Entry Point";
         THROW_REFERENCE_ERROR_AND_RETURN(thread_, msg.c_str(), Unexpected(false));
     }
     if (jsPandaFile->IsModule(recordInfo)) {
@@ -327,12 +325,15 @@ Expected<JSTaggedValue, bool> EcmaContext::CommonInvokeEcmaEntrypoint(const JSPa
         }
     }
     if (thread_->HasPendingException()) {
+#ifdef PANDA_TARGET_OHOS
+        return result;
+#else
         return Unexpected(false);
+#endif
     }
     if (!executeFromJob) {
         job::MicroJobQueue::ExecutePendingJob(thread_, GetMicroJobQueue());
     }
-
     return result;
 }
 
@@ -351,6 +352,12 @@ Expected<JSTaggedValue, bool> EcmaContext::InvokeEcmaEntrypoint(const JSPandaFil
 
     JSHandle<JSFunction> func(thread_, program->GetMainFunction());
     Expected<JSTaggedValue, bool> result = CommonInvokeEcmaEntrypoint(jsPandaFile, entryPoint, func, executeFromJob);
+
+#ifdef PANDA_TARGET_OHOS
+    if (thread_->HasPendingException()) {
+        HandleUncaughtException();
+    }
+#endif
 
     return result;
 }
@@ -538,7 +545,7 @@ JSTaggedValue EcmaContext::FindConstpoolWithAOT(const JSPandaFile *jsPandaFile, 
     // A constpool is created when a Function is serialized. Slowpath, the default deserialized constpool,
     // string is non-lazy load mode. A hole is returned if you access the constpool of the serialized Function
     if (constpool.IsHole() && ecmascript::AnFileDataManager::GetInstance()->IsEnable()) {
-        bool result = GetAOTFileManager()->LoadAiFile(jsPandaFile);
+        bool result = aotFileManager_->LoadAiFile(jsPandaFile);
         if (result) {
             constpool = FindConstpool(jsPandaFile, index);
         }
@@ -608,6 +615,7 @@ JSHandle<JSTaggedValue> EcmaContext::GetAndClearEcmaUncaughtException() const
 void EcmaContext::ProcessNativeDelete(const WeakRootVisitor &visitor)
 {
     auto iterator = cachedSharedConstpools_.begin();
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "Constpools:" + std::to_string(cachedSharedConstpools_.size()));
     while (iterator != cachedSharedConstpools_.end()) {
         auto &constpools = iterator->second;
         auto constpoolIter = constpools.begin();
@@ -708,6 +716,9 @@ void EcmaContext::HandleUncaughtException(JSTaggedValue exception)
 
 void EcmaContext::HandleUncaughtException()
 {
+    if (!thread_->HasPendingException()) {
+        return;
+    }
     JSTaggedValue exception = thread_->GetException();
     HandleUncaughtException(exception);
 }
@@ -1101,7 +1112,7 @@ void EcmaContext::JoinStackPop(JSHandle<JSTaggedValue> receiver)
 std::tuple<uint64_t, uint8_t *, int, kungfu::CalleeRegAndOffsetVec> EcmaContext::CalCallSiteInfo(
     uintptr_t retAddr) const
 {
-    auto loader = GetAOTFileManager();
+    auto loader = aotFileManager_;
     auto callSiteInfo = loader->CalCallSiteInfo(retAddr);
     if (std::get<1>(callSiteInfo) != nullptr) {
         return callSiteInfo;

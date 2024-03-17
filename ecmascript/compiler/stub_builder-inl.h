@@ -462,6 +462,11 @@ inline GateRef StubBuilder::Int8And(GateRef x, GateRef y)
     return env_->GetBuilder()->Int8And(x, y);
 }
 
+inline GateRef StubBuilder::Int8Xor(GateRef x, GateRef y)
+{
+    return env_->GetBuilder()->Int8Xor(x, y);
+}
+
 inline GateRef StubBuilder::Int32And(GateRef x, GateRef y)
 {
     return env_->GetBuilder()->Int32And(x, y);
@@ -639,6 +644,26 @@ inline GateRef StubBuilder::TaggedIsHole(GateRef x)
 inline GateRef StubBuilder::TaggedIsNotHole(GateRef x)
 {
     return env_->GetBuilder()->TaggedIsNotHole(x);
+}
+
+inline GateRef StubBuilder::ValueIsSpecialHole(GateRef x)
+{
+    return env_->GetBuilder()->IsSpecialHole(x);
+}
+
+inline GateRef StubBuilder::ElementsKindIsIntOrHoleInt(GateRef kind)
+{
+    return env_->GetBuilder()->ElementsKindIsIntOrHoleInt(kind);
+}
+
+inline GateRef StubBuilder::ElementsKindIsNumOrHoleNum(GateRef kind)
+{
+    return env_->GetBuilder()->ElementsKindIsNumOrHoleNum(kind);
+}
+
+inline GateRef StubBuilder::ElementsKindIsHeapKind(GateRef kind)
+{
+    return env_->GetBuilder()->ElementsKindIsHeapKind(kind);
 }
 
 inline GateRef StubBuilder::TaggedIsUndefined(GateRef x)
@@ -832,6 +857,11 @@ inline GateRef StubBuilder::TaggedUndefined()
 inline GateRef StubBuilder::Int8Equal(GateRef x, GateRef y)
 {
     return env_->GetBuilder()->Int8Equal(x, y);
+}
+
+inline GateRef StubBuilder::Int8GreaterThanOrEqual(GateRef x, GateRef y)
+{
+    return env_->GetBuilder()->Int8GreaterThanOrEqual(x, y);
 }
 
 inline GateRef StubBuilder::Equal(GateRef x, GateRef y)
@@ -1040,6 +1070,11 @@ inline GateRef StubBuilder::GetLengthOfTaggedArray(GateRef array)
     return Load(VariableType::INT32(), array, IntPtr(TaggedArray::LENGTH_OFFSET));
 }
 
+inline GateRef StubBuilder::GetLengthOfJSTypedArray(GateRef array)
+{
+    return Load(VariableType::INT32(), array, IntPtr(JSTypedArray::ARRAY_LENGTH_OFFSET));
+}
+
 inline GateRef StubBuilder::GetExtractLengthOfTaggedArray(GateRef array)
 {
     return Load(VariableType::INT32(), array, IntPtr(TaggedArray::EXTRA_LENGTH_OFFSET));
@@ -1063,6 +1098,11 @@ inline GateRef StubBuilder::LoadHClass(GateRef object)
 inline void StubBuilder::StoreHClass(GateRef glue, GateRef object, GateRef hClass)
 {
     return env_->GetBuilder()->StoreHClass(glue, object, hClass);
+}
+
+inline void StubBuilder::StoreBuiltinHClass(GateRef glue, GateRef object, GateRef hClass)
+{
+    return env_->GetBuilder()->StoreHClassWithoutBarrier(glue, object, hClass);
 }
 
 inline void StubBuilder::StorePrototype(GateRef glue, GateRef hclass, GateRef prototype)
@@ -1618,6 +1658,15 @@ inline GateRef StubBuilder::IsStringElement(GateRef attr)
         Int32(HandlerBase::HandlerKind::STRING));
 }
 
+inline GateRef StubBuilder::IsNumber(GateRef attr)
+{
+    return Int32Equal(
+        Int32And(
+            Int32LSR(attr, Int32(HandlerBase::KindBit::START_BIT)),
+            Int32((1LLU << HandlerBase::KindBit::SIZE) - 1)),
+        Int32(HandlerBase::HandlerKind::NUMBER));
+}
+
 inline GateRef StubBuilder::IsStringLength(GateRef attr)
 {
     return Int32Equal(
@@ -1691,15 +1740,6 @@ inline GateRef StubBuilder::HandlerBaseGetRep(GateRef attr)
 {
     return Int32And(Int32LSR(attr, Int32(HandlerBase::RepresentationBit::START_BIT)),
         Int32((1LLU << HandlerBase::RepresentationBit::SIZE) - 1));
-}
-
-inline GateRef StubBuilder::IsInternalAccessor(GateRef attr)
-{
-    return Int32NotEqual(
-        Int32And(Int32LSR(attr,
-            Int32(HandlerBase::InternalAccessorBit::START_BIT)),
-            Int32((1LLU << HandlerBase::InternalAccessorBit::SIZE) - 1)),
-        Int32(0));
 }
 
 inline GateRef StubBuilder::IsInvalidPropertyBox(GateRef obj)
@@ -1850,10 +1890,11 @@ inline void StubBuilder::SetProtoChangeDetailsToHClass(VariableType type, GateRe
     Store(type, glue, hClass, offset, protoChange);
 }
 
-inline void StubBuilder::SetLayoutToHClass(VariableType type, GateRef glue, GateRef hClass, GateRef attr)
+inline void StubBuilder::SetLayoutToHClass(
+    VariableType type, GateRef glue, GateRef hClass, GateRef attr, MemoryOrder order)
 {
     GateRef offset = IntPtr(JSHClass::LAYOUT_OFFSET);
-    Store(type, glue, hClass, offset, attr);
+    Store(type, glue, hClass, offset, attr, order);
 }
 
 inline void StubBuilder::SetEnumCacheToHClass(VariableType type, GateRef glue, GateRef hClass, GateRef key)

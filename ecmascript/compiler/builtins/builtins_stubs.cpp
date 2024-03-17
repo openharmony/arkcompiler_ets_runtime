@@ -25,15 +25,18 @@
 #include "ecmascript/compiler/builtins/containers_stub_builder.h"
 #include "ecmascript/compiler/builtins/builtins_collection_stub_builder.h"
 #include "ecmascript/compiler/builtins/builtins_object_stub_builder.h"
+#include "ecmascript/compiler/codegen/llvm/llvm_ir_builder.h"
 #include "ecmascript/compiler/typed_array_stub_builder.h"
 #include "ecmascript/compiler/interpreter_stub-inl.h"
-#include "ecmascript/compiler/llvm_ir_builder.h"
 #include "ecmascript/compiler/new_object_stub_builder.h"
 #include "ecmascript/compiler/stub_builder-inl.h"
 #include "ecmascript/compiler/stub_builder.h"
 #include "ecmascript/compiler/variable_type.h"
 #include "ecmascript/js_date.h"
 #include "ecmascript/js_primitive_ref.h"
+#include "ecmascript/linked_hash_table.h"
+#include "ecmascript/js_set.h"
+#include "ecmascript/js_map.h"
 
 namespace panda::ecmascript::kungfu {
 #if ECMASCRIPT_ENABLE_BUILTIN_LOG
@@ -172,11 +175,16 @@ DECLARE_BUILTINS(String##method)                                                
     V(CharAt,       JS_POINTER, Hole())                                             \
     V(FromCharCode, JS_ANY,     Hole())                                             \
     V(CharCodeAt,   JS_ANY,     DoubleToTaggedDoublePtr(Double(base::NAN_VALUE)))   \
+    V(CodePointAt,  JS_ANY,     Undefined())                                        \
     V(IndexOf,      JS_ANY,     IntToTaggedPtr(Int32(-1)))                          \
     V(Substring,    JS_ANY,     IntToTaggedPtr(Int32(-1)))                          \
     V(Replace,      JS_ANY,     Undefined())                                        \
     V(Trim,         JS_ANY,     Undefined())                                        \
-    V(Slice,        JS_ANY,     Undefined())
+    V(Concat,       JS_ANY,     Undefined())                                        \
+    V(Slice,        JS_ANY,     Undefined())                                        \
+    V(ToLowerCase,  JS_ANY,     Undefined())                                        \
+    V(StartsWith,   JS_ANY,     TaggedFalse())                                      \
+    V(EndsWith,     JS_ANY,     TaggedFalse())
 
 DECLARE_BUILTINS(LocaleCompare)
 {
@@ -189,6 +197,24 @@ DECLARE_BUILTINS(LocaleCompare)
     Bind(&slowPath);
     {
         auto name = BuiltinsStubCSigns::GetName(BUILTINS_STUB_ID(LocaleCompare));
+        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func, newTarget, name.c_str());
+        Jump(&exit);
+    }
+    Bind(&exit);
+    Return(*res);
+}
+
+DECLARE_BUILTINS(GetStringIterator)
+{
+    auto env = GetEnvironment();
+    DEFVARIABLE(res, VariableType::JS_ANY(), Undefined());
+    Label exit(env);
+    Label slowPath(env);
+    BuiltinsStringStubBuilder stringStubBuilder(this);
+    stringStubBuilder.GetStringIterator(glue, thisValue, numArgs, &res, &exit, &slowPath);
+    Bind(&slowPath);
+    {
+        auto name = BuiltinsStubCSigns::GetName(BUILTINS_STUB_ID(GetStringIterator));
         res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func, newTarget, name.c_str());
         Jump(&exit);
     }
@@ -294,7 +320,8 @@ DECLARE_BUILTINS(Array##Method)                                                 
     V(Reverse,      JS_POINTER)             \
     V(Push,         JS_ANY)                 \
     V(Values,       JS_POINTER)             \
-    V(Includes,     JS_ANY)
+    V(Includes,     JS_ANY)                 \
+    V(Map,          JS_ANY)
 
 DECLARE_BUILTINS(SORT)
 {
@@ -728,6 +755,18 @@ DECLARE_BUILTINS_OBJECT_STUB_BUILDER(Object, HasOwnProperty, VariableType::JS_AN
 DECLARE_BUILTINS_OBJECT_STUB_BUILDER(Object, Keys, VariableType::JS_ANY(), Undefined());
 #undef DECLARE_BUILTINS_OBJECT_STUB_BUILDER
 
+DECLARE_BUILTINS(MapConstructor)
+{
+    LinkedHashTableStubBuilder<LinkedHashMap, LinkedHashMapObject> hashTableBuilder(this, glue);
+    hashTableBuilder.GenMapSetConstructor(nativeCode, func, newTarget, thisValue, numArgs);
+}
+
+DECLARE_BUILTINS(SetConstructor)
+{
+    LinkedHashTableStubBuilder<LinkedHashSet, LinkedHashSetObject> hashTableBuilder(this, glue);
+    hashTableBuilder.GenMapSetConstructor(nativeCode, func, newTarget, thisValue, numArgs);
+}
+
 #define DECLARE_BUILTINS_COLLECTION_STUB_BUILDER(type, method, retType, retDefaultValue)            \
 DECLARE_BUILTINS(type##method)                                                                      \
 {                                                                                                   \
@@ -809,10 +848,8 @@ DECLARE_BUILTINS(type##method)                                                  
     DEFVARIABLE(res, retType, retDefaultValue);                                                     \
     Label slowPath(env);                                                                            \
     Label exit(env);                                                                                \
-    GateRef begin = GetCallArg0(numArgs);                                                           \
-    GateRef end = GetCallArg1(numArgs);                                                             \
     TypedArrayStubBuilder builder(this);                                                            \
-    builder.method(glue, thisValue, begin, end, &res, &exit, &slowPath);                            \
+    builder.method(glue, thisValue, numArgs, &res, &exit, &slowPath);                               \
     Bind(&slowPath);                                                                                \
     {                                                                                               \
         auto name = BuiltinsStubCSigns::GetName(BUILTINS_STUB_ID(type##method));                    \
@@ -825,5 +862,7 @@ DECLARE_BUILTINS(type##method)                                                  
 
 // TypedArray.Subarray
 DECLARE_BUILTINS_TYPEDARRAY_STUB_BUILDER(TypedArray, SubArray, VariableType::JS_ANY(), Undefined());
+DECLARE_BUILTINS_TYPEDARRAY_STUB_BUILDER(TypedArray, GetByteLength, VariableType::JS_ANY(), Undefined());
+DECLARE_BUILTINS_TYPEDARRAY_STUB_BUILDER(TypedArray, GetByteOffset, VariableType::JS_ANY(), Undefined());
 #undef DECLARE_BUILTINS_TYPEDARRAY_STUB_BUILDER
 }  // namespace panda::ecmascript::kungfu

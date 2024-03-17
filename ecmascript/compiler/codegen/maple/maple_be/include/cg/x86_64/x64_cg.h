@@ -80,9 +80,9 @@ public:
         return mp.New<X64Standardize>(f);
     }
 
-    CFGOptimizer *CreateCFGOptimizer(MemPool &mp, CGFunc &f) const override
+    CFGOptimizer *CreateCFGOptimizer(MemPool &mp, CGFunc &f, LoopAnalysis &loop) const override
     {
-        return mp.New<X64CFGOptimizer>(f, mp);
+        return mp.New<X64CFGOptimizer>(f, mp, loop);
     }
 
     /* Init SubTarget optimization */

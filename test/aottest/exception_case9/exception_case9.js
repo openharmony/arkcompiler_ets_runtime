@@ -13,6 +13,8 @@
  * limitations under the License.
  */
 
+var testTxt = ["exception_case9.js:20:20", "exception_case9.js:24:24", "exception_case9.js:28:1"];
+var i = 0;
 try {
     function foo() {
         a.b
@@ -23,16 +25,18 @@ try {
         },
         set name(a) {}
     }
-    o.name
+    o.name;
+    assert_unreachable();
 } catch (e) {
-    print(e)
+    assert_equal(e.message, "a is not defined");
     let stack = e.stack
     let array = stack.split('\n')
     for (let line of array) {
         let start = line.lastIndexOf('/') + 1
         let end = line.length - 1
         if (start < end) {
-            print(line.slice(start, end))
+            assert_equal(line.slice(start, end), testTxt[i]);
+            i++;
         } else {
             print(line)
         }

@@ -59,7 +59,7 @@ void BaseSnapshotInfo::CollectLiteralInfo(JSHandle<TaggedArray> array, uint32_t 
                                           JSHandle<ConstantPool> snapshotConstantPool,
                                           const std::set<uint32_t> &skippedMethods,
                                           JSHandle<JSTaggedValue> ihc, JSHandle<JSTaggedValue> chc,
-                                          int32_t elementIndex)
+                                          int32_t elementIndex, ElementsKind kind)
 {
     ObjectFactory *factory = vm_->GetFactory();
     JSMutableHandle<JSTaggedValue> valueHandle(thread_, JSTaggedValue::Undefined());
@@ -94,6 +94,10 @@ void BaseSnapshotInfo::CollectLiteralInfo(JSHandle<TaggedArray> array, uint32_t 
 
     if (elementIndex != AOT_ELEMENT_INDEX_DEFAULT_VALUE) {
         aotLiteralInfo->SetElementIndex(JSTaggedValue(elementIndex));
+    }
+
+    if (kind != ElementsKind::GENERIC) {
+        aotLiteralInfo->SetElementsKind(kind);
     }
 
     snapshotConstantPool->SetObjectToCache(thread_, constantPoolIndex, aotLiteralInfo.GetTaggedValue());
@@ -157,7 +161,7 @@ void ClassLiteralSnapshotInfo::StoreDataToGlobalData(SnapshotGlobalData &globalD
     bool hasAbcId = TryGetABCId(abcId);
     for (auto item : info_) {
         const ItemData &data = item.second;
-        JSHandle<ConstantPool> cp = GetConstpool(data);
+        JSHandle<ConstantPool> cp = GetUnsharedConstpool(data);
         auto literalObj = ConstantPool::GetClassLiteralFromCache(thread_, cp, data.constantPoolIdx_, data.recordName_);
         JSHandle<ClassLiteral> classLiteral(thread_, literalObj);
         JSHandle<TaggedArray> arrayHandle(thread_, classLiteral->GetArray());
@@ -176,7 +180,8 @@ void ClassLiteralSnapshotInfo::StoreDataToGlobalData(SnapshotGlobalData &globalD
             chc = TryGetHClass(ctorPt, ctorPt);
         }
 
-        CollectLiteralInfo(arrayHandle, data.constantPoolIdx_, snapshotCp, skippedMethods, ihc, chc);
+        CollectLiteralInfo(arrayHandle, data.constantPoolIdx_, snapshotCp, skippedMethods, ihc, chc,
+                           AOT_ELEMENT_INDEX_DEFAULT_VALUE, ElementsKind::GENERIC);
         globalData.RecordReviseData(
             ReviseData::ItemData {globalData.GetCurDataIdx(), snapshotCpArrIdx, data.constantPoolIdx_});
     }
@@ -190,7 +195,7 @@ void ObjectLiteralSnapshotInfo::StoreDataToGlobalData(SnapshotGlobalData &global
     bool hasAbcId = TryGetABCId(abcId);
     for (auto item : info_) {
         const ItemData &data = item.second;
-        JSHandle<ConstantPool> cp = GetConstpool(data);
+        JSHandle<ConstantPool> cp = GetUnsharedConstpool(data);
         panda_file::File::EntityId id = cp->GetEntityId(data.constantPoolIdx_);
         JSMutableHandle<TaggedArray> elements(thread_, JSTaggedValue::Undefined());
         JSMutableHandle<TaggedArray> properties(thread_, JSTaggedValue::Undefined());
@@ -214,7 +219,8 @@ void ObjectLiteralSnapshotInfo::StoreDataToGlobalData(SnapshotGlobalData &global
             }
         }
 
-        CollectLiteralInfo(properties, data.constantPoolIdx_, snapshotCp, skippedMethods, ihc, chc);
+        CollectLiteralInfo(properties, data.constantPoolIdx_, snapshotCp, skippedMethods, ihc, chc,
+                           AOT_ELEMENT_INDEX_DEFAULT_VALUE, ElementsKind::GENERIC);
         globalData.RecordReviseData(
             ReviseData::ItemData {globalData.GetCurDataIdx(), snapshotCpArrIdx, data.constantPoolIdx_});
     }
@@ -226,24 +232,26 @@ void ArrayLiteralSnapshotInfo::StoreDataToGlobalData(SnapshotGlobalData &globalD
     PGOTypeManager *ptManager = thread_->GetCurrentEcmaContext()->GetPTManager();
     for (auto item : info_) {
         const ItemData &data = item.second;
-        JSHandle<ConstantPool> cp = GetConstpool(data);
+        JSHandle<ConstantPool> cp = GetUnsharedConstpool(data);
         panda_file::File::EntityId id = cp->GetEntityId(data.constantPoolIdx_);
         JSHandle<TaggedArray> literal = LiteralDataExtractor::GetDatasIgnoreType(
             thread_, jsPandaFile_, id, cp, data.recordName_);
         int32_t elementIndex = ptManager->GetElementsIndexByEntityId(id);
+        ElementsKind kind = ptManager->GetElementsKindByEntityId(id);
 
         uint32_t snapshotCpArrIdx = globalData.GetCpArrIdxByConstanPoolId(data.constantPoolId_);
         JSHandle<TaggedArray> snapshotCpArr(thread_, globalData.GetCurSnapshotCpArray());
         JSHandle<ConstantPool> snapshotCp(thread_, snapshotCpArr->Get(snapshotCpArrIdx));
         JSHandle<JSTaggedValue> ihc = thread_->GlobalConstants()->GetHandledUndefined();
         JSHandle<JSTaggedValue> chc = thread_->GlobalConstants()->GetHandledUndefined();
-        CollectLiteralInfo(literal, data.constantPoolIdx_, snapshotCp, skippedMethods, ihc, chc, elementIndex);
+        CollectLiteralInfo(literal, data.constantPoolIdx_, snapshotCp, skippedMethods, ihc, chc,
+                           elementIndex, kind);
         globalData.RecordReviseData(
             ReviseData::ItemData {globalData.GetCurDataIdx(), snapshotCpArrIdx, data.constantPoolIdx_});
     }
 }
 
-JSHandle<ConstantPool> BaseSnapshotInfo::GetConstpool(const ItemData &data)
+JSHandle<ConstantPool> BaseSnapshotInfo::GetUnsharedConstpool(const ItemData &data)
 {
     EcmaContext *context = thread_->GetCurrentEcmaContext();
     JSTaggedValue shareCp = context->FindConstpool(jsPandaFile_, data.constantPoolId_);
@@ -283,6 +291,7 @@ void SnapshotConstantPoolData::Record(const BytecodeInstruction &bcIns, int32_t 
         case BytecodeInstruction::Opcode::LDOBJBYNAME_IMM16_ID16:
         case BytecodeInstruction::Opcode::STOBJBYNAME_IMM8_ID16_V8:
         case BytecodeInstruction::Opcode::STOBJBYNAME_IMM16_ID16_V8:
+        case BytecodeInstruction::Opcode::DEFINEFIELDBYNAME_IMM8_ID16_V8:
         case BytecodeInstruction::Opcode::LDSUPERBYNAME_IMM8_ID16:
         case BytecodeInstruction::Opcode::LDSUPERBYNAME_IMM16_ID16:
         case BytecodeInstruction::Opcode::STSUPERBYNAME_IMM8_ID16_V8:

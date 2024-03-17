@@ -82,6 +82,7 @@ void TSInlineLowering::CandidateInlineCall(GateRef gate, ChunkQueue<InlineTypeIn
             break;
         case EcmaOpcode::STOBJBYNAME_IMM8_ID16_V8:
         case EcmaOpcode::STOBJBYNAME_IMM16_ID16_V8:
+        case EcmaOpcode::DEFINEFIELDBYNAME_IMM8_ID16_V8:
         case EcmaOpcode::STTHISBYNAME_IMM8_ID16:
         case EcmaOpcode::STTHISBYNAME_IMM16_ID16:
             CandidateAccessor(gate, workList, CallKind::CALL_SETTER);
@@ -146,7 +147,6 @@ void TSInlineLowering::TryInline(InlineTypeInfoAccessor &info, ChunkQueue<Inline
         if (inlineSuccess_) {
             SetInitCallTargetAndConstPoolId(info);
             CircuitRootScope scope(circuit_);
-            AnalyseFastAccessor(info, methodPcInfo.pcOffsets, methodOffset);
             if (!noCheck_ && !info.IsCallInit()) {
                 InlineCheck(info);
             }
@@ -306,12 +306,7 @@ void TSInlineLowering::ReplaceAccessorInput(InlineTypeInfoAccessor &info, GateRe
     std::vector<GateRef> vec;
     GateRef thisObj = GetAccessorReceiver(gate);
     GateRef callTarget = Circuit::NullGate();
-    // Fast accessor will not load getter or setter func
-    if (EnableFastAccessor()) {
-        callTarget = initCallTarget_;
-    } else {
-        callTarget = BuildAccessor(info);
-    }
+    callTarget = BuildAccessor(info);
     size_t actualArgc = 0;
     if (info.IsCallGetter()) {
         actualArgc = NUM_MANDATORY_JSFUNC_ARGS;
@@ -352,20 +347,25 @@ GateRef TSInlineLowering::BuildAccessor(InlineTypeInfoAccessor &info)
     PGOTypeManager *ptManager = thread_->GetCurrentEcmaContext()->GetPTManager();
     int holderHCIndex = static_cast<int>(ptManager->GetHClassIndexByProfileType(holderType));
     ASSERT(ptManager->QueryHClass(holderType.first, holderType.second).IsJSHClass());
-    auto holderHC = builder_.GetHClassGateFromIndex(gate, holderHCIndex);
+    ArgumentAccessor argAcc(circuit_);
+    GateRef constpool = argAcc.GetFrameArgsIn(gate, FrameArgIdx::CONST_POOL);
 
     auto currentLabel = env.GetCurrentLabel();
     auto state = currentLabel->GetControl();
     auto depend = currentLabel->GetDepend();
+    GateRef holder = circuit_->NewGate(circuit_->LookUpHolder(), MachineType::I64,
+                                       { state, depend, receiver, builder_.Int32(holderHCIndex), constpool},
+                                       GateType::AnyType());
+
     if (info.IsCallGetter()) {
         accessor = circuit_->NewGate(circuit_->LoadGetter(), MachineType::I64,
-                                     {state, depend, receiver, holderHC, builder_.Int32(plrData)}, GateType::AnyType());
+                                     { holder, holder, builder_.Int32(plrData) }, GateType::AnyType());
     } else {
         accessor = circuit_->NewGate(circuit_->LoadSetter(), MachineType::I64,
-                                     {state, depend, receiver, holderHC, builder_.Int32(plrData)}, GateType::AnyType());
+                                     { holder, holder, builder_.Int32(plrData) }, GateType::AnyType());
     }
-    acc_.ReplaceDependIn(gate, accessor);
-    acc_.ReplaceDependIn(gate, accessor);
+    acc_.ReplaceDependIn(gate, holder);
+    acc_.ReplaceStateIn(gate, holder);
     return accessor;
 }
 
@@ -521,7 +521,7 @@ void TSInlineLowering::InlineFuncCheck(const InlineTypeInfoAccessor &info)
     GateRef frameState = acc_.GetFrameState(gate);
     size_t funcIndex = acc_.GetNumValueIn(gate) - 1;
     GateRef inlineFunc =  acc_.GetValueIn(gate, funcIndex);
-    // Do not load from inlineFunc beacause type in inlineFunc could be modified by others
+    // Do not load from inlineFunc because type in inlineFunc could be modified by others
     uint32_t methodOffset = info.GetCallMethodId();
     GateRef ret = circuit_->NewGate(circuit_->JSInlineTargetTypeCheck(info.GetType()),
         MachineType::I1, {callState, callDepend, inlineFunc, builder_.IntPtr(methodOffset), frameState},
@@ -546,16 +546,16 @@ void TSInlineLowering::InlineAccessorCheck(const InlineTypeInfoAccessor &info)
     ASSERT(ptManager->QueryHClass(receiverType.first, receiverType.second).IsJSHClass());
 
     bool noNeedCheckHeapObject = acc_.IsHeapObjectFromElementsKind(receiver);
-    builder_.ObjectTypeCheck(acc_.GetGateType(gate), noNeedCheckHeapObject, receiver, builder_.Int32(receiverHCIndex));
-
+    builder_.ObjectTypeCheck(acc_.GetGateType(gate), noNeedCheckHeapObject, receiver, builder_.Int32(receiverHCIndex),
+                             acc_.GetFrameState(gate));
     auto currentLabel = env.GetCurrentLabel();
     auto callState = currentLabel->GetControl();
     auto callDepend = currentLabel->GetDepend();
-    auto frameState = acc_.FindNearestFrameState(callDepend);
+    auto frameState = acc_.GetFrameState(gate);
     ArgumentAccessor argAcc(circuit_);
-    GateRef jsFunc = argAcc.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
+    GateRef constpool = argAcc.GetFrameArgsIn(gate, FrameArgIdx::CONST_POOL);
     GateRef ret = circuit_->NewGate(circuit_->PrototypeCheck(receiverHCIndex), MachineType::I1,
-        {callState, callDepend, jsFunc, frameState}, GateType::NJSValue());
+        {callState, callDepend, constpool, frameState}, GateType::NJSValue());
     acc_.ReplaceStateIn(gate, ret);
     acc_.ReplaceDependIn(gate, ret);
 }
@@ -636,9 +636,14 @@ size_t TSInlineLowering::GetOrInitialInlineCounts(GateRef frameArgs)
 bool TSInlineLowering::IsRecursiveFunc(InlineTypeInfoAccessor &info, size_t calleeMethodOffset)
 {
     GateRef caller = info.GetCallGate();
+    auto callerMethodOffset = acc_.TryGetMethodOffset(caller);
+    if (callerMethodOffset == calleeMethodOffset) {
+        return true;
+    }
     GateRef frameArgs = GetFrameArgs(info);
+    caller = acc_.GetValueIn(frameArgs);
     while (acc_.GetOpCode(caller) == OpCode::JS_BYTECODE) {
-        auto callerMethodOffset = acc_.TryGetMethodOffset(caller);
+        callerMethodOffset = acc_.TryGetMethodOffset(caller);
         if (callerMethodOffset == calleeMethodOffset) {
             return true;
         }
@@ -695,12 +700,8 @@ GateRef TSInlineLowering::GetCallSetterValue(GateRef gate)
 GateRef TSInlineLowering::GetFrameState(InlineTypeInfoAccessor &info)
 {
     GateRef gate = info.GetCallGate();
-    if (info.IsNormalCall()) {
-        return acc_.GetFrameState(gate);
-    }
-    ASSERT(info.IsCallAccessor());
-    GateRef frameState = acc_.FindNearestFrameState(gate);
-    return frameState;
+    ASSERT(info.IsCallAccessor() || info.IsNormalCall());
+    return acc_.GetFrameState(gate);
 }
 
 GateRef TSInlineLowering::GetFrameArgs(InlineTypeInfoAccessor &info)
@@ -719,62 +720,11 @@ void TSInlineLowering::SetInitCallTargetAndConstPoolId(InlineTypeInfoAccessor &i
     }
 }
 
-void TSInlineLowering::AnalyseFastAccessor(InlineTypeInfoAccessor &info, std::vector<const uint8_t*> pcOffsets,
-                                           uint32_t inlineMethodOffset)
+int32_t TSInlineLowering::GetAccessorConstpoolId(InlineTypeInfoAccessor &info)
 {
-    isFastAccessor_ = false;
-    if (!info.IsCallAccessor()) {
-        return;
-    }
+    ASSERT(info.IsCallAccessor());
+    uint32_t inlineMethodOffset = info.GetCallMethodId();
     const JSPandaFile *pf = ctx_->GetJSPandaFile();
-    int32_t constantpoolId = tsManager_->GetConstantPoolIDByMethodOffset(pf, inlineMethodOffset);
-    if (constantpoolId == initConstantPoolId_) {
-        for (size_t i = 0; i < pcOffsets.size(); i++) {
-            auto pc = pcOffsets[i];
-            auto ecmaOpcode = ctx_->GetByteCodes()->GetOpcode(pc);
-            // These bytecodes require calltarget during the lowering process, so the acquisition of the accessor
-            // function cannot be omitted.
-            switch (ecmaOpcode) {
-                case EcmaOpcode::CREATEARRAYWITHBUFFER_IMM8_ID16:
-                case EcmaOpcode::CREATEARRAYWITHBUFFER_IMM16_ID16:
-                case EcmaOpcode::STMODULEVAR_IMM8:
-                case EcmaOpcode::WIDE_STMODULEVAR_PREF_IMM16:
-                case EcmaOpcode::DYNAMICIMPORT:
-                case EcmaOpcode::LDLOCALMODULEVAR_IMM8:
-                case EcmaOpcode::WIDE_LDLOCALMODULEVAR_PREF_IMM16:
-                case EcmaOpcode::LDEXTERNALMODULEVAR_IMM8:
-                case EcmaOpcode::WIDE_LDEXTERNALMODULEVAR_PREF_IMM16:
-                case EcmaOpcode::GETMODULENAMESPACE_IMM8:
-                case EcmaOpcode::WIDE_GETMODULENAMESPACE_PREF_IMM16:
-                case EcmaOpcode::SUPERCALLSPREAD_IMM8_V8:
-                case EcmaOpcode::NEWLEXENVWITHNAME_IMM8_ID16:
-                case EcmaOpcode::WIDE_NEWLEXENVWITHNAME_PREF_IMM16_ID16:
-                case EcmaOpcode::LDSUPERBYVALUE_IMM8_V8:
-                case EcmaOpcode::LDSUPERBYVALUE_IMM16_V8:
-                case EcmaOpcode::STSUPERBYVALUE_IMM16_V8_V8:
-                case EcmaOpcode::STSUPERBYVALUE_IMM8_V8_V8:
-                case EcmaOpcode::LDSUPERBYNAME_IMM8_ID16:
-                case EcmaOpcode::LDSUPERBYNAME_IMM16_ID16:
-                case EcmaOpcode::STSUPERBYNAME_IMM8_ID16_V8:
-                case EcmaOpcode::STSUPERBYNAME_IMM16_ID16_V8:
-                case EcmaOpcode::DEFINECLASSWITHBUFFER_IMM8_ID16_ID16_IMM16_V8:
-                case EcmaOpcode::DEFINECLASSWITHBUFFER_IMM16_ID16_ID16_IMM16_V8:
-                case EcmaOpcode::DEFINEFUNC_IMM8_ID16_IMM8:
-                case EcmaOpcode::DEFINEFUNC_IMM16_ID16_IMM8:
-                case EcmaOpcode::DEFINEMETHOD_IMM8_ID16_IMM8:
-                case EcmaOpcode::DEFINEMETHOD_IMM16_ID16_IMM8:
-                case EcmaOpcode::LDLEXVAR_IMM4_IMM4:
-                case EcmaOpcode::LDLEXVAR_IMM8_IMM8:
-                case EcmaOpcode::WIDE_LDLEXVAR_PREF_IMM16_IMM16:
-                case EcmaOpcode::STLEXVAR_IMM4_IMM4:
-                case EcmaOpcode::STLEXVAR_IMM8_IMM8:
-                case EcmaOpcode::WIDE_STLEXVAR_PREF_IMM16_IMM16:
-                    return;
-                default:
-                    break;
-            }
-        }
-        isFastAccessor_ = true;
-    }
+    return tsManager_->GetConstantPoolIDByMethodOffset(pf, inlineMethodOffset);
 }
 }  // namespace panda::ecmascript
