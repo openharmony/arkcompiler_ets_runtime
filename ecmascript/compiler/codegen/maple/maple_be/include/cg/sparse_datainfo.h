@@ -120,15 +120,15 @@ public:
         info &= secondInfo.info;
     }
 
-    void OrBits(const SparseDataInfo &secondInfo)
+    bool OrBits(const SparseDataInfo &secondInfo)
     {
-        info |= secondInfo.info;
+        return info |= secondInfo.info;
     }
 
     /* if bit in secondElem is 1, bit in current DataInfo is set 0 */
-    void Difference(const SparseDataInfo &secondInfo)
+    bool Difference(const SparseDataInfo &secondInfo)
     {
-        info.Diff(secondInfo.info);
+        return info.Diff(secondInfo.info);
     }
 
     void ResetAllBit()
