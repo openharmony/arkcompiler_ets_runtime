@@ -561,6 +561,7 @@ public:
     void Initialize();
     void Destroy();
     void Prepare();
+    void GetHeapPrepare();
     void Resume(TriggerGCType gcType);
     void ResumeForAppSpawn();
     void CompactHeapBeforeFork();

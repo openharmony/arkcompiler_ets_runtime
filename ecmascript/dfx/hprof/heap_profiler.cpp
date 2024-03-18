@@ -24,6 +24,7 @@
 #include "ecmascript/mem/assert_scope.h"
 #include "ecmascript/mem/concurrent_sweeper.h"
 #include "ecmascript/mem/heap-inl.h"
+#include "ecmascript/mem/shared_heap/shared_concurrent_sweeper.h"
 
 #if defined(ENABLE_DUMP_IN_FAULTLOG)
 #include "faultloggerd_client.h"
@@ -128,8 +129,7 @@ void HeapProfiler::MoveEvent(uintptr_t address, TaggedObject *forwardAddress, si
 
 void HeapProfiler::UpdateHeapObjects(HeapSnapshot *snapshot)
 {
-    SharedHeap *sHeap_ = SharedHeap::GetInstance();
-    sHeap_->CollectGarbageImpl(TriggerGCType::SHARED_GC, GCReason::OTHER);
+    ForceSharedGC();
     snapshot->UpdateNodes();
 }
 
@@ -160,8 +160,7 @@ bool HeapProfiler::DumpHeapSnapshot(DumpFormat dumpFormat, Stream *stream, Progr
             ASSERT(heapClean);
         }
         SuspendAllScope suspendScope(vm_->GetAssociatedJSThread());
-        SharedHeap *sHeap_ = SharedHeap::GetInstance();
-        sHeap_->CollectGarbageImpl(TriggerGCType::SHARED_GC, GCReason::OTHER);
+        ForceSharedGC();
         LOG_ECMA(INFO) << "HeapProfiler DumpSnapshot start";
         if (isFullGC) {
             size_t heapSize = vm_->GetHeap()->GetLiveObjectSize();
@@ -321,6 +320,13 @@ bool HeapProfiler::ForceFullGC(const EcmaVM *vm)
         return true;
     }
     return false;
+}
+
+void HeapProfiler::ForceSharedGC()
+{
+    SharedHeap *sHeap = SharedHeap::GetInstance();
+    sHeap->CollectGarbageImpl(TriggerGCType::SHARED_GC, GCReason::OTHER);
+    sHeap->GetSweeper()->WaitAllTaskFinished();
 }
 
 HeapSnapshot *HeapProfiler::MakeHeapSnapshot(SampleType sampleType, bool isVmMode, bool isPrivate,
