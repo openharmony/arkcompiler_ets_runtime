@@ -18,3 +18,4 @@ test successful
 {"g":8,"f2":1}
 {"a":{}}
 {"3":3}
+end JSON.stringify(globalThis)

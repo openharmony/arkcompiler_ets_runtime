@@ -732,10 +732,9 @@ JSTaggedValue JSStableArray::With(JSThread *thread, JSHandle<JSArray> receiver,
                                   int64_t insertCount, int64_t index, JSHandle<JSTaggedValue> value)
 {
     JSHandle<JSObject> thisObjHandle(receiver);
-    JSTaggedValue newArray = JSArray::ArraySpeciesCreate(thread, thisObjHandle,
-                                                         JSTaggedNumber(static_cast<uint32_t>(insertCount)));
+    JSHandle<JSTaggedValue> newArray = JSArray::ArrayCreate(thread, JSTaggedNumber(0));
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    JSHandle<JSObject> newArrayHandle(thread, newArray);
+    JSHandle<JSObject> newArrayHandle(newArray);
 
     JSHandle<JSTaggedValue> thisObjVal(thisObjHandle);
     TaggedArray *srcElements = TaggedArray::Cast(thisObjHandle->GetElements().GetTaggedObject());
@@ -745,7 +744,7 @@ JSTaggedValue JSStableArray::With(JSThread *thread, JSHandle<JSArray> receiver,
     if (insertCount > destElements->GetLength()) {
         destElements = *JSObject::GrowElementsCapacity(thread, newArrayHandle, insertCount);
     }
-
+    ASSERT(!newArrayHandle->GetJSHClass()->IsDictionaryMode());
     for (uint32_t idx = 0; idx < insertCount; idx++) {
         if (idx == index) {
             destElements->Set(thread, idx, value.GetTaggedValue());
@@ -769,10 +768,9 @@ JSTaggedValue JSStableArray::ToSpliced(JSHandle<JSArray> receiver, EcmaRuntimeCa
     JSThread *thread = argv->GetThread();
 
     JSHandle<JSObject> thisObjHandle(receiver);
-    JSTaggedValue newArray = JSArray::ArraySpeciesCreate(thread, thisObjHandle,
-                                                         JSTaggedNumber(static_cast<uint32_t>(insertCount)));
+    JSHandle<JSTaggedValue> newArray = JSArray::ArrayCreate(thread, JSTaggedNumber(0));
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    JSHandle<JSObject> newArrayHandle(thread, newArray);
+    JSHandle<JSObject> newArrayHandle(newArray);
 
     JSHandle<JSTaggedValue> thisObjVal(thisObjHandle);
     TaggedArray *srcElements = TaggedArray::Cast(thisObjHandle->GetElements().GetTaggedObject());
@@ -782,7 +780,7 @@ JSTaggedValue JSStableArray::ToSpliced(JSHandle<JSArray> receiver, EcmaRuntimeCa
     if (insertCount > destElements->GetLength()) {
         destElements = *JSObject::GrowElementsCapacity(thread, newArrayHandle, insertCount);
     }
-
+    ASSERT(!newArrayHandle->GetJSHClass()->IsDictionaryMode());
     uint32_t i = 0;
     uint32_t r = actualStart + actualSkipCount;
 
@@ -821,10 +819,9 @@ JSTaggedValue JSStableArray::ToReversed(JSThread *thread, JSHandle<JSArray> rece
                                         int64_t insertCount)
 {
     JSHandle<JSObject> thisObjHandle(receiver);
-    JSTaggedValue newArray = JSArray::ArraySpeciesCreate(thread, thisObjHandle,
-                                                         JSTaggedNumber(static_cast<uint32_t>(insertCount)));
+    JSHandle<JSTaggedValue> newArray = JSArray::ArrayCreate(thread, JSTaggedNumber(0));
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    JSHandle<JSObject> newArrayHandle(thread, newArray);
+    JSHandle<JSObject> newArrayHandle(newArray);
 
     JSHandle<JSTaggedValue> thisObjVal(thisObjHandle);
     TaggedArray *srcElements = TaggedArray::Cast(thisObjHandle->GetElements().GetTaggedObject());
@@ -834,7 +831,7 @@ JSTaggedValue JSStableArray::ToReversed(JSThread *thread, JSHandle<JSArray> rece
     if (insertCount > destElements->GetLength()) {
         destElements = *JSObject::GrowElementsCapacity(thread, newArrayHandle, insertCount);
     }
-
+    ASSERT(!newArrayHandle->GetJSHClass()->IsDictionaryMode());
     for (uint32_t idx = 0; idx < insertCount; idx++) {
         auto kValue = srcElementsHandle->Get(idx);
         if (kValue.IsHole()) {
