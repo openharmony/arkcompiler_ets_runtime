@@ -463,6 +463,14 @@ void Heap::Prepare()
     WaitClearTaskFinished();
 }
 
+void Heap::GetHeapPrepare()
+{
+    // Ensure local and shared heap prepared.
+    Prepare();
+    SharedHeap *sHeap = SharedHeap::GetInstance();
+    sHeap->Prepare();
+}
+
 void Heap::Resume(TriggerGCType gcType)
 {
     if (mode_ != HeapMode::SPAWN &&

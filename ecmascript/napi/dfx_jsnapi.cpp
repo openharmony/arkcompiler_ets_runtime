@@ -406,7 +406,7 @@ void DFXJSNApi::SetOverLimit(EcmaVM *vm, bool state)
 
 void DFXJSNApi::GetHeapPrepare(const EcmaVM *vm)
 {
-    const_cast<ecmascript::Heap *>(vm->GetHeap())->Prepare();
+    const_cast<ecmascript::Heap *>(vm->GetHeap())->GetHeapPrepare();
 }
 
 void DFXJSNApi::NotifyApplicationState(EcmaVM *vm, bool inBackground)
