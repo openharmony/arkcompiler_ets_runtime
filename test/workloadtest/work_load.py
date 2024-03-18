@@ -131,7 +131,7 @@ def execute_shell_script(script_path, args):
 
 
 def configure_environment(path, file_path, tools_type):
-    text = "--case-path ts-swift-workload\n" \
+    text = "--case-path weekly_workload\n" \
            f"--ts-tools-path {path}\n" \
            f"--tools-type {tools_type}\n" \
            "--swift-tools-path ~/tools/swift-5.7.3-RELEASE-ubuntu22.04/usr/bin\n" \
@@ -172,14 +172,13 @@ def prepare_workload_code(path):
 
 def report(boundary_value: int):
     del_out_file()
-    folder_path = "./"
-    file_pattern = "pgo_data_*.xlsx"
-    file_paths = glob.glob(os.path.join(folder_path, file_pattern))
+    file_paths = glob.glob(os.path.join("./", "pgo_data_*.xlsx"))
     red_fill = PatternFill(start_color='FF0000', end_color='FF0000', fill_type='solid')
     file_paths.sort(key=lambda x: datetime.datetime.strptime(
         x[WorkLoadConfig.START_INDEX:WorkLoadConfig.END_INDEX],
         "%Y%m%d%H%M%S"), reverse=True)
     max_two_files = file_paths[:2]
+    boundary_num = 0
     if len(max_two_files) == 2:
         wb_one = load_workbook(max_two_files[0])
         sheet_one = wb_one.active
@@ -200,10 +199,11 @@ def report(boundary_value: int):
             case = row_one[0]
             average_one = row_one[-1]
             average_two = row_two[-1]
-            difference = (average_one - average_two) / average_one * 100
-            percentage = "{:.2f}%".format(difference)
-            result_data.append([case, percentage])
-            write_to_txt('../out/pgo_daily.txt', ''.join([case, percentage, '\n']))
+            if average_one != 0:
+                difference = (average_one - average_two) / average_one * 100
+                percentage = "{:.2f}%".format(difference)
+                result_data.append([case, percentage])
+                write_to_txt('../out/pgo_daily.txt', ''.join([case, ":",percentage, '\n']))
         result_wb = Workbook()
         result_sheet = result_wb.active
         result_sheet.append(['case', 'percentage'])
@@ -212,12 +212,13 @@ def report(boundary_value: int):
             cell = result_sheet.cell(row=result_sheet.max_row, column=2)
             if cell.value and float(cell.value.strip('%')) < boundary_value:
                 cell.fill = red_fill
+                boundary_num += 1
         now = datetime.datetime.now()
-        formatted_date = now.strftime("%Y%m%d%H%M%S")
-        daily_excel_name = "".join(["pgo_daily_", formatted_date, ".xlsx"])
-        daily_excel_out = "../out/pgo_daily.xlsx"
-        result_wb.save(daily_excel_name)
-        result_wb.save(daily_excel_out)
+        result_sheet.append(['Total_Case', str(len(result_data))])
+        result_sheet.append(['Boundary_Total_Case', str(boundary_num)])
+        write_to_txt('../out/pgo_daily.txt', ''.join(["Total_Case", ":", str(len(result_data)), '\n']))
+        write_to_txt('../out/pgo_daily.txt', ''.join(["Boundary_Total_Case", ":", str(boundary_num), '\n']))
+        result_wb.save(os.path.join("../out", "".join([now.strftime("%Y%m%d%H%M%S") + "_pgo_daily.xlsx"])))
 
 
 def del_out_file():
@@ -254,6 +255,7 @@ def main(args):
         if code_v:
             execute_args.append('--code-v')
             execute_args.append(code_v)
+        execute_args.append('--run')
         execute_args.append('--run-count')
         execute_args.append(run_count)
         execute_shell_script("run_pgo.sh", execute_args)
