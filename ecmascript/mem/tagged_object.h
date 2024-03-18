@@ -30,6 +30,7 @@ public:
     {
         return static_cast<TaggedObject *>(header);
     }
+    TaggedObject(): class_(0) {}
 
     void SynchronizedSetClass(const JSThread *thread, JSHClass *hclass);
     JSHClass *SynchronizedGetClass() const;
