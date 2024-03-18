@@ -804,7 +804,7 @@ JSTaggedValue JSStableArray::Map(JSHandle<JSObject> newArrayHandle, JSHandle<JSO
             JSTaggedValue mapResult = JSFunction::Call(info);
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
             mapResultHandle.Update(mapResult);
-            ElementAccessor::Set(thread, newArrayHandle, k, mapResultHandle, true);
+            JSObject::CreateDataPropertyOrThrow(thread, newArrayHandle, k, mapResultHandle);
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
             if (ElementAccessor::GetElementsLength(thisObjHandle) < len) {
                 len = ElementAccessor::GetElementsLength(thisObjHandle);
