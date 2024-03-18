@@ -5376,6 +5376,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
 #endif
         // fast path
         if (LIKELY(receiver.IsHeapObject())) {
+            SAVE_ACC();
             JSTaggedValue res = FastRuntimeStub::GetPropertyByValue(thread, receiver, propKey);
             if (!res.IsHole()) {
                 ASSERT(!res.IsAccessor());
@@ -5383,8 +5384,11 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
                 SET_ACC(res);
                 DISPATCH(LDOBJBYVALUE_IMM8_V8);
             }
+            RESTORE_ACC();
         }
         // slow path
+        receiver = GET_VREG_VALUE(v0); // Maybe moved by GC
+        propKey = GET_ACC();           // Maybe moved by GC
         SAVE_PC();
         JSTaggedValue res = SlowRuntimeStub::LdObjByValue(thread, receiver, propKey, false, JSTaggedValue::Undefined());
         INTERPRETER_RETURN_IF_ABRUPT(res);
@@ -5427,6 +5431,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
 #endif
         // fast path
         if (LIKELY(receiver.IsHeapObject())) {
+            SAVE_ACC();
             JSTaggedValue res = FastRuntimeStub::GetPropertyByValue(thread, receiver, propKey);
             if (!res.IsHole()) {
                 ASSERT(!res.IsAccessor());
@@ -5434,8 +5439,11 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
                 SET_ACC(res);
                 DISPATCH(LDOBJBYVALUE_IMM16_V8);
             }
+            RESTORE_ACC();
         }
         // slow path
+        receiver = GET_VREG_VALUE(v0); // Maybe moved by GC
+        propKey = GET_ACC();           // Maybe moved by GC
         SAVE_PC();
         JSTaggedValue res = SlowRuntimeStub::LdObjByValue(thread, receiver, propKey, false, JSTaggedValue::Undefined());
         INTERPRETER_RETURN_IF_ABRUPT(res);
@@ -5453,6 +5461,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
 
         // fast path
         if (LIKELY(receiver.IsHeapObject())) {
+            SAVE_ACC();
             JSTaggedValue res = FastRuntimeStub::GetPropertyByValue(thread, receiver, propKey);
             if (!res.IsHole()) {
                 ASSERT(!res.IsAccessor());
@@ -5460,8 +5469,11 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
                 SET_ACC(res);
                 DISPATCH(DEPRECATED_LDOBJBYVALUE_PREF_V8_V8);
             }
+            RESTORE_ACC();
         }
         // slow path
+        receiver = GET_VREG_VALUE(v0); // Maybe moved by GC
+        propKey = GET_ACC();           // Maybe moved by GC
         SAVE_PC();
         JSTaggedValue res = SlowRuntimeStub::LdObjByValue(thread, receiver, propKey, false, JSTaggedValue::Undefined());
         INTERPRETER_RETURN_IF_ABRUPT(res);
@@ -6874,6 +6886,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
 #endif
         // fast path
         if (LIKELY(receiver.IsHeapObject())) {
+            SAVE_ACC();
             JSTaggedValue res = FastRuntimeStub::GetPropertyByValue(thread, receiver, propKey);
             if (!res.IsHole()) {
                 ASSERT(!res.IsAccessor());
@@ -6881,8 +6894,11 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
                 SET_ACC(res);
                 DISPATCH(LDTHISBYVALUE_IMM8);
             }
+            RESTORE_ACC();
         }
         // slow path
+        receiver = GetThis(sp);        // Maybe moved by GC
+        propKey = GET_ACC();           // Maybe moved by GC
         SAVE_PC();
         JSTaggedValue res = SlowRuntimeStub::LdObjByValue(thread, receiver, propKey, false, JSTaggedValue::Undefined());
         INTERPRETER_RETURN_IF_ABRUPT(res);
@@ -6923,6 +6939,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
 #endif
         if (LIKELY(receiver.IsHeapObject())) {
             // fast path
+            SAVE_ACC();
             JSTaggedValue res = FastRuntimeStub::GetPropertyByValue(thread, receiver, propKey);
             if (!res.IsHole()) {
                 ASSERT(!res.IsAccessor());
@@ -6930,8 +6947,11 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
                 SET_ACC(res);
                 DISPATCH(LDTHISBYVALUE_IMM16);
             }
+            RESTORE_ACC();
         }
         // slow path
+        receiver = GetThis(sp);        // Maybe moved by GC
+        propKey = GET_ACC();           // Maybe moved by GC
         SAVE_PC();
         JSTaggedValue res = SlowRuntimeStub::LdObjByValue(thread, receiver, propKey, false, JSTaggedValue::Undefined());
         INTERPRETER_RETURN_IF_ABRUPT(res);
