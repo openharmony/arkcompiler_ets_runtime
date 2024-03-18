@@ -17,6 +17,7 @@
 
 #include "ecmascript/base/string_helper.h"
 #include "ecmascript/ecma_macros.h"
+#include "ecmascript/ecma_string_table.h"
 #include "ecmascript/js_iterator.h"
 #include "ecmascript/js_string_iterator.h"
 #include "ecmascript/js_tagged_number.h"
@@ -72,8 +73,13 @@ JSTaggedValue BuiltinsStringIterator::NextInternal(JSThread *thread, JSHandle<JS
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     if (position + 1 == len || first < base::utf_helper::DECODE_LEAD_LOW ||
         first > base::utf_helper::DECODE_LEAD_HIGH) {
-        std::vector<uint16_t> resultString {first, 0x0};
-        result.Update(factory->NewFromUtf16(resultString.data(), 1).GetTaggedValue());
+        if (EcmaStringAccessor::CanBeCompressed(&first, 1)) {
+            JSHandle<SingleCharTable> singleCharTable(thread, thread->GetSingleCharTable());
+            result.Update(singleCharTable->GetStringFromSingleCharTable(first));
+        } else {
+            std::vector<uint16_t> resultString {first, 0x0};
+            result.Update(factory->NewFromUtf16(resultString.data(), 1).GetTaggedValue());
+        }
     } else {
         // 11. Else,
         // a. Let second be the code unit value at index position+1 in the String S.
