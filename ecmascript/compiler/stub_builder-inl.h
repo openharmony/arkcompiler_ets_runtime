@@ -604,6 +604,11 @@ inline GateRef StubBuilder::TaggedIsString(GateRef obj)
     return env_->GetBuilder()->TaggedIsString(obj);
 }
 
+inline GateRef StubBuilder::TaggedIsStringIterator(GateRef obj)
+{
+    return env_->GetBuilder()->TaggedIsStringIterator(obj);
+}
+
 inline GateRef StubBuilder::TaggedIsShared(GateRef obj)
 {
     return env_->GetBuilder()->TaggedIsShared(obj);

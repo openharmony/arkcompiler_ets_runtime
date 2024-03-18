@@ -1490,7 +1490,7 @@ JSTaggedValue BuiltinsArray::Map(EcmaRuntimeCallInfo *argv)
     //   e. Increase k by 1.
     uint32_t k = 0;
     uint32_t len = static_cast<uint32_t>(rawLen);
-    if (thisObjVal->IsStableJSArray(thread) && !thisObjHandle->GetJSHClass()->HasConstructor()) {
+    if (thisObjVal->IsStableJSArray(thread)) {
         JSStableArray::Map(newArrayHandle, thisObjHandle, argv, k, len);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     }

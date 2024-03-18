@@ -222,6 +222,24 @@ DECLARE_BUILTINS(GetStringIterator)
     Return(*res);
 }
 
+DECLARE_BUILTINS(STRING_ITERATOR_PROTO_NEXT)
+{
+    auto env = GetEnvironment();
+    DEFVARIABLE(res, VariableType::JS_ANY(), Undefined());
+    Label exit(env);
+    Label slowPath(env);
+    BuiltinsStringStubBuilder stringStubBuilder(this);
+    stringStubBuilder.StringIteratorNext(glue, thisValue, numArgs, &res, &exit, &slowPath);
+    Bind(&slowPath);
+    {
+        auto name = BuiltinsStubCSigns::GetName(BUILTINS_STUB_ID(STRING_ITERATOR_PROTO_NEXT));
+        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func, newTarget, name.c_str());
+        Jump(&exit);
+    }
+    Bind(&exit);
+    Return(*res);
+}
+
 BUILTINS_WITH_STRING_STUB_BUILDER(DECLARE_BUILTINS_WITH_STRING_STUB_BUILDER)
 
 #undef DECLARE_BUILTINS_WITH_STRING_STUB_BUILDER

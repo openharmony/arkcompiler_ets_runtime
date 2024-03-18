@@ -48,6 +48,8 @@ public:
     void EndsWith(GateRef glue, GateRef thisValue, GateRef numArgs, Variable *res, Label *exit, Label *slowPath);
     void GetStringIterator(GateRef glue, GateRef thisValue, GateRef numArgs,
                            Variable *res, Label *exit, Label *slowPath);
+    void StringIteratorNext(GateRef glue, GateRef thisValue, GateRef numArgs,
+                            Variable *res, Label *exit, Label *slowPath);
 
     GateRef ConvertAndClampRelativeIndex(GateRef index, GateRef length);
     GateRef StringAt(const StringInfoGateRef &stringInfoGate, GateRef index);

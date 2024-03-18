@@ -114,6 +114,7 @@ namespace panda::ecmascript::kungfu {
 
 #define AOT_AND_BUILTINS_STUB_LIST(V)               \
     V(LocaleCompare)                                \
+    V(STRING_ITERATOR_PROTO_NEXT)                   \
     V(SORT)
 
 #define AOT_BUILTINS_STUB_LIST(V)                   \
@@ -127,7 +128,6 @@ namespace panda::ecmascript::kungfu {
     V(TYPED_ARRAY_PROTO_ITERATOR)                   \
     V(MAP_ITERATOR_PROTO_NEXT)                      \
     V(SET_ITERATOR_PROTO_NEXT)                      \
-    V(STRING_ITERATOR_PROTO_NEXT)                   \
     V(ARRAY_ITERATOR_PROTO_NEXT)                    \
     V(ITERATOR_PROTO_RETURN)
 
@@ -208,6 +208,7 @@ public:
     static bool IsTypedBuiltin(ID builtinId)
     {
         return (BuiltinsStubCSigns::ID::LocaleCompare == builtinId) ||
+               (BuiltinsStubCSigns::ID::STRING_ITERATOR_PROTO_NEXT == builtinId) ||
                (BuiltinsStubCSigns::ID::SORT == builtinId) ||
                ((BuiltinsStubCSigns::ID::TYPED_BUILTINS_FIRST <= builtinId) &&
                (builtinId <= BuiltinsStubCSigns::ID::TYPED_BUILTINS_LAST));
@@ -359,6 +360,7 @@ public:
             {"pow", MathPow},
             {"floor", FLOOR},
             {"localeCompare", LocaleCompare},
+            {"next", STRING_ITERATOR_PROTO_NEXT},
             {"sort", SORT},
             {"stringify", STRINGIFY},
         };
