@@ -38,7 +38,7 @@ void AsyncFunctionLowering::ProcessJumpTable()
     GateRef newTarget = argAccessor_.GetCommonArgGate(CommonArgIdx::NEW_TARGET);
     GateRef isEqual = builder_.Equal(newTarget, builder_.Undefined());
     auto firstUse = accessor_.ConstUses(stateEntry_).begin();
-    GateRef ifBranchCondition = builder_.Branch(stateEntry_, isEqual);
+    GateRef ifBranchCondition = builder_.Branch(stateEntry_, isEqual, 1, 1, "checkNewTarget");
     GateRef ifTrueCondition = builder_.IfTrue(ifBranchCondition);
     GateRef ifFalseCondition = builder_.IfFalse(ifBranchCondition);
     while (accessor_.GetOpCode(*firstUse) == OpCode::STATE_SPLIT) {

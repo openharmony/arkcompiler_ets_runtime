@@ -236,7 +236,7 @@ void PostSchedule::LoweringHeapAllocAndPrepareScheduleGate(GateRef gate,
     GateRef newTop = builder_.PtrAdd(top, size);
     GateRef condition = builder_.Int64GreaterThan(newTop, end);
     Label *currentLabel = env.GetCurrentLabel();
-    builder_.Branch(condition, &callRuntime, &success);
+    BRANCH_CIR(condition, &callRuntime, &success);
     {
         GateRef ifBranch = currentLabel->GetControl();
         PrepareToScheduleNewGate(ifBranch, currentBBGates);
@@ -429,7 +429,7 @@ void PostSchedule::LoweringStoreUnknownBarrierAndPrepareScheduleGate(GateRef gat
     Label exit(&builder_);
     Label isHeapObject(&builder_);
     Label *currentLabel = env.GetCurrentLabel();
-    builder_.Branch(condition, &isHeapObject, &exit);
+    BRANCH_CIR(condition, &isHeapObject, &exit);
     {
         GateRef ifBranch = currentLabel->GetControl();
         PrepareToScheduleNewGate(ifBranch, currentBBGates);

@@ -305,7 +305,7 @@ void CopyRestArgsStubBuilder::GenerateCircuit()
     GateRef args = PtrAdd(argv, IntPtr(NUM_MANDATORY_JSFUNC_ARGS * 8)); // 8: ptr size
     GateRef actualArgc = Int32Sub(numArgs, Int32(NUM_MANDATORY_JSFUNC_ARGS));
     // 1. Calculate actual rest num.
-    Branch(Int32UnsignedGreaterThan(actualArgc, startIdx), &numArgsGreater, &numArgsNotGreater);
+    BRANCH(Int32UnsignedGreaterThan(actualArgc, startIdx), &numArgsGreater, &numArgsNotGreater);
     Bind(&numArgsGreater);
     {
         actualRestNum = Int32Sub(actualArgc, startIdx);
@@ -352,7 +352,7 @@ void GetUnmapedArgsStubBuilder::GenerateCircuit()
     newBuilder.SetParameters(glue, 0);
     newBuilder.NewArgumentsList(&argumentsList, &afterArgumentsList, args, startIdx, actualArgc);
     Bind(&afterArgumentsList);
-    Branch(TaggedIsException(*argumentsList), &exit, &newArgumentsObj);
+    BRANCH(TaggedIsException(*argumentsList), &exit, &newArgumentsObj);
     Bind(&newArgumentsObj);
     newBuilder.NewArgumentsObj(&argumentsObj, &exit, *argumentsList, actualArgc);
     Bind(&exit);
@@ -622,11 +622,11 @@ void TryLoadICByNameStubBuilder::GenerateCircuit()
     Label hclassEqualFirstValue(env);
     Label hclassNotEqualFirstValue(env);
     Label cachedHandlerNotHole(env);
-    Branch(TaggedIsHeapObject(receiver), &receiverIsHeapObject, &receiverNotHeapObject);
+    BRANCH(TaggedIsHeapObject(receiver), &receiverIsHeapObject, &receiverNotHeapObject);
     Bind(&receiverIsHeapObject);
     {
         GateRef hclass = LoadHClass(receiver);
-        Branch(Equal(LoadObjectFromWeakRef(firstValue), hclass),
+        BRANCH(Equal(LoadObjectFromWeakRef(firstValue), hclass),
                &hclassEqualFirstValue,
                &hclassNotEqualFirstValue);
         Bind(&hclassEqualFirstValue);
@@ -636,7 +636,7 @@ void TryLoadICByNameStubBuilder::GenerateCircuit()
         Bind(&hclassNotEqualFirstValue);
         {
             GateRef cachedHandler = CheckPolyHClass(firstValue, hclass);
-            Branch(TaggedIsHole(cachedHandler), &receiverNotHeapObject, &cachedHandlerNotHole);
+            BRANCH(TaggedIsHole(cachedHandler), &receiverNotHeapObject, &cachedHandlerNotHole);
             Bind(&cachedHandlerNotHole);
             {
                 Return(LoadICWithHandler(glue, receiver, receiver, cachedHandler, ProfileOperation()));
@@ -664,22 +664,22 @@ void TryLoadICByValueStubBuilder::GenerateCircuit()
     Label hclassNotEqualFirstValue(env);
     Label firstValueEqualKey(env);
     Label cachedHandlerNotHole(env);
-    Branch(TaggedIsHeapObject(receiver), &receiverIsHeapObject, &receiverNotHeapObject);
+    BRANCH(TaggedIsHeapObject(receiver), &receiverIsHeapObject, &receiverNotHeapObject);
     Bind(&receiverIsHeapObject);
     {
         GateRef hclass = LoadHClass(receiver);
-        Branch(Equal(LoadObjectFromWeakRef(firstValue), hclass),
+        BRANCH(Equal(LoadObjectFromWeakRef(firstValue), hclass),
                &hclassEqualFirstValue,
                &hclassNotEqualFirstValue);
         Bind(&hclassEqualFirstValue);
         Return(LoadElement(glue, receiver, key));
         Bind(&hclassNotEqualFirstValue);
         {
-            Branch(Int64Equal(firstValue, key), &firstValueEqualKey, &receiverNotHeapObject);
+            BRANCH(Int64Equal(firstValue, key), &firstValueEqualKey, &receiverNotHeapObject);
             Bind(&firstValueEqualKey);
             {
                 auto cachedHandler = CheckPolyHClass(secondValue, hclass);
-                Branch(TaggedIsHole(cachedHandler), &receiverNotHeapObject, &cachedHandlerNotHole);
+                BRANCH(TaggedIsHole(cachedHandler), &receiverNotHeapObject, &cachedHandlerNotHole);
                 Bind(&cachedHandlerNotHole);
                 Return(LoadICWithHandler(glue, receiver, receiver, cachedHandler, ProfileOperation()));
             }
@@ -702,11 +702,11 @@ void TryStoreICByNameStubBuilder::GenerateCircuit()
     Label hclassEqualFirstValue(env);
     Label hclassNotEqualFirstValue(env);
     Label cachedHandlerNotHole(env);
-    Branch(TaggedIsHeapObject(receiver), &receiverIsHeapObject, &receiverNotHeapObject);
+    BRANCH(TaggedIsHeapObject(receiver), &receiverIsHeapObject, &receiverNotHeapObject);
     Bind(&receiverIsHeapObject);
     {
         GateRef hclass = LoadHClass(receiver);
-        Branch(Equal(LoadObjectFromWeakRef(firstValue), hclass),
+        BRANCH(Equal(LoadObjectFromWeakRef(firstValue), hclass),
                &hclassEqualFirstValue,
                &hclassNotEqualFirstValue);
         Bind(&hclassEqualFirstValue);
@@ -716,7 +716,7 @@ void TryStoreICByNameStubBuilder::GenerateCircuit()
         Bind(&hclassNotEqualFirstValue);
         {
             GateRef cachedHandler = CheckPolyHClass(firstValue, hclass);
-            Branch(TaggedIsHole(cachedHandler), &receiverNotHeapObject, &cachedHandlerNotHole);
+            BRANCH(TaggedIsHole(cachedHandler), &receiverNotHeapObject, &cachedHandlerNotHole);
             Bind(&cachedHandlerNotHole);
             {
                 Return(StoreICWithHandler(glue, receiver, receiver, value, cachedHandler));
@@ -742,22 +742,22 @@ void TryStoreICByValueStubBuilder::GenerateCircuit()
     Label hclassNotEqualFirstValue(env);
     Label firstValueEqualKey(env);
     Label cachedHandlerNotHole(env);
-    Branch(TaggedIsHeapObject(receiver), &receiverIsHeapObject, &receiverNotHeapObject);
+    BRANCH(TaggedIsHeapObject(receiver), &receiverIsHeapObject, &receiverNotHeapObject);
     Bind(&receiverIsHeapObject);
     {
         GateRef hclass = LoadHClass(receiver);
-        Branch(Equal(LoadObjectFromWeakRef(firstValue), hclass),
+        BRANCH(Equal(LoadObjectFromWeakRef(firstValue), hclass),
                &hclassEqualFirstValue,
                &hclassNotEqualFirstValue);
         Bind(&hclassEqualFirstValue);
         Return(ICStoreElement(glue, receiver, key, value, secondValue));
         Bind(&hclassNotEqualFirstValue);
         {
-            Branch(Int64Equal(firstValue, key), &firstValueEqualKey, &receiverNotHeapObject);
+            BRANCH(Int64Equal(firstValue, key), &firstValueEqualKey, &receiverNotHeapObject);
             Bind(&firstValueEqualKey);
             {
                 GateRef cachedHandler = CheckPolyHClass(secondValue, hclass);
-                Branch(TaggedIsHole(cachedHandler), &receiverNotHeapObject, &cachedHandlerNotHole);
+                BRANCH(TaggedIsHole(cachedHandler), &receiverNotHeapObject, &cachedHandlerNotHole);
                 Bind(&cachedHandlerNotHole);
                 Return(StoreICWithHandler(glue, receiver, receiver, value, cachedHandler));
             }
@@ -844,11 +844,11 @@ void JsBoundCallInternalStubBuilder::GenerateCircuit()
         Int64((1LU << MethodLiteral::NumArgsBits::SIZE) - 1));
     GateRef expectedArgc = Int64Add(expectedNum, Int64(NUM_MANDATORY_JSFUNC_ARGS));
     GateRef actualArgc = Int64Sub(argc, IntPtr(NUM_MANDATORY_JSFUNC_ARGS));
-    Branch(JudgeAotAndFastCallWithMethod(method, CircuitBuilder::JudgeMethodType::HAS_AOT_FASTCALL),
+    BRANCH(JudgeAotAndFastCallWithMethod(method, CircuitBuilder::JudgeMethodType::HAS_AOT_FASTCALL),
         &methodIsFastCall, &notFastCall);
     Bind(&methodIsFastCall);
     {
-        Branch(Int64LessThanOrEqual(expectedArgc, argc), &fastCall, &fastCallBridge);
+        BRANCH(Int64LessThanOrEqual(expectedArgc, argc), &fastCall, &fastCallBridge);
         Bind(&fastCall);
         {
             result = CallNGCRuntime(glue, RTSTUB_ID(JSFastCallWithArgV),
@@ -864,7 +864,7 @@ void JsBoundCallInternalStubBuilder::GenerateCircuit()
     }
     Bind(&notFastCall);
     {
-        Branch(Int64LessThanOrEqual(expectedArgc, argc), &slowCall, &slowCallBridge);
+        BRANCH(Int64LessThanOrEqual(expectedArgc, argc), &slowCall, &slowCallBridge);
         Bind(&slowCall);
         {
             result = CallNGCRuntime(glue, RTSTUB_ID(JSCallWithArgV),
@@ -901,7 +901,7 @@ void JsProxyCallInternalStubBuilder::GenerateCircuit()
     DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
 
     GateRef handler = GetHandlerFromJSProxy(proxy);
-    Branch(TaggedIsNull(handler), &isNull, &notNull);
+    BRANCH(TaggedIsNull(handler), &isNull, &notNull);
     Bind(&isNull);
     {
         ThrowTypeAndReturn(glue, GET_MESSAGE_STRING_ID(NonCallable), Exception());
@@ -919,7 +919,7 @@ void JsProxyCallInternalStubBuilder::GenerateCircuit()
         GateRef method = CallRuntime(glue, RTSTUB_ID(JSObjectGetMethod), {handler, key});
         ReturnExceptionIfAbruptCompletion(glue);
 
-        Branch(TaggedIsUndefined(method), &isUndefined, &isNotUndefined);
+        BRANCH(TaggedIsUndefined(method), &isUndefined, &isNotUndefined);
         Bind(&isUndefined);
         {
             Label isHeapObject(env);
@@ -929,19 +929,19 @@ void JsProxyCallInternalStubBuilder::GenerateCircuit()
             Label fastCall(env);
             Label notFastCall(env);
             Label slowCall(env);
-            Branch(TaggedIsHeapObject(target), &isHeapObject, &slowPath);
+            BRANCH(TaggedIsHeapObject(target), &isHeapObject, &slowPath);
             Bind(&isHeapObject);
             {
-                Branch(IsJSFunction(target), &isJsFcuntion, &slowPath);
+                BRANCH(IsJSFunction(target), &isJsFcuntion, &slowPath);
                 Bind(&isJsFcuntion);
                 {
-                    Branch(IsClassConstructor(target), &slowPath, &notCallConstructor);
+                    BRANCH(IsClassConstructor(target), &slowPath, &notCallConstructor);
                     Bind(&notCallConstructor);
                     GateRef meth = GetMethodFromFunction(target);
                     GateRef actualArgc = Int64Sub(argc, IntPtr(NUM_MANDATORY_JSFUNC_ARGS));
                     GateRef actualArgv =
                         PtrAdd(argv, IntPtr(NUM_MANDATORY_JSFUNC_ARGS * JSTaggedValue::TaggedTypeSize()));
-                    Branch(JudgeAotAndFastCallWithMethod(meth, CircuitBuilder::JudgeMethodType::HAS_AOT_FASTCALL),
+                    BRANCH(JudgeAotAndFastCallWithMethod(meth, CircuitBuilder::JudgeMethodType::HAS_AOT_FASTCALL),
                         &fastCall, &notFastCall);
                     Bind(&fastCall);
                     {
@@ -951,7 +951,7 @@ void JsProxyCallInternalStubBuilder::GenerateCircuit()
                     }
                     Bind(&notFastCall);
                     {
-                        Branch(JudgeAotAndFastCallWithMethod(meth, CircuitBuilder::JudgeMethodType::HAS_AOT),
+                        BRANCH(JudgeAotAndFastCallWithMethod(meth, CircuitBuilder::JudgeMethodType::HAS_AOT),
                             &slowCall, &slowPath);
                         Bind(&slowCall);
                         {
@@ -982,17 +982,17 @@ void JsProxyCallInternalStubBuilder::GenerateCircuit()
             // 2: this offset
             GateRef numArgs = Int64(JSPROXY_NUM_ARGS + NUM_MANDATORY_JSFUNC_ARGS);
 
-            Branch(TaggedIsHeapObject(method), &isHeapObject1, &slowPath1);
+            BRANCH(TaggedIsHeapObject(method), &isHeapObject1, &slowPath1);
             Bind(&isHeapObject1);
             {
-                Branch(IsJSFunction(method), &isJsFcuntion1, &slowPath1);
+                BRANCH(IsJSFunction(method), &isJsFcuntion1, &slowPath1);
                 Bind(&isJsFcuntion1);
                 {
-                    Branch(IsClassConstructor(method), &slowPath1, &notCallConstructor1);
+                    BRANCH(IsClassConstructor(method), &slowPath1, &notCallConstructor1);
                     Bind(&notCallConstructor1);
                     GateRef meth = GetMethodFromFunction(method);
                     GateRef code = GetAotCodeAddr(meth);
-                    Branch(JudgeAotAndFastCallWithMethod(meth, CircuitBuilder::JudgeMethodType::HAS_AOT_FASTCALL),
+                    BRANCH(JudgeAotAndFastCallWithMethod(meth, CircuitBuilder::JudgeMethodType::HAS_AOT_FASTCALL),
                         &fastCall1, &notFastCall1);
                     Bind(&fastCall1);
                     {
@@ -1002,7 +1002,7 @@ void JsProxyCallInternalStubBuilder::GenerateCircuit()
                     }
                     Bind(&notFastCall1);
                     {
-                        Branch(JudgeAotAndFastCallWithMethod(meth, CircuitBuilder::JudgeMethodType::HAS_AOT),
+                        BRANCH(JudgeAotAndFastCallWithMethod(meth, CircuitBuilder::JudgeMethodType::HAS_AOT),
                             &slowCall1, &slowPath1);
                         Bind(&slowCall1);
                         {
@@ -1054,7 +1054,7 @@ void FastStringEqualStubBuilder::GenerateCircuit()
     Label leftNotEqualRight(env);
     Label exit(env);
     DEFVARIABLE(result, VariableType::BOOL(), False());
-    Branch(Equal(str1, str2), &leftEqualRight, &leftNotEqualRight);
+    BRANCH(Equal(str1, str2), &leftEqualRight, &leftNotEqualRight);
     Bind(&leftEqualRight);
     {
         result = True();

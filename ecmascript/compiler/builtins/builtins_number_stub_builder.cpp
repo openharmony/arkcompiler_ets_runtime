@@ -26,7 +26,7 @@ void BuiltinsNumberStubBuilder::ParseFloat(Variable *result, Label *exit, Label 
     Label definedMsg(env);
     Label undefinedMsg(env);
     GateRef msg = GetCallArg0(numArgs_);
-    Branch(TaggedIsUndefined(msg), &undefinedMsg, &definedMsg);
+    BRANCH(TaggedIsUndefined(msg), &undefinedMsg, &definedMsg);
     Bind(&undefinedMsg);
     {
         *result = DoubleToTaggedDoublePtr(Double(base::NAN_VALUE));
@@ -36,9 +36,9 @@ void BuiltinsNumberStubBuilder::ParseFloat(Variable *result, Label *exit, Label 
     {
         Label heapObj(env);
         Label stringObj(env);
-        Branch(TaggedIsHeapObject(msg), &heapObj, slowPath);
+        BRANCH(TaggedIsHeapObject(msg), &heapObj, slowPath);
         Bind(&heapObj);
-        Branch(IsString(msg), &stringObj, slowPath);
+        BRANCH(IsString(msg), &stringObj, slowPath);
         Bind(&stringObj);
         {
             *result = CallNGCRuntime(glue_, RTSTUB_ID(NumberHelperStringToDouble), { msg });

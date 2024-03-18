@@ -24,35 +24,35 @@ void ICStubBuilder::NamedICAccessor(Variable* cachedHandler, Label *tryICHandler
     Label receiverNotHeapObject(env);
     Label tryIC(env);
 
-    Branch(TaggedIsHeapObject(receiver_), &receiverIsHeapObject, &receiverNotHeapObject);
+    BRANCH(TaggedIsHeapObject(receiver_), &receiverIsHeapObject, &receiverNotHeapObject);
     Bind(&receiverIsHeapObject);
     {
-        Branch(TaggedIsUndefined(profileTypeInfo_), tryFastPath_, &tryIC);
+        BRANCH(TaggedIsUndefined(profileTypeInfo_), tryFastPath_, &tryIC);
         Bind(&tryIC);
         {
             Label isHeapObject(env);
             Label notHeapObject(env);
             GateRef firstValue = GetValueFromTaggedArray(
                 profileTypeInfo_, slotId_);
-            Branch(TaggedIsHeapObject(firstValue), &isHeapObject, &notHeapObject);
+            BRANCH(TaggedIsHeapObject(firstValue), &isHeapObject, &notHeapObject);
             Bind(&isHeapObject);
             {
                 GateRef secondValue = GetValueFromTaggedArray(profileTypeInfo_, Int32Add(slotId_, Int32(1)));
                 cachedHandler->WriteVariable(secondValue);
                 Label tryPoly(env);
                 GateRef hclass = LoadHClass(receiver_);
-                Branch(Equal(LoadObjectFromWeakRef(firstValue), hclass),
+                BRANCH(Equal(LoadObjectFromWeakRef(firstValue), hclass),
                        tryICHandler,
                        &tryPoly);
                 Bind(&tryPoly);
                 {
                     cachedHandler->WriteVariable(CheckPolyHClass(firstValue, hclass));
-                    Branch(TaggedIsHole(cachedHandler->ReadVariable()), slowPath_, tryICHandler);
+                    BRANCH(TaggedIsHole(cachedHandler->ReadVariable()), slowPath_, tryICHandler);
                 }
             }
             Bind(&notHeapObject);
             {
-                Branch(TaggedIsUndefined(firstValue), slowPath_, tryFastPath_);
+                BRANCH(TaggedIsUndefined(firstValue), slowPath_, tryFastPath_);
             }
         }
     }
@@ -60,10 +60,10 @@ void ICStubBuilder::NamedICAccessor(Variable* cachedHandler, Label *tryICHandler
     {
         Label tryNumber(env);
         Label profileNotUndefined(env);
-        Branch(TaggedIsNumber(receiver_), &tryNumber, slowPath_);
+        BRANCH(TaggedIsNumber(receiver_), &tryNumber, slowPath_);
         Bind(&tryNumber);
         {
-            Branch(TaggedIsUndefined(profileTypeInfo_), slowPath_, &profileNotUndefined);
+            BRANCH(TaggedIsUndefined(profileTypeInfo_), slowPath_, &profileNotUndefined);
             Bind(&profileNotUndefined);
             {
                 GateRef firstValue = GetValueFromTaggedArray(profileTypeInfo_, slotId_);
@@ -74,7 +74,7 @@ void ICStubBuilder::NamedICAccessor(Variable* cachedHandler, Label *tryICHandler
                 auto numberFunction = GetGlobalEnvValue(VariableType::JS_ANY(),
                     glueGlobalEnv, GlobalEnv::NUMBER_FUNCTION_INDEX);
                 GateRef hclass = LoadHClass(numberFunction);
-                Branch(BoolAnd(TaggedIsHeapObject(firstValue), Equal(LoadObjectFromWeakRef(firstValue), hclass)),
+                BRANCH(BoolAnd(TaggedIsHeapObject(firstValue), Equal(LoadObjectFromWeakRef(firstValue), hclass)),
                        tryICHandler, slowPath_);
             }
         }
@@ -86,56 +86,56 @@ void ICStubBuilder::ValuedICAccessor(Variable* cachedHandler, Label *tryICHandle
     auto env = GetEnvironment();
     Label receiverIsHeapObject(env);
 
-    Branch(TaggedIsHeapObject(receiver_), &receiverIsHeapObject, slowPath_);
+    BRANCH(TaggedIsHeapObject(receiver_), &receiverIsHeapObject, slowPath_);
     Bind(&receiverIsHeapObject);
     {
         Label tryIC(env);
-        Branch(TaggedIsUndefined(profileTypeInfo_), tryFastPath_, &tryIC);
+        BRANCH(TaggedIsUndefined(profileTypeInfo_), tryFastPath_, &tryIC);
         Bind(&tryIC);
         {
             Label isHeapObject(env);
             Label notHeapObject(env);
             GateRef firstValue = GetValueFromTaggedArray(
                 profileTypeInfo_, slotId_);
-            Branch(TaggedIsHeapObject(firstValue), &isHeapObject, &notHeapObject);
+            BRANCH(TaggedIsHeapObject(firstValue), &isHeapObject, &notHeapObject);
             Bind(&isHeapObject);
             {
                 Label tryPoly(env);
                 Label tryWithElementPoly(env);
                 GateRef hclass = LoadHClass(receiver_);
-                Branch(Equal(LoadObjectFromWeakRef(firstValue), hclass),
+                BRANCH(Equal(LoadObjectFromWeakRef(firstValue), hclass),
                        tryElementIC,
                        &tryPoly);
                 Bind(&tryPoly);
                 {
                     Label firstIsKey(env);
-                    Branch(Int64Equal(firstValue, propKey_), &firstIsKey, &tryWithElementPoly);
+                    BRANCH(Int64Equal(firstValue, propKey_), &firstIsKey, &tryWithElementPoly);
                     Bind(&firstIsKey);
                     {
                         GateRef handler = CheckPolyHClass(cachedHandler->ReadVariable(), hclass);
                         cachedHandler->WriteVariable(handler);
-                        Branch(TaggedIsHole(cachedHandler->ReadVariable()), slowPath_, tryICHandler);
+                        BRANCH(TaggedIsHole(cachedHandler->ReadVariable()), slowPath_, tryICHandler);
                     }
                     Bind(&tryWithElementPoly);
                     {
                         Label checkSecond(env);
                         Label checkPoly(env);
-                        Branch(TaggedIsWeak(firstValue), slowPath_, &checkSecond);
+                        BRANCH(TaggedIsWeak(firstValue), slowPath_, &checkSecond);
                         Bind(&checkSecond);
                         {
-                            Branch(TaggedIsHole(cachedHandler->ReadVariable()), &checkPoly, slowPath_);
+                            BRANCH(TaggedIsHole(cachedHandler->ReadVariable()), &checkPoly, slowPath_);
                         }
                         Bind(&checkPoly);
                         {
                             cachedHandler->WriteVariable(CheckPolyHClass(firstValue, hclass));
-                            Branch(TaggedIsHole(cachedHandler->ReadVariable()), slowPath_, tryElementIC);
+                            BRANCH(TaggedIsHole(cachedHandler->ReadVariable()), slowPath_, tryElementIC);
                         }
                     }
                 }
             }
             Bind(&notHeapObject);
             {
-                Branch(TaggedIsUndefined(firstValue), slowPath_, tryFastPath_);
+                BRANCH(TaggedIsUndefined(firstValue), slowPath_, tryFastPath_);
             }
         }
     }
@@ -154,7 +154,7 @@ void ICStubBuilder::LoadICByName(
     {
         GateRef ret = LoadICWithHandler(glue_, receiver_, receiver_, *cachedHandler, callback);
         result->WriteVariable(ret);
-        Branch(TaggedIsHole(ret), slowPath_, success_);
+        BRANCH(TaggedIsHole(ret), slowPath_, success_);
     }
 }
 
@@ -172,7 +172,7 @@ void ICStubBuilder::StoreICByName(Variable* result, Label* tryFastPath, Label *s
     {
         GateRef ret = StoreICWithHandler(glue_, receiver_, receiver_, value_, *cachedHandler, callback_);
         result->WriteVariable(ret);
-        Branch(TaggedIsHole(ret), slowPath_, success_);
+        BRANCH(TaggedIsHole(ret), slowPath_, success_);
     }
 }
 
@@ -199,7 +199,7 @@ void ICStubBuilder::LoadICByValue(
     Bind(&loadElement);
     {
         GateRef handlerInfo = NumberGetInt(glue_, *cachedHandler);
-        Branch(IsElement(handlerInfo), &handlerInfoIsElement, &handlerInfoNotElement);
+        BRANCH(IsElement(handlerInfo), &handlerInfoIsElement, &handlerInfoNotElement);
         Bind(&handlerInfoIsElement);
         {
             ret = LoadElement(glue_, receiver_, propKey_);
@@ -207,7 +207,7 @@ void ICStubBuilder::LoadICByValue(
         }
         Bind(&handlerInfoNotElement);
         {
-            Branch(IsStringElement(handlerInfo), &handlerInfoIsStringElement, &handlerInfoNotStringElement);
+            BRANCH(IsStringElement(handlerInfo), &handlerInfoIsStringElement, &handlerInfoNotStringElement);
             Bind(&handlerInfoIsStringElement);
             {
                 ret = LoadStringElement(glue_, receiver_, propKey_);
@@ -215,7 +215,7 @@ void ICStubBuilder::LoadICByValue(
             }
             Bind(&handlerInfoNotStringElement);
             {
-                Branch(IsTypedArrayElement(handlerInfo), &handlerInfoIsTypedArrayElement, &exit);
+                BRANCH(IsTypedArrayElement(handlerInfo), &handlerInfoIsTypedArrayElement, &exit);
                 Bind(&handlerInfoIsTypedArrayElement);
                 {
                     GateRef hclass = LoadHClass(receiver_);
@@ -234,7 +234,7 @@ void ICStubBuilder::LoadICByValue(
     }
     Bind(&exit);
     result->WriteVariable(*ret);
-    Branch(TaggedIsHole(*ret), slowPath_, success_);
+    BRANCH(TaggedIsHole(*ret), slowPath_, success_);
 }
 
 void ICStubBuilder::StoreICByValue(Variable* result, Label* tryFastPath, Label *slowPath, Label *success)
@@ -251,13 +251,13 @@ void ICStubBuilder::StoreICByValue(Variable* result, Label* tryFastPath, Label *
     {
         GateRef ret = ICStoreElement(glue_, receiver_, propKey_, value_, *cachedHandler);
         result->WriteVariable(ret);
-        Branch(TaggedIsHole(ret), slowPath_, success_);
+        BRANCH(TaggedIsHole(ret), slowPath_, success_);
     }
     Bind(&storeWithHandler);
     {
         GateRef ret = StoreICWithHandler(glue_, receiver_, receiver_, value_, *cachedHandler, callback_);
         result->WriteVariable(ret);
-        Branch(TaggedIsHole(ret), slowPath_, success_);
+        BRANCH(TaggedIsHole(ret), slowPath_, success_);
     }
 }
 
@@ -267,17 +267,17 @@ void ICStubBuilder::TryLoadGlobalICByName(Variable* result, Label* tryFastPath, 
     Label tryIC(env);
 
     SetLabels(tryFastPath, slowPath, success);
-    Branch(TaggedIsUndefined(profileTypeInfo_), tryFastPath_, &tryIC);
+    BRANCH(TaggedIsUndefined(profileTypeInfo_), tryFastPath_, &tryIC);
     Bind(&tryIC);
     {
         GateRef handler = GetValueFromTaggedArray(profileTypeInfo_, slotId_);
         Label isHeapObject(env);
-        Branch(TaggedIsHeapObject(handler), &isHeapObject, slowPath_);
+        BRANCH(TaggedIsHeapObject(handler), &isHeapObject, slowPath_);
         Bind(&isHeapObject);
         {
             GateRef ret = LoadGlobal(handler);
             result->WriteVariable(ret);
-            Branch(TaggedIsHole(ret), slowPath_, success_);
+            BRANCH(TaggedIsHole(ret), slowPath_, success_);
         }
     }
 }
@@ -288,17 +288,17 @@ void ICStubBuilder::TryStoreGlobalICByName(Variable* result, Label* tryFastPath,
     Label tryIC(env);
 
     SetLabels(tryFastPath, slowPath, success);
-    Branch(TaggedIsUndefined(profileTypeInfo_), tryFastPath_, &tryIC);
+    BRANCH(TaggedIsUndefined(profileTypeInfo_), tryFastPath_, &tryIC);
     Bind(&tryIC);
     {
         GateRef handler = GetValueFromTaggedArray(profileTypeInfo_, slotId_);
         Label isHeapObject(env);
-        Branch(TaggedIsHeapObject(handler), &isHeapObject, slowPath_);
+        BRANCH(TaggedIsHeapObject(handler), &isHeapObject, slowPath_);
         Bind(&isHeapObject);
         {
             GateRef ret = StoreGlobal(glue_, value_, handler);
             result->WriteVariable(ret);
-            Branch(TaggedIsHole(ret), slowPath_, success_);
+            BRANCH(TaggedIsHole(ret), slowPath_, success_);
         }
     }
 }
