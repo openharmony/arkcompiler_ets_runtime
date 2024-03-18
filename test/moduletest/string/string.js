@@ -258,3 +258,8 @@ print(str_endsWith1.endsWith('endsWith!'));       // true
 print(str_endsWith1.endsWith('endsWith!', -1));   // false
 print(str_endsWith1.endsWith('endsWith!', 100));  // true
 print(str_endsWith1.endsWith('string', 25.3));    // true
+
+let arr = Array(14);
+let tree_str = arr + 512;
+tree_str.substring(0,arr.length);
+print("sub_string test success!");
