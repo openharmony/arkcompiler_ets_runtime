@@ -105,28 +105,36 @@ JSHandle<Program> PandaFileTranslator::GenerateProgram(EcmaVM *vm, const JSPanda
                                                        std::string_view entryPoint)
 {
     uint32_t mainMethodIndex = jsPandaFile->GetMainMethodIndex(entryPoint.data());
-    JSHandle<ConstantPool> constpool;
+    JSHandle<ConstantPool> sconstpool;
     bool isNewVersion = jsPandaFile->IsNewVersion();
     if (isNewVersion) {
-        constpool = vm->GetJSThread()->GetCurrentEcmaContext()->FindOrCreateConstPool(
+        sconstpool = vm->GetJSThread()->GetCurrentEcmaContext()->FindOrCreateConstPool(
             jsPandaFile, EntityId(mainMethodIndex));
     } else {
-        JSTaggedValue constpoolVal = vm->GetJSThread()->GetCurrentEcmaContext()->FindConstpool(jsPandaFile, 0);
+        EcmaContext *context = vm->GetJSThread()->GetCurrentEcmaContext();
+        JSTaggedValue constpoolVal = context->FindConstpool(jsPandaFile, 0);
+        JSHandle<ConstantPool> unsharedConstpool;
         if (constpoolVal.IsHole()) {
-            constpool = ParseConstPool(vm, jsPandaFile);
+            std::pair<JSHandle<ConstantPool>, JSHandle<ConstantPool>> constpoolPair = ParseConstPool(vm, jsPandaFile);
+            sconstpool = constpoolPair.first;
+            unsharedConstpool = constpoolPair.second;
             // old version dont support multi constpool
-            vm->GetJSThread()->GetCurrentEcmaContext()->AddConstpool(jsPandaFile, constpool.GetTaggedValue());
+            context->AddConstpool(jsPandaFile, sconstpool.GetTaggedValue());
+            context->SetUnsharedConstpool(
+                sconstpool->GetUnsharedConstpoolIndex().GetInt(), unsharedConstpool.GetTaggedValue());
         } else {
-            constpool = JSHandle<ConstantPool>(vm->GetJSThread(), constpoolVal);
+            sconstpool = JSHandle<ConstantPool>(vm->GetJSThread(), constpoolVal);
+            unsharedConstpool = JSHandle<ConstantPool>(
+                vm->GetJSThread(), context->FindUnsharedConstpool(sconstpool.GetTaggedValue()));
         }
 
         if (!jsPandaFile->IsBundlePack()) {
-            ParseFuncAndLiteralConstPool(vm, jsPandaFile, entryPoint.data(), constpool);
+            ParseFuncAndLiteralConstPool(vm, jsPandaFile, entryPoint.data(), sconstpool, unsharedConstpool);
         }
     }
 
     MethodLiteral *mainMethodLiteral = jsPandaFile->FindMethodLiteral(mainMethodIndex);
-    return GenerateProgramInternal(vm, mainMethodLiteral, constpool);
+    return GenerateProgramInternal(vm, mainMethodLiteral, sconstpool);
 }
 
 JSHandle<Program> PandaFileTranslator::GenerateProgramInternal(EcmaVM *vm,
@@ -155,10 +163,12 @@ JSHandle<Program> PandaFileTranslator::GenerateProgramInternal(EcmaVM *vm,
     return program;
 }
 
-JSHandle<ConstantPool> PandaFileTranslator::ParseConstPool(EcmaVM *vm, const JSPandaFile *jsPandaFile)
+std::pair<JSHandle<ConstantPool>, JSHandle<ConstantPool>> PandaFileTranslator::ParseConstPool(
+    EcmaVM *vm, const JSPandaFile *jsPandaFile)
 {
     JSThread *thread = vm->GetJSThread();
     ObjectFactory *factory = vm->GetFactory();
+    JSHandle<ConstantPool> sconstpool = AllocateSharedConstPool(vm, jsPandaFile);
     JSHandle<ConstantPool> constpool = AllocateConstPool(vm, jsPandaFile);
 
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
@@ -177,7 +187,7 @@ JSHandle<ConstantPool> PandaFileTranslator::ParseConstPool(EcmaVM *vm, const JSP
             JSMutableHandle<TaggedArray> elements(thread, JSTaggedValue::Undefined());
             JSMutableHandle<TaggedArray> properties(thread, JSTaggedValue::Undefined());
             LiteralDataExtractor::ExtractObjectDatas(
-                thread, jsPandaFile, index, elements, properties, constpool);
+                thread, jsPandaFile, index, elements, properties, sconstpool);
             JSHandle<JSObject> obj = JSObject::CreateObjectFromProperties(thread, properties);
             JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
             JSMutableHandle<JSTaggedValue> valueHandle(thread, JSTaggedValue::Undefined());
@@ -194,7 +204,7 @@ JSHandle<ConstantPool> PandaFileTranslator::ParseConstPool(EcmaVM *vm, const JSP
         } else if (type == ConstPoolType::ARRAY_LITERAL) {
             size_t index = static_cast<size_t>(it.first);
             JSHandle<TaggedArray> literal = LiteralDataExtractor::GetDatasIgnoreType(
-                thread, jsPandaFile, index, constpool);
+                thread, jsPandaFile, index, sconstpool);
             uint32_t length = literal->GetLength();
 
             JSHandle<JSArray> arr(JSArray::ArrayCreate(thread, JSTaggedNumber(length)));
@@ -203,7 +213,7 @@ JSHandle<ConstantPool> PandaFileTranslator::ParseConstPool(EcmaVM *vm, const JSP
         } else if (type == ConstPoolType::CLASS_LITERAL) {
             size_t index = static_cast<size_t>(it.first);
             JSHandle<TaggedArray> literal = LiteralDataExtractor::GetDatasIgnoreTypeForClass(
-                thread, jsPandaFile, index, constpool);
+                thread, jsPandaFile, index, sconstpool);
             JSHandle<ClassLiteral> classLiteral = factory->NewClassLiteral();
             classLiteral->SetArray(thread, literal);
             constpool->SetObjectToCache(thread, value.GetConstpoolIndex(), classLiteral.GetTaggedValue());
@@ -218,14 +228,15 @@ JSHandle<ConstantPool> PandaFileTranslator::ParseConstPool(EcmaVM *vm, const JSP
 
             JSHandle<Method> method = factory->NewSMethod(methodLiteral);
             constpool->SetObjectToCache(thread, value.GetConstpoolIndex(), method.GetTaggedValue());
-            method->SetConstantPool(thread, constpool.GetTaggedValue());
+            method->SetConstantPool(thread, sconstpool.GetTaggedValue());
         }
     }
-    return constpool;
+    return std::make_pair(sconstpool, constpool);
 }
 
 void PandaFileTranslator::ParseFuncAndLiteralConstPool(EcmaVM *vm, const JSPandaFile *jsPandaFile,
                                                        const CString &entryPoint,
+                                                       JSHandle<ConstantPool> sconstpool,
                                                        JSHandle<ConstantPool> constpool)
 {
     auto &recordInfo = const_cast<JSPandaFile *>(jsPandaFile)->FindRecordInfo(entryPoint);
@@ -247,7 +258,7 @@ void PandaFileTranslator::ParseFuncAndLiteralConstPool(EcmaVM *vm, const JSPanda
             JSMutableHandle<TaggedArray> elements(thread, JSTaggedValue::Undefined());
             JSMutableHandle<TaggedArray> properties(thread, JSTaggedValue::Undefined());
             LiteralDataExtractor::ExtractObjectDatas(
-                thread, jsPandaFile, index, elements, properties, constpool, entryPoint);
+                thread, jsPandaFile, index, elements, properties, sconstpool, entryPoint);
             JSHandle<JSObject> obj = JSObject::CreateObjectFromProperties(thread, properties);
             JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
             JSMutableHandle<JSTaggedValue> valueHandle(thread, JSTaggedValue::Undefined());
@@ -264,7 +275,7 @@ void PandaFileTranslator::ParseFuncAndLiteralConstPool(EcmaVM *vm, const JSPanda
         } else if (type == ConstPoolType::ARRAY_LITERAL) {
             size_t index = static_cast<size_t>(it.first);
             JSHandle<TaggedArray> literal = LiteralDataExtractor::GetDatasIgnoreType(
-                thread, jsPandaFile, index, constpool, entryPoint);
+                thread, jsPandaFile, index, sconstpool, entryPoint);
             uint32_t length = literal->GetLength();
             JSHandle<JSArray> arr(JSArray::ArrayCreate(thread, JSTaggedNumber(length)));
             arr->SetElements(thread, literal);
@@ -272,7 +283,7 @@ void PandaFileTranslator::ParseFuncAndLiteralConstPool(EcmaVM *vm, const JSPanda
         } else if (type == ConstPoolType::CLASS_LITERAL) {
             size_t index = static_cast<size_t>(it.first);
             JSHandle<TaggedArray> literal = LiteralDataExtractor::GetDatasIgnoreTypeForClass(
-                thread, jsPandaFile, index, constpool, entryPoint);
+                thread, jsPandaFile, index, sconstpool, entryPoint);
             JSHandle<ClassLiteral> classLiteral = factory->NewClassLiteral();
             classLiteral->SetArray(thread, literal);
             constpool->SetObjectToCache(thread, value.GetConstpoolIndex(), classLiteral.GetTaggedValue());
@@ -287,18 +298,31 @@ void PandaFileTranslator::ParseFuncAndLiteralConstPool(EcmaVM *vm, const JSPanda
 
             JSHandle<Method> method = factory->NewSMethod(methodLiteral);
             constpool->SetObjectToCache(thread, value.GetConstpoolIndex(), method.GetTaggedValue());
-            method->SetConstantPool(thread, constpool.GetTaggedValue());
+            method->SetConstantPool(thread, sconstpool.GetTaggedValue());
         }
     }
     recordInfo.SetParsedConstpoolVM(vm);
+}
+
+JSHandle<ConstantPool> PandaFileTranslator::AllocateSharedConstPool(EcmaVM *vm, const JSPandaFile *jsPandaFile)
+{
+    ObjectFactory *factory = vm->GetFactory();
+    EcmaContext *context = vm->GetJSThread()->GetCurrentEcmaContext();
+    uint32_t constpoolIndex = jsPandaFile->GetConstpoolIndex();
+    JSHandle<ConstantPool> sconstpool = factory->NewSConstantPool(constpoolIndex);
+    sconstpool->SetJSPandaFile(jsPandaFile);
+    sconstpool->SetUnsharedConstpoolIndex(JSTaggedValue(context->GetAndIncreaseUnsharedConstpoolCount()));
+    sconstpool->SetSharedConstpoolId(JSTaggedValue(0)); // 0 :old version has one constpool.
+    return sconstpool;
 }
 
 JSHandle<ConstantPool> PandaFileTranslator::AllocateConstPool(EcmaVM *vm, const JSPandaFile *jsPandaFile)
 {
     ObjectFactory *factory = vm->GetFactory();
     uint32_t constpoolIndex = jsPandaFile->GetConstpoolIndex();
-    JSHandle<ConstantPool> constpool = factory->NewSConstantPool(constpoolIndex);
+    JSHandle<ConstantPool> constpool = factory->NewConstantPool(constpoolIndex);
     constpool->SetJSPandaFile(jsPandaFile);
+    constpool->SetUnsharedConstpoolIndex(JSTaggedValue(ConstantPool::CONSTPOOL_TYPE_FLAG));
     return constpool;
 }
 
