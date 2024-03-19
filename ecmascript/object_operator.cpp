@@ -408,7 +408,7 @@ void ObjectOperator::TransitionForAttributeChanged(const JSHandle<JSObject> &rec
         uint32_t index = GetIndex();
         JSHandle<GlobalDictionary> dictHandle(thread_, receiver->GetProperties());
         dictHandle->SetAttributes(thread_, index, attr);
-        GlobalDictionary::InvalidatePropertyBox(thread_, dictHandle, index, attr);
+        GlobalDictionary::InvalidatePropertyBox(thread_, dictHandle, GetIndex(), attr);
     } else {
         uint32_t index = GetIndex();
         if (!receiver->GetJSHClass()->IsDictionaryMode()) {

@@ -253,3 +253,7 @@ try {
 } catch (error) {
     print(error)
 }
+
+const v3 = String.fromCharCode(564654156456456465465)
+const v5 = new Int16Array(true);
+print(v5["join"](v3));
