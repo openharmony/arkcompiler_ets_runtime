@@ -11,8 +11,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import("//arkcompiler/ets_runtime/test/test_helper.gni")
+RangeError: Invalid array length
+exception_case4.js:18:18
+exception_case4.js:20:1
 
-host_aot_js_test_action("exception_case3") {
-  deps = []
-}

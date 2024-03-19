@@ -11,8 +11,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import("//arkcompiler/ets_runtime/test/test_helper.gni")
+ReferenceError: a is not defined
+exception_case7.js:19:19
+exception_case7.js:23:1
 
-host_aot_js_test_action("exception_case3") {
-  deps = []
-}

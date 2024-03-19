@@ -11,8 +11,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import("//arkcompiler/ets_runtime/test/test_helper.gni")
+SyntaxError: Unexpected Number in JSON Array Or Object
+exception_case8.js:18:18
+exception_case8.js:22:22
+exception_case8.js:24:1
 
-host_aot_js_test_action("exception_case3") {
-  deps = []
-}
