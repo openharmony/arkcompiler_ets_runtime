@@ -47,10 +47,12 @@ private:
     static void FixInstructionId32(const OldBytecodeInst &inst, uint32_t index, uint32_t fixOrder = 0);
     static void FixOpcode(MethodLiteral *method, const OldBytecodeInst &inst);
     static void UpdateICOffset(MethodLiteral *method, uint8_t *pc);
-    static JSHandle<ConstantPool> ParseConstPool(EcmaVM *vm, const JSPandaFile *jsPandaFile);
+    static std::pair<JSHandle<ConstantPool>, JSHandle<ConstantPool>> ParseConstPool(
+        EcmaVM *vm, const JSPandaFile *jsPandaFile);
     static void ParseFuncAndLiteralConstPool(EcmaVM *vm, const JSPandaFile *jsPandaFile, const CString &entryPoint,
-                                             JSHandle<ConstantPool> constpool);
+        JSHandle<ConstantPool> sconstpool, JSHandle<ConstantPool> constpool);
     static JSHandle<ConstantPool> AllocateConstPool(EcmaVM *vm, const JSPandaFile *jsPandaFile);
+    static JSHandle<ConstantPool> AllocateSharedConstPool(EcmaVM *vm, const JSPandaFile *jsPandaFile);
 
     friend class PatchLoader;
 };

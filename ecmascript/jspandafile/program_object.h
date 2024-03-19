@@ -405,6 +405,12 @@ public:
             return val;
         }
 
+        if (!taggedPool->GetJSPandaFile()->IsNewVersion()) {
+            JSTaggedValue unsharedCp = thread->GetCurrentEcmaContext()->FindUnsharedConstpool(constpool);
+            taggedPool = ConstantPool::Cast(unsharedCp.GetTaggedObject());
+            return taggedPool->Get(index);
+        }
+
         [[maybe_unused]] EcmaHandleScope handleScope(thread);
         ASSERT(jsPandaFile->IsNewVersion());
         JSHandle<ConstantPool> constpoolHandle(thread, constpool);
@@ -618,6 +624,11 @@ public:
         const ConstantPool *taggedPool = ConstantPool::Cast(constpool.GetTaggedObject());
         auto val = taggedPool->Get(index);
         if (val.IsHole()) {
+            if (!taggedPool->GetJSPandaFile()->IsNewVersion()) {
+                JSTaggedValue unsharedCp = thread->GetCurrentEcmaContext()->FindUnsharedConstpool(constpool);
+                taggedPool = ConstantPool::Cast(unsharedCp.GetTaggedObject());
+                return taggedPool->Get(index);
+            }
             [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
             JSPandaFile *jsPandaFile = taggedPool->GetJSPandaFile();
