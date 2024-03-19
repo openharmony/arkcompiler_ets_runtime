@@ -208,7 +208,7 @@ JSTaggedValue LoadICRuntime::LoadValueMiss(JSHandle<JSTaggedValue> receiver, JSH
         }
         UpdateLoadStringHandler(receiver);
     } else {
-        if (op.GetValue().IsInternalAccessor()) {
+        if (op.GetValue().IsAccessor()) {
             op = ObjectOperator(GetThread(), receiver, key);
         }
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(GetThread());
@@ -298,7 +298,7 @@ JSTaggedValue LoadICRuntime::LoadTypedArrayValueMiss(JSHandle<JSTaggedValue> rec
         ObjectOperator op(GetThread(), receiver, key);
         auto result = JSHandle<JSTaggedValue>(GetThread(), JSObject::GetProperty(GetThread(), &op));
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(GetThread());
-        if (op.GetValue().IsInternalAccessor()) {
+        if (op.GetValue().IsAccessor()) {
             op = ObjectOperator(GetThread(), receiver, key);
         }
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(GetThread());
@@ -357,6 +357,9 @@ JSTaggedValue StoreICRuntime::StoreMiss(JSHandle<JSTaggedValue> receiver, JSHand
     bool success = JSObject::SetProperty(&op, value, true);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
     // ic-switch
+    if (op.GetValue().IsAccessor()) {
+        op = ObjectOperator(GetThread(), receiver, key);
+    }
     if (!GetThread()->GetEcmaVM()->ICEnabled()) {
         icAccessor_.SetAsMega();
         return success ? JSTaggedValue::Undefined() : JSTaggedValue::Exception();
@@ -399,6 +402,9 @@ JSTaggedValue StoreICRuntime::StoreTypedArrayValueMiss(JSHandle<JSTaggedValue> r
         UpdateReceiverHClass(JSHandle<JSTaggedValue>(GetThread(), JSHandle<JSObject>::Cast(receiver)->GetClass()));
         ObjectOperator op(GetThread(), receiver, key);
         bool success = JSObject::SetProperty(&op, value, true);
+        if (op.GetValue().IsAccessor()) {
+            op = ObjectOperator(GetThread(), receiver, key);
+        }
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(GetThread());
         // ic-switch
         if (!GetThread()->GetEcmaVM()->ICEnabled()) {
