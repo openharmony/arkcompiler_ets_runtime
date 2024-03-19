@@ -13,6 +13,8 @@
  * limitations under the License.
  */
 declare function print(str:any):string;
+declare function assert_unreachable():void;
+declare function assert_equal(a: Object, b: Object):void;
 
 // case1: CREATEOBJECTWITHEXCLUDEDKEYS
 const o4 : {} = {
@@ -37,6 +39,7 @@ function f1() {
     return
     try {
       f()
+      assert_unreachable();
     } catch(e) {
     }
 }
@@ -45,6 +48,7 @@ function f1() {
 function f2() {
     try {
         return
+        assert_unreachable();
     } catch(e15) {
     }
     while(1) {}
@@ -59,7 +63,7 @@ const v75 : number = new C60()
 function f230():string {
     const v292:number = -2;
     const v303:number[] = [1000,-1970969808,536870887,257,17933,11,1024];
-    try { new v292(64, ...v303, ...v303, ...v303, ...v303); } catch (e) {}
+    try { new v292(64, ...v303, ...v303, ...v303, ...v303); assert_unreachable(); } catch (e) {}
     return "bigint";
 }
 for (let v316:number = 0; v316 < 5; v316++) {
@@ -73,6 +77,7 @@ try {
         [a1718];
         static [v1705] = a1719;
     }
+    assert_unreachable();
 } catch (e) {}
 
 // case8: stackmapNum % 2
@@ -82,9 +87,9 @@ v39++;
 
 // case9: this branch is unreachable
 let v:number = [];
-print(Math.abs(--v));
-print(v);
+assert_equal(Math.abs(--v), 1);
+assert_equal(v, -1);
 let u:number[] = [];
-print(--u);
+assert_equal(--u, -1);
 
 print("compiler success");

@@ -275,7 +275,7 @@ JSTaggedValue BuiltinsArrayBuffer::CloneArrayBuffer(JSThread *thread, const JSHa
 {
     BUILTINS_API_TRACE(thread, ArrayBuffer, CloneArrayBuffer);
     // 1. Assert: Type(srcBuffer) is Object and it has an [[ArrayBufferData]] internal slot.
-    ASSERT(srcBuffer->IsArrayBuffer() || srcBuffer->IsSharedArrayBuffer());
+    ASSERT(srcBuffer->IsArrayBuffer() || srcBuffer->IsSharedArrayBuffer() || srcBuffer->IsByteArray());
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     // 2. If cloneConstructor is not present
     if (constructor->IsUndefined()) {
@@ -764,9 +764,8 @@ JSTaggedValue BuiltinsArrayBuffer::TypedArrayToList(JSThread *thread, JSHandle<J
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSTaggedValue> bufferHandle(thread, items->GetViewedArrayBufferOrByteArray());
     uint32_t arrayLen = items->GetArrayLength();
-    JSTaggedValue newArray = JSArray::ArrayCreate(thread, JSTaggedNumber(0)).GetTaggedValue();
+    JSHandle<JSObject> newArrayHandle(thread, JSArray::ArrayCreate(thread, JSTaggedNumber(0)).GetTaggedValue());
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    JSHandle<JSObject> newArrayHandle(thread, newArray);
     JSHandle<TaggedArray> oldElements(thread, newArrayHandle->GetElements());
     JSHandle<TaggedArray> elements = (oldElements->GetLength() < arrayLen) ?
         factory->ExtendArray(oldElements, arrayLen) : oldElements;

@@ -48,9 +48,9 @@
     /* String.prototype.codePointAt ( pos ) */                                      \
     V("codePointAt",       CodePointAt,       1, StringCodePointAt)                 \
     /* String.prototype.concat ( ...args ) */                                       \
-    V("concat",            Concat,            1, INVALID)                           \
+    V("concat",            Concat,            1, StringConcat)                      \
     /* String.prototype.endsWith ( searchString [ , endPosition ] ) */              \
-    V("endsWith",          EndsWith,          1, INVALID)                           \
+    V("endsWith",          EndsWith,          1, StringEndsWith)                    \
     /* String.prototype.includes ( searchString [ , position ] ) */                 \
     V("includes",          Includes,          1, INVALID)                           \
     /* String.prototype.indexOf ( searchString [ , position ] ) */                  \
@@ -86,7 +86,7 @@
     /* String.prototype.split ( separator, limit ) */                               \
     V("split",             Split,             2, INVALID)                           \
     /* String.prototype.startsWith ( searchString [ , position ] ) */               \
-    V("startsWith",        StartsWith,        1, INVALID)                           \
+    V("startsWith",        StartsWith,        1, StringStartsWith)                  \
     /* In Annex B.2.2: Additional Properties of the String.prototype Object */      \
     /* String.prototype.substr ( start, length ) */                                 \
     V("substr",            SubStr,            2, INVALID)                           \
@@ -97,7 +97,7 @@
     /* String.prototype.toLocaleUpperCase ( [ reserved1 [ , reserved2 ] ] ) */      \
     V("toLocaleUpperCase", ToLocaleUpperCase, 0, INVALID)                           \
     /* String.prototype.toLowerCase ( ) */                                          \
-    V("toLowerCase",       ToLowerCase,       0, INVALID)                           \
+    V("toLowerCase",       ToLowerCase,       0, StringToLowerCase)                 \
     /* String.prototype.toString ( ) */                                             \
     V("toString",          ToString,          0, INVALID)                           \
     /* String.prototype.toUpperCase ( ) */                                          \

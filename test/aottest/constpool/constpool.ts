@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-declare function print(str:any):string;
+declare function assert_equal(a: Object, b: Object):void;
 
 class A {
     constructor() {}
@@ -23,5 +23,5 @@ class A {
     z() {}
 }
 let a = new A()
-print(a.y)
-print(a.z.name)
+assert_equal(a.y, 1)
+assert_equal(a.z.name, "z")

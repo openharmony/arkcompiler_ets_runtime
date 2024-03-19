@@ -391,7 +391,8 @@ public:
 
     enum Barrier {
         NEED_BARRIER = 0,
-        NO_BARRIER
+        NO_BARRIER,
+        UNKNOWN_BARRIER
     };
 
     static MemoryOrder Default()
@@ -399,10 +400,19 @@ public:
         return Create(NOT_ATOMIC);
     }
 
-    static MemoryOrder Create(Order order, Barrier barrier = NO_BARRIER)
+    static MemoryOrder NeedBarrier()
     {
-        uint32_t value = OrderField::Encode(order) | BarrierField::Encode(barrier);
-        return MemoryOrder(value);
+        return Create(NOT_ATOMIC, NEED_BARRIER);
+    }
+
+    static MemoryOrder NeedBarrierAndAtomic()
+    {
+        return Create(MEMORY_ORDER_RELEASE, NEED_BARRIER);
+    }
+
+    static MemoryOrder NoBarrier()
+    {
+        return Create(NOT_ATOMIC, NO_BARRIER);
     }
 
     void SetBarrier(Barrier barrier)
@@ -431,6 +441,12 @@ public:
     }
 
 private:
+    static MemoryOrder Create(Order order, Barrier barrier = UNKNOWN_BARRIER)
+    {
+        uint32_t value = OrderField::Encode(order) | BarrierField::Encode(barrier);
+        return MemoryOrder(value);
+    }
+
     static constexpr uint32_t ORDER_BITS = 8;
     static constexpr uint32_t BARRIER_BITS = 8;
     using OrderField = panda::BitField<Order, 0, ORDER_BITS>;

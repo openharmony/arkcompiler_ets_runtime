@@ -240,7 +240,8 @@ public:
           loopHeaderGates_(circuit->chunk()),
           preFrameState_(circuit_->GetRoot()),
           preFrameArgs_(circuit_->GetRoot()),
-          isInline_(isInline)
+          isInline_(isInline),
+          methodId_(method_->GetMethodId().GetOffset())
     {
     }
     ~BytecodeCircuitBuilder() = default;
@@ -546,6 +547,34 @@ public:
         return numOfLiveBB_;
     }
 
+    int32_t GetCurrentConstpoolId() const
+    {
+        panda_file::IndexAccessor indexAccessor(*file_->GetPandaFile(), panda_file::File::EntityId(methodId_));
+        return static_cast<int32_t>(indexAccessor.GetHeaderIndex());
+    }
+
+    GateRef GetCurrentConstpool(GateRef jsFunc) const
+    {
+        int32_t constpoolId = GetCurrentConstpoolId();
+        if (gateAcc_.GetOpCode(preFrameArgs_) == OpCode::CIRCUIT_ROOT) {
+            return circuit_->NewGate(circuit_->GetConstPool(constpoolId), MachineType::I64, {jsFunc},
+                                     GateType::AnyType());
+        }
+        GateRef frameArgs = preFrameArgs_;
+        GateRef preConstpool = Circuit::NullGate();
+        int32_t preConstpoolId = 0;
+        while (gateAcc_.GetOpCode(frameArgs) != OpCode::CIRCUIT_ROOT) {
+            preConstpool = gateAcc_.GetValueIn(frameArgs, static_cast<size_t>(FrameArgIdx::CONST_POOL));
+            preConstpoolId = gateAcc_.GetConstpoolId(preConstpool);
+            if (preConstpoolId == constpoolId) {
+                return preConstpool;
+            }
+            frameArgs = gateAcc_.GetFrameState(frameArgs);
+        }
+        return circuit_->NewGate(circuit_->GetConstPool(constpoolId), MachineType::I64, {jsFunc},
+                                 GateType::AnyType());
+    }
+
 private:
     void CollectTryCatchBlockInfo(ExceptionInfo &Exception);
     void BuildCatchBlocks(const ExceptionInfo &Exception);
@@ -608,6 +637,7 @@ private:
     GateRef preFrameArgs_ {Circuit::NullGate()};
     size_t numOfLiveBB_ {0};
     bool isInline_ {false};
+    uint32_t methodId_ {0};
 };
 }  // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_CLASS_LINKER_BYTECODE_CIRCUIT_IR_BUILDER_H

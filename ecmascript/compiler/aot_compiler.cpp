@@ -140,6 +140,7 @@ int Main(const int argc, const char **argv)
                 .EnableInlineNative(cOptions.isEnableNativeInline_)
                 .EnableLoweringBuiltin(cOptions.isEnableLoweringBuiltin_)
                 .EnableOptBranchProfiling(cOptions.isEnableOptBranchProfiling_)
+                .EnableEscapeAnalysis(cOptions.isEnableEscapeAnalysis_)
                 .Build();
 
         PassManager passManager(vm,
@@ -151,7 +152,8 @@ int Main(const int argc, const char **argv)
                                 cOptions.maxAotMethodSize_,
                                 cOptions.maxMethodsInModule_,
                                 profilerDecoder,
-                                &passOptions);
+                                &passOptions,
+                                cOptions.optBCRange_);
 
         bool isEnableLiteCG = runtimeOptions.IsCompilerEnableLiteCG();
         AOTFileGenerator generator(&log, &logList, vm, cOptions.triple_, isEnableLiteCG);

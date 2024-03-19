@@ -502,18 +502,13 @@ JSHandle<JSObject> TypedArrayHelper::TypedArraySpeciesCreate(JSThread *thread, c
     JSHandle<JSTaggedValue> defaultConstructor =
         TypedArrayHelper::GetConstructor(thread, JSHandle<JSTaggedValue>(obj));
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-    JSHandle<JSTaggedValue> key = thread->GlobalConstants()->GetHandledConstructorString();
-    JSHandle<JSTaggedValue> objConstructor =
-        JSObject::GetProperty(thread, JSHandle<JSTaggedValue>(obj), key, JSHandle<JSTaggedValue>(obj)).GetValue();
     JSHandle<JSObject> result;
     JSHandle<JSTaggedValue> proto(thread, obj->GetJSHClass()->GetPrototype());
-    bool ctrVali = objConstructor->IsUndefined();
-    bool isJSTypedArr = proto->IsJSTypedArray();
     bool isCtrUnchanged = PropertyDetector::IsTypedArraySpeciesProtectDetectorValid(env) &&
-        !objConstructor->IsClassConstructor();
+        !TypedArrayHelper::IsAccessorHasChanged(proto) &&
+        !obj->GetJSHClass()->HasConstructor();
     bool isCtrBylen = buffHandle->IsInt();
-    bool isCtrObj = objConstructor->IsECMAObject();
-    if (ctrVali || (isJSTypedArr && isCtrUnchanged && isCtrBylen && isCtrObj)) {
+    if (isCtrUnchanged && isCtrBylen) {
         JSType type = obj->GetJSHClass()->GetObjectType();
         DataViewType arrayType = GetType(type);
         uint32_t length = buffHandle->GetInt();
@@ -523,6 +518,9 @@ JSHandle<JSObject> TypedArrayHelper::TypedArraySpeciesCreate(JSThread *thread, c
                                                       defaultConstructor, length, arrayType);
         RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSHandle<JSObject>(thread, JSTaggedValue::Exception()));
     } else {
+        JSHandle<JSTaggedValue> key = thread->GlobalConstants()->GetHandledConstructorString();
+        JSHandle<JSTaggedValue> objConstructor =
+        JSObject::GetProperty(thread, JSHandle<JSTaggedValue>(obj), key, JSHandle<JSTaggedValue>(obj)).GetValue();
         // 3. Let constructor be ? SpeciesConstructor(exemplar, defaultConstructor).
         JSHandle<JSTaggedValue> thisConstructor =
             JSObject::SlowSpeciesConstructor(thread, objConstructor, defaultConstructor);

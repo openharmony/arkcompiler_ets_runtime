@@ -42,20 +42,6 @@ GateRef CircuitBuilder::ObjectTypeCheck(GateType type, bool isHeapObject, GateRe
     return ret;
 }
 
-GateRef CircuitBuilder::ObjectTypeCompare(GateType type, bool isHeapObject, GateRef gate, GateRef hclassIndex)
-{
-    auto currentLabel = env_->GetCurrentLabel();
-    auto currentControl = currentLabel->GetControl();
-    auto currentDepend = currentLabel->GetDepend();
-    auto frameState = acc_.FindNearestFrameState(currentDepend);
-    ObjectTypeAccessor accessor(type, isHeapObject);
-    GateRef ret = GetCircuit()->NewGate(circuit_->ObjectTypeCompare(accessor.ToValue()), MachineType::I1,
-        {currentControl, currentDepend, gate, hclassIndex, frameState}, GateType::NJSValue());
-    currentLabel->SetControl(ret);
-    currentLabel->SetDepend(ret);
-    return ret;
-}
-
 GateRef CircuitBuilder::HeapObjectCheck(GateRef gate, GateRef frameState)
 {
     auto currentLabel = env_->GetCurrentLabel();
@@ -65,6 +51,19 @@ GateRef CircuitBuilder::HeapObjectCheck(GateRef gate, GateRef frameState)
                                         MachineType::I1,
                                         {currentControl, currentDepend, gate, frameState},
                                         GateType::NJSValue());
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
+}
+
+GateRef CircuitBuilder::EcmaObjectCheck(GateRef value)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    auto frameState = acc_.FindNearestFrameState(currentDepend);
+    GateRef ret = GetCircuit()->NewGate(circuit_->EcmaObjectCheck(),
+        MachineType::I1, {currentControl, currentDepend, value, frameState}, GateType::NJSValue());
     currentLabel->SetControl(ret);
     currentLabel->SetDepend(ret);
     return ret;
@@ -244,13 +243,13 @@ GateRef CircuitBuilder::RangeGuard(GateRef gate, uint32_t left, uint32_t right)
     return ret;
 }
 
-GateRef CircuitBuilder::BuiltinPrototypeHClassCheck(GateRef gate, BuiltinTypeId type)
+GateRef CircuitBuilder::BuiltinPrototypeHClassCheck(GateRef gate, BuiltinTypeId type, ElementsKind kind)
 {
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
     auto frameState = acc_.FindNearestFrameState(currentDepend);
-    BuiltinPrototypeHClassAccessor accessor(type);
+    BuiltinPrototypeHClassAccessor accessor(type, kind);
     GateRef ret = GetCircuit()->NewGate(circuit_->BuiltinPrototypeHClassCheck(accessor.ToValue()),
         MachineType::I1, {currentControl, currentDepend, gate, frameState}, GateType::NJSValue());
     currentLabel->SetControl(ret);
@@ -542,7 +541,22 @@ GateRef CircuitBuilder::TryPrimitiveTypeCheck(GateType type, GateRef gate)
     return ret;
 }
 
-GateRef CircuitBuilder::CallTargetCheck(GateRef gate, GateRef function, GateRef id, GateRef param, const char* comment)
+std::vector<GateRef> CircuitBuilder::ConcatParams(const std::vector<std::vector<GateRef>>& params)
+{
+    std::vector<GateRef> unionParams;
+    for (auto param: params) {
+        unionParams.insert(unionParams.end(), param.begin(), param.end());
+    }
+    return unionParams;
+}
+
+GateRef CircuitBuilder::CallTargetCheck(GateRef gate, GateRef function, GateRef id, const char* comment)
+{
+    return CallTargetCheck(gate, function, id, {}, comment);
+}
+
+GateRef CircuitBuilder::CallTargetCheck(GateRef gate, GateRef function, GateRef id, std::vector<GateRef> params,
+                                        const char* comment)
 {
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
@@ -553,9 +567,10 @@ GateRef CircuitBuilder::CallTargetCheck(GateRef gate, GateRef function, GateRef 
     } else {
         frameState = acc_.FindNearestFrameState(currentDepend);
     }
-    GateRef ret = GetCircuit()->NewGate(circuit_->TypedCallCheck(),
+    auto params_vec = ConcatParams({{ currentControl, currentDepend, function, id }, params, {frameState}});
+    GateRef ret = GetCircuit()->NewGate(circuit_->TypedCallCheck(params.size() + 2),
                                         MachineType::I1,
-                                        { currentControl, currentDepend, function, id, param, frameState},
+                                        params_vec,
                                         GateType::NJSValue(),
                                         comment);
     currentLabel->SetControl(ret);
@@ -661,6 +676,32 @@ GateRef CircuitBuilder::LexVarIsHoleCheck(GateRef value)
     auto frameState = acc_.FindNearestFrameState(currentDepend);
     GateRef ret = GetCircuit()->NewGate(circuit_->LexVarIsHoleCheck(),
     MachineType::I1, {currentControl, currentDepend, value, frameState}, GateType::NJSValue());
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
+}
+
+GateRef CircuitBuilder::IsUndefinedOrHoleCheck(GateRef value)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    auto frameState = acc_.FindNearestFrameState(currentDepend);
+    GateRef ret = GetCircuit()->NewGate(circuit_->IsUndefinedOrHoleCheck(),
+        MachineType::I1, {currentControl, currentDepend, value, frameState}, GateType::NJSValue());
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
+}
+
+GateRef CircuitBuilder::IsNotUndefinedOrHoleCheck(GateRef value)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    auto frameState = acc_.FindNearestFrameState(currentDepend);
+    GateRef ret = GetCircuit()->NewGate(circuit_->IsNotUndefinedOrHoleCheck(),
+        MachineType::I1, {currentControl, currentDepend, value, frameState}, GateType::NJSValue());
     currentLabel->SetControl(ret);
     currentLabel->SetDepend(ret);
     return ret;
@@ -824,12 +865,10 @@ GateRef CircuitBuilder::StoreConstOffset(VariableType type,
     GateRef receiver, size_t offset, GateRef value, MemoryOrder order)
 {
     auto currentLabel = env_->GetCurrentLabel();
-    auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
     auto bits = LoadStoreConstOffsetAccessor::ToValue(offset, order);
     auto ret = GetCircuit()->NewGate(circuit_->StoreConstOffset(bits), type.GetMachineType(),
-        { currentControl, currentDepend, receiver, value }, type.GetGateType());
-    currentLabel->SetControl(ret);
+        { currentDepend, receiver, value }, type.GetGateType());
     currentLabel->SetDepend(ret);
     return ret;
 }
@@ -941,14 +980,12 @@ GateRef CircuitBuilder::FinishAllocate(GateRef value)
     return newGate;
 }
 
-GateRef CircuitBuilder::HeapAlloc(GateRef size, GateType type, RegionSpaceFlag flag)
+GateRef CircuitBuilder::HeapAlloc(GateRef glue, GateRef size, GateType type, RegionSpaceFlag flag)
 {
     auto currentLabel = env_->GetCurrentLabel();
-    auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
     auto ret = GetCircuit()->NewGate(circuit_->HeapAlloc(flag), MachineType::I64,
-                                     { currentControl, currentDepend, size }, type);
-    currentLabel->SetControl(ret);
+                                     { currentDepend, glue, size }, type);
     currentLabel->SetDepend(ret);
     return ret;
 }
@@ -1493,8 +1530,10 @@ GateRef CircuitBuilder::TypedCreateObjWithBuffer(std::vector<GateRef> &valueIn)
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
+    auto frameState = acc_.FindNearestFrameState(currentDepend);
     std::vector<GateRef> vec { currentControl, currentDepend };
     vec.insert(vec.end(), valueIn.begin(), valueIn.end());
+    vec.emplace_back(frameState);
     GateRef ret = GetCircuit()->NewGate(circuit_->TypedCreateObjWithBuffer(valueIn.size()),
         MachineType::I64, vec, GateType::AnyType());
     currentLabel->SetControl(ret);
@@ -1524,6 +1563,19 @@ GateRef CircuitBuilder::ToNumber(GateRef gate, GateRef value, GateRef glue)
     Bind(&exit);
     auto ret = *result;
     env_->SubCfgExit();
+    return ret;
+}
+
+GateRef CircuitBuilder::BuildMathBuiltinOp(const GateMetaData* op, std::vector<GateRef> args)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    GateRef ret =
+        GetCircuit()->NewGate(op, MachineType::I64,
+            ConcatParams({std::vector{ currentControl, currentDepend}, args}), GateType::AnyType());
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
     return ret;
 }
 

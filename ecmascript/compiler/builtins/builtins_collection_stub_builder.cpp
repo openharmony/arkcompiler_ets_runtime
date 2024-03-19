@@ -51,6 +51,14 @@ void BuiltinsCollectionStubBuilder<CollectionType>::Clear(Variable *result, Labe
         LinkedHashTableStubBuilder<LinkedHashSet, LinkedHashSetObject> linkedHashTableStubBuilder(this, glue_);
         res = linkedHashTableStubBuilder.Clear(linkedTable);
     }
+
+    Label exception(env);
+    Label noException(env);
+    Branch(TaggedIsException(res), &exception, &noException);
+    Bind(&noException);
+    SetLinked(res);
+    Jump(exit);
+    Bind(&exception);
     *result = res;
     Jump(exit);
 }

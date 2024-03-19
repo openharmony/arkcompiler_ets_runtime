@@ -1703,6 +1703,21 @@ public:
         return NumberOfPropsBits::Decode(bits);
     }
 
+    inline bool HasProps() const
+    {
+        return NumberOfProps() > 0;
+    }
+
+    inline bool PropsIsEmpty() const
+    {
+        return NumberOfProps() == 0;
+    }
+
+    inline uint32_t LastPropIndex() const
+    {
+        return NumberOfProps() - 1;
+    }
+
     inline int32_t GetNextInlinedPropsIndex() const
     {
         uint32_t inlinedProperties = GetInlinedProperties();

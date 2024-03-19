@@ -152,6 +152,13 @@ bool JSFunction::PrototypeSetter(JSThread *thread, const JSHandle<JSObject> &sel
     } else {
         SetFunctionPrototypeOrInstanceHClass(thread, func, value.GetTaggedValue());
     }
+    // Since dynamically setting the prototype will cause a transition,
+    // but the HClass of the AOT after the transition cannot be obtained,
+    // in order to avoid subsequent Deopt, PGO gives up collecting this type.
+    if (thread->GetEcmaVM()->IsEnablePGOProfiler()) {
+        EntityId ctorMethodId = Method::Cast(func->GetMethod())->GetMethodId();
+        thread->GetEcmaVM()->GetPGOProfiler()->InsertSkipCtorMethodId(ctorMethodId);
+    }
     return true;
 }
 
@@ -181,7 +188,7 @@ JSTaggedValue JSFunction::NameGetter(JSThread *thread, const JSHandle<JSObject> 
         JSHandle<JSTaggedValue> boundName = thread->GlobalConstants()->GetHandledBoundString();
         JSHandle<JSTaggedValue> targetName = JSObject::GetProperty(thread, target, nameKey).GetValue();
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-        
+
         JSHandle<EcmaString> handlePrefixString = JSTaggedValue::ToString(thread, boundName);
         JSHandle<EcmaString> spaceString(globalConst->GetHandledSpaceString());
         JSHandle<EcmaString> concatString = factory->ConcatFromString(handlePrefixString, spaceString);
@@ -943,7 +950,8 @@ void JSFunction::InitializeForConcurrentFunction(JSThread *thread)
     ecmascript::JSRecordInfo recordInfo;
     bool hasRecord = jsPandaFile->CheckAndGetRecordInfo(recordName, recordInfo);
     if (!hasRecord) {
-        LOG_ECMA(ERROR) << "cannot find record '" << recordName << "', please check the request path.";
+        CString msg = "Cannot find module '" + recordName + "' , which is application Entry Point";
+        LOG_ECMA(ERROR) << msg;
         return;
     }
     if (!jsPandaFile->IsModule(recordInfo)) {

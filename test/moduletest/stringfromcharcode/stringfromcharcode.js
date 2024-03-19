@@ -53,3 +53,18 @@ print(str7.codePointAt(0));
 print(str6.codePointAt(1));
 print(str6.codePointAt(12));
 print(str6.codePointAt(284));
+
+var str8 = "meiyou";
+var str9 = "haodeha";
+var str10 = "wodeyisishi";
+print(str8.concat(str9));
+print(str8.concat(str9, str10));
+print(str8.concat(str9, '  hh ', str10));
+
+var str11 = "djfaDJKLAD";
+var str12 = "djfaDJKLADf大家发";
+var str13 = "DJKLAD";
+
+print(str11.toLowerCase());
+print(str12.toLowerCase());
+print(str13.toLowerCase());

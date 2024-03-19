@@ -154,21 +154,21 @@ function foo() {
 
     a134.push(-4);
     a134[4] = 5;
-    print(a134[0]);
-    print(a134[1]);
-    print(a134[2]);
-    print(a134[3]);
-    print(a134[4]);
+    assert_equal(a134[0], -1);
+    assert_equal(a134[1], 1.2);
+    assert_equal(a134[2], 3);
+    assert_equal(a134[3], -4);
+    assert_equal(a134[4], 5);
     a134[4] = a134[2] + a134[1];
-    print(a134[4]);
+    assert_equal(a134[4], 4.2);
 
     a133.push(3.2);
     a133.push(4.8);
     a133[3] = a133[0] + a133[1];
-    print(a133[0]);
-    print(a133[1]);
-    print(a133[2]);
-    print(a133[3]);
+    assert_equal(a133[0], 3.2);
+    assert_equal(a133[1], 4.8);
+    assert_equal(a133[2], undefined);
+    assert_equal(a133[3], 8);
 }
 
 for (let i = 0; i < 4; i++) {

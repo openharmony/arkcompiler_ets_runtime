@@ -468,3 +468,10 @@ function fun1(obj, name, type) {
 let unscopables1 = Array.prototype[Symbol.unscopables];
 let unscopables2 = Array.prototype[Symbol.unscopables];
 print(unscopables1 == unscopables2)
+
+arr=[]
+let index=4294967291;
+arr[index]=0;
+arr.length=10;
+arr.fill(10);
+print(arr)

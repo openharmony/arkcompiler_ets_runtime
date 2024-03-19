@@ -318,6 +318,155 @@ void BuiltinsArrayStubBuilder::Filter(GateRef glue, GateRef thisValue, GateRef n
     }
 }
 
+void BuiltinsArrayStubBuilder::Map(GateRef glue, GateRef thisValue, GateRef numArgs,
+    Variable *result, Label *exit, Label *slowPath)
+{
+    auto env = GetEnvironment();
+    Label isHeapObject(env);
+    Label isJsArray(env);
+    Label defaultConstr(env);
+    Branch(TaggedIsHeapObject(thisValue), &isHeapObject, slowPath);
+    Bind(&isHeapObject);
+    GateRef thisValueIsJSArray = IsJsArray(thisValue);
+    GateRef protoIsJsArray = IsJsArray(StubBuilder::GetPrototype(glue, thisValue));
+    Branch(BoolAnd(thisValueIsJSArray, protoIsJsArray), &isJsArray, slowPath);
+    Bind(&isJsArray);
+    Branch(HasConstructor(thisValue), slowPath, &defaultConstr);
+    Bind(&defaultConstr);
+
+    GateRef callbackFnHandle = GetCallArg0(numArgs);
+    Label argOHeapObject(env);
+    Label callable(env);
+    Label notOverFlow(env);
+    Branch(TaggedIsHeapObject(callbackFnHandle), &argOHeapObject, slowPath);
+    Bind(&argOHeapObject);
+    Branch(IsCallable(callbackFnHandle), &callable, slowPath);
+    Bind(&callable);
+    GateRef len = ZExtInt32ToInt64(GetArrayLength(thisValue));
+    Label isEmptyArray(env);
+    Label notEmptyArray(env);
+    Branch(Int64Equal(len, Int64(0)), &isEmptyArray, &notEmptyArray);
+    Bind(&isEmptyArray);
+    {
+        NewObjectStubBuilder newBuilder(this);
+        result->WriteVariable(newBuilder.CreateEmptyArray(glue));
+        Jump(exit);
+    }
+    Bind(&notEmptyArray);
+    Branch(Int64GreaterThan(len, Int64(JSObject::MAX_GAP)), slowPath, &notOverFlow);
+    Bind(&notOverFlow);
+
+    GateRef argHandle = GetCallArg1(numArgs);
+    GateRef newArray = NewArray(glue, len);
+    GateRef lengthOffset = IntPtr(JSArray::LENGTH_OFFSET);
+    Label stableJSArray(env);
+    Label notStableJSArray(env);
+    DEFVARIABLE(i, VariableType::INT64(), Int64(0));
+    Branch(IsStableJSArray(glue, thisValue), &stableJSArray, slowPath);
+    Bind(&stableJSArray);
+    {
+        DEFVARIABLE(thisArrLenVar, VariableType::INT64(), len);
+        DEFVARIABLE(kValue, VariableType::JS_ANY(), Hole());
+        Label loopHead(env);
+        Label loopEnd(env);
+        Label next(env);
+        Label loopExit(env);
+        Jump(&loopHead);
+        LoopBegin(&loopHead);
+        {
+            Branch(Int64LessThan(*i, *thisArrLenVar), &next, &loopExit);
+            Bind(&next);
+            kValue = GetTaggedValueWithElementsKind(thisValue, *i);
+            Label kValueIsHole(env);
+            Label kValueNotHole(env);
+            Label arrayValueIsHole(env);
+            Label arrayValueNotHole(env);
+            Label hasProperty(env);
+            Branch(TaggedIsHole(*kValue), &arrayValueIsHole, &arrayValueNotHole);
+            Bind(&arrayValueIsHole);
+            {
+                GateRef hasProp = CallRuntime(glue, RTSTUB_ID(HasProperty), { thisValue, IntToTaggedInt(*i) });
+                Branch(TaggedIsTrue(hasProp), &hasProperty, &arrayValueNotHole);
+                Bind(&hasProperty);
+                Label hasException0(env);
+                Label notHasException0(env);
+                kValue = FastGetPropertyByIndex(glue, thisValue, TruncInt64ToInt32(*i), ProfileOperation());
+                Branch(HasPendingException(glue), &hasException0, &notHasException0);
+                Bind(&hasException0);
+                {
+                    result->WriteVariable(Exception());
+                    Jump(exit);
+                }
+                Bind(&notHasException0);
+                {
+                    Jump(&arrayValueNotHole);
+                }
+            }
+            Bind(&arrayValueNotHole);
+            Branch(TaggedIsHole(*kValue), &kValueIsHole, &kValueNotHole);
+            Bind(&kValueNotHole);
+            {
+                GateRef key = Int64ToTaggedInt(*i);
+                Label checkArray(env);
+                GateRef retValue = JSCallDispatch(glue, callbackFnHandle, Int32(NUM_MANDATORY_JSFUNC_ARGS), 0,
+                                                  Circuit::NullGate(), JSCallMode::CALL_THIS_ARG3_WITH_RETURN,
+                                                  { argHandle, *kValue, key, thisValue });
+                Label hasException1(env);
+                Label notHasException1(env);
+                Branch(HasPendingException(glue), &hasException1, &notHasException1);
+                Bind(&hasException1);
+                {
+                    result->WriteVariable(Exception());
+                    Jump(exit);
+                }
+                Bind(&notHasException1);
+                SetValueWithElementsKind(glue, newArray, retValue, *i, Boolean(true),
+                                         Int32(static_cast<uint32_t>(ElementsKind::NONE)));
+                Label lenChange(env);
+                GateRef tmpArrLen = ZExtInt32ToInt64(GetArrayLength(thisValue));
+                Branch(Int64LessThan(tmpArrLen, *thisArrLenVar), &lenChange, &kValueIsHole);
+                Bind(&lenChange);
+                {
+                    thisArrLenVar = tmpArrLen;
+                    Jump(&kValueIsHole);
+                }
+            }
+            Bind(&kValueIsHole);
+            i = Int64Add(*i, Int64(1));
+            Branch(IsStableJSArray(glue, thisValue), &loopEnd, &notStableJSArray);
+        }
+        Bind(&loopEnd);
+        LoopEnd(&loopHead);
+        Bind(&loopExit);
+        Jump(&notStableJSArray);
+    }
+    Bind(&notStableJSArray);
+    {
+        Label finish(env);
+        Label callRT(env);
+        GateRef newArrayEles = GetElementsArray(newArray);
+        Branch(Int32LessThan(*i, len), &callRT, &finish);
+        Bind(&callRT);
+        {
+            CallNGCRuntime(glue, RTSTUB_ID(ArrayTrim), {glue, newArrayEles, *i});
+            GateRef ret = CallRuntime(glue, RTSTUB_ID(JSArrayMapUnStable), { argHandle, thisValue,
+                IntToTaggedInt(*i), IntToTaggedInt(len), newArray, callbackFnHandle });
+            result->WriteVariable(ret);
+            Jump(exit);
+        }
+        Bind(&finish);
+        {
+            result->WriteVariable(newArray);
+            Label needTrim(env);
+            Branch(Int64LessThan(*i, len), &needTrim, exit);
+            Bind(&needTrim);
+            CallNGCRuntime(glue, RTSTUB_ID(ArrayTrim), {glue, newArrayEles, *i});
+            Store(VariableType::INT32(), glue, newArray, lengthOffset, TruncInt64ToInt32(*i));
+            Jump(exit);
+        }
+    }
+}
+
 // Note: unused arguments are reserved for further development
 void BuiltinsArrayStubBuilder::ForEach([[maybe_unused]] GateRef glue, GateRef thisValue, GateRef numArgs,
     [[maybe_unused]] Variable *result, Label *exit, Label *slowPath)

@@ -47,6 +47,7 @@ void PGOTypeInfer::RunTypeInfer(GateRef gate)
             break;
         case EcmaOpcode::STOBJBYNAME_IMM8_ID16_V8:
         case EcmaOpcode::STOBJBYNAME_IMM16_ID16_V8:
+        case EcmaOpcode::DEFINEFIELDBYNAME_IMM8_ID16_V8:
             InferStObjByName(gate, false);
             break;
         case EcmaOpcode::STTHISBYNAME_IMM8_ID16:
@@ -140,6 +141,7 @@ void PGOTypeInfer::InferLdObjByName(GateRef gate)
     GateRef receiver = acc_.GetValueIn(gate, 2); // 2: acc or this object
 
     UpdateTypeForRWOp(gate, receiver, propIndex);
+    TrySetElementsKind(gate);
 }
 
 void PGOTypeInfer::InferStObjByName(GateRef gate, bool isThis)

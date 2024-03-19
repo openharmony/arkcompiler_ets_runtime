@@ -396,7 +396,7 @@ JSTaggedValue BuiltinsString::EndsWith(EcmaRuntimeCallInfo *argv)
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     uint32_t thisLen = EcmaStringAccessor(thisHandle).GetLength();
     uint32_t searchLen = EcmaStringAccessor(searchHandle).GetLength();
-    uint32_t pos = 0;
+    int32_t pos = 0;
     JSHandle<JSTaggedValue> posTag = BuiltinsString::GetCallArg(argv, 1);
     if (posTag->IsUndefined()) {
         pos = thisLen;
@@ -406,11 +406,11 @@ JSTaggedValue BuiltinsString::EndsWith(EcmaRuntimeCallInfo *argv)
         if (posVal.GetNumber() == BuiltinsNumber::POSITIVE_INFINITY) {
             pos = thisLen;
         } else {
-            pos = static_cast<uint32_t>(posVal.ToInt32());
+            pos = posVal.ToInt32();
         }
     }
-    uint32_t end = std::min(std::max(pos, 0U), thisLen);
-    int32_t start = static_cast<int32_t>(end - searchLen);
+    pos = std::min(std::max(pos, 0), static_cast<int32_t>(thisLen));
+    int32_t start = static_cast<int32_t>(pos - searchLen);
     if (start < 0) {
         return BuiltinsString::GetTaggedBoolean(false);
     }
@@ -1778,11 +1778,10 @@ JSTaggedValue BuiltinsString::StartsWith(EcmaRuntimeCallInfo *argv)
     if (static_cast<uint32_t>(pos) + searchLen > thisLen) {
         return BuiltinsString::GetTaggedBoolean(false);
     }
-    int32_t res = EcmaStringAccessor::IndexOf(thread->GetEcmaVM(), thisHandle, searchHandle, pos);
-    if (res == pos) {
-        return BuiltinsString::GetTaggedBoolean(true);
-    }
-    return BuiltinsString::GetTaggedBoolean(false);
+
+    bool result = EcmaStringAccessor::IsSubStringAt(thread->GetEcmaVM(), thisHandle, searchHandle, pos);
+
+    return BuiltinsString::GetTaggedBoolean(result);
 }
 
 // 21.1.3.19

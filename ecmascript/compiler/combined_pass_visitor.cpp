@@ -45,6 +45,21 @@ void CombinedPassVisitor::AddPass(PassVisitor* pass)
     passList_.emplace_back(pass);
 }
 
+void CombinedPassVisitor::LogicallyReplaceGate(GateRef gate, GateRef replacement)
+{
+    auto uses = acc_.Uses(gate);
+    for (auto it = uses.begin(); it != uses.end();) {
+        if (acc_.GetMark(*it) == MarkCode::FINISHED) {
+            PushChangedGate(*it);
+        }
+        it = acc_.ReplaceIn(it, replacement);
+    }
+}
+void CombinedPassVisitor::RelaxStateAndDepend(GateRef gate)
+{
+    ReplaceGate(gate, StateDepend {acc_.GetState(gate), acc_.GetDep(gate)}, gate);
+}
+
 void CombinedPassVisitor::ReplaceGate(GateRef gate, GateRef replacement)
 {
     GateRef depend = Circuit::NullGate();
@@ -57,12 +72,12 @@ void CombinedPassVisitor::ReplaceGate(GateRef gate, GateRef replacement)
         ASSERT(acc_.GetStateCount(gate) == 1 || acc_.GetOpCode(replacement) == OpCode::DEAD);  // 1: one state
         state = acc_.GetState(gate);
     }
-    return ReplaceGate(gate, StateDepend {state, depend}, replacement);
+    ReplaceGate(gate, StateDepend {state, depend}, replacement);
+    acc_.DeleteGate(gate);
 }
 
 void CombinedPassVisitor::ReplaceGate(GateRef gate, StateDepend stateDepend, GateRef replacement)
 {
-    ASSERT(gate != replacement);
     auto state = stateDepend.State();
     auto depend = stateDepend.Depend();
     auto uses = acc_.Uses(gate);
@@ -82,7 +97,6 @@ void CombinedPassVisitor::ReplaceGate(GateRef gate, StateDepend stateDepend, Gat
             it = acc_.ReplaceIn(it, replacement);
         }
     }
-    acc_.DeleteGate(gate);
 }
 
 void CombinedPassVisitor::VisitGraph()

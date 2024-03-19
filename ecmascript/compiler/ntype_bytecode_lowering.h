@@ -57,6 +57,8 @@ private:
     void LowerLdLocalMoudleVar(GateRef gate);
     void LowerStModuleVar(GateRef gate);
     void LowerNTypedStOwnByName(GateRef gate);
+    void LowerThrowIfSuperNotCorrectCall(GateRef gate);
+    void LowerThrowIfNotObject(GateRef gate);
 
     bool IsLogEnabled() const
     {
@@ -77,6 +79,11 @@ private:
     {
         return methodName_;
     }
+
+    enum SuperCorrectCallCheck : uint8_t {
+        CALL_SUPER_BEFORE_THIS_CHECK = 0,
+        FORBIDDEN_SUPER_REBIND_THIS_CHECK,
+    };
 
     void AddProfiling(GateRef gate);
     Circuit *circuit_ {nullptr};

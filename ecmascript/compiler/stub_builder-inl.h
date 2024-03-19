@@ -462,6 +462,11 @@ inline GateRef StubBuilder::Int8And(GateRef x, GateRef y)
     return env_->GetBuilder()->Int8And(x, y);
 }
 
+inline GateRef StubBuilder::Int8Xor(GateRef x, GateRef y)
+{
+    return env_->GetBuilder()->Int8Xor(x, y);
+}
+
 inline GateRef StubBuilder::Int32And(GateRef x, GateRef y)
 {
     return env_->GetBuilder()->Int32And(x, y);
@@ -597,6 +602,11 @@ inline GateRef StubBuilder::TaggedIsObject(GateRef x)
 inline GateRef StubBuilder::TaggedIsString(GateRef obj)
 {
     return env_->GetBuilder()->TaggedIsString(obj);
+}
+
+inline GateRef StubBuilder::TaggedIsStringIterator(GateRef obj)
+{
+    return env_->GetBuilder()->TaggedIsStringIterator(obj);
 }
 
 inline GateRef StubBuilder::TaggedIsShared(GateRef obj)
@@ -854,6 +864,11 @@ inline GateRef StubBuilder::Int8Equal(GateRef x, GateRef y)
     return env_->GetBuilder()->Int8Equal(x, y);
 }
 
+inline GateRef StubBuilder::Int8GreaterThanOrEqual(GateRef x, GateRef y)
+{
+    return env_->GetBuilder()->Int8GreaterThanOrEqual(x, y);
+}
+
 inline GateRef StubBuilder::Equal(GateRef x, GateRef y)
 {
     return env_->GetBuilder()->Equal(x, y);
@@ -1060,6 +1075,11 @@ inline GateRef StubBuilder::GetLengthOfTaggedArray(GateRef array)
     return Load(VariableType::INT32(), array, IntPtr(TaggedArray::LENGTH_OFFSET));
 }
 
+inline GateRef StubBuilder::GetLengthOfJSTypedArray(GateRef array)
+{
+    return Load(VariableType::INT32(), array, IntPtr(JSTypedArray::ARRAY_LENGTH_OFFSET));
+}
+
 inline GateRef StubBuilder::GetExtractLengthOfTaggedArray(GateRef array)
 {
     return Load(VariableType::INT32(), array, IntPtr(TaggedArray::EXTRA_LENGTH_OFFSET));
@@ -1085,9 +1105,9 @@ inline void StubBuilder::StoreHClass(GateRef glue, GateRef object, GateRef hClas
     return env_->GetBuilder()->StoreHClass(glue, object, hClass);
 }
 
-inline void StubBuilder::StoreBuiltinHClass(GateRef object, GateRef hClass)
+inline void StubBuilder::StoreBuiltinHClass(GateRef glue, GateRef object, GateRef hClass)
 {
-    return env_->GetBuilder()->StoreHClassWithoutBarrier(object, hClass);
+    return env_->GetBuilder()->StoreHClassWithoutBarrier(glue, object, hClass);
 }
 
 inline void StubBuilder::StorePrototype(GateRef glue, GateRef hclass, GateRef prototype)
@@ -1643,6 +1663,15 @@ inline GateRef StubBuilder::IsStringElement(GateRef attr)
         Int32(HandlerBase::HandlerKind::STRING));
 }
 
+inline GateRef StubBuilder::IsNumber(GateRef attr)
+{
+    return Int32Equal(
+        Int32And(
+            Int32LSR(attr, Int32(HandlerBase::KindBit::START_BIT)),
+            Int32((1LLU << HandlerBase::KindBit::SIZE) - 1)),
+        Int32(HandlerBase::HandlerKind::NUMBER));
+}
+
 inline GateRef StubBuilder::IsStringLength(GateRef attr)
 {
     return Int32Equal(
@@ -1716,15 +1745,6 @@ inline GateRef StubBuilder::HandlerBaseGetRep(GateRef attr)
 {
     return Int32And(Int32LSR(attr, Int32(HandlerBase::RepresentationBit::START_BIT)),
         Int32((1LLU << HandlerBase::RepresentationBit::SIZE) - 1));
-}
-
-inline GateRef StubBuilder::IsInternalAccessor(GateRef attr)
-{
-    return Int32NotEqual(
-        Int32And(Int32LSR(attr,
-            Int32(HandlerBase::InternalAccessorBit::START_BIT)),
-            Int32((1LLU << HandlerBase::InternalAccessorBit::SIZE) - 1)),
-        Int32(0));
 }
 
 inline GateRef StubBuilder::IsInvalidPropertyBox(GateRef obj)

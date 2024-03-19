@@ -27,6 +27,7 @@
 #include "ecmascript/js_stable_array.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/base/typed_array_helper.h"
+#include "ecmascript/builtins/builtins_iterator.h"
 #include "ecmascript/builtins/builtins_string_iterator.h"
 #include "ecmascript/compiler/builtins/containers_stub_builder.h"
 #include "ecmascript/builtins/builtins_array.h"
@@ -453,6 +454,24 @@ DEF_RUNTIME_STUBS(JSArrayFilterUnStable)
 
     JSTaggedValue ret = builtins::BuiltinsArray::FilterUnStableJSArray(thread, thisArgHandle, thisObjVal, k, len,
         toIndex, newArrayHandle, callbackFnHandle);
+    return ret.GetRawData();
+}
+
+DEF_RUNTIME_STUBS(JSArrayMapUnStable)
+{
+    RUNTIME_STUBS_HEADER(JSArrayMapUnStable);
+    JSHandle<JSTaggedValue> thisArgHandle = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
+    JSHandle<JSTaggedValue> thisObjVal = GetHArg<JSTaggedValue>(argv, argc, 1);  // 1: means the one parameter
+    JSTaggedType taggedValueK = GetTArg(argv, argc, 2);  // 2: means the two parameter
+    int64_t k = JSTaggedNumber(JSTaggedValue(taggedValueK)).GetNumber();
+    JSTaggedType taggedValueLen = GetTArg(argv, argc, 3);  // 3: means the three parameter
+    int64_t len = JSTaggedNumber(JSTaggedValue(taggedValueLen)).GetNumber();
+    JSHandle<JSObject> newArrayHandle =
+        JSMutableHandle<JSObject>(thread, GetHArg<JSObject>(argv, argc, 4));  // 4: means the four parameter
+    JSHandle<JSTaggedValue> callbackFnHandle = GetHArg<JSTaggedValue>(argv, argc, 5);  // 5: means the five parameter
+
+    JSTaggedValue ret = builtins::BuiltinsArray::MapUnStableJSArray(thread, thisArgHandle, thisObjVal, k, len,
+        newArrayHandle, callbackFnHandle);
     return ret.GetRawData();
 }
 
@@ -961,6 +980,13 @@ DEF_RUNTIME_STUBS(ArrayIteratorNext)
     RUNTIME_STUBS_HEADER(ArrayIteratorNext);
     JSHandle<JSTaggedValue> thisObj = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
     return JSArrayIterator::NextInternal(thread, thisObj).GetRawData();
+}
+
+DEF_RUNTIME_STUBS(IteratorReturn)
+{
+    RUNTIME_STUBS_HEADER(IteratorReturn);
+    JSHandle<JSTaggedValue> thisObj = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
+    return builtins::BuiltinsIterator::ReturnInternal(thread, thisObj).GetRawData();
 }
 
 DEF_RUNTIME_STUBS(GetNextPropName)
@@ -2831,35 +2857,100 @@ JSTaggedType RuntimeStubs::FloatSqrt(double x)
     return JSTaggedValue(result).GetRawData();
 }
 
-JSTaggedType RuntimeStubs::FloatCos(double x)
+double RuntimeStubs::FloatAcos(double x)
 {
-    double result = std::cos(x);
-    return JSTaggedValue(result).GetRawData();
+    return std::acos(x);
 }
 
-JSTaggedType RuntimeStubs::FloatSin(double x)
+double RuntimeStubs::FloatAcosh(double x)
 {
-    double result = std::sin(x);
-    return JSTaggedValue(result).GetRawData();
+    return std::acosh(x);
 }
 
-JSTaggedType RuntimeStubs::FloatACos(double x)
+double RuntimeStubs::FloatAsin(double x)
 {
-    double result = std::acos(x);
-    return JSTaggedValue(result).GetRawData();
+    return std::asin(x);
 }
 
-JSTaggedType RuntimeStubs::FloatATan(double x)
+double RuntimeStubs::FloatAsinh(double x)
 {
-    double result = std::atan(x);
-    return JSTaggedValue(result).GetRawData();
+    return std::asinh(x);
 }
 
-JSTaggedType RuntimeStubs::FloatFloor(double x)
+double RuntimeStubs::FloatAtan(double x)
+{
+    return std::atan(x);
+}
+
+double RuntimeStubs::FloatAtan2(double y, double x)
+{
+    return std::atan2(y, x);
+}
+
+double RuntimeStubs::FloatAtanh(double x)
+{
+    return std::atanh(x);
+}
+
+double RuntimeStubs::FloatCos(double x)
+{
+    return std::cos(x);
+}
+
+double RuntimeStubs::FloatCosh(double x)
+{
+    return std::cosh(x);
+}
+
+double RuntimeStubs::FloatSin(double x)
+{
+    return std::sin(x);
+}
+
+double RuntimeStubs::FloatSinh(double x)
+{
+    return std::sinh(x);
+}
+
+double RuntimeStubs::FloatTan(double x)
+{
+    return std::tan(x);
+}
+
+double RuntimeStubs::FloatTanh(double x)
+{
+    return std::tanh(x);
+}
+
+double RuntimeStubs::FloatFloor(double x)
 {
     ASSERT(!std::isnan(x));
-    double result = std::floor(x);
-    return JSTaggedValue(result).GetRawData();
+    return std::floor(x);
+}
+
+double RuntimeStubs::FloatLog(double x)
+{
+    return std::log(x);
+}
+
+double RuntimeStubs::FloatLog2(double x)
+{
+    return std::log2(x);
+}
+
+double RuntimeStubs::FloatLog10(double x)
+{
+    return std::log10(x);
+}
+
+double RuntimeStubs::FloatLog1p(double x)
+{
+    return std::log1p(x);
+}
+
+double RuntimeStubs::FloatPow(double base, double exp)
+{
+    return std::pow(base, exp);
 }
 
 int32_t RuntimeStubs::DoubleToInt(double x, size_t bits)
@@ -3025,7 +3116,7 @@ void RuntimeStubs::SaveFrameToContext(JSThread *thread, JSHandle<GeneratorContex
     JSTaggedValue function = frameHandler.GetFunction();
     Method *method = JSFunction::Cast(function.GetTaggedObject())->GetCallTarget();
     if (method->IsAotWithCallField()) {
-        method->ClearAOTFlags();
+        method->ClearAOTStatusWhenDeopt();
     }
     context->SetMethod(thread, function);
     context->SetThis(thread, frameHandler.GetThis());

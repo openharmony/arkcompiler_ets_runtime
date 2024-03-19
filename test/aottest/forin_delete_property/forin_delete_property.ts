@@ -21,11 +21,15 @@
  */
 
 declare function print(str:any):string;
+declare function assert_equal(a: Object, b: Object):void;
 // fast path
 let fast = {"a":1}
 fast.b = "a"
+var testArrary = ["a", "b"];
+var j = 0;
 for (let i in fast) {
-    print(i)
+    assert_equal(i, testArrary[j])
+    j++
     delete fast.a
 }
 print("===============")
@@ -42,12 +46,18 @@ let own = {
 }
 own.__proto__ = parent
 
+testArrary = ["a", "b", "1"];
+j = 0;
 for (let i in own) {
     delete own.a
-    print(i)
+    assert_equal(i, testArrary[j])
+    j++
     delete parent.c
 }
 print("===============")
+testArrary = ["b", "1", "a"];
+j = 0;
 for (let i in own) {
-    print(i)
+    assert_equal(i, testArrary[j])
+    j++
 }

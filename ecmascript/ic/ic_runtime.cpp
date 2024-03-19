@@ -23,6 +23,7 @@
 #include "ecmascript/interpreter/slow_runtime_stub.h"
 #include "ecmascript/js_function.h"
 #include "ecmascript/js_hclass-inl.h"
+#include "ecmascript/js_primitive_ref.h"
 #include "ecmascript/js_proxy.h"
 #include "ecmascript/js_tagged_value-inl.h"
 #include "ecmascript/js_typed_array.h"
@@ -43,8 +44,13 @@ void ICRuntime::UpdateLoadHandler(const ObjectOperator &op, JSHandle<JSTaggedVal
         key = JSHandle<JSTaggedValue>();
     }
     JSHandle<JSTaggedValue> handlerValue;
+    ObjectFactory *factory = thread_->GetEcmaVM()->GetFactory();
+    JSHandle<JSHClass> originhclass;
     if (receiver->IsNumber()) {
-        receiver = thread_->GetEcmaVM()->GetGlobalEnv()->GetNumberFunction();
+        receiver = JSHandle<JSTaggedValue>::Cast(factory->NewJSPrimitiveRef(PrimitiveType::PRIMITIVE_NUMBER, receiver));
+    } else if (receiver->IsString()) {
+        originhclass = JSHandle<JSHClass>(thread_, receiver->GetTaggedObject()->GetClass());
+        receiver = JSHandle<JSTaggedValue>::Cast(factory->NewJSPrimitiveRef(PrimitiveType::PRIMITIVE_STRING, receiver));
     }
     JSHandle<JSHClass> hclass(GetThread(), receiver->GetTaggedObject()->GetClass());
     // When a transition occurs without the shadow property, AOT does not trigger the
@@ -70,13 +76,16 @@ void ICRuntime::UpdateLoadHandler(const ObjectOperator &op, JSHandle<JSTaggedVal
             handlerValue = LoadHandler::LoadProperty(thread_, op);
         } else {
             // do not support global prototype ic
-            if (IsGlobalLoadIC(GetICKind()) || receiver->IsString()) {
+            if (IsGlobalLoadIC(GetICKind())) {
                 return;
             }
             handlerValue = PrototypeHandler::LoadPrototype(thread_, op, hclass);
         }
     }
 
+    if (!originhclass.GetTaggedValue().IsUndefined()) {
+        hclass = originhclass;
+    }
     if (key.IsEmpty()) {
         icAccessor_.AddHandlerWithoutKey(JSHandle<JSTaggedValue>::Cast(hclass), handlerValue);
     } else if (op.IsElement()) {

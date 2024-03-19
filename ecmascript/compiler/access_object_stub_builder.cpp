@@ -576,7 +576,7 @@ GateRef AccessObjectStubBuilder::StOwnByValueWithNameSet(GateRef glue, GateRef r
             Branch(IsClassPrototype(receiver), &slowPath, &notClassPrototype);
             Bind(&notClassPrototype);
             {
-                result = SetPropertyByValue(glue, receiver, key, value, false);
+                result = SetPropertyByValue(glue, receiver, key, value, true, ProfileOperation(), true);
                 Branch(TaggedIsHole(*result), &slowPath, &notHole);
                 Bind(&notHole);
                 {
@@ -621,7 +621,7 @@ GateRef AccessObjectStubBuilder::StOwnByNameWithNameSet(GateRef glue, GateRef re
             Branch(IsClassPrototype(receiver), &notJSObject, &notClassPrototype);
             Bind(&notClassPrototype);
             {
-                result = SetPropertyByName(glue, receiver, key, value, true, True());
+                result = SetPropertyByName(glue, receiver, key, value, true, True(), ProfileOperation(), false, true);
                 Branch(TaggedIsHole(*result), &notJSObject, &notHole);
                 Bind(&notHole);
                 {

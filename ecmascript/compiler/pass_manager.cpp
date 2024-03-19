@@ -131,6 +131,7 @@ bool JitPassManager::Compile(JSHandle<JSFunction> &jsFunction, AOTFileGenerator 
         pipeline.RunPass<LaterEliminationPass>();
         pipeline.RunPass<ValueNumberingPass>();
         pipeline.RunPass<StateSplitLinearizerPass>();
+        pipeline.RunPass<EscapeAnalysisPass>();
         pipeline.RunPass<StringOptimizationPass>();
         pipeline.RunPass<NTypeHCRLoweringPass>();
         pipeline.RunPass<TypeHCRLoweringPass>();
@@ -257,7 +258,8 @@ bool PassManager::Compile(JSPandaFile *jsPandaFile, const std::string &fileName,
         }
 
         PassData data(&builder, &circuit, &ctx, log_, fullName, &methodInfo, hasTypes, recordName,
-                      methodLiteral, methodOffset, vm_->GetNativeAreaAllocator(), decoder, passOptions_);
+                      methodLiteral, methodOffset, vm_->GetNativeAreaAllocator(), decoder, passOptions_,
+                      optBCRange_);
         PassRunner<PassData> pipeline(&data);
         if (data.GetMethodLiteral()->HasDebuggerStmt()) {
             data.AbortCompilation();
@@ -296,6 +298,7 @@ bool PassManager::Compile(JSPandaFile *jsPandaFile, const std::string &fileName,
         pipeline.RunPass<LaterEliminationPass>();
         pipeline.RunPass<ValueNumberingPass>();
         pipeline.RunPass<StateSplitLinearizerPass>();
+        pipeline.RunPass<EscapeAnalysisPass>();
         pipeline.RunPass<StringOptimizationPass>();
         pipeline.RunPass<NTypeHCRLoweringPass>();
         pipeline.RunPass<TypeHCRLoweringPass>();

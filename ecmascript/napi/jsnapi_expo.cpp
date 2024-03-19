@@ -80,6 +80,7 @@
 #include "ecmascript/module/js_module_manager.h"
 #include "ecmascript/module/js_module_source_text.h"
 #include "ecmascript/module/module_path_helper.h"
+#include "ecmascript/module/napi_module_loader.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/patch/quick_fix_manager.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
@@ -794,6 +795,11 @@ bool JSValueRef::IsVector()
 bool JSValueRef::IsSharedObject()
 {
     return JSNApiHelper::ToJSTaggedValue(this).IsJSSharedObject();
+}
+
+bool JSValueRef::IsJSShared()
+{
+    return JSNApiHelper::ToJSTaggedValue(this).IsJSShared();
 }
 
 // ---------------------------------- DataView -----------------------------------
@@ -2723,6 +2729,11 @@ void JSNApi::SetSourceMapTranslateCallback(EcmaVM *vm, SourceMapTranslateCallbac
     vm->SetSourceMapTranslateCallback(callback);
 }
 
+void JSNApi::SetNativeStackCallback(EcmaVM *vm, NativeStackCallback callback)
+{
+    vm->SetNativeStackCallback(callback);
+}
+
 void JSNApi::SetSourceMapCallback(EcmaVM *vm, SourceMapCallback callback)
 {
     vm->SetSourceMapCallback(callback);
@@ -3119,7 +3130,7 @@ bool JSNApi::NotifyDebugMode([[maybe_unused]] int tid,
 
     bool ret = false;
     if (!debugApp) {
-        return false;
+        return true;
     }
     JsDebuggerManager *jsDebuggerManager = vm->GetJsDebuggerManager();
     auto handle = panda::os::library_loader::Load(std::string(option.libraryPath));
@@ -3813,20 +3824,42 @@ Local<ObjectRef> JSNApi::ExecuteNativeModule(EcmaVM *vm, const std::string &key)
 Local<ObjectRef> JSNApi::GetModuleNameSpaceFromFile(EcmaVM *vm, const std::string &file, const std::string &module_path)
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
-    // need get moduleName from stack
-    std::pair<std::string, std::string> moduleInfo = vm->GetCurrentModuleInfo(false);
     std::string recordNameStr;
+    std::string abcFilePath;
     if (module_path.size() != 0) {
         recordNameStr = module_path + PathHelper::SLASH_TAG + file;
+        ecmascript::CString moduleName = ModulePathHelper::GetModuleNameWithPath(module_path.c_str());
+        abcFilePath = ModulePathHelper::ConcatPandaFilePath(moduleName);
     } else {
+        // need get moduleName from stack
+        std::pair<std::string, std::string> moduleInfo = vm->GetCurrentModuleInfo(false);
         recordNameStr = std::string(vm->GetBundleName().c_str()) + PathHelper::SLASH_TAG +
             moduleInfo.first + PathHelper::SLASH_TAG + file;
+        abcFilePath = moduleInfo.second;
     }
     LOG_ECMA(DEBUG) << "JSNApi::LoadModuleNameSpaceFromFile: Concated recordName " << recordNameStr.c_str();
     ecmascript::ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
     JSHandle<JSTaggedValue> moduleNamespace = moduleManager->
-        GetModuleNameSpaceFromFile(thread, recordNameStr, moduleInfo.second);
+        GetModuleNameSpaceFromFile(thread, recordNameStr, abcFilePath);
     return JSNApiHelper::ToLocal<ObjectRef>(moduleNamespace);
+}
+
+Local<ObjectRef> JSNApi::GetModuleNameSpaceWithModuleInfo(EcmaVM *vm, const std::string &file,
+                                                          const std::string &module_path)
+{
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
+    ecmascript::CString moduleStr = ModulePathHelper::GetModuleNameWithPath(module_path.c_str());
+    ecmascript::CString srcPrefix = moduleStr + ModulePathHelper::PHYCICAL_FILE_PATH;
+    std::string prefix = ConvertToStdString(srcPrefix);
+    if (file.find(srcPrefix) == 0)  {
+        std::string fileName = file.substr(prefix.size() + 1);
+        return GetModuleNameSpaceFromFile(vm, fileName, module_path);
+    }
+    ecmascript::CString requestPath = file.c_str();
+    ecmascript::CString modulePath = module_path.c_str();
+    JSHandle<JSTaggedValue> nameSp = ecmascript::NapiModuleLoader::LoadModuleNameSpaceWithModuleInfo(vm,
+        requestPath, modulePath);
+    return JSNApiHelper::ToLocal<ObjectRef>(nameSp);
 }
 
  // Initialize IcuData Path

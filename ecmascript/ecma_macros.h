@@ -369,6 +369,20 @@
     } while (false)
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
+#define THROW_MODULE_NOT_FOUND_ERROR_WITH_RETURN_VALUE(thread, requestStr, currentRecord, value)             \
+    do {                                                                                                     \
+        if ((thread)->HasPendingException()) {                                                               \
+            return (value);                                                                                  \
+        }                                                                                                    \
+        ObjectFactory *_factory = (thread)->GetEcmaVM()->GetFactory();                                       \
+        CString normalizeStr = ModulePathHelper::ReformatPath(currentRecord);                                \
+        CString msg =  "Cannot find module '" + requestStr + "' imported from '" + normalizeStr + "'.";      \
+        JSHandle<JSObject> _error = _factory->GetJSError(ErrorType::REFERENCE_ERROR, msg.c_str());           \
+        (thread)->SetException(_error.GetTaggedValue());                                                     \
+        return (value);                                                                                      \
+    } while (false)
+
+// NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define THROW_TYPE_ERROR_AND_RETURN(thread, message, value)                                      \
     THROW_NEW_ERROR_WITH_MSG_AND_RETURN_VALUE(thread, ErrorType::TYPE_ERROR, message, value)
 

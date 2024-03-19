@@ -99,6 +99,9 @@ void ObjectOperator::UpdateHolder()
         JSHandle<JSTaggedValue> undefined = thread_->GlobalConstants()->GetHandledUndefined();
         holder_.Update(JSPrimitiveRef::StringCreate(thread_, holder_, undefined).GetTaggedValue());
     } else {
+        if (holder_->IsString() || holder_->IsNumber()) {
+            SetIsOnPrototype(true);
+        }
         holder_.Update(JSTaggedValue::ToPrototypeOrObj(thread_, holder_).GetTaggedValue());
     }
 }
@@ -834,6 +837,10 @@ bool ObjectOperator::WriteDataProperty(const JSHandle<JSObject> &receiver, const
         bool success = UpdateValueAndDetails(receiver, value, attr, attrChanged);
         if (success) {
             JSHandle<JSObject> obj(receiver);
+            if (obj->GetJSHClass()->IsPrototype()) {
+                JSHandle<ProtoChangeMarker> markerHandle = thread_->GetEcmaVM()->GetFactory()->NewProtoChangeMarker();
+                obj->GetJSHClass()->SetProtoChangeMarker(thread_, markerHandle.GetTaggedValue());
+            }
             JSHClass::NotifyAccessorChanged(thread_, JSHandle<JSHClass>(thread_, obj->GetJSHClass()));
         }
         return success;

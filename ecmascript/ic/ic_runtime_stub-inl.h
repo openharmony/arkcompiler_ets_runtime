@@ -119,12 +119,12 @@ ARK_INLINE JSTaggedValue ICRuntimeStub::TryLoadICByValue(JSThread *thread, JSTag
     if (receiver.IsHeapObject()) {
         auto hclass = receiver.GetTaggedObject()->GetClass();
         if (firstValue.GetWeakReferentUnChecked() == hclass) {
-            if (HandlerBase::IsNormalElement(secondValue.GetInt())) {
+            if (HandlerBase::IsNormalElement(secondValue.GetNumber())) {
                 return LoadElement(JSObject::Cast(receiver.GetTaggedObject()), key);
-            } else if (HandlerBase::IsTypedArrayElement(secondValue.GetInt())) {
+            } else if (HandlerBase::IsTypedArrayElement(secondValue.GetNumber())) {
                 return LoadTypedArrayElement(thread, receiver, key);
             }
-            ASSERT(HandlerBase::IsStringElement(secondValue.GetInt()));
+            ASSERT(HandlerBase::IsStringElement(secondValue.GetNumber()));
             return LoadStringElement(thread, receiver, key);
         }
         // check ploy
@@ -236,7 +236,7 @@ ARK_INLINE JSTaggedValue ICRuntimeStub::StoreICWithHandler(JSThread *thread, JST
             return StoreICWithHandler(thread, receiver, holder, value,
                                       JSTaggedValue(static_cast<int32_t>(handlerInfo)));
         }
-        ASSERT(HandlerBase::IsAccessor(handlerInfo) || HandlerBase::IsInternalAccessor(handlerInfo));
+        ASSERT(HandlerBase::IsAccessor(handlerInfo));
         auto accessor = LoadFromField(JSObject::Cast(holder.GetTaggedObject()), handlerInfo);
         return FastRuntimeStub::CallSetter(thread, JSTaggedValue(receiver), value, accessor);
     }
@@ -298,7 +298,7 @@ JSTaggedValue ICRuntimeStub::StoreWithTS(JSThread *thread, JSTaggedValue receive
         StoreField(thread, JSObject::Cast(receiver.GetTaggedObject()), value, handlerInfoInt);
         return JSTaggedValue::Undefined();
     }
-    ASSERT(HandlerBase::IsAccessor(handlerInfoInt) || HandlerBase::IsInternalAccessor(handlerInfoInt));
+    ASSERT(HandlerBase::IsAccessor(handlerInfoInt));
     auto accessor = LoadFromField(JSObject::Cast(holder.GetTaggedObject()), handlerInfoInt);
     return FastRuntimeStub::CallSetter(thread, JSTaggedValue(receiver), value, accessor);
 }
@@ -442,17 +442,10 @@ ARK_INLINE JSTaggedValue ICRuntimeStub::LoadICWithHandler(JSThread *thread, JSTa
     INTERPRETER_TRACE(thread, LoadICWithHandler);
     if (LIKELY(handler.IsInt())) {
         auto handlerInfo = static_cast<uint32_t>(handler.GetInt());
-        JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
         if (LIKELY(HandlerBase::IsField(handlerInfo))) {
-            if (!receiver.IsNumber()) {
-                return LoadFromField(JSObject::Cast(holder.GetTaggedObject()), handlerInfo);
-            }
-            ASSERT(receiver.IsNumber());
-            holder = env->GetNumberFunction().GetObject<JSFunction>()->GetFunctionPrototype();
             return LoadFromField(JSObject::Cast(holder.GetTaggedObject()), handlerInfo);
         }
-        if (LIKELY(HandlerBase::IsString(handlerInfo))) {
-            holder = env->GetStringFunction().GetObject<JSFunction>()->GetFunctionPrototype();
+        if (HandlerBase::IsString(handlerInfo) || HandlerBase::IsNumber(handlerInfo)) {
             return LoadFromField(JSObject::Cast(holder.GetTaggedObject()), handlerInfo);
         }
         if (HandlerBase::IsNonExist(handlerInfo)) {
@@ -461,12 +454,7 @@ ARK_INLINE JSTaggedValue ICRuntimeStub::LoadICWithHandler(JSThread *thread, JSTa
         if (HandlerBase::IsStringLength(handlerInfo)) {
             return JSTaggedNumber((EcmaStringAccessor(EcmaString::Cast(holder)).GetLength()));
         }
-        ASSERT(HandlerBase::IsAccessor(handlerInfo) || HandlerBase::IsInternalAccessor(handlerInfo));
-        if (holder.IsString()) {
-            holder = env->GetStringFunction().GetObject<JSFunction>()->GetFunctionPrototype();
-        } else if (holder.IsNumber()) {
-            holder = env->GetNumberFunction().GetObject<JSFunction>()->GetFunctionPrototype();
-        }
+        ASSERT(HandlerBase::IsAccessor(handlerInfo));
         auto accessor = LoadFromField(JSObject::Cast(holder.GetTaggedObject()), handlerInfo);
         return FastRuntimeStub::CallGetter(thread, receiver, holder, accessor);
     }
@@ -560,6 +548,7 @@ JSTaggedValue ICRuntimeStub::StoreElement(JSThread *thread, JSObject *receiver, 
         auto handlerInfo = static_cast<uint32_t>(handler.GetInt());
         [[maybe_unused]] EcmaHandleScope handleScope(thread);
         JSHandle<JSObject> receiverHandle(thread, receiver);
+        JSHandle<JSTaggedValue> valueHandle(thread, value);
         if (HandlerBase::IsTypedArrayElement(handlerInfo)) {
             return StoreTypedArrayElement(thread, JSTaggedValue::Cast(receiver), key, value);
         } else if (HandlerBase::IsJSArray(handlerInfo)) {
@@ -580,13 +569,12 @@ JSTaggedValue ICRuntimeStub::StoreElement(JSThread *thread, JSObject *receiver, 
             if (JSObject::ShouldTransToDict(capacity, elementIndex)) {
                 return JSTaggedValue::Hole();
             }
-            JSHandle<JSTaggedValue> valueHandle(thread, value);
             elements = *JSObject::GrowElementsCapacity(thread, receiverHandle, elementIndex + 1);
             receiverHandle->SetElements(thread, JSTaggedValue(elements));
             elements->Set(thread, elementIndex, valueHandle);
             return JSTaggedValue::Undefined();
         }
-        elements->Set(thread, elementIndex, value);
+        elements->Set(thread, elementIndex, valueHandle);
     } else {
         ASSERT(handler.IsPrototypeHandler());
         PrototypeHandler *prototypeHandler = PrototypeHandler::Cast(handler.GetTaggedObject());

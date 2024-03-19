@@ -73,6 +73,13 @@ void NTypeBytecodeLowering::Lower(GateRef gate)
         case EcmaOpcode::THROW_UNDEFINEDIFHOLEWITHNAME_PREF_ID16:
             LowerThrowUndefinedIfHoleWithName(gate);
             break;
+        case EcmaOpcode::THROW_IFSUPERNOTCORRECTCALL_PREF_IMM8:
+        case EcmaOpcode::THROW_IFSUPERNOTCORRECTCALL_PREF_IMM16:
+            LowerThrowIfSuperNotCorrectCall(gate);
+            break;
+        case EcmaOpcode::THROW_IFNOTOBJECT_PREF_V8:
+            LowerThrowIfNotObject(gate);
+            break;
         case EcmaOpcode::LDLEXVAR_IMM4_IMM4:
         case EcmaOpcode::LDLEXVAR_IMM8_IMM8:
         case EcmaOpcode::WIDE_LDLEXVAR_PREF_IMM16_IMM16:
@@ -105,6 +112,30 @@ void NTypeBytecodeLowering::LowerThrowUndefinedIfHoleWithName(GateRef gate)
     AddProfiling(gate);
     GateRef value = acc_.GetValueIn(gate, 1); // 1: the second parameter
     builder_.LexVarIsHoleCheck(value);
+    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), Circuit::NullGate());
+}
+
+void NTypeBytecodeLowering::LowerThrowIfSuperNotCorrectCall(GateRef gate)
+{
+    AddProfiling(gate);
+    GateRef index = acc_.GetValueIn(gate, 0);
+    GateRef value = acc_.GetValueIn(gate, 1);
+    uint32_t indexValue = static_cast<uint32_t>(acc_.GetConstantValue(index));
+    if (indexValue == CALL_SUPER_BEFORE_THIS_CHECK) {
+        builder_.IsUndefinedOrHoleCheck(value);
+    } else if (indexValue == FORBIDDEN_SUPER_REBIND_THIS_CHECK) {
+        builder_.IsNotUndefinedOrHoleCheck(value);
+    } else {
+        UNREACHABLE();
+    }
+    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), builder_.TaggedTrue());
+}
+
+void NTypeBytecodeLowering::LowerThrowIfNotObject(GateRef gate)
+{
+    AddProfiling(gate);
+    GateRef value = acc_.GetValueIn(gate, 0); // 0: the first parameter
+    builder_.EcmaObjectCheck(value);
     acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), Circuit::NullGate());
 }
 
@@ -314,7 +345,7 @@ void NTypeBytecodeLowering::LowerNTypedStOwnByName(GateRef gate)
         return;
     }
 
-    GateRef hclassGate = acc_.GetValueIn(receiver, 3); // 3: hclass offset
+    GateRef hclassGate = acc_.GetValueIn(receiver, 2); // 2: hclass offset
     JSTaggedValue taggedHClass(acc_.GetConstantValue(hclassGate));
     GateRef stringId = acc_.GetValueIn(gate, 0);
     JSTaggedValue key = TypeInfoAccessor::GetStringFromConstantPool(thread_, acc_.TryGetMethodOffset(gate),

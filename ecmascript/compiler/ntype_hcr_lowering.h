@@ -48,15 +48,14 @@ private:
     void LowerCreateArray(GateRef gate, GateRef glue);
     void LowerCreateArrayWithBuffer(GateRef gate, GateRef glue);
     void LowerCreateArguments(GateRef gate, GateRef glue);
-    void LowerCreateEmptyArray(GateRef gate);
+    void LowerCreateEmptyArray(GateRef gate, GateRef glue);
     void LowerCreateArrayWithOwn(GateRef gate, GateRef glue);
     void LowerStoreModuleVar(GateRef gate, GateRef glue);
     void LowerLdLocalModuleVar(GateRef gate);
 
-    GateRef LoadFromConstPool(GateRef jsFunc, size_t index, size_t valVecType);
-    GateRef NewJSArrayLiteral(GateRef gate, GateRef elements, GateRef length, uint32_t hintLength = 0);
-    GateRef NewTaggedArray(size_t length);
-    GateRef NewTaggedArray(GateRef length);
+    GateRef LoadFromConstPool(GateRef constPool, size_t index, size_t valVecType);
+    GateRef NewJSArrayLiteral(GateRef glue, GateRef gate, GateRef elements, GateRef length, uint32_t hintLength = 0);
+    GateRef NewTaggedArray(size_t length, GateRef glue);
     GateRef CreateElementsWithLength(GateRef gate, GateRef glue, size_t arrayLength);
     GateRef LowerCallRuntime(GateRef glue, GateRef hirGate, int index, const std::vector<GateRef> &args,
                              bool useLabel = false);

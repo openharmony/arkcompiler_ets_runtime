@@ -304,13 +304,10 @@ void Builtins::InitializeSFunciton(const JSHandle<GlobalEnv> &env,
     JSHandle<JSObject> sFuncPrototypeObj(sFuncPrototype);
     SharedStrictModeForbiddenAccessCallerArguments(env, sFuncPrototypeObj);
     // Function.prototype method
-    // 19.2.3.1 Function.prototype.apply ( thisArg, argArray )
-    SetSFunction(env, sFuncPrototypeObj, "apply", Function::FunctionPrototypeApply, FunctionLength::TWO,
-        BUILTINS_STUB_ID(FunctionPrototypeApply));
-    // 19.2.3.2 Function.prototype.bind ( thisArg , ...args)
-    SetSFunction(env, sFuncPrototypeObj, "bind", Function::FunctionPrototypeBind, FunctionLength::ONE);
-    // 19.2.3.3 Function.prototype.call (thisArg , ...args)
-    SetSFunction(env, sFuncPrototypeObj, "call", Function::FunctionPrototypeCall, FunctionLength::ONE);
+    for (const base::BuiltinFunctionEntry &entry: Function::GetFunctionPrototypeFunctions()) {
+        SetSFunction(env, sFuncPrototypeObj, entry.GetName(), entry.GetEntrypoint(),
+                     entry.GetLength(), entry.GetBuiltinStubId());
+    }
     // 19.2.3.5 Function.prototype.toString ( )
     SetSFunction(env, sFuncPrototypeObj, thread_->GlobalConstants()->GetHandledToStringString(),
         Function::FunctionPrototypeToString, FunctionLength::ZERO);
@@ -389,6 +386,8 @@ void Builtins::Initialize(const JSHandle<GlobalEnv> &env, JSThread *thread, bool
     // initialize object method.
     env->SetObjectFunction(thread_, objectFunction);
     env->SetObjectFunctionPrototype(thread_, objFuncPrototype);
+    thread_->SetInitialBuiltinHClass(
+        BuiltinTypeId::OBJECT, objectFunction->GetJSHClass(), *objFuncClass, objFuncPrototype->GetJSHClass());
 
     JSHandle<JSHClass> functionClass = factory_->CreateFunctionClass(FunctionKind::BASE_CONSTRUCTOR, JSFunction::SIZE,
                                                                      JSType::JS_FUNCTION, env->GetFunctionPrototype());
@@ -653,13 +652,10 @@ void Builtins::InitializeFunction(const JSHandle<GlobalEnv> &env, const JSHandle
     StrictModeForbiddenAccessCallerArguments(env, funcFuncPrototypeObj);
 
     // Function.prototype method
-    // 19.2.3.1 Function.prototype.apply ( thisArg, argArray )
-    SetFunction(env, funcFuncPrototypeObj, "apply", Function::FunctionPrototypeApply, FunctionLength::TWO,
-        BUILTINS_STUB_ID(FunctionPrototypeApply));
-    // 19.2.3.2 Function.prototype.bind ( thisArg , ...args)
-    SetFunction(env, funcFuncPrototypeObj, "bind", Function::FunctionPrototypeBind, FunctionLength::ONE);
-    // 19.2.3.3 Function.prototype.call (thisArg , ...args)
-    SetFunction(env, funcFuncPrototypeObj, "call", Function::FunctionPrototypeCall, FunctionLength::ONE);
+    for (const base::BuiltinFunctionEntry &entry: Function::GetFunctionPrototypeFunctions()) {
+        SetFunction(env, funcFuncPrototypeObj, entry.GetName(), entry.GetEntrypoint(),
+                    entry.GetLength(), entry.GetBuiltinStubId());
+    }
     // 19.2.3.5 Function.prototype.toString ( )
     SetFunction(env, funcFuncPrototypeObj, thread_->GlobalConstants()->GetHandledToStringString(),
                 Function::FunctionPrototypeToString, FunctionLength::ZERO);
@@ -1004,6 +1000,7 @@ void Builtins::InitializeDate(const JSHandle<GlobalEnv> &env, JSHandle<JSTaggedV
     env->SetDatePrototype(thread_, dateFuncPrototype);
     thread_->SetInitialBuiltinHClass(BuiltinTypeId::DATE,
         dateFunction->GetJSHClass(),
+        *dateFuncInstanceHClass,
         dateFuncPrototype->GetJSHClass());
 }
 
@@ -1368,7 +1365,8 @@ void Builtins::InitializeSet(const JSHandle<GlobalEnv> &env, JSHandle<JSTaggedVa
         factory_->NewEcmaHClass(JSSet::SIZE, JSType::JS_SET, setFuncPrototypeValue);
     // Set() = new Function()
     JSHandle<JSTaggedValue> setFunction(
-        NewBuiltinConstructor(env, setFuncPrototype, BuiltinsSet::SetConstructor, "Set", FunctionLength::ZERO));
+        NewBuiltinConstructor(env, setFuncPrototype, BuiltinsSet::SetConstructor, "Set", FunctionLength::ZERO,
+                              BUILTINS_STUB_ID(SetConstructor)));
     JSFunction::SetFunctionPrototypeOrInstanceHClass(thread_,
                                                      JSHandle<JSFunction>(setFunction),
                                                      setFuncInstanceHClass.GetTaggedValue());
@@ -1414,6 +1412,7 @@ void Builtins::InitializeSet(const JSHandle<GlobalEnv> &env, JSHandle<JSTaggedVa
     env->SetSetProtoValuesFunction(thread_, valuesFunc);
     thread_->SetInitialBuiltinHClass(BuiltinTypeId::SET,
         setFunction->GetTaggedObject()->GetClass(),
+        *setFuncInstanceHClass,
         setFuncPrototype->GetJSHClass());
 }
 
@@ -1443,7 +1442,8 @@ void Builtins::InitializeMap(const JSHandle<GlobalEnv> &env, JSHandle<JSTaggedVa
         factory_->NewEcmaHClass(JSMap::SIZE, JSType::JS_MAP, mapFuncPrototypeValue);
     // Map() = new Function()
     JSHandle<JSTaggedValue> mapFunction(
-        NewBuiltinConstructor(env, mapFuncPrototype, BuiltinsMap::MapConstructor, "Map", FunctionLength::ZERO));
+        NewBuiltinConstructor(env, mapFuncPrototype, BuiltinsMap::MapConstructor, "Map", FunctionLength::ZERO,
+                              BUILTINS_STUB_ID(MapConstructor)));
     // Map().prototype = Map.Prototype & Map.prototype.constructor = Map()
     JSFunction::SetFunctionPrototypeOrInstanceHClass(thread_,
                                                      JSHandle<JSFunction>(mapFunction),
@@ -1486,6 +1486,7 @@ void Builtins::InitializeMap(const JSHandle<GlobalEnv> &env, JSHandle<JSTaggedVa
     env->SetMapProtoEntriesFunction(thread_, entriesFunc);
     thread_->SetInitialBuiltinHClass(BuiltinTypeId::MAP,
         mapFunction->GetTaggedObject()->GetClass(),
+        *mapFuncInstanceHClass,
         mapFuncPrototype->GetJSHClass());
 }
 
@@ -1766,7 +1767,8 @@ void Builtins::InitializeString(const JSHandle<GlobalEnv> &env, JSHandle<JSTagge
                     entry.GetLength(), entry.GetBuiltinStubId());
     }
     JSHandle<JSTaggedValue> stringIter = SetAndReturnFunctionAtSymbol(env, stringFuncPrototype,
-        env->GetIteratorSymbol(), "[Symbol.iterator]", BuiltinsString::GetStringIterator, FunctionLength::ZERO);
+        env->GetIteratorSymbol(), "[Symbol.iterator]", BuiltinsString::GetStringIterator, FunctionLength::ZERO,
+        BUILTINS_STUB_ID(GetStringIterator));
 
     // String method
     for (const base::BuiltinFunctionEntry &entry: BuiltinsString::GetStringFunctions()) {
@@ -1782,9 +1784,7 @@ void Builtins::InitializeString(const JSHandle<GlobalEnv> &env, JSHandle<JSTagge
     env->SetStringFunction(thread_, stringFunction);
     env->SetStringPrototype(thread_, stringFuncPrototype);
     env->SetStringProtoIterFunction(thread_, stringIter);
-    thread_->SetInitialBuiltinHClass(BuiltinTypeId::STRING,
-        stringFunction->GetJSHClass(),
-        stringFuncPrototype->GetJSHClass());
+    thread_->SetInitialBuiltinHClass(BuiltinTypeId::STRING, nullptr, nullptr, stringFuncPrototype->GetJSHClass());
 }
 
 void Builtins::InitializeStringIterator(const JSHandle<GlobalEnv> &env,
@@ -1807,6 +1807,7 @@ void Builtins::InitializeStringIterator(const JSHandle<GlobalEnv> &env,
     SetStringTagSymbol(env, strIterPrototype, "String Iterator");
 
     env->SetStringIterator(thread_, strIterFunction);
+    env->SetStringIteratorClass(thread_, strIterFuncInstanceHClass);
     env->SetStringIteratorPrototype(thread_, strIterPrototype);
 }
 
@@ -1845,7 +1846,8 @@ void Builtins::InitializeIterator(const JSHandle<GlobalEnv> &env, const JSHandle
     // Iterator.prototype.next()
     SetFunction(env, iteratorPrototype, "next", BuiltinsIterator::Next, FunctionLength::ONE);
     // Iterator.prototype.return()
-    SetFunction(env, iteratorPrototype, "return", BuiltinsIterator::Return, FunctionLength::ONE);
+    SetFunction(env, iteratorPrototype, "return", BuiltinsIterator::Return, FunctionLength::ONE,
+        BUILTINS_STUB_ID(ITERATOR_PROTO_RETURN));
     // Iterator.prototype.throw()
     SetFunction(env, iteratorPrototype, "throw", BuiltinsIterator::Throw, FunctionLength::ONE);
     // %IteratorPrototype% [ @@iterator ]
@@ -2175,8 +2177,8 @@ void Builtins::InitializeArray(const JSHandle<GlobalEnv> &env, const JSHandle<JS
     env->SetArrayFunction(thread_, arrayFunction);
     env->SetArrayPrototype(thread_, arrFuncPrototype);
 
-    thread_->SetInitialBuiltinHClass(
-        BuiltinTypeId::ARRAY, arrayFunction->GetJSHClass(), arrFuncPrototype->GetJSHClass());
+    thread_->SetInitialBuiltinHClass(BuiltinTypeId::ARRAY, arrayFunction->GetJSHClass(),
+        *arrFuncInstanceHClass, arrFuncPrototype->GetJSHClass());
 }
 
 void Builtins::InitializeTypedArray(const JSHandle<GlobalEnv> &env, JSHandle<JSTaggedValue> objFuncPrototypeVal) const
@@ -2254,6 +2256,7 @@ void Builtins::InitializeTypedArray(const JSHandle<GlobalEnv> &env, JSHandle<JST
     env->SetTypedArrayProtoValuesFunction(thread_, valuesFunc);
     thread_->SetInitialBuiltinHClass(BuiltinTypeId::TYPED_ARRAY,
         typedArrayFunction->GetJSHClass(),
+        *typedArrFuncInstanceHClass,
         typedArrFuncPrototype->GetJSHClass());
 
     JSHandle<JSHClass> specificTypedArrayFuncClass =
@@ -2314,6 +2317,7 @@ void Builtins::Initialize##Type(const JSHandle<GlobalEnv> &env, const JSHandle<J
     /* Initializes HClass record of %TypedArray% */                                                             \
     thread_->SetInitialBuiltinHClass(BuiltinTypeId::TYPE,                                                       \
         arrayFunction->GetJSHClass(),                                                                           \
+        *arrFuncInstanceHClass,                                                                                 \
         arrFuncPrototype->GetJSHClass());                                                                       \
 }
 
@@ -2636,6 +2640,7 @@ void Builtins::InitializeDataView(const JSHandle<GlobalEnv> &env, JSHandle<JSTag
     env->SetDataViewPrototype(thread_, dataViewFuncPrototype.GetTaggedValue());
     thread_->SetInitialBuiltinHClass(BuiltinTypeId::DATA_VIEW,
         dataViewFunction->GetJSHClass(),
+        *dataViewFuncInstanceHClass,
         dataViewFuncPrototype->GetJSHClass());
 }
 
@@ -2773,9 +2778,11 @@ JSHandle<JSTaggedValue> Builtins::SetAndReturnFunctionAtSymbol(const JSHandle<Gl
                                                                const JSHandle<JSTaggedValue> &symbol,
                                                                std::string_view name,
                                                                EcmaEntrypoint func,
-                                                               int length) const
+                                                               int length,
+                                                               kungfu::BuiltinsStubCSigns::ID builtinId) const
 {
-    JSHandle<JSFunction> function = factory_->NewJSFunction(env, reinterpret_cast<void *>(func));
+    JSHandle<JSFunction> function = factory_->NewJSFunction(env, reinterpret_cast<void *>(func),
+        FunctionKind::NORMAL_FUNCTION, builtinId);
     JSFunction::SetFunctionLength(thread_, function, JSTaggedValue(length));
     JSHandle<JSTaggedValue> nameString(factory_->NewFromUtf8(name));
     JSHandle<JSFunctionBase> baseFunction(function);

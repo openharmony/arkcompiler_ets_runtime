@@ -68,6 +68,11 @@ GateRef CircuitBuilder::Selector(OpCode opcode, GateRef control,
     return Selector(opcode, machineType, control, values, valueCounts, type);
 }
 
+GateRef CircuitBuilder::Nop()
+{
+    return circuit_->NewGate(circuit_->Nop(), {});
+}
+
 GateRef CircuitBuilder::UndefineConstant()
 {
     auto type = GateType::TaggedValue();
@@ -199,6 +204,11 @@ GateRef CircuitBuilder::GetLengthOfTaggedArray(GateRef array)
     return Load(VariableType::INT32(), array, IntPtr(TaggedArray::LENGTH_OFFSET));
 }
 
+GateRef CircuitBuilder::GetLengthOfJSTypedArray(GateRef array)
+{
+    return Load(VariableType::INT32(), array, IntPtr(JSTypedArray::ARRAY_LENGTH_OFFSET));
+}
+
 void CircuitBuilder::Jump(Label *label)
 {
     ASSERT(label);
@@ -309,7 +319,7 @@ GateRef CircuitBuilder::DeoptCheck(GateRef condition, GateRef frameState, DeoptT
     auto currentDepend = currentLabel->GetDepend();
     ASSERT(acc_.GetOpCode(frameState) == OpCode::FRAME_STATE);
     GateRef ret = GetCircuit()->NewGate(circuit_->DeoptCheck(),
-        MachineType::I1, { currentControl, condition,
+        MachineType::I1, { currentControl, currentDepend, condition,
         frameState, Int64(static_cast<int64_t>(type))}, GateType::NJSValue(), comment.c_str());
     auto dependRelay = DependRelay(ret, currentDepend);
     currentLabel->SetControl(ret);
@@ -410,9 +420,8 @@ GateRef CircuitBuilder::NanValue()
     return Double(std::numeric_limits<double>::quiet_NaN());
 }
 
-GateRef CircuitBuilder::LoadObjectFromConstPool(GateRef jsFunc, GateRef index)
+GateRef CircuitBuilder::LoadObjectFromConstPool(GateRef constPool, GateRef index)
 {
-    GateRef constPool = GetConstPoolFromFunction(jsFunc);
     return GetValueFromTaggedArray(constPool, TruncInt64ToInt32(index));
 }
 
@@ -430,25 +439,6 @@ void CircuitBuilder::AppendFrameArgs(std::vector<GateRef> &args, GateRef hirGate
     } else {
         args.emplace_back(frameArgs);
     }
-}
-
-GateRef CircuitBuilder::GetConstPool(GateRef jsFunc)
-{
-    auto currentLabel = env_->GetCurrentLabel();
-    auto currentDepend = currentLabel->GetDepend();
-    // In an inline accessor scenario, if the accessor function and the caller function have the same constpool, then
-    // the caller function is used to load accessor, which avoids the dependency on the accessor.
-    if (acc_.GetOpCode(jsFunc) == OpCode::LOAD_GETTER || acc_.GetOpCode(jsFunc) == OpCode::LOAD_SETTER) {
-        GateRef frameState = acc_.GetFrameState(jsFunc);
-        if (acc_.GetOpCode(frameState) != OpCode::FRAME_STATE) {
-            jsFunc = frameState;
-        }
-    }
-    auto newGate = GetCircuit()->NewGate(circuit_->GetConstPool(), MachineType::I64,
-                                         { currentDepend, jsFunc },
-                                         GateType::AnyType());
-    currentLabel->SetDepend(newGate);
-    return newGate;
 }
 
 GateRef CircuitBuilder::GetGlobalEnv()
@@ -548,14 +538,6 @@ GateRef CircuitBuilder::GetConstPoolFromFunction(GateRef jsFunc)
 {
     GateRef method = GetMethodFromFunction(jsFunc);
     return Load(VariableType::JS_ANY(), method, IntPtr(Method::CONSTANT_POOL_OFFSET));
-}
-
-GateRef CircuitBuilder::GetObjectFromConstPool(GateRef glue, GateRef hirGate, GateRef jsFunc, GateRef index,
-                                               ConstPoolType type)
-{
-    GateRef constPool = GetConstPoolFromFunction(jsFunc);
-    GateRef module = GetModuleFromFunction(jsFunc);
-    return GetObjectFromConstPool(glue, hirGate, constPool, module, index, type);
 }
 
 GateRef CircuitBuilder::GetEmptyArray(GateRef glue)
@@ -833,8 +815,7 @@ GateRef CircuitBuilder::GetCodeAddr(GateRef method)
 GateRef CircuitBuilder::GetHClassGateFromIndex(GateRef gate, int32_t index)
 {
     ArgumentAccessor argAcc(circuit_);
-    GateRef jsFunc = argAcc.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
-    GateRef constPool = GetConstPool(jsFunc);
+    GateRef constPool = argAcc.GetFrameArgsIn(gate, FrameArgIdx::CONST_POOL);
     return LoadHClassFromConstpool(constPool, index);
 }
 

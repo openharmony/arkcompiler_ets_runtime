@@ -157,11 +157,21 @@ void Gate::CheckValueInput(bool isArch64) const
                 CheckInputMachineType(idx, MachineType::ARCH, isArch64);
                 break;
             case OpCode::STORE:
-                if (idx == valueStart + 1) { // 1: idx 1
+                if ((idx == valueStart + 1) || (idx == valueStart + 2)) { // 1:base, 2:offset
                     CheckInputMachineType(idx, MachineType::ARCH, isArch64);
                 }
                 break;
-            case OpCode::HEAP_ALLOC:
+            case OpCode::STORE_WITHOUT_BARRIER:
+                if (idx == valueStart) {
+                    CheckInputMachineType(idx, MachineType::ARCH, isArch64);
+                }
+                break;
+            case OpCode::HEAP_ALLOC: {
+                if (idx == valueStart + 1) { // 1: size offset
+                    CheckInputMachineType(idx, MachineType::I64, isArch64);
+                }
+                break;
+            }
             case OpCode::TAGGED_TO_INT64:
             case OpCode::INT64_TO_TAGGED:
                 ASSERT(idx == valueStart);

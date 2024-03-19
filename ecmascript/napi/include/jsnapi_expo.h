@@ -96,6 +96,7 @@ using JSTaggedType = uint64_t;
 using ConcurrentCallback = void (*)(Local<JSValueRef> result, bool success, void *taskInfo, void *data);
 using SourceMapCallback = std::function<std::string(const std::string& rawStack)>;
 using SourceMapTranslateCallback = std::function<bool(std::string& url, int& line, int& column)>;
+using NativeStackCallback = std::function<std::string()>;
 using DeviceDisconnectCallback = std::function<bool()>;
 
 #define ECMA_DISALLOW_COPY(className)      \
@@ -490,6 +491,7 @@ public:
     bool IsTreeSet();
     bool IsVector();
     bool IsSharedObject();
+    bool IsJSShared();
 
 private:
     JSTaggedType value_;
@@ -1190,6 +1192,8 @@ public:
     static Local<ObjectRef> ExecuteNativeModule(EcmaVM *vm, const std::string &key);
     static Local<ObjectRef> GetModuleNameSpaceFromFile(EcmaVM *vm, const std::string &file,
                                                        const std::string &module_path);
+    static Local<ObjectRef> GetModuleNameSpaceWithModuleInfo(EcmaVM *vm, const std::string &file,
+                                                             const std::string &module_path);
     // secure memory check
     static bool CheckSecureMem(uintptr_t mem);
 
@@ -1260,6 +1264,7 @@ public:
     static void SetNativePtrGetter(EcmaVM *vm, void* cb);
     static void SetSourceMapCallback(EcmaVM *vm, SourceMapCallback cb);
     static void SetSourceMapTranslateCallback(EcmaVM *vm, SourceMapTranslateCallback cb);
+    static void SetNativeStackCallback(EcmaVM *vm, NativeStackCallback cb);
     static void SetHostEnqueueJob(const EcmaVM* vm, Local<JSValueRef> cb);
     static void InitializeIcuData(const ecmascript::JSRuntimeOptions &options);
     static void InitializeMemMapAllocator();

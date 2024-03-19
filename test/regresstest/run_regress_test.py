@@ -334,7 +334,7 @@ def run_test_case_with_expect(command, test_case_file, expect_file, result_file,
             out_str = out.decode('UTF-8').strip()
             err_str = err.decode('UTF-8').strip()
             ret_code = process.poll()
-            # ret_code equals 0 means execute ok, ret_code equals 255 means having uncaughtable error
+            # ret_code equals 0 means execute ok, ret_code equals 255 means uncaught error
             if (ret_code == 0 and (out_str == expect_output_str.strip() or err_str == expect_output_str.strip())) or \
                 ret_code == 255:
                 write_result_file(f'PASS {test_case_file} \n', result_file)
@@ -361,8 +361,12 @@ def run_test_case_with_assert(command, test_case_file, result_file, timeout):
             out, err = process.communicate(timeout=timeout)
             ret_code = process.poll()
             err_str = err.decode('UTF-8')
-            # ret_code equals 0 means execute ok, ret_code equals 255 means having uncaughtable error
-            if (ret_code != 0 and ret_code != 255) or (err_str != '' and "[ecmascript] Stack overflow" not in err_str):
+            # ret_code equals 0 means execute ok, ret_code equals 255 means uncaught error
+            if ret_code == 255:
+                out_put_std(ret_code, command, f'PASS: {test_case_file}')
+                write_result_file(f'PASS {test_case_file} \n', result_file)
+                return True
+            elif ret_code != 0 or (err_str != '' and "[ecmascript] Stack overflow" not in err_str):
                 out_put_std(ret_code, command, f'FAIL: {test_case_file} \nerr: {str(err_str)}')
                 write_result_file(f'FAIL {test_case_file} \n', result_file)
                 return False

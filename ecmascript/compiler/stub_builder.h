@@ -162,7 +162,6 @@ public:
                GateRef offset,
                GateRef value,
                MemoryOrder order = MemoryOrder::Default());
-    void StoreWithBarrier(VariableType type, GateRef glue, GateRef base, GateRef offset, GateRef value);
     // arithmetic
     GateRef TaggedCastToIntPtr(GateRef x);
     GateRef Int16Add(GateRef x, GateRef y);
@@ -189,6 +188,7 @@ public:
     // bit operation
     GateRef Int32Or(GateRef x, GateRef y);
     GateRef Int8And(GateRef x, GateRef y);
+    GateRef Int8Xor(GateRef x, GateRef y);
     GateRef Int32And(GateRef x, GateRef y);
     GateRef IntPtrAnd(GateRef x, GateRef y);
     GateRef BoolAnd(GateRef x, GateRef y);
@@ -237,6 +237,7 @@ public:
     GateRef TaggedIsTransWithProtoHandler(GateRef x);
     GateRef TaggedIsTransitionHandler(GateRef x);
     GateRef TaggedIsString(GateRef obj);
+    GateRef TaggedIsStringIterator(GateRef obj);
     GateRef TaggedIsShared(GateRef obj);
     GateRef BothAreString(GateRef x, GateRef y);
     GateRef TaggedIsStringOrSymbol(GateRef obj);
@@ -268,6 +269,7 @@ public:
     GateRef TaggedUndefined();
     // compare operation
     GateRef Int8Equal(GateRef x, GateRef y);
+    GateRef Int8GreaterThanOrEqual(GateRef x, GateRef y);
     GateRef Equal(GateRef x, GateRef y);
     GateRef Int32Equal(GateRef x, GateRef y);
     GateRef Int32NotEqual(GateRef x, GateRef y);
@@ -309,12 +311,13 @@ public:
     void SetPropertiesArray(VariableType type, GateRef glue, GateRef object, GateRef propsArray);
     void SetHash(GateRef glue, GateRef object, GateRef hash);
     GateRef GetLengthOfTaggedArray(GateRef array);
+    GateRef GetLengthOfJSTypedArray(GateRef array);
     GateRef GetExtractLengthOfTaggedArray(GateRef array);
     // object operation
     GateRef IsJSHClass(GateRef obj);
     GateRef LoadHClass(GateRef object);
     void StoreHClass(GateRef glue, GateRef object, GateRef hClass);
-    void StoreBuiltinHClass(GateRef object, GateRef hClass);
+    void StoreBuiltinHClass(GateRef glue, GateRef object, GateRef hClass);
     void StorePrototype(GateRef glue, GateRef hclass, GateRef prototype);
     void CopyAllHClass(GateRef glue, GateRef dstHClass, GateRef scrHClass);
     GateRef GetObjectType(GateRef hClass);
@@ -366,6 +369,7 @@ public:
     GateRef IsStoreShared(GateRef attr);
     GateRef IsElement(GateRef attr);
     GateRef IsStringElement(GateRef attr);
+    GateRef IsNumber(GateRef attr);
     GateRef IsStringLength(GateRef attr);
     GateRef IsTypedArrayElement(GateRef attr);
     GateRef IsNonExist(GateRef attr);
@@ -399,7 +403,6 @@ public:
     GateRef GetTransitionHandlerInfo(GateRef obj);
     GateRef GetTransWithProtoHClass(GateRef obj);
     GateRef GetTransWithProtoHandlerInfo(GateRef obj);
-    GateRef IsInternalAccessor(GateRef attr);
     GateRef GetProtoCell(GateRef object);
     GateRef GetPrototypeHandlerHolder(GateRef object);
     GateRef GetPrototypeHandlerHandlerInfo(GateRef object);
@@ -634,12 +637,12 @@ public:
         ProfileOperation callback = ProfileOperation());
     void FastSetPropertyByIndex(GateRef glue, GateRef obj, GateRef index, GateRef value);
     GateRef SetPropertyByIndex(GateRef glue, GateRef receiver, GateRef index,
-        GateRef value, bool useOwn, ProfileOperation callback = ProfileOperation());
+        GateRef value, bool useOwn, ProfileOperation callback = ProfileOperation(), bool defineSemantics = false);
     GateRef SetPropertyByName(GateRef glue, GateRef receiver, GateRef key,
         GateRef value, bool useOwn, GateRef isInternal, ProfileOperation callback = ProfileOperation(),
-        bool canUseIsInternal = false); // Crawl prototype chain
+        bool canUseIsInternal = false, bool defineSemantics = false); // Crawl prototype chain
     GateRef SetPropertyByValue(GateRef glue, GateRef receiver, GateRef key, GateRef value, bool useOwn,
-        ProfileOperation callback = ProfileOperation());
+        ProfileOperation callback = ProfileOperation(), bool defineSemantics = false);
     GateRef GetParentEnv(GateRef object);
     GateRef GetPropertiesFromLexicalEnv(GateRef object, GateRef index);
     void SetPropertiesToLexicalEnv(GateRef glue, GateRef object, GateRef index, GateRef value);

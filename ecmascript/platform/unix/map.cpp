@@ -89,7 +89,8 @@ void PageProtect(void *mem, size_t size, int prot)
 {
     int ret = mprotect(mem, size, prot);
     if (ret != 0) {
-        LOG_ECMA(ERROR) << "PageProtect change to " << prot << " failed, error code is " << errno;
+        LOG_ECMA(ERROR) << "PageProtect mem = " << mem << ", size = " << size <<
+            ", change to " << prot << " failed, ret = " << ret << ", error code is " << errno;
     }
 }
 

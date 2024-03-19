@@ -23,9 +23,11 @@
 #include "ecmascript/compiler/combined_pass_visitor.h"
 #include "ecmascript/compiler/common_stubs.h"
 #include "ecmascript/compiler/compiler_log.h"
-#include "ecmascript/compiler/dead_code_elimination.h"
 #include "ecmascript/compiler/constant_folding.h"
+#include "ecmascript/compiler/dead_code_elimination.h"
 #include "ecmascript/compiler/early_elimination.h"
+#include "ecmascript/compiler/escape_analysis.h"
+#include "ecmascript/compiler/escape_analysis_editor.h"
 #include "ecmascript/compiler/graph_editor.h"
 #include "ecmascript/compiler/graph_linearizer.h"
 #include "ecmascript/compiler/later_elimination.h"
@@ -37,6 +39,7 @@
 #include "ecmascript/compiler/ntype_bytecode_lowering.h"
 #include "ecmascript/compiler/ntype_hcr_lowering.h"
 #include "ecmascript/compiler/number_speculative_runner.h"
+#include "ecmascript/compiler/post_schedule.h"
 #include "ecmascript/compiler/scheduler.h"
 #include "ecmascript/compiler/string_builder_optimizer.h"
 #include "ecmascript/compiler/slowpath_lowering.h"
@@ -49,6 +52,7 @@
 #include "ecmascript/compiler/type_inference/initialization_analysis.h"
 #include "ecmascript/compiler/type_inference/pgo_type_infer.h"
 #include "ecmascript/compiler/typed_hcr_lowering.h"
+#include "ecmascript/compiler/typed_native_inline_lowering.h"
 #include "ecmascript/compiler/value_numbering.h"
 #include "ecmascript/compiler/instruction_combine.h"
 #include "ecmascript/compiler/verifier.h"
@@ -69,10 +73,12 @@ public:
              std::string methodName, MethodInfo *methodInfo = nullptr, bool hasTypes = false,
              const CString &recordName = "", MethodLiteral *methodLiteral = nullptr,
              uint32_t methodOffset = 0, NativeAreaAllocator *allocator = nullptr,
-             PGOProfilerDecoder *decoder = nullptr, PassOptions *passOptions = nullptr)
+             PGOProfilerDecoder *decoder = nullptr, PassOptions *passOptions = nullptr,
+             std::string optBCRange = "")
         : builder_(builder), circuit_(circuit), ctx_(ctx), log_(log), methodName_(methodName),
           methodInfo_(methodInfo), hasTypes_(hasTypes), recordName_(recordName), methodLiteral_(methodLiteral),
-          methodOffset_(methodOffset), allocator_(allocator), decoder_(decoder), passOptions_(passOptions)
+          methodOffset_(methodOffset), allocator_(allocator), decoder_(decoder), passOptions_(passOptions),
+          optBCRange_(optBCRange)
     {
     }
 
@@ -183,6 +189,11 @@ public:
         return passOptions_;
     }
 
+    std::string GetOptBCRange() const
+    {
+        return optBCRange_;
+    }
+
     bool IsTypeAbort() const
     {
         if (hasTypes_) {
@@ -233,6 +244,7 @@ private:
     NativeAreaAllocator *allocator_ {nullptr};
     PGOProfilerDecoder *decoder_ {nullptr};
     PassOptions *passOptions_ {nullptr};
+    std::string optBCRange_;
 };
 
 template<typename T1>
@@ -294,6 +306,32 @@ public:
     }
 };
 
+class EscapeAnalysisPass {
+public:
+    bool Run(PassData *data)
+    {
+        PassOptions *passOptions = data->GetPassOptions();
+        if (!passOptions->EnableEscapeAnalysis()) {
+            return false;
+        }
+        TimeScope timescope("EscapeAnalysisPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
+        bool enableLog = data->GetLog()->EnableMethodCIRLog();
+        JSRuntimeOptions runtimeOption = data->GetPassContext()->GetEcmaVM()->GetJSOptions();
+        Chunk chunk(data->GetNativeAreaAllocator());
+        CombinedPassVisitor visitor(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk);
+        EscapeAnalysis escapeAnalysis(data->GetCircuit(), &visitor, &chunk, runtimeOption.GetTraceEscapeAnalysis());
+        visitor.AddPass(&escapeAnalysis);
+        visitor.VisitGraph();
+        CombinedPassVisitor Editvisitor(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk);
+        EscapeAnalysisEditor escapeAnalysisEditor(data->GetCircuit(), &visitor, &chunk,
+                                                  &escapeAnalysis, runtimeOption.GetTraceEscapeAnalysis());
+        Editvisitor.AddPass(&escapeAnalysisEditor);
+        Editvisitor.VisitGraph();
+        visitor.PrintLog("escape Analysis");
+        return true;
+    }
+};
+
 class TypeBytecodeLoweringPass {
 public:
     bool Run(PassData* data)
@@ -312,7 +350,8 @@ public:
                                       enableTypeLog,
                                       data->GetMethodName(),
                                       passOptions->EnableLoweringBuiltin(),
-                                      data->GetRecordName());
+                                      data->GetRecordName(),
+                                      data->GetOptBCRange());
         bool success = lowering.RunTypedBytecodeLowering();
         if (!success) {
             data->MarkAsTypeAbort();
@@ -382,19 +421,37 @@ public:
         if (!passOptions->EnableTypeLowering()) {
             return false;
         }
-        TimeScope timescope("TypeHCRLoweringPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
-        bool enableLog = data->GetLog()->EnableMethodCIRLog();
-        Chunk chunk(data->GetNativeAreaAllocator());
-        CombinedPassVisitor visitor(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk);
-        TypedHCRLowering lowering(data->GetCircuit(),
-                                 &visitor,
-                                 data->GetCompilerConfig(),
-                                 data->GetTSManager(),
-                                 &chunk,
-                                 passOptions->EnableLoweringBuiltin());
-        visitor.AddPass(&lowering);
-        visitor.VisitGraph();
-        visitor.PrintLog("TypedHCRLowering");
+        {
+            TimeScope timescope("TypeHCRLoweringPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
+            bool enableLog = data->GetLog()->EnableMethodCIRLog();
+            Chunk chunk(data->GetNativeAreaAllocator());
+            CombinedPassVisitor visitor(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk);
+            TypedHCRLowering lowering(data->GetCircuit(),
+                                    &visitor,
+                                    data->GetCompilerConfig(),
+                                    data->GetTSManager(),
+                                    &chunk,
+                                    passOptions->EnableLoweringBuiltin());
+            visitor.AddPass(&lowering);
+            visitor.VisitGraph();
+            visitor.PrintLog("TypedHCRLowering");
+        }
+
+        {
+            TimeScope timescope("TypedNativeInlineLoweringPass", data->GetMethodName(), data->GetMethodOffset(),
+                                data->GetLog());
+            bool enableLog = data->GetLog()->EnableMethodCIRLog();
+            Chunk chunk(data->GetNativeAreaAllocator());
+            CombinedPassVisitor visitor(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk);
+            TypedNativeInlineLowering lowering(data->GetCircuit(),
+                                               &visitor,
+                                               data->GetCompilerConfig(),
+                                               &chunk);
+            visitor.AddPass(&lowering);
+            visitor.VisitGraph();
+            visitor.PrintLog("TypedNativeInlineLowering");
+        }
+
         return true;
     }
 };
@@ -693,6 +750,8 @@ public:
         TimeScope timescope("SchedulingPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
         bool enableLog = data->GetLog()->EnableMethodCIRLog();
         Scheduler::Run(data->GetCircuit(), data->GetCfg(), data->GetMethodName(), enableLog);
+        Chunk chunk(data->GetNativeAreaAllocator());
+        PostSchedule(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk).Run(data->GetCfg());
         return true;
     }
 };
@@ -726,6 +785,7 @@ public:
         bool liteCG = data->GetTSManager()->GetEcmaVM()->GetJSOptions().IsCompilerEnableLiteCG();
         GraphLinearizer(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk, false, licm, liteCG)
             .Run(data->GetCfg());
+        PostSchedule(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk).Run(data->GetCfg());
         return true;
     }
 };

@@ -135,9 +135,9 @@ JSHandle<JSTaggedValue> CjsModule::Load(JSThread *thread, JSHandle<EcmaString> &
     JSRecordInfo recordInfo;
     bool hasRecord = jsPandaFile->CheckAndGetRecordInfo(requestEntryPoint, recordInfo);
     if (!hasRecord) {
-        CString msg = "cannot find record '" + requestEntryPoint + "', please check the request path.";
-        LOG_FULL(ERROR) << msg;
-        THROW_NEW_ERROR_AND_RETURN_HANDLE(thread, ErrorType::REFERENCE_ERROR, JSTaggedValue, msg.c_str());
+        JSHandle<JSTaggedValue> exp(thread, JSTaggedValue::Exception());
+        CString requestStr = ConvertToString(request.GetTaggedValue());
+        THROW_MODULE_NOT_FOUND_ERROR_WITH_RETURN_VALUE(thread, requestStr, fullName, exp);
     }
     if (jsPandaFile->IsJson(recordInfo)) {
         JSHandle<JSTaggedValue> result = JSHandle<JSTaggedValue>(thread,
@@ -168,8 +168,7 @@ void CjsModule::RequireExecution(JSThread *thread, CString mergedFilename, CStri
     std::shared_ptr<JSPandaFile> jsPandaFile =
         JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, mergedFilename, requestEntryPoint);
     if (jsPandaFile == nullptr) {
-        CString msg = "Load file with filename '" + mergedFilename + "' failed, recordName '" + requestEntryPoint + "'";
-        THROW_ERROR(thread, ErrorType::REFERENCE_ERROR, msg.c_str());
+        LOG_FULL(FATAL) << "Load current file's panda file failed. Current file is " <<  mergedFilename;
     }
     JSPandaFileExecutor::Execute(thread, jsPandaFile.get(), requestEntryPoint);
 }

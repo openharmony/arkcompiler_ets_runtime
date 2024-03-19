@@ -15,8 +15,10 @@
 
 #include "ecmascript/js_thread.h"
 #include "ecmascript/builtin_entries.h"
+#include "ecmascript/enum_conversion.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/runtime_call_id.h"
+#include "ecmascript/ts_types/builtin_type_id.h"
 
 #if !defined(PANDA_TARGET_WINDOWS) && !defined(PANDA_TARGET_MACOS) && !defined(PANDA_TARGET_IOS)
 #include <sys/resource.h>
@@ -423,15 +425,18 @@ void JSThread::ResetGuardians()
     glueData_.stableArrayElementsGuardians_ = true;
 }
 
-void JSThread::SetInitialBuiltinHClass(BuiltinTypeId type, JSHClass *builtinHClass, JSHClass *prototypeHClass)
+void JSThread::SetInitialBuiltinHClass(
+    BuiltinTypeId type, JSHClass *builtinHClass, JSHClass *instanceHClass, JSHClass *prototypeHClass)
 {
     size_t index = BuiltinHClassEntries::GetEntryIndex(type);
     auto &entry = glueData_.builtinHClassEntries_.entries[index];
     LOG_ECMA(DEBUG) << "JSThread::SetInitialBuiltinHClass: "
                     << "Builtin = " << ToString(type)
                     << ", builtinHClass = " << builtinHClass
+                    << ", instanceHClass = " << instanceHClass
                     << ", prototypeHClass = " << prototypeHClass;
     entry.builtinHClass = builtinHClass;
+    entry.instanceHClass = instanceHClass;
     entry.prototypeHClass = prototypeHClass;
 }
 
@@ -439,6 +444,23 @@ JSHClass *JSThread::GetBuiltinHClass(BuiltinTypeId type) const
 {
     size_t index = BuiltinHClassEntries::GetEntryIndex(type);
     return glueData_.builtinHClassEntries_.entries[index].builtinHClass;
+}
+
+JSHClass *JSThread::GetBuiltinInstanceHClass(BuiltinTypeId type) const
+{
+    size_t index = BuiltinHClassEntries::GetEntryIndex(type);
+    return glueData_.builtinHClassEntries_.entries[index].instanceHClass;
+}
+
+JSHClass *JSThread::GetArrayInstanceHClass(ElementsKind kind) const
+{
+    auto iter = GetArrayHClassIndexMap().find(kind);
+    ASSERT(iter != GetArrayHClassIndexMap().end());
+    auto index = static_cast<size_t>(iter->second);
+    auto exceptArrayHClass = GlobalConstants()->GetGlobalConstantObject(index);
+    auto exceptRecvHClass = JSHClass::Cast(exceptArrayHClass.GetTaggedObject());
+    ASSERT(exceptRecvHClass->IsJSArray());
+    return exceptRecvHClass;
 }
 
 JSHClass *JSThread::GetBuiltinPrototypeHClass(BuiltinTypeId type) const
@@ -504,15 +526,12 @@ void JSThread::CheckOrSwitchPGOStubs()
     }
 }
 
-void JSThread::SwitchJitProfileStubsIfNeeded()
+void JSThread::SwitchJitProfileStubs()
 {
     bool isSwitch = false;
-    bool isEnableJit = vm_->IsEnableJit();
-    if (isEnableJit) {
-        if (GetBCStubStatus() == BCStubStatus::NORMAL_BC_STUB) {
-            SetBCStubStatus(BCStubStatus::JIT_PROFILE_BC_STUB);
-            isSwitch = true;
-        }
+    if (GetBCStubStatus() == BCStubStatus::NORMAL_BC_STUB) {
+        SetBCStubStatus(BCStubStatus::JIT_PROFILE_BC_STUB);
+        isSwitch = true;
     }
     if (isSwitch) {
         Address curAddress;
@@ -544,18 +563,17 @@ bool JSThread::CheckSafepoint()
         SetTerminationRequestWithoutLock(false);
     }
 
-    if (vm_->IsEnableJit() && HasInstallMachineCodeWithoutLock()) {
-        vm_->GetJit()->InstallTasksWithoutClearFlag();
-        // jit 's thread_ is current JSThread's this.
-        SetInstallMachineCodeWithoutLock(false);
-    }
-
     // vmThreadControl_ 's thread_ is current JSThread's this.
     if (VMNeedSuspensionWithoutLock()) {
         interruptMutex_.Unlock();
         vmThreadControl_->SuspendVM();
     } else {
         interruptMutex_.Unlock();
+    }
+
+    if (vm_->IsEnableJit() && HasInstallMachineCode()) {
+        vm_->GetJit()->InstallTasks(GetThreadId());
+        SetInstallMachineCode(false);
     }
 
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)

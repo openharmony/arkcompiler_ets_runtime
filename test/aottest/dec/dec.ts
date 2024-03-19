@@ -13,13 +13,14 @@
  * limitations under the License.
  */
 
-declare function print(arg:any):string;
+declare function assert_true(condition: boolean):void;
+declare function assert_equal(a: Object, b: Object):void;
 
 let num1:number = 2;
-print(--num1);
+assert_equal(--num1, 1);
 
 let num2:number = 2.1;
-print(--num2);
+assert_equal(--num2, 1.1);
 
 let str:any = "a";
-print(--str);
+assert_true(isNaN(--str));

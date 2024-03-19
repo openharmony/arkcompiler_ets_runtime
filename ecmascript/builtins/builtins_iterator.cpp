@@ -44,8 +44,13 @@ JSTaggedValue BuiltinsIterator::Return(EcmaRuntimeCallInfo *argv)
     BUILTINS_API_TRACE(argv->GetThread(), Iterator, Return);
     JSThread *thread = argv->GetThread();
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
-    JSHandle<JSTaggedValue> value = GetCallArg(argv, 0);
-    JSHandle<JSObject> iterResult = JSIterator::CreateIterResultObject(thread, value, true);
+    JSHandle<JSTaggedValue> thisValue = GetCallArg(argv, 0);
+    return ReturnInternal(thread, thisValue);
+}
+
+JSTaggedValue BuiltinsIterator::ReturnInternal(JSThread *thread, JSHandle<JSTaggedValue> thisValue)
+{
+    JSHandle<JSObject> iterResult = JSIterator::CreateIterResultObject(thread, thisValue, true);
     return iterResult.GetTaggedValue();
 }
 

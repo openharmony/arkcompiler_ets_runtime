@@ -13,12 +13,14 @@
  * limitations under the License.
  */
 
-declare function print(str:any):string;
+declare function assert_equal(a: Object, b: Object):void;
 var arrayIterator = ['fifth', 'sixth', 666];
-print(arrayIterator[0]);
-print(arrayIterator[1]);
-print(arrayIterator[2]);
+assert_equal(arrayIterator[0], "fifth");
+assert_equal(arrayIterator[1], "sixth");
+assert_equal(arrayIterator[2], 666);
 
+var testNum1 = -1;
+var testNum2 = -1;
 class Index {
     currentArrays: number[][] = [
         [0, 0, 0, 0],
@@ -55,8 +57,8 @@ class Index {
 
     run() {
         let newArray = this.changeCurretArrays();
-        print(this.computeScore(newArray));
-        print(this.computeScore(this.currentArrays));
+        testNum1 = this.computeScore(newArray);
+        testNum2 = this.computeScore(this.currentArrays);
         this.currentArrays = newArray;
     }
 }
@@ -64,49 +66,51 @@ class Index {
 let index = new Index;
 for (let i = 0; i < 3; i++) {
     index.run();
+    assert_equal(testNum1, 16 * (i + 1));
+    assert_equal(testNum2, 16 * i);
 }
 
 let K:number[] = [];
 K.push(8.2);
-print(K[0]);
+assert_equal(K[0], 8.2);
 K[1] = 3;
-print(K[1]);
+assert_equal(K[1], 3);
 
 let x = 1.2;
 let y = 9;
 let T:number[] = [0, 1, 1.2, x];
-print(T[0]);
-print(T[1]);
-print(T[2]);
-print(T[3]);
+assert_equal(T[0], 0);
+assert_equal(T[1], 1);
+assert_equal(T[2], 1.2);
+assert_equal(T[3], x);
 x = 1;
 let Ta:number[] = [,, 4.2, x];
 let Tb:number[] = [1, y, 1.2, x];
 let Tc:number[] = [-2, -9, 8.3, x];
 
-print(Ta[0]);
-print(Ta[1]);
-print(Ta[2]);
-print(Ta[3]);
+assert_equal(Ta[0], undefined);
+assert_equal(Ta[1], undefined);
+assert_equal(Ta[2], 4.2);
+assert_equal(Ta[3], 1);
 
-print(Tb[0]);
-print(Tb[1]);
-print(Tb[2]);
-print(Tb[3]);
+assert_equal(Tb[0], 1);
+assert_equal(Tb[1], 9);
+assert_equal(Tb[2], 1.2);
+assert_equal(Tb[3], 1);
 
-print(Tc[0]);
-print(Tc[1]);
-print(Tc[2]);
-print(Tc[3]);
+assert_equal(Tc[0], -2);
+assert_equal(Tc[1], -9);
+assert_equal(Tc[2], 8.3);
+assert_equal(Tc[3], 1);
 
 let z = {test: 1.8}
 
 let Td:number[] = [8848, "aotTest", z, x];
 
-print(Td[0]);
-print(Td[1]);
-print(Td[2].test);
-print(Td[3]);
+assert_equal(Td[0], 8848);
+assert_equal(Td[1], "aotTest");
+assert_equal(Td[2].test, 1.8);
+assert_equal(Td[3], 1);
 
 Td[4] = 9999;
-print(Td[4]);
+assert_equal(Td[4], 9999);

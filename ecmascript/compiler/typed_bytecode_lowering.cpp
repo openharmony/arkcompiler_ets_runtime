@@ -13,22 +13,29 @@
  * limitations under the License.
  */
 
+#include <string>
+#include <cstring>
+#include <cstdlib>
+
 #include "ecmascript/compiler/typed_bytecode_lowering.h"
 #include "ecmascript/builtin_entries.h"
 #include "ecmascript/compiler/builtins_lowering.h"
 #include "ecmascript/compiler/bytecodes.h"
 #include "ecmascript/compiler/circuit.h"
+#include "ecmascript/compiler/type_info_accessors.h"
 #include "ecmascript/dfx/vmstat/opt_code_profiler.h"
 #include "ecmascript/enum_conversion.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/stackmap/llvm/llvm_stackmap_parser.h"
+#include "ecmascript/base/string_helper.h"
 
 namespace panda::ecmascript::kungfu {
 bool TypedBytecodeLowering::RunTypedBytecodeLowering()
 {
     std::vector<GateRef> gateList;
     circuit_->GetAllGates(gateList);
+    ParseOptBytecodeRange();
     for (const auto &gate : gateList) {
         auto op = acc_.GetOpCode(gate);
         if (op == OpCode::JS_BYTECODE) {
@@ -85,13 +92,74 @@ bool TypedBytecodeLowering::RunTypedBytecodeLowering()
     return success;
 }
 
+void TypedBytecodeLowering::ParseOptBytecodeRange()
+{
+    std::vector<std::string> splitStrs = base::StringHelper::SplitString(optBCRange_, ",");
+    for (const auto &optBCRange : splitStrs) {
+        std::vector<std::string> splitRange = base::StringHelper::SplitString(optBCRange, ":");
+        if (splitRange.size() == 2) {
+            std::vector<int32_t> range;
+            std::string start = splitRange[0];
+            std::string end = splitRange[1];
+            uint32_t startNumber = std::strtoull(start.c_str(), nullptr, 10);
+            uint32_t endNumber = std::strtoull(end.c_str(), nullptr, 10);
+            range.push_back(static_cast<int32_t>(startNumber));
+            range.push_back(static_cast<int32_t>(endNumber));
+            optBCRangeList_.push_back(range);
+        }
+    }
+}
+
+bool TypedBytecodeLowering::CheckIsInOptBCIgnoreRange(int32_t index, EcmaOpcode ecmaOpcode)
+{
+    for (std::vector<int32_t> range : optBCRangeList_) {
+        if (index >= range[0] && index <= range[1]) {
+            LOG_COMPILER(INFO) << "TypedBytecodeLowering ignore opcode:" << GetEcmaOpcodeStr(ecmaOpcode);
+            return true;
+        }
+    }
+    return false;
+}
+
 void TypedBytecodeLowering::Lower(GateRef gate)
 {
     EcmaOpcode ecmaOpcode = acc_.GetByteCodeOpcode(gate);
     // initialize label manager
     Environment env(gate, circuit_, &builder_);
     AddBytecodeCount(ecmaOpcode);
+    // The order in the switch is referred to in ecmascript/compiler/ecma_opcode_des.h
+    int32_t index = GetEcmaOpCodeListIndex(ecmaOpcode);
+    if (optBCRangeList_.size() > 0 && CheckIsInOptBCIgnoreRange(index, ecmaOpcode)) {
+        DeleteBytecodeCount(ecmaOpcode);
+        allNonTypedOpCount_++;
+        return;
+    }
     switch (ecmaOpcode) {
+        case EcmaOpcode::GETITERATOR_IMM8:
+        case EcmaOpcode::GETITERATOR_IMM16:
+            LowerGetIterator(gate);
+            break;
+        case EcmaOpcode::CREATEEMPTYOBJECT:
+            LowerCreateEmptyObject(gate);
+            break;
+        case EcmaOpcode::CALLTHIS0_IMM8_V8:
+            LowerTypedCallthis0(gate);
+            break;
+        case EcmaOpcode::CALLTHIS1_IMM8_V8_V8:
+            LowerTypedCallthis1(gate);
+            break;
+        case EcmaOpcode::CALLTHIS2_IMM8_V8_V8_V8:
+            LowerTypedCallthis2(gate);
+            break;
+        case EcmaOpcode::CREATEOBJECTWITHBUFFER_IMM8_ID16:
+        case EcmaOpcode::CREATEOBJECTWITHBUFFER_IMM16_ID16:
+            LowerCreateObjectWithBuffer(gate);
+            break;
+        case EcmaOpcode::NEWOBJRANGE_IMM8_IMM8_V8:
+        case EcmaOpcode::NEWOBJRANGE_IMM16_IMM8_V8:
+        case EcmaOpcode::WIDE_NEWOBJRANGE_PREF_IMM16_V8:
+            LowerTypedNewObjRange(gate);
+            break;
         case EcmaOpcode::ADD2_IMM8_V8:
             LowerTypedBinOp<TypedBinOp::TYPED_ADD>(gate);
             break;
@@ -107,6 +175,12 @@ void TypedBytecodeLowering::Lower(GateRef gate)
         case EcmaOpcode::MOD2_IMM8_V8:
             LowerTypedBinOp<TypedBinOp::TYPED_MOD>(gate);
             break;
+        case EcmaOpcode::EQ_IMM8_V8:
+            LowerTypedEqOrNotEq<TypedBinOp::TYPED_EQ>(gate);
+            break;
+        case EcmaOpcode::NOTEQ_IMM8_V8:
+            LowerTypedEqOrNotEq<TypedBinOp::TYPED_NOTEQ>(gate);
+            break;
         case EcmaOpcode::LESS_IMM8_V8:
             LowerTypedBinOp<TypedBinOp::TYPED_LESS>(gate);
             break;
@@ -118,18 +192,6 @@ void TypedBytecodeLowering::Lower(GateRef gate)
             break;
         case EcmaOpcode::GREATEREQ_IMM8_V8:
             LowerTypedBinOp<TypedBinOp::TYPED_GREATEREQ>(gate);
-            break;
-        case EcmaOpcode::EQ_IMM8_V8:
-            LowerTypedEqOrNotEq<TypedBinOp::TYPED_EQ>(gate);
-            break;
-        case EcmaOpcode::STRICTEQ_IMM8_V8:
-            LowerTypedEqOrNotEq<TypedBinOp::TYPED_STRICTEQ>(gate);
-            break;
-        case EcmaOpcode::NOTEQ_IMM8_V8:
-            LowerTypedEqOrNotEq<TypedBinOp::TYPED_NOTEQ>(gate);
-            break;
-        case EcmaOpcode::STRICTNOTEQ_IMM8_V8:
-            LowerTypedEqOrNotEq<TypedBinOp::TYPED_STRICTNOTEQ>(gate);
             break;
         case EcmaOpcode::SHL2_IMM8_V8:
             LowerTypedBinOp<TypedBinOp::TYPED_SHL>(gate);
@@ -149,6 +211,10 @@ void TypedBytecodeLowering::Lower(GateRef gate)
         case EcmaOpcode::XOR2_IMM8_V8:
             LowerTypedBinOp<TypedBinOp::TYPED_XOR>(gate);
             break;
+        case EcmaOpcode::TYPEOF_IMM8:
+        case EcmaOpcode::TYPEOF_IMM16:
+            LowerTypedTypeOf(gate);
+            break;
         case EcmaOpcode::TONUMERIC_IMM8:
             LowerTypeToNumeric(gate);
             break;
@@ -164,21 +230,42 @@ void TypedBytecodeLowering::Lower(GateRef gate)
         case EcmaOpcode::DEC_IMM8:
             LowerTypedUnOp<TypedUnOp::TYPED_DEC>(gate);
             break;
+        case EcmaOpcode::INSTANCEOF_IMM8_V8:
+            LowerInstanceOf(gate);
+            break;
+        case EcmaOpcode::STRICTNOTEQ_IMM8_V8:
+            LowerTypedEqOrNotEq<TypedBinOp::TYPED_STRICTNOTEQ>(gate);
+            break;
+        case EcmaOpcode::STRICTEQ_IMM8_V8:
+            LowerTypedEqOrNotEq<TypedBinOp::TYPED_STRICTEQ>(gate);
+            break;
         case EcmaOpcode::ISTRUE:
             LowerTypedIsTrueOrFalse(gate, true);
             break;
         case EcmaOpcode::ISFALSE:
             LowerTypedIsTrueOrFalse(gate, false);
             break;
-        case EcmaOpcode::JEQZ_IMM8:
-        case EcmaOpcode::JEQZ_IMM16:
-        case EcmaOpcode::JEQZ_IMM32:
-            LowerConditionJump(gate, false);
+        case EcmaOpcode::CALLTHIS3_IMM8_V8_V8_V8_V8:
+            LowerTypedCallthis3(gate);
             break;
-        case EcmaOpcode::JNEZ_IMM8:
-        case EcmaOpcode::JNEZ_IMM16:
-        case EcmaOpcode::JNEZ_IMM32:
-            LowerConditionJump(gate, true);
+        case EcmaOpcode::CALLTHISRANGE_IMM8_IMM8_V8:
+            LowerTypedCallthisrange(gate);
+            break;
+        case EcmaOpcode::SUPERCALLTHISRANGE_IMM8_IMM8_V8:
+        case EcmaOpcode::WIDE_SUPERCALLTHISRANGE_PREF_IMM16_V8:
+            LowerTypedSuperCall(gate);
+            break;
+        case EcmaOpcode::CALLARG0_IMM8:
+            LowerTypedCallArg0(gate);
+            break;
+        case EcmaOpcode::CALLARGS2_IMM8_V8_V8:
+            LowerTypedCallArg2(gate);
+            break;
+        case EcmaOpcode::CALLARGS3_IMM8_V8_V8_V8:
+            LowerTypedCallArg3(gate);
+            break;
+        case EcmaOpcode::CALLRANGE_IMM8_IMM8_V8:
+            LowerTypedCallrange(gate);
             break;
         case EcmaOpcode::LDOBJBYNAME_IMM8_ID16:
         case EcmaOpcode::LDOBJBYNAME_IMM16_ID16:
@@ -193,9 +280,24 @@ void TypedBytecodeLowering::Lower(GateRef gate)
         case EcmaOpcode::DEFINEFIELDBYNAME_IMM8_ID16_V8:
             LowerTypedStObjByName(gate);
             break;
-        case EcmaOpcode::STOWNBYNAME_IMM8_ID16_V8:
-        case EcmaOpcode::STOWNBYNAME_IMM16_ID16_V8:
-            LowerTypedStOwnByName(gate);
+        case EcmaOpcode::LDOBJBYVALUE_IMM8_V8:
+        case EcmaOpcode::LDOBJBYVALUE_IMM16_V8:
+        case EcmaOpcode::LDTHISBYVALUE_IMM8:
+        case EcmaOpcode::LDTHISBYVALUE_IMM16:
+            LowerTypedLdObjByValue(gate);
+            break;
+        case EcmaOpcode::JEQZ_IMM8:
+        case EcmaOpcode::JEQZ_IMM16:
+        case EcmaOpcode::JEQZ_IMM32:
+            LowerConditionJump(gate, false);
+            break;
+        case EcmaOpcode::STOBJBYVALUE_IMM8_V8_V8:
+        case EcmaOpcode::STOBJBYVALUE_IMM16_V8_V8:
+            LowerTypedStObjByValue(gate);
+            break;
+        case EcmaOpcode::STOWNBYVALUE_IMM8_V8_V8:
+        case EcmaOpcode::STOWNBYVALUE_IMM16_V8_V8:
+            LowerTypedStOwnByValue(gate);
             break;
         case EcmaOpcode::LDOBJBYINDEX_IMM8_IMM16:
         case EcmaOpcode::LDOBJBYINDEX_IMM16_IMM16:
@@ -207,88 +309,47 @@ void TypedBytecodeLowering::Lower(GateRef gate)
         case EcmaOpcode::WIDE_STOBJBYINDEX_PREF_V8_IMM32:
             LowerTypedStObjByIndex(gate);
             break;
-        case EcmaOpcode::LDOBJBYVALUE_IMM8_V8:
-        case EcmaOpcode::LDOBJBYVALUE_IMM16_V8:
-        case EcmaOpcode::LDTHISBYVALUE_IMM8:
-        case EcmaOpcode::LDTHISBYVALUE_IMM16:
-            LowerTypedLdObjByValue(gate);
-            break;
-        case EcmaOpcode::STOBJBYVALUE_IMM8_V8_V8:
-        case EcmaOpcode::STOBJBYVALUE_IMM16_V8_V8:
-            LowerTypedStObjByValue(gate);
-            break;
-        case EcmaOpcode::STOWNBYVALUE_IMM8_V8_V8:
-        case EcmaOpcode::STOWNBYVALUE_IMM16_V8_V8:
-            LowerTypedStOwnByValue(gate);
-            break;
-        case EcmaOpcode::NEWOBJRANGE_IMM8_IMM8_V8:
-        case EcmaOpcode::NEWOBJRANGE_IMM16_IMM8_V8:
-        case EcmaOpcode::WIDE_NEWOBJRANGE_PREF_IMM16_V8:
-            LowerTypedNewObjRange(gate);
-            break;
-        case EcmaOpcode::SUPERCALLTHISRANGE_IMM8_IMM8_V8:
-        case EcmaOpcode::WIDE_SUPERCALLTHISRANGE_PREF_IMM16_V8:
-            LowerTypedSuperCall(gate);
-            break;
-        case EcmaOpcode::CALLARG0_IMM8:
-            LowerTypedCallArg0(gate);
-            break;
-        case EcmaOpcode::CALLARG1_IMM8_V8:
-            LowerTypedCallArg1(gate);
-            break;
-        case EcmaOpcode::CALLARGS2_IMM8_V8_V8:
-            LowerTypedCallArg2(gate);
-            break;
-        case EcmaOpcode::CALLARGS3_IMM8_V8_V8_V8:
-            LowerTypedCallArg3(gate);
-            break;
-        case EcmaOpcode::CALLRANGE_IMM8_IMM8_V8:
-            LowerTypedCallrange(gate);
-            break;
-        case EcmaOpcode::CALLTHIS0_IMM8_V8:
-            LowerTypedCallthis0(gate);
-            break;
-        case EcmaOpcode::CALLTHIS1_IMM8_V8_V8:
-            LowerTypedCallthis1(gate);
-            break;
-        case EcmaOpcode::CALLTHIS2_IMM8_V8_V8_V8:
-            LowerTypedCallthis2(gate);
-            break;
-        case EcmaOpcode::CALLTHIS3_IMM8_V8_V8_V8_V8:
-            LowerTypedCallthis3(gate);
-            break;
-        case EcmaOpcode::CALLTHISRANGE_IMM8_IMM8_V8:
-            LowerTypedCallthisrange(gate);
-            break;
-        case EcmaOpcode::CALLRUNTIME_CALLINIT_PREF_IMM8_V8:
-            LowerTypedCallInit(gate);
-            break;
-        case EcmaOpcode::TYPEOF_IMM8:
-        case EcmaOpcode::TYPEOF_IMM16:
-            LowerTypedTypeOf(gate);
-            break;
-        case EcmaOpcode::GETITERATOR_IMM8:
-        case EcmaOpcode::GETITERATOR_IMM16:
-            LowerGetIterator(gate);
-            break;
         case EcmaOpcode::TRYLDGLOBALBYNAME_IMM8_ID16:
         case EcmaOpcode::TRYLDGLOBALBYNAME_IMM16_ID16:
             LowerTypedTryLdGlobalByName(gate);
             break;
-        case EcmaOpcode::INSTANCEOF_IMM8_V8:
-            LowerInstanceOf(gate);
+        case EcmaOpcode::STOWNBYNAME_IMM8_ID16_V8:
+        case EcmaOpcode::STOWNBYNAME_IMM16_ID16_V8:
+            LowerTypedStOwnByName(gate);
             break;
-        case EcmaOpcode::CREATEEMPTYOBJECT:
-            LowerCreateEmptyObject(gate);
+        case EcmaOpcode::JNEZ_IMM8:
+        case EcmaOpcode::JNEZ_IMM16:
+        case EcmaOpcode::JNEZ_IMM32:
+            LowerConditionJump(gate, true);
             break;
-        case EcmaOpcode::CREATEOBJECTWITHBUFFER_IMM8_ID16:
-        case EcmaOpcode::CREATEOBJECTWITHBUFFER_IMM16_ID16:
-            LowerCreateObjectWithBuffer(gate);
+        case EcmaOpcode::CALLARG1_IMM8_V8:
+            LowerTypedCallArg1(gate);
+            break;
+        case EcmaOpcode::CALLRUNTIME_CALLINIT_PREF_IMM8_V8:
+            LowerTypedCallInit(gate);
             break;
         default:
             DeleteBytecodeCount(ecmaOpcode);
             allNonTypedOpCount_++;
             break;
+    }
+}
+
+int32_t TypedBytecodeLowering::GetEcmaOpCodeListIndex(EcmaOpcode ecmaOpCode)
+{
+    std::vector<EcmaOpcode> opcodeList = GetEcmaCodeListForRange();
+    int32_t index = opcodeList.size();
+    int32_t size = static_cast<int32_t>(opcodeList.size());
+    for (int32_t i = 0; i < size; i++) {
+        if (opcodeList[i] == ecmaOpCode) {
+            index = i;
+            break;
+        }
+    }
+    if (index != size) {
+        return index;
+    } else {
+        return -1;
     }
 }
 
@@ -323,7 +384,7 @@ void TypedBytecodeLowering::LowerTypedEqOrNotEq(GateRef gate)
     PGOTypeRef pgoType = acc_.TryGetPGOType(gate);
 
     BinOpTypeInfoAccessor tacc(thread_, circuit_, gate);
-    if (tacc.LeftOrRightIsUndefinedOrNull() || tacc.HasNumberType()) {
+    if (tacc.LeftOrRightIsUndefinedOrNullOrHole() || tacc.HasNumberType()) {
         AddProfiling(gate);
         GateRef result = builder_.TypedBinaryOp<Op>(
             left, right, leftType, rightType, gateType, pgoType);
@@ -484,12 +545,12 @@ void TypedBytecodeLowering::LowerTypedLdObjByName(GateRef gate)
             builder_.ProtoChangeMarkerCheck(receiver, frameState);
             PropertyLookupResult plr = tacc.GetAccessInfo(0).Plr();
             GateRef plrGate = builder_.Int32(plr.GetData());
-            GateRef jsFunc = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
+            GateRef constpoool = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::CONST_POOL);
             size_t holderHClassIndex = tacc.GetAccessInfo(0).HClassIndex();
             if (LIKELY(!plr.IsAccessor())) {
-                result = builder_.MonoLoadPropertyOnProto(receiver, plrGate, jsFunc, holderHClassIndex);
+                result = builder_.MonoLoadPropertyOnProto(receiver, plrGate, constpoool, holderHClassIndex);
             } else {
-                result = builder_.MonoCallGetterOnProto(gate, receiver, plrGate, jsFunc, holderHClassIndex);
+                result = builder_.MonoCallGetterOnProto(gate, receiver, plrGate, constpoool, holderHClassIndex);
             }
         }
         acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), *result);
@@ -569,14 +630,14 @@ void TypedBytecodeLowering::LowerTypedStObjByName(GateRef gate)
 
     // The framestate of Call and Accessor related instructions directives is placed on IR. Using the depend edge to
     // climb up and find the nearest framestate for other instructions
-    if (opcode == EcmaOpcode::DEFINEFIELDBYNAME_IMM8_ID16_V8 ||
-        opcode == EcmaOpcode::STOWNBYNAME_IMM8_ID16_V8 ||
+    if (opcode == EcmaOpcode::STOWNBYNAME_IMM8_ID16_V8 ||
         opcode == EcmaOpcode::STOWNBYNAME_IMM16_ID16_V8) {
         frameState = acc_.FindNearestFrameState(builder_.GetDepend());
     } else if (opcode == EcmaOpcode::STOBJBYNAME_IMM8_ID16_V8 ||
                opcode == EcmaOpcode::STOBJBYNAME_IMM16_ID16_V8 ||
                opcode == EcmaOpcode::STTHISBYNAME_IMM8_ID16 ||
-               opcode == EcmaOpcode::STTHISBYNAME_IMM16_ID16) {
+               opcode == EcmaOpcode::STTHISBYNAME_IMM16_ID16 ||
+               opcode == EcmaOpcode::DEFINEFIELDBYNAME_IMM8_ID16_V8) {
         frameState = acc_.GetFrameState(gate);
     } else {
         UNREACHABLE();
@@ -590,15 +651,15 @@ void TypedBytecodeLowering::LowerTypedStObjByName(GateRef gate)
             builder_.ProtoChangeMarkerCheck(tacc.GetReceiver(), frameState);
             PropertyLookupResult plr = tacc.GetAccessInfo(0).Plr();
             GateRef plrGate = builder_.Int32(plr.GetData());
-            GateRef jsFunc = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
+            GateRef constpool = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::CONST_POOL);
             size_t holderHClassIndex = tacc.GetAccessInfo(0).HClassIndex();
             GateRef value = tacc.GetValue();
             if (tacc.IsHolderEqNewHolder(0)) {
-                builder_.MonoStorePropertyLookUpProto(tacc.GetReceiver(), plrGate, jsFunc, holderHClassIndex, value);
+                builder_.MonoStorePropertyLookUpProto(tacc.GetReceiver(), plrGate, constpool, holderHClassIndex, value);
             } else {
-                auto propKey = builder_.LoadObjectFromConstPool(argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC),
+                auto propKey = builder_.LoadObjectFromConstPool(argAcc_.GetFrameArgsIn(gate, FrameArgIdx::CONST_POOL),
                                                                 tacc.GetKey());
-                builder_.MonoStoreProperty(tacc.GetReceiver(), plrGate, jsFunc, holderHClassIndex, value,
+                builder_.MonoStoreProperty(tacc.GetReceiver(), plrGate, constpool, holderHClassIndex, value,
                                            propKey);
             }
         } else if (tacc.IsReceiverEqHolder(0)) {
@@ -656,13 +717,13 @@ void TypedBytecodeLowering::LowerTypedStObjByName(GateRef gate)
                 builder_.Branch(builder_.IsProtoTypeHClass(receiverHC), &isProto, &notProto,
                     BranchWeight::ONE_WEIGHT, BranchWeight::DEOPT_WEIGHT);
                 builder_.Bind(&isProto);
-                auto propKey = builder_.LoadObjectFromConstPool(argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC),
+                auto propKey = builder_.LoadObjectFromConstPool(argAcc_.GetFrameArgsIn(gate, FrameArgIdx::CONST_POOL),
                                                                 tacc.GetKey());
                 builder_.CallRuntime(glue_, RTSTUB_ID(UpdateAOTHClass), Gate::InvalidGateRef,
                     { receiverHC, newHolderHC, propKey }, gate);
                 builder_.Jump(&notProto);
                 builder_.Bind(&notProto);
-                MemoryOrder order = MemoryOrder::Create(MemoryOrder::MEMORY_ORDER_RELEASE);
+                MemoryOrder order = MemoryOrder::NeedBarrierAndAtomic();
                 builder_.StoreConstOffset(VariableType::JS_ANY(), tacc.GetReceiver(),
                     TaggedObject::HCLASS_OFFSET, newHolderHC, order);
                 if (!tacc.GetAccessInfo(i).Plr().IsInlinedProps()) {
@@ -753,11 +814,12 @@ bool TypedBytecodeLowering::TryLowerTypedLdObjByNameForBuiltin(GateRef gate)
     LoadBulitinObjTypeInfoAccessor tacc(thread_, circuit_, gate, chunk_);
     // Just supported mono.
     if (tacc.IsMono()) {
-        if (tacc.IsBuiltinsString()) {
-            return TryLowerTypedLdObjByNameForBuiltin(tacc, BuiltinTypeId::STRING);
-        }
-        if (tacc.IsBuiltinsArray()) {
-            return TryLowerTypedLdObjByNameForBuiltin(tacc, BuiltinTypeId::ARRAY);
+        auto builtinsId = tacc.GetBuiltinsTypeId();
+        if (builtinsId.has_value()) {
+            if (TryLowerTypedLdObjByNameForBuiltin(tacc, builtinsId.value())) {
+                return true;
+            }
+            return TryLowerTypedLdObjByNameForBuiltinMethod(tacc, builtinsId.value());
         }
     }
 
@@ -881,10 +943,11 @@ void TypedBytecodeLowering::LowerTypedLdStringLength(const LoadBulitinObjTypeInf
     acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
 }
 
-bool TypedBytecodeLowering::TryLowerTypedLdObjByNameForBuiltinMethod(
-    GateRef gate, JSTaggedValue key, BuiltinTypeId type)
+bool TypedBytecodeLowering::TryLowerTypedLdObjByNameForBuiltinMethod(const LoadBulitinObjTypeInfoAccessor &tacc,
+                                                                     BuiltinTypeId type)
 {
-    AddProfiling(gate);
+    GateRef gate = tacc.GetGate();
+    JSTaggedValue key = tacc.GetKeyTaggedValue();
     std::optional<GlobalEnvField> protoField = ToGlobelEnvPrototypeField(type);
     if (!protoField.has_value()) {
         return false;
@@ -897,15 +960,19 @@ bool TypedBytecodeLowering::TryLowerTypedLdObjByNameForBuiltinMethod(
     if (!plr.IsFound() || plr.IsAccessor()) {
         return false;
     }
+    AddProfiling(gate);
     GateRef receiver = acc_.GetValueIn(gate, 2);
     if (!Uncheck()) {
         // For Array type only: array stability shall be ensured.
+        ElementsKind kind = ElementsKind::NONE;
         if (type == BuiltinTypeId::ARRAY) {
             builder_.StableArrayCheck(receiver, ElementsKind::GENERIC, ArrayMetaDataAccessor::CALL_BUILTIN_METHOD);
+            kind = tacc.TryGetArrayElementsKind();
         }
+
         // This check is not required by String, since string is a primitive type.
         if (type != BuiltinTypeId::STRING) {
-            builder_.BuiltinPrototypeHClassCheck(receiver, type);
+            builder_.BuiltinPrototypeHClassCheck(receiver, type, kind);
         }
     }
     // Successfully goes to typed path
@@ -1305,8 +1372,11 @@ void TypedBytecodeLowering::LowerTypedSuperCall(GateRef gate)
 void TypedBytecodeLowering::SpeculateCallBuiltin(GateRef gate, GateRef func, const std::vector<GateRef> &args,
                                                  BuiltinsStubCSigns::ID id, bool isThrow)
 {
+    if (IS_TYPED_INLINE_BUILTINS_ID(id)) {
+        return;
+    }
     if (!Uncheck()) {
-        builder_.CallTargetCheck(gate, func, builder_.IntPtr(static_cast<int64_t>(id)), args[0]);
+        builder_.CallTargetCheck(gate, func, builder_.IntPtr(static_cast<int64_t>(id)), {args[0]});
     }
 
     GateRef result = builder_.TypedCallBuiltin(gate, args, id);
@@ -1873,20 +1943,23 @@ void TypedBytecodeLowering::LowerCreateEmptyObject(GateRef gate)
     GateRef size = builder_.IntPtr(objectHC->GetObjectSize());
 
     builder_.StartAllocate();
-    GateRef object = builder_.HeapAlloc(size, GateType::TaggedValue(), RegionSpaceFlag::IN_YOUNG_SPACE);
+    GateRef object = builder_.HeapAlloc(glue_, size, GateType::TaggedValue(), RegionSpaceFlag::IN_YOUNG_SPACE);
 
     // initialization
     for (size_t offset = JSObject::SIZE; offset < objectSize; offset += JSTaggedValue::TaggedTypeSize()) {
         builder_.StoreConstOffset(VariableType::INT64(), object, offset, builder_.Undefined());
     }
-    builder_.StoreConstOffset(VariableType::JS_POINTER(), object, JSObject::HCLASS_OFFSET, hclass);
+    builder_.StoreConstOffset(VariableType::JS_POINTER(), object, JSObject::HCLASS_OFFSET, hclass,
+        MemoryOrder::NeedBarrierAndAtomic());
     builder_.StoreConstOffset(VariableType::INT64(), object, JSObject::HASH_OFFSET,
                               builder_.Int64(JSTaggedValue(0).GetRawData()));
-    builder_.StoreConstOffset(VariableType::JS_POINTER(), object, JSObject::PROPERTIES_OFFSET, emptyArray);
-    builder_.StoreConstOffset(VariableType::JS_POINTER(), object, JSObject::ELEMENTS_OFFSET, emptyArray);
-    builder_.FinishAllocate(object);
+    builder_.StoreConstOffset(VariableType::JS_POINTER(), object, JSObject::PROPERTIES_OFFSET, emptyArray,
+        MemoryOrder::NoBarrier());
+    builder_.StoreConstOffset(VariableType::JS_POINTER(), object, JSObject::ELEMENTS_OFFSET, emptyArray,
+        MemoryOrder::NoBarrier());
+    GateRef result = builder_.FinishAllocate(object);
 
-    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), object);
+    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
 }
 
 void TypedBytecodeLowering::LowerTypedStOwnByValue(GateRef gate)
@@ -1927,16 +2000,27 @@ void TypedBytecodeLowering::LowerCreateObjectWithBuffer(GateRef gate)
     }
 
     AddProfiling(gate);
-    GateRef jsFunc = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
     auto size = newClass->GetObjectSize();
     std::vector<GateRef> valueIn;
-    valueIn.emplace_back(jsFunc);
     valueIn.emplace_back(builder_.IntPtr(size));
     valueIn.emplace_back(index);
     valueIn.emplace_back(builder_.Int64(newClass.GetTaggedValue().GetRawData()));
     valueIn.emplace_back(acc_.GetValueIn(gate, 1));
     for (uint32_t i = 0; i < newClass->GetInlinedProperties(); i++) {
-        valueIn.emplace_back(builder_.Int64(inlinedProps.at(i)));
+        auto attr = layout->GetAttr(i);
+        GateRef prop;
+        if (attr.IsIntRep()) {
+            prop = builder_.Int32(inlinedProps.at(i));
+        } else if (attr.IsTaggedRep()) {
+            prop = circuit_->NewGate(circuit_->GetMetaBuilder()->Constant(inlinedProps.at(i)),
+                                     MachineType::I64, GateType::AnyType());
+        } else if (attr.IsDoubleRep()) {
+            prop = circuit_->NewGate(circuit_->GetMetaBuilder()->Constant(inlinedProps.at(i)),
+                                     MachineType::F64, GateType::NJSValue());
+        } else {
+            prop = builder_.Int64(inlinedProps.at(i));
+        }
+        valueIn.emplace_back(prop);
         valueIn.emplace_back(builder_.Int32(newClass->GetInlinedPropertiesOffset(i)));
     }
     GateRef ret = builder_.TypedCreateObjWithBuffer(valueIn);

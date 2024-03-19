@@ -386,20 +386,11 @@ public:
     }
 
     // add for AOT
-    void SetCodeEntryAndMarkAOT(uintptr_t codeEntry)
-    {
-        SetAotCodeBit(true);
-        SetNativeBit(false);
-        SetCodeEntryOrLiteral(codeEntry);
-    }
+    void SetCodeEntryAndMarkAOTWhenBinding(uintptr_t codeEntry);
 
-    void ClearAOTFlags()
-    {
-        SetAotCodeBit(false);
-        SetIsFastCall(false);
-        SetDeoptType(kungfu::DeoptType::NOTCHECK);
-        SetCodeEntryOrLiteral(reinterpret_cast<uintptr_t>(nullptr));
-    }
+    void ClearAOTStatusWhenDeopt();
+
+    void ClearAOTFlagsWhenInit();
 
     void SetCompiledFuncEntry(uintptr_t codeEntry, bool isFastCall);
 

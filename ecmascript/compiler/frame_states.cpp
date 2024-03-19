@@ -851,8 +851,8 @@ public:
         } else {
             if (!loopInfo.loopBodys->TestBit(backId)) {
                 loopInfo.loopBodys->SetBit(backId);
+                loopInfo.numLoopBacks++;
             }
-            loopInfo.numLoopBacks++;
         }
     }
 

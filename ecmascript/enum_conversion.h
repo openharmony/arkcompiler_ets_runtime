@@ -50,5 +50,46 @@ inline constexpr std::optional<GlobalEnvField> ToGlobelEnvPrototypeField(Builtin
             return std::nullopt;
     }
 }
+
+constexpr std::optional<BuiltinTypeId> ToBuiltinsTypeId(JSType type)
+{
+    if (type >= JSType::STRING_FIRST && type <= JSType::STRING_LAST) {
+        return BuiltinTypeId::STRING;
+    }
+    switch (type) {
+        case JSType::JS_MAP:
+            return BuiltinTypeId::MAP;
+        case JSType::JS_SET:
+            return BuiltinTypeId::SET;
+        case JSType::JS_OBJECT:
+            return BuiltinTypeId::OBJECT;
+        case JSType::JS_ARRAY:
+            return BuiltinTypeId::ARRAY;
+        case JSType::JS_DATA_VIEW:
+            return BuiltinTypeId::DATA_VIEW;
+        case JSType::JS_DATE:
+            return BuiltinTypeId::DATE;
+        case JSType::JS_INT8_ARRAY:
+            return BuiltinTypeId::INT8_ARRAY;
+        case JSType::JS_UINT8_ARRAY:
+            return BuiltinTypeId::UINT8_ARRAY;
+        case JSType::JS_UINT8_CLAMPED_ARRAY:
+            return BuiltinTypeId::UINT8_CLAMPED_ARRAY;
+        case JSType::JS_INT16_ARRAY:
+            return BuiltinTypeId::INT16_ARRAY;
+        case JSType::JS_UINT16_ARRAY:
+            return BuiltinTypeId::UINT16_ARRAY;
+        case JSType::JS_INT32_ARRAY:
+            return BuiltinTypeId::INT32_ARRAY;
+        case JSType::JS_UINT32_ARRAY:
+            return BuiltinTypeId::UINT32_ARRAY;
+        case JSType::JS_FLOAT32_ARRAY:
+            return BuiltinTypeId::FLOAT32_ARRAY;
+        case JSType::JS_FLOAT64_ARRAY:
+            return BuiltinTypeId::FLOAT64_ARRAY;
+        default:
+            return std::nullopt;
+    }
+}
 } // namespace panda::ecmascript
 #endif // ECMASCRIPT_ENUM_CONVERSION_H

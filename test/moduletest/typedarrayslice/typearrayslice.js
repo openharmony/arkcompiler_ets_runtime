@@ -43,3 +43,13 @@ class Array1 extends Int8Array {
 }
 const a = new Array1(1, 2, 3);
 print(a.slice(0, 1));
+
+var sample = new BigInt64Array([40n, 41n, 42n, 43n]);
+var calls = 0;
+Object.defineProperty(BigInt64Array.prototype, "constructor", {
+  get: function() {
+    calls++;
+  }
+});
+sample.slice();
+print(calls);

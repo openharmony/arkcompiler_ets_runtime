@@ -437,6 +437,7 @@ public:
             case EcmaOpcode::LDTHISBYNAME_IMM16_ID16:
             case EcmaOpcode::STOBJBYNAME_IMM8_ID16_V8:
             case EcmaOpcode::STOBJBYNAME_IMM16_ID16_V8:
+            case EcmaOpcode::DEFINEFIELDBYNAME_IMM8_ID16_V8:
             case EcmaOpcode::STTHISBYNAME_IMM8_ID16:
             case EcmaOpcode::STTHISBYNAME_IMM16_ID16:
             case EcmaOpcode::CALLRUNTIME_CALLINIT_PREF_IMM8_V8:

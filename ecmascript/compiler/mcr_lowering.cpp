@@ -28,9 +28,6 @@ GateRef MCRLowering::VisitGate(GateRef gate)
 {
     auto op = acc_.GetOpCode(gate);
     switch (op) {
-        case OpCode::GET_CONSTPOOL:
-            LowerGetConstPool(gate);
-            break;
         case OpCode::STATE_SPLIT:
             DeleteStateSplit(gate);
             break;
@@ -42,6 +39,9 @@ GateRef MCRLowering::VisitGate(GateRef gate)
             break;
         case OpCode::HEAP_OBJECT_CHECK:
             LowerHeapObjectCheck(gate);
+            break;
+        case OpCode::ECMA_OBJECT_CHECK:
+            LowerEcmaObjectCheck(gate);
             break;
         case OpCode::ELEMENTSKIND_CHECK:
             LowerElementskindCheck(gate);
@@ -70,9 +70,6 @@ GateRef MCRLowering::VisitGate(GateRef gate)
         case OpCode::GET_GLOBAL_CONSTANT_VALUE:
             LowerGetGlobalConstantValue(gate);
             break;
-        case OpCode::HEAP_ALLOC:
-            LowerHeapAllocate(gate);
-            break;
         case OpCode::INT32_CHECK_RIGHT_IS_ZERO:
             LowerInt32CheckRightIsZero(gate);
             break;
@@ -96,6 +93,12 @@ GateRef MCRLowering::VisitGate(GateRef gate)
             break;
         case OpCode::LEX_VAR_IS_HOLE_CHECK:
             LowerLexVarIsHoleCheck(gate);
+            break;
+        case OpCode::IS_UNDEFINED_OR_HOLE_CHECK:
+            LowerIsUndefinedOrHoleCheck(gate);
+            break;
+        case OpCode::IS_NOT_UNDEFINED_OR_HOLE_CHECK:
+            LowerIsNotUndefinedOrHoleCheck(gate);
             break;
         case OpCode::STORE_MEMORY:
             LowerStoreMemory(gate);
@@ -195,6 +198,17 @@ void MCRLowering::LowerHeapObjectCheck(GateRef gate)
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 
+void MCRLowering::LowerEcmaObjectCheck(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    GateRef frameState = acc_.GetFrameState(gate);
+    GateRef value = acc_.GetValueIn(gate, 0);
+    GateRef condition = builder_.BoolAnd(builder_.TaggedIsHeapObject(value),
+                                         builder_.TaggedObjectIsEcmaObject(value));
+    builder_.DeoptCheck(condition, frameState, DeoptType::NOTECMAOBJECT1);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
+}
+
 void MCRLowering::LowerTaggedIsHeapObject(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
@@ -244,18 +258,6 @@ void MCRLowering::LowerIsSpecificObjectType(GateRef gate)
         }
     }
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
-}
-
-void MCRLowering::LowerGetConstPool(GateRef gate)
-{
-    Environment env(gate, circuit_, &builder_);
-    GateRef jsFunc = acc_.GetValueIn(gate, 0); // 0: this object
-    GateRef newGate = builder_.GetConstPoolFromFunction(jsFunc);
-
-    acc_.UpdateAllUses(gate, newGate);
-
-    // delete old gate
-    acc_.DeleteGate(gate);
 }
 
 void MCRLowering::DeleteStateSplit(GateRef gate)
@@ -820,55 +822,6 @@ void MCRLowering::LowerGetGlobalConstantValue(GateRef gate)
     acc_.ReplaceGate(gate, Circuit::NullGate(), builder_.GetDepend(), result);
 }
 
-void MCRLowering::LowerHeapAllocate(GateRef gate)
-{
-    Environment env(gate, circuit_, &builder_);
-    auto flag = acc_.TryGetValue(gate);
-    switch (flag) {
-        case RegionSpaceFlag::IN_YOUNG_SPACE:
-            HeapAllocateInYoung(gate);
-            break;
-        default:
-            LOG_ECMA(FATAL) << "this branch is unreachable";
-            UNREACHABLE();
-    }
-}
-
-void MCRLowering::HeapAllocateInYoung(GateRef gate)
-{
-    Label exit(&builder_);
-    GateRef size = acc_.GetValueIn(gate, 0);
-    DEFVALUE(result, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
-#ifndef ARK_ASAN_ON
-    Label success(&builder_);
-    Label callRuntime(&builder_);
-    size_t topOffset = JSThread::GlueData::GetNewSpaceAllocationTopAddressOffset(false);
-    size_t endOffset = JSThread::GlueData::GetNewSpaceAllocationEndAddressOffset(false);
-    GateRef topAddress = builder_.Load(VariableType::NATIVE_POINTER(), glue_, builder_.IntPtr(topOffset));
-    GateRef endAddress = builder_.Load(VariableType::NATIVE_POINTER(), glue_, builder_.IntPtr(endOffset));
-    GateRef top = builder_.Load(VariableType::JS_POINTER(), topAddress, builder_.IntPtr(0));
-    GateRef end = builder_.Load(VariableType::JS_POINTER(), endAddress, builder_.IntPtr(0));
-
-    GateRef newTop = builder_.PtrAdd(top, size);
-    builder_.Branch(builder_.IntPtrGreaterThan(newTop, end), &callRuntime, &success);
-    builder_.Bind(&success);
-    {
-        builder_.Store(VariableType::NATIVE_POINTER(), glue_, topAddress, builder_.IntPtr(0), newTop);
-        result = top;
-        builder_.Jump(&exit);
-    }
-    builder_.Bind(&callRuntime);
-#endif
-    {
-        result = builder_.CallRuntime(glue_, RTSTUB_ID(AllocateInYoung), Gate::InvalidGateRef,
-                                      {builder_.ToTaggedInt(size)}, gate);
-        builder_.Jump(&exit);
-    }
-    builder_.Bind(&exit);
-
-    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
-}
-
 void MCRLowering::LowerInt32CheckRightIsZero(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
@@ -911,6 +864,26 @@ void MCRLowering::LowerLexVarIsHoleCheck(GateRef gate)
     GateRef value = acc_.GetValueIn(gate, 0);
     GateRef valueIsNotHole = builder_.TaggedIsNotHole(value);
     builder_.DeoptCheck(valueIsNotHole, frameState, DeoptType::LEXVARISHOLE1);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
+}
+
+void MCRLowering::LowerIsUndefinedOrHoleCheck(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    GateRef frameState = acc_.GetFrameState(gate);
+    GateRef value = acc_.GetValueIn(gate, 0);
+    GateRef isNotUndefinedorHole = builder_.BoolNot(builder_.TaggedIsUndefinedOrHole(value));
+    builder_.DeoptCheck(isNotUndefinedorHole, frameState, DeoptType::ISUNDEFINEDORHOLE);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
+}
+
+void MCRLowering::LowerIsNotUndefinedOrHoleCheck(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    GateRef frameState = acc_.GetFrameState(gate);
+    GateRef value = acc_.GetValueIn(gate, 0);
+    GateRef isUndefinedorHole = builder_.TaggedIsUndefinedOrHole(value);
+    builder_.DeoptCheck(isUndefinedorHole, frameState, DeoptType::ISNOTUNDEFINEDORHOLE);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 

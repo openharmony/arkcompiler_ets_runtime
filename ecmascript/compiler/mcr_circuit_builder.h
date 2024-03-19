@@ -147,6 +147,26 @@ GateRef CircuitBuilder::TaggedIsString(GateRef obj)
     return ret;
 }
 
+GateRef CircuitBuilder::TaggedIsStringIterator(GateRef obj)
+{
+    Label entry(env_);
+    SubCfgEntry(&entry);
+    Label exit(env_);
+    DEFVALUE(result, env_, VariableType::BOOL(), False());
+    Label isHeapObject(env_);
+    Branch(TaggedIsHeapObject(obj), &isHeapObject, &exit);
+    Bind(&isHeapObject);
+    {
+        result = Int32Equal(GetObjectType(LoadHClass(obj)),
+                            Int32(static_cast<int32_t>(JSType::JS_STRING_ITERATOR)));
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *result;
+    SubCfgExit();
+    return ret;
+}
+
 GateRef CircuitBuilder::TaggedIsShared(GateRef obj)
 {
     Label entry(env_);
@@ -461,6 +481,11 @@ GateRef CircuitBuilder::TaggedIsUndefinedOrNull(GateRef x)
     return result;
 }
 
+GateRef CircuitBuilder::TaggedIsUndefinedOrNullOrHole(GateRef x)
+{
+    return BoolOr(TaggedIsUndefinedOrNull(x), TaggedIsHole(x));
+}
+
 GateRef CircuitBuilder::TaggedIsNotUndefinedAndNull(GateRef x)
 {
     x = ChangeTaggedPointerToInt64(x);
@@ -468,6 +493,19 @@ GateRef CircuitBuilder::TaggedIsNotUndefinedAndNull(GateRef x)
     GateRef tagSpecial = Int64(JSTaggedValue::TAG_SPECIAL);
     GateRef andGate = Int64And(x, heapObjMask);
     GateRef result = NotEqual(andGate, tagSpecial);
+    return result;
+}
+
+GateRef CircuitBuilder::TaggedIsNotUndefinedAndNullAndHole(GateRef x)
+{
+    return BoolAnd(TaggedIsNotUndefinedAndNull(x), TaggedIsNotHole(x));
+}
+
+GateRef CircuitBuilder::TaggedIsUndefinedOrHole(GateRef x)
+{
+    GateRef isUndefined = TaggedIsUndefined(x);
+    GateRef isHole = TaggedIsHole(x);
+    GateRef result = BoolOr(isHole, isUndefined);
     return result;
 }
 

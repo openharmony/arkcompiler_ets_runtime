@@ -17,6 +17,7 @@
 
 #include <map>
 #include <string>
+#include <vector>
 
 namespace panda::ecmascript::kungfu {
 
@@ -63,6 +64,7 @@ namespace panda::ecmascript::kungfu {
     V(NEWOBJAPPLY_IMM16_V8)                                                \
     V(NEWOBJRANGE_IMM8_IMM8_V8)                                            \
     V(NEWOBJRANGE_IMM16_IMM8_V8)                                           \
+    V(WIDE_NEWOBJRANGE_PREF_IMM16_V8)                                      \
     V(NEWLEXENV_IMM8)                                                      \
     V(NEWLEXENVWITHNAME_IMM8_ID16)                                         \
     V(ADD2_IMM8_V8)                                                        \
@@ -99,6 +101,7 @@ namespace panda::ecmascript::kungfu {
     V(ISFALSE)                                                             \
     V(CALLTHIS3_IMM8_V8_V8_V8_V8)                                          \
     V(CALLTHISRANGE_IMM8_IMM8_V8)                                          \
+    V(WIDE_SUPERCALLTHISRANGE_PREF_IMM16_V8)                               \
     V(SUPERCALLTHISRANGE_IMM8_IMM8_V8)                                     \
     V(SUPERCALLARROWRANGE_IMM8_IMM8_V8)                                    \
     V(DEFINEFUNC_IMM8_ID16_IMM8)                                           \
@@ -113,12 +116,19 @@ namespace panda::ecmascript::kungfu {
     V(CALLRANGE_IMM8_IMM8_V8)                                              \
     V(LDEXTERNALMODULEVAR_IMM8)                                            \
     V(LDTHISBYNAME_IMM8_ID16)                                              \
-    V(DEFINEGETTERSETTERBYVALUE_V8_V8_V8_V8)                               \
     V(LDTHISBYNAME_IMM16_ID16)                                             \
+    V(LDOBJBYNAME_IMM8_ID16)                                               \
+    V(LDOBJBYNAME_IMM16_ID16)                                              \
+    V(DEFINEGETTERSETTERBYVALUE_V8_V8_V8_V8)                               \
     V(STTHISBYNAME_IMM8_ID16)                                              \
     V(STTHISBYNAME_IMM16_ID16)                                             \
+    V(STOBJBYNAME_IMM8_ID16_V8)                                            \
+    V(STOBJBYNAME_IMM16_ID16_V8)                                           \
+    V(DEFINEFIELDBYNAME_IMM8_ID16_V8)                                      \
     V(LDTHISBYVALUE_IMM8)                                                  \
     V(LDTHISBYVALUE_IMM16)                                                 \
+    V(LDOBJBYVALUE_IMM8_V8)                                                \
+    V(LDOBJBYVALUE_IMM16_V8)                                               \
     V(STTHISBYVALUE_IMM8_V8)                                               \
     V(STTHISBYVALUE_IMM16_V8)                                              \
     V(DYNAMICIMPORT)                                                       \
@@ -131,6 +141,7 @@ namespace panda::ecmascript::kungfu {
     V(GETNEXTPROPNAME_V8)                                                  \
     V(JEQZ_IMM8)                                                           \
     V(JEQZ_IMM16)                                                          \
+    V(JEQZ_IMM32)                                                          \
     V(SETOBJECTWITHPROTO_IMM8_V8)                                          \
     V(DELOBJPROP_V8)                                                       \
     V(SUSPENDGENERATOR_V8)                                                 \
@@ -138,8 +149,6 @@ namespace panda::ecmascript::kungfu {
     V(COPYDATAPROPERTIES_V8)                                               \
     V(STARRAYSPREAD_V8_V8)                                                 \
     V(SETOBJECTWITHPROTO_IMM16_V8)                                         \
-    V(LDOBJBYVALUE_IMM8_V8)                                                \
-    V(LDOBJBYVALUE_IMM16_V8)                                               \
     V(STOBJBYVALUE_IMM8_V8_V8)                                             \
     V(STOBJBYVALUE_IMM16_V8_V8)                                            \
     V(STOWNBYVALUE_IMM8_V8_V8)                                             \
@@ -150,8 +159,10 @@ namespace panda::ecmascript::kungfu {
     V(STSUPERBYVALUE_IMM16_V8_V8)                                          \
     V(LDOBJBYINDEX_IMM8_IMM16)                                             \
     V(LDOBJBYINDEX_IMM16_IMM16)                                            \
+    V(WIDE_LDOBJBYINDEX_PREF_IMM32)                                        \
     V(STOBJBYINDEX_IMM8_V8_IMM16)                                          \
     V(STOBJBYINDEX_IMM16_V8_IMM16)                                         \
+    V(WIDE_STOBJBYINDEX_PREF_V8_IMM32)                                     \
     V(STOWNBYINDEX_IMM8_V8_IMM16)                                          \
     V(STOWNBYINDEX_IMM16_V8_IMM16)                                         \
     V(ASYNCFUNCTIONRESOLVE_V8)                                             \
@@ -167,10 +178,6 @@ namespace panda::ecmascript::kungfu {
     V(TRYSTGLOBALBYNAME_IMM16_ID16)                                        \
     V(LDGLOBALVAR_IMM16_ID16)                                              \
     V(STGLOBALVAR_IMM16_ID16)                                              \
-    V(LDOBJBYNAME_IMM8_ID16)                                               \
-    V(LDOBJBYNAME_IMM16_ID16)                                              \
-    V(STOBJBYNAME_IMM8_ID16_V8)                                            \
-    V(STOBJBYNAME_IMM16_ID16_V8)                                           \
     V(STOWNBYNAME_IMM8_ID16_V8)                                            \
     V(STOWNBYNAME_IMM16_ID16_V8)                                           \
     V(LDSUPERBYNAME_IMM8_ID16)                                             \
@@ -180,7 +187,6 @@ namespace panda::ecmascript::kungfu {
     V(LDLOCALMODULEVAR_IMM8)                                               \
     V(STCONSTTOGLOBALRECORD_IMM16_ID16)                                    \
     V(STTOGLOBALRECORD_IMM16_ID16)                                         \
-    V(JEQZ_IMM32)                                                          \
     V(JNEZ_IMM8)                                                           \
     V(JNEZ_IMM16)                                                          \
     V(JNEZ_IMM32)                                                          \
@@ -244,7 +250,6 @@ namespace panda::ecmascript::kungfu {
     V(WIDE_CREATEOBJECTWITHEXCLUDEDKEYS_PREF_IMM16_V8_V8)                  \
     V(THROW_PREF_NONE)                                                     \
     V(DEPRECATED_POPLEXENV_PREF_NONE)                                      \
-    V(WIDE_NEWOBJRANGE_PREF_IMM16_V8)                                      \
     V(THROW_NOTEXISTS_PREF_NONE)                                           \
     V(DEPRECATED_GETITERATORNEXT_PREF_V8_V8)                               \
     V(WIDE_NEWLEXENV_PREF_IMM16)                                           \
@@ -259,17 +264,14 @@ namespace panda::ecmascript::kungfu {
     V(WIDE_CALLTHISRANGE_PREF_IMM16_V8)                                    \
     V(THROW_IFNOTOBJECT_PREF_V8)                                           \
     V(DEPRECATED_TONUMERIC_PREF_V8)                                        \
-    V(WIDE_SUPERCALLTHISRANGE_PREF_IMM16_V8)                               \
     V(THROW_UNDEFINEDIFHOLE_PREF_V8_V8)                                    \
     V(THROW_UNDEFINEDIFHOLEWITHNAME_PREF_ID16)                             \
     V(DEPRECATED_NEG_PREF_V8)                                              \
     V(WIDE_SUPERCALLARROWRANGE_PREF_IMM16_V8)                              \
     V(THROW_IFSUPERNOTCORRECTCALL_PREF_IMM8)                               \
     V(DEPRECATED_NOT_PREF_V8)                                              \
-    V(WIDE_LDOBJBYINDEX_PREF_IMM32)                                        \
     V(THROW_IFSUPERNOTCORRECTCALL_PREF_IMM16)                              \
     V(DEPRECATED_INC_PREF_V8)                                              \
-    V(WIDE_STOBJBYINDEX_PREF_V8_IMM32)                                     \
     V(DEPRECATED_DEC_PREF_V8)                                              \
     V(WIDE_STOWNBYINDEX_PREF_V8_IMM32)                                     \
     V(DEPRECATED_CALLARG0_PREF_V8)                                         \
@@ -317,7 +319,6 @@ namespace panda::ecmascript::kungfu {
     V(DEPRECATED_CREATEOBJECTHAVINGMETHOD_PREF_IMM16)                      \
     V(DEPRECATED_DYNAMICIMPORT_PREF_V8)                                    \
     V(CALLRUNTIME_NOTIFYCONCURRENTRESULT_PREF_NONE)                        \
-    V(DEFINEFIELDBYNAME_IMM8_ID16_V8)                                      \
     V(CALLRUNTIME_DEFINEFIELDBYVALUE_PREF_IMM8_V8_V8)                      \
     V(CALLRUNTIME_DEFINEFIELDBYINDEX_PREF_IMM8_IMM32_V8)                   \
     V(CALLRUNTIME_TOPROPERTYKEY_PREF_NONE)                                 \
@@ -340,5 +341,27 @@ inline std::string GetEcmaOpcodeStr(EcmaOpcode opcode)
     return "bytecode-" + std::to_string(static_cast<uint16_t>(opcode));
 }
 
+inline std::vector<EcmaOpcode> GetEcmaCodeListForRange()
+{
+    std::vector<EcmaOpcode> lorwingOpCodeList = {
+#define BYTECODE_NAME_VECTOR(name) EcmaOpcode::name,
+        ECMA_OPCODE_LIST(BYTECODE_NAME_VECTOR)
+#undef BYTECODE_NAME_VECTOR
+    };
+    return lorwingOpCodeList;
+}
+
+inline std::string GetHelpForEcmaCodeListForRange()
+{
+    int32_t i = 0;
+    std::vector<EcmaOpcode> lorwingOpCodeList = GetEcmaCodeListForRange();
+    std::string optBCRangeStr;
+    optBCRangeStr.append(" bytecode for list: \n");
+    for (auto ecmaOpCode : lorwingOpCodeList) {
+        optBCRangeStr.append(" index:" + std::to_string(i) + "     ecmaOpCode:" + GetEcmaOpcodeStr(ecmaOpCode) + "\n");
+        i++;
+    }
+    return optBCRangeStr;
+}
 }  // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_ECMA_OPCODE_DES_H_

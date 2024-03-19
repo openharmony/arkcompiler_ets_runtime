@@ -13,8 +13,9 @@
  * limitations under the License.
  */
 
-declare function print(str:any):string;
+declare function assert_true(condition: boolean):void;
+declare function assert_equal(a: Object, b: Object):void;
 var empArr : Array<any> = [];
 var isArr = Array.isArray(empArr);
-print(empArr.length);
-print(isArr);
+assert_equal(empArr.length, 0);
+assert_true(isArr);

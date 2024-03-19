@@ -121,10 +121,19 @@ void SourceMap::Init(uint8_t *data, size_t dataSize, const std::string& url)
 
 void SourceMap::SplitSourceMap(const std::string& url, const std::string& sourceMapData)
 {
+    auto iter = sourceMaps_.find(url);
+    if (iter != sourceMaps_.end()) {
+        return;
+    }
+    size_t urlLeft = 0;
+    size_t urlRight = 0;
     size_t leftBracket = 0;
     size_t rightBracket = 0;
     std::string value;
     while ((leftBracket = sourceMapData.find(": {", rightBracket)) != std::string::npos) {
+        urlLeft = leftBracket;
+        urlRight = sourceMapData.find("  \"", rightBracket) + INDEX_THREE;
+        std::string key = sourceMapData.substr(urlRight, urlLeft - urlRight - INDEX_ONE);
         rightBracket = sourceMapData.find("},", leftBracket);
         value = sourceMapData.substr(leftBracket, rightBracket);
         std::size_t sources = value.find("\"sources\": [");
@@ -136,15 +145,13 @@ void SourceMap::SplitSourceMap(const std::string& url, const std::string& source
             continue;
         }
         // Intercept the sourcemap file path as the key
-        std::string key = value.substr(sources + NUM_TWENTY, names - sources - NUM_TWENTYSIX);
+        std::string filePath = value.substr(sources + NUM_TWENTY, names - sources - NUM_TWENTYSIX);
         if (key == url) {
-            auto iter = sourceMaps_.find(key);
-            if (iter != sourceMaps_.end()) {
-                continue;
-            }
             std::shared_ptr<SourceMapData> modularMap = std::make_shared<SourceMapData>();
+            modularMap->url_ = filePath;
             ExtractSourceMapData(value, modularMap);
             sourceMaps_.emplace(key, modularMap);
+            return;
         }
     }
 }
@@ -225,7 +232,7 @@ void SourceMap::ExtractSourceMapData(const std::string& sourceMapData, std::shar
     curMapData->mappings_.shrink_to_fit();
 }
 
-MappingInfo SourceMap::Find(int32_t row, int32_t col, const SourceMapData& targetMap, const std::string& key)
+MappingInfo SourceMap::Find(int32_t row, int32_t col, const SourceMapData& targetMap)
 {
     if (row < 1 || col < 1 || targetMap.afterPos_.empty()) {
         return MappingInfo {0, 0, ""};
@@ -249,7 +256,7 @@ MappingInfo SourceMap::Find(int32_t row, int32_t col, const SourceMapData& targe
             left = mid + 1;
         }
     }
-    std::string sources = key;
+    std::string sources = targetMap.url_;
     auto pos = sources.find(WEBPACK);
     if (pos != std::string::npos) {
         sources.replace(pos, sizeof(WEBPACK) - 1, "");
@@ -373,19 +380,21 @@ bool SourceMap::TranslateUrlPositionBySourceMap(std::string& url, int& line, int
 {
     auto iter = sourceMaps_.find(url);
     if (iter != sourceMaps_.end()) {
-        return GetLineAndColumnNumbers(line, column, *(iter->second), url);
+        return GetLineAndColumnNumbers(line, column, *(iter->second));
+    } else if (url.rfind(".js") != std::string::npos) {
+        return true;
     }
     return false;
 }
 
-bool SourceMap::GetLineAndColumnNumbers(int& line, int& column, SourceMapData& targetMap, std::string& key)
+bool SourceMap::GetLineAndColumnNumbers(int& line, int& column, SourceMapData& targetMap)
 {
     int32_t offSet = 0;
     MappingInfo mapInfo;
 #if defined(WINDOWS_PLATFORM) || defined(MAC_PLATFORM)
-        mapInfo = Find(line - offSet + OFFSET_PREVIEW, column, targetMap, key);
+        mapInfo = Find(line - offSet + OFFSET_PREVIEW, column, targetMap);
 #else
-        mapInfo = Find(line - offSet, column, targetMap, key);
+        mapInfo = Find(line - offSet, column, targetMap);
 #endif
     if (mapInfo.row == 0 || mapInfo.col == 0) {
         return false;

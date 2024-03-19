@@ -22,14 +22,15 @@
 
 namespace panda::ecmascript::kungfu {
 extern "C" {
-PUBLIC_API void *CreateJitCompiler(EcmaVM *vm, JitTask *jitTask);
+PUBLIC_API void InitJitCompiler(EcmaVM *vm);
+PUBLIC_API void *CreateJitCompilerTask(JitTask *jitTask);
 PUBLIC_API bool JitCompile(void *compiler, JitTask *jitTask);
 PUBLIC_API bool JitFinalize(void *compiler, JitTask *jitTask);
 PUBLIC_API void DeleteJitCompile(void *handle);
 };
 
 struct JitCompilationOptions {
-    JitCompilationOptions(JSRuntimeOptions &runtimeOptions, EcmaVM *vm);
+    JitCompilationOptions(EcmaVM *vm);
     JitCompilationOptions() = default;
 
     std::string triple_;
@@ -63,21 +64,12 @@ struct JitCompilationOptions {
     bool isEnableLoweringBuiltin_;
 };
 
-class JitCompiler {
+class JitCompilerTask final {
 public:
-    static JitCompiler *Create(EcmaVM *vm, JitTask *jitTask);
-    explicit JitCompiler(EcmaVM *vm, JSHandle<JSFunction> jsFunction)
-        : vm_(vm),
-          jsFunction_(jsFunction),
-          jitOptions_(vm->GetJSOptions(), vm),
-          log_(jitOptions_.logOption_),
-          logList_(jitOptions_.logMethodsList_),
-          profilerDecoder_(jitOptions_.profilerIn_, jitOptions_.hotnessThreshold_)
-    {
-        Init();
-    }
-    ~JitCompiler();
-    void Init();
+    JitCompilerTask(JitTask *jitTask) : vm_(jitTask->GetVM()), jsFunction_(jitTask->GetJsFunction()),
+        passManager_(nullptr), jitCodeGenerator_(nullptr) { };
+
+    static JitCompilerTask *CreateJitCompilerTask(JitTask *jitTask);
 
     bool Compile();
     bool Finalize(JitTask *jitTask);
@@ -85,13 +77,51 @@ public:
 private:
     EcmaVM *vm_;
     JSHandle<JSFunction> jsFunction_;
+    std::unique_ptr<JitPassManager> passManager_;
+    // need refact AOTFileGenerator to JitCodeGenerator
+    std::unique_ptr<AOTFileGenerator> jitCodeGenerator_;
+};
+
+class JitCompiler final {
+public:
+    explicit JitCompiler(EcmaVM *vm) : jitOptions_(vm),
+        log_(jitOptions_.logOption_),
+        logList_(jitOptions_.logMethodsList_),
+        profilerDecoder_(jitOptions_.profilerIn_, jitOptions_.hotnessThreshold_) { }
+    ~JitCompiler() = default;
+    void Init(EcmaVM *vm);
+
+    static JitCompiler *GetInstance(EcmaVM *vm = nullptr);
+    JitCompilationOptions &GetJitOptions()
+    {
+        return jitOptions_;
+    }
+
+    CompilerLog &GetCompilerLog()
+    {
+        return log_;
+    }
+
+    AotMethodLogList &GetLogList()
+    {
+        return logList_;
+    }
+
+    PGOProfilerDecoder &GetProfilerDecoder()
+    {
+        return profilerDecoder_;
+    }
+    PassOptions &GetPassOptions()
+    {
+        return passOptions_;
+    }
+
+private:
     JitCompilationOptions jitOptions_;
     CompilerLog log_;
     AotMethodLogList logList_;
     PGOProfilerDecoder profilerDecoder_;
     PassOptions passOptions_;
-    JitPassManager *passManager_;
-    AOTFileGenerator *aotFileGenerator_;
 };
 }  // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_JIT_COMPILER_H
