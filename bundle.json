@@ -31,7 +31,9 @@
               "c_utils",
               "code_signature",
               "libuv",
-              "zlib"
+              "zlib",
+              "bounds_checking_function",
+              "icu"
             ],
             "third_party": [
               "bounds_checking_function",
