@@ -48,9 +48,9 @@ JSTaggedValue BuiltinsNumberFormat::NumberFormatConstructor(EcmaRuntimeCallInfo 
     // [[UnitDisplay]], [[Currency]], [[CurrencyDisplay]], [[CurrencySign]], [[MinimumIntegerDigits]],
     // [[MinimumFractionDigits]], [[MaximumFractionDigits]], [[MinimumSignificantDigits]], [[MaximumSignificantDigits]],
     // [[RoundingType]], [[Notation]], [[CompactDisplay]], [[UseGrouping]], [[SignDisplay]], [[BoundFormat]] »).
-    JSHandle<JSNumberFormat> numberFormat =
-        JSHandle<JSNumberFormat>::Cast(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(constructor), newTarget));
+    JSHandle<JSObject> newObject = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(constructor), newTarget);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    JSHandle<JSNumberFormat> numberFormat = JSHandle<JSNumberFormat>::Cast(newObject);
 
     // 3. Perform ? InitializeNumberFormat(numberFormat, locales, options).
     JSHandle<JSTaggedValue> locales = GetCallArg(argv, 0);

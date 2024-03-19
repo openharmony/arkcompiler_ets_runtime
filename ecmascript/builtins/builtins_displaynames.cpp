@@ -43,9 +43,9 @@ JSTaggedValue BuiltinsDisplayNames::DisplayNamesConstructor(EcmaRuntimeCallInfo 
     // 2. Let displayNames be ? OrdinaryCreateFromConstructor(NewTarget, "%DisplayNames.prototype%",
     // « [[InitializedDisplayNames]], [[Locale]], [[Style]], [[Type]], [[Fallback]], [[Fields]] »).
     JSHandle<JSTaggedValue> constructor = GetConstructor(argv);
-    JSHandle<JSDisplayNames> displayNames =
-        JSHandle<JSDisplayNames>::Cast(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(constructor), newTarget));
+    JSHandle<JSObject> newObject = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(constructor), newTarget);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    JSHandle<JSDisplayNames> displayNames = JSHandle<JSDisplayNames>::Cast(newObject);
 
     // 3. Perform ? InitializeDisplayNames(displayNames, locales, options).
     JSHandle<JSTaggedValue> locales = GetCallArg(argv, 0);

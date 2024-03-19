@@ -35,6 +35,7 @@ JSHandle<JSPrimitiveRef> JSPrimitiveRef::StringCreate(JSThread *thread, const JS
     // 6. Set S.[[OwnPropertyKeys]] as specified.
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSTaggedValue> str(factory->NewJSString(value, newTarget));
+    RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSPrimitiveRef, thread);
     // 7. Let length be the number of code unit elements in value.
     JSHandle<JSTaggedValue> lengthStr = thread->GlobalConstants()->GetHandledLengthString();
     uint32_t length = EcmaStringAccessor(value->GetTaggedObject()).GetLength();

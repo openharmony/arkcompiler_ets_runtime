@@ -44,9 +44,9 @@ JSTaggedValue BuiltinsListFormat::ListFormatConstructor(EcmaRuntimeCallInfo *arg
     // [[Type]], [[Style]], [[Templates]] »).
 
     JSHandle<JSTaggedValue> constructor = GetConstructor(argv);
-    JSHandle<JSListFormat> listFormat = JSHandle<JSListFormat>::Cast(
-        factory->NewJSObjectByConstructor(JSHandle<JSFunction>(constructor), newTarget));
+    JSHandle<JSObject> newObject = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(constructor), newTarget);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    JSHandle<JSListFormat> listFormat = JSHandle<JSListFormat>::Cast(newObject);
 
     // 3. Perform ? InitializeListFormat(listFormat, locales, options).
     JSHandle<JSTaggedValue> locales = GetCallArg(argv, 0);
