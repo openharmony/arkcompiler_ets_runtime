@@ -21,7 +21,6 @@
  */
 
 declare function print(str:any):string;
-declare function assert_equal(a: Object, b: Object):void;
 
 let parent = {
     "c": undefined,
@@ -39,16 +38,10 @@ let own = {
 delete own.b
 own.__proto__ = parent
 
-var testArrary = ["1", "c", "b"];
-var j = 0;
 for (let i in parent) {
-    assert_equal(i, testArrary[j]);
-    j++;
+    print(i)
 }
-testArrary = ["1", "a", "c", "b"];
-j = 0;
 print("=============")
 for (let i in own) {
-    assert_equal(i, testArrary[j]);
-    j++;
+    print(i)
 }
