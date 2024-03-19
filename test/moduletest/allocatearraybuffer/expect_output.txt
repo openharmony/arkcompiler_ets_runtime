@@ -13,3 +13,4 @@
 
 undefined
 NaN
+1
