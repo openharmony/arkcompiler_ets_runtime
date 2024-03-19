@@ -745,6 +745,11 @@ bool JSObject::SetProperty(ObjectOperator *op, const JSHandle<JSTaggedValue> &va
         bool hasReceiver = false;
         if (op->HasReceiver()) {
             op->ReLookupPropertyInReceiver();
+            isInternalAccessor = false;
+            if (op->IsAccessorDescriptor()) {
+                JSTaggedValue ret = ShouldGetValueFromBox(op);
+                isInternalAccessor = AccessorData::Cast(ret.GetTaggedObject())->IsInternal();
+            }
             hasReceiver = true;
         }
         bool isSuccess = true;

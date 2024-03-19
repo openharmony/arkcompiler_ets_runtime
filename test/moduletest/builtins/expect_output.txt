@@ -55,3 +55,6 @@ builtins regexp end
 true
 false
 false
+builtins reflect start
+v56.length 102630708
+builtins reflect end

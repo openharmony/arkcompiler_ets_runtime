@@ -37,4 +37,15 @@ try {
 } catch (err) {
     err.constructor.prototype.name = 123456789;
 }
-0();
+try {
+   0(); 
+} catch (error) {}
+
+Object.defineProperty(ReferenceError.prototype, "constructor", {
+    value: "x"
+})
+try {
+    print(x13)
+} catch (e) {
+    print(e.name)
+}
