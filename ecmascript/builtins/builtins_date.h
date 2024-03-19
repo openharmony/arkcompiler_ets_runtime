@@ -166,6 +166,8 @@ public:
     static JSTaggedValue ToPrimitive(EcmaRuntimeCallInfo *argv);
 
 private:
+    static JSTaggedValue ExtractDateFields(JSThread *thread, uint32_t &length, EcmaRuntimeCallInfo *argv,
+        JSTaggedValue &timeValue);
     // definition for set data code.
     static constexpr uint32_t CODE_SET_DATE = 0x32;
     static constexpr uint32_t CODE_SET_MILLISECONDS = 0x76;

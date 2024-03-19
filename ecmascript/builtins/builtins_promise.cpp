@@ -1067,6 +1067,7 @@ JSTaggedValue BuiltinsPromise::Finally(EcmaRuntimeCallInfo *argv)
     JSHandle<JSObject> ctor = JSHandle<JSObject>::Cast(promise);
     JSHandle<JSTaggedValue> promiseFunc = JSHandle<JSTaggedValue>::Cast(env->GetPromiseFunction());
     JSHandle<JSTaggedValue> constructor = JSObject::SpeciesConstructor(thread, ctor, promiseFunc);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     ASSERT_PRINT(constructor->IsConstructor(), "constructor is not constructor");
     JSHandle<JSTaggedValue> thenFinally;
     JSHandle<JSTaggedValue> catchFinally;
