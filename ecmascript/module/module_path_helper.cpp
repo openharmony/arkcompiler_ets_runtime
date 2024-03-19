@@ -617,6 +617,10 @@ CString ModulePathHelper::ParseFileNameToVMAName(const CString &filename)
     }
 
     if (filename.find(EXT_NAME_ABC) != CString::npos) {
+        pos = filename.find(BUNDLE_INSTALL_PATH);
+        if (pos == CString::npos) {
+            return tag + PathHelper::COLON_TAG + filename;
+        }
         CString file = filename.substr(BUNDLE_INSTALL_PATH_LEN);
         return tag + PathHelper::COLON_TAG + file;
     }

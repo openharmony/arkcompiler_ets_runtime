@@ -665,4 +665,32 @@ HWTEST_F_L0(EcmaModuleTest, IsImportFile)
     outFileName = ModulePathHelper::RemoveSuffix(inputFileName);
     EXPECT_EQ(outFileName, result);
 }
+
+HWTEST_F_L0(EcmaModuleTest, ParseFileNameToVMAName)
+{
+    CString inputFileName = "test.abc";
+    CString outFileName = ModulePathHelper::ParseFileNameToVMAName(inputFileName);
+    CString exceptOutFileName = "ArkTS Code:test.abc";
+    EXPECT_EQ(outFileName, exceptOutFileName);
+
+    inputFileName = "";
+    outFileName = ModulePathHelper::ParseFileNameToVMAName(inputFileName);
+    exceptOutFileName = "ArkTS Code";
+    EXPECT_EQ(outFileName, exceptOutFileName);
+
+    inputFileName = "libutil.z.so/util.js";
+    outFileName = ModulePathHelper::ParseFileNameToVMAName(inputFileName);
+    exceptOutFileName = "ArkTS Code:libutil.z.so/util.js";
+    EXPECT_EQ(outFileName, exceptOutFileName);
+
+    inputFileName = "libutil.HashMap.z.so/util.HashMap.js";
+    outFileName = ModulePathHelper::ParseFileNameToVMAName(inputFileName);
+    exceptOutFileName = "ArkTS Code:libhashmap.z.so/HashMap.js";
+    EXPECT_EQ(outFileName, exceptOutFileName);
+
+    inputFileName = "/data/storage/el1/bundle/com.example.application/ets/modules.abc";
+    outFileName = ModulePathHelper::ParseFileNameToVMAName(inputFileName);
+    exceptOutFileName = "ArkTS Code:com.example.application/ets/modules.abc";
+    EXPECT_EQ(outFileName, exceptOutFileName);
+}
 }  // namespace panda::test

@@ -214,6 +214,7 @@ HWTEST_F_L0(JSPandaFileManagerTest, LoadJSPandaFile)
 {
     const char *filename1 = "__JSPandaFileManagerTest1.pa";
     const char *filename2 = "__JSPandaFileManagerTest2.pa";
+    const char *filename3 = "__JSPandaFileManagerTest3.abc";
     const char *data = R"(
         .function void foo() {}
     )";
@@ -222,23 +223,32 @@ HWTEST_F_L0(JSPandaFileManagerTest, LoadJSPandaFile)
     auto res = parser.Parse(data);
     std::unique_ptr<const File> pfPtr1 = pandasm::AsmEmitter::Emit(res.Value());
     std::unique_ptr<const File> pfPtr2 = pandasm::AsmEmitter::Emit(res.Value());
+    std::unique_ptr<const File> pfPtr3 = pandasm::AsmEmitter::Emit(res.Value());
     std::shared_ptr<JSPandaFile> pf1 = pfManager->NewJSPandaFile(pfPtr1.release(), CString(filename1));
     std::shared_ptr<JSPandaFile> pf2 = pfManager->NewJSPandaFile(pfPtr2.release(), CString(filename2));
+    std::shared_ptr<JSPandaFile> pf3 = pfManager->NewJSPandaFile(pfPtr3.release(), CString(filename3));
     pfManager->AddJSPandaFileVm(instance, pf1);
     pfManager->AddJSPandaFileVm(instance, pf2);
+    pfManager->AddJSPandaFileVm(instance, pf3);
     std::shared_ptr<JSPandaFile> loadedPf1 =
         pfManager->LoadJSPandaFile(thread, filename1, JSPandaFile::ENTRY_MAIN_FUNCTION);
     std::shared_ptr<JSPandaFile> loadedPf2 =
         pfManager->LoadJSPandaFile(thread, filename2, JSPandaFile::ENTRY_MAIN_FUNCTION, (void *)data, sizeof(data));
+    std::shared_ptr<JSPandaFile> loadedPf3 =
+        pfManager->LoadJSPandaFile(thread, filename3, JSPandaFile::ENTRY_MAIN_FUNCTION, (void *)data, sizeof(data));
     EXPECT_TRUE(loadedPf1 != nullptr);
     EXPECT_TRUE(loadedPf2 != nullptr);
+    EXPECT_TRUE(loadedPf3 != nullptr);
     EXPECT_TRUE(pf1 == loadedPf1);
     EXPECT_TRUE(pf2 == loadedPf2);
+    EXPECT_TRUE(pf3 == loadedPf3);
     EXPECT_STREQ(loadedPf1->GetJSPandaFileDesc().c_str(), "__JSPandaFileManagerTest1.pa");
     EXPECT_STREQ(loadedPf2->GetJSPandaFileDesc().c_str(), "__JSPandaFileManagerTest2.pa");
+    EXPECT_STREQ(loadedPf3->GetJSPandaFileDesc().c_str(), "__JSPandaFileManagerTest3.abc");
 
     pfManager->RemoveJSPandaFileVm(instance, pf1.get());
     pfManager->RemoveJSPandaFileVm(instance, pf2.get());
+    pfManager->RemoveJSPandaFileVm(instance, pf3.get());
 }
 
 HWTEST_F_L0(JSPandaFileManagerTest, GenerateProgram)
