@@ -71,3 +71,6 @@ v1[5] = 23;
 print(obj1[str1]);
 obj1[str1] = 5;
 print(obj1[str1]);
+
+let key = 1 + {};
+print("abc"[key])
