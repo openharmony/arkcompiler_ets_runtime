@@ -13,7 +13,7 @@
 
 import("//arkcompiler/ets_runtime/test/test_helper.gni")
 
-host_aot_assert_test_action("ts_inline_exception6") {
+host_aot_test_action("ts_inline_exception6") {
   deps = []
   is_enable_opt_inlining = true
 }

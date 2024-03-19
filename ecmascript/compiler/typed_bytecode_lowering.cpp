@@ -562,7 +562,7 @@ void TypedBytecodeLowering::LowerTypedLdObjByName(GateRef gate)
     for (size_t i = 0; i < typeCount; ++i) {
         auto expected = builder_.GetHClassGateFromIndex(gate, tacc.GetExpectedHClassIndex(i));
         if (i != typeCount - 1) {
-            builder_.Branch(builder_.Equal(receiverHC, expected), &loaders[i], &fails[i]);
+            BRANCH_CIR(builder_.Equal(receiverHC, expected), &loaders[i], &fails[i]);
             builder_.Bind(&loaders[i]);
         } else {
             // Deopt if fails at last hclass compare
@@ -590,7 +590,7 @@ void TypedBytecodeLowering::LowerTypedLdObjByName(GateRef gate)
             builder_.LoopBegin(&loopHead);
             builder_.DeoptCheck(builder_.TaggedIsNotNull(*current), frameState, DeoptType::INCONSISTENTHCLASS2);
             auto curHC = builder_.LoadConstOffset(VariableType::JS_POINTER(), *current, TaggedObject::HCLASS_OFFSET);
-            builder_.Branch(builder_.Equal(curHC, holderHC), &loadHolder, &lookUpProto);
+            BRANCH_CIR(builder_.Equal(curHC, holderHC), &loadHolder, &lookUpProto);
 
             builder_.Bind(&lookUpProto);
             current = builder_.LoadConstOffset(VariableType::JS_ANY(), curHC, JSHClass::PROTOTYPE_OFFSET);
@@ -676,7 +676,7 @@ void TypedBytecodeLowering::LowerTypedStObjByName(GateRef gate)
     for (size_t i = 0; i < typeCount; ++i) {
         auto expected = builder_.GetHClassGateFromIndex(gate, tacc.GetExpectedHClassIndex(i));
         if (i != typeCount - 1) {
-            builder_.Branch(builder_.Equal(receiverHC, expected),
+            BRANCH_CIR(builder_.Equal(receiverHC, expected),
                 &loaders[i], &fails[i]);
             builder_.Bind(&loaders[i]);
         } else {
@@ -698,7 +698,7 @@ void TypedBytecodeLowering::LowerTypedStObjByName(GateRef gate)
                 builder_.DeoptCheck(builder_.TaggedIsNotNull(*current), frameState, DeoptType::INCONSISTENTHCLASS4);
                 auto curHC = builder_.LoadConstOffset(VariableType::JS_POINTER(), *current,
                                                       TaggedObject::HCLASS_OFFSET);
-                builder_.Branch(builder_.Equal(curHC, holderHC), &loadHolder, &lookUpProto);
+                BRANCH_CIR(builder_.Equal(curHC, holderHC), &loadHolder, &lookUpProto);
 
                 builder_.Bind(&lookUpProto);
                 current = builder_.LoadConstOffset(VariableType::JS_ANY(), curHC, JSHClass::PROTOTYPE_OFFSET);
@@ -715,7 +715,7 @@ void TypedBytecodeLowering::LowerTypedStObjByName(GateRef gate)
                 auto newHolderHC = builder_.GetHClassGateFromIndex(gate, tacc.GetAccessInfo(i).HClassIndex());
                 builder_.StoreConstOffset(VariableType::JS_ANY(), newHolderHC, JSHClass::PROTOTYPE_OFFSET, prototype);
                 builder_.Branch(builder_.IsProtoTypeHClass(receiverHC), &isProto, &notProto,
-                    BranchWeight::ONE_WEIGHT, BranchWeight::DEOPT_WEIGHT);
+                    BranchWeight::ONE_WEIGHT, BranchWeight::DEOPT_WEIGHT, "isProtoTypeHClass");
                 builder_.Bind(&isProto);
                 auto propKey = builder_.LoadObjectFromConstPool(argAcc_.GetFrameArgsIn(gate, FrameArgIdx::CONST_POOL),
                                                                 tacc.GetKey());
@@ -734,7 +734,7 @@ void TypedBytecodeLowering::LowerTypedStObjByName(GateRef gate)
                     auto index = builder_.Int32(tacc.GetAccessInfo(i).Plr().GetOffset());
                     Label needExtend(&builder_);
                     Label notExtend(&builder_);
-                    builder_.Branch(builder_.Int32UnsignedLessThan(index, capacity), &notExtend, &needExtend);
+                    BRANCH_CIR(builder_.Int32UnsignedLessThan(index, capacity), &notExtend, &needExtend);
                     builder_.Bind(&notExtend);
                     {
                         BuildNamedPropertyAccess(gate, tacc.GetReceiver(), tacc.GetReceiver(),

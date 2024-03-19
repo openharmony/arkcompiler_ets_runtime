@@ -488,7 +488,7 @@ void NumberSpeculativeLowering::VisitBooleanJump(GateRef gate)
         std::swap(trueWeight, falseWeight);
         condition = builder_.BoolNot(condition);
     }
-    GateRef ifBranch = builder_.Branch(acc_.GetState(gate), condition, trueWeight, falseWeight);
+    GateRef ifBranch = builder_.Branch(acc_.GetState(gate), condition, trueWeight, falseWeight, "booleanJump");
     acc_.ReplaceGate(gate, ifBranch, acc_.GetDep(gate), Circuit::NullGate());
 }
 
@@ -1019,7 +1019,7 @@ void NumberSpeculativeLowering::VisitLoadPropertyOnProto(GateRef gate)
         builder_.LoopBegin(&loopHead);
         builder_.DeoptCheck(builder_.TaggedIsNotNull(*current), frameState, DeoptType::INCONSISTENTHCLASS7);
         auto curHC = builder_.LoadConstOffset(VariableType::JS_POINTER(), *current, TaggedObject::HCLASS_OFFSET);
-        builder_.Branch(builder_.Equal(curHC, holderHC), &loadHolder, &lookUpProto);
+        BRANCH_CIR(builder_.Equal(curHC, holderHC), &loadHolder, &lookUpProto);
 
         builder_.Bind(&lookUpProto);
         current = builder_.LoadConstOffset(VariableType::JS_ANY(), curHC, JSHClass::PROTOTYPE_OFFSET);

@@ -1394,7 +1394,7 @@ inline GateRef StubBuilder::IsJSObjectType(GateRef obj, JSType jsType)
     Label heapObj(env);
     Label exit(env);
     GateRef isHeapObject = TaggedIsHeapObject(obj);
-    Branch(isHeapObject, &heapObj, &exit);
+    BRANCH(isHeapObject, &heapObj, &exit);
     Bind(&heapObj);
     GateRef objectType = GetObjectType(LoadHClass(obj));
     result = env_->GetBuilder()->LogicAnd(isHeapObject, Int32Equal(objectType, Int32(static_cast<int32_t>(jsType))));
@@ -2137,7 +2137,7 @@ inline void StubBuilder::CheckUpdateSharedType(bool isDicMode, Variable *result,
 {
     auto *env = GetEnvironment();
     Label isSharedObj(env);
-    Branch(IsJSSharedType(jsType), &isSharedObj, executeSetProp);
+    BRANCH(IsJSSharedType(jsType), &isSharedObj, executeSetProp);
     Bind(&isSharedObj);
     {
         Label typeMismatch(env);
@@ -2679,7 +2679,7 @@ inline GateRef StubBuilder::GetMethodFromJSFunction(GateRef object)
     Label funcIsJSFunctionBase(env);
     Label funcIsJSProxy(env);
     Label getMethod(env);
-    Branch(IsJSFunctionBase(object), &funcIsJSFunctionBase, &funcIsJSProxy);
+    BRANCH(IsJSFunctionBase(object), &funcIsJSFunctionBase, &funcIsJSProxy);
     Bind(&funcIsJSFunctionBase);
     {
         methodOffset = IntPtr(JSFunctionBase::METHOD_OFFSET);
@@ -3120,7 +3120,7 @@ inline void StubBuilder::CheckDetectorName(GateRef glue, GateRef key, Label *fal
         VariableType::INT64(), glueGlobalEnv, GlobalEnv::LAST_DETECTOR_SYMBOL_INDEX);
     GateRef isDetectorName = BoolAnd(Int64UnsignedLessThanOrEqual(firstDetectorName, keyAddr),
                                      Int64UnsignedLessThanOrEqual(keyAddr, lastDetectorName));
-    Branch(isDetectorName, slow, fallthrough);
+    BRANCH(isDetectorName, slow, fallthrough);
 }
 
 inline GateRef StubBuilder::LoadPfHeaderFromConstPool(GateRef jsFunc)
@@ -3162,16 +3162,16 @@ inline GateRef StubBuilder::LoadHCIndexFromConstPool(
     Label afterLoop(env);
     Label matchSuccess(env);
     Label afterUpdate(env);
-    Branch(Int32LessThan(*i, cachedLength), &loopHead, miss);
+    BRANCH(Int32LessThan(*i, cachedLength), &loopHead, miss);
     LoopBegin(&loopHead);
     bcOffset = GetInt32OfTInt(GetValueFromTaggedArray(cachedArray, *i));
-    Branch(Int32Equal(*bcOffset, traceId), &matchSuccess, &afterUpdate);
+    BRANCH(Int32Equal(*bcOffset, traceId), &matchSuccess, &afterUpdate);
     Bind(&matchSuccess);
     constantIndex = GetInt32OfTInt(GetValueFromTaggedArray(cachedArray, Int32Add(*i, Int32(1))));
     Jump(&afterLoop);
     Bind(&afterUpdate);
     i = Int32Add(*i, Int32(2)); // 2 : skip traceId and constantIndex
-    Branch(Int32LessThan(*i, cachedLength), &loopEnd, miss);
+    BRANCH(Int32LessThan(*i, cachedLength), &loopEnd, miss);
     Bind(&loopEnd);
     LoopEnd(&loopHead);
     Bind(&afterLoop);

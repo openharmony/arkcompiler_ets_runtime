@@ -31,16 +31,16 @@ void BuiltinsFunctionStubBuilder::Apply(GateRef glue, GateRef thisValue,
     Label targetNotUndefined(env);
     Label isHeapObject(env);
     //1. If IsCallable(func) is false, throw a TypeError exception
-    Branch(TaggedIsHeapObject(thisValue), &isHeapObject, slowPath);
+    BRANCH(TaggedIsHeapObject(thisValue), &isHeapObject, slowPath);
     Bind(&isHeapObject);
     {
-        Branch(IsCallable(thisValue), &targetIsCallable, slowPath);
+        BRANCH(IsCallable(thisValue), &targetIsCallable, slowPath);
         Bind(&targetIsCallable);
         {
             GateRef thisArg = GetCallArg0(numArgs);
             GateRef arrayObj = GetCallArg1(numArgs);
             // 2. If argArray is null or undefined, then
-            Branch(TaggedIsUndefined(arrayObj), &targetIsUndefined, &targetNotUndefined);
+            BRANCH(TaggedIsUndefined(arrayObj), &targetIsUndefined, &targetNotUndefined);
             Bind(&targetIsUndefined);
             {
                 // a. Return Call(func, thisArg).
@@ -54,7 +54,7 @@ void BuiltinsFunctionStubBuilder::Apply(GateRef glue, GateRef thisValue,
                 GateRef elements = BuildArgumentsListFastElements(glue, arrayObj);
                 Label targetIsHole(env);
                 Label targetNotHole(env);
-                Branch(TaggedIsHole(elements), &targetIsHole, &targetNotHole);
+                BRANCH(TaggedIsHole(elements), &targetIsHole, &targetNotHole);
                 Bind(&targetIsHole);
                 {
                     BuiltinsObjectStubBuilder objectStubBuilder(this);
@@ -62,7 +62,7 @@ void BuiltinsFunctionStubBuilder::Apply(GateRef glue, GateRef thisValue,
                     // 4. ReturnIfAbrupt(argList).
                     Label isPendingException(env);
                     Label noPendingException(env);
-                    Branch(HasPendingException(glue), &isPendingException, &noPendingException);
+                    BRANCH(HasPendingException(glue), &isPendingException, &noPendingException);
                     Bind(&isPendingException);
                     {
                         Jump(slowPath);
@@ -81,7 +81,7 @@ void BuiltinsFunctionStubBuilder::Apply(GateRef glue, GateRef thisValue,
                     // 6. Return Call(func, thisArg, argList).
                     Label taggedIsStableJsArg(env);
                     Label taggedNotStableJsArg(env);
-                    Branch(IsStableJSArguments(glue, arrayObj), &taggedIsStableJsArg, &taggedNotStableJsArg);
+                    BRANCH(IsStableJSArguments(glue, arrayObj), &taggedIsStableJsArg, &taggedNotStableJsArg);
                     Bind(&taggedIsStableJsArg);
                     {
                         GateRef hClass = LoadHClass(arrayObj);
@@ -125,10 +125,10 @@ GateRef BuiltinsFunctionStubBuilder::BuildArgumentsListFastElements(GateRef glue
     Label targetIsStableJSArray(env);
     Label targetNotStableJSArray(env);
 
-    Branch(HasStableElements(glue, arrayObj), &hasStableElements, &exit);
+    BRANCH(HasStableElements(glue, arrayObj), &hasStableElements, &exit);
     Bind(&hasStableElements);
     {
-        Branch(IsStableJSArguments(glue, arrayObj), &targetIsStableJSArguments, &targetNotStableJSArguments);
+        BRANCH(IsStableJSArguments(glue, arrayObj), &targetIsStableJSArguments, &targetNotStableJSArguments);
         Bind(&targetIsStableJSArguments);
         {
             GateRef hClass = LoadHClass(arrayObj);
@@ -136,17 +136,17 @@ GateRef BuiltinsFunctionStubBuilder::BuildArgumentsListFastElements(GateRef glue
             GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
             GateRef argmentsClass = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv,
                                                       GlobalEnv::ARGUMENTS_CLASS);
-            Branch(Int64Equal(hClass, argmentsClass), &hClassEqual, &exit);
+            BRANCH(Int64Equal(hClass, argmentsClass), &hClassEqual, &exit);
             Bind(&hClassEqual);
             {
                 GateRef PropertyInlinedPropsOffset = IntPtr(JSArguments::LENGTH_INLINE_PROPERTY_INDEX);
                 GateRef result = GetPropertyInlinedProps(arrayObj, hClass, PropertyInlinedPropsOffset);
-                Branch(TaggedIsInt(result), &targetIsInt, &exit);
+                BRANCH(TaggedIsInt(result), &targetIsInt, &exit);
                 Bind(&targetIsInt);
                 {
                     res = GetElementsArray(arrayObj);
                     Label isMutantTaggedArray(env);
-                    Branch(IsMutantTaggedArray(*res), &isMutantTaggedArray, &exit);
+                    BRANCH(IsMutantTaggedArray(*res), &isMutantTaggedArray, &exit);
                     Bind(&isMutantTaggedArray);
                     {
                         NewObjectStubBuilder newBuilder(this);
@@ -160,7 +160,7 @@ GateRef BuiltinsFunctionStubBuilder::BuildArgumentsListFastElements(GateRef glue
                         Jump(&loopHead);
                         LoopBegin(&loopHead);
                         {
-                            Branch(Int32UnsignedLessThan(*index, elementsLength), &storeValue, &afterLoop);
+                            BRANCH(Int32UnsignedLessThan(*index, elementsLength), &storeValue, &afterLoop);
                             Bind(&storeValue);
                             {
                                 GateRef value = GetTaggedValueWithElementsKind(arrayObj, *index);
@@ -182,12 +182,12 @@ GateRef BuiltinsFunctionStubBuilder::BuildArgumentsListFastElements(GateRef glue
         }
         Bind(&targetNotStableJSArguments);
         {
-            Branch(IsStableJSArray(glue, arrayObj), &targetIsStableJSArray, &targetNotStableJSArray);
+            BRANCH(IsStableJSArray(glue, arrayObj), &targetIsStableJSArray, &targetNotStableJSArray);
             Bind(&targetIsStableJSArray);
             {
                 res = GetElementsArray(arrayObj);
                 Label isMutantTaggedArray(env);
-                Branch(IsMutantTaggedArray(*res), &isMutantTaggedArray, &exit);
+                BRANCH(IsMutantTaggedArray(*res), &isMutantTaggedArray, &exit);
                 Bind(&isMutantTaggedArray);
                 {
                     NewObjectStubBuilder newBuilder(this);
@@ -201,7 +201,7 @@ GateRef BuiltinsFunctionStubBuilder::BuildArgumentsListFastElements(GateRef glue
                     Jump(&loopHead);
                     LoopBegin(&loopHead);
                     {
-                        Branch(Int32UnsignedLessThan(*index, elementsLength), &storeValue, &afterLoop);
+                        BRANCH(Int32UnsignedLessThan(*index, elementsLength), &storeValue, &afterLoop);
                         Bind(&storeValue);
                         {
                             GateRef value = GetTaggedValueWithElementsKind(arrayObj, *index);
@@ -242,7 +242,7 @@ GateRef BuiltinsFunctionStubBuilder::MakeArgListWithHole(GateRef glue, GateRef a
     Label exit(env);
     Label greatThanZero(env);
     Label lessThanZero(env);
-    Branch(Int32GreaterThan(length, Int32(0)), &greatThanZero, &lessThanZero);
+    BRANCH(Int32GreaterThan(length, Int32(0)), &greatThanZero, &lessThanZero);
     Bind(&lessThanZero);
     {
         res = Int32(0);
@@ -252,7 +252,7 @@ GateRef BuiltinsFunctionStubBuilder::MakeArgListWithHole(GateRef glue, GateRef a
     GateRef argsLength = GetLengthOfTaggedArray(argv);
     Label lengthGreaterThanArgsLength(env);
     Label lengthLessThanArgsLength(env);
-    Branch(Int32GreaterThan(length, argsLength), &lengthGreaterThanArgsLength, &lengthLessThanArgsLength);
+    BRANCH(Int32GreaterThan(length, argsLength), &lengthGreaterThanArgsLength, &lengthLessThanArgsLength);
     Bind(&lengthGreaterThanArgsLength);
     {
         res = argsLength;
@@ -264,11 +264,11 @@ GateRef BuiltinsFunctionStubBuilder::MakeArgListWithHole(GateRef glue, GateRef a
         Label loopEnd(env);
         Label targetIsHole(env);
         Label targetNotHole(env);
-        Branch(Int32UnsignedLessThan(*i, *res), &loopHead, &exit);
+        BRANCH(Int32UnsignedLessThan(*i, *res), &loopHead, &exit);
         LoopBegin(&loopHead);
         {
             GateRef value = GetValueFromTaggedArray(argv, *i);
-            Branch(TaggedIsHole(value), &targetIsHole, &targetNotHole);
+            BRANCH(TaggedIsHole(value), &targetIsHole, &targetNotHole);
             Bind(&targetIsHole);
             {
                 SetValueToTaggedArray(VariableType::JS_ANY(), glue, argv, *i, Undefined());
@@ -276,7 +276,7 @@ GateRef BuiltinsFunctionStubBuilder::MakeArgListWithHole(GateRef glue, GateRef a
             }
             Bind(&targetNotHole);
             i = Int32Add(*i, Int32(1));
-            Branch(Int32UnsignedLessThan(*i, *res), &loopEnd, &exit);
+            BRANCH(Int32UnsignedLessThan(*i, *res), &loopEnd, &exit);
         }
         Bind(&loopEnd);
         LoopEnd(&loopHead);

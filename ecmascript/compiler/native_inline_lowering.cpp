@@ -186,5 +186,4 @@ void NativeInlineLowering::TryInlineMathBinaryBuiltin(GateRef gate, size_t argc,
     return;
 }
 
-
 }  // namespace panda::ecmascript

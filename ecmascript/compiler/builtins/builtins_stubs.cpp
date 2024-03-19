@@ -78,7 +78,7 @@ GateRef BuiltinsStubBuilder::GetArg(GateRef numArgs, GateRef index)
     DEFVARIABLE(arg, VariableType::JS_ANY(), Undefined());
     Label validIndex(env);
     Label exit(env);
-    Branch(IntPtrGreaterThan(numArgs, index), &validIndex, &exit);
+    BRANCH(IntPtrGreaterThan(numArgs, index), &validIndex, &exit);
     Bind(&validIndex);
     {
         GateRef argv = GetArgv();
@@ -106,7 +106,7 @@ GateRef BuiltinsStubBuilder::CallSlowPath(GateRef nativeCode, GateRef glue, Gate
     Label callThis3(env);
     DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
     GateRef runtimeCallInfoArgs = PtrAdd(numArgs, IntPtr(NUM_MANDATORY_JSFUNC_ARGS));
-    Branch(Int64Equal(numArgs, IntPtr(0)), &callThis0, &notcallThis0);
+    BRANCH(Int64Equal(numArgs, IntPtr(0)), &callThis0, &notcallThis0);
     Bind(&callThis0);
     {
         auto args = { nativeCode, glue, runtimeCallInfoArgs, func, newTarget, thisValue };
@@ -115,7 +115,7 @@ GateRef BuiltinsStubBuilder::CallSlowPath(GateRef nativeCode, GateRef glue, Gate
     }
     Bind(&notcallThis0);
     {
-        Branch(Int64Equal(numArgs, IntPtr(1)), &callThis1, &notcallThis1);
+        BRANCH(Int64Equal(numArgs, IntPtr(1)), &callThis1, &notcallThis1);
         Bind(&callThis1);
         {
             GateRef arg0 = GetCallArg0(numArgs);
@@ -125,7 +125,7 @@ GateRef BuiltinsStubBuilder::CallSlowPath(GateRef nativeCode, GateRef glue, Gate
         }
         Bind(&notcallThis1);
         {
-            Branch(Int64Equal(numArgs, IntPtr(2)), &callThis2, &callThis3); // 2: args2
+            BRANCH(Int64Equal(numArgs, IntPtr(2)), &callThis2, &callThis3); // 2: args2
             Bind(&callThis2);
             {
                 GateRef arg0 = GetCallArg0(numArgs);
@@ -376,15 +376,15 @@ DECLARE_BUILTINS(BooleanConstructor)
     Label slowPath2(env);
     Label exit(env);
 
-    Branch(TaggedIsHeapObject(newTarget), &newTargetIsHeapObject, &slowPath1);
+    BRANCH(TaggedIsHeapObject(newTarget), &newTargetIsHeapObject, &slowPath1);
     Bind(&newTargetIsHeapObject);
-    Branch(IsJSFunction(newTarget), &newTargetIsJSFunction, &slowPath);
+    BRANCH(IsJSFunction(newTarget), &newTargetIsJSFunction, &slowPath);
     Bind(&newTargetIsJSFunction);
     {
         Label intialHClassIsHClass(env);
         GateRef intialHClass = Load(VariableType::JS_ANY(), newTarget,
                                     IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
-        Branch(IsJSHClass(intialHClass), &intialHClassIsHClass, &slowPath2);
+        BRANCH(IsJSHClass(intialHClass), &intialHClassIsHClass, &slowPath2);
         Bind(&intialHClassIsHClass);
         {
             NewObjectStubBuilder newBuilder(this);
@@ -440,14 +440,14 @@ DECLARE_BUILTINS(NumberConstructor)
     Label hasArg(env);
     Label numberCreate(env);
     Label newTargetIsHeapObject(env);
-    Branch(TaggedIsHeapObject(newTarget), &newTargetIsHeapObject, &slowPath1);
+    BRANCH(TaggedIsHeapObject(newTarget), &newTargetIsHeapObject, &slowPath1);
     Bind(&newTargetIsHeapObject);
-    Branch(Int64GreaterThan(numArgs, IntPtr(0)), &hasArg, &numberCreate);
+    BRANCH(Int64GreaterThan(numArgs, IntPtr(0)), &hasArg, &numberCreate);
     Bind(&hasArg);
     {
         GateRef value = GetArgNCheck(Int32(0));
         Label number(env);
-        Branch(TaggedIsNumber(value), &number, &slowPath);
+        BRANCH(TaggedIsNumber(value), &number, &slowPath);
         Bind(&number);
         {
             numberValue = value;
@@ -459,16 +459,16 @@ DECLARE_BUILTINS(NumberConstructor)
     Bind(&numberCreate);
     Label newObj(env);
     Label newTargetIsJSFunction(env);
-    Branch(TaggedIsUndefined(newTarget), &exit, &newObj);
+    BRANCH(TaggedIsUndefined(newTarget), &exit, &newObj);
     Bind(&newObj);
     {
-        Branch(IsJSFunction(newTarget), &newTargetIsJSFunction, &slowPath);
+        BRANCH(IsJSFunction(newTarget), &newTargetIsJSFunction, &slowPath);
         Bind(&newTargetIsJSFunction);
         {
             Label intialHClassIsHClass(env);
             GateRef intialHClass = Load(VariableType::JS_ANY(), newTarget,
                 IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
-            Branch(IsJSHClass(intialHClass), &intialHClassIsHClass, &slowPath2);
+            BRANCH(IsJSHClass(intialHClass), &intialHClassIsHClass, &slowPath2);
             Bind(&intialHClassIsHClass);
             {
                 NewObjectStubBuilder newBuilder(this);
@@ -522,27 +522,27 @@ DECLARE_BUILTINS(DateConstructor)
     Label slowPath2(env);
     Label exit(env);
 
-    Branch(TaggedIsHeapObject(newTarget), &newTargetIsHeapObject, &slowPath1);
+    BRANCH(TaggedIsHeapObject(newTarget), &newTargetIsHeapObject, &slowPath1);
     Bind(&newTargetIsHeapObject);
-    Branch(IsJSFunction(newTarget), &newTargetIsJSFunction, &slowPath);
+    BRANCH(IsJSFunction(newTarget), &newTargetIsJSFunction, &slowPath);
     Bind(&newTargetIsJSFunction);
     {
         Label intialHClassIsHClass(env);
         GateRef intialHClass = Load(VariableType::JS_ANY(), newTarget,
                                     IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
-        Branch(IsJSHClass(intialHClass), &intialHClassIsHClass, &slowPath2);
+        BRANCH(IsJSHClass(intialHClass), &intialHClassIsHClass, &slowPath2);
         Bind(&intialHClassIsHClass);
         {
             Label oneArg(env);
             Label notOneArg(env);
             Label newJSDate(env);
             DEFVARIABLE(timeValue, VariableType::FLOAT64(), Double(0));
-            Branch(Int64Equal(numArgs, IntPtr(1)), &oneArg, &notOneArg);
+            BRANCH(Int64Equal(numArgs, IntPtr(1)), &oneArg, &notOneArg);
             Bind(&oneArg);
             {
                 Label valueIsNumber(env);
                 GateRef value = GetArgNCheck(IntPtr(0));
-                Branch(TaggedIsNumber(value), &valueIsNumber, &slowPath);
+                BRANCH(TaggedIsNumber(value), &valueIsNumber, &slowPath);
                 Bind(&valueIsNumber);
                 {
                     timeValue = CallNGCRuntime(glue, RTSTUB_ID(TimeClip), {GetDoubleOfTNumber(value)});
@@ -552,14 +552,14 @@ DECLARE_BUILTINS(DateConstructor)
             Bind(&notOneArg);
             {
                 Label threeArgs(env);
-                Branch(Int64Equal(numArgs, IntPtr(3)), &threeArgs, &slowPath);  // 3: year month day
+                BRANCH(Int64Equal(numArgs, IntPtr(3)), &threeArgs, &slowPath);  // 3: year month day
                 Bind(&threeArgs);
                 {
                     Label numberYearMonthDay(env);
                     GateRef year = GetArgNCheck(IntPtr(0));
                     GateRef month = GetArgNCheck(IntPtr(1));
                     GateRef day = GetArgNCheck(IntPtr(2));
-                    Branch(IsNumberYearMonthDay(year, month, day), &numberYearMonthDay, &slowPath);
+                    BRANCH(IsNumberYearMonthDay(year, month, day), &numberYearMonthDay, &slowPath);
                     Bind(&numberYearMonthDay);
                     {
                         GateRef y = GetDoubleOfTNumber(year);
@@ -623,9 +623,9 @@ DECLARE_BUILTINS(ArrayConstructor)
     Label slowPath2(env);
     Label exit(env);
 
-    Branch(TaggedIsHeapObject(newTarget), &newTargetIsHeapObject, &slowPath1);
+    BRANCH(TaggedIsHeapObject(newTarget), &newTargetIsHeapObject, &slowPath1);
     Bind(&newTargetIsHeapObject);
-    Branch(IsJSFunction(newTarget), &newTargetIsJSFunction, &slowPath);
+    BRANCH(IsJSFunction(newTarget), &newTargetIsJSFunction, &slowPath);
     Bind(&newTargetIsJSFunction);
     {
         Label fastGetHclass(env);
@@ -633,17 +633,17 @@ DECLARE_BUILTINS(ArrayConstructor)
         GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
         GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
         auto arrayFunc = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv, GlobalEnv::ARRAY_FUNCTION_INDEX);
-        Branch(Equal(arrayFunc, newTarget), &fastGetHclass, &slowPath2);
+        BRANCH(Equal(arrayFunc, newTarget), &fastGetHclass, &slowPath2);
         Bind(&fastGetHclass);
         GateRef intialHClass = Load(VariableType::JS_ANY(), newTarget, IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
         DEFVARIABLE(arrayLength, VariableType::INT64(), Int64(0));
-        Branch(IsJSHClass(intialHClass), &intialHClassIsHClass, &slowPath2);
+        BRANCH(IsJSHClass(intialHClass), &intialHClassIsHClass, &slowPath2);
         Bind(&intialHClassIsHClass);
         {
             Label noArg(env);
             Label hasArg(env);
             Label arrayCreate(env);
-            Branch(Int64Equal(numArgs, IntPtr(0)), &noArg, &hasArg);
+            BRANCH(Int64Equal(numArgs, IntPtr(0)), &noArg, &hasArg);
             Bind(&noArg);
             {
                 Jump(&arrayCreate);
@@ -651,24 +651,24 @@ DECLARE_BUILTINS(ArrayConstructor)
             Bind(&hasArg);
             {
                 Label hasOneArg(env);
-                Branch(Int64Equal(numArgs, IntPtr(1)), &hasOneArg, &slowPath);
+                BRANCH(Int64Equal(numArgs, IntPtr(1)), &hasOneArg, &slowPath);
                 Bind(&hasOneArg);
                 {
                     Label argIsNumber(env);
                     GateRef arg0 = GetArg(numArgs, IntPtr(0));
-                    Branch(TaggedIsNumber(arg0), &argIsNumber, &slowPath);
+                    BRANCH(TaggedIsNumber(arg0), &argIsNumber, &slowPath);
                     Bind(&argIsNumber);
                     {
                         Label argIsInt(env);
                         Label argIsDouble(env);
-                        Branch(TaggedIsInt(arg0), &argIsInt, &argIsDouble);
+                        BRANCH(TaggedIsInt(arg0), &argIsInt, &argIsDouble);
                         Bind(&argIsInt);
                         {
                             Label validIntLength(env);
                             GateRef intLen = GetInt64OfTInt(arg0);
                             GateRef isGEZero = Int64GreaterThanOrEqual(intLen, Int64(0));
                             GateRef isLEMaxLen = Int64LessThanOrEqual(intLen, Int64(JSArray::MAX_ARRAY_INDEX));
-                            Branch(BoolAnd(isGEZero, isLEMaxLen), &validIntLength, &slowPath);
+                            BRANCH(BoolAnd(isGEZero, isLEMaxLen), &validIntLength, &slowPath);
                             Bind(&validIntLength);
                             {
                                 arrayLength = intLen;
@@ -684,7 +684,7 @@ DECLARE_BUILTINS(ArrayConstructor)
                             GateRef doubleEqual = DoubleEqual(doubleLength, intToDouble);
                             GateRef doubleLEMaxLen =
                                 DoubleLessThanOrEqual(doubleLength, Double(JSArray::MAX_ARRAY_INDEX));
-                            Branch(BoolAnd(doubleEqual, doubleLEMaxLen), &validDoubleLength, &slowPath);
+                            BRANCH(BoolAnd(doubleEqual, doubleLEMaxLen), &validDoubleLength, &slowPath);
                             Bind(&validDoubleLength);
                             {
                                 arrayLength = SExtInt32ToInt64(doubleToInt);
@@ -697,7 +697,7 @@ DECLARE_BUILTINS(ArrayConstructor)
             Bind(&arrayCreate);
             {
                 Label lengthValid(env);
-                Branch(Int64GreaterThan(*arrayLength, Int64(JSObject::MAX_GAP)), &slowPath, &lengthValid);
+                BRANCH(Int64GreaterThan(*arrayLength, Int64(JSObject::MAX_GAP)), &slowPath, &lengthValid);
                 Bind(&lengthValid);
                 {
                     NewObjectStubBuilder newBuilder(this);

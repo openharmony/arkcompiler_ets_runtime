@@ -13,24 +13,20 @@
  * limitations under the License.
  */
 
-var testTxt = ["exception_case3.js:20:20", "exception_case3.js:22:1"];
-var i = 0;
 try {
     function foo(a, b, c) {
         d.e;
     }
-    foo(1);
-    assert_unreachable();
+    foo(1)
 } catch (e) {
-    assert_equal(e.message, "d is not defined");
+    print(e)
     let stack = e.stack
     let array = stack.split('\n')
     for (let line of array) {
         let start = line.lastIndexOf('/') + 1
         let end = line.length - 1
         if (start < end) {
-            assert_equal(line.slice(start, end), testTxt[i]);
-            i++;
+            print(line.slice(start, end))
         } else {
             print(line)
         }

@@ -145,7 +145,8 @@ void MCRLowering::LowerConvertHoleAsUndefined(GateRef gate)
     GateRef receiver = acc_.GetValueIn(gate, 0);
     DEFVALUE(result, (&builder_), VariableType::JS_ANY(), receiver);
 
-    builder_.Branch(builder_.TaggedIsHole(*result), &returnUndefined, &exit, 1, BranchWeight::DEOPT_WEIGHT);
+    builder_.Branch(builder_.TaggedIsHole(*result), &returnUndefined, &exit, 1, BranchWeight::DEOPT_WEIGHT,
+                    "holeCheck");
     builder_.Bind(&returnUndefined);
     {
         result = builder_.UndefineConstant();
@@ -426,7 +427,8 @@ GateRef MCRLowering::ConvertSpecialHoleIntToTagged(GateRef gate, Label* exit)
     Label returnTaggedInt(&builder_);
     DEFVALUE(result, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
 
-    builder_.Branch(builder_.IsSpecialHole(gate), &returnUndefined, &returnTaggedInt, 1, BranchWeight::DEOPT_WEIGHT);
+    builder_.Branch(builder_.IsSpecialHole(gate), &returnUndefined, &returnTaggedInt, 1, BranchWeight::DEOPT_WEIGHT,
+                    "specialHoleCheck");
     builder_.Bind(&returnUndefined);
     {
         result = builder_.UndefineConstant();
@@ -448,7 +450,8 @@ GateRef MCRLowering::ConvertSpecialHoleDoubleToTagged(GateRef gate, Label* exit)
     Label returnTaggedDouble(&builder_);
     DEFVALUE(result, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
 
-    builder_.Branch(builder_.IsSpecialHole(gate), &returnUndefined, &returnTaggedDouble, 1, BranchWeight::DEOPT_WEIGHT);
+    builder_.Branch(builder_.IsSpecialHole(gate), &returnUndefined, &returnTaggedDouble, 1, BranchWeight::DEOPT_WEIGHT,
+                    "specialHoleCheck");
     builder_.Bind(&returnUndefined);
     {
         result = builder_.UndefineConstant();
@@ -470,7 +473,7 @@ GateRef MCRLowering::ConvertTaggedNumberToBool(GateRef gate, Label *exit)
     Label isInt(&builder_);
     Label isDouble(&builder_);
     Label toInt32(&builder_);
-    builder_.Branch(builder_.TaggedIsInt(gate), &isInt, &isDouble);
+    BRANCH_CIR(builder_.TaggedIsInt(gate), &isInt, &isDouble);
     builder_.Bind(&isInt);
     {
         GateRef intVal = builder_.GetInt64OfTInt(gate);
@@ -493,7 +496,7 @@ GateRef MCRLowering::ConvertTaggedNumberToInt32(GateRef gate, Label *exit)
     Label isInt(&builder_);
     Label isDouble(&builder_);
     Label toInt32(&builder_);
-    builder_.Branch(builder_.TaggedIsInt(gate), &isInt, &isDouble);
+    BRANCH_CIR(builder_.TaggedIsInt(gate), &isInt, &isDouble);
     builder_.Bind(&isInt);
     result = ConvertTaggedIntToInt32(gate);
     builder_.Jump(exit);
@@ -509,7 +512,7 @@ GateRef MCRLowering::ConvertTaggedNumberToFloat64(GateRef gate, Label *exit)
     DEFVALUE(result, (&builder_), VariableType::FLOAT64(), builder_.Double(0));
     Label isInt(&builder_);
     Label isDouble(&builder_);
-    builder_.Branch(builder_.TaggedIsInt(gate), &isInt, &isDouble);
+    BRANCH_CIR(builder_.TaggedIsInt(gate), &isInt, &isDouble);
     builder_.Bind(&isInt);
     result = ConvertInt32ToFloat64(ConvertTaggedIntToInt32(gate));
     builder_.Jump(exit);
@@ -748,7 +751,7 @@ GateRef MCRLowering::ConvertUInt32ToTaggedNumber(GateRef gate, Label *exit)
     Label notOverFlow(&builder_);
     GateRef upperBound = builder_.Int32(INT32_MAX);
     DEFVALUE(taggedVal, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
-    builder_.Branch(builder_.Int32UnsignedLessThanOrEqual(gate, upperBound), &notOverFlow, &isOverFlow);
+    BRANCH_CIR(builder_.Int32UnsignedLessThanOrEqual(gate, upperBound), &notOverFlow, &isOverFlow);
     builder_.Bind(&notOverFlow);
     taggedVal = builder_.Int32ToTaggedPtr(gate);
     builder_.Jump(exit);
@@ -983,7 +986,7 @@ void MCRLowering::InitializeWithSpeicalValue(Label *exit, GateRef object, GateRe
     builder_.Jump(&begin);
     builder_.LoopBegin(&begin);
     {
-        builder_.Branch(builder_.Int32UnsignedLessThan(*startOffset, end), &storeValue, exit);
+        BRANCH_CIR(builder_.Int32UnsignedLessThan(*startOffset, end), &storeValue, exit);
         builder_.Bind(&storeValue);
         {
             builder_.Store(VariableType::INT64(), glue, object, builder_.ZExtInt32ToPtr(*startOffset), value);
@@ -1008,7 +1011,7 @@ void MCRLowering::LowerMigrateFromRawValueToHeapValues(GateRef gate)
     Label createCOW(&builder_);
     Label createNormal(&builder_);
     Label finishElementsInit(&builder_);
-    builder_.Branch(needCOW, &createCOW, &createNormal);
+    BRANCH_CIR(needCOW, &createCOW, &createNormal);
     builder_.Bind(&createCOW);
     {
         newElements = builder_.CallRuntime(glue_, RTSTUB_ID(NewCOWTaggedArray), acc_.GetDep(gate),
@@ -1034,13 +1037,13 @@ void MCRLowering::LowerMigrateFromRawValueToHeapValues(GateRef gate)
         Label storeHole(&builder_);
         Label storeNormalValue(&builder_);
         Label finishStore(&builder_);
-        builder_.Branch(builder_.Int32UnsignedLessThan(*index, length), &storeValue, &afterLoop);
+        BRANCH_CIR(builder_.Int32UnsignedLessThan(*index, length), &storeValue, &afterLoop);
         builder_.Bind(&storeValue);
         {
             Label rawValueIsInt(&builder_);
             Label rawValueIsNumber(&builder_);
             GateRef value = builder_.GetValueFromJSArrayWithElementsKind(VariableType::INT64(), elements, *index);
-            builder_.Branch(builder_.IsSpecialHole(value), &storeHole, &storeNormalValue);
+            BRANCH_CIR(builder_.IsSpecialHole(value), &storeHole, &storeNormalValue);
             builder_.Bind(&storeHole);
             {
                 builder_.SetValueToTaggedArray(VariableType::JS_ANY(), glue_, *newElements, *index, builder_.Hole());
@@ -1048,7 +1051,7 @@ void MCRLowering::LowerMigrateFromRawValueToHeapValues(GateRef gate)
             }
             builder_.Bind(&storeNormalValue);
             {
-                builder_.Branch(isIntKind, &rawValueIsInt, &rawValueIsNumber);
+                BRANCH_CIR(isIntKind, &rawValueIsInt, &rawValueIsNumber);
                 builder_.Bind(&rawValueIsInt);
                 {
                     GateRef convertedInt = builder_.ToTaggedIntPtr(value);
@@ -1095,7 +1098,7 @@ void MCRLowering::LowerMigrateFromHeapValueToRawValue(GateRef gate)
     Label createCOW(&builder_);
     Label createNormal(&builder_);
     Label finishElementsInit(&builder_);
-    builder_.Branch(needCOW, &createCOW, &createNormal);
+    BRANCH_CIR(needCOW, &createCOW, &createNormal);
     builder_.Bind(&createCOW);
     {
         newElements = builder_.CallRuntime(glue_, RTSTUB_ID(NewCOWMutantTaggedArray), acc_.GetDep(gate),
@@ -1121,13 +1124,13 @@ void MCRLowering::LowerMigrateFromHeapValueToRawValue(GateRef gate)
         Label storeSpecialHole(&builder_);
         Label storeNormalValue(&builder_);
         Label finishStore(&builder_);
-        builder_.Branch(builder_.Int32UnsignedLessThan(*index, length), &storeValue, &afterLoop);
+        BRANCH_CIR(builder_.Int32UnsignedLessThan(*index, length), &storeValue, &afterLoop);
         builder_.Bind(&storeValue);
         {
             Label convertToInt(&builder_);
             Label convertToDouble(&builder_);
             GateRef value = builder_.GetValueFromTaggedArray(elements, *index);
-            builder_.Branch(builder_.TaggedIsHole(value), &storeSpecialHole, &storeNormalValue);
+            BRANCH_CIR(builder_.TaggedIsHole(value), &storeSpecialHole, &storeNormalValue);
             builder_.Bind(&storeSpecialHole);
             {
                 builder_.SetValueToTaggedArray(VariableType::INT64(), glue_, *newElements,
@@ -1138,7 +1141,7 @@ void MCRLowering::LowerMigrateFromHeapValueToRawValue(GateRef gate)
             {
                 Label valueIsInt(&builder_);
                 Label valueIsDouble(&builder_);
-                builder_.Branch(isIntKind, &convertToInt, &convertToDouble);
+                BRANCH_CIR(isIntKind, &convertToInt, &convertToDouble);
                 builder_.Bind(&convertToInt);
                 {
                     GateRef convertedInt = builder_.GetInt64OfTInt(value);
@@ -1147,7 +1150,7 @@ void MCRLowering::LowerMigrateFromHeapValueToRawValue(GateRef gate)
                 }
                 builder_.Bind(&convertToDouble);
                 {
-                    builder_.Branch(builder_.TaggedIsInt(value), &valueIsInt, &valueIsDouble);
+                    BRANCH_CIR(builder_.TaggedIsInt(value), &valueIsInt, &valueIsDouble);
                     builder_.Bind(&valueIsInt);
                     {
                         GateRef convertedDoubleFromTInt = builder_.CastDoubleToInt64(builder_.GetDoubleOfTInt(value));
@@ -1200,11 +1203,11 @@ void MCRLowering::LowerMigrateFromHoleIntToHoleNumber(GateRef gate)
     {
         Label storeNormalValue(&builder_);
         Label finishStore(&builder_);
-        builder_.Branch(builder_.Int32UnsignedLessThan(*index, length), &storeValue, &afterLoop);
+        BRANCH_CIR(builder_.Int32UnsignedLessThan(*index, length), &storeValue, &afterLoop);
         builder_.Bind(&storeValue);
         {
             GateRef value = builder_.GetValueFromTaggedArray(VariableType::INT64(), elements, *index);
-            builder_.Branch(builder_.IsSpecialHole(value), &finishStore, &storeNormalValue);
+            BRANCH_CIR(builder_.IsSpecialHole(value), &finishStore, &storeNormalValue);
             builder_.Bind(&storeNormalValue);
             {
                 GateRef intVal = builder_.TruncInt64ToInt32(value);
@@ -1248,11 +1251,11 @@ void MCRLowering::LowerMigrateFromHoleNumberToHoleInt(GateRef gate)
     {
         Label storeNormalValue(&builder_);
         Label finishStore(&builder_);
-        builder_.Branch(builder_.Int32UnsignedLessThan(*index, length), &storeValue, &afterLoop);
+        BRANCH_CIR(builder_.Int32UnsignedLessThan(*index, length), &storeValue, &afterLoop);
         builder_.Bind(&storeValue);
         {
             GateRef value = builder_.GetValueFromTaggedArray(VariableType::INT64(), elements, *index);
-            builder_.Branch(builder_.IsSpecialHole(value), &finishStore, &storeNormalValue);
+            BRANCH_CIR(builder_.IsSpecialHole(value), &finishStore, &storeNormalValue);
             builder_.Bind(&storeNormalValue);
             {
                 GateRef doubleVal = builder_.CastInt64ToFloat64(value);

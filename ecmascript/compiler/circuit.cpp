@@ -78,7 +78,9 @@ Gate *Circuit::AllocateGateSpace(size_t numIns)
 
 bool Circuit::AddComment(GateRef g, const char* str)
 {
-    ASSERT(debugInfo_ != nullptr);
+    if (debugInfo_ == nullptr) {
+        return false;
+    }
     if (!debugInfo_->IsEnable()) {
         return false;
     }

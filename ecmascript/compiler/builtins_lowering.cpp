@@ -80,14 +80,14 @@ GateRef BuiltinLowering::TypedFloor(GateRef gate)
     GateRef para1 = acc_.GetValueIn(gate, 0);
     DEFVALUE(result, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
 
-    builder_.Branch(builder_.TaggedIsNumber(para1), &numberBranch, &notNumberBranch);
+    BRANCH_CIR(builder_.TaggedIsNumber(para1), &numberBranch, &notNumberBranch);
     builder_.Bind(&numberBranch);
     {
         GateRef value = builder_.GetDoubleOfTNumber(para1);
         Label IsNan(&builder_);
         Label NotNan(&builder_);
         GateRef condition = builder_.DoubleIsNAN(value);
-        builder_.Branch(condition, &IsNan, &NotNan);
+        BRANCH_CIR(condition, &IsNan, &NotNan);
         builder_.Bind(&NotNan);
         {
             GateRef glue = acc_.GetGlueFromArgList();
@@ -157,7 +157,7 @@ void BuiltinLowering::ReplaceHirWithValue(GateRef hirGate, GateRef value, bool n
         GateRef exceptionVal = builder_.ExceptionConstant();
         // compare with trampolines result
         GateRef equal = builder_.Equal(value, exceptionVal);
-        auto ifBranch = builder_.Branch(state, equal);
+        auto ifBranch = builder_.Branch(state, equal, 1, BranchWeight::DEOPT_WEIGHT, "checkException");
 
         GateRef ifTrue = builder_.IfTrue(ifBranch);
         GateRef ifFalse = builder_.IfFalse(ifBranch);
@@ -418,7 +418,7 @@ void BuiltinLowering::LowerNumberConstructor(GateRef gate)
     Label exit(env);
     Label isNumber(env);
     Label notNumber(env);
-    builder_.Branch(builder_.TaggedIsNumber(param), &isNumber, &notNumber);
+    BRANCH_CIR(builder_.TaggedIsNumber(param), &isNumber, &notNumber);
     builder_.Bind(&isNumber);
     {
         result = param;
@@ -428,15 +428,15 @@ void BuiltinLowering::LowerNumberConstructor(GateRef gate)
     {
         Label isString(env);
         Label notString(env);
-        builder_.Branch(builder_.TaggedIsString(param), &isString, &notString);
+        BRANCH_CIR(builder_.TaggedIsString(param), &isString, &notString);
         builder_.Bind(&isString);
         {
             Label nonZeroLength(env);
             auto length = builder_.GetLengthFromString(param);
-            builder_.Branch(builder_.Equal(length, builder_.Int32(0)), &exit, &nonZeroLength);
+            BRANCH_CIR(builder_.Equal(length, builder_.Int32(0)), &exit, &nonZeroLength);
             builder_.Bind(&nonZeroLength);
             Label isInteger(env);
-            builder_.Branch(builder_.IsIntegerString(param), &isInteger, &notString);
+            BRANCH_CIR(builder_.IsIntegerString(param), &isInteger, &notString);
             builder_.Bind(&isInteger);
             {
                 result = IntToTaggedIntPtr(builder_.GetRawHashFromString(param));

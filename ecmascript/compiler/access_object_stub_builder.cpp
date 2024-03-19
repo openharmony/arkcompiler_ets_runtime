@@ -40,7 +40,7 @@ GateRef AccessObjectStubBuilder::LoadObjByName(GateRef glue, GateRef receiver, G
     {
         GateRef propKey = ResolvePropKey(glue, prop, info);
         result = GetPropertyByName(glue, receiver, propKey, callback, True());
-        Branch(TaggedIsHole(*result), &slowPath, &exit);
+        BRANCH(TaggedIsHole(*result), &slowPath, &exit);
     }
     Bind(&slowPath);
     {
@@ -67,11 +67,11 @@ GateRef AccessObjectStubBuilder::DeprecatedLoadObjByName(GateRef glue, GateRef r
     Label slowPath(env);
 
     DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
-    Branch(TaggedIsHeapObject(receiver), &fastPath, &slowPath);
+    BRANCH(TaggedIsHeapObject(receiver), &fastPath, &slowPath);
     Bind(&fastPath);
     {
         result = GetPropertyByName(glue, receiver, propKey, ProfileOperation(), True());
-        Branch(TaggedIsHole(*result), &slowPath, &exit);
+        BRANCH(TaggedIsHole(*result), &slowPath, &exit);
     }
     Bind(&slowPath);
     {
@@ -104,7 +104,7 @@ GateRef AccessObjectStubBuilder::StoreObjByName(GateRef glue, GateRef receiver, 
     {
         GateRef propKey = ResolvePropKey(glue, prop, info);
         result = SetPropertyByName(glue, receiver, propKey, value, false, True(), callback);
-        Branch(TaggedIsHole(*result), &slowPath, &exit);
+        BRANCH(TaggedIsHole(*result), &slowPath, &exit);
     }
     Bind(&slowPath);
     {
@@ -154,7 +154,7 @@ GateRef AccessObjectStubBuilder::LoadObjByValue(GateRef glue, GateRef receiver, 
     Bind(&tryFastPath);
     {
         result = GetPropertyByValue(glue, receiver, key, callback);
-        Branch(TaggedIsHole(*result), &slowPath, &exit);
+        BRANCH(TaggedIsHole(*result), &slowPath, &exit);
     }
     Bind(&slowPath);
     {
@@ -180,11 +180,11 @@ GateRef AccessObjectStubBuilder::DeprecatedLoadObjByValue(GateRef glue, GateRef 
     Label slowPath(env);
 
     DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
-    Branch(TaggedIsHeapObject(receiver), &fastPath, &slowPath);
+    BRANCH(TaggedIsHeapObject(receiver), &fastPath, &slowPath);
     Bind(&fastPath);
     {
         result = GetPropertyByValue(glue, receiver, key, ProfileOperation());
-        Branch(TaggedIsHole(*result), &slowPath, &exit);
+        BRANCH(TaggedIsHole(*result), &slowPath, &exit);
     }
     Bind(&slowPath);
     {
@@ -215,7 +215,7 @@ GateRef AccessObjectStubBuilder::StoreObjByValue(GateRef glue, GateRef receiver,
     Bind(&tryFastPath);
     {
         result = SetPropertyByValue(glue, receiver, key, value, false, callback);
-        Branch(TaggedIsHole(*result), &slowPath, &exit);
+        BRANCH(TaggedIsHole(*result), &slowPath, &exit);
     }
     Bind(&slowPath);
     {
@@ -246,16 +246,16 @@ GateRef AccessObjectStubBuilder::StoreOwnByIndex(GateRef glue, GateRef receiver,
     Bind(&tryFastPath);
     {
         Label isHeapObject(env);
-        Branch(TaggedIsHeapObject(receiver), &isHeapObject, &slowPath);
+        BRANCH(TaggedIsHeapObject(receiver), &isHeapObject, &slowPath);
         Bind(&isHeapObject);
         Label notClassConstructor(env);
-        Branch(IsClassConstructor(receiver), &slowPath, &notClassConstructor);
+        BRANCH(IsClassConstructor(receiver), &slowPath, &notClassConstructor);
         Bind(&notClassConstructor);
         Label notClassPrototype(env);
-        Branch(IsClassPrototype(receiver), &slowPath, &notClassPrototype);
+        BRANCH(IsClassPrototype(receiver), &slowPath, &notClassPrototype);
         Bind(&notClassPrototype);
         result = SetPropertyByIndex(glue, receiver, index, value, true);
-        Branch(TaggedIsHole(*result), &slowPath, &exit);
+        BRANCH(TaggedIsHole(*result), &slowPath, &exit);
     }
     Bind(&slowPath);
     {
@@ -293,7 +293,7 @@ GateRef AccessObjectStubBuilder::TryLoadGlobalByName(GateRef glue, GateRef prop,
         GateRef record = LdGlobalRecord(glue, propKey);
         Label foundInRecord(env);
         Label notFoundInRecord(env);
-        Branch(TaggedIsUndefined(record), &notFoundInRecord, &foundInRecord);
+        BRANCH(TaggedIsUndefined(record), &notFoundInRecord, &foundInRecord);
         Bind(&foundInRecord);
         {
             result = Load(VariableType::JS_ANY(), record, IntPtr(PropertyBox::VALUE_OFFSET));
@@ -303,7 +303,7 @@ GateRef AccessObjectStubBuilder::TryLoadGlobalByName(GateRef glue, GateRef prop,
         {
             GateRef globalObject = GetGlobalObject(glue);
             result = GetGlobalOwnProperty(glue, globalObject, propKey, callback);
-            Branch(TaggedIsHole(*result), &slowPath, &exit);
+            BRANCH(TaggedIsHole(*result), &slowPath, &exit);
         }
     }
     Bind(&slowPath);
@@ -342,7 +342,7 @@ GateRef AccessObjectStubBuilder::TryStoreGlobalByName(GateRef glue, GateRef prop
         GateRef record = LdGlobalRecord(glue, propKey);
         Label foundInRecord(env);
         Label notFoundInRecord(env);
-        Branch(TaggedIsUndefined(record), &notFoundInRecord, &foundInRecord);
+        BRANCH(TaggedIsUndefined(record), &notFoundInRecord, &foundInRecord);
         Bind(&foundInRecord);
         {
             result = CallRuntime(glue, RTSTUB_ID(TryUpdateGlobalRecord), { propKey, value });
@@ -354,7 +354,7 @@ GateRef AccessObjectStubBuilder::TryStoreGlobalByName(GateRef glue, GateRef prop
             result = GetGlobalOwnProperty(glue, globalObject, propKey, callback);
             Label isFoundInGlobal(env);
             Label notFoundInGlobal(env);
-            Branch(TaggedIsHole(*result), &notFoundInGlobal, &isFoundInGlobal);
+            BRANCH(TaggedIsHole(*result), &notFoundInGlobal, &isFoundInGlobal);
             Bind(&isFoundInGlobal);
             {
                 result = CallRuntime(glue, RTSTUB_ID(StGlobalVar), { propKey, value });
@@ -404,7 +404,7 @@ GateRef AccessObjectStubBuilder::LoadGlobalVar(GateRef glue, GateRef prop, const
         GateRef globalObject = GetGlobalObject(glue);
         GateRef propKey = ResolvePropKey(glue, prop, info);
         result = GetGlobalOwnProperty(glue, globalObject, propKey, callback);
-        Branch(TaggedIsHole(*result), &slowPath, &exit);
+        BRANCH(TaggedIsHole(*result), &slowPath, &exit);
     }
     Bind(&slowPath);
     {
@@ -468,17 +468,17 @@ GateRef AccessObjectStubBuilder::StOwnByIndex(GateRef glue, GateRef receiver, Ga
     Label isHeapObject(env);
     Label slowPath(env);
     Label exit(env);
-    Branch(TaggedIsHeapObject(receiver), &isHeapObject, &slowPath);
+    BRANCH(TaggedIsHeapObject(receiver), &isHeapObject, &slowPath);
     Bind(&isHeapObject);
     Label notClassConstructor(env);
-    Branch(IsClassConstructor(receiver), &slowPath, &notClassConstructor);
+    BRANCH(IsClassConstructor(receiver), &slowPath, &notClassConstructor);
     Bind(&notClassConstructor);
     Label notClassPrototype(env);
-    Branch(IsClassPrototype(receiver), &slowPath, &notClassPrototype);
+    BRANCH(IsClassPrototype(receiver), &slowPath, &notClassPrototype);
     Bind(&notClassPrototype);
     {
         result = SetPropertyByIndex(glue, receiver, TruncInt64ToInt32(index), value, true);
-        Branch(TaggedIsHole(*result), &slowPath, &exit);
+        BRANCH(TaggedIsHole(*result), &slowPath, &exit);
     }
     Bind(&slowPath);
     {
@@ -500,17 +500,17 @@ GateRef AccessObjectStubBuilder::StOwnByValue(GateRef glue, GateRef receiver, Ga
     Label isHeapObject(env);
     Label slowPath(env);
     Label exit(env);
-    Branch(TaggedIsHeapObject(receiver), &isHeapObject, &slowPath);
+    BRANCH(TaggedIsHeapObject(receiver), &isHeapObject, &slowPath);
     Bind(&isHeapObject);
     Label notClassConstructor(env);
-    Branch(IsClassConstructor(receiver), &slowPath, &notClassConstructor);
+    BRANCH(IsClassConstructor(receiver), &slowPath, &notClassConstructor);
     Bind(&notClassConstructor);
     Label notClassPrototype(env);
-    Branch(IsClassPrototype(receiver), &slowPath, &notClassPrototype);
+    BRANCH(IsClassPrototype(receiver), &slowPath, &notClassPrototype);
     Bind(&notClassPrototype);
     {
         result = SetPropertyByValue(glue, receiver, key, value, true);
-        Branch(TaggedIsHole(*result), &slowPath, &exit);
+        BRANCH(TaggedIsHole(*result), &slowPath, &exit);
     }
     Bind(&slowPath);
     {
@@ -532,17 +532,17 @@ GateRef AccessObjectStubBuilder::StOwnByName(GateRef glue, GateRef receiver, Gat
     Label isJSObject(env);
     Label slowPath(env);
     Label exit(env);
-    Branch(IsJSObject(receiver), &isJSObject, &slowPath);
+    BRANCH(IsJSObject(receiver), &isJSObject, &slowPath);
     Bind(&isJSObject);
     Label notClassConstructor(env);
-    Branch(IsClassConstructor(receiver), &slowPath, &notClassConstructor);
+    BRANCH(IsClassConstructor(receiver), &slowPath, &notClassConstructor);
     Bind(&notClassConstructor);
     Label notClassPrototype(env);
-    Branch(IsClassPrototype(receiver), &slowPath, &notClassPrototype);
+    BRANCH(IsClassPrototype(receiver), &slowPath, &notClassPrototype);
     Bind(&notClassPrototype);
     {
         result = SetPropertyByName(glue, receiver, key, value, true, True());
-        Branch(TaggedIsHole(*result), &slowPath, &exit);
+        BRANCH(TaggedIsHole(*result), &slowPath, &exit);
     }
     Bind(&slowPath);
     {
@@ -567,21 +567,21 @@ GateRef AccessObjectStubBuilder::StOwnByValueWithNameSet(GateRef glue, GateRef r
     Label notClassPrototype(env);
     Label notHole(env);
     Label exit(env);
-    Branch(TaggedIsHeapObject(receiver), &isHeapObject, &slowPath);
+    BRANCH(TaggedIsHeapObject(receiver), &isHeapObject, &slowPath);
     Bind(&isHeapObject);
     {
-        Branch(IsClassConstructor(receiver), &slowPath, &notClassConstructor);
+        BRANCH(IsClassConstructor(receiver), &slowPath, &notClassConstructor);
         Bind(&notClassConstructor);
         {
-            Branch(IsClassPrototype(receiver), &slowPath, &notClassPrototype);
+            BRANCH(IsClassPrototype(receiver), &slowPath, &notClassPrototype);
             Bind(&notClassPrototype);
             {
                 result = SetPropertyByValue(glue, receiver, key, value, true, ProfileOperation(), true);
-                Branch(TaggedIsHole(*result), &slowPath, &notHole);
+                BRANCH(TaggedIsHole(*result), &slowPath, &notHole);
                 Bind(&notHole);
                 {
                     Label notexception(env);
-                    Branch(TaggedIsException(*result), &exit, &notexception);
+                    BRANCH(TaggedIsException(*result), &exit, &notexception);
                     Bind(&notexception);
                     CallRuntime(glue, RTSTUB_ID(SetFunctionNameNoPrefix), { value, key });
                     Jump(&exit);
@@ -612,21 +612,21 @@ GateRef AccessObjectStubBuilder::StOwnByNameWithNameSet(GateRef glue, GateRef re
     Label notClassPrototype(env);
     Label notHole(env);
     Label exit(env);
-    Branch(IsJSObject(receiver), &isJSObject, &notJSObject);
+    BRANCH(IsJSObject(receiver), &isJSObject, &notJSObject);
     Bind(&isJSObject);
     {
-        Branch(IsClassConstructor(receiver), &notJSObject, &notClassConstructor);
+        BRANCH(IsClassConstructor(receiver), &notJSObject, &notClassConstructor);
         Bind(&notClassConstructor);
         {
-            Branch(IsClassPrototype(receiver), &notJSObject, &notClassPrototype);
+            BRANCH(IsClassPrototype(receiver), &notJSObject, &notClassPrototype);
             Bind(&notClassPrototype);
             {
                 result = SetPropertyByName(glue, receiver, key, value, true, True(), ProfileOperation(), false, true);
-                Branch(TaggedIsHole(*result), &notJSObject, &notHole);
+                BRANCH(TaggedIsHole(*result), &notJSObject, &notHole);
                 Bind(&notHole);
                 {
                     Label notException(env);
-                    Branch(TaggedIsException(*result), &exit, &notException);
+                    BRANCH(TaggedIsException(*result), &exit, &notException);
                     Bind(&notException);
                     CallRuntime(glue, RTSTUB_ID(SetFunctionNameNoPrefix), {value, key});
                     Jump(&exit);
@@ -654,11 +654,11 @@ GateRef AccessObjectStubBuilder::StObjByIndex(GateRef glue, GateRef receiver, Ga
     Label exit(env);
     Label fastPath(env);
     Label slowPath(env);
-    Branch(TaggedIsHeapObject(receiver), &fastPath, &slowPath);
+    BRANCH(TaggedIsHeapObject(receiver), &fastPath, &slowPath);
     Bind(&fastPath);
     {
         result = SetPropertyByIndex(glue, receiver, TruncInt64ToInt32(index), value, false);
-        Branch(TaggedIsHole(*result), &slowPath, &exit);
+        BRANCH(TaggedIsHole(*result), &slowPath, &exit);
     }
     Bind(&slowPath);
     {
@@ -680,11 +680,11 @@ GateRef AccessObjectStubBuilder::LdObjByIndex(GateRef glue, GateRef receiver, Ga
     Label fastPath(env);
     Label slowPath(env);
     Label exit(env);
-    Branch(TaggedIsHeapObject(receiver), &fastPath, &slowPath);
+    BRANCH(TaggedIsHeapObject(receiver), &fastPath, &slowPath);
     Bind(&fastPath);
     {
         varAcc = GetPropertyByIndex(glue, receiver, TruncInt64ToInt32(index), ProfileOperation());
-        Branch(TaggedIsHole(*varAcc), &slowPath, &exit);
+        BRANCH(TaggedIsHole(*varAcc), &slowPath, &exit);
     }
     Bind(&slowPath);
     {

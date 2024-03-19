@@ -20,7 +20,7 @@
  * @tc.require: issueI89SMQ
  */
 
-declare function assert_equal(a: Object, b: Object):void;
+declare function print(str:any):string;
 
 let grandparent = {
     "a": 1,
@@ -44,9 +44,6 @@ let own = {
 own.__proto__ = parent
 parent.__proto__ = grandparent
 
-var testArrary = ["1", "a", "b", "c", "2", "d"];
-var j = 0;
 for (let i in own) {
-    assert_equal(i, testArrary[j]);
-    j++;
+    print(i)
 }
