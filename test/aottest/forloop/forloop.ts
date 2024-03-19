@@ -12,7 +12,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-declare function assert_equal(a: Object, b: Object):void;
+declare function print(arg: number): string;
 
 function foo(n: number) {
     let x: number = 0;
@@ -22,7 +22,7 @@ function foo(n: number) {
     return x;
 }
 
-assert_equal(foo(300), 90300.25);
+print(foo(300));
 
 function forLoop(n: number): number {
   let sum = 0;
@@ -123,17 +123,17 @@ function forNestedLoop3(n: number): number {
 
 let n = 10;
 let ret1 = forLoop(n);
-assert_equal(ret1, 10);
+print(ret1);
 let ret2 = forLoopWithBreak(n);
-assert_equal(ret2, -1);
+print(ret2);
 let ret3 = forLoopWithContinue(n);
-assert_equal(ret3, -10);
+print(ret3);
 let ret4 = forNestedLoop0(n);
-assert_equal(ret4, -110);
+print(ret4);
 let ret5 = forNestedLoop1(n);
-assert_equal(ret5, -10);
+print(ret5);
 let ret6 = forNestedLoop2(n);
-assert_equal(ret6, 0);
+print(ret6);
 let ret7 = forNestedLoop3(n);
-assert_equal(ret7, 10);
+print(ret7);
 let ret8 = foo(20);

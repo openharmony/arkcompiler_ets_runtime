@@ -25,36 +25,25 @@ declare function print(str:any):string;
 // no elements
 let fast = {"a":1}
 fast.b = "a"
-var testArrary = ["a", "b"];
-var j = 0;
 for (let i in fast) {
-    assert_equal(i, testArrary[j]);
-    j++;
+    print(i)
 }
 
-j = 0;
 // use enum cache
 for (let i in fast) {
-    assert_equal(i, testArrary[j]);
-    j++;
+    print(i)
 }
 
 fast.c = 1
-testArrary = ["a", "b", "c"];
-j = 0;
 // invalidate enum cache
 for (let i in fast) {
-    assert_equal(i, testArrary[j]);
-    j++;
+    print(i)
 }
 
 // has elements
 let slow = {"s":222}
 slow[2] = "aa"
 slow[4] = 1
-testArrary = ["2", "4", "s"];
-j = 0;
 for (let i in slow) {
-    assert_equal(i, testArrary[j]);
-    j++;
+    print(i)
 }

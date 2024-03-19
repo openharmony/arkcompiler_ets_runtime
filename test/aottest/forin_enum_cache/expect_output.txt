@@ -11,8 +11,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import("//arkcompiler/ets_runtime/test/test_helper.gni")
-
-host_aot_test_action("forin_empty_prototype") {
-  deps = []
-}
+===generate enum cache===
+a
+b
+c
+===use enum cache===
+a
+b
+c
+===re-generate enum cache===
+a
+b
+c
+e
+===change attribute===
+a
+b
+c
+===delete property===
+a
+b
+c
