@@ -110,28 +110,28 @@ private:
                                                    const callbackfun &op);
     template<typename callbackfun>
     static JSTaggedValue HandleWithUint8(JSThread *thread, uint32_t size, uint8_t *block, uint32_t indexedPosition,
-                                         EcmaRuntimeCallInfo *argv, const callbackfun &op);
+                                         EcmaRuntimeCallInfo *argv, const callbackfun &op, uint8_t &tag);
     template<typename callbackfun>
     static JSTaggedValue HandleWithInt8(JSThread *thread, uint32_t size, uint8_t *block, uint32_t indexedPosition,
-                                        EcmaRuntimeCallInfo *argv, const callbackfun &op);
+                                        EcmaRuntimeCallInfo *argv, const callbackfun &op, int8_t &tag);
     template<typename callbackfun>
     static JSTaggedValue HandleWithUint16(JSThread *thread, uint32_t size, uint8_t *block, uint32_t indexedPosition,
-                                          EcmaRuntimeCallInfo *argv, const callbackfun &op);
+                                          EcmaRuntimeCallInfo *argv, const callbackfun &op, uint16_t &tag);
     template<typename callbackfun>
     static JSTaggedValue HandleWithInt16(JSThread *thread, uint32_t size, uint8_t *block, uint32_t indexedPosition,
-                                         EcmaRuntimeCallInfo *argv, const callbackfun &op);
+                                         EcmaRuntimeCallInfo *argv, const callbackfun &op, int16_t &tag);
     template<typename callbackfun>
     static JSTaggedValue HandleWithUint32(JSThread *thread, uint32_t size, uint8_t *block, uint32_t indexedPosition,
-                                          EcmaRuntimeCallInfo *argv, const callbackfun &op);
+                                          EcmaRuntimeCallInfo *argv, const callbackfun &op, uint32_t &tag);
     template<typename callbackfun>
     static JSTaggedValue HandleWithInt32(JSThread *thread, uint32_t size, uint8_t *block, uint32_t indexedPosition,
-                                         EcmaRuntimeCallInfo *argv, const callbackfun &op);
+                                         EcmaRuntimeCallInfo *argv, const callbackfun &op, int32_t &tag);
     template<typename callbackfun>
     static JSTaggedValue HandleWithBigInt64(JSThread *thread, uint32_t size, uint8_t *block, uint32_t indexedPosition,
-                                            EcmaRuntimeCallInfo *argv, const callbackfun &op);
+        EcmaRuntimeCallInfo *argv, const callbackfun &op, int64_t &tag, bool &lossless);
     template<typename callbackfun>
     static JSTaggedValue HandleWithBigUint64(JSThread *thread, uint32_t size, uint8_t *block, uint32_t indexedPosition,
-                                             EcmaRuntimeCallInfo *argv, const callbackfun &op);
+        EcmaRuntimeCallInfo *argv, const callbackfun &op, uint64_t &tag, bool &lossless);
 
     static constexpr int ARGS_NUMBER = 2;
 };

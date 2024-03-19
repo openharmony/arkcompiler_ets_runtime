@@ -30,7 +30,7 @@ void BuiltinsCollectionStubBuilder<CollectionType>::CheckCollectionObj(Label *th
     // check target obj
     auto jsType = std::is_same_v<CollectionType, JSSet> ? JSType::JS_SET : JSType::JS_MAP;
     GateRef isJsCollectionObj = IsJSObjectType(thisValue_, jsType);
-    Branch(isJsCollectionObj, thisCollectionObj, slowPath);
+    BRANCH(isJsCollectionObj, thisCollectionObj, slowPath);
 }
 
 template <typename CollectionType>
@@ -54,7 +54,7 @@ void BuiltinsCollectionStubBuilder<CollectionType>::Clear(Variable *result, Labe
 
     Label exception(env);
     Label noException(env);
-    Branch(TaggedIsException(res), &exception, &noException);
+    BRANCH(TaggedIsException(res), &exception, &noException);
     Bind(&noException);
     SetLinked(res);
     Jump(exit);
@@ -128,9 +128,9 @@ void BuiltinsCollectionStubBuilder<CollectionType>::ForEach(Variable *result, La
     Label callable(env);
     // check heap obj
     Label heapObj(env);
-    Branch(TaggedIsHeapObject(callbackFnHandle), &heapObj, slowPath);
+    BRANCH(TaggedIsHeapObject(callbackFnHandle), &heapObj, slowPath);
     Bind(&heapObj);
-    Branch(IsCallable(callbackFnHandle), &callable, slowPath);
+    BRANCH(IsCallable(callbackFnHandle), &callable, slowPath);
     Bind(&callable);
 
     GateRef linkedTable = GetLinked();
@@ -144,7 +144,7 @@ void BuiltinsCollectionStubBuilder<CollectionType>::ForEach(Variable *result, La
     }
 
     Label exception(env);
-    Branch(TaggedIsException(res), &exception, exit);
+    BRANCH(TaggedIsException(res), &exception, exit);
     Bind(&exception);
     *result = res;
     Jump(exit);
@@ -165,7 +165,7 @@ void BuiltinsCollectionStubBuilder<CollectionType>::MapSetOrSetAdd(
     GateRef key = GetCallArg0(numArgs_);
     // check key
     Label keyNotHole(env);
-    Branch(TaggedIsHole(key), slowPath, &keyNotHole);
+    BRANCH(TaggedIsHole(key), slowPath, &keyNotHole);
     Bind(&keyNotHole);
     GateRef value = isJsMapSet ? GetCallArg1(numArgs_) : key;
     GateRef linkedTable = GetLinked();

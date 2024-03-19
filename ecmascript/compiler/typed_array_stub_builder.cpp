@@ -30,7 +30,7 @@ GateRef TypedArrayStubBuilder::IsDetachedBuffer(GateRef buffer)
     Label isByteArray(env);
     Label notByteArray(env);
     DEFVARIABLE(result, VariableType::BOOL(), False());
-    Branch(IsByteArray(buffer), &isByteArray, &notByteArray);
+    BRANCH(IsByteArray(buffer), &isByteArray, &notByteArray);
     Bind(&isByteArray);
     {
         Jump(&exit);
@@ -38,7 +38,7 @@ GateRef TypedArrayStubBuilder::IsDetachedBuffer(GateRef buffer)
     Bind(&notByteArray);
     {
         GateRef dataSlot = GetArrayBufferData(buffer);
-        Branch(TaggedIsNull(dataSlot), &isNull, &exit);
+        BRANCH(TaggedIsNull(dataSlot), &isNull, &exit);
         Bind(&isNull);
         {
             result = True();
@@ -61,7 +61,7 @@ GateRef TypedArrayStubBuilder::GetDataPointFromBuffer(GateRef arrBuf)
     Label isByteArray(env);
     Label notByteArray(env);
     DEFVARIABLE(result, VariableType::JS_ANY(), arrBuf);
-    Branch(IsByteArray(arrBuf), &isByteArray, &notByteArray);
+    BRANCH(IsByteArray(arrBuf), &isByteArray, &notByteArray);
     Bind(&isByteArray);
     {
         result = PtrAdd(*result, IntPtr(ByteArray::DATA_OFFSET));
@@ -88,11 +88,11 @@ GateRef TypedArrayStubBuilder::CheckTypedArrayIndexInRange(GateRef array, GateRe
     Label exit(env);
     Label indexIsvalid(env);
     Label indexNotLessZero(env);
-    Branch(Int64LessThan(index, Int64(0)), &exit, &indexNotLessZero);
+    BRANCH(Int64LessThan(index, Int64(0)), &exit, &indexNotLessZero);
     Bind(&indexNotLessZero);
     {
         GateRef arrLen = GetArrayLength(array);
-        Branch(Int64GreaterThanOrEqual(index, ZExtInt32ToInt64(arrLen)), &exit, &indexIsvalid);
+        BRANCH(Int64GreaterThanOrEqual(index, ZExtInt32ToInt64(arrLen)), &exit, &indexIsvalid);
         Bind(&indexIsvalid);
         {
             result = True();
@@ -116,16 +116,16 @@ GateRef TypedArrayStubBuilder::LoadTypedArrayElement(GateRef glue, GateRef array
     Label indexIsvalid(env);
     Label slowPath(env);
     GateRef buffer = GetViewedArrayBuffer(array);
-    Branch(IsDetachedBuffer(buffer), &exit, &notDetached);
+    BRANCH(IsDetachedBuffer(buffer), &exit, &notDetached);
     Bind(&notDetached);
     {
         GateRef index = TryToElementsIndex(glue, key);
-        Branch(CheckTypedArrayIndexInRange(array, index), &indexIsvalid, &exit);
+        BRANCH(CheckTypedArrayIndexInRange(array, index), &indexIsvalid, &exit);
         Bind(&indexIsvalid);
         {
             GateRef offset = GetByteOffset(array);
             result = GetValueFromBuffer(buffer, TruncInt64ToInt32(index), offset, jsType);
-            Branch(TaggedIsNumber(*result), &exit, &slowPath);
+            BRANCH(TaggedIsNumber(*result), &exit, &slowPath);
         }
         Bind(&slowPath);
         {
@@ -151,10 +151,10 @@ GateRef TypedArrayStubBuilder::StoreTypedArrayElement(GateRef glue, GateRef arra
     Label notDetached(env);
     Label indexIsvalid(env);
     GateRef buffer = GetViewedArrayBuffer(array);
-    Branch(IsDetachedBuffer(buffer), &exit, &notDetached);
+    BRANCH(IsDetachedBuffer(buffer), &exit, &notDetached);
     Bind(&notDetached);
     {
-        Branch(CheckTypedArrayIndexInRange(array, index), &indexIsvalid, &exit);
+        BRANCH(CheckTypedArrayIndexInRange(array, index), &indexIsvalid, &exit);
         Bind(&indexIsvalid);
         {
             result = CallRuntime(glue, RTSTUB_ID(SetTypeArrayPropertyByIndex),
@@ -181,7 +181,7 @@ GateRef TypedArrayStubBuilder::FastGetPropertyByIndex(GateRef glue, GateRef arra
     Label indexIsvalid(env);
     
     GateRef buffer = GetViewedArrayBuffer(array);
-    Branch(IsDetachedBuffer(buffer), &isDetached, &notDetached);
+    BRANCH(IsDetachedBuffer(buffer), &isDetached, &notDetached);
     Bind(&isDetached);
     {
         Jump(&slowPath);
@@ -189,12 +189,12 @@ GateRef TypedArrayStubBuilder::FastGetPropertyByIndex(GateRef glue, GateRef arra
     Bind(&notDetached);
     {
         GateRef arrLen = GetArrayLength(array);
-        Branch(Int32GreaterThanOrEqual(index, arrLen), &exit, &indexIsvalid);
+        BRANCH(Int32GreaterThanOrEqual(index, arrLen), &exit, &indexIsvalid);
         Bind(&indexIsvalid);
         {
             GateRef offset = GetByteOffset(array);
             result = GetValueFromBuffer(buffer, index, offset, jsType);
-            Branch(TaggedIsNumber(*result), &exit, &slowPath);
+            BRANCH(TaggedIsNumber(*result), &exit, &slowPath);
         }
     }
     Bind(&slowPath);
@@ -225,7 +225,7 @@ GateRef TypedArrayStubBuilder::FastCopyElementToArray(GateRef glue, GateRef type
     Label endLoop(env);
 
     GateRef buffer = GetViewedArrayBuffer(typedArray);
-    Branch(IsDetachedBuffer(buffer), &isDetached, &notDetached);
+    BRANCH(IsDetachedBuffer(buffer), &isDetached, &notDetached);
     Bind(&isDetached);
     {
         result = False();
@@ -241,7 +241,7 @@ GateRef TypedArrayStubBuilder::FastCopyElementToArray(GateRef glue, GateRef type
         Jump(&begin);
         LoopBegin(&begin);
         {
-            Branch(Int32UnsignedLessThan(*start, arrLen), &storeValue, &exit);
+            BRANCH(Int32UnsignedLessThan(*start, arrLen), &storeValue, &exit);
             Bind(&storeValue);
             {
                 GateRef value = GetValueFromBuffer(buffer, *start, offset, jsType);
@@ -290,7 +290,7 @@ GateRef TypedArrayStubBuilder::GetValueFromBuffer(GateRef buffer, GateRef index,
         static_cast<int64_t>(JSType::JS_UINT32_ARRAY), static_cast<int64_t>(JSType::JS_FLOAT32_ARRAY),
         static_cast<int64_t>(JSType::JS_FLOAT64_ARRAY) };
 
-    Branch(Int32LessThanOrEqual(jsType, Int32(static_cast<int32_t>(JSType::JS_UINT8_CLAMPED_ARRAY))),
+    BRANCH(Int32LessThanOrEqual(jsType, Int32(static_cast<int32_t>(JSType::JS_UINT8_CLAMPED_ARRAY))),
         &isInt8, &notInt8);
     Bind(&isInt8);
     {
@@ -326,7 +326,7 @@ GateRef TypedArrayStubBuilder::GetValueFromBuffer(GateRef buffer, GateRef index,
 
     Bind(&notInt8);
     {
-        Branch(Int32LessThanOrEqual(jsType, Int32(static_cast<int32_t>(JSType::JS_INT32_ARRAY))),
+        BRANCH(Int32LessThanOrEqual(jsType, Int32(static_cast<int32_t>(JSType::JS_INT32_ARRAY))),
             &isInt16, &notInt16);
         Bind(&isInt16);
         {
@@ -372,7 +372,7 @@ GateRef TypedArrayStubBuilder::GetValueFromBuffer(GateRef buffer, GateRef index,
                 GateRef re = Load(VariableType::INT32(), block, byteIndex);
 
                 auto condition = Int32UnsignedGreaterThan(re, Int32(INT32_MAX));
-                Branch(condition, &overflow, &notOverflow);
+                BRANCH(condition, &overflow, &notOverflow);
                 Bind(&overflow);
                 {
                     result = DoubleToTaggedDoublePtr(ChangeUInt32ToFloat64(re));
@@ -425,29 +425,29 @@ void TypedArrayStubBuilder::SubArray(GateRef glue, GateRef thisValue, GateRef nu
     DEFVARIABLE(endIndex, VariableType::INT32(), Int32(0));
     DEFVARIABLE(newLength, VariableType::INT32(), Int32(0));
 
-    Branch(IsEcmaObject(thisValue), &ecmaObj, slowPath);
+    BRANCH(IsEcmaObject(thisValue), &ecmaObj, slowPath);
     Bind(&ecmaObj);
-    Branch(IsTypedArray(thisValue), &typedArray, slowPath);
+    BRANCH(IsTypedArray(thisValue), &typedArray, slowPath);
     Bind(&typedArray);
 
     GateRef objHclass = LoadHClass(thisValue);
     Label defaultConstructor(env);
-    Branch(HasConstructorByHClass(objHclass), slowPath, &defaultConstructor);
+    BRANCH(HasConstructorByHClass(objHclass), slowPath, &defaultConstructor);
     Bind(&defaultConstructor);
     GateRef arrayLen = GetArrayLength(thisValue);
     GateRef buffer = GetViewedArrayBuffer(thisValue);
     Label offHeap(env);
-    Branch(BoolOr(IsJSObjectType(buffer, JSType::JS_ARRAY_BUFFER),
+    BRANCH(BoolOr(IsJSObjectType(buffer, JSType::JS_ARRAY_BUFFER),
         IsJSObjectType(buffer, JSType::JS_SHARED_ARRAY_BUFFER)), &offHeap, slowPath);
     Bind(&offHeap);
     Label notDetached(env);
-    Branch(IsDetachedBuffer(buffer), slowPath, &notDetached);
+    BRANCH(IsDetachedBuffer(buffer), slowPath, &notDetached);
     Bind(&notDetached);
 
     Label intIndex(env);
     GateRef relativeBegin = GetCallArg0(numArgs);
     GateRef end = GetCallArg1(numArgs);
-    Branch(TaggedIsInt(relativeBegin), &intIndex, slowPath);
+    BRANCH(TaggedIsInt(relativeBegin), &intIndex, slowPath);
     Bind(&intIndex);
     GateRef relativeBeginInt = GetInt32OfTInt(relativeBegin);
     beginIndex = CalArrayRelativePos(relativeBeginInt, arrayLen);
@@ -456,7 +456,7 @@ void TypedArrayStubBuilder::SubArray(GateRef glue, GateRef thisValue, GateRef nu
     Label defEnd(env);
     Label calNewLength(env);
     Label newArray(env);
-    Branch(TaggedIsUndefined(end), &undefEnd, &defEnd);
+    BRANCH(TaggedIsUndefined(end), &undefEnd, &defEnd);
     Bind(&undefEnd);
     {
         endIndex = arrayLen;
@@ -465,7 +465,7 @@ void TypedArrayStubBuilder::SubArray(GateRef glue, GateRef thisValue, GateRef nu
     Bind(&defEnd);
     {
         Label intEnd(env);
-        Branch(TaggedIsInt(end), &intEnd, slowPath);
+        BRANCH(TaggedIsInt(end), &intEnd, slowPath);
         Bind(&intEnd);
         {
             GateRef endVal = GetInt32OfTInt(end);
@@ -477,7 +477,7 @@ void TypedArrayStubBuilder::SubArray(GateRef glue, GateRef thisValue, GateRef nu
     {
         GateRef diffLen = Int32Sub(*endIndex, *beginIndex);
         Label diffLargeZero(env);
-        Branch(Int32GreaterThan(diffLen, Int32(0)), &diffLargeZero, &newArray);
+        BRANCH(Int32GreaterThan(diffLen, Int32(0)), &diffLargeZero, &newArray);
         Bind(&diffLargeZero);
         {
             newLength = diffLen;
@@ -486,7 +486,7 @@ void TypedArrayStubBuilder::SubArray(GateRef glue, GateRef thisValue, GateRef nu
     }
     Bind(&newArray);
     GateRef oldByteLength = Load(VariableType::INT32(), thisValue, IntPtr(JSTypedArray::BYTE_LENGTH_OFFSET));
-    Branch(Int32Equal(arrayLen, Int32(0)), slowPath, &isNotZero);
+    BRANCH(Int32Equal(arrayLen, Int32(0)), slowPath, &isNotZero);
     Bind(&isNotZero);
     GateRef elementSize = Int32Div(oldByteLength, arrayLen);
     NewObjectStubBuilder newBuilder(this);
@@ -502,12 +502,12 @@ void TypedArrayStubBuilder::GetByteLength([[maybe_unused]] GateRef glue, GateRef
     Label typedArray(env);
     Label Detached(env);
     Label notDetached(env);
-    Branch(IsEcmaObject(thisValue), &ecmaObj, slowPath);
+    BRANCH(IsEcmaObject(thisValue), &ecmaObj, slowPath);
     Bind(&ecmaObj);
-    Branch(IsTypedArray(thisValue), &typedArray, slowPath);
+    BRANCH(IsTypedArray(thisValue), &typedArray, slowPath);
     Bind(&typedArray);
     GateRef buffer = GetViewedArrayBuffer(thisValue);
-    Branch(IsDetachedBuffer(buffer), &Detached, &notDetached);
+    BRANCH(IsDetachedBuffer(buffer), &Detached, &notDetached);
     Bind(&Detached);
     {
         *result = IntToTaggedPtr(Int32(0));
@@ -528,12 +528,12 @@ void TypedArrayStubBuilder::GetByteOffset([[maybe_unused]] GateRef glue, GateRef
     Label typedArray(env);
     Label Detached(env);
     Label notDetached(env);
-    Branch(IsEcmaObject(thisValue), &ecmaObj, slowPath);
+    BRANCH(IsEcmaObject(thisValue), &ecmaObj, slowPath);
     Bind(&ecmaObj);
-    Branch(IsTypedArray(thisValue), &typedArray, slowPath);
+    BRANCH(IsTypedArray(thisValue), &typedArray, slowPath);
     Bind(&typedArray);
     GateRef buffer = GetViewedArrayBuffer(thisValue);
-    Branch(IsDetachedBuffer(buffer), &Detached, &notDetached);
+    BRANCH(IsDetachedBuffer(buffer), &Detached, &notDetached);
     Bind(&Detached);
     {
         *result = IntToTaggedPtr(Int32(0));

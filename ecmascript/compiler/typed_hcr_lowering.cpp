@@ -419,12 +419,12 @@ void TypedHCRLowering::LowerFlattenTreeStringCheck(GateRef gate, GateRef glue)
     Label isTreeString(&builder_);
     Label exit(&builder_);
 
-    builder_.Branch(builder_.IsTreeString(str), &isTreeString, &exit);
+    BRANCH_CIR(builder_.IsTreeString(str), &isTreeString, &exit);
     builder_.Bind(&isTreeString);
     {
         Label isFlat(&builder_);
         Label needFlat(&builder_);
-        builder_.Branch(builder_.TreeStringIsFlat(str), &isFlat, &needFlat);
+        BRANCH_CIR(builder_.TreeStringIsFlat(str), &isFlat, &needFlat);
         builder_.Bind(&isFlat);
         {
             result = builder_.GetFirstFromTreeString(str);
@@ -599,13 +599,14 @@ void TypedHCRLowering::LowerIndexCheck(GateRef gate)
 GateRef TypedHCRLowering::LowerCallRuntime(GateRef glue, GateRef hirGate, int index, const std::vector<GateRef> &args,
                                            bool useLabel)
 {
+    const std::string name = RuntimeStubCSigns::GetRTName(index);
     if (useLabel) {
-        GateRef result = builder_.CallRuntime(glue, index, Gate::InvalidGateRef, args, hirGate);
+        GateRef result = builder_.CallRuntime(glue, index, Gate::InvalidGateRef, args, hirGate, name.c_str());
         return result;
     } else {
         const CallSignature *cs = RuntimeStubCSigns::Get(RTSTUB_ID(CallRuntime));
         GateRef target = builder_.IntPtr(index);
-        GateRef result = builder_.Call(cs, glue, target, dependEntry_, args, hirGate);
+        GateRef result = builder_.Call(cs, glue, target, dependEntry_, args, hirGate, name.c_str());
         return result;
     }
 }
@@ -631,7 +632,7 @@ void TypedHCRLowering::LowerPrimitiveToNumber(GateRef dst, GateRef src, GateType
         Label exit(&builder_);
         Label isTrue(&builder_);
         Label isFalse(&builder_);
-        builder_.Branch(builder_.TaggedIsTrue(src), &isTrue, &isFalse);
+        BRANCH_CIR(builder_.TaggedIsTrue(src), &isTrue, &isFalse);
         builder_.Bind(&isTrue);
         {
             result = IntToTaggedIntPtr(builder_.Int32(1));
@@ -696,7 +697,7 @@ void TypedHCRLowering::LowerCallGetter(GateRef gate, GateRef glue)
     Label notInternalAccessor(&builder_);
     Label callGetter(&builder_);
     Label exit(&builder_);
-    builder_.Branch(builder_.IsAccessorInternal(accessor), &isInternalAccessor, &notInternalAccessor);
+    BRANCH_CIR(builder_.IsAccessorInternal(accessor), &isInternalAccessor, &notInternalAccessor);
     {
         builder_.Bind(&isInternalAccessor);
         {
@@ -707,7 +708,7 @@ void TypedHCRLowering::LowerCallGetter(GateRef gate, GateRef glue)
         builder_.Bind(&notInternalAccessor);
         {
             GateRef getter = builder_.LoadConstOffset(VariableType::JS_ANY(), accessor, AccessorData::GETTER_OFFSET);
-            builder_.Branch(builder_.IsSpecial(getter, JSTaggedValue::VALUE_UNDEFINED), &exit, &callGetter);
+            BRANCH_CIR(builder_.IsSpecial(getter, JSTaggedValue::VALUE_UNDEFINED), &exit, &callGetter);
             builder_.Bind(&callGetter);
             {
                 result = CallAccessor(glue, gate, getter, receiver, AccessorMode::GETTER);
@@ -786,7 +787,7 @@ void TypedHCRLowering::LowerCallSetter(GateRef gate, GateRef glue)
     Label notInternalAccessor(&builder_);
     Label callSetter(&builder_);
     Label exit(&builder_);
-    builder_.Branch(builder_.IsAccessorInternal(accessor), &isInternalAccessor, &notInternalAccessor);
+    BRANCH_CIR(builder_.IsAccessorInternal(accessor), &isInternalAccessor, &notInternalAccessor);
     {
         builder_.Bind(&isInternalAccessor);
         {
@@ -797,7 +798,7 @@ void TypedHCRLowering::LowerCallSetter(GateRef gate, GateRef glue)
         builder_.Bind(&notInternalAccessor);
         {
             GateRef setter = builder_.LoadConstOffset(VariableType::JS_ANY(), accessor, AccessorData::SETTER_OFFSET);
-            builder_.Branch(builder_.IsSpecial(setter, JSTaggedValue::VALUE_UNDEFINED), &exit, &callSetter);
+            BRANCH_CIR(builder_.IsSpecial(setter, JSTaggedValue::VALUE_UNDEFINED), &exit, &callSetter);
             builder_.Bind(&callSetter);
             {
                 CallAccessor(glue, gate, setter, receiver, AccessorMode::SETTER, value);
@@ -936,7 +937,7 @@ void TypedHCRLowering::LowerCowArrayCheck(GateRef gate, GateRef glue)
     GateRef receiver = acc_.GetValueIn(gate, 0);
     Label notCOWArray(&builder_);
     Label isCOWArray(&builder_);
-    builder_.Branch(builder_.IsJsCOWArray(receiver), &isCOWArray, &notCOWArray);
+    BRANCH_CIR(builder_.IsJsCOWArray(receiver), &isCOWArray, &notCOWArray);
     builder_.Bind(&isCOWArray);
     {
         LowerCallRuntime(glue, gate, RTSTUB_ID(CheckAndCopyArray), {receiver}, true);
@@ -1055,7 +1056,7 @@ GateRef TypedHCRLowering::BuildTypedArrayLoadElement(GateRef receiver, GateRef o
     DEFVALUE(result, (&builder_), type, builder_.Double(0));
 
     GateRef isOnHeap = builder_.IsOnHeap(builder_.LoadHClass(receiver));
-    builder_.Branch(isOnHeap, isByteArray, isArrayBuffer);
+    BRANCH_CIR(isOnHeap, isByteArray, isArrayBuffer);
     builder_.Bind(isByteArray);
     {
         data = builder_.PtrAdd(byteArrayOrArrayBuffer, builder_.IntPtr(ByteArray::DATA_OFFSET));
@@ -1234,7 +1235,7 @@ void TypedHCRLowering::BuildTypedArrayStoreElement(GateRef receiver, GateRef off
                                                               JSTypedArray::VIEWED_ARRAY_BUFFER_OFFSET);
     GateRef isOnHeap = builder_.IsOnHeap(builder_.LoadHClass(receiver));
     DEFVALUE(data, (&builder_), VariableType::JS_ANY(), builder_.Undefined());
-    builder_.Branch(isOnHeap, isByteArray, isArrayBuffer);
+    BRANCH_CIR(isOnHeap, isByteArray, isArrayBuffer);
     builder_.Bind(isByteArray);
     {
         data = builder_.PtrAdd(byteArrayOrArrayBuffer, builder_.IntPtr(ByteArray::DATA_OFFSET));
@@ -1272,7 +1273,7 @@ void TypedHCRLowering::LowerUInt8ClampedArrayStoreElement(GateRef gate)
     Label isOverFlow(&builder_);
     Label notOverFlow(&builder_);
     Label exit(&builder_);
-    builder_.Branch(builder_.Int32GreaterThan(value, topValue), &isOverFlow, &notOverFlow);
+    BRANCH_CIR(builder_.Int32GreaterThan(value, topValue), &isOverFlow, &notOverFlow);
     builder_.Bind(&isOverFlow);
     {
         result = topValue;
@@ -1281,7 +1282,7 @@ void TypedHCRLowering::LowerUInt8ClampedArrayStoreElement(GateRef gate)
     builder_.Bind(&notOverFlow);
     {
         Label isUnderSpill(&builder_);
-        builder_.Branch(builder_.Int32LessThan(value, bottomValue), &isUnderSpill, &exit);
+        BRANCH_CIR(builder_.Int32LessThan(value, bottomValue), &isUnderSpill, &exit);
         builder_.Bind(&isUnderSpill);
         {
             result = bottomValue;
@@ -1514,7 +1515,7 @@ void TypedHCRLowering::LowerTypedNewAllocateThis(GateRef gate, GateRef glue)
     Label exit(&builder_);
 
     GateRef isBase = builder_.IsBase(ctor);
-    builder_.Branch(isBase, &allocate, &exit);
+    BRANCH_CIR(isBase, &allocate, &exit);
     builder_.Bind(&allocate);
     {
         thisObj = builder_.CallStub(glue, gate, CommonStubCSigns::NewJSObject, { glue, ctor });
@@ -1535,7 +1536,7 @@ void TypedHCRLowering::LowerTypedSuperAllocateThis(GateRef gate, GateRef glue)
     Label exit(&builder_);
 
     GateRef isBase = builder_.IsBase(superCtor);
-    builder_.Branch(isBase, &allocate, &exit);
+    BRANCH_CIR(isBase, &allocate, &exit);
     builder_.Bind(&allocate);
     {
         thisObj = builder_.CallStub(glue, gate, CommonStubCSigns::NewJSObject, { glue, newTarget });
@@ -1612,7 +1613,7 @@ void TypedHCRLowering::ReplaceHirWithPendingException(GateRef hirGate, GateRef g
                                                       GateRef value)
 {
     auto condition = builder_.HasPendingException(glue);
-    GateRef ifBranch = builder_.Branch(state, condition);
+    GateRef ifBranch = builder_.Branch(state, condition, 1, BranchWeight::DEOPT_WEIGHT, "checkException");
     GateRef ifTrue = builder_.IfTrue(ifBranch);
     GateRef ifFalse = builder_.IfFalse(ifBranch);
     GateRef eDepend = builder_.DependRelay(ifTrue, depend);
@@ -1641,7 +1642,7 @@ void TypedHCRLowering::LowerLookupHolder(GateRef gate)
 
     builder_.LoopBegin(&loopHead);
     auto curHC = builder_.LoadHClass(*holder);
-    builder_.Branch(builder_.Equal(curHC, holderHC), &exit, &lookUpProto);
+    BRANCH_CIR(builder_.Equal(curHC, holderHC), &exit, &lookUpProto);
 
     builder_.Bind(&lookUpProto);
     holder = builder_.LoadConstOffset(VariableType::JS_ANY(), curHC, JSHClass::PROTOTYPE_OFFSET);
@@ -1727,7 +1728,7 @@ void TypedHCRLowering::LowerStringEqual(GateRef gate, GateRef glue)
     DEFVALUE(result, (&builder_), VariableType::BOOL(), builder_.False());
     Label lenEqual(&builder_);
     Label exit(&builder_);
-    builder_.Branch(builder_.Equal(leftLength, rightLength), &lenEqual, &exit);
+    BRANCH_CIR(builder_.Equal(leftLength, rightLength), &lenEqual, &exit);
     builder_.Bind(&lenEqual);
     {
         result = builder_.CallStub(glue, gate, CommonStubCSigns::FastStringEqual, { glue, left, right });
@@ -1770,7 +1771,7 @@ void TypedHCRLowering::LowerStringAdd(GateRef gate, GateRef glue)
     DEFVALUE(newLeft, (&builder_), VariableType::JS_POINTER(), builder_.Undefined());
     DEFVALUE(result, (&builder_), VariableType::JS_POINTER(), builder_.Undefined());
 
-    builder_.Branch(builder_.Equal(leftLength, builder_.Int32(0)), &leftEmpty, &leftNotEmpty);
+    BRANCH_CIR(builder_.Equal(leftLength, builder_.Int32(0)), &leftEmpty, &leftNotEmpty);
     builder_.Bind(&leftEmpty);
     {
         result = right;
@@ -1780,7 +1781,7 @@ void TypedHCRLowering::LowerStringAdd(GateRef gate, GateRef glue)
     {
         Label rightEmpty(&builder_);
         Label rightNotEmpty(&builder_);
-        builder_.Branch(builder_.Equal(rightLength, builder_.Int32(0)), &rightEmpty, &rightNotEmpty);
+        BRANCH_CIR(builder_.Equal(rightLength, builder_.Int32(0)), &rightEmpty, &rightNotEmpty);
         builder_.Bind(&rightEmpty);
         {
             result = left;
@@ -1789,11 +1790,11 @@ void TypedHCRLowering::LowerStringAdd(GateRef gate, GateRef glue)
         builder_.Bind(&rightNotEmpty);
         {
             Label stringConcatOpt(&builder_);
-            builder_.Branch(builder_.Int32LessThan(newLength,
+            BRANCH_CIR(builder_.Int32LessThan(newLength,
                 builder_.Int32(SlicedString::MIN_SLICED_ECMASTRING_LENGTH)), &slowPath, &stringConcatOpt);
             builder_.Bind(&stringConcatOpt);
             {
-                builder_.Branch(builder_.IsSpecialSlicedString(left), &isNotFirstConcat, &isFirstConcat);
+                BRANCH_CIR(builder_.IsSpecialSlicedString(left), &isNotFirstConcat, &isFirstConcat);
                 builder_.Bind(&isFirstConcat);
                 {
                     Label fastPath(&builder_);
@@ -1801,16 +1802,16 @@ void TypedHCRLowering::LowerStringAdd(GateRef gate, GateRef glue)
                     Label canBeCompress(&builder_);
                     Label canNotBeCompress(&builder_);
                     Label newSlicedStr(&builder_);
-                    builder_.Branch(builder_.Int32LessThan(builder_.Int32(LineEcmaString::MAX_LENGTH),
+                    BRANCH_CIR(builder_.Int32LessThan(builder_.Int32(LineEcmaString::MAX_LENGTH),
                         backStoreLength), &slowPath, &fastPath);
                     builder_.Bind(&fastPath);
                     {
-                        builder_.Branch(builder_.CanBeConcat(left, right, isValidFirstOpt),
+                        BRANCH_CIR(builder_.CanBeConcat(left, right, isValidFirstOpt),
                             &canBeConcat, &slowPath);
                         builder_.Bind(&canBeConcat);
                         {
                             lineString = AllocateLineString(glue, backStoreLength, canBeCompressed);
-                            builder_.Branch(canBeCompressed, &canBeCompress, &canNotBeCompress);
+                            BRANCH_CIR(canBeCompressed, &canBeCompress, &canNotBeCompress);
                             builder_.Bind(&canBeCompress);
                             {
                                 GateRef leftSource = builder_.GetStringDataFromLineOrConstantString(left);
@@ -1838,7 +1839,7 @@ void TypedHCRLowering::LowerStringAdd(GateRef gate, GateRef glue)
                                 GateRef rightDst = builder_.TaggedPointerToInt64(builder_.PtrAdd(leftDst,
                                     builder_.PtrMul(builder_.ZExtInt32ToPtr(leftLength),
                                     builder_.IntPtr(sizeof(uint16_t)))));
-                                builder_.Branch(leftIsUtf8, &leftIsUtf8L, &leftIsUtf16L);
+                                BRANCH_CIR(leftIsUtf8, &leftIsUtf8L, &leftIsUtf16L);
                                 builder_.Bind(&leftIsUtf8L);
                                 {
                                     // left is utf8, right string must utf16
@@ -1851,7 +1852,7 @@ void TypedHCRLowering::LowerStringAdd(GateRef gate, GateRef glue)
                                 {
                                     builder_.CopyChars(glue, leftDst, leftSource, leftLength,
                                         builder_.IntPtr(sizeof(uint16_t)), VariableType::INT16());
-                                    builder_.Branch(rightIsUtf8, &rightIsUtf8L, &rightIsUtf16L);
+                                    BRANCH_CIR(rightIsUtf8, &rightIsUtf8L, &rightIsUtf16L);
                                     builder_.Bind(&rightIsUtf8L);
                                     builder_.CopyUtf8AsUtf16(glue, rightDst, rightSource, rightLength);
                                     builder_.Jump(&newSlicedStr);
@@ -1871,7 +1872,7 @@ void TypedHCRLowering::LowerStringAdd(GateRef gate, GateRef glue)
                 builder_.Bind(&isNotFirstConcat);
                 {
                     Label fastPath(&builder_);
-                    builder_.Branch(builder_.CanBackStore(right, isValidOpt), &fastPath, &slowPath);
+                    BRANCH_CIR(builder_.CanBackStore(right, isValidOpt), &fastPath, &slowPath);
                     builder_.Bind(&fastPath);
                     {
                         // left string length means current length,
@@ -1881,8 +1882,7 @@ void TypedHCRLowering::LowerStringAdd(GateRef gate, GateRef glue)
                         GateRef maxLength = builder_.GetLengthFromString(*lineString);
                         Label needsRealloc(&builder_);
                         Label backingStore(&builder_);
-                        builder_.Branch(builder_.Int32LessThan(maxLength, newLength),
-                                        &needsRealloc, &backingStore);
+                        BRANCH_CIR(builder_.Int32LessThan(maxLength, newLength), &needsRealloc, &backingStore);
                         builder_.Bind(&needsRealloc);
                         {
                             Label newLineStr(&builder_);
@@ -1890,11 +1890,11 @@ void TypedHCRLowering::LowerStringAdd(GateRef gate, GateRef glue)
                             Label canNotBeCompress(&builder_);
                             // The new backing store will have a length of min(2*length, LineEcmaString::MAX_LENGTH).
                             GateRef newBackStoreLength = builder_.Int32Mul(newLength, builder_.Int32(2));
-                            builder_.Branch(builder_.Int32LessThan(newBackStoreLength,
+                            BRANCH_CIR(builder_.Int32LessThan(newBackStoreLength,
                                 builder_.Int32(LineEcmaString::MAX_LENGTH)), &newLineStr, &slowPath);
                             builder_.Bind(&newLineStr);
                             {
-                                builder_.Branch(canBeCompressed, &canBeCompress, &canNotBeCompress);
+                                BRANCH_CIR(canBeCompressed, &canBeCompress, &canNotBeCompress);
                                 builder_.Bind(&canBeCompress);
                                 {
                                     GateRef newBackingStore = AllocateLineString(glue, newBackStoreLength,
@@ -1955,7 +1955,7 @@ void TypedHCRLowering::LowerStringAdd(GateRef gate, GateRef glue)
                         {
                             Label canBeCompress(&builder_);
                             Label canNotBeCompress(&builder_);
-                            builder_.Branch(canBeCompressed, &canBeCompress, &canNotBeCompress);
+                            BRANCH_CIR(canBeCompressed, &canBeCompress, &canNotBeCompress);
                             builder_.Bind(&canBeCompress);
                             {
                                 GateRef len = builder_.Int32LSL(newLength,
@@ -2026,7 +2026,7 @@ GateRef TypedHCRLowering::AllocateLineString(GateRef glue, GateRef length, GateR
 
     GateRef len = builder_.Int32LSL(length, builder_.Int32(EcmaString::STRING_LENGTH_SHIFT_COUNT));
 
-    builder_.Branch(canBeCompressed, &isUtf8, &isUtf16);
+    BRANCH_CIR(canBeCompressed, &isUtf8, &isUtf16);
     builder_.Bind(&isUtf8);
     {
         size = builder_.AlignUp(builder_.ComputeSizeUtf8(builder_.ZExtInt32ToPtr(length)),
@@ -2068,7 +2068,7 @@ GateRef TypedHCRLowering::AllocateSlicedString(GateRef glue, GateRef flatString,
 
     GateRef len = builder_.Int32LSL(length, builder_.Int32(EcmaString::STRING_LENGTH_SHIFT_COUNT));
 
-    builder_.Branch(canBeCompressed, &isUtf8, &isUtf16);
+    BRANCH_CIR(canBeCompressed, &isUtf8, &isUtf16);
     builder_.Bind(&isUtf8);
     {
         mixLength = builder_.Int32Or(len, builder_.Int32(EcmaString::STRING_COMPRESSED));
@@ -2196,12 +2196,12 @@ void TypedHCRLowering::LowerArrayConstructorCheck(GateRef gate, GateRef glue)
     Label exit(&builder_);
     DEFVALUE(check, (&builder_), VariableType::BOOL(), builder_.True());
     check = builder_.TaggedIsHeapObject(newTarget);
-    builder_.Branch(*check, &isHeapObject, &exit);
+    BRANCH_CIR(*check, &isHeapObject, &exit);
     builder_.Bind(&isHeapObject);
     {
         Label isJSFunction(&builder_);
         check = builder_.IsJSFunction(newTarget);
-        builder_.Branch(*check, &isJSFunction, &exit);
+        BRANCH_CIR(*check, &isJSFunction, &exit);
         builder_.Bind(&isJSFunction);
         {
             Label getHclass(&builder_);
@@ -2211,7 +2211,7 @@ void TypedHCRLowering::LowerArrayConstructorCheck(GateRef gate, GateRef glue)
             GateRef arrayFunc =
                 builder_.GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv, GlobalEnv::ARRAY_FUNCTION_INDEX);
             check = builder_.Equal(arrayFunc, newTarget);
-            builder_.Branch(*check, &getHclass, &exit);
+            BRANCH_CIR(*check, &getHclass, &exit);
             builder_.Bind(&getHclass);
             {
                 GateRef intialHClass = builder_.Load(VariableType::JS_ANY(), newTarget,
@@ -2244,19 +2244,19 @@ void TypedHCRLowering::LowerArrayConstructor(GateRef gate, GateRef glue)
     DEFVALUE(arrayLength, (&builder_), VariableType::INT64(), builder_.Int64(0));
     Label argIsNumber(&builder_);
     Label arrayCreate(&builder_);
-    builder_.Branch(builder_.TaggedIsNumber(arg0), &argIsNumber, &slowPath);
+    BRANCH_CIR(builder_.TaggedIsNumber(arg0), &argIsNumber, &slowPath);
     builder_.Bind(&argIsNumber);
     {
         Label argIsInt(&builder_);
         Label argIsDouble(&builder_);
-        builder_.Branch(builder_.TaggedIsInt(arg0), &argIsInt, &argIsDouble);
+        BRANCH_CIR(builder_.TaggedIsInt(arg0), &argIsInt, &argIsDouble);
         builder_.Bind(&argIsInt);
         {
             Label validIntLength(&builder_);
             GateRef intLen = builder_.GetInt64OfTInt(arg0);
             GateRef isGEZero = builder_.Int64GreaterThanOrEqual(intLen, builder_.Int64(0));
             GateRef isLEMaxLen = builder_.Int64LessThanOrEqual(intLen, builder_.Int64(JSArray::MAX_ARRAY_INDEX));
-            builder_.Branch(builder_.BoolAnd(isGEZero, isLEMaxLen), &validIntLength, &slowPath);
+            BRANCH_CIR(builder_.BoolAnd(isGEZero, isLEMaxLen), &validIntLength, &slowPath);
             builder_.Bind(&validIntLength);
             {
                 arrayLength = intLen;
@@ -2273,7 +2273,7 @@ void TypedHCRLowering::LowerArrayConstructor(GateRef gate, GateRef glue)
             GateRef doubleEqual = builder_.DoubleEqual(doubleLength, intToDouble);
             GateRef doubleLEMaxLen =
                 builder_.DoubleLessThanOrEqual(doubleLength, builder_.Double(JSArray::MAX_ARRAY_INDEX));
-            builder_.Branch(builder_.BoolAnd(doubleEqual, doubleLEMaxLen), &validDoubleLength, &slowPath);
+            BRANCH_CIR(builder_.BoolAnd(doubleEqual, doubleLEMaxLen), &validDoubleLength, &slowPath);
             builder_.Bind(&validDoubleLength);
             {
                 arrayLength = builder_.SExtInt32ToInt64(doubleToInt);
@@ -2284,7 +2284,7 @@ void TypedHCRLowering::LowerArrayConstructor(GateRef gate, GateRef glue)
     builder_.Bind(&arrayCreate);
     {
         Label lengthValid(&builder_);
-        builder_.Branch(
+        BRANCH_CIR(
             builder_.Int64GreaterThan(*arrayLength, builder_.Int64(JSObject::MAX_GAP)), &slowPath, &lengthValid);
         builder_.Bind(&lengthValid);
         {
@@ -2341,12 +2341,12 @@ void TypedHCRLowering::LowerObjectConstructorCheck(GateRef gate, GateRef glue)
     Label exit(&builder_);
     DEFVALUE(check, (&builder_), VariableType::BOOL(), builder_.True());
     check = builder_.TaggedIsHeapObject(newTarget);
-    builder_.Branch(*check, &isHeapObject, &exit);
+    BRANCH_CIR(*check, &isHeapObject, &exit);
     builder_.Bind(&isHeapObject);
     {
         Label isJSFunction(&builder_);
         check = builder_.IsJSFunction(newTarget);
-        builder_.Branch(*check, &isJSFunction, &exit);
+        BRANCH_CIR(*check, &isJSFunction, &exit);
         builder_.Bind(&isJSFunction);
         {
             Label getHclass(&builder_);
@@ -2356,7 +2356,7 @@ void TypedHCRLowering::LowerObjectConstructorCheck(GateRef gate, GateRef glue)
             GateRef targetFunc =
                 builder_.GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv, GlobalEnv::OBJECT_FUNCTION_INDEX);
             check = builder_.Equal(targetFunc, newTarget);
-            builder_.Branch(*check, &getHclass, &exit);
+            BRANCH_CIR(*check, &getHclass, &exit);
             builder_.Bind(&getHclass);
             {
                 GateRef intialHClass = builder_.Load(VariableType::JS_ANY(), newTarget,
@@ -2385,12 +2385,12 @@ void TypedHCRLowering::LowerObjectConstructor(GateRef gate, GateRef glue)
 
     Label isHeapObj(&builder_);
     Label notHeapObj(&builder_);
-    builder_.Branch(builder_.TaggedIsHeapObject(value), &isHeapObj, &notHeapObj);
+    BRANCH_CIR(builder_.TaggedIsHeapObject(value), &isHeapObj, &notHeapObj);
     builder_.Bind(&isHeapObj);
     {
         Label isEcmaObj(&builder_);
         Label notEcmaObj(&builder_);
-        builder_.Branch(builder_.TaggedObjectIsEcmaObject(value), &isEcmaObj, &notEcmaObj);
+        BRANCH_CIR(builder_.TaggedObjectIsEcmaObject(value), &isEcmaObj, &notEcmaObj);
         builder_.Bind(&isEcmaObj);
         {
             res = value;
@@ -2400,7 +2400,7 @@ void TypedHCRLowering::LowerObjectConstructor(GateRef gate, GateRef glue)
         {
             Label isSymbol(&builder_);
             Label notSymbol(&builder_);
-            builder_.Branch(builder_.TaggedIsSymbol(value), &isSymbol, &notSymbol);
+            BRANCH_CIR(builder_.TaggedIsSymbol(value), &isSymbol, &notSymbol);
             builder_.Bind(&isSymbol);
             {
                 res = NewJSPrimitiveRef(PrimitiveType::PRIMITIVE_SYMBOL, glue, value);
@@ -2409,7 +2409,7 @@ void TypedHCRLowering::LowerObjectConstructor(GateRef gate, GateRef glue)
             builder_.Bind(&notSymbol);
             {
                 Label isBigInt(&builder_);
-                builder_.Branch(builder_.TaggedIsBigInt(value), &isBigInt, &slowPath);
+                BRANCH_CIR(builder_.TaggedIsBigInt(value), &isBigInt, &slowPath);
                 builder_.Bind(&isBigInt);
                 {
                     res = NewJSPrimitiveRef(PrimitiveType::PRIMITIVE_BIGINT, glue, value);
@@ -2422,7 +2422,7 @@ void TypedHCRLowering::LowerObjectConstructor(GateRef gate, GateRef glue)
     {
         Label isNumber(&builder_);
         Label notNumber(&builder_);
-        builder_.Branch(builder_.TaggedIsNumber(value), &isNumber, &notNumber);
+        BRANCH_CIR(builder_.TaggedIsNumber(value), &isNumber, &notNumber);
         builder_.Bind(&isNumber);
         {
             res = NewJSPrimitiveRef(PrimitiveType::PRIMITIVE_NUMBER, glue, value);
@@ -2431,7 +2431,7 @@ void TypedHCRLowering::LowerObjectConstructor(GateRef gate, GateRef glue)
         builder_.Bind(&notNumber);
         {
             Label isBoolean(&builder_);
-            builder_.Branch(builder_.TaggedIsBoolean(value), &isBoolean, &slowPath);
+            BRANCH_CIR(builder_.TaggedIsBoolean(value), &isBoolean, &slowPath);
             builder_.Bind(&isBoolean);
             {
                 res = NewJSPrimitiveRef(PrimitiveType::PRIMITIVE_BOOLEAN, glue, value);
@@ -2494,7 +2494,7 @@ void TypedHCRLowering::ReplaceGateWithPendingException(GateRef glue, GateRef gat
                                                        GateRef value)
 {
     auto condition = builder_.HasPendingException(glue);
-    GateRef ifBranch = builder_.Branch(state, condition);
+    GateRef ifBranch = builder_.Branch(state, condition, 1, BranchWeight::DEOPT_WEIGHT, "checkException");
     GateRef ifTrue = builder_.IfTrue(ifBranch);
     GateRef ifFalse = builder_.IfFalse(ifBranch);
     GateRef eDepend = builder_.DependRelay(ifTrue, depend);
@@ -2540,9 +2540,9 @@ void TypedHCRLowering::LowerOrdinaryHasInstance(GateRef gate, GateRef glue)
     Label objIsHeapObject(&builder_);
     Label objIsEcmaObject(&builder_);
     Label objNotEcmaObject(&builder_);
-    builder_.Branch(builder_.TaggedIsHeapObject(obj), &objIsHeapObject, &objNotEcmaObject);
+    BRANCH_CIR(builder_.TaggedIsHeapObject(obj), &objIsHeapObject, &objNotEcmaObject);
     builder_.Bind(&objIsHeapObject);
-    builder_.Branch(builder_.TaggedObjectIsEcmaObject(obj), &objIsEcmaObject, &objNotEcmaObject);
+    BRANCH_CIR(builder_.TaggedObjectIsEcmaObject(obj), &objIsEcmaObject, &objNotEcmaObject);
     builder_.Bind(&objNotEcmaObject);
     {
         result = builder_.TaggedFalse();
@@ -2556,21 +2556,21 @@ void TypedHCRLowering::LowerOrdinaryHasInstance(GateRef gate, GateRef glue)
         Label gotCtorPrototype(&builder_);
         Label isHeapObject(&builder_);
         DEFVALUE(constructorPrototype, (&builder_), VariableType::JS_ANY(), builder_.Undefined());
-        builder_.Branch(builder_.IsJSFunction(target), &ctorIsJSFunction, &getCtorProtoSlowPath);
+        BRANCH_CIR(builder_.IsJSFunction(target), &ctorIsJSFunction, &getCtorProtoSlowPath);
         builder_.Bind(&ctorIsJSFunction);
         {
             Label getCtorProtoFastPath(&builder_);
             GateRef ctorProtoOrHC = builder_.LoadConstOffset(VariableType::JS_POINTER(), target,
                                                              JSFunction::PROTO_OR_DYNCLASS_OFFSET);
 
-            builder_.Branch(builder_.TaggedIsHole(ctorProtoOrHC), &getCtorProtoSlowPath, &getCtorProtoFastPath);
+            BRANCH_CIR(builder_.TaggedIsHole(ctorProtoOrHC), &getCtorProtoSlowPath, &getCtorProtoFastPath);
             builder_.Bind(&getCtorProtoFastPath);
             {
                 Label isHClass(&builder_);
                 Label isPrototype(&builder_);
-                builder_.Branch(builder_.TaggedIsHeapObject(ctorProtoOrHC), &isHeapObject, &getCtorProtoSlowPath);
+                BRANCH_CIR(builder_.TaggedIsHeapObject(ctorProtoOrHC), &isHeapObject, &getCtorProtoSlowPath);
                 builder_.Bind(&isHeapObject);
-                builder_.Branch(builder_.IsJSHClass(ctorProtoOrHC), &isHClass, &isPrototype);
+                BRANCH_CIR(builder_.IsJSHClass(ctorProtoOrHC), &isHClass, &isPrototype);
                 builder_.Bind(&isHClass);
                 {
                     constructorPrototype = builder_.LoadConstOffset(VariableType::JS_POINTER(), ctorProtoOrHC,
@@ -2605,12 +2605,12 @@ void TypedHCRLowering::LowerOrdinaryHasInstance(GateRef gate, GateRef glue)
         Label shouldReturn(&builder_);
         Label shouldContinue(&builder_);
 
-        builder_.Branch(builder_.TaggedIsNull(*object), &afterLoop, &loopHead);
+        BRANCH_CIR(builder_.TaggedIsNull(*object), &afterLoop, &loopHead);
         builder_.LoopBegin(&loopHead);
         {
             GateRef isEqual = builder_.Equal(*object, *constructorPrototype);
 
-            builder_.Branch(isEqual, &strictEqual1, &notStrictEqual1);
+            BRANCH_CIR(isEqual, &strictEqual1, &notStrictEqual1);
             builder_.Bind(&strictEqual1);
             {
                 result = builder_.TaggedTrue();
@@ -2622,9 +2622,9 @@ void TypedHCRLowering::LowerOrdinaryHasInstance(GateRef gate, GateRef glue)
                 Label objectIsEcmaObject(&builder_);
                 Label objectNotEcmaObject(&builder_);
 
-                builder_.Branch(builder_.TaggedIsHeapObject(*object), &objectIsHeapObject, &objectNotEcmaObject);
+                BRANCH_CIR(builder_.TaggedIsHeapObject(*object), &objectIsHeapObject, &objectNotEcmaObject);
                 builder_.Bind(&objectIsHeapObject);
-                builder_.Branch(builder_.TaggedObjectIsEcmaObject(*object), &objectIsEcmaObject, &objectNotEcmaObject);
+                BRANCH_CIR(builder_.TaggedObjectIsEcmaObject(*object), &objectIsEcmaObject, &objectNotEcmaObject);
                 builder_.Bind(&objectNotEcmaObject);
                 {
                     GateRef taggedId = builder_.Int32(GET_MESSAGE_STRING_ID(CanNotGetNotEcmaObject));
@@ -2637,7 +2637,7 @@ void TypedHCRLowering::LowerOrdinaryHasInstance(GateRef gate, GateRef glue)
                 {
                     Label objectIsJsProxy(&builder_);
                     Label objectNotIsJsProxy(&builder_);
-                    builder_.Branch(builder_.IsJsProxy(*object), &objectIsJsProxy, &objectNotIsJsProxy);
+                    BRANCH_CIR(builder_.IsJsProxy(*object), &objectIsJsProxy, &objectNotIsJsProxy);
                     builder_.Bind(&objectIsJsProxy);
                     {
                         object = builder_.CallRuntime(glue, RTSTUB_ID(CallGetPrototype), Gate::InvalidGateRef,
@@ -2653,7 +2653,7 @@ void TypedHCRLowering::LowerOrdinaryHasInstance(GateRef gate, GateRef glue)
                 }
             }
             builder_.Bind(&shouldContinue);
-            builder_.Branch(builder_.TaggedIsNull(*object), &afterLoop, &loopEnd);
+            BRANCH_CIR(builder_.TaggedIsNull(*object), &afterLoop, &loopEnd);
         }
         builder_.Bind(&loopEnd);
         builder_.LoopEnd(&loopHead);
@@ -2711,7 +2711,7 @@ void TypedHCRLowering::LowerMonoLoadPropertyOnProto(GateRef gate)
     builder_.LoopBegin(&loopHead);
     builder_.DeoptCheck(builder_.TaggedIsNotNull(*current), frameState, DeoptType::INCONSISTENTHCLASS8);
     auto curHC = builder_.LoadConstOffset(VariableType::JS_POINTER(), *current, TaggedObject::HCLASS_OFFSET);
-    builder_.Branch(builder_.Equal(curHC, holderHC), &loadHolder, &lookUpProto);
+    BRANCH_CIR(builder_.Equal(curHC, holderHC), &loadHolder, &lookUpProto);
 
     builder_.Bind(&lookUpProto);
     current = builder_.LoadConstOffset(VariableType::JS_ANY(), curHC, JSHClass::PROTOTYPE_OFFSET);
@@ -2752,7 +2752,7 @@ void TypedHCRLowering::LowerMonoCallGetterOnProto(GateRef gate, GateRef glue)
     builder_.LoopBegin(&loopHead);
     builder_.DeoptCheck(builder_.TaggedIsNotNull(*current), frameState, DeoptType::INCONSISTENTHCLASS9);
     auto curHC = builder_.LoadConstOffset(VariableType::JS_POINTER(), *current, TaggedObject::HCLASS_OFFSET);
-    builder_.Branch(builder_.Equal(curHC, holderHC), &loadHolder, &lookUpProto);
+    BRANCH_CIR(builder_.Equal(curHC, holderHC), &loadHolder, &lookUpProto);
 
     builder_.Bind(&lookUpProto);
     current = builder_.LoadConstOffset(VariableType::JS_ANY(), curHC, JSHClass::PROTOTYPE_OFFSET);
@@ -2768,7 +2768,7 @@ void TypedHCRLowering::LowerMonoCallGetterOnProto(GateRef gate, GateRef glue)
     Label notInternalAccessor(&builder_);
     Label callGetter(&builder_);
     Label exit(&builder_);
-    builder_.Branch(builder_.IsAccessorInternal(accessor), &isInternalAccessor, &notInternalAccessor);
+    BRANCH_CIR(builder_.IsAccessorInternal(accessor), &isInternalAccessor, &notInternalAccessor);
     {
         builder_.Bind(&isInternalAccessor);
         {
@@ -2779,7 +2779,7 @@ void TypedHCRLowering::LowerMonoCallGetterOnProto(GateRef gate, GateRef glue)
         builder_.Bind(&notInternalAccessor);
         {
             GateRef getter = builder_.LoadConstOffset(VariableType::JS_ANY(), accessor, AccessorData::GETTER_OFFSET);
-            builder_.Branch(builder_.IsSpecial(getter, JSTaggedValue::VALUE_UNDEFINED), &exit, &callGetter);
+            BRANCH_CIR(builder_.IsSpecial(getter, JSTaggedValue::VALUE_UNDEFINED), &exit, &callGetter);
             builder_.Bind(&callGetter);
             {
                 result = CallAccessor(glue, gate, getter, receiver, AccessorMode::GETTER);
@@ -2844,7 +2844,7 @@ void TypedHCRLowering::LowerMonoStorePropertyLookUpProto(GateRef gate, GateRef g
     builder_.DeoptCheck(builder_.TaggedIsNotNull(*current), frameState, DeoptType::INCONSISTENTHCLASS10);
     auto curHC = builder_.LoadConstOffset(VariableType::JS_POINTER(), *current,
                                           TaggedObject::HCLASS_OFFSET);
-    builder_.Branch(builder_.Equal(curHC, holderHC), &loadHolder, &lookUpProto);
+    BRANCH_CIR(builder_.Equal(curHC, holderHC), &loadHolder, &lookUpProto);
 
     builder_.Bind(&lookUpProto);
     current = builder_.LoadConstOffset(VariableType::JS_ANY(), curHC, JSHClass::PROTOTYPE_OFFSET);
@@ -2859,7 +2859,7 @@ void TypedHCRLowering::LowerMonoStorePropertyLookUpProto(GateRef gate, GateRef g
         Label isInternalAccessor(&builder_);
         Label notInternalAccessor(&builder_);
         Label callSetter(&builder_);
-        builder_.Branch(builder_.IsAccessorInternal(accessor), &isInternalAccessor, &notInternalAccessor);
+        BRANCH_CIR(builder_.IsAccessorInternal(accessor), &isInternalAccessor, &notInternalAccessor);
         {
             builder_.Bind(&isInternalAccessor);
             {
@@ -2871,7 +2871,7 @@ void TypedHCRLowering::LowerMonoStorePropertyLookUpProto(GateRef gate, GateRef g
             {
                 GateRef setter =
                     builder_.LoadConstOffset(VariableType::JS_ANY(), accessor, AccessorData::SETTER_OFFSET);
-                builder_.Branch(builder_.IsSpecial(setter, JSTaggedValue::VALUE_UNDEFINED), &exit, &callSetter);
+                BRANCH_CIR(builder_.IsSpecial(setter, JSTaggedValue::VALUE_UNDEFINED), &exit, &callSetter);
                 builder_.Bind(&callSetter);
                 {
                     CallAccessor(glue, gate, setter, receiver, AccessorMode::SETTER, value);
@@ -2905,7 +2905,7 @@ void TypedHCRLowering::LowerMonoStoreProperty(GateRef gate, GateRef glue)
     auto newHolderHC = builder_.LoadHClassFromUnsharedConstpool(unsharedConstpool, acc_.GetConstantValue(hclassIndex));
     builder_.StoreConstOffset(VariableType::JS_ANY(), newHolderHC, JSHClass::PROTOTYPE_OFFSET, prototype);
     builder_.Branch(builder_.IsProtoTypeHClass(receiverHC), &isProto, &notProto,
-        BranchWeight::ONE_WEIGHT, BranchWeight::DEOPT_WEIGHT);
+        BranchWeight::ONE_WEIGHT, BranchWeight::DEOPT_WEIGHT, "isProtoTypeHClass");
     builder_.Bind(&isProto);
     builder_.CallRuntime(glue, RTSTUB_ID(UpdateAOTHClass), Gate::InvalidGateRef,
         { receiverHC, newHolderHC, key }, gate);
@@ -2920,7 +2920,7 @@ void TypedHCRLowering::LowerMonoStoreProperty(GateRef gate, GateRef glue)
         auto index = builder_.Int32(plr.GetOffset());
         Label needExtend(&builder_);
         Label notExtend(&builder_);
-        builder_.Branch(builder_.Int32UnsignedLessThan(index, capacity), &notExtend, &needExtend);
+        BRANCH_CIR(builder_.Int32UnsignedLessThan(index, capacity), &notExtend, &needExtend);
         builder_.Bind(&notExtend);
         {
             if (!plr.IsAccessor()) {
@@ -2931,7 +2931,7 @@ void TypedHCRLowering::LowerMonoStoreProperty(GateRef gate, GateRef glue)
                 Label isInternalAccessor(&builder_);
                 Label notInternalAccessor(&builder_);
                 Label callSetter(&builder_);
-                builder_.Branch(builder_.IsAccessorInternal(accessor), &isInternalAccessor, &notInternalAccessor);
+                BRANCH_CIR(builder_.IsAccessorInternal(accessor), &isInternalAccessor, &notInternalAccessor);
                 {
                     builder_.Bind(&isInternalAccessor);
                     {
@@ -2943,7 +2943,7 @@ void TypedHCRLowering::LowerMonoStoreProperty(GateRef gate, GateRef glue)
                     {
                         GateRef setter =
                             builder_.LoadConstOffset(VariableType::JS_ANY(), accessor, AccessorData::SETTER_OFFSET);
-                        builder_.Branch(builder_.IsSpecial(setter, JSTaggedValue::VALUE_UNDEFINED), &exit, &callSetter);
+                        BRANCH_CIR(builder_.IsSpecial(setter, JSTaggedValue::VALUE_UNDEFINED), &exit, &callSetter);
                         builder_.Bind(&callSetter);
                         {
                             CallAccessor(glue, gate, setter, receiver, AccessorMode::SETTER, value);
@@ -2971,7 +2971,7 @@ void TypedHCRLowering::LowerMonoStoreProperty(GateRef gate, GateRef glue)
             Label isInternalAccessor(&builder_);
             Label notInternalAccessor(&builder_);
             Label callSetter(&builder_);
-            builder_.Branch(builder_.IsAccessorInternal(accessor), &isInternalAccessor, &notInternalAccessor);
+            BRANCH_CIR(builder_.IsAccessorInternal(accessor), &isInternalAccessor, &notInternalAccessor);
             {
                 builder_.Bind(&isInternalAccessor);
                 {
@@ -2983,7 +2983,7 @@ void TypedHCRLowering::LowerMonoStoreProperty(GateRef gate, GateRef glue)
                 {
                     GateRef setter =
                         builder_.LoadConstOffset(VariableType::JS_ANY(), accessor, AccessorData::SETTER_OFFSET);
-                    builder_.Branch(builder_.IsSpecial(setter, JSTaggedValue::VALUE_UNDEFINED), &exit, &callSetter);
+                    BRANCH_CIR(builder_.IsSpecial(setter, JSTaggedValue::VALUE_UNDEFINED), &exit, &callSetter);
                     builder_.Bind(&callSetter);
                     {
                         CallAccessor(glue, gate, setter, receiver, AccessorMode::SETTER, value);
@@ -3052,7 +3052,7 @@ void TypedHCRLowering::LowerTypedCreateObjWithBuffer(GateRef gate, GateRef glue)
     GateRef hclass = builder_.LoadConstOffset(VariableType::JS_POINTER(), oldObj, JSObject::HCLASS_OFFSET);
     GateRef emptyArray = builder_.GetGlobalConstantValue(ConstantIndex::EMPTY_ARRAY_OBJECT_INDEX);
     GateRef objectSize = builder_.GetObjectSizeFromHClass(hclass);
-    builder_.Branch(builder_.Equal(objectSize, objSize), &equal, &notEqual);
+    BRANCH_CIR(builder_.Equal(objectSize, objSize), &equal, &notEqual);
     builder_.Bind(&equal);
     {
         builder_.StartAllocate();
@@ -3097,7 +3097,7 @@ void TypedHCRLowering::LowerStringFromSingleCharCode(GateRef gate, GateRef glue)
     Label canNotBeCompress(&builder_);
     GateRef codePointTag = acc_.GetValueIn(gate);
     GateRef codePointValue = builder_.ToNumber(gate, codePointTag, glue);
-    builder_.Branch(builder_.HasPendingException(glue), &isPendingException, &noPendingException);
+    BRANCH_CIR(builder_.HasPendingException(glue), &isPendingException, &noPendingException);
     builder_.Bind(&isPendingException);
     {
         res = builder_.ExceptionConstant();
@@ -3105,7 +3105,7 @@ void TypedHCRLowering::LowerStringFromSingleCharCode(GateRef gate, GateRef glue)
     }
     builder_.Bind(&noPendingException);
     {
-        builder_.Branch(builder_.TaggedIsInt(codePointValue), &isInt, &notInt);
+        BRANCH_CIR(builder_.TaggedIsInt(codePointValue), &isInt, &notInt);
         builder_.Bind(&isInt);
         {
             value = builder_.TruncInt32ToInt16(builder_.GetInt32OfTInt(codePointValue));
@@ -3118,8 +3118,7 @@ void TypedHCRLowering::LowerStringFromSingleCharCode(GateRef gate, GateRef glue)
             builder_.Jump(&newObj);
         }
         builder_.Bind(&newObj);
-        builder_.Branch(builder_.IsASCIICharacter(builder_.ZExtInt16ToInt32(*value)), &canBeCompress,
-                        &canNotBeCompress);
+        BRANCH_CIR(builder_.IsASCIICharacter(builder_.ZExtInt16ToInt32(*value)), &canBeCompress, &canNotBeCompress);
         NewObjectStubBuilder newBuilder(&env);
         newBuilder.SetParameters(glue, 0);
         builder_.Bind(&canBeCompress);
@@ -3167,18 +3166,18 @@ void TypedHCRLowering::LowerMigrateArrayWithKind(GateRef gate)
                                                   builder_.BoolAnd(oldKindIsNum, newKindIsHoleNum));
     GateRef sameKinds = builder_.Int32Equal(oldKind, newKind);
     GateRef noNeedMigration = builder_.BoolOr(sameKinds, isTransitToHoleKind);
-    builder_.Branch(noNeedMigration, &exit, &doMigration);
+    BRANCH_CIR(noNeedMigration, &exit, &doMigration);
     builder_.Bind(&doMigration);
 
     GateRef needCOW = builder_.IsJsCOWArray(object);
-    builder_.Branch(builder_.ElementsKindIsIntOrHoleInt(oldKind), &migrateFromInt, &migrateOtherKinds);
+    BRANCH_CIR(builder_.ElementsKindIsIntOrHoleInt(oldKind), &migrateFromInt, &migrateOtherKinds);
     builder_.Bind(&migrateFromInt);
     {
         Label migrateToHeapValuesFromInt(&builder_);
         Label migrateToRawValuesFromInt(&builder_);
         Label migrateToNumbersFromInt(&builder_);
-        builder_.Branch(builder_.ElementsKindIsHeapKind(newKind),
-                        &migrateToHeapValuesFromInt, &migrateToRawValuesFromInt);
+        BRANCH_CIR(builder_.ElementsKindIsHeapKind(newKind),
+                   &migrateToHeapValuesFromInt, &migrateToRawValuesFromInt);
         builder_.Bind(&migrateToHeapValuesFromInt);
         {
             newElements = builder_.MigrateFromRawValueToHeapValues(object, needCOW, builder_.True());
@@ -3187,7 +3186,7 @@ void TypedHCRLowering::LowerMigrateArrayWithKind(GateRef gate)
         }
         builder_.Bind(&migrateToRawValuesFromInt);
         {
-            builder_.Branch(builder_.ElementsKindIsNumOrHoleNum(newKind), &migrateToNumbersFromInt, &exit);
+            BRANCH_CIR(builder_.ElementsKindIsNumOrHoleNum(newKind), &migrateToNumbersFromInt, &exit);
             builder_.Bind(&migrateToNumbersFromInt);
             {
                 builder_.MigrateFromHoleIntToHoleNumber(object);
@@ -3202,15 +3201,15 @@ void TypedHCRLowering::LowerMigrateArrayWithKind(GateRef gate)
         Label migrateToRawValuesFromNum(&builder_);
         Label migrateToIntFromNum(&builder_);
         Label migrateToRawValueFromTagged(&builder_);
-        builder_.Branch(builder_.ElementsKindIsNumOrHoleNum(oldKind), &migrateFromNumber, &migrateToRawValueFromTagged);
+        BRANCH_CIR(builder_.ElementsKindIsNumOrHoleNum(oldKind), &migrateFromNumber, &migrateToRawValueFromTagged);
         builder_.Bind(&migrateFromNumber);
         {
-            builder_.Branch(builder_.ElementsKindIsHeapKind(newKind),
-                            &migrateToHeapValuesFromNum, &migrateToRawValuesFromNum);
+            BRANCH_CIR(builder_.ElementsKindIsHeapKind(newKind),
+                       &migrateToHeapValuesFromNum, &migrateToRawValuesFromNum);
             builder_.Bind(&migrateToHeapValuesFromNum);
             {
                 Label migrateToTaggedFromNum(&builder_);
-                builder_.Branch(builder_.ElementsKindIsHeapKind(newKind), &migrateToTaggedFromNum, &exit);
+                BRANCH_CIR(builder_.ElementsKindIsHeapKind(newKind), &migrateToTaggedFromNum, &exit);
                 builder_.Bind(&migrateToTaggedFromNum);
                 {
                     newElements = builder_.MigrateFromRawValueToHeapValues(object, needCOW, builder_.False());
@@ -3220,7 +3219,7 @@ void TypedHCRLowering::LowerMigrateArrayWithKind(GateRef gate)
             }
             builder_.Bind(&migrateToRawValuesFromNum);
             {
-                builder_.Branch(builder_.ElementsKindIsIntOrHoleInt(newKind), &migrateToIntFromNum, &exit);
+                BRANCH_CIR(builder_.ElementsKindIsIntOrHoleInt(newKind), &migrateToIntFromNum, &exit);
                 builder_.Bind(&migrateToIntFromNum);
                 {
                     builder_.MigrateFromHoleNumberToHoleInt(object);
@@ -3232,8 +3231,8 @@ void TypedHCRLowering::LowerMigrateArrayWithKind(GateRef gate)
         {
             Label migrateToIntFromTagged(&builder_);
             Label migrateToOthersFromTagged(&builder_);
-            builder_.Branch(builder_.ElementsKindIsIntOrHoleInt(newKind),
-                            &migrateToIntFromTagged, &migrateToOthersFromTagged);
+            BRANCH_CIR(builder_.ElementsKindIsIntOrHoleInt(newKind),
+                       &migrateToIntFromTagged, &migrateToOthersFromTagged);
             builder_.Bind(&migrateToIntFromTagged);
             {
                 newElements = builder_.MigrateFromHeapValueToRawValue(object, needCOW, builder_.True());
@@ -3243,7 +3242,7 @@ void TypedHCRLowering::LowerMigrateArrayWithKind(GateRef gate)
             builder_.Bind(&migrateToOthersFromTagged);
             {
                 Label migrateToNumFromTagged(&builder_);
-                builder_.Branch(builder_.ElementsKindIsNumOrHoleNum(newKind), &migrateToNumFromTagged, &exit);
+                BRANCH_CIR(builder_.ElementsKindIsNumOrHoleNum(newKind), &migrateToNumFromTagged, &exit);
                 builder_.Bind(&migrateToNumFromTagged);
                 {
                     newElements = builder_.MigrateFromHeapValueToRawValue(object, needCOW, builder_.False());

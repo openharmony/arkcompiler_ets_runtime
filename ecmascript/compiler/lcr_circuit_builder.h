@@ -129,7 +129,7 @@ GateRef CircuitBuilder::GetDoubleOfTNumber(GateRef x)
     Label isDouble(env_);
     Label exit(env_);
     DEFVALUE(result, env_, VariableType::FLOAT64(), Double(0));
-    Branch(TaggedIsInt(x), &isInt, &isDouble);
+    BRANCH_CIR2(TaggedIsInt(x), &isInt, &isDouble);
     Bind(&isInt);
     {
         result = ChangeInt32ToFloat64(GetInt32OfTInt(x));
@@ -160,7 +160,7 @@ GateRef CircuitBuilder::DoubleToInt(GateRef x, Label *exit)
     exp = Int32Sub(exp, Int32(base::DOUBLE_EXPONENT_BIAS));
     GateRef bits = Int32(base::INT32_BITS - 1);
     // exp < 32 - 1
-    Branch(Int32LessThan(exp, bits), exit, &overflow);
+    BRANCH_CIR2(Int32LessThan(exp, bits), exit, &overflow);
 
     Bind(&overflow);
     {
@@ -185,7 +185,7 @@ GateRef CircuitBuilder::DoubleToInt(GateRef glue, GateRef x, size_t typeBits)
 
     if (env_->IsAmd64()) {
         // 0x80000000: amd64 overflow return value
-        Branch(Int32Equal(xInt, Int32(0x80000000)), &overflow, &exit);
+        BRANCH_CIR2(Int32Equal(xInt, Int32(0x80000000)), &overflow, &exit);
     } else {
         GateRef xInt64 = CastDoubleToInt64(x);
         // exp = (u64 & DOUBLE_EXPONENT_MASK) >> DOUBLE_SIGNIFICAND_SIZE - DOUBLE_EXPONENT_BIAS
@@ -194,7 +194,7 @@ GateRef CircuitBuilder::DoubleToInt(GateRef glue, GateRef x, size_t typeBits)
         exp = Int32Sub(exp, Int32(base::DOUBLE_EXPONENT_BIAS));
         GateRef bits = Int32(typeBits - 1);
         // exp < 32 - 1
-        Branch(Int32LessThan(exp, bits), &exit, &overflow);
+        BRANCH_CIR2(Int32LessThan(exp, bits), &exit, &overflow);
     }
     Bind(&overflow);
     {

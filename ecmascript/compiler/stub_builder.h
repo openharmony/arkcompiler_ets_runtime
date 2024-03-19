@@ -135,7 +135,14 @@ public:
     GateRef Return();
     void Bind(Label *label);
     void Jump(Label *label);
-    void Branch(GateRef condition, Label *trueLabel, Label *falseLabel);
+
+#define BRANCH(condition, trueLabel, falseLabel)                       \
+    {                                                                  \
+        std::ostringstream os;                                         \
+        os << __func__ << ": " << #trueLabel << "- " << #falseLabel;   \
+        Branch(condition, trueLabel, falseLabel, os.str().c_str());    \
+    }
+    void Branch(GateRef condition, Label *trueLabel, Label *falseLabel, const char* comment = nullptr);
     void Switch(GateRef index, Label *defaultLabel, int64_t *keysValue, Label *keysLabel, int numberOfKeys);
     void LoopBegin(Label *loopHead);
     void LoopEnd(Label *loopHead);

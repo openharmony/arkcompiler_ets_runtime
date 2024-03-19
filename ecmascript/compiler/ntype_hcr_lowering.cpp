@@ -237,13 +237,14 @@ GateRef NTypeHCRLowering::NewTaggedArray(size_t length, GateRef glue)
 GateRef NTypeHCRLowering::LowerCallRuntime(GateRef glue, GateRef hirGate, int index, const std::vector<GateRef> &args,
     bool useLabel)
 {
+    const std::string name = RuntimeStubCSigns::GetRTName(index);
     if (useLabel) {
-        GateRef result = builder_.CallRuntime(glue, index, Gate::InvalidGateRef, args, hirGate);
+        GateRef result = builder_.CallRuntime(glue, index, Gate::InvalidGateRef, args, hirGate, name.c_str());
         return result;
     } else {
         const CallSignature *cs = RuntimeStubCSigns::Get(RTSTUB_ID(CallRuntime));
         GateRef target = builder_.IntPtr(index);
-        GateRef result = builder_.Call(cs, glue, target, dependEntry_, args, hirGate);
+        GateRef result = builder_.Call(cs, glue, target, dependEntry_, args, hirGate, name.c_str());
         return result;
     }
 }
@@ -264,7 +265,7 @@ void NTypeHCRLowering::LowerStoreModuleVar(GateRef gate, GateRef glue)
 
     Label dataIsUndefined(&builder_);
     Label exit(&builder_);
-    builder_.Branch(builder_.TaggedIsUndefined(data), &dataIsUndefined, &exit);
+    BRANCH_CIR(builder_.TaggedIsUndefined(data), &dataIsUndefined, &exit);
     builder_.Bind(&dataIsUndefined);
     {
         GateRef size = builder_.GetLengthOfTaggedArray(localExportEntries);
@@ -292,7 +293,7 @@ void NTypeHCRLowering::LowerLdLocalModuleVar(GateRef gate)
     DEFVALUE(result, (&builder_), VariableType::JS_ANY(), builder_.Hole());
     Label dataIsNotUndefined(&builder_);
     Label exit(&builder_);
-    builder_.Branch(builder_.TaggedIsUndefined(dictionary), &exit, &dataIsNotUndefined);
+    BRANCH_CIR(builder_.TaggedIsUndefined(dictionary), &exit, &dataIsNotUndefined);
     builder_.Bind(&dataIsNotUndefined);
     {
         GateRef dataOffset = builder_.Int32(TaggedArray::DATA_OFFSET);
@@ -308,7 +309,7 @@ void NTypeHCRLowering::LowerLdLocalModuleVar(GateRef gate)
 void NTypeHCRLowering::ReplaceGateWithPendingException(GateRef gate, GateRef state, GateRef depend, GateRef value)
 {
     auto condition = builder_.HasPendingException(glue_);
-    GateRef ifBranch = builder_.Branch(state, condition);
+    GateRef ifBranch = builder_.Branch(state, condition, 1, BranchWeight::DEOPT_WEIGHT, "checkException");
     GateRef ifTrue = builder_.IfTrue(ifBranch);
     GateRef ifFalse = builder_.IfFalse(ifBranch);
     GateRef eDepend = builder_.DependRelay(ifTrue, depend);

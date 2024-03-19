@@ -13,3 +13,9 @@
 
 true
 true
+undefined
+get
+get
+undefined
+0
+1

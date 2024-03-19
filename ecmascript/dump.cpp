@@ -4762,7 +4762,9 @@ void JSObject::DumpForSnapshot(std::vector<Reference> &vec) const
 {
     DISALLOW_GARBAGE_COLLECTION;
     JSHClass *jshclass = GetJSHClass();
-    vec.emplace_back(CString("__proto__"), jshclass->GetPrototype());
+    if (jshclass != nullptr) {
+        vec.emplace_back(CString("__proto__"), jshclass->GetPrototype());
+    }
 
     TaggedArray *elements = TaggedArray::Cast(GetElements().GetTaggedObject());
 
@@ -4782,7 +4784,7 @@ void JSObject::DumpForSnapshot(std::vector<Reference> &vec) const
         return;
     }
     vec.emplace_back("(object properties)", JSTaggedValue(properties));
-    if (!properties->IsDictionaryMode()) {
+    if ((!properties->IsDictionaryMode()) && (jshclass != nullptr)) {
         JSTaggedValue attrs = jshclass->GetLayout();
         if (attrs.IsNull()) {
             return;

@@ -72,7 +72,7 @@ public:
         DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
         Label isValid(env);
         Label exit(env);
-        Branch(Int32GreaterThan(TruncPtrToInt32(numArg), Int32(0)), &isValid, &exit);
+        BRANCH(Int32GreaterThan(TruncPtrToInt32(numArg), Int32(0)), &isValid, &exit);
         Bind(&isValid);
         {
             result = TaggedArgument(static_cast<size_t>(BuiltinsArgs::ARG0_OR_ARGV));
@@ -92,7 +92,7 @@ public:
         DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
         Label isValid(env);
         Label exit(env);
-        Branch(Int32GreaterThan(TruncPtrToInt32(numArg), Int32(1)), &isValid, &exit);
+        BRANCH(Int32GreaterThan(TruncPtrToInt32(numArg), Int32(1)), &isValid, &exit);
         Bind(&isValid);
         {
             result = TaggedArgument(static_cast<size_t>(BuiltinsArgs::ARG1));
@@ -113,7 +113,7 @@ public:
         Label isValid(env);
         Label exit(env);
         // 2: 2 args
-        Branch(Int32GreaterThan(TruncPtrToInt32(numArg), Int32(2)), &isValid, &exit);
+        BRANCH(Int32GreaterThan(TruncPtrToInt32(numArg), Int32(2)), &isValid, &exit);
         Bind(&isValid);
         {
             result = TaggedArgument(static_cast<size_t>(BuiltinsArgs::ARG2));

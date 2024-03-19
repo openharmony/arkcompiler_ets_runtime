@@ -55,9 +55,13 @@ main()
     js_perf_test_archive_path=$1
     OPENHARMONY_OUT_PATH=$2
     D8_BINARY_PATH=$3
+    if [ $# -ge 4 ]; then
+        iterations_multiplier=$4
+    fi
+
     VER_PLATFORM="full_x86_64"
-    if [ $# == 4 ]; then
-        VER_PLATFORM=$4
+    if [ $# == 5 ]; then
+        VER_PLATFORM=$5
     fi
     cur_path=$(dirname "$(readlink -f "$0")")
     
@@ -74,6 +78,12 @@ main()
     [ -f "$cur_path/run_js_test.py" ] || { echo "no run_js_test.py, please check it";return $ret_error;}
    
     download_js_test_files || { return $ret_error; } 
+
+    if [ ! -z $iterations_multiplier ]; then
+        for js_test in `find $JS_TEST_PATH -name "*js"`; do
+            python3 $cur_path/prerun_proc.py __MULTIPLIER__=$iterations_multiplier $js_test
+        done
+    fi
 
     echo "LD_LIBRARY_PATH:$LD_LIBRARY_PATH"
     python3  "$cur_path"/run_js_test.py -bp "$OPENHARMONY_OUT_PATH" -p "$JS_TEST_PATH" -o "$js_perf_test_archive_path"\
