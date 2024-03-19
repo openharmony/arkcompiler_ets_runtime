@@ -76,6 +76,7 @@ group("ark_js_host_linux_tools_packages") {
     deps += [
       "ecmascript/compiler:ark_aot_compiler(${host_toolchain})",
       "ecmascript/compiler:ark_stub_compiler(${host_toolchain})",
+      "ecmascript/compiler:libark_jsoptimizer(${host_toolchain})",
       "ecmascript/pgo_profiler/prof_dump:profdump(${host_toolchain})",
     ]
   }

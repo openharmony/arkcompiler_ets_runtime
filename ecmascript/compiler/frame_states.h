@@ -129,7 +129,7 @@ public:
         return liveContext_->currentDepend_;
     }
     void MergeIntoSuccessor(const BytecodeRegion &bb, const BytecodeRegion &bbNext);
-    void AdvanceToNextBB(const BytecodeRegion &bb);
+    void AdvanceToNextBB(const BytecodeRegion &bb, bool isOsrLoopExit = false);
     void InitEntryBB(const BytecodeRegion &bb);
 
     const ChunkDeque<size_t>& GetRpoList() const
@@ -144,6 +144,20 @@ public:
     void UpdateAccumulator(GateRef gate)
     {
         UpdateVirtualRegister(accumulatorIndex_, gate);
+    }
+
+    void SetOsrLoopHeadBB(const BytecodeRegion &loopHeadOfOSR);
+
+    bool IsOsrLoopExit(const BytecodeRegion &curBB);
+
+    bool OutOfOsrLoop(const BytecodeRegion &curBB);
+
+    size_t GetOsrLoopHeadBBId() const;
+
+    bool IsContextExists(uint32_t bbIndex) const
+    {
+        ASSERT(bbIndex < bbFrameContext_.size());
+        return bbFrameContext_[bbIndex] != nullptr;
     }
 
 private:
@@ -210,6 +224,7 @@ private:
     FrameContext *GetOrOCreateMergedContext(uint32_t bbIndex);
     void FillBcInputs(const BytecodeInfo &bytecodeInfo, uint32_t bcIndex, GateRef gate);
     void DumpLiveState();
+    size_t GetNumOfStatePreds(const BytecodeRegion &bb);
     GateRef MergeValue(const BytecodeRegion &bb,
         GateRef stateMerge, GateRef currentValue, GateRef nextValue, size_t index);
     void NewMerge(const BytecodeRegion &bbNext);
@@ -261,6 +276,7 @@ private:
     ChunkVector<LoopInfo> loops_;
     ChunkDeque<size_t> rpoList_;
     ChunkVector<size_t> postOrderList_;
+    const BytecodeRegion *loopHeadOfOSR_ {nullptr};
 
     friend class BlockLoopAnalysis;
     friend class SubContextScope;

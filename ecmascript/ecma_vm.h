@@ -580,6 +580,16 @@ public:
     bool PUBLIC_API IsEnableJit() const;
     void EnableJit() const;
 
+    bool IsEnableOsr() const
+    {
+        return isEnableOsr_;
+    }
+
+    void SetEnableOsr(bool state)
+    {
+        isEnableOsr_ = state;
+    }
+
     bool isOverLimit() const
     {
         return overLimit_;
@@ -710,6 +720,7 @@ private:
     friend class EcmaContext;
     CMap<uint32_t, EcmaVM *> workerList_ {};
     Mutex mutex_;
+    bool isEnableOsr_ {false};
     bool overLimit_ {false};
 };
 }  // namespace ecmascript

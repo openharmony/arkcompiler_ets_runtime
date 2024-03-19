@@ -133,10 +133,14 @@ void Jit::DeleteJitCompile(void *compiler)
     deleteJitCompile_(compiler);
 }
 
-void Jit::Compile(EcmaVM *vm, JSHandle<JSFunction> &jsFunction, JitCompileMode mode)
+void Jit::Compile(EcmaVM *vm, JSHandle<JSFunction> &jsFunction, int32_t offset, JitCompileMode mode)
 {
     auto jit = Jit::GetInstance();
     if (!jit->IsEnable()) {
+        return;
+    }
+
+    if (!vm->IsEnableOsr() && offset != MachineCode::INVALID_OSR_OFFSET) {
         return;
     }
 
@@ -153,18 +157,27 @@ void Jit::Compile(EcmaVM *vm, JSHandle<JSFunction> &jsFunction, JitCompileMode m
         LOG_JIT(DEBUG) << "skip method, as it compiling:" << methodName;
         return;
     }
+
     if (jsFunction->GetMachineCode() != JSTaggedValue::Undefined()) {
-        LOG_JIT(DEBUG) << "skip method, as it has been jit compiled:" << methodName;
-        return;
+        MachineCode *machineCode = MachineCode::Cast(jsFunction->GetMachineCode().GetTaggedObject());
+        if (machineCode->GetOSROffset() == MachineCode::INVALID_OSR_OFFSET) {
+            LOG_JIT(DEBUG) << "skip method, as it has been jit compiled:" << methodName;
+            return;
+        }
     }
+
     // using hole value to indecate compiling. todo: reset when failed
     jsFunction->SetMachineCode(vm->GetJSThread(), JSTaggedValue::Hole());
+
+    LOG_JIT(DEBUG) << "start compile:" << methodName << ", kind:" << static_cast<int>(kind) <<
+        ", mode:" << ((mode == SYNC) ? "sync" : "async") <<
+        (offset == MachineCode::INVALID_OSR_OFFSET ? "" : ", OSR offset: " + std::to_string(offset));
 
     {
         CString msg = "compile method:" + methodName + ", in work thread";
         Scope scope(msg);
 
-        JitTask *jitTask = new JitTask(vm, jit, jsFunction, methodName, vm->GetJSThread()->GetThreadId());
+        JitTask *jitTask = new JitTask(vm, jit, jsFunction, methodName, offset, vm->GetJSThread()->GetThreadId());
 
         jitTask->PrepareCompile();
 

@@ -749,6 +749,11 @@ void RuntimeStubs::DebugPrintInstruction([[maybe_unused]] uintptr_t argGlue, con
     LOG_INTERPRETER(DEBUG) << inst;
 }
 
+void RuntimeStubs::DebugOsrEntry([[maybe_unused]] uintptr_t argGlue, const uint8_t *codeEntry)
+{
+    LOG_JIT(DEBUG) << "[OSR]: Enter OSR Code: " << reinterpret_cast<const void*>(codeEntry);
+}
+
 void RuntimeStubs::Comment(uintptr_t argStr)
 {
     std::string str(reinterpret_cast<char *>(argStr));
@@ -1516,7 +1521,8 @@ DEF_RUNTIME_STUBS(JitCompile)
 {
     RUNTIME_STUBS_HEADER(JitCompile);
     JSHandle<JSFunction> thisFunc = GetHArg<JSFunction>(argv, argc, 0);  // 0: means the zeroth parameter
-    Jit::Compile(thread->GetEcmaVM(), thisFunc, JitCompileMode::ASYNC);
+    JSTaggedValue offset = GetArg(argv, argc, 1);  // 1: means the first parameter
+    Jit::Compile(thread->GetEcmaVM(), thisFunc, offset.GetInt(), JitCompileMode::ASYNC);
     return JSTaggedValue::Undefined().GetRawData();
 }
 

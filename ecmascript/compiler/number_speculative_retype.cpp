@@ -169,6 +169,7 @@ GateRef NumberSpeculativeRetype::VisitGate(GateRef gate)
         case OpCode::TYPED_SUPER_ALLOCATE_THIS:
         case OpCode::GET_SUPER_CONSTRUCTOR:
         case OpCode::ARG:
+        case OpCode::INITVREG:
         case OpCode::RETURN:
         case OpCode::FRAME_ARGS:
         case OpCode::SAVE_REGISTER:

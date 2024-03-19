@@ -44,6 +44,9 @@ void LoopAnalysis::Run()
     ChunkVector<GateRef>& headerGates = bcBuilder_->GetLoopHeaderGates();
     for (auto it = headerGates.rbegin(); it != headerGates.rend(); ++it) {
         auto gate = *it;
+        if (gate == Circuit::NullGate()) {
+            continue;
+        }
         auto loopInfo = chunk_->New<LoopInfo>(chunk_, gate);
         loopInfos_.emplace_back(loopInfo);
     }

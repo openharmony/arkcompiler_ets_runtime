@@ -432,6 +432,7 @@ private:
     V(DebugPrint)                               \
     V(DebugPrintCustom)                         \
     V(DebugPrintInstruction)                    \
+    V(DebugOsrEntry)                            \
     V(Comment)                                  \
     V(FatalPrint)                               \
     V(FatalPrintCustom)                         \
@@ -507,7 +508,8 @@ private:
     V(LocaleCompareNoGc)                        \
     V(StringGetStart)                           \
     V(StringGetEnd)                             \
-    V(ArrayTrim)
+    V(ArrayTrim)                                \
+    V(OptimizedFastJmp)
 
 #define DECL_CALL_SIGNATURE(name)                                  \
 class name##CallSignature final {                                  \

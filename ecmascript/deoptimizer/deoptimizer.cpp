@@ -525,6 +525,14 @@ void Deoptimizier::UpdateAndDumpDeoptInfo(kungfu::DeoptType type)
     // depth records the number of layers of nested calls when deopt occurs
     for (size_t i = 0; i <= inlineDepth_; i++) {
         JSTaggedValue callTarget = GetDeoptValue(i, static_cast<int32_t>(SpecVregIndex::FUNC_INDEX));
+        auto func = JSFunction::Cast(callTarget.GetTaggedObject());
+        if (func->GetMachineCode() != JSTaggedValue::Undefined()) {
+            MachineCode *machineCode = MachineCode::Cast(func->GetMachineCode().GetTaggedObject());
+            if (type != kungfu::DeoptType::OSRLOOPEXIT &&
+                machineCode->GetOSROffset() != MachineCode::INVALID_OSR_OFFSET) {
+                machineCode->SetOsrDeoptFlag(true);
+            }
+        }
         auto method = GetMethod(callTarget);
         if (i == inlineDepth_) {
             Dump(callTarget, type, i);
@@ -536,7 +544,6 @@ void Deoptimizier::UpdateAndDumpDeoptInfo(kungfu::DeoptType type)
             method->SetDeoptThreshold(--deoptThreshold);
         } else {
             method->ClearAOTStatusWhenDeopt();
-            auto func = JSFunction::Cast(callTarget.GetTaggedObject());
             if (func->GetMachineCode() != JSTaggedValue::Undefined()) {
                 func->SetMachineCode(thread_, JSTaggedValue::Undefined());
             }

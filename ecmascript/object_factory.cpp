@@ -3113,6 +3113,8 @@ JSHandle<ProfileTypeInfo> ObjectFactory::NewProfileTypeInfo(uint32_t length)
     if (vm_->IsEnableJit()) {
         uint16_t threshold = vm_->GetJSOptions().GetJitHotnessThreshold();
         array->SetJitHotnessThreshold(threshold);
+        threshold = vm_->GetJSOptions().GetOsrHotnessThreshold();
+        array->SetOsrHotnessThreshold(threshold);
     }
     return array;
 }

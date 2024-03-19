@@ -67,7 +67,7 @@ struct JitCompilationOptions {
 class JitCompilerTask final {
 public:
     JitCompilerTask(JitTask *jitTask) : vm_(jitTask->GetVM()), jsFunction_(jitTask->GetJsFunction()),
-        passManager_(nullptr), jitCodeGenerator_(nullptr) { };
+        offset_(jitTask->GetOffset()), passManager_(nullptr), jitCodeGenerator_(nullptr) { };
 
     static JitCompilerTask *CreateJitCompilerTask(JitTask *jitTask);
 
@@ -77,6 +77,7 @@ public:
 private:
     EcmaVM *vm_;
     JSHandle<JSFunction> jsFunction_;
+    int32_t offset_;
     std::unique_ptr<JitPassManager> passManager_;
     // need refact AOTFileGenerator to JitCodeGenerator
     std::unique_ptr<AOTFileGenerator> jitCodeGenerator_;

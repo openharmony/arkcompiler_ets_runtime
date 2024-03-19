@@ -58,7 +58,7 @@ bool GateMetaData::IsRoot() const
 
 bool GateMetaData::IsProlog() const
 {
-    return (opcode_ == OpCode::ARG);
+    return (opcode_ == OpCode::ARG || opcode_ == OpCode::INITVREG);
 }
 
 bool GateMetaData::IsFixed() const
@@ -342,6 +342,13 @@ CACHED_ARG_LIST(DECLARE_CACHED_VALUE_CASE)
     }
 
     auto meta = new (chunk_) OneParameterMetaData(OpCode::ARG, GateFlags::HAS_ROOT, 0, 0, 0, value);
+    meta->SetKind(GateMetaData::Kind::MUTABLE_ONE_PARAMETER);
+    return meta;
+}
+
+const GateMetaData* GateMetaBuilder::InitVreg(uint64_t value)
+{
+    auto meta = new (chunk_) OneParameterMetaData(OpCode::INITVREG, GateFlags::HAS_ROOT, 0, 0, 0, value);
     meta->SetKind(GateMetaData::Kind::MUTABLE_ONE_PARAMETER);
     return meta;
 }
