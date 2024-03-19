@@ -11,9 +11,35 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import("//arkcompiler/ets_runtime/test/test_helper.gni")
-
-host_aot_test_action("deopt") {
-  deps = []
-  is_only_typed_path = true
-}
+true
+1a
+true
+1a
+1a
+1a
+1a
+1a
+1a
+1a
+1a
+1a
+1a
+1a
+1a
+1a
+1a
+1a
+1a
+1a
+1a
+1a
+1a
+1a
+1a
+1a
+1a
+1a
+true
+1a
+1a
+1a
