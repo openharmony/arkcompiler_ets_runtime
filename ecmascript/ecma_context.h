@@ -256,6 +256,8 @@ public:
 
     void AddConstpool(const JSPandaFile *jsPandaFile, JSTaggedValue constpool, int32_t index = 0);
 
+    void UpdateConstpool(const std::string& fileName, JSTaggedValue constpool, int32_t index = 0);
+
     bool HasCachedConstpool(const JSPandaFile *jsPandaFile) const;
 
     JSTaggedValue PUBLIC_API FindConstpool(const JSPandaFile *jsPandaFile, int32_t index);
