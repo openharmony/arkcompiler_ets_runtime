@@ -39,9 +39,9 @@ JSTaggedValue BuiltinsLocale::LocaleConstructor(EcmaRuntimeCallInfo *argv)
 
     // 6. Let locale be ? OrdinaryCreateFromConstructor(NewTarget, %LocalePrototype%, internalSlotsList).
     JSHandle<JSTaggedValue> constructor = GetConstructor(argv);
-    JSHandle<JSLocale> locale =
-        JSHandle<JSLocale>::Cast(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(constructor), newTarget));
+    JSHandle<JSObject> newObject = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(constructor), newTarget);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    JSHandle<JSLocale> locale =JSHandle<JSLocale>::Cast(newObject);
 
     // 7. If Type(tag) is not String or Object, throw a TypeError exception.
     JSHandle<JSTaggedValue> tag = GetCallArg(argv, 0);

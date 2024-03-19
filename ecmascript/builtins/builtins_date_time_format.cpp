@@ -45,9 +45,9 @@ JSTaggedValue BuiltinsDateTimeFormat::DateTimeFormatConstructor(EcmaRuntimeCallI
     //    [[InitializedDateTimeFormat]], [[Locale]], [[Calendar]], [[NumberingSystem]], [[TimeZone]], [[Weekday]],
     //    [[Era]], [[Year]], [[Month]], [[Day]], [[Hour]], [[Minute]], [[Second]], [[TimeZoneName]], [[HourCycle]],
     //    [[Pattern]], [[BoundFormat]] »).
-    JSHandle<JSDateTimeFormat> dateTimeFormat = JSHandle<JSDateTimeFormat>::Cast(
-        factory->NewJSObjectByConstructor(JSHandle<JSFunction>(constructor), newTarget));
+    JSHandle<JSObject> newObject = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(constructor), newTarget);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    JSHandle<JSDateTimeFormat> dateTimeFormat = JSHandle<JSDateTimeFormat>::Cast(newObject);
 
     // 3. Perform ? InitializeDateTimeFormat(dateTimeFormat, locales, options).
     JSHandle<JSTaggedValue> locales = GetCallArg(argv, 0);

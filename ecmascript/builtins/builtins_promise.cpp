@@ -60,9 +60,9 @@ JSTaggedValue BuiltinsPromise::PromiseConstructor(EcmaRuntimeCallInfo *argv)
     // «[[PromiseState]], [[PromiseResult]], [[PromiseFulfillReactions]], [[PromiseRejectReactions]]» ).
     // 4. ReturnIfAbrupt(promise).
     JSHandle<JSTaggedValue> constructor = GetConstructor(argv);
-    JSHandle<JSPromise> instancePromise =
-        JSHandle<JSPromise>::Cast(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(constructor), newTarget));
+    JSHandle<JSObject> newObject = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(constructor), newTarget);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    JSHandle<JSPromise> instancePromise = JSHandle<JSPromise>::Cast(newObject);
 
     // 5. Set promise's [[PromiseState]] internal slot to "pending".
     // 6. Set promise's [[PromiseFulfillReactions]] internal slot to a new empty List.

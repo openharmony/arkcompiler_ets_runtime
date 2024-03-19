@@ -1860,7 +1860,9 @@ JSHandle<JSPrimitiveRef> ObjectFactory::NewJSString(const JSHandle<JSTaggedValue
     if (newTarget->IsUndefined()) {
         obj = JSHandle<JSPrimitiveRef>::Cast(NewJSObjectByConstructor(stringFunc));
     } else {
-        obj = JSHandle<JSPrimitiveRef>::Cast(NewJSObjectByConstructor(stringFunc, newTarget));
+        JSHandle<JSObject> newObject = NewJSObjectByConstructor(stringFunc, newTarget);
+        RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSPrimitiveRef, thread_);
+        obj = JSHandle<JSPrimitiveRef>::Cast(newObject);
     }
     obj->SetValue(thread_, str);
     return obj;
