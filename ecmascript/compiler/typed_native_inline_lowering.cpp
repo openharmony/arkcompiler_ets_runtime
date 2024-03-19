@@ -103,7 +103,7 @@ void TypedNativeInlineLowering::LowerMathPow(GateRef gate)
     GateRef tempIsNan = builder_.BoolAnd(baseIsOne, builder_.DoubleIsINF(exp));
     GateRef resultIsNan = builder_.BoolOr(builder_.DoubleIsNAN(exp), tempIsNan);
 
-    builder_.Branch(resultIsNan, &exit, &notNan);
+    BRANCH_CIR(resultIsNan, &exit, &notNan);
     builder_.Bind(&notNan);
     {
         GateRef glue = acc_.GetGlueFromArgList();
@@ -138,7 +138,7 @@ void TypedNativeInlineLowering::LowerGeneralUnaryMath(GateRef gate, RuntimeStubC
         check = builder_.BoolOr(gt, lt);
     }
 
-    builder_.Branch(check, &exit, &checkNotPassed);
+    BRANCH_CIR(check, &exit, &checkNotPassed);
     builder_.Bind(&checkNotPassed);
     {
         GateRef glue = acc_.GetGlueFromArgList();
@@ -165,14 +165,14 @@ void TypedNativeInlineLowering::LowerMathAtan2(GateRef gate)
     auto yIsNan = builder_.DoubleIsNAN(y);
     auto xIsNan = builder_.DoubleIsNAN(x);
     auto checkNaN = builder_.BoolOr(yIsNan, xIsNan);
-    builder_.Branch(checkNaN, &exit, &label1);
+    BRANCH_CIR(checkNaN, &exit, &label1);
     builder_.Bind(&label1);
     {
         Label label4(&builder_);
         auto yIsZero = builder_.DoubleEqual(y, builder_.Double(0.));
         auto xIsMoreZero = builder_.DoubleGreaterThan(x, builder_.Double(0.));
         auto check = builder_.BoolAnd(yIsZero, xIsMoreZero);
-        builder_.Branch(check, &label4, &label2);
+        BRANCH_CIR(check, &label4, &label2);
         builder_.Bind(&label4);
         {
             result = y;
@@ -183,13 +183,13 @@ void TypedNativeInlineLowering::LowerMathAtan2(GateRef gate)
     {
         Label label5(&builder_);
         auto xIsPositiveInf = builder_.DoubleEqual(x, builder_.Double(std::numeric_limits<double>::infinity()));
-        builder_.Branch(xIsPositiveInf, &label5, &label3);
+        BRANCH_CIR(xIsPositiveInf, &label5, &label3);
         builder_.Bind(&label5);
         {
             Label label6(&builder_);
             Label label7(&builder_);
             auto yPositiveCheck = builder_.DoubleGreaterThanOrEqual(y, builder_.Double(0.));
-            builder_.Branch(yPositiveCheck, &label6, &label7);
+            BRANCH_CIR(yPositiveCheck, &label6, &label7);
             builder_.Bind(&label6);
             {
                 result = builder_.Double(0.0);
@@ -231,11 +231,11 @@ void TypedNativeInlineLowering::LowerAbs(GateRef gate)
     Label isIntMin(&builder_);
     Label isResultInt(&builder_);
     Label intExit(&builder_);
-    builder_.Branch(builder_.TaggedIsInt(param), &isInt, &notInt);
+    BRANCH_CIR(builder_.TaggedIsInt(param), &isInt, &notInt);
     builder_.Bind(&isInt);
     {
         auto value = builder_.GetInt32OfTInt(param);
-        builder_.Branch(builder_.Equal(value, builder_.Int32(INT32_MIN)), &isIntMin, &isResultInt);
+        BRANCH_CIR(builder_.Equal(value, builder_.Int32(INT32_MIN)), &isIntMin, &isResultInt);
         builder_.Bind(&isResultInt);
         {
             auto temp = builder_.Int32ASR(value, builder_.Int32(JSTaggedValue::INT_SIGN_BIT_OFFSET));

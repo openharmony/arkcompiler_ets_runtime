@@ -222,11 +222,11 @@ void CircuitBuilder::Jump(Label *label)
 }
 
 void CircuitBuilder::Branch(GateRef condition, Label *trueLabel, Label *falseLabel,
-                            uint32_t trueWeight, uint32_t falseWeight)
+                            uint32_t trueWeight, uint32_t falseWeight, const char* comment)
 {
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
-    GateRef ifBranch = Branch(currentControl, condition, trueWeight, falseWeight);
+    GateRef ifBranch = Branch(currentControl, condition, trueWeight, falseWeight, comment);
     currentLabel->SetControl(ifBranch);
     GateRef ifTrue = IfTrue(ifBranch);
     trueLabel->AppendPredecessor(GetCurrentLabel());
@@ -695,7 +695,7 @@ GateRef CircuitBuilder::IsEcmaObject(GateRef obj)
     Label heapObj(env_);
     Label exit(env_);
     GateRef isHeapObject = TaggedIsHeapObject(obj);
-    Branch(isHeapObject, &heapObj, &exit);
+    BRANCH_CIR2(isHeapObject, &heapObj, &exit);
     Bind(&heapObj);
     result = LogicAnd(isHeapObject, TaggedObjectIsEcmaObject(obj));
     Jump(&exit);
@@ -720,7 +720,7 @@ GateRef CircuitBuilder::GetObjectFromConstPool(GateRef glue, GateRef hirGate, Ga
     }
     auto cacheValue = GetValueFromTaggedArray(constPool, index);
     DEFVALUE(result, env_, VariableType::JS_ANY(), cacheValue);
-    Branch(BoolOr(TaggedIsHole(*result), TaggedIsNullPtr(*result)), &cacheMiss, &cache);
+    BRANCH_CIR2(BoolOr(TaggedIsHole(*result), TaggedIsNullPtr(*result)), &cacheMiss, &cache);
     Bind(&cacheMiss);
     {
         if (type == ConstPoolType::STRING) {
@@ -742,7 +742,7 @@ GateRef CircuitBuilder::GetObjectFromConstPool(GateRef glue, GateRef hirGate, Ga
     {
         if (type == ConstPoolType::METHOD) {
             Label isAOTLiteralInfo(env_);
-            Branch(IsAOTLiteralInfo(*result), &isAOTLiteralInfo, &exit);
+            BRANCH_CIR2(IsAOTLiteralInfo(*result), &isAOTLiteralInfo, &exit);
             Bind(&isAOTLiteralInfo);
             {
                 result = CallRuntime(glue, RTSTUB_ID(GetMethodFromCache), Gate::InvalidGateRef,
@@ -751,7 +751,7 @@ GateRef CircuitBuilder::GetObjectFromConstPool(GateRef glue, GateRef hirGate, Ga
             }
         } else if (type == ConstPoolType::ARRAY_LITERAL) {
             Label isAOTLiteralInfo(env_);
-            Branch(IsAOTLiteralInfo(*result), &isAOTLiteralInfo, &exit);
+            BRANCH_CIR2(IsAOTLiteralInfo(*result), &isAOTLiteralInfo, &exit);
             Bind(&isAOTLiteralInfo);
             {
                 result = CallRuntime(glue, RTSTUB_ID(GetArrayLiteralFromCache), Gate::InvalidGateRef,
@@ -760,7 +760,7 @@ GateRef CircuitBuilder::GetObjectFromConstPool(GateRef glue, GateRef hirGate, Ga
             }
         } else if (type == ConstPoolType::OBJECT_LITERAL) {
             Label isAOTLiteralInfo(env_);
-            Branch(IsAOTLiteralInfo(*result), &isAOTLiteralInfo, &exit);
+            BRANCH_CIR2(IsAOTLiteralInfo(*result), &isAOTLiteralInfo, &exit);
             Bind(&isAOTLiteralInfo);
             {
                 result = CallRuntime(glue, RTSTUB_ID(GetObjectLiteralFromCache), Gate::InvalidGateRef,

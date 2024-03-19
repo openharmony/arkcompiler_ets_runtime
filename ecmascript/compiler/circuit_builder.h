@@ -227,6 +227,21 @@ public:
     void ClearConstantCache(GateRef gate);
     GateRef NanValue();
     GateRef RelocatableData(uint64_t val);
+
+#define BRANCH_CIR(condition, trueLabel, falseLabel)                                \
+    {                                                                               \
+        std::ostringstream os;                                                      \
+        os << __func__ << ": " << #trueLabel << "- " << #falseLabel;                \
+        builder_.Branch(condition, trueLabel, falseLabel, 1, 1, os.str().c_str());  \
+    }
+
+#define BRANCH_CIR2(condition, trueLabel, falseLabel)                      \
+    {                                                                      \
+        std::ostringstream os;                                             \
+        os << __func__ << ": " << #trueLabel << "- " << #falseLabel;       \
+        Branch(condition, trueLabel, falseLabel, 1, 1, os.str().c_str());  \
+    }
+
     GateRef Branch(GateRef state, GateRef condition, uint32_t leftWeight = 1, uint32_t rightWeight = 1,
                    const char* comment = nullptr);  // 1: default branch weight
     GateRef SwitchBranch(GateRef state, GateRef index, int caseCounts);
@@ -312,7 +327,7 @@ public:
     inline void Bind(Label *label, bool justSlowPath);
     void Jump(Label *label);
     void Branch(GateRef condition, Label *trueLabel, Label *falseLabel,
-                uint32_t trueWeight = 1, uint32_t falseWeight = 1);   // 1: default branch weight
+                uint32_t trueWeight = 1, uint32_t falseWeight = 1, const char* comment = nullptr);
     void Switch(GateRef index, Label *defaultLabel, int64_t *keysValue, Label *keysLabel, int numberOfKeys);
     void LoopBegin(Label *loopHead);
     void LoopEnd(Label *loopHead);
