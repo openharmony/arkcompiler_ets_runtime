@@ -14,8 +14,6 @@
  */
 
 declare function print(arg:any):string;
-declare function assert_equal(a: Object, b: Object):void;
-declare function assert_unreachable():void;
 declare class ArkTools {
     static hiddenStackSourceFile(): boolean;
 }
@@ -23,7 +21,7 @@ ArkTools.hiddenStackSourceFile()
 class A {
     constructor() {}
     get name() {
-        assert_equal(arguments.length, 0)
+        print(arguments.length)
         a.b
     }
     set name(a) {}
@@ -37,8 +35,7 @@ function foo2() {
 }
 try {
     foo2()
-    assert_unreachable()
 } catch (e) {
-    assert_equal(e.message, "a is not defined")
+    print(e)
     print(e.stack)
 }
