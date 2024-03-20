@@ -362,7 +362,6 @@ public:
 
     bool NeedStopCollection() override
     {
-        LOG_FULL(ERROR) << "SharedHeap NeedStopCollection() not support yet";
         return onSerializeEvent_;
     }
 

@@ -636,6 +636,12 @@ bool JSThread::CheckSafepoint()
         SetTerminationRequestWithoutLock(false);
     }
 
+    if (IsSuspended()) {
+        interruptMutex_.Unlock();
+        WaitSuspension();
+        interruptMutex_.Lock();
+    }
+
     // vmThreadControl_ 's thread_ is current JSThread's this.
     if (VMNeedSuspensionWithoutLock()) {
         interruptMutex_.Unlock();
@@ -647,12 +653,6 @@ bool JSThread::CheckSafepoint()
     if (vm_->IsEnableJit() && HasInstallMachineCode()) {
         vm_->GetJit()->InstallTasks(GetThreadId());
         SetInstallMachineCode(false);
-    }
-
-    if (IsSuspended()) {
-        interruptMutex_.Unlock();
-        WaitSuspension();
-        interruptMutex_.Lock();
     }
 
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
