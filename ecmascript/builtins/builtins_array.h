@@ -43,7 +43,7 @@
     /* Array.prototype.entries ( ) */                                       \
     V("entries",        Entries,          0, INVALID)                       \
     /* Array.prototype.every ( callbackfn [ , thisArg ] ) */                \
-    V("every",          Every,            1, INVALID)                       \
+    V("every",          Every,            1, ArrayEvery)                    \
     /* Array.prototype.fill ( value [ , start [ , end ] ] ) */              \
     V("fill",           Fill,             1, INVALID)                       \
     /* Array.prototype.filter ( callbackfn [ , thisArg ] ) */               \
