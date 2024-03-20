@@ -236,6 +236,7 @@ public:
     GateRef InYoungGeneration(GateRef region);
     GateRef TaggedIsGeneratorObject(GateRef x);
     GateRef TaggedIsJSArray(GateRef x);
+    GateRef IsTaggedArray(GateRef x);
     GateRef TaggedIsAsyncGeneratorObject(GateRef x);
     GateRef TaggedIsJSGlobalObject(GateRef x);
     GateRef TaggedIsWeak(GateRef x);
