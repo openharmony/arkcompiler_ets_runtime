@@ -17,3 +17,4 @@ true
 true
 false
 Invalid string length
+RangeError: Invalid string length

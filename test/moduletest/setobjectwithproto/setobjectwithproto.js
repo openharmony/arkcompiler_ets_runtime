@@ -35,3 +35,7 @@ C32.__proto__ = Array;
 let obj2 = new C32();
 print(obj2.__proto__ == C32.prototype);
 print(C32.__proto__ == Array);
+
+Float64Array.__proto__ = Float32Array
+new Float64Array();
+print("test new Float64Array Suc")

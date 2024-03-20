@@ -52,3 +52,4 @@ arr5.push(arr6);
 arr6.push(arr4);
 print(arr4.toString());
 print(arr4.toString());
+([11])["join"]('쏄');

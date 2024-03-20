@@ -24,3 +24,4 @@ SyntaxError
 0
 42
 42
+RangeError: invalid locale

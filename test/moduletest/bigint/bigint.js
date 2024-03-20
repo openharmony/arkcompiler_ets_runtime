@@ -76,3 +76,10 @@ print(v52(v35));
 
 print(BigInt.asUintN(2**32, 42n));
 print(BigInt.asIntN(2**32, 42n));
+
+const v83 = new BigUint64Array(1096);
+try {
+    v83["toLocaleString"]("toLocaleString", "toLocaleString");
+} catch (error) {
+    print(error);
+}

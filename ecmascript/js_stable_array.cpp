@@ -80,15 +80,14 @@ JSTaggedValue JSStableArray::Pop(JSHandle<JSArray> receiver, EcmaRuntimeCallInfo
 }
 
 JSTaggedValue JSStableArray::Splice(JSHandle<JSArray> receiver, EcmaRuntimeCallInfo *argv,
-                                    uint32_t start, uint32_t insertCount, uint32_t actualDeleteCount)
+                                    uint32_t start, uint32_t insertCount, uint32_t actualDeleteCount,
+                                    JSTaggedValue newArray)
 {
     JSThread *thread = argv->GetThread();
     uint32_t len = receiver->GetArrayLength();
     uint32_t argc = argv->GetArgsNumber();
 
     JSHandle<JSObject> thisObjHandle(receiver);
-    JSTaggedValue newArray = JSArray::ArraySpeciesCreate(thread, thisObjHandle, JSTaggedNumber(actualDeleteCount));
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSHandle<JSObject> newArrayHandle(thread, newArray);
 
     JSHandle<JSTaggedValue> thisObjVal(thisObjHandle);
@@ -255,6 +254,10 @@ JSTaggedValue JSStableArray::Join(JSHandle<JSArray> receiver, EcmaRuntimeCallInf
     uint32_t len = elementsLength > length ? length : elementsLength;
     if (elementsLength == 0 && length != 0) {
         len = length;
+    }
+    if (len <= 1) {
+        // sep unused, set isOneByte to default(true)
+        isOneByte = true;
     }
     for (uint32_t k = 0; k < len; k++) {
         JSTaggedValue element = JSTaggedValue::Undefined();
