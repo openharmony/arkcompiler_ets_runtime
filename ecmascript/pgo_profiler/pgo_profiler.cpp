@@ -19,6 +19,7 @@
 #include <memory>
 
 #include "ecmascript/elements.h"
+#include "ecmascript/enum_conversion.h"
 #include "ecmascript/ic/ic_handler.h"
 #include "ecmascript/ic/profile_type_info.h"
 #include "ecmascript/interpreter/interpreter-inl.h"
@@ -140,6 +141,7 @@ void PGOProfiler::ProfileDefineGetterSetter(
     if (!methodValue.IsMethod()) {
         return;
     }
+
     auto function = JSFunction::Cast(funcValue);
     WorkNode* workNode = reinterpret_cast<WorkNode*>(function->GetWorkNodePointer());
     if (workNode != nullptr) {
@@ -231,8 +233,7 @@ void PGOProfiler::UpdateTrackInfo(JSTaggedValue trackInfoVal)
         if (!object->GetClass()->IsJSFunction()) {
             return;
         }
-        auto method = JSFunction::Cast(object)->GetMethod();
-        auto profileTypeInfoVal = Method::Cast(method)->GetProfileTypeInfo();
+        auto profileTypeInfoVal = JSFunction::Cast(object)->GetProfileTypeInfo();
         if (profileTypeInfoVal.IsUndefined()) {
             return;
         }
@@ -397,7 +398,7 @@ void PGOProfiler::HandlePGOPreDump()
         if (!methodValue.IsMethod()) {
             return;
         }
-        JSTaggedValue recordNameValue = Method::Cast(methodValue)->GetRecordName();
+        JSTaggedValue recordNameValue = func->GetRecordName();
         if (!recordNameValue.IsString()) {
             return;
         }
@@ -412,7 +413,7 @@ void PGOProfiler::HandlePGOPreDump()
 
         ProfileType recordType = GetRecordProfileType(abcId, recordName);
         recordInfos_->AddMethod(recordType, Method::Cast(methodValue), SampleMode::HOTNESS_MODE);
-        ProfileBytecode(abcId, recordName, methodValue);
+        ProfileBytecode(abcId, recordName, funcValue);
     });
 }
 
@@ -439,7 +440,7 @@ void PGOProfiler::HandlePGODump(bool force)
             current = PopFromProfileQueue();
             continue;
         }
-        JSTaggedValue recordNameValue = Method::Cast(methodValue)->GetRecordName();
+        JSTaggedValue recordNameValue = func->GetRecordName();
         if (!recordNameValue.IsString()) {
             current = PopFromProfileQueue();
             continue;
@@ -457,7 +458,7 @@ void PGOProfiler::HandlePGODump(bool force)
         if (recordInfos_->AddMethod(recordType, Method::Cast(methodValue), SampleMode::HOTNESS_MODE)) {
             methodCount_++;
         }
-        ProfileBytecode(abcId, recordName, methodValue);
+        ProfileBytecode(abcId, recordName, value);
         current = PopFromProfileQueue();
     }
     if (state_ == State::PAUSE) {
@@ -514,10 +515,15 @@ bool PGOProfiler::PausePGODump()
     return false;
 }
 
-void PGOProfiler::ProfileBytecode(ApEntityId abcId, const CString &recordName, JSTaggedValue value)
+void PGOProfiler::ProfileBytecode(ApEntityId abcId, const CString &recordName, JSTaggedValue funcValue)
 {
-    Method *method = Method::Cast(value.GetTaggedObject());
-    JSTaggedValue profileTypeInfoVal = method->GetProfileTypeInfo();
+    JSFunction *function = JSFunction::Cast(funcValue);
+    if (function->GetClass()->IsJSSharedFunction() ||
+        function->GetFunctionKind() == ecmascript::FunctionKind::CONCURRENT_FUNCTION) {
+        return;
+    }
+    Method *method = Method::Cast(function->GetMethod());
+    JSTaggedValue profileTypeInfoVal = function->GetProfileTypeInfo();
     ASSERT(!profileTypeInfoVal.IsUndefined());
     auto profileTypeInfo = ProfileTypeInfo::Cast(profileTypeInfoVal.GetTaggedObject());
     auto methodId = method->GetMethodId();
@@ -776,10 +782,6 @@ void PGOProfiler::DumpICByValue(ApEntityId abcId, const CString &recordName, Ent
     }
     // Check key
     if ((firstValue.IsString() || firstValue.IsSymbol())) {
-        JSTaggedValue secondValue = profileTypeInfo->Get(slotId + 1);
-        if (secondValue.IsHeapObject()) {
-            DumpICByNameWithPoly(abcId, recordName, methodId, bcOffset, secondValue, type);
-        }
         return;
     }
     // Check without key
@@ -846,11 +848,13 @@ void PGOProfiler::DumpICByNameWithHandler(ApEntityId abcId, const CString &recor
             if (HandlerBase::IsField(handlerInfo) || HandlerBase::IsAccessor(handlerInfo)) {
                 AddObjectInfo(abcId, recordName, methodId, bcOffset, hclass, hclass, hclass);
             }
-            AddBuiltinsInfo(abcId, recordName, methodId, bcOffset, hclass, hclass);
+            AddBuiltinsInfoByNameInInstance(abcId, recordName, methodId, bcOffset, hclass);
         } else if (secondValue.IsPrototypeHandler()) {
             auto prototypeHandler = PrototypeHandler::Cast(secondValue.GetTaggedObject());
             auto cellValue = prototypeHandler->GetProtoCell();
-            ASSERT(cellValue.IsProtoChangeMarker());
+            if (cellValue.IsUndefined()) {
+                return;
+            }
             ProtoChangeMarker *cell = ProtoChangeMarker::Cast(cellValue.GetTaggedObject());
             if (cell->GetHasChanged()) {
                 return;
@@ -865,7 +869,9 @@ void PGOProfiler::DumpICByNameWithHandler(ApEntityId abcId, const CString &recor
             if (HandlerBase::IsNonExist(handlerInfo)) {
                 return;
             }
-            AddObjectInfo(abcId, recordName, methodId, bcOffset, hclass, holderHClass, holderHClass);
+            if (!AddObjectInfo(abcId, recordName, methodId, bcOffset, hclass, holderHClass, holderHClass)) {
+                return AddBuiltinsInfoByNameInProt(abcId, recordName, methodId, bcOffset, hclass, holderHClass);
+            }
         }
         // LoadGlobal
         return;
@@ -895,7 +901,9 @@ void PGOProfiler::DumpICByNameWithHandler(ApEntityId abcId, const CString &recor
     } else if (secondValue.IsPrototypeHandler()) {
         auto prototypeHandler = PrototypeHandler::Cast(secondValue.GetTaggedObject());
         auto cellValue = prototypeHandler->GetProtoCell();
-        ASSERT(cellValue.IsProtoChangeMarker());
+        if (cellValue.IsUndefined()) {
+            return;
+        }
         ProtoChangeMarker *cell = ProtoChangeMarker::Cast(cellValue.GetTaggedObject());
         if (cell->GetHasChanged()) {
             return;
@@ -1304,27 +1312,27 @@ void PGOProfiler::UpdateTranstionLayout(JSHClass *parent, JSHClass *child)
     }
 }
 
-void PGOProfiler::AddTranstionObjectInfo(
+bool PGOProfiler::AddTranstionObjectInfo(
     ProfileType recordType, EntityId methodId, int32_t bcOffset, JSHClass *receiver, JSHClass *hold, JSHClass *holdTra)
 {
     auto receiverRootHClass = JSTaggedType(JSHClass::FindRootHClass(receiver));
     auto receiverRootType = GetProfileTypeSafe(receiverRootHClass, receiverRootHClass);
     if (receiverRootType.IsNone()) {
-        return;
+        return false;
     }
     auto receiverType = GetOrInsertProfileTypeSafe(receiverRootHClass, JSTaggedType(receiver));
 
     auto holdRootHClass = JSTaggedType(JSHClass::FindRootHClass(hold));
     auto holdRootType = GetProfileTypeSafe(holdRootHClass, holdRootHClass);
     if (holdRootType.IsNone()) {
-        return;
+        return true;
     }
     auto holdType = GetOrInsertProfileTypeSafe(holdRootHClass, JSTaggedType(hold));
 
     auto holdTraRootHClass = JSTaggedType(JSHClass::FindRootHClass(holdTra));
     auto holdTraRootType = GetProfileTypeSafe(holdTraRootHClass, holdTraRootHClass);
     if (holdTraRootType.IsNone()) {
-        return;
+        return true;
     }
     auto holdTraType = GetOrInsertProfileTypeSafe(holdTraRootHClass, JSTaggedType(holdTra));
 
@@ -1341,13 +1349,14 @@ void PGOProfiler::AddTranstionObjectInfo(
     PGOObjectInfo info(receiverRootType, receiverType, holdRootType, holdType, holdTraRootType, holdTraType);
     UpdatePrototypeChainInfo(receiver, hold, info);
     recordInfos_->AddObjectInfo(recordType, methodId, bcOffset, info);
+    return true;
 }
 
-void PGOProfiler::AddObjectInfo(ApEntityId abcId, const CString &recordName, EntityId methodId, int32_t bcOffset,
+bool PGOProfiler::AddObjectInfo(ApEntityId abcId, const CString &recordName, EntityId methodId, int32_t bcOffset,
                                 JSHClass *receiver, JSHClass *hold, JSHClass *holdTra)
 {
     ProfileType recordType = GetRecordProfileType(abcId, recordName);
-    AddTranstionObjectInfo(recordType, methodId, bcOffset, receiver, hold, holdTra);
+    return AddTranstionObjectInfo(recordType, methodId, bcOffset, receiver, hold, holdTra);
 }
 
 void PGOProfiler::UpdatePrototypeChainInfo(JSHClass *receiver, JSHClass *holder, PGOObjectInfo &info)
@@ -1386,6 +1395,53 @@ void PGOProfiler::AddObjectInfoWithMega(
     recordInfos_->AddObjectInfo(recordType, methodId, bcOffset, info);
 }
 
+void PGOProfiler::AddBuiltinsInfoByNameInInstance(ApEntityId abcId, const CString &recordName, EntityId methodId,
+    int32_t bcOffset, JSHClass *receiver)
+{
+    auto type = receiver->GetObjectType();
+    auto builtinsId = ToBuiltinsTypeId(type);
+    if (!builtinsId.has_value()) {
+        return;
+    }
+    auto thread = vm_->GetJSThread();
+    JSHClass *exceptRecvHClass = nullptr;
+    if (builtinsId == BuiltinTypeId::ARRAY) {
+        exceptRecvHClass = thread->GetArrayInstanceHClass(receiver->GetElementsKind());
+    } else if (builtinsId == BuiltinTypeId::STRING) {
+        exceptRecvHClass = receiver;
+    } else {
+        exceptRecvHClass = thread->GetBuiltinInstanceHClass(builtinsId.value());
+    }
+    if (exceptRecvHClass != receiver) {
+        return;
+    }
+    AddBuiltinsInfo(abcId, recordName, methodId, bcOffset, receiver, receiver);
+}
+
+void PGOProfiler::AddBuiltinsInfoByNameInProt(ApEntityId abcId, const CString &recordName, EntityId methodId,
+    int32_t bcOffset, JSHClass *receiver, JSHClass *hold)
+{
+    auto type = receiver->GetObjectType();
+    auto builtinsId = ToBuiltinsTypeId(type);
+    if (!builtinsId.has_value()) {
+        return;
+    }
+    auto thread = vm_->GetJSThread();
+    JSHClass *exceptRecvHClass = nullptr;
+    if (builtinsId == BuiltinTypeId::ARRAY) {
+        exceptRecvHClass = thread->GetArrayInstanceHClass(receiver->GetElementsKind());
+    } else if (builtinsId == BuiltinTypeId::STRING) {
+        exceptRecvHClass = receiver;
+    } else {
+        exceptRecvHClass = thread->GetBuiltinInstanceHClass(builtinsId.value());
+    }
+    auto exceptHoldHClass = thread->GetBuiltinPrototypeHClass(builtinsId.value());
+    if (exceptRecvHClass != receiver || exceptHoldHClass != hold) {
+        return;
+    }
+    AddBuiltinsInfo(abcId, recordName, methodId, bcOffset, receiver, receiver);
+}
+
 void PGOProfiler::AddBuiltinsInfo(
     ApEntityId abcId, const CString &recordName, EntityId methodId, int32_t bcOffset, JSHClass *receiver,
     JSHClass *transitionHClass, OnHeapMode onHeap)
@@ -1403,7 +1459,7 @@ void PGOProfiler::AddBuiltinsInfo(
         auto profileType = ProfileType::CreateBuiltinsTypedArray(abcId, jsType, onHeap);
         PGOObjectInfo info(profileType);
         recordInfos_->AddObjectInfo(recordType, methodId, bcOffset, info);
-    } else if (receiver->IsString()) {
+    } else {
         auto type = receiver->GetObjectType();
         PGOObjectInfo info(ProfileType::CreateBuiltins(abcId, type));
         recordInfos_->AddObjectInfo(recordType, methodId, bcOffset, info);

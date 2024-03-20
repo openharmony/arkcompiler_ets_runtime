@@ -534,6 +534,8 @@ CString *HeapSnapshot::GenerateNodeName(TaggedObject *entry)
             return GetString("ResolvedBinding");
         case JSType::RESOLVEDINDEXBINDING_RECORD:
             return GetString("ResolvedIndexBinding");
+        case JSType::RESOLVEDRECORDBINDING_RECORD:
+            return GetString("ResolvedRecordBinding");
         case JSType::JS_MODULE_NAMESPACE:
             return GetString("ModuleNamespace");
         case JSType::JS_API_PLAIN_ARRAY:
@@ -641,6 +643,12 @@ NodeType HeapSnapshot::GenerateNodeType(TaggedObject *entry)
 
 void HeapSnapshot::FillNodes(bool isInFinish)
 {
+    SharedHeap *sHeap = SharedHeap::GetInstance();
+    if (sHeap != nullptr) {
+        sHeap->IterateOverObjects([this, isInFinish](TaggedObject *obj) {
+            GenerateNode(JSTaggedValue(obj), 0, isInFinish);
+        });
+    }
     // Iterate Heap Object
     auto heap = vm_->GetHeap();
     if (heap != nullptr) {

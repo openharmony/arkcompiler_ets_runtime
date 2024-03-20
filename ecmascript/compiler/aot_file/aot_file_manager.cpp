@@ -282,6 +282,7 @@ void AOTFileManager::SetAOTMainFuncEntry(JSHandle<JSFunction> mainFunc, const JS
     Method *method = mainFunc->GetCallTarget();
     method->SetDeoptThreshold(vm_->GetJSOptions().GetDeoptThreshold());
     method->SetCodeEntryAndMarkAOTWhenBinding(static_cast<uintptr_t>(mainEntry));
+    mainFunc->SetCodeEntry(static_cast<uintptr_t>(mainEntry));
     method->SetIsFastCall(isFastCall);
 #ifndef NDEBUG
     PrintAOTEntry(jsPandaFile, method, mainEntry);
@@ -292,9 +293,14 @@ void AOTFileManager::SetAOTMainFuncEntry(JSHandle<JSFunction> mainFunc, const JS
     methodLiteral->SetIsFastCall(isFastCall);
 }
 
-void AOTFileManager::SetAOTFuncEntry(const JSPandaFile *jsPandaFile, Method *method,
-                                     uint32_t entryIndex, bool *canFastCall)
+void AOTFileManager::SetAOTFuncEntry(const JSPandaFile *jsPandaFile, JSFunction *function,
+                                     Method *method, uint32_t entryIndex, bool *canFastCall)
 {
+    uint64_t methodCodeEntry = method->GetCodeEntryOrLiteral();
+    if (function != nullptr && methodCodeEntry != reinterpret_cast<uintptr_t>(nullptr)) {
+        function->SetCodeEntry(methodCodeEntry);
+        return;
+    }
     AnFileDataManager *anFileDataManager = AnFileDataManager::GetInstance();
     uint32_t anFileInfoIndex = jsPandaFile->GetAOTFileInfoIndex();
     const std::shared_ptr<AnFileInfo> anFileInfo = anFileDataManager->SafeGetAnFileInfo(anFileInfoIndex);

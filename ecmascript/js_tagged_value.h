@@ -650,10 +650,13 @@ public:
     bool IsStarExportEntry() const;
     bool IsResolvedBinding() const;
     bool IsResolvedIndexBinding() const;
+    bool IsResolvedRecordBinding() const;
     bool IsModuleNamespace() const;
     bool IsJSSharedObject() const;
     bool IsJSSharedFunction() const;
     bool IsJSShared() const;
+    bool PUBLIC_API IsInSharedHeap() const;
+    bool IsInSharedSweepableSpace() const;
     static bool IsSameTypeOrHClass(JSTaggedValue x, JSTaggedValue y);
 
     static ComparisonResult Compare(JSThread *thread, const JSHandle<JSTaggedValue> &x,
@@ -696,6 +699,18 @@ private:
                                  const JSHandle<JSTaggedValue> &key,
                                  const JSHandle<JSTaggedValue> &value);
     static JSHandle<EcmaString> NativePointerToString(JSThread *thread, const JSHandle<JSTaggedValue> &tagged);
+
+    static ARK_INLINE JSTaggedValue WrapUint64(uint64_t v)
+    {
+        return JSTaggedValue(static_cast<JSTaggedType>(v) | TAG_INT);
+    }
+    static ARK_INLINE uint64_t UnwrapToUint64(JSTaggedValue v)
+    {
+        ASSERT_PRINT(v.IsInt(), "can not convert JSTaggedValue to Int :" << std::hex << v.GetRawData());
+        return static_cast<uint64_t>(v.GetRawData() & (~TAG_INT));
+    }
+
+    friend class PropertyAttributes;
 };
 STATIC_ASSERT_EQ_ARCH(sizeof(JSTaggedValue), JSTaggedValue::SizeArch32, JSTaggedValue::SizeArch64);
 }  // namespace panda::ecmascript

@@ -13,7 +13,7 @@
 
 import("//arkcompiler/ets_runtime/test/test_helper.gni")
 
-host_aot_assert_test_action("exception_case13") {
+host_aot_test_action("exception_case13") {
   deps = []
   is_enable_trace_deopt = true
 }

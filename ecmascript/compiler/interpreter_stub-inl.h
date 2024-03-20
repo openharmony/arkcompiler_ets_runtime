@@ -270,15 +270,14 @@ GateRef InterpreterStubBuilder::GetEnvFromFunction(GateRef function)
     return Load(VariableType::JS_POINTER(), function, IntPtr(JSFunction::LEXICAL_ENV_OFFSET));
 }
 
-GateRef InterpreterStubBuilder::GetProfileTypeInfoFromMethod(GateRef method)
+GateRef InterpreterStubBuilder::GetProfileTypeInfoFromFunction(GateRef function)
 {
-    return Load(VariableType::JS_POINTER(), method, IntPtr(Method::PROFILE_TYPE_INFO_OFFSET));
+    return Load(VariableType::JS_POINTER(), function, IntPtr(JSFunction::PROFILE_TYPE_INFO_OFFSET));
 }
 
 GateRef InterpreterStubBuilder::GetModuleFromFunction(GateRef function)
 {
-    GateRef method = GetMethodFromFunction(function);
-    return Load(VariableType::JS_POINTER(), method, IntPtr(Method::ECMA_MODULE_OFFSET));
+    return Load(VariableType::JS_POINTER(), function, IntPtr(JSFunction::ECMA_MODULE_OFFSET));
 }
 
 GateRef InterpreterStubBuilder::GetHomeObjectFromFunction(GateRef function)
@@ -313,6 +312,12 @@ GateRef InterpreterStubBuilder::GetResumeModeFromAsyncGeneratorObject(GateRef ob
     return Int32And(
         Int32LSR(bitfield, Int32(JSAsyncGeneratorObject::ResumeModeBits::START_BIT)),
         Int32((1LU << JSAsyncGeneratorObject::ResumeModeBits::SIZE) - 1));
+}
+
+void InterpreterStubBuilder::SetModuleToFunction(GateRef glue, GateRef function, GateRef value)
+{
+    GateRef offset = IntPtr(JSFunction::ECMA_MODULE_OFFSET);
+    Store(VariableType::JS_POINTER(), glue, function, offset, value);
 }
 
 void InterpreterStubBuilder::SetPcToFrame(GateRef glue, GateRef frame, GateRef value)
@@ -418,11 +423,11 @@ GateRef InterpreterStubBuilder::PushUndefined(GateRef glue, GateRef sp, GateRef 
     Label pushUndefinedBegin(env);
     Label pushUndefinedAgain(env);
     Label pushUndefinedEnd(env);
-    Branch(Int32LessThan(*i, num), &pushUndefinedBegin, &pushUndefinedEnd);
+    BRANCH(Int32LessThan(*i, num), &pushUndefinedBegin, &pushUndefinedEnd);
     LoopBegin(&pushUndefinedBegin);
     newSp = PushArg(glue, *newSp, Undefined());
     i = Int32Add(*i, Int32(1));  // 1 : set as high 1 bits
-    Branch(Int32LessThan(*i, num), &pushUndefinedAgain, &pushUndefinedEnd);
+    BRANCH(Int32LessThan(*i, num), &pushUndefinedAgain, &pushUndefinedEnd);
     Bind(&pushUndefinedAgain);
     LoopEnd(&pushUndefinedBegin);
     Bind(&pushUndefinedEnd);
@@ -441,12 +446,12 @@ GateRef InterpreterStubBuilder::PushRange(GateRef glue, GateRef sp, GateRef arra
     Label pushArgsBegin(env);
     Label pushArgsAgain(env);
     Label pushArgsEnd(env);
-    Branch(Int32GreaterThanOrEqual(*i, startIndex), &pushArgsBegin, &pushArgsEnd);
+    BRANCH(Int32GreaterThanOrEqual(*i, startIndex), &pushArgsBegin, &pushArgsEnd);
     LoopBegin(&pushArgsBegin);
     GateRef arg = GetVregValue(array, ZExtInt32ToPtr(*i));
     newSp = PushArg(glue, *newSp, arg);
     i = Int32Sub(*i, Int32(1));  // 1 : set as high 1 bits
-    Branch(Int32GreaterThanOrEqual(*i, startIndex), &pushArgsAgain, &pushArgsEnd);
+    BRANCH(Int32GreaterThanOrEqual(*i, startIndex), &pushArgsAgain, &pushArgsEnd);
     Bind(&pushArgsAgain);
     LoopEnd(&pushArgsBegin);
     Bind(&pushArgsEnd);
@@ -483,7 +488,7 @@ GateRef InterpreterStubBuilder::GetStartIdxAndNumArgs(GateRef sp, GateRef restId
                       IntPtr(AsmInterpretedFrame::GetFpOffset(env->IsArch32Bit())));
     Label actualEqualDeclared(env);
     Label actualNotEqualDeclared(env);
-    Branch(Int32UnsignedGreaterThan(ChangeIntPtrToInt32(PtrSub(fp, sp)),
+    BRANCH(Int32UnsignedGreaterThan(ChangeIntPtrToInt32(PtrSub(fp, sp)),
                                     Int32Mul(Int32Add(Int32Add(numVregs, copyArgs), *numArgs),
                                              Int32(sizeof(JSTaggedType)))),
            &actualNotEqualDeclared, &actualEqualDeclared);
@@ -497,7 +502,7 @@ GateRef InterpreterStubBuilder::GetStartIdxAndNumArgs(GateRef sp, GateRef restId
     Label numArgsGreater(env);
     Label numArgsNotGreater(env);
     Label exit(env);
-    Branch(Int32UnsignedGreaterThan(*numArgs, restIdx), &numArgsGreater, &numArgsNotGreater);
+    BRANCH(Int32UnsignedGreaterThan(*numArgs, restIdx), &numArgsGreater, &numArgsNotGreater);
     Bind(&numArgsGreater);
     {
         numArgs = Int32Sub(*numArgs, restIdx);
@@ -641,7 +646,7 @@ void InterpreterStubBuilder::CheckException(GateRef glue, GateRef sp, GateRef pc
     auto env = GetEnvironment();
     Label isException(env);
     Label notException(env);
-    Branch(TaggedIsException(res), &isException, &notException);
+    BRANCH(TaggedIsException(res), &isException, &notException);
     Bind(&isException);
     {
         DISPATCH_LAST(acc);
@@ -659,7 +664,7 @@ void InterpreterStubBuilder::CheckPendingException(GateRef glue, GateRef sp, Gat
     auto env = GetEnvironment();
     Label isException(env);
     Label notException(env);
-    Branch(HasPendingException(glue), &isException, &notException);
+    BRANCH(HasPendingException(glue), &isException, &notException);
     Bind(&isException);
     {
         DISPATCH_LAST(acc);
@@ -677,7 +682,7 @@ void InterpreterStubBuilder::CheckExceptionWithVar(GateRef glue, GateRef sp, Gat
     auto env = GetEnvironment();
     Label isException(env);
     Label notException(env);
-    Branch(TaggedIsException(res), &isException, &notException);
+    BRANCH(TaggedIsException(res), &isException, &notException);
     Bind(&isException);
     {
         DISPATCH_LAST(acc);
@@ -697,7 +702,7 @@ void InterpreterStubBuilder::CheckExceptionWithJump(GateRef glue, GateRef sp, Ga
     auto env = GetEnvironment();
     Label isException(env);
     Label notException(env);
-    Branch(TaggedIsException(res), &isException, &notException);
+    BRANCH(TaggedIsException(res), &isException, &notException);
     Bind(&isException);
     {
         DISPATCH_LAST(acc);

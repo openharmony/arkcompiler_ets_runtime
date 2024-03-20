@@ -218,8 +218,10 @@ public:
 
 private:
     static const size_t CIRCUIT_SPACE = 1U << 30U;  // 1GB
-
+public:
     void Print(GateRef gate) const;
+
+private:
     GateType GetGateType(GateRef gate) const;
     GateRef GetGateRef(const Gate *gate) const;
     MachineType GetMachineType(GateRef gate) const;

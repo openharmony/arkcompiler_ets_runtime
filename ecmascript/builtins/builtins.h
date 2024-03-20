@@ -50,6 +50,7 @@ private:
     JSThread *thread_{nullptr};
     ObjectFactory *factory_{nullptr};
     EcmaVM *vm_{nullptr};
+    SharedHeap *sHeap_{nullptr};
 
     JSHandle<JSFunction> NewBuiltinConstructor(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &prototype,
                                                EcmaEntrypoint ctorFunc, std::string_view name, int length,
@@ -344,17 +345,28 @@ private:
                            EcmaEntrypoint func, int length) const;
     void SetNonConstantObject(const JSHandle<JSObject> &obj, std::string_view key,
                               JSHandle<JSTaggedValue> &value) const;
-    void InitializeSObjectAndSFunction(const JSHandle<GlobalEnv> &env);
+
+    // For SharedObject/SharedFunction
+    void InitializeSObjectAndSFunction(const JSHandle<GlobalEnv> &env) const;
+    void CopySObjectAndSFunction(const JSHandle<GlobalEnv> &env, const JSTaggedValue &srcEnv) const;
     void InitializeSObject(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &sObjIHClass,
-                           const JSHandle<JSObject> &sObjFuncPrototype) const;
-    void InitializeSFunciton(const JSHandle<GlobalEnv> &env,
-                             const JSHandle<JSHClass> &sFuncPrototypeHClass) const;
+                           const JSHandle<JSObject> &sObjFuncPrototype,
+                           const JSHandle<JSFunction> &sFuncPrototype) const;
+    void InitializeSFunction(const JSHandle<GlobalEnv> &env,
+                             const JSHandle<JSFunction> &sFuncPrototype) const;
+
+    JSHandle<JSHClass> CreateSObjectFunctionHClass(const JSHandle<JSFunction> &sFuncPrototype) const;
+    JSHandle<JSHClass> CreateSObjectPrototypeHClass() const;
+    JSHandle<JSHClass> CreateSFunctionHClass(const JSHandle<JSFunction> &sFuncPrototype) const;
+    JSHandle<JSHClass> CreateSFunctionPrototypeHClass(const JSHandle<JSTaggedValue> &sObjFuncPrototypeVal) const;
+
     void InitializeSCtor(const JSHandle<JSHClass> &protoHClass, const JSHandle<JSFunction> &ctor,
                          std::string_view name, int length) const;
 
     void SetSFunctionName(const JSHandle<JSFunction> &ctor, std::string_view name) const;
     void SetSFunctionName(const JSHandle<JSFunction> &ctor, const JSHandle<JSTaggedValue> &name) const;
     void SetSFunctionLength(const JSHandle<JSFunction> &ctor, int length) const;
+    void SetSFunctionPrototype(const JSHandle<JSFunction> &ctor, const JSTaggedValue &prototype) const;
 
     JSHandle<JSFunction> NewSFunction(const JSHandle<GlobalEnv> &env, const JSHandle<JSTaggedValue> &key,
                                       EcmaEntrypoint func, int length,
@@ -362,18 +374,18 @@ private:
                                       kungfu::BuiltinsStubCSigns::INVALID) const;
 
     void SetSFunction(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &obj, std::string_view key,
-                      EcmaEntrypoint func, int length, kungfu::BuiltinsStubCSigns::ID builtinId =
+                      EcmaEntrypoint func, uint32_t index, int length, kungfu::BuiltinsStubCSigns::ID builtinId =
                       kungfu::BuiltinsStubCSigns::INVALID) const;
 
     void SetSFunction(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &obj,
-                      const JSHandle<JSTaggedValue> &key, EcmaEntrypoint func, int length,
+                      const JSHandle<JSTaggedValue> &key, EcmaEntrypoint func, uint32_t index, int length,
                       kungfu::BuiltinsStubCSigns::ID builtinId = kungfu::BuiltinsStubCSigns::INVALID) const;
-    void SetSAccessor(const JSHandle<JSObject> &obj, const JSHandle<JSTaggedValue> &key,
+    void SetSAccessor(const JSHandle<JSObject> &obj, uint32_t index,
                       const JSHandle<JSTaggedValue> &getter, const JSHandle<JSTaggedValue> &setter) const;
 
     JSHandle<JSTaggedValue> CreateSGetterSetter(const JSHandle<GlobalEnv> &env, EcmaEntrypoint func,
                                                 std::string_view name, int length) const;
-    void SharedStrictModeForbiddenAccessCallerArguments(const JSHandle<GlobalEnv> &env,
+    void SharedStrictModeForbiddenAccessCallerArguments(const JSHandle<GlobalEnv> &env, uint32_t &index,
                                                         const JSHandle<JSObject> &prototype) const;
     JSHandle<JSTaggedValue> CreateArrayUnscopables(JSThread *thread) const;
     friend class builtins::BuiltinsLazyCallback;

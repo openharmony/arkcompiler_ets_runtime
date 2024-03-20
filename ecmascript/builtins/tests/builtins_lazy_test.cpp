@@ -51,6 +51,7 @@ public:
         instance->SetEnableForceGC(true);
         ASSERT_TRUE(instance != nullptr) << "Cannot create EcmaVM";
         thread = instance->GetJSThread();
+        thread->ManagedCodeBegin();
         scope = new EcmaHandleScope(thread);
     }
 

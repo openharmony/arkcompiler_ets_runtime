@@ -674,14 +674,12 @@ void AArch64GenProEpilog::GeneratePushRegs()
         if (firstHalf == kRinvalid) {
             /* remember it */
             firstHalf = reg;
-            /* for int callee-saved register: x19->19,x20->20 ...
-               for float callee-saved register: d8->72, d9->73 ..., d15->79
-            */
-            uint16 regNO = (regType == kRegTyInt) ? static_cast<uint16>(reg - 1) : static_cast<uint16>(reg - V8 + 72);
-            calleeRegAndOffsetVec.push_back(std::pair<uint16, int32>(regNO, offset));
         } else {
-            uint16 regNO = (regType == kRegTyInt) ? static_cast<uint16>(reg - 1) : static_cast<uint16>(reg - V8 + 72);
-            calleeRegAndOffsetVec.push_back(std::pair<uint16, int32>(regNO, offset + k8ByteSize));
+            uint16 reg0NO = (regType == kRegTyInt) ?
+                static_cast<uint16>(firstHalf - 1) : static_cast<uint16>(firstHalf  - V8 + 72);
+            uint16 reg1NO = (regType == kRegTyInt) ? static_cast<uint16>(reg - 1) : static_cast<uint16>(reg - V8 + 72);
+            calleeRegAndOffsetVec.push_back(std::pair<uint16, int32>(reg0NO, offset));
+            calleeRegAndOffsetVec.push_back(std::pair<uint16, int32>(reg1NO, offset + k8ByteSize));
             AppendInstructionPushPair(cgFunc, firstHalf, reg, regType, offset);
             AArch64isa::GetNextOffsetCalleeSaved(offset);
             firstHalf = kRinvalid;
@@ -689,11 +687,15 @@ void AArch64GenProEpilog::GeneratePushRegs()
     }
 
     if (intRegFirstHalf != kRinvalid) {
+        uint16 regNO = static_cast<uint16>(intRegFirstHalf - 1);
+        calleeRegAndOffsetVec.push_back(std::pair<uint16, int32>(regNO, offset));
         AppendInstructionPushSingle(cgFunc, intRegFirstHalf, kRegTyInt, offset);
         AArch64isa::GetNextOffsetCalleeSaved(offset);
     }
 
     if (fpRegFirstHalf != kRinvalid) {
+        uint16 regNO = static_cast<uint16>(fpRegFirstHalf - V8 + 72);
+        calleeRegAndOffsetVec.push_back(std::pair<uint16, int32>(regNO, offset));
         AppendInstructionPushSingle(cgFunc, fpRegFirstHalf, kRegTyFloat, offset);
         AArch64isa::GetNextOffsetCalleeSaved(offset);
     }

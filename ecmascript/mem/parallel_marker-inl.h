@@ -71,8 +71,8 @@ inline void NonMovableMarker::MarkValue(uint32_t threadId, ObjectSlot &slot, Reg
 inline void NonMovableMarker::MarkObject(uint32_t threadId, TaggedObject *object)
 {
     Region *objectRegion = Region::ObjectAddressToRange(object);
-
-    if (!heap_->IsConcurrentFullMark() && !objectRegion->InYoungSpace()) {
+    if ((!heap_->IsConcurrentFullMark() && !objectRegion->InYoungSpace()) ||
+        objectRegion->InSharedHeap()) {
         return;
     }
 
@@ -253,10 +253,43 @@ inline void MovableMarker::UpdateForwardAddressIfSuccess(uint32_t threadId, Tagg
 inline bool MovableMarker::UpdateForwardAddressIfFailed(TaggedObject *object, uintptr_t toAddress, size_t size,
     ObjectSlot slot)
 {
-    FreeObject::FillFreeObject(heap_->GetEcmaVM(), toAddress, size);
+    FreeObject::FillFreeObject(heap_, toAddress, size);
     TaggedObject *dst = MarkWord(object).ToForwardingAddress();
     slot.Update(dst);
     return Region::ObjectAddressToRange(dst)->InYoungSpace();
+}
+
+void MovableMarker::UpdateLocalToShareRSet(TaggedObject *object, JSHClass *cls)
+{
+    Region *region = Region::ObjectAddressToRange(object);
+    ASSERT(!region->InSharedHeap());
+    auto callbackWithCSet = [this, region](TaggedObject *root, ObjectSlot start, ObjectSlot end, VisitObjectArea area) {
+        if (area == VisitObjectArea::IN_OBJECT) {
+            if (VisitBodyInObj(root, start, end,
+                               [&](ObjectSlot slot, [[maybe_unused]]TaggedObject *root) {
+                                   SetLocalToShareRSet(slot, region);
+                               })) {
+                return;
+            };
+        }
+        for (ObjectSlot slot = start; slot < end; slot++) {
+            SetLocalToShareRSet(slot, region);
+        }
+    };
+    ObjectXRay::VisitObjectBody<VisitType::OLD_GC_VISIT>(object, cls, callbackWithCSet);
+}
+
+void MovableMarker::SetLocalToShareRSet(ObjectSlot slot, Region *region)
+{
+    ASSERT(!region->InSharedHeap());
+    JSTaggedType value = slot.GetTaggedType();
+    if (!JSTaggedValue(value).IsHeapObject()) {
+        return;
+    }
+    Region *valueRegion = Region::ObjectAddressToRange(value);
+    if (valueRegion->InSharedSweepableSpace()) {
+        region->AtomicInsertLocalToShareRSet(slot.SlotAddress());
+    }
 }
 
 inline void SemiGCMarker::MarkValue(uint32_t threadId, TaggedObject *root, ObjectSlot slot)
@@ -345,7 +378,7 @@ inline SlotStatus CompressGCMarker::MarkObject(uint32_t threadId, TaggedObject *
 {
     Region *objectRegion = Region::ObjectAddressToRange(object);
     if (!NeedEvacuate(objectRegion)) {
-        if (objectRegion->AtomicMark(object)) {
+        if (!objectRegion->InSharedHeap() && objectRegion->AtomicMark(object)) {
             workManager_->Push(threadId, object);
         }
         return SlotStatus::CLEAR_SLOT;
@@ -395,6 +428,10 @@ inline SlotStatus CompressGCMarker::EvacuateObject(uint32_t threadId, TaggedObje
                                                MarkWord::FromForwardingAddress(forwardAddress));
     if (result == oldValue) {
         UpdateForwardAddressIfSuccess(threadId, object, klass, forwardAddress, size, markWord, slot);
+        Region *region = Region::ObjectAddressToRange(object);
+        if (region->HasLocalToShareRememberedSet()) {
+            UpdateLocalToShareRSet(reinterpret_cast<TaggedObject *>(forwardAddress), klass);
+        }
         if (isAppSpawn_ && klass->IsString()) {
             // calculate and set hashcode for read-only ecmastring in advance
             EcmaStringAccessor(reinterpret_cast<TaggedObject *>(forwardAddress)).GetHashcode();
@@ -414,7 +451,8 @@ inline void CompressGCMarker::RecordWeakReference(uint32_t threadId, JSTaggedTyp
 inline bool CompressGCMarker::NeedEvacuate(Region *region)
 {
     if (isAppSpawn_) {
-        return !region->InHugeObjectSpace()  && !region->InReadOnlySpace() && !region->InNonMovableSpace();
+        return !region->InHugeObjectSpace()  && !region->InReadOnlySpace() && !region->InNonMovableSpace() &&
+               !region->InSharedHeap();
     }
     return region->InYoungOrOldSpace();
 }

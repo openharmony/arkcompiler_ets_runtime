@@ -47,9 +47,12 @@ public:
                                                                    bool needUpdate = false);
     static Expected<JSTaggedValue, bool> CommonExecuteBuffer(JSThread *thread, const CString &filename,
                                                              const CString &entry, const JSPandaFile *jsPandaFile);
+    static Expected<JSTaggedValue, bool> LazyExecuteModule(
+        JSThread *thread, const CString &recordName, const CString &filename, bool isMergedAbc);
+
     static Expected<JSTaggedValue, bool> ExecuteAbcFileWithFlag(JSThread *thread, const CString &bundleName,
-                                                                  const CString &moduleName, const CString &entry,
-                                                                  bool flag);
+                                                                const CString &moduleName, const CString &entry,
+                                                                bool isSingletonPattern);
 };
 }  // namespace panda::ecmascript
 #endif // ECMASCRIPT_JSPANDAFILE_JS_PANDAFILE_EXECUTOR_H

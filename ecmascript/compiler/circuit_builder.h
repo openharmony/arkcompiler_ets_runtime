@@ -227,6 +227,21 @@ public:
     void ClearConstantCache(GateRef gate);
     GateRef NanValue();
     GateRef RelocatableData(uint64_t val);
+
+#define BRANCH_CIR(condition, trueLabel, falseLabel)                                \
+    {                                                                               \
+        std::ostringstream os;                                                      \
+        os << __func__ << ": " << #trueLabel << "- " << #falseLabel;                \
+        builder_.Branch(condition, trueLabel, falseLabel, 1, 1, os.str().c_str());  \
+    }
+
+#define BRANCH_CIR2(condition, trueLabel, falseLabel)                      \
+    {                                                                      \
+        std::ostringstream os;                                             \
+        os << __func__ << ": " << #trueLabel << "- " << #falseLabel;       \
+        Branch(condition, trueLabel, falseLabel, 1, 1, os.str().c_str());  \
+    }
+
     GateRef Branch(GateRef state, GateRef condition, uint32_t leftWeight = 1, uint32_t rightWeight = 1,
                    const char* comment = nullptr);  // 1: default branch weight
     GateRef SwitchBranch(GateRef state, GateRef index, int caseCounts);
@@ -243,8 +258,12 @@ public:
     GateRef LoadBuiltinObject(size_t offset);
 
     // Get
+    GateRef GetUnsharedConstpool(GateRef constpool);
     GateRef GetConstPoolFromFunction(GateRef jsFunc);
-    GateRef GetCodeAddr(GateRef method);
+    GateRef GetUnsharedConstpoolFromGlue(GateRef glue, GateRef constpool);
+    GateRef GetUnsharedConstpoolIndex(GateRef constpool);
+    GateRef GetUnsharedConstpool(GateRef arrayAddr, GateRef index);
+    GateRef GetCodeAddr(GateRef jsFunc);
     GateRef GetObjectFromConstPool(GateRef glue, GateRef hirGate, GateRef constPool, GateRef module, GateRef index,
                                    ConstPoolType type);
     GateRef GetFunctionLexicalEnv(GateRef function);
@@ -288,6 +307,7 @@ public:
     void SetLengthToFunction(GateRef glue, GateRef function, GateRef value);
     void SetLexicalEnvToFunction(GateRef glue, GateRef function, GateRef value);
     void SetHomeObjectToFunction(GateRef glue, GateRef function, GateRef value);
+    void SetModuleToFunction(GateRef glue, GateRef function, GateRef value);
 
     inline GateRef LogicAnd(GateRef x, GateRef y);
     inline GateRef LogicOr(GateRef x, GateRef y);
@@ -312,7 +332,7 @@ public:
     inline void Bind(Label *label, bool justSlowPath);
     void Jump(Label *label);
     void Branch(GateRef condition, Label *trueLabel, Label *falseLabel,
-                uint32_t trueWeight = 1, uint32_t falseWeight = 1);   // 1: default branch weight
+                uint32_t trueWeight = 1, uint32_t falseWeight = 1, const char* comment = nullptr);
     void Switch(GateRef index, Label *defaultLabel, int64_t *keysValue, Label *keysLabel, int numberOfKeys);
     void LoopBegin(Label *loopHead);
     void LoopEnd(Label *loopHead);
@@ -467,13 +487,15 @@ public:
                             OnHeapMode onHeap = OnHeapMode::NONE);
     GateRef LoadTypedArrayLength(GateRef gate, GateType type, OnHeapMode onHeap = OnHeapMode::NONE);
     GateRef RangeGuard(GateRef gate, uint32_t left, uint32_t right);
-    GateRef BuiltinPrototypeHClassCheck(GateRef gate, BuiltinTypeId type);
+    GateRef BuiltinPrototypeHClassCheck(GateRef gate, BuiltinTypeId type, ElementsKind kind = ElementsKind::NONE);
     GateRef OrdinaryHasInstanceCheck(GateRef target, GateRef jsFunc, std::vector<GateRef> &expectedHCIndexes);
     GateRef IndexCheck(GateRef gate, GateRef index);
     GateRef ObjectTypeCheck(GateType type, bool isHeapObject, GateRef gate, GateRef hclassIndex,
                             GateRef frameState = Gate::InvalidGateRef);
     GateRef TryPrimitiveTypeCheck(GateType type, GateRef gate);
-    GateRef CallTargetCheck(GateRef gate, GateRef function, GateRef id, GateRef param, const char* comment = nullptr);
+    GateRef CallTargetCheck(GateRef gate, GateRef function, GateRef id, const char* comment = nullptr);
+    GateRef CallTargetCheck(GateRef gate, GateRef function, GateRef id, std::vector<GateRef> params,
+                            const char* comment = nullptr);
     GateRef JSCallTargetFromDefineFuncCheck(GateType type, GateRef func, GateRef gate);
     template<TypedCallTargetCheckOp Op>
     GateRef JSCallTargetTypeCheck(GateType type, GateRef func, GateRef methodIndex, GateRef gate);
@@ -576,7 +598,7 @@ public:
     GateRef LoadStringLength(GateRef string);
     GateRef LoadConstOffset(VariableType type, GateRef receiver, size_t offset,
         MemoryOrder order = MemoryOrder::Default());
-    GateRef LoadHClassFromConstpool(GateRef constpool, size_t index);
+    GateRef LoadHClassFromUnsharedConstpool(GateRef constpool, size_t index);
     GateRef TypedCall(GateRef hirGate, std::vector<GateRef> args, bool isNoGC);
     GateRef TypedFastCall(GateRef hirGate, std::vector<GateRef> args, bool isNoGC);
     inline void SetValueToTaggedArray(VariableType valType, GateRef glue, GateRef array, GateRef index, GateRef val);
@@ -642,6 +664,7 @@ public:
     inline GateRef TaggedIsBoolean(GateRef x);
     inline GateRef TaggedIsBigInt(GateRef obj);
     inline GateRef TaggedIsString(GateRef obj);
+    inline GateRef TaggedIsStringIterator(GateRef obj);
     inline GateRef TaggedIsShared(GateRef obj);
     inline GateRef TaggedIsStringOrSymbol(GateRef obj);
     inline GateRef TaggedIsSymbol(GateRef obj);
@@ -767,6 +790,7 @@ public:
     static MachineType GetMachineTypeFromVariableType(VariableType type);
 
     // Unary / BinaryOp
+    GateRef BuildMathBuiltinOp(const GateMetaData* op, std::vector<GateRef> args);
     template<OpCode Op, MachineType Type>
     inline GateRef BinaryOp(GateRef x, GateRef y);
     template<OpCode Op, MachineType Type>
@@ -800,6 +824,8 @@ public:
 #undef CMP_BINARY_OP_WITHOUT_BITWIDTH
 
 private:
+
+    std::vector<GateRef> ConcatParams(const std::vector<std::vector<GateRef>>& params);
     static constexpr uint32_t GATE_TWO_VALUESIN = 2;
 
     inline void SetDepend(GateRef depend);

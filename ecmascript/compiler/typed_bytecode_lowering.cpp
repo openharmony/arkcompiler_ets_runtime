@@ -22,6 +22,7 @@
 #include "ecmascript/compiler/builtins_lowering.h"
 #include "ecmascript/compiler/bytecodes.h"
 #include "ecmascript/compiler/circuit.h"
+#include "ecmascript/compiler/type_info_accessors.h"
 #include "ecmascript/dfx/vmstat/opt_code_profiler.h"
 #include "ecmascript/enum_conversion.h"
 #include "ecmascript/js_tagged_value.h"
@@ -561,7 +562,7 @@ void TypedBytecodeLowering::LowerTypedLdObjByName(GateRef gate)
     for (size_t i = 0; i < typeCount; ++i) {
         auto expected = builder_.GetHClassGateFromIndex(gate, tacc.GetExpectedHClassIndex(i));
         if (i != typeCount - 1) {
-            builder_.Branch(builder_.Equal(receiverHC, expected), &loaders[i], &fails[i]);
+            BRANCH_CIR(builder_.Equal(receiverHC, expected), &loaders[i], &fails[i]);
             builder_.Bind(&loaders[i]);
         } else {
             // Deopt if fails at last hclass compare
@@ -589,7 +590,7 @@ void TypedBytecodeLowering::LowerTypedLdObjByName(GateRef gate)
             builder_.LoopBegin(&loopHead);
             builder_.DeoptCheck(builder_.TaggedIsNotNull(*current), frameState, DeoptType::INCONSISTENTHCLASS2);
             auto curHC = builder_.LoadConstOffset(VariableType::JS_POINTER(), *current, TaggedObject::HCLASS_OFFSET);
-            builder_.Branch(builder_.Equal(curHC, holderHC), &loadHolder, &lookUpProto);
+            BRANCH_CIR(builder_.Equal(curHC, holderHC), &loadHolder, &lookUpProto);
 
             builder_.Bind(&lookUpProto);
             current = builder_.LoadConstOffset(VariableType::JS_ANY(), curHC, JSHClass::PROTOTYPE_OFFSET);
@@ -675,7 +676,7 @@ void TypedBytecodeLowering::LowerTypedStObjByName(GateRef gate)
     for (size_t i = 0; i < typeCount; ++i) {
         auto expected = builder_.GetHClassGateFromIndex(gate, tacc.GetExpectedHClassIndex(i));
         if (i != typeCount - 1) {
-            builder_.Branch(builder_.Equal(receiverHC, expected),
+            BRANCH_CIR(builder_.Equal(receiverHC, expected),
                 &loaders[i], &fails[i]);
             builder_.Bind(&loaders[i]);
         } else {
@@ -697,7 +698,7 @@ void TypedBytecodeLowering::LowerTypedStObjByName(GateRef gate)
                 builder_.DeoptCheck(builder_.TaggedIsNotNull(*current), frameState, DeoptType::INCONSISTENTHCLASS4);
                 auto curHC = builder_.LoadConstOffset(VariableType::JS_POINTER(), *current,
                                                       TaggedObject::HCLASS_OFFSET);
-                builder_.Branch(builder_.Equal(curHC, holderHC), &loadHolder, &lookUpProto);
+                BRANCH_CIR(builder_.Equal(curHC, holderHC), &loadHolder, &lookUpProto);
 
                 builder_.Bind(&lookUpProto);
                 current = builder_.LoadConstOffset(VariableType::JS_ANY(), curHC, JSHClass::PROTOTYPE_OFFSET);
@@ -714,7 +715,7 @@ void TypedBytecodeLowering::LowerTypedStObjByName(GateRef gate)
                 auto newHolderHC = builder_.GetHClassGateFromIndex(gate, tacc.GetAccessInfo(i).HClassIndex());
                 builder_.StoreConstOffset(VariableType::JS_ANY(), newHolderHC, JSHClass::PROTOTYPE_OFFSET, prototype);
                 builder_.Branch(builder_.IsProtoTypeHClass(receiverHC), &isProto, &notProto,
-                    BranchWeight::ONE_WEIGHT, BranchWeight::DEOPT_WEIGHT);
+                    BranchWeight::ONE_WEIGHT, BranchWeight::DEOPT_WEIGHT, "isProtoTypeHClass");
                 builder_.Bind(&isProto);
                 auto propKey = builder_.LoadObjectFromConstPool(argAcc_.GetFrameArgsIn(gate, FrameArgIdx::CONST_POOL),
                                                                 tacc.GetKey());
@@ -733,7 +734,7 @@ void TypedBytecodeLowering::LowerTypedStObjByName(GateRef gate)
                     auto index = builder_.Int32(tacc.GetAccessInfo(i).Plr().GetOffset());
                     Label needExtend(&builder_);
                     Label notExtend(&builder_);
-                    builder_.Branch(builder_.Int32UnsignedLessThan(index, capacity), &notExtend, &needExtend);
+                    BRANCH_CIR(builder_.Int32UnsignedLessThan(index, capacity), &notExtend, &needExtend);
                     builder_.Bind(&notExtend);
                     {
                         BuildNamedPropertyAccess(gate, tacc.GetReceiver(), tacc.GetReceiver(),
@@ -813,11 +814,12 @@ bool TypedBytecodeLowering::TryLowerTypedLdObjByNameForBuiltin(GateRef gate)
     LoadBulitinObjTypeInfoAccessor tacc(thread_, circuit_, gate, chunk_);
     // Just supported mono.
     if (tacc.IsMono()) {
-        if (tacc.IsBuiltinsString()) {
-            return TryLowerTypedLdObjByNameForBuiltin(tacc, BuiltinTypeId::STRING);
-        }
-        if (tacc.IsBuiltinsArray()) {
-            return TryLowerTypedLdObjByNameForBuiltin(tacc, BuiltinTypeId::ARRAY);
+        auto builtinsId = tacc.GetBuiltinsTypeId();
+        if (builtinsId.has_value()) {
+            if (TryLowerTypedLdObjByNameForBuiltin(tacc, builtinsId.value())) {
+                return true;
+            }
+            return TryLowerTypedLdObjByNameForBuiltinMethod(tacc, builtinsId.value());
         }
     }
 
@@ -941,10 +943,11 @@ void TypedBytecodeLowering::LowerTypedLdStringLength(const LoadBulitinObjTypeInf
     acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
 }
 
-bool TypedBytecodeLowering::TryLowerTypedLdObjByNameForBuiltinMethod(
-    GateRef gate, JSTaggedValue key, BuiltinTypeId type)
+bool TypedBytecodeLowering::TryLowerTypedLdObjByNameForBuiltinMethod(const LoadBulitinObjTypeInfoAccessor &tacc,
+                                                                     BuiltinTypeId type)
 {
-    AddProfiling(gate);
+    GateRef gate = tacc.GetGate();
+    JSTaggedValue key = tacc.GetKeyTaggedValue();
     std::optional<GlobalEnvField> protoField = ToGlobelEnvPrototypeField(type);
     if (!protoField.has_value()) {
         return false;
@@ -957,15 +960,19 @@ bool TypedBytecodeLowering::TryLowerTypedLdObjByNameForBuiltinMethod(
     if (!plr.IsFound() || plr.IsAccessor()) {
         return false;
     }
+    AddProfiling(gate);
     GateRef receiver = acc_.GetValueIn(gate, 2);
     if (!Uncheck()) {
         // For Array type only: array stability shall be ensured.
+        ElementsKind kind = ElementsKind::NONE;
         if (type == BuiltinTypeId::ARRAY) {
             builder_.StableArrayCheck(receiver, ElementsKind::GENERIC, ArrayMetaDataAccessor::CALL_BUILTIN_METHOD);
+            kind = tacc.TryGetArrayElementsKind();
         }
+
         // This check is not required by String, since string is a primitive type.
         if (type != BuiltinTypeId::STRING) {
-            builder_.BuiltinPrototypeHClassCheck(receiver, type);
+            builder_.BuiltinPrototypeHClassCheck(receiver, type, kind);
         }
     }
     // Successfully goes to typed path
@@ -1365,8 +1372,11 @@ void TypedBytecodeLowering::LowerTypedSuperCall(GateRef gate)
 void TypedBytecodeLowering::SpeculateCallBuiltin(GateRef gate, GateRef func, const std::vector<GateRef> &args,
                                                  BuiltinsStubCSigns::ID id, bool isThrow)
 {
+    if (IS_TYPED_INLINE_BUILTINS_ID(id)) {
+        return;
+    }
     if (!Uncheck()) {
-        builder_.CallTargetCheck(gate, func, builder_.IntPtr(static_cast<int64_t>(id)), args[0]);
+        builder_.CallTargetCheck(gate, func, builder_.IntPtr(static_cast<int64_t>(id)), {args[0]});
     }
 
     GateRef result = builder_.TypedCallBuiltin(gate, args, id);

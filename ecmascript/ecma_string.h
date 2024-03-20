@@ -110,15 +110,15 @@ private:
 
     static EcmaString *CreateEmptyString(const EcmaVM *vm);
     static EcmaString *CreateFromUtf8(const EcmaVM *vm, const uint8_t *utf8Data, uint32_t utf8Len,
-        bool canBeCompress, MemSpaceType type = MemSpaceType::SEMI_SPACE, bool isConstantString = false,
+        bool canBeCompress, MemSpaceType type = MemSpaceType::SHARED_OLD_SPACE, bool isConstantString = false,
         uint32_t idOffset = 0);
     static EcmaString *CreateFromUtf8CompressedSubString(const EcmaVM *vm, const JSHandle<EcmaString> &string,
         uint32_t offset, uint32_t utf8Len, MemSpaceType type = MemSpaceType::SEMI_SPACE);
     static EcmaString *CreateUtf16StringFromUtf8(const EcmaVM *vm, const uint8_t *utf8Data, uint32_t utf8Len,
-        MemSpaceType type = MemSpaceType::SEMI_SPACE);
+        MemSpaceType type = MemSpaceType::SHARED_OLD_SPACE);
     static EcmaString *CreateFromUtf16(const EcmaVM *vm, const uint16_t *utf16Data, uint32_t utf16Len,
-        bool canBeCompress, MemSpaceType type = MemSpaceType::SEMI_SPACE);
-    static SlicedString *CreateSlicedString(const EcmaVM *vm, MemSpaceType type = MemSpaceType::SEMI_SPACE);
+        bool canBeCompress, MemSpaceType type = MemSpaceType::SHARED_OLD_SPACE);
+    static SlicedString *CreateSlicedString(const EcmaVM *vm, MemSpaceType type = MemSpaceType::SHARED_OLD_SPACE);
     static EcmaString *CreateLineString(const EcmaVM *vm, size_t length, bool compressed);
     static EcmaString *CreateLineStringNoGC(const EcmaVM *vm, size_t length, bool compressed);
     static EcmaString *CreateLineStringWithSpaceType(const EcmaVM *vm,
@@ -126,9 +126,9 @@ private:
     static EcmaString *CreateTreeString(const EcmaVM *vm,
         const JSHandle<EcmaString> &left, const JSHandle<EcmaString> &right, uint32_t length, bool compressed);
     static EcmaString *CreateConstantString(const EcmaVM *vm, const uint8_t *utf8Data,
-        size_t length, bool compressed, MemSpaceType type = MemSpaceType::SEMI_SPACE, uint32_t idOffset = 0);
+        size_t length, bool compressed, MemSpaceType type = MemSpaceType::SHARED_OLD_SPACE, uint32_t idOffset = 0);
     static EcmaString *Concat(const EcmaVM *vm, const JSHandle<EcmaString> &left,
-        const JSHandle<EcmaString> &right, MemSpaceType type = MemSpaceType::SEMI_SPACE);
+        const JSHandle<EcmaString> &right, MemSpaceType type = MemSpaceType::SHARED_OLD_SPACE);
     static EcmaString *CopyStringToOldSpace(const EcmaVM *vm, const JSHandle<EcmaString> &original,
         uint32_t length, bool compressed);
     static EcmaString *FastSubString(const EcmaVM *vm,
@@ -719,10 +719,10 @@ private:
     static EcmaString *SlowFlatten(const EcmaVM *vm, const JSHandle<EcmaString> &string, MemSpaceType type);
 
     static EcmaString *Flatten(const EcmaVM *vm, const JSHandle<EcmaString> &string,
-                               MemSpaceType type = MemSpaceType::SEMI_SPACE);
+                               MemSpaceType type = MemSpaceType::SHARED_OLD_SPACE);
 
     static FlatStringInfo FlattenAllString(const EcmaVM *vm, const JSHandle<EcmaString> &string,
-                                            MemSpaceType type = MemSpaceType::SEMI_SPACE);
+                                            MemSpaceType type = MemSpaceType::SHARED_OLD_SPACE);
 
     static EcmaString *FlattenNoGC(const EcmaVM *vm, EcmaString *string);
 
@@ -1063,7 +1063,7 @@ public:
     }
 
     static EcmaString *CreateFromUtf8(const EcmaVM *vm, const uint8_t *utf8Data, uint32_t utf8Len, bool canBeCompress,
-                                      MemSpaceType type = MemSpaceType::SEMI_SPACE, bool isConstantString = false,
+                                      MemSpaceType type = MemSpaceType::SHARED_OLD_SPACE, bool isConstantString = false,
                                       uint32_t idOffset = 0)
     {
         return EcmaString::CreateFromUtf8(vm, utf8Data, utf8Len, canBeCompress, type, isConstantString, idOffset);
@@ -1071,31 +1071,31 @@ public:
 
     static EcmaString *CreateFromUtf8CompressedSubString(const EcmaVM *vm, const JSHandle<EcmaString> &string,
                                                          uint32_t offset, uint32_t utf8Len,
-                                                         MemSpaceType type = MemSpaceType::SEMI_SPACE)
+                                                         MemSpaceType type = MemSpaceType::SHARED_OLD_SPACE)
     {
         return EcmaString::CreateFromUtf8CompressedSubString(vm, string, offset, utf8Len, type);
     }
 
     static EcmaString *CreateConstantString(const EcmaVM *vm, const uint8_t *utf8Data, size_t length,
-        bool compressed, MemSpaceType type = MemSpaceType::SEMI_SPACE, uint32_t idOffset = 0)
+        bool compressed, MemSpaceType type = MemSpaceType::SHARED_OLD_SPACE, uint32_t idOffset = 0)
     {
         return EcmaString::CreateConstantString(vm, utf8Data, length, compressed, type, idOffset);
     }
 
     static EcmaString *CreateUtf16StringFromUtf8(const EcmaVM *vm, const uint8_t *utf8Data, uint32_t utf8Len,
-        MemSpaceType type = MemSpaceType::SEMI_SPACE)
+        MemSpaceType type = MemSpaceType::SHARED_OLD_SPACE)
     {
         return EcmaString::CreateUtf16StringFromUtf8(vm, utf8Data, utf8Len, type);
     }
 
     static EcmaString *CreateFromUtf16(const EcmaVM *vm, const uint16_t *utf16Data, uint32_t utf16Len,
-                                       bool canBeCompress, MemSpaceType type = MemSpaceType::SEMI_SPACE)
+                                       bool canBeCompress, MemSpaceType type = MemSpaceType::SHARED_OLD_SPACE)
     {
         return EcmaString::CreateFromUtf16(vm, utf16Data, utf16Len, canBeCompress, type);
     }
 
     static EcmaString *Concat(const EcmaVM *vm, const JSHandle<EcmaString> &str1Handle,
-        const JSHandle<EcmaString> &str2Handle, MemSpaceType type = MemSpaceType::SEMI_SPACE)
+        const JSHandle<EcmaString> &str2Handle, MemSpaceType type = MemSpaceType::SHARED_OLD_SPACE)
     {
         return EcmaString::Concat(vm, str1Handle, str2Handle, type);
     }
@@ -1481,19 +1481,19 @@ public:
     }
 
     static EcmaString *Flatten(const EcmaVM *vm, const JSHandle<EcmaString> &string,
-        MemSpaceType type = MemSpaceType::SEMI_SPACE)
+        MemSpaceType type = MemSpaceType::SHARED_OLD_SPACE)
     {
         return EcmaString::Flatten(vm, string, type);
     }
 
     static FlatStringInfo FlattenAllString(const EcmaVM *vm, const JSHandle<EcmaString> &string,
-        MemSpaceType type = MemSpaceType::SEMI_SPACE)
+        MemSpaceType type = MemSpaceType::SHARED_OLD_SPACE)
     {
         return EcmaString::FlattenAllString(vm, string, type);
     }
 
     static EcmaString *SlowFlatten(const EcmaVM *vm, const JSHandle<EcmaString> &string,
-        MemSpaceType type = MemSpaceType::SEMI_SPACE)
+        MemSpaceType type = MemSpaceType::SHARED_OLD_SPACE)
     {
         return EcmaString::SlowFlatten(vm, string, type);
     }

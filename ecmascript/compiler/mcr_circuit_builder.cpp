@@ -243,13 +243,13 @@ GateRef CircuitBuilder::RangeGuard(GateRef gate, uint32_t left, uint32_t right)
     return ret;
 }
 
-GateRef CircuitBuilder::BuiltinPrototypeHClassCheck(GateRef gate, BuiltinTypeId type)
+GateRef CircuitBuilder::BuiltinPrototypeHClassCheck(GateRef gate, BuiltinTypeId type, ElementsKind kind)
 {
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
     auto frameState = acc_.FindNearestFrameState(currentDepend);
-    BuiltinPrototypeHClassAccessor accessor(type);
+    BuiltinPrototypeHClassAccessor accessor(type, kind);
     GateRef ret = GetCircuit()->NewGate(circuit_->BuiltinPrototypeHClassCheck(accessor.ToValue()),
         MachineType::I1, {currentControl, currentDepend, gate, frameState}, GateType::NJSValue());
     currentLabel->SetControl(ret);
@@ -541,7 +541,22 @@ GateRef CircuitBuilder::TryPrimitiveTypeCheck(GateType type, GateRef gate)
     return ret;
 }
 
-GateRef CircuitBuilder::CallTargetCheck(GateRef gate, GateRef function, GateRef id, GateRef param, const char* comment)
+std::vector<GateRef> CircuitBuilder::ConcatParams(const std::vector<std::vector<GateRef>>& params)
+{
+    std::vector<GateRef> unionParams;
+    for (auto param: params) {
+        unionParams.insert(unionParams.end(), param.begin(), param.end());
+    }
+    return unionParams;
+}
+
+GateRef CircuitBuilder::CallTargetCheck(GateRef gate, GateRef function, GateRef id, const char* comment)
+{
+    return CallTargetCheck(gate, function, id, {}, comment);
+}
+
+GateRef CircuitBuilder::CallTargetCheck(GateRef gate, GateRef function, GateRef id, std::vector<GateRef> params,
+                                        const char* comment)
 {
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
@@ -552,9 +567,10 @@ GateRef CircuitBuilder::CallTargetCheck(GateRef gate, GateRef function, GateRef 
     } else {
         frameState = acc_.FindNearestFrameState(currentDepend);
     }
-    GateRef ret = GetCircuit()->NewGate(circuit_->TypedCallCheck(),
+    auto params_vec = ConcatParams({{ currentControl, currentDepend, function, id }, params, {frameState}});
+    GateRef ret = GetCircuit()->NewGate(circuit_->TypedCallCheck(params.size() + 2),
                                         MachineType::I1,
-                                        { currentControl, currentDepend, function, id, param, frameState},
+                                        params_vec,
                                         GateType::NJSValue(),
                                         comment);
     currentLabel->SetControl(ret);
@@ -835,11 +851,11 @@ GateRef CircuitBuilder::LoadConstOffset(VariableType type, GateRef receiver, siz
     return ret;
 }
 
-GateRef CircuitBuilder::LoadHClassFromConstpool(GateRef constpool, size_t index)
+GateRef CircuitBuilder::LoadHClassFromUnsharedConstpool(GateRef constpool, size_t index)
 {
     auto currentLabel = env_->GetCurrentLabel();
     auto currentDepend = currentLabel->GetDepend();
-    auto ret = GetCircuit()->NewGate(circuit_->LoadHClassFromConstpool(index), MachineType::I64,
+    auto ret = GetCircuit()->NewGate(circuit_->LoadHClassFromUnsharedConstpool(index), MachineType::I64,
                                      { currentDepend, constpool }, GateType::AnyType());
     currentLabel->SetDepend(ret);
     return ret;
@@ -1122,7 +1138,7 @@ void CircuitBuilder::SetRawHashcode(GateRef glue, GateRef str, GateRef rawHashco
     Label exit(env_);
 
     DEFVALUE(hash, env_, VariableType::INT32(), Int32(0));
-    Branch(isInteger, &integer, &notInteger);
+    BRANCH_CIR2(isInteger, &integer, &notInteger);
     Bind(&integer);
     {
         hash = Int32Or(rawHashcode, Int32(EcmaString::IS_INTEGER_MASK));
@@ -1154,7 +1170,7 @@ GateRef CircuitBuilder::GetHashcodeFromString(GateRef glue, GateRef value)
     Label exit(env_);
     DEFVALUE(hashcode, env_, VariableType::INT32(), Int32(0));
     hashcode = Load(VariableType::INT32(), value, IntPtr(EcmaString::MIX_HASHCODE_OFFSET));
-    Branch(Int32Equal(*hashcode, Int32(0)), &noRawHashcode, &exit);
+    BRANCH_CIR2(Int32Equal(*hashcode, Int32(0)), &noRawHashcode, &exit);
     Bind(&noRawHashcode);
     {
         hashcode = GetInt32OfTInt(
@@ -1177,12 +1193,12 @@ GateRef CircuitBuilder::TryGetHashcodeFromString(GateRef string)
     Label exit(env_);
     DEFVALUE(result, env_, VariableType::INT64(), Int64(-1));
     GateRef hashCode = ZExtInt32ToInt64(Load(VariableType::INT32(), string, IntPtr(EcmaString::MIX_HASHCODE_OFFSET)));
-    Branch(Int64Equal(hashCode, Int64(0)), &noRawHashcode, &storeHash);
+    BRANCH_CIR2(Int64Equal(hashCode, Int64(0)), &noRawHashcode, &storeHash);
     Bind(&noRawHashcode);
     {
         GateRef length = GetLengthFromString(string);
         Label lengthNotZero(env_);
-        Branch(Int32Equal(length, Int32(0)), &storeHash, &exit);
+        BRANCH_CIR2(Int32Equal(length, Int32(0)), &storeHash, &exit);
     }
     Bind(&storeHash);
     result = hashCode;
@@ -1201,7 +1217,7 @@ GateRef CircuitBuilder::GetStringDataFromLineOrConstantString(GateRef str)
     Label isConstantString(env_);
     Label isLineString(env_);
     DEFVALUE(result, env_, VariableType::NATIVE_POINTER(), IntPtr(0));
-    Branch(IsConstantString(str), &isConstantString, &isLineString);
+    BRANCH_CIR2(IsConstantString(str), &isConstantString, &isLineString);
     Bind(&isConstantString);
     {
         GateRef address = ChangeTaggedPointerToInt64(PtrAdd(str, IntPtr(ConstantString::CONSTANT_DATA_OFFSET)));
@@ -1235,7 +1251,7 @@ void CircuitBuilder::CopyChars(GateRef glue, GateRef dst, GateRef source,
 
     LoopBegin(&loopHead);
     {
-        Branch(Int32GreaterThan(*len, Int32(0)), &next, &exit);
+        BRANCH_CIR2(Int32GreaterThan(*len, Int32(0)), &next, &exit);
         Bind(&next);
         {
             len = Int32Sub(*len, Int32(1));
@@ -1271,7 +1287,7 @@ void CircuitBuilder::CopyUtf8AsUtf16(GateRef glue, GateRef dst, GateRef src,
     Jump(&loopHead);
     LoopBegin(&loopHead);
     {
-        Branch(Int32GreaterThan(*len, Int32(0)), &next, &exit);
+        BRANCH_CIR2(Int32GreaterThan(*len, Int32(0)), &next, &exit);
         Bind(&next);
         {
             len = Int32Sub(*len, Int32(1));
@@ -1313,10 +1329,10 @@ GateRef CircuitBuilder::GetEnumCacheKind(GateRef glue, GateRef enumCache)
     Label isEmptyArray(env_);
     Label notEmptyArray(env_);
 
-    Branch(TaggedIsUndefinedOrNull(enumCache), &exit, &enumCacheIsArray);
+    BRANCH_CIR2(TaggedIsUndefinedOrNull(enumCache), &exit, &enumCacheIsArray);
     Bind(&enumCacheIsArray);
     GateRef emptyArray = GetEmptyArray(glue);
-    Branch(Int64Equal(enumCache, emptyArray), &isEmptyArray, &notEmptyArray);
+    BRANCH_CIR2(Int64Equal(enumCache, emptyArray), &isEmptyArray, &notEmptyArray);
     Bind(&isEmptyArray);
     {
         result = Int32(static_cast<int32_t>(EnumCacheKind::SIMPLE));
@@ -1350,10 +1366,10 @@ GateRef CircuitBuilder::IsEnumCacheValid(GateRef receiver, GateRef cachedHclass,
     Label protoNotChanged(env_);
 
     GateRef hclass = LoadHClass(receiver);
-    Branch(Int64Equal(hclass, cachedHclass), &isSameHclass, &exit);
+    BRANCH_CIR2(Int64Equal(hclass, cachedHclass), &isSameHclass, &exit);
     Bind(&isSameHclass);
-    Branch(Int32Equal(kind, Int32(static_cast<int32_t>(EnumCacheKind::SIMPLE))),
-           &isSimpleEnumCache, &notSimpleEnumCache);
+    BRANCH_CIR2(Int32Equal(kind, Int32(static_cast<int32_t>(EnumCacheKind::SIMPLE))),
+                &isSimpleEnumCache, &notSimpleEnumCache);
     Bind(&isSimpleEnumCache);
     {
         result = True();
@@ -1361,12 +1377,12 @@ GateRef CircuitBuilder::IsEnumCacheValid(GateRef receiver, GateRef cachedHclass,
     }
     Bind(&notSimpleEnumCache);
     GateRef prototype = GetPrototypeFromHClass(hclass);
-    Branch(IsEcmaObject(prototype), &prototypeIsEcmaObj, &exit);
+    BRANCH_CIR2(IsEcmaObject(prototype), &prototypeIsEcmaObj, &exit);
     Bind(&prototypeIsEcmaObj);
     GateRef protoChangeMarker = GetProtoChangeMarkerFromHClass(hclass);
-    Branch(TaggedIsProtoChangeMarker(protoChangeMarker), &isProtoChangeMarker, &exit);
+    BRANCH_CIR2(TaggedIsProtoChangeMarker(protoChangeMarker), &isProtoChangeMarker, &exit);
     Bind(&isProtoChangeMarker);
-    Branch(GetHasChanged(protoChangeMarker), &exit, &protoNotChanged);
+    BRANCH_CIR2(GetHasChanged(protoChangeMarker), &exit, &protoNotChanged);
     Bind(&protoNotChanged);
     {
         result = True();
@@ -1393,16 +1409,16 @@ GateRef CircuitBuilder::NeedCheckProperty(GateRef receiver)
     DEFVALUE(result, env_, VariableType::BOOL(), True());
     DEFVALUE(current, env_, VariableType::JS_ANY(), receiver);
 
-    Branch(TaggedIsHeapObject(*current), &loopHead, &afterLoop);
+    BRANCH_CIR2(TaggedIsHeapObject(*current), &loopHead, &afterLoop);
     LoopBegin(&loopHead);
     {
-        Branch(IsJSObject(*current), &isJSObject, &exit);
+        BRANCH_CIR2(IsJSObject(*current), &isJSObject, &exit);
         Bind(&isJSObject);
         GateRef hclass = LoadHClass(*current);
-        Branch(HasDeleteProperty(hclass), &exit, &hasNoDeleteProperty);
+        BRANCH_CIR2(HasDeleteProperty(hclass), &exit, &hasNoDeleteProperty);
         Bind(&hasNoDeleteProperty);
         current = GetPrototypeFromHClass(hclass);
-        Branch(TaggedIsHeapObject(*current), &loopEnd, &afterLoop);
+        BRANCH_CIR2(TaggedIsHeapObject(*current), &loopEnd, &afterLoop);
     }
     Bind(&loopEnd);
     LoopEnd(&loopHead);
@@ -1533,7 +1549,7 @@ GateRef CircuitBuilder::ToNumber(GateRef gate, GateRef value, GateRef glue)
     Label isNumber(env_);
     Label notNumber(env_);
     DEFVALUE(result, env_, VariableType::JS_ANY(), Hole());
-    Branch(TaggedIsNumber(value), &isNumber, &notNumber);
+    BRANCH_CIR2(TaggedIsNumber(value), &isNumber, &notNumber);
     Bind(&isNumber);
     {
         result = value;
@@ -1547,6 +1563,19 @@ GateRef CircuitBuilder::ToNumber(GateRef gate, GateRef value, GateRef glue)
     Bind(&exit);
     auto ret = *result;
     env_->SubCfgExit();
+    return ret;
+}
+
+GateRef CircuitBuilder::BuildMathBuiltinOp(const GateMetaData* op, std::vector<GateRef> args)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    GateRef ret =
+        GetCircuit()->NewGate(op, MachineType::I64,
+            ConcatParams({std::vector{ currentControl, currentDepend}, args}), GateType::AnyType());
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
     return ret;
 }
 

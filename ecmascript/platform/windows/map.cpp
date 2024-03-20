@@ -101,7 +101,8 @@ void PageProtect(void *mem, size_t size, int prot)
     [[maybe_unused]] DWORD oldProtect;
     if (!VirtualProtect(mem, size, prot, &oldProtect)) {
         int errCode = GetLastError();
-        LOG_ECMA(ERROR) << "PageProtect change to " << prot << " failed, error code is " << errCode;
+        LOG_ECMA(ERROR) << "PageProtect mem = " << mem << ", size = " << size <<
+            ", change to " << prot << " failed, error code is " << errCode;
     }
 }
 

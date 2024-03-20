@@ -19,6 +19,7 @@
 #include "ecmascript/builtins/builtins.h"
 #include "ecmascript/builtins/builtins_global.h"
 #include "ecmascript/ecma_string-inl.h"
+#include "ecmascript/ecma_string_table.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/free_object.h"
 #include "ecmascript/global_env.h"
@@ -72,180 +73,225 @@
 #include "ecmascript/method.h"
 #include "ecmascript/module/js_module_source_text.h"
 #include "ecmascript/object_factory.h"
+#include "ecmascript/runtime.h"
 #include "ecmascript/subtyping_operator.h"
 #include "ecmascript/tagged_node.h"
 #include "ecmascript/ts_types/ts_type.h"
 
 namespace panda::ecmascript {
-void GlobalEnvConstants::Init(JSThread *thread, JSHClass *hClass)
+void GlobalEnvConstants::Init(JSThread *thread)
 {
-    InitRootsClass(thread, hClass);
-    InitGlobalConstant(thread);
-    InitGlobalCaches();
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    auto *globalConst = Runtime::GetInstance()->GetGlobalEnvConstants();
+    if (globalConst != nullptr) {
+        // 1. Copy shareds.
+        for (size_t i = static_cast<size_t>(ConstantIndex::SHARED_BEGIN);
+            i <= static_cast<size_t>(ConstantIndex::SHARED_END); i++) {
+            constants_[i] = globalConst->constants_[i];
+        }
+    } else {
+        InitSharedRootsClasses(factory);
+        InitSharedStrings(factory);
+        InitSharedMiscellanious(thread, factory);
+    }
+    // 2. Init non-shareds.
+    InitMiscellanious(thread, factory);
+    InitRootsClasses(factory);
 }
 
-void GlobalEnvConstants::InitRootsClass(JSThread *thread, JSHClass *hClass)
+void GlobalEnvConstants::InitSharedStrings(ObjectFactory *factory)
+{
+    #define INIT_GLOBAL_ENV_CONSTANT_STRING(Name, Index, Token) \
+        SetConstant(ConstantIndex::Index, factory->NewFromASCIINonMovable(Token));
+        SHARED_GLOBAL_ENV_CONSTANT_STRING(INIT_GLOBAL_ENV_CONSTANT_STRING)
+    #undef INIT_GLOBAL_ENV_CONSTANT_STRING
+}
+
+void GlobalEnvConstants::InitSharedRootsClasses(ObjectFactory *factory)
 {
     // Global constants are readonly.
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHClass *hClass = *factory->InitSClassClass();
 
     SetConstant(ConstantIndex::HCLASS_CLASS_INDEX, JSTaggedValue(hClass));
     // To reverse the order, the hclass of string needs to load default supers
     SetConstant(ConstantIndex::ARRAY_CLASS_INDEX,
-                factory->NewEcmaReadOnlyHClass(hClass, 0, JSType::TAGGED_ARRAY));
-    SetConstant(ConstantIndex::DEFAULT_SUPERS_INDEX,
-                WeakVector::Create(thread, SubtypingOperator::DEFAULT_SUPERS_CAPACITY, MemSpaceType::NON_MOVABLE));
+        factory->NewSEcmaReadOnlyHClass(hClass, 0, JSType::TAGGED_ARRAY));
     SetConstant(ConstantIndex::FREE_OBJECT_WITH_NONE_FIELD_CLASS_INDEX,
-        factory->NewEcmaReadOnlyHClass(hClass, FreeObject::NEXT_OFFSET, JSType::FREE_OBJECT_WITH_NONE_FIELD));
+                factory->NewSEcmaReadOnlyHClass(hClass, FreeObject::NEXT_OFFSET, JSType::FREE_OBJECT_WITH_NONE_FIELD));
     SetConstant(ConstantIndex::FREE_OBJECT_WITH_ONE_FIELD_CLASS_INDEX,
-        factory->NewEcmaReadOnlyHClass(hClass, FreeObject::SIZE_OFFSET, JSType::FREE_OBJECT_WITH_ONE_FIELD));
+        factory->NewSEcmaReadOnlyHClass(hClass, FreeObject::SIZE_OFFSET, JSType::FREE_OBJECT_WITH_ONE_FIELD));
     SetConstant(ConstantIndex::FREE_OBJECT_WITH_TWO_FIELD_CLASS_INDEX,
-                factory->NewEcmaReadOnlyHClass(hClass, FreeObject::SIZE, JSType::FREE_OBJECT_WITH_TWO_FIELD));
-    SetConstant(ConstantIndex::LINE_STRING_CLASS_INDEX, factory->NewEcmaReadOnlyHClass(hClass, 0, JSType::LINE_STRING));
+        factory->NewSEcmaReadOnlyHClass(hClass, FreeObject::SIZE, JSType::FREE_OBJECT_WITH_TWO_FIELD));
+    SetConstant(ConstantIndex::LINE_STRING_CLASS_INDEX,
+        factory->NewSEcmaReadOnlyHClass(hClass, 0, JSType::LINE_STRING));
     SetConstant(ConstantIndex::SLICED_STRING_CLASS_INDEX,
-        factory->NewEcmaReadOnlyHClass(hClass, 0, JSType::SLICED_STRING));
+        factory->NewSEcmaReadOnlyHClass(hClass, 0, JSType::SLICED_STRING));
     SetConstant(ConstantIndex::CONSTANT_STRING_CLASS_INDEX,
-        factory->NewEcmaReadOnlyHClass(hClass, 0, JSType::CONSTANT_STRING));
-    SetConstant(ConstantIndex::TREE_STRING_CLASS_INDEX, factory->NewEcmaReadOnlyHClass(hClass, 0, JSType::TREE_STRING));
+        factory->NewSEcmaReadOnlyHClass(hClass, 0, JSType::CONSTANT_STRING));
+    SetConstant(ConstantIndex::TREE_STRING_CLASS_INDEX,
+        factory->NewSEcmaReadOnlyHClass(hClass, 0, JSType::TREE_STRING));
     SetConstant(ConstantIndex::BYTE_ARRAY_CLASS_INDEX,
-                factory->NewEcmaReadOnlyHClass(hClass, 0, JSType::BYTE_ARRAY));
+        factory->NewSEcmaReadOnlyHClass(hClass, 0, JSType::BYTE_ARRAY));
     SetConstant(ConstantIndex::CONSTANT_POOL_CLASS_INDEX,
-                factory->NewEcmaReadOnlyHClass(hClass, 0, JSType::CONSTANT_POOL));
+        factory->NewSEcmaReadOnlyHClass(hClass, 0, JSType::CONSTANT_POOL));
     SetConstant(ConstantIndex::PROFILE_TYPE_INFO_CLASS_INDEX,
-                factory->NewEcmaReadOnlyHClass(hClass, 0, JSType::PROFILE_TYPE_INFO));
+        factory->NewSEcmaReadOnlyHClass(hClass, 0, JSType::PROFILE_TYPE_INFO));
     SetConstant(ConstantIndex::AOT_LITERAL_INFO_CLASS_INDEX,
-                factory->NewEcmaReadOnlyHClass(hClass, 0, JSType::AOT_LITERAL_INFO));
+        factory->NewSEcmaReadOnlyHClass(hClass, 0, JSType::AOT_LITERAL_INFO));
     SetConstant(ConstantIndex::VTABLE_CLASS_INDEX,
-                factory->NewEcmaReadOnlyHClass(hClass, 0, JSType::VTABLE));
+        factory->NewSEcmaReadOnlyHClass(hClass, 0, JSType::VTABLE));
     SetConstant(ConstantIndex::COW_MUTANT_TAGGED_ARRAY_CLASS_INDEX,
-                factory->NewEcmaReadOnlyHClass(hClass, 0, JSType::COW_MUTANT_TAGGED_ARRAY));
+        factory->NewSEcmaReadOnlyHClass(hClass, 0, JSType::COW_MUTANT_TAGGED_ARRAY));
     SetConstant(ConstantIndex::MUTANT_TAGGED_ARRAY_CLASS_INDEX,
-                factory->NewEcmaReadOnlyHClass(hClass, 0, JSType::MUTANT_TAGGED_ARRAY));
-    InitGlobalConstantSpecial(thread);
+        factory->NewSEcmaReadOnlyHClass(hClass, 0, JSType::MUTANT_TAGGED_ARRAY));
     SetConstant(ConstantIndex::DICTIONARY_CLASS_INDEX,
-                factory->NewEcmaReadOnlyHClass(hClass, 0, JSType::TAGGED_DICTIONARY));
+        factory->NewSEcmaReadOnlyHClass(hClass, 0, JSType::TAGGED_DICTIONARY));
     SetConstant(ConstantIndex::COW_ARRAY_CLASS_INDEX,
-                factory->NewEcmaReadOnlyHClass(hClass, 0, JSType::COW_TAGGED_ARRAY));
+        factory->NewSEcmaReadOnlyHClass(hClass, 0, JSType::COW_TAGGED_ARRAY));
     SetConstant(ConstantIndex::BIGINT_CLASS_INDEX,
-                factory->NewEcmaReadOnlyHClass(hClass, BigInt::SIZE, JSType::BIGINT));
+        factory->NewSEcmaReadOnlyHClass(hClass, BigInt::SIZE, JSType::BIGINT));
     SetConstant(ConstantIndex::JS_NATIVE_POINTER_CLASS_INDEX,
-                factory->NewEcmaReadOnlyHClass(hClass, JSNativePointer::SIZE, JSType::JS_NATIVE_POINTER));
+        factory->NewSEcmaReadOnlyHClass(hClass, JSNativePointer::SIZE, JSType::JS_NATIVE_POINTER));
     SetConstant(ConstantIndex::ENV_CLASS_INDEX,
-                factory->NewEcmaReadOnlyHClass(hClass, 0, JSType::LEXICAL_ENV));
+        factory->NewSEcmaReadOnlyHClass(hClass, 0, JSType::LEXICAL_ENV));
     SetConstant(ConstantIndex::SYMBOL_CLASS_INDEX,
-                factory->NewEcmaReadOnlyHClass(hClass, JSSymbol::SIZE, JSType::SYMBOL));
+        factory->NewSEcmaReadOnlyHClass(hClass, JSSymbol::SIZE, JSType::SYMBOL));
     SetConstant(ConstantIndex::ACCESSOR_DATA_CLASS_INDEX,
-                factory->NewEcmaReadOnlyHClass(hClass, AccessorData::SIZE, JSType::ACCESSOR_DATA));
+        factory->NewSEcmaReadOnlyHClass(hClass, AccessorData::SIZE, JSType::ACCESSOR_DATA));
     SetConstant(ConstantIndex::INTERNAL_ACCESSOR_CLASS_INDEX,
-                factory->NewEcmaReadOnlyHClass(hClass, AccessorData::SIZE, JSType::INTERNAL_ACCESSOR));
-    SetConstant(ConstantIndex::JS_PROXY_ORDINARY_CLASS_INDEX,
-                factory->NewEcmaHClass(hClass, JSProxy::SIZE, JSType::JS_PROXY));
+        factory->NewSEcmaReadOnlyHClass(hClass, AccessorData::SIZE, JSType::INTERNAL_ACCESSOR));
     SetConstant(ConstantIndex::COMPLETION_RECORD_CLASS_INDEX,
-                factory->NewEcmaReadOnlyHClass(hClass, CompletionRecord::SIZE, JSType::COMPLETION_RECORD));
+        factory->NewSEcmaReadOnlyHClass(hClass, CompletionRecord::SIZE, JSType::COMPLETION_RECORD));
     SetConstant(ConstantIndex::GENERATOR_CONTEST_INDEX,
-                factory->NewEcmaReadOnlyHClass(hClass, GeneratorContext::SIZE, JSType::JS_GENERATOR_CONTEXT));
+        factory->NewSEcmaReadOnlyHClass(hClass, GeneratorContext::SIZE, JSType::JS_GENERATOR_CONTEXT));
     SetConstant(ConstantIndex::ASYNC_GENERATOR_REQUEST_CLASS_INDEX,
-                factory->NewEcmaReadOnlyHClass(hClass, AsyncGeneratorRequest::SIZE,
-                                               JSType::ASYNC_GENERATOR_REQUEST));
+        factory->NewSEcmaReadOnlyHClass(hClass, AsyncGeneratorRequest::SIZE,
+                                        JSType::ASYNC_GENERATOR_REQUEST));
     SetConstant(ConstantIndex::ASYNC_ITERATOR_RECORD_CLASS_INDEX,
-                factory->NewEcmaReadOnlyHClass(hClass, AsyncIteratorRecord::SIZE, JSType::ASYNC_ITERATOR_RECORD));
+        factory->NewSEcmaReadOnlyHClass(hClass, AsyncIteratorRecord::SIZE, JSType::ASYNC_ITERATOR_RECORD));
     SetConstant(ConstantIndex::CAPABILITY_RECORD_CLASS_INDEX,
-                factory->NewEcmaReadOnlyHClass(hClass, PromiseCapability::SIZE, JSType::PROMISE_CAPABILITY));
+        factory->NewSEcmaReadOnlyHClass(hClass, PromiseCapability::SIZE, JSType::PROMISE_CAPABILITY));
     SetConstant(ConstantIndex::REACTIONS_RECORD_CLASS_INDEX,
-                factory->NewEcmaReadOnlyHClass(hClass, PromiseReaction::SIZE, JSType::PROMISE_REACTIONS));
+        factory->NewSEcmaReadOnlyHClass(hClass, PromiseReaction::SIZE, JSType::PROMISE_REACTIONS));
     SetConstant(ConstantIndex::PROMISE_ITERATOR_RECORD_CLASS_INDEX,
-                factory->NewEcmaReadOnlyHClass(hClass, PromiseIteratorRecord::SIZE,
-                                               JSType::PROMISE_ITERATOR_RECORD));
+        factory->NewSEcmaReadOnlyHClass(hClass, PromiseIteratorRecord::SIZE,
+                                        JSType::PROMISE_ITERATOR_RECORD));
     SetConstant(ConstantIndex::PROMISE_RECORD_CLASS_INDEX,
-                factory->NewEcmaReadOnlyHClass(hClass, PromiseRecord::SIZE, JSType::PROMISE_RECORD));
+        factory->NewSEcmaReadOnlyHClass(hClass, PromiseRecord::SIZE, JSType::PROMISE_RECORD));
     SetConstant(ConstantIndex::PROMISE_RESOLVING_FUNCTIONS_CLASS_INDEX,
-                factory->NewEcmaReadOnlyHClass(hClass, ResolvingFunctionsRecord::SIZE,
-                                               JSType::RESOLVING_FUNCTIONS_RECORD));
+        factory->NewSEcmaReadOnlyHClass(hClass, ResolvingFunctionsRecord::SIZE,
+                                        JSType::RESOLVING_FUNCTIONS_RECORD));
     SetConstant(ConstantIndex::MICRO_JOB_QUEUE_CLASS_INDEX,
-                factory->NewEcmaReadOnlyHClass(hClass, job::MicroJobQueue::SIZE, JSType::MICRO_JOB_QUEUE));
+        factory->NewSEcmaReadOnlyHClass(hClass, job::MicroJobQueue::SIZE, JSType::MICRO_JOB_QUEUE));
     SetConstant(ConstantIndex::PENDING_JOB_CLASS_INDEX,
-                factory->NewEcmaReadOnlyHClass(hClass, job::PendingJob::SIZE, JSType::PENDING_JOB));
+        factory->NewSEcmaReadOnlyHClass(hClass, job::PendingJob::SIZE, JSType::PENDING_JOB));
     SetConstant(ConstantIndex::PROTO_CHANGE_MARKER_CLASS_INDEX,
-                factory->NewEcmaReadOnlyHClass(hClass, ProtoChangeMarker::SIZE, JSType::PROTO_CHANGE_MARKER));
+        factory->NewSEcmaReadOnlyHClass(hClass, ProtoChangeMarker::SIZE, JSType::PROTO_CHANGE_MARKER));
     SetConstant(ConstantIndex::PROTO_CHANGE_DETAILS_CLASS_INDEX,
-                factory->NewEcmaReadOnlyHClass(hClass, ProtoChangeDetails::SIZE, JSType::PROTOTYPE_INFO));
+        factory->NewSEcmaReadOnlyHClass(hClass, ProtoChangeDetails::SIZE, JSType::PROTOTYPE_INFO));
     SetConstant(ConstantIndex::MARKER_CELL_CLASS_INDEX,
-                factory->NewEcmaReadOnlyHClass(hClass, MarkerCell::SIZE, JSType::MARKER_CELL));
+        factory->NewSEcmaReadOnlyHClass(hClass, MarkerCell::SIZE, JSType::MARKER_CELL));
     SetConstant(ConstantIndex::TRACK_INFO_CLASS_INDEX,
-                factory->NewEcmaReadOnlyHClass(hClass, TrackInfo::SIZE, JSType::TRACK_INFO));
+        factory->NewSEcmaReadOnlyHClass(hClass, TrackInfo::SIZE, JSType::TRACK_INFO));
     SetConstant(ConstantIndex::PROTOTYPE_HANDLER_CLASS_INDEX,
-                factory->NewEcmaReadOnlyHClass(hClass, PrototypeHandler::SIZE, JSType::PROTOTYPE_HANDLER));
+        factory->NewSEcmaReadOnlyHClass(hClass, PrototypeHandler::SIZE, JSType::PROTOTYPE_HANDLER));
     SetConstant(ConstantIndex::TRANSITION_HANDLER_CLASS_INDEX,
-                factory->NewEcmaReadOnlyHClass(hClass, TransitionHandler::SIZE, JSType::TRANSITION_HANDLER));
+        factory->NewSEcmaReadOnlyHClass(hClass, TransitionHandler::SIZE, JSType::TRANSITION_HANDLER));
     SetConstant(ConstantIndex::TRANS_WITH_PROTO_HANDLER_CLASS_INDEX,
-                factory->NewEcmaReadOnlyHClass(hClass, TransWithProtoHandler::SIZE, JSType::TRANS_WITH_PROTO_HANDLER));
+        factory->NewSEcmaReadOnlyHClass(hClass, TransWithProtoHandler::SIZE, JSType::TRANS_WITH_PROTO_HANDLER));
     SetConstant(ConstantIndex::STORE_TS_HANDLER_CLASS_INDEX,
-                factory->NewEcmaReadOnlyHClass(hClass, StoreTSHandler::SIZE, JSType::STORE_TS_HANDLER));
+        factory->NewSEcmaReadOnlyHClass(hClass, StoreTSHandler::SIZE, JSType::STORE_TS_HANDLER));
     SetConstant(ConstantIndex::PROPERTY_BOX_CLASS_INDEX,
-                factory->NewEcmaReadOnlyHClass(hClass, PropertyBox::SIZE, JSType::PROPERTY_BOX));
+        factory->NewSEcmaReadOnlyHClass(hClass, PropertyBox::SIZE, JSType::PROPERTY_BOX));
     SetConstant(ConstantIndex::PROGRAM_CLASS_INDEX,
-                factory->NewEcmaReadOnlyHClass(hClass, Program::SIZE, JSType::PROGRAM));
-    SetConstant(
-        ConstantIndex::IMPORT_ENTRY_CLASS_INDEX,
-        factory->NewEcmaReadOnlyHClass(hClass, ImportEntry::SIZE, JSType::IMPORTENTRY_RECORD));
-    SetConstant(
-        ConstantIndex::LOCAL_EXPORT_ENTRY_CLASS_INDEX,
-        factory->NewEcmaReadOnlyHClass(hClass, LocalExportEntry::SIZE, JSType::LOCAL_EXPORTENTRY_RECORD));
-    SetConstant(
-        ConstantIndex::INDIRECT_EXPORT_ENTRY_CLASS_INDEX,
-        factory->NewEcmaReadOnlyHClass(hClass, IndirectExportEntry::SIZE,
-                                       JSType::INDIRECT_EXPORTENTRY_RECORD));
-    SetConstant(
-        ConstantIndex::STAR_EXPORT_ENTRY_CLASS_INDEX,
-        factory->NewEcmaReadOnlyHClass(hClass, StarExportEntry::SIZE, JSType::STAR_EXPORTENTRY_RECORD));
-    SetConstant(
-        ConstantIndex::SOURCE_TEXT_MODULE_CLASS_INDEX,
-        factory->NewEcmaReadOnlyHClass(hClass, SourceTextModule::SIZE, JSType::SOURCE_TEXT_MODULE_RECORD));
-    SetConstant(
-        ConstantIndex::RESOLVED_BINDING_CLASS_INDEX,
-        factory->NewEcmaReadOnlyHClass(hClass, ResolvedBinding::SIZE, JSType::RESOLVEDBINDING_RECORD));
-    SetConstant(
-        ConstantIndex::RESOLVED_INDEX_BINDING_CLASS_INDEX,
-        factory->NewEcmaReadOnlyHClass(hClass, ResolvedIndexBinding::SIZE, JSType::RESOLVEDINDEXBINDING_RECORD));
+        factory->NewSEcmaReadOnlyHClass(hClass, Program::SIZE, JSType::PROGRAM));
+    SetConstant(ConstantIndex::IMPORT_ENTRY_CLASS_INDEX,
+        factory->NewSEcmaReadOnlyHClass(hClass, ImportEntry::SIZE, JSType::IMPORTENTRY_RECORD));
+    SetConstant(ConstantIndex::LOCAL_EXPORT_ENTRY_CLASS_INDEX,
+        factory->NewSEcmaReadOnlyHClass(hClass, LocalExportEntry::SIZE, JSType::LOCAL_EXPORTENTRY_RECORD));
+    SetConstant(ConstantIndex::INDIRECT_EXPORT_ENTRY_CLASS_INDEX,
+        factory->NewSEcmaReadOnlyHClass(hClass, IndirectExportEntry::SIZE,
+                                        JSType::INDIRECT_EXPORTENTRY_RECORD));
+    SetConstant(ConstantIndex::STAR_EXPORT_ENTRY_CLASS_INDEX,
+        factory->NewSEcmaReadOnlyHClass(hClass, StarExportEntry::SIZE, JSType::STAR_EXPORTENTRY_RECORD));
+    SetConstant(ConstantIndex::SOURCE_TEXT_MODULE_CLASS_INDEX,
+        factory->NewSEcmaReadOnlyHClass(hClass, SourceTextModule::SIZE, JSType::SOURCE_TEXT_MODULE_RECORD));
+    SetConstant(ConstantIndex::RESOLVED_BINDING_CLASS_INDEX,
+        factory->NewSEcmaReadOnlyHClass(hClass, ResolvedBinding::SIZE, JSType::RESOLVEDBINDING_RECORD));
+    SetConstant(ConstantIndex::RESOLVED_INDEX_BINDING_CLASS_INDEX,
+        factory->NewSEcmaReadOnlyHClass(hClass, ResolvedIndexBinding::SIZE, JSType::RESOLVEDINDEXBINDING_RECORD));
+    SetConstant(ConstantIndex::MACHINE_CODE_CLASS_INDEX,
+        factory->NewSEcmaReadOnlyHClass(hClass, 0, JSType::MACHINE_CODE_OBJECT));
+    SetConstant(ConstantIndex::CLASS_INFO_EXTRACTOR_HCLASS_INDEX,
+        factory->NewSEcmaReadOnlyHClass(hClass, ClassInfoExtractor::SIZE,
+                                        JSType::CLASS_INFO_EXTRACTOR));
+    SetConstant(ConstantIndex::TS_OBJECT_TYPE_CLASS_INDEX,
+        factory->NewSEcmaReadOnlyHClass(hClass, TSObjectType::SIZE, JSType::TS_OBJECT_TYPE));
+    SetConstant(ConstantIndex::TS_CLASS_TYPE_CLASS_INDEX,
+        factory->NewSEcmaReadOnlyHClass(hClass, TSClassType::SIZE, JSType::TS_CLASS_TYPE));
+    SetConstant(ConstantIndex::TS_UNION_TYPE_CLASS_INDEX,
+        factory->NewSEcmaReadOnlyHClass(hClass, TSUnionType::SIZE, JSType::TS_UNION_TYPE));
+    SetConstant(ConstantIndex::TS_INTERFACE_TYPE_CLASS_INDEX,
+        factory->NewSEcmaReadOnlyHClass(hClass, TSInterfaceType::SIZE, JSType::TS_INTERFACE_TYPE));
+    SetConstant(ConstantIndex::TS_CLASS_INSTANCE_TYPE_CLASS_INDEX,
+        factory->NewSEcmaReadOnlyHClass(hClass, TSClassInstanceType::SIZE,
+                                        JSType::TS_CLASS_INSTANCE_TYPE));
+    SetConstant(ConstantIndex::TS_FUNCTION_TYPE_CLASS_INDEX,
+        factory->NewSEcmaReadOnlyHClass(hClass, TSFunctionType::SIZE, JSType::TS_FUNCTION_TYPE));
+    SetConstant(ConstantIndex::TS_ARRAY_TYPE_CLASS_INDEX,
+        factory->NewSEcmaReadOnlyHClass(hClass, TSArrayType::SIZE, JSType::TS_ARRAY_TYPE));
+    SetConstant(ConstantIndex::TS_ITERATOR_INSTANCE_TYPE_CLASS_INDEX,
+        factory->NewSEcmaReadOnlyHClass(hClass, TSIteratorInstanceType::SIZE,
+                                        JSType::TS_ITERATOR_INSTANCE_TYPE));
+    SetConstant(ConstantIndex::TS_NAMESPACE_TYPE_CLASS_INDEX,
+        factory->NewSEcmaReadOnlyHClass(hClass, TSNamespaceType::SIZE, JSType::TS_NAMESPACE_TYPE));
+    SetConstant(ConstantIndex::CELL_RECORD_CLASS_INDEX,
+        factory->NewSEcmaReadOnlyHClass(hClass, CellRecord::SIZE, JSType::CELL_RECORD));
+    SetConstant(ConstantIndex::METHOD_CLASS_INDEX,
+        factory->NewSEcmaReadOnlyHClass(hClass, Method::SIZE, JSType::METHOD));
+    SetConstant(ConstantIndex::LINKED_NODE_CLASS_INDEX,
+        factory->NewSEcmaReadOnlyHClass(hClass, LinkedNode::SIZE, JSType::LINKED_NODE));
+    SetConstant(ConstantIndex::RB_TREENODE_CLASS_INDEX,
+        factory->NewSEcmaReadOnlyHClass(hClass, RBTreeNode::SIZE, JSType::RB_TREENODE));
+    SetConstant(ConstantIndex::CLASS_LITERAL_HCLASS_INDEX,
+        factory->NewSEcmaReadOnlyHClass(hClass, ClassLiteral::SIZE, JSType::CLASS_LITERAL));
+    SetConstant(ConstantIndex::RESOLVED_RECORD_BINDING_CLASS_INDEX,
+        factory->NewSEcmaReadOnlyHClass(hClass, ResolvedRecordBinding::SIZE, JSType::RESOLVEDRECORDBINDING_RECORD));
+}
 
-    JSHClass *jsProxyCallableClass = *factory->NewEcmaHClass(hClass, JSProxy::SIZE, JSType::JS_PROXY);
+void GlobalEnvConstants::InitSharedMiscellanious(JSThread *thread, ObjectFactory *factory)
+{
+    // Accessors
+    auto accessor = factory->NewSInternalAccessor(reinterpret_cast<void *>(JSFunction::PrototypeSetter),
+                                                  reinterpret_cast<void *>(JSFunction::PrototypeGetter));
+    SetConstant(ConstantIndex::FUNCTION_PROTOTYPE_ACCESSOR, accessor);
+    accessor = factory->NewSInternalAccessor(nullptr, reinterpret_cast<void *>(JSFunction::NameGetter));
+    SetConstant(ConstantIndex::FUNCTION_NAME_ACCESSOR, accessor);
+    accessor = factory->NewSInternalAccessor(nullptr, reinterpret_cast<void *>(JSFunction::LengthGetter));
+    SetConstant(ConstantIndex::FUNCTION_LENGTH_ACCESSOR, accessor);
+    accessor = factory->NewSInternalAccessor(reinterpret_cast<void *>(JSArray::LengthSetter),
+                                             reinterpret_cast<void *>(JSArray::LengthGetter));
+    SetConstant(ConstantIndex::ARRAY_LENGTH_ACCESSOR, accessor);
+    // Specials
+    SetConstant(ConstantIndex::UNDEFINED_INDEX, JSTaggedValue::Undefined());
+    SetConstant(ConstantIndex::NULL_INDEX, JSTaggedValue::Null());
+    SetConstant(ConstantIndex::TRUE_INDEX, JSTaggedValue::True());
+    SetConstant(ConstantIndex::FALSE_INDEX, JSTaggedValue::False());
+    // Emptys
+    auto vm = thread->GetEcmaVM();
+    SetConstant(ConstantIndex::EMPTY_STRING_OBJECT_INDEX, JSTaggedValue(EcmaStringAccessor::CreateEmptyString(vm)));
+    SetConstant(ConstantIndex::SINGLE_CHAR_TABLE_INDEX, SingleCharTable::CreateSingleCharTable(thread));
+    SetConstant(ConstantIndex::EMPTY_ARRAY_OBJECT_INDEX, factory->NewSEmptyArray());
+    SetConstant(ConstantIndex::EMPTY_MUTANT_ARRAY_OBJECT_INDEX, factory->NewSEmptyMutantArray());
+    SetConstant(ConstantIndex::EMPTY_SLAYOUT_INFO_OBJECT_INDEX, factory->CreateSLayoutInfo(0));
+}
 
-    jsProxyCallableClass->SetCallable(true);
-    SetConstant(ConstantIndex::JS_PROXY_CALLABLE_CLASS_INDEX, JSTaggedValue(jsProxyCallableClass));
-
-    JSHClass *jsProxyConstructClass = *factory->NewEcmaHClass(hClass, JSProxy::SIZE, JSType::JS_PROXY);
-
-    jsProxyConstructClass->SetCallable(true);
-    jsProxyConstructClass->SetConstructor(true);
-    SetConstant(ConstantIndex::JS_PROXY_CONSTRUCT_CLASS_INDEX, JSTaggedValue(jsProxyConstructClass));
+void GlobalEnvConstants::InitRootsClasses(ObjectFactory *factory)
+{
+    JSHClass *hClass = JSHClass::Cast(GetHClassClass().GetTaggedObject());
 
     SetConstant(ConstantIndex::JS_REALM_CLASS_INDEX,
                 factory->NewEcmaHClass(hClass, JSRealm::SIZE, JSType::JS_REALM));
-    SetConstant(ConstantIndex::MACHINE_CODE_CLASS_INDEX,
-                factory->NewEcmaReadOnlyHClass(hClass, 0, JSType::MACHINE_CODE_OBJECT));
-    SetConstant(ConstantIndex::CLASS_INFO_EXTRACTOR_HCLASS_INDEX,
-                factory->NewEcmaReadOnlyHClass(hClass, ClassInfoExtractor::SIZE,
-                                               JSType::CLASS_INFO_EXTRACTOR));
-    SetConstant(ConstantIndex::TS_OBJECT_TYPE_CLASS_INDEX,
-                factory->NewEcmaReadOnlyHClass(hClass, TSObjectType::SIZE, JSType::TS_OBJECT_TYPE));
-    SetConstant(ConstantIndex::TS_CLASS_TYPE_CLASS_INDEX,
-                factory->NewEcmaReadOnlyHClass(hClass, TSClassType::SIZE, JSType::TS_CLASS_TYPE));
-    SetConstant(ConstantIndex::TS_UNION_TYPE_CLASS_INDEX,
-                factory->NewEcmaReadOnlyHClass(hClass, TSUnionType::SIZE, JSType::TS_UNION_TYPE));
-    SetConstant(ConstantIndex::TS_INTERFACE_TYPE_CLASS_INDEX,
-                factory->NewEcmaReadOnlyHClass(hClass, TSInterfaceType::SIZE, JSType::TS_INTERFACE_TYPE));
-    SetConstant(ConstantIndex::TS_CLASS_INSTANCE_TYPE_CLASS_INDEX,
-                factory->NewEcmaReadOnlyHClass(hClass, TSClassInstanceType::SIZE,
-                                               JSType::TS_CLASS_INSTANCE_TYPE));
-    SetConstant(ConstantIndex::TS_FUNCTION_TYPE_CLASS_INDEX,
-                factory->NewEcmaReadOnlyHClass(hClass, TSFunctionType::SIZE, JSType::TS_FUNCTION_TYPE));
-    SetConstant(ConstantIndex::TS_ARRAY_TYPE_CLASS_INDEX,
-                factory->NewEcmaReadOnlyHClass(hClass, TSArrayType::SIZE, JSType::TS_ARRAY_TYPE));
-    SetConstant(ConstantIndex::TS_ITERATOR_INSTANCE_TYPE_CLASS_INDEX,
-                factory->NewEcmaReadOnlyHClass(hClass, TSIteratorInstanceType::SIZE,
-                JSType::TS_ITERATOR_INSTANCE_TYPE));
-    SetConstant(ConstantIndex::TS_NAMESPACE_TYPE_CLASS_INDEX,
-                factory->NewEcmaReadOnlyHClass(hClass, TSNamespaceType::SIZE, JSType::TS_NAMESPACE_TYPE));
     SetConstant(ConstantIndex::JS_REGEXP_ITERATOR_CLASS_INDEX,
                 factory->NewEcmaHClass(hClass, JSRegExpIterator::SIZE, JSType::JS_REG_EXP_ITERATOR));
     SetConstant(ConstantIndex::JS_SET_ITERATOR_CLASS_INDEX,
@@ -254,9 +300,8 @@ void GlobalEnvConstants::InitRootsClass(JSThread *thread, JSHClass *hClass)
                 factory->NewEcmaHClass(hClass, JSMapIterator::SIZE, JSType::JS_MAP_ITERATOR, 0)); // 0: no inlined props
     SetConstant(ConstantIndex::JS_ARRAY_ITERATOR_CLASS_INDEX,
                 factory->NewEcmaHClass(hClass, JSArrayIterator::SIZE, JSType::JS_ARRAY_ITERATOR, 0));
-    SetConstant(
-        ConstantIndex::JS_API_ARRAYLIST_ITERATOR_CLASS_INDEX,
-        factory->NewEcmaHClass(hClass, JSAPIArrayListIterator::SIZE, JSType::JS_API_ARRAYLIST_ITERATOR));
+    SetConstant(ConstantIndex::JS_API_ARRAYLIST_ITERATOR_CLASS_INDEX,
+                factory->NewEcmaHClass(hClass, JSAPIArrayListIterator::SIZE, JSType::JS_API_ARRAYLIST_ITERATOR));
     SetConstant(ConstantIndex::JS_API_DEQUE_ITERATOR_CLASS_INDEX,
                 factory->NewEcmaHClass(hClass, JSAPIDequeIterator::SIZE, JSType::JS_API_DEQUE_ITERATOR));
     SetConstant(ConstantIndex::JS_API_LIGHTWEIGHTMAP_ITERATOR_CLASS_INDEX,
@@ -265,14 +310,12 @@ void GlobalEnvConstants::InitRootsClass(JSThread *thread, JSHClass *hClass)
     SetConstant(ConstantIndex::JS_API_LIGHTWEIGHTSET_ITERATOR_CLASS_INDEX,
                 factory->NewEcmaHClass(hClass, JSAPILightWeightSetIterator::SIZE,
                 JSType::JS_API_LIGHT_WEIGHT_SET_ITERATOR));
-    SetConstant(
-        ConstantIndex::JS_API_LINKED_LIST_ITERATOR_CLASS_INDEX,
-        factory->NewEcmaHClass(hClass, JSAPILinkedListIterator::SIZE, JSType::JS_API_LINKED_LIST_ITERATOR));
+    SetConstant(ConstantIndex::JS_API_LINKED_LIST_ITERATOR_CLASS_INDEX,
+                factory->NewEcmaHClass(hClass, JSAPILinkedListIterator::SIZE, JSType::JS_API_LINKED_LIST_ITERATOR));
     SetConstant(ConstantIndex::JS_API_LIST_ITERATOR_CLASS_INDEX,
                 factory->NewEcmaHClass(hClass, JSAPIListIterator::SIZE, JSType::JS_API_LIST_ITERATOR));
-    SetConstant(
-        ConstantIndex::JS_API_PLAIN_ARRAY_ITERATOR_CLASS_INDEX,
-        factory->NewEcmaHClass(hClass, JSAPIPlainArrayIterator::SIZE, JSType::JS_API_PLAIN_ARRAY_ITERATOR));
+    SetConstant(ConstantIndex::JS_API_PLAIN_ARRAY_ITERATOR_CLASS_INDEX,
+                factory->NewEcmaHClass(hClass, JSAPIPlainArrayIterator::SIZE, JSType::JS_API_PLAIN_ARRAY_ITERATOR));
     SetConstant(ConstantIndex::JS_API_QUEUE_ITERATOR_CLASS_INDEX,
                 factory->NewEcmaHClass(hClass, JSAPIQueueIterator::SIZE, JSType::JS_API_QUEUE_ITERATOR));
     SetConstant(ConstantIndex::JS_API_STACK_ITERATOR_CLASS_INDEX,
@@ -287,62 +330,35 @@ void GlobalEnvConstants::InitRootsClass(JSThread *thread, JSHClass *hClass)
                 factory->NewEcmaHClass(hClass, JSAPITreeMapIterator::SIZE, JSType::JS_API_TREEMAP_ITERATOR));
     SetConstant(ConstantIndex::JS_API_TREE_SET_ITERATOR_CLASS_INDEX,
                 factory->NewEcmaHClass(hClass, JSAPITreeSetIterator::SIZE, JSType::JS_API_TREESET_ITERATOR));
-    SetConstant(ConstantIndex::LINKED_NODE_CLASS_INDEX,
-                factory->NewEcmaHClass(hClass, LinkedNode::SIZE, JSType::LINKED_NODE));
-    SetConstant(ConstantIndex::RB_TREENODE_CLASS_INDEX,
-                factory->NewEcmaHClass(hClass, RBTreeNode::SIZE, JSType::RB_TREENODE));
-    SetConstant(ConstantIndex::CELL_RECORD_CLASS_INDEX,
-                factory->NewEcmaReadOnlyHClass(hClass, CellRecord::SIZE, JSType::CELL_RECORD));
     SetConstant(ConstantIndex::OBJECT_HCLASS_INDEX, factory->NewEcmaHClass(JSObject::SIZE, JSType::JS_OBJECT));
-    SetConstant(ConstantIndex::METHOD_CLASS_INDEX,
-                factory->NewEcmaHClass(hClass, Method::SIZE, JSType::METHOD));
-    SetConstant(ConstantIndex::CLASS_LITERAL_HCLASS_INDEX,
-                factory->NewEcmaHClass(hClass, ClassLiteral::SIZE, JSType::CLASS_LITERAL));
+    SetConstant(ConstantIndex::CLASS_PROTOTYPE_HCLASS_INDEX,
+                factory->CreateDefaultClassPrototypeHClass(hClass));
+    SetConstant(ConstantIndex::CLASS_CONSTRUCTOR_HCLASS_INDEX,
+                factory->CreateDefaultClassConstructorHClass(hClass));
+    SetConstant(ConstantIndex::JS_PROXY_ORDINARY_CLASS_INDEX,
+                factory->NewEcmaHClass(hClass, JSProxy::SIZE, JSType::JS_PROXY));
+    // JS_PROXY_CALLABLE_CLASS_INDEX
+    JSHClass *jsProxyCallableClass = *factory->NewEcmaHClass(hClass, JSProxy::SIZE, JSType::JS_PROXY);
+    jsProxyCallableClass->SetCallable(true);
+    SetConstant(ConstantIndex::JS_PROXY_CALLABLE_CLASS_INDEX, JSTaggedValue(jsProxyCallableClass));
+    // JS_PROXY_CONSTRUCT_CLASS_INDEX
+    JSHClass *jsProxyConstructClass = *factory->NewEcmaHClass(hClass, JSProxy::SIZE, JSType::JS_PROXY);
+    jsProxyConstructClass->SetCallable(true);
+    jsProxyConstructClass->SetConstructor(true);
+    SetConstant(ConstantIndex::JS_PROXY_CONSTRUCT_CLASS_INDEX, JSTaggedValue(jsProxyConstructClass));
 }
 
-void GlobalEnvConstants::InitGlobalConstantSpecial(JSThread *thread)
+void GlobalEnvConstants::InitMiscellanious(JSThread *thread, ObjectFactory *factory)
 {
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    // SPECIAL INIT
-    SetConstant(ConstantIndex::UNDEFINED_INDEX, JSTaggedValue::Undefined());
-    SetConstant(ConstantIndex::NULL_INDEX, JSTaggedValue::Null());
-    SetConstant(ConstantIndex::TRUE_INDEX, JSTaggedValue::True());
-    SetConstant(ConstantIndex::FALSE_INDEX, JSTaggedValue::False());
-    auto vm = thread->GetEcmaVM();
-    SetConstant(ConstantIndex::EMPTY_STRING_OBJECT_INDEX, JSTaggedValue(EcmaStringAccessor::CreateEmptyString(vm)));
-    SetConstant(ConstantIndex::EMPTY_ARRAY_OBJECT_INDEX, factory->NewEmptyArray());
-    SetConstant(ConstantIndex::EMPTY_MUTANT_ARRAY_OBJECT_INDEX, factory->NewEmptyMutantArray());
     SetConstant(ConstantIndex::EMPTY_LAYOUT_INFO_OBJECT_INDEX, factory->CreateLayoutInfo(0));
     SetConstant(ConstantIndex::EMPTY_TAGGED_QUEUE_OBJECT_INDEX, factory->NewTaggedQueue(0));
-}
+    SetConstant(ConstantIndex::DEFAULT_SUPERS_INDEX,
+                WeakVector::Create(thread, SubtypingOperator::DEFAULT_SUPERS_CAPACITY, MemSpaceType::NON_MOVABLE));
 
-// NOLINTNEXTLINE(readability-function-size)
-void GlobalEnvConstants::InitGlobalConstant(JSThread *thread)
-{
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    /* non ECMA standard jsapi containers iterators, init to Undefined first */
+    // non ECMA standard jsapi containers iterators, init to Undefined first
     InitJSAPIContainers();
 
-#define INIT_GLOBAL_ENV_CONSTANT_STRING(Name, Index, Token) \
-    SetConstant(ConstantIndex::Index, factory->NewFromASCIINonMovable(Token));
-
-    GLOBAL_ENV_CONSTANT_STRING(INIT_GLOBAL_ENV_CONSTANT_STRING)
-#undef INIT_GLOBAL_ENV_CONSTANT_STRING
-
-    auto accessor = factory->NewInternalAccessor(reinterpret_cast<void *>(JSFunction::PrototypeSetter),
-                                                 reinterpret_cast<void *>(JSFunction::PrototypeGetter));
-    SetConstant(ConstantIndex::FUNCTION_PROTOTYPE_ACCESSOR, accessor);
-    accessor = factory->NewInternalAccessor(nullptr, reinterpret_cast<void *>(JSFunction::NameGetter));
-    SetConstant(ConstantIndex::FUNCTION_NAME_ACCESSOR, accessor);
-    accessor = factory->NewInternalAccessor(nullptr, reinterpret_cast<void *>(JSFunction::LengthGetter));
-    SetConstant(ConstantIndex::FUNCTION_LENGTH_ACCESSOR, accessor);
-    accessor = factory->NewInternalAccessor(reinterpret_cast<void *>(JSArray::LengthSetter),
-                                            reinterpret_cast<void *>(JSArray::LengthGetter));
-    SetConstant(ConstantIndex::ARRAY_LENGTH_ACCESSOR, accessor);
-    SetConstant(ConstantIndex::CLASS_PROTOTYPE_HCLASS_INDEX,
-                factory->CreateDefaultClassPrototypeHClass(JSHClass::Cast(GetHClassClass().GetTaggedObject())));
-    SetConstant(ConstantIndex::CLASS_CONSTRUCTOR_HCLASS_INDEX,
-        factory->CreateDefaultClassConstructorHClass(JSHClass::Cast(GetHClassClass().GetTaggedObject())));
+    InitGlobalCaches();
 }
 
 void GlobalEnvConstants::InitGlobalCaches()

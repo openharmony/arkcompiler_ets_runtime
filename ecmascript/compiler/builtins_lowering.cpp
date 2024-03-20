@@ -25,15 +25,8 @@ void BuiltinLowering::LowerTypedCallBuitin(GateRef gate)
     auto idGate = acc_.GetValueIn(gate, valuesIn - 1);
     auto id = static_cast<BuiltinsStubCSigns::ID>(acc_.GetConstantValue(idGate));
     switch (id) {
-        case BUILTINS_STUB_ID(ABS):
-            LowerTypedAbs(gate);
-            break;
         case BUILTINS_STUB_ID(FLOOR):
-        case BUILTINS_STUB_ID(COS):
-        case BUILTINS_STUB_ID(SIN):
-        case BUILTINS_STUB_ID(ACOS):
-        case BUILTINS_STUB_ID(ATAN):
-            LowerTypedTrigonometric(gate, id);
+            LowerTypedFloor(gate);
             break;
         case BUILTINS_STUB_ID(LocaleCompare):
             LowerTypedLocaleCompare(gate);
@@ -68,13 +61,13 @@ void BuiltinLowering::LowerTypedCallBuitin(GateRef gate)
     }
 }
 
-void BuiltinLowering::LowerTypedTrigonometric(GateRef gate, BuiltinsStubCSigns::ID id)
+void BuiltinLowering::LowerTypedFloor(GateRef gate)
 {
-    auto ret = TypedTrigonometric(gate, id);
+    auto ret = TypedFloor(gate);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), ret);
 }
 
-GateRef BuiltinLowering::TypedTrigonometric(GateRef gate, BuiltinsStubCSigns::ID id)
+GateRef BuiltinLowering::TypedFloor(GateRef gate)
 {
     auto env = builder_.GetCurrentEnvironment();
     Label entry(&builder_);
@@ -87,39 +80,20 @@ GateRef BuiltinLowering::TypedTrigonometric(GateRef gate, BuiltinsStubCSigns::ID
     GateRef para1 = acc_.GetValueIn(gate, 0);
     DEFVALUE(result, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
 
-    builder_.Branch(builder_.TaggedIsNumber(para1), &numberBranch, &notNumberBranch);
+    BRANCH_CIR(builder_.TaggedIsNumber(para1), &numberBranch, &notNumberBranch);
     builder_.Bind(&numberBranch);
     {
         GateRef value = builder_.GetDoubleOfTNumber(para1);
         Label IsNan(&builder_);
         Label NotNan(&builder_);
         GateRef condition = builder_.DoubleIsNAN(value);
-        builder_.Branch(condition, &IsNan, &NotNan);
+        BRANCH_CIR(condition, &IsNan, &NotNan);
         builder_.Bind(&NotNan);
         {
             GateRef glue = acc_.GetGlueFromArgList();
-            int index = RTSTUB_ID(FloatCos);
-            switch (id) {
-                case BUILTINS_STUB_ID(FLOOR):
-                    index = RTSTUB_ID(FloatFloor);
-                    break;
-                case BUILTINS_STUB_ID(ACOS):
-                    index = RTSTUB_ID(FloatACos);
-                    break;
-                case BUILTINS_STUB_ID(ATAN):
-                    index = RTSTUB_ID(FloatATan);
-                    break;
-                case BUILTINS_STUB_ID(COS):
-                    index = RTSTUB_ID(FloatCos);
-                    break;
-                case BUILTINS_STUB_ID(SIN):
-                    index = RTSTUB_ID(FloatSin);
-                    break;
-                default:
-                    LOG_ECMA(FATAL) << "this branch is unreachable";
-                    UNREACHABLE();
-            }
-            result = builder_.CallNGCRuntime(glue, index, Gate::InvalidGateRef, {value}, gate);
+            int index = RTSTUB_ID(FloatFloor);
+            GateRef floor = builder_.CallNGCRuntime(glue, index, Gate::InvalidGateRef, {value}, gate);
+            result = builder_.DoubleToTaggedDoublePtr(floor);
             builder_.Jump(&exit);
         }
         builder_.Bind(&IsNan);
@@ -152,58 +126,10 @@ void BuiltinLowering::LowerTypedSqrt(GateRef gate)
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), ret);
 }
 
-void BuiltinLowering::LowerTypedAbs(GateRef gate)
-{
-    auto ret = TypedAbs(gate);
-    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), ret);
-}
-
 GateRef BuiltinLowering::IntToTaggedIntPtr(GateRef x)
 {
     GateRef val = builder_.SExtInt32ToInt64(x);
     return builder_.ToTaggedIntPtr(val);
-}
-
-//  Int abs : The internal representation of an integer is inverse code,
-//  The absolute value of a negative number can be found by inverting it by adding one.
-
-//  Float abs : A floating-point number is composed of mantissa and exponent.
-//  The length of mantissa will affect the precision of the number, and its sign will determine the sign of the number.
-//  The absolute value of a floating-point number can be found by setting mantissa sign bit to 0.
-GateRef BuiltinLowering::TypedAbs(GateRef gate)
-{
-    auto env = builder_.GetCurrentEnvironment();
-    Label entry(&builder_);
-    env->SubCfgEntry(&entry);
-
-    Label exit(&builder_);
-    GateRef para1 = acc_.GetValueIn(gate, 0);
-    DEFVALUE(result, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
-
-    Label isInt(&builder_);
-    Label notInt(&builder_);
-    builder_.Branch(builder_.TaggedIsInt(para1), &isInt, &notInt);
-    builder_.Bind(&isInt);
-    {
-        auto value = builder_.GetInt32OfTInt(para1);
-        auto temp = builder_.Int32ASR(value, builder_.Int32(JSTaggedValue::INT_SIGN_BIT_OFFSET));
-        auto res = builder_.Int32Xor(value, temp);
-        result = IntToTaggedIntPtr(builder_.Int32Sub(res, temp));
-        builder_.Jump(&exit);
-    }
-    builder_.Bind(&notInt);
-    {
-        auto value = builder_.GetDoubleOfTDouble(para1);
-        // set the sign bit to 0 by shift left then right.
-        auto temp = builder_.Int64LSL(builder_.CastDoubleToInt64(value), builder_.Int64(1));
-        auto res = builder_.Int64LSR(temp, builder_.Int64(1));
-        result = builder_.DoubleToTaggedDoublePtr(builder_.CastInt64ToFloat64(res));
-        builder_.Jump(&exit);
-    }
-    builder_.Bind(&exit);
-    auto ret = *result;
-    env->SubCfgExit();
-    return ret;
 }
 
 GateRef BuiltinLowering::LowerCallRuntime(GateRef glue, GateRef gate, int index, const std::vector<GateRef> &args,
@@ -231,7 +157,7 @@ void BuiltinLowering::ReplaceHirWithValue(GateRef hirGate, GateRef value, bool n
         GateRef exceptionVal = builder_.ExceptionConstant();
         // compare with trampolines result
         GateRef equal = builder_.Equal(value, exceptionVal);
-        auto ifBranch = builder_.Branch(state, equal);
+        auto ifBranch = builder_.Branch(state, equal, 1, BranchWeight::DEOPT_WEIGHT, "checkException");
 
         GateRef ifTrue = builder_.IfTrue(ifBranch);
         GateRef ifFalse = builder_.IfFalse(ifBranch);
@@ -358,13 +284,15 @@ GateRef BuiltinLowering::CheckPara(GateRef gate, GateRef funcCheck)
 {
     GateRef idGate = acc_.GetValueIn(gate, 1);
     BuiltinsStubCSigns::ID id = static_cast<BuiltinsStubCSigns::ID>(acc_.GetConstantValue(idGate));
+    if (IS_TYPED_INLINE_BUILTINS_ID(id)) {
+        // Don't need check param. Param was checked before
+        return funcCheck;
+    }
     switch (id) {
-        case BuiltinsStubCSigns::ID::COS:
-        case BuiltinsStubCSigns::ID::SIN:
-        case BuiltinsStubCSigns::ID::ACOS:
-        case BuiltinsStubCSigns::ID::ATAN:
-        case BuiltinsStubCSigns::ID::ABS:
         case BuiltinsStubCSigns::ID::FLOOR: {
+            if (acc_.GetNumValueIn(gate) <= 2U) {
+                return funcCheck;
+            }
             GateRef para = acc_.GetValueIn(gate, 2);
             GateRef paracheck = builder_.TaggedIsNumber(para);
             return builder_.BoolAnd(paracheck, funcCheck);
@@ -386,7 +314,6 @@ GateRef BuiltinLowering::CheckPara(GateRef gate, GateRef funcCheck)
         case BuiltinsStubCSigns::ID::ARRAY_ITERATOR_PROTO_NEXT:
         case BuiltinsStubCSigns::ID::ITERATOR_PROTO_RETURN:
         case BuiltinsStubCSigns::ID::NumberConstructor:
-        case BuiltinsStubCSigns::ID::StringFromCharCode:
             // Don't need check para
             return funcCheck;
         default: {
@@ -491,7 +418,7 @@ void BuiltinLowering::LowerNumberConstructor(GateRef gate)
     Label exit(env);
     Label isNumber(env);
     Label notNumber(env);
-    builder_.Branch(builder_.TaggedIsNumber(param), &isNumber, &notNumber);
+    BRANCH_CIR(builder_.TaggedIsNumber(param), &isNumber, &notNumber);
     builder_.Bind(&isNumber);
     {
         result = param;
@@ -501,15 +428,15 @@ void BuiltinLowering::LowerNumberConstructor(GateRef gate)
     {
         Label isString(env);
         Label notString(env);
-        builder_.Branch(builder_.TaggedIsString(param), &isString, &notString);
+        BRANCH_CIR(builder_.TaggedIsString(param), &isString, &notString);
         builder_.Bind(&isString);
         {
             Label nonZeroLength(env);
             auto length = builder_.GetLengthFromString(param);
-            builder_.Branch(builder_.Equal(length, builder_.Int32(0)), &exit, &nonZeroLength);
+            BRANCH_CIR(builder_.Equal(length, builder_.Int32(0)), &exit, &nonZeroLength);
             builder_.Bind(&nonZeroLength);
             Label isInteger(env);
-            builder_.Branch(builder_.IsIntegerString(param), &isInteger, &notString);
+            BRANCH_CIR(builder_.IsIntegerString(param), &isInteger, &notString);
             builder_.Bind(&isInteger);
             {
                 result = IntToTaggedIntPtr(builder_.GetRawHashFromString(param));

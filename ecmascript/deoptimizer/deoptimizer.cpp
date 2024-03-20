@@ -411,12 +411,13 @@ bool Deoptimizier::CollectVirtualRegisters(Method* method, FrameWriter *frameWri
     return true;
 }
 
-void Deoptimizier::Dump(Method* method, kungfu::DeoptType type, size_t depth)
+void Deoptimizier::Dump(JSTaggedValue callTarget, kungfu::DeoptType type, size_t depth)
 {
     if (thread_->IsPGOProfilerEnable()) {
-        auto profileTypeInfo = method->GetProfileTypeInfo();
+        JSFunction *function = JSFunction::Cast(callTarget);
+        auto profileTypeInfo = function->GetProfileTypeInfo();
         if (profileTypeInfo.IsUndefined()) {
-            SlowRuntimeStub::NotifyInlineCache(thread_, method);
+            SlowRuntimeStub::NotifyInlineCache(thread_, function);
         }
     }
     if (traceDeopt_) {
@@ -424,7 +425,7 @@ void Deoptimizier::Dump(Method* method, kungfu::DeoptType type, size_t depth)
         LOG_TRACE(INFO) << "Check Type: " << checkType;
         std::string data = JsStackInfo::BuildJsStackTrace(thread_, true);
         LOG_COMPILER(INFO) << "Deoptimize" << data;
-        const uint8_t *pc = method->GetBytecodeArray() + pc_.at(depth);
+        const uint8_t *pc = GetMethod(callTarget)->GetBytecodeArray() + pc_.at(depth);
         BytecodeInstruction inst(pc);
         LOG_COMPILER(INFO) << inst;
     }
@@ -523,10 +524,10 @@ void Deoptimizier::UpdateAndDumpDeoptInfo(kungfu::DeoptType type)
 {
     // depth records the number of layers of nested calls when deopt occurs
     for (size_t i = 0; i <= inlineDepth_; i++) {
-        JSTaggedValue CallTarget = GetDeoptValue(i, static_cast<int32_t>(SpecVregIndex::FUNC_INDEX));
-        auto method = GetMethod(CallTarget);
+        JSTaggedValue callTarget = GetDeoptValue(i, static_cast<int32_t>(SpecVregIndex::FUNC_INDEX));
+        auto method = GetMethod(callTarget);
         if (i == inlineDepth_) {
-            Dump(method, type, i);
+            Dump(callTarget, type, i);
         }
         ASSERT(thread_ != nullptr);
         uint8_t deoptThreshold = method->GetDeoptThreshold();
@@ -535,9 +536,11 @@ void Deoptimizier::UpdateAndDumpDeoptInfo(kungfu::DeoptType type)
             method->SetDeoptThreshold(--deoptThreshold);
         } else {
             method->ClearAOTStatusWhenDeopt();
-            if (method->GetMachineCode() != JSTaggedValue::Undefined()) {
-                method->SetMachineCode(thread_, JSTaggedValue::Undefined());
+            auto func = JSFunction::Cast(callTarget.GetTaggedObject());
+            if (func->GetMachineCode() != JSTaggedValue::Undefined()) {
+                func->SetMachineCode(thread_, JSTaggedValue::Undefined());
             }
+            func->SetCodeEntry(reinterpret_cast<uintptr_t>(nullptr));
         }
     }
 }

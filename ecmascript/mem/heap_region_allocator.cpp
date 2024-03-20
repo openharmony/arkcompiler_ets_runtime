@@ -16,8 +16,7 @@
 #include "ecmascript/mem/heap_region_allocator.h"
 
 #include "ecmascript/ecma_vm.h"
-#include "ecmascript/js_thread.h"
-#include "ecmascript/mem/heap.h"
+#include "ecmascript/mem/heap-inl.h"
 #include "ecmascript/mem/mark_stack.h"
 #include "ecmascript/mem/mem_map_allocator.h"
 #include "ecmascript/mem/region.h"
@@ -27,7 +26,7 @@
 namespace panda::ecmascript {
 constexpr size_t PANDA_POOL_ALIGNMENT_IN_BYTES = 256_KB;
 
-Region *HeapRegionAllocator::AllocateAlignedRegion(Space *space, size_t capacity, JSThread* thread)
+Region *HeapRegionAllocator::AllocateAlignedRegion(Space *space, size_t capacity, JSThread* thread, BaseHeap *heap)
 {
     if (capacity == 0) {
         LOG_ECMA_MEM(FATAL) << "capacity must have a size bigger than 0";
@@ -35,16 +34,20 @@ Region *HeapRegionAllocator::AllocateAlignedRegion(Space *space, size_t capacity
     }
     RegionSpaceFlag flags = space->GetRegionFlag();
     bool isRegular = (flags != RegionSpaceFlag::IN_HUGE_OBJECT_SPACE &&
-        flags != RegionSpaceFlag::IN_HUGE_MACHINE_CODE_SPACE);
+        flags != RegionSpaceFlag::IN_HUGE_MACHINE_CODE_SPACE &&
+        flags != RegionSpaceFlag::IN_SHARED_HUGE_OBJECT_SPACE);
     bool isMachineCode = (flags == RegionSpaceFlag::IN_MACHINE_CODE_SPACE ||
         flags == RegionSpaceFlag::IN_HUGE_MACHINE_CODE_SPACE);
-    auto pool = MemMapAllocator::GetInstance()->Allocate(thread->GetThreadId(), capacity, DEFAULT_REGION_SIZE,
+    auto tid = thread ? thread->GetThreadId() : JSThread::GetCurrentThreadId();
+    auto pool = MemMapAllocator::GetInstance()->Allocate(tid, capacity, DEFAULT_REGION_SIZE,
                                                          ToSpaceTypeName(space->GetSpaceType()),
                                                          isRegular, isMachineCode);
     void *mapMem = pool.GetMem();
     if (mapMem == nullptr) {
-        const_cast<Heap *>(thread->GetEcmaVM()->GetHeap())->ThrowOutOfMemoryErrorForDefault(DEFAULT_REGION_SIZE,
-            "HeapRegionAllocator::AllocateAlignedRegion", false);
+        if (thread != nullptr) {
+            heap->ThrowOutOfMemoryErrorForDefault(thread, DEFAULT_REGION_SIZE,
+                "HeapRegionAllocator::AllocateAlignedRegion", false);
+        }
         LOG_ECMA_MEM(FATAL) << "pool is empty " << annoMemoryUsage_.load(std::memory_order_relaxed);
         UNREACHABLE();
     }
@@ -64,7 +67,7 @@ Region *HeapRegionAllocator::AllocateAlignedRegion(Space *space, size_t capacity
     uintptr_t begin = AlignUp(mem + sizeof(Region), static_cast<size_t>(MemAlignment::MEM_ALIGN_REGION));
     uintptr_t end = mem + capacity;
 
-    Region *region = new (ToVoidPtr(mem)) Region(thread, mem, begin, end, flags);
+    Region *region = new (ToVoidPtr(mem)) Region(heap->GetNativeAreaAllocator(), mem, begin, end, flags);
     std::atomic_thread_fence(std::memory_order_seq_cst);
     return region;
 }
@@ -72,7 +75,8 @@ Region *HeapRegionAllocator::AllocateAlignedRegion(Space *space, size_t capacity
 void HeapRegionAllocator::FreeRegion(Region *region, size_t cachedSize)
 {
     auto size = region->GetCapacity();
-    bool isRegular = !region->InHugeObjectSpace() && !region->InHugeMachineCodeSpace();
+    bool isRegular = !region->InHugeObjectSpace() && !region->InHugeMachineCodeSpace() &&
+        !region->InSharedHugeObjectSpace();
     auto allocateBase = region->GetAllocateBase();
 
     DecreaseAnnoMemoryUsage(size);

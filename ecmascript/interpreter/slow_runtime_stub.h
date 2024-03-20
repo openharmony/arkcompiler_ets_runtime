@@ -118,6 +118,7 @@ public:
     static void StModuleVar(JSThread *thread, int32_t index, JSTaggedValue value);
     static JSTaggedValue LdLocalModuleVar(JSThread *thread, int32_t index);
     static JSTaggedValue LdExternalModuleVar(JSThread *thread, int32_t index);
+    static JSTaggedValue LdSendableExternalModuleVar(JSThread *thread, int32_t index, JSTaggedValue thisFunc);
     static JSTaggedValue CreateRegExpWithLiteral(JSThread *thread, JSTaggedValue pattern, uint8_t flags);
     static JSTaggedValue GetIteratorNext(JSThread *thread, JSTaggedValue obj, JSTaggedValue method);
 
@@ -152,12 +153,12 @@ public:
                                          JSTaggedValue array);
     static JSTaggedValue DynamicImport(JSThread *thread, JSTaggedValue specifier, JSTaggedValue func);
     static JSTaggedValue DefineMethod(JSThread *thread, Method *method, JSTaggedValue homeObject,
-                                      uint16_t length, JSTaggedValue env);
+                                      uint16_t length, JSTaggedValue env, JSTaggedValue module);
     static JSTaggedValue LdSendableClass(JSThread *thread, JSTaggedValue env, uint16_t level);
     static JSTaggedValue LdSuperByValue(JSThread *thread, JSTaggedValue obj, JSTaggedValue key, JSTaggedValue thisFunc);
     static JSTaggedValue StSuperByValue(JSThread *thread, JSTaggedValue obj, JSTaggedValue key, JSTaggedValue value,
                                         JSTaggedValue thisFunc);
-    static JSTaggedValue NotifyInlineCache(JSThread *thread, Method *method);
+    static JSTaggedValue NotifyInlineCache(JSThread *thread, JSFunction *function);
     static JSTaggedValue ThrowReferenceError(JSThread *thread, JSTaggedValue prop, const char *desc);
 
     static JSTaggedValue ResolveClass(JSThread *thread, JSTaggedValue ctor, TaggedArray *literal, JSTaggedValue base,

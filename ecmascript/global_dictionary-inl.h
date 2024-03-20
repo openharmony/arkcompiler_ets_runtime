@@ -61,7 +61,7 @@ JSTaggedValue GlobalDictionary::GetValue(int entry) const
 PropertyAttributes GlobalDictionary::GetAttributes(int entry) const
 {
     int index = GetEntryIndex(entry) + ENTRY_DETAILS_INDEX;
-    return PropertyAttributes(Get(index).GetInt());
+    return PropertyAttributes(Get(index));
 }
 
 void GlobalDictionary::SetEntry(const JSThread *thread, int entry, const JSTaggedValue &key, const JSTaggedValue &value,

@@ -128,15 +128,14 @@ void TransitionsDictionary::Rehash(const JSThread *thread, TransitionsDictionary
     newTable->SetHoleEntriesCount(thread, 0);
 }
 
-// class JSHClass
-void JSHClass::Initialize(const JSThread *thread, uint32_t size, JSType type, uint32_t inlinedProps)
+void JSHClass::InitializeWithDefaultValue(const JSThread *thread, uint32_t size, JSType type, uint32_t inlinedProps)
 {
     DISALLOW_GARBAGE_COLLECTION;
     ClearBitField();
     if (JSType::JS_OBJECT_FIRST <= type && type <= JSType::JS_OBJECT_LAST) {
         SetObjectSize(size + inlinedProps * JSTaggedValue::TaggedTypeSize());
         SetInlinedPropsStart(size);
-        SetLayout(thread, thread->GlobalConstants()->GetEmptyLayoutInfo());
+        SetLayout(thread, JSTaggedValue::Null());
     } else {
         SetObjectSize(size);
         SetLayout(thread, JSTaggedValue::Null());
@@ -157,7 +156,29 @@ void JSHClass::Initialize(const JSThread *thread, uint32_t size, JSType type, ui
     SetProtoChangeMarker(thread, JSTaggedValue::Null());
     SetProtoChangeDetails(thread, JSTaggedValue::Null());
     SetEnumCache(thread, JSTaggedValue::Null());
+    SetSupers(thread, JSTaggedValue::Undefined());
+    SetLevel(0);
+    SetVTable(thread, JSTaggedValue::Undefined());
+}
+
+// class JSHClass
+void JSHClass::Initialize(const JSThread *thread, uint32_t size, JSType type, uint32_t inlinedProps)
+{
+    InitializeWithDefaultValue(thread, size, type, inlinedProps);
+    if (JSType::JS_OBJECT_FIRST <= type && type <= JSType::JS_OBJECT_LAST) {
+        SetLayout(thread, thread->GlobalConstants()->GetEmptyLayoutInfo());
+    }
     InitTSInheritInfo(thread);
+}
+
+// for sharedHeap
+void JSHClass::Initialize(const JSThread *thread, uint32_t size, JSType type,
+    uint32_t inlinedProps, const JSHandle<JSTaggedValue> &layout)
+{
+    InitializeWithDefaultValue(thread, size, type, inlinedProps);
+    if (JSType::JS_OBJECT_FIRST <= type && type <= JSType::JS_OBJECT_LAST) {
+        SetLayout(thread, layout);
+    }
 }
 
 void JSHClass::InitTSInheritInfo(const JSThread *thread)
@@ -400,7 +421,7 @@ void JSHClass::OptimizePrototypeForIC(const JSThread *thread, const JSHandle<JST
     JSHandle<JSHClass> hclass(thread, proto->GetTaggedObject()->GetClass());
     ASSERT(!Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(*hclass))->InReadOnlySpace());
     if (!hclass->IsPrototype()) {
-        if (!hclass->IsTS()) {
+        if (!hclass->IsTS() && !hclass->IsJSShared()) {
             // The local IC and on-proto IC are different, because the former don't need to notify the whole
             // prototype-chain or listen the changes of prototype chain, but the latter do. Therefore, when
             // an object becomes a prototype object at the first time, we need to copy its hidden class in
@@ -915,6 +936,9 @@ void JSHClass::RefreshUsers(const JSThread *thread, const JSHandle<JSHClass> &ol
 bool JSHClass::HasTSSubtyping() const
 {
     // if fill TS inherit info, supers must not be empty
+    if (!GetSupers().IsHeapObject()) {
+        return false;
+    }
     WeakVector *supers = WeakVector::Cast(GetSupers().GetTaggedObject());
     return !(supers->Empty());
 }
@@ -1164,8 +1188,10 @@ bool JSHClass::DumpForChildHClass(const JSHClass *hclass, HClassLayoutDesc *desc
     if (hclass->IsDictionaryMode()) {
         return false;
     }
-
-    uint32_t last = hclass->NumberOfProps() - 1;
+    if (hclass->PropsIsEmpty()) {
+        return false;
+    }
+    uint32_t last = hclass->LastPropIndex();
     LayoutInfo *layoutInfo = LayoutInfo::Cast(hclass->GetLayout().GetTaggedObject());
     layoutInfo->DumpFieldIndex(last, desc);
     return true;
@@ -1177,8 +1203,10 @@ bool JSHClass::UpdateChildLayoutDesc(const JSHClass *hclass, HClassLayoutDesc *c
     if (hclass->IsDictionaryMode()) {
         return false;
     }
-
-    uint32_t last = hclass->NumberOfProps() - 1;
+    if (hclass->PropsIsEmpty()) {
+        return false;
+    }
+    uint32_t last = hclass->LastPropIndex();
     LayoutInfo *layoutInfo = LayoutInfo::Cast(hclass->GetLayout().GetTaggedObject());
     return layoutInfo->UpdateFieldIndex(last, childDesc);
 }

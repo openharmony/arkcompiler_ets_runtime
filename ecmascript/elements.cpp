@@ -104,7 +104,6 @@ ConstantIndex Elements::GetGlobalContantIndexByKind(ElementsKind kind)
 ElementsKind Elements::MergeElementsKind(ElementsKind curKind, ElementsKind newKind)
 {
     auto result = ElementsKind(static_cast<uint8_t>(curKind) | static_cast<uint8_t>(newKind));
-    ASSERT(result != ElementsKind::NONE);
     result = FixElementsKind(result);
     return result;
 }

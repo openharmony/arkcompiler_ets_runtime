@@ -65,8 +65,23 @@ group("ark_aot_ts_test") {
     "async_env",
     "await",
     "await_loop",
+    "deopt",
     "deopt_clear_aotflags",
     "elements_kind",
+    "equal_nan",
+    "exception_case1",
+    "exception_case10",
+    "exception_case11",
+    "exception_case12",
+    "exception_case13",
+    "exception_case2",
+    "exception_case3",
+    "exception_case4",
+    "exception_case5",
+    "exception_case6",
+    "exception_case7",
+    "exception_case8",
+    "exception_case9",
     "exp",
     "extends_builtins",
     "fast_call_builtins",
@@ -142,6 +157,7 @@ group("ark_aot_ts_test") {
     "optimized_call",
     "or",
     "ordinaryhasinstance",
+    "pgo_builtins",
     "pgo_call",
     "pgo_call_js",
     "pgo_class_operation",
@@ -159,7 +175,6 @@ group("ark_aot_ts_test") {
     "pgo_ldobjbyvalue_string",
     "pgo_length",
     "pgo_objectliteral_operation",
-    "pgo_call_deopt",
     "pgo_call_deopt_js",
     "pgo_call_recursive_js",
     "pgo_on_heap",
@@ -198,7 +213,6 @@ group("ark_aot_ts_test") {
     "supercallspread",
     "suspendgenerator",
     "suspendgeneratorbranch",
-
     "suspendgeneratorfor",
     "suspendgeneratorphi",
     "suspendgeneratorreturn",
@@ -222,6 +236,14 @@ group("ark_aot_ts_test") {
     "ts_inline_change_target",
     "ts_inline_deopt",
     "ts_inline_deopt_loop",
+    "ts_inline_exception1",
+    "ts_inline_exception2",
+    "ts_inline_exception3",
+    "ts_inline_exception4",
+    "ts_inline_exception5",
+    "ts_inline_exception6",
+    "ts_inline_exception7",
+    "ts_inline_exception8",
     "ts_inline_extends",
     "ts_inline_loop",
     "ts_inline_max_call",
@@ -240,7 +262,12 @@ group("ark_aot_ts_test") {
     "sendablecontext",
   ]
 
-  deps = []
+  if (!is_debug) {
+    test_list += [ "pgo_call_deopt" ]
+  }
+
+  deps = [ "builtin_inlining:ark_aot_builtin_inlining_test" ]
+
   foreach(test, test_list) {
     deps += [ "${test}:${test}AotAction" ]
     if (!is_debug) {
@@ -308,33 +335,10 @@ group("ark_aot_ts_assert_test") {
     "definemethod",
     "definencfunc",
     "delobjprop",
-    "deopt",
     "destructuring",
     "div",
     "duplicatefunctions",
     "duplicatekey",
-    "equal_nan",
-    "exception_case1",
-    "exception_case10",
-    "exception_case11",
-    "exception_case12",
-    "exception_case13",
-    "exception_case2",
-    "exception_case3",
-    "exception_case4",
-    "exception_case5",
-    "exception_case6",
-    "exception_case7",
-    "exception_case8",
-    "exception_case9",
-    "ts_inline_exception1",
-    "ts_inline_exception2",
-    "ts_inline_exception3",
-    "ts_inline_exception4",
-    "ts_inline_exception5",
-    "ts_inline_exception6",
-    "ts_inline_exception7",
-    "ts_inline_exception8",
   ]
   foreach(test, assert_test_list) {
     deps += [ "${test}:${test}AotAssertAction" ]

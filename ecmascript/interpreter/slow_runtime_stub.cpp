@@ -1022,14 +1022,15 @@ JSTaggedValue SlowRuntimeStub::SuperCallSpread(JSThread *thread, JSTaggedValue f
 }
 
 JSTaggedValue SlowRuntimeStub::DefineMethod(JSThread *thread, Method *method, JSTaggedValue homeObject,
-                                            uint16_t length, JSTaggedValue env)
+                                            uint16_t length, JSTaggedValue env, JSTaggedValue module)
 {
     INTERPRETER_TRACE(thread, DefineMethod);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<Method> methodHandle(thread, method);
     JSHandle<JSTaggedValue> homeObjectHandle(thread, homeObject);
     JSHandle<JSTaggedValue> envHandle(thread, env);
-    return RuntimeStubs::RuntimeDefineMethod(thread, methodHandle, homeObjectHandle, length, envHandle);
+    JSHandle<JSTaggedValue> moduleHandle(thread, module);
+    return RuntimeStubs::RuntimeDefineMethod(thread, methodHandle, homeObjectHandle, length, envHandle, moduleHandle);
 }
 
 JSTaggedValue SlowRuntimeStub::LdSendableClass(JSThread *thread, JSTaggedValue env, uint16_t level)
@@ -1038,6 +1039,14 @@ JSTaggedValue SlowRuntimeStub::LdSendableClass(JSThread *thread, JSTaggedValue e
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> envHandle(thread, env);
     return RuntimeStubs::RuntimeLdSendableClass(envHandle, level);
+}
+
+JSTaggedValue SlowRuntimeStub::LdSendableExternalModuleVar(JSThread *thread, int32_t index, JSTaggedValue thisFunc)
+{
+    RUNTIME_TRACE(thread, LdSendableExternalModuleVarByIndex);
+    [[maybe_unused]] EcmaHandleScope scope(thread);
+
+    return RuntimeStubs::RuntimeLdSendableExternalModuleVar(thread, index, thisFunc);
 }
 
 JSTaggedValue SlowRuntimeStub::LdSuperByValue(JSThread *thread, JSTaggedValue obj, JSTaggedValue key,
@@ -1080,14 +1089,14 @@ void SlowRuntimeStub::ThrowDeleteSuperProperty(JSThread *thread)
     return RuntimeStubs::RuntimeThrowDeleteSuperProperty(thread);
 }
 
-JSTaggedValue SlowRuntimeStub::NotifyInlineCache(JSThread *thread, Method *method)
+JSTaggedValue SlowRuntimeStub::NotifyInlineCache(JSThread *thread, JSFunction *function)
 {
     INTERPRETER_TRACE(thread, NotifyInlineCache);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
-    JSHandle<Method> methodHandle(thread, method);
-    uint32_t slotSize = methodHandle->GetSlotSize();
-    return RuntimeStubs::RuntimeNotifyInlineCache(thread, methodHandle, slotSize);
+    JSHandle<JSFunction> functionHandle(thread, function);
+    uint32_t slotSize = functionHandle->GetCallTarget()->GetSlotSize();
+    return RuntimeStubs::RuntimeNotifyInlineCache(thread, functionHandle, slotSize);
 }
 
 JSTaggedValue SlowRuntimeStub::ResolveClass(JSThread *thread, JSTaggedValue ctor, TaggedArray *literal,

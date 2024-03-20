@@ -140,16 +140,16 @@ void Jit::Compile(EcmaVM *vm, JSHandle<JSFunction> &jsFunction, JitCompileMode m
         return;
     }
 
-    if (method->GetMachineCode() == JSTaggedValue::Hole()) {
+    if (jsFunction->GetMachineCode() == JSTaggedValue::Hole()) {
         LOG_JIT(DEBUG) << "skip method, as it compiling:" << methodName;
         return;
     }
-    if (method->GetMachineCode() != JSTaggedValue::Undefined()) {
+    if (jsFunction->GetMachineCode() != JSTaggedValue::Undefined()) {
         LOG_JIT(DEBUG) << "skip method, as it has been jit compiled:" << methodName;
         return;
     }
     // using hole value to indecate compiling. todo: reset when failed
-    method->SetMachineCode(vm->GetJSThread(), JSTaggedValue::Hole());
+    jsFunction->SetMachineCode(vm->GetJSThread(), JSTaggedValue::Hole());
 
     {
         CString msg = "compile method:" + methodName + ", in work thread";

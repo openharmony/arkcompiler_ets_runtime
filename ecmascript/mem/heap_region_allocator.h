@@ -21,7 +21,7 @@
 #include "ecmascript/mem/mem.h"
 
 namespace panda::ecmascript {
-class JSThread;
+class BaseHeap;
 class Region;
 class Space;
 
@@ -30,7 +30,7 @@ public:
     HeapRegionAllocator() = default;
     virtual ~HeapRegionAllocator() = default;
 
-    Region *AllocateAlignedRegion(Space *space, size_t capacity, JSThread* thread);
+    Region *AllocateAlignedRegion(Space *space, size_t capacity, JSThread* thread, BaseHeap *heap);
     void FreeRegion(Region *region, size_t cachedSize);
 
     void IncreaseAnnoMemoryUsage(size_t bytes)

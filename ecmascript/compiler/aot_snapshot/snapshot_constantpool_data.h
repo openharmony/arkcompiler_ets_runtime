@@ -77,6 +77,7 @@ protected:
                             JSHandle<JSTaggedValue> ihc, JSHandle<JSTaggedValue> chc,
                             int32_t elementIndex = AOT_ELEMENT_INDEX_DEFAULT_VALUE,
                             ElementsKind kind = ElementsKind::GENERIC);
+    JSHandle<ConstantPool> GetUnsharedConstpool(const ItemData &data);
 
     CUnorderedMap<ItemKey, ItemData> info_ {};
     EcmaVM *vm_ {nullptr};

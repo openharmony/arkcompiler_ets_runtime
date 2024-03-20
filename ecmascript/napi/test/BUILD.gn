@@ -146,6 +146,28 @@ host_unittest_action("Jsnapi_004_Test") {
   deps += hiviewdfx_deps
 }
 
+host_unittest_action("Jsnapi_Sendable_Test") {
+  module_out_path = module_output_path
+
+  sources = [ "jsnapi_sendable_tests.cpp" ]
+
+  configs = [ "../../../:ecma_test_config" ]
+
+  deps = [
+    "$ark_third_party_root/icu/icu4c:shared_icui18n",
+    "$ark_third_party_root/icu/icu4c:shared_icuuc",
+    "../../../:libark_jsruntime_test",
+    sdk_libc_secshared_dep,
+  ]
+
+  foreach(file, test_js_files) {
+    deps += [ ":gen_${file}_abc" ]
+  }
+
+  external_deps = hiviewdfx_ext_deps
+  deps += hiviewdfx_deps
+}
+
 host_unittest_action("FFIWorkLoadTest") {
   module_out_path = module_output_path
 
@@ -199,6 +221,7 @@ group("unittest") {
     ":Jsnapi_002_Test",
     ":Jsnapi_003_Test",
     ":Jsnapi_004_Test",
+    ":Jsnapi_Sendable_Test",
   ]
 }
 
@@ -209,6 +232,7 @@ group("host_unittest") {
     ":Jsnapi_002_TestAction",
     ":Jsnapi_003_TestAction",
     ":Jsnapi_004_TestAction",
+    ":Jsnapi_Sendable_TestAction",
   ]
 
   if (is_mac) {
@@ -217,6 +241,7 @@ group("host_unittest") {
       ":Jsnapi_002_TestAction",
       ":Jsnapi_003_TestAction",
       ":Jsnapi_004_TestAction",
+      ":Jsnapi_Sendable_TestAction",
     ]
   }
 }

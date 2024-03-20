@@ -63,22 +63,16 @@ bool ValueSerializer::CheckObjectCanSerialize(TaggedObject *object, bool &findSh
         case JSType::JS_OBJECT:
         case JSType::JS_ASYNC_FUNCTION:  // means CONCURRENT_FUNCTION
             return true;
-        case JSType::JS_SHARED_OBJECT: {
+        case JSType::JS_SHARED_OBJECT:
+        case JSType::JS_SHARED_FUNCTION: {
             if (serializeSharedEvent_ > 0) {
                 return true;
             }
             if (defaultCloneShared_ || cloneSharedSet_.find(ToUintPtr(object)) != cloneSharedSet_.end()) {
                 findSharedObject = true;
                 serializeSharedEvent_++;
-                return true;
             }
-            break;
-        }
-        case JSType::JS_SHARED_FUNCTION: {
-            if (serializeSharedEvent_ > 0) {
-                return true;
-            }
-            break;
+            return true;
         }
         default:
             break;
@@ -115,6 +109,11 @@ bool ValueSerializer::WriteValue(JSThread *thread,
         data_->SetIncompleteData(true);
         return false;
     }
+    // Push share root object to runtime map
+    if (!sharedObjects_.empty()) {
+        uint32_t index = Runtime::GetInstance()->PushSerializationRoot(thread_, sharedObjects_);
+        data_->SetDataIndex(index);
+    }
     size_t maxSerializerSize = vm_->GetEcmaParamConfiguration().GetMaxJSSerializerSize();
     if (data_->Size() > maxSerializerSize) {
         LOG_ECMA(ERROR) << "The serialization data size has exceed limit Size, current size is: " << data_->Size()
@@ -138,6 +137,12 @@ void ValueSerializer::SerializeObjectImpl(TaggedObject *object, bool isWeak)
         data_->WriteEncodeFlag(EncodeFlag::WEAK);
     }
     if (SerializeReference(object) || SerializeRootObject(object)) {
+        return;
+    }
+    Region *region = Region::ObjectAddressToRange(object);
+    if (object->GetClass()->IsString() || object->GetClass()->IsMethod() || region->InSharedReadOnlySpace() ||
+        (serializeSharedEvent_ == 0 && region->InSharedHeap())) {
+        SerializeSharedObject(object);
         return;
     }
     if (object->GetClass()->IsNativeBindingObject()) {
@@ -169,19 +174,9 @@ void ValueSerializer::SerializeObjectImpl(TaggedObject *object, bool isWeak)
             array->SetTrackInfo(thread_, JSTaggedValue::Undefined());
             break;
         }
-        case JSType::TREE_STRING:
-        case JSType::SLICED_STRING:
-            object = EcmaStringAccessor::FlattenNoGC(vm_, EcmaString::Cast(object));
-            break;
         case JSType::JS_REG_EXP:
             SerializeJSRegExpPrologue(reinterpret_cast<JSRegExp *>(object));
             break;
-        case JSType::JS_SHARED_FUNCTION: {
-            if (serializeSharedEvent_ > 0) {
-                data_->WriteEncodeFlag(EncodeFlag::JS_FUNCTION_IN_SHARED);
-            }
-            break;
-        }
         case JSType::JS_OBJECT:
             hashfield = Barriers::GetValue<JSTaggedType>(object, JSObject::HASH_OFFSET);
             Barriers::SetPrimitive<JSTaggedType>(object, JSObject::HASH_OFFSET, JSTaggedValue::VALUE_ZERO);
@@ -226,9 +221,9 @@ void ValueSerializer::SerializeJSError(TaggedObject *object)
     JSHandle<JSTaggedValue> msg =
         JSObject::GetProperty(thread_, JSHandle<JSTaggedValue>(thread_, object), handleMsg).GetValue();
     if (msg->IsString()) {
-        EcmaString *str = EcmaStringAccessor::FlattenNoGC(vm_, EcmaString::Cast(msg->GetTaggedObject()));
         data_->WriteUint8(1); // 1: msg is string
-        SerializeTaggedObject<SerializeType::VALUE_SERIALIZE>(str);
+        // string must be shared
+        SerializeSharedObject(msg->GetTaggedObject());
     } else {
         data_->WriteUint8(0); // 0: msg is undefined
     }
@@ -409,7 +404,7 @@ bool ValueSerializer::PrepareClone(JSThread *thread, const JSHandle<JSTaggedValu
             JSHandle<JSTaggedValue> element = JSArray::FastGetPropertyByValue(thread, cloneList, index);
             if (element->IsArrayBuffer()) {
                 cloneArrayBufferSet_.insert(static_cast<uintptr_t>(element.GetTaggedType()));
-            } else if (element->IsJSSharedObject()) {
+            } else if (element->IsJSShared()) {
                 cloneSharedSet_.insert(static_cast<uintptr_t>(element.GetTaggedType()));
             } else {
                 return false;

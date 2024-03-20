@@ -16,12 +16,14 @@
 #include "ecmascript/mem/verification.h"
 
 #include "ecmascript/js_tagged_value-inl.h"
+#include "ecmascript/mem/concurrent_sweeper.h"
+#include "ecmascript/mem/shared_heap/shared_concurrent_sweeper.h"
 #include "ecmascript/mem/slots.h"
 #include "ecmascript/mem/visitor.h"
-#include "ecmascript/mem/concurrent_sweeper.h"
+#include "ecmascript/runtime.h"
 
 namespace panda::ecmascript {
-void LogErrorForObjSlot(const Heap *heap, const char *headerInfo, TaggedObject *obj, ObjectSlot slot,
+void LogErrorForObjSlot(const BaseHeap *heap, const char *headerInfo, TaggedObject *obj, ObjectSlot slot,
                         TaggedObject *value)
 {
     TaggedObject *slotValue = slot.GetTaggedObject();
@@ -50,7 +52,7 @@ void LogErrorForObjSlot(const Heap *heap, const char *headerInfo, TaggedObject *
     UNREACHABLE();
 }
 
-void LogErrorForObj(const Heap *heap, const char *headerInfo, TaggedObject *obj)
+void LogErrorForObj(const BaseHeap *heap, const char *headerInfo, TaggedObject *obj)
 {
     Region *region = Region::ObjectAddressToRange(obj);
     LOG_GC(FATAL) << headerInfo
@@ -65,7 +67,7 @@ void LogErrorForObj(const Heap *heap, const char *headerInfo, TaggedObject *obj)
 }
 
 // Only used for verify InactiveSemiSpace
-void VerifyObjectVisitor::VerifyInactiveSemiSpaceMarkedObject(const Heap *heap, void *addr)
+void VerifyObjectVisitor::VerifyInactiveSemiSpaceMarkedObject(const BaseHeap *heap, void *addr)
 {
     TaggedObject *object = reinterpret_cast<TaggedObject*>(addr);
     Region *objectRegion = Region::ObjectAddressToRange(object);
@@ -91,7 +93,7 @@ void VerifyObjectVisitor::VerifyInactiveSemiSpaceMarkedObject(const Heap *heap, 
 void VerifyObjectVisitor::VisitAllObjects(TaggedObject *obj)
 {
     auto jsHclass = obj->GetClass();
-    objXRay_.VisitObjectBody<VisitType::OLD_GC_VISIT>(
+    ObjectXRay::VisitObjectBody<VisitType::OLD_GC_VISIT>(
         obj, jsHclass, [this](TaggedObject *root, ObjectSlot start, ObjectSlot end,
                               VisitObjectArea area) {
             if (area == VisitObjectArea::IN_OBJECT) {
@@ -155,6 +157,13 @@ void VerifyObjectVisitor::VerifyObjectSlotLegal(ObjectSlot slot, TaggedObject *o
             case VerifyKind::VERIFY_EVACUATE_FULL:
                 VerifyEvacuateFull(object, slot, value.GetTaggedObject());
                 break;
+            case VerifyKind::VERIFY_SHARED_RSET_POST_FULL_GC:
+                VerifySharedRSetPostFullGC(object, slot, value.GetTaggedObject());
+                break;
+            case VerifyKind::VERIFY_PRE_SHARED_GC:
+            case VerifyKind::VERIFY_POST_SHARED_GC:
+                VerifySharedObjectReference(object, slot, value.GetTaggedObject());
+                break;
             default:
                 LOG_GC(FATAL) << "unknown verify kind:" << static_cast<size_t>(verifyKind_);
                 UNREACHABLE();
@@ -166,12 +175,19 @@ void VerifyObjectVisitor::VerifyMarkYoung(TaggedObject *object, ObjectSlot slot,
 {
     Region *objectRegion = Region::ObjectAddressToRange(object);
     Region *valueRegion = Region::ObjectAddressToRange(value);
+    ASSERT(!objectRegion->InSharedHeap());
     if (!objectRegion->InYoungSpace() && valueRegion->InYoungSpace()) {
         if (!objectRegion->TestOldToNew(slot.SlotAddress())) {
             LogErrorForObjSlot(heap_, "Verify MarkYoung: Old object, slot miss old_to_new bit.", object, slot, value);
         } else if (!valueRegion->Test(value)) {
             LogErrorForObjSlot(heap_, "Verify MarkYoung: Old object, slot has old_to_new bit, miss gc_mark bit.",
                 object, slot, value);
+        }
+    }
+    if (!objectRegion->InSharedHeap() && valueRegion->InSharedSweepableSpace()) {
+        if (!objectRegion->TestLocalToShare(slot.SlotAddress())) {
+            LogErrorForObjSlot(heap_, "Verify MarkYoung: Local object, slot local_to_share bit = 0, "
+                "but SharedHeap object.", object, slot, value);
         }
     }
     if (objectRegion->Test(object)) {
@@ -183,7 +199,7 @@ void VerifyObjectVisitor::VerifyMarkYoung(TaggedObject *object, ObjectSlot slot,
                 object, slot, value);
         }
         if (valueRegion->Test(value) && !(valueRegion->InYoungSpace() || valueRegion->InAppSpawnSpace() ||
-                                          valueRegion->InReadOnlySpace())) {
+                                          valueRegion->InReadOnlySpace() || valueRegion->InSharedHeap())) {
             LogErrorForObjSlot(heap_, "Verify MarkYoung: Marked object, slot marked, but NOT in "
                 "Young/AppSpawn/ReadOnly Space.", object, slot, value);
         }
@@ -207,6 +223,12 @@ void VerifyObjectVisitor::VerifyEvacuateYoung(TaggedObject *object, ObjectSlot s
             }
         }
     }
+    if (!objectRegion->InSharedHeap() && valueRegion->InSharedSweepableSpace()) {
+        if (!objectRegion->TestLocalToShare(slot.SlotAddress())) {
+            LogErrorForObjSlot(heap_, "Verify EvacuateYoung: Local object, slot local_to_share bit = 0, "
+                "but SharedHeap object.", object, slot, value);
+        }
+    }
     if (objectRegion->InActiveSemiSpace()) {
         if (valueRegion->InInactiveSemiSpace()) {
             LogErrorForObjSlot(heap_, "Verify EvacuateYoung: ActiveSpace object, slot in InactiveSpace(FromSpace).",
@@ -225,8 +247,14 @@ void VerifyObjectVisitor::VerifyMarkFull(TaggedObject *object, ObjectSlot slot, 
         }
     }
     if (objectRegion->Test(object)) {
-        if (!valueRegion->Test(value)) {
+        if (!valueRegion->InSharedHeap() && !valueRegion->Test(value)) {
             LogErrorForObjSlot(heap_, "Verify MarkFull: Marked object, slot miss gc_mark bit.", object, slot, value);
+        }
+    }
+    if (!objectRegion->InSharedHeap() && valueRegion->InSharedSweepableSpace()) {
+        if (!objectRegion->TestLocalToShare(slot.SlotAddress())) {
+            LogErrorForObjSlot(heap_, "Verify VerifyMarkFull: Local object, slot local_to_share bit = 0, "
+                "but SharedHeap object.", object, slot, value);
         }
     }
 }
@@ -243,6 +271,35 @@ void VerifyObjectVisitor::VerifyEvacuateFull([[maybe_unused]]TaggedObject *root,
                                              [[maybe_unused]]TaggedObject *value) const
 {
     VerifyEvacuateYoung(root, slot, value);
+}
+
+void VerifyObjectVisitor::VerifySharedObjectReference(TaggedObject *object, ObjectSlot slot, TaggedObject *value) const
+{
+    Region *objectRegion = Region::ObjectAddressToRange(object);
+    Region *valueRegion = Region::ObjectAddressToRange(value);
+    if (objectRegion->InSharedHeap()) {
+        if (!valueRegion->InSharedHeap()) {
+            LogErrorForObjSlot(heap_, "Verify SharedObjectReference: Shared object references a local object",
+                object, slot, value);
+        }
+    } else if (valueRegion->InSharedSweepableSpace()) {
+        if (!objectRegion->TestLocalToShare(slot.SlotAddress())) {
+            LogErrorForObjSlot(heap_, "Verify SharedObjectReference: Local object, slot local_to_share bit = 0, "
+                "but SharedHeap object.", object, slot, value);
+        }
+    }
+}
+
+void VerifyObjectVisitor::VerifySharedRSetPostFullGC(TaggedObject *object, ObjectSlot slot, TaggedObject *value) const
+{
+    Region *objectRegion = Region::ObjectAddressToRange(object);
+    Region *valueRegion = Region::ObjectAddressToRange(value);
+    if (!objectRegion->InSharedHeap() && valueRegion->InSharedSweepableSpace()) {
+        if (!objectRegion->TestLocalToShare(slot.SlotAddress())) {
+            LogErrorForObjSlot(heap_, "Verify SharedRSetPostFullGC: Local object, slot local_to_share bit = 0, "
+                "but SharedHeap object.", object, slot, value);
+        }
+    }
 }
 
 void VerifyObjectVisitor::operator()(TaggedObject *obj, JSTaggedValue value)
@@ -281,10 +338,20 @@ size_t Verification::VerifyRoot() const
 {
     size_t failCount = 0;
     RootVisitor visitor = [this, &failCount]([[maybe_unused]] Root type, ObjectSlot slot) {
+        JSTaggedValue value(slot.GetTaggedType());
+        // Skip verifying shared object in local gc verification.
+        if (value.IsInSharedHeap()) {
+            return;
+        }
         VerifyObjectSlot(slot, &failCount);
     };
     RootRangeVisitor rangeVisitor = [this, &failCount]([[maybe_unused]] Root type, ObjectSlot start, ObjectSlot end) {
         for (ObjectSlot slot = start; slot < end; slot++) {
+            JSTaggedValue value(slot.GetTaggedType());
+            // Skip verifying shared object in local gc verification.
+            if (value.IsInSharedHeap()) {
+                return;
+            }
             VerifyObjectSlot(slot, &failCount);
         }
     };
@@ -292,7 +359,7 @@ size_t Verification::VerifyRoot() const
         []([[maybe_unused]] Root type, [[maybe_unused]] ObjectSlot base, [[maybe_unused]] ObjectSlot derived,
            [[maybe_unused]] uintptr_t baseOldObject) {
     };
-    objXRay_.VisitVMRoots(visitor, rangeVisitor, derivedVisitor);
+    ObjectXRay::VisitVMRoots(heap_->GetEcmaVM(), visitor, rangeVisitor, derivedVisitor);
     if (failCount > 0) {
         LOG_GC(ERROR) << "VerifyRoot detects deadObject count is " << failCount;
     }
@@ -325,6 +392,65 @@ void Verification::VerifyObjectSlot(const ObjectSlot &slot, size_t *failCount) c
         VerifyObjectVisitor(heap_, failCount, verifyKind_)(value.GetTaggedWeakRef());
     } else if (value.IsHeapObject()) {
         VerifyObjectVisitor(heap_, failCount, verifyKind_)(value.GetTaggedObject());
+    }
+}
+
+void SharedHeapVerification::VerifyAll() const
+{
+    [[maybe_unused]] VerifyScope verifyScope(sHeap_);
+    sHeap_->GetSweeper()->EnsureAllTaskFinished();
+    size_t result = VerifyRoot();
+    result += VerifyHeap();
+    if (result > 0) {
+        LOG_GC(FATAL) << "Verify (type=" << static_cast<uint8_t>(verifyKind_)
+                      << ") corrupted and " << result << " corruptions";
+    }
+}
+
+size_t SharedHeapVerification::VerifyRoot() const
+{
+    size_t failCount = 0;
+    RootVisitor visitor = [this, &failCount]([[maybe_unused]] Root type, ObjectSlot slot) {
+        VerifyObjectSlot(slot, &failCount);
+    };
+    RootRangeVisitor rangeVisitor = [this, &failCount]([[maybe_unused]] Root type, ObjectSlot start, ObjectSlot end) {
+        for (ObjectSlot slot = start; slot < end; slot++) {
+            VerifyObjectSlot(slot, &failCount);
+        }
+    };
+    RootBaseAndDerivedVisitor derivedVisitor =
+        []([[maybe_unused]] Root type, [[maybe_unused]] ObjectSlot base, [[maybe_unused]] ObjectSlot derived,
+           [[maybe_unused]] uintptr_t baseOldObject) {
+    };
+    Runtime::GetInstance()->GCIterateThreadList([&](JSThread *thread) {
+        ASSERT(!thread->IsInRunningState());
+        auto vm = thread->GetEcmaVM();
+        auto localHeap = const_cast<Heap*>(vm->GetHeap());
+        localHeap->GetSweeper()->EnsureAllTaskFinished();
+        ObjectXRay::VisitVMRoots(vm, visitor, rangeVisitor, derivedVisitor);
+        if (failCount > 0) {
+            LOG_GC(ERROR) << "SharedHeap VerifyRoot detects deadObject count is " << failCount;
+        }
+    });
+    return failCount;
+}
+
+size_t SharedHeapVerification::VerifyHeap() const
+{
+    size_t failCount = sHeap_->VerifyHeapObjects(verifyKind_);
+    if (failCount > 0) {
+        LOG_GC(ERROR) << "SharedHeap VerifyHeap detects deadObject count is " << failCount;
+    }
+    return failCount;
+}
+
+void SharedHeapVerification::VerifyObjectSlot(const ObjectSlot &slot, size_t *failCount) const
+{
+    JSTaggedValue value(slot.GetTaggedType());
+    if (value.IsWeak()) {
+        VerifyObjectVisitor(sHeap_, failCount, verifyKind_)(value.GetTaggedWeakRef());
+    } else if (value.IsHeapObject()) {
+        VerifyObjectVisitor(sHeap_, failCount, verifyKind_)(value.GetTaggedObject());
     }
 }
 }  // namespace panda::ecmascript

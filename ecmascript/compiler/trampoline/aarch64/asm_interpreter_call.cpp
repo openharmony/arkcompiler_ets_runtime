@@ -179,7 +179,7 @@ void AsmInterpreterCall::JSCallCommonEntry(ExtendedAssembler *assembler, JSCallM
         __ Mov(temp, callTargetRegister);
         __ Ldr(Register(X20), MemoryOperand(methodRegister, Method::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET));
         // Reload constpool and profileInfo to make sure gc map work normally
-        __ Ldr(Register(X22), MemoryOperand(methodRegister, Method::PROFILE_TYPE_INFO_OFFSET));
+        __ Ldr(Register(X22), MemoryOperand(temp, JSFunction::PROFILE_TYPE_INFO_OFFSET));
         __ Ldr(Register(X21), MemoryOperand(methodRegister, Method::CONSTANT_POOL_OFFSET));
 
         __ Mov(temp, kungfu::BytecodeStubCSigns::ID_ThrowStackOverflowException);
@@ -1038,7 +1038,7 @@ void AsmInterpreterCall::GeneratorReEnterAsmInterpDispatch(ExtendedAssembler *as
     __ Align16(currentSlotRegister);
     __ Mov(Register(SP), currentSlotRegister);
     // call bc stub
-    CallBCStub(assembler, newSp, glue, method, pc, temp);
+    CallBCStub(assembler, newSp, glue, callTarget, method, pc, temp);
 
     __ Bind(&stackOverflow);
     {
@@ -1147,6 +1147,7 @@ void AsmInterpreterCall::DispatchCall(ExtendedAssembler *assembler, Register pcR
     Register newSpRegister, Register accRegister)
 {
     Register glueRegister = __ GlueRegister();
+    Register callTargetRegister = __ CallDispatcherArgument(kungfu::CallDispatchInputs::CALL_TARGET);
     Register methodRegister = __ CallDispatcherArgument(kungfu::CallDispatchInputs::METHOD);
 
     if (glueRegister.GetId() != X19) {
@@ -1158,7 +1159,7 @@ void AsmInterpreterCall::DispatchCall(ExtendedAssembler *assembler, Register pcR
     } else {
         ASSERT(accRegister == Register(X23));
     }
-    __ Ldr(Register(X22), MemoryOperand(methodRegister, Method::PROFILE_TYPE_INFO_OFFSET));
+    __ Ldr(Register(X22), MemoryOperand(callTargetRegister, JSFunction::PROFILE_TYPE_INFO_OFFSET));
     __ Ldr(Register(X21), MemoryOperand(methodRegister, Method::CONSTANT_POOL_OFFSET));
     __ Mov(Register(X20), pcRegister);
     __ Mov(Register(FP), newSpRegister);
@@ -1292,14 +1293,14 @@ void AsmInterpreterCall::PushGeneratorFrameState(ExtendedAssembler *assembler, R
 }
 
 void AsmInterpreterCall::CallBCStub(ExtendedAssembler *assembler, Register &newSp, Register &glue,
-    Register &method, Register &pc, Register &temp)
+    Register &callTarget, Register &method, Register &pc, Register &temp)
 {
     // prepare call entry
     __ Mov(Register(X19), glue);    // X19 - glue
     __ Mov(Register(FP), newSp);    // FP - sp
     __ Mov(Register(X20), pc);      // X20 - pc
     __ Ldr(Register(X21), MemoryOperand(method, Method::CONSTANT_POOL_OFFSET));   // X21 - constantpool
-    __ Ldr(Register(X22), MemoryOperand(method, Method::PROFILE_TYPE_INFO_OFFSET)); // X22 - profileTypeInfo
+    __ Ldr(Register(X22), MemoryOperand(callTarget, JSFunction::PROFILE_TYPE_INFO_OFFSET)); // X22 - profileTypeInfo
     __ Mov(Register(X23), Immediate(JSTaggedValue::Hole().GetRawData()));                   // X23 - acc
     __ Ldr(Register(X24), MemoryOperand(method, Method::LITERAL_INFO_OFFSET)); // X24 - hotnessCounter
 

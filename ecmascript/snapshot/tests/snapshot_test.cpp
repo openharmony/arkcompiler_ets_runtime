@@ -48,11 +48,13 @@ public:
         ecmaVm = JSNApi::CreateEcmaVM(options);
         ASSERT_TRUE(ecmaVm != nullptr) << "Cannot create EcmaVM";
         thread = ecmaVm->GetJSThread();
+        thread->ManagedCodeBegin();
         scope = new EcmaHandleScope(thread);
     }
 
     void TearDown() override
     {
+        thread->ManagedCodeEnd();
         delete scope;
         scope = nullptr;
         ecmaVm->SetEnableForceGC(false);
@@ -79,15 +81,19 @@ public:
         // serialize in earlier version tag
         snapshotSerialize.Serialize(*array1, nullptr, fileName);
 
-        JSRuntimeOptions options;
-        EcmaVM *ecmaVm2 = JSNApi::CreateEcmaVM(options);
-        // deserialize with last version tag
-        SnapshotMock snapshotDeserialize(ecmaVm2);
-        snapshotDeserialize.SetLastVersion(deserializeVersion);
-        EXPECT_EQ(snapshotDeserialize.Deserialize(SnapshotType::VM_ROOT, fileName), expected);
+        std::thread t1([&]() {
+            JSRuntimeOptions options;
+            EcmaVM *ecmaVm2 = JSNApi::CreateEcmaVM(options);
+            // deserialize with last version tag
+            SnapshotMock snapshotDeserialize(ecmaVm2);
+            snapshotDeserialize.SetLastVersion(deserializeVersion);
+            EXPECT_EQ(snapshotDeserialize.Deserialize(SnapshotType::VM_ROOT, fileName), expected);
 
-        ASSERT_EQ(const_cast<Heap *>(ecmaVm2->GetHeap())->GetHugeObjectSpace()->GetFirstRegion() != nullptr, expected);
-        JSNApi::DestroyJSVM(ecmaVm2);
+            ASSERT_EQ(const_cast<Heap *>(ecmaVm2->GetHeap())->GetHugeObjectSpace()->GetFirstRegion() != nullptr,
+                      expected);
+            JSNApi::DestroyJSVM(ecmaVm2);
+        });
+        t1.join();
         std::remove(fileName.c_str());
     }
 
@@ -243,32 +249,40 @@ HWTEST_F_L0(SnapshotTest, SerializeBuiltins)
     CString fileName = "builtins.snapshot";
     std::remove(fileName.c_str());
     // generate builtins.snapshot file
-    JSRuntimeOptions options1;
-    options1.SetArkProperties(ArkProperties::ENABLE_SNAPSHOT_SERIALIZE);
-    EcmaVM *ecmaVm1 = JSNApi::CreateEcmaVM(options1);
-    JSNApi::DestroyJSVM(ecmaVm1);
+    std::thread t1([]() {
+        JSRuntimeOptions options1;
+        options1.SetArkProperties(ArkProperties::ENABLE_SNAPSHOT_SERIALIZE);
+        EcmaVM *ecmaVm1 = JSNApi::CreateEcmaVM(options1);
+        JSNApi::DestroyJSVM(ecmaVm1);
+    });
+    t1.join();
 
     // create EcmaVM use builtins deserialzie
-    JSRuntimeOptions options2;
-    options2.SetArkProperties(ArkProperties::ENABLE_SNAPSHOT_DESERIALIZE);
-    EcmaVM *ecmaVm2 = JSNApi::CreateEcmaVM(options2);
-    EXPECT_TRUE(ecmaVm2->GetGlobalEnv()->GetClass()->GetObjectType() == JSType::GLOBAL_ENV);
-    auto globalConst = const_cast<GlobalEnvConstants *>(ecmaVm2->GetJSThread()->GlobalConstants());
-    size_t hclassEndIndex = static_cast<size_t>(ConstantIndex::UNDEFINED_INDEX);
-    size_t hclassIndex = 0;
-    globalConst->VisitRangeSlot([&hclassIndex, &hclassEndIndex]([[maybe_unused]] Root type,
-                                                                ObjectSlot start, ObjectSlot end) {
-        while (start < end) {
-            JSTaggedValue object(start.GetTaggedType());
-            start++;
-            if (hclassIndex < hclassEndIndex) {
-                EXPECT_TRUE(object.IsJSHClass());
+    std::thread t2([&]() {
+        JSRuntimeOptions options2;
+        options2.SetArkProperties(ArkProperties::ENABLE_SNAPSHOT_DESERIALIZE);
+        EcmaVM *ecmaVm2 = JSNApi::CreateEcmaVM(options2);
+        EXPECT_TRUE(ecmaVm2->GetGlobalEnv()->GetClass()->GetObjectType() == JSType::GLOBAL_ENV);
+        auto globalConst = const_cast<GlobalEnvConstants *>(ecmaVm2->GetJSThread()->GlobalConstants());
+        globalConst->VisitRangeSlot([]([[maybe_unused]] Root type, ObjectSlot start, ObjectSlot end) {
+            size_t sharedBeginHclassIndex = static_cast<size_t>(ConstantIndex::SHARED_HCLASS_BEGIN);
+            size_t sharedHclassEndIndex = static_cast<size_t>(ConstantIndex::SHARED_HCLASS_END);
+            size_t hclassBeginIndex = static_cast<size_t>(ConstantIndex::NON_SHARED_HCLASS_BEGIN);
+            size_t hclassEndIndex = static_cast<size_t>(ConstantIndex::NON_SHARED_HCLASS_END);
+            size_t index = sharedBeginHclassIndex;
+            while (start < end) {
+                JSTaggedValue object(start.GetTaggedType());
+                start++;
+                if ((index >= sharedBeginHclassIndex && index <= sharedHclassEndIndex) ||
+                    (index >= hclassBeginIndex && index <= hclassEndIndex)) {
+                    EXPECT_TRUE(object.IsJSHClass());
+                }
+                index++;
             }
-            hclassIndex++;
-        }
+        });
+        JSNApi::DestroyJSVM(ecmaVm2);
     });
-    JSNApi::DestroyJSVM(ecmaVm2);
-
+    t2.join();
     std::remove(fileName.c_str());
 }
 

@@ -40,7 +40,7 @@ CString ModulePathHelper::ConcatFileNameWithMerge(JSThread *thread, const JSPand
         // this branch save for require/dynamic import/old version sdk
         // requestName: requestPkgName
         CString entryPoint = ParseThirdPartyPackage(jsPandaFile, recordName, requestName);
-        if (entryPoint.empty()) {
+        if (entryPoint.empty() && thread->GetEcmaVM()->EnableReportModuleResolvingFailure()) {
             THROW_MODULE_NOT_FOUND_ERROR_WITH_RETURN_VALUE(thread, requestName, recordName, entryPoint);
         }
         return entryPoint;
@@ -623,6 +623,10 @@ CString ModulePathHelper::ParseFileNameToVMAName(const CString &filename)
     }
 
     if (filename.find(EXT_NAME_ABC) != CString::npos) {
+        pos = filename.find(BUNDLE_INSTALL_PATH);
+        if (pos == CString::npos) {
+            return tag + PathHelper::COLON_TAG + filename;
+        }
         CString file = filename.substr(BUNDLE_INSTALL_PATH_LEN);
         return tag + PathHelper::COLON_TAG + file;
     }

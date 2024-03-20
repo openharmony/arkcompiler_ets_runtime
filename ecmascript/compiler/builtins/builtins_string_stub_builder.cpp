@@ -18,6 +18,7 @@
 #include "ecmascript/builtins/builtins_number.h"
 #include "ecmascript/compiler/builtins/builtins_stubs.h"
 #include "ecmascript/compiler/new_object_stub_builder.h"
+#include "ecmascript/js_iterator.h"
 #include "ecmascript/js_string_iterator.h"
 
 namespace panda::ecmascript::kungfu {
@@ -36,19 +37,19 @@ void BuiltinsStringStubBuilder::FromCharCode(GateRef glue, [[maybe_unused]] Gate
     Label canNotBeCompress(env);
     Label isPendingException(env);
     Label noPendingException(env);
-    Branch(Int64Equal(IntPtr(0), numArgs), &lengthIsZero, &lengthNotZero);
+    BRANCH(Int64Equal(IntPtr(0), numArgs), &lengthIsZero, &lengthNotZero);
     Bind(&lengthIsZero);
     res->WriteVariable(GetGlobalConstantValue(
         VariableType::JS_POINTER(), glue, ConstantIndex::EMPTY_STRING_OBJECT_INDEX));
     Jump(exit);
     Bind(&lengthNotZero);
     {
-        Branch(Int64Equal(IntPtr(1), numArgs), &lengthIsOne, slowPath);
+        BRANCH(Int64Equal(IntPtr(1), numArgs), &lengthIsOne, slowPath);
         Bind(&lengthIsOne);
         {
             GateRef codePointTag = GetCallArg0(numArgs);
             GateRef codePointValue = ToNumber(glue, codePointTag);
-            Branch(HasPendingException(glue), &isPendingException, &noPendingException);
+            BRANCH(HasPendingException(glue), &isPendingException, &noPendingException);
             Bind(&isPendingException);
             {
                 res->WriteVariable(Exception());
@@ -56,7 +57,7 @@ void BuiltinsStringStubBuilder::FromCharCode(GateRef glue, [[maybe_unused]] Gate
             }
             Bind(&noPendingException);
             {
-                Branch(TaggedIsInt(codePointValue), &isInt, &notInt);
+                BRANCH(TaggedIsInt(codePointValue), &isInt, &notInt);
                 Bind(&isInt);
                 {
                     value = TruncInt32ToInt16(GetInt32OfTInt(codePointValue));
@@ -68,7 +69,7 @@ void BuiltinsStringStubBuilder::FromCharCode(GateRef glue, [[maybe_unused]] Gate
                     Jump(&newObj);
                 }
                 Bind(&newObj);
-                Branch(IsASCIICharacter(ZExtInt16ToInt32(*value)), &canBeCompress, &canNotBeCompress);
+                BRANCH(IsASCIICharacter(ZExtInt16ToInt32(*value)), &canBeCompress, &canNotBeCompress);
                 NewObjectStubBuilder newBuilder(this);
                 newBuilder.SetParameters(glue, 0);
                 Bind(&canBeCompress);
@@ -115,41 +116,41 @@ void BuiltinsStringStubBuilder::CharAt(GateRef glue, GateRef thisValue, GateRef 
     Label thisIsHeapobject(env);
     Label flattenFastPath(env);
 
-    Branch(TaggedIsUndefinedOrNull(thisValue), slowPath, &objNotUndefinedAndNull);
+    BRANCH(TaggedIsUndefinedOrNull(thisValue), slowPath, &objNotUndefinedAndNull);
     Bind(&objNotUndefinedAndNull);
     {
-        Branch(TaggedIsHeapObject(thisValue), &thisIsHeapobject, slowPath);
+        BRANCH(TaggedIsHeapObject(thisValue), &thisIsHeapobject, slowPath);
         Bind(&thisIsHeapobject);
-        Branch(IsString(thisValue), &isString, slowPath);
+        BRANCH(IsString(thisValue), &isString, slowPath);
         Bind(&isString);
         {
             FlatStringStubBuilder thisFlat(this);
             thisFlat.FlattenString(glue, thisValue, &flattenFastPath);
             Bind(&flattenFastPath);
             GateRef thisLen = GetLengthFromString(thisValue);
-            Branch(Int64GreaterThanOrEqual(IntPtr(0), numArgs), &next, &posTagNotUndefined);
+            BRANCH(Int64GreaterThanOrEqual(IntPtr(0), numArgs), &next, &posTagNotUndefined);
             Bind(&posTagNotUndefined);
             {
                 GateRef posTag = GetCallArg0(numArgs);
-                Branch(TaggedIsInt(posTag), &posTagIsInt, &posTagNotInt);
+                BRANCH(TaggedIsInt(posTag), &posTagIsInt, &posTagNotInt);
                 Bind(&posTagIsInt);
                 pos = GetInt32OfTInt(posTag);
                 Jump(&next);
                 Bind(&posTagNotInt);
-                Branch(TaggedIsDouble(posTag), &posTagIsDouble, slowPath);
+                BRANCH(TaggedIsDouble(posTag), &posTagIsDouble, slowPath);
                 Bind(&posTagIsDouble);
                 doubleValue = GetDoubleOfTDouble(posTag);
-                Branch(DoubleIsINF(*doubleValue), &posGreaterLen, &isNotINF);
+                BRANCH(DoubleIsINF(*doubleValue), &posGreaterLen, &isNotINF);
                 Bind(&isNotINF);
                 pos = DoubleToInt(glue, GetDoubleOfTDouble(posTag));
                 Jump(&next);
             }
             Bind(&next);
             {
-                Branch(Int32GreaterThanOrEqual(*pos, thisLen), &posGreaterLen, &posNotGreaterLen);
+                BRANCH(Int32GreaterThanOrEqual(*pos, thisLen), &posGreaterLen, &posNotGreaterLen);
                 Bind(&posNotGreaterLen);
                 {
-                    Branch(Int32LessThan(*pos, Int32(0)), &posGreaterLen, &posNotLessZero);
+                    BRANCH(Int32LessThan(*pos, Int32(0)), &posGreaterLen, &posNotLessZero);
                     Bind(&posNotLessZero);
                     {
                         StringInfoGateRef stringInfoGate(&thisFlat);
@@ -208,13 +209,13 @@ void BuiltinsStringStubBuilder::CodePointAt(GateRef glue, GateRef thisValue, Gat
         GateRef first = StringAt(stringInfoGate, *pos);
         GateRef firstIsValid = BoolOr(Int32UnsignedLessThan(first, Int32(base::utf_helper::DECODE_LEAD_LOW)),
             Int32UnsignedGreaterThan(first, Int32(base::utf_helper::DECODE_LEAD_HIGH)));
-        Branch(BoolOr(firstIsValid, Int32Equal(Int32Add(*pos, Int32(1)), GetLengthFromString(thisValue))),
+        BRANCH(BoolOr(firstIsValid, Int32Equal(Int32Add(*pos, Int32(1)), GetLengthFromString(thisValue))),
             &returnFirst, &getNextChar);
         Bind(&getNextChar);
         GateRef second = StringAt(stringInfoGate, Int32Add(*pos, Int32(1)));
         GateRef secondIsValid = BoolOr(Int32UnsignedLessThan(second, Int32(base::utf_helper::DECODE_TRAIL_LOW)),
             Int32UnsignedGreaterThan(second, Int32(base::utf_helper::DECODE_TRAIL_HIGH)));
-        Branch(secondIsValid, &returnFirst, slowPath);
+        BRANCH(secondIsValid, &returnFirst, slowPath);
         Bind(&returnFirst);
         res->WriteVariable(IntToTaggedPtr(first));
         Jump(exit);
@@ -239,20 +240,20 @@ void BuiltinsStringStubBuilder::CheckParamsAndGetPosition(GateRef glue, GateRef 
     Label posTagIsDouble(env);
     Label thisIsHeapobject(env);
 
-    Branch(TaggedIsUndefinedOrNull(thisValue), slowPath, &objNotUndefinedAndNull);
+    BRANCH(TaggedIsUndefinedOrNull(thisValue), slowPath, &objNotUndefinedAndNull);
     Bind(&objNotUndefinedAndNull);
     {
-        Branch(TaggedIsHeapObject(thisValue), &thisIsHeapobject, slowPath);
+        BRANCH(TaggedIsHeapObject(thisValue), &thisIsHeapobject, slowPath);
         Bind(&thisIsHeapobject);
-        Branch(IsString(thisValue), &isString, slowPath);
+        BRANCH(IsString(thisValue), &isString, slowPath);
         Bind(&isString);
         {
             GateRef thisLen = GetLengthFromString(thisValue);
-            Branch(Int64GreaterThanOrEqual(IntPtr(0), numArgs), &next, &posTagNotUndefined);
+            BRANCH(Int64GreaterThanOrEqual(IntPtr(0), numArgs), &next, &posTagNotUndefined);
             Bind(&posTagNotUndefined);
             {
                 GateRef posTag = GetCallArg0(numArgs);
-                Branch(TaggedIsInt(posTag), &posTagIsInt, &posTagNotInt);
+                BRANCH(TaggedIsInt(posTag), &posTagIsInt, &posTagNotInt);
                 Bind(&posTagIsInt);
                 {
                     pos->WriteVariable(GetInt32OfTInt(posTag));
@@ -260,10 +261,10 @@ void BuiltinsStringStubBuilder::CheckParamsAndGetPosition(GateRef glue, GateRef 
                 }
                 Bind(&posTagNotInt);
                 {
-                    Branch(TaggedIsDouble(posTag), &posTagIsDouble, slowPath);
+                    BRANCH(TaggedIsDouble(posTag), &posTagIsDouble, slowPath);
                     Bind(&posTagIsDouble);
                     doubleValue = GetDoubleOfTDouble(posTag);
-                    Branch(DoubleIsINF(*doubleValue), exit, &isNotINF);
+                    BRANCH(DoubleIsINF(*doubleValue), exit, &isNotINF);
                     Bind(&isNotINF);
                     pos->WriteVariable(DoubleToInt(glue, GetDoubleOfTDouble(posTag)));
                     Jump(&next);
@@ -271,10 +272,10 @@ void BuiltinsStringStubBuilder::CheckParamsAndGetPosition(GateRef glue, GateRef 
             }
             Bind(&next);
             {
-                Branch(Int32GreaterThanOrEqual(pos->ReadVariable(), thisLen), exit, &posNotGreaterLen);
+                BRANCH(Int32GreaterThanOrEqual(pos->ReadVariable(), thisLen), exit, &posNotGreaterLen);
                 Bind(&posNotGreaterLen);
                 {
-                    Branch(Int32LessThan(pos->ReadVariable(), Int32(0)), exit, posIsValid);
+                    BRANCH(Int32LessThan(pos->ReadVariable(), Int32(0)), exit, posIsValid);
                 }
             }
         }
@@ -303,31 +304,31 @@ void BuiltinsStringStubBuilder::IndexOf(GateRef glue, GateRef thisValue, GateRef
     Label flattenFastPath(env);
     Label flattenFastPath1(env);
 
-    Branch(TaggedIsUndefinedOrNull(thisValue), slowPath, &objNotUndefinedAndNull);
+    BRANCH(TaggedIsUndefinedOrNull(thisValue), slowPath, &objNotUndefinedAndNull);
     Bind(&objNotUndefinedAndNull);
     {
-        Branch(TaggedIsHeapObject(thisValue), &thisIsHeapobject, slowPath);
+        BRANCH(TaggedIsHeapObject(thisValue), &thisIsHeapobject, slowPath);
         Bind(&thisIsHeapobject);
-        Branch(IsString(thisValue), &isString, slowPath);
+        BRANCH(IsString(thisValue), &isString, slowPath);
         Bind(&isString);
         {
             GateRef searchTag = GetCallArg0(numArgs);
-            Branch(TaggedIsHeapObject(searchTag), &searchTagIsHeapObject, slowPath);
+            BRANCH(TaggedIsHeapObject(searchTag), &searchTagIsHeapObject, slowPath);
             Bind(&searchTagIsHeapObject);
-            Branch(IsString(searchTag), &isSearchString, slowPath);
+            BRANCH(IsString(searchTag), &isSearchString, slowPath);
             Bind(&isSearchString);
             {
                 GateRef thisLen = GetLengthFromString(thisValue);
-                Branch(Int64GreaterThanOrEqual(IntPtr(1), numArgs), &next, &posTagNotUndefined);
+                BRANCH(Int64GreaterThanOrEqual(IntPtr(1), numArgs), &next, &posTagNotUndefined);
                 Bind(&posTagNotUndefined);
                 {
                     GateRef posTag = GetCallArg1(numArgs);
-                    Branch(TaggedIsInt(posTag), &posTagIsInt, &posTagNotInt);
+                    BRANCH(TaggedIsInt(posTag), &posTagIsInt, &posTagNotInt);
                     Bind(&posTagIsInt);
                     pos = GetInt32OfTInt(posTag);
                     Jump(&next);
                     Bind(&posTagNotInt);
-                    Branch(TaggedIsDouble(posTag), &posTagIsDouble, slowPath);
+                    BRANCH(TaggedIsDouble(posTag), &posTagIsDouble, slowPath);
                     Bind(&posTagIsDouble);
                     pos = DoubleToInt(glue, GetDoubleOfTDouble(posTag));
                     Jump(&next);
@@ -336,7 +337,7 @@ void BuiltinsStringStubBuilder::IndexOf(GateRef glue, GateRef thisValue, GateRef
                 {
                     Label posGreaterThanZero(env);
                     Label posNotGreaterThanZero(env);
-                    Branch(Int32GreaterThan(*pos, Int32(0)), &posGreaterThanZero, &posNotGreaterThanZero);
+                    BRANCH(Int32GreaterThan(*pos, Int32(0)), &posGreaterThanZero, &posNotGreaterThanZero);
                     Bind(&posNotGreaterThanZero);
                     {
                         pos = Int32(0);
@@ -344,7 +345,7 @@ void BuiltinsStringStubBuilder::IndexOf(GateRef glue, GateRef thisValue, GateRef
                     }
                     Bind(&posGreaterThanZero);
                     {
-                        Branch(Int32LessThanOrEqual(*pos, thisLen), &nextCount, &posNotLessThanLen);
+                        BRANCH(Int32LessThanOrEqual(*pos, thisLen), &nextCount, &posNotLessThanLen);
                         Bind(&posNotLessThanLen);
                         {
                             pos = thisLen;
@@ -362,11 +363,11 @@ void BuiltinsStringStubBuilder::IndexOf(GateRef glue, GateRef thisValue, GateRef
                         StringInfoGateRef thisStringInfoGate(&thisFlat);
                         StringInfoGateRef searchStringInfoGate(&searchFlat);
                         GateRef resPos = StringIndexOf(thisStringInfoGate, searchStringInfoGate, *pos);
-                        Branch(Int32GreaterThanOrEqual(resPos, Int32(0)), &resPosGreaterZero, exit);
+                        BRANCH(Int32GreaterThanOrEqual(resPos, Int32(0)), &resPosGreaterZero, exit);
                         Bind(&resPosGreaterZero);
                         {
                             Label resPosLessZero(env);
-                            Branch(Int32LessThanOrEqual(resPos, thisLen), &resPosLessZero, exit);
+                            BRANCH(Int32LessThanOrEqual(resPos, thisLen), &resPosLessZero, exit);
                             Bind(&resPosLessZero);
                             {
                                 res->WriteVariable(IntToTaggedPtr(resPos));
@@ -414,33 +415,33 @@ void BuiltinsStringStubBuilder::Substring(GateRef glue, GateRef thisValue, GateR
     Label startNotGreatEnd(env);
     Label thisIsHeapobject(env);
 
-    Branch(TaggedIsUndefinedOrNull(thisValue), slowPath, &objNotUndefinedAndNull);
+    BRANCH(TaggedIsUndefinedOrNull(thisValue), slowPath, &objNotUndefinedAndNull);
     Bind(&objNotUndefinedAndNull);
     {
-        Branch(TaggedIsHeapObject(thisValue), &thisIsHeapobject, slowPath);
+        BRANCH(TaggedIsHeapObject(thisValue), &thisIsHeapobject, slowPath);
         Bind(&thisIsHeapobject);
-        Branch(IsString(thisValue), &isString, slowPath);
+        BRANCH(IsString(thisValue), &isString, slowPath);
         Bind(&isString);
         {
             Label next(env);
             GateRef thisLen = GetLengthFromString(thisValue);
-            Branch(Int64GreaterThanOrEqual(IntPtr(0), numArgs), &next, &startTagNotUndefined);
+            BRANCH(Int64GreaterThanOrEqual(IntPtr(0), numArgs), &next, &startTagNotUndefined);
             Bind(&startTagNotUndefined);
             {
                 GateRef startTag = GetCallArg0(numArgs);
-                Branch(TaggedIsInt(startTag), &posTagIsInt, &posTagNotInt);
+                BRANCH(TaggedIsInt(startTag), &posTagIsInt, &posTagNotInt);
                 Bind(&posTagIsInt);
                 start = GetInt32OfTInt(startTag);
                 Jump(&next);
                 Bind(&posTagNotInt);
-                Branch(TaggedIsDouble(startTag), &posTagIsDouble, slowPath);
+                BRANCH(TaggedIsDouble(startTag), &posTagIsDouble, slowPath);
                 Bind(&posTagIsDouble);
                 start = DoubleToInt(glue, GetDoubleOfTDouble(startTag));
                 Jump(&next);
             }
             Bind(&next);
             {
-                Branch(Int64GreaterThanOrEqual(IntPtr(1), numArgs), &endTagIsUndefined, &endTagNotUndefined);
+                BRANCH(Int64GreaterThanOrEqual(IntPtr(1), numArgs), &endTagIsUndefined, &endTagNotUndefined);
                 Bind(&endTagIsUndefined);
                 {
                     end = thisLen;
@@ -449,12 +450,12 @@ void BuiltinsStringStubBuilder::Substring(GateRef glue, GateRef thisValue, GateR
                 Bind(&endTagNotUndefined);
                 {
                     GateRef endTag = GetCallArg1(numArgs);
-                    Branch(TaggedIsInt(endTag), &endTagIsInt, &endTagNotInt);
+                    BRANCH(TaggedIsInt(endTag), &endTagIsInt, &endTagNotInt);
                     Bind(&endTagIsInt);
                     end = GetInt32OfTInt(endTag);
                     Jump(&countStart);
                     Bind(&endTagNotInt);
-                    Branch(TaggedIsDouble(endTag), &endTagIsDouble, slowPath);
+                    BRANCH(TaggedIsDouble(endTag), &endTagIsDouble, slowPath);
                     Bind(&endTagIsDouble);
                     end = DoubleToInt(glue, GetDoubleOfTDouble(endTag));
                     Jump(&countStart);
@@ -463,7 +464,7 @@ void BuiltinsStringStubBuilder::Substring(GateRef glue, GateRef thisValue, GateR
             Bind(&countStart);
             {
                 Label startGreatLen(env);
-                Branch(Int32GreaterThan(*start, Int32(0)), &startGreatZero, &startNotGreatZero);
+                BRANCH(Int32GreaterThan(*start, Int32(0)), &startGreatZero, &startNotGreatZero);
                 Bind(&startNotGreatZero);
                 {
                     start = Int32(0);
@@ -471,7 +472,7 @@ void BuiltinsStringStubBuilder::Substring(GateRef glue, GateRef thisValue, GateR
                 }
                 Bind(&startGreatZero);
                 {
-                    Branch(Int32GreaterThan(*start, thisLen), &startGreatLen, &countEnd);
+                    BRANCH(Int32GreaterThan(*start, thisLen), &startGreatLen, &countEnd);
                     Bind(&startGreatLen);
                     {
                         start = thisLen;
@@ -481,7 +482,7 @@ void BuiltinsStringStubBuilder::Substring(GateRef glue, GateRef thisValue, GateR
             }
             Bind(&countEnd);
             {
-                Branch(Int32GreaterThan(*end, Int32(0)), &endGreatZero, &endNotGreatZero);
+                BRANCH(Int32GreaterThan(*end, Int32(0)), &endGreatZero, &endNotGreatZero);
                 Bind(&endNotGreatZero);
                 {
                     end = Int32(0);
@@ -489,7 +490,7 @@ void BuiltinsStringStubBuilder::Substring(GateRef glue, GateRef thisValue, GateR
                 }
                 Bind(&endGreatZero);
                 {
-                    Branch(Int32GreaterThan(*end, thisLen), &endGreatLen, &countFrom);
+                    BRANCH(Int32GreaterThan(*end, thisLen), &endGreatLen, &countFrom);
                     Bind(&endGreatLen);
                     {
                         end = thisLen;
@@ -499,7 +500,7 @@ void BuiltinsStringStubBuilder::Substring(GateRef glue, GateRef thisValue, GateR
             }
             Bind(&countFrom);
             {
-                Branch(Int32GreaterThan(*start, *end), &startGreatEnd, &startNotGreatEnd);
+                BRANCH(Int32GreaterThan(*start, *end), &startGreatEnd, &startNotGreatEnd);
                 Bind(&startGreatEnd);
                 {
                     from = *end;
@@ -545,13 +546,13 @@ GateRef BuiltinsStringStubBuilder::GetSubString(GateRef glue, GateRef thisValue,
     thisFlat.FlattenString(glue, thisValue, &flattenFastPath);
     Bind(&flattenFastPath);
     {
-        Branch(Int32Equal(len, Int32(1)), &isSingleChar, &notSingleChar);
+        BRANCH(Int32Equal(len, Int32(1)), &isSingleChar, &notSingleChar);
         Bind(&isSingleChar);
         {
             StringInfoGateRef stringInfoGate1(&thisFlat);
             GateRef charCode = StringAt(stringInfoGate1, from);
             GateRef canStoreAsUtf8 = IsASCIICharacter(charCode);
-            Branch(canStoreAsUtf8, &getStringFromSingleCharTable, &fastSubstring);
+            BRANCH(canStoreAsUtf8, &getStringFromSingleCharTable, &fastSubstring);
             Bind(&getStringFromSingleCharTable);
             {
                 GateRef singleCharTable = GetSingleCharTable(glue);
@@ -560,18 +561,18 @@ GateRef BuiltinsStringStubBuilder::GetSubString(GateRef glue, GateRef thisValue,
             }
         }
         Bind(&notSingleChar);
-        Branch(Int32GreaterThanOrEqual(len, Int32(SlicedString::MIN_SLICED_ECMASTRING_LENGTH)),
+        BRANCH(Int32GreaterThanOrEqual(len, Int32(SlicedString::MIN_SLICED_ECMASTRING_LENGTH)),
             &mayGetSliceString, &fastSubstring);
         Bind(&mayGetSliceString);
         {
-            Branch(IsUtf16String(thisValue), &isUtf16, &sliceString);
+            BRANCH(IsUtf16String(thisValue), &isUtf16, &sliceString);
             Bind(&isUtf16);
             {
                 StringInfoGateRef stringInfoGate(&thisFlat);
                 GateRef fromOffset = PtrMul(ZExtInt32ToPtr(from), IntPtr(sizeof(uint16_t) / sizeof(uint8_t)));
                 GateRef source = PtrAdd(GetNormalStringData(stringInfoGate), fromOffset);
                 GateRef canBeCompressed = CanBeCompressed(source, len, true);
-                Branch(canBeCompressed, &isUtf8, &sliceString);
+                BRANCH(canBeCompressed, &isUtf8, &sliceString);
                 Bind(&isUtf8);
                 {
                     NewObjectStubBuilder newBuilder(this);
@@ -612,7 +613,7 @@ void BuiltinsStringStubBuilder::Replace(GateRef glue, GateRef thisValue, GateRef
 
     Label objNotUndefinedAndNull(env);
 
-    Branch(TaggedIsUndefinedOrNull(thisValue), slowPath, &objNotUndefinedAndNull);
+    BRANCH(TaggedIsUndefinedOrNull(thisValue), slowPath, &objNotUndefinedAndNull);
     Bind(&objNotUndefinedAndNull);
     {
         Label thisIsHeapObj(env);
@@ -620,34 +621,34 @@ void BuiltinsStringStubBuilder::Replace(GateRef glue, GateRef thisValue, GateRef
         Label searchIsHeapObj(env);
         Label replaceIsHeapObj(env);
 
-        Branch(TaggedIsHeapObject(thisValue), &thisIsHeapObj, slowPath);
+        BRANCH(TaggedIsHeapObject(thisValue), &thisIsHeapObj, slowPath);
         Bind(&thisIsHeapObj);
-        Branch(Int64Equal(IntPtr(2), numArgs), &tagsDefined, slowPath); // 2: number of parameters. search & replace Tag
+        BRANCH(Int64Equal(IntPtr(2), numArgs), &tagsDefined, slowPath); // 2: number of parameters. search & replace Tag
         Bind(&tagsDefined);
         {
             Label next(env);
 
             GateRef searchTag = GetCallArg0(numArgs);
-            Branch(TaggedIsHeapObject(searchTag), &searchIsHeapObj, slowPath);
+            BRANCH(TaggedIsHeapObject(searchTag), &searchIsHeapObj, slowPath);
             Bind(&searchIsHeapObj);
             GateRef replaceTag = GetCallArg1(numArgs);
-            Branch(TaggedIsHeapObject(replaceTag), &replaceIsHeapObj, slowPath);
+            BRANCH(TaggedIsHeapObject(replaceTag), &replaceIsHeapObj, slowPath);
             Bind(&replaceIsHeapObj);
-            Branch(BoolOr(IsJSRegExp(searchTag), IsEcmaObject(searchTag)), slowPath, &next);
+            BRANCH(BoolOr(IsJSRegExp(searchTag), IsEcmaObject(searchTag)), slowPath, &next);
             Bind(&next);
             {
                 Label allAreStrings(env);
                 GateRef thisIsString = IsString(thisValue);
                 GateRef searchIsString = IsString(searchTag);
                 GateRef replaceIsString = IsString(replaceTag);
-                Branch(BoolAnd(BoolAnd(thisIsString, searchIsString), replaceIsString), &allAreStrings, slowPath);
+                BRANCH(BoolAnd(BoolAnd(thisIsString, searchIsString), replaceIsString), &allAreStrings, slowPath);
                 Bind(&allAreStrings);
                 {
                     Label replaceTagNotCallable(env);
 
                     GateRef replaceTagIsCallable = IsCallable(replaceTag);
 
-                    Branch(replaceTagIsCallable, slowPath, &replaceTagNotCallable);
+                    BRANCH(replaceTagIsCallable, slowPath, &replaceTagNotCallable);
                     Bind(&replaceTagNotCallable);
                     {
                         Label thisFlattenFastPath(env);
@@ -664,7 +665,7 @@ void BuiltinsStringStubBuilder::Replace(GateRef glue, GateRef thisValue, GateRef
                         Bind(&searchFlattenFastPath);
                         StringInfoGateRef searchStringInfoGate(&searchFlat);
                         GateRef pos = StringIndexOf(thisStringInfoGate, searchStringInfoGate, Int32(-1));
-                        Branch(Int32Equal(pos, Int32(-1)), &noReplace, &nextProcess);
+                        BRANCH(Int32Equal(pos, Int32(-1)), &noReplace, &nextProcess);
                         Bind(&noReplace);
                         {
                             res->WriteVariable(thisValue);
@@ -674,13 +675,13 @@ void BuiltinsStringStubBuilder::Replace(GateRef glue, GateRef thisValue, GateRef
                         {
                             Label functionalReplaceFalse(env);
 
-                            Branch(replaceTagIsCallable, slowPath, &functionalReplaceFalse);
+                            BRANCH(replaceTagIsCallable, slowPath, &functionalReplaceFalse);
                             Bind(&functionalReplaceFalse);
                             {
                                 Label replHandleIsString(env);
 
                                 GateRef replHandle = GetSubstitution(glue, searchTag, thisValue, pos, replaceTag);
-                                Branch(IsString(replHandle), &replHandleIsString, slowPath);
+                                BRANCH(IsString(replHandle), &replHandleIsString, slowPath);
                                 Bind(&replHandleIsString);
                                 {
                                     GateRef tailPos = Int32Add(pos, searchStringInfoGate.GetLength());
@@ -716,7 +717,7 @@ GateRef BuiltinsStringStubBuilder::ConvertAndClampRelativeIndex(GateRef index, G
     Label indexLessThanZero(env);
     Label next(env);
 
-    Branch(Int32GreaterThanOrEqual(index, Int32(0)), &indexGreaterThanOrEqualZero, &indexLessThanZero);
+    BRANCH(Int32GreaterThanOrEqual(index, Int32(0)), &indexGreaterThanOrEqualZero, &indexLessThanZero);
     Bind(&indexGreaterThanOrEqualZero);
     {
         relativeIndex = index;
@@ -733,7 +734,7 @@ GateRef BuiltinsStringStubBuilder::ConvertAndClampRelativeIndex(GateRef index, G
         Label elseCheck(env);
         Label exit(env);
 
-        Branch(Int32LessThan(*relativeIndex, Int32(0)), &relativeIndexLessThanZero, &elseCheck);
+        BRANCH(Int32LessThan(*relativeIndex, Int32(0)), &relativeIndexLessThanZero, &elseCheck);
         Bind(&relativeIndexLessThanZero);
         {
             relativeIndex = Int32(0);
@@ -743,7 +744,7 @@ GateRef BuiltinsStringStubBuilder::ConvertAndClampRelativeIndex(GateRef index, G
         {
             Label relativeIndexGreaterThanLength(env);
 
-            Branch(Int32GreaterThan(*relativeIndex, length), &relativeIndexGreaterThanLength, &exit);
+            BRANCH(Int32GreaterThan(*relativeIndex, length), &relativeIndexGreaterThanLength, &exit);
             Bind(&relativeIndexGreaterThanLength);
             {
                 relativeIndex = length;
@@ -769,20 +770,20 @@ void BuiltinsStringStubBuilder::Slice(GateRef glue, GateRef thisValue, GateRef n
 
     Label objNotUndefinedAndNull(env);
 
-    Branch(TaggedIsUndefinedOrNull(thisValue), slowPath, &objNotUndefinedAndNull);
+    BRANCH(TaggedIsUndefinedOrNull(thisValue), slowPath, &objNotUndefinedAndNull);
     Bind(&objNotUndefinedAndNull);
     {
         Label thisIsHeapObj(env);
         Label isString(env);
 
-        Branch(TaggedIsHeapObject(thisValue), &thisIsHeapObj, slowPath);
+        BRANCH(TaggedIsHeapObject(thisValue), &thisIsHeapObj, slowPath);
         Bind(&thisIsHeapObj);
-        Branch(IsString(thisValue), &isString, slowPath);
+        BRANCH(IsString(thisValue), &isString, slowPath);
         Bind(&isString);
         {
             Label startTagDefined(env);
 
-            Branch(Int64GreaterThanOrEqual(IntPtr(0), numArgs), slowPath, &startTagDefined);
+            BRANCH(Int64GreaterThanOrEqual(IntPtr(0), numArgs), slowPath, &startTagDefined);
             Bind(&startTagDefined);
             {
                 Label startTagIsInt(env);
@@ -792,11 +793,11 @@ void BuiltinsStringStubBuilder::Slice(GateRef glue, GateRef thisValue, GateRef n
                 Label next(env);
 
                 GateRef startTag = GetCallArg0(numArgs);
-                Branch(TaggedIsInt(startTag), &startTagIsInt, slowPath);
+                BRANCH(TaggedIsInt(startTag), &startTagIsInt, slowPath);
                 Bind(&startTagIsInt);
                 GateRef thisLen = GetLengthFromString(thisValue);
                 start = ConvertAndClampRelativeIndex(GetInt32OfTInt(startTag), thisLen);
-                Branch(Int64GreaterThanOrEqual(IntPtr(1), numArgs), &endTagUndefined, &endTagDefined);
+                BRANCH(Int64GreaterThanOrEqual(IntPtr(1), numArgs), &endTagUndefined, &endTagDefined);
                 Bind(&endTagUndefined);
                 {
                     end = thisLen;
@@ -805,7 +806,7 @@ void BuiltinsStringStubBuilder::Slice(GateRef glue, GateRef thisValue, GateRef n
                 Bind(&endTagDefined);
                 {
                     GateRef endTag = GetCallArg1(numArgs);
-                    Branch(TaggedIsInt(endTag), &endTagIsInt, slowPath);
+                    BRANCH(TaggedIsInt(endTag), &endTagIsInt, slowPath);
                     Bind(&endTagIsInt);
                     end = ConvertAndClampRelativeIndex(GetInt32OfTInt(endTag), thisLen);
                     Jump(&next);
@@ -817,7 +818,7 @@ void BuiltinsStringStubBuilder::Slice(GateRef glue, GateRef thisValue, GateRef n
                     Label finish(env);
 
                     sliceLen = Int32Sub(*end, *start);
-                    Branch(Int32LessThanOrEqual(*sliceLen, Int32(0)), &emptyString, &fastSubString);
+                    BRANCH(Int32LessThanOrEqual(*sliceLen, Int32(0)), &emptyString, &fastSubString);
                     Bind(&emptyString);
                     {
                         result = GetGlobalConstantValue(
@@ -853,15 +854,15 @@ void BuiltinsStringStubBuilder::Trim(GateRef glue, GateRef thisValue, GateRef nu
 
     Label objNotUndefinedAndNull(env);
 
-    Branch(TaggedIsUndefinedOrNull(thisValue), slowPath, &objNotUndefinedAndNull);
+    BRANCH(TaggedIsUndefinedOrNull(thisValue), slowPath, &objNotUndefinedAndNull);
     Bind(&objNotUndefinedAndNull);
     {
         Label thisIsHeapObj(env);
         Label thisIsString(env);
 
-        Branch(TaggedIsHeapObject(thisValue), &thisIsHeapObj, slowPath);
+        BRANCH(TaggedIsHeapObject(thisValue), &thisIsHeapObj, slowPath);
         Bind(&thisIsHeapObj);
-        Branch(IsString(thisValue), &thisIsString, slowPath);
+        BRANCH(IsString(thisValue), &thisIsString, slowPath);
         Bind(&thisIsString);
         GateRef result = EcmaStringTrim(glue, thisValue, Int32(0)); // 0: mode = TrimMode::TRIM
         res->WriteVariable(result);
@@ -883,7 +884,7 @@ GateRef BuiltinsStringStubBuilder::StringAt(const StringInfoGateRef &stringInfoG
     Label leftIsNumber(env);
     Label rightIsNumber(env);
     GateRef dataUtf16 = GetNormalStringData(stringInfoGate);
-    Branch(IsUtf16String(stringInfoGate.GetString()), &isUtf16, &isUtf8);
+    BRANCH(IsUtf16String(stringInfoGate.GetString()), &isUtf16, &isUtf8);
     Bind(&isUtf16);
     {
         result = ZExtInt16ToInt32(Load(VariableType::INT16(), PtrAdd(dataUtf16,
@@ -917,21 +918,21 @@ GateRef BuiltinsStringStubBuilder::GetSingleCharCodeByIndex(GateRef str, GateRef
     Label isSlicedString(env);
     Label exit(env);
 
-    Branch(IsConstantString(str), &isConstantString, &lineStringCheck);
+    BRANCH(IsConstantString(str), &isConstantString, &lineStringCheck);
     Bind(&isConstantString);
     {
         result = GetSingleCharCodeFromConstantString(str, index);
         Jump(&exit);
     }
     Bind(&lineStringCheck);
-    Branch(IsLineString(str), &isLineString, &slicedStringCheck);
+    BRANCH(IsLineString(str), &isLineString, &slicedStringCheck);
     Bind(&isLineString);
     {
         result = GetSingleCharCodeFromLineString(str, index);
         Jump(&exit);
     }
     Bind(&slicedStringCheck);
-    Branch(IsSlicedString(str), &isSlicedString, &exit);
+    BRANCH(IsSlicedString(str), &isSlicedString, &exit);
     Bind(&isSlicedString);
     {
         result = GetSingleCharCodeFromSlicedString(str, index);
@@ -967,7 +968,7 @@ GateRef BuiltinsStringStubBuilder::GetSingleCharCodeFromLineString(GateRef str, 
     Label isUtf16(env);
     Label isUtf8(env);
     Label exit(env);
-    Branch(IsUtf16String(str), &isUtf16, &isUtf8);
+    BRANCH(IsUtf16String(str), &isUtf16, &isUtf8);
     Bind(&isUtf16);
     {
         result = ZExtInt16ToInt32(Load(VariableType::INT16(), PtrAdd(dataAddr,
@@ -998,7 +999,7 @@ GateRef BuiltinsStringStubBuilder::GetSingleCharCodeFromSlicedString(GateRef str
 
     GateRef parent = Load(VariableType::JS_POINTER(), str, IntPtr(SlicedString::PARENT_OFFSET));
     GateRef startIndex = Load(VariableType::INT32(), str, IntPtr(SlicedString::STARTINDEX_OFFSET));
-    Branch(IsLineString(parent), &isLineString, &notLineString);
+    BRANCH(IsLineString(parent), &isLineString, &notLineString);
     Bind(&isLineString);
     {
         result = GetSingleCharCodeFromLineString(parent, Int32Add(startIndex, index));
@@ -1030,7 +1031,7 @@ GateRef BuiltinsStringStubBuilder::CreateStringBySingleCharCode(GateRef glue, Ga
     Label utf16(env);
     Label afterNew(env);
     GateRef canStoreAsUtf8 = IsASCIICharacter(charCode);
-    Branch(canStoreAsUtf8, &utf8, &utf16);
+    BRANCH(canStoreAsUtf8, &utf8, &utf16);
     Bind(&utf8);
     {
         newBuilder.AllocLineStringObject(&result, &afterNew, Int32(1), true);
@@ -1044,7 +1045,7 @@ GateRef BuiltinsStringStubBuilder::CreateStringBySingleCharCode(GateRef glue, Ga
         Label isUtf8Copy(env);
         Label isUtf16Copy(env);
         GateRef dst = ChangeStringTaggedPointerToInt64(PtrAdd(*result, IntPtr(LineEcmaString::DATA_OFFSET)));
-        Branch(canStoreAsUtf8, &isUtf8Copy, &isUtf16Copy);
+        BRANCH(canStoreAsUtf8, &isUtf8Copy, &isUtf16Copy);
         Bind(&isUtf8Copy);
         {
             Store(VariableType::INT8(), glue, dst, IntPtr(0), TruncInt32ToInt8(charCode));
@@ -1078,7 +1079,7 @@ GateRef BuiltinsStringStubBuilder::CreateFromEcmaString(GateRef glue, GateRef in
     Label isUtf8(env);
     Label allocString(env);
     GateRef dataUtf = GetNormalStringData(stringInfoGate);
-    Branch(IsUtf16String(stringInfoGate.GetString()), &isUtf16, &isUtf8);
+    BRANCH(IsUtf16String(stringInfoGate.GetString()), &isUtf16, &isUtf8);
     Bind(&isUtf16);
     {
         GateRef dataAddr = PtrAdd(dataUtf, PtrMul(ZExtInt32ToPtr(index), IntPtr(sizeof(uint16_t))));
@@ -1100,7 +1101,7 @@ GateRef BuiltinsStringStubBuilder::CreateFromEcmaString(GateRef glue, GateRef in
         Label isUtf16Next(env);
         NewObjectStubBuilder newBuilder(this);
         newBuilder.SetParameters(glue, 0);
-        Branch(*canBeCompressed, &isUtf8Next, &isUtf16Next);
+        BRANCH(*canBeCompressed, &isUtf8Next, &isUtf16Next);
         Bind(&isUtf8Next);
         {
             GateRef singleCharTable = GetSingleCharTable(glue);
@@ -1116,7 +1117,7 @@ GateRef BuiltinsStringStubBuilder::CreateFromEcmaString(GateRef glue, GateRef in
             Label isUtf8Copy(env);
             Label isUtf16Copy(env);
             GateRef dst = ChangeStringTaggedPointerToInt64(PtrAdd(*result, IntPtr(LineEcmaString::DATA_OFFSET)));
-            Branch(*canBeCompressed, &isUtf8Copy, &isUtf16Copy);
+            BRANCH(*canBeCompressed, &isUtf8Copy, &isUtf16Copy);
             Bind(&isUtf8Copy);
             {
                 Store(VariableType::INT8(), glue, dst, IntPtr(0), TruncInt16ToInt8(*data));
@@ -1151,7 +1152,7 @@ GateRef BuiltinsStringStubBuilder::FastSubString(GateRef glue, GateRef thisValue
     Label isUtf8(env);
     Label isUtf16(env);
 
-    Branch(Int32Equal(len, Int32(0)), &lenEqualZero, &lenNotEqualZero);
+    BRANCH(Int32Equal(len, Int32(0)), &lenEqualZero, &lenNotEqualZero);
     Bind(&lenEqualZero);
     {
         result = GetGlobalConstantValue(
@@ -1160,15 +1161,15 @@ GateRef BuiltinsStringStubBuilder::FastSubString(GateRef glue, GateRef thisValue
     }
     Bind(&lenNotEqualZero);
     {
-        Branch(Int32Equal(from, Int32(0)), &fromEqualZero, &next);
+        BRANCH(Int32Equal(from, Int32(0)), &fromEqualZero, &next);
         Bind(&fromEqualZero);
         {
             GateRef thisLen = stringInfoGate.GetLength();
-            Branch(Int32Equal(len, thisLen), &exit, &next);
+            BRANCH(Int32Equal(len, thisLen), &exit, &next);
         }
         Bind(&next);
         {
-            Branch(IsUtf8String(thisValue), &isUtf8, &isUtf16);
+            BRANCH(IsUtf8String(thisValue), &isUtf8, &isUtf16);
             Bind(&isUtf8);
             {
                 result = FastSubUtf8String(glue, from, len, stringInfoGate);
@@ -1233,7 +1234,7 @@ GateRef BuiltinsStringStubBuilder::FastSubUtf16String(GateRef glue, GateRef from
     NewObjectStubBuilder newBuilder(this);
     newBuilder.SetParameters(glue, 0);
     Label afterNew(env);
-    Branch(canBeCompressed, &isUtf8, &isUtf16);
+    BRANCH(canBeCompressed, &isUtf8, &isUtf16);
     Bind(&isUtf8);
     {
         newBuilder.AllocLineStringObject(&result, &afterNew, len, true);
@@ -1246,7 +1247,7 @@ GateRef BuiltinsStringStubBuilder::FastSubUtf16String(GateRef glue, GateRef from
     {
         GateRef source1 = PtrAdd(GetNormalStringData(stringInfoGate), fromOffset);
         GateRef dst = ChangeStringTaggedPointerToInt64(PtrAdd(*result, IntPtr(LineEcmaString::DATA_OFFSET)));
-        Branch(canBeCompressed, &isUtf8Next, &isUtf16Next);
+        BRANCH(canBeCompressed, &isUtf8Next, &isUtf16Next);
         Bind(&isUtf8Next);
         {
             CopyUtf16AsUtf8(glue, dst, source1, len);
@@ -1290,7 +1291,7 @@ GateRef BuiltinsStringStubBuilder::GetSubstitution(GateRef glue, GateRef searchS
     Bind(&replaceFlattenFastPath);
     StringInfoGateRef replaceStringInfoGate(&replaceFlat);
     GateRef nextDollarIndex = StringIndexOf(replaceStringInfoGate, dollarStringInfoGate, Int32(-1));
-    Branch(Int32LessThan(nextDollarIndex, Int32(0)), &notFound, &slowPath);
+    BRANCH(Int32LessThan(nextDollarIndex, Int32(0)), &notFound, &slowPath);
     Bind(&notFound);
     {
         result = replaceString;
@@ -1325,7 +1326,7 @@ void BuiltinsStringStubBuilder::CopyChars(GateRef glue, GateRef dst, GateRef sou
 
     LoopBegin(&loopHead);
     {
-        Branch(Int32GreaterThan(*len, Int32(0)), &next, &exit);
+        BRANCH(Int32GreaterThan(*len, Int32(0)), &next, &exit);
         Bind(&next);
         {
             len = Int32Sub(*len, Int32(1));
@@ -1359,17 +1360,17 @@ GateRef BuiltinsStringStubBuilder::CanBeCompressed(GateRef data, GateRef len, bo
     Jump(&loopHead);
     LoopBegin(&loopHead);
     {
-        Branch(Int32LessThan(*i, len), &nextCount, &exit);
+        BRANCH(Int32LessThan(*i, len), &nextCount, &exit);
         Bind(&nextCount);
         {
             if (isUtf16) {
                 GateRef tmp = Load(VariableType::INT16(), data,
                     PtrMul(ZExtInt32ToPtr(*i), IntPtr(sizeof(uint16_t))));
-                Branch(IsASCIICharacter(ZExtInt16ToInt32(tmp)), &loopEnd, &isNotASCIICharacter);
+                BRANCH(IsASCIICharacter(ZExtInt16ToInt32(tmp)), &loopEnd, &isNotASCIICharacter);
             } else {
                 GateRef tmp = Load(VariableType::INT8(), data,
                     PtrMul(ZExtInt32ToPtr(*i), IntPtr(sizeof(uint8_t))));
-                Branch(IsASCIICharacter(ZExtInt8ToInt32(tmp)), &loopEnd, &isNotASCIICharacter);
+                BRANCH(IsASCIICharacter(ZExtInt8ToInt32(tmp)), &loopEnd, &isNotASCIICharacter);
             }
             Bind(&isNotASCIICharacter);
             {
@@ -1405,7 +1406,7 @@ void BuiltinsStringStubBuilder::CopyUtf8AsUtf16(GateRef glue, GateRef dst, GateR
     Jump(&loopHead);
     LoopBegin(&loopHead);
     {
-        Branch(Int32GreaterThan(*len, Int32(0)), &next, &exit);
+        BRANCH(Int32GreaterThan(*len, Int32(0)), &next, &exit);
         Bind(&next);
         {
             len = Int32Sub(*len, Int32(1));
@@ -1442,7 +1443,7 @@ void BuiltinsStringStubBuilder::CopyUtf16AsUtf8(GateRef glue, GateRef dst, GateR
     Jump(&loopHead);
     LoopBegin(&loopHead);
     {
-        Branch(Int32GreaterThan(*len, Int32(0)), &next, &exit);
+        BRANCH(Int32GreaterThan(*len, Int32(0)), &next, &exit);
         Bind(&next);
         {
             len = Int32Sub(*len, Int32(1));
@@ -1509,7 +1510,7 @@ GateRef BuiltinsStringStubBuilder::StringIndexOf(GateRef lhsData, bool lhsIsUtf8
     }
     Jump(&loopHead);
     LoopBegin(&loopHead);
-    Branch(Int32LessThanOrEqual(*i, max), &next, &exit);
+    BRANCH(Int32LessThanOrEqual(*i, max), &next, &exit);
     Bind(&next);
     {
         Label loopHead1(env);
@@ -1520,7 +1521,7 @@ GateRef BuiltinsStringStubBuilder::StringIndexOf(GateRef lhsData, bool lhsIsUtf8
         } else {
             lhsTemp = GetUtf16Data(lhsData, *i);
         }
-        Branch(Int32NotEqual(lhsTemp, first), &nextCount1, &nextCount);
+        BRANCH(Int32NotEqual(lhsTemp, first), &nextCount1, &nextCount);
         Bind(&nextCount1);
         {
             i = Int32Add(*i, Int32(1));
@@ -1528,7 +1529,7 @@ GateRef BuiltinsStringStubBuilder::StringIndexOf(GateRef lhsData, bool lhsIsUtf8
         }
         LoopBegin(&loopHead1);
         {
-            Branch(Int32LessThanOrEqual(*i, max), &continueFor, &nextCount);
+            BRANCH(Int32LessThanOrEqual(*i, max), &continueFor, &nextCount);
             Bind(&continueFor);
             {
                 GateRef lhsTemp1;
@@ -1537,7 +1538,7 @@ GateRef BuiltinsStringStubBuilder::StringIndexOf(GateRef lhsData, bool lhsIsUtf8
                 } else {
                     lhsTemp1 = GetUtf16Data(lhsData, *i);
                 }
-                Branch(Int32NotEqual(lhsTemp1, first), &lhsNotEqualFirst, &nextCount);
+                BRANCH(Int32NotEqual(lhsTemp1, first), &lhsNotEqualFirst, &nextCount);
                 Bind(&lhsNotEqualFirst);
                 {
                     i = Int32Add(*i, Int32(1));
@@ -1549,7 +1550,7 @@ GateRef BuiltinsStringStubBuilder::StringIndexOf(GateRef lhsData, bool lhsIsUtf8
         LoopEnd(&loopHead1);
         Bind(&nextCount);
         {
-            Branch(Int32LessThanOrEqual(*i, max), &continueCount, &loopEnd);
+            BRANCH(Int32LessThanOrEqual(*i, max), &continueCount, &loopEnd);
             Bind(&continueCount);
             {
                 Label loopHead2(env);
@@ -1560,7 +1561,7 @@ GateRef BuiltinsStringStubBuilder::StringIndexOf(GateRef lhsData, bool lhsIsUtf8
                 Jump(&loopHead2);
                 LoopBegin(&loopHead2);
                 {
-                    Branch(Int32LessThan(*j, end), &lessEnd, &nextCount2);
+                    BRANCH(Int32LessThan(*j, end), &lessEnd, &nextCount2);
                     Bind(&lessEnd);
                     {
                         GateRef lhsTemp2;
@@ -1575,7 +1576,7 @@ GateRef BuiltinsStringStubBuilder::StringIndexOf(GateRef lhsData, bool lhsIsUtf8
                         } else {
                             rhsTemp = GetUtf16Data(rhsData, *k);
                         }
-                        Branch(Int32Equal(lhsTemp2, rhsTemp), &loopEnd2, &nextCount2);
+                        BRANCH(Int32Equal(lhsTemp2, rhsTemp), &loopEnd2, &nextCount2);
                     }
                 }
                 Bind(&loopEnd2);
@@ -1584,7 +1585,7 @@ GateRef BuiltinsStringStubBuilder::StringIndexOf(GateRef lhsData, bool lhsIsUtf8
                 LoopEnd(&loopHead2);
                 Bind(&nextCount2);
                 {
-                    Branch(Int32Equal(*j, end), &equalEnd, &loopEnd);
+                    BRANCH(Int32Equal(*j, end), &equalEnd, &loopEnd);
                     Bind(&equalEnd);
                     result = *i;
                     Jump(&exit);
@@ -1640,10 +1641,10 @@ GateRef BuiltinsStringStubBuilder::StringIndexOf(const StringInfoGateRef &lStrin
     GateRef lhsCount = lStringInfoGate.GetLength();
     GateRef rhsCount = rStringInfoGate.GetLength();
 
-    Branch(Int32GreaterThan(pos, lhsCount), &exit, &nextCount);
+    BRANCH(Int32GreaterThan(pos, lhsCount), &exit, &nextCount);
     Bind(&nextCount);
     {
-        Branch(Int32Equal(rhsCount, Int32(0)), &rhsCountEqualZero, &rhsCountNotEqualZero);
+        BRANCH(Int32Equal(rhsCount, Int32(0)), &rhsCountEqualZero, &rhsCountNotEqualZero);
         Bind(&rhsCountEqualZero);
         {
             result = pos;
@@ -1651,7 +1652,7 @@ GateRef BuiltinsStringStubBuilder::StringIndexOf(const StringInfoGateRef &lStrin
         }
         Bind(&rhsCountNotEqualZero);
         {
-            Branch(Int32LessThan(pos, Int32(0)), &posLessZero, &posNotLessZero);
+            BRANCH(Int32LessThan(pos, Int32(0)), &posLessZero, &posNotLessZero);
             Bind(&posLessZero);
             {
                 posTag = Int32(0);
@@ -1660,20 +1661,20 @@ GateRef BuiltinsStringStubBuilder::StringIndexOf(const StringInfoGateRef &lStrin
             Bind(&posNotLessZero);
             {
                 GateRef max = Int32Sub(lhsCount, rhsCount);
-                Branch(Int32LessThan(max, Int32(0)), &exit, &maxNotLessZero);
+                BRANCH(Int32LessThan(max, Int32(0)), &exit, &maxNotLessZero);
                 Bind(&maxNotLessZero);
                 {
                     GateRef posRMax = Int32Add(*posTag, rhsCount);
-                    Branch(Int32GreaterThan(posRMax, lhsCount), &exit, &posRMaxNotGreaterLhs);
+                    BRANCH(Int32GreaterThan(posRMax, lhsCount), &exit, &posRMaxNotGreaterLhs);
                     Bind(&posRMaxNotGreaterLhs);
                     GateRef rhsData = GetNormalStringData(rStringInfoGate);
                     GateRef lhsData = GetNormalStringData(lStringInfoGate);
-                    Branch(IsUtf8String(rStringInfoGate.GetString()), &rhsIsUtf8, &rhsIsUtf16);
+                    BRANCH(IsUtf8String(rStringInfoGate.GetString()), &rhsIsUtf8, &rhsIsUtf16);
                     Bind(&rhsIsUtf8);
                     {
                         Label lhsIsUtf8(env);
                         Label lhsIsUtf16(env);
-                        Branch(IsUtf8String(lStringInfoGate.GetString()), &lhsIsUtf8, &lhsIsUtf16);
+                        BRANCH(IsUtf8String(lStringInfoGate.GetString()), &lhsIsUtf8, &lhsIsUtf16);
                         Bind(&lhsIsUtf8);
                         {
                             result = StringIndexOf(lhsData, true, rhsData, true, *posTag, max, rhsCount);
@@ -1689,7 +1690,7 @@ GateRef BuiltinsStringStubBuilder::StringIndexOf(const StringInfoGateRef &lStrin
                     {
                         Label lhsIsUtf8(env);
                         Label lhsIsUtf16(env);
-                        Branch(IsUtf8String(lStringInfoGate.GetString()), &lhsIsUtf8, &lhsIsUtf16);
+                        BRANCH(IsUtf8String(lStringInfoGate.GetString()), &lhsIsUtf8, &lhsIsUtf16);
                         Bind(&lhsIsUtf8);
                         {
                             result = StringIndexOf(lhsData, true, rhsData, false, *posTag, max, rhsCount);
@@ -1717,18 +1718,18 @@ void FlatStringStubBuilder::FlattenString(GateRef glue, GateRef str, Label *fast
     Label notLineString(env);
     Label exit(env);
     length_ = GetLengthFromString(str);
-    Branch(BoolOr(IsLineString(str), IsConstantString(str)), &exit, &notLineString);
+    BRANCH(BoolOr(IsLineString(str), IsConstantString(str)), &exit, &notLineString);
     Bind(&notLineString);
     {
         Label isTreeString(env);
         Label notTreeString(env);
         Label isSlicedString(env);
-        Branch(IsTreeString(str), &isTreeString, &notTreeString);
+        BRANCH(IsTreeString(str), &isTreeString, &notTreeString);
         Bind(&isTreeString);
         {
             Label isFlat(env);
             Label notFlat(env);
-            Branch(TreeStringIsFlat(str), &isFlat, &notFlat);
+            BRANCH(TreeStringIsFlat(str), &isFlat, &notFlat);
             Bind(&isFlat);
             {
                 flatString_.WriteVariable(GetFirstFromTreeString(str));
@@ -1741,7 +1742,7 @@ void FlatStringStubBuilder::FlattenString(GateRef glue, GateRef str, Label *fast
             }
         }
         Bind(&notTreeString);
-        Branch(IsSlicedString(str), &isSlicedString, &exit);
+        BRANCH(IsSlicedString(str), &isSlicedString, &exit);
         Bind(&isSlicedString);
         {
             flatString_.WriteVariable(GetParentFromSlicedString(str));
@@ -1765,7 +1766,7 @@ GateRef BuiltinsStringStubBuilder::GetStringDataFromLineOrConstantString(GateRef
     Label isConstantString(env);
     Label isLineString(env);
     DEFVARIABLE(result, VariableType::NATIVE_POINTER(), IntPtr(0));
-    Branch(IsConstantString(str), &isConstantString, &isLineString);
+    BRANCH(IsConstantString(str), &isConstantString, &isLineString);
     Bind(&isConstantString);
     {
         GateRef address = ChangeStringTaggedPointerToInt64(PtrAdd(str, IntPtr(ConstantString::CONSTANT_DATA_OFFSET)));
@@ -1791,20 +1792,20 @@ void BuiltinsStringStubBuilder::Concat(GateRef glue, GateRef thisValue, GateRef 
 
     Label objNotUndefinedAndNull(env);
 
-    Branch(TaggedIsUndefinedOrNull(thisValue), slowPath, &objNotUndefinedAndNull);
+    BRANCH(TaggedIsUndefinedOrNull(thisValue), slowPath, &objNotUndefinedAndNull);
     Bind(&objNotUndefinedAndNull);
     {
         Label thisIsHeapObj(env);
         Label isString(env);
 
-        Branch(TaggedIsHeapObject(thisValue), &thisIsHeapObj, slowPath);
+        BRANCH(TaggedIsHeapObject(thisValue), &thisIsHeapObj, slowPath);
         Bind(&thisIsHeapObj);
-        Branch(IsString(thisValue), &isString, slowPath);
+        BRANCH(IsString(thisValue), &isString, slowPath);
         Bind(&isString);
         {
             Label noPara(env);
             Label hasPara(env);
-            Branch(Int64GreaterThanOrEqual(IntPtr(0), numArgs), &noPara, &hasPara);
+            BRANCH(Int64GreaterThanOrEqual(IntPtr(0), numArgs), &noPara, &hasPara);
             Bind(&noPara);
             {
                 res->WriteVariable(thisValue);
@@ -1824,10 +1825,10 @@ void BuiltinsStringStubBuilder::Concat(GateRef glue, GateRef thisValue, GateRef 
                 Label next(env);
                 Label next1(env);
                 GateRef arg0 = TaggedArgument(static_cast<size_t>(BuiltinsArgs::ARG0_OR_ARGV));
-                Branch(TaggedIsString(arg0), &arg0IsValid, slowPath);
+                BRANCH(TaggedIsString(arg0), &arg0IsValid, slowPath);
                 Bind(&arg0IsValid);
                 {
-                    Branch(Int64Equal(IntPtr(1), numArgs), &argc1, &notArgc1);
+                    BRANCH(Int64Equal(IntPtr(1), numArgs), &argc1, &notArgc1);
                     Bind(&argc1);
                     {
                         res->WriteVariable(StringConcat(glue, thisValue, arg0));
@@ -1836,12 +1837,12 @@ void BuiltinsStringStubBuilder::Concat(GateRef glue, GateRef thisValue, GateRef 
                     Bind(&notArgc1);
                     {
                         result = StringConcat(glue, thisValue, arg0);
-                        Branch(TaggedIsException(*result), slowPath, &next);
+                        BRANCH(TaggedIsException(*result), slowPath, &next);
                         Bind(&next);
                         GateRef arg1 = TaggedArgument(static_cast<size_t>(BuiltinsArgs::ARG1));
-                        Branch(TaggedIsString(arg1), &arg1IsValid, slowPath);
+                        BRANCH(TaggedIsString(arg1), &arg1IsValid, slowPath);
                         Bind(&arg1IsValid);
-                        Branch(Int64Equal(IntPtr(2), numArgs), &argc2, &notArgc2); // 2: number of parameters.
+                        BRANCH(Int64Equal(IntPtr(2), numArgs), &argc2, &notArgc2); // 2: number of parameters.
                         Bind(&argc2);
                         {
                             res->WriteVariable(StringConcat(glue, *result, arg1));
@@ -1849,12 +1850,12 @@ void BuiltinsStringStubBuilder::Concat(GateRef glue, GateRef thisValue, GateRef 
                         }
                         Bind(&notArgc2);
                         result = StringConcat(glue, *result, arg1);
-                        Branch(TaggedIsException(*result), slowPath, &next1);
+                        BRANCH(TaggedIsException(*result), slowPath, &next1);
                         Bind(&next1);
                         GateRef arg2 = TaggedArgument(static_cast<size_t>(BuiltinsArgs::ARG2));
-                        Branch(TaggedIsString(arg2), &arg2IsValid, slowPath);
+                        BRANCH(TaggedIsString(arg2), &arg2IsValid, slowPath);
                         Bind(&arg2IsValid);
-                        Branch(Int64Equal(IntPtr(3), numArgs), &argc3, slowPath); // 3: number of parameters.
+                        BRANCH(Int64Equal(IntPtr(3), numArgs), &argc3, slowPath); // 3: number of parameters.
                         Bind(&argc3);
                         {
                             res->WriteVariable(StringConcat(glue, *result, arg2));
@@ -1872,22 +1873,22 @@ void BuiltinsStringStubBuilder::ToLowerCase(GateRef glue, GateRef thisValue, [[m
 {
     auto env = GetEnvironment();
     Label objNotUndefinedAndNull(env);
-    Branch(TaggedIsUndefinedOrNull(thisValue), slowPath, &objNotUndefinedAndNull);
+    BRANCH(TaggedIsUndefinedOrNull(thisValue), slowPath, &objNotUndefinedAndNull);
     Bind(&objNotUndefinedAndNull);
     {
         Label thisIsHeapObj(env);
         Label isString(env);
 
-        Branch(TaggedIsHeapObject(thisValue), &thisIsHeapObj, slowPath);
+        BRANCH(TaggedIsHeapObject(thisValue), &thisIsHeapObj, slowPath);
         Bind(&thisIsHeapObj);
-        Branch(IsString(thisValue), &isString, slowPath);
+        BRANCH(IsString(thisValue), &isString, slowPath);
         Bind(&isString);
         {
             Label isUtf8(env);
             Label hasPara(env);
             Label isUtf8Next(env);
             Label flattenFastPath(env);
-            Branch(IsUtf8String(thisValue), &isUtf8, slowPath);
+            BRANCH(IsUtf8String(thisValue), &isUtf8, slowPath);
             Bind(&isUtf8);
             {
                 GateRef srcLength = GetLengthFromString(thisValue);
@@ -1914,7 +1915,7 @@ void BuiltinsStringStubBuilder::ToLowerCase(GateRef glue, GateRef thisValue, [[m
                     Jump(&loopHead);
                     LoopBegin(&loopHead);
                     {
-                        Branch(Int32GreaterThan(*len, Int32(0)), &next, exit);
+                        BRANCH(Int32GreaterThan(*len, Int32(0)), &next, exit);
                         Bind(&next);
                         {
                             len = Int32Sub(*len, Int32(1));
@@ -1922,7 +1923,7 @@ void BuiltinsStringStubBuilder::ToLowerCase(GateRef glue, GateRef thisValue, [[m
                             // 65: means 'A', 90: means 'Z'
                             GateRef needLower = BoolAnd(Int8GreaterThanOrEqual(i, Int8(65)),
                                 Int8GreaterThanOrEqual(Int8(90), i));
-                            Branch(needLower, &toLower, &notLower);
+                            BRANCH(needLower, &toLower, &notLower);
                             Bind(&toLower);
                             GateRef j = Int8Xor(i, Int8(1 << 5));
                             Store(VariableType::INT8(), glue, *dstTmp, IntPtr(0), j);
@@ -1957,7 +1958,7 @@ GateRef BuiltinsStringStubBuilder::StringConcat(GateRef glue, GateRef leftString
     GateRef leftLength = GetLengthFromString(leftString);
     GateRef rightLength = GetLengthFromString(rightString);
     GateRef newLength = Int32Add(leftLength, rightLength);
-    Branch(Int32GreaterThanOrEqual(newLength, Int32(EcmaString::MAX_STRING_LENGTH)), &throwError, &lessThanMax);
+    BRANCH(Int32GreaterThanOrEqual(newLength, Int32(EcmaString::MAX_STRING_LENGTH)), &throwError, &lessThanMax);
     Bind(&throwError);
     {
         GateRef taggedId = Int32(GET_MESSAGE_STRING_ID(InvalidStringLength));
@@ -1965,7 +1966,7 @@ GateRef BuiltinsStringStubBuilder::StringConcat(GateRef glue, GateRef leftString
         Jump(&exit);
     }
     Bind(&lessThanMax);
-    Branch(Int32Equal(newLength, Int32(0)), &equalZero, &notEqualZero);
+    BRANCH(Int32Equal(newLength, Int32(0)), &equalZero, &notEqualZero);
     Bind(&equalZero);
     {
         result = GetGlobalConstantValue(
@@ -1980,14 +1981,14 @@ GateRef BuiltinsStringStubBuilder::StringConcat(GateRef glue, GateRef leftString
         Label rightNotEqualZero(env);
         Label newLineString(env);
         Label newTreeString(env);
-        Branch(Int32Equal(leftLength, Int32(0)), &leftEqualZero, &leftNotEqualZero);
+        BRANCH(Int32Equal(leftLength, Int32(0)), &leftEqualZero, &leftNotEqualZero);
         Bind(&leftEqualZero);
         {
             result = rightString;
             Jump(&exit);
         }
         Bind(&leftNotEqualZero);
-        Branch(Int32Equal(rightLength, Int32(0)), &rightEqualZero, &rightNotEqualZero);
+        BRANCH(Int32Equal(rightLength, Int32(0)), &rightEqualZero, &rightNotEqualZero);
         Bind(&rightEqualZero);
         {
             result = leftString;
@@ -2003,14 +2004,14 @@ GateRef BuiltinsStringStubBuilder::StringConcat(GateRef glue, GateRef leftString
             GateRef isTreeOrSlicedString = Int32LessThan(newLength,
                 Int32(std::min(TreeEcmaString::MIN_TREE_ECMASTRING_LENGTH,
                                SlicedString::MIN_SLICED_ECMASTRING_LENGTH)));
-            Branch(isTreeOrSlicedString, &newLineString, &newTreeString);
+            BRANCH(isTreeOrSlicedString, &newLineString, &newTreeString);
             Bind(&newLineString);
             {
                 Label isUtf8(env);
                 Label isUtf16(env);
                 Label isUtf8Next(env);
                 Label isUtf16Next(env);
-                Branch(canBeCompressed, &isUtf8, &isUtf16);
+                BRANCH(canBeCompressed, &isUtf8, &isUtf16);
                 Bind(&isUtf8);
                 {
                     newBuilder.AllocLineStringObject(&result, &isUtf8Next, newLength, true);
@@ -2042,7 +2043,7 @@ GateRef BuiltinsStringStubBuilder::StringConcat(GateRef glue, GateRef leftString
                         PtrAdd(*result, IntPtr(LineEcmaString::DATA_OFFSET)));
                     GateRef rightDst = ChangeStringTaggedPointerToInt64(
                         PtrAdd(leftDst, PtrMul(ZExtInt32ToPtr(leftLength), IntPtr(sizeof(uint16_t)))));
-                    Branch(leftIsUtf8, &leftIsUtf8L, &leftIsUtf16L);
+                    BRANCH(leftIsUtf8, &leftIsUtf8L, &leftIsUtf16L);
                     Bind(&leftIsUtf8L);
                     {
                         // left is utf8,right string must utf16
@@ -2055,7 +2056,7 @@ GateRef BuiltinsStringStubBuilder::StringConcat(GateRef glue, GateRef leftString
                     {
                         CopyChars(glue, leftDst, leftSource, leftLength,
                             IntPtr(sizeof(uint16_t)), VariableType::INT16());
-                        Branch(rightIsUtf8, &rightIsUtf8L, &rightIsUtf16L);
+                        BRANCH(rightIsUtf8, &rightIsUtf8L, &rightIsUtf16L);
                         Bind(&rightIsUtf8L);
                         CopyUtf8AsUtf16(glue, rightDst, rightSource, rightLength);
                         Jump(&exit);
@@ -2070,7 +2071,7 @@ GateRef BuiltinsStringStubBuilder::StringConcat(GateRef glue, GateRef leftString
             {
                 Label isUtf8(env);
                 Label isUtf16(env);
-                Branch(canBeCompressed, &isUtf8, &isUtf16);
+                BRANCH(canBeCompressed, &isUtf8, &isUtf16);
                 Bind(&isUtf8);
                 {
                     newBuilder.AllocTreeStringObject(&result, &exit, leftString, rightString, newLength, true);
@@ -2095,18 +2096,18 @@ void BuiltinsStringStubBuilder::LocaleCompare([[maybe_unused]] GateRef glue, Gat
     auto env = GetEnvironment();
 
     Label thisIsHeapObj(env);
-    Branch(TaggedIsHeapObject(thisValue), &thisIsHeapObj, slowPath);
+    BRANCH(TaggedIsHeapObject(thisValue), &thisIsHeapObj, slowPath);
     Bind(&thisIsHeapObj);
     {
         Label thisValueIsString(env);
         Label fristArgIsString(env);
         Label arg0IsHeapObj(env);
-        Branch(IsString(thisValue), &thisValueIsString, slowPath);
+        BRANCH(IsString(thisValue), &thisValueIsString, slowPath);
         Bind(&thisValueIsString);
         GateRef arg0 = GetCallArg0(numArgs);
-        Branch(TaggedIsHeapObject(arg0), &arg0IsHeapObj, slowPath);
+        BRANCH(TaggedIsHeapObject(arg0), &arg0IsHeapObj, slowPath);
         Bind(&arg0IsHeapObj);
-        Branch(IsString(arg0), &fristArgIsString, slowPath);
+        BRANCH(IsString(arg0), &fristArgIsString, slowPath);
         Bind(&fristArgIsString);
 #ifdef ARK_SUPPORT_INTL
         GateRef locales = GetCallArg1(numArgs);
@@ -2119,12 +2120,12 @@ void BuiltinsStringStubBuilder::LocaleCompare([[maybe_unused]] GateRef glue, Gat
         Label cacheAble(env);
         Label uncacheable(env);
 
-        Branch(cacheable, &cacheAble, &uncacheable);
+        BRANCH(cacheable, &cacheAble, &uncacheable);
         Bind(&cacheAble);
         {
             Label defvalue(env);
             GateRef resValue = CallNGCRuntime(glue, RTSTUB_ID(LocaleCompareNoGc), {glue, locales, thisValue, arg0});
-            Branch(TaggedIsUndefined(resValue), slowPath, &defvalue);
+            BRANCH(TaggedIsUndefined(resValue), slowPath, &defvalue);
             Bind(&defvalue);
             *res = resValue;
             Jump(exit);
@@ -2147,11 +2148,11 @@ void BuiltinsStringStubBuilder::GetStringIterator(GateRef glue, GateRef thisValu
     DEFVARIABLE(result, VariableType::JS_POINTER(), Undefined());
 
     Label thisIsHeapObj(env);
-    Branch(TaggedIsHeapObject(thisValue), &thisIsHeapObj, slowPath);
+    BRANCH(TaggedIsHeapObject(thisValue), &thisIsHeapObj, slowPath);
     Bind(&thisIsHeapObj);
     {
         Label thisValueIsString(env);
-        Branch(IsString(thisValue), &thisValueIsString, slowPath);
+        BRANCH(IsString(thisValue), &thisValueIsString, slowPath);
         Bind(&thisValueIsString);
         GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
         GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
@@ -2165,6 +2166,86 @@ void BuiltinsStringStubBuilder::GetStringIterator(GateRef glue, GateRef thisValu
         Store(VariableType::JS_POINTER(), glue, *result, IntPtr(JSStringIterator::ITERATED_STRING_OFFSET), thisValue);
         Store(VariableType::INT32(), glue, *result, IntPtr(JSStringIterator::STRING_ITERATOR_NEXT_INDEX_OFFSET),
               Int32(0));
+        res->WriteVariable(*result);
+        Jump(exit);
+    }
+}
+
+void BuiltinsStringStubBuilder::StringIteratorNext(GateRef glue, GateRef thisValue, [[maybe_unused]] GateRef numArgs,
+                                                   Variable *res, Label *exit, Label *slowPath)
+{
+    auto env = GetEnvironment();
+    DEFVARIABLE(result, VariableType::JS_POINTER(), Undefined());
+
+    Label thisIsHeapObj(env);
+    Label thisIsStringIterator(env);
+    Label strNotUndefined(env);
+    Label strIsHeapObj(env);
+    Label strIsString(env);
+    Label iterDone(env);
+    BRANCH(TaggedIsHeapObject(thisValue), &thisIsHeapObj, slowPath);
+    Bind(&thisIsHeapObj);
+    BRANCH(TaggedIsStringIterator(thisValue), &thisIsStringIterator, slowPath);
+    Bind(&thisIsStringIterator);
+    GateRef str = Load(VariableType::JS_POINTER(), thisValue, IntPtr(JSStringIterator::ITERATED_STRING_OFFSET));
+    BRANCH(TaggedIsUndefined(str), &iterDone, &strNotUndefined);
+    Bind(&strNotUndefined);
+    BRANCH(TaggedIsHeapObject(str), &strIsHeapObj, slowPath);
+    Bind(&strIsHeapObj);
+    BRANCH(TaggedIsString(str), &strIsString, slowPath);
+    Bind(&strIsString);
+    {
+        Label getFirst(env);
+        Label afterFlat(env);
+        Label getStringFromSingleCharTable(env);
+        GateRef position = Load(VariableType::INT32(), thisValue,
+                                IntPtr(JSStringIterator::STRING_ITERATOR_NEXT_INDEX_OFFSET));
+        GateRef len = GetLengthFromString(str);
+        BRANCH(Int32GreaterThanOrEqual(position, len), &iterDone, &getFirst);
+        Bind(&getFirst);
+        FlatStringStubBuilder strFlat(this);
+        strFlat.FlattenString(glue, str, &afterFlat);
+        Bind(&afterFlat);
+        StringInfoGateRef strInfo(&strFlat);
+        GateRef first = StringAt(strInfo, position);
+        GateRef canStoreAsUtf8 = IsASCIICharacter(first);
+        BRANCH(canStoreAsUtf8, &getStringFromSingleCharTable, slowPath);
+        Bind(&getStringFromSingleCharTable);
+        GateRef singleCharTable = GetSingleCharTable(glue);
+        GateRef firstStr = GetValueFromTaggedArray(singleCharTable, ZExtInt16ToInt32(first));
+        Store(VariableType::INT32(), glue, thisValue, IntPtr(JSStringIterator::STRING_ITERATOR_NEXT_INDEX_OFFSET),
+              Int32Add(position, Int32(1)));
+        // CreateIterResultObject(firstStr, false)
+        GateRef iterResultClass = GetGlobalConstantValue(VariableType::JS_POINTER(), glue,
+                                                         ConstantIndex::ITERATOR_RESULT_CLASS);
+        Label afterNew(env);
+        NewObjectStubBuilder newBuilder(this);
+        newBuilder.SetParameters(glue, 0);
+        newBuilder.NewJSObject(&result, &afterNew, iterResultClass);
+        Bind(&afterNew);
+        SetPropertyInlinedProps(glue, *result, iterResultClass, firstStr,
+                                Int32(JSIterator::VALUE_INLINE_PROPERTY_INDEX));
+        SetPropertyInlinedProps(glue, *result, iterResultClass, TaggedFalse(),
+                                Int32(JSIterator::DONE_INLINE_PROPERTY_INDEX));
+        res->WriteVariable(*result);
+        Jump(exit);
+    }
+    Bind(&iterDone);
+    {
+        Store(VariableType::JS_POINTER(), glue, thisValue, IntPtr(JSStringIterator::ITERATED_STRING_OFFSET),
+              Undefined());
+        // CreateIterResultObject(undefined, true)
+        GateRef iterResultClass = GetGlobalConstantValue(VariableType::JS_POINTER(), glue,
+                                                         ConstantIndex::ITERATOR_RESULT_CLASS);
+        Label afterNew(env);
+        NewObjectStubBuilder newBuilder(this);
+        newBuilder.SetParameters(glue, 0);
+        newBuilder.NewJSObject(&result, &afterNew, iterResultClass);
+        Bind(&afterNew);
+        SetPropertyInlinedProps(glue, *result, iterResultClass, Undefined(),
+                                Int32(JSIterator::VALUE_INLINE_PROPERTY_INDEX));
+        SetPropertyInlinedProps(glue, *result, iterResultClass, TaggedTrue(),
+                                Int32(JSIterator::DONE_INLINE_PROPERTY_INDEX));
         res->WriteVariable(*result);
         Jump(exit);
     }
@@ -2184,7 +2265,7 @@ GateRef BuiltinsStringStubBuilder::EcmaStringTrim(GateRef glue, GateRef thisValu
     Label exit(env);
 
     GateRef srcLen = GetLengthFromString(thisValue);
-    Branch(Int32Equal(srcLen, Int32(0)), &emptyString, &notEmpty);
+    BRANCH(Int32Equal(srcLen, Int32(0)), &emptyString, &notEmpty);
     Bind(&emptyString);
     {
         result = GetGlobalConstantValue(
@@ -2227,7 +2308,7 @@ GateRef BuiltinsStringStubBuilder::EcmaStringTrimBody(GateRef glue, GateRef this
     Label notTrimStart(env);
     Label next(env);
 
-    Branch(Int32GreaterThanOrEqual(trimMode, Int32(0)), &trimOrTrimStart, &notTrimStart);
+    BRANCH(Int32GreaterThanOrEqual(trimMode, Int32(0)), &trimOrTrimStart, &notTrimStart);
     Bind(&trimOrTrimStart); // mode = TrimMode::TRIM or TrimMode::TRIM_START
     {
         start = CallNGCRuntime(glue, RTSTUB_ID(StringGetStart), {isUtf8, srcString, srcLen, startIndex});
@@ -2236,7 +2317,7 @@ GateRef BuiltinsStringStubBuilder::EcmaStringTrimBody(GateRef glue, GateRef this
     Bind(&notTrimStart);
     {
         Label trimOrTrimEnd(env);
-        Branch(Int32LessThanOrEqual(trimMode, Int32(0)), &trimOrTrimEnd, &next);
+        BRANCH(Int32LessThanOrEqual(trimMode, Int32(0)), &trimOrTrimEnd, &next);
         Bind(&trimOrTrimEnd); // mode = TrimMode::TRIM or TrimMode::TRIM_END
         {
             end = CallNGCRuntime(glue, RTSTUB_ID(StringGetEnd), {isUtf8, srcString, *start, srcLen, startIndex});
@@ -2270,7 +2351,7 @@ GateRef BuiltinsStringStubBuilder::IsSubStringAt(GateRef lhsData, bool lhsIsUtf8
 
     Jump(&loopHead);
     LoopBegin(&loopHead);
-    Branch(Int32LessThan(*i, rhsCount), &next, &exit);
+    BRANCH(Int32LessThan(*i, rhsCount), &next, &exit);
     Bind(&next);
     {
         GateRef lhsTemp;
@@ -2285,7 +2366,7 @@ GateRef BuiltinsStringStubBuilder::IsSubStringAt(GateRef lhsData, bool lhsIsUtf8
         } else {
             rhsTemp = GetUtf16Data(rhsData, *i);
         }
-        Branch(Int32Equal(lhsTemp, rhsTemp), &loopEnd, &notEqual);
+        BRANCH(Int32Equal(lhsTemp, rhsTemp), &loopEnd, &notEqual);
         Bind(&notEqual);
         {
             result = TaggedFalse();
@@ -2316,12 +2397,12 @@ GateRef BuiltinsStringStubBuilder::IsSubStringAt(const StringInfoGateRef &lStrin
     GateRef rhsCount = rStringInfoGate.GetLength();
     GateRef rhsData = GetNormalStringData(rStringInfoGate);
     GateRef lhsData = GetNormalStringData(lStringInfoGate);
-    Branch(IsUtf8String(rStringInfoGate.GetString()), &rhsIsUtf8, &rhsIsUtf16);
+    BRANCH(IsUtf8String(rStringInfoGate.GetString()), &rhsIsUtf8, &rhsIsUtf16);
     Bind(&rhsIsUtf8);
     {
         Label lhsIsUtf8(env);
         Label lhsIsUtf16(env);
-        Branch(IsUtf8String(lStringInfoGate.GetString()), &lhsIsUtf8, &lhsIsUtf16);
+        BRANCH(IsUtf8String(lStringInfoGate.GetString()), &lhsIsUtf8, &lhsIsUtf16);
         Bind(&lhsIsUtf8);
         {
             result = IsSubStringAt(lhsData, true, rhsData, true, pos, rhsCount);
@@ -2337,7 +2418,7 @@ GateRef BuiltinsStringStubBuilder::IsSubStringAt(const StringInfoGateRef &lStrin
     {
         Label lhsIsUtf8(env);
         Label lhsIsUtf16(env);
-        Branch(IsUtf8String(lStringInfoGate.GetString()), &lhsIsUtf8, &lhsIsUtf16);
+        BRANCH(IsUtf8String(lStringInfoGate.GetString()), &lhsIsUtf8, &lhsIsUtf16);
         Bind(&lhsIsUtf8);
         {
             result = IsSubStringAt(lhsData, true, rhsData, false, pos, rhsCount);
@@ -2381,34 +2462,34 @@ void BuiltinsStringStubBuilder::StartsWith(GateRef glue, GateRef thisValue, Gate
     Label resPosEqualPos(env);
     Label resPosNotEqualPos(env);
 
-    Branch(TaggedIsUndefinedOrNull(thisValue), slowPath, &objNotUndefinedAndNull);
+    BRANCH(TaggedIsUndefinedOrNull(thisValue), slowPath, &objNotUndefinedAndNull);
     Bind(&objNotUndefinedAndNull);
     {
-        Branch(TaggedIsHeapObject(thisValue), &thisIsHeapobject, slowPath);
+        BRANCH(TaggedIsHeapObject(thisValue), &thisIsHeapobject, slowPath);
         Bind(&thisIsHeapobject);
-        Branch(IsString(thisValue), &isString, slowPath);
+        BRANCH(IsString(thisValue), &isString, slowPath);
         Bind(&isString);
         {
             GateRef searchTag = GetCallArg0(numArgs);
-            Branch(TaggedIsHeapObject(searchTag), &searchTagIsHeapObject, slowPath);
+            BRANCH(TaggedIsHeapObject(searchTag), &searchTagIsHeapObject, slowPath);
             Bind(&searchTagIsHeapObject);
-            Branch(IsString(searchTag), &isSearchString, slowPath);
+            BRANCH(IsString(searchTag), &isSearchString, slowPath);
             Bind(&isSearchString);
             {
                 GateRef thisLen = GetLengthFromString(thisValue);
                 GateRef searchLen = GetLengthFromString(searchTag);
-                Branch(Int64GreaterThanOrEqual(IntPtr(1), numArgs), &next, &posTagNotUndefined);
+                BRANCH(Int64GreaterThanOrEqual(IntPtr(1), numArgs), &next, &posTagNotUndefined);
                 Bind(&posTagNotUndefined);
                 {
                     GateRef posTag = GetCallArg1(numArgs);
-                    Branch(TaggedIsInt(posTag), &posTagIsInt, &posTagNotInt);
+                    BRANCH(TaggedIsInt(posTag), &posTagIsInt, &posTagNotInt);
                     Bind(&posTagIsInt);
                     pos = GetInt32OfTInt(posTag);
                     Jump(&next);
                     Bind(&posTagNotInt);
-                    Branch(TaggedIsDouble(posTag), &posTagIsDouble, slowPath);
+                    BRANCH(TaggedIsDouble(posTag), &posTagIsDouble, slowPath);
                     Bind(&posTagIsDouble);
-                    Branch(DoubleEqual(GetDoubleOfTDouble(posTag), Double(builtins::BuiltinsNumber::POSITIVE_INFINITY)),
+                    BRANCH(DoubleEqual(GetDoubleOfTDouble(posTag), Double(builtins::BuiltinsNumber::POSITIVE_INFINITY)),
                         &posTagIsPositiveInfinity, &posTagNotPositiveInfinity);
                     Bind(&posTagIsPositiveInfinity);
                     pos = thisLen;
@@ -2422,7 +2503,7 @@ void BuiltinsStringStubBuilder::StartsWith(GateRef glue, GateRef thisValue, Gate
                     Label posGreaterThanZero(env);
                     Label posNotGreaterThanZero(env);
                     Label nextCount(env);
-                    Branch(Int32GreaterThan(*pos, Int32(0)), &posGreaterThanZero, &posNotGreaterThanZero);
+                    BRANCH(Int32GreaterThan(*pos, Int32(0)), &posGreaterThanZero, &posNotGreaterThanZero);
                     Bind(&posNotGreaterThanZero);
                     {
                         pos = Int32(0);
@@ -2430,7 +2511,7 @@ void BuiltinsStringStubBuilder::StartsWith(GateRef glue, GateRef thisValue, Gate
                     }
                     Bind(&posGreaterThanZero);
                     {
-                        Branch(Int32LessThanOrEqual(*pos, thisLen), &nextCount, &posNotLessThanLen);
+                        BRANCH(Int32LessThanOrEqual(*pos, thisLen), &nextCount, &posNotLessThanLen);
                         Bind(&posNotLessThanLen);
                         {
                             pos = thisLen;
@@ -2443,7 +2524,7 @@ void BuiltinsStringStubBuilder::StartsWith(GateRef glue, GateRef thisValue, Gate
                         Label greaterThanThisLen(env);
 
                         GateRef posAddSearchLen = Int32Add(*pos, searchLen);
-                        Branch(Int32GreaterThan(posAddSearchLen, thisLen), &greaterThanThisLen, &notGreaterThanThisLen);
+                        BRANCH(Int32GreaterThan(posAddSearchLen, thisLen), &greaterThanThisLen, &notGreaterThanThisLen);
                         Bind(&greaterThanThisLen);
                         {
                             res->WriteVariable(TaggedFalse());
@@ -2462,6 +2543,141 @@ void BuiltinsStringStubBuilder::StartsWith(GateRef glue, GateRef thisValue, Gate
                             GateRef result = IsSubStringAt(thisStringInfoGate, searchStringInfoGate, *pos);
                             res->WriteVariable(result);
                             Jump(exit);
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+void BuiltinsStringStubBuilder::EndsWith(GateRef glue, GateRef thisValue, GateRef numArgs,
+    Variable *res, Label *exit, Label *slowPath)
+{
+    auto env = GetEnvironment();
+    DEFVARIABLE(searchPos, VariableType::INT32(), Int32(0));
+    DEFVARIABLE(startPos, VariableType::INT32(), Int32(0));
+    DEFVARIABLE(endPos, VariableType::INT32(), Int32(0));
+    Label thisExists(env);
+    Label thisIsHeapObject(env);
+    Label thisIsString(env);
+    Label searchTagExists(env);
+    Label searchTagIsHeapObject(env);
+    Label searchTagIsString(env);
+    Label posTagExists(env);
+    Label posTagNotExists(env);
+    Label posTagIsNumber(env);
+    Label posTagIsInt(env);
+    Label posTagIsDouble(env);
+    Label afterCallArg(env);
+    Label endPosLessThanZero(env);
+    Label endPosNotLessThanZero(env);
+    Label endPosMoreThanThisLen(env);
+    Label endPosNotMoreThanThisLen(env);
+    Label startPosLessThanZero(env);
+    Label startPosNotLessThanZero(env);
+    Label flattenFastPath1(env);
+    Label flattenFastPath2(env);
+    Label resultIndexEqualStartPos(env);
+
+    BRANCH(TaggedIsUndefinedOrNull(thisValue), slowPath, &thisExists);
+    Bind(&thisExists);
+    {
+        BRANCH(TaggedIsHeapObject(thisValue), &thisIsHeapObject, slowPath);
+        Bind(&thisIsHeapObject);
+        BRANCH(IsString(thisValue), &thisIsString, slowPath);
+        Bind(&thisIsString);
+        BRANCH(Int64GreaterThanOrEqual(IntPtr(0), numArgs), slowPath, &searchTagExists);
+        Bind(&searchTagExists);
+        {
+            GateRef searchTag = GetCallArg0(numArgs);
+            BRANCH(TaggedIsHeapObject(searchTag), &searchTagIsHeapObject, slowPath);
+            Bind(&searchTagIsHeapObject);
+            BRANCH(IsString(searchTag), &searchTagIsString, slowPath);
+            Bind(&searchTagIsString);
+            {
+                GateRef thisLen = GetLengthFromString(thisValue);
+                GateRef searchLen = GetLengthFromString(searchTag);
+                BRANCH(Int64GreaterThanOrEqual(IntPtr(1), numArgs), &posTagNotExists, &posTagExists);
+                Bind(&posTagExists);
+                {
+                    GateRef posTag = GetCallArg1(numArgs);
+                    BRANCH(TaggedIsNumber(posTag), &posTagIsNumber, slowPath);
+                    Bind(&posTagIsNumber);
+                    BRANCH(TaggedIsInt(posTag), &posTagIsInt, &posTagIsDouble);
+                    Bind(&posTagIsInt);
+                    {
+                        searchPos = GetInt32OfTInt(posTag);
+                        Jump(&afterCallArg);
+                    }
+                    Bind(&posTagIsDouble);
+                    {
+                        Label posTagIsPositiveInfinity(env);
+                        Label posTagNotPositiveInfinity(env);
+                        GateRef doubleVal = GetDoubleOfTDouble(posTag);
+                        BRANCH(DoubleEqual(doubleVal, Double(builtins::BuiltinsNumber::POSITIVE_INFINITY)),
+                            &posTagIsPositiveInfinity, &posTagNotPositiveInfinity);
+                        Bind(&posTagIsPositiveInfinity);
+                        {
+                            searchPos = thisLen;
+                            Jump(&afterCallArg);
+                        }
+                        Bind(&posTagNotPositiveInfinity);
+                        {
+                            searchPos = DoubleToInt(glue, doubleVal);
+                            Jump(&afterCallArg);
+                        }
+                    }
+                }
+                Bind(&posTagNotExists);
+                {
+                    searchPos = thisLen;
+                    Jump(&afterCallArg);
+                }
+                Bind(&afterCallArg);
+                {
+                    endPos = *searchPos;
+                    BRANCH(Int32GreaterThanOrEqual(*endPos, Int32(0)), &endPosNotLessThanZero, &endPosLessThanZero);
+                    Bind(&endPosLessThanZero);
+                    {
+                        endPos = Int32(0);
+                        Jump(&endPosNotLessThanZero);
+                    }
+                    Bind(&endPosNotLessThanZero);
+                    {
+                        BRANCH(Int32LessThanOrEqual(*endPos, thisLen), &endPosNotMoreThanThisLen,
+                            &endPosMoreThanThisLen);
+                        Bind(&endPosMoreThanThisLen);
+                        {
+                            endPos = thisLen;
+                            Jump(&endPosNotMoreThanThisLen);
+                        }
+                        Bind(&endPosNotMoreThanThisLen);
+                        {
+                            startPos = Int32Sub(*endPos, searchLen);
+                            BRANCH(Int32LessThan(*startPos, Int32(0)), &startPosLessThanZero,
+                                &startPosNotLessThanZero);
+                            Bind(&startPosNotLessThanZero);
+                            {
+                                FlatStringStubBuilder thisFlat(this);
+                                thisFlat.FlattenString(glue, thisValue, &flattenFastPath1);
+                                Bind(&flattenFastPath1);
+                                FlatStringStubBuilder searchFlat(this);
+                                searchFlat.FlattenString(glue, searchTag, &flattenFastPath2);
+                                Bind(&flattenFastPath2);
+                                {
+                                    StringInfoGateRef thisStringInfoGate(&thisFlat);
+                                    StringInfoGateRef searchStringInfoGate(&searchFlat);
+                                    GateRef result = IsSubStringAt(thisStringInfoGate, searchStringInfoGate, *startPos);
+                                    res->WriteVariable(result);
+                                    Jump(exit);
+                                }
+                            }
+                            Bind(&startPosLessThanZero);
+                            {
+                                res->WriteVariable(TaggedFalse());
+                                Jump(exit);
+                            }
                         }
                     }
                 }

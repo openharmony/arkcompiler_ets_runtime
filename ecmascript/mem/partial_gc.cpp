@@ -160,6 +160,7 @@ void PartialGC::ProcessNativeDelete()
     TRACE_GC(GCStats::Scope::ScopeId::ClearNativeObject, heap_->GetEcmaVM()->GetEcmaGCStats());
     WeakRootVisitor gcUpdateWeak = [this](TaggedObject *header) {
         Region *objectRegion = Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(header));
+        ASSERT(!objectRegion->InSharedHeap());
         if (!objectRegion->InYoungSpaceOrCSet() && !heap_->IsConcurrentFullMark()) {
             return header;
         }

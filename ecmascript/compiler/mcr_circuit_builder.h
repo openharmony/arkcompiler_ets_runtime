@@ -95,7 +95,7 @@ GateRef CircuitBuilder::IsSpecialSlicedString(GateRef obj)
     Label exit(env_);
     DEFVALUE(result, env_, VariableType::BOOL(), False());
     Label isSlicedStr(env_);
-    Branch(isSlicedString, &isSlicedStr, &exit);
+    BRANCH_CIR2(isSlicedString, &isSlicedStr, &exit);
     Bind(&isSlicedStr);
     {
         GateRef hasBackingStore = LoadConstOffset(VariableType::INT32(), obj, SlicedString::BACKING_STORE_FLAG);
@@ -115,7 +115,7 @@ GateRef CircuitBuilder::TaggedIsBigInt(GateRef obj)
     Label exit(env_);
     DEFVALUE(result, env_, VariableType::BOOL(), False());
     Label isHeapObject(env_);
-    Branch(TaggedIsHeapObject(obj), &isHeapObject, &exit);
+    BRANCH_CIR2(TaggedIsHeapObject(obj), &isHeapObject, &exit);
     Bind(&isHeapObject);
     {
         result = Int32Equal(GetObjectType(LoadHClass(obj)),
@@ -135,10 +135,30 @@ GateRef CircuitBuilder::TaggedIsString(GateRef obj)
     Label exit(env_);
     DEFVALUE(result, env_, VariableType::BOOL(), False());
     Label isHeapObject(env_);
-    Branch(TaggedIsHeapObject(obj), &isHeapObject, &exit);
+    BRANCH_CIR2(TaggedIsHeapObject(obj), &isHeapObject, &exit);
     Bind(&isHeapObject);
     {
         result = TaggedObjectIsString(obj);
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *result;
+    SubCfgExit();
+    return ret;
+}
+
+GateRef CircuitBuilder::TaggedIsStringIterator(GateRef obj)
+{
+    Label entry(env_);
+    SubCfgEntry(&entry);
+    Label exit(env_);
+    DEFVALUE(result, env_, VariableType::BOOL(), False());
+    Label isHeapObject(env_);
+    Branch(TaggedIsHeapObject(obj), &isHeapObject, &exit);
+    Bind(&isHeapObject);
+    {
+        result = Int32Equal(GetObjectType(LoadHClass(obj)),
+                            Int32(static_cast<int32_t>(JSType::JS_STRING_ITERATOR)));
         Jump(&exit);
     }
     Bind(&exit);
@@ -154,7 +174,7 @@ GateRef CircuitBuilder::TaggedIsShared(GateRef obj)
     Label exit(env_);
     DEFVALUE(result, env_, VariableType::BOOL(), False());
     Label isHeapObject(env_);
-    Branch(TaggedIsHeapObject(obj), &isHeapObject, &exit);
+    BRANCH_CIR2(TaggedIsHeapObject(obj), &isHeapObject, &exit);
     Bind(&isHeapObject);
     {
         result = TaggedObjectIsShared(obj);
@@ -173,7 +193,7 @@ GateRef CircuitBuilder::TaggedIsSymbol(GateRef obj)
     Label exit(env_);
     DEFVALUE(result, env_, VariableType::BOOL(), False());
     Label isHeapObject(env_);
-    Branch(TaggedIsHeapObject(obj), &isHeapObject, &exit);
+    BRANCH_CIR2(TaggedIsHeapObject(obj), &isHeapObject, &exit);
     Bind(&isHeapObject);
     {
         GateRef objType = GetObjectType(LoadHClass(obj));
@@ -193,13 +213,13 @@ GateRef CircuitBuilder::TaggedIsStringOrSymbol(GateRef obj)
     Label exit(env_);
     DEFVALUE(result, env_, VariableType::BOOL(), False());
     Label isHeapObject(env_);
-    Branch(TaggedIsHeapObject(obj), &isHeapObject, &exit);
+    BRANCH_CIR2(TaggedIsHeapObject(obj), &isHeapObject, &exit);
     Bind(&isHeapObject);
     {
         result = TaggedObjectIsString(obj);
         Label isString(env_);
         Label notString(env_);
-        Branch(*result, &exit, &notString);
+        BRANCH_CIR2(*result, &exit, &notString);
         Bind(&notString);
         {
             GateRef objType = GetObjectType(LoadHClass(obj));
@@ -220,7 +240,7 @@ GateRef CircuitBuilder::TaggedIsProtoChangeMarker(GateRef obj)
     Label exit(env_);
     DEFVALUE(result, env_, VariableType::BOOL(), False());
     Label isHeapObject(env_);
-    Branch(TaggedIsHeapObject(obj), &isHeapObject, &exit);
+    BRANCH_CIR2(TaggedIsHeapObject(obj), &isHeapObject, &exit);
     Bind(&isHeapObject);
     {
         GateRef objType = GetObjectType(LoadHClass(obj));
@@ -302,10 +322,10 @@ GateRef CircuitBuilder::BothAreString(GateRef x, GateRef y)
     Label bothAreStringType(env_);
     Label exit(env_);
     DEFVALUE(result, env_, VariableType::BOOL(), False());
-    Branch(BoolAnd(TaggedIsHeapObject(x), TaggedIsHeapObject(y)), &bothAreHeapObjet, &exit);
+    BRANCH_CIR2(BoolAnd(TaggedIsHeapObject(x), TaggedIsHeapObject(y)), &bothAreHeapObjet, &exit);
     Bind(&bothAreHeapObjet);
     {
-        Branch(TaggedObjectBothAreString(x, y), &bothAreStringType, &exit);
+        BRANCH_CIR2(TaggedObjectBothAreString(x, y), &bothAreStringType, &exit);
         Bind(&bothAreStringType);
         {
             result = True();
@@ -402,7 +422,7 @@ GateRef CircuitBuilder::TaggedIsJSArray(GateRef obj)
     Label exit(env_);
     DEFVALUE(result, env_, VariableType::BOOL(), False());
     Label isHeapObject(env_);
-    Branch(TaggedIsHeapObject(obj), &isHeapObject, &exit);
+    BRANCH_CIR2(TaggedIsHeapObject(obj), &isHeapObject, &exit);
     Bind(&isHeapObject);
     {
         GateRef objType = GetObjectType(LoadHClass(obj));

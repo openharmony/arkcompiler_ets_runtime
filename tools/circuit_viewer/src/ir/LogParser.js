@@ -224,6 +224,7 @@ class LogParser {
   static Load(fn, cb) {
     const xhr = new XMLHttpRequest();
     xhr.open('GET', fn);
+    xhr.setRequestHeader('Cache-Control', 'no-cache');
     xhr.onreadystatechange = () => {
       if (xhr.readyState === XMLHttpRequest.DONE) {
         if (xhr.status === 200) {

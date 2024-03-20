@@ -20,23 +20,23 @@
 #include "ecmascript/mem/mem_common.h"
 
 #ifdef ECMASCRIPT_SUPPORT_HEAPSAMPLING
-#define CHECK_OBJECT_AND_INC_OBJ_SIZE(size)                                             \
-    if (object != 0) {                                                                  \
-        IncreaseLiveObjectSize(size);                                                   \
-        if (!heap_->IsConcurrentFullMark() || heap_->GetJSThread()->IsReadyToMark()) {  \
-            Region::ObjectAddressToRange(object)->IncreaseAliveObject(size);            \
-        }                                                                               \
-        InvokeAllocationInspector(object, size, size);                                  \
-        return object;                                                                  \
+#define CHECK_OBJECT_AND_INC_OBJ_SIZE(size)                                   \
+    if (object != 0) {                                                        \
+        IncreaseLiveObjectSize(size);                                         \
+        if (!heap_->IsConcurrentFullMark() || heap_->IsReadyToMark()) {       \
+            Region::ObjectAddressToRange(object)->IncreaseAliveObject(size);  \
+        }                                                                     \
+        InvokeAllocationInspector(object, size, size);                        \
+        return object;                                                        \
     }
 #else
-#define CHECK_OBJECT_AND_INC_OBJ_SIZE(size)                                             \
-    if (object != 0) {                                                                  \
-        IncreaseLiveObjectSize(size);                                                   \
-        if (!heap_->IsConcurrentFullMark() || heap_->GetJSThread()->IsReadyToMark()) {  \
-            Region::ObjectAddressToRange(object)->IncreaseAliveObject(size);            \
-        }                                                                               \
-        return object;                                                                  \
+#define CHECK_OBJECT_AND_INC_OBJ_SIZE(size)                                   \
+    if (object != 0) {                                                        \
+        IncreaseLiveObjectSize(size);                                         \
+        if (!heap_->IsConcurrentFullMark() || heap_->IsReadyToMark()) {       \
+            Region::ObjectAddressToRange(object)->IncreaseAliveObject(size);  \
+        }                                                                     \
+        return object;                                                        \
     }
 #endif
 
@@ -136,6 +136,7 @@ public:
 protected:
     FreeListAllocator *allocator_;
     SweepState sweepState_ = SweepState::NO_SWEEP;
+    Heap *localHeap_ {nullptr};
 
 private:
     // For sweeping

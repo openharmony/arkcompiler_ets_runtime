@@ -37,7 +37,7 @@ TlabAllocator::TlabAllocator(Heap *heap)
 inline void TlabAllocator::Finalize()
 {
     if (youngAllocator_.Available() != 0) {
-        FreeObject::FillFreeObject(heap_->GetEcmaVM(), youngAllocator_.GetTop(), youngAllocator_.Available());
+        FreeObject::FillFreeObject(heap_, youngAllocator_.GetTop(), youngAllocator_.Available());
         youngAllocator_.Reset();
     }
 
@@ -111,7 +111,7 @@ bool TlabAllocator::ExpandYoung()
     uintptr_t buffer = heap_->AllocateYoungSync(MIN_BUFFER_SIZE);
     if (buffer == 0) {
         if (youngAllocator_.Available() != 0) {
-            FreeObject::FillFreeObject(heap_->GetEcmaVM(), youngAllocator_.GetTop(), youngAllocator_.Available());
+            FreeObject::FillFreeObject(heap_, youngAllocator_.GetTop(), youngAllocator_.Available());
         }
         return false;
     }
@@ -121,7 +121,7 @@ bool TlabAllocator::ExpandYoung()
         buffer = youngAllocator_.GetTop();
     } else {
         if (youngAllocator_.Available() != 0) {
-            FreeObject::FillFreeObject(heap_->GetEcmaVM(), youngAllocator_.GetTop(), youngAllocator_.Available());
+            FreeObject::FillFreeObject(heap_, youngAllocator_.GetTop(), youngAllocator_.Available());
         }
     }
     youngAllocator_.Reset(buffer, end);

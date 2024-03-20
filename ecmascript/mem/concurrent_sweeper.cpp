@@ -98,7 +98,6 @@ void ConcurrentSweeper::WaitAllTaskFinished()
 
 void ConcurrentSweeper::EnsureAllTaskFinished()
 {
-    CHECK_JS_THREAD(heap_->GetEcmaVM());
     if (!isSweeping_) {
         return;
     }
@@ -152,6 +151,7 @@ void ConcurrentSweeper::ClearRSetInRange(Region *current, uintptr_t freeStart, u
     } else {
         current->ClearOldToNewRSetInRange(freeStart, freeEnd);
     }
+    current->AtomicClearLocalToShareRSetInRange(freeStart, freeEnd);
     current->ClearCrossRegionRSetInRange(freeStart, freeEnd);
 }
 

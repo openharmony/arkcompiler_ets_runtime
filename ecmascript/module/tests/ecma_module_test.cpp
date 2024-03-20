@@ -28,6 +28,7 @@
 #include "ecmascript/module/module_path_helper.h"
 #include "ecmascript/tests/test_helper.h"
 #include "ecmascript/linked_hash_table.h"
+#include "ecmascript/checkpoint/thread_state_transition.h"
 
 
 using namespace panda::ecmascript;
@@ -222,6 +223,7 @@ HWTEST_F_L0(EcmaModuleTest, GetRecordName2)
 
 HWTEST_F_L0(EcmaModuleTest, GetExportObjectIndex)
 {
+    ThreadNativeScope nativeScope(thread);
     std::string baseFileName = MODULE_ABC_PATH "module_test_module_test_C.abc";
 
     JSNApi::EnableUserUncaughtErrorHandler(instance);
@@ -664,5 +666,65 @@ HWTEST_F_L0(EcmaModuleTest, IsImportFile)
     EXPECT_TRUE(res6);
     outFileName = ModulePathHelper::RemoveSuffix(inputFileName);
     EXPECT_EQ(outFileName, result);
+}
+
+HWTEST_F_L0(EcmaModuleTest, GetModuleNameWithPath)
+{
+    CString inputPath1 = "com.example.application/entry";
+    CString res1 = "entry";
+    CString outFileName1 = ModulePathHelper::GetModuleNameWithPath(inputPath1);
+    EXPECT_EQ(outFileName1, res1);
+
+    CString inputPath2 = "com.example.applicationentry";
+    CString res2 = "";
+    CString outFileName2 = ModulePathHelper::GetModuleNameWithPath(inputPath2);
+    EXPECT_EQ(outFileName2, res2);
+}
+
+HWTEST_F_L0(EcmaModuleTest, ConcatPandaFilePath)
+{
+    CString inputPath1 = "entry";
+    CString res1 = "/data/storage/el1/bundle/entry/ets/modules.abc";
+    CString outFileName1 = ModulePathHelper::ConcatPandaFilePath(inputPath1);
+    EXPECT_EQ(outFileName1, res1);
+
+    CString inputPath2 = "";
+    CString res2 = "";
+    CString outFileName2 = ModulePathHelper::ConcatPandaFilePath(inputPath2);
+    EXPECT_EQ(outFileName2, res2);
+
+    CString inputPath3 = "entry";
+    CString bundleName = "com.example.application";
+    CString res3 = "/data/storage/el1/bundle/com.example.application/entry/entry/ets/modules.abc";
+    CString outFileName3 = ModulePathHelper::ConcatPandaFilePath(inputPath3, bundleName);
+    EXPECT_EQ(outFileName3, res3);
+}
+
+HWTEST_F_L0(EcmaModuleTest, ParseFileNameToVMAName)
+{
+    CString inputFileName = "test.abc";
+    CString outFileName = ModulePathHelper::ParseFileNameToVMAName(inputFileName);
+    CString exceptOutFileName = "ArkTS Code:test.abc";
+    EXPECT_EQ(outFileName, exceptOutFileName);
+
+    inputFileName = "";
+    outFileName = ModulePathHelper::ParseFileNameToVMAName(inputFileName);
+    exceptOutFileName = "ArkTS Code";
+    EXPECT_EQ(outFileName, exceptOutFileName);
+
+    inputFileName = "libutil.z.so/util.js";
+    outFileName = ModulePathHelper::ParseFileNameToVMAName(inputFileName);
+    exceptOutFileName = "ArkTS Code:libutil.z.so/util.js";
+    EXPECT_EQ(outFileName, exceptOutFileName);
+
+    inputFileName = "libutil.HashMap.z.so/util.HashMap.js";
+    outFileName = ModulePathHelper::ParseFileNameToVMAName(inputFileName);
+    exceptOutFileName = "ArkTS Code:libhashmap.z.so/HashMap.js";
+    EXPECT_EQ(outFileName, exceptOutFileName);
+
+    inputFileName = "/data/storage/el1/bundle/com.example.application/ets/modules.abc";
+    outFileName = ModulePathHelper::ParseFileNameToVMAName(inputFileName);
+    exceptOutFileName = "ArkTS Code:com.example.application/ets/modules.abc";
+    EXPECT_EQ(outFileName, exceptOutFileName);
 }
 }  // namespace panda::test

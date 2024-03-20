@@ -26,7 +26,7 @@ namespace panda::ecmascript {
 inline RememberedSet *Region::CreateRememberedSet()
 {
     auto bitSize = GCBitset::SizeOfGCBitset(GetCapacity());
-    auto setAddr = thread_->GetNativeAreaAllocator()->Allocate(bitSize + RememberedSet::GCBITSET_DATA_OFFSET);
+    auto setAddr = nativeAreaAllocator_->Allocate(bitSize + RememberedSet::GCBITSET_DATA_OFFSET);
     auto ret = new (setAddr) RememberedSet(bitSize);
     ret->ClearAll();
     std::atomic_thread_fence(std::memory_order_seq_cst);
@@ -58,6 +58,17 @@ inline RememberedSet *Region::GetOrCreateOldToNewRememberedSet()
         }
     }
     return packedData_.oldToNewSet_;
+}
+
+inline RememberedSet *Region::GetOrCreateLocalToShareRememberedSet()
+{
+    if (UNLIKELY(localToShareSet_ == nullptr)) {
+        LockHolder lock(*lock_);
+        if (localToShareSet_ == nullptr) {
+            localToShareSet_ = CreateRememberedSet();
+        }
+    }
+    return localToShareSet_;
 }
 
 inline void Region::MergeRSetForConcurrentSweeping()
@@ -114,6 +125,17 @@ inline bool Region::TestOldToNew(uintptr_t addr)
     return set->TestBit(ToUintPtr(this), addr);
 }
 
+// ONLY used for heap verification.
+inline bool Region::TestLocalToShare(uintptr_t addr)
+{
+    ASSERT(InRange(addr));
+    // Only used for heap verification, so donot need to use lock
+    if (localToShareSet_ == nullptr) {
+        return false;
+    }
+    return localToShareSet_->TestBit(ToUintPtr(this), addr);
+}
+
 template <typename Visitor>
 inline void Region::IterateAllMarkedBits(Visitor visitor) const
 {
@@ -138,6 +160,46 @@ inline void Region::AtomicInsertCrossRegionRSet(uintptr_t addr)
 {
     auto set = GetOrCreateCrossRegionRememberedSet();
     set->AtomicInsert(ToUintPtr(this), addr);
+}
+
+inline bool Region::HasLocalToShareRememberedSet() const
+{
+    return localToShareSet_ != nullptr;
+}
+
+inline void Region::InsertLocalToShareRSet(uintptr_t addr)
+{
+    auto set = GetOrCreateLocalToShareRememberedSet();
+    set->Insert(ToUintPtr(this), addr);
+}
+
+inline void Region::AtomicInsertLocalToShareRSet(uintptr_t addr)
+{
+    auto set = GetOrCreateLocalToShareRememberedSet();
+    set->AtomicInsert(ToUintPtr(this), addr);
+}
+
+inline void Region::AtomicClearLocalToShareRSetInRange(uintptr_t start, uintptr_t end)
+{
+    if (localToShareSet_ != nullptr) {
+        localToShareSet_->AtomicClearRange(ToUintPtr(this), start, end);
+    }
+}
+
+inline void Region::DeleteLocalToShareRSet()
+{
+    if (localToShareSet_ != nullptr) {
+        nativeAreaAllocator_->Free(localToShareSet_, localToShareSet_->Size());
+        localToShareSet_ = nullptr;
+    }
+}
+
+template <typename Visitor>
+inline void Region::AtomicIterateAllLocalToShareBits(Visitor visitor)
+{
+    if (localToShareSet_ != nullptr) {
+        localToShareSet_->AtomicIterateAllMarkedBits(ToUintPtr(this), visitor);
+    }
 }
 
 template <typename Visitor>
@@ -172,7 +234,7 @@ inline void Region::AtomicClearCrossRegionRSetInRange(uintptr_t start, uintptr_t
 inline void Region::DeleteCrossRegionRSet()
 {
     if (crossRegionSet_ != nullptr) {
-        thread_->GetNativeAreaAllocator()->Free(crossRegionSet_, crossRegionSet_->Size());
+        nativeAreaAllocator_->Free(crossRegionSet_, crossRegionSet_->Size());
         crossRegionSet_ = nullptr;
     }
 }
@@ -230,7 +292,7 @@ inline void Region::ClearOldToNewRSetInRange(uintptr_t start, uintptr_t end)
 inline void Region::DeleteOldToNewRSet()
 {
     if (packedData_.oldToNewSet_ != nullptr) {
-        thread_->GetNativeAreaAllocator()->Free(packedData_.oldToNewSet_, packedData_.oldToNewSet_->Size());
+        nativeAreaAllocator_->Free(packedData_.oldToNewSet_, packedData_.oldToNewSet_->Size());
         packedData_.oldToNewSet_ = nullptr;
     }
 }
@@ -252,7 +314,7 @@ inline void Region::ClearSweepingRSetInRange(uintptr_t start, uintptr_t end)
 inline void Region::DeleteSweepingRSet()
 {
     if (sweepingRSet_ != nullptr) {
-        thread_->GetNativeAreaAllocator()->Free(sweepingRSet_, sweepingRSet_->Size());
+        nativeAreaAllocator_->Free(sweepingRSet_, sweepingRSet_->Size());
         sweepingRSet_ = nullptr;
     }
 }

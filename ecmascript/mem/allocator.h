@@ -23,7 +23,7 @@
 
 namespace panda::ecmascript {
 class Region;
-class Heap;
+class BaseHeap;
 
 class Allocator {
 public:
@@ -87,10 +87,10 @@ public:
     NO_COPY_SEMANTIC(FreeListAllocator);
     NO_MOVE_SEMANTIC(FreeListAllocator);
 
-    inline explicit FreeListAllocator(Heap *heap);
+    inline explicit FreeListAllocator(BaseHeap *heap);
     inline void Initialize(Region *region);
 
-    inline void Reset(Heap *heap);
+    inline void Reset(BaseHeap *heap);
 
     inline uintptr_t Allocate(size_t size);
     inline void AddFree(Region *region);
@@ -134,7 +134,7 @@ private:
 
     BumpPointerAllocator bpAllocator_;
     std::unique_ptr<FreeObjectList> freeList_ {nullptr};
-    Heap *heap_{nullptr};
+    BaseHeap *heap_{nullptr};
     size_t allocationSizeAccumulator_ {0};
 };
 }  // namespace panda::ecmascript

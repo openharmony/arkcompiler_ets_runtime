@@ -514,6 +514,12 @@ bool JSSerializer::WriteJSFunction(const JSHandle<JSTaggedValue> &value)
         return false;
     }
     JSHandle<JSTaggedValue> method(thread_, func->GetMethod());
+    if (Method::Cast(method.GetTaggedValue())->IsAotWithCallField()) {
+        uintptr_t codeEntry = func->GetCodeEntry();
+        if (!WriteRawData(&codeEntry, sizeof(uintptr_t))) {
+            return false;
+        }
+    }
     if (!SerializeJSTaggedValue(method)) {
         return false;
     }
@@ -1316,7 +1322,7 @@ JSHandle<JSTaggedValue> JSDeserializer::ReadMethod()
     if (!ReadNativePointer(&methodLiteral)) {
         return JSHandle<JSTaggedValue>();
     }
-    JSHandle<Method> method = factory_->NewMethod(reinterpret_cast<MethodLiteral *>(methodLiteral));
+    JSHandle<Method> method = factory_->NewSMethod(reinterpret_cast<MethodLiteral *>(methodLiteral));
     JSHandle<JSTaggedValue> methodTag(method);
     referenceMap_.emplace(objectId_++, methodTag);
 
@@ -1379,6 +1385,13 @@ JSHandle<JSTaggedValue> JSDeserializer::ReadJSFunction()
     JSHandle<Method> method = JSHandle<Method>::Cast(methodVal);
     func->SetMethod(thread_, method);
     func->InitializeForConcurrentFunction(thread_);
+    if (method->IsAotWithCallField()) {
+        uintptr_t codeEntry;
+        if (!ReadNativePointer(&codeEntry)) {
+            return JSHandle<JSTaggedValue>();
+        }
+        func->SetCodeEntry(codeEntry);
+    }
     return funcTag;
 }
 

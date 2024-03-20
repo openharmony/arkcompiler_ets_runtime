@@ -110,7 +110,7 @@ private:
         FORCE_SAVE_PAUSE,
     };
 
-    void ProfileBytecode(ApEntityId abcId, const CString &recordName, JSTaggedValue value);
+    void ProfileBytecode(ApEntityId abcId, const CString &recordName, JSTaggedValue funcValue);
     bool PausePGODump();
 
     void DumpICByName(ApEntityId abcId, const CString &recordName, EntityId methodId, int32_t bcOffset, uint32_t slotId,
@@ -147,13 +147,17 @@ private:
 
     void UpdateLayout(JSHClass *hclass);
     void UpdateTranstionLayout(JSHClass *parent, JSHClass *child);
-    void AddTranstionObjectInfo(ProfileType recordType, EntityId methodId, int32_t bcOffset, JSHClass *receiver,
+    bool AddTranstionObjectInfo(ProfileType recordType, EntityId methodId, int32_t bcOffset, JSHClass *receiver,
         JSHClass *hold, JSHClass *holdTra);
     void UpdatePrototypeChainInfo(JSHClass *receiver, JSHClass *holder, PGOObjectInfo &info);
 
-    void AddObjectInfo(ApEntityId abcId, const CString &recordName, EntityId methodId, int32_t bcOffset,
+    bool AddObjectInfo(ApEntityId abcId, const CString &recordName, EntityId methodId, int32_t bcOffset,
                        JSHClass *receiver, JSHClass *hold, JSHClass *holdTra);
     void AddObjectInfoWithMega(ApEntityId abcId, const CString &recordName, EntityId methodId, int32_t bcOffset);
+    void AddBuiltinsInfoByNameInInstance(ApEntityId abcId, const CString &recordName, EntityId methodId,
+        int32_t bcOffset, JSHClass *receiver);
+    void AddBuiltinsInfoByNameInProt(ApEntityId abcId, const CString &recordName, EntityId methodId, int32_t bcOffset,
+        JSHClass *receiver, JSHClass *hold);
     void AddBuiltinsInfo(
         ApEntityId abcId, const CString &recordName, EntityId methodId, int32_t bcOffset, JSHClass *receiver,
         JSHClass *transitionHClass, OnHeapMode onHeap = OnHeapMode::NONE);

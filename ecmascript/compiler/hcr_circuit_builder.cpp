@@ -309,7 +309,7 @@ GateRef CircuitBuilder::FastCallOptimized(GateRef glue, GateRef code, GateRef de
         ASSERT(hirGate != Circuit::NullGate());
         filteredHirGate = hirGate;
     }
-    GateRef result = Call(cs, glue, code, depend, args, filteredHirGate);
+    GateRef result = Call(cs, glue, code, depend, args, filteredHirGate, "fastCallOptimized");
     return result;
 }
 
@@ -327,7 +327,7 @@ GateRef CircuitBuilder::CallOptimized(GateRef glue, GateRef code, GateRef depend
         ASSERT(hirGate != Circuit::NullGate());
         filteredHirGate = hirGate;
     }
-    GateRef result = Call(cs, glue, code, depend, args, filteredHirGate);
+    GateRef result = Call(cs, glue, code, depend, args, filteredHirGate, "callOptimized");
     return result;
 }
 
@@ -474,11 +474,11 @@ GateRef CircuitBuilder::IsStabelArray(GateRef glue, GateRef obj)
     Label targetIsHeapObject(env_);
     Label targetIsStableArray(env_);
 
-    Branch(TaggedIsHeapObject(obj), &targetIsHeapObject, &exit);
+    BRANCH_CIR2(TaggedIsHeapObject(obj), &targetIsHeapObject, &exit);
     Bind(&targetIsHeapObject);
     {
         GateRef jsHclass = LoadHClass(obj);
-        Branch(IsStableArray(jsHclass), &targetIsStableArray, &exit);
+        BRANCH_CIR2(IsStableArray(jsHclass), &targetIsStableArray, &exit);
         Bind(&targetIsStableArray);
         {
             GateRef guardiansOffset =

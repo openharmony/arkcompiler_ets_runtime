@@ -54,10 +54,12 @@ public:
         runtimeOptions_.SetCompilerExternalPkgJsonInfo(BuildOhosExternalPkgJson());
         vm_ = JSNApi::CreateEcmaVM(runtimeOptions_);
         ASSERT(vm_ != nullptr);
+        vm_->GetJSThread()->ManagedCodeBegin();
     }
 
     void TearDown() override
     {
+        vm_->GetJSThread()->ManagedCodeEnd();
         ohos::EnableAotListHelper::GetInstance()->Clear();
         JSNApi::DestroyJSVM(vm_);
         vm_ = nullptr;
