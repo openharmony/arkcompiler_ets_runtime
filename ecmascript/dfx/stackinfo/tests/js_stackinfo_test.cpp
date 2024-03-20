@@ -87,12 +87,36 @@ HWTEST_F_L0(JsStackInfoTest, FrameCheckTest)
     ret1 &= ArkFrameCheck(frame[13]);
     EXPECT_TRUE(ret1 == false);
 
-    bool ret2 = IsFunctionFrame(frame[8]);
+    bool ret2 = IsFunctionFrame(frame[2]);
+    ret2 &= IsFunctionFrame(frame[3]);
+    ret2 &= IsFunctionFrame(frame[8]);
     ret2 &= IsFunctionFrame(frame[9]);
     ret2 &= IsFunctionFrame(frame[10]);
     ret2 &= IsFunctionFrame(frame[15]);
     EXPECT_TRUE(ret2 == true);
     ret2 &= IsFunctionFrame(frame[16]);
     EXPECT_TRUE(ret2 == false);
+}
+
+HWTEST_F_L0(JsStackInfoTest, TranslateByteCodePc)
+{
+    std::vector<MethodInfo> vec = {
+        {0, 0, 24},
+        {1, 24, 30},
+        {2, 54, 56},
+        {3, 120, 60}
+    };
+    uintptr_t realPc = 115;
+
+    auto ret = TranslateByteCodePc(realPc, vec);
+    EXPECT_TRUE(ret != std::nullopt);
+
+    vec.clear();
+    ret = TranslateByteCodePc(realPc, vec);
+    EXPECT_TRUE(ret == std::nullopt);
+
+    vec.push_back({2, 54, 56});
+    ret = TranslateByteCodePc(realPc, vec);
+    EXPECT_TRUE(ret != std::nullopt);
 }
 }  // namespace panda::test

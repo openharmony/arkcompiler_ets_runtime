@@ -518,6 +518,11 @@ public:
         return GetOffset<static_cast<size_t>(Index::JSFuncIndex)>(isArch32);
     }
 
+    static size_t GetReturnAddrOffset(bool isArch32 = false)
+    {
+        return GetOffset<static_cast<size_t>(Index::ReturnAddrIndex)>(isArch32);
+    }
+
     static size_t ComputeReservedJSFuncOffset(size_t slotSize)
     {
         size_t slotOffset = static_cast<size_t>(Index::PrevFpIndex) - static_cast<size_t>(Index::JSFuncIndex);
