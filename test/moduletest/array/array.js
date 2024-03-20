@@ -497,3 +497,37 @@ var arr_copywithin3 = arr_copywithin3.copyWithin(0, 0, 10);
 print(arr_copywithin3);
 var arr_copywithin4 = arr_copywithin4.copyWithin(3, 0, 6);
 print(arr_copywithin4);
+
+// Test case for every()
+var arr_every1 = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+var arr_every2 = new Array();
+function testEvery(element, index, array) {
+    if (index == 0) {
+        array.length = 6;
+    }
+    return element < 6;
+}
+function testEvery4(element, index, array) {
+  array.pop();
+  array.pop();
+  array.pop();
+  return element < 6;
+}
+for (let i = 0; i < 10; i++) arr_every2[i] = i;
+var arr_every3 = new Array();
+for (let i = 0; i < 10; i++) {
+  if (i == 2) {
+    continue;
+  }
+  arr_every3[i] = i;
+}
+var arr_every4 = new Array();
+for (let i = 0; i < 10; i++) arr_every4[i] = i;
+var result_every1 = arr_every1.every(testEvery);
+print(result_every1);
+var result_every2 = arr_every2.every(testEvery);
+print(result_every2);
+var result_every3 = arr_every3.every(testEvery);
+print(result_every3);
+var result_every4 = arr_every4.every(testEvery4);
+print(result_every4);
