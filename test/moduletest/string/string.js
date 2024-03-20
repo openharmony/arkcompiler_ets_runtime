@@ -46,3 +46,9 @@ try {
 } catch (e) {
     print(e.message);
 }
+
+try {
+    "123".padEnd(Math.pow(2, 40))
+} catch (e) {
+    print(e)
+}
