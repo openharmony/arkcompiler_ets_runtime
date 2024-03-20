@@ -786,6 +786,7 @@ JSTaggedValue BuiltinsString::IsWellFormed(EcmaRuntimeCallInfo *argv)
         } else {
             position = position + codeUnitCount;
         }
+        thread->CheckSafepointIfSuspended();
     }
     return JSTaggedValue::True();
 }
@@ -876,6 +877,7 @@ JSTaggedValue BuiltinsString::ToWellFormed(EcmaRuntimeCallInfo *argv)
             }
         }
         position = position + codeUnitCount;
+        thread->CheckSafepointIfSuspended();
     }
     const char16_t *constChar16tData = r.data();
     auto *char16tData = const_cast<char16_t *>(constChar16tData);
@@ -1266,6 +1268,7 @@ JSTaggedValue BuiltinsString::ReplaceAll(EcmaRuntimeCallInfo *argv)
         stringBuilder = stringBuilder + stringPrefixString + stringRealReplaceStr;
         endOfLastMatch = pos + searchLength;
         pos = EcmaStringAccessor::IndexOf(ecmaVm, thisString, searchString, pos + advanceBy);
+        thread->CheckSafepointIfSuspended();
     }
 
     if (endOfLastMatch < static_cast<int32_t>(EcmaStringAccessor(thisString).GetLength())) {
@@ -1465,6 +1468,7 @@ JSTaggedValue BuiltinsString::GetSubstitution(JSThread *thread, const JSHandle<E
                 canBeCompress = false;
             }
         }
+        thread->CheckSafepointIfSuspended();
     }
     LOG_ECMA(FATAL) << "this branch is unreachable";
     UNREACHABLE();
@@ -1708,6 +1712,7 @@ JSTaggedValue BuiltinsString::CreateArrayThisStringAndSeperatorStringAreNotEmpty
         }
         index = pos + static_cast<int32_t>(seperatorLength);
         pos = EcmaStringAccessor::IndexOf(ecmaVm, thisString, seperatorString, index);
+        thread->CheckSafepointIfSuspended();
     }
     uint32_t posArrLength = posArray.size();
     arrayLength = lim > posArrLength ? posArrLength + 1 : posArrLength;
@@ -2282,6 +2287,7 @@ JSTaggedValue BuiltinsString::StringToList(JSThread *thread, JSHandle<EcmaString
         JSHandle<EcmaString> newStr = factory->NewFromUtf16Literal(&c, 1);
         ElementAccessor::Set(thread, newArrayHandle, index, newStr, true);
         index++;
+        thread->CheckSafepointIfSuspended();
     }
     JSHandle<JSArray>(newArrayHandle)->SetArrayLength(thread, totalElements);
 

@@ -55,7 +55,7 @@ public:
 
     void Reset();
 
-    uintptr_t AllocateWithoutGC(size_t size);
+    uintptr_t AllocateWithoutGC(JSThread *thread, size_t size);
 
     uintptr_t Allocate(JSThread *thread, size_t size, bool allowGC = true);
 
@@ -114,10 +114,10 @@ protected:
 
 private:
     uintptr_t AllocateWithExpand(JSThread *thread, size_t size);
-    uintptr_t TryAllocate(size_t size);
+    uintptr_t TryAllocate(JSThread *thread, size_t size);
     bool Expand(JSThread *thread);
     // For sweeping
-    uintptr_t AllocateAfterSweepingCompleted(size_t size);
+    uintptr_t AllocateAfterSweepingCompleted(JSThread *thread, size_t size);
 
     Mutex lock_;
     Mutex allocateLock_;

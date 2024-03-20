@@ -112,7 +112,7 @@ JSHandle<JSHClass> ObjectFactory::NewSEcmaHClassClass(JSHClass *hclass, uint32_t
 {
     NewSObjectHook();
     uint32_t classSize = JSHClass::SIZE;
-    auto *newClass = static_cast<JSHClass *>(sHeap_->AllocateClassClass(hclass, classSize));
+    auto *newClass = static_cast<JSHClass *>(sHeap_->AllocateClassClass(thread_, hclass, classSize));
     newClass->Initialize(thread_, size, type, 0, thread_->GlobalConstants()->GetHandledEmptySLayoutInfo());
     return JSHandle<JSHClass>(thread_, newClass);
 }

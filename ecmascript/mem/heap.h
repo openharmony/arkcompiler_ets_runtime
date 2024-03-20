@@ -514,7 +514,7 @@ public:
     template<class Callback>
     void IterateOverObjects(const Callback &cb) const;
 
-    inline TaggedObject *AllocateClassClass(JSHClass *hclass, size_t size);
+    inline TaggedObject *AllocateClassClass(JSThread *thread, JSHClass *hclass, size_t size);
 
     inline TaggedObject *AllocateNonMovableOrHugeObject(JSThread *thread, JSHClass *hclass);
 
