@@ -77,11 +77,16 @@ public:
 
     void Includes(GateRef glue, GateRef thisValue, GateRef numArgs, Variable *result, Label *exit, Label *slowPath);
 
+    void CopyWithin(GateRef glue, GateRef thisValue, GateRef numArgs,
+        Variable *result, Label *exit, Label *slowPath);
+
     void Map(GateRef glue, GateRef thisValue, GateRef numArgs, Variable *result, Label *exit, Label *slowPath);
 
     GateRef IsConcatSpreadable(GateRef glue, GateRef obj);
 
     GateRef NewArray(GateRef glue, GateRef count);
+
+    GateRef CalculatePositionWithLength(GateRef position, GateRef length);
 private:
     static constexpr uint32_t MAX_LENGTH_ZERO = 0;
     static constexpr uint32_t MAX_LENGTH_ONE = 1;
