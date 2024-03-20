@@ -6815,7 +6815,7 @@ bool StubBuilder::IsCallModeSupportPGO(JSCallMode mode)
 
 GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNumArgs, GateRef jumpSize,
                                     GateRef hotnessCounter, JSCallMode mode, std::initializer_list<GateRef> args,
-                                    ProfileOperation callback)
+                                    ProfileOperation callback, bool checkIsCallable)
 {
     auto env = GetEnvironment();
     Label entryPass(env);
@@ -6829,20 +6829,26 @@ GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNu
     // save pc
     SavePcIfNeeded(glue);
     GateRef bitfield = 0;
+    GateRef hclass = 0;
 #if ECMASCRIPT_ENABLE_FUNCTION_CALL_TIMER
     CallNGCRuntime(glue, RTSTUB_ID(StartCallTimer), { glue, func, False()});
 #endif
-    BRANCH(TaggedIsHeapObject(func), &funcIsHeapObject, &funcNotCallable);
-    Bind(&funcIsHeapObject);
-    GateRef hclass = LoadHClass(func);
-    bitfield = Load(VariableType::INT32(), hclass, IntPtr(JSHClass::BIT_FIELD_OFFSET));
-    BRANCH(IsCallableFromBitField(bitfield), &funcIsCallable, &funcNotCallable);
-    Bind(&funcNotCallable);
-    {
-        CallRuntime(glue, RTSTUB_ID(ThrowNotCallableException), {});
-        Jump(&exit);
+    if (checkIsCallable) {
+        BRANCH(TaggedIsHeapObject(func), &funcIsHeapObject, &funcNotCallable);
+        Bind(&funcIsHeapObject);
+        hclass = LoadHClass(func);
+        bitfield = Load(VariableType::INT32(), hclass, IntPtr(JSHClass::BIT_FIELD_OFFSET));
+        BRANCH(IsCallableFromBitField(bitfield), &funcIsCallable, &funcNotCallable);
+        Bind(&funcNotCallable);
+        {
+            CallRuntime(glue, RTSTUB_ID(ThrowNotCallableException), {});
+            Jump(&exit);
+        }
+        Bind(&funcIsCallable);
+    } else {
+        hclass = LoadHClass(func);
+        bitfield = Load(VariableType::INT32(), hclass, IntPtr(JSHClass::BIT_FIELD_OFFSET));
     }
-    Bind(&funcIsCallable);
     GateRef method = GetMethodFromJSFunction(func);
     GateRef callField = GetCallFieldFromMethod(method);
     GateRef isNativeMask = Int64(static_cast<uint64_t>(1) << MethodLiteral::IsNativeBit::START_BIT);

@@ -481,7 +481,8 @@ GateRef LinkedHashTableStubBuilder<LinkedHashTableType, LinkedHashTableObject>::
         Label hasException(env);
         Label notHasException(env);
         GateRef retValue = JSCallDispatch(glue_, callbackFnHandle, Int32(NUM_MANDATORY_JSFUNC_ARGS), 0,
-            Circuit::NullGate(), JSCallMode::CALL_THIS_ARG3_WITH_RETURN, { thisArg, value, key, thisValue });
+            Circuit::NullGate(), JSCallMode::CALL_THIS_ARG3_WITH_RETURN, { thisArg, value, key, thisValue },
+            ProfileOperation(), false);
         BRANCH(HasPendingException(glue_), &hasException, &notHasException);
         Bind(&hasException);
         {
@@ -519,7 +520,7 @@ GateRef LinkedHashTableStubBuilder<LinkedHashTableType, LinkedHashTableObject>::
         }
     }
     Bind(&loopEnd);
-    LoopEnd(&loopHead, env, glue_);
+    LoopEnd(&loopHead);
     Bind(&loopExit);
     Jump(&exit);
 
