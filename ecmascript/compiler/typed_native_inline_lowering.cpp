@@ -111,6 +111,12 @@ GateRef TypedNativeInlineLowering::VisitGate(GateRef gate)
         case OpCode::MATH_MAX_DOUBLE:
             LowerDoubleMinMax<true>(gate);
             break;
+        case OpCode::MATH_CLZ32_DOUBLE:
+            LowerClz32Float64(gate);
+            break;
+        case OpCode::MATH_CLZ32_INT32:
+            LowerClz32Int32(gate);
+            break;
         default:
             break;
     }
@@ -578,6 +584,38 @@ GateRef TypedNativeInlineLowering::FindFrameState(GateRef gate)
         gate = acc_.GetDep(gate);
     }
     return acc_.GetFrameState(gate);
+}
+
+void TypedNativeInlineLowering::LowerClz32Float64(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    Label exit(&builder_);
+    Label isFinit(&builder_);
+
+    GateRef param = acc_.GetValueIn(gate, 0);
+    const int32_t defaultReturnValue = 32;
+    DEFVALUE(result, (&builder_), VariableType::INT32(), builder_.Int32(defaultReturnValue));
+
+    // NaN, Inf, -Inf after ToUint32 equal 0, so we in advance know result: Clz32(0) = 32
+    auto paramCheck = builder_.BoolOr(builder_.DoubleIsNAN(param), builder_.DoubleIsINF(param));
+    builder_.Branch(paramCheck, &exit, &isFinit);
+    builder_.Bind(&isFinit);
+    {
+        auto truncedValue = builder_.TruncInt64ToInt32(builder_.TruncFloatToInt64(param));
+        result = builder_.CountLeadingZeroes32(truncedValue);
+        builder_.Jump(&exit);
+    }
+
+    builder_.Bind(&exit);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
+}
+
+void TypedNativeInlineLowering::LowerClz32Int32(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    GateRef param = acc_.GetValueIn(gate, 0);
+    GateRef result = builder_.CountLeadingZeroes32(param);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
 }
 
 }

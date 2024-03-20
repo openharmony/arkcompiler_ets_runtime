@@ -93,6 +93,7 @@ private:
     GateRef VisitMathDoubleParamsBuiltin(GateRef gate);
     const GateMetaData *GetNewMeta(OpCode op, TypeInfo type);
     GateRef VisitMathTaggedNumberParamsBuiltin(GateRef gate);
+    GateRef VisitClz32Builtin(GateRef gate);
     GateRef VisitBooleanJump(GateRef gate);
     GateRef VisitRangeCheckPredicate(GateRef gate);
     GateRef VisitIndexCheck(GateRef gate);

@@ -46,6 +46,7 @@ private:
     void TryInlineMathBinaryBuiltin(GateRef gate, size_t argc, BuiltinsStubCSigns::ID id, const GateMetaData* op);
     void TryInlineMathMinMaxBuiltin(GateRef gate, size_t argc, BuiltinsStubCSigns::ID id, const GateMetaData* op,
                                     double defaultValue);
+    void TryInlineMathClz32Builtin(GateRef gate, size_t argc);
 
     bool EnableLog() const
     {

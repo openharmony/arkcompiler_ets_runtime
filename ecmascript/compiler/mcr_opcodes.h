@@ -80,6 +80,9 @@ namespace panda::ecmascript::kungfu {
     V(MathLog1p, MATH_LOG1P, GateFlags::NO_WRITE, 1, 1, 1)                                      \
     V(MathExp, MATH_EXP, GateFlags::NO_WRITE, 1, 1, 1)                                          \
     V(MathExpm1, MATH_EXPM1, GateFlags::NO_WRITE, 1, 1, 1)                                      \
+    V(MathClz32, MATH_CLZ32, GateFlags::NO_WRITE, 1, 1, 1)                                      \
+    V(MathClz32Double, MATH_CLZ32_DOUBLE, GateFlags::NO_WRITE, 1, 1, 1)                         \
+    V(MathClz32Int32, MATH_CLZ32_INT32, GateFlags::NO_WRITE, 1, 1, 1)                           \
     V(MathAbs, MATH_ABS, GateFlags::NO_WRITE, 1, 1, 1)                                          \
     V(MathAbsInt32, MATH_ABS_INT32, GateFlags::NO_WRITE, 1, 1, 1)                               \
     V(MathAbsDouble, MATH_ABS_DOUBLE, GateFlags::NO_WRITE, 1, 1, 1)                             \

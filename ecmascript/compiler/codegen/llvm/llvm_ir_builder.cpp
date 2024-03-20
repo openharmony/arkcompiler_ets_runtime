@@ -210,6 +210,7 @@ void LLVMIRBuilder::InitializeHandlers()
         {OpCode::ABS, &LLVMIRBuilder::HandleAbs},
         {OpCode::MIN, &LLVMIRBuilder::HandleMin},
         {OpCode::MAX, &LLVMIRBuilder::HandleMax},
+        {OpCode::CLZ32, &LLVMIRBuilder::HandleClz32},
         {OpCode::READSP, &LLVMIRBuilder::HandleReadSp},
         {OpCode::FINISH_ALLOCATE, &LLVMIRBuilder::HandleFinishAllocate},
     };
@@ -2563,6 +2564,26 @@ void LLVMIRBuilder::HandleDeoptCheck(GateRef gate)
     }
     LLVMBuildRet(builder_, returnValue);
     Bind(gate, result);
+}
+
+void LLVMIRBuilder::HandleClz32(GateRef gate)
+{
+    VisitClz32(gate, acc_.GetIn(gate, 0));
+}
+
+void LLVMIRBuilder::VisitClz32(GateRef gate,  GateRef param)
+{
+    LLVMValueRef value = GetLValue(param);
+    LLVMValueRef trueConst = LLVMConstInt(GetInt1T(), 0, true);
+
+    llvm::CallInst *result = llvm::unwrap(builder_)->CreateBinaryIntrinsic(llvm::Intrinsic::ctlz,
+                                                                           llvm::unwrap(value),
+                                                                           llvm::unwrap(trueConst));
+    Bind(gate, llvm::wrap(result));
+
+    if (IsLogEnabled()) {
+        SetDebugInfo(gate, value);
+    }
 }
 
 LLVMTypeRef LLVMIRBuilder::GetExperimentalDeoptTy()

@@ -462,6 +462,7 @@ private:
     V(FloatExp)                                 \
     V(FloatExpm1)                               \
     V(FloatCbrt)                                \
+    V(FloatClz32)                               \
     V(FloatFloor)                               \
     V(FloatPow)                                 \
     V(FindElementWithCache)                     \

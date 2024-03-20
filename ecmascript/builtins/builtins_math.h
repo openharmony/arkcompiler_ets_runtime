@@ -44,7 +44,7 @@
     V("atanh",  Atanh,  1, MathAtanh)   /* Math.atanh ( x ) */              \
     V("cbrt",   Cbrt,   1, MathCbrt)     /* Math.cbrt ( x ) */              \
     V("ceil",   Ceil,   1, INVALID)     /* Math.ceil ( x ) */               \
-    V("clz32",  Clz32,  1, INVALID)     /* Math.clz32 ( x ) */              \
+    V("clz32",  Clz32,  1, MathClz32)   /* Math.clz32 ( x ) */              \
     V("cos",    Cos,    1, MathCos)     /* Math.cos ( x ) */                \
     V("cosh",   Cosh,   1, MathCosh)    /* Math.cosh ( x ) */               \
     V("exp",    Exp,    1, MathExp)     /* Math.exp ( x ) */                \

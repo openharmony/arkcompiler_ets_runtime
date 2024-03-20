@@ -11,41 +11,39 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-group("ark_aot_builtin_inlining_math_test") {
-  testonly = true
-  test_list = [
-    "Acos",
-    "Acosh",
-    "Asin",
-    "Asinh",
-    "Atan",
-    "Atan2",
-    "Atanh",
-    "Cos",
-    "Cosh",
-    "Log",
-    "Log2",
-    "Log10",
-    "Log1p",
-    "Exp",
-    "Expm1",
-    "Sin",
-    "Sinh",
-    "Tan",
-    "Tanh",
-    "Abs",
-    "Pow",
-    "Cbrt",
-    "Min",
-    "Max",
-    "Clz32",
-  ]
-
-  deps = []
-  foreach(test, test_list) {
-    deps += [ "${test}:builtinMath${test}AotAction" ]
-    if (!is_debug) {
-      deps += [ "${test}:builtinMath${test}AotContextAction" ]
-    }
-  }
-}
+32
+32
+31
+0
+1
+30
+0
+30
+31
+25
+25
+0
+0
+0
+32
+32
+32
+32
+32
+29
+[trace] Check Type: NotNumber1
+32
+[trace] Check Type: NotNumber1
+32
+[trace] Check Type: NotCallTarget1
+-8
+[trace] Check Type: NotCallTarget1
+abc
+27
+[trace] Check Type: NotNumber1
+32
+[trace] Check Type: NotNumber1
+26
+25
+Error: so big
+26

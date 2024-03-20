@@ -122,6 +122,9 @@ void NativeInlineLowering::RunNativeInlineLowering()
             case BuiltinsStubCSigns::ID::MathExpm1:
                 TryInlineMathUnaryBuiltin(gate, argc, id, circuit_->MathExpm1());
                 break;
+            case BuiltinsStubCSigns::ID::MathClz32:
+                TryInlineMathClz32Builtin(gate, argc);
+                break;
             case BuiltinsStubCSigns::ID::MathPow:
                 TryInlineMathBinaryBuiltin(gate, argc, id, circuit_->MathPow());
                 break;
@@ -180,6 +183,23 @@ void NativeInlineLowering::TryInlineMathUnaryBuiltin(GateRef gate, size_t argc, 
         return;
     }
     GateRef ret = builder_.BuildMathBuiltinOp(op, {acc_.GetValueIn(gate, 1)});
+    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), ret);
+}
+
+void NativeInlineLowering::TryInlineMathClz32Builtin(GateRef gate, size_t argc)
+{
+    Environment env(gate, circuit_, &builder_);
+    if (!Uncheck()) {
+        builder_.CallTargetCheck(gate, acc_.GetValueIn(gate, argc + 1),
+                                 builder_.IntPtr(static_cast<int64_t>(BuiltinsStubCSigns::ID::MathClz32)));
+    }
+    // NOTE(schernykh): Add tracing
+    if (argc == 0) {
+        const int32_t defaultValue = 32;
+        acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), builder_.Int32(defaultValue));
+        return;
+    }
+    GateRef ret = builder_.BuildMathBuiltinOp(circuit_->MathClz32(), {acc_.GetValueIn(gate, 1)});
     acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), ret);
 }
 
