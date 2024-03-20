@@ -1373,6 +1373,19 @@ bool JSObject::ValidateAndApplyPropertyDescriptor(ObjectOperator *op, bool exten
         // 10. If O is not undefined, then
         // a. For each field of Desc that is present, set the corresponding attribute of the property named P of object
         // O to the value of the field.
+        if (!desc.HasValue() && desc.HasWritable() && current.HasValue()) {
+            // [[Value]] and [[Writable]] attributes are set to the value of the corresponding field in Desc
+            // if Desc has that field or to the attribute's default value otherwise.
+            PropertyDescriptor newDesc = desc;
+            JSHandle<JSTaggedValue> valueHandle = current.GetValue();
+            if (valueHandle->IsPropertyBox()) {
+                JSTaggedValue value = PropertyBox::Cast(valueHandle->GetTaggedObject())->GetValue();
+                valueHandle = JSHandle<JSTaggedValue>(op->GetThread(), value);
+            }
+            newDesc.SetValue(valueHandle);
+            op->UpdateDetector();
+            return op->WriteDataPropertyInHolder(newDesc);
+        }
         op->UpdateDetector();
         return op->WriteDataPropertyInHolder(desc);
     }
