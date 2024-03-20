@@ -17,6 +17,7 @@
 #include "ecmascript/builtins/builtins.h"
 #include "ecmascript/builtins/builtins_function.h"
 #include "ecmascript/builtins/builtins_object.h"
+#include "ecmascript/checkpoint/thread_state_transition.h"
 #include "ecmascript/compiler/aot_file/an_file_data_manager.h"
 #include "ecmascript/compiler/aot_file/aot_file_manager.h"
 #include "ecmascript/compiler/circuit_builder_helper.h"
@@ -87,10 +88,12 @@ public:
         ASSERT_TRUE(vm_ != nullptr) << "Cannot create Runtime";
         thread_ = vm_->GetJSThread();
         vm_->SetEnableForceGC(true);
+        thread_->ManagedCodeBegin();
     }
 
     void TearDown() override
     {
+        thread_->ManagedCodeEnd();
         vm_->SetEnableForceGC(false);
         JSNApi::DestroyJSVM(vm_);
     }
@@ -216,6 +219,7 @@ HWTEST_F_L0(JSNApiTests, ObjectRef_Freeze)
     JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
     JSHandle<JSTaggedValue> set = env->GetBuiltinsSetFunction();
     object->Freeze(vm_);
+    ecmascript::ThreadManagedScope managedScope(thread_);
     bool status = JSObject::SetIntegrityLevel(thread_, JSHandle<JSObject>::Cast(set), IntegrityLevel::FROZEN);
     ASSERT_TRUE(status);
 }
@@ -237,6 +241,7 @@ HWTEST_F_L0(JSNApiTests, ObjectRef_Seal)
     JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
     JSHandle<JSTaggedValue> set = env->GetBuiltinsSetFunction();
     object->Seal(vm_); // 尝试将对象封闭
+    ecmascript::ThreadManagedScope managedScope(thread_);
     bool status = JSObject::SetIntegrityLevel(thread_, JSHandle<JSObject>::Cast(set), IntegrityLevel::SEALED);
     ASSERT_TRUE(status);
 }
@@ -268,6 +273,7 @@ HWTEST_F_L0(JSNApiTests, ObjectRef_GetAllPropertyNames)
  */
 HWTEST_F_L0(JSNApiTests, GetIndex)
 {
+    ecmascript::ThreadManagedScope managedScope(vm_->GetJSThread());
     LocalScope scope(vm_);
     JSThread *thread = vm_->GetJSThread();
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
@@ -297,6 +303,7 @@ HWTEST_F_L0(JSNApiTests, GetKind_entries_values_keys)
 {
     LocalScope scope(vm_);
     JSThread *thread = vm_->GetJSThread();
+    ecmascript::ThreadManagedScope managedScope(thread);
     std::string expectedResult = "entries";
     std::string valuesResult = "values";
     std::string keysResult = "keys";
@@ -336,6 +343,7 @@ HWTEST_F_L0(JSNApiTests, GetKind_entries_values_keys)
  */
 HWTEST_F_L0(JSNApiTests, GetKind_001)
 {
+    ecmascript::ThreadManagedScope managedScope(vm_->GetJSThread());
     LocalScope scope(vm_);
     JSThread *thread = vm_->GetJSThread();
     std::string keysResult = "keys";
@@ -365,6 +373,7 @@ HWTEST_F_L0(JSNApiTests, GetKind_001)
  */
 HWTEST_F_L0(JSNApiTests, GetKind_002)
 {
+    ecmascript::ThreadManagedScope managedScope(vm_->GetJSThread());
     LocalScope scope(vm_);
     JSThread *thread = vm_->GetJSThread();
     std::string valuesResult = "values";
@@ -394,6 +403,7 @@ HWTEST_F_L0(JSNApiTests, GetKind_002)
  */
 HWTEST_F_L0(JSNApiTests, GetKind_003)
 {
+    ecmascript::ThreadManagedScope managedScope(vm_->GetJSThread());
     LocalScope scope(vm_);
     JSThread *thread = vm_->GetJSThread();
     std::string expectedResult = "entries";

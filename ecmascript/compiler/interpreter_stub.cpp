@@ -2533,7 +2533,7 @@ DECLARE_ASM_HANDLER(HandleReturn)
         GateRef function = GetFunctionFromFrame(prevState);
         GateRef method = Load(VariableType::JS_ANY(), function, IntPtr(JSFunctionBase::METHOD_OFFSET));
         varConstpool = GetConstpoolFromMethod(method);
-        varProfileTypeInfo = GetProfileTypeInfoFromMethod(method);
+        varProfileTypeInfo = GetProfileTypeInfoFromFunction(function);
         varHotnessCounter = GetHotnessCounterFromMethod(method);
         GateRef jumpSize = GetCallSizeFromFrame(prevState);
         CallNGCRuntime(glue, RTSTUB_ID(ResumeRspAndDispatch),
@@ -2605,7 +2605,7 @@ DECLARE_ASM_HANDLER(HandleReturnundefined)
         GateRef function = GetFunctionFromFrame(prevState);
         GateRef method = Load(VariableType::JS_ANY(), function, IntPtr(JSFunctionBase::METHOD_OFFSET));
         varConstpool = GetConstpoolFromMethod(method);
-        varProfileTypeInfo = GetProfileTypeInfoFromMethod(method);
+        varProfileTypeInfo = GetProfileTypeInfoFromFunction(function);
         varHotnessCounter = GetHotnessCounterFromMethod(method);
         GateRef jumpSize = GetCallSizeFromFrame(prevState);
         CallNGCRuntime(glue, RTSTUB_ID(ResumeRspAndDispatch),
@@ -2687,7 +2687,7 @@ DECLARE_ASM_HANDLER(HandleSuspendgeneratorV8)
         GateRef function = GetFunctionFromFrame(prevState);
         GateRef method = Load(VariableType::JS_ANY(), function, IntPtr(JSFunctionBase::METHOD_OFFSET));
         varConstpool = GetConstpoolFromMethod(method);
-        varProfileTypeInfo = GetProfileTypeInfoFromMethod(method);
+        varProfileTypeInfo = GetProfileTypeInfoFromFunction(function);
         varHotnessCounter = GetHotnessCounterFromMethod(method);
         GateRef jumpSize = GetCallSizeFromFrame(prevState);
         CallNGCRuntime(glue, RTSTUB_ID(ResumeRspAndDispatch),
@@ -2768,7 +2768,7 @@ DECLARE_ASM_HANDLER(HandleDeprecatedSuspendgeneratorPrefV8V8)
         GateRef function = GetFunctionFromFrame(prevState);
         GateRef method = Load(VariableType::JS_ANY(), function, IntPtr(JSFunctionBase::METHOD_OFFSET));
         varConstpool = GetConstpoolFromMethod(method);
-        varProfileTypeInfo = GetProfileTypeInfoFromMethod(method);
+        varProfileTypeInfo = GetProfileTypeInfoFromFunction(function);
         varHotnessCounter = GetHotnessCounterFromMethod(method);
         GateRef jumpSize = GetCallSizeFromFrame(prevState);
         CallNGCRuntime(glue, RTSTUB_ID(ResumeRspAndDispatch),
@@ -3112,7 +3112,7 @@ DECLARE_ASM_HANDLER(HandleAsyncgeneratorresolveV8V8V8)
         GateRef function = GetFunctionFromFrame(prevState);
         GateRef method = Load(VariableType::JS_ANY(), function, IntPtr(JSFunctionBase::METHOD_OFFSET));
         varConstpool = GetConstpoolFromMethod(method);
-        varProfileTypeInfo = GetProfileTypeInfoFromMethod(method);
+        varProfileTypeInfo = GetProfileTypeInfoFromFunction(function);
         varHotnessCounter = GetHotnessCounterFromMethod(method);
         GateRef jumpSize = GetCallSizeFromFrame(prevState);
         CallNGCRuntime(glue, RTSTUB_ID(ResumeRspAndDispatch),
@@ -4388,7 +4388,7 @@ DECLARE_ASM_HANDLER(HandleDefinefuncImm8Id16Imm8)
     GateRef methodId = ReadInst16_1(pc);
     GateRef length = ReadInst8_3(pc);
     NewObjectStubBuilder newBuilder(this);
-    GateRef result = newBuilder.NewJSFunction(glue, constpool, GetModule(sp), ZExtInt16ToInt32(methodId));
+    GateRef result = newBuilder.NewJSFunction(glue, constpool, ZExtInt16ToInt32(methodId));
     Label notException(env);
     CHECK_EXCEPTION_WITH_JUMP(result, &notException);
     Bind(&notException);
@@ -4398,6 +4398,7 @@ DECLARE_ASM_HANDLER(HandleDefinefuncImm8Id16Imm8)
         GateRef envHandle = GetEnvFromFrame(frame);
         SetLexicalEnvToFunction(glue, result, envHandle);
         GateRef currentFunc = GetFunctionFromFrame(frame);
+        SetModuleToFunction(glue, result, GetModuleFromFunction(currentFunc));
         SetHomeObjectToFunction(glue, result, GetHomeObjectFromFunction(currentFunc));
         callback.ProfileDefineClass(result);
         varAcc = result;
@@ -4412,7 +4413,7 @@ DECLARE_ASM_HANDLER(HandleDefinefuncImm16Id16Imm8)
     GateRef methodId = ReadInst16_2(pc);
     GateRef length = ReadInst8_4(pc);
     NewObjectStubBuilder newBuilder(this);
-    GateRef result = newBuilder.NewJSFunction(glue, constpool, GetModule(sp), ZExtInt16ToInt32(methodId));
+    GateRef result = newBuilder.NewJSFunction(glue, constpool, ZExtInt16ToInt32(methodId));
     Label notException(env);
     CHECK_EXCEPTION_WITH_JUMP(result, &notException);
     Bind(&notException);
@@ -4423,6 +4424,7 @@ DECLARE_ASM_HANDLER(HandleDefinefuncImm16Id16Imm8)
         SetLexicalEnvToFunction(glue, result, envHandle);
         GateRef currentFunc = GetFunctionFromFrame(frame);
         SetHomeObjectToFunction(glue, result, GetHomeObjectFromFunction(currentFunc));
+        SetModuleToFunction(glue, result, GetModuleFromFunction(currentFunc));
         varAcc = result;
         callback.ProfileDefineClass(result);
         DISPATCH_WITH_ACC(DEFINEFUNC_IMM16_ID16_IMM8);
@@ -4437,8 +4439,9 @@ DECLARE_ASM_HANDLER(HandleDefinemethodImm8Id16Imm8)
     GateRef length = ReadInst8_3(pc);
     GateRef lexEnv = GetEnvFromFrame(GetFrame(sp));
     DEFVARIABLE(result, VariableType::JS_POINTER(),
-        GetMethodFromConstPool(glue, constpool, GetModule(sp), ZExtInt16ToInt32(methodId)));
-    result = CallRuntime(glue, RTSTUB_ID(DefineMethod), { *result, acc, Int8ToTaggedInt(length), lexEnv });
+        GetMethodFromConstPool(glue, constpool, ZExtInt16ToInt32(methodId)));
+    result = CallRuntime(glue, RTSTUB_ID(DefineMethod), { *result, acc, Int8ToTaggedInt(length),
+        lexEnv, GetModule(sp) });
     Label notException(env);
     CHECK_EXCEPTION_WITH_JUMP(*result, &notException);
     Bind(&notException);
@@ -4456,8 +4459,9 @@ DECLARE_ASM_HANDLER(HandleDefinemethodImm16Id16Imm8)
     GateRef length = ReadInst8_4(pc);
     GateRef lexEnv = GetEnvFromFrame(GetFrame(sp));
     DEFVARIABLE(result, VariableType::JS_POINTER(),
-        GetMethodFromConstPool(glue, constpool, GetModule(sp), ZExtInt16ToInt32(methodId)));
-    result = CallRuntime(glue, RTSTUB_ID(DefineMethod), { *result, acc, Int8ToTaggedInt(length), lexEnv });
+        GetMethodFromConstPool(glue, constpool, ZExtInt16ToInt32(methodId)));
+    result = CallRuntime(glue, RTSTUB_ID(DefineMethod), { *result, acc, Int8ToTaggedInt(length),
+        lexEnv, GetModule(sp) });
     Label notException(env);
     CHECK_EXCEPTION_WITH_JUMP(*result, &notException);
     Bind(&notException);
@@ -4800,7 +4804,7 @@ DECLARE_ASM_HANDLER_NOPRINT(ExceptionHandler)
         GateRef function = GetFunctionFromFrame(GetFrame(*varSp));
         GateRef method = Load(VariableType::JS_ANY(), function, IntPtr(JSFunctionBase::METHOD_OFFSET));
         varConstpool = GetConstpoolFromMethod(method);
-        varProfileTypeInfo = GetProfileTypeInfoFromMethod(method);
+        varProfileTypeInfo = GetProfileTypeInfoFromFunction(function);
         varHotnessCounter = GetHotnessCounterFromMethod(method);
         CallNGCRuntime(glue, RTSTUB_ID(ResumeCaughtFrameAndDispatch), {
             glue, *varSp, *varPc, *varConstpool,
@@ -4842,7 +4846,7 @@ DECLARE_ASM_HANDLER(SingleStepDebugging)
         varAcc = GetAccFromFrame(frameAfter);
         GateRef function = GetFunctionFromFrame(frameAfter);
         GateRef method = Load(VariableType::JS_ANY(), function, IntPtr(JSFunctionBase::METHOD_OFFSET));
-        varProfileTypeInfo = GetProfileTypeInfoFromMethod(method);
+        varProfileTypeInfo = GetProfileTypeInfoFromFunction(function);
         varConstpool = GetConstpoolFromMethod(method);
         varHotnessCounter = GetHotnessCounterFromMethod(method);
     }
@@ -4921,7 +4925,7 @@ DECLARE_ASM_HANDLER(BCDebuggerEntry)
             GateRef function = GetFunctionFromFrame(prevState);
             GateRef method = Load(VariableType::JS_ANY(), function, IntPtr(JSFunctionBase::METHOD_OFFSET));
             varConstpool = GetConstpoolFromMethod(method);
-            varProfileTypeInfo = GetProfileTypeInfoFromMethod(method);
+            varProfileTypeInfo = GetProfileTypeInfoFromFunction(function);
             varHotnessCounter = GetHotnessCounterFromMethod(method);
             GateRef jumpSize = IntPtr(0);
             CallNGCRuntime(glue, RTSTUB_ID(ResumeRspAndRollback),
@@ -5163,6 +5167,48 @@ DECLARE_ASM_HANDLER(HandleCallRuntimeLdSendableClassPrefImm16)
     GateRef lexEnv = GetEnvFromFrame(GetFrame(sp));
     varAcc = CallRuntime(glue, RTSTUB_ID(LdSendableClass), { lexEnv, Int16ToTaggedInt(level) });
     DISPATCH_WITH_ACC(CALLRUNTIME_LDSENDABLECLASS_PREF_IMM16);
+}
+
+DECLARE_ASM_HANDLER(HandleCallRuntimeLdsendableexternalmodulevarImm8)
+{
+    DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
+    DEFVARIABLE(moduleRef, VariableType::JS_ANY(), Undefined());
+    GateRef index = ReadInst8_1(pc);
+
+    // LdSendableExternalModuleVarByIndex may load uninitialized module lazy. Exception could happened.
+    GateRef currentFunc = GetFunctionFromFrame(GetFrame(sp));
+    moduleRef = CallRuntime(glue, RTSTUB_ID(LdSendableExternalModuleVarByIndex), {Int8ToTaggedInt(index), currentFunc});
+
+    auto env = GetEnvironment();
+    Label notException(env);
+    CHECK_EXCEPTION_WITH_JUMP(*moduleRef, &notException);
+    Bind(&notException);
+    {
+        varAcc = *moduleRef;
+        DISPATCH_WITH_ACC(CALLRUNTIME_LDSENDABLEEXTERNALMODULEVAR_PREF_IMM8);
+    }
+}
+
+DECLARE_ASM_HANDLER(HandleCallRuntimeWideLdsendableexternalmodulevarPrefImm16)
+{
+    DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
+    DEFVARIABLE(moduleRef, VariableType::JS_ANY(), Undefined());
+
+    GateRef index = ReadInst16_1(pc);
+
+    // LdSendableExternalModuleVarByIndex may load uninitialized module lazy. Exception could happened.
+    GateRef currentFunc = GetFunctionFromFrame(GetFrame(sp));
+    moduleRef =
+        CallRuntime(glue, RTSTUB_ID(LdSendableExternalModuleVarByIndex), {Int16ToTaggedInt(index), currentFunc});
+
+    auto env = GetEnvironment();
+    Label notException(env);
+    CHECK_EXCEPTION_WITH_JUMP(*moduleRef, &notException);
+    Bind(&notException);
+    {
+        varAcc = *moduleRef;
+        DISPATCH_WITH_ACC(CALLRUNTIME_WIDELDSENDABLEEXTERNALMODULEVAR_PREF_IMM16);
+    }
 }
 
 ASM_INTERPRETER_BC_TYPE_PROFILER_STUB_LIST(DECLARE_ASM_HANDLER_PROFILE)

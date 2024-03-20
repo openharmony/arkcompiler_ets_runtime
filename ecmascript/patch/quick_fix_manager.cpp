@@ -19,6 +19,8 @@
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/js_tagged_value-inl.h"
 #include "ecmascript/mem/c_string.h"
+#include "ecmascript/module/js_module_manager.h"
+#include "ecmascript/module/js_shared_module.h"
 #include "ecmascript/napi/include/jsnapi.h"
 #include "ecmascript/object_factory.h"
 
@@ -205,7 +207,8 @@ JSTaggedValue QuickFixManager::CheckAndGetPatch(JSThread *thread, const JSPandaF
     ASSERT(patchFile != nullptr);
 
     EcmaVM *vm = thread->GetEcmaVM();
-    JSHandle<Method> method = vm->GetFactory()->NewMethod(patchMethodLiteral);
+    JSHandle<Method> method;
+    method = vm->GetFactory()->NewSMethod(patchMethodLiteral);
     JSHandle<ConstantPool> newConstpool = thread->GetCurrentEcmaContext()->FindOrCreateConstPool(
         patchFile.get(), patchMethodLiteral->GetMethodId());
     method->SetConstantPool(thread, newConstpool);
@@ -213,16 +216,17 @@ JSTaggedValue QuickFixManager::CheckAndGetPatch(JSThread *thread, const JSPandaF
     CString recordName = MethodLiteral::GetRecordName(baseFile, baseMethodId);
     EcmaContext *context = thread->GetCurrentEcmaContext();
     JSHandle<JSTaggedValue> moduleRecord = context->FindPatchModule(recordName);
+    EntityId methodId = method->GetMethodId();
     if (moduleRecord->IsHole()) {
         PatchLoader::ExecuteFuncOrPatchMain(thread, patchFile.get(), patchInfo);
         moduleRecord = context->FindPatchModule(recordName);
         if (moduleRecord->IsHole()) {
             LOG_ECMA(ERROR) << "cold patch: moduleRecord is still hole after regeneration";
-            method->SetModule(thread, JSTaggedValue::Undefined());
+            PatchLoader::UpdateModuleForColdPatch(thread, methodId, recordName, false);
             return method.GetTaggedValue();
         }
     }
-    method->SetModule(thread, moduleRecord.GetTaggedValue());
+    PatchLoader::UpdateModuleForColdPatch(thread, methodId, recordName);
     return method.GetTaggedValue();
 }
 

@@ -442,7 +442,7 @@ void BuiltinsObjectStubBuilder::LayoutInfoAssignAllEnumProperty(Variable *result
         Bind(&next);
 
         GateRef key = GetKeyFromLayoutInfo(layout, *idx);
-        GateRef attr = TruncInt64ToInt32(GetPropAttrFromLayoutInfo(layout, *idx));
+        GateRef attr = GetPropAttrFromLayoutInfo(layout, *idx);
         Label stringKey(env);
         BRANCH(TaggedIsString(key), &stringKey, &loopEnd);
         Bind(&stringKey);
@@ -727,7 +727,7 @@ void BuiltinsObjectStubBuilder::HasOwnProperty(Variable *result, Label *exit, La
         BRANCH(TaggedIsString(prop), &keyIsString, slowPath); // 2 : two args
         Bind(&keyIsString);
         {
-            GateRef res = CallNGCRuntime(glue_, RTSTUB_ID(TryToElementsIndexOrFindInStringTable), { glue_, prop });
+            GateRef res = CallRuntime(glue_, RTSTUB_ID(TryToElementsIndexOrFindInStringTable), { prop });
             BRANCH(TaggedIsNumber(res), &isIndex, &notIndex);
             Bind(&isIndex);
             {

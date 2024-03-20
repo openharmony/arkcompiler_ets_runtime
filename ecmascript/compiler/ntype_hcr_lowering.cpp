@@ -145,8 +145,9 @@ void NTypeHCRLowering::LowerCreateArguments(GateRef gate, GateRef glue)
     }
 }
 
-GateRef NTypeHCRLowering::LoadFromConstPool(GateRef constPool, size_t index, size_t valVecType)
+GateRef NTypeHCRLowering::LoadFromConstPool(GateRef constpool, size_t index, size_t valVecType)
 {
+    GateRef constPool = builder_.GetUnsharedConstpool(constpool);
     GateRef constPoolSize = builder_.GetLengthOfTaggedArray(constPool);
     GateRef valVecIndex = builder_.Int32Sub(constPoolSize, builder_.Int32(valVecType));
     GateRef valVec = builder_.GetValueFromTaggedArray(constPool, valVecIndex);
@@ -254,9 +255,8 @@ void NTypeHCRLowering::LowerStoreModuleVar(GateRef gate, GateRef glue)
     GateRef jsFunc = acc_.GetValueIn(gate, 0);
     GateRef index = acc_.GetValueIn(gate, 1);
     GateRef value = acc_.GetValueIn(gate, 2);
-    GateRef method = builder_.GetMethodFromFunction(jsFunc);
-    GateRef moduleOffset = builder_.IntPtr(Method::ECMA_MODULE_OFFSET);
-    GateRef module = builder_.Load(VariableType::JS_ANY(), method, moduleOffset);
+    GateRef moduleOffset = builder_.IntPtr(JSFunction::ECMA_MODULE_OFFSET);
+    GateRef module = builder_.Load(VariableType::JS_ANY(), jsFunc, moduleOffset);
     GateRef localExportEntriesOffset = builder_.IntPtr(SourceTextModule::LOCAL_EXPORT_ENTTRIES_OFFSET);
     GateRef localExportEntries = builder_.Load(VariableType::JS_ANY(), module, localExportEntriesOffset);
     GateRef nameDictionaryOffset = builder_.IntPtr(SourceTextModule::NAME_DICTIONARY_OFFSET);
@@ -286,9 +286,8 @@ void NTypeHCRLowering::LowerLdLocalModuleVar(GateRef gate)
     Environment env(gate, circuit_, &builder_);
     GateRef jsFunc = acc_.GetValueIn(gate, 0);
     GateRef index = acc_.GetValueIn(gate, 1);
-    GateRef method = builder_.GetMethodFromFunction(jsFunc);
-    GateRef moduleOffset = builder_.IntPtr(Method::ECMA_MODULE_OFFSET);
-    GateRef module = builder_.Load(VariableType::JS_ANY(), method, moduleOffset);
+    GateRef moduleOffset = builder_.IntPtr(JSFunction::ECMA_MODULE_OFFSET);
+    GateRef module = builder_.Load(VariableType::JS_ANY(), jsFunc, moduleOffset);
     GateRef nameDictionaryOffset = builder_.IntPtr(SourceTextModule::NAME_DICTIONARY_OFFSET);
     GateRef dictionary = builder_.Load(VariableType::JS_ANY(), module, nameDictionaryOffset);
     DEFVALUE(result, (&builder_), VariableType::JS_ANY(), builder_.Hole());

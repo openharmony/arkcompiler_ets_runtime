@@ -599,30 +599,39 @@ GateRef NewObjectStubBuilder::LoadHClassFromMethod(GateRef glue, GateRef method)
     return ret;
 }
 
-GateRef NewObjectStubBuilder::NewJSFunction(GateRef glue, GateRef constpool, GateRef module, GateRef index)
+GateRef NewObjectStubBuilder::NewJSFunction(GateRef glue, GateRef constpool, GateRef index)
 {
     auto env = GetEnvironment();
     Label subentry(env);
     env->SubCfgEntry(&subentry);
     Label exit(env);
     DEFVARIABLE(ihc, VariableType::JS_ANY(), Undefined());
+    DEFVARIABLE(val, VariableType::JS_ANY(), Undefined());
     DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
-    auto val = GetValueFromTaggedArray(constpool, index);
+
+    val = GetValueFromTaggedArray(constpool, index);
+
     Label isHeapObject(env);
     Label afterAOTLiteral(env);
-    BRANCH(TaggedIsHeapObject(val), &isHeapObject, &afterAOTLiteral);
+    BRANCH(TaggedIsHeapObject(*val), &isHeapObject, &afterAOTLiteral);
     {
         Bind(&isHeapObject);
         Label isAOTLiteral(env);
-        BRANCH(IsAOTLiteralInfo(val), &isAOTLiteral, &afterAOTLiteral);
+        BRANCH(IsAOTLiteralInfo(*val), &isAOTLiteral, &afterAOTLiteral);
         {
             Bind(&isAOTLiteral);
-            ihc = GetIhcFromAOTLiteralInfo(val);
+            // Avoiding shareobj references to unshareobj.
+            GateRef unshareIdx = GetUnsharedConstpoolIndex(constpool);
+            GateRef unshareCpOffset = JSThread::GlueData::GetUnSharedConstpoolsOffset(env->Is32Bit());
+            GateRef unshareCpAddr = Load(VariableType::NATIVE_POINTER(), glue, IntPtr(unshareCpOffset));
+            GateRef unshareCp = GetUnsharedConstpool(unshareCpAddr, unshareIdx);
+            val = GetValueFromTaggedArray(unshareCp, index);
+            ihc = GetIhcFromAOTLiteralInfo(*val);
             Jump(&afterAOTLiteral);
         }
     }
     Bind(&afterAOTLiteral);
-    GateRef method = GetMethodFromConstPool(glue, constpool, module, index);
+    GateRef method = GetMethodFromConstPool(glue, constpool, index);
     GateRef hclass = LoadHClassFromMethod(glue, method);
     result = NewJSObject(glue, hclass);
     SetExtensibleToBitfield(glue, hclass, true);
@@ -630,6 +639,16 @@ GateRef NewObjectStubBuilder::NewJSFunction(GateRef glue, GateRef constpool, Gat
     GateRef kind = GetFuncKind(method);
     InitializeJSFunction(glue, *result, kind);
     SetMethodToFunction(glue, *result, method);
+
+    Label isAotWithCallField(env);
+    Label afterAotWithCallField(env);
+    BRANCH(IsAotWithCallField(method), &isAotWithCallField, &afterAotWithCallField);
+    {
+        Bind(&isAotWithCallField);
+        SetCodeEntryToFunction(glue, *result, method);
+        Jump(&afterAotWithCallField);
+    }
+    Bind(&afterAotWithCallField);
 
     Label ihcNotUndefined(env);
     BRANCH(TaggedIsUndefined(*ihc), &exit, &ihcNotUndefined);
@@ -651,8 +670,7 @@ void NewObjectStubBuilder::NewJSFunction(GateRef glue, GateRef jsFunc, GateRef i
     Label hasException(env);
     Label notException(env);
     GateRef constPool = GetConstPoolFromFunction(jsFunc);
-    GateRef module = GetModuleFromFunction(jsFunc);
-    result->WriteVariable(NewJSFunction(glue, constPool, module, index));
+    result->WriteVariable(NewJSFunction(glue, constPool, index));
     BRANCH(HasPendingException(glue), &hasException, &notException);
     Bind(&hasException);
     {
@@ -662,6 +680,7 @@ void NewObjectStubBuilder::NewJSFunction(GateRef glue, GateRef jsFunc, GateRef i
     {
         SetLengthToFunction(glue_, result->ReadVariable(), length);
         SetLexicalEnvToFunction(glue_, result->ReadVariable(), lexEnv);
+        SetModuleToFunction(glue_, result->ReadVariable(), GetModuleFromFunction(jsFunc));
         SetHomeObjectToFunction(glue_, result->ReadVariable(), GetHomeObjectFromFunction(jsFunc));
         Jump(success);
     }
@@ -916,6 +935,14 @@ void NewObjectStubBuilder::HeapAlloc(Variable *result, Label *exit, RegionSpaceF
     }
 }
 
+void NewObjectStubBuilder::AllocateInSOld(Variable *result, Label *exit)
+{
+    DEFVARIABLE(ret, VariableType::JS_ANY(), Undefined());
+    ret = CallRuntime(glue_, RTSTUB_ID(AllocateInSOld), {IntToTaggedInt(size_)});
+    result->WriteVariable(*ret);
+    Jump(exit);
+}
+
 void NewObjectStubBuilder::AllocateInYoungPrologue(Variable *result, Label *callRuntime, Label *exit)
 {
     auto env = GetEnvironment();
@@ -1057,7 +1084,7 @@ void NewObjectStubBuilder::AllocLineStringObject(Variable *result, Label *exit, 
             IntPtr(static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT)));
     }
     Label afterAllocate(env);
-    AllocateInYoung(result, &afterAllocate);
+    AllocateInSOld(result, &afterAllocate);
 
     Bind(&afterAllocate);
     GateRef stringClass = GetGlobalConstantValue(VariableType::JS_POINTER(), glue_,
@@ -1075,7 +1102,7 @@ void NewObjectStubBuilder::AllocSlicedStringObject(Variable *result, Label *exit
 
     size_ = AlignUp(IntPtr(SlicedString::SIZE), IntPtr(static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT)));
     Label afterAllocate(env);
-    AllocateInYoung(result, &afterAllocate);
+    AllocateInSOld(result, &afterAllocate);
 
     Bind(&afterAllocate);
     GateRef stringClass = GetGlobalConstantValue(VariableType::JS_POINTER(), glue_,
@@ -1100,7 +1127,7 @@ void NewObjectStubBuilder::AllocTreeStringObject(Variable *result, Label *exit, 
 
     size_ = AlignUp(IntPtr(TreeEcmaString::SIZE), IntPtr(static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT)));
     Label afterAllocate(env);
-    AllocateInYoung(result, &afterAllocate);
+    AllocateInSOld(result, &afterAllocate);
 
     Bind(&afterAllocate);
     GateRef stringClass = GetGlobalConstantValue(VariableType::JS_POINTER(), glue_,

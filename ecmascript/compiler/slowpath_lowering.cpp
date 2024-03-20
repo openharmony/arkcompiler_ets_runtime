@@ -745,6 +745,10 @@ void SlowPathLowering::Lower(GateRef gate)
         case EcmaOpcode::CALLRUNTIME_LDSENDABLECLASS_PREF_IMM16:
             LowerLdSendableClass(gate);
             break;
+        case EcmaOpcode::CALLRUNTIME_LDSENDABLEEXTERNALMODULEVAR_PREF_IMM8:
+        case EcmaOpcode::CALLRUNTIME_WIDELDSENDABLEEXTERNALMODULEVAR_PREF_IMM16:
+            LowerSendableExternalModule(gate);
+            break;
         case EcmaOpcode::LDA_STR_ID16:
             LowerLdStr(gate);
             break;
@@ -2674,7 +2678,7 @@ void SlowPathLowering::LowerDefineMethod(GateRef gate)
     Label successExit(&builder_);
     Label exceptionExit(&builder_);
     GateRef result = LowerCallRuntime(gate, RTSTUB_ID(DefineMethod),
-        {method, homeObject, builder_.ToTaggedInt(length), env}, true);
+        {method, homeObject, builder_.ToTaggedInt(length), env, builder_.GetModuleFromFunction(jsFunc)}, true);
     BRANCH_CIR(builder_.IsSpecial(result, JSTaggedValue::VALUE_EXCEPTION),
         &exceptionExit, &successExit);
     CREATE_DOUBLE_EXIT(successExit, exceptionExit)
@@ -2967,7 +2971,7 @@ void SlowPathLowering::LowerFastCall(GateRef gate, GateRef glue, GateRef func, G
                     builder_.Bind(&call);
                     {
                         builder_.StartCallTimer(glue_, gate, {glue_, func, builder_.True()}, true);
-                        GateRef code = builder_.GetCodeAddr(method);
+                        GateRef code = builder_.GetCodeAddr(func);
                         auto depend = builder_.GetDepend();
                         const CallSignature *cs = RuntimeStubCSigns::GetOptimizedFastCallSign();
                         result->WriteVariable(builder_.Call(cs, glue, code, depend, argsFastCall, gate, "callFastAOT"));
@@ -2997,7 +3001,7 @@ void SlowPathLowering::LowerFastCall(GateRef gate, GateRef glue, GateRef func, G
                 builder_.Bind(&call1);
                 {
                     builder_.StartCallTimer(glue_, gate, {glue_, func, builder_.True()}, true);
-                    GateRef code = builder_.GetCodeAddr(method);
+                    GateRef code = builder_.GetCodeAddr(func);
                     auto depend = builder_.GetDepend();
                     const CallSignature *cs = RuntimeStubCSigns::GetOptimizedCallSign();
                     result->WriteVariable(builder_.Call(cs, glue, code, depend, args, gate, "callAOT"));
@@ -3043,8 +3047,7 @@ void SlowPathLowering::LowerTypedCall(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
     GateRef func = acc_.GetValueIn(gate, static_cast<size_t>(CommonArgIdx::FUNC));
-    GateRef method  = builder_.GetMethodFromFunction(func);
-    GateRef code = builder_.GetCodeAddr(method);
+    GateRef code = builder_.GetCodeAddr(func);
     size_t num = acc_.GetNumValueIn(gate);
     std::vector<GateRef> args(num);
     for (size_t i = 0; i < num; ++i) {
@@ -3061,8 +3064,7 @@ void SlowPathLowering::LowerTypedFastCall(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
     GateRef func = acc_.GetValueIn(gate, static_cast<size_t>(FastCallArgIdx::FUNC));
-    GateRef method  = builder_.GetMethodFromFunction(func);
-    GateRef code = builder_.GetCodeAddr(method);
+    GateRef code = builder_.GetCodeAddr(func);
     size_t num = acc_.GetNumValueIn(gate);
     std::vector<GateRef> args(num);
     for (size_t i = 0; i < num; ++i) {
@@ -3276,6 +3278,16 @@ void SlowPathLowering::LowerLdSendableClass(GateRef gate)
     GateRef lexicalEnv = acc_.GetValueIn(gate, 1);
     GateRef newGate = LowerCallRuntime(gate, RTSTUB_ID(LdSendableClass), { lexicalEnv, builder_.ToTaggedInt(level) });
     ReplaceHirWithValue(gate, newGate);
+}
+
+void SlowPathLowering::LowerSendableExternalModule(GateRef gate)
+{
+    ASSERT(acc_.GetNumValueIn(gate) == 1);
+    GateRef jsFunc = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
+    GateRef index = builder_.ToTaggedInt(acc_.GetValueIn(gate, 0));
+    GateRef result = LowerCallRuntime(gate,
+        RTSTUB_ID(LdSendableExternalModuleVarByIndex), {index, jsFunc}, true);
+    ReplaceHirWithValue(gate, result);
 }
 
 void SlowPathLowering::LowerCallInit(GateRef gate)

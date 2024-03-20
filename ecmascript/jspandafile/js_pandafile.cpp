@@ -253,6 +253,14 @@ CString JSPandaFile::GetEntryPoint(const CString &recordName) const
     return CString();
 }
 
+CString JSPandaFile::GetRecordName(const CString &entryPoint) const
+{
+    if (entryPoint.empty() || entryPoint == JSPandaFile::ENTRY_FUNCTION_NAME) {
+        return GetJSPandaFileDesc();
+    }
+    return entryPoint;
+}
+
 bool JSPandaFile::FindOhmUrlInPF(const CString &recordName, CString &entryPoint) const
 {
     Span<const uint32_t> classIndexes = pf_->GetClasses();

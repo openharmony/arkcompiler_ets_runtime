@@ -14,6 +14,8 @@
  */
 
 #include "ecmascript/js_thread.h"
+
+#include "ecmascript/runtime.h"
 #include "ecmascript/builtin_entries.h"
 #include "ecmascript/enum_conversion.h"
 #include "ecmascript/js_tagged_value.h"
@@ -47,10 +49,18 @@ namespace panda::ecmascript {
 using CommonStubCSigns = panda::ecmascript::kungfu::CommonStubCSigns;
 using BytecodeStubCSigns = panda::ecmascript::kungfu::BytecodeStubCSigns;
 
+thread_local JSThread *currentThread = nullptr;
+
+JSThread *JSThread::GetCurrent()
+{
+    return currentThread;
+}
+
 // static
 JSThread *JSThread::Create(EcmaVM *vm)
 {
     auto jsThread = new JSThread(vm);
+
     AsmInterParsedOption asmInterOpt = vm->GetJSOptions().GetAsmInterParsedOption();
     if (asmInterOpt.enableAsm) {
         jsThread->EnableAsmInterpreter();
@@ -67,6 +77,13 @@ JSThread *JSThread::Create(EcmaVM *vm)
 
     jsThread->glueData_.stackLimit_ = GetAsmStackLimit();
     jsThread->glueData_.stackStart_ = GetCurrentStackPosition();
+
+    Runtime::GetInstance()->RegisterThread(jsThread);
+    // If it is not true, we created a new thread for future fork
+    if (currentThread == nullptr) {
+        currentThread = jsThread;
+        jsThread->UpdateState(ThreadState::NATIVE);
+    }
     return jsThread;
 }
 
@@ -100,6 +117,7 @@ JSThread::JSThread(EcmaVM *vm) : id_(os::thread::GetCurrentThreadId()), vm_(vm)
 
 JSThread::~JSThread()
 {
+    readyForGCIterating_ = false;
     if (globalStorage_ != nullptr) {
         GetEcmaVM()->GetChunk()->Delete(globalStorage_);
         globalStorage_ = nullptr;
@@ -126,6 +144,15 @@ JSThread::~JSThread()
         delete vmThreadControl_;
         vmThreadControl_ = nullptr;
     }
+    if (currentThread == this) {
+        UpdateState(ThreadState::TERMINATED);
+        currentThread = nullptr;
+    } else {
+        // We have created this JSThread instance but hadn't forked it.
+        ASSERT(GetState() == ThreadState::CREATED);
+        UpdateState(ThreadState::TERMINATED);
+    }
+    Runtime::GetInstance()->UnregisterThread(this);
 }
 
 void JSThread::SetException(JSTaggedValue exception)
@@ -177,6 +204,36 @@ const JSTaggedType *JSThread::GetCurrentInterpretedFrame() const
     return GetCurrentSPFrame();
 }
 
+void JSThread::InvokeWeakNodeFreeGlobalCallBack()
+{
+    while (!weakNodeFreeGlobalCallbacks_.empty()) {
+        auto callbackPair = weakNodeFreeGlobalCallbacks_.back();
+        weakNodeFreeGlobalCallbacks_.pop_back();
+        ASSERT(callbackPair.first != nullptr && callbackPair.second != nullptr);
+        auto callback = callbackPair.first;
+        (*callback)(callbackPair.second);
+    }
+}
+
+void JSThread::InvokeWeakNodeNativeFinalizeCallback()
+{
+    // the second callback may lead to another GC, if this, return directly;
+    if (runningNativeFinalizeCallbacks_) {
+        return;
+    }
+    runningNativeFinalizeCallbacks_ = true;
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "InvokeNativeFinalizeCallbacks num:"
+        + std::to_string(weakNodeNativeFinalizeCallbacks_.size()));
+    while (!weakNodeNativeFinalizeCallbacks_.empty()) {
+        auto callbackPair = weakNodeNativeFinalizeCallbacks_.back();
+        weakNodeNativeFinalizeCallbacks_.pop_back();
+        ASSERT(callbackPair.first != nullptr && callbackPair.second != nullptr);
+        auto callback = callbackPair.first;
+        (*callback)(callbackPair.second);
+    }
+    runningNativeFinalizeCallbacks_ = false;
+}
+
 bool JSThread::IsStartGlobalLeakCheck() const
 {
     return GetEcmaVM()->GetJSOptions().IsStartGlobalLeakCheck();
@@ -190,6 +247,16 @@ bool JSThread::EnableGlobalObjectLeakCheck() const
 bool JSThread::EnableGlobalPrimitiveLeakCheck() const
 {
     return GetEcmaVM()->GetJSOptions().EnableGlobalPrimitiveLeakCheck();
+}
+
+bool JSThread::IsInRunningStateOrProfiling() const
+{
+    bool result = IsInRunningState();
+#if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
+    return result || vm_->GetHeapProfile() != nullptr;
+#else
+    return result;
+#endif
 }
 
 void JSThread::WriteToStackTraceFd(std::ostringstream &buffer) const
@@ -222,7 +289,6 @@ void JSThread::Iterate(const RootVisitor &visitor, const RootRangeVisitor &range
     if (!glueData_.exception_.IsHole()) {
         visitor(Root::ROOT_VM, ObjectSlot(ToUintPtr(&glueData_.exception_)));
     }
-    visitor(Root::ROOT_VM, ObjectSlot(ToUintPtr(&glueData_.singleCharTable_)));
     rangeVisitor(
         Root::ROOT_VM, ObjectSlot(glueData_.builtinEntries_.Begin()), ObjectSlot(glueData_.builtinEntries_.End()));
 
@@ -322,9 +388,9 @@ void JSThread::IterateHandleWithCheck(const RootVisitor &visitor, const RootRang
     }
 }
 
-void JSThread::IterateWeakEcmaGlobalStorage(const WeakRootVisitor &visitor)
+void JSThread::IterateWeakEcmaGlobalStorage(const WeakRootVisitor &visitor, bool isSharedGC)
 {
-    auto callBack = [this, visitor](WeakNode *node) {
+    auto callBack = [this, visitor, isSharedGC](WeakNode *node) {
         JSTaggedValue value(node->GetObject());
         if (!value.IsHeapObject()) {
             return;
@@ -339,8 +405,15 @@ void JSThread::IterateWeakEcmaGlobalStorage(const WeakRootVisitor &visitor)
                 weakNodeNativeFinalizeCallbacks_.push_back(std::make_pair(nativeFinalizeCallback,
                                                                           node->GetReference()));
             }
-            if (!node->CallFreeGlobalCallback()) {
+            auto freeGlobalCallBack = node->GetFreeGlobalCallback();
+            if (!freeGlobalCallBack) {
+                // If no callback, dispose global immediately
                 DisposeGlobalHandle(ToUintPtr(node));
+            } else if (isSharedGC) {
+                // For shared GC, free global should defer execute in its own thread
+                weakNodeFreeGlobalCallbacks_.push_back(std::make_pair(freeGlobalCallBack, node->GetReference()));
+            } else {
+                node->CallFreeGlobalCallback();
             }
         } else if (fwd != object) {
             // update
@@ -563,6 +636,12 @@ bool JSThread::CheckSafepoint()
         SetTerminationRequestWithoutLock(false);
     }
 
+    if (IsSuspended()) {
+        interruptMutex_.Unlock();
+        WaitSuspension();
+        interruptMutex_.Lock();
+    }
+
     // vmThreadControl_ 's thread_ is current JSThread's this.
     if (VMNeedSuspensionWithoutLock()) {
         interruptMutex_.Unlock();
@@ -754,7 +833,11 @@ void JSThread::SwitchCurrentContext(EcmaContext *currentContext, bool isInIterat
     glueData_.currentContext_->SetStackLimit(GetStackLimit());
     glueData_.currentContext_->SetStackStart(GetStackStart());
     glueData_.currentContext_->SetGlobalEnv(GetGlueGlobalEnv());
-    glueData_.currentContext_->GetGlobalEnv()->SetJSGlobalObject(this, glueData_.globalObject_);
+    // When the glueData_.currentContext_ is not fully initialized，glueData_.globalObject_ will be hole.
+    // Assigning hole to JSGlobalObject could cause a mistake at builtins initalization.
+    if (!glueData_.globalObject_.IsHole()) {
+        glueData_.currentContext_->GetGlobalEnv()->SetJSGlobalObject(this, glueData_.globalObject_);
+    }
 
     SetCurrentSPFrame(currentContext->GetCurrentFrame());
     SetLastLeaveFrame(currentContext->GetLeaveFrame());
@@ -864,4 +947,153 @@ bool JSThread::IsPropertyCacheCleared() const
     }
     return true;
 }
+
+void JSThread::UpdateState(ThreadState newState)
+{
+    ThreadState oldState = GetState();
+    if (oldState == ThreadState::RUNNING && newState != ThreadState::RUNNING) {
+        TransferFromRunningToSuspended(newState);
+    } else if (oldState != ThreadState::RUNNING && newState == ThreadState::RUNNING) {
+        TransferToRunning();
+    } else {
+        // Here can be some extra checks...
+        StoreState(newState, false);
+    }
+}
+
+void JSThread::SuspendThread(bool internalSuspend)
+{
+    LockHolder lock(suspendLock_);
+    if (!internalSuspend) {
+        // do smth here if we want to combine internal and external suspension
+    }
+    uint32_t old_count = suspendCount_++;
+    if (old_count == 0) {
+        SetFlag(ThreadFlag::SUSPEND_REQUEST);
+        SetCheckSafePointStatus();
+    }
+}
+
+void JSThread::ResumeThread(bool internalSuspend)
+{
+    LockHolder lock(suspendLock_);
+    if (!internalSuspend) {
+        // do smth here if we want to combine internal and external suspension
+    }
+    if (suspendCount_ > 0) {
+        suspendCount_--;
+        if (suspendCount_ == 0) {
+            ClearFlag(ThreadFlag::SUSPEND_REQUEST);
+            ResetCheckSafePointStatus();
+        }
+    }
+    suspendCondVar_.Signal();
+}
+
+void JSThread::WaitSuspension()
+{
+    constexpr int TIMEOUT = 100;
+    ThreadState oldState = GetState();
+    UpdateState(ThreadState::IS_SUSPENDED);
+    {
+        LockHolder lock(suspendLock_);
+        while (suspendCount_ > 0) {
+            suspendCondVar_.TimedWait(&suspendLock_, TIMEOUT);
+            // we need to do smth if Runtime is terminating at this point
+        }
+        ASSERT(!IsSuspended());
+    }
+    UpdateState(oldState);
+}
+
+void JSThread::ManagedCodeBegin()
+{
+    ASSERT(!IsInManagedState());
+    UpdateState(ThreadState::RUNNING);
+}
+
+void JSThread::ManagedCodeEnd()
+{
+    ASSERT(IsInManagedState());
+    UpdateState(ThreadState::NATIVE);
+}
+
+void JSThread::TransferFromRunningToSuspended(ThreadState newState)
+{
+    ASSERT(currentThread == this);
+    StoreState(newState, false);
+    ASSERT(Runtime::GetInstance()->GetMutatorLock()->HasLock());
+    Runtime::GetInstance()->GetMutatorLock()->Unlock();
+}
+
+void JSThread::TransferToRunning()
+{
+    ASSERT(currentThread == this);
+    StoreState(ThreadState::RUNNING, true);
+    // Invoke free weak global callback when thread switch to running
+    if (!weakNodeFreeGlobalCallbacks_.empty()) {
+        InvokeWeakNodeFreeGlobalCallBack();
+    }
+}
+
+void JSThread::StoreState(ThreadState newState, bool lockMutatorLock)
+{
+    while (true) {
+        ThreadStateAndFlags oldStateAndFlags;
+        oldStateAndFlags.asInt = stateAndFlags_.asInt;
+        if (lockMutatorLock && oldStateAndFlags.asStruct.flags != ThreadFlag::NO_FLAGS) {
+            WaitSuspension();
+            continue;
+        }
+        ThreadStateAndFlags newStateAndFlags;
+        newStateAndFlags.asStruct.flags = oldStateAndFlags.asStruct.flags;
+        newStateAndFlags.asStruct.state = newState;
+
+        if (lockMutatorLock) {
+            Runtime::GetInstance()->GetMutatorLock()->ReadLock();
+        }
+
+        if (stateAndFlags_.asAtomicInt.compare_exchange_weak(oldStateAndFlags.asNonvolatileInt,
+            newStateAndFlags.asNonvolatileInt, std::memory_order_release)) {
+            break;
+        }
+
+        // CAS failed. Unlock mutator lock
+        if (lockMutatorLock) {
+            ASSERT(Runtime::GetInstance()->GetMutatorLock()->HasLock());
+            Runtime::GetInstance()->GetMutatorLock()->Unlock();
+        }
+    }
+}
+
+void JSThread::PostFork()
+{
+    SetThreadId();
+    if (currentThread == nullptr) {
+        currentThread = this;
+        ASSERT(GetState() == ThreadState::CREATED);
+        UpdateState(ThreadState::NATIVE);
+    } else {
+        // We tried to call fork in the same thread
+        ASSERT(currentThread == this);
+        ASSERT(GetState() == ThreadState::NATIVE);
+    }
+}
+#ifndef NDEBUG
+bool JSThread::IsInManagedState() const
+{
+    ASSERT(this == JSThread::GetCurrent());
+    return GetMutatorLockState() == MutatorLock::MutatorLockState::RDLOCK && GetState() == ThreadState::RUNNING;
+}
+
+MutatorLock::MutatorLockState JSThread::GetMutatorLockState() const
+{
+    return mutatorLockState_;
+}
+
+void JSThread::SetMutatorLockState(MutatorLock::MutatorLockState newState)
+{
+    mutatorLockState_ = newState;
+}
+#endif
 }  // namespace panda::ecmascript

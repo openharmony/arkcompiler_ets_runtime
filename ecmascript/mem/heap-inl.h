@@ -39,9 +39,41 @@ namespace panda::ecmascript {
             DumpHeapSnapshotBeforeOOM();                                                                    \
         }                                                                                                   \
         StatisticHeapDetail();                                                                              \
+        ThrowOutOfMemoryError(GetJSThread(), size, message);                                                \
         (object) = reinterpret_cast<TaggedObject *>((space)->Allocate(size));                               \
-        ThrowOutOfMemoryError(size, message);                                                               \
     }
+
+#define CHECK_SOBJ_AND_THROW_OOM_ERROR(thread, object, size, space, message)                                \
+    if (UNLIKELY((object) == nullptr)) {                                                                    \
+        size_t oomOvershootSize = GetEcmaParamConfiguration().GetOutOfMemoryOvershootSize();                \
+        (space)->IncreaseOutOfMemoryOvershootSize(oomOvershootSize);                                        \
+        ThrowOutOfMemoryError(thread, size, message);                                                       \
+        (object) = reinterpret_cast<TaggedObject *>((space)->Allocate(thread, size));                       \
+    }
+
+template<class Callback>
+void SharedHeap::EnumerateOldSpaceRegions(const Callback &cb) const
+{
+    sOldSpace_->EnumerateRegions(cb);
+    sNonMovableSpace_->EnumerateRegions(cb);
+    sHugeObjectSpace_->EnumerateRegions(cb);
+}
+
+template<class Callback>
+void SharedHeap::EnumerateOldSpaceRegionsWithRecord(const Callback &cb) const
+{
+    sOldSpace_->EnumerateRegionsWithRecord(cb);
+    sNonMovableSpace_->EnumerateRegionsWithRecord(cb);
+    sHugeObjectSpace_->EnumerateRegionsWithRecord(cb);
+}
+
+template<class Callback>
+void SharedHeap::IterateOverObjects(const Callback &cb) const
+{
+    sOldSpace_->IterateOverObjects(cb);
+    sNonMovableSpace_->IterateOverObjects(cb);
+    sHugeObjectSpace_->IterateOverObjects(cb);
+}
 
 template<class Callback>
 void Heap::EnumerateOldSpaceRegions(const Callback &cb, Region *region) const
@@ -259,6 +291,19 @@ TaggedObject *Heap::AllocateClassClass(JSHClass *hclass, size_t size)
     return object;
 }
 
+TaggedObject *SharedHeap::AllocateClassClass(JSHClass *hclass, size_t size)
+{
+    size = AlignUp(size, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
+    auto object = reinterpret_cast<TaggedObject *>(sNonMovableSpace_->AllocateWithoutGC(size));
+    if (UNLIKELY(object == nullptr)) {
+        LOG_ECMA_MEM(FATAL) << "Heap::AllocateClassClass can not allocate any space";
+        UNREACHABLE();
+    }
+    *reinterpret_cast<MarkWordType *>(ToUintPtr(object)) = reinterpret_cast<MarkWordType>(hclass);
+    // todo(Gymee) OnAllocateEvent
+    return object;
+}
+
 TaggedObject *Heap::AllocateHugeObject(size_t size)
 {
     // Check whether it is necessary to trigger Old GC before expanding to avoid OOM risk.
@@ -270,12 +315,13 @@ TaggedObject *Heap::AllocateHugeObject(size_t size)
         object = reinterpret_cast<TaggedObject *>(hugeObjectSpace_->Allocate(size, thread_));
         if (UNLIKELY(object == nullptr)) {
             // if allocate huge object OOM, temporarily increase space size to avoid vm crash
-            size_t oomOvershootSize = GetEcmaVM()->GetEcmaParamConfiguration().GetOutOfMemoryOvershootSize();
+            size_t oomOvershootSize = config_.GetOutOfMemoryOvershootSize();
             oldSpace_->IncreaseOutOfMemoryOvershootSize(oomOvershootSize);
             DumpHeapSnapshotBeforeOOM();
             StatisticHeapDetail();
             object = reinterpret_cast<TaggedObject *>(hugeObjectSpace_->Allocate(size, thread_));
-            ThrowOutOfMemoryError(size, "Heap::AllocateHugeObject");
+            ThrowOutOfMemoryError(thread_, size, "Heap::AllocateHugeObject");
+            object = reinterpret_cast<TaggedObject *>(hugeObjectSpace_->Allocate(size, thread_));
             if (UNLIKELY(object == nullptr)) {
                 FatalOutOfMemoryError(size, "Heap::AllocateHugeObject");
             }
@@ -387,9 +433,12 @@ void Heap::ReclaimRegions(TriggerGCType gcType)
 // only call in js-thread
 void Heap::ClearSlotsRange(Region *current, uintptr_t freeStart, uintptr_t freeEnd)
 {
-    current->AtomicClearSweepingRSetInRange(freeStart, freeEnd);
-    current->ClearOldToNewRSetInRange(freeStart, freeEnd);
-    current->AtomicClearCrossRegionRSetInRange(freeStart, freeEnd);
+    if (!current->InYoungSpace()) {
+        current->AtomicClearSweepingRSetInRange(freeStart, freeEnd);
+        current->ClearOldToNewRSetInRange(freeStart, freeEnd);
+        current->AtomicClearCrossRegionRSetInRange(freeStart, freeEnd);
+    }
+    current->AtomicClearLocalToShareRSetInRange(freeStart, freeEnd);
 }
 
 size_t Heap::GetCommittedSize() const
@@ -433,6 +482,106 @@ void Heap::InitializeIdleStatusControl(std::function<void(bool)> callback)
         OPTIONAL_LOG(ecmaVm_, INFO) << "Received idle status control call back";
         enableIdleGC_ = ecmaVm_->GetJSOptions().EnableIdleGC();
     }
+}
+
+TaggedObject *SharedHeap::AllocateNonMovableOrHugeObject(JSThread *thread, JSHClass *hclass)
+{
+    size_t size = hclass->GetObjectSize();
+    return AllocateNonMovableOrHugeObject(thread, hclass, size);
+}
+
+TaggedObject *SharedHeap::AllocateNonMovableOrHugeObject(JSThread *thread, JSHClass *hclass, size_t size)
+{
+    size = AlignUp(size, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
+    if (size > MAX_REGULAR_HEAP_OBJECT_SIZE) {
+        return AllocateHugeObject(thread, hclass, size);
+    }
+    auto object = reinterpret_cast<TaggedObject *>(sNonMovableSpace_->Allocate(thread, size));
+    CHECK_SOBJ_AND_THROW_OOM_ERROR(thread, object, size, sNonMovableSpace_,
+        "SharedHeap::AllocateNonMovableOrHugeObject");
+    object->SetClass(thread, hclass);
+    // todo(lukai) OnAllocateEvent
+    return object;
+}
+
+TaggedObject *SharedHeap::AllocateOldOrHugeObject(JSThread *thread, JSHClass *hclass)
+{
+    size_t size = hclass->GetObjectSize();
+    return AllocateOldOrHugeObject(thread, hclass, size);
+}
+
+TaggedObject *SharedHeap::AllocateOldOrHugeObject(JSThread *thread, JSHClass *hclass, size_t size)
+{
+    size = AlignUp(size, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
+    if (size > MAX_REGULAR_HEAP_OBJECT_SIZE) {
+        return AllocateHugeObject(thread, hclass, size);
+    }
+    auto object = reinterpret_cast<TaggedObject *>(sOldSpace_->Allocate(thread, size));
+    CHECK_SOBJ_AND_THROW_OOM_ERROR(thread, object, size, sOldSpace_, "SharedHeap::AllocateOldOrHugeObject");
+    object->SetClass(thread, hclass);
+    // todo(lukai) OnAllocateEvent
+    return object;
+}
+
+TaggedObject *SharedHeap::AllocateOldOrHugeObject(JSThread *thread, size_t size)
+{
+    size = AlignUp(size, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
+    if (size > MAX_REGULAR_HEAP_OBJECT_SIZE) {
+        return AllocateHugeObject(thread, size);
+    }
+
+    auto object = reinterpret_cast<TaggedObject *>(sOldSpace_->Allocate(thread, size));
+    CHECK_SOBJ_AND_THROW_OOM_ERROR(thread, object, size, sOldSpace_, "SharedHeap::AllocateOldOrHugeObject");
+    return object;
+}
+
+TaggedObject *SharedHeap::AllocateHugeObject(JSThread *thread, JSHClass *hclass, size_t size)
+{
+    auto object = AllocateHugeObject(thread, size);
+    object->SetClass(thread, hclass);
+    // todo(lukai) OnAllocateEvent
+    return object;
+}
+
+TaggedObject *SharedHeap::AllocateHugeObject(JSThread *thread, size_t size)
+{
+    // Check whether it is necessary to trigger Shared GC before expanding to avoid OOM risk.
+    CheckHugeAndTriggerGC(thread, size);
+    auto *object = reinterpret_cast<TaggedObject *>(sHugeObjectSpace_->Allocate(thread, size));
+    if (UNLIKELY(object == nullptr)) {
+        CollectGarbage(thread, TriggerGCType::SHARED_GC, GCReason::ALLOCATION_LIMIT);
+        object = reinterpret_cast<TaggedObject *>(sHugeObjectSpace_->Allocate(thread, size));
+        if (UNLIKELY(object == nullptr)) {
+            // if allocate huge object OOM, temporarily increase space size to avoid vm crash
+            size_t oomOvershootSize = config_.GetOutOfMemoryOvershootSize();
+            sHugeObjectSpace_->IncreaseOutOfMemoryOvershootSize(oomOvershootSize);
+            // todo(lukai) DumpHeapSnapshotBeforeOOM
+            ThrowOutOfMemoryError(thread, size, "SharedHeap::AllocateHugeObject");
+            object = reinterpret_cast<TaggedObject *>(sHugeObjectSpace_->Allocate(thread, size));
+            if (UNLIKELY(object == nullptr)) {
+                FatalOutOfMemoryError(size, "SharedHeap::AllocateHugeObject");
+            }
+        }
+    }
+    return object;
+}
+
+TaggedObject *SharedHeap::AllocateReadOnlyOrHugeObject(JSThread *thread, JSHClass *hclass)
+{
+    size_t size = hclass->GetObjectSize();
+    return AllocateReadOnlyOrHugeObject(thread, hclass, size);
+}
+
+TaggedObject *SharedHeap::AllocateReadOnlyOrHugeObject(JSThread *thread, JSHClass *hclass, size_t size)
+{
+    size = AlignUp(size, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
+    if (size > MAX_REGULAR_HEAP_OBJECT_SIZE) {
+        return AllocateHugeObject(thread, hclass, size);
+    }
+    auto object = reinterpret_cast<TaggedObject *>(sReadOnlySpace_->Allocate(thread, size));
+    CHECK_SOBJ_AND_THROW_OOM_ERROR(thread, object, size, sReadOnlySpace_, "SharedHeap::AllocateReadOnlyOrHugeObject");
+    object->SetClass(thread, hclass);
+    return object;
 }
 }  // namespace panda::ecmascript
 

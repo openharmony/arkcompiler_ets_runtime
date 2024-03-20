@@ -401,11 +401,11 @@ bool ObjectOperator::IsDetectorName(JSHandle<GlobalEnv> env, JSTaggedValue key)
     return (start <= addr) && (addr <= end);
 }
 
-TrackType ObjectOperator::GetTrackType() const
+SharedFieldType ObjectOperator::GetSharedFieldType() const
 {
     return JSObject::Cast(holder_->GetTaggedObject())->GetJSHClass()->IsDictionaryMode()
-                              ? attributes_.GetDictTrackType()
-                              : attributes_.GetTrackType();
+                              ? attributes_.GetDictSharedFieldType()
+                              : attributes_.GetSharedFieldType();
 }
 
 void ObjectOperator::ToPropertyDescriptor(PropertyDescriptor &desc) const
@@ -419,7 +419,7 @@ void ObjectOperator::ToPropertyDescriptor(PropertyDescriptor &desc) const
         desc.SetWritable(IsWritable());
         JSTaggedValue val = GetValue();
         desc.SetValue(JSHandle<JSTaggedValue>(thread_, val));
-        desc.SetTrackType(GetTrackType());
+        desc.SetSharedFieldType(GetSharedFieldType());
     } else {
         auto result = GetValue();
         bool isPropertyBox = result.IsPropertyBox();
@@ -508,7 +508,7 @@ void ObjectOperator::LookupGlobal(const JSHandle<JSObject> &obj)
         return;
     }
     JSTaggedValue value(dict->GetBox(entry));
-    uint32_t attr = dict->GetAttributes(entry).GetValue();
+    auto attr = dict->GetAttributes(entry).GetValue();
     SetFound(entry, value, attr, true);
 }
 
@@ -537,7 +537,7 @@ void ObjectOperator::LookupPropertyInlinedProps(const JSHandle<JSObject> &obj)
         }
 
         JSTaggedValue value(dict->GetBox(entry));
-        uint32_t attr = dict->GetAttributes(entry).GetValue();
+        auto attr = dict->GetAttributes(entry).GetValue();
         SetFound(entry, value, attr, true);
         return;
     }
@@ -578,7 +578,7 @@ void ObjectOperator::LookupPropertyInlinedProps(const JSHandle<JSObject> &obj)
     }
 
     JSTaggedValue value = dict->GetValue(entry);
-    uint32_t attr = dict->GetAttributes(entry).GetValue();
+    auto attr = dict->GetAttributes(entry).GetValue();
     SetFound(entry, value, attr, false);
 }
 
@@ -610,7 +610,7 @@ void ObjectOperator::TransitionForAttributeChanged(const JSHandle<JSObject> &rec
             JSHandle<NameDictionary> dict(JSObject::TransitionToDictionary(thread_, receiver));
             index = static_cast<uint32_t>(dict->FindEntry(key_.GetTaggedValue()));
             PropertyAttributes origin = dict->GetAttributes(index);
-            attr.SetDictTrackType(attr.GetTrackType());
+            attr.SetDictSharedFieldType(attr.GetSharedFieldType());
             attr.SetDictionaryOrder(origin.GetDictionaryOrder());
             dict->SetAttributes(thread_, index, attr);
         } else {
@@ -909,7 +909,7 @@ void ObjectOperator::DeleteElementInHolder() const
     }
 }
 
-void ObjectOperator::SetFound(uint32_t index, JSTaggedValue value, uint32_t attr, bool mode, bool transition)
+void ObjectOperator::SetFound(uint32_t index, JSTaggedValue value, uint64_t attr, bool mode, bool transition)
 {
     SetIndex(index);
     SetValue(value);
@@ -918,7 +918,7 @@ void ObjectOperator::SetFound(uint32_t index, JSTaggedValue value, uint32_t attr
     SetAttr(attr);
 }
 
-void ObjectOperator::UpdateFound(uint32_t index, uint32_t attr, bool mode, bool transition)
+void ObjectOperator::UpdateFound(uint32_t index, uint64_t attr, bool mode, bool transition)
 {
     SetIndex(index);
     SetFastMode(mode);
@@ -991,7 +991,7 @@ void ObjectOperator::LookupElementInlinedProps(const JSHandle<JSObject> &obj)
                 return;
             }
 
-            uint32_t attr = dictionary->GetAttributes(entry).GetValue();
+            auto attr = dictionary->GetAttributes(entry).GetValue();
             SetFound(entry, dictionary->GetValue(entry), attr, false);
         }
     }

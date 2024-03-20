@@ -479,9 +479,11 @@ CString JSHClass::DumpJSType(JSType type)
         case JSType::SOURCE_TEXT_MODULE_RECORD:
             return "SourceTextModuleRecord";
         case JSType::RESOLVEDBINDING_RECORD:
-            return "ResolvedBingingRecord";
+            return "ResolvedBindingRecord";
         case JSType::RESOLVEDINDEXBINDING_RECORD:
-            return "ResolvedIndexBingingRecord";
+            return "ResolvedIndexBindingRecord";
+        case JSType::RESOLVEDRECORDBINDING_RECORD:
+            return "ResolvedRecordBindingRecord";
         case JSType::IMPORTENTRY_RECORD:
             return "ImportEntry";
         case JSType::LOCAL_EXPORTENTRY_RECORD:
@@ -1215,6 +1217,9 @@ static void DumpObject(TaggedObject *obj, std::ostream &os)
         case JSType::RESOLVEDINDEXBINDING_RECORD:
             ResolvedIndexBinding::Cast(obj)->Dump(os);
             break;
+        case JSType::RESOLVEDRECORDBINDING_RECORD:
+            ResolvedRecordBinding::Cast(obj)->Dump(os);
+            break;
         case JSType::JS_MODULE_NAMESPACE:
             ModuleNamespace::Cast(obj)->Dump(os);
             break;
@@ -1678,11 +1683,14 @@ void JSFunction::Dump(std::ostream &os) const
     os << "\n";
     os << " - LexicalEnv: ";
     if (GetClass()->IsJSSharedFunction()) {
-        os << GetLexicalEnv().GetTaggedObject()<< "\n";
+        os << GetLexicalEnv().GetRawData()<< "\n";
     } else {
         GetLexicalEnv().Dump(os);
         os << "\n";
     }
+    os << " - ProfileTypeInfo: ";
+    GetProfileTypeInfo().Dump(os);
+    os << "\n";
     os << " - HomeObject: ";
     GetHomeObject().Dump(os);
     os << "\n";
@@ -1691,6 +1699,9 @@ void JSFunction::Dump(std::ostream &os) const
     os << "\n";
     os << " - Method: ";
     GetMethod().Dump(os);
+    os << "\n";
+    os << " - Module: ";
+    GetModule().Dump(os);
     os << "\n";
     JSObject::Dump(os);
 }
@@ -3814,6 +3825,16 @@ void ResolvedIndexBinding::Dump(std::ostream &os) const
     os << "\n";
 }
 
+void ResolvedRecordBinding::Dump(std::ostream &os) const
+{
+    os << " - Module: ";
+    GetModuleRecord().Dump(os);
+    os << "\n";
+    os << " - Index: ";
+    GetIndex();
+    os << "\n";
+}
+
 void ModuleNamespace::Dump(std::ostream &os) const
 {
     os << " - Exports: ";
@@ -3897,12 +3918,6 @@ void Method::Dump(std::ostream &os) const
     os << "\n";
     os << " - ConstantPool: ";
     GetConstantPool().Dump(os);
-    os << "\n";
-    os << " - ProfileTypeInfo: ";
-    GetProfileTypeInfo().Dump(os);
-    os << "\n";
-    os << " - Module: ";
-    GetModule().Dump(os);
     os << "\n";
     os << " - FunctionKind: " << static_cast<int>(GetFunctionKind());
     os << "\n";
@@ -4400,6 +4415,9 @@ static void DumpObject(TaggedObject *obj, std::vector<Reference> &vec, bool isVm
         case JSType::RESOLVEDINDEXBINDING_RECORD:
             ResolvedIndexBinding::Cast(obj)->DumpForSnapshot(vec);
             return;
+        case JSType::RESOLVEDRECORDBINDING_RECORD:
+            ResolvedRecordBinding::Cast(obj)->DumpForSnapshot(vec);
+            return;
         case JSType::JS_MODULE_NAMESPACE:
             ModuleNamespace::Cast(obj)->DumpForSnapshot(vec);
             return;
@@ -4815,7 +4833,10 @@ void JSFunction::DumpForSnapshot(std::vector<Reference> &vec) const
 {
     vec.emplace_back(CString("ProtoOrHClass"), GetProtoOrHClass());
     vec.emplace_back(CString("LexicalEnv"), GetLexicalEnv());
+    vec.emplace_back(CString("ProfileTypeInfo"), GetProfileTypeInfo());
     vec.emplace_back(CString("HomeObject"), GetHomeObject());
+    vec.emplace_back(CString("Module"), GetModule());
+    vec.emplace_back(CString("Method"), GetMethod());
     if ((!GetMethod().IsNull()) && (!GetMethod().IsUndefined())) {
         vec.emplace_back(CString("FunctionKind"), JSTaggedValue(static_cast<int>(GetFunctionKind())));
     }
@@ -4828,9 +4849,6 @@ void Method::DumpForSnapshot(std::vector<Reference> &vec) const
 {
     vec.emplace_back(CString("MethodName"), JSTaggedValue(GetMethodName()));
     vec.emplace_back(CString("ConstantPool"), GetConstantPool());
-    vec.emplace_back(CString("ProfileTypeInfo"), GetProfileTypeInfo());
-    vec.emplace_back(CString("Module"), GetModule());
-    vec.emplace_back(CString("MachineCode"), GetMachineCode());
 }
 
 void Program::DumpForSnapshot(std::vector<Reference> &vec) const
@@ -5987,6 +6005,12 @@ void ResolvedBinding::DumpForSnapshot(std::vector<Reference> &vec) const
 void ResolvedIndexBinding::DumpForSnapshot(std::vector<Reference> &vec) const
 {
     vec.emplace_back(CString("Module"), GetModule());
+    vec.emplace_back(CString("Index"), JSTaggedValue(GetIndex()));
+}
+
+void ResolvedRecordBinding::DumpForSnapshot(std::vector<Reference> &vec) const
+{
+    vec.emplace_back(CString("ModuleRecord"), GetModuleRecord());
     vec.emplace_back(CString("Index"), JSTaggedValue(GetIndex()));
 }
 

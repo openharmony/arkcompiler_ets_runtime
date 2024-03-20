@@ -60,7 +60,11 @@ public:
     static constexpr size_t AOT_IHC_INDEX = 2;
     static constexpr size_t AOT_ELEMENT_INDEX = 3;
     static constexpr size_t AOT_ELEMENTS_KIND_INDEX = 4;
-    static constexpr size_t RESERVED_LENGTH = AOT_ELEMENTS_KIND_INDEX;
+    static constexpr size_t LITERAL_TYPE_INDEX = 5;
+    static constexpr size_t RESERVED_LENGTH = LITERAL_TYPE_INDEX;
+
+    static constexpr int32_t METHOD_LITERAL_TYPE = 1;
+    static constexpr int32_t INVALID_LITERAL_TYPE = 0;
 
     static AOTLiteralInfo *Cast(TaggedObject *object)
     {
@@ -80,6 +84,7 @@ public:
         SetChc(JSTaggedValue::Undefined());
         SetElementIndex(JSTaggedValue(kungfu::BaseSnapshotInfo::AOT_ELEMENT_INDEX_DEFAULT_VALUE));
         SetElementsKind(ElementsKind::GENERIC);
+        SetLiteralType(JSTaggedValue(INVALID_LITERAL_TYPE));
     }
 
     inline uint32_t GetCacheLength() const
@@ -130,6 +135,16 @@ public:
         return kind;
     }
 
+    inline void SetLiteralType(JSTaggedValue value)
+    {
+        Barriers::SetPrimitive(GetData(), GetLiteralTypeOffset(), value.GetRawData());
+    }
+
+    inline int GetLiteralType() const
+    {
+        return JSTaggedValue(Barriers::GetValue<JSTaggedType>(GetData(), GetLiteralTypeOffset())).GetInt();
+    }
+
     inline void SetObjectToCache(JSThread *thread, uint32_t index, JSTaggedValue value)
     {
         Set(thread, index, value);
@@ -160,6 +175,11 @@ private:
     {
         return JSTaggedValue::TaggedTypeSize() * (GetLength() - AOT_ELEMENTS_KIND_INDEX);
     }
+
+    inline size_t GetLiteralTypeOffset() const
+    {
+        return JSTaggedValue::TaggedTypeSize() * (GetLength() - LITERAL_TYPE_INDEX);
+    }
 };
 
 class AOTFileManager {
@@ -187,8 +207,8 @@ public:
     void BindPandaFilesInAotFile(const std::string &aotFileBaseName, const std::string &moduleName);
     void SetAOTMainFuncEntry(JSHandle<JSFunction> mainFunc, const JSPandaFile *jsPandaFile,
                              std::string_view entryPoint);
-    void SetAOTFuncEntry(const JSPandaFile *jsPandaFile, Method *method,
-                         uint32_t entryIndex, bool *canFastCall = nullptr);
+    void SetAOTFuncEntry(const JSPandaFile *jsPandaFile, JSFunction *function,
+                         Method *method, uint32_t entryIndex = 0, bool *canFastCall = nullptr);
     bool LoadAiFile([[maybe_unused]] const std::string &filename);
     bool LoadAiFile(const JSPandaFile *jsPandaFile);
     kungfu::ArkStackMapParser* GetStackMapParser() const;

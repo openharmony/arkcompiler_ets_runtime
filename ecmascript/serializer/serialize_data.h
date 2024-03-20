@@ -18,20 +18,25 @@
 
 #include "ecmascript/js_tagged_value-inl.h"
 #include "ecmascript/mem/dyn_chunk.h"
+#include "ecmascript/runtime.h"
 #include "ecmascript/shared_mm/shared_mm.h"
 #include "ecmascript/snapshot/mem/snapshot_env.h"
 
 namespace panda::ecmascript {
 constexpr size_t INITIAL_CAPACITY = 64;
 constexpr int CAPACITY_INCREASE_RATE = 2;
+constexpr uint32_t RESERVED_INDEX = 0;
 enum class EncodeFlag : uint8_t {
-    // 0x00~0x03 represent new object to different space:
+    // 0x00~0x06 represent new object to different space:
     // 0x00: old space
     // 0x01: non movable space
     // 0x02: machine code space
     // 0x03: huge space
+    // 0x04: shared old space
+    // 0x05: shared non movable space
+    // 0x06: shared huge space
     NEW_OBJECT = 0x00,
-    REFERENCE = 0x04,
+    REFERENCE = 0x07,
     WEAK,
     PRIMITIVE,
     MULTI_RAW_DATA,
@@ -44,7 +49,7 @@ enum class EncodeFlag : uint8_t {
     NATIVE_BINDING_OBJECT,
     JS_ERROR,
     JS_REG_EXP,
-    JS_FUNCTION_IN_SHARED,
+    SHARED_OBJECT,
     LAST
 };
 
@@ -52,7 +57,10 @@ enum class SerializedObjectSpace : uint8_t {
     OLD_SPACE = 0,
     NON_MOVABLE_SPACE,
     MACHINE_CODE_SPACE,
-    HUGE_SPACE
+    HUGE_SPACE,
+    SHARED_OLD_SPACE,
+    SHARED_NON_MOVABLE_SPACE,
+    SHARED_HUGE_SPACE
 };
 
 enum class SerializeType : uint8_t {
@@ -71,6 +79,9 @@ public:
             DecreaseSharedArrayBufferReference();
         }
         free(buffer_);
+        if (!incompleteData_ && dataIndex_ != RESERVED_INDEX) {
+            Runtime::GetInstance()->RemoveSerializationRoot(thread_, dataIndex_);
+        }
     }
     NO_COPY_SEMANTIC(SerializeData);
     NO_MOVE_SEMANTIC(SerializeData);
@@ -286,6 +297,16 @@ public:
         return machineCodeSpaceSize_;
     }
 
+    size_t GetSharedOldSpaceSize() const
+    {
+        return sharedOldSpaceSize_;
+    }
+
+    size_t GetSharedNonMovableSpaceSize() const
+    {
+        return sharedNonMovableSpaceSize_;
+    }
+
     void CalculateSerializedObjectSize(SerializedObjectSpace space, size_t objectSize)
     {
         switch (space) {
@@ -297,6 +318,12 @@ public:
                 break;
             case SerializedObjectSpace::MACHINE_CODE_SPACE:
                 AlignSpaceObjectSize(machineCodeSpaceSize_, objectSize);
+                break;
+            case SerializedObjectSpace::SHARED_OLD_SPACE:
+                AlignSpaceObjectSize(sharedOldSpaceSize_, objectSize);
+                break;
+            case SerializedObjectSpace::SHARED_NON_MOVABLE_SPACE:
+                AlignSpaceObjectSize(sharedNonMovableSpaceSize_, objectSize);
                 break;
             default:
                 break;
@@ -328,19 +355,32 @@ public:
         sharedArrayBufferSet_.insert(ptr);
     }
 
+    void SetDataIndex(uint32_t dataIndex)
+    {
+        dataIndex_ = dataIndex;
+    }
+
+    uint32_t GetDataIndex() const
+    {
+        return dataIndex_;
+    }
+
 private:
     static constexpr size_t U8_SIZE = 1;
     static constexpr size_t U16_SIZE = 2;
     static constexpr size_t U32_SIZE = 4;
     static constexpr size_t U64_SIZE = 8;
     JSThread *thread_;
-    uint8_t *buffer_ = nullptr;
-    uint64_t sizeLimit_ = 0;
-    size_t bufferSize_ = 0;
-    size_t bufferCapacity_ = 0;
+    uint32_t dataIndex_ {RESERVED_INDEX};
+    uint8_t *buffer_ {nullptr};
+    uint64_t sizeLimit_ {0};
+    size_t bufferSize_ {0};
+    size_t bufferCapacity_ {0};
     size_t oldSpaceSize_ {0};
     size_t nonMovableSpaceSize_ {0};
     size_t machineCodeSpaceSize_ {0};
+    size_t sharedOldSpaceSize_ {0};
+    size_t sharedNonMovableSpaceSize_ {0};
     bool incompleteData_ {false};
     std::vector<size_t> regionRemainSizeVector_;
     std::set<uintptr_t> sharedArrayBufferSet_;

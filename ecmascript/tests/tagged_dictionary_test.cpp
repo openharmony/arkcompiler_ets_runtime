@@ -169,7 +169,8 @@ HWTEST_F_L0(TaggedDictionaryTest, NameDictionary_ShrinkCapacity)
     for (int i = 0; i < 10; i++) {
         keyArray[5] = '0' + static_cast<uint32_t>(i);
         keyArray[6] = 0;
-        JSHandle<JSTaggedValue> key(thread, stringTable->GetOrInternString(keyArray, utf::Mutf8Size(keyArray), true));
+        JSHandle<JSTaggedValue> key(thread,
+                                    stringTable->GetOrInternString(instance, keyArray, utf::Mutf8Size(keyArray), true));
         JSHandle<JSTaggedValue> value(thread, JSTaggedValue(i));
         PropertyAttributes metaData;
         // test insert()
@@ -179,8 +180,8 @@ HWTEST_F_L0(TaggedDictionaryTest, NameDictionary_ShrinkCapacity)
 
     keyArray[5] = '2';
     keyArray[6] = 0;
-    JSHandle<JSTaggedValue> arrayHandle(thread,
-                                        stringTable->GetOrInternString(keyArray, utf::Mutf8Size(keyArray), true));
+    JSHandle<JSTaggedValue> arrayHandle(
+        thread, stringTable->GetOrInternString(instance, keyArray, utf::Mutf8Size(keyArray), true));
     int entry = dictHandle->FindEntry(arrayHandle.GetTaggedValue());
     EXPECT_NE(entry, -1);
 

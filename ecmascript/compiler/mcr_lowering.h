@@ -46,8 +46,9 @@ private:
     void LowerHClassStableArrayCheck(GateRef gate);
     void LowerElementskindCheck(GateRef gate);
     void LowerGetConstPool(GateRef gate);
+    void LowerGetUnsharedConstpool(GateRef gate);
     void LowerLoadConstOffset(GateRef gate);
-    void LowerLoadHClassFromConstpool(GateRef gate);
+    void LowerLoadHClassFromUnsharedConstpool(GateRef gate);
     void LowerStoreConstOffset(GateRef gate);
     void LowerConvertHoleAsUndefined(GateRef gate);
     void LowerCheckAndConvert(GateRef gate);
@@ -98,6 +99,7 @@ private:
     GateRef ConvertTaggedNumberToInt32(GateRef gate, Label *exit);
     GateRef ConvertTaggedNumberToFloat64(GateRef gate, Label *exit);
     GateRef ConvertTaggedBooleanToBool(GateRef gate);
+    void HeapAllocateInSOld(GateRef gate);
     void InitializeWithSpeicalValue(Label *exit, GateRef object, GateRef glue, GateRef value,
                                     GateRef start, GateRef end);
 

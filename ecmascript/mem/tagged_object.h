@@ -53,6 +53,7 @@ private:
     MarkWordType class_;
 
     friend class Heap;
+    friend class SharedHeap;
     friend class ObjectFactory;
     friend class EcmaString;
 };

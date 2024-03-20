@@ -54,7 +54,7 @@ public:
     GateRef NewJSArrayWithSize(GateRef hclass, GateRef size);
     GateRef NewJSForinIterator(GateRef glue, GateRef receiver, GateRef keys, GateRef cachedHclass);
     GateRef LoadHClassFromMethod(GateRef glue, GateRef method);
-    GateRef NewJSFunction(GateRef glue, GateRef constpool, GateRef module, GateRef index);
+    GateRef NewJSFunction(GateRef glue, GateRef constpool, GateRef index);
     void NewJSFunction(GateRef glue, GateRef jsFunc, GateRef index, GateRef length, GateRef lexEnv,
                        Variable *result, Label *success, Label *failed);
     void InitializeJSFunction(GateRef glue, GateRef func, GateRef kind);
@@ -98,6 +98,7 @@ private:
     void AllocateInYoungPrologue(Variable *result, Label *callRuntime, Label *exit);
     void AllocateInYoung(Variable *result, Label *exit);
     void AllocateInYoung(Variable *result, Label *error, Label *noError);
+    void AllocateInSOld(Variable *result, Label *exit);
     void InitializeTaggedArrayWithSpeicalValue(Label *exit,
         GateRef array, GateRef value, GateRef start, GateRef length);
     GateRef glue_ {Circuit::NullGate()};

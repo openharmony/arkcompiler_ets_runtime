@@ -770,8 +770,9 @@ void CreateObjWithBufferTypeInfoAccessor::Init()
     auto imm = acc_.GetConstantValue(index_);
     auto methodOffset = acc_.TryGetMethodOffset(GetGate());
     JSTaggedValue cp = tsManager_->GetConstantPool(methodOffset);
+    JSTaggedValue unsharedCp = thread_->GetCurrentEcmaContext()->FindUnsharedConstpool(cp);
     JSTaggedValue obj = ConstantPool::GetLiteralFromCache<ConstPoolType::OBJECT_LITERAL>(
-        tsManager_->GetEcmaVM()->GetJSThread(), cp, imm, recordName_);
+        tsManager_->GetEcmaVM()->GetJSThread(), unsharedCp, imm, recordName_);
     objHandle_ = JSHandle<JSObject>(thread_, obj);
 }
 

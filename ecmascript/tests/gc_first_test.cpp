@@ -14,6 +14,7 @@
  */
 
 #include "ecmascript/builtins/builtins_ark_tools.h"
+#include "ecmascript/checkpoint/thread_state_transition.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/mem/full_gc.h"
 #include "ecmascript/object_factory-inl.h"
@@ -45,6 +46,7 @@ public:
         instance = JSNApi::CreateEcmaVM(options);
         ASSERT_TRUE(instance != nullptr) << "Cannot create EcmaVM";
         thread = instance->GetJSThread();
+        thread->ManagedCodeBegin();
         scope = new EcmaHandleScope(thread);
         auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
         heap->GetConcurrentMarker()->EnableConcurrentMarking(EnableConcurrentMarkType::ENABLE);
@@ -213,5 +215,37 @@ HWTEST_F_L0(GCTest, NativeBindingCheckGCTest)
     heap->CollectGarbage(TriggerGCType::FULL_GC);
     newNativeSize = heap->GetNativeBindingSize();
     EXPECT_EQ(newNativeSize - oldNativeSize, 0UL);
+}
+
+HWTEST_F_L0(GCTest, SharedGC)
+{
+    constexpr size_t ALLOCATE_COUNT = 100;
+    constexpr size_t ALLOCATE_SIZE = 512;
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    auto sHeap = SharedHeap::GetInstance();
+    sHeap->CollectGarbage(thread, TriggerGCType::SHARED_GC, GCReason::OTHER);
+    auto oldSizebase = sHeap->GetOldSpace()->GetHeapObjectSize();
+    {
+        [[maybe_unused]] ecmascript::EcmaHandleScope baseScope(thread);
+        for (int i = 0; i < ALLOCATE_COUNT; i++) {
+            factory->NewSOldSpaceTaggedArray(ALLOCATE_SIZE, JSTaggedValue::Undefined());
+        }
+    }
+    size_t oldSizeBefore = sHeap->GetOldSpace()->GetHeapObjectSize();
+    EXPECT_TRUE(oldSizeBefore > oldSizebase);
+    sHeap->CollectGarbage(thread, TriggerGCType::SHARED_GC, GCReason::OTHER);
+    auto oldSizeAfter = sHeap->GetOldSpace()->GetHeapObjectSize();
+    EXPECT_TRUE(oldSizeBefore > oldSizeAfter);
+    EXPECT_EQ(oldSizebase, oldSizeAfter);
+}
+
+HWTEST_F_L0(GCTest, SharedGCSuspendAll)
+{
+    EXPECT_TRUE(thread->IsInRunningState());
+    {
+        SuspendAllScope suspendScope(thread);
+        EXPECT_TRUE(!thread->IsInRunningState());
+    }
+    EXPECT_TRUE(thread->IsInRunningState());
 }
 }  // namespace panda::test

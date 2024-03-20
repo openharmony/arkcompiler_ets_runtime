@@ -258,8 +258,12 @@ public:
     GateRef LoadBuiltinObject(size_t offset);
 
     // Get
+    GateRef GetUnsharedConstpool(GateRef constpool);
     GateRef GetConstPoolFromFunction(GateRef jsFunc);
-    GateRef GetCodeAddr(GateRef method);
+    GateRef GetUnsharedConstpoolFromGlue(GateRef glue, GateRef constpool);
+    GateRef GetUnsharedConstpoolIndex(GateRef constpool);
+    GateRef GetUnsharedConstpool(GateRef arrayAddr, GateRef index);
+    GateRef GetCodeAddr(GateRef jsFunc);
     GateRef GetObjectFromConstPool(GateRef glue, GateRef hirGate, GateRef constPool, GateRef module, GateRef index,
                                    ConstPoolType type);
     GateRef GetFunctionLexicalEnv(GateRef function);
@@ -303,6 +307,7 @@ public:
     void SetLengthToFunction(GateRef glue, GateRef function, GateRef value);
     void SetLexicalEnvToFunction(GateRef glue, GateRef function, GateRef value);
     void SetHomeObjectToFunction(GateRef glue, GateRef function, GateRef value);
+    void SetModuleToFunction(GateRef glue, GateRef function, GateRef value);
 
     inline GateRef LogicAnd(GateRef x, GateRef y);
     inline GateRef LogicOr(GateRef x, GateRef y);
@@ -593,7 +598,7 @@ public:
     GateRef LoadStringLength(GateRef string);
     GateRef LoadConstOffset(VariableType type, GateRef receiver, size_t offset,
         MemoryOrder order = MemoryOrder::Default());
-    GateRef LoadHClassFromConstpool(GateRef constpool, size_t index);
+    GateRef LoadHClassFromUnsharedConstpool(GateRef constpool, size_t index);
     GateRef TypedCall(GateRef hirGate, std::vector<GateRef> args, bool isNoGC);
     GateRef TypedFastCall(GateRef hirGate, std::vector<GateRef> args, bool isNoGC);
     inline void SetValueToTaggedArray(VariableType valType, GateRef glue, GateRef array, GateRef index, GateRef val);

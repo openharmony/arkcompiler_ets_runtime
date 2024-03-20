@@ -18,12 +18,14 @@
 #include "ecmascript/ecma_string_table.h"
 #include "ecmascript/js_symbol.h"
 #include "ecmascript/mem/c_containers.h"
+#include "ecmascript/mem/space.h"
 
 namespace panda::ecmascript {
 
 EcmaString *EcmaString::Concat(const EcmaVM *vm,
     const JSHandle<EcmaString> &left, const JSHandle<EcmaString> &right, MemSpaceType type)
 {
+    ASSERT(IsSMemSpace(type));
     // allocator may trig gc and move src, need to hold it
     EcmaString *strLeft = *left;
     EcmaString *strRight = *right;
@@ -35,21 +37,9 @@ EcmaString *EcmaString::Concat(const EcmaVM *vm,
     }
 
     if (leftLength == 0) {
-        if (type == MemSpaceType::OLD_SPACE) {
-            Region *objectRegion = Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(*right));
-            if (objectRegion->InYoungSpace()) {
-                return CopyStringToOldSpace(vm, right, rightLength, strRight->IsUtf8());
-            }
-        }
         return strRight;
     }
     if (rightLength == 0) {
-        if (type == MemSpaceType::OLD_SPACE) {
-            Region *objectRegion = Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(*left));
-            if (objectRegion->InYoungSpace()) {
-                return CopyStringToOldSpace(vm, left, leftLength, strLeft->IsUtf8());
-            }
-        }
         return strLeft;
     }
     // if the result string is small, make a LineString
@@ -1130,6 +1120,7 @@ EcmaString *EcmaString::Trim(const JSThread *thread, const JSHandle<EcmaString> 
 EcmaString *EcmaString::SlowFlatten(const EcmaVM *vm, const JSHandle<EcmaString> &string, MemSpaceType type)
 {
     ASSERT(string->IsTreeString() || string->IsSlicedString());
+    ASSERT(IsSMemSpace(type));
     auto thread = vm->GetJSThread();
     uint32_t length = string->GetLength();
     EcmaString *result = nullptr;
@@ -1164,6 +1155,7 @@ EcmaString *EcmaString::Flatten(const EcmaVM *vm, const JSHandle<EcmaString> &st
 
 FlatStringInfo EcmaString::FlattenAllString(const EcmaVM *vm, const JSHandle<EcmaString> &string, MemSpaceType type)
 {
+    ASSERT(IsSMemSpace(type));
     EcmaString *s = *string;
     uint32_t startIndex = 0;
     if (s->IsLineOrConstantString()) {

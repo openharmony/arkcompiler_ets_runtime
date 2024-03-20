@@ -173,7 +173,7 @@ void TaggedArray::RemoveElementByIndex(const JSThread *thread, JSHandle<TaggedAr
                                        uint32_t index, uint32_t effectiveLength, bool noNeedBarrier)
 {
     ASSERT(0 <= index || index < effectiveLength);
-    if (noNeedBarrier || (srcArray->IsYoungAndNotMarking(thread))) {
+    if (noNeedBarrier) {
         size_t taggedTypeSize = JSTaggedValue::TaggedTypeSize();
         size_t offset = taggedTypeSize * index;
         auto *addr = reinterpret_cast<JSTaggedType *>(ToUintPtr(srcArray->GetData()) + offset);
@@ -196,21 +196,10 @@ void TaggedArray::InsertElementByIndex(const JSThread *thread, JSHandle<TaggedAr
 {
     ASSERT(0 <= index || index <= effectiveLength);
     ASSERT(effectiveLength < srcArray->GetLength());
-    if (srcArray->IsYoungAndNotMarking(thread)) {
-        size_t taggedTypeSize = JSTaggedValue::TaggedTypeSize();
-        size_t offset = taggedTypeSize * effectiveLength;
-        auto *addr = reinterpret_cast<JSTaggedType *>(ToUintPtr(srcArray->GetData()) + offset);
-        while (effectiveLength != index && effectiveLength > 0) {
-            *addr = *(addr - 1);
-            addr--;
-            effectiveLength--;
-        }
-    } else {
-        while (effectiveLength != index && effectiveLength > 0) {
-            JSTaggedValue oldValue = srcArray->Get(effectiveLength - 1);
-            srcArray->Set(thread, effectiveLength, oldValue);
-            effectiveLength--;
-        }
+    while (effectiveLength != index && effectiveLength > 0) {
+        JSTaggedValue oldValue = srcArray->Get(effectiveLength - 1);
+        srcArray->Set(thread, effectiveLength, oldValue);
+        effectiveLength--;
     }
     srcArray->Set(thread, index, value.GetTaggedValue());
 }
@@ -220,16 +209,8 @@ void TaggedArray::CopyTaggedArrayElement(const JSThread *thread, JSHandle<Tagged
 {
     ASSERT(effectiveLength <= srcElements->GetLength());
     ASSERT(effectiveLength <= dstElements->GetLength());
-    if (dstElements->IsYoungAndNotMarking(thread)) {
-        size_t size = effectiveLength * sizeof(JSTaggedType);
-        if (memcpy_s(reinterpret_cast<void *>(dstElements->GetData()), size,
-            reinterpret_cast<void *>(srcElements->GetData()), size) != EOK) {
-            LOG_FULL(FATAL) << "memcpy_s failed" << " size: " << size;
-        }
-    } else {
-        for (uint32_t i = 0; i < effectiveLength; i++) {
-            dstElements->Set(thread, i, srcElements->Get(i));
-        }
+    for (uint32_t i = 0; i < effectiveLength; i++) {
+        dstElements->Set(thread, i, srcElements->Get(i));
     }
 }
 

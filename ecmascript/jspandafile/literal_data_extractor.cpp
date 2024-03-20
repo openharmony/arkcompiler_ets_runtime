@@ -22,6 +22,7 @@
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/module/js_module_manager.h"
+#include "ecmascript/module/js_shared_module.h"
 #include "ecmascript/patch/quick_fix_manager.h"
 #include "ecmascript/tagged_array-inl.h"
 
@@ -67,7 +68,7 @@ void LiteralDataExtractor::ExtractObjectDatas(JSThread *thread, const JSPandaFil
             }
             case LiteralTag::STRING: {
                 StringData sd = jsPandaFile->GetStringData(EntityId(std::get<uint32_t>(value)));
-                EcmaString *str = factory->GetRawStringFromStringTable(sd, MemSpaceType::OLD_SPACE);
+                EcmaString *str = factory->GetRawStringFromStringTable(sd, MemSpaceType::SHARED_OLD_SPACE);
                 jt = JSTaggedValue(str);
                 uint32_t elementIndex = 0;
                 if (JSTaggedValue::ToElementIndex(jt, &elementIndex) && ppos % pairSize == 0) {
@@ -181,7 +182,7 @@ JSHandle<TaggedArray> LiteralDataExtractor::EnumerateLiteralVals(JSThread *threa
                 }
                 case LiteralTag::STRING: {
                     StringData sd = jsPandaFile->GetStringData(EntityId(std::get<uint32_t>(value)));
-                    EcmaString *str = factory->GetRawStringFromStringTable(sd, MemSpaceType::OLD_SPACE);
+                    EcmaString *str = factory->GetRawStringFromStringTable(sd, MemSpaceType::SHARED_OLD_SPACE);
                     jt = JSTaggedValue(str);
                     break;
                 }
@@ -242,8 +243,10 @@ JSHandle<TaggedArray> LiteralDataExtractor::EnumerateLiteralVals(JSThread *threa
     return literals;
 }
 
-JSHandle<JSFunction> LiteralDataExtractor::CreateJSFunctionInLiteral(EcmaVM *vm, JSHandle<Method> method,
-                                                                     FunctionKind kind, ClassKind classKind)
+JSHandle<JSFunction> LiteralDataExtractor::CreateJSFunctionInLiteral(EcmaVM *vm,
+                                                                     const JSHandle<Method> &method,
+                                                                     FunctionKind kind,
+                                                                     ClassKind classKind)
 {
     ObjectFactory *factory = vm->GetFactory();
     JSHandle<GlobalEnv> env = vm->GetGlobalEnv();
@@ -294,29 +297,13 @@ JSHandle<JSFunction> LiteralDataExtractor::DefineMethodInLiteral(JSThread *threa
         kind = literalKind;
     }
     bool canFastCall = false;
-
-    CString moduleName = jsPandaFile->GetJSPandaFileDesc();
-    CString entry = JSPandaFile::ENTRY_FUNCTION_NAME;
-    if (!entryPoint.empty()) {
-        moduleName = entryPoint;
-        entry = entryPoint;
-    }
-    JSRecordInfo recordInfo;
-    bool hasRecord = jsPandaFile->CheckAndGetRecordInfo(entry, recordInfo);
-    if (!hasRecord) {
-        LOG_ECMA(FATAL) << "cannot find record '" + entry + "', please check the request path.";
-    }
-    JSMutableHandle<JSTaggedValue> module(thread, JSTaggedValue::Undefined());
-    if (jsPandaFile->IsModule(recordInfo)) {
-        module.Update(thread->GetCurrentEcmaContext()->GetModuleManager()->HostGetImportedModule(moduleName));
-    } else {
-        module.Update(factory->NewFromUtf8(moduleName));
-    }
-
-    JSHandle<Method> method = factory->NewMethod(jsPandaFile, methodLiteral, constpool,
-        module, entryIndex, isLoadedAOT, &canFastCall);
+    JSHandle<Method> method =
+        factory->NewSMethod(jsPandaFile, methodLiteral, constpool, entryIndex, isLoadedAOT, &canFastCall);
     JSHandle<JSHClass> functionClass;
     JSHandle<JSFunction> jsFunc = CreateJSFunctionInLiteral(vm, method, kind, classKind);
+    ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
+    JSHandle<JSTaggedValue> module = moduleManager->GenerateFuncModule(jsPandaFile, entryPoint, classKind);
+    jsFunc->SetModule(thread, module.GetTaggedValue());
     jsFunc->SetLength(length);
     return jsFunc;
 }
@@ -400,7 +387,7 @@ void LiteralDataExtractor::ExtractObjectDatas(JSThread *thread, const JSPandaFil
             }
             case LiteralTag::STRING: {
                 StringData sd = jsPandaFile->GetStringData(EntityId(std::get<uint32_t>(value)));
-                EcmaString *str = factory->GetRawStringFromStringTable(sd, MemSpaceType::OLD_SPACE);
+                EcmaString *str = factory->GetRawStringFromStringTable(sd, MemSpaceType::SHARED_OLD_SPACE);
                 jt = JSTaggedValue(str);
                 uint32_t elementIndex = 0;
                 if (JSTaggedValue::ToElementIndex(jt, &elementIndex) && ppos % pairSize == 0) {
@@ -486,7 +473,12 @@ JSHandle<TaggedArray> LiteralDataExtractor::GetDatasIgnoreType(JSThread *thread,
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     LiteralDataAccessor lda = jsPandaFile->GetLiteralDataAccessor();
     uint32_t num = lda.GetLiteralValsNum(id) / 2;  // 2: half
-    JSHandle<TaggedArray> literals = JSHandle<TaggedArray>(factory->NewCOWTaggedArray(num));
+    JSHandle<TaggedArray> literals;
+    if (classKind == ClassKind::SENDABLE) {
+        literals = JSHandle<TaggedArray>(factory->NewSCOWTaggedArray(num));
+    } else {
+        literals = JSHandle<TaggedArray>(factory->NewCOWTaggedArray(num));
+    }
     uint32_t pos = 0;
     uint32_t methodId = 0;
     FunctionKind kind;
@@ -511,7 +503,7 @@ JSHandle<TaggedArray> LiteralDataExtractor::GetDatasIgnoreType(JSThread *thread,
                 }
                 case LiteralTag::STRING: {
                     StringData sd = jsPandaFile->GetStringData(EntityId(std::get<uint32_t>(value)));
-                    EcmaString *str = factory->GetRawStringFromStringTable(sd, MemSpaceType::OLD_SPACE);
+                    EcmaString *str = factory->GetRawStringFromStringTable(sd, MemSpaceType::SHARED_OLD_SPACE);
                     jt = JSTaggedValue(str);
                     break;
                 }

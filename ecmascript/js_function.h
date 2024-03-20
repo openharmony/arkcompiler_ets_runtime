@@ -58,18 +58,15 @@ public:
         return Method::ConstCast(method.GetTaggedObject())->GetFunctionKind();
     }
 
-    JSTaggedValue GetModule() const
-    {
-        JSTaggedValue method = GetMethod();
-        return Method::ConstCast(method.GetTaggedObject())->GetModule();
-    }
+    void SetCompiledFuncEntry(uintptr_t codeEntry, bool isFastCall);
 
     static constexpr size_t METHOD_OFFSET = JSObject::SIZE;
-    ACCESSORS(Method, METHOD_OFFSET, LENGTH_OFFSET)
+    ACCESSORS(Method, METHOD_OFFSET, CODE_ENTRY_OFFSET)
+    ACCESSORS_PRIMITIVE_FIELD(CodeEntry, uintptr_t, CODE_ENTRY_OFFSET, LENGTH_OFFSET)
     ACCESSORS_PRIMITIVE_FIELD(Length, uint32_t, LENGTH_OFFSET, LAST_OFFSET)
     DEFINE_ALIGN_SIZE(LAST_OFFSET);
 
-    DECL_VISIT_OBJECT_FOR_JS_OBJECT(JSObject, METHOD_OFFSET, LENGTH_OFFSET)
+    DECL_VISIT_OBJECT_FOR_JS_OBJECT(JSObject, METHOD_OFFSET, CODE_ENTRY_OFFSET)
     DECL_DUMP()
 };
 
@@ -225,6 +222,8 @@ public:
 
     void SetFunctionExtraInfo(JSThread *thread, void *nativeFunc, const DeleteEntryPoint &deleter,
         void *data, size_t nativeBindingsize = 0);
+    void SetSFunctionExtraInfo(
+        JSThread *thread, void *nativeFunc, const DeleteEntryPoint &deleter, void *data, size_t nativeBindingsize = 0);
 
     JSTaggedValue GetFunctionExtraInfo() const;
     JSTaggedValue GetNativeFunctionExtraInfo() const;
@@ -234,6 +233,9 @@ public:
 
     static void InitializeJSFunction(JSThread *thread, const JSHandle<JSFunction> &func,
                                      FunctionKind kind = FunctionKind::NORMAL_FUNCTION);
+    static void InitializeSFunction(JSThread *thread, const JSHandle<JSFunction> &func,
+                                    FunctionKind kind = FunctionKind::NORMAL_FUNCTION);
+    static void InitializeWithDefaultValue(JSThread *thread, const JSHandle<JSFunction> &func);
     static JSHClass *PUBLIC_API GetOrCreateInitialJSHClass(JSThread *thread, const JSHandle<JSFunction> &fun);
     static JSHandle<JSHClass> GetInstanceJSHClass(JSThread *thread, JSHandle<JSFunction> constructor,
                                                   JSHandle<JSTaggedValue> newTarget);
@@ -241,8 +243,11 @@ public:
     static constexpr size_t PROTO_OR_DYNCLASS_OFFSET = JSFunctionBase::SIZE;
     ACCESSORS(ProtoOrHClass, PROTO_OR_DYNCLASS_OFFSET, LEXICAL_ENV_OFFSET)
     // For runtime native function, the LexicalEnv field is used to store GlobalEnv, such as RegExp's native function
-    ACCESSORS(LexicalEnv, LEXICAL_ENV_OFFSET, HOME_OBJECT_OFFSET)
-    ACCESSORS(HomeObject, HOME_OBJECT_OFFSET, WORK_NODE_POINTER_OFFSET)
+    ACCESSORS(LexicalEnv, LEXICAL_ENV_OFFSET, MACHINECODE_OFFSET)
+    ACCESSORS(MachineCode, MACHINECODE_OFFSET, PROFILE_TYPE_INFO_OFFSET)
+    ACCESSORS(ProfileTypeInfo, PROFILE_TYPE_INFO_OFFSET, HOME_OBJECT_OFFSET)
+    ACCESSORS(HomeObject, HOME_OBJECT_OFFSET, ECMA_MODULE_OFFSET)
+    ACCESSORS(Module, ECMA_MODULE_OFFSET, WORK_NODE_POINTER_OFFSET)
     ACCESSORS_PRIMITIVE_FIELD(WorkNodePointer, uintptr_t, WORK_NODE_POINTER_OFFSET, LAST_OFFSET)
     DEFINE_ALIGN_SIZE(LAST_OFFSET);
 
@@ -329,10 +334,9 @@ class JSAsyncModuleFulfilledFunction : public JSFunction {
 public:
     CAST_CHECK(JSAsyncModuleFulfilledFunction, IsJSAsyncModuleFulfilledFunction);
 
-    static constexpr size_t MODULE_OFFSET = JSFunction::SIZE;
-    ACCESSORS(Module, MODULE_OFFSET, SIZE);
+    static constexpr size_t SIZE = JSFunction::SIZE;
 
-    DECL_VISIT_OBJECT_FOR_JS_OBJECT(JSFunction, MODULE_OFFSET, SIZE)
+    DECL_VISIT_OBJECT_FOR_JS_OBJECT(JSFunction, SIZE, SIZE)
 
     DECL_DUMP()
 };
@@ -341,10 +345,9 @@ class JSAsyncModuleRejectedFunction : public JSFunction {
 public:
     CAST_CHECK(JSAsyncModuleRejectedFunction, IsJSAsyncModuleRejectedFunction);
 
-    static constexpr size_t MODULE_OFFSET = JSFunction::SIZE;
-    ACCESSORS(Module, MODULE_OFFSET, SIZE);
+    static constexpr size_t SIZE = JSFunction::SIZE;
 
-    DECL_VISIT_OBJECT_FOR_JS_OBJECT(JSFunction, MODULE_OFFSET, SIZE)
+    DECL_VISIT_OBJECT_FOR_JS_OBJECT(JSFunction, SIZE, SIZE)
 
     DECL_DUMP()
 };

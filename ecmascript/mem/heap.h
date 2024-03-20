@@ -21,6 +21,7 @@
 #include "ecmascript/js_thread.h"
 #include "ecmascript/mem/linear_space.h"
 #include "ecmascript/mem/mark_stack.h"
+#include "ecmascript/mem/shared_heap/shared_space.h"
 #include "ecmascript/mem/sparse_space.h"
 #include "ecmascript/mem/work_manager.h"
 #include "ecmascript/taskpool/taskpool.h"
@@ -30,6 +31,7 @@ class ConcurrentMarker;
 class ConcurrentSweeper;
 class EcmaVM;
 class FullGC;
+class GCStats;
 class HeapRegionAllocator;
 class HeapTracker;
 #if !WIN_OR_MAC_OR_IOS_PLATFORM
@@ -43,6 +45,9 @@ class MemController;
 class NativeAreaAllocator;
 class ParallelEvacuator;
 class PartialGC;
+class SharedConcurrentSweeper;
+class SharedGC;
+class SharedGCMarker;
 class STWYoungGC;
 
 using IdleNotifyStatusCallback = std::function<void(bool)>;
@@ -86,18 +91,476 @@ enum class VerifyKind {
     VERIFY_EVACUATE_YOUNG,
     VERIFY_CONCURRENT_MARK_FULL,
     VERIFY_EVACUATE_OLD,
-    VERIFY_EVACUATE_FULL
+    VERIFY_EVACUATE_FULL,
+    VERIFY_SHARED_RSET_POST_FULL_GC,
+    VERIFY_PRE_SHARED_GC,
+    VERIFY_POST_SHARED_GC
 };
 
-class Heap {
+class BaseHeap {
+public:
+    BaseHeap(const EcmaParamConfiguration &config) : config_(config) {}
+    virtual ~BaseHeap() = default;
+    NO_COPY_SEMANTIC(BaseHeap);
+    NO_MOVE_SEMANTIC(BaseHeap);
+
+    virtual bool IsMarking() const = 0;
+
+    virtual bool IsReadyToMark() const = 0;
+
+    virtual bool NeedStopCollection() = 0;
+
+    virtual void TryTriggerConcurrentMarking() = 0;
+
+    virtual void TryTriggerIdleCollection() = 0;
+
+    virtual void TryTriggerIncrementalMarking() = 0;
+
+    virtual bool OldSpaceExceedCapacity(size_t size) const = 0;
+
+    virtual bool OldSpaceExceedLimit() const = 0;
+
+    virtual inline size_t GetCommittedSize() const = 0;
+
+    virtual inline size_t GetHeapObjectSize() const = 0;
+
+    virtual void ChangeGCParams(bool inBackground) = 0;
+
+    virtual const GlobalEnvConstants *GetGlobalConst() const = 0;
+
+    virtual GCStats *GetEcmaGCStats() = 0;
+
+    void SetMarkType(MarkType markType)
+    {
+        markType_ = markType;
+    }
+
+    bool IsFullMark() const
+    {
+        return markType_ == MarkType::MARK_FULL;
+    }
+
+    bool IsConcurrentFullMark() const
+    {
+        return markType_ == MarkType::MARK_FULL;
+    }
+
+    TriggerGCType GetGCType() const
+    {
+        return gcType_;
+    }
+
+    bool IsAlive(TaggedObject *object) const;
+
+    bool ContainObject(TaggedObject *object) const;
+
+    void SetOnSerializeEvent(bool isSerialize)
+    {
+        onSerializeEvent_ = isSerialize;
+        if (!onSerializeEvent_ && !InSensitiveStatus()) {
+            TryTriggerIncrementalMarking();
+            TryTriggerIdleCollection();
+            TryTriggerConcurrentMarking();
+        }
+    }
+
+    bool GetOnSerializeEvent() const
+    {
+        return onSerializeEvent_;
+    }
+
+    bool GetOldGCRequested()
+    {
+        return oldGCRequested_;
+    }
+
+    EcmaParamConfiguration GetEcmaParamConfiguration() const
+    {
+        return config_;
+    }
+
+    NativeAreaAllocator *GetNativeAreaAllocator() const
+    {
+        return nativeAreaAllocator_;
+    }
+
+    HeapRegionAllocator *GetHeapRegionAllocator() const
+    {
+        return heapRegionAllocator_;
+    }
+
+    void ShouldThrowOOMError(bool shouldThrow)
+    {
+        shouldThrowOOMError_ = shouldThrow;
+    }
+
+    bool IsInBackground() const
+    {
+        return inBackground_;
+    }
+
+    // ONLY used for heap verification.
+    bool IsVerifying() const
+    {
+        return isVerifying_;
+    }
+
+    // ONLY used for heap verification.
+    void SetVerifying(bool verifying)
+    {
+        isVerifying_ = verifying;
+    }
+
+    void NotifyHeapAliveSizeAfterGC(size_t size)
+    {
+        heapAliveSizeAfterGC_ = size;
+    }
+
+    size_t GetHeapAliveSizeAfterGC() const
+    {
+        return heapAliveSizeAfterGC_;
+    }
+
+    bool InSensitiveStatus() const
+    {
+        return sensitiveStatus_.load(std::memory_order_relaxed) == AppSensitiveStatus::ENTER_HIGH_SENSITIVE
+            || onStartupEvent_;
+    }
+
+    AppSensitiveStatus GetSensitiveStatus() const
+    {
+        return sensitiveStatus_.load(std::memory_order_relaxed);
+    }
+
+    bool onStartUpEvent() const
+    {
+        return onStartupEvent_;
+    }
+
+    void SetSensitiveStatus(AppSensitiveStatus status)
+    {
+        sensitiveStatus_.store(status, std::memory_order_release);;
+    }
+
+    bool CASSensitiveStatus(AppSensitiveStatus expect, AppSensitiveStatus status)
+    {
+        return sensitiveStatus_.compare_exchange_strong(expect, status, std::memory_order_seq_cst);
+    }
+
+    void NotifyPostFork()
+    {
+        LockHolder holder(finishColdStartMutex_);
+        onStartupEvent_ = true;
+        LOG_GC(INFO) << "SmartGC: enter app cold start";
+    }
+
+    // Whether should verify heap during gc.
+    bool ShouldVerifyHeap() const
+    {
+        return shouldVerifyHeap_;
+    }
+
+    void ThrowOutOfMemoryErrorForDefault(JSThread *thread, size_t size, std::string functionName,
+        bool NonMovableObjNearOOM = false);
+
+    uint32_t GetMaxMarkTaskCount() const
+    {
+        return maxMarkTaskCount_;
+    }
+
+    bool CheckCanDistributeTask();
+    void IncreaseTaskCount();
+    void ReduceTaskCount();
+    void WaitRunningTaskFinished();
+    void WaitClearTaskFinished();
+    void ThrowOutOfMemoryError(JSThread *thread, size_t size, std::string functionName,
+        bool NonMovableObjNearOOM = false);
+
+protected:
+    void FatalOutOfMemoryError(size_t size, std::string functionName);
+
+    const EcmaParamConfiguration config_;
+    MarkType markType_ {MarkType::MARK_YOUNG};
+    TriggerGCType gcType_ {TriggerGCType::YOUNG_GC};
+    Mutex gcCollectGarbageMutex_;
+    // Region allocators.
+    NativeAreaAllocator *nativeAreaAllocator_ {nullptr};
+    HeapRegionAllocator *heapRegionAllocator_ {nullptr};
+
+    size_t heapAliveSizeAfterGC_ {0};
+    size_t globalSpaceAllocLimit_ {0};
+    // parallel marker task count.
+    uint32_t runningTaskCount_ {0};
+    uint32_t maxMarkTaskCount_ {0};
+    Mutex waitTaskFinishedMutex_;
+    ConditionVariable waitTaskFinishedCV_;
+    Mutex waitClearTaskFinishedMutex_;
+    ConditionVariable waitClearTaskFinishedCV_;
+    bool clearTaskFinished_ {true};
+    bool inBackground_ {false};
+    bool shouldThrowOOMError_ {false};
+    bool oldGCRequested_ {false};
+    bool onSerializeEvent_ {false};
+    std::atomic<AppSensitiveStatus> sensitiveStatus_ {AppSensitiveStatus::NORMAL_SCENE};
+    bool onStartupEvent_ {false};
+    Mutex finishColdStartMutex_;
+    // ONLY used for heap verification.
+    bool shouldVerifyHeap_ {false};
+    bool isVerifying_ {false};
+};
+
+class SharedHeap : public BaseHeap {
+public:
+    SharedHeap(const EcmaParamConfiguration &config) : BaseHeap(config) {}
+    virtual ~SharedHeap() = default;
+
+    static SharedHeap* GetInstance();
+
+    void Initialize(NativeAreaAllocator *nativeAreaAllocator, HeapRegionAllocator *heapRegionAllocator,
+        const JSRuntimeOptions &option);
+
+    void PostInitialization(const GlobalEnvConstants *globalEnvConstants, const JSRuntimeOptions &option);
+
+    void EnableParallelGC(JSRuntimeOptions &option);
+    void DisableParallelGC();
+    class ParallelMarkTask : public Task {
+    public:
+        ParallelMarkTask(int32_t id, SharedHeap *heap)
+            : Task(id), sHeap_(heap) {};
+        ~ParallelMarkTask() override = default;
+        bool Run(uint32_t threadIndex) override;
+
+        NO_COPY_SEMANTIC(ParallelMarkTask);
+        NO_MOVE_SEMANTIC(ParallelMarkTask);
+
+    private:
+        SharedHeap *sHeap_ {nullptr};
+    };
+
+    class AsyncClearTask : public Task {
+    public:
+        AsyncClearTask(int32_t id, SharedHeap *heap)
+            : Task(id), sHeap_(heap) {}
+        ~AsyncClearTask() override = default;
+        bool Run(uint32_t threadIndex) override;
+
+        NO_COPY_SEMANTIC(AsyncClearTask);
+        NO_MOVE_SEMANTIC(AsyncClearTask);
+    private:
+        SharedHeap *sHeap_;
+    };
+    bool IsMarking() const override
+    {
+        LOG_FULL(ERROR) << "SharedHeap IsMarking() not support yet";
+        return false;
+    }
+
+    bool IsReadyToMark() const override
+    {
+        return true;
+    }
+
+    bool NeedStopCollection() override
+    {
+        return onSerializeEvent_;
+    }
+
+    bool CheckAndTriggerGC(JSThread *thread, size_t size = 0);
+
+    bool CheckHugeAndTriggerGC(JSThread *thread, size_t size);
+
+    void TryTriggerConcurrentMarking() override
+    {
+        LOG_FULL(ERROR) << "SharedHeap TryTriggerConcurrentMarking() not support yet";
+        return;
+    }
+
+    void TryTriggerIdleCollection() override
+    {
+        LOG_FULL(ERROR) << "SharedHeap TryTriggerIdleCollection() not support yet";
+        return;
+    }
+
+    void TryTriggerIncrementalMarking() override
+    {
+        LOG_FULL(ERROR) << "SharedHeap TryTriggerIncrementalMarking() not support yet";
+        return;
+    }
+
+    bool OldSpaceExceedCapacity(size_t size) const override
+    {
+        size_t totalSize = sOldSpace_->GetCommittedSize() + size;
+        return totalSize >= sOldSpace_->GetMaximumCapacity() + sOldSpace_->GetOutOfMemoryOvershootSize();
+    }
+
+    bool OldSpaceExceedLimit() const override
+    {
+        return sOldSpace_->GetHeapObjectSize() >= sOldSpace_->GetInitialCapacity();
+    }
+
+    SharedConcurrentSweeper *GetSweeper() const
+    {
+        return sSweeper_;
+    }
+
+    bool IsParallelGCEnabled() const
+    {
+        return parallelGC_;
+    }
+
+    SharedOldSpace *GetOldSpace() const
+    {
+        return sOldSpace_;
+    }
+
+    SharedNonMovableSpace *GetNonMovableSpace() const
+    {
+        return sNonMovableSpace_;
+    }
+
+    SharedHugeObjectSpace *GetHugeObjectSpace() const
+    {
+        return sHugeObjectSpace_;
+    }
+
+    SharedReadOnlySpace *GetReadOnlySpace() const
+    {
+        return sReadOnlySpace_;
+    }
+
+    void CollectGarbage(JSThread *thread, TriggerGCType gcType, GCReason reason);
+    void CollectGarbageImpl(TriggerGCType gcType, GCReason reason);
+
+    void SetMaxMarkTaskCount(uint32_t maxTaskCount)
+    {
+        maxMarkTaskCount_ = maxTaskCount;
+    }
+
+    inline size_t GetCommittedSize() const override
+    {
+        size_t result = sOldSpace_->GetCommittedSize() +
+            sHugeObjectSpace_->GetCommittedSize() +
+            sNonMovableSpace_->GetCommittedSize() +
+            sReadOnlySpace_->GetCommittedSize();
+        return result;
+    }
+
+    inline size_t GetHeapObjectSize() const override
+    {
+        size_t result = sOldSpace_->GetHeapObjectSize() +
+            sHugeObjectSpace_->GetHeapObjectSize() +
+            sNonMovableSpace_->GetHeapObjectSize() +
+            sReadOnlySpace_->GetCommittedSize();
+        return result;
+    }
+
+    void ChangeGCParams([[maybe_unused]]bool inBackground) override
+    {
+        LOG_FULL(ERROR) << "SharedHeap ChangeGCParams() not support yet";
+        return;
+    }
+
+    GCStats *GetEcmaGCStats() override
+    {
+        return sGCStats_;
+    }
+
+    inline void SetGlobalEnvConstants(const GlobalEnvConstants *globalEnvConstants)
+    {
+        globalEnvConstants_ = globalEnvConstants;
+    }
+
+    inline const GlobalEnvConstants *GetGlobalConst() const override
+    {
+        return globalEnvConstants_;
+    }
+
+    SharedSparseSpace *GetSpaceWithType(MemSpaceType type) const
+    {
+        switch (type) {
+            case MemSpaceType::SHARED_OLD_SPACE:
+                return sOldSpace_;
+            case MemSpaceType::SHARED_NON_MOVABLE:
+                return sNonMovableSpace_;
+            default:
+                LOG_ECMA(FATAL) << "this branch is unreachable";
+                UNREACHABLE();
+                break;
+        }
+    }
+
+    void Prepare();
+    void Reclaim();
+    void PostGCMarkingTask();
+
+    SharedGCWorkManager *GetWorkManager() const
+    {
+        return sWorkManager_;
+    }
+
+    SharedGCMarker *GetSharedGCMarker() const
+    {
+        return sharedGCMarker_;
+    }
+
+    void PrepareRecordRegionsForReclaim();
+
+    template<class Callback>
+    void EnumerateOldSpaceRegions(const Callback &cb) const;
+
+    template<class Callback>
+    void EnumerateOldSpaceRegionsWithRecord(const Callback &cb) const;
+
+    template<class Callback>
+    void IterateOverObjects(const Callback &cb) const;
+
+    inline TaggedObject *AllocateClassClass(JSHClass *hclass, size_t size);
+
+    inline TaggedObject *AllocateNonMovableOrHugeObject(JSThread *thread, JSHClass *hclass);
+
+    inline TaggedObject *AllocateNonMovableOrHugeObject(JSThread *thread, JSHClass *hclass, size_t size);
+
+    inline TaggedObject *AllocateOldOrHugeObject(JSThread *thread, JSHClass *hclass);
+
+    inline TaggedObject *AllocateOldOrHugeObject(JSThread *thread, JSHClass *hclass, size_t size);
+
+    inline TaggedObject *AllocateOldOrHugeObject(JSThread *thread, size_t size);
+
+    inline TaggedObject *AllocateHugeObject(JSThread *thread, JSHClass *hclass, size_t size);
+
+    inline TaggedObject *AllocateHugeObject(JSThread *thread, size_t size);
+
+    inline TaggedObject *AllocateReadOnlyOrHugeObject(JSThread *thread, JSHClass *hclass);
+
+    inline TaggedObject *AllocateReadOnlyOrHugeObject(JSThread *thread, JSHClass *hclass, size_t size);
+
+    size_t VerifyHeapObjects(VerifyKind verifyKind) const;
+private:
+    void ReclaimRegions();
+
+    bool parallelGC_ {true};
+    GCStats *sGCStats_ {nullptr};
+    const GlobalEnvConstants *globalEnvConstants_ {nullptr};
+    SharedOldSpace *sOldSpace_ {nullptr};
+    SharedNonMovableSpace *sNonMovableSpace_ {nullptr};
+    SharedReadOnlySpace *sReadOnlySpace_ {nullptr};
+    SharedHugeObjectSpace *sHugeObjectSpace_ {nullptr};
+    SharedGCWorkManager *sWorkManager_ {nullptr};
+    SharedConcurrentSweeper *sSweeper_ {nullptr};
+    SharedGC *sharedGC_ {nullptr};
+    SharedGCMarker *sharedGCMarker_ {nullptr};
+};
+
+class Heap : public BaseHeap {
 public:
     explicit Heap(EcmaVM *ecmaVm);
-    ~Heap() = default;
+    virtual ~Heap() = default;
     NO_COPY_SEMANTIC(Heap);
     NO_MOVE_SEMANTIC(Heap);
     void Initialize();
     void Destroy();
     void Prepare();
+    void GetHeapPrepare();
     void Resume(TriggerGCType gcType);
     void ResumeForAppSpawn();
     void CompactHeapBeforeFork();
@@ -242,63 +705,14 @@ public:
         return workManager_;
     }
 
+    const GlobalEnvConstants *GetGlobalConst() const override
+    {
+        return thread_->GlobalConstants();
+    }
+
     MemController *GetMemController() const
     {
         return memController_;
-    }
-
-    bool InSensitiveStatus() const
-    {
-        return sensitiveStatus_.load(std::memory_order_relaxed) == AppSensitiveStatus::ENTER_HIGH_SENSITIVE
-            || onStartupEvent_;
-    }
-
-    AppSensitiveStatus GetSensitiveStatus() const
-    {
-        return sensitiveStatus_.load(std::memory_order_relaxed);
-    }
-
-    bool onStartUpEvent() const
-    {
-        return onStartupEvent_;
-    }
-
-    void SetSensitiveStatus(AppSensitiveStatus status)
-    {
-        sensitiveStatus_.store(status, std::memory_order_release);;
-    }
-
-    bool CASSensitiveStatus(AppSensitiveStatus expect, AppSensitiveStatus status)
-    {
-        return sensitiveStatus_.compare_exchange_strong(expect, status, std::memory_order_seq_cst);
-    }
-
-    void NotifyPostFork()
-    {
-        LockHolder holder(finishColdStartMutex_);
-        onStartupEvent_ = true;
-        LOG_GC(INFO) << "SmartGC: enter app cold start";
-    }
-
-    void SetOnSerializeEvent(bool isSerialize)
-    {
-        onSerializeEvent_ = isSerialize;
-        if (!onSerializeEvent_ && !InSensitiveStatus()) {
-            TryTriggerIncrementalMarking();
-            TryTriggerIdleCollection();
-            TryTriggerConcurrentMarking();
-        }
-    }
-
-    bool GetOnSerializeEvent() const
-    {
-        return onSerializeEvent_;
-    }
-
-    // Whether should verify heap during gc.
-    bool ShouldVerifyHeap() const
-    {
-        return shouldVerifyHeap_;
     }
 
     /*
@@ -329,22 +743,10 @@ public:
     // Snapshot
     inline uintptr_t AllocateSnapshotSpace(size_t size);
 
-    NativeAreaAllocator *GetNativeAreaAllocator() const
-    {
-        return nativeAreaAllocator_;
-    }
-
-    HeapRegionAllocator *GetHeapRegionAllocator() const
-    {
-        return heapRegionAllocator_;
-    }
-
     /*
      * GC triggers.
      */
-
     void CollectGarbage(TriggerGCType gcType, GCReason reason = GCReason::OTHER);
-
     bool CheckAndTriggerOldGC(size_t size = 0);
     bool CheckAndTriggerHintGC();
     TriggerGCType SelectGCType() const;
@@ -358,20 +760,22 @@ public:
     {
         return parallelGC_;
     }
-    void ChangeGCParams(bool inBackground);
+    void ChangeGCParams(bool inBackground) override;
+
+    GCStats *GetEcmaGCStats() override;
+    
+    JSObjectResizingStrategy *GetJSObjectResizingStrategy();
+
     void TriggerIdleCollection(int idleMicroSec);
     void NotifyMemoryPressure(bool inHighMemoryPressure);
-    bool CheckCanDistributeTask();
 
-    void WaitRunningTaskFinished();
-
-    void TryTriggerConcurrentMarking();
+    void TryTriggerConcurrentMarking() override;
     void AdjustBySurvivalRate(size_t originalNewSpaceSize);
     void TriggerConcurrentMarking();
     bool CheckCanTriggerConcurrentMarking();
 
-    void TryTriggerIdleCollection();
-    void TryTriggerIncrementalMarking();
+    void TryTriggerIdleCollection() override;
+    void TryTriggerIncrementalMarking() override;
     void CalculateIdleDuration();
     void UpdateWorkManager(WorkManager *workManager);
     /*
@@ -379,20 +783,6 @@ public:
      * Return true if there's ongoing concurrent marking.
      */
     bool CheckOngoingConcurrentMarking();
-
-    /*
-     * Functions invoked during GC.
-     */
-
-    void SetMarkType(MarkType markType)
-    {
-        markType_ = markType;
-    }
-
-    bool IsConcurrentFullMark() const
-    {
-        return markType_ == MarkType::MARK_FULL;
-    }
 
     inline void SwapNewSpace();
     inline void SwapOldSpace();
@@ -436,9 +826,20 @@ public:
         memGrowingtype_ = memGrowingType;
     }
 
-    inline size_t GetCommittedSize() const;
+    size_t CalculateLinearSpaceOverShoot()
+    {
+        return oldSpace_->GetMaximumCapacity() - oldSpace_->GetInitialCapacity();
+    }
 
-    inline size_t GetHeapObjectSize() const;
+    inline size_t GetCommittedSize() const override;
+
+    inline size_t GetHeapObjectSize() const override;
+
+    size_t GetRegionCachedSize() const
+    {
+        return activeSemiSpace_->GetInitialCapacity();
+    }
+
     size_t GetLiveObjectSize() const;
 
     inline uint32_t GetHeapObjectCount() const;
@@ -451,11 +852,6 @@ public:
     size_t GetArrayBufferSize() const;
 
     size_t GetHeapLimitSize() const;
-
-    uint32_t GetMaxMarkTaskCount() const
-    {
-        return maxMarkTaskCount_;
-    }
 
     uint32_t GetMaxEvacuateTaskCount() const
     {
@@ -488,7 +884,7 @@ public:
 
     void ClearIdleTask();
 
-    bool IsEmptyIdleTask() const
+    bool IsEmptyIdleTask()
     {
         return idleTask_ == IdleTaskType::NO_TASK;
     }
@@ -503,7 +899,7 @@ public:
 
     bool ObjectExceedMaxHeapSize() const;
 
-    bool NeedStopCollection();
+    bool NeedStopCollection() override;
 
 #if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
     void StartHeapTracking()
@@ -534,41 +930,26 @@ public:
     template<class Callback>
     void IterateOverObjects(const Callback &cb) const;
 
-    bool IsAlive(TaggedObject *object) const;
-    bool ContainObject(TaggedObject *object) const;
-
     size_t VerifyHeapObjects(VerifyKind verifyKind = VerifyKind::VERIFY_PRE_GC) const;
     size_t VerifyOldToNewRSet(VerifyKind verifyKind = VerifyKind::VERIFY_PRE_GC) const;
     void StatisticHeapObject(TriggerGCType gcType) const;
     void StatisticHeapDetail() const;
     void PrintHeapInfo(TriggerGCType gcType) const;
 
-    bool OldSpaceExceedCapacity(size_t size) const
+    bool OldSpaceExceedCapacity(size_t size) const override
     {
         size_t totalSize = oldSpace_->GetCommittedSize() + hugeObjectSpace_->GetCommittedSize() + size;
         return totalSize >= oldSpace_->GetMaximumCapacity() + oldSpace_->GetOvershootSize() +
                oldSpace_->GetOutOfMemoryOvershootSize();
     }
 
-    bool OldSpaceExceedLimit() const
+    bool OldSpaceExceedLimit() const override
     {
         size_t totalSize = oldSpace_->GetHeapObjectSize() + hugeObjectSpace_->GetHeapObjectSize();
         return totalSize >= oldSpace_->GetInitialCapacity() + oldSpace_->GetOvershootSize();
     }
 
     void AdjustSpaceSizeForAppSpawn();
-
-    // ONLY used for heap verification.
-    bool IsVerifying() const
-    {
-        return isVerifying_;
-    }
-
-    // ONLY used for heap verification.
-    void SetVerifying(bool verifying)
-    {
-        isVerifying_ = verifying;
-    }
 
     static bool ShouldMoveToRoSpace(JSHClass *hclass, TaggedObject *object)
     {
@@ -585,18 +966,10 @@ public:
         fullMarkRequested_ = fullMarkRequested;
     }
 
-    void ShouldThrowOOMError(bool shouldThrow)
-    {
-        shouldThrowOOMError_ = shouldThrow;
-    }
-
     void SetHeapMode(HeapMode mode)
     {
         mode_ = mode;
     }
-
-    void ThrowOutOfMemoryError(size_t size, std::string functionName, bool NonMovableObjNearOOM = false);
-    void ThrowOutOfMemoryErrorForDefault(size_t size, std::string functionName, bool NonMovableObjNearOOM = false);
 
     void IncreaseNativeBindingSize(size_t size);
     void IncreaseNativeBindingSize(JSNativePointer *object);
@@ -622,34 +995,19 @@ public:
 
     void TryTriggerFullMarkByNativeSize();
 
-    void NotifyHeapAliveSizeAfterGC(size_t size)
+    bool IsMarking() const override
     {
-        heapAliveSizeAfterGC_ = size;
+        return thread_->IsMarking();
     }
 
-    size_t GetHeapAliveSizeAfterGC() const
+    bool IsReadyToMark() const override
     {
-        return heapAliveSizeAfterGC_;
-    }
-
-    bool IsInBackground() const
-    {
-        return inBackground_;
+        return thread_->IsReadyToMark();
     }
 
     bool IsYoungGC() const
     {
         return gcType_ == TriggerGCType::YOUNG_GC;
-    }
-
-    bool GetOldGCRequested()
-    {
-        return oldGCRequested_;
-    }
-
-    TriggerGCType GetGCType() const
-    {
-        return gcType_;
     }
 
     void CheckNonMovableSpaceOOM();
@@ -664,15 +1022,10 @@ private:
     static constexpr int BACKGROUND_GROW_LIMIT = 2_MB;
     // Threadshold that HintGC will actually trigger GC.
     static constexpr double SURVIVAL_RATE_THRESHOLD = 0.5;
-    void FatalOutOfMemoryError(size_t size, std::string functionName);
     void RecomputeLimits();
     void AdjustOldSpaceLimit();
     // record lastRegion for each space, which will be used in ReclaimRegions()
     void PrepareRecordRegionsForReclaim();
-    void IncreaseTaskCount();
-    void ReduceTaskCount();
-    void WaitClearTaskFinished();
-    void InvokeWeakNodeNativeFinalizeCallback();
     void DumpHeapSnapshotBeforeOOM(bool isFullGC = true);
     inline void ReclaimRegions(TriggerGCType gcType);
     inline size_t CalculateCommittedCacheSize();
@@ -806,65 +1159,37 @@ private:
     // Work manager managing the tasks mostly generated in the GC mark phase.
     WorkManager *workManager_ {nullptr};
 
-    MarkType markType_ {MarkType::MARK_YOUNG};
-
     bool parallelGC_ {true};
     bool fullGCRequested_ {false};
-    bool oldGCRequested_ {false};
     bool fullMarkRequested_ {false};
     bool oldSpaceLimitAdjusted_ {false};
-    bool shouldThrowOOMError_ {false};
-    bool runningNativeFinalizeCallbacks_ {false};
     bool enableIdleGC_ {false};
     HeapMode mode_ { HeapMode::NORMAL };
-
-    size_t globalSpaceAllocLimit_ {0};
-    size_t promotedSize_ {0};
-    size_t semiSpaceCopiedSize_ {0};
-    size_t nativeBindingSize_{0};
-    size_t globalSpaceNativeLimit_ {0};
-    MemGrowingType memGrowingtype_ {MemGrowingType::HIGH_THROUGHPUT};
-    TriggerGCType gcType_ {TriggerGCType::YOUNG_GC};
-
-    bool clearTaskFinished_ {true};
-    Mutex waitClearTaskFinishedMutex_;
-    ConditionVariable waitClearTaskFinishedCV_;
-    uint32_t runningTaskCount_ {0};
-    // parallel marker task number.
-    uint32_t maxMarkTaskCount_ {0};
-    // parallel evacuator task number.
-    uint32_t maxEvacuateTaskCount_ {0};
-    Mutex finishColdStartMutex_;
-    Mutex waitTaskFinishedMutex_;
-    ConditionVariable waitTaskFinishedCV_;
 
     /*
      * The memory controller providing memory statistics (by allocations and coleections),
      * which is used for GC heuristics.
      */
     MemController *memController_ {nullptr};
+    size_t promotedSize_ {0};
+    size_t semiSpaceCopiedSize_ {0};
+    size_t nativeBindingSize_{0};
+    size_t globalSpaceNativeLimit_ {0};
+    MemGrowingType memGrowingtype_ {MemGrowingType::HIGH_THROUGHPUT};
 
-    // Region allocators.
-    NativeAreaAllocator *nativeAreaAllocator_ {nullptr};
-    HeapRegionAllocator *heapRegionAllocator_ {nullptr};
+    // parallel evacuator task number.
+    uint32_t maxEvacuateTaskCount_ {0};
+    Mutex waitTaskFinishedMutex_;
+    ConditionVariable waitTaskFinishedCV_;
 
     // Application status
-    bool inBackground_ {false};
 
     IdleNotifyStatusCallback notifyIdleStatusCallback {nullptr};
-    std::atomic<AppSensitiveStatus> sensitiveStatus_ {AppSensitiveStatus::NORMAL_SCENE};
-    bool onStartupEvent_ {false};
-    bool onSerializeEvent_ {false};
 
     IdleTaskType idleTask_ {IdleTaskType::NO_TASK};
     float idlePredictDuration_ {0.0f};
-    size_t heapAliveSizeAfterGC_ {0};
     double idleTaskFinishTime_ {0.0};
     int32_t recursionDepth_ {0};
-
-    // ONLY used for heap verification.
-    bool shouldVerifyHeap_ {false};
-    bool isVerifying_ {false};
 
     /*
      * The listeners which are called at the end of GC

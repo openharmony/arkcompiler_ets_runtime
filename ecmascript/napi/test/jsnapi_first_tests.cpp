@@ -57,7 +57,9 @@
 #include "ecmascript/tests/test_helper.h"
 #include "ecmascript/tagged_tree.h"
 #include "ecmascript/weak_vector.h"
+#include "ecmascript/checkpoint/thread_state_transition.h"
 #include "gtest/gtest.h"
+#include "jsnapi_expo.h"
 
 using namespace panda;
 using namespace panda::ecmascript;
@@ -87,10 +89,12 @@ public:
         ASSERT_TRUE(vm_ != nullptr) << "Cannot create Runtime";
         thread_ = vm_->GetJSThread();
         vm_->SetEnableForceGC(true);
+        thread_->ManagedCodeBegin();
     }
 
     void TearDown() override
     {
+        thread_->ManagedCodeEnd();
         vm_->SetEnableForceGC(false);
         JSNApi::DestroyJSVM(vm_);
     }
@@ -1084,6 +1088,7 @@ HWTEST_F_L0(JSNApiTests, OOMError)
 
 HWTEST_F_L0(JSNApiTests, InheritPrototype_001)
 {
+    ecmascript::ThreadManagedScope managedScope(vm_->GetJSThread());
     LocalScope scope(vm_);
     JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
     // new with Builtins::Set Prototype
@@ -1147,6 +1152,7 @@ HWTEST_F_L0(JSNApiTests, InheritPrototype_001)
 
 HWTEST_F_L0(JSNApiTests, InheritPrototype_002)
 {
+    ecmascript::ThreadManagedScope managedScope(vm_->GetJSThread());
     LocalScope scope(vm_);
     JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
     // new with Builtins::weakSet Prototype
@@ -1181,6 +1187,7 @@ HWTEST_F_L0(JSNApiTests, InheritPrototype_002)
 
 HWTEST_F_L0(JSNApiTests, InheritPrototype_003)
 {
+    ecmascript::ThreadManagedScope managedScope(vm_->GetJSThread());
     LocalScope scope(vm_);
     JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
     auto factory = vm_->GetFactory();
@@ -1220,6 +1227,7 @@ HWTEST_F_L0(JSNApiTests, InheritPrototype_003)
 
 HWTEST_F_L0(JSNApiTests, InheritPrototype_004)
 {
+    ecmascript::ThreadManagedScope managedScope(vm_->GetJSThread());
     LocalScope scope(vm_);
     JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
     auto factory = vm_->GetFactory();
@@ -1291,13 +1299,14 @@ HWTEST_F_L0(JSNApiTests, ClassFunction)
     JSTaggedValue accessor =
         JSHandle<JSFunction>(clsObj)->GetPropertyInlinedProps(JSFunction::CLASS_PROTOTYPE_INLINE_PROPERTY_INDEX);
     ASSERT_TRUE(accessor.IsInternalAccessor());
-    
+
     accessor = JSHandle<JSFunction>(clsObj)->GetPropertyInlinedProps(JSFunction::LENGTH_INLINE_PROPERTY_INDEX);
     ASSERT_TRUE(!accessor.IsUndefinedOrNull());
 }
 
 HWTEST_F_L0(JSNApiTests, WeakRefSecondPassCallback)
 {
+    ecmascript::ThreadManagedScope managedScope(vm_->GetJSThread());
     LocalScope scope(vm_);
     Local<ObjectRef> object1 = ObjectRef::New(vm_);
     Global<ObjectRef> globalObject1(vm_, object1);
@@ -1335,6 +1344,7 @@ HWTEST_F_L0(JSNApiTests, WeakRefSecondPassCallback)
  */
 HWTEST_F_L0(JSNApiTests, TriggerGC_OLD_GC)
 {
+    ecmascript::ThreadManagedScope managedScope(vm_->GetJSThread());
     vm_->SetEnableForceGC(false);
     auto globalEnv = vm_->GetGlobalEnv();
     auto factory = vm_->GetFactory();
@@ -1370,13 +1380,17 @@ HWTEST_F_L0(JSNApiTests, TriggerGC_OLD_GC)
  */
 HWTEST_F_L0(JSNApiTests, addWorker_DeleteWorker)
 {
-    JSRuntimeOptions option;
-    EcmaVM *workerVm = JSNApi::CreateEcmaVM(option);
-    JSNApi::AddWorker(vm_, workerVm);
-    bool hasDeleted = JSNApi::DeleteWorker(vm_, workerVm);
-    EXPECT_TRUE(hasDeleted);
+    std::thread t1([&]() {
+        JSRuntimeOptions option;
+        EcmaVM *workerVm = JSNApi::CreateEcmaVM(option);
+        JSNApi::AddWorker(vm_, workerVm);
+        bool hasDeleted = JSNApi::DeleteWorker(vm_, workerVm);
+        JSNApi::DestroyJSVM(workerVm);
+        EXPECT_TRUE(hasDeleted);
+    });
+    t1.join();
 
-    hasDeleted = JSNApi::DeleteWorker(vm_, nullptr);
+    bool hasDeleted = JSNApi::DeleteWorker(vm_, nullptr);
     EXPECT_FALSE(hasDeleted);
 }
 
@@ -2036,12 +2050,15 @@ HWTEST_F_L0(JSNApiTests, FunctionRef_New_GetFunctionPrototype)
 HWTEST_F_L0(JSNApiTests, PrintExceptionInfo)
 {
     LocalScope scope(vm_);
-    RuntimeOption option;
-    option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
-    vm_ = JSNApi::CreateJSVM(option);
-    ASSERT_TRUE(vm_ != nullptr) << "Cannot create Runtime";
-    thread_ = vm_->GetJSThread();
-    JSNApi::PrintExceptionInfo(vm_);
+    std::thread t1([&](){
+        RuntimeOption option;
+        option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
+        auto *vm = JSNApi::CreateJSVM(option);
+        ASSERT_TRUE(vm != nullptr) << "Cannot create Runtime";
+        JSNApi::PrintExceptionInfo(vm);
+        JSNApi::DestroyJSVM(vm);
+    });
+    t1.join();
 }
 
 /*

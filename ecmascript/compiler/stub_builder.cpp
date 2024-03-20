@@ -114,7 +114,7 @@ void StubBuilder::LoopEnd(Label *loopHead)
     env_->SetCurrentLabel(nullptr);
 }
 
-void StubBuilder::MatchTrackType(GateRef trackType, GateRef value, Label *executeSetProp, Label *typeMismatch)
+void StubBuilder::MatchFieldType(GateRef fieldType, GateRef value, Label *executeSetProp, Label *typeMismatch)
 {
     auto *env = GetEnvironment();
     Label isNumber(env);
@@ -124,11 +124,13 @@ void StubBuilder::MatchTrackType(GateRef trackType, GateRef value, Label *execut
     Label isString(env);
     Label checkJSShared(env);
     Label isJSShared(env);
+    Label checkBigInt(env);
+    Label isBigInt(env);
     Label checkJSNone(env);
     Label isJSNone(env);
     Label exit(env);
     DEFVARIABLE(result, VariableType::BOOL(), False());
-    BRANCH(Equal(trackType, Int32(static_cast<int32_t>(TrackType::NUMBER))), &isNumber, &checkBoolean);
+    BRANCH(Equal(fieldType, Int32(static_cast<int32_t>(SharedFieldType::NUMBER))), &isNumber, &checkBoolean);
     Bind(&isNumber);
     {
         result = TaggedIsNumber(value);
@@ -136,7 +138,7 @@ void StubBuilder::MatchTrackType(GateRef trackType, GateRef value, Label *execut
     }
     Bind(&checkBoolean);
     {
-        BRANCH(Equal(trackType, Int32(static_cast<int32_t>(TrackType::BOOLEAN))), &isBoolean, &checkString);
+        BRANCH(Equal(fieldType, Int32(static_cast<int32_t>(SharedFieldType::BOOLEAN))), &isBoolean, &checkString);
         Bind(&isBoolean);
         {
             result = TaggedIsBoolean(value);
@@ -145,7 +147,7 @@ void StubBuilder::MatchTrackType(GateRef trackType, GateRef value, Label *execut
     }
     Bind(&checkString);
     {
-        BRANCH(Equal(trackType, Int32(static_cast<int32_t>(TrackType::STRING))), &isString, &checkJSShared);
+        BRANCH(Equal(fieldType, Int32(static_cast<int32_t>(SharedFieldType::STRING))), &isString, &checkJSShared);
         Bind(&isString);
         {
             result = BoolOr(TaggedIsString(value), TaggedIsNull(value));
@@ -154,16 +156,25 @@ void StubBuilder::MatchTrackType(GateRef trackType, GateRef value, Label *execut
     }
     Bind(&checkJSShared);
     {
-        BRANCH(Equal(trackType, Int32(static_cast<int32_t>(TrackType::SENDABLE))), &isJSShared, &checkJSNone);
+        BRANCH(Equal(fieldType, Int32(static_cast<int32_t>(SharedFieldType::SENDABLE))), &isJSShared, &checkBigInt);
         Bind(&isJSShared);
         {
             result = BoolOr(TaggedIsShared(value), TaggedIsNull(value));
             Jump(&exit);
         }
     }
+    Bind(&checkBigInt);
+    {
+        BRANCH(Equal(fieldType, Int32(static_cast<int32_t>(SharedFieldType::BIG_INT))), &isBigInt, &checkJSNone);
+        Bind(&isBigInt);
+        {
+            result = TaggedIsBigInt(value);
+            Jump(&exit);
+        }
+    }
     Bind(&checkJSNone);
     {
-        BRANCH(Equal(trackType, Int32(static_cast<int32_t>(TrackType::NONE))), &isJSNone, &exit);
+        BRANCH(Equal(fieldType, Int32(static_cast<int32_t>(SharedFieldType::NONE))), &isJSNone, &exit);
         Bind(&isJSNone);
         {
             // bypass none type
@@ -399,7 +410,6 @@ GateRef StubBuilder::IsMatchInTransitionDictionary(GateRef element, GateRef key,
     return BoolAnd(Equal(element, key), Int32Equal(metaData, attr));
 }
 
-// metaData is int32 type
 GateRef StubBuilder::FindEntryFromTransitionDictionary(GateRef glue, GateRef elements, GateRef key, GateRef metaData)
 {
     auto env = GetEnvironment();
@@ -475,9 +485,9 @@ GateRef StubBuilder::FindEntryFromTransitionDictionary(GateRef glue, GateRef ele
                     {
                         Label isMatch(env);
                         Label notMatch(env);
-                        BRANCH(
-                            IsMatchInTransitionDictionary(element, key, metaData,
-                                GetAttributesFromDictionary<TransitionsDictionary>(elements, *entry)),
+                        BRANCH(IsMatchInTransitionDictionary(element, key, metaData,
+                            // metaData is int32 type
+                            TruncInt64ToInt32(GetAttributesFromDictionary<TransitionsDictionary>(elements, *entry))),
                             &isMatch, &notMatch);
                         {
                             Bind(&isMatch);
@@ -837,7 +847,7 @@ void StubBuilder::JSHClassAddProperty(GateRef glue, GateRef receiver, GateRef ke
               IntToTaggedInt(inlineProps) });
         CopyAllHClass(glue, newJshclass, hclass);
         CallRuntime(glue, RTSTUB_ID(UpdateLayOutAndAddTransition),
-                    { hclass, newJshclass, key, IntToTaggedInt(attr) });
+                    { hclass, newJshclass, key, Int64ToTaggedInt(attr) });
 #if ECMASCRIPT_ENABLE_IC
         NotifyHClassChanged(glue, hclass, newJshclass);
 #endif
@@ -889,7 +899,7 @@ GateRef StubBuilder::AddPropertyByName(GateRef glue, GateRef receiver, GateRef k
     }
     Bind(&afterCtorCon);
     // 0x111 : default attribute for property: writable, enumerable, configurable
-    DEFVARIABLE(attr, VariableType::INT32(), propertyAttributes);
+    DEFVARIABLE(attr, VariableType::INT64(), propertyAttributes);
     GateRef numberOfProps = GetNumberOfPropsFromHClass(hclass);
     GateRef inlinedProperties = GetInlinedPropertiesFromHClass(hclass);
     Label hasUnusedInProps(env);
@@ -909,7 +919,7 @@ GateRef StubBuilder::AddPropertyByName(GateRef glue, GateRef receiver, GateRef k
             GateRef newHclass = LoadHClass(receiver);
             GateRef newLayoutInfo = GetLayoutFromHClass(newHclass);
             GateRef offset = GetInlinedPropOffsetFromHClass(hclass, numberOfProps);
-            attr = GetInt32OfTInt(GetPropAttrFromLayoutInfo(newLayoutInfo, numberOfProps));
+            attr = GetPropAttrFromLayoutInfo(newLayoutInfo, numberOfProps);
             SetValueWithAttr(glue, receiver, offset, key, value, *attr);
             result = Undefined();
             Jump(&exit);
@@ -941,7 +951,7 @@ GateRef StubBuilder::AddPropertyByName(GateRef glue, GateRef receiver, GateRef k
         Bind(&isDictMode);
         {
             GateRef res = CallRuntime(glue, RTSTUB_ID(NameDictPutIfAbsent),
-                                      {receiver, *array, key, value, IntToTaggedInt(*attr), TaggedFalse()});
+                                      {receiver, *array, key, value, Int64ToTaggedInt(*attr), TaggedFalse()});
             SetPropertiesArray(VariableType::JS_POINTER(), glue, receiver, res);
             Jump(&exit);
         }
@@ -960,7 +970,7 @@ GateRef StubBuilder::AddPropertyByName(GateRef glue, GateRef receiver, GateRef k
                     attr = SetDictionaryOrderFieldInPropAttr(*attr,
                         Int32(PropertyAttributes::MAX_FAST_PROPS_CAPACITY));
                     GateRef res = CallRuntime(glue, RTSTUB_ID(NameDictPutIfAbsent),
-                        { receiver, *array, key, value, IntToTaggedInt(*attr), TaggedTrue() });
+                        { receiver, *array, key, value, Int64ToTaggedInt(*attr), TaggedTrue() });
                     SetPropertiesArray(VariableType::JS_POINTER(), glue, receiver, res);
                     result = Undefined();
                     Jump(&exit);
@@ -1234,11 +1244,22 @@ void StubBuilder::SetValueWithBarrier(GateRef glue, GateRef obj, GateRef offset,
     Label exit(env);
     Label isVailedIndex(env);
     Label notValidIndex(env);
-
+    Label shareBarrier(env);
+    Label shareBarrierExit(env);
     // ObjectAddressToRange function may cause obj is not an object. GC may not mark this obj.
     GateRef objectRegion = ObjectAddressToRange(obj);
     GateRef valueRegion = ObjectAddressToRange(value);
     GateRef slotAddr = PtrAdd(TaggedCastToIntPtr(obj), offset);
+    GateRef objectNotInShare = BoolNot(InSharedHeap(objectRegion));
+    GateRef valueRegionInShare = InSharedSweepableSpace(valueRegion);
+    BRANCH(BoolAnd(objectNotInShare, valueRegionInShare), &shareBarrier, &shareBarrierExit);
+    Bind(&shareBarrier);
+    {
+        // todo(lukai) fastpath
+        CallNGCRuntime(glue, RTSTUB_ID(InsertLocalToShareRSet), { glue, obj, offset });
+        Jump(&shareBarrierExit);
+    }
+    Bind(&shareBarrierExit);
     GateRef objectNotInYoung = BoolNot(InYoungGeneration(objectRegion));
     GateRef valueRegionInYoung = InYoungGeneration(valueRegion);
     BRANCH(BoolAnd(objectNotInYoung, valueRegionInYoung), &isVailedIndex, &notValidIndex);
@@ -1719,6 +1740,7 @@ GateRef StubBuilder::LoadICWithHandler(
     Label handlerIsPrototypeHandler(env);
     Label handlerNotPrototypeHandler(env);
     Label cellHasChanged(env);
+    Label cellNotUndefined(env);
     Label loopHead(env);
     Label loopEnd(env);
     DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
@@ -1775,6 +1797,8 @@ GateRef StubBuilder::LoadICWithHandler(
         Bind(&handlerIsPrototypeHandler);
         {
             GateRef cellValue = GetProtoCell(*handler);
+            BRANCH(TaggedIsUndefined(cellValue), &loopEnd, &cellNotUndefined);
+            Bind(&cellNotUndefined);
             BRANCH(GetHasChanged(cellValue), &cellHasChanged, &loopEnd);
             Bind(&cellHasChanged);
             {
@@ -2073,6 +2097,7 @@ GateRef StubBuilder::StoreICWithHandler(GateRef glue, GateRef receiver, GateRef 
     Label aotHandlerInfoNotField(env);
     Label cellHasChanged(env);
     Label cellNotChanged(env);
+    Label cellNotUndefined(env);
     Label aotCellNotChanged(env);
     Label loopHead(env);
     Label loopEnd(env);
@@ -2099,8 +2124,8 @@ GateRef StubBuilder::StoreICWithHandler(GateRef glue, GateRef receiver, GateRef 
                 BRANCH(IsStoreShared(handlerInfo), &isShared, &notShared);
                 Bind(&isShared);
                 {
-                    GateRef trackType = GetTrackTypeFromHandler(handlerInfo);
-                    MatchTrackType(&result, glue, trackType, value, &prepareIntHandlerLoop, &exit);
+                    GateRef field = GetFieldTypeFromHandler(handlerInfo);
+                    MatchFieldType(&result, glue, field, value, &prepareIntHandlerLoop, &exit);
                     Bind(&prepareIntHandlerLoop);
                     {
                         handler = IntToTaggedPtr(ClearSharedStoreKind(handlerInfo));
@@ -2151,6 +2176,8 @@ GateRef StubBuilder::StoreICWithHandler(GateRef glue, GateRef receiver, GateRef 
         Bind(&handlerIsPrototypeHandler);
         {
             GateRef cellValue = GetProtoCell(*handler);
+            BRANCH(TaggedIsUndefined(cellValue), &loopEnd, &cellNotUndefined);
+            Bind(&cellNotUndefined);
             BRANCH(TaggedIsNull(cellValue), &cellHasChanged, &cellNotNull);
             Bind(&cellNotNull);
             {
@@ -2378,7 +2405,7 @@ GateRef StubBuilder::GetAttributesFromDictionary(GateRef elements, GateRef entry
     GateRef attributesIndex =
         Int32Add(arrayIndex, Int32(DictionaryT::ENTRY_DETAILS_INDEX));
     auto attrValue = GetValueFromTaggedArray(elements, attributesIndex);
-    return GetInt32OfTInt(attrValue);
+    return GetInt64OfTInt(attrValue);
 }
 
 template<typename DictionaryT>
@@ -2439,7 +2466,7 @@ inline void StubBuilder::UpdateValueAndAttributes(GateRef glue, GateRef elements
     GateRef attroffset =
         PtrMul(ZExtInt32ToPtr(attributesIndex), IntPtr(JSTaggedValue::TaggedTypeSize()));
     GateRef dataOffset = PtrAdd(attroffset, IntPtr(TaggedArray::DATA_OFFSET));
-    Store(VariableType::INT64(), glue, elements, dataOffset, IntToTaggedInt(attr));
+    Store(VariableType::INT64(), glue, elements, dataOffset, Int64ToTaggedInt(attr));
 }
 
 template<typename DictionaryT>
@@ -2650,7 +2677,7 @@ GateRef StubBuilder::GetPropertyByValue(GateRef glue, GateRef receiver, GateRef 
                         Label notFind(env);
                         Label find(env);
                         // if key can't find in stringtabele, key is not propertyname for a object
-                        GateRef res = CallNGCRuntime(glue, RTSTUB_ID(TryGetInternString), { glue, *key });
+                        GateRef res = CallRuntime(glue, RTSTUB_ID(TryGetInternString), { *key });
                         BRANCH(TaggedIsHole(res), &notFind, &find);
                         Bind(&notFind);
                         {
@@ -2754,8 +2781,7 @@ GateRef StubBuilder::GetPropertyByName(GateRef glue, GateRef receiver, GateRef k
                 Bind(&hasEntry);
                 {
                     // PropertyAttributes attr(layoutInfo->GetAttr(entry))
-                    GateRef propAttr = GetPropAttrFromLayoutInfo(layOutInfo, entryA);
-                    GateRef attr = GetInt32OfTInt(propAttr);
+                    GateRef attr = GetPropAttrFromLayoutInfo(layOutInfo, entryA);
                     GateRef value = JSObjectGetProperty(*holder, hclass, attr);
                     Label isAccessor(env);
                     Label notAccessor(env);
@@ -2880,7 +2906,7 @@ void StubBuilder::TransitionForRepChange(GateRef glue, GateRef receiver, GateRef
           IntToTaggedInt(inlineProps) });
     CopyAllHClass(glue, newJshclass, hclass);
     CallRuntime(glue, RTSTUB_ID(CopyAndUpdateObjLayout),
-                { hclass, newJshclass, key, IntToTaggedInt(attr) });
+                { hclass, newJshclass, key, Int64ToTaggedInt(attr) });
 #if ECMASCRIPT_ENABLE_IC
     NotifyHClassChanged(glue, hclass, newJshclass);
 #endif
@@ -2967,7 +2993,7 @@ GateRef StubBuilder::AddElementInternal(GateRef glue, GateRef receiver, GateRef 
         Bind(&isDicMode);
         {
             GateRef res = CallRuntime(glue, RTSTUB_ID(NumberDictionaryPut),
-                { receiver, elements, IntToTaggedInt(index), value, IntToTaggedInt(attr), TaggedFalse() });
+                { receiver, elements, IntToTaggedInt(index), value, Int64ToTaggedInt(attr), TaggedFalse() });
             SetElementsArray(VariableType::JS_POINTER(), glue, receiver, res);
             result = True();
             Jump(&exit);
@@ -2987,7 +3013,7 @@ GateRef StubBuilder::AddElementInternal(GateRef glue, GateRef receiver, GateRef 
                 Bind(&isTransToDict);
                 {
                     GateRef res = CallRuntime(glue, RTSTUB_ID(NumberDictionaryPut),
-                        { receiver, elements, IntToTaggedInt(index), value, IntToTaggedInt(attr), TaggedTrue() });
+                        { receiver, elements, IntToTaggedInt(index), value, Int64ToTaggedInt(attr), TaggedTrue() });
                     SetElementsArray(VariableType::JS_POINTER(), glue, receiver, res);
                     result = True();
                     Jump(&exit);
@@ -3155,7 +3181,7 @@ GateRef StubBuilder::IsArrayLengthWritable(GateRef glue, GateRef receiver)
         }
         Bind(&isNegtiveOne);
         {
-            GateRef attr1 = Int32(PropertyAttributes::GetDefaultAttributes());
+            GateRef attr1 = Int64(PropertyAttributes::GetDefaultAttributes());
             result = IsWritable(attr1);
             Jump(&exit);
         }
@@ -3163,8 +3189,7 @@ GateRef StubBuilder::IsArrayLengthWritable(GateRef glue, GateRef receiver)
     Bind(&notDicMode);
     {
         GateRef layoutInfo = GetLayoutFromHClass(hclass);
-        GateRef propAttr = GetPropAttrFromLayoutInfo(layoutInfo, Int32(JSArray::LENGTH_INLINE_PROPERTY_INDEX));
-        GateRef attr = GetInt32OfTInt(propAttr);
+        GateRef attr = GetPropAttrFromLayoutInfo(layoutInfo, Int32(JSArray::LENGTH_INLINE_PROPERTY_INDEX));
         result = IsWritable(attr);
         Jump(&exit);
     }
@@ -3198,7 +3223,7 @@ GateRef StubBuilder::FindTransitions(GateRef glue, GateRef receiver, GateRef hcl
             GateRef last = Int32Sub(propNums, Int32(1));
             GateRef layoutInfo = GetLayoutFromHClass(transitionHClass);
             GateRef cachedKey = GetKeyFromLayoutInfo(layoutInfo, last);
-            GateRef cachedAttr = GetInt32OfTInt(GetPropAttrFromLayoutInfo(layoutInfo, last));
+            GateRef cachedAttr = GetPropAttrFromLayoutInfo(layoutInfo, last);
             GateRef cachedMetaData = GetPropertyMetaDataFromAttr(cachedAttr);
             Label keyMatch(env);
             Label isMatch(env);
@@ -3455,8 +3480,8 @@ GateRef StubBuilder::SetPropertyByIndex(GateRef glue, GateRef receiver, GateRef 
     {
         Label success(env);
         Label failed(env);
-        BRANCH(AddElementInternal(glue, receiver, index, value,
-                                  Int32(PropertyAttributes::GetDefaultAttributes())), &success, &failed);
+        BRANCH(AddElementInternal(glue, receiver, index, value, Int64(PropertyAttributes::GetDefaultAttributes())),
+               &success, &failed);
         Bind(&success);
         {
             returnValue = Undefined();
@@ -3582,8 +3607,7 @@ GateRef StubBuilder::SetPropertyByName(GateRef glue, GateRef receiver, GateRef k
             Bind(&hasEntry);
             {
                 // PropertyAttributes attr(layoutInfo->GetAttr(entry))
-                GateRef propAttr = GetPropAttrFromLayoutInfo(layOutInfo, entry);
-                GateRef attr = GetInt32OfTInt(propAttr);
+                GateRef attr = GetPropAttrFromLayoutInfo(layOutInfo, entry);
                 Label isAccessor(env);
                 Label notAccessor(env);
                 BRANCH(IsAccessor(attr), &isAccessor, &notAccessor);
@@ -3764,8 +3788,7 @@ GateRef StubBuilder::SetPropertyByName(GateRef glue, GateRef receiver, GateRef k
     {
         GateRef receiverHClass = LoadHClass(receiver);
         GateRef receiverLayoutInfo = GetLayoutFromHClass(receiverHClass);
-        GateRef holePropAttr = GetPropAttrFromLayoutInfo(receiverLayoutInfo, *receiverHoleEntry);
-        GateRef holeAttr = GetInt32OfTInt(holePropAttr);
+        GateRef holeAttr = GetPropAttrFromLayoutInfo(receiverLayoutInfo, *receiverHoleEntry);
         JSObjectSetProperty(glue, receiver, receiverHClass, holeAttr, key, value);
         ProfilerStubBuilder(env).UpdatePropAttrWithValue(
             glue, jsType, receiverLayoutInfo, holeAttr, *receiverHoleEntry, value, callback);
@@ -3787,7 +3810,7 @@ GateRef StubBuilder::SetPropertyByName(GateRef glue, GateRef receiver, GateRef k
     Bind(&extensible);
     {
         result = AddPropertyByName(glue, receiver, key, value,
-            Int32(PropertyAttributes::GetDefaultAttributes()), callback);
+            Int64(PropertyAttributes::GetDefaultAttributes()), callback);
         Jump(&exit);
     }
     Bind(&exit);
@@ -3864,7 +3887,7 @@ GateRef StubBuilder::SetPropertyByValue(GateRef glue, GateRef receiver, GateRef 
                     {
                         Label notFind(env);
                         Label find(env);
-                        GateRef res = CallNGCRuntime(glue, RTSTUB_ID(TryGetInternString), { glue, *varKey });
+                        GateRef res = CallRuntime(glue, RTSTUB_ID(TryGetInternString), { *varKey });
                         BRANCH(TaggedIsHole(res), &notFind, &find);
                         Bind(&notFind);
                         {
@@ -4335,7 +4358,7 @@ void StubBuilder::FastSetPropertyByName(GateRef glue, GateRef obj, GateRef key, 
             {
                 Label notFind(env);
                 Label find(env);
-                GateRef res = CallNGCRuntime(glue, RTSTUB_ID(TryGetInternString), { glue, *keyVar });
+                GateRef res = CallRuntime(glue, RTSTUB_ID(TryGetInternString), { *keyVar });
                 BRANCH(TaggedIsHole(res), &notFind, &find);
                 Bind(&notFind);
                 {
@@ -5964,8 +5987,9 @@ GateRef StubBuilder::GetStringFromConstPool(GateRef glue, GateRef constpool, Gat
     return env_->GetBuilder()->GetObjectFromConstPool(glue, hirGate, constpool, module, index, ConstPoolType::STRING);
 }
 
-GateRef StubBuilder::GetMethodFromConstPool(GateRef glue, GateRef constpool, GateRef module, GateRef index)
+GateRef StubBuilder::GetMethodFromConstPool(GateRef glue, GateRef constpool, GateRef index)
 {
+    GateRef module = Circuit::NullGate();
     GateRef hirGate = Circuit::NullGate();
     return env_->GetBuilder()->GetObjectFromConstPool(glue, hirGate, constpool, module, index, ConstPoolType::METHOD);
 }
@@ -6975,7 +6999,7 @@ GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNu
             BRANCH(Int64LessThanOrEqual(expectedArgc, realNumArgs), &fastCall, &fastCallBridge);
             Bind(&fastCall);
             {
-                GateRef code = GetAotCodeAddr(method);
+                GateRef code = GetAotCodeAddr(func);
                 switch (mode) {
                     case JSCallMode::CALL_THIS_ARG0:
                         thisValue = data[0];
@@ -7151,7 +7175,7 @@ GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNu
             BRANCH(Int64LessThanOrEqual(expectedArgc, realNumArgs), &slowCall, &slowCallBridge);
             Bind(&slowCall);
             {
-                GateRef code = GetAotCodeAddr(method);
+                GateRef code = GetAotCodeAddr(func);
                 switch (mode) {
                     case JSCallMode::CALL_THIS_ARG0:
                         thisValue = data[0];

@@ -221,14 +221,16 @@ void AotCompilerPreprocessor::GenerateGlobalTypes(const CompilationOptions &cOpt
             typeRecorder.BindPgoTypeToGateType(jsPandaFile, tsManager, methodLiteral);
 
             bcInfo->IterateInfoByType(methodOffset, PGOBCInfo::Type::ARRAY_LITERAL,
-                                      [this, tsManager, ptManager,
-                                       &recordName]([[maybe_unused]] const uint32_t bcIdx,
-                                                    [[maybe_unused]] const uint32_t bcOffset, const uint32_t cpIdx) {
+                                      [this, tsManager, ptManager, &recordName]([[maybe_unused]] const uint32_t bcIdx,
+                                            [[maybe_unused]] const uint32_t bcOffset, const uint32_t cpIdx) {
                                             JSHandle<ConstantPool> constpoolHandle(tsManager->GetConstantPool());
                                             JSThread *thread = vm_->GetJSThread();
+                                            JSTaggedValue unsharedCp = thread->GetCurrentEcmaContext()
+                                                ->FindUnsharedConstpool(constpoolHandle.GetTaggedValue());
+                                            ASSERT(ConstantPool::CheckUnsharedConstpool(unsharedCp));
                                             JSTaggedValue arr =
                                                 ConstantPool::GetLiteralFromCache<ConstPoolType::ARRAY_LITERAL>(
-                                                    thread, constpoolHandle.GetTaggedValue(), cpIdx, recordName);
+                                                    thread, unsharedCp, cpIdx, recordName);
                                             JSHandle<JSArray> arrayHandle(thread, arr);
                                             panda_file::File::EntityId id =
                                                 ConstantPool::GetIdFromCache(constpoolHandle.GetTaggedValue(), cpIdx);

@@ -657,11 +657,12 @@ void TypedHCRLowering::LowerPrimitiveToNumber(GateRef dst, GateRef src, GateType
     acc_.ReplaceGate(dst, builder_.GetState(), builder_.GetDepend(), *result);
 }
 
-GateRef TypedHCRLowering::LoadFromConstPool(GateRef constPool, size_t index, size_t valVecType)
+GateRef TypedHCRLowering::LoadFromConstPool(GateRef constpool, size_t index, size_t valVecType)
 {
-    GateRef constPoolSize = builder_.GetLengthOfTaggedArray(constPool);
+    GateRef unsharedConstpool = builder_.GetUnsharedConstpool(constpool);
+    GateRef constPoolSize = builder_.GetLengthOfTaggedArray(unsharedConstpool);
     GateRef valVecIndex = builder_.Int32Sub(constPoolSize, builder_.Int32(valVecType));
-    GateRef valVec = builder_.GetValueFromTaggedArray(constPool, valVecIndex);
+    GateRef valVec = builder_.GetValueFromTaggedArray(unsharedConstpool, valVecIndex);
     return builder_.LoadFromTaggedArray(valVec, index);
 }
 
@@ -1630,7 +1631,9 @@ void TypedHCRLowering::LowerLookupHolder(GateRef gate)
     GateRef receiver = acc_.GetValueIn(gate, 0);
     GateRef holderHCIndex = acc_.GetValueIn(gate, 1);
     GateRef constPool = acc_.GetValueIn(gate, 2);  // 2: constpool
-    GateRef holderHC = builder_.LoadHClassFromConstpool(constPool, acc_.GetConstantValue(holderHCIndex));
+    GateRef unsharedConstpool = builder_.GetUnsharedConstpool(constPool);
+    GateRef holderHC = builder_.LoadHClassFromUnsharedConstpool(unsharedConstpool,
+        acc_.GetConstantValue(holderHCIndex));
     DEFVALUE(holder, (&builder_), VariableType::JS_ANY(), receiver);
     Label loopHead(&builder_);
     Label exit(&builder_);
@@ -1698,7 +1701,8 @@ void TypedHCRLowering::LowerPrototypeCheck(GateRef gate)
     GateRef frameState = acc_.GetFrameState(gate);
 
     uint32_t hclassIndex = acc_.GetHClassIndex(gate);
-    auto expectedReceiverHC = builder_.LoadHClassFromConstpool(constPool, hclassIndex);
+    GateRef unsharedConstpool = builder_.GetUnsharedConstpool(constPool);
+    auto expectedReceiverHC = builder_.LoadHClassFromUnsharedConstpool(unsharedConstpool, hclassIndex);
 
     auto prototype = builder_.LoadConstOffset(VariableType::JS_ANY(), expectedReceiverHC, JSHClass::PROTOTYPE_OFFSET);
     auto protoHClass = builder_.LoadHClass(prototype);
@@ -2042,7 +2046,7 @@ GateRef TypedHCRLowering::AllocateLineString(GateRef glue, GateRef length, GateR
     GateRef stringClass = builder_.GetGlobalConstantValue(ConstantIndex::LINE_STRING_CLASS_INDEX);
 
     builder_.StartAllocate();
-    GateRef lineString = builder_.HeapAlloc(glue, *size, GateType::TaggedValue(), RegionSpaceFlag::IN_YOUNG_SPACE);
+    GateRef lineString = builder_.HeapAlloc(glue, *size, GateType::TaggedValue(), RegionSpaceFlag::IN_SHARED_OLD_SPACE);
     builder_.StoreConstOffset(VariableType::JS_POINTER(), lineString, 0, stringClass,
         MemoryOrder::NeedBarrierAndAtomic());
     builder_.StoreConstOffset(VariableType::INT32(), lineString, EcmaString::MIX_LENGTH_OFFSET, *mixLength);
@@ -2081,7 +2085,8 @@ GateRef TypedHCRLowering::AllocateSlicedString(GateRef glue, GateRef flatString,
     GateRef size = builder_.IntPtr(AlignUp(SlicedString::SIZE, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT)));
 
     builder_.StartAllocate();
-    GateRef slicedString = builder_.HeapAlloc(glue, size, GateType::TaggedValue(), RegionSpaceFlag::IN_YOUNG_SPACE);
+    GateRef slicedString = builder_.HeapAlloc(glue, size, GateType::TaggedValue(),
+        RegionSpaceFlag::IN_SHARED_OLD_SPACE);
     builder_.StoreConstOffset(VariableType::JS_POINTER(), slicedString, 0, stringClass,
         MemoryOrder::NeedBarrierAndAtomic());
     builder_.StoreConstOffset(VariableType::INT32(), slicedString, EcmaString::MIX_LENGTH_OFFSET, *mixLength);
@@ -2694,7 +2699,8 @@ void TypedHCRLowering::LowerMonoLoadPropertyOnProto(GateRef gate)
     auto prototype = builder_.LoadConstOffset(VariableType::JS_ANY(), receiverHC, JSHClass::PROTOTYPE_OFFSET);
 
     // lookup from receiver for holder
-    auto holderHC = builder_.LoadHClassFromConstpool(constPool, acc_.GetConstantValue(hclassIndex));
+    GateRef unsharedConstpool = builder_.GetUnsharedConstpool(constPool);
+    auto holderHC = builder_.LoadHClassFromUnsharedConstpool(unsharedConstpool, acc_.GetConstantValue(hclassIndex));
     DEFVALUE(current, (&builder_), VariableType::JS_ANY(), prototype);
     Label exit(&builder_);
     Label loopHead(&builder_);
@@ -2734,7 +2740,8 @@ void TypedHCRLowering::LowerMonoCallGetterOnProto(GateRef gate, GateRef glue)
     auto prototype = builder_.LoadConstOffset(VariableType::JS_ANY(), receiverHC, JSHClass::PROTOTYPE_OFFSET);
 
     // lookup from receiver for holder
-    auto holderHC = builder_.LoadHClassFromConstpool(constPool, acc_.GetConstantValue(hclassIndex));
+    GateRef unsharedConstpool = builder_.GetUnsharedConstpool(constPool);
+    auto holderHC = builder_.LoadHClassFromUnsharedConstpool(unsharedConstpool, acc_.GetConstantValue(hclassIndex));
     DEFVALUE(current, (&builder_), VariableType::JS_ANY(), prototype);
     Label exitLoad(&builder_);
     Label loopHead(&builder_);
@@ -2824,7 +2831,8 @@ void TypedHCRLowering::LowerMonoStorePropertyLookUpProto(GateRef gate, GateRef g
     auto receiverHC = builder_.LoadConstOffset(VariableType::JS_POINTER(), receiver, TaggedObject::HCLASS_OFFSET);
     auto prototype = builder_.LoadConstOffset(VariableType::JS_ANY(), receiverHC, JSHClass::PROTOTYPE_OFFSET);
     // lookup from receiver for holder
-    auto holderHC = builder_.LoadHClassFromConstpool(constpool, acc_.GetConstantValue(hclassIndex));
+    GateRef unsharedConstpool = builder_.GetUnsharedConstpool(constpool);
+    auto holderHC = builder_.LoadHClassFromUnsharedConstpool(unsharedConstpool, acc_.GetConstantValue(hclassIndex));
     DEFVALUE(current, (&builder_), VariableType::JS_ANY(), prototype);
     Label exit(&builder_);
     Label loopHead(&builder_);
@@ -2893,7 +2901,8 @@ void TypedHCRLowering::LowerMonoStoreProperty(GateRef gate, GateRef glue)
     Label exit(&builder_);
     Label notProto(&builder_);
     Label isProto(&builder_);
-    auto newHolderHC = builder_.LoadHClassFromConstpool(constPool, acc_.GetConstantValue(hclassIndex));
+    GateRef unsharedConstpool = builder_.GetUnsharedConstpool(constPool);
+    auto newHolderHC = builder_.LoadHClassFromUnsharedConstpool(unsharedConstpool, acc_.GetConstantValue(hclassIndex));
     builder_.StoreConstOffset(VariableType::JS_ANY(), newHolderHC, JSHClass::PROTOTYPE_OFFSET, prototype);
     builder_.Branch(builder_.IsProtoTypeHClass(receiverHC), &isProto, &notProto,
         BranchWeight::ONE_WEIGHT, BranchWeight::DEOPT_WEIGHT, "isProtoTypeHClass");
@@ -3114,8 +3123,7 @@ void TypedHCRLowering::LowerStringFromSingleCharCode(GateRef gate, GateRef glue)
         newBuilder.SetParameters(glue, 0);
         builder_.Bind(&canBeCompress);
         {
-            GateRef singleCharTable = builder_.Load(VariableType::JS_ANY(), glue,
-                builder_.IntPtr(JSThread::GlueData::GetSingleCharTableOffset(env.Is32Bit())));
+            GateRef singleCharTable = builder_.GetGlobalConstantValue(ConstantIndex::SINGLE_CHAR_TABLE_INDEX);
             res = builder_.GetValueFromTaggedArray(singleCharTable, builder_.ZExtInt16ToInt32(*value));
             builder_.Jump(&exit);
         }

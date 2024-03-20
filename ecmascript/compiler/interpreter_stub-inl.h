@@ -270,15 +270,14 @@ GateRef InterpreterStubBuilder::GetEnvFromFunction(GateRef function)
     return Load(VariableType::JS_POINTER(), function, IntPtr(JSFunction::LEXICAL_ENV_OFFSET));
 }
 
-GateRef InterpreterStubBuilder::GetProfileTypeInfoFromMethod(GateRef method)
+GateRef InterpreterStubBuilder::GetProfileTypeInfoFromFunction(GateRef function)
 {
-    return Load(VariableType::JS_POINTER(), method, IntPtr(Method::PROFILE_TYPE_INFO_OFFSET));
+    return Load(VariableType::JS_POINTER(), function, IntPtr(JSFunction::PROFILE_TYPE_INFO_OFFSET));
 }
 
 GateRef InterpreterStubBuilder::GetModuleFromFunction(GateRef function)
 {
-    GateRef method = GetMethodFromFunction(function);
-    return Load(VariableType::JS_POINTER(), method, IntPtr(Method::ECMA_MODULE_OFFSET));
+    return Load(VariableType::JS_POINTER(), function, IntPtr(JSFunction::ECMA_MODULE_OFFSET));
 }
 
 GateRef InterpreterStubBuilder::GetHomeObjectFromFunction(GateRef function)
@@ -313,6 +312,12 @@ GateRef InterpreterStubBuilder::GetResumeModeFromAsyncGeneratorObject(GateRef ob
     return Int32And(
         Int32LSR(bitfield, Int32(JSAsyncGeneratorObject::ResumeModeBits::START_BIT)),
         Int32((1LU << JSAsyncGeneratorObject::ResumeModeBits::SIZE) - 1));
+}
+
+void InterpreterStubBuilder::SetModuleToFunction(GateRef glue, GateRef function, GateRef value)
+{
+    GateRef offset = IntPtr(JSFunction::ECMA_MODULE_OFFSET);
+    Store(VariableType::JS_POINTER(), glue, function, offset, value);
 }
 
 void InterpreterStubBuilder::SetPcToFrame(GateRef glue, GateRef frame, GateRef value)

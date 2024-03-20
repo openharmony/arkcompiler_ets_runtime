@@ -52,27 +52,30 @@ HWTEST_F_L0(EcmaVMTest, CreateEcmaVMInTwoWays)
     options.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
     EcmaVM *ecmaVm1 = JSNApi::CreateJSVM(options);
 
-    JSRuntimeOptions options2;
-    options2.SetEnableArkTools(false);
-    options2.SetEnableForceGC(false);
-    options2.SetForceFullGC(false);
-    options2.SetArkProperties(ArkProperties::GC_STATS_PRINT);
-    // A non-production gc strategy. Prohibit stw-gc 10 times.
-    EcmaVM *ecmaVm2 = JSNApi::CreateEcmaVM(options2);
+    std::thread t1([&]() {
+        JSRuntimeOptions options2;
+        options2.SetEnableArkTools(false);
+        options2.SetEnableForceGC(false);
+        options2.SetForceFullGC(false);
+        options2.SetArkProperties(ArkProperties::GC_STATS_PRINT);
+        // A non-production gc strategy. Prohibit stw-gc 10 times.
+        EcmaVM *ecmaVm2 = JSNApi::CreateEcmaVM(options2);
 
-    EXPECT_TRUE(ecmaVm1 != ecmaVm2);
+        EXPECT_TRUE(ecmaVm1 != ecmaVm2);
 
-    JSRuntimeOptions options1Out = ecmaVm1->GetJSOptions();
-    JSRuntimeOptions options2Out = ecmaVm2->GetJSOptions();
+        JSRuntimeOptions options1Out = ecmaVm1->GetJSOptions();
+        JSRuntimeOptions options2Out = ecmaVm2->GetJSOptions();
 
-    EXPECT_TRUE(&options1Out != &options2Out);
+        EXPECT_TRUE(&options1Out != &options2Out);
 
-    EXPECT_TRUE(options1Out.EnableArkTools() != options2Out.EnableArkTools());
-    EXPECT_TRUE(options1Out.EnableForceGC() != options2Out.EnableForceGC());
-    EXPECT_TRUE(options1Out.ForceFullGC() != options2Out.ForceFullGC());
-    EXPECT_TRUE(options1Out.GetArkProperties() != options2Out.GetArkProperties());
+        EXPECT_TRUE(options1Out.EnableArkTools() != options2Out.EnableArkTools());
+        EXPECT_TRUE(options1Out.EnableForceGC() != options2Out.EnableForceGC());
+        EXPECT_TRUE(options1Out.ForceFullGC() != options2Out.ForceFullGC());
+        EXPECT_TRUE(options1Out.GetArkProperties() != options2Out.GetArkProperties());
 
-    JSNApi::DestroyJSVM(ecmaVm2);
+        JSNApi::DestroyJSVM(ecmaVm2);
+    });
+    t1.join();
     JSNApi::DestroyJSVM(ecmaVm1);
 }
 }  // namespace panda::ecmascript

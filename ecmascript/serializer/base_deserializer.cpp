@@ -23,6 +23,9 @@
 #include "ecmascript/js_thread.h"
 #include "ecmascript/mem/mem.h"
 #include "ecmascript/mem/sparse_space.h"
+#include "ecmascript/platform/mutex.h"
+#include "ecmascript/runtime.h"
+#include "ecmascript/runtime_lock.h"
 #include "ecmascript/shared_mm/shared_mm.h"
 
 namespace panda::ecmascript {
@@ -31,7 +34,10 @@ namespace panda::ecmascript {
     (uint8_t)SerializedObjectSpace::OLD_SPACE:                            \
     case (uint8_t)SerializedObjectSpace::NON_MOVABLE_SPACE:               \
     case (uint8_t)SerializedObjectSpace::MACHINE_CODE_SPACE:              \
-    case (uint8_t)SerializedObjectSpace::HUGE_SPACE
+    case (uint8_t)SerializedObjectSpace::HUGE_SPACE:                      \
+    case (uint8_t)SerializedObjectSpace::SHARED_OLD_SPACE:                \
+    case (uint8_t)SerializedObjectSpace::SHARED_NON_MOVABLE_SPACE:        \
+    case (uint8_t)SerializedObjectSpace::SHARED_HUGE_SPACE
 
 JSHandle<JSTaggedValue> BaseDeserializer::ReadValue()
 {
@@ -52,8 +58,8 @@ JSHandle<JSTaggedValue> BaseDeserializer::DeserializeJSTaggedValue()
     heap_->SetOnSerializeEvent(true);
 
     uint8_t encodeFlag = data_->ReadUint8(position_);
-    JSTaggedType result = 0U;
-    while (ReadSingleEncodeData(encodeFlag, ToUintPtr(&result), 0, true) == 0) { // 0: root object offset
+    JSHandle<JSTaggedValue> resHandle(thread_, JSTaggedValue::Undefined());
+    while (ReadSingleEncodeData(encodeFlag, resHandle.GetAddress(), 0, true) == 0) { // 0: root object offset
         encodeFlag = data_->ReadUint8(position_);
     }
     // now new constpool here if newConstPoolInfos_ is not empty
@@ -87,11 +93,11 @@ JSHandle<JSTaggedValue> BaseDeserializer::DeserializeJSTaggedValue()
     heap_->SetOnSerializeEvent(false);
 
     // If is on concurrent mark, mark push root object to stack for mark
-    if (JSTaggedValue(result).IsHeapObject() && thread_->IsConcurrentMarkingOrFinished()) {
-        Barriers::MarkAndPushForDeserialize(thread_, JSTaggedValue(result).GetHeapObject());
+    if (resHandle->IsHeapObject() && thread_->IsConcurrentMarkingOrFinished()) {
+        Barriers::MarkAndPushForDeserialize(thread_, resHandle->GetHeapObject());
     }
 
-    return JSHandle<JSTaggedValue>(thread_, JSTaggedValue(result));
+    return resHandle;
 }
 
 uintptr_t BaseDeserializer::DeserializeTaggedObject(SerializedObjectSpace space)
@@ -99,21 +105,7 @@ uintptr_t BaseDeserializer::DeserializeTaggedObject(SerializedObjectSpace space)
     size_t objSize = data_->ReadUint32(position_);
     uintptr_t res = RelocateObjectAddr(space, objSize);
     objectVector_.push_back(res);
-    size_t resIndex = objectVector_.size() - 1;
     DeserializeObjectField(res, res + objSize);
-    JSType type = reinterpret_cast<TaggedObject *>(res)->GetClass()->GetObjectType();
-    // String need remove duplicates if string table can find
-    if (type == JSType::LINE_STRING || type == JSType::CONSTANT_STRING) {
-        EcmaStringTable *stringTable = thread_->GetEcmaVM()->GetEcmaStringTable();
-        EcmaString *str = stringTable->GetString(reinterpret_cast<EcmaString *>(res));
-        if (str) {
-            res = ToUintPtr(str);
-            objectVector_[resIndex] = res;
-        } else {
-            EcmaStringAccessor(reinterpret_cast<EcmaString *>(res)).ClearInternString();
-            stringTable->InternString(reinterpret_cast<EcmaString *>(res));
-        }
-    }
     return res;
 }
 
@@ -132,10 +124,8 @@ void BaseDeserializer::DeserializeConstPool(NewConstPoolInfo *info)
     JSPandaFile *jsPandaFile = info->jsPandaFile_;
     panda_file::File::EntityId methodId = info->methodId_;
     ObjectSlot slot = info->GetSlot();
-    JSHandle<ConstantPool> constpool = ConstantPool::CreateConstPool(thread_->GetEcmaVM(), jsPandaFile, methodId);
-    panda_file::IndexAccessor indexAccessor(*jsPandaFile->GetPandaFile(), methodId);
-    int32_t index = static_cast<int32_t>(indexAccessor.GetHeaderIndex());
-    thread_->GetCurrentEcmaContext()->AddConstpool(jsPandaFile, constpool.GetTaggedValue(), index);
+    EcmaContext *context = thread_->GetCurrentEcmaContext();
+    JSHandle<ConstantPool> constpool = context->CreateConstpoolPair(jsPandaFile, methodId);
 
     slot.Update(constpool.GetTaggedType());
     WriteBarrier(thread_, reinterpret_cast<void *>(info->GetObjAddr()), info->GetFieldOffset(),
@@ -190,19 +180,10 @@ void BaseDeserializer::HandleNewObjectEncodeFlag(SerializedObjectSpace space,  u
     void *bufferPointer = GetAndResetBufferPointer();
     ConstantPool *constpool = GetAndResetConstantPool();
     bool needNewConstPool = GetAndResetNeedNewConstPool();
-    bool isErrorMsg = GetAndResetIsErrorMsg();
-    bool functionInShared = GetAndResetFunctionInShared();
-
     // deserialize object here
     uintptr_t addr = DeserializeTaggedObject(space);
 
     // deserialize object epilogue
-    if (isErrorMsg) {
-        // defer new js error
-        jsErrorInfos_.back()->errorMsg_ = JSTaggedValue(static_cast<JSTaggedType>(addr));
-        return;
-    }
-
     if (isTransferBuffer) {
         TransferArrayBufferAttach(addr);
     } else if (isSharedArrayBuffer) {
@@ -215,9 +196,6 @@ void BaseDeserializer::HandleNewObjectEncodeFlag(SerializedObjectSpace space,  u
         // defer new constpool
         newConstPoolInfos_.back()->objAddr_ = addr;
         newConstPoolInfos_.back()->offset_ = Method::CONSTANT_POOL_OFFSET;
-    }
-    if (functionInShared) {
-        concurrentFunctions_.push_back(reinterpret_cast<JSFunction *>(addr));
     }
     TaggedObject *object = reinterpret_cast<TaggedObject *>(addr);
     if (object->GetClass()->IsJSNativePointer()) {
@@ -401,6 +379,7 @@ size_t BaseDeserializer::ReadSingleEncodeData(uint8_t encodeFlag, uintptr_t objA
             break;
         }
         case (uint8_t)EncodeFlag::JS_ERROR: {
+            slot.Update(JSTaggedValue::Undefined().GetRawData());
             uint8_t type = data_->ReadUint8(position_);
             ASSERT(type >= static_cast<uint8_t>(JSType::JS_ERROR_FIRST)
                 && type <= static_cast<uint8_t>(JSType::JS_ERROR_LAST));
@@ -412,9 +391,20 @@ size_t BaseDeserializer::ReadSingleEncodeData(uint8_t encodeFlag, uintptr_t objA
             }
             break;
         }
-        case (uint8_t)EncodeFlag::JS_FUNCTION_IN_SHARED: {
-            functionInShared_ = true;
-            handledFieldSize = 0;
+        case (uint8_t)EncodeFlag::SHARED_OBJECT: {
+            JSTaggedType value = data_->ReadJSTaggedType(position_);
+            objectVector_.push_back(value);
+            bool isErrorMsg = GetAndResetIsErrorMsg();
+            if (isErrorMsg) {
+                // defer new js error
+                jsErrorInfos_.back()->errorMsg_ = JSTaggedValue(value);
+                break;
+            }
+            if (!isRoot) {
+                WriteBarrier<WriteBarrierType::DESERIALIZE>(thread_, reinterpret_cast<void *>(objAddr), fieldOffset,
+                                                            value);
+            }
+            UpdateMaybeWeak(slot, value, GetAndResetWeak());
             break;
         }
         default:
@@ -452,14 +442,41 @@ uintptr_t BaseDeserializer::RelocateObjectAddr(SerializedObjectSpace space, size
                 ASSERT(machineCodeRegionIndex_ < regionVector_.size());
                 machineCodeSpaceBeginAddr_ = regionVector_[machineCodeRegionIndex_++]->GetBegin();
             }
-            res = nonMovableSpaceBeginAddr_;
-            nonMovableSpaceBeginAddr_ += objSize;
+            res = machineCodeSpaceBeginAddr_;
+            machineCodeSpaceBeginAddr_ += objSize;
             break;
         }
-        default:
+        case SerializedObjectSpace::HUGE_SPACE: {
             // no gc for this allocate
             res = heap_->GetHugeObjectSpace()->Allocate(objSize, thread_);
             break;
+        }
+        case SerializedObjectSpace::SHARED_OLD_SPACE: {
+            if (sOldSpaceBeginAddr_ + objSize > AlignUp(sOldSpaceBeginAddr_, DEFAULT_REGION_SIZE)) {
+                ASSERT(sOldRegionIndex_ < regionVector_.size());
+                sOldSpaceBeginAddr_ = regionVector_[sOldRegionIndex_++]->GetBegin();
+            }
+            res = sOldSpaceBeginAddr_;
+            sOldSpaceBeginAddr_ += objSize;
+            break;
+        }
+        case SerializedObjectSpace::SHARED_NON_MOVABLE_SPACE: {
+            if (sNonMovableSpaceBeginAddr_ + objSize > AlignUp(sNonMovableSpaceBeginAddr_, DEFAULT_REGION_SIZE)) {
+                ASSERT(sNonMovableRegionIndex_ < regionVector_.size());
+                sNonMovableSpaceBeginAddr_ = regionVector_[sNonMovableRegionIndex_++]->GetBegin();
+            }
+            res = sNonMovableSpaceBeginAddr_;
+            sNonMovableSpaceBeginAddr_ += objSize;
+            break;
+        }
+        case SerializedObjectSpace::SHARED_HUGE_SPACE: {
+            // no gc for this allocate
+            res = sheap_->GetHugeObjectSpace()->Allocate(thread_, objSize);
+            break;
+        }
+        default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
+            UNREACHABLE();
     }
     return res;
 }
@@ -555,6 +572,16 @@ void BaseDeserializer::AllocateToDifferentSpaces()
         heap_->GetMachineCodeSpace()->IncreaseLiveObjectSize(machineCodeSpaceSize);
         AllocateToMachineCodeSpace(machineCodeSpaceSize);
     }
+    size_t sOldSpaceSize = data_->GetSharedOldSpaceSize();
+    if (sOldSpaceSize > 0) {
+        sheap_->GetOldSpace()->IncreaseLiveObjectSize(sOldSpaceSize);
+        AllocateToSharedOldSpace(sOldSpaceSize);
+    }
+    size_t sNonMovableSpaceSize = data_->GetSharedNonMovableSpaceSize();
+    if (sNonMovableSpaceSize > 0) {
+        sheap_->GetNonMovableSpace()->IncreaseLiveObjectSize(sNonMovableSpaceSize);
+        AllocateToSharedNonMovableSpace(sNonMovableSpaceSize);
+    }
 }
 
 void BaseDeserializer::AllocateMultiRegion(SparseSpace *space, size_t spaceObjSize, size_t &regionIndex)
@@ -573,6 +600,32 @@ void BaseDeserializer::AllocateMultiRegion(SparseSpace *space, size_t spaceObjSi
     }
     size_t lastRegionRemainSize = regionAlignedSize - spaceObjSize;
     space->ResetTopPointer(space->GetCurrentRegion()->GetEnd() - lastRegionRemainSize);
+}
+
+Region *BaseDeserializer::AllocateMultiSharedRegion(SharedSparseSpace *space, size_t spaceObjSize, size_t &regionIndex)
+{
+    regionIndex = regionVector_.size();
+    size_t regionAlignedSize = SerializeData::AlignUpRegionAvailableSize(spaceObjSize);
+    size_t regionNum = regionAlignedSize / Region::GetRegionAvailableSize();
+    std::vector<size_t> regionRemainSizeVector = data_->GetRegionRemainSizeVector();
+    std::vector<Region *> allocateRegions;
+    while (regionNum > 0) {
+        if (space->CommittedSizeExceed()) {
+            LOG_ECMA(FATAL) << "BaseDeserializer::OutOfMemory when deserialize";
+        }
+        Region *region = space->AllocateDeserializeRegion(thread_);
+        if (regionNum == 1) { // 1: Last allocate region
+            size_t lastRegionRemainSize = regionAlignedSize - spaceObjSize;
+            region->SetHighWaterMark(region->GetEnd() - lastRegionRemainSize);
+        } else {
+            region->SetHighWaterMark(region->GetEnd() - regionRemainSizeVector[regionRemainSizeIndex_++]);
+        }
+        regionVector_.push_back(region);
+        allocateRegions.push_back(region);
+        regionNum--;
+    }
+    space->MergeDeserializeAllocateRegions(allocateRegions);
+    return allocateRegions.front();
 }
 
 void BaseDeserializer::AllocateToOldSpace(size_t oldSpaceSize)
@@ -617,6 +670,30 @@ void BaseDeserializer::AllocateToMachineCodeSpace(size_t machineCodeSpaceSize)
         AllocateMultiRegion(space, machineCodeSpaceSize, machineCodeRegionIndex_);
     } else {
         machineCodeSpaceBeginAddr_ = object;
+    }
+}
+
+void BaseDeserializer::AllocateToSharedOldSpace(size_t sOldSpaceSize)
+{
+    SharedSparseSpace *space = sheap_->GetOldSpace();
+    uintptr_t object = space->AllocateNoGCAndExpand(thread_, sOldSpaceSize);
+    if (UNLIKELY(object == 0U)) {
+        Region *region = AllocateMultiSharedRegion(space, sOldSpaceSize, sOldRegionIndex_);
+        sOldSpaceBeginAddr_ = region->GetBegin();
+    } else {
+        sOldSpaceBeginAddr_ = object;
+    }
+}
+
+void BaseDeserializer::AllocateToSharedNonMovableSpace(size_t sNonMovableSpaceSize)
+{
+    SharedNonMovableSpace *space = sheap_->GetNonMovableSpace();
+    uintptr_t object = space->AllocateNoGCAndExpand(thread_, sNonMovableSpaceSize);
+    if (UNLIKELY(object == 0U)) {
+        Region *region = AllocateMultiSharedRegion(space, sNonMovableSpaceSize, sNonMovableRegionIndex_);
+        sNonMovableSpaceBeginAddr_ = region->GetBegin();
+    } else {
+        sNonMovableSpaceBeginAddr_ = object;
     }
 }
 

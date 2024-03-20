@@ -49,6 +49,7 @@ public:
     static JSTaggedValue GetNewTarget(JSTaggedType *sp);
     static JSTaggedValue GetThis(JSTaggedType *sp);
     static JSTaggedValue GetConstantPool(JSTaggedType *sp);
+    static JSTaggedValue GetUnsharedConstpool(JSThread* thread, JSTaggedType *sp);
     static JSTaggedValue GetModule(JSTaggedType *sp);
     static JSTaggedValue GetProfileTypeInfo(JSTaggedType *sp);
     static uint32_t GetNumArgs(JSTaggedType *sp, uint32_t restIdx, uint32_t &startIdx);

@@ -98,39 +98,11 @@ JSHandle<Method> Method::Create(JSThread *thread, const JSPandaFile *jsPandaFile
         return JSHandle<Method>(thread, patchVal);
     }
 
-    JSHandle<Method> method = vm->GetFactory()->NewMethod(methodLiteral);
+    JSHandle<Method> method;
+    method = vm->GetFactory()->NewSMethod(methodLiteral);
     JSHandle<ConstantPool> newConstpool = thread->GetCurrentEcmaContext()->FindOrCreateConstPool(jsPandaFile, methodId);
     method->SetConstantPool(thread, newConstpool);
     return method;
-}
-
-const JSTaggedValue Method::GetRecordName() const
-{
-    JSTaggedValue module = GetModule();
-    if (module.IsSourceTextModule()) {
-        JSTaggedValue recordName = SourceTextModule::Cast(module.GetTaggedObject())->GetEcmaModuleRecordName();
-        if (!recordName.IsString()) {
-            LOG_INTERPRETER(DEBUG) << "module record name is undefined";
-            return JSTaggedValue::Hole();
-        }
-        return recordName;
-    }
-    if (module.IsString()) {
-        return module;
-    }
-    LOG_INTERPRETER(DEBUG) << "record name is undefined";
-    return JSTaggedValue::Hole();
-}
-
-void Method::SetCompiledFuncEntry(uintptr_t codeEntry, bool isFastCall)
-{
-    ASSERT(codeEntry != 0);
-    SetCodeEntryAndMarkAOTWhenBinding(codeEntry);
-
-    SetIsFastCall(isFastCall);
-    MethodLiteral *methodLiteral = GetMethodLiteral();
-    methodLiteral->SetAotCodeBit(true);
-    methodLiteral->SetIsFastCall(isFastCall);
 }
 
 void Method::SetCodeEntryAndMarkAOTWhenBinding(uintptr_t codeEntry)

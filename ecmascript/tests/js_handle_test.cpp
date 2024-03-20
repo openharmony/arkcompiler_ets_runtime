@@ -183,7 +183,8 @@ HWTEST_F_L0(JSHandleTest, NewWeakGlobalHandle)
         EXPECT_TRUE(thread->IsWeak(globalString));
     }
     // trigger GC
-    thread->GetEcmaVM()->CollectGarbage(TriggerGCType::FULL_GC);
+    SharedHeap::GetInstance()->CollectGarbage(instance->GetJSThread(), ecmascript::TriggerGCType::SHARED_GC,
+                                              GCReason::OTHER);
 
     // check weak reference
     JSTaggedType result = *reinterpret_cast<JSTaggedType *>(globalString);

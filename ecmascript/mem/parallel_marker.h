@@ -82,7 +82,6 @@ protected:
     }
 
     Heap *heap_ {nullptr};
-    ObjectXRay objXRay_ {nullptr};
     WorkManager *workManager_ {nullptr};
 
     friend class Heap;
@@ -134,6 +133,10 @@ protected:
                                               uintptr_t toAddress, size_t size, const MarkWord &markWord,
                                               ObjectSlot slot, bool isPromoted = false);
     inline bool UpdateForwardAddressIfFailed(TaggedObject *object, uintptr_t toAddress, size_t size, ObjectSlot slot);
+
+    inline void UpdateLocalToShareRSet(TaggedObject *object, JSHClass *cls);
+
+    inline void SetLocalToShareRSet(ObjectSlot slot, Region *region);
 };
 
 class SemiGCMarker : public MovableMarker {

@@ -21,6 +21,8 @@
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/js_handle.h"
 #include "ecmascript/js_tagged_value-inl.h"
+#include "ecmascript/mem/heap.h"
+#include "ecmascript/mem/space.h"
 #include "ecmascript/object_factory-inl.h"
 
 namespace panda::ecmascript {
@@ -157,16 +159,14 @@ inline EcmaString *EcmaString::CreateLineStringNoGC(const EcmaVM *vm, size_t len
 inline EcmaString *EcmaString::CreateLineStringWithSpaceType(const EcmaVM *vm, size_t length, bool compressed,
                                                              MemSpaceType type)
 {
+    ASSERT(IsSMemSpace(type));
     size_t size = compressed ? LineEcmaString::ComputeSizeUtf8(length) : LineEcmaString::ComputeSizeUtf16(length);
     EcmaString *string = nullptr;
     switch (type) {
-        case MemSpaceType::SEMI_SPACE:
-            string = vm->GetFactory()->AllocLineStringObject(size);
-            break;
-        case MemSpaceType::OLD_SPACE:
+        case MemSpaceType::SHARED_OLD_SPACE:
             string = vm->GetFactory()->AllocOldSpaceLineStringObject(size);
             break;
-        case MemSpaceType::NON_MOVABLE:
+        case MemSpaceType::SHARED_NON_MOVABLE:
             string = vm->GetFactory()->AllocNonMovableLineStringObject(size);
             break;
         default:
@@ -182,13 +182,14 @@ inline SlicedString *EcmaString::CreateSlicedString(const EcmaVM *vm, MemSpaceTy
 {
     auto slicedString = SlicedString::Cast(vm->GetFactory()->AllocSlicedStringObject(type));
     slicedString->SetRawHashcode(0);
-    slicedString->SetParent(vm->GetJSThread(), JSTaggedValue::Undefined());
+    slicedString->SetParent(vm->GetJSThread(), JSTaggedValue::Undefined(), BarrierMode::SKIP_BARRIER);
     return slicedString;
 }
 
 inline EcmaString *EcmaString::CreateConstantString(const EcmaVM *vm, const uint8_t *utf8Data,
     size_t length, bool compressed, MemSpaceType type, uint32_t idOffset)
 {
+    ASSERT(IsSMemSpace(type));
     auto string = ConstantString::Cast(vm->GetFactory()->AllocConstantStringObject(type));
     auto thread = vm->GetJSThread();
     string->SetLength(length, compressed);

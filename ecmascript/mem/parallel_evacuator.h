@@ -33,7 +33,7 @@
 namespace panda::ecmascript {
 class ParallelEvacuator {
 public:
-    explicit ParallelEvacuator(Heap *heap) : heap_(heap), objXRay_(heap->GetEcmaVM()) {}
+    explicit ParallelEvacuator(Heap *heap) : heap_(heap) {}
     ~ParallelEvacuator() = default;
     void Initialize();
     void Finalize();
@@ -138,6 +138,9 @@ private:
     inline void SetObjectFieldRSet(TaggedObject *object, JSHClass *cls);
     inline void SetObjectRSet(ObjectSlot slot, Region *region);
 
+    inline void UpdateLocalToShareRSet(TaggedObject *object, JSHClass *cls);
+    inline void SetLocalToShareRSet(ObjectSlot slot, Region *region);
+
     inline bool IsWholeRegionEvacuate(Region *region);
     void VerifyValue(TaggedObject *object, ObjectSlot slot);
     void VerifyHeapObject(TaggedObject *object);
@@ -166,7 +169,6 @@ private:
 
     Heap *heap_;
     TlabAllocator *allocator_ {nullptr};
-    ObjectXRay objXRay_;
 
     uintptr_t waterLine_ = 0;
     std::vector<std::unique_ptr<Workload>> workloads_;

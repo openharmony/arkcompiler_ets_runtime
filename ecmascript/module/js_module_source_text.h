@@ -49,6 +49,13 @@ enum class LoadingTypes : uint8_t {
     OTHERS
 };
 
+enum class SharedTypes : uint8_t {
+    UNSENDABLE_MODULE = 0x01,
+    SENDABLE_FUNCTION_MODULE,
+    SHARED_MODULE,
+    TOTAL_KINDS,
+};
+
 class SourceTextModule final : public ModuleRecord {
 public:
     static constexpr int UNDEFINED_INDEX = -1;
@@ -152,6 +159,17 @@ public:
                moduleType == ModuleTypes::INTERNAL_MODULE;
     }
 
+    inline static bool IsModuleInSharedHeap(JSHandle<SourceTextModule> currentModule)
+    {
+        return currentModule->GetSharedType() > SharedTypes::UNSENDABLE_MODULE;
+    }
+
+    inline static bool IsSendableFunctionModule(JSTaggedValue currentModule)
+    {
+        return SourceTextModule::Cast(currentModule.GetTaggedObject())->GetSharedType() ==
+            SharedTypes::SENDABLE_FUNCTION_MODULE;
+    }
+
     static constexpr size_t SOURCE_TEXT_MODULE_OFFSET = ModuleRecord::SIZE;
     ACCESSORS(Environment, SOURCE_TEXT_MODULE_OFFSET, NAMESPACE_OFFSET);
     ACCESSORS(Namespace, NAMESPACE_OFFSET, ECMA_MODULE_FILENAME);
@@ -182,6 +200,7 @@ public:
     static constexpr size_t HASTLA_BITS = 1;
     static constexpr size_t LOADING_TYPE_BITS = 3;
     static constexpr uint16_t REGISTER_COUNTS = 16;
+    static constexpr size_t IS_SHARED_TYPE_BITS = 2;
 
     FIRST_BIT_FIELD(BitField, Status, ModuleStatus, STATUS_BITS)
     NEXT_BIT_FIELD(BitField, Types, ModuleTypes, MODULE_TYPE_BITS, Status)
@@ -189,6 +208,9 @@ public:
     NEXT_BIT_FIELD(BitField, HasTLA, bool, HASTLA_BITS, IsNewBcVersion)
     NEXT_BIT_FIELD(BitField, LoadingTypes, LoadingTypes, LOADING_TYPE_BITS, HasTLA)
     NEXT_BIT_FIELD(BitField, RegisterCounts, uint16_t, REGISTER_COUNTS, LoadingTypes)
+    NEXT_BIT_FIELD(BitField, SharedType, SharedTypes, IS_SHARED_TYPE_BITS, RegisterCounts)
+
+    static_assert(static_cast<size_t>(SharedTypes::TOTAL_KINDS) <= (1 << IS_SHARED_TYPE_BITS));
 
     DECL_DUMP()
     DECL_VISIT_OBJECT(SOURCE_TEXT_MODULE_OFFSET, EVALUATION_ERROR_OFFSET)

@@ -67,7 +67,7 @@ uintptr_t BumpPointerAllocator::Allocate(size_t size)
     return result;
 }
 
-FreeListAllocator::FreeListAllocator(Heap *heap) : heap_(heap)
+FreeListAllocator::FreeListAllocator(BaseHeap *heap) : heap_(heap)
 {
     freeList_ = std::make_unique<FreeObjectList>();
 }
@@ -77,7 +77,7 @@ void FreeListAllocator::Initialize(Region *region)
     bpAllocator_.Reset(region->GetBegin(), region->GetEnd());
 }
 
-void FreeListAllocator::Reset(Heap *heap)
+void FreeListAllocator::Reset(BaseHeap *heap)
 {
     heap_ = heap;
     freeList_ = std::make_unique<FreeObjectList>();
@@ -137,7 +137,7 @@ void FreeListAllocator::FillBumpPointer()
 {
     size_t size = bpAllocator_.Available();
     if (size != 0) {
-        FreeObject::FillFreeObject(heap_->GetEcmaVM(), bpAllocator_.GetTop(), size);
+        FreeObject::FillFreeObject(heap_, bpAllocator_.GetTop(), size);
     }
 }
 
@@ -157,7 +157,7 @@ void FreeListAllocator::Free(uintptr_t begin, size_t size, bool isAdd)
     ASSERT(heap_ != nullptr);
     ASSERT(size >= 0);
     if (size != 0) {
-        FreeObject::FillFreeObject(heap_->GetEcmaVM(), begin, size);
+        FreeObject::FillFreeObject(heap_, begin, size);
         ASAN_UNPOISON_MEMORY_REGION(reinterpret_cast<void *>(begin), size);
         freeList_->Free(begin, size, isAdd);
         ASAN_POISON_MEMORY_REGION(reinterpret_cast<void *>(begin), size);

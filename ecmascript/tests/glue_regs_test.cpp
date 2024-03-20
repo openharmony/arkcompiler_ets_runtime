@@ -103,7 +103,7 @@ HWTEST_F_L0(GlueRegsTest, ConstantAccessorTest)
     EXPECT_TRUE(!Name##value.IsNull());                                  \
     JSHandle<Type> Name##handledValue = globalConst->GetHandled##Name(); \
     EXPECT_TRUE(!Name##handledValue->IsNull());
-    GLOBAL_ENV_CONSTANT_ACCESSOR(CONSTANT_ACCESSOR_ITERATOR)
+    SHARED_GLOBAL_ENV_CONSTANT_ACCESSOR(CONSTANT_ACCESSOR_ITERATOR)
 #undef CONSTANT_ACCESSOR_ITERATOR
 }
 }  // namespace panda::test

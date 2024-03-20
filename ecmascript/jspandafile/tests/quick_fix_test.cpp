@@ -42,12 +42,12 @@ public:
 
     void SetUp() override
     {
-        TestHelper::CreateEcmaVMWithScope(instance, thread, scope);
+        TestHelper::CreateEcmaVMWithScope(instance, thread, scope, false, false, false);
     }
 
     void TearDown() override
     {
-        TestHelper::DestroyEcmaVMWithScope(instance, scope);
+        TestHelper::DestroyEcmaVMWithScope(instance, scope, false);
     }
 
     EcmaVM *instance {nullptr};

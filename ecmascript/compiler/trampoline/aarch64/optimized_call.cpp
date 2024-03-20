@@ -209,7 +209,7 @@ void OptimizedCall::OptimizedCallAndPushUndefined(ExtendedAssembler *assembler)
     Register argV(X4);
     __ Ldr(jsfunc, MemoryOperand(sp, FRAME_SLOT_SIZE));
     __ Ldr(method, MemoryOperand(jsfunc, JSFunction::METHOD_OFFSET));
-    __ Ldr(codeAddr, MemoryOperand(method, Method::CODE_ENTRY_OFFSET));
+    __ Ldr(codeAddr, MemoryOperand(jsfunc, JSFunction::CODE_ENTRY_OFFSET));
     __ Ldr(expectedNumArgs, MemoryOperand(method, Method::CALL_FIELD_OFFSET));
     __ Lsr(expectedNumArgs, expectedNumArgs, MethodLiteral::NumArgsBits::START_BIT);
     __ And(expectedNumArgs, expectedNumArgs,
@@ -1035,7 +1035,7 @@ void OptimizedCall::CallOptimized(ExtendedAssembler *assembler)
     Register codeAddr(X5);
     __ Ldr(jsfunc, MemoryOperand(sp, FRAME_SLOT_SIZE));
     __ Ldr(method, MemoryOperand(jsfunc, JSFunction::METHOD_OFFSET));
-    __ Ldr(codeAddr, MemoryOperand(method, Method::CODE_ENTRY_OFFSET));
+    __ Ldr(codeAddr, MemoryOperand(jsfunc, JSFunction::CODE_ENTRY_OFFSET));
     __ Br(codeAddr);
 }
 

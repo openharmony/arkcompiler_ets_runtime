@@ -23,6 +23,7 @@
 #include "ecmascript/lexical_env.h"
 #include "ecmascript/mem/heap-inl.h"
 #include "ecmascript/mem/barriers-inl.h"
+#include "ecmascript/mem/space.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/tagged_array-inl.h"
 
@@ -31,9 +32,9 @@ EcmaString *ObjectFactory::AllocLineStringObjectNoGC(size_t size)
 {
     TaggedObject *object = nullptr;
     if (size > MAX_REGULAR_HEAP_OBJECT_SIZE) {
-        object = reinterpret_cast<TaggedObject *>(heap_->GetHugeObjectSpace()->Allocate(size, thread_));
+        object = reinterpret_cast<TaggedObject *>(sHeap_->GetHugeObjectSpace()->Allocate(thread_, size));
     } else {
-        object = reinterpret_cast<TaggedObject *>(heap_->GetOldSpace()->Allocate(size, false));
+        object = reinterpret_cast<TaggedObject *>(sHeap_->GetOldSpace()->Allocate(thread_, size, false));
     }
     object->SetClass(thread_, JSHClass::Cast(thread_->GlobalConstants()->GetLineStringClass().GetTaggedObject()));
     return EcmaString::Cast(object);
@@ -41,44 +42,47 @@ EcmaString *ObjectFactory::AllocLineStringObjectNoGC(size_t size)
 
 EcmaString *ObjectFactory::AllocNonMovableLineStringObject(size_t size)
 {
-    NewObjectHook();
-    return reinterpret_cast<EcmaString *>(heap_->AllocateNonMovableOrHugeObject(
-        JSHClass::Cast(thread_->GlobalConstants()->GetLineStringClass().GetTaggedObject()), size));
+    NewSObjectHook();
+    return reinterpret_cast<EcmaString *>(sHeap_->AllocateNonMovableOrHugeObject(
+        thread_, JSHClass::Cast(thread_->GlobalConstants()->GetLineStringClass().GetTaggedObject()), size));
 }
 
 EcmaString *ObjectFactory::AllocLineStringObject(size_t size)
 {
-    NewObjectHook();
-    return reinterpret_cast<EcmaString *>(heap_->AllocateYoungOrHugeObject(
-        JSHClass::Cast(thread_->GlobalConstants()->GetLineStringClass().GetTaggedObject()), size));
+    NewSObjectHook();
+    return reinterpret_cast<EcmaString *>(sHeap_->AllocateOldOrHugeObject(
+        thread_, JSHClass::Cast(thread_->GlobalConstants()->GetLineStringClass().GetTaggedObject()), size));
 }
 
 EcmaString *ObjectFactory::AllocOldSpaceLineStringObject(size_t size)
 {
-    NewObjectHook();
-    return reinterpret_cast<EcmaString *>(heap_->AllocateOldOrHugeObject(
-        JSHClass::Cast(thread_->GlobalConstants()->GetLineStringClass().GetTaggedObject()), size));
+    NewSObjectHook();
+    return reinterpret_cast<EcmaString *>(sHeap_->AllocateOldOrHugeObject(
+        thread_, JSHClass::Cast(thread_->GlobalConstants()->GetLineStringClass().GetTaggedObject()), size));
 }
 
 EcmaString *ObjectFactory::AllocSlicedStringObject(MemSpaceType type)
 {
-    NewObjectHook();
+    ASSERT(IsSMemSpace(type));
+    NewSObjectHook();
     return reinterpret_cast<EcmaString *>(AllocObjectWithSpaceType(SlicedString::SIZE,
         JSHClass::Cast(thread_->GlobalConstants()->GetSlicedStringClass().GetTaggedObject()), type));
 }
 
 EcmaString *ObjectFactory::AllocConstantStringObject(MemSpaceType type)
 {
-    NewObjectHook();
+    ASSERT(IsSMemSpace(type));
+    NewSObjectHook();
     return reinterpret_cast<EcmaString *>(AllocObjectWithSpaceType(ConstantString::SIZE,
         JSHClass::Cast(thread_->GlobalConstants()->GetConstantStringClass().GetTaggedObject()), type));
 }
 
 EcmaString *ObjectFactory::AllocTreeStringObject()
 {
-    NewObjectHook();
-    return reinterpret_cast<EcmaString *>(heap_->AllocateYoungOrHugeObject(
-        JSHClass::Cast(thread_->GlobalConstants()->GetTreeStringClass().GetTaggedObject()), TreeEcmaString::SIZE));
+    NewSObjectHook();
+    return reinterpret_cast<EcmaString *>(sHeap_->AllocateOldOrHugeObject(
+        thread_, JSHClass::Cast(thread_->GlobalConstants()->GetTreeStringClass().GetTaggedObject()),
+        TreeEcmaString::SIZE));
 }
 
 JSHandle<JSNativePointer> ObjectFactory::NewJSNativePointer(void *externalPointer,
@@ -102,7 +106,7 @@ JSHandle<JSNativePointer> ObjectFactory::NewJSNativePointer(void *externalPointe
     obj->SetData(data);
     obj->SetBindingSize(nativeBindingsize);
     obj->SetNativeFlag(flag);
-    
+
     if (callBack != nullptr) {
         heap_->IncreaseNativeBindingSize(nativeBindingsize);
         vm_->PushToNativePointerList(static_cast<JSNativePointer *>(header));
@@ -151,6 +155,10 @@ TaggedObject *ObjectFactory::AllocObjectWithSpaceType(size_t size, JSHClass *cls
             return heap_->AllocateOldOrHugeObject(cls, size);
         case MemSpaceType::NON_MOVABLE:
             return heap_->AllocateNonMovableOrHugeObject(cls, size);
+        case MemSpaceType::SHARED_OLD_SPACE:
+            return sHeap_->AllocateOldOrHugeObject(thread_, cls, size);
+        case MemSpaceType::SHARED_NON_MOVABLE:
+            return sHeap_->AllocateNonMovableOrHugeObject(thread_, cls, size);
         default:
             LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();

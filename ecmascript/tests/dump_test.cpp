@@ -451,19 +451,19 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
             }
             case JSType::METHOD: {
 #ifdef PANDA_TARGET_64
-                CHECK_DUMP_FIELDS(TaggedObject::TaggedObjectSize(), Method::SIZE, 9U);
+                CHECK_DUMP_FIELDS(TaggedObject::TaggedObjectSize(), Method::SIZE, 6U);
 #else
-                CHECK_DUMP_FIELDS(TaggedObject::TaggedObjectSize(), Method::SIZE, 8U);
+                CHECK_DUMP_FIELDS(TaggedObject::TaggedObjectSize(), Method::SIZE, 5U);
 #endif
                 break;
             }
             case JSType::JS_FUNCTION_BASE: {
-                CHECK_DUMP_FIELDS(JSObject::SIZE, JSFunctionBase::SIZE, 2U);
+                CHECK_DUMP_FIELDS(JSObject::SIZE, JSFunctionBase::SIZE, 3U);
                 break;
             }
             case JSType::JS_FUNCTION:
             case JSType::JS_SHARED_FUNCTION: {
-                CHECK_DUMP_FIELDS(JSFunctionBase::SIZE, JSFunction::SIZE, 4U);
+                CHECK_DUMP_FIELDS(JSFunctionBase::SIZE, JSFunction::SIZE, 7U);
                 JSHandle<JSTaggedValue> jsFunc = globalEnv->GetFunctionFunction();
                 DUMP_FOR_HANDLE(jsFunc);
                 break;
@@ -493,7 +493,7 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 break;
             }
             case JSType::JS_ASYNC_MODULE_FULFILLED_FUNCTION: {
-                CHECK_DUMP_FIELDS(JSFunction::SIZE, JSAsyncModuleFulfilledFunction::SIZE, 1U);
+                CHECK_DUMP_FIELDS(JSFunction::SIZE, JSAsyncModuleFulfilledFunction::SIZE, 0U);
                 JSHandle<JSHClass> moduleFulfilledClass =
                     JSHandle<JSHClass>::Cast(globalEnv->GetAsyncModuleFulfilledFunctionClass());
                 JSHandle<JSObject> moduleFulfilledFunc = factory->NewJSObjectWithInit(moduleFulfilledClass);
@@ -501,7 +501,7 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 break;
             }
             case JSType::JS_ASYNC_MODULE_REJECTED_FUNCTION: {
-                CHECK_DUMP_FIELDS(JSFunction::SIZE, JSAsyncModuleRejectedFunction::SIZE, 1U);
+                CHECK_DUMP_FIELDS(JSFunction::SIZE, JSAsyncModuleRejectedFunction::SIZE, 0U);
                 JSHandle<JSHClass> moduleRejectedClass =
                     JSHandle<JSHClass>::Cast(globalEnv->GetAsyncModuleRejectedFunctionClass());
                 JSHandle<JSObject> moduleRejectedFunc = factory->NewJSObjectWithInit(moduleRejectedClass);
@@ -1374,6 +1374,12 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 CHECK_DUMP_FIELDS(Record::SIZE, ResolvedIndexBinding::SIZE, 2U);
                 JSHandle<ResolvedIndexBinding> resolvedBinding = factory->NewResolvedIndexBindingRecord();
                 DUMP_FOR_HANDLE(resolvedBinding);
+                break;
+            }
+            case JSType::RESOLVEDRECORDBINDING_RECORD: {
+                CHECK_DUMP_FIELDS(Record::SIZE, ResolvedRecordBinding::SIZE, 2U);
+                JSHandle<ResolvedRecordBinding> recordBinding = factory->NewSResolvedRecordBindingRecord();
+                DUMP_FOR_HANDLE(recordBinding);
                 break;
             }
             case JSType::JS_MODULE_NAMESPACE: {

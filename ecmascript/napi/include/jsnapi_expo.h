@@ -501,7 +501,7 @@ private:
     template<typename T>
     friend class Local;
 };
-  
+
 // NOLINTNEXTLINE(cppcoreguidelines-special-member-functions, hicpp-special-member-functions)
 class ECMA_PUBLIC_API PropertyAttribute {
 public:
@@ -640,6 +640,9 @@ public:
     static Local<ObjectRef> NewWithNamedProperties(const EcmaVM *vm, size_t propertyCount, const char **keys,
                                                    const Local<JSValueRef> *values);
     static Local<ObjectRef> CreateAccessorData(const EcmaVM *vm, Local<FunctionRef> getter, Local<FunctionRef> setter);
+    static Local<ObjectRef> CreateSendableAccessorData(const EcmaVM *vm,
+                                                       Local<FunctionRef> getter,
+                                                       Local<FunctionRef> setter);
     bool ConvertToNativeBindingObject(const EcmaVM *vm, Local<NativePointerRef> value);
     bool Set(const EcmaVM *vm, Local<JSValueRef> key, Local<JSValueRef> value);
     bool Set(const EcmaVM *vm, uint32_t key, Local<JSValueRef> value);
@@ -680,14 +683,39 @@ using FunctionCallback = Local<JSValueRef>(*)(JsiRuntimeCallInfo*);
 using InternalFunctionCallback = JSValueRef(*)(JsiRuntimeCallInfo*);
 class ECMA_PUBLIC_API FunctionRef : public ObjectRef {
 public:
+    struct SendablePropertiesInfo {
+        Local<panda::ArrayRef> keys;
+        Local<panda::ArrayRef> values;
+        PropertyAttribute *attributes;
+    };
+    struct SendablePropertiesInfos {
+        SendablePropertiesInfo instancePropertiesInfo;
+        SendablePropertiesInfo staticPropertiesInfo;
+        SendablePropertiesInfo nonStaticPropertiesInfo;
+    };
     static Local<FunctionRef> New(EcmaVM *vm, FunctionCallback nativeFunc, Deleter deleter = nullptr,
         void *data = nullptr, bool callNapi = false, size_t nativeBindingsize = 0);
     static Local<FunctionRef> New(EcmaVM *vm, InternalFunctionCallback nativeFunc, Deleter deleter,
         void *data = nullptr, bool callNapi = false, size_t nativeBindingsize = 0);
+    static Local<FunctionRef> NewSendable(EcmaVM *vm,
+                                          InternalFunctionCallback nativeFunc,
+                                          Deleter deleter,
+                                          void *data = nullptr,
+                                          bool callNapi = false,
+                                          size_t nativeBindingsize = 0);
     static Local<FunctionRef> NewClassFunction(EcmaVM *vm, FunctionCallback nativeFunc, Deleter deleter,
         void *data, bool callNapi = false, size_t nativeBindingsize = 0);
     static Local<FunctionRef> NewClassFunction(EcmaVM *vm, InternalFunctionCallback nativeFunc, Deleter deleter,
         void *data, bool callNapi = false, size_t nativeBindingsize = 0);
+    static Local<FunctionRef> NewSendableClassFunction(const EcmaVM *vm,
+                                                       InternalFunctionCallback nativeFunc,
+                                                       Deleter deleter,
+                                                       void *data,
+                                                       Local<StringRef> name,
+                                                       SendablePropertiesInfos infos,
+                                                       Local<FunctionRef> parent,
+                                                       bool callNapi = false,
+                                                       size_t nativeBindingsize = 0);
     JSValueRef* CallForNapi(const EcmaVM *vm, JSValueRef *thisObj, JSValueRef *const argv[],
         int32_t length);
     Local<JSValueRef> Call(const EcmaVM *vm, Local<JSValueRef> thisObj, const Local<JSValueRef> argv[],
@@ -1087,7 +1115,7 @@ public:
     Local<PromiseRef> Then(const EcmaVM *vm, Local<FunctionRef> handler);
     Local<PromiseRef> Finally(const EcmaVM *vm, Local<FunctionRef> handler);
     Local<PromiseRef> Then(const EcmaVM *vm, Local<FunctionRef> onFulfilled, Local<FunctionRef> onRejected);
-    
+
     Local<JSValueRef> GetPromiseState(const EcmaVM *vm);
     Local<JSValueRef> GetPromiseResult(const EcmaVM *vm);
 };
@@ -1266,12 +1294,6 @@ public:
     static void SetSourceMapTranslateCallback(EcmaVM *vm, SourceMapTranslateCallback cb);
     static void SetNativeStackCallback(EcmaVM *vm, NativeStackCallback cb);
     static void SetHostEnqueueJob(const EcmaVM* vm, Local<JSValueRef> cb);
-    static void InitializeIcuData(const ecmascript::JSRuntimeOptions &options);
-    static void InitializeMemMapAllocator();
-    static void InitializePGOProfiler(const ecmascript::JSRuntimeOptions &options);
-    static void DestroyAnDataManager();
-    static void DestroyMemMapAllocator();
-    static void DestroyPGOProfiler();
     static EcmaVM* CreateEcmaVM(const ecmascript::JSRuntimeOptions &options);
     static void PreFork(EcmaVM *vm);
     static void PostFork(EcmaVM *vm, const RuntimeOption &option);
@@ -1279,7 +1301,6 @@ public:
     static bool DeleteWorker(EcmaVM *hostVm, EcmaVM *workerVm);
     static void GetStackBeforeCallNapiSuccess(EcmaVM *vm, bool &getStackBeforeCallNapiSuccess);
     static void GetStackAfterCallNapi(EcmaVM *vm);
-
     static PatchErrorCode LoadPatch(EcmaVM *vm, const std::string &patchFileName, const std::string &baseFileName);
     static PatchErrorCode LoadPatch(EcmaVM *vm,
                                     const std::string &patchFileName, const void *patchBuffer, size_t patchSize,
@@ -1318,7 +1339,6 @@ public:
                     int32_t triggerMode)> &cb);
     static void SetSearchHapPathTracker(EcmaVM *vm, std::function<bool(const std::string moduleName,
                     std::string &hapPath)> cb);
-
 private:
     static int vmCount_;
     static bool initialize_;

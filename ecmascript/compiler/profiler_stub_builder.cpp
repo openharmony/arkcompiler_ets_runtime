@@ -407,7 +407,7 @@ GateRef ProfilerStubBuilder::UpdateTrackTypeInPropAttr(GateRef attr, GateRef val
 
     GateRef oldTrackType = GetTrackTypeInPropAttr(attr);
     DEFVARIABLE(newTrackType, VariableType::INT32(), Int32(static_cast<int32_t>(TrackType::TAGGED)));
-    DEFVARIABLE(result, VariableType::INT32(), attr);
+    DEFVARIABLE(result, VariableType::INT64(), attr);
 
     Label exit(env);
     Label judgeValue(env);
@@ -451,8 +451,7 @@ void ProfilerStubBuilder::UpdatePropAttrIC(
     GateRef attrIndex = HandlerBaseGetAttrIndex(handler);
     GateRef hclass = LoadHClass(receiver);
     GateRef layout = GetLayoutFromHClass(hclass);
-    GateRef propAttr = GetPropAttrFromLayoutInfo(layout, attrIndex);
-    GateRef attr = GetInt32OfTInt(propAttr);
+    GateRef attr = GetPropAttrFromLayoutInfo(layout, attrIndex);
     GateRef newAttr = UpdateTrackTypeInPropAttr(attr, value, callback);
     BRANCH(IsJSShared(receiver), &exit, &handleUnShared);
     Bind(&handleUnShared);
