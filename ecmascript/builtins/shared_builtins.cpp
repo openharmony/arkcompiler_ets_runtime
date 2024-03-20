@@ -553,7 +553,7 @@ JSHandle<JSHClass> Builtins::CreateSArrayFunctionHClass(const JSHandle<JSFunctio
     JSHandle<JSTaggedValue> keyString;
     JSHandle<LayoutInfo> layout = factory_->CreateSLayoutInfo(length);
     for (const auto &[key, isAccessor] : properties) {
-        LOG_ECMA(ERROR) << "CreateSArrayFunctionHClass " << key;
+        LOG_ECMA(DEBUG) << "CreateSArrayFunctionHClass " << key;
         attributes.SetOffset(index);
         attributes.SetIsAccessor(isAccessor);
         if (key == "[Symbol.species]") {

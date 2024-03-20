@@ -718,7 +718,7 @@ private:
     // string must be not flat
     static EcmaString *SlowFlatten(const EcmaVM *vm, const JSHandle<EcmaString> &string, MemSpaceType type);
 
-    static EcmaString *Flatten(const EcmaVM *vm, const JSHandle<EcmaString> &string,
+    PUBLIC_API static EcmaString *Flatten(const EcmaVM *vm, const JSHandle<EcmaString> &string,
                                MemSpaceType type = MemSpaceType::SHARED_OLD_SPACE);
 
     static FlatStringInfo FlattenAllString(const EcmaVM *vm, const JSHandle<EcmaString> &string,
@@ -1480,7 +1480,7 @@ public:
         return string_->NotTreeString();
     }
 
-    static EcmaString *Flatten(const EcmaVM *vm, const JSHandle<EcmaString> &string,
+    PUBLIC_API static EcmaString *Flatten(const EcmaVM *vm, const JSHandle<EcmaString> &string,
         MemSpaceType type = MemSpaceType::SHARED_OLD_SPACE)
     {
         return EcmaString::Flatten(vm, string, type);
