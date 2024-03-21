@@ -21,7 +21,7 @@
 namespace panda::ecmascript {
 std::deque<JitTask*> Jit::asyncCompileJitTasks_;
 Mutex Jit::asyncCompileJitTasksMtx_;
-void (*Jit::initJitCompiler_)(EcmaVM *vm) = nullptr;
+void (*Jit::initJitCompiler_)(JSRuntimeOptions options) = nullptr;
 bool(*Jit::jitCompile_)(void*, JitTask*) = nullptr;
 bool(*Jit::jitFinalize_)(void*, JitTask*) = nullptr;
 void*(*Jit::createJitCompilerTask_)(JitTask*) = nullptr;
@@ -34,14 +34,23 @@ Jit *Jit::GetInstance()
     return &instance_;
 }
 
-void Jit::SetEnable(const EcmaVM *vm)
+void Jit::SetEnableOrDisable(const JSRuntimeOptions &options, bool isEnable)
 {
+    if (options.IsEnableAPPJIT()) {
+        // temporary for app jit options test.
+        LOG_JIT(DEBUG) << (isEnable ? "jit is enable" : "jit is disable");
+        return;
+    }
+    if (!isEnable) {
+        jitEnable_ = false;
+        return;
+    }
     if (!initialized_) {
         Initialize();
     }
     if (initialized_ && !jitEnable_) {
         jitEnable_ = true;
-        initJitCompiler_(const_cast<EcmaVM*>(vm));
+        initJitCompiler_(options);
     }
 }
 
@@ -65,7 +74,7 @@ void Jit::Initialize()
         return;
     }
 
-    initJitCompiler_ = reinterpret_cast<void(*)(EcmaVM*)>(FindSymbol(libHandle_, JITCOMPILEINIT.c_str()));
+    initJitCompiler_ = reinterpret_cast<void(*)(JSRuntimeOptions)>(FindSymbol(libHandle_, JITCOMPILEINIT.c_str()));
     if (initJitCompiler_ == nullptr) {
         LOG_JIT(ERROR) << "jit can't find symbol initJitCompiler";
         return;
