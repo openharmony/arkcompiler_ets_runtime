@@ -250,4 +250,24 @@ void BuiltinsCollectionStubBuilder<CollectionType>::Has(Variable *result, Label 
 
 template void BuiltinsCollectionStubBuilder<JSMap>::Has(Variable *result, Label *exit, Label *slowPath);
 template void BuiltinsCollectionStubBuilder<JSSet>::Has(Variable *result, Label *exit, Label *slowPath);
+
+template <typename CollectionType>
+void BuiltinsCollectionStubBuilder<CollectionType>::Get(Variable *result, Label *exit, Label *slowPath)
+{
+    auto env = GetEnvironment();
+    Label thisCollectionObj(env);
+    // check target obj
+    CheckCollectionObj(&thisCollectionObj, slowPath);
+
+    Bind(&thisCollectionObj);
+    GateRef key = GetCallArg0(numArgs_);
+    GateRef linkedTable = GetLinked();
+    static_assert(std::is_same_v<CollectionType, JSMap>);
+    LinkedHashTableStubBuilder<LinkedHashMap, LinkedHashMapObject> linkedHashTableStubBuilder(this, glue_);
+    *result = linkedHashTableStubBuilder.Get(linkedTable, key);
+    Jump(exit);
+}
+
+template void BuiltinsCollectionStubBuilder<JSMap>::Get(Variable *result, Label *exit, Label *slowPath);
+
 }  // namespace panda::ecmascript::kungfu

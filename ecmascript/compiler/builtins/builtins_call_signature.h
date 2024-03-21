@@ -102,6 +102,7 @@ namespace panda::ecmascript::kungfu {
     V(MapSet)                                       \
     V(MapDelete)                                    \
     V(MapHas)                                       \
+    V(MapGet)                                       \
     V(NumberParseFloat)                             \
     V(TypedArraySubArray)                           \
     V(TypedArrayGetByteLength)                      \
