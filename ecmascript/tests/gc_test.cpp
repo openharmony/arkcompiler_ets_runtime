@@ -245,9 +245,7 @@ HWTEST_F_L0(GCTest, NonNewSpaceNativeBindingCheckGCTest)
         newNativeSize = heap->GetNativeBindingSize();
         EXPECT_TRUE(newNativeSize - oldNativeSize < 2048 * 1024 *1024);
     }
-    auto partialGc = heap->GetPartialGC();
-    heap->SetMarkType(MarkType::MARK_FULL);
-    partialGc->RunPhases();
+    heap->CollectGarbage(TriggerGCType::FULL_GC);
     newNativeSize = heap->GetNonNewSpaceNativeBindingSize();
     EXPECT_EQ(newNativeSize - oldNativeSize, 0UL);
 }
