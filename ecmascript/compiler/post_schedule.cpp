@@ -72,24 +72,32 @@ void PostSchedule::GenerateExtraBB(ControlFlowGraph &cfg)
 
 bool PostSchedule::VisitHeapAlloc(GateRef gate, ControlFlowGraph &cfg, size_t bbIdx, size_t instIdx)
 {
-    ASSERT(acc_.TryGetValue(gate) == RegionSpaceFlag::IN_YOUNG_SPACE ||
-           acc_.TryGetValue(gate) == RegionSpaceFlag::IN_SHARED_OLD_SPACE);
+    int64_t flag = acc_.TryGetValue(gate);
+    ASSERT(flag == RegionSpaceFlag::IN_YOUNG_SPACE ||
+           flag == RegionSpaceFlag::IN_SHARED_OLD_SPACE);
     std::vector<GateRef> currentBBGates;
     std::vector<GateRef> successBBGates;
     std::vector<GateRef> failBBGates;
     std::vector<GateRef> endBBGates;
-    LoweringHeapAllocAndPrepareScheduleGate(gate, currentBBGates, successBBGates, failBBGates, endBBGates);
+    if (flag == RegionSpaceFlag::IN_YOUNG_SPACE) {
+        LoweringHeapAllocAndPrepareScheduleGate(gate, currentBBGates, successBBGates, failBBGates, endBBGates, flag);
 #ifdef ARK_ASAN_ON
-    ReplaceGateDirectly(currentBBGates, cfg, bbIdx, instIdx);
-    return false;
+        ReplaceGateDirectly(currentBBGates, cfg, bbIdx, instIdx);
+        return false;
 #else
-    ReplaceBBState(cfg, bbIdx, currentBBGates, endBBGates);
-    ScheduleEndBB(endBBGates, cfg, bbIdx, instIdx);
-    ScheduleNewBB(successBBGates, cfg, bbIdx);
-    ScheduleNewBB(failBBGates, cfg, bbIdx);
-    ScheduleCurrentBB(currentBBGates, cfg, bbIdx, instIdx);
-    return true;
+        ReplaceBBState(cfg, bbIdx, currentBBGates, endBBGates);
+        ScheduleEndBB(endBBGates, cfg, bbIdx, instIdx);
+        ScheduleNewBB(successBBGates, cfg, bbIdx);
+        ScheduleNewBB(failBBGates, cfg, bbIdx);
+        ScheduleCurrentBB(currentBBGates, cfg, bbIdx, instIdx);
+        return true;
 #endif
+    } else if (flag == RegionSpaceFlag::IN_SHARED_OLD_SPACE) {
+        LoweringHeapAllocate(gate, currentBBGates, successBBGates, failBBGates, endBBGates, flag);
+        ReplaceGateDirectly(currentBBGates, cfg, bbIdx, instIdx);
+        return false;
+    }
+    return false;
 }
 
 void PostSchedule::ReplaceGateDirectly(std::vector<GateRef> &gates, ControlFlowGraph &cfg, size_t bbIdx, size_t instIdx)
@@ -181,37 +189,13 @@ void PostSchedule::LoweringHeapAllocAndPrepareScheduleGate(GateRef gate,
                                                            std::vector<GateRef> &currentBBGates,
                                                            std::vector<GateRef> &successBBGates,
                                                            std::vector<GateRef> &failBBGates,
-                                                           std::vector<GateRef> &endBBGates)
+                                                           std::vector<GateRef> &endBBGates,
+                                                           [[maybe_unused]] int64_t flag)
 {
-    Environment env(gate, circuit_, &builder_);
 #ifdef ARK_ASAN_ON
-    (void)successBBGates;
-    (void)failBBGates;
-    (void)endBBGates;
-    GateRef glue = acc_.GetValueIn(gate, 0);
-    GateRef size = acc_.GetValueIn(gate, 1);
-    GateRef taggedIntMask = circuit_->GetConstantGateWithoutCache(
-        MachineType::I64, JSTaggedValue::TAG_INT, GateType::NJSValue());
-    GateRef taggedSize = builder_.Int64Or(size, taggedIntMask);
-    GateRef target = circuit_->GetConstantGateWithoutCache(
-        MachineType::ARCH, RTSTUB_ID(AllocateInYoung), GateType::NJSValue());
-    const CallSignature *cs = RuntimeStubCSigns::Get(RTSTUB_ID(CallRuntime));
-    ASSERT(cs->IsRuntimeStub());
-    GateRef reseverdFrameArgs = circuit_->GetConstantGateWithoutCache(MachineType::I64, 0, GateType::NJSValue());
-    GateRef reseverdPc = circuit_->GetConstantGateWithoutCache(MachineType::I64, 0, GateType::NJSValue());
-    GateRef result = builder_.Call(cs, glue, target, builder_.GetDepend(),
-                                   { taggedSize, reseverdFrameArgs, reseverdPc }, Circuit::NullGate(), "Heap alloc");
-    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
-
-    // Must keep the order of value-in/depend-in
-    PrepareToScheduleNewGate(result, currentBBGates);
-    PrepareToScheduleNewGate(target, currentBBGates);
-    PrepareToScheduleNewGate(taggedSize, currentBBGates);
-    PrepareToScheduleNewGate(reseverdFrameArgs, currentBBGates);
-    PrepareToScheduleNewGate(reseverdPc, currentBBGates);
-    PrepareToScheduleNewGate(taggedIntMask, currentBBGates);
-    return;
+    LoweringHeapAllocate(gate, currentBBGates, successBBGates, failBBGates, endBBGates, flag);
 #else
+    Environment env(gate, circuit_, &builder_);
     Label exit(&builder_);
     GateRef glue = acc_.GetValueIn(gate, 0);
     GateRef size = acc_.GetValueIn(gate, 1);
@@ -310,6 +294,48 @@ void PostSchedule::LoweringHeapAllocAndPrepareScheduleGate(GateRef gate,
     }
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
 #endif
+}
+
+void PostSchedule::LoweringHeapAllocate(GateRef gate,
+                                        std::vector<GateRef> &currentBBGates,
+                                        std::vector<GateRef> &successBBGates,
+                                        std::vector<GateRef> &failBBGates,
+                                        std::vector<GateRef> &endBBGates,
+                                        int64_t flag)
+{
+    Environment env(gate, circuit_, &builder_);
+    (void)successBBGates;
+    (void)failBBGates;
+    (void)endBBGates;
+    GateRef glue = acc_.GetValueIn(gate, 0);
+    GateRef size = acc_.GetValueIn(gate, 1);
+    GateRef taggedIntMask = circuit_->GetConstantGateWithoutCache(
+        MachineType::I64, JSTaggedValue::TAG_INT, GateType::NJSValue());
+    GateRef taggedSize = builder_.Int64Or(size, taggedIntMask);
+    GateRef target;
+    if (flag == RegionSpaceFlag::IN_YOUNG_SPACE) {
+        target = circuit_->GetConstantGateWithoutCache(
+            MachineType::ARCH, RTSTUB_ID(AllocateInYoung), GateType::NJSValue());
+    } else {
+        target = circuit_->GetConstantGateWithoutCache(
+            MachineType::ARCH, RTSTUB_ID(AllocateInSOld), GateType::NJSValue());
+    }
+    const CallSignature *cs = RuntimeStubCSigns::Get(RTSTUB_ID(CallRuntime));
+    ASSERT(cs->IsRuntimeStub());
+    GateRef reseverdFrameArgs = circuit_->GetConstantGateWithoutCache(MachineType::I64, 0, GateType::NJSValue());
+    GateRef reseverdPc = circuit_->GetConstantGateWithoutCache(MachineType::I64, 0, GateType::NJSValue());
+    GateRef result = builder_.Call(cs, glue, target, builder_.GetDepend(),
+                                   { taggedSize, reseverdFrameArgs, reseverdPc }, Circuit::NullGate(), "Heap alloc");
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
+
+    // Must keep the order of value-in/depend-in
+    PrepareToScheduleNewGate(result, currentBBGates);
+    PrepareToScheduleNewGate(target, currentBBGates);
+    PrepareToScheduleNewGate(taggedSize, currentBBGates);
+    PrepareToScheduleNewGate(reseverdFrameArgs, currentBBGates);
+    PrepareToScheduleNewGate(reseverdPc, currentBBGates);
+    PrepareToScheduleNewGate(taggedIntMask, currentBBGates);
+    return;
 }
 
 bool PostSchedule::VisitStore(GateRef gate, ControlFlowGraph &cfg, size_t bbIdx, size_t instIdx)
