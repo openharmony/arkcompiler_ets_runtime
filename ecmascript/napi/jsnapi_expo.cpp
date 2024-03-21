@@ -3754,12 +3754,12 @@ bool JSNApi::Execute(EcmaVM *vm, const uint8_t *data, int32_t size, const std::s
     return true;
 }
 
-RouteErrorCode JSNApi::ExecuteWithSingletonPatternFlag(EcmaVM *vm, const std::string &bundleName, const std::string &moduleName,
-    const std::string &ohmurl, bool flag)
+RouteErrorCode JSNApi::ExecuteWithSingletonPatternFlag(EcmaVM *vm, const std::string &bundleName,
+    const std::string &moduleName, const std::string &ohmurl, bool isSingletonPattern)
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, RouteErrorCode::ROUTE_INTERNAL_ERROR);
-    if (!ecmascript::JSPandaFileExecutor::ExecuteAbcFileWithFlag(thread, bundleName.c_str(), moduleName.c_str(),
-        ohmurl.c_str(), flag)) {
+    if (!ecmascript::JSPandaFileExecutor::ExecuteAbcFileWithSingletonPatternFlag(thread, bundleName.c_str(),
+        moduleName.c_str(), ohmurl.c_str(), isSingletonPattern)) {
         if (thread->HasPendingException()) {
             thread->GetCurrentEcmaContext()->HandleUncaughtException();
         }

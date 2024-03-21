@@ -407,19 +407,16 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::LazyExecuteModule(
     return JSTaggedValue::Undefined();
 }
 
-Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteAbcFileWithFlag(JSThread *thread, const CString &bundleName,
-    const CString &moduleName, const CString &entry, bool isSingletonPattern)
+Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteAbcFileWithSingletonPatternFlag(JSThread *thread,
+    [[maybe_unused]] const CString &bundleName, const CString &moduleName, const CString &entry,
+    bool isSingletonPattern)
 {
     CString abcFilePath = ModulePathHelper::ConcatPandaFilePath(moduleName);
     std::shared_ptr<JSPandaFile> jsPandaFile =
         JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, abcFilePath, entry);
     if (jsPandaFile == nullptr) {
-        abcFilePath = ModulePathHelper::ConcatPandaFilePath(moduleName, bundleName);
-        jsPandaFile = JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, abcFilePath, entry);
-        if (jsPandaFile == nullptr) {
-            LOG_ECMA(ERROR) << "When the route jump, loading panda file failed. Current file is " << abcFilePath;
-            return Unexpected(false);
-        }
+        LOG_ECMA(ERROR) << "When the route jump, loading panda file failed. Current file is " << abcFilePath;
+        return Unexpected(false);
     }
     CString entryPoint = ModulePathHelper::ConcatFileNameWithMerge(thread, jsPandaFile.get(),
         abcFilePath, "", entry);

@@ -84,6 +84,8 @@ namespace panda::ecmascript::kungfu {
     V(ArrayIncludes)                                \
     V(ArrayFrom)                                    \
     V(ArraySplice)                                  \
+    V(ArrayCopyWithin)                              \
+    V(ArrayEvery)                                   \
     V(SetClear)                                     \
     V(SetValues)                                    \
     V(SetEntries)                                   \

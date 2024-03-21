@@ -50,9 +50,9 @@ public:
     static Expected<JSTaggedValue, bool> LazyExecuteModule(
         JSThread *thread, const CString &recordName, const CString &filename, bool isMergedAbc);
 
-    static Expected<JSTaggedValue, bool> ExecuteAbcFileWithFlag(JSThread *thread, const CString &bundleName,
-                                                                const CString &moduleName, const CString &entry,
-                                                                bool isSingletonPattern);
+    static Expected<JSTaggedValue, bool> ExecuteAbcFileWithSingletonPatternFlag(JSThread *thread,
+        [[maybe_unused]] const CString &bundleName, const CString &moduleName, const CString &entry,
+        bool isSingletonPattern);
 };
 }  // namespace panda::ecmascript
 #endif // ECMASCRIPT_JSPANDAFILE_JS_PANDAFILE_EXECUTOR_H

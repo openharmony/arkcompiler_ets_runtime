@@ -339,6 +339,8 @@ DECLARE_BUILTINS(Array##Method)                                                 
     V(Push,         JS_ANY)                 \
     V(Values,       JS_POINTER)             \
     V(Includes,     JS_ANY)                 \
+    V(CopyWithin,   JS_ANY)                 \
+    V(Every,        JS_ANY)                 \
     V(Map,          JS_ANY)
 
 DECLARE_BUILTINS(SORT)

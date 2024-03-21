@@ -239,14 +239,10 @@ public:
      * Before: moduleName
      * After:  data/storage/el1/bundle/moduleName/ets/modules.abc
      */
-    inline static CString ConcatPandaFilePath(const CString &moduleName, const CString &bundleName = "")
+    inline static CString ConcatPandaFilePath(const CString &moduleName)
     {
         if (moduleName.size() == 0) {
             return CString();
-        }
-        if (bundleName.size() != 0) {
-            return BUNDLE_INSTALL_PATH + bundleName + PathHelper::SLASH_TAG + moduleName +
-                PathHelper::SLASH_TAG + moduleName + MERGE_ABC_ETS_MODULES;
         }
         return BUNDLE_INSTALL_PATH + moduleName + MERGE_ABC_ETS_MODULES;
     }

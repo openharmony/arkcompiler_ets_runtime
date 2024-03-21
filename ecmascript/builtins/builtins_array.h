@@ -39,11 +39,11 @@
     /* Array.prototype.concat ( ...items ) */                               \
     V("concat",         Concat,           1, ArrayConcat)                   \
     /* Array.prototype.copyWithin ( target, start [ , end ] ) */            \
-    V("copyWithin",     CopyWithin,       2, INVALID)                       \
+    V("copyWithin",     CopyWithin,       2, ArrayCopyWithin)               \
     /* Array.prototype.entries ( ) */                                       \
     V("entries",        Entries,          0, INVALID)                       \
     /* Array.prototype.every ( callbackfn [ , thisArg ] ) */                \
-    V("every",          Every,            1, INVALID)                       \
+    V("every",          Every,            1, ArrayEvery)                    \
     /* Array.prototype.fill ( value [ , start [ , end ] ] ) */              \
     V("fill",           Fill,             1, INVALID)                       \
     /* Array.prototype.filter ( callbackfn [ , thisArg ] ) */               \

@@ -693,10 +693,9 @@ HWTEST_F_L0(EcmaModuleTest, ConcatPandaFilePath)
     CString outFileName2 = ModulePathHelper::ConcatPandaFilePath(inputPath2);
     EXPECT_EQ(outFileName2, res2);
 
-    CString inputPath3 = "entry";
-    CString bundleName = "com.example.application";
-    CString res3 = "/data/storage/el1/bundle/com.example.application/entry/entry/ets/modules.abc";
-    CString outFileName3 = ModulePathHelper::ConcatPandaFilePath(inputPath3, bundleName);
+    CString inputPath3 = "entry1";
+    CString res3 = "/data/storage/el1/bundle/entry1/ets/modules.abc";
+    CString outFileName3 = ModulePathHelper::ConcatPandaFilePath(inputPath3);
     EXPECT_EQ(outFileName3, res3);
 }
 
