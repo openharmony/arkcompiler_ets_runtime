@@ -323,25 +323,26 @@ DECLARE_BUILTINS(Array##Method)                                                 
 }
 
 #define BUILTINS_WITH_ARRAY_STUB_BUILDER(V) \
-    V(Concat,       JS_ANY)                 \
-    V(Filter,       JS_POINTER)             \
-    V(Find,         JS_ANY)                 \
-    V(FindIndex,    JS_ANY)                 \
-    V(From,         JS_ANY)                 \
-    V(Splice,       JS_ANY)                 \
-    V(ForEach,      JS_ANY)                 \
-    V(IndexOf,      JS_ANY)                 \
-    V(LastIndexOf,  JS_ANY)                 \
-    V(Pop,          JS_ANY)                 \
-    V(Slice,        JS_POINTER)             \
-    V(Reduce,       JS_ANY)                 \
-    V(Reverse,      JS_POINTER)             \
-    V(Push,         JS_ANY)                 \
-    V(Values,       JS_POINTER)             \
-    V(Includes,     JS_ANY)                 \
-    V(CopyWithin,   JS_ANY)                 \
-    V(Every,        JS_ANY)                 \
-    V(Map,          JS_ANY)
+    V(Concat,           JS_ANY)             \
+    V(Filter,           JS_POINTER)         \
+    V(Find,             JS_ANY)             \
+    V(FindIndex,        JS_ANY)             \
+    V(From,             JS_ANY)             \
+    V(Splice,           JS_ANY)             \
+    V(ForEach,          JS_ANY)             \
+    V(IndexOf,          JS_ANY)             \
+    V(LastIndexOf,      JS_ANY)             \
+    V(Pop,              JS_ANY)             \
+    V(Slice,            JS_POINTER)         \
+    V(Reduce,           JS_ANY)             \
+    V(Reverse,          JS_POINTER)         \
+    V(Push,             JS_ANY)             \
+    V(Values,           JS_POINTER)         \
+    V(Includes,         JS_ANY)             \
+    V(CopyWithin,       JS_ANY)             \
+    V(Every,            JS_ANY)             \
+    V(FindLastIndex,    JS_ANY)             \
+    V(Map,              JS_ANY)
 
 DECLARE_BUILTINS(SORT)
 {

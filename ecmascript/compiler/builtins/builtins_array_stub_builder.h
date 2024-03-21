@@ -85,6 +85,9 @@ public:
 
     void Map(GateRef glue, GateRef thisValue, GateRef numArgs, Variable *result, Label *exit, Label *slowPath);
 
+    void FindLastIndex(GateRef glue, GateRef thisValue, GateRef numArgs,
+        Variable *result, Label *exit, Label *slowPath);
+
     GateRef IsConcatSpreadable(GateRef glue, GateRef obj);
 
     GateRef NewArray(GateRef glue, GateRef count);

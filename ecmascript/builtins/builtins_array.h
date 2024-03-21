@@ -55,7 +55,7 @@
     /* Array.prototype.findLast ( predicate [ , thisArg ] ) */              \
     V("findLast",       FindLast,         1, INVALID)                       \
     /* Array.prototype.findLastIndex ( predicate [ , thisArg ] ) */         \
-    V("findLastIndex",  FindLastIndex,    1, INVALID)                       \
+    V("findLastIndex",  FindLastIndex,    1, ArrayFindLastIndex)            \
     /* Array.prototype.flat ( [ depth ] ) */                                \
     V("flat",           Flat,             0, INVALID)                       \
     /* Array.prototype.flatMap ( mapperFunction [ , thisArg ] ) */          \
