@@ -162,7 +162,9 @@ JSTaggedValue ErrorHelper::ErrorCommonConstructor(EcmaRuntimeCallInfo *argv,
     auto globalConst = thread->GlobalConstants();
     if (!message->IsUndefined()) {
         JSHandle<EcmaString> handleStr = JSTaggedValue::ToString(thread, message);
-        LOG_ECMA(DEBUG) << "Throw error: " << EcmaStringAccessor(handleStr).ToCString();
+        if (errorType != ErrorType::OOM_ERROR) {
+            LOG_ECMA(DEBUG) << "Throw error: " << EcmaStringAccessor(handleStr).ToCString();
+        }
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         JSHandle<JSTaggedValue> msgKey = globalConst->GetHandledMessageString();
         PropertyDescriptor msgDesc(thread, JSHandle<JSTaggedValue>::Cast(handleStr), true, false, true);
