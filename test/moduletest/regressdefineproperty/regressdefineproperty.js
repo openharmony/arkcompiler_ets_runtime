@@ -69,3 +69,11 @@ for (let i = 0; i < 1100; i++) {
   });
 }
 print(JSON.stringify(o1))
+
+function fn() { };
+let v0 = function fn1() { }.bind(fn);
+Object.defineProperty(v0, "length", {
+  writable: true
+})
+v0.length = 42;
+print(v0.length)
