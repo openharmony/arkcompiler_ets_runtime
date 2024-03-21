@@ -58,7 +58,14 @@ private:
                                                  std::vector<GateRef> &currentBBGates,
                                                  std::vector<GateRef> &successBBGates,
                                                  std::vector<GateRef> &failBBGates,
-                                                 std::vector<GateRef> &endBBGates);
+                                                 std::vector<GateRef> &endBBGates,
+                                                 int64_t flag);
+    void LoweringHeapAllocate(GateRef gate,
+                              std::vector<GateRef> &currentBBGates,
+                              std::vector<GateRef> &successBBGates,
+                              std::vector<GateRef> &failBBGates,
+                              std::vector<GateRef> &endBBGates,
+                              int64_t flag);
 
     void LoweringStoreNoBarrierAndPrepareScheduleGate(GateRef gate, std::vector<GateRef> &currentBBGates);
     void LoweringStoreWithBarrierAndPrepareScheduleGate(GateRef gate, std::vector<GateRef> &currentBBGates);
