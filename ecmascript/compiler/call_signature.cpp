@@ -1946,6 +1946,20 @@ DEF_CALL_SIGNATURE(FindElementWithCache)
     callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
 }
 
+DEF_CALL_SIGNATURE(NumberIsFinite)
+{
+    // 1 : 1 input parameters
+    CallSignature index("NumberIsFinite", 0, 1, ArgumentsOrder::DEFAULT_ORDER, VariableType::BOOL());
+    *callSign = index;
+    // 1 : 1 input parameters
+    std::array<VariableType, 1> params = {
+        VariableType::FLOAT64(),
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetGCLeafFunction(true);
+    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
+}
+
 DEF_CALL_SIGNATURE(DoubleToInt)
 {
     // 2 : 2 input parameters

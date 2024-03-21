@@ -55,6 +55,38 @@ try {
 
 // Replace standart builtin
 let true_cos = Math.cos
+
+len = true_cos();
+print(len); // Nan
+
+// Check with single param
+len = true_cos(0);
+print(len); // 1
+
+// Check with single not zero param
+len = true_cos(Math.PI / 2);
+print(len); // 6.123233995736766e-17
+
+// Check with 2 params
+len = true_cos(0, 0);
+print(len); // 1
+
+// Check with 3 params
+len = true_cos(0, 0, 0);
+print(len); // 1
+
+// Check with 4 params
+len = true_cos(0, 0, 0, 0);
+print(len); // 1
+
+// Check with 5 params
+len = true_cos(0, 0, 0, 0, 0);
+print(len); // 1
+
+try {
+    print(true_cos(0))
+} catch(e) {}
+
 Math.cos = replace
 len = Math.cos(111);
 print(len); // 111

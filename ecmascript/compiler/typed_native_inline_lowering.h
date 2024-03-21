@@ -80,9 +80,15 @@ private:
     void LowerIntMinMax(GateRef gate);
     template<bool IS_MAX>
     void LowerDoubleMinMax(GateRef gate);
+    void LowerMathImul(GateRef gate);
+    void LowerGlobalIsFinite(GateRef gate);
+    void LowerGlobalIsNan(GateRef gate);
+
+    GateRef LowerGlobalDoubleIsFinite(GateRef value);
+    GateRef LowerGlobalTNumberIsFinite(GateRef value);
+    GateRef LowerGlobalTNumberIsNan(GateRef value);
 
     GateRef FindFrameState(GateRef gate);
-
 private:
     Circuit* circuit_ {nullptr};
     GateAccessor acc_;

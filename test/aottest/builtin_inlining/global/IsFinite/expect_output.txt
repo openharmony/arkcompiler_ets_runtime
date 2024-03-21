@@ -11,14 +11,37 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import("//arkcompiler/ets_runtime/test/test_helper.gni")
-
-host_aot_test_action("builtinMathAsinh") {
-  is_enable_pgo = true
-  is_only_typed_path = true
-  is_enable_opt_inlining = true
-  is_enable_trace_deopt = true
-  is_enable_enableArkTools = true
-  log_option = " --log-info=trace"
-  deps = []
-}
+true
+true
+true
+true
+true
+false
+false
+false
+false
+true
+true
+NaN
+true
+[trace] Check Type: NotNumber1
+false
+[trace] Check Type: NotNumber1
+false
+true
+[trace] Check Type: NotNumber1
+false
+[trace] Check Type: NotNumber1
+true
+[trace] Check Type: NotCallTarget1
+-12
+[trace] Check Type: NotCallTarget1
+abc
+true
+[trace] Check Type: NotNumber1
+false
+[trace] Check Type: NotNumber1
+true
+true
+Error: already positive
+true

@@ -17,6 +17,7 @@ host_aot_test_action("builtinMathSqrt") {
   is_enable_pgo = true
   is_only_typed_path = true
   is_enable_opt_inlining = true
+  is_enable_enableArkTools = true
   is_enable_trace_deopt = true
   log_option = " --log-info=trace"
   deps = []

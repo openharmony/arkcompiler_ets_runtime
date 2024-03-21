@@ -466,6 +466,7 @@ private:
     V(FloatFloor)                               \
     V(FloatPow)                                 \
     V(FloatCeil)                                \
+    V(NumberIsFinite)                           \
     V(FindElementWithCache)                     \
     V(MarkingBarrier)                           \
     V(StoreBarrier)                             \

@@ -40,13 +40,21 @@ public:
     void RunNativeInlineLowering();
 
 private:
-    std::optional<size_t> GetArgc(GateRef gate);
-    void TryInlineStringFromCharCode(GateRef gate, size_t argc);
-    void TryInlineMathUnaryBuiltin(GateRef gate, size_t argc, BuiltinsStubCSigns::ID id, const GateMetaData* op);
-    void TryInlineMathBinaryBuiltin(GateRef gate, size_t argc, BuiltinsStubCSigns::ID id, const GateMetaData* op);
+    std::optional<std::pair<size_t, bool>> GetCallInfo(GateRef gate);
+    void TryInlineStringFromCharCode(GateRef gate, size_t argc, bool skipThis);
+    void TryInlineMathUnaryBuiltin(GateRef gate, size_t argc, BuiltinsStubCSigns::ID id, const GateMetaData* op,
+                                   bool skipThis);
+    void TryInlineMathBinaryBuiltin(GateRef gate, size_t argc, BuiltinsStubCSigns::ID id, const GateMetaData* op,
+                                    bool skipThis);
+    void TryInlineMathImulBuiltin(GateRef gate, size_t argc, BuiltinsStubCSigns::ID id, const GateMetaData* op,
+                                  bool skipThis);
+    void TryInlineGlobalFiniteBuiltin(GateRef gate, size_t argc, BuiltinsStubCSigns::ID id, const GateMetaData* op,
+                                      bool skipThis);
+    void TryInlineGlobalNanBuiltin(GateRef gate, size_t argc, BuiltinsStubCSigns::ID id, const GateMetaData* op,
+                                   bool skipThis);
     void TryInlineMathMinMaxBuiltin(GateRef gate, size_t argc, BuiltinsStubCSigns::ID id, const GateMetaData* op,
-                                    double defaultValue);
-    void TryInlineMathClz32Builtin(GateRef gate, size_t argc);
+                                    double defaultValue, bool skipThis);
+    void TryInlineMathClz32Builtin(GateRef gate, size_t argc, bool skipThis);
 
     bool EnableLog() const
     {

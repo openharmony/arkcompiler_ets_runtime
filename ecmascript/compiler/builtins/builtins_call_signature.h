@@ -172,8 +172,11 @@ namespace panda::ecmascript::kungfu {
     V(MathFRound)                                   \
     V(MathMin)                                      \
     V(MathMax)                                      \
+    V(MathImul)                                     \
+    V(GlobalIsFinite)                               \
+    V(GlobalIsNan)                                  \
     V(TYPED_BUILTINS_INLINE_FIRST = MathAcos)       \
-    V(TYPED_BUILTINS_INLINE_LAST = MathMax)
+    V(TYPED_BUILTINS_INLINE_LAST = GlobalIsNan)
 
 class BuiltinsStubCSigns {
 public:
@@ -343,6 +346,8 @@ public:
                 return ConstantIndex::MATH_ROUND_INDEX;
             case BuiltinsStubCSigns::ID::MathFRound:
                 return ConstantIndex::MATH_FROUND_INDEX;
+            case BuiltinsStubCSigns::ID::MathImul:
+                return ConstantIndex::MATH_IMUL_INDEX;
             case BuiltinsStubCSigns::ID::LocaleCompare:
                 return ConstantIndex::LOCALE_COMPARE_FUNCTION_INDEX;
             case BuiltinsStubCSigns::ID::SORT:
@@ -361,6 +366,10 @@ public:
                 return ConstantIndex::ITERATOR_PROTO_RETURN_INDEX;
             case BuiltinsStubCSigns::ID::StringFromCharCode:
                 return ConstantIndex::STRING_FROM_CHAR_CODE_INDEX;
+            case BuiltinsStubCSigns::ID::GlobalIsFinite:
+                return ConstantIndex::GLOBAL_IS_FINITE_INDEX;
+            case BuiltinsStubCSigns::ID::GlobalIsNan:
+                return ConstantIndex::GLOBAL_IS_NAN_INDEX;
             default:
                 LOG_COMPILER(FATAL) << "this branch is unreachable";
                 UNREACHABLE();
@@ -402,10 +411,13 @@ public:
             {"fround", MathFRound},
             {"ceil", MathCeil},
             {"floor", MathFloor},
+            {"imul", MathImul},
             {"localeCompare", LocaleCompare},
             {"next", STRING_ITERATOR_PROTO_NEXT},
             {"sort", SORT},
             {"stringify", STRINGIFY},
+            {"isFinite", GlobalIsFinite},
+            {"isNan", GlobalIsNan},
         };
         if (str2BuiltinId.count(idStr) > 0) {
             return str2BuiltinId.at(idStr);

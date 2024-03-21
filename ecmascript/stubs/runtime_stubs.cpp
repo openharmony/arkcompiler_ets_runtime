@@ -3000,6 +3000,11 @@ double RuntimeStubs::FloatPow(double base, double exp)
     return std::pow(base, exp);
 }
 
+bool RuntimeStubs::NumberIsFinite(double x)
+{
+    return std::isfinite(x);
+}
+
 int32_t RuntimeStubs::DoubleToInt(double x, size_t bits)
 {
     return base::NumberHelper::DoubleToInt(x, bits);

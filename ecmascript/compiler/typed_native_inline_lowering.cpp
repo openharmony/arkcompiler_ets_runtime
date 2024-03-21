@@ -142,6 +142,15 @@ GateRef TypedNativeInlineLowering::VisitGate(GateRef gate)
         case OpCode::MATH_FLOOR:
             LowerMathCeilFloor<false>(gate);
             break;
+        case OpCode::MATH_IMUL:
+            LowerMathImul(gate);
+            break;
+        case OpCode::GLOBAL_IS_FINITE:
+            LowerGlobalIsFinite(gate);
+            break;
+        case OpCode::GLOBAL_IS_NAN:
+            LowerGlobalIsNan(gate);
+            break;
         default:
             break;
     }
@@ -188,6 +197,79 @@ void TypedNativeInlineLowering::LowerMathCeilFloorWithRuntimeCall(GateRef gate)
     }
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
 }
+GateRef TypedNativeInlineLowering::LowerGlobalDoubleIsFinite(GateRef value)
+{
+    // set the sign bit to 0 by shift left then right.
+    auto temp = builder_.Int64LSL(builder_.CastDoubleToInt64(value), builder_.Int64(1));
+    auto res = builder_.Int64LSR(temp, builder_.Int64(1));
+    auto abs = builder_.CastInt64ToFloat64(res);
+    auto result = builder_.DoubleLessThan(abs, builder_.Double(base::POSITIVE_INFINITY));
+    return result;
+}
+
+GateRef TypedNativeInlineLowering::LowerGlobalTNumberIsFinite(GateRef value)
+{
+    ASSERT(!acc_.GetGateType(value).IsNJSValueType());
+    DEFVALUE(result, (&builder_), VariableType::BOOL(), builder_.Boolean(true));
+
+    Label isInt(&builder_);
+    Label notInt(&builder_);
+    Label exit(&builder_);
+    builder_.Branch(builder_.TaggedIsInt(value), &isInt, &notInt);
+    builder_.Bind(&isInt);
+    {
+        result = builder_.Boolean(true);
+        builder_.Jump(&exit);
+    }
+    builder_.Bind(&notInt);
+    {
+        result = LowerGlobalDoubleIsFinite(value);
+        builder_.Jump(&exit);
+    }
+    builder_.Bind(&exit);
+    return *result;
+}
+
+void TypedNativeInlineLowering::LowerGlobalIsFinite(GateRef gate)
+{
+    GateRef value = acc_.GetValueIn(gate, 0);
+    Environment env(gate, circuit_, &builder_);
+    GateRef result = LowerGlobalDoubleIsFinite(value);
+
+    acc_.ReplaceGate(gate, builder_.GetStateDepend(), result);
+}
+
+GateRef TypedNativeInlineLowering::LowerGlobalTNumberIsNan(GateRef value)
+{
+    ASSERT(!acc_.GetGateType(value).IsNJSValueType());
+    DEFVALUE(result, (&builder_), VariableType::BOOL(), builder_.Boolean(false));
+
+    Label isInt(&builder_);
+    Label notInt(&builder_);
+    Label exit(&builder_);
+    builder_.Branch(builder_.TaggedIsInt(value), &isInt, &notInt);
+    builder_.Bind(&isInt);
+    {
+        result = builder_.Boolean(false);
+        builder_.Jump(&exit);
+    }
+    builder_.Bind(&notInt);
+    {
+        result = builder_.DoubleIsNAN(value);
+        builder_.Jump(&exit);
+    }
+    builder_.Bind(&exit);
+    return *result;
+}
+
+void TypedNativeInlineLowering::LowerGlobalIsNan(GateRef gate)
+{
+    GateRef value = acc_.GetValueIn(gate, 0);
+    Environment env(gate, circuit_, &builder_);
+    GateRef result = builder_.DoubleIsNAN(value);
+
+    acc_.ReplaceGate(gate, builder_.GetStateDepend(), result);
+}
 
 void TypedNativeInlineLowering::LowerMathPow(GateRef gate)
 {
@@ -232,6 +314,17 @@ void TypedNativeInlineLowering::LowerMathExp(GateRef gate)
 #else
     LowerGeneralUnaryMath(gate, RTSTUB_ID(FloatExp));
 #endif
+}
+
+void TypedNativeInlineLowering::LowerMathImul(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    GateRef val1 = acc_.GetValueIn(gate, 0);
+    GateRef val2 = acc_.GetValueIn(gate, 1);
+    ASSERT(acc_.GetGateType(val1).IsNJSValueType() && acc_.GetGateType(val2).IsNJSValueType());
+
+    GateRef result = builder_.Int32Mul(val1, val2);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
 }
 
 void TypedNativeInlineLowering::LowerGeneralUnaryMath(GateRef gate, RuntimeStubCSigns::ID stubId)

@@ -95,6 +95,9 @@ private:
     GateRef VisitMathTaggedNumberParamsBuiltin(GateRef gate);
     GateRef VisitClz32Builtin(GateRef gate);
     GateRef VisitMathTrunc(GateRef gate);
+    GateRef VisitMathImul(GateRef gate);
+    template <bool IS_NAN>
+    GateRef VisitGlobalBuiltin(GateRef gate);
     GateRef VisitBooleanJump(GateRef gate);
     GateRef VisitRangeCheckPredicate(GateRef gate);
     GateRef VisitIndexCheck(GateRef gate);
@@ -124,6 +127,10 @@ private:
     void ConvertForIntOperator(GateRef gate, GateType leftType, GateType rightType);
     void ConvertForShiftAndLogicalOperator(GateRef gate, GateType leftType, GateType rightType);
     void ConvertForDoubleOperator(GateRef gate, GateType leftType, GateType rightType);
+
+    TypeInfo GetNumberInputTypeInfo(GateRef gate);
+    void SetNewInputForMathImul(GateRef gate, int idx, Label *exit);
+    double GetDoubleValueFromConst(GateRef gate);
 
     GateRef CheckAndConvertToInt32(GateRef gate, GateType gateType, ConvertSupport support = ConvertSupport::ENABLE,
                                    OpType type = OpType::NORMAL);

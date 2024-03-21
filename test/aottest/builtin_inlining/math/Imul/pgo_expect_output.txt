@@ -11,14 +11,41 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import("//arkcompiler/ets_runtime/test/test_helper.gni")
-
-host_aot_test_action("builtinMathAsinh") {
-  is_enable_pgo = true
-  is_only_typed_path = true
-  is_enable_opt_inlining = true
-  is_enable_trace_deopt = true
-  is_enable_enableArkTools = true
-  log_option = " --log-info=trace"
-  deps = []
-}
+6
+0
+0
+8
+0
+0
+0
+0
+0
+0
+0
+20
+50000
+12000
+10
+8
+-42
+0
+0
+2147483647
+0
+2
+0
+-2
+0
+2
+9
+-24
+0
+-24
+-24
+0
+-24
+0
+46
+-28
+Error: already positive
+-46
