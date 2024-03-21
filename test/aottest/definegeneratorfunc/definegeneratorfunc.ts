@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-declare function assert_equal(a: Object, b: Object):void;
+declare function print(str:any):string;
 function* genfunc() {
   yield 1;
   yield 2;
@@ -22,7 +22,7 @@ function* genfunc() {
 
 let gen = genfunc();
 
-assert_equal(gen.next().value, 1);
-assert_equal(gen.next().value, 2);
-assert_equal(gen.next().value, 3);
-assert_equal(gen.next().done, true);
+print(gen.next().value);
+print(gen.next().value);
+print(gen.next().value);
+print(gen.next().done);

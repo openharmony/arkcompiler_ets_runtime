@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-declare function assert_equal(a: Object, b: Object):void;
+declare function print(str:string):string;
 let phrase = {
     firstWord: "hello",
     secondWord: "world",
@@ -27,8 +27,8 @@ let phrase = {
     }
 };
 
-assert_equal(phrase.fullPhrase, "hello world");
+print(phrase.fullPhrase)
 
 phrase.fullPhrase = "world hello";
 
-assert_equal(phrase.fullPhrase, "world hello");
+print(phrase.fullPhrase)
