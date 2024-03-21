@@ -121,6 +121,7 @@ class PostSchedule;
     V(SExtInt32ToPtr, Sext, MachineType::ARCH)                         \
     V(ZExtInt16ToInt32, Zext, MachineType::I32)                        \
     V(ZExtInt16ToInt64, Zext, MachineType::I64)                        \
+    V(DoubleTrunc, DoubleTrunc, MachineType::F64)                      \
     V(TruncInt16ToInt8, Trunc, MachineType::I8)                        \
     V(TruncInt64ToInt32, Trunc, MachineType::I32)                      \
     V(TruncPtrToInt32, Trunc, MachineType::I32)                        \

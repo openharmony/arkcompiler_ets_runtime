@@ -87,6 +87,9 @@ GateRef TypedNativeInlineLowering::VisitGate(GateRef gate)
         case OpCode::MATH_ABS_DOUBLE:
             LowerDoubleAbs(gate);
             break;
+        case OpCode::MATH_TRUNC:
+            LowerTrunc(gate);
+            break;
         case OpCode::MATH_POW:
             LowerMathPow(gate);
             break;
@@ -616,6 +619,44 @@ void TypedNativeInlineLowering::LowerClz32Int32(GateRef gate)
     GateRef param = acc_.GetValueIn(gate, 0);
     GateRef result = builder_.CountLeadingZeroes32(param);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
+}
+
+//  Int trunc(x) : return x
+//  Float trunc(x) : return the integer part removing all fractional digits
+void TypedNativeInlineLowering::LowerTrunc(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    GateRef param = acc_.GetValueIn(gate, 0);
+    DEFVALUE(result, (&builder_), VariableType::FLOAT64(), builder_.NanValue());
+
+    Label isInt(&builder_);
+    Label notInt(&builder_);
+    Label isDouble(&builder_);
+    Label exit(&builder_);
+
+    BRANCH_CIR(builder_.TaggedIsInt(param), &isInt, &notInt);
+    builder_.Bind(&isInt);
+    {
+        result = builder_.ChangeInt32ToFloat64(builder_.GetInt32OfTInt(param));
+        builder_.Jump(&exit);
+    }
+    builder_.Bind(&notInt);
+    {
+        BRANCH_CIR(builder_.TaggedIsDouble(param), &isDouble, &exit);
+        builder_.Bind(&isDouble);
+        {
+            GateRef input = builder_.GetDoubleOfTDouble(param);
+            if (builder_.GetCompilationConfig()->IsAArch64()) {
+                result = builder_.DoubleTrunc(input);
+            } else {
+                GateRef glue = acc_.GetGlueFromArgList();
+                result = builder_.CallNGCRuntime(glue, RTSTUB_ID(FloatTrunc), Gate::InvalidGateRef, {input}, gate);
+            }
+            builder_.Jump(&exit);
+        }
+    }
+    builder_.Bind(&exit);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
 }
 
 }

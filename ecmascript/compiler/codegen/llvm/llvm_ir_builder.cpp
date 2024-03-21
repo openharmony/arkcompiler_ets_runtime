@@ -211,6 +211,7 @@ void LLVMIRBuilder::InitializeHandlers()
         {OpCode::MIN, &LLVMIRBuilder::HandleMin},
         {OpCode::MAX, &LLVMIRBuilder::HandleMax},
         {OpCode::CLZ32, &LLVMIRBuilder::HandleClz32},
+        {OpCode::DOUBLE_TRUNC, &LLVMIRBuilder::HandleDoubleTrunc},
         {OpCode::READSP, &LLVMIRBuilder::HandleReadSp},
         {OpCode::FINISH_ALLOCATE, &LLVMIRBuilder::HandleFinishAllocate},
     };
@@ -2248,6 +2249,25 @@ void LLVMIRBuilder::HandleChangeTaggedPointerToInt64(GateRef gate)
 void LLVMIRBuilder::HandleChangeInt64ToTagged(GateRef gate)
 {
     VisitChangeInt64ToTagged(gate, acc_.GetIn(gate, 0));
+}
+
+void LLVMIRBuilder::HandleDoubleTrunc(GateRef gate)
+{
+    GateRef param = acc_.GetIn(gate, 0);
+    VisitDoubleTrunc(gate, param);
+}
+
+void LLVMIRBuilder::VisitDoubleTrunc(GateRef gate, GateRef e1)
+{
+    llvm::Value *e1Value = llvm::unwrap(GetLValue(e1));
+    ASSERT(acc_.GetMachineType(e1) == acc_.GetMachineType(gate));
+    llvm::Intrinsic::ID llvmId = llvm::Intrinsic::trunc;
+    llvm::Value *result = llvm::unwrap(builder_)->CreateUnaryIntrinsic(llvmId, e1Value);
+    Bind(gate, llvm::wrap(result));
+
+    if (IsLogEnabled()) {
+        SetDebugInfo(gate, llvm::wrap(result));
+    }
 }
 
 void LLVMIRBuilder::VisitIntDiv(GateRef gate, GateRef e1, GateRef e2)

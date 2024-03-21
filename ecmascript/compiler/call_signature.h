@@ -455,6 +455,7 @@ private:
     V(FloatSinh)                                \
     V(FloatTan)                                 \
     V(FloatTanh)                                \
+    V(FloatTrunc)                               \
     V(FloatLog)                                 \
     V(FloatLog2)                                \
     V(FloatLog10)                               \

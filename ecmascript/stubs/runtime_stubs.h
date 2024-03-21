@@ -130,6 +130,7 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(FloatSinh)                               \
     V(FloatTan)                                \
     V(FloatTanh)                               \
+    V(FloatTrunc)                              \
     V(FloatLog)                                \
     V(FloatLog2)                               \
     V(FloatLog10)                              \
@@ -491,6 +492,7 @@ public:
     static double FloatSinh(double x);
     static double FloatTan(double x);
     static double FloatTanh(double x);
+    static double FloatTrunc(double x);
     static double FloatFloor(double x);
     static double FloatLog(double x);
     static double FloatLog2(double x);

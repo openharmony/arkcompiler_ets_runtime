@@ -74,6 +74,7 @@ namespace panda::ecmascript::kungfu {
     V(MathSinh, MATH_SINH, GateFlags::NO_WRITE, 1, 1, 1)                                        \
     V(MathTan, MATH_TAN, GateFlags::NO_WRITE, 1, 1, 1)                                          \
     V(MathTanh, MATH_TANH, GateFlags::NO_WRITE, 1, 1, 1)                                        \
+    V(MathTrunc, MATH_TRUNC, GateFlags::NO_WRITE, 1, 1, 1)                                      \
     V(MathLog, MATH_LOG, GateFlags::NO_WRITE, 1, 1, 1)                                          \
     V(MathLog2, MATH_LOG2, GateFlags::NO_WRITE, 1, 1, 1)                                        \
     V(MathLog10, MATH_LOG10, GateFlags::NO_WRITE, 1, 1, 1)                                      \

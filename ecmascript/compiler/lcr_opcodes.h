@@ -46,6 +46,7 @@ namespace panda::ecmascript::kungfu {
 #define LCR_UNARY_GATE_META_DATA_CACHE_LIST(V)                                   \
     V(Zext, ZEXT, GateFlags::NONE_FLAG, 0, 0, 1)                                 \
     V(Sext, SEXT, GateFlags::NONE_FLAG, 0, 0, 1)                                 \
+    V(DoubleTrunc, DOUBLE_TRUNC, GateFlags::NO_WRITE, 0, 0, 1)                   \
     V(Trunc, TRUNC, GateFlags::NONE_FLAG, 0, 0, 1)                               \
     V(Fext, FEXT, GateFlags::NONE_FLAG, 0, 0, 1)                                 \
     V(Ftrunc, FTRUNC, GateFlags::NONE_FLAG, 0, 0, 1)                             \

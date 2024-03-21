@@ -107,6 +107,7 @@ enum class CallExceptionKind : bool {
     V(Min, (GateRef gate, GateRef e1, GateRef e2))                                        \
     V(Max, (GateRef gate, GateRef e1, GateRef e2))                                        \
     V(Clz32, (GateRef gate, GateRef e1))                                                  \
+    V(DoubleTrunc, (GateRef gate, GateRef e1))                                            \
     V(ReadSp, (GateRef gate))                                                             \
     V(FinishAllocate, (GateRef gate, GateRef e1))
 

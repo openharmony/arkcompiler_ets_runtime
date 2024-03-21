@@ -2955,6 +2955,11 @@ double RuntimeStubs::FloatCbrt(double x)
     return std::cbrt(x);
 }
 
+double RuntimeStubs::FloatTrunc(double x)
+{
+    return std::trunc(x);
+}
+
 double RuntimeStubs::FloatFloor(double x)
 {
     ASSERT(!std::isnan(x));

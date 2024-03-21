@@ -205,6 +205,8 @@ GateRef NumberSpeculativeRetype::VisitGate(GateRef gate)
         case OpCode::MATH_MIN:
         case OpCode::MATH_MAX:
             return VisitMathTaggedNumberParamsBuiltin(gate);
+        case OpCode::MATH_TRUNC:
+            return VisitMathTrunc(gate);
         case OpCode::JS_BYTECODE:
         case OpCode::RUNTIME_CALL:
         case OpCode::PRIMITIVE_TYPE_CHECK:
@@ -1481,6 +1483,21 @@ GateRef NumberSpeculativeRetype::VisitMathTaggedNumberParamsBuiltin(GateRef gate
         }
         acc_.ReplaceValueIn(gate, input, i);
     }
+    acc_.ReplaceStateIn(gate, builder_.GetState());
+    acc_.ReplaceDependIn(gate, builder_.GetDepend());
+    return Circuit::NullGate();
+}
+
+GateRef NumberSpeculativeRetype::VisitMathTrunc(GateRef gate)
+{
+    if (IsRetype()) {
+        return SetOutputType(gate, GateType::DoubleType());
+    }
+    ASSERT(IsConvert());
+    Environment env(gate, circuit_, &builder_);
+    ASSERT(acc_.GetNumValueIn(gate) == 1);
+    GateRef input = acc_.GetValueIn(gate, 0);
+    acc_.ReplaceValueIn(gate, CheckAndConvertToTagged(input, GateType::NumberType(), ConvertToNumber::BOOL_ONLY), 0);
     acc_.ReplaceStateIn(gate, builder_.GetState());
     acc_.ReplaceDependIn(gate, builder_.GetDepend());
     return Circuit::NullGate();

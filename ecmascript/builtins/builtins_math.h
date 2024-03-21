@@ -68,7 +68,7 @@
     V("sqrt",   Sqrt,   1, SQRT)        /* Math.sqrt ( x ) */               \
     V("tan",    Tan,    1, MathTan)     /* Math.tan ( x ) */                \
     V("tanh",   Tanh,   1, MathTanh)    /* Math.tanh ( x ) */               \
-    V("trunc",  Trunc,  1, INVALID)     /* Math.trunc ( x ) */
+    V("trunc",  Trunc,  1, MathTrunc)   /* Math.trunc ( x ) */
 
 namespace panda::ecmascript::builtins {
 class BuiltinsMath : public base::BuiltinsBase {

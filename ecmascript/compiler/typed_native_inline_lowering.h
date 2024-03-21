@@ -44,6 +44,7 @@ private:
     template <MathTrigonometricCheck CHECK = MathTrigonometricCheck::NOT_NAN>
     void LowerGeneralUnaryMath(GateRef gate, RuntimeStubCSigns::ID stubId);
     void LowerMathAtan2(GateRef gate);
+    void LowerTrunc(GateRef gate);
     void LowerMathPow(GateRef gate);
     void LowerMathExp(GateRef gate);
     void LowerClz32Float64(GateRef gate);
