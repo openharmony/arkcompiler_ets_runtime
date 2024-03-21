@@ -1338,7 +1338,7 @@ void BuiltinsStringStubBuilder::CopyChars(GateRef glue, GateRef dst, GateRef sou
     Bind(&loopEnd);
     sourceTmp = PtrAdd(*sourceTmp, size);
     dstTmp = PtrAdd(*dstTmp, size);
-    LoopEnd(&loopHead);
+    LoopEnd(&loopHead, env, glue);
 
     Bind(&exit);
     env->SubCfgExit();
@@ -1419,7 +1419,7 @@ void BuiltinsStringStubBuilder::CopyUtf8AsUtf16(GateRef glue, GateRef dst, GateR
     Bind(&loopEnd);
     sourceTmp = PtrAdd(*sourceTmp, IntPtr(sizeof(uint8_t)));
     dstTmp = PtrAdd(*dstTmp, IntPtr(sizeof(uint16_t)));
-    LoopEnd(&loopHead);
+    LoopEnd(&loopHead, env, glue);
 
     Bind(&exit);
     env->SubCfgExit();
@@ -1456,7 +1456,7 @@ void BuiltinsStringStubBuilder::CopyUtf16AsUtf8(GateRef glue, GateRef dst, GateR
     Bind(&loopEnd);
     sourceTmp = PtrAdd(*sourceTmp, IntPtr(sizeof(uint16_t)));
     dstTmp = PtrAdd(*dstTmp, IntPtr(sizeof(uint8_t)));
-    LoopEnd(&loopHead);
+    LoopEnd(&loopHead, env, glue);
 
     Bind(&exit);
     env->SubCfgExit();

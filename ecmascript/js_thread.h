@@ -845,7 +845,8 @@ public:
                                                  base::AlignedPointer,
                                                  BuiltinEntries,
                                                  base::AlignedBool,
-                                                 base::AlignedPointer> {
+                                                 base::AlignedPointer,
+                                                 base::AlignedUint32> {
         enum class Index : size_t {
             BCStubEntriesIndex = 0,
             ExceptionIndex,
@@ -878,6 +879,7 @@ public:
             BuiltinEntriesIndex,
             IsTracingIndex,
             unsharedConstpoolsIndex,
+            stateAndFlagsIndex,
             NumOfMembers
         };
         static_assert(static_cast<size_t>(Index::NumOfMembers) == NumOfTypes);
@@ -1047,6 +1049,11 @@ public:
             return GetOffset<static_cast<size_t>(Index::unsharedConstpoolsIndex)>(isArch32);
         }
 
+        static size_t GetStateAndFlagsOffset(bool isArch32)
+        {
+            return GetOffset<static_cast<size_t>(Index::stateAndFlagsIndex)>(isArch32);
+        }
+
         alignas(EAS) BCStubEntries bcStubEntries_;
         alignas(EAS) JSTaggedValue exception_ {JSTaggedValue::Hole()};
         alignas(EAS) JSTaggedValue globalObject_ {JSTaggedValue::Hole()};
@@ -1078,6 +1085,7 @@ public:
         alignas(EAS) BuiltinEntries builtinEntries_;
         alignas(EAS) bool isTracing_ {false};
         alignas(EAS) uintptr_t unsharedConstpools_ {0};
+        alignas(EAS) ThreadStateAndFlags stateAndFlags_ {};
     };
     STATIC_ASSERT_EQ_ARCH(sizeof(GlueData), GlueData::SizeArch32, GlueData::SizeArch64);
 
@@ -1124,6 +1132,13 @@ public:
         return ReadFlag(ThreadFlag::SUSPEND_REQUEST);
     }
 
+    void CheckSafepointIfSuspended()
+    {
+        if (IsSuspended()) {
+            CheckSafepoint();
+        }
+    }
+
     bool IsInRunningState() const
     {
         return GetState() == ThreadState::RUNNING;
@@ -1133,7 +1148,7 @@ public:
 
     ThreadState GetState() const
     {
-        uint32_t stateAndFlags = stateAndFlags_.asAtomicInt.load(std::memory_order_acquire);
+        uint32_t stateAndFlags = glueData_.stateAndFlags_.asAtomicInt.load(std::memory_order_acquire);
         return static_cast<enum ThreadState>(stateAndFlags >> THREAD_STATE_OFFSET);
     }
     void UpdateState(ThreadState newState);
@@ -1175,16 +1190,16 @@ private:
     void StoreState(ThreadState newState, bool lockMutatorLock);
     bool ReadFlag(ThreadFlag flag) const
     {
-        return (stateAndFlags_.asStruct.flags & static_cast<uint16_t>(flag)) != 0;
+        return (glueData_.stateAndFlags_.asStruct.flags & static_cast<uint16_t>(flag)) != 0;
     }
     void SetFlag(ThreadFlag flag)
     {
-        stateAndFlags_.asAtomicInt.fetch_or(flag, std::memory_order_seq_cst);
+        glueData_.stateAndFlags_.asAtomicInt.fetch_or(flag, std::memory_order_seq_cst);
     }
 
     void ClearFlag(ThreadFlag flag)
     {
-        stateAndFlags_.asAtomicInt.fetch_and(UINT32_MAX ^ flag, std::memory_order_seq_cst);
+        glueData_.stateAndFlags_.asAtomicInt.fetch_and(UINT32_MAX ^ flag, std::memory_order_seq_cst);
     }
 
     void DumpStack() DUMP_API_ATTR;
@@ -1246,7 +1261,6 @@ private:
     int32_t suspendCount_ {0};
     ConditionVariable suspendCondVar_;
 
-    ThreadStateAndFlags stateAndFlags_ {};
 #ifndef NDEBUG
     MutatorLock::MutatorLockState mutatorLockState_ = MutatorLock::MutatorLockState::UNLOCKED;
 #endif

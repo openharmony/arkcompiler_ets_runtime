@@ -357,7 +357,7 @@ GateRef NewObjectStubBuilder::ExtendArray(GateRef glue, GateRef elements, GateRe
         }
     }
     Bind(&loopEnd);
-    LoopEnd(&loopHead);
+    LoopEnd(&loopHead, env, glue);
     Bind(&afterLoop);
     {
         Label loopHead1(env);
@@ -485,7 +485,7 @@ GateRef NewObjectStubBuilder::CopyArray(GateRef glue, GateRef elements, GateRef 
                 }
             }
             Bind(&loopEnd);
-            LoopEnd(&loopHead);
+            LoopEnd(&loopHead, env, glue);
             Bind(&afterLoop);
             {
                 result = *array;

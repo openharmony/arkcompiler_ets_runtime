@@ -132,7 +132,7 @@ GateRef BuiltinsObjectStubBuilder::CreateListFromArrayLike(GateRef glue, GateRef
                     }
                 }
                 Bind(&loopEnd);
-                LoopEnd(&loopHead);
+                LoopEnd(&loopHead, env, glue);
                 Bind(&afterLoop);
                 {
                     res = array;
@@ -359,7 +359,7 @@ void BuiltinsObjectStubBuilder::AssignEnumElementProperty(Variable *result, Labe
         }
         Bind(&loopEnd);
         idx = Int32Add(*idx, Int32(1));
-        LoopEnd(&loopHead);
+        LoopEnd(&loopHead, env, glue_);
         Bind(&loopExit);
         Jump(&exit);
     }
@@ -409,7 +409,7 @@ void BuiltinsObjectStubBuilder::AssignEnumElementProperty(Variable *result, Labe
         }
         Bind(&loopEnd);
         idx = Int32Add(*idx, Int32(1));
-        LoopEnd(&loopHead);
+        LoopEnd(&loopHead, env, glue_);
         Bind(&loopExit);
         Jump(&exit);
     }
@@ -502,7 +502,7 @@ void BuiltinsObjectStubBuilder::LayoutInfoAssignAllEnumProperty(Variable *result
     }
     Bind(&loopEnd);
     idx = Int32Add(*idx, Int32(1));
-    LoopEnd(&loopHead);
+    LoopEnd(&loopHead, env, glue_);
     Bind(&loopExit);
     Jump(&exit);
 
@@ -580,7 +580,7 @@ void BuiltinsObjectStubBuilder::NameDictionaryAssignAllEnumProperty(Variable *re
     }
     Bind(&loopEnd);
     idx = Int32Add(*idx, Int32(1));
-    LoopEnd(&loopHead);
+    LoopEnd(&loopHead, env, glue_);
     Bind(&loopExit);
     Jump(&exit);
 
@@ -849,7 +849,7 @@ GateRef BuiltinsObjectStubBuilder::GetNumKeysFromLayoutInfo(GateRef object, Gate
         }
         Bind(&loopEnd);
         i = Int32Add(*i, Int32(1));
-        LoopEnd(&loopHead);
+        LoopEnd(&loopHead, env, glue_);
     }
     Bind(&exit);
     auto ret = *result;
@@ -940,7 +940,7 @@ GateRef BuiltinsObjectStubBuilder::GetNumKeysFromDictionary(GateRef array)
         }
         Bind(&loopEnd);
         i = Int32Add(*i, Int32(1));
-        LoopEnd(&loopHead);
+        LoopEnd(&loopHead, env, glue_);
     }
     Bind(&afterLoop);
     Jump(&exit);
@@ -983,7 +983,7 @@ void BuiltinsObjectStubBuilder::LayoutInfoGetAllEnumKeys(GateRef end, GateRef of
         }
         Bind(&loopEnd);
         i = Int32Add(*i, Int32(1));
-        LoopEnd(&loopHead);
+        LoopEnd(&loopHead, env, glue_);
     }
     Bind(&afterLoop);
     Jump(&exit);
@@ -1040,7 +1040,7 @@ GateRef BuiltinsObjectStubBuilder::CopyFromEnumCache(GateRef glue, GateRef eleme
         }
     }
     Bind(&loopEnd);
-    LoopEnd(&loopHead);
+    LoopEnd(&loopHead, env, glue);
     Bind(&afterLoop);
     {
         result = array;
@@ -1180,7 +1180,7 @@ GateRef BuiltinsObjectStubBuilder::GetEnumElementKeys(GateRef glue, GateRef obj)
                 }
                 Bind(&loopEnd);
                 i = Int32Add(*i, Int32(1));
-                LoopEnd(&loopHead);
+                LoopEnd(&loopHead, env, glue);
             }
         }
         Bind(&notPrimitiveString);
@@ -1211,7 +1211,7 @@ GateRef BuiltinsObjectStubBuilder::GetEnumElementKeys(GateRef glue, GateRef obj)
                 }
                 Bind(&loopEnd);
                 j = Int32Add(*j, Int32(1));
-                LoopEnd(&loopHead);
+                LoopEnd(&loopHead, env, glue);
                 Bind(&afterLoop);
                 {
                     Store(VariableType::INT32(), glue_,

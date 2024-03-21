@@ -18,6 +18,7 @@
 #include "ecmascript/base/atomic_helper.h"
 #include "ecmascript/base/typed_array_helper-inl.h"
 #include "libpandabase/utils/time.h"
+#include "ecmascript/checkpoint/thread_state_transition.h"
 
 namespace panda::ecmascript::builtins {
 using NumberHelper = base::NumberHelper;
@@ -558,6 +559,7 @@ WaitResult BuiltinsAtomics::DoWait(JSThread *thread, JSHandle<JSTaggedValue> &ar
         timeoutTime = currentTime + static_cast<uint64_t>(timeout);
     }
     WaitResult res = WaitResult::OK;
+    ThreadNativeScope nativeScope(thread);
     while (true) {
         if (!node->waiting_) {
             res = WaitResult::OK;
