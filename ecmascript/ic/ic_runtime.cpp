@@ -169,7 +169,7 @@ JSTaggedValue LoadICRuntime::LoadMiss(JSHandle<JSTaggedValue> receiver, JSHandle
 
     ObjectOperator op(GetThread(), receiver, key);
     auto result = JSHandle<JSTaggedValue>(thread_, JSObject::GetProperty(GetThread(), &op));
-    if (op.GetValue().IsInternalAccessor()) {
+    if (op.GetValue().IsAccessor()) {
         op = ObjectOperator(GetThread(), receiver, key);
     }
     if (!op.IsFound() && kind == ICKind::NamedGlobalTryLoadIC) {
@@ -226,6 +226,9 @@ JSTaggedValue StoreICRuntime::StoreMiss(JSHandle<JSTaggedValue> receiver, JSHand
         }
     }
     bool success = JSObject::SetProperty(&op, value, true);
+    if (op.GetValue().IsAccessor()) {
+        op = ObjectOperator(GetThread(), receiver, key);
+    }
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
     // ic-switch
     if (!GetThread()->GetEcmaVM()->ICEnabled()) {

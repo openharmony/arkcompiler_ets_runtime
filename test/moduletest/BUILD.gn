@@ -282,6 +282,7 @@ group("ark_asm_single_step_test") {
     "globalthis",
 
     # "helloworld",
+    "ictest",
     "instanceofic",
     "jsonparser",
     "jsonstringifier",
