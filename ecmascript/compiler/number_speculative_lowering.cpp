@@ -102,6 +102,11 @@ void NumberSpeculativeLowering::VisitGate(GateRef gate)
             VisitLoadPropertyOnProto(gate);
             break;
         }
+        case OpCode::MATH_ROUND:
+        case OpCode::MATH_FROUND: {
+            VisitRound(gate);
+            break;
+        }
         default:
             break;
     }
@@ -1036,4 +1041,14 @@ void NumberSpeculativeLowering::VisitLoadPropertyOnProto(GateRef gate)
         acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
     }
 }
+
+void NumberSpeculativeLowering::VisitRound(GateRef gate)
+{
+    TypeInfo output = GetOutputType(gate);
+    GateRef in = acc_.GetValueIn(gate, 0);
+    if (output == TypeInfo::INT32) {
+        acc_.ReplaceGate(gate, in);
+    }
+}
+
 }  // namespace panda::ecmascript

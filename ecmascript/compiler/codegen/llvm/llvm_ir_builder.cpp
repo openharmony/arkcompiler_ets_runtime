@@ -212,6 +212,7 @@ void LLVMIRBuilder::InitializeHandlers()
         {OpCode::MAX, &LLVMIRBuilder::HandleMax},
         {OpCode::CLZ32, &LLVMIRBuilder::HandleClz32},
         {OpCode::DOUBLE_TRUNC, &LLVMIRBuilder::HandleDoubleTrunc},
+        {OpCode::FLOOR, &LLVMIRBuilder::HandleFloor},
         {OpCode::READSP, &LLVMIRBuilder::HandleReadSp},
         {OpCode::FINISH_ALLOCATE, &LLVMIRBuilder::HandleFinishAllocate},
     };
@@ -2114,6 +2115,11 @@ void LLVMIRBuilder::VisitMax(GateRef gate, GateRef e1, GateRef e2)
         UNREACHABLE();
     }
     VisitIntrinsic(gate, llvmId, e1, e2);
+}
+
+void LLVMIRBuilder::HandleFloor(GateRef gate)
+{
+    VisitIntrinsic(gate, llvm::Intrinsic::floor, acc_.GetIn(gate, 0));
 }
 
 template<typename... Ts>

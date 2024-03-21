@@ -167,6 +167,8 @@ namespace panda::ecmascript::kungfu {
     V(MathPow)                                      \
     V(MathTrunc)                                    \
     V(MathAbs)                                      \
+    V(MathRound)                                    \
+    V(MathFRound)                                   \
     V(MathMin)                                      \
     V(MathMax)                                      \
     V(TYPED_BUILTINS_INLINE_FIRST = MathAcos)       \
@@ -342,6 +344,10 @@ public:
                 return ConstantIndex::MATH_MAX_INDEX;
             case BuiltinsStubCSigns::ID::MathSqrt:
                 return ConstantIndex::MATH_SQRT_INDEX;
+            case BuiltinsStubCSigns::ID::MathRound:
+                return ConstantIndex::MATH_ROUND_INDEX;
+            case BuiltinsStubCSigns::ID::MathFRound:
+                return ConstantIndex::MATH_FROUND_INDEX;
             case BuiltinsStubCSigns::ID::LocaleCompare:
                 return ConstantIndex::LOCALE_COMPARE_FUNCTION_INDEX;
             case BuiltinsStubCSigns::ID::SORT:
@@ -397,6 +403,8 @@ public:
             {"abs", MathAbs},
             {"pow", MathPow},
             {"trunc", MathTrunc},
+            {"round", MathRound},
+            {"fround", MathFRound},
             {"floor", FLOOR},
             {"localeCompare", LocaleCompare},
             {"next", STRING_ITERATOR_PROTO_NEXT},

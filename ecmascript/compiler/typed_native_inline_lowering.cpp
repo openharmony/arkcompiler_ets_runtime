@@ -64,16 +64,16 @@ GateRef TypedNativeInlineLowering::VisitGate(GateRef gate)
             LowerGeneralUnaryMath(gate, RTSTUB_ID(FloatTanh));
             break;
         case OpCode::MATH_ACOS:
-            LowerGeneralUnaryMath<MathTrigonometricCheck::ABS_GT_ONE>(gate, RTSTUB_ID(FloatAcos));
+            LowerGeneralUnaryMath(gate, RTSTUB_ID(FloatAcos));
             break;
         case OpCode::MATH_ASIN:
-            LowerGeneralUnaryMath<MathTrigonometricCheck::ABS_GT_ONE>(gate, RTSTUB_ID(FloatAsin));
+            LowerGeneralUnaryMath(gate, RTSTUB_ID(FloatAsin));
             break;
         case OpCode::MATH_ATANH:
-            LowerGeneralUnaryMath<MathTrigonometricCheck::ABS_GT_ONE>(gate, RTSTUB_ID(FloatAtanh));
+            LowerGeneralUnaryMath(gate, RTSTUB_ID(FloatAtanh));
             break;
         case OpCode::MATH_ACOSH:
-            LowerGeneralUnaryMath<MathTrigonometricCheck::LT_ONE>(gate, RTSTUB_ID(FloatAcosh));
+            LowerGeneralUnaryMath(gate, RTSTUB_ID(FloatAcosh));
             break;
         case OpCode::MATH_ATAN2:
             LowerMathAtan2(gate);
@@ -126,6 +126,14 @@ GateRef TypedNativeInlineLowering::VisitGate(GateRef gate)
         case OpCode::MATH_SQRT:
             LowerMathSqrt(gate);
             break;
+        case OpCode::MATH_ROUND:
+        case OpCode::MATH_FROUND:
+            LowerTaggedRounding(gate);
+            break;
+        case OpCode::MATH_ROUND_DOUBLE:
+        case OpCode::MATH_FROUND_DOUBLE:
+            LowerDoubleRounding(gate);
+            break;
         default:
             break;
     }
@@ -137,7 +145,6 @@ void TypedNativeInlineLowering::LowerMathPow(GateRef gate)
     Environment env(gate, circuit_, &builder_);
     GateRef base = acc_.GetValueIn(gate, 0);
     GateRef exp = acc_.GetValueIn(gate, 1);
-
     Label exit(&builder_);
     Label notNan(&builder_);
 
@@ -178,38 +185,13 @@ void TypedNativeInlineLowering::LowerMathExp(GateRef gate)
 #endif
 }
 
-template <TypedNativeInlineLowering::MathTrigonometricCheck CHECK>
 void TypedNativeInlineLowering::LowerGeneralUnaryMath(GateRef gate, RuntimeStubCSigns::ID stubId)
 {
     Environment env(gate, circuit_, &builder_);
-
-    Label exit(&builder_);
-    Label checkNotPassed(&builder_);
-
     GateRef value = acc_.GetValueIn(gate, 0);
-    DEFVALUE(result, (&builder_), VariableType::FLOAT64(), builder_.Double(base::NAN_VALUE));
-
-    GateRef check;
-    const double doubleOne = 1.0;
-    if constexpr (CHECK == TypedNativeInlineLowering::MathTrigonometricCheck::NOT_NAN) {
-        check = builder_.DoubleIsNAN(value);
-    } else if constexpr (CHECK == TypedNativeInlineLowering::MathTrigonometricCheck::LT_ONE) {
-        check = builder_.DoubleLessThan(value, builder_.Double(doubleOne));
-    } else if constexpr (CHECK == TypedNativeInlineLowering::MathTrigonometricCheck::ABS_GT_ONE) {
-        auto gt = builder_.DoubleGreaterThan(value, builder_.Double(doubleOne));
-        auto lt = builder_.DoubleLessThan(value, builder_.Double(-doubleOne));
-        check = builder_.BoolOr(gt, lt);
-    }
-
-    BRANCH_CIR(check, &exit, &checkNotPassed);
-    builder_.Bind(&checkNotPassed);
-    {
-        GateRef glue = acc_.GetGlueFromArgList();
-        result = builder_.CallNGCRuntime(glue, stubId, Gate::InvalidGateRef, {value}, gate);
-        builder_.Jump(&exit);
-    }
-    builder_.Bind(&exit);
-    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
+    GateRef glue = acc_.GetGlueFromArgList();
+    GateRef result = builder_.CallNGCRuntime(glue, stubId, Gate::InvalidGateRef, {value}, gate);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
 }
 
 void TypedNativeInlineLowering::LowerMathAtan2(GateRef gate)
@@ -217,63 +199,9 @@ void TypedNativeInlineLowering::LowerMathAtan2(GateRef gate)
     Environment env(gate, circuit_, &builder_);
     GateRef y = acc_.GetValueIn(gate, 0);
     GateRef x = acc_.GetValueIn(gate, 1);
-
-    DEFVALUE(result, (&builder_), VariableType::FLOAT64(), builder_.Double(base::NAN_VALUE));
-
-    Label exit(&builder_);
-    Label label1(&builder_);
-    Label label2(&builder_);
-    Label label3(&builder_);
-
-    auto yIsNan = builder_.DoubleIsNAN(y);
-    auto xIsNan = builder_.DoubleIsNAN(x);
-    auto checkNaN = builder_.BoolOr(yIsNan, xIsNan);
-    BRANCH_CIR(checkNaN, &exit, &label1);
-    builder_.Bind(&label1);
-    {
-        Label label4(&builder_);
-        auto yIsZero = builder_.DoubleEqual(y, builder_.Double(0.));
-        auto xIsMoreZero = builder_.DoubleGreaterThan(x, builder_.Double(0.));
-        auto check = builder_.BoolAnd(yIsZero, xIsMoreZero);
-        BRANCH_CIR(check, &label4, &label2);
-        builder_.Bind(&label4);
-        {
-            result = y;
-            builder_.Jump(&exit);
-        }
-    }
-    builder_.Bind(&label2);
-    {
-        Label label5(&builder_);
-        auto xIsPositiveInf = builder_.DoubleEqual(x, builder_.Double(std::numeric_limits<double>::infinity()));
-        BRANCH_CIR(xIsPositiveInf, &label5, &label3);
-        builder_.Bind(&label5);
-        {
-            Label label6(&builder_);
-            Label label7(&builder_);
-            auto yPositiveCheck = builder_.DoubleGreaterThanOrEqual(y, builder_.Double(0.));
-            BRANCH_CIR(yPositiveCheck, &label6, &label7);
-            builder_.Bind(&label6);
-            {
-                result = builder_.Double(0.0);
-                builder_.Jump(&exit);
-            }
-            builder_.Bind(&label7);
-            {
-                result = builder_.Double(-0.0);
-                builder_.Jump(&exit);
-            }
-        }
-    }
-    builder_.Bind(&label3);
-    {
-        GateRef glue = acc_.GetGlueFromArgList();
-        result = builder_.CallNGCRuntime(glue, RTSTUB_ID(FloatAtan2), Gate::InvalidGateRef, {y, x}, gate);
-        builder_.Jump(&exit);
-    }
-
-    builder_.Bind(&exit);
-    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
+    GateRef glue = acc_.GetGlueFromArgList();
+    GateRef result = builder_.CallNGCRuntime(glue, RTSTUB_ID(FloatAtan2), Gate::InvalidGateRef, {y, x}, gate);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
 }
 
 //  Int abs : The internal representation of an integer is inverse code,
@@ -349,6 +277,67 @@ void TypedNativeInlineLowering::LowerAbs(GateRef gate)
     GateRef value = acc_.GetValueIn(gate, 0);
     Environment env(gate, circuit_, &builder_);
     GateRef res = BuildTNumberAbs(value);
+    acc_.ReplaceGate(gate, builder_.GetStateDepend(), res);
+}
+
+GateRef TypedNativeInlineLowering::BuildRounding(GateRef gate, GateRef value, OpCode op)
+{
+    if (op == OpCode::MATH_ROUND || op == OpCode::MATH_ROUND_DOUBLE) {
+        const double shift = 0.5;
+        GateRef rounded = BuildRounding(gate, builder_.DoubleAdd(value, builder_.Double(shift)), OpCode::FLOOR);
+        GateRef signMask = builder_.Int64And(builder_.CastDoubleToInt64(value), builder_.Int64(1ULL << 63U));
+        // copy sign if value is negative
+        GateRef res = builder_.Int64Or(builder_.CastDoubleToInt64(rounded), signMask);
+        return builder_.CastInt64ToFloat64(res);
+    } else if (op == OpCode::MATH_FROUND || op == OpCode::MATH_FROUND_DOUBLE) {
+        return builder_.ExtFloat32ToDouble(builder_.TruncDoubleToFloat32(value));
+    } else if (op == OpCode::FLOOR) {
+        if (builder_.GetCompilationConfig()->IsAArch64() && !isLiteCG_) {
+            return builder_.Floor(value);
+        }
+        GateRef glue = acc_.GetGlueFromArgList();
+        return builder_.CallNGCRuntime(glue, RTSTUB_ID(FloatFloor), Gate::InvalidGateRef, {value}, gate);
+    } else {
+        UNREACHABLE();
+    }
+}
+
+void TypedNativeInlineLowering::LowerTaggedRounding(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+
+    DEFVALUE(result, (&builder_), VariableType::FLOAT64(), builder_.NanValue());
+
+    GateRef in = acc_.GetValueIn(gate, 0);
+    Label isInt(&builder_);
+    Label isDouble(&builder_);
+    Label exit(&builder_);
+
+    builder_.Branch(builder_.TaggedIsInt(in), &isInt, &isDouble);
+    builder_.Bind(&isInt);
+    {
+        result = builder_.GetDoubleOfTInt(in);
+        builder_.Jump(&exit);
+    }
+    builder_.Bind(&isDouble);
+    {
+        GateRef value = builder_.GetDoubleOfTDouble(in);
+        result = BuildRounding(gate, value, acc_.GetOpCode(gate));
+        builder_.Jump(&exit);
+    }
+
+    builder_.Bind(&exit);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
+}
+
+void TypedNativeInlineLowering::LowerDoubleRounding(GateRef gate)
+{
+    if (builder_.GetCompilationConfig()->IsAArch64() && !isLiteCG_) {
+        return;
+    }
+    Environment env(gate, circuit_, &builder_);
+    GateRef value = acc_.GetValueIn(gate, 0);
+    GateRef res = BuildRounding(gate, value, acc_.GetOpCode(gate));
     acc_.ReplaceGate(gate, builder_.GetStateDepend(), res);
 }
 

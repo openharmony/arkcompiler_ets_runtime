@@ -54,6 +54,8 @@ private:
     void VisitLoadElement(GateRef gate);
     void VisitLoadProperty(GateRef gate);
     void VisitLoadPropertyOnProto(GateRef gate);
+    void VisitRound(GateRef gate);
+    void VisitFRound(GateRef gate);
 
     template<TypedBinOp Op>
     void VisitNumberCalculate(GateRef gate);

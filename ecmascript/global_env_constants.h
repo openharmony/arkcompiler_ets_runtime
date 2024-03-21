@@ -183,6 +183,8 @@ class ObjectFactory;
     V(JSTaggedValue, MathFloorFunction, MATH_FLOOR_FUNCTION_INDEX, ecma_roots_special)                 \
     V(JSTaggedValue, MathMin, MATH_MIN_INDEX, ecma_roots_special)                                      \
     V(JSTaggedValue, MathMax, MATH_MAX_INDEX, ecma_roots_special)                                      \
+    V(JSTaggedValue, MathRound, MATH_ROUND_INDEX, ecma_roots_special)                                  \
+    V(JSTaggedValue, MathFRound, MATH_FROUND_INDEX, ecma_roots_special)                                \
     V(JSTaggedValue, LocaleCompareFunction, LOCALE_COMPARE_FUNCTION_INDEX, ecma_roots_special)         \
     V(JSTaggedValue, ArraySortFunction, ARRAY_SORT_FUNCTION_INDEX, ecma_roots_special)                 \
     V(JSTaggedValue, JsonStringifyFunction, JSON_STRINGIFY_FUNCTION_INDEX, ecma_roots_special)         \

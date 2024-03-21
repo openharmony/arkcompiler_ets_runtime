@@ -203,6 +203,8 @@ GateRef NumberSpeculativeRetype::VisitGate(GateRef gate)
         case OpCode::MATH_MIN:
         case OpCode::MATH_MAX:
         case OpCode::MATH_SIGN:
+        case OpCode::MATH_ROUND:
+        case OpCode::MATH_FROUND:
             return VisitMathTaggedNumberParamsBuiltin(gate);
         case OpCode::MATH_TRUNC:
             return VisitMathTrunc(gate);
@@ -1406,7 +1408,7 @@ const GateMetaData *NumberSpeculativeRetype::GetNewMeta(OpCode op, TypeInfo type
             case OpCode::MATH_MAX:
                 return circuit_->MathMaxInt32();
             default:
-                UNREACHABLE();
+                return nullptr;
         }
     } else if (type == TypeInfo::FLOAT64) {
         switch (op) {
@@ -1416,11 +1418,14 @@ const GateMetaData *NumberSpeculativeRetype::GetNewMeta(OpCode op, TypeInfo type
                 return circuit_->MathMinDouble();
             case OpCode::MATH_MAX:
                 return circuit_->MathMaxDouble();
+            case OpCode::MATH_ROUND:
+                return circuit_->MathRoundDouble();
+            case OpCode::MATH_FROUND:
+                return circuit_->MathFRoundDouble();
             default:
-                UNREACHABLE();
+                return nullptr;
         }
     } else {
-        UNREACHABLE();
         return nullptr;
     }
 }
@@ -1429,19 +1434,28 @@ GateRef NumberSpeculativeRetype::VisitMathTaggedNumberParamsBuiltin(GateRef gate
 {
     size_t valueNum = acc_.GetNumValueIn(gate);
     ASSERT(valueNum <= 2U);
+    OpCode op = acc_.GetOpCode(gate);
     if (IsRetype()) {
         TypeInfo type = GetNumberTypeInfo(acc_.GetValueIn(gate, 0));
         if (valueNum > 1U) {
             TypeInfo secondInputType = GetNumberTypeInfo(acc_.GetValueIn(gate, 1U));
             type = GetCommonTypeInfo(type, secondInputType);
         }
+        if (type == TypeInfo::TAGGED && (op == OpCode::MATH_ROUND || op == OpCode::MATH_FROUND)) {
+            type = TypeInfo::FLOAT64;
+        }
         return SetOutputType(gate, type);
     }
     ASSERT(IsConvert());
     TypeInfo type = GetOutputTypeInfo(gate); // load type computed in retype phase
-    if (type != TypeInfo::TAGGED) {
-        const GateMetaData* meta = GetNewMeta(acc_.GetOpCode(gate), type);
+    if (op == OpCode::MATH_ROUND || op == OpCode::MATH_FROUND) {
+        type = GetNumberTypeInfo(acc_.GetValueIn(gate, 0));
+    }
+    const GateMetaData* meta = GetNewMeta(op, type);
+    if (meta != nullptr) {
         acc_.SetMetaData(gate, meta);
+        acc_.SetGateType(gate, GateType::NJSValue());
+        acc_.SetMachineType(gate, type == TypeInfo::INT32 ? MachineType::I32 : MachineType::F64);
     }
     Environment env(gate, circuit_, &builder_);
     for (size_t i = 0; i < valueNum; ++i) {

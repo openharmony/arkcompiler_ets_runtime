@@ -14,6 +14,7 @@
  */
 
 #include <cmath>
+#include <cfenv>
 #include <sstream>
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/log.h"
@@ -2956,7 +2957,6 @@ double RuntimeStubs::FloatTrunc(double x)
 
 double RuntimeStubs::FloatFloor(double x)
 {
-    ASSERT(!std::isnan(x));
     return std::floor(x);
 }
 

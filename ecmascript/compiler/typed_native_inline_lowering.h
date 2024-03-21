@@ -35,13 +35,6 @@ public:
     ~TypedNativeInlineLowering() = default;
     GateRef VisitGate(GateRef gate) override;
 private:
-    enum class MathTrigonometricCheck : uint8_t {
-        NOT_NAN,
-        LT_ONE,
-        ABS_GT_ONE
-    };
-
-    template <MathTrigonometricCheck CHECK = MathTrigonometricCheck::NOT_NAN>
     void LowerGeneralUnaryMath(GateRef gate, RuntimeStubCSigns::ID stubId);
     void LowerMathAtan2(GateRef gate);
     void LowerTrunc(GateRef gate);
@@ -51,6 +44,9 @@ private:
     void LowerClz32Int32(GateRef gate);
     void LowerMathSqrt(GateRef gate);
     void LowerMathSign(GateRef gate);
+    GateRef BuildRounding(GateRef gate, GateRef value, OpCode op);
+    void LowerTaggedRounding(GateRef gate);
+    void LowerDoubleRounding(GateRef gate);
 
     GateRef BuildIntAbs(GateRef value);
     GateRef BuildDoubleAbs(GateRef value);

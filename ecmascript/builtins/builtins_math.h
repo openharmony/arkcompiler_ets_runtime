@@ -50,7 +50,7 @@
     V("exp",    Exp,    1, MathExp)     /* Math.exp ( x ) */                \
     V("expm1",  Expm1,  1, MathExpm1)   /* Math.expm1 ( x ) */              \
     V("floor",  Floor,  1, FLOOR)       /* Math.floor ( x ) */              \
-    V("fround", Fround, 1, INVALID)     /* Math.fround ( x ) */             \
+    V("fround", Fround, 1, MathFRound)  /* Math.fround ( x ) */             \
     V("hypot",  Hypot,  2, INVALID)     /* Math.hypot ( ...args ) */        \
     V("imul",   Imul,   2, INVALID)     /* Math.imul ( x, y ) */            \
     V("log",    Log,    1, MathLog)     /* Math.log ( x ) */                \
@@ -61,7 +61,7 @@
     V("min",    Min,    2, MathMin)     /* Math.min ( ...args ) */          \
     V("pow",    Pow,    2, MathPow)     /* Math.pow ( base, exponent ) */   \
     V("random", Random, 0, INVALID)     /* Math.random ( ) */               \
-    V("round",  Round,  1, INVALID)     /* Math.round ( x ) */              \
+    V("round",  Round,  1, MathRound)   /* Math.round ( x ) */              \
     V("sign",   Sign,   1, MathSign)    /* Math.sign ( x ) */               \
     V("sin",    Sin,    1, MathSin)     /* Math.sin ( x ) */                \
     V("sinh",   Sinh,   1, MathSinh)    /* Math.sinh ( x ) */               \

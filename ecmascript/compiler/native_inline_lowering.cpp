@@ -146,6 +146,12 @@ void NativeInlineLowering::RunNativeInlineLowering()
             case BuiltinsStubCSigns::ID::MathMax:
                 TryInlineMathMinMaxBuiltin(gate, argc, id, circuit_->MathMax(), -base::POSITIVE_INFINITY);
                 break;
+            case BuiltinsStubCSigns::ID::MathRound:
+                TryInlineMathUnaryBuiltin(gate, argc, id, circuit_->MathRound());
+                break;
+            case BuiltinsStubCSigns::ID::MathFRound:
+                TryInlineMathUnaryBuiltin(gate, argc, id, circuit_->MathFRound());
+                break;
             default:
                 break;
         }
