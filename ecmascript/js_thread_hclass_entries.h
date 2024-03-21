@@ -45,6 +45,8 @@ struct BuiltinHClassEntries {
         JSHClass *instanceHClass = nullptr;
         // prototypeHClass = HClass of X.prototype
         JSHClass *prototypeHClass = nullptr;
+        // prototypeOfPrototypeHClass = HClass of X.prototype.prototype
+        JSHClass *prototypeOfPrototypeHClass = nullptr;
     };
     Entry entries[N_ENTRIES];
 
@@ -77,6 +79,12 @@ struct BuiltinHClassEntries {
     {
         size_t index = GetEntryIndex(type);
         return sizeof(Entry) * index + MEMBER_OFFSET(Entry, prototypeHClass);
+    }
+
+    static size_t GetPrototypeOfPrototypeHClassOffset(BuiltinTypeId type)
+    {
+        size_t index = GetEntryIndex(type);
+        return sizeof(Entry) * index + MEMBER_OFFSET(Entry, prototypeOfPrototypeHClass);
     }
 
     static constexpr size_t SizeArch32 = sizeof(entries);

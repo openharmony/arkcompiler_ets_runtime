@@ -184,6 +184,15 @@ GateRef CircuitBuilder::LoadPrototypeHClass(GateRef object)
     return LoadHClass(objectPrototype);
 }
 
+GateRef CircuitBuilder::LoadPrototypeOfPrototypeHClass(GateRef object)
+{
+    GateRef objectHClass = LoadHClassByConstOffset(object);
+    GateRef objectPrototype = LoadPrototype(objectHClass);
+    GateRef objectPrototypeHClass = LoadHClassByConstOffset(objectPrototype);
+    GateRef objectPrototypeOfPrototype = LoadPrototype(objectPrototypeHClass);
+    return LoadHClass(objectPrototypeOfPrototype);
+}
+
 GateRef CircuitBuilder::GetObjectSizeFromHClass(GateRef hClass)
 {
     // NOTE: check for special case of string and TAGGED_ARRAY

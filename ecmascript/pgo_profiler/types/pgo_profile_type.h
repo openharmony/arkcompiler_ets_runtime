@@ -51,7 +51,8 @@ public:
         ConstructorId,
         MegaStateKinds,
         TotalKinds,
-        UnknowId
+        UnknowId,
+        GlobalsId
     };
 
     static constexpr uint32_t RECORD_ID_FOR_BUNDLE = 1;
@@ -193,6 +194,12 @@ public:
         return ProfileType(abcId, id, Kind::BuiltinsId);
     }
 
+    static ProfileType CreateGlobals(ApEntityId abcId, ConstantIndex constantIndex)
+    {
+        auto id = static_cast<uint32_t>(constantIndex);
+        return ProfileType(abcId, id, Kind::GlobalsId);
+    }
+
     ProfileType &Remap(const PGOContext &context);
 
     bool IsNone() const
@@ -208,6 +215,11 @@ public:
     bool IsRootType() const
     {
         return IsRootBits::Decode(type_);
+    }
+
+    bool IsGlobalsType() const
+    {
+        return GetKind() == Kind::GlobalsId;
     }
 
     bool IsBuiltinsType() const
@@ -326,6 +338,13 @@ public:
         ASSERT(IsBuiltinsType());
         auto builtinsId = BuiltinsId(GetId());
         return builtinsId.GetBuiltinsId();
+    }
+
+    ConstantIndex GetGlobalsId() const
+    {
+        ASSERT(IsGlobalsType());
+        auto globalsId = static_cast<ConstantIndex>(GetId());
+        return globalsId;
     }
 
     ElementsKind GetElementsKindBeforeTransition() const

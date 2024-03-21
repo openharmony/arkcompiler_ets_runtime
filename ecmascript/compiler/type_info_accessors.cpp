@@ -710,6 +710,8 @@ void AccBuiltinObjTypeInfoAccessor::FetchBuiltinsTypes()
                 continue;
             }
             types_.emplace_back(temp.GetReceiverType());
+        } else if (temp.GetReceiverType().IsGlobalsType()) {
+            types_.emplace_back(temp.GetReceiverType());
         }
     }
 }

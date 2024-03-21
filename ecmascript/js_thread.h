@@ -279,7 +279,8 @@ public:
     void ResetGuardians();
 
     void SetInitialBuiltinHClass(
-        BuiltinTypeId type, JSHClass *builtinHClass, JSHClass *instanceHClass, JSHClass *prototypeHClass);
+        BuiltinTypeId type, JSHClass *builtinHClass, JSHClass *instanceHClass,
+                            JSHClass *prototypeHClass, JSHClass *prototypeOfPrototypeHClass = nullptr);
 
     JSHClass *GetBuiltinHClass(BuiltinTypeId type) const;
 
@@ -287,6 +288,7 @@ public:
     JSHClass *GetArrayInstanceHClass(ElementsKind kind) const;
 
     PUBLIC_API JSHClass *GetBuiltinPrototypeHClass(BuiltinTypeId type) const;
+    PUBLIC_API JSHClass *GetBuiltinPrototypeOfPrototypeHClass(BuiltinTypeId type) const;
 
     static size_t GetBuiltinHClassOffset(BuiltinTypeId, bool isArch32);
 
@@ -972,6 +974,12 @@ public:
         static size_t GetBuiltinPrototypeHClassOffset(BuiltinTypeId type, bool isArch32)
         {
             return GetBuiltinHClassEntriesOffset(isArch32) + BuiltinHClassEntries::GetPrototypeHClassOffset(type);
+        }
+
+        static size_t GetBuiltinPrototypeOfPrototypeHClassOffset(BuiltinTypeId type, bool isArch32)
+        {
+            return GetBuiltinHClassEntriesOffset(isArch32) +
+                   BuiltinHClassEntries::GetPrototypeOfPrototypeHClassOffset(type);
         }
 
         static size_t GetBCDebuggerStubEntriesOffset(bool isArch32)

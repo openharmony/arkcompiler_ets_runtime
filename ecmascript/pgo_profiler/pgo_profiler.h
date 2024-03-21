@@ -161,6 +161,8 @@ private:
     void AddBuiltinsInfo(
         ApEntityId abcId, const CString &recordName, EntityId methodId, int32_t bcOffset, JSHClass *receiver,
         JSHClass *transitionHClass, OnHeapMode onHeap = OnHeapMode::NONE);
+    void AddBuiltinsGlobalInfo(ApEntityId abcId, const CString &recordName, EntityId methodId,
+                               int32_t bcOffset, ConstantIndex globalId);
 
     ProfileType GetProfileType(JSTaggedType root, JSTaggedType child);
     ProfileType GetProfileTypeSafe(JSTaggedType root, JSTaggedType child);

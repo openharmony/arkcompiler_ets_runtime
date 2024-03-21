@@ -499,7 +499,8 @@ void JSThread::ResetGuardians()
 }
 
 void JSThread::SetInitialBuiltinHClass(
-    BuiltinTypeId type, JSHClass *builtinHClass, JSHClass *instanceHClass, JSHClass *prototypeHClass)
+    BuiltinTypeId type, JSHClass *builtinHClass, JSHClass *instanceHClass,
+    JSHClass *prototypeHClass, JSHClass *prototypeOfPrototypeHClass)
 {
     size_t index = BuiltinHClassEntries::GetEntryIndex(type);
     auto &entry = glueData_.builtinHClassEntries_.entries[index];
@@ -507,10 +508,12 @@ void JSThread::SetInitialBuiltinHClass(
                     << "Builtin = " << ToString(type)
                     << ", builtinHClass = " << builtinHClass
                     << ", instanceHClass = " << instanceHClass
-                    << ", prototypeHClass = " << prototypeHClass;
+                    << ", prototypeHClass = " << prototypeHClass
+                    << ", prototypeOfPrototypeHClass = " << prototypeOfPrototypeHClass;
     entry.builtinHClass = builtinHClass;
     entry.instanceHClass = instanceHClass;
     entry.prototypeHClass = prototypeHClass;
+    entry.prototypeOfPrototypeHClass = prototypeOfPrototypeHClass;
 }
 
 JSHClass *JSThread::GetBuiltinHClass(BuiltinTypeId type) const
@@ -540,6 +543,12 @@ JSHClass *JSThread::GetBuiltinPrototypeHClass(BuiltinTypeId type) const
 {
     size_t index = BuiltinHClassEntries::GetEntryIndex(type);
     return glueData_.builtinHClassEntries_.entries[index].prototypeHClass;
+}
+
+JSHClass *JSThread::GetBuiltinPrototypeOfPrototypeHClass(BuiltinTypeId type) const
+{
+    size_t index = BuiltinHClassEntries::GetEntryIndex(type);
+    return glueData_.builtinHClassEntries_.entries[index].prototypeOfPrototypeHClass;
 }
 
 size_t JSThread::GetBuiltinHClassOffset(BuiltinTypeId type, bool isArch32)

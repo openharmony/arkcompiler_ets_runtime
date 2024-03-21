@@ -73,7 +73,8 @@ void NumberSpeculativeLowering::VisitGate(GateRef gate)
             VisitConstant(gate);
             break;
         }
-        case OpCode::TYPED_CALL_BUILTIN: {
+        case OpCode::TYPED_CALL_BUILTIN:
+        case OpCode::TYPED_CALL_BUILTIN_SIDE_EFFECT:{
             VisitCallBuiltins(gate);
             break;
         }

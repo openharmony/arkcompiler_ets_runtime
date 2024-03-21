@@ -1412,9 +1412,20 @@ void PGOProfiler::AddBuiltinsInfoByNameInInstance(ApEntityId abcId, const CStrin
     } else {
         exceptRecvHClass = thread->GetBuiltinInstanceHClass(builtinsId.value());
     }
+
     if (exceptRecvHClass != receiver) {
-        return;
+        // When JSType cannot uniquely identify builtins object, it is necessary to
+        // query the receiver on the global constants.
+        if (builtinsId == BuiltinTypeId::OBJECT) {
+            exceptRecvHClass = JSHClass::Cast(thread->GlobalConstants()->GetIteratorResultClass().GetTaggedObject());
+            if (exceptRecvHClass == receiver) {
+                AddBuiltinsGlobalInfo(abcId, recordName, methodId, bcOffset,
+                                      ConstantIndex::ITERATOR_RESULT_CLASS);
+            }
+        }
+        return ;
     }
+
     AddBuiltinsInfo(abcId, recordName, methodId, bcOffset, receiver, receiver);
 }
 
@@ -1435,11 +1446,29 @@ void PGOProfiler::AddBuiltinsInfoByNameInProt(ApEntityId abcId, const CString &r
     } else {
         exceptRecvHClass = thread->GetBuiltinInstanceHClass(builtinsId.value());
     }
+
     auto exceptHoldHClass = thread->GetBuiltinPrototypeHClass(builtinsId.value());
-    if (exceptRecvHClass != receiver || exceptHoldHClass != hold) {
-        return;
+    // iterator needs to find two layers of prototype
+    if (builtinsId == BuiltinTypeId::ARRAY_ITERATOR) {
+        auto exceptPrototypeOfPrototypeHClass =
+            thread->GetBuiltinPrototypeOfPrototypeHClass(builtinsId.value());
+        if ((exceptRecvHClass != receiver) ||
+            (exceptHoldHClass != hold && exceptPrototypeOfPrototypeHClass != hold)) {
+            return;
+        }
+    } else if (exceptRecvHClass != receiver || exceptHoldHClass != hold) {
+        return ;
     }
+
     AddBuiltinsInfo(abcId, recordName, methodId, bcOffset, receiver, receiver);
+}
+
+void PGOProfiler::AddBuiltinsGlobalInfo(ApEntityId abcId, const CString &recordName, EntityId methodId,
+                                        int32_t bcOffset, ConstantIndex globalId)
+{
+    ProfileType recordType = GetRecordProfileType(abcId, recordName);
+    PGOObjectInfo info(ProfileType::CreateGlobals(abcId, globalId));
+    recordInfos_->AddObjectInfo(recordType, methodId, bcOffset, info);
 }
 
 void PGOProfiler::AddBuiltinsInfo(

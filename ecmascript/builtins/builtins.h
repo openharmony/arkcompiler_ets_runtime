@@ -221,7 +221,8 @@ private:
 
     void InitializeSetIterator(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &iteratorFuncClass) const;
 
-    void InitializeArrayIterator(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &iteratorFuncClass) const;
+    void InitializeArrayIterator(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &iteratorFuncClass,
+                                 const JSHandle<JSHClass> &iteratorPrototypeClass) const;
 
     void InitializeArrayBuffer(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &objFuncClass) const;
     void LazyInitializeArrayBuffer(const JSHandle<GlobalEnv> &env) const;
