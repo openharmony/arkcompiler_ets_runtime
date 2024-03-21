@@ -81,21 +81,20 @@ HWTEST_F_L0(JsStackInfoTest, FrameCheckTest)
     frame[20] = reinterpret_cast<uintptr_t>(FrameType::OPTIMIZED_JS_FUNCTION_UNFOLD_ARGV_FRAME);
     frame[21] = reinterpret_cast<uintptr_t>(FrameType::BUILTIN_FRAME_WITH_ARGV_STACK_OVER_FLOW_FRAME);
 
-    bool ret1 = ArkFrameCheck(frame[1]);
-    ret1 &= ArkFrameCheck(frame[17]);
-    EXPECT_TRUE(ret1 == true);
-    ret1 &= ArkFrameCheck(frame[13]);
-    EXPECT_TRUE(ret1 == false);
-
-    bool ret2 = IsFunctionFrame(frame[2]);
-    ret2 &= IsFunctionFrame(frame[3]);
-    ret2 &= IsFunctionFrame(frame[8]);
-    ret2 &= IsFunctionFrame(frame[9]);
-    ret2 &= IsFunctionFrame(frame[10]);
-    ret2 &= IsFunctionFrame(frame[15]);
-    EXPECT_TRUE(ret2 == true);
-    ret2 &= IsFunctionFrame(frame[16]);
-    EXPECT_TRUE(ret2 == false);
+    for (i = 0; i < 21; i++) {
+        bool ret1 = ArkFrameCheck(frame[i]);
+        if (i == 1 || i == 17) {
+            EXPECT_TRUE(ret1 == true);
+        } else {
+            EXPECT_TRUE(ret1 == false);
+        }
+        bool ret2 = IsFunctionFrame(frame[i]);
+        if (i == 2 || i == 3 || i == 8 || i == 9 || i ==10 || i == 15) {
+            EXPECT_TRUE(ret2 == true);
+        } else {
+            EXPECT_TRUE(ret2 == false);
+        }
+    }
 }
 
 HWTEST_F_L0(JsStackInfoTest, TranslateByteCodePc)

@@ -18,7 +18,9 @@
 
 #include <csignal>
 #include "ecmascript/compiler/aot_file/aot_file_manager.h"
+#include "ecmascript/extractortool/src/source_map.h"
 #include "ecmascript/js_thread.h"
+#include "ecmascript/jspandafile/js_pandafile_manager.h"
 
 namespace panda::ecmascript {
 typedef bool (*ReadMemFunc)(void *ctx, uintptr_t addr, uintptr_t *val);
@@ -62,6 +64,15 @@ struct CodeInfo {
         : offset(offset), methodId(methodId), codeSize(codeSize) {}
 };
 
+struct JsFrameDebugInfo {
+    EntityId methodId;
+    uint32_t offset;
+    std::string hapPath;
+    std::string filePath;
+    JsFrameDebugInfo(EntityId methodId, uint32_t offset, std::string &hapPath, std::string &filePath)
+        : methodId(methodId), offset(offset), hapPath(hapPath), filePath(filePath) {}
+};
+
 #if defined(PANDA_TARGET_OHOS)
 struct JsFrame {
     char functionName[FUNCTIONNAME_MAX];
@@ -70,6 +81,28 @@ struct JsFrame {
     int32_t column;
 };
 #endif
+
+class JSSymbolExtractor {
+public:
+    JSSymbolExtractor() = default;
+    ~JSSymbolExtractor();
+    static JSSymbolExtractor* Create();
+    static bool Destory(JSSymbolExtractor* extractor);
+    void CreateJSPandaFile(uint8_t *data, size_t dataSize);
+    void CreateSourceMap(uint8_t *data, size_t dataSize);
+    void CreateDebugExtractor();
+
+    JSPandaFile* GetJSPandaFile(uint8_t *data = nullptr, size_t dataSize = 0);
+    DebugInfoExtractor* GetDebugExtractor();
+    SourceMap* GetSourceMap(uint8_t *data = nullptr, size_t dataSize = 0);
+    std::vector<MethodInfo> GetmethodInfos();
+
+    std::vector<MethodInfo> methodInfo_;
+private:
+    std::shared_ptr<JSPandaFile> jsPandaFile_ {nullptr};
+    std::unique_ptr<DebugInfoExtractor> debugExtractor_ {nullptr};
+    std::shared_ptr<SourceMap> sourceMap_ {nullptr};
+};
 
 class JsStackInfo {
 public:
@@ -88,11 +121,13 @@ extern "C" int get_ark_js_heap_crash_info(
     int pid, uintptr_t *x20, uintptr_t *fp, int out_js_info, char *buf, size_t buf_sz);
 extern "C" int ark_parse_js_frame_info(
     uintptr_t byteCodePc, uintptr_t mapBase, uintptr_t loadOffset, uint8_t *data, uint64_t dataSize,
-    panda::ecmascript::JsFunction *jsFunction);
+    uintptr_t extractorptr, panda::ecmascript::JsFunction *jsFunction);
 extern "C" int ark_translate_js_frame_info(
     uint8_t *data, size_t dataSize, panda::ecmascript::JsFunction *jsFunction);
 extern "C" int step_ark(
     void *ctx, panda::ecmascript::ReadMemFunc readMem, uintptr_t *fp, uintptr_t *sp, uintptr_t *pc, bool *isJsFrame);
+extern "C" int ark_create_js_symbol_extractor(uintptr_t *extractorptr);
+extern "C" int ark_destory_js_symbol_extractor(uintptr_t extractorptr);
 #if defined(PANDA_TARGET_OHOS)
 extern "C" int get_ark_native_frame_info(
     int pid, uintptr_t *pc, uintptr_t *fp, uintptr_t *sp, panda::ecmascript::JsFrame *jsFrame, size_t &size);
