@@ -562,14 +562,22 @@ JSHandle<JSDateTimeFormat> JSDateTimeFormat::InitializeDateTimeFormat(JSThread *
 
     HourCycleOption dtfHourCycle = HourCycleOption::UNDEFINED;
 
-    // If dateTimeFormat.[[Hour]] is defined, then
-    if (isHourDefined) {
-        // e. Set dateTimeFormat.[[HourCycle]] to hc.
+    if (timeStyle != DateTimeStyleOption::UNDEFINED) {
+        // Set dateTimeFormat.[[HourCycle]] to hc.
         dtfHourCycle = hc;
-    } else {
-        // 37. Else,
-        //     a. Set dateTimeFormat.[[HourCycle]] to undefined.
-        dtfHourCycle = HourCycleOption::UNDEFINED;
+    }
+
+    if (dateStyle == DateTimeStyleOption::UNDEFINED
+        && timeStyle == DateTimeStyleOption::UNDEFINED) {
+        // If dateTimeFormat.[[Hour]] is defined, then
+        if (isHourDefined) {
+            // e. Set dateTimeFormat.[[HourCycle]] to hc.
+            dtfHourCycle = hc;
+        } else {
+            // 37. Else,
+            //     a. Set dateTimeFormat.[[HourCycle]] to undefined.
+            dtfHourCycle = HourCycleOption::UNDEFINED;
+        }
     }
 
     // Set dateTimeFormat.[[hourCycle]].
