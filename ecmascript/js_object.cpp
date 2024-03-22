@@ -333,6 +333,41 @@ void JSObject::OptimizeAsFastProperties(const JSThread *thread, JSHandle<JSObjec
     obj->SetProperties(thread, array);
 }
 
+void JSObject::SetSProperties(JSThread *thread,
+                              JSHandle<JSObject> obj,
+                              JSHandle<JSHClass> hclass,
+                              const std::vector<PropertyDescriptor> &descs)
+{
+    uint32_t length = descs.size();
+    JSMutableHandle<JSTaggedValue> propKey(thread, JSTaggedValue::Undefined());
+    JSMutableHandle<JSTaggedValue> propValue(thread, JSTaggedValue::Undefined());
+
+    if (LIKELY(!hclass->IsDictionaryMode())) {
+        for (uint32_t i = 0; i < length; ++i) {
+            propValue.Update(descs[i].GetValue());
+            // note(lzl): IsSAccessor?
+            if (!propValue->IsSharedType() && !propValue->IsAccessor()) {
+                THROW_TYPE_ERROR(thread, "The properties of sendable class must be sendable too.");
+            }
+            obj->SetPropertyInlinedProps(thread, i, propValue.GetTaggedValue());
+        }
+    } else {
+        JSMutableHandle<ecmascript::NameDictionary> dict(
+            thread, ecmascript::NameDictionary::CreateInSharedHeap(
+                thread, ecmascript::NameDictionary::ComputeHashTableSize(length)));
+        for (uint32_t i = 0; i < length; i++) {
+            propKey.Update(descs[i].GetKey());
+            propValue.Update(descs[i].GetValue());
+            PropertyAttributes attr =
+                PropertyAttributes::Default(descs[i].IsWritable(), descs[i].IsEnumerable(), descs[i].IsConfigurable());
+            JSHandle<ecmascript::NameDictionary> newDict =
+                ecmascript::NameDictionary::PutIfAbsent(thread, dict, propKey, propValue, attr);
+            dict.Update(newDict);
+        }
+        obj->SetProperties(thread, dict);
+    }
+}
+
 bool JSObject::IsArrayLengthWritable(JSThread *thread, const JSHandle<JSObject> &receiver)
 {
     auto *hclass = receiver->GetJSHClass();
@@ -2809,10 +2844,15 @@ void ECMAObject::SetNativePointerField(const JSThread *thread, int32_t index, vo
         if (static_cast<int32_t>(array->GetExtraLength()) > index) {
             EcmaVM *vm = thread->GetEcmaVM();
             JSHandle<JSTaggedValue> current = JSHandle<JSTaggedValue>(thread, array->Get(thread, index));
+            JSHandle<JSTaggedValue> obj(thread, this);
             if (!current->IsHole() && nativePointer == nullptr) {
                 // Try to remove native pointer if exists.
                 vm->RemoveFromNativePointerList(*JSHandle<JSNativePointer>(current));
                 array->Set(thread, index, JSTaggedValue::Hole());
+            } else if (obj->IsJSShared()) {
+                JSHandle<JSNativePointer> pointer =
+                    vm->GetFactory()->NewSJSNativePointer(nativePointer, callBack, data, false, nativeBindingsize);
+                array->Set(thread, index, pointer.GetTaggedValue());
             } else {
                 JSHandle<JSNativePointer> pointer = vm->GetFactory()->NewJSNativePointer(
                     nativePointer, callBack, data, false, nativeBindingsize, isConcurrent);
@@ -2848,7 +2888,8 @@ void ECMAObject::SetNativePointerFieldCount(const JSThread *thread, int32_t coun
             // Native Pointer field count is fixed.
             if (array->GetExtraLength() == 0) {
                 JSHandle<TaggedArray> newArray =
-                    thread->GetEcmaVM()->GetFactory()->NewTaggedArray(count + RESOLVED_MAX_SIZE);
+                    value->IsJSShared() ? thread->GetEcmaVM()->GetFactory()->NewSTaggedArray(count + RESOLVED_MAX_SIZE)
+                                        : thread->GetEcmaVM()->GetFactory()->NewTaggedArray(count + RESOLVED_MAX_SIZE);
                 newArray->SetExtraLength(count);
                 newArray->Set(thread, count + HASH_INDEX, array->Get(HASH_INDEX));
                 newArray->Set(thread, count + FUNCTION_EXTRA_INDEX, array->Get(FUNCTION_EXTRA_INDEX));
@@ -2856,7 +2897,8 @@ void ECMAObject::SetNativePointerFieldCount(const JSThread *thread, int32_t coun
             }
         } else if (value->IsJSNativePointer()) {
             JSHandle<TaggedArray> newArray =
-                thread->GetEcmaVM()->GetFactory()->NewTaggedArray(count + RESOLVED_MAX_SIZE);
+                value->IsJSShared() ? thread->GetEcmaVM()->GetFactory()->NewSTaggedArray(count + RESOLVED_MAX_SIZE)
+                                    : thread->GetEcmaVM()->GetFactory()->NewTaggedArray(count + RESOLVED_MAX_SIZE);
             newArray->SetExtraLength(count);
             newArray->Set(thread, count + HASH_INDEX, JSTaggedValue(0));
             newArray->Set(thread, count + FUNCTION_EXTRA_INDEX, value);
@@ -2866,7 +2908,9 @@ void ECMAObject::SetNativePointerFieldCount(const JSThread *thread, int32_t coun
             UNREACHABLE();
         }
     } else {
-        JSHandle<TaggedArray> newArray = thread->GetEcmaVM()->GetFactory()->NewTaggedArray(count + 1);
+        JSHandle<TaggedArray> newArray = value->IsJSShared()
+                                             ? thread->GetEcmaVM()->GetFactory()->NewSTaggedArray(count + 1)
+                                             : thread->GetEcmaVM()->GetFactory()->NewTaggedArray(count + 1);
         newArray->SetExtraLength(count);
         newArray->Set(thread, count + HASH_INDEX, value);
         Barriers::SetObject<true>(thread, *obj, HASH_OFFSET, newArray.GetTaggedValue().GetRawData());

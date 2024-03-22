@@ -491,6 +491,22 @@ void EcmaVM::ProcessNativeDelete(const WeakRootVisitor &visitor)
     }
 }
 
+void EcmaVM::ProcessSharedNativeDelete(const WeakRootVisitor &visitor)
+{
+    auto sharedIter = sharedNativePointerList_.begin();
+    while (sharedIter != sharedNativePointerList_.end()) {
+        JSNativePointer *object = *sharedIter;
+        auto fwd = visitor(reinterpret_cast<TaggedObject *>(object));
+        if (fwd == nullptr) {
+            sharedNativePointerCallbacks_.emplace_back(
+                std::make_pair(object->GetDeleter(), std::make_pair(object->GetExternalPointer(), object->GetData())));
+            sharedIter = sharedNativePointerList_.erase(sharedIter);
+        } else {
+            ++sharedIter;
+        }
+    }
+}
+
 void EcmaVM::ProcessReferences(const WeakRootVisitor &visitor)
 {
     if (thread_->GetCurrentEcmaContext()->GetRegExpParserCache() != nullptr) {
@@ -547,6 +563,12 @@ void EcmaVM::PushToNativePointerList(JSNativePointer *pointer, Concurrent isConc
     } else {
         nativePointerList_.emplace_back(pointer);
     }
+}
+
+void EcmaVM::PushToSharedNativePointerList(JSNativePointer *pointer)
+{
+    ASSERT(JSTaggedValue(pointer).IsInSharedHeap());
+    sharedNativePointerList_.emplace_back(pointer);
 }
 
 void EcmaVM::RemoveFromNativePointerList(JSNativePointer *pointer)

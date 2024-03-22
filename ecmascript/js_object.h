@@ -743,6 +743,11 @@ public:
     static void TryOptimizeAsFastElements(const JSThread *thread, JSHandle<JSObject> obj);
     static void OptimizeAsFastProperties(const JSThread *thread, JSHandle<JSObject> obj);
 
+    static void SetSProperties(JSThread *thread,
+                               JSHandle<JSObject> obj,
+                               JSHandle<JSHClass> hclass,
+                               const std::vector<PropertyDescriptor> &descs);
+
 protected:
     static void ElementsToDictionary(const JSThread *thread, JSHandle<JSObject> obj);
 

@@ -86,6 +86,7 @@ void SharedGC::Sweep()
         ASSERT(!thread->IsInRunningState());
         thread->GetCurrentEcmaContext()->ProcessNativeDeleteInSharedGC(gcUpdateWeak);
         thread->IterateWeakEcmaGlobalStorage(gcUpdateWeak, true);
+        thread->GetEcmaVM()->ProcessSharedNativeDelete(gcUpdateWeak);
     });
 
     sHeap_->GetSweeper()->Sweep();

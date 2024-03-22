@@ -17,9 +17,6 @@
 #include "ecmascript/tests/test_helper.h"
 #include "gtest/gtest.h"
 
-// index 0 is name/constructor, index 1 is property to test.
-static constexpr int INITIAL_PROPERTY_LENGTH = 2;
-
 using namespace panda::ecmascript;
 
 namespace panda::test {
@@ -107,40 +104,26 @@ panda::JSValueRef FunctionCallback(JsiRuntimeCallInfo *info)
 Local<FunctionRef> GetNewSendableClassFunction(
     EcmaVM *vm, const char *instanceKey, const char *staticKey, const char *nonStaticKey, Local<FunctionRef> parent)
 {
-    Local<panda::ArrayRef> instanceKeys = panda::ArrayRef::New(vm, 1);
-    Local<panda::ArrayRef> instanceValues = panda::ArrayRef::New(vm, 1);
-    PropertyAttribute *instanceAttributes = new PropertyAttribute[1];
-    // index 0 is name
-    Local<panda::ArrayRef> staticKeys = panda::ArrayRef::New(vm, INITIAL_PROPERTY_LENGTH);
-    Local<panda::ArrayRef> staticValues = panda::ArrayRef::New(vm, INITIAL_PROPERTY_LENGTH);
-    PropertyAttribute *staticAttributes = new PropertyAttribute[INITIAL_PROPERTY_LENGTH];
-    // index 0 is constructor
-    Local<panda::ArrayRef> nonStaticKeys = panda::ArrayRef::New(vm, INITIAL_PROPERTY_LENGTH);
-    Local<panda::ArrayRef> nonStaticValues = panda::ArrayRef::New(vm, INITIAL_PROPERTY_LENGTH);
-    PropertyAttribute *nonStaticAttributes = new PropertyAttribute[INITIAL_PROPERTY_LENGTH];
+    FunctionRef::SendablePropertiesInfos infos;
 
     Local<StringRef> instanceStr = StringRef::NewFromUtf8(vm, instanceKey);
-    instanceKeys->Set(vm, 0, instanceStr);
-    instanceValues->Set(vm, 0, instanceStr);
-    instanceAttributes[0] = PropertyAttribute(instanceStr, true, true, true);
+    infos.instancePropertiesInfo.keys.push_back(instanceStr);
+    infos.instancePropertiesInfo.types.push_back(FunctionRef::SendableType::NONE);
+    infos.instancePropertiesInfo.attributes.push_back(PropertyAttribute(instanceStr, true, true, true));
 
     Local<StringRef> staticStr = StringRef::NewFromUtf8(vm, staticKey);
-    staticKeys->Set(vm, 1, staticStr);
-    staticValues->Set(vm, 1, staticStr);
-    staticAttributes[1] = PropertyAttribute(staticStr, true, true, true);
+    infos.staticPropertiesInfo.keys.push_back(staticStr);
+    infos.staticPropertiesInfo.types.push_back(FunctionRef::SendableType::NONE);
+    infos.staticPropertiesInfo.attributes.push_back(PropertyAttribute(staticStr, true, true, true));
 
     Local<StringRef> nonStaticStr = StringRef::NewFromUtf8(vm, nonStaticKey);
-    nonStaticKeys->Set(vm, 1, nonStaticStr);
-    nonStaticValues->Set(vm, 1, nonStaticStr);
-    nonStaticAttributes[1] = PropertyAttribute(nonStaticStr, true, true, true);
+    infos.nonStaticPropertiesInfo.keys.push_back(nonStaticStr);
+    infos.nonStaticPropertiesInfo.types.push_back(FunctionRef::SendableType::NONE);
+    infos.nonStaticPropertiesInfo.attributes.push_back(PropertyAttribute(nonStaticStr, true, true, true));
 
     Local<StringRef> nameStr = StringRef::NewFromUtf8(vm, "name");
     Local<FunctionRef> constructor =
-        FunctionRef::NewSendableClassFunction(vm, FunctionCallback, nullptr, nullptr, nameStr,
-                                              {{instanceKeys, instanceValues, instanceAttributes},
-                                               {staticKeys, staticValues, staticAttributes},
-                                               {nonStaticKeys, nonStaticValues, nonStaticAttributes}},
-                                              parent);
+        FunctionRef::NewSendableClassFunction(vm, FunctionCallback, nullptr, nullptr, nameStr, infos, parent);
 
     return constructor;
 }
@@ -291,17 +274,7 @@ HWTEST_F_L0(JSNApiTests, NewSendableClassFunctionFunction)
 {
     LocalScope scope(vm_);
 
-    Local<panda::ArrayRef> instanceKeys = panda::ArrayRef::New(vm_, 0);
-    Local<panda::ArrayRef> instanceValues = panda::ArrayRef::New(vm_, 0);
-    PropertyAttribute *instanceAttributes = new PropertyAttribute[0];
-    // index 0 is name
-    Local<panda::ArrayRef> staticKeys = panda::ArrayRef::New(vm_, INITIAL_PROPERTY_LENGTH);
-    Local<panda::ArrayRef> staticValues = panda::ArrayRef::New(vm_, INITIAL_PROPERTY_LENGTH);
-    PropertyAttribute *staticAttributes = new PropertyAttribute[INITIAL_PROPERTY_LENGTH];
-    // index 0 is constructor
-    Local<panda::ArrayRef> nonStaticKeys = panda::ArrayRef::New(vm_, 1);
-    Local<panda::ArrayRef> nonStaticValues = panda::ArrayRef::New(vm_, 1);
-    PropertyAttribute *nonStaticAttributes = new PropertyAttribute[1];
+    FunctionRef::SendablePropertiesInfos infos;
 
     Local<FunctionRef> func = FunctionRef::NewSendable(
         vm_,
@@ -311,16 +284,12 @@ HWTEST_F_L0(JSNApiTests, NewSendableClassFunctionFunction)
             return **StringRef::NewFromUtf8(vm, "funcResult");
         },
         nullptr);
-    staticKeys->Set(vm_, 1, staticKey);
-    staticValues->Set(vm_, 1, func);
-    staticAttributes[1] = PropertyAttribute(func, true, true, true);
+    infos.staticPropertiesInfo.keys.push_back(staticKey);
+    infos.staticPropertiesInfo.types.push_back(FunctionRef::SendableType::OBJECT);
+    infos.staticPropertiesInfo.attributes.push_back(PropertyAttribute(func, true, true, true));
 
     Local<FunctionRef> constructor = FunctionRef::NewSendableClassFunction(
-        vm_, FunctionCallback, nullptr, nullptr, StringRef::NewFromUtf8(vm_, "name"),
-        {{instanceKeys, instanceValues, instanceAttributes},
-         {staticKeys, staticValues, staticAttributes},
-         {nonStaticKeys, nonStaticValues, nonStaticAttributes}},
-        FunctionRef::Null(vm_));
+        vm_, FunctionCallback, nullptr, nullptr, StringRef::NewFromUtf8(vm_, "name"), infos, FunctionRef::Null(vm_));
 
     Local<FunctionRef> staticValue = constructor->Get(vm_, staticKey);
     ASSERT_TRUE(staticValue->IsFunction());
@@ -332,22 +301,12 @@ HWTEST_F_L0(JSNApiTests, NewSendableClassFunctionGetterSetter)
 {
     LocalScope scope(vm_);
 
-    Local<panda::ArrayRef> instanceKeys = panda::ArrayRef::New(vm_, 0);
-    Local<panda::ArrayRef> instanceValues = panda::ArrayRef::New(vm_, 0);
-    PropertyAttribute *instanceAttributes = new PropertyAttribute[0];
-    // index 0 is name
-    Local<panda::ArrayRef> staticKeys = panda::ArrayRef::New(vm_, 3);
-    Local<panda::ArrayRef> staticValues = panda::ArrayRef::New(vm_, 3);
-    PropertyAttribute *staticAttributes = new PropertyAttribute[3];
-    // index 0 is constructor
-    Local<panda::ArrayRef> nonStaticKeys = panda::ArrayRef::New(vm_, 1);
-    Local<panda::ArrayRef> nonStaticValues = panda::ArrayRef::New(vm_, 1);
-    PropertyAttribute *nonStaticAttributes = new PropertyAttribute[1];
+    FunctionRef::SendablePropertiesInfos infos;
 
     Local<StringRef> getterSetter = StringRef::NewFromUtf8(vm_, "getterSetter");
-    staticKeys->Set(vm_, 1, getterSetter);
-    staticValues->Set(vm_, 1, getterSetter);
-    staticAttributes[1] = PropertyAttribute(getterSetter, true, true, true);
+    infos.staticPropertiesInfo.keys.push_back(getterSetter);
+    infos.staticPropertiesInfo.types.push_back(FunctionRef::SendableType::NONE);
+    infos.staticPropertiesInfo.attributes.push_back(PropertyAttribute(getterSetter, true, true, true));
     Local<FunctionRef> staticGetter = FunctionRef::NewSendable(
         vm_,
         [](JsiRuntimeCallInfo *info) -> JSValueRef {
@@ -368,19 +327,17 @@ HWTEST_F_L0(JSNApiTests, NewSendableClassFunctionGetterSetter)
         },
         nullptr);
     Local<JSValueRef> staticValue = panda::ObjectRef::CreateSendableAccessorData(vm_, staticGetter, staticSetter);
-    staticKeys->Set(vm_, 2, staticKey);
-    staticValues->Set(vm_, 2, staticValue);
-    staticAttributes[2] = PropertyAttribute(staticValue, true, true, true);
+    infos.staticPropertiesInfo.keys.push_back(staticKey);
+    infos.staticPropertiesInfo.types.push_back(FunctionRef::SendableType::OBJECT);
+    infos.staticPropertiesInfo.attributes.push_back(PropertyAttribute(staticValue, true, true, true));
 
     Local<FunctionRef> constructor = FunctionRef::NewSendableClassFunction(
-        vm_, FunctionCallback, nullptr, nullptr, StringRef::NewFromUtf8(vm_, "name"),
-        {{instanceKeys, instanceValues, instanceAttributes},
-         {staticKeys, staticValues, staticAttributes},
-         {nonStaticKeys, nonStaticValues, nonStaticAttributes}},
-        FunctionRef::Null(vm_));
+        vm_, FunctionCallback, nullptr, nullptr, StringRef::NewFromUtf8(vm_, "name"), infos, FunctionRef::Null(vm_));
 
+    ASSERT_EQ("getterSetter", constructor->Get(vm_, getterSetter)->ToString(vm_)->ToString());
     ASSERT_EQ("getterSetter", constructor->Get(vm_, staticKey)->ToString(vm_)->ToString());
     constructor->Set(vm_, staticKey, StringRef::NewFromUtf8(vm_, "getterSetter0"));
+    ASSERT_EQ("getterSetter0", constructor->Get(vm_, getterSetter)->ToString(vm_)->ToString());
     ASSERT_EQ("getterSetter0", constructor->Get(vm_, staticKey)->ToString(vm_)->ToString());
 }
 
