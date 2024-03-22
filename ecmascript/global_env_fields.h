@@ -248,7 +248,9 @@
     V(JSTaggedValue, NativeBindingSymbol, NATIVE_BINDING_SYMBOL_INDEX)                              \
     V(JSTaggedValue, HasInstanceSymbol, HASINSTANCE_SYMBOL_INDEX)                                   \
     V(JSTaggedValue, SharedArrayFunction, SHARED_ARRAY_FUNCTION_INDEX)                              \
-    V(JSTaggedValue, SharedArrayPrototype, SHARED_ARRAY_PROTOTYPE_INDEX)
+    V(JSTaggedValue, SharedArrayPrototype, SHARED_ARRAY_PROTOTYPE_INDEX)                            \
+    V(JSTaggedValue, SharedMapPrototype,  SHARED_MAP_PROTOTYPE_INDEX)                               \
+    V(JSTaggedValue, SharedSetPrototype, SHARED_SET_PROTOTYPE_INDEX)
 
 #define GLOBAL_ENV_FIELDS(V)                                \
     GLOBAL_ENV_SHARED_FIELDS(V)                             \

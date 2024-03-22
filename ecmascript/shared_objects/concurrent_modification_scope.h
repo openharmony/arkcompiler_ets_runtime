@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#ifndef ECMASCRIPT_SHARED_OBJECTS_CONCURENT_MODICTION_SCOPE_H
-#define ECMASCRIPT_SHARED_OBJECTS_CONCURENT_MODICTION_SCOPE_H
+#ifndef ECMASCRIPT_SHARED_OBJECTS_CONCURRENT_MODIFICATION_SCOPE_H
+#define ECMASCRIPT_SHARED_OBJECTS_CONCURRENT_MODIFICATION_SCOPE_H
 
 #include "ecmascript/shared_objects/js_shared_set.h"
 
@@ -123,4 +123,4 @@ private:
     static_assert(std::is_same_v<Container, JSSharedSet> || std::is_same_v<Container, JSSharedMap>);
 };
 } // namespace panda::ecmascript
-#endif  // ECMASCRIPT_SHARED_OBJECTS_CONCURENT_MODICTION_SCOPE_H
+#endif  // ECMASCRIPT_SHARED_OBJECTS_CONCURRENT_MODIFICATION_SCOPE_H

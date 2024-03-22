@@ -1265,11 +1265,7 @@ inline GateRef StubBuilder::IsJsProxy(GateRef obj)
 
 inline GateRef StubBuilder::IsJSShared(GateRef obj)
 {
-    GateRef bitfield = Load(VariableType::INT32(), LoadHClass(obj), IntPtr(JSHClass::BIT_FIELD_OFFSET));
-    return Int32NotEqual(
-        Int32And(Int32LSR(bitfield, Int32(JSHClass::IsJSSharedBit::START_BIT)),
-                 Int32((1LU << JSHClass::IsJSSharedBit::SIZE) - 1)),
-        Int32(0));
+    return TaggedIsShared(obj);
 }
 
 inline GateRef StubBuilder::IsJSGlobalObject(GateRef obj)

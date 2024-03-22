@@ -177,6 +177,7 @@ void Builtins::InitializeSSet(const JSHandle<GlobalEnv> &env, const JSHandle<JSO
         CreateSGetterSetter(env, BuiltinsSharedSet::Species, "[Symbol.species]", FunctionLength::ZERO);
     SetSAccessor(JSHandle<JSObject>(setFunction), fieldIndex, speciesGetter, globalConst->GetHandledUndefined());
 
+    env->SetSharedSetPrototype(thread_, setPrototype);
     env->SetSBuiltininSetFunction(thread_, setFunction);
 }
 
@@ -237,6 +238,7 @@ void Builtins::InitializeSMap(const JSHandle<GlobalEnv> &env, const JSHandle<JSO
         CreateSGetterSetter(env, BuiltinsSharedMap::Species, "[Symbol.species]", FunctionLength::ZERO);
     SetSAccessor(JSHandle<JSObject>(mapFunction), fieldIndex, speciesGetter, globalConst->GetHandledUndefined());
 
+    env->SetSharedMapPrototype(thread_, mapPrototype);
     env->SetSBuiltininMapFunction(thread_, mapFunction);
 }
 

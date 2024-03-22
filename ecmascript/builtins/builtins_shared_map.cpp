@@ -20,7 +20,7 @@
 #include "ecmascript/interpreter/interpreter.h"
 #include "ecmascript/linked_hash_table.h"
 #include "ecmascript/object_factory.h"
-#include "ecmascript/shared_objects/concurrent_modifiction_scope.h"
+#include "ecmascript/shared_objects/concurrent_modification_scope.h"
 #include "ecmascript/shared_objects/js_shared_map.h"
 #include "ecmascript/shared_objects/js_shared_map_iterator.h"
 

@@ -186,6 +186,11 @@ void JSHClass::Initialize(const JSThread *thread, uint32_t size, JSType type,
         case JSType::JS_SHARED_SET:
         case JSType::JS_SHARED_MAP:
         case JSType::JS_SHARED_ARRAY:
+        case JSType::BIGINT:
+        case JSType::LINE_STRING:
+        case JSType::CONSTANT_STRING:
+        case JSType::SLICED_STRING:
+        case JSType::TREE_STRING:
             SetIsJSShared(true);
             break;
         default:

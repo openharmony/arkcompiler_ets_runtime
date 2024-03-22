@@ -143,8 +143,8 @@ void ValueSerializer::SerializeObjectImpl(TaggedObject *object, bool isWeak)
         return;
     }
     Region *region = Region::ObjectAddressToRange(object);
-    if (object->GetClass()->IsString() || object->GetClass()->IsMethod() || IsSharedContainer(object) ||
-        region->InSharedReadOnlySpace() || (serializeSharedEvent_ == 0 && region->InSharedHeap())) {
+    if (object->GetClass()->IsString() || object->GetClass()->IsMethod() || region->InSharedReadOnlySpace() ||
+        (serializeSharedEvent_ == 0 && region->InSharedHeap())) {
         SerializeSharedObject(object);
         return;
     }
@@ -416,12 +416,6 @@ bool ValueSerializer::PrepareClone(JSThread *thread, const JSHandle<JSTaggedValu
         index++;
     }
     return true;
-}
-
-bool ValueSerializer::IsSharedContainer(TaggedObject *object)
-{
-    auto hclass = object->GetClass();
-    return hclass->IsJSSharedSet() || hclass->IsJSSharedMap() || hclass->IsJSSharedArray();
 }
 }  // namespace panda::ecmascript
 

@@ -21,7 +21,7 @@
 
 #include "ecmascript/linked_hash_table.h"
 #include "ecmascript/object_factory.h"
-#include "ecmascript/shared_objects/concurrent_modifiction_scope.h"
+#include "ecmascript/shared_objects/concurrent_modification_scope.h"
 #include "ecmascript/shared_objects/js_shared_set.h"
 #include "ecmascript/shared_objects/js_shared_set_iterator.h"
 #include "ecmascript/tagged_array-inl.h"
