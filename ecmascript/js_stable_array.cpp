@@ -1226,4 +1226,54 @@ JSTaggedValue JSStableArray::HandleFindLastOfStable(JSThread *thread, JSHandle<J
     }
     return callResult;
 }
+
+JSTaggedValue JSStableArray::HandleReduceRightOfStable(JSThread *thread, JSHandle<JSObject> thisObjHandle,
+                                                       JSHandle<JSTaggedValue> callbackFnHandle,
+                                                       JSMutableHandle<JSTaggedValue> &accumulator,
+                                                       JSHandle<JSTaggedValue> thisArgHandle, int64_t &k)
+{
+    JSHandle<JSTaggedValue> thisObjVal(thisObjHandle);
+    JSMutableHandle<JSTaggedValue> kValue(thread, JSTaggedValue::Hole());
+    JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
+    JSTaggedValue callResult = JSTaggedValue::Undefined();
+    JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
+    const int32_t argsLength = 4; // 4: «accumulator, kValue, k, O»
+    int64_t len = static_cast<int64_t>(base::ArrayHelper::GetArrayLength(thread, thisObjVal));
+    while (k >= 0) {
+        key.Update(JSTaggedValue(k));
+        kValue.Update(ElementAccessor::Get(thisObjHandle, k));
+        if (!kValue.GetTaggedValue().IsHole()) {
+            EcmaRuntimeCallInfo *info =
+                EcmaInterpreter::NewRuntimeCallInfo(thread, callbackFnHandle, thisArgHandle, undefined, argsLength);
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+            info->SetCallArg(accumulator.GetTaggedValue(), kValue.GetTaggedValue(),
+                key.GetTaggedValue(), thisObjVal.GetTaggedValue());
+            callResult = JSFunction::Call(info);
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+            accumulator.Update(callResult);
+        } else {
+            bool exists = JSTaggedValue::HasProperty(thread, thisObjVal, key);
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+            if (exists) {
+                auto res = JSArray::FastGetPropertyByValue(thread, thisObjVal, key).GetTaggedValue();
+                RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+                kValue.Update(res);
+                EcmaRuntimeCallInfo *info = EcmaInterpreter::NewRuntimeCallInfo(thread, callbackFnHandle,
+                    thisArgHandle, undefined, argsLength);
+                RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+                info->SetCallArg(accumulator.GetTaggedValue(), kValue.GetTaggedValue(),
+                    key.GetTaggedValue(), thisObjVal.GetTaggedValue());
+                callResult = JSFunction::Call(info);
+                RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+                accumulator.Update(callResult);
+            }
+        }
+        k--;
+        int64_t newLen = static_cast<int64_t>(base::ArrayHelper::GetArrayLength(thread, thisObjVal));
+        if (!thisObjVal->IsStableJSArray(thread) || newLen != len) {
+            return base::BuiltinsBase::GetTaggedBoolean(false);
+        }
+    }
+    return base::BuiltinsBase::GetTaggedBoolean(true);
+}
 }  // namespace panda::ecmascript

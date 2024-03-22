@@ -79,6 +79,10 @@ public:
                                                 JSHandle<JSTaggedValue> callbackFnHandle,
                                                 JSHandle<JSTaggedValue> thisArgHandle,
                                                 JSMutableHandle<JSTaggedValue> &kValue, int64_t &k);
+    static JSTaggedValue HandleReduceRightOfStable(JSThread *thread, JSHandle<JSObject> thisObjHandle,
+                                                   JSHandle<JSTaggedValue> callbackFnHandle,
+                                                   JSMutableHandle<JSTaggedValue> &accumulator,
+                                                   JSHandle<JSTaggedValue> thisArgHandle, int64_t &k);
 
 private:
     static void SetSepValue(JSHandle<EcmaString> sepStringHandle, int &sep, uint32_t &sepLength);

@@ -343,6 +343,7 @@ DECLARE_BUILTINS(Array##Method)                                                 
     V(Every,            JS_ANY)             \
     V(FindLastIndex,    JS_ANY)             \
     V(FindLast,         JS_ANY)             \
+    V(ReduceRight,      JS_ANY)             \
     V(Map,              JS_ANY)
 
 DECLARE_BUILTINS(SORT)
