@@ -103,6 +103,7 @@
 
 #include "ecmascript/platform/mutex.h"
 #include "ecmascript/platform/log.h"
+#include "ecmascript/jit/jit.h"
 
 namespace panda {
 using ecmascript::AccessorData;
@@ -3181,7 +3182,8 @@ EcmaVM *JSNApi::CreateJSVM(const RuntimeOption &option)
     runtimeOptions.SetEnableAOT(option.GetEnableAOT());
     runtimeOptions.SetEnablePGOProfiler(option.GetEnableProfile());
     runtimeOptions.SetPGOProfilerPath(option.GetProfileDir());
-
+    // jit
+    runtimeOptions.SetEnableJIT(option.GetEnableJIT());
     // Dfx
     runtimeOptions.SetLogLevel(Log::LevelToString(Log::ConvertFromRuntime(option.GetLogLevel())));
     runtimeOptions.SetEnableArkTools(option.GetEnableArkTools());
@@ -3826,6 +3828,7 @@ void JSNApi::PostFork(EcmaVM *vm, const RuntimeOption &option)
                     << ", aot: " << jsOption.GetEnableAOT()
                     << ", bundle name: " <<  option.GetBundleName();
     jsOption.SetEnablePGOProfiler(option.GetEnableProfile());
+    jsOption.SetEnableJIT(option.GetEnableJIT());
     ecmascript::pgo::PGOProfilerManager::GetInstance()->SetBundleName(option.GetBundleName());
     JSRuntimeOptions runtimeOptions;
     runtimeOptions.SetLogLevel(Log::LevelToString(Log::ConvertFromRuntime(option.GetLogLevel())));

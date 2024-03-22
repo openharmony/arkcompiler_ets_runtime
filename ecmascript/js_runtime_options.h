@@ -1077,6 +1077,16 @@ public:
         return enableJIT_;
     }
 
+    void SetEnableAPPJIT(bool value)
+    {
+        enableAPPJIT_ = value;
+    }
+
+    bool IsEnableAPPJIT() const
+    {
+        return enableAPPJIT_;
+    }
+
     void SetJitHotnessThreshold(uint16_t value)
     {
         jitHotnessThreshold_ = value;
@@ -1618,6 +1628,7 @@ private:
     bool enableOptInlining_ {true};
     bool enableOptPGOType_ {true};
     bool enableJIT_{false};
+    bool enableAPPJIT_{false};
     uint16_t jitHotnessThreshold_ {2};
     bool forceJitCompileMain_{false};
     bool enableGlobalTypeInfer_ {false};

@@ -22,7 +22,7 @@
 
 namespace panda::ecmascript::kungfu {
 extern "C" {
-PUBLIC_API void InitJitCompiler(EcmaVM *vm);
+PUBLIC_API void InitJitCompiler(JSRuntimeOptions options);
 PUBLIC_API void *CreateJitCompilerTask(JitTask *jitTask);
 PUBLIC_API bool JitCompile(void *compiler, JitTask *jitTask);
 PUBLIC_API bool JitFinalize(void *compiler, JitTask *jitTask);
@@ -30,7 +30,7 @@ PUBLIC_API void DeleteJitCompile(void *handle);
 };
 
 struct JitCompilationOptions {
-    JitCompilationOptions(EcmaVM *vm);
+    JitCompilationOptions(JSRuntimeOptions options);
     JitCompilationOptions() = default;
 
     std::string triple_;
@@ -84,14 +84,14 @@ private:
 
 class JitCompiler final {
 public:
-    explicit JitCompiler(EcmaVM *vm) : jitOptions_(vm),
+    explicit JitCompiler(JSRuntimeOptions *options) : jitOptions_(*options),
         log_(jitOptions_.logOption_),
         logList_(jitOptions_.logMethodsList_),
         profilerDecoder_(jitOptions_.profilerIn_, jitOptions_.hotnessThreshold_) { }
     ~JitCompiler() = default;
-    void Init(EcmaVM *vm);
+    void Init(JSRuntimeOptions options);
 
-    static JitCompiler *GetInstance(EcmaVM *vm = nullptr);
+    static JitCompiler *GetInstance(JSRuntimeOptions *options = nullptr);
     JitCompilationOptions &GetJitOptions()
     {
         return jitOptions_;
