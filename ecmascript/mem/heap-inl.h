@@ -291,10 +291,10 @@ TaggedObject *Heap::AllocateClassClass(JSHClass *hclass, size_t size)
     return object;
 }
 
-TaggedObject *SharedHeap::AllocateClassClass(JSHClass *hclass, size_t size)
+TaggedObject *SharedHeap::AllocateClassClass(JSThread *thread, JSHClass *hclass, size_t size)
 {
     size = AlignUp(size, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
-    auto object = reinterpret_cast<TaggedObject *>(sNonMovableSpace_->AllocateWithoutGC(size));
+    auto object = reinterpret_cast<TaggedObject *>(sNonMovableSpace_->AllocateWithoutGC(thread, size));
     if (UNLIKELY(object == nullptr)) {
         LOG_ECMA_MEM(FATAL) << "Heap::AllocateClassClass can not allocate any space";
         UNREACHABLE();

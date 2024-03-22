@@ -16,6 +16,7 @@
 #include "ecmascript/intl/locale_helper.h"
 
 #include "ecmascript/base/string_helper.h"
+#include "ecmascript/checkpoint/thread_state_transition.h"
 #include "ecmascript/ecma_macros.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/global_env.h"
@@ -412,7 +413,11 @@ std::vector<std::string> LocaleHelper::GetAvailableLocales(JSThread *thread, con
     auto globalConst = thread->GlobalConstants();
     JSHandle<EcmaString> specialValue = JSHandle<EcmaString>::Cast(globalConst->GetHandledEnUsPosixString());
     std::string specialString = ConvertToStdString(specialValue);
-    UEnumeration *uenum = uloc_openAvailableByType(ULOC_AVAILABLE_WITH_LEGACY_ALIASES, &status);
+    UEnumeration *uenum = nullptr;
+    {
+        ThreadNativeScope nativeScope(thread);
+        uenum = uloc_openAvailableByType(ULOC_AVAILABLE_WITH_LEGACY_ALIASES, &status);
+    }
     std::vector<std::string> allLocales;
     const char *loc = nullptr;
     // Third party libs computing can be in Native state

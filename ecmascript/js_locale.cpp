@@ -165,13 +165,16 @@ JSHandle<TaggedArray> JSLocale::LookupSupportedLocales(JSThread *thread, const J
     //       removed.
     //    b. Let availableLocale be BestAvailableLocale(availableLocales, noExtensionsLocale).
     //    c. If availableLocale is not undefined, append locale to the end of subset.
-    for (uint32_t i = 0; i < length; ++i) {
-        item.Update(requestedLocales->Get(thread, i));
-        intl::LocaleHelper::ParsedLocale foundationResult = intl::LocaleHelper::HandleLocale(item);
-        std::string availableLocale =
-            intl::LocaleHelper::BestAvailableLocale(availableStringLocales, foundationResult.base);
-        if (!availableLocale.empty()) {
-            subset->Set(thread, index++, item.GetTaggedValue());
+    {
+        ThreadNativeScope nativeScope(thread);
+        for (uint32_t i = 0; i < length; ++i) {
+            item.Update(requestedLocales->Get(thread, i));
+            intl::LocaleHelper::ParsedLocale foundationResult = intl::LocaleHelper::HandleLocale(item);
+            std::string availableLocale =
+                intl::LocaleHelper::BestAvailableLocale(availableStringLocales, foundationResult.base);
+            if (!availableLocale.empty()) {
+                subset->Set(thread, index++, item.GetTaggedValue());
+            }
         }
     }
     // 3. Return subset.
