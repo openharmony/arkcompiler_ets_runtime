@@ -294,8 +294,16 @@ JSHandle<JSCollator> JSCollator::InitializeCollator(JSThread *thread,
     // 27. Let ignorePunctuation be ? GetOption(options, "ignorePunctuation", "boolean", undefined, false).
     // 28. Set collator.[[IgnorePunctuation]] to ignorePunctuation.
     bool ignorePunctuation = false;
-    JSLocale::GetOptionOfBool(thread, optionsObject, globalConst->GetHandledIgnorePunctuationString(), false,
-                              &ignorePunctuation);
+    bool defaultIgnorePunctuation = false;
+    std::string localesString =
+            locales->IsUndefined() ? "" : EcmaStringAccessor(locales.GetTaggedValue()).ToStdString();
+    transform(localesString.begin(), localesString.end(), localesString.begin(), ::tolower);
+    // If the ignorePunctuation is not defined, which in "th" locale that is true but false on other locales.
+    if (localesString == "th") {
+        defaultIgnorePunctuation = true;
+    }
+    JSLocale::GetOptionOfBool(thread, optionsObject, globalConst->GetHandledIgnorePunctuationString(),
+                              defaultIgnorePunctuation, &ignorePunctuation);
     collator->SetIgnorePunctuation(ignorePunctuation);
     if (ignorePunctuation) {
         status = U_ZERO_ERROR;

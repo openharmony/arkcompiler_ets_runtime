@@ -1568,7 +1568,6 @@
     {
       "reason": "Add remaining Intl test cases and temporarily skip execution failure cases(111)",
       "files": [
-        "intl/regress-14307.js",
         "intl/default_locale.js",
         "intl/collator/check-co-option.js",
         "intl/collator/options.js",
