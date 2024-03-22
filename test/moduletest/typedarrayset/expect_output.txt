@@ -11,8 +11,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import("//arkcompiler/ets_runtime/test/test_helper.gni")
-
-host_moduletest_action("typedarrayslice") {
-  deps = []
-}
+0,0,0,0,0,0,0,0
+0,0,0,0,0,0,0,0
+0,0,0,0,0,0,0,0
+0,0,0,0,0,0,0,0
+0,0,0,0,0,0,0,0
+0,0,0,0,0,0,0,0
+0,0,0,0,0,0,0,0
+0,0,0,0,0,0,0,0
