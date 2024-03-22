@@ -40,8 +40,8 @@ public:
     {
         return runtimeStatEnabled_;
     }
-    void StartCount(PandaRuntimeTimer *timer, int callerId);
-    void StopCount(const PandaRuntimeTimer *timer);
+    void PUBLIC_API StartCount(PandaRuntimeTimer *timer, int callerId);
+    void PUBLIC_API StopCount(const PandaRuntimeTimer *timer);
     void PrintAllStats() const;
     void ResetAllCount();
     void Print() const;

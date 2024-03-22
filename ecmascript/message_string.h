@@ -55,7 +55,8 @@ namespace panda::ecmascript {
     V(CanNotConvertUnknowObject, "Cannot convert a Unknown object value to a JSObject")      \
     V(CanNotConvertNotValidObject, "Obj is not a valid object")                              \
     V(CanNotConvertContainerObject, "Can not delete property in Container Object")           \
-    V(InvalidStringLength, "Invalid string length")
+    V(InvalidStringLength, "Invalid string length")                                          \
+    V(InvalidNewTarget, "new.target is not an object")
 
 #define DEBUG_CHECK_MESSAGE_STRING_LIST(V)                                                   \
     V(IsCallable)                                                                            \

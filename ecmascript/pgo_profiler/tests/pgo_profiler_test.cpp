@@ -22,6 +22,7 @@
 #include <utility>
 
 #include "ecmascript/base/file_header.h"
+#include "ecmascript/checkpoint/thread_state_transition.h"
 #include "ecmascript/elements.h"
 #include "ecmascript/log_wrapper.h"
 #include "ecmascript/object_factory.h"
@@ -203,7 +204,7 @@ protected:
     }
 
     void CheckApMethodsInApFiles(const std::string &fileName,
-                                  std::unordered_map<std::string, std::vector<PGOMethodId>> &recordMethodList)
+                                 std::unordered_map<std::string, std::vector<PGOMethodId>> &recordMethodList)
     {
         std::vector<MethodLiteral *> methodLiterals {};
         CreateJSPandaFile(fileName.c_str(), methodLiterals);
@@ -213,7 +214,7 @@ protected:
             if (recordEntry == recordMethodList.end()) {
                 continue;
             }
-            for (auto index = 0; index < recordEntry->second.size(); ++index) {
+            for (size_t index = 0; index < recordEntry->second.size(); ++index) {
                 if (!(recordEntry->second.at(index) == methodLiteral->GetMethodId())) {
                     continue;
                 }
@@ -243,17 +244,20 @@ HWTEST_F_L0(PGOProfilerTest, Sample)
     option.SetEnableProfile(true);
     option.SetProfileDir("ark-profiler/");
     vm_ = JSNApi::CreateJSVM(option);
-    JSHandle<ConstantPool> constPool = vm_->GetFactory()->NewConstantPool(4);
+    vm_->GetJSThread()->ManagedCodeBegin();
+    JSHandle<ConstantPool> constPool = vm_->GetFactory()->NewSConstantPool(4);
     constPool->SetJSPandaFile(pf_.get());
     uint32_t checksum = 304293;
     PGOProfilerManager::GetInstance()->SamplePandaFileInfo(checksum, "ark-profiler.abc");
     ASSERT_TRUE(vm_ != nullptr) << "Cannot create Runtime";
 
-    JSHandle<Method> method = vm_->GetFactory()->NewMethod(methodLiterals[0]);
+    JSHandle<Method> method = vm_->GetFactory()->NewSMethod(methodLiterals[0]);
     method->SetConstantPool(vm_->GetJSThread(), constPool.GetTaggedValue());
     JSHandle<JSTaggedValue> recordName(vm_->GetFactory()->NewFromStdString("test"));
-    method->SetModule(vm_->GetJSThread(), recordName);
+    JSHandle<JSFunction> func = vm_->GetFactory()->NewJSFunction(vm_->GetGlobalEnv(), method);
+    func->SetModule(vm_->GetJSThread(), recordName);
     vm_->GetPGOProfiler()->SetSaveTimestamp(std::chrono::system_clock::now());
+    vm_->GetJSThread()->ManagedCodeEnd();
     JSNApi::DestroyJSVM(vm_);
     // Loader
     PGOProfilerDecoder loader("ark-profiler/modules.ap", DECODER_THRESHOLD);
@@ -280,23 +284,28 @@ HWTEST_F_L0(PGOProfilerTest, Sample1)
     option.SetEnableProfile(true);
     option.SetProfileDir("ark-profiler1/");
     vm_ = JSNApi::CreateJSVM(option);
-    JSHandle<ConstantPool> constPool = vm_->GetFactory()->NewConstantPool(4);
+    vm_->GetJSThread()->ManagedCodeBegin();
+    JSHandle<ConstantPool> constPool = vm_->GetFactory()->NewSConstantPool(4);
     constPool->SetJSPandaFile(pf_.get());
     uint32_t checksum = 304293;
     PGOProfilerManager::GetInstance()->SamplePandaFileInfo(checksum, "ark-profiler1.abc");
     ASSERT_TRUE(vm_ != nullptr) << "Cannot create Runtime";
 
-    JSHandle<Method> method = vm_->GetFactory()->NewMethod(methodLiterals[0]);
-    JSHandle<Method> method1 = vm_->GetFactory()->NewMethod(methodLiterals[1]);
-    JSHandle<Method> method2 = vm_->GetFactory()->NewMethod(methodLiterals[2]);
+    JSHandle<Method> method = vm_->GetFactory()->NewSMethod(methodLiterals[0]);
+    JSHandle<Method> method1 = vm_->GetFactory()->NewSMethod(methodLiterals[1]);
+    JSHandle<Method> method2 = vm_->GetFactory()->NewSMethod(methodLiterals[2]);
     method->SetConstantPool(vm_->GetJSThread(), constPool.GetTaggedValue());
     method1->SetConstantPool(vm_->GetJSThread(), constPool.GetTaggedValue());
     method2->SetConstantPool(vm_->GetJSThread(), constPool.GetTaggedValue());
 
+    JSHandle<JSFunction> func = vm_->GetFactory()->NewJSFunction(vm_->GetGlobalEnv(), method);
+    JSHandle<JSFunction> func1 = vm_->GetFactory()->NewJSFunction(vm_->GetGlobalEnv(), method1);
+    JSHandle<JSFunction> func2 = vm_->GetFactory()->NewJSFunction(vm_->GetGlobalEnv(), method2);
     JSHandle<JSTaggedValue> recordName(vm_->GetFactory()->NewFromStdString("test"));
-    method->SetModule(vm_->GetJSThread(), recordName);
-    method1->SetModule(vm_->GetJSThread(), recordName);
-    method2->SetModule(vm_->GetJSThread(), recordName);
+    func->SetModule(vm_->GetJSThread(), recordName);
+    func1->SetModule(vm_->GetJSThread(), recordName);
+    func2->SetModule(vm_->GetJSThread(), recordName);
+    vm_->GetJSThread()->ManagedCodeEnd();
     JSNApi::DestroyJSVM(vm_);
 
     // Loader
@@ -331,21 +340,25 @@ HWTEST_F_L0(PGOProfilerTest, Sample2)
     option.SetEnableProfile(true);
     option.SetProfileDir("ark-profiler2/");
     vm_ = JSNApi::CreateJSVM(option);
-    JSHandle<ConstantPool> constPool = vm_->GetFactory()->NewConstantPool(4);
+    vm_->GetJSThread()->ManagedCodeBegin();
+    JSHandle<ConstantPool> constPool = vm_->GetFactory()->NewSConstantPool(4);
     constPool->SetJSPandaFile(pf_.get());
     ASSERT_TRUE(vm_ != nullptr) << "Cannot create Runtime";
     uint32_t checksum = 304293;
     PGOProfilerManager::GetInstance()->SamplePandaFileInfo(checksum, "ark-profiler2.abc");
 
-    JSHandle<Method> method = vm_->GetFactory()->NewMethod(methodLiterals[0]);
-    JSHandle<Method> method1 = vm_->GetFactory()->NewMethod(methodLiterals[1]);
+    JSHandle<Method> method = vm_->GetFactory()->NewSMethod(methodLiterals[0]);
+    JSHandle<Method> method1 = vm_->GetFactory()->NewSMethod(methodLiterals[1]);
 
     method->SetConstantPool(vm_->GetJSThread(), constPool.GetTaggedValue());
     method1->SetConstantPool(vm_->GetJSThread(), constPool.GetTaggedValue());
+    JSHandle<JSFunction> func = vm_->GetFactory()->NewJSFunction(vm_->GetGlobalEnv(), method);
     JSHandle<JSTaggedValue> recordName(vm_->GetFactory()->NewFromStdString("test"));
-    method->SetModule(vm_->GetJSThread(), recordName);
+    func->SetModule(vm_->GetJSThread(), recordName);
+    JSHandle<JSFunction> func1 = vm_->GetFactory()->NewJSFunction(vm_->GetGlobalEnv(), method1);
     JSHandle<JSTaggedValue> recordName1(vm_->GetFactory()->NewFromStdString("test1"));
-    method1->SetModule(vm_->GetJSThread(), recordName1);
+    func1->SetModule(vm_->GetJSThread(), recordName1);
+    vm_->GetJSThread()->ManagedCodeEnd();
     JSNApi::DestroyJSVM(vm_);
 
     // Loader
@@ -383,18 +396,21 @@ HWTEST_F_L0(PGOProfilerTest, DisEnableSample)
     option.SetEnableProfile(false);
     option.SetProfileDir("ark-profiler3/");
     vm_ = JSNApi::CreateJSVM(option);
+    vm_->GetJSThread()->ManagedCodeBegin();
     JSPandaFileManager::GetInstance()->AddJSPandaFileVm(vm_, pf_);
-    JSHandle<ConstantPool> constPool = vm_->GetFactory()->NewConstantPool(4);
+    JSHandle<ConstantPool> constPool = vm_->GetFactory()->NewSConstantPool(4);
     constPool->SetJSPandaFile(pf_.get());
     uint32_t checksum = pf_->GetChecksum();
     PGOProfilerManager::GetInstance()->SamplePandaFileInfo(checksum, "sample_test.abc");
     ASSERT_TRUE(vm_ != nullptr) << "Cannot create Runtime";
 
-    JSHandle<Method> method = vm_->GetFactory()->NewMethod(methodLiterals[0]);
+    JSHandle<Method> method = vm_->GetFactory()->NewSMethod(methodLiterals[0]);
 
     method->SetConstantPool(vm_->GetJSThread(), constPool.GetTaggedValue());
+    JSHandle<JSFunction> func = vm_->GetFactory()->NewJSFunction(vm_->GetGlobalEnv(), method);
     JSHandle<JSTaggedValue> recordName(vm_->GetFactory()->NewFromStdString("sample_test"));
-    method->SetModule(vm_->GetJSThread(), recordName);
+    func->SetModule(vm_->GetJSThread(), recordName);
+    vm_->GetJSThread()->ManagedCodeEnd();
     JSNApi::DestroyJSVM(vm_);
 
     // Loader
@@ -439,14 +455,17 @@ HWTEST_F_L0(PGOProfilerTest, PGOProfilerManagerSample)
     currentPath[PATH_MAX + 1] = '\0';
     option.SetProfileDir(currentPath);
     vm_ = JSNApi::CreateJSVM(option);
+    vm_->GetJSThread()->ManagedCodeBegin();
     uint32_t checksum = 304293;
     PGOProfilerManager::GetInstance()->SamplePandaFileInfo(checksum, "");
     ASSERT_TRUE(vm_ != nullptr) << "Cannot create Runtime";
 
     // RecordName is hole
     MethodLiteral *methodLiteral = new MethodLiteral(EntityId(61));
-    JSHandle<Method> method = vm_->GetFactory()->NewMethod(methodLiteral);
-    method->SetModule(vm_->GetJSThread(), JSTaggedValue::Hole());
+    JSHandle<Method> method = vm_->GetFactory()->NewSMethod(methodLiteral);
+    JSHandle<JSFunction> func = vm_->GetFactory()->NewJSFunction(vm_->GetGlobalEnv(), method);
+    func->SetModule(vm_->GetJSThread(), JSTaggedValue::Hole());
+    vm_->GetJSThread()->ManagedCodeEnd();
     JSNApi::DestroyJSVM(vm_);
 
     PGOProfilerDecoder loader("", DECODER_THRESHOLD);
@@ -470,34 +489,48 @@ HWTEST_F_L0(PGOProfilerTest, PGOProfilerDoubleVM)
     // outDir is empty
     option.SetProfileDir("ark-profiler5/");
     vm_ = JSNApi::CreateJSVM(option);
+    vm_->GetJSThread()->ManagedCodeBegin();
     JSPandaFileManager::GetInstance()->AddJSPandaFileVm(vm_, pf_);
-    JSHandle<ConstantPool> constPool = vm_->GetFactory()->NewConstantPool(4);
+    JSHandle<ConstantPool> constPool = vm_->GetFactory()->NewSConstantPool(4);
     constPool->SetJSPandaFile(pf_.get());
     uint32_t checksum = 304293;
     PGOProfilerManager::GetInstance()->SamplePandaFileInfo(checksum, "sample_test.abc");
     ASSERT_TRUE(vm_ != nullptr) << "Cannot create Runtime";
     // worker vm read profile enable from PGOProfilerManager singleton
     option.SetEnableProfile(false);
-    auto vm2 = JSNApi::CreateJSVM(option);
-    JSHandle<ConstantPool> constPool2 = vm2->GetFactory()->NewConstantPool(4);
-    constPool2->SetJSPandaFile(pf_.get());
-    PGOProfilerManager::GetInstance()->SamplePandaFileInfo(checksum, "sample_test.abc");
-    ASSERT_TRUE(vm2 != nullptr) << "Cannot create Runtime";
 
-    JSHandle<Method> method = vm2->GetFactory()->NewMethod(methodLiterals[0]);
-    method->SetConstantPool(vm2->GetJSThread(), constPool2.GetTaggedValue());
+    std::thread t1([&]() {
+        auto vm2 = JSNApi::CreateJSVM(option);
+        vm2->GetJSThread()->ManagedCodeBegin();
+        JSHandle<ConstantPool> constPool2 = vm2->GetFactory()->NewSConstantPool(4);
+        constPool2->SetJSPandaFile(pf_.get());
+        PGOProfilerManager::GetInstance()->SamplePandaFileInfo(checksum, "sample_test.abc");
+        ASSERT_TRUE(vm2 != nullptr) << "Cannot create Runtime";
+
+        JSHandle<Method> method = vm2->GetFactory()->NewSMethod(methodLiterals[0]);
+        method->SetConstantPool(vm2->GetJSThread(), constPool2.GetTaggedValue());
+        JSHandle<JSFunction> func = vm2->GetFactory()->NewJSFunction(vm_->GetGlobalEnv(), method);
+        JSHandle<JSTaggedValue> recordName(vm2->GetFactory()->NewFromStdString("sample_test"));
+        func->SetModule(vm2->GetJSThread(), recordName);
+        vm2->GetJSThread()->ManagedCodeEnd();
+        JSNApi::DestroyJSVM(vm2);
+    });
+    {
+        ThreadSuspensionScope scope(vm_->GetJSThread());
+        t1.join();
+    }
     JSHandle<JSTaggedValue> recordName(vm_->GetFactory()->NewFromStdString("sample_test"));
-    method->SetModule(vm2->GetJSThread(), recordName);
-
-    JSHandle<Method> method1 = vm_->GetFactory()->NewMethod(methodLiterals[0]);
-    JSHandle<Method> method2 = vm_->GetFactory()->NewMethod(methodLiterals[1]);
+    JSHandle<Method> method1 = vm_->GetFactory()->NewSMethod(methodLiterals[0]);
+    JSHandle<Method> method2 = vm_->GetFactory()->NewSMethod(methodLiterals[1]);
     method1->SetConstantPool(vm_->GetJSThread(), constPool.GetTaggedValue());
     method2->SetConstantPool(vm_->GetJSThread(), constPool.GetTaggedValue());
+    JSHandle<JSFunction> func1 = vm_->GetFactory()->NewJSFunction(vm_->GetGlobalEnv(), method1);
+    JSHandle<JSFunction> func2 = vm_->GetFactory()->NewJSFunction(vm_->GetGlobalEnv(), method2);
     JSHandle<JSTaggedValue> recordName1(vm_->GetFactory()->NewFromStdString("sample_test"));
-    method1->SetModule(vm_->GetJSThread(), recordName);
-    method2->SetModule(vm_->GetJSThread(), recordName);
+    func1->SetModule(vm_->GetJSThread(), recordName);
+    func2->SetModule(vm_->GetJSThread(), recordName);
 
-    JSNApi::DestroyJSVM(vm2);
+    vm_->GetJSThread()->ManagedCodeEnd();
     JSNApi::DestroyJSVM(vm_);
 
     PGOProfilerDecoder loader("ark-profiler5/profiler", DECODER_THRESHOLD);
@@ -530,17 +563,20 @@ HWTEST_F_L0(PGOProfilerTest, PGOProfilerDecoderNoHotMethod)
     option.SetEnableProfile(true);
     option.SetProfileDir("ark-profiler8/");
     vm_ = JSNApi::CreateJSVM(option);
+    vm_->GetJSThread()->ManagedCodeBegin();
     JSPandaFileManager::GetInstance()->AddJSPandaFileVm(vm_, pf_);
-    JSHandle<ConstantPool> constPool = vm_->GetFactory()->NewConstantPool(4);
+    JSHandle<ConstantPool> constPool = vm_->GetFactory()->NewSConstantPool(4);
     constPool->SetJSPandaFile(pf_.get());
     uint32_t checksum = pf_->GetChecksum();
     PGOProfilerManager::GetInstance()->SamplePandaFileInfo(checksum, "sample_test.abc");
 
-    JSHandle<Method> method = vm_->GetFactory()->NewMethod(methodLiterals[0]);
+    JSHandle<Method> method = vm_->GetFactory()->NewSMethod(methodLiterals[0]);
 
     method->SetConstantPool(vm_->GetJSThread(), constPool.GetTaggedValue());
+    JSHandle<JSFunction> func = vm_->GetFactory()->NewJSFunction(vm_->GetGlobalEnv(), method);
     JSHandle<JSTaggedValue> recordName(vm_->GetFactory()->NewFromStdString("sample_test"));
-    method->SetModule(vm_->GetJSThread(), recordName);
+    func->SetModule(vm_->GetJSThread(), recordName);
+    vm_->GetJSThread()->ManagedCodeEnd();
     JSNApi::DestroyJSVM(vm_);
 
     PGOProfilerDecoder loader("ark-profiler8/modules.ap", DECODER_THRESHOLD);
@@ -572,8 +608,9 @@ HWTEST_F_L0(PGOProfilerTest, PGOProfilerPostTask)
     option.SetEnableProfile(true);
     option.SetProfileDir("ark-profiler9/");
     vm_ = JSNApi::CreateJSVM(option);
+    vm_->GetJSThread()->ManagedCodeBegin();
     JSPandaFileManager::GetInstance()->AddJSPandaFileVm(vm_, pf_);
-    JSHandle<ConstantPool> constPool = vm_->GetFactory()->NewConstantPool(4);
+    JSHandle<ConstantPool> constPool = vm_->GetFactory()->NewSConstantPool(4);
     constPool->SetJSPandaFile(pf_.get());
     uint32_t checksum = 304293;
     PGOProfilerManager::GetInstance()->SetApGenMode(ApGenMode::OVERWRITE);
@@ -581,11 +618,13 @@ HWTEST_F_L0(PGOProfilerTest, PGOProfilerPostTask)
 
     JSHandle<JSTaggedValue> recordName(vm_->GetFactory()->NewFromStdString("ark-profiler9.abc"));
     for (int i = 61; i < 91; i++) {
-        JSHandle<Method> method = vm_->GetFactory()->NewMethod(methodLiterals[i]);
+        JSHandle<Method> method = vm_->GetFactory()->NewSMethod(methodLiterals[i]);
         method->SetConstantPool(vm_->GetJSThread(), constPool.GetTaggedValue());
-        method->SetModule(vm_->GetJSThread(), recordName);
+        JSHandle<JSFunction> func = vm_->GetFactory()->NewJSFunction(vm_->GetGlobalEnv(), method);
+        func->SetModule(vm_->GetJSThread(), recordName);
     }
 
+    vm_->GetJSThread()->ManagedCodeEnd();
     JSNApi::DestroyJSVM(vm_);
 
     PGOProfilerDecoder loader("ark-profiler9/modules.ap", DECODER_THRESHOLD);
@@ -657,18 +696,21 @@ HWTEST_F_L0(PGOProfilerTest, FailResetProfilerInWorker)
     option.SetProfileDir("ark-profiler12/");
     // PgoProfiler is disabled as default.
     vm_ = JSNApi::CreateJSVM(option);
+    vm_->GetJSThread()->ManagedCodeBegin();
     JSPandaFileManager::GetInstance()->AddJSPandaFileVm(vm_, pf_);
     uint32_t checksum = pf_->GetChecksum();
     PGOProfilerManager::GetInstance()->SamplePandaFileInfo(checksum, "sample_test.abc");
     ASSERT_TRUE(vm_ != nullptr) << "Cannot create Runtime";
 
-    JSHandle<Method> method = vm_->GetFactory()->NewMethod(methodLiterals[0]);
+    JSHandle<Method> method = vm_->GetFactory()->NewSMethod(methodLiterals[0]);
 
-    JSHandle<ConstantPool> constPool = vm_->GetFactory()->NewConstantPool(4);
+    JSHandle<ConstantPool> constPool = vm_->GetFactory()->NewSConstantPool(4);
     constPool->SetJSPandaFile(pf_.get());
     method->SetConstantPool(vm_->GetJSThread(), constPool.GetTaggedValue());
+    JSHandle<JSFunction> func = vm_->GetFactory()->NewJSFunction(vm_->GetGlobalEnv(), method);
     JSHandle<JSTaggedValue> recordName(vm_->GetFactory()->NewFromStdString("sample_test"));
-    method->SetModule(vm_->GetJSThread(), recordName);
+    func->SetModule(vm_->GetJSThread(), recordName);
+    vm_->GetJSThread()->ManagedCodeEnd();
     JSNApi::DestroyJSVM(vm_);
 
     // Loader

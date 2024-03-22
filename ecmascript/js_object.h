@@ -109,14 +109,14 @@ public:
         key_ = key;
     }
 
-    inline void SetTrackType(TrackType trackType)
+    inline void SetSharedFieldType(SharedFieldType fieldType)
     {
-        trackType_ = trackType;
+        fieldType_ = fieldType;
     }
 
-    inline TrackType GetTrackType() const
+    inline SharedFieldType GetSharedFieldType() const
     {
-        return trackType_;
+        return fieldType_;
     }
 
     inline bool IsWritable() const
@@ -243,7 +243,7 @@ private:
     bool hasWritable_ {false};
     bool hasEnumerable_ {false};
     bool hasConfigurable_ {false};
-    TrackType trackType_ {TrackType::NONE};
+    SharedFieldType fieldType_ {SharedFieldType::NONE};
 
     JSHandle<JSTaggedValue> value_ {};
     JSHandle<JSTaggedValue> getter_ {};

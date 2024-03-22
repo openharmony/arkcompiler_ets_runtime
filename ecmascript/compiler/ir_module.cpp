@@ -28,7 +28,8 @@ std::string IRModule::GetFuncName(const MethodLiteral *methodLiteral,
     DebugInfoExtractor *debugExtractor =
         JSPandaFileManager::GetInstance()->GetJSPtExtractor(jsPandaFile);
     std::string url = debugExtractor->GetSourceFile(methodId);
-    name += std::string("@") + url + std::string("@") + fileName;
+    auto offset = methodLiteral->GetMethodId().GetOffset();
+    name += std::string("@") + url + std::string("@") + std::to_string(offset) + std::string("@") + fileName;
     return name;
 }
 

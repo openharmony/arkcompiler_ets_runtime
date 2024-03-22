@@ -78,7 +78,7 @@ GateRef CircuitBuilder::LogicAnd(GateRef x, GateRef y)
     Label isX(env_);
     Label notX(env_);
     DEFVALUE(result, env_, VariableType::BOOL(), x);
-    Branch(x, &isX, &notX);
+    BRANCH_CIR2(x, &isX, &notX);
     Bind(&isX);
     {
         result = y;
@@ -102,7 +102,7 @@ GateRef CircuitBuilder::LogicOr(GateRef x, GateRef y)
     Label isX(env_);
     Label notX(env_);
     DEFVALUE(result, env_, VariableType::BOOL(), x);
-    Branch(x, &isX, &notX);
+    BRANCH_CIR2(x, &isX, &notX);
     Bind(&isX);
     {
         Jump(&exit);
@@ -125,7 +125,7 @@ int CircuitBuilder::NextVariableId()
 
 void CircuitBuilder::HandleException(GateRef result, Label *success, Label *fail, Label *exit)
 {
-    Branch(Equal(result, ExceptionConstant()), fail, success);
+    BRANCH_CIR2(Equal(result, ExceptionConstant()), fail, success);
     Bind(fail);
     {
         Jump(exit);
@@ -134,7 +134,7 @@ void CircuitBuilder::HandleException(GateRef result, Label *success, Label *fail
 
 void CircuitBuilder::HandleException(GateRef result, Label *success, Label *fail, Label *exit, GateRef exceptionVal)
 {
-    Branch(Equal(result, exceptionVal), fail, success);
+    BRANCH_CIR2(Equal(result, exceptionVal), fail, success);
     Bind(fail);
     {
         Jump(exit);

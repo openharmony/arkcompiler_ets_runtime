@@ -99,6 +99,7 @@ group("ark_js_moduletest") {
     "loadicbyname",
     "loadicbyvalue",
     "localelowercase",
+    "mapget",
     "memleakobjectcreate",
     "merge",
     "module",
@@ -169,6 +170,8 @@ group("ark_js_moduletest") {
     "sharedcheck",
     "definesendableclass",
     "sendablecontext",
+    "sendableclassuseimport",
+    "sharedic",
   ]
 
   deps = []
@@ -301,6 +304,7 @@ group("ark_asm_test") {
     "lexicalenv",
     "linkedhashtable",
     "loadicbyvalue",
+    "mapget",
     "module",
     "multiargs",
     "multiprotoic",
@@ -347,6 +351,8 @@ group("ark_asm_test") {
     "sharedcheck",
     "definesendableclass",
     "sendablecontext",
+    "sendableclassuseimport",
+    "sharedic",
   ]
 
   deps = []
@@ -462,6 +468,7 @@ group("ark_asm_single_step_test") {
     "ldmodulensbyic",
     "lexicalenv",
     "loadicbyvalue",
+    "mapget",
     "module",
     "multiargs",
     "multiprotoic",
@@ -502,6 +509,8 @@ group("ark_asm_single_step_test") {
     "sharedcheck",
     "definesendableclass",
     "sendablecontext",
+    "sendableclassuseimport",
+    "sharedic",
   ]
 
   deps = []

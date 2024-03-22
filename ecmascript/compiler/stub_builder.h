@@ -135,17 +135,27 @@ public:
     GateRef Return();
     void Bind(Label *label);
     void Jump(Label *label);
-    void Branch(GateRef condition, Label *trueLabel, Label *falseLabel);
+
+#define BRANCH(condition, trueLabel, falseLabel)                       \
+    {                                                                  \
+        std::ostringstream os;                                         \
+        os << __func__ << ": " << #trueLabel << "- " << #falseLabel;   \
+        Branch(condition, trueLabel, falseLabel, os.str().c_str());    \
+    }
+    void Branch(GateRef condition, Label *trueLabel, Label *falseLabel, const char* comment = nullptr);
     void Switch(GateRef index, Label *defaultLabel, int64_t *keysValue, Label *keysLabel, int numberOfKeys);
     void LoopBegin(Label *loopHead);
     void LoopEnd(Label *loopHead);
+    /// LoopEnd with safepoint
+    void LoopEnd(Label *loopHead, Environment *env, GateRef glue);
+    GateRef CheckSuspend(GateRef glue);
     // call operation
     GateRef CallRuntime(GateRef glue, int index, const std::initializer_list<GateRef>& args);
     GateRef CallRuntime(GateRef glue, int index, GateRef argc, GateRef argv);
     GateRef CallNGCRuntime(GateRef glue, int index, const std::initializer_list<GateRef>& args);
     GateRef FastCallOptimized(GateRef glue, GateRef code, const std::initializer_list<GateRef>& args);
     GateRef CallOptimized(GateRef glue, GateRef code, const std::initializer_list<GateRef>& args);
-    GateRef GetAotCodeAddr(GateRef method);
+    GateRef GetAotCodeAddr(GateRef jsFunc);
     GateRef CallStub(GateRef glue, int index, const std::initializer_list<GateRef>& args);
     GateRef CallBuiltinRuntime(GateRef glue, const std::initializer_list<GateRef>& args,
                                bool isNew = false, const char* comment = nullptr);
@@ -162,7 +172,6 @@ public:
                GateRef offset,
                GateRef value,
                MemoryOrder order = MemoryOrder::Default());
-    void StoreWithBarrier(VariableType type, GateRef glue, GateRef base, GateRef offset, GateRef value);
     // arithmetic
     GateRef TaggedCastToIntPtr(GateRef x);
     GateRef Int16Add(GateRef x, GateRef y);
@@ -228,6 +237,8 @@ public:
     GateRef TaggedIsAccessor(GateRef x);
     GateRef ObjectAddressToRange(GateRef x);
     GateRef InYoungGeneration(GateRef region);
+    GateRef InSharedHeap(GateRef region);
+    GateRef InSharedSweepableSpace(GateRef region);
     GateRef TaggedIsGeneratorObject(GateRef x);
     GateRef TaggedIsJSArray(GateRef x);
     GateRef TaggedIsAsyncGeneratorObject(GateRef x);
@@ -238,6 +249,7 @@ public:
     GateRef TaggedIsTransWithProtoHandler(GateRef x);
     GateRef TaggedIsTransitionHandler(GateRef x);
     GateRef TaggedIsString(GateRef obj);
+    GateRef TaggedIsStringIterator(GateRef obj);
     GateRef TaggedIsShared(GateRef obj);
     GateRef BothAreString(GateRef x, GateRef y);
     GateRef TaggedIsStringOrSymbol(GateRef obj);
@@ -317,7 +329,7 @@ public:
     GateRef IsJSHClass(GateRef obj);
     GateRef LoadHClass(GateRef object);
     void StoreHClass(GateRef glue, GateRef object, GateRef hClass);
-    void StoreBuiltinHClass(GateRef object, GateRef hClass);
+    void StoreBuiltinHClass(GateRef glue, GateRef object, GateRef hClass);
     void StorePrototype(GateRef glue, GateRef hclass, GateRef prototype);
     void CopyAllHClass(GateRef glue, GateRef dstHClass, GateRef scrHClass);
     GateRef GetObjectType(GateRef hClass);
@@ -480,12 +492,14 @@ public:
     GateRef GetInlinedPropertiesFromHClass(GateRef hClass);
     void ThrowTypeAndReturn(GateRef glue, int messageId, GateRef val);
     GateRef GetValueFromTaggedArray(GateRef elements, GateRef index);
+    GateRef GetUnsharedConstpoolIndex(GateRef constpool);
+    GateRef GetUnsharedConstpool(GateRef array, GateRef index);
     GateRef GetValueFromMutantTaggedArray(GateRef elements, GateRef index);
     void CheckUpdateSharedType(bool isDicMode, Variable *result, GateRef glue, GateRef jsType, GateRef attr,
                                GateRef value, Label *executeSetProp, Label *exit);
-    void MatchTrackType(Variable *result, GateRef glue, GateRef trackType, GateRef value, Label *executeSetProp,
+    void MatchFieldType(Variable *result, GateRef glue, GateRef fieldType, GateRef value, Label *executeSetProp,
                                Label *exit);
-    GateRef GetTrackTypeFromHandler(GateRef attr);
+    GateRef GetFieldTypeFromHandler(GateRef attr);
     GateRef ClearSharedStoreKind(GateRef handlerInfo);
     GateRef GetTaggedValueWithElementsKind(GateRef receiver, GateRef index);
     GateRef SetValueWithElementsKind(GateRef glue, GateRef receiver, GateRef rawValue, GateRef index,
@@ -512,7 +526,7 @@ public:
     GateRef GetPropertiesAddrFromLayoutInfo(GateRef layout);
     GateRef GetPropertyMetaDataFromAttr(GateRef attr);
     GateRef GetKeyFromLayoutInfo(GateRef layout, GateRef entry);
-    void MatchTrackType(GateRef trackType, GateRef value, Label *executeSetProp, Label *typeMismatch);
+    void MatchFieldType(GateRef fieldType, GateRef value, Label *executeSetProp, Label *typeMismatch);
     GateRef FindElementWithCache(GateRef glue, GateRef layoutInfo, GateRef hClass,
         GateRef key, GateRef propsNum);
     GateRef FindElementFromNumberDictionary(GateRef glue, GateRef elements, GateRef index);
@@ -614,7 +628,8 @@ public:
     GateRef SetIsInlinePropsFieldInPropAttr(GateRef attr, GateRef value);
     GateRef SetTrackTypeInPropAttr(GateRef attr, GateRef type);
     GateRef GetTrackTypeInPropAttr(GateRef attr);
-    GateRef GetDictTrackTypeInPropAttr(GateRef attr);
+    GateRef GetSharedFieldTypeInPropAttr(GateRef attr);
+    GateRef GetDictSharedFieldTypeInPropAttr(GateRef attr);
     GateRef GetRepInPropAttr(GateRef attr);
     GateRef IsIntRepInPropAttr(GateRef attr);
     GateRef IsDoubleRepInPropAttr(GateRef attr);
@@ -653,7 +668,9 @@ public:
     void SetProtoOrHClassToFunction(GateRef glue, GateRef function, GateRef value);
     void SetWorkNodePointerToFunction(GateRef glue, GateRef function, GateRef value);
     void SetHomeObjectToFunction(GateRef glue, GateRef function, GateRef value);
+    void SetModuleToFunction(GateRef glue, GateRef function, GateRef value);
     void SetMethodToFunction(GateRef glue, GateRef function, GateRef value);
+    void SetCodeEntryToFunction(GateRef glue, GateRef function, GateRef value);
     void SetLengthToFunction(GateRef glue, GateRef function, GateRef value);
     GateRef GetGlobalObject(GateRef glue);
     GateRef GetMethodFromFunction(GateRef function);
@@ -676,7 +693,7 @@ public:
     inline GateRef GetObjectFromConstPool(GateRef constpool, GateRef index);
     GateRef GetConstPoolFromFunction(GateRef jsFunc);
     GateRef GetStringFromConstPool(GateRef glue, GateRef constpool, GateRef index);
-    GateRef GetMethodFromConstPool(GateRef glue, GateRef constpool, GateRef index, GateRef module);
+    GateRef GetMethodFromConstPool(GateRef glue, GateRef constpool, GateRef index);
     GateRef GetArrayLiteralFromConstPool(GateRef glue, GateRef constpool, GateRef index, GateRef module);
     GateRef GetObjectLiteralFromConstPool(GateRef glue, GateRef constpool, GateRef index, GateRef module);
     void SetExtensibleToBitfield(GateRef glue, GateRef obj, bool isExtensible);

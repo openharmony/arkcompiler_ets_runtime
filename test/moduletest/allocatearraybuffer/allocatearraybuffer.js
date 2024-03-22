@@ -32,3 +32,10 @@ print(arrayBuffer.length);
 const dataview = new DataView(new ArrayBuffer(64));
 dataview.setInt16(0,-1);
 print(dataview.getFloat64("cas"));
+
+const v32 = new Int32Array(10);
+for (let i = 0; i < v32.length; i++) {
+    v32[i] = i + 1;
+}
+const v36 = this.Atomics;
+print(v36.and(v32, this, v36));

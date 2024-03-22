@@ -45,6 +45,17 @@ private:
         SHIFT_AND_LOGICAL,
     };
 
+    enum class ConvertToNumber {
+        DISABLE,
+        BOOL_ONLY,
+        ALL
+    };
+
+    ConvertSupport ToConvertSupport(ConvertToNumber convert)
+    {
+        return convert == ConvertToNumber::DISABLE ? ConvertSupport::DISABLE : ConvertSupport::ENABLE;
+    }
+
     bool IsRetype() const
     {
         return state_ == State::Retype;
@@ -78,7 +89,8 @@ private:
     GateRef VisitNumberCompare(GateRef gate);
     GateRef VisitNumberShiftAndLogical(GateRef gate);
     GateRef VisitNumberToString(GateRef gate);
-    GateRef VisitNumberMod(GateRef gate);
+    GateRef VisitMathBuiltin(GateRef gate);
+    GateRef VisitMathAbs(GateRef gate);
     GateRef VisitBooleanJump(GateRef gate);
     GateRef VisitRangeCheckPredicate(GateRef gate);
     GateRef VisitIndexCheck(GateRef gate);
@@ -112,8 +124,9 @@ private:
 
     GateRef CheckAndConvertToInt32(GateRef gate, GateType gateType, ConvertSupport support = ConvertSupport::ENABLE,
                                    OpType type = OpType::NORMAL);
-    GateRef CheckAndConvertToFloat64(GateRef gate, GateType gateType, ConvertSupport support = ConvertSupport::ENABLE);
-    GateRef CheckAndConvertToTagged(GateRef gate, GateType gateType);
+    GateRef CheckAndConvertToFloat64(GateRef gate, GateType gateType,
+                                    ConvertToNumber convert = ConvertToNumber::BOOL_ONLY);
+    GateRef CheckAndConvertToTagged(GateRef gate, GateType gateType, ConvertToNumber convert);
     GateRef CheckAndConvertToBool(GateRef gate, GateType gateType);
     GateRef ConvertToTagged(GateRef gate);
     GateRef TryConvertConstant(GateRef gate, bool needInt32);

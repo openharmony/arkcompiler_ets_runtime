@@ -65,7 +65,17 @@ group("ark_aot_ts_test") {
     "async_env",
     "await",
     "await_loop",
+    "definegeneratorfunc",
+    "definegettersetterbyvalue",
+    "definemethod",
+    "definencfunc",
+    "delobjprop",
+    "deopt",
     "deopt_clear_aotflags",
+    "destructuring",
+    "div",
+    "duplicatefunctions",
+    "duplicatekey",
     "elements_kind",
     "equal_nan",
     "exception_case1",
@@ -156,6 +166,7 @@ group("ark_aot_ts_test") {
     "optimized_call",
     "or",
     "ordinaryhasinstance",
+    "pgo_builtins",
     "pgo_call",
     "pgo_call_js",
     "pgo_class_operation",
@@ -173,7 +184,6 @@ group("ark_aot_ts_test") {
     "pgo_ldobjbyvalue_string",
     "pgo_length",
     "pgo_objectliteral_operation",
-    "pgo_call_deopt",
     "pgo_call_deopt_js",
     "pgo_call_recursive_js",
     "pgo_on_heap",
@@ -212,7 +222,6 @@ group("ark_aot_ts_test") {
     "supercallspread",
     "suspendgenerator",
     "suspendgeneratorbranch",
-
     "suspendgeneratorfor",
     "suspendgeneratorphi",
     "suspendgeneratorreturn",
@@ -262,7 +271,12 @@ group("ark_aot_ts_test") {
     "sendablecontext",
   ]
 
-  deps = []
+  if (!is_debug) {
+    test_list += [ "pgo_call_deopt" ]
+  }
+
+  deps = [ "builtin_inlining:ark_aot_builtin_inlining_test" ]
+
   foreach(test, test_list) {
     deps += [ "${test}:${test}AotAction" ]
     if (!is_debug) {
@@ -325,16 +339,6 @@ group("ark_aot_ts_assert_test") {
     "defineclass",
     "definefunc",
     "definefunc_variable_args",
-    "definegeneratorfunc",
-    "definegettersetterbyvalue",
-    "definemethod",
-    "definencfunc",
-    "delobjprop",
-    "deopt",
-    "destructuring",
-    "div",
-    "duplicatefunctions",
-    "duplicatekey",
   ]
   foreach(test, assert_test_list) {
     deps += [ "${test}:${test}AotAssertAction" ]

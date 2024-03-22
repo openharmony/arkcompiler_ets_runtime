@@ -14,6 +14,7 @@
  */
 
 #include "ecmascript/mem/mem_map_allocator.h"
+#include "ecmascript/js_thread.h"
 #include "ecmascript/platform/map.h"
 #include "ecmascript/platform/os.h"
 

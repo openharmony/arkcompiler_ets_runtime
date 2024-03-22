@@ -112,6 +112,7 @@ private:
      * trigger full gc to make sure no unreachable objects in heap
      */
     bool ForceFullGC(const EcmaVM *vm);
+    void ForceSharedGC();
 
     /**
      * make a new heap snapshot and put it into a container eg, vector

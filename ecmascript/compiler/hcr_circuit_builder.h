@@ -184,6 +184,15 @@ GateRef CircuitBuilder::LoadPrototypeHClass(GateRef object)
     return LoadHClass(objectPrototype);
 }
 
+GateRef CircuitBuilder::LoadPrototypeOfPrototypeHClass(GateRef object)
+{
+    GateRef objectHClass = LoadHClassByConstOffset(object);
+    GateRef objectPrototype = LoadPrototype(objectHClass);
+    GateRef objectPrototypeHClass = LoadHClassByConstOffset(objectPrototype);
+    GateRef objectPrototypeOfPrototype = LoadPrototype(objectPrototypeHClass);
+    return LoadHClass(objectPrototypeOfPrototype);
+}
+
 GateRef CircuitBuilder::GetObjectSizeFromHClass(GateRef hClass)
 {
     // NOTE: check for special case of string and TAGGED_ARRAY
@@ -206,12 +215,14 @@ GateRef CircuitBuilder::IsDictionaryModeByHClass(GateRef hClass)
 
 void CircuitBuilder::StoreHClass(GateRef glue, GateRef object, GateRef hClass)
 {
-    StoreWithBarrier(VariableType::JS_POINTER(), glue, object, IntPtr(TaggedObject::HCLASS_OFFSET), hClass);
+    Store(VariableType::JS_POINTER(), glue, object, IntPtr(TaggedObject::HCLASS_OFFSET), hClass,
+          MemoryOrder::NeedBarrier());
 }
 
-void CircuitBuilder::StoreHClassWithoutBarrier(GateRef object, GateRef hClass)
+void CircuitBuilder::StoreHClassWithoutBarrier(GateRef glue, GateRef object, GateRef hClass)
 {
-    StoreWithNoBarrier(VariableType::JS_POINTER(), object, IntPtr(TaggedObject::HCLASS_OFFSET), hClass);
+    Store(VariableType::JS_POINTER(), glue, object, IntPtr(TaggedObject::HCLASS_OFFSET), hClass,
+          MemoryOrder::NoBarrier());
 }
 
 void CircuitBuilder::StorePrototype(GateRef glue, GateRef hclass, GateRef prototype)

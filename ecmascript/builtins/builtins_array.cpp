@@ -1494,6 +1494,13 @@ JSTaggedValue BuiltinsArray::Map(EcmaRuntimeCallInfo *argv)
         JSStableArray::Map(newArrayHandle, thisObjHandle, argv, k, len);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     }
+    return MapUnStableJSArray(thread, thisArgHandle, thisObjVal, k, len, newArrayHandle, callbackFnHandle);
+}
+
+JSTaggedValue BuiltinsArray::MapUnStableJSArray(JSThread *thread, JSHandle<JSTaggedValue> &thisArgHandle,
+    JSHandle<JSTaggedValue> &thisObjVal, int64_t k, int64_t len, JSHandle<JSObject> newArrayHandle,
+    JSHandle<JSTaggedValue> &callbackFnHandle)
+{
     JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
     JSMutableHandle<JSTaggedValue> mapResultHandle(thread, JSTaggedValue::Undefined());
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
@@ -3228,6 +3235,17 @@ JSTaggedValue BuiltinsArray::FindLast(EcmaRuntimeCallInfo *argv)
     int64_t k = len - 1;
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
     const uint32_t argsLength = 3; // 3: «kValue, k, O»
+    JSTaggedValue callResult = GetTaggedBoolean(false);
+    if (thisObjVal->IsStableJSArray(thread)) {
+        JSMutableHandle<JSTaggedValue> kValue(thread, JSTaggedValue::Undefined());
+        callResult = JSStableArray::HandleFindLastOfStable(thread, thisObjHandle,
+            callbackFnHandle, thisArgHandle, kValue, k);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        if (callResult.ToBoolean()) {
+            return kValue.GetTaggedValue();
+        }
+    }
+
     while (k >= 0) {
         JSHandle<JSTaggedValue> kValue = JSArray::FastGetPropertyByValue(thread, thisObjVal, k);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -3236,7 +3254,7 @@ JSTaggedValue BuiltinsArray::FindLast(EcmaRuntimeCallInfo *argv)
             EcmaInterpreter::NewRuntimeCallInfo(thread, callbackFnHandle, thisArgHandle, undefined, argsLength);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         info->SetCallArg(kValue.GetTaggedValue(), key.GetTaggedValue(), thisObjVal.GetTaggedValue());
-        JSTaggedValue callResult = JSFunction::Call(info);
+        callResult = JSFunction::Call(info);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         if (callResult.ToBoolean()) {
             return kValue.GetTaggedValue();

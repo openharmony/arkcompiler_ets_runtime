@@ -103,6 +103,9 @@
 #include "ecmascript/mem/space-inl.h"
 #include "ecmascript/mem/visitor.h"
 #include "ecmascript/object_factory.h"
+#include "ecmascript/platform/mutex.h"
+#include "ecmascript/runtime.h"
+#include "ecmascript/runtime_lock.h"
 #include "ecmascript/snapshot/mem/snapshot_env.h"
 #ifdef ARK_SUPPORT_INTL
 #include "ecmascript/builtins/builtins_collator.h"
@@ -1250,7 +1253,7 @@ void SnapshotProcessor::DeserializeSpaceObject(uintptr_t beginAddr, Space* space
     }
     for (size_t i = 0; i < numberOfRegions; i++) {
         Region *region = vm_->GetHeapRegionAllocator()->AllocateAlignedRegion(
-            space, DEFAULT_REGION_SIZE, vm_->GetAssociatedJSThread());
+            space, DEFAULT_REGION_SIZE, vm_->GetAssociatedJSThread(), const_cast<Heap *>(vm_->GetHeap()));
         auto fileRegion = ToNativePtr<Region>(beginAddr + i * (DEFAULT_REGION_SIZE - GetMarkGCBitSetSize()));
         uintptr_t objectBeginAddr =
             ToUintPtr(fileRegion) + AlignUp(sizeof(Region),  static_cast<size_t>(MemAlignment::MEM_ALIGN_REGION));
@@ -1312,7 +1315,7 @@ void SnapshotProcessor::DeserializeHugeSpaceObject(uintptr_t beginAddr, HugeObje
         size_t objSize = SnapshotHelper::GetHugeObjectSize(snapshotData);
         size_t alignedHugeRegionSize = AlignUp(objSize + sizeof(Region), PANDA_POOL_ALIGNMENT_IN_BYTES);
         Region *region = vm_->GetHeapRegionAllocator()->AllocateAlignedRegion(
-            space, alignedHugeRegionSize, vm_->GetAssociatedJSThread());
+            space, alignedHugeRegionSize, vm_->GetAssociatedJSThread(), const_cast<Heap *>(vm_->GetHeap()));
         // low 32 bits storage regionIndex
         size_t regionIndex = SnapshotHelper::GetHugeObjectRegionIndex(snapshotData);
         regionIndexMap_.emplace(regionIndex, region);
@@ -1341,8 +1344,8 @@ void SnapshotProcessor::DeserializeString(uintptr_t stringBegin, uintptr_t strin
 {
     EcmaStringTable *stringTable = vm_->GetEcmaStringTable();
     ASSERT(stringVector_.empty());
-    auto oldSpace = const_cast<Heap *>(vm_->GetHeap())->GetOldSpace();
-    auto hugeSpace = const_cast<Heap *>(vm_->GetHeap())->GetHugeObjectSpace();
+    auto oldSpace = sHeap_->GetOldSpace();
+    auto hugeSpace = sHeap_->GetHugeObjectSpace();
     auto globalConst = const_cast<GlobalEnvConstants *>(vm_->GetJSThread()->GlobalConstants());
     auto lineStringClass = globalConst->GetLineStringClass();
     auto constantStringClass = globalConst->GetConstantStringClass();
@@ -1363,28 +1366,31 @@ void SnapshotProcessor::DeserializeString(uintptr_t stringBegin, uintptr_t strin
         }
         size_t strSize = EcmaStringAccessor(str).ObjectSize();
         strSize = AlignUp(strSize, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
-        auto strFromTable = stringTable->GetString(str);
-        if (strFromTable) {
-            stringVector_.emplace_back(ToUintPtr(strFromTable));
-        } else {
-            uintptr_t newObj = 0;
-            if (UNLIKELY(strSize > MAX_REGULAR_HEAP_OBJECT_SIZE)) {
-                newObj = hugeSpace->Allocate(strSize, vm_->GetJSThread());
+        {
+            RuntimeLockHolder locker(vm_->GetJSThread(), stringTable->mutex_);
+            auto strFromTable = stringTable->GetStringThreadUnsafe(str);
+            if (strFromTable) {
+                stringVector_.emplace_back(ToUintPtr(strFromTable));
             } else {
-                newObj = oldSpace->Allocate(strSize, false);
+                uintptr_t newObj = 0;
+                if (UNLIKELY(strSize > MAX_REGULAR_HEAP_OBJECT_SIZE)) {
+                    newObj = hugeSpace->Allocate(vm_->GetJSThread(), strSize);
+                } else {
+                    newObj = oldSpace->Allocate(vm_->GetJSThread(), strSize, false);
+                }
+                if (newObj == 0) {
+                    LOG_ECMA_MEM(FATAL) << "Snapshot Allocate OldLocalSpace OOM";
+                    UNREACHABLE();
+                }
+                if (memcpy_s(ToVoidPtr(newObj), strSize, str, strSize) != EOK) {
+                    LOG_FULL(FATAL) << "memcpy_s failed";
+                    UNREACHABLE();
+                }
+                str = reinterpret_cast<EcmaString *>(newObj);
+                EcmaStringAccessor(str).ClearInternString();
+                stringTable->GetOrInternStringThreadUnsafe(vm_, str);
+                stringVector_.emplace_back(newObj);
             }
-            if (newObj == 0) {
-                LOG_ECMA_MEM(FATAL) << "Snapshot Allocate OldLocalSpace OOM";
-                UNREACHABLE();
-            }
-            if (memcpy_s(ToVoidPtr(newObj), strSize, str, strSize) != EOK) {
-                LOG_FULL(FATAL) << "memcpy_s failed";
-                UNREACHABLE();
-            }
-            str = reinterpret_cast<EcmaString *>(newObj);
-            EcmaStringAccessor(str).ClearInternString();
-            stringTable->GetOrInternString(str);
-            stringVector_.emplace_back(newObj);
         }
         stringBegin += strSize;
     }
@@ -1495,7 +1501,7 @@ void SnapshotProcessor::SerializeObject(TaggedObject *objectHeader, CQueue<Tagge
         }
     };
 
-    objXRay_.VisitObjectBody<VisitType::SNAPSHOT_VISIT>(objectHeader, objectHeader->GetClass(), visitor);
+    ObjectXRay::VisitObjectBody<VisitType::SNAPSHOT_VISIT>(objectHeader, objectHeader->GetClass(), visitor);
 }
 
 bool SnapshotProcessor::VisitObjectBodyWithRep(TaggedObject *root, ObjectSlot slot, uintptr_t obj, int index,
@@ -1581,7 +1587,7 @@ void SnapshotProcessor::RelocateSpaceObject(const JSPandaFile *jsPandaFile, Spac
                 (JSType(objType) >= JSType::STRING_FIRST && JSType(objType) <= JSType::STRING_LAST)) {
                 auto str = reinterpret_cast<EcmaString *>(begin);
                 EcmaStringAccessor(str).ClearInternString();
-                stringTable->InsertStringIfNotExist(str);
+                stringTable->InsertStringIfNotExistThreadUnsafe(str);
                 if (JSType(objType) == JSType::CONSTANT_STRING) {
                     auto constantStr = ConstantString::Cast(str);
                     uint32_t id = constantStr->GetEntityIdU32();
@@ -1672,6 +1678,9 @@ void SnapshotProcessor::DeserializeTaggedField(uint64_t *value, TaggedObject *ro
             ASSERT((ToUintPtr(value) % static_cast<uint8_t>(MemAlignment::MEM_ALIGN_OBJECT)) == 0);
             rootRegion->InsertOldToNewRSet((uintptr_t)value);
         }
+        if (!rootRegion->InSharedHeap() && valueRegion->InSharedSweepableSpace()) {
+            rootRegion->AtomicInsertLocalToShareRSet((uintptr_t)value);
+        }
         *value = taggedObjectAddr;
         return;
     }
@@ -1710,7 +1719,7 @@ void SnapshotProcessor::DeserializeField(TaggedObject *objectHeader)
         }
     };
 
-    objXRay_.VisitObjectBody<VisitType::SNAPSHOT_VISIT>(objectHeader, objectHeader->GetClass(), visitor);
+    ObjectXRay::VisitObjectBody<VisitType::SNAPSHOT_VISIT>(objectHeader, objectHeader->GetClass(), visitor);
 }
 
 EncodeBit SnapshotProcessor::NativePointerToEncodeBit(void *nativePointer)
@@ -1820,16 +1829,17 @@ uintptr_t SnapshotProcessor::GetNewObj(size_t objectSize, TaggedObject *objectHe
         return AllocateObjectToLocalSpace(snapshotLocalSpace_, objectSize);
     }
     auto region = Region::ObjectAddressToRange(objectHeader);
-    if (region->InYoungOrOldSpace()) {
+    if (region->InYoungOrOldSpace() || region->InSharedOldSpace()) {
         return AllocateObjectToLocalSpace(oldLocalSpace_, objectSize);
     }
     if (region->InMachineCodeSpace()) {
         return AllocateObjectToLocalSpace(machineCodeLocalSpace_, objectSize);
     }
-    if (region->InNonMovableSpace() || region->InReadOnlySpace()) {
+    if (region->InNonMovableSpace() || region->InReadOnlySpace() ||
+        region->InSharedNonMovableSpace() || region->InSharedReadOnlySpace()) {
         return AllocateObjectToLocalSpace(nonMovableLocalSpace_, objectSize);
     }
-    if (region->InHugeObjectSpace()) {
+    if (region->InHugeObjectSpace() || region->InSharedHugeObjectSpace()) {
         return AllocateObjectToLocalSpace(hugeObjectLocalSpace_, objectSize);
     }
     return AllocateObjectToLocalSpace(snapshotLocalSpace_, objectSize);

@@ -51,7 +51,8 @@ public:
         ConstructorId,
         MegaStateKinds,
         TotalKinds,
-        UnknowId
+        UnknowId,
+        GlobalsId
     };
 
     static constexpr uint32_t RECORD_ID_FOR_BUNDLE = 1;
@@ -193,6 +194,12 @@ public:
         return ProfileType(abcId, id, Kind::BuiltinsId);
     }
 
+    static ProfileType CreateGlobals(ApEntityId abcId, ConstantIndex constantIndex)
+    {
+        auto id = static_cast<uint32_t>(constantIndex);
+        return ProfileType(abcId, id, Kind::GlobalsId);
+    }
+
     ProfileType &Remap(const PGOContext &context);
 
     bool IsNone() const
@@ -208,6 +215,11 @@ public:
     bool IsRootType() const
     {
         return IsRootBits::Decode(type_);
+    }
+
+    bool IsGlobalsType() const
+    {
+        return GetKind() == Kind::GlobalsId;
     }
 
     bool IsBuiltinsType() const
@@ -321,11 +333,18 @@ public:
         return GetId();
     }
 
-    JSType GetBuiltinsId() const
+    JSType GetBuiltinsType() const
     {
         ASSERT(IsBuiltinsType());
         auto builtinsId = BuiltinsId(GetId());
         return builtinsId.GetBuiltinsId();
+    }
+
+    ConstantIndex GetGlobalsId() const
+    {
+        ASSERT(IsGlobalsType());
+        auto globalsId = static_cast<ConstantIndex>(GetId());
+        return globalsId;
     }
 
     ElementsKind GetElementsKindBeforeTransition() const
@@ -345,7 +364,7 @@ public:
     bool IsBuiltinsString() const
     {
         if (IsBuiltinsType()) {
-            JSType type = GetBuiltinsId();
+            JSType type = GetBuiltinsType();
             return type >= JSType::STRING_FIRST && type <= JSType::STRING_LAST;
         }
         return false;
@@ -354,7 +373,7 @@ public:
     bool IsBuiltinsArray() const
     {
         if (IsBuiltinsType()) {
-            JSType type = GetBuiltinsId();
+            JSType type = GetBuiltinsType();
             return type == JSType::JS_ARRAY;
         }
         return false;
@@ -363,7 +382,7 @@ public:
     bool IsBuiltinsTypeArray() const
     {
         if (IsBuiltinsType()) {
-            JSType type = GetBuiltinsId();
+            JSType type = GetBuiltinsType();
             return type > JSType::JS_TYPED_ARRAY_FIRST && type <= JSType::JS_TYPED_ARRAY_LAST;
         }
         return false;

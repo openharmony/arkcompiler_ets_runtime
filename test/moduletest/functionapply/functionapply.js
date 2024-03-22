@@ -28,3 +28,14 @@ Object.defineProperty(v4, "length", {
     value:0
 });
 print(String.fromCharCode.apply(null, v4));
+function f0(a, b) {
+    print(a,b);
+}
+
+let v38;
+function f2() {
+    arguments.length = -1;
+    v38 = arguments;
+}
+f2(1,2);
+f0.apply(null,v38);

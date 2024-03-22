@@ -15,6 +15,7 @@
 #ifndef ECMASCRIPT_ECMA_CONTEXT_H
 #define ECMASCRIPT_ECMA_CONTEXT_H
 
+#include <cstdint>
 #include <optional>
 #include "ecmascript/base/config.h"
 #include "ecmascript/common.h"
@@ -260,7 +261,10 @@ public:
     JSTaggedValue PUBLIC_API FindConstpool(const JSPandaFile *jsPandaFile, int32_t index);
     // For new version instruction.
     JSTaggedValue PUBLIC_API FindConstpool(const JSPandaFile *jsPandaFile, panda_file::File::EntityId id);
+    JSTaggedValue PUBLIC_API FindUnsharedConstpool(JSTaggedValue sharedConstpool);
+    JSHandle<ConstantPool> CreateConstpoolPair(JSPandaFile *jsPandaFile, EntityId methodId);
     JSTaggedValue FindConstpoolWithAOT(const JSPandaFile *jsPandaFile, int32_t index);
+    void EraseUnsharedConstpool(JSTaggedValue sharedConstpool);
     std::optional<std::reference_wrapper<CMap<int32_t, JSTaggedValue>>> FindConstpools(
         const JSPandaFile *jsPandaFile);
 
@@ -496,6 +500,27 @@ public:
         return isAotEntry_;
     }
 
+    void SetUnsharedConstpool(int32_t unsharedConstpoolIndex, JSTaggedValue constpool)
+    {
+        ASSERT(0 <= unsharedConstpoolIndex && unsharedConstpoolIndex < UNSHARED_CONSTANTPOOL_COUNT);
+        unsharedConstpools_->data()[unsharedConstpoolIndex] = constpool;
+    }
+
+    int32_t GetAndIncreaseUnsharedConstpoolCount()
+    {
+        static std::mutex unsharedConstpoolCountMutex_;
+        std::lock_guard<std::mutex> guard(unsharedConstpoolCountMutex_);
+        return unsharedConstpoolCount_++;
+    }
+
+    void CheckUnsharedConstpoolArrayLimit(int32_t index)
+    {
+        if (index >= UNSHARED_CONSTANTPOOL_COUNT) {
+            LOG_ECMA(FATAL) << "the unshared constpool array need to expanding capacity";
+            UNREACHABLE();
+        }
+    }
+
     std::tuple<uint64_t, uint8_t *, int, kungfu::CalleeRegAndOffsetVec> CalCallSiteInfo(uintptr_t retAddr) const;
 private:
     void CJSExecution(JSHandle<JSFunction> &func, JSHandle<JSTaggedValue> &thisArg,
@@ -535,7 +560,12 @@ private:
     JSTaggedValue microJobQueue_ {JSTaggedValue::Hole()};
     EcmaRuntimeStat *runtimeStat_ {nullptr};
 
-    CMap<const JSPandaFile *, CMap<int32_t, JSTaggedValue>> cachedConstpools_ {};
+    CMap<const JSPandaFile *, CMap<int32_t, JSTaggedValue>> cachedSharedConstpools_ {};
+    // todo(lijiamin) Consider expanding capacity.
+    static constexpr int32_t UNSHARED_CONSTANTPOOL_COUNT = 10240;
+    std::array<JSTaggedValue, UNSHARED_CONSTANTPOOL_COUNT> *unsharedConstpools_ = nullptr;
+    static int32_t unsharedConstpoolCount_; // unshared constpool index.
+    static constexpr int32_t SHARED_CONSTPOOL_KEY_NOT_FOUND = INT32_MAX; // INT32_MAX :invalid value.
 
     // for HotReload of module.
     CMap<CString, JSHandle<JSTaggedValue>> cachedPatchModules_ {};

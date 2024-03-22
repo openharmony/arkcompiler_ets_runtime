@@ -16,7 +16,7 @@
 #ifndef ECMASCRIPT_FREE_OBJECT_H
 #define ECMASCRIPT_FREE_OBJECT_H
 
-#include "ecmascript/js_hclass.h"
+#include "ecmascript/js_hclass-inl.h"
 #include "ecmascript/mem/barriers.h"
 #include "ecmascript/mem/tagged_object-inl.h"
 
@@ -29,7 +29,7 @@ public:
     {
         return reinterpret_cast<FreeObject *>(object);
     }
-    static FreeObject *FillFreeObject(EcmaVM *vm, uintptr_t address, size_t size);
+    static FreeObject *FillFreeObject(BaseHeap *heap, uintptr_t address, size_t size);
 
     inline bool IsEmpty() const
     {

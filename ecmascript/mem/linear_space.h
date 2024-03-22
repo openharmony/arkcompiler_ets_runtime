@@ -45,6 +45,7 @@ public:
     void InvokeAllocationInspector(Address object, size_t size, size_t alignedSize);
 
 protected:
+    Heap *localHeap_;
     BumpPointerAllocator allocator_;
     size_t overShootSize_ {0};
     size_t allocateAfterLastGC_ {0};
@@ -65,7 +66,7 @@ public:
     uintptr_t AllocateSync(size_t size);
 
     void SetOverShootSize(size_t size);
-    bool AdjustCapacity(size_t allocatedSizeSinceGC);
+    bool AdjustCapacity(size_t allocatedSizeSinceGC, JSThread *thread);
     void SetWaterLine();
     void SetWaterLineWithoutGC();
 
@@ -112,7 +113,8 @@ private:
 
 class ReadOnlySpace : public LinearSpace {
 public:
-    ReadOnlySpace(Heap *heap, size_t initialCapacity, size_t maximumCapacity);
+    ReadOnlySpace(Heap *heap, size_t initialCapacity, size_t maximumCapacity,
+        MemSpaceType type = MemSpaceType::READ_ONLY_SPACE);
     ~ReadOnlySpace() override = default;
     void SetReadOnly()
     {

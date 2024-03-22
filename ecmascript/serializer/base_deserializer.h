@@ -105,7 +105,10 @@ struct JSErrorInfo {
 class BaseDeserializer {
 public:
     explicit BaseDeserializer(JSThread *thread, SerializeData *data, void *hint = nullptr)
-        : thread_(thread), heap_(const_cast<Heap *>(thread->GetEcmaVM()->GetHeap())), data_(data), engine_(hint) {}
+        : thread_(thread), heap_(const_cast<Heap *>(thread->GetEcmaVM()->GetHeap())), data_(data), engine_(hint)
+    {
+        sheap_ = SharedHeap::GetInstance();
+    }
     ~BaseDeserializer()
     {
         objectVector_.clear();
@@ -137,9 +140,12 @@ private:
 
     void AllocateToDifferentSpaces();
     void AllocateMultiRegion(SparseSpace *space, size_t spaceObjSize, size_t &regionIndex);
+    Region *AllocateMultiSharedRegion(SharedSparseSpace *space, size_t spaceObjSize, size_t &regionIndex);
     void AllocateToOldSpace(size_t oldSpaceSize);
     void AllocateToNonMovableSpace(size_t nonMovableSpaceSize);
     void AllocateToMachineCodeSpace(size_t machineCodeSpaceSize);
+    void AllocateToSharedOldSpace(size_t sOldSpaceSize);
+    void AllocateToSharedNonMovableSpace(size_t sNonMovableSpaceSize);
 
     bool GetAndResetWeak()
     {
@@ -223,16 +229,21 @@ private:
 private:
     JSThread *thread_;
     Heap *heap_;
+    SharedHeap *sheap_;
     SerializeData* data_;
     void *engine_;
     uintptr_t oldSpaceBeginAddr_ {0};
     uintptr_t nonMovableSpaceBeginAddr_ {0};
     uintptr_t machineCodeSpaceBeginAddr_ {0};
+    uintptr_t sOldSpaceBeginAddr_ {0};
+    uintptr_t sNonMovableSpaceBeginAddr_ {0};
     CVector<uintptr_t> objectVector_;
     CVector<Region *> regionVector_;
     size_t oldRegionIndex_ {0};
     size_t nonMovableRegionIndex_ {0};
     size_t machineCodeRegionIndex_ {0};
+    size_t sOldRegionIndex_ {0};
+    size_t sNonMovableRegionIndex_ {0};
     size_t regionRemainSizeIndex_ {0};
     bool isWeak_ {false};
     bool isTransferArrayBuffer_ {false};

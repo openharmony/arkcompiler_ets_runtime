@@ -46,3 +46,71 @@ try {
   }
   new C4(C4, C4);
 } catch(e) {}
+
+let arr = new Int8Array(10)
+for (let v5 =0; v5 < 400;v5++) {
+}
+Object.defineProperty(arr,"a", {
+       set(x) {
+           Reflect.deleteProperty(arr , "b")
+           return "a";
+       } 
+})
+arr["b"] = "b"
+for (let i = 0; i < 1; ++i) {
+    arr["a"] = 1;
+    print(arr["a"])
+}
+
+let obj = {
+  get a() {
+      Reflect.deleteProperty(this, "b")
+      print("get")
+      return "a";
+  },
+  b:"b"
+}
+
+for (let v5 =0;v5 < 400; v5++) {
+}
+
+for (let i = 0; i <2; i++) {
+  obj["a"]
+}
+
+let arr2 = {}
+for (let v5 =0; v5 < 400;v5++) {
+
+}
+Object.defineProperty(arr2,"a", {
+    set(x) {
+           Reflect.deleteProperty(this , "b")
+           return "a";
+    }   
+})
+arr2["b"] = "b"
+
+for(let i = 0; i <i ;++i) {
+    arr2["a"] = 1;
+}
+print(arr2["a"])
+
+let v1 = 0;
+class c0 {
+    set y(v3) {}
+}
+
+class c1 extends c0 {
+    set y(v4) {
+        if (v1++ === 29) {
+            delete c1.prototype.y;
+        }
+    }
+}
+
+class c2 extends c1 {}
+let v2 = new c2();
+for (let v5 = 0;v5 < 2; v5++) {
+    print(v5);
+    v2.y = 42;
+}

@@ -60,3 +60,45 @@ result = arr2.findLastIndex((element, index, array) => {
     return (element == 100);
 });
 print(result);
+
+var arr3 = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+var arr4 = new Array();
+function testFunction(element, index, array) {
+    if (index == 9) {
+        array.length = 6;
+    }
+    return element < 1;
+}
+for (let i = 0; i < 10; i++) arr4[i] = i;
+
+result = arr3.findLast(testFunction);
+print(result);
+result = arr4.findLast(testFunction);
+print(result);
+
+let arr1 = [1, 2, , 7, , undefined];
+arr1.__proto__.push(9);
+arr1.__proto__.push(9);
+arr1.__proto__.push(9);
+function fun1(element){
+    return element === 1;
+}
+print(arr1.findLast(fun1));
+arr1.__proto__.pop(9);
+arr1.__proto__.pop(9);
+arr1.__proto__.pop(9);
+
+//slowPath
+let arr5 = [1, 2, 3, 4, 5, 6, 7, 8];
+function func2(element, index, arr) {
+    return element === 6;
+}
+print(arr5.findLast(func2));
+
+//notFound
+let arr6 = new Array(5, 2, 7);
+function func3(element, index, arr) {
+    arr.length = 3;
+    return element === 100;
+}
+print(arr6.findLast(func3));

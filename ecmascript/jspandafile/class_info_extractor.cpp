@@ -22,7 +22,8 @@
 
 namespace panda::ecmascript {
 void ClassInfoExtractor::BuildClassInfoExtractorFromLiteral(JSThread *thread, JSHandle<ClassInfoExtractor> &extractor,
-                                                            const JSHandle<TaggedArray> &literal)
+                                                            const JSHandle<TaggedArray> &literal,
+                                                            ClassKind kind)
 {
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     const GlobalEnvConstants *globalConst = thread->GlobalConstants();
@@ -36,9 +37,18 @@ void ClassInfoExtractor::BuildClassInfoExtractorFromLiteral(JSThread *thread, JS
     }
 
     // Reserve sufficient length to prevent frequent creation.
-    JSHandle<TaggedArray> nonStaticKeys = factory->NewOldSpaceTaggedArray(nonStaticNum + NON_STATIC_RESERVED_LENGTH);
-    JSHandle<TaggedArray> nonStaticProperties =
+    JSHandle<TaggedArray> nonStaticKeys;
+    JSHandle<TaggedArray> nonStaticProperties;
         factory->NewOldSpaceTaggedArray(nonStaticNum + NON_STATIC_RESERVED_LENGTH);
+    if (kind == ClassKind::SENDABLE) {
+        nonStaticKeys = factory->NewSOldSpaceTaggedArray(nonStaticNum + NON_STATIC_RESERVED_LENGTH);
+        nonStaticProperties =
+            factory->NewSOldSpaceTaggedArray(nonStaticNum + NON_STATIC_RESERVED_LENGTH);
+    } else {
+        nonStaticKeys = factory->NewOldSpaceTaggedArray(nonStaticNum + NON_STATIC_RESERVED_LENGTH);
+        nonStaticProperties =
+            factory->NewOldSpaceTaggedArray(nonStaticNum + NON_STATIC_RESERVED_LENGTH);
+    }
 
     nonStaticKeys->Set(thread, CONSTRUCTOR_INDEX, globalConst->GetConstructorString());
     Method *method = Method::Cast(extractor->GetConstructorMethod().GetTaggedObject());
@@ -62,8 +72,15 @@ void ClassInfoExtractor::BuildClassInfoExtractorFromLiteral(JSThread *thread, JS
     uint32_t staticNum = literalBufferLength == 0 ? 0 : (literalBufferLength - 1) / 2 - nonStaticNum;
 
     // Reserve sufficient length to prevent frequent creation.
-    JSHandle<TaggedArray> staticKeys = factory->NewOldSpaceTaggedArray(staticNum + STATIC_RESERVED_LENGTH);
-    JSHandle<TaggedArray> staticProperties = factory->NewOldSpaceTaggedArray(staticNum + STATIC_RESERVED_LENGTH);
+    JSHandle<TaggedArray> staticKeys;
+    JSHandle<TaggedArray> staticProperties;
+    if (kind == ClassKind::SENDABLE) {
+        staticKeys = factory->NewSOldSpaceTaggedArray(staticNum + STATIC_RESERVED_LENGTH);
+        staticProperties = factory->NewSOldSpaceTaggedArray(staticNum + STATIC_RESERVED_LENGTH);
+    } else {
+        staticKeys = factory->NewOldSpaceTaggedArray(staticNum + STATIC_RESERVED_LENGTH);
+        staticProperties = factory->NewOldSpaceTaggedArray(staticNum + STATIC_RESERVED_LENGTH);
+    }
 
     staticKeys->Set(thread, LENGTH_INDEX, globalConst->GetLengthString());
     staticKeys->Set(thread, NAME_INDEX, globalConst->GetNameString());
@@ -327,8 +344,7 @@ JSHandle<JSHClass> ClassInfoExtractor::CreateSendableHClass(JSThread *thread, JS
     uint32_t maxInline = isProtoClass ? JSSharedObject::MAX_INLINE : JSSharedFunction::MAX_INLINE;
     if (LIKELY(length + extraLength <= maxInline)) {
         JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
-        JSHandle<LayoutInfo> layout = factory->CreateLayoutInfo(length + extraLength, MemSpaceType::OLD_SPACE,
-                                                                GrowMode::KEEP);
+        JSHandle<LayoutInfo> layout = factory->CreateSLayoutInfo(length + extraLength);
         for (uint32_t index = 0; index < length; ++index) {
             key.Update(keys->Get(index));
             ASSERT_PRINT(JSTaggedValue::IsPropertyKey(key), "Key is not a property key");
@@ -341,14 +357,14 @@ JSHandle<JSHClass> ClassInfoExtractor::CreateSendableHClass(JSThread *thread, JS
             attributes.SetOffset(index);
             layout->AddKey(thread, index, key.GetTaggedValue(), attributes);
         }
-        hclass = isProtoClass ? factory->NewEcmaHClass(JSSharedObject::SIZE, JSType::JS_SHARED_OBJECT, length) :
-            factory->NewEcmaHClass(JSSharedFunction::SIZE, JSType::JS_SHARED_FUNCTION, length + extraLength);
+        hclass = isProtoClass ? factory->NewSEcmaHClass(JSSharedObject::SIZE, JSType::JS_SHARED_OBJECT, length) :
+            factory->NewSEcmaHClass(JSSharedFunction::SIZE, JSType::JS_SHARED_FUNCTION, length + extraLength);
         hclass->SetLayout(thread, layout);
         hclass->SetNumberOfProps(length);
     } else {
         // dictionary mode
-        hclass = isProtoClass ? factory->NewEcmaHClass(JSSharedObject::SIZE, JSType::JS_SHARED_OBJECT, 0) :
-            factory->NewEcmaHClass(JSSharedFunction::SIZE, JSType::JS_SHARED_FUNCTION, 0);
+        hclass = isProtoClass ? factory->NewSEcmaHClass(JSSharedObject::SIZE, JSType::JS_SHARED_OBJECT, 0) :
+            factory->NewSEcmaHClass(JSSharedFunction::SIZE, JSType::JS_SHARED_FUNCTION, 0);
         hclass->SetIsDictionaryMode(true);
         hclass->SetNumberOfProps(0);
     }
@@ -393,7 +409,7 @@ JSHandle<JSFunction> ClassHelper::DefineClassFromExtractor(JSThread *thread, con
         for (uint32_t index = 0; index < nonStaticLength; ++index) {
             propValue.Update(nonStaticProperties->Get(index));
             if (propValue->IsJSFunction()) {
-                JSHandle<JSFunction> propFunc = factory->CloneJSFuction(JSHandle<JSFunction>::Cast(propValue));
+                JSHandle<JSFunction> propFunc = factory->CloneJSFunction(JSHandle<JSFunction>::Cast(propValue));
                 propFunc->SetHomeObject(thread, prototype);
                 propFunc->SetLexicalEnv(thread, lexenv);
                 propValue.Update(propFunc);
@@ -419,7 +435,7 @@ JSHandle<JSFunction> ClassHelper::DefineClassFromExtractor(JSThread *thread, con
         for (uint32_t index = 0; index < staticLength; ++index) {
             propValue.Update(staticProperties->Get(index));
             if (propValue->IsJSFunction()) {
-                JSHandle<JSFunction> propFunc = factory->CloneJSFuction(JSHandle<JSFunction>::Cast(propValue));
+                JSHandle<JSFunction> propFunc = factory->CloneJSFunction(JSHandle<JSFunction>::Cast(propValue));
                 propFunc->SetHomeObject(thread, constructor);
                 propFunc->SetLexicalEnv(thread, lexenv);
                 propValue.Update(propFunc);
@@ -486,7 +502,7 @@ JSHandle<JSFunction> ClassHelper::DefineClassWithIHClass(JSThread *thread,
         for (uint32_t index = 0; index < nonStaticLength; ++index) {
             propValue.Update(nonStaticProperties->Get(index));
             if (propValue->IsJSFunction()) {
-                JSHandle<JSFunction> propFunc = factory->CloneJSFuction(JSHandle<JSFunction>::Cast(propValue));
+                JSHandle<JSFunction> propFunc = factory->CloneJSFunction(JSHandle<JSFunction>::Cast(propValue));
                 propFunc->SetHomeObject(thread, prototype);
                 propFunc->SetLexicalEnv(thread, lexenv);
                 propValue.Update(propFunc);
@@ -513,7 +529,7 @@ JSHandle<JSFunction> ClassHelper::DefineClassWithIHClass(JSThread *thread,
         for (uint32_t index = 0; index < staticLength; ++index) {
             propValue.Update(staticProperties->Get(index));
             if (propValue->IsJSFunction()) {
-                JSHandle<JSFunction> propFunc = factory->CloneJSFuction(JSHandle<JSFunction>::Cast(propValue));
+                JSHandle<JSFunction> propFunc = factory->CloneJSFunction(JSHandle<JSFunction>::Cast(propValue));
                 propFunc->SetHomeObject(thread, constructor);
                 propFunc->SetLexicalEnv(thread, lexenv);
                 propValue.Update(propFunc);
@@ -595,7 +611,7 @@ JSHandle<NameDictionary> ClassHelper::BuildDictionaryProperties(JSThread *thread
         propKey.Update(keys->Get(index));
         propValue.Update(properties->Get(index));
         if (propValue->IsJSFunction()) {
-            JSHandle<JSFunction> propFunc = factory->CloneJSFuction(JSHandle<JSFunction>::Cast(propValue));
+            JSHandle<JSFunction> propFunc = factory->CloneJSFunction(JSHandle<JSFunction>::Cast(propValue));
             propFunc->SetHomeObject(thread, object);
             propFunc->SetLexicalEnv(thread, lexenv);
             propValue.Update(propFunc);
@@ -606,39 +622,34 @@ JSHandle<NameDictionary> ClassHelper::BuildDictionaryProperties(JSThread *thread
     return dict;
 }
 
-bool ClassHelper::MatchTrackType(TrackType trackType, JSTaggedValue value)
+bool ClassHelper::MatchFieldType(SharedFieldType fieldType, JSTaggedValue value)
 {
     bool checkRet = false;
-    switch (trackType) {
-        case TrackType::NUMBER: {
+    switch (fieldType) {
+        case SharedFieldType::NUMBER: {
             checkRet = value.IsNumber();
             break;
         }
-        case TrackType::INT: {
-            checkRet = value.IsInt();
-            break;
-        }
-        case TrackType::DOUBLE: {
-            checkRet = value.IsDouble();
-            break;
-        }
-        case TrackType::BOOLEAN: {
+        case SharedFieldType::BOOLEAN: {
             checkRet = value.IsBoolean();
             break;
         }
-        case TrackType::STRING: {
+        case SharedFieldType::STRING: {
             checkRet = value.IsString() || value.IsNull();
             break;
         }
-        case TrackType::SENDABLE: {
+        case SharedFieldType::BIG_INT: {
+            checkRet = value.IsBigInt();
+            break;
+        }
+        case SharedFieldType::SENDABLE: {
             checkRet = value.IsJSShared() || value.IsNull();
             break;
         }
-        case TrackType::NONE: {
+        case SharedFieldType::NONE: {
             checkRet = true;
             break;
         }
-        case TrackType::TAGGED:
         default:
             break;
     }
@@ -676,7 +687,7 @@ JSHandle<JSFunction> SendableClassDefiner::DefineSendableClassFromExtractor(JSTh
     SendableClassDefiner::FilterDuplicatedKeys(thread, nonStaticKeys, nonStaticProperties);
     JSHandle<JSHClass> prototypeHClass = ClassInfoExtractor::CreateSendableHClass(thread, nonStaticKeys,
                                                                                   nonStaticProperties, true);
-    JSHandle<JSObject> prototype = factory->NewOldSpaceJSObject(prototypeHClass);
+    JSHandle<JSObject> prototype = factory->NewSharedOldSpaceJSObject(prototypeHClass);
     uint32_t length = staticFieldArray->GetLength();
     uint32_t staticFields =  length / 2; // 2: key-type
     JSHandle<JSHClass> constructorHClass =
@@ -687,8 +698,8 @@ JSHandle<JSFunction> SendableClassDefiner::DefineSendableClassFromExtractor(JSTh
         auto layout = JSHandle<LayoutInfo>(thread, constructorHClass->GetLayout());
         AddFieldTypeToHClass(thread, staticFieldArray, layout, constructorHClass);
     }
-    JSHandle<JSFunction> constructor = factory->NewJSFunctionByHClass(method, constructorHClass,
-        MemSpaceType::NON_MOVABLE);
+
+    JSHandle<JSFunction> constructor = factory->NewSFunctionByHClass(method, constructorHClass);
 
     // non-static
     nonStaticProperties->Set(thread, 0, constructor);
@@ -746,7 +757,7 @@ JSHandle<JSFunction> SendableClassDefiner::DefineSendableClassFromExtractor(JSTh
         JSMutableHandle<NameDictionary> nameDict(thread, dict);
         if (staticFields > 0) {
             AddFieldTypeToDict(thread, staticFieldArray, nameDict,
-                               PropertyAttributes::Default(false, true, false));
+                               PropertyAttributes::Default(true, true, false));
         }
         constructor->SetProperties(thread, nameDict);
     }
@@ -816,7 +827,7 @@ JSHandle<NameDictionary> SendableClassDefiner::BuildSendableDictionaryProperties
     ASSERT(keys->GetLength() == properties->GetLength());
 
     JSMutableHandle<NameDictionary> dict(
-        thread, NameDictionary::Create(thread, NameDictionary::ComputeHashTableSize(length)));
+        thread, NameDictionary::CreateInSharedHeap(thread, NameDictionary::ComputeHashTableSize(length)));
     JSMutableHandle<JSTaggedValue> propKey(thread, JSTaggedValue::Undefined());
     JSMutableHandle<JSTaggedValue> propValue(thread, JSTaggedValue::Undefined());
     for (uint32_t index = 0; index < length; index++) {
@@ -851,20 +862,20 @@ void SendableClassDefiner::AddFieldTypeToHClass(JSThread *thread, const JSHandle
     uint32_t length = fieldTypeArray->GetLength();
     JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
     uint32_t index = static_cast<uint32_t>(layout->NumberOfElements());
-    PropertyAttributes attributes = PropertyAttributes::Default(true, true, false);
-    attributes.SetIsInlinedProps(true);
-    attributes.SetRepresentation(Representation::TAGGED);
     for (uint32_t i = 0; i < length; i += 2) { // 2: key-value pair;
+        PropertyAttributes attributes = PropertyAttributes::Default(true, true, false);
         key.Update(fieldTypeArray->Get(i));
         ASSERT(key->IsString());
-        TrackType type = FromFieldType(FieldType(fieldTypeArray->Get(i + 1).GetInt()));
+        SharedFieldType type = FromFieldType(FieldType(fieldTypeArray->Get(i + 1).GetInt()));
         int entry = layout->FindElementWithCache(thread, *hclass, key.GetTaggedValue(), index);
         if (entry != -1) {
             attributes = layout->GetAttr(entry);
-            attributes.SetTrackType(type);
+            attributes.SetSharedFieldType(type);
             layout->SetNormalAttr(thread, entry, attributes);
         } else {
-            attributes.SetTrackType(type);
+            attributes.SetIsInlinedProps(true);
+            attributes.SetRepresentation(Representation::TAGGED);
+            attributes.SetSharedFieldType(type);
             attributes.SetOffset(index);
             layout->AddKey(thread, index++, key.GetTaggedValue(), attributes);
         }
@@ -889,8 +900,8 @@ void SendableClassDefiner::AddFieldTypeToDict(JSThread *thread, const JSHandle<T
     for (uint32_t i = 0; i < length; i += 2) { // 2: key-value pair;
         key.Update(fieldTypeArray->Get(i));
         ASSERT(key->IsString());
-        TrackType type = FromFieldType(FieldType(fieldTypeArray->Get(i + 1).GetInt()));
-        attributes.SetTrackType(type);
+        SharedFieldType type = FromFieldType(FieldType(fieldTypeArray->Get(i + 1).GetInt()));
+        attributes.SetSharedFieldType(type);
         attributes.SetBoxType(PropertyBoxType::UNDEFINED);
         JSHandle<NameDictionary> newDict = NameDictionary::Put(thread, dict, key, value, attributes);
         dict.Update(newDict);
@@ -919,15 +930,15 @@ void SendableClassDefiner::DefineSendableInstanceHClass(JSThread *thread, const 
     JSHandle<JSHClass> iHClass;
     if (base->IsHole() || base->IsNull()) {
         if (fieldNum == 0) {
-            iHClass = factory->NewEcmaHClass(JSSharedObject::SIZE, JSType::JS_SHARED_OBJECT, fieldNum);
+            iHClass = factory->NewSEcmaHClass(JSSharedObject::SIZE, JSType::JS_SHARED_OBJECT, fieldNum);
         } else if (LIKELY(fieldNum <= JSSharedObject::MAX_INLINE)) {
-            iHClass = factory->NewEcmaHClass(JSSharedObject::SIZE, JSType::JS_SHARED_OBJECT, fieldNum);
-            JSHandle<LayoutInfo> layout = factory->CreateLayoutInfo(fieldNum, MemSpaceType::OLD_SPACE, GrowMode::KEEP);
+            iHClass = factory->NewSEcmaHClass(JSSharedObject::SIZE, JSType::JS_SHARED_OBJECT, fieldNum);
+            JSHandle<LayoutInfo> layout = factory->CreateSLayoutInfo(fieldNum);
             AddFieldTypeToHClass(thread, fieldTypeArray, layout, iHClass);
         } else {
-            iHClass = factory->NewEcmaHClass(JSSharedObject::SIZE, JSType::JS_SHARED_OBJECT, 0);
+            iHClass = factory->NewSEcmaHClass(JSSharedObject::SIZE, JSType::JS_SHARED_OBJECT, 0);
             JSHandle<NameDictionary> dict =
-                NameDictionary::Create(thread, NameDictionary::ComputeHashTableSize(fieldNum));
+                NameDictionary::CreateInSharedHeap(thread, NameDictionary::ComputeHashTableSize(fieldNum));
             AddFieldTypeToHClass(thread, fieldTypeArray, dict, iHClass);
         }
     } else {
@@ -940,15 +951,15 @@ void SendableClassDefiner::DefineSendableInstanceHClass(JSThread *thread, const 
             JSHandle<LayoutInfo> baseLayout(thread, baseIHClass->GetLayout());
             auto newLength = baseLength + fieldNum;
             if (fieldNum == 0) {
-                iHClass = factory->NewEcmaHClass(JSSharedObject::SIZE, JSType::JS_SHARED_OBJECT, fieldNum);
+                iHClass = factory->NewSEcmaHClass(JSSharedObject::SIZE, JSType::JS_SHARED_OBJECT, fieldNum);
             } else if (LIKELY(newLength <= JSSharedObject::MAX_INLINE)) {
-                iHClass = factory->NewEcmaHClass(JSSharedObject::SIZE, JSType::JS_SHARED_OBJECT, newLength);
-                JSHandle<LayoutInfo> layout = factory->CopyAndReSort(baseLayout, baseLength, newLength);
+                iHClass = factory->NewSEcmaHClass(JSSharedObject::SIZE, JSType::JS_SHARED_OBJECT, newLength);
+                JSHandle<LayoutInfo> layout = factory->CopyAndReSortSLayoutInfo(baseLayout, baseLength, newLength);
                 AddFieldTypeToHClass(thread, fieldTypeArray, layout, iHClass);
             } else {
-                iHClass = factory->NewEcmaHClass(JSSharedObject::SIZE, JSType::JS_SHARED_OBJECT, 0);
+                iHClass = factory->NewSEcmaHClass(JSSharedObject::SIZE, JSType::JS_SHARED_OBJECT, 0);
                 JSHandle<NameDictionary> dict =
-                    NameDictionary::Create(thread, NameDictionary::ComputeHashTableSize(newLength));
+                    NameDictionary::CreateInSharedHeap(thread, NameDictionary::ComputeHashTableSize(newLength));
                 auto globalConst = const_cast<GlobalEnvConstants *>(thread->GlobalConstants());
                 JSHandle<JSTaggedValue> value = globalConst->GetHandledUndefined();
                 JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
@@ -964,11 +975,12 @@ void SendableClassDefiner::DefineSendableInstanceHClass(JSThread *thread, const 
         } else {
             JSHandle<NameDictionary> baseDict(thread, baseIHClass->GetLayout());
             auto baseLength = baseDict->EntriesCount();
+            auto newLength = fieldNum + baseLength;
             JSHandle<NameDictionary> dict =
-                NameDictionary::Create(thread, NameDictionary::ComputeHashTableSize(fieldNum + baseLength));
+                NameDictionary::CreateInSharedHeap(thread, NameDictionary::ComputeHashTableSize(newLength));
             baseDict->Rehash(thread, *dict);
             dict->SetNextEnumerationIndex(thread, baseDict->GetNextEnumerationIndex());
-            iHClass = factory->NewEcmaHClass(JSSharedObject::SIZE, JSType::JS_SHARED_OBJECT, 0);
+            iHClass = factory->NewSEcmaHClass(JSSharedObject::SIZE, JSType::JS_SHARED_OBJECT, 0);
             AddFieldTypeToHClass(thread, fieldTypeArray, dict, iHClass);
         }
     }
@@ -1037,7 +1049,7 @@ bool SendableClassDefiner::TryUpdateExistValue(JSThread *thread, JSMutableHandle
         }
     } else {
         if (value->IsJSFunction() && JSHandle<JSFunction>(value)->IsGetterOrSetter()) {
-            JSHandle<AccessorData> accessor = thread->GetEcmaVM()->GetFactory()->NewAccessorData();
+            JSHandle<AccessorData> accessor = thread->GetEcmaVM()->GetFactory()->NewSAccessorData();
             UpdateValueToAccessor(thread, value, accessor);
         }
     }
@@ -1047,7 +1059,7 @@ bool SendableClassDefiner::TryUpdateExistValue(JSThread *thread, JSMutableHandle
 void SendableClassDefiner::TryUpdateValue(JSThread *thread, JSMutableHandle<JSTaggedValue> &value)
 {
     if (value->IsJSFunction() && JSHandle<JSFunction>(value)->IsGetterOrSetter()) {
-        JSHandle<AccessorData> accessor = thread->GetEcmaVM()->GetFactory()->NewAccessorData();
+        JSHandle<AccessorData> accessor = thread->GetEcmaVM()->GetFactory()->NewSAccessorData();
         UpdateValueToAccessor(thread, value, accessor);
     }
 }

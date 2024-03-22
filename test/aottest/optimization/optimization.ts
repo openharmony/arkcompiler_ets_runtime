@@ -100,3 +100,34 @@ const size = (x === undefined) ? 1 : 2;
 const cleanupFunc = (x === undefined) ? 1 : 2;
 print(size);
 print(cleanupFunc);
+
+function foo1() : void {
+    print(0);
+}
+function foo2(i : number) : void {
+    let a = {x: null, y:233, z:466};
+    let b = {y: 5};
+    a.x = b;
+    if (i > 10) {
+        a.x.y = i;
+    }
+    foo1()
+    return a.x.y;
+}
+function foo3(i : number) : void {
+    let a = {x: null, y:233, z:466};
+    let b = {y: 5};
+    a.x = b;
+    if (i > 10) {
+        a.x.y = i;
+    }
+    foo1()
+    return a.x;
+}
+print(foo2(1))
+print(foo2(5))
+print(foo2(10))
+print(foo2(100))
+print(foo2(11))
+print(foo3(1))
+print(foo3(11))

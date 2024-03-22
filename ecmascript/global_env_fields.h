@@ -26,13 +26,8 @@
     V(JSTaggedValue, ObjectFunctionClass, OBJECT_FUNCTION_CLASS_INDEX)                              \
     V(JSTaggedValue, ObjectFunctionPrototype, OBJECT_FUNCTION_PROTOTYPE_INDEX)                      \
     V(JSTaggedValue, ObjectFunctionPrototypeClass, OBJECT_FUNCTION_PROTOTYPE_CLASS_INDEX)           \
-    V(JSTaggedValue, SObjectFunction, SHARED_OBJECT_FUNCTION_INDEX)                                 \
-    V(JSTaggedValue, SObjectFunctionPrototype, SHARED_OBJECT_FUNCTION_PROTOTYPE_INDEX)              \
     V(JSTaggedValue, FunctionFunction, FUNCTION_FUNCTION_INDEX)                                     \
     V(JSTaggedValue, FunctionPrototype, FUNCTION_PROTOTYPE_INDEX)                                   \
-    V(JSTaggedValue, SFunctionFunction, SHARED_FUNCTION_FUNCTION_INDEX)                             \
-    V(JSTaggedValue, SFunctionPrototype, SHARED_FUNCTION_PROTOTYPE_INDEX)                           \
-    V(JSTaggedValue, SConstructorClass, SHARED_CONSTRUCTOR_CLASS_INDEX)                             \
     V(JSTaggedValue, NumberFunction, NUMBER_FUNCTION_INDEX)                                         \
     V(JSTaggedValue, NumberPrototype, NUMBER_PROTOTYPE_INDEX)                                       \
     V(JSTaggedValue, BigIntFunction, BIGINT_FUNCTION_INDEX)                                         \
@@ -165,10 +160,12 @@
     V(JSTaggedValue, HoleySymbol, HOLEY_SYMBOL_OFFSET)                                              \
     V(JSTaggedValue, ElementICSymbol, ELEMENT_IC_SYMBOL_OFFSET)                                     \
     V(JSTaggedValue, IteratorPrototype, ITERATOR_PROTOTYPE_INDEX)                                   \
+    V(JSTaggedValue, IteratorResult, ITERATOR_RESULT_INDEX)                                         \
     V(JSTaggedValue, AsyncIteratorPrototype, ASYNC_ITERATOR_PROTOTYPE_INDEX)                        \
     V(JSTaggedValue, ForinIteratorPrototype, FORIN_ITERATOR_PROTOTYPE_INDEX)                        \
     V(JSTaggedValue, ForinIteratorClass, FOR_IN_ITERATOR_CLASS_INDEX)                               \
     V(JSTaggedValue, StringIterator, STRING_ITERATOR_INDEX)                                         \
+    V(JSTaggedValue, StringIteratorClass, STRING_ITERATOR_CLASS_INDEX)                              \
     V(JSTaggedValue, AsyncFromSyncIterator, ASYNC_FROM_SYNC_ITERATOR_INDEX)                         \
     V(JSTaggedValue, MapIteratorPrototype, MAP_ITERATOR_PROTOTYPE_INDEX)                            \
     V(JSTaggedValue, SetIteratorPrototype, SET_ITERATOR_PROTOTYPE_INDEX)                            \
@@ -188,7 +185,6 @@
     V(JSTaggedValue, FunctionClassWithoutProto, FUNCTION_CLASS_WITHOUT_PROTO)                       \
     V(JSTaggedValue, FunctionClassWithoutName, FUNCTION_CLASS_WITHOUT_NAME)                         \
     V(JSTaggedValue, BoundFunctionClass, BOUND_FUNCTION_CLASS)                                      \
-    V(JSTaggedValue, SFunctionClassWithoutProto, SHARED_FUNCTION_CLASS_WITHOUT_PROTO)               \
     V(JSTaggedValue, ArgumentsClass, ARGUMENTS_CLASS)                                               \
     V(JSTaggedValue, ArgumentsCallerAccessor, ARGUMENTS_CALLER_ACCESSOR)                            \
     V(JSTaggedValue, ArgumentsCalleeAccessor, ARGUMENTS_CALLEE_ACCESSOR)                            \
@@ -214,7 +210,6 @@
     V(JSTaggedValue, SpecificTypedArrayFunctionClass, SPERCIFIC_TYPED_ARRAY_FUNCTION_CLASS)         \
     V(JSTaggedValue, ConstructorFunctionClass, CONSTRUCTOR_FUNCTION_CLASS)                          \
     V(JSTaggedValue, NormalFunctionClass, NORMAL_FUNCTION_CLASS)                                    \
-    V(JSTaggedValue, SNormalFunctionClass, SHARED_NORMAL_FUNCTION_CLASS)                            \
     V(JSTaggedValue, JSIntlBoundFunctionClass, JS_INTL_BOUND_FUNCTION_CLASS)                        \
     V(JSTaggedValue, NumberFormatLocales, NUMBER_FORMAT_LOCALES_INDEX)                              \
     V(JSTaggedValue, DateTimeFormatLocales, DATE_TIMEFORMAT_LOCALES_INDEX)                          \
@@ -239,7 +234,18 @@
     V(JSTaggedValue, IteratorSymbol, ITERATOR_SYMBOL_INDEX)                                         \
     V(JSTaggedValue, SpeciesSymbol, SPECIES_SYMBOL_INDEX)
 
+#define GLOBAL_ENV_SHARED_FIELDS(V)                                                                 \
+    V(JSTaggedValue, SObjectFunction, SHARED_OBJECT_FUNCTION_INDEX)                                 \
+    V(JSTaggedValue, SObjectFunctionPrototype, SHARED_OBJECT_FUNCTION_PROTOTYPE_INDEX)              \
+    V(JSTaggedValue, SFunctionFunction, SHARED_FUNCTION_FUNCTION_INDEX)                             \
+    V(JSTaggedValue, SFunctionPrototype, SHARED_FUNCTION_PROTOTYPE_INDEX)                           \
+    V(JSTaggedValue, SConstructorClass, SHARED_CONSTRUCTOR_CLASS_INDEX)                             \
+    V(JSTaggedValue, SFunctionClassWithoutProto, SHARED_FUNCTION_CLASS_WITHOUT_PROTO)               \
+    V(JSTaggedValue, SFunctionClassWithoutAccessor, SHARED_FUNCTION_CLASS_WITHOUT_ACCESSOR)         \
+    V(JSTaggedValue, SNormalFunctionClass, SHARED_NORMAL_FUNCTION_CLASS)
+
 #define GLOBAL_ENV_FIELDS(V)                                \
+    GLOBAL_ENV_SHARED_FIELDS(V)                             \
     GLOBAL_ENV_COMMON_FIELDS(V)                             \
     GLOBAL_ENV_DETECTOR_SYMBOL_FIELDS(V)                    \
     GLOBAL_ENV_DETECTOR_FIELDS(V)

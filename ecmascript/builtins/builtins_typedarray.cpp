@@ -1110,7 +1110,7 @@ JSTaggedValue BuiltinsTypedArray::Set(EcmaRuntimeCallInfo *argv)
         }
     }
     // 9. Let targetBuffer be the value of target’s [[ViewedArrayBuffer]] internal slot.
-    JSHandle<JSTaggedValue> targetBuffer(thread, JSTypedArray::FastGetOffHeapBuffer(thread, targetObj));
+    JSHandle<JSTaggedValue> targetBuffer(thread, targetObj->GetViewedArrayBufferOrByteArray());
     // 10. If IsDetachedBuffer(targetBuffer) is true, throw a TypeError exception.
     if (BuiltinsArrayBuffer::IsDetachedBuffer(targetBuffer.GetTaggedValue())) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "The targetBuffer of This value is detached buffer.",
@@ -1420,7 +1420,12 @@ JSTaggedValue BuiltinsTypedArray::Slice(EcmaRuntimeCallInfo *argv)
         //     iv. Increase targetByteIndex by 1.
         uint8_t *srcBuf = (uint8_t *)BuiltinsArrayBuffer::GetDataPointFromBuffer(srcBuffer, srcByteIndex);
         uint8_t *targetBuf = (uint8_t *)BuiltinsArrayBuffer::GetDataPointFromBuffer(targetBuffer, targetByteIndex);
-        while (count--) {
+        if (srcBuffer != targetBuffer && memmove_s(
+            targetBuf, elementSize * count, srcBuf, elementSize * count) != EOK) {
+            LOG_FULL(FATAL) << "memcpy_s failed";
+            UNREACHABLE();
+        }
+        while (srcBuffer == targetBuffer && count--) {
             if (memcpy_s(targetBuf, elementSize, srcBuf, elementSize) != EOK) {
                 LOG_FULL(FATAL) << "memcpy_s failed";
                 UNREACHABLE();

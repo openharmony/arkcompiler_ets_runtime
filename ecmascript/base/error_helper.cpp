@@ -162,7 +162,9 @@ JSTaggedValue ErrorHelper::ErrorCommonConstructor(EcmaRuntimeCallInfo *argv,
     auto globalConst = thread->GlobalConstants();
     if (!message->IsUndefined()) {
         JSHandle<EcmaString> handleStr = JSTaggedValue::ToString(thread, message);
-        LOG_ECMA(DEBUG) << "Throw error: " << EcmaStringAccessor(handleStr).ToCString();
+        if (errorType != ErrorType::OOM_ERROR) {
+            LOG_ECMA(DEBUG) << "Throw error: " << EcmaStringAccessor(handleStr).ToCString();
+        }
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         JSHandle<JSTaggedValue> msgKey = globalConst->GetHandledMessageString();
         PropertyDescriptor msgDesc(thread, JSHandle<JSTaggedValue>::Cast(handleStr), true, false, true);
@@ -246,10 +248,15 @@ JSHandle<EcmaString> ErrorHelper::BuildEcmaStackTrace(JSThread *thread, std::str
     LOG_ECMA(DEBUG) << data;
     // unconverted stack
     stack = data;
+    auto ecmaVm = thread->GetEcmaVM();
     // sourceMap callback
-    auto cb = thread->GetEcmaVM()->GetSourceMapCallback();
-    if (cb != nullptr) {
-        data = cb(data.c_str());
+    auto sourceMapcb = ecmaVm->GetSourceMapCallback();
+    if (sourceMapcb != nullptr && !data.empty()) {
+        data = sourceMapcb(data.c_str());
+    }
+    auto nativeStackcb = ecmaVm->GetNativeStackCallback();
+    if (nativeStackcb != nullptr && data.empty()) {
+        data = nativeStackcb();
     }
 
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();

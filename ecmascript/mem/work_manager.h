@@ -28,6 +28,7 @@ static constexpr uint32_t MARKSTACK_MAX_SIZE = 100;
 static constexpr uint32_t STACK_AREA_SIZE = sizeof(uintptr_t) * MARKSTACK_MAX_SIZE;
 
 class Heap;
+class SharedHeap;
 class Stack;
 class SemiSpaceCollector;
 class TlabAllocator;
@@ -132,11 +133,49 @@ struct WorkNodeHolder {
     size_t promotedSize_ = 0;
 };
 
-class WorkManager final {
+class WorkManagerBase {
+public:
+    WorkManagerBase(NativeAreaAllocator *allocator);
+    virtual ~WorkManagerBase();
+
+    WorkSpaceChunk *GetSpaceChunk() const
+    {
+        return const_cast<WorkSpaceChunk *>(&spaceChunk_);
+    }
+
+    void InitializeBase()
+    {
+        spaceStart_ = workSpace_;
+        spaceEnd_ = workSpace_ + WORKNODE_SPACE_SIZE;
+    }
+
+    void FinishBase()
+    {
+        while (!agedSpaces_.empty()) {
+            GetSpaceChunk()->Free(reinterpret_cast<void *>(agedSpaces_.back()));
+            agedSpaces_.pop_back();
+        }
+    }
+
+    WorkNode *AllocateWorkNode();
+
+    Mutex mtx_;
+private:
+    NO_COPY_SEMANTIC(WorkManagerBase);
+    NO_MOVE_SEMANTIC(WorkManagerBase);
+    
+    WorkSpaceChunk spaceChunk_;
+    uintptr_t workSpace_;
+    uintptr_t spaceStart_;
+    uintptr_t spaceEnd_;
+    std::vector<uintptr_t> agedSpaces_;
+};
+
+class WorkManager : public WorkManagerBase {
 public:
     WorkManager() = delete;
     WorkManager(Heap *heap, uint32_t threadNum);
-    ~WorkManager();
+    ~WorkManager() override;
 
     void Initialize(TriggerGCType gcType, ParallelGCTaskPhase taskPhase);
     size_t Finish();
@@ -194,34 +233,74 @@ public:
     {
         return threadNum_;
     }
+
     inline bool HasInitialized() const
     {
         return initialized_.load(std::memory_order_acquire);
-    }
-
-    WorkSpaceChunk *GetSpaceChunk() const
-    {
-        return const_cast<WorkSpaceChunk *>(&spaceChunk_);
     }
 
 private:
     NO_COPY_SEMANTIC(WorkManager);
     NO_MOVE_SEMANTIC(WorkManager);
 
-    WorkNode *AllocateWorkNode();
-
     Heap *heap_;
     uint32_t threadNum_;
-    WorkSpaceChunk spaceChunk_;
     std::array<WorkNodeHolder, MAX_TASKPOOL_THREAD_NUM + 1> works_;
     std::array<ContinuousStack<JSTaggedType> *, MAX_TASKPOOL_THREAD_NUM + 1> continuousQueue_;
     GlobalWorkStack workStack_;
-    uintptr_t workSpace_;
-    uintptr_t spaceStart_;
-    uintptr_t spaceEnd_;
-    std::vector<uintptr_t> agedSpaces_;
-    Mutex mtx_;
     ParallelGCTaskPhase parallelGCTaskPhase_;
+    std::atomic<bool> initialized_ {false};
+};
+
+struct SharedGCWorkNodeHolder {
+    WorkNode *inNode_ {nullptr};
+    WorkNode *outNode_ {nullptr};
+    ProcessQueue *weakQueue_ {nullptr};
+};
+
+class SharedGCWorkManager : public WorkManagerBase {
+public:
+    SharedGCWorkManager(SharedHeap *heap, uint32_t threadNum);
+    ~SharedGCWorkManager() override;
+
+    void Initialize();
+    void Finish();
+
+    bool Push(uint32_t threadId, TaggedObject *object);
+    bool Pop(uint32_t threadId, TaggedObject **object);
+
+    bool PopWorkNodeFromGlobal(uint32_t threadId);
+    void PushWorkNodeToGlobal(uint32_t threadId, bool postTask = true);
+
+    inline void PushWeakReference(uint32_t threadId, JSTaggedType *weak)
+    {
+        works_.at(threadId).weakQueue_->PushBack(weak);
+    }
+
+    inline ProcessQueue *GetWeakReferenceQueue(uint32_t threadId) const
+    {
+        return works_.at(threadId).weakQueue_;
+    }
+
+    inline uint32_t GetTotalThreadNum()
+    {
+        return threadNum_;
+    }
+
+    inline bool HasInitialized() const
+    {
+        return initialized_.load(std::memory_order_acquire);
+    }
+
+private:
+    NO_COPY_SEMANTIC(SharedGCWorkManager);
+    NO_MOVE_SEMANTIC(SharedGCWorkManager);
+
+    SharedHeap *sHeap_;
+    uint32_t threadNum_;
+    std::array<SharedGCWorkNodeHolder, MAX_TASKPOOL_THREAD_NUM + 1> works_;
+    std::array<ContinuousStack<JSTaggedType> *, MAX_TASKPOOL_THREAD_NUM + 1> continuousQueue_;
+    GlobalWorkStack workStack_;
     std::atomic<bool> initialized_ {false};
 };
 }  // namespace panda::ecmascript

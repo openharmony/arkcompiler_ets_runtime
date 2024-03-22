@@ -534,6 +534,8 @@ CString *HeapSnapshot::GenerateNodeName(TaggedObject *entry)
             return GetString("ResolvedBinding");
         case JSType::RESOLVEDINDEXBINDING_RECORD:
             return GetString("ResolvedIndexBinding");
+        case JSType::RESOLVEDRECORDBINDING_RECORD:
+            return GetString("ResolvedRecordBinding");
         case JSType::JS_MODULE_NAMESPACE:
             return GetString("ModuleNamespace");
         case JSType::JS_API_PLAIN_ARRAY:
@@ -641,6 +643,12 @@ NodeType HeapSnapshot::GenerateNodeType(TaggedObject *entry)
 
 void HeapSnapshot::FillNodes(bool isInFinish)
 {
+    SharedHeap *sHeap = SharedHeap::GetInstance();
+    if (sHeap != nullptr) {
+        sHeap->IterateOverObjects([this, isInFinish](TaggedObject *obj) {
+            GenerateNode(JSTaggedValue(obj), 0, isInFinish);
+        });
+    }
     // Iterate Heap Object
     auto heap = vm_->GetHeap();
     if (heap != nullptr) {
@@ -1036,6 +1044,7 @@ void HeapSnapshot::FillEdges()
                 continue;
             }
             Node *entryTo = nullptr;
+            EdgeType type = toValue.IsWeak() ? EdgeType::WEAK : (EdgeType)it.type_;
             if (toValue.IsWeak()) {
                 toValue.RemoveWeakTag();
             }
@@ -1048,8 +1057,8 @@ void HeapSnapshot::FillEdges()
             }
             if (entryTo != nullptr) {
                 Edge *edge = (it.type_ == Reference::ReferenceType::ELEMENT) ?
-                    Edge::NewEdge(chunk_, edgeCount_, (EdgeType)it.type_, entryFrom, entryTo, it.index_) :
-                    Edge::NewEdge(chunk_, edgeCount_, (EdgeType)it.type_, entryFrom, entryTo, GetString(it.name_));
+                    Edge::NewEdge(chunk_, edgeCount_, type, entryFrom, entryTo, it.index_) :
+                    Edge::NewEdge(chunk_, edgeCount_, type, entryFrom, entryTo, GetString(it.name_));
                 RenameFunction(it.name_, entryFrom, entryTo);
                 InsertEdgeUnique(edge);
                 (*iter)->IncEdgeCount();  // Update Node's edgeCount_ here

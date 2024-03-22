@@ -178,7 +178,7 @@ HWTEST_F_L0(AccessorDataTest, CallInternalSet)
     JSFunction *func1 = globalEnv->GetObjectFunction().GetObject<JSFunction>();
     Method::Cast(func1->GetMethod().GetTaggedObject())->SetFunctionKind(FunctionKind::BASE_CONSTRUCTOR);
     JSHandle<JSFunction> funcTagVal1 =
-        factory->CloneJSFuction(JSHandle<JSFunction>(thread, func1));
+        factory->CloneJSFunction(JSHandle<JSFunction>(thread, func1));
 
     // Call the CallInternalGet method to inspect prototype.
     JSHandle<JSTaggedValue> nullPrototypeHandle(thread, JSTaggedValue::Null());

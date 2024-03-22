@@ -65,6 +65,7 @@ public:
     panda::ecmascript::FrameType GetFrameType() const;
     void SetFrameType(panda::ecmascript::FrameType type);
     GateRef GetConstantGate(MachineType machineType, uint64_t value, GateType type);
+    GateRef GetConstantGateWithoutCache(MachineType machineType, uint64_t value, GateType type);
     void ClearConstantCache(MachineType machineType, uint64_t value, GateType type);
     GateRef GetConstantStringGate(MachineType machineType, std::string_view str, GateType type);
     GateRef NewArg(MachineType machineType, size_t index, GateType type, GateRef argRoot);
@@ -217,8 +218,10 @@ public:
 
 private:
     static const size_t CIRCUIT_SPACE = 1U << 30U;  // 1GB
-
+public:
     void Print(GateRef gate) const;
+
+private:
     GateType GetGateType(GateRef gate) const;
     GateRef GetGateRef(const Gate *gate) const;
     MachineType GetMachineType(GateRef gate) const;

@@ -44,12 +44,17 @@ JSTaggedValue BuiltinsFunction::FunctionPrototypeInvokeSelf([[maybe_unused]] Ecm
     return JSTaggedValue::Undefined();
 }
 namespace {
-static size_t MakeArgListWithHole(JSThread *thread, TaggedArray *argv, size_t length)
+static size_t MakeArgListWithHole(JSThread *thread, TaggedArray *argv, int length)
 {
-    if (length > argv->GetLength()) {
-        length = argv->GetLength();
+    if (length <= 0) {
+        return 0;
     }
-    for (size_t index = 0; index < length; ++index) {
+    size_t newlength = static_cast<size_t>(length);
+    size_t arryLength = argv->GetLength();
+    if (newlength > arryLength) {
+        length = arryLength;
+    }
+    for (size_t index = 0; index < newlength; ++index) {
         JSTaggedValue value = argv->Get(thread, index);
         if (value.IsHole()) {
             argv->Set(thread, index, JSTaggedValue::Undefined());
@@ -75,7 +80,7 @@ static std::pair<TaggedArray*, size_t> BuildArgumentsListFast(JSThread *thread,
         if (!result.IsInt()) {
             return std::make_pair(nullptr, 0);
         }
-        size_t length = static_cast<size_t>(result.GetInt());
+        auto length = result.GetInt();
         size_t res = MakeArgListWithHole(thread, elements, length);
         return std::make_pair(elements, res);
     } else if (arrayObj->IsStableJSArray(thread)) {

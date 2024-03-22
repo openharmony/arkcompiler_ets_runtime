@@ -83,8 +83,8 @@ std::pair<JSTaggedValue, bool> ObjectFastOperator::HasOwnProperty(JSThread *thre
     }
 
     if (!EcmaStringAccessor(key).IsInternString()) {
-        EcmaString *str =
-            thread->GetEcmaVM()->GetEcmaStringTable()->TryGetInternString(EcmaString::Cast(key.GetTaggedObject()));
+        JSHandle<EcmaString> keyHandle(thread, key);
+        EcmaString *str = thread->GetEcmaVM()->GetEcmaStringTable()->TryGetInternString(thread, keyHandle);
         if (str == nullptr) {
             return std::make_pair(JSTaggedValue::Hole(), true);
         }
@@ -247,7 +247,7 @@ JSTaggedValue ObjectFastOperator::SetPropertyByName(JSThread *thread, JSTaggedVa
                     break;
                 }
                 if (holder.IsJSShared() && (sCheckMode == SCheckMode::CHECK)) {
-                    if (!ClassHelper::MatchTrackType(attr.GetTrackType(), value)) {
+                    if (!ClassHelper::MatchFieldType(attr.GetSharedFieldType(), value)) {
                         THROW_TYPE_ERROR_AND_RETURN((thread), GET_MESSAGE_STRING(SetTypeMismatchedSharedProperty),
                                                     JSTaggedValue::Exception());
                     }
@@ -283,7 +283,7 @@ JSTaggedValue ObjectFastOperator::SetPropertyByName(JSThread *thread, JSTaggedVa
                     break;
                 }
                 if ((sCheckMode == SCheckMode::CHECK) && holder.IsJSShared()) {
-                    if (!ClassHelper::MatchTrackType(attr.GetDictTrackType(), value)) {
+                    if (!ClassHelper::MatchFieldType(attr.GetDictSharedFieldType(), value)) {
                         THROW_TYPE_ERROR_AND_RETURN((thread), GET_MESSAGE_STRING(SetTypeMismatchedSharedProperty),
                                                     JSTaggedValue::Exception());
                     }

@@ -116,6 +116,7 @@ GateRef NumberSpeculativeRetype::VisitGate(GateRef gate)
         case OpCode::CONSTANT:
             return VisitConstant(gate);
         case OpCode::TYPED_CALL_BUILTIN:
+        case OpCode::TYPED_CALL_BUILTIN_SIDE_EFFECT:
             return VisitCallBuiltins(gate);
         case OpCode::TYPE_CONVERT:
             return VisitTypeConvert(gate);
@@ -133,6 +134,27 @@ GateRef NumberSpeculativeRetype::VisitGate(GateRef gate)
             return VisitIntermediateValue(gate);
         case OpCode::NUMBER_TO_STRING:
             return VisitNumberToString(gate);
+        case OpCode::MATH_LOG:
+        case OpCode::MATH_LOG2:
+        case OpCode::MATH_LOG10:
+        case OpCode::MATH_LOG1P:
+        case OpCode::MATH_ACOS:
+        case OpCode::MATH_ACOSH:
+        case OpCode::MATH_ASIN:
+        case OpCode::MATH_ASINH:
+        case OpCode::MATH_ATAN:
+        case OpCode::MATH_ATAN2:
+        case OpCode::MATH_ATANH:
+        case OpCode::MATH_COS:
+        case OpCode::MATH_COSH:
+        case OpCode::MATH_SIN:
+        case OpCode::MATH_SINH:
+        case OpCode::MATH_TAN:
+        case OpCode::MATH_TANH:
+        case OpCode::MATH_POW:
+            return VisitMathBuiltin(gate);
+        case OpCode::MATH_ABS:
+            return VisitMathAbs(gate);
         case OpCode::JS_BYTECODE:
         case OpCode::PRIMITIVE_TYPE_CHECK:
         case OpCode::STABLE_ARRAY_CHECK:
@@ -160,6 +182,7 @@ GateRef NumberSpeculativeRetype::VisitGate(GateRef gate)
         case OpCode::ORDINARY_HAS_INSTANCE:
         case OpCode::ECMA_STRING_CHECK:
         case OpCode::CREATE_ARGUMENTS:
+        case OpCode::TAGGED_TO_INT64:
             return VisitOthers(gate);
         default:
             return Circuit::NullGate();
@@ -201,7 +224,7 @@ GateRef NumberSpeculativeRetype::VisitUndefinedEqualCompareOrUndefinedNotEqualCo
            acc_.GetTypedBinaryOp(gate) == TypedBinOp::TYPED_NOTEQ);
     GateRef left = acc_.GetValueIn(gate, 0);
     GateRef right = acc_.GetValueIn(gate, 1);
-    ASSERT((acc_.IsUndefinedOrNull(left)) || (acc_.IsUndefinedOrNull(right)));
+    ASSERT((acc_.IsUndefinedOrNullOrHole(left)) || (acc_.IsUndefinedOrNullOrHole(right)));
     if (IsRetype()) {
         return SetOutputType(gate, GateType::BooleanType());
     }
@@ -414,7 +437,8 @@ GateRef NumberSpeculativeRetype::VisitNumberBinaryOp(GateRef gate)
         case TypedBinOp::TYPED_ADD:
         case TypedBinOp::TYPED_SUB:
         case TypedBinOp::TYPED_MUL:
-        case TypedBinOp::TYPED_DIV: {
+        case TypedBinOp::TYPED_DIV:
+        case TypedBinOp::TYPED_MOD: {
             return VisitNumberCalculate(gate);
         }
         case TypedBinOp::TYPED_LESS:
@@ -434,9 +458,6 @@ GateRef NumberSpeculativeRetype::VisitNumberBinaryOp(GateRef gate)
         case TypedBinOp::TYPED_OR:
         case TypedBinOp::TYPED_XOR: {
             return VisitNumberShiftAndLogical(gate);
-        }
-        case TypedBinOp::TYPED_MOD: {
-            return VisitNumberMod(gate);
         }
         default:
             return VisitNumberRelated(gate);
@@ -646,7 +667,7 @@ GateRef NumberSpeculativeRetype::VisitNumberRelated(GateRef gate)
             GateRef input = acc_.GetValueIn(gate, i);
             GateType inputType = acc_.GetGateType(input);
             if (inputType.IsNumberType() || inputType.IsBooleanType()) {
-                acc_.ReplaceValueIn(gate, CheckAndConvertToTagged(input, inputType), i);
+                acc_.ReplaceValueIn(gate, CheckAndConvertToTagged(input, inputType, ConvertToNumber::BOOL_ONLY), i);
             }
         }
         acc_.ReplaceStateIn(gate, builder_.GetState());
@@ -946,7 +967,8 @@ GateRef NumberSpeculativeRetype::CheckAndConvertToInt32(GateRef gate, GateType g
     return result;
 }
 
-GateRef NumberSpeculativeRetype::CheckAndConvertToFloat64(GateRef gate, GateType gateType, ConvertSupport support)
+GateRef NumberSpeculativeRetype::CheckAndConvertToFloat64(GateRef gate, GateType gateType,
+                                                          ConvertToNumber convert)
 {
     auto result = TryConvertConstant(gate, false);
     if (result != Circuit::NullGate()) {
@@ -957,7 +979,7 @@ GateRef NumberSpeculativeRetype::CheckAndConvertToFloat64(GateRef gate, GateType
     TypeInfo output = GetOutputTypeInfo(gate);
     switch (output) {
         case TypeInfo::INT1:
-            result = builder_.ConvertBoolToFloat64(gate, support);
+            result = builder_.ConvertBoolToFloat64(gate, ToConvertSupport(convert));
             break;
         case TypeInfo::INT32:
             result = builder_.ConvertInt32ToFloat64(gate);
@@ -987,7 +1009,14 @@ GateRef NumberSpeculativeRetype::CheckAndConvertToFloat64(GateRef gate, GateType
                 result = builder_.CheckUndefinedAndConvertToFloat64(gate);
             } else {
                 ASSERT(gateType.IsNumberType());
-                result = builder_.CheckTaggedNumberAndConvertToFloat64(gate);
+                if (convert == ConvertToNumber::ALL) {
+                    GateRef glue = acc_.GetGlueFromArgList();
+                    GateRef number = builder_.ToNumber(glue, gate, glue);
+                    ResizeAndSetTypeInfo(number, TypeInfo::TAGGED);
+                    result = builder_.GetDoubleOfTNumber(number);
+                } else {
+                    result = builder_.CheckTaggedNumberAndConvertToFloat64(gate);
+                }
             }
             break;
         }
@@ -1001,7 +1030,7 @@ GateRef NumberSpeculativeRetype::CheckAndConvertToFloat64(GateRef gate, GateType
     return result;
 }
 
-GateRef NumberSpeculativeRetype::CheckAndConvertToTagged(GateRef gate, GateType gateType)
+GateRef NumberSpeculativeRetype::CheckAndConvertToTagged(GateRef gate, GateType gateType, ConvertToNumber convert)
 {
     TypeInfo output = GetOutputTypeInfo(gate);
     switch (output) {
@@ -1019,6 +1048,15 @@ GateRef NumberSpeculativeRetype::CheckAndConvertToTagged(GateRef gate, GateType 
             return builder_.CheckHoleDoubleAndConvertToTaggedDouble(gate);
         case TypeInfo::NONE:
         case TypeInfo::TAGGED: {
+            if (convert == ConvertToNumber::ALL) {
+                // Convert if not number
+                ASSERT(gateType.IsNumberType());
+                GateRef glue = acc_.GetGlueFromArgList();
+                GateRef ret = builder_.ToNumber(glue, gate, glue);
+                ResizeAndSetTypeInfo(ret, TypeInfo::TAGGED);
+                return ret;
+            }
+            // Deoptimize if not number
             ASSERT(gateType.IsNumberType() || gateType.IsBooleanType());
             builder_.TryPrimitiveTypeCheck(gateType, gate);
             return gate;
@@ -1215,7 +1253,7 @@ GateRef NumberSpeculativeRetype::VisitStoreProperty(GateRef gate)
     if (plr.GetRepresentation() == Representation::DOUBLE) {
         acc_.SetMetaData(gate, circuit_->StorePropertyNoBarrier());
         acc_.ReplaceValueIn(
-            gate, CheckAndConvertToFloat64(value, GateType::NumberType(), ConvertSupport::DISABLE), 2); // 2: value
+            gate, CheckAndConvertToFloat64(value, GateType::NumberType(), ConvertToNumber::DISABLE), 2); // 2: value
     } else if (plr.GetRepresentation() == Representation::INT) {
         acc_.SetMetaData(gate, circuit_->StorePropertyNoBarrier());
         acc_.ReplaceValueIn(
@@ -1284,22 +1322,35 @@ GateRef NumberSpeculativeRetype::VisitTypeConvert(GateRef gate)
     return Circuit::NullGate();
 }
 
-GateRef NumberSpeculativeRetype::VisitNumberMod(GateRef gate)
+GateRef NumberSpeculativeRetype::VisitMathBuiltin(GateRef gate)
 {
     if (IsRetype()) {
-        const PGOSampleType *sampleType = acc_.GetTypedBinaryType(gate).GetPGOSampleType();
-        if (sampleType->IsNumber()) {
-            return SetOutputType(gate, *sampleType);
-        } else {
-            GateType gateType = acc_.GetGateType(gate);
-            GateType resType = gateType.IsIntType() ? GateType::IntType() : GateType::DoubleType();
-            return SetOutputType(gate, resType);
-        }
-    } else if (IsConvert()) {
-        Environment env(gate, circuit_, &builder_);
-        ConvertForBinaryOp(gate);
+        return SetOutputType(gate, GateType::DoubleType());
     }
+    ASSERT(IsConvert());
+    Environment env(gate, circuit_, &builder_);
+    size_t valueNum = acc_.GetNumValueIn(gate);
+    for (size_t i = 0; i < valueNum; ++i) {
+        GateRef input = acc_.GetValueIn(gate, i);
+        acc_.ReplaceValueIn(gate, CheckAndConvertToFloat64(input, GateType::NumberType(), ConvertToNumber::BOOL_ONLY), i);
+    }
+    acc_.ReplaceStateIn(gate, builder_.GetState());
+    acc_.ReplaceDependIn(gate, builder_.GetDepend());
+    return Circuit::NullGate();
+}
 
+GateRef NumberSpeculativeRetype::VisitMathAbs(GateRef gate)
+{
+    if (IsRetype()) {
+        return SetOutputType(gate, GateType::NumberType());
+    }
+    ASSERT(IsConvert());
+    Environment env(gate, circuit_, &builder_);
+    ASSERT(acc_.GetNumValueIn(gate) == 1);
+    GateRef input = acc_.GetValueIn(gate, 0);
+    acc_.ReplaceValueIn(gate, CheckAndConvertToTagged(input, GateType::NumberType(), ConvertToNumber::BOOL_ONLY), 0);
+    acc_.ReplaceStateIn(gate, builder_.GetState());
+    acc_.ReplaceDependIn(gate, builder_.GetDepend());
     return Circuit::NullGate();
 }
 
@@ -1369,7 +1420,7 @@ GateRef NumberSpeculativeRetype::VisitMonoStoreProperty(GateRef gate)
     if (plr.GetRepresentation() == Representation::DOUBLE) {
         acc_.SetStoreNoBarrier(gate, true);
         acc_.ReplaceValueIn(
-            gate, CheckAndConvertToFloat64(value, GateType::NumberType(), ConvertSupport::DISABLE), 4); // 4: value
+            gate, CheckAndConvertToFloat64(value, GateType::NumberType(), ConvertToNumber::DISABLE), 4); // 4: value
     } else if (plr.GetRepresentation() == Representation::INT) {
         acc_.SetStoreNoBarrier(gate, true);
         acc_.ReplaceValueIn(

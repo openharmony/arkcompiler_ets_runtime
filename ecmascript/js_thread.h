@@ -29,7 +29,9 @@
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/js_thread_hclass_entries.h"
 #include "ecmascript/js_thread_stub_entries.h"
+#include "ecmascript/log_wrapper.h"
 #include "ecmascript/mem/visitor.h"
+#include "ecmascript/mutator_lock.h"
 
 namespace panda::ecmascript {
 class EcmaContext;
@@ -40,7 +42,6 @@ class PropertiesCache;
 template<typename T>
 class EcmaGlobalStorage;
 class Node;
-class SingleCharTable;
 class DebugNode;
 class VmThreadControl;
 using WeakClearCallback = void (*)(void *);
@@ -63,6 +64,34 @@ enum class BCStubStatus: uint8_t {
 };
 
 enum class StableArrayChangeKind { PROTO, NOT_PROTO };
+
+enum ThreadFlag : uint16_t {
+    NO_FLAGS = 0 << 0,
+    SUSPEND_REQUEST = 1 << 0
+};
+
+static constexpr uint32_t THREAD_STATE_OFFSET = 16;
+enum class ThreadState : uint16_t {
+    CREATED = 0,
+    RUNNING = 1,
+    NATIVE = 2,
+    WAIT = 3,
+    IS_SUSPENDED = 4,
+    TERMINATED = 5,
+};
+
+union ThreadStateAndFlags {
+    explicit ThreadStateAndFlags(uint32_t val = 0): asInt(val) {}
+    struct {
+        volatile uint16_t flags;
+        volatile ThreadState state;
+    } asStruct;
+    volatile uint32_t asInt;
+    uint32_t asNonvolatileInt;
+    std::atomic<uint32_t> asAtomicInt;
+private:
+    NO_COPY_SEMANTIC(ThreadStateAndFlags);
+};
 
 static constexpr uint32_t MAIN_THREAD_INDEX = 0;
 
@@ -101,6 +130,7 @@ public:
     }
 
     static JSThread *Create(EcmaVM *vm);
+    static JSThread *GetCurrent();
 
     int GetNestedLevel() const
     {
@@ -170,6 +200,16 @@ public:
         glueData_.newSpaceAllocationEndAddress_ = end;
     }
 
+    uintptr_t GetUnsharedConstpools() const
+    {
+        return glueData_.unsharedConstpools_;
+    }
+
+    void SetUnsharedConstpools(uintptr_t unsharedConstpools)
+    {
+        glueData_.unsharedConstpools_ = unsharedConstpools;
+    }
+
     void SetIsStartHeapSampling(bool isStart)
     {
         glueData_.isStartHeapSampling_ = isStart ? JSTaggedValue::True() : JSTaggedValue::False();
@@ -189,11 +229,6 @@ public:
     void PUBLIC_API ShrinkHandleStorage(int prevIndex);
     void PUBLIC_API CheckJSTaggedType(JSTaggedType value) const;
     bool PUBLIC_API CpuProfilerCheckJSTaggedType(JSTaggedType value) const;
-
-    std::vector<std::pair<WeakClearCallback, void *>> *GetWeakNodeNativeFinalizeCallbacks()
-    {
-        return &weakNodeNativeFinalizeCallbacks_;
-    }
 
     void PUBLIC_API SetException(JSTaggedValue exception);
 
@@ -243,11 +278,17 @@ public:
 
     void ResetGuardians();
 
-    void SetInitialBuiltinHClass(BuiltinTypeId type, JSHClass *builtinHClass, JSHClass *prototypeHClass);
+    void SetInitialBuiltinHClass(
+        BuiltinTypeId type, JSHClass *builtinHClass, JSHClass *instanceHClass,
+                            JSHClass *prototypeHClass, JSHClass *prototypeOfPrototypeHClass = nullptr);
 
     JSHClass *GetBuiltinHClass(BuiltinTypeId type) const;
 
+    JSHClass *GetBuiltinInstanceHClass(BuiltinTypeId type) const;
+    JSHClass *GetArrayInstanceHClass(ElementsKind kind) const;
+
     PUBLIC_API JSHClass *GetBuiltinPrototypeHClass(BuiltinTypeId type) const;
+    PUBLIC_API JSHClass *GetBuiltinPrototypeOfPrototypeHClass(BuiltinTypeId type) const;
 
     static size_t GetBuiltinHClassOffset(BuiltinTypeId, bool isArch32);
 
@@ -321,17 +362,14 @@ public:
         return id_.load(std::memory_order_relaxed);
     }
 
-    void SetThreadId()
-    {
-        id_.store(JSThread::GetCurrentThreadId(), std::memory_order_relaxed);
-    }
+    void PostFork();
 
     static ThreadId GetCurrentThreadId()
     {
         return os::thread::GetCurrentThreadId();
     }
 
-    void IterateWeakEcmaGlobalStorage(const WeakRootVisitor &visitor);
+    void IterateWeakEcmaGlobalStorage(const WeakRootVisitor &visitor, bool isSharedGC = false);
 
     PUBLIC_API PropertiesCache *GetPropertiesCache() const;
 
@@ -476,6 +514,16 @@ public:
     bool GetEnableLazyBuiltins() const
     {
         return enableLazyBuiltins_;
+    }
+
+    void SetReadyForGCIterating()
+    {
+        readyForGCIterating_ = true;
+    }
+
+    bool ReadyForGCIterating() const
+    {
+        return readyForGCIterating_;
     }
 
     static constexpr size_t GetGlueDataOffset()
@@ -745,6 +793,8 @@ public:
         glueData_.isDebugMode_ = false;
     }
 
+    void InvokeWeakNodeFreeGlobalCallBack();
+    void InvokeWeakNodeNativeFinalizeCallback();
     bool IsStartGlobalLeakCheck() const;
     bool EnableGlobalObjectLeakCheck() const;
     bool EnableGlobalPrimitiveLeakCheck() const;
@@ -796,8 +846,9 @@ public:
                                                  JSTaggedValue,
                                                  base::AlignedPointer,
                                                  BuiltinEntries,
-                                                 JSTaggedValue,
-                                                 base::AlignedBool> {
+                                                 base::AlignedBool,
+                                                 base::AlignedPointer,
+                                                 base::AlignedUint32> {
         enum class Index : size_t {
             BCStubEntriesIndex = 0,
             ExceptionIndex,
@@ -828,8 +879,9 @@ public:
             EntryFrameDroppedStateIndex,
             CurrentContextIndex,
             BuiltinEntriesIndex,
-            SingleCharTableIndex,
             IsTracingIndex,
+            unsharedConstpoolsIndex,
+            stateAndFlagsIndex,
             NumOfMembers
         };
         static_assert(static_cast<size_t>(Index::NumOfMembers) == NumOfTypes);
@@ -914,9 +966,20 @@ public:
             return GetBuiltinHClassEntriesOffset(isArch32) + BuiltinHClassEntries::GetBuiltinHClassOffset(type);
         }
 
+        static size_t GetBuiltinInstanceHClassOffset(BuiltinTypeId type, bool isArch32)
+        {
+            return GetBuiltinHClassEntriesOffset(isArch32) + BuiltinHClassEntries::GetInstanceHClassOffset(type);
+        }
+
         static size_t GetBuiltinPrototypeHClassOffset(BuiltinTypeId type, bool isArch32)
         {
             return GetBuiltinHClassEntriesOffset(isArch32) + BuiltinHClassEntries::GetPrototypeHClassOffset(type);
+        }
+
+        static size_t GetBuiltinPrototypeOfPrototypeHClassOffset(BuiltinTypeId type, bool isArch32)
+        {
+            return GetBuiltinHClassEntriesOffset(isArch32) +
+                   BuiltinHClassEntries::GetPrototypeOfPrototypeHClassOffset(type);
         }
 
         static size_t GetBCDebuggerStubEntriesOffset(bool isArch32)
@@ -984,14 +1047,19 @@ public:
             return GetOffset<static_cast<size_t>(Index::BuiltinEntriesIndex)>(isArch32);
         }
 
-        static size_t GetSingleCharTableOffset(bool isArch32)
-        {
-            return GetOffset<static_cast<size_t>(Index::SingleCharTableIndex)>(isArch32);
-        }
-
         static size_t GetIsTracingOffset(bool isArch32)
         {
             return GetOffset<static_cast<size_t>(Index::IsTracingIndex)>(isArch32);
+        }
+
+        static size_t GetUnSharedConstpoolsOffset(bool isArch32)
+        {
+            return GetOffset<static_cast<size_t>(Index::unsharedConstpoolsIndex)>(isArch32);
+        }
+
+        static size_t GetStateAndFlagsOffset(bool isArch32)
+        {
+            return GetOffset<static_cast<size_t>(Index::stateAndFlagsIndex)>(isArch32);
         }
 
         alignas(EAS) BCStubEntries bcStubEntries_;
@@ -1012,8 +1080,8 @@ public:
         alignas(EAS) JSTaggedType *frameBase_ {nullptr};
         alignas(EAS) uint64_t stackStart_ {0};
         alignas(EAS) uint64_t stackLimit_ {0};
-        alignas(EAS) GlobalEnv *glueGlobalEnv_;
-        alignas(EAS) GlobalEnvConstants *globalConst_;
+        alignas(EAS) GlobalEnv *glueGlobalEnv_ {nullptr};
+        alignas(EAS) GlobalEnvConstants *globalConst_ {nullptr};
         alignas(EAS) bool allowCrossThreadExecution_ {false};
         alignas(EAS) volatile uint64_t interruptVector_ {0};
         alignas(EAS) JSTaggedValue isStartHeapSampling_ {JSTaggedValue::False()};
@@ -1023,8 +1091,9 @@ public:
         alignas(EAS) uint64_t entryFrameDroppedState_ {FrameDroppedState::StateFalse};
         alignas(EAS) EcmaContext *currentContext_ {nullptr};
         alignas(EAS) BuiltinEntries builtinEntries_;
-        alignas(EAS) JSTaggedValue singleCharTable_ {JSTaggedValue::Hole()};
         alignas(EAS) bool isTracing_ {false};
+        alignas(EAS) uintptr_t unsharedConstpools_ {0};
+        alignas(EAS) ThreadStateAndFlags stateAndFlags_ {};
     };
     STATIC_ASSERT_EQ_ARCH(sizeof(GlueData), GlueData::SizeArch32, GlueData::SizeArch64);
 
@@ -1038,13 +1107,8 @@ public:
 
     JSTaggedValue GetSingleCharTable() const
     {
-        ASSERT(glueData_.singleCharTable_ != JSTaggedValue::Hole());
-        return glueData_.singleCharTable_;
-    }
-
-    void SetSingleCharTable(JSTaggedValue singleCharTable)
-    {
-        glueData_.singleCharTable_ = singleCharTable;
+        ASSERT(glueData_.globalConst_->GetSingleCharTable() != JSTaggedValue::Hole());
+        return glueData_.globalConst_->GetSingleCharTable();
     }
 
     void SwitchCurrentContext(EcmaContext *currentContext, bool isInIterate = false);
@@ -1066,6 +1130,47 @@ public:
     void InitializeBuiltinObject(const std::string& key);
     void InitializeBuiltinObject();
 
+    inline bool IsThreadSafe()
+    {
+        return IsMainThread() || IsSuspended();
+    }
+
+    inline bool IsSuspended()
+    {
+        return ReadFlag(ThreadFlag::SUSPEND_REQUEST);
+    }
+
+    void CheckSafepointIfSuspended()
+    {
+        if (IsSuspended()) {
+            CheckSafepoint();
+        }
+    }
+
+    bool IsInRunningState() const
+    {
+        return GetState() == ThreadState::RUNNING;
+    }
+
+    bool IsInRunningStateOrProfiling() const;
+
+    ThreadState GetState() const
+    {
+        uint32_t stateAndFlags = glueData_.stateAndFlags_.asAtomicInt.load(std::memory_order_acquire);
+        return static_cast<enum ThreadState>(stateAndFlags >> THREAD_STATE_OFFSET);
+    }
+    void UpdateState(ThreadState newState);
+    void SuspendThread(bool internalSuspend);
+    void ResumeThread(bool internalSuspend);
+    void WaitSuspension();
+    PUBLIC_API void ManagedCodeBegin();
+    PUBLIC_API void ManagedCodeEnd();
+#ifndef NDEBUG
+    bool IsInManagedState() const;
+    MutatorLock::MutatorLockState GetMutatorLockState() const;
+    void SetMutatorLockState(MutatorLock::MutatorLockState newState);
+#endif
+
 private:
     NO_COPY_SEMANTIC(JSThread);
     NO_MOVE_SEMANTIC(JSThread);
@@ -1081,6 +1186,28 @@ private:
     void SetArrayHClassIndexMap(const CMap<ElementsKind, ConstantIndex> &map)
     {
         arrayHClassIndexMap_ = map;
+    }
+
+    void SetThreadId()
+    {
+        id_.store(JSThread::GetCurrentThreadId(), std::memory_order_relaxed);
+    }
+
+    void TransferFromRunningToSuspended(ThreadState newState);
+    void TransferToRunning();
+    void StoreState(ThreadState newState, bool lockMutatorLock);
+    bool ReadFlag(ThreadFlag flag) const
+    {
+        return (glueData_.stateAndFlags_.asStruct.flags & static_cast<uint16_t>(flag)) != 0;
+    }
+    void SetFlag(ThreadFlag flag)
+    {
+        glueData_.stateAndFlags_.asAtomicInt.fetch_or(flag, std::memory_order_seq_cst);
+    }
+
+    void ClearFlag(ThreadFlag flag)
+    {
+        glueData_.stateAndFlags_.asAtomicInt.fetch_and(UINT32_MAX ^ flag, std::memory_order_seq_cst);
     }
 
     void DumpStack() DUMP_API_ATTR;
@@ -1100,6 +1227,8 @@ private:
     int nestedLevel_ = 0;
     NativeAreaAllocator *nativeAreaAllocator_ {nullptr};
     HeapRegionAllocator *heapRegionAllocator_ {nullptr};
+    bool runningNativeFinalizeCallbacks_ {false};
+    std::vector<std::pair<WeakClearCallback, void *>> weakNodeFreeGlobalCallbacks_ {};
     std::vector<std::pair<WeakClearCallback, void *>> weakNodeNativeFinalizeCallbacks_ {};
 
     EcmaGlobalStorage<Node> *globalStorage_ {nullptr};
@@ -1121,7 +1250,7 @@ private:
     VmThreadControl *vmThreadControl_ {nullptr};
     bool enableStackSourceFile_ {true};
     bool enableLazyBuiltins_ {false};
-
+    bool readyForGCIterating_ {false};
     // CpuProfiler
     bool isProfiling_ {false};
     bool gcState_ {false};
@@ -1135,6 +1264,14 @@ private:
     CVector<EcmaContext *> contexts_;
     EcmaContext *currentContext_ {nullptr};
     mutable Mutex interruptMutex_;
+
+    Mutex suspendLock_;
+    int32_t suspendCount_ {0};
+    ConditionVariable suspendCondVar_;
+
+#ifndef NDEBUG
+    MutatorLock::MutatorLockState mutatorLockState_ = MutatorLock::MutatorLockState::UNLOCKED;
+#endif
 
     friend class GlobalHandleCollection;
     friend class EcmaVM;

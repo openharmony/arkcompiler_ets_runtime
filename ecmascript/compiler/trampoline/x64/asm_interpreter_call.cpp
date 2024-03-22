@@ -118,7 +118,7 @@ void AsmInterpreterCall::GeneratorReEnterAsmInterpDispatch(ExtendedAssembler *as
         contextRegister, pcRegister, tempRegister);
 
     // call bc stub
-    DispatchCall(assembler, pcRegister, newSpRegister, methodRegister);
+    DispatchCall(assembler, pcRegister, newSpRegister, callTargetRegister, methodRegister);
     __ Bind(&stackOverflow);
     {
         ThrowStackOverflowExceptionAndReturn(assembler, glueRegister, fpRegister, tempRegister);
@@ -329,7 +329,7 @@ void AsmInterpreterCall::JSCallCommonEntry(ExtendedAssembler *assembler, JSCallM
         __ Movq(callTargetRegister, tempRegister);
         __ Movq(Operand(methodRegister, Method::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET), r12);  // pc: r12
         // Reload constpool and profileInfo to make sure gc map work normally
-        __ Movq(Operand(methodRegister, Method::PROFILE_TYPE_INFO_OFFSET), r14);       // profileTypeInfo: r14
+        __ Movq(Operand(tempRegister, JSFunction::PROFILE_TYPE_INFO_OFFSET), r14);       // profileTypeInfo: r14
         __ Movq(Operand(methodRegister, Method::CONSTANT_POOL_OFFSET), rbx);           // constantPool: rbx
 
         __ Movq(kungfu::BytecodeStubCSigns::ID_ThrowStackOverflowException, tempRegister);
@@ -709,7 +709,7 @@ void AsmInterpreterCall::PushVregs(ExtendedAssembler *assembler, Label *stackOve
         PushFrameState(assembler, prevSpRegister, fpRegister,
             callTargetRegister, thisRegister, methodRegister, pcRegister, tempRegister);
     }
-    DispatchCall(assembler, pcRegister, newSpRegister, methodRegister);
+    DispatchCall(assembler, pcRegister, newSpRegister, callTargetRegister, methodRegister);
 }
 
 // Input: %r13 - glue
@@ -717,7 +717,7 @@ void AsmInterpreterCall::PushVregs(ExtendedAssembler *assembler, Label *stackOve
 //        %r12 - callTarget
 //        %rbx - method
 void AsmInterpreterCall::DispatchCall(ExtendedAssembler *assembler, Register pcRegister,
-    Register newSpRegister, Register methodRegister, Register accRegister)
+    Register newSpRegister, Register callTargetRegister, Register methodRegister, Register accRegister)
 {
     Register glueRegister = __ GlueRegister();
     Label dispatchCall;
@@ -727,7 +727,7 @@ void AsmInterpreterCall::DispatchCall(ExtendedAssembler *assembler, Register pcR
     __ PushAlignBytes();
     __ Bind(&dispatchCall);
     // profileTypeInfo: r14
-    __ Movq(Operand(methodRegister, Method::PROFILE_TYPE_INFO_OFFSET), r14);
+    __ Movq(Operand(callTargetRegister, JSFunction::PROFILE_TYPE_INFO_OFFSET), r14);
     // glue may rdi
     if (glueRegister != r13) {
         __ Movq(glueRegister, r13);

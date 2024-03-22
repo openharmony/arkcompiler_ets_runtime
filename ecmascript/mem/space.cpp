@@ -22,7 +22,7 @@
 #include "ecmascript/mem/space.h"
 
 namespace panda::ecmascript {
-Space::Space(Heap* heap, HeapRegionAllocator *heapRegionAllocator,
+Space::Space(BaseHeap* heap, HeapRegionAllocator *heapRegionAllocator,
              MemSpaceType spaceType, size_t initialCapacity,
              size_t maximumCapacity)
     : heap_(heap),
@@ -66,12 +66,14 @@ void Space::ClearAndFreeRegion(Region *region, size_t cachedSize)
     LOG_ECMA_MEM(DEBUG) << "Clear region from:" << region << " to " << ToSpaceTypeName(spaceType_);
     region->DeleteCrossRegionRSet();
     region->DeleteOldToNewRSet();
+    region->DeleteLocalToShareRSet();
     region->DeleteSweepingRSet();
     DecreaseCommitted(region->GetCapacity());
     DecreaseObjectSize(region->GetSize());
     if (spaceType_ == MemSpaceType::OLD_SPACE || spaceType_ == MemSpaceType::NON_MOVABLE ||
         spaceType_ == MemSpaceType::MACHINE_CODE_SPACE || spaceType_ == MemSpaceType::LOCAL_SPACE ||
-        spaceType_ == MemSpaceType::APPSPAWN_SPACE) {
+        spaceType_ == MemSpaceType::APPSPAWN_SPACE || spaceType_ == MemSpaceType::SHARED_NON_MOVABLE ||
+        spaceType_ == MemSpaceType::SHARED_OLD_SPACE) {
         region->DestroyFreeObjectSets();
     }
     heapRegionAllocator_->FreeRegion(region, cachedSize);
@@ -98,6 +100,8 @@ HugeMachineCodeSpace::HugeMachineCodeSpace(Heap *heap, HeapRegionAllocator *heap
 
 uintptr_t HugeObjectSpace::Allocate(size_t objectSize, JSThread *thread)
 {
+    ASSERT(thread->IsInRunningStateOrProfiling());
+    thread->CheckSafepointIfSuspended();
     // In HugeObject allocation, we have a revervation of 8 bytes for markBitSet in objectSize.
     // In case Region is not aligned by 16 bytes, HUGE_OBJECT_BITSET_SIZE is 8 bytes more.
     size_t alignedSize = AlignUp(objectSize + sizeof(Region) + HUGE_OBJECT_BITSET_SIZE, PANDA_POOL_ALIGNMENT_IN_BYTES);
@@ -105,7 +109,7 @@ uintptr_t HugeObjectSpace::Allocate(size_t objectSize, JSThread *thread)
         LOG_ECMA_MEM(INFO) << "Committed size " << committedSize_ << " of huge object space is too big.";
         return 0;
     }
-    Region *region = heapRegionAllocator_->AllocateAlignedRegion(this, alignedSize, thread);
+    Region *region = heapRegionAllocator_->AllocateAlignedRegion(this, alignedSize, thread, heap_);
     AddRegion(region);
     // It need to mark unpoison when huge object being allocated.
     ASAN_UNPOISON_MEMORY_REGION(reinterpret_cast<void *>(region->GetBegin()), objectSize);

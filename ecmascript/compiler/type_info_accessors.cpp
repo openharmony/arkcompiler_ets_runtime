@@ -710,6 +710,8 @@ void AccBuiltinObjTypeInfoAccessor::FetchBuiltinsTypes()
                 continue;
             }
             types_.emplace_back(temp.GetReceiverType());
+        } else if (temp.GetReceiverType().IsGlobalsType()) {
+            types_.emplace_back(temp.GetReceiverType());
         }
     }
 }
@@ -717,7 +719,9 @@ void AccBuiltinObjTypeInfoAccessor::FetchBuiltinsTypes()
 bool AccBuiltinObjTypeInfoAccessor::CheckDuplicatedBuiltinType(ProfileType newType) const
 {
     for (auto &type : types_) {
-        if (type.GetBuiltinsId() == newType.GetBuiltinsId()) {
+        if (type.GetBuiltinsType() == newType.GetBuiltinsType() &&
+            type.GetElementsKindBeforeTransition() == newType.GetElementsKindBeforeTransition() &&
+            type.GetElementsKindAfterTransition() == newType.GetElementsKindAfterTransition()) {
             // When elementsKind switch on, we should check elementsKind too.
             return true;
         }
@@ -768,8 +772,9 @@ void CreateObjWithBufferTypeInfoAccessor::Init()
     auto imm = acc_.GetConstantValue(index_);
     auto methodOffset = acc_.TryGetMethodOffset(GetGate());
     JSTaggedValue cp = tsManager_->GetConstantPool(methodOffset);
+    JSTaggedValue unsharedCp = thread_->GetCurrentEcmaContext()->FindUnsharedConstpool(cp);
     JSTaggedValue obj = ConstantPool::GetLiteralFromCache<ConstPoolType::OBJECT_LITERAL>(
-        tsManager_->GetEcmaVM()->GetJSThread(), cp, imm, recordName_);
+        tsManager_->GetEcmaVM()->GetJSThread(), unsharedCp, imm, recordName_);
     objHandle_ = JSHandle<JSObject>(thread_, obj);
 }
 

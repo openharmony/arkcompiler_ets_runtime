@@ -39,7 +39,7 @@ public:
         DEFVARIABLE(length, VariableType::INT32(), Int32(0));
         GateRef begin = Load(VariableType::INT32(), obj, IntPtr(JSAPIQueue::FRONT_OFFSET));
         GateRef end = Load(VariableType::INT32(), obj, IntPtr(JSAPIQueue::TAIL_OFFSET));
-        Branch(Int32GreaterThanOrEqual(end, begin), &endGreatBeging, &endNotGreatBeging);
+        BRANCH(Int32GreaterThanOrEqual(end, begin), &endGreatBeging, &endNotGreatBeging);
         Bind(&endGreatBeging);
         {
             length = Int32Sub(end, begin);

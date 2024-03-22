@@ -875,7 +875,7 @@ bool JSObject::SetPropertyForDataDescriptor(ObjectOperator *op, const JSHandle<J
         return false;
     }
     if (op->IsFound() && receiver->IsJSShared()) {
-        if (!ClassHelper::MatchTrackType(op->GetTrackType(), value.GetTaggedValue())) {
+        if (!ClassHelper::MatchFieldType(op->GetSharedFieldType(), value.GetTaggedValue())) {
             if (mayThrow) {
                 THROW_TYPE_ERROR_AND_RETURN(thread, GET_MESSAGE_STRING(SetTypeMismatchedSharedProperty), false);
             }
@@ -913,7 +913,7 @@ bool JSObject::SetPropertyForDataDescriptor(ObjectOperator *op, const JSHandle<J
             return false;
         }
         if (hasReceiver && receiver->IsJSShared() &&
-            !ClassHelper::MatchTrackType(op->GetTrackType(), value.GetTaggedValue())) {
+            !ClassHelper::MatchFieldType(op->GetSharedFieldType(), value.GetTaggedValue())) {
             if (mayThrow) {
                 THROW_TYPE_ERROR_AND_RETURN(thread, GET_MESSAGE_STRING(SetTypeMismatchedSharedProperty), false);
             }
@@ -1256,7 +1256,7 @@ bool JSObject::ValidateDataDescriptorWhenConfigurable(ObjectOperator *op, const 
         if (!desc.HasValue()) {
             THROW_TYPE_ERROR_AND_RETURN(op->GetThread(), GET_MESSAGE_STRING(UpdateSendableAttributes), false);
         }
-        if (!ClassHelper::MatchTrackType(current.GetTrackType(), desc.GetValue().GetTaggedValue())) {
+        if (!ClassHelper::MatchFieldType(current.GetSharedFieldType(), desc.GetValue().GetTaggedValue())) {
             THROW_TYPE_ERROR_AND_RETURN(op->GetThread(), GET_MESSAGE_STRING(SetTypeMismatchedSharedProperty), false);
         }
     }
@@ -1373,6 +1373,19 @@ bool JSObject::ValidateAndApplyPropertyDescriptor(ObjectOperator *op, bool exten
         // 10. If O is not undefined, then
         // a. For each field of Desc that is present, set the corresponding attribute of the property named P of object
         // O to the value of the field.
+        if (!desc.HasValue() && desc.HasWritable() && current.HasValue()) {
+            // [[Value]] and [[Writable]] attributes are set to the value of the corresponding field in Desc
+            // if Desc has that field or to the attribute's default value otherwise.
+            PropertyDescriptor newDesc = desc;
+            JSHandle<JSTaggedValue> valueHandle = current.GetValue();
+            if (valueHandle->IsPropertyBox()) {
+                JSTaggedValue value = PropertyBox::Cast(valueHandle->GetTaggedObject())->GetValue();
+                valueHandle = JSHandle<JSTaggedValue>(op->GetThread(), value);
+            }
+            newDesc.SetValue(valueHandle);
+            op->UpdateDetector();
+            return op->WriteDataPropertyInHolder(newDesc);
+        }
         op->UpdateDetector();
         return op->WriteDataPropertyInHolder(desc);
     }

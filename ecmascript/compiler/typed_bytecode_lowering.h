@@ -118,11 +118,13 @@ private:
                                      GateRef value, PropertyLookupResult plr, uint32_t receiverHClassIndex = 0);
     using AccessMode = PGOObjectAccessHelper::AccessMode;
     bool TryLowerTypedLdObjByNameForBuiltin(GateRef gate);
+    bool TryLowerTypedLdObjByNameForBuiltinsId(const LoadBulitinObjTypeInfoAccessor &tacc, BuiltinTypeId type);
     bool TryLowerTypedLdObjByNameForBuiltin(const LoadBulitinObjTypeInfoAccessor &tacc, BuiltinTypeId type);
+    bool TryLowerTypedLdObjByNameForGlobalsId(const LoadBulitinObjTypeInfoAccessor &tacc, ConstantIndex globalsId);
     void LowerTypedLdArrayLength(const LoadBulitinObjTypeInfoAccessor &tacc);
     void LowerTypedLdTypedArrayLength(const LoadBulitinObjTypeInfoAccessor &tacc);
     void LowerTypedLdStringLength(const LoadBulitinObjTypeInfoAccessor &tacc);
-    bool TryLowerTypedLdObjByNameForBuiltinMethod(GateRef gate, JSTaggedValue key, BuiltinTypeId type);
+    bool TryLowerTypedLdObjByNameForBuiltinMethod(const LoadBulitinObjTypeInfoAccessor &tacc, BuiltinTypeId type);
 
     void LowerTypedLdObjByIndex(GateRef gate);
     bool TryLowerTypedLdObjByIndexForBuiltin(GateRef gate);
@@ -202,7 +204,7 @@ private:
     void SpeculateNumber(const UnOpTypeInfoAccessor& tacc);
     void SpeculateConditionJump(const ConditionJumpTypeInfoAccessor &tacc, bool flag);
     void SpeculateCallBuiltin(GateRef gate, GateRef func, const std::vector<GateRef> &args,
-                              BuiltinsStubCSigns::ID id, bool isThrow);
+                              BuiltinsStubCSigns::ID id, bool isThrow, bool isSideEffect = false);
     void DeleteConstDataIfNoUser(GateRef gate);
     bool TryLowerNewBuiltinConstructor(GateRef gate);
     bool TryLowerTypedLdobjBynameFromGloablBuiltin(GateRef gate);

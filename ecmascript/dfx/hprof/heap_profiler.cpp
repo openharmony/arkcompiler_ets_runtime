@@ -15,6 +15,7 @@
 
 #include "ecmascript/dfx/hprof/heap_profiler.h"
 
+#include "ecmascript/checkpoint/thread_state_transition.h"
 #include "ecmascript/dfx/hprof/file_stream.h"
 #include "ecmascript/dfx/hprof/heap_snapshot.h"
 #include "ecmascript/ecma_vm.h"
@@ -23,6 +24,7 @@
 #include "ecmascript/mem/assert_scope.h"
 #include "ecmascript/mem/concurrent_sweeper.h"
 #include "ecmascript/mem/heap-inl.h"
+#include "ecmascript/mem/shared_heap/shared_concurrent_sweeper.h"
 
 #if defined(ENABLE_DUMP_IN_FAULTLOG)
 #include "faultloggerd_client.h"
@@ -127,8 +129,7 @@ void HeapProfiler::MoveEvent(uintptr_t address, TaggedObject *forwardAddress, si
 
 void HeapProfiler::UpdateHeapObjects(HeapSnapshot *snapshot)
 {
-    vm_->CollectGarbage(TriggerGCType::OLD_GC);
-    vm_->GetHeap()->GetSweeper()->EnsureAllTaskFinished();
+    ForceSharedGC();
     snapshot->UpdateNodes();
 }
 
@@ -151,23 +152,28 @@ void HeapProfiler::DumpHeapSnapshot([[maybe_unused]] DumpFormat dumpFormat, [[ma
 bool HeapProfiler::DumpHeapSnapshot(DumpFormat dumpFormat, Stream *stream, Progress *progress,
                                     bool isVmMode, bool isPrivate, bool captureNumericValue, bool isFullGC)
 {
-    if (isFullGC) {
-        [[maybe_unused]] bool heapClean = ForceFullGC(vm_);
-        ASSERT(heapClean);
-    }
-    LOG_ECMA(INFO) << "HeapProfiler DumpSnapshot start";
     int32_t heapCount = 0;
-    if (isFullGC) {
-        size_t heapSize = vm_->GetHeap()->GetLiveObjectSize();
-        LOG_ECMA(INFO) << "HeapProfiler DumpSnapshot heap size " << heapSize;
-        heapCount = static_cast<int32_t>(vm_->GetHeap()->GetHeapObjectCount());
-        if (progress != nullptr) {
-            progress->ReportProgress(0, heapCount);
+    HeapSnapshot *snapshot = nullptr;
+    {
+        if (isFullGC) {
+            [[maybe_unused]] bool heapClean = ForceFullGC(vm_);
+            ASSERT(heapClean);
         }
+        SuspendAllScope suspendScope(vm_->GetAssociatedJSThread());
+        ForceSharedGC();
+        LOG_ECMA(INFO) << "HeapProfiler DumpSnapshot start";
+        if (isFullGC) {
+            size_t heapSize = vm_->GetHeap()->GetLiveObjectSize();
+            LOG_ECMA(INFO) << "HeapProfiler DumpSnapshot heap size " << heapSize;
+            heapCount = static_cast<int32_t>(vm_->GetHeap()->GetHeapObjectCount());
+            if (progress != nullptr) {
+                progress->ReportProgress(0, heapCount);
+            }
+        }
+        snapshot = MakeHeapSnapshot(SampleType::ONE_SHOT, isVmMode, isPrivate, captureNumericValue,
+                                    false, isFullGC);
+        ASSERT(snapshot != nullptr);
     }
-    HeapSnapshot *snapshot = MakeHeapSnapshot(SampleType::ONE_SHOT, isVmMode, isPrivate, captureNumericValue,
-                                              false, isFullGC);
-    ASSERT(snapshot != nullptr);
     entryIdMap_->UpdateEntryIdMap(snapshot);
     isProfiling_ = true;
     if (progress != nullptr) {
@@ -187,6 +193,8 @@ bool HeapProfiler::DumpHeapSnapshot(DumpFormat dumpFormat, Stream *stream, Progr
 bool HeapProfiler::StartHeapTracking(double timeInterval, bool isVmMode, Stream *stream,
                                      bool traceAllocation, bool newThread)
 {
+    vm_->CollectGarbage(TriggerGCType::OLD_GC);
+    SuspendAllScope suspendScope(vm_->GetAssociatedJSThread());
     HeapSnapshot *snapshot = MakeHeapSnapshot(SampleType::REAL_TIME, isVmMode, false, false, traceAllocation);
     if (snapshot == nullptr) {
         return false;
@@ -211,8 +219,13 @@ bool HeapProfiler::UpdateHeapTracking(Stream *stream)
     if (snapshot == nullptr) {
         return false;
     }
-    snapshot->RecordSampleTime();
-    UpdateHeapObjects(snapshot);
+
+    {
+        vm_->CollectGarbage(TriggerGCType::OLD_GC);
+        SuspendAllScope suspendScope(vm_->GetAssociatedJSThread());
+        snapshot->RecordSampleTime();
+        UpdateHeapObjects(snapshot);
+    }
 
     if (stream != nullptr) {
         snapshot->PushHeapStat(stream);
@@ -241,7 +254,11 @@ bool HeapProfiler::StopHeapTracking(Stream *stream, Progress *progress, bool new
     if (progress != nullptr) {
         progress->ReportProgress(0, heapCount);
     }
-    snapshot->FinishSnapshot();
+    {
+        SuspendAllScope suspendScope(vm_->GetAssociatedJSThread());
+        snapshot->FinishSnapshot();
+    }
+
     isProfiling_ = false;
     if (progress != nullptr) {
         progress->ReportProgress(heapCount, heapCount);
@@ -303,6 +320,13 @@ bool HeapProfiler::ForceFullGC(const EcmaVM *vm)
         return true;
     }
     return false;
+}
+
+void HeapProfiler::ForceSharedGC()
+{
+    SharedHeap *sHeap = SharedHeap::GetInstance();
+    sHeap->CollectGarbageImpl(TriggerGCType::SHARED_GC, GCReason::OTHER);
+    sHeap->GetSweeper()->WaitAllTaskFinished();
 }
 
 HeapSnapshot *HeapProfiler::MakeHeapSnapshot(SampleType sampleType, bool isVmMode, bool isPrivate,

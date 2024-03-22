@@ -79,6 +79,8 @@ struct PatchInfo {
     CVector<JSHandle<JSTaggedValue>> baseConstpools;
     // patch replaced recordNames.
     CUnorderedSet<CString> replacedRecordNames;
+    // patch replaced methods.
+    CUnorderedMap<EntityId, CString> repalcedPatchMethods;
 };
 
 enum class StageOfHotReload : int32_t {
@@ -106,6 +108,9 @@ public:
     static void ExecuteFuncOrPatchMain(
         JSThread *thread, const JSPandaFile *jsPandaFile, const PatchInfo &patchInfo, bool loadPatch = true);
     static CMap<uint32_t, CString> CollectClassInfo(const JSPandaFile *jsPandaFile);
+    static void UpdateModuleForColdPatch(
+        JSThread *thread, EntityId methodId, CString &recordName, bool hasModule = true);
+    static void UpdateJSFunction(JSThread *thread, PatchInfo &patchInfo);
 
 private:
     static PatchInfo GeneratePatchInfo(const JSPandaFile *patchFile);
@@ -126,7 +131,11 @@ private:
 
     static void ReplaceModuleOfMethod(JSThread *thread, const JSPandaFile *baseFile, PatchInfo &patchInfo);
     static Method *GetPatchMethod(JSThread *thread,
-        const BaseMethodIndex &methodIndex, const ConstantPool *baseConstpool);
+        const BaseMethodIndex &methodIndex, const JSTaggedValue baseConstpool);
+    static void FindAndReplaceClassLiteral(JSThread *thread, const JSPandaFile *baseFile,
+                                           const JSPandaFile *patchFile, JSTaggedValue constpoolValue,
+                                           PatchInfo &patchInfo, uint32_t constpoolIndex,
+                                           uint32_t constpoolNum, const CMap<uint32_t, CString> &baseClassInfo);
 };
 }  // namespace panda::ecmascript
 #endif // ECMASCRIPT_PATCH_PATCH_LOADER_H

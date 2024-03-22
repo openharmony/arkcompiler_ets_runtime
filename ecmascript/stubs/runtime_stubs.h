@@ -110,20 +110,33 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(FatalPrintCustom)                        \
     V(GetActualArgvNoGC)                       \
     V(InsertOldToNewRSet)                      \
+    V(InsertLocalToShareRSet)                  \
     V(MarkingBarrier)                          \
     V(StoreBarrier)                            \
     V(DoubleToInt)                             \
     V(DoubleToLength)                          \
     V(FloatMod)                                \
     V(FloatSqrt)                               \
+    V(FloatAcos)                               \
+    V(FloatAcosh)                              \
+    V(FloatAsin)                               \
+    V(FloatAsinh)                              \
+    V(FloatAtan)                               \
+    V(FloatAtan2)                              \
+    V(FloatAtanh)                              \
     V(FloatCos)                                \
+    V(FloatCosh)                               \
     V(FloatSin)                                \
-    V(FloatACos)                               \
-    V(FloatATan)                               \
+    V(FloatSinh)                               \
+    V(FloatTan)                                \
+    V(FloatTanh)                               \
+    V(FloatLog)                                \
+    V(FloatLog2)                               \
+    V(FloatLog10)                              \
+    V(FloatLog1p)                              \
     V(FloatFloor)                              \
+    V(FloatPow)                                \
     V(FindElementWithCache)                    \
-    V(TryToElementsIndexOrFindInStringTable)   \
-    V(TryGetInternString)                      \
     V(CreateArrayFromList)                     \
     V(StringsAreEquals)                        \
     V(BigIntEquals)                            \
@@ -144,6 +157,7 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
 #define RUNTIME_STUB_WITH_GC_LIST(V)      \
     V(AddElementInternal)                 \
     V(AllocateInYoung)                    \
+    V(AllocateInSOld)                     \
     V(CallInternalGetter)                 \
     V(CallInternalSetter)                 \
     V(CallGetPrototype)                   \
@@ -171,6 +185,7 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(TaggedArraySetValue)                \
     V(JSArrayReduceUnStable)              \
     V(JSArrayFilterUnStable)              \
+    V(JSArrayMapUnStable)                 \
     V(CheckAndCopyArray)                  \
     V(NewEcmaHClass)                      \
     V(UpdateLayOutAndAddTransition)       \
@@ -215,6 +230,7 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(SetIteratorNext)                    \
     V(StringIteratorNext)                 \
     V(ArrayIteratorNext)                  \
+    V(IteratorReturn)                     \
     V(GetNextPropName)                    \
     V(GetNextPropNameSlowpath)            \
     V(ThrowIfNotObject)                   \
@@ -262,6 +278,7 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(StModuleVar)                        \
     V(LdLocalModuleVarByIndex)            \
     V(LdExternalModuleVarByIndex)         \
+    V(LdSendableExternalModuleVarByIndex) \
     V(LdLocalModuleVarByIndexOnJSFunc)    \
     V(LdExternalModuleVarByIndexOnJSFunc) \
     V(LdModuleVar)                        \
@@ -390,7 +407,9 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(FunctionDefineOwnProperty)          \
     V(AOTEnableProtoChangeMarker)         \
     V(HasProperty)                        \
-    V(DumpObject)
+    V(DumpObject)                         \
+    V(TryGetInternString)                 \
+    V(TryToElementsIndexOrFindInStringTable)
 
 #define RUNTIME_STUB_LIST(V)                     \
     RUNTIME_ASM_STUB_LIST(V)                     \
@@ -448,20 +467,33 @@ public:
         uintptr_t object, size_t offset, TaggedObject *value);
     static void StoreBarrier([[maybe_unused]] uintptr_t argGlue,
         uintptr_t object, size_t offset, TaggedObject *value);
-    static JSTaggedType TryToElementsIndexOrFindInStringTable(uintptr_t argGlue, JSTaggedType ecmaString);
-    static JSTaggedType TryGetInternString(uintptr_t argGlue, JSTaggedType ecmaString);
     static JSTaggedType CreateArrayFromList([[maybe_unused]] uintptr_t argGlue, int32_t argc, JSTaggedValue *argvPtr);
     static JSTaggedType GetActualArgvNoGC(uintptr_t argGlue);
     static void InsertOldToNewRSet([[maybe_unused]] uintptr_t argGlue, uintptr_t object, size_t offset);
+    static void InsertLocalToShareRSet([[maybe_unused]] uintptr_t argGlue, uintptr_t object, size_t offset);
     static int32_t DoubleToInt(double x, size_t bits);
     static JSTaggedType DoubleToLength(double x);
     static double FloatMod(double x, double y);
     static JSTaggedType FloatSqrt(double x);
-    static JSTaggedType FloatCos(double x);
-    static JSTaggedType FloatSin(double x);
-    static JSTaggedType FloatACos(double x);
-    static JSTaggedType FloatATan(double x);
-    static JSTaggedType FloatFloor(double x);
+    static double FloatAcos(double x);
+    static double FloatAcosh(double x);
+    static double FloatAsin(double x);
+    static double FloatAsinh(double x);
+    static double FloatAtan(double x);
+    static double FloatAtan2(double y, double x);
+    static double FloatAtanh(double x);
+    static double FloatCos(double x);
+    static double FloatCosh(double x);
+    static double FloatSin(double x);
+    static double FloatSinh(double x);
+    static double FloatTan(double x);
+    static double FloatTanh(double x);
+    static double FloatFloor(double x);
+    static double FloatLog(double x);
+    static double FloatLog2(double x);
+    static double FloatLog10(double x);
+    static double FloatLog1p(double x);
+    static double FloatPow(double base, double exp);
     static int32_t FindElementWithCache(uintptr_t argGlue, JSTaggedType hclass,
                                         JSTaggedType key, int32_t num);
     static bool StringsAreEquals(EcmaString *str1, EcmaString *str2);
@@ -586,7 +618,7 @@ private:
                                                                        ClassKind kind = ClassKind::NON_SENDABLE);
     static inline JSTaggedValue RuntimeSetClassConstructorLength(JSThread *thread, JSTaggedValue ctor,
                                                                  JSTaggedValue length);
-    static inline JSTaggedValue RuntimeNotifyInlineCache(JSThread *thread, const JSHandle<Method> &method,
+    static inline JSTaggedValue RuntimeNotifyInlineCache(JSThread *thread, const JSHandle<JSFunction> &function,
                                                          uint32_t icSlotSize);
     static inline JSTaggedValue RuntimeStOwnByValueWithNameSet(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
                                                                const JSHandle<JSTaggedValue> &key,
@@ -612,6 +644,8 @@ private:
     static inline JSTaggedValue RuntimeLdLocalModuleVar(JSThread *thread, int32_t index,
                                                         JSTaggedValue jsFunc);
     static inline JSTaggedValue RuntimeLdExternalModuleVar(JSThread *thread, int32_t index);
+    static inline JSTaggedValue RuntimeLdSendableExternalModuleVar(JSThread *thread, int32_t index,
+                                                                   JSTaggedValue jsFunc);
     static inline JSTaggedValue RuntimeLdExternalModuleVar(JSThread *thread, int32_t index,
                                                            JSTaggedValue jsFunc);
     static inline JSTaggedValue RuntimeLdModuleVar(JSThread *thread, JSTaggedValue key, bool inner);
@@ -725,7 +759,8 @@ private:
                                                                     uint16_t firstArgRegIdx);
     static inline JSTaggedValue RuntimeDefineMethod(JSThread *thread, const JSHandle<Method> &methodHandle,
                                                     const JSHandle<JSTaggedValue> &homeObject, uint16_t length,
-                                                    const JSHandle<JSTaggedValue> &env);
+                                                    const JSHandle<JSTaggedValue> &env,
+                                                    const JSHandle<JSTaggedValue> &module);
     static inline JSTaggedValue RuntimeCallSpread(JSThread *thread, const JSHandle<JSTaggedValue> &func,
                                                      const JSHandle<JSTaggedValue> &obj,
                                                      const JSHandle<JSTaggedValue> &array);
@@ -816,7 +851,7 @@ private:
     static inline bool ShouldUseAOTHClass(const JSHandle<JSTaggedValue> &ihc,
                                           const JSHandle<JSTaggedValue> &chc,
                                           const JSHandle<ClassLiteral> &classLiteral);
-    static inline JSTaggedType RuntimeTryGetInternString(uintptr_t argGlue, EcmaString *string);
+    static inline JSTaggedType RuntimeTryGetInternString(uintptr_t argGlue, const JSHandle<EcmaString> &string);
     friend class SlowRuntimeStub;
 };
 }  // namespace panda::ecmascript

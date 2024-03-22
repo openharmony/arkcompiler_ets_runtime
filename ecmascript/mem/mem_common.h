@@ -16,6 +16,7 @@
 #ifndef ECMASCRIPT_MEM_MEM_COMMON_H
 #define ECMASCRIPT_MEM_MEM_COMMON_H
 
+#include <cstddef>
 #include <cstdint>
 
 namespace panda::ecmascript {

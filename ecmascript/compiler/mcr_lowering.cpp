@@ -28,6 +28,9 @@ GateRef MCRLowering::VisitGate(GateRef gate)
 {
     auto op = acc_.GetOpCode(gate);
     switch (op) {
+        case OpCode::GET_UNSHARED_CONSTPOOL:
+            LowerGetUnsharedConstpool(gate);
+            break;
         case OpCode::STATE_SPLIT:
             DeleteStateSplit(gate);
             break;
@@ -40,6 +43,9 @@ GateRef MCRLowering::VisitGate(GateRef gate)
         case OpCode::HEAP_OBJECT_CHECK:
             LowerHeapObjectCheck(gate);
             break;
+        case OpCode::ECMA_OBJECT_CHECK:
+            LowerEcmaObjectCheck(gate);
+            break;
         case OpCode::ELEMENTSKIND_CHECK:
             LowerElementskindCheck(gate);
             break;
@@ -47,7 +53,7 @@ GateRef MCRLowering::VisitGate(GateRef gate)
             LowerLoadConstOffset(gate);
             break;
         case OpCode::LOAD_HCLASS_FROM_CONSTPOOL:
-            LowerLoadHClassFromConstpool(gate);
+            LowerLoadHClassFromUnsharedConstpool(gate);
             break;
         case OpCode::STORE_CONST_OFFSET:
             LowerStoreConstOffset(gate);
@@ -66,9 +72,6 @@ GateRef MCRLowering::VisitGate(GateRef gate)
             break;
         case OpCode::GET_GLOBAL_CONSTANT_VALUE:
             LowerGetGlobalConstantValue(gate);
-            break;
-        case OpCode::HEAP_ALLOC:
-            LowerHeapAllocate(gate);
             break;
         case OpCode::INT32_CHECK_RIGHT_IS_ZERO:
             LowerInt32CheckRightIsZero(gate);
@@ -142,7 +145,8 @@ void MCRLowering::LowerConvertHoleAsUndefined(GateRef gate)
     GateRef receiver = acc_.GetValueIn(gate, 0);
     DEFVALUE(result, (&builder_), VariableType::JS_ANY(), receiver);
 
-    builder_.Branch(builder_.TaggedIsHole(*result), &returnUndefined, &exit, 1, BranchWeight::DEOPT_WEIGHT);
+    builder_.Branch(builder_.TaggedIsHole(*result), &returnUndefined, &exit, 1, BranchWeight::DEOPT_WEIGHT,
+                    "holeCheck");
     builder_.Bind(&returnUndefined);
     {
         result = builder_.UndefineConstant();
@@ -162,7 +166,7 @@ void MCRLowering::LowerLoadConstOffset(GateRef gate)
     acc_.ReplaceGate(gate, Circuit::NullGate(), builder_.GetDepend(), result);
 }
 
-void MCRLowering::LowerLoadHClassFromConstpool(GateRef gate)
+void MCRLowering::LowerLoadHClassFromUnsharedConstpool(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
     GateRef constpool = acc_.GetValueIn(gate, 0);
@@ -195,6 +199,17 @@ void MCRLowering::LowerHeapObjectCheck(GateRef gate)
     GateRef heapObjectCheck = builder_.TaggedIsHeapObject(receiver);
     builder_.DeoptCheck(heapObjectCheck, frameState, DeoptType::NOTHEAPOBJECT1);
 
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
+}
+
+void MCRLowering::LowerEcmaObjectCheck(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    GateRef frameState = acc_.GetFrameState(gate);
+    GateRef value = acc_.GetValueIn(gate, 0);
+    GateRef condition = builder_.BoolAnd(builder_.TaggedIsHeapObject(value),
+                                         builder_.TaggedObjectIsEcmaObject(value));
+    builder_.DeoptCheck(condition, frameState, DeoptType::NOTECMAOBJECT1);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 
@@ -247,6 +262,18 @@ void MCRLowering::LowerIsSpecificObjectType(GateRef gate)
         }
     }
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
+}
+
+void MCRLowering::LowerGetUnsharedConstpool(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    GateRef constpool = acc_.GetValueIn(gate, 0); // 0: this object
+    GateRef newGate = builder_.GetUnsharedConstpoolFromGlue(glue_, constpool);
+
+    acc_.UpdateAllUses(gate, newGate);
+
+    // delete old gate
+    acc_.DeleteGate(gate);
 }
 
 void MCRLowering::DeleteStateSplit(GateRef gate)
@@ -400,7 +427,8 @@ GateRef MCRLowering::ConvertSpecialHoleIntToTagged(GateRef gate, Label* exit)
     Label returnTaggedInt(&builder_);
     DEFVALUE(result, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
 
-    builder_.Branch(builder_.IsSpecialHole(gate), &returnUndefined, &returnTaggedInt, 1, BranchWeight::DEOPT_WEIGHT);
+    builder_.Branch(builder_.IsSpecialHole(gate), &returnUndefined, &returnTaggedInt, 1, BranchWeight::DEOPT_WEIGHT,
+                    "specialHoleCheck");
     builder_.Bind(&returnUndefined);
     {
         result = builder_.UndefineConstant();
@@ -422,7 +450,8 @@ GateRef MCRLowering::ConvertSpecialHoleDoubleToTagged(GateRef gate, Label* exit)
     Label returnTaggedDouble(&builder_);
     DEFVALUE(result, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
 
-    builder_.Branch(builder_.IsSpecialHole(gate), &returnUndefined, &returnTaggedDouble, 1, BranchWeight::DEOPT_WEIGHT);
+    builder_.Branch(builder_.IsSpecialHole(gate), &returnUndefined, &returnTaggedDouble, 1, BranchWeight::DEOPT_WEIGHT,
+                    "specialHoleCheck");
     builder_.Bind(&returnUndefined);
     {
         result = builder_.UndefineConstant();
@@ -444,7 +473,7 @@ GateRef MCRLowering::ConvertTaggedNumberToBool(GateRef gate, Label *exit)
     Label isInt(&builder_);
     Label isDouble(&builder_);
     Label toInt32(&builder_);
-    builder_.Branch(builder_.TaggedIsInt(gate), &isInt, &isDouble);
+    BRANCH_CIR(builder_.TaggedIsInt(gate), &isInt, &isDouble);
     builder_.Bind(&isInt);
     {
         GateRef intVal = builder_.GetInt64OfTInt(gate);
@@ -467,7 +496,7 @@ GateRef MCRLowering::ConvertTaggedNumberToInt32(GateRef gate, Label *exit)
     Label isInt(&builder_);
     Label isDouble(&builder_);
     Label toInt32(&builder_);
-    builder_.Branch(builder_.TaggedIsInt(gate), &isInt, &isDouble);
+    BRANCH_CIR(builder_.TaggedIsInt(gate), &isInt, &isDouble);
     builder_.Bind(&isInt);
     result = ConvertTaggedIntToInt32(gate);
     builder_.Jump(exit);
@@ -483,7 +512,7 @@ GateRef MCRLowering::ConvertTaggedNumberToFloat64(GateRef gate, Label *exit)
     DEFVALUE(result, (&builder_), VariableType::FLOAT64(), builder_.Double(0));
     Label isInt(&builder_);
     Label isDouble(&builder_);
-    builder_.Branch(builder_.TaggedIsInt(gate), &isInt, &isDouble);
+    BRANCH_CIR(builder_.TaggedIsInt(gate), &isInt, &isDouble);
     builder_.Bind(&isInt);
     result = ConvertInt32ToFloat64(ConvertTaggedIntToInt32(gate));
     builder_.Jump(exit);
@@ -722,7 +751,7 @@ GateRef MCRLowering::ConvertUInt32ToTaggedNumber(GateRef gate, Label *exit)
     Label notOverFlow(&builder_);
     GateRef upperBound = builder_.Int32(INT32_MAX);
     DEFVALUE(taggedVal, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
-    builder_.Branch(builder_.Int32UnsignedLessThanOrEqual(gate, upperBound), &notOverFlow, &isOverFlow);
+    BRANCH_CIR(builder_.Int32UnsignedLessThanOrEqual(gate, upperBound), &notOverFlow, &isOverFlow);
     builder_.Bind(&notOverFlow);
     taggedVal = builder_.Int32ToTaggedPtr(gate);
     builder_.Jump(exit);
@@ -811,53 +840,13 @@ void MCRLowering::LowerGetGlobalConstantValue(GateRef gate)
     acc_.ReplaceGate(gate, Circuit::NullGate(), builder_.GetDepend(), result);
 }
 
-void MCRLowering::LowerHeapAllocate(GateRef gate)
+void MCRLowering::HeapAllocateInSOld(GateRef gate)
 {
-    Environment env(gate, circuit_, &builder_);
-    auto flag = acc_.TryGetValue(gate);
-    switch (flag) {
-        case RegionSpaceFlag::IN_YOUNG_SPACE:
-            HeapAllocateInYoung(gate);
-            break;
-        default:
-            LOG_ECMA(FATAL) << "this branch is unreachable";
-            UNREACHABLE();
-    }
-}
-
-void MCRLowering::HeapAllocateInYoung(GateRef gate)
-{
-    Label exit(&builder_);
     GateRef size = acc_.GetValueIn(gate, 0);
-    DEFVALUE(result, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
-#ifndef ARK_ASAN_ON
-    Label success(&builder_);
-    Label callRuntime(&builder_);
-    size_t topOffset = JSThread::GlueData::GetNewSpaceAllocationTopAddressOffset(false);
-    size_t endOffset = JSThread::GlueData::GetNewSpaceAllocationEndAddressOffset(false);
-    GateRef topAddress = builder_.Load(VariableType::NATIVE_POINTER(), glue_, builder_.IntPtr(topOffset));
-    GateRef endAddress = builder_.Load(VariableType::NATIVE_POINTER(), glue_, builder_.IntPtr(endOffset));
-    GateRef top = builder_.Load(VariableType::JS_POINTER(), topAddress, builder_.IntPtr(0));
-    GateRef end = builder_.Load(VariableType::JS_POINTER(), endAddress, builder_.IntPtr(0));
+    GateRef ret = builder_.CallRuntime(glue_, RTSTUB_ID(AllocateInSOld), Gate::InvalidGateRef,
+                                       {builder_.ToTaggedInt(size)}, gate);
 
-    GateRef newTop = builder_.PtrAdd(top, size);
-    builder_.Branch(builder_.IntPtrGreaterThan(newTop, end), &callRuntime, &success);
-    builder_.Bind(&success);
-    {
-        builder_.Store(VariableType::NATIVE_POINTER(), glue_, topAddress, builder_.IntPtr(0), newTop);
-        result = top;
-        builder_.Jump(&exit);
-    }
-    builder_.Bind(&callRuntime);
-#endif
-    {
-        result = builder_.CallRuntime(glue_, RTSTUB_ID(AllocateInYoung), Gate::InvalidGateRef,
-                                      {builder_.ToTaggedInt(size)}, gate);
-        builder_.Jump(&exit);
-    }
-    builder_.Bind(&exit);
-
-    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), ret);
 }
 
 void MCRLowering::LowerInt32CheckRightIsZero(GateRef gate)
@@ -997,7 +986,7 @@ void MCRLowering::InitializeWithSpeicalValue(Label *exit, GateRef object, GateRe
     builder_.Jump(&begin);
     builder_.LoopBegin(&begin);
     {
-        builder_.Branch(builder_.Int32UnsignedLessThan(*startOffset, end), &storeValue, exit);
+        BRANCH_CIR(builder_.Int32UnsignedLessThan(*startOffset, end), &storeValue, exit);
         builder_.Bind(&storeValue);
         {
             builder_.Store(VariableType::INT64(), glue, object, builder_.ZExtInt32ToPtr(*startOffset), value);
@@ -1022,7 +1011,7 @@ void MCRLowering::LowerMigrateFromRawValueToHeapValues(GateRef gate)
     Label createCOW(&builder_);
     Label createNormal(&builder_);
     Label finishElementsInit(&builder_);
-    builder_.Branch(needCOW, &createCOW, &createNormal);
+    BRANCH_CIR(needCOW, &createCOW, &createNormal);
     builder_.Bind(&createCOW);
     {
         newElements = builder_.CallRuntime(glue_, RTSTUB_ID(NewCOWTaggedArray), acc_.GetDep(gate),
@@ -1048,13 +1037,13 @@ void MCRLowering::LowerMigrateFromRawValueToHeapValues(GateRef gate)
         Label storeHole(&builder_);
         Label storeNormalValue(&builder_);
         Label finishStore(&builder_);
-        builder_.Branch(builder_.Int32UnsignedLessThan(*index, length), &storeValue, &afterLoop);
+        BRANCH_CIR(builder_.Int32UnsignedLessThan(*index, length), &storeValue, &afterLoop);
         builder_.Bind(&storeValue);
         {
             Label rawValueIsInt(&builder_);
             Label rawValueIsNumber(&builder_);
             GateRef value = builder_.GetValueFromJSArrayWithElementsKind(VariableType::INT64(), elements, *index);
-            builder_.Branch(builder_.IsSpecialHole(value), &storeHole, &storeNormalValue);
+            BRANCH_CIR(builder_.IsSpecialHole(value), &storeHole, &storeNormalValue);
             builder_.Bind(&storeHole);
             {
                 builder_.SetValueToTaggedArray(VariableType::JS_ANY(), glue_, *newElements, *index, builder_.Hole());
@@ -1062,7 +1051,7 @@ void MCRLowering::LowerMigrateFromRawValueToHeapValues(GateRef gate)
             }
             builder_.Bind(&storeNormalValue);
             {
-                builder_.Branch(isIntKind, &rawValueIsInt, &rawValueIsNumber);
+                BRANCH_CIR(isIntKind, &rawValueIsInt, &rawValueIsNumber);
                 builder_.Bind(&rawValueIsInt);
                 {
                     GateRef convertedInt = builder_.ToTaggedIntPtr(value);
@@ -1109,7 +1098,7 @@ void MCRLowering::LowerMigrateFromHeapValueToRawValue(GateRef gate)
     Label createCOW(&builder_);
     Label createNormal(&builder_);
     Label finishElementsInit(&builder_);
-    builder_.Branch(needCOW, &createCOW, &createNormal);
+    BRANCH_CIR(needCOW, &createCOW, &createNormal);
     builder_.Bind(&createCOW);
     {
         newElements = builder_.CallRuntime(glue_, RTSTUB_ID(NewCOWMutantTaggedArray), acc_.GetDep(gate),
@@ -1135,13 +1124,13 @@ void MCRLowering::LowerMigrateFromHeapValueToRawValue(GateRef gate)
         Label storeSpecialHole(&builder_);
         Label storeNormalValue(&builder_);
         Label finishStore(&builder_);
-        builder_.Branch(builder_.Int32UnsignedLessThan(*index, length), &storeValue, &afterLoop);
+        BRANCH_CIR(builder_.Int32UnsignedLessThan(*index, length), &storeValue, &afterLoop);
         builder_.Bind(&storeValue);
         {
             Label convertToInt(&builder_);
             Label convertToDouble(&builder_);
             GateRef value = builder_.GetValueFromTaggedArray(elements, *index);
-            builder_.Branch(builder_.TaggedIsHole(value), &storeSpecialHole, &storeNormalValue);
+            BRANCH_CIR(builder_.TaggedIsHole(value), &storeSpecialHole, &storeNormalValue);
             builder_.Bind(&storeSpecialHole);
             {
                 builder_.SetValueToTaggedArray(VariableType::INT64(), glue_, *newElements,
@@ -1152,7 +1141,7 @@ void MCRLowering::LowerMigrateFromHeapValueToRawValue(GateRef gate)
             {
                 Label valueIsInt(&builder_);
                 Label valueIsDouble(&builder_);
-                builder_.Branch(isIntKind, &convertToInt, &convertToDouble);
+                BRANCH_CIR(isIntKind, &convertToInt, &convertToDouble);
                 builder_.Bind(&convertToInt);
                 {
                     GateRef convertedInt = builder_.GetInt64OfTInt(value);
@@ -1161,7 +1150,7 @@ void MCRLowering::LowerMigrateFromHeapValueToRawValue(GateRef gate)
                 }
                 builder_.Bind(&convertToDouble);
                 {
-                    builder_.Branch(builder_.TaggedIsInt(value), &valueIsInt, &valueIsDouble);
+                    BRANCH_CIR(builder_.TaggedIsInt(value), &valueIsInt, &valueIsDouble);
                     builder_.Bind(&valueIsInt);
                     {
                         GateRef convertedDoubleFromTInt = builder_.CastDoubleToInt64(builder_.GetDoubleOfTInt(value));
@@ -1214,11 +1203,11 @@ void MCRLowering::LowerMigrateFromHoleIntToHoleNumber(GateRef gate)
     {
         Label storeNormalValue(&builder_);
         Label finishStore(&builder_);
-        builder_.Branch(builder_.Int32UnsignedLessThan(*index, length), &storeValue, &afterLoop);
+        BRANCH_CIR(builder_.Int32UnsignedLessThan(*index, length), &storeValue, &afterLoop);
         builder_.Bind(&storeValue);
         {
             GateRef value = builder_.GetValueFromTaggedArray(VariableType::INT64(), elements, *index);
-            builder_.Branch(builder_.IsSpecialHole(value), &finishStore, &storeNormalValue);
+            BRANCH_CIR(builder_.IsSpecialHole(value), &finishStore, &storeNormalValue);
             builder_.Bind(&storeNormalValue);
             {
                 GateRef intVal = builder_.TruncInt64ToInt32(value);
@@ -1262,11 +1251,11 @@ void MCRLowering::LowerMigrateFromHoleNumberToHoleInt(GateRef gate)
     {
         Label storeNormalValue(&builder_);
         Label finishStore(&builder_);
-        builder_.Branch(builder_.Int32UnsignedLessThan(*index, length), &storeValue, &afterLoop);
+        BRANCH_CIR(builder_.Int32UnsignedLessThan(*index, length), &storeValue, &afterLoop);
         builder_.Bind(&storeValue);
         {
             GateRef value = builder_.GetValueFromTaggedArray(VariableType::INT64(), elements, *index);
-            builder_.Branch(builder_.IsSpecialHole(value), &finishStore, &storeNormalValue);
+            BRANCH_CIR(builder_.IsSpecialHole(value), &finishStore, &storeNormalValue);
             builder_.Bind(&storeNormalValue);
             {
                 GateRef doubleVal = builder_.CastInt64ToFloat64(value);

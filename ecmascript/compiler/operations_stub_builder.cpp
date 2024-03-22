@@ -29,7 +29,7 @@ GateRef OperationsStubBuilder::Equal(GateRef glue, GateRef left, GateRef right, 
     Label notHole(env);
     DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
     result = FastEqual(glue, left, right, callback);
-    Branch(TaggedIsHole(*result), &isHole, &notHole);
+    BRANCH(TaggedIsHole(*result), &isHole, &notHole);
     Bind(&isHole);
     {
         // slow path
@@ -40,7 +40,7 @@ GateRef OperationsStubBuilder::Equal(GateRef glue, GateRef left, GateRef right, 
     {
         Label resultIsTrue(env);
         Label resultNotTrue(env);
-        Branch(TaggedIsTrue(*result), &resultIsTrue, &resultNotTrue);
+        BRANCH(TaggedIsTrue(*result), &resultIsTrue, &resultNotTrue);
         Bind(&resultIsTrue);
         {
             callback.ProfileBranch(true);
@@ -69,7 +69,7 @@ GateRef OperationsStubBuilder::NotEqual(GateRef glue, GateRef left, GateRef righ
     result = FastEqual(glue, left, right, callback);
     Label isHole(env);
     Label notHole(env);
-    Branch(TaggedIsHole(*result), &isHole, &notHole);
+    BRANCH(TaggedIsHole(*result), &isHole, &notHole);
     Bind(&isHole);
     {
         // slow path
@@ -80,7 +80,7 @@ GateRef OperationsStubBuilder::NotEqual(GateRef glue, GateRef left, GateRef righ
     {
         Label resultIsTrue(env);
         Label resultNotTrue(env);
-        Branch(TaggedIsTrue(*result), &resultIsTrue, &resultNotTrue);
+        BRANCH(TaggedIsTrue(*result), &resultIsTrue, &resultNotTrue);
         Bind(&resultIsTrue);
         {
             result = TaggedFalse();
@@ -109,7 +109,7 @@ GateRef OperationsStubBuilder::StrictEqual(GateRef glue, GateRef left, GateRef r
     Label strictEqual(env);
     Label notStrictEqual(env);
     DEFVARIABLE(result, VariableType::JS_ANY(), TaggedTrue());
-    Branch(FastStrictEqual(glue, left, right, callback), &strictEqual, &notStrictEqual);
+    BRANCH(FastStrictEqual(glue, left, right, callback), &strictEqual, &notStrictEqual);
     Bind(&strictEqual);
     {
         callback.ProfileBranch(true);
@@ -136,7 +136,7 @@ GateRef OperationsStubBuilder::StrictNotEqual(GateRef glue, GateRef left, GateRe
     Label strictEqual(env);
     Label notStrictEqual(env);
     DEFVARIABLE(result, VariableType::JS_ANY(), TaggedTrue());
-    Branch(FastStrictEqual(glue, left, right, callback), &strictEqual, &notStrictEqual);
+    BRANCH(FastStrictEqual(glue, left, right, callback), &strictEqual, &notStrictEqual);
     Bind(&strictEqual);
     {
         result = TaggedFalse();
@@ -167,27 +167,27 @@ GateRef OperationsStubBuilder::Less(GateRef glue, GateRef left, GateRef right, P
     Label slowPath(env);
 
     DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
-    Branch(TaggedIsInt(left), &leftIsInt, &leftOrRightNotInt);
+    BRANCH(TaggedIsInt(left), &leftIsInt, &leftOrRightNotInt);
     Bind(&leftIsInt);
     {
         Label rightIsInt(env);
-        Branch(TaggedIsInt(right), &rightIsInt, &leftOrRightNotInt);
+        BRANCH(TaggedIsInt(right), &rightIsInt, &leftOrRightNotInt);
         Bind(&rightIsInt);
         {
             callback.ProfileOpType(Int32(PGOSampleType::IntType()));
             GateRef intLeft = TaggedGetInt(left);
             GateRef intRight = TaggedGetInt(right);
-            Branch(Int32LessThan(intLeft, intRight), &leftLessRight, &leftNotLessRight);
+            BRANCH(Int32LessThan(intLeft, intRight), &leftLessRight, &leftNotLessRight);
         }
     }
     Bind(&leftOrRightNotInt);
     {
         Label leftIsNumber(env);
-        Branch(TaggedIsNumber(left), &leftIsNumber, &slowPath);
+        BRANCH(TaggedIsNumber(left), &leftIsNumber, &slowPath);
         Bind(&leftIsNumber);
         {
             Label rightIsNumber(env);
-            Branch(TaggedIsNumber(right), &rightIsNumber, &slowPath);
+            BRANCH(TaggedIsNumber(right), &rightIsNumber, &slowPath);
             Bind(&rightIsNumber);
             {
                 // fast path
@@ -200,7 +200,7 @@ GateRef OperationsStubBuilder::Less(GateRef glue, GateRef left, GateRef right, P
                 Label exit2(env);
                 Label rightIsInt1(env);
                 Label rightNotInt1(env);
-                Branch(TaggedIsInt(left), &leftIsInt1, &leftNotInt1);
+                BRANCH(TaggedIsInt(left), &leftIsInt1, &leftNotInt1);
                 Bind(&leftIsInt1);
                 {
                     doubleLeft = ChangeInt32ToFloat64(TaggedGetInt(left));
@@ -214,7 +214,7 @@ GateRef OperationsStubBuilder::Less(GateRef glue, GateRef left, GateRef right, P
                 }
                 Bind(&exit1);
                 {
-                    Branch(TaggedIsInt(right), &rightIsInt1, &rightNotInt1);
+                    BRANCH(TaggedIsInt(right), &rightIsInt1, &rightNotInt1);
                 }
                 Bind(&rightIsInt1);
                 {
@@ -232,7 +232,7 @@ GateRef OperationsStubBuilder::Less(GateRef glue, GateRef left, GateRef right, P
                 }
                 Bind(&exit2);
                 {
-                    Branch(DoubleLessThan(*doubleLeft, *doubleRight), &leftLessRight, &leftNotLessRight);
+                    BRANCH(DoubleLessThan(*doubleLeft, *doubleRight), &leftLessRight, &leftNotLessRight);
                 }
             }
         }
@@ -274,27 +274,27 @@ GateRef OperationsStubBuilder::LessEq(GateRef glue, GateRef left, GateRef right,
     Label slowPath(env);
 
     DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
-    Branch(TaggedIsInt(left), &leftIsInt, &leftOrRightNotInt);
+    BRANCH(TaggedIsInt(left), &leftIsInt, &leftOrRightNotInt);
     Bind(&leftIsInt);
     {
         Label rightIsInt(env);
-        Branch(TaggedIsInt(right), &rightIsInt, &leftOrRightNotInt);
+        BRANCH(TaggedIsInt(right), &rightIsInt, &leftOrRightNotInt);
         Bind(&rightIsInt);
         {
             callback.ProfileOpType(Int32(PGOSampleType::IntType()));
             GateRef intLeft = TaggedGetInt(left);
             GateRef intRight = TaggedGetInt(right);
-            Branch(Int32LessThanOrEqual(intLeft, intRight), &leftLessEqRight, &leftNotLessEqRight);
+            BRANCH(Int32LessThanOrEqual(intLeft, intRight), &leftLessEqRight, &leftNotLessEqRight);
         }
     }
     Bind(&leftOrRightNotInt);
     {
         Label leftIsNumber(env);
-        Branch(TaggedIsNumber(left), &leftIsNumber, &slowPath);
+        BRANCH(TaggedIsNumber(left), &leftIsNumber, &slowPath);
         Bind(&leftIsNumber);
         {
             Label rightIsNumber(env);
-            Branch(TaggedIsNumber(right), &rightIsNumber, &slowPath);
+            BRANCH(TaggedIsNumber(right), &rightIsNumber, &slowPath);
             Bind(&rightIsNumber);
             {
                 // fast path
@@ -307,7 +307,7 @@ GateRef OperationsStubBuilder::LessEq(GateRef glue, GateRef left, GateRef right,
                 Label exit2(env);
                 Label rightIsInt1(env);
                 Label rightNotInt1(env);
-                Branch(TaggedIsInt(left), &leftIsInt1, &leftNotInt1);
+                BRANCH(TaggedIsInt(left), &leftIsInt1, &leftNotInt1);
                 Bind(&leftIsInt1);
                 {
                     doubleLeft = ChangeInt32ToFloat64(TaggedGetInt(left));
@@ -321,7 +321,7 @@ GateRef OperationsStubBuilder::LessEq(GateRef glue, GateRef left, GateRef right,
                 }
                 Bind(&exit1);
                 {
-                    Branch(TaggedIsInt(right), &rightIsInt1, &rightNotInt1);
+                    BRANCH(TaggedIsInt(right), &rightIsInt1, &rightNotInt1);
                 }
                 Bind(&rightIsInt1);
                 {
@@ -339,7 +339,7 @@ GateRef OperationsStubBuilder::LessEq(GateRef glue, GateRef left, GateRef right,
                 }
                 Bind(&exit2);
                 {
-                    Branch(DoubleLessThanOrEqual(*doubleLeft, *doubleRight), &leftLessEqRight, &leftNotLessEqRight);
+                    BRANCH(DoubleLessThanOrEqual(*doubleLeft, *doubleRight), &leftLessEqRight, &leftNotLessEqRight);
                 }
             }
         }
@@ -380,27 +380,27 @@ GateRef OperationsStubBuilder::Greater(GateRef glue, GateRef left, GateRef right
     Label leftNotGreaterRight(env);
     Label slowPath(env);
     DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
-    Branch(TaggedIsInt(left), &leftIsInt, &leftOrRightNotInt);
+    BRANCH(TaggedIsInt(left), &leftIsInt, &leftOrRightNotInt);
     Bind(&leftIsInt);
     {
         Label rightIsInt(env);
-        Branch(TaggedIsInt(right), &rightIsInt, &leftOrRightNotInt);
+        BRANCH(TaggedIsInt(right), &rightIsInt, &leftOrRightNotInt);
         Bind(&rightIsInt);
         {
             callback.ProfileOpType(Int32(PGOSampleType::IntType()));
             GateRef intLeft = TaggedGetInt(left);
             GateRef intRight = TaggedGetInt(right);
-            Branch(Int32GreaterThan(intLeft, intRight), &leftGreaterRight, &leftNotGreaterRight);
+            BRANCH(Int32GreaterThan(intLeft, intRight), &leftGreaterRight, &leftNotGreaterRight);
         }
     }
     Bind(&leftOrRightNotInt);
     {
         Label leftIsNumber(env);
-        Branch(TaggedIsNumber(left), &leftIsNumber, &slowPath);
+        BRANCH(TaggedIsNumber(left), &leftIsNumber, &slowPath);
         Bind(&leftIsNumber);
         {
             Label rightIsNumber(env);
-            Branch(TaggedIsNumber(right), &rightIsNumber, &slowPath);
+            BRANCH(TaggedIsNumber(right), &rightIsNumber, &slowPath);
             Bind(&rightIsNumber);
             {
                 // fast path
@@ -413,7 +413,7 @@ GateRef OperationsStubBuilder::Greater(GateRef glue, GateRef left, GateRef right
                 Label exit2(env);
                 Label rightIsInt1(env);
                 Label rightNotInt1(env);
-                Branch(TaggedIsInt(left), &leftIsInt1, &leftNotInt1);
+                BRANCH(TaggedIsInt(left), &leftIsInt1, &leftNotInt1);
                 Bind(&leftIsInt1);
                 {
                     doubleLeft = ChangeInt32ToFloat64(TaggedGetInt(left));
@@ -427,7 +427,7 @@ GateRef OperationsStubBuilder::Greater(GateRef glue, GateRef left, GateRef right
                 }
                 Bind(&exit1);
                 {
-                    Branch(TaggedIsInt(right), &rightIsInt1, &rightNotInt1);
+                    BRANCH(TaggedIsInt(right), &rightIsInt1, &rightNotInt1);
                 }
                 Bind(&rightIsInt1);
                 {
@@ -445,7 +445,7 @@ GateRef OperationsStubBuilder::Greater(GateRef glue, GateRef left, GateRef right
                 }
                 Bind(&exit2);
                 {
-                    Branch(DoubleGreaterThan(*doubleLeft, *doubleRight), &leftGreaterRight, &leftNotGreaterRight);
+                    BRANCH(DoubleGreaterThan(*doubleLeft, *doubleRight), &leftGreaterRight, &leftNotGreaterRight);
                 }
             }
         }
@@ -486,27 +486,27 @@ GateRef OperationsStubBuilder::GreaterEq(GateRef glue, GateRef left, GateRef rig
     Label leftNotGreaterEQRight(env);
     Label slowPath(env);
     DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
-    Branch(TaggedIsInt(left), &leftIsInt, &leftOrRightNotInt);
+    BRANCH(TaggedIsInt(left), &leftIsInt, &leftOrRightNotInt);
     Bind(&leftIsInt);
     {
         Label rightIsInt(env);
-        Branch(TaggedIsInt(right), &rightIsInt, &leftOrRightNotInt);
+        BRANCH(TaggedIsInt(right), &rightIsInt, &leftOrRightNotInt);
         Bind(&rightIsInt);
         {
             callback.ProfileOpType(Int32(PGOSampleType::IntType()));
             GateRef intLeft = TaggedGetInt(left);
             GateRef intRight = TaggedGetInt(right);
-            Branch(Int32GreaterThanOrEqual(intLeft, intRight), &leftGreaterEqRight, &leftNotGreaterEQRight);
+            BRANCH(Int32GreaterThanOrEqual(intLeft, intRight), &leftGreaterEqRight, &leftNotGreaterEQRight);
         }
     }
     Bind(&leftOrRightNotInt);
     {
         Label leftIsNumber(env);
-        Branch(TaggedIsNumber(left), &leftIsNumber, &slowPath);
+        BRANCH(TaggedIsNumber(left), &leftIsNumber, &slowPath);
         Bind(&leftIsNumber);
         {
             Label rightIsNumber(env);
-            Branch(TaggedIsNumber(right), &rightIsNumber, &slowPath);
+            BRANCH(TaggedIsNumber(right), &rightIsNumber, &slowPath);
             Bind(&rightIsNumber);
             {
                 // fast path
@@ -519,7 +519,7 @@ GateRef OperationsStubBuilder::GreaterEq(GateRef glue, GateRef left, GateRef rig
                 Label exit2(env);
                 Label rightIsInt1(env);
                 Label rightNotInt1(env);
-                Branch(TaggedIsInt(left), &leftIsInt1, &leftNotInt1);
+                BRANCH(TaggedIsInt(left), &leftIsInt1, &leftNotInt1);
                 Bind(&leftIsInt1);
                 {
                     doubleLeft = ChangeInt32ToFloat64(TaggedGetInt(left));
@@ -533,7 +533,7 @@ GateRef OperationsStubBuilder::GreaterEq(GateRef glue, GateRef left, GateRef rig
                 }
                 Bind(&exit1);
                 {
-                    Branch(TaggedIsInt(right), &rightIsInt1, &rightNotInt1);
+                    BRANCH(TaggedIsInt(right), &rightIsInt1, &rightNotInt1);
                 }
                 Bind(&rightIsInt1);
                 {
@@ -551,7 +551,7 @@ GateRef OperationsStubBuilder::GreaterEq(GateRef glue, GateRef left, GateRef rig
                 }
                 Bind(&exit2);
                 {
-                    Branch(DoubleGreaterThanOrEqual(*doubleLeft, *doubleRight),
+                    BRANCH(DoubleGreaterThanOrEqual(*doubleLeft, *doubleRight),
                         &leftGreaterEqRight, &leftNotGreaterEQRight);
                 }
             }
@@ -589,7 +589,7 @@ GateRef OperationsStubBuilder::Add(GateRef glue, GateRef left, GateRef right, Pr
     Label exit(env);
     Label slowPath(env);
     DEFVARIABLE(result, VariableType::JS_ANY(), FastAdd(glue, left, right, callback));
-    Branch(TaggedIsHole(*result), &slowPath, &exit);
+    BRANCH(TaggedIsHole(*result), &slowPath, &exit);
     Bind(&slowPath);
     {
         callback.ProfileOpType(Int32(PGOSampleType::AnyType()));
@@ -610,7 +610,7 @@ GateRef OperationsStubBuilder::Sub(GateRef glue, GateRef left, GateRef right, Pr
     Label exit(env);
     Label slowPath(env);
     DEFVARIABLE(result, VariableType::JS_ANY(), FastSub(glue, left, right, callback));
-    Branch(TaggedIsHole(*result), &slowPath, &exit);
+    BRANCH(TaggedIsHole(*result), &slowPath, &exit);
     Bind(&slowPath);
     {
         callback.ProfileOpType(Int32(PGOSampleType::AnyType()));
@@ -631,7 +631,7 @@ GateRef OperationsStubBuilder::Mul(GateRef glue, GateRef left, GateRef right, Pr
     Label exit(env);
     Label slowPath(env);
     DEFVARIABLE(result, VariableType::JS_ANY(), FastMul(glue, left, right, callback));
-    Branch(TaggedIsHole(*result), &slowPath, &exit);
+    BRANCH(TaggedIsHole(*result), &slowPath, &exit);
     Bind(&slowPath);
     {
         callback.ProfileOpType(Int32(PGOSampleType::AnyType()));
@@ -652,7 +652,7 @@ GateRef OperationsStubBuilder::Div(GateRef glue, GateRef left, GateRef right, Pr
     Label exit(env);
     Label slowPath(env);
     DEFVARIABLE(result, VariableType::JS_ANY(), FastDiv(left, right, callback));
-    Branch(TaggedIsHole(*result), &slowPath, &exit);
+    BRANCH(TaggedIsHole(*result), &slowPath, &exit);
     Bind(&slowPath);
     {
         callback.ProfileOpType(Int32(PGOSampleType::AnyType()));
@@ -673,7 +673,7 @@ GateRef OperationsStubBuilder::Mod(GateRef glue, GateRef left, GateRef right, Pr
     Label exit(env);
     Label slowPath(env);
     DEFVARIABLE(result, VariableType::JS_ANY(), FastMod(glue, left, right, callback));
-    Branch(TaggedIsHole(*result), &slowPath, &exit);
+    BRANCH(TaggedIsHole(*result), &slowPath, &exit);
     Bind(&slowPath);
     {
         callback.ProfileOpType(Int32(PGOSampleType::AnyType()));
@@ -700,21 +700,21 @@ GateRef OperationsStubBuilder::Shl(GateRef glue, GateRef left, GateRef right, Pr
     Label calculate(env);
     Label leftIsNumber(env);
     Label leftNotNumberOrRightNotNumber(env);
-    Branch(TaggedIsNumber(left), &leftIsNumber, &leftNotNumberOrRightNotNumber);
+    BRANCH(TaggedIsNumber(left), &leftIsNumber, &leftNotNumberOrRightNotNumber);
     Bind(&leftIsNumber);
     {
         Label rightIsNumber(env);
-        Branch(TaggedIsNumber(right), &rightIsNumber, &leftNotNumberOrRightNotNumber);
+        BRANCH(TaggedIsNumber(right), &rightIsNumber, &leftNotNumberOrRightNotNumber);
         Bind(&rightIsNumber);
         {
             Label leftIsInt(env);
             Label leftIsDouble(env);
-            Branch(TaggedIsInt(left), &leftIsInt, &leftIsDouble);
+            BRANCH(TaggedIsInt(left), &leftIsInt, &leftIsDouble);
             Bind(&leftIsInt);
             {
                 Label rightIsInt(env);
                 Label rightIsDouble(env);
-                Branch(TaggedIsInt(right), &rightIsInt, &rightIsDouble);
+                BRANCH(TaggedIsInt(right), &rightIsInt, &rightIsDouble);
                 Bind(&rightIsInt);
                 {
                     callback.ProfileOpType(Int32(PGOSampleType::IntType()));
@@ -735,7 +735,7 @@ GateRef OperationsStubBuilder::Shl(GateRef glue, GateRef left, GateRef right, Pr
             {
                 Label rightIsInt(env);
                 Label rightIsDouble(env);
-                Branch(TaggedIsInt(right), &rightIsInt, &rightIsDouble);
+                BRANCH(TaggedIsInt(right), &rightIsInt, &rightIsDouble);
                 Bind(&rightIsInt);
                 {
                     callback.ProfileOpType(Int32(PGOSampleType::NumberType()));
@@ -793,21 +793,21 @@ GateRef OperationsStubBuilder::Shr(GateRef glue, GateRef left, GateRef right, Pr
     Label notOverflow(env);
     Label leftIsNumber(env);
     Label leftNotNumberOrRightNotNumber(env);
-    Branch(TaggedIsNumber(left), &leftIsNumber, &leftNotNumberOrRightNotNumber);
+    BRANCH(TaggedIsNumber(left), &leftIsNumber, &leftNotNumberOrRightNotNumber);
     Bind(&leftIsNumber);
     {
         Label rightIsNumber(env);
-        Branch(TaggedIsNumber(right), &rightIsNumber, &leftNotNumberOrRightNotNumber);
+        BRANCH(TaggedIsNumber(right), &rightIsNumber, &leftNotNumberOrRightNotNumber);
         Bind(&rightIsNumber);
         {
             Label leftIsInt(env);
             Label leftIsDouble(env);
-            Branch(TaggedIsInt(left), &leftIsInt, &leftIsDouble);
+            BRANCH(TaggedIsInt(left), &leftIsInt, &leftIsDouble);
             Bind(&leftIsInt);
             {
                 Label rightIsInt(env);
                 Label rightIsDouble(env);
-                Branch(TaggedIsInt(right), &rightIsInt, &rightIsDouble);
+                BRANCH(TaggedIsInt(right), &rightIsInt, &rightIsDouble);
                 Bind(&rightIsInt);
                 {
                     curType = Int32(PGOSampleType::IntType());
@@ -828,7 +828,7 @@ GateRef OperationsStubBuilder::Shr(GateRef glue, GateRef left, GateRef right, Pr
             {
                 Label rightIsInt(env);
                 Label rightIsDouble(env);
-                Branch(TaggedIsInt(right), &rightIsInt, &rightIsDouble);
+                BRANCH(TaggedIsInt(right), &rightIsInt, &rightIsDouble);
                 Bind(&rightIsInt);
                 {
                     curType = Int32(PGOSampleType::NumberType());
@@ -861,7 +861,7 @@ GateRef OperationsStubBuilder::Shr(GateRef glue, GateRef left, GateRef right, Pr
         GateRef shift = Int32And(*opNumber1, Int32(0x1f));
         GateRef val = Int32LSR(*opNumber0, shift);
         auto condition = Int32UnsignedGreaterThan(val, Int32(INT32_MAX));
-        Branch(condition, &overflow, &notOverflow);
+        BRANCH(condition, &overflow, &notOverflow);
         Bind(&overflow);
         {
             callback.ProfileOpType(Int32(PGOSampleType::IntOverFlowType()));
@@ -895,21 +895,21 @@ GateRef OperationsStubBuilder::Ashr(GateRef glue, GateRef left, GateRef right, P
     Label calculate(env);
     Label leftIsNumber(env);
     Label leftNotNumberOrRightNotNumber(env);
-    Branch(TaggedIsNumber(left), &leftIsNumber, &leftNotNumberOrRightNotNumber);
+    BRANCH(TaggedIsNumber(left), &leftIsNumber, &leftNotNumberOrRightNotNumber);
     Bind(&leftIsNumber);
     {
         Label rightIsNumber(env);
-        Branch(TaggedIsNumber(right), &rightIsNumber, &leftNotNumberOrRightNotNumber);
+        BRANCH(TaggedIsNumber(right), &rightIsNumber, &leftNotNumberOrRightNotNumber);
         Bind(&rightIsNumber);
         {
             Label leftIsInt(env);
             Label leftIsDouble(env);
-            Branch(TaggedIsInt(left), &leftIsInt, &leftIsDouble);
+            BRANCH(TaggedIsInt(left), &leftIsInt, &leftIsDouble);
             Bind(&leftIsInt);
             {
                 Label rightIsInt(env);
                 Label rightIsDouble(env);
-                Branch(TaggedIsInt(right), &rightIsInt, &rightIsDouble);
+                BRANCH(TaggedIsInt(right), &rightIsInt, &rightIsDouble);
                 Bind(&rightIsInt);
                 {
                     callback.ProfileOpType(Int32(PGOSampleType::IntType()));
@@ -930,7 +930,7 @@ GateRef OperationsStubBuilder::Ashr(GateRef glue, GateRef left, GateRef right, P
             {
                 Label rightIsInt(env);
                 Label rightIsDouble(env);
-                Branch(TaggedIsInt(right), &rightIsInt, &rightIsDouble);
+                BRANCH(TaggedIsInt(right), &rightIsInt, &rightIsDouble);
                 Bind(&rightIsInt);
                 {
                     callback.ProfileOpType(Int32(PGOSampleType::NumberType()));
@@ -985,21 +985,21 @@ GateRef OperationsStubBuilder::And(GateRef glue, GateRef left, GateRef right, Pr
     Label calculate(env);
     Label leftIsNumber(env);
     Label leftNotNumberOrRightNotNumber(env);
-    Branch(TaggedIsNumber(left), &leftIsNumber, &leftNotNumberOrRightNotNumber);
+    BRANCH(TaggedIsNumber(left), &leftIsNumber, &leftNotNumberOrRightNotNumber);
     Bind(&leftIsNumber);
     {
         Label rightIsNumber(env);
-        Branch(TaggedIsNumber(right), &rightIsNumber, &leftNotNumberOrRightNotNumber);
+        BRANCH(TaggedIsNumber(right), &rightIsNumber, &leftNotNumberOrRightNotNumber);
         Bind(&rightIsNumber);
         {
             Label leftIsInt(env);
             Label leftIsDouble(env);
-            Branch(TaggedIsInt(left), &leftIsInt, &leftIsDouble);
+            BRANCH(TaggedIsInt(left), &leftIsInt, &leftIsDouble);
             Bind(&leftIsInt);
             {
                 Label rightIsInt(env);
                 Label rightIsDouble(env);
-                Branch(TaggedIsInt(right), &rightIsInt, &rightIsDouble);
+                BRANCH(TaggedIsInt(right), &rightIsInt, &rightIsDouble);
                 Bind(&rightIsInt);
                 {
                     callback.ProfileOpType(Int32(PGOSampleType::IntType()));
@@ -1020,7 +1020,7 @@ GateRef OperationsStubBuilder::And(GateRef glue, GateRef left, GateRef right, Pr
             {
                 Label rightIsInt(env);
                 Label rightIsDouble(env);
-                Branch(TaggedIsInt(right), &rightIsInt, &rightIsDouble);
+                BRANCH(TaggedIsInt(right), &rightIsInt, &rightIsDouble);
                 Bind(&rightIsInt);
                 {
                     callback.ProfileOpType(Int32(PGOSampleType::NumberType()));
@@ -1074,21 +1074,21 @@ GateRef OperationsStubBuilder::Or(GateRef glue, GateRef left, GateRef right, Pro
     Label calculate(env);
     Label leftIsNumber(env);
     Label leftNotNumberOrRightNotNumber(env);
-    Branch(TaggedIsNumber(left), &leftIsNumber, &leftNotNumberOrRightNotNumber);
+    BRANCH(TaggedIsNumber(left), &leftIsNumber, &leftNotNumberOrRightNotNumber);
     Bind(&leftIsNumber);
     {
         Label rightIsNumber(env);
-        Branch(TaggedIsNumber(right), &rightIsNumber, &leftNotNumberOrRightNotNumber);
+        BRANCH(TaggedIsNumber(right), &rightIsNumber, &leftNotNumberOrRightNotNumber);
         Bind(&rightIsNumber);
         {
             Label leftIsInt(env);
             Label leftIsDouble(env);
-            Branch(TaggedIsInt(left), &leftIsInt, &leftIsDouble);
+            BRANCH(TaggedIsInt(left), &leftIsInt, &leftIsDouble);
             Bind(&leftIsInt);
             {
                 Label rightIsInt(env);
                 Label rightIsDouble(env);
-                Branch(TaggedIsInt(right), &rightIsInt, &rightIsDouble);
+                BRANCH(TaggedIsInt(right), &rightIsInt, &rightIsDouble);
                 Bind(&rightIsInt);
                 {
                     callback.ProfileOpType(Int32(PGOSampleType::IntType()));
@@ -1109,7 +1109,7 @@ GateRef OperationsStubBuilder::Or(GateRef glue, GateRef left, GateRef right, Pro
             {
                 Label rightIsInt(env);
                 Label rightIsDouble(env);
-                Branch(TaggedIsInt(right), &rightIsInt, &rightIsDouble);
+                BRANCH(TaggedIsInt(right), &rightIsInt, &rightIsDouble);
                 Bind(&rightIsInt);
                 {
                     callback.ProfileOpType(Int32(PGOSampleType::NumberType()));
@@ -1163,21 +1163,21 @@ GateRef OperationsStubBuilder::Xor(GateRef glue, GateRef left, GateRef right, Pr
     Label calculate(env);
     Label leftIsNumber(env);
     Label leftNotNumberOrRightNotNumber(env);
-    Branch(TaggedIsNumber(left), &leftIsNumber, &leftNotNumberOrRightNotNumber);
+    BRANCH(TaggedIsNumber(left), &leftIsNumber, &leftNotNumberOrRightNotNumber);
     Bind(&leftIsNumber);
     {
         Label rightIsNumber(env);
-        Branch(TaggedIsNumber(right), &rightIsNumber, &leftNotNumberOrRightNotNumber);
+        BRANCH(TaggedIsNumber(right), &rightIsNumber, &leftNotNumberOrRightNotNumber);
         Bind(&rightIsNumber);
         {
             Label leftIsInt(env);
             Label leftIsDouble(env);
-            Branch(TaggedIsInt(left), &leftIsInt, &leftIsDouble);
+            BRANCH(TaggedIsInt(left), &leftIsInt, &leftIsDouble);
             Bind(&leftIsInt);
             {
                 Label rightIsInt(env);
                 Label rightIsDouble(env);
-                Branch(TaggedIsInt(right), &rightIsInt, &rightIsDouble);
+                BRANCH(TaggedIsInt(right), &rightIsInt, &rightIsDouble);
                 Bind(&rightIsInt);
                 {
                     callback.ProfileOpType(Int32(PGOSampleType::IntType()));
@@ -1198,7 +1198,7 @@ GateRef OperationsStubBuilder::Xor(GateRef glue, GateRef left, GateRef right, Pr
             {
                 Label rightIsInt(env);
                 Label rightIsDouble(env);
-                Branch(TaggedIsInt(right), &rightIsInt, &rightIsDouble);
+                BRANCH(TaggedIsInt(right), &rightIsInt, &rightIsDouble);
                 Bind(&rightIsInt);
                 {
                     callback.ProfileOpType(Int32(PGOSampleType::NumberType()));
@@ -1249,12 +1249,12 @@ GateRef OperationsStubBuilder::Inc(GateRef glue, GateRef value, ProfileOperation
     Label valueIsInt(env);
     Label valueNotInt(env);
     Label slowPath(env);
-    Branch(TaggedIsInt(value), &valueIsInt, &valueNotInt);
+    BRANCH(TaggedIsInt(value), &valueIsInt, &valueNotInt);
     Bind(&valueIsInt);
     {
         GateRef valueInt = GetInt32OfTInt(value);
         Label valueNoOverflow(env);
-        Branch(Int32Equal(valueInt, Int32(INT32_MAX)), &valueNotInt, &valueNoOverflow);
+        BRANCH(Int32Equal(valueInt, Int32(INT32_MAX)), &valueNotInt, &valueNoOverflow);
         Bind(&valueNoOverflow);
         {
             callback.ProfileOpType(Int32(PGOSampleType::IntType()));
@@ -1265,7 +1265,7 @@ GateRef OperationsStubBuilder::Inc(GateRef glue, GateRef value, ProfileOperation
     Bind(&valueNotInt);
     {
         Label valueIsDouble(env);
-        Branch(TaggedIsDouble(value), &valueIsDouble, &slowPath);
+        BRANCH(TaggedIsDouble(value), &valueIsDouble, &slowPath);
         Bind(&valueIsDouble);
         {
             callback.ProfileOpType(Int32(PGOSampleType::DoubleType()));
@@ -1297,12 +1297,12 @@ GateRef OperationsStubBuilder::Dec(GateRef glue, GateRef value, ProfileOperation
     Label valueIsInt(env);
     Label valueNotInt(env);
     Label slowPath(env);
-    Branch(TaggedIsInt(value), &valueIsInt, &valueNotInt);
+    BRANCH(TaggedIsInt(value), &valueIsInt, &valueNotInt);
     Bind(&valueIsInt);
     {
         GateRef valueInt = GetInt32OfTInt(value);
         Label valueNoOverflow(env);
-        Branch(Int32Equal(valueInt, Int32(INT32_MIN)), &valueNotInt, &valueNoOverflow);
+        BRANCH(Int32Equal(valueInt, Int32(INT32_MIN)), &valueNotInt, &valueNoOverflow);
         Bind(&valueNoOverflow);
         {
             callback.ProfileOpType(Int32(PGOSampleType::IntType()));
@@ -1313,7 +1313,7 @@ GateRef OperationsStubBuilder::Dec(GateRef glue, GateRef value, ProfileOperation
     Bind(&valueNotInt);
     {
         Label valueIsDouble(env);
-        Branch(TaggedIsDouble(value), &valueIsDouble, &slowPath);
+        BRANCH(TaggedIsDouble(value), &valueIsDouble, &slowPath);
         Bind(&valueIsDouble);
         {
             callback.ProfileOpType(Int32(PGOSampleType::DoubleType()));
@@ -1345,13 +1345,13 @@ GateRef OperationsStubBuilder::Neg(GateRef glue, GateRef value, ProfileOperation
     DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
     Label valueIsInt(env);
     Label valueNotInt(env);
-    Branch(TaggedIsInt(value), &valueIsInt, &valueNotInt);
+    BRANCH(TaggedIsInt(value), &valueIsInt, &valueNotInt);
     Bind(&valueIsInt);
     {
         GateRef valueInt = GetInt32OfTInt(value);
         Label valueIsZero(env);
         Label valueNotZero(env);
-        Branch(Int32Equal(valueInt, Int32(0)), &valueIsZero, &valueNotZero);
+        BRANCH(Int32Equal(valueInt, Int32(0)), &valueIsZero, &valueNotZero);
         Bind(&valueIsZero);
         {
             callback.ProfileOpType(Int32(PGOSampleType::IntOverFlowType()));
@@ -1362,7 +1362,7 @@ GateRef OperationsStubBuilder::Neg(GateRef glue, GateRef value, ProfileOperation
         {
             Label valueIsInt32Min(env);
             Label valueNotInt32Min(env);
-            Branch(Int32Equal(valueInt, Int32(INT32_MIN)), &valueIsInt32Min, &valueNotInt32Min);
+            BRANCH(Int32Equal(valueInt, Int32(INT32_MIN)), &valueIsInt32Min, &valueNotInt32Min);
             Bind(&valueIsInt32Min);
             {
                 callback.ProfileOpType(Int32(PGOSampleType::IntOverFlowType()));
@@ -1381,7 +1381,7 @@ GateRef OperationsStubBuilder::Neg(GateRef glue, GateRef value, ProfileOperation
     {
         Label valueIsDouble(env);
         Label valueNotDouble(env);
-        Branch(TaggedIsDouble(value), &valueIsDouble, &valueNotDouble);
+        BRANCH(TaggedIsDouble(value), &valueIsDouble, &valueNotDouble);
         Bind(&valueIsDouble);
         {
             callback.ProfileOpType(Int32(PGOSampleType::DoubleType()));
@@ -1413,7 +1413,7 @@ GateRef OperationsStubBuilder::Not(GateRef glue, GateRef value, ProfileOperation
     DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
     Label numberIsInt(env);
     Label numberNotInt(env);
-    Branch(TaggedIsInt(value), &numberIsInt, &numberNotInt);
+    BRANCH(TaggedIsInt(value), &numberIsInt, &numberNotInt);
     Bind(&numberIsInt);
     {
         callback.ProfileOpType(Int32(PGOSampleType::IntType()));
@@ -1425,7 +1425,7 @@ GateRef OperationsStubBuilder::Not(GateRef glue, GateRef value, ProfileOperation
     {
         Label numberIsDouble(env);
         Label numberNotDouble(env);
-        Branch(TaggedIsDouble(value), &numberIsDouble, &numberNotDouble);
+        BRANCH(TaggedIsDouble(value), &numberIsDouble, &numberNotDouble);
         Bind(&numberIsDouble);
         {
             callback.ProfileOpType(Int32(PGOSampleType::DoubleType()));

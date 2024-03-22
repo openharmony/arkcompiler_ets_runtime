@@ -40,8 +40,10 @@ static ARK_INLINE void WriteBarrier(const JSThread *thread, void *obj, size_t of
         // Should align with '8' in 64 and 32 bit platform
         ASSERT((slotAddr % static_cast<uint8_t>(MemAlignment::MEM_ALIGN_OBJECT)) == 0);
         objectRegion->InsertOldToNewRSet(slotAddr);
+    } else if (!objectRegion->InSharedHeap() && valueRegion->InSharedSweepableSpace()) {
+        objectRegion->AtomicInsertLocalToShareRSet(slotAddr);
     }
-
+    ASSERT(!objectRegion->InSharedHeap() || valueRegion->InSharedHeap());
     if (thread->IsConcurrentMarkingOrFinished()) {
         Barriers::Update(thread, slotAddr, objectRegion, reinterpret_cast<TaggedObject *>(value),
                          valueRegion, writeType);

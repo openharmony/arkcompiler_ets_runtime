@@ -18,6 +18,7 @@
 
 #include "ecmascript/compiler/argument_accessor.h"
 #include "ecmascript/compiler/pgo_type/pgo_type_manager.h"
+#include "ecmascript/enum_conversion.h"
 #include "ecmascript/ts_types/ts_manager.h"
 
 namespace panda::ecmascript::kungfu {
@@ -72,9 +73,9 @@ public:
 
     bool HasStringType() const;
 
-    bool LeftOrRightIsUndefinedOrNull() const
+    bool LeftOrRightIsUndefinedOrNullOrHole() const
     {
-        return acc_.IsUndefinedOrNull(left_) || acc_.IsUndefinedOrNull(right_);
+        return acc_.IsUndefinedOrNullOrHole(left_) || acc_.IsUndefinedOrNullOrHole(right_);
     }
 
 private:
@@ -892,6 +893,27 @@ public:
     {
         ProfileType currType = types_[index];
         return currType.GetElementsKindAfterTransition();
+    }
+
+    bool IsBuiltinsType() const
+    {
+        return IsMono() && types_[0].IsBuiltinsType();
+    }
+
+    bool IsGlobalsType() const
+    {
+        return IsMono() && types_[0].IsGlobalsType();
+    }
+
+    std::optional<BuiltinTypeId> GetBuiltinsTypeId() const
+    {
+        auto type = types_[0].GetBuiltinsType();
+        return ToBuiltinsTypeId(type);
+    }
+
+    std::optional<ConstantIndex> GetGlobalsId() const
+    {
+        return types_[0].GetGlobalsId();
     }
 
     bool IsBuiltinInstanceType(BuiltinTypeId type) const

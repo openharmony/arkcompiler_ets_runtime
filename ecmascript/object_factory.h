@@ -92,6 +92,7 @@ class JSLocale;
 class ResolvingFunctionsRecord;
 class EcmaVM;
 class Heap;
+class SharedHeap;
 class ConstantPool;
 class Program;
 class LayoutInfo;
@@ -151,6 +152,7 @@ class CjsRequire;
 class CjsExports;
 class ResolvedBinding;
 class ResolvedIndexBinding;
+class ResolvedRecordBinding;
 class BigInt;
 class AsyncGeneratorRequest;
 class AsyncIteratorRecord;
@@ -195,12 +197,12 @@ enum class GrowMode { KEEP, GROW };
 class ObjectFactory {
 public:
     static constexpr JSTaggedType FREE_MEMMORY_ADDRESS_ZAM_VALUE = 0xDEADFACE;
-    ObjectFactory(JSThread *thread, Heap *heap);
+    ObjectFactory(JSThread *thread, Heap *heap, SharedHeap *sHeap);
     ~ObjectFactory() = default;
     JSHandle<Method> NewMethodForNativeFunction(const void *func, FunctionKind kind = FunctionKind::NORMAL_FUNCTION,
                                                 kungfu::BuiltinsStubCSigns::ID builtinId =
                                                 kungfu::BuiltinsStubCSigns::INVALID,
-                                                MemSpaceType spaceType = OLD_SPACE);
+                                                MemSpaceType methodSpaceType = SHARED_OLD_SPACE);
 
     JSHandle<ProfileTypeInfo> NewProfileTypeInfo(uint32_t length);
     JSHandle<ConstantPool> NewConstantPool(uint32_t capacity);
@@ -229,11 +231,13 @@ public:
     JSHandle<JSFunction> NewJSFunction(const JSHandle<GlobalEnv> &env, const void *nativeFunc = nullptr,
                                        FunctionKind kind = FunctionKind::NORMAL_FUNCTION,
                                        kungfu::BuiltinsStubCSigns::ID builtinId = kungfu::BuiltinsStubCSigns::INVALID,
-                                       MemSpaceType spaceType = OLD_SPACE);
-    JSHandle<JSFunction> NewSFunction(const JSHandle<GlobalEnv> &env, const void *nativeFunc = nullptr,
-        FunctionKind kind = FunctionKind::NORMAL_FUNCTION,
-        kungfu::BuiltinsStubCSigns::ID builtinId = kungfu::BuiltinsStubCSigns::INVALID,
-        MemSpaceType spaceType = OLD_SPACE);
+                                       MemSpaceType methodSpaceType = SHARED_OLD_SPACE);
+    JSHandle<JSFunction> NewSFunction(const JSHandle<GlobalEnv> &env,
+                                      const void *nativeFunc = nullptr,
+                                      FunctionKind kind = FunctionKind::NORMAL_FUNCTION,
+                                      kungfu::BuiltinsStubCSigns::ID builtinId = kungfu::BuiltinsStubCSigns::INVALID,
+                                      MemSpaceType spaceType = SHARED_OLD_SPACE);
+    void InitializeMethod(const MethodLiteral *methodLiteral, JSHandle<Method> &method);
     // use for method
     JSHandle<JSFunction> NewJSFunction(const JSHandle<GlobalEnv> &env, const JSHandle<Method> &method);
 
@@ -356,7 +360,7 @@ public:
                                                uint32_t oldLength, uint32_t k = 0);
     JSHandle<TaggedArray> NewAndCopyTaggedArray(JSHandle<TaggedArray> &srcElements, uint32_t newLength,
                                                 uint32_t oldLength, uint32_t k = 0);
-    JSHandle<TaggedArray> NewAndCopyNameDictionary(JSHandle<TaggedArray> &srcElements, uint32_t length);
+    JSHandle<TaggedArray> NewAndCopySNameDictionary(JSHandle<TaggedArray> &srcElements, uint32_t length);
     JSHandle<TaggedArray> NewAndCopyTaggedArrayByObject(JSHandle<JSObject> thisObjHandle, uint32_t newLength,
                                                         uint32_t oldLength, uint32_t k = 0);
     JSHandle<MutantTaggedArray> NewAndCopyMutantTaggedArrayByObject(JSHandle<JSObject> thisObjHandle,
@@ -476,7 +480,7 @@ public:
                                           bool canShareHClass = true);
     JSHandle<JSObject> CloneObjectLiteral(JSHandle<JSObject> object);
     JSHandle<JSArray> CloneArrayLiteral(JSHandle<JSArray> object);
-    JSHandle<JSFunction> CloneJSFuction(JSHandle<JSFunction> func);
+    JSHandle<JSFunction> CloneJSFunction(JSHandle<JSFunction> func);
     JSHandle<JSFunction> CloneSFunction(JSHandle<JSFunction> func);
     JSHandle<JSFunction> CloneClassCtor(JSHandle<JSFunction> ctor, const JSHandle<JSTaggedValue> &lexenv,
                                         bool canShareHClass);
@@ -524,8 +528,8 @@ public:
     JSHandle<Method> NewMethod(const MethodLiteral *methodLiteral, MemSpaceType spaceType = OLD_SPACE);
 
     JSHandle<Method> NewMethod(const JSPandaFile *jsPandaFile, MethodLiteral *methodLiteral,
-                               JSHandle<ConstantPool> constpool, JSHandle<JSTaggedValue> module,
-                               uint32_t entryIndex, bool needSetAotFlag, bool *canFastCall = nullptr);
+                               JSHandle<ConstantPool> constpool, uint32_t entryIndex,
+                               bool needSetAotFlag, bool *canFastCall = nullptr);
 
     // used for creating jsobject by constructor
     JSHandle<JSObject> NewJSObjectByConstructor(const JSHandle<JSFunction> &constructor,
@@ -656,8 +660,8 @@ public:
     JSHandle<ResolvedBinding> NewResolvedBindingRecord(const JSHandle<SourceTextModule> &module,
                                                        const JSHandle<JSTaggedValue> &bindingName);
     JSHandle<ResolvedIndexBinding> NewResolvedIndexBindingRecord();
-    JSHandle<ResolvedIndexBinding> NewResolvedIndexBindingRecord(const JSHandle<SourceTextModule> &module,
-                                                                           int32_t index);
+    JSHandle<ResolvedIndexBinding> NewResolvedIndexBindingRecord(
+        const JSHandle<SourceTextModule> &module, int32_t index);
 
     JSHandle<CellRecord> NewCellRecord();
     JSHandle<JSFunction> NewJSAsyncGeneratorFunction(const JSHandle<Method> &method);
@@ -687,10 +691,117 @@ public:
                                                          const PropertyDescriptor *attributes);
     JSHandle<JSTaggedValue> CreateJSObjectWithNamedProperties(size_t propertyCount, const char **keys,
                                                               const Local<JSValueRef> *values);
-
     // Fill the given free memory range with special zam value.
     void FillFreeMemoryRange(uintptr_t start, uintptr_t end);
 
+    // -----------------------------------shared object-----------------------------------------
+    JSHandle<JSObject> NewSharedOldSpaceJSObject(const JSHandle<JSHClass> &jshclass);
+
+    TaggedObject *NewSharedOldSpaceObject(const JSHandle<JSHClass> &hclass);
+
+    JSHandle<JSHClass> NewSEcmaHClass(uint32_t size, JSType type, uint32_t inlinedProps);
+
+    JSHandle<JSHClass> NewSEcmaHClass(JSHClass *hclass, uint32_t size, JSType type,
+        uint32_t inlinedProps = JSHClass::DEFAULT_CAPACITY_OF_IN_OBJECTS);
+
+    JSHandle<JSHClass> NewSEcmaHClass(uint32_t size, uint32_t inlinedProps, JSType type,
+        const JSHandle<JSTaggedValue> &prototype, const JSHandle<JSTaggedValue> &layout);
+
+    JSHandle<JSHClass> NewSEcmaHClassClass(JSHClass *hclass, uint32_t size, JSType type);
+
+    JSHandle<JSHClass> InitSClassClass();
+
+    JSHandle<JSHClass> NewSEcmaReadOnlyHClass(JSHClass *hclass, uint32_t size, JSType type,
+                                             uint32_t inlinedProps = JSHClass::DEFAULT_CAPACITY_OF_IN_OBJECTS);
+    JSHandle<TaggedArray> SharedEmptyArray() const;
+
+    JSHandle<Method> NewSMethodForNativeFunction(const void *func, FunctionKind kind = FunctionKind::NORMAL_FUNCTION,
+                                                kungfu::BuiltinsStubCSigns::ID builtinId =
+                                                kungfu::BuiltinsStubCSigns::INVALID,
+                                                MemSpaceType spaceType = SHARED_OLD_SPACE);
+
+    JSHandle<JSFunction> NewSFunctionByHClass(const JSHandle<Method> &methodHandle,
+                                              const JSHandle<JSHClass> &hclass);
+    JSHandle<JSFunction> NewSFunctionByHClass(const void *func, const JSHandle<JSHClass> &hclass,
+        FunctionKind kind,
+        kungfu::BuiltinsStubCSigns::ID builtinId = kungfu::BuiltinsStubCSigns::INVALID,
+        MemSpaceType spaceType = SHARED_OLD_SPACE);
+
+    JSHandle<JSFunction> NewSFunctionWithAccessor(
+        const void *func,
+        const JSHandle<JSHClass> &hclass,
+        FunctionKind kind,
+        kungfu::BuiltinsStubCSigns::ID builtinId = kungfu::BuiltinsStubCSigns::INVALID,
+        MemSpaceType spaceType = SHARED_OLD_SPACE);
+
+    JSHandle<Method> NewSMethod(const MethodLiteral *methodLiteral, MemSpaceType methodSpaceType = SHARED_OLD_SPACE);
+
+    JSHandle<Method> NewSMethod(const JSPandaFile *jsPandaFile,
+                                MethodLiteral *methodLiteral,
+                                JSHandle<ConstantPool> constpool,
+                                uint32_t entryIndex,
+                                bool needSetAotFlag,
+                                bool *canFastCall = nullptr);
+
+    JSHandle<ConstantPool> NewSConstantPool(uint32_t capacity);
+
+    JSHandle<AOTLiteralInfo> NewSAOTLiteralInfo(uint32_t length, JSTaggedValue initVal = JSTaggedValue::Hole());
+
+    JSHandle<COWTaggedArray> NewSCOWTaggedArray(uint32_t length, JSTaggedValue initVal = JSTaggedValue::Hole());
+
+    JSHandle<ClassLiteral> NewSClassLiteral();
+
+    JSHandle<ClassInfoExtractor> NewSClassInfoExtractor(JSHandle<JSTaggedValue> method);
+
+    JSHandle<TaggedArray> NewSOldSpaceTaggedArray(uint32_t length, JSTaggedValue initVal = JSTaggedValue::Hole());
+
+    JSHandle<TaggedArray> NewSTaggedArray(uint32_t length, JSTaggedValue initVal, MemSpaceType spaceType);
+
+    JSHandle<AccessorData> NewSAccessorData();
+
+    JSHandle<SourceTextModule> NewSModule();
+
+    JSHandle<ResolvedIndexBinding> NewSResolvedIndexBindingRecord();
+
+    JSHandle<ResolvedIndexBinding> NewSResolvedIndexBindingRecord(const JSHandle<SourceTextModule> &module,
+        int32_t index);
+
+    JSHandle<ResolvedBinding> NewSResolvedBindingRecord();
+
+    JSHandle<ResolvedBinding> NewSResolvedBindingRecord(const JSHandle<SourceTextModule> &module,
+        const JSHandle<JSTaggedValue> &bindingName);
+
+    JSHandle<ResolvedRecordBinding> NewSResolvedRecordBindingRecord();
+
+    JSHandle<ResolvedRecordBinding> NewSResolvedRecordBindingRecord(const JSHandle<EcmaString> &moduleRecord,
+                                                                    int32_t index);
+
+    JSHandle<LayoutInfo> CopyAndReSortSLayoutInfo(const JSHandle<LayoutInfo> &old, int end, int capacity);
+
+    JSHandle<LayoutInfo> CreateSLayoutInfo(uint32_t properties);
+
+    JSHandle<TaggedArray> NewSEmptyArray(); // only used for EcmaVM.
+
+    JSHandle<MutantTaggedArray> NewSEmptyMutantArray();
+
+    JSHandle<TaggedArray> PUBLIC_API NewSDictionaryArray(uint32_t length);
+
+    JSHandle<TaggedArray> NewSTaggedArrayWithoutInit(uint32_t length);
+
+    JSHandle<JSHClass> CreateSFunctionClass(uint32_t size, JSType type,
+                                            const JSHandle<JSTaggedValue> &prototype, bool isAccessor = true);
+
+    JSHandle<JSNativePointer> NewSJSNativePointer(void *externalPointer,
+                                                  const DeleteEntryPoint &callBack,
+                                                  void *data = nullptr,
+                                                  bool nonMovable = false,
+                                                  size_t nativeBindingsize = 0,
+                                                  NativeFlag flag = NativeFlag::NO_DIV);
+
+    JSHandle<AccessorData> NewSInternalAccessor(void *setter, void *getter);
+
+    JSHandle<JSSymbol> NewSWellKnownSymbol(const JSHandle<JSTaggedValue> &name);
+    JSHandle<JSSymbol> NewSWellKnownSymbolWithChar(std::string_view description);
 private:
     friend class GlobalEnv;
     friend class GlobalEnvConstants;
@@ -706,6 +817,7 @@ private:
 
     EcmaVM *vm_ {nullptr};
     Heap *heap_ {nullptr};
+    SharedHeap *sHeap_ {nullptr};
 
     static constexpr uint32_t LENGTH_THRESHOLD = 50;
     static constexpr int MAX_LITERAL_HCLASS_CACHE_SIZE = 63;
@@ -714,7 +826,7 @@ private:
     NO_MOVE_SEMANTIC(ObjectFactory);
 
     void NewObjectHook() const;
-
+    void NewSObjectHook() const;
     // used for creating jshclass in GlobalEnv, EcmaVM
     JSHandle<JSHClass> NewEcmaHClassClass(JSHClass *hclass, uint32_t size, JSType type);
 
@@ -747,7 +859,8 @@ private:
                                                                uint32_t utf8Len) const;
     JSHandle<EcmaString> GetStringFromStringTableNonMovable(const uint8_t *utf8Data, uint32_t utf8Len) const;
     // For MUtf-8 string data
-    EcmaString* PUBLIC_API GetRawStringFromStringTable(StringData sd, MemSpaceType type = MemSpaceType::SEMI_SPACE,
+    EcmaString *PUBLIC_API GetRawStringFromStringTable(StringData sd,
+                                                       MemSpaceType type = MemSpaceType::SHARED_OLD_SPACE,
                                                        bool isConstantString = false, uint32_t idOffset = 0) const;
 
     JSHandle<EcmaString> GetStringFromStringTable(const uint16_t *utf16Data, uint32_t utf16Len,
@@ -757,9 +870,6 @@ private:
 
     JSHandle<EcmaString> GetStringFromStringTable(const JSHandle<EcmaString> &firstString,
                                                   const JSHandle<EcmaString> &secondString);
-
-    JSHandle<TaggedArray> NewEmptyArray();  // only used for EcmaVM.
-    JSHandle<MutantTaggedArray> NewEmptyMutantArray();
 
     JSHandle<JSHClass> CreateJSArguments(const JSHandle<GlobalEnv> &env);
     JSHandle<JSHClass> CreateJSArrayInstanceClass(JSHandle<JSTaggedValue> proto,
@@ -784,15 +894,6 @@ private:
 
     JSHandle<MutantTaggedArray> NewMutantTaggedArrayWithoutInit(uint32_t length, MemSpaceType spaceType);
 
-    // For sharedobject
-    JSHandle<JSFunction> NewSFunction(const JSHandle<Method> &methodHandle,
-                                      const JSHandle<JSTaggedValue> &homeObject);
-    JSHandle<JSFunction> NewSFunctionByHClass(const void *func, const JSHandle<JSHClass> &hclass,
-                                              FunctionKind kind);
-    JSHandle<JSFunction> NewSFunctionByHClass(const JSHandle<Method> &methodHandle,
-                                              const JSHandle<JSHClass> &hclass);
-    JSHandle<JSHClass> CreateSFunctionClassWithoutProto(uint32_t size, JSType type,
-                                                        const JSHandle<JSTaggedValue> &prototype);
     friend class Builtins;    // create builtins object need hclass
     friend class JSFunction;  // create prototype_or_hclass need hclass
     friend class JSHClass;    // HC transition need hclass
@@ -807,6 +908,7 @@ private:
     friend class ConstantPool;
     friend class EcmaContext;
     friend class kungfu::TSHClassGenerator;
+    friend class panda::FunctionRef;
 };
 
 class ClassLinkerFactory {

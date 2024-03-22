@@ -242,3 +242,24 @@ print(text_str2.startsWith(search_str1));
 print(text_str2.startsWith(search_str1, 10));
 print(text_str2.startsWith(search_str2, 42));
 print(text_str2.startsWith(search_str1, text_str.length - 1));
+
+const str7 = "测试"
+const iter = str7[Symbol.iterator]();
+print(iter.next().value);
+print(iter.next().value);
+print(iter.next().done);
+print(iter.next().value);
+
+const str_endsWith1 = 'this is a test for string endsWith!';
+print(str_endsWith1.endsWith('string', '25'));    // true
+print(str_endsWith1.endsWith('string', 25));      // true
+print(str_endsWith1.endsWith('endsWith!', 25));   // false
+print(str_endsWith1.endsWith('endsWith!'));       // true
+print(str_endsWith1.endsWith('endsWith!', -1));   // false
+print(str_endsWith1.endsWith('endsWith!', 100));  // true
+print(str_endsWith1.endsWith('string', 25.3));    // true
+
+let arr = Array(14);
+let tree_str = arr + 512;
+tree_str.substring(0,arr.length);
+print("sub_string test success!");

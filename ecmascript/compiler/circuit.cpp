@@ -78,7 +78,9 @@ Gate *Circuit::AllocateGateSpace(size_t numIns)
 
 bool Circuit::AddComment(GateRef g, const char* str)
 {
-    ASSERT(debugInfo_ != nullptr);
+    if (debugInfo_ == nullptr) {
+        return false;
+    }
     if (!debugInfo_->IsEnable()) {
         return false;
     }
@@ -456,6 +458,12 @@ GateRef Circuit::GetConstantGate(MachineType machineType, uint64_t value,
     }
     auto gate = NewGate(metaBuilder_.Constant(value), machineType, type);
     constantCache_[{machineType, value, type}] = gate;
+    return gate;
+}
+
+GateRef Circuit::GetConstantGateWithoutCache(MachineType machineType, uint64_t value, GateType type)
+{
+    auto gate = NewGate(metaBuilder_.Constant(value), machineType, type);
     return gate;
 }
 

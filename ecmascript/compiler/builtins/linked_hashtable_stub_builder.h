@@ -35,6 +35,9 @@ public:
     GateRef Insert(GateRef linkedTable, GateRef key, GateRef value);
     GateRef Delete(GateRef linkedTable, GateRef key);
     GateRef Has(GateRef linkedTable, GateRef key);
+    GateRef Get(GateRef linkedTable, GateRef key);
+
+    void GenMapSetConstructor(GateRef nativeCode, GateRef func, GateRef newTarget, GateRef thisValue, GateRef numArgs);
 
 private:
     GateRef IsKey(GateRef key)
@@ -198,6 +201,7 @@ private:
     void Rehash(GateRef linkedTable, GateRef newTable);
     GateRef ComputeCapacity(GateRef atLeastSpaceFor);
     void RemoveEntry(GateRef linkedTable, GateRef entry);
+    void StoreHashTableToNewObject(GateRef newTargetHClass, Variable& returnValue);
 
     GateRef glue_;
 };

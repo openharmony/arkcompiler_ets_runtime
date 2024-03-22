@@ -35,10 +35,16 @@ enum class TrackType : uint8_t {
     INT = 0x1ULL,
     DOUBLE = 0x1ULL << 1,
     NUMBER = INT | DOUBLE,
-    TAGGED = 0x1ULL << 2,
-    BOOLEAN = 5,
-    STRING = 6,
-    SENDABLE = 7
+    TAGGED = 0x1ULL << 2
+};
+
+enum class SharedFieldType : uint8_t {
+    NONE = 0,
+    NUMBER = 1,
+    STRING = 2,
+    BOOLEAN = 3,
+    SENDABLE = 4,
+    BIG_INT = 5,
 };
 
 enum class PropertyBoxType {
@@ -64,13 +70,14 @@ enum class PropertyBoxType {
  *         --------------------------------
  *    Fast | OffsetField(bit 8...17)
  *         | TrackTypeField(bit 18...20)
- *         | SortedIndexField(bit 21...30)
- *         | IsConstPropsField(bit 31)
- *         | IsNotHoleField(bit 32)
+ *         | SharedFieldTypeField(bit 21...23)
+ *         | SortedIndexField(bit 24...33)
+ *         | IsConstPropsField(bit 34)
+ *         | IsNotHoleField(bit 35)
  *         -----------------------------
  *    Slow | PropertyBoxTypeField(bit 8...9)
  *         | DictionaryOrderField(bit 10...29)
- *         | TrackTypeField(bit 30...32)
+ *         | SharedFieldTypeField(bit 30...32)
  */
 class PropertyAttributes {
 public:
@@ -80,21 +87,24 @@ public:
     DEFAULT_NOEXCEPT_MOVE_SEMANTIC(PropertyAttributes);
     DEFAULT_COPY_SEMANTIC(PropertyAttributes);
 
-    explicit PropertyAttributes(uint32_t v) : value_(v) {}
-    explicit PropertyAttributes(int32_t v) : value_(static_cast<uint32_t>(v)) {}
-    explicit PropertyAttributes(JSTaggedValue v) : value_(v.GetInt()) {}
+    explicit PropertyAttributes(uint64_t v) : value_(v) {}
+    explicit PropertyAttributes(JSTaggedValue v) : value_(JSTaggedValue::UnwrapToUint64(v)) {}
     explicit PropertyAttributes(const PropertyDescriptor &desc);
 
     static constexpr uint32_t DICTIONARY_ORDER_NUM = 20;
     static constexpr uint32_t OFFSET_BITFIELD_NUM = 10;
     static constexpr uint32_t REPRESENTATION_NUM = 2;
     static constexpr uint32_t TRACK_TYPE_NUM = 3;
+    static constexpr uint32_t FIELD_TYPE_NUM = 3;
     static constexpr uint32_t MAX_FAST_PROPS_CAPACITY = (1U << OFFSET_BITFIELD_NUM) - 1;
     static constexpr unsigned BITS_PER_BYTE = 8;
 
-    using PropertyMetaDataField = BitField<int, 0, 4>;  // 4: property metaData field occupies 4 bits
-    using AttributesField = BitField<int, 0, 4>;        // 4: attributes field occupies 4 bits
-    using DefaultAttributesField = BitField<int, 0, 3>; // 3: default attributes field occupies 3 bits
+    static constexpr uint32_t MAX_BIT_SIZE = 48;
+    static constexpr int INITIAL_PROPERTY_INDEX = 0;
+
+    using PropertyMetaDataField = BitField<int32_t, 0, 4>;  // 4: property metaData field occupies 4 bits
+    using AttributesField = BitField<int32_t, 0, 4>;        // 4: attributes field occupies 4 bits
+    using DefaultAttributesField = BitField<int32_t, 0, 3>; // 3: default attributes field occupies 3 bits
     using WritableField = BitField<bool, 0, 1>;         // 1: writable field occupies 1 bits
     using EnumerableField = WritableField::NextFlag;
     using ConfigurableField = EnumerableField::NextFlag;
@@ -113,14 +123,16 @@ public:
     using OffsetField = FastModeStartField::NextField<uint32_t, OFFSET_BITFIELD_NUM>; // 17
     using TrackTypeField = OffsetField::NextField<TrackType, TRACK_TYPE_NUM>;     // 20: 3 bits
 
-    static constexpr uint32_t NORMAL_ATTR_BITS = 20;
-    using NormalAttrField = BitField<int, 0, NORMAL_ATTR_BITS>;
-    using SortedIndexField = TrackTypeField::NextField<uint32_t, OFFSET_BITFIELD_NUM>; // 30
-    using IsConstPropsField = SortedIndexField::NextFlag;                              // 31
-    using IsNotHoleField = IsConstPropsField::NextFlag;                                // 32
+    // normal attr should include SharedFieldTypeField when set to layout
+    static constexpr uint32_t NORMAL_ATTR_BITS = 23;
+    using NormalAttrField = BitField<uint32_t, 0, NORMAL_ATTR_BITS>;
+    using SharedFieldTypeField = TrackTypeField::NextField<SharedFieldType, FIELD_TYPE_NUM>; // 23: 3 bits
+    using SortedIndexField = SharedFieldTypeField::NextField<uint32_t, OFFSET_BITFIELD_NUM>; // 33: 10 bits
+    using IsConstPropsField = SortedIndexField::NextFlag;                              // 34
+    using IsNotHoleField = IsConstPropsField::NextFlag;                                // 35
     using FastModeLastField = IsNotHoleField;
     static_assert(
-        FastModeLastField::START_BIT + FastModeLastField::SIZE <= sizeof(uint32_t) * BITS_PER_BYTE, "Invalid");
+        FastModeLastField::START_BIT + FastModeLastField::SIZE <= MAX_BIT_SIZE, "Invalid");
 
     // ---------------------------------------------------------------------------------------------
     // only for dictionary mode, include global
@@ -129,15 +141,13 @@ public:
     static_assert(DictModeStartField::SIZE == CommonLastBitField::SIZE);
     using PropertyBoxTypeField = DictModeStartField::NextField<PropertyBoxType, 2>;               // 2: 2 bits, 8-9
     using DictionaryOrderField = PropertyBoxTypeField::NextField<uint32_t, DICTIONARY_ORDER_NUM>; // 29
-    using DictTrackTypeField = DictionaryOrderField::NextField<TrackType, TRACK_TYPE_NUM>;
-    using DictModeLastField = DictTrackTypeField;
+    using DictSharedFieldTypeField = DictionaryOrderField::NextField<SharedFieldType, FIELD_TYPE_NUM>;
+    using DictModeLastField = DictSharedFieldTypeField;
+
     static_assert(
-        DictModeLastField::START_BIT + DictModeLastField::SIZE <= sizeof(uint32_t) * BITS_PER_BYTE, "Invalid");
+        DictModeLastField::START_BIT + DictModeLastField::SIZE <= MAX_BIT_SIZE, "Invalid");
 
-    static constexpr uint32_t BIT_SIZE = 28;
-    static constexpr int INITIAL_PROPERTY_INDEX = 0;
-
-    inline int GetPropertyMetaData() const
+    inline int32_t GetPropertyMetaData() const
     {
         return PropertyMetaDataField::Get(value_);
     }
@@ -149,24 +159,24 @@ public:
 
     static PropertyAttributes Default(bool w, bool e, bool c, bool isAccessor = false)
     {
-        uint32_t value = WritableField::Encode(w) | EnumerableField::Encode(e) | ConfigurableField::Encode(c) |
+        uint64_t value = WritableField::Encode(w) | EnumerableField::Encode(e) | ConfigurableField::Encode(c) |
                          IsAccessorField::Encode(isAccessor);
         return PropertyAttributes(value);
     }
 
     static PropertyAttributes DefaultAccessor(bool w, bool e, bool c)
     {
-        uint32_t value = WritableField::Encode(w) | EnumerableField::Encode(e) | ConfigurableField::Encode(c) |
+        uint64_t value = WritableField::Encode(w) | EnumerableField::Encode(e) | ConfigurableField::Encode(c) |
                          IsAccessorField::Encode(true);
         return PropertyAttributes(value);
     }
 
     inline void SetDefaultAttributes()
     {
-        AttributesField::Set<uint32_t>(DefaultAttributesField::Mask(), &value_);
+        AttributesField::Set<uint64_t>(DefaultAttributesField::Mask(), &value_);
     }
 
-    static inline int GetDefaultAttributes()
+    static inline int32_t GetDefaultAttributes()
     {
         return DefaultAttributesField::Mask();
     }
@@ -194,12 +204,12 @@ public:
 
     inline bool IsDefaultAttributes() const
     {
-        return AttributesField::Get(value_) == static_cast<int>(DefaultAttributesField::Mask());
+        return AttributesField::Get(value_) == static_cast<int32_t>(DefaultAttributesField::Mask());
     }
 
     inline void SetNoneAttributes()
     {
-        AttributesField::Set<uint32_t>(0U, &value_);
+        AttributesField::Set<uint64_t>(0U, &value_);
     }
 
     inline bool IsNoneAttributes() const
@@ -209,7 +219,7 @@ public:
 
     inline void SetWritable(bool flag)
     {
-        WritableField::Set<uint32_t>(flag, &value_);
+        WritableField::Set<uint64_t>(flag, &value_);
     }
     inline bool IsWritable() const
     {
@@ -217,7 +227,7 @@ public:
     }
     inline void SetEnumerable(bool flag)
     {
-        EnumerableField::Set<uint32_t>(flag, &value_);
+        EnumerableField::Set<uint64_t>(flag, &value_);
     }
     inline bool IsEnumerable() const
     {
@@ -225,7 +235,7 @@ public:
     }
     inline void SetConfigurable(bool flag)
     {
-        ConfigurableField::Set<uint32_t>(flag, &value_);
+        ConfigurableField::Set<uint64_t>(flag, &value_);
     }
     inline bool IsConfigurable() const
     {
@@ -234,7 +244,7 @@ public:
 
     inline void SetIsAccessor(bool flag)
     {
-        IsAccessorField::Set<uint32_t>(flag, &value_);
+        IsAccessorField::Set<uint64_t>(flag, &value_);
     }
 
     inline bool IsAccessor() const
@@ -244,7 +254,7 @@ public:
 
     inline void SetIsInlinedProps(bool flag)
     {
-        IsInlinedPropsField::Set<uint32_t>(flag, &value_);
+        IsInlinedPropsField::Set<uint64_t>(flag, &value_);
     }
 
     inline bool IsInlinedProps() const
@@ -254,7 +264,7 @@ public:
 
     inline void SetIsConstProps(bool flag)
     {
-        IsConstPropsField::Set<uint32_t>(flag, &value_);
+        IsConstPropsField::Set<uint64_t>(flag, &value_);
     }
 
     inline bool IsConstProps() const
@@ -264,7 +274,7 @@ public:
 
     inline void SetIsNotHole(bool flag)
     {
-        IsNotHoleField::Set<uint32_t>(flag, &value_);
+        IsNotHoleField::Set<uint64_t>(flag, &value_);
     }
 
     inline bool IsNotHole() const
@@ -291,7 +301,7 @@ public:
 
     inline void SetRepresentation(Representation representation)
     {
-        RepresentationField::Set<uint32_t>(representation, &value_);
+        RepresentationField::Set<uint64_t>(representation, &value_);
     }
 
     inline Representation GetRepresentation() const
@@ -306,22 +316,32 @@ public:
 
     inline void SetTrackType(TrackType type)
     {
-        TrackTypeField::Set(type, &value_);
+        TrackTypeField::Set<uint64_t>(type, &value_);
     }
 
-    inline void SetDictTrackType(TrackType type)
+    inline SharedFieldType GetSharedFieldType() const
     {
-        DictTrackTypeField::Set(type, &value_);
+        return SharedFieldTypeField::Get(value_);
     }
 
-    inline TrackType GetDictTrackType() const
+    inline void SetSharedFieldType(SharedFieldType fieldType)
     {
-        return DictTrackTypeField::Get(value_);
+        SharedFieldTypeField::Set<uint64_t>(fieldType, &value_);
+    }
+
+    inline void SetDictSharedFieldType(SharedFieldType fieldType)
+    {
+        DictSharedFieldTypeField::Set<uint64_t>(fieldType, &value_);
+    }
+
+    inline SharedFieldType GetDictSharedFieldType() const
+    {
+        return DictSharedFieldTypeField::Get(value_);
     }
 
     inline void SetDictionaryOrder(uint32_t order)
     {
-        DictionaryOrderField::Set<uint32_t>(order, &value_);
+        DictionaryOrderField::Set<uint64_t>(order, &value_);
     }
     inline uint32_t GetDictionaryOrder() const
     {
@@ -330,8 +350,9 @@ public:
 
     inline void SetOffset(uint32_t offset)
     {
-        OffsetField::Set<uint32_t>(offset, &value_);
+        OffsetField::Set<uint64_t>(offset, &value_);
     }
+
     inline uint32_t GetOffset() const
     {
         return OffsetField::Get(value_);
@@ -339,7 +360,7 @@ public:
 
     inline void SetSortedIndex(uint32_t sortedIndex)
     {
-        SortedIndexField::Set<uint32_t>(sortedIndex, &value_);
+        SortedIndexField::Set<uint64_t>(sortedIndex, &value_);
     }
     inline uint32_t GetSortedIndex() const
     {
@@ -348,7 +369,7 @@ public:
 
     inline void SetNormalAttr(uint32_t normalAttr)
     {
-        NormalAttrField::Set<uint32_t>(normalAttr, &value_);
+        NormalAttrField::Set<uint64_t>(normalAttr, &value_);
     }
 
     inline uint32_t GetNormalAttr() const
@@ -358,17 +379,17 @@ public:
 
     inline JSTaggedValue GetNormalTagged() const
     {
-        return JSTaggedValue(static_cast<int>(GetNormalAttr()));
+        return JSTaggedValue::WrapUint64(GetNormalAttr());
     }
 
-    inline uint32_t GetValue() const
+    inline uint64_t GetValue() const
     {
         return value_;
     }
 
     inline void SetBoxType(PropertyBoxType cellType)
     {
-        PropertyBoxTypeField::Set<uint32_t>(cellType, &value_);
+        PropertyBoxTypeField::Set<uint64_t>(cellType, &value_);
     }
 
     inline PropertyBoxType GetBoxType() const
@@ -383,11 +404,11 @@ public:
 
     inline JSTaggedValue GetTaggedValue() const
     {
-        return JSTaggedValue(static_cast<int>(value_));
+        return JSTaggedValue::WrapUint64(value_);
     }
 
 private:
-    uint32_t value_{0};
+    uint64_t value_{0};
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_PROPERTY_ATTRIBUTES_H

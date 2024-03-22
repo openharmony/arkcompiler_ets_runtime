@@ -31,3 +31,15 @@ print(narr[0], 6);
 let arr=new Array(10);
 map=arr.map(()=>{});
 print(map.at(9));
+
+// Species constructor is used to create []
+// So not should use ElementAccessor::Set (elements.length == 0)
+var instance = [];
+var Ctor = function() {
+  return instance;
+};
+var a = [1, 2, 3, 4, 5];
+a.constructor = {};
+a.constructor[Symbol.species] = Ctor;
+var result = a.map(function() {});
+print(result == instance);

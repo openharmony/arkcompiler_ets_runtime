@@ -84,3 +84,15 @@ true
 false
 true
 false
+测
+试
+true
+undefined
+true
+true
+false
+true
+false
+true
+true
+sub_string test success!

@@ -13,13 +13,12 @@
  * limitations under the License.
  */
 
-//declare function print(str:string):string;
-declare function assert_equal(a: Object, b: Object):void;
+declare function print(str:string):string;
 
 var num1:number = 99
 var num2:number = 2
 var res:number = num1 / num2
-assert_equal(res, 49.5);
+print(res);
 var num3: number = 50
 var num4: number = 45.5
-assert_equal(num3 / num4, 1.098901098901099);
+print(num3 / num4);

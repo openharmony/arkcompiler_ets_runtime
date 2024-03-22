@@ -39,6 +39,7 @@
 #include "ecmascript/runtime_call_id.h"
 #include "ecmascript/stubs/runtime_stubs.h"
 #include "ecmascript/template_string.h"
+#include "ecmascript/checkpoint/thread_state_transition.h"
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
 #include "ecmascript/dfx/cpu_profiler/cpu_profiler.h"
 #endif
@@ -141,7 +142,7 @@ using CommonStubCSigns = kungfu::CommonStubCSigns;
 #define SET_ACC(val) (acc = val)               // NOLINT(cppcoreguidelines-macro-usage)
 
 #define GET_METHOD_FROM_CACHE(index) \
-    ConstantPool::GetMethodFromCache(thread, constpool, module, index)
+    ConstantPool::GetMethodFromCache(thread, constpool, index)
 
 #define GET_STR_FROM_CACHE(index) \
     ConstantPool::GetStringFromCache(thread, constpool, index)
@@ -616,6 +617,7 @@ using CommonStubCSigns = kungfu::CommonStubCSigns;
 JSTaggedValue EcmaInterpreter::ExecuteNative(EcmaRuntimeCallInfo *info)
 {
     JSThread *thread = info->GetThread();
+    ASSERT(thread->IsInManagedState());
     INTERPRETER_TRACE(thread, ExecuteNative);
 
     // current is entry frame.
@@ -634,8 +636,11 @@ JSTaggedValue EcmaInterpreter::ExecuteNative(EcmaRuntimeCallInfo *info)
     ECMAObject *callTarget = reinterpret_cast<ECMAObject*>(info->GetFunctionValue().GetTaggedObject());
     Method *method = callTarget->GetCallTarget();
     LOG_INST() << "Entry: Runtime Call.";
-    JSTaggedValue tagged =
-        reinterpret_cast<EcmaEntrypoint>(const_cast<void *>(method->GetNativePointer()))(info);
+    JSTaggedValue tagged;
+    {
+        ASSERT(thread == JSThread::GetCurrent());
+        tagged = reinterpret_cast<EcmaEntrypoint>(const_cast<void *>(method->GetNativePointer()))(info);
+    }
     LOG_INST() << "Exit: Runtime Call.";
 
     InterpretedEntryFrame *entryState = GET_ENTRY_FRAME(sp);
@@ -652,6 +657,7 @@ JSTaggedValue EcmaInterpreter::Execute(EcmaRuntimeCallInfo *info)
     }
 
     JSThread *thread = info->GetThread();
+    ASSERT(thread->IsInManagedState());
     INTERPRETER_TRACE(thread, Execute);
     // check stack overflow before re-enter interpreter
     STACK_LIMIT_CHECK(thread, thread->GetException());
@@ -740,7 +746,7 @@ JSTaggedValue EcmaInterpreter::Execute(EcmaRuntimeCallInfo *info)
 
     state->constpool = method->GetConstantPool();
     JSHandle<JSFunction> thisFunc = JSHandle<JSFunction>::Cast(func);
-    state->profileTypeInfo = method->GetProfileTypeInfo();
+    state->profileTypeInfo = thisFunc->GetProfileTypeInfo();
     state->base.prev = sp;
     state->base.type = FrameType::INTERPRETER_FRAME;
     state->env = thisFunc->GetLexicalEnv();
@@ -822,7 +828,7 @@ JSTaggedValue EcmaInterpreter::GeneratorReEnterInterpreter(JSThread *thread, JSH
     state->function = func.GetTaggedValue();
     state->thisObj = context->GetThis();
     state->constpool = method->GetConstantPool();
-    state->profileTypeInfo = method->GetProfileTypeInfo();
+    state->profileTypeInfo = func->GetProfileTypeInfo();
     state->acc = context->GetAcc();
     state->base.prev = breakSp;
     state->base.type = FrameType::INTERPRETER_FRAME;
@@ -980,7 +986,8 @@ std::pair<JSTaggedValue, JSTaggedValue> EcmaInterpreter::GetCurrentEntryPoint(JS
         if (method->IsNativeWithCallField()) {
             continue;
         }
-        JSHandle<JSTaggedValue> module(thread, method->GetModule());
+        JSTaggedValue func = frameHandler.GetFunction();
+        JSHandle<JSTaggedValue> module(thread, JSFunction::Cast(func.GetTaggedObject())->GetModule());
 
         if (module->IsSourceTextModule()) {
             SourceTextModule *sourceTextModule = SourceTextModule::Cast(module->GetTaggedObject());
@@ -1012,7 +1019,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
     constexpr size_t numOps = 0x100;
     constexpr size_t numThrowOps = 10;
     constexpr size_t numWideOps = 20;
-    constexpr size_t numCallRuntimeOps = 9;
+    constexpr size_t numCallRuntimeOps = 11;
     constexpr size_t numDeprecatedOps = 47;
 
     static std::array<const void *, numOps> instDispatchTable {
@@ -1403,7 +1410,8 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         setVregsAndFrameNotNative:
             startReg--;
         deprecatedSetVregsAndFrameNotNative: {
-            if (JSFunction::Cast(funcObject)->IsClassConstructor()) {
+            JSFunction *func = JSFunction::Cast(funcObject);
+            if (func->IsClassConstructor()) {
                 {
                     [[maybe_unused]] EcmaHandleScope handleScope(thread);
                     JSHandle<JSObject> error =
@@ -1449,8 +1457,8 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
             state->thisObj = JSTaggedValue(thisObj);
             state->acc = JSTaggedValue::Hole();
             state->constpool = methodHandle->GetConstantPool();
-            state->profileTypeInfo = methodHandle->GetProfileTypeInfo();
-            JSTaggedValue env = JSFunction::Cast(funcObject)->GetLexicalEnv();
+            state->profileTypeInfo = func->GetProfileTypeInfo();
+            JSTaggedValue env = func->GetLexicalEnv();
             state->env = env;
             thread->SetCurrentSPFrame(newSp);
             LOG_INST() << "Entry: Runtime Call " << std::hex << reinterpret_cast<uintptr_t>(sp) << " "
@@ -3310,7 +3318,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
 
                     state->function = superCtor;
                     state->constpool = methodHandle->GetConstantPool();
-                    state->profileTypeInfo = methodHandle->GetProfileTypeInfo();
+                    state->profileTypeInfo = superCtorFunc->GetProfileTypeInfo();
                     state->env = superCtorFunc->GetLexicalEnv();
                 }
 
@@ -3446,7 +3454,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
 
                     state->function = superCtor;
                     state->constpool = methodHandle->GetConstantPool();
-                    state->profileTypeInfo = methodHandle->GetProfileTypeInfo();
+                    state->profileTypeInfo = superCtorFunc->GetProfileTypeInfo();
                     state->env = superCtorFunc->GetLexicalEnv();
                 }
 
@@ -3582,7 +3590,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
 
                     state->function = superCtor;
                     state->constpool = methodHandle->GetConstantPool();
-                    state->profileTypeInfo = methodHandle->GetProfileTypeInfo();
+                    state->profileTypeInfo = superCtorFunc->GetProfileTypeInfo();
                     state->env = superCtorFunc->GetLexicalEnv();
                 }
 
@@ -3718,7 +3726,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
 
                     state->function = superCtor;
                     state->constpool = methodHandle->GetConstantPool();
-                    state->profileTypeInfo = methodHandle->GetProfileTypeInfo();
+                    state->profileTypeInfo = superCtorFunc->GetProfileTypeInfo();
                     state->env = superCtorFunc->GetLexicalEnv();
                 }
 
@@ -3776,7 +3784,6 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
                    << " imm:" << imm;
         SAVE_ACC();
         auto constpool = GetConstantPool(sp);
-        auto module = GetEcmaModule(sp);
         JSObject *result = JSObject::Cast(GET_METHOD_FROM_CACHE(imm).GetTaggedObject());
         RESTORE_ACC();
         JSTaggedValue env = GET_ACC();
@@ -4090,7 +4097,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
 
                     state->function = ctor;
                     state->constpool = methodHandle->GetConstantPool();
-                    state->profileTypeInfo = methodHandle->GetProfileTypeInfo();
+                    state->profileTypeInfo = ctorFunc->GetProfileTypeInfo();
                     state->env = ctorFunc->GetLexicalEnv();
                 }
 
@@ -4227,7 +4234,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
 
                     state->function = ctor;
                     state->constpool = methodHandle->GetConstantPool();
-                    state->profileTypeInfo = methodHandle->GetProfileTypeInfo();
+                    state->profileTypeInfo = ctorFunc->GetProfileTypeInfo();
                     state->env = ctorFunc->GetLexicalEnv();
                 }
 
@@ -4363,7 +4370,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
 
                     state->function = ctor;
                     state->constpool = methodHandle->GetConstantPool();
-                    state->profileTypeInfo = methodHandle->GetProfileTypeInfo();
+                    state->profileTypeInfo = ctorFunc->GetProfileTypeInfo();
                     state->env = ctorFunc->GetLexicalEnv();
                 }
 
@@ -4578,7 +4585,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         uint16_t imm = READ_INST_16_1();
         LOG_INST() << "intrinsics::createarraywithbuffer"
                    << " imm:" << imm;
-        auto constpool = GetConstantPool(sp);
+        auto constpool = GetUnsharedConstpool(thread, sp);
         JSArray *result = JSArray::Cast(GET_LITERA_FROM_CACHE(imm, ConstPoolType::ARRAY_LITERAL,
                                                               GetEcmaModule(sp)).GetTaggedObject());
         SAVE_PC();
@@ -4591,7 +4598,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         uint16_t imm = READ_INST_16_2();
         LOG_INST() << "intrinsics::createarraywithbuffer"
                    << " imm:" << imm;
-        auto constpool = GetConstantPool(sp);
+        auto constpool = GetUnsharedConstpool(thread, sp);
         JSArray *result = JSArray::Cast(GET_LITERA_FROM_CACHE(imm, ConstPoolType::ARRAY_LITERAL,
                                                               GetEcmaModule(sp)).GetTaggedObject());
         SAVE_PC();
@@ -4605,7 +4612,6 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         LOG_INST() << "intrinsics::createarraywithbuffer"
                    << " imm:" << imm;
         auto constpool = GetConstantPool(sp);
-        auto module = GetEcmaModule(sp);
         JSArray *result = JSArray::Cast(GET_METHOD_FROM_CACHE(imm).GetTaggedObject());
         SAVE_PC();
         JSTaggedValue res = SlowRuntimeStub::CreateArrayWithBuffer(thread, factory, result);
@@ -4617,7 +4623,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         uint16_t imm = READ_INST_16_1();
         LOG_INST() << "intrinsics::createobjectwithbuffer"
                    << " imm:" << imm;
-        auto constpool = GetConstantPool(sp);
+        auto constpool = GetUnsharedConstpool(thread, sp);
         JSObject *result = JSObject::Cast(GET_LITERA_FROM_CACHE(imm, ConstPoolType::OBJECT_LITERAL,
                                                                 GetEcmaModule(sp)).GetTaggedObject());
         SAVE_PC();
@@ -4631,7 +4637,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         uint16_t imm = READ_INST_16_2();
         LOG_INST() << "intrinsics::createobjectwithbuffer"
                    << " imm:" << imm;
-        auto constpool = GetConstantPool(sp);
+        auto constpool = GetUnsharedConstpool(thread, sp);
         JSObject *result = JSObject::Cast(GET_LITERA_FROM_CACHE(imm, ConstPoolType::OBJECT_LITERAL,
                                                                 GetEcmaModule(sp)).GetTaggedObject());
         SAVE_PC();
@@ -4646,7 +4652,6 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         LOG_INST() << "intrinsics::createobjectwithbuffer"
                    << " imm:" << imm;
         auto constpool = GetConstantPool(sp);
-        auto module = GetEcmaModule(sp);
         JSObject *result = JSObject::Cast(GET_METHOD_FROM_CACHE(imm).GetTaggedObject());
 
         SAVE_PC();
@@ -4914,12 +4919,11 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         LOG_INST() << "intrinsics::definefunc length: " << length;
 
         auto constpool = GetConstantPool(sp);
-        auto module = GetEcmaModule(sp);
         InterpretedFrame *state = GET_FRAME(sp);
         JSTaggedValue envHandle = state->env;
         JSFunction *currentFunc = JSFunction::Cast((GET_FRAME(sp)->function).GetTaggedObject());
 
-        auto res = SlowRuntimeStub::DefineFunc(thread, constpool, methodId, module,
+        auto res = SlowRuntimeStub::DefineFunc(thread, constpool, methodId, currentFunc->GetModule(),
             length, envHandle, currentFunc->GetHomeObject());
         JSFunction *jsFunc = JSFunction::Cast(res.GetTaggedObject());
 
@@ -4932,12 +4936,11 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         LOG_INST() << "intrinsics::definefunc length: " << length;
 
         auto constpool = GetConstantPool(sp);
-        auto module = GetEcmaModule(sp);
         InterpretedFrame *state = GET_FRAME(sp);
         JSTaggedValue envHandle = state->env;
         JSFunction *currentFunc = JSFunction::Cast((GET_FRAME(sp)->function).GetTaggedObject());
 
-        auto res = SlowRuntimeStub::DefineFunc(thread, constpool, methodId, module,
+        auto res = SlowRuntimeStub::DefineFunc(thread, constpool, methodId, currentFunc->GetModule(),
             length, envHandle, currentFunc->GetHomeObject());
         JSFunction *jsFunc = JSFunction::Cast(res.GetTaggedObject());
 
@@ -4950,7 +4953,6 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         LOG_INST() << "intrinsics::definemethod length: " << length;
         SAVE_ACC();
         auto constpool = GetConstantPool(sp);
-        auto module = GetEcmaModule(sp);
         Method *method = Method::Cast(GET_METHOD_FROM_CACHE(methodId).GetTaggedObject());
         ASSERT(method != nullptr);
         RESTORE_ACC();
@@ -4960,7 +4962,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         InterpretedFrame *state = GET_FRAME(sp);
         JSTaggedValue taggedCurEnv = state->env;
 
-        auto res = SlowRuntimeStub::DefineMethod(thread, method, homeObject, length, taggedCurEnv);
+        auto res = SlowRuntimeStub::DefineMethod(thread, method, homeObject, length, taggedCurEnv, GetEcmaModule(sp));
         INTERPRETER_RETURN_IF_ABRUPT(res);
         JSFunction *result = JSFunction::Cast(res.GetTaggedObject());
         SET_ACC(JSTaggedValue(result));
@@ -4973,7 +4975,6 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         LOG_INST() << "intrinsics::definemethod length: " << length;
         SAVE_ACC();
         auto constpool = GetConstantPool(sp);
-        auto module = GetEcmaModule(sp);
         Method *method = Method::Cast(GET_METHOD_FROM_CACHE(methodId).GetTaggedObject());
         ASSERT(method != nullptr);
         RESTORE_ACC();
@@ -4983,7 +4984,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         InterpretedFrame *state = GET_FRAME(sp);
         JSTaggedValue taggedCurEnv = state->env;
 
-        auto res = SlowRuntimeStub::DefineMethod(thread, method, homeObject, length, taggedCurEnv);
+        auto res = SlowRuntimeStub::DefineMethod(thread, method, homeObject, length, taggedCurEnv, GetEcmaModule(sp));
         INTERPRETER_RETURN_IF_ABRUPT(res);
         JSFunction *result = JSFunction::Cast(res.GetTaggedObject());
         SET_ACC(JSTaggedValue(result));
@@ -5376,6 +5377,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
 #endif
         // fast path
         if (LIKELY(receiver.IsHeapObject())) {
+            SAVE_ACC();
             JSTaggedValue res = FastRuntimeStub::GetPropertyByValue(thread, receiver, propKey);
             if (!res.IsHole()) {
                 ASSERT(!res.IsAccessor());
@@ -5383,8 +5385,11 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
                 SET_ACC(res);
                 DISPATCH(LDOBJBYVALUE_IMM8_V8);
             }
+            RESTORE_ACC();
         }
         // slow path
+        receiver = GET_VREG_VALUE(v0); // Maybe moved by GC
+        propKey = GET_ACC();           // Maybe moved by GC
         SAVE_PC();
         JSTaggedValue res = SlowRuntimeStub::LdObjByValue(thread, receiver, propKey, false, JSTaggedValue::Undefined());
         INTERPRETER_RETURN_IF_ABRUPT(res);
@@ -5427,6 +5432,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
 #endif
         // fast path
         if (LIKELY(receiver.IsHeapObject())) {
+            SAVE_ACC();
             JSTaggedValue res = FastRuntimeStub::GetPropertyByValue(thread, receiver, propKey);
             if (!res.IsHole()) {
                 ASSERT(!res.IsAccessor());
@@ -5434,8 +5440,11 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
                 SET_ACC(res);
                 DISPATCH(LDOBJBYVALUE_IMM16_V8);
             }
+            RESTORE_ACC();
         }
         // slow path
+        receiver = GET_VREG_VALUE(v0); // Maybe moved by GC
+        propKey = GET_ACC();           // Maybe moved by GC
         SAVE_PC();
         JSTaggedValue res = SlowRuntimeStub::LdObjByValue(thread, receiver, propKey, false, JSTaggedValue::Undefined());
         INTERPRETER_RETURN_IF_ABRUPT(res);
@@ -5453,6 +5462,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
 
         // fast path
         if (LIKELY(receiver.IsHeapObject())) {
+            SAVE_ACC();
             JSTaggedValue res = FastRuntimeStub::GetPropertyByValue(thread, receiver, propKey);
             if (!res.IsHole()) {
                 ASSERT(!res.IsAccessor());
@@ -5460,8 +5470,11 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
                 SET_ACC(res);
                 DISPATCH(DEPRECATED_LDOBJBYVALUE_PREF_V8_V8);
             }
+            RESTORE_ACC();
         }
         // slow path
+        receiver = GET_VREG_VALUE(v0); // Maybe moved by GC
+        propKey = GET_ACC();           // Maybe moved by GC
         SAVE_PC();
         JSTaggedValue res = SlowRuntimeStub::LdObjByValue(thread, receiver, propKey, false, JSTaggedValue::Undefined());
         INTERPRETER_RETURN_IF_ABRUPT(res);
@@ -6874,6 +6887,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
 #endif
         // fast path
         if (LIKELY(receiver.IsHeapObject())) {
+            SAVE_ACC();
             JSTaggedValue res = FastRuntimeStub::GetPropertyByValue(thread, receiver, propKey);
             if (!res.IsHole()) {
                 ASSERT(!res.IsAccessor());
@@ -6881,8 +6895,11 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
                 SET_ACC(res);
                 DISPATCH(LDTHISBYVALUE_IMM8);
             }
+            RESTORE_ACC();
         }
         // slow path
+        receiver = GetThis(sp);        // Maybe moved by GC
+        propKey = GET_ACC();           // Maybe moved by GC
         SAVE_PC();
         JSTaggedValue res = SlowRuntimeStub::LdObjByValue(thread, receiver, propKey, false, JSTaggedValue::Undefined());
         INTERPRETER_RETURN_IF_ABRUPT(res);
@@ -6923,6 +6940,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
 #endif
         if (LIKELY(receiver.IsHeapObject())) {
             // fast path
+            SAVE_ACC();
             JSTaggedValue res = FastRuntimeStub::GetPropertyByValue(thread, receiver, propKey);
             if (!res.IsHole()) {
                 ASSERT(!res.IsAccessor());
@@ -6930,8 +6948,11 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
                 SET_ACC(res);
                 DISPATCH(LDTHISBYVALUE_IMM16);
             }
+            RESTORE_ACC();
         }
         // slow path
+        receiver = GetThis(sp);        // Maybe moved by GC
+        propKey = GET_ACC();           // Maybe moved by GC
         SAVE_PC();
         JSTaggedValue res = SlowRuntimeStub::LdObjByValue(thread, receiver, propKey, false, JSTaggedValue::Undefined());
         INTERPRETER_RETURN_IF_ABRUPT(res);
@@ -7501,6 +7522,26 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         SET_ACC(res);
         DISPATCH(CALLRUNTIME_LDSENDABLECLASS_PREF_IMM16);
     }
+    HANDLE_OPCODE(CALLRUNTIME_LDSENDABLEEXTERNALMODULEVAR_PREF_IMM8) {
+        int32_t index = READ_INST_8_1();
+        JSTaggedValue funcObj = GetFunction(sp);
+        LOG_INST() << "intrinsics::ldsendableexternalmodulevar index:" << index;
+
+        JSTaggedValue moduleVar = SlowRuntimeStub::LdSendableExternalModuleVar(thread, index, funcObj);
+        INTERPRETER_RETURN_IF_ABRUPT(moduleVar);
+        SET_ACC(moduleVar);
+        DISPATCH(CALLRUNTIME_LDSENDABLEEXTERNALMODULEVAR_PREF_IMM8);
+    }
+    HANDLE_OPCODE(CALLRUNTIME_WIDELDSENDABLEEXTERNALMODULEVAR_PREF_IMM16) {
+        int32_t index = READ_INST_16_1();
+        JSTaggedValue funcObj = GetFunction(sp);
+        LOG_INST() << "intrinsics::ldsendableexternalmodulevar index:" << index;
+
+        JSTaggedValue moduleVar = SlowRuntimeStub::LdSendableExternalModuleVar(thread, index, funcObj);
+        INTERPRETER_RETURN_IF_ABRUPT(moduleVar);
+        SET_ACC(moduleVar);
+        DISPATCH(CALLRUNTIME_WIDELDSENDABLEEXTERNALMODULEVAR_PREF_IMM16);
+    }
 #include "templates/debugger_instruction_handler.inl"
 }
 #endif
@@ -7609,7 +7650,7 @@ JSTaggedValue EcmaInterpreter::GetEcmaModule(JSTaggedType *sp)
 {
     // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
     JSFunction *currentFunc = JSFunction::Cast((GET_FRAME(sp)->function).GetTaggedObject());
-    return currentFunc->GetCallTarget()->GetModule();
+    return currentFunc->GetModule();
 }
 
 JSTaggedValue EcmaInterpreter::GetConstantPool(JSTaggedType *sp)
@@ -7617,6 +7658,12 @@ JSTaggedValue EcmaInterpreter::GetConstantPool(JSTaggedType *sp)
     // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
     InterpretedFrame *state = reinterpret_cast<InterpretedFrame *>(sp) - 1;
     return state->constpool;
+}
+
+JSTaggedValue EcmaInterpreter::GetUnsharedConstpool(JSThread* thread, JSTaggedType *sp)
+{
+    InterpretedFrame *state = reinterpret_cast<InterpretedFrame *>(sp) - 1;
+    return thread->GetCurrentEcmaContext()->FindUnsharedConstpool(state->constpool);
 }
 
 bool EcmaInterpreter::UpdateHotnessCounter(JSThread* thread, JSTaggedType *sp, JSTaggedValue acc, int32_t offset)
@@ -7638,7 +7685,7 @@ bool EcmaInterpreter::UpdateHotnessCounter(JSThread* thread, JSTaggedType *sp, J
             auto thisFunc = JSFunction::Cast(state->function.GetTaggedObject());
             method = thisFunc->GetCallTarget(); // for CheckSafepoint, method need retrieve.
             method->SetHotnessCounter(EcmaInterpreter::METHOD_HOTNESS_THRESHOLD);
-            auto res = SlowRuntimeStub::NotifyInlineCache(thread, method);
+            auto res = SlowRuntimeStub::NotifyInlineCache(thread, thisFunc);
             state->profileTypeInfo = res;
             return true;
         } else {

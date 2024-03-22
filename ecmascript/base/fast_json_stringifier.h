@@ -64,6 +64,14 @@ private:
                                     uint32_t elementSize);
     bool TryCacheSerializeKeys(const JSHandle<JSObject> &obj, bool hasContent,
                                CVector<std::pair<CString, int>> &strCache);
+    bool TryCacheSerializeKeysFromPropertiesArray(const JSHandle<JSObject> &obj, bool hasContent,
+                                                  CVector<std::pair<CString, int>> &strCache);
+    bool TryCacheSerializeKeysFromEnumCache(const JSHandle<JSObject> &obj, bool hasContent,
+                                            CVector<std::pair<CString, int>> &strCache);
+    bool TryCacheSerializeKeysFromGlobalObject(const JSHandle<JSObject> &obj, bool hasContent,
+                                               CVector<std::pair<CString, int>> &strCache);
+    bool TryCacheSerializeKeysFromNameDictionary(const JSHandle<JSObject> &obj, bool hasContent,
+                                                 CVector<std::pair<CString, int>> &strCache);
     bool SerializeKeysWithCache(const JSHandle<JSObject> &obj, bool hasContent,
                                 CVector<std::pair<CString, int>> &strCache, uint32_t &cacheIndex);
     bool AppendJsonString(bool hasContent);

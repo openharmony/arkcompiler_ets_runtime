@@ -16,9 +16,12 @@
 #ifndef ECMASCRIPT_STRING_TABLE_H
 #define ECMASCRIPT_STRING_TABLE_H
 
+#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_thread.h"
 #include "ecmascript/mem/c_containers.h"
 #include "ecmascript/mem/space.h"
 #include "ecmascript/mem/visitor.h"
+#include "ecmascript/platform/mutex.h"
 #include "ecmascript/tagged_array-inl.h"
 
 namespace panda::ecmascript {
@@ -28,51 +31,56 @@ class JSPandaFile;
 
 class EcmaStringTable {
 public:
-    explicit EcmaStringTable(const EcmaVM *vm);
+    EcmaStringTable() = default;
     virtual ~EcmaStringTable()
     {
         table_.clear();
     }
 
-    void InternEmptyString(EcmaString *emptyStr);
-    EcmaString *GetOrInternString(const JSHandle<EcmaString> &firstString, const JSHandle<EcmaString> &secondString);
-    EcmaString *GetOrInternString(const uint8_t *utf8Data, uint32_t utf8Len, bool canBeCompress);
-    EcmaString *CreateAndInternStringNonMovable(const uint8_t *utf8Data, uint32_t utf8Len);
-    EcmaString *GetOrInternString(const uint16_t *utf16Data, uint32_t utf16Len, bool canBeCompress);
-    EcmaString *GetOrInternString(EcmaString *string);
-    EcmaString *GetOrInternCompressedSubString(const JSHandle<EcmaString> &string, uint32_t offset, uint32_t utf8Len);
-    EcmaString *GetOrInternStringWithSpaceType(const uint8_t *utf8Data, uint32_t utf8Len, bool canBeCompress,
-                                               MemSpaceType type, bool isConstantString, uint32_t idOffset);
-    EcmaString *GetOrInternStringWithSpaceType(const uint8_t *utf8Data, uint32_t utf16Len,
+    void InternEmptyString(JSThread *thread, EcmaString *emptyStr);
+    EcmaString *GetOrInternString(EcmaVM *vm,
+                                  const JSHandle<EcmaString> &firstString,
+                                  const JSHandle<EcmaString> &secondString);
+    EcmaString *GetOrInternString(EcmaVM *vm, const uint8_t *utf8Data, uint32_t utf8Len, bool canBeCompress);
+    EcmaString *CreateAndInternStringNonMovable(EcmaVM *vm, const uint8_t *utf8Data, uint32_t utf8Len);
+    EcmaString *GetOrInternString(EcmaVM *vm, const uint16_t *utf16Data, uint32_t utf16Len, bool canBeCompress);
+    EcmaString *GetOrInternString(EcmaVM *vm, EcmaString *string);
+    EcmaString *GetOrInternCompressedSubString(EcmaVM *vm, const JSHandle<EcmaString> &string,
+        uint32_t offset, uint32_t utf8Len);
+    EcmaString *GetOrInternStringWithSpaceType(EcmaVM *vm, const uint8_t *utf8Data, uint32_t utf8Len,
+        bool canBeCompress, MemSpaceType type, bool isConstantString, uint32_t idOffset);
+    EcmaString *GetOrInternStringWithSpaceType(EcmaVM *vm, const uint8_t *utf8Data, uint32_t utf16Len,
                                                MemSpaceType type);
-    EcmaString *TryGetInternString(EcmaString *string);
-    EcmaString *InsertStringToTable(const JSHandle<EcmaString> &strHandle);
+    EcmaString *TryGetInternString(JSThread *thread, const JSHandle<EcmaString> &string);
+    EcmaString *InsertStringToTable(EcmaVM *vm, const JSHandle<EcmaString> &strHandle);
 
     void SweepWeakReference(const WeakRootVisitor &visitor);
-    bool CheckStringTableValidity();
-    void RelocateConstantData(const JSPandaFile *jsPandaFile);
+    bool CheckStringTableValidity(JSThread *thread);
+    void RelocateConstantData(EcmaVM *vm, const JSPandaFile *jsPandaFile);
 private:
     NO_COPY_SEMANTIC(EcmaStringTable);
     NO_MOVE_SEMANTIC(EcmaStringTable);
 
-    std::pair<EcmaString *, uint32_t> GetString(
-        const JSHandle<EcmaString> &firstString, const JSHandle<EcmaString> &secondString) const;
-    std::pair<EcmaString *, uint32_t> GetString(const uint8_t *utf8Data, uint32_t utf8Len, bool canBeCompress) const;
-    std::pair<EcmaString *, uint32_t> GetString(const uint16_t *utf16Data, uint32_t utf16Len) const;
-    EcmaString *GetString(EcmaString *string) const;
+    std::pair<EcmaString *, uint32_t> GetStringThreadUnsafe(const JSHandle<EcmaString> &firstString,
+                                                            const JSHandle<EcmaString> &secondString) const;
+    std::pair<EcmaString *, uint32_t> GetStringThreadUnsafe(const uint8_t *utf8Data, uint32_t utf8Len,
+                                                            bool canBeCompress) const;
+    std::pair<EcmaString *, uint32_t> GetStringThreadUnsafe(const uint16_t *utf16Data, uint32_t utf16Len) const;
+    EcmaString *GetStringThreadUnsafe(EcmaString *string) const;
 
-    void InternString(EcmaString *string);
+    void InternStringThreadUnsafe(EcmaString *string);
+    EcmaString *GetOrInternStringThreadUnsafe(EcmaVM *vm, EcmaString *string);
 
-    void InsertStringIfNotExist(EcmaString *string)
+    void InsertStringIfNotExistThreadUnsafe(EcmaString *string)
     {
-        EcmaString *str = GetString(string);
+        EcmaString *str = GetStringThreadUnsafe(string);
         if (str == nullptr) {
-            InternString(string);
+            InternStringThreadUnsafe(string);
         }
     }
 
     CUnorderedMultiMap<uint32_t, EcmaString *> table_;
-    const EcmaVM *vm_{nullptr};
+    RecursiveMutex mutex_;
     friend class SnapshotProcessor;
     friend class BaseDeserializer;
 };
@@ -83,12 +91,16 @@ public:
     {
         return reinterpret_cast<SingleCharTable*>(object);
     }
-    static void CreateSingleCharTable(JSThread *thread);
+    static JSTaggedValue CreateSingleCharTable(JSThread *thread);
     JSTaggedValue GetStringFromSingleCharTable(int32_t ch)
     {
         return Get(ch);
     }
 private:
+    SingleCharTable() = default;
+    ~SingleCharTable() = default;
+    NO_COPY_SEMANTIC(SingleCharTable);
+    NO_MOVE_SEMANTIC(SingleCharTable);
     static constexpr uint32_t MAX_ONEBYTE_CHARCODE = 128; // 0X00-0X7F
 };
 }  // namespace panda::ecmascript

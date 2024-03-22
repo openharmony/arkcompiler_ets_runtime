@@ -196,13 +196,16 @@ public:
         return nativeFinalizeCallback_;
     }
 
-    bool CallFreeGlobalCallback()
+    WeakClearCallback GetFreeGlobalCallback() const
+    {
+        return freeGlobalCallback_;
+    }
+
+    void CallFreeGlobalCallback()
     {
         if (freeGlobalCallback_ != nullptr) {
             freeGlobalCallback_(reference_);
-            return true;
         }
-        return false;
     }
 
     void CallNativeFinalizeCallback()

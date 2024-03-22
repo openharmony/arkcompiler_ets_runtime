@@ -36,6 +36,15 @@ SerializedObjectSpace BaseSerializer::GetSerializedObjectSpace(TaggedObject *obj
     if (region->InHugeObjectSpace()) {
         return SerializedObjectSpace::HUGE_SPACE;
     }
+    if (region->InSharedOldSpace()) {
+        return SerializedObjectSpace::SHARED_OLD_SPACE;
+    }
+    if (region->InSharedNonMovableSpace()) {
+        return SerializedObjectSpace::SHARED_NON_MOVABLE_SPACE;
+    }
+    if (region->InSharedHugeObjectSpace()) {
+        return SerializedObjectSpace::SHARED_HUGE_SPACE;
+    }
     LOG_ECMA(FATAL) << "this branch is unreachable";
     UNREACHABLE();
 }
@@ -85,6 +94,14 @@ bool BaseSerializer::SerializeRootObject(TaggedObject *object)
     }
 
     return false;
+}
+
+void BaseSerializer::SerializeSharedObject(TaggedObject *object)
+{
+    data_->WriteEncodeFlag(EncodeFlag::SHARED_OBJECT);
+    data_->WriteJSTaggedType(reinterpret_cast<JSTaggedType>(object));
+    referenceMap_.emplace(object, objectIndex_++);
+    sharedObjects_.emplace_back(object);
 }
 
 bool BaseSerializer::SerializeSpecialObjIndividually(JSType objectType, TaggedObject *root,
@@ -170,6 +187,22 @@ void BaseSerializer::SerializeSFunctionFieldIndividually(TaggedObject *root, Obj
     while (slot < end) {
         size_t fieldOffset = slot.SlotAddress() - ToUintPtr(root);
         switch (fieldOffset) {
+            case JSFunction::MACHINECODE_OFFSET:
+            case JSFunction::PROFILE_TYPE_INFO_OFFSET: {
+                data_->WriteEncodeFlag(EncodeFlag::PRIMITIVE);
+                data_->WriteJSTaggedValue(JSTaggedValue::Undefined());
+                slot++;
+                break;
+            }
+            case JSFunction::ECMA_MODULE_OFFSET: {
+                // Module of shared function should write pointer directly when serialize
+                TaggedObject *module = JSFunction::Cast(root)->GetModule().GetTaggedObject();
+                if (!SerializeReference(module)) {
+                    SerializeSharedObject(module);
+                }
+                slot++;
+                break;
+            }
             case JSFunction::WORK_NODE_POINTER_OFFSET: {
                 data_->WriteEncodeFlag(EncodeFlag::MULTI_RAW_DATA);
                 data_->WriteUint32(sizeof(uintptr_t));
@@ -224,7 +257,10 @@ void BaseSerializer::SerializeAsyncFunctionFieldIndividually(TaggedObject *root,
             }
             case JSFunction::PROTO_OR_DYNCLASS_OFFSET:
             case JSFunction::LEXICAL_ENV_OFFSET:
-            case JSFunction::HOME_OBJECT_OFFSET: {
+            case JSFunction::MACHINECODE_OFFSET:
+            case JSFunction::PROFILE_TYPE_INFO_OFFSET:
+            case JSFunction::HOME_OBJECT_OFFSET:
+            case JSFunction::ECMA_MODULE_OFFSET: {
                 data_->WriteEncodeFlag(EncodeFlag::PRIMITIVE);
                 data_->WriteJSTaggedValue(JSTaggedValue::Undefined());
                 slot++;
@@ -253,9 +289,7 @@ void BaseSerializer::SerializeMethodFieldIndividually(TaggedObject *root, Object
     while (slot < end) {
         size_t fieldOffset = slot.SlotAddress() - ToUintPtr(root);
         switch (fieldOffset) {
-            case Method::CONSTANT_POOL_OFFSET:
-            case Method::PROFILE_TYPE_INFO_OFFSET:
-            case Method::ECMA_MODULE_OFFSET: {
+            case Method::CONSTANT_POOL_OFFSET:{
                 data_->WriteEncodeFlag(EncodeFlag::PRIMITIVE);
                 data_->WriteJSTaggedValue(JSTaggedValue::Undefined());
                 slot++;

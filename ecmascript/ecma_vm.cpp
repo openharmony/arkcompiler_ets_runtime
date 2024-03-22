@@ -18,6 +18,7 @@
 #include "ecmascript/base/string_helper.h"
 #include "ecmascript/builtins/builtins.h"
 #include "ecmascript/builtins/builtins_ark_tools.h"
+#include "ecmascript/checkpoint/thread_state_transition.h"
 #ifdef ARK_SUPPORT_INTL
 #include "ecmascript/builtins/builtins_collator.h"
 #include "ecmascript/builtins/builtins_date_time_format.h"
@@ -79,6 +80,7 @@
 #include "ecmascript/patch/quick_fix_manager.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
 #include "ecmascript/regexp/regexp_parser_cache.h"
+#include "ecmascript/runtime.h"
 #include "ecmascript/runtime_call_id.h"
 #include "ecmascript/snapshot/mem/snapshot.h"
 #include "ecmascript/snapshot/mem/snapshot_env.h"
@@ -97,22 +99,24 @@ namespace panda::ecmascript {
 using RandomGenerator = base::RandomGenerator;
 using PGOProfilerManager = pgo::PGOProfilerManager;
 AOTFileManager *JsStackInfo::loader = nullptr;
-/* static */
-EcmaVM *EcmaVM::Create(const JSRuntimeOptions &options, EcmaParamConfiguration &config)
+
+EcmaVM *EcmaVM::Create(const JSRuntimeOptions &options)
 {
+    Runtime::CreateIfFirstVm(options);
+    auto heapType = options.IsWorker() ? EcmaParamConfiguration::HeapType::WORKER_HEAP :
+        EcmaParamConfiguration::HeapType::DEFAULT_HEAP;
+    auto config = EcmaParamConfiguration(heapType,
+                                         MemMapAllocator::GetInstance()->GetCapacity());
+    MemMapAllocator::GetInstance()->IncreaseAndCheckReserved(config.GetMaxHeapSize());
     JSRuntimeOptions newOptions = options;
     // only define SUPPORT_ENABLE_ASM_INTERP can enable asm-interpreter
 #if !defined(SUPPORT_ENABLE_ASM_INTERP)
     newOptions.SetEnableAsmInterpreter(false);
 #endif
     auto vm = new EcmaVM(newOptions, config);
-    if (UNLIKELY(vm == nullptr)) {
-        LOG_ECMA(ERROR) << "Failed to create jsvm";
-        return nullptr;
-    }
     auto jsThread = JSThread::Create(vm);
     vm->thread_ = jsThread;
-    vm->Initialize();
+    Runtime::GetInstance()->InitializeIfFirstVm(vm);
     if (JsStackInfo::loader == nullptr) {
         JsStackInfo::loader = vm->GetAOTFileManager();
     }
@@ -127,12 +131,12 @@ EcmaVM *EcmaVM::Create(const JSRuntimeOptions &options, EcmaParamConfiguration &
 // static
 bool EcmaVM::Destroy(EcmaVM *vm)
 {
-    if (vm != nullptr) {
-        delete vm;
-        vm = nullptr;
-        return true;
+    if (UNLIKELY(vm == nullptr)) {
+        return false;
     }
-    return false;
+    delete vm;
+    Runtime::DestroyIfLastVm();
+    return true;
 }
 
 void EcmaVM::PreFork()
@@ -140,6 +144,7 @@ void EcmaVM::PreFork()
     heap_->CompactHeapBeforeFork();
     heap_->AdjustSpaceSizeForAppSpawn();
     heap_->GetReadOnlySpace()->SetReadOnly();
+    SharedHeap::GetInstance()->DisableParallelGC();
     heap_->DisableParallelGC();
 }
 
@@ -147,7 +152,9 @@ void EcmaVM::PostFork()
 {
     RandomGenerator::InitRandom();
     heap_->SetHeapMode(HeapMode::SHARE);
-    GetAssociatedJSThread()->SetThreadId();
+    GetAssociatedJSThread()->PostFork();
+    Taskpool::GetCurrentTaskpool()->Initialize();
+    SharedHeap::GetInstance()->EnableParallelGC(GetJSOptions());
     heap_->EnableParallelGC();
     std::string bundleName = PGOProfilerManager::GetInstance()->GetBundleName();
     if (ohos::EnableAotListHelper::GetInstance()->IsDisableBlackList(bundleName)) {
@@ -164,8 +171,7 @@ void EcmaVM::PostFork()
 }
 
 EcmaVM::EcmaVM(JSRuntimeOptions options, EcmaParamConfiguration config)
-    : stringTable_(new EcmaStringTable(this)),
-      nativeAreaAllocator_(std::make_unique<NativeAreaAllocator>()),
+    : nativeAreaAllocator_(std::make_unique<NativeAreaAllocator>()),
       heapRegionAllocator_(std::make_unique<HeapRegionAllocator>()),
       chunk_(nativeAreaAllocator_.get()),
       ecmaParamConfiguration_(std::move(config))
@@ -233,6 +239,7 @@ Jit *EcmaVM::GetJit() const
 bool EcmaVM::Initialize()
 {
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "EcmaVM::Initialize");
+    stringTable_ = Runtime::GetInstance()->GetEcmaStringTable();
     InitializePGOProfiler();
     Taskpool::GetCurrentTaskpool()->Initialize();
 #ifndef PANDA_TARGET_WINDOWS
@@ -241,7 +248,7 @@ bool EcmaVM::Initialize()
     heap_ = new Heap(this);
     heap_->Initialize();
     gcStats_ = chunk_.New<GCStats>(heap_, options_.GetLongPauseTime());
-    factory_ = chunk_.New<ObjectFactory>(thread_, heap_);
+    factory_ = chunk_.New<ObjectFactory>(thread_, heap_, SharedHeap::GetInstance());
     if (UNLIKELY(factory_ == nullptr)) {
         LOG_FULL(FATAL) << "alloc factory_ failed";
         UNREACHABLE();
@@ -251,13 +258,13 @@ bool EcmaVM::Initialize()
     auto context = new EcmaContext(thread_);
     thread_->PushContext(context);
     [[maybe_unused]] EcmaHandleScope scope(thread_);
+    thread_->SetReadyForGCIterating();
     snapshotEnv_ = new SnapshotEnv(this);
     context->Initialize();
     snapshotEnv_->AddGlobalConstToMap();
     thread_->SetGlueGlobalEnv(reinterpret_cast<GlobalEnv *>(context->GetGlobalEnv().GetTaggedType()));
     thread_->SetGlobalObject(GetGlobalEnv()->GetGlobalObject());
     thread_->SetCurrentEcmaContext(context);
-    SingleCharTable::CreateSingleCharTable(thread_);
     GenerateInternalNativeMethods();
     quickFixManager_ = new QuickFixManager();
     if (options_.GetEnableAsmInterpreter()) {
@@ -275,6 +282,7 @@ bool EcmaVM::Initialize()
 
 EcmaVM::~EcmaVM()
 {
+    ASSERT(thread_->IsInRunningStateOrProfiling());
     initialized_ = false;
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
     if (thread_->isProfiling_) {
@@ -349,7 +357,6 @@ EcmaVM::~EcmaVM()
     }
 
     if (stringTable_ != nullptr) {
-        delete stringTable_;
         stringTable_ = nullptr;
     }
 
@@ -388,6 +395,7 @@ JSHandle<GlobalEnv> EcmaVM::GetGlobalEnv() const
 JSTaggedValue EcmaVM::FastCallAot(size_t actualNumArgs, JSTaggedType *args, const JSTaggedType *prevFp)
 {
     INTERPRETER_TRACE(thread_, ExecuteAot);
+    ASSERT(thread_->IsInManagedState());
     auto entry = thread_->GetRTInterface(kungfu::RuntimeStubCSigns::ID_OptimizedFastCallEntry);
     // do not modify this log to INFO, this will call many times
     LOG_ECMA(DEBUG) << "start to execute aot entry: " << (void*)entry;
@@ -465,8 +473,6 @@ void EcmaVM::ProcessNativeDelete(const WeakRootVisitor &visitor)
             }
         }
     }
-
-    thread_->GetCurrentEcmaContext()->ProcessNativeDelete(visitor);
 }
 
 void EcmaVM::ProcessReferences(const WeakRootVisitor &visitor)
@@ -495,12 +501,12 @@ void EcmaVM::ProcessReferences(const WeakRootVisitor &visitor)
             ++iter;
         }
     }
-    thread_->GetCurrentEcmaContext()->ProcessReferences(visitor);
     GetPGOProfiler()->ProcessReferences(visitor);
 }
 
 void EcmaVM::PushToNativePointerList(JSNativePointer *pointer)
 {
+    ASSERT(!JSTaggedValue(pointer).IsInSharedHeap());
     nativePointerList_.emplace_back(pointer);
 }
 
@@ -555,10 +561,12 @@ void EcmaVM::Iterate(const RootVisitor &v, const RootRangeVisitor &rv)
 {
     rv(Root::ROOT_VM, ObjectSlot(ToUintPtr(&internalNativeMethods_.front())),
         ObjectSlot(ToUintPtr(&internalNativeMethods_.back()) + JSTaggedValue::TaggedTypeSize()));
-    if (!WIN_OR_MAC_OR_IOS_PLATFORM) {
+    if (!WIN_OR_MAC_OR_IOS_PLATFORM && snapshotEnv_!= nullptr) {
         snapshotEnv_->Iterate(v);
     }
-    pgoProfiler_->Iterate(v);
+    if (pgoProfiler_ != nullptr) {
+        pgoProfiler_->Iterate(v);
+    }
 }
 
 #if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
@@ -636,7 +644,7 @@ void EcmaVM::GenerateInternalNativeMethods()
     size_t length = static_cast<size_t>(MethodIndex::METHOD_END);
     constexpr uint32_t numArgs = 2;  // function object and this
     for (size_t i = 0; i < length; i++) {
-        auto method = factory_->NewMethod(nullptr, MemSpaceType::NON_MOVABLE);
+        auto method = factory_->NewSMethod(nullptr, MemSpaceType::SHARED_NON_MOVABLE);
         method->SetNativePointer(InternalMethodTable[i]);
         method->SetNativeBit(true);
         method->SetNumArgsWithCallField(numArgs);
@@ -829,5 +837,21 @@ bool EcmaVM::IsHmsModule(const CString &moduleStr) const
         return false;
     }
     return true;
+}
+
+// Initialize IcuData Path
+void EcmaVM::InitializeIcuData(const JSRuntimeOptions &options)
+{
+    std::string icuPath = options.GetIcuDataPath();
+    if (icuPath == "default") {
+#if !WIN_OR_MAC_OR_IOS_PLATFORM && !defined(PANDA_TARGET_LINUX)
+        SetHwIcuDirectory();
+#endif
+    } else {
+        std::string absPath;
+        if (ecmascript::RealPath(icuPath, absPath)) {
+            u_setDataDirectory(absPath.c_str());
+        }
+    }
 }
 }  // namespace panda::ecmascript

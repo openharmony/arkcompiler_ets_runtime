@@ -39,10 +39,25 @@ enum MemSpaceType {
     READ_ONLY_SPACE,
     APPSPAWN_SPACE,
     HUGE_MACHINE_CODE_SPACE,
+    SHARED_NON_MOVABLE,
+    SHARED_OLD_SPACE,
+    SHARED_READ_ONLY_SPACE,
+    SHARED_HUGE_OBJECT_SPACE,
     SPACE_TYPE_LAST,  // Count of different types
 
+    SHARED_BEGIN = SHARED_NON_MOVABLE,
+    SHARED_END = SHARED_HUGE_OBJECT_SPACE,
+    // Free region means memory maybe always in use and can not be evacuated
     FREE_LIST_NUM = MACHINE_CODE_SPACE - OLD_SPACE + 1,
+    SHARED_SWEEPING_SPACE_BEGIN = SHARED_NON_MOVABLE,
+    SHARED_SWEEPING_SPACE_END = SHARED_OLD_SPACE,
+    SHARED_SWEEPING_SPACE_NUM = SHARED_SWEEPING_SPACE_END - SHARED_SWEEPING_SPACE_BEGIN + 1,
 };
+
+static inline bool IsSMemSpace(MemSpaceType type)
+{
+    return (type >= MemSpaceType::SHARED_BEGIN) && (type <= MemSpaceType::SHARED_END);
+}
 
 static inline std::string ToSpaceTypeName(MemSpaceType type)
 {
@@ -69,6 +84,14 @@ static inline std::string ToSpaceTypeName(MemSpaceType type)
             return "appspawn space";
         case HUGE_MACHINE_CODE_SPACE:
             return "huge machine code space";
+        case SHARED_NON_MOVABLE:
+            return "shared non movable space";
+        case SHARED_OLD_SPACE:
+            return "shared old space";
+        case SHARED_READ_ONLY_SPACE:
+            return "shared read only space";
+        case SHARED_HUGE_OBJECT_SPACE:
+            return "shared huge object space";
         default:
             return "unknown space";
     }
@@ -76,7 +99,7 @@ static inline std::string ToSpaceTypeName(MemSpaceType type)
 
 class Space {
 public:
-    Space(Heap* heap, HeapRegionAllocator *regionAllocator, MemSpaceType spaceType, size_t initialCapacity,
+    Space(BaseHeap* heap, HeapRegionAllocator *regionAllocator, MemSpaceType spaceType, size_t initialCapacity,
           size_t maximumCapacity);
     virtual ~Space() = default;
     NO_COPY_SEMANTIC(Space);
@@ -221,7 +244,7 @@ public:
 protected:
     void ClearAndFreeRegion(Region *region, size_t cachedSize = 0);
     
-    Heap *heap_ {nullptr};
+    BaseHeap *heap_ {nullptr};
     HeapRegionAllocator *heapRegionAllocator_ {nullptr};
     EcmaList<Region> regionList_ {};
     MemSpaceType spaceType_ {};
@@ -236,9 +259,9 @@ protected:
 
 class HugeObjectSpace : public Space {
 public:
-    HugeObjectSpace(Heap* heap, HeapRegionAllocator *regionAllocator, size_t initialCapacity,
+    HugeObjectSpace(Heap *heap, HeapRegionAllocator *regionAllocator, size_t initialCapacity,
                     size_t maximumCapacity);
-    HugeObjectSpace(Heap* heap, HeapRegionAllocator *regionAllocator, size_t initialCapacity,
+    HugeObjectSpace(Heap *heap, HeapRegionAllocator *regionAllocator, size_t initialCapacity,
                     size_t maximumCapacity, MemSpaceType spaceType);
     ~HugeObjectSpace() override = default;
     NO_COPY_SEMANTIC(HugeObjectSpace);
@@ -259,7 +282,7 @@ private:
 
 class HugeMachineCodeSpace : public HugeObjectSpace {
 public:
-    HugeMachineCodeSpace(Heap* heap, HeapRegionAllocator *regionAllocator, size_t initialCapacity,
+    HugeMachineCodeSpace(Heap *heap, HeapRegionAllocator *regionAllocator, size_t initialCapacity,
                          size_t maximumCapacity);
 };
 

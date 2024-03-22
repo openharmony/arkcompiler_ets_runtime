@@ -28,6 +28,7 @@
 #include "ecmascript/js_tagged_value-inl.h"
 #include "ecmascript/mem/c_containers.h"
 #include "ecmascript/module/js_module_source_text.h"
+#include "ecmascript/module/js_shared_module.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/tagged_array.h"
 #include "ecmascript/require/js_require_manager.h"
@@ -35,12 +36,7 @@
 namespace panda::ecmascript {
 void JSFunction::InitializeJSFunction(JSThread *thread, const JSHandle<JSFunction> &func, FunctionKind kind)
 {
-    func->SetProtoOrHClass(thread, JSTaggedValue::Hole(), SKIP_BARRIER);
-    func->SetHomeObject(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
-    func->SetWorkNodePointer(reinterpret_cast<uintptr_t>(nullptr));
-    func->SetLexicalEnv(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
-    func->SetMethod(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
-
+    InitializeWithDefaultValue(thread, func);
     auto globalConst = thread->GlobalConstants();
     if (HasPrototype(kind)) {
         JSHandle<JSTaggedValue> accessor = globalConst->GetHandledFunctionPrototypeAccessor();
@@ -81,6 +77,31 @@ void JSFunction::InitializeJSFunction(JSThread *thread, const JSHandle<JSFunctio
         accessor = globalConst->GetHandledFunctionLengthAccessor();
         func->SetPropertyInlinedProps(thread, LENGTH_INLINE_PROPERTY_INDEX, accessor.GetTaggedValue());
     }
+}
+
+void JSFunction::InitializeSFunction(JSThread *thread, const JSHandle<JSFunction> &func, FunctionKind kind)
+{
+    InitializeWithDefaultValue(thread, func);
+    auto globalConst = thread->GlobalConstants();
+    if (HasAccessor(kind)) {
+        JSHandle<JSTaggedValue> accessor = globalConst->GetHandledFunctionNameAccessor();
+        func->SetPropertyInlinedProps(thread, NAME_INLINE_PROPERTY_INDEX, accessor.GetTaggedValue());
+        accessor = globalConst->GetHandledFunctionLengthAccessor();
+        func->SetPropertyInlinedProps(thread, LENGTH_INLINE_PROPERTY_INDEX, accessor.GetTaggedValue());
+    }
+}
+
+void JSFunction::InitializeWithDefaultValue(JSThread *thread, const JSHandle<JSFunction> &func)
+{
+    func->SetProtoOrHClass(thread, JSTaggedValue::Hole(), SKIP_BARRIER);
+    func->SetHomeObject(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
+    func->SetWorkNodePointer(reinterpret_cast<uintptr_t>(nullptr));
+    func->SetLexicalEnv(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
+    func->SetMachineCode(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
+    func->SetProfileTypeInfo(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
+    func->SetMethod(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
+    func->SetModule(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
+    func->SetCodeEntry(reinterpret_cast<uintptr_t>(nullptr));
 }
 
 JSHandle<JSObject> JSFunction::NewJSFunctionPrototype(JSThread *thread, const JSHandle<JSFunction> &func)
@@ -440,6 +461,7 @@ JSTaggedValue JSFunction::Invoke(EcmaRuntimeCallInfo *info, const JSHandle<JSTag
 JSTaggedValue JSFunction::InvokeOptimizedEntrypoint(JSThread *thread, JSHandle<JSFunction> mainFunc,
     JSHandle<JSTaggedValue> &thisArg, std::string_view entryPoint, CJSInfo* cjsInfo)
 {
+    ASSERT(thread->IsInManagedState());
     if (mainFunc->IsClassConstructor()) {
         {
             ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
@@ -511,6 +533,7 @@ std::vector<JSTaggedType> JSFunction::GetArgsData(bool isFastCall, JSHandle<JSTa
 JSTaggedValue JSFunction::InvokeOptimizedEntrypoint(JSThread *thread, JSHandle<JSFunction> func,
     EcmaRuntimeCallInfo *info)
 {
+    ASSERT(thread->IsInManagedState());
     Method *method = func->GetCallTarget();
     JSTaggedValue resultValue;
     uint32_t numArgs = method->GetNumArgsWithCallField();
@@ -839,6 +862,19 @@ JSHandle<JSHClass> JSFunction::GetOrCreateDerivedJSHClass(JSThread *thread, JSHa
     return newJSHClass;
 }
 
+JSTaggedValue JSFunction::GetRecordName() const
+{
+    JSTaggedValue module = GetModule();
+    if (module.IsSourceTextModule()) {
+        return SourceTextModule::GetModuleName(module);
+    }
+    if (module.IsString()) {
+        return module;
+    }
+    LOG_INTERPRETER(DEBUG) << "record name is undefined";
+    return JSTaggedValue::Hole();
+}
+
 // Those interface below is discarded
 void JSFunction::InitializeJSFunction(JSThread *thread, [[maybe_unused]] const JSHandle<GlobalEnv> &env,
                                       const JSHandle<JSFunction> &func, FunctionKind kind)
@@ -893,6 +929,49 @@ void JSFunction::SetFunctionExtraInfo(JSThread *thread, void *nativeFunc,
         }
     } else {
         JSHandle<TaggedArray> newArray = vm->GetFactory()->NewTaggedArray(RESOLVED_MAX_SIZE);
+        newArray->SetExtraLength(0);
+        newArray->Set(thread, HASH_INDEX, value);
+        newArray->Set(thread, FUNCTION_EXTRA_INDEX, pointer);
+        Barriers::SetObject<true>(thread, *obj, HASH_OFFSET, newArray.GetTaggedValue().GetRawData());
+    }
+}
+
+void JSFunction::SetSFunctionExtraInfo(
+    JSThread *thread, void *nativeFunc, const DeleteEntryPoint &deleter, void *data, size_t nativeBindingsize)
+{
+    JSTaggedType hashField = Barriers::GetValue<JSTaggedType>(this, HASH_OFFSET);
+    EcmaVM *vm = thread->GetEcmaVM();
+    JSHandle<JSTaggedValue> value(thread, JSTaggedValue(hashField));
+    JSHandle<ECMAObject> obj(thread, this);
+    JSHandle<JSNativePointer> pointer =
+        vm->GetFactory()->NewSJSNativePointer(nativeFunc, deleter, data, false, nativeBindingsize);
+    if (!obj->HasHash()) {
+        Barriers::SetObject<true>(thread, *obj, HASH_OFFSET, pointer.GetTaggedValue().GetRawData());
+        return;
+    }
+    if (value->IsHeapObject()) {
+        if (value->IsJSNativePointer()) {
+            Barriers::SetObject<true>(thread, *obj, HASH_OFFSET, pointer.GetTaggedValue().GetRawData());
+            return;
+        }
+        JSHandle<TaggedArray> array(value);
+
+        uint32_t nativeFieldCount = array->GetExtraLength();
+        if (array->GetLength() >= nativeFieldCount + RESOLVED_MAX_SIZE) {
+            array->Set(thread, nativeFieldCount + FUNCTION_EXTRA_INDEX, pointer);
+        } else {
+            JSHandle<TaggedArray> newArray =
+                vm->GetFactory()->NewSTaggedArrayWithoutInit(nativeFieldCount + RESOLVED_MAX_SIZE);
+            newArray->SetExtraLength(nativeFieldCount);
+            for (uint32_t i = 0; i < nativeFieldCount; i++) {
+                newArray->Set(thread, i, array->Get(i));
+            }
+            newArray->Set(thread, nativeFieldCount + HASH_INDEX, array->Get(nativeFieldCount + HASH_INDEX));
+            newArray->Set(thread, nativeFieldCount + FUNCTION_EXTRA_INDEX, pointer);
+            Barriers::SetObject<true>(thread, *obj, HASH_OFFSET, newArray.GetTaggedValue().GetRawData());
+        }
+    } else {
+        JSHandle<TaggedArray> newArray = vm->GetFactory()->NewSTaggedArrayWithoutInit(RESOLVED_MAX_SIZE);
         newArray->SetExtraLength(0);
         newArray->Set(thread, HASH_INDEX, value);
         newArray->Set(thread, FUNCTION_EXTRA_INDEX, pointer);
@@ -973,6 +1052,18 @@ void JSFunction::InitializeForConcurrentFunction(JSThread *thread)
     JSHandle<ecmascript::SourceTextModule> module = JSHandle<ecmascript::SourceTextModule>::Cast(moduleRecord);
     module->SetStatus(ecmascript::ModuleStatus::INSTANTIATED);
     ecmascript::SourceTextModule::EvaluateForConcurrent(thread, module, method);
-    method->SetModule(thread, module);
+    this->SetModule(thread, moduleRecord);
+}
+
+void JSFunctionBase::SetCompiledFuncEntry(uintptr_t codeEntry, bool isFastCall)
+{
+    ASSERT(codeEntry != 0);
+    Method* method = Method::Cast(GetMethod());
+    method->SetCodeEntryAndMarkAOTWhenBinding(codeEntry);
+
+    method->SetIsFastCall(isFastCall);
+    MethodLiteral *methodLiteral = method->GetMethodLiteral();
+    methodLiteral->SetAotCodeBit(true);
+    methodLiteral->SetIsFastCall(isFastCall);
 }
 }  // namespace panda::ecmascript

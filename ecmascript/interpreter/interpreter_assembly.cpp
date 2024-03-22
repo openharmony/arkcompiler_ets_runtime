@@ -3280,6 +3280,20 @@ void InterpreterAssembly::HandleWideLdexternalmodulevarPrefImm16(
     DISPATCH(WIDE_LDEXTERNALMODULEVAR_PREF_IMM16);
 }
 
+void InterpreterAssembly::HandleCallRuntimeWideLdsendableexternalmodulevarPrefImm16(
+    JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
+    JSTaggedValue acc, int16_t hotnessCounter)
+{
+    int32_t index = READ_INST_16_1();
+    JSTaggedValue thisFunc = GetFunction(sp);
+    LOG_INST() << "intrinsics::ldsendableexternalmodulevar index:" << index;
+
+    JSTaggedValue moduleVar = SlowRuntimeStub::LdSendableExternalModuleVar(thread, index, thisFunc);
+    INTERPRETER_RETURN_IF_ABRUPT(moduleVar);
+    SET_ACC(moduleVar);
+    DISPATCH(CALLRUNTIME_WIDELDSENDABLEEXTERNALMODULEVAR_PREF_IMM16);
+}
+
 void InterpreterAssembly::HandleWideLdlocalmodulevarPrefImm16(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
@@ -3577,7 +3591,7 @@ void InterpreterAssembly::HandleWideSupercallarrowrangePrefImm16V8(
 
                 state->function = superCtor;
                 state->constpool = methodHandle->GetConstantPool();
-                state->profileTypeInfo = methodHandle->GetProfileTypeInfo();
+                state->profileTypeInfo = superCtorFunc->GetProfileTypeInfo();
                 state->env = superCtorFunc->GetLexicalEnv();
             }
 
@@ -3720,7 +3734,7 @@ void InterpreterAssembly::HandleWideSupercallthisrangePrefImm16V8(
 
                 state->function = superCtor;
                 state->constpool = methodHandle->GetConstantPool();
-                state->profileTypeInfo = methodHandle->GetProfileTypeInfo();
+                state->profileTypeInfo = superCtorFunc->GetProfileTypeInfo();
                 state->env = superCtorFunc->GetLexicalEnv();
             }
 
@@ -3908,7 +3922,7 @@ void InterpreterAssembly::HandleWideNewobjrangePrefImm16V8(
 
                 state->function = ctor;
                 state->constpool = methodHandle->GetConstantPool();
-                state->profileTypeInfo = methodHandle->GetProfileTypeInfo();
+                state->profileTypeInfo = ctorFunc->GetProfileTypeInfo();
                 state->env = ctorFunc->GetLexicalEnv();
             }
 
@@ -3979,7 +3993,7 @@ void InterpreterAssembly::HandleDeprecatedCreateobjecthavingmethodPrefImm16(
     SAVE_ACC();
     constpool = GetConstantPool(sp);
     JSObject *result =
-        JSObject::Cast(ConstantPool::GetMethodFromCache(thread, constpool, GetModule(sp), imm).GetTaggedObject());
+        JSObject::Cast(ConstantPool::GetMethodFromCache(thread, constpool, imm).GetTaggedObject());
     RESTORE_ACC();
     JSTaggedValue env = GET_ACC();
 
@@ -4770,7 +4784,7 @@ void InterpreterAssembly::HandleDeprecatedCreateobjectwithbufferPrefImm16(
                << " imm:" << imm;
     constpool = GetConstantPool(sp);
     JSObject *result =
-        JSObject::Cast(ConstantPool::GetMethodFromCache(thread, constpool, GetModule(sp), imm).GetTaggedObject());
+        JSObject::Cast(ConstantPool::GetMethodFromCache(thread, constpool, imm).GetTaggedObject());
 
     SAVE_PC();
     EcmaVM *ecmaVm = thread->GetEcmaVM();
@@ -4790,7 +4804,7 @@ void InterpreterAssembly::HandleDeprecatedCreatearraywithbufferPrefImm16(
                << " imm:" << imm;
     constpool = GetConstantPool(sp);
     JSArray *result =
-        JSArray::Cast(ConstantPool::GetMethodFromCache(thread, constpool, GetModule(sp), imm).GetTaggedObject());
+        JSArray::Cast(ConstantPool::GetMethodFromCache(thread, constpool, imm).GetTaggedObject());
     SAVE_PC();
     EcmaVM *ecmaVm = thread->GetEcmaVM();
     ObjectFactory *factory = ecmaVm->GetFactory();
@@ -6595,6 +6609,20 @@ void InterpreterAssembly::HandleLdexternalmodulevarImm8(
     DISPATCH(LDEXTERNALMODULEVAR_IMM8);
 }
 
+void InterpreterAssembly::HandleCallRuntimeLdsendableexternalmodulevarImm8(
+    JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
+    JSTaggedValue acc, int16_t hotnessCounter)
+{
+    int32_t index = READ_INST_8_1();
+    JSTaggedValue thisFunc = GetFunction(sp);
+    LOG_INST() << "intrinsics::ldsendableexternalmodulevar index:" << index;
+
+    JSTaggedValue moduleVar = SlowRuntimeStub::LdSendableExternalModuleVar(thread, index, thisFunc);
+    INTERPRETER_RETURN_IF_ABRUPT(moduleVar);
+    SET_ACC(moduleVar);
+    DISPATCH(CALLRUNTIME_LDSENDABLEEXTERNALMODULEVAR_PREF_IMM8);
+}
+
 void InterpreterAssembly::HandleDefinemethodImm16Id16Imm8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
@@ -6605,7 +6633,7 @@ void InterpreterAssembly::HandleDefinemethodImm16Id16Imm8(
     SAVE_ACC();
     constpool = GetConstantPool(sp);
     Method *method =
-        Method::Cast(ConstantPool::GetMethodFromCache(thread, constpool, GetModule(sp), methodId).GetTaggedObject());
+        Method::Cast(ConstantPool::GetMethodFromCache(thread, constpool, methodId).GetTaggedObject());
     ASSERT(method != nullptr);
     RESTORE_ACC();
 
@@ -6614,7 +6642,7 @@ void InterpreterAssembly::HandleDefinemethodImm16Id16Imm8(
     InterpretedFrame *state = (reinterpret_cast<InterpretedFrame *>(sp) - 1);
     JSTaggedValue taggedCurEnv = state->env;
 
-    auto res = SlowRuntimeStub::DefineMethod(thread, method, homeObject, length, taggedCurEnv);
+    auto res = SlowRuntimeStub::DefineMethod(thread, method, homeObject, length, taggedCurEnv, GetModule(sp));
     INTERPRETER_RETURN_IF_ABRUPT(res);
     JSFunction *result = JSFunction::Cast(res.GetTaggedObject());
 
@@ -6715,7 +6743,7 @@ void InterpreterAssembly::HandleDefinemethodImm8Id16Imm8(
     SAVE_ACC();
     constpool = GetConstantPool(sp);
     Method *method =
-        Method::Cast(ConstantPool::GetMethodFromCache(thread, constpool, GetModule(sp), methodId).GetTaggedObject());
+        Method::Cast(ConstantPool::GetMethodFromCache(thread, constpool, methodId).GetTaggedObject());
     ASSERT(method != nullptr);
     RESTORE_ACC();
 
@@ -6723,7 +6751,7 @@ void InterpreterAssembly::HandleDefinemethodImm8Id16Imm8(
     JSTaggedValue homeObject = GET_ACC();
     InterpretedFrame *state = (reinterpret_cast<InterpretedFrame *>(sp) - 1);
     JSTaggedValue taggedCurEnv = state->env;
-    auto res = SlowRuntimeStub::DefineMethod(thread, method, homeObject, length, taggedCurEnv);
+    auto res = SlowRuntimeStub::DefineMethod(thread, method, homeObject, length, taggedCurEnv, GetModule(sp));
     INTERPRETER_RETURN_IF_ABRUPT(res);
     JSFunction *result = JSFunction::Cast(res.GetTaggedObject());
 
@@ -6881,7 +6909,7 @@ void InterpreterAssembly::HandleSupercallarrowrangeImm8Imm8V8(
 
                 state->function = superCtor;
                 state->constpool = methodHandle->GetConstantPool();
-                state->profileTypeInfo = methodHandle->GetProfileTypeInfo();
+                state->profileTypeInfo = superCtorFunc->GetProfileTypeInfo();
                 state->env = superCtorFunc->GetLexicalEnv();
             }
 
@@ -7024,7 +7052,7 @@ void InterpreterAssembly::HandleSupercallthisrangeImm8Imm8V8(
 
                 state->function = superCtor;
                 state->constpool = methodHandle->GetConstantPool();
-                state->profileTypeInfo = methodHandle->GetProfileTypeInfo();
+                state->profileTypeInfo = superCtorFunc->GetProfileTypeInfo();
                 state->env = superCtorFunc->GetLexicalEnv();
             }
 
@@ -7200,7 +7228,7 @@ void InterpreterAssembly::HandleNewobjrangeImm16Imm8V8(
 
                 state->function = ctor;
                 state->constpool = methodHandle->GetConstantPool();
-                state->profileTypeInfo = methodHandle->GetProfileTypeInfo();
+                state->profileTypeInfo = ctorFunc->GetProfileTypeInfo();
                 state->env = ctorFunc->GetLexicalEnv();
             }
 
@@ -7342,7 +7370,7 @@ void InterpreterAssembly::HandleNewobjrangeImm8Imm8V8(
 
                 state->function = ctor;
                 state->constpool = methodHandle->GetConstantPool();
-                state->profileTypeInfo = methodHandle->GetProfileTypeInfo();
+                state->profileTypeInfo = ctorFunc->GetProfileTypeInfo();
                 state->env = ctorFunc->GetLexicalEnv();
             }
 
@@ -7426,7 +7454,7 @@ void InterpreterAssembly::HandleCreateobjectwithbufferImm16Id16(
     uint16_t imm = READ_INST_16_2();
     LOG_INST() << "intrinsics::createobjectwithbuffer"
                << " imm:" << imm;
-    constpool = GetConstantPool(sp);
+    constpool = GetUnsharedConstpool(thread, sp);
     JSObject *result = JSObject::Cast(
         ConstantPool::GetLiteralFromCache<ConstPoolType::OBJECT_LITERAL>(
             thread, constpool, imm, GetModule(sp)).GetTaggedObject());
@@ -7447,7 +7475,7 @@ void InterpreterAssembly::HandleCreateobjectwithbufferImm8Id16(
     uint16_t imm = READ_INST_16_1();
     LOG_INST() << "intrinsics::createobjectwithbuffer"
                << " imm:" << imm;
-    constpool = GetConstantPool(sp);
+    constpool = GetUnsharedConstpool(thread, sp);
     JSObject *result = JSObject::Cast(
         ConstantPool::GetLiteralFromCache<ConstPoolType::OBJECT_LITERAL>(
             thread, constpool, imm, GetModule(sp)).GetTaggedObject());
@@ -7484,7 +7512,7 @@ void InterpreterAssembly::HandleCreatearraywithbufferImm8Id16(
     uint16_t imm = READ_INST_16_1();
     LOG_INST() << "intrinsics::createarraywithbuffer"
                << " imm:" << imm;
-    constpool = GetConstantPool(sp);
+    constpool = GetUnsharedConstpool(thread, sp);
     JSArray *result = JSArray::Cast(
         ConstantPool::GetLiteralFromCache<ConstPoolType::ARRAY_LITERAL>(
             thread, constpool, imm, GetModule(sp)).GetTaggedObject());
@@ -7632,20 +7660,26 @@ JSTaggedValue InterpreterAssembly::GetConstantPool(JSTaggedType *sp)
     return method->GetConstantPool();
 }
 
+JSTaggedValue InterpreterAssembly::GetUnsharedConstpool(JSThread* thread, JSTaggedType *sp)
+{
+    AsmInterpretedFrame *state = reinterpret_cast<AsmInterpretedFrame *>(sp) - 1;
+    Method *method = JSFunction::Cast(state->function.GetTaggedObject())->GetCallTarget();
+    return thread->GetCurrentEcmaContext()->FindUnsharedConstpool(method->GetConstantPool());
+}
+
 JSTaggedValue InterpreterAssembly::GetModule(JSTaggedType *sp)
 {
     // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
     AsmInterpretedFrame *state = reinterpret_cast<AsmInterpretedFrame *>(sp) - 1;
-    Method *method = JSFunction::Cast(state->function.GetTaggedObject())->GetCallTarget();
-    return method->GetModule();
+    return JSFunction::Cast(state->function.GetTaggedObject())->GetModule();
 }
 
 JSTaggedValue InterpreterAssembly::GetProfileTypeInfo(JSTaggedType *sp)
 {
     // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
     AsmInterpretedFrame *state = reinterpret_cast<AsmInterpretedFrame *>(sp) - 1;
-    Method *method = JSFunction::Cast(state->function.GetTaggedObject())->GetCallTarget();
-    return method->GetProfileTypeInfo();
+    JSFunction *function = JSFunction::Cast(state->function.GetTaggedObject());
+    return function->GetProfileTypeInfo();
 }
 
 JSTaggedType *InterpreterAssembly::GetAsmInterpreterFramePointer(AsmInterpretedFrame *state)
@@ -7690,10 +7724,9 @@ inline JSTaggedValue InterpreterAssembly::UpdateHotnessCounter(JSThread* thread,
     AsmInterpretedFrame *state = GET_ASM_FRAME(sp);
     thread->CheckSafepoint();
     JSFunction* function = JSFunction::Cast(state->function.GetTaggedObject());
-    Method *method = function->GetCallTarget();
-    JSTaggedValue profileTypeInfo = method->GetProfileTypeInfo();
+    JSTaggedValue profileTypeInfo = function->GetProfileTypeInfo();
     if (profileTypeInfo.IsUndefined()) {
-        return SlowRuntimeStub::NotifyInlineCache(thread, method);
+        return SlowRuntimeStub::NotifyInlineCache(thread, function);
     }
     return profileTypeInfo;
 }

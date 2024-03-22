@@ -38,7 +38,8 @@ namespace panda::ecmascript::kungfu {
     V(InlineNative, false)                                                       \
     V(LoweringBuiltin, false)                                                    \
     V(FastModule, false)                                                         \
-    V(OptBranchProfiling, true)
+    V(OptBranchProfiling, true)                                                  \
+    V(EscapeAnalysis, false)
 
 #define OPTION_BUILDER(NAME, DEFAULT)                                            \
     Builder &Enable##NAME(bool value) {                                          \

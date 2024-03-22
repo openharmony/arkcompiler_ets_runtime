@@ -17,6 +17,7 @@
 
 #include "ecmascript/base/block_hook_scope.h"
 #include "ecmascript/builtins/builtins_ark_tools.h"
+#include "ecmascript/checkpoint/thread_state_transition.h"
 #include "ecmascript/dfx/hprof/heap_profiler.h"
 #include "ecmascript/dfx/stackinfo/js_stackinfo.h"
 #include "ecmascript/dfx/tracing/tracing.h"
@@ -405,11 +406,12 @@ void DFXJSNApi::SetOverLimit(EcmaVM *vm, bool state)
 
 void DFXJSNApi::GetHeapPrepare(const EcmaVM *vm)
 {
-    const_cast<ecmascript::Heap *>(vm->GetHeap())->Prepare();
+    const_cast<ecmascript::Heap *>(vm->GetHeap())->GetHeapPrepare();
 }
 
 void DFXJSNApi::NotifyApplicationState(EcmaVM *vm, bool inBackground)
 {
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     const_cast<ecmascript::Heap *>(vm->GetHeap())->ChangeGCParams(inBackground);
 }
 
@@ -420,6 +422,7 @@ void DFXJSNApi::NotifyIdleStatusControl(const EcmaVM *vm, std::function<void(boo
 
 void DFXJSNApi::NotifyIdleTime(const EcmaVM *vm, int idleMicroSec)
 {
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     const_cast<ecmascript::Heap *>(vm->GetHeap())->TriggerIdleCollection(idleMicroSec);
 }
 
@@ -430,6 +433,7 @@ void DFXJSNApi::NotifyMemoryPressure(EcmaVM *vm, bool inHighMemoryPressure)
 
 void DFXJSNApi::NotifyFinishColdStart(EcmaVM *vm, bool isConvinced)
 {
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     if (isConvinced) {
         const_cast<ecmascript::Heap *>(vm->GetHeap())->NotifyFinishColdStart();
     } else {

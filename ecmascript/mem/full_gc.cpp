@@ -25,6 +25,7 @@
 #include "ecmascript/mem/mem.h"
 #include "ecmascript/mem/parallel_marker-inl.h"
 #include "ecmascript/mem/space-inl.h"
+#include "ecmascript/mem/verification.h"
 #include "ecmascript/mem/visitor.h"
 #include "ecmascript/mem/gc_stats.h"
 #include "ecmascript/ecma_string_table.h"
@@ -56,6 +57,11 @@ void FullGC::RunPhases()
     Mark();
     Sweep();
     Finish();
+    if (UNLIKELY(heap_->ShouldVerifyHeap())) {
+        // verify mark
+        LOG_ECMA(DEBUG) << "start verify post fullgc";
+        Verification(heap_, VerifyKind::VERIFY_SHARED_RSET_POST_FULL_GC).VerifyAll();
+    }
     heap_->NotifyHeapAliveSizeAfterGC(heap_->GetHeapObjectSize());
 }
 
@@ -124,7 +130,7 @@ void FullGC::Sweep()
 
             Region *objectRegion = Region::ObjectAddressToRange(header);
             if (!HasEvacuated(objectRegion)) {
-                if (!objectRegion->Test(header)) {
+                if (!objectRegion->InSharedHeap() && !objectRegion->Test(header)) {
                     slot.Clear();
                 }
             } else {
@@ -140,7 +146,6 @@ void FullGC::Sweep()
         }
     }
 
-    auto stringTable = heap_->GetEcmaVM()->GetEcmaStringTable();
     WeakRootVisitor gcUpdateWeak = [this](TaggedObject *header) {
         Region *objectRegion = Region::ObjectAddressToRange(header);
         if (!objectRegion) {
@@ -148,7 +153,8 @@ void FullGC::Sweep()
             return reinterpret_cast<TaggedObject *>(ToUintPtr(nullptr));
         }
         if (!HasEvacuated(objectRegion)) {
-            if (objectRegion->Test(header)) {
+            // The weak object in shared heap is always alive during fullGC.
+            if (objectRegion->InSharedHeap() || objectRegion->Test(header)) {
                 return header;
             }
             return reinterpret_cast<TaggedObject *>(ToUintPtr(nullptr));
@@ -160,7 +166,6 @@ void FullGC::Sweep()
         }
         return reinterpret_cast<TaggedObject *>(ToUintPtr(nullptr));
     };
-    stringTable->SweepWeakReference(gcUpdateWeak);
     heap_->GetEcmaVM()->GetJSThread()->IterateWeakEcmaGlobalStorage(gcUpdateWeak);
     heap_->GetEcmaVM()->ProcessReferences(gcUpdateWeak);
 

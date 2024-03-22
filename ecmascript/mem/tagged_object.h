@@ -30,6 +30,7 @@ public:
     {
         return static_cast<TaggedObject *>(header);
     }
+    TaggedObject(): class_(0) {}
 
     void SynchronizedSetClass(const JSThread *thread, JSHClass *hclass);
     JSHClass *SynchronizedGetClass() const;
@@ -52,6 +53,7 @@ private:
     MarkWordType class_;
 
     friend class Heap;
+    friend class SharedHeap;
     friend class ObjectFactory;
     friend class EcmaString;
 };

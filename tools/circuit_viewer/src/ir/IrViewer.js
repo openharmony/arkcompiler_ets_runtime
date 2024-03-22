@@ -85,12 +85,12 @@ class IrViewer {
 
     tx = 10;
     ty += 30;
-    let bms = [['隐藏选中', () => { this.hideNode(0); }],
-    ['隐藏未选中', () => { this.hideNode(1); }],
-    ['显示隐藏', () => { this.hideNode(2); }],
-    ['选中前继', () => { this.selectNode(0); }],
-    ['选中后继', () => { this.selectNode(1); }],
-    ['刷新', () => { this.freshNode(); }]];
+    let bms = [['隐藏选中(Hide selected)', () => { this.hideNode(0); }],
+    ['隐藏未选中(Hide unselected)', () => { this.hideNode(1); }],
+    ['显示隐藏(Show hide)', () => { this.hideNode(2); }],
+    ['选中前继(Select pred)', () => { this.selectNode(0); }],
+    ['选中后继(Select suc)', () => { this.selectNode(1); }],
+    ['刷新(refresh)', () => { this.freshNode(); }]];
     for (let bm of bms) {
       let bw = X2DFast.gi().getTextWidth(bm[0], 14) + 6;
       let btn = new XButton(tx, ty, bw, 20, bm[0]);

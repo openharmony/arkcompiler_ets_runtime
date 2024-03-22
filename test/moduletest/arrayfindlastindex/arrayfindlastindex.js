@@ -27,3 +27,45 @@
     });
     print(index);
 })();
+
+var arr1 = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+var arr2 = new Array();
+function testFunction(element, index, array) {
+    if (index == 9) {
+        array.length = 6;
+    }
+    return element < 1;
+}
+for (let i = 0; i < 10; i++) arr2[i] = i;
+
+var result1 = arr1.findLastIndex(testFunction);
+print(result1);
+var result2 = arr2.findLastIndex(testFunction);
+print(result2);
+
+let arr3 = [1, 2, , 7, , undefined];
+arr3.__proto__.push(9);
+arr3.__proto__.push(9);
+arr3.__proto__.push(9);
+function fun1(element) {
+    return element === 1;
+}
+print(arr3.findLastIndex(fun1));
+arr3.__proto__.pop(9);
+arr3.__proto__.pop(9);
+arr3.__proto__.pop(9);
+
+//slowPath
+let arr4 = [1, 2, 3, 4, 5, 6, 7, 8];
+function func2(element, index, arr) {
+    return element === 6;
+}
+print(arr4.findLastIndex(func2));
+
+//notFound
+let arr5 = new Array(5, 2, 7, 9, 20);
+function func3(element, index, arr) {
+    arr.length = 3;
+    return element === 100;
+}
+print(arr5.findLastIndex(func3));

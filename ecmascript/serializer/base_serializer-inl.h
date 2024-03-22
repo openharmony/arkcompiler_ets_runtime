@@ -43,7 +43,7 @@ void BaseSerializer::SerializeObjectField(TaggedObject *object)
         }
     };
 
-    objXRay_.VisitObjectBody<VisitType::ALL_VISIT>(object, object->GetClass(), visitor);
+    ObjectXRay::VisitObjectBody<VisitType::ALL_VISIT>(object, object->GetClass(), visitor);
 }
 
 template<SerializeType serializeType>

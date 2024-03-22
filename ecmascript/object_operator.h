@@ -159,14 +159,14 @@ public:
         return attributes_;
     }
 
-    inline void SetAttr(uint32_t attr)
+    inline void SetAttr(uint64_t attr)
     {
         attributes_ = PropertyAttributes(attr);
     }
 
     inline void SetAttr(const PropertyAttributes &attr)
     {
-        attributes_ = PropertyAttributes(attr);
+        attributes_ = attr;
     }
 
     inline bool IsPrimitiveAttr() const
@@ -275,7 +275,7 @@ public:
     }
 
     void ToPropertyDescriptor(PropertyDescriptor &desc) const;
-    TrackType GetTrackType() const;
+    SharedFieldType GetSharedFieldType() const;
     void LookupProperty();
     void GlobalLookupProperty();
     inline void ReLookupPropertyInReceiver()
@@ -324,8 +324,8 @@ private:
     void StartGlobalLookUp(OperatorType type);
     void HandleKey(const JSHandle<JSTaggedValue> &key);
     uint32_t ComputeElementCapacity(uint32_t oldCapacity);
-    void SetFound(uint32_t index, JSTaggedValue value, uint32_t attr, bool mode, bool transition = false);
-    void UpdateFound(uint32_t index, uint32_t attr, bool mode, bool transition);
+    void SetFound(uint32_t index, JSTaggedValue value, uint64_t attr, bool mode, bool transition = false);
+    void UpdateFound(uint32_t index, uint64_t attr, bool mode, bool transition);
     void ResetState();
     void ResetStateForAddProperty();
     inline void LookupPropertyInHolder()

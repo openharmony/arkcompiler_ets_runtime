@@ -50,20 +50,20 @@ void NTypeHCRLowering::LowerCreateArray(GateRef gate, GateRef glue)
 {
     Environment env(gate, circuit_, &builder_);
     if (acc_.GetArraySize(gate) == 0) {
-        LowerCreateEmptyArray(gate);
+        LowerCreateEmptyArray(gate, glue);
     } else {
         LowerCreateArrayWithOwn(gate, glue);
     }
 }
 
-void NTypeHCRLowering::LowerCreateEmptyArray(GateRef gate)
+void NTypeHCRLowering::LowerCreateEmptyArray(GateRef gate, GateRef glue)
 {
     GateRef length = builder_.Int32(0);
     GateRef elements = Circuit::NullGate();
     GateRef value = acc_.GetValueIn(gate, 0);
     auto hintLength = static_cast<uint32_t>(acc_.GetConstantValue(value));
     elements = builder_.GetGlobalConstantValue(ConstantIndex::EMPTY_ARRAY_OBJECT_INDEX);
-    auto array = NewJSArrayLiteral(gate, elements, length, hintLength);
+    auto array = NewJSArrayLiteral(glue, gate, elements, length, hintLength);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), array);
 }
 
@@ -73,7 +73,7 @@ void NTypeHCRLowering::LowerCreateArrayWithOwn(GateRef gate, GateRef glue)
     GateRef length = builder_.IntPtr(elementsLength);
     GateRef elements = CreateElementsWithLength(gate, glue, elementsLength);
 
-    auto array = NewJSArrayLiteral(gate, elements, length);
+    auto array = NewJSArrayLiteral(glue, gate, elements, length);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), array);
 }
 
@@ -111,7 +111,7 @@ void NTypeHCRLowering::LowerCreateArrayWithBuffer(GateRef gate, GateRef glue)
         length = builder_.IntPtr(literialLength);
     }
 
-    auto array = NewJSArrayLiteral(gate, elements, length);
+    auto array = NewJSArrayLiteral(glue, gate, elements, length);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), array);
 }
 
@@ -145,8 +145,9 @@ void NTypeHCRLowering::LowerCreateArguments(GateRef gate, GateRef glue)
     }
 }
 
-GateRef NTypeHCRLowering::LoadFromConstPool(GateRef constPool, size_t index, size_t valVecType)
+GateRef NTypeHCRLowering::LoadFromConstPool(GateRef constpool, size_t index, size_t valVecType)
 {
+    GateRef constPool = builder_.GetUnsharedConstpool(constpool);
     GateRef constPoolSize = builder_.GetLengthOfTaggedArray(constPool);
     GateRef valVecIndex = builder_.Int32Sub(constPoolSize, builder_.Int32(valVecType));
     GateRef valVec = builder_.GetValueFromTaggedArray(constPool, valVecIndex);
@@ -158,14 +159,15 @@ GateRef NTypeHCRLowering::CreateElementsWithLength(GateRef gate, GateRef glue, s
     GateRef elements = Circuit::NullGate();
     GateRef length = builder_.IntPtr(arrayLength);
     if (arrayLength < MAX_TAGGED_ARRAY_LENGTH) {
-        elements = NewTaggedArray(arrayLength);
+        elements = NewTaggedArray(arrayLength, glue);
     } else {
         elements = LowerCallRuntime(glue, gate, RTSTUB_ID(NewTaggedArray), { builder_.Int32ToTaggedInt(length) }, true);
     }
     return elements;
 }
 
-GateRef NTypeHCRLowering::NewJSArrayLiteral(GateRef gate, GateRef elements, GateRef length, uint32_t hintLength)
+GateRef NTypeHCRLowering::NewJSArrayLiteral(GateRef glue, GateRef gate, GateRef elements, GateRef length,
+                                            uint32_t hintLength)
 {
     ElementsKind kind = acc_.GetArrayMetaDataAccessor(gate).GetElementsKind();
     GateRef hclass = Circuit::NullGate();
@@ -189,16 +191,18 @@ GateRef NTypeHCRLowering::NewJSArrayLiteral(GateRef gate, GateRef elements, Gate
     GateRef size = builder_.IntPtr(arrayHC->GetObjectSize());
 
     builder_.StartAllocate();
-    GateRef array = builder_.HeapAlloc(size, GateType::TaggedValue(), RegionSpaceFlag::IN_YOUNG_SPACE);
+    GateRef array = builder_.HeapAlloc(glue, size, GateType::TaggedValue(), RegionSpaceFlag::IN_YOUNG_SPACE);
     // initialization
     for (size_t offset = JSArray::SIZE; offset < arraySize; offset += JSTaggedValue::TaggedTypeSize()) {
         builder_.StoreConstOffset(VariableType::INT64(), array, offset, builder_.Undefined());
     }
-    builder_.StoreConstOffset(VariableType::JS_POINTER(), array, 0, hclass);
+    builder_.StoreConstOffset(VariableType::JS_POINTER(), array, 0, hclass, MemoryOrder::NeedBarrierAndAtomic());
     builder_.StoreConstOffset(VariableType::INT64(), array, ECMAObject::HASH_OFFSET,
                               builder_.Int64(JSTaggedValue(0).GetRawData()));
-    builder_.StoreConstOffset(VariableType::JS_POINTER(), array, JSObject::PROPERTIES_OFFSET, emptyArray);
-    builder_.StoreConstOffset(VariableType::JS_POINTER(), array, JSObject::ELEMENTS_OFFSET, elements);
+    builder_.StoreConstOffset(VariableType::JS_POINTER(), array, JSObject::PROPERTIES_OFFSET, emptyArray,
+        MemoryOrder::NoBarrier());
+    builder_.StoreConstOffset(VariableType::JS_POINTER(), array, JSObject::ELEMENTS_OFFSET, elements,
+        MemoryOrder::NeedBarrier());
     builder_.StoreConstOffset(VariableType::INT32(), array, JSArray::LENGTH_OFFSET, length);
     if (hintLength > 0) {
         builder_.StoreConstOffset(VariableType::INT64(), array, JSArray::TRACK_INFO_OFFSET,
@@ -206,20 +210,22 @@ GateRef NTypeHCRLowering::NewJSArrayLiteral(GateRef gate, GateRef elements, Gate
     } else {
         builder_.StoreConstOffset(VariableType::INT64(), array, JSArray::TRACK_INFO_OFFSET, builder_.Undefined());
     }
-    builder_.StoreConstOffset(VariableType::JS_POINTER(), array, lengthAccessorOffset, accessor);
+    builder_.StoreConstOffset(VariableType::JS_POINTER(), array, lengthAccessorOffset, accessor,
+        MemoryOrder::NeedBarrier());
     return builder_.FinishAllocate(array);
 }
 
-GateRef NTypeHCRLowering::NewTaggedArray(size_t length)
+GateRef NTypeHCRLowering::NewTaggedArray(size_t length, GateRef glue)
 {
     GateRef elementsHclass = builder_.GetGlobalConstantValue(ConstantIndex::ARRAY_CLASS_INDEX);
     GateRef elementsSize = builder_.ComputeTaggedArraySize(builder_.IntPtr(length));
 
     builder_.StartAllocate();
-    GateRef elements = builder_.HeapAlloc(elementsSize, GateType::TaggedValue(), RegionSpaceFlag::IN_YOUNG_SPACE);
-    builder_.StoreConstOffset(VariableType::JS_POINTER(), elements, 0, elementsHclass);
+    GateRef elements = builder_.HeapAlloc(glue, elementsSize, GateType::TaggedValue(), RegionSpaceFlag::IN_YOUNG_SPACE);
+    builder_.StoreConstOffset(VariableType::JS_POINTER(), elements, 0, elementsHclass,
+        MemoryOrder::NeedBarrierAndAtomic());
     builder_.StoreConstOffset(VariableType::JS_ANY(), elements, TaggedArray::LENGTH_OFFSET,
-        builder_.Int32ToTaggedInt(builder_.IntPtr(length)));
+        builder_.Int32ToTaggedInt(builder_.IntPtr(length)), MemoryOrder::NoBarrier());
     size_t endOffset = TaggedArray::DATA_OFFSET + length * JSTaggedValue::TaggedTypeSize();
     // initialization
     for (size_t offset = TaggedArray::DATA_OFFSET; offset < endOffset; offset += JSTaggedValue::TaggedTypeSize()) {
@@ -231,13 +237,14 @@ GateRef NTypeHCRLowering::NewTaggedArray(size_t length)
 GateRef NTypeHCRLowering::LowerCallRuntime(GateRef glue, GateRef hirGate, int index, const std::vector<GateRef> &args,
     bool useLabel)
 {
+    const std::string name = RuntimeStubCSigns::GetRTName(index);
     if (useLabel) {
-        GateRef result = builder_.CallRuntime(glue, index, Gate::InvalidGateRef, args, hirGate);
+        GateRef result = builder_.CallRuntime(glue, index, Gate::InvalidGateRef, args, hirGate, name.c_str());
         return result;
     } else {
         const CallSignature *cs = RuntimeStubCSigns::Get(RTSTUB_ID(CallRuntime));
         GateRef target = builder_.IntPtr(index);
-        GateRef result = builder_.Call(cs, glue, target, dependEntry_, args, hirGate);
+        GateRef result = builder_.Call(cs, glue, target, dependEntry_, args, hirGate, name.c_str());
         return result;
     }
 }
@@ -248,9 +255,8 @@ void NTypeHCRLowering::LowerStoreModuleVar(GateRef gate, GateRef glue)
     GateRef jsFunc = acc_.GetValueIn(gate, 0);
     GateRef index = acc_.GetValueIn(gate, 1);
     GateRef value = acc_.GetValueIn(gate, 2);
-    GateRef method = builder_.GetMethodFromFunction(jsFunc);
-    GateRef moduleOffset = builder_.IntPtr(Method::ECMA_MODULE_OFFSET);
-    GateRef module = builder_.Load(VariableType::JS_ANY(), method, moduleOffset);
+    GateRef moduleOffset = builder_.IntPtr(JSFunction::ECMA_MODULE_OFFSET);
+    GateRef module = builder_.Load(VariableType::JS_ANY(), jsFunc, moduleOffset);
     GateRef localExportEntriesOffset = builder_.IntPtr(SourceTextModule::LOCAL_EXPORT_ENTTRIES_OFFSET);
     GateRef localExportEntries = builder_.Load(VariableType::JS_ANY(), module, localExportEntriesOffset);
     GateRef nameDictionaryOffset = builder_.IntPtr(SourceTextModule::NAME_DICTIONARY_OFFSET);
@@ -259,29 +265,13 @@ void NTypeHCRLowering::LowerStoreModuleVar(GateRef gate, GateRef glue)
 
     Label dataIsUndefined(&builder_);
     Label exit(&builder_);
-    builder_.Branch(builder_.TaggedIsUndefined(data), &dataIsUndefined, &exit);
+    BRANCH_CIR(builder_.TaggedIsUndefined(data), &dataIsUndefined, &exit);
     builder_.Bind(&dataIsUndefined);
     {
         GateRef size = builder_.GetLengthOfTaggedArray(localExportEntries);
-        Label fastpath(&builder_);
-        Label slowPath(&builder_);
-        Label finishNew(&builder_);
-        builder_.Branch(builder_.Int32LessThan(size, builder_.Int32(MAX_TAGGED_ARRAY_LENGTH)), &fastpath, &slowPath);
-        builder_.Bind(&fastpath);
-        {
-            array = NewTaggedArray(size);
-            builder_.Jump(&finishNew);
-        }
-        builder_.Bind(&slowPath);
-        {
-            array = LowerCallRuntime(glue, gate, RTSTUB_ID(NewTaggedArray), { builder_.Int32ToTaggedInt(size) }, true);
-            builder_.Jump(&finishNew);
-        }
-        builder_.Bind(&finishNew);
-        {
-            builder_.StoreConstOffset(VariableType::JS_ANY(), module, SourceTextModule::NAME_DICTIONARY_OFFSET, *array);
-            builder_.Jump(&exit);
-        }
+        array = LowerCallRuntime(glue, gate, RTSTUB_ID(NewTaggedArray), { builder_.Int32ToTaggedInt(size) }, true);
+        builder_.StoreConstOffset(VariableType::JS_ANY(), module, SourceTextModule::NAME_DICTIONARY_OFFSET, *array);
+        builder_.Jump(&exit);
     }
     builder_.Bind(&exit);
     GateRef dataOffset = builder_.Int32(TaggedArray::DATA_OFFSET);
@@ -291,52 +281,19 @@ void NTypeHCRLowering::LowerStoreModuleVar(GateRef gate, GateRef glue)
     ReplaceGateWithPendingException(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 
-GateRef NTypeHCRLowering::NewTaggedArray(GateRef length)
-{
-    Label subentry(&builder_);
-    builder_.SubCfgEntry(&subentry);
-    Label exit(&builder_);
-    DEFVALUE(array, (&builder_), VariableType::JS_ANY(), builder_.Undefined());
-    GateRef hclass = builder_.GetGlobalConstantValue(ConstantIndex::ARRAY_CLASS_INDEX);
-    GateRef size = builder_.ComputeTaggedArraySize(builder_.ZExtInt32ToPtr(length));
-    builder_.StartAllocate();
-    array = builder_.HeapAlloc(size, GateType::TaggedValue(), RegionSpaceFlag::IN_YOUNG_SPACE);
-    builder_.StoreConstOffset(VariableType::JS_POINTER(), *array, 0, hclass);
-    builder_.StoreConstOffset(VariableType::JS_ANY(), *array, TaggedArray::LENGTH_OFFSET,
-        builder_.Int32ToTaggedInt(length));
-    GateRef dataOffset = builder_.Int32(TaggedArray::DATA_OFFSET);
-    GateRef offset = builder_.Int32Mul(length, builder_.Int32(JSTaggedValue::TaggedTypeSize()));
-    GateRef endOffset = builder_.Int32Add(offset, builder_.Int32(TaggedArray::DATA_OFFSET));
-    Label loopHead(&builder_);
-    Label loopEnd(&builder_);
-    DEFVALUE(startOffset, (&builder_), VariableType::INT32(), dataOffset);
-    builder_.Branch(builder_.Int32UnsignedLessThan(*startOffset, endOffset), &loopHead, &exit);
-    builder_.LoopBegin(&loopHead);
-    builder_.Store(VariableType::INT64(), glue_, *array, *startOffset, builder_.Hole());
-    startOffset = builder_.Int32Add(*startOffset, builder_.Int32(JSTaggedValue::TaggedTypeSize()));
-    builder_.Branch(builder_.Int32UnsignedLessThan(*startOffset, endOffset), &loopEnd, &exit);
-    builder_.Bind(&loopEnd);
-    builder_.LoopEnd(&loopHead);
-    builder_.Bind(&exit);
-    auto ret = builder_.FinishAllocate(*array);
-    builder_.SubCfgExit();
-    return ret;
-}
-
 void NTypeHCRLowering::LowerLdLocalModuleVar(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
     GateRef jsFunc = acc_.GetValueIn(gate, 0);
     GateRef index = acc_.GetValueIn(gate, 1);
-    GateRef method = builder_.GetMethodFromFunction(jsFunc);
-    GateRef moduleOffset = builder_.IntPtr(Method::ECMA_MODULE_OFFSET);
-    GateRef module = builder_.Load(VariableType::JS_ANY(), method, moduleOffset);
+    GateRef moduleOffset = builder_.IntPtr(JSFunction::ECMA_MODULE_OFFSET);
+    GateRef module = builder_.Load(VariableType::JS_ANY(), jsFunc, moduleOffset);
     GateRef nameDictionaryOffset = builder_.IntPtr(SourceTextModule::NAME_DICTIONARY_OFFSET);
     GateRef dictionary = builder_.Load(VariableType::JS_ANY(), module, nameDictionaryOffset);
     DEFVALUE(result, (&builder_), VariableType::JS_ANY(), builder_.Hole());
     Label dataIsNotUndefined(&builder_);
     Label exit(&builder_);
-    builder_.Branch(builder_.TaggedIsUndefined(dictionary), &exit, &dataIsNotUndefined);
+    BRANCH_CIR(builder_.TaggedIsUndefined(dictionary), &exit, &dataIsNotUndefined);
     builder_.Bind(&dataIsNotUndefined);
     {
         GateRef dataOffset = builder_.Int32(TaggedArray::DATA_OFFSET);
@@ -352,7 +309,7 @@ void NTypeHCRLowering::LowerLdLocalModuleVar(GateRef gate)
 void NTypeHCRLowering::ReplaceGateWithPendingException(GateRef gate, GateRef state, GateRef depend, GateRef value)
 {
     auto condition = builder_.HasPendingException(glue_);
-    GateRef ifBranch = builder_.Branch(state, condition);
+    GateRef ifBranch = builder_.Branch(state, condition, 1, BranchWeight::DEOPT_WEIGHT, "checkException");
     GateRef ifTrue = builder_.IfTrue(ifBranch);
     GateRef ifFalse = builder_.IfFalse(ifBranch);
     GateRef eDepend = builder_.DependRelay(ifTrue, depend);

@@ -227,7 +227,7 @@ void OptimizedFastCall::OptimizedFastCallAndPushUndefined(ExtendedAssembler *ass
     TempRegister1Scope scope1(assembler);
     Register method1 = __ TempRegister1();
     __ Ldr(method1, MemoryOperand(jsfunc, JSFunction::METHOD_OFFSET));
-    __ Ldr(X11, MemoryOperand(method1, Method::CODE_ENTRY_OFFSET));
+    __ Ldr(X11, MemoryOperand(jsfunc, JSFunction::CODE_ENTRY_OFFSET));
     __ Blr(X11);
 
     __ Mov(Register(SP), Register(FP));
@@ -308,7 +308,7 @@ void OptimizedFastCall::JSFastCallWithArgV(ExtendedAssembler *assembler)
     TempRegister1Scope scope1(assembler);
     Register method = __ TempRegister1();
     __ Ldr(method, MemoryOperand(jsfunc, JSFunction::METHOD_OFFSET));
-    __ Ldr(X11, MemoryOperand(method, Method::CODE_ENTRY_OFFSET));
+    __ Ldr(X11, MemoryOperand(jsfunc, JSFunctionBase::CODE_ENTRY_OFFSET));
     __ Blr(X11);
 
     __ Mov(Register(SP), Register(FP));
@@ -450,7 +450,7 @@ void OptimizedFastCall::JSFastCallWithArgVAndPushUndefined(ExtendedAssembler *as
     TempRegister1Scope scope1(assembler);
     Register method = __ TempRegister1();
     __ Ldr(method, MemoryOperand(X1, JSFunction::METHOD_OFFSET));
-    __ Ldr(X11, MemoryOperand(method, Method::CODE_ENTRY_OFFSET));
+    __ Ldr(X11, MemoryOperand(X1, JSFunction::CODE_ENTRY_OFFSET));
     __ Blr(X11);
 
     __ Mov(Register(SP), Register(FP));

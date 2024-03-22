@@ -73,7 +73,8 @@ void NumberSpeculativeLowering::VisitGate(GateRef gate)
             VisitConstant(gate);
             break;
         }
-        case OpCode::TYPED_CALL_BUILTIN: {
+        case OpCode::TYPED_CALL_BUILTIN:
+        case OpCode::TYPED_CALL_BUILTIN_SIDE_EFFECT:{
             VisitCallBuiltins(gate);
             break;
         }
@@ -488,7 +489,7 @@ void NumberSpeculativeLowering::VisitBooleanJump(GateRef gate)
         std::swap(trueWeight, falseWeight);
         condition = builder_.BoolNot(condition);
     }
-    GateRef ifBranch = builder_.Branch(acc_.GetState(gate), condition, trueWeight, falseWeight);
+    GateRef ifBranch = builder_.Branch(acc_.GetState(gate), condition, trueWeight, falseWeight, "booleanJump");
     acc_.ReplaceGate(gate, ifBranch, acc_.GetDep(gate), Circuit::NullGate());
 }
 
@@ -498,7 +499,7 @@ void NumberSpeculativeLowering::VisitUndefinedStrictEqOrUndefinedStrictNotEq(Gat
            acc_.GetTypedBinaryOp(gate) == TypedBinOp::TYPED_STRICTNOTEQ);
     GateRef left = acc_.GetValueIn(gate, 0);
     GateRef right = acc_.GetValueIn(gate, 1);
-    ASSERT(acc_.IsUndefinedOrNull(left) || acc_.IsUndefinedOrNull(right));
+    ASSERT(acc_.IsUndefinedOrNullOrHole(left) || acc_.IsUndefinedOrNullOrHole(right));
     GateRef result = Circuit::NullGate();
     if (acc_.GetTypedBinaryOp(gate) == TypedBinOp::TYPED_STRICTEQ) {
         result = builder_.Equal(left, right);
@@ -517,13 +518,13 @@ void NumberSpeculativeLowering::VisitUndefinedEqOrUndefinedNotEq(GateRef gate)
            acc_.GetTypedBinaryOp(gate) == TypedBinOp::TYPED_NOTEQ);
     GateRef left = acc_.GetValueIn(gate, 0);
     GateRef right = acc_.GetValueIn(gate, 1);
-    ASSERT(acc_.IsUndefinedOrNull(left) || acc_.IsUndefinedOrNull(right));
-    GateRef valueGate =  acc_.IsUndefinedOrNull(left) ? right : left;
+    ASSERT(acc_.IsUndefinedOrNullOrHole(left) || acc_.IsUndefinedOrNullOrHole(right));
+    GateRef valueGate =  acc_.IsUndefinedOrNullOrHole(left) ? right : left;
     GateRef result = Circuit::NullGate();
     if (acc_.GetTypedBinaryOp(gate) == TypedBinOp::TYPED_EQ) {
-        result = builder_.TaggedIsUndefinedOrNull(valueGate);
+        result = builder_.TaggedIsUndefinedOrNullOrHole(valueGate);
     } else {
-        result = builder_.TaggedIsNotUndefinedAndNull(valueGate);
+        result = builder_.TaggedIsNotUndefinedAndNullAndHole(valueGate);
     }
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
 }
@@ -1007,7 +1008,8 @@ void NumberSpeculativeLowering::VisitLoadPropertyOnProto(GateRef gate)
         auto receiverHC = builder_.LoadConstOffset(VariableType::JS_POINTER(), receiver, TaggedObject::HCLASS_OFFSET);
         auto prototype = builder_.LoadConstOffset(VariableType::JS_ANY(), receiverHC, JSHClass::PROTOTYPE_OFFSET);
 
-        auto holderHC = builder_.LoadHClassFromConstpool(constpool, acc_.GetConstantValue(hclassIndex));
+        GateRef unsharedConstpool = builder_.GetUnsharedConstpool(constpool);
+        auto holderHC = builder_.LoadHClassFromUnsharedConstpool(unsharedConstpool, acc_.GetConstantValue(hclassIndex));
         DEFVALUE(current, (&builder_), VariableType::JS_ANY(), prototype);
         Label exit(&builder_);
         Label loopHead(&builder_);
@@ -1018,7 +1020,7 @@ void NumberSpeculativeLowering::VisitLoadPropertyOnProto(GateRef gate)
         builder_.LoopBegin(&loopHead);
         builder_.DeoptCheck(builder_.TaggedIsNotNull(*current), frameState, DeoptType::INCONSISTENTHCLASS7);
         auto curHC = builder_.LoadConstOffset(VariableType::JS_POINTER(), *current, TaggedObject::HCLASS_OFFSET);
-        builder_.Branch(builder_.Equal(curHC, holderHC), &loadHolder, &lookUpProto);
+        BRANCH_CIR(builder_.Equal(curHC, holderHC), &loadHolder, &lookUpProto);
 
         builder_.Bind(&lookUpProto);
         current = builder_.LoadConstOffset(VariableType::JS_ANY(), curHC, JSHClass::PROTOTYPE_OFFSET);
