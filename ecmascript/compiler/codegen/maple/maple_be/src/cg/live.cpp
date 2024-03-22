@@ -40,10 +40,10 @@ void LiveAnalysis::InitAndGetDefUse()
     }
 }
 
-void LiveAnalysis::RemovePhiLiveInFromSuccNotFromThisBB(BB &curBB, BB &succBB) const
+bool LiveAnalysis::RemovePhiLiveInFromSuccNotFromThisBB(BB &curBB, BB &succBB) const
 {
     if (succBB.GetPhiInsns().empty()) {
-        return;
+        return false;
     }
     LocalMapleAllocator allocator(cgFunc->GetStackMemPool());
     SparseDataInfo tempPhiIn(succBB.GetLiveIn()->GetMaxRegNum(), allocator);
@@ -59,7 +59,7 @@ void LiveAnalysis::RemovePhiLiveInFromSuccNotFromThisBB(BB &curBB, BB &succBB) c
             }
         }
     }
-    curBB.GetLiveOut()->Difference(tempPhiIn);
+    return curBB.GetLiveOut()->Difference(tempPhiIn);
 }
 
 /* Out[BB] = Union all of In[Succs(BB)]
@@ -69,35 +69,34 @@ void LiveAnalysis::RemovePhiLiveInFromSuccNotFromThisBB(BB &curBB, BB &succBB) c
  */
 bool LiveAnalysis::GenerateLiveOut(BB &bb) const
 {
-    const auto bbLiveOutBak(bb.GetLiveOut()->GetInfo());
+    bool isChanged = false;
     for (auto succBB : bb.GetSuccs()) {
         if (succBB->GetLiveInChange() && !succBB->GetLiveIn()->NoneBit()) {
-            bb.LiveOutOrBits(*succBB->GetLiveIn());
-            RemovePhiLiveInFromSuccNotFromThisBB(bb, *succBB);
+            isChanged = bb.LiveOutOrBits(*succBB->GetLiveIn()) || isChanged;
+            isChanged = RemovePhiLiveInFromSuccNotFromThisBB(bb, *succBB) || isChanged;
         }
     }
-    return !bb.GetLiveOut()->IsEqual(bbLiveOutBak);
+    return isChanged;
 }
 
 /* In[BB] = use[BB] Union (Out[BB]-def[BB]) */
 bool LiveAnalysis::GenerateLiveIn(BB &bb)
 {
+    bool isChanged = false;
     LocalMapleAllocator allocator(cgFunc->GetStackMemPool());
-    const auto bbLiveInBak(bb.GetLiveIn()->GetInfo());
     if (!bb.GetInsertUse()) {
-        bb.SetLiveInInfo(*bb.GetUse());
+        if (!bb.GetLiveIn()->IsEqual(*bb.GetUse())) {
+            bb.SetLiveInInfo(*bb.GetUse());
+            isChanged = true;
+        }
         bb.SetInsertUse(true);
     }
     SparseDataInfo &bbLiveOut = bb.GetLiveOut()->Clone(allocator);
     if (!bbLiveOut.NoneBit()) {
         bbLiveOut.Difference(*bb.GetDef());
-        bb.LiveInOrBits(bbLiveOut);
+        isChanged = bb.LiveInOrBits(bbLiveOut) || isChanged;
     }
-
-    if (!bb.GetLiveIn()->IsEqual(bbLiveInBak)) {
-        return true;
-    }
-    return false;
+    return isChanged;
 }
 
 SparseDataInfo *LiveAnalysis::GenerateLiveInByDefUse(SparseDataInfo &liveOut, SparseDataInfo &use, SparseDataInfo &def)
