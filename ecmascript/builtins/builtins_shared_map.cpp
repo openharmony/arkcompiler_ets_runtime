@@ -236,8 +236,7 @@ JSTaggedValue BuiltinsSharedMap::Values(EcmaRuntimeCallInfo *argv)
 }
 
 JSTaggedValue BuiltinsSharedMap::AddEntriesFromIterable(JSThread *thread, const JSHandle<JSObject> &target,
-                                                  const JSHandle<JSTaggedValue> &iterable,
-                                                  const JSHandle<JSTaggedValue> &adder, ObjectFactory *factory)
+    const JSHandle<JSTaggedValue> &iterable, const JSHandle<JSTaggedValue> &adder, ObjectFactory *factory)
 {
     BUILTINS_API_TRACE(thread, SharedMap, AddEntriesFromIterable);
     // If IsCallable(adder) is false, throw a TypeError exception

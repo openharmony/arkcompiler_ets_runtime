@@ -21,8 +21,8 @@
 #include "ecmascript/shared_objects/concurrent_modification_scope.h"
 
 namespace panda::ecmascript {
-void JSSharedMap::Set(JSThread *thread, const JSHandle<JSSharedMap> &map, const JSHandle<JSTaggedValue> &key,
-                const JSHandle<JSTaggedValue> &value)
+void JSSharedMap::Set(JSThread *thread, const JSHandle<JSSharedMap> &map,
+                      const JSHandle<JSTaggedValue> &key, const JSHandle<JSTaggedValue> &value)
 {
     if (!LinkedHashMap::IsKey(key.GetTaggedValue())) {
         THROW_TYPE_ERROR(thread, "the value must be Key of JSSet");

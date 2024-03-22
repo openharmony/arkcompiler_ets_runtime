@@ -515,7 +515,7 @@ JSTaggedType BaseDeserializer::RelocateObjectProtoAddr(uint8_t objectType)
             return env->GetSharedArrayPrototype().GetTaggedType();
         case (uint8_t)JSType::JS_MAP:
             return env->GetMapPrototype().GetTaggedType();
-         case (uint8_t)JSType::JS_SHARED_MAP:
+        case (uint8_t)JSType::JS_SHARED_MAP:
             return env->GetSharedMapPrototype().GetTaggedType();
         case (uint8_t)JSType::JS_SET:
             return env->GetSetPrototype().GetTaggedType();

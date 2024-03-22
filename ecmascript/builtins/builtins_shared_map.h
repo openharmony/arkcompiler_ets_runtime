@@ -46,32 +46,18 @@
 namespace panda::ecmascript::builtins {
 class BuiltinsSharedMap : public base::BuiltinsBase {
 public:
-    // 23.1.1.1
     static JSTaggedValue Constructor(EcmaRuntimeCallInfo *argv);
-    // 23.1.2.2
     static JSTaggedValue Species(EcmaRuntimeCallInfo *argv);
-    // 23.1.3.1
     static JSTaggedValue Clear(EcmaRuntimeCallInfo *argv);
-    // 23.1.3.3
     static JSTaggedValue Delete(EcmaRuntimeCallInfo *argv);
-    // 23.1.3.4
     static JSTaggedValue Entries(EcmaRuntimeCallInfo *argv);
-    // 23.1.3.5
     static JSTaggedValue ForEach(EcmaRuntimeCallInfo *argv);
-    // 23.1.3.6
     static JSTaggedValue Get(EcmaRuntimeCallInfo *argv);
-    // 23.1.3.7
     static JSTaggedValue Has(EcmaRuntimeCallInfo *argv);
-    // 23.1.3.8
     static JSTaggedValue Keys(EcmaRuntimeCallInfo *argv);
-    // 23.1.3.9
     static JSTaggedValue Set(EcmaRuntimeCallInfo *argv);
-    // 23.1.3.10
     static JSTaggedValue GetSize(EcmaRuntimeCallInfo *argv);
-    // 23.1.3.11
     static JSTaggedValue Values(EcmaRuntimeCallInfo *argv);
-
-    // es12 24.1.1.2 AddEntriesFromIterable ( target, iterable, adder )
     static JSTaggedValue AddEntriesFromIterable(JSThread *thread, const JSHandle<JSObject> &target,
                                                 const JSHandle<JSTaggedValue> &iterable,
                                                 const JSHandle<JSTaggedValue> &adder, ObjectFactory *factory);

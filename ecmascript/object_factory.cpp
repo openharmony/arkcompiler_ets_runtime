@@ -1248,7 +1248,7 @@ void ObjectFactory::InitializeJSObject(const JSHandle<JSObject> &obj, const JSHa
         case JSType::JS_MAP:
             JSMap::Cast(*obj)->SetLinkedMap(thread_, JSTaggedValue::Undefined());
             break;
-      case JSType::JS_SHARED_MAP:
+        case JSType::JS_SHARED_MAP:
             JSSharedMap::Cast(*obj)->SetLinkedMap(thread_, JSTaggedValue::Undefined());
             JSSharedMap::Cast(*obj)->SetModRecord(0);
             break;

@@ -116,65 +116,36 @@
 namespace panda::ecmascript::builtins {
 class BuiltinsSharedArray : public base::BuiltinsBase {
 public:
-    // 22.1.1
     static JSTaggedValue ArrayConstructor(EcmaRuntimeCallInfo *argv);
-
-    // 22.1.2.1
     static JSTaggedValue From(EcmaRuntimeCallInfo *argv);
-    // 22.1.2.5
     static JSTaggedValue Species(EcmaRuntimeCallInfo *argv);
 
     // prototype
-    // 22.1.3.1
     static JSTaggedValue Concat(EcmaRuntimeCallInfo *argv);
-    // 22.1.3.4
     static JSTaggedValue Entries(EcmaRuntimeCallInfo *argv);
-    // 22.1.3.6
     static JSTaggedValue Fill(EcmaRuntimeCallInfo *argv);
-    // 22.1.3.7
     static JSTaggedValue Filter(EcmaRuntimeCallInfo *argv);
-    // 22.1.3.8
     static JSTaggedValue Find(EcmaRuntimeCallInfo *argv);
-    // 22.1.3.9
     static JSTaggedValue FindIndex(EcmaRuntimeCallInfo *argv);
-    // 22.1.3.10
     static JSTaggedValue ForEach(EcmaRuntimeCallInfo *argv);
-    // 22.1.3.11
     static JSTaggedValue IndexOf(EcmaRuntimeCallInfo *argv);
-    // 22.1.3.12
     static JSTaggedValue Join(EcmaRuntimeCallInfo *argv);
-    // 22.1.3.13
     static JSTaggedValue Keys(EcmaRuntimeCallInfo *argv);
-    // 22.1.3.15
     static JSTaggedValue Map(EcmaRuntimeCallInfo *argv);
-    // 22.1.3.16
     static JSTaggedValue Pop(EcmaRuntimeCallInfo *argv);
-    // 22.1.3.17
     static JSTaggedValue Push(EcmaRuntimeCallInfo *argv);
-    // 22.1.3.18
     static JSTaggedValue Reduce(EcmaRuntimeCallInfo *argv);
-    // 22.1.3.21
     static JSTaggedValue Shift(EcmaRuntimeCallInfo *argv);
-    // 22.1.3.22
     static JSTaggedValue Slice(EcmaRuntimeCallInfo *argv);
-    // 22.1.3.24
     static JSTaggedValue Sort(EcmaRuntimeCallInfo *argv);
-    // 22.1.3.27
-    static JSTaggedValue ToString(EcmaRuntimeCallInfo *argv); // no change
-    // 22.1.3.28
-    static JSTaggedValue Unshift(EcmaRuntimeCallInfo *argv); // done
-    // 22.1.3.29
-    static JSTaggedValue Values(EcmaRuntimeCallInfo *argv); // no change
-    // 22.1.3.31
-    static JSTaggedValue Unscopables(EcmaRuntimeCallInfo *argv); // no change
-    // es12 23.1.3.13
-    static JSTaggedValue Includes(EcmaRuntimeCallInfo *argv); // no change
-    // es12 23.1.3.10
+    static JSTaggedValue ToString(EcmaRuntimeCallInfo *argv);
+    static JSTaggedValue Unshift(EcmaRuntimeCallInfo *argv);
+    static JSTaggedValue Values(EcmaRuntimeCallInfo *argv);
+    static JSTaggedValue Unscopables(EcmaRuntimeCallInfo *argv);
+    static JSTaggedValue Includes(EcmaRuntimeCallInfo *argv);
     static JSTaggedValue Flat(EcmaRuntimeCallInfo *argv);
-    // es12 23.1.3.11
     static JSTaggedValue FlatMap(EcmaRuntimeCallInfo *argv);
-    // 23.1.3.1 Array.prototype.at ( index )
-    static JSTaggedValue At(EcmaRuntimeCallInfo *argv); // no change
+    static JSTaggedValue At(EcmaRuntimeCallInfo *argv);
 
     // Excluding the '@@' internal properties
     static Span<const base::BuiltinFunctionEntry> GetSharedArrayFunctions()

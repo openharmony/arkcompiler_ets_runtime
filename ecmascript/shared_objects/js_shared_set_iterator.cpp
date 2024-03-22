@@ -73,8 +73,8 @@ JSTaggedValue JSSharedSetIterator::NextInternal(JSThread *thread, JSHandle<JSTag
     return JSIterator::CreateIterResultObject(thread, undefinedHandle, true).GetTaggedValue();
 }
 
-JSHandle<JSTaggedValue> JSSharedSetIterator::CreateSetIterator(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
-                                                         IterationKind kind)
+JSHandle<JSTaggedValue> JSSharedSetIterator::CreateSetIterator(JSThread *thread,
+    const JSHandle<JSTaggedValue> &obj, IterationKind kind)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     if (!obj->IsJSSharedSet()) {

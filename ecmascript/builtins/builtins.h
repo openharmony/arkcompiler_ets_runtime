@@ -100,7 +100,8 @@ private:
 
     void InitializeArray(const JSHandle<GlobalEnv> &env, const JSHandle<JSTaggedValue> &objFuncPrototypeVal) const;
 
-    void InitializeSharedArray(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &sObjIHClass, JSHandle<JSFunction> &sFuncPrototype) const;
+    void InitializeSharedArray(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &sObjIHClass,
+                               JSHandle<JSFunction> &sFuncPrototype) const;
 
     void InitializeTypedArray(const JSHandle<GlobalEnv> &env, JSHandle<JSTaggedValue> objFuncPrototypeVal) const;
     void LazyInitializeTypedArray(const JSHandle<GlobalEnv> &env) const;

@@ -214,7 +214,7 @@ void Builtins::InitializeSMap(const JSHandle<GlobalEnv> &env, const JSHandle<JSO
     // SharedMap.prototype functions
     for (const base::BuiltinFunctionEntry &entry: BuiltinsSharedMap::GetMapPrototypeFunctions()) {
         SetSFunction(env, mapPrototype, entry.GetName(), entry.GetEntrypoint(), fieldIndex++,
-                    entry.GetLength(), entry.GetBuiltinStubId());
+                     entry.GetLength(), entry.GetBuiltinStubId());
     }
     // @@ToStringTag
     JSHandle<JSTaggedValue> strTag(factory_->NewFromUtf8("SharedMap"));

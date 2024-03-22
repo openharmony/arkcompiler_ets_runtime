@@ -79,8 +79,8 @@ JSTaggedValue JSSharedMapIterator::NextInternal(JSThread *thread, JSHandle<JSTag
     return JSIterator::CreateIterResultObject(thread, undefinedHandle, true).GetTaggedValue();
 }
 
-JSHandle<JSTaggedValue> JSSharedMapIterator::CreateMapIterator(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
-                                                         IterationKind kind)
+JSHandle<JSTaggedValue> JSSharedMapIterator::CreateMapIterator(JSThread *thread,
+    const JSHandle<JSTaggedValue> &obj, IterationKind kind)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     if (!obj->IsJSSharedMap()) {

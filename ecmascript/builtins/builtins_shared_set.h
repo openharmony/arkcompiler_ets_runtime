@@ -44,25 +44,15 @@
 namespace panda::ecmascript::builtins {
 class BuiltinsSharedSet : public base::BuiltinsBase {
 public:
-    // 23.2.1.1
     static JSTaggedValue Constructor(EcmaRuntimeCallInfo *argv);
-    // 23.2.2.2
     static JSTaggedValue Species(EcmaRuntimeCallInfo *argv);
-    // 23.2.3.1
     static JSTaggedValue Add(EcmaRuntimeCallInfo *argv);
-    // 23.2.3.2
     static JSTaggedValue Clear(EcmaRuntimeCallInfo *argv);
-    // 23.2.3.4
     static JSTaggedValue Delete(EcmaRuntimeCallInfo *argv);
-    // 23.2.3.5
     static JSTaggedValue Entries(EcmaRuntimeCallInfo *argv);
-    // 23.2.3.6
     static JSTaggedValue ForEach(EcmaRuntimeCallInfo *argv);
-    // 23.2.3.7
     static JSTaggedValue Has(EcmaRuntimeCallInfo *argv);
-    // 23.2.3.9
     static JSTaggedValue GetSize(EcmaRuntimeCallInfo *argv);
-    // 23.2.3.10
     static JSTaggedValue Values(EcmaRuntimeCallInfo *argv);
 
     // Excluding the '@@' internal properties
