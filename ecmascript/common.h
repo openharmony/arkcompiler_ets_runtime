@@ -69,7 +69,9 @@ enum class RequestAotMode : uint8_t {
     V(Evacuate)                          \
     V(Finish)                            \
     V(UpdateReference)                   \
-    V(EvacuateSpace)
+    V(EvacuateSpace)                     \
+    V(SuspendAll)                        \
+    V(ResumeAll)
 
 #define RECORD_DATA(V)                   \
     V(START_OBJ_SIZE)                    \

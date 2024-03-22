@@ -650,7 +650,11 @@ void SharedGCStats::PrintSharedGCDuration()
         << STATS_DESCRIPTION_FORMAT("Sweep:")
         << STATS_DATA_FORMAT(scopeDuration_[Scope::ScopeId::Sweep]) << "ms\n"
         << STATS_DESCRIPTION_FORMAT("Finish:")
-        << STATS_DATA_FORMAT(scopeDuration_[Scope::ScopeId::Finish]) << "ms";
+        << STATS_DATA_FORMAT(scopeDuration_[Scope::ScopeId::Finish]) << "ms\n"
+        << STATS_DESCRIPTION_FORMAT("SuspendAll:")
+        << STATS_DATA_FORMAT(scopeDuration_[Scope::ScopeId::SuspendAll]) << "ms\n"
+        << STATS_DESCRIPTION_FORMAT("ResumeAll:")
+        << STATS_DATA_FORMAT(scopeDuration_[Scope::ScopeId::ResumeAll]) << "ms";
 }
 
 void SharedGCStats::RecordStatisticBeforeGC(TriggerGCType gcType, GCReason reason)
