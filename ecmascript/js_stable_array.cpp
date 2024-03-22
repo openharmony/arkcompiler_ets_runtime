@@ -1186,4 +1186,44 @@ JSTaggedValue JSStableArray::Fill(JSThread *thread, const JSHandle<JSObject> &th
         return thisObj.GetTaggedValue();
     }
 }
+
+JSTaggedValue JSStableArray::HandleFindLastOfStable(JSThread *thread, JSHandle<JSObject> thisObjHandle,
+                                                    JSHandle<JSTaggedValue> callbackFnHandle,
+                                                    JSHandle<JSTaggedValue> thisArgHandle,
+                                                    JSMutableHandle<JSTaggedValue> &kValue, int64_t &k)
+{
+    JSHandle<JSTaggedValue> thisObjVal(thisObjHandle);
+    JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
+    const uint32_t argsLength = 3; // 3: «kValue, k, O»
+    JSTaggedValue callResult = base::BuiltinsBase::GetTaggedBoolean(false);
+    while (k >= 0) {
+        JSTaggedValue val = ElementAccessor::Get(thisObjHandle, k);
+        if (!val.IsHole()) {
+            kValue.Update(val);
+        } else if (JSTaggedValue::HasProperty(thread, thisObjVal, k)) {
+            auto res = JSArray::FastGetPropertyByValue(thread, thisObjVal, k).GetTaggedValue();
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+            kValue.Update(res);
+        } else {
+            kValue.Update(JSTaggedValue::Undefined());
+        }
+        EcmaRuntimeCallInfo *info =
+            EcmaInterpreter::NewRuntimeCallInfo(thread, callbackFnHandle, thisArgHandle, undefined, argsLength);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        info->SetCallArg(kValue.GetTaggedValue(), JSTaggedValue(k), thisObjVal.GetTaggedValue());
+        callResult = JSFunction::Call(info);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        if (callResult.ToBoolean()) {
+            return callResult;
+        }
+        k--;
+        if (ElementAccessor::GetElementsLength(thisObjHandle) - 1 < k) {
+            break;
+        }
+        if (!thisObjVal->IsStableJSArray(thread)) {
+            break;
+        }
+    }
+    return callResult;
+}
 }  // namespace panda::ecmascript

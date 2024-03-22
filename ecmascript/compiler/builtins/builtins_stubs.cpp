@@ -342,6 +342,7 @@ DECLARE_BUILTINS(Array##Method)                                                 
     V(CopyWithin,       JS_ANY)             \
     V(Every,            JS_ANY)             \
     V(FindLastIndex,    JS_ANY)             \
+    V(FindLast,         JS_ANY)             \
     V(Map,              JS_ANY)
 
 DECLARE_BUILTINS(SORT)

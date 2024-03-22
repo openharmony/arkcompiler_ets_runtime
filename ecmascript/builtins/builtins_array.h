@@ -53,7 +53,7 @@
     /* Array.prototype.findIndex ( predicate [ , thisArg ] ) */             \
     V("findIndex",      FindIndex,        1, ArrayFindIndex)                \
     /* Array.prototype.findLast ( predicate [ , thisArg ] ) */              \
-    V("findLast",       FindLast,         1, INVALID)                       \
+    V("findLast",       FindLast,         1, ArrayFindLast)                 \
     /* Array.prototype.findLastIndex ( predicate [ , thisArg ] ) */         \
     V("findLastIndex",  FindLastIndex,    1, ArrayFindLastIndex)            \
     /* Array.prototype.flat ( [ depth ] ) */                                \
