@@ -1143,7 +1143,7 @@ public:
     void CheckSafepointIfSuspended()
     {
         if (IsSuspended()) {
-            CheckSafepoint();
+            WaitSuspension();
         }
     }
 

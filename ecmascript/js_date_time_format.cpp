@@ -814,7 +814,10 @@ JSHandle<EcmaString> JSDateTimeFormat::FormatDateTime(JSThread *thread,
     icu::UnicodeString result;
 
     // 3. Set result to the string-concatenation of result and part.[[Value]].
-    simpleDateFormat->format(xValue, result);
+    {
+        ThreadNativeScope nativeScope(thread);
+        simpleDateFormat->format(xValue, result);
+    }
 
     // 4. Return result.
     return intl::LocaleHelper::UStringToString(thread, result);
@@ -829,7 +832,10 @@ JSHandle<JSArray> JSDateTimeFormat::FormatDateTimeToParts(JSThread *thread,
     UErrorCode status = U_ZERO_ERROR;
     icu::FieldPositionIterator fieldPositionIter;
     icu::UnicodeString formattedParts;
-    simpleDateFormat->format(x, formattedParts, &fieldPositionIter, status);
+    {
+        ThreadNativeScope nativeScope(thread);
+        simpleDateFormat->format(x, formattedParts, &fieldPositionIter, status);
+    }
     if (U_FAILURE(status) != 0) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "format failed", thread->GetEcmaVM()->GetFactory()->NewJSArray());
     }
