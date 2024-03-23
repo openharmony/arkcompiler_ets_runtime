@@ -341,6 +341,7 @@ DECLARE_BUILTINS(Array##Method)                                                 
     V(Values,           JS_POINTER)         \
     V(Includes,         JS_ANY)             \
     V(CopyWithin,       JS_ANY)             \
+    V(Some,             JS_ANY)             \
     V(Every,            JS_ANY)             \
     V(FindLastIndex,    JS_ANY)             \
     V(FindLast,         JS_ANY)             \

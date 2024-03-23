@@ -2243,7 +2243,15 @@ JSTaggedValue BuiltinsArray::Some(EcmaRuntimeCallInfo *argv)
     //     v. If testResult is true, return true.
     //   e. Increase k by 1.
     JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
-    int64_t k = 0;
+    uint32_t k = 0;
+    JSTaggedValue callResult = GetTaggedBoolean(false);
+    if (thisObjVal->IsStableJSArray(thread)) {
+        callResult = JSStableArray::HandleSomeOfStable(thread, thisObjHandle, callbackFnHandle, thisArgHandle, k);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        if (callResult.ToBoolean()) {
+            return GetTaggedBoolean(true);
+        }
+    }
     while (k < len) {
         bool exists = (thisHandle->IsTypedArray() || JSTaggedValue::HasProperty(thread, thisObjVal, k));
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -2257,7 +2265,7 @@ JSTaggedValue BuiltinsArray::Some(EcmaRuntimeCallInfo *argv)
                 EcmaInterpreter::NewRuntimeCallInfo(thread, callbackFnHandle, thisArgHandle, undefined, argsLength);
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
             info->SetCallArg(kValue.GetTaggedValue(), key.GetTaggedValue(), thisObjVal.GetTaggedValue());
-            JSTaggedValue callResult = JSFunction::Call(info);
+            callResult = JSFunction::Call(info);
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
             if (callResult.ToBoolean()) {
                 return GetTaggedBoolean(true);

@@ -625,6 +625,51 @@ JSTaggedValue JSStableArray::HandleEveryOfStable(JSThread *thread, JSHandle<JSOb
     return base::BuiltinsBase::GetTaggedBoolean(true);
 }
 
+JSTaggedValue JSStableArray::HandleSomeOfStable(JSThread *thread, JSHandle<JSObject> thisObjHandle,
+                                                JSHandle<JSTaggedValue> callbackFnHandle,
+                                                JSHandle<JSTaggedValue> thisArgHandle, uint32_t &k)
+{
+    JSHandle<JSTaggedValue> thisObjVal(thisObjHandle);
+    JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
+    uint64_t len = static_cast<uint64_t>(base::ArrayHelper::GetArrayLength(thread, thisObjVal));
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    const int32_t argsLength = 3; // 3: ?kValue, k, O?
+    JSTaggedValue callResult = base::BuiltinsBase::GetTaggedBoolean(false);
+    JSMutableHandle<JSTaggedValue> kValue(thread, JSTaggedValue::Undefined());
+    while (k < len) {
+        // Elements of thisObjHandle may change.
+        kValue.Update(ElementAccessor::Get(thisObjHandle, k));
+        if (!kValue.GetTaggedValue().IsHole()) {
+            EcmaRuntimeCallInfo *info =
+                EcmaInterpreter::NewRuntimeCallInfo(thread, callbackFnHandle, thisArgHandle, undefined, argsLength);
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+            info->SetCallArg(kValue.GetTaggedValue(), JSTaggedValue(k), thisObjVal.GetTaggedValue());
+            callResult = JSFunction::Call(info);
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        } else if (JSTaggedValue::HasProperty(thread, thisObjVal, k)) {
+            JSHandle<JSTaggedValue> kValue1 = JSArray::FastGetPropertyByValue(thread, thisObjVal, k);
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+            EcmaRuntimeCallInfo *info =
+                EcmaInterpreter::NewRuntimeCallInfo(thread, callbackFnHandle, thisArgHandle, undefined, argsLength);
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+            info->SetCallArg(kValue1.GetTaggedValue(), JSTaggedValue(k), thisObjVal.GetTaggedValue());
+            callResult = JSFunction::Call(info);
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        }
+        if (ElementAccessor::GetElementsLength(thisObjHandle) < len) {
+            len = ElementAccessor::GetElementsLength(thisObjHandle);
+        }
+        if (callResult.ToBoolean()) {
+            return base::BuiltinsBase::GetTaggedBoolean(true);
+        }
+        k++;
+        if (!thisObjVal->IsStableJSArray(thread)) {
+            return base::BuiltinsBase::GetTaggedBoolean(false);
+        }
+    }
+    return base::BuiltinsBase::GetTaggedBoolean(false);
+}
+
 JSTaggedValue JSStableArray::HandleforEachOfStable(JSThread *thread, JSHandle<JSObject> thisObjHandle,
                                                    JSHandle<JSTaggedValue> callbackFnHandle,
                                                    JSHandle<JSTaggedValue> thisArgHandle, uint32_t len, uint32_t &k)

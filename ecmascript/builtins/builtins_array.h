@@ -89,7 +89,7 @@
     /* Array.prototype.slice ( start, end ) */                              \
     V("slice",          Slice,            2, ArraySlice)                    \
     /* Array.prototype.some ( callbackfn [ , thisArg ] ) */                 \
-    V("some",           Some,             1, INVALID)                       \
+    V("some",           Some,             1, ArraySome)                     \
     /* Array.prototype.sort ( comparefn ) */                                \
     V("sort",           Sort,             1, SORT)                          \
     /* Array.prototype.splice ( start, deleteCount, ...items ) */           \

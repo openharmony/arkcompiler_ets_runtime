@@ -46,6 +46,9 @@ public:
     static JSTaggedValue HandleEveryOfStable(JSThread *thread, JSHandle<JSObject> thisObjHandle,
                                              JSHandle<JSTaggedValue> callbackFnHandle,
                                              JSHandle<JSTaggedValue> thisArgHandle, uint32_t &k);
+    static JSTaggedValue HandleSomeOfStable(JSThread *thread, JSHandle<JSObject> thisObjHandle,
+                                             JSHandle<JSTaggedValue> callbackFnHandle,
+                                             JSHandle<JSTaggedValue> thisArgHandle, uint32_t &k);
     static JSTaggedValue HandleforEachOfStable(JSThread *thread, JSHandle<JSObject> thisObjHandle,
                                                JSHandle<JSTaggedValue> callbackFnHandle,
                                                JSHandle<JSTaggedValue> thisArgHandle, uint32_t len, uint32_t &k);
