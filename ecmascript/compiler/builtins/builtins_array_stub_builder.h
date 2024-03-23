@@ -30,6 +30,9 @@ public:
     NO_COPY_SEMANTIC(BuiltinsArrayStubBuilder);
     void GenerateCircuit() override {}
 
+    void Unshift(GateRef glue, GateRef thisValue, GateRef numArgs,
+        Variable *result, Label *exit, Label *slowPath);
+
     void Shift(GateRef glue, GateRef thisValue, GateRef numArgs,
         Variable *result, Label *exit, Label *slowPath);
 
