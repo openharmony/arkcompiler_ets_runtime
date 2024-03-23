@@ -85,7 +85,7 @@
     /* Array.prototype.reverse ( ) */                                       \
     V("reverse",        Reverse,          0, ArrayReverse)                  \
     /* Array.prototype.shift ( ) */                                         \
-    V("shift",          Shift,            0, INVALID)                       \
+    V("shift",          Shift,            0, ArrayShift)                    \
     /* Array.prototype.slice ( start, end ) */                              \
     V("slice",          Slice,            2, ArraySlice)                    \
     /* Array.prototype.some ( callbackfn [ , thisArg ] ) */                 \
