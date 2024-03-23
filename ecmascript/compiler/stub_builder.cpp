@@ -150,56 +150,113 @@ void StubBuilder::MatchFieldType(GateRef fieldType, GateRef value, Label *execut
     Label isBigInt(env);
     Label checkJSNone(env);
     Label isJSNone(env);
+    Label checkGeneric(env);
+    Label isGeneric(env);
+    Label checkNull(env);
+    Label isNull(env);
+    Label checkUndefined(env);
+    Label isUndefined(env);
     Label exit(env);
     DEFVARIABLE(result, VariableType::BOOL(), False());
-    BRANCH(Equal(fieldType, Int32(static_cast<int32_t>(SharedFieldType::NUMBER))), &isNumber, &checkBoolean);
+    BRANCH(BoolAnd(
+        Int32NotEqual(Int32And(fieldType, Int32(static_cast<int32_t>(SharedFieldType::NUMBER))), Int32(0)),
+        TaggedIsNumber(value)),
+        &isNumber, &checkBoolean);
     Bind(&isNumber);
     {
-        result = TaggedIsNumber(value);
+        result = True();
         Jump(&exit);
     }
     Bind(&checkBoolean);
     {
-        BRANCH(Equal(fieldType, Int32(static_cast<int32_t>(SharedFieldType::BOOLEAN))), &isBoolean, &checkString);
+        BRANCH(BoolAnd(
+            Int32NotEqual(Int32And(fieldType, Int32(static_cast<int32_t>(SharedFieldType::BOOLEAN))), Int32(0)),
+            TaggedIsBoolean(value)),
+            &isBoolean, &checkString);
         Bind(&isBoolean);
         {
-            result = TaggedIsBoolean(value);
+            result = True();
             Jump(&exit);
         }
     }
     Bind(&checkString);
     {
-        BRANCH(Equal(fieldType, Int32(static_cast<int32_t>(SharedFieldType::STRING))), &isString, &checkJSShared);
+        BRANCH(BoolAnd(
+            Int32NotEqual(Int32And(fieldType, Int32(static_cast<int32_t>(SharedFieldType::STRING))), Int32(0)),
+            BoolOr(TaggedIsString(value), TaggedIsNull(value))),
+            &isString, &checkJSShared);
         Bind(&isString);
         {
-            result = BoolOr(TaggedIsString(value), TaggedIsNull(value));
+            result = True();
             Jump(&exit);
         }
     }
     Bind(&checkJSShared);
     {
-        BRANCH(Equal(fieldType, Int32(static_cast<int32_t>(SharedFieldType::SENDABLE))), &isJSShared, &checkBigInt);
+        BRANCH(BoolAnd(
+            Int32NotEqual(Int32And(fieldType, Int32(static_cast<int32_t>(SharedFieldType::SENDABLE))), Int32(0)),
+            BoolOr(TaggedIsShared(value), TaggedIsNull(value))),
+            &isJSShared, &checkBigInt);
         Bind(&isJSShared);
         {
-            result = BoolOr(TaggedIsShared(value), TaggedIsNull(value));
+            result = True();
             Jump(&exit);
         }
     }
     Bind(&checkBigInt);
     {
-        BRANCH(Equal(fieldType, Int32(static_cast<int32_t>(SharedFieldType::BIG_INT))), &isBigInt, &checkJSNone);
+        BRANCH(BoolAnd(
+            Int32NotEqual(Int32And(fieldType, Int32(static_cast<int32_t>(SharedFieldType::BIG_INT))), Int32(0)),
+            TaggedIsBigInt(value)),
+            &isBigInt, &checkJSNone);
         Bind(&isBigInt);
         {
-            result = TaggedIsBigInt(value);
+            result = True();
             Jump(&exit);
         }
     }
     Bind(&checkJSNone);
     {
-        BRANCH(Equal(fieldType, Int32(static_cast<int32_t>(SharedFieldType::NONE))), &isJSNone, &exit);
+        BRANCH(Equal(fieldType, Int32(static_cast<int32_t>(SharedFieldType::NONE))), &isJSNone, &checkGeneric);
         Bind(&isJSNone);
         {
             // bypass none type
+            result = True();
+            Jump(&exit);
+        }
+    }
+    Bind(&checkGeneric);
+    {
+        BRANCH(BoolAnd(
+            Int32NotEqual(Int32And(fieldType, Int32(static_cast<int32_t>(SharedFieldType::GENERIC))), Int32(0)),
+            BoolOr(TaggedIsShared(value), BoolNot(TaggedIsHeapObject(value)))),
+            &isGeneric, &checkNull);
+        Bind(&isGeneric);
+        {
+            result = True();
+            Jump(&exit);
+        }
+    }
+    Bind(&checkNull);
+    {
+        BRANCH(BoolAnd(
+            Int32NotEqual(Int32And(fieldType, Int32(static_cast<int32_t>(SharedFieldType::NULL_TYPE))), Int32(0)),
+            TaggedIsNull(value)),
+            &isNull, &checkUndefined);
+        Bind(&isNull);
+        {
+            result = True();
+            Jump(&exit);
+        }
+    }
+    Bind(&checkUndefined);
+    {
+        BRANCH(BoolAnd(
+            Int32NotEqual(Int32And(fieldType, Int32(static_cast<int32_t>(SharedFieldType::UNDEFINED))), Int32(0)),
+            TaggedIsUndefined(value)),
+            &isUndefined, &exit);
+        Bind(&isUndefined);
+        {
             result = True();
             Jump(&exit);
         }
@@ -1779,7 +1836,7 @@ GateRef StubBuilder::LoadICWithHandler(
         BRANCH(TaggedIsInt(*handler), &handlerIsInt, &handlerNotInt);
         Bind(&handlerIsInt);
         {
-            GateRef handlerInfo = GetInt32OfTInt(*handler);
+            GateRef handlerInfo = GetInt64OfTInt(*handler);
             BRANCH(IsField(handlerInfo), &handlerInfoIsField, &handlerInfoNotField);
             Bind(&handlerInfoIsField);
             {
@@ -1986,7 +2043,7 @@ GateRef StubBuilder::ICStoreElement(GateRef glue, GateRef receiver, GateRef key,
         BRANCH(TaggedIsInt(*varHandler), &handlerIsInt, &handlerNotInt);
         Bind(&handlerIsInt);
         {
-            GateRef handlerInfo = GetInt32OfTInt(*varHandler);
+            GateRef handlerInfo = GetInt64OfTInt(*varHandler);
             BRANCH(IsTypedArrayElement(handlerInfo), &handlerInfoIsTypedArray, &handerInfoNotTypedArray);
             Bind(&handlerInfoIsTypedArray);
             {
@@ -2138,7 +2195,7 @@ GateRef StubBuilder::StoreICWithHandler(GateRef glue, GateRef receiver, GateRef 
         BRANCH(TaggedIsInt(*handler), &handlerIsInt, &handlerNotInt);
         Bind(&handlerIsInt);
         {
-            GateRef handlerInfo = GetInt32OfTInt(*handler);
+            GateRef handlerInfo = GetInt64OfTInt(*handler);
             BRANCH(IsNonSharedStoreField(handlerInfo), &handlerInfoIsField, &handlerInfoNotField);
             Bind(&handlerInfoIsField);
             {
@@ -2227,7 +2284,7 @@ GateRef StubBuilder::StoreICWithHandler(GateRef glue, GateRef receiver, GateRef 
                 {
                     holder = GetStoreTSHandlerHolder(*handler);
                     handler = GetStoreTSHandlerHandlerInfo(*handler);
-                    GateRef handlerInfo = GetInt32OfTInt(*handler);
+                    GateRef handlerInfo = GetInt64OfTInt(*handler);
                     BRANCH(IsField(handlerInfo), &aotHandlerInfoIsField, &aotHandlerInfoNotField);
                     Bind(&aotHandlerInfoIsField);
                     {
@@ -2319,10 +2376,10 @@ GateRef StubBuilder::StoreWithTransition(GateRef glue, GateRef receiver, GateRef
     GateRef handlerInfo;
     if (withPrototype) {
         newHClass = GetTransWithProtoHClass(handler);
-        handlerInfo = GetInt32OfTInt(GetTransWithProtoHandlerInfo(handler));
+        handlerInfo = GetInt64OfTInt(GetTransWithProtoHandlerInfo(handler));
     } else {
         newHClass = GetTransitionHClass(handler);
-        handlerInfo = GetInt32OfTInt(GetTransitionHandlerInfo(handler));
+        handlerInfo = GetInt64OfTInt(GetTransitionHandlerInfo(handler));
     }
 
     GateRef oldHClass = LoadHClass(receiver);

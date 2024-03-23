@@ -1632,7 +1632,7 @@ inline GateRef StubBuilder::IsField(GateRef attr)
 {
     return Int32Equal(
         Int32And(
-            Int32LSR(attr, Int32(HandlerBase::KindBit::START_BIT)),
+            TruncInt64ToInt32(Int64LSR(attr, Int64(HandlerBase::KindBit::START_BIT))),
             Int32((1LLU << HandlerBase::KindBit::SIZE) - 1)),
         Int32(HandlerBase::HandlerKind::FIELD));
 }
@@ -1641,7 +1641,7 @@ inline GateRef StubBuilder::IsNonSharedStoreField(GateRef attr)
 {
     return Int32Equal(
         Int32And(
-            Int32LSR(attr, Int32(HandlerBase::SWholeKindBit::START_BIT)),
+            TruncInt64ToInt32(Int64LSR(attr, Int64(HandlerBase::SWholeKindBit::START_BIT))),
             Int32((1LLU << HandlerBase::SWholeKindBit::SIZE) - 1)),
         Int32(HandlerBase::StoreHandlerKind::S_FIELD));
 }
@@ -1649,8 +1649,8 @@ inline GateRef StubBuilder::IsNonSharedStoreField(GateRef attr)
 inline GateRef StubBuilder::IsStoreShared(GateRef attr)
 {
     return Int32NotEqual(
-        Int32And(Int32LSR(attr,
-            Int32(HandlerBase::SSharedBit::START_BIT)),
+        Int32And(
+            TruncInt64ToInt32(Int64LSR(attr, Int64(HandlerBase::SSharedBit::START_BIT))),
             Int32((1LLU << HandlerBase::SSharedBit::SIZE) - 1)),
         Int32(0));
 }
@@ -1659,7 +1659,7 @@ inline GateRef StubBuilder::IsElement(GateRef attr)
 {
     return Int32Equal(
         Int32And(
-            Int32LSR(attr, Int32(HandlerBase::KindBit::START_BIT)),
+            TruncInt64ToInt32(Int64LSR(attr, Int64(HandlerBase::KindBit::START_BIT))),
             Int32((1LLU << HandlerBase::KindBit::SIZE) - 1)),
         Int32(HandlerBase::HandlerKind::ELEMENT));
 }
@@ -1668,7 +1668,7 @@ inline GateRef StubBuilder::IsStringElement(GateRef attr)
 {
     return Int32Equal(
         Int32And(
-            Int32LSR(attr, Int32(HandlerBase::KindBit::START_BIT)),
+            TruncInt64ToInt32(Int64LSR(attr, Int64(HandlerBase::KindBit::START_BIT))),
             Int32((1LLU << HandlerBase::KindBit::SIZE) - 1)),
         Int32(HandlerBase::HandlerKind::STRING));
 }
@@ -1677,7 +1677,7 @@ inline GateRef StubBuilder::IsNumber(GateRef attr)
 {
     return Int32Equal(
         Int32And(
-            Int32LSR(attr, Int32(HandlerBase::KindBit::START_BIT)),
+            TruncInt64ToInt32(Int64LSR(attr, Int64(HandlerBase::KindBit::START_BIT))),
             Int32((1LLU << HandlerBase::KindBit::SIZE) - 1)),
         Int32(HandlerBase::HandlerKind::NUMBER));
 }
@@ -1686,7 +1686,7 @@ inline GateRef StubBuilder::IsStringLength(GateRef attr)
 {
     return Int32Equal(
         Int32And(
-            Int32LSR(attr, Int32(HandlerBase::KindBit::START_BIT)),
+            TruncInt64ToInt32(Int64LSR(attr, Int64(HandlerBase::KindBit::START_BIT))),
             Int32((1LLU << HandlerBase::KindBit::SIZE) - 1)),
         Int32(HandlerBase::HandlerKind::STRING_LENGTH));
 }
@@ -1695,7 +1695,7 @@ inline GateRef StubBuilder::IsTypedArrayElement(GateRef attr)
 {
     return Int32Equal(
         Int32And(
-            Int32LSR(attr, Int32(HandlerBase::KindBit::START_BIT)),
+            TruncInt64ToInt32(Int64LSR(attr, Int64(HandlerBase::KindBit::START_BIT))),
             Int32((1LLU << HandlerBase::KindBit::SIZE) - 1)),
         Int32(HandlerBase::HandlerKind::TYPED_ARRAY));
 }
@@ -1704,7 +1704,7 @@ inline GateRef StubBuilder::IsNonExist(GateRef attr)
 {
     return Int32Equal(
         Int32And(
-            Int32LSR(attr, Int32(HandlerBase::KindBit::START_BIT)),
+            TruncInt64ToInt32(Int64LSR(attr, Int64(HandlerBase::KindBit::START_BIT))),
             Int32((1LLU << HandlerBase::KindBit::SIZE) - 1)),
         Int32(HandlerBase::HandlerKind::NON_EXIST));
 }
@@ -1712,8 +1712,8 @@ inline GateRef StubBuilder::IsNonExist(GateRef attr)
 inline GateRef StubBuilder::HandlerBaseIsAccessor(GateRef attr)
 {
     return Int32NotEqual(
-        Int32And(Int32LSR(attr,
-            Int32(HandlerBase::AccessorBit::START_BIT)),
+        Int32And(
+            TruncInt64ToInt32(Int64LSR(attr, Int64(HandlerBase::AccessorBit::START_BIT))),
             Int32((1LLU << HandlerBase::AccessorBit::SIZE) - 1)),
         Int32(0));
 }
@@ -1721,8 +1721,8 @@ inline GateRef StubBuilder::HandlerBaseIsAccessor(GateRef attr)
 inline GateRef StubBuilder::HandlerBaseIsJSArray(GateRef attr)
 {
     return Int32NotEqual(
-        Int32And(Int32LSR(attr,
-            Int32(HandlerBase::IsJSArrayBit::START_BIT)),
+        Int32And(
+            TruncInt64ToInt32(Int64LSR(attr, Int64(HandlerBase::IsJSArrayBit::START_BIT))),
             Int32((1LLU << HandlerBase::IsJSArrayBit::SIZE) - 1)),
         Int32(0));
 }
@@ -1730,30 +1730,31 @@ inline GateRef StubBuilder::HandlerBaseIsJSArray(GateRef attr)
 inline GateRef StubBuilder::HandlerBaseIsInlinedProperty(GateRef attr)
 {
     return Int32NotEqual(
-        Int32And(Int32LSR(attr,
-            Int32(HandlerBase::InlinedPropsBit::START_BIT)),
+        Int32And(
+            TruncInt64ToInt32(Int64LSR(attr, Int64(HandlerBase::InlinedPropsBit::START_BIT))),
             Int32((1LLU << HandlerBase::InlinedPropsBit::SIZE) - 1)),
         Int32(0));
 }
 
 inline GateRef StubBuilder::HandlerBaseGetOffset(GateRef attr)
 {
-    return Int32And(Int32LSR(attr,
-        Int32(HandlerBase::OffsetBit::START_BIT)),
+    return Int32And(
+        TruncInt64ToInt32(Int64LSR(attr, Int64(HandlerBase::OffsetBit::START_BIT))),
         Int32((1LLU << HandlerBase::OffsetBit::SIZE) - 1));
 }
 
 
 inline GateRef StubBuilder::HandlerBaseGetAttrIndex(GateRef attr)
 {
-    return Int32And(Int32LSR(attr,
-        Int32(HandlerBase::AttrIndexBit::START_BIT)),
+    return Int32And(
+        TruncInt64ToInt32(Int64LSR(attr, Int64(HandlerBase::AttrIndexBit::START_BIT))),
         Int32((1LLU << HandlerBase::AttrIndexBit::SIZE) - 1));
 }
 
 inline GateRef StubBuilder::HandlerBaseGetRep(GateRef attr)
 {
-    return Int32And(Int32LSR(attr, Int32(HandlerBase::RepresentationBit::START_BIT)),
+    return Int32And(
+        TruncInt64ToInt32(Int64LSR(attr, Int64(HandlerBase::RepresentationBit::START_BIT))),
         Int32((1LLU << HandlerBase::RepresentationBit::SIZE) - 1));
 }
 
@@ -2180,14 +2181,14 @@ inline void StubBuilder::MatchFieldType(Variable *result, GateRef glue, GateRef 
 
 inline GateRef StubBuilder::GetFieldTypeFromHandler(GateRef attr)
 {
-    return Int32And(Int32LSR(attr,
-        Int32(HandlerBase::SFieldTypeBit::START_BIT)),
+    return Int32And(
+        TruncInt64ToInt32(Int64LSR(attr, Int64(HandlerBase::SFieldTypeBit::START_BIT))),
         Int32((1LLU << HandlerBase::SFieldTypeBit::SIZE) - 1));
 }
 
 inline GateRef StubBuilder::ClearSharedStoreKind(GateRef handlerInfo)
 {
-    return Int32And(handlerInfo, Int32Not(Int32(HandlerBase::SSharedBit::Mask())));
+    return Int64And(handlerInfo, Int64Not(Int64(HandlerBase::SSharedBit::Mask())));
 }
 
 inline GateRef StubBuilder::IsSpecialContainer(GateRef jsType)

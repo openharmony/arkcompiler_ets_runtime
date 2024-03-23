@@ -198,7 +198,7 @@ void ICStubBuilder::LoadICByValue(
     ValuedICAccessor(&cachedHandler, &loadWithHandler, &loadElement);
     Bind(&loadElement);
     {
-        GateRef handlerInfo = NumberGetInt(glue_, *cachedHandler);
+        GateRef handlerInfo = GetInt64OfTInt(*cachedHandler);
         BRANCH(IsElement(handlerInfo), &handlerInfoIsElement, &handlerInfoNotElement);
         Bind(&handlerInfoIsElement);
         {
