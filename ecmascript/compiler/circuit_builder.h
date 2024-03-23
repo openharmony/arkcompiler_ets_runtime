@@ -183,7 +183,7 @@ public:
     GateRef Arguments(size_t index);
     GateRef DefaultCase(GateRef switchBranch);
     GateRef DependRelay(GateRef state, GateRef depend);
-    GateRef DeoptCheck(GateRef condition, GateRef frameState, DeoptType type);
+    void DeoptCheck(GateRef condition, GateRef frameState, DeoptType type);
     GateRef GetElementsArray(GateRef object);
     GateRef GetLengthOfTaggedArray(GateRef array);
     GateRef GetLengthOfJSTypedArray(GateRef array);
