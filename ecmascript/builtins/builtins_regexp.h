@@ -69,7 +69,8 @@ public:
     static JSTaggedValue FlagsBitsToString(JSThread *thread, uint8_t flags);
     // 21.2.5.2.1 Runtime Semantics: RegExpExec ( R, S )
     static JSTaggedValue RegExpExec(JSThread *thread, const JSHandle<JSTaggedValue> &regexp,
-                                    const JSHandle<JSTaggedValue> &inputString, bool useCache);
+                                    const JSHandle<JSTaggedValue> &inputString, bool useCache,
+                                    bool isIntermediateResult = false);
     // 21.2.5.2.3 AdvanceStringIndex ( S, index, unicode )
     static int64_t AdvanceStringIndex(const JSHandle<JSTaggedValue> &inputStr, int64_t index,
                                       bool unicode);
@@ -92,12 +93,16 @@ public:
     // 21.2.5.2.2 Runtime Semantics: RegExpBuiltinExec ( R, S )
     static JSTaggedValue RegExpBuiltinExec(JSThread *thread, const JSHandle<JSTaggedValue> regexp,
                                            const JSHandle<JSTaggedValue> inputStr,
-                                           bool isFastPath, bool useCache);
+                                           bool isFastPath, bool useCache, bool isIntermediateResult = false);
     static JSTaggedValue RegExpSearchFast(JSThread *thread, const JSHandle<JSTaggedValue> regexp,
                                           const JSHandle<JSTaggedValue> string);
     static JSTaggedValue RegExpSplit(JSThread *thread, const JSHandle<JSTaggedValue> regexp,
                                      JSHandle<JSTaggedValue> jsString, JSHandle<JSTaggedValue> limit,
                                      bool isFastPath);
+    static JSTaggedValue GetExecResultIndex(JSThread *thread, const JSHandle<JSTaggedValue> &execResults,
+                                            bool isFastPath);
+    static JSTaggedValue GetExecResultGroups(JSThread *thread, const JSHandle<JSTaggedValue> &execResults,
+                                             bool isFastPath);
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define SET_GET_CAPTURE(index)                                                                                \
     static JSTaggedValue GetCapture##index(JSThread *thread, const JSHandle<JSObject> &obj);                  \
@@ -120,6 +125,9 @@ private:
     static constexpr uint32_t MAX_SPLIT_LIMIT = 0xFFFFFFFFu;
     static constexpr uint32_t REGEXP_GLOBAL_ARRAY_SIZE = 9;
     static constexpr uint32_t LAST_INDEX_OFFSET = 0;
+    static constexpr uint32_t EXEC_RESULT_INDEX_OFFSET = 1;
+    static constexpr uint32_t EXEC_RESULT_INPUT_OFFSET = 2;
+    static constexpr uint32_t EXEC_RESULT_GROUPS_OFFSET = 3;
 
     static bool Matcher(JSThread *thread, const JSHandle<JSTaggedValue> regexp,
                         const uint8_t *buffer, size_t length, int32_t lastindex, bool isUtf16);
