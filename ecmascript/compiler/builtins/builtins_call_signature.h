@@ -86,6 +86,7 @@ namespace panda::ecmascript::kungfu {
     V(ArraySplice)                                  \
     V(ArrayReduceRight)                             \
     V(ArrayCopyWithin)                              \
+    V(ArraySome)                                    \
     V(ArrayEvery)                                   \
     V(ArrayFindLastIndex)                           \
     V(ArrayFindLast)                                \
