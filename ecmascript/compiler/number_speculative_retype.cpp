@@ -1425,6 +1425,11 @@ const GateMetaData *NumberSpeculativeRetype::GetNewMeta(OpCode op, TypeInfo type
             default:
                 return nullptr;
         }
+    } else if (type == TypeInfo::TAGGED) {
+        if (op == OpCode::MATH_SIGN) {
+            return circuit_->MathSignTagged();
+        }
+        return nullptr;
     } else {
         return nullptr;
     }
@@ -1443,6 +1448,12 @@ GateRef NumberSpeculativeRetype::VisitMathTaggedNumberParamsBuiltin(GateRef gate
         }
         if (type == TypeInfo::TAGGED && op == OpCode::MATH_ROUND) {
             type = TypeInfo::FLOAT64;
+        }
+        if (op == OpCode::MATH_SIGN) {
+            if (type == TypeInfo::INT32) {
+                return SetOutputType(gate, TypeInfo::INT32);
+            }
+            return SetOutputType(gate, TypeInfo::TAGGED);
         }
         return SetOutputType(gate, type);
     }

@@ -97,7 +97,10 @@ GateRef TypedNativeInlineLowering::VisitGate(GateRef gate)
             LowerGeneralUnaryMath(gate, RTSTUB_ID(FloatCbrt));
             break;
         case OpCode::MATH_SIGN:
-            LowerMathSign(gate);
+            LowerMathSignInt(gate);
+            break;
+        case OpCode::MATH_SIGN_TAGGED:
+            LowerMathSignTagged(gate);
             break;
         case OpCode::MATH_MIN:
             LowerMinMax<false>(gate);
@@ -724,45 +727,7 @@ void TypedNativeInlineLowering::LowerMathSqrt(GateRef gate)
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), ret);
 }
 
-static void LowerMathSignDouble(Variable *resVarPtr, CircuitBuilder *builder, GateRef param,
-                                std::vector<Label> *labelsForFloatCase);
-
-void TypedNativeInlineLowering::LowerMathSign(GateRef gate)
-{
-    Environment env(gate, circuit_, &builder_);
-    Label exit(&builder_);
-    GateRef param = acc_.GetValueIn(gate, 0);
-    DEFVALUE(taggedRes, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
-
-    std::vector<Label> labelsForFloatCase;
-    constexpr auto FLOAT_CASE_LABELS_COUNT = 9;
-    labelsForFloatCase.reserve(FLOAT_CASE_LABELS_COUNT);
-    for (auto i = 0; i < FLOAT_CASE_LABELS_COUNT; i++) {
-        labelsForFloatCase.emplace_back(&builder_);
-    }
-
-    Label isInt(&builder_);
-    Label notInt(&builder_);
-    builder_.Branch(builder_.TaggedIsInt(param), &isInt, &notInt);
-    builder_.Bind(&isInt);
-    {
-        auto value = builder_.GetInt32OfTInt(param);
-        auto nz = builder_.BooleanToInt32(builder_.Int32NotEqual(value, builder_.Int32(0)));
-        auto valueShifted = builder_.Int32ASR(value, builder_.Int32(JSTaggedValue::INT_SIGN_BIT_OFFSET));
-        auto res = builder_.Int32Or(valueShifted, nz);
-        taggedRes = builder_.Int32ToTaggedPtr(res);
-        builder_.Jump(&exit);
-    }
-    builder_.Bind(&notInt);
-    {
-        LowerMathSignDouble(&taggedRes, &builder_, param, &labelsForFloatCase);
-        builder_.Jump(&exit);
-    }
-    builder_.Bind(&exit);
-    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *taggedRes);
-}
-
-static void LowerMathSignDouble(Variable *resVarPtr, CircuitBuilder *builder, GateRef param,
+static void BuildMathSignDouble(Variable *resVarPtr, CircuitBuilder *builder, GateRef param,
                                 std::vector<Label> *labelsForFloatCase)
 {
     auto &taggedRes = *resVarPtr;
@@ -817,4 +782,55 @@ static void LowerMathSignDouble(Variable *resVarPtr, CircuitBuilder *builder, Ga
     builder->Bind(exitNan);
 }
 
+static GateRef BuildMathSignInt(CircuitBuilder *builder, GateRef input)
+{
+    auto nz = builder->BooleanToInt32(builder->Int32NotEqual(input, builder->Int32(0)));
+    auto valueShifted = builder->Int32ASR(input, builder->Int32(JSTaggedValue::INT_SIGN_BIT_OFFSET));
+    return builder->Int32Or(valueShifted, nz);
+}
+
+void TypedNativeInlineLowering::LowerMathSignInt(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    GateRef param = acc_.GetValueIn(gate, 0);
+
+    auto res = BuildMathSignInt(&builder_, param);
+
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), res);
+}
+
+void TypedNativeInlineLowering::LowerMathSignTagged(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    Label exit(&builder_);
+    GateRef param = acc_.GetValueIn(gate, 0);
+    DEFVALUE(taggedRes, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
+
+    std::vector<Label> labelsForFloatCase;
+    constexpr auto FLOAT_CASE_LABELS_COUNT = 9;
+    labelsForFloatCase.reserve(FLOAT_CASE_LABELS_COUNT);
+    for (auto i = 0; i < FLOAT_CASE_LABELS_COUNT; i++) {
+        labelsForFloatCase.emplace_back(&builder_);
+    }
+
+    Label isInt(&builder_);
+    Label notInt(&builder_);
+    builder_.Branch(builder_.TaggedIsInt(param), &isInt, &notInt);
+    builder_.Bind(&isInt);
+    {
+        auto value = builder_.GetInt32OfTInt(param);
+
+        auto res = BuildMathSignInt(&builder_, value);
+
+        taggedRes = builder_.Int32ToTaggedPtr(res);
+        builder_.Jump(&exit);
+    }
+    builder_.Bind(&notInt);
+    {
+        BuildMathSignDouble(&taggedRes, &builder_, param, &labelsForFloatCase);
+        builder_.Jump(&exit);
+    }
+    builder_.Bind(&exit);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *taggedRes);
+}
 }

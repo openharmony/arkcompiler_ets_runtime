@@ -46,10 +46,11 @@ private:
     void LowerMathCeilFloorWithRuntimeCall(GateRef gate);
     void LowerMathPow(GateRef gate);
     void LowerMathExp(GateRef gate);
+    void LowerMathSignInt(GateRef gate);
+    void LowerMathSignTagged(GateRef gate);
     void LowerClz32Float64(GateRef gate);
     void LowerClz32Int32(GateRef gate);
     void LowerMathSqrt(GateRef gate);
-    void LowerMathSign(GateRef gate);
     GateRef BuildRounding(GateRef gate, GateRef value, OpCode op);
     void LowerTaggedRounding(GateRef gate);
     void LowerDoubleRounding(GateRef gate);
