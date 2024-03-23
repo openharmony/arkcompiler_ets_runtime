@@ -70,7 +70,6 @@ undefined
 TypeError
 TypeError
 /(?:)/
-g
 \/vedio\/av(uuu)(uuu)
 beep, ,boop,   ,afff测试样本one1
 verifyRegExp_1: ,bcdefghijklmnopqrstuvwxyz,bcdefghijklmnopqrstuvwxyz,bcdefghijklmnopqrstuvwxyz,bcdefghijklmnopqrstuvwxyz
@@ -87,3 +86,31 @@ true
 true
 true
 SyntaxError: Invalid regular expression :/[\p{}]/u
+a,b,c
+a,b,c
+a,b,c
+a,b,c
+true
+a,b,c
+1
+-1
+1
+2
+a,bc
+2
+a,bc
+2
+abc
+2
+abc
+2
+abc,abc
+0
+abc,abc
+0
+g
+abc
+3
+abc
+6
+/a+b+c/y

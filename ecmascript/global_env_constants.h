@@ -417,6 +417,8 @@ class ObjectFactory;
     V(EthioaaString,                  ETHIOAA_INDEX,                         "ethioaa")                     \
     V(StickyString,                   STICKY_INDEX,                          "sticky")                      \
     V(HasIndicesString,               HAS_INDICES_INDEX,                     "hasIndices")                  \
+    V(MultilineString,                MULTILINE_INDEX,                       "multiline")                   \
+    V(IgnoreCaseString,               IGNORE_CASE_INDEX,                     "ignoreCase")                  \
     V(IndicesString,                  INDICES_INDEX,                         "indices")                     \
     V(UString,                        U_INDEX,                               "u")                           \
     V(IndexString,                    INDEX_INDEX,                           "index")                       \
