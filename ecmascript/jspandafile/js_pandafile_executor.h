@@ -38,6 +38,11 @@ public:
     static Expected<JSTaggedValue, bool> Execute(JSThread *thread, const JSPandaFile *jsPandaFile,
                                                  std::string_view entryPoint, bool executeFromJob = false);
     static void BindPandaFilesForAot(EcmaVM *vm, JSPandaFile *jsPandaFile);
+    static Expected<JSTaggedValue, bool> ExecuteSpecialModule(JSThread *thread, const CString &recordName,
+                                                              const CString &filename, const JSPandaFile *jsPandaFile,
+                                                              const JSRecordInfo &recordInfo);
+    static Expected<JSTaggedValue, bool> LazyExecuteModule(JSThread *thread, CString &recordName,
+                                                           const CString &filename, bool isMergedAbc);
     // Execute from secure mem
     static Expected<JSTaggedValue, bool> ExecuteFromBufferSecure(JSThread *thread, uint8_t *buffer, size_t size,
                                                                  std::string_view entryPoint,
@@ -47,8 +52,6 @@ public:
                                                                    bool needUpdate = false);
     static Expected<JSTaggedValue, bool> CommonExecuteBuffer(JSThread *thread, const CString &filename,
                                                              const CString &entry, const JSPandaFile *jsPandaFile);
-    static Expected<JSTaggedValue, bool> LazyExecuteModule(
-        JSThread *thread, const CString &recordName, const CString &filename, bool isMergedAbc);
 };
 }  // namespace panda::ecmascript
 #endif // ECMASCRIPT_JSPANDAFILE_JS_PANDAFILE_EXECUTOR_H
