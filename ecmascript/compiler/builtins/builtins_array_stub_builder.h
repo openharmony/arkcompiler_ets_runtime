@@ -83,6 +83,8 @@ public:
     void Every(GateRef glue, GateRef thisValue, GateRef numArgs,
         Variable *result, Label *exit, Label *slowPath);
 
+    void ReduceRight(GateRef glue, GateRef thisValue, GateRef numArgs, Variable *result, Label *exit, Label *slowPath);
+
     void Map(GateRef glue, GateRef thisValue, GateRef numArgs, Variable *result, Label *exit, Label *slowPath);
 
     void FindLastIndex(GateRef glue, GateRef thisValue, GateRef numArgs,

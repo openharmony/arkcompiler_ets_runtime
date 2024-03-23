@@ -1837,6 +1837,17 @@ JSTaggedValue BuiltinsArray::ReduceRight(EcmaRuntimeCallInfo *argv)
     //   e. Decrease k by 1.
     JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
     JSTaggedValue callResult = JSTaggedValue::Undefined();
+
+    JSHandle<JSTaggedValue> thisArgHandle = globalConst->GetHandledUndefined();
+    if (thisObjVal->IsStableJSArray(thread)) {
+        JSTaggedValue ret = JSStableArray::HandleReduceRightOfStable(thread, thisObjHandle,
+            callbackFnHandle, accumulator, thisArgHandle, k);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        if (ret.ToBoolean()) {
+            return accumulator.GetTaggedValue();
+        }
+    }
+
     while (k >= 0) {
         key.Update(JSTaggedValue(k));
         bool exists = (thisHandle->IsTypedArray() || JSTaggedValue::HasProperty(thread, thisObjVal, key));
@@ -1844,7 +1855,6 @@ JSTaggedValue BuiltinsArray::ReduceRight(EcmaRuntimeCallInfo *argv)
         if (exists) {
             JSHandle<JSTaggedValue> kValue = JSArray::FastGetPropertyByValue(thread, thisObjVal, key);
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-            JSHandle<JSTaggedValue> thisArgHandle = globalConst->GetHandledUndefined();
             const uint32_t argsLength = 4; // 4: «accumulator, kValue, k, O»
             JSHandle<JSTaggedValue> undefined = globalConst->GetHandledUndefined();
             EcmaRuntimeCallInfo *info =

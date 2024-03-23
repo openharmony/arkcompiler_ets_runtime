@@ -81,7 +81,7 @@
     /* Array.prototype.reduce ( callbackfn [ , initialValue ] ) */          \
     V("reduce",         Reduce,           1, ArrayReduce)                   \
     /* Array.prototype.reduceRight ( callbackfn [ , initialValue ] ) */     \
-    V("reduceRight",    ReduceRight,      1, INVALID)                       \
+    V("reduceRight",    ReduceRight,      1, ArrayReduceRight)              \
     /* Array.prototype.reverse ( ) */                                       \
     V("reverse",        Reverse,          0, ArrayReverse)                  \
     /* Array.prototype.shift ( ) */                                         \
