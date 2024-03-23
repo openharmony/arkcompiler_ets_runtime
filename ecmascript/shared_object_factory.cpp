@@ -13,6 +13,10 @@
  * limitations under the License.
  */
 
+#include "ecmascript/js_handle.h"
+#include "ecmascript/js_object.h"
+#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/log_wrapper.h"
 #include "ecmascript/object_factory.h"
 
 #include "ecmascript/accessor_data.h"
@@ -28,6 +32,7 @@
 #include "ecmascript/module/js_module_source_text.h"
 #include "ecmascript/module/js_shared_module.h"
 
+// class Object;
 namespace panda::ecmascript {
 void ObjectFactory::NewSObjectHook() const
 {
@@ -246,6 +251,13 @@ TaggedObject *ObjectFactory::NewSharedOldSpaceObject(const JSHandle<JSHClass> &h
         InitializeExtraProperties(hclass, header, inobjPropCount);
     }
     return header;
+}
+
+JSHandle<JSObject> ObjectFactory::NewSharedOldSpaceJSObjectWithInit(const JSHandle<JSHClass> &jshclass)
+{
+    auto obj = NewSharedOldSpaceJSObject(jshclass);
+    InitializeJSObject(obj, jshclass);
+    return obj;
 }
 
 JSHandle<JSObject> ObjectFactory::NewSharedOldSpaceJSObject(const JSHandle<JSHClass> &jshclass)
@@ -478,10 +490,40 @@ JSHandle<JSSymbol> ObjectFactory::NewSWellKnownSymbol(const JSHandle<JSTaggedVal
     return obj;
 }
 
+JSHandle<JSSymbol> ObjectFactory::NewSPublicSymbol(const JSHandle<JSTaggedValue> &name)
+{
+    NewObjectHook();
+    TaggedObject *header = sHeap_->AllocateNonMovableOrHugeObject(
+        thread_, JSHClass::Cast(thread_->GlobalConstants()->GetSymbolClass().GetTaggedObject()));
+    JSHandle<JSSymbol> obj(thread_, JSSymbol::Cast(header));
+    obj->SetFlags(0);
+    obj->SetDescription(thread_, name);
+    obj->SetHashField(SymbolTable::Hash(name.GetTaggedValue()));
+    return obj;
+}
+
+JSHandle<JSSymbol> ObjectFactory::NewSEmptySymbol()
+{
+    NewObjectHook();
+    TaggedObject *header = sHeap_->AllocateNonMovableOrHugeObject(
+        thread_, JSHClass::Cast(thread_->GlobalConstants()->GetSymbolClass().GetTaggedObject()));
+    JSHandle<JSSymbol> obj(thread_, JSSymbol::Cast(header));
+    obj->SetDescription(thread_, JSTaggedValue::Undefined());
+    obj->SetFlags(0);
+    obj->SetHashField(0);
+    return obj;
+}
+
 JSHandle<JSSymbol> ObjectFactory::NewSWellKnownSymbolWithChar(std::string_view description)
 {
     JSHandle<EcmaString> string = NewFromUtf8(description);
     return NewSWellKnownSymbol(JSHandle<JSTaggedValue>(string));
+}
+
+JSHandle<JSSymbol> ObjectFactory::NewSPublicSymbolWithChar(std::string_view description)
+{
+    JSHandle<EcmaString> string = NewFromUtf8(description);
+    return NewSPublicSymbol(JSHandle<JSTaggedValue>(string));
 }
 
 JSHandle<SourceTextModule> ObjectFactory::NewSModule()

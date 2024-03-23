@@ -23,6 +23,7 @@
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/global_dictionary-inl.h"
 #include "ecmascript/global_env.h"
+#include "ecmascript/js_hclass.h"
 #include "ecmascript/vtable.h"
 #include "ecmascript/ic/ic_handler.h"
 #include "ecmascript/ic/profile_type_info.h"
@@ -63,7 +64,9 @@
 #include "ecmascript/js_api/js_api_vector.h"
 #include "ecmascript/js_api/js_api_vector_iterator.h"
 #include "ecmascript/js_array.h"
+#include "ecmascript/js_shared_array.h"
 #include "ecmascript/js_array_iterator.h"
+#include "ecmascript/js_shared_array_iterator.h"
 #include "ecmascript/js_arraybuffer.h"
 #include "ecmascript/js_async_from_sync_iterator.h"
 #include "ecmascript/js_async_function.h"
@@ -108,6 +111,10 @@
 #include "ecmascript/require/js_cjs_module_cache.h"
 #include "ecmascript/require/js_cjs_require.h"
 #include "ecmascript/require/js_cjs_exports.h"
+#include "ecmascript/shared_objects/js_shared_map.h"
+#include "ecmascript/shared_objects/js_shared_map_iterator.h"
+#include "ecmascript/shared_objects/js_shared_set.h"
+#include "ecmascript/shared_objects/js_shared_set_iterator.h"
 #include "ecmascript/tagged_array.h"
 #include "ecmascript/tagged_dictionary.h"
 #include "ecmascript/tagged_hash_array.h"
@@ -200,8 +207,12 @@ CString JSHClass::DumpJSType(JSType type)
             return "Regexp";
         case JSType::JS_SET:
             return "Set";
+        case JSType::JS_SHARED_SET:
+            return "SharedSet";
         case JSType::JS_MAP:
             return "Map";
+        case JSType::JS_SHARED_MAP:
+            return "SharedMap";
         case JSType::JS_WEAK_SET:
             return "WeakSet";
         case JSType::JS_WEAK_MAP:
@@ -218,6 +229,8 @@ CString JSHClass::DumpJSType(JSType type)
             return "Bound Function";
         case JSType::JS_ARRAY:
             return "Array";
+        case JSType::JS_SHARED_ARRAY:
+            return "SharedArray";
         case JSType::JS_TYPED_ARRAY:
             return "Typed Array";
         case JSType::JS_INT8_ARRAY:
@@ -262,8 +275,12 @@ CString JSHClass::DumpJSType(JSType type)
             return "ForinInterator";
         case JSType::JS_MAP_ITERATOR:
             return "MapIterator";
+        case JSType::JS_SHARED_MAP_ITERATOR:
+            return "SharedMapIterator";
         case JSType::JS_SET_ITERATOR:
             return "SetIterator";
+        case JSType::JS_SHARED_SET_ITERATOR:
+            return "SharedSetIterator";
         case JSType::JS_ARRAY_ITERATOR:
             return "ArrayIterator";
         case JSType::JS_STRING_ITERATOR:
@@ -492,7 +509,7 @@ CString JSHClass::DumpJSType(JSType type)
             return "StarExportEntry";
         default: {
             CString ret = "unknown type ";
-            return ret + static_cast<char>(type);
+            return ret.append(std::to_string(static_cast<char>(type)));
         }
     }
 }
@@ -790,9 +807,17 @@ static void DumpObject(TaggedObject *obj, std::ostream &os)
             needDumpHClass = true;
             JSSet::Cast(obj)->Dump(os);
             break;
+        case JSType::JS_SHARED_SET:
+            needDumpHClass = true;
+            JSSharedSet::Cast(obj)->Dump(os);
+            break;
         case JSType::JS_MAP:
             needDumpHClass = true;
             JSMap::Cast(obj)->Dump(os);
+            break;
+        case JSType::JS_SHARED_MAP:
+            needDumpHClass = true;
+            JSSharedMap::Cast(obj)->Dump(os);
             break;
         case JSType::JS_WEAK_SET:
             needDumpHClass = true;
@@ -823,6 +848,10 @@ static void DumpObject(TaggedObject *obj, std::ostream &os)
         case JSType::JS_ARRAY:
             needDumpHClass = true;
             JSArray::Cast(obj)->Dump(os);
+            break;
+        case JSType::JS_SHARED_ARRAY:
+            needDumpHClass = true;
+            JSSharedArray::Cast(obj)->Dump(os);
             break;
         case JSType::JS_TYPED_ARRAY:
         case JSType::JS_INT8_ARRAY:
@@ -964,14 +993,23 @@ static void DumpObject(TaggedObject *obj, std::ostream &os)
         case JSType::JS_MAP_ITERATOR:
             JSMapIterator::Cast(obj)->Dump(os);
             break;
+        case JSType::JS_SHARED_MAP_ITERATOR:
+            JSSharedMapIterator::Cast(obj)->Dump(os);
+            break;
         case JSType::JS_SET_ITERATOR:
             JSSetIterator::Cast(obj)->Dump(os);
+            break;
+        case JSType::JS_SHARED_SET_ITERATOR:
+            JSSharedSetIterator::Cast(obj)->Dump(os);
             break;
         case JSType::JS_REG_EXP_ITERATOR:
             JSRegExpIterator::Cast(obj)->Dump(os);
             break;
         case JSType::JS_ARRAY_ITERATOR:
             JSArrayIterator::Cast(obj)->Dump(os);
+            break;
+        case JSType::JS_SHARED_ARRAY_ITERATOR:
+            JSSharedArrayIterator::Cast(obj)->Dump(os);
             break;
         case JSType::JS_STRING_ITERATOR:
             JSStringIterator::Cast(obj)->Dump(os);
@@ -1762,6 +1800,19 @@ void JSMap::Dump(std::ostream &os) const
     map->Dump(os);
 }
 
+void JSSharedMap::Dump(std::ostream &os) const
+{
+    LinkedHashMap *map = LinkedHashMap::Cast(GetLinkedMap().GetTaggedObject());
+    os << " - modRecord: " << std::dec << GetModRecord() << "\n";
+    os << " - elements: " << std::dec << map->NumberOfElements() << "\n";
+    os << " - deleted-elements: " << std::dec << map->NumberOfDeletedElements() << "\n";
+    os << " - capacity: " << std::dec << map->Capacity() << "\n";
+    JSObject::Dump(os);
+
+    os << " <NameDictionary[" << map->NumberOfElements() << "]>\n";
+    map->Dump(os);
+}
+
 void JSAPITreeMap::Dump(std::ostream &os) const
 {
     TaggedTreeMap *map = TaggedTreeMap::Cast(GetTreeMap().GetTaggedObject());
@@ -2023,9 +2074,37 @@ void JSMapIterator::Dump(std::ostream &os) const
     map->Dump(os);
 }
 
+void JSSharedMapIterator::Dump(std::ostream &os) const
+{
+    JSSharedMap *iteratedMap = JSSharedMap::Cast(GetIteratedMap().GetTaggedObject());
+    LinkedHashMap *map = LinkedHashMap::Cast(iteratedMap->GetLinkedMap().GetTaggedObject());
+    os << " - elements: " << std::dec << map->NumberOfElements() << "\n";
+    os << " - deleted-elements: " << std::dec << map->NumberOfDeletedElements() << "\n";
+    os << " - capacity: " << std::dec << map->Capacity() << "\n";
+    os << " - nextIndex: " << std::dec << GetNextIndex() << "\n";
+    os << " - IterationKind: " << std::dec << static_cast<int>(GetIterationKind()) << "\n";
+    JSObject::Dump(os);
+
+    os << " <NameDictionary[" << map->NumberOfElements() << "]>\n";
+    map->Dump(os);
+}
+
 void JSSet::Dump(std::ostream &os) const
 {
     LinkedHashSet *set = LinkedHashSet::Cast(GetLinkedSet().GetTaggedObject());
+    os << " - elements: " << std::dec << set->NumberOfElements() << "\n";
+    os << " - deleted-elements: " << std::dec << set->NumberOfDeletedElements() << "\n";
+    os << " - capacity: " << std::dec << set->Capacity() << "\n";
+    JSObject::Dump(os);
+
+    os << " <NameDictionary[" << set->NumberOfElements() << "]>\n";
+    set->Dump(os);
+}
+
+void JSSharedSet::Dump(std::ostream &os) const
+{
+    LinkedHashSet *set = LinkedHashSet::Cast(GetLinkedSet().GetTaggedObject());
+    os << " - modRecord: " << std::dec << GetModRecord() << "\n";
     os << " - elements: " << std::dec << set->NumberOfElements() << "\n";
     os << " - deleted-elements: " << std::dec << set->NumberOfDeletedElements() << "\n";
     os << " - capacity: " << std::dec << set->Capacity() << "\n";
@@ -2109,6 +2188,21 @@ void JSSetIterator::Dump(std::ostream &os) const
     set->Dump(os);
 }
 
+void JSSharedSetIterator::Dump(std::ostream &os) const
+{
+    JSSharedSet *iteratedSet = JSSharedSet::Cast(GetIteratedSet().GetTaggedObject());
+    LinkedHashSet *set = LinkedHashSet::Cast(iteratedSet->GetLinkedSet().GetTaggedObject());
+    os << " - elements: " << std::dec << set->NumberOfElements() << "\n";
+    os << " - deleted-elements: " << std::dec << set->NumberOfDeletedElements() << "\n";
+    os << " - capacity: " << std::dec << set->Capacity() << "\n";
+    os << " - nextIndex: " << std::dec << GetNextIndex() << "\n";
+    os << " - IterationKind: " << std::dec << static_cast<int>(GetIterationKind()) << "\n";
+    JSObject::Dump(os);
+
+    os << " <NameDictionary[" << set->NumberOfElements() << "]>\n";
+    set->Dump(os);
+}
+
 void JSRegExpIterator::Dump(std::ostream &os) const
 {
     os << " - IteratingRegExp: ";
@@ -2129,10 +2223,26 @@ void JSArray::Dump(std::ostream &os) const
     JSObject::Dump(os);
 }
 
+void JSSharedArray::Dump(std::ostream &os) const
+{
+    os << " - length: " << std::dec << GetArrayLength() << "\n";
+    JSObject::Dump(os);
+}
+
 void JSArrayIterator::Dump(std::ostream &os) const
 {
     JSArray *array = JSArray::Cast(GetIteratedArray().GetTaggedObject());
     os << " - length: " << std::dec << array->GetArrayLength() << "\n";
+    os << " - nextIndex: " << std::dec << GetNextIndex() << "\n";
+    os << " - IterationKind: " << std::dec << static_cast<int>(GetIterationKind()) << "\n";
+    JSObject::Dump(os);
+}
+
+void JSSharedArrayIterator::Dump(std::ostream &os) const
+{
+    JSSharedArray *array = JSSharedArray::Cast(GetIteratedArray().GetTaggedObject());
+    os << " - length: " << std::dec << array->GetArrayLength() << "\n";
+    os << " - expectedModCount: " << std::dec << GetExpectedModCount() << "\n";
     os << " - nextIndex: " << std::dec << GetNextIndex() << "\n";
     os << " - IterationKind: " << std::dec << static_cast<int>(GetIterationKind()) << "\n";
     JSObject::Dump(os);
@@ -4071,8 +4181,14 @@ static void DumpObject(TaggedObject *obj, std::vector<Reference> &vec, bool isVm
         case JSType::JS_SET:
             JSSet::Cast(obj)->DumpForSnapshot(vec);
             return;
+        case JSType::JS_SHARED_SET:
+            JSSharedSet::Cast(obj)->DumpForSnapshot(vec);
+            return;
         case JSType::JS_MAP:
             JSMap::Cast(obj)->DumpForSnapshot(vec);
+            return;
+        case JSType::JS_SHARED_MAP:
+            JSSharedMap::Cast(obj)->DumpForSnapshot(vec);
             return;
         case JSType::JS_WEAK_SET:
             JSWeakSet::Cast(obj)->DumpForSnapshot(vec);
@@ -4097,6 +4213,9 @@ static void DumpObject(TaggedObject *obj, std::vector<Reference> &vec, bool isVm
             return;
         case JSType::JS_ARRAY:
             JSArray::Cast(obj)->DumpForSnapshot(vec);
+            return;
+        case JSType::JS_SHARED_ARRAY:
+            JSSharedArray::Cast(obj)->DumpForSnapshot(vec);
             return;
         case JSType::JS_TYPED_ARRAY:
         case JSType::JS_INT8_ARRAY:
@@ -4207,8 +4326,11 @@ static void DumpObject(TaggedObject *obj, std::vector<Reference> &vec, bool isVm
         case JSType::JS_ASYNCITERATOR:
         case JSType::JS_FORIN_ITERATOR:
         case JSType::JS_MAP_ITERATOR:
+        case JSType::JS_SHARED_MAP_ITERATOR:
         case JSType::JS_SET_ITERATOR:
+        case JSType::JS_SHARED_SET_ITERATOR:
         case JSType::JS_ARRAY_ITERATOR:
+        case JSType::JS_SHARED_ARRAY_ITERATOR:
         case JSType::JS_STRING_ITERATOR:
         case JSType::JS_REG_EXP_ITERATOR:
         case JSType::JS_ARRAY_BUFFER:
@@ -4944,6 +5066,16 @@ void JSMap::DumpForSnapshot(std::vector<Reference> &vec) const
     JSObject::DumpForSnapshot(vec);
 }
 
+void JSSharedMap::DumpForSnapshot(std::vector<Reference> &vec) const
+{
+    LinkedHashMap *map = LinkedHashMap::Cast(GetLinkedMap().GetTaggedObject());
+    vec.emplace_back("linkedmap", GetLinkedMap());
+    vec.emplace_back("ModRecord", JSTaggedValue(GetModRecord()));
+    map->DumpForSnapshot(vec);
+
+    JSObject::DumpForSnapshot(vec);
+}
+
 void JSForInIterator::DumpForSnapshot(std::vector<Reference> &vec) const
 {
     vec.emplace_back(CString("Object"), GetObject());
@@ -4964,10 +5096,31 @@ void JSMapIterator::DumpForSnapshot(std::vector<Reference> &vec) const
     JSObject::DumpForSnapshot(vec);
 }
 
+void JSSharedMapIterator::DumpForSnapshot(std::vector<Reference> &vec) const
+{
+    JSSharedMap *iteratedMap = JSSharedMap::Cast(GetIteratedMap().GetTaggedObject());
+    LinkedHashMap *map = LinkedHashMap::Cast(iteratedMap->GetLinkedMap().GetTaggedObject());
+    vec.emplace_back("iteratedmap", GetIteratedMap());
+    map->DumpForSnapshot(vec);
+    vec.emplace_back(CString("NextIndex"), JSTaggedValue(GetNextIndex()));
+    vec.emplace_back(CString("IterationKind"), JSTaggedValue(static_cast<int>(GetIterationKind())));
+    JSObject::DumpForSnapshot(vec);
+}
+
 void JSSet::DumpForSnapshot(std::vector<Reference> &vec) const
 {
     LinkedHashSet *set = LinkedHashSet::Cast(GetLinkedSet().GetTaggedObject());
     vec.emplace_back("linkedset", GetLinkedSet());
+    set->DumpForSnapshot(vec);
+
+    JSObject::DumpForSnapshot(vec);
+}
+
+void JSSharedSet::DumpForSnapshot(std::vector<Reference> &vec) const
+{
+    LinkedHashSet *set = LinkedHashSet::Cast(GetLinkedSet().GetTaggedObject());
+    vec.emplace_back("linkedset", GetLinkedSet());
+    vec.emplace_back("ModRecord", JSTaggedValue(GetModRecord()));
     set->DumpForSnapshot(vec);
 
     JSObject::DumpForSnapshot(vec);
@@ -5024,9 +5177,26 @@ void JSSetIterator::DumpForSnapshot(std::vector<Reference> &vec) const
     JSObject::DumpForSnapshot(vec);
 }
 
+void JSSharedSetIterator::DumpForSnapshot(std::vector<Reference> &vec) const
+{
+    JSSharedSet *iteratedSet = JSSharedSet::Cast(GetIteratedSet().GetTaggedObject());
+    LinkedHashSet *set = LinkedHashSet::Cast(iteratedSet->GetLinkedSet().GetTaggedObject());
+    vec.emplace_back("iteratedset", GetIteratedSet());
+    set->DumpForSnapshot(vec);
+    vec.emplace_back(CString("NextIndex"), JSTaggedValue(GetNextIndex()));
+    vec.emplace_back(CString("IterationKind"), JSTaggedValue(static_cast<int>(GetIterationKind())));
+    JSObject::DumpForSnapshot(vec);
+}
+
 void JSArray::DumpForSnapshot(std::vector<Reference> &vec) const
 {
     vec.emplace_back(CString("Length"), JSTaggedValue(GetLength()));
+    JSObject::DumpForSnapshot(vec);
+}
+
+void JSSharedArray::DumpForSnapshot(std::vector<Reference> &vec) const
+{
+    vec.emplace_back("ModCount: ", JSTaggedValue(GetModCount()));
     JSObject::DumpForSnapshot(vec);
 }
 
@@ -5152,6 +5322,17 @@ void JSArrayIterator::DumpForSnapshot(std::vector<Reference> &vec) const
     vec.emplace_back(CString("NextIndex"), JSTaggedValue(GetNextIndex()));
     vec.emplace_back(CString("IterationKind"), JSTaggedValue(static_cast<int>(GetIterationKind())));
     vec.emplace_back(CString("BitField"), JSTaggedValue(GetBitField()));
+    JSObject::DumpForSnapshot(vec);
+}
+
+void JSSharedArrayIterator::DumpForSnapshot(std::vector<Reference> &vec) const
+{
+    JSSharedArray *array = JSSharedArray::Cast(GetIteratedArray().GetTaggedObject());
+    vec.emplace_back("iteratedarray", GetIteratedArray());
+    array->DumpForSnapshot(vec);
+    vec.emplace_back(CString("expectedModCount"), JSTaggedValue(GetExpectedModCount()));
+    vec.emplace_back(CString("NextIndex"), JSTaggedValue(GetNextIndex()));
+    vec.emplace_back(CString("IterationKind"), JSTaggedValue(static_cast<int>(GetIterationKind())));
     JSObject::DumpForSnapshot(vec);
 }
 

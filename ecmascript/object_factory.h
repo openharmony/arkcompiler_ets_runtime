@@ -23,12 +23,12 @@
 #include "ecmascript/js_handle.h"
 #include "ecmascript/js_hclass.h"
 #include "ecmascript/js_native_pointer.h"
-#include "ecmascript/js_shared_object.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/mem/heap_region_allocator.h"
 #include "ecmascript/mem/machine_code.h"
 #include "ecmascript/mem/native_area_allocator.h"
 #include "ecmascript/mem/space.h"
+#include "ecmascript/shared_objects/js_shared_object.h"
 #include "ecmascript/tagged_array.h"
 #include "ecmascript/byte_array.h"
 
@@ -57,12 +57,17 @@ class JSArguments;
 class TaggedQueue;
 class JSForInIterator;
 class JSSet;
+class JSSharedSet;
 class JSMap;
+class JSSharedMap;
 class JSRegExp;
 class JSSetIterator;
+class JSSharedSetIterator;
 class JSRegExpIterator;
 class JSMapIterator;
+class JSSharedMapIterator;
 class JSArrayIterator;
+class JSSharedArrayIterator;
 class JSAPIPlainArrayIterator;
 class JSStringIterator;
 class JSGeneratorObject;
@@ -328,6 +333,7 @@ public:
     JSHandle<job::PendingJob> NewPendingJob(const JSHandle<JSFunction> &func, const JSHandle<TaggedArray> &argv);
 
     JSHandle<JSArray> NewJSArray();
+    JSHandle<JSSharedArray> NewJSSArray();
     JSHandle<JSArray> PUBLIC_API NewJSArray(size_t length, JSHandle<JSHClass> &hclass);
     JSHandle<TaggedArray> PUBLIC_API NewJsonFixedArray(size_t start, size_t length,
                                                        const std::vector<JSHandle<JSTaggedValue>> &vec);
@@ -433,6 +439,7 @@ public:
     JSHandle<TaggedQueue> GetEmptyTaggedQueue() const;
 
     JSHandle<JSSetIterator> NewJSSetIterator(const JSHandle<JSSet> &set, IterationKind kind);
+    JSHandle<JSSharedSetIterator> NewJSSetIterator(const JSHandle<JSSharedSet> &set, IterationKind kind);
 
     JSHandle<JSRegExpIterator> NewJSRegExpIterator(const JSHandle<JSTaggedValue> &matcher,
                                                    const JSHandle<EcmaString> &inputStr, bool global,
@@ -440,7 +447,10 @@ public:
 
     JSHandle<JSMapIterator> NewJSMapIterator(const JSHandle<JSMap> &map, IterationKind kind);
 
+    JSHandle<JSSharedMapIterator> NewJSMapIterator(const JSHandle<JSSharedMap> &map, IterationKind kind);
+
     JSHandle<JSArrayIterator> NewJSArrayIterator(const JSHandle<JSObject> &array, IterationKind kind);
+    JSHandle<JSSharedArrayIterator> NewJSSharedArrayIterator(const JSHandle<JSObject> &array, IterationKind kind);
 
     JSHandle<CompletionRecord> NewCompletionRecord(CompletionRecordType type, JSHandle<JSTaggedValue> value);
 
@@ -696,6 +706,7 @@ public:
 
     // -----------------------------------shared object-----------------------------------------
     JSHandle<JSObject> NewSharedOldSpaceJSObject(const JSHandle<JSHClass> &jshclass);
+    JSHandle<JSObject> NewSharedOldSpaceJSObjectWithInit(const JSHandle<JSHClass> &jshclass);
 
     TaggedObject *NewSharedOldSpaceObject(const JSHandle<JSHClass> &hclass);
 
@@ -801,7 +812,10 @@ public:
     JSHandle<AccessorData> NewSInternalAccessor(void *setter, void *getter);
 
     JSHandle<JSSymbol> NewSWellKnownSymbol(const JSHandle<JSTaggedValue> &name);
+    JSHandle<JSSymbol> NewSEmptySymbol();
     JSHandle<JSSymbol> NewSWellKnownSymbolWithChar(std::string_view description);
+    JSHandle<JSSymbol> NewSPublicSymbolWithChar(std::string_view description);
+    JSHandle<JSSymbol> NewSPublicSymbol(const JSHandle<JSTaggedValue> &name);
 private:
     friend class GlobalEnv;
     friend class GlobalEnvConstants;

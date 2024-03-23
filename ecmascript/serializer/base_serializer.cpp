@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include "ecmascript/js_hclass.h"
 #include "ecmascript/serializer/base_serializer-inl.h"
 
 #include "ecmascript/ecma_vm.h"

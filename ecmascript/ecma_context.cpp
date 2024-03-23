@@ -36,6 +36,7 @@
 #include "ecmascript/js_function.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/log.h"
+#include "ecmascript/log_wrapper.h"
 #include "ecmascript/module/module_path_helper.h"
 #include "ecmascript/module/js_shared_module.h"
 #include "ecmascript/object_factory.h"

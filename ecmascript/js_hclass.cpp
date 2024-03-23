@@ -20,6 +20,7 @@
 
 #include "ecmascript/base/config.h"
 #include "ecmascript/global_env.h"
+#include "ecmascript/js_shared_array.h"
 #include "ecmascript/pgo_profiler/pgo_profiler.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_layout.h"
 #include "ecmascript/tagged_array.h"
@@ -178,6 +179,22 @@ void JSHClass::Initialize(const JSThread *thread, uint32_t size, JSType type,
     InitializeWithDefaultValue(thread, size, type, inlinedProps);
     if (JSType::JS_OBJECT_FIRST <= type && type <= JSType::JS_OBJECT_LAST) {
         SetLayout(thread, layout);
+    }
+    switch (type) {
+        case JSType::JS_SHARED_OBJECT:
+        case JSType::JS_SHARED_FUNCTION:
+        case JSType::JS_SHARED_SET:
+        case JSType::JS_SHARED_MAP:
+        case JSType::JS_SHARED_ARRAY:
+        case JSType::BIGINT:
+        case JSType::LINE_STRING:
+        case JSType::CONSTANT_STRING:
+        case JSType::SLICED_STRING:
+        case JSType::TREE_STRING:
+            SetIsJSShared(true);
+            break;
+        default:
+            break;
     }
 }
 

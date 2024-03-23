@@ -47,7 +47,7 @@ public:
     // Don't shrink a HashTable below this capacity.
     static const int MIN_SHRINK_CAPACITY = 16;
 
-    static JSHandle<Derived> Create(const JSThread *thread, int numberOfElements);
+    static JSHandle<Derived> Create(const JSThread *thread, int numberOfElements, MemSpaceKind spaceKind);
 
     static JSHandle<Derived> Insert(const JSThread *thread, const JSHandle<Derived> &table,
                                     const JSHandle<JSTaggedValue> &key, const JSHandle<JSTaggedValue> &value);
@@ -341,7 +341,8 @@ public:
     {
         return static_cast<LinkedHashMap *>(obj);
     }
-    static JSHandle<LinkedHashMap> Create(const JSThread *thread, int numberOfElements = MIN_CAPACITY);
+    static JSHandle<LinkedHashMap> Create(const JSThread *thread, int numberOfElements = MIN_CAPACITY,
+        MemSpaceKind spaceKind = MemSpaceKind::LOCAL);
 
     static JSHandle<LinkedHashMap> Delete(const JSThread *thread, const JSHandle<LinkedHashMap> &obj,
         const JSHandle<JSTaggedValue> &key);
@@ -381,7 +382,8 @@ public:
     {
         return static_cast<LinkedHashSet *>(obj);
     }
-    static JSHandle<LinkedHashSet> Create(const JSThread *thread, int numberOfElements = MIN_CAPACITY);
+    static JSHandle<LinkedHashSet> Create(const JSThread *thread, int numberOfElements = MIN_CAPACITY,
+        MemSpaceKind spaceKind = MemSpaceKind::LOCAL);
 
     static JSHandle<LinkedHashSet> Delete(const JSThread *thread, const JSHandle<LinkedHashSet> &obj,
         const JSHandle<JSTaggedValue> &key);

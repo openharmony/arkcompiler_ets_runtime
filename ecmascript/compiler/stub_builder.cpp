@@ -3497,7 +3497,13 @@ GateRef StubBuilder::SetPropertyByIndex(GateRef glue, GateRef receiver, GateRef 
     }
     Label isExtensible(env);
     Label notExtensible(env);
+    Label throwNotExtensible(env);
     BRANCH(IsExtensible(receiver), &isExtensible, &notExtensible);
+    Bind(&notExtensible);
+    {
+        // fixme(hzzhouzebin) this makes SharedArray's frozen no sense.
+        BRANCH(IsJsSArray(receiver), &isExtensible, &throwNotExtensible);
+    }
     Bind(&isExtensible);
     {
         Label success(env);
@@ -3515,7 +3521,7 @@ GateRef StubBuilder::SetPropertyByIndex(GateRef glue, GateRef receiver, GateRef 
             Jump(&exit);
         }
     }
-    Bind(&notExtensible);
+    Bind(&throwNotExtensible);
     {
         GateRef taggedId = Int32(GET_MESSAGE_STRING_ID(SetPropertyWhenNotExtensible));
         CallRuntime(glue, RTSTUB_ID(ThrowTypeError), { IntToTaggedInt(taggedId) });
@@ -3705,11 +3711,11 @@ GateRef StubBuilder::SetPropertyByName(GateRef glue, GateRef receiver, GateRef k
                             // JSObject::Cast(holder)->SetProperty(thread, hclass, attr, value)
                             // return JSTaggedValue::Undefined()
                             Label executeSetProp(env);
-                            CheckUpdateSharedType(false, &result, glue, jsType, attr, value, &executeSetProp, &exit);
+                            CheckUpdateSharedType(false, &result, glue, receiver, attr, value, &executeSetProp, &exit);
                             Bind(&executeSetProp);
                             JSObjectSetProperty(glue, *holder, hclass, attr, key, value);
                             ProfilerStubBuilder(env).UpdatePropAttrWithValue(
-                                glue, jsType, layOutInfo, attr, entry, value, callback);
+                                glue, receiver, layOutInfo, attr, entry, value, callback);
                             result = Undefined();
                             Jump(&exit);
                         }
@@ -3778,7 +3784,7 @@ GateRef StubBuilder::SetPropertyByName(GateRef glue, GateRef receiver, GateRef k
                             // dict->UpdateValue(thread, entry, value)
                             // return JSTaggedValue::Undefined()
                             Label executeSetProp(env);
-                            CheckUpdateSharedType(true, &result, glue, jsType, attr1, value, &executeSetProp, &exit);
+                            CheckUpdateSharedType(true, &result, glue, receiver, attr1, value, &executeSetProp, &exit);
                             Bind(&executeSetProp);
                             UpdateValueInDict<NameDictionary>(glue, array, entry1, value);
                             result = Undefined();
@@ -3813,7 +3819,7 @@ GateRef StubBuilder::SetPropertyByName(GateRef glue, GateRef receiver, GateRef k
         GateRef holeAttr = GetPropAttrFromLayoutInfo(receiverLayoutInfo, *receiverHoleEntry);
         JSObjectSetProperty(glue, receiver, receiverHClass, holeAttr, key, value);
         ProfilerStubBuilder(env).UpdatePropAttrWithValue(
-            glue, jsType, receiverLayoutInfo, holeAttr, *receiverHoleEntry, value, callback);
+            glue, receiver, receiverLayoutInfo, holeAttr, *receiverHoleEntry, value, callback);
         result = Undefined();
         Jump(&exit);
     }
