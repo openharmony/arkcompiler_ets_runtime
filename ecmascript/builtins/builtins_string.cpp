@@ -633,11 +633,15 @@ JSTaggedValue BuiltinsString::Match(EcmaRuntimeCallInfo *argv)
         JSHandle<JSRegExp> re(regexp);
         JSHandle<JSTaggedValue> pattern(thread, re->GetOriginalSource());
         JSHandle<JSTaggedValue> flags(thread, re->GetOriginalFlags());
-        JSTaggedValue cacheResult = cacheTable->FindCachedResult(thread, thisTag,
-                                                                 RegExpExecResultCache::MATCH_TYPE, regexp,
-                                                                 JSTaggedValue(0));
-        if (!cacheResult.IsUndefined()) {
-            return cacheResult;
+        bool isFastPath = BuiltinsRegExp::IsFastRegExp(thread, regexp);
+        if (isFastPath) {
+            uint32_t lastIndex = static_cast<uint32_t>(BuiltinsRegExp::GetLastIndex(thread, regexp, true));
+            JSTaggedValue cacheResult = cacheTable->FindCachedResult(thread, thisTag,
+                                                                     RegExpExecResultCache::MATCH_TYPE, regexp,
+                                                                     JSTaggedValue(lastIndex));
+            if (!cacheResult.IsUndefined()) {
+                return cacheResult;
+            }
         }
     }
     if (!regexp->IsUndefined() && !regexp->IsNull()) {
@@ -1034,11 +1038,15 @@ JSTaggedValue BuiltinsString::Replace(EcmaRuntimeCallInfo *argv)
         JSHandle<JSRegExp> re(searchTag);
         JSHandle<JSTaggedValue> pattern(thread, re->GetOriginalSource());
         JSHandle<JSTaggedValue> flags(thread, re->GetOriginalFlags());
-        JSTaggedValue cacheResult = cacheTable->FindCachedResult(thread, thisTag,
-                                                                 RegExpExecResultCache::REPLACE_TYPE, searchTag,
-                                                                 replaceTag.GetTaggedValue());
-        if (!cacheResult.IsUndefined()) {
-            return cacheResult;
+        bool isFastPath = BuiltinsRegExp::IsFastRegExp(thread, searchTag);
+        if (isFastPath) {
+            uint32_t lastIndex = static_cast<uint32_t>(BuiltinsRegExp::GetLastIndex(thread, searchTag, true));
+            JSTaggedValue cacheResult = cacheTable->FindCachedResult(thread, thisTag,
+                RegExpExecResultCache::REPLACE_TYPE, searchTag, JSTaggedValue(lastIndex),
+                replaceTag.GetTaggedValue());
+            if (!cacheResult.IsUndefined()) {
+                return cacheResult;
+            }
         }
     }
 

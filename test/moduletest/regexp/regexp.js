@@ -366,6 +366,39 @@ try {
     print(e)
 }
 
+// Testing regexp.prototype.replace after optimization
+{
+  const re1 = /[Cz]/;
+  const re2 = /[Cz]/g;
+  const re3 = /([Cz])/;
+  const re4 = /([Cz])/g;
+
+  let replace_str = "abCdefgzabCdefgzabCdefgz";
+  let replace_result = replace_str.replace(re1, "");
+  print(re1.lastIndex);
+  let cached_reuslt = replace_str.replace(re1, "");
+  print(replace_result === cached_reuslt);
+  print(re1.lastIndex);
+
+  replace_result = replace_str.replace(re2, "xyz");
+  print(re2.lastIndex);
+  cached_reuslt = replace_str.replace(re2, "xyz");
+  print(replace_result === cached_reuslt);
+  print(re2.lastIndex);
+
+  replace_result = replace_str.replace(re3, "x$1yz");
+  print(re3.lastIndex);
+  cached_reuslt = replace_str.replace(re3, "x$1yz");
+  print(replace_result === cached_reuslt);
+  print(re3.lastIndex);
+
+  replace_result = replace_str.replace(re4, String);
+  print(re4.lastIndex);
+  cached_reuslt = replace_str.replace(re4, String);
+  print(replace_result === cached_reuslt);
+  print(re4.lastIndex);
+}
+
 // test RegExp.prototype.xx
 print(RegExp.prototype.dotAll)
 print(RegExp.prototype.global)
@@ -506,3 +539,36 @@ Object.defineProperty(myExp, "sticky", {
     value: true
   })
 print(myExp.toString());
+
+// Testing regexp.prototype.replace after optimization
+{
+  const re1 = /[Cz]/;
+  const re2 = /[Cz]/g;
+  const re3 = /([Cz])/;
+  const re4 = /([Cz])/g;
+
+  let replace_str = "abCdefgzabCdefgzabCdefgz";
+  let replace_result = replace_str.replace(re1, "");
+  print(re1.lastIndex);
+  let cached_reuslt = replace_str.replace(re1, "");
+  print(replace_result === cached_reuslt);
+  print(re1.lastIndex);
+
+  replace_result = replace_str.replace(re2, "xyz");
+  print(re2.lastIndex);
+  cached_reuslt = replace_str.replace(re2, "xyz");
+  print(replace_result === cached_reuslt);
+  print(re2.lastIndex);
+
+  replace_result = replace_str.replace(re3, "x$1yz");
+  print(re3.lastIndex);
+  cached_reuslt = replace_str.replace(re3, "x$1yz");
+  print(replace_result === cached_reuslt);
+  print(re3.lastIndex);
+
+  replace_result = replace_str.replace(re4, String);
+  print(re4.lastIndex);
+  cached_reuslt = replace_str.replace(re4, String);
+  print(replace_result === cached_reuslt);
+  print(re4.lastIndex);
+}

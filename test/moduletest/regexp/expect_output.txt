@@ -57,6 +57,18 @@ null
 aaa
 aa
 TypeError: this does not have [[RegExpMatcher]]
+0
+true
+0
+0
+true
+0
+0
+true
+0
+0
+true
+0
 undefined
 undefined
 undefined
@@ -114,3 +126,15 @@ abc
 abc
 6
 /a+b+c/y
+0
+true
+0
+3
+false
+8
+0
+true
+0
+3
+true
+8
