@@ -1,0 +1,56 @@
+# Copyright (c) 2024 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+NaN
+1
+1
+2.718281828459045
+3.720075976020836e-44
+2.6881171418161356e+43
+1.000000001
+0
+Infinity
+NaN
+2.718281828459045
+2.718281828459045
+2.718281828459045
+2.718281828459045
+2.718281828459045
+111
+2.718281828459045
+[trace] Check Type: NotNumber1
+2.718281828459045
+[trace] Check Type: NotNumber1
+NaN
+[trace] Check Type: NotNumber1
+NaN
+[trace] Check Type: NotCallTarget1
+1
+[trace] Check Type: NotCallTarget1
+2
+[trace] Check Type: NotCallTarget1
+1
+[trace] Check Type: NotCallTarget1
+2
+2.718281828459045
+2.718281828459045
+2.718281828459045
+[trace] Check Type: NotNumber1
+NaN
+[trace] Check Type: NotNumber1
+obj.valueOf
+1.026187963170189e-10
+[trace] Check Type: NotNumber1
+14.879731724872837
+[trace] Check Type: NotNumber1
+NaN

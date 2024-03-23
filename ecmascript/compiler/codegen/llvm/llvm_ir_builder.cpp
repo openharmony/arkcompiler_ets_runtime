@@ -45,6 +45,8 @@
 #endif
 
 #include "llvm/IR/Instructions.h"
+#include "llvm/IR/Intrinsics.h"
+#include "llvm/IR/IRBuilder.h"
 
 #if defined(__clang__)
 #pragma clang diagnostic pop
@@ -204,6 +206,7 @@ void LLVMIRBuilder::InitializeHandlers()
         {OpCode::MUL_WITH_OVERFLOW, &LLVMIRBuilder::HandleMulWithOverflow},
         {OpCode::EXTRACT_VALUE, &LLVMIRBuilder::HandleExtractValue},
         {OpCode::SQRT, &LLVMIRBuilder::HandleSqrt},
+        {OpCode::EXP, &LLVMIRBuilder::HandleExp},
         {OpCode::READSP, &LLVMIRBuilder::HandleReadSp},
         {OpCode::FINISH_ALLOCATE, &LLVMIRBuilder::HandleFinishAllocate},
     };
@@ -1979,6 +1982,45 @@ void LLVMIRBuilder::VisitSqrt(GateRef gate, GateRef e1)
     if (IsLogEnabled()) {
         SetDebugInfo(gate, result);
     }
+}
+
+void LLVMIRBuilder::HandleExp(GateRef gate)
+{
+    GateRef base = acc_.GetIn(gate, 0U);
+    GateRef power = acc_.GetIn(gate, 1U);
+    VisitExp(gate, base, power);
+}
+
+void LLVMIRBuilder::VisitExp([[maybe_unused]] GateRef gate, [[maybe_unused]] GateRef e1, [[maybe_unused]] GateRef e2)
+{
+#ifdef SUPPORT_LLVM_INTRINSICS_WITH_CALLS
+    llvm::Value *e1Value = llvm::unwrap(GetLValue(e1));
+    llvm::Value *e2Value = llvm::unwrap(GetLValue(e2));
+
+    [[maybe_unused]] auto machineType = acc_.GetMachineType(gate);
+    ASSERT(machineType == MachineType::F64);
+    ASSERT(acc_.GetMachineType(e1) == machineType);
+    ASSERT(acc_.GetMachineType(e2) == machineType);
+
+    llvm::Value *result = nullptr;
+
+    constexpr double one = 1.0;
+    if (acc_.IsConstant(e1) && acc_.GetFloat64FromConstant(e1) == std::exp(one)) {
+        llvm::Intrinsic::ID llvmId = llvm::Intrinsic::exp;
+        result = llvm::unwrap(builder_)->CreateUnaryIntrinsic(llvmId, e2Value);
+    } else {
+        llvm::Intrinsic::ID llvmId = llvm::Intrinsic::pow;
+        result = llvm::unwrap(builder_)->CreateBinaryIntrinsic(llvmId, e1Value, e2Value);
+    }
+
+    Bind(gate, llvm::wrap(result));
+
+    if (IsLogEnabled()) {
+        SetDebugInfo(gate, llvm::wrap(result));
+    }
+#else
+    UNREACHABLE();
+#endif
 }
 
 LLVMIntPredicate LLVMIRBuilder::ConvertLLVMPredicateFromICMP(ICmpCondition cond)

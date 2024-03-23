@@ -2950,6 +2950,11 @@ double RuntimeStubs::FloatTanh(double x)
     return std::tanh(x);
 }
 
+double RuntimeStubs::FloatCbrt(double x)
+{
+    return std::cbrt(x);
+}
+
 double RuntimeStubs::FloatFloor(double x)
 {
     ASSERT(!std::isnan(x));
@@ -2974,6 +2979,16 @@ double RuntimeStubs::FloatLog10(double x)
 double RuntimeStubs::FloatLog1p(double x)
 {
     return std::log1p(x);
+}
+
+double RuntimeStubs::FloatExp(double x)
+{
+    return std::exp(x);
+}
+
+double RuntimeStubs::FloatExpm1(double x)
+{
+    return std::expm1(x);
 }
 
 double RuntimeStubs::FloatPow(double base, double exp)

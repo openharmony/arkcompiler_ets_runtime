@@ -172,8 +172,11 @@ class ObjectFactory;
     V(JSTaggedValue, MathLog2, MATH_LOG2_INDEX, ecma_roots_special)                                    \
     V(JSTaggedValue, MathLog10, MATH_LOG10_INDEX, ecma_roots_special)                                  \
     V(JSTaggedValue, MathLog1p, MATH_LOG1P_INDEX, ecma_roots_special)                                  \
+    V(JSTaggedValue, MathExp, MATH_EXP_INDEX, ecma_roots_special)                                      \
+    V(JSTaggedValue, MathExpm1, MATH_EXPM1_INDEX, ecma_roots_special)                                  \
     V(JSTaggedValue, MathAbs, MATH_ABS_INDEX, ecma_roots_special)                                      \
     V(JSTaggedValue, MathPow, MATH_POW_INDEX, ecma_roots_special)                                      \
+    V(JSTaggedValue, MathCbrt, MATH_CBRT_INDEX, ecma_roots_special)                                    \
     V(JSTaggedValue, MathFloorFunction, MATH_FLOOR_FUNCTION_INDEX, ecma_roots_special)                 \
     V(JSTaggedValue, LocaleCompareFunction, LOCALE_COMPARE_FUNCTION_INDEX, ecma_roots_special)         \
     V(JSTaggedValue, ArraySortFunction, ARRAY_SORT_FUNCTION_INDEX, ecma_roots_special)                 \
