@@ -588,3 +588,12 @@ var result_some2 = arr_some2.some(testSome);
 print(result_some2);
 var result_some3 = arr_some3.some(testSome);
 print(result_some3);
+
+// Test case for unshift()
+var arr_unshift1 = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+var arr_unshift2 = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+
+var result_unshift1 = arr_unshift1.unshift(1, 2, 3, 4, 5);
+print(result_unshift1);
+var result_unshift2 = arr_unshift2.unshift(1, 2, 3);
+print(result_unshift2);

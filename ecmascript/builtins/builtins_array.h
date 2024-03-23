@@ -105,7 +105,7 @@
     /* Array.prototype.toString ( ) */                                      \
     V("toString",       ToString,         0, INVALID)                       \
     /* Array.prototype.unshift ( ...items ) */                              \
-    V("unshift",        Unshift,          1, INVALID)                       \
+    V("unshift",        Unshift,          1, ArrayUnshift)                  \
     /* Array.prototype.values ( ) */                                        \
     V("values",         Values,           0, ArrayValues)                   \
     /* Array.prototype.with ( index, value ) */                             \
