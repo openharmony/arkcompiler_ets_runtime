@@ -49,6 +49,12 @@ print(Math.round(0)); //: 0
 print(Math.round(3)); //: 3
 print(Math.round(-5)); //: -5
 
+// Test large ints
+print(Math.round(1073741824)) //: 1073741824
+print(Math.round(1073741804)) //: 1073741804
+print(Math.round(1073741784)) //: 1073741784
+print(Math.round(-1073741804)) //: -1073741804
+
 // Check with single float param
 print(Math.round(1.9e80)); //: 1.9e+80
 printZero(Math.round(2.5)); //: 3

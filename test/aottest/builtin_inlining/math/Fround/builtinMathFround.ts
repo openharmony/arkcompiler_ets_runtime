@@ -49,6 +49,12 @@ print(Math.fround(0)); //: 0
 print(Math.fround(3)); //: 3
 print(Math.fround(-5)); //: -5
 
+// Test large ints
+print(Math.fround(1073741824)) //: 1073741824
+print(Math.fround(1073741804)) //: 1073741824
+print(Math.fround(1073741784)) //: 1073741760
+print(Math.fround(-1073741804)) //: -1073741824
+
 // Check with single float param
 print(Math.fround(1.9e80)); //: Infinity
 printZero(Math.fround(2.5)); //: 2.5
@@ -94,9 +100,9 @@ Math.fround = true_fround
 
 printFround(12.3); //: 12.300000190734863
 // Call standard builtin with non-number param
-//aot: [trace] Check Type: NotNumber2
+//aot: [trace] Check Type: NotNumber1
 printFround("abc"); //: NaN
-//aot: [trace] Check Type: NotNumber2
+//aot: [trace] Check Type: NotNumber1
 printFround("-12.9"); //: -12.899999618530273
 
 if (ArkTools.isAOTCompiled(printFround)) {
@@ -118,7 +124,7 @@ try {
     print(Math.fround()) //: NaN
     print(Math.fround(0.3)) //: 0.30000001192092896
     printFround(-12); //: -12
-    //aot: [trace] Check Type: NotNumber2
+    //aot: [trace] Check Type: NotNumber1
     printFround("abc"); //: NaN
 } catch (e) {
 }
@@ -126,5 +132,5 @@ try {
 let obj = {
     valueOf: () => { return -22.5; }
 };
-//aot: [trace] Check Type: NotNumber2
+//aot: [trace] Check Type: NotNumber1
 print(Math.fround(obj)); //: -22.5

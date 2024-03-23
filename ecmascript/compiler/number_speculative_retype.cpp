@@ -196,6 +196,7 @@ GateRef NumberSpeculativeRetype::VisitGate(GateRef gate)
         case OpCode::MATH_TANH:
         case OpCode::MATH_POW:
         case OpCode::MATH_CBRT:
+        case OpCode::MATH_FROUND:
             return VisitMathDoubleParamsBuiltin(gate);
         case OpCode::MATH_CLZ32:
             return VisitClz32Builtin(gate);
@@ -204,7 +205,6 @@ GateRef NumberSpeculativeRetype::VisitGate(GateRef gate)
         case OpCode::MATH_MAX:
         case OpCode::MATH_SIGN:
         case OpCode::MATH_ROUND:
-        case OpCode::MATH_FROUND:
             return VisitMathTaggedNumberParamsBuiltin(gate);
         case OpCode::MATH_TRUNC:
             return VisitMathTrunc(gate);
@@ -1420,8 +1420,6 @@ const GateMetaData *NumberSpeculativeRetype::GetNewMeta(OpCode op, TypeInfo type
                 return circuit_->MathMaxDouble();
             case OpCode::MATH_ROUND:
                 return circuit_->MathRoundDouble();
-            case OpCode::MATH_FROUND:
-                return circuit_->MathFRoundDouble();
             default:
                 return nullptr;
         }
@@ -1441,14 +1439,14 @@ GateRef NumberSpeculativeRetype::VisitMathTaggedNumberParamsBuiltin(GateRef gate
             TypeInfo secondInputType = GetNumberTypeInfo(acc_.GetValueIn(gate, 1U));
             type = GetCommonTypeInfo(type, secondInputType);
         }
-        if (type == TypeInfo::TAGGED && (op == OpCode::MATH_ROUND || op == OpCode::MATH_FROUND)) {
+        if (type == TypeInfo::TAGGED && op == OpCode::MATH_ROUND) {
             type = TypeInfo::FLOAT64;
         }
         return SetOutputType(gate, type);
     }
     ASSERT(IsConvert());
     TypeInfo type = GetOutputTypeInfo(gate); // load type computed in retype phase
-    if (op == OpCode::MATH_ROUND || op == OpCode::MATH_FROUND) {
+    if (op == OpCode::MATH_ROUND) {
         type = GetNumberTypeInfo(acc_.GetValueIn(gate, 0));
     }
     const GateMetaData* meta = GetNewMeta(op, type);

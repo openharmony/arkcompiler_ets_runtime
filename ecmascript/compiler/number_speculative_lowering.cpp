@@ -102,8 +102,7 @@ void NumberSpeculativeLowering::VisitGate(GateRef gate)
             VisitLoadPropertyOnProto(gate);
             break;
         }
-        case OpCode::MATH_ROUND:
-        case OpCode::MATH_FROUND: {
+        case OpCode::MATH_ROUND: {
             VisitRound(gate);
             break;
         }

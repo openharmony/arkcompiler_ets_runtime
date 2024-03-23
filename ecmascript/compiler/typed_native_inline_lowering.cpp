@@ -127,11 +127,10 @@ GateRef TypedNativeInlineLowering::VisitGate(GateRef gate)
             LowerMathSqrt(gate);
             break;
         case OpCode::MATH_ROUND:
-        case OpCode::MATH_FROUND:
             LowerTaggedRounding(gate);
             break;
         case OpCode::MATH_ROUND_DOUBLE:
-        case OpCode::MATH_FROUND_DOUBLE:
+        case OpCode::MATH_FROUND:
             LowerDoubleRounding(gate);
             break;
         default:
@@ -283,20 +282,28 @@ void TypedNativeInlineLowering::LowerAbs(GateRef gate)
 GateRef TypedNativeInlineLowering::BuildRounding(GateRef gate, GateRef value, OpCode op)
 {
     if (op == OpCode::MATH_ROUND || op == OpCode::MATH_ROUND_DOUBLE) {
-        const double shift = 0.5;
-        GateRef rounded = BuildRounding(gate, builder_.DoubleAdd(value, builder_.Double(shift)), OpCode::FLOOR);
-        GateRef signMask = builder_.Int64And(builder_.CastDoubleToInt64(value), builder_.Int64(1ULL << 63U));
-        // copy sign if value is negative
-        GateRef res = builder_.Int64Or(builder_.CastDoubleToInt64(rounded), signMask);
-        return builder_.CastInt64ToFloat64(res);
-    } else if (op == OpCode::MATH_FROUND || op == OpCode::MATH_FROUND_DOUBLE) {
+        const double diff = 0.5;
+        GateRef rounded = BuildRounding(gate, value, OpCode::FLOOR);
+        Label sub(&builder_);
+        Label ret(&builder_);
+        DEFVALUE(result, (&builder_), VariableType::FLOAT64(), rounded);
+        BRANCH_CIR(builder_.DoubleGreaterThan(builder_.DoubleSub(rounded, value), builder_.Double(diff)), &sub, &exit);
+        builder_.Bind(&sub);
+        {
+            result = builder_.DoubleSub(builder_.Double(1U));
+            builder_.Branch(&exit);
+        }
+        builder_.Bind(&exit);
+        GateRef res = *result;
+        return res;
+    } else if (op == OpCode::MATH_FROUND) {
         return builder_.ExtFloat32ToDouble(builder_.TruncDoubleToFloat32(value));
-    } else if (op == OpCode::FLOOR) {
+    } else if (op == OpCode::CEIL) {
         if (builder_.GetCompilationConfig()->IsAArch64() && !isLiteCG_) {
-            return builder_.Floor(value);
+            return builder_.Ceil(value);
         }
         GateRef glue = acc_.GetGlueFromArgList();
-        return builder_.CallNGCRuntime(glue, RTSTUB_ID(FloatFloor), Gate::InvalidGateRef, {value}, gate);
+        return builder_.CallNGCRuntime(glue, RTSTUB_ID(FloatCeil), Gate::InvalidGateRef, {value}, gate);
     } else {
         UNREACHABLE();
     }
@@ -332,9 +339,6 @@ void TypedNativeInlineLowering::LowerTaggedRounding(GateRef gate)
 
 void TypedNativeInlineLowering::LowerDoubleRounding(GateRef gate)
 {
-    if (builder_.GetCompilationConfig()->IsAArch64() && !isLiteCG_) {
-        return;
-    }
     Environment env(gate, circuit_, &builder_);
     GateRef value = acc_.GetValueIn(gate, 0);
     GateRef res = BuildRounding(gate, value, acc_.GetOpCode(gate));
