@@ -203,6 +203,7 @@ using AsyncGeneratorObject = builtins::BuiltinsAsyncGenerator;
 
 void Builtins::Initialize(const JSHandle<GlobalEnv> &env, JSThread *thread, bool lazyInit, bool isRealm)
 {
+    thread->CheckSafepointIfSuspended();
     thread_ = thread;
     vm_ = thread->GetEcmaVM();
     factory_ = vm_->GetFactory();
@@ -246,6 +247,7 @@ void Builtins::Initialize(const JSHandle<GlobalEnv> &env, JSThread *thread, bool
     // initialize Function, forbidden change order
     InitializeFunction(env, emptyFuncClass);
 
+    thread->CheckSafepointIfSuspended();
     JSHandle<JSHClass> asyncAwaitStatusFuncClass =
         factory_->CreateFunctionClass(FunctionKind::NORMAL_FUNCTION, JSAsyncAwaitStatusFunction::SIZE,
                                       JSType::JS_ASYNC_AWAIT_STATUS_FUNCTION, env->GetFunctionPrototype());
@@ -286,6 +288,7 @@ void Builtins::Initialize(const JSHandle<GlobalEnv> &env, JSThread *thread, bool
                                                   JSType::JS_FUNCTION, env->GetFunctionPrototype());
     env->SetFunctionClassWithoutName(thread_, functionClass);
 
+    thread->CheckSafepointIfSuspended();
     functionClass = factory_->CreateBoundFunctionClass();
     env->SetBoundFunctionClass(thread_, functionClass);
     auto runtimeGlobalEnv = Runtime::GetInstance()->GetGlobalEnv();
@@ -307,6 +310,7 @@ void Builtins::Initialize(const JSHandle<GlobalEnv> &env, JSThread *thread, bool
         InitializeBigIntWithRealm(env);
     }
 
+    thread->CheckSafepointIfSuspended();
     InitializeArray(env, objFuncPrototypeVal);
     if (lazyInit) {
         LazyInitializeDate(env);
@@ -333,6 +337,7 @@ void Builtins::Initialize(const JSHandle<GlobalEnv> &env, JSThread *thread, bool
         InitializeDataView(env, objFuncPrototypeVal);
         InitializeSharedArrayBuffer(env, objFuncClass);
     }
+    thread->CheckSafepointIfSuspended();
     InitializeNumber(env, globalObject, primRefObjHClass);
     InitializeObject(env, objFuncPrototype, objectFunction);
     InitializeBoolean(env, primRefObjHClass);
@@ -358,6 +363,7 @@ void Builtins::Initialize(const JSHandle<GlobalEnv> &env, JSThread *thread, bool
     InitializeAsyncGeneratorFunction(env, objFuncClass);
     InitializePromise(env, objFuncClass);
     InitializePromiseJob(env);
+    thread->CheckSafepointIfSuspended();
 #ifdef ARK_SUPPORT_INTL
     InitializeIntl(env, objFuncPrototypeVal);
     if (lazyInit) {
@@ -383,6 +389,7 @@ void Builtins::Initialize(const JSHandle<GlobalEnv> &env, JSThread *thread, bool
         InitializeSegments(env);
         InitializeSegmenter(env);
     }
+    thread->CheckSafepointIfSuspended();
 #endif
     InitializeModuleNamespace(env, objFuncClass);
     InitializeCjsModule(env);
@@ -406,6 +413,7 @@ void Builtins::Initialize(const JSHandle<GlobalEnv> &env, JSThread *thread, bool
     env->SetAsyncFunctionClass(thread_, asyncFuncClass);
     thread_->ResetGuardians();
 
+    thread->CheckSafepointIfSuspended();
     if (vm_->GetJSOptions().IsEnableLoweringBuiltin()) {
         if (!lazyInit) {
             thread_->InitializeBuiltinObject();

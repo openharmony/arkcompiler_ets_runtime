@@ -231,6 +231,7 @@ JSHandle<EcmaString> LocaleHelper::ToLanguageTag(JSThread *thread, const icu::Lo
         specialCount++;
         specialBeginning++;
     }
+    thread->CheckSafepointIfSuspended();
     if (findBeginning != std::string::npos) {
         // It begin with "-u-xx" or with more elements.
         tempRes = result.substr(0, findBeginning + INTL_INDEX_THREE + specialCount);
