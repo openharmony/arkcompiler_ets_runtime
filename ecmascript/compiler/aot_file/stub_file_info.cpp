@@ -158,7 +158,9 @@ bool StubFileInfo::Load()
         }
     }
     LOG_COMPILER(INFO) << "loaded stub file successfully";
-    PageProtect(stubsMem_.addr_, stubsMem_.size_, PAGE_PROT_EXEC_READ);
+    if (!PageProtect(stubsMem_.addr_, stubsMem_.size_, PAGE_PROT_EXEC_READ)) {
+        return false;
+    }
     return true;
 }
 
