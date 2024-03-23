@@ -21,6 +21,7 @@
 
 #include "ecmascript/ecma_string_table.h"
 #include "ecmascript/element_accessor-inl.h"
+#include "ecmascript/interpreter/fast_runtime_stub-inl.h"
 #include "ecmascript/js_api/js_api_arraylist.h"
 #include "ecmascript/js_api/js_api_deque.h"
 #include "ecmascript/js_api/js_api_linked_list.h"
@@ -942,6 +943,28 @@ bool ObjectFastOperator::GetNumFromString(const char *str, int len, int *index, 
     *num = value;
     *index = indexStr;
     return true;
+}
+
+JSTaggedValue ObjectFastOperator::FastGetPropertyByPorpsIndex(JSThread *thread,
+                                                              JSTaggedValue receiver, uint32_t index)
+{
+    JSTaggedValue value = JSTaggedValue::Hole();
+    JSObject *obj = JSObject::Cast(receiver);
+    TaggedArray *properties = TaggedArray::Cast(obj->GetProperties().GetTaggedObject());
+    if (!properties->IsDictionaryMode()) {
+        JSHClass *jsHclass = obj->GetJSHClass();
+        LayoutInfo *layoutInfo = LayoutInfo::Cast(jsHclass->GetLayout().GetTaggedObject());
+        PropertyAttributes attr = layoutInfo->GetAttr(index);
+        value = obj->GetProperty(jsHclass, attr);
+    } else {
+        NameDictionary *dict = NameDictionary::Cast(properties);
+        value = dict->GetValue(index);
+    }
+    if (UNLIKELY(value.IsAccessor())) {
+        return FastRuntimeStub::CallGetter(thread, JSTaggedValue(obj), JSTaggedValue(obj), value);
+    }
+    ASSERT(!value.IsAccessor());
+    return value;
 }
 }
 #endif  // ECMASCRIPT_OBJECT_FAST_OPERATOR_INL_H

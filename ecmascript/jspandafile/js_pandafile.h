@@ -290,6 +290,8 @@ public:
 
     bool CheckAndGetRecordInfo(const CString &recordName, JSRecordInfo &recordInfo) const;
 
+    const JSRecordInfo &GetRecordInfo(const CString &recordName);
+
     CString GetJsonStringId(const JSRecordInfo &jsRecordInfo) const;
 
     bool PUBLIC_API IsModule(const JSRecordInfo &jsRecordInfo) const

@@ -30,6 +30,7 @@
 #include "ecmascript/module/js_module_namespace.h"
 #include "ecmascript/module/module_data_extractor.h"
 #include "ecmascript/module/module_path_helper.h"
+#include "ecmascript/object_fast_operator-inl.h"
 #include "ecmascript/platform/file.h"
 #include "ecmascript/tagged_dictionary.h"
 
@@ -1415,6 +1416,15 @@ JSTaggedValue SourceTextModule::GetModuleValue(JSThread *thread, JSTaggedValue k
     }
 
     return JSTaggedValue::Hole();
+}
+
+JSTaggedValue SourceTextModule::GetValueFromExportObject(JSThread *thread, JSHandle<JSTaggedValue> &exportObject,
+    int32_t index)
+{
+    if (index == SourceTextModule::UNDEFINED_INDEX) {
+        return exportObject.GetTaggedValue();
+    }
+    return ObjectFastOperator::FastGetPropertyByPorpsIndex(thread, exportObject.GetTaggedValue(), index);
 }
 
 JSTaggedValue SourceTextModule::FindByExport(const JSTaggedValue &exportEntriesTv, const JSTaggedValue &key,

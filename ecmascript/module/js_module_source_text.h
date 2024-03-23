@@ -159,6 +159,16 @@ public:
                moduleType == ModuleTypes::INTERNAL_MODULE;
     }
 
+    inline static bool IsCjsModule(ModuleTypes moduleType)
+    {
+        return moduleType == ModuleTypes::CJS_MODULE;
+    }
+
+    inline static bool IsJsonModule(ModuleTypes moduleType)
+    {
+        return moduleType == ModuleTypes::JSON_MODULE;
+    }
+
     inline static bool IsModuleInSharedHeap(JSHandle<SourceTextModule> currentModule)
     {
         return currentModule->GetSharedType() > SharedTypes::UNSENDABLE_MODULE;
@@ -237,6 +247,8 @@ public:
 
     JSTaggedValue GetNativeModuleValue(JSThread *thread, JSHandle<ResolvedBinding> &binding);
     JSTaggedValue GetNativeModuleValue(JSThread *thread, JSHandle<ResolvedIndexBinding> &binding);
+    static JSTaggedValue GetValueFromExportObject(JSThread *thread, JSHandle<JSTaggedValue> &exportObject,
+        int32_t index);
 
     static JSHandle<JSTaggedValue> ResolveIndirectExport(JSThread *thread, const JSHandle<JSTaggedValue> &exportEntry,
                                                          const JSHandle<JSTaggedValue> &exportName,
