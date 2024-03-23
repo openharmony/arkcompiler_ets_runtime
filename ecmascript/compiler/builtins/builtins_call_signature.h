@@ -67,6 +67,7 @@ namespace panda::ecmascript::kungfu {
     V(ArrayListForEach)                             \
     V(ArrayListReplaceAllElements)                  \
     V(FunctionPrototypeApply)                       \
+    V(ArrayShift)                                   \
     V(ArrayConcat)                                  \
     V(ArrayFilter)                                  \
     V(ArrayFind)                                    \

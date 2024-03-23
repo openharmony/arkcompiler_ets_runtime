@@ -26,6 +26,123 @@
 #include "ecmascript/base/array_helper.h"
 
 namespace panda::ecmascript::kungfu {
+void BuiltinsArrayStubBuilder::Shift(GateRef glue, GateRef thisValue,
+    [[maybe_unused]] GateRef numArgs, Variable *result, Label *exit, Label *slowPath)
+{
+    auto env = GetEnvironment();
+    Label isHeapObject(env);
+    Label stableJSArray(env);
+    Label isDefaultConstructor(env);
+    BRANCH(TaggedIsHeapObject(thisValue), &isHeapObject, slowPath);
+    Bind(&isHeapObject);
+    BRANCH(HasConstructor(thisValue), slowPath, &isDefaultConstructor);
+    Bind(&isDefaultConstructor);
+    GateRef isThisEcmaObject = IsEcmaObject(thisValue);
+    GateRef isThisStableJSArray = IsStableJSArray(glue, thisValue);
+    BRANCH(BoolAnd(isThisEcmaObject, isThisStableJSArray), &stableJSArray, slowPath);
+    Bind(&stableJSArray);
+    {
+        Label isLengthWritable(env);
+        BRANCH(IsArrayLengthWritable(glue, thisValue), &isLengthWritable, slowPath);
+        Bind(&isLengthWritable);
+        {
+            GateRef thisLen = ZExtInt32ToInt64(GetArrayLength(thisValue));
+            Label lengthNotZero(env);
+            BRANCH(Int64Equal(thisLen, Int64(0)), exit, &lengthNotZero);
+            Bind(&lengthNotZero);
+            {
+                Label isJsCOWArray(env);
+                Label getElements(env);
+                BRANCH(IsJsCOWArray(thisValue), &isJsCOWArray, &getElements);
+                Bind(&isJsCOWArray);
+                {
+                    CallRuntime(glue, RTSTUB_ID(CheckAndCopyArray), { thisValue });
+                    Jump(&getElements);
+                }
+                Bind(&getElements);
+                {
+                    GateRef elements = GetElementsArray(thisValue);
+                    GateRef capacity = ZExtInt32ToInt64(GetLengthOfTaggedArray(elements));
+                    GateRef index = Int64Sub(thisLen, Int64(1));
+                    DEFVARIABLE(element, VariableType::JS_ANY(), Hole());
+                    element = GetTaggedValueWithElementsKind(thisValue, Int64(0));
+                    Label hasException0(env);
+                    Label taggedHole(env);
+                    Label copyArray(env);
+                    BRANCH(TaggedIsHole(*element), &taggedHole, &copyArray);
+                    Bind(&taggedHole);
+                    {
+                        element = FastGetPropertyByIndex(glue, thisValue, Int32(0), ProfileOperation());
+                        BRANCH(HasPendingException(glue), &hasException0, &copyArray);
+                        Bind(&hasException0);
+                        {
+                            result->WriteVariable(Exception());
+                            Jump(exit);
+                        }
+                    }
+                    Bind(&copyArray);
+                    {
+                        DEFVARIABLE(fromKey, VariableType::INT64(), Int64(1));
+                        DEFVARIABLE(toKey, VariableType::INT64(), Int64Sub(*fromKey, Int64(1)));
+                        Label loopHead(env);
+                        Label loopNext(env);
+                        Label loopEnd(env);
+                        Label loopExit(env);
+                        Jump(&loopHead);
+                        LoopBegin(&loopHead);
+                        {
+                            BRANCH(Int64LessThan(*fromKey, thisLen), &loopNext, &loopExit);
+                            Bind(&loopNext);
+                            {
+                                GateRef ele = GetTaggedValueWithElementsKind(thisValue, *fromKey);
+                                SetValueWithElementsKind(glue, thisValue, ele, *toKey, Boolean(false),
+                                    Int32(static_cast<uint32_t>(ElementsKind::NONE)));
+                                Jump(&loopEnd);
+                            }
+                        }
+                        Bind(&loopEnd);
+                        fromKey = Int64Add(*fromKey, Int64(1));
+                        toKey = Int64Add(*toKey, Int64(1));
+                        LoopEnd(&loopHead);
+                        Bind(&loopExit);
+                        {
+                            Label noTrim(env);
+                            Label needTrim(env);
+                            Label setNewLen(env);
+                            GateRef unused = Int64Sub(capacity, index);
+                            BRANCH(Int64GreaterThan(unused, Int64(TaggedArray::MAX_END_UNUSED)), &needTrim, &noTrim);
+                            Bind(&needTrim);
+                            {
+                                CallNGCRuntime(glue, RTSTUB_ID(ArrayTrim), {glue, elements, index});
+                                Jump(&setNewLen);
+                            }
+                            Bind(&noTrim);
+                            {
+                                SetValueWithElementsKind(glue, thisValue, Hole(), index, Boolean(false),
+                                    Int32(static_cast<uint32_t>(ElementsKind::NONE)));
+                                Jump(&setNewLen);
+                            }
+                            Bind(&setNewLen);
+                            {
+                                GateRef lengthOffset = IntPtr(JSArray::LENGTH_OFFSET);
+                                Store(VariableType::INT32(), glue, thisValue, lengthOffset, index);
+
+                                Label isNotHole(env);
+                                BRANCH(TaggedIsHole(*element), exit, &isNotHole);
+                                Bind(&isNotHole);
+                                {
+                                    result->WriteVariable(*element);
+                                    Jump(exit);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 void BuiltinsArrayStubBuilder::Concat(GateRef glue, GateRef thisValue, GateRef numArgs,
     Variable *result, Label *exit, Label *slowPath)
 {

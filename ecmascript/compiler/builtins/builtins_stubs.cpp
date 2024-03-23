@@ -323,6 +323,7 @@ DECLARE_BUILTINS(Array##Method)                                                 
 }
 
 #define BUILTINS_WITH_ARRAY_STUB_BUILDER(V) \
+    V(Shift,            JS_ANY)             \
     V(Concat,           JS_ANY)             \
     V(Filter,           JS_POINTER)         \
     V(Find,             JS_ANY)             \
