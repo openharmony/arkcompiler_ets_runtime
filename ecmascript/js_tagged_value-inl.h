@@ -1543,6 +1543,12 @@ inline bool JSTaggedValue::IsJSShared() const
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSShared();
 }
 
+inline bool JSTaggedValue::IsSharedType() const
+{
+    // number, boolean, string, bigint, shared object, undefined, null
+    return IsNumber() || IsJSShared() || IsBoolean() || IsUndefinedOrNull();
+}
+
 inline double JSTaggedValue::ExtractNumber() const
 {
     ASSERT(IsNumber());
