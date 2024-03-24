@@ -74,6 +74,7 @@ print(Math.round(-2.5)); //: -2
 print(Math.round(-2.7)); //: -3
 print(Math.round(-1.9e80)); //: -1.9e+80
 print(Math.round(1.9e-80)); //: 0
+print(Math.round(0.5 - Number.EPSILON / 4)); //: 0
 
 // Check with special float params
 print(Math.round(Infinity)); //: Infinity

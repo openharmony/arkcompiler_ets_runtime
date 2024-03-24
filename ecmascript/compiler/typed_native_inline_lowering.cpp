@@ -428,22 +428,37 @@ GateRef TypedNativeInlineLowering::BuildRounding(GateRef gate, GateRef value, Op
         Label entry(&builder_);
         builder_.SubCfgEntry(&entry);
         const double diff = 0.5;
-        GateRef rounded;
-        if (builder_.GetCompilationConfig()->IsAArch64()) {
-            rounded = builder_.DoubleCeil(value);
-        } else {
-            GateRef glue = acc_.GetGlueFromArgList();
-            rounded = builder_.CallNGCRuntime(glue, RTSTUB_ID(FloatCeil), Gate::InvalidGateRef, {value}, gate);
-        }
-
-        Label sub(&builder_);
+        GateRef diffValue = builder_.Double(diff);
+        const double zero = 0.0;
+        Label subOne(&builder_);
         Label exit(&builder_);
-        DEFVALUE(result, (&builder_), VariableType::FLOAT64(), rounded);
-        GateRef compare = builder_.DoubleGreaterThan(builder_.DoubleSub(rounded, value), builder_.Double(diff));
-        BRANCH_CIR(compare, &sub, &exit);
-        builder_.Bind(&sub);
+        Label retCeil(&builder_);
+        Label nonZero(&builder_);
+        DEFVALUE(result, (&builder_), VariableType::FLOAT64(), builder_.Double(zero));
+        // 0 <= x < 0.5, return 0
+        GateRef returnZero = builder_.BoolAnd(builder_.DoubleLessThan(value, diffValue),
+            builder_.DoubleGreaterThan(value, builder_.Double(zero)));
+        BRANCH_CIR(returnZero, &exit, &nonZero);
+        builder_.Bind(&nonZero);
         {
-            result = builder_.DoubleSub(rounded, builder_.Double(1U));
+            GateRef rounded;
+            if (builder_.GetCompilationConfig()->IsAArch64() && !isLiteCG_) {
+                rounded = builder_.DoubleCeil(value);
+            } else {
+                GateRef glue = acc_.GetGlueFromArgList();
+                rounded = builder_.CallNGCRuntime(glue, RTSTUB_ID(FloatCeil), Gate::InvalidGateRef, {value}, gate);
+            }
+            // if ceil(x) - x > 0.5, return ceil(x) - 1
+            // else return ceil(x)
+            BRANCH_CIR(builder_.DoubleGreaterThan(builder_.DoubleSub(rounded, value), diffValue),
+                &subOne, &retCeil);
+            builder_.Bind(&subOne);
+            {
+                result = builder_.DoubleSub(rounded, builder_.Double(1U));
+                builder_.Jump(&exit);
+            }
+            builder_.Bind(&retCeil);
+            result = rounded;
             builder_.Jump(&exit);
         }
         builder_.Bind(&exit);
