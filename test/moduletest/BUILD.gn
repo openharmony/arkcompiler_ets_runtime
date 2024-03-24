@@ -168,9 +168,12 @@ group("ark_js_moduletest") {
     "regresssuper",
     "objectfreeze",
     "sharedcheck",
+    "sharedarray",
     "definesendableclass",
     "sendablecontext",
     "sendableclassuseimport",
+    "sharedset",
+    "sharedmap",
     "sharedic",
   ]
 
@@ -348,9 +351,12 @@ group("ark_asm_test") {
     "deregistermodule",
     "getpropertybyic",
     "sharedcheck",
+    "sharedarray",
     "definesendableclass",
     "sendablecontext",
     "sendableclassuseimport",
+    "sharedset",
+    "sharedmap",
     "sharedic",
   ]
 
@@ -506,10 +512,13 @@ group("ark_asm_single_step_test") {
     "getpropertybyic",
     "regressarraybuffer",
     "sharedcheck",
+    "sharedarray",
     "definesendableclass",
     "sendablecontext",
     "sendableclassuseimport",
     "sharedic",
+    "sharedset",
+    "sharedmap",
   ]
 
   deps = []
