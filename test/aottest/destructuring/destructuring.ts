@@ -13,38 +13,46 @@
  * limitations under the License.
  */
 
-declare function assert_equal(a: Object, b: Object):void;
+declare function print(arg:any):string;
 function foo({x = 11, y = 22})
 {
     return x + y;
 }
 
-assert_equal(foo({}), 33);
+print(foo({}));
 
 // normal
 let [] = [];
 let [c, d] = [1, 2];
 let [e, , ,...f] = [1, 2, 3, 4, 5, 6];
-assert_equal(c, 1); // 1
-assert_equal(d, 2); // 2
-assert_equal(e, 1); // 1
-assert_equal(f, [4,5,6]); // 4,5,6
+print(c); // 1
+print(d); // 2
+print(e); // 1
+print(f); // 4,5,6
 
 // destructuring more elements
 const foo1 = ["one", "two"];
 const [red, yellow, green, blue] = foo1;
 
-assert_equal(red, "one"); // "one"
-assert_equal(yellow, "two"); // "two"
-assert_equal(green, undefined); // undefined
-assert_equal(blue, undefined); //undefined
+print(red); // "one"
+print(yellow); // "two"
+print(green); // undefined
+print(blue); //undefined
 
 // swap
 let a = 1;
 let b = 3;
 [a, b] = [b, a];
-assert_equal(a, 3); // 3
-assert_equal(b, 1); // 1
+print(a); // 3
+print(b); // 1
 const arr = [1, 2, 3];
 [arr[2], arr[1]] = [arr[1], arr[2]];
-assert_equal(arr, [1, 3, 2]); // [1, 3, 2]
+print(arr); // [1, 3, 2]
+
+let x, y;
+function fn() {
+  for ([...[x, y]] of [[null]]) {
+    print(x);
+  }
+}
+fn();

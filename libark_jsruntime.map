@@ -122,6 +122,7 @@
       panda::ecmascript::EcmaString::StringsAreEqual*;
       panda::ecmascript::EcmaString::ToElementIndex*;
       panda::ecmascript::EcmaString::ToTypedArrayIndex*;
+      panda::ecmascript::EcmaString::Flatten*;
       panda::ecmascript::EcmaStringAccessor::EcmaStringAccessor*;
       panda::ecmascript::EcmaStringAccessor::ToStdString*;
       panda::ecmascript::EcmaVM::GetGlobalEnv*;
@@ -171,6 +172,8 @@
       panda::ecmascript::JSProxy::IsArray*;
       panda::ecmascript::JSTaggedValue::IsJSCOWArray*;
       panda::ecmascript::JSTaggedValue::IsInSharedHeap*;
+      panda::ecmascript::Heap::AddGCListener*;
+      panda::ecmascript::Heap::RemoveGCListener*;
       panda::ecmascript::JSTaggedValue::SetProperty*;
       panda::ecmascript::JSTaggedValue::ToString*;
       panda::ecmascript::JSTypedArray::FastSetPropertyByIndex*;
@@ -330,6 +333,7 @@
       panda::ecmascript::kungfu::PGOTypeRecorder::GetElementsLength*;
       panda::ecmascript::kungfu::PGOTypeRecorder::GetPGOType*;
       panda::ecmascript::kungfu::PGOTypeRecorder::GetTransitionElementsKindForUser*;
+      panda::ecmascript::kungfu::PGOTypeRecorder::GetTransitionElementsKindsForUser*;
       panda::ecmascript::kungfu::PGOTypeRecorder::PGOTypeRecorder*;
       panda::ecmascript::kungfu::ReviseData::Resolve*;
       panda::ecmascript::kungfu::SnapshotConstantPoolData::Record*;

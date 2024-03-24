@@ -25,15 +25,14 @@
 #include "ecmascript/platform/file.h"
 
 namespace panda::ecmascript::kungfu {
-JitCompiler *JitCompiler::GetInstance(EcmaVM *vm)
+JitCompiler *JitCompiler::GetInstance(JSRuntimeOptions *options)
 {
-    static JitCompiler instance(vm);
+    static JitCompiler instance(options);
     return &instance;
 }
 
-JitCompilationOptions::JitCompilationOptions(EcmaVM *vm)
+JitCompilationOptions::JitCompilationOptions(JSRuntimeOptions runtimeOptions)
 {
-    JSRuntimeOptions &runtimeOptions = vm->GetJSOptions();
 #if defined(PANDA_TARGET_AMD64)
     triple_ = TARGET_X64;
 #elif defined(PANDA_TARGET_ARM64)
@@ -57,7 +56,7 @@ JitCompilationOptions::JitCompilationOptions(EcmaVM *vm)
     isEnableOptInlining_ = runtimeOptions.IsEnableOptInlining();
     isEnableOptString_ = runtimeOptions.IsEnableOptString();
     isEnableTypeInfer_ =
-        isEnableTypeLowering_ || vm->GetJSThread()->GetCurrentEcmaContext()->GetTSManager()->AssertTypes();
+        isEnableTypeLowering_ || runtimeOptions.AssertTypes();
     isEnableOptPGOType_ = runtimeOptions.IsEnableOptPGOType();
     isEnableOptTrackField_ = runtimeOptions.IsEnableOptTrackField();
     isEnableOptLoopPeeling_ = runtimeOptions.IsEnableOptLoopPeeling();
@@ -70,13 +69,13 @@ JitCompilationOptions::JitCompilationOptions(EcmaVM *vm)
     isEnableLoweringBuiltin_ = runtimeOptions.IsEnableLoweringBuiltin();
 }
 
-void JitCompiler::Init(EcmaVM *vm)
+void JitCompiler::Init(JSRuntimeOptions runtimeOptions)
 {
     BytecodeStubCSigns::Initialize();
     CommonStubCSigns::Initialize();
     RuntimeStubCSigns::Initialize();
 
-    JitCompilationOptions jitOptions(vm);
+    JitCompilationOptions jitOptions(runtimeOptions);
     jitOptions_ = jitOptions;
     PassOptions::Builder optionsBuilder;
     passOptions_ =
@@ -148,13 +147,10 @@ bool JitCompilerTask::Finalize(JitTask *jitTask)
     return true;
 }
 
-void InitJitCompiler(EcmaVM *vm)
+void InitJitCompiler(JSRuntimeOptions options)
 {
-    if (vm == nullptr) {
-        return;
-    }
-    JitCompiler *jitCompiler = JitCompiler::GetInstance(vm);
-    jitCompiler->Init(vm);
+    JitCompiler *jitCompiler = JitCompiler::GetInstance(&options);
+    jitCompiler->Init(options);
 }
 
 void *CreateJitCompilerTask(JitTask *jitTask)

@@ -16,10 +16,12 @@
 #include "ecmascript/intl/locale_helper.h"
 
 #include "ecmascript/base/string_helper.h"
+#include "ecmascript/checkpoint/thread_state_transition.h"
 #include "ecmascript/ecma_macros.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/object_factory.h"
+#include "ecmascript/checkpoint/thread_state_transition.h"
 
 #if defined(__clang__)
 #pragma clang diagnostic push
@@ -186,7 +188,12 @@ JSHandle<EcmaString> LocaleHelper::CanonicalizeUnicodeLocaleId(JSThread *thread,
     std::string localeCStr = ConvertToStdString(locale);
     std::transform(localeCStr.begin(), localeCStr.end(), localeCStr.begin(), AsciiAlphaToLower);
     UErrorCode status = U_ZERO_ERROR;
-    icu::Locale formalLocale = icu::Locale::forLanguageTag(localeCStr.c_str(), status);
+    icu::Locale formalLocale;
+    {
+        // Third party libs call can be in Native state
+        ThreadNativeScope nativeScope(thread);
+        formalLocale = icu::Locale::forLanguageTag(localeCStr.c_str(), status);
+    }
     if ((U_FAILURE(status) != 0) || (formalLocale.isBogus() != 0)) {
         THROW_RANGE_ERROR_AND_RETURN(thread, "invalid locale", factory->GetEmptyString());
     }
@@ -224,6 +231,7 @@ JSHandle<EcmaString> LocaleHelper::ToLanguageTag(JSThread *thread, const icu::Lo
         specialCount++;
         specialBeginning++;
     }
+    thread->CheckSafepointIfSuspended();
     if (findBeginning != std::string::npos) {
         // It begin with "-u-xx" or with more elements.
         tempRes = result.substr(0, findBeginning + INTL_INDEX_THREE + specialCount);
@@ -406,9 +414,15 @@ std::vector<std::string> LocaleHelper::GetAvailableLocales(JSThread *thread, con
     auto globalConst = thread->GlobalConstants();
     JSHandle<EcmaString> specialValue = JSHandle<EcmaString>::Cast(globalConst->GetHandledEnUsPosixString());
     std::string specialString = ConvertToStdString(specialValue);
-    UEnumeration *uenum = uloc_openAvailableByType(ULOC_AVAILABLE_WITH_LEGACY_ALIASES, &status);
+    UEnumeration *uenum = nullptr;
+    {
+        ThreadNativeScope nativeScope(thread);
+        uenum = uloc_openAvailableByType(ULOC_AVAILABLE_WITH_LEGACY_ALIASES, &status);
+    }
     std::vector<std::string> allLocales;
     const char *loc = nullptr;
+    // Third party libs computing can be in Native state
+    ThreadNativeScope nativeScope(thread);
     for (loc = uenum_next(uenum, nullptr, &status); loc != nullptr; loc = uenum_next(uenum, nullptr, &status)) {
         ASSERT(U_SUCCESS(status));
         std::string locStr(loc);

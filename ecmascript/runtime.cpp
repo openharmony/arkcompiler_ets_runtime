@@ -18,6 +18,7 @@
 
 #include "ecmascript/compiler/aot_file/an_file_data_manager.h"
 #include "ecmascript/ecma_vm.h"
+#include "ecmascript/jit/jit.h"
 #include "ecmascript/ecma_string_table.h"
 #include "ecmascript/log_wrapper.h"
 #include "ecmascript/mem/mem_map_allocator.h"
@@ -49,6 +50,8 @@ void Runtime::CreateIfFirstVm(const JSRuntimeOptions &options)
         MemMapAllocator::GetInstance()->Initialize(ecmascript::DEFAULT_REGION_SIZE);
         PGOProfilerManager::GetInstance()->Initialize(options.GetPGOProfilerPath(),
                                                       options.GetPGOHotnessThreshold());
+        bool isEnableJit = options.IsEnableJIT() && options.GetEnableAsmInterpreter();
+        Jit::GetInstance()->SetEnableOrDisable(options, isEnableJit);
         ASSERT(instance_ == nullptr);
         instance_ = new Runtime();
         firstVmCreated_ = true;

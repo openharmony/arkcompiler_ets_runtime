@@ -20,6 +20,7 @@
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_function.h"
 #include "ecmascript/js_handle.h"
+#include "ecmascript/js_hclass.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/object_factory.h"
@@ -98,6 +99,9 @@ private:
     void InitializeSymbolWithRealm(const JSHandle<GlobalEnv> &realm, const JSHandle<JSHClass> &objFuncInstanceHClass);
 
     void InitializeArray(const JSHandle<GlobalEnv> &env, const JSHandle<JSTaggedValue> &objFuncPrototypeVal) const;
+
+    void InitializeSharedArray(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &sObjIHClass,
+                               JSHandle<JSFunction> &sFuncPrototype) const;
 
     void InitializeTypedArray(const JSHandle<GlobalEnv> &env, JSHandle<JSTaggedValue> objFuncPrototypeVal) const;
     void LazyInitializeTypedArray(const JSHandle<GlobalEnv> &env) const;
@@ -218,10 +222,14 @@ private:
     void InitializeForinIterator(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &iteratorFuncClass) const;
 
     void InitializeMapIterator(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &iteratorFuncClass) const;
+    void InitializeSMapIterator(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &iteratorFuncClass) const;
 
     void InitializeSetIterator(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &iteratorFuncClass) const;
+    void InitializeSSetIterator(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &iteratorFuncClass) const;
 
-    void InitializeArrayIterator(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &iteratorFuncClass) const;
+    void InitializeArrayIterator(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &iteratorFuncClass,
+                                 const JSHandle<JSHClass> &iteratorPrototypeClass) const;
+    void InitializeSArrayIterator(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &iteratorFuncClass) const;
 
     void InitializeArrayBuffer(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &objFuncClass) const;
     void LazyInitializeArrayBuffer(const JSHandle<GlobalEnv> &env) const;
@@ -345,20 +353,31 @@ private:
                            EcmaEntrypoint func, int length) const;
     void SetNonConstantObject(const JSHandle<JSObject> &obj, std::string_view key,
                               JSHandle<JSTaggedValue> &value) const;
+    void RegisterSendableContainers(const JSHandle<GlobalEnv> &env) const;
 
     // For SharedObject/SharedFunction
     void InitializeSObjectAndSFunction(const JSHandle<GlobalEnv> &env) const;
     void CopySObjectAndSFunction(const JSHandle<GlobalEnv> &env, const JSTaggedValue &srcEnv) const;
     void InitializeSObject(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &sObjIHClass,
-                           const JSHandle<JSObject> &sObjFuncPrototype,
+                           const JSHandle<JSObject> &sObjPrototype,
                            const JSHandle<JSFunction> &sFuncPrototype) const;
     void InitializeSFunction(const JSHandle<GlobalEnv> &env,
                              const JSHandle<JSFunction> &sFuncPrototype) const;
+    void InitializeSSet(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &sObjPrototype,
+                        const JSHandle<JSFunction> &sFuncPrototype) const;
+    void InitializeSMap(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &sObjPrototype,
+                        const JSHandle<JSFunction> &sFuncPrototype) const;
 
     JSHandle<JSHClass> CreateSObjectFunctionHClass(const JSHandle<JSFunction> &sFuncPrototype) const;
     JSHandle<JSHClass> CreateSObjectPrototypeHClass() const;
     JSHandle<JSHClass> CreateSFunctionHClass(const JSHandle<JSFunction> &sFuncPrototype) const;
-    JSHandle<JSHClass> CreateSFunctionPrototypeHClass(const JSHandle<JSTaggedValue> &sObjFuncPrototypeVal) const;
+    JSHandle<JSHClass> CreateSFunctionPrototypeHClass(const JSHandle<JSTaggedValue> &sObjPrototypeVal) const;
+    JSHandle<JSHClass> CreateSSetPrototypeHClass(const JSHandle<JSObject> &sObjPrototype) const;
+    JSHandle<JSHClass> CreateSSetFunctionHClass(const JSHandle<JSFunction> &sFuncPrototype) const;
+    JSHandle<JSHClass> CreateSMapPrototypeHClass(const JSHandle<JSObject> &sObjPrototype) const;
+    JSHandle<JSHClass> CreateSMapFunctionHClass(const JSHandle<JSFunction> &sFuncPrototype) const;
+    JSHandle<JSHClass> CreateSArrayPrototypeHClass(const JSHandle<JSObject> &sObjPrototype) const;
+    JSHandle<JSHClass> CreateSArrayFunctionHClass(const JSHandle<JSFunction> &sFuncPrototype) const;
 
     void InitializeSCtor(const JSHandle<JSHClass> &protoHClass, const JSHandle<JSFunction> &ctor,
                          std::string_view name, int length) const;
@@ -388,6 +407,7 @@ private:
     void SharedStrictModeForbiddenAccessCallerArguments(const JSHandle<GlobalEnv> &env, uint32_t &index,
                                                         const JSHandle<JSObject> &prototype) const;
     JSHandle<JSTaggedValue> CreateArrayUnscopables(JSThread *thread) const;
+    void InitializeSSymbolAttributes(const JSHandle<GlobalEnv> &env);
     friend class builtins::BuiltinsLazyCallback;
 };
 }  // namespace panda::ecmascript

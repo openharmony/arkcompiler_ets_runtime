@@ -67,6 +67,8 @@ namespace panda::ecmascript::kungfu {
     V(ArrayListForEach)                             \
     V(ArrayListReplaceAllElements)                  \
     V(FunctionPrototypeApply)                       \
+    V(ArrayUnshift)                                 \
+    V(ArrayShift)                                   \
     V(ArrayConcat)                                  \
     V(ArrayFilter)                                  \
     V(ArrayFind)                                    \
@@ -84,8 +86,12 @@ namespace panda::ecmascript::kungfu {
     V(ArrayIncludes)                                \
     V(ArrayFrom)                                    \
     V(ArraySplice)                                  \
+    V(ArrayReduceRight)                             \
     V(ArrayCopyWithin)                              \
+    V(ArraySome)                                    \
     V(ArrayEvery)                                   \
+    V(ArrayFindLastIndex)                           \
+    V(ArrayFindLast)                                \
     V(SetClear)                                     \
     V(SetValues)                                    \
     V(SetEntries)                                   \
@@ -101,6 +107,7 @@ namespace panda::ecmascript::kungfu {
     V(MapSet)                                       \
     V(MapDelete)                                    \
     V(MapHas)                                       \
+    V(MapGet)                                       \
     V(NumberParseFloat)                             \
     V(TypedArraySubArray)                           \
     V(TypedArrayGetByteLength)                      \
@@ -147,11 +154,14 @@ namespace panda::ecmascript::kungfu {
     V(MathSin)                                      \
     V(MathSinh)                                     \
     V(MathTan)                                      \
+    V(MathCbrt)                                     \
     V(MathTanh)                                     \
     V(MathLog)                                      \
     V(MathLog2)                                     \
     V(MathLog10)                                    \
     V(MathLog1p)                                    \
+    V(MathExp)                                      \
+    V(MathExpm1)                                    \
     V(MathPow)                                      \
     V(MathAbs)                                      \
     V(TYPED_BUILTINS_INLINE_FIRST = MathAcos)       \
@@ -305,8 +315,14 @@ public:
                 return ConstantIndex::MATH_LOG10_INDEX;
             case BuiltinsStubCSigns::ID::MathLog1p:
                 return ConstantIndex::MATH_LOG1P_INDEX;
+            case BuiltinsStubCSigns::ID::MathExp:
+                return ConstantIndex::MATH_EXP_INDEX;
+            case BuiltinsStubCSigns::ID::MathExpm1:
+                return ConstantIndex::MATH_EXPM1_INDEX;
             case BuiltinsStubCSigns::ID::MathPow:
                 return ConstantIndex::MATH_POW_INDEX;
+            case BuiltinsStubCSigns::ID::MathCbrt:
+                return ConstantIndex::MATH_CBRT_INDEX;
             case BuiltinsStubCSigns::ID::FLOOR:
                 return ConstantIndex::MATH_FLOOR_FUNCTION_INDEX;
             case BuiltinsStubCSigns::ID::SQRT:
@@ -357,7 +373,10 @@ public:
             {"Log2", MathLog2},
             {"Log10", MathLog10},
             {"Log1p", MathLog1p},
+            {"Exp", MathExp},
+            {"Expm1", MathExpm1},
             {"sqrt", SQRT},
+            {"cbrt", MathCbrt},
             {"abs", MathAbs},
             {"pow", MathPow},
             {"floor", FLOOR},

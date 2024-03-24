@@ -49,7 +49,9 @@
 #include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/js_arguments.h"
 #include "ecmascript/js_array.h"
+#include "ecmascript/js_shared_array.h"
 #include "ecmascript/js_array_iterator.h"
+#include "ecmascript/js_shared_array_iterator.h"
 #include "ecmascript/js_arraybuffer.h"
 #include "ecmascript/js_finalization_registry.h"
 #include "ecmascript/js_for_in_iterator.h"
@@ -74,6 +76,10 @@
 #include "ecmascript/module/js_module_source_text.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/runtime.h"
+#include "ecmascript/shared_objects/js_shared_map.h"
+#include "ecmascript/shared_objects/js_shared_map_iterator.h"
+#include "ecmascript/shared_objects/js_shared_set.h"
+#include "ecmascript/shared_objects/js_shared_set_iterator.h"
 #include "ecmascript/subtyping_operator.h"
 #include "ecmascript/tagged_node.h"
 #include "ecmascript/ts_types/ts_type.h"
@@ -272,6 +278,9 @@ void GlobalEnvConstants::InitSharedMiscellanious(JSThread *thread, ObjectFactory
     accessor = factory->NewSInternalAccessor(reinterpret_cast<void *>(JSArray::LengthSetter),
                                              reinterpret_cast<void *>(JSArray::LengthGetter));
     SetConstant(ConstantIndex::ARRAY_LENGTH_ACCESSOR, accessor);
+    accessor = factory->NewSInternalAccessor(reinterpret_cast<void *>(JSSharedArray::LengthSetter),
+                                             reinterpret_cast<void *>(JSSharedArray::LengthGetter));
+    SetConstant(ConstantIndex::SHARED_ARRAY_LENGTH_ACCESSOR, accessor);
     // Specials
     SetConstant(ConstantIndex::UNDEFINED_INDEX, JSTaggedValue::Undefined());
     SetConstant(ConstantIndex::NULL_INDEX, JSTaggedValue::Null());
@@ -296,10 +305,18 @@ void GlobalEnvConstants::InitRootsClasses(ObjectFactory *factory)
                 factory->NewEcmaHClass(hClass, JSRegExpIterator::SIZE, JSType::JS_REG_EXP_ITERATOR));
     SetConstant(ConstantIndex::JS_SET_ITERATOR_CLASS_INDEX,
                 factory->NewEcmaHClass(hClass, JSSetIterator::SIZE, JSType::JS_SET_ITERATOR, 0)); // 0: no inlined props
+    SetConstant(ConstantIndex::JS_SHARED_SET_ITERATOR_CLASS_INDEX,
+                factory->NewEcmaHClass(hClass, JSSharedSetIterator::SIZE,
+                JSType::JS_SHARED_SET_ITERATOR, 0)); // 0: no inlined props
     SetConstant(ConstantIndex::JS_MAP_ITERATOR_CLASS_INDEX,
                 factory->NewEcmaHClass(hClass, JSMapIterator::SIZE, JSType::JS_MAP_ITERATOR, 0)); // 0: no inlined props
+    SetConstant(ConstantIndex::JS_SHARED_MAP_ITERATOR_CLASS_INDEX,
+                factory->NewEcmaHClass(hClass, JSSharedMapIterator::SIZE,
+                JSType::JS_SHARED_MAP_ITERATOR, 0)); // 0: no inlined props
     SetConstant(ConstantIndex::JS_ARRAY_ITERATOR_CLASS_INDEX,
                 factory->NewEcmaHClass(hClass, JSArrayIterator::SIZE, JSType::JS_ARRAY_ITERATOR, 0));
+    SetConstant(ConstantIndex::JS_SHARED_ARRAY_ITERATOR_CLASS_INDEX,
+                factory->NewEcmaHClass(hClass, JSSharedArrayIterator::SIZE, JSType::JS_SHARED_ARRAY_ITERATOR, 0));
     SetConstant(ConstantIndex::JS_API_ARRAYLIST_ITERATOR_CLASS_INDEX,
                 factory->NewEcmaHClass(hClass, JSAPIArrayListIterator::SIZE, JSType::JS_API_ARRAYLIST_ITERATOR));
     SetConstant(ConstantIndex::JS_API_DEQUE_ITERATOR_CLASS_INDEX,

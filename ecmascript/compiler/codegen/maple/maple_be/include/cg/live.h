@@ -94,7 +94,7 @@ protected:
     StackMemPool &stackMp;
 
 private:
-    void RemovePhiLiveInFromSuccNotFromThisBB(BB &curBB, BB &succBB) const;
+    bool RemovePhiLiveInFromSuccNotFromThisBB(BB &curBB, BB &succBB) const;
 };
 
 MAPLE_FUNC_PHASE_DECLARE_BEGIN(CgLiveAnalysis, maplebe::CGFunc)

@@ -38,6 +38,7 @@ public:
     void Add(Variable *result, Label *exit, Label *slowPath);
     void Delete(Variable *result, Label *exit, Label *slowPath);
     void Has(Variable *result, Label *exit, Label *slowPath);
+    void Get(Variable *result, Label *exit, Label *slowPath);
 
 private:
     // check target obj

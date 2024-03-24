@@ -103,6 +103,7 @@
 
 #include "ecmascript/platform/mutex.h"
 #include "ecmascript/platform/log.h"
+#include "ecmascript/jit/jit.h"
 
 namespace panda {
 using ecmascript::AccessorData;
@@ -193,7 +194,6 @@ using PathHelper = ecmascript::base::PathHelper;
 using ModulePathHelper = ecmascript::ModulePathHelper;
 using JsDebuggerManager = ecmascript::tooling::JsDebuggerManager;
 using FrameIterator = ecmascript::FrameIterator;
-using RouteErrorCode = JSNApi::RouteErrorCode;
 
 namespace {
 // NOLINTNEXTLINE(fuchsia-statically-constructed-objects)
@@ -2327,7 +2327,6 @@ JSHandle<JSHClass> CreateInlinedSendableHClass(JSThread *thread,
                                                     ecmascript::JSType::JS_SHARED_FUNCTION, length);
     hclass->SetLayout(thread, layout);
     hclass->SetNumberOfProps(length);
-
     return hclass;
 }
 
@@ -2364,7 +2363,6 @@ JSHandle<JSHClass> CreateDictSendableHClass(JSThread *thread,
     hclass->SetLayout(thread, dict);
     hclass->SetNumberOfProps(0);
     hclass->SetIsDictionaryMode(true);
-
     return hclass;
 }
 
@@ -3182,7 +3180,8 @@ EcmaVM *JSNApi::CreateJSVM(const RuntimeOption &option)
     runtimeOptions.SetEnableAOT(option.GetEnableAOT());
     runtimeOptions.SetEnablePGOProfiler(option.GetEnableProfile());
     runtimeOptions.SetPGOProfilerPath(option.GetProfileDir());
-
+    // jit
+    runtimeOptions.SetEnableJIT(option.GetEnableJIT());
     // Dfx
     runtimeOptions.SetLogLevel(Log::LevelToString(Log::ConvertFromRuntime(option.GetLogLevel())));
     runtimeOptions.SetEnableArkTools(option.GetEnableArkTools());
@@ -3754,20 +3753,21 @@ bool JSNApi::Execute(EcmaVM *vm, const uint8_t *data, int32_t size, const std::s
     return true;
 }
 
-RouteErrorCode JSNApi::ExecuteWithSingletonPatternFlag(EcmaVM *vm, const std::string &bundleName,
+int JSNApi::ExecuteWithSingletonPatternFlag(EcmaVM *vm, const std::string &bundleName,
     const std::string &moduleName, const std::string &ohmurl, bool isSingletonPattern)
 {
-    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, RouteErrorCode::ROUTE_INTERNAL_ERROR);
-    if (!ecmascript::JSPandaFileExecutor::ExecuteAbcFileWithSingletonPatternFlag(thread, bundleName.c_str(),
-        moduleName.c_str(), ohmurl.c_str(), isSingletonPattern)) {
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, ecmascript::JSPandaFileExecutor::ROUTE_INTERNAL_ERROR);
+    ecmascript::ThreadManagedScope scope(thread);
+    int result = ecmascript::JSPandaFileExecutor::ExecuteAbcFileWithSingletonPatternFlag(thread, bundleName.c_str(),
+        moduleName.c_str(), ohmurl.c_str(), isSingletonPattern);
+    if (!result) {
         if (thread->HasPendingException()) {
             thread->GetCurrentEcmaContext()->HandleUncaughtException();
         }
         LOG_ECMA(ERROR) << "Execute with singleton-pattern flag failed with bundle name is'" << bundleName
                         << "' and module name is '" << moduleName << "', entry is'" << ohmurl << "'" << std::endl;
-        return RouteErrorCode::ROUTE_URI_ERROR;
     }
-    return RouteErrorCode::ROUTE_SUCCESS;
+    return result;
 }
 
 // The security interface needs to be modified accordingly.
@@ -3843,6 +3843,7 @@ void JSNApi::PostFork(EcmaVM *vm, const RuntimeOption &option)
                     << ", aot: " << jsOption.GetEnableAOT()
                     << ", bundle name: " <<  option.GetBundleName();
     jsOption.SetEnablePGOProfiler(option.GetEnableProfile());
+    jsOption.SetEnableJIT(option.GetEnableJIT());
     ecmascript::pgo::PGOProfilerManager::GetInstance()->SetBundleName(option.GetBundleName());
     JSRuntimeOptions runtimeOptions;
     runtimeOptions.SetLogLevel(Log::LevelToString(Log::ConvertFromRuntime(option.GetLogLevel())));

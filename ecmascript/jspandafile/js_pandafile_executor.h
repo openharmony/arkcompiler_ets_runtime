@@ -25,6 +25,10 @@
 namespace panda::ecmascript {
 class JSPandaFileExecutor {
 public:
+    static constexpr int ROUTE_SUCCESS = 0;
+    static constexpr int ROUTE_INTERNAL_ERROR = 100001;
+    static constexpr int ROUTE_URI_ERROR = 100002;
+
     static Expected<JSTaggedValue, bool> ExecuteFromAbcFile(JSThread *thread, const CString &filename,
                                                             std::string_view entryPoint, bool needUpdate = false,
                                                             bool executeFromJob = false);
@@ -38,6 +42,11 @@ public:
     static Expected<JSTaggedValue, bool> Execute(JSThread *thread, const JSPandaFile *jsPandaFile,
                                                  std::string_view entryPoint, bool executeFromJob = false);
     static void BindPandaFilesForAot(EcmaVM *vm, JSPandaFile *jsPandaFile);
+    static Expected<JSTaggedValue, bool> ExecuteSpecialModule(JSThread *thread, const CString &recordName,
+                                                              const CString &filename, const JSPandaFile *jsPandaFile,
+                                                              const JSRecordInfo &recordInfo);
+    static Expected<JSTaggedValue, bool> LazyExecuteModule(JSThread *thread, CString &recordName,
+                                                           const CString &filename, bool isMergedAbc);
     // Execute from secure mem
     static Expected<JSTaggedValue, bool> ExecuteFromBufferSecure(JSThread *thread, uint8_t *buffer, size_t size,
                                                                  std::string_view entryPoint,
@@ -47,10 +56,7 @@ public:
                                                                    bool needUpdate = false);
     static Expected<JSTaggedValue, bool> CommonExecuteBuffer(JSThread *thread, const CString &filename,
                                                              const CString &entry, const JSPandaFile *jsPandaFile);
-    static Expected<JSTaggedValue, bool> LazyExecuteModule(
-        JSThread *thread, const CString &recordName, const CString &filename, bool isMergedAbc);
-
-    static Expected<JSTaggedValue, bool> ExecuteAbcFileWithSingletonPatternFlag(JSThread *thread,
+    static int ExecuteAbcFileWithSingletonPatternFlag(JSThread *thread,
         [[maybe_unused]] const CString &bundleName, const CString &moduleName, const CString &entry,
         bool isSingletonPattern);
 };

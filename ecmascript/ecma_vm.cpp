@@ -164,6 +164,10 @@ void EcmaVM::PostFork()
         options_.SetEnablePGOProfiler(true);
     }
     ResetPGOProfiler();
+
+    bool isEnableJit = options_.IsEnableJIT() && options_.GetEnableAsmInterpreter();
+    options_.SetEnableAPPJIT(true);
+    Jit::GetInstance()->SetEnableOrDisable(options_, isEnableJit);
 #ifdef ENABLE_POSTFORK_FORCEEXPAND
     heap_->NotifyPostFork();
     heap_->NotifyFinishColdStartSoon();
@@ -219,15 +223,11 @@ bool EcmaVM::IsEnableElementsKind() const
 
 bool EcmaVM::IsEnableJit() const
 {
-    if (options_.IsWorker()) {
-        return GetJit()->IsEnable();
-    }
-    return options_.GetEnableAsmInterpreter() && options_.IsEnableJIT();
+    return GetJit()->IsEnable();
 }
 
 void EcmaVM::EnableJit() const
 {
-    Jit::GetInstance()->SetEnable(this);
     GetJSThread()->SwitchJitProfileStubs();
 }
 

@@ -598,6 +598,8 @@ public:
     bool IsArguments() const;
     bool IsDate() const;
     bool IsJSArray() const;
+    bool IsJSSArray() const;
+    bool IsJSShared() const;
     bool IsJSMap() const;
     bool IsJSSet() const;
     bool IsJSRegExp() const;

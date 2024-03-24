@@ -101,7 +101,7 @@ void LinkedHashTableStubBuilder<LinkedHashTableType, LinkedHashTableObject>::Reh
     }
     Bind(&loopEnd);
     i = Int32Add(*i, Int32(1));
-    LoopEnd(&loopHead);
+    LoopEnd(&loopHead, env, glue_);
     Bind(&loopExit);
 
     SetNumberOfElements(newTable, GetNumberOfElements(linkedTable));
@@ -176,7 +176,7 @@ void LinkedHashTableStubBuilder<LinkedHashTableType, LinkedHashTableObject>::Rem
     }
     Bind(&loopEnd);
     i = Int32Add(*i, Int32(1));
-    LoopEnd(&loopHead);
+    LoopEnd(&loopHead, env, glue_);
     Bind(&loopExit);
 
     GateRef newNofe = Int32Sub(GetNumberOfElements(linkedTable), Int32(1));
@@ -321,7 +321,7 @@ GateRef LinkedHashTableStubBuilder<LinkedHashTableType, LinkedHashTableObject>::
         }
         Bind(&loopEnd);
         entry = GetNextEntry(linkedTable, TaggedGetInt(*entry));
-        LoopEnd(&loopHead);
+        LoopEnd(&loopHead, env, glue_);
         Bind(&loopExit);
         Jump(&exit);
     }
@@ -363,7 +363,7 @@ GateRef LinkedHashTableStubBuilder<LinkedHashTableType, LinkedHashTableObject>::
     }
     Bind(&loopEnd);
     currentEntry = Int32Sub(*currentEntry, Int32(1));
-    LoopEnd(&loopHead);
+    LoopEnd(&loopHead, env, glue_);
     Bind(&loopExit);
     Jump(&exit);
     Bind(&exit);
@@ -519,7 +519,7 @@ GateRef LinkedHashTableStubBuilder<LinkedHashTableType, LinkedHashTableObject>::
         }
     }
     Bind(&loopEnd);
-    LoopEnd(&loopHead);
+    LoopEnd(&loopHead, env, glue_);
     Bind(&loopExit);
     Jump(&exit);
 
@@ -737,4 +737,31 @@ template void LinkedHashTableStubBuilder<LinkedHashMap, LinkedHashMapObject>::Ge
 template void LinkedHashTableStubBuilder<LinkedHashSet, LinkedHashSetObject>::GenMapSetConstructor(
     GateRef nativeCode, GateRef func, GateRef newTarget, GateRef thisValue, GateRef numArgs);
 
+template <typename LinkedHashTableType, typename LinkedHashTableObject>
+GateRef LinkedHashTableStubBuilder<LinkedHashTableType, LinkedHashTableObject>::Get(
+    GateRef linkedTable, GateRef key)
+{
+    auto env = GetEnvironment();
+    Label cfgEntry(env);
+    env->SubCfgEntry(&cfgEntry);
+    Label exit(env);
+    DEFVARIABLE(res, VariableType::JS_ANY(), Undefined());
+    GateRef hash = GetHash(key);
+    GateRef entry = FindElement(linkedTable, key, hash);
+    Label findEntry(env);
+    Branch(Int32Equal(entry, Int32(-1)), &exit, &findEntry);
+    Bind(&findEntry);
+    {
+        res = GetValue(linkedTable, entry);
+        Jump(&exit);
+    }
+
+    Bind(&exit);
+    auto ret = *res;
+    env->SubCfgExit();
+    return ret;
+}
+
+template GateRef LinkedHashTableStubBuilder<LinkedHashMap, LinkedHashMapObject>::Get(
+    GateRef linkedTable, GateRef key);
 }  // namespace panda::ecmascript::kungfu

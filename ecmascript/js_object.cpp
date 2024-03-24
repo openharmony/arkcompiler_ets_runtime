@@ -28,6 +28,7 @@
 #include "ecmascript/js_iterator.h"
 #include "ecmascript/js_object_resizing_strategy.h"
 #include "ecmascript/js_primitive_ref.h"
+#include "ecmascript/js_shared_array.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/object_factory-inl.h"
@@ -94,6 +95,10 @@ JSHandle<TaggedArray> JSObject::GrowElementsCapacity(const JSThread *thread, con
         uint32_t hint = JSHandle<JSArray>(obj)->GetHintLength();
         newCapacity = ComputeElementCapacityWithHint(capacity, hint);
     }
+    if (obj->IsJSSArray()) {
+        uint32_t hint = JSHandle<JSSharedArray>(obj)->GetHintLength();
+        newCapacity = ComputeElementCapacityWithHint(capacity, hint);
+    }
     if (newCapacity == 0) {
         newCapacity = highGrowth ? ComputeElementCapacityHighGrowth(capacity) :
             ComputeElementCapacity(capacity, isNew);
@@ -103,8 +108,9 @@ JSHandle<TaggedArray> JSObject::GrowElementsCapacity(const JSThread *thread, con
     uint32_t oldLength = oldElements->GetLength();
 
     ElementsKind kind = obj->GetClass()->GetElementsKind();
-    JSHandle<TaggedArray> newElements = factory->CopyArray(oldElements, oldLength, newCapacity,
-                                                           JSTaggedValue::Hole(), MemSpaceType::SEMI_SPACE, kind);
+    JSHandle<TaggedArray> newElements =
+        factory->CopyArray(oldElements, oldLength, newCapacity, JSTaggedValue::Hole(),
+                           obj->IsJSShared() ? MemSpaceType::SHARED_OLD_SPACE : MemSpaceType::SEMI_SPACE, kind);
     obj->SetElements(thread, newElements);
     if (thread->IsPGOProfilerEnable() && obj->IsJSArray()) {
         auto trackInfo = JSHandle<JSArray>(obj)->GetTrackInfo();
@@ -179,6 +185,7 @@ JSHandle<NameDictionary> JSObject::TransitionToDictionary(const JSThread *thread
     uint32_t propNumber = jshclass->NumberOfProps();
 
     ASSERT(!jshclass->GetLayout().IsNull());
+    ASSERT(!jshclass->IsJSShared());
     JSHandle<LayoutInfo> layoutInfoHandle(thread, jshclass->GetLayout());
     ASSERT(layoutInfoHandle->GetLength() != 0);
     JSMutableHandle<NameDictionary> dict(
@@ -225,6 +232,7 @@ void JSObject::ElementsToDictionary(const JSThread *thread, JSHandle<JSObject> o
     JSHandle<TaggedArray> elements(thread, obj->GetElements());
     ASSERT(!obj->GetJSHClass()->IsDictionaryElement());
     uint32_t length = elements->GetLength();
+    ASSERT(!obj->IsJSShared());
     JSMutableHandle<NumberDictionary> dict(thread, NumberDictionary::Create(thread));
     auto attr = PropertyAttributes(PropertyAttributes::GetDefaultAttributes());
     JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
@@ -356,6 +364,20 @@ bool JSObject::AddElementInternal(JSThread *thread, const JSHandle<JSObject> &re
             }
         }
     }
+    if (receiver->IsJSSArray()) {
+        DISALLOW_GARBAGE_COLLECTION;
+        JSSharedArray *arr = JSSharedArray::Cast(*receiver);
+        uint32_t oldLength = arr->GetArrayLength();
+        if (index >= oldLength) {
+            if (!IsArrayLengthWritable(thread, receiver)) {
+                return false;
+            }
+            arr->SetArrayLength(thread, index + 1);
+            if (index > oldLength) {
+                kind = ElementsKind::HOLE;
+            }
+        }
+    }
     thread->NotifyStableArrayElementsGuardians(receiver, StableArrayChangeKind::NOT_PROTO);
 
     // check whether to convert to dictionary
@@ -382,7 +404,7 @@ bool JSObject::AddElementInternal(JSThread *thread, const JSHandle<JSObject> &re
 
     uint32_t capacity = elements->GetLength();
     if (index >= capacity || !attr.IsDefaultAttributes()) {
-        if (ShouldTransToDict(capacity, index) || !attr.IsDefaultAttributes()) {
+        if (!receiver->IsJSSArray() && (ShouldTransToDict(capacity, index) || !attr.IsDefaultAttributes())) {
             JSObject::ElementsToDictionary(thread, receiver);
             JSHandle<JSTaggedValue> keyHandle(thread, JSTaggedValue(static_cast<int32_t>(index)));
             JSHandle<NumberDictionary> dict(thread, receiver->GetElements());
@@ -393,6 +415,9 @@ bool JSObject::AddElementInternal(JSThread *thread, const JSHandle<JSObject> &re
         elements = *JSObject::GrowElementsCapacity(thread, receiver, index + 1);
     }
     bool needTransition = true;
+    if (receiver->IsJSShared()) {
+        needTransition = false;
+    }
     ElementAccessor::Set(thread, receiver, index, value, needTransition, kind);
     return true;
 }
@@ -923,7 +948,8 @@ bool JSObject::SetPropertyForDataDescriptor(ObjectOperator *op, const JSHandle<J
         RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, isSuccess);
     } else {
         // 5f. Else if Receiver does not currently have a property P, Return CreateDataProperty(Receiver, P, V).
-        if (!receiver->IsExtensible(thread)) {
+        // fixme(hzzhouzebin) this makes SharedArray's frozen no sense.
+        if (!receiver->IsExtensible(thread) && !receiver->IsJSSharedArray()) {
             if (mayThrow) {
                 THROW_TYPE_ERROR_AND_RETURN(thread, GET_MESSAGE_STRING(SetPropertyWhenNotExtensible), false);
             }
@@ -1373,6 +1399,19 @@ bool JSObject::ValidateAndApplyPropertyDescriptor(ObjectOperator *op, bool exten
         // 10. If O is not undefined, then
         // a. For each field of Desc that is present, set the corresponding attribute of the property named P of object
         // O to the value of the field.
+        if (!desc.HasValue() && desc.HasWritable() && current.HasValue()) {
+            // [[Value]] and [[Writable]] attributes are set to the value of the corresponding field in Desc
+            // if Desc has that field or to the attribute's default value otherwise.
+            PropertyDescriptor newDesc = desc;
+            JSHandle<JSTaggedValue> valueHandle = current.GetValue();
+            if (valueHandle->IsPropertyBox()) {
+                JSTaggedValue value = PropertyBox::Cast(valueHandle->GetTaggedObject())->GetValue();
+                valueHandle = JSHandle<JSTaggedValue>(op->GetThread(), value);
+            }
+            newDesc.SetValue(valueHandle);
+            op->UpdateDetector();
+            return op->WriteDataPropertyInHolder(newDesc);
+        }
         op->UpdateDetector();
         return op->WriteDataPropertyInHolder(desc);
     }

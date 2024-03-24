@@ -147,19 +147,11 @@
     V(JSTaggedValue, AsyncFunction, ASYNC_FUNCTION_INDEX)                                           \
     V(JSTaggedValue, AsyncFunctionPrototype, ASYNC_FUNCTION_PROTOTYPE_INDEX)                        \
     V(JSTaggedValue, JSGlobalObject, JS_GLOBAL_OBJECT_INDEX)                                        \
-    V(JSTaggedValue, HasInstanceSymbol, HASINSTANCE_SYMBOL_INDEX)                                   \
     V(JSTaggedValue, HasInstanceFunction, HASINSTANCE_FUNCTION_INDEX)                               \
-    V(JSTaggedValue, IsConcatSpreadableSymbol, ISCONCAT_SYMBOL_INDEX)                               \
-    V(JSTaggedValue, ToStringTagSymbol, TOSTRINGTAG_SYMBOL_INDEX)                                   \
-    V(JSTaggedValue, AsyncIteratorSymbol, ASYNC_ITERATOR_SYMBOL_INDEX)                              \
-    V(JSTaggedValue, MatchSymbol, MATCH_SYMBOL_INDEX)                                               \
-    V(JSTaggedValue, MatchAllSymbol, MATCH_All_SYMBOL_INDEX)                                        \
-    V(JSTaggedValue, SearchSymbol, SEARCH_SYMBOL_INDEX)                                             \
-    V(JSTaggedValue, ToPrimitiveSymbol, TOPRIMITIVE_SYMBOL_INDEX)                                   \
-    V(JSTaggedValue, UnscopablesSymbol, UNSCOPABLES_SYMBOL_INDEX)                                   \
     V(JSTaggedValue, HoleySymbol, HOLEY_SYMBOL_OFFSET)                                              \
     V(JSTaggedValue, ElementICSymbol, ELEMENT_IC_SYMBOL_OFFSET)                                     \
     V(JSTaggedValue, IteratorPrototype, ITERATOR_PROTOTYPE_INDEX)                                   \
+    V(JSTaggedValue, IteratorResult, ITERATOR_RESULT_INDEX)                                         \
     V(JSTaggedValue, AsyncIteratorPrototype, ASYNC_ITERATOR_PROTOTYPE_INDEX)                        \
     V(JSTaggedValue, ForinIteratorPrototype, FORIN_ITERATOR_PROTOTYPE_INDEX)                        \
     V(JSTaggedValue, ForinIteratorClass, FOR_IN_ITERATOR_CLASS_INDEX)                               \
@@ -167,9 +159,12 @@
     V(JSTaggedValue, StringIteratorClass, STRING_ITERATOR_CLASS_INDEX)                              \
     V(JSTaggedValue, AsyncFromSyncIterator, ASYNC_FROM_SYNC_ITERATOR_INDEX)                         \
     V(JSTaggedValue, MapIteratorPrototype, MAP_ITERATOR_PROTOTYPE_INDEX)                            \
+    V(JSTaggedValue, SharedMapIteratorPrototype, SHARED_MAP_ITERATOR_PROTOTYPE_INDEX)               \
     V(JSTaggedValue, SetIteratorPrototype, SET_ITERATOR_PROTOTYPE_INDEX)                            \
+    V(JSTaggedValue, SharedSetIteratorPrototype, SHARED_SET_ITERATOR_PROTOTYPE_INDEX)               \
     V(JSTaggedValue, RegExpIteratorPrototype, REGEXP_ITERATOR_PROTOTYPE_INDEX)                      \
     V(JSTaggedValue, ArrayIteratorPrototype, ARRAY_ITERATOR_PROTOTYPE_INDEX)                        \
+    V(JSTaggedValue, SharedArrayIteratorPrototype, SHARED_ARRAY_ITERATOR_PROTOTYPE_INDEX)           \
     V(JSTaggedValue, StringIteratorPrototype, STRING_ITERATOR_PROTOTYPE_INDEX)                      \
     V(JSTaggedValue, AsyncFromSyncIteratorPrototype, ASYNC_FROM_SYNC_ITERATOR_PROTOTYPE_INDEX)      \
     /* SymbolTable *RegisterSymbols */                                                              \
@@ -218,7 +213,6 @@
     V(JSTaggedValue, ObjectLiteralHClassCache, OBJECT_LITERAL_HCLASS_CACHE)                         \
     V(JSTaggedValue, WeakRefKeepObjects, WEAK_REF_KEEP_OBJECTS)                                     \
     V(JSTaggedValue, FinRegLists, FIN_REG_LISTS)                                                    \
-    V(JSTaggedValue, NativeBindingSymbol, NATIVE_BINDING_SYMBOL_INDEX)                              \
     V(JSTaggedValue, CjsModuleFunction, CJS_MODULE_FUNCTION_INDEX)                                  \
     V(JSTaggedValue, CjsExportsFunction, CJS_EXPORTS_FUNCTION_INDEX)                                \
     V(JSTaggedValue, CjsRequireFunction, CJS_REQUIRE_FUNCTION_INDEX)                                \
@@ -226,27 +220,41 @@
     V(JSTaggedValue, ExportOfScript, DEFAULT_EXPORT_OF_SCRIPT)                                      \
     V(JSTaggedValue, JsonObjectHclassCache, JSON_OBJECT_HCLASS_CACHE)
 
-// Maintain the same order with DETECTOR_SYMBOL_LIST
-#define GLOBAL_ENV_DETECTOR_SYMBOL_FIELDS(V)                                                        \
-    V(JSTaggedValue, ReplaceSymbol, REPLACE_SYMBOL_INDEX)                                           \
-    V(JSTaggedValue, SplitSymbol, SPLIT_SYMBOL_INDEX)                                               \
-    V(JSTaggedValue, IteratorSymbol, ITERATOR_SYMBOL_INDEX)                                         \
-    V(JSTaggedValue, SpeciesSymbol, SPECIES_SYMBOL_INDEX)
-
 #define GLOBAL_ENV_SHARED_FIELDS(V)                                                                 \
     V(JSTaggedValue, SObjectFunction, SHARED_OBJECT_FUNCTION_INDEX)                                 \
     V(JSTaggedValue, SObjectFunctionPrototype, SHARED_OBJECT_FUNCTION_PROTOTYPE_INDEX)              \
     V(JSTaggedValue, SFunctionFunction, SHARED_FUNCTION_FUNCTION_INDEX)                             \
     V(JSTaggedValue, SFunctionPrototype, SHARED_FUNCTION_PROTOTYPE_INDEX)                           \
+    V(JSTaggedValue, SBuiltininSetFunction, SHARED_BUILTIN_SET_FUNCTION_INDEX)                      \
+    V(JSTaggedValue, SBuiltininMapFunction, SHARED_BUILTIN_MAP_FUNCTION_INDEX)                      \
     V(JSTaggedValue, SConstructorClass, SHARED_CONSTRUCTOR_CLASS_INDEX)                             \
     V(JSTaggedValue, SFunctionClassWithoutProto, SHARED_FUNCTION_CLASS_WITHOUT_PROTO)               \
     V(JSTaggedValue, SFunctionClassWithoutAccessor, SHARED_FUNCTION_CLASS_WITHOUT_ACCESSOR)         \
-    V(JSTaggedValue, SNormalFunctionClass, SHARED_NORMAL_FUNCTION_CLASS)
+    V(JSTaggedValue, SNormalFunctionClass, SHARED_NORMAL_FUNCTION_CLASS)                            \
+    /* DETECTOR SYMBOL BEGIN (Maintain the same order with DETECTOR_SYMBOL_LIST) */                 \
+    V(JSTaggedValue, ReplaceSymbol, REPLACE_SYMBOL_INDEX)                                           \
+    V(JSTaggedValue, SplitSymbol, SPLIT_SYMBOL_INDEX)                                               \
+    V(JSTaggedValue, IteratorSymbol, ITERATOR_SYMBOL_INDEX)                                         \
+    V(JSTaggedValue, SpeciesSymbol, SPECIES_SYMBOL_INDEX)                                           \
+    /* DETECTOR SYMBOL END */                                                                       \
+    V(JSTaggedValue, IsConcatSpreadableSymbol, ISCONCAT_SYMBOL_INDEX)                               \
+    V(JSTaggedValue, ToStringTagSymbol, TOSTRINGTAG_SYMBOL_INDEX)                                   \
+    V(JSTaggedValue, AsyncIteratorSymbol, ASYNC_ITERATOR_SYMBOL_INDEX)                              \
+    V(JSTaggedValue, MatchSymbol, MATCH_SYMBOL_INDEX)                                               \
+    V(JSTaggedValue, MatchAllSymbol, MATCH_All_SYMBOL_INDEX)                                        \
+    V(JSTaggedValue, SearchSymbol, SEARCH_SYMBOL_INDEX)                                             \
+    V(JSTaggedValue, ToPrimitiveSymbol, TOPRIMITIVE_SYMBOL_INDEX)                                   \
+    V(JSTaggedValue, UnscopablesSymbol, UNSCOPABLES_SYMBOL_INDEX)                                   \
+    V(JSTaggedValue, NativeBindingSymbol, NATIVE_BINDING_SYMBOL_INDEX)                              \
+    V(JSTaggedValue, HasInstanceSymbol, HASINSTANCE_SYMBOL_INDEX)                                   \
+    V(JSTaggedValue, SharedArrayFunction, SHARED_ARRAY_FUNCTION_INDEX)                              \
+    V(JSTaggedValue, SharedArrayPrototype, SHARED_ARRAY_PROTOTYPE_INDEX)                            \
+    V(JSTaggedValue, SharedMapPrototype,  SHARED_MAP_PROTOTYPE_INDEX)                               \
+    V(JSTaggedValue, SharedSetPrototype, SHARED_SET_PROTOTYPE_INDEX)
 
 #define GLOBAL_ENV_FIELDS(V)                                \
     GLOBAL_ENV_SHARED_FIELDS(V)                             \
     GLOBAL_ENV_COMMON_FIELDS(V)                             \
-    GLOBAL_ENV_DETECTOR_SYMBOL_FIELDS(V)                    \
     GLOBAL_ENV_DETECTOR_FIELDS(V)
 
 namespace panda::ecmascript {

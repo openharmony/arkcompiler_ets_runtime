@@ -17,6 +17,7 @@
 #include <cstring>
 #include <cstdlib>
 
+#include "ecmascript/compiler/circuit_builder.h"
 #include "ecmascript/compiler/typed_bytecode_lowering.h"
 #include "ecmascript/builtin_entries.h"
 #include "ecmascript/compiler/builtins_lowering.h"
@@ -809,17 +810,30 @@ GateRef TypedBytecodeLowering::BuildNamedPropertyAccess(
     return result;
 }
 
+bool TypedBytecodeLowering::TryLowerTypedLdObjByNameForBuiltinsId(const LoadBulitinObjTypeInfoAccessor &tacc,
+                                                                  BuiltinTypeId type)
+{
+    if (TryLowerTypedLdObjByNameForBuiltin(tacc, type)) {
+        return true;
+    }
+    return TryLowerTypedLdObjByNameForBuiltinMethod(tacc, type);
+}
+
 bool TypedBytecodeLowering::TryLowerTypedLdObjByNameForBuiltin(GateRef gate)
 {
     LoadBulitinObjTypeInfoAccessor tacc(thread_, circuit_, gate, chunk_);
     // Just supported mono.
     if (tacc.IsMono()) {
-        auto builtinsId = tacc.GetBuiltinsTypeId();
-        if (builtinsId.has_value()) {
-            if (TryLowerTypedLdObjByNameForBuiltin(tacc, builtinsId.value())) {
-                return true;
+        if (tacc.IsBuiltinsType()) {
+            auto builtinsId = tacc.GetBuiltinsTypeId();
+            if (builtinsId.has_value()) {
+                return TryLowerTypedLdObjByNameForBuiltinsId(tacc, builtinsId.value());
             }
-            return TryLowerTypedLdObjByNameForBuiltinMethod(tacc, builtinsId.value());
+        } else if (tacc.IsGlobalsType()) {
+            auto globalsId = tacc.GetGlobalsId();
+            if (globalsId.has_value()) {
+                return TryLowerTypedLdObjByNameForGlobalsId(tacc, globalsId.value());
+            }
         }
     }
 
@@ -870,6 +884,36 @@ bool TypedBytecodeLowering::TryLowerTypedLdObjByNameForBuiltin(const LoadBulitin
         }
     }
     // (2) other functions
+    return false;
+}
+
+bool TypedBytecodeLowering::TryLowerTypedLdObjByNameForGlobalsId(const LoadBulitinObjTypeInfoAccessor &tacc,
+                                                                 ConstantIndex globalsId)
+{
+    if (globalsId == ConstantIndex::ITERATOR_RESULT_CLASS) {
+        GateRef receiver = tacc.GetReceiver();
+        GateRef gate = tacc.GetGate();
+        JSHClass *hclass = JSHClass::Cast(thread_->GlobalConstants()->GetIteratorResultClass().GetTaggedObject());
+        JSTaggedValue key = tacc.GetKeyTaggedValue();
+        PropertyLookupResult plr = JSHClass::LookupPropertyInBuiltinHClass(thread_, hclass, key);
+        if (!plr.IsFound() || plr.IsAccessor()) {
+            return false;
+        }
+        AddProfiling(gate);
+        // 1. check hclass
+        GateRef frameState = acc_.FindNearestFrameState(gate);
+        builder_.HeapObjectCheck(receiver, frameState);
+        GateRef receiverHClass = builder_.LoadHClassByConstOffset(receiver);
+        GateRef expectedHClass = builder_.GetGlobalConstantValue(globalsId);
+        builder_.DeoptCheck(builder_.Equal(receiverHClass, expectedHClass), frameState,
+                            DeoptType::INCONSISTENTHCLASS11);
+        // 2. load property
+        GateRef plrGate = builder_.Int32(plr.GetData());
+        GateRef result = builder_.LoadProperty(receiver, plrGate, plr.IsFunction());
+        acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
+        DeleteConstDataIfNoUser(tacc.GetKey());
+        return true;
+    }
     return false;
 }
 
@@ -956,9 +1000,25 @@ bool TypedBytecodeLowering::TryLowerTypedLdObjByNameForBuiltinMethod(const LoadB
     JSHandle<GlobalEnv> globalEnv = thread_->GetEcmaVM()->GetGlobalEnv();
     JSHClass *prototypeHClass = globalEnv->GetGlobalEnvObjectByIndex(protoFieldIndex)->GetTaggedObject()->GetClass();
     PropertyLookupResult plr = JSHClass::LookupPropertyInBuiltinPrototypeHClass(thread_, prototypeHClass, key);
+    bool isPrototypeOfPrototype = false;
     // Unable to handle accessor at the moment
     if (!plr.IsFound() || plr.IsAccessor()) {
-        return false;
+        if (type == BuiltinTypeId::ARRAY_ITERATOR) {
+            protoField = ToGlobelEnvPrototypeField(BuiltinTypeId::ITERATOR);
+            if (!protoField.has_value()) {
+                return false;
+            }
+            protoFieldIndex = static_cast<size_t>(*protoField);
+            prototypeHClass = globalEnv->GetGlobalEnvObjectByIndex(protoFieldIndex)->GetTaggedObject()->GetClass();
+            plr = JSHClass::LookupPropertyInBuiltinPrototypeHClass(thread_, prototypeHClass, key);
+            if (!plr.IsFound() || plr.IsAccessor()) {
+                return false;
+            } else {
+                isPrototypeOfPrototype = true;
+            }
+        } else {
+            return false;
+        }
     }
     AddProfiling(gate);
     GateRef receiver = acc_.GetValueIn(gate, 2);
@@ -972,7 +1032,7 @@ bool TypedBytecodeLowering::TryLowerTypedLdObjByNameForBuiltinMethod(const LoadB
 
         // This check is not required by String, since string is a primitive type.
         if (type != BuiltinTypeId::STRING) {
-            builder_.BuiltinPrototypeHClassCheck(receiver, type, kind);
+            builder_.BuiltinPrototypeHClassCheck(receiver, type, kind, isPrototypeOfPrototype);
         }
     }
     // Successfully goes to typed path
@@ -1370,7 +1430,7 @@ void TypedBytecodeLowering::LowerTypedSuperCall(GateRef gate)
 }
 
 void TypedBytecodeLowering::SpeculateCallBuiltin(GateRef gate, GateRef func, const std::vector<GateRef> &args,
-                                                 BuiltinsStubCSigns::ID id, bool isThrow)
+                                                 BuiltinsStubCSigns::ID id, bool isThrow, bool isSideEffect)
 {
     if (IS_TYPED_INLINE_BUILTINS_ID(id)) {
         return;
@@ -1379,7 +1439,7 @@ void TypedBytecodeLowering::SpeculateCallBuiltin(GateRef gate, GateRef func, con
         builder_.CallTargetCheck(gate, func, builder_.IntPtr(static_cast<int64_t>(id)), {args[0]});
     }
 
-    GateRef result = builder_.TypedCallBuiltin(gate, args, id);
+    GateRef result = builder_.TypedCallBuiltin(gate, args, id, isSideEffect);
 
     if (isThrow) {
         acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
@@ -1709,7 +1769,7 @@ void TypedBytecodeLowering::LowerTypedCallthis0(GateRef gate)
     BuiltinsStubCSigns::ID pgoFuncId = tacc.TryGetPGOBuiltinId();
     if (IS_TYPED_BUILTINS_ID_CALL_THIS0(pgoFuncId)) {
         AddProfiling(gate);
-        SpeculateCallBuiltin(gate, tacc.GetFunc(), { tacc.GetThisObj() }, pgoFuncId, true);
+        SpeculateCallBuiltin(gate, tacc.GetFunc(), { tacc.GetThisObj() }, pgoFuncId, true, true);
         return;
     }
     if (!tacc.CanOptimizeAsFastCall()) {
@@ -1878,7 +1938,7 @@ void TypedBytecodeLowering::LowerGetIterator(GateRef gate)
     }
     AddProfiling(gate);
     GateRef obj = tacc.GetCallee();
-    SpeculateCallBuiltin(gate, obj, { obj }, id, true);
+    SpeculateCallBuiltin(gate, obj, { obj }, id, true, true);
 }
 
 void TypedBytecodeLowering::LowerTypedTryLdGlobalByName(GateRef gate)

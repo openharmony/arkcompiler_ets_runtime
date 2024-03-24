@@ -27,6 +27,8 @@
 #include "ecmascript/ic/proto_change_details.h"
 #include "ecmascript/jobs/micro_job_queue.h"
 #include "ecmascript/jobs/pending_job.h"
+#include "ecmascript/js_shared_array.h"
+#include "ecmascript/js_shared_array_iterator.h"
 #include "ecmascript/jspandafile/class_info_extractor.h"
 #include "ecmascript/jspandafile/class_literal.h"
 #include "ecmascript/jspandafile/program_object.h"
@@ -112,6 +114,10 @@
 #include "ecmascript/mem/machine_code.h"
 #include "ecmascript/module/js_module_source_text.h"
 #include "ecmascript/object_factory.h"
+#include "ecmascript/shared_objects/js_shared_map.h"
+#include "ecmascript/shared_objects/js_shared_map_iterator.h"
+#include "ecmascript/shared_objects/js_shared_set.h"
+#include "ecmascript/shared_objects/js_shared_set_iterator.h"
 #include "ecmascript/tagged_array.h"
 #include "ecmascript/tagged_dictionary.h"
 #include "ecmascript/tagged_hash_array.h"
@@ -191,12 +197,42 @@ static JSHandle<JSMap> NewJSMap(JSThread *thread, ObjectFactory *factory, JSHand
     return jsMap;
 }
 
+static JSHandle<JSSharedMap> NewJSSharedMap(JSThread *thread, ObjectFactory *factory)
+{
+    auto globalEnv = thread->GetEcmaVM()->GetGlobalEnv();
+    JSHandle<JSTaggedValue> proto = globalEnv->GetSFunctionPrototype();
+    auto emptySLayout = thread->GlobalConstants()->GetHandledEmptySLayoutInfo();
+    JSHandle<JSHClass> mapClass = factory->NewSEcmaHClass(JSSharedMap::SIZE, 0,
+        JSType::JS_SHARED_MAP, proto, emptySLayout);
+    JSHandle<JSSharedMap> jsMap = JSHandle<JSSharedMap>::Cast(factory->NewJSObjectWithInit(mapClass));
+    JSHandle<LinkedHashMap> linkedMap(
+        LinkedHashMap::Create(thread, LinkedHashMap::MIN_CAPACITY, MemSpaceKind::SHARED));
+    jsMap->SetLinkedMap(thread, linkedMap);
+    jsMap->SetModRecord(0);
+    return jsMap;
+}
+
 static JSHandle<JSSet> NewJSSet(JSThread *thread, ObjectFactory *factory, JSHandle<JSTaggedValue> proto)
 {
     JSHandle<JSHClass> setClass = factory->NewEcmaHClass(JSSet::SIZE, JSType::JS_SET, proto);
     JSHandle<JSSet> jsSet = JSHandle<JSSet>::Cast(factory->NewJSObjectWithInit(setClass));
     JSHandle<LinkedHashSet> linkedSet(LinkedHashSet::Create(thread));
     jsSet->SetLinkedSet(thread, linkedSet);
+    return jsSet;
+}
+
+static JSHandle<JSSharedSet> NewJSSharedSet(JSThread *thread, ObjectFactory *factory)
+{
+    auto globalEnv = thread->GetEcmaVM()->GetGlobalEnv();
+    JSHandle<JSTaggedValue> proto = globalEnv->GetSFunctionPrototype();
+    auto emptySLayout = thread->GlobalConstants()->GetHandledEmptySLayoutInfo();
+    JSHandle<JSHClass> setClass = factory->NewSEcmaHClass(JSSharedSet::SIZE, 0,
+        JSType::JS_SHARED_SET, proto, emptySLayout);
+    JSHandle<JSSharedSet> jsSet = JSHandle<JSSharedSet>::Cast(factory->NewJSObjectWithInit(setClass));
+    JSHandle<LinkedHashSet> linkedSet(
+        LinkedHashSet::Create(thread, LinkedHashSet::MIN_CAPACITY, MemSpaceKind::SHARED));
+    jsSet->SetLinkedSet(thread, linkedSet);
+    jsSet->SetModRecord(0);
     return jsSet;
 }
 
@@ -590,9 +626,21 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 DUMP_FOR_HANDLE(jsSet);
                 break;
             }
+            case JSType::JS_SHARED_SET: {
+                CHECK_DUMP_FIELDS(JSObject::SIZE, JSSharedSet::SIZE, 2U);
+                JSHandle<JSSharedSet> jsSet = NewJSSharedSet(thread, factory);
+                DUMP_FOR_HANDLE(jsSet);
+                break;
+            }
             case JSType::JS_MAP: {
                 CHECK_DUMP_FIELDS(JSObject::SIZE, JSMap::SIZE, 1U);
                 JSHandle<JSMap> jsMap = NewJSMap(thread, factory, proto);
+                DUMP_FOR_HANDLE(jsMap);
+                break;
+            }
+            case JSType::JS_SHARED_MAP: {
+                CHECK_DUMP_FIELDS(JSObject::SIZE, JSSharedMap::SIZE, 2U);
+                JSHandle<JSSharedMap> jsMap = NewJSSharedMap(thread, factory);
                 DUMP_FOR_HANDLE(jsMap);
                 break;
             }
@@ -664,10 +712,24 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 DUMP_FOR_HANDLE(jsMapIter);
                 break;
             }
+            case JSType::JS_SHARED_MAP_ITERATOR: {
+                CHECK_DUMP_FIELDS(JSObject::SIZE, JSSharedMapIterator::SIZE, 2U);
+                JSHandle<JSSharedMapIterator> jsMapIter =
+                    factory->NewJSMapIterator(NewJSSharedMap(thread, factory), IterationKind::KEY);
+                DUMP_FOR_HANDLE(jsMapIter);
+                break;
+            }
             case JSType::JS_SET_ITERATOR: {
                 CHECK_DUMP_FIELDS(JSObject::SIZE, JSSetIterator::SIZE, 2U);
                 JSHandle<JSSetIterator> jsSetIter =
                     factory->NewJSSetIterator(NewJSSet(thread, factory, proto), IterationKind::KEY);
+                DUMP_FOR_HANDLE(jsSetIter);
+                break;
+            }
+            case JSType::JS_SHARED_SET_ITERATOR: {
+                CHECK_DUMP_FIELDS(JSObject::SIZE, JSSharedSetIterator::SIZE, 2U);
+                JSHandle<JSSharedSetIterator> jsSetIter =
+                    factory->NewJSSetIterator(NewJSSharedSet(thread, factory), IterationKind::KEY);
                 DUMP_FOR_HANDLE(jsSetIter);
                 break;
             }
@@ -684,6 +746,13 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 CHECK_DUMP_FIELDS(JSObject::SIZE, JSArrayIterator::SIZE, 2U);
                 JSHandle<JSArrayIterator> arrayIter =
                     factory->NewJSArrayIterator(JSHandle<JSObject>::Cast(factory->NewJSArray()), IterationKind::KEY);
+                DUMP_FOR_HANDLE(arrayIter);
+                break;
+            }
+            case JSType::JS_SHARED_ARRAY_ITERATOR: {
+                CHECK_DUMP_FIELDS(JSObject::SIZE, JSArrayIterator::SIZE, 2U);
+                JSHandle<JSSharedArrayIterator> arrayIter = factory->NewJSSharedArrayIterator(
+                    JSHandle<JSObject>::Cast(factory->NewJSSArray()), IterationKind::KEY);
                 DUMP_FOR_HANDLE(arrayIter);
                 break;
             }
@@ -788,6 +857,12 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
             case JSType::JS_ARRAY: {
                 CHECK_DUMP_FIELDS(JSObject::SIZE, JSArray::SIZE, 2U);
                 JSHandle<JSArray> jsArray = factory->NewJSArray();
+                DUMP_FOR_HANDLE(jsArray);
+                break;
+            }
+            case JSType::JS_SHARED_ARRAY: {
+                CHECK_DUMP_FIELDS(JSObject::SIZE, JSArray::SIZE, 2U);
+                JSHandle<JSSharedArray> jsArray = factory->NewJSSArray();
                 DUMP_FOR_HANDLE(jsArray);
                 break;
             }

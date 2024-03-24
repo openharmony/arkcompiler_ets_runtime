@@ -297,6 +297,50 @@ namespace panda::ecmascript {
     V(Array, With)                            \
     V(Array, ToSorted)                        \
     V(Array, ToSpliced)                       \
+    V(SharedArray, Constructor)               \
+    V(SharedArray, From)                      \
+    V(SharedArray, Of)                        \
+    V(SharedArray, IsArray)                   \
+    V(SharedArray, Entries)                   \
+    V(SharedArray, Species)                   \
+    V(SharedArray, Concat)                    \
+    V(SharedArray, CopyWithin)                \
+    V(SharedArray, Every)                     \
+    V(SharedArray, Fill)                      \
+    V(SharedArray, Filter)                    \
+    V(SharedArray, Find)                      \
+    V(SharedArray, FindIndex)                 \
+    V(SharedArray, FindLast)                  \
+    V(SharedArray, FindLastIndex)             \
+    V(SharedArray, ForEach)                   \
+    V(SharedArray, IndexOf)                   \
+    V(SharedArray, Join)                      \
+    V(SharedArray, Keys)                      \
+    V(SharedArray, LastIndexOf)               \
+    V(SharedArray, Map)                       \
+    V(SharedArray, Pop)                       \
+    V(SharedArray, Push)                      \
+    V(SharedArray, Reduce)                    \
+    V(SharedArray, ReduceRight)               \
+    V(SharedArray, Reverse)                   \
+    V(SharedArray, Shift)                     \
+    V(SharedArray, Slice)                     \
+    V(SharedArray, Some)                      \
+    V(SharedArray, Sort)                      \
+    V(SharedArray, Splice)                    \
+    V(SharedArray, ToLocaleString)            \
+    V(SharedArray, ToString)                  \
+    V(SharedArray, Unscopables)               \
+    V(SharedArray, Unshift)                   \
+    V(SharedArray, Values)                    \
+    V(SharedArray, Includes)                  \
+    V(SharedArray, Flat)                      \
+    V(SharedArray, FlatMap)                   \
+    V(SharedArray, At)                        \
+    V(SharedArray, ToReversed)                \
+    V(SharedArray, With)                      \
+    V(SharedArray, ToSorted)                  \
+    V(SharedArray, ToSpliced)                 \
     V(ArrayBuffer, Constructor)               \
     V(ArrayBuffer, Slice)                     \
     V(ArrayBuffer, Species)                   \
@@ -489,6 +533,19 @@ namespace panda::ecmascript {
     V(Map, Values)                            \
     V(Map, ForEach)                           \
     V(Map, AddEntriesFromIterable)            \
+    V(SharedMap, Constructor)               \
+    V(SharedMap, Species)                   \
+    V(SharedMap, Clear)                     \
+    V(SharedMap, Delete)                    \
+    V(SharedMap, Entries)                   \
+    V(SharedMap, Get)                       \
+    V(SharedMap, Has)                       \
+    V(SharedMap, Keys)                      \
+    V(SharedMap, Set)                       \
+    V(SharedMap, GetSize)                   \
+    V(SharedMap, Values)                    \
+    V(SharedMap, ForEach)                   \
+    V(SharedMap, AddEntriesFromIterable)    \
     V(Math, Abs)                              \
     V(Math, Acos)                             \
     V(Math, Acosh)                            \
@@ -711,6 +768,16 @@ namespace panda::ecmascript {
     V(Set, GetSize)                           \
     V(Set, Values)                            \
     V(Set, ForEach)                           \
+    V(SharedSet, Constructor)                 \
+    V(SharedSet, Species)                     \
+    V(SharedSet, Add)                         \
+    V(SharedSet, Clear)                       \
+    V(SharedSet, Delete)                      \
+    V(SharedSet, Entries)                     \
+    V(SharedSet, Has)                         \
+    V(SharedSet, GetSize)                     \
+    V(SharedSet, Values)                      \
+    V(SharedSet, ForEach)                     \
     V(StringIterator, Next)                   \
     V(String, Constructor)                    \
     V(String, FromCharCode)                   \

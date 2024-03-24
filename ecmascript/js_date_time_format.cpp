@@ -15,6 +15,7 @@
 
 #include "ecmascript/js_date_time_format.h"
 
+#include "ecmascript/checkpoint/thread_state_transition.h"
 #include "ecmascript/intl/locale_helper.h"
 #include "ecmascript/ecma_macros.h"
 #include "ecmascript/global_env.h"
@@ -450,8 +451,11 @@ JSHandle<JSDateTimeFormat> JSDateTimeFormat::InitializeDateTimeFormat(JSThread *
     }
 
     // 36.a. Let hcDefault be dataLocaleData.[[hourCycle]].
-    std::unique_ptr<icu::DateTimePatternGenerator> generator(
-        icu::DateTimePatternGenerator::createInstance(icuLocale, status));
+    std::unique_ptr<icu::DateTimePatternGenerator> generator;
+    {
+        ThreadNativeScope nativeScope(thread);
+        generator.reset(icu::DateTimePatternGenerator::createInstance(icuLocale, status));
+    }
     if (U_FAILURE(status) || generator == nullptr) {
         if (status == UErrorCode::U_MISSING_RESOURCE_ERROR) {
             THROW_REFERENCE_ERROR_AND_RETURN(thread, "can not find icu data resources", dateTimeFormat);
@@ -810,7 +814,10 @@ JSHandle<EcmaString> JSDateTimeFormat::FormatDateTime(JSThread *thread,
     icu::UnicodeString result;
 
     // 3. Set result to the string-concatenation of result and part.[[Value]].
-    simpleDateFormat->format(xValue, result);
+    {
+        ThreadNativeScope nativeScope(thread);
+        simpleDateFormat->format(xValue, result);
+    }
 
     // 4. Return result.
     return intl::LocaleHelper::UStringToString(thread, result);
@@ -825,7 +832,10 @@ JSHandle<JSArray> JSDateTimeFormat::FormatDateTimeToParts(JSThread *thread,
     UErrorCode status = U_ZERO_ERROR;
     icu::FieldPositionIterator fieldPositionIter;
     icu::UnicodeString formattedParts;
-    simpleDateFormat->format(x, formattedParts, &fieldPositionIter, status);
+    {
+        ThreadNativeScope nativeScope(thread);
+        simpleDateFormat->format(x, formattedParts, &fieldPositionIter, status);
+    }
     if (U_FAILURE(status) != 0) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "format failed", thread->GetEcmaVM()->GetFactory()->NewJSArray());
     }

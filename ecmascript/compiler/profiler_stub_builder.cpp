@@ -468,7 +468,7 @@ void ProfilerStubBuilder::UpdatePropAttrIC(
     env->SubCfgExit();
 }
 
-void ProfilerStubBuilder::UpdatePropAttrWithValue(GateRef glue, GateRef jsType, GateRef layout, GateRef attr,
+void ProfilerStubBuilder::UpdatePropAttrWithValue(GateRef glue, GateRef receiver, GateRef layout, GateRef attr,
                                                   GateRef attrIndex, GateRef value, ProfileOperation callback)
 {
     if (callback.IsEmpty()) {
@@ -479,9 +479,9 @@ void ProfilerStubBuilder::UpdatePropAttrWithValue(GateRef glue, GateRef jsType, 
     env->SubCfgEntry(&entry);
     Label exit(env);
     Label updateLayout(env);
-    Label notSharedType(env);
-    BRANCH(IsJSSharedType(jsType), &exit, &notSharedType);
-    Bind(&notSharedType);
+    Label isNotJSShared(env);
+    BRANCH(IsJSShared(receiver), &exit, &isNotJSShared);
+    Bind(&isNotJSShared);
     GateRef newAttr = UpdateTrackTypeInPropAttr(attr, value, callback);
     BRANCH(Equal(attr, newAttr), &exit, &updateLayout);
     Bind(&updateLayout);

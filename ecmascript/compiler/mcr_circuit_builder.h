@@ -68,9 +68,11 @@ GateRef CircuitBuilder::TaggedObjectIsString(GateRef obj)
 
 GateRef CircuitBuilder::TaggedObjectIsShared(GateRef obj)
 {
-    GateRef objectType = GetObjectType(LoadHClass(obj));
-    return BoolOr(Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::JS_SHARED_OBJECT))),
-                  Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::JS_SHARED_FUNCTION))));
+    GateRef bitfield = Load(VariableType::INT32(), LoadHClass(obj), IntPtr(JSHClass::BIT_FIELD_OFFSET));
+    return Int32NotEqual(
+        Int32And(Int32LSR(bitfield, Int32(JSHClass::IsJSSharedBit::START_BIT)),
+                 Int32((1LU << JSHClass::IsJSSharedBit::SIZE) - 1)),
+        Int32(0));
 }
 
 GateRef CircuitBuilder::TaggedObjectBothAreString(GateRef x, GateRef y)
@@ -551,7 +553,7 @@ GateRef CircuitBuilder::TaggedGetInt(GateRef x)
 }
 
 inline GateRef CircuitBuilder::TypedCallBuiltin(GateRef hirGate, const std::vector<GateRef> &args,
-                                                BuiltinsStubCSigns::ID id)
+                                                BuiltinsStubCSigns::ID id, bool isSideEffect)
 {
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
@@ -562,7 +564,7 @@ inline GateRef CircuitBuilder::TypedCallBuiltin(GateRef hirGate, const std::vect
     inList.push_back(Int8(static_cast<int8_t>(id)));
     AppendFrameArgs(inList, hirGate);
 
-    auto builtinOp = TypedCallOperator(hirGate, MachineType::I64, inList);
+    auto builtinOp = TypedCallOperator(hirGate, MachineType::I64, inList, isSideEffect);
     currentLabel->SetControl(builtinOp);
     currentLabel->SetDepend(builtinOp);
     return builtinOp;

@@ -36,7 +36,7 @@ public:
     // Help to finish sweeping task. It can be called through js thread
     void EnsureAllTaskFinished();
     // Ensure task finish. It can be called through js thread
-    void EnsureTaskFinished(MemSpaceType type);
+    void EnsureTaskFinished(JSThread *thread, MemSpaceType type);
 
     void TryFillSweptRegion();
 

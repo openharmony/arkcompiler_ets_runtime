@@ -27,12 +27,15 @@ group("ark_aot_builtin_inlining_math_test") {
     "Log2",
     "Log10",
     "Log1p",
+    "Exp",
+    "Expm1",
     "Sin",
     "Sinh",
     "Tan",
     "Tanh",
     "Abs",
     "Pow",
+    "Cbrt",
   ]
 
   deps = []

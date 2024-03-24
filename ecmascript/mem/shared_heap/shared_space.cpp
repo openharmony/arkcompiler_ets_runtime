@@ -16,10 +16,13 @@
 #include "ecmascript/mem/shared_heap/shared_space.h"
 
 #include "ecmascript/js_hclass-inl.h"
+#include "ecmascript/js_thread.h"
 #include "ecmascript/mem/allocator-inl.h"
 #include "ecmascript/mem/free_object_set.h"
 #include "ecmascript/mem/heap-inl.h"
 #include "ecmascript/mem/shared_heap/shared_concurrent_sweeper.h"
+#include "ecmascript/checkpoint/thread_state_transition.h"
+#include "ecmascript/runtime_lock.h"
 
 namespace panda::ecmascript {
 SharedSparseSpace::SharedSparseSpace(SharedHeap *heap,
@@ -47,11 +50,11 @@ void SharedSparseSpace::ResetTopPointer(uintptr_t top)
 }
 
 // only used in share heap initialize before first vmThread created.
-uintptr_t SharedSparseSpace::AllocateWithoutGC(size_t size)
+uintptr_t SharedSparseSpace::AllocateWithoutGC(JSThread *thread, size_t size)
 {
-    uintptr_t object = TryAllocate(size);
+    uintptr_t object = TryAllocate(thread, size);
     CHECK_SOBJECT_AND_INC_OBJ_SIZE(size);
-    object = AllocateWithExpand(nullptr, size);
+    object = AllocateWithExpand(thread, size);
     CHECK_SOBJECT_AND_INC_OBJ_SIZE(size);
     return object;
 }
@@ -59,15 +62,16 @@ uintptr_t SharedSparseSpace::AllocateWithoutGC(size_t size)
 uintptr_t SharedSparseSpace::Allocate(JSThread *thread, size_t size, bool allowGC)
 {
     ASSERT(thread->IsInRunningStateOrProfiling());
-    uintptr_t object = TryAllocate(size);
+    thread->CheckSafepointIfSuspended();
+    uintptr_t object = TryAllocate(thread, size);
     CHECK_SOBJECT_AND_INC_OBJ_SIZE(size);
     if (sweepState_ == SweepState::SWEEPING) {
-        object = AllocateAfterSweepingCompleted(size);
+        object = AllocateAfterSweepingCompleted(thread, size);
         CHECK_SOBJECT_AND_INC_OBJ_SIZE(size);
     }
     // Check whether it is necessary to trigger Shared GC before expanding to avoid OOM risk.
     if (allowGC && sHeap_->CheckAndTriggerGC(thread)) {
-        object = TryAllocate(size);
+        object = TryAllocate(thread, size);
         CHECK_SOBJECT_AND_INC_OBJ_SIZE(size);
     }
     object = AllocateWithExpand(thread, size);
@@ -79,27 +83,28 @@ uintptr_t SharedSparseSpace::Allocate(JSThread *thread, size_t size, bool allowG
     return object;
 }
 
-uintptr_t SharedSparseSpace::AllocateNoGCAndExpand([[maybe_unused]] JSThread *thread, size_t size)
+uintptr_t SharedSparseSpace::AllocateNoGCAndExpand(JSThread *thread, size_t size)
 {
     ASSERT(thread->IsInRunningStateOrProfiling());
-    uintptr_t object = TryAllocate(size);
+    thread->CheckSafepointIfSuspended();
+    uintptr_t object = TryAllocate(thread, size);
     CHECK_SOBJECT_AND_INC_OBJ_SIZE(size);
     if (sweepState_ == SweepState::SWEEPING) {
-        object = AllocateAfterSweepingCompleted(size);
+        object = AllocateAfterSweepingCompleted(thread, size);
         CHECK_SOBJECT_AND_INC_OBJ_SIZE(size);
     }
     return object;
 }
 
-uintptr_t SharedSparseSpace::TryAllocate(size_t size)
+uintptr_t SharedSparseSpace::TryAllocate(JSThread *thread, size_t size)
 {
-    LockHolder lock(allocateLock_);
+    RuntimeLockHolder lock(thread, allocateLock_);
     return allocator_->Allocate(size);
 }
 
 uintptr_t SharedSparseSpace::AllocateWithExpand(JSThread *thread, size_t size)
 {
-    LockHolder lock(allocateLock_);
+    RuntimeLockHolder lock(thread, allocateLock_);
     // In order to avoid expand twice by different threads, try allocate first.
     auto object = allocator_->Allocate(size);
     if (object == 0 && Expand(thread)) {
@@ -139,9 +144,9 @@ void SharedSparseSpace::MergeDeserializeAllocateRegions(const std::vector<Region
     }
 }
 
-uintptr_t SharedSparseSpace::AllocateAfterSweepingCompleted(size_t size)
+uintptr_t SharedSparseSpace::AllocateAfterSweepingCompleted(JSThread *thread, size_t size)
 {
-    LockHolder lock(allocateLock_);
+    RuntimeLockHolder lock(thread, allocateLock_);
     if (sweepState_ != SweepState::SWEEPING) {
         return allocator_->Allocate(size);
     }
@@ -152,7 +157,7 @@ uintptr_t SharedSparseSpace::AllocateAfterSweepingCompleted(size_t size)
         }
     }
     // Parallel sweep and fill
-    sHeap_->GetSweeper()->EnsureTaskFinished(spaceType_);
+    sHeap_->GetSweeper()->EnsureTaskFinished(thread, spaceType_);
     return allocator_->Allocate(size);
 }
 
@@ -370,6 +375,7 @@ bool SharedReadOnlySpace::Expand(JSThread *thread)
 uintptr_t SharedReadOnlySpace::Allocate(JSThread *thread, size_t size)
 {
     ASSERT(thread->IsInRunningStateOrProfiling());
+    thread->CheckSafepointIfSuspended();
     LockHolder holder(allocateLock_);
     auto object = allocator_.Allocate(size);
     if (object != 0) {
@@ -391,6 +397,7 @@ SharedHugeObjectSpace::SharedHugeObjectSpace(BaseHeap *heap, HeapRegionAllocator
 uintptr_t SharedHugeObjectSpace::Allocate(JSThread *thread, size_t objectSize)
 {
     ASSERT(thread->IsInRunningStateOrProfiling());
+    thread->CheckSafepointIfSuspended();
     LockHolder lock(allocateLock_);
     // In HugeObject allocation, we have a revervation of 8 bytes for markBitSet in objectSize.
     // In case Region is not aligned by 16 bytes, HUGE_OBJECT_BITSET_SIZE is 8 bytes more.

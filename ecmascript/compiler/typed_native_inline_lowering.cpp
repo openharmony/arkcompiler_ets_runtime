@@ -42,6 +42,12 @@ GateRef TypedNativeInlineLowering::VisitGate(GateRef gate)
         case OpCode::MATH_LOG1P:
             LowerGeneralUnaryMath(gate, RTSTUB_ID(FloatLog1p));
             break;
+        case OpCode::MATH_EXP:
+            LowerMathExp(gate);
+            break;
+        case OpCode::MATH_EXPM1:
+            LowerGeneralUnaryMath(gate, RTSTUB_ID(FloatExpm1));
+            break;
         case OpCode::MATH_SINH:
             LowerGeneralUnaryMath(gate, RTSTUB_ID(FloatSinh));
             break;
@@ -78,6 +84,9 @@ GateRef TypedNativeInlineLowering::VisitGate(GateRef gate)
         case OpCode::MATH_POW:
             LowerMathPow(gate);
             break;
+        case OpCode::MATH_CBRT:
+            LowerGeneralUnaryMath(gate, RTSTUB_ID(FloatCbrt));
+            break;
         default:
             break;
     }
@@ -113,6 +122,21 @@ void TypedNativeInlineLowering::LowerMathPow(GateRef gate)
 
     builder_.Bind(&exit);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
+}
+
+void TypedNativeInlineLowering::LowerMathExp(GateRef gate)
+{
+#ifdef SUPPORT_LLVM_INTRINSICS_WITH_CALLS
+    Environment env(gate, circuit_, &builder_);
+    constexpr double one = 1.0;
+    GateRef base = builder_.Double(std::exp(one));
+    GateRef power = acc_.GetValueIn(gate, 0U);
+
+    GateRef exp = builder_.DoubleExp(base, power);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), exp);
+#else
+    LowerGeneralUnaryMath(gate, RTSTUB_ID(FloatExp));
+#endif
 }
 
 template <TypedNativeInlineLowering::MathTrigonometricCheck CHECK>

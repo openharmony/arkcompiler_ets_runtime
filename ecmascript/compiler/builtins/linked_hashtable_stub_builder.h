@@ -35,6 +35,7 @@ public:
     GateRef Insert(GateRef linkedTable, GateRef key, GateRef value);
     GateRef Delete(GateRef linkedTable, GateRef key);
     GateRef Has(GateRef linkedTable, GateRef key);
+    GateRef Get(GateRef linkedTable, GateRef key);
 
     void GenMapSetConstructor(GateRef nativeCode, GateRef func, GateRef newTarget, GateRef thisValue, GateRef numArgs);
 

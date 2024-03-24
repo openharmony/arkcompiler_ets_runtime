@@ -116,6 +116,7 @@ GateRef NumberSpeculativeRetype::VisitGate(GateRef gate)
         case OpCode::CONSTANT:
             return VisitConstant(gate);
         case OpCode::TYPED_CALL_BUILTIN:
+        case OpCode::TYPED_CALL_BUILTIN_SIDE_EFFECT:
             return VisitCallBuiltins(gate);
         case OpCode::TYPE_CONVERT:
             return VisitTypeConvert(gate);
@@ -137,6 +138,8 @@ GateRef NumberSpeculativeRetype::VisitGate(GateRef gate)
         case OpCode::MATH_LOG2:
         case OpCode::MATH_LOG10:
         case OpCode::MATH_LOG1P:
+        case OpCode::MATH_EXP:
+        case OpCode::MATH_EXPM1:
         case OpCode::MATH_ACOS:
         case OpCode::MATH_ACOSH:
         case OpCode::MATH_ASIN:
@@ -151,6 +154,7 @@ GateRef NumberSpeculativeRetype::VisitGate(GateRef gate)
         case OpCode::MATH_TAN:
         case OpCode::MATH_TANH:
         case OpCode::MATH_POW:
+        case OpCode::MATH_CBRT:
             return VisitMathBuiltin(gate);
         case OpCode::MATH_ABS:
             return VisitMathAbs(gate);

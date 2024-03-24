@@ -118,6 +118,9 @@ HWTEST_F_L0(GlobalIndexMapTest, GlobalIndexMap_initGlobalEnv)
             GlobalIndex rootIndex;
             GlobalIndexMap::FindGlobalIndex(globalIndexMap, objectValue, &rootIndex);
             EXPECT_EQ(static_cast<int>(index), rootIndex.GetGlobalEnvId());
+            if (index != rootIndex.GetGlobalEnvId()) {
+                objectValue.D();
+            }
             GlobalIndex globalEnvGlobalIndex;
             globalEnvGlobalIndex.UpdateGlobalEnvId(index);
             EXPECT_EQ(globalEnvGlobalIndex, rootIndex);

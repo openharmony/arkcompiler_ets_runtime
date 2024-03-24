@@ -15,6 +15,7 @@
 
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 
+#include "ecmascript/checkpoint/thread_state_transition.h"
 #include "ecmascript/compiler/aot_file/an_file_data_manager.h"
 #include "ecmascript/compiler/aot_file/aot_file_manager.h"
 #include "ecmascript/js_file_path.h"
@@ -518,6 +519,7 @@ std::string GetModuleNameFromDesc(const std::string &desc)
 std::shared_ptr<JSPandaFile> JSPandaFileManager::GenerateJSPandaFile(JSThread *thread, const panda_file::File *pf,
                                                                      const CString &desc, std::string_view entryPoint)
 {
+    ThreadNativeScope nativeScope(thread);
     ASSERT(GetJSPandaFile(pf) == nullptr);
     std::shared_ptr<JSPandaFile> newJsPandaFile = NewJSPandaFile(pf, desc);
     EcmaVM *vm = thread->GetEcmaVM();

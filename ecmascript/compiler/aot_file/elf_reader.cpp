@@ -271,7 +271,9 @@ bool ElfReader::ParseELFSegment()
         ASSERT(phdr[i].p_offset % PageSize() == 0);
         if ((phdr[i].p_flags & llvm::ELF::PF_X) != 0) {
             ASSERT(reinterpret_cast<uintptr_t>(virtualAddr) % PageSize() == 0);
-            PageProtect(virtualAddr, phdr[i].p_memsz, PAGE_PROT_EXEC_READ);
+            if (!PageProtect(virtualAddr, phdr[i].p_memsz, PAGE_PROT_EXEC_READ)) {
+                return false;
+            }
         }
     }
     return true;

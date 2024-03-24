@@ -78,12 +78,16 @@ namespace panda::ecmascript::kungfu {
     V(MathLog2, MATH_LOG2, GateFlags::NO_WRITE, 1, 1, 1)                                        \
     V(MathLog10, MATH_LOG10, GateFlags::NO_WRITE, 1, 1, 1)                                      \
     V(MathLog1p, MATH_LOG1P, GateFlags::NO_WRITE, 1, 1, 1)                                      \
+    V(MathExp, MATH_EXP, GateFlags::NO_WRITE, 1, 1, 1)                                          \
+    V(MathExpm1, MATH_EXPM1, GateFlags::NO_WRITE, 1, 1, 1)                                      \
     V(MathAbs, MATH_ABS, GateFlags::NO_WRITE, 1, 1, 1)                                          \
     V(MathPow, MATH_POW, GateFlags::NO_WRITE, 1, 1, 2)                                          \
+    V(MathCbrt, MATH_CBRT, GateFlags::NO_WRITE, 1, 1, 1)                                        \
     MCR_BINARY_GATE_META_DATA_CACHE_LIST(V)
 
-#define MCR_GATE_META_DATA_LIST_WITH_PC_OFFSET(V)                              \
-    V(TypedCallBuiltin, TYPED_CALL_BUILTIN, GateFlags::CHECKABLE, 1, 1, value)
+#define MCR_GATE_META_DATA_LIST_WITH_PC_OFFSET(V)                                                            \
+    V(TypedCallBuiltin, TYPED_CALL_BUILTIN, GateFlags::CHECKABLE, 1, 1, value)                               \
+    V(TypedCallBuiltinSideEffect, TYPED_CALL_BUILTIN_SIDE_EFFECT, GateFlags::HAS_FRAME_STATE, 1, 1, value)
 
 #define MCR_GATE_META_DATA_LIST_FOR_CALL(V)                                    \
     V(TypedCall, TYPEDCALL, GateFlags::HAS_FRAME_STATE, 1, 1, value)           \

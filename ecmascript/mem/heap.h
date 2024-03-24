@@ -514,7 +514,7 @@ public:
     template<class Callback>
     void IterateOverObjects(const Callback &cb) const;
 
-    inline TaggedObject *AllocateClassClass(JSHClass *hclass, size_t size);
+    inline TaggedObject *AllocateClassClass(JSThread *thread, JSHClass *hclass, size_t size);
 
     inline TaggedObject *AllocateNonMovableOrHugeObject(JSThread *thread, JSHClass *hclass);
 
@@ -1013,8 +1013,8 @@ public:
     void CheckNonMovableSpaceOOM();
     std::tuple<uint64_t, uint8_t *, int, kungfu::CalleeRegAndOffsetVec> CalCallSiteInfo(uintptr_t retAddr) const;
 
-    GCListenerId AddGCListener(FinishGCListener listener, void *data);
-    void RemoveGCListener(GCListenerId listenerId);
+    PUBLIC_API GCListenerId AddGCListener(FinishGCListener listener, void *data);
+    PUBLIC_API void RemoveGCListener(GCListenerId listenerId);
 private:
     static constexpr int IDLE_TIME_LIMIT = 10;  // if idle time over 10ms we can do something
     static constexpr int ALLOCATE_SIZE_LIMIT = 100_KB;

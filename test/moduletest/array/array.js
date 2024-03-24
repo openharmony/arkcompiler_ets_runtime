@@ -531,3 +531,69 @@ var result_every3 = arr_every3.every(testEvery);
 print(result_every3);
 var result_every4 = arr_every4.every(testEvery4);
 print(result_every4);
+
+// Test case for reduceRight()
+var arr_reduceRight1 = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+var arr_reduceRight2 = new Array();
+function testReduceRight(accumulator, element, index, array) {
+    if (index == 0) {
+        array.length = 6;
+    }
+    return accumulator + element;
+}
+function testReduceRight4(accumulator, element, index, array) {
+  array.pop();
+  array.pop();
+  return accumulator + element;
+}
+for (let i = 0; i < 10; i++) arr_reduceRight2[i] = i;
+var arr_reduceRight3 = new Array();
+for (let i = 0; i < 10; i++) {
+  if (i < 9) {
+    continue;
+  }
+  arr_reduceRight3[i] = i;
+}
+var arr_reduceRight4 = new Array();
+for (let i = 0; i < 10; i++) arr_reduceRight4[i] = i;
+var result_reduceRight1 = arr_reduceRight1.reduceRight(testReduceRight, 100);
+print(result_reduceRight1);
+var result_reduceRight2 = arr_reduceRight2.reduceRight(testReduceRight, 100);
+print(result_reduceRight2);
+var result_reduceRight3 = arr_reduceRight3.reduceRight(testReduceRight, 100);
+print(result_reduceRight3);
+var result_reduceRight4 = arr_reduceRight4.reduceRight(testReduceRight4, 100);
+print(result_reduceRight4);
+
+// Test case for some()
+var arr_some1 = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+var arr_some2 = new Array();
+function testSome(element, index, array) {
+    if (index == 0) {
+        array.length = 6;
+    }
+    return element > 8;
+}
+for (let i = 0; i < 10; i++) arr_some2[i] = i;
+var arr_some3 = new Array();
+for (let i = 0; i < 10; i++) {
+  if (i < 9) {
+    continue;
+  }
+  arr_some3[i] = i;
+}
+var result_some1 = arr_some1.some(testSome);
+print(result_some1);
+var result_some2 = arr_some2.some(testSome);
+print(result_some2);
+var result_some3 = arr_some3.some(testSome);
+print(result_some3);
+
+// Test case for unshift()
+var arr_unshift1 = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+var arr_unshift2 = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+
+var result_unshift1 = arr_unshift1.unshift(1, 2, 3, 4, 5);
+print(result_unshift1);
+var result_unshift2 = arr_unshift2.unshift(1, 2, 3);
+print(result_unshift2);

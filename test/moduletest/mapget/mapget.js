@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023 Huawei Device Co., Ltd.
+ * Copyright (c) 2024 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -12,10 +12,23 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-let badregexp =  "(?:" +  " ".repeat(32768*2)+  ")*";
-let reg = RegExp(badregexp);
-try {
-    reg.test();
-} catch (e) {
-    print(e instanceof SyntaxError);
+
+/*
+ * @tc.name:mapget
+ * @tc.desc: test Map.get
+ * @tc.type: FUNC
+ * @tc.require: issueI97M5M
+ */
+let map = new Map();
+
+map.set('key', 'value');
+print(map.get('key'))
+
+for (let i = 0; i < 3; ++i) {
+    map.set(i, -i);
+}
+
+for (let i = 0; i < 4; ++i) {
+    let value = map.get(i);
+    print(value);
 }

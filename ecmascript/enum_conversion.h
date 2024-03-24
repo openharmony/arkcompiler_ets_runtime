@@ -46,6 +46,10 @@ inline constexpr std::optional<GlobalEnvField> ToGlobelEnvPrototypeField(Builtin
             return GlobalEnvField::SET_PROTOTYPE_INDEX;
         case BuiltinTypeId::STRING:
             return GlobalEnvField::STRING_PROTOTYPE_INDEX;
+        case BuiltinTypeId::ITERATOR:
+            return GlobalEnvField::ITERATOR_PROTOTYPE_INDEX;
+        case BuiltinTypeId::ARRAY_ITERATOR:
+            return GlobalEnvField::ARRAY_ITERATOR_PROTOTYPE_INDEX;
         default: // No corresponding entry in either BuiltinTypeId or GlobalEnvField
             return std::nullopt;
     }
@@ -87,6 +91,8 @@ constexpr std::optional<BuiltinTypeId> ToBuiltinsTypeId(JSType type)
             return BuiltinTypeId::FLOAT32_ARRAY;
         case JSType::JS_FLOAT64_ARRAY:
             return BuiltinTypeId::FLOAT64_ARRAY;
+        case JSType::JS_ARRAY_ITERATOR:
+            return BuiltinTypeId::ARRAY_ITERATOR;
         default:
             return std::nullopt;
     }

@@ -909,6 +909,22 @@ inline bool JSTaggedValue::IsArray(JSThread *thread) const
     return false;
 }
 
+inline bool JSTaggedValue::IsSArray(JSThread *thread) const
+{
+    if (!IsHeapObject()) {
+        return false;
+    }
+    JSHClass *jsHclass = GetTaggedObject()->GetClass();
+    if (jsHclass->IsJSSharedArray()) {
+        return true;
+    }
+
+    if (jsHclass->IsJSProxy()) {
+        return JSProxy::Cast(GetTaggedObject())->IsArray(thread);
+    }
+    return false;
+}
+
 inline bool JSTaggedValue::IsCOWArray() const
 {
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsCOWArray();
@@ -922,6 +938,11 @@ inline bool JSTaggedValue::IsMutantTaggedArray() const
 inline bool JSTaggedValue::IsJSArray() const
 {
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSArray();
+}
+
+inline bool JSTaggedValue::IsJSSharedArray() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSSharedArray();
 }
 
 inline bool JSTaggedValue::IsStableJSArray(JSThread *thread) const
@@ -1012,6 +1033,11 @@ inline bool JSTaggedValue::IsJSMap() const
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSMap();
 }
 
+inline bool JSTaggedValue::IsJSSharedMap() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSSharedMap();
+}
+
 inline bool JSTaggedValue::IsJSWeakMap() const
 {
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSWeakMap();
@@ -1025,6 +1051,11 @@ inline bool JSTaggedValue::IsJSWeakSet() const
 inline bool JSTaggedValue::IsJSSet() const
 {
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSSet();
+}
+
+inline bool JSTaggedValue::IsJSSharedSet() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSSharedSet();
 }
 
 inline bool JSTaggedValue::IsJSWeakRef() const
@@ -1182,6 +1213,11 @@ inline bool JSTaggedValue::IsJSSetIterator() const
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSSetIterator();
 }
 
+inline bool JSTaggedValue::IsJSSharedSetIterator() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSSharedSetIterator();
+}
+
 inline bool JSTaggedValue::IsJSRegExpIterator() const
 {
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSRegExpIterator();
@@ -1190,6 +1226,11 @@ inline bool JSTaggedValue::IsJSRegExpIterator() const
 inline bool JSTaggedValue::IsJSMapIterator() const
 {
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSMapIterator();
+}
+
+inline bool JSTaggedValue::IsJSSharedMapIterator() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSSharedMapIterator();
 }
 
 inline bool JSTaggedValue::IsJSAPIHashMapIterator() const
@@ -1215,6 +1256,11 @@ inline bool JSTaggedValue::IsJSAPITreeSetIterator() const
 inline bool JSTaggedValue::IsJSArrayIterator() const
 {
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSArrayIterator();
+}
+
+inline bool JSTaggedValue::IsJSSharedArrayIterator() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSSharedArrayIterator();
 }
 
 inline bool JSTaggedValue::IsJSAPIArrayListIterator() const

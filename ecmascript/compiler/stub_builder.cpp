@@ -33,6 +33,7 @@
 #include "ecmascript/js_object.h"
 #include "ecmascript/js_primitive_ref.h"
 #include "ecmascript/js_arguments.h"
+#include "ecmascript/js_thread.h"
 #include "ecmascript/mem/remembered_set.h"
 #include "ecmascript/message_string.h"
 #include "ecmascript/pgo_profiler/types/pgo_profiler_type.h"
@@ -97,6 +98,27 @@ void StubBuilder::LoopBegin(Label *loopHead)
     loopHead->SetPreControl(loopControl);
     loopHead->Bind();
     env_->SetCurrentLabel(loopHead);
+}
+
+GateRef StubBuilder::CheckSuspend(GateRef glue)
+{
+    GateRef stateAndFlagsOffset = IntPtr(JSThread::GlueData::GetStateAndFlagsOffset(env_->IsArch32Bit()));
+    GateRef stateAndFlags = Load(VariableType::INT16(), glue, stateAndFlagsOffset);
+    return Int32And(ZExtInt16ToInt32(stateAndFlags), Int32(SUSPEND_REQUEST));
+}
+
+void StubBuilder::LoopEnd(Label *loopHead, Environment *env, GateRef glue)
+{
+    Label loopEnd(env);
+    Label needSuspend(env);
+    Branch(Int32Equal(Int32(ThreadFlag::SUSPEND_REQUEST), CheckSuspend(glue)), &needSuspend, &loopEnd);
+    Bind(&needSuspend);
+    {
+        CallRuntime(glue, RTSTUB_ID(CheckSafePoint), {});
+        Jump(&loopEnd);
+    }
+    Bind(&loopEnd);
+    LoopEnd(loopHead);
 }
 
 void StubBuilder::LoopEnd(Label *loopHead)
@@ -230,7 +252,7 @@ GateRef StubBuilder::FindElementWithCache(GateRef glue, GateRef layoutInfo, Gate
             i = Int32Add(*i, Int32(1));
             BRANCH(Int32UnsignedLessThan(*i, propsNum), &loopEnd, &afterLoop);
             Bind(&loopEnd);
-            LoopEnd(&loopHead);
+            LoopEnd(&loopHead, env, glue);
         }
         Bind(&afterLoop);
         result = Int32(-1);
@@ -294,7 +316,7 @@ GateRef StubBuilder::FindElementFromNumberDictionary(GateRef glue, GateRef eleme
     Bind(&loopEnd);
     entry = GetNextPositionForHash(*entry, *count, capacity);
     count = Int32Add(*count, Int32(1));
-    LoopEnd(&loopHead);
+    LoopEnd(&loopHead, env, glue);
     Bind(&exit);
     auto ret = *result;
     env->SubCfgExit();
@@ -396,7 +418,7 @@ GateRef StubBuilder::FindEntryFromNameDictionary(GateRef glue, GateRef elements,
         {
             entry = GetNextPositionForHash(*entry, *count, capacity);
             count = Int32Add(*count, Int32(1));
-            LoopEnd(&loopHead);
+            LoopEnd(&loopHead, env, glue);
         }
     }
     Bind(&exit);
@@ -508,7 +530,7 @@ GateRef StubBuilder::FindEntryFromTransitionDictionary(GateRef glue, GateRef ele
         {
             entry = GetNextPositionForHash(*entry, *count, capacity);
             count = Int32Add(*count, Int32(1));
-            LoopEnd(&loopHead);
+            LoopEnd(&loopHead, env, glue);
         }
     }
     Bind(&exit);
@@ -1507,7 +1529,7 @@ GateRef StubBuilder::StringToElementIndex(GateRef glue, GateRef string)
                     Jump(&exit);
                 }
                 Bind(&loopEnd);
-                LoopEnd(&loopHead);
+                LoopEnd(&loopHead, env, glue);
                 Bind(&afterLoop);
                 {
                     Label lessThanMaxIndex(env);
@@ -1808,7 +1830,7 @@ GateRef StubBuilder::LoadICWithHandler(
             Bind(&loopEnd);
             holder = GetPrototypeHandlerHolder(*handler);
             handler = GetPrototypeHandlerHandlerInfo(*handler);
-            LoopEnd(&loopHead);
+            LoopEnd(&loopHead, env, glue);
         }
     }
     Bind(&handlerNotPrototypeHandler);
@@ -2046,7 +2068,7 @@ GateRef StubBuilder::ICStoreElement(GateRef glue, GateRef receiver, GateRef key,
             Bind(&loopEnd);
             {
                 varHandler = GetPrototypeHandlerHandlerInfo(*varHandler);
-                LoopEnd(&loopHead);
+                LoopEnd(&loopHead, env, glue);
             }
         }
     }
@@ -2226,7 +2248,7 @@ GateRef StubBuilder::StoreICWithHandler(GateRef glue, GateRef receiver, GateRef 
         }
         Bind(&JumpLoopHead);
         {
-            LoopEnd(&loopHead);
+            LoopEnd(&loopHead, env, glue);
         }
     }
     Bind(&exit);
@@ -2598,7 +2620,7 @@ GateRef StubBuilder::GetPropertyByIndex(GateRef glue, GateRef receiver, GateRef 
             }
         }
         Bind(&loopEnd);
-        LoopEnd(&loopHead);
+        LoopEnd(&loopHead, env, glue);
         Bind(&afterLoop);
         {
             result = Undefined();
@@ -2846,7 +2868,7 @@ GateRef StubBuilder::GetPropertyByName(GateRef glue, GateRef receiver, GateRef k
             }
         }
         Bind(&loopEnd);
-        LoopEnd(&loopHead);
+        LoopEnd(&loopHead, env, glue);
         Bind(&afterLoop);
         {
             result = Undefined();
@@ -3470,12 +3492,18 @@ GateRef StubBuilder::SetPropertyByIndex(GateRef glue, GateRef receiver, GateRef 
             BRANCH(TaggedIsHeapObject(*holder), &loopEnd, &afterLoop);
         }
         Bind(&loopEnd);
-        LoopEnd(&loopHead);
+        LoopEnd(&loopHead, env, glue);
         Bind(&afterLoop);
     }
     Label isExtensible(env);
     Label notExtensible(env);
+    Label throwNotExtensible(env);
     BRANCH(IsExtensible(receiver), &isExtensible, &notExtensible);
+    Bind(&notExtensible);
+    {
+        // fixme(hzzhouzebin) this makes SharedArray's frozen no sense.
+        BRANCH(IsJsSArray(receiver), &isExtensible, &throwNotExtensible);
+    }
     Bind(&isExtensible);
     {
         Label success(env);
@@ -3493,7 +3521,7 @@ GateRef StubBuilder::SetPropertyByIndex(GateRef glue, GateRef receiver, GateRef 
             Jump(&exit);
         }
     }
-    Bind(&notExtensible);
+    Bind(&throwNotExtensible);
     {
         GateRef taggedId = Int32(GET_MESSAGE_STRING_ID(SetPropertyWhenNotExtensible));
         CallRuntime(glue, RTSTUB_ID(ThrowTypeError), { IntToTaggedInt(taggedId) });
@@ -3683,11 +3711,11 @@ GateRef StubBuilder::SetPropertyByName(GateRef glue, GateRef receiver, GateRef k
                             // JSObject::Cast(holder)->SetProperty(thread, hclass, attr, value)
                             // return JSTaggedValue::Undefined()
                             Label executeSetProp(env);
-                            CheckUpdateSharedType(false, &result, glue, jsType, attr, value, &executeSetProp, &exit);
+                            CheckUpdateSharedType(false, &result, glue, receiver, attr, value, &executeSetProp, &exit);
                             Bind(&executeSetProp);
                             JSObjectSetProperty(glue, *holder, hclass, attr, key, value);
                             ProfilerStubBuilder(env).UpdatePropAttrWithValue(
-                                glue, jsType, layOutInfo, attr, entry, value, callback);
+                                glue, receiver, layOutInfo, attr, entry, value, callback);
                             result = Undefined();
                             Jump(&exit);
                         }
@@ -3756,7 +3784,7 @@ GateRef StubBuilder::SetPropertyByName(GateRef glue, GateRef receiver, GateRef k
                             // dict->UpdateValue(thread, entry, value)
                             // return JSTaggedValue::Undefined()
                             Label executeSetProp(env);
-                            CheckUpdateSharedType(true, &result, glue, jsType, attr1, value, &executeSetProp, &exit);
+                            CheckUpdateSharedType(true, &result, glue, receiver, attr1, value, &executeSetProp, &exit);
                             Bind(&executeSetProp);
                             UpdateValueInDict<NameDictionary>(glue, array, entry1, value);
                             result = Undefined();
@@ -3778,7 +3806,7 @@ GateRef StubBuilder::SetPropertyByName(GateRef glue, GateRef receiver, GateRef k
             BRANCH(TaggedIsHeapObject(*holder), &loopEnd, &afterLoop);
         }
         Bind(&loopEnd);
-        LoopEnd(&loopHead);
+        LoopEnd(&loopHead, env, glue);
         Bind(&afterLoop);
     }
     Label holeEntryNotNegtiveOne(env);
@@ -3791,7 +3819,7 @@ GateRef StubBuilder::SetPropertyByName(GateRef glue, GateRef receiver, GateRef k
         GateRef holeAttr = GetPropAttrFromLayoutInfo(receiverLayoutInfo, *receiverHoleEntry);
         JSObjectSetProperty(glue, receiver, receiverHClass, holeAttr, key, value);
         ProfilerStubBuilder(env).UpdatePropAttrWithValue(
-            glue, jsType, receiverLayoutInfo, holeAttr, *receiverHoleEntry, value, callback);
+            glue, receiver, receiverLayoutInfo, holeAttr, *receiverHoleEntry, value, callback);
         result = Undefined();
         Jump(&exit);
     }
@@ -4129,8 +4157,6 @@ GateRef StubBuilder::InstanceOf(
     Bind(&targetNotEcmaObject);
     {
         GateRef taggedId = Int32(GET_MESSAGE_STRING_ID(TargetTypeNotObject));
-        // stability testing log 20240127
-        CallRuntime(glue, RTSTUB_ID(DumpObject), { target, IntToTaggedInt(taggedId) });
         CallRuntime(glue, RTSTUB_ID(ThrowTypeError), { IntToTaggedInt(taggedId) });
         result = Exception();
         Jump(&exit);
@@ -4172,8 +4198,6 @@ GateRef StubBuilder::InstanceOf(
             Bind(&targetNotCallable);
             {
                 GateRef taggedId = Int32(GET_MESSAGE_STRING_ID(InstanceOfErrorTargetNotCallable));
-                // stability testing log 20240127
-                CallRuntime(glue, RTSTUB_ID(DumpObject), { target, IntToTaggedInt(taggedId) });
                 CallRuntime(glue, RTSTUB_ID(ThrowTypeError), { IntToTaggedInt(taggedId) });
                 result = Exception();
                 Jump(&exit);
@@ -4599,7 +4623,7 @@ GateRef StubBuilder::OrdinaryHasInstance(GateRef glue, GateRef target, GateRef o
                         BRANCH(TaggedIsNull(*object), &afterLoop, &loopEnd);
                     }
                     Bind(&loopEnd);
-                    LoopEnd(&loopHead);
+                    LoopEnd(&loopHead, env, glue);
                     Bind(&afterLoop);
                     {
                         result = TaggedFalse();
@@ -7577,7 +7601,7 @@ GateRef StubBuilder::TryStringOrSymbolToElementIndex(GateRef glue, GateRef key)
                 }
             }
             Bind(&loopEnd);
-            LoopEnd(&loopHead);
+            LoopEnd(&loopHead, env, glue);
             Bind(&afterLoop);
             {
                 Label lessThanMaxIndex(env);
@@ -8146,7 +8170,7 @@ GateRef StubBuilder::AppendSkipHole(GateRef glue, GateRef first, GateRef second,
         }
     }
     Bind(&loopEnd);
-    LoopEnd(&loopHead);
+    LoopEnd(&loopHead, env, glue);
     Bind(&afterLoop);
     {
         Label loopHead1(env);

@@ -244,6 +244,19 @@ bool JSPandaFile::CheckAndGetRecordInfo(const CString &recordName, JSRecordInfo 
     return false;
 }
 
+const JSRecordInfo &JSPandaFile::GetRecordInfo(const CString &recordName)
+{
+    if (IsBundlePack()) {
+        return jsRecordInfo_.begin()->second;
+    }
+    auto info = jsRecordInfo_.find(recordName);
+    if (info != jsRecordInfo_.end()) {
+        return info->second;
+    }
+    LOG_FULL(FATAL) << "Get record info failed";
+    UNREACHABLE();
+}
+
 CString JSPandaFile::GetEntryPoint(const CString &recordName) const
 {
     CString entryPoint;

@@ -1193,12 +1193,6 @@ public:
         INTERNAL_ERROR
     };
 
-    enum class RouteErrorCode : int {
-        ROUTE_SUCCESS = 0,
-        ROUTE_INTERNAL_ERROR = 100001,
-        ROUTE_URI_ERROR = 100002
-    };
-
     static EcmaVM *CreateJSVM(const RuntimeOption &option);
     static void DestroyJSVM(EcmaVM *ecmaVm);
     static void RegisterUncatchableErrorHandler(EcmaVM *ecmaVm, const UncatchableErrorHandler &handler);
@@ -1217,7 +1211,7 @@ public:
     static bool Execute(EcmaVM *vm, const std::string &fileName, const std::string &entry, bool needUpdate = false);
     static bool Execute(EcmaVM *vm, const uint8_t *data, int32_t size, const std::string &entry,
                         const std::string &filename = "", bool needUpdate = false);
-    static RouteErrorCode ExecuteWithSingletonPatternFlag(EcmaVM *vm, const std::string &bundleName,
+    static int ExecuteWithSingletonPatternFlag(EcmaVM *vm, const std::string &bundleName,
         const std::string &moduleName, const std::string &ohmurl, bool isSingletonPattern);
     // merge abc, execute module buffer
     static bool ExecuteModuleBuffer(EcmaVM *vm, const uint8_t *data, int32_t size, const std::string &filename = "",

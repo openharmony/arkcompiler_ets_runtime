@@ -806,9 +806,9 @@ public:
     {
         *liveIn = arg;
     }
-    void LiveInOrBits(const SparseDataInfo &arg) const
+    bool LiveInOrBits(const SparseDataInfo &arg) const
     {
-        liveIn->OrBits(arg);
+        return liveIn->OrBits(arg);
     }
     void LiveInEnlargeCapacity(uint32 arg) const
     {
@@ -835,9 +835,9 @@ public:
     {
         liveOut->SetBit(arg);
     }
-    void LiveOutOrBits(const SparseDataInfo &arg) const
+    bool LiveOutOrBits(const SparseDataInfo &arg) const
     {
-        liveOut->OrBits(arg);
+        return liveOut->OrBits(arg);
     }
     void LiveOutEnlargeCapacity(uint32 arg) const
     {

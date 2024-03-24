@@ -33,7 +33,7 @@ public:
     Jit() {}
     ~Jit();
     static Jit *GetInstance();
-    void SetEnable(const EcmaVM *vm);
+    void SetEnableOrDisable(const JSRuntimeOptions &options, bool isEnable);
     bool IsEnable();
     void Initialize();
 
@@ -76,7 +76,7 @@ private:
     Mutex installJitTasksDequeMtx_;
     static Mutex asyncCompileJitTasksMtx_;
 
-    static void (*initJitCompiler_)(EcmaVM *vm);
+    static void (*initJitCompiler_)(JSRuntimeOptions);
     static bool(*jitCompile_)(void*, JitTask*);
     static bool(*jitFinalize_)(void*, JitTask*);
     static void*(*createJitCompilerTask_)(JitTask*);

@@ -448,7 +448,9 @@ public:
 
     // Type
     bool IsJSMap() const;
+    bool IsJSSharedMap() const;
     bool IsJSSet() const;
+    bool IsJSSharedSet() const;
     bool IsJSWeakMap() const;
     bool IsJSWeakSet() const;
     bool IsJSWeakRef() const;
@@ -482,9 +484,11 @@ public:
     bool IsJSGlobalObject() const;
     bool IsJSError() const;
     bool IsArray(JSThread *thread) const;
+    bool IsSArray(JSThread *thread) const;
     bool IsCOWArray() const;
     bool IsMutantTaggedArray() const;
     bool IsJSArray() const;
+    bool IsJSSharedArray() const;
     bool PUBLIC_API IsJSCOWArray() const;
     bool IsStableJSArray(JSThread *thread) const;
     bool IsStableJSArguments(JSThread *thread) const;
@@ -530,9 +534,12 @@ public:
     bool IsSharedArrayBuffer() const;
 
     bool IsJSSetIterator() const;
+    bool IsJSSharedSetIterator() const;
     bool IsJSRegExpIterator() const;
     bool IsJSMapIterator() const;
+    bool IsJSSharedMapIterator() const;
     bool IsJSArrayIterator() const;
+    bool IsJSSharedArrayIterator() const;
     bool IsIterator() const;
     bool IsAsyncIterator() const;
     bool IsGeneratorFunction() const;

@@ -21,6 +21,7 @@
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/object_factory-inl.h"
+#include "ecmascript/checkpoint/thread_state_transition.h"
 
 #if defined(__clang__)
 #pragma clang diagnostic push
@@ -164,13 +165,16 @@ JSHandle<TaggedArray> JSLocale::LookupSupportedLocales(JSThread *thread, const J
     //       removed.
     //    b. Let availableLocale be BestAvailableLocale(availableLocales, noExtensionsLocale).
     //    c. If availableLocale is not undefined, append locale to the end of subset.
-    for (uint32_t i = 0; i < length; ++i) {
-        item.Update(requestedLocales->Get(thread, i));
-        intl::LocaleHelper::ParsedLocale foundationResult = intl::LocaleHelper::HandleLocale(item);
-        std::string availableLocale =
-            intl::LocaleHelper::BestAvailableLocale(availableStringLocales, foundationResult.base);
-        if (!availableLocale.empty()) {
-            subset->Set(thread, index++, item.GetTaggedValue());
+    {
+        ThreadNativeScope nativeScope(thread);
+        for (uint32_t i = 0; i < length; ++i) {
+            item.Update(requestedLocales->Get(thread, i));
+            intl::LocaleHelper::ParsedLocale foundationResult = intl::LocaleHelper::HandleLocale(item);
+            std::string availableLocale =
+                intl::LocaleHelper::BestAvailableLocale(availableStringLocales, foundationResult.base);
+            if (!availableLocale.empty()) {
+                subset->Set(thread, index++, item.GetTaggedValue());
+            }
         }
     }
     // 3. Return subset.
@@ -838,6 +842,7 @@ bool InsertOptions(JSThread *thread, const JSHandle<JSObject> &options, icu::Loc
         if (!uloc_toLegacyType(uloc_toLegacyKey("ca"), strResult.c_str())) {
             return false;
         }
+        ThreadNativeScope nativeScope(thread);
         builder->setUnicodeLocaleKeyword("ca", strResult.c_str());
     }
 
@@ -848,6 +853,7 @@ bool InsertOptions(JSThread *thread, const JSHandle<JSObject> &options, icu::Loc
         if (!uloc_toLegacyType(uloc_toLegacyKey("co"), strResult.c_str())) {
             return false;
         }
+        ThreadNativeScope nativeScope(thread);
         builder->setUnicodeLocaleKeyword("co", strResult.c_str());
     }
 
@@ -858,6 +864,7 @@ bool InsertOptions(JSThread *thread, const JSHandle<JSObject> &options, icu::Loc
         if (!uloc_toLegacyType(uloc_toLegacyKey("hc"), strResult.c_str())) {
             return false;
         }
+        ThreadNativeScope nativeScope(thread);
         builder->setUnicodeLocaleKeyword("hc", strResult.c_str());
     }
 
@@ -868,6 +875,7 @@ bool InsertOptions(JSThread *thread, const JSHandle<JSObject> &options, icu::Loc
         if (!uloc_toLegacyType(uloc_toLegacyKey("kf"), strResult.c_str())) {
             return false;
         }
+        ThreadNativeScope nativeScope(thread);
         builder->setUnicodeLocaleKeyword("kf", strResult.c_str());
     }
 
@@ -879,6 +887,7 @@ bool InsertOptions(JSThread *thread, const JSHandle<JSObject> &options, icu::Loc
         if (!uloc_toLegacyType(uloc_toLegacyKey("kn"), strResult.c_str())) {
             return false;
         }
+        ThreadNativeScope nativeScope(thread);
         builder->setUnicodeLocaleKeyword("kn", strResult.c_str());
     }
 
@@ -890,6 +899,7 @@ bool InsertOptions(JSThread *thread, const JSHandle<JSObject> &options, icu::Loc
         if (!uloc_toLegacyType(uloc_toLegacyKey("nu"), strResult.c_str())) {
             return false;
         }
+        ThreadNativeScope nativeScope(thread);
         builder->setUnicodeLocaleKeyword("nu", strResult.c_str());
     }
     return true;

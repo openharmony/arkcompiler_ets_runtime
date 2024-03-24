@@ -61,6 +61,7 @@ class PostSchedule;
     V(Int64Add, Add, MachineType::I64)                                    \
     V(DoubleAdd, Add, MachineType::F64)                                   \
     V(PtrAdd, Add, MachineType::ARCH)                                     \
+    V(DoubleExp, Exp, MachineType::F64)                                   \
     V(Int16Sub, Sub, MachineType::I16)                                    \
     V(Int32Sub, Sub, MachineType::I32)                                    \
     V(Int64Sub, Sub, MachineType::I64)                                    \
@@ -465,6 +466,7 @@ public:
     inline GateRef LoadHClassByConstOffset(GateRef object);
     inline GateRef LoadPrototype(GateRef hclass);
     inline GateRef LoadPrototypeHClass(GateRef object);
+    inline GateRef LoadPrototypeOfPrototypeHClass(GateRef object);
     void SetPropertyInlinedProps(GateRef glue, GateRef obj, GateRef hClass,
                                  GateRef value, GateRef attrOffset, VariableType type);
 
@@ -487,7 +489,8 @@ public:
                             OnHeapMode onHeap = OnHeapMode::NONE);
     GateRef LoadTypedArrayLength(GateRef gate, GateType type, OnHeapMode onHeap = OnHeapMode::NONE);
     GateRef RangeGuard(GateRef gate, uint32_t left, uint32_t right);
-    GateRef BuiltinPrototypeHClassCheck(GateRef gate, BuiltinTypeId type, ElementsKind kind = ElementsKind::NONE);
+    GateRef BuiltinPrototypeHClassCheck(GateRef gate, BuiltinTypeId type, ElementsKind kind,
+                                        bool isPrototypeOfPrototype);
     GateRef OrdinaryHasInstanceCheck(GateRef target, GateRef jsFunc, std::vector<GateRef> &expectedHCIndexes);
     GateRef IndexCheck(GateRef gate, GateRef index);
     GateRef ObjectTypeCheck(GateType type, bool isHeapObject, GateRef gate, GateRef hclassIndex,
@@ -505,8 +508,9 @@ public:
     inline GateRef JSNoGCCallThisTargetTypeCheck(GateType type, GateRef func, GateRef methodId, GateRef gate);
     GateRef TypeOfCheck(GateRef gate, GateType type);
     GateRef TypedTypeOf(GateType type);
-    GateRef TypedCallOperator(GateRef hirGate, MachineType type, const std::vector<GateRef>& inList);
-    inline GateRef TypedCallBuiltin(GateRef hirGate, const std::vector<GateRef> &args, BuiltinsStubCSigns::ID id);
+    GateRef TypedCallOperator(GateRef hirGate, MachineType type, const std::vector<GateRef>& inList, bool isSideEffect);
+    inline GateRef TypedCallBuiltin(GateRef hirGate, const std::vector<GateRef> &args,
+                                    BuiltinsStubCSigns::ID id, bool isSideEffect);
     GateRef TypeConvert(MachineType type, GateType typeFrom, GateType typeTo, const std::vector<GateRef>& inList);
     GateRef Int32CheckRightIsZero(GateRef right);
     GateRef RemainderIsNegativeZero(GateRef left, GateRef right);

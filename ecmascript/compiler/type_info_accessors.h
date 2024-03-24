@@ -895,10 +895,25 @@ public:
         return currType.GetElementsKindAfterTransition();
     }
 
+    bool IsBuiltinsType() const
+    {
+        return IsMono() && types_[0].IsBuiltinsType();
+    }
+
+    bool IsGlobalsType() const
+    {
+        return IsMono() && types_[0].IsGlobalsType();
+    }
+
     std::optional<BuiltinTypeId> GetBuiltinsTypeId() const
     {
         auto type = types_[0].GetBuiltinsType();
         return ToBuiltinsTypeId(type);
+    }
+
+    std::optional<ConstantIndex> GetGlobalsId() const
+    {
+        return types_[0].GetGlobalsId();
     }
 
     bool IsBuiltinInstanceType(BuiltinTypeId type) const

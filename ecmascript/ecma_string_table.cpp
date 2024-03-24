@@ -294,7 +294,6 @@ void EcmaStringTable::SweepWeakReference(const WeakRootVisitor &visitor)
         // Strings in string table should not be in the young space. Only old gc will sweep string table.
         auto *object = it->second;
         auto fwd = visitor(object);
-        // todo(hzzhouzebin) wait for shared-gc
         ASSERT(!Region::ObjectAddressToRange(object)->InYoungSpace());
         if (fwd == nullptr) {
             LOG_ECMA(VERBOSE) << "StringTable: delete string " << std::hex << object;

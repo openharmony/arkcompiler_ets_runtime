@@ -39,7 +39,9 @@ MemMap MemMapAllocator::Allocate(const uint32_t threadId, size_t size, size_t al
         if (mem.GetMem() != nullptr) {
             int prot = isMachineCode ? PAGE_PROT_EXEC_READWRITE : PAGE_PROT_READWRITE;
             PageTagType type = isMachineCode ? PageTagType::MACHINE_CODE : PageTagType::HEAP;
-            PageProtect(mem.GetMem(), mem.GetSize(), prot);
+            if (!PageProtect(mem.GetMem(), mem.GetSize(), prot)) {
+                return MemMap();
+            }
             PageTag(mem.GetMem(), size, type, spaceName, threadId);
             return mem;
         }
@@ -48,7 +50,9 @@ MemMap MemMapAllocator::Allocate(const uint32_t threadId, size_t size, size_t al
             memMapTotalSize_ += size;
             int prot = isMachineCode ? PAGE_PROT_EXEC_READWRITE : PAGE_PROT_READWRITE;
             PageTagType type = isMachineCode ? PageTagType::MACHINE_CODE : PageTagType::HEAP;
-            PageProtect(mem.GetMem(), mem.GetSize(), prot);
+            if (!PageProtect(mem.GetMem(), mem.GetSize(), prot)) {
+                return MemMap();
+            }
             PageTag(mem.GetMem(), size, type, spaceName, threadId);
             return mem;
         }
@@ -61,7 +65,9 @@ MemMap MemMapAllocator::Allocate(const uint32_t threadId, size_t size, size_t al
     if (mem.GetMem() != nullptr) {
         int prot = isMachineCode ? PAGE_PROT_EXEC_READWRITE : PAGE_PROT_READWRITE;
         PageTagType type = isMachineCode ? PageTagType::MACHINE_CODE : PageTagType::HEAP;
-        PageProtect(mem.GetMem(), mem.GetSize(), prot);
+        if (!PageProtect(mem.GetMem(), mem.GetSize(), prot)) {
+            return MemMap();
+        }
         PageTag(mem.GetMem(), mem.GetSize(), type, spaceName, threadId);
         memMapTotalSize_ += mem.GetSize();
     }
@@ -96,7 +102,9 @@ void MemMapAllocator::Free(void *mem, size_t size, bool isRegular)
 {
     memMapTotalSize_ -= size;
     PageTag(mem, size, PageTagType::MEMPOOL_CACHE);
-    PageProtect(mem, size, PAGE_PROT_NONE);
+    if (!PageProtect(mem, size, PAGE_PROT_NONE)) {
+        return;
+    }
     PageRelease(mem, size);
     if (isRegular) {
         memMapPool_.AddMemToCache(mem, size);

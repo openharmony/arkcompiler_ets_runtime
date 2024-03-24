@@ -389,7 +389,7 @@ public:
         return pgoTypeRecorder_.GetElementsKindsForUser(GetPcOffsetByGate(gate));
     }
 
-    std::vector<ElementsKind> GetTransitionElementsKindsForUser(GateRef gate) const
+    PUBLIC_API std::vector<ElementsKind> GetTransitionElementsKindsForUser(GateRef gate) const
     {
         return pgoTypeRecorder_.GetTransitionElementsKindsForUser(GetPcOffsetByGate(gate));
     }

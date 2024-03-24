@@ -803,7 +803,7 @@ DECLARE_ASM_HANDLER(HandleLdlexvarImm4Imm4)
     i = Int32Add(*i, Int32(1));
     BRANCH(Int32LessThan(*i, level), &loopEnd, &afterLoop);
     Bind(&loopEnd);
-    LoopEnd(&loopHead);
+    LoopEnd(&loopHead, env, glue);
     Bind(&afterLoop);
     GateRef variable = GetPropertiesFromLexicalEnv(*currentEnv, slot);
     varAcc = variable;
@@ -832,7 +832,7 @@ DECLARE_ASM_HANDLER(HandleLdlexvarImm8Imm8)
     i = Int32Add(*i, Int32(1));
     BRANCH(Int32LessThan(*i, level), &loopEnd, &afterLoop);
     Bind(&loopEnd);
-    LoopEnd(&loopHead);
+    LoopEnd(&loopHead, env, glue);
     Bind(&afterLoop);
     GateRef variable = GetPropertiesFromLexicalEnv(*currentEnv, slot);
     varAcc = variable;
@@ -860,7 +860,7 @@ DECLARE_ASM_HANDLER(HandleWideLdlexvarPrefImm16Imm16)
     i = Int32Add(*i, Int32(1));
     BRANCH(Int32LessThan(*i, level), &loopEnd, &afterLoop);
     Bind(&loopEnd);
-    LoopEnd(&loopHead);
+    LoopEnd(&loopHead, env, glue);
     Bind(&afterLoop);
     GateRef variable = GetPropertiesFromLexicalEnv(*currentEnv, slot);
     varAcc = variable;
@@ -887,7 +887,7 @@ DECLARE_ASM_HANDLER(HandleStlexvarImm4Imm4)
     i = Int32Add(*i, Int32(1));
     BRANCH(Int32LessThan(*i, level), &loopEnd, &afterLoop);
     Bind(&loopEnd);
-    LoopEnd(&loopHead);
+    LoopEnd(&loopHead, env, glue);
     Bind(&afterLoop);
     SetPropertiesToLexicalEnv(glue, *currentEnv, slot, value);
     DISPATCH(STLEXVAR_IMM4_IMM4);
@@ -913,7 +913,7 @@ DECLARE_ASM_HANDLER(HandleStlexvarImm8Imm8)
     i = Int32Add(*i, Int32(1));
     BRANCH(Int32LessThan(*i, level), &loopEnd, &afterLoop);
     Bind(&loopEnd);
-    LoopEnd(&loopHead);
+    LoopEnd(&loopHead, env, glue);
     Bind(&afterLoop);
     SetPropertiesToLexicalEnv(glue, *currentEnv, slot, value);
     DISPATCH(STLEXVAR_IMM8_IMM8);
@@ -939,7 +939,7 @@ DECLARE_ASM_HANDLER(HandleWideStlexvarPrefImm16Imm16)
     i = Int32Add(*i, Int32(1));
     BRANCH(Int32LessThan(*i, level), &loopEnd, &afterLoop);
     Bind(&loopEnd);
-    LoopEnd(&loopHead);
+    LoopEnd(&loopHead, env, glue);
     Bind(&afterLoop);
     SetPropertiesToLexicalEnv(glue, *currentEnv, slot, value);
     DISPATCH(WIDE_STLEXVAR_PREF_IMM16_IMM16);
@@ -965,7 +965,7 @@ DECLARE_ASM_HANDLER(HandleDeprecatedStlexvarPrefImm16Imm16V8)
     i = Int32Add(*i, Int32(1));
     BRANCH(Int32LessThan(*i, level), &loopEnd, &afterLoop);
     Bind(&loopEnd);
-    LoopEnd(&loopHead);
+    LoopEnd(&loopHead, env, glue);
     Bind(&afterLoop);
     SetPropertiesToLexicalEnv(glue, *currentEnv, slot, value);
     DISPATCH(DEPRECATED_STLEXVAR_PREF_IMM16_IMM16_V8);
@@ -991,7 +991,7 @@ DECLARE_ASM_HANDLER(HandleDeprecatedStlexvarPrefImm8Imm8V8)
     i = Int32Add(*i, Int32(1));
     BRANCH(Int32LessThan(*i, level), &loopEnd, &afterLoop);
     Bind(&loopEnd);
-    LoopEnd(&loopHead);
+    LoopEnd(&loopHead, env, glue);
     Bind(&afterLoop);
     SetPropertiesToLexicalEnv(glue, *currentEnv, slot, value);
     DISPATCH(DEPRECATED_STLEXVAR_PREF_IMM8_IMM8_V8);
@@ -1017,7 +1017,7 @@ DECLARE_ASM_HANDLER(HandleDeprecatedStlexvarPrefImm4Imm4V8)
     i = Int32Add(*i, Int32(1));
     BRANCH(Int32LessThan(*i, level), &loopEnd, &afterLoop);
     Bind(&loopEnd);
-    LoopEnd(&loopHead);
+    LoopEnd(&loopHead, env, glue);
     Bind(&afterLoop);
     SetPropertiesToLexicalEnv(glue, *currentEnv, slot, value);
     DISPATCH(DEPRECATED_STLEXVAR_PREF_IMM4_IMM4_V8);
@@ -5047,7 +5047,7 @@ DECLARE_ASM_HANDLER(HandleDefineFieldByNameImm8Id16V8)
             BRANCH(TaggedIsHeapObject(*holder), &loopEnd, &icPath);
         }
         Bind(&loopEnd);
-        LoopEnd(&loopHead);
+        LoopEnd(&loopHead, env, glue);
     }
     Bind(&icPath);
     {
