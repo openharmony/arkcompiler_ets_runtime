@@ -23,8 +23,8 @@
 namespace panda::ecmascript {
 void JSSharedSet::Add(JSThread *thread, const JSHandle<JSSharedSet> &set, const JSHandle<JSTaggedValue> &value)
 {
-    if (!LinkedHashSet::IsKey(value.GetTaggedValue())) {
-        THROW_TYPE_ERROR(thread, "the value must be Key of JSSharedSet");
+    if (!value->IsSharedType()) {
+        THROW_TYPE_ERROR(thread, "the value of shared set must be shared too");
     }
     [[maybe_unused]] ConcurrentModScope<JSSharedSet, ModType::WRITE> scope(thread,
         set.GetTaggedValue().GetTaggedObject());

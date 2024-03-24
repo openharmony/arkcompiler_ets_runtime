@@ -24,8 +24,11 @@ namespace panda::ecmascript {
 void JSSharedMap::Set(JSThread *thread, const JSHandle<JSSharedMap> &map,
                       const JSHandle<JSTaggedValue> &key, const JSHandle<JSTaggedValue> &value)
 {
-    if (!LinkedHashMap::IsKey(key.GetTaggedValue())) {
-        THROW_TYPE_ERROR(thread, "the value must be Key of JSSet");
+    if (!key->IsSharedType()) {
+        THROW_TYPE_ERROR(thread, "the key of shared map must be shared too");
+    }
+    if (!value->IsSharedType()) {
+        THROW_TYPE_ERROR(thread, "the value of shared map must be shared too");
     }
     [[maybe_unused]] ConcurrentModScope<JSSharedMap, ModType::WRITE> scope(thread,
         map.GetTaggedValue().GetTaggedObject());
