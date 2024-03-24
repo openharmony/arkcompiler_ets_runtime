@@ -13,31 +13,41 @@
  * limitations under the License.
  */
 
-#include "ecmascript/js_shared_array.h"
+#include "ecmascript/shared_objects/js_shared_array.h"
 
 #include "ecmascript/base/array_helper.h"
+#include "ecmascript/containers/containers_errors.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/element_accessor.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_handle.h"
 #include "ecmascript/js_object.h"
 #include "ecmascript/js_tagged_value-inl.h"
+#include "ecmascript/js_tagged_value.h"
 #include "ecmascript/mem/space.h"
 #include "ecmascript/message_string.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/object_fast_operator-inl.h"
+#include "ecmascript/shared_objects/concurrent_modification_scope.h"
 
 namespace panda::ecmascript {
 using base::ArrayHelper;
 
-JSTaggedValue JSSharedArray::LengthGetter([[maybe_unused]] JSThread *thread, const JSHandle<JSObject> &self)
+JSTaggedValue JSSharedArray::LengthGetter([[maybe_unused]] JSThread *thread, const JSHandle<JSObject> &self,
+                                          SCheckMode checkMode)
 {
+    [[maybe_unused]] ConcurrentModScope<JSSharedArray> scope(thread, self.GetTaggedValue().GetTaggedObject(),
+                                                             checkMode);
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception());
     return JSTaggedValue(JSSharedArray::Cast(*self)->GetLength());
 }
 
 bool JSSharedArray::LengthSetter(JSThread *thread, const JSHandle<JSObject> &self, const JSHandle<JSTaggedValue> &value,
-                                 bool mayThrow)
+                                 bool mayThrow, SCheckMode checkMode)
 {
+    [[maybe_unused]] ConcurrentModScope<JSSharedArray, ModType::WRITE> scope(
+        thread, self.GetTaggedValue().GetTaggedObject(), checkMode);
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false); 
     uint32_t newLen = 0;
     if (!JSTaggedValue::ToArrayLength(thread, value, &newLen) && mayThrow) {
         RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
@@ -85,7 +95,9 @@ JSHandle<JSTaggedValue> JSSharedArray::ArrayCreate(JSThread *thread, JSTaggedNum
     double arrayLength = length.GetNumber();
     if (arrayLength > MAX_ARRAY_INDEX) {
         JSHandle<JSTaggedValue> exception(thread, JSTaggedValue::Exception());
-        THROW_RANGE_ERROR_AND_RETURN(thread, "array length must less than 2^32 - 1", exception);
+        auto error = containers::ContainerError::BusinessError(thread, containers::ErrorFlag::TYPE_ERROR,
+                                                               "Parameter error.array length must less than 2^32 - 1");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, exception);
     }
     uint32_t normalArrayLength = length.ToUint32();
 
@@ -239,9 +251,7 @@ void JSSharedArray::SetCapacity(JSThread *thread, const JSHandle<JSObject> &arra
         CheckAndCopyArray(thread, JSHandle<JSSharedArray>(array));
         array->FillElementsWithHoles(thread, newLen, oldLen < capacity ? oldLen : capacity);
     }
-    if (JSObject::ShouldTransToDict(oldLen, newLen)) {
-        JSObject::ElementsToDictionary(thread, array);
-    } else if (newLen > capacity) {
+    if (newLen > capacity) {
         JSObject::GrowElementsCapacity(thread, array, newLen, isNew);
     }
     JSSharedArray::Cast(*array)->SetArrayLength(thread, newLen);

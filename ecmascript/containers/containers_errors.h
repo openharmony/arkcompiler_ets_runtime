@@ -31,6 +31,7 @@ enum ErrorFlag {
 class ContainerError {
 public:
     static JSTaggedValue BusinessError(JSThread *thread, int32_t errorCode, const char *msg);
+    static void AddBusinessError(JSThread *thread, JSHandle<JSObject> error, int32_t errorCode);
 };
 } // namespace panda::ecmascript::containers
 #endif // ECMASCRIPT_CONTAINERS_CONTAINERS_ERROR_H

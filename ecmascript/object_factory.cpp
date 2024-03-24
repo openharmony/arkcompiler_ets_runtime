@@ -73,9 +73,7 @@
 #include "ecmascript/js_api/js_api_vector_iterator.h"
 #include "ecmascript/js_arguments.h"
 #include "ecmascript/js_array.h"
-#include "ecmascript/js_shared_array.h"
 #include "ecmascript/js_array_iterator.h"
-#include "ecmascript/js_shared_array_iterator.h"
 #include "ecmascript/js_arraybuffer.h"
 #include "ecmascript/js_async_from_sync_iterator.h"
 #include "ecmascript/js_async_function.h"
@@ -126,6 +124,8 @@
 #include "ecmascript/require/js_cjs_module.h"
 #include "ecmascript/require/js_cjs_require.h"
 #include "ecmascript/shared_mm/shared_mm.h"
+#include "ecmascript/shared_objects/js_shared_array.h"
+#include "ecmascript/shared_objects/js_shared_array_iterator.h"
 #include "ecmascript/shared_objects/js_shared_map.h"
 #include "ecmascript/shared_objects/js_shared_map_iterator.h"
 #include "ecmascript/shared_objects/js_shared_set.h"
@@ -1200,6 +1200,7 @@ void ObjectFactory::InitializeJSObject(const JSHandle<JSObject> &obj, const JSHa
             JSSharedArray::Cast(*obj)->SetLength(0);
             JSSharedArray::Cast(*obj)->SetTrackInfo(thread_, JSTaggedValue::Undefined());
             ASSERT(!obj->GetJSHClass()->IsDictionaryMode());
+            JSSharedArray::Cast(*obj)->SetModRecord(0);
             auto accessor = thread_->GlobalConstants()->GetSharedArrayLengthAccessor();
             JSSharedArray::Cast(*obj)->SetPropertyInlinedProps(thread_, JSArray::LENGTH_INLINE_PROPERTY_INDEX,
                                                                accessor);
@@ -3314,7 +3315,6 @@ JSHandle<JSSharedArrayIterator> ObjectFactory::NewJSSharedArrayIterator(const JS
     JSHandle<JSSharedArrayIterator> iter(NewJSObject(hclassHandle));
     iter->GetJSHClass()->SetExtensible(true);
     iter->SetIteratedArray(thread_, array);
-    iter->SetExpectedModCount(JSHandle<JSSharedArray>::Cast(array)->GetModCount());
     iter->SetNextIndex(0);
     iter->SetIterationKind(kind);
     return iter;

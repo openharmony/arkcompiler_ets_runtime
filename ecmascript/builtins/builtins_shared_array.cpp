@@ -23,42 +23,32 @@
 #include "ecmascript/base/typed_array_helper.h"
 #include "ecmascript/builtins/builtins_array.h"
 #include "ecmascript/builtins/builtins_string.h"
+#include "ecmascript/containers/containers_errors.h"
 #include "ecmascript/ecma_macros.h"
 #include "ecmascript/ecma_runtime_call_info.h"
 #include "ecmascript/ecma_string.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/interpreter/interpreter.h"
 #include "ecmascript/js_array.h"
-#include "ecmascript/js_shared_array_iterator.h"
 #include "ecmascript/js_function.h"
 #include "ecmascript/js_handle.h"
 #include "ecmascript/js_hclass.h"
 #include "ecmascript/js_map_iterator.h"
-#include "ecmascript/js_shared_array.h"
+#include "ecmascript/js_object.h"
 #include "ecmascript/js_stable_array.h"
 #include "ecmascript/js_tagged_number.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/object_fast_operator-inl.h"
+#include "ecmascript/shared_objects/concurrent_modification_scope.h"
+#include "ecmascript/shared_objects/js_shared_array.h"
+#include "ecmascript/shared_objects/js_shared_array_iterator.h"
 #include "ecmascript/tagged_array-inl.h"
+#include "jsnapi_expo.h"
 
 namespace panda::ecmascript::builtins {
 using ArrayHelper = base::ArrayHelper;
 using TypedArrayHelper = base::TypedArrayHelper;
-
-namespace {
-#define GET_MOD_COUNT(thisHandle)                                                    \
-    JSHandle<JSSharedArray> sharedArray = JSHandle<JSSharedArray>::Cast(thisHandle); \
-    uint32_t oldModCount = sharedArray->GetModCount();                               \
-    uint32_t newModCount;
-
-#define CHECK_MOD_COUNT(value)                                                                                \
-    newModCount = Barriers::AtomicSetPrimitive(sharedArray.GetTaggedValue().GetTaggedObject(),                \
-                                               JSSharedArray::MOD_COUNT_OFFSET, oldModCount, value);          \
-    if (newModCount != oldModCount) {                                                                         \
-        THROW_TYPE_ERROR_AND_RETURN(thread, "Concurrent modification exception", JSTaggedValue::Exception()); \
-    }
-}  // namespace
 
 // 22.1.1
 JSTaggedValue BuiltinsSharedArray::ArrayConstructor(EcmaRuntimeCallInfo *argv)
@@ -113,7 +103,9 @@ JSTaggedValue BuiltinsSharedArray::ArrayConstructor(EcmaRuntimeCallInfo *argv)
             newLen = JSTaggedValue::ToUint32(thread, len);
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
             if (JSTaggedNumber(len.GetTaggedValue()).GetNumber() != newLen) {
-                THROW_RANGE_ERROR_AND_RETURN(thread, "Invalid array length", JSTaggedValue::Exception());
+                auto error = containers::ContainerError::BusinessError(thread, containers::ErrorFlag::TYPE_ERROR,
+                                                                       "Parameter error.Invalid array length");
+                THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
             }
         }
         JSSharedArray::SetCapacity(thread, newArrayHandle, 0, newLen, true);
@@ -144,6 +136,11 @@ JSTaggedValue BuiltinsSharedArray::ArrayConstructor(EcmaRuntimeCallInfo *argv)
         itemK.Update(GetCallArg(argv, k));
         if (itemK.GetTaggedValue().IsHole()) {
             itemK.Update(JSTaggedValue::Undefined());
+        }
+        if (!itemK->IsSharedType()) {
+            auto error = containers::ContainerError::BusinessError(thread, containers::ErrorFlag::TYPE_ERROR,
+                                                                   "Parameter error.Only accept sendable value");
+            THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
         }
         JSObject::CreateDataProperty(thread, newArrayHandle, key, itemK);
     }
@@ -273,6 +270,11 @@ JSTaggedValue BuiltinsSharedArray::From(EcmaRuntimeCallInfo *argv)
             } else {
                 mapValue.Update(nextValue.GetTaggedValue());
             }
+            if (!mapValue->IsSharedType()) {
+                auto error = containers::ContainerError::BusinessError(thread, containers::ErrorFlag::TYPE_ERROR,
+                                                                       "Parameter error.Only accept sendable value");
+                THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
+            }
             //     ix. Let defineStatus be CreateDataPropertyOrThrow(A, Pk, mappedValue).
             //     x. If defineStatus is an abrupt completion, return IteratorClose(iterator, defineStatus).
             //     xi. Increase k by 1.
@@ -341,6 +343,11 @@ JSTaggedValue BuiltinsSharedArray::From(EcmaRuntimeCallInfo *argv)
         } else {
             mapValue.Update(kValue.GetTaggedValue());
         }
+        if (!mapValue->IsSharedType()) {
+            auto error = containers::ContainerError::BusinessError(thread, containers::ErrorFlag::TYPE_ERROR,
+                                                                   "Parameter error.Only accept sendable value");
+            THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
+        }
         JSObject::CreateDataPropertyOrThrow(thread, newArrayHandle, k, mapValue);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         k++;
@@ -373,8 +380,8 @@ JSTaggedValue BuiltinsSharedArray::Concat(EcmaRuntimeCallInfo *argv)
 
     // 1. Let O be ToObject(this value).
     JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
-    GET_MOD_COUNT(thisHandle);
     JSHandle<JSObject> thisObjHandle = JSTaggedValue::ToObject(thread, thisHandle);
+    [[maybe_unused]] ConcurrentModScope<JSSharedArray> scope(thread, thisHandle.GetTaggedValue().GetTaggedObject());
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSHandle<JSTaggedValue> thisObjVal(thisObjHandle);
 
@@ -402,6 +409,11 @@ JSTaggedValue BuiltinsSharedArray::Concat(EcmaRuntimeCallInfo *argv)
             ele.Update(thisObjHandle.GetTaggedValue());
         } else {
             ele.Update(GetCallArg(argv, i));
+        }
+        if (!ele->IsSharedType()) {
+            auto error = containers::ContainerError::BusinessError(thread, containers::ErrorFlag::TYPE_ERROR,
+                                                                    "Parameter error.Only accept sendable value");
+            THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
         }
         // a. Let spreadable be ? IsConcatSpreadable(E).
         bool isSpreadable = ArrayHelper::IsConcatSpreadable(thread, ele);
@@ -463,7 +475,6 @@ JSTaggedValue BuiltinsSharedArray::Concat(EcmaRuntimeCallInfo *argv)
     JSTaggedValue::SetProperty(thread, JSHandle<JSTaggedValue>::Cast(newArrayHandle), lengthKey, lenHandle, true);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
-    CHECK_MOD_COUNT(oldModCount);
     // 7. Return A.
     return newArrayHandle.GetTaggedValue();
 }
@@ -476,15 +487,14 @@ JSTaggedValue BuiltinsSharedArray::Entries(EcmaRuntimeCallInfo *argv)
     JSThread *thread = argv->GetThread();
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
-    GET_MOD_COUNT(thisHandle);
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     // 1. Let O be ToObject(this value).
     // 2. ReturnIfAbrupt(O).
     JSHandle<JSObject> self = JSTaggedValue::ToObject(thread, GetThis(argv));
+    [[maybe_unused]] ConcurrentModScope<JSSharedArray> scope(thread, thisHandle.GetTaggedValue().GetTaggedObject());
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     // 3. Return CreateArrayIterator(O, "key+value").
     JSHandle<JSSharedArrayIterator> iter(factory->NewJSSharedArrayIterator(self, IterationKind::KEY_AND_VALUE));
-    CHECK_MOD_COUNT(oldModCount);
     return iter.GetTaggedValue();
 }
 
@@ -498,10 +508,11 @@ JSTaggedValue BuiltinsSharedArray::Fill(EcmaRuntimeCallInfo *argv)
 
     // 1. Let O be ToObject(this value).
     JSHandle<JSTaggedValue> thisObjVal = GetThis(argv);
-    GET_MOD_COUNT(thisObjVal);
     JSHandle<JSObject> thisObjHandle = JSTaggedValue::ToObject(thread, thisObjVal);
-
-    if (thisObjVal->IsJSArray()) {
+    [[maybe_unused]] ConcurrentModScope<JSSharedArray, ModType::WRITE> scope(
+        thread, thisObjHandle.GetTaggedValue().GetTaggedObject());
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    if (thisObjVal->IsJSSharedArray()) {
         bool isDictionary = thisObjHandle->GetJSHClass()->IsDictionaryElement();
         if (isDictionary) {
             uint32_t length = JSSharedArray::Cast(*thisObjHandle)->GetLength();
@@ -572,7 +583,6 @@ JSTaggedValue BuiltinsSharedArray::Fill(EcmaRuntimeCallInfo *argv)
 
     if (thisObjVal->IsStableJSArray(thread) && !startArg->IsJSObject() && !endArg->IsJSObject()) {
         auto opResult = JSStableArray::Fill(thread, thisObjHandle, value, start, end, len);
-        CHECK_MOD_COUNT(oldModCount + 1);
         return opResult;
     }
 
@@ -580,7 +590,6 @@ JSTaggedValue BuiltinsSharedArray::Fill(EcmaRuntimeCallInfo *argv)
         bool result = JSTypedArray::FastTypedArrayFill(thread, thisObjVal, value, start, end);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         if (result) {
-            CHECK_MOD_COUNT(oldModCount + 1);
             return thisObjHandle.GetTaggedValue();
         }
     }
@@ -595,7 +604,6 @@ JSTaggedValue BuiltinsSharedArray::Fill(EcmaRuntimeCallInfo *argv)
     }
 
     // 12. Return O.
-    CHECK_MOD_COUNT(oldModCount + 1);
     return thisObjHandle.GetTaggedValue();
 }
 
@@ -643,8 +651,8 @@ JSTaggedValue BuiltinsSharedArray::Filter(EcmaRuntimeCallInfo *argv)
 
     // 1. Let O be ToObject(this value).
     JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
-    GET_MOD_COUNT(thisHandle);
     JSHandle<JSObject> thisObjHandle = JSTaggedValue::ToObject(thread, thisHandle);
+    [[maybe_unused]] ConcurrentModScope<JSSharedArray> scope(thread, thisHandle.GetTaggedValue().GetTaggedObject());
     // 2. ReturnIfAbrupt(O).
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSHandle<JSTaggedValue> thisObjVal(thisObjHandle);
@@ -697,7 +705,6 @@ JSTaggedValue BuiltinsSharedArray::Filter(EcmaRuntimeCallInfo *argv)
     auto opResult =
         FilterUnStableJSArray(thread, thisArgHandle, thisObjVal, k, len, toIndex, newArrayHandle, callbackFnHandle);
 
-    CHECK_MOD_COUNT(oldModCount);
     return opResult;
 }
 
@@ -711,8 +718,8 @@ JSTaggedValue BuiltinsSharedArray::Find(EcmaRuntimeCallInfo *argv)
 
     // 1. Let O be ToObject(this value).
     JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
-    GET_MOD_COUNT(thisHandle);
     JSHandle<JSObject> thisObjHandle = JSTaggedValue::ToObject(thread, thisHandle);
+    [[maybe_unused]] ConcurrentModScope<JSSharedArray> scope(thread, thisHandle.GetTaggedValue().GetTaggedObject());
     // 2. ReturnIfAbrupt(O).
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSHandle<JSTaggedValue> thisObjVal(thisObjHandle);
@@ -755,14 +762,12 @@ JSTaggedValue BuiltinsSharedArray::Find(EcmaRuntimeCallInfo *argv)
         JSTaggedValue callResult = JSFunction::Call(info);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         if (callResult.ToBoolean()) {
-            CHECK_MOD_COUNT(oldModCount);
             return kValue.GetTaggedValue();
         }
         k++;
     }
 
     // 9. Return undefined.
-    CHECK_MOD_COUNT(oldModCount);
     return JSTaggedValue::Undefined();
 }
 
@@ -776,8 +781,8 @@ JSTaggedValue BuiltinsSharedArray::FindIndex(EcmaRuntimeCallInfo *argv)
 
     // 1. Let O be ToObject(this value).
     JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
-    GET_MOD_COUNT(thisHandle);
     JSHandle<JSObject> thisObjHandle = JSTaggedValue::ToObject(thread, thisHandle);
+    [[maybe_unused]] ConcurrentModScope<JSSharedArray> scope(thread, thisHandle.GetTaggedValue().GetTaggedObject());
     // 2. ReturnIfAbrupt(O).
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSHandle<JSTaggedValue> thisObjVal(thisObjHandle);
@@ -811,7 +816,6 @@ JSTaggedValue BuiltinsSharedArray::FindIndex(EcmaRuntimeCallInfo *argv)
         callResult = JSStableArray::HandleFindIndexOfStable(thread, thisObjHandle, callbackFnHandle, thisArgHandle, k);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         if (callResult.ToBoolean()) {
-            CHECK_MOD_COUNT(oldModCount);
             return GetTaggedDouble(k);
         }
     }
@@ -829,14 +833,12 @@ JSTaggedValue BuiltinsSharedArray::FindIndex(EcmaRuntimeCallInfo *argv)
         callResult = JSFunction::Call(info);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         if (callResult.ToBoolean()) {
-            CHECK_MOD_COUNT(oldModCount);
             return GetTaggedDouble(k);
         }
         k++;
     }
 
     // 9. Return -1.
-    CHECK_MOD_COUNT(oldModCount);
     return GetTaggedDouble(-1);
 }
 
@@ -850,8 +852,8 @@ JSTaggedValue BuiltinsSharedArray::ForEach(EcmaRuntimeCallInfo *argv)
 
     // 1. Let O be ToObject(this value).
     JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
-    GET_MOD_COUNT(thisHandle);
     JSHandle<JSObject> thisObjHandle = JSTaggedValue::ToObject(thread, thisHandle);
+    [[maybe_unused]] ConcurrentModScope<JSSharedArray> scope(thread, thisHandle.GetTaggedValue().GetTaggedObject());
     // 2. ReturnIfAbrupt(O).
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSHandle<JSTaggedValue> thisObjVal(thisObjHandle);
@@ -907,7 +909,6 @@ JSTaggedValue BuiltinsSharedArray::ForEach(EcmaRuntimeCallInfo *argv)
     }
 
     // 9. Return undefined.
-    CHECK_MOD_COUNT(oldModCount);
     return JSTaggedValue::Undefined();
 }
 
@@ -992,7 +993,8 @@ JSTaggedValue BuiltinsSharedArray::IndexOf(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
     JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
-    GET_MOD_COUNT(thisHandle);
+    [[maybe_unused]] ConcurrentModScope<JSSharedArray> scope(thread, thisHandle.GetTaggedValue().GetTaggedObject());
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSTaggedValue opResult;
     if (thisHandle->IsStableJSArray(thread)) {
         opResult = IndexOfStable(argv, thread, thisHandle);
@@ -1000,7 +1002,6 @@ JSTaggedValue BuiltinsSharedArray::IndexOf(EcmaRuntimeCallInfo *argv)
         opResult = IndexOfSlowPath(argv, thread, thisHandle);
     }
 
-    CHECK_MOD_COUNT(oldModCount);
     return opResult;
 }
 
@@ -1011,9 +1012,9 @@ JSTaggedValue BuiltinsSharedArray::Join(EcmaRuntimeCallInfo *argv)
     JSThread *thread = argv->GetThread();
     BUILTINS_API_TRACE(argv->GetThread(), SharedArray, Join);
     JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
-    GET_MOD_COUNT(thisHandle);
+    [[maybe_unused]] ConcurrentModScope<JSSharedArray> scope(thread, thisHandle.GetTaggedValue().GetTaggedObject());
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     auto opResult = BuiltinsArray::Join(argv);
-    CHECK_MOD_COUNT(oldModCount);
     return opResult;
 }
 
@@ -1024,9 +1025,9 @@ JSTaggedValue BuiltinsSharedArray::Keys(EcmaRuntimeCallInfo *argv)
     JSThread *thread = argv->GetThread();
     BUILTINS_API_TRACE(argv->GetThread(), SharedArray, Keys);
     JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
-    GET_MOD_COUNT(thisHandle);
+    [[maybe_unused]] ConcurrentModScope<JSSharedArray> scope(thread, thisHandle.GetTaggedValue().GetTaggedObject());
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     auto opResult = BuiltinsArray::Keys(argv);
-    CHECK_MOD_COUNT(oldModCount);
     return opResult;
 }
 
@@ -1111,8 +1112,8 @@ JSTaggedValue BuiltinsSharedArray::Map(EcmaRuntimeCallInfo *argv)
 
     // 1. Let O be ToObject(this value).
     JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
-    GET_MOD_COUNT(thisHandle);
     JSHandle<JSObject> thisObjHandle = JSTaggedValue::ToObject(thread, thisHandle);
+    [[maybe_unused]] ConcurrentModScope<JSSharedArray> scope(thread, thisHandle.GetTaggedValue().GetTaggedObject());
     // 2. ReturnIfAbrupt(O).
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSHandle<JSTaggedValue> thisObjVal(thisObjHandle);
@@ -1185,7 +1186,6 @@ JSTaggedValue BuiltinsSharedArray::Map(EcmaRuntimeCallInfo *argv)
     }
 
     // 11. Return A.
-    CHECK_MOD_COUNT(oldModCount);
     return newArrayHandle.GetTaggedValue();
 }
 
@@ -1201,10 +1201,11 @@ JSTaggedValue BuiltinsSharedArray::Pop(EcmaRuntimeCallInfo *argv)
     // 1. Let O be ToObject(this value).
     JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
     JSHandle<JSObject> thisObjHandle = JSTaggedValue::ToObject(thread, thisHandle);
-    GET_MOD_COUNT(thisHandle);
+    [[maybe_unused]] ConcurrentModScope<JSSharedArray, ModType::WRITE> scope(
+        thread, thisHandle.GetTaggedValue().GetTaggedObject());
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
     JSTaggedValue opResult = PopInner(argv, thisHandle, thisObjHandle);
-    CHECK_MOD_COUNT(oldModCount + 1);
     return opResult;
 }
 
@@ -1234,7 +1235,7 @@ JSTaggedValue BuiltinsSharedArray::PopInner(EcmaRuntimeCallInfo *argv, JSHandle<
     JSHandle<JSTaggedValue> lengthKey = thread->GlobalConstants()->GetHandledLengthString();
     if (len == 0) {
         JSHandle<JSTaggedValue> lengthValue(thread, JSTaggedValue(0));
-        JSTaggedValue::SetProperty(thread, thisObjVal, lengthKey, lengthValue, true);
+        JSTaggedValue::SetProperty(thread, thisObjVal, lengthKey, lengthValue, true, SCheckMode::SKIP);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         return JSTaggedValue::Undefined();
     }
@@ -1255,7 +1256,7 @@ JSTaggedValue BuiltinsSharedArray::PopInner(EcmaRuntimeCallInfo *argv, JSHandle<
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSTaggedValue::DeletePropertyOrThrow(thread, thisObjVal, indexHandle);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    JSTaggedValue::SetProperty(thread, thisObjVal, lengthKey, indexHandle, true);
+    JSTaggedValue::SetProperty(thread, thisObjVal, lengthKey, indexHandle, true, SCheckMode::SKIP);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
     return element.GetTaggedValue();
@@ -1269,10 +1270,11 @@ JSTaggedValue BuiltinsSharedArray::Push(EcmaRuntimeCallInfo *argv)
     JSThread *thread = argv->GetThread();
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
-    GET_MOD_COUNT(thisHandle);
+    [[maybe_unused]] ConcurrentModScope<JSSharedArray, ModType::WRITE> scope(
+        thread, thisHandle.GetTaggedValue().GetTaggedObject());
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     if (thisHandle->IsStableJSArray(thread)) {
         auto opResult = JSStableArray::Push(JSHandle<JSSharedArray>::Cast(thisHandle), argv);
-        CHECK_MOD_COUNT(oldModCount + 1);
         return opResult;
     }
     // 6. Let argCount be the number of elements in items.
@@ -1312,12 +1314,11 @@ JSTaggedValue BuiltinsSharedArray::Push(EcmaRuntimeCallInfo *argv)
     // 9. Let setStatus be Set(O, "length", len, true).
     JSHandle<JSTaggedValue> lengthKey = thread->GlobalConstants()->GetHandledLengthString();
     key.Update(JSTaggedValue(len));
-    JSTaggedValue::SetProperty(thread, thisObjVal, lengthKey, key, true);
+    JSTaggedValue::SetProperty(thread, thisObjVal, lengthKey, key, true, SCheckMode::SKIP);
     // 10. ReturnIfAbrupt(setStatus).
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
     // 11. Return len.
-    CHECK_MOD_COUNT(oldModCount + 1);
     return GetTaggedDouble(len);
 }
 
@@ -1363,8 +1364,8 @@ JSTaggedValue BuiltinsSharedArray::Reduce(EcmaRuntimeCallInfo *argv)
     uint32_t argc = argv->GetArgsNumber();
     // 1. Let O be ToObject(this value).
     JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
-    GET_MOD_COUNT(thisHandle);
     JSHandle<JSObject> thisObjHandle = JSTaggedValue::ToObject(thread, thisHandle);
+    [[maybe_unused]] ConcurrentModScope<JSSharedArray> scope(thread, thisHandle.GetTaggedValue().GetTaggedObject());
     // 2. ReturnIfAbrupt(O).
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSHandle<JSTaggedValue> thisObjVal(thisObjHandle);
@@ -1424,7 +1425,6 @@ JSTaggedValue BuiltinsSharedArray::Reduce(EcmaRuntimeCallInfo *argv)
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     }
     auto opResult = ReduceUnStableJSArray(thread, thisHandle, thisObjVal, k, len, accumulator, callbackFnHandle);
-    CHECK_MOD_COUNT(oldModCount);
     return opResult;
 }
 
@@ -1438,13 +1438,13 @@ JSTaggedValue BuiltinsSharedArray::Shift(EcmaRuntimeCallInfo *argv)
 
     // 1. Let O be ToObject(this value).
     JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
-    GET_MOD_COUNT(thisHandle);
     JSHandle<JSObject> thisObjHandle = JSTaggedValue::ToObject(thread, thisHandle);
+    [[maybe_unused]] ConcurrentModScope<JSSharedArray, ModType::WRITE> scope(
+        thread, thisHandle.GetTaggedValue().GetTaggedObject());
     // 2. ReturnIfAbrupt(O).
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     if (thisHandle->IsStableJSArray(thread) && JSObject::IsArrayLengthWritable(thread, thisObjHandle)) {
         auto opResult = JSStableArray::Shift(JSHandle<JSSharedArray>::Cast(thisHandle), argv);
-        CHECK_MOD_COUNT(oldModCount + 1);
         return opResult;
     }
     JSHandle<JSTaggedValue> thisObjVal(thisObjHandle);
@@ -1460,9 +1460,8 @@ JSTaggedValue BuiltinsSharedArray::Shift(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> lengthKey = thread->GlobalConstants()->GetHandledLengthString();
     if (len == 0) {
         JSHandle<JSTaggedValue> zeroLenHandle(thread, JSTaggedValue(len));
-        JSTaggedValue::SetProperty(thread, thisObjVal, lengthKey, zeroLenHandle, true);
+        JSTaggedValue::SetProperty(thread, thisObjVal, lengthKey, zeroLenHandle, false, SCheckMode::SKIP);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-        CHECK_MOD_COUNT(oldModCount + 1);
         return JSTaggedValue::Undefined();
     }
 
@@ -1512,12 +1511,11 @@ JSTaggedValue BuiltinsSharedArray::Shift(EcmaRuntimeCallInfo *argv)
 
     // 12. Let setStatus be Set(O, "length", len–1, true).
     JSHandle<JSTaggedValue> newLenHandle(thread, JSTaggedValue(len - 1));
-    JSTaggedValue::SetProperty(thread, thisObjVal, lengthKey, newLenHandle, true);
+    JSTaggedValue::SetProperty(thread, thisObjVal, lengthKey, newLenHandle, true, SCheckMode::SKIP);
     // 13. ReturnIfAbrupt(setStatus).
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
     // 14. Return first.
-    CHECK_MOD_COUNT(oldModCount + 1);
     return firstValue.GetTaggedValue();
 }
 
@@ -1531,8 +1529,8 @@ JSTaggedValue BuiltinsSharedArray::Slice(EcmaRuntimeCallInfo *argv)
 
     // 1. Let O be ToObject(this value).
     JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
-    GET_MOD_COUNT(thisHandle);
     JSHandle<JSObject> thisObjHandle = JSTaggedValue::ToObject(thread, thisHandle);
+    [[maybe_unused]] ConcurrentModScope<JSSharedArray> scope(thread, thisHandle.GetTaggedValue().GetTaggedObject());
     // 2. ReturnIfAbrupt(O).
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSHandle<JSTaggedValue> thisObjVal(thisObjHandle);
@@ -1592,7 +1590,6 @@ JSTaggedValue BuiltinsSharedArray::Slice(EcmaRuntimeCallInfo *argv)
     if (thisHandle->IsStableJSArray(thread) && !thisObjHandle->GetJSHClass()->HasConstructor()
         && JSObject::GetPrototype(thisObjHandle).IsJSArray()) {
         auto opResult = JSStableArray::Slice(thread, thisObjHandle, k, count);
-        CHECK_MOD_COUNT(oldModCount);
         return opResult;
     }
 
@@ -1602,7 +1599,6 @@ JSTaggedValue BuiltinsSharedArray::Slice(EcmaRuntimeCallInfo *argv)
     // 13. ReturnIfAbrupt(A).
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     if (count == 0) {
-        CHECK_MOD_COUNT(oldModCount);
         return newArray;
     }
     JSHandle<JSObject> newArrayHandle(thread, newArray);
@@ -1645,7 +1641,6 @@ JSTaggedValue BuiltinsSharedArray::Slice(EcmaRuntimeCallInfo *argv)
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
     // 18. Return A.
-    CHECK_MOD_COUNT(oldModCount);
     return newArrayHandle.GetTaggedValue();
 }
 
@@ -1665,8 +1660,9 @@ JSTaggedValue BuiltinsSharedArray::Sort(EcmaRuntimeCallInfo *argv)
 
     // 2. Let obj be ToObject(this value).
     JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
-    GET_MOD_COUNT(thisHandle);
     JSHandle<JSObject> thisObjHandle = JSTaggedValue::ToObject(thread, thisHandle);
+    [[maybe_unused]] ConcurrentModScope<JSSharedArray, ModType::WRITE> scope(
+        thread, thisHandle.GetTaggedValue().GetTaggedObject());
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
     // Array sort
@@ -1676,7 +1672,6 @@ JSTaggedValue BuiltinsSharedArray::Sort(EcmaRuntimeCallInfo *argv)
         JSSharedArray::Sort(thread, JSHandle<JSTaggedValue>::Cast(thisObjHandle), callbackFnHandle);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     }
-    CHECK_MOD_COUNT(oldModCount + 1);
     return thisObjHandle.GetTaggedValue();
 }
 
@@ -1691,8 +1686,8 @@ JSTaggedValue BuiltinsSharedArray::ToString(EcmaRuntimeCallInfo *argv)
 
     // 1. Let array be ToObject(this value).
     JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
-    GET_MOD_COUNT(thisHandle);
     JSHandle<JSObject> thisObjHandle = JSTaggedValue::ToObject(thread, thisHandle);
+    [[maybe_unused]] ConcurrentModScope<JSSharedArray> scope(thread, thisHandle.GetTaggedValue().GetTaggedObject());
     // 2. ReturnIfAbrupt(array).
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSHandle<JSTaggedValue> thisObjVal(thisObjHandle);
@@ -1719,7 +1714,6 @@ JSTaggedValue BuiltinsSharedArray::ToString(EcmaRuntimeCallInfo *argv)
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     info->SetCallArg(argsLength, 0, argv, 0);
     auto opResult = JSFunction::Call(info);
-    CHECK_MOD_COUNT(oldModCount);
     return opResult;
 }
 
@@ -1736,8 +1730,9 @@ JSTaggedValue BuiltinsSharedArray::Unshift(EcmaRuntimeCallInfo *argv)
 
     // 1. Let O be ToObject(this value).
     JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
-    GET_MOD_COUNT(thisHandle);
     JSHandle<JSObject> thisObjHandle = JSTaggedValue::ToObject(thread, thisHandle);
+    [[maybe_unused]] ConcurrentModScope<JSSharedArray, ModType::WRITE> scope(
+        thread, thisHandle.GetTaggedValue().GetTaggedObject());
     // 2. ReturnIfAbrupt(O).
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSHandle<JSTaggedValue> thisObjVal(thisObjHandle);
@@ -1809,12 +1804,11 @@ JSTaggedValue BuiltinsSharedArray::Unshift(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> lengthKey = thread->GlobalConstants()->GetHandledLengthString();
     int64_t newLen = len + argc;
     JSHandle<JSTaggedValue> newLenHandle(thread, JSTaggedValue(newLen));
-    JSTaggedValue::SetProperty(thread, thisObjVal, lengthKey, newLenHandle, true);
+    JSTaggedValue::SetProperty(thread, thisObjVal, lengthKey, newLenHandle, true, SCheckMode::SKIP);
     // 8. ReturnIfAbrupt(setStatus).
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
     // 9. Return len+argCount.
-    CHECK_MOD_COUNT(oldModCount + 1);
     return GetTaggedDouble(newLen);
 }
 
@@ -1826,15 +1820,14 @@ JSTaggedValue BuiltinsSharedArray::Values(EcmaRuntimeCallInfo *argv)
     JSThread *thread = argv->GetThread();
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
-    GET_MOD_COUNT(thisHandle);
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     // 1. Let O be ToObject(this value).
     // 2. ReturnIfAbrupt(O).
     JSHandle<JSObject> self = JSTaggedValue::ToObject(thread, GetThis(argv));
+    [[maybe_unused]] ConcurrentModScope<JSSharedArray> scope(thread, thisHandle.GetTaggedValue().GetTaggedObject());
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     // 3. Return CreateArrayIterator(O, "value").
     JSHandle<JSSharedArrayIterator> iter(factory->NewJSSharedArrayIterator(self, IterationKind::VALUE));
-    CHECK_MOD_COUNT(oldModCount);
     return iter.GetTaggedValue();
 }
 // 22.1.3.31 Array.prototype [ @@unscopables ]
@@ -1910,8 +1903,8 @@ JSTaggedValue BuiltinsSharedArray::Flat(EcmaRuntimeCallInfo *argv)
 
     // 1. Let O be ? ToObject(this value).
     JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
-    GET_MOD_COUNT(thisHandle);
     JSHandle<JSObject> thisObjHandle = JSTaggedValue::ToObject(thread, thisHandle);
+    [[maybe_unused]] ConcurrentModScope<JSSharedArray> scope(thread, thisHandle.GetTaggedValue().GetTaggedObject());
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
     uint32_t argc = argv->GetArgsNumber();
@@ -1950,7 +1943,6 @@ JSTaggedValue BuiltinsSharedArray::Flat(EcmaRuntimeCallInfo *argv)
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
     // 7. Return A.
-    CHECK_MOD_COUNT(oldModCount);
     return newArrayHandle.GetTaggedValue();
 }
 
@@ -1964,8 +1956,8 @@ JSTaggedValue BuiltinsSharedArray::FlatMap(EcmaRuntimeCallInfo *argv)
 
     // 1. Let O be ? ToObject(this value).
     JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
-    GET_MOD_COUNT(thisHandle);
     JSHandle<JSObject> thisObjHandle = JSTaggedValue::ToObject(thread, thisHandle);
+    [[maybe_unused]] ConcurrentModScope<JSSharedArray> scope(thread, thisHandle.GetTaggedValue().GetTaggedObject());
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSHandle<JSTaggedValue> thisObjVal(thisObjHandle);
 
@@ -1990,7 +1982,6 @@ JSTaggedValue BuiltinsSharedArray::FlatMap(EcmaRuntimeCallInfo *argv)
                                   mapperFunctionHandle, GetCallArg(argv, 1));
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     // 6. Return A.
-    CHECK_MOD_COUNT(oldModCount);
     return newArrayHandle.GetTaggedValue();
 }
 
@@ -2003,8 +1994,8 @@ JSTaggedValue BuiltinsSharedArray::Includes(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     // 1. Let O be ? ToObject(this value).
     JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
-    GET_MOD_COUNT(thisHandle);
     JSHandle<JSObject> thisObjHandle = JSTaggedValue::ToObject(thread, thisHandle);
+    [[maybe_unused]] ConcurrentModScope<JSSharedArray> scope(thread, thisHandle.GetTaggedValue().GetTaggedObject());
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
     uint32_t argc = argv->GetArgsNumber();
@@ -2016,7 +2007,6 @@ JSTaggedValue BuiltinsSharedArray::Includes(EcmaRuntimeCallInfo *argv)
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     // 3. If len is 0, return false.
     if (len == 0) {
-        CHECK_MOD_COUNT(oldModCount);
         return GetTaggedBoolean(false);
     }
     // 4. Let n be ? ToIntegerOrInfinity(fromIndex).
@@ -2032,7 +2022,6 @@ JSTaggedValue BuiltinsSharedArray::Includes(EcmaRuntimeCallInfo *argv)
     // 6. If n is +∞, return false.
     // 7. Else if n is -∞, set n to 0.
     if (fromIndex >= len) {
-        CHECK_MOD_COUNT(oldModCount);
         return GetTaggedBoolean(false);
     } else if (fromIndex < -len) {
         fromIndex = 0;
@@ -2059,13 +2048,11 @@ JSTaggedValue BuiltinsSharedArray::Includes(EcmaRuntimeCallInfo *argv)
         kValueHandle.Update(JSSharedArray::FastGetPropertyByValue(thread, thisObjVal, key).GetTaggedValue());
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         if (JSTaggedValue::SameValueZero(searchElement.GetTaggedValue(), kValueHandle.GetTaggedValue())) {
-            CHECK_MOD_COUNT(oldModCount);
             return GetTaggedBoolean(true);
         }
         from++;
     }
     // 11. Return false.
-    CHECK_MOD_COUNT(oldModCount);
     return GetTaggedBoolean(false);
 }
 
@@ -2079,10 +2066,15 @@ JSTaggedValue BuiltinsSharedArray::At(EcmaRuntimeCallInfo *argv)
 
     // 1. Let O be ToObject(this value).
     JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
-    GET_MOD_COUNT(thisHandle);
+    if (!thisHandle->IsSharedType()) {
+        auto error = containers::ContainerError::BusinessError(thread, containers::ErrorFlag::BIND_ERROR,
+                                                               "The at method cannot be bound with non-sendable");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
+    }
+    [[maybe_unused]] ConcurrentModScope<JSSharedArray> scope(thread, thisHandle.GetTaggedValue().GetTaggedObject());
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     if (thisHandle->IsStableJSArray(thread)) {
         auto opResult = JSStableArray::At(JSHandle<JSSharedArray>::Cast(thisHandle), argv);
-        CHECK_MOD_COUNT(oldModCount);
         return opResult;
     }
     JSHandle<JSObject> thisObjHandle = JSTaggedValue::ToObject(thread, thisHandle);
@@ -2115,13 +2107,11 @@ JSTaggedValue BuiltinsSharedArray::At(EcmaRuntimeCallInfo *argv)
     // 6. If k < 0 or k ≥ len, return undefined.
     if (k < 0 || k >= len) {
         // Return undefined.
-        CHECK_MOD_COUNT(oldModCount);
         return JSTaggedValue::Undefined();
     }
     // 7. Return ? Get(O, ! ToString(𝔽(k))).
     JSHandle<JSTaggedValue> element = JSSharedArray::FastGetPropertyByValue(thread, thisObjVal, k);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    CHECK_MOD_COUNT(oldModCount);
     return element.GetTaggedValue();
 }
 }  // namespace panda::ecmascript::builtins

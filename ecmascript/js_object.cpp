@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include "ecmascript/js_object.h"
 #include "ecmascript/js_object-inl.h"
 
 #include "ecmascript/accessor_data.h"
@@ -28,7 +29,6 @@
 #include "ecmascript/js_iterator.h"
 #include "ecmascript/js_object_resizing_strategy.h"
 #include "ecmascript/js_primitive_ref.h"
-#include "ecmascript/js_shared_array.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/object_factory-inl.h"
@@ -36,6 +36,7 @@
 #include "ecmascript/pgo_profiler/pgo_profiler.h"
 #include "ecmascript/property_accessor.h"
 #include "ecmascript/property_attributes.h"
+#include "ecmascript/shared_objects/js_shared_array.h"
 #include "ecmascript/tagged_array-inl.h"
 #include "ecmascript/jspandafile/debug_info_extractor.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
@@ -833,14 +834,14 @@ bool JSObject::SetProperty(JSThread *thread, const JSHandle<JSObject> &obj, cons
 }
 
 bool JSObject::SetProperty(JSThread *thread, const JSHandle<JSTaggedValue> &obj, const JSHandle<JSTaggedValue> &key,
-                           const JSHandle<JSTaggedValue> &value, bool mayThrow)
+                           const JSHandle<JSTaggedValue> &value, bool mayThrow, SCheckMode checkMode)
 {
     ASSERT_PRINT(!(obj->IsUndefined() || obj->IsNull() || obj->IsHole()), "Obj is not a valid object");
     ASSERT_PRINT(JSTaggedValue::IsPropertyKey(key), "Key is not a property key");
 
     // 2 ~ 4 findProperty in Receiver, Obj and its parents
     ObjectOperator op(thread, obj, key);
-    return SetProperty(&op, value, mayThrow);
+    return SetProperty(&op, value, mayThrow, checkMode);
 }
 
 bool JSObject::SetProperty(JSThread *thread, const JSHandle<JSTaggedValue> &obj, uint32_t index,
@@ -883,7 +884,8 @@ bool JSObject::SetPropertyForDataDescriptorProxy(JSThread *thread, ObjectOperato
 }
 
 bool JSObject::SetPropertyForDataDescriptor(ObjectOperator *op, const JSHandle<JSTaggedValue> &value,
-                                            JSHandle<JSTaggedValue> &receiver, bool mayThrow, bool isInternalAccessor)
+                                            JSHandle<JSTaggedValue> &receiver, bool mayThrow, bool isInternalAccessor,
+                                            SCheckMode checkMode)
 {
     JSThread *thread = op->GetThread();
     if (!op->IsWritable()) {
@@ -944,7 +946,7 @@ bool JSObject::SetPropertyForDataDescriptor(ObjectOperator *op, const JSHandle<J
             }
             return false;
         }
-        isSuccess = op->UpdateDataValue(JSHandle<JSObject>(receiver), value, isInternalAccessor, mayThrow);
+        isSuccess = op->UpdateDataValue(JSHandle<JSObject>(receiver), value, isInternalAccessor, mayThrow, checkMode);
         RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, isSuccess);
     } else {
         // 5f. Else if Receiver does not currently have a property P, Return CreateDataProperty(Receiver, P, V).
@@ -966,7 +968,7 @@ bool JSObject::SetPropertyForDataDescriptor(ObjectOperator *op, const JSHandle<J
     return isSuccess;
 }
 
-bool JSObject::SetProperty(ObjectOperator *op, const JSHandle<JSTaggedValue> &value, bool mayThrow)
+bool JSObject::SetProperty(ObjectOperator *op, const JSHandle<JSTaggedValue> &value, bool mayThrow, SCheckMode checkMode)
 {
     JSThread *thread = op->GetThread();
     op->UpdateDetector();
@@ -994,7 +996,7 @@ bool JSObject::SetProperty(ObjectOperator *op, const JSHandle<JSTaggedValue> &va
 
     // 5. If IsDataDescriptor(ownDesc) is true, then
     if (!op->IsAccessorDescriptor() || isInternalAccessor) {
-        return SetPropertyForDataDescriptor(op, value, receiver, mayThrow, isInternalAccessor);
+        return SetPropertyForDataDescriptor(op, value, receiver, mayThrow, isInternalAccessor, checkMode);
     }
     // 6. Assert: IsAccessorDescriptor(ownDesc) is true.
     ASSERT(op->IsAccessorDescriptor());

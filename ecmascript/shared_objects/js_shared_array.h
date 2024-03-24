@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#ifndef ECMASCRIPT_JS_SHARED_ARRAY_H
-#define ECMASCRIPT_JS_SHARED_ARRAY_H
+#ifndef ECMASCRIPT_SHARED_OBJECTS_JS_SHARED_ARRAY_H
+#define ECMASCRIPT_SHARED_OBJECTS_JS_SHARED_ARRAY_H
 
 #include "ecmascript/js_array.h"
 #include "ecmascript/js_object.h"
@@ -68,11 +68,11 @@ public:
     static constexpr size_t LENGTH_OFFSET = JSObject::SIZE;
     ACCESSORS_SYNCHRONIZED_PRIMITIVE_FIELD(Length, uint32_t, LENGTH_OFFSET, TRACE_INDEX_OFFSET)
     ACCESSORS_SYNCHRONIZED_PRIMITIVE_FIELD(TraceIndex, uint32_t, TRACE_INDEX_OFFSET, TRACK_INFO_OFFSET)
-    ACCESSORS_SYNCHRONIZED(TrackInfo, TRACK_INFO_OFFSET, MOD_COUNT_OFFSET)
-    ACCESSORS_SYNCHRONIZED_PRIMITIVE_FIELD(ModCount, uint32_t, MOD_COUNT_OFFSET, LAST_OFFSET)
+    ACCESSORS_SYNCHRONIZED(TrackInfo, TRACK_INFO_OFFSET, MOD_RECORD_OFFSET)
+    ACCESSORS_SYNCHRONIZED_PRIMITIVE_FIELD(ModRecord, uint32_t, MOD_RECORD_OFFSET, LAST_OFFSET)
     DEFINE_ALIGN_SIZE(LAST_OFFSET);
 
-    DECL_VISIT_OBJECT_FOR_JS_OBJECT(JSObject, TRACK_INFO_OFFSET, MOD_COUNT_OFFSET)
+    DECL_VISIT_OBJECT_FOR_JS_OBJECT(JSObject, TRACK_INFO_OFFSET, MOD_RECORD_OFFSET)
 
     static const uint32_t MAX_ARRAY_INDEX = MAX_ELEMENT_INDEX;
     DECL_DUMP()
@@ -84,10 +84,10 @@ public:
 
     static bool PropertyKeyToArrayIndex(JSThread *thread, const JSHandle<JSTaggedValue> &key, uint32_t *output);
 
-    static JSTaggedValue LengthGetter(JSThread *thread, const JSHandle<JSObject> &self);
+    static JSTaggedValue LengthGetter(JSThread *thread, const JSHandle<JSObject> &self, SCheckMode mode = SCheckMode::CHECK);
 
     static bool LengthSetter(JSThread *thread, const JSHandle<JSObject> &self, const JSHandle<JSTaggedValue> &value,
-                             bool mayThrow = false);
+                             bool mayThrow = false, SCheckMode mode = SCheckMode::CHECK);
 
     static JSHandle<JSTaggedValue> FastGetPropertyByValue(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
                                                           uint32_t index);
@@ -117,4 +117,4 @@ public:
 };
 }  // namespace panda::ecmascript
 
-#endif  // ECMASCRIPT_JS_SHARED_ARRAY_H
+#endif  // ECMASCRIPT_SHARED_OBJECTS_JS_SHARED_ARRAY_H

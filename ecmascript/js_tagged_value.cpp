@@ -34,6 +34,7 @@
 #include "ecmascript/js_date.h"
 #include "ecmascript/js_handle.h"
 #include "ecmascript/js_object-inl.h"
+#include "ecmascript/js_object.h"
 #include "ecmascript/js_primitive_ref.h"
 #include "ecmascript/js_proxy.h"
 #include "ecmascript/js_tagged_value-inl.h"
@@ -729,7 +730,8 @@ OperationResult JSTaggedValue::GetProperty(JSThread *thread, const JSHandle<JSTa
 
 // 7.3.3 Set (O, P, V, Throw)
 bool JSTaggedValue::SetProperty(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
-                                const JSHandle<JSTaggedValue> &key, const JSHandle<JSTaggedValue> &value, bool mayThrow)
+                                const JSHandle<JSTaggedValue> &key, const JSHandle<JSTaggedValue> &value, bool mayThrow,
+                                SCheckMode checkMode)
 {
     if (obj->IsUndefined() || obj->IsNull() || obj->IsHole()) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "Obj is not a Valid object", false);
@@ -748,7 +750,7 @@ bool JSTaggedValue::SetProperty(JSThread *thread, const JSHandle<JSTaggedValue> 
     } else if (obj->IsSpecialContainer()) {
         success = SetJSAPIProperty(thread, obj, key, value);
     } else {
-        success = JSObject::SetProperty(thread, obj, key, value, mayThrow);
+        success = JSObject::SetProperty(thread, obj, key, value, mayThrow, checkMode);
     }
     // 5. ReturnIfAbrupt(success).
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, success);

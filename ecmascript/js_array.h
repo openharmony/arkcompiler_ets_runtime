@@ -87,7 +87,7 @@ public:
     static JSTaggedValue LengthGetter(JSThread *thread, const JSHandle<JSObject> &self);
 
     static bool LengthSetter(JSThread *thread, const JSHandle<JSObject> &self, const JSHandle<JSTaggedValue> &value,
-                             bool mayThrow = false);
+                             bool mayThrow = false, SCheckMode checkMode = SCheckMode::CHECK);
 
     static JSHandle<JSTaggedValue> FastGetPropertyByValue(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
                                                           uint32_t index);

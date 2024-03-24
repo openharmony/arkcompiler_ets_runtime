@@ -33,7 +33,7 @@ JSTaggedValue JSArray::LengthGetter([[maybe_unused]] JSThread *thread, const JSH
 }
 
 bool JSArray::LengthSetter(JSThread *thread, const JSHandle<JSObject> &self, const JSHandle<JSTaggedValue> &value,
-                           bool mayThrow)
+                           bool mayThrow, [[maybe_unused]] SCheckMode checkMode)
 {
     uint32_t newLen = 0;
     if (!JSTaggedValue::ToArrayLength(thread, value, &newLen) && mayThrow) {
