@@ -1827,9 +1827,11 @@ void JSAPITreeMap::Dump(std::ostream &os) const
 
 void JSAPITreeMap::DumpForSnapshot(std::vector<Reference> &vec) const
 {
-    TaggedTreeMap *map = TaggedTreeMap::Cast(GetTreeMap().GetTaggedObject());
-    vec.emplace_back("treemap", GetTreeMap());
-    map->DumpForSnapshot(vec);
+    if (!(GetTreeMap().IsInvalidValue())) {
+        TaggedTreeMap *map = TaggedTreeMap::Cast(GetTreeMap().GetTaggedObject());
+        vec.emplace_back("treemap", GetTreeMap());
+        map->DumpForSnapshot(vec);
+    }
 
     JSObject::DumpForSnapshot(vec);
 }
@@ -1851,10 +1853,13 @@ void JSAPITreeMapIterator::Dump(std::ostream &os) const
 
 void JSAPITreeMapIterator::DumpForSnapshot(std::vector<Reference> &vec) const
 {
-    TaggedTreeMap *map =
-        TaggedTreeMap::Cast(JSAPITreeMap::Cast(GetIteratedMap().GetTaggedObject())->GetTreeMap().GetTaggedObject());
-    vec.emplace_back("iteratedmap", GetIteratedMap());
-    map->DumpForSnapshot(vec);
+    if (!(GetIteratedMap().IsInvalidValue())) {
+        TaggedTreeMap *map =
+            TaggedTreeMap::Cast(JSAPITreeMap::Cast(GetIteratedMap().GetTaggedObject())->GetTreeMap().GetTaggedObject());
+        vec.emplace_back("iteratedmap", GetIteratedMap());
+        map->DumpForSnapshot(vec);
+    }
+
     vec.emplace_back(CString("NextIndex"), JSTaggedValue(GetNextIndex()));
     vec.emplace_back(CString("IterationKind"), JSTaggedValue(static_cast<int>(GetIterationKind())));
     JSObject::DumpForSnapshot(vec);
@@ -1944,9 +1949,11 @@ void JSAPITreeSet::Dump(std::ostream &os) const
 
 void JSAPITreeSet::DumpForSnapshot(std::vector<Reference> &vec) const
 {
-    TaggedTreeSet *set = TaggedTreeSet::Cast(GetTreeSet().GetTaggedObject());
-    vec.emplace_back("treeset", GetTreeSet());
-    set->DumpForSnapshot(vec);
+    if (!(GetTreeSet().IsInvalidValue())) {
+        TaggedTreeSet *set = TaggedTreeSet::Cast(GetTreeSet().GetTaggedObject());
+        vec.emplace_back("treeset", GetTreeSet());
+        set->DumpForSnapshot(vec);
+    }
 
     JSObject::DumpForSnapshot(vec);
 }
@@ -1968,10 +1975,13 @@ void JSAPITreeSetIterator::Dump(std::ostream &os) const
 
 void JSAPITreeSetIterator::DumpForSnapshot(std::vector<Reference> &vec) const
 {
-    TaggedTreeSet *set =
-        TaggedTreeSet::Cast(JSAPITreeSet::Cast(GetIteratedSet().GetTaggedObject())->GetTreeSet().GetTaggedObject());
-    vec.emplace_back("iteratedset", GetIteratedSet());
-    set->DumpForSnapshot(vec);
+    if (!(GetIteratedSet().IsInvalidValue())) {
+        TaggedTreeSet *set =
+            TaggedTreeSet::Cast(JSAPITreeSet::Cast(GetIteratedSet().GetTaggedObject())->GetTreeSet().GetTaggedObject());
+        vec.emplace_back("iteratedset", GetIteratedSet());
+        set->DumpForSnapshot(vec);
+    }
+
     vec.emplace_back(CString("NextIndex"), JSTaggedValue(GetNextIndex()));
     vec.emplace_back(CString("IterationKind"), JSTaggedValue(static_cast<int>(GetIterationKind())));
     JSObject::DumpForSnapshot(vec);
@@ -2036,9 +2046,12 @@ void JSAPIPlainArrayIterator::Dump(std::ostream &os) const
 
 void JSAPIPlainArrayIterator::DumpForSnapshot(std::vector<Reference> &vec) const
 {
-    JSAPIPlainArray *array = JSAPIPlainArray::Cast(GetIteratedPlainArray().GetTaggedObject());
-    vec.emplace_back("iteratedplainarray", GetIteratedPlainArray());
-    array->DumpForSnapshot(vec);
+    if (!(GetIteratedPlainArray().IsInvalidValue())) {
+        JSAPIPlainArray *array = JSAPIPlainArray::Cast(GetIteratedPlainArray().GetTaggedObject());
+        vec.emplace_back("iteratedplainarray", GetIteratedPlainArray());
+        array->DumpForSnapshot(vec);
+    }
+
     vec.emplace_back(CString("NextIndex"), JSTaggedValue(GetNextIndex()));
     JSObject::DumpForSnapshot(vec);
 }
@@ -2315,9 +2328,12 @@ void JSAPIHashMap::Dump(std::ostream &os) const
 
 void JSAPIHashMap::DumpForSnapshot(std::vector<Reference> &vec) const
 {
-    TaggedHashArray *map = TaggedHashArray::Cast(GetTable().GetTaggedObject());
-    vec.emplace_back("hashmap", GetTable());
-    map->DumpForSnapshot(vec);
+    if (!(GetTable().IsInvalidValue())) {
+        TaggedHashArray *map = TaggedHashArray::Cast(GetTable().GetTaggedObject());
+        vec.emplace_back("hashmap", GetTable());
+        map->DumpForSnapshot(vec);
+    }
+
     JSObject::DumpForSnapshot(vec);
 }
 
@@ -2331,9 +2347,12 @@ void JSAPIHashSet::Dump(std::ostream &os) const
 
 void JSAPIHashSet::DumpForSnapshot(std::vector<Reference> &vec) const
 {
-    TaggedHashArray *set = TaggedHashArray::Cast(GetTable().GetTaggedObject());
-    vec.emplace_back("hashset", GetTable());
-    set->DumpForSnapshot(vec);
+    if (!(GetTable().IsInvalidValue())) {
+        TaggedHashArray *set = TaggedHashArray::Cast(GetTable().GetTaggedObject());
+        vec.emplace_back("hashset", GetTable());
+        set->DumpForSnapshot(vec);
+    }
+
     JSObject::DumpForSnapshot(vec);
 }
 
@@ -2443,8 +2462,10 @@ void JSAPILinkedList::Dump(std::ostream &os) const
 
 void JSAPILinkedList::DumpForSnapshot(std::vector<Reference> &vec) const
 {
-    TaggedDoubleList *list = TaggedDoubleList::Cast(GetDoubleList().GetTaggedObject());
-    list->DumpForSnapshot(vec);
+    if (!(GetDoubleList().IsInvalidValue())) {
+        TaggedDoubleList *list = TaggedDoubleList::Cast(GetDoubleList().GetTaggedObject());
+        list->DumpForSnapshot(vec);
+    }
 
     JSObject::DumpForSnapshot(vec);
 }
@@ -2462,9 +2483,12 @@ void JSAPILinkedListIterator::Dump(std::ostream &os) const
 
 void JSAPILinkedListIterator::DumpForSnapshot(std::vector<Reference> &vec) const
 {
-    TaggedDoubleList *linkedList = TaggedDoubleList::Cast(GetIteratedLinkedList().GetTaggedObject());
-    vec.emplace_back("iteratedlist", GetIteratedLinkedList());
-    linkedList->DumpForSnapshot(vec);
+    if (!(GetIteratedLinkedList().IsInvalidValue())) {
+        TaggedDoubleList *linkedList = TaggedDoubleList::Cast(GetIteratedLinkedList().GetTaggedObject());
+        vec.emplace_back("iteratedlist", GetIteratedLinkedList());
+        linkedList->DumpForSnapshot(vec);
+    }
+
     vec.emplace_back(CString("NextIndex"), JSTaggedValue(GetNextIndex()));
     JSObject::DumpForSnapshot(vec);
 }
@@ -5059,9 +5083,11 @@ void JSDate::DumpForSnapshot(std::vector<Reference> &vec) const
 
 void JSMap::DumpForSnapshot(std::vector<Reference> &vec) const
 {
-    LinkedHashMap *map = LinkedHashMap::Cast(GetLinkedMap().GetTaggedObject());
-    vec.emplace_back("linkedmap", GetLinkedMap());
-    map->DumpForSnapshot(vec);
+    if (!(GetLinkedMap().IsInvalidValue())) {
+        LinkedHashMap *map = LinkedHashMap::Cast(GetLinkedMap().GetTaggedObject());
+        vec.emplace_back("linkedmap", GetLinkedMap());
+        map->DumpForSnapshot(vec);
+    }
 
     JSObject::DumpForSnapshot(vec);
 }
@@ -5088,9 +5114,12 @@ void JSForInIterator::DumpForSnapshot(std::vector<Reference> &vec) const
 
 void JSMapIterator::DumpForSnapshot(std::vector<Reference> &vec) const
 {
-    LinkedHashMap *map = LinkedHashMap::Cast(GetIteratedMap().GetTaggedObject());
-    vec.emplace_back("iteratedmap", GetIteratedMap());
-    map->DumpForSnapshot(vec);
+    if (!(GetIteratedMap().IsInvalidValue())) {
+        LinkedHashMap *map = LinkedHashMap::Cast(GetIteratedMap().GetTaggedObject());
+        vec.emplace_back("iteratedmap", GetIteratedMap());
+        map->DumpForSnapshot(vec);
+    }
+
     vec.emplace_back(CString("NextIndex"), JSTaggedValue(GetNextIndex()));
     vec.emplace_back(CString("IterationKind"), JSTaggedValue(static_cast<int>(GetIterationKind())));
     JSObject::DumpForSnapshot(vec);
@@ -5109,9 +5138,11 @@ void JSSharedMapIterator::DumpForSnapshot(std::vector<Reference> &vec) const
 
 void JSSet::DumpForSnapshot(std::vector<Reference> &vec) const
 {
-    LinkedHashSet *set = LinkedHashSet::Cast(GetLinkedSet().GetTaggedObject());
-    vec.emplace_back("linkedset", GetLinkedSet());
-    set->DumpForSnapshot(vec);
+    if (!(GetLinkedSet().IsInvalidValue())) {
+        LinkedHashSet *set = LinkedHashSet::Cast(GetLinkedSet().GetTaggedObject());
+        vec.emplace_back("linkedset", GetLinkedSet());
+        set->DumpForSnapshot(vec);
+    }
 
     JSObject::DumpForSnapshot(vec);
 }
@@ -5128,18 +5159,22 @@ void JSSharedSet::DumpForSnapshot(std::vector<Reference> &vec) const
 
 void JSWeakMap::DumpForSnapshot(std::vector<Reference> &vec) const
 {
-    LinkedHashMap *map = LinkedHashMap::Cast(GetLinkedMap().GetTaggedObject());
-    vec.emplace_back("linkedmap", GetLinkedMap());
-    map->DumpForSnapshot(vec);
+    if (!(GetLinkedMap().IsInvalidValue())) {
+        LinkedHashMap *map = LinkedHashMap::Cast(GetLinkedMap().GetTaggedObject());
+        vec.emplace_back("linkedmap", GetLinkedMap());
+        map->DumpForSnapshot(vec);
+    }
 
     JSObject::DumpForSnapshot(vec);
 }
 
 void JSWeakSet::DumpForSnapshot(std::vector<Reference> &vec) const
 {
-    LinkedHashSet *set = LinkedHashSet::Cast(GetLinkedSet().GetTaggedObject());
-    vec.emplace_back("linkeset", GetLinkedSet());
-    set->DumpForSnapshot(vec);
+    if (!(GetLinkedSet().IsInvalidValue())) {
+        LinkedHashSet *set = LinkedHashSet::Cast(GetLinkedSet().GetTaggedObject());
+        vec.emplace_back("linkeset", GetLinkedSet());
+        set->DumpForSnapshot(vec);
+    }
 
     JSObject::DumpForSnapshot(vec);
 }
@@ -5153,8 +5188,11 @@ void JSWeakRef::DumpForSnapshot(std::vector<Reference> &vec) const
 void JSFinalizationRegistry::DumpForSnapshot(std::vector<Reference> &vec) const
 {
     vec.emplace_back(CString("CleanupCallback"), GetCleanupCallback());
-    LinkedHashMap *map = LinkedHashMap::Cast(GetMaybeUnregister().GetTaggedObject());
-    map->DumpForSnapshot(vec);
+    if (!(GetMaybeUnregister().IsInvalidValue())) {
+        LinkedHashMap *map = LinkedHashMap::Cast(GetMaybeUnregister().GetTaggedObject());
+        map->DumpForSnapshot(vec);
+    }
+
     vec.emplace_back(CString("MaybeUnregister"), GetMaybeUnregister());
     vec.emplace_back(CString("Next"), GetNext());
     vec.emplace_back(CString("Prev"), GetPrev());
@@ -5169,9 +5207,12 @@ void CellRecord::DumpForSnapshot(std::vector<Reference> &vec) const
 
 void JSSetIterator::DumpForSnapshot(std::vector<Reference> &vec) const
 {
-    LinkedHashSet *set = LinkedHashSet::Cast(GetIteratedSet().GetTaggedObject());
-    vec.emplace_back("iteratedset", GetIteratedSet());
-    set->DumpForSnapshot(vec);
+    if (!(GetIteratedSet().IsInvalidValue())) {
+        LinkedHashSet *set = LinkedHashSet::Cast(GetIteratedSet().GetTaggedObject());
+        vec.emplace_back("iteratedset", GetIteratedSet());
+        set->DumpForSnapshot(vec);
+    }
+
     vec.emplace_back(CString("NextIndex"), JSTaggedValue(GetNextIndex()));
     vec.emplace_back(CString("IterationKind"), JSTaggedValue(static_cast<int>(GetIterationKind())));
     JSObject::DumpForSnapshot(vec);
@@ -5235,10 +5276,13 @@ void JSAPILightWeightMap::DumpForSnapshot(std::vector<Reference> &vec) const
 
 void JSAPILightWeightMapIterator::DumpForSnapshot(std::vector<Reference> &vec) const
 {
-    JSAPILightWeightMap *map =
-        JSAPILightWeightMap::Cast(GetIteratedLightWeightMap().GetTaggedObject());
-    vec.emplace_back("iteratedmap", GetIteratedLightWeightMap());
-    map->DumpForSnapshot(vec);
+    if (!(GetIteratedLightWeightMap().IsInvalidValue())) {
+        JSAPILightWeightMap *map =
+            JSAPILightWeightMap::Cast(GetIteratedLightWeightMap().GetTaggedObject());
+        vec.emplace_back("iteratedmap", GetIteratedLightWeightMap());
+        map->DumpForSnapshot(vec);
+    }
+
     vec.emplace_back(CString("NextIndex"), JSTaggedValue(GetNextIndex()));
     vec.emplace_back(CString("IterationKind"), JSTaggedValue(static_cast<int>(GetIterationKind())));
     vec.emplace_back(CString("BitField"), JSTaggedValue(GetBitField()));
@@ -5253,9 +5297,12 @@ void JSAPIQueue::DumpForSnapshot(std::vector<Reference> &vec) const
 
 void JSAPIQueueIterator::DumpForSnapshot(std::vector<Reference> &vec) const
 {
-    JSAPIQueue *queue = JSAPIQueue::Cast(GetIteratedQueue().GetTaggedObject());
-    vec.emplace_back("iteratedqueue", GetIteratedQueue());
-    queue->DumpForSnapshot(vec);
+    if (!(GetIteratedQueue().IsInvalidValue())) {
+        JSAPIQueue *queue = JSAPIQueue::Cast(GetIteratedQueue().GetTaggedObject());
+        vec.emplace_back("iteratedqueue", GetIteratedQueue());
+        queue->DumpForSnapshot(vec);
+    }
+
     vec.emplace_back(CString("NextIndex"), JSTaggedValue(GetNextIndex()));
     JSObject::DumpForSnapshot(vec);
 }
@@ -5267,9 +5314,12 @@ void JSAPIDeque::DumpForSnapshot(std::vector<Reference> &vec) const
 
 void JSAPIDequeIterator::DumpForSnapshot(std::vector<Reference> &vec) const
 {
-    JSAPIDeque *deque = JSAPIDeque::Cast(GetIteratedDeque().GetTaggedObject());
-    vec.emplace_back("iterateddeque", GetIteratedDeque());
-    deque->DumpForSnapshot(vec);
+    if (!(GetIteratedDeque().IsInvalidValue())) {
+        JSAPIDeque *deque = JSAPIDeque::Cast(GetIteratedDeque().GetTaggedObject());
+        vec.emplace_back("iterateddeque", GetIteratedDeque());
+        deque->DumpForSnapshot(vec);
+    }
+
     vec.emplace_back(CString("NextIndex"), JSTaggedValue(GetNextIndex()));
     JSObject::DumpForSnapshot(vec);
 }
@@ -5291,10 +5341,13 @@ void JSAPILightWeightSet::DumpForSnapshot(std::vector<Reference> &vec) const
 
 void JSAPILightWeightSetIterator::DumpForSnapshot(std::vector<Reference> &vec) const
 {
-    JSAPILightWeightSet *set =
-        JSAPILightWeightSet::Cast(GetIteratedLightWeightSet().GetTaggedObject());
-    vec.emplace_back("iteratedset", GetIteratedLightWeightSet());
-    set->DumpForSnapshot(vec);
+    if (!(GetIteratedLightWeightSet().IsInvalidValue())) {
+        JSAPILightWeightSet *set =
+            JSAPILightWeightSet::Cast(GetIteratedLightWeightSet().GetTaggedObject());
+        vec.emplace_back("iteratedset", GetIteratedLightWeightSet());
+        set->DumpForSnapshot(vec);
+    }
+
     vec.emplace_back(CString("NextIndex"), JSTaggedValue(GetNextIndex()));
     vec.emplace_back(CString("IterationKind"), JSTaggedValue(static_cast<int>(GetIterationKind())));
     JSObject::DumpForSnapshot(vec);
@@ -5307,18 +5360,24 @@ void JSAPIStack::DumpForSnapshot(std::vector<Reference> &vec) const
 
 void JSAPIStackIterator::DumpForSnapshot(std::vector<Reference> &vec) const
 {
-    JSAPIStack *stack = JSAPIStack::Cast(GetIteratedStack().GetTaggedObject());
-    vec.emplace_back("iteratedstack", GetIteratedStack());
-    stack->DumpForSnapshot(vec);
+    if (!(GetIteratedStack().IsInvalidValue())) {
+        JSAPIStack *stack = JSAPIStack::Cast(GetIteratedStack().GetTaggedObject());
+        vec.emplace_back("iteratedstack", GetIteratedStack());
+        stack->DumpForSnapshot(vec);
+    }
+
     vec.emplace_back(CString("NextIndex"), JSTaggedValue(GetNextIndex()));
     JSObject::DumpForSnapshot(vec);
 }
 
 void JSArrayIterator::DumpForSnapshot(std::vector<Reference> &vec) const
 {
-    JSArray *array = JSArray::Cast(GetIteratedArray().GetTaggedObject());
-    vec.emplace_back("iteratedarray", GetIteratedArray());
-    array->DumpForSnapshot(vec);
+    if (!(GetIteratedArray().IsInvalidValue())) {
+        JSArray *array = JSArray::Cast(GetIteratedArray().GetTaggedObject());
+        vec.emplace_back("iteratedarray", GetIteratedArray());
+        array->DumpForSnapshot(vec);
+    }
+
     vec.emplace_back(CString("NextIndex"), JSTaggedValue(GetNextIndex()));
     vec.emplace_back(CString("IterationKind"), JSTaggedValue(static_cast<int>(GetIterationKind())));
     vec.emplace_back(CString("BitField"), JSTaggedValue(GetBitField()));
@@ -5343,9 +5402,12 @@ void JSAPIVector::DumpForSnapshot(std::vector<Reference> &vec) const
 
 void JSAPIVectorIterator::DumpForSnapshot(std::vector<Reference> &vec) const
 {
-    JSAPIVector *vector = JSAPIVector::Cast(GetIteratedVector().GetTaggedObject());
-    vec.emplace_back("iteratedvector", GetIteratedVector());
-    vector->DumpForSnapshot(vec);
+    if (!(GetIteratedVector().IsInvalidValue())) {
+        JSAPIVector *vector = JSAPIVector::Cast(GetIteratedVector().GetTaggedObject());
+        vec.emplace_back("iteratedvector", GetIteratedVector());
+        vector->DumpForSnapshot(vec);
+    }
+
     vec.emplace_back(CString("NextIndex"), JSTaggedValue(GetNextIndex()));
     JSObject::DumpForSnapshot(vec);
 }
