@@ -2144,20 +2144,23 @@ void TypedHCRLowering::LowerTypeOfCheck(GateRef gate)
         check = builder_.TaggedIsNull(value);
     } else if (type.IsUndefinedType()) {
         check = builder_.TaggedIsUndefined(value);
-    } else if (type.IsStringType()) {
-        check = builder_.BoolAnd(builder_.TaggedIsHeapObject(value), builder_.TaggedIsString(value));
-    } else if (type.IsBigIntType()) {
-        check = builder_.BoolAnd(builder_.TaggedIsHeapObject(value), builder_.IsJsType(value, JSType::BIGINT));
-    } else if (type.IsSymbolType()) {
-        check = builder_.BoolAnd(builder_.TaggedIsHeapObject(value), builder_.IsJsType(value, JSType::SYMBOL));
-    } else if (tsManager_->IsFunctionTypeKind(type) || tsManager_->IsClassTypeKind(type)) {
-        check = builder_.BoolAnd(builder_.TaggedIsHeapObject(value), builder_.IsCallable(value));
-    } else if (tsManager_->IsObjectTypeKind(type) || tsManager_->IsClassInstanceTypeKind(type)) {
-        check = builder_.BoolAnd(builder_.TaggedIsHeapObject(value), builder_.IsJsType(value, JSType::JS_OBJECT));
-    } else if (tsManager_->IsArrayTypeKind(type)) {
-        check = builder_.BoolAnd(builder_.TaggedIsHeapObject(value), builder_.IsJsType(value, JSType::JS_ARRAY));
     } else {
-        UNREACHABLE();
+        builder_.DeoptCheck(builder_.TaggedIsHeapObject(value), frameState, DeoptType::INCONSISTENTTYPE1);
+        if (type.IsStringType()) {
+            check = builder_.TaggedIsString(value);
+        } else if (type.IsBigIntType()) {
+            check = builder_.IsJsType(value, JSType::BIGINT);
+        } else if (type.IsSymbolType()) {
+            check = builder_.IsJsType(value, JSType::SYMBOL);
+        } else if (tsManager_->IsFunctionTypeKind(type) || tsManager_->IsClassTypeKind(type)) {
+            check = builder_.IsCallable(value);
+        } else if (tsManager_->IsObjectTypeKind(type) || tsManager_->IsClassInstanceTypeKind(type)) {
+            check = builder_.IsJsType(value, JSType::JS_OBJECT);
+        } else if (tsManager_->IsArrayTypeKind(type)) {
+            check = builder_.IsJsType(value, JSType::JS_ARRAY);
+        } else {
+            UNREACHABLE();
+        }
     }
 
     builder_.DeoptCheck(check, frameState, DeoptType::INCONSISTENTTYPE1);
