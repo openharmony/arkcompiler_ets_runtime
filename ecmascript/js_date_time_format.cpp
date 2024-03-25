@@ -415,6 +415,12 @@ JSHandle<JSDateTimeFormat> JSDateTimeFormat::InitializeDateTimeFormat(JSThread *
     ASSERT_PRINT(!icuLocale.isBogus(), "icuLocale is bogus");
     UErrorCode status = U_ZERO_ERROR;
 
+    if (numberingSystem->IsUndefined()) {
+        std::string numberingSystemStr = JSLocale::GetNumberingSystem(icuLocale);
+        auto result = factory->NewFromStdString(numberingSystemStr);
+        dateTimeFormat->SetNumberingSystem(thread, result);
+    }
+
     // Set resolvedIcuLocaleCopy to a copy of icuLocale.
     // Set icuLocale.[[ca]] to calendar.
     // Set icuLocale.[[nu]] to numberingSystem.
@@ -1013,6 +1019,8 @@ void JSDateTimeFormat::ResolvedOptions(JSThread *thread, const JSHandle<JSDateTi
         }
     } else if (icuCalendar == "ethiopic-amete-alem") {
         calendarValue.Update(globalConst->GetHandledEthioaaString().GetTaggedValue());
+    } else if (icuCalendar.length() != 0) {
+        calendarValue.Update(factory->NewFromStdString(icuCalendar).GetTaggedValue());
     }
     property = globalConst->GetHandledCalendarString();
     JSObject::CreateDataPropertyOrThrow(thread, options, property, calendarValue);
