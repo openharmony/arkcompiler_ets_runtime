@@ -707,6 +707,11 @@ inline GateRef StubBuilder::TaggedIsJSArray(GateRef x)
     return env_->GetBuilder()->TaggedIsJSArray(x);
 }
 
+inline GateRef StubBuilder::IsTaggedArray(GateRef x)
+{
+    return env_->GetBuilder()->IsTaggedArray(x);
+}
+
 inline GateRef StubBuilder::TaggedIsAsyncGeneratorObject(GateRef x)
 {
     return env_->GetBuilder()->TaggedIsAsyncGeneratorObject(x);

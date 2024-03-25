@@ -1717,23 +1717,27 @@ GateRef StubBuilder::CheckPolyHClass(GateRef cachedValue, GateRef hclass)
     BRANCH(TaggedIsWeak(cachedValue), &exit, &cachedValueNotWeak);
     Bind(&cachedValueNotWeak);
     {
-        GateRef length = GetLengthOfTaggedArray(cachedValue);
-        Jump(&loopHead);
-        LoopBegin(&loopHead);
+        Label isTaggedArray(env);
+        Branch(IsTaggedArray(cachedValue), &isTaggedArray, &exit);
+        Bind(&isTaggedArray);
         {
-            BRANCH(Int32UnsignedLessThan(*i, length), &iLessLength, &exit);
-            Bind(&iLessLength);
+            GateRef length = GetLengthOfTaggedArray(cachedValue);
+            Jump(&loopHead);
+            LoopBegin(&loopHead);
             {
-                GateRef element = GetValueFromTaggedArray(cachedValue, *i);
-                BRANCH(Equal(LoadObjectFromWeakRef(element), hclass), &hasHclass, &loopEnd);
-                Bind(&hasHclass);
-                result = GetValueFromTaggedArray(cachedValue,
-                                                 Int32Add(*i, Int32(1)));
-                Jump(&exit);
+                BRANCH(Int32UnsignedLessThan(*i, length), &iLessLength, &exit);
+                Bind(&iLessLength);
+                {
+                    GateRef element = GetValueFromTaggedArray(cachedValue, *i);
+                    BRANCH(Equal(LoadObjectFromWeakRef(element), hclass), &hasHclass, &loopEnd);
+                    Bind(&hasHclass);
+                    result = GetValueFromTaggedArray(cachedValue, Int32Add(*i, Int32(1)));
+                    Jump(&exit);
+                }
+                Bind(&loopEnd);
+                i = Int32Add(*i, Int32(2)); // 2 means one ic, two slot
+                LoopEnd(&loopHead);
             }
-            Bind(&loopEnd);
-            i = Int32Add(*i, Int32(2));  // 2 means one ic, two slot
-            LoopEnd(&loopHead);
         }
     }
     Bind(&exit);

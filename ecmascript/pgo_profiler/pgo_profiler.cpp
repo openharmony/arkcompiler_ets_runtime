@@ -567,8 +567,7 @@ void PGOProfiler::ProfileBytecode(ApEntityId abcId, const CString &recordName, J
                 break;
             }
             case EcmaOpcode::STOBJBYNAME_IMM8_ID16_V8:
-            case EcmaOpcode::STTHISBYNAME_IMM8_ID16:
-            case EcmaOpcode::DEFINEFIELDBYNAME_IMM8_ID16_V8: {
+            case EcmaOpcode::STTHISBYNAME_IMM8_ID16: {
                 uint8_t slotId = READ_INST_8_0();
                 CHECK_SLOTID_BREAK(slotId);
                 DumpICByName(abcId, recordName, methodId, bcOffset, slotId, profileTypeInfo, BCType::STORE);
