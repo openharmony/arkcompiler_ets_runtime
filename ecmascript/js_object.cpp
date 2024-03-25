@@ -1870,10 +1870,16 @@ JSHandle<TaggedArray> JSObject::EnumerableOwnNames(JSThread *thread, const JSHan
         if (copyLengthOfKeys != 0 && copyLengthOfElements != 0) {
             keys = TaggedArray::AppendSkipHole(thread, elementArray, keyArray, copyLengthOfKeys + copyLengthOfElements);
         } else if (copyLengthOfKeys != 0) {
-            keyArray->SetLength(copyLengthOfKeys); // keyArray will skip nonEnumerable properties, need re-set length.
+            if (copyLengthOfKeys < keyArray->GetLength()) {
+                // keyArray will skip nonEnumerable properties, need re-set length.
+                keyArray->Trim(thread, copyLengthOfKeys);
+            }
             return keyArray;
         } else if (copyLengthOfElements != 0) {
-            elementArray->SetLength(copyLengthOfElements); // elementArray will skip hole value, need re-set length.
+            if (copyLengthOfElements < elementArray->GetLength()) {
+                // elementArray will skip hole value, need re-set length.
+                elementArray->Trim(thread, copyLengthOfElements);
+            }
             return elementArray;
         } else {
             keys = factory->EmptyArray();

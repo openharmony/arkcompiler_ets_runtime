@@ -1214,10 +1214,15 @@ GateRef BuiltinsObjectStubBuilder::GetEnumElementKeys(GateRef glue, GateRef obj)
                 LoopEnd(&loopHead, env, glue);
                 Bind(&afterLoop);
                 {
-                    Store(VariableType::INT32(), glue_,
-                        elementArray, IntPtr(TaggedArray::LENGTH_OFFSET), *elementIndex);
                     result = elementArray;
-                    Jump(&exit);
+                    Label needTrim(env);
+                    BRANCH(Int32LessThan(*elementIndex, numOfElements), &needTrim, &exit);
+                    Bind(&needTrim);
+                    {
+                        CallNGCRuntime(glue, RTSTUB_ID(ArrayTrim),
+                                       {glue, elementArray, ZExtInt32ToInt64(*elementIndex)});
+                        Jump(&exit);
+                    }
                 }
             }
         }

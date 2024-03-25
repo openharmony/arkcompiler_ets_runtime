@@ -3451,7 +3451,9 @@ DEF_RUNTIME_STUBS(NameDictionaryGetAllEnumKeys)
     JSHandle<TaggedArray> keyArray = factory->NewTaggedArray(numOfKeys);
     NameDictionary *dict = NameDictionary::Cast(object->GetProperties().GetTaggedObject());
     dict->GetAllEnumKeys(thread, 0, keyArray, &keys);
-    keyArray->SetLength(keys);
+    if (keys < keyArray->GetLength()) {
+        keyArray->Trim(thread, keys);
+    }
     return keyArray.GetTaggedValue().GetRawData();
 }
 
@@ -3465,7 +3467,9 @@ DEF_RUNTIME_STUBS(NumberDictionaryGetAllEnumKeys)
     uint32_t keys = elementIndex;
     NumberDictionary::GetAllEnumKeys(
         thread, JSHandle<NumberDictionary>(array), elementIndex, elementArray, &keys);
-    elementArray->SetLength(keys);
+    if (keys < elementArray->GetLength()) {
+        elementArray->Trim(thread, keys);
+    }
     return JSTaggedValue::Undefined().GetRawData();
 }
 
