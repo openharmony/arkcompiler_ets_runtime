@@ -126,3 +126,15 @@ class StaticTest {
     static a = 1;  // expect no print
     static length = 1;  // expect no TypeError
 }
+
+let o = {
+    toString() {
+        class C {
+            #p(a, b) { }
+        }
+    }
+}
+let o1 = {
+    [o](a, b) { }
+}
+print("test privateproperty class sucecess")
