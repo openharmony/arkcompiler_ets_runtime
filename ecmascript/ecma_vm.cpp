@@ -107,7 +107,6 @@ EcmaVM *EcmaVM::Create(const JSRuntimeOptions &options)
         EcmaParamConfiguration::HeapType::DEFAULT_HEAP;
     auto config = EcmaParamConfiguration(heapType,
                                          MemMapAllocator::GetInstance()->GetCapacity());
-    MemMapAllocator::GetInstance()->IncreaseAndCheckReserved(config.GetMaxHeapSize());
     JSRuntimeOptions newOptions = options;
     // only define SUPPORT_ENABLE_ASM_INTERP can enable asm-interpreter
 #if !defined(SUPPORT_ENABLE_ASM_INTERP)

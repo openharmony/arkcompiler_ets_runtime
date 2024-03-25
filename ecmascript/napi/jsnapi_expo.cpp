@@ -3220,8 +3220,6 @@ void JSNApi::DestroyJSVM(EcmaVM *ecmaVm)
         return;
     }
     ecmaVm->GetJSThread()->ManagedCodeBegin();
-    auto &config = ecmaVm->GetEcmaParamConfiguration();
-    MemMapAllocator::GetInstance()->DecreaseReserved(config.GetMaxHeapSize());
     EcmaVM::Destroy(ecmaVm);
 }
 
