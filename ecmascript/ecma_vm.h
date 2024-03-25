@@ -53,6 +53,7 @@ class Tracing;
 class RegExpExecResultCache;
 class JSPromise;
 enum class PromiseRejectionEvent : uint8_t;
+enum class Concurrent { YES, NO };
 class JSPandaFileManager;
 class JSPandaFile;
 class EcmaStringTable;
@@ -100,6 +101,7 @@ using RequestAotCallback =
 using SearchHapPathCallBack = std::function<bool(const std::string moduleName, std::string &hapPath)>;
 using DeviceDisconnectCallback = std::function<bool()>;
 using UncatchableErrorHandler = std::function<void(panda::TryCatch&)>;
+using DeleteEntryPoint = void (*)(void *, void *);
 class EcmaVM {
 public:
     static EcmaVM *Create(const JSRuntimeOptions &options);
@@ -207,7 +209,7 @@ public:
         return icEnabled_;
     }
 
-    void PushToNativePointerList(JSNativePointer *pointer);
+    void PushToNativePointerList(JSNativePointer *pointer, Concurrent isConcurrent = Concurrent::NO);
     void RemoveFromNativePointerList(JSNativePointer *pointer);
     void PushToDeregisterModuleList(CString module);
     void RemoveFromDeregisterModuleList(CString module);
@@ -317,6 +319,11 @@ public:
     const CList<JSNativePointer *> GetNativePointerList() const
     {
         return nativePointerList_;
+    }
+
+    size_t GetConcurrentNativePointerListSize() const
+    {
+        return concurrentNativePointerList_.size();
     }
 
     void SetResolveBufferCallback(ResolveBufferCallback cb)
@@ -600,6 +607,11 @@ public:
         return thread_->GetThreadId();
     }
 
+    std::vector<std::pair<DeleteEntryPoint, std::pair<void *, void *>>> &GetNativePointerCallbacks()
+    {
+        return nativePointerCallbacks_;
+    }
+
     static void InitializeIcuData(const JSRuntimeOptions &options);
 protected:
 
@@ -629,6 +641,8 @@ private:
     Heap *heap_ {nullptr};
     ObjectFactory *factory_ {nullptr};
     CList<JSNativePointer *> nativePointerList_;
+    CList<JSNativePointer *> concurrentNativePointerList_;
+    std::vector<std::pair<DeleteEntryPoint, std::pair<void *, void *>>> nativePointerCallbacks_ {};
     // VM execution states.
     JSThread *thread_ {nullptr};
 

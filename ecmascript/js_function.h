@@ -221,7 +221,7 @@ public:
     }
 
     void SetFunctionExtraInfo(JSThread *thread, void *nativeFunc, const DeleteEntryPoint &deleter,
-        void *data, size_t nativeBindingsize = 0);
+        void *data, size_t nativeBindingsize = 0, Concurrent isConcurrent = Concurrent::NO);
     void SetSFunctionExtraInfo(
         JSThread *thread, void *nativeFunc, const DeleteEntryPoint &deleter, void *data, size_t nativeBindingsize = 0);
 

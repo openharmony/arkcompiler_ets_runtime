@@ -713,6 +713,8 @@ void Heap::CollectGarbage(TriggerGCType gcType, GCReason reason)
     // Weak node nativeFinalizeCallback may execute JS and change the weakNodeList status,
     // even lead to another GC, so this have to invoke after this GC process.
     thread_->InvokeWeakNodeNativeFinalizeCallback();
+    // PostTask for ProcessNativeDelete
+    CleanCallBack();
 
     if (UNLIKELY(ShouldVerifyHeap())) {
         // verify post gc heap verify
@@ -1633,6 +1635,27 @@ bool Heap::FinishColdStartTask::Run([[maybe_unused]] uint32_t threadIndex)
 {
     std::this_thread::sleep_for(std::chrono::microseconds(2000000));  // 2000000 means 2s
     heap_->NotifyFinishColdStart(false);
+    return true;
+}
+
+void Heap::CleanCallBack()
+{
+    auto &callbacks = this->GetEcmaVM()->GetNativePointerCallbacks();
+    if (!callbacks.empty()) {
+        Taskpool::GetCurrentTaskpool()->PostTask(
+            std::make_unique<DeleteCallbackTask>(this->GetJSThread()->GetThreadId(), callbacks)
+        );
+    }
+    ASSERT(callbacks.empty());
+}
+
+bool Heap::DeleteCallbackTask::Run([[maybe_unused]] uint32_t threadIndex)
+{
+    for (auto iter : nativePointerCallbacks_) {
+        if (iter.first != nullptr) {
+            iter.first(iter.second.first, iter.second.second);
+        }
+    }
     return true;
 }
 
