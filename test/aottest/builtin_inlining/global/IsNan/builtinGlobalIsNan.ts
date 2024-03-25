@@ -32,7 +32,12 @@ function printIsNaN(x: any) {
     } finally {
     }
 }
+
+var x = "x"
+x -= 1
+print(isNaN(x)) // true
 // Check with single int param
+
 print(isNaN(0)); // false
 print(isNaN(3)); // false
 print(isNaN(-5)); // false

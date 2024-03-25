@@ -1409,6 +1409,7 @@ GateRef NumberSpeculativeRetype::VisitGlobalBuiltin(GateRef gate)
     Environment env(gate, circuit_, &builder_);
     ASSERT(acc_.GetNumValueIn(gate) == 1);
     GateRef input = acc_.GetValueIn(gate, 0);
+#ifdef SUPPORT_CHECK_TO_INT
     auto type = GetNumberInputTypeInfo(input);
     if (type == TypeInfo::INT32) {
         GateRef result;
@@ -1423,20 +1424,10 @@ GateRef NumberSpeculativeRetype::VisitGlobalBuiltin(GateRef gate)
     } else {
         ASSERT(type == TypeInfo::FLOAT64);
         input = CheckAndConvertToFloat64(input, GateType::NumberType());
-        if (acc_.GetOpCode(input) == OpCode::CONSTANT) {
-            double rawValue = GetDoubleValueFromConst(input);
-            GateRef result;
-            if constexpr (IS_NAN) {
-                result = std::isnan(rawValue) ? builder_.TaggedTrue() : builder_.TaggedFalse();
-            } else {
-                result = std::isfinite(rawValue) ? builder_.TaggedTrue() : builder_.TaggedFalse();
-            }
-            ResizeAndSetTypeInfo(result, TypeInfo::TAGGED);
-
-            acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
-            return Circuit::NullGate();
-        }
     }
+#else
+    input = CheckAndConvertToFloat64(input, GateType::NumberType());
+#endif
     acc_.ReplaceValueIn(gate, input, 0);
     ResizeAndSetTypeInfo(input, TypeInfo::FLOAT64);
     acc_.ReplaceStateIn(gate, builder_.GetState());
@@ -1599,12 +1590,7 @@ void NumberSpeculativeRetype::SetNewInputForMathImul(GateRef gate, int idx, Labe
     } else {
         ASSERT(type == TypeInfo::FLOAT64);
         input = CheckAndConvertToFloat64(input, GateType::NumberType(), ConvertToNumber::BOOL_ONLY);
-        if (acc_.GetOpCode(input) == OpCode::CONSTANT) {
-            double rawValue = GetDoubleValueFromConst(input);
-            input = builder_.Int32(base::NumberHelper::DoubleToInt(rawValue, base::INT32_BITS));
-        } else {
-            input = builder_.DoubleToInt(input, exit);
-        }
+        input = builder_.DoubleToInt(input, exit);
     }
     ResizeAndSetTypeInfo(input, TypeInfo::INT32);
     acc_.ReplaceValueIn(gate, input, idx);
