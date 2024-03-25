@@ -256,6 +256,11 @@ public:
         profileDir_ = value;
     }
 
+    void SetEnableJIT(bool value)
+    {
+        enableJIT_ = value;
+    }
+
 private:
     std::string GetGcType() const
     {
@@ -364,11 +369,6 @@ private:
     std::string GetProfileDir() const
     {
         return profileDir_;
-    }
-
-    void SetEnableJIT(bool value)
-    {
-        enableJIT_ = value;
     }
 
     bool GetEnableJIT() const
