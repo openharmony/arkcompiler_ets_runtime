@@ -271,6 +271,7 @@ GateRef NumberSpeculativeRetype::VisitGate(GateRef gate)
         case OpCode::TAGGED_TO_INT64:
         case OpCode::TYPED_CALL_BUILTIN:
         case OpCode::TYPED_CALL_BUILTIN_SIDE_EFFECT:
+        case OpCode::MAP_GET:
             return VisitOthers(gate);
         default:
             return Circuit::NullGate();

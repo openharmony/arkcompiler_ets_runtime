@@ -504,6 +504,7 @@ private:
     V(Getnextpropname)                          \
     V(CreateJSSetIterator)                      \
     V(CreateJSMapIterator)                      \
+    V(JSMapGet)                                 \
     V(JSHClassFindProtoTransitions)             \
     V(NumberHelperStringToDouble)               \
     V(GetStringToListCacheArray)                \

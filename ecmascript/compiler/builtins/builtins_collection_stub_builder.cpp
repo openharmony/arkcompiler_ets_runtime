@@ -135,12 +135,13 @@ void BuiltinsCollectionStubBuilder<CollectionType>::ForEach(Variable *result, La
 
     GateRef linkedTable = GetLinked();
     GateRef res = Circuit::NullGate();
+    GateRef thisArg = GetCallArg1(numArgs_);
     if constexpr (std::is_same_v<CollectionType, JSMap>) {
         LinkedHashTableStubBuilder<LinkedHashMap, LinkedHashMapObject> linkedHashTableStubBuilder(this, glue_);
-        res = linkedHashTableStubBuilder.ForEach(thisValue_, linkedTable, numArgs_);
+        res = linkedHashTableStubBuilder.ForEach(thisValue_, linkedTable, callbackFnHandle, thisArg);
     } else {
         LinkedHashTableStubBuilder<LinkedHashSet, LinkedHashSetObject> linkedHashTableStubBuilder(this, glue_);
-        res = linkedHashTableStubBuilder.ForEach(thisValue_, linkedTable, numArgs_);
+        res = linkedHashTableStubBuilder.ForEach(thisValue_, linkedTable, callbackFnHandle, thisArg);
     }
 
     Label exception(env);

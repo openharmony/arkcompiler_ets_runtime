@@ -300,6 +300,7 @@ public:
         // NOTE(schernykh): try to remove this switch and move StringFromCharCode to TYPED_BUILTINS_INLINE list
         switch (builtinId) {
             case BuiltinsStubCSigns::ID::StringFromCharCode:
+            case BuiltinsStubCSigns::ID::MapGet:
                 return true;
             default:
                 return false;
@@ -416,6 +417,8 @@ public:
                 return ConstantIndex::MATH_FROUND_INDEX;
             case BuiltinsStubCSigns::ID::MathImul:
                 return ConstantIndex::MATH_IMUL_INDEX;
+            case BuiltinsStubCSigns::ID::MapGet:
+                return ConstantIndex::MAP_GET_INDEX;
             case BuiltinsStubCSigns::ID::StringLocaleCompare:
                 return ConstantIndex::LOCALE_COMPARE_FUNCTION_INDEX;
             case BuiltinsStubCSigns::ID::ArraySort:
@@ -526,6 +529,7 @@ public:
             {MathMin, "Math.min"},
             {GlobalIsFinite, "isFinite"},
             {GlobalIsNan, "isNan"},
+            {MapGet, "Map.get"},
         };
         if (builtinId2Str.count(id) > 0) {
             return builtinId2Str.at(id);

@@ -827,8 +827,8 @@ public:
     inline GateRef DoubleIsINF(GateRef x);
     static MachineType GetMachineTypeFromVariableType(VariableType type);
 
-    // Unary / BinaryOp
-    GateRef BuildMathBuiltinOp(const GateMetaData* op, std::vector<GateRef> args);
+    // Opcode with control and depend inputs from label and value inputs args
+    GateRef BuildControlDependOp(const GateMetaData* op, std::vector<GateRef> args);
     template<OpCode Op, MachineType Type>
     inline GateRef BinaryOp(GateRef x, GateRef y);
     template<OpCode Op, MachineType Type>
