@@ -1665,15 +1665,37 @@ JSTaggedValue BuiltinsString::Split(EcmaRuntimeCallInfo *argv)
 JSTaggedValue BuiltinsString::CreateArrayFromString(JSThread *thread, EcmaVM *ecmaVm,
     const JSHandle<EcmaString> &thisString, uint32_t thisLength, uint32_t lim)
 {
+    bool isUtf8 = EcmaStringAccessor(thisString).IsUtf8();
+    bool canBeCompressed = EcmaStringAccessor::CanBeCompressed(*thisString);
+    bool isOneByte = isUtf8 & canBeCompressed;
+    JSHandle<EcmaString> seperatorString = thread->GetEcmaVM()->GetFactory()->GetEmptyString();
+    if (lim == UINT32_MAX - 1) {
+        JSHandle<StringSplitResultCache> cacheTable(thread->GetCurrentEcmaContext()->GetStringSplitResultCache());
+        JSTaggedValue cacheResult = StringSplitResultCache::FindCachedResult(thread, cacheTable, thisString,
+            seperatorString, isOneByte);
+        if (cacheResult != JSTaggedValue::Undefined()) {
+            JSHandle<JSTaggedValue> resultArray(JSArray::CreateArrayFromList(thread,
+                JSHandle<TaggedArray>(thread, cacheResult)));
+            return resultArray.GetTaggedValue();
+        }
+    }
     uint32_t actualLength = std::min(thisLength, lim);
-    JSHandle<JSObject> resultArray(JSArray::ArrayCreate(thread, JSTaggedNumber(actualLength)));
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<TaggedArray> array = factory->NewTaggedArray(actualLength);
     for (uint32_t i = 0; i < actualLength; ++i) {
-        EcmaString *elementString = EcmaStringAccessor::FastSubString(ecmaVm, thisString, i, 1);
-        JSHandle<JSTaggedValue> elementTag(thread, elementString);
+        EcmaString *elementString = EcmaStringAccessor::GetSubString(ecmaVm, thisString, i, 1);
         // Perform CreateDataProperty(A, "0", S), CreateDataProperty's fast path
-        JSObject::CreateDataProperty(thread, resultArray, i, elementTag);
+        if (isOneByte) {
+            array->Set<false>(thread, i, JSTaggedValue(elementString));
+        } else {
+            array->Set(thread, i, JSTaggedValue(elementString));
+        }
         ASSERT_PRINT(!thread->HasPendingException(), "CreateDataProperty can't throw exception");
+    }
+    JSHandle<JSArray> resultArray = JSArray::CreateArrayFromList(thread, array);
+    if (lim == UINT32_MAX - 1) {
+        JSHandle<StringSplitResultCache> cacheTable(thread->GetCurrentEcmaContext()->GetStringSplitResultCache());
+        StringSplitResultCache::SetCachedResult(thread, cacheTable, thisString, seperatorString, array);
     }
     return resultArray.GetTaggedValue();
 }
@@ -2323,7 +2345,7 @@ JSTaggedValue StringSplitResultCache::CreateCacheTable(const JSThread *thread)
 
 JSTaggedValue StringSplitResultCache::FindCachedResult(const JSThread *thread,
     const JSHandle<StringSplitResultCache> &cache, const JSHandle<EcmaString> &thisString,
-    const JSHandle<EcmaString> &pattern)
+    const JSHandle<EcmaString> &pattern, bool isOneByte)
 {
     uint32_t hash = EcmaStringAccessor(thisString).GetHashcode();
     uint32_t entry = hash & (CACHE_SIZE - 1);
@@ -2341,8 +2363,12 @@ JSTaggedValue StringSplitResultCache::FindCachedResult(const JSThread *thread,
         JSHandle<TaggedArray> cacheArray(thread, cache->Get(index + ARRAY_INDEX));
         uint32_t arrayLength = cacheArray->GetLength();
         ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-        JSHandle<TaggedArray> copyArray = factory->NewAndCopyTaggedArray(cacheArray,
-            arrayLength, arrayLength);
+        JSHandle<TaggedArray> copyArray;
+        if (isOneByte) {
+            copyArray = factory->NewAndCopyTaggedArraySkipBarrier(cacheArray, arrayLength, arrayLength);
+        } else {
+            copyArray = factory->NewAndCopyTaggedArray(cacheArray, arrayLength, arrayLength);
+        }
         return copyArray.GetTaggedValue();
     }
     return JSTaggedValue::Undefined();

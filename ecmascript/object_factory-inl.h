@@ -61,6 +61,13 @@ EcmaString *ObjectFactory::AllocOldSpaceLineStringObject(size_t size)
         thread_, JSHClass::Cast(thread_->GlobalConstants()->GetLineStringClass().GetTaggedObject()), size));
 }
 
+EcmaString *ObjectFactory::AllocReadOnlyLineStringObject(size_t size)
+{
+    NewSObjectHook();
+    return reinterpret_cast<EcmaString *>(sHeap_->AllocateReadOnlyOrHugeObject(
+        thread_, JSHClass::Cast(thread_->GlobalConstants()->GetLineStringClass().GetTaggedObject()), size));
+}
+
 EcmaString *ObjectFactory::AllocSlicedStringObject(MemSpaceType type)
 {
     ASSERT(IsSMemSpace(type));

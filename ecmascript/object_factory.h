@@ -366,6 +366,8 @@ public:
                                                uint32_t oldLength, uint32_t k = 0);
     JSHandle<TaggedArray> NewAndCopyTaggedArray(JSHandle<TaggedArray> &srcElements, uint32_t newLength,
                                                 uint32_t oldLength, uint32_t k = 0);
+    JSHandle<TaggedArray> NewAndCopyTaggedArraySkipBarrier(JSHandle<TaggedArray> &srcElements, uint32_t newLength,
+                                                           uint32_t oldLength, uint32_t k = 0);
     JSHandle<TaggedArray> NewAndCopySNameDictionary(JSHandle<TaggedArray> &srcElements, uint32_t length);
     JSHandle<TaggedArray> NewAndCopyTaggedArrayByObject(JSHandle<JSObject> thisObjHandle, uint32_t newLength,
                                                         uint32_t oldLength, uint32_t k = 0);
@@ -595,6 +597,7 @@ public:
     inline EcmaString *AllocLineStringObject(size_t size);
     inline EcmaString *AllocLineStringObjectNoGC(size_t size);
     inline EcmaString *AllocOldSpaceLineStringObject(size_t size);
+    inline EcmaString *AllocReadOnlyLineStringObject(size_t size);
     inline EcmaString *AllocNonMovableLineStringObject(size_t size);
     inline EcmaString *AllocSlicedStringObject(MemSpaceType type);
     inline EcmaString *AllocConstantStringObject(MemSpaceType type);
@@ -853,6 +856,8 @@ private:
 
     // used to create nonmovable utf8 string at global constants
     JSHandle<EcmaString> NewFromASCIINonMovable(std::string_view data);
+    // used to create nonmovable utf8 string at global constants
+    JSHandle<EcmaString> NewFromASCIIReadOnly(std::string_view data);
 
     // used for creating Function
     JSHandle<JSFunction> NewJSFunction(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &hclass);
@@ -872,6 +877,7 @@ private:
     JSHandle<EcmaString> GetCompressedSubStringFromStringTable(const JSHandle<EcmaString> &string, uint32_t offset,
                                                                uint32_t utf8Len) const;
     JSHandle<EcmaString> GetStringFromStringTableNonMovable(const uint8_t *utf8Data, uint32_t utf8Len) const;
+    JSHandle<EcmaString> GetStringFromStringTableReadOnly(const uint8_t *utf8Data, uint32_t utf8Len) const;
     // For MUtf-8 string data
     EcmaString *PUBLIC_API GetRawStringFromStringTable(StringData sd,
                                                        MemSpaceType type = MemSpaceType::SHARED_OLD_SPACE,

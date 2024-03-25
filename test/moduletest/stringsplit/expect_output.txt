@@ -12,3 +12,27 @@
 # limitations under the License.
 
 TypeError: Cannot convert a BigInt value to a number
+17
+true
+true
+1200
+true
+true
+9
+true
+true
+1000
+true
+true
+10
+true
+true
+201
+true
+true
+7
+true
+true
+201
+true
+true

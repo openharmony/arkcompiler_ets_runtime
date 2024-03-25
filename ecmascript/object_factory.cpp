@@ -2462,6 +2462,24 @@ JSHandle<TaggedArray> ObjectFactory::NewAndCopyTaggedArray(JSHandle<TaggedArray>
     return dstElements;
 }
 
+JSHandle<TaggedArray> ObjectFactory::NewAndCopyTaggedArraySkipBarrier(JSHandle<TaggedArray> &srcElements,
+    uint32_t newLength, uint32_t oldLength, uint32_t k)
+{
+    ASSERT(oldLength <= newLength);
+    MemSpaceType spaceType = newLength < LENGTH_THRESHOLD ? MemSpaceType::SEMI_SPACE : MemSpaceType::OLD_SPACE;
+    JSHandle<TaggedArray> dstElements = NewTaggedArrayWithoutInit(newLength, spaceType);
+    if (newLength == 0) {
+        return dstElements;
+    }
+    for (uint32_t i = 0; i < oldLength; i++) {
+        dstElements->Set<false>(thread_, i, srcElements->Get(i + k));
+    }
+    for (uint32_t i = oldLength; i < newLength; i++) {
+        dstElements->Set(thread_, i, JSTaggedValue::Hole());
+    }
+    return dstElements;
+}
+
 JSHandle<TaggedArray> ObjectFactory::NewAndCopySNameDictionary(JSHandle<TaggedArray> &srcElements, uint32_t length)
 {
     JSHandle<TaggedArray> dstElements = NewSDictionaryArray(length);
@@ -3016,6 +3034,16 @@ JSHandle<EcmaString> ObjectFactory::GetStringFromStringTableNonMovable(const uin
     }
     auto stringTable = vm_->GetEcmaStringTable();
     return JSHandle<EcmaString>(thread_, stringTable->CreateAndInternStringNonMovable(vm_, utf8Data, utf8Len));
+}
+
+JSHandle<EcmaString> ObjectFactory::GetStringFromStringTableReadOnly(const uint8_t *utf8Data, uint32_t utf8Len) const
+{
+    NewObjectHook();
+    if (utf8Len == 0) {
+        return GetEmptyString();
+    }
+    auto stringTable = vm_->GetEcmaStringTable();
+    return JSHandle<EcmaString>(thread_, stringTable->CreateAndInternStringReadOnly(vm_, utf8Data, utf8Len));
 }
 
 JSHandle<EcmaString> ObjectFactory::GetStringFromStringTable(const uint16_t *utf16Data, uint32_t utf16Len,
@@ -3994,6 +4022,13 @@ JSHandle<EcmaString> ObjectFactory::NewFromASCIINonMovable(std::string_view data
     auto utf8Data = reinterpret_cast<const uint8_t *>(data.data());
     ASSERT(EcmaStringAccessor::CanBeCompressed(utf8Data, data.length()));
     return GetStringFromStringTableNonMovable(utf8Data, data.length());
+}
+
+JSHandle<EcmaString> ObjectFactory::NewFromASCIIReadOnly(std::string_view data)
+{
+    auto utf8Data = reinterpret_cast<const uint8_t *>(data.data());
+    ASSERT(EcmaStringAccessor::CanBeCompressed(utf8Data, data.length()));
+    return GetStringFromStringTableReadOnly(utf8Data, data.length());
 }
 
 JSHandle<EcmaString> ObjectFactory::NewFromUtf8(std::string_view data)

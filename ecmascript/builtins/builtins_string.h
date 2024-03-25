@@ -270,7 +270,7 @@ private:
     static JSTaggedValue Pad(EcmaRuntimeCallInfo *argv, bool isStart);
     static int32_t ConvertDoubleToInt(double d);
     static JSTaggedValue CreateArrayFromString(JSThread *thread, EcmaVM *ecmaVm,
-        const JSHandle<EcmaString> &thisString, uint32_t thisLength, uint32_t lim);
+        const JSHandle<EcmaString> &thisString, uint32_t thisLength, uint32_t lim = UINT32_MAX - 1);
     static JSTaggedValue CreateArrayBySplitString(JSThread *thread, EcmaVM *ecmaVm,
         const JSHandle<EcmaString> &thisString, const JSHandle<EcmaString> &seperatorString,
         uint32_t thisLength, uint32_t seperatorLength, uint32_t lim);
@@ -298,7 +298,7 @@ public:
     }
     static JSTaggedValue CreateCacheTable(const JSThread *thread);
     static JSTaggedValue FindCachedResult(const JSThread *thread, const JSHandle<StringSplitResultCache> &cache,
-        const JSHandle<EcmaString> &string, const JSHandle<EcmaString> &pattern);
+        const JSHandle<EcmaString> &string, const JSHandle<EcmaString> &pattern, bool isOneByte = false);
     static void SetCachedResult(const JSThread *thread, const JSHandle<StringSplitResultCache> &cache,
         const JSHandle<EcmaString> &string, const JSHandle<EcmaString> &pattern,
         const JSHandle<TaggedArray> &result);
