@@ -1089,6 +1089,41 @@ HWTEST_F_L0(PGOProfilerTest, StringEqualProfileTest)
     unlink("ark-profiler22/modules.ap");
     rmdir("ark-profiler22/");
 }
+
+HWTEST_F_L0(PGOProfilerTest, BuiltinsTest)
+{
+    mkdir("ark-profiler23/", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+    const char *targetRecordName = "builtins_test";
+    ExecuteAndLoadJSPandaFile("ark-profiler23/", targetRecordName);
+    ASSERT_NE(pf_, nullptr);
+    uint32_t checksum = pf_->GetChecksum();
+
+    // Loader
+    PGOProfilerDecoder decoder("ark-profiler23/modules.ap", 1);
+    ASSERT_TRUE(decoder.LoadAndVerify(checksum));
+    auto methodLiterals = pf_->GetMethodLiteralMap();
+    for (auto iter : methodLiterals) {
+        auto methodLiteral = iter.second;
+        auto methodId = methodLiteral->GetMethodId();
+        auto methodName = methodLiteral->GetMethodName(pf_.get(), methodId);
+        if (std::string(methodName) != "ArrayList") {
+            decoder.MatchAndMarkMethod(pf_.get(), targetRecordName, methodName, methodId);
+            ASSERT_TRUE(decoder.Match(pf_.get(), targetRecordName, methodId));
+        }
+        auto callback = [methodName](uint32_t offset, const PGOType *type) {
+            ASSERT_NE(offset, 0);
+            if (type->IsRwOpType() && std::string(methodName) == "A") {
+                auto pgoRWOpType = *reinterpret_cast<const PGORWOpType *>(type);
+                ASSERT_TRUE(pgoRWOpType.GetCount() == 1);
+            }
+        };
+        decoder.GetTypeInfo(pf_.get(), targetRecordName, methodLiteral,
+                            callback);
+    }
+    unlink("ark-profiler23/modules.ap");
+    rmdir("ark-profiler23/");
+}
+
 #endif
 
 #if defined(SUPPORT_ENABLE_ASM_INTERP)

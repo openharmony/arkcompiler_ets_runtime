@@ -888,25 +888,47 @@ bool TypedBytecodeLowering::TryLowerTypedLdObjByNameForBuiltin(const LoadBulitin
 }
 
 bool TypedBytecodeLowering::TryLowerTypedLdObjByNameForGlobalsId(const LoadBulitinObjTypeInfoAccessor &tacc,
-                                                                 ConstantIndex globalsId)
+                                                                 GlobalIndex globalsId)
 {
-    if (globalsId == ConstantIndex::ITERATOR_RESULT_CLASS) {
-        GateRef receiver = tacc.GetReceiver();
-        GateRef gate = tacc.GetGate();
-        JSHClass *hclass = JSHClass::Cast(thread_->GlobalConstants()->GetIteratorResultClass().GetTaggedObject());
-        JSTaggedValue key = tacc.GetKeyTaggedValue();
+    GateRef receiver = tacc.GetReceiver();
+    GateRef gate = tacc.GetGate();
+    JSTaggedValue key = tacc.GetKeyTaggedValue();
+    GateRef frameState = acc_.FindNearestFrameState(gate);
+    if (globalsId.IsGlobalConstId()) {
+        ConstantIndex index = static_cast<ConstantIndex>(globalsId.GetGlobalConstId());
+        JSHClass *hclass = JSHClass::Cast(thread_->GlobalConstants()->GetGlobalConstantObject(
+            static_cast<size_t>(index)).GetTaggedObject());
         PropertyLookupResult plr = JSHClass::LookupPropertyInBuiltinHClass(thread_, hclass, key);
         if (!plr.IsFound() || plr.IsAccessor()) {
             return false;
         }
         AddProfiling(gate);
         // 1. check hclass
-        GateRef frameState = acc_.FindNearestFrameState(gate);
         builder_.HeapObjectCheck(receiver, frameState);
         GateRef receiverHClass = builder_.LoadHClassByConstOffset(receiver);
-        GateRef expectedHClass = builder_.GetGlobalConstantValue(globalsId);
+        GateRef expectedHClass = builder_.GetGlobalConstantValue(index);
         builder_.DeoptCheck(builder_.Equal(receiverHClass, expectedHClass), frameState,
                             DeoptType::INCONSISTENTHCLASS11);
+        // 2. load property
+        GateRef plrGate = builder_.Int32(plr.GetData());
+        GateRef result = builder_.LoadProperty(receiver, plrGate, plr.IsFunction());
+        acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
+        DeleteConstDataIfNoUser(tacc.GetKey());
+        return true;
+    } else if (globalsId.IsGlobalEnvId()) { // ctor Hclass
+        GlobalEnvField index = static_cast<GlobalEnvField>(globalsId.GetGlobalEnvId());
+        JSHClass *hclass = JSHClass::Cast(thread_->GetGlobalEnv()->GetGlobalEnvObjectByIndex(
+            static_cast<size_t>(index))->GetTaggedObject()->GetClass());
+        PropertyLookupResult plr = JSHClass::LookupPropertyInBuiltinHClass(thread_, hclass, key);
+        if (!plr.IsFound() || plr.IsAccessor()) {
+            return false;
+        }
+        AddProfiling(gate);
+        // 1. check hclass
+        builder_.HeapObjectCheck(receiver, frameState);
+        GateRef globalEnvObj = builder_.GetGlobalEnvObj(builder_.GetGlobalEnv(), static_cast<size_t>(index));
+        builder_.DeoptCheck(builder_.Equal(receiver, globalEnvObj), frameState,
+                            DeoptType::INCONSISTENTHCLASS12);
         // 2. load property
         GateRef plrGate = builder_.Int32(plr.GetData());
         GateRef result = builder_.LoadProperty(receiver, plrGate, plr.IsFunction());

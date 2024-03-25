@@ -516,6 +516,13 @@ void JSThread::SetInitialBuiltinHClass(
     entry.prototypeOfPrototypeHClass = prototypeOfPrototypeHClass;
 }
 
+void JSThread::SetInitialBuiltinGlobalHClass(
+    JSHClass *builtinHClass, GlobalIndex globalIndex)
+{
+    auto &map = ctorHclassEntries_;
+    map[builtinHClass] = globalIndex;
+}
+
 JSHClass *JSThread::GetBuiltinHClass(BuiltinTypeId type) const
 {
     size_t index = BuiltinHClassEntries::GetEntryIndex(type);

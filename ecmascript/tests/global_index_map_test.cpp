@@ -16,6 +16,7 @@
 #include "ecmascript/builtin_entries.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/global_env_constants.h"
+#include "ecmascript/global_index.h"
 #include "ecmascript/global_index_map.h"
 #include "ecmascript/tests/test_helper.h"
 

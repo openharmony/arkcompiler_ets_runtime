@@ -60,6 +60,7 @@
 #include "ecmascript/builtins/builtins_weak_set.h"
 #include "ecmascript/containers/containers_private.h"
 #include "ecmascript/ecma_runtime_call_info.h"
+#include "ecmascript/global_index.h"
 #include "ecmascript/js_array.h"
 #include "ecmascript/js_arraybuffer.h"
 #include "ecmascript/js_array_iterator.h"
@@ -584,6 +585,10 @@ void Builtins::InitializeObject(const JSHandle<GlobalEnv> &env, const JSHandle<J
     JSHandle<JSTaggedValue> protoGetter = CreateGetter(env, Object::ProtoGetter, "__proto__", FunctionLength::ZERO);
     JSHandle<JSTaggedValue> protoSetter = CreateSetter(env, Object::ProtoSetter, "__proto__", FunctionLength::ONE);
     SetAccessor(objFuncPrototype, protoKey, protoGetter, protoSetter);
+
+    GlobalIndex globalIndex;
+    globalIndex.UpdateGlobalEnvId(static_cast<size_t>(GlobalEnvField::OBJECT_FUNCTION_INDEX));
+    thread_->SetInitialBuiltinGlobalHClass(objFunc->GetJSHClass(), globalIndex);
 }
 
 void Builtins::InitializeSymbol(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &objFuncClass) const

@@ -25,6 +25,7 @@
 #include "ecmascript/elements.h"
 #include "ecmascript/frames.h"
 #include "ecmascript/global_env_constants.h"
+#include "ecmascript/global_index.h"
 #include "ecmascript/js_object_resizing_strategy.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/js_thread_hclass_entries.h"
@@ -37,6 +38,7 @@ namespace panda::ecmascript {
 class EcmaContext;
 class EcmaVM;
 class EcmaHandleScope;
+class GlobalIndex;
 class HeapRegionAllocator;
 class PropertiesCache;
 template<typename T>
@@ -249,6 +251,11 @@ public:
         glueData_.globalObject_ = globalObject;
     }
 
+    const GlobalEnv *GetGlobalEnv() const
+    {
+        return glueData_.glueGlobalEnv_;
+    }
+
     const GlobalEnvConstants *GlobalConstants() const
     {
         return glueData_.globalConst_;
@@ -269,6 +276,11 @@ public:
         return arrayHClassIndexMap_;
     }
 
+    const CMap<JSHClass *, GlobalIndex> &GetCtorHclassEntries() const
+    {
+        return ctorHclassEntries_;
+    }
+
     void NotifyStableArrayElementsGuardians(JSHandle<JSObject> receiver, StableArrayChangeKind changeKind);
 
     bool IsStableArrayElementsGuardiansInvalid() const
@@ -281,6 +293,8 @@ public:
     void SetInitialBuiltinHClass(
         BuiltinTypeId type, JSHClass *builtinHClass, JSHClass *instanceHClass,
                             JSHClass *prototypeHClass, JSHClass *prototypeOfPrototypeHClass = nullptr);
+
+    void SetInitialBuiltinGlobalHClass(JSHClass *builtinHClass, GlobalIndex globalIndex);
 
     JSHClass *GetBuiltinHClass(BuiltinTypeId type) const;
 
@@ -1273,6 +1287,7 @@ private:
     bool finalizationCheckState_ {false};
 
     CMap<ElementsKind, ConstantIndex> arrayHClassIndexMap_;
+    CMap<JSHClass *, GlobalIndex> ctorHclassEntries_;
 
     CVector<EcmaContext *> contexts_;
     EcmaContext *currentContext_ {nullptr};

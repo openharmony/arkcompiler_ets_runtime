@@ -19,6 +19,7 @@
 #include "ecmascript/compiler/argument_accessor.h"
 #include "ecmascript/compiler/pgo_type/pgo_type_manager.h"
 #include "ecmascript/enum_conversion.h"
+#include "ecmascript/global_index.h"
 #include "ecmascript/ts_types/ts_manager.h"
 
 namespace panda::ecmascript::kungfu {
@@ -911,7 +912,7 @@ public:
         return ToBuiltinsTypeId(type);
     }
 
-    std::optional<ConstantIndex> GetGlobalsId() const
+    std::optional<GlobalIndex> GetGlobalsId() const
     {
         return types_[0].GetGlobalsId();
     }

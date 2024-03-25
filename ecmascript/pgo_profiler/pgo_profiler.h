@@ -21,6 +21,7 @@
 
 #include "ecmascript/common.h"
 #include "ecmascript/elements.h"
+#include "ecmascript/global_index.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/jspandafile/method_literal.h"
 #include "ecmascript/mem/c_containers.h"
@@ -37,6 +38,7 @@
 namespace panda::ecmascript {
 class ProfileTypeInfo;
 class JSFunction;
+class GlobalIndex;
 
 namespace pgo {
 class PGORecordDetailInfos;
@@ -162,7 +164,7 @@ private:
         ApEntityId abcId, const CString &recordName, EntityId methodId, int32_t bcOffset, JSHClass *receiver,
         JSHClass *transitionHClass, OnHeapMode onHeap = OnHeapMode::NONE);
     void AddBuiltinsGlobalInfo(ApEntityId abcId, const CString &recordName, EntityId methodId,
-                               int32_t bcOffset, ConstantIndex globalId);
+                               int32_t bcOffset, GlobalIndex globalId);
 
     ProfileType GetProfileType(JSTaggedType root, JSTaggedType child);
     ProfileType GetProfileTypeSafe(JSTaggedType root, JSTaggedType child);
