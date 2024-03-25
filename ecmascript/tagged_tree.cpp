@@ -24,7 +24,7 @@ JSHandle<Derived> TaggedTree<Derived>::Create(const JSThread *thread, int number
 {
     ASSERT_PRINT(numberOfElements > 0, "size must be a non-negative integer");
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    auto capacity = numberOfElements > MIN_CAPACITY ? static_cast<uint32_t>(numberOfElements) : MIN_CAPACITY;
+    int capacity = numberOfElements > MIN_CAPACITY ? numberOfElements : MIN_CAPACITY;
     int length = ELEMENTS_START_INDEX + capacity * (Derived::ENTRY_SIZE);
 
     auto tree = JSHandle<Derived>::Cast(factory->NewTaggedArray(length));
