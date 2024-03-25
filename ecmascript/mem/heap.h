@@ -365,7 +365,7 @@ public:
         return onSerializeEvent_;
     }
 
-    bool CheckAndTriggerGC(JSThread *thread, size_t size = 0);
+    bool CheckAndTriggerGC(JSThread *thread);
 
     bool CheckHugeAndTriggerGC(JSThread *thread, size_t size);
 
@@ -995,6 +995,8 @@ public:
 
     void TryTriggerFullMarkByNativeSize();
 
+    void TryTriggerFullMarkBySharedSize(size_t size);
+
     bool IsMarking() const override
     {
         return thread_->IsMarking();
@@ -1022,6 +1024,7 @@ private:
     static constexpr int BACKGROUND_GROW_LIMIT = 2_MB;
     // Threadshold that HintGC will actually trigger GC.
     static constexpr double SURVIVAL_RATE_THRESHOLD = 0.5;
+    static constexpr size_t NEW_ALLOCATED_SHARED_OBJECT_SIZE_LIMIT = DEFAULT_SHARED_HEAP_SIZE / 10; // 10 : ten times.
     void RecomputeLimits();
     void AdjustOldSpaceLimit();
     // record lastRegion for each space, which will be used in ReclaimRegions()
@@ -1175,6 +1178,7 @@ private:
     size_t semiSpaceCopiedSize_ {0};
     size_t nativeBindingSize_{0};
     size_t globalSpaceNativeLimit_ {0};
+    size_t newAllocatedSharedObjectSize_ {0};
     MemGrowingType memGrowingtype_ {MemGrowingType::HIGH_THROUGHPUT};
 
     // parallel evacuator task number.

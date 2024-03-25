@@ -63,6 +63,10 @@ uintptr_t SharedSparseSpace::Allocate(JSThread *thread, size_t size, bool allowG
 {
     ASSERT(thread->IsInRunningStateOrProfiling());
     thread->CheckSafepointIfSuspended();
+    if (allowGC) {
+        auto localHeap = const_cast<Heap*>(thread->GetEcmaVM()->GetHeap());
+        localHeap->TryTriggerFullMarkBySharedSize(size);
+    }
     uintptr_t object = TryAllocate(thread, size);
     CHECK_SOBJECT_AND_INC_OBJ_SIZE(size);
     if (sweepState_ == SweepState::SWEEPING) {
@@ -413,6 +417,8 @@ uintptr_t SharedHugeObjectSpace::Allocate(JSThread *thread, size_t objectSize)
 #ifdef ECMASCRIPT_SUPPORT_HEAPSAMPLING
     InvokeAllocationInspector(region->GetBegin(), objectSize);
 #endif
+    auto localHeap = const_cast<Heap*>(thread->GetEcmaVM()->GetHeap());
+    localHeap->TryTriggerFullMarkBySharedSize(alignedSize);
     return region->GetBegin();
 }
 

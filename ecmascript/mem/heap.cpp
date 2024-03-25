@@ -67,9 +67,9 @@ SharedHeap* SharedHeap::GetInstance()
     return shareHeap;
 }
 
-bool SharedHeap::CheckAndTriggerGC(JSThread *thread, size_t size)
+bool SharedHeap::CheckAndTriggerGC(JSThread *thread)
 {
-    if ((OldSpaceExceedLimit() || OldSpaceExceedCapacity(size) || GetHeapObjectSize() > globalSpaceAllocLimit_) &&
+    if ((OldSpaceExceedLimit() || GetHeapObjectSize() > globalSpaceAllocLimit_) &&
         !NeedStopCollection()) {
         CollectGarbage(thread, TriggerGCType::SHARED_GC, GCReason::ALLOCATION_LIMIT);
         return true;
@@ -1331,6 +1331,21 @@ void Heap::TryTriggerFullMarkByNativeSize()
             TryTriggerConcurrentMarking();
         } else {
             CheckAndTriggerOldGC();
+        }
+    }
+}
+
+void Heap::TryTriggerFullMarkBySharedSize(size_t size)
+{
+    newAllocatedSharedObjectSize_ += size;
+    if (newAllocatedSharedObjectSize_ >= NEW_ALLOCATED_SHARED_OBJECT_SIZE_LIMIT) {
+        if (concurrentMarker_->IsEnabled()) {
+            SetFullMarkRequestedState(true);
+            TryTriggerConcurrentMarking();
+            newAllocatedSharedObjectSize_ = 0;
+        } else if (!NeedStopCollection()) {
+            CollectGarbage(TriggerGCType::OLD_GC, GCReason::ALLOCATION_LIMIT);
+            newAllocatedSharedObjectSize_= 0;
         }
     }
 }
