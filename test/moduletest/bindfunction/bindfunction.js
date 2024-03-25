@@ -73,3 +73,8 @@ bfoo(2);
 
 var array = [1];
 array.forEach(bfoo);
+
+// TestCase: bind proxy
+const proxy = new Proxy(Array.prototype.includes, {});
+const bind_proxy = proxy.bind();
+print(bind_proxy.length)
