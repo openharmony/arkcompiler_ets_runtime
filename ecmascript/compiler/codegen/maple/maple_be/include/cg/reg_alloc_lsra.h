@@ -773,7 +773,7 @@ public:
     regno_t HandleSpillForLi(LiveInterval &li);
     MemOperand *GetSpillMem(uint32 vregNO, bool isDest, Insn &insn, regno_t regNO, bool &isOutOfRange,
                             uint32 bitSize) const;
-    void InsertCallerSave(Insn &insn, Operand &opnd, bool isDef);
+    void InsertCallerSave(Insn &insn, Operand &opnd, bool isDef, uint32 spillIdx);
     uint32 GetRegFromMask(uint32 mask, regno_t offset, const LiveInterval &li);
     uint32 FindAvailablePhyReg(LiveInterval &li);
     uint32 AssignPhysRegs(LiveInterval &li);

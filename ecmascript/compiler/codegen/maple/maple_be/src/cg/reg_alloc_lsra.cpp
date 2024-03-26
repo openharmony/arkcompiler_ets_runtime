@@ -1359,7 +1359,7 @@ uint32 LSRALinearScanRegAllocator::FindAvailablePhyReg(LiveInterval &li)
 }
 
 /* Spill and reload for caller saved registers. */
-void LSRALinearScanRegAllocator::InsertCallerSave(Insn &insn, Operand &opnd, bool isDef)
+void LSRALinearScanRegAllocator::InsertCallerSave(Insn &insn, Operand &opnd, bool isDef, uint32 spillIdx)
 {
     auto &regOpnd = static_cast<RegOperand &>(opnd);
     uint32 vRegNO = regOpnd.GetRegisterNumber();
@@ -1408,8 +1408,8 @@ void LSRALinearScanRegAllocator::InsertCallerSave(Insn &insn, Operand &opnd, boo
     bool isOutOfRange = false;
     if (isDef) {
         Insn *nextInsn = insn.GetNext();
-        memOpnd = GetSpillMem(vRegNO, true, insn, static_cast<regno_t>(intSpillRegSet[0] + firstIntReg), isOutOfRange,
-                              regSize);
+        memOpnd = GetSpillMem(vRegNO, true, insn, static_cast<regno_t>(intSpillRegSet[spillIdx + 1] + firstIntReg),
+                              isOutOfRange, regSize);
         Insn *stInsn = regInfo->BuildStrInsn(regSize, spType, *phyOpnd, *memOpnd);
         comment = " SPILL for caller_save " + std::to_string(vRegNO);
         ++callerSaveSpillCount;
@@ -1426,8 +1426,8 @@ void LSRALinearScanRegAllocator::InsertCallerSave(Insn &insn, Operand &opnd, boo
             insn.GetBB()->InsertInsnAfter(insn, *stInsn);
         }
     } else {
-        memOpnd = GetSpillMem(vRegNO, false, insn, static_cast<regno_t>(intSpillRegSet[0] + firstIntReg), isOutOfRange,
-                              regSize);
+        memOpnd = GetSpillMem(vRegNO, false, insn, static_cast<regno_t>(intSpillRegSet[spillIdx] + firstIntReg),
+                              isOutOfRange, regSize);
         Insn *ldInsn = regInfo->BuildLdrInsn(regSize, spType, *phyOpnd, *memOpnd);
         comment = " RELOAD for caller_save " + std::to_string(vRegNO);
         ++callerSaveReloadCount;
@@ -1804,8 +1804,8 @@ RegOperand *LSRALinearScanRegAllocator::GetReplaceUdOpnd(Insn &insn, Operand &op
     }
 
     if (li->IsShouldSave()) {
-        InsertCallerSave(insn, opnd, false);
-        InsertCallerSave(insn, opnd, true);
+        InsertCallerSave(insn, opnd, false, spillIdx);
+        InsertCallerSave(insn, opnd, true, spillIdx);
     } else if (li->GetStackSlot() == kSpilled) {
         SpillOperand(insn, opnd, false, spillIdx);
         SpillOperand(insn, opnd, true, spillIdx);
@@ -1846,11 +1846,13 @@ RegOperand *LSRALinearScanRegAllocator::GetReplaceOpnd(Insn &insn, Operand &opnd
         cgFunc->AddtoCalleeSaved(regNO);
     }
 
-    if (li->IsShouldSave()) {
-        InsertCallerSave(insn, opnd, isDef);
-    } else if (li->GetStackSlot() == kSpilled) {
+    if (li->IsShouldSave() || li->GetStackSlot() == kSpilled) {
         spillIdx = isDef ? 0 : spillIdx;
-        SpillOperand(insn, opnd, isDef, spillIdx);
+        if (li->IsShouldSave()) {
+            InsertCallerSave(insn, opnd, isDef, spillIdx);
+        } else {
+            SpillOperand(insn, opnd, isDef, spillIdx);
+        }
         if (!isDef) {
             ++spillIdx;
         }
