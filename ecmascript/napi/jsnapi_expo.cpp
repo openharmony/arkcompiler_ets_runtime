@@ -3753,6 +3753,23 @@ bool JSNApi::Execute(EcmaVM *vm, const uint8_t *data, int32_t size, const std::s
     return true;
 }
 
+int JSNApi::ExecuteWithSingletonPatternFlag(EcmaVM *vm, const std::string &bundleName,
+    const std::string &moduleName, const std::string &ohmurl, bool isSingletonPattern)
+{
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, ecmascript::JSPandaFileExecutor::ROUTE_INTERNAL_ERROR);
+    ecmascript::ThreadManagedScope scope(thread);
+    int result = ecmascript::JSPandaFileExecutor::ExecuteAbcFileWithSingletonPatternFlag(thread, bundleName.c_str(),
+        moduleName.c_str(), ohmurl.c_str(), isSingletonPattern);
+    if (!result) {
+        if (thread->HasPendingException()) {
+            thread->GetCurrentEcmaContext()->HandleUncaughtException();
+        }
+        LOG_ECMA(ERROR) << "Execute with singleton-pattern flag failed with bundle name is'" << bundleName
+                        << "' and module name is '" << moduleName << "', entry is'" << ohmurl << "'" << std::endl;
+    }
+    return result;
+}
+
 // The security interface needs to be modified accordingly.
 bool JSNApi::ExecuteModuleBuffer(EcmaVM *vm, const uint8_t *data, int32_t size, const std::string &filename,
                                  bool needUpdate)

@@ -25,6 +25,10 @@
 namespace panda::ecmascript {
 class JSPandaFileExecutor {
 public:
+    static constexpr int ROUTE_SUCCESS = 0;
+    static constexpr int ROUTE_INTERNAL_ERROR = 100001;
+    static constexpr int ROUTE_URI_ERROR = 100002;
+
     static Expected<JSTaggedValue, bool> ExecuteFromAbcFile(JSThread *thread, const CString &filename,
                                                             std::string_view entryPoint, bool needUpdate = false,
                                                             bool executeFromJob = false);
@@ -52,6 +56,9 @@ public:
                                                                    bool needUpdate = false);
     static Expected<JSTaggedValue, bool> CommonExecuteBuffer(JSThread *thread, const CString &filename,
                                                              const CString &entry, const JSPandaFile *jsPandaFile);
+    static int ExecuteAbcFileWithSingletonPatternFlag(JSThread *thread,
+        [[maybe_unused]] const CString &bundleName, const CString &moduleName, const CString &entry,
+        bool isSingletonPattern);
 };
 }  // namespace panda::ecmascript
 #endif // ECMASCRIPT_JSPANDAFILE_JS_PANDAFILE_EXECUTOR_H
