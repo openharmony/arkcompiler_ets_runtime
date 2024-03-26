@@ -322,6 +322,7 @@ public:
     GateRef GetPropertiesArray(GateRef object);
     // SetProperties in js_object.h
     void SetPropertiesArray(VariableType type, GateRef glue, GateRef object, GateRef propsArray);
+    GateRef GetHash(GateRef object);
     void SetHash(GateRef glue, GateRef object, GateRef hash);
     GateRef GetLengthOfTaggedArray(GateRef array);
     GateRef GetLengthOfJSTypedArray(GateRef array);
@@ -452,6 +453,9 @@ public:
     GateRef GetLayoutFromHClass(GateRef hClass);
     GateRef GetBitFieldFromHClass(GateRef hClass);
     GateRef GetLengthFromString(GateRef value);
+    GateRef CalcHashcodeForInt(GateRef value);
+    void CalcHashcodeForDouble(GateRef value, Variable *res, Label *exit);
+    void CalcHashcodeForObject(GateRef glue, GateRef value, Variable *res, Label *exit);
     GateRef GetHashcodeFromString(GateRef glue, GateRef value);
     inline GateRef IsIntegerString(GateRef string);
     inline void SetRawHashcode(GateRef glue, GateRef str, GateRef rawHashcode, GateRef isInteger);
@@ -857,6 +861,7 @@ private:
     void InitializeArguments();
     void CheckDetectorName(GateRef glue, GateRef key, Label *fallthrough, Label *slow);
     bool IsCallModeSupportPGO(JSCallMode mode);
+    GateRef CanDoubleRepresentInt(GateRef exp, GateRef expBits, GateRef fractionBits);
 
     CallSignature *callSignature_ {nullptr};
     Environment *env_;

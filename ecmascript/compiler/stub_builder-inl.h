@@ -1069,6 +1069,12 @@ inline void StubBuilder::SetPropertiesArray(VariableType type, GateRef glue, Gat
     Store(type, glue, object, propertiesOffset, propsArray);
 }
 
+inline GateRef StubBuilder::GetHash(GateRef object)
+{
+    GateRef hashOffset = IntPtr(ECMAObject::HASH_OFFSET);
+    return Load(VariableType::JS_ANY(), object, hashOffset);
+}
+
 inline void StubBuilder::SetHash(GateRef glue, GateRef object, GateRef hash)
 {
     GateRef hashOffset = IntPtr(ECMAObject::HASH_OFFSET);
