@@ -1852,6 +1852,7 @@ GateRef StubBuilder::StoreICWithHandler(GateRef glue, GateRef receiver, GateRef 
     Label aotCellNotChanged(env);
     Label loopHead(env);
     Label loopEnd(env);
+    Label cellNotNull(env);
     DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
     DEFVARIABLE(holder, VariableType::JS_ANY(), argHolder);
     DEFVARIABLE(handler, VariableType::JS_ANY(), argHandler);
@@ -1913,7 +1914,11 @@ GateRef StubBuilder::StoreICWithHandler(GateRef glue, GateRef receiver, GateRef 
         Bind(&handlerIsPrototypeHandler);
         {
             GateRef cellValue = GetProtoCell(*handler);
-            Branch(GetHasChanged(cellValue), &cellHasChanged, &loopEnd);
+            Branch(TaggedIsNull(cellValue), &cellHasChanged, &cellNotNull);
+            Bind(&cellNotNull);
+            {
+                Branch(GetHasChanged(cellValue), &cellHasChanged, &loopEnd);
+            }
             Bind(&loopEnd);
             {
                 holder = GetPrototypeHandlerHolder(*handler);

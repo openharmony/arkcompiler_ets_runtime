@@ -1461,6 +1461,7 @@ JSHandle<BigInt> BigInt::Remainder(JSThread *thread, JSHandle<BigInt> n, JSHandl
     } else {
         ASSERT(d->GetLength() > 1); // 1 : Entering the current branch length must be greater than 1
         DivideAndRemainderWithBigintDivisor(thread, n, d, remainder);
+        RETURN_HANDLE_IF_ABRUPT_COMPLETION(BigInt, thread);
     }
     ASSERT(remainder.GetTaggedValue().IsBigInt());
     remainder->SetSign(n->GetSign());
