@@ -572,3 +572,8 @@ print(myExp.toString());
   print(replace_result === cached_reuslt);
   print(re4.lastIndex);
 }
+try {
+  let matchReg = new RegExp("@【哈哈】*^o^*|@小米（kk）",'g');
+} catch (error) {
+  print(error)
+}

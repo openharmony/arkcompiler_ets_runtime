@@ -130,6 +130,9 @@ void RegExpParser::ParseDisjunction(bool isBackward)
             uint32_t pos = gotoOp.EmitOpCode(&buffer_, 0) - gotoOp.GetSize();
             Advance();
             ParseAlternative(isBackward);
+            if (isError_) {
+                return;
+            }
             gotoOp.UpdateOpPara(&buffer_, pos, buffer_.size_ - pos - gotoOp.GetSize());
         }
     } while (c0_ != KEY_EOF && c0_ != ')');
