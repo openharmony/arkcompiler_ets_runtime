@@ -33,12 +33,13 @@ void ObjEmitter::EmitFuncBinaryCode(ObjFuncEmitInfo &objFuncEmitInfo)
     CGFunc &cgFunc = objFuncEmitInfo.GetCGFunc();
     objFuncEmitInfo.SetFuncName(cgFunc.GetName());
 
-    int labelSize = cgFunc.GetLab2BBMap().size() + cgFunc.GetLabelAndValueMap().size() + 1;
+    int labelSize = static_cast<int>(cgFunc.GetLab2BBMap().size()) +
+                    static_cast<int>(cgFunc.GetLabelAndValueMap().size()) + 1;
     std::vector<uint32> label2Offset(labelSize, 0xFFFFFFFFULL);
     EmitInstructions(objFuncEmitInfo, label2Offset);
     objFuncEmitInfo.UpdateMethodCodeSize();
 
-    int symbolSize = cgFunc.GetLabelIdx() + 1;
+    int symbolSize = static_cast<int>(cgFunc.GetLabelIdx() + 1);
     std::vector<uint32> symbol2Offset(symbolSize, 0xFFFFFFFFULL);
     EmitFunctionSymbolTable(objFuncEmitInfo, symbol2Offset);
     EmitSwitchTable(objFuncEmitInfo, symbol2Offset);
@@ -221,6 +222,7 @@ void ObjEmitter::EmitMIRAddrofConstCommon(EmitInfo &emitInfo, uint64 specialOffs
 {
     MIRAddrofConst &symAddr = static_cast<MIRAddrofConst &>(emitInfo.elemConst);
     MIRSymbol *symAddrSym = GlobalTables::GetGsymTable().GetSymbolFromStidx(symAddr.GetSymbolIndex().Idx());
+    DEBUG_ASSERT(symAddrSym != nullptr, "null ptr check");
     const std::string &symAddrName = symAddrSym->GetName();
     LabelFixup labelFixup(symAddrName, emitInfo.offset, kLabelFixupDirect64);
     if (specialOffset != 0) {

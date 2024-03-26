@@ -643,8 +643,10 @@ void AArch64GenProEpilog::GeneratePushRegs()
                                     memLayout->GetSizeOfLocals());
     } else {
         offset = (static_cast<int32>(memLayout->RealStackFrameSize() -
-            (aarchCGFunc.SizeOfCalleeSaved() - (kDivide2 * kAarch64IntregBytelen))) - /* for FP/LR */
-            memLayout->SizeOfArgsToStackPass() - cgFunc.GetFunction().GetFrameReseverdSlot());
+            (static_cast<int32>(aarchCGFunc.SizeOfCalleeSaved()) -
+            (kDivide2 * static_cast<int32>(kAarch64IntregBytelen)))) - /* for FP/LR */
+            static_cast<int32>(memLayout->SizeOfArgsToStackPass()) -
+            static_cast<int32>(cgFunc.GetFunction().GetFrameReseverdSlot()));
     }
 
     if (cgFunc.GetCG()->IsStackProtectorStrong() || cgFunc.GetCG()->IsStackProtectorAll()) {
@@ -706,7 +708,8 @@ void AArch64GenProEpilog::GeneratePushRegs()
         int64 fpToCurSpDistance =
             (cgFunc.GetMemlayout()->SizeOfArgsToStackPass() + cgFunc.GetFunction().GetFrameReseverdSlot());
         int32 fp2PrevFrameSPDelta =
-            static_cast<AArch64MemLayout *>(cgFunc.GetMemlayout())->RealStackFrameSize() - fpToCurSpDistance;
+            static_cast<int32>(static_cast<AArch64MemLayout *>(cgFunc.GetMemlayout())->RealStackFrameSize()) -
+	        fpToCurSpDistance;
         emitMemoryManager.funcFpSPDeltaSaver(emitMemoryManager.codeSpace, cgFunc.GetName(), fp2PrevFrameSPDelta);
     }
 }

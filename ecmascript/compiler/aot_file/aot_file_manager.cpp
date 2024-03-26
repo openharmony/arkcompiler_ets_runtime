@@ -424,7 +424,7 @@ void AOTFileManager::ParseDeserializedData(const CString &snapshotFileName, JSTa
         auto nameOffset = SnapshotGlobalData::Cast(SnapshotGlobalData::CP_PANDA_INFO_ITEM::NAME_ID);
         auto indexOffset = SnapshotGlobalData::Cast(SnapshotGlobalData::CP_PANDA_INFO_ITEM::INDEX_ID);
         CString fileNameStr = EcmaStringAccessor(fileInfo->Get(nameOffset)).ToCString();
-        uint32_t fileIndex = fileInfo->Get(indexOffset).GetInt();
+        uint32_t fileIndex = static_cast<uint32_t>(fileInfo->Get(indexOffset).GetInt());
         // handle constant pool
         cpList.Update(aiData->Get(i + SnapshotGlobalData::Cast(SnapshotGlobalData::CP_TOP_ITEM::CP_ARRAY_ID)));
         uint32_t cpLen = cpList->GetLength();
