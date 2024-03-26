@@ -52,6 +52,8 @@ namespace panda::ecmascript {
 using PathHelper = base::PathHelper;
 
 int32_t EcmaContext::unsharedConstpoolCount_ = 0;
+CUnorderedSet<int32_t> EcmaContext::freeUnsharedConstpoolCount_ {};
+std::mutex EcmaContext::unsharedConstpoolCountMutex_;
 
 EcmaContext::EcmaContext(JSThread *thread)
     : thread_(thread),
@@ -562,6 +564,14 @@ JSHandle<ConstantPool> EcmaContext::FindOrCreateConstPool(const JSPandaFile *jsP
     return JSHandle<ConstantPool>(thread_, constpool);
 }
 
+void EcmaContext::InsertFreeUnsharedConstpoolCount(JSTaggedValue sharedConstpool)
+{
+    std::lock_guard<std::mutex> guard(unsharedConstpoolCountMutex_);
+    int32_t index = ConstantPool::Cast(sharedConstpool.GetTaggedObject())->GetUnsharedConstpoolIndex().GetInt();
+    ASSERT(0 <= index && index != ConstantPool::CONSTPOOL_TYPE_FLAG && index < UNSHARED_CONSTANTPOOL_COUNT);
+    freeUnsharedConstpoolCount_.insert(index);
+}
+
 void EcmaContext::CreateAllConstpool(const JSPandaFile *jsPandaFile)
 {
     auto headers = jsPandaFile->GetPandaFile()->GetIndexHeaders();
@@ -603,8 +613,9 @@ JSHandle<JSTaggedValue> EcmaContext::GetAndClearEcmaUncaughtException() const
     return exceptionHandle;
 }
 
-void EcmaContext::ProcessNativeDelete(const WeakRootVisitor &visitor)
+void EcmaContext::ProcessNativeDeleteInSharedGC(const WeakRootVisitor &visitor)
 {
+    // share-gc trigger.
     auto iterator = cachedSharedConstpools_.begin();
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "Constpools:" + std::to_string(cachedSharedConstpools_.size()));
     while (iterator != cachedSharedConstpools_.end()) {
@@ -618,6 +629,9 @@ void EcmaContext::ProcessNativeDelete(const WeakRootVisitor &visitor)
                 if (fwd == nullptr) {
                     constpoolIter = constpools.erase(constpoolIter);
                     EraseUnsharedConstpool(constpoolVal);
+                    // when shared constpool is not referenced by any objects,
+                    // global unshared constpool count can be reuse.
+                    InsertFreeUnsharedConstpoolCount(constpoolVal);
                     continue;
                 }
             }
