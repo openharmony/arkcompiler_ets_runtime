@@ -1084,19 +1084,20 @@ ohos_source_set("libark_jsruntime_test_set") {
       "/system/lib64/${arkcompiler_relative_lib_path}/lib_ark_builtins.d.abc"
   defines += [ "TARGET_BUILTINS_DTS_PATH=\"${target_builtins_dts_path}\"" ]
 
+  deps = []
+  external_deps = []
   if (defined(is_arkui_x) && is_arkui_x) {
-    deps = [
+    deps += [
       "$ark_third_party_root/icu/icu4c:static_icui18n",
       "$ark_third_party_root/icu/icu4c:static_icuuc",
     ]
   } else {
-    deps = [
-      "$ark_third_party_root/icu/icu4c:shared_icui18n",
-      "$ark_third_party_root/icu/icu4c:shared_icuuc",
+    external_deps += [
+      "icu:shared_icui18n",
+      "icu:shared_icuuc",
     ]
   }
 
-  external_deps = []
   if (enable_dump_in_faultlog) {
     external_deps += [ "libuv:uv" ]
   }
@@ -1201,6 +1202,7 @@ ohos_shared_library("libark_jsruntime") {
   }
 
   all_dependent_configs = [ ":ark_jsruntime_public_config" ]
+  public_configs = [ ":ark_jsruntime_public_config" ]
 
   if (is_ohos && is_standard_system && !is_debug) {
     version_script = "libark_jsruntime.map"
@@ -1233,9 +1235,9 @@ ohos_shared_library("libark_jsruntime") {
       "$ark_third_party_root/icu/icu4c:static_icuuc",
     ]
   } else {
-    deps += [
-      "$ark_third_party_root/icu/icu4c:shared_icui18n",
-      "$ark_third_party_root/icu/icu4c:shared_icuuc",
+    external_deps += [
+      "icu:shared_icui18n",
+      "icu:shared_icuuc",
     ]
   }
   innerapi_tags = [ "platformsdk_indirect" ]
@@ -1245,11 +1247,8 @@ ohos_shared_library("libark_jsruntime") {
 
 ohos_shared_library("libark_jsruntime_test") {
   stack_protector_ret = false
-  deps = [
-    ":libark_jsruntime_test_set",
-    "$ark_root/libpandafile:libarkfile_static",
-  ]
-
+  deps = [ ":libark_jsruntime_test_set" ]
+  external_deps = [ "runtime_core:libarkfile_static" ]
   public_configs = [ "$js_root:ark_jsruntime_public_config" ]
   public_configs += [ ":include_llvm" ]
 
@@ -1266,7 +1265,10 @@ ohos_shared_library("libark_jsruntime_test") {
   if (!is_mingw && !is_mac) {
     output_extension = "so"
   }
-  subsystem_name = "test"
+
+  # Set the subsystem name
+  part_name = "ets_runtime"
+  subsystem_name = "arkcompiler"
 }
 
 ohos_prebuilt_etc("app_aot_enable_list") {

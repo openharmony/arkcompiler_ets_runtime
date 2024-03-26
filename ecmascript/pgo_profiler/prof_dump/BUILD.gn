@@ -44,9 +44,9 @@ ohos_executable("profdump") {
       "$ark_third_party_root/icu/icu4c:static_icuuc",
     ]
   } else {
-    deps += [
-      "$ark_third_party_root/icu/icu4c:shared_icui18n",
-      "$ark_third_party_root/icu/icu4c:shared_icuuc",
+    external_deps += [
+      "icu:shared_icui18n",
+      "icu:shared_icuuc",
     ]
   }
 

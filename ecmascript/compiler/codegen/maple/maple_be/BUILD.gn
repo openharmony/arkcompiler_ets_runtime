@@ -29,7 +29,6 @@ include_directories = [
   "${MAPLEALL_ROOT}/maple_ipa/include",
   "${MAPLEALL_ROOT}/maple_ipa/include/old",
   "${MAPLEALL_ROOT}/maple_phase/include",
-  "${MAPLEALL_THIRD_PARTY_ROOT}/bounds_checking_function/include",
 ]
 
 deps_libcg = [
@@ -286,7 +285,7 @@ ohos_static_library("libmplad") {
   sources = src_libmplad
   include_dirs = include_directories
   output_dir = "${root_out_dir}/lib/${HOST_ARCH}"
-
+  external_deps = [ "bounds_checking_function:libsec_static" ]
   part_name = "ets_runtime"
   subsystem_name = "arkcompiler"
 }
@@ -296,6 +295,7 @@ ohos_source_set("libcglowerer") {
   configs = [ "${MAPLEALL_ROOT}:mapleallcompilecfg" ]
   sources = src_libcglowerer
   include_dirs = include_directories
+  external_deps = [ "bounds_checking_function:libsec_static" ]
   part_name = "ets_runtime"
   subsystem_name = "arkcompiler"
 }
@@ -307,6 +307,7 @@ ohos_static_library("libmplbe") {
   deps = deps_libmplbe
   include_dirs = include_directories
   output_dir = "${root_out_dir}/lib/${HOST_ARCH}"
+  external_deps = [ "bounds_checking_function:libsec_static" ]
   part_name = "ets_runtime"
   subsystem_name = "arkcompiler"
 }
@@ -316,6 +317,7 @@ ohos_source_set("libcgaarch64") {
   configs = [ "${MAPLEALL_ROOT}:mapleallcompilecfg" ]
   sources = src_libcgaarch64
   include_dirs = include_directories
+  external_deps = [ "bounds_checking_function:libsec_static" ]
   part_name = "ets_runtime"
   subsystem_name = "arkcompiler"
 }
@@ -325,6 +327,7 @@ ohos_source_set("libcgx8664") {
   configs = [ "${MAPLEALL_ROOT}:mapleallcompilecfg" ]
   sources = src_libcgx8664
   include_dirs = include_directories
+  external_deps = [ "bounds_checking_function:libsec_static" ]
   part_name = "ets_runtime"
   subsystem_name = "arkcompiler"
 }
@@ -334,6 +337,7 @@ ohos_source_set("libcgx86phases") {
   configs = [ "${MAPLEALL_ROOT}:mapleallcompilecfg" ]
   sources = src_libcgx86phases
   include_dirs = include_directories
+  external_deps = [ "bounds_checking_function:libsec_static" ]
   part_name = "ets_runtime"
   subsystem_name = "arkcompiler"
 }
@@ -343,6 +347,7 @@ ohos_source_set("libcgriscv64") {
   configs = [ "${MAPLEALL_ROOT}:mapleallcompilecfg" ]
   sources = src_libcgriscv64
   include_dirs = include_directories
+  external_deps = [ "bounds_checking_function:libsec_static" ]
   part_name = "ets_runtime"
   subsystem_name = "arkcompiler"
 }
@@ -352,6 +357,7 @@ ohos_static_library("libcgark") {
   configs = [ "${MAPLEALL_ROOT}:mapleallcompilecfg" ]
   sources = src_libcgark
   include_dirs = include_directories
+  external_deps = [ "bounds_checking_function:libsec_static" ]
   part_name = "ets_runtime"
   subsystem_name = "arkcompiler"
 }
@@ -361,6 +367,7 @@ ohos_source_set("libcgphases") {
   configs = [ "${MAPLEALL_ROOT}:mapleallcompilecfg" ]
   sources = src_libcgphases
   include_dirs = include_directories
+  external_deps = [ "bounds_checking_function:libsec_static" ]
   part_name = "ets_runtime"
   subsystem_name = "arkcompiler"
 }
@@ -372,6 +379,7 @@ ohos_static_library("libcg") {
   include_dirs = include_directories
   deps = deps_libcg
   output_dir = "${root_out_dir}/lib/${HOST_ARCH}"
+  external_deps = [ "bounds_checking_function:libsec_static" ]
   part_name = "ets_runtime"
   subsystem_name = "arkcompiler"
 }
