@@ -49,10 +49,6 @@
     V("find", Find, 1, INVALID)                                                  \
     /* SharedArray.prototype.findIndex ( predicate [ , thisArg ] ) */            \
     V("findIndex", FindIndex, 1, INVALID)                                        \
-    /* SharedArray.prototype.flat ( [ depth ] ) */                               \
-    V("flat", Flat, 0, INVALID)                                                  \
-    /* SharedArray.prototype.flatMap ( mapperFunction [ , thisArg ] ) */         \
-    V("flatMap", FlatMap, 1, INVALID)                                            \
     /* SharedArray.prototype.forEach ( callbackfn [ , thisArg ] ) */             \
     V("forEach", ForEach, 1, INVALID)                                            \
     /* SharedArray.prototype.includes ( searchElement [ , fromIndex ] ) */       \
@@ -143,8 +139,6 @@ public:
     static JSTaggedValue Values(EcmaRuntimeCallInfo *argv);
     static JSTaggedValue Unscopables(EcmaRuntimeCallInfo *argv);
     static JSTaggedValue Includes(EcmaRuntimeCallInfo *argv);
-    static JSTaggedValue Flat(EcmaRuntimeCallInfo *argv);
-    static JSTaggedValue FlatMap(EcmaRuntimeCallInfo *argv);
     static JSTaggedValue At(EcmaRuntimeCallInfo *argv);
 
     // Excluding the '@@' internal properties

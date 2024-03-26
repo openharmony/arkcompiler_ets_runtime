@@ -968,7 +968,8 @@ bool JSObject::SetPropertyForDataDescriptor(ObjectOperator *op, const JSHandle<J
     return isSuccess;
 }
 
-bool JSObject::SetProperty(ObjectOperator *op, const JSHandle<JSTaggedValue> &value, bool mayThrow, SCheckMode checkMode)
+bool JSObject::SetProperty(ObjectOperator *op, const JSHandle<JSTaggedValue> &value, bool mayThrow,
+                           SCheckMode checkMode)
 {
     JSThread *thread = op->GetThread();
     op->UpdateDetector();

@@ -47,7 +47,7 @@ bool JSSharedArray::LengthSetter(JSThread *thread, const JSHandle<JSObject> &sel
 {
     [[maybe_unused]] ConcurrentModScope<JSSharedArray, ModType::WRITE> scope(
         thread, self.GetTaggedValue().GetTaggedObject(), checkMode);
-    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false); 
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
     uint32_t newLen = 0;
     if (!JSTaggedValue::ToArrayLength(thread, value, &newLen) && mayThrow) {
         RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);

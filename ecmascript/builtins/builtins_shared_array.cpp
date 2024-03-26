@@ -62,11 +62,12 @@ JSTaggedValue BuiltinsSharedArray::ArrayConstructor(EcmaRuntimeCallInfo *argv)
     // 1. Let numberOfArgs be the number of arguments passed to this function call.
     uint32_t argc = argv->GetArgsNumber();
 
-    // 3. If NewTarget is undefined, let newTarget be the active function object, else let newTarget be NewTarget.
-    JSHandle<JSTaggedValue> constructor = GetConstructor(argv);
+    // 3. If NewTarget is undefined, throw exception
     JSHandle<JSTaggedValue> newTarget = GetNewTarget(argv);
     if (newTarget->IsUndefined()) {
-        newTarget = constructor;
+        JSTaggedValue error = containers::ContainerError::BusinessError(
+            thread, containers::ErrorFlag::IS_NULL_ERROR, "The ArkTS Array's constructor cannot be directly invoked.");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
 
     // 4. Let proto be GetPrototypeFromConstructor(newTarget, "%ArrayPrototype%").
@@ -380,6 +381,11 @@ JSTaggedValue BuiltinsSharedArray::Concat(EcmaRuntimeCallInfo *argv)
 
     // 1. Let O be ToObject(this value).
     JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
+    if (!thisHandle->IsSharedType()) {
+        auto error = containers::ContainerError::BusinessError(thread, containers::ErrorFlag::BIND_ERROR,
+                                                               "The concat method cannot be bound with non-sendable");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
+    }
     JSHandle<JSObject> thisObjHandle = JSTaggedValue::ToObject(thread, thisHandle);
     [[maybe_unused]] ConcurrentModScope<JSSharedArray> scope(thread, thisHandle.GetTaggedValue().GetTaggedObject());
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -412,7 +418,7 @@ JSTaggedValue BuiltinsSharedArray::Concat(EcmaRuntimeCallInfo *argv)
         }
         if (!ele->IsSharedType()) {
             auto error = containers::ContainerError::BusinessError(thread, containers::ErrorFlag::TYPE_ERROR,
-                                                                    "Parameter error.Only accept sendable value");
+                                                                   "Parameter error.Only accept sendable value");
             THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
         }
         // a. Let spreadable be ? IsConcatSpreadable(E).
@@ -487,6 +493,11 @@ JSTaggedValue BuiltinsSharedArray::Entries(EcmaRuntimeCallInfo *argv)
     JSThread *thread = argv->GetThread();
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
+    if (!thisHandle->IsSharedType()) {
+        auto error = containers::ContainerError::BusinessError(thread, containers::ErrorFlag::BIND_ERROR,
+                                                               "The entries method cannot be bound with non-sendable");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
+    }
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     // 1. Let O be ToObject(this value).
     // 2. ReturnIfAbrupt(O).
@@ -508,6 +519,11 @@ JSTaggedValue BuiltinsSharedArray::Fill(EcmaRuntimeCallInfo *argv)
 
     // 1. Let O be ToObject(this value).
     JSHandle<JSTaggedValue> thisObjVal = GetThis(argv);
+    if (!thisObjVal->IsSharedType()) {
+        auto error = containers::ContainerError::BusinessError(thread, containers::ErrorFlag::BIND_ERROR,
+                                                               "The fill method cannot be bound with non-sendable");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
+    }
     JSHandle<JSObject> thisObjHandle = JSTaggedValue::ToObject(thread, thisObjVal);
     [[maybe_unused]] ConcurrentModScope<JSSharedArray, ModType::WRITE> scope(
         thread, thisObjHandle.GetTaggedValue().GetTaggedObject());
@@ -527,6 +543,11 @@ JSTaggedValue BuiltinsSharedArray::Fill(EcmaRuntimeCallInfo *argv)
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
     JSHandle<JSTaggedValue> value = GetCallArg(argv, 0);
+    if (!value->IsSharedType()) {
+        auto error = containers::ContainerError::BusinessError(thread, containers::ErrorFlag::TYPE_ERROR,
+                                                               "Parameter error.Only accept sendable value");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
+    }
     if (thisObjVal->IsTypedArray()) {
         ContentType contentType = JSHandle<JSTypedArray>::Cast(thisObjVal)->GetContentType();
         if (contentType == ContentType::BigInt) {
@@ -651,6 +672,11 @@ JSTaggedValue BuiltinsSharedArray::Filter(EcmaRuntimeCallInfo *argv)
 
     // 1. Let O be ToObject(this value).
     JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
+    if (!thisHandle->IsSharedType()) {
+        auto error = containers::ContainerError::BusinessError(thread, containers::ErrorFlag::BIND_ERROR,
+                                                               "The filter method cannot be bound with non-sendable");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
+    }
     JSHandle<JSObject> thisObjHandle = JSTaggedValue::ToObject(thread, thisHandle);
     [[maybe_unused]] ConcurrentModScope<JSSharedArray> scope(thread, thisHandle.GetTaggedValue().GetTaggedObject());
     // 2. ReturnIfAbrupt(O).
@@ -718,6 +744,11 @@ JSTaggedValue BuiltinsSharedArray::Find(EcmaRuntimeCallInfo *argv)
 
     // 1. Let O be ToObject(this value).
     JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
+    if (!thisHandle->IsSharedType()) {
+        auto error = containers::ContainerError::BusinessError(thread, containers::ErrorFlag::BIND_ERROR,
+                                                               "The find method cannot be bound with non-sendable");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
+    }
     JSHandle<JSObject> thisObjHandle = JSTaggedValue::ToObject(thread, thisHandle);
     [[maybe_unused]] ConcurrentModScope<JSSharedArray> scope(thread, thisHandle.GetTaggedValue().GetTaggedObject());
     // 2. ReturnIfAbrupt(O).
@@ -781,6 +812,11 @@ JSTaggedValue BuiltinsSharedArray::FindIndex(EcmaRuntimeCallInfo *argv)
 
     // 1. Let O be ToObject(this value).
     JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
+    if (!thisHandle->IsSharedType()) {
+        auto error = containers::ContainerError::BusinessError(
+            thread, containers::ErrorFlag::BIND_ERROR, "The findIndex method cannot be bound with non-sendable");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
+    }
     JSHandle<JSObject> thisObjHandle = JSTaggedValue::ToObject(thread, thisHandle);
     [[maybe_unused]] ConcurrentModScope<JSSharedArray> scope(thread, thisHandle.GetTaggedValue().GetTaggedObject());
     // 2. ReturnIfAbrupt(O).
@@ -852,6 +888,11 @@ JSTaggedValue BuiltinsSharedArray::ForEach(EcmaRuntimeCallInfo *argv)
 
     // 1. Let O be ToObject(this value).
     JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
+    if (!thisHandle->IsSharedType()) {
+        auto error = containers::ContainerError::BusinessError(thread, containers::ErrorFlag::BIND_ERROR,
+                                                               "The forEach method cannot be bound with non-sendable");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
+    }
     JSHandle<JSObject> thisObjHandle = JSTaggedValue::ToObject(thread, thisHandle);
     [[maybe_unused]] ConcurrentModScope<JSSharedArray> scope(thread, thisHandle.GetTaggedValue().GetTaggedObject());
     // 2. ReturnIfAbrupt(O).
@@ -993,6 +1034,11 @@ JSTaggedValue BuiltinsSharedArray::IndexOf(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
     JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
+    if (!thisHandle->IsSharedType()) {
+        auto error = containers::ContainerError::BusinessError(thread, containers::ErrorFlag::BIND_ERROR,
+                                                               "The indexOf method cannot be bound with non-sendable");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
+    }
     [[maybe_unused]] ConcurrentModScope<JSSharedArray> scope(thread, thisHandle.GetTaggedValue().GetTaggedObject());
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSTaggedValue opResult;
@@ -1012,6 +1058,11 @@ JSTaggedValue BuiltinsSharedArray::Join(EcmaRuntimeCallInfo *argv)
     JSThread *thread = argv->GetThread();
     BUILTINS_API_TRACE(argv->GetThread(), SharedArray, Join);
     JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
+    if (!thisHandle->IsSharedType()) {
+        auto error = containers::ContainerError::BusinessError(thread, containers::ErrorFlag::BIND_ERROR,
+                                                               "The join method cannot be bound with non-sendable");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
+    }
     [[maybe_unused]] ConcurrentModScope<JSSharedArray> scope(thread, thisHandle.GetTaggedValue().GetTaggedObject());
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     auto opResult = BuiltinsArray::Join(argv);
@@ -1025,6 +1076,11 @@ JSTaggedValue BuiltinsSharedArray::Keys(EcmaRuntimeCallInfo *argv)
     JSThread *thread = argv->GetThread();
     BUILTINS_API_TRACE(argv->GetThread(), SharedArray, Keys);
     JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
+    if (!thisHandle->IsSharedType()) {
+        auto error = containers::ContainerError::BusinessError(thread, containers::ErrorFlag::BIND_ERROR,
+                                                               "The keys method cannot be bound with non-sendable");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
+    }
     [[maybe_unused]] ConcurrentModScope<JSSharedArray> scope(thread, thisHandle.GetTaggedValue().GetTaggedObject());
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     auto opResult = BuiltinsArray::Keys(argv);
@@ -1112,6 +1168,11 @@ JSTaggedValue BuiltinsSharedArray::Map(EcmaRuntimeCallInfo *argv)
 
     // 1. Let O be ToObject(this value).
     JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
+    if (!thisHandle->IsSharedType()) {
+        auto error = containers::ContainerError::BusinessError(thread, containers::ErrorFlag::BIND_ERROR,
+                                                               "The map method cannot be bound with non-sendable");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
+    }
     JSHandle<JSObject> thisObjHandle = JSTaggedValue::ToObject(thread, thisHandle);
     [[maybe_unused]] ConcurrentModScope<JSSharedArray> scope(thread, thisHandle.GetTaggedValue().GetTaggedObject());
     // 2. ReturnIfAbrupt(O).
@@ -1177,6 +1238,11 @@ JSTaggedValue BuiltinsSharedArray::Map(EcmaRuntimeCallInfo *argv)
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
             info->SetCallArg(kValue.GetTaggedValue(), key.GetTaggedValue(), thisObjVal.GetTaggedValue());
             JSTaggedValue mapResult = JSFunction::Call(info);
+            if (!mapResult.IsSharedType()) {
+                auto error = containers::ContainerError::BusinessError(thread, containers::ErrorFlag::TYPE_ERROR,
+                                                                       "Parameter error.Only accept sendable value");
+                THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
+            }
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
             mapResultHandle.Update(mapResult);
             JSObject::CreateDataPropertyOrThrow(thread, newArrayHandle, k, mapResultHandle);
@@ -1200,6 +1266,11 @@ JSTaggedValue BuiltinsSharedArray::Pop(EcmaRuntimeCallInfo *argv)
 
     // 1. Let O be ToObject(this value).
     JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
+    if (!thisHandle->IsSharedType()) {
+        auto error = containers::ContainerError::BusinessError(thread, containers::ErrorFlag::BIND_ERROR,
+                                                               "The pop method cannot be bound with non-sendable");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
+    }
     JSHandle<JSObject> thisObjHandle = JSTaggedValue::ToObject(thread, thisHandle);
     [[maybe_unused]] ConcurrentModScope<JSSharedArray, ModType::WRITE> scope(
         thread, thisHandle.GetTaggedValue().GetTaggedObject());
@@ -1270,6 +1341,11 @@ JSTaggedValue BuiltinsSharedArray::Push(EcmaRuntimeCallInfo *argv)
     JSThread *thread = argv->GetThread();
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
+    if (!thisHandle->IsSharedType()) {
+        auto error = containers::ContainerError::BusinessError(thread, containers::ErrorFlag::BIND_ERROR,
+                                                               "The push method cannot be bound with non-sendable");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
+    }
     [[maybe_unused]] ConcurrentModScope<JSSharedArray, ModType::WRITE> scope(
         thread, thisHandle.GetTaggedValue().GetTaggedObject());
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -1305,6 +1381,11 @@ JSTaggedValue BuiltinsSharedArray::Push(EcmaRuntimeCallInfo *argv)
     while (k < argc) {
         key.Update(JSTaggedValue(len));
         JSHandle<JSTaggedValue> kValue = GetCallArg(argv, k);
+        if (!kValue->IsSharedType()) {
+            auto error = containers::ContainerError::BusinessError(thread, containers::ErrorFlag::TYPE_ERROR,
+                                                                   "Parameter error.Only accept sendable value");
+            THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
+        }
         JSSharedArray::FastSetPropertyByValue(thread, thisObjVal, key, kValue);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         k++;
@@ -1364,6 +1445,11 @@ JSTaggedValue BuiltinsSharedArray::Reduce(EcmaRuntimeCallInfo *argv)
     uint32_t argc = argv->GetArgsNumber();
     // 1. Let O be ToObject(this value).
     JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
+    if (!thisHandle->IsSharedType()) {
+        auto error = containers::ContainerError::BusinessError(thread, containers::ErrorFlag::BIND_ERROR,
+                                                               "The reduce method cannot be bound with non-sendable");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
+    }
     JSHandle<JSObject> thisObjHandle = JSTaggedValue::ToObject(thread, thisHandle);
     [[maybe_unused]] ConcurrentModScope<JSSharedArray> scope(thread, thisHandle.GetTaggedValue().GetTaggedObject());
     // 2. ReturnIfAbrupt(O).
@@ -1438,6 +1524,11 @@ JSTaggedValue BuiltinsSharedArray::Shift(EcmaRuntimeCallInfo *argv)
 
     // 1. Let O be ToObject(this value).
     JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
+    if (!thisHandle->IsSharedType()) {
+        auto error = containers::ContainerError::BusinessError(thread, containers::ErrorFlag::BIND_ERROR,
+                                                               "The shift method cannot be bound with non-sendable");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
+    }
     JSHandle<JSObject> thisObjHandle = JSTaggedValue::ToObject(thread, thisHandle);
     [[maybe_unused]] ConcurrentModScope<JSSharedArray, ModType::WRITE> scope(
         thread, thisHandle.GetTaggedValue().GetTaggedObject());
@@ -1529,6 +1620,11 @@ JSTaggedValue BuiltinsSharedArray::Slice(EcmaRuntimeCallInfo *argv)
 
     // 1. Let O be ToObject(this value).
     JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
+    if (!thisHandle->IsSharedType()) {
+        auto error = containers::ContainerError::BusinessError(thread, containers::ErrorFlag::BIND_ERROR,
+                                                               "The slice method cannot be bound with non-sendable");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
+    }
     JSHandle<JSObject> thisObjHandle = JSTaggedValue::ToObject(thread, thisHandle);
     [[maybe_unused]] ConcurrentModScope<JSSharedArray> scope(thread, thisHandle.GetTaggedValue().GetTaggedObject());
     // 2. ReturnIfAbrupt(O).
@@ -1660,6 +1756,11 @@ JSTaggedValue BuiltinsSharedArray::Sort(EcmaRuntimeCallInfo *argv)
 
     // 2. Let obj be ToObject(this value).
     JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
+    if (!thisHandle->IsSharedType()) {
+        auto error = containers::ContainerError::BusinessError(thread, containers::ErrorFlag::BIND_ERROR,
+                                                               "The sort method cannot be bound with non-sendable");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
+    }
     JSHandle<JSObject> thisObjHandle = JSTaggedValue::ToObject(thread, thisHandle);
     [[maybe_unused]] ConcurrentModScope<JSSharedArray, ModType::WRITE> scope(
         thread, thisHandle.GetTaggedValue().GetTaggedObject());
@@ -1686,6 +1787,11 @@ JSTaggedValue BuiltinsSharedArray::ToString(EcmaRuntimeCallInfo *argv)
 
     // 1. Let array be ToObject(this value).
     JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
+    if (!thisHandle->IsSharedType()) {
+        auto error = containers::ContainerError::BusinessError(thread, containers::ErrorFlag::BIND_ERROR,
+                                                               "The toString method cannot be bound with non-sendable");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
+    }
     JSHandle<JSObject> thisObjHandle = JSTaggedValue::ToObject(thread, thisHandle);
     [[maybe_unused]] ConcurrentModScope<JSSharedArray> scope(thread, thisHandle.GetTaggedValue().GetTaggedObject());
     // 2. ReturnIfAbrupt(array).
@@ -1730,6 +1836,11 @@ JSTaggedValue BuiltinsSharedArray::Unshift(EcmaRuntimeCallInfo *argv)
 
     // 1. Let O be ToObject(this value).
     JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
+    if (!thisHandle->IsSharedType()) {
+        auto error = containers::ContainerError::BusinessError(thread, containers::ErrorFlag::BIND_ERROR,
+                                                               "The unshift method cannot be bound with non-sendable");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
+    }
     JSHandle<JSObject> thisObjHandle = JSTaggedValue::ToObject(thread, thisHandle);
     [[maybe_unused]] ConcurrentModScope<JSSharedArray, ModType::WRITE> scope(
         thread, thisHandle.GetTaggedValue().GetTaggedObject());
@@ -1794,6 +1905,11 @@ JSTaggedValue BuiltinsSharedArray::Unshift(EcmaRuntimeCallInfo *argv)
         while (j < argc) {
             toKey.Update(JSTaggedValue(j));
             JSHandle<JSTaggedValue> toValue = GetCallArg(argv, j);
+            if (!toValue->IsSharedType()) {
+                auto error = containers::ContainerError::BusinessError(thread, containers::ErrorFlag::TYPE_ERROR,
+                                                                       "Parameter error.Only accept sendable value");
+                THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
+            }
             JSSharedArray::FastSetPropertyByValue(thread, thisObjVal, toKey, toValue);
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
             j++;
@@ -1820,6 +1936,11 @@ JSTaggedValue BuiltinsSharedArray::Values(EcmaRuntimeCallInfo *argv)
     JSThread *thread = argv->GetThread();
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
+    if (!thisHandle->IsSharedType()) {
+        auto error = containers::ContainerError::BusinessError(thread, containers::ErrorFlag::BIND_ERROR,
+                                                               "The values method cannot be bound with non-sendable");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
+    }
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     // 1. Let O be ToObject(this value).
     // 2. ReturnIfAbrupt(O).
@@ -1893,98 +2014,6 @@ JSTaggedValue BuiltinsSharedArray::Unscopables(EcmaRuntimeCallInfo *argv)
     return unscopableList.GetTaggedValue();
 }
 
-// es12 23.1.3.10
-JSTaggedValue BuiltinsSharedArray::Flat(EcmaRuntimeCallInfo *argv)
-{
-    ASSERT(argv);
-    BUILTINS_API_TRACE(argv->GetThread(), SharedArray, Flat);
-    JSThread *thread = argv->GetThread();
-    [[maybe_unused]] EcmaHandleScope handleScope(thread);
-
-    // 1. Let O be ? ToObject(this value).
-    JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
-    JSHandle<JSObject> thisObjHandle = JSTaggedValue::ToObject(thread, thisHandle);
-    [[maybe_unused]] ConcurrentModScope<JSSharedArray> scope(thread, thisHandle.GetTaggedValue().GetTaggedObject());
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-
-    uint32_t argc = argv->GetArgsNumber();
-    JSHandle<JSTaggedValue> thisObjVal(thisObjHandle);
-
-    // 2. Let sourceLen be ? LengthOfArrayLike(O).
-    int64_t sourceLen = ArrayHelper::GetLength(thread, thisObjVal);
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-
-    // 3. Let depthNum be 1.
-    double depthNum = 1;
-
-    // 4. If depth is not undefined, then
-    // a. Set depthNum to ? ToIntegerOrInfinity(depth).
-    // b. If depthNum < 0, set depthNum to 0.
-    if (argc > 0) {
-        JSHandle<JSTaggedValue> msg1 = GetCallArg(argv, 0);
-        if (!msg1->IsUndefined()) {
-            JSTaggedNumber fromIndexTemp = JSTaggedValue::ToNumber(thread, msg1);
-            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-            depthNum = base::NumberHelper::TruncateDouble(fromIndexTemp.GetNumber());
-            depthNum = depthNum < 0 ? 0 : depthNum;
-        }
-    }
-    // 5. Let A be ? ArraySpeciesCreate(O, 0).
-    uint32_t arrayLen = 0;
-    JSTaggedValue newArray = JSSharedArray::ArraySpeciesCreate(thread, thisObjHandle, JSTaggedNumber(arrayLen));
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-
-    base::FlattenArgs args = { sourceLen, 0, depthNum };
-    JSHandle<JSObject> newArrayHandle(thread, newArray);
-    // 6. Perform ? FlattenIntoArray(A, O, sourceLen, 0, depthNum).
-    ArrayHelper::FlattenIntoArray(thread, newArrayHandle, thisObjVal, args,
-                                  thread->GlobalConstants()->GetHandledUndefined(),
-                                  thread->GlobalConstants()->GetHandledUndefined());
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-
-    // 7. Return A.
-    return newArrayHandle.GetTaggedValue();
-}
-
-// es12 23.1.3.11
-JSTaggedValue BuiltinsSharedArray::FlatMap(EcmaRuntimeCallInfo *argv)
-{
-    ASSERT(argv);
-    BUILTINS_API_TRACE(argv->GetThread(), SharedArray, FlatMap);
-    JSThread *thread = argv->GetThread();
-    [[maybe_unused]] EcmaHandleScope handleScope(thread);
-
-    // 1. Let O be ? ToObject(this value).
-    JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
-    JSHandle<JSObject> thisObjHandle = JSTaggedValue::ToObject(thread, thisHandle);
-    [[maybe_unused]] ConcurrentModScope<JSSharedArray> scope(thread, thisHandle.GetTaggedValue().GetTaggedObject());
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    JSHandle<JSTaggedValue> thisObjVal(thisObjHandle);
-
-    // 2. Let sourceLen be ? LengthOfArrayLike(O).
-    int64_t sourceLen = ArrayHelper::GetLength(thread, thisObjVal);
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-
-    // 3. If ! IsCallable(mapperFunction) is false, throw a TypeError exception.
-    JSHandle<JSTaggedValue> mapperFunctionHandle = GetCallArg(argv, 0);
-    if (!mapperFunctionHandle->IsCallable()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "the mapperFunction is not callable.", JSTaggedValue::Exception());
-    }
-    // 4. Let A be ? ArraySpeciesCreate(O, 0).
-    uint32_t arrayLen = 0;
-    JSTaggedValue newArray = JSSharedArray::ArraySpeciesCreate(thread, thisObjHandle, JSTaggedNumber(arrayLen));
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-
-    base::FlattenArgs args = { sourceLen, 0, 1 };
-    JSHandle<JSObject> newArrayHandle(thread, newArray);
-    // 5. Perform ? FlattenIntoArray(A, O, sourceLen, 0, 1, mapperFunction, thisArg).
-    ArrayHelper::FlattenIntoArray(thread, newArrayHandle, thisObjVal, args,
-                                  mapperFunctionHandle, GetCallArg(argv, 1));
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    // 6. Return A.
-    return newArrayHandle.GetTaggedValue();
-}
-
 // 23.1.3.13 Array.prototype.includes ( searchElement [ , fromIndex ] )
 JSTaggedValue BuiltinsSharedArray::Includes(EcmaRuntimeCallInfo *argv)
 {
@@ -1994,6 +2023,11 @@ JSTaggedValue BuiltinsSharedArray::Includes(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     // 1. Let O be ? ToObject(this value).
     JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
+    if (!thisHandle->IsSharedType()) {
+        auto error = containers::ContainerError::BusinessError(thread, containers::ErrorFlag::BIND_ERROR,
+                                                               "The includes method cannot be bound with non-sendable");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
+    }
     JSHandle<JSObject> thisObjHandle = JSTaggedValue::ToObject(thread, thisHandle);
     [[maybe_unused]] ConcurrentModScope<JSSharedArray> scope(thread, thisHandle.GetTaggedValue().GetTaggedObject());
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
