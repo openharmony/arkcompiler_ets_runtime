@@ -472,6 +472,21 @@ void EcmaVM::ProcessNativeDelete(const WeakRootVisitor &visitor)
                 ++iter;
             }
         }
+
+        auto newIter = concurrentNativePointerList_.begin();
+        while (newIter != concurrentNativePointerList_.end()) {
+            JSNativePointer *object = *newIter;
+            auto fwd = visitor(reinterpret_cast<TaggedObject *>(object));
+            if (fwd == nullptr) {
+                nativeAreaAllocator_->DecreaseNativeSizeStats(object->GetBindingSize(), object->GetNativeFlag());
+                nativePointerCallbacks_.emplace_back(std::make_pair(object->GetDeleter(),
+                                                                    std::make_pair(object->GetExternalPointer(),
+                                                                                   object->GetData())));
+                newIter = concurrentNativePointerList_.erase(newIter);
+            } else {
+                ++newIter;
+            }
+        }
     }
 }
 
@@ -500,14 +515,37 @@ void EcmaVM::ProcessReferences(const WeakRootVisitor &visitor)
             }
             ++iter;
         }
+
+        auto newIter = concurrentNativePointerList_.begin();
+        while (newIter != concurrentNativePointerList_.end()) {
+            JSNativePointer *object = *newIter;
+            auto fwd = visitor(reinterpret_cast<TaggedObject *>(object));
+            if (fwd == nullptr) {
+                nativeAreaAllocator_->DecreaseNativeSizeStats(object->GetBindingSize(), object->GetNativeFlag());
+                nativePointerCallbacks_.emplace_back(std::make_pair(object->GetDeleter(),
+                                                                    std::make_pair(object->GetExternalPointer(),
+                                                                                   object->GetData())));
+                newIter = concurrentNativePointerList_.erase(newIter);
+                continue;
+            }
+            heap_->IncreaseNativeBindingSize(JSNativePointer::Cast(fwd));
+            if (fwd != reinterpret_cast<TaggedObject *>(object)) {
+                *newIter = JSNativePointer::Cast(fwd);
+            }
+            ++newIter;
+        }
     }
     GetPGOProfiler()->ProcessReferences(visitor);
 }
 
-void EcmaVM::PushToNativePointerList(JSNativePointer *pointer)
+void EcmaVM::PushToNativePointerList(JSNativePointer *pointer, Concurrent isConcurrent)
 {
     ASSERT(!JSTaggedValue(pointer).IsInSharedHeap());
-    nativePointerList_.emplace_back(pointer);
+    if (isConcurrent == Concurrent::YES) {
+        concurrentNativePointerList_.emplace_back(pointer);
+    } else {
+        nativePointerList_.emplace_back(pointer);
+    }
 }
 
 void EcmaVM::RemoveFromNativePointerList(JSNativePointer *pointer)
@@ -518,6 +556,13 @@ void EcmaVM::RemoveFromNativePointerList(JSNativePointer *pointer)
         nativeAreaAllocator_->DecreaseNativeSizeStats(object->GetBindingSize(), object->GetNativeFlag());
         object->Destroy();
         nativePointerList_.erase(iter);
+    }
+    auto newIter = std::find(concurrentNativePointerList_.begin(), concurrentNativePointerList_.end(), pointer);
+    if (newIter != concurrentNativePointerList_.end()) {
+        JSNativePointer *object = *iter;
+        nativeAreaAllocator_->DecreaseNativeSizeStats(object->GetBindingSize(), object->GetNativeFlag());
+        object->Destroy();
+        concurrentNativePointerList_.erase(iter);
     }
 }
 
@@ -543,6 +588,9 @@ bool EcmaVM::ContainInDeregisterModuleList(CString module)
 void EcmaVM::ClearBufferData()
 {
     for (auto iter : nativePointerList_) {
+        iter->Destroy();
+    }
+    for (auto iter : concurrentNativePointerList_) {
         iter->Destroy();
     }
     nativePointerList_.clear();

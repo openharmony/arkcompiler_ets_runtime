@@ -894,15 +894,15 @@ bool JSFunction::NameSetter(JSThread *thread, const JSHandle<JSObject> &self, co
     return true;
 }
 
-void JSFunction::SetFunctionExtraInfo(JSThread *thread, void *nativeFunc,
-                                      const DeleteEntryPoint &deleter, void *data, size_t nativeBindingsize)
+void JSFunction::SetFunctionExtraInfo(JSThread *thread, void *nativeFunc, const DeleteEntryPoint &deleter,
+                                      void *data, size_t nativeBindingsize, Concurrent isConcurrent)
 {
     JSTaggedType hashField = Barriers::GetValue<JSTaggedType>(this, HASH_OFFSET);
     EcmaVM *vm = thread->GetEcmaVM();
     JSHandle<JSTaggedValue> value(thread, JSTaggedValue(hashField));
     JSHandle<ECMAObject> obj(thread, this);
     JSHandle<JSNativePointer> pointer = vm->GetFactory()->NewJSNativePointer(nativeFunc, deleter, data,
-        false, nativeBindingsize);
+        false, nativeBindingsize, isConcurrent);
     if (!obj->HasHash()) {
         Barriers::SetObject<true>(thread, *obj, HASH_OFFSET, pointer.GetTaggedValue().GetRawData());
         return;

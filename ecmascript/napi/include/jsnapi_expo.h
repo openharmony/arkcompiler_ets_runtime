@@ -624,6 +624,9 @@ public:
     static Local<NativePointerRef> New(const EcmaVM *vm, void *nativePointer, size_t nativeBindingsize = 0);
     static Local<NativePointerRef> New(const EcmaVM *vm, void *nativePointer, NativePointerCallback callBack,
                                        void *data, size_t nativeBindingsize = 0);
+    static Local<NativePointerRef> NewConcurrent(const EcmaVM *vm, void *nativePointer,
+                                                 NativePointerCallback callBack,
+                                                 void *data, size_t nativeBindingsize = 0);
     void *Value();
 };
 
@@ -677,6 +680,11 @@ public:
                                void *nativePointer = nullptr,
                                NativePointerCallback callBack = nullptr,
                                void *data = nullptr, size_t nativeBindingsize = 0);
+    void SetConcurrentNativePointerField(const EcmaVM *vm,
+                                         int32_t index,
+                                         void *nativePointer = nullptr,
+                                         NativePointerCallback callBack = nullptr,
+                                         void *data = nullptr, size_t nativeBindingsize = 0);
 };
 
 using FunctionCallback = Local<JSValueRef>(*)(JsiRuntimeCallInfo*);
@@ -695,7 +703,11 @@ public:
     };
     static Local<FunctionRef> New(EcmaVM *vm, FunctionCallback nativeFunc, Deleter deleter = nullptr,
         void *data = nullptr, bool callNapi = false, size_t nativeBindingsize = 0);
+    static Local<FunctionRef> NewConcurrent(EcmaVM *vm, FunctionCallback nativeFunc, Deleter deleter = nullptr,
+        void *data = nullptr, bool callNapi = false, size_t nativeBindingsize = 0);
     static Local<FunctionRef> New(EcmaVM *vm, InternalFunctionCallback nativeFunc, Deleter deleter,
+        void *data = nullptr, bool callNapi = false, size_t nativeBindingsize = 0);
+    static Local<FunctionRef> NewConcurrent(EcmaVM *vm, InternalFunctionCallback nativeFunc, Deleter deleter,
         void *data = nullptr, bool callNapi = false, size_t nativeBindingsize = 0);
     static Local<FunctionRef> NewSendable(EcmaVM *vm,
                                           InternalFunctionCallback nativeFunc,

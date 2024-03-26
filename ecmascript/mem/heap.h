@@ -17,6 +17,7 @@
 #define ECMASCRIPT_MEM_HEAP_H
 
 #include "ecmascript/base/config.h"
+#include "ecmascript/ecma_vm.h"
 #include "ecmascript/frames.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/mem/linear_space.h"
@@ -1033,6 +1034,7 @@ private:
     inline void ReclaimRegions(TriggerGCType gcType);
     inline size_t CalculateCommittedCacheSize();
     void ProcessGCListeners();
+    void CleanCallBack();
     class ParallelGCTask : public Task {
     public:
         ParallelGCTask(int32_t id, Heap *heap, ParallelGCTaskPhase taskPhase)
@@ -1073,6 +1075,23 @@ private:
         NO_MOVE_SEMANTIC(FinishColdStartTask);
     private:
         Heap *heap_;
+    };
+
+    class DeleteCallbackTask : public Task {
+    public:
+        DeleteCallbackTask(int32_t id, std::vector<std::pair<DeleteEntryPoint, std::pair<void *, void *>>> &callbacks)
+            : Task(id)
+        {
+            std::swap(callbacks, nativePointerCallbacks_);
+        };
+        ~DeleteCallbackTask() override = default;
+        bool Run(uint32_t threadIndex) override;
+
+        NO_COPY_SEMANTIC(DeleteCallbackTask);
+        NO_MOVE_SEMANTIC(DeleteCallbackTask);
+
+    private:
+        std::vector<std::pair<DeleteEntryPoint, std::pair<void *, void *>>> nativePointerCallbacks_ {};
     };
 
     class RecursionScope {

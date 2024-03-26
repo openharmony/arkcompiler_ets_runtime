@@ -194,7 +194,6 @@ enum class MethodIndex : uint8_t;
 
 using ErrorType = base::ErrorType;
 using base::ErrorType;
-using DeleteEntryPoint = void (*)(void *, void *);
 
 enum class RemoveSlots { YES, NO };
 enum class GrowMode { KEEP, GROW };
@@ -522,6 +521,7 @@ public:
                                                         void *data = nullptr,
                                                         bool nonMovable = false,
                                                         size_t nativeBindingsize = 0,
+                                                        Concurrent isConcurrent = Concurrent::NO,
                                                         NativeFlag flag = NativeFlag::NO_DIV);
 
     JSHandle<JSObject> NewOldSpaceObjLiteralByHClass(const JSHandle<JSHClass> &hclass);
