@@ -19,6 +19,7 @@ host_aot_test_action("builtinMathExp") {
   is_test_llvm_only = true
   is_enable_opt_inlining = true
   is_enable_trace_deopt = true
+  is_enable_enableArkTools = true
   log_option = " --log-info=trace"
   deps = []
 }

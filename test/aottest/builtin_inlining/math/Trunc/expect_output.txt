@@ -12,49 +12,36 @@
 # limitations under the License.
 
 NaN
+NaN
+Infinity
+-Infinity
 0
-3
-5
-1.5
-3.141592653589793
-3.141592653589793
-1.9e+80
-1.9e+80
-1.9e-80
-1.9e-80
-Infinity
-Infinity
-NaN
-1/x: Infinity
-3
-3
-4
-4
--1.001
-2147483647
-2147483648
-2147483647
-2147483648
-2147483649
-3
-[trace] Check Type: NotNumber2
-NaN
-[trace] Check Type: NotNumber2
-NaN
-12
-[trace] Check Type: NotNumber2
-NaN
-[trace] Check Type: NotNumber2
-12
-[trace] Check Type: NotCallTarget1
+1/x: -Infinity
+1
 -12
+1
+2
+3
+-1
+1/x: -Infinity
+-4
+2
+3
+4
+111.09
+[trace] Check Type: NotNumber2
+NaN
+[trace] Check Type: NotNumber2
+2
+[trace] Check Type: NotCallTarget1
+-12.1
 [trace] Check Type: NotCallTarget1
 abc
-12
+-48
 [trace] Check Type: NotNumber2
 NaN
 [trace] Check Type: NotNumber2
-23
-14
+-35
+-14
 Error: already positive
-23
+-35

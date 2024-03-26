@@ -25,9 +25,6 @@ void BuiltinLowering::LowerTypedCallBuitin(GateRef gate)
     auto idGate = acc_.GetValueIn(gate, valuesIn - 1);
     auto id = static_cast<BuiltinsStubCSigns::ID>(acc_.GetConstantValue(idGate));
     switch (id) {
-        case BUILTINS_STUB_ID(FLOOR):
-            LowerTypedFloor(gate);
-            break;
         case BUILTINS_STUB_ID(LocaleCompare):
             LowerTypedLocaleCompare(gate);
             break;
@@ -111,19 +108,6 @@ GateRef BuiltinLowering::TypedFloor(GateRef gate)
     auto ret = *result;
     env->SubCfgExit();
     return ret;
-}
-
-void BuiltinLowering::LowerTypedSqrt(GateRef gate)
-{
-    Environment env(gate, circuit_, &builder_);
-    GateRef param = acc_.GetValueIn(gate, 0);
-    // 20.2.2.32
-    // If value is NAN or negative, include -NaN and -Infinity but not -0.0, the result is NaN
-    // Assembly instruction support NAN and negative
-    auto ret = builder_.Sqrt(param);
-    acc_.SetMachineType(ret, MachineType::F64);
-    acc_.SetGateType(ret, GateType::NJSValue());
-    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), ret);
 }
 
 GateRef BuiltinLowering::IntToTaggedIntPtr(GateRef x)
@@ -289,17 +273,6 @@ GateRef BuiltinLowering::CheckPara(GateRef gate, GateRef funcCheck)
         return funcCheck;
     }
     switch (id) {
-        case BuiltinsStubCSigns::ID::FLOOR: {
-            if (acc_.GetNumValueIn(gate) <= 2U) {
-                return funcCheck;
-            }
-            GateRef para = acc_.GetValueIn(gate, 2);
-            GateRef paracheck = builder_.TaggedIsNumber(para);
-            return builder_.BoolAnd(paracheck, funcCheck);
-        }
-        case BuiltinsStubCSigns::ID::SQRT:
-            // NumberSpeculativeRetype is checked
-            return funcCheck;
         case BuiltinsStubCSigns::ID::LocaleCompare:
         case BuiltinsStubCSigns::ID::SORT:
         case BuiltinsStubCSigns::ID::STRINGIFY:

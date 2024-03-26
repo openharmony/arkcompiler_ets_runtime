@@ -154,7 +154,7 @@ class ObjectFactory;
     V(JSTaggedValue, DefaultSupers, DEFAULT_SUPERS_INDEX, ecma_roots_special)                          \
     V(JSTaggedValue, EmptyTaggedQueue, EMPTY_TAGGED_QUEUE_OBJECT_INDEX, ecma_roots_special)            \
     V(JSTaggedValue, UndefinedCompletionRecord, UNDEFINED_COMPLRTION_RECORD_INDEX, ecma_roots_special) \
-    V(JSTaggedValue, MathSqrtFunction, MATH_SQRT_FUNCTION_INDEX, ecma_roots_special)                   \
+    V(JSTaggedValue, MathSqrt, MATH_SQRT_INDEX, ecma_roots_special)                                    \
     V(JSTaggedValue, MathAcos, MATH_ACOS_INDEX, ecma_roots_special)                                    \
     V(JSTaggedValue, MathAcosh, MATH_ACOSH_INDEX, ecma_roots_special)                                  \
     V(JSTaggedValue, MathAsin, MATH_ASIN_INDEX, ecma_roots_special)                                    \
@@ -164,20 +164,31 @@ class ObjectFactory;
     V(JSTaggedValue, MathAtanh, MATH_ATANH_INDEX, ecma_roots_special)                                  \
     V(JSTaggedValue, MathCos, MATH_COS_INDEX, ecma_roots_special)                                      \
     V(JSTaggedValue, MathCosh, MATH_COSH_INDEX, ecma_roots_special)                                    \
+    V(JSTaggedValue, MathSign, MATH_SIGN_INDEX, ecma_roots_special)                                    \
     V(JSTaggedValue, MathSin, MATH_SIN_INDEX, ecma_roots_special)                                      \
     V(JSTaggedValue, MathSinh, MATH_SINH_INDEX, ecma_roots_special)                                    \
     V(JSTaggedValue, MathTan, MATH_TAN_INDEX, ecma_roots_special)                                      \
     V(JSTaggedValue, MathTanh, MATH_TANH_INDEX, ecma_roots_special)                                    \
+    V(JSTaggedValue, MathTrunc, MATH_TRUNC_INDEX, ecma_roots_special)                                  \
     V(JSTaggedValue, MathLog, MATH_LOG_INDEX, ecma_roots_special)                                      \
     V(JSTaggedValue, MathLog2, MATH_LOG2_INDEX, ecma_roots_special)                                    \
     V(JSTaggedValue, MathLog10, MATH_LOG10_INDEX, ecma_roots_special)                                  \
     V(JSTaggedValue, MathLog1p, MATH_LOG1P_INDEX, ecma_roots_special)                                  \
     V(JSTaggedValue, MathExp, MATH_EXP_INDEX, ecma_roots_special)                                      \
     V(JSTaggedValue, MathExpm1, MATH_EXPM1_INDEX, ecma_roots_special)                                  \
+    V(JSTaggedValue, MathClz32, MATH_CLZ32_INDEX, ecma_roots_special)                                  \
     V(JSTaggedValue, MathAbs, MATH_ABS_INDEX, ecma_roots_special)                                      \
     V(JSTaggedValue, MathPow, MATH_POW_INDEX, ecma_roots_special)                                      \
     V(JSTaggedValue, MathCbrt, MATH_CBRT_INDEX, ecma_roots_special)                                    \
-    V(JSTaggedValue, MathFloorFunction, MATH_FLOOR_FUNCTION_INDEX, ecma_roots_special)                 \
+    V(JSTaggedValue, MathMin, MATH_MIN_INDEX, ecma_roots_special)                                      \
+    V(JSTaggedValue, MathMax, MATH_MAX_INDEX, ecma_roots_special)                                      \
+    V(JSTaggedValue, MathRound, MATH_ROUND_INDEX, ecma_roots_special)                                  \
+    V(JSTaggedValue, MathFRound, MATH_FROUND_INDEX, ecma_roots_special)                                \
+    V(JSTaggedValue, MathCeil, MATH_CEIL_INDEX, ecma_roots_special)                                    \
+    V(JSTaggedValue, MathFloor, MATH_FLOOR_INDEX, ecma_roots_special)                                  \
+    V(JSTaggedValue, MathImul, MATH_IMUL_INDEX, ecma_roots_special)                                    \
+    V(JSTaggedValue, GlobalIsFinite, GLOBAL_IS_FINITE_INDEX, ecma_roots_special)                       \
+    V(JSTaggedValue, GlobalIsNan, GLOBAL_IS_NAN_INDEX, ecma_roots_special)                             \
     V(JSTaggedValue, LocaleCompareFunction, LOCALE_COMPARE_FUNCTION_INDEX, ecma_roots_special)         \
     V(JSTaggedValue, ArraySortFunction, ARRAY_SORT_FUNCTION_INDEX, ecma_roots_special)                 \
     V(JSTaggedValue, JsonStringifyFunction, JSON_STRINGIFY_FUNCTION_INDEX, ecma_roots_special)         \

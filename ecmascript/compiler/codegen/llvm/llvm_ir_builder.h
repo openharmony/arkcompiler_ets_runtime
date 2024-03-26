@@ -311,6 +311,8 @@ private:
     LLVMValueRef CanonicalizeToPtr(LLVMValueRef value, LLVMTypeRef ptrType) const;
     LLVMValueRef GetCurrentFrameType(LLVMValueRef currentSpFrameAddr);
     void SetFunctionCallConv();
+    template<typename... Ts>
+    void VisitIntrinsic(GateRef gate, unsigned llvmId, Ts... inputs);
 
     bool IsLogEnabled() const
     {

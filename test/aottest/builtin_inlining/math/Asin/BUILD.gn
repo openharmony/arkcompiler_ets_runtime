@@ -18,6 +18,7 @@ host_aot_test_action("builtinMathAsin") {
   is_only_typed_path = true
   is_enable_opt_inlining = true
   is_enable_trace_deopt = true
+  is_enable_enableArkTools = true
   log_option = " --log-info=trace"
   deps = []
 }

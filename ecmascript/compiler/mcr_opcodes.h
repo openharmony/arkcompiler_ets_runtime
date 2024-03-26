@@ -70,19 +70,42 @@ namespace panda::ecmascript::kungfu {
     V(MathAtanh, MATH_ATANH, GateFlags::NO_WRITE, 1, 1, 1)                                      \
     V(MathCos, MATH_COS, GateFlags::NO_WRITE, 1, 1, 1)                                          \
     V(MathCosh, MATH_COSH, GateFlags::NO_WRITE, 1, 1, 1)                                        \
+    V(MathSign, MATH_SIGN, GateFlags::NO_WRITE, 1, 1, 1)                                        \
+    V(MathSignTagged, MATH_SIGN_TAGGED, GateFlags::NO_WRITE, 1, 1, 1)                           \
     V(MathSin, MATH_SIN, GateFlags::NO_WRITE, 1, 1, 1)                                          \
     V(MathSinh, MATH_SINH, GateFlags::NO_WRITE, 1, 1, 1)                                        \
+    V(MathSqrt, MATH_SQRT, GateFlags::NO_WRITE, 1, 1, 1)                                        \
     V(MathTan, MATH_TAN, GateFlags::NO_WRITE, 1, 1, 1)                                          \
     V(MathTanh, MATH_TANH, GateFlags::NO_WRITE, 1, 1, 1)                                        \
+    V(MathTrunc, MATH_TRUNC, GateFlags::NO_WRITE, 1, 1, 1)                                      \
     V(MathLog, MATH_LOG, GateFlags::NO_WRITE, 1, 1, 1)                                          \
     V(MathLog2, MATH_LOG2, GateFlags::NO_WRITE, 1, 1, 1)                                        \
     V(MathLog10, MATH_LOG10, GateFlags::NO_WRITE, 1, 1, 1)                                      \
     V(MathLog1p, MATH_LOG1P, GateFlags::NO_WRITE, 1, 1, 1)                                      \
     V(MathExp, MATH_EXP, GateFlags::NO_WRITE, 1, 1, 1)                                          \
     V(MathExpm1, MATH_EXPM1, GateFlags::NO_WRITE, 1, 1, 1)                                      \
+    V(MathClz32, MATH_CLZ32, GateFlags::NO_WRITE, 1, 1, 1)                                      \
+    V(MathClz32Double, MATH_CLZ32_DOUBLE, GateFlags::NO_WRITE, 1, 1, 1)                         \
+    V(MathClz32Int32, MATH_CLZ32_INT32, GateFlags::NO_WRITE, 1, 1, 1)                           \
     V(MathAbs, MATH_ABS, GateFlags::NO_WRITE, 1, 1, 1)                                          \
+    V(MathAbsInt32, MATH_ABS_INT32, GateFlags::NO_WRITE, 1, 1, 1)                               \
+    V(MathAbsDouble, MATH_ABS_DOUBLE, GateFlags::NO_WRITE, 1, 1, 1)                             \
     V(MathPow, MATH_POW, GateFlags::NO_WRITE, 1, 1, 2)                                          \
     V(MathCbrt, MATH_CBRT, GateFlags::NO_WRITE, 1, 1, 1)                                        \
+    V(MathMin, MATH_MIN, GateFlags::NO_WRITE, 1, 1, 2)                                          \
+    V(MathMinInt32, MATH_MIN_INT32, GateFlags::NO_WRITE, 1, 1, 2)                               \
+    V(MathMinDouble, MATH_MIN_DOUBLE, GateFlags::NO_WRITE, 1, 1, 2)                             \
+    V(MathMax, MATH_MAX, GateFlags::NO_WRITE, 1, 1, 2)                                          \
+    V(MathMaxInt32, MATH_MAX_INT32, GateFlags::NO_WRITE, 1, 1, 2)                               \
+    V(MathMaxDouble, MATH_MAX_DOUBLE, GateFlags::NO_WRITE, 1, 1, 2)                             \
+    V(MathRound, MATH_ROUND, GateFlags::NO_WRITE, 1, 1, 1)                                      \
+    V(MathRoundDouble, MATH_ROUND_DOUBLE, GateFlags::NO_WRITE, 1, 1, 1)                         \
+    V(MathFRound, MATH_FROUND, GateFlags::NO_WRITE, 1, 1, 1)                                    \
+    V(MathCeil, MATH_CEIL, GateFlags::NO_WRITE, 1, 1, 1)                                        \
+    V(MathFloor, MATH_FLOOR, GateFlags::NO_WRITE, 1, 1, 1)                                      \
+    V(MathImul, MATH_IMUL, GateFlags::NO_WRITE, 1, 1, 2)                                        \
+    V(GlobalIsFinite, GLOBAL_IS_FINITE, GateFlags::NO_WRITE, 1, 1, 1)                           \
+    V(GlobalIsNan, GLOBAL_IS_NAN, GateFlags::NO_WRITE, 1, 1, 1)                                 \
     MCR_BINARY_GATE_META_DATA_CACHE_LIST(V)
 
 #define MCR_GATE_META_DATA_LIST_WITH_PC_OFFSET(V)                                                            \

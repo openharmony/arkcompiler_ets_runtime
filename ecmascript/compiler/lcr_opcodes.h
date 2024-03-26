@@ -36,14 +36,17 @@ namespace panda::ecmascript::kungfu {
     V(Lsr, LSR, GateFlags::NONE_FLAG, 0, 0, 2)                                                       \
     V(Asr, ASR, GateFlags::NONE_FLAG, 0, 0, 2)                                                       \
     V(Sqrt, SQRT, GateFlags::NO_WRITE, 0, 0, 1)                                                      \
+    V(Min, MIN, GateFlags::NO_WRITE, 0, 0, 2)                                                        \
+    V(Max, MAX, GateFlags::NO_WRITE, 0, 0, 2)                                                        \
     V(AddWithOverflow, ADD_WITH_OVERFLOW, GateFlags::NONE_FLAG, 0, 0, 2)                             \
     V(SubWithOverflow, SUB_WITH_OVERFLOW, GateFlags::NONE_FLAG, 0, 0, 2)                             \
     V(MulWithOverflow, MUL_WITH_OVERFLOW, GateFlags::NONE_FLAG, 0, 0, 2)                             \
     V(ExtractValue, EXTRACT_VALUE, GateFlags::NONE_FLAG, 0, 0, 2)
-    
+
 #define LCR_UNARY_GATE_META_DATA_CACHE_LIST(V)                                   \
     V(Zext, ZEXT, GateFlags::NONE_FLAG, 0, 0, 1)                                 \
     V(Sext, SEXT, GateFlags::NONE_FLAG, 0, 0, 1)                                 \
+    V(DoubleTrunc, DOUBLE_TRUNC, GateFlags::NO_WRITE, 0, 0, 1)                   \
     V(Trunc, TRUNC, GateFlags::NONE_FLAG, 0, 0, 1)                               \
     V(Fext, FEXT, GateFlags::NONE_FLAG, 0, 0, 1)                                 \
     V(Ftrunc, FTRUNC, GateFlags::NONE_FLAG, 0, 0, 1)                             \
@@ -56,7 +59,11 @@ namespace panda::ecmascript::kungfu {
     V(UnsignedFloatToInt, UNSIGNED_FLOAT_TO_INT, GateFlags::NONE_FLAG, 0, 0, 1)  \
     V(TruncFloatToInt64, TRUNC_FLOAT_TO_INT64, GateFlags::NONE_FLAG, 0, 0, 1)    \
     V(TruncFloatToInt32, TRUNC_FLOAT_TO_INT32, GateFlags::NONE_FLAG, 0, 0, 1)    \
-    V(Bitcast, BITCAST, GateFlags::NONE_FLAG, 0, 0, 1)
+    V(Bitcast, BITCAST, GateFlags::NONE_FLAG, 0, 0, 1)                           \
+    V(Abs, ABS, GateFlags::NO_WRITE, 0, 0, 1)                                    \
+    V(Clz32, CLZ32, GateFlags::NONE_FLAG, 0, 0, 1)                               \
+    V(Ceil, CEIL, GateFlags::NO_WRITE, 0, 0, 1)                                  \
+    V(Floor, FLOOR, GateFlags::NO_WRITE, 0, 0, 1)
 
 #define LCR_IMMUTABLE_META_DATA_CACHE_LIST(V)                                                   \
     V(ReadSp, READSP, GateFlags::NONE_FLAG, 0, 0, 0)                                            \

@@ -488,8 +488,10 @@ void Builtins::InitializeGlobalObject(const JSHandle<GlobalEnv> &env, const JSHa
 
     // Global object function
     SetFunction(env, globalObject, "eval", Global::NotSupportEval, FunctionLength::ONE);
-    SetFunction(env, globalObject, "isFinite", Global::IsFinite, FunctionLength::ONE);
-    SetFunction(env, globalObject, "isNaN", Global::IsNaN, FunctionLength::ONE);
+    SetFunction(env, globalObject, "isFinite", Global::IsFinite, FunctionLength::ONE,
+                kungfu::BuiltinsStubCSigns::GlobalIsFinite);
+    SetFunction(env, globalObject, "isNaN", Global::IsNaN, FunctionLength::ONE,
+                kungfu::BuiltinsStubCSigns::GlobalIsNan);
     SetFunction(env, globalObject, "decodeURI", Global::DecodeURI, FunctionLength::ONE);
     SetFunction(env, globalObject, "encodeURI", Global::EncodeURI, FunctionLength::ONE);
     SetFunction(env, globalObject, "escape", Global::Escape, FunctionLength::ONE);
@@ -1558,7 +1560,6 @@ void Builtins::InitializeMath(const JSHandle<GlobalEnv> &env, const JSHandle<JST
     for (const base::BuiltinConstantEntry &entry: Math::GetMathConstants()) {
         SetConstant(mathObject, entry.GetName(), entry.GetTaggedValue());
     }
-
     JSHandle<JSTaggedValue> mathString(factory_->NewFromASCII("Math"));
     JSHandle<JSObject> globalObject(thread_, env->GetGlobalObject());
     PropertyDescriptor mathDesc(thread_, JSHandle<JSTaggedValue>::Cast(mathObject), true, false, true);

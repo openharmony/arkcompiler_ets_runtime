@@ -127,8 +127,6 @@ namespace panda::ecmascript::kungfu {
     V(SORT)
 
 #define AOT_BUILTINS_STUB_LIST(V)                   \
-    V(SQRT)  /* list start and math list start */   \
-    V(FLOOR)  /* math list end */                   \
     V(STRINGIFY)                                    \
     V(MAP_PROTO_ITERATOR)                           \
     V(SET_PROTO_ITERATOR)                           \
@@ -151,8 +149,10 @@ namespace panda::ecmascript::kungfu {
     V(MathAtanh)                                    \
     V(MathCos)                                      \
     V(MathCosh)                                     \
+    V(MathSign)                                     \
     V(MathSin)                                      \
     V(MathSinh)                                     \
+    V(MathSqrt)                                     \
     V(MathTan)                                      \
     V(MathCbrt)                                     \
     V(MathTanh)                                     \
@@ -162,10 +162,21 @@ namespace panda::ecmascript::kungfu {
     V(MathLog1p)                                    \
     V(MathExp)                                      \
     V(MathExpm1)                                    \
+    V(MathClz32)                                    \
     V(MathPow)                                      \
+    V(MathTrunc)                                    \
+    V(MathCeil)                                     \
+    V(MathFloor)                                    \
     V(MathAbs)                                      \
+    V(MathRound)                                    \
+    V(MathFRound)                                   \
+    V(MathMin)                                      \
+    V(MathMax)                                      \
+    V(MathImul)                                     \
+    V(GlobalIsFinite)                               \
+    V(GlobalIsNan)                                  \
     V(TYPED_BUILTINS_INLINE_FIRST = MathAcos)       \
-    V(TYPED_BUILTINS_INLINE_LAST = MathAbs)
+    V(TYPED_BUILTINS_INLINE_LAST = GlobalIsNan)
 
 class BuiltinsStubCSigns {
 public:
@@ -178,10 +189,8 @@ public:
         AOT_BUILTINS_INLINE_LIST(DEF_STUB_ID)
 #undef DEF_STUB_ID
         BUILTINS_CONSTRUCTOR_STUB_FIRST = BooleanConstructor,
-        TYPED_BUILTINS_FIRST = SQRT,
+        TYPED_BUILTINS_FIRST = STRINGIFY,
         TYPED_BUILTINS_LAST = ITERATOR_PROTO_RETURN,
-        TYPED_BUILTINS_MATH_FIRST = SQRT,
-        TYPED_BUILTINS_MATH_LAST = FLOOR,
         INVALID = 0xFF,
     };
     static_assert(ID::NONE == 0);
@@ -241,12 +250,6 @@ public:
         return false;
     }
 
-    static bool IsTypedBuiltinMath(ID builtinId)
-    {
-        return (BuiltinsStubCSigns::ID::TYPED_BUILTINS_MATH_FIRST <= builtinId) &&
-               (builtinId <= BuiltinsStubCSigns::ID::TYPED_BUILTINS_MATH_LAST);
-    }
-
     static bool IsTypedBuiltinNumber(ID builtinId)
     {
         return BuiltinsStubCSigns::ID::NumberConstructor == builtinId;
@@ -297,6 +300,8 @@ public:
                 return ConstantIndex::MATH_COS_INDEX;
             case BuiltinsStubCSigns::ID::MathCosh:
                 return ConstantIndex::MATH_COSH_INDEX;
+            case BuiltinsStubCSigns::ID::MathSign:
+                return ConstantIndex::MATH_SIGN_INDEX;
             case BuiltinsStubCSigns::ID::MathSin:
                 return ConstantIndex::MATH_SIN_INDEX;
             case BuiltinsStubCSigns::ID::MathSinh:
@@ -319,14 +324,30 @@ public:
                 return ConstantIndex::MATH_EXP_INDEX;
             case BuiltinsStubCSigns::ID::MathExpm1:
                 return ConstantIndex::MATH_EXPM1_INDEX;
+            case BuiltinsStubCSigns::ID::MathClz32:
+                return ConstantIndex::MATH_CLZ32_INDEX;
             case BuiltinsStubCSigns::ID::MathPow:
                 return ConstantIndex::MATH_POW_INDEX;
             case BuiltinsStubCSigns::ID::MathCbrt:
                 return ConstantIndex::MATH_CBRT_INDEX;
-            case BuiltinsStubCSigns::ID::FLOOR:
-                return ConstantIndex::MATH_FLOOR_FUNCTION_INDEX;
-            case BuiltinsStubCSigns::ID::SQRT:
-                return ConstantIndex::MATH_SQRT_FUNCTION_INDEX;
+            case BuiltinsStubCSigns::ID::MathTrunc:
+                return ConstantIndex::MATH_TRUNC_INDEX;
+            case BuiltinsStubCSigns::ID::MathCeil:
+                return ConstantIndex::MATH_CEIL_INDEX;
+            case BuiltinsStubCSigns::ID::MathFloor:
+                return ConstantIndex::MATH_FLOOR_INDEX;
+            case BuiltinsStubCSigns::ID::MathMin:
+                return ConstantIndex::MATH_MIN_INDEX;
+            case BuiltinsStubCSigns::ID::MathMax:
+                return ConstantIndex::MATH_MAX_INDEX;
+            case BuiltinsStubCSigns::ID::MathSqrt:
+                return ConstantIndex::MATH_SQRT_INDEX;
+            case BuiltinsStubCSigns::ID::MathRound:
+                return ConstantIndex::MATH_ROUND_INDEX;
+            case BuiltinsStubCSigns::ID::MathFRound:
+                return ConstantIndex::MATH_FROUND_INDEX;
+            case BuiltinsStubCSigns::ID::MathImul:
+                return ConstantIndex::MATH_IMUL_INDEX;
             case BuiltinsStubCSigns::ID::LocaleCompare:
                 return ConstantIndex::LOCALE_COMPARE_FUNCTION_INDEX;
             case BuiltinsStubCSigns::ID::SORT:
@@ -345,6 +366,10 @@ public:
                 return ConstantIndex::ITERATOR_PROTO_RETURN_INDEX;
             case BuiltinsStubCSigns::ID::StringFromCharCode:
                 return ConstantIndex::STRING_FROM_CHAR_CODE_INDEX;
+            case BuiltinsStubCSigns::ID::GlobalIsFinite:
+                return ConstantIndex::GLOBAL_IS_FINITE_INDEX;
+            case BuiltinsStubCSigns::ID::GlobalIsNan:
+                return ConstantIndex::GLOBAL_IS_NAN_INDEX;
             default:
                 LOG_COMPILER(FATAL) << "this branch is unreachable";
                 UNREACHABLE();
@@ -365,6 +390,7 @@ public:
             {"Atanh", MathAtanh},
             {"Cos", MathCos},
             {"Cosh", MathCosh},
+            {"Sign", MathSign},
             {"Sin", MathSin},
             {"Sinh", MathSinh},
             {"Tan", MathTan},
@@ -375,15 +401,23 @@ public:
             {"Log1p", MathLog1p},
             {"Exp", MathExp},
             {"Expm1", MathExpm1},
-            {"sqrt", SQRT},
+            {"Clz32", MathClz32},
+            {"Sqrt", MathSqrt},
             {"cbrt", MathCbrt},
             {"abs", MathAbs},
             {"pow", MathPow},
-            {"floor", FLOOR},
+            {"trunc", MathTrunc},
+            {"round", MathRound},
+            {"fround", MathFRound},
+            {"ceil", MathCeil},
+            {"floor", MathFloor},
+            {"imul", MathImul},
             {"localeCompare", LocaleCompare},
             {"next", STRING_ITERATOR_PROTO_NEXT},
             {"sort", SORT},
             {"stringify", STRINGIFY},
+            {"isFinite", GlobalIsFinite},
+            {"isNan", GlobalIsNan},
         };
         if (str2BuiltinId.count(idStr) > 0) {
             return str2BuiltinId.at(idStr);
@@ -415,7 +449,6 @@ enum class BuiltinsArgs : size_t {
 #define PGO_BUILTINS_STUB_ID(name) ((-1) * kungfu::BuiltinsStubCSigns::name)
 #define IS_TYPED_BUILTINS_ID(id) kungfu::BuiltinsStubCSigns::IsTypedBuiltin(id)
 #define IS_TYPED_INLINE_BUILTINS_ID(id) kungfu::BuiltinsStubCSigns::IsTypedInlineBuiltin(id)
-#define IS_TYPED_BUILTINS_MATH_ID(id) kungfu::BuiltinsStubCSigns::IsTypedBuiltinMath(id)
 #define IS_TYPED_BUILTINS_NUMBER_ID(id) kungfu::BuiltinsStubCSigns::IsTypedBuiltinNumber(id)
 #define IS_TYPED_BUILTINS_ID_CALL_THIS0(id) kungfu::BuiltinsStubCSigns::IsTypedBuiltinCallThis0(id)
 #define IS_TYPED_BUILTINS_ID_CALL_THIS3(id) kungfu::BuiltinsStubCSigns::IsTypedBuiltinCallThis3(id)

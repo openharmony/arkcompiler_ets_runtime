@@ -18,6 +18,7 @@ host_aot_test_action("loop_hoist") {
   is_only_typed_path = true
   is_enable_builtins_dts = true
   is_enable_pgo = true
+  is_enable_opt_inlining = true
   is_enable_opt_loop_peeling = true
   is_enable_lowering_builtin = true
   is_enable_typed_op_profiler = true

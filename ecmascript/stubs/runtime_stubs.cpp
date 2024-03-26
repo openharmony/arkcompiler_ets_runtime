@@ -14,6 +14,7 @@
  */
 
 #include <cmath>
+#include <cfenv>
 #include <sstream>
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/log.h"
@@ -2879,12 +2880,6 @@ double RuntimeStubs::FloatMod(double x, double y)
     return std::fmod(x, y);
 }
 
-JSTaggedType RuntimeStubs::FloatSqrt(double x)
-{
-    double result = std::sqrt(x);
-    return JSTaggedValue(result).GetRawData();
-}
-
 double RuntimeStubs::FloatAcos(double x)
 {
     return std::acos(x);
@@ -2955,9 +2950,18 @@ double RuntimeStubs::FloatCbrt(double x)
     return std::cbrt(x);
 }
 
+double RuntimeStubs::FloatTrunc(double x)
+{
+    return std::trunc(x);
+}
+
+double RuntimeStubs::FloatCeil(double x)
+{
+    return std::ceil(x);
+}
+
 double RuntimeStubs::FloatFloor(double x)
 {
-    ASSERT(!std::isnan(x));
     return std::floor(x);
 }
 
@@ -2994,6 +2998,11 @@ double RuntimeStubs::FloatExpm1(double x)
 double RuntimeStubs::FloatPow(double base, double exp)
 {
     return std::pow(base, exp);
+}
+
+bool RuntimeStubs::NumberIsFinite(double x)
+{
+    return std::isfinite(x);
 }
 
 int32_t RuntimeStubs::DoubleToInt(double x, size_t bits)

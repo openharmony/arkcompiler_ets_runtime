@@ -1866,20 +1866,6 @@ DEF_CALL_SIGNATURE(InsertLocalToShareRSet)
     callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
 }
 
-DEF_CALL_SIGNATURE(FloatSqrt)
-{
-    // 1 : 1 input parameters
-    CallSignature index("FloatSqrt", 0, 1, ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
-    *callSign = index;
-    // 1 : 1 input parameters
-    std::array<VariableType, 1> params = {
-        VariableType::FLOAT64(),
-    };
-    callSign->SetParameters(params.data());
-    callSign->SetGCLeafFunction(true);
-    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
-}
-
 #define DEF_FLOAT_UNARY_CALL_SIGNATURE_BY_NAME(NAME)                                               \
     DEF_CALL_SIGNATURE(NAME)                                                                       \
     {                                                                                              \
@@ -1909,12 +1895,15 @@ DEF_FLOAT_UNARY_CALL_SIGNATURE_BY_NAME(FloatTan)
 DEF_FLOAT_UNARY_CALL_SIGNATURE_BY_NAME(FloatTanh)
 DEF_FLOAT_UNARY_CALL_SIGNATURE_BY_NAME(FloatExp)
 DEF_FLOAT_UNARY_CALL_SIGNATURE_BY_NAME(FloatExpm1)
+DEF_FLOAT_UNARY_CALL_SIGNATURE_BY_NAME(FloatTrunc)
 DEF_FLOAT_UNARY_CALL_SIGNATURE_BY_NAME(FloatFloor)
 DEF_FLOAT_UNARY_CALL_SIGNATURE_BY_NAME(FloatLog)
 DEF_FLOAT_UNARY_CALL_SIGNATURE_BY_NAME(FloatLog2)
 DEF_FLOAT_UNARY_CALL_SIGNATURE_BY_NAME(FloatLog10)
 DEF_FLOAT_UNARY_CALL_SIGNATURE_BY_NAME(FloatLog1p)
 DEF_FLOAT_UNARY_CALL_SIGNATURE_BY_NAME(FloatCbrt)
+DEF_FLOAT_UNARY_CALL_SIGNATURE_BY_NAME(FloatClz32)
+DEF_FLOAT_UNARY_CALL_SIGNATURE_BY_NAME(FloatCeil)
 
 #undef DEF_FLOAT_UNARY_CALL_SIGNATURE_BY_NAME
 
@@ -1951,6 +1940,20 @@ DEF_CALL_SIGNATURE(FindElementWithCache)
         VariableType::JS_ANY(),
         VariableType::JS_ANY(),
         VariableType::INT32(),
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetGCLeafFunction(true);
+    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
+}
+
+DEF_CALL_SIGNATURE(NumberIsFinite)
+{
+    // 1 : 1 input parameters
+    CallSignature index("NumberIsFinite", 0, 1, ArgumentsOrder::DEFAULT_ORDER, VariableType::BOOL());
+    *callSign = index;
+    // 1 : 1 input parameters
+    std::array<VariableType, 1> params = {
+        VariableType::FLOAT64(),
     };
     callSign->SetParameters(params.data());
     callSign->SetGCLeafFunction(true);

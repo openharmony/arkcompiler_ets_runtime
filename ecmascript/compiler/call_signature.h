@@ -441,7 +441,6 @@ private:
     V(DoubleToInt)                              \
     V(DoubleToLength)                           \
     V(FloatMod)                                 \
-    V(FloatSqrt)                                \
     V(FloatAcos)                                \
     V(FloatAcosh)                               \
     V(FloatAsin)                                \
@@ -455,6 +454,7 @@ private:
     V(FloatSinh)                                \
     V(FloatTan)                                 \
     V(FloatTanh)                                \
+    V(FloatTrunc)                               \
     V(FloatLog)                                 \
     V(FloatLog2)                                \
     V(FloatLog10)                               \
@@ -462,8 +462,11 @@ private:
     V(FloatExp)                                 \
     V(FloatExpm1)                               \
     V(FloatCbrt)                                \
+    V(FloatClz32)                               \
     V(FloatFloor)                               \
     V(FloatPow)                                 \
+    V(FloatCeil)                                \
+    V(NumberIsFinite)                           \
     V(FindElementWithCache)                     \
     V(MarkingBarrier)                           \
     V(StoreBarrier)                             \
