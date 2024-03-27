@@ -552,6 +552,7 @@ ecma_source = [
   "ecmascript/base/array_helper.cpp",
   "ecmascript/base/atomic_helper.cpp",
   "ecmascript/base/builtins_base.cpp",
+  "ecmascript/base/dtoa_helper.cpp",
   "ecmascript/base/error_helper.cpp",
   "ecmascript/base/fast_json_stringifier.cpp",
   "ecmascript/base/json_helper.cpp",
