@@ -158,7 +158,8 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(LocaleCompareNoGc)                       \
     V(StringGetStart)                          \
     V(StringGetEnd)                            \
-    V(ArrayTrim)
+    V(ArrayTrim)                               \
+    V(ClearJitCompiledCodeFlags)
 
 #define RUNTIME_STUB_WITH_GC_LIST(V)      \
     V(AddElementInternal)                 \
@@ -528,6 +529,8 @@ public:
 
     static int32_t StringGetStart(bool isUtf8, EcmaString *srcString, int32_t length, int32_t startIndex);
     static int32_t StringGetEnd(bool isUtf8, EcmaString *srcString, int32_t start, int32_t length, int32_t startIndex);
+    static void ClearJitCompiledCodeFlags(Method *method);
+
 private:
     static void DumpToStreamWithHint(std::ostream &out, std::string_view prompt, JSTaggedValue value);
     static void PrintHeapReginInfo(uintptr_t argGlue);

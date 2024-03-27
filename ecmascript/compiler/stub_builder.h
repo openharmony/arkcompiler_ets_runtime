@@ -782,6 +782,8 @@ public:
     GateRef GetIhcFromAOTLiteralInfo(GateRef info);
     GateRef IsAotWithCallField(GateRef method);
     GateRef IsFastCall(GateRef method);
+    GateRef IsJitCompiledCode(GateRef method);
+    void ClearJitCompiledCodeFlags(GateRef glue, GateRef method);
     GateRef JudgeAotAndFastCall(GateRef jsFunc, CircuitBuilder::JudgeMethodType type);
     GateRef JudgeAotAndFastCallWithMethod(GateRef method, CircuitBuilder::JudgeMethodType type);
     GateRef GetInternalString(GateRef glue, GateRef key);

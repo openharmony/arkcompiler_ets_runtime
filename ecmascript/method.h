@@ -389,6 +389,13 @@ public:
 
     void SetCompiledFuncEntry(uintptr_t codeEntry, bool isFastCall);
 
+    // jit code
+    bool IsJitCompiledCode() const;
+    void SetJitCompiledCode(bool flag);
+    void ClearJitCompiledCodeFlags();
+
+    bool CanSerializeCodeEntry() const;
+
     static constexpr size_t Size()
     {
         return sizeof(Method);
@@ -429,6 +436,7 @@ public:
     using DeoptCountBits = FunctionKindBits::NextField<uint8_t, DEOPT_THRESHOLD_BITS>; // offset 12-19
     using DeoptTypeBits = DeoptCountBits::NextField<kungfu::DeoptType, DEOPTTYPE_NUM_BITS>; // offset 20-27
     using IsCallNapiBit = DeoptTypeBits::NextFlag; // offset 28
+    using IsJitCompiledCodeBit = IsCallNapiBit::NextFlag; // offset 29
 
     static constexpr size_t CONSTANT_POOL_OFFSET = TaggedObjectSize();
     ACCESSORS(ConstantPool, CONSTANT_POOL_OFFSET, CALL_FIELD_OFFSET)

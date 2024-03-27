@@ -642,9 +642,19 @@ GateRef NewObjectStubBuilder::NewJSFunction(GateRef glue, GateRef constpool, Gat
 
     Label isAotWithCallField(env);
     Label afterAotWithCallField(env);
+    Label isJitCompiledCode(env);
+    Label afterJitCompiledCode(env);
     BRANCH(IsAotWithCallField(method), &isAotWithCallField, &afterAotWithCallField);
     {
         Bind(&isAotWithCallField);
+        BRANCH(IsJitCompiledCode(method), &isJitCompiledCode, &afterJitCompiledCode);
+        {
+            Bind(&isJitCompiledCode);
+            ClearJitCompiledCodeFlags(glue, method);
+            Jump(&afterAotWithCallField);
+        }
+        Bind(&afterJitCompiledCode);
+
         SetCodeEntryToFunction(glue, *result, method);
         Jump(&afterAotWithCallField);
     }

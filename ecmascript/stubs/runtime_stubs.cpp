@@ -3539,6 +3539,12 @@ void RuntimeStubs::ArrayTrim(uintptr_t argGlue, TaggedArray *array, int64_t newL
     array->Trim(thread, length);
 }
 
+void RuntimeStubs::ClearJitCompiledCodeFlags(Method *method)
+{
+    DISALLOW_GARBAGE_COLLECTION;
+    method->ClearJitCompiledCodeFlags();
+}
+
 DEF_RUNTIME_STUBS(ArrayForEachContinue)
 {
     RUNTIME_STUBS_HEADER(ArrayForEachContinue);
