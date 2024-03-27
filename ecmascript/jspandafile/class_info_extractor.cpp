@@ -638,10 +638,10 @@ bool ClassHelper::MatchFieldType(SharedFieldType fieldType, JSTaggedValue value)
     } else if ((sharedFieldType & static_cast<uint32_t>(SharedFieldType::SENDABLE)) != 0 &&
         (value.IsJSShared() || value.IsNull())) {
         return true;
-    } else if (sharedFieldType == static_cast<uint32_t>(SharedFieldType::NONE)) {
-        return true;
-    } else if ((sharedFieldType & static_cast<uint32_t>(SharedFieldType::GENERIC)) != 0 &&
+    } else if ((sharedFieldType == static_cast<uint32_t>(SharedFieldType::NONE) ||
+        (sharedFieldType & static_cast<uint32_t>(SharedFieldType::GENERIC)) != 0) &&
         (value.IsJSShared() || !value.IsHeapObject())) {
+        // (none || generic) && (jsShared || !heapObject)
         return true;
     } else if ((sharedFieldType & static_cast<uint32_t>(SharedFieldType::NULL_TYPE)) != 0 && value.IsNull()) {
         return true;
