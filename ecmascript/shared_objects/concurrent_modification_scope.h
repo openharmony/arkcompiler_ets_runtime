@@ -71,8 +71,8 @@ private:
         uint32_t ret = Barriers::AtomicSetPrimitive(const_cast<TaggedObject *>(obj_), Container::MOD_RECORD_OFFSET,
             expectedModRecord, desiredModRecord);
         if (ret != expectedModRecord) {
-            auto error = containers::ContainerError::BusinessError(thread_, containers::ErrorFlag::TYPE_ERROR,
-                                                                   "Concurrent modification exception");
+            auto error = containers::ContainerError::BusinessError(
+                thread_, containers::ErrorFlag::CONCURRENT_MODIFICATION_ERROR, "Concurrent modification exception");
             THROW_NEW_ERROR_AND_RETURN(thread_, error);
         }
     }
@@ -84,8 +84,8 @@ private:
         uint32_t ret = Barriers::AtomicSetPrimitive(const_cast<TaggedObject *>(obj_), Container::MOD_RECORD_OFFSET,
             expectedModRecord, desiredModRecord);
         if (ret != expectedModRecord) {
-            auto error = containers::ContainerError::BusinessError(thread_, containers::ErrorFlag::TYPE_ERROR,
-                                                                   "Concurrent modification exception");
+            auto error = containers::ContainerError::BusinessError(
+                thread_, containers::ErrorFlag::CONCURRENT_MODIFICATION_ERROR, "Concurrent modification exception");
             THROW_NEW_ERROR_AND_RETURN(thread_, error);
         }
     }
@@ -96,8 +96,8 @@ private:
             // Expect no writers
             expectModRecord_ = GetModRecord();
             if ((expectModRecord_ & WRITE_MOD_MASK)) {
-                auto error = containers::ContainerError::BusinessError(thread_, containers::ErrorFlag::TYPE_ERROR,
-                                                                       "Concurrent modification exception");
+                auto error = containers::ContainerError::BusinessError(
+                    thread_, containers::ErrorFlag::CONCURRENT_MODIFICATION_ERROR, "Concurrent modification exception");
                 THROW_NEW_ERROR_AND_RETURN(thread_, error);
             }
             // Increase readers by 1
@@ -122,8 +122,8 @@ private:
             expectModRecord_ = GetModRecord();
             if ((expectModRecord_ & WRITE_MOD_MASK) ||
                  expectModRecord_ == 0) {
-                auto error = containers::ContainerError::BusinessError(thread_, containers::ErrorFlag::TYPE_ERROR,
-                                                                       "Concurrent modification exception");
+                auto error = containers::ContainerError::BusinessError(
+                    thread_, containers::ErrorFlag::CONCURRENT_MODIFICATION_ERROR, "Concurrent modification exception");
                 THROW_NEW_ERROR_AND_RETURN(thread_, error);
             }
             // Decrease readers by 1
