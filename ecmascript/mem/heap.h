@@ -33,6 +33,7 @@ class ConcurrentSweeper;
 class EcmaVM;
 class FullGC;
 class GCStats;
+class GCKeyStats;
 class HeapRegionAllocator;
 class HeapTracker;
 #if !WIN_OR_MAC_OR_IOS_PLATFORM
@@ -764,6 +765,8 @@ public:
     void ChangeGCParams(bool inBackground) override;
 
     GCStats *GetEcmaGCStats() override;
+
+    GCKeyStats *GetEcmaGCKeyStats();
     
     JSObjectResizingStrategy *GetJSObjectResizingStrategy();
 

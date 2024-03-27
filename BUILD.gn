@@ -281,6 +281,9 @@ config("hiviewdfx_config") {
   if (enable_hilog) {
     defines += [ "ENABLE_HILOG" ]
   }
+  if (enable_hisysevent) {
+    defines += [ "ENABLE_HISYSEVENT" ]
+  }
 
   include_dirs = [ "$hilog_root/include" ]
 }
@@ -774,6 +777,7 @@ ecma_source = [
   "ecmascript/mem/free_object_list.cpp",
   "ecmascript/mem/free_object_set.cpp",
   "ecmascript/mem/gc_stats.cpp",
+  "ecmascript/mem/gc_key_stats.cpp",
   "ecmascript/mem/heap.cpp",
   "ecmascript/mem/heap_region_allocator.cpp",
   "ecmascript/mem/incremental_marker.cpp",

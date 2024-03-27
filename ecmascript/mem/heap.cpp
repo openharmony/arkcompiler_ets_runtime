@@ -44,6 +44,7 @@
 #include "ecmascript/mem/verification.h"
 #include "ecmascript/mem/work_manager.h"
 #include "ecmascript/mem/gc_stats.h"
+#include "ecmascript/mem/gc_key_stats.h"
 #include "ecmascript/runtime_call_id.h"
 #include "ecmascript/runtime_lock.h"
 #if !WIN_OR_MAC_OR_IOS_PLATFORM
@@ -700,6 +701,12 @@ void Heap::CollectGarbage(TriggerGCType gcType, GCReason reason)
         }
         // GC log
         GetEcmaGCStats()->RecordStatisticAfterGC();
+#ifdef ENABLE_HISYSEVENT
+        GetEcmaGCKeyStats()->IncGCCount();
+        if (GetEcmaGCKeyStats()->CheckIfMainThread() && GetEcmaGCKeyStats()->CheckIfKeyPauseTime()) {
+            GetEcmaGCKeyStats()->AddGCStatsToKey();
+        }
+#endif
         GetEcmaGCStats()->PrintGCStatistic();
     }
 
@@ -1449,6 +1456,11 @@ void Heap::ChangeGCParams(bool inBackground)
 GCStats *Heap::GetEcmaGCStats()
 {
     return ecmaVm_->GetEcmaGCStats();
+}
+
+GCKeyStats *Heap::GetEcmaGCKeyStats()
+{
+    return ecmaVm_->GetEcmaGCKeyStats();
 }
 
 JSObjectResizingStrategy *Heap::GetJSObjectResizingStrategy()
