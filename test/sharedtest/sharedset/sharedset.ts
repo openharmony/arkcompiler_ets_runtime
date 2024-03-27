@@ -186,7 +186,7 @@ try {
     set.add(key + 5);
   });
 } catch (e) {
-  print("Add Scenario[forEach]: " + e);
+  print("Add Scenario[forEach]: " + e + ", errCode: " + e.code);
 }
 try {
   sharedSet.forEach((key: number, _: number, set: SharedSet) => {
@@ -195,14 +195,14 @@ try {
     }
   });
 } catch (e) {
-  print("Delete Scenario[forEach]: " + e);
+  print("Delete Scenario[forEach]: " + e + ", errCode: " + e.code);
 }
 try {
   sharedSet.forEach((key: number, _: number, set: SharedSet) => {
     set.clear();
   });
 } catch (e) {
-  print("Clear Scenario[forEach]: " + e);
+  print("Clear Scenario[forEach]: " + e + ", errCode: " + e.code);
 }
 print("===Concurrent modification during iteration Test(forEach) end===");
 

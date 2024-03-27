@@ -228,7 +228,7 @@ function unshift() {
 
 function slice() {
     print("Start Test slice")
-    const animals = SharedArray<string>('ant', 'bison', 'camel', 'duck', 'elephant');
+    const animals = new SharedArray<string>('ant', 'bison', 'camel', 'duck', 'elephant');
     print(animals.slice());
     print(animals.slice(2));
     print(animals.slice(2, 4));
@@ -247,7 +247,7 @@ function sort() {
 
 function indexOf() {
     print("Start Test indexOf")
-    const beasts = SharedArray<string>('ant', 'bison', 'camel', 'duck', 'bison');
+    const beasts = new SharedArray<string>('ant', 'bison', 'camel', 'duck', 'bison');
     print(beasts.indexOf('bison')); // Expected: 1
     print(beasts.indexOf('bison', 2)) // Expected: 4
     print(beasts.indexOf('giraffe')) // Expected： -1
