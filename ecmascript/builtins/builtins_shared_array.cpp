@@ -49,6 +49,7 @@
 namespace panda::ecmascript::builtins {
 using ArrayHelper = base::ArrayHelper;
 using TypedArrayHelper = base::TypedArrayHelper;
+using ContainerError = containers::ContainerError;
 
 // 22.1.1
 JSTaggedValue BuiltinsSharedArray::ArrayConstructor(EcmaRuntimeCallInfo *argv)
@@ -813,8 +814,7 @@ JSTaggedValue BuiltinsSharedArray::FindIndex(EcmaRuntimeCallInfo *argv)
     // 1. Let O be ToObject(this value).
     JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
     if (!thisHandle->IsSharedType()) {
-        auto error = containers::ContainerError::BusinessError(
-            thread, containers::ErrorFlag::BIND_ERROR, "The findIndex method cannot be bound with non-sendable");
+        auto error = ContainerError::BindError(thread, "The findIndex method cannot be bound with non-sendable");
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
     JSHandle<JSObject> thisObjHandle = JSTaggedValue::ToObject(thread, thisHandle);
@@ -1446,8 +1446,7 @@ JSTaggedValue BuiltinsSharedArray::Reduce(EcmaRuntimeCallInfo *argv)
     // 1. Let O be ToObject(this value).
     JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
     if (!thisHandle->IsSharedType()) {
-        auto error = containers::ContainerError::BusinessError(thread, containers::ErrorFlag::BIND_ERROR,
-                                                               "The reduce method cannot be bound with non-sendable");
+        auto error = ContainerError::BindError(thread, "The reduce method cannot be bound with non-sendable");
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
     JSHandle<JSObject> thisObjHandle = JSTaggedValue::ToObject(thread, thisHandle);
