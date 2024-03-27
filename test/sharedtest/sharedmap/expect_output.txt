@@ -79,9 +79,9 @@ map key[forEach]: 1
 map key[forEach]: 2
 map key[forEach]: 3
 map key[forEach]: 4
-Set Scenario[forEach]: TypeError: Concurrent modification exception
-Delete Scenario[forEach]: TypeError: Concurrent modification exception
-Clear Scenario[forEach]: TypeError: Concurrent modification exception
+Set Scenario[forEach]: BusinessError: Concurrent modification exception, errCode: 10200201
+Delete Scenario[forEach]: BusinessError: Concurrent modification exception, errCode: 10200201
+Clear Scenario[forEach]: BusinessError: Concurrent modification exception, errCode: 10200201
 ===Concurrent modification during iteration Test(forEach) end===
 ===Type check begin===
 sharedMap set[shared] element

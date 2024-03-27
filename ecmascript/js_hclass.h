@@ -346,14 +346,6 @@ enum class EnumCacheKind : uint8_t {
 
 }  // namespace EnumCache
 
-namespace JSShared {
-// check mode for js shared
-enum SCheckMode: uint8_t {
-    SKIP = 0,
-    CHECK
-};
-} // namespace JSShared
-
 class JSHClass : public TaggedObject {
 public:
     static constexpr int TYPE_BITFIELD_NUM = 8;

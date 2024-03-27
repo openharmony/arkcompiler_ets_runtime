@@ -22,6 +22,7 @@
 #include "ecmascript/builtins/builtins_shared_object.h"
 #include "ecmascript/builtins/builtins_shared_map.h"
 #include "ecmascript/builtins/builtins_shared_set.h"
+#include "ecmascript/shared_objects/js_shared_array.h"
 #include "ecmascript/shared_objects/js_shared_map.h"
 #include "ecmascript/shared_objects/js_shared_object.h"
 #include "ecmascript/shared_objects/js_shared_set.h"
@@ -29,7 +30,6 @@
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/symbol_table.h"
 #include "ecmascript/builtins/builtins_shared_array.h"
-#include "ecmascript/js_shared_array.h"
 
 namespace panda::ecmascript {
 using BuiltinsSharedObject = builtins::BuiltinsSharedObject;

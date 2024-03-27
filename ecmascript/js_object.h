@@ -533,7 +533,8 @@ public:
                             const JSHandle<JSTaggedValue> &value, bool mayThrow = false);
 
     static bool SetProperty(JSThread *thread, const JSHandle<JSTaggedValue> &obj, const JSHandle<JSTaggedValue> &key,
-                            const JSHandle<JSTaggedValue> &value, bool mayThrow = false);
+                            const JSHandle<JSTaggedValue> &value, bool mayThrow = false,
+                            SCheckMode checkMode = SCheckMode::CHECK);
 
     static bool SetProperty(JSThread *thread, const JSHandle<JSTaggedValue> &obj, const JSHandle<JSTaggedValue> &key,
                             const JSHandle<JSTaggedValue> &value, const JSHandle<JSTaggedValue> &receiver,
@@ -759,7 +760,8 @@ private:
         PropertyAttributes attr = PropertyAttributes(PropertyAttributes::GetDefaultAttributes()));
 
     static JSTaggedValue GetProperty(JSThread *thread, ObjectOperator *op);
-    static bool SetProperty(ObjectOperator *op, const JSHandle<JSTaggedValue> &value, bool mayThrow);
+    static bool SetProperty(ObjectOperator *op, const JSHandle<JSTaggedValue> &value, bool mayThrow,
+                            SCheckMode checkMode = SCheckMode::CHECK);
     static void DeletePropertyInternal(JSThread *thread, const JSHandle<JSObject> &obj,
                                        const JSHandle<JSTaggedValue> &key, uint32_t index);
     int FindProperty(const JSHandle<JSTaggedValue> &key);
@@ -784,7 +786,8 @@ private:
     static bool ValidateDataDescriptorWhenConfigurable(ObjectOperator *op, const PropertyDescriptor &desc,
                                                        const PropertyDescriptor &current, SCheckMode sCheckMode);
     static bool SetPropertyForDataDescriptor(ObjectOperator *op, const JSHandle<JSTaggedValue> &value,
-                                             JSHandle<JSTaggedValue> &receiver, bool mayThrow, bool isInternalAccessor);
+                                             JSHandle<JSTaggedValue> &receiver, bool mayThrow, bool isInternalAccessor,
+                                             SCheckMode checkMode = SCheckMode::CHECK);
     static bool SetPropertyForDataDescriptorProxy(JSThread *thread, ObjectOperator *op,
                                                   const JSHandle<JSTaggedValue> &value,
                                                   JSHandle<JSTaggedValue> &receiver);

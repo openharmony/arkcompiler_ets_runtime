@@ -20,9 +20,9 @@
 
 #include "ecmascript/base/config.h"
 #include "ecmascript/global_env.h"
-#include "ecmascript/js_shared_array.h"
 #include "ecmascript/pgo_profiler/pgo_profiler.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_layout.h"
+#include "ecmascript/shared_objects/js_shared_array.h"
 #include "ecmascript/tagged_array.h"
 #include "ecmascript/vtable.h"
 #include "ecmascript/ic/proto_change_details.h"

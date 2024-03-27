@@ -17,6 +17,7 @@
 #define ECMASCRIPT_OBJECT_OPERATOR_H
 
 #include "ecmascript/js_handle.h"
+#include "ecmascript/js_object.h"
 #include "ecmascript/property_attributes.h"
 
 #include "ecmascript/ecma_string.h"
@@ -25,6 +26,7 @@
 namespace panda::ecmascript {
 class PropertyDescriptor;
 class JSObject;
+using SCheckMode = JSShared::SCheckMode;
 
 enum class OperatorType : uint8_t {
     PROTOTYPE_CHAIN,
@@ -288,7 +290,7 @@ public:
         SetFound(NOT_FOUND_INDEX, JSTaggedValue::Undefined(), PropertyAttributes::GetDefaultAttributes(), false, false);
     }
     bool UpdateDataValue(const JSHandle<JSObject> &receiver, const JSHandle<JSTaggedValue> &value,
-                         bool isInternalAccessor, bool mayThrow = false);
+                         bool isInternalAccessor, bool mayThrow = false, SCheckMode checkMode = SCheckMode::CHECK);
     bool WriteDataPropertyInHolder(const PropertyDescriptor &desc)
     {
         JSHandle<JSObject> receiver(holder_);

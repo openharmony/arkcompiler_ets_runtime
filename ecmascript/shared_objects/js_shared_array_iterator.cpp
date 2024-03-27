@@ -13,16 +13,17 @@
  * limitations under the License.
  */
 
-#include "ecmascript/js_shared_array_iterator.h"
+#include "ecmascript/shared_objects/js_shared_array_iterator.h"
 
 #include "ecmascript/base/typed_array_helper-inl.h"
 #include "ecmascript/base/typed_array_helper.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_array.h"
 #include "ecmascript/js_handle.h"
-#include "ecmascript/js_shared_array.h"
 #include "ecmascript/js_hclass.h"
 #include "ecmascript/object_factory.h"
+#include "ecmascript/shared_objects/concurrent_modification_scope.h"
+#include "ecmascript/shared_objects/js_shared_array.h"
 
 namespace panda::ecmascript {
 using BuiltinsBase = base::BuiltinsBase;
@@ -48,13 +49,13 @@ JSTaggedValue JSSharedArrayIterator::NextInternal(JSThread *thread, JSHandle<JST
     JSHandle<JSSharedArrayIterator> iter(thisObj);
     // 4.Let a be O.[[IteratedArrayLike]].
     JSHandle<JSTaggedValue> array(thread, iter->GetIteratedArray());
+    JSHandle<JSSharedArray> iteratedArray(thread, iter->GetIteratedArray());
+    [[maybe_unused]] ConcurrentModScope<JSSharedArray> scope(thread, *iteratedArray);
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception());
     JSHandle<JSTaggedValue> undefinedHandle(thread, JSTaggedValue::Undefined());
     // 5.If a is undefined, return CreateIterResultObject(undefined, true).
     if (array->IsUndefined()) {
         return JSIterator::CreateIterResultObject(thread, undefinedHandle, true).GetTaggedValue();
-    }
-    if (iter->GetExpectedModCount() != JSHandle<JSSharedArray>::Cast(array)->GetModCount()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "Concurrent modification during iteration", JSTaggedValue::Exception());
     }
     // 6.Let index be O.[[ArrayLikeNextIndex]].
     uint32_t index = iter->GetNextIndex();

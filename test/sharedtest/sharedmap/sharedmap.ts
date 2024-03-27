@@ -180,7 +180,7 @@ try {
     map.set(key + 5, "value" + key + 5);
   });
 } catch (e) {
-  print("Set Scenario[forEach]: " + e);
+  print("Set Scenario[forEach]: " + e + ", errCode: " + e.code);
 }
 try {
   sharedMap.forEach((_: string, key: number, map: SharedMap) => {
@@ -189,14 +189,14 @@ try {
     }
   });
 } catch (e) {
-  print("Delete Scenario[forEach]: " + e);
+  print("Delete Scenario[forEach]: " + e + ", errCode: " + e.code);
 }
 try {
   sharedMap.forEach((_: string, key: number, map: SharedMap) => {
     map.clear();
   });
 } catch (e) {
-  print("Clear Scenario[forEach]: " + e);
+  print("Clear Scenario[forEach]: " + e + ", errCode: " + e.code);
 }
 print("===Concurrent modification during iteration Test(forEach) end===");
 

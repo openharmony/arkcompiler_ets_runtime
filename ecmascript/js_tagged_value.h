@@ -36,6 +36,16 @@ class EcmaString;
 class JSThread;
 struct Reference;
 
+namespace JSShared {
+// check mode for js shared
+enum SCheckMode: uint8_t {
+    SKIP = 0,
+    CHECK
+};
+} // namespace JSShared
+
+using SCheckMode = JSShared::SCheckMode;
+
 static constexpr double SAFE_NUMBER = 9007199254740991LL;
 
 // Don't switch the order!
@@ -416,8 +426,8 @@ public:
                             const JSHandle<JSTaggedValue> &value, bool mayThrow = false);
 
     static bool PUBLIC_API SetProperty(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
-                                       const JSHandle<JSTaggedValue> &key,
-                                       const JSHandle<JSTaggedValue> &value, bool mayThrow = false);
+                                       const JSHandle<JSTaggedValue> &key, const JSHandle<JSTaggedValue> &value,
+                                       bool mayThrow = false, SCheckMode checkMode = SCheckMode::CHECK);
 
     static bool SetProperty(JSThread *thread, const JSHandle<JSTaggedValue> &obj, const JSHandle<JSTaggedValue> &key,
                             const JSHandle<JSTaggedValue> &value, const JSHandle<JSTaggedValue> &receiver,

@@ -74,9 +74,9 @@ set key[forEach]: 1
 set key[forEach]: 2
 set key[forEach]: 3
 set key[forEach]: 4
-Add Scenario[forEach]: TypeError: Concurrent modification exception
-Delete Scenario[forEach]: TypeError: Concurrent modification exception
-Clear Scenario[forEach]: TypeError: Concurrent modification exception
+Add Scenario[forEach]: BusinessError: Concurrent modification exception, errCode: 10200201
+Delete Scenario[forEach]: BusinessError: Concurrent modification exception, errCode: 10200201
+Clear Scenario[forEach]: BusinessError: Concurrent modification exception, errCode: 10200201
 ===Concurrent modification during iteration Test(forEach) end===
 ===Type check begin===
 SharedSet add[shared] element

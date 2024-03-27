@@ -19,6 +19,7 @@
 #include "ecmascript/ecma_macros.h"
 #include "ecmascript/js_hclass.h"
 #include "ecmascript/js_native_pointer.h"
+#include "ecmascript/js_object.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/mem/slots.h"
 #include "ecmascript/mem/visitor.h"
@@ -29,6 +30,8 @@ class AccessorData final : public Record {
 public:
     using InternalGetFunc = JSTaggedValue (*)(JSThread *, const JSHandle<JSObject> &);
     using InternalSetFunc = bool (*)(JSThread *, const JSHandle<JSObject> &, const JSHandle<JSTaggedValue> &, bool);
+    using InternalSetFuncWithSCheck = bool (*)(JSThread *, const JSHandle<JSObject> &, const JSHandle<JSTaggedValue> &,
+                                               bool, SCheckMode);
 
     static AccessorData *Cast(TaggedObject *object)
     {
@@ -55,10 +58,14 @@ public:
     }
 
     bool CallInternalSet(JSThread *thread, const JSHandle<JSObject> &obj, const JSHandle<JSTaggedValue> &value,
-                         bool mayThrow = false) const
+                         bool mayThrow = false, SCheckMode mode = SCheckMode::CHECK) const
     {
         ASSERT(GetSetter().IsJSNativePointer());
         JSNativePointer *setter = JSNativePointer::Cast(GetSetter().GetTaggedObject());
+        if (obj->IsJSSArray()) {
+            auto setFunc = reinterpret_cast<InternalSetFuncWithSCheck>(setter->GetExternalPointer());
+            return setFunc(thread, obj, value, mayThrow, mode);
+        }
         auto setFunc = reinterpret_cast<InternalSetFunc>(setter->GetExternalPointer());
         return setFunc(thread, obj, value, mayThrow);
     }

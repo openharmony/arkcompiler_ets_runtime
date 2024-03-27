@@ -16,7 +16,10 @@
 #ifndef ECMASCRIPT_SHARED_OBJECTS_CONCURRENT_MODIFICATION_SCOPE_H
 #define ECMASCRIPT_SHARED_OBJECTS_CONCURRENT_MODIFICATION_SCOPE_H
 
+#include "ecmascript/js_object.h"
 #include "ecmascript/shared_objects/js_shared_set.h"
+
+#include "ecmascript/containers/containers_errors.h"
 
 namespace panda::ecmascript {
 enum class ModType : uint8_t {
@@ -26,9 +29,12 @@ enum class ModType : uint8_t {
 template<typename Container, ModType modType = ModType::READ>
 class ConcurrentModScope final {
 public:
-    ConcurrentModScope(JSThread *thread, const TaggedObject *obj)
-        : thread_(thread), obj_(obj)
+    ConcurrentModScope(JSThread *thread, const TaggedObject *obj, SCheckMode mode = SCheckMode::CHECK)
+        : thread_(thread), obj_(obj), checkMode_(mode)
     {
+        if (checkMode_ == SCheckMode::SKIP) {
+            return;
+        }
         if constexpr (modType == ModType::READ) {
             CanRead();
         } else {
@@ -38,6 +44,9 @@ public:
 
     ~ConcurrentModScope()
     {
+        if (checkMode_ == SCheckMode::SKIP) {
+            return;
+        }
         if constexpr (modType == ModType::READ) {
             ReadDone();
         } else {
@@ -51,7 +60,7 @@ private:
     inline uint32_t GetModRecord()
     {
         return reinterpret_cast<volatile std::atomic<uint32_t> *>(
-            ToUintPtr(obj_) + Container::MOD_RECORD_OFFET)->load(std::memory_order_acquire);
+            ToUintPtr(obj_) + Container::MOD_RECORD_OFFSET)->load(std::memory_order_acquire);
     }
 
     inline void CanWrite()
@@ -59,10 +68,12 @@ private:
         // Set to ModType::WRITE, expect no writer and readers
         constexpr uint32_t expectedModRecord = 0;
         constexpr uint32_t desiredModRecord = WRITE_MOD_MASK;
-        uint32_t ret = Barriers::AtomicSetPrimitive(const_cast<TaggedObject *>(obj_), Container::MOD_RECORD_OFFET,
+        uint32_t ret = Barriers::AtomicSetPrimitive(const_cast<TaggedObject *>(obj_), Container::MOD_RECORD_OFFSET,
             expectedModRecord, desiredModRecord);
         if (ret != expectedModRecord) {
-            THROW_TYPE_ERROR(thread_, "Concurrent modification exception");
+            auto error = containers::ContainerError::BusinessError(
+                thread_, containers::ErrorFlag::CONCURRENT_MODIFICATION_ERROR, "Concurrent modification exception");
+            THROW_NEW_ERROR_AND_RETURN(thread_, error);
         }
     }
 
@@ -70,10 +81,12 @@ private:
     {
         constexpr uint32_t expectedModRecord = WRITE_MOD_MASK;
         constexpr uint32_t desiredModRecord = 0u;
-        uint32_t ret = Barriers::AtomicSetPrimitive(const_cast<TaggedObject *>(obj_), Container::MOD_RECORD_OFFET,
+        uint32_t ret = Barriers::AtomicSetPrimitive(const_cast<TaggedObject *>(obj_), Container::MOD_RECORD_OFFSET,
             expectedModRecord, desiredModRecord);
         if (ret != expectedModRecord) {
-            THROW_TYPE_ERROR(thread_, "Concurrent modification exception");
+            auto error = containers::ContainerError::BusinessError(
+                thread_, containers::ErrorFlag::CONCURRENT_MODIFICATION_ERROR, "Concurrent modification exception");
+            THROW_NEW_ERROR_AND_RETURN(thread_, error);
         }
     }
 
@@ -83,11 +96,13 @@ private:
             // Expect no writers
             expectModRecord_ = GetModRecord();
             if ((expectModRecord_ & WRITE_MOD_MASK)) {
-                THROW_TYPE_ERROR(thread_, "Concurrent modification exception");
+                auto error = containers::ContainerError::BusinessError(
+                    thread_, containers::ErrorFlag::CONCURRENT_MODIFICATION_ERROR, "Concurrent modification exception");
+                THROW_NEW_ERROR_AND_RETURN(thread_, error);
             }
             // Increase readers by 1
             desiredModRecord_ = expectModRecord_ + 1;
-            auto ret = Barriers::AtomicSetPrimitive(const_cast<TaggedObject *>(obj_), Container::MOD_RECORD_OFFET,
+            auto ret = Barriers::AtomicSetPrimitive(const_cast<TaggedObject *>(obj_), Container::MOD_RECORD_OFFSET,
                 expectModRecord_, desiredModRecord_);
             if (ret == expectModRecord_) {
                 break;
@@ -99,7 +114,7 @@ private:
     {
         std::swap(expectModRecord_, desiredModRecord_);
         while (true) {
-            auto ret = Barriers::AtomicSetPrimitive(const_cast<TaggedObject *>(obj_), Container::MOD_RECORD_OFFET,
+            auto ret = Barriers::AtomicSetPrimitive(const_cast<TaggedObject *>(obj_), Container::MOD_RECORD_OFFSET,
                 expectModRecord_, desiredModRecord_);
             if (ret == expectModRecord_) {
                 break;
@@ -107,7 +122,9 @@ private:
             expectModRecord_ = GetModRecord();
             if ((expectModRecord_ & WRITE_MOD_MASK) ||
                  expectModRecord_ == 0) {
-                THROW_TYPE_ERROR(thread_, "Concurrent modification exception");
+                auto error = containers::ContainerError::BusinessError(
+                    thread_, containers::ErrorFlag::CONCURRENT_MODIFICATION_ERROR, "Concurrent modification exception");
+                THROW_NEW_ERROR_AND_RETURN(thread_, error);
             }
             // Decrease readers by 1
             desiredModRecord_ = expectModRecord_ - 1;
@@ -116,11 +133,13 @@ private:
 
     JSThread *thread_ {nullptr};
     const TaggedObject *obj_ {nullptr};
+    SCheckMode checkMode_ { SCheckMode::CHECK };
     // For readers
     uint32_t expectModRecord_ {0};
     uint32_t desiredModRecord_ {0};
 
-    static_assert(std::is_same_v<Container, JSSharedSet> || std::is_same_v<Container, JSSharedMap>);
+    static_assert(std::is_same_v<Container, JSSharedSet> || std::is_same_v<Container, JSSharedMap> ||
+                  std::is_same_v<Container, JSSharedArray>);
 };
 } // namespace panda::ecmascript
 #endif  // ECMASCRIPT_SHARED_OBJECTS_CONCURRENT_MODIFICATION_SCOPE_H
