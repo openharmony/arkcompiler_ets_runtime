@@ -26,7 +26,7 @@
 
 namespace panda::ecmascript::kungfu {
 using PGOProfilerManager = pgo::PGOProfilerManager;
-bool JitPassManager::Compile(JSHandle<JSFunction> &jsFunction, AOTFileGenerator &gen)
+bool JitPassManager::Compile(JSHandle<JSFunction> &jsFunction, AOTFileGenerator &gen, int32_t osrOffset)
 {
     [[maybe_unused]] EcmaHandleScope handleScope(vm_->GetJSThread());
     const JSPandaFile *jsPandaFile = Method::Cast(jsFunction->GetMethod().GetTaggedObject())->GetJSPandaFile();
@@ -52,7 +52,7 @@ bool JitPassManager::Compile(JSHandle<JSFunction> &jsFunction, AOTFileGenerator 
                                           log_->OutputASM(),
                                           maxMethodsInModule_,
                                           vm_->GetJSOptions().GetCompilerMethodsRange());
-    cmpDriver_->CompileMethod(jsFunction, [this, &fileName] (const CString recordName,
+    cmpDriver_->CompileMethod(jsFunction, [this, &fileName, &osrOffset] (const CString recordName,
                                                              const std::string &methodName,
                                                              MethodLiteral *methodLiteral,
                                                              uint32_t methodOffset,
@@ -91,6 +91,7 @@ bool JitPassManager::Compile(JSHandle<JSFunction> &jsFunction, AOTFileGenerator 
             circuit_, ctx_->GetByteCodes(), hasTypes, enableMethodLog && log_->OutputCIR(),
             passOptions_->EnableTypeLowering(), fullName, recordName, decoder, false,
             passOptions_->EnableOptTrackField());
+        builder_->SetOsrOffset(osrOffset);
         {
             TimeScope timeScope("BytecodeToCircuit", methodName, methodOffset, log_);
             builder_->BytecodeToCircuit();

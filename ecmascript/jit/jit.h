@@ -37,7 +37,8 @@ public:
     bool IsEnable();
     void Initialize();
 
-    static void Compile(EcmaVM *vm, JSHandle<JSFunction> &jsFunction, JitCompileMode mode = SYNC);
+    static void Compile(EcmaVM *vm, JSHandle<JSFunction> &jsFunction,
+                        int32_t offset = MachineCode::INVALID_OSR_OFFSET, JitCompileMode mode = SYNC);
     bool JitCompile(void *compiler, JitTask *jitTask);
     bool JitFinalize(void *compiler, JitTask *jitTask);
     void *CreateJitCompilerTask(JitTask *jitTask);

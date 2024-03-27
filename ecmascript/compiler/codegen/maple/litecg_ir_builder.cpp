@@ -30,6 +30,7 @@
 #include "ecmascript/frames.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/method.h"
+#include "triple.h"
 #include "lmir_builder.h"
 
 namespace panda::ecmascript::kungfu {
@@ -74,6 +75,9 @@ LiteCGIRBuilder::LiteCGIRBuilder(const std::vector<std::vector<GateRef>> *schedu
     slotSize_ = sizeof(uint64_t);
     slotType_ = lmirBuilder_->i64Type;
     InitializeHandlers();
+    if (cfg != nullptr) {
+        maple::Triple::GetTriple().Init(cfg->IsAArch64());
+    }
 }
 
 LiteCGIRBuilder::~LiteCGIRBuilder()
@@ -153,7 +157,9 @@ void LiteCGIRBuilder::AddFunc()
     std::string funcName = lmirModule_->GetFuncName(methodLiteral_, jsPandaFile_);
     FunctionBuilder funcBuilder = lmirBuilder_->DefineFunction(funcName);
     funcBuilder.Param(lmirBuilder_->i64Type, "glue");
-    if (!methodLiteral_->IsFastCall()) {
+    if (circuit_->IsOsr()) {
+        funcBuilder.Param(lmirBuilder_->i64PtrType, "interpSp");
+    } else if (!methodLiteral_->IsFastCall()) {
         funcBuilder.Param(lmirBuilder_->i64Type, "actualArgc")
             .Param(lmirBuilder_->i64RefType, "func")
             .Param(lmirBuilder_->i64RefType, "new_target")
@@ -298,6 +304,11 @@ void LiteCGIRBuilder::GenPrologue(maple::litecg::Function &function)
     } else if (frameType == FrameType::OPTIMIZED_JS_FUNCTION_FRAME) {
         reservedSlotsSize = OptimizedJSFunctionFrame::ComputeReservedJSFuncOffset(slotSize_);
         lmirBuilder_->SetFuncFrameResverdSlot(reservedSlotsSize);
+        if (circuit_->IsOsr()) {
+            SaveFrameTypeOnFrame(methodLiteral_->IsFastCall() ? FrameType::OPTIMIZED_JS_FAST_CALL_FUNCTION_FRAME
+                                                              : frameType);
+            return;
+        }
         auto ArgList = circuit_->GetArgRoot();
         auto uses = acc_.Uses(ArgList);
         for (auto useIt = uses.begin(); useIt != uses.end(); ++useIt) {
@@ -509,6 +520,7 @@ void LiteCGIRBuilder::InitializeHandlers()
         {OpCode::SQRT, &LiteCGIRBuilder::HandleSqrt},
         {OpCode::READSP, &LiteCGIRBuilder::HandleReadSp},
         {OpCode::FINISH_ALLOCATE, &LiteCGIRBuilder::HandleFinishAllocate},
+        {OpCode::INITVREG, &LiteCGIRBuilder::HandleInitVreg},
     };
     illegalOpHandlers_ = {OpCode::NOP,
                           OpCode::CIRCUIT_ROOT,
@@ -575,6 +587,11 @@ void LiteCGIRBuilder::HandleParameter(GateRef gate)
 
 void LiteCGIRBuilder::VisitParameter(GateRef gate)
 {
+    std::vector<GateRef> outs;
+    acc_.GetOuts(gate, outs);
+    if (outs.empty()) {
+        return;
+    }
     size_t argth = static_cast<size_t>(acc_.TryGetValue(gate));
     Var &param = lmirBuilder_->GetParam(lmirBuilder_->GetCurFunction(), argth);
     SaveGate2Expr(gate, lmirBuilder_->GenExprFromVar(param));
@@ -1820,6 +1837,168 @@ void LiteCGIRBuilder::VisitReadSp(GateRef gate)
 {
     Expr result = lmirBuilder_->LiteCGGetPregSP();
     SaveGate2Expr(gate, result);
+}
+
+void LiteCGIRBuilder::HandleInitVreg(GateRef gate)
+{
+    ASSERT(acc_.GetOpCode(gate) == OpCode::INITVREG);
+    VisitInitVreg(gate);
+}
+
+void LiteCGIRBuilder::VisitInitVreg(GateRef gate)
+{
+    size_t vregNumber = acc_.GetInitOffset(gate);
+    BB &bb = GetOrCreateBB(instID2bbID_[acc_.GetId(gate)]);
+    LiteCGType *i64 = lmirBuilder_->i64Type;
+    LiteCGType *i64Ptr = lmirBuilder_->i64PtrType;
+    LiteCGType *i64Ref = lmirBuilder_->i64RefType;
+    LiteCGType *i32 = lmirBuilder_->i32Type;
+    switch (vregNumber) {
+        case INIT_VRGE_GLUE: {
+            // init glue
+            Expr glue = lmirBuilder_->GenExprFromVar(
+                lmirBuilder_->GetParam(lmirBuilder_->GetCurFunction(), 0));  // 0 : osr first param - glue
+            SaveGate2Expr(gate, glue);
+            return;
+        }
+        case INIT_VRGE_ARGS: {
+            // init argc
+            SaveGate2Expr(gate, lmirBuilder_->ConstVal(lmirBuilder_->CreateIntConst(i64, 0)));
+            return;
+        }
+        case INIT_VRGE_FUNCTION: {
+            // init func
+            PregIdx vreg = lmirBuilder_->CreatePreg(i64Ref);
+            // load from frame
+            Expr sp = lmirBuilder_->GenExprFromVar(
+                lmirBuilder_->GetParam(lmirBuilder_->GetCurFunction(), 1));  // 1 : osr second param - sp
+            Expr offsetFrame = lmirBuilder_->ConstVal(
+                lmirBuilder_->CreateIntConst(i64Ptr, AsmInterpretedFrame::GetSize(!circuit_->IsArch64())));
+            Expr frame = lmirBuilder_->Sub(i64Ptr, sp, offsetFrame);
+            Expr offsetFunc = lmirBuilder_->ConstVal(
+                lmirBuilder_->CreateIntConst(i64Ptr, AsmInterpretedFrame::GetFunctionOffset(!circuit_->IsArch64())));
+            Expr addrFunc = lmirBuilder_->Add(i64Ptr, frame, offsetFunc);
+            Expr ldrFunc = lmirBuilder_->Iread(i64Ref, addrFunc, lmirBuilder_->CreatePtrType(i64Ptr));
+            lmirBuilder_->AppendStmt(bb, lmirBuilder_->Regassign(ldrFunc, vreg));
+            if (circuit_->GetFrameType() == FrameType::OPTIMIZED_JS_FUNCTION_FRAME) {
+                // reset jsfunc on OptJSFuncFrame
+                Expr fpAddr = CallingFp(false);
+                Expr frameAddr = lmirBuilder_->Cvt(fpAddr.GetType(), lmirBuilder_->i64Type, fpAddr);
+                size_t reservedOffset = OptimizedJSFunctionFrame::ComputeReservedJSFuncOffset(slotSize_);
+                Expr frameJSFuncSlotAddr =
+                    lmirBuilder_->Sub(frameAddr.GetType(), frameAddr,
+                                      lmirBuilder_->ConstVal(lmirBuilder_->CreateIntConst(slotType_, reservedOffset)));
+                Expr jsFuncAddr = lmirBuilder_->Cvt(frameJSFuncSlotAddr.GetType(),
+                                                    lmirBuilder_->CreatePtrType(slotType_), frameJSFuncSlotAddr);
+                Expr jsFuncValue = lmirBuilder_->Cvt(lmirBuilder_->i64PtrType, slotType_, lmirBuilder_->Regread(vreg));
+                auto &stmt = lmirBuilder_->Iassign(jsFuncValue, jsFuncAddr, jsFuncAddr.GetType());
+                lmirBuilder_->AppendStmt(bb, stmt);
+            }
+            SaveGate2Expr(gate, lmirBuilder_->Regread(vreg));
+            return;
+        }
+        case INIT_VRGE_NEW_TARGET: {
+            // init new_target
+            PregIdx vreg = lmirBuilder_->CreatePreg(i64Ref);
+            // load func from interpreter sp
+            Expr sp = lmirBuilder_->GenExprFromVar(
+                lmirBuilder_->GetParam(lmirBuilder_->GetCurFunction(), 1));  // 1 : osr second param - sp
+            Expr offsetFrame = lmirBuilder_->ConstVal(
+                lmirBuilder_->CreateIntConst(i64Ptr, AsmInterpretedFrame::GetSize(!circuit_->IsArch64())));
+            Expr frame = lmirBuilder_->Sub(i64Ptr, sp, offsetFrame);
+            Expr offsetFunc = lmirBuilder_->ConstVal(
+                lmirBuilder_->CreateIntConst(i64Ptr, AsmInterpretedFrame::GetFunctionOffset(!circuit_->IsArch64())));
+            Expr addrFunc = lmirBuilder_->Add(i64Ptr, frame, offsetFunc);
+            Expr func = lmirBuilder_->Iread(i64Ref, addrFunc, lmirBuilder_->CreatePtrType(i64Ptr));
+            // load method from func
+            Expr offsetMethod = lmirBuilder_->ConstVal(
+                lmirBuilder_->CreateIntConst(lmirBuilder_->i64PtrType, JSFunctionBase::METHOD_OFFSET));
+            Expr addrMethod = lmirBuilder_->Add(i64Ptr, func, offsetMethod);
+            Expr method = lmirBuilder_->Iread(i64Ptr, addrMethod, lmirBuilder_->CreatePtrType(i64Ptr));
+            // load callField from method
+            Expr offsetCF = lmirBuilder_->ConstVal(lmirBuilder_->CreateIntConst(i64Ptr, Method::CALL_FIELD_OFFSET));
+            Expr addrCF = lmirBuilder_->Add(i64Ptr, method, offsetCF);
+            Expr cf = lmirBuilder_->Iread(i64, addrCF, lmirBuilder_->CreatePtrType(i64));
+            // cal new target offset from callField
+            Expr offsetNVSB =
+                lmirBuilder_->ConstVal(lmirBuilder_->CreateIntConst(i64, MethodLiteral::NumVregsBits::START_BIT));
+            Expr offsetNVSZ = lmirBuilder_->ConstVal(
+                lmirBuilder_->CreateIntConst(i64, (1LLU << MethodLiteral::NumVregsBits::SIZE) - 1));
+            Expr offsetHFSB =
+                lmirBuilder_->ConstVal(lmirBuilder_->CreateIntConst(i64, MethodLiteral::HaveFuncBit::START_BIT));
+            Expr offsetHFSZ = lmirBuilder_->ConstVal(
+                lmirBuilder_->CreateIntConst(i64, (1LLU << MethodLiteral::HaveFuncBit::SIZE) - 1));
+            Expr const0 = lmirBuilder_->ConstVal(lmirBuilder_->CreateIntConst(i64, 0));
+            Expr numVregs = lmirBuilder_->Cvt(
+                i64, i32, lmirBuilder_->And(i64, lmirBuilder_->LShr(i64, cf, offsetNVSB), offsetNVSZ));
+            Expr haveFunc = lmirBuilder_->Cvt(
+                i64, i32,
+                lmirBuilder_->ICmp(i64, lmirBuilder_->And(i64, lmirBuilder_->LShr(i64, cf, offsetHFSB), offsetHFSZ),
+                                   const0, IntCmpCondition::kNE));
+            Expr size = lmirBuilder_->ConstVal(lmirBuilder_->CreateIntConst(i64Ptr, JSTaggedValue::TaggedTypeSize()));
+            Expr offsetNewTarget = lmirBuilder_->Mul(
+                i64Ptr, lmirBuilder_->ZExt(i32, i64Ptr, lmirBuilder_->Add(i32, numVregs, haveFunc)), size);
+            // load new target from sp
+            Expr addrNewTarget = lmirBuilder_->Add(i64Ptr, sp, offsetNewTarget);
+            Expr ldrNewTarget = lmirBuilder_->Iread(i64Ref, addrNewTarget, lmirBuilder_->CreatePtrType(i64Ptr));
+            lmirBuilder_->AppendStmt(bb, lmirBuilder_->Regassign(ldrNewTarget, vreg));
+            SaveGate2Expr(gate, lmirBuilder_->Regread(vreg));
+            return;
+        }
+        case INIT_VRGE_THIS_OBJECT: {
+            // init this
+            PregIdx vreg = lmirBuilder_->CreatePreg(i64Ref);
+            // load from frame
+            Expr sp = lmirBuilder_->GenExprFromVar(
+                lmirBuilder_->GetParam(lmirBuilder_->GetCurFunction(), 1));  // 1 : osr second param - sp
+            Expr offsetFrame = lmirBuilder_->ConstVal(
+                lmirBuilder_->CreateIntConst(i64Ptr, AsmInterpretedFrame::GetSize(!circuit_->IsArch64())));
+            Expr frame = lmirBuilder_->Sub(i64Ptr, sp, offsetFrame);
+            Expr offsetThis = lmirBuilder_->ConstVal(
+                lmirBuilder_->CreateIntConst(i64Ptr, AsmInterpretedFrame::GetThisOffset(!circuit_->IsArch64())));
+            Expr addrThis = lmirBuilder_->Add(i64Ptr, frame, offsetThis);
+            Expr ldrThis = lmirBuilder_->Iread(i64Ref, addrThis, lmirBuilder_->CreatePtrType(i64Ptr));
+            lmirBuilder_->AppendStmt(bb, lmirBuilder_->Regassign(ldrThis, vreg));
+            SaveGate2Expr(gate, lmirBuilder_->Regread(vreg));
+            return;
+        }
+        case INIT_VRGE_NUM_ARGS: {
+            // init numargs
+            SaveGate2Expr(gate, lmirBuilder_->ConstVal(lmirBuilder_->CreateIntConst(i64, 0)));
+            return;
+        }
+        case INIT_VRGE_ENV: {
+            // init env
+            PregIdx vreg = lmirBuilder_->CreatePreg(i64Ref);
+            // load from frame
+            Expr sp = lmirBuilder_->GenExprFromVar(
+                lmirBuilder_->GetParam(lmirBuilder_->GetCurFunction(), 1));  // 1 : osr second param - sp
+            Expr offsetFrame = lmirBuilder_->ConstVal(
+                lmirBuilder_->CreateIntConst(i64Ptr, AsmInterpretedFrame::GetSize(!circuit_->IsArch64())));
+            Expr frame = lmirBuilder_->Sub(i64Ptr, sp, offsetFrame);
+            Expr offsetEnv = lmirBuilder_->ConstVal(
+                lmirBuilder_->CreateIntConst(i64Ptr, AsmInterpretedFrame::GetEnvOffset(!circuit_->IsArch64())));
+            Expr addrEnv = lmirBuilder_->Add(i64Ptr, frame, offsetEnv);
+            Expr ldrEnv = lmirBuilder_->Iread(i64Ref, addrEnv, lmirBuilder_->CreatePtrType(i64Ptr));
+            lmirBuilder_->AppendStmt(bb, lmirBuilder_->Regassign(ldrEnv, vreg));
+            SaveGate2Expr(gate, lmirBuilder_->Regread(vreg));
+            return;
+        }
+        default: {
+            // init vregs
+            PregIdx vreg = lmirBuilder_->CreatePreg(i64Ref);
+            // load from sp
+            Expr sp = lmirBuilder_->GenExprFromVar(
+                lmirBuilder_->GetParam(lmirBuilder_->GetCurFunction(), 1));  // 1 : osr second param - sp
+            Expr offset =
+                lmirBuilder_->ConstVal(lmirBuilder_->CreateIntConst(i64Ptr, vregNumber * sizeof(JSTaggedType)));
+            Expr addr = lmirBuilder_->Add(i64Ptr, sp, offset);
+            Expr ldrVreg = lmirBuilder_->Iread(i64Ref, addr, lmirBuilder_->CreatePtrType(i64Ptr));
+            lmirBuilder_->AppendStmt(bb, lmirBuilder_->Regassign(ldrVreg, vreg));
+            SaveGate2Expr(gate, lmirBuilder_->Regread(vreg));
+            return;
+        }
+    }
 }
 
 void LiteCGIRBuilder::HandleFPTrunc(GateRef gate)

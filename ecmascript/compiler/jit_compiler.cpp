@@ -133,7 +133,7 @@ bool JitCompilerTask::Compile()
         return false;
     }
     jitCodeGenerator_.reset(aotFileGenerator);
-    return passManager_->Compile(jsFunction_, *jitCodeGenerator_);
+    return passManager_->Compile(jsFunction_, *jitCodeGenerator_, offset_);
 }
 
 bool JitCompilerTask::Finalize(JitTask *jitTask)

@@ -56,7 +56,7 @@ public:
 
     GateRef IsProfileTypeInfoDumped(GateRef profileTypeInfo, ProfileOperation callback);
 
-    void TryJitCompile(GateRef glue, GateRef func, GateRef profileTypeInfo);
+    void TryJitCompile(GateRef glue, GateRef pc, GateRef func, GateRef profileTypeInfo);
     GateRef IsHotForJitCompiling(GateRef profileTypeInfo, ProfileOperation callback);
     GateRef IsHotForJitCompiling(GateRef profileTypeInfo);
 
@@ -82,6 +82,10 @@ private:
     GateRef GetJitHotnessThreshold(GateRef profileTypeInfo);
     GateRef GetJitHotnessThresholdOffset(GateRef profileTypeInfo);
     GateRef GetJitHotnessCntOffset(GateRef profileTypeInfo);
+    GateRef GetOsrHotnessThresholdOffset(GateRef profileTypeInfo);
+    GateRef GetOsrHotnessThreshold(GateRef profileTypeInfo);
+    GateRef GetOsrHotnessCntOffset(GateRef profileTypeInfo);
+    GateRef GetOsrHotnessCnt(GateRef profileTypeInfo);
 };
 } // namespace panda::ecmascript::kungfu
 #endif // ECMASCRIPT_COMPILER_PROFILER_STUB_BUILDER_H

@@ -116,7 +116,10 @@
       panda::ecmascript::EcmaContext::FindOrCreateConstPool*;
       panda::ecmascript::EcmaContext::FindUnsharedConstpool*;
       panda::ecmascript::EcmaContext::SetTSManager*;
+      panda::ecmascript::EcmaRuntimeStat::StartCount*;
+      panda::ecmascript::EcmaRuntimeStat::StopCount*;
       panda::ecmascript::EcmaString::ComputeHashcode*;
+      panda::ecmascript::EcmaString::Flatten*;
       panda::ecmascript::EcmaString::GetUtf16DataFlat*;
       panda::ecmascript::EcmaString::GetUtf8DataFlat*;
       panda::ecmascript::EcmaString::StringsAreEqual*;
@@ -146,6 +149,8 @@
       panda::ecmascript::ForceCreateDirectory*;
       panda::ecmascript::GetFileDelimiter*;
       panda::ecmascript::GetPathSeparator*;
+      panda::ecmascript::Heap::AddGCListener*;
+      panda::ecmascript::Heap::RemoveGCListener*;
       panda::ecmascript::JSAPIArrayList::Set*;
       panda::ecmascript::JSAPIDeque::Set*;
       panda::ecmascript::JSAPILinkedList::Set*;
@@ -222,6 +227,7 @@
       panda::ecmascript::ObjectFactory::NewTaggedArray*;
       panda::ecmascript::ObjectOperator::UpdateDetector*;
       panda::ecmascript::PageMap*;
+      panda::ecmascript::PageSize*;
       panda::ecmascript::PageUnmap*;
       panda::ecmascript::PageSize*;
       panda::ecmascript::RealPath*;

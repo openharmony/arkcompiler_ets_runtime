@@ -159,7 +159,9 @@ enum CommandValues {
     OPTION_COMPILER_ENABLE_LOWERING_BUILTIN,
     OPTION_COMPILER_ENABLE_LITECG,
     OPTION_COMPILER_ENABLE_JIT,
+    OPTION_COMPILER_ENABLE_OSR,
     OPTION_COMPILER_JIT_HOTNESS_THRESHOLD,
+    OPTION_COMPILER_OSR_HOTNESS_THRESHOLD,
     OPTION_COMPILER_FORCE_JIT_COMPILE_MAIN,
     OPTION_COMPILER_TRACE_JIT,
     OPTION_ENABLE_ELEMENTSKIND,
@@ -1087,6 +1089,16 @@ public:
         return enableAPPJIT_;
     }
 
+    void SetEnableOSR(bool value)
+    {
+        enableOSR_ = value;
+    }
+
+    bool IsEnableOSR() const
+    {
+        return enableOSR_;
+    }
+
     void SetJitHotnessThreshold(uint16_t value)
     {
         jitHotnessThreshold_ = value;
@@ -1095,6 +1107,16 @@ public:
     uint16_t GetJitHotnessThreshold() const
     {
         return jitHotnessThreshold_;
+    }
+
+    void SetOsrHotnessThreshold(uint16_t value)
+    {
+        osrHotnessThreshold_ = value;
+    }
+
+    uint16_t GetOsrHotnessThreshold() const
+    {
+        return osrHotnessThreshold_;
     }
 
     void SetForceJitCompileMain(bool value)
@@ -1629,7 +1651,9 @@ private:
     bool enableOptPGOType_ {true};
     bool enableJIT_{false};
     bool enableAPPJIT_{false};
+    bool enableOSR_{false};
     uint16_t jitHotnessThreshold_ {2};
+    uint16_t osrHotnessThreshold_ {2};
     bool forceJitCompileMain_{false};
     bool enableGlobalTypeInfer_ {false};
     bool enableOptTrackField_ {true};
