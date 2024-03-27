@@ -295,7 +295,8 @@ ohos_source_set("libcglowerer") {
   configs = [ "${MAPLEALL_ROOT}:mapleallcompilecfg" ]
   sources = src_libcglowerer
   include_dirs = include_directories
-  external_deps = [ "bounds_checking_function:libsec_static" ]
+  include_dirs +=
+      [ "${MAPLEALL_THIRD_PARTY_ROOT}/bounds_checking_function/include" ]
   part_name = "ets_runtime"
   subsystem_name = "arkcompiler"
 }
@@ -317,7 +318,8 @@ ohos_source_set("libcgaarch64") {
   configs = [ "${MAPLEALL_ROOT}:mapleallcompilecfg" ]
   sources = src_libcgaarch64
   include_dirs = include_directories
-  external_deps = [ "bounds_checking_function:libsec_static" ]
+  include_dirs +=
+      [ "${MAPLEALL_THIRD_PARTY_ROOT}/bounds_checking_function/include" ]
   part_name = "ets_runtime"
   subsystem_name = "arkcompiler"
 }
@@ -327,7 +329,8 @@ ohos_source_set("libcgx8664") {
   configs = [ "${MAPLEALL_ROOT}:mapleallcompilecfg" ]
   sources = src_libcgx8664
   include_dirs = include_directories
-  external_deps = [ "bounds_checking_function:libsec_static" ]
+  include_dirs +=
+      [ "${MAPLEALL_THIRD_PARTY_ROOT}/bounds_checking_function/include" ]
   part_name = "ets_runtime"
   subsystem_name = "arkcompiler"
 }
@@ -337,7 +340,8 @@ ohos_source_set("libcgx86phases") {
   configs = [ "${MAPLEALL_ROOT}:mapleallcompilecfg" ]
   sources = src_libcgx86phases
   include_dirs = include_directories
-  external_deps = [ "bounds_checking_function:libsec_static" ]
+  include_dirs +=
+      [ "${MAPLEALL_THIRD_PARTY_ROOT}/bounds_checking_function/include" ]
   part_name = "ets_runtime"
   subsystem_name = "arkcompiler"
 }
@@ -347,7 +351,8 @@ ohos_source_set("libcgriscv64") {
   configs = [ "${MAPLEALL_ROOT}:mapleallcompilecfg" ]
   sources = src_libcgriscv64
   include_dirs = include_directories
-  external_deps = [ "bounds_checking_function:libsec_static" ]
+  include_dirs +=
+      [ "${MAPLEALL_THIRD_PARTY_ROOT}/bounds_checking_function/include" ]
   part_name = "ets_runtime"
   subsystem_name = "arkcompiler"
 }
@@ -367,7 +372,8 @@ ohos_source_set("libcgphases") {
   configs = [ "${MAPLEALL_ROOT}:mapleallcompilecfg" ]
   sources = src_libcgphases
   include_dirs = include_directories
-  external_deps = [ "bounds_checking_function:libsec_static" ]
+  include_dirs +=
+      [ "${MAPLEALL_THIRD_PARTY_ROOT}/bounds_checking_function/include" ]
   part_name = "ets_runtime"
   subsystem_name = "arkcompiler"
 }
