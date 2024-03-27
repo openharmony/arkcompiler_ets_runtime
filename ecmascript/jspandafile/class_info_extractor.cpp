@@ -625,33 +625,28 @@ JSHandle<NameDictionary> ClassHelper::BuildDictionaryProperties(JSThread *thread
 bool ClassHelper::MatchFieldType(SharedFieldType fieldType, JSTaggedValue value)
 {
     bool checkRet = false;
-    switch (fieldType) {
-        case SharedFieldType::NUMBER: {
-            checkRet = value.IsNumber();
-            break;
-        }
-        case SharedFieldType::BOOLEAN: {
-            checkRet = value.IsBoolean();
-            break;
-        }
-        case SharedFieldType::STRING: {
-            checkRet = value.IsString() || value.IsNull();
-            break;
-        }
-        case SharedFieldType::BIG_INT: {
-            checkRet = value.IsBigInt();
-            break;
-        }
-        case SharedFieldType::SENDABLE: {
-            checkRet = value.IsJSShared() || value.IsNull();
-            break;
-        }
-        case SharedFieldType::NONE: {
-            checkRet = true;
-            break;
-        }
-        default:
-            break;
+    uint32_t sharedFieldType = static_cast<uint32_t>(fieldType);
+    if ((sharedFieldType & static_cast<uint32_t>(SharedFieldType::NUMBER)) != 0 && value.IsNumber()) {
+        return true;
+    } else if ((sharedFieldType & static_cast<uint32_t>(SharedFieldType::BOOLEAN)) != 0 && value.IsBoolean()) {
+        return true;
+    } else if ((sharedFieldType & static_cast<uint32_t>(SharedFieldType::STRING)) != 0 &&
+        (value.IsString() || value.IsNull())) {
+        return true;
+    } else if ((sharedFieldType & static_cast<uint32_t>(SharedFieldType::BIG_INT)) != 0 && value.IsBigInt()) {
+        return true;
+    } else if ((sharedFieldType & static_cast<uint32_t>(SharedFieldType::SENDABLE)) != 0 &&
+        (value.IsJSShared() || value.IsNull())) {
+        return true;
+    } else if (sharedFieldType == static_cast<uint32_t>(SharedFieldType::NONE)) {
+        return true;
+    } else if ((sharedFieldType & static_cast<uint32_t>(SharedFieldType::GENERIC)) != 0 &&
+        (value.IsJSShared() || !value.IsHeapObject())) {
+        return true;
+    } else if ((sharedFieldType & static_cast<uint32_t>(SharedFieldType::NULL_TYPE)) != 0 && value.IsNull()) {
+        return true;
+    } else if ((sharedFieldType & static_cast<uint32_t>(SharedFieldType::UNDEFINED)) != 0 && value.IsUndefined()) {
+        return true;
     }
     return checkRet;
 }

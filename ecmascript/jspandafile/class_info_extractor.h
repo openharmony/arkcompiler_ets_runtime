@@ -34,6 +34,9 @@ enum class FieldType {
     BOOLEAN = (1 << 2),
     TS_TYPE_REF = (1 << 3),
     BIG_INT = (1 << 4),
+    GENERIC = (1 << 5),
+    NULL_TYPE = (1 << 6),
+    UNDEFINED = (1 << 7),
 };
 class ClassInfoExtractor : public TaggedObject {
 public:
@@ -144,23 +147,7 @@ public:
 private:
     static SharedFieldType FromFieldType(FieldType type)
     {
-        switch (type) {
-            case FieldType::NONE:
-                return SharedFieldType::NONE;
-            case FieldType::NUMBER:
-                return SharedFieldType::NUMBER;
-            case FieldType::STRING:
-                return SharedFieldType::STRING;
-            case FieldType::BOOLEAN:
-                return SharedFieldType::BOOLEAN;
-            case FieldType::TS_TYPE_REF:
-                return SharedFieldType::SENDABLE;
-            case FieldType::BIG_INT:
-                return SharedFieldType::BIG_INT;
-            default:
-                LOG_ECMA(FATAL) << "Unsupport fieldType in shared object with type: " << static_cast<uint32_t>(type);
-                UNREACHABLE();
-        }
+        return SharedFieldType(static_cast<uint32_t>(type));
     }
 
     static JSHandle<NameDictionary> BuildSendableDictionaryProperties(JSThread *thread,

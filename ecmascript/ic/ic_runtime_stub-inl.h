@@ -220,7 +220,7 @@ ARK_INLINE JSTaggedValue ICRuntimeStub::StoreICWithHandler(JSThread *thread, JST
 {
     INTERPRETER_TRACE(thread, StoreICWithHandler);
     if (handler.IsInt()) {
-        auto handlerInfo = static_cast<uint32_t>(handler.GetInt());
+        auto handlerInfo = JSTaggedValue::UnwrapToUint64(handler);
         if (HandlerBase::IsNonSharedStoreField(handlerInfo)) {
             StoreField(thread, JSObject::Cast(receiver.GetTaggedObject()), value, handlerInfo);
             return JSTaggedValue::Undefined();
@@ -234,7 +234,7 @@ ARK_INLINE JSTaggedValue ICRuntimeStub::StoreICWithHandler(JSThread *thread, JST
             }
             HandlerBase::ClearSharedStoreKind(handlerInfo);
             return StoreICWithHandler(thread, receiver, holder, value,
-                                      JSTaggedValue(static_cast<int32_t>(handlerInfo)));
+                                      JSTaggedValue::WrapUint64(handlerInfo));
         }
         ASSERT(HandlerBase::IsAccessor(handlerInfo));
         auto accessor = LoadFromField(JSObject::Cast(holder.GetTaggedObject()), handlerInfo);
@@ -295,7 +295,7 @@ JSTaggedValue ICRuntimeStub::StoreWithTS(JSThread *thread, JSTaggedValue receive
     }
     auto holder = storeTSHandler->GetHolder();
     JSTaggedValue handlerInfo = storeTSHandler->GetHandlerInfo();
-    auto handlerInfoInt = static_cast<uint32_t>(handlerInfo.GetInt());
+    auto handlerInfoInt = JSTaggedValue::UnwrapToUint64(handlerInfo);
     if (HandlerBase::IsField(handlerInfoInt)) {
         StoreField(thread, JSObject::Cast(receiver.GetTaggedObject()), value, handlerInfoInt);
         return JSTaggedValue::Undefined();
@@ -311,16 +311,16 @@ void ICRuntimeStub::StoreWithTransition(JSThread *thread, JSObject *receiver, JS
     INTERPRETER_TRACE(thread, StoreWithTransition);
 
     JSHClass *newHClass = nullptr;
-    uint32_t handlerInfo = 0;
+    uint64_t handlerInfo = 0;
 
     if (withPrototype) {
         TransWithProtoHandler *transWithProtoHandler = TransWithProtoHandler::Cast(handler.GetTaggedObject());
         newHClass = JSHClass::Cast(transWithProtoHandler->GetTransitionHClass().GetTaggedObject());
-        handlerInfo = static_cast<uint32_t>(transWithProtoHandler->GetHandlerInfo().GetInt());
+        handlerInfo = JSTaggedValue::UnwrapToUint64(transWithProtoHandler->GetHandlerInfo());
     } else {
         TransitionHandler *transitionHandler = TransitionHandler::Cast(handler.GetTaggedObject());
         newHClass = JSHClass::Cast(transitionHandler->GetTransitionHClass().GetTaggedObject());
-        handlerInfo = static_cast<uint32_t>(transitionHandler->GetHandlerInfo().GetInt());
+        handlerInfo = JSTaggedValue::UnwrapToUint64(transitionHandler->GetHandlerInfo());
     }
 
     receiver->SynchronizedSetClass(thread, newHClass);
@@ -376,7 +376,7 @@ JSTaggedValue ICRuntimeStub::StoreTransWithProto(JSThread *thread, JSObject *rec
     return JSTaggedValue::Undefined();
 }
 
-ARK_INLINE void ICRuntimeStub::StoreField(JSThread *thread, JSObject *receiver, JSTaggedValue value, uint32_t handler)
+ARK_INLINE void ICRuntimeStub::StoreField(JSThread *thread, JSObject *receiver, JSTaggedValue value, uint64_t handler)
 {
     INTERPRETER_TRACE(thread, StoreField);
     int index = HandlerBase::GetOffset(handler);
@@ -389,7 +389,7 @@ ARK_INLINE void ICRuntimeStub::StoreField(JSThread *thread, JSObject *receiver, 
     array->Set(thread, index, value);
 }
 
-ARK_INLINE JSTaggedValue ICRuntimeStub::LoadFromField(JSObject *receiver, uint32_t handlerInfo)
+ARK_INLINE JSTaggedValue ICRuntimeStub::LoadFromField(JSObject *receiver, uint64_t handlerInfo)
 {
     int index = HandlerBase::GetOffset(handlerInfo);
     if (HandlerBase::IsInlinedProps(handlerInfo)) {
@@ -446,7 +446,7 @@ ARK_INLINE JSTaggedValue ICRuntimeStub::LoadICWithHandler(JSThread *thread, JSTa
 {
     INTERPRETER_TRACE(thread, LoadICWithHandler);
     if (LIKELY(handler.IsInt())) {
-        auto handlerInfo = static_cast<uint32_t>(handler.GetInt());
+        auto handlerInfo = JSTaggedValue::UnwrapToUint64(handler);
         if (LIKELY(HandlerBase::IsField(handlerInfo))) {
             return LoadFromField(JSObject::Cast(holder.GetTaggedObject()), handlerInfo);
         }
@@ -475,7 +475,7 @@ ARK_INLINE JSTaggedValue ICRuntimeStub::LoadICWithElementHandler(JSThread *threa
     JSTaggedValue handler, JSTaggedValue key)
 {
     if (LIKELY(handler.IsInt())) {
-        auto handlerInfo = static_cast<uint32_t>(handler.GetInt());
+        auto handlerInfo = JSTaggedValue::UnwrapToUint64(handler);
         if (HandlerBase::IsNormalElement(handlerInfo)) {
             return LoadElement(JSObject::Cast(receiver.GetTaggedObject()), key);
         } else if (HandlerBase::IsTypedArrayElement(handlerInfo)) {
@@ -550,7 +550,7 @@ JSTaggedValue ICRuntimeStub::StoreElement(JSThread *thread, JSObject *receiver, 
     }
     uint32_t elementIndex = static_cast<uint32_t>(index);
     if (handler.IsInt()) {
-        auto handlerInfo = static_cast<uint32_t>(handler.GetInt());
+        auto handlerInfo = JSTaggedValue::UnwrapToUint64(handler);
         [[maybe_unused]] EcmaHandleScope handleScope(thread);
         JSHandle<JSObject> receiverHandle(thread, receiver);
         JSHandle<JSTaggedValue> valueHandle(thread, value);

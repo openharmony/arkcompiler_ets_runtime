@@ -720,6 +720,9 @@ private:
     }
 
     friend class PropertyAttributes;
+    friend class ICRuntimeStub;
+    friend class LoadHandler;
+    friend class StoreHandler;
 };
 STATIC_ASSERT_EQ_ARCH(sizeof(JSTaggedValue), JSTaggedValue::SizeArch32, JSTaggedValue::SizeArch64);
 }  // namespace panda::ecmascript

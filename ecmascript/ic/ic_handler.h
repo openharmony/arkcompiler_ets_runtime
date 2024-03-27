@@ -26,6 +26,7 @@ class HandlerBase {
 public:
     static constexpr uint32_t KIND_BIT_LENGTH = 4;
     static constexpr uint32_t STORE_KIND_BIT_LENGTH = 2;
+    static constexpr uint32_t MAX_BIT_SIZE = 48;
     enum HandlerKind {
         NONE = 0,
         FIELD,
@@ -58,7 +59,7 @@ public:
     using IsOnHeapBit = AttrIndexBit::NextFlag;                                                             // 30
     using NeedSkipInPGODumpBit  = IsOnHeapBit::NextFlag;                                                    // 31
     static_assert(
-        NeedSkipInPGODumpBit::START_BIT + NeedSkipInPGODumpBit::SIZE <= sizeof(uint32_t) * BITS_PER_BYTE, "Invalid");
+        NeedSkipInPGODumpBit::START_BIT + NeedSkipInPGODumpBit::SIZE <= MAX_BIT_SIZE, "Invalid");
     static_assert(static_cast<size_t>(HandlerKind::TOTAL_KINDS) <= (1 << KIND_BIT_LENGTH));
 
     // For Store
@@ -73,107 +74,107 @@ public:
     HandlerBase() = default;
     virtual ~HandlerBase() = default;
 
-    static inline bool IsAccessor(uint32_t handler)
+    static inline bool IsAccessor(uint64_t handler)
     {
         return AccessorBit::Get(handler);
     }
 
-    static inline SharedFieldType GetFieldType(uint32_t handler)
+    static inline SharedFieldType GetFieldType(uint64_t handler)
     {
         return static_cast<SharedFieldType>(SFieldTypeBit::Get(handler));
     }
 
-    static inline bool IsNonExist(uint32_t handler)
+    static inline bool IsNonExist(uint64_t handler)
     {
         return GetKind(handler) == HandlerKind::NON_EXIST;
     }
 
-    static inline bool IsField(uint32_t handler)
+    static inline bool IsField(uint64_t handler)
     {
         return GetKind(handler) == HandlerKind::FIELD;
     }
 
-    static inline bool IsNonSharedStoreField(uint32_t handler)
+    static inline bool IsNonSharedStoreField(uint64_t handler)
     {
         return static_cast<StoreHandlerKind>(GetKind(handler)) == StoreHandlerKind::S_FIELD;
     }
 
-    static inline bool IsStoreShared(uint32_t handler)
+    static inline bool IsStoreShared(uint64_t handler)
     {
         return SSharedBit::Get(handler);
     }
 
-    static inline void ClearSharedStoreKind(uint32_t &handler)
+    static inline void ClearSharedStoreKind(uint64_t &handler)
     {
-        SSharedBit::Set<uint32_t>(false, &handler);
+        SSharedBit::Set<uint64_t>(false, &handler);
     }
 
-    static inline bool IsString(uint32_t handler)
+    static inline bool IsString(uint64_t handler)
     {
         return GetKind(handler) == HandlerKind::STRING;
     }
 
-    static inline bool IsNumber(uint32_t handler)
+    static inline bool IsNumber(uint64_t handler)
     {
         return GetKind(handler) == HandlerKind::NUMBER;
     }
 
-    static inline bool IsStringLength(uint32_t handler)
+    static inline bool IsStringLength(uint64_t handler)
     {
         return GetKind(handler) == HandlerKind::STRING_LENGTH;
     }
 
-    static inline bool IsElement(uint32_t handler)
+    static inline bool IsElement(uint64_t handler)
     {
         return IsNormalElement(handler) || IsStringElement(handler) || IsTypedArrayElement(handler);
     }
 
-    static inline bool IsNormalElement(uint32_t handler)
+    static inline bool IsNormalElement(uint64_t handler)
     {
         return GetKind(handler) == HandlerKind::ELEMENT;
     }
 
-    static inline bool IsStringElement(uint32_t handler)
+    static inline bool IsStringElement(uint64_t handler)
     {
         return GetKind(handler) == HandlerKind::STRING;
     }
 
-    static inline bool IsTypedArrayElement(uint32_t handler)
+    static inline bool IsTypedArrayElement(uint64_t handler)
     {
         return GetKind(handler) == HandlerKind::TYPED_ARRAY;
     }
 
-    static inline bool IsDictionary(uint32_t handler)
+    static inline bool IsDictionary(uint64_t handler)
     {
         return GetKind(handler) == HandlerKind::DICTIONARY;
     }
 
-    static inline bool IsInlinedProps(uint32_t handler)
+    static inline bool IsInlinedProps(uint64_t handler)
     {
         return InlinedPropsBit::Get(handler);
     }
 
-    static inline HandlerKind GetKind(uint32_t handler)
+    static inline HandlerKind GetKind(uint64_t handler)
     {
         return KindBit::Get(handler);
     }
 
-    static inline bool IsJSArray(uint32_t handler)
+    static inline bool IsJSArray(uint64_t handler)
     {
         return IsJSArrayBit::Get(handler);
     }
 
-    static inline bool NeedSkipInPGODump(uint32_t handler)
+    static inline bool NeedSkipInPGODump(uint64_t handler)
     {
         return NeedSkipInPGODumpBit::Get(handler);
     }
 
-    static inline int GetOffset(uint32_t handler)
+    static inline int GetOffset(uint64_t handler)
     {
         return OffsetBit::Get(handler);
     }
 
-    static inline bool IsOnHeap(uint32_t handler)
+    static inline bool IsOnHeap(uint64_t handler)
     {
         return IsOnHeapBit::Get(handler);
     }
@@ -183,11 +184,11 @@ class LoadHandler final : public HandlerBase {
 public:
     static inline JSHandle<JSTaggedValue> LoadProperty(const JSThread *thread, const ObjectOperator &op)
     {
-        uint32_t handler = 0;
+        uint64_t handler = 0;
         ASSERT(!op.IsElement());
         if (!op.IsFound()) {
-            KindBit::Set<uint32_t>(HandlerKind::NON_EXIST, &handler);
-            return JSHandle<JSTaggedValue>(thread, JSTaggedValue(handler));
+            KindBit::Set<uint64_t>(HandlerKind::NON_EXIST, &handler);
+            return JSHandle<JSTaggedValue>(thread, JSTaggedValue::WrapUint64(handler));
         }
         ASSERT(op.IsFastMode());
 
@@ -196,7 +197,7 @@ public:
             return JSHandle<JSTaggedValue>(thread, val);
         }
         bool hasAccessor = op.IsAccessorDescriptor();
-        AccessorBit::Set<uint32_t>(hasAccessor, &handler);
+        AccessorBit::Set<uint64_t>(hasAccessor, &handler);
 
         if (!hasAccessor) {
             if (op.GetReceiver()->IsString()) {
@@ -206,33 +207,33 @@ public:
                     proKey = EcmaString::Cast(op.GetKey()->GetTaggedObject());
                 }
                 if (EcmaStringAccessor::StringsAreEqual(proKey, EcmaString::Cast(lenKey.GetTaggedObject()))) {
-                    KindBit::Set<uint32_t>(HandlerKind::STRING_LENGTH, &handler);
+                    KindBit::Set<uint64_t>(HandlerKind::STRING_LENGTH, &handler);
                 } else {
-                    KindBit::Set<uint32_t>(HandlerKind::STRING, &handler);
+                    KindBit::Set<uint64_t>(HandlerKind::STRING, &handler);
                 }
             } else if (op.GetReceiver()->IsNumber()) {
-                KindBit::Set<uint32_t>(HandlerKind::NUMBER, &handler);
+                KindBit::Set<uint64_t>(HandlerKind::NUMBER, &handler);
             } else {
-                KindBit::Set<uint32_t>(HandlerKind::FIELD, &handler);
+                KindBit::Set<uint64_t>(HandlerKind::FIELD, &handler);
             }
         }
 
         if (op.IsInlinedProps()) {
-            InlinedPropsBit::Set<uint32_t>(true, &handler);
+            InlinedPropsBit::Set<uint64_t>(true, &handler);
             JSHandle<JSObject> holder = JSHandle<JSObject>::Cast(op.GetHolder());
             auto index = holder->GetJSHClass()->GetInlinedPropertiesIndex(op.GetIndex());
-            OffsetBit::Set<uint32_t>(index, &handler);
-            AttrIndexBit::Set<uint32_t>(op.GetIndex(), &handler);
-            RepresentationBit::Set(op.GetRepresentation(), &handler);
-            return JSHandle<JSTaggedValue>(thread, JSTaggedValue(handler));
+            OffsetBit::Set<uint64_t>(index, &handler);
+            AttrIndexBit::Set<uint64_t>(op.GetIndex(), &handler);
+            RepresentationBit::Set<uint64_t>(op.GetRepresentation(), &handler);
+            return JSHandle<JSTaggedValue>(thread, JSTaggedValue::WrapUint64(handler));
         }
         if (op.IsFastMode()) {
             JSHandle<JSObject> holder = JSHandle<JSObject>::Cast(op.GetHolder());
             uint32_t inlinePropNum = holder->GetJSHClass()->GetInlinedProperties();
-            AttrIndexBit::Set<uint32_t>(op.GetIndex() + inlinePropNum, &handler);
-            OffsetBit::Set<uint32_t>(op.GetIndex(), &handler);
-            RepresentationBit::Set(Representation::TAGGED, &handler);
-            return JSHandle<JSTaggedValue>(thread, JSTaggedValue(handler));
+            AttrIndexBit::Set<uint64_t>(op.GetIndex() + inlinePropNum, &handler);
+            OffsetBit::Set<uint64_t>(op.GetIndex(), &handler);
+            RepresentationBit::Set<uint64_t>(Representation::TAGGED, &handler);
+            return JSHandle<JSTaggedValue>(thread, JSTaggedValue::WrapUint64(handler));
         }
         LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
@@ -240,8 +241,8 @@ public:
 
     static inline JSHandle<JSTaggedValue> LoadElement(const JSThread *thread, const ObjectOperator &op)
     {
-        uint32_t handler = 0;
-        KindBit::Set<uint32_t>(HandlerKind::ELEMENT, &handler);
+        uint64_t handler = 0;
+        KindBit::Set<uint64_t>(HandlerKind::ELEMENT, &handler);
 
         // To avoid logical errors and Deopt, temporarily skipping PGO Profiling.
         // logical errors:
@@ -252,29 +253,29 @@ public:
         //     is string, it will be treated as a number type by the AOT, leading to deopt at runtime.
         if (op.GetReceiver() != op.GetHolder() ||
             op.KeyFromStringType()) {
-            NeedSkipInPGODumpBit::Set<uint32_t>(true, &handler);
+            NeedSkipInPGODumpBit::Set<uint64_t>(true, &handler);
         }
 
         if (op.GetReceiver()->IsJSArray()) {
-            IsJSArrayBit::Set<uint32_t>(true, &handler);
+            IsJSArrayBit::Set<uint64_t>(true, &handler);
         }
-        return JSHandle<JSTaggedValue>(thread, JSTaggedValue(handler));
+        return JSHandle<JSTaggedValue>(thread, JSTaggedValue::WrapUint64(handler));
     }
 
     static inline JSHandle<JSTaggedValue> LoadStringElement(const JSThread *thread)
     {
-        uint32_t handler = 0;
-        KindBit::Set<uint32_t>(HandlerKind::STRING, &handler);
-        return JSHandle<JSTaggedValue>(thread, JSTaggedValue(handler));
+        uint64_t handler = 0;
+        KindBit::Set<uint64_t>(HandlerKind::STRING, &handler);
+        return JSHandle<JSTaggedValue>(thread, JSTaggedValue::WrapUint64(handler));
     }
 
     static inline JSHandle<JSTaggedValue> LoadTypedArrayElement(const JSThread *thread,
                                                                 JSHandle<JSTypedArray> typedArray)
     {
-        uint32_t handler = 0;
-        KindBit::Set<uint32_t>(HandlerKind::TYPED_ARRAY, &handler);
-        IsOnHeapBit::Set<uint32_t>(JSHandle<TaggedObject>(typedArray)->GetClass()->IsOnHeapFromBitField(), &handler);
-        return JSHandle<JSTaggedValue>(thread, JSTaggedValue(handler));
+        uint64_t handler = 0;
+        KindBit::Set<uint64_t>(HandlerKind::TYPED_ARRAY, &handler);
+        IsOnHeapBit::Set<uint64_t>(JSHandle<TaggedObject>(typedArray)->GetClass()->IsOnHeapFromBitField(), &handler);
+        return JSHandle<JSTaggedValue>(thread, JSTaggedValue::WrapUint64(handler));
     }
 };
 
@@ -282,14 +283,14 @@ class StoreHandler final : public HandlerBase {
 public:
     static inline JSHandle<JSTaggedValue> StoreProperty(const JSThread *thread, const ObjectOperator &op)
     {
-        uint32_t handler = 0;
+        uint64_t handler = 0;
         JSHandle<JSObject> receiver = JSHandle<JSObject>::Cast(op.GetReceiver());
-        SSharedBit::Set<uint32_t>(op.GetReceiver()->IsJSShared(), &handler);
+        SSharedBit::Set<uint64_t>(op.GetReceiver()->IsJSShared(), &handler);
         TaggedArray *array = TaggedArray::Cast(receiver->GetProperties().GetTaggedObject());
         if (!array->IsDictionaryMode()) {
-            SFieldTypeBit::Set(op.GetAttr().GetSharedFieldType(), &handler);
+            SFieldTypeBit::Set<uint64_t>(op.GetAttr().GetSharedFieldType(), &handler);
         } else {
-            SFieldTypeBit::Set(op.GetAttr().GetDictSharedFieldType(), &handler);
+            SFieldTypeBit::Set<uint64_t>(op.GetAttr().GetDictSharedFieldType(), &handler);
         }
         if (op.IsElement()) {
             return StoreElement(thread, op.GetReceiver(), handler);
@@ -299,12 +300,12 @@ public:
             return JSHandle<JSTaggedValue>(thread, val);
         }
         bool hasSetter = op.IsAccessorDescriptor();
-        AccessorBit::Set<uint32_t>(hasSetter, &handler);
+        AccessorBit::Set<uint64_t>(hasSetter, &handler);
         if (!hasSetter) {
-            SKindBit::Set<uint32_t>(StoreHandlerKind::S_FIELD, &handler);
+            SKindBit::Set<uint64_t>(StoreHandlerKind::S_FIELD, &handler);
         }
         if (op.IsInlinedProps()) {
-            InlinedPropsBit::Set<uint32_t>(true, &handler);
+            InlinedPropsBit::Set<uint64_t>(true, &handler);
             uint32_t index = 0;
             if (!hasSetter) {
                 index = receiver->GetJSHClass()->GetInlinedPropertiesIndex(op.GetIndex());
@@ -312,28 +313,28 @@ public:
                 JSHandle<JSObject> holder = JSHandle<JSObject>::Cast(op.GetHolder());
                 index = holder->GetJSHClass()->GetInlinedPropertiesIndex(op.GetIndex());
             }
-            AttrIndexBit::Set<uint32_t>(op.GetIndex(), &handler);
-            OffsetBit::Set<uint32_t>(index, &handler);
+            AttrIndexBit::Set<uint64_t>(op.GetIndex(), &handler);
+            OffsetBit::Set<uint64_t>(index, &handler);
             RepresentationBit::Set(op.GetRepresentation(), &handler);
-            return JSHandle<JSTaggedValue>(thread, JSTaggedValue(static_cast<int32_t>(handler)));
+            return JSHandle<JSTaggedValue>(thread, JSTaggedValue::WrapUint64(handler));
         }
         ASSERT(op.IsFastMode());
         uint32_t inlinePropNum = receiver->GetJSHClass()->GetInlinedProperties();
-        AttrIndexBit::Set<uint32_t>(op.GetIndex() + inlinePropNum, &handler);
-        OffsetBit::Set<uint32_t>(op.GetIndex(), &handler);
+        AttrIndexBit::Set<uint64_t>(op.GetIndex() + inlinePropNum, &handler);
+        OffsetBit::Set<uint64_t>(op.GetIndex(), &handler);
         RepresentationBit::Set(Representation::TAGGED, &handler);
-        return JSHandle<JSTaggedValue>(thread, JSTaggedValue(static_cast<int32_t>(handler)));
+        return JSHandle<JSTaggedValue>(thread, JSTaggedValue::WrapUint64(handler));
     }
 
     static inline JSHandle<JSTaggedValue> StoreElement(const JSThread *thread,
-                                                       JSHandle<JSTaggedValue> receiver, uint32_t handler)
+                                                       JSHandle<JSTaggedValue> receiver, uint64_t handler)
     {
-        SKindBit::Set<uint32_t>(StoreHandlerKind::S_ELEMENT, &handler);
+        SKindBit::Set<uint64_t>(StoreHandlerKind::S_ELEMENT, &handler);
 
         if (receiver->IsJSArray()) {
-            IsJSArrayBit::Set<uint32_t>(true, &handler);
+            IsJSArrayBit::Set<uint64_t>(true, &handler);
         }
-        return JSHandle<JSTaggedValue>(thread, JSTaggedValue(static_cast<int32_t>(handler)));
+        return JSHandle<JSTaggedValue>(thread, JSTaggedValue::WrapUint64(handler));
     }
 };
 
