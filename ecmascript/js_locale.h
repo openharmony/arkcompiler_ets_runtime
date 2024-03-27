@@ -483,6 +483,8 @@ public:
 
     static bool IsWellFormedCurrencyCode(const std::string &currency);
 
+    static bool IsWellFormedCalendarCode(const std::string& calendar);
+
     static JSHandle<JSTaggedValue> GetNumberFieldType(JSThread *thread, JSTaggedValue x, int32_t fieldId);
 
     static bool ApplyOptionsToTag(JSThread *thread, const JSHandle<EcmaString> &tag, const JSHandle<JSObject> &options,

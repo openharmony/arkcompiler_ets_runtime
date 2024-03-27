@@ -99,6 +99,9 @@ public:
 
     static void ResolvedOptions(JSThread *thread, const JSHandle<JSDisplayNames> &displayNames,
                                 const JSHandle<JSObject> &options);
+
+private:
+    static UDateTimePatternField StringToUDateTimePatternField(const char* code);
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_JS_DISPLAYNAMES_H
