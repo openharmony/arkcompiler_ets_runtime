@@ -807,7 +807,7 @@ public:
     GateRef GetIterator(GateRef glue, GateRef obj, ProfileOperation callback);
     GateRef JSCallDispatch(GateRef glue, GateRef func, GateRef actualNumArgs, GateRef jumpSize, GateRef hotnessCounter,
                            JSCallMode mode, std::initializer_list<GateRef> args,
-                           ProfileOperation callback = ProfileOperation());
+                           ProfileOperation callback = ProfileOperation(), bool checkIsCallable = true);
     GateRef IsFastTypeArray(GateRef jsType);
     GateRef GetTypeArrayPropertyByName(GateRef glue, GateRef receiver, GateRef holder, GateRef key, GateRef jsType);
     GateRef SetTypeArrayPropertyByName(GateRef glue, GateRef receiver, GateRef holder, GateRef key, GateRef value,
