@@ -1616,7 +1616,7 @@ void Builtins::InitializeString(const JSHandle<GlobalEnv> &env, JSHandle<JSTagge
     }
     JSHandle<JSTaggedValue> stringIter = SetAndReturnFunctionAtSymbol(env, stringFuncPrototype,
         env->GetIteratorSymbol(), "[Symbol.iterator]", BuiltinsString::GetStringIterator, FunctionLength::ZERO,
-        BUILTINS_STUB_ID(GetStringIterator));
+        BUILTINS_STUB_ID(StringGetStringIterator));
 
     // String method
     for (const base::BuiltinFunctionEntry &entry: BuiltinsString::GetStringFunctions()) {

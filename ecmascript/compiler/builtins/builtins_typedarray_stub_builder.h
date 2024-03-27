@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023 Huawei Device Co., Ltd.
+ * Copyright (c) 2024 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -13,21 +13,21 @@
  * limitations under the License.
  */
 
-#ifndef ECMASCRIPT_COMPILER_TYPED_ARRAY_STUB_BUILDER_H
-#define ECMASCRIPT_COMPILER_TYPED_ARRAY_STUB_BUILDER_H
+#ifndef ECMASCRIPT_COMPILER_BUILTINS_TYPEDARRAY_STUB_BUILDER_H
+#define ECMASCRIPT_COMPILER_BUILTINS_TYPEDARRAY_STUB_BUILDER_H
 
 #include "ecmascript/compiler/stub_builder-inl.h"
 #include "ecmascript/js_arraybuffer.h"
 #include "ecmascript/js_typed_array.h"
 
 namespace panda::ecmascript::kungfu {
-class TypedArrayStubBuilder : public BuiltinsStubBuilder {
+class BuiltinsTypedArrayStubBuilder : public BuiltinsStubBuilder {
 public:
-    explicit TypedArrayStubBuilder(StubBuilder *parent)
+    explicit BuiltinsTypedArrayStubBuilder(StubBuilder *parent)
         : BuiltinsStubBuilder(parent) {}
-    ~TypedArrayStubBuilder() override = default;
-    NO_MOVE_SEMANTIC(TypedArrayStubBuilder);
-    NO_COPY_SEMANTIC(TypedArrayStubBuilder);
+    ~BuiltinsTypedArrayStubBuilder() override = default;
+    NO_MOVE_SEMANTIC(BuiltinsTypedArrayStubBuilder);
+    NO_COPY_SEMANTIC(BuiltinsTypedArrayStubBuilder);
     void GenerateCircuit() override {}
     GateRef FastGetPropertyByIndex(GateRef glue, GateRef array, GateRef index, GateRef jsType);
     GateRef FastCopyElementToArray(GateRef glue, GateRef typedArray, GateRef array);
@@ -37,12 +37,12 @@ public:
     GateRef GetValueFromBuffer(GateRef buffer, GateRef index, GateRef offset, GateRef jsType);
     GateRef IsDetachedBuffer(GateRef buffer);
     GateRef GetDataPointFromBuffer(GateRef arrBuf);
-    void SubArray(GateRef glue, GateRef numArgs, GateRef end,
-        Variable *result, Label *exit, Label *slowPath);
-    void GetByteLength(GateRef glue, GateRef numArgs, GateRef end,
-        Variable *result, Label *exit, Label *slowPath);
-    void GetByteOffset(GateRef glue, GateRef numArgs, GateRef end,
-        Variable *result, Label *exit, Label *slowPath);
+
+#define DECLARE_BUILTINS_TYPEDARRAY_STUB_BUILDER(method, ...)           \
+    void method(GateRef glue, GateRef numArgs, GateRef end, Variable *result, Label *exit, Label *slowPath);
+BUILTINS_WITH_TYPEDARRAY_STUB_BUILDER(DECLARE_BUILTINS_TYPEDARRAY_STUB_BUILDER)
+#undef DECLARE_BUILTINS_TYPEDARRAY_STUB_BUILDER
+
     GateRef GetViewedArrayBuffer(GateRef array)
     {
         GateRef offset = IntPtr(JSTypedArray::VIEWED_ARRAY_BUFFER_OFFSET);
@@ -80,4 +80,4 @@ public:
     }
 };
 }  // namespace panda::ecmascript::kungfu
-#endif  // ECMASCRIPT_COMPILER_TYPED_ARRAY_STUB_BUILDER_H
+#endif  // ECMASCRIPT_COMPILER_BUILTINS_TYPEDARRAY_STUB_BUILDER_H
