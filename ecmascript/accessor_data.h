@@ -29,8 +29,9 @@ namespace panda::ecmascript {
 class AccessorData final : public Record {
 public:
     using InternalGetFunc = JSTaggedValue (*)(JSThread *, const JSHandle<JSObject> &);
-    using InternalSetFunc = bool (*)(JSThread *, const JSHandle<JSObject> &, const JSHandle<JSTaggedValue> &, bool,
-                                     SCheckMode);
+    using InternalSetFunc = bool (*)(JSThread *, const JSHandle<JSObject> &, const JSHandle<JSTaggedValue> &, bool);
+    using InternalSetFuncWithSCheck = bool (*)(JSThread *, const JSHandle<JSObject> &, const JSHandle<JSTaggedValue> &,
+                                               bool, SCheckMode);
 
     static AccessorData *Cast(TaggedObject *object)
     {
@@ -61,8 +62,12 @@ public:
     {
         ASSERT(GetSetter().IsJSNativePointer());
         JSNativePointer *setter = JSNativePointer::Cast(GetSetter().GetTaggedObject());
+        if (obj->IsJSSArray()) {
+            auto setFunc = reinterpret_cast<InternalSetFuncWithSCheck>(setter->GetExternalPointer());
+            return setFunc(thread, obj, value, mayThrow, mode);
+        }
         auto setFunc = reinterpret_cast<InternalSetFunc>(setter->GetExternalPointer());
-        return setFunc(thread, obj, value, mayThrow, mode);
+        return setFunc(thread, obj, value, mayThrow);
     }
 
     static constexpr size_t GETTER_OFFSET = Record::SIZE;
