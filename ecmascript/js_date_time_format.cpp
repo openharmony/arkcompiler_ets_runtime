@@ -47,7 +47,11 @@ struct CommonDateFormatPart {
 };
 
 namespace {
-const std::vector<std::string> ICU_LONG_SHORT = {"long", "short"};
+const std::vector<std::string> ICU_LONG_SHORT = {
+    "long", "short",
+    "longOffset", "shortOffset",
+    "longGeneric", "shortGeneric"
+};
 const std::vector<std::string> ICU_NARROW_LONG_SHORT = {"narrow", "long", "short"};
 const std::vector<std::string> ICU2_DIGIT_NUMERIC = {"2-digit", "numeric"};
 const std::vector<std::string> ICU_NARROW_LONG_SHORT2_DIGIT_NUMERIC = {"narrow", "long", "short", "2-digit", "numeric"};
@@ -72,7 +76,11 @@ const std::vector<IcuPatternEntry> ICU_HOUR_PE = {
 };
 const std::vector<IcuPatternEntry> ICU_MINUTE_PE = {{"mm", "2-digit"}, {"m", "numeric"}};
 const std::vector<IcuPatternEntry> ICU_SECOND_PE = {{"ss", "2-digit"}, {"s", "numeric"}};
-const std::vector<IcuPatternEntry> ICU_YIME_ZONE_NAME_PE = {{"zzzz", "long"}, {"z", "short"}};
+const std::vector<IcuPatternEntry> ICU_YIME_ZONE_NAME_PE = {
+    {"zzzz", "long"}, {"z", "short"},
+    {"OOOO", "longOffset"}, {"O", "shortOffset"},
+    {"vvvv", "longGeneric"}, {"v", "shortGeneric"}
+};
 
 const std::map<char16_t, HourCycleOption> HOUR_CYCLE_MAP = {
     {'K', HourCycleOption::H11},
