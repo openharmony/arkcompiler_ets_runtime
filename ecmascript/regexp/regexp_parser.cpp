@@ -1677,52 +1677,52 @@ bool RegExpParser::IsSupportedBinaryProperty(UProperty property)
         case UCHAR_ASCII_HEX_DIGIT:
         case UCHAR_BIDI_CONTROL:
         case UCHAR_BIDI_MIRRORED:
-        case UCHAR_CASE_IGNORABLE:
-        case UCHAR_CASED:
-        case UCHAR_CHANGES_WHEN_CASEFOLDED:
-        case UCHAR_CHANGES_WHEN_CASEMAPPED:
-        case UCHAR_CHANGES_WHEN_LOWERCASED:
-        case UCHAR_CHANGES_WHEN_NFKC_CASEFOLDED:
-        case UCHAR_CHANGES_WHEN_TITLECASED:
-        case UCHAR_CHANGES_WHEN_UPPERCASED:
         case UCHAR_DASH:
         case UCHAR_DEFAULT_IGNORABLE_CODE_POINT:
         case UCHAR_DEPRECATED:
         case UCHAR_DIACRITIC:
-        case UCHAR_EMOJI:
-        case UCHAR_EMOJI_COMPONENT:
-        case UCHAR_EMOJI_MODIFIER_BASE:
-        case UCHAR_EMOJI_MODIFIER:
-        case UCHAR_EMOJI_PRESENTATION:
-        case UCHAR_EXTENDED_PICTOGRAPHIC:
-        case UCHAR_EXTENDER:
-        case UCHAR_GRAPHEME_BASE:
-        case UCHAR_GRAPHEME_EXTEND:
-        case UCHAR_HEX_DIGIT:
-        case UCHAR_ID_CONTINUE:
-        case UCHAR_ID_START:
-        case UCHAR_IDEOGRAPHIC:
-        case UCHAR_IDS_BINARY_OPERATOR:
-        case UCHAR_IDS_TRINARY_OPERATOR:
         case UCHAR_JOIN_CONTROL:
+        case UCHAR_IDS_TRINARY_OPERATOR:
+        case UCHAR_IDS_BINARY_OPERATOR:
+        case UCHAR_IDEOGRAPHIC:
+        case UCHAR_S_TERM:
+        case UCHAR_ID_START:
+        case UCHAR_ID_CONTINUE:
+        case UCHAR_HEX_DIGIT:
+        case UCHAR_GRAPHEME_EXTEND:
+        case UCHAR_GRAPHEME_BASE:
+        case UCHAR_EXTENDER:
         case UCHAR_LOGICAL_ORDER_EXCEPTION:
         case UCHAR_LOWERCASE:
         case UCHAR_MATH:
         case UCHAR_NONCHARACTER_CODE_POINT:
-        case UCHAR_PATTERN_SYNTAX:
-        case UCHAR_PATTERN_WHITE_SPACE:
         case UCHAR_QUOTATION_MARK:
         case UCHAR_RADICAL:
-        case UCHAR_REGIONAL_INDICATOR:
-        case UCHAR_S_TERM:
         case UCHAR_SOFT_DOTTED:
         case UCHAR_TERMINAL_PUNCTUATION:
         case UCHAR_UNIFIED_IDEOGRAPH:
         case UCHAR_UPPERCASE:
-        case UCHAR_VARIATION_SELECTOR:
         case UCHAR_WHITE_SPACE:
         case UCHAR_XID_CONTINUE:
         case UCHAR_XID_START:
+        case UCHAR_VARIATION_SELECTOR:
+        case UCHAR_PATTERN_SYNTAX:
+        case UCHAR_PATTERN_WHITE_SPACE:
+        case UCHAR_CASED:
+        case UCHAR_CASE_IGNORABLE:
+        case UCHAR_CHANGES_WHEN_LOWERCASED:
+        case UCHAR_CHANGES_WHEN_UPPERCASED:
+        case UCHAR_CHANGES_WHEN_TITLECASED:
+        case UCHAR_CHANGES_WHEN_CASEFOLDED:
+        case UCHAR_CHANGES_WHEN_CASEMAPPED:
+        case UCHAR_CHANGES_WHEN_NFKC_CASEFOLDED:
+        case UCHAR_REGIONAL_INDICATOR:
+        case UCHAR_EMOJI:
+        case UCHAR_EMOJI_PRESENTATION:
+        case UCHAR_EMOJI_MODIFIER:
+        case UCHAR_EMOJI_MODIFIER_BASE:
+        case UCHAR_EMOJI_COMPONENT:
+        case UCHAR_EXTENDED_PICTOGRAPHIC:
             return true;
         case UCHAR_BASIC_EMOJI:
         case UCHAR_EMOJI_KEYCAP_SEQUENCE:
