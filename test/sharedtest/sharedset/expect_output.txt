@@ -79,7 +79,7 @@ Delete Scenario[forEach]: BusinessError: Concurrent modification exception, errC
 Clear Scenario[forEach]: BusinessError: Concurrent modification exception, errCode: 10200201
 ===Concurrent modification during iteration Test(forEach) end===
 ===Type check begin===
-SharedSet add[shared] element
-sharedSet add[unshared]: TypeError: the value of shared set must be shared too
-sharedSet add[unshared]: TypeError: the value of shared set must be shared too
+sharedSet add[shared] element success
+sharedSet add[unshared]: BusinessError: Parameter error. Only accept sendable value, errCode: 401
+sharedSet add[unshared]: BusinessError: Parameter error. Only accept sendable value, errCode: 401
 ===Type check end===

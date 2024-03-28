@@ -210,22 +210,22 @@ class SObject {
 try {
   let sObj = new SObject();
   sharedMap = new SharedMap([["str", 1], [sObj, undefined], [true, null]]);
-  print("sharedMap set[shared] element");
+  print("sharedMap set[shared] element success");
 } catch (e) {
-  print("sharedMap set[unshared]: " + e);
+  print("sharedMap set[unshared]: " + e + ", errCode: " + e.code);
 }
 
 try {
   let obj = {}
   sharedMap = new SharedMap([["str", 1], [obj, 2]]);
 } catch (e) {
-  print("sharedMap set[unshared]: " + e);
+  print("sharedMap set[unshared]: " + e + ", errCode: " + e.code);
 }
 
 try {
   let sym = Symbol("testSymbol")
   sharedMap = new SharedMap([["str", 1], [sym, 2]]);
 } catch (e) {
-  print("sharedMap set[unshared]: " + e);
+  print("sharedMap set[unshared]: " + e + ", errCode: " + e.code);
 }
 print("===Type check end===");

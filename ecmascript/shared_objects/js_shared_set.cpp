@@ -24,7 +24,9 @@ namespace panda::ecmascript {
 void JSSharedSet::Add(JSThread *thread, const JSHandle<JSSharedSet> &set, const JSHandle<JSTaggedValue> &value)
 {
     if (!value->IsSharedType()) {
-        THROW_TYPE_ERROR(thread, "the value of shared set must be shared too");
+        auto error = containers::ContainerError::BusinessError(thread, containers::ErrorFlag::TYPE_ERROR,
+                                                               "Parameter error. Only accept sendable value");
+        THROW_NEW_ERROR_AND_RETURN(thread, error);
     }
     [[maybe_unused]] ConcurrentModScope<JSSharedSet, ModType::WRITE> scope(thread,
         set.GetTaggedValue().GetTaggedObject());

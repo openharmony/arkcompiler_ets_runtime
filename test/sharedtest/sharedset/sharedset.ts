@@ -216,22 +216,22 @@ class SObject {
 try {
   let sObj = new SObject();
   sharedSet = new SharedSet(["str", 1, sObj, undefined, true, null]);
-  print("SharedSet add[shared] element");
+  print("sharedSet add[shared] element success");
 } catch (e) {
-  print("SharedSet add[unshared]: " + e);
+  print("sharedSet add[unshared]: " + e + ", errCode: " + e.code);
 }
 
 try {
   let obj = {}
   sharedSet = new SharedSet([obj]);
 } catch (e) {
-  print("sharedSet add[unshared]: " + e);
+  print("sharedSet add[unshared]: " + e + ", errCode: " + e.code);
 }
 
 try {
   let sym = Symbol("testSymbol")
   sharedSet = new SharedSet([sym, 2]);
 } catch (e) {
-  print("sharedSet add[unshared]: " + e);
+  print("sharedSet add[unshared]: " + e + ", errCode: " + e.code);
 }
 print("===Type check end===");
