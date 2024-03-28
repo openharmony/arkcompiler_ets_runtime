@@ -148,10 +148,8 @@ void StubBuilder::MatchFieldType(GateRef fieldType, GateRef value, Label *execut
     Label isJSShared(env);
     Label checkBigInt(env);
     Label isBigInt(env);
-    Label checkJSNone(env);
-    Label isJSNone(env);
-    Label checkGeneric(env);
-    Label isGeneric(env);
+    Label checkNoneOrGeneric(env);
+    Label isNoneOrGeneric(env);
     Label checkNull(env);
     Label isNull(env);
     Label checkUndefined(env);
@@ -208,31 +206,23 @@ void StubBuilder::MatchFieldType(GateRef fieldType, GateRef value, Label *execut
         BRANCH(BoolAnd(
             Int32NotEqual(Int32And(fieldType, Int32(static_cast<int32_t>(SharedFieldType::BIG_INT))), Int32(0)),
             TaggedIsBigInt(value)),
-            &isBigInt, &checkJSNone);
+            &isBigInt, &checkNoneOrGeneric);
         Bind(&isBigInt);
         {
             result = True();
             Jump(&exit);
         }
     }
-    Bind(&checkJSNone);
-    {
-        BRANCH(Equal(fieldType, Int32(static_cast<int32_t>(SharedFieldType::NONE))), &isJSNone, &checkGeneric);
-        Bind(&isJSNone);
-        {
-            // bypass none type
-            result = True();
-            Jump(&exit);
-        }
-    }
-    Bind(&checkGeneric);
+    Bind(&checkNoneOrGeneric);
     {
         BRANCH(BoolAnd(
-            Int32NotEqual(Int32And(fieldType, Int32(static_cast<int32_t>(SharedFieldType::GENERIC))), Int32(0)),
+            BoolOr(Equal(fieldType, Int32(static_cast<int32_t>(SharedFieldType::NONE))),
+                Int32NotEqual(Int32And(fieldType, Int32(static_cast<int32_t>(SharedFieldType::GENERIC))), Int32(0))),
             BoolOr(TaggedIsShared(value), BoolNot(TaggedIsHeapObject(value)))),
-            &isGeneric, &checkNull);
-        Bind(&isGeneric);
+            &isNoneOrGeneric, &checkNull);
+        Bind(&isNoneOrGeneric);
         {
+            // (none || generic) && (jsShared || !heapObject)
             result = True();
             Jump(&exit);
         }
