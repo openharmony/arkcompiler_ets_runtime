@@ -35,68 +35,68 @@ function printCeil(x: any) {
 }
 
 // Check without params
-print(Math.ceil());             // NaN
+print(Math.ceil());             //: NaN
 
 // Check with non-number param
-print(Math.ceil("string"));     // [trace] Check Type: NotNumber1
-                                // NaN
-print(Math.ceil(null));         // 0
-print(Math.ceil(undefined));    // NaN
-print(Math.ceil(false));        // 0
-print(Math.ceil(true));         // 1
-print(Math.ceil(new Object));   // NaN
-print(Math.ceil("1.3333"));     // 2
+print(Math.ceil("string"));     //aot: [trace] Check Type: NotNumber1
+                                //: NaN
+print(Math.ceil(null));         //: 0
+print(Math.ceil(undefined));    //: NaN
+print(Math.ceil(false));        //: 0
+print(Math.ceil(true));         //: 1
+print(Math.ceil(new Object));   //: NaN
+print(Math.ceil("1.3333"));     //: 2
 
 // Replace standart builtin
 let backup = Math.ceil
 Math.ceil = replace
-print(Math.ceil(111));          // 111
+print(Math.ceil(111));          //: 111
 Math.ceil = backup
 
 // Check with NaN param
-print(Math.ceil(NaN));          // NaN
+print(Math.ceil(NaN));          //: NaN
 
 // Check with infinity param
-print(Math.ceil(-Infinity));    // -Infinity
-print(Math.ceil(+Infinity));    // Infinity
+print(Math.ceil(-Infinity));    //: -Infinity
+print(Math.ceil(+Infinity));    //: Infinity
 
 // Check with zero param
-print(Math.ceil(-0.0));         // 0
-print(Math.ceil(0.0));          // 0
-print(Math.ceil(+0.0));         // 0
+print(Math.ceil(-0.0));         //: 0
+print(Math.ceil(0.0));          //: 0
+print(Math.ceil(+0.0));         //: 0
 
 // Check with integer param
-print(Math.ceil(-1.0));         // -1
-print(Math.ceil(+1.0));         // 1
-print(Math.ceil(-12.0));        // -12
-print(Math.ceil(+12.0));        // 12
-print(Math.ceil(-123.0));       // -123
-print(Math.ceil(+123.0));       // 123
+print(Math.ceil(-1.0));         //: -1
+print(Math.ceil(+1.0));         //: 1
+print(Math.ceil(-12.0));        //: -12
+print(Math.ceil(+12.0));        //: 12
+print(Math.ceil(-123.0));       //: -123
+print(Math.ceil(+123.0));       //: 123
 
-printCeil(1.5);                 // 2
+printCeil(1.5);                 //: 2
 // Call standard builtin with non-number param
-printCeil("abc");               // [trace] Check Type: NotNumber1
-                                // NaN
-printCeil("1.5");               // [trace] Check Type: NotNumber1
-                                // 2
+printCeil("abc");               //aot: [trace] Check Type: NotNumber1
+                                //: NaN
+printCeil("1.5");               //aot: [trace] Check Type: NotNumber1
+                                //: 2
 
 if (ArkTools.isAOTCompiled(printCeil)) {
     // Replace standard builtin after call to standard builtin was profiled
     Math.ceil = replace
 }
-printCeil(1.5);                 // aot: [trace] Check Type: NotCallTarget1
-                                // aot: 1.5
-                                // pgo: 2
-printCeil("abc");               // aot: [trace] Check Type: NotCallTarget1
-                                // aot: abc
-                                // pgo: NaN
+printCeil(1.5);                 //aot: [trace] Check Type: NotCallTarget1
+                                //aot: 1.5
+                                //pgo: 2
+printCeil("abc");               //aot: [trace] Check Type: NotCallTarget1
+                                //aot: abc
+                                //pgo: NaN
 
 Math.ceil = backup
 
 // Check with fractional param
-print(Math.ceil(-1.25));        // -1
-print(Math.ceil(+1.25));        // 2
-print(Math.ceil(-1.50));        // -1
-print(Math.ceil(+1.50));        // 2
-print(Math.ceil(-1.75));        // -1
-print(Math.ceil(+1.75));        // 2
+print(Math.ceil(-1.25));        //: -1
+print(Math.ceil(+1.25));        //: 2
+print(Math.ceil(-1.50));        //: -1
+print(Math.ceil(+1.50));        //: 2
+print(Math.ceil(-1.75));        //: -1
+print(Math.ceil(+1.75));        //: 2

@@ -34,58 +34,73 @@ function printclz32(x: any) {
 }
 
 // Check without params
-print(Math.clz32()); // 32
+print(Math.clz32()); //: 32
 
 // Check with single int param
-print(Math.clz32(0)); // 32
-print(Math.clz32(1)); // 31
-print(Math.clz32(1 << 31)) // 0
-print(Math.clz32(1 << 30)) // 1
-print(Math.clz32(3)); // 0b11 -> 30
-print(Math.clz32(-5)); // 0
-print(Math.clz32(4294967298)); // MAX_UINT32 + 3 -> 30
+print(Math.clz32(0)); //: 32
+print(Math.clz32(1)); //: 31
+print(Math.clz32(1 << 31)) //: 0
+print(Math.clz32(1 << 30)) //: 1
+print(Math.clz32(-5)); //: 0
+
+// 0b11
+print(Math.clz32(3)); //: 30
+
+// MAX_UINT32 + 3
+print(Math.clz32(4294967298)); //: 30
 
 // Check with single float param
-print(Math.clz32(1.9999999999999)); // 31
-print(Math.clz32(126.55555555555)); // 25
-print(Math.clz32(126.999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999)) // 25
+print(Math.clz32(1.9999999999999)); //: 31
+print(Math.clz32(126.55555555555)); //: 25
+print(Math.clz32(126.999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999)) //: 25
 
 // Negative arguments
-print(Math.clz32((1 << 30) + (1 << 31))) // -1073741824 (0xC0000000) -> 0
-print(Math.clz32(-5)) // 0
-print(Math.clz32(-126.99999999999999999999999)) // 0
+// -1073741824 (0xC0000000) ->
+print(Math.clz32((1 << 30) + (1 << 31))) //: 0
+print(Math.clz32(-5)) //: 0
+print(Math.clz32(-126.99999999999999999999999)) //: 0
 
 
 // Corner cases
-print(Math.clz32(NaN)) // 32
-print(Math.clz32(+0.0)) // 32
-print(Math.clz32(-0.0)) // 32
-print(Math.clz32(Infinity)); // 32
-print(Math.clz32(-Infinity)); // 32
+print(Math.clz32(NaN)) //: 32
+print(Math.clz32(+0.0)) //: 32
+print(Math.clz32(-0.0)) //: 32
+print(Math.clz32(Infinity)); //: 32
+print(Math.clz32(-Infinity)); //: 32
 
-printclz32(4); // 29
-printclz32("abc"); // 32
-printclz32("abcd"); // 32
+printclz32(4); //: 29
+//aot: [trace] Check Type: NotNumber1
+printclz32("abc"); //: 32
+//aot: [trace] Check Type: NotNumber1
+printclz32("abcd"); //: 32
 
 let true_clz32 = Math.clz32
 if (ArkTools.isAOTCompiled(printclz32)) {
     // Replace standard builtin after call to standard builtin was profiled
     Math.clz32 = replace
 }
-printclz32(-8); // 0; or -8, deopt
-printclz32("abc"); // 32; or abc, deopt
+printclz32(-8); //pgo: 0
+//aot: [trace] Check Type: NotCallTarget1
+//aot: -8
+
+printclz32("abc"); //pgo: 32
+//aot: [trace] Check Type: NotCallTarget1
+//aot: abc
+
 Math.clz32 = true_clz32
 
 // Check IR correctness inside try-block
 try {
-    printclz32(16); // 27
-    printclz32("abc"); // 32
+    printclz32(16); //: 27
+    //aot: [trace] Check Type: NotNumber1
+    printclz32("abc"); //: 32
 } catch (e) {
 }
 
 let obj = {};
 obj.valueOf = (() => { return 32; })
-print(Math.clz32(obj)); // 26
+//aot: [trace] Check Type: NotNumber1
+print(Math.clz32(obj)); //: 26
 
 function Throwing() {
     this.value = 64;
@@ -99,11 +114,11 @@ Throwing.prototype.valueOf = function() {
 let throwingObj = new Throwing();
 
 try {
-    print(Math.clz32(throwingObj)); // 25
+    print(Math.clz32(throwingObj)); //: 25
     throwingObj.value = 128;
-    print(Math.clz32(throwingObj)); // exception
+    print(Math.clz32(throwingObj)); //: Error: so big
 } catch(e) {
     print(e);
 } finally {
-    print(Math.clz32(obj)); // 26
+    print(Math.clz32(obj)); //: 26
 }

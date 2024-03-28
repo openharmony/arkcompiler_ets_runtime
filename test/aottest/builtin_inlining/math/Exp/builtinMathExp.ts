@@ -55,66 +55,73 @@ let obj = {
 };
 
 // Check without params
-print(Math.exp()); // NaN
+print(Math.exp()); //: NaN
 
 // Check with single param
-print(Math.exp(0)); // 1
-print(Math.exp(-0)); // 1
-print(Math.exp(1)); // 2.718281828459045
-print(Math.exp(-100)); // 3.720075976020836e-44
-print(Math.exp(100)); // 2.6881171418161356e+43
-print(Math.exp(10e-10)); // 1.000000001
+print(Math.exp(0)); //: 1
+print(Math.exp(-0)); //: 1
+print(Math.exp(1)); //: 2.718281828459045
+print(Math.exp(-100)); //: 3.720075976020836e-44
+print(Math.exp(100)); //: 2.6881171418161356e+43
+print(Math.exp(10e-10)); //: 1.000000001
 
 // Check with special float params
-printZero(Math.exp(-Infinity)); // 0
-print(Math.exp(Infinity)); // Infinity
-print(Math.exp(NaN)); // NaN
+printZero(Math.exp(-Infinity)); //: 0
+print(Math.exp(Infinity)); //: Infinity
+print(Math.exp(NaN)); //: NaN
 
 // Check with 2 params
-print(Math.exp(1, 1)); // 2.718281828459045
+print(Math.exp(1, 1)); //: 2.718281828459045
 
 // Check with 3 params
-print(Math.exp(1, 1, 1)); // 2.718281828459045
+print(Math.exp(1, 1, 1)); //: 2.718281828459045
 
 // Check with 4 params
-print(Math.exp(1, 1, 1, 1)); // 2.718281828459045
+print(Math.exp(1, 1, 1, 1)); //: 2.718281828459045
 
 // Check with 5 params
-print(Math.exp(1, 1, 1, 1, 1)); // 2.718281828459045
+print(Math.exp(1, 1, 1, 1, 1)); //: 2.718281828459045
 
 try {
-    print(Math.exp(1)); // 2.718281828459045
+    print(Math.exp(1)); //: 2.718281828459045
 } catch(e) {}
 
 // Replace standart builtin
 let trueExp = Math.exp
 Math.exp = replace
-print(Math.exp(111)); // 111
+print(Math.exp(111)); //: 111
 Math.exp = trueExp
 
-print(Math.exp(1)); // 2.718281828459045
+print(Math.exp(1)); //: 2.718281828459045
 
 // Call standart builtin with non-number param
-// Check Type: NotNumber1
-printExp("1"); // 2.718281828459045
-// Check Type: NotNumber1
-printExp("NaN"); // NaN
-// Check Type: NotNumber1
-printExp("abc"); // NaN
+//aot: [trace] Check Type: NotNumber1
+printExp("1"); //: 2.718281828459045
+//aot: [trace] Check Type: NotNumber1
+printExp("NaN"); //: NaN
+//aot: [trace] Check Type: NotNumber1
+printExp("abc"); //: NaN
 
 if (ArkTools.isAOTCompiled(printExp)) {
     // Replace standard builtin after call to standard builtin was profiled
     Math.exp = replace
 }
 
-// Check Type: NotCallTarget1
-printExp(1); // 2.718281828459045
-// Check Type: NotCallTarget1
-printExp(2); // 7.38905609893065
-// Check Type: NotCallTarget1
-printExp("1"); // 2.718281828459045
-// Check Type: NotCallTarget1
-printExp("2"); // 7.38905609893065
+printExp(1); //pgo: 2.718281828459045
+//aot: [trace] Check Type: NotCallTarget1
+//aot: 1
+
+printExp(2); //pgo: 7.38905609893065
+//aot: [trace] Check Type: NotCallTarget1
+//aot: 2
+
+printExp("1"); //pgo: 2.718281828459045
+//aot: [trace] Check Type: NotCallTarget1
+//aot: 1
+
+printExp("2"); //pgo: 7.38905609893065
+//aot: [trace] Check Type: NotCallTarget1
+//aot: 2
 
 Math.exp = trueExp
 
@@ -123,14 +130,15 @@ try {
     print(Math.exp(1)); //: 2.718281828459045
     print(Math.exp(1, 2)); //: 2.718281828459045
     printExp(1, 2); //: 2.718281828459045
-    // Check Type: NotNumber1
+    //aot: [trace] Check Type: NotNumber1
     printExp("abc", 3e3); //: NaN
 } catch (e) {
 }
 
-// Check Type: NotNumber1
-printExp(obj); // 1.026187963170189e-10
-// Check Type: NotNumber1
-printExp(doubleObj); // 14.879731724872837
-// Check Type: NotNumber1
-printExp(nanObj); // NaN
+//aot: [trace] Check Type: NotNumber1
+//: obj.valueOf
+printExp(obj); //: 1.026187963170189e-10
+//aot: [trace] Check Type: NotNumber1
+printExp(doubleObj); //: 14.879731724872837
+//aot: [trace] Check Type: NotNumber1
+printExp(nanObj); //: NaN

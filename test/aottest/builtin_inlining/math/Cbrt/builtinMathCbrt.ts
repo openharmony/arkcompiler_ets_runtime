@@ -36,62 +36,76 @@ function printCbrt(x: any) {
 let res:number = 1;
 
 // Check without params
-print(Math.cbrt()); // NaN
+print(Math.cbrt()); //: NaN
 
 // Check with single param
-print(Math.cbrt(-0.027)); // -0.3
-print(Math.cbrt(0.125)); // 0.5
-print(Math.cbrt(1)); // 1
-print(Math.cbrt(8)); // 2
-print(Math.cbrt(2146689000)); // 1290
-print(Math.cbrt(1_0000_0000_0000)); // 10000
-print(Math.cbrt(-1_0000_0000_0000)); // -10000
-print(Math.cbrt(10e80)); // 1e27
+print(Math.cbrt(-0.027)); //: -0.29999999999999992
+print(Math.cbrt(0.125)); //: 0.49999999999999992
+print(Math.cbrt(1)); //: 1
+print(Math.cbrt(8)); //: 2
+print(Math.cbrt(2146689000)); //: 1290.0000000000002
+print(Math.cbrt(1_0000_0000_0000)); //: 10000
+print(Math.cbrt(-1_0000_0000_0000)); //: -10000
+print(Math.cbrt(10e80)); //: 1.0000000000000002e+27
 
 // Check with three param
-print(Math.cbrt(64, 4, 6)); // 4
+print(Math.cbrt(64, 4, 6)); //: 4
 
 // If n is NaN, +0.0f or -0.0f, return n
 res = Math.cbrt(+0.0);
-print(res); // 0
-print("1/x: " + 1.0/res); // +inf
+print(res); //: 0
+print("1/x: " + 1.0/res); //: 1/x: Infinity
 
 res = Math.cbrt(-0.0);
-print(res); // -0
-print("1/x: " + 1.0/res); // -inf
+print(res); //: 0
+print("1/x: " + 1.0/res); //: 1/x: -Infinity
 
-print(Math.cbrt(NaN)); // NaN
+print(Math.cbrt(NaN)); //: NaN
 
 // Replace standard builtin
 let true_cbrt = Math.cbrt;
 Math.cbrt = replace;
-print(Math.cbrt(0.001)); // 0.001, no deopt
+
+// no deopt
+print(Math.cbrt(0.001)); //: 0.001
 Math.cbrt = true_cbrt;
 
-printCbrt("abcd"); // NaN
-printCbrt("-125"); // -5
-printCbrt("abcdef"); // NaN
+//aot: [trace] Check Type: NotNumber1
+printCbrt("abcd"); //: NaN
 
+//aot: [trace] Check Type: NotNumber1
+printCbrt("-125"); //: -5
+
+//aot: [trace] Check Type: NotNumber1
+printCbrt("abcdef"); //: NaN
 
 if (ArkTools.isAOTCompiled(printCbrt)) {
     // Replace standard builtin after call to standard builtin was profiled
     Math.cbrt = replace
 }
 
-printCbrt(-216); // -6; or -216, deopt
-printCbrt("abcd"); // NaN; or "abcd", deopt
+printCbrt(-216); //pgo: -6.000000000000001
+//aot: [trace] Check Type: NotCallTarget1
+//aot: -216
+
+printCbrt("abcd"); //pgo: NaN
+//aot: [trace] Check Type: NotCallTarget1
+//aot: abcd
+
 Math.cbrt = true_cbrt;
 
 // Check IR correctness inside try-block
 try {
-    printCbrt(10); // 2.1544346900318834
-    printCbrt("abc"); // NaN
+    printCbrt(10); //: 2.1544346900318834
+    //aot: [trace] Check Type: NotNumber1
+    printCbrt("abc"); //: NaN
 } catch (e) {
 }
 
 let obj = {};
 obj.valueOf = (() => { return -64; })
-print(Math.cbrt(obj)); // -8
+//aot: [trace] Check Type: NotNumber1
+print(Math.cbrt(obj)); //: -4
 
 function Throwing() {
     this.value = 100;
@@ -107,11 +121,11 @@ Throwing.prototype.valueOf = function() {
 let throwingObj = new Throwing();
 
 try {
-    print(Math.cbrt(throwingObj)); // 4.641588834
+    print(Math.cbrt(throwingObj)); //: 4.641588833612778
     throwingObj.value = 1000;
-    print(Math.cbrt(throwingObj)); // exception
+    print(Math.cbrt(throwingObj)); //: Error: big value
 } catch(e) {
     print(e);
 } finally {
-    print(Math.cbrt(obj)); // -8
+    print(Math.cbrt(obj)); //: -4
 }

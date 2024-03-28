@@ -23,27 +23,27 @@ function replace(a : number)
 }
 
 // Several params:
-print(Math.sign(3, -0.12))
-print(Math.sign(-3, 0.12))
-print(Math.sign(-3, 0.12, -0.0))
-print(Math.sign(-4, 0.12, -0.0, 0.0))
+print(Math.sign(3, -0.12)) //: 1
+print(Math.sign(-3, 0.12)) //: -1
+print(Math.sign(-3, 0.12, -0.0)) //: -1
+print(Math.sign(-4, 0.12, -0.0, 0.0)) //: -1
 
-print(Math.sign(3))
-print(Math.sign(-3))
+print(Math.sign(3)) //: 1
+print(Math.sign(-3)) //: -1
 
-print("Test -0.0:")
+// Test +0.0 and -0.0
 // 0.0 and -0.0:
-print(1 / Math.sign(0))
-print(1 / Math.sign(-0))
+print(1 / Math.sign(0)) //: Infinity
+print(1 / Math.sign(-0)) //: -Infinity
 
-print("Infinities:")
-print(Math.sign(-Infinity))
-print(Math.sign(Infinity))
+// Infinities
+print(Math.sign(-Infinity)) //: -1
+print(Math.sign(Infinity)) //: 1
 
 // Replace, no deopt
 let trueSign = Math.sign
 Math.sign = replace
-print(Math.sign(-12)) // -1
+print(Math.sign(-12)) //: -12
 Math.sign = trueSign
 
 // Replace for the callee:
@@ -60,33 +60,41 @@ function printSign(a: any)
     }
 }
 
-print("Check:")
-printSign(1)
-printSign(Math.PI)
-printSign(-Math.PI)
-printSign(NaN)
-printSign(-1.5)
-printSign(Infinity)
+// Check:
+printSign(1) //: 1
+printSign(Math.PI) //: 1
+printSign(-Math.PI) //: -1
+printSign(NaN) //: NaN
+printSign(-1.5) //: -1
+printSign(Infinity) //: 1
 
 if (ArkTools.isAOTCompiled(printSign)) {
     // Replace standard builtin after call to standard builtin was profiled
     Math.sign = replace
 }
 
-print("Check deopt from compiled:")
-printSign(2)         // 1 or deopt, 2 
-printSign(-Math.PI)  // -1 or deopt, -3.14 
+// Check deopt from compiled
+printSign(2)         //pgo: 1
+//aot: [trace] Check Type: NotCallTarget1
+//aot: 2
+
+printSign(-Math.PI)  //pgo: -1
+//aot: [trace] Check Type: NotCallTarget1
+//aot: -3.141592653589793
+
 Math.sign = trueSign
 let obj = {};
 obj.valueOf = (() => { return -23; })
-printSign(obj);      // -1, deopt
-printSign(-1.5)      // -1
-printSign(Infinity)  // 1
+//aot: [trace] Check Type: NotNumber2
+printSign(obj);      //: -1
+printSign(-1.5)      //: -1
+printSign(Infinity)  //: 1
 
-print("Check IR correctness inside try-block:")
+// Check IR correctness inside try-block
 try {
-    printSign(-12) // -1
-    printSign("-12") // -1, deopt
+    printSign(-12) //: -1
+    //aot: [trace] Check Type: NotNumber2
+    printSign("-12") //: -1
 } catch (e) {
     print(e)
 }
@@ -116,8 +124,17 @@ function tryCatchTest(obj: any, v : number)
     }
 }
 
-print("Test try-catch-deopt 1:")
+// Test try-catch-deopt 1
 tryCatchTest(throwingObj, ArkTools.isAOTCompiled(tryCatchTest) * 1)
+//: -1
+//pgo: 0
+//aot: 1
+//: 0
+
+// Test try-catch-deopt 2
 throwingObj.value = 14
-print("Test try-catch-deopt 2:")
 tryCatchTest(throwingObj, ArkTools.isAOTCompiled(tryCatchTest) * 1)
+//: Error: exception
+//pgo: 0
+//aot: -1
+//: 0
