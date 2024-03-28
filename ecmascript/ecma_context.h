@@ -519,10 +519,10 @@ public:
         return unsharedConstpoolCount_++;
     }
 
-    void CheckUnsharedConstpoolArrayLimit(int32_t index)
+    void CheckUnsharedConstpoolArrayLimit(int32_t count)
     {
-        if (index >= UNSHARED_CONSTANTPOOL_COUNT) {
-            LOG_ECMA(FATAL) << "the unshared constpool array need to expanding capacity";
+        if (count >= UNSHARED_CONSTANTPOOL_COUNT) {
+            LOG_ECMA(FATAL) << "the unshared constpool array need to expanding capacity, count :" << count;
             UNREACHABLE();
         }
     }
