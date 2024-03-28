@@ -3218,5 +3218,20 @@ inline GateRef StubBuilder::GetKey(GateRef layoutInfo, GateRef index)
     GateRef fixedIdx = GetKeyIndex(index);
     return GetValueFromTaggedArray(layoutInfo, fixedIdx);
 }
+
+inline GateRef StubBuilder::IsMarkerCellValid(GateRef cell)
+{
+    return env_->GetBuilder()->IsMarkerCellValid(cell);
+}
+
+inline GateRef StubBuilder::GetAccessorHasChanged(GateRef obj)
+{
+    return env_->GetBuilder()->GetAccessorHasChanged(obj);
+}
+
+inline GateRef StubBuilder::ComputeTaggedTypedArraySize(GateRef elementSize, GateRef length)
+{
+    return PtrAdd(IntPtr(ByteArray::DATA_OFFSET), PtrMul(elementSize, length));
+}
 } //  namespace panda::ecmascript::kungfu
 #endif // ECMASCRIPT_COMPILER_STUB_INL_H

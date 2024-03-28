@@ -164,6 +164,7 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(AddElementInternal)                 \
     V(AllocateInYoung)                    \
     V(AllocateInSOld)                     \
+    V(TypedArraySpeciesCreate)            \
     V(CallInternalGetter)                 \
     V(CallInternalSetter)                 \
     V(CallGetPrototype)                   \

@@ -15,6 +15,7 @@
 
 #include "ecmascript/compiler/new_object_stub_builder.h"
 
+#include "ecmascript/compiler/number_gate_info.h"
 #include "ecmascript/compiler/stub_builder-inl.h"
 #include "ecmascript/compiler/stub_builder.h"
 #include "ecmascript/ecma_string.h"
@@ -1558,6 +1559,332 @@ GateRef NewObjectStubBuilder::NewTaggedSubArray(GateRef glue, GateRef srcTypedAr
     Store(VariableType::INT32(), glue, obj, IntPtr(JSTypedArray::BYTE_OFFSET_OFFSET), beginByteOffset);
     Store(VariableType::INT32(), glue, obj, IntPtr(JSTypedArray::ARRAY_LENGTH_OFFSET), newLength);
     Store(VariableType::INT32(), glue, obj, IntPtr(JSTypedArray::CONTENT_TYPE_OFFSET), contentType);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef NewObjectStubBuilder::NewTypedArray(GateRef glue, GateRef srcTypedArray, GateRef srcType, GateRef length)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+
+    DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
+    Label slowPath(env);
+    Label defaultConstr(env);
+    Label markerCellValid(env);
+    Label isProtoChangeMarker(env);
+    Label accessorNotChanged(env);
+    Label exit(env);
+    BRANCH(HasConstructor(srcTypedArray), &slowPath, &defaultConstr);
+    Bind(&defaultConstr);
+    GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
+    GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
+    GateRef markerCell = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv,
+        GlobalEnv::TYPED_ARRAY_SPECIES_PROTECT_DETECTOR_INDEX);
+    BRANCH(IsMarkerCellValid(markerCell), &markerCellValid, &slowPath);
+    Bind(&markerCellValid);
+    GateRef marker = GetProtoChangeMarkerFromHClass(LoadHClass(srcTypedArray));
+    BRANCH(TaggedIsProtoChangeMarker(marker), &isProtoChangeMarker, &accessorNotChanged);
+    Bind(&isProtoChangeMarker);
+    BRANCH(GetAccessorHasChanged(marker), &slowPath, &accessorNotChanged);
+
+    Bind(&accessorNotChanged);
+    {
+        DEFVARIABLE(buffer, VariableType::JS_ANY(), Undefined());
+        Label next(env);
+        GateRef hclass = LoadHClass(srcTypedArray);
+        GateRef obj = NewJSObject(glue, hclass);
+        result = obj;
+        GateRef ctorName = Load(VariableType::JS_POINTER(), srcTypedArray,
+            IntPtr(JSTypedArray::TYPED_ARRAY_NAME_OFFSET));
+        GateRef elementSize = GetElementSizeFromType(glue, srcType);
+        GateRef newByteLength = Int32Mul(elementSize, length);
+        GateRef contentType = Load(VariableType::INT32(), srcTypedArray, IntPtr(JSTypedArray::CONTENT_TYPE_OFFSET));
+        BRANCH(Int32LessThanOrEqual(newByteLength, Int32(RangeInfo::TYPED_ARRAY_ONHEAP_MAX)), &next, &slowPath);
+        Bind(&next);
+        {
+            Label newByteArrayExit(env);
+            NewByteArray(&buffer, &newByteArrayExit, elementSize, length);
+            Bind(&newByteArrayExit);
+            StoreHClass(glue, obj, GetOnHeapHClassFromType(glue, srcType));
+            Store(VariableType::JS_POINTER(), glue, obj, IntPtr(JSTypedArray::VIEWED_ARRAY_BUFFER_OFFSET), *buffer);
+            Store(VariableType::JS_POINTER(), glue, obj, IntPtr(JSTypedArray::TYPED_ARRAY_NAME_OFFSET), ctorName);
+            Store(VariableType::INT32(), glue, obj, IntPtr(JSTypedArray::BYTE_LENGTH_OFFSET), newByteLength);
+            Store(VariableType::INT32(), glue, obj, IntPtr(JSTypedArray::BYTE_OFFSET_OFFSET), Int32(0));
+            Store(VariableType::INT32(), glue, obj, IntPtr(JSTypedArray::ARRAY_LENGTH_OFFSET), length);
+            Store(VariableType::INT32(), glue, obj, IntPtr(JSTypedArray::CONTENT_TYPE_OFFSET), contentType);
+            Jump(&exit);
+        }
+    }
+
+    Bind(&slowPath);
+    {
+        result = CallRuntime(glue, RTSTUB_ID(TypedArraySpeciesCreate),
+            { srcTypedArray, IntToTaggedInt(Int32(1)), IntToTaggedInt(length) });
+        Jump(&exit);
+    }
+
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+void NewObjectStubBuilder::NewByteArray(Variable *result, Label *exit, GateRef elementSize, GateRef length)
+{
+    auto env = GetEnvironment();
+
+    Label noError(env);
+    Label initializeExit(env);
+    size_ = AlignUp(ComputeTaggedTypedArraySize(ZExtInt32ToPtr(elementSize), ZExtInt32ToPtr(length)),
+        IntPtr(static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT)));
+    AllocateInYoung(result, exit, &noError);
+    Bind(&noError);
+    {
+        auto hclass = GetGlobalConstantValue(VariableType::JS_POINTER(), glue_, ConstantIndex::BYTE_ARRAY_CLASS_INDEX);
+        StoreBuiltinHClass(glue_, result->ReadVariable(), hclass);
+        GateRef byteLength = Int32Mul(elementSize, length);
+        auto startOffset = Int32(ByteArray::DATA_OFFSET);
+        auto endOffset = Int32Add(Int32(ByteArray::DATA_OFFSET), byteLength);
+        InitializeWithSpeicalValue(&initializeExit, result->ReadVariable(), Int32(0), startOffset, endOffset);
+        Bind(&initializeExit);
+        Store(VariableType::INT32(), glue_, result->ReadVariable(), IntPtr(ByteArray::ARRAY_LENGTH_OFFSET), length);
+        Store(VariableType::INT32(), glue_, result->ReadVariable(), IntPtr(ByteArray::BYTE_LENGTH_OFFSET), elementSize);
+        Jump(exit);
+    }
+}
+
+GateRef NewObjectStubBuilder::GetElementSizeFromType(GateRef glue, GateRef type)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+
+    DEFVARIABLE(result, VariableType::INT32(), Int32(0));
+    Label defaultLabel(env);
+    Label exit(env);
+    Label labelBuffer[11] = {
+        Label(env), Label(env), Label(env), Label(env), Label(env), Label(env),
+        Label(env), Label(env), Label(env), Label(env), Label(env) };
+    int64_t valueBuffer[11] = {
+        static_cast<int64_t>(JSType::JS_INT8_ARRAY),
+        static_cast<int64_t>(JSType::JS_UINT8_ARRAY),
+        static_cast<int64_t>(JSType::JS_UINT8_CLAMPED_ARRAY),
+        static_cast<int64_t>(JSType::JS_INT16_ARRAY),
+        static_cast<int64_t>(JSType::JS_UINT16_ARRAY),
+        static_cast<int64_t>(JSType::JS_INT32_ARRAY),
+        static_cast<int64_t>(JSType::JS_UINT32_ARRAY),
+        static_cast<int64_t>(JSType::JS_FLOAT32_ARRAY),
+        static_cast<int64_t>(JSType::JS_FLOAT64_ARRAY),
+        static_cast<int64_t>(JSType::JS_BIGINT64_ARRAY),
+        static_cast<int64_t>(JSType::JS_BIGUINT64_ARRAY) };
+
+    // 11 : this switch has 11 case
+    Switch(type, &defaultLabel, valueBuffer, labelBuffer, 11);
+    // 0 : index of this buffer
+    Bind(&labelBuffer[0]);
+    {
+        // 1 : the elementSize of this type is 1
+        result = Int32(1);
+        Jump(&exit);
+    }
+    // 1 : index of this buffer
+    Bind(&labelBuffer[1]);
+    {
+        // 1 : the elementSize of this type is 1
+        result = Int32(1);
+        Jump(&exit);
+    }
+    // 2 : index of this buffer
+    Bind(&labelBuffer[2]);
+    {
+        // 1 : the elementSize of this type is 1
+        result = Int32(1);
+        Jump(&exit);
+    }
+    // 3 : index of this buffer
+    Bind(&labelBuffer[3]);
+    {
+        // 2 : the elementSize of this type is 2
+        result = Int32(2);
+        Jump(&exit);
+    }
+    // 4 : index of this buffer
+    Bind(&labelBuffer[4]);
+    {
+        // 2 : the elementSize of this type is 2
+        result = Int32(2);
+        Jump(&exit);
+    }
+    // 5 : index of this buffer
+    Bind(&labelBuffer[5]);
+    {
+        // 4 : the elementSize of this type is 4
+        result = Int32(4);
+        Jump(&exit);
+    }
+    // 6 : index of this buffer
+    Bind(&labelBuffer[6]);
+    {
+        // 4 : the elementSize of this type is 4
+        result = Int32(4);
+        Jump(&exit);
+    }
+    // 7 : index of this buffer
+    Bind(&labelBuffer[7]);
+    {
+        // 4 : the elementSize of this type is 4
+        result = Int32(4);
+        Jump(&exit);
+    }
+    // 8 : index of this buffer
+    Bind(&labelBuffer[8]);
+    {
+        // 8 : the elementSize of this type is 8
+        result = Int32(8);
+        Jump(&exit);
+    }
+    // 9 : index of this buffer
+    Bind(&labelBuffer[9]);
+    {
+        // 8 : the elementSize of this type is 8
+        result = Int32(8);
+        Jump(&exit);
+    }
+    // 10 : index of this buffer
+    Bind(&labelBuffer[10]);
+    {
+        // 8 : the elementSize of this type is 8
+        result = Int32(8);
+        Jump(&exit);
+    }
+    Bind(&defaultLabel);
+    {
+        FatalPrint(glue, { Int32(GET_MESSAGE_STRING_ID(ThisBranchIsUnreachable)) });
+        Jump(&exit);
+    }
+
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef NewObjectStubBuilder::GetOnHeapHClassFromType(GateRef glue, GateRef type)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+
+    DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
+    GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
+    GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
+    Label defaultLabel(env);
+    Label exit(env);
+    Label labelBuffer[11] = {
+        Label(env), Label(env), Label(env), Label(env), Label(env), Label(env),
+        Label(env), Label(env), Label(env), Label(env), Label(env) };
+    int64_t valueBuffer[11] = {
+        static_cast<int64_t>(JSType::JS_INT8_ARRAY),
+        static_cast<int64_t>(JSType::JS_UINT8_ARRAY),
+        static_cast<int64_t>(JSType::JS_UINT8_CLAMPED_ARRAY),
+        static_cast<int64_t>(JSType::JS_INT16_ARRAY),
+        static_cast<int64_t>(JSType::JS_UINT16_ARRAY),
+        static_cast<int64_t>(JSType::JS_INT32_ARRAY),
+        static_cast<int64_t>(JSType::JS_UINT32_ARRAY),
+        static_cast<int64_t>(JSType::JS_FLOAT32_ARRAY),
+        static_cast<int64_t>(JSType::JS_FLOAT64_ARRAY),
+        static_cast<int64_t>(JSType::JS_BIGINT64_ARRAY),
+        static_cast<int64_t>(JSType::JS_BIGUINT64_ARRAY) };
+
+    // 11 : this switch has 11 case
+    Switch(type, &defaultLabel, valueBuffer, labelBuffer, 11);
+    // 0 : index of this buffer
+    Bind(&labelBuffer[0]);
+    {
+        result = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv,
+            GlobalEnv::INT8_ARRAY_ROOT_HCLASS_ON_HEAP_INDEX);
+        Jump(&exit);
+    }
+    // 1 : index of this buffer
+    Bind(&labelBuffer[1]);
+    {
+        result = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv,
+            GlobalEnv::UINT8_ARRAY_ROOT_HCLASS_ON_HEAP_INDEX);
+        Jump(&exit);
+    }
+    // 2 : index of this buffer
+    Bind(&labelBuffer[2]);
+    {
+        result = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv,
+            GlobalEnv::UINT8_CLAMPED_ARRAY_ROOT_HCLASS_ON_HEAP_INDEX);
+        Jump(&exit);
+    }
+    // 3 : index of this buffer
+    Bind(&labelBuffer[3]);
+    {
+        result = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv,
+            GlobalEnv::INT16_ARRAY_ROOT_HCLASS_ON_HEAP_INDEX);
+        Jump(&exit);
+    }
+    // 4 : index of this buffer
+    Bind(&labelBuffer[4]);
+    {
+        result = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv,
+            GlobalEnv::UINT16_ARRAY_ROOT_HCLASS_ON_HEAP_INDEX);
+        Jump(&exit);
+    }
+    // 5 : index of this buffer
+    Bind(&labelBuffer[5]);
+    {
+        result = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv,
+            GlobalEnv::INT32_ARRAY_ROOT_HCLASS_ON_HEAP_INDEX);
+        Jump(&exit);
+    }
+    // 6 : index of this buffer
+    Bind(&labelBuffer[6]);
+    {
+        result = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv,
+            GlobalEnv::UINT32_ARRAY_ROOT_HCLASS_ON_HEAP_INDEX);
+        Jump(&exit);
+    }
+    // 7 : index of this buffer
+    Bind(&labelBuffer[7]);
+    {
+        result = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv,
+            GlobalEnv::FLOAT32_ARRAY_ROOT_HCLASS_ON_HEAP_INDEX);
+        Jump(&exit);
+    }
+    // 8 : index of this buffer
+    Bind(&labelBuffer[8]);
+    {
+        result = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv,
+            GlobalEnv::FLOAT64_ARRAY_ROOT_HCLASS_ON_HEAP_INDEX);
+        Jump(&exit);
+    }
+    // 9 : index of this buffer
+    Bind(&labelBuffer[9]);
+    {
+        result = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv,
+            GlobalEnv::BIGINT64_ARRAY_ROOT_HCLASS_ON_HEAP_INDEX);
+        Jump(&exit);
+    }
+    // 10 : index of this buffer
+    Bind(&labelBuffer[10]);
+    {
+        result = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv,
+            GlobalEnv::BIGUINT64_ARRAY_ROOT_HCLASS_ON_HEAP_INDEX);
+        Jump(&exit);
+    }
+    Bind(&defaultLabel);
+    {
+        FatalPrint(glue, { Int32(GET_MESSAGE_STRING_ID(ThisBranchIsUnreachable)) });
+        Jump(&exit);
+    }
+
+    Bind(&exit);
     auto ret = *result;
     env->SubCfgExit();
     return ret;
