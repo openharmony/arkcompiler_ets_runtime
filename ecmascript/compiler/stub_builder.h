@@ -838,6 +838,9 @@ public:
     GateRef AppendSkipHole(GateRef glue, GateRef first, GateRef second, GateRef copyLength);
     GateRef IntToEcmaString(GateRef glue, GateRef number);
     GateRef NumberToString(GateRef glue, GateRef number);
+    inline GateRef IsMarkerCellValid(GateRef cell);
+    inline GateRef GetAccessorHasChanged(GateRef obj);
+    inline GateRef ComputeTaggedTypedArraySize(GateRef elementSize, GateRef length);
 
 private:
     using BinaryOperation = std::function<GateRef(Environment*, GateRef, GateRef)>;

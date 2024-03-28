@@ -87,6 +87,10 @@ public:
     void CreateJSCollectionIterator(Variable *result, Label *exit, GateRef set, GateRef kind);
     GateRef NewTaggedSubArray(GateRef glue, GateRef srcTypedArray, GateRef elementSize, GateRef newLength,
         GateRef beginIndex, GateRef arrayCls, GateRef buffer);
+    GateRef NewTypedArray(GateRef glue, GateRef srcTypedArray, GateRef srcType, GateRef length);
+    void NewByteArray(Variable *result, Label *exit, GateRef elementSize, GateRef length);
+    GateRef GetElementSizeFromType(GateRef glue, GateRef type);
+    GateRef GetOnHeapHClassFromType(GateRef glue, GateRef type);
 
 private:
     static constexpr int MAX_TAGGED_ARRAY_LENGTH = 50;
