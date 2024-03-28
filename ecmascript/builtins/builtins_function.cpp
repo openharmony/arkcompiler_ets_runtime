@@ -174,16 +174,14 @@ JSTaggedValue BuiltinsFunction::FunctionPrototypeBind(EcmaRuntimeCallInfo *argv)
         argsArray->Set(thread, index, GetCallArg(argv, index + 1));
     }
     // 4. Let F be BoundFunctionCreate(Target, thisArg, args).
-    JSHandle<JSFunctionBase> targetFunction = JSHandle<JSFunctionBase>::Cast(target);
-    JSHandle<JSBoundFunction> boundFunction = factory->NewJSBoundFunction(targetFunction, thisArg, argsArray);
+    JSHandle<JSBoundFunction> boundFunction = factory->NewJSBoundFunction(target, thisArg, argsArray);
     // 5. ReturnIfAbrupt(F)
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
     // 6. Let targetHasLength be HasOwnProperty(Target, "length").
     auto globalConst = thread->GlobalConstants();
     JSHandle<JSTaggedValue> lengthKey = globalConst->GetHandledLengthString();
-    bool targetHasLength =
-        JSTaggedValue::HasOwnProperty(thread, JSHandle<JSTaggedValue>::Cast(targetFunction), lengthKey);
+    bool targetHasLength = JSTaggedValue::HasOwnProperty(thread, target, lengthKey);
     // 7. ReturnIfAbrupt(targetHasLength).
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
@@ -191,7 +189,7 @@ JSTaggedValue BuiltinsFunction::FunctionPrototypeBind(EcmaRuntimeCallInfo *argv)
     // 8. If targetHasLength is true, then
     if (targetHasLength) {
         // a. Let targetLen be Get(Target, "length").
-        JSHandle<JSTaggedValue> targetLen = JSObject::GetProperty(thread, target, lengthKey).GetValue();
+        JSHandle<JSTaggedValue> targetLen = JSTaggedValue::GetProperty(thread, target, lengthKey).GetValue();
         // b. ReturnIfAbrupt(targetLen).
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 

@@ -139,8 +139,8 @@ HWTEST_F_L0(ObjectFactoryTest, NewJSBoundFunction)
     const JSHandle<TaggedArray> array(thread->GlobalConstants()->GetHandledEmptyArray());
 
     // check mem alloc
-    JSHandle<JSFunctionBase> targetFunc(funFun);
-    JSHandle<JSBoundFunction> newBoundFun = factory->NewJSBoundFunction(targetFunc, bound, array);
+    JSHandle<JSBoundFunction> newBoundFun =
+        factory->NewJSBoundFunction(JSHandle<JSTaggedValue>::Cast(funFun), bound, array);
     JSHandle<JSHClass> newBoundFunCls(thread, newBoundFun->GetJSHClass());
     EXPECT_TRUE(*newBoundFun != nullptr);
     EXPECT_TRUE(*newBoundFunCls != nullptr);
