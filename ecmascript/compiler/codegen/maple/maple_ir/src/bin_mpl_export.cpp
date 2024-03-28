@@ -475,7 +475,7 @@ void BinaryMplExport::OutputStr(const GStrIdx &gstr)
     }
 
     size_t mark = gStrMark.size();
-    gStrMark[gstr] = mark;
+    gStrMark[gstr] = static_cast<int64>(mark);
     WriteNum(kBinString);
     DEBUG_ASSERT(GlobalTables::GetStrTable().StringTableSize() != 0, "Container check");
     WriteAsciiStr(GlobalTables::GetStrTable().GetStringFromStrIdx(gstr));
@@ -495,7 +495,7 @@ void BinaryMplExport::OutputUsrStr(UStrIdx ustr)
     }
 
     size_t mark = uStrMark.size();
-    uStrMark[ustr] = mark;
+    uStrMark[ustr] = static_cast<int64>(mark);
     WriteNum(kBinUsrString);
     WriteAsciiStr(GlobalTables::GetUStrTable().GetStringFromStrIdx(ustr));
 }
@@ -669,7 +669,7 @@ void BinaryMplExport::Init()
     funcMark[nullptr] = 0;
     eaNodeMark[nullptr] = 0;
     curFunc = nullptr;
-    for (uint32 pti = static_cast<int32>(PTY_begin); pti < static_cast<uint32>(PTY_end); ++pti) {
+    for (uint32 pti = static_cast<uint32>(PTY_begin); pti < static_cast<uint32>(PTY_end); ++pti) {
         typMark[GlobalTables::GetTypeTable().GetTypeFromTyIdx(TyIdx(pti))] = pti;
     }
 }
@@ -695,7 +695,7 @@ void BinaryMplExport::OutputSymbol(MIRSymbol *sym)
     WriteNum(sym->GetSKind());
     WriteNum(sym->GetStorageClass());
     size_t mark = symMark.size();
-    symMark[sym] = mark;
+    symMark[sym] = static_cast<int64>(mark);
     OutputTypeAttrs(sym->GetAttrs());
     WriteNum(sym->GetIsTmp() ? 1 : 0);
     if (sym->GetSKind() == kStPreg) {
@@ -733,7 +733,7 @@ void BinaryMplExport::OutputFunction(PUIdx puIdx)
         return;
     }
     size_t mark = funcMark.size();
-    funcMark[func] = mark;
+    funcMark[func] = static_cast<int64>(mark);
     MIRFunction *savedFunc = mod.CurFunction();
     mod.SetCurFunction(func);
 
@@ -899,7 +899,7 @@ void BinaryMplExport::OutputCallInfo(CallInfo &callInfo)
     }
     WriteNum(kBinCallinfo);
     size_t mark = callInfoMark.size();
-    callInfoMark[callInfo.GetID()] = mark;
+    callInfoMark[callInfo.GetID()] = static_cast<int64>(mark);
     WriteNum(callInfo.GetCallType());  // call type
     WriteInt(callInfo.GetLoopDepth());
     WriteInt(callInfo.GetID());
@@ -1072,7 +1072,7 @@ void BinaryMplExport::OutEaCgNode(EACGBaseNode &node)
         return;
     }
     size_t mark = eaNodeMark.size();
-    eaNodeMark[&node] = mark;
+    eaNodeMark[&node] = static_cast<int64>(mark);
     WriteNum(kBinEaCgNode);
     WriteNum(node.kind);
     OutEaCgBaseNode(node, true);
@@ -1192,7 +1192,7 @@ void BinaryMplExport::WriteSymField(uint64 contentIdx)
             DEBUG_ASSERT(!(s->IsWpoFakeParm() || s->IsWpoFakeRet()) || s->IsDeleted(), "wpofake var not deleted");
             MIRStorageClass storageClass = s->GetStorageClass();
             MIRSymKind sKind = s->GetSKind();
-            if (s->IsDeleted() || storageClass == kScUnused || (s->GetIsImported() && !s->GetAppearsInCode()) ||
+	        if (s->IsDeleted() || storageClass == kScUnused || (s->GetIsImported() && !s->GetAppearsInCode()) ||
                 (sKind == kStFunc && (storageClass == kScExtern || !s->GetAppearsInCode()))) {
                 continue;
             }
@@ -1366,8 +1366,8 @@ void BinaryMplExport::OutputType(TyIdx tyIdx)
         }
         ++BinaryMplExport::typeMarkOffset;
     } else {
-        size_t mark = typMark.size() + BinaryMplExport::typeMarkOffset;
-        typMark[ty] = mark;
+        size_t mark = typMark.size() + static_cast<size_t>(BinaryMplExport::typeMarkOffset);
+        typMark[ty] = static_cast<int64>(mark);
     }
 
     auto func = CreateProductFunction<OutputTypeFactory>(ty->GetKind());

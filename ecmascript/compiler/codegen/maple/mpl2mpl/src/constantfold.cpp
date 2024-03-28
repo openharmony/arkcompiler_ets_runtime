@@ -1191,7 +1191,7 @@ MIRConst *ConstantFold::FoldRoundMIRConst(const MIRConst &cst, PrimType fromType
                 return GlobalTables::GetFpConstTable().GetOrCreateFloatConst(floatValue);
             }
         } else {
-            uint64 fromValue = constValue.GetExtValue();
+            uint64 fromValue = static_cast<uint64>(constValue.GetExtValue());
             float floatValue = round(static_cast<float>(fromValue));
             if (static_cast<uint64>(floatValue) == fromValue) {
                 return GlobalTables::GetFpConstTable().GetOrCreateFloatConst(floatValue);
@@ -1206,7 +1206,7 @@ MIRConst *ConstantFold::FoldRoundMIRConst(const MIRConst &cst, PrimType fromType
                 return GlobalTables::GetFpConstTable().GetOrCreateDoubleConst(doubleValue);
             }
         } else {
-            uint64 fromValue = constValue.GetExtValue();
+            uint64 fromValue = static_cast<uint64>(constValue.GetExtValue());
             double doubleValue = round(static_cast<double>(fromValue));
             if (static_cast<uint64>(doubleValue) == fromValue) {
                 return GlobalTables::GetFpConstTable().GetOrCreateDoubleConst(doubleValue);
@@ -1530,7 +1530,7 @@ std::pair<BaseNode *, std::optional<IntVal>> ConstantFold::FoldTypeCvt(TypeCvtNo
 
 MIRConst *ConstantFold::FoldSignExtendMIRConst(Opcode opcode, PrimType resultType, uint8 size, const IntVal &val) const
 {
-    uint64 result = opcode == OP_sext ? val.GetSXTValue(size) : val.GetZXTValue(size);
+    uint64 result = opcode == OP_sext ? static_cast<uint64>(val.GetSXTValue(size)) : val.GetZXTValue(size);
     MIRType &type = *GlobalTables::GetTypeTable().GetPrimType(resultType);
     MIRIntConst *constValue = GlobalTables::GetIntConstTable().GetOrCreateIntConst(result, type);
     return constValue;
@@ -1853,7 +1853,7 @@ std::pair<BaseNode *, std::optional<IntVal>> ConstantFold::FoldBinary(BinaryNode
                         bsize++;
                         ucst >>= 1;
                     } while (ucst != 0);
-                    if (shrAmt + bsize <= GetPrimTypeSize(primType) * kBitSizePerByte) {
+                    if (shrAmt + static_cast<int64>(bsize <= GetPrimTypeSize(primType) * kBitSizePerByte)) {
                         fold2extractbits = true;
                         // change to use extractbits
                         result = mirModule->GetMIRBuilder()->CreateExprExtractbits(
@@ -2337,7 +2337,7 @@ StmtNode *ConstantFold::SimplifyCondGoto(CondGotoNode *node)
         ASSERT_NOT_NULL(intConst);
         if ((node->GetOpCode() == OP_brtrue && !intConst->IsZero()) ||
             (node->GetOpCode() == OP_brfalse && intConst->IsZero())) {
-            uint32 freq = mirModule->CurFunction()->GetFreqFromLastStmt(node->GetStmtID());
+            uint32 freq = static_cast<uint32>(mirModule->CurFunction()->GetFreqFromLastStmt(node->GetStmtID()));
             GotoNode *gotoNode = mirModule->CurFuncCodeMemPool()->New<GotoNode>(OP_goto);
             gotoNode->SetOffset(node->GetOffset());
             if (Options::profileUse && mirModule->CurFunction()->GetFuncProfData()) {

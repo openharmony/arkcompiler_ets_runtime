@@ -3046,8 +3046,8 @@ public:
         auto *node = allocator.GetMemPool()->New<WhileStmtNode>(*this);
         node->SetStmtID(stmtIDNext++);
         if (fromFreqs.count(GetStmtID()) > 0) {
-            int64_t oldFreq = fromFreqs[GetStmtID()];
-            int64_t newFreq = numer == 0 ? 0 : (denom > 0 ? (oldFreq * numer / denom) : oldFreq);
+            int64_t oldFreq = static_cast<int64_t>(fromFreqs[GetStmtID()]);
+            int64_t newFreq = static_cast<int64_t>(numer == 0 ? 0 : (denom > 0 ? (oldFreq * numer / denom) : oldFreq));
             toFreqs[node->GetStmtID()] = (newFreq > 0 || numer == 0) ? static_cast<uint64_t>(newFreq) : 1;
             if (updateOp & kUpdateOrigFreq) {
                 int64_t left = (oldFreq - newFreq) > 0 ? (oldFreq - newFreq) : 1;

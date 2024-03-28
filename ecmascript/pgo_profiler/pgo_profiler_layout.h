@@ -509,7 +509,7 @@ public:
 
     void Merge(const ChildHClassLayoutDesc &desc)
     {
-        size_ = ChildHClassLayoutDescInner::CaculateSize(desc);
+        size_ = static_cast<int32_t>(ChildHClassLayoutDescInner::CaculateSize(desc));
         type_ = desc.GetProfileType();
         childCount_ = 0;
         desc.IterateChilds([this] (const ProfileType &childType) -> bool {

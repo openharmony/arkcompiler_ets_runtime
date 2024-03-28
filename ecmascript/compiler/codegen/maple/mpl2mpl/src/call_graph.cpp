@@ -364,6 +364,7 @@ SCCNode<CGNode> *CallGraph::GetSCCNode(MIRFunction *func) const
 void CallGraph::UpdateCaleeCandidate(PUIdx callerPuIdx, IcallNode *icall, std::set<PUIdx> &candidate)
 {
     CGNode *caller = GetCGNode(callerPuIdx);
+    CHECK_FATAL(caller != nullptr, "caller is null");
     for (auto &pair : caller->GetCallee()) {
         auto *callsite = pair.first;
         if (callsite->GetCallStmt() == icall) {
@@ -381,6 +382,7 @@ void CallGraph::UpdateCaleeCandidate(PUIdx callerPuIdx, IcallNode *icall, std::s
 void CallGraph::UpdateCaleeCandidate(PUIdx callerPuIdx, IcallNode *icall, PUIdx calleePuidx, CallNode *call)
 {
     CGNode *caller = GetCGNode(callerPuIdx);
+    CHECK_FATAL(caller != nullptr, "caller is null");
     for (auto &pair : caller->GetCallee()) {
         auto *callsite = pair.first;
         if (callsite->GetCallStmt() == icall) {
@@ -656,8 +658,10 @@ void CallGraph::HandleICall(BlockNode &body, CGNode &node, StmtNode *stmt, uint3
                 if (symbol->GetKonst()->GetKind() == kConstAggConst) {
                     auto *aggConst = static_cast<MIRAggConst *>(symbol->GetKonst());
                     auto *elem = aggConst->GetAggConstElement(dread->GetFieldID());
+                    CHECK_FATAL(elem != nullptr, "elem is null");
                     if (elem->GetKind() == kConstAddrofFunc) {
                         auto *addrofFuncConst = static_cast<MIRAddroffuncConst *>(elem);
+                        CHECK_FATAL(addrofFuncConst != nullptr, "addrofFuncConst is null");
                         stmt = ReplaceIcallToCall(body, icall, addrofFuncConst->GetValue());
                         HandleCall(node, stmt, loopDepth);
                         return;
@@ -1295,8 +1299,9 @@ void DoDevirtual(const Klass &klass, const KlassHierarchy &klassh)
                             rightSymbol->GetInferredTyIdx() != kNoneTyIdx) {
                             // Devirtual
                             Klass *currKlass = klassh.GetKlassFromTyIdx(rightSymbol->GetInferredTyIdx());
-                            if (op == OP_interfacecall || op == OP_interfacecallassigned || op == OP_virtualcall ||
-                                op == OP_virtualcallassigned) {
+                            CHECK_FATAL(currKlass != nullptr, "null ptr check");
+                            if ((op == OP_interfacecall || op == OP_interfacecallassigned || op == OP_virtualcall ||
+                                op == OP_virtualcallassigned)) {
                                 std::vector<Klass *> klassVector;
                                 klassVector.push_back(currKlass);
                                 bool hasDevirtualed = false;

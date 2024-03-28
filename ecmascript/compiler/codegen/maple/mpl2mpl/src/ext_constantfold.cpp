@@ -247,13 +247,13 @@ BaseNode *ExtConstantFold::ExtFoldXand(BinaryNode *node)
         (IsPrimitiveInteger(rnode->Opnd(1)->GetPrimType())) &&
         (lnode->Opnd(0)->Opnd(0)->IsSameContent(rnode->Opnd(0)->Opnd(0)))) {
         MIRConst *lmConstVal = safe_cast<ConstvalNode>(lnode->Opnd(0)->Opnd(1))->GetConstVal();
-        uint64 lmVal = static_cast<MIRIntConst *>(lmConstVal)->GetExtValue();
+        uint64 lmVal = static_cast<uint64>(static_cast<MIRIntConst *>(lmConstVal)->GetExtValue());
         MIRConst *rmConstVal = safe_cast<ConstvalNode>(rnode->Opnd(0)->Opnd(1))->GetConstVal();
-        uint64 rmVal = static_cast<MIRIntConst *>(rmConstVal)->GetExtValue();
+        uint64 rmVal = static_cast<uint64>(static_cast<MIRIntConst *>(rmConstVal)->GetExtValue());
         MIRConst *lcConstVal = safe_cast<ConstvalNode>(lnode->Opnd(1))->GetConstVal();
-        uint64 lcVal = static_cast<MIRIntConst *>(lcConstVal)->GetExtValue();
+        uint64 lcVal = static_cast<uint64>(static_cast<MIRIntConst *>(lcConstVal)->GetExtValue());
         MIRConst *rcConstVal = safe_cast<ConstvalNode>(rnode->Opnd(1))->GetConstVal();
-        uint64 rcVal = static_cast<MIRIntConst *>(rcConstVal)->GetExtValue();
+        uint64 rcVal = static_cast<uint64>(static_cast<MIRIntConst *>(rcConstVal)->GetExtValue());
 
         bool isWorkable = true;
         for (uint64 i = 0; i < k64BitSize; i++) {

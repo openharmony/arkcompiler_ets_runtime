@@ -289,7 +289,7 @@ static StmtNode *SplitAggCopy(const AssignType *assignNode, MIRStructType *struc
         newRHS->SetPrimType(fieldType->GetPrimType());
         block->InsertAfter(assignNode, newDassign);
         if (fieldType->IsMIRUnionType()) {
-            id += fieldType->NumberOfFieldIDs();
+            id += static_cast<FieldID>(fieldType->NumberOfFieldIDs());
         }
     }
     auto newAssign = assignNode->GetNext();
