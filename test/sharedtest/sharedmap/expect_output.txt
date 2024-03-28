@@ -84,7 +84,7 @@ Delete Scenario[forEach]: BusinessError: Concurrent modification exception, errC
 Clear Scenario[forEach]: BusinessError: Concurrent modification exception, errCode: 10200201
 ===Concurrent modification during iteration Test(forEach) end===
 ===Type check begin===
-sharedMap set[shared] element
-sharedMap set[unshared]: TypeError: the key of shared map must be shared too
-sharedMap set[unshared]: TypeError: the key of shared map must be shared too
+sharedMap set[shared] element success
+sharedMap set[unshared]: BusinessError: Parameter error. Only accept sendable value, errCode: 401
+sharedMap set[unshared]: BusinessError: Parameter error. Only accept sendable value, errCode: 401
 ===Type check end===

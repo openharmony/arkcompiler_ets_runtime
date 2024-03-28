@@ -24,11 +24,10 @@ namespace panda::ecmascript {
 void JSSharedMap::Set(JSThread *thread, const JSHandle<JSSharedMap> &map,
                       const JSHandle<JSTaggedValue> &key, const JSHandle<JSTaggedValue> &value)
 {
-    if (!key->IsSharedType()) {
-        THROW_TYPE_ERROR(thread, "the key of shared map must be shared too");
-    }
-    if (!value->IsSharedType()) {
-        THROW_TYPE_ERROR(thread, "the value of shared map must be shared too");
+    if (!key->IsSharedType() || !value->IsSharedType()) {
+        auto error = containers::ContainerError::BusinessError(thread, containers::ErrorFlag::TYPE_ERROR,
+                                                               "Parameter error. Only accept sendable value");
+        THROW_NEW_ERROR_AND_RETURN(thread, error);
     }
     [[maybe_unused]] ConcurrentModScope<JSSharedMap, ModType::WRITE> scope(thread,
         map.GetTaggedValue().GetTaggedObject());
