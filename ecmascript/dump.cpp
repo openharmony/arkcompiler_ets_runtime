@@ -4807,7 +4807,7 @@ void TaggedHashArray::Dump(std::ostream &os) const
 void TaggedHashArray::DumpForSnapshot(std::vector<Reference> &vec) const
 {
     DISALLOW_GARBAGE_COLLECTION;
-    int capacity = GetLength();
+    int capacity = static_cast<int>(GetLength());
     vec.reserve(vec.size() + capacity);
     for (int hashIndex = 0; hashIndex < capacity; hashIndex++) {
         JSTaggedValue value = Get(hashIndex);

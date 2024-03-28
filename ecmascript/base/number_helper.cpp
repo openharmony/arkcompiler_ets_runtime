@@ -312,12 +312,12 @@ void NumberHelper::CustomEcvtIsFixed(double &valueNumber, int &digits, int *deci
             while (digits >= MIN_RADIX && buf[digits - 1] == '0') {
                 digits--;
             }
-            digitsMax = digits;
+            digitsMax = static_cast<unsigned int>(digits);
         } else {
-            digitsMin = digits + 1;
+            digitsMin = static_cast<unsigned int>(digits) + 1;
         }
     }
-    digits = digitsMax;
+    digits = static_cast<int>(digitsMax);
 }
 
 int NumberHelper::CustomEcvt(double valueNumber, int digits, int *decimalPoint,
@@ -437,7 +437,8 @@ void NumberHelper::DoubleToASCIIWithFlag(std::string& buf, double valueNumber, i
         std::string buf1(JS_DTOA_BUF_SIZE, '\0');
         int decimalPoint = 0;
         int sign = 0;
-        bool fixed = ((flags & POINT_INDEX) == base::FIXED_FORMAT);
+        bool fixed = ((static_cast<unsigned int>(flags) & POINT_INDEX) ==
+            static_cast<unsigned int>(base::FIXED_FORMAT));
         int numberMax = fixed ? digits : MAX_DIGITS;
         int digitNumber = CustomEcvt(valueNumber, digits, &decimalPoint, buf1, fixed, &sign);
         int number = decimalPoint;
