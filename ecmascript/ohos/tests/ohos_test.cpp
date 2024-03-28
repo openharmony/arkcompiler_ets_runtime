@@ -50,6 +50,7 @@ public:
         runtimeOptions_.SetTargetCompilerMode("partial");
         runtimeOptions_.SetAOTOutputFile("/data/local/ark-cache/com.ohos.test/arm64/phone");
         runtimeOptions_.SetCompilerPkgJsonInfo(BuildOhosPkgJson("/data/local/ark-profile/100/com.ohos.test"));
+        runtimeOptions_.SetCompilerFrameworkAbcPath("/etc/abc/framework");
         runtimeOptions_.SetCompilerEnableExternalPkg(true);
         runtimeOptions_.SetCompilerExternalPkgJsonInfo(BuildOhosExternalPkgJson());
         vm_ = JSNApi::CreateEcmaVM(runtimeOptions_);

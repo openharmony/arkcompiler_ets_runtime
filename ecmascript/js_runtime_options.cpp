@@ -270,6 +270,7 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"compiler-pkg-info", required_argument, nullptr, OPTION_COMPILER_PKG_INFO},
         {"compiler-external-pkg-info", required_argument, nullptr, OPTION_COMPILER_EXTERNAL_PKG_INFO},
         {"compiler-enable-external-pkg", required_argument, nullptr, OPTION_COMPILER_ENABLE_EXTERNAL_PKG},
+        {"compiler-framework-abc-path", required_argument, nullptr, OPTION_COMPILER_FRAMEWORK_ABC_PATH},
         {"compiler-enable-lexenv-specialization", required_argument, nullptr,
             OPTION_COMPILER_ENABLE_LEXENV_SPECIALIZATION},
         {"compiler-enable-native-inline", required_argument, nullptr, OPTION_COMPILER_ENABLE_NATIVE_INLINE},
@@ -676,7 +677,7 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                 }
                 break;
             case OPTION_COMPILER_PGO_SAVE_MIN_INTERVAL:
-                ret = ParseUint32Param("compiler-pgo-save-min-interval)", &argUint32);
+                ret = ParseUint32Param("compiler-pgo-save-min-interval", &argUint32);
                 if (ret) {
                     SetPGOSaveMinInterval(argUint32);
                 } else {
@@ -844,6 +845,9 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                 break;
             case OPTION_TARGET_COMPILER_MODE:
                 SetTargetCompilerMode(optarg);
+                break;
+            case OPTION_COMPILER_FRAMEWORK_ABC_PATH:
+                SetCompilerFrameworkAbcPath(optarg);
                 break;
             case OPTION_HAP_PATH:
                 SetHapPath(optarg);

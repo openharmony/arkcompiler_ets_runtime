@@ -147,6 +147,7 @@ enum CommandValues {
     OPTION_COMPILER_PKG_INFO,
     OPTION_COMPILER_EXTERNAL_PKG_INFO,
     OPTION_COMPILER_ENABLE_EXTERNAL_PKG,
+    OPTION_COMPILER_FRAMEWORK_ABC_PATH,
     OPTION_COMPILER_OPT_ARRAY_BOUNDS_CHECK_ELIMINATION,
     OPTION_COMPILER_OPT_LOOP_INVARIANT_CODE_MOTION,
     OPTION_COMPILER_OPT_CONSTANT_FOLDING,
@@ -1297,6 +1298,21 @@ public:
         return maxInlineBytecodes_;
     }
 
+    void SetCompilerFrameworkAbcPath(std::string frameworkAbcPath)
+    {
+        frameworkAbcPath_ = std::move(frameworkAbcPath);
+    }
+
+    std::string GetCompilerFrameworkAbcPath() const
+    {
+        return frameworkAbcPath_;
+    }
+
+    bool WasSetCompilerFrameworkAbcPath() const
+    {
+        return WasOptionSet(OPTION_COMPILER_FRAMEWORK_ABC_PATH);
+    }
+
     void SetTargetCompilerMode(std::string mode)
     {
         targetCompilerMode_ = std::move(mode);
@@ -1657,6 +1673,7 @@ private:
     bool traceInstructionCombine_{false};
     size_t maxInlineBytecodes_ {45};
     std::string targetCompilerMode_ {""};
+    std::string frameworkAbcPath_ {""};
     std::string hapPath_ {""};
     uint32_t hapAbcOffset_ {0};
     uint32_t hapAbcSize_ {0};
