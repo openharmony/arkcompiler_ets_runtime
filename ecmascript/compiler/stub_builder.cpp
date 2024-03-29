@@ -21,11 +21,11 @@
 #include "ecmascript/compiler/assembler_module.h"
 #include "ecmascript/compiler/access_object_stub_builder.h"
 #include "ecmascript/compiler/builtins/builtins_string_stub_builder.h"
+#include "ecmascript/compiler/builtins/builtins_typedarray_stub_builder.h"
 #include "ecmascript/compiler/interpreter_stub.h"
 #include "ecmascript/compiler/new_object_stub_builder.h"
 #include "ecmascript/compiler/profiler_stub_builder.h"
 #include "ecmascript/compiler/rt_call_signature.h"
-#include "ecmascript/compiler/typed_array_stub_builder.h"
 #include "ecmascript/global_env_constants.h"
 #include "ecmascript/ic/properties_cache.h"
 #include "ecmascript/js_api/js_api_arraylist.h"
@@ -2039,7 +2039,7 @@ GateRef StubBuilder::ICStoreElement(GateRef glue, GateRef receiver, GateRef key,
             {
                 GateRef hclass = LoadHClass(receiver);
                 GateRef jsType = GetObjectType(hclass);
-                TypedArrayStubBuilder typedArrayBuilder(this);
+                BuiltinsTypedArrayStubBuilder typedArrayBuilder(this);
                 result = typedArrayBuilder.StoreTypedArrayElement(glue, receiver, index64, value, jsType);
                 Jump(&exit);
             }
@@ -2582,7 +2582,7 @@ GateRef StubBuilder::GetPropertyByIndex(GateRef glue, GateRef receiver, GateRef 
             BRANCH(IsFastTypeArray(jsType), &isFastTypeArray, &notFastTypeArray);
             Bind(&isFastTypeArray);
             {
-                TypedArrayStubBuilder typedArrayStubBuilder(this);
+                BuiltinsTypedArrayStubBuilder typedArrayStubBuilder(this);
                 result = typedArrayStubBuilder.FastGetPropertyByIndex(glue, *holder, index, jsType);
                 Jump(&exit);
             }
@@ -7820,7 +7820,7 @@ GateRef StubBuilder::GetTypeArrayPropertyByName(GateRef glue, GateRef receiver, 
         BRANCH(Int32GreaterThanOrEqual(index, Int32(0)), &validIndex, &notValidIndex);
         Bind(&validIndex);
         {
-            TypedArrayStubBuilder typedArrayStubBuilder(this);
+            BuiltinsTypedArrayStubBuilder typedArrayStubBuilder(this);
             result = typedArrayStubBuilder.FastGetPropertyByIndex(glue, holder, index, jsType);
             Jump(&exit);
         }

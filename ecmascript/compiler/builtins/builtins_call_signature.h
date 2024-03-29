@@ -27,91 +27,118 @@ namespace panda::ecmascript::kungfu {
 
 // BUILTINS_STUB_LIST is shared both ASM Interpreter and AOT.
 // AOT_BUILTINS_STUB_LIST is used in AOT only.
-#define BUILTINS_STUB_LIST(V)                       \
-    BUILTINS_METHOD_STUB_LIST(V)                    \
+#define BUILTINS_STUB_LIST(V, D)                    \
+    BUILTINS_METHOD_STUB_LIST(D, D, D)              \
+    BUILTINS_WITH_CONTAINERS_STUB_BUILDER(D)        \
     BUILTINS_CONSTRUCTOR_STUB_LIST(V)               \
     AOT_AND_BUILTINS_STUB_LIST(V)
 
-#define BUILTINS_METHOD_STUB_LIST(V)                \
-    V(StringCharCodeAt)                             \
-    V(StringCodePointAt)                            \
-    V(StringIndexOf)                                \
-    V(StringSubstring)                              \
-    V(StringReplace)                                \
-    V(StringCharAt)                                 \
-    V(StringFromCharCode)                           \
-    V(StringTrim)                                   \
-    V(StringSlice)                                  \
-    V(StringConcat)                                 \
-    V(StringStartsWith)                             \
-    V(StringToLowerCase)                            \
-    V(StringEndsWith)                               \
-    V(GetStringIterator)                            \
-    V(ObjectToString)                               \
-    V(ObjectCreate)                                 \
-    V(ObjectAssign)                                 \
-    V(ObjectHasOwnProperty)                         \
-    V(ObjectKeys)                                   \
-    V(VectorForEach)                                \
-    V(VectorReplaceAllElements)                     \
-    V(StackForEach)                                 \
-    V(PlainArrayForEach)                            \
-    V(QueueForEach)                                 \
-    V(DequeForEach)                                 \
-    V(LightWeightMapForEach)                        \
-    V(LightWeightSetForEach)                        \
-    V(HashMapForEach)                               \
-    V(HashSetForEach)                               \
-    V(LinkedListForEach)                            \
-    V(ListForEach)                                  \
-    V(ArrayListForEach)                             \
-    V(ArrayListReplaceAllElements)                  \
-    V(FunctionPrototypeApply)                       \
-    V(ArrayUnshift)                                 \
-    V(ArrayShift)                                   \
-    V(ArrayConcat)                                  \
-    V(ArrayFilter)                                  \
-    V(ArrayFind)                                    \
-    V(ArrayFindIndex)                               \
-    V(ArrayForEach)                                 \
-    V(ArrayIndexOf)                                 \
-    V(ArrayMap)                                     \
-    V(ArrayLastIndexOf)                             \
-    V(ArrayPop)                                     \
-    V(ArraySlice)                                   \
-    V(ArrayValues)                                  \
-    V(ArrayReduce)                                  \
-    V(ArrayReverse)                                 \
-    V(ArrayPush)                                    \
-    V(ArrayIncludes)                                \
-    V(ArrayFrom)                                    \
-    V(ArraySplice)                                  \
-    V(ArrayReduceRight)                             \
-    V(ArrayCopyWithin)                              \
-    V(ArraySome)                                    \
-    V(ArrayEvery)                                   \
-    V(ArrayFindLastIndex)                           \
-    V(ArrayFindLast)                                \
-    V(SetClear)                                     \
-    V(SetValues)                                    \
-    V(SetEntries)                                   \
-    V(SetForEach)                                   \
-    V(SetAdd)                                       \
-    V(SetDelete)                                    \
-    V(SetHas)                                       \
-    V(MapClear)                                     \
-    V(MapValues)                                    \
-    V(MapEntries)                                   \
-    V(MapKeys)                                      \
-    V(MapForEach)                                   \
-    V(MapSet)                                       \
-    V(MapDelete)                                    \
-    V(MapHas)                                       \
-    V(MapGet)                                       \
-    V(NumberParseFloat)                             \
-    V(TypedArraySubArray)                           \
-    V(TypedArrayGetByteLength)                      \
-    V(TypedArrayGetByteOffset)
+#define BUILTINS_METHOD_STUB_LIST(V, T, D)          \
+    BUILTINS_WITH_STRING_STUB_BUILDER(V)            \
+    BUILTINS_WITH_OBJECT_STUB_BUILDER(T)            \
+    BUILTINS_WITH_ARRAY_STUB_BUILDER(V)             \
+    BUILTINS_WITH_SET_STUB_BUILDER(D)               \
+    BUILTINS_WITH_MAP_STUB_BUILDER(D)               \
+    BUILTINS_WITH_FUNCTION_STUB_BUILDER(V)          \
+    BUILTINS_WITH_NUMBER_STUB_BUILDER(T)            \
+    BUILTINS_WITH_TYPEDARRAY_STUB_BUILDER(V)
+
+#define BUILTINS_WITH_STRING_STUB_BUILDER(V)                                            \
+    V(CharAt,             String,   Hole())                                             \
+    V(FromCharCode,       String,   Hole())                                             \
+    V(CharCodeAt,         String,   DoubleToTaggedDoublePtr(Double(base::NAN_VALUE)))   \
+    V(CodePointAt,        String,   Undefined())                                        \
+    V(IndexOf,            String,   IntToTaggedPtr(Int32(-1)))                          \
+    V(Substring,          String,   IntToTaggedPtr(Int32(-1)))                          \
+    V(Replace,            String,   Undefined())                                        \
+    V(Trim,               String,   Undefined())                                        \
+    V(Concat,             String,   Undefined())                                        \
+    V(Slice,              String,   Undefined())                                        \
+    V(ToLowerCase,        String,   Undefined())                                        \
+    V(StartsWith,         String,   TaggedFalse())                                      \
+    V(EndsWith,           String,   TaggedFalse())                                      \
+    V(GetStringIterator,  String,   Undefined())
+
+#define BUILTINS_WITH_OBJECT_STUB_BUILDER(V)                                      \
+    V(ToString,        Object,   Undefined())                                     \
+    V(Create,          Object,   Undefined())                                     \
+    V(Assign,          Object,   Undefined())                                     \
+    V(HasOwnProperty,  Object,   TaggedFalse())                                   \
+    V(Keys,            Object,   Undefined())
+
+#define BUILTINS_WITH_ARRAY_STUB_BUILDER(V)         \
+    V(Unshift,       Array,   Undefined())          \
+    V(Shift,         Array,   Undefined())          \
+    V(Concat,        Array,   Undefined())          \
+    V(Filter,        Array,   Undefined())          \
+    V(Find,          Array,   Undefined())          \
+    V(FindIndex,     Array,   Undefined())          \
+    V(From,          Array,   Undefined())          \
+    V(Splice,        Array,   Undefined())          \
+    V(ForEach,       Array,   Undefined())          \
+    V(IndexOf,       Array,   Undefined())          \
+    V(LastIndexOf,   Array,   Undefined())          \
+    V(Pop,           Array,   Undefined())          \
+    V(Slice,         Array,   Undefined())          \
+    V(Reduce,        Array,   Undefined())          \
+    V(Reverse,       Array,   Undefined())          \
+    V(Push,          Array,   Undefined())          \
+    V(Values,        Array,   Undefined())          \
+    V(Includes,      Array,   Undefined())          \
+    V(CopyWithin,    Array,   Undefined())          \
+    V(Some,          Array,   Undefined())          \
+    V(Every,         Array,   Undefined())          \
+    V(FindLastIndex, Array,   Undefined())          \
+    V(FindLast,      Array,   Undefined())          \
+    V(ReduceRight,   Array,   Undefined())          \
+    V(Map,           Array,   Undefined())
+
+#define BUILTINS_WITH_SET_STUB_BUILDER(V)           \
+    V(Clear,    Set,   Undefined())                 \
+    V(Values,   Set,   Undefined())                 \
+    V(Entries,  Set,   Undefined())                 \
+    V(ForEach,  Set,   Undefined())                 \
+    V(Add,      Set,   Undefined())                 \
+    V(Delete,   Set,   Undefined())                 \
+    V(Has,      Set,   Undefined())
+
+#define BUILTINS_WITH_MAP_STUB_BUILDER(V)           \
+    V(Clear,    Map,   Undefined())                 \
+    V(Values,   Map,   Undefined())                 \
+    V(Entries,  Map,   Undefined())                 \
+    V(Keys,     Map,   Undefined())                 \
+    V(ForEach,  Map,   Undefined())                 \
+    V(Set,      Map,   Undefined())                 \
+    V(Delete,   Map,   Undefined())                 \
+    V(Has,      Map,   Undefined())                 \
+    V(Get,      Map,   Undefined())
+
+#define BUILTINS_WITH_FUNCTION_STUB_BUILDER(V)      \
+    V(PrototypeApply,  Function,  Undefined())
+
+#define BUILTINS_WITH_NUMBER_STUB_BUILDER(V)        \
+    V(ParseFloat,      Number,    Undefined())
+
+#define BUILTINS_WITH_TYPEDARRAY_STUB_BUILDER(V)    \
+    V(SubArray,        TypedArray,  Undefined())    \
+    V(GetByteLength,   TypedArray,  Undefined())    \
+    V(GetByteOffset,   TypedArray,  Undefined())
+
+#define BUILTINS_WITH_CONTAINERS_STUB_BUILDER(V)                                                               \
+    V(ForEach,            ArrayList,      ContainersCommonFuncCall,  ARRAYLIST_FOREACH,            JS_POINTER) \
+    V(ForEach,            Deque,          DequeCommonFuncCall,       DEQUE_FOREACH,                JS_POINTER) \
+    V(ForEach,            HashMap,        ContainersHashCall,        HASHMAP_FOREACH,              JS_POINTER) \
+    V(ForEach,            HashSet,        ContainersHashCall,        HASHSET_FOREACH,              JS_POINTER) \
+    V(ForEach,            LightWeightMap, ContainersLightWeightCall, LIGHTWEIGHTMAP_FOREACH,       JS_POINTER) \
+    V(ForEach,            LightWeightSet, ContainersLightWeightCall, LIGHTWEIGHTSET_FOREACH,       JS_POINTER) \
+    V(ForEach,            LinkedList,     ContainersLinkedListCall,  LINKEDLIST_FOREACH,           JS_POINTER) \
+    V(ForEach,            List,           ContainersLinkedListCall,  LIST_FOREACH,                 JS_POINTER) \
+    V(ForEach,            PlainArray,     ContainersCommonFuncCall,  PLAINARRAY_FOREACH,           JS_POINTER) \
+    V(ForEach,            Queue,          QueueCommonFuncCall,       QUEUE_FOREACH,                JS_POINTER) \
+    V(ForEach,            Stack,          ContainersCommonFuncCall,  STACK_FOREACH,                JS_POINTER) \
+    V(ForEach,            Vector,         ContainersCommonFuncCall,  VECTOR_FOREACH,               JS_POINTER) \
+    V(ReplaceAllElements, ArrayList,      ContainersCommonFuncCall,  ARRAYLIST_REPLACEALLELEMENTS, JS_POINTER) \
+    V(ReplaceAllElements, Vector,         ContainersCommonFuncCall,  VECTOR_REPLACEALLELEMENTS,    JS_POINTER)
 
 #define BUILTINS_CONSTRUCTOR_STUB_LIST(V)           \
     V(BooleanConstructor)                           \
@@ -182,11 +209,13 @@ class BuiltinsStubCSigns {
 public:
     enum ID {
 #define DEF_STUB_ID(name) name,
+#define DEF_STUB_ID_DYN(name, type, ...) type##name,
         PADDING_BUILTINS_STUB_LIST(DEF_STUB_ID)
-        BUILTINS_STUB_LIST(DEF_STUB_ID)
+        BUILTINS_STUB_LIST(DEF_STUB_ID, DEF_STUB_ID_DYN)
         NUM_OF_BUILTINS_STUBS,
         AOT_BUILTINS_STUB_LIST(DEF_STUB_ID)
         AOT_BUILTINS_INLINE_LIST(DEF_STUB_ID)
+#undef DEF_STUB_ID_DYN
 #undef DEF_STUB_ID
         BUILTINS_CONSTRUCTOR_STUB_FIRST = BooleanConstructor,
         TYPED_BUILTINS_FIRST = STRINGIFY,

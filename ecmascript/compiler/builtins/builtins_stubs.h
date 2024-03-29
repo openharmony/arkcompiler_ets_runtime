@@ -163,7 +163,24 @@ public:
         void GenerateCircuitImpl(GateRef glue, GateRef nativeCode, GateRef func, GateRef newTarget, \
                                  GateRef thisValue, GateRef numArgs);                               \
     };
-    BUILTINS_STUB_LIST(DECLARE_BUILTINS_STUB_CLASS)
+
+
+#define DECLARE_BUILTINS_STUB_CLASS_DYN(name, type, ...)                                            \
+    class type##name##StubBuilder : public BuiltinsStubBuilder {                                    \
+    public:                                                                                         \
+        type##name##StubBuilder(CallSignature *callSignature, Environment *env)                     \
+            : BuiltinsStubBuilder(callSignature, env) {}                                            \
+        ~type##name##StubBuilder() = default;                                                       \
+        NO_MOVE_SEMANTIC(type##name##StubBuilder);                                                  \
+        NO_COPY_SEMANTIC(type##name##StubBuilder);                                                  \
+        void GenerateCircuit() override;                                                            \
+                                                                                                    \
+    private:                                                                                        \
+        void GenerateCircuitImpl(GateRef glue, GateRef nativeCode, GateRef func, GateRef newTarget, \
+                                 GateRef thisValue, GateRef numArgs);                               \
+    };
+    BUILTINS_STUB_LIST(DECLARE_BUILTINS_STUB_CLASS, DECLARE_BUILTINS_STUB_CLASS_DYN)
+#undef DECLARE_BUILTINS_STUB_CLASS_DYN
 #undef DECLARE_BUILTINS_STUB_CLASS
 }  // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_BUILTINS_STUB_H

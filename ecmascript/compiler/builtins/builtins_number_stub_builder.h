@@ -28,7 +28,12 @@ public:
     NO_MOVE_SEMANTIC(BuiltinsNumberStubBuilder);
     NO_COPY_SEMANTIC(BuiltinsNumberStubBuilder);
     void GenerateCircuit() override {}
-    void ParseFloat(Variable *result, Label *exit, Label *slowPath);
+#define DECLARE_BUILTINS_NUMBER_STUB_BUILDER(method, ...)           \
+    void method(Variable *result, Label *exit, Label *slowPath);
+BUILTINS_WITH_NUMBER_STUB_BUILDER(DECLARE_BUILTINS_NUMBER_STUB_BUILDER)
+#undef DECLARE_BUILTINS_NUMBER_STUB_BUILDER
+
+    void GenNumberConstructor(GateRef nativeCode, GateRef func, GateRef newTarget);
 
 private:
     GateRef glue_ { Circuit::NullGate() };

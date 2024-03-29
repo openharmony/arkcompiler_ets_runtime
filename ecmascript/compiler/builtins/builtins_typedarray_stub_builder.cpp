@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023 Huawei Device Co., Ltd.
+ * Copyright (c) 2024 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -13,14 +13,14 @@
  * limitations under the License.
  */
 
-#include "ecmascript/compiler/typed_array_stub_builder.h"
+#include "ecmascript/compiler/builtins/builtins_typedarray_stub_builder.h"
 
 #include "ecmascript/base/typed_array_helper.h"
 #include "ecmascript/byte_array.h"
 #include "ecmascript/compiler/new_object_stub_builder.h"
 
 namespace panda::ecmascript::kungfu {
-GateRef TypedArrayStubBuilder::IsDetachedBuffer(GateRef buffer)
+GateRef BuiltinsTypedArrayStubBuilder::IsDetachedBuffer(GateRef buffer)
 {
     auto env = GetEnvironment();
     Label entryPass(env);
@@ -51,7 +51,7 @@ GateRef TypedArrayStubBuilder::IsDetachedBuffer(GateRef buffer)
     return ret;
 }
 
-GateRef TypedArrayStubBuilder::GetDataPointFromBuffer(GateRef arrBuf)
+GateRef BuiltinsTypedArrayStubBuilder::GetDataPointFromBuffer(GateRef arrBuf)
 {
     auto env = GetEnvironment();
     Label entryPass(env);
@@ -79,7 +79,7 @@ GateRef TypedArrayStubBuilder::GetDataPointFromBuffer(GateRef arrBuf)
     return ret;
 }
 
-GateRef TypedArrayStubBuilder::CheckTypedArrayIndexInRange(GateRef array, GateRef index)
+GateRef BuiltinsTypedArrayStubBuilder::CheckTypedArrayIndexInRange(GateRef array, GateRef index)
 {
     auto env = GetEnvironment();
     Label entryPass(env);
@@ -105,7 +105,7 @@ GateRef TypedArrayStubBuilder::CheckTypedArrayIndexInRange(GateRef array, GateRe
     return ret;
 }
 
-GateRef TypedArrayStubBuilder::LoadTypedArrayElement(GateRef glue, GateRef array, GateRef key, GateRef jsType)
+GateRef BuiltinsTypedArrayStubBuilder::LoadTypedArrayElement(GateRef glue, GateRef array, GateRef key, GateRef jsType)
 {
     auto env = GetEnvironment();
     Label entryPass(env);
@@ -140,8 +140,8 @@ GateRef TypedArrayStubBuilder::LoadTypedArrayElement(GateRef glue, GateRef array
     return ret;
 }
 
-GateRef TypedArrayStubBuilder::StoreTypedArrayElement(GateRef glue, GateRef array, GateRef index, GateRef value,
-                                                      GateRef jsType)
+GateRef BuiltinsTypedArrayStubBuilder::StoreTypedArrayElement(GateRef glue, GateRef array, GateRef index, GateRef value,
+                                                              GateRef jsType)
 {
     auto env = GetEnvironment();
     Label entryPass(env);
@@ -168,7 +168,8 @@ GateRef TypedArrayStubBuilder::StoreTypedArrayElement(GateRef glue, GateRef arra
     return ret;
 }
 
-GateRef TypedArrayStubBuilder::FastGetPropertyByIndex(GateRef glue, GateRef array, GateRef index, GateRef jsType)
+GateRef BuiltinsTypedArrayStubBuilder::FastGetPropertyByIndex(GateRef glue, GateRef array,
+                                                              GateRef index, GateRef jsType)
 {
     auto env = GetEnvironment();
     Label entryPass(env);
@@ -209,7 +210,7 @@ GateRef TypedArrayStubBuilder::FastGetPropertyByIndex(GateRef glue, GateRef arra
     return ret;
 }
 
-GateRef TypedArrayStubBuilder::FastCopyElementToArray(GateRef glue, GateRef typedArray, GateRef array)
+GateRef BuiltinsTypedArrayStubBuilder::FastCopyElementToArray(GateRef glue, GateRef typedArray, GateRef array)
 {
     auto env = GetEnvironment();
     Label entryPass(env);
@@ -264,7 +265,7 @@ GateRef TypedArrayStubBuilder::FastCopyElementToArray(GateRef glue, GateRef type
     return ret;
 }
 
-GateRef TypedArrayStubBuilder::GetValueFromBuffer(GateRef buffer, GateRef index, GateRef offset, GateRef jsType)
+GateRef BuiltinsTypedArrayStubBuilder::GetValueFromBuffer(GateRef buffer, GateRef index, GateRef offset, GateRef jsType)
 {
     auto env = GetEnvironment();
     Label entryPass(env);
@@ -414,7 +415,7 @@ GateRef TypedArrayStubBuilder::GetValueFromBuffer(GateRef buffer, GateRef index,
     return ret;
 }
 
-void TypedArrayStubBuilder::SubArray(GateRef glue, GateRef thisValue, GateRef numArgs,
+void BuiltinsTypedArrayStubBuilder::SubArray(GateRef glue, GateRef thisValue, GateRef numArgs,
     Variable *result, Label *exit, Label *slowPath)
 {
     auto env = GetEnvironment();
@@ -494,7 +495,7 @@ void TypedArrayStubBuilder::SubArray(GateRef glue, GateRef thisValue, GateRef nu
     Jump(exit);
 }
 
-void TypedArrayStubBuilder::GetByteLength([[maybe_unused]] GateRef glue, GateRef thisValue,
+void BuiltinsTypedArrayStubBuilder::GetByteLength([[maybe_unused]] GateRef glue, GateRef thisValue,
     [[maybe_unused]] GateRef numArgs, Variable *result, Label *exit, Label *slowPath)
 {
     auto env = GetEnvironment();
@@ -520,7 +521,7 @@ void TypedArrayStubBuilder::GetByteLength([[maybe_unused]] GateRef glue, GateRef
     Jump(exit);
 }
 
-void TypedArrayStubBuilder::GetByteOffset([[maybe_unused]] GateRef glue, GateRef thisValue,
+void BuiltinsTypedArrayStubBuilder::GetByteOffset([[maybe_unused]] GateRef glue, GateRef thisValue,
     [[maybe_unused]] GateRef numArgs, Variable *result, Label *exit, Label *slowPath)
 {
     auto env = GetEnvironment();

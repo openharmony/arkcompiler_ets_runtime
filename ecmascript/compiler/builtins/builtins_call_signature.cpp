@@ -39,7 +39,12 @@ void BuiltinsStubCSigns::Initialize()
     BuiltinsCallSignature::Initialize(&callSigns_[name]);            \
     COMMON_INIT(name)
 
-    BUILTINS_STUB_LIST(INIT_BUILTINS_METHOD)
+#define INIT_BUILTINS_METHOD_DYN(name, type, ...)                    \
+    BuiltinsCallSignature::Initialize(&callSigns_[type##name]);      \
+    COMMON_INIT(type##name)
+
+    BUILTINS_STUB_LIST(INIT_BUILTINS_METHOD, INIT_BUILTINS_METHOD_DYN)
+#undef INIT_BUILTINS_METHOD_DYN
 #undef INIT_BUILTINS_METHOD
 
 #undef COMMON_INIT
