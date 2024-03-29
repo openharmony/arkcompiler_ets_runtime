@@ -2854,6 +2854,22 @@ inline GateRef StubBuilder::IsFastCall(GateRef method)
         Int64(0));
 }
 
+inline GateRef StubBuilder::IsJitCompiledCode(GateRef method)
+{
+    GateRef fieldOffset = IntPtr(Method::EXTRA_LITERAL_INFO_OFFSET);
+    GateRef literalField = Load(VariableType::INT64(), method, fieldOffset);
+    return Int64NotEqual(
+        Int64And(
+            Int64LSR(literalField, Int64(Method::IsJitCompiledCodeBit::START_BIT)),
+            Int64((1LU << Method::IsJitCompiledCodeBit::SIZE) - 1)),
+        Int64(0));
+}
+
+inline void StubBuilder::ClearJitCompiledCodeFlags(GateRef glue, GateRef method)
+{
+    CallNGCRuntime(glue, RTSTUB_ID(ClearJitCompiledCodeFlags), { method });
+}
+
 inline GateRef StubBuilder::HasPrototype(GateRef kind)
 {
     GateRef greater = Int32GreaterThanOrEqual(kind,

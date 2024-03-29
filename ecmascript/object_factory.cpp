@@ -1804,7 +1804,10 @@ JSHandle<JSFunction> ObjectFactory::NewJSFunctionByHClass(const JSHandle<Method>
     clazz->SetExtensible(true);
     JSFunction::InitializeJSFunction(thread_, function, method->GetFunctionKind());
     function->SetMethod(thread_, method);
-    if (method->IsAotWithCallField()) {
+    if (method->IsJitCompiledCode()) {
+        // jit install code also set aot callfield, should clear flag when new function
+        method->ClearJitCompiledCodeFlags();
+    } else if (method->IsAotWithCallField()) {
         thread_->GetEcmaVM()->GetAOTFileManager()->
             SetAOTFuncEntry(method->GetJSPandaFile(), *function, *method);
     }

@@ -492,7 +492,7 @@ bool JSSerializer::WriteMethod(const JSHandle<JSTaggedValue> &value)
         if (!WriteString(desc)) {
             return false;
         }
-        if (method->IsAotWithCallField()) {
+        if (method->CanSerializeCodeEntry()) {
             uintptr_t codeEntry = method->GetCodeEntryOrLiteral();
             if (!WriteRawData(&codeEntry, sizeof(uintptr_t))) {
                 return false;
@@ -514,7 +514,8 @@ bool JSSerializer::WriteJSFunction(const JSHandle<JSTaggedValue> &value)
         return false;
     }
     JSHandle<JSTaggedValue> method(thread_, func->GetMethod());
-    if (Method::Cast(method.GetTaggedValue())->IsAotWithCallField()) {
+    Method *methodPtr = Method::Cast(method.GetTaggedValue());
+    if (methodPtr->CanSerializeCodeEntry()) {
         uintptr_t codeEntry = func->GetCodeEntry();
         if (!WriteRawData(&codeEntry, sizeof(uintptr_t))) {
             return false;
@@ -1338,7 +1339,7 @@ JSHandle<JSTaggedValue> JSDeserializer::ReadMethod()
         thread_->GetCurrentEcmaContext()->FindOrCreateConstPool(jsPandaFile.get(), method->GetMethodId());
     method->SetConstantPool(thread_, constPool.GetTaggedValue());
 
-    if (method->IsAotWithCallField()) {
+    if (method->CanSerializeCodeEntry()) {
         uintptr_t codeEntry;
         if (!ReadNativePointer(&codeEntry)) {
             return JSHandle<JSTaggedValue>();

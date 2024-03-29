@@ -1058,10 +1058,13 @@ void JSFunction::InitializeForConcurrentFunction(JSThread *thread)
 void JSFunctionBase::SetCompiledFuncEntry(uintptr_t codeEntry, bool isFastCall)
 {
     ASSERT(codeEntry != 0);
+    SetCodeEntry(codeEntry);
+
     Method* method = Method::Cast(GetMethod());
     method->SetCodeEntryAndMarkAOTWhenBinding(codeEntry);
-
+    method->SetJitCompiledCode(true);
     method->SetIsFastCall(isFastCall);
+
     MethodLiteral *methodLiteral = method->GetMethodLiteral();
     methodLiteral->SetAotCodeBit(true);
     methodLiteral->SetIsFastCall(isFastCall);
