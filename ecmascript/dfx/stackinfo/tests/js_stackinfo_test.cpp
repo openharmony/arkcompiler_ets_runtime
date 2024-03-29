@@ -81,7 +81,7 @@ HWTEST_F_L0(JsStackInfoTest, FrameCheckTest)
     frame[20] = reinterpret_cast<uintptr_t>(FrameType::OPTIMIZED_JS_FUNCTION_UNFOLD_ARGV_FRAME);
     frame[21] = reinterpret_cast<uintptr_t>(FrameType::BUILTIN_FRAME_WITH_ARGV_STACK_OVER_FLOW_FRAME);
 
-    for (i = 0; i < 21; i++) {
+    for (i = 0; i < 22; i++) {
         bool ret1 = ArkFrameCheck(frame[i]);
         if (i == 1 || i == 17) {
             EXPECT_TRUE(ret1 == true);
@@ -92,7 +92,7 @@ HWTEST_F_L0(JsStackInfoTest, FrameCheckTest)
         if (i == 2 || i == 3 || i == 8 || i == 9 || i ==10 || i == 15) {
             EXPECT_TRUE(ret2 == true);
         } else {
-            EXPECT_TRUE(ret2 == false);
+            EXPECT_FALSE(ret2 == false);
         }
     }
 }
@@ -117,5 +117,24 @@ HWTEST_F_L0(JsStackInfoTest, TranslateByteCodePc)
     vec.push_back({2, 54, 56});
     ret = TranslateByteCodePc(realPc, vec);
     EXPECT_TRUE(ret != std::nullopt);
+}
+
+HWTEST_F_L0(JsStackInfoTest, GetArkNativeFrameInfo)
+{
+    uintptr_t pc = 0;
+    uintptr_t fp = 0;
+    uintptr_t sp = 0;
+    size_t size = 22;
+    JsFrame jsFrame[22];
+    bool ret = GetArkNativeFrameInfo(getpid(), &pc, &fp, &sp, &jsFrame, &size);
+    EXPECT_FALSE(ret);
+    EXPECT_TRUE(size == 22);
+
+    pc = 1234;
+    fp = 62480;
+    sp = 62496;
+    bool ret = GetArkNativeFrameInfo(getpid(), &pc, &fp, &sp, &jsFrame, &size);
+    EXPECT_FALSE(ret);
+    EXPECT_TRUE(size == 22);
 }
 }  // namespace panda::test
