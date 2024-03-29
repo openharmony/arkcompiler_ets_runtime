@@ -14,12 +14,13 @@
  */
 
 function foo() {
-
+  REPLACE_FUNC_FOO1
   print("patch foo")
   foo2()
 }
 
 function foo2() {
+  REPLACE_FUNC_FOO2
   print("patch foo2" )
 }
 

@@ -15,9 +15,11 @@
 
 var obj = {
     "foo": function () {
+        REPLACE_FUNC_FOO1
         return "foo"
     },
     "foo2": function() {
+        REPLACE_FUNC_FOO2
         return "foo2"
     }
 }

@@ -18,9 +18,11 @@ class A {
         print("A")
     }
     foo() {
+        REPLACE_FUNC_FOO1
         return "foo"
     }
     foo2() {
+        REPLACE_FUNC_FOO2
         return "foo2"
     }
 }

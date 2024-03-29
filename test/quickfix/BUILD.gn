@@ -69,6 +69,9 @@ host_quickfix_test_action("multi_patch") {
 foreach(testcase, hot_reload_test_list) {
   host_quickfix_test_action("${testcase}") {
     entry_point = "--entry-point=base"
+    if (!is_debug) {
+      is_gen_js_by_script = true
+    }
   }
 }
 

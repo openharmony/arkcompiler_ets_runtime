@@ -15,7 +15,10 @@
 var x = "-10";
 
 function foo() {
+	REPLACE_FUNC_FOO1
 	function foo2() {
+		REPLACE_FUNC_FOO2
+		var y = "-100"
 		function foo3() {
 			print("patch: " + a65536)
             print("patch: " + a65488)

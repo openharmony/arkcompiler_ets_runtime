@@ -15,9 +15,11 @@
 
 class A {
     constructor() {
+        REPLACE_FUNC_FOO1
         print("A")
     }
     foo() {
+        REPLACE_FUNC_FOO2
         return "foo"
     }
 }

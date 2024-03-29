@@ -15,9 +15,11 @@
 
 class A {
     constructor() {
+        REPLACE_FUNC_FOO1
         this.str = "base"
     }
     foo() {
+        REPLACE_FUNC_FOO2
         print("foo: " + this.str)
     }
 }
