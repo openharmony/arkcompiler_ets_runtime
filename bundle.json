@@ -36,8 +36,6 @@
               "icu"
             ],
             "third_party": [
-              "bounds_checking_function",
-              "icu"
             ]
         },
         "build": {
