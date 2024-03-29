@@ -89,3 +89,7 @@ try {
 } catch (error) {
     print(error.name);
 }
+
+let arr1 = new Array;
+let pro1 = new Proxy(arr1, {});
+print(Object.prototype.toString.call(pro1));
