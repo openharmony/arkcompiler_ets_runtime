@@ -175,6 +175,24 @@ EcmaString *EcmaStringTable::CreateAndInternStringNonMovable(EcmaVM *vm, const u
     return str;
 }
 
+/*
+    This function is used to create global constant strings from read-only sapce only.
+    It only inserts string into string-table and provides no string-table validity check.
+*/
+EcmaString *EcmaStringTable::CreateAndInternStringReadOnly(EcmaVM *vm, const uint8_t *utf8Data, uint32_t utf8Len)
+{
+    RuntimeLockHolder locker(vm->GetJSThread(), mutex_);
+    std::pair<EcmaString *, uint32_t> result = GetStringThreadUnsafe(utf8Data, utf8Len, true);
+    if (result.first != nullptr) {
+        return result.first;
+    }
+    EcmaString *str = EcmaStringAccessor::CreateFromUtf8(vm, utf8Data, utf8Len, true,
+                                                         MemSpaceType::SHARED_READ_ONLY_SPACE);
+    str->SetMixHashcode(result.second);
+    InternStringThreadUnsafe(str);
+    return str;
+}
+
 EcmaString *EcmaStringTable::GetOrInternString(EcmaVM *vm, const uint16_t *utf16Data, uint32_t utf16Len,
                                                bool canBeCompress)
 {
@@ -378,7 +396,7 @@ JSTaggedValue SingleCharTable::CreateSingleCharTable(JSThread *thread)
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     for (uint32_t i = 1; i < MAX_ONEBYTE_CHARCODE; ++i) {
         std::string tmp(1, i + 0X00); // 1: size
-        table->Set(thread, i, factory->NewFromASCIINonMovable(tmp).GetTaggedValue());
+        table->Set(thread, i, factory->NewFromASCIIReadOnly(tmp).GetTaggedValue());
     }
     return table.GetTaggedValue();
 }
