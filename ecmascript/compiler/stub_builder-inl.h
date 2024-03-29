@@ -3164,7 +3164,13 @@ inline void StubBuilder::CheckDetectorName(GateRef glue, GateRef key, Label *fal
         VariableType::INT64(), glueGlobalEnv, GlobalEnv::LAST_DETECTOR_SYMBOL_INDEX);
     GateRef isDetectorName = BoolAnd(Int64UnsignedLessThanOrEqual(firstDetectorName, keyAddr),
                                      Int64UnsignedLessThanOrEqual(keyAddr, lastDetectorName));
-    BRANCH(isDetectorName, slow, fallthrough);
+    Label checkCommonDetector(env_);
+    BRANCH(isDetectorName, slow, &checkCommonDetector);
+    Bind(&checkCommonDetector);
+    auto gFlagsStr = GetGlobalConstantValue(
+        VariableType::JS_POINTER(), glue, ConstantIndex::FLAGS_INDEX);
+    GateRef isFlagsStr = Equal(key, gFlagsStr);
+    BRANCH(isFlagsStr, slow, fallthrough);
 }
 
 inline GateRef StubBuilder::LoadPfHeaderFromConstPool(GateRef jsFunc)

@@ -3965,11 +3965,11 @@ GateRef StubBuilder::SetPropertyByValue(GateRef glue, GateRef receiver, GateRef 
                 Jump(&exit);
             }
             Label isString(env);
-            Label notString(env);
+            Label checkDetector(env);
             Bind(&notNumber1);
             {
                 Label notIntenalString(env);
-                BRANCH(TaggedIsString(*varKey), &isString, &notString);
+                BRANCH(TaggedIsString(*varKey), &isString, &checkDetector);
                 Bind(&isString);
                 {
                     BRANCH(IsInternalString(*varKey), &setByName, &notIntenalString);
@@ -3983,21 +3983,21 @@ GateRef StubBuilder::SetPropertyByValue(GateRef glue, GateRef receiver, GateRef 
                         {
                             varKey = CallRuntime(glue, RTSTUB_ID(InsertStringToTable), { *varKey });
                             isInternal = False();
-                            Jump(&setByName);
+                            Jump(&checkDetector);
                         }
                         Bind(&find);
                         {
                             varKey = res;
-                            Jump(&setByName);
+                            Jump(&checkDetector);
                         }
                     }
                 }
             }
-            Bind(&notString);
+            Bind(&checkDetector);
             CheckDetectorName(glue, *varKey, &setByName, &exit);
             Bind(&setByName);
             {
-                result = SetPropertyByName(glue, receiver, *varKey, value, useOwn,  *isInternal, callback,
+                result = SetPropertyByName(glue, receiver, *varKey, value, useOwn, *isInternal, callback,
                                            true, defineSemantics);
                 Jump(&exit);
             }

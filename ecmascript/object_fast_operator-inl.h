@@ -514,9 +514,8 @@ JSTaggedValue ObjectFastOperator::SetPropertyByValue(JSThread *thread, JSTaggedV
                 receiver = receiverHandler.GetTaggedValue();
                 value = valueHandler.GetTaggedValue();
             }
-        } else {
-            ObjectOperator::UpdateDetector(thread, receiver, key);
         }
+        ObjectOperator::UpdateDetector(thread, receiver, key);
         return ObjectFastOperator::SetPropertyByName<status>(thread, receiver, key, value, sCheckMode);
     }
     return JSTaggedValue::Hole();

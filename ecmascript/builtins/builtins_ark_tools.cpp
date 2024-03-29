@@ -483,6 +483,22 @@ JSTaggedValue BuiltinsArkTools::IsRegExpReplaceDetectorValid(EcmaRuntimeCallInfo
     return JSTaggedValue(PropertyDetector::IsRegExpReplaceDetectorValid(env));
 }
 
+JSTaggedValue BuiltinsArkTools::IsRegExpFlagsDetectorValid(EcmaRuntimeCallInfo *info)
+{
+    ASSERT(info);
+    JSThread *thread = info->GetThread();
+    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+    return JSTaggedValue(PropertyDetector::IsRegExpFlagsDetectorValid(env));
+}
+
+JSTaggedValue BuiltinsArkTools::IsNumberStringNotRegexpLikeDetectorValid(EcmaRuntimeCallInfo *info)
+{
+    ASSERT(info);
+    JSThread *thread = info->GetThread();
+    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+    return JSTaggedValue(PropertyDetector::IsNumberStringNotRegexpLikeDetectorValid(env));
+}
+
 JSTaggedValue BuiltinsArkTools::IsSymbolIteratorDetectorValid(EcmaRuntimeCallInfo *info)
 {
     ASSERT(info);

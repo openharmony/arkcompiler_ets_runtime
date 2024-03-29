@@ -205,6 +205,8 @@ using SharedArrayBuffer = builtins::BuiltinsSharedArrayBuffer;
 using BuiltinsAsyncIterator = builtins::BuiltinsAsyncIterator;
 using AsyncGeneratorObject = builtins::BuiltinsAsyncGenerator;
 
+static constexpr size_t REGEXP_INLINE_PROPS = 18;
+
 void Builtins::Initialize(const JSHandle<GlobalEnv> &env, JSThread *thread, bool lazyInit, bool isRealm)
 {
     thread->CheckSafepointIfSuspended();
@@ -1919,7 +1921,7 @@ void Builtins::InitializeRegExp(const JSHandle<GlobalEnv> &env)
     [[maybe_unused]] EcmaHandleScope scope(thread_);
     // RegExp.prototype
     JSHandle<JSFunction> objFun(env->GetObjectFunction());
-    JSHandle<JSObject> regPrototype = factory_->NewJSObjectByConstructor(objFun);
+    JSHandle<JSObject> regPrototype = factory_->NewJSObjectByConstructor(env, objFun, REGEXP_INLINE_PROPS);
     JSHandle<JSTaggedValue> regPrototypeValue(regPrototype);
 
     // RegExp.prototype_or_hclass
@@ -2000,22 +2002,29 @@ void Builtins::InitializeRegExp(const JSHandle<GlobalEnv> &env)
     JSHandle<JSFunction>(speciesGetter)->SetLexicalEnv(thread_, env);
 
     // Set RegExp.prototype[@@split]
-    SetFunctionAtSymbol(env, regPrototype, env->GetSplitSymbol(), "[Symbol.split]", RegExp::Split, FunctionLength::TWO);
+    JSHandle<JSTaggedValue> splitFunc = SetAndReturnFunctionAtSymbol(
+        env, regPrototype, env->GetSplitSymbol(), "[Symbol.split]", RegExp::Split, FunctionLength::TWO);
     // Set RegExp.prototype[@@search]
-    SetFunctionAtSymbol(env, regPrototype, env->GetSearchSymbol(), "[Symbol.search]", RegExp::Search,
-                        FunctionLength::ONE);
+    JSHandle<JSTaggedValue> searchFunc = SetAndReturnFunctionAtSymbol(
+        env, regPrototype, env->GetSearchSymbol(), "[Symbol.search]", RegExp::Search, FunctionLength::ONE);
     // Set RegExp.prototype[@@match]
-    SetFunctionAtSymbol(env, regPrototype, env->GetMatchSymbol(), "[Symbol.match]", RegExp::Match, FunctionLength::ONE);
+    JSHandle<JSTaggedValue> matchFunc = SetAndReturnFunctionAtSymbol(
+        env, regPrototype, env->GetMatchSymbol(), "[Symbol.match]", RegExp::Match, FunctionLength::ONE);
     // Set RegExp.prototype[@@matchAll]
-    SetFunctionAtSymbol(env, regPrototype, env->GetMatchAllSymbol(), "[Symbol.matchAll]", RegExp::MatchAll,
-                        FunctionLength::ONE);
+    JSHandle<JSTaggedValue> matchAllFunc = SetAndReturnFunctionAtSymbol(
+        env, regPrototype, env->GetMatchAllSymbol(), "[Symbol.matchAll]", RegExp::MatchAll, FunctionLength::ONE);
     // Set RegExp.prototype[@@replace]
-    SetFunctionAtSymbol(env, regPrototype, env->GetReplaceSymbol(), "[Symbol.replace]", RegExp::Replace,
-                        FunctionLength::TWO);
+    JSHandle<JSTaggedValue> replaceFunc = SetAndReturnFunctionAtSymbol(
+        env, regPrototype, env->GetReplaceSymbol(), "[Symbol.replace]", RegExp::Replace, FunctionLength::TWO);
 
     env->SetRegExpFunction(thread_, regexpFunction);
     env->SetRegExpPrototype(thread_, regPrototype);
     env->SetRegExpExecFunction(thread_, execFunc);
+    env->SetRegExpSplitFunction(thread_, splitFunc);
+    env->SetRegExpSearchFunction(thread_, searchFunc);
+    env->SetRegExpMatchFunction(thread_, matchFunc);
+    env->SetRegExpMatchAllFunction(thread_, matchAllFunc);
+    env->SetRegExpReplaceFunction(thread_, replaceFunc);
     // Set RegExp.prototype hclass
     JSHandle<JSHClass> regPrototypeClass(thread_, regPrototype->GetJSHClass());
     env->SetRegExpPrototypeClass(thread_, regPrototypeClass.GetTaggedValue());
