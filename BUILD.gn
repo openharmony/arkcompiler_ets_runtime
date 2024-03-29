@@ -1086,7 +1086,7 @@ ohos_source_set("libark_jsruntime_test_set") {
   defines += [ "TARGET_BUILTINS_DTS_PATH=\"${target_builtins_dts_path}\"" ]
 
   deps = []
-  external_deps = []
+  external_deps = [ "zlib:libz" ]
   if (defined(is_arkui_x) && is_arkui_x) {
     deps += [
       "$ark_third_party_root/icu/icu4c:static_icui18n",
@@ -1255,6 +1255,11 @@ ohos_shared_library("libark_jsruntime_test") {
 
   if (enable_hilog) {
     external_deps += [ "hilog:libhilog" ]
+  }
+  if (!ark_standalone_build) {
+    public_external_deps = [ "zlib:libz" ]
+  } else {
+    external_deps += [ "zlib:libz" ]
   }
 
   ldflags = []
