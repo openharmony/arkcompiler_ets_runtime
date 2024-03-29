@@ -475,7 +475,7 @@ public:
         Chunk chunk(data->GetNativeAreaAllocator());
         CombinedPassVisitor visitor(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk);
         NTypeHCRLowering lowering(data->GetCircuit(), &visitor, data->GetPassContext(),
-                                  data->GetRecordName(), &chunk);
+                                  data->GetRecordName(), data->GetMethodLiteral(), &chunk);
         visitor.AddPass(&lowering);
         visitor.VisitGraph();
         visitor.PrintLog("NTypeHCRLowering");

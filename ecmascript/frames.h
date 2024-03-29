@@ -505,6 +505,8 @@ STATIC_ASSERT_EQ_ARCH(sizeof(OptimizedJSFunctionArgConfigFrame),
 //               |       new-target         |
 //               +--------------------------+
 //               |       call-target        |
+//               +--------------------------+
+//               |       argv               |
 //               |--------------------------|
 //               |       argc               |
 //      sp ----> |--------------------------| ---------------
@@ -546,7 +548,8 @@ public:
 
     JSTaggedType* GetArgv(uintptr_t *preFrameSp) const
     {
-        return reinterpret_cast<JSTaggedType *>(preFrameSp + sizeof(uint64_t) / sizeof(uintptr_t));
+        const size_t offset = 2;    // 2: skip argc and argv.
+        return reinterpret_cast<JSTaggedType *>(preFrameSp + offset * sizeof(uint64_t) / sizeof(uintptr_t));
     }
 
     size_t GetArgc(uintptr_t *preFrameSp) const

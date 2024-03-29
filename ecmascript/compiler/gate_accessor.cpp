@@ -280,11 +280,11 @@ ArrayMetaDataAccessor GateAccessor::GetArrayMetaDataAccessor(GateRef gate) const
     return ArrayMetaDataAccessor(gatePtr->GetOneParameterMetaData()->GetValue());
 }
 
-bool GateAccessor::NeedPushUndefined(GateRef gate) const
+bool GateAccessor::NeedPushArgv(GateRef gate) const
 {
     ASSERT(GetOpCode(gate) == OpCode::CALL_NEW);
     Gate *gatePtr = circuit_->LoadGatePtr(gate);
-    return gatePtr->GetNewConstructMetaData()->NeedPushUndefined();
+    return gatePtr->GetNewConstructMetaData()->NeedPushArgv();
 }
 
 CreateArgumentsAccessor GateAccessor::GetCreateArgumentsAccessor(GateRef gate) const

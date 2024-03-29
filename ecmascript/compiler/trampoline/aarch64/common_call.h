@@ -38,6 +38,7 @@ public:
     static constexpr int QUADRUPLE_SLOT_SIZE = 32;
     static constexpr int QUINTUPLE_SLOT_SIZE = 40;
     static constexpr int OCTUPLE_SLOT_SIZE = 64;
+    static constexpr int NONUPLE_SLOT_SIZE = 72;
     static constexpr int FRAME_SLOT_SIZE_LOG2 = 3;
     enum BuiltinsLeaveFrameArgId : unsigned {CODE_ADDRESS = 0, ENV, ARGC, ARGV};
     static inline int64_t GetStackArgOffSetToFp(unsigned argId)
@@ -78,7 +79,7 @@ public:
 
     static void JSFunctionEntry(ExtendedAssembler *assembler);
 
-    static void OptimizedCallAndPushUndefined(ExtendedAssembler *assembler);
+    static void OptimizedCallAndPushArgv(ExtendedAssembler *assembler);
 
     static void JSProxyCallInternalWithArgV(ExtendedAssembler *assembler);
 
@@ -90,7 +91,7 @@ public:
 
     static void JSCallWithArgV(ExtendedAssembler *assembler);
 
-    static void JSCallWithArgVAndPushUndefined(ExtendedAssembler *assembler);
+    static void JSCallWithArgVAndPushArgv(ExtendedAssembler *assembler);
 
     static void DeoptHandlerAsm(ExtendedAssembler *assembler);
 
@@ -98,7 +99,7 @@ public:
 
     static void GenJSCall(ExtendedAssembler *assembler, bool isNew);
 
-    static void GenJSCallWithArgV(ExtendedAssembler *assembler, bool needAddExpectedArgs);
+    static void GenJSCallWithArgV(ExtendedAssembler *assembler, bool needPushArgv);
 private:
     static void DeoptEnterAsmInterp(ExtendedAssembler *assembler);
     static void JSCallCheck(ExtendedAssembler *assembler, Register jsfunc, Register taggedValue,
@@ -131,11 +132,11 @@ class OptimizedFastCall : public CommonCall {
 public:
     static void OptimizedFastCallEntry(ExtendedAssembler *assembler);
 
-    static void OptimizedFastCallAndPushUndefined(ExtendedAssembler *assembler);
+    static void OptimizedFastCallAndPushArgv(ExtendedAssembler *assembler);
 
     static void JSFastCallWithArgV(ExtendedAssembler *assembler);
 
-    static void JSFastCallWithArgVAndPushUndefined(ExtendedAssembler *assembler);
+    static void JSFastCallWithArgVAndPushArgv(ExtendedAssembler *assembler);
 };
 
 class AsmInterpreterCall : public CommonCall {

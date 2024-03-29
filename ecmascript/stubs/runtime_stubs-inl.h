@@ -2802,10 +2802,10 @@ JSTaggedValue RuntimeStubs::GetResultValue(JSThread *thread, bool isAotMethod, J
     JSTaggedValue resultValue;
     if (isAotMethod && ctor->IsClassConstructor()) {
         uint32_t numArgs = ctor->GetCallTarget()->GetNumArgsWithCallField();
-        bool needPushUndefined = numArgs > size;
+        bool needPushArgv = numArgs != size;
         const JSTaggedType *prevFp = thread->GetLastLeaveFrame();
         if (ctor->GetCallTarget()->IsFastCall()) {
-            if (needPushUndefined) {
+            if (needPushArgv) {
                 values.reserve(numArgs + NUM_MANDATORY_JSFUNC_ARGS - 1);
                 for (uint32_t i = size; i < numArgs; i++) {
                     values.emplace_back(JSTaggedValue::VALUE_UNDEFINED);
@@ -2814,7 +2814,7 @@ JSTaggedValue RuntimeStubs::GetResultValue(JSThread *thread, bool isAotMethod, J
             }
             resultValue = thread->GetEcmaVM()->FastCallAot(size, values.data(), prevFp);
         } else {
-            resultValue = thread->GetCurrentEcmaContext()->ExecuteAot(size, values.data(), prevFp, needPushUndefined);
+            resultValue = thread->GetCurrentEcmaContext()->ExecuteAot(size, values.data(), prevFp, needPushArgv);
         }
     } else {
         ctor->GetCallTarget()->SetAotCodeBit(false); // if Construct is not ClassConstructor, don't run aot

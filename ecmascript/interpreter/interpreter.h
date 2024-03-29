@@ -49,7 +49,7 @@ public:
         JSThread *thread, JSHandle<JSTaggedValue> func, JSHandle<JSTaggedValue> thisObj,
         JSHandle<JSTaggedValue> newTarget, uint32_t numArgs, bool needCheckStack = true);
     static EcmaRuntimeCallInfo* ReBuildRuntimeCallInfo(
-        JSThread *thread, EcmaRuntimeCallInfo* info, uint32_t numArgs, bool needCheckStack = true);
+        JSThread *thread, EcmaRuntimeCallInfo* info, int numArgs, bool needCheckStack = true);
     static JSTaggedValue GeneratorReEnterInterpreter(JSThread *thread, JSHandle<GeneratorContext> context);
     static JSTaggedValue GeneratorReEnterAot(JSThread *thread, JSHandle<GeneratorContext> context);
 #ifndef EXCLUDE_C_INTERPRETER

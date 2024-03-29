@@ -2981,7 +2981,9 @@ LLVMValueRef LLVMModule::AddFunc(const panda::ecmascript::MethodLiteral *methodL
     std::vector<LLVMTypeRef> paramTys = { glue };
     if (!methodLiteral->IsFastCall()) {
         LLVMTypeRef actualArgc = NewLType(MachineType::I64, GateType::NJSValue());
+        LLVMTypeRef actualArgv = NewLType(MachineType::I64, GateType::NJSValue());
         paramTys.emplace_back(actualArgc);
+        paramTys.emplace_back(actualArgv);
         auto funcIndex = static_cast<uint32_t>(CommonArgIdx::FUNC);
         auto numOfComArgs = static_cast<uint32_t>(CommonArgIdx::NUM_OF_ARGS);
         paramCount = methodLiteral->GetNumArgsWithCallField() + numOfComArgs;

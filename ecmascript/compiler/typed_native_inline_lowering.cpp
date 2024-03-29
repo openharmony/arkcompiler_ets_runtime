@@ -2517,7 +2517,8 @@ void TypedNativeInlineLowering::LowerReflectConstruct(GateRef gate)
     BRANCH_CIR(builder_.TaggedIsHole(thisObj), &callRuntime, &callCtor);
     builder_.Bind(&callCtor);
     {
-        std::vector<GateRef> args { glue, builder_.Int64(NUM_MANDATORY_JSFUNC_ARGS), target, target, thisObj };
+        std::vector<GateRef> args { glue, builder_.Int64(NUM_MANDATORY_JSFUNC_ARGS), builder_.IntPtr(0),
+                                    target, target, thisObj };
         result = builder_.Construct(gate, args);
         builder_.Jump(&exit);
     }

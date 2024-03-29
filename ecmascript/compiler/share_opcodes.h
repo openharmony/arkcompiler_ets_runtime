@@ -68,7 +68,7 @@ namespace panda::ecmascript::kungfu {
 
 #define SHARE_GATE_META_DATA_LIST_WITH_VALUE(V)                                         \
     V(Constant, CONSTANT, GateFlags::NONE_FLAG, 0, 0, 0)                                \
-    V(FrameArgs, FRAME_ARGS, GateFlags::HAS_FRAME_STATE, 0, 0, 5)                       \
+    V(FrameArgs, FRAME_ARGS, GateFlags::HAS_FRAME_STATE, 0, 0, 6)                       \
     V(FrameState, FRAME_STATE, GateFlags::HAS_FRAME_STATE, 0, 0, 2)                     \
     V(IfBranch, IF_BRANCH, GateFlags::CONTROL, 1, 0, 1)                                 \
     V(RelocatableData, RELOCATABLE_DATA, GateFlags::NONE_FLAG, 0, 0, 0)                 \
@@ -159,11 +159,12 @@ enum class OpCode : uint16_t {
 // Special virtual register in the OSR.
 static constexpr size_t INIT_VRGE_GLUE = -1;
 static constexpr size_t INIT_VRGE_ARGS = -2;
-static constexpr size_t INIT_VRGE_FUNCTION = -3;
-static constexpr size_t INIT_VRGE_NEW_TARGET = -4;
-static constexpr size_t INIT_VRGE_THIS_OBJECT = -5;
-static constexpr size_t INIT_VRGE_NUM_ARGS = -6;
-static constexpr size_t INIT_VRGE_ENV = -7;
+static constexpr size_t INIT_VRGE_ARGV = -3;
+static constexpr size_t INIT_VRGE_FUNCTION = -4;
+static constexpr size_t INIT_VRGE_NEW_TARGET = -5;
+static constexpr size_t INIT_VRGE_THIS_OBJECT = -6;
+static constexpr size_t INIT_VRGE_NUM_ARGS = -7;
+static constexpr size_t INIT_VRGE_ENV = -8;
 
 }
 

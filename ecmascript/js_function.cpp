@@ -540,14 +540,14 @@ JSTaggedValue JSFunction::InvokeOptimizedEntrypoint(JSThread *thread, JSHandle<J
     ASSERT(thread->IsInManagedState());
     Method *method = func->GetCallTarget();
     JSTaggedValue resultValue;
-    uint32_t numArgs = method->GetNumArgsWithCallField();
-    bool needPushUndefined = numArgs > info->GetArgsNumber();
+    size_t numArgs = method->GetNumArgsWithCallField();
+    bool needPushArgv = numArgs != info->GetArgsNumber();
     const JSTaggedType *prevFp = thread->GetLastLeaveFrame();
 #if ECMASCRIPT_ENABLE_FUNCTION_CALL_TIMER
     RuntimeStubs::StartCallTimer(thread->GetGlueAddr(), func.GetTaggedType(), true);
 #endif
     if (method->IsFastCall()) {
-        if (needPushUndefined) {
+        if (needPushArgv) {
             info = EcmaInterpreter::ReBuildRuntimeCallInfo(thread, info, numArgs);
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         }
@@ -556,7 +556,7 @@ JSTaggedValue JSFunction::InvokeOptimizedEntrypoint(JSThread *thread, JSHandle<J
         resultValue = thread->GetEcmaVM()->FastCallAot(info->GetArgsNumber(), stackArgs + 1, prevFp);
     } else {
         resultValue = thread->GetCurrentEcmaContext()->ExecuteAot(info->GetArgsNumber(),
-            info->GetArgs(), prevFp, needPushUndefined);
+            info->GetArgs(), prevFp, needPushArgv);
     }
 #if ECMASCRIPT_ENABLE_FUNCTION_CALL_TIMER
     RuntimeStubs::EndCallTimer(thread->GetGlueAddr(), func.GetTaggedType());
