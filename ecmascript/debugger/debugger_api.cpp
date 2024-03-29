@@ -1305,6 +1305,11 @@ bool DebuggerApi::CheckPromiseQueueSize(const EcmaVM *ecmaVm)
     return queueSizeEntry == queueSizeCurrent;
 }
 
+bool DebuggerApi::IsMainThread()
+{
+    return JSThread::IsMainThread();
+}
+
 void DebuggerApi::DropLastFrame(const EcmaVM *ecmaVm)
 {
     auto *debuggerMgr = ecmaVm->GetJsDebuggerManager();

@@ -1176,6 +1176,7 @@ public:
     void SuspendThread(bool internalSuspend);
     void ResumeThread(bool internalSuspend);
     void WaitSuspension();
+    static bool IsMainThread();
     PUBLIC_API void ManagedCodeBegin();
     PUBLIC_API void ManagedCodeEnd();
 #ifndef NDEBUG
@@ -1226,8 +1227,6 @@ private:
     void DumpStack() DUMP_API_ATTR;
 
     static size_t GetAsmStackLimit();
-
-    static bool IsMainThread();
 
     static constexpr size_t DEFAULT_MAX_SYSTEM_STACK_SIZE = 8_MB;
 
