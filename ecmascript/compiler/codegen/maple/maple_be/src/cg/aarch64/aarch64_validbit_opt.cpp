@@ -94,7 +94,7 @@ void AArch64ValidBitOpt::SetValidBits(Insn &insn)
             uint32 shiftBits = static_cast<uint32>(static_cast<ImmOperand &>(opnd).GetValue());
             auto &dstOpnd = static_cast<RegOperand &>(insn.GetOperand(kInsnFirstOpnd));
             auto &srcOpnd = static_cast<RegOperand &>(insn.GetOperand(kInsnSecondOpnd));
-            if ((static_cast<int64>(srcOpnd.GetValidBitsNum()) - shiftBits) <= 0) {
+            if ((static_cast<uint32>(srcOpnd.GetValidBitsNum()) - shiftBits) <= 0) {
                 dstOpnd.SetValidBitsNum(k1BitSize);
             } else {
                 dstOpnd.SetValidBitsNum(srcOpnd.GetValidBitsNum() - shiftBits);

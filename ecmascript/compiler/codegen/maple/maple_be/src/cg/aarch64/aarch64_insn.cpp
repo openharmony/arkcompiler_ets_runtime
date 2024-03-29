@@ -55,7 +55,7 @@ void A64OpndEmitVisitor::Visit(maplebe::RegOperand *v)
                 EmitVectorOperand(*v);
             } else {
                 /* FP reg cannot be reffield. 8~0, 16~1, 32~2, 64~3. 8 is 1000b, has 3 zero. */
-                uint32 regSet = __builtin_ctz(static_cast<uint32>(opndSize)) - 3;
+                uint32 regSet = static_cast<uint32>(__builtin_ctz(static_cast<uint32>(opndSize)) - 3);
                 (void)emitter.Emit(AArch64CG::intRegNames[regSet][regNO]);
             }
             break;

@@ -426,10 +426,10 @@ BaseNode *CGLowerer::LowerFarray(ArrayNode &array)
         if (constvalNode->GetConstVal()->GetKind() == kConstInt) {
             const MIRIntConst *pIntConst = static_cast<const MIRIntConst *>(constvalNode->GetConstVal());
             CHECK_FATAL(JAVALANG || !pIntConst->IsNegative(), "Array index should >= 0.");
-            uint64 eleOffset = pIntConst->GetExtValue() * eSize;
+            uint64 eleOffset = static_cast<uint64>(pIntConst->GetExtValue() * eSize);
 
             if (farrayType->GetKind() == kTypeJArray) {
-                eleOffset += RTSupport::GetRTSupportInstance().GetArrayContentOffset();
+                eleOffset += static_cast<uint64>(RTSupport::GetRTSupportInstance().GetArrayContentOffset());
             }
 
             BaseNode *baseNode = NodeConvert(array.GetPrimType(), *array.GetBase());
@@ -454,7 +454,7 @@ BaseNode *CGLowerer::LowerFarray(ArrayNode &array)
 
     if ((farrayType->GetKind() == kTypeJArray) && (resNode->GetOpCode() == OP_constval)) {
         ConstvalNode *idxNode = static_cast<ConstvalNode *>(resNode);
-        uint64 idx = safe_cast<MIRIntConst>(idxNode->GetConstVal())->GetExtValue();
+        uint64 idx = static_cast<uint64>(safe_cast<MIRIntConst>(idxNode->GetConstVal())->GetExtValue());
         MIRIntConst *eConst = GlobalTables::GetIntConstTable().GetOrCreateIntConst(idx * eSize, arrayType);
         rMul = mirModule.CurFuncCodeMemPool()->New<ConstvalNode>(eConst);
         rMul->SetPrimType(array.GetPrimType());
@@ -506,7 +506,7 @@ BaseNode *CGLowerer::LowerArrayDim(ArrayNode &array, int32 dim)
             item = NodeConvert(array.GetPrimType(), *array.GetIndex(static_cast<size_t>(static_cast<unsigned int>(i))));
             int64 offsetSize = 1;
             for (int32 j = i + 1; j < dim; ++j) {
-                offsetSize *= arrayType->GetSizeArrayItem(static_cast<uint32>(j));
+                offsetSize *= static_cast<int64>(arrayType->GetSizeArrayItem(static_cast<uint32>(j)));
             }
             MIRIntConst *offsetCst = mirModule.CurFuncCodeMemPool()->New<MIRIntConst>(
                 offsetSize, *GlobalTables::GetTypeTable().GetTypeFromTyIdx(array.GetPrimType()));
@@ -577,7 +577,7 @@ BaseNode *CGLowerer::LowerArray(ArrayNode &array, const BaseNode &parent)
     if (resNode->GetOpCode() == OP_constval) {
         /* index is a constant, we can calculate the offset now */
         ConstvalNode *idxNode = static_cast<ConstvalNode *>(resNode);
-        uint64 idx = safe_cast<MIRIntConst>(idxNode->GetConstVal())->GetExtValue();
+        uint64 idx = static_cast<uint64>(safe_cast<MIRIntConst>(idxNode->GetConstVal())->GetExtValue());
         MIRIntConst *eConst = GlobalTables::GetIntConstTable().GetOrCreateIntConst(idx * eSize, arrayTypes);
         rMul = mirModule.CurFuncCodeMemPool()->New<ConstvalNode>(eConst);
         rMul->SetPrimType(array.GetPrimType());
@@ -671,7 +671,7 @@ BaseNode *CGLowerer::LowerCArray(ArrayNode &array)
             uint64 indexVal = 0;
             if (index->op == OP_constval) {
                 ConstvalNode *constNode = static_cast<ConstvalNode *>(index);
-                indexVal = (static_cast<MIRIntConst *>(constNode->GetConstVal()))->GetExtValue();
+                indexVal = static_cast<uint64>((static_cast<MIRIntConst *>(constNode->GetConstVal()))->GetExtValue());
                 isConst = true;
                 MIRIntConst *newConstNode = mirModule.GetMemPool()->New<MIRIntConst>(
                     indexVal * mpyDim, *GlobalTables::GetTypeTable().GetTypeFromTyIdx(TyIdx(array.GetPrimType())));
@@ -733,7 +733,7 @@ BaseNode *CGLowerer::LowerCArray(ArrayNode &array)
     if (resNode->op == OP_constval) {
         // index is a constant, we can calculate the offset now
         ConstvalNode *idxNode = static_cast<ConstvalNode *>(resNode);
-        uint64 idx = static_cast<MIRIntConst *>(idxNode->GetConstVal())->GetExtValue();
+        uint64 idx = static_cast<uint64>(static_cast<MIRIntConst *>(idxNode->GetConstVal())->GetExtValue());
         MIRIntConst *econst = mirModule.GetMemPool()->New<MIRIntConst>(
             idx * esize, *GlobalTables::GetTypeTable().GetTypeFromTyIdx(TyIdx(array.GetPrimType())));
         rMul = mirModule.CurFuncCodeMemPool()->New<ConstvalNode>(econst);
@@ -782,7 +782,7 @@ StmtNode *CGLowerer::WriteBitField(const std::pair<int32, int32> &byteBitOffsets
     }
     // if space not enough in the unit with size of primType, we would make an extra assignment from next bound
     auto bitsRemained = (bitOffset + bitSize) - primTypeBitSize;
-    auto bitsExtracted = primTypeBitSize - bitOffset;
+    auto bitsExtracted = primTypeBitSize - static_cast<uint32>(bitOffset);
     if (CGOptions::IsBigEndian()) {
         bitOffset = 0;
     }
@@ -2240,6 +2240,7 @@ void CGLowerer::LowerEntry(MIRFunction &func)
         retSt->SetSKind(kStVar);
         std::string retName(".return.");
         MIRSymbol *funcSt = GlobalTables::GetGsymTable().GetSymbolFromStidx(func.GetStIdx().Idx());
+        DEBUG_ASSERT(funcSt != nullptr, "null ptr check");
         retName += funcSt->GetName();
         retSt->SetNameStrIdx(retName);
         MIRType *pointType = beCommon.BeGetOrCreatePointerType(*func.GetReturnType());
@@ -2737,7 +2738,7 @@ BaseNode *CGLowerer::LowerExpr(BaseNode &parent, BaseNode &expr, BlockNode &blkN
         case OP_sizeoftype: {
             CHECK(static_cast<SizeoftypeNode &>(expr).GetTyIdx() < beCommon.GetSizeOfTypeSizeTable(),
                   "index out of range in CGLowerer::LowerExpr");
-            int64 typeSize = beCommon.GetTypeSize(static_cast<SizeoftypeNode &>(expr).GetTyIdx());
+            int64 typeSize = static_cast<int64>(beCommon.GetTypeSize(static_cast<SizeoftypeNode &>(expr).GetTyIdx()));
             return mirModule.GetMIRBuilder()->CreateIntConst(typeSize, PTY_u32);
         }
 
@@ -2828,6 +2829,7 @@ BaseNode *CGLowerer::LowerDreadToThreadLocal(BaseNode &expr, const BlockNode &bl
         return result;
     }
     MIRSymbol *symbol = GlobalTables::GetGsymTable().GetSymbolFromStidx(stIdx.Idx());
+    CHECK_FATAL(symbol != nullptr, "symbol should not be nullptr");
 
     if (symbol->IsThreadLocal()) {
         //  iread <* u32> 0 (regread u64 %addr)

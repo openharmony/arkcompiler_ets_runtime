@@ -612,7 +612,7 @@ std::pair<int32, int32> BECommon::GetFieldOffset(MIRStructType &structType, Fiel
         uint64 fieldSizeBits = fieldTypeSize * kBitsPerByte;
         auto originAlign = GetTypeAlign(fieldTyIdx);
         auto fieldAlign = fieldAttr.IsPacked() ? 1 : std::min(originAlign, structPack);
-        uint64 fieldAlignBits = fieldAlign * kBitsPerByte;
+        uint64 fieldAlignBits = static_cast<uint64>(fieldAlign * kBitsPerByte);
         CHECK_FATAL(fieldAlign != 0, "fieldAlign should not equal 0");
         if (structType.GetKind() != kTypeUnion) {
             if (fieldType->GetKind() == kTypeBitField) {
@@ -660,7 +660,7 @@ std::pair<int32, int32> BECommon::GetFieldOffset(MIRStructType &structType, Fiel
                         allocedSizeInBits = RoundUp(allocedSizeInBits, fieldAlignBits);
                     }
                     allocedSize = RoundUp(allocedSize, fieldAlign);
-                    offset = (allocedSizeInBits / fieldAlignBits) * fieldAlign;
+                    offset = static_cast<uint64>((allocedSizeInBits / fieldAlignBits) * fieldAlign);
                     leftOverBits = true;
                 }
 

@@ -239,7 +239,7 @@ static void AppendReferenceOffsets64(const BECommon &beCommon, MIRStructType &cu
         auto fieldSize = beCommon.GetTypeSize(fieldTypeIdx);
         auto fieldAlign = beCommon.GetTypeAlign(fieldTypeIdx);
         int64 myOffset = static_cast<int64>(RoundUp(curOffset, fieldAlign));
-        int64 nextOffset = myOffset + fieldSize;
+        int64 nextOffset = myOffset + static_cast<int64>(fieldSize);
 
         if (!CGOptions::IsQuiet()) {
             LogInfo::MapleLogger() << "    field: " << fieldName << "\n";
