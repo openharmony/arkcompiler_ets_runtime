@@ -367,6 +367,7 @@ MIRSymbol *MIRBuilder::GetOrCreateDeclInFunc(const std::string &str, const MIRTy
     DEBUG_ASSERT(symbolTable != nullptr, "symbol_table is null");
     bool isCreated = false;
     MIRSymbol *st = GetOrCreateLocalDecl(str, type.GetTypeIndex(), *symbolTable, isCreated);
+    DEBUG_ASSERT(st != nullptr, "st is null");
     if (isCreated) {
         st->SetStorageClass(kScAuto);
         st->SetSKind(kStVar);
@@ -922,6 +923,7 @@ CallNode *MIRBuilder::CreateStmtCall(const std::string &callee, const MapleVecto
     MIRSymbol *st = GlobalTables::GetGsymTable().GetSymbolFromStidx(stIdx.Idx());
     DEBUG_ASSERT(st != nullptr, "MIRSymbol st is null");
     MIRFunction *func = st->GetFunction();
+    DEBUG_ASSERT(func != nullptr, "func st is null");
     return CreateStmtCall(func->GetPuidx(), args, OP_call);
 }
 

@@ -369,7 +369,7 @@ void BinaryMplImport::UpdateMethodSymbols()
 void BinaryMplImport::ImportFieldsOfStructType(FieldVector &fields, uint32 methodSize)
 {
     int64 size = ReadNum();
-    int64 initSize = fields.size() + methodSize;
+    int64 initSize = static_cast<int64>(fields.size() + methodSize);
     for (int64 i = 0; i < size; ++i) {
         FieldPair fp;
         ImportFieldPair(fp);
@@ -682,7 +682,7 @@ TyIdx BinaryMplImport::ImportType(bool forPointedType)
             return origType->GetTypeIndex();
         }
         case kBinKindTypeBitField: {
-            uint8 fieldSize = ReadNum();
+            uint8 fieldSize = static_cast<uint8>(ReadNum());
             MIRBitFieldType type(fieldSize, primType, strIdx);
             type.SetNameIsLocal(nameIsLocal);
             MIRType *origType = &InsertInTypeTables(type);
@@ -839,7 +839,7 @@ TyIdx BinaryMplImport::ImportTypeNonJava()
             return tyIdxUsed;
         }
         case kBinKindTypeBitField: {
-            uint8 fieldSize = ReadNum();
+            uint8 fieldSize = static_cast<uint8>(ReadNum());
             MIRBitFieldType type(fieldSize, primType, strIdx);
             type.SetNameIsLocal(nameIsLocal);
             GlobalTables::GetTypeTable().CreateMirTypeNodeAt(type, tyIdxUsed, &mod, false, false);

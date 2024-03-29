@@ -714,7 +714,7 @@ BaseNode *MIRLower::LowerFarray(ArrayNode *array)
         if (constvalNode->GetConstVal()->GetKind() == kConstInt) {
             const MIRIntConst *pIntConst = static_cast<const MIRIntConst *>(constvalNode->GetConstVal());
             CHECK_FATAL(mirModule.IsJavaModule() || !pIntConst->IsNegative(), "Array index should >= 0.");
-            int64 eleOffset = pIntConst->GetExtValue() * eSize;
+            int64 eleOffset = pIntConst->GetExtValue() * static_cast<int64>(eSize);
 
             BaseNode *baseNode = array->GetBase();
             if (eleOffset == 0) {
@@ -811,7 +811,7 @@ BaseNode *MIRLower::LowerCArray(ArrayNode *array)
             uint64 indexVal = 0;
             if (index->op == OP_constval) {
                 ConstvalNode *constNode = static_cast<ConstvalNode *>(index);
-                indexVal = (static_cast<MIRIntConst *>(constNode->GetConstVal()))->GetExtValue();
+                indexVal = static_cast<uint64>((static_cast<MIRIntConst *>(constNode->GetConstVal()))->GetExtValue());
                 isConst = true;
                 MIRIntConst *newConstNode = mirModule.GetMemPool()->New<MIRIntConst>(
                     indexVal * mpyDim, *GlobalTables::GetTypeTable().GetTypeFromTyIdx(TyIdx(array->GetPrimType())));

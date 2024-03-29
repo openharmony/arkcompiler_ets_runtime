@@ -140,7 +140,7 @@ void MIRLexer::GenName()
 TokenKind MIRLexer::GetConstVal()
 {
     bool negative = false;
-    int valStart = curIdx;
+    int valStart = static_cast<int>(curIdx);
     char c = GetCharAtWithUpperCheck(curIdx);
     if (c == '-') {
         c = GetNextCurrentCharWithUpperCheck();
@@ -214,7 +214,7 @@ TokenKind MIRLexer::GetHexConst(uint32 valStart, bool negative)
         tmp = (tmp << k16BitShift) + static_cast<uint32>(HexCharToDigit(c));
         c = GetNextCurrentCharWithUpperCheck();
     }
-    theIntVal = static_cast<int64>(static_cast<uint64>(tmp));
+    theIntVal = static_cast<uint64>(static_cast<uint64>(tmp));
     if (negative) {
         theIntVal = -theIntVal;
     }
@@ -232,7 +232,7 @@ TokenKind MIRLexer::GetIntConst(uint32 valStart, bool negative)
 {
     auto negOrSelf = [negative](uint64 val) { return negative ? ~val + 1 : val; };
 
-    theIntVal = HexCharToDigit(GetCharAtWithUpperCheck(curIdx));
+    theIntVal = static_cast<uint64>(HexCharToDigit(GetCharAtWithUpperCheck(curIdx)));
 
     uint64 radix = theIntVal == 0 ? 8 : 10;
 
@@ -315,7 +315,7 @@ TokenKind MIRLexer::GetFloatConst(uint32 valStart, uint32 startIdx, bool negativ
         if (negative) {
             theFloatVal = -theFloatVal;
         }
-        theIntVal = static_cast<int>(theFloatVal);
+        theIntVal = static_cast<uint64>(theFloatVal);
         theDoubleVal = static_cast<double>(theFloatVal);
         if (negative && fabs(theFloatVal) <= 1e-6) {
             theDoubleVal = -theDoubleVal;
@@ -329,7 +329,7 @@ TokenKind MIRLexer::GetFloatConst(uint32 valStart, uint32 startIdx, bool negativ
         if (negative) {
             theDoubleVal = -theDoubleVal;
         }
-        theIntVal = static_cast<int>(theDoubleVal);
+        theIntVal = static_cast<uint64>(theDoubleVal);
         theFloatVal = static_cast<float>(theDoubleVal);
         if (negative && fabs(theDoubleVal) <= 1e-15) {
             theFloatVal = -theFloatVal;
@@ -359,11 +359,11 @@ TokenKind MIRLexer::GetTokenWithPrefixPercent()
     // token with prefix '%'
     char c = GetCharAtWithUpperCheck(curIdx);
     if (isdigit(c)) {
-        int valStart = curIdx - 1;
-        theIntVal = HexCharToDigit(c);
+        int valStart = static_cast<int>(curIdx) - 1;
+        theIntVal = static_cast<uint64>(HexCharToDigit(c));
         c = GetNextCurrentCharWithUpperCheck();
         while (isdigit(c)) {
-            theIntVal = (theIntVal * 10) + HexCharToDigit(c); // 10 for decimal
+            theIntVal = (theIntVal * 10) + static_cast<uint64>(HexCharToDigit(c)); // 10 for decimal
             DEBUG_ASSERT(theIntVal >= 0, "int value overflow");
             c = GetNextCurrentCharWithUpperCheck();
         }

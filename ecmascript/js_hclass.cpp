@@ -509,7 +509,7 @@ void JSHClass::OptimizeAsFastProperties(const JSThread *thread, const JSHandle<J
     if (isDictionary) {
         ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
         JSHandle<LayoutInfo> layoutInfoHandle = factory->CreateLayoutInfo(numberOfProperties);
-        int numberOfInlinedProps = newJsHClass->GetInlinedProperties();
+        int numberOfInlinedProps = static_cast<int>(newJsHClass->GetInlinedProperties());
         for (int i = 0; i < numberOfProperties; i++) {
             JSTaggedValue key = properties->GetKey(indexOrder[i]);
             PropertyAttributes attributes = properties->GetAttributes(indexOrder[i]);
