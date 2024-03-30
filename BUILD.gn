@@ -745,6 +745,7 @@ ecma_source = [
   "ecmascript/js_iterator.cpp",
   "ecmascript/js_map.cpp",
   "ecmascript/js_map_iterator.cpp",
+  "ecmascript/jsnapi_sendable.cpp",
   "ecmascript/method.cpp",
   "ecmascript/js_object.cpp",
   "ecmascript/js_primitive_ref.cpp",

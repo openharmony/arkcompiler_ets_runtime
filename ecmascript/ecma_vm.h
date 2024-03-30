@@ -246,6 +246,9 @@ public:
     void ProcessNativeDelete(const WeakRootVisitor &visitor);
     void ProcessReferences(const WeakRootVisitor &visitor);
 
+    void PushToSharedNativePointerList(JSNativePointer *pointer);
+    void ProcessSharedNativeDelete(const WeakRootVisitor &visitor);
+
     SnapshotEnv *GetSnapshotEnv() const
     {
         return snapshotEnv_;
@@ -335,7 +338,7 @@ public:
     {
         return resolveBufferCallback_;
     }
-    
+
     void SetSearchHapPathCallBack(SearchHapPathCallBack cb)
     {
         SearchHapPathCallBack_ = cb;
@@ -623,6 +626,11 @@ public:
     }
 
     static void InitializeIcuData(const JSRuntimeOptions &options);
+
+    std::vector<std::pair<DeleteEntryPoint, std::pair<void *, void *>>> &GetSharedNativePointerCallbacks()
+    {
+        return sharedNativePointerCallbacks_;
+    }
 protected:
 
     void PrintJSErrorInfo(const JSHandle<JSTaggedValue> &exceptionInfo) const;
@@ -653,6 +661,8 @@ private:
     CList<JSNativePointer *> nativePointerList_;
     CList<JSNativePointer *> concurrentNativePointerList_;
     std::vector<std::pair<DeleteEntryPoint, std::pair<void *, void *>>> nativePointerCallbacks_ {};
+    CList<JSNativePointer *> sharedNativePointerList_;
+    std::vector<std::pair<DeleteEntryPoint, std::pair<void *, void *>>> sharedNativePointerCallbacks_ {};
     // VM execution states.
     JSThread *thread_ {nullptr};
 

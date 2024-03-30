@@ -794,6 +794,7 @@ public:
     }
 
     void InvokeWeakNodeFreeGlobalCallBack();
+    void InvokeSharedNativePointerCallbacks();
     void InvokeWeakNodeNativeFinalizeCallback();
     bool IsStartGlobalLeakCheck() const;
     bool EnableGlobalObjectLeakCheck() const;
