@@ -180,6 +180,17 @@ public:
         return constpool;
     }
 
+    static bool IsAotMethodLiteralInfo(JSTaggedValue literalInfo)
+    {
+        return literalInfo.IsAOTLiteralInfo() && (AOTLiteralInfo::Cast(literalInfo.GetTaggedObject())->
+            GetLiteralType() == AOTLiteralInfo::METHOD_LITERAL_TYPE);
+    }
+
+    static bool HasNoFuncEntryValue(JSHandle<AOTLiteralInfo> literalInfo)
+    {
+        return literalInfo->GetObjectFromCache(0).GetInt() == static_cast<int>(AOTLiteralInfo::NO_FUNC_ENTRY_VALUE);
+    }
+
     static JSHandle<ConstantPool> CreateSharedConstPoolForAOT(
         EcmaVM *vm, JSHandle<ConstantPool> constpool, int32_t unsharedConstpoolIndex = 0, int32_t cpId = 0)
     {
@@ -195,9 +206,11 @@ public:
             JSThread *thread = vm->GetJSThread();
             if (val.IsString()) {
                 sconstpool->SetObjectToCache(thread, i, val);
-            } else if (val.IsAOTLiteralInfo() && (AOTLiteralInfo::Cast(val.GetTaggedObject())->
-                GetLiteralType() == AOTLiteralInfo::METHOD_LITERAL_TYPE)) {
+            } else if (IsAotMethodLiteralInfo(val)) {
                 JSHandle<AOTLiteralInfo> valHandle(thread, val);
+                if (HasNoFuncEntryValue(valHandle)) {
+                    continue;
+                }
                 JSHandle<AOTLiteralInfo> methodLiteral = CopySharedMethodAOTLiteralInfo(vm, valHandle);
                 sconstpool->SetObjectToCache(thread, i, methodLiteral.GetTaggedValue());
             }
