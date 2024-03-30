@@ -368,6 +368,8 @@
       ark_parse_js_frame_info;
       ark_translate_js_frame_info;
       step_ark;
+      ark_create_js_symbol_extractor;
+      ark_destory_js_symbol_extractor;
     };
   local:
     *;
