@@ -39,8 +39,8 @@ let res:number = 1;
 print(Math.cbrt()); //: NaN
 
 // Check with single param
-print(Math.cbrt(-0.027)); //: -0.29999999999999992
-print(Math.cbrt(0.125)); //: 0.49999999999999992
+print(Math.cbrt(-0.027)); //: -0.29999999999999993
+print(Math.cbrt(0.125)); //: 0.49999999999999994
 print(Math.cbrt(1)); //: 1
 print(Math.cbrt(8)); //: 2
 print(Math.cbrt(2146689000)); //: 1290.0000000000002
