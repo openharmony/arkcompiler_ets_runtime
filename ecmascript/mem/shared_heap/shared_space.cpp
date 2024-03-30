@@ -165,10 +165,28 @@ uintptr_t SharedSparseSpace::AllocateAfterSweepingCompleted(JSThread *thread, si
     return allocator_->Allocate(size);
 }
 
+void SharedSparseSpace::ReclaimRegions()
+{
+    EnumerateReclaimRegions([this](Region *region) {
+        region->DeleteCrossRegionRSet();
+        region->DeleteOldToNewRSet();
+        region->DeleteLocalToShareRSet();
+        region->DeleteSweepingRSet();
+        region->DestroyFreeObjectSets();
+        heapRegionAllocator_->FreeRegion(region, 0);
+    });
+    reclaimRegionList_.clear();
+}
+
 void SharedSparseSpace::PrepareSweeping()
 {
     liveObjectSize_ = 0;
     EnumerateRegions([this](Region *current) {
+        if (current->AliveObject() == 0) {
+            RemoveRegion(current);
+            reclaimRegionList_.emplace(current);
+            return;
+        }
         IncreaseLiveObjectSize(current->AliveObject());
         current->ResetWasted();
         AddSweepingRegion(current);

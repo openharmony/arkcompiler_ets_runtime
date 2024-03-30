@@ -108,6 +108,17 @@ public:
 
     void InvokeAllocationInspector(Address object, size_t size, size_t alignedSize);
 
+    template<class Callback>
+    void EnumerateReclaimRegions(const Callback &cb) const
+    {
+        for (Region *current : reclaimRegionList_) {
+            if (current != nullptr) {
+                cb(current);
+            }
+        }
+    }
+
+    void ReclaimRegions();
 protected:
     FreeListAllocator *allocator_;
     SweepState sweepState_ = SweepState::NO_SWEEP;
@@ -124,6 +135,7 @@ private:
     SharedHeap *sHeap_ {nullptr};
     std::vector<Region *> sweepingList_;
     std::vector<Region *> sweptList_;
+    std::set<Region*> reclaimRegionList_;
     size_t liveObjectSize_ {0};
 };
 

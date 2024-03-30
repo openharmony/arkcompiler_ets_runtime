@@ -201,6 +201,8 @@ void SharedHeap::Reclaim()
 
 void SharedHeap::ReclaimRegions()
 {
+    sOldSpace_->ReclaimRegions();
+    sNonMovableSpace_->ReclaimRegions();
     sSweeper_->WaitAllTaskFinished();
     EnumerateOldSpaceRegionsWithRecord([] (Region *region) {
         region->ClearMarkGCBitset();
