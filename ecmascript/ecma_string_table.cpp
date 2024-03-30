@@ -145,6 +145,7 @@ EcmaString *EcmaStringTable::GetOrInternString(EcmaVM *vm, const uint8_t *utf8Da
 EcmaString *EcmaStringTable::GetOrInternCompressedSubString(EcmaVM *vm, const JSHandle<EcmaString> &string,
     uint32_t offset, uint32_t utf8Len)
 {
+    RuntimeLockHolder locker(vm->GetJSThread(), mutex_);
     auto *utf8Data = EcmaStringAccessor(string).GetDataUtf8() + offset;
     std::pair<EcmaString *, uint32_t> result = GetStringThreadUnsafe(utf8Data, utf8Len, true);
     if (result.first != nullptr) {
@@ -308,11 +309,11 @@ EcmaString *EcmaStringTable::GetOrInternStringWithSpaceType(EcmaVM *vm, const ui
 
 void EcmaStringTable::SweepWeakReference(const WeakRootVisitor &visitor)
 {
+    // No need lock here, only shared gc will sweep string table, meanwhile other threads are suspended.
     for (auto it = table_.begin(); it != table_.end();) {
-        // Strings in string table should not be in the young space. Only old gc will sweep string table.
         auto *object = it->second;
         auto fwd = visitor(object);
-        ASSERT(!Region::ObjectAddressToRange(object)->InYoungSpace());
+        ASSERT(Region::ObjectAddressToRange(object)->InSharedHeap());
         if (fwd == nullptr) {
             LOG_ECMA(VERBOSE) << "StringTable: delete string " << std::hex << object;
             it = table_.erase(it);
