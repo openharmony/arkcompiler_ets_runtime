@@ -370,6 +370,8 @@ public:
 
     bool CheckHugeAndTriggerGC(JSThread *thread, size_t size);
 
+    void TryTriggerLocalConcurrentMarking(JSThread *currentThread);
+
     void TryTriggerConcurrentMarking() override
     {
         LOG_FULL(ERROR) << "SharedHeap TryTriggerConcurrentMarking() not support yet";
@@ -540,6 +542,7 @@ private:
     void ReclaimRegions();
 
     bool parallelGC_ {true};
+    bool localFullMarkTriggered_ {false};
     GCStats *sGCStats_ {nullptr};
     const GlobalEnvConstants *globalEnvConstants_ {nullptr};
     SharedOldSpace *sOldSpace_ {nullptr};
@@ -997,6 +1000,8 @@ public:
     void TryTriggerFullMarkByNativeSize();
 
     void TryTriggerFullMarkBySharedSize(size_t size);
+
+    bool TryTriggerFullMarkBySharedLimit();
 
     bool IsMarking() const override
     {

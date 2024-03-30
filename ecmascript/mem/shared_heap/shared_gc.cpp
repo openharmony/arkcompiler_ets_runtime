@@ -49,6 +49,7 @@ void SharedGC::Initialize()
     });
     sWorkManager_->Initialize();
 }
+
 void SharedGC::Mark()
 {
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "SharedGC::Mark");
@@ -57,9 +58,11 @@ void SharedGC::Mark()
     Runtime::GetInstance()->GCIterateThreadList([&](JSThread *thread) {
         ASSERT(!thread->IsInRunningState());
         auto vm = thread->GetEcmaVM();
-        vm->GetHeap()->GetSweeper()->EnsureAllTaskFinished();
+        auto heap = const_cast<Heap*>(vm->GetHeap());
+        heap->GetSweeper()->EnsureAllTaskFinished();
+        heap->WaitClearTaskFinished();
         sHeap_->GetSharedGCMarker()->MarkRoots(MAIN_THREAD_INDEX, vm);
-        sHeap_->GetSharedGCMarker()->ProcessLocalToShare(MAIN_THREAD_INDEX, const_cast<Heap*>(vm->GetHeap()));
+        sHeap_->GetSharedGCMarker()->ProcessLocalToShare(MAIN_THREAD_INDEX, heap);
     });
     sHeap_->WaitRunningTaskFinished();
 }

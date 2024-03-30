@@ -1059,6 +1059,9 @@ void JSThread::TransferToRunning()
     if (!vm_->GetSharedNativePointerCallbacks().empty()) {
         InvokeSharedNativePointerCallbacks();
     }
+    if (fullMarkRequest_) {
+        fullMarkRequest_ = const_cast<Heap*>(vm_->GetHeap())->TryTriggerFullMarkBySharedLimit();
+    }
 }
 
 void JSThread::StoreState(ThreadState newState, bool lockMutatorLock)

@@ -1144,6 +1144,11 @@ public:
     void InitializeBuiltinObject(const std::string& key);
     void InitializeBuiltinObject();
 
+    void SetFullMarkRequest()
+    {
+        fullMarkRequest_ = true;
+    }
+
     inline bool IsThreadSafe()
     {
         return IsMainThread() || IsSuspended();
@@ -1271,6 +1276,8 @@ private:
     std::string profileName_ {""};
 
     bool finalizationCheckState_ {false};
+    // Shared heap
+    bool fullMarkRequest_ {false};
 
     CMap<ElementsKind, ConstantIndex> arrayHClassIndexMap_;
 
