@@ -1191,11 +1191,14 @@ ohos_shared_library("libark_jsruntime") {
     }
   }
 
-  deps = [
-    ":libark_jsruntime_static",
-    sdk_libc_secshared_dep,
-  ]
+  deps = [ ":libark_jsruntime_static" ]
   external_deps = []
+  if (defined(is_arkui_x) && is_arkui_x && target_os == "ios") {
+    deps += [ "$ark_third_party_root/bounds_checking_function:libsec_static" ]
+  } else {
+    external_deps += [ "bounds_checking_function:libsec_shared" ]
+  }
+
   if (!is_arkui_x) {
     external_deps += [ "runtime_core:libarkfile_static" ]
   } else {

@@ -40,7 +40,6 @@ include_libmplutil = [
   "${MAPLEALL_ROOT}/maple_ir/include",
   "${MAPLEALL_ROOT}/mempool/include",
   "${MAPLEALL_ROOT}/maple_driver/include",
-  "${MAPLEALL_THIRD_PARTY_ROOT}/bounds_checking_function/include",
 ]
 
 include_libcommandline = [ "${MAPLEALL_ROOT}/maple_util/include" ]
@@ -50,6 +49,7 @@ ohos_static_library("libmplutil") {
   configs = [ "${MAPLEALL_ROOT}:mapleallcompilecfg" ]
   sources = src_libmplutil
   include_dirs = include_libmplutil
+  external_deps = [ "bounds_checking_function:libsec_static" ]
   libs = [ "pthread" ]
   output_dir = "${root_out_dir}/lib/${HOST_ARCH}"
   part_name = "ets_runtime"
@@ -61,6 +61,7 @@ ohos_static_library("libcommandline") {
   configs = [ "${MAPLEALL_ROOT}:mapleallcompilecfg" ]
   sources = src_libcommandline
   include_dirs = include_libcommandline
+  external_deps = [ "bounds_checking_function:libsec_static" ]
   output_dir = "${root_out_dir}/lib/${HOST_ARCH}"
   part_name = "ets_runtime"
   subsystem_name = "arkcompiler"

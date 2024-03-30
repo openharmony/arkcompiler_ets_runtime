@@ -19,7 +19,6 @@ include_directories = [
   "${MAPLEALL_ROOT}/maple_util/include",
   "${MAPLEALL_ROOT}/maple_driver/include",
   "${MAPLEALL_ROOT}/mempool/include",
-  "${MAPLEALL_THIRD_PARTY_ROOT}/bounds_checking_function/include",
   "${MAPLEALL_ROOT}/maple_ipa/include",
   "${MAPLEALL_ROOT}/maple_ipa/include/old",
   "${MAPLEALL_ROOT}/maple_me/include",
@@ -64,6 +63,7 @@ ohos_static_library("libmplir") {
   configs = [ "${MAPLEALL_ROOT}:mapleallcompilecfg" ]
   sources = src_libmplir
   include_dirs = include_directories
+  external_deps = [ "bounds_checking_function:libsec_static" ]
   output_dir = "${root_out_dir}/lib/${HOST_ARCH}"
   deps = [
     "${MAPLEALL_ROOT}/maple_driver:libdriver_option",
