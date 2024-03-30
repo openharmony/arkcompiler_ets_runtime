@@ -280,22 +280,6 @@ public:
         return capacity_;
     }
 
-    void IncreaseAndCheckReserved(size_t size)
-    {
-        if (reserved_ + size > capacity_) {
-            LOG_GC(ERROR) << "pool is empty, reserved = " << reserved_ << ", capacity_ = " <<
-                capacity_ << ", size = " << size;
-        }
-        reserved_ += size;
-        LOG_GC(DEBUG) << "Ark IncreaseAndCheckReserved reserved = " << reserved_ << ", capacity_ = " << capacity_;
-    }
-
-    void DecreaseReserved(size_t size)
-    {
-        reserved_ -= size;
-        LOG_GC(DEBUG) << "Ark DecreaseReserved reserved = " << reserved_ << ", capacity_ = " << capacity_;
-    }
-
     static MemMapAllocator *GetInstance();
 
     MemMap Allocate(const uint32_t threadId, size_t size, size_t alignment,
@@ -330,7 +314,6 @@ private:
     MemMapFreeList memMapFreeList_;
     std::atomic_size_t memMapTotalSize_ {0};
     size_t capacity_ {0};
-    size_t reserved_ {0};
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_MEM_MEM_MAP_ALLOCATOR_H

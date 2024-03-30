@@ -28,11 +28,6 @@ MemMapAllocator *MemMapAllocator::GetInstance()
 MemMap MemMapAllocator::Allocate(const uint32_t threadId, size_t size, size_t alignment,
                                  const std::string &spaceName, bool regular, bool isMachineCode)
 {
-    if (UNLIKELY(memMapTotalSize_ + size > capacity_)) {
-        LOG_GC(ERROR) << "memory map overflow";
-        return MemMap();
-    }
-
     MemMap mem;
     if (regular) {
         mem = memMapPool_.GetRegularMemFromCommitted(size);
@@ -44,6 +39,11 @@ MemMap MemMapAllocator::Allocate(const uint32_t threadId, size_t size, size_t al
             }
             PageTag(mem.GetMem(), size, type, spaceName, threadId);
             return mem;
+        }
+
+        if (UNLIKELY(memMapTotalSize_ + size > capacity_)) {
+            LOG_GC(ERROR) << "memory map overflow";
+            return MemMap();
         }
         mem = memMapPool_.GetMemFromCache(size);
         if (mem.GetMem() != nullptr) {
@@ -60,6 +60,10 @@ MemMap MemMapAllocator::Allocate(const uint32_t threadId, size_t size, size_t al
         memMapPool_.InsertMemMap(mem);
         mem = memMapPool_.SplitMemFromCache(mem);
     } else {
+        if (UNLIKELY(memMapTotalSize_ + size > capacity_)) {
+            LOG_GC(ERROR) << "memory map overflow";
+            return MemMap();
+        }
         mem = memMapFreeList_.GetMemFromList(size);
     }
     if (mem.GetMem() != nullptr) {
@@ -116,14 +120,7 @@ void MemMapAllocator::Free(void *mem, size_t size, bool isRegular)
 void MemMapAllocator::AdapterSuitablePoolCapacity()
 {
     size_t physicalSize = PhysicalSize();
-    capacity_ = std::max<size_t>(physicalSize / PHY_SIZE_MULTIPLE, MIN_MEM_POOL_CAPACITY);
-    if (capacity_ > LARGE_POOL_SIZE) {
-        capacity_ = std::max<size_t>(capacity_, STANDARD_POOL_SIZE);
-    } else if (capacity_ >= MEDIUM_POOL_SIZE) {
-        capacity_ = std::min<size_t>(capacity_, STANDARD_POOL_SIZE);
-    } else if (capacity_ >= LOW_POOL_SIZE) {
-        capacity_ = std::max<size_t>(capacity_, 128_MB);
-    }
+    capacity_ = std::min<size_t>(physicalSize * DEFAULT_CAPACITY_RATE, MAX_MEM_POOL_CAPACITY);
     LOG_GC(INFO) << "Ark Auto adapter memory pool capacity:" << capacity_;
 }
 }  // namespace panda::ecmascript
