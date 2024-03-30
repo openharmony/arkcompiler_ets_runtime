@@ -23,34 +23,35 @@ let len:number = 1;
 
 // Check without params
 len = Math.asinh();
-print(len); // NaN
+print(len); //: NaN
 
 len = Math.asinh(NaN);
-print(len); // NaN
+print(len); //: NaN
 
 // Check with single param
 len = Math.asinh(0);
-print(len); // 0 
+print(len); //: 0
 
 // Check with single param
 len = Math.asinh(-1);
-print(len); // -0.881373587019543
+print(len); //: -0.881373587019543
 
 // Check with single param
 len = Math.asinh(1);
-print(len); // 0.881373587019543
+print(len); //: 0.881373587019543
 
 // Check with single param
 len = Math.asinh(10);
-print(len); // 2.99822295029797
+print(len); //: 2.99822295029797
 
 // Replace standart builtin
 let true_asinh = Math.asinh
 Math.asinh = replace
 len = Math.asinh(111);
-print(len);
+print(len); //: 111
 
 // Call standart builtin with non-number param
 Math.asinh = true_asinh
 len = Math.asinh("NaN"); // deopt
-print(len); // NaN
+//aot: [trace] Check Type: NotNumber1
+print(len); //: NaN

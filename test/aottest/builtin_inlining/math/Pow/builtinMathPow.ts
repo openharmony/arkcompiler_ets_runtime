@@ -19,86 +19,86 @@ let len:number = 1;
 
 // Check without params
 len = Math.pow();
-print(len); // Nan
+print(len); //: NaN
 
 // Check with single param
 len = Math.pow(0);
-print(len); // Nan
+print(len); //: NaN
 
 // Check with three param
 len = Math.pow(2, 4, 6);
-print(len); // 16
+print(len); //: 16
 
 // If exponent is NaN, return NaN.
 len = Math.pow(2, NaN)
-print(len) // NaN
+print(len) //: NaN
 
 // If exponent is either +0.0 or -0.0, return 1.0
 len = Math.pow(3, +0.0);
-print(len); // 1
+print(len); //: 1
 
 let temp = -0.0
 len = Math.pow(3, -0.0);
-print(len); // 1
+print(len); //: 1
 
 // If base is -inf, then:
 // a. If exponent > +0.0, then
 //  * If exponent is an odd integral Number, return -inf. Otherwise, return +inf.
 len = Math.pow(-Infinity, 5);
-print(len); // -Infinity
+print(len); //: -Infinity
 len = Math.pow(-Infinity, 6);
-print(len); // Infinity
+print(len); //: Infinity
 // b. Else:
 //  * If exponent is an odd integral Number, return -0.0. Otherwise, return +0.0.
 len = Math.pow(-Infinity, -3);
-print(len); // -0.0
+print("1/x: " + 1 / len); //: 1/x: -Infinity
 len = Math.pow(-Infinity, -4);
-print(len); // +0.0
+print(len); //: 0
 
 // If base is +0.0 and if exponent > +0.0, return +0.0. Otherwise, return +inf.
 len = Math.pow(+0.0, 2);
-print(len); // +0.0
+print(len); //: 0
 len = Math.pow(+0.0, -2);
-print(len); // +inf
+print(len); //: Infinity
 
 
 // If base is -0.0, then
 // a. If exponent > +0.0, then
 //  * If exponent is an odd integral Number, return -0.0. Otherwise, return +0.0.
 len = Math.pow(-0.0, 7);
-print(len); // -0.0
+print("1/x: " + 1 / len); //: 1/x: -Infinity
 len = Math.pow(-0.0, 8);
-print(len); // +0.0
+print(len); //: 0
 
 // b. Else,
 //  * If exponent is an odd integral Number, return -inf. Otherwise, return +inf.
 len = Math.pow(-0.0, -9);
-print(len); // -inf
+print(len); //: -Infinity
 len = Math.pow(-0.0, -10);
-print(len); // +inf
+print(len); //: Infinity
 
 // If exponent is +inf, then
 // a. If abs(base) > 1, return +inf.
 len = Math.pow(1.5, +Infinity);
-print(len); // +inf
+print(len); //: Infinity
 // b. If abs(base) = 1, return NaN.
 len = Math.pow(1, +Infinity);
-print(len); // NaN
+print(len); //: NaN
 // c. If abs(base) < 1, return +inf.
 len = Math.pow(0.5, +Infinity);
-print(len); // +0.0
+print(len); //: 0
 
 // If exponent is -inf, then
 // a. If abs(base) > 1, return +inf.
 len = Math.pow(1.5, -Infinity);
-print(len); // +0.0
+print(len); //: 0
 // b. If abs(base) = 1, return NaN.
 len = Math.pow(1, -Infinity);
-print(len); // NaN
+print(len); //: NaN
 // c. If abs(base) < 1, return +inf.
 len = Math.pow(0.2, -Infinity);
-print(len); // +inf
+print(len); //: Infinity
 
-
+//aot: [trace] Check Type: NotNumber1
 len = Math.pow(2, "three");
-print(len); // Nan
+print(len); //: NaN

@@ -23,38 +23,39 @@ let len:number = 1;
 
 // Check without params
 len = Math.tan();
-print(len); // NaN
+print(len); //: NaN
 
 len = Math.tan(NaN);
-print(len); // NaN
+print(len); //: NaN
 
 // Check with single param
 len = Math.tan(0);
-print(len); // 0
+print(len); //: 0
 
 // Check with single param
 len = Math.tan(-1);
-print(len); // -1.5574077246549023
+print(len); //: -1.5574077246549023
 
 // Check with single param
 len = Math.tan(1);
-print(len); // 1.5574077246549023
+print(len); //: 1.5574077246549023
 
 // Check with single param
 len = Math.tan(Math.PI / 10);
-print(len); // 0.9999999999999999
+print(len); //: 0.3249196962329063
 
 // Check with single param
 len = Math.tan(10);
-print(len); // 0.6483608274590866
+print(len); //: 0.6483608274590866
 
 // Replace standart builtin
 let true_tan = Math.tan
 Math.tan = replace
 len = Math.tan(111);
-print(len);
+print(len); //: 111
 
 // Call standart builtin with non-number param
 Math.tan = true_tan
+//aot: [trace] Check Type: NotNumber1
 len = Math.tan("NaN"); // deopt
-print(len); // NaN
+print(len); //: NaN

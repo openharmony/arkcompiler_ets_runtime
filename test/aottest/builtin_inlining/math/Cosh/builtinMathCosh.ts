@@ -23,34 +23,35 @@ let len:number = 1;
 
 // Check without params
 len = Math.cosh();
-print(len); // NaN
+print(len); //: NaN
 
 len = Math.cosh(NaN);
-print(len); // NaN
+print(len); //: NaN
 
 // Check with single param
 len = Math.cosh(0);
-print(len); // 1 
+print(len); //: 1
 
 // Check with single param
 len = Math.cosh(-1);
-print(len); // 1.5430806348152437
+print(len); //: 1.5430806348152437
 
 // Check with single param
 len = Math.cosh(1);
-print(len); // 1.5430806348152437
+print(len); //: 1.5430806348152437
 
 // Check with single param
 len = Math.cosh(10);
-print(len); // 11013.232920103324
+print(len); //: 11013.232920103324
 
 // Replace standart builtin
 let true_cosh = Math.cosh
 Math.cosh = replace
-len = Math.cosh(111);
+len = Math.cosh(111); //: 111
 print(len);
 
 // Call standart builtin with non-number param
 Math.cosh = true_cosh
-len = Math.cosh("NaN"); // deopt
-print(len); // NaN
+// deopt
+len = Math.cosh("NaN"); //aot: [trace] Check Type: NotNumber1
+print(len); //: NaN
