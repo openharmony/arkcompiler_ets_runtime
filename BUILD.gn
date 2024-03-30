@@ -1253,6 +1253,10 @@ ohos_shared_library("libark_jsruntime_test") {
   public_configs = [ "$js_root:ark_jsruntime_public_config" ]
   public_configs += [ ":include_llvm" ]
 
+  if (enable_hilog) {
+    external_deps += [ "hilog:libhilog" ]
+  }
+
   ldflags = []
   if (enable_coverage) {
     ldflags += [ "--coverage" ]
