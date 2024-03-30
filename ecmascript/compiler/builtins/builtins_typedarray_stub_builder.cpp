@@ -415,6 +415,137 @@ GateRef BuiltinsTypedArrayStubBuilder::GetValueFromBuffer(GateRef buffer, GateRe
     return ret;
 }
 
+GateRef BuiltinsTypedArrayStubBuilder::CalculatePositionWithLength(GateRef position, GateRef length)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    DEFVARIABLE(result, VariableType::INT64(), Int64(0));
+    Label positionLessThanZero(env);
+    Label positionNotLessThanZero(env);
+    Label resultNotGreaterThanZero(env);
+    Label positionLessThanLength(env);
+    Label positionNotLessThanLength(env);
+    Label afterCalculatePosition(env);
+
+    BRANCH(Int64LessThan(position, Int64(0)), &positionLessThanZero, &positionNotLessThanZero);
+    Bind(&positionLessThanZero);
+    {
+        result = Int64Add(position, length);
+        BRANCH(Int64GreaterThan(*result, Int64(0)), &afterCalculatePosition, &resultNotGreaterThanZero);
+        Bind(&resultNotGreaterThanZero);
+        {
+            result = Int64(0);
+            Jump(&afterCalculatePosition);
+        }
+    }
+    Bind(&positionNotLessThanZero);
+    {
+        BRANCH(Int64LessThan(position, length), &positionLessThanLength, &positionNotLessThanLength);
+        Bind(&positionLessThanLength);
+        {
+            result = position;
+            Jump(&afterCalculatePosition);
+        }
+        Bind(&positionNotLessThanLength);
+        {
+            result = length;
+            Jump(&afterCalculatePosition);
+        }
+    }
+    Bind(&afterCalculatePosition);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+void BuiltinsTypedArrayStubBuilder::Slice(GateRef glue, GateRef thisValue, GateRef numArgs,
+    Variable *result, Label *exit, Label *slowPath)
+{
+    auto env = GetEnvironment();
+    Label thisExists(env);
+    Label isEcmaObject(env);
+    Label isTypedArray(env);
+    Label isFastTypedArray(env);
+    Label defaultConstr(env);
+    BRANCH(TaggedIsUndefinedOrNull(thisValue), slowPath, &thisExists);
+    Bind(&thisExists);
+    BRANCH(IsEcmaObject(thisValue), &isEcmaObject, slowPath);
+    Bind(&isEcmaObject);
+    BRANCH(IsTypedArray(thisValue), &isTypedArray, slowPath);
+    Bind(&isTypedArray);
+    GateRef arrayType = GetObjectType(LoadHClass(thisValue));
+    BRANCH(IsFastTypeArray(arrayType), &isFastTypedArray, slowPath);
+    Bind(&isFastTypedArray);
+    BRANCH(HasConstructor(thisValue), slowPath, &defaultConstr);
+    Bind(&defaultConstr);
+
+    DEFVARIABLE(startPos, VariableType::INT64(), Int64(0));
+    DEFVARIABLE(endPos, VariableType::INT64(), Int64(0));
+    DEFVARIABLE(newArrayLen, VariableType::INT64(), Int64(0));
+    Label startTagExists(env);
+    Label startTagIsInt(env);
+    Label afterCallArg(env);
+    Label endTagExists(env);
+    Label endTagIsInt(env);
+    Label adjustArrLen(env);
+    Label newTypedArray(env);
+    Label writeVariable(env);
+    Label copyBuffer(env);
+    GateRef thisLen = ZExtInt32ToInt64(GetArrayLength(thisValue));
+    BRANCH(Int64GreaterThanOrEqual(IntPtr(0), numArgs), slowPath, &startTagExists);
+    Bind(&startTagExists);
+    {
+        GateRef startTag = GetCallArg0(numArgs);
+        BRANCH(TaggedIsInt(startTag), &startTagIsInt, slowPath);
+        Bind(&startTagIsInt);
+        {
+            startPos = SExtInt32ToInt64(TaggedGetInt(startTag));
+            endPos = thisLen;
+            BRANCH(Int64GreaterThanOrEqual(IntPtr(1), numArgs), &afterCallArg, &endTagExists);
+            Bind(&endTagExists);
+            {
+                GateRef endTag = GetCallArg1(numArgs);
+                BRANCH(TaggedIsInt(endTag), &endTagIsInt, slowPath);
+                Bind(&endTagIsInt);
+                {
+                    endPos = SExtInt32ToInt64(TaggedGetInt(endTag));
+                    Jump(&afterCallArg);
+                }
+            }
+            Bind(&afterCallArg);
+            {
+                startPos = CalculatePositionWithLength(*startPos, thisLen);
+                endPos = CalculatePositionWithLength(*endPos, thisLen);
+                BRANCH(Int64GreaterThan(*endPos, *startPos), &adjustArrLen, &newTypedArray);
+                Bind(&adjustArrLen);
+                {
+                    newArrayLen = Int64Sub(*endPos, *startPos);
+                    Jump(&newTypedArray);
+                }
+            }
+        }
+    }
+    Bind(&newTypedArray);
+    {
+        NewObjectStubBuilder newBuilder(this);
+        newBuilder.SetParameters(glue, 0);
+        GateRef newArray = newBuilder.NewTypedArray(glue, thisValue, arrayType, TruncInt64ToInt32(*newArrayLen));
+        BRANCH(Int32Equal(TruncInt64ToInt32(*newArrayLen), Int32(0)), &writeVariable, &copyBuffer);
+        Bind(&copyBuffer);
+        {
+            CallNGCRuntime(glue, RTSTUB_ID(CopyTypedArrayBuffer), {thisValue, newArray, TruncInt64ToInt32(*startPos),
+                TruncInt64ToInt32(*newArrayLen), newBuilder.GetElementSizeFromType(glue, arrayType)});
+            Jump(&writeVariable);
+        }
+        Bind(&writeVariable);
+        {
+            result->WriteVariable(newArray);
+            Jump(exit);
+        }
+    }
+}
+
 void BuiltinsTypedArrayStubBuilder::SubArray(GateRef glue, GateRef thisValue, GateRef numArgs,
     Variable *result, Label *exit, Label *slowPath)
 {

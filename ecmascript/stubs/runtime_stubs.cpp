@@ -26,6 +26,7 @@
 #include "ecmascript/base/number_helper.h"
 #include "ecmascript/base/string_helper.h"
 #include "ecmascript/builtins/builtins_array.h"
+#include "ecmascript/builtins/builtins_arraybuffer.h"
 #include "ecmascript/js_stable_array.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/base/typed_array_helper.h"
@@ -193,6 +194,23 @@ DEF_RUNTIME_STUBS(TypedArraySpeciesCreate)
     JSHandle<JSObject> newArr = base::TypedArrayHelper::TypedArraySpeciesCreate(thread, thisObj, index, args);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception().GetRawData());
     return newArr.GetTaggedValue().GetRawData();
+}
+
+void RuntimeStubs::CopyTypedArrayBuffer(JSTypedArray *srcArray, JSTypedArray *targetArray,
+    int32_t startPos, int32_t count, int32_t elementSize)
+{
+    DISALLOW_GARBAGE_COLLECTION;
+    JSTaggedValue srcBuffer = srcArray->GetViewedArrayBufferOrByteArray();
+    JSTaggedValue targetBuffer = targetArray->GetViewedArrayBufferOrByteArray();
+    uint32_t srcByteIndex = startPos * elementSize + srcArray->GetByteOffset();
+    uint32_t targetByteIndex = targetArray->GetByteOffset();
+    uint8_t *srcBuf = (uint8_t *)builtins::BuiltinsArrayBuffer::GetDataPointFromBuffer(srcBuffer, srcByteIndex);
+    uint8_t *targetBuf = (uint8_t *)builtins::BuiltinsArrayBuffer::GetDataPointFromBuffer(targetBuffer,
+                                                                                          targetByteIndex);
+    if (memmove_s(targetBuf, elementSize * count, srcBuf, elementSize * count) != EOK) {
+        LOG_FULL(FATAL) << "memmove_s failed";
+        UNREACHABLE();
+    }
 }
 
 DEF_RUNTIME_STUBS(CallInternalGetter)

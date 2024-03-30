@@ -37,6 +37,7 @@ public:
     GateRef GetValueFromBuffer(GateRef buffer, GateRef index, GateRef offset, GateRef jsType);
     GateRef IsDetachedBuffer(GateRef buffer);
     GateRef GetDataPointFromBuffer(GateRef arrBuf);
+    GateRef CalculatePositionWithLength(GateRef position, GateRef length);
 
 #define DECLARE_BUILTINS_TYPEDARRAY_STUB_BUILDER(method, ...)           \
     void method(GateRef glue, GateRef numArgs, GateRef end, Variable *result, Label *exit, Label *slowPath);

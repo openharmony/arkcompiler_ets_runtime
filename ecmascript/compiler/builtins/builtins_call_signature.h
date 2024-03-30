@@ -120,6 +120,7 @@ namespace panda::ecmascript::kungfu {
     V(ParseFloat,      Number,    Undefined())
 
 #define BUILTINS_WITH_TYPEDARRAY_STUB_BUILDER(V)    \
+    V(Slice,           TypedArray,  Undefined())    \
     V(SubArray,        TypedArray,  Undefined())    \
     V(GetByteLength,   TypedArray,  Undefined())    \
     V(GetByteOffset,   TypedArray,  Undefined())
