@@ -844,6 +844,7 @@ void NewObjectStubBuilder::NewArgumentsList(Variable *result, Label *exit,
                                                 ConstantIndex::ARRAY_CLASS_INDEX);
     StoreHClass(glue_, result->ReadVariable(), arrayClass);
     Store(VariableType::INT32(), glue_, result->ReadVariable(), IntPtr(TaggedArray::LENGTH_OFFSET), numArgs);
+    Store(VariableType::INT32(), glue_, result->ReadVariable(), IntPtr(TaggedArray::EXTRA_LENGTH_OFFSET), Int32(0));
     // skip InitializeTaggedArrayWithSpeicalValue due to immediate setting arguments
     Label setArgumentsBegin(env);
     Label setArgumentsAgain(env);
@@ -1077,6 +1078,7 @@ void NewObjectStubBuilder::InitializeTaggedArrayWithSpeicalValue(Label *exit,
     GateRef array, GateRef value, GateRef start, GateRef length)
 {
     Store(VariableType::INT32(), glue_, array, IntPtr(TaggedArray::LENGTH_OFFSET), length);
+    Store(VariableType::INT32(), glue_, array, IntPtr(TaggedArray::EXTRA_LENGTH_OFFSET), Int32(0));
     auto offset = Int32Mul(start, Int32(JSTaggedValue::TaggedTypeSize()));
     auto dataOffset = Int32Add(offset, Int32(TaggedArray::DATA_OFFSET));
     offset = Int32Mul(length, Int32(JSTaggedValue::TaggedTypeSize()));

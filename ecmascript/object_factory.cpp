@@ -2454,6 +2454,7 @@ JSHandle<TaggedArray> ObjectFactory::NewAndCopyTaggedArray(JSHandle<TaggedArray>
     ASSERT(oldLength <= newLength);
     MemSpaceType spaceType = newLength < LENGTH_THRESHOLD ? MemSpaceType::SEMI_SPACE : MemSpaceType::OLD_SPACE;
     JSHandle<TaggedArray> dstElements = NewTaggedArrayWithoutInit(newLength, spaceType);
+    dstElements->SetExtraLength(srcElements->GetExtraLength());
     if (newLength == 0) {
         return dstElements;
     }
@@ -2522,7 +2523,8 @@ JSHandle<TaggedArray> ObjectFactory::NewAndCopyTaggedArrayByObject(JSHandle<JSOb
     ASSERT(oldLength <= newLength);
     MemSpaceType spaceType = newLength < LENGTH_THRESHOLD ? MemSpaceType::SEMI_SPACE : MemSpaceType::OLD_SPACE;
     JSHandle<TaggedArray> dstElements(NewTaggedArrayWithoutInit(newLength, spaceType));
-    JSHandle<TaggedArray> srcElements(thread_, thisObjHandle->GetElements());
+    TaggedArray *srcElements = TaggedArray::Cast(thisObjHandle->GetElements().GetTaggedObject());
+    dstElements->SetExtraLength(srcElements->GetExtraLength());
     if (newLength == 0) {
         return dstElements;
     }
@@ -2543,7 +2545,8 @@ JSHandle<MutantTaggedArray> ObjectFactory::NewAndCopyMutantTaggedArrayByObject(J
     ASSERT(oldLength <= newLength);
     MemSpaceType spaceType = newLength < LENGTH_THRESHOLD ? MemSpaceType::SEMI_SPACE : MemSpaceType::OLD_SPACE;
     JSHandle<MutantTaggedArray> dstElements(NewMutantTaggedArrayWithoutInit(newLength, spaceType));
-    JSHandle<MutantTaggedArray> srcElements(thread_, thisObjHandle->GetElements());
+    MutantTaggedArray *srcElements = MutantTaggedArray::Cast(thisObjHandle->GetElements().GetTaggedObject());
+    dstElements->SetExtraLength(srcElements->GetExtraLength());
     if (newLength == 0) {
         return dstElements;
     }
