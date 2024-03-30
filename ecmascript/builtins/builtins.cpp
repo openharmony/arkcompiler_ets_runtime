@@ -168,6 +168,7 @@ using Math = builtins::BuiltinsMath;
 using Atomics = builtins::BuiltinsAtomics;
 using ArrayBuffer = builtins::BuiltinsArrayBuffer;
 using Json = builtins::BuiltinsJson;
+using SendableJson = builtins::BuiltinsSendableJson;
 using Proxy = builtins::BuiltinsProxy;
 using Reflect = builtins::BuiltinsReflect;
 using AsyncFunction = builtins::BuiltinsAsyncFunction;
@@ -351,6 +352,7 @@ void Builtins::Initialize(const JSHandle<GlobalEnv> &env, JSThread *thread, bool
     InitializeGlobalObject(env, globalObject);
     InitializeAtomics(env, objFuncPrototypeVal);
     InitializeJson(env, objFuncPrototypeVal);
+    InitializeSendableJson(env, objFuncPrototypeVal);
     InitializeIterator(env, objFuncClass);
     InitializeAsyncIterator(env, objFuncClass);
     InitializeAsyncFromSyncIterator(env, objFuncClass);
@@ -1584,6 +1586,23 @@ void Builtins::InitializeJson(const JSHandle<GlobalEnv> &env, const JSHandle<JST
     JSObject::DefineOwnProperty(thread_, globalObject, jsonString, jsonDesc);
     // @@ToStringTag
     SetStringTagSymbol(env, jsonObject, "JSON");
+    env->SetJsonFunction(thread_, jsonObject);
+}
+
+void Builtins::InitializeSendableJson(const JSHandle<GlobalEnv> &env,
+                                      const JSHandle<JSTaggedValue> &objFuncPrototypeVal) const
+{
+    [[maybe_unused]] EcmaHandleScope scope(thread_);
+    JSHandle<JSHClass> jsonHClass = factory_->NewEcmaHClass(JSObject::SIZE, JSType::JS_OBJECT, objFuncPrototypeVal);
+    JSHandle<JSObject> jsonObject = factory_->NewJSObjectWithInit(jsonHClass);
+
+    SetFunction(env, jsonObject, "parse", SendableJson::Parse, FunctionLength::TWO);
+    PropertyDescriptor jsonDesc(thread_, JSHandle<JSTaggedValue>::Cast(jsonObject), true, false, true);
+    JSHandle<JSTaggedValue> jsonString(factory_->NewFromASCII("SENDABLE_JSON"));
+    JSHandle<JSObject> globalObject(thread_, env->GetGlobalObject());
+    JSObject::DefineOwnProperty(thread_, globalObject, jsonString, jsonDesc);
+    // @@ToStringTag
+    SetStringTagSymbol(env, jsonObject, "SENDABLE_JSON");
     env->SetJsonFunction(thread_, jsonObject);
 }
 

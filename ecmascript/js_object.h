@@ -552,7 +552,8 @@ public:
     static bool HasProperty(JSThread *thread, const JSHandle<JSObject> &obj, uint32_t index);
 
     // 9.1.10 [[Delete]]
-    static bool DeleteProperty(JSThread *thread, const JSHandle<JSObject> &obj, const JSHandle<JSTaggedValue> &key);
+    static bool DeleteProperty(JSThread *thread, const JSHandle<JSObject> &obj, const JSHandle<JSTaggedValue> &key,
+                               SCheckMode sCheckMode = SCheckMode::CHECK);
 
     // [[OwnPropertyKeys]]
     static JSHandle<TaggedArray> GetOwnPropertyKeys(JSThread *thread, const JSHandle<JSObject> &obj);

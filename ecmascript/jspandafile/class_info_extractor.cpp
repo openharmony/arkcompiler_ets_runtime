@@ -622,6 +622,13 @@ JSHandle<NameDictionary> ClassHelper::BuildDictionaryProperties(JSThread *thread
     return dict;
 }
 
+bool ClassHelper::MismatchFieldType(JSTaggedValue holder, SCheckMode sCheckMode, SharedFieldType fieldType,
+                                    JSTaggedValue value)
+{
+    return holder.IsJSShared() && (sCheckMode == SCheckMode::CHECK) &&
+           (!ClassHelper::MatchFieldType(fieldType, value));
+}
+
 bool ClassHelper::MatchFieldType(SharedFieldType fieldType, JSTaggedValue value)
 {
     bool checkRet = false;

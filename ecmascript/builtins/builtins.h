@@ -206,6 +206,9 @@ private:
 
     void InitializeJson(const JSHandle<GlobalEnv> &env, const JSHandle<JSTaggedValue> &objFuncPrototypeVal) const;
 
+    void InitializeSendableJson(const JSHandle<GlobalEnv> &env,
+                                const JSHandle<JSTaggedValue> &objFuncPrototypeVal) const;
+
     void InitializeString(const JSHandle<GlobalEnv> &env, JSHandle<JSTaggedValue> objFuncPrototypeVal) const;
 
     void InitializeIterator(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &objFuncClass) const;

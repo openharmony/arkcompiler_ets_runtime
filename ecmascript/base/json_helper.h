@@ -24,6 +24,11 @@ namespace panda::ecmascript::base {
 
 class JsonHelper {
 public:
+    enum class TransformType : uint32_t {
+        SENDABLE = 1,
+        NORMAL = 2
+    };
+
     static CString ValueToQuotedString(CString str);
 
     static bool IsFastValueToQuotedString(const char *value);

@@ -708,18 +708,27 @@ public:
     void FillFreeMemoryRange(uintptr_t start, uintptr_t end);
 
     // -----------------------------------shared object-----------------------------------------
-    JSHandle<JSObject> NewSharedOldSpaceJSObject(const JSHandle<JSHClass> &jshclass);
-    JSHandle<JSObject> NewSharedOldSpaceJSObjectWithInit(const JSHandle<JSHClass> &jshclass);
+    JSHandle<JSObject> PUBLIC_API NewSharedOldSpaceJSObject(const JSHandle<JSHClass> &jshclass);
+
+    JSHandle<JSObject> PUBLIC_API NewSharedOldSpaceJSObjectWithInit(const JSHandle<JSHClass> &jshclass);
 
     TaggedObject *NewSharedOldSpaceObject(const JSHandle<JSHClass> &hclass);
 
-    JSHandle<JSHClass> NewSEcmaHClass(uint32_t size, JSType type, uint32_t inlinedProps);
+    JSHandle<JSHClass> PUBLIC_API NewSEcmaHClass(uint32_t size, JSType type, uint32_t inlinedProps);
 
-    JSHandle<JSHClass> NewSEcmaHClass(JSHClass *hclass, uint32_t size, JSType type,
+    JSHandle<JSHClass> PUBLIC_API NewSEcmaHClass(uint32_t size, JSType type, const JSHandle<JSTaggedValue> &prototype);
+
+    JSHandle<JSHClass> PUBLIC_API NewSEcmaHClass(JSHClass *hclass, uint32_t size, JSType type,
         uint32_t inlinedProps = JSHClass::DEFAULT_CAPACITY_OF_IN_OBJECTS);
+    
+    JSHandle<JSHClass> PUBLIC_API NewSEcmaHClass(uint32_t size, uint32_t inlinedProps, JSType type,
+                                      const JSHandle<JSTaggedValue> &prototype);
 
-    JSHandle<JSHClass> NewSEcmaHClass(uint32_t size, uint32_t inlinedProps, JSType type,
+    JSHandle<JSHClass> PUBLIC_API NewSEcmaHClass(uint32_t size, uint32_t inlinedProps, JSType type,
         const JSHandle<JSTaggedValue> &prototype, const JSHandle<JSTaggedValue> &layout);
+    
+    JSHandle<JSHClass> PUBLIC_API NewSEcmaHClassDictMode(uint32_t size, uint32_t inlinedProps, JSType type,
+                                              const JSHandle<JSTaggedValue> &prototype);
 
     JSHandle<JSHClass> NewSEcmaHClassClass(JSHClass *hclass, uint32_t size, JSType type);
 
@@ -769,7 +778,7 @@ public:
 
     JSHandle<TaggedArray> NewSOldSpaceTaggedArray(uint32_t length, JSTaggedValue initVal = JSTaggedValue::Hole());
 
-    JSHandle<TaggedArray> NewSTaggedArray(uint32_t length, JSTaggedValue initVal, MemSpaceType spaceType);
+    JSHandle<TaggedArray> PUBLIC_API NewSTaggedArray(uint32_t length, JSTaggedValue initVal, MemSpaceType spaceType);
 
     JSHandle<AccessorData> NewSAccessorData();
 
@@ -792,7 +801,7 @@ public:
 
     JSHandle<LayoutInfo> CopyAndReSortSLayoutInfo(const JSHandle<LayoutInfo> &old, int end, int capacity);
 
-    JSHandle<LayoutInfo> CreateSLayoutInfo(uint32_t properties);
+    JSHandle<LayoutInfo> PUBLIC_API CreateSLayoutInfo(uint32_t properties);
 
     JSHandle<TaggedArray> NewSEmptyArray(); // only used for EcmaVM.
 
