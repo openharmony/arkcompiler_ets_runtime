@@ -153,10 +153,13 @@ HWTEST_F_L0(JSPandaFileManagerTest, MultiEcmaVM_Add_Find_Remove_JSPandaFile)
     pfManager->AddJSPandaFileVm(instance, pf1);
     pfManager->AddJSPandaFileVm(instance, pf2);
 
+    EcmaContext *context = instance->GetJSThread()->GetCurrentEcmaContext();
     JSHandle<ConstantPool> constpool1 = instance->GetFactory()->NewSConstantPool(1);
+    constpool1->SetUnsharedConstpoolIndex(JSTaggedValue(context->GetAndIncreaseUnsharedConstpoolCount()));
     JSHandle<ConstantPool> constpool2 = instance->GetFactory()->NewSConstantPool(2);
-    instance->GetJSThread()->GetCurrentEcmaContext()->AddConstpool(pf1.get(), constpool1.GetTaggedValue(), 0);
-    instance->GetJSThread()->GetCurrentEcmaContext()->AddConstpool(pf2.get(), constpool2.GetTaggedValue(), 0);
+    constpool2->SetUnsharedConstpoolIndex(JSTaggedValue(context->GetAndIncreaseUnsharedConstpoolCount()));
+    context->AddConstpool(pf1.get(), constpool1.GetTaggedValue(), 0);
+    context->AddConstpool(pf2.get(), constpool2.GetTaggedValue(), 0);
 
     std::thread t1([&]() {
         EcmaVM *instance1;

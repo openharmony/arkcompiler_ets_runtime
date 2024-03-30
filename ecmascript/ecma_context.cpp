@@ -798,6 +798,11 @@ void EcmaContext::ClearBufferData()
     while (iter != cachedSharedConstpools_.end()) {
         LOG_ECMA(INFO) << "remove js pandafile by vm destruct, file:" << iter->first->GetJSPandaFileDesc();
         JSPandaFileManager::GetInstance()->RemoveJSPandaFileVm(vm_, iter->first);
+        auto item = iter->second.begin();
+        while (item != iter->second.end()) {
+            InsertFreeUnsharedConstpoolCount(item->second);
+            item++;
+        }
         iter++;
     }
     cachedSharedConstpools_.clear();
