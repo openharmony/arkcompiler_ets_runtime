@@ -73,14 +73,12 @@ struct JsFrameDebugInfo {
         : methodId(methodId), offset(offset), hapPath(hapPath), filePath(filePath) {}
 };
 
-#if defined(PANDA_TARGET_OHOS)
 struct JsFrame {
     char functionName[FUNCTIONNAME_MAX];
     char url[URL_MAX];
     int32_t line;
     int32_t column;
 };
-#endif
 
 class JSSymbolExtractor {
 public:
