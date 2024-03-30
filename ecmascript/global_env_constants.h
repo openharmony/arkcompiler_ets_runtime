@@ -224,6 +224,7 @@ class ObjectFactory;
     V(JSTaggedValue, DataViewSetUint16, DATA_VIEW_SET_UINT16_INDEX, ecma_roots_builtins)                \
     V(JSTaggedValue, DataViewSetUint32, DATA_VIEW_SET_UINT32_INDEX, ecma_roots_builtins)                \
     V(JSTaggedValue, DateGetTime, DATE_GET_TIME_INDEX, ecma_roots_special)                              \
+    V(JSTaggedValue, DateNow, DATE_NOW_INDEX, ecma_roots_special)                                       \
     V(JSTaggedValue, NumberIsNaN, NUMBER_IS_NAN_INDEX, ecma_roots_builtins)                             \
     V(JSTaggedValue, NumberIsFinite, NUMBER_IS_FINITE_INDEX, ecma_roots_builtins)                       \
     V(JSTaggedValue, NumberIsInteger, NUMBER_IS_INTEGER_INDEX, ecma_roots_builtins)                     \

@@ -125,6 +125,7 @@ private:
     GateRef VisitMonoCallGetterOnProto(GateRef gate);
     GateRef VisitMonoStoreProperty(GateRef gate);
     GateRef VisitDateGetTime(GateRef gate);
+    GateRef VisitDateNow(GateRef gate);
 
     void ConvertForNumberBinaryOp(GateRef gate);
     void ConvertForNumberCompareOp(GateRef gate);

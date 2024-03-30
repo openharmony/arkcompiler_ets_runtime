@@ -1960,6 +1960,15 @@ DEF_FLOAT_BINARY_CALL_SIGNATURE_BY_NAME(FloatPow)
 
 #undef DEF_FLOAT_BINARY_CALL_SIGNATURE_BY_NAME
 
+DEF_CALL_SIGNATURE(CallDateNow)
+{
+    CallSignature signature("CallDateNow", 0, 0, ArgumentsOrder::DEFAULT_ORDER,
+        VariableType::FLOAT64());
+    *callSign = signature;
+    callSign->SetGCLeafFunction(true);
+    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
+}
+
 DEF_CALL_SIGNATURE(FindElementWithCache)
 {
     // 4 : 4 input parameters

@@ -16,6 +16,8 @@
 #include <cmath>
 #include <cfenv>
 #include <sstream>
+#include <sys/time.h>
+
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/log.h"
 #include "ecmascript/log_wrapper.h"
@@ -3060,6 +3062,17 @@ double RuntimeStubs::FloatPow(double base, double exp)
 bool RuntimeStubs::NumberIsFinite(double x)
 {
     return std::isfinite(x);
+}
+
+double RuntimeStubs::CallDateNow()
+{
+    // time from now is in ms.
+    int64_t ans;
+    struct timeval tv {
+    };
+    gettimeofday(&tv, nullptr);
+    ans = static_cast<int64_t>(tv.tv_sec) * MS_PER_SECOND + (tv.tv_usec / MS_PER_SECOND);
+    return static_cast<double>(ans);
 }
 
 int32_t RuntimeStubs::DoubleToInt(double x, size_t bits)

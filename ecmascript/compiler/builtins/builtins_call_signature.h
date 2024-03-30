@@ -232,6 +232,7 @@ namespace panda::ecmascript::kungfu {
     V(MathMax)                                      \
     V(MathImul)                                     \
     V(DateGetTime)                                  \
+    V(DateNow)                                      \
     V(GlobalIsFinite)                               \
     V(GlobalIsNan)                                  \
     V(ArrayBufferIsView)                            \
@@ -471,6 +472,8 @@ public:
                 return ConstantIndex::STRING_FROM_CHAR_CODE_INDEX;
             case BuiltinsStubCSigns::ID::DateGetTime:
                 return ConstantIndex::DATE_GET_TIME_INDEX;
+            case BuiltinsStubCSigns::ID::DateNow:
+                return ConstantIndex::DATE_NOW_INDEX;
             case BuiltinsStubCSigns::ID::GlobalIsFinite:
                 return ConstantIndex::GLOBAL_IS_FINITE_INDEX;
             case BuiltinsStubCSigns::ID::GlobalIsNan:
@@ -562,6 +565,7 @@ public:
             {MathMax, "Math.max"},
             {MathMin, "Math.min"},
             {DateGetTime, "Date.prototype.getTime"},
+            {DateNow, "Date.now"},
             {GlobalIsFinite, "isFinite"},
             {GlobalIsNan, "isNan"},
             {MapGet, "Map.get"},
@@ -615,6 +619,7 @@ public:
             {"sort", ArraySort},
             {"stringify", JsonStringify},
             {"getTime", DateGetTime},
+            {"now", DateNow},
             {"isFinite", GlobalIsFinite},
             {"isNan", GlobalIsNan},
         };

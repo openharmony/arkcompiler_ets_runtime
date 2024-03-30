@@ -244,6 +244,8 @@ GateRef NumberSpeculativeRetype::VisitGate(GateRef gate)
         case OpCode::MAP_HAS:
         case OpCode::SET_HAS:
             return VisitOthers(gate, GateType::BooleanType());
+        case OpCode::DATE_NOW:
+            return VisitDateNow(gate);
         case OpCode::JS_BYTECODE:
         case OpCode::RUNTIME_CALL:
         case OpCode::PRIMITIVE_TYPE_CHECK:
@@ -1842,6 +1844,16 @@ GateRef NumberSpeculativeRetype::VisitDateGetTime(GateRef gate)
     }
     ASSERT(IsConvert());
     // Nothing to do, because one input and it is object "this"
+    return Circuit::NullGate();
+}
+
+GateRef NumberSpeculativeRetype::VisitDateNow(GateRef gate)
+{
+    if (IsRetype()) {
+        return SetOutputType(gate, GateType::DoubleType());
+    }
+    ASSERT(IsConvert());
+    // Nothing to do, because don't have inputs
     return Circuit::NullGate();
 }
 

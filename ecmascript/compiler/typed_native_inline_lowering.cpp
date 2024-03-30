@@ -209,6 +209,9 @@ GateRef TypedNativeInlineLowering::VisitGate(GateRef gate)
         case OpCode::SET_HAS:
             LowerToCommonStub(gate, CommonStubCSigns::JSSetHas);
             break;
+        case OpCode::DATE_NOW:
+            LowerGeneralWithoutArgs(gate, RTSTUB_ID(CallDateNow));
+            break;
         default:
             break;
     }
@@ -1609,6 +1612,14 @@ void TypedNativeInlineLowering::LowerDateGetTime(GateRef gate)
     GateRef obj = acc_.GetValueIn(gate, 0);
     GateRef dateValueOffset = builder_.IntPtr(JSDate::TIME_VALUE_OFFSET);
     GateRef result = builder_.Load(VariableType::JS_ANY(), obj, dateValueOffset);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
+}
+
+void TypedNativeInlineLowering::LowerGeneralWithoutArgs(GateRef gate, RuntimeStubCSigns::ID stubId)
+{
+    Environment env(gate, circuit_, &builder_);
+    GateRef glue = acc_.GetGlueFromArgList();
+    GateRef result = builder_.CallNGCRuntime(glue, stubId, Gate::InvalidGateRef, {glue}, gate);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
 }
 

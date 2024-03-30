@@ -107,6 +107,7 @@ private:
     void LowerMathImul(GateRef gate);
     void LowerGlobalIsFinite(GateRef gate);
     void LowerGlobalIsNan(GateRef gate);
+    void LowerGeneralWithoutArgs(GateRef gate, RuntimeStubCSigns::ID stubId);
 
     GateRef LowerGlobalDoubleIsFinite(GateRef value);
     GateRef LowerGlobalTNumberIsFinite(GateRef value);

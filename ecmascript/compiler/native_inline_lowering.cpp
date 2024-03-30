@@ -230,6 +230,9 @@ void NativeInlineLowering::RunNativeInlineLowering()
             case BuiltinsStubCSigns::ID::SetHas:
                 InlineStubBuiltin(gate, 1U, argc, id, circuit_->SetHas(), skipThis);
                 break;
+            case BuiltinsStubCSigns::ID::DateNow:
+                TryInlineWhitoutParamBuiltin(gate, argc, id, circuit_->DateNow(), skipThis);
+                break;
             default:
                 break;
         }
@@ -373,6 +376,24 @@ void NativeInlineLowering::TryInlineMathUnaryBuiltin(GateRef gate, size_t argc, 
         return;
     }
     GateRef ret = builder_.BuildControlDependOp(op, {acc_.GetValueIn(gate, firstParam)});
+    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), ret);
+}
+
+void NativeInlineLowering::TryInlineWhitoutParamBuiltin(GateRef gate, size_t argc, BuiltinsStubCSigns::ID id,
+                                                        const GateMetaData* op, bool skipThis)
+{
+    Environment env(gate, circuit_, &builder_);
+    bool firstParam = skipThis ? 1 : 0;
+    if (!Uncheck()) {
+        builder_.CallTargetCheck(gate, acc_.GetValueIn(gate, argc + firstParam),
+                                 builder_.IntPtr(static_cast<int64_t>(id)));
+    }
+
+    if (EnableTrace()) {
+        AddTraceLogs(gate, id);
+    }
+
+    GateRef ret = builder_.BuildControlDependOp(op, {});
     acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), ret);
 }
 

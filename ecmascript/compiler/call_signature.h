@@ -474,6 +474,7 @@ private:
     V(FloatFloor)                               \
     V(FloatPow)                                 \
     V(FloatCeil)                                \
+    V(CallDateNow)                              \
     V(NumberIsFinite)                           \
     V(FindElementWithCache)                     \
     V(MarkingBarrier)                           \
