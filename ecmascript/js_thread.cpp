@@ -401,9 +401,9 @@ void JSThread::IterateHandleWithCheck(const RootVisitor &visitor, const RootRang
     }
 }
 
-void JSThread::IterateWeakEcmaGlobalStorage(const WeakRootVisitor &visitor, bool isSharedGC)
+void JSThread::IterateWeakEcmaGlobalStorage(const WeakRootVisitor &visitor, GCKind gcKind)
 {
-    auto callBack = [this, visitor, isSharedGC](WeakNode *node) {
+    auto callBack = [this, visitor, gcKind](WeakNode *node) {
         JSTaggedValue value(node->GetObject());
         if (!value.IsHeapObject()) {
             return;
@@ -422,7 +422,7 @@ void JSThread::IterateWeakEcmaGlobalStorage(const WeakRootVisitor &visitor, bool
             if (!freeGlobalCallBack) {
                 // If no callback, dispose global immediately
                 DisposeGlobalHandle(ToUintPtr(node));
-            } else if (isSharedGC) {
+            } else if (gcKind == GCKind::SHARED_GC) {
                 // For shared GC, free global should defer execute in its own thread
                 weakNodeFreeGlobalCallbacks_.push_back(std::make_pair(freeGlobalCallBack, node->GetReference()));
             } else {

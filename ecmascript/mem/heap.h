@@ -132,6 +132,8 @@ public:
 
     virtual GCStats *GetEcmaGCStats() = 0;
 
+    virtual bool ObjectExceedMaxHeapSize() const = 0;
+
     void SetMarkType(MarkType markType)
     {
         markType_ = markType;
@@ -327,6 +329,7 @@ public:
 
     void EnableParallelGC(JSRuntimeOptions &option);
     void DisableParallelGC();
+    void AdjustGlobalSpaceAllocLimit();
     class ParallelMarkTask : public Task {
     public:
         ParallelMarkTask(int32_t id, SharedHeap *heap)
@@ -364,14 +367,13 @@ public:
         return true;
     }
 
-    bool NeedStopCollection() override
-    {
-        return onSerializeEvent_;
-    }
+    bool NeedStopCollection() override;
 
-    bool CheckAndTriggerGC(JSThread *thread);
+    bool ObjectExceedMaxHeapSize() const override;
 
-    bool CheckHugeAndTriggerGC(JSThread *thread, size_t size);
+    bool CheckAndTriggerSharedGC(JSThread *thread);
+
+    bool CheckHugeAndTriggerSharedGC(JSThread *thread, size_t size);
 
     void TryTriggerLocalConcurrentMarking(JSThread *currentThread);
 
@@ -413,6 +415,8 @@ public:
     {
         return parallelGC_;
     }
+
+    bool MainThreadInSensitiveStatus() const;
 
     SharedOldSpace *GetOldSpace() const
     {
@@ -556,6 +560,8 @@ private:
     SharedConcurrentSweeper *sSweeper_ {nullptr};
     SharedGC *sharedGC_ {nullptr};
     SharedGCMarker *sharedGCMarker_ {nullptr};
+    size_t growingFactor_ {0};
+    size_t growingStep_ {0};
 };
 
 class Heap : public BaseHeap {
@@ -904,7 +910,7 @@ public:
 
     void HandleExitHighSensitiveEvent();
 
-    bool ObjectExceedMaxHeapSize() const;
+    bool ObjectExceedMaxHeapSize() const override;
 
     bool NeedStopCollection() override;
 

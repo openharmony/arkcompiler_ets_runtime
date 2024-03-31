@@ -75,7 +75,7 @@ uintptr_t SharedSparseSpace::Allocate(JSThread *thread, size_t size, bool allowG
         CHECK_SOBJECT_AND_INC_OBJ_SIZE(size);
     }
     // Check whether it is necessary to trigger Shared GC before expanding to avoid OOM risk.
-    if (allowGC && sHeap_->CheckAndTriggerGC(thread)) {
+    if (allowGC && sHeap_->CheckAndTriggerSharedGC(thread)) {
         object = TryAllocate(thread, size);
         CHECK_SOBJECT_AND_INC_OBJ_SIZE(size);
     }

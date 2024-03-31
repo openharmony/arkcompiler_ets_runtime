@@ -46,6 +46,11 @@ public:
     void ResumeAll(JSThread *current);
     void IterateSerializeRoot(const RootVisitor &v);
 
+    JSThread *GetMainThread() const
+    {
+        return mainThread_;
+    }
+
     MutatorLock *GetMutatorLock()
     {
         return &mutatorLock_;

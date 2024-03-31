@@ -67,6 +67,7 @@ public:
             defaultNonMovableSpaceSize_ = 2_MB;
             defaultSnapshotSpaceSize_ = 512_KB;
             defaultMachineCodeSpaceSize_ = 2_MB;
+            defaultGlobalAllocLimit_ = 20_MB;
             semiSpaceTriggerConcurrentMark_ = 1_MB;
             semiSpaceStepOvershootSize_ = 2_MB;
             oldSpaceOvershootSize_ = 4_MB;
@@ -75,6 +76,8 @@ public:
             minGrowingStep_ = 4_MB;
             maxStackSize_ = 128_KB;
             maxJSSerializerSize_ = 8_MB;
+            sharedHeapLimitGrowingFactor_ = 2; // 2: growing factor
+            sharedHeapLimitGrowingStep_ = 20_MB;
         } else if (maxHeapSize_ < HIGH_MEMORY) { // 128_MB ~ 256_MB
             minSemiSpaceSize_ = 2_MB;
             maxSemiSpaceSize_ = 8_MB;
@@ -82,6 +85,7 @@ public:
             defaultNonMovableSpaceSize_ = 6_MB;
             defaultSnapshotSpaceSize_ = 512_KB;
             defaultMachineCodeSpaceSize_ = 2_MB;
+            defaultGlobalAllocLimit_ = 20_MB;
             semiSpaceTriggerConcurrentMark_ = 1.5_MB;
             semiSpaceStepOvershootSize_ = 2_MB;
             oldSpaceOvershootSize_ = 8_MB;
@@ -90,6 +94,8 @@ public:
             minGrowingStep_ = 8_MB;
             maxStackSize_ = 128_KB;
             maxJSSerializerSize_ = 16_MB;
+            sharedHeapLimitGrowingFactor_ = 2; // 2: growing factor
+            sharedHeapLimitGrowingStep_ = 40_MB;
         }  else { // 256_MB ~ 384_MB
             minSemiSpaceSize_ = 2_MB;
             maxSemiSpaceSize_ = 16_MB;
@@ -97,6 +103,7 @@ public:
             defaultNonMovableSpaceSize_ = 64_MB;
             defaultSnapshotSpaceSize_ = 4_MB;
             defaultMachineCodeSpaceSize_ = 8_MB;
+            defaultGlobalAllocLimit_ = 20_MB;
             semiSpaceTriggerConcurrentMark_ = 1.5_MB;
             semiSpaceStepOvershootSize_ = 2_MB;
             oldSpaceOvershootSize_ = 8_MB;
@@ -105,6 +112,8 @@ public:
             minGrowingStep_ = 16_MB;
             maxStackSize_ = 128_KB;
             maxJSSerializerSize_ = 16_MB;
+            sharedHeapLimitGrowingFactor_ = 2; // 2: growing factor
+            sharedHeapLimitGrowingStep_ = 40_MB;
         }
     }
 
@@ -143,6 +152,11 @@ public:
         return defaultMachineCodeSpaceSize_;
     }
 
+    size_t GetDefaultGlobalAllocLimit() const
+    {
+        return defaultGlobalAllocLimit_;
+    }
+
     size_t GetSemiSpaceTriggerConcurrentMark() const
     {
         return semiSpaceTriggerConcurrentMark_;
@@ -171,6 +185,16 @@ public:
     size_t GetMinGrowingStep() const
     {
         return minGrowingStep_;
+    }
+
+    size_t GetSharedHeapLimitGrowingFactor() const
+    {
+        return sharedHeapLimitGrowingFactor_;
+    }
+
+    size_t GetSharedHeapLimitGrowingStep() const
+    {
+        return sharedHeapLimitGrowingStep_;
     }
 
     uint32_t GetMaxStackSize() const
@@ -207,12 +231,15 @@ private:
     size_t defaultNonMovableSpaceSize_ {0};
     size_t defaultSnapshotSpaceSize_ {0};
     size_t defaultMachineCodeSpaceSize_ {0};
+    size_t defaultGlobalAllocLimit_ {0};
     size_t semiSpaceTriggerConcurrentMark_ {0};
     size_t semiSpaceStepOvershootSize_ {0};
     size_t oldSpaceOvershootSize_ {0};
     size_t outOfMemoryOvershootSize_ {0};
     size_t minAllocLimitGrowingStep_ {0};
     size_t minGrowingStep_ {0};
+    size_t sharedHeapLimitGrowingFactor_ {0};
+    size_t sharedHeapLimitGrowingStep_ {0};
     size_t maxJSSerializerSize_ {0};
     uint32_t maxStackSize_ {0};
 };

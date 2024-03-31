@@ -567,7 +567,7 @@ TaggedObject *SharedHeap::AllocateHugeObject(JSThread *thread, JSHClass *hclass,
 TaggedObject *SharedHeap::AllocateHugeObject(JSThread *thread, size_t size)
 {
     // Check whether it is necessary to trigger Shared GC before expanding to avoid OOM risk.
-    CheckHugeAndTriggerGC(thread, size);
+    CheckHugeAndTriggerSharedGC(thread, size);
     auto *object = reinterpret_cast<TaggedObject *>(sHugeObjectSpace_->Allocate(thread, size));
     if (UNLIKELY(object == nullptr)) {
         CollectGarbage(thread, TriggerGCType::SHARED_GC, GCReason::ALLOCATION_LIMIT);
