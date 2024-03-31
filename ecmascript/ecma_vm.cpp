@@ -581,10 +581,10 @@ void EcmaVM::RemoveFromNativePointerList(JSNativePointer *pointer)
     }
     auto newIter = std::find(concurrentNativePointerList_.begin(), concurrentNativePointerList_.end(), pointer);
     if (newIter != concurrentNativePointerList_.end()) {
-        JSNativePointer *object = *iter;
+        JSNativePointer *object = *newIter;
         nativeAreaAllocator_->DecreaseNativeSizeStats(object->GetBindingSize(), object->GetNativeFlag());
         object->Destroy();
-        concurrentNativePointerList_.erase(iter);
+        concurrentNativePointerList_.erase(newIter);
     }
 }
 
