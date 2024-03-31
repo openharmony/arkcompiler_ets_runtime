@@ -523,9 +523,9 @@ public:
         return enableLazyBuiltins_;
     }
 
-    void SetReadyForGCIterating()
+    void SetReadyForGCIterating(bool flag)
     {
-        readyForGCIterating_ = true;
+        readyForGCIterating_ = flag;
     }
 
     bool ReadyForGCIterating() const

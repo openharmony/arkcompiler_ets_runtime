@@ -71,6 +71,8 @@ const char *GCStats::GCReasonToString()
             return "Switch to background";
         case GCReason::EXTERNAL_TRIGGER:
             return "Externally triggered";
+        case GCReason::WORKER_DESTRUCTION:
+            return "Worker Destruction";
         default:
             return "Other";
     }

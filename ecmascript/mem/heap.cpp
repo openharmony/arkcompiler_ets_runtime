@@ -91,7 +91,8 @@ bool SharedHeap::CheckHugeAndTriggerSharedGC(JSThread *thread, size_t size)
 // Shared gc trigger
 void SharedHeap::AdjustGlobalSpaceAllocLimit()
 {
-    globalSpaceAllocLimit_ = std::max(GetHeapObjectSize() * growingFactor_, config_.GetDefaultGlobalAllocLimit());
+    globalSpaceAllocLimit_ = std::max(GetHeapObjectSize() * growingFactor_,
+                                      config_.GetDefaultGlobalAllocLimit() * 2); // 2: double
     globalSpaceAllocLimit_ = std::min(std::min(globalSpaceAllocLimit_, GetCommittedSize() + growingStep_),
                                       config_.GetMaxHeapSize());
     LOG_ECMA(INFO) << "Shared gc adjust global space alloc limit to: " << globalSpaceAllocLimit_;

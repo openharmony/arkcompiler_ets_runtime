@@ -106,7 +106,21 @@ public:
         serializeDataIndexVector_.emplace_back(index);
     }
 
+    static bool SharedGCRequest()
+    {
+        LockHolder lock(*vmCreationLock_);
+        destroyCount_++;
+        if (destroyCount_ == WORKER_DESTRUCTION_COUNT || vmCount_ < MIN_GC_TRIGGER_VM_COUNT) {
+            destroyCount_ = 0;
+            return true;
+        } else {
+            return false;
+        }
+    }
+
 private:
+    static constexpr int32_t WORKER_DESTRUCTION_COUNT = 3;
+    static constexpr int32_t MIN_GC_TRIGGER_VM_COUNT = 4;
     Runtime() = default;
     ~Runtime() = default;
     void SuspendAllThreadsImpl(JSThread *current);
@@ -145,6 +159,7 @@ private:
 
     // Runtime instance and VMs creation.
     static int32_t vmCount_;
+    static int32_t destroyCount_;
     static bool firstVmCreated_;
     static Mutex *vmCreationLock_;
     static Runtime *instance_;
