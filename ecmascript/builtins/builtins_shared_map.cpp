@@ -20,7 +20,7 @@
 #include "ecmascript/interpreter/interpreter.h"
 #include "ecmascript/linked_hash_table.h"
 #include "ecmascript/object_factory.h"
-#include "ecmascript/shared_objects/concurrent_modification_scope.h"
+#include "ecmascript/shared_objects/concurrent_api_scope.h"
 #include "ecmascript/shared_objects/js_shared_map.h"
 #include "ecmascript/shared_objects/js_shared_map_iterator.h"
 
@@ -77,7 +77,7 @@ JSTaggedValue BuiltinsSharedMap::Set(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSSharedMap()) {
         auto error = containers::ContainerError::BusinessError(thread, containers::ErrorFlag::BIND_ERROR,
-                                                               "The set method cannot be bound with non-sendable");
+                                                               "The set method cannot be bound.");
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
     JSHandle<JSTaggedValue> key = GetCallArg(argv, 0);
@@ -95,7 +95,7 @@ JSTaggedValue BuiltinsSharedMap::Clear(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSSharedMap()) {
         auto error = containers::ContainerError::BusinessError(thread, containers::ErrorFlag::BIND_ERROR,
-                                                               "The clear method cannot be bound with non-sendable");
+                                                               "The clear method cannot be bound.");
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
     JSHandle<JSSharedMap> map(self);
@@ -111,7 +111,7 @@ JSTaggedValue BuiltinsSharedMap::Delete(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSSharedMap()) {
         auto error = containers::ContainerError::BusinessError(thread, containers::ErrorFlag::BIND_ERROR,
-                                                               "The delete method cannot be bound with non-sendable");
+                                                               "The delete method cannot be bound.");
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
     JSHandle<JSSharedMap> map(self);
@@ -128,7 +128,7 @@ JSTaggedValue BuiltinsSharedMap::Has(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> self(GetThis(argv));
     if (!self->IsJSSharedMap()) {
         auto error = containers::ContainerError::BusinessError(thread, containers::ErrorFlag::BIND_ERROR,
-                                                               "The has method cannot be bound with non-sendable");
+                                                               "The has method cannot be bound.");
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
     JSSharedMap *jsMap = JSSharedMap::Cast(self.GetTaggedValue().GetTaggedObject());
@@ -145,7 +145,7 @@ JSTaggedValue BuiltinsSharedMap::Get(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> self(GetThis(argv));
     if (!self->IsJSSharedMap()) {
         auto error = containers::ContainerError::BusinessError(thread, containers::ErrorFlag::BIND_ERROR,
-                                                               "The get method cannot be bound with non-sendable");
+                                                               "The get method cannot be bound.");
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
     JSSharedMap *jsMap = JSSharedMap::Cast(self.GetTaggedValue().GetTaggedObject());
@@ -162,10 +162,10 @@ JSTaggedValue BuiltinsSharedMap::ForEach(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSSharedMap()) {
         auto error = containers::ContainerError::BusinessError(thread, containers::ErrorFlag::BIND_ERROR,
-                                                               "The forEach method cannot be bound with non-sendable");
+                                                               "The forEach method cannot be bound.");
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
-    [[maybe_unused]] ConcurrentModScope<JSSharedMap> scope(thread, self.GetTaggedValue().GetTaggedObject());
+    [[maybe_unused]] ConcurrentApiScope<JSSharedMap> scope(thread, self.GetTaggedValue().GetTaggedObject());
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception());
     JSHandle<JSSharedMap> map(self);
     JSHandle<JSTaggedValue> func(GetCallArg(argv, 0));
@@ -223,7 +223,7 @@ JSTaggedValue BuiltinsSharedMap::Entries(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSSharedMap()) {
         auto error = containers::ContainerError::BusinessError(thread, containers::ErrorFlag::BIND_ERROR,
-                                                               "The entries method cannot be bound with non-sendable");
+                                                               "The entries method cannot be bound.");
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
     JSHandle<JSTaggedValue> iter = JSSharedMapIterator::CreateMapIterator(thread, self, IterationKind::KEY_AND_VALUE);
@@ -239,7 +239,7 @@ JSTaggedValue BuiltinsSharedMap::Keys(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSSharedMap()) {
         auto error = containers::ContainerError::BusinessError(thread, containers::ErrorFlag::BIND_ERROR,
-                                                               "The keys method cannot be bound with non-sendable");
+                                                               "The keys method cannot be bound.");
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
     JSHandle<JSTaggedValue> iter = JSSharedMapIterator::CreateMapIterator(thread, self, IterationKind::KEY);
@@ -255,7 +255,7 @@ JSTaggedValue BuiltinsSharedMap::Values(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSSharedMap()) {
         auto error = containers::ContainerError::BusinessError(thread, containers::ErrorFlag::BIND_ERROR,
-                                                               "The values method cannot be bound with non-sendable");
+                                                               "The values method cannot be bound.");
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
     JSHandle<JSTaggedValue> iter = JSSharedMapIterator::CreateMapIterator(thread, self, IterationKind::VALUE);

@@ -231,6 +231,24 @@ function bindErrorTest() {
     } catch (err) {
         print("Call boundIncludes failed. err: " + err + ", errCode: " + err.code);
     }
+
+    const unboundShrinkTo = array1.shrinkTo;
+    const boundShrinkTo = unboundShrinkTo.bind(normal);
+    try {
+        boundShrinkTo();
+        print("Call boundShrinkTo succeed.");
+    } catch (err) {
+        print("Call boundShrinkTo failed. err: " + err + ", errCode: " + err.code);
+    }
+
+    const unboundExtendTo = array1.extendTo;
+    const boundExtendTo = unboundExtendTo.bind(normal);
+    try {
+        boundExtendTo();
+        print("Call boundExtendTo succeed.");
+    } catch (err) {
+        print("Call boundExtendTo failed. err: " + err + ", errCode: " + err.code);
+    }
 }
 
 // SharedMap ut
@@ -396,16 +414,16 @@ function createErrorTest(): void {
     print("Start createErrorTest");
     try {
         const arr = new SharedArray<string>(-1);
-        print("Init with length: -1 success.");
+        print("Init with small first element: -1 success.");
     } catch (err) {
-        print("Init with length: -1, err: " + err + ", errCode: " + err.code);
+        print("Init with small first element: -1, err: " + err + ", errCode: " + err.code);
     }
 
     try {
         const arr = new SharedArray<string>(0xffff);
-        print("Init with max length: 0xffff success.");
+        print("Init with big first element: 0xffff success.");
     } catch (err) {
-        print("Init with max length: 0xffff, err: " + err + ", errCode: " + err.code);
+        print("Init with big first element: 0xffff, err: " + err + ", errCode: " + err.code);
     }
 
     try {
@@ -443,6 +461,16 @@ function fromErrorTest(): void {
         print("Create from mapper: non-sendable element success.");
     } catch (err) {
         print("Create from mapper: non-sendable element fail. err: " + err + ", errCode: " + err.code);
+    }
+}
+
+function staticCreateErrorTest(): void {
+    print("Start staticCreateErrorTest");
+    try {
+        SharedArray.create<NormalClass>(4, new NormalClass(1), new NormalClass(2));
+        print("Static create with non-sendable initialValue success.");
+    } catch (err) {
+        print("Static create from non-sendable initialValue fail. err: " + err + ", errCode: " + err.code);
     }
 }
 
@@ -608,6 +636,17 @@ function unshiftErrorTest() {
     }
 }
 
+function extendToErrorTest() {
+    print("Start Test extendToErrorTest")
+    const array = new SharedArray<number>(1, 2, 3);
+    try {
+        array.extendTo(5, new NormalClass(4));
+        print("extendTo array with non-sendable element success.");
+    } catch (err) {
+        print("extendTo array with non-sendable element fail. err: " + err + ", errCode: " + err.code);
+    }
+}
+
 function concurrencyErrorTest() {
     const array1 = new SharedArray<number>(1, 2, 3);
     try {
@@ -628,10 +667,17 @@ function concurrencyErrorTest() {
       }
       try {
         array1.forEach((key: number, _: number, array: SharedArray) => {
-            array.length = 0;
+            array.shrinkTo(0);
         });
       } catch (err) {
-        print("clear while iterate array fail. err: " + err + ", errCode: " + err.code);
+        print("shrink while iterate array fail. err: " + err + ", errCode: " + err.code);
+      }
+      try {
+        array1.forEach((key: number, _: number, array: SharedArray) => {
+            array.extendTo(array1.length + 1, 100);
+        });
+      } catch (err) {
+        print("extend while iterate array fail. err: " + err + ", errCode: " + err.code);
       }
 }
 
@@ -652,6 +698,8 @@ fillErrorTest()
 mapErrorTest()
 pushErrorTest()
 unshiftErrorTest()
+staticCreateErrorTest();
+extendToErrorTest();
 directCallConstructor();
 directCallConstructorMap();
 directCallConstructorSet();

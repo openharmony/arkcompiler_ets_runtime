@@ -515,6 +515,7 @@ public:
     void UpdateValueAndAttributes(GateRef glue, GateRef elements, GateRef index, GateRef value, GateRef attr);
     GateRef IsSpecialIndexedObj(GateRef jsType);
     GateRef IsSpecialContainer(GateRef jsType);
+    GateRef IsSharedArray(GateRef jsType);
     GateRef IsAccessorInternal(GateRef value);
     template<typename DictionaryT>
     GateRef GetAttributesFromDictionary(GateRef elements, GateRef entry);

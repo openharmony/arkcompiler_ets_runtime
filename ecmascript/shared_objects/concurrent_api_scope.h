@@ -13,13 +13,14 @@
  * limitations under the License.
  */
 
-#ifndef ECMASCRIPT_SHARED_OBJECTS_CONCURRENT_MODIFICATION_SCOPE_H
-#define ECMASCRIPT_SHARED_OBJECTS_CONCURRENT_MODIFICATION_SCOPE_H
+#ifndef ECMASCRIPT_SHARED_OBJECTS_CONCURRENT_API_SCOPE_H
+#define ECMASCRIPT_SHARED_OBJECTS_CONCURRENT_API_SCOPE_H
 
 #include "ecmascript/js_object.h"
 #include "ecmascript/shared_objects/js_shared_set.h"
 
 #include "ecmascript/containers/containers_errors.h"
+#include "macros.h"
 
 namespace panda::ecmascript {
 enum class ModType : uint8_t {
@@ -27,9 +28,9 @@ enum class ModType : uint8_t {
     WRITE = 1
 };
 template<typename Container, ModType modType = ModType::READ>
-class ConcurrentModScope final {
+class ConcurrentApiScope final {
 public:
-    ConcurrentModScope(JSThread *thread, const TaggedObject *obj, SCheckMode mode = SCheckMode::CHECK)
+    ConcurrentApiScope(JSThread *thread, const TaggedObject *obj, SCheckMode mode = SCheckMode::CHECK)
         : thread_(thread), obj_(obj), checkMode_(mode)
     {
         if (checkMode_ == SCheckMode::SKIP) {
@@ -42,7 +43,7 @@ public:
         }
     }
 
-    ~ConcurrentModScope()
+    ~ConcurrentApiScope()
     {
         if (checkMode_ == SCheckMode::SKIP) {
             return;
@@ -57,6 +58,8 @@ public:
     static constexpr uint32_t WRITE_MOD_MASK = 1 << 31;
 
 private:
+    NO_COPY_SEMANTIC(ConcurrentApiScope);
+    NO_MOVE_SEMANTIC(ConcurrentApiScope);
     inline uint32_t GetModRecord()
     {
         return reinterpret_cast<volatile std::atomic<uint32_t> *>(
@@ -142,4 +145,4 @@ private:
                   std::is_same_v<Container, JSSharedArray>);
 };
 } // namespace panda::ecmascript
-#endif  // ECMASCRIPT_SHARED_OBJECTS_CONCURRENT_MODIFICATION_SCOPE_H
+#endif  // ECMASCRIPT_SHARED_OBJECTS_CONCURRENT_API_SCOPE_H

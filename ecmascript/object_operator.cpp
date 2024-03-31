@@ -648,7 +648,7 @@ bool ObjectOperator::UpdateValueAndDetails(const JSHandle<JSObject> &receiver, c
 }
 
 bool ObjectOperator::UpdateDataValue(const JSHandle<JSObject> &receiver, const JSHandle<JSTaggedValue> &value,
-                                     bool isInternalAccessor, bool mayThrow, SCheckMode checkMode)
+                                     bool isInternalAccessor, bool mayThrow)
 {
     if (IsElement()) {
         TaggedArray *elements = TaggedArray::Cast(receiver->GetElements().GetTaggedObject());
@@ -698,7 +698,7 @@ bool ObjectOperator::UpdateDataValue(const JSHandle<JSObject> &receiver, const J
     if (isInternalAccessor) {
         auto accessor = AccessorData::Cast(GetValue().GetTaggedObject());
         if (accessor->HasSetter()) {
-            bool res = accessor->CallInternalSet(thread_, JSHandle<JSObject>(receiver), value, mayThrow, checkMode);
+            bool res = accessor->CallInternalSet(thread_, JSHandle<JSObject>(receiver), value, mayThrow);
             if (receiver->GetJSHClass()->IsDictionaryMode()) {
                 SetIsInlinedProps(false);
                 SetFastMode(false);

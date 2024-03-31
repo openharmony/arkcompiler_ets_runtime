@@ -85,15 +85,15 @@ Clear Scenario[forEach]: BusinessError: Concurrent modification exception, errCo
 ===Concurrent modification during iteration Test(forEach) end===
 ===Type check begin===
 sharedMap set[shared] element success
-sharedMap set[unshared]: BusinessError: Parameter error. Only accept sendable value, errCode: 401
-sharedMap set[unshared]: BusinessError: Parameter error. Only accept sendable value, errCode: 401
+sharedMap set[unshared]: BusinessError: Parameter error. Only accept sendable value., errCode: 401
+sharedMap set[unshared]: BusinessError: Parameter error. Only accept sendable value., errCode: 401
 ===Type check end===
 ===Class inheritance test begin ===
 true
 1
 add extension(.): TypeError: Cannot add property in prevent extensions
 add extension([]): TypeError: Cannot add property in prevent extensions
-SubSharedMap set[unshared]: BusinessError: Parameter error. Only accept sendable value, errCode: 401
+SubSharedMap set[unshared]: BusinessError: Parameter error. Only accept sendable value., errCode: 401
 3
 SubSharedMap [key, value][for-of]: [1, one]
 SubSharedMap [key, value][for-of]: [2, two]
@@ -101,7 +101,7 @@ SubSharedMap [key, value][for-of]: [3, three]
 SubSharedMap Delete Scenario[forEach]: BusinessError: Concurrent modification exception, errCode: 10200201
 true
 1
-SubSubSharedMap set[unshared]: BusinessError: Parameter error. Only accept sendable value, errCode: 401
+SubSubSharedMap set[unshared]: BusinessError: Parameter error. Only accept sendable value., errCode: 401
 3
 SubSubSharedMap [key, value][for-of]: [1, one]
 SubSubSharedMap [key, value][for-of]: [2, two]
