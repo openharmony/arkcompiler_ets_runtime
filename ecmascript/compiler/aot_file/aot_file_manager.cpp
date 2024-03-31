@@ -41,6 +41,7 @@
 #include "ecmascript/log_wrapper.h"
 #include "ecmascript/mem/region.h"
 #include "ecmascript/message_string.h"
+#include "ecmascript/ohos/framework_helper.h"
 #include "ecmascript/snapshot/mem/snapshot.h"
 #include "ecmascript/stackmap/ark_stackmap_parser.h"
 #include "ecmascript/stackmap/llvm/llvm_stackmap_parser.h"
@@ -410,6 +411,7 @@ void AOTFileManager::ParseDeserializedData(const CString &snapshotFileName, JSTa
     uint32_t anFileInfoIndex = anFileDataManager->SafeGetFileInfoIndex(baseName + FILE_EXTENSION_AN);
 
     JSThread *thread = vm_->GetJSThread();
+    FrameworkHelper frameworkHelper(thread);
     JSHandle<TaggedArray> aiData(thread, deserializedData);
     uint32_t aiDataLen = aiData->GetLength();
     ASSERT(aiDataLen % AOTSnapshotConstants::SNAPSHOT_DATA_ITEM_SIZE  == 0);
@@ -423,19 +425,23 @@ void AOTFileManager::ParseDeserializedData(const CString &snapshotFileName, JSTa
         fileInfo.Update(aiData->Get(i + SnapshotGlobalData::Cast(SnapshotGlobalData::CP_TOP_ITEM::PANDA_INFO_ID)));
         auto nameOffset = SnapshotGlobalData::Cast(SnapshotGlobalData::CP_PANDA_INFO_ITEM::NAME_ID);
         auto indexOffset = SnapshotGlobalData::Cast(SnapshotGlobalData::CP_PANDA_INFO_ITEM::INDEX_ID);
-        CString fileNameStr = EcmaStringAccessor(fileInfo->Get(nameOffset)).ToCString();
+        CString fileNameCStr = EcmaStringAccessor(fileInfo->Get(nameOffset)).ToCString();
+        std::string fileNameStr = EcmaStringAccessor(fileInfo->Get(nameOffset)).ToStdString();
         uint32_t fileIndex = static_cast<uint32_t>(fileInfo->Get(indexOffset).GetInt());
         // handle constant pool
         cpList.Update(aiData->Get(i + SnapshotGlobalData::Cast(SnapshotGlobalData::CP_TOP_ITEM::CP_ARRAY_ID)));
         uint32_t cpLen = cpList->GetLength();
         ASSERT(cpLen % AOTSnapshotConstants::SNAPSHOT_CP_ARRAY_ITEM_SIZE == 0);
-        auto &PandaCpInfoInserted = fileNameToMulCpMap.try_emplace(fileNameStr).first->second;
+        auto &PandaCpInfoInserted = fileNameToMulCpMap.try_emplace(fileNameCStr).first->second;
         PandaCpInfoInserted.fileIndex_ = fileIndex;
         MultiConstantPoolMap &cpMap = PandaCpInfoInserted.multiCpsMap_;
         for (uint32_t pos = 0; pos < cpLen; pos += AOTSnapshotConstants::SNAPSHOT_CP_ARRAY_ITEM_SIZE) {
             int32_t constantPoolID = cpList->Get(pos).GetInt();
             JSTaggedValue cp = cpList->Get(pos + 1);
             cpMap.insert({constantPoolID, cp});
+            if (frameworkHelper.IsFrameworkAbcFile(fileNameStr)) {
+                thread->GetCurrentEcmaContext()->UpdateConstpool(fileNameStr, cp, constantPoolID);
+            }
         }
     }
 }

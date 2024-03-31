@@ -1554,7 +1554,7 @@ public:
     {
         return optBCRange_;
     }
-    
+
     void SetEnableEscapeAnalysis(bool value)
     {
         enableEscapeAnalysis_ = value;

@@ -606,6 +606,28 @@ void EcmaContext::AddConstpool(const JSPandaFile *jsPandaFile, JSTaggedValue con
     constpoolMap.insert({index, constpool});
 }
 
+void EcmaContext::UpdateConstpool(const std::string& fileName, JSTaggedValue constpool, int32_t index)
+{
+    for (auto iter = cachedSharedConstpools_.begin(); iter != cachedSharedConstpools_.end(); iter++) {
+        std::string curFileName = iter->first->GetJSPandaFileDesc().c_str();
+        auto &constpoolMap = iter->second;
+        // update the aot literal info under each constpool id in the framework abc file
+        if (curFileName != fileName || constpoolMap.find(index) == constpoolMap.end()) {
+            continue;
+        }
+        ConstantPool *curConstPool = ConstantPool::Cast(constpoolMap[index].GetTaggedObject());
+        const ConstantPool *taggedPool = ConstantPool::Cast(constpool.GetTaggedObject());
+        uint32_t constpoolLen = taggedPool->GetCacheLength();
+        for (uint32_t i = 0; i < constpoolLen; i++) {
+            auto val = taggedPool->GetObjectFromCache(i);
+            if (val.IsAOTLiteralInfo()) {
+                curConstPool->SetObjectToCache(thread_, i, val);
+            }
+        }
+        break;
+    }
+}
+
 JSHandle<JSTaggedValue> EcmaContext::GetAndClearEcmaUncaughtException() const
 {
     JSHandle<JSTaggedValue> exceptionHandle = GetEcmaUncaughtException();
