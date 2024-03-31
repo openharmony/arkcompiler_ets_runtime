@@ -3399,7 +3399,8 @@ bool JSNApi::StartDebugger([[maybe_unused]] EcmaVM *vm, [[maybe_unused]] const D
 #endif // ECMASCRIPT_SUPPORT_DEBUGGER
 }
 
-// for old process.
+// rk
+// FA or Stage
 bool JSNApi::StartDebuggerForOldProcess([[maybe_unused]] EcmaVM *vm, [[maybe_unused]] const DebugOption &option,
                                         [[maybe_unused]] int32_t instanceId,
                                         [[maybe_unused]] const DebuggerPostTask &debuggerPostTask)
@@ -3456,7 +3457,8 @@ bool JSNApi::StartDebuggerForOldProcess([[maybe_unused]] EcmaVM *vm, [[maybe_unu
 #endif // ECMASCRIPT_SUPPORT_DEBUGGER
 }
 
-// for socketpair process in ohos platform.
+// ohos or emulator
+// FA or Stage
 bool JSNApi::StartDebuggerForSocketPair([[maybe_unused]] int tid, [[maybe_unused]] int socketfd)
 {
 #if defined(ECMASCRIPT_SUPPORT_DEBUGGER)
@@ -3493,8 +3495,11 @@ bool JSNApi::StartDebuggerForSocketPair([[maybe_unused]] int tid, [[maybe_unused
 #endif // ECMASCRIPT_SUPPORT_DEBUGGER
 }
 
+// ohos or emulator
+// FA or Stage
 // release or debug hap : aa start
 //                        aa start -D
+//                        aa start -p
 //                        new worker
 bool JSNApi::NotifyDebugMode([[maybe_unused]] int tid,
                              [[maybe_unused]] EcmaVM *vm,
@@ -3525,7 +3530,11 @@ bool JSNApi::NotifyDebugMode([[maybe_unused]] int tid,
     jsDebuggerManager->SetDebugLibraryHandle(std::move(handle.Value()));
     jsDebuggerManager->SetDebugMode(option.isDebugMode && debugApp);
     jsDebuggerManager->SetIsDebugApp(debugApp);
+#ifdef PANDA_TARGET_ARM32
     ret = StartDebuggerForOldProcess(vm, option, instanceId, debuggerPostTask);
+#else
+    ret = true;
+#endif
 
     // store debugger postTask in inspector.
     using StoreDebuggerInfo = void (*)(int, EcmaVM *, const DebuggerPostTask &);
@@ -3537,6 +3546,23 @@ bool JSNApi::NotifyDebugMode([[maybe_unused]] int tid,
         return false;
     }
     reinterpret_cast<StoreDebuggerInfo>(symOfStoreDebuggerInfo.Value())(tid, vm, debuggerPostTask);
+
+#ifndef PANDA_TARGET_ARM32
+    // Initialize debugger
+    using InitializeDebuggerForSocketpair = bool(*)(void*);
+    auto sym = panda::os::library_loader::ResolveSymbol(
+        jsDebuggerManager->GetDebugLibraryHandle(), "InitializeDebuggerForSocketpair");
+    if (!sym) {
+        LOG_ECMA(ERROR) << "[NotifyDebugMode] Resolve InitializeDebuggerForSocketpair symbol fail: "
+            << sym.Error().ToString();
+        return false;
+    }
+    if (!reinterpret_cast<InitializeDebuggerForSocketpair>(sym.Value())(vm)) {
+        LOG_ECMA(ERROR) << "[NotifyDebugMode] InitializeDebuggerForSocketpair fail";
+        return false;
+    }
+#endif
+
     if (option.isDebugMode) {
         using WaitForDebugger = void (*)(EcmaVM *);
         auto symOfWaitForDebugger = panda::os::library_loader::ResolveSymbol(
