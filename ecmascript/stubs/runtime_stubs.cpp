@@ -3307,6 +3307,22 @@ DEF_RUNTIME_STUBS(AotInlineTrace)
     return JSTaggedValue::Undefined().GetRawData();
 }
 
+DEF_RUNTIME_STUBS(AotInlineBuiltinTrace)
+{
+    RUNTIME_STUBS_HEADER(AotInlineBuiltinTrace);
+    JSTaggedValue callerFunc = GetArg(argv, argc, 0);
+    JSFunction *callerJSFunc = JSFunction::Cast(callerFunc);
+    Method *callerMethod = Method::Cast(callerJSFunc->GetMethod());
+    auto callerRecordName = callerMethod->GetRecordNameStr();
+    const std::string callerFuncName(callerMethod->GetMethodName());
+    std::string callerFullName = callerFuncName + "@" + std::string(callerRecordName);
+
+    auto builtinId = static_cast<kungfu::BuiltinsStubCSigns::ID>(GetArg(argv, argc, 1).GetInt());
+    LOG_TRACE(INFO) << "aot inline builtin: " << kungfu::BuiltinsStubCSigns::GetBuiltinName(builtinId)
+                    << ", caller function name:" << callerFullName;
+    return JSTaggedValue::Undefined().GetRawData();
+}
+
 DEF_RUNTIME_STUBS(LocaleCompare)
 {
     RUNTIME_STUBS_HEADER(LocaleCompare);

@@ -23,42 +23,55 @@ let len:number = 1;
 
 // Check without params
 len = Math.atan2();
+//aot: [trace] aot inline builtin: Math.atan2, caller function name:func_main_0@builtinMathAtan2
 print(len); //: NaN
 
 len = Math.atan2(NaN);
+//aot: [trace] aot inline builtin: Math.atan2, caller function name:func_main_0@builtinMathAtan2
 print(len); //: NaN
 
 len = Math.atan2(NaN, NaN);
+//aot: [trace] aot inline builtin: Math.atan2, caller function name:func_main_0@builtinMathAtan2
 print(len); //: NaN
 
 len = Math.atan2(0, NaN);
+//aot: [trace] aot inline builtin: Math.atan2, caller function name:func_main_0@builtinMathAtan2
 print(len); //: NaN
 
 len = Math.atan2(NaN, 0);
+//aot: [trace] aot inline builtin: Math.atan2, caller function name:func_main_0@builtinMathAtan2
 print(len); //: NaN
 
 len = Math.atan2(-1, 1.5);
+//aot: [trace] aot inline builtin: Math.atan2, caller function name:func_main_0@builtinMathAtan2
 print(len); //: -0.5880026035475675
 
 len = Math.atan2(1, -0); // PI/2
+//aot: [trace] aot inline builtin: Math.atan2, caller function name:func_main_0@builtinMathAtan2
 print(len); //: 1.5707963267948966
 
 len = Math.atan2(0, 1);
+//aot: [trace] aot inline builtin: Math.atan2, caller function name:func_main_0@builtinMathAtan2
 print(len); //: 0
 
 len = Math.atan2(0, -0); // PI
+//aot: [trace] aot inline builtin: Math.atan2, caller function name:func_main_0@builtinMathAtan2
 print(len); //: 3.141592653589793
 
 len = Math.atan2(-0, 0);
+//aot: [trace] aot inline builtin: Math.atan2, caller function name:func_main_0@builtinMathAtan2
 print("1/x: " + 1/len); //: 1/x: -Infinity
 
 len = Math.atan2(-0, -0); // -PI
+//aot: [trace] aot inline builtin: Math.atan2, caller function name:func_main_0@builtinMathAtan2
 print(len); //: -3.141592653589793
 
 len = Math.atan2(-1, Number.POSITIVE_INFINITY)
+//aot: [trace] aot inline builtin: Math.atan2, caller function name:func_main_0@builtinMathAtan2
 print("1/x: " + 1/len) //: 1/x: -Infinity
 
 len = Math.atan2(1, Number.POSITIVE_INFINITY)
+//aot: [trace] aot inline builtin: Math.atan2, caller function name:func_main_0@builtinMathAtan2
 print(len) //: 0
 
 // Replace standart builtin
@@ -70,5 +83,6 @@ print(len); //: 111
 // Call standart builtin with non-number param
 Math.atan2 = true_atan2
 len = Math.atan2(0, "NaN"); // deopt
+//aot: [trace] aot inline builtin: Math.atan2, caller function name:func_main_0@builtinMathAtan2
 //aot: [trace] Check Type: NotNumber1
 print(len); //: NaN

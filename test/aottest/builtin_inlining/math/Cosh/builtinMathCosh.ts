@@ -23,25 +23,31 @@ let len:number = 1;
 
 // Check without params
 len = Math.cosh();
+//aot: [trace] aot inline builtin: Math.cosh, caller function name:func_main_0@builtinMathCosh
 print(len); //: NaN
 
 len = Math.cosh(NaN);
+//aot: [trace] aot inline builtin: Math.cosh, caller function name:func_main_0@builtinMathCosh
 print(len); //: NaN
 
 // Check with single param
 len = Math.cosh(0);
+//aot: [trace] aot inline builtin: Math.cosh, caller function name:func_main_0@builtinMathCosh
 print(len); //: 1
 
 // Check with single param
 len = Math.cosh(-1);
+//aot: [trace] aot inline builtin: Math.cosh, caller function name:func_main_0@builtinMathCosh
 print(len); //: 1.5430806348152437
 
 // Check with single param
 len = Math.cosh(1);
+//aot: [trace] aot inline builtin: Math.cosh, caller function name:func_main_0@builtinMathCosh
 print(len); //: 1.5430806348152437
 
 // Check with single param
 len = Math.cosh(10);
+//aot: [trace] aot inline builtin: Math.cosh, caller function name:func_main_0@builtinMathCosh
 print(len); //: 11013.232920103324
 
 // Replace standart builtin
@@ -53,5 +59,6 @@ print(len);
 // Call standart builtin with non-number param
 Math.cosh = true_cosh
 // deopt
+//aot: [trace] aot inline builtin: Math.cosh, caller function name:func_main_0@builtinMathCosh
 len = Math.cosh("NaN"); //aot: [trace] Check Type: NotNumber1
 print(len); //: NaN

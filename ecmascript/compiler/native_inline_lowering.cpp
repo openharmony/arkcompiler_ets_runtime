@@ -221,6 +221,18 @@ void NativeInlineLowering::RunNativeInlineLowering()
     }
 }
 
+void NativeInlineLowering::AddTraceLogs(GateRef gate, BuiltinsStubCSigns::ID id)
+{
+    size_t index = RTSTUB_ID(AotInlineBuiltinTrace);
+
+    GateRef frameState = acc_.GetFrameState(gate);
+    GateRef frameArgs = acc_.GetValueIn(frameState);
+    GateRef callerFunc = acc_.GetValueIn(frameArgs, 0);
+    std::vector<GateRef> args{callerFunc, builder_.Int32(id)};
+
+    builder_.CallRuntime(glue_, index, Gate::InvalidGateRef, args, gate);
+}
+
 void NativeInlineLowering::TryInlineStringFromCharCode(GateRef gate, size_t argc, bool skipThis)
 {
     if (!skipThis) {
@@ -236,6 +248,11 @@ void NativeInlineLowering::TryInlineStringFromCharCode(GateRef gate, size_t argc
                                  builder_.IntPtr(static_cast<int64_t>(BuiltinsStubCSigns::ID::StringFromCharCode)),
                                  {tacc.GetArg0()});
     }
+
+    if (EnableTrace()) {
+        AddTraceLogs(gate, BuiltinsStubCSigns::ID::StringFromCharCode);
+    }
+
     GateRef ret = builder_.StringFromSingleCharCode(tacc.GetArg0());
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), ret);
 }
@@ -249,7 +266,11 @@ void NativeInlineLowering::TryInlineMathUnaryBuiltin(GateRef gate, size_t argc, 
         builder_.CallTargetCheck(gate, acc_.GetValueIn(gate, argc + firstParam),
                                  builder_.IntPtr(static_cast<int64_t>(id)));
     }
-    // NOTE(schernykh): Add tracing
+
+    if (EnableTrace()) {
+        AddTraceLogs(gate, id);
+    }
+
     if (argc == 0) {
         acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), builder_.NanValue());
         return;
@@ -266,7 +287,9 @@ void NativeInlineLowering::TryInlineMathClz32Builtin(GateRef gate, size_t argc, 
         builder_.CallTargetCheck(gate, acc_.GetValueIn(gate, argc + firstParam),
                                  builder_.IntPtr(static_cast<int64_t>(BuiltinsStubCSigns::ID::MathClz32)));
     }
-    // NOTE(schernykh): Add tracing
+    if (EnableTrace()) {
+        AddTraceLogs(gate, BuiltinsStubCSigns::ID::MathClz32);
+    }
     if (argc == 0) {
         const int32_t defaultValue = 32;
         acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), builder_.Int32(defaultValue));
@@ -285,7 +308,9 @@ void NativeInlineLowering::TryInlineGlobalFiniteBuiltin(GateRef gate, size_t arg
         builder_.CallTargetCheck(gate, acc_.GetValueIn(gate, argc + firstParam),
                                  builder_.IntPtr(static_cast<int64_t>(id)));
     }
-    // NOTE(schernykh): Add tracing
+    if (EnableTrace()) {
+        AddTraceLogs(gate, id);
+    }
     if (argc == 0) {
         acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), builder_.Boolean(false));
         return;
@@ -303,7 +328,9 @@ void NativeInlineLowering::TryInlineGlobalNanBuiltin(GateRef gate, size_t argc, 
         builder_.CallTargetCheck(gate, acc_.GetValueIn(gate, argc + firstParam),
                                  builder_.IntPtr(static_cast<int64_t>(id)));
     }
-    // NOTE(schernykh): Add tracing
+    if (EnableTrace()) {
+        AddTraceLogs(gate, id);
+    }
     if (argc == 0) {
         acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), builder_.Boolean(true));
         return;
@@ -321,7 +348,9 @@ void NativeInlineLowering::TryInlineMathImulBuiltin(GateRef gate, size_t argc, B
         builder_.CallTargetCheck(gate, acc_.GetValueIn(gate, argc + firstParam),
                                  builder_.IntPtr(static_cast<int64_t>(id)));
     }
-    // NOTE(schernykh): Add tracing
+    if (EnableTrace()) {
+        AddTraceLogs(gate, id);
+    }
     if (argc < 2U) {
         acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), builder_.Int32(0));
         return;
@@ -341,7 +370,9 @@ void NativeInlineLowering::TryInlineMathBinaryBuiltin(GateRef gate, size_t argc,
         builder_.CallTargetCheck(gate, acc_.GetValueIn(gate, argc + firstParam),
                                  builder_.IntPtr(static_cast<int64_t>(id)));
     }
-    // NOTE(schernykh): Add tracing
+    if (EnableTrace()) {
+        AddTraceLogs(gate, id);
+    }
     if (argc < 2U) {
         acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), builder_.NanValue());
         return;
@@ -360,6 +391,9 @@ void NativeInlineLowering::TryInlineMathMinMaxBuiltin(GateRef gate, size_t argc,
     if (!Uncheck()) {
         builder_.CallTargetCheck(gate, acc_.GetValueIn(gate, argc + firstParam),
                                  builder_.IntPtr(static_cast<int64_t>(id)));
+    }
+    if (EnableTrace()) {
+        AddTraceLogs(gate, id);
     }
     if (argc == 0) {
         GateRef ret = builder_.DoubleToTaggedDoublePtr(builder_.Double(defaultValue));

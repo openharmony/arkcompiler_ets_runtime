@@ -35,34 +35,51 @@ function printTrunc(x : any) {
 }
 
 // Check without params
+//aot: [trace] aot inline builtin: Math.trunc, caller function name:func_main_0@builtinMathTrunc
 print(Math.trunc()); //: NaN
 
 // Check with special float params
+//aot: [trace] aot inline builtin: Math.trunc, caller function name:func_main_0@builtinMathTrunc
 print(Math.trunc(NaN)); //: NaN
+//aot: [trace] aot inline builtin: Math.trunc, caller function name:func_main_0@builtinMathTrunc
 print(Math.trunc(Infinity)); //: Infinity
+//aot: [trace] aot inline builtin: Math.trunc, caller function name:func_main_0@builtinMathTrunc
 print(Math.trunc(-Infinity)); //: -Infinity
+//aot: [trace] aot inline builtin: Math.trunc, caller function name:func_main_0@builtinMathTrunc
 print(Math.trunc(+0)); //: 0
+//aot: [trace] aot inline builtin: Math.trunc, caller function name:func_main_0@builtinMathTrunc
 print("1/x: " + 1 / Math.trunc(-0)); //: 1/x: -Infinity
 
 // Check with single integer param
+//aot: [trace] aot inline builtin: Math.trunc, caller function name:func_main_0@builtinMathTrunc
 print(Math.trunc(1)); //: 1
+//aot: [trace] aot inline builtin: Math.trunc, caller function name:func_main_0@builtinMathTrunc
 print(Math.trunc(-12)); //: -12
 
 // Check with single float param
+//aot: [trace] aot inline builtin: Math.trunc, caller function name:func_main_0@builtinMathTrunc
 print(Math.trunc(1.15613251)); //: 1
+//aot: [trace] aot inline builtin: Math.trunc, caller function name:func_main_0@builtinMathTrunc
 print(Math.trunc(2.5)); //: 2
+//aot: [trace] aot inline builtin: Math.trunc, caller function name:func_main_0@builtinMathTrunc
 print(Math.trunc(3.84556546)); //: 3
+//aot: [trace] aot inline builtin: Math.trunc, caller function name:func_main_0@builtinMathTrunc
 print(Math.trunc(-1.124212)); //: -1
+//aot: [trace] aot inline builtin: Math.trunc, caller function name:func_main_0@builtinMathTrunc
 print("1/x: " + 1 / Math.trunc(-8.5e-80)); //: 1/x: -Infinity
+//aot: [trace] aot inline builtin: Math.trunc, caller function name:func_main_0@builtinMathTrunc
 print(Math.trunc(-4.5)); //: -4
 
 // Check with 2 params
+//aot: [trace] aot inline builtin: Math.trunc, caller function name:func_main_0@builtinMathTrunc
 print(Math.trunc(2.4, 10.5)); //: 2
 
 // Check with 3 params
+//aot: [trace] aot inline builtin: Math.trunc, caller function name:func_main_0@builtinMathTrunc
 print(Math.trunc(3.123, 10, 1e-39)); //: 3
 
 // Check with 4 params
+//aot: [trace] aot inline builtin: Math.trunc, caller function name:func_main_0@builtinMathTrunc
 print(Math.trunc(4.89, 10.5, 0, 11)); //: 4
 
 // Replace standart builtin
@@ -72,8 +89,10 @@ print(Math.trunc(111.09)); //: 111.09
 Math.trunc = true_trunc
 
 // Call standart builtin with non-number param
+//aot: [trace] aot inline builtin: Math.trunc, caller function name:doTrunc@builtinMathTrunc
 //aot: [trace] Check Type: NotNumber2
 printTrunc("abc"); //: NaN
+//aot: [trace] aot inline builtin: Math.trunc, caller function name:doTrunc@builtinMathTrunc
 //aot: [trace] Check Type: NotNumber2
 printTrunc("2.45"); //: 2
 
@@ -93,7 +112,9 @@ Math.trunc = true_trunc
 
 // Checl IR correctness inside try-block
 try {
+    //aot: [trace] aot inline builtin: Math.trunc, caller function name:doTrunc@builtinMathTrunc
     printTrunc(-48.12); //: -48
+    //aot: [trace] aot inline builtin: Math.trunc, caller function name:doTrunc@builtinMathTrunc
     //aot: [trace] Check Type: NotNumber2
     printTrunc("abc"); //: NaN
 } catch (e) {
@@ -102,6 +123,7 @@ try {
 let obj = {
     valueOf: () => { return -35.121; }
 };
+//aot: [trace] aot inline builtin: Math.trunc, caller function name:func_main_0@builtinMathTrunc
 //aot: [trace] Check Type: NotNumber2
 print(Math.trunc(obj)); //: -35
 

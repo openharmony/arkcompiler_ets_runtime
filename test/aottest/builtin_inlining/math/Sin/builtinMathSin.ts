@@ -23,30 +23,37 @@ let len:number = 1;
 
 // Check without params
 len = Math.sin();
+//aot: [trace] aot inline builtin: Math.sin, caller function name:func_main_0@builtinMathSin
 print(len); //: NaN
 
 // Check with single param
 len = Math.sin(0);
+//aot: [trace] aot inline builtin: Math.sin, caller function name:func_main_0@builtinMathSin
 print(len); //: 0
 
 // Check with single not zero param
 len = Math.sin(Math.PI / 2);
+//aot: [trace] aot inline builtin: Math.sin, caller function name:func_main_0@builtinMathSin
 print(len); //: 1
 
 // Check with 2 params
 len = Math.sin(0,0);
+//aot: [trace] aot inline builtin: Math.sin, caller function name:func_main_0@builtinMathSin
 print(len); //: 0
 
 // Check with 3 params
 len = Math.sin(0,0,0);
+//aot: [trace] aot inline builtin: Math.sin, caller function name:func_main_0@builtinMathSin
 print(len); //: 0
 
 // Check with 4 params
 len = Math.sin(0,0,0,0);
+//aot: [trace] aot inline builtin: Math.sin, caller function name:func_main_0@builtinMathSin
 print(len); //: 0
 
 // Check with 5 params
 len = Math.sin(0,0,0,0,0);
+//aot: [trace] aot inline builtin: Math.sin, caller function name:func_main_0@builtinMathSin
 print(len); //: 0
 
 // Replace standart builtin
@@ -57,6 +64,7 @@ print(len); //: 111
 
 // Call standart builtin with non-number param
 Math.sin = true_sin
+//aot: [trace] aot inline builtin: Math.sin, caller function name:func_main_0@builtinMathSin
 //aot: [trace] Check Type: NotNumber1
 len = Math.sin("0"); // deopt
 print(len); //: 0

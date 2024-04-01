@@ -35,65 +35,97 @@ function printIsNaN(x: any) {
 
 var x = "x"
 x -= 1
-print(isNaN(x)) // true
-// Check with single int param
+//aot: [trace] aot inline builtin: isNan, caller function name:func_main_0@builtinGlobalIsNan
+print(isNaN(x)) //: true
 
-print(isNaN(0)); // false
-print(isNaN(3)); // false
-print(isNaN(-5)); // false
+// Check with single int param
+//aot: [trace] aot inline builtin: isNan, caller function name:func_main_0@builtinGlobalIsNan
+print(isNaN(0)); //: false
+//aot: [trace] aot inline builtin: isNan, caller function name:func_main_0@builtinGlobalIsNan
+print(isNaN(3)); //: false
+//aot: [trace] aot inline builtin: isNan, caller function name:func_main_0@builtinGlobalIsNan
+print(isNaN(-5)); //: false
 
 // Check with single float param
-print(isNaN(-1.5)); // false
-print(isNaN(1.5)); // false
+//aot: [trace] aot inline builtin: isNan, caller function name:func_main_0@builtinGlobalIsNan
+print(isNaN(-1.5)); //: false
+//aot: [trace] aot inline builtin: isNan, caller function name:func_main_0@builtinGlobalIsNan
+print(isNaN(1.5)); //: false
 
 // Check with special float params
-print(isNaN(Infinity)); // false
-print(isNaN(-Infinity)); // false
-print(isNaN(NaN)); // true
-print(isNaN(Math.exp(800))); // false
+//aot: [trace] aot inline builtin: isNan, caller function name:func_main_0@builtinGlobalIsNan
+print(isNaN(Infinity)); //: false
+//aot: [trace] aot inline builtin: isNan, caller function name:func_main_0@builtinGlobalIsNan
+print(isNaN(-Infinity)); //: false
+//aot: [trace] aot inline builtin: isNan, caller function name:func_main_0@builtinGlobalIsNan
+print(isNaN(NaN)); //: true
+//aot: [trace] aot inline builtin: Math.exp, caller function name:func_main_0@builtinGlobalIsNan
+//aot: [trace] aot inline builtin: isNan, caller function name:func_main_0@builtinGlobalIsNan
+print(isNaN(Math.exp(800))); //: false
 
 // Check with 2 params
-print(isNaN(NaN, Infinity)); // true
+//aot: [trace] aot inline builtin: isNan, caller function name:func_main_0@builtinGlobalIsNan
+print(isNaN(NaN, Infinity)); //: true
 
 // Check with 3 params
-print(isNaN(NaN, 3, Infinity)); // true
+//aot: [trace] aot inline builtin: isNan, caller function name:func_main_0@builtinGlobalIsNan
+print(isNaN(NaN, 3, Infinity)); //: true
 
 
 // Replace standard builtin
 let true_is_nan = isNaN
 isNaN = replace
-print(isNaN(NaN)); // NaN
+print(isNaN(NaN)); //: NaN
 isNaN = true_is_nan
 
+//aot: [trace] aot inline builtin: isNan, caller function name:doIsNaN@builtinGlobalIsNan
+printIsNaN(-3);    //: false
+//aot: [trace] aot inline builtin: isNan, caller function name:doIsNaN@builtinGlobalIsNan
+//aot: [trace] Check Type: NotNumber1
+printIsNaN("abc"); //: true
+//aot: [trace] aot inline builtin: isNan, caller function name:doIsNaN@builtinGlobalIsNan
+//aot: [trace] Check Type: NotNumber1
+printIsNaN("abc"); //: true
+//aot: [trace] aot inline builtin: isNan, caller function name:doIsNaN@builtinGlobalIsNan
+printIsNaN(-12); //: false
 
-printIsNaN(-3);    // false
-printIsNaN("abc"); // true
-printIsNaN("abc"); // true
-
-printIsNaN(-12); // false
 // Call standard builtin with non-number param
-printIsNaN("abc"); // true
-printIsNaN("-12"); // false
+//aot: [trace] aot inline builtin: isNan, caller function name:doIsNaN@builtinGlobalIsNan
+//aot: [trace] Check Type: NotNumber1
+printIsNaN("abc"); //: true
+//aot: [trace] aot inline builtin: isNan, caller function name:doIsNaN@builtinGlobalIsNan
+//aot: [trace] Check Type: NotNumber1
+printIsNaN("-12"); //: false
 
 if (ArkTools.isAOTCompiled(doIsNaN)) {
     // Replace standard builtin after call to standard builtin was profiled
     isNaN = replace
 }
-printIsNaN(-12); // false; or -12, deopt
-printIsNaN("abc"); // true; or abc, deopt
+printIsNaN(-12); //pgo: false
+                 //aot: [trace] Check Type: NotCallTarget1
+                 //aot: -12
+printIsNaN("abc"); //pgo: true
+                   //aot: [trace] Check Type: NotCallTarget1
+                   //aot: abc
 isNaN = true_is_nan
 
 // Check IR correctness inside try-block
 try {
-    printIsNaN(-12); // false
-    printIsNaN(NaN); // true
-    printIsNaN("abc"); // true
+    //aot: [trace] aot inline builtin: isNan, caller function name:doIsNaN@builtinGlobalIsNan
+    printIsNaN(-12); //: false
+    //aot: [trace] aot inline builtin: isNan, caller function name:doIsNaN@builtinGlobalIsNan
+    printIsNaN(NaN); //: true
+    //aot: [trace] aot inline builtin: isNan, caller function name:doIsNaN@builtinGlobalIsNan
+    //aot: [trace] Check Type: NotNumber1
+    printIsNaN("abc"); //: true
 } catch (e) {
 }
 
 let obj = {};
 obj.valueOf = (() => { return -23; })
-print(isNaN(obj)); // false
+//aot: [trace] aot inline builtin: isNan, caller function name:func_main_0@builtinGlobalIsNan
+//aot: [trace] Check Type: NotNumber1
+print(isNaN(obj)); //: false
 
 function Throwing() {
     this.value = -14;
@@ -107,11 +139,11 @@ Throwing.prototype.valueOf = function() {
 let throwingObj = new Throwing();
 
 try {
-    print(isNaN(throwingObj)); // false
+    print(isNaN(throwingObj)); //: false
     throwingObj.value = 10;
-    print(isNaN(throwingObj)); // exception
+    print(isNaN(throwingObj)); //: Error: already positive
 } catch(e) {
     print(e);
 } finally {
-    print(isNaN(obj)); // false
+    print(isNaN(obj)); //: false
 }

@@ -4604,3 +4604,20 @@ template("host_quickfix_test_action") {
     outputs = [ "$target_out_dir/${_target_name_}/" ]
   }
 }
+
+template("host_aot_builtin_inlining_test_action") {
+  host_aot_test_action("${target_name}") {
+    forward_variables_from(invoker, "*")
+
+    is_enable_pgo = true
+    is_only_typed_path = true
+    is_enable_opt_inlining = true
+    is_enable_trace_deopt = true
+    log_option = " --log-info=trace"
+    is_enable_inline_trace = true
+    is_enable_enableArkTools = true
+    gen_expect_output = true
+    is_test_llvm_only = true
+    deps = []
+  }
+}

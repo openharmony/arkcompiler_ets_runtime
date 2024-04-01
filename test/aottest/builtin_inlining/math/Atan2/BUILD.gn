@@ -13,14 +13,5 @@
 
 import("//arkcompiler/ets_runtime/test/test_helper.gni")
 
-host_aot_test_action("builtinMathAtan2") {
-  is_enable_pgo = true
-  is_only_typed_path = true
-  is_test_llvm_only = true
-  is_enable_opt_inlining = true
-  is_enable_trace_deopt = true
-  is_enable_enableArkTools = true
-  log_option = " --log-info=trace"
-  gen_expect_output = true
-  deps = []
+host_aot_builtin_inlining_test_action("builtinMathAtan2") {
 }

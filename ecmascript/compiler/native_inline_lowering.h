@@ -63,6 +63,8 @@ private:
     void TryInlineDataViewGet(GateRef gate, size_t argc, BuiltinsStubCSigns::ID id);
     void TryInlineDataViewSet(GateRef gate, size_t argc, BuiltinsStubCSigns::ID id);
 
+    void AddTraceLogs(GateRef gate, BuiltinsStubCSigns::ID id);
+
     bool EnableLog() const
     {
         return enableLog_;

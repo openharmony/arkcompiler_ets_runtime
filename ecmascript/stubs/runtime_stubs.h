@@ -400,6 +400,7 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(TestIn)                             \
     V(UpdateAOTHClass)                    \
     V(AotInlineTrace)                     \
+    V(AotInlineBuiltinTrace)              \
     V(LocaleCompare)                      \
     V(ArraySort)                          \
     V(FastStringify)                      \
