@@ -25,6 +25,58 @@ MemMapAllocator *MemMapAllocator::GetInstance()
     return vmAllocator_;
 }
 
+void MemMapAllocator::InitializeRegularRegionMap([[maybe_unused]] size_t alignment)
+{
+#if defined(PANDA_TARGET_64) && !WIN_OR_MAC_OR_IOS_PLATFORM
+    size_t initialRegularObjectCapacity = std::min(capacity_ / 2, INITIAL_REGULAR_OBJECT_CAPACITY);
+    size_t i = 0;
+    while (i < MEM_MAP_RETRY_NUM) {
+        void *addr = reinterpret_cast<void *>(ToUintPtr(RandomGenerateBigAddr(REGULAR_OBJECT_MEM_MAP_BEGIN_ADDR)) +
+            i * STEP_INCREASE_MEM_MAP_ADDR);
+        MemMap memMap = PageMap(initialRegularObjectCapacity, PAGE_PROT_NONE, alignment, addr);
+        if (ToUintPtr(memMap.GetMem()) >= ToUintPtr(addr)) {
+            PageTag(memMap.GetMem(), memMap.GetSize(), PageTagType::MEMPOOL_CACHE);
+            PageRelease(memMap.GetMem(), memMap.GetSize());
+            memMapPool_.InsertMemMap(memMap);
+            memMapPool_.SplitMemMapToCache(memMap);
+            break;
+        } else {
+            PageUnmap(memMap);
+            LOG_ECMA(ERROR) << "Regular object mem map big addr fail: " << errno;
+        }
+        i++;
+    }
+#endif
+}
+
+void MemMapAllocator::InitializeHugeRegionMap(size_t alignment)
+{
+    size_t initialHugeObjectCapacity = std::min(capacity_ / 2, INITIAL_HUGE_OBJECT_CAPACITY);
+#if defined(PANDA_TARGET_64) && !WIN_OR_MAC_OR_IOS_PLATFORM
+    size_t i = 0;
+    while (i <= MEM_MAP_RETRY_NUM) {
+        void *addr = reinterpret_cast<void *>(ToUintPtr(RandomGenerateBigAddr(HUGE_OBJECT_MEM_MAP_BEGIN_ADDR)) +
+            i * STEP_INCREASE_MEM_MAP_ADDR);
+        MemMap memMap = PageMap(initialHugeObjectCapacity, PAGE_PROT_NONE, alignment, addr);
+        if (ToUintPtr(memMap.GetMem()) >= ToUintPtr(addr) || i == MEM_MAP_RETRY_NUM) {
+            PageTag(memMap.GetMem(), memMap.GetSize(), PageTagType::MEMPOOL_CACHE);
+            PageRelease(memMap.GetMem(), memMap.GetSize());
+            memMapFreeList_.Initialize(memMap, capacity_);
+            break;
+        } else {
+            PageUnmap(memMap);
+            LOG_ECMA(ERROR) << "Huge object mem map big addr fail: " << errno;
+        }
+        i++;
+    }
+#else
+    MemMap hugeMemMap = PageMap(initialHugeObjectCapacity, PAGE_PROT_NONE, alignment);
+    PageTag(hugeMemMap.GetMem(), hugeMemMap.GetSize(), PageTagType::MEMPOOL_CACHE);
+    PageRelease(hugeMemMap.GetMem(), hugeMemMap.GetSize());
+    memMapFreeList_.Initialize(hugeMemMap, capacity_);
+#endif
+}
+
 MemMap MemMapAllocator::Allocate(const uint32_t threadId, size_t size, size_t alignment,
                                  const std::string &spaceName, bool regular, bool isMachineCode)
 {

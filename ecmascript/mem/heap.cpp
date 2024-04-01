@@ -1600,9 +1600,6 @@ bool Heap::NeedStopCollection()
         return true;
     }
     LOG_GC(INFO) << "SmartGC: force expand will cause OOM, have to trigger gc";
-    GetNewSpace()->SetOverShootSize(
-        GetNewSpace()->GetCommittedSize() - GetNewSpace()->GetInitialCapacity() +
-        config_.GetOldSpaceOvershootSize());
     return false;
 }
 
