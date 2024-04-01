@@ -133,6 +133,7 @@ enum CommandValues {
     OPTION_COMPILER_PGO_SAVE_MIN_INTERVAL,
     OPTION_ENABLE_PGO_PROFILER,
     OPTION_PRINT_EXECUTE_TIME,
+    OPTION_COMPILER_DEVICE_STATE,
     OPTION_COMPILER_VERIFY_VTABLE,
     OPTION_COMPILER_SELECT_METHODS,
     OPTION_COMPILER_SKIP_METHODS,
@@ -1230,6 +1231,21 @@ public:
         return stressDeopt_;
     }
 
+    void SetDeviceState(bool value)
+    {
+        deviceIsScreenOff_ = value;
+    }
+
+    bool GetDeviceState() const
+    {
+        return deviceIsScreenOff_;
+    }
+
+    bool WasSetDeviceState() const
+    {
+        return WasOptionSet(OPTION_COMPILER_DEVICE_STATE);
+    }
+
     void SetOptCodeProfiler(bool value)
     {
         optCodeProfiler_ = value;
@@ -1686,6 +1702,7 @@ private:
     bool traceDeopt_ {false};
     uint8_t deoptThreshold_ {10};
     bool stressDeopt_ {false};
+    bool deviceIsScreenOff_ {true};
     bool optCodeProfiler_ {false};
     bool startGlobalLeakCheck_ {false};
     bool verifyVTable_ {false};

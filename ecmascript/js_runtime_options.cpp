@@ -74,6 +74,7 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
     "--compiler-trace-value-numbering:     Enable tracing value numbering for aot runtime. Default: 'false'\n"
     "--compiler-max-inline-bytecodes       Set max bytecodes count which aot function can be inlined. Default: '25'\n"
     "--compiler-deopt-threshold:           Set max count which aot function can occur deoptimization. Default: '10'\n"
+    "--compiler-device-state               Compiler device state for aot. Check device screen state. Default: 'false'\n"
     "--compiler-stress-deopt:              Enable stress deopt for aot compiler. Default: 'false'\n"
     "--compiler-opt-code-profiler:         Enable opt code Bytecode Statistics for aot runtime. Default: 'false'\n"
     "--compiler-opt-bc-range:              Range list for EcmaOpCode range Example '1:2,5:8'\n"
@@ -204,6 +205,7 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"compiler-trace-instruction-combine", required_argument, nullptr, OPTION_COMPILER_TRACE_INSTRUCTION_COMBINE},
         {"compiler-max-inline-bytecodes", required_argument, nullptr, OPTION_COMPILER_MAX_INLINE_BYTECODES},
         {"compiler-deopt-threshold", required_argument, nullptr, OPTION_COMPILER_DEOPT_THRESHOLD},
+        {"compiler-device-state", required_argument, nullptr, OPTION_COMPILER_DEVICE_STATE},
         {"compiler-stress-deopt", required_argument, nullptr, OPTION_COMPILER_STRESS_DEOPT},
         {"compiler-opt-code-profiler", required_argument, nullptr, OPTION_COMPILER_OPT_CODE_PROFILER},
         {"compiler-opt-bc-range", required_argument, nullptr, OPTION_COMPILER_OPT_BC_RANGE},
@@ -457,6 +459,14 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                 ret = ParseUint32Param("deopt-threshol", &argUint32);
                 if (ret) {
                     SetDeoptThreshold(argUint32);
+                } else {
+                    return false;
+                }
+                break;
+            case OPTION_COMPILER_DEVICE_STATE:
+                ret = ParseBoolParam(&argBool);
+                if (ret) {
+                    SetDeviceState(argBool);
                 } else {
                     return false;
                 }
