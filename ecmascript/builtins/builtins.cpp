@@ -1215,8 +1215,7 @@ void Builtins::InitializeSet(const JSHandle<GlobalEnv> &env, JSHandle<JSTaggedVa
         factory_->NewEcmaHClass(JSSet::SIZE, JSType::JS_SET, setFuncPrototypeValue);
     // Set() = new Function()
     JSHandle<JSTaggedValue> setFunction(
-        NewBuiltinConstructor(env, setFuncPrototype, BuiltinsSet::SetConstructor, "Set", FunctionLength::ZERO,
-                              BUILTINS_STUB_ID(SetConstructor)));
+        NewBuiltinConstructor(env, setFuncPrototype, BuiltinsSet::SetConstructor, "Set", FunctionLength::ZERO));
     JSFunction::SetFunctionPrototypeOrInstanceHClass(thread_,
                                                      JSHandle<JSFunction>(setFunction),
                                                      setFuncInstanceHClass.GetTaggedValue());
@@ -1292,8 +1291,7 @@ void Builtins::InitializeMap(const JSHandle<GlobalEnv> &env, JSHandle<JSTaggedVa
         factory_->NewEcmaHClass(JSMap::SIZE, JSType::JS_MAP, mapFuncPrototypeValue);
     // Map() = new Function()
     JSHandle<JSTaggedValue> mapFunction(
-        NewBuiltinConstructor(env, mapFuncPrototype, BuiltinsMap::MapConstructor, "Map", FunctionLength::ZERO,
-                              BUILTINS_STUB_ID(MapConstructor)));
+        NewBuiltinConstructor(env, mapFuncPrototype, BuiltinsMap::MapConstructor, "Map", FunctionLength::ZERO));
     // Map().prototype = Map.Prototype & Map.prototype.constructor = Map()
     JSFunction::SetFunctionPrototypeOrInstanceHClass(thread_,
                                                      JSHandle<JSFunction>(mapFunction),
