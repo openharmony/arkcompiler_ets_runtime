@@ -40,7 +40,9 @@ FreeObject *FreeObject::FillFreeObject(BaseHeap *heap, uintptr_t address, size_t
     } else {
         LOG_ECMA(DEBUG) << "Fill free object size is smaller";
     }
+#ifdef ARK_ASAN_ON
     ASAN_POISON_MEMORY_REGION(reinterpret_cast<void *>(address), size);
+#endif
     return object;
 }
 }  // namespace panda::ecmascript
