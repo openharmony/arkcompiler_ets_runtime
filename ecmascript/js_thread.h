@@ -817,11 +817,6 @@ public:
         return glueData_.propertiesGrowStep_;
     }
 
-    void SetRandomStatePtr(uint64_t *ptr)
-    {
-        glueData_.randomStatePtr_ = reinterpret_cast<uintptr_t>(ptr);
-    }
-
     struct GlueData : public base::AlignedStruct<JSTaggedValue::TaggedTypeSize(),
                                                  BCStubEntries,
                                                  JSTaggedValue,
@@ -853,7 +848,6 @@ public:
                                                  base::AlignedPointer,
                                                  BuiltinEntries,
                                                  base::AlignedBool,
-                                                 base::AlignedPointer,
                                                  base::AlignedPointer,
                                                  base::AlignedUint32> {
         enum class Index : size_t {
@@ -888,7 +882,6 @@ public:
             BuiltinEntriesIndex,
             IsTracingIndex,
             unsharedConstpoolsIndex,
-            RandomStatePtrIndex,
             stateAndFlagsIndex,
             NumOfMembers
         };
@@ -1070,11 +1063,6 @@ public:
             return GetOffset<static_cast<size_t>(Index::stateAndFlagsIndex)>(isArch32);
         }
 
-        static size_t GetRandomStatePtrOffset(bool isArch32)
-        {
-            return GetOffset<static_cast<size_t>(Index::RandomStatePtrIndex)>(isArch32);
-        }
-
         alignas(EAS) BCStubEntries bcStubEntries_;
         alignas(EAS) JSTaggedValue exception_ {JSTaggedValue::Hole()};
         alignas(EAS) JSTaggedValue globalObject_ {JSTaggedValue::Hole()};
@@ -1106,7 +1094,6 @@ public:
         alignas(EAS) BuiltinEntries builtinEntries_;
         alignas(EAS) bool isTracing_ {false};
         alignas(EAS) uintptr_t unsharedConstpools_ {0};
-        alignas(EAS) uintptr_t randomStatePtr_ {0};
         alignas(EAS) ThreadStateAndFlags stateAndFlags_ {};
     };
     STATIC_ASSERT_EQ_ARCH(sizeof(GlueData), GlueData::SizeArch32, GlueData::SizeArch64);
