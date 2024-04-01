@@ -149,7 +149,7 @@ JSTaggedValue BuiltinsSharedArray::From(EcmaRuntimeCallInfo *argv)
     }
     if (!mapping && items->IsString()) {
         JSHandle<EcmaString> strItems(items);
-        return BuiltinsString::StringToList(thread, strItems);
+        return BuiltinsString::StringToSList(thread, strItems);
     }
     // Fast path for TypedArray
     if (!mapping && items->IsTypedArray()) {
@@ -185,7 +185,7 @@ JSTaggedValue BuiltinsSharedArray::From(EcmaRuntimeCallInfo *argv)
             newArray = JSSharedArray::ArrayCreate(thread, JSTaggedNumber(0)).GetTaggedValue();
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         }
-        if (!newArray.IsECMAObject()) {
+        if (!newArray.IsJSSharedArray()) {
             THROW_TYPE_ERROR_AND_RETURN(thread, "Failed to construct the array.", JSTaggedValue::Exception());
         }
         JSHandle<JSObject> newArrayHandle(thread, newArray);
@@ -212,6 +212,7 @@ JSTaggedValue BuiltinsSharedArray::From(EcmaRuntimeCallInfo *argv)
             if (next->IsFalse()) {
                 JSSharedArray::LengthSetter(thread, newArrayHandle, key, true);
                 RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+                newArrayHandle->GetJSHClass()->SetExtensible(false);
                 return newArrayHandle.GetTaggedValue();
             }
             //     v. Let nextValue be IteratorValue(next).
@@ -277,7 +278,7 @@ JSTaggedValue BuiltinsSharedArray::From(EcmaRuntimeCallInfo *argv)
         newArray = JSSharedArray::ArrayCreate(thread, JSTaggedNumber(static_cast<double>(len))).GetTaggedValue();
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     }
-    if (!newArray.IsECMAObject()) {
+    if (!newArray.IsJSSharedArray()) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "Failed to construct the array.", JSTaggedValue::Exception());
     }
     JSHandle<JSObject> newArrayHandle(thread, newArray);
@@ -312,7 +313,7 @@ JSTaggedValue BuiltinsSharedArray::From(EcmaRuntimeCallInfo *argv)
             auto error = ContainerError::ParamError(thread, "Parameter error.Only accept sendable value.");
             THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
         }
-        JSObject::CreateDataPropertyOrThrow(thread, newArrayHandle, k, mapValue);
+        JSObject::CreateDataPropertyOrThrow(thread, newArrayHandle, k, mapValue, SCheckMode::SKIP);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         k++;
     }
@@ -469,6 +470,10 @@ JSTaggedValue BuiltinsSharedArray::Concat(EcmaRuntimeCallInfo *argv)
                     // a. Let subElement be Get(E, P).
                     JSHandle<JSTaggedValue> fromValHandle =
                         JSSharedArray::FastGetPropertyByValue(thread, ele, fromKey);
+                    if (!fromValHandle->IsSharedType()) {
+                        auto error = ContainerError::ParamError(thread, "Parameter error.Only accept sendable value.");
+                        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
+                    }
                     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
                     // b. Perform ? CreateDataPropertyOrThrow(A, ! ToString(𝔽(n)), subElement).
                     JSObject::CreateDataPropertyOrThrow(thread, newArrayHandle, toKey, fromValHandle, SCheckMode::SKIP);
@@ -487,7 +492,7 @@ JSTaggedValue BuiltinsSharedArray::Concat(EcmaRuntimeCallInfo *argv)
             }
             // iii. Perform ? CreateDataPropertyOrThrow(A, ! ToString(𝔽(n)), E).
             // iv. Set n to n + 1.
-            JSObject::CreateDataPropertyOrThrow(thread, newArrayHandle, n, ele);
+            JSObject::CreateDataPropertyOrThrow(thread, newArrayHandle, n, ele, SCheckMode::SKIP);
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
             n++;
         }
@@ -1249,7 +1254,7 @@ JSTaggedValue BuiltinsSharedArray::Map(EcmaRuntimeCallInfo *argv)
             }
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
             mapResultHandle.Update(mapResult);
-            JSObject::CreateDataPropertyOrThrow(thread, newArrayHandle, k, mapResultHandle);
+            JSObject::CreateDataPropertyOrThrow(thread, newArrayHandle, k, mapResultHandle, SCheckMode::SKIP);
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         }
         k++;

@@ -169,7 +169,7 @@ GateRef CircuitBuilder::TaggedIsStringIterator(GateRef obj)
     return ret;
 }
 
-GateRef CircuitBuilder::TaggedIsShared(GateRef obj)
+GateRef CircuitBuilder::TaggedIsSharedObj(GateRef obj)
 {
     Label entry(env_);
     SubCfgEntry(&entry);

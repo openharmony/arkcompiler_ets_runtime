@@ -42,6 +42,7 @@
 #include "ecmascript/js_typed_array.h"
 #include "ecmascript/message_string.h"
 #include "ecmascript/module/js_module_namespace.h"
+#include "ecmascript/shared_objects/js_shared_array.h"
 #include "ecmascript/tagged_array.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/symbol_table.h"
@@ -885,6 +886,10 @@ bool JSTaggedValue::DefineOwnProperty(JSThread *thread, const JSHandle<JSTaggedV
 {
     if (obj->IsJSArray()) {
         return JSArray::DefineOwnProperty(thread, JSHandle<JSObject>(obj), key, desc);
+    }
+
+    if (obj->IsJSSharedArray()) {
+        return JSSharedArray::DefineOwnProperty(thread, JSHandle<JSObject>(obj), key, desc);
     }
 
     if (obj->IsJSProxy()) {

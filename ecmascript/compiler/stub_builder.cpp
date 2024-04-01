@@ -193,7 +193,7 @@ void StubBuilder::MatchFieldType(GateRef fieldType, GateRef value, Label *execut
     {
         BRANCH(BoolAnd(
             Int32NotEqual(Int32And(fieldType, Int32(static_cast<int32_t>(SharedFieldType::SENDABLE))), Int32(0)),
-            BoolOr(TaggedIsShared(value), TaggedIsNull(value))),
+            BoolOr(TaggedIsSharedObj(value), TaggedIsNull(value))),
             &isJSShared, &checkBigInt);
         Bind(&isJSShared);
         {
@@ -218,7 +218,7 @@ void StubBuilder::MatchFieldType(GateRef fieldType, GateRef value, Label *execut
         BRANCH(BoolAnd(
             BoolOr(Equal(fieldType, Int32(static_cast<int32_t>(SharedFieldType::NONE))),
                 Int32NotEqual(Int32And(fieldType, Int32(static_cast<int32_t>(SharedFieldType::GENERIC))), Int32(0))),
-            BoolOr(TaggedIsShared(value), BoolNot(TaggedIsHeapObject(value)))),
+            BoolOr(TaggedIsSharedObj(value), BoolNot(TaggedIsHeapObject(value)))),
             &isNoneOrGeneric, &checkNull);
         Bind(&isNoneOrGeneric);
         {

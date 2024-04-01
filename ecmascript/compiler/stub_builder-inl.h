@@ -609,9 +609,9 @@ inline GateRef StubBuilder::TaggedIsStringIterator(GateRef obj)
     return env_->GetBuilder()->TaggedIsStringIterator(obj);
 }
 
-inline GateRef StubBuilder::TaggedIsShared(GateRef obj)
+inline GateRef StubBuilder::TaggedIsSharedObj(GateRef obj)
 {
-    return env_->GetBuilder()->TaggedIsShared(obj);
+    return env_->GetBuilder()->TaggedIsSharedObj(obj);
 }
 
 inline GateRef StubBuilder::TaggedIsStringOrSymbol(GateRef obj)
@@ -1270,7 +1270,7 @@ inline GateRef StubBuilder::IsJsProxy(GateRef obj)
 
 inline GateRef StubBuilder::IsJSShared(GateRef obj)
 {
-    return TaggedIsShared(obj);
+    return TaggedIsSharedObj(obj);
 }
 
 inline GateRef StubBuilder::IsJSGlobalObject(GateRef obj)

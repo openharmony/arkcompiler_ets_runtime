@@ -299,7 +299,7 @@ void BuiltinsObjectStubBuilder::Create(Variable *result, Label *exit, Label *slo
     GateRef proto = GetCallArg0(numArgs_);
     GateRef protoIsNull = TaggedIsNull(proto);
     GateRef protoIsEcmaObj = IsEcmaObject(proto);
-    GateRef protoIsJSShared = TaggedIsShared(proto);
+    GateRef protoIsJSShared = TaggedIsSharedObj(proto);
     BRANCH(BoolOr(BoolAnd(BoolNot(protoIsEcmaObj), BoolNot(protoIsNull)), protoIsJSShared), slowPath, &newObject);
     Bind(&newObject);
     {

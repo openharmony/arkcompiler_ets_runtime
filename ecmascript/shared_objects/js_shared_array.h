@@ -44,6 +44,7 @@ public:
                                   const PropertyDescriptor &desc);
 
     static bool IsLengthString(JSThread *thread, const JSHandle<JSTaggedValue> &key);
+    static JSHandle<JSSharedArray> CreateArrayFromList(JSThread *thread, const JSHandle<TaggedArray> &elements);
     // use first inlined property slot for array length
     inline uint32_t GetArrayLength() const
     {

@@ -14,6 +14,7 @@
  */
 
 #include "ecmascript/js_object.h"
+#include "ecmascript/js_handle.h"
 #include "ecmascript/js_object-inl.h"
 
 #include "ecmascript/accessor_data.h"
@@ -405,10 +406,8 @@ bool JSObject::AddElementInternal(JSThread *thread, const JSHandle<JSObject> &re
         JSSharedArray *arr = JSSharedArray::Cast(*receiver);
         uint32_t oldLength = arr->GetArrayLength();
         if (index >= oldLength) {
-            if (!IsArrayLengthWritable(thread, receiver)) {
-                return false;
-            }
-            arr->SetArrayLength(thread, index + 1);
+            JSHandle<JSTaggedValue> newLength(thread, JSTaggedValue(static_cast<uint32_t>(index + 1)));
+            JSSharedArray::LengthSetter(thread, receiver, newLength);
             if (index > oldLength) {
                 kind = ElementsKind::HOLE;
             }
@@ -988,7 +987,7 @@ bool JSObject::SetPropertyForDataDescriptor(ObjectOperator *op, const JSHandle<J
     } else {
         // 5f. Else if Receiver does not currently have a property P, Return CreateDataProperty(Receiver, P, V).
         // fixme(hzzhouzebin) this makes SharedArray's frozen no sense.
-        if (!receiver->IsExtensible(thread) && !receiver->IsJSSharedArray()) {
+        if (!receiver->IsExtensible(thread) && !(receiver->IsJSSharedArray() && op->IsElement())) {
             if (mayThrow) {
                 THROW_TYPE_ERROR_AND_RETURN(thread, GET_MESSAGE_STRING(SetPropertyWhenNotExtensible), false);
             }
@@ -1271,9 +1270,9 @@ bool JSObject::DefineOwnProperty(JSThread *thread, const JSHandle<JSObject> &obj
 }
 
 bool JSObject::DefineOwnProperty(JSThread *thread, const JSHandle<JSObject> &obj, uint32_t index,
-                                 const PropertyDescriptor &desc)
+                                 const PropertyDescriptor &desc, SCheckMode sCheckMode)
 {
-    return OrdinaryDefineOwnProperty(thread, obj, index, desc);
+    return OrdinaryDefineOwnProperty(thread, obj, index, desc, sCheckMode);
 }
 
 // 9.1.6.1 OrdinaryDefineOwnProperty (O, P, Desc)
@@ -1298,7 +1297,7 @@ bool JSObject::OrdinaryDefineOwnProperty(JSThread *thread, const JSHandle<JSObje
 }
 
 bool JSObject::OrdinaryDefineOwnProperty(JSThread *thread, const JSHandle<JSObject> &obj, uint32_t index,
-                                         const PropertyDescriptor &desc)
+                                         const PropertyDescriptor &desc, SCheckMode sCheckMode)
 {
     JSHandle<JSTaggedValue> objValue(obj);
     ObjectOperator op(thread, objValue, index, OperatorType::OWN);
@@ -1306,7 +1305,7 @@ bool JSObject::OrdinaryDefineOwnProperty(JSThread *thread, const JSHandle<JSObje
     bool extensible = obj->IsExtensible();
     PropertyDescriptor current(thread);
     op.ToPropertyDescriptor(current);
-    return ValidateAndApplyPropertyDescriptor(&op, extensible, desc, current);
+    return ValidateAndApplyPropertyDescriptor(&op, extensible, desc, current, sCheckMode);
 }
 
 bool JSObject::ValidateDataDescriptorWhenConfigurable(ObjectOperator *op, const PropertyDescriptor &desc,
@@ -1341,7 +1340,7 @@ bool JSObject::ValidateAndApplyPropertyDescriptor(ObjectOperator *op, bool exten
     // 2. If current is undefined, then
     if (current.IsEmpty()) {
         // 2a. If extensible is false, return false.
-        if (!extensible) {
+        if (!(extensible || (op->GetReceiver()->IsJSShared() && sCheckMode == SCheckMode::SKIP))) {
             return false;
         }
         if (!op->HasHolder()) {
@@ -1716,7 +1715,7 @@ bool JSObject::CreateDataProperty(JSThread *thread, const JSHandle<JSObject> &ob
 }
 
 bool JSObject::CreateDataProperty(JSThread *thread, const JSHandle<JSObject> &obj, uint32_t index,
-                                  const JSHandle<JSTaggedValue> &value)
+                                  const JSHandle<JSTaggedValue> &value, SCheckMode sCheckMode)
 {
     ASSERT_PRINT(obj->IsECMAObject(), "Obj is not a valid object");
     auto result = ObjectFastOperator::SetPropertyByIndex<ObjectFastOperator::Status::DefineSemantics>
@@ -1725,7 +1724,7 @@ bool JSObject::CreateDataProperty(JSThread *thread, const JSHandle<JSObject> &ob
         return !result.IsException();
     }
     PropertyDescriptor desc(thread, value, true, true, true);
-    return DefineOwnProperty(thread, obj, index, desc);
+    return DefineOwnProperty(thread, obj, index, desc, sCheckMode);
 }
 
 // 7.3.5 CreateMethodProperty (O, P, V)
@@ -1744,11 +1743,11 @@ bool JSObject::CreateDataPropertyOrThrow(JSThread *thread, const JSHandle<JSObje
 }
 
 bool JSObject::CreateDataPropertyOrThrow(JSThread *thread, const JSHandle<JSObject> &obj, uint32_t index,
-                                         const JSHandle<JSTaggedValue> &value)
+                                         const JSHandle<JSTaggedValue> &value,  SCheckMode sCheckMode)
 {
     ASSERT_PRINT(obj->IsECMAObject(), "Obj is not a valid object");
 
-    bool success = CreateDataProperty(thread, obj, index, value);
+    bool success = CreateDataProperty(thread, obj, index, value, sCheckMode);
     if (!success) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "failed to create data property", success);
     }

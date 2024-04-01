@@ -114,7 +114,6 @@ JSHandle<JSTaggedValue> JSSharedArray::ArrayCreate(JSThread *thread, JSTaggedNum
     JSHandle<JSObject> obj = factory->NewJSObjectByConstructor(arrayFunc, newTarget);
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
     // 9. Set the [[Extensible]] internal slot of A to true.
-    obj->GetJSHClass()->SetExtensible(true);
 
     // 10. Perform OrdinaryDefineOwnProperty(A, "length", PropertyDescriptor{[[Value]]: length, [[Writable]]:
     // true, [[Enumerable]]: false, [[Configurable]]: false}).
@@ -376,6 +375,25 @@ bool JSSharedArray::DefineOwnProperty(JSThread *thread, const JSHandle<JSObject>
 bool JSSharedArray::IsLengthString(JSThread *thread, const JSHandle<JSTaggedValue> &key)
 {
     return key.GetTaggedValue() == thread->GlobalConstants()->GetLengthString();
+}
+
+JSHandle<JSSharedArray> JSSharedArray::CreateArrayFromList(JSThread *thread, const JSHandle<TaggedArray> &elements)
+{
+    // Assert: elements is a List whose elements are all ECMAScript language values.
+    // 2. Let array be ArrayCreate(0).
+    uint32_t length = elements->GetLength();
+
+    // 4. For each element e of elements
+    auto env = thread->GetEcmaVM()->GetGlobalEnv();
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<JSFunction> arrayFunc(env->GetSharedArrayFunction());
+    JSHandle<JSObject> obj = factory->NewJSObjectByConstructor(arrayFunc);
+    JSSharedArray::Cast(*obj)->SetArrayLength(thread, length);
+    obj->SetElements(thread, elements);
+    obj->GetJSHClass()->SetExtensible(false);
+    JSHandle<JSSharedArray> arr(obj);
+
+    return arr;
 }
 
 JSHandle<JSTaggedValue> JSSharedArray::FastGetPropertyByValue(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
