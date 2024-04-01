@@ -1178,7 +1178,7 @@ uint64_t RandomGenerator::XorShift64(uint64_t *pVal)
     return x * GET_MULTIPLY;
 }
 
-void RandomGenerator::InitRandom(JSThread *thread)
+void RandomGenerator::InitRandom()
 {
     struct timeval tv;
     gettimeofday(&tv, NULL);
@@ -1187,7 +1187,6 @@ void RandomGenerator::InitRandom(JSThread *thread)
     if (randomState_ == 0) {
         randomState_ = 1;
     }
-    thread->SetRandomStatePtr(&randomState_);
 }
 
 double RandomGenerator::NextDouble()
