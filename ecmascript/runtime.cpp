@@ -166,6 +166,11 @@ void Runtime::ResumeAll(JSThread *current)
 void Runtime::SuspendAllThreadsImpl(JSThread *current)
 {
     LockHolder lock(threadsLock_);
+    while (suspendNewCount_ != 0) {
+        // Someone has already suspended all threads.
+        // Wait until it finishes.
+        threadSuspendCondVar_.Wait(&threadsLock_);
+    }
     suspendNewCount_++;
     for (auto i : threads_) {
         if (i != current) {
@@ -179,6 +184,10 @@ void Runtime::ResumeAllThreadsImpl(JSThread *current)
     LockHolder lock(threadsLock_);
     if (suspendNewCount_ > 0) {
         suspendNewCount_--;
+    }
+    if (suspendNewCount_ == 0) {
+        // Signal to waiting to suspend threads
+        threadSuspendCondVar_.Signal();
     }
     for (auto i : threads_) {
         if (i != current) {
