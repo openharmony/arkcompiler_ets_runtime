@@ -177,6 +177,7 @@ private:
 
     static void UpdateValueToAccessor(JSThread *thread, JSMutableHandle<JSTaggedValue> &value,
                                       JSHandle<AccessorData> &accessor);
+    static std::pair<uint32_t, uint32_t> GetSizeAndMaxInlineByType(JSType type);
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_JSPANDAFILE_CLASS_INFO_EXTRACTOR_H
