@@ -280,11 +280,13 @@ public:
 
     void SetInitialBuiltinHClass(
         BuiltinTypeId type, JSHClass *builtinHClass, JSHClass *instanceHClass,
-                            JSHClass *prototypeHClass, JSHClass *prototypeOfPrototypeHClass = nullptr);
+                            JSHClass *prototypeHClass, JSHClass *prototypeOfPrototypeHClass = nullptr,
+                            JSHClass *extraHClass = nullptr);
 
     JSHClass *GetBuiltinHClass(BuiltinTypeId type) const;
 
     JSHClass *GetBuiltinInstanceHClass(BuiltinTypeId type) const;
+    JSHClass *GetBuiltinExtraHClass(BuiltinTypeId type) const;
     JSHClass *GetArrayInstanceHClass(ElementsKind kind) const;
 
     PUBLIC_API JSHClass *GetBuiltinPrototypeHClass(BuiltinTypeId type) const;
