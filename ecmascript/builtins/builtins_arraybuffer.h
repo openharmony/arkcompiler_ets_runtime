@@ -141,6 +141,9 @@ private:
 
     static JSTaggedValue TypedArrayToList(JSThread *thread, JSHandle<JSTypedArray>& items);
 
+    static constexpr uint64_t MAX_NATIVE_SIZE_LIMIT = 4_GB;
+    static constexpr char const *NATIVE_SIZE_OUT_OF_LIMIT_MESSAGE = "total array buffer size out of limit(4_GB)";
+
     friend class BuiltinsArray;
     friend class BuiltinsSharedArray;
 };
