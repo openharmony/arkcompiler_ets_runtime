@@ -75,6 +75,7 @@ namespace panda::ecmascript::kungfu {
     V(FindIndex,     Array,   Undefined())          \
     V(From,          Array,   Undefined())          \
     V(Splice,        Array,   Undefined())          \
+    V(ToSpliced,     Array,   Undefined())          \
     V(ForEach,       Array,   Undefined())          \
     V(IndexOf,       Array,   Undefined())          \
     V(LastIndexOf,   Array,   Undefined())          \
