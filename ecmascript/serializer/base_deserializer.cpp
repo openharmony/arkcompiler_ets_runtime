@@ -206,7 +206,7 @@ void BaseDeserializer::HandleNewObjectEncodeFlag(SerializedObjectSpace space,  u
     } else if (object->GetClass()->IsJSFunction()) {
         JSFunction* func = reinterpret_cast<JSFunction *>(object);
         FunctionKind funcKind = func->GetFunctionKind();
-        if (funcKind == FunctionKind::CONCURRENT_FUNCTION) {
+        if (funcKind == FunctionKind::CONCURRENT_FUNCTION || object->GetClass()->IsJSSharedFunction()) {
             // defer initialize concurrent function until constpool is set
             concurrentFunctions_.push_back(reinterpret_cast<JSFunction *>(object));
         }
