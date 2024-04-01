@@ -82,6 +82,7 @@ namespace panda::ecmascript::kungfu {
     V(Slice,         Array,   Undefined())          \
     V(Reduce,        Array,   Undefined())          \
     V(Reverse,       Array,   Undefined())          \
+    V(ToReversed,    Array,   Undefined())          \
     V(Push,          Array,   Undefined())          \
     V(Values,        Array,   Undefined())          \
     V(Includes,      Array,   Undefined())          \

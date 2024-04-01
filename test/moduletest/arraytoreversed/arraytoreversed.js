@@ -30,3 +30,12 @@ const arr2 = new Array(1025);
 for(let i = 0; i < 1025; i = i + 1)
     arr2[i] = i;
 const arr3 = arr2.toReversed();
+
+var arr5 = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+var arr6 = new Array();
+for (let i = 0; i < 10; i++) arr6[i] = i;
+
+var result1 = arr5.toReversed();
+print(result1);
+var result2 = arr6.toReversed();
+print(result2);

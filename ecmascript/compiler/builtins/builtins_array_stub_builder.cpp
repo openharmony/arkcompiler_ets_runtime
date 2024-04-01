@@ -1415,38 +1415,165 @@ void BuiltinsArrayStubBuilder::Reverse(GateRef glue, GateRef thisValue, [[maybe_
     BRANCH(IsJsCOWArray(thisValue), slowPath, &notCOWArray);
     Bind(&notCOWArray);
 
-    GateRef thisArrLen = ZExtInt32ToInt64(GetArrayLength(thisValue));
-    DEFVARIABLE(i, VariableType::INT64(), Int64(0));
-    DEFVARIABLE(j, VariableType::INT64(),  Int64Sub(thisArrLen, Int64(1)));
+    result->WriteVariable(DoReverse(glue, thisValue, thisValue, Boolean(false), result, exit));
+    Jump(exit);
+}
 
+// Note: unused arguments are reserved for further development
+void BuiltinsArrayStubBuilder::ToReversed(GateRef glue, GateRef thisValue, [[maybe_unused]] GateRef numArgs,
+    Variable *result, Label *exit, Label *slowPath)
+{
+    auto env = GetEnvironment();
+    Label isHeapObject(env);
+    Label isJsArray(env);
+    Label defaultConstr(env);
+    Label isStability(env);
+    Label notCOWArray(env);
+    BRANCH(TaggedIsHeapObject(thisValue), &isHeapObject, slowPath);
+    Bind(&isHeapObject);
+    BRANCH(IsJsArray(thisValue), &isJsArray, slowPath);
+    Bind(&isJsArray);
+    BRANCH(HasConstructor(thisValue), slowPath, &defaultConstr);
+    Bind(&defaultConstr);
+    BRANCH(IsStableJSArray(glue, thisValue), &isStability, slowPath);
+    Bind(&isStability);
+    BRANCH(IsJsCOWArray(thisValue), slowPath, &notCOWArray);
+    Bind(&notCOWArray);
+
+    GateRef thisArrLen = GetArrayLength(thisValue);
+    GateRef receiver = NewArray(glue, Int32(0));
+    GrowElementsCapacity(glue, receiver, thisArrLen);
+    SetArrayLength(glue, receiver, thisArrLen);
+    result->WriteVariable(DoReverse(glue, thisValue, receiver, Boolean(true), result, exit));
+    Jump(exit);
+}
+
+GateRef BuiltinsArrayStubBuilder::DoReverse(GateRef glue, GateRef thisValue, GateRef receiver,
+    GateRef receiverState, Variable *result, Label *exit)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    DEFVARIABLE(i, VariableType::INT64(), Int64(0));
+    DEFVARIABLE(j, VariableType::INT64(), Int64Sub(ZExtInt32ToInt64(GetArrayLength(thisValue)), Int64(1)));
     Label loopHead(env);
     Label loopEnd(env);
     Label next(env);
     Label loopExit(env);
+
     Jump(&loopHead);
     LoopBegin(&loopHead);
     {
-        Label arrayValue(env);
-        Label valueEqual(env);
-        BRANCH(Int64LessThan(*i, *j), &next, &loopExit);
+        DEFVARIABLE(lower, VariableType::JS_ANY(), Hole());
+        DEFVARIABLE(upper, VariableType::JS_ANY(), Hole());
+        Label lowerValueIsHole(env);
+        Label afterGettingLower(env);
+        Label lowerHasProperty(env);
+        Label lowerHasException0(env);
+        Label upperValueIsHole(env);
+        Label afterGettingUpper(env);
+        Label upperHasProperty(env);
+        Label upperHasException0(env);
+        Label receiverIsNew(env);
+        Label receiverIsOrigin(env);
+        Label lowerIsHole(env);
+        Label lowerIsNotHole(env);
+        Label dealWithUpper(env);
+        Label upperIsHole(env);
+        Label upperIsNotHole(env);
+        BRANCH(Int64LessThanOrEqual(*i, *j), &next, &loopExit);
         Bind(&next);
         {
-            GateRef lower = GetTaggedValueWithElementsKind(thisValue, *i);
-            GateRef upper = GetTaggedValueWithElementsKind(thisValue, *j);
-            SetValueWithElementsKind(glue, thisValue, upper, *i, Boolean(false),
-                                     Int32(static_cast<uint32_t>(ElementsKind::NONE)));
-            SetValueWithElementsKind(glue, thisValue, lower, *j, Boolean(false),
-                                     Int32(static_cast<uint32_t>(ElementsKind::NONE)));
-            Jump(&loopEnd);
+            lower = GetTaggedValueWithElementsKind(thisValue, *i);
+            BRANCH(TaggedIsHole(*lower), &lowerValueIsHole, &afterGettingLower);
+            Bind(&lowerValueIsHole);
+            {
+                GateRef lowerHasProp = CallRuntime(glue, RTSTUB_ID(HasProperty), { thisValue, IntToTaggedInt(*i) });
+                BRANCH(TaggedIsTrue(lowerHasProp), &lowerHasProperty, &afterGettingLower);
+                Bind(&lowerHasProperty);
+                {
+                    lower = FastGetPropertyByIndex(glue, thisValue, TruncInt64ToInt32(*i), ProfileOperation());
+                    BRANCH(HasPendingException(glue), &lowerHasException0, &afterGettingLower);
+                    Bind(&lowerHasException0);
+                    {
+                        result->WriteVariable(Exception());
+                        Jump(exit);
+                    }
+                }
+            }
+            Bind(&afterGettingLower);
+            {
+                upper = GetTaggedValueWithElementsKind(thisValue, *j);
+                BRANCH(TaggedIsHole(*upper), &upperValueIsHole, &afterGettingUpper);
+                Bind(&upperValueIsHole);
+                {
+                    GateRef upperHasProp = CallRuntime(glue, RTSTUB_ID(HasProperty), { thisValue, IntToTaggedInt(*j) });
+                    BRANCH(TaggedIsTrue(upperHasProp), &upperHasProperty, &afterGettingUpper);
+                    Bind(&upperHasProperty);
+                    {
+                        upper = FastGetPropertyByIndex(glue, thisValue, TruncInt64ToInt32(*j), ProfileOperation());
+                        BRANCH(HasPendingException(glue), &upperHasException0, &afterGettingUpper);
+                    }
+                    Bind(&upperHasException0);
+                    {
+                        result->WriteVariable(Exception());
+                        Jump(exit);
+                    }
+                }
+                Bind(&afterGettingUpper);
+                {
+                    BRANCH(receiverState, &receiverIsNew, &receiverIsOrigin);
+                    Bind(&receiverIsNew);
+                    {
+                        BRANCH(TaggedIsHole(*lower), &lowerIsHole, &lowerIsNotHole);
+                        Bind(&lowerIsHole);
+                        {
+                            SetValueWithElementsKind(glue, receiver, Undefined(), *j, Boolean(true),
+                                Int32(static_cast<uint32_t>(ElementsKind::NONE)));
+                            Jump(&dealWithUpper);
+                        }
+                        Bind(&lowerIsNotHole);
+                        {
+                            SetValueWithElementsKind(glue, receiver, *lower, *j, Boolean(true),
+                                Int32(static_cast<uint32_t>(ElementsKind::NONE)));
+                            Jump(&dealWithUpper);
+                        }
+                        Bind(&dealWithUpper);
+                        {
+                            BRANCH(TaggedIsHole(*upper), &upperIsHole, &upperIsNotHole);
+                            Bind(&upperIsHole);
+                            {
+                                SetValueWithElementsKind(glue, receiver, Undefined(), *i, Boolean(true),
+                                    Int32(static_cast<uint32_t>(ElementsKind::NONE)));
+                                Jump(&loopEnd);
+                            }
+                            Bind(&upperIsNotHole);
+                            {
+                                SetValueWithElementsKind(glue, receiver, *upper, *i, Boolean(true),
+                                    Int32(static_cast<uint32_t>(ElementsKind::NONE)));
+                                Jump(&loopEnd);
+                            }
+                        }
+                    }
+                    Bind(&receiverIsOrigin);
+                    {
+                        SetValueWithElementsKind(glue, receiver, *upper, *i, Boolean(false),
+                            Int32(static_cast<uint32_t>(ElementsKind::NONE)));
+                        SetValueWithElementsKind(glue, receiver, *lower, *j, Boolean(false),
+                            Int32(static_cast<uint32_t>(ElementsKind::NONE)));
+                        Jump(&loopEnd);
+                    }
+                }
+            }
         }
     }
     Bind(&loopEnd);
     i = Int64Add(*i, Int64(1));
     j = Int64Sub(*j, Int64(1));
-    LoopEnd(&loopHead, env, glue);
+    LoopEnd(&loopHead);
     Bind(&loopExit);
-    result->WriteVariable(thisValue);
-    Jump(exit);
+    env->SubCfgExit();
+    return receiver;
 }
 
 GateRef BuiltinsArrayStubBuilder::IsJsArrayWithLengthLimit(GateRef glue, GateRef object,
