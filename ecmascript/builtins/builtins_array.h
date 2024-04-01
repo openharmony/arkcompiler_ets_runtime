@@ -109,7 +109,7 @@
     /* Array.prototype.values ( ) */                                        \
     V("values",         Values,           0, ArrayValues)                   \
     /* Array.prototype.with ( index, value ) */                             \
-    V("with",           With,             2, INVALID)
+    V("with",           With,             2, ArrayWith)
 
 namespace panda::ecmascript::builtins {
 static constexpr uint8_t INDEX_TWO = 2;

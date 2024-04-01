@@ -26,6 +26,128 @@
 #include "ecmascript/base/array_helper.h"
 
 namespace panda::ecmascript::kungfu {
+void BuiltinsArrayStubBuilder::With(GateRef glue, GateRef thisValue, GateRef numArgs,
+    Variable *result, Label *exit, Label *slowPath)
+{
+    auto env = GetEnvironment();
+    DEFVARIABLE(relativeIndex, VariableType::INT64(), Int64(0));
+    DEFVARIABLE(actualIndex, VariableType::INT64(), Int64(0));
+    Label isHeapObject(env);
+    Label isJsArray(env);
+    Label isStableArray(env);
+    Label defaultConstr(env);
+    Label notCOWArray(env);
+    BRANCH(TaggedIsHeapObject(thisValue), &isHeapObject, slowPath);
+    Bind(&isHeapObject);
+    BRANCH(IsJsArray(thisValue), &isJsArray, slowPath);
+    Bind(&isJsArray);
+    BRANCH(HasConstructor(thisValue), slowPath, &defaultConstr);
+    Bind(&defaultConstr);
+    BRANCH(IsStableJSArray(glue, thisValue), &isStableArray, slowPath);
+    Bind(&isStableArray);
+    BRANCH(IsJsCOWArray(thisValue), slowPath, &notCOWArray);
+    Bind(&notCOWArray);
+
+    GateRef thisLen = ZExtInt32ToInt64(GetArrayLength(thisValue));
+    GateRef index = GetCallArg0(numArgs);
+    Label taggedIsInt(env);
+    BRANCH(TaggedIsInt(index), &taggedIsInt, slowPath);
+    Bind(&taggedIsInt);
+    {
+        relativeIndex = GetInt64OfTInt(index);
+        DEFVARIABLE(value, VariableType::JS_ANY(), Hole());
+        Label twoArg(env);
+        Label ifOneArg(env);
+        Label getIndex(env);
+        // 2 : means there are two args
+        BRANCH(Int64Equal(numArgs, IntPtr(2)), &twoArg, &ifOneArg);
+        Bind(&twoArg);
+        {
+            value = GetCallArg1(numArgs);
+            Jump(&getIndex);
+        }
+        Bind(&ifOneArg);
+        {
+            // 1 : means there are only one arg
+            BRANCH(Int64Equal(numArgs, IntPtr(1)), &getIndex, slowPath);
+        }
+        Bind(&getIndex);
+        {
+            Label indexGreaterOrEqualZero(env);
+            Label indexLessZero(env);
+            Label next(env);
+            Label notOutOfRange(env);
+            BRANCH(Int64GreaterThanOrEqual(*relativeIndex, Int64(0)), &indexGreaterOrEqualZero, &indexLessZero);
+            Bind(&indexGreaterOrEqualZero);
+            {
+                actualIndex = *relativeIndex;
+                Jump(&next);
+            }
+            Bind(&indexLessZero);
+            {
+                actualIndex = Int64Add(thisLen, *relativeIndex);
+                Jump(&next);
+            }
+            Bind(&next);
+            {
+                BRANCH(BoolOr(Int64GreaterThanOrEqual(*actualIndex, thisLen), Int64LessThan(*actualIndex, Int64(0))),
+                    slowPath, &notOutOfRange);
+                Bind(&notOutOfRange);
+                {
+                    GateRef newArray = NewArray(glue, Int32(0));
+                    GrowElementsCapacity(glue, newArray, TruncInt64ToInt32(thisLen));
+                    DEFVARIABLE(k, VariableType::INT64(), Int64(0));
+                    Label loopHead(env);
+                    Label loopEnd(env);
+                    Label loopExit(env);
+                    Label loopNext(env);
+                    Label replaceIndex(env);
+                    Label notReplaceIndex(env);
+                    Jump(&loopHead);
+                    LoopBegin(&loopHead);
+                    {
+                        BRANCH(Int64LessThan(*k, thisLen), &loopNext, &loopExit);
+                        Bind(&loopNext);
+                        BRANCH(Int64Equal(*k, *actualIndex), &replaceIndex, &notReplaceIndex);
+                        Bind(&replaceIndex);
+                        {
+                            SetValueWithElementsKind(glue, newArray, *value, *k, Boolean(true),
+                                Int32(static_cast<uint32_t>(ElementsKind::NONE)));
+                            Jump(&loopEnd);
+                        }
+                        Bind(&notReplaceIndex);
+                        {
+                            GateRef ele = GetTaggedValueWithElementsKind(thisValue, *k);
+                            Label eleIsHole(env);
+                            Label eleNotHole(env);
+                            BRANCH(TaggedIsHole(ele), &eleIsHole, &eleNotHole);
+                            Bind(&eleIsHole);
+                            {
+                                SetValueWithElementsKind(glue, newArray, Undefined(), *k, Boolean(true),
+                                    Int32(static_cast<uint32_t>(ElementsKind::NONE)));
+                                Jump(&loopEnd);
+                            }
+                            Bind(&eleNotHole);
+                            {
+                                SetValueWithElementsKind(glue, newArray, ele, *k, Boolean(true),
+                                    Int32(static_cast<uint32_t>(ElementsKind::NONE)));
+                                Jump(&loopEnd);
+                            }
+                        }
+                    }
+                    Bind(&loopEnd);
+                    k = Int64Add(*k, Int64(1));
+                    LoopEnd(&loopHead);
+                    Bind(&loopExit);
+                    SetArrayLength(glue, newArray, thisLen);
+                    result->WriteVariable(newArray);
+                    Jump(exit);
+                }
+            }
+        }
+    }
+}
+
 void BuiltinsArrayStubBuilder::Unshift(GateRef glue, GateRef thisValue, GateRef numArgs,
     Variable *result, Label *exit, Label *slowPath)
 {
