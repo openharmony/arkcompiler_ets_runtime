@@ -18,6 +18,9 @@
 #include "ecmascript/js_function.h"
 #include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/jspandafile/method_literal.h"
+#include "ecmascript/shared_objects/js_shared_array.h"
+#include "ecmascript/shared_objects/js_shared_map.h"
+#include "ecmascript/shared_objects/js_shared_set.h"
 #include "ecmascript/tagged_dictionary.h"
 
 namespace panda::ecmascript {
@@ -940,19 +943,21 @@ void SendableClassDefiner::DefineSendableInstanceHClass(JSThread *thread, const 
         ASSERT(base->IsJSSharedFunction());
         JSHandle<JSFunction> baseCtor = JSHandle<JSFunction>::Cast(base);
         JSHandle<JSHClass> baseIHClass(thread, baseCtor->GetProtoOrHClass());
-        ASSERT(baseIHClass->IsJSSharedObject());
+        ASSERT(baseIHClass->IsJSShared());
+        JSType baseType = baseIHClass->GetObjectType();
+        const auto [baseSize, baseMaxInlineSize] = GetSizeAndMaxInlineByType(baseType);
         if (LIKELY(!baseIHClass->IsDictionaryMode())) {
             auto baseLength = baseIHClass->NumberOfProps();
             JSHandle<LayoutInfo> baseLayout(thread, baseIHClass->GetLayout());
             auto newLength = baseLength + fieldNum;
-            if (fieldNum == 0) {
-                iHClass = factory->NewSEcmaHClass(JSSharedObject::SIZE, JSType::JS_SHARED_OBJECT, fieldNum);
-            } else if (LIKELY(newLength <= JSSharedObject::MAX_INLINE)) {
-                iHClass = factory->NewSEcmaHClass(JSSharedObject::SIZE, JSType::JS_SHARED_OBJECT, newLength);
+            if (newLength == 0) {
+                iHClass = factory->NewSEcmaHClass(baseSize, baseType, 0);
+            } else if (LIKELY(newLength <= baseMaxInlineSize)) {
+                iHClass = factory->NewSEcmaHClass(baseSize, baseType, newLength);
                 JSHandle<LayoutInfo> layout = factory->CopyAndReSortSLayoutInfo(baseLayout, baseLength, newLength);
                 AddFieldTypeToHClass(thread, fieldTypeArray, layout, iHClass);
             } else {
-                iHClass = factory->NewSEcmaHClass(JSSharedObject::SIZE, JSType::JS_SHARED_OBJECT, 0);
+                iHClass = factory->NewSEcmaHClass(baseSize, baseType, 0);
                 JSHandle<NameDictionary> dict =
                     NameDictionary::CreateInSharedHeap(thread, NameDictionary::ComputeHashTableSize(newLength));
                 auto globalConst = const_cast<GlobalEnvConstants *>(thread->GlobalConstants());
@@ -975,7 +980,7 @@ void SendableClassDefiner::DefineSendableInstanceHClass(JSThread *thread, const 
                 NameDictionary::CreateInSharedHeap(thread, NameDictionary::ComputeHashTableSize(newLength));
             baseDict->Rehash(thread, *dict);
             dict->SetNextEnumerationIndex(thread, baseDict->GetNextEnumerationIndex());
-            iHClass = factory->NewSEcmaHClass(JSSharedObject::SIZE, JSType::JS_SHARED_OBJECT, 0);
+            iHClass = factory->NewSEcmaHClass(baseSize, baseType, 0);
             AddFieldTypeToHClass(thread, fieldTypeArray, dict, iHClass);
         }
     }
@@ -1069,5 +1074,23 @@ void SendableClassDefiner::UpdateValueToAccessor(JSThread *thread, JSMutableHand
         accessor->SetSetter(thread, value);
     }
     value.Update(accessor);
+}
+
+std::pair<uint32_t, uint32_t> SendableClassDefiner::GetSizeAndMaxInlineByType(JSType type)
+{
+    switch (type) {
+        case JSType::JS_SHARED_OBJECT:
+            return { JSSharedObject::SIZE, JSSharedObject::MAX_INLINE };
+        case JSType::JS_SHARED_ARRAY:
+            return { JSSharedArray::SIZE, JSSharedArray::MAX_INLINE };
+        case JSType::JS_SHARED_MAP:
+            return { JSSharedMap::SIZE, JSSharedMap::MAX_INLINE };
+        case JSType::JS_SHARED_SET:
+            return { JSSharedSet::SIZE, JSSharedSet::MAX_INLINE };
+        default:
+            LOG_ECMA(FATAL) << "this branch is unreachable, cannot get size for type: " << static_cast<uint32_t>(type);
+            UNREACHABLE();
+            return {};
+    }
 }
 }  // namespace panda::ecmascript
