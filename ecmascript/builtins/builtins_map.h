@@ -33,7 +33,7 @@
     /* Map.prototype.forEach ( callbackfn [ , thisArg ] ) */    \
     V("forEach", ForEach, 1, MapForEach)                        \
     /* Map.prototype.get ( key ) */                             \
-    V("get",     Get,     1, MapGet)                            \
+    V("get",     Get,     1, INVALID)                           \
     /* Map.prototype.has ( key ) */                             \
     V("has",     Has,     1, MapHas)                            \
     /* Map.prototype.keys ( ) */                                \
