@@ -1476,6 +1476,9 @@ bool JSObject::PreventExtensions(JSThread *thread, const JSHandle<JSObject> &obj
     if (obj->IsExtensible()) {
         JSHandle<JSHClass> jshclass(thread, obj->GetJSHClass());
         JSHandle<JSHClass> newHclass = JSHClass::TransitionExtension(thread, jshclass);
+#if ECMASCRIPT_ENABLE_IC
+        JSHClass::NotifyHclassChanged(thread, jshclass, newHclass);
+#endif
         obj->SynchronizedSetClass(thread, *newHclass);
         JSHClass::TryRestoreElementsKind(thread, newHclass, obj);
     }
