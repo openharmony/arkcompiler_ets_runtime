@@ -2352,8 +2352,7 @@ Local<FunctionRef> FunctionRef::NewSendableClassFunction(const EcmaVM *vm,
     JSHandle<JSFunction> constructor = factory->NewSFunctionByHClass(
         reinterpret_cast<void *>(nativeFunc), constructorHClass, ecmascript::FunctionKind::CLASS_CONSTRUCTOR);
 
-    infos.nonStaticPropertiesInfo.attributes.front() = PropertyAttribute(
-        JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>::Cast(constructor)), false, false, false);
+    sendable.SetSConstructor(constructor);
     JSObject::SetSProperties(thread, prototype, prototypeHClass, sendable.GetNonStaticDescs());
     JSObject::SetSProperties(thread, JSHandle<JSObject>::Cast(constructor), constructorHClass,
                              sendable.GetStaticDescs());

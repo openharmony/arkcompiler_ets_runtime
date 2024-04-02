@@ -24,6 +24,7 @@ namespace panda::ecmascript {
 class JSNapiSendable {
 public:
     JSNapiSendable(JSThread *thread, FunctionRef::SendablePropertiesInfos &infos, Local<StringRef> &name);
+    void SetSConstructor(JSHandle<JSFunction> constructor);
     const std::vector<PropertyDescriptor> GetStaticDescs() const
     {
         return staticDescs_;
@@ -42,12 +43,11 @@ private:
     std::vector<PropertyDescriptor> nonStaticDescs_;
     std::vector<PropertyDescriptor> instanceDescs_;
 
-    static void InitSPropertiesInfos(JSThread *thread,
-                                     FunctionRef::SendablePropertiesInfos &infos,
-                                     Local<StringRef> &name);
-    static void Init(JSThread *thread,
-                     FunctionRef::SendablePropertiesInfo &info,
-                     std::vector<PropertyDescriptor> &descs);
+    static void InitStaticDescription(JSThread *thread, std::vector<PropertyDescriptor> &descs, Local<StringRef> &name);
+    static void InitNonStaticDescription(JSThread *thread, std::vector<PropertyDescriptor> &descs);
+    static void InitWithPropertiesInfo(JSThread *thread,
+                                       FunctionRef::SendablePropertiesInfo &info,
+                                       std::vector<PropertyDescriptor> &descs);
     static SharedFieldType GetSharedFieldType(JSThread *thread,
                                               FunctionRef::SendableType type,
                                               Local<JSValueRef> value);

@@ -26,52 +26,62 @@ namespace panda::ecmascript {
 
 JSNapiSendable::JSNapiSendable(JSThread *thread, FunctionRef::SendablePropertiesInfos &infos, Local<StringRef> &name)
 {
-    InitSPropertiesInfos(thread, infos, name);
-    Init(thread, infos.staticPropertiesInfo, staticDescs_);
-    Init(thread, infos.nonStaticPropertiesInfo, nonStaticDescs_);
-    Init(thread, infos.instancePropertiesInfo, instanceDescs_);
+    InitStaticDescription(thread, staticDescs_, name);
+    InitNonStaticDescription(thread, nonStaticDescs_);
+    InitWithPropertiesInfo(thread, infos.staticPropertiesInfo, staticDescs_);
+    InitWithPropertiesInfo(thread, infos.nonStaticPropertiesInfo, nonStaticDescs_);
+    InitWithPropertiesInfo(thread, infos.instancePropertiesInfo, instanceDescs_);
 }
 
-void JSNapiSendable::InitSPropertiesInfos(JSThread *thread,
-                                          FunctionRef::SendablePropertiesInfos &infos,
-                                          Local<StringRef> &name)
+void JSNapiSendable::SetSConstructor(JSHandle<JSFunction> constructor)
 {
-    EcmaVM *vm = thread->GetEcmaVM();
-    const GlobalEnvConstants *globalConst = thread->GlobalConstants();
-    JSHandle<JSTaggedValue> napiWrapperKey = globalConst->GetHandledNapiWrapperString();
+    nonStaticDescs_[0].SetValue(JSHandle<JSTaggedValue>::Cast(constructor));
+}
 
-    infos.instancePropertiesInfo.keys.insert(infos.instancePropertiesInfo.keys.begin(),
-                                             JSNApiHelper::ToLocal<StringRef>(napiWrapperKey));
-    infos.instancePropertiesInfo.types.insert(infos.instancePropertiesInfo.types.begin(),
-                                              FunctionRef::SendableType::OBJECT);
-    infos.instancePropertiesInfo.attributes.insert(infos.instancePropertiesInfo.attributes.begin(),
-                                                   PropertyAttribute(JSValueRef::Null(vm), true, false, true));
+void JSNapiSendable::InitStaticDescription(JSThread *thread,
+                                           std::vector<PropertyDescriptor> &descs,
+                                           Local<StringRef> &name)
+{
+    const GlobalEnvConstants *globalConst = thread->GlobalConstants();
 
     JSHandle<JSTaggedValue> nameKey = globalConst->GetHandledNameString();
-    infos.staticPropertiesInfo.keys.insert(infos.staticPropertiesInfo.keys.begin(),
-                                           JSNApiHelper::ToLocal<StringRef>(nameKey));
-    infos.staticPropertiesInfo.types.insert(infos.staticPropertiesInfo.types.begin(), FunctionRef::SendableType::NONE);
-    infos.staticPropertiesInfo.attributes.insert(infos.staticPropertiesInfo.attributes.begin(),
-                                                 PropertyAttribute(name, false, false, false));
+    PropertyDescriptor nameDesc(thread, false, false, false);
+    nameDesc.SetKey(nameKey);
+    nameDesc.SetSharedFieldType(SharedFieldType::STRING);
+    nameDesc.SetValue(JSNApiHelper::ToJSHandle(name));
+    descs.push_back(nameDesc);
 
-    JSHandle<JSTaggedValue> constructorKey = globalConst->GetHandledConstructorString();
-    infos.nonStaticPropertiesInfo.keys.insert(infos.nonStaticPropertiesInfo.keys.begin(),
-                                              JSNApiHelper::ToLocal<StringRef>(constructorKey));
-    infos.nonStaticPropertiesInfo.types.insert(infos.nonStaticPropertiesInfo.types.begin(),
-                                               FunctionRef::SendableType::OBJECT);
-    infos.nonStaticPropertiesInfo.attributes.insert(infos.nonStaticPropertiesInfo.attributes.begin(),
-                                                    PropertyAttribute(JSValueRef::Null(vm), false, false, false));
+    JSHandle<JSTaggedValue> prototypeKey = globalConst->GetHandledPrototypeString();
+    PropertyDescriptor prototypeDesc(thread, false, false, false);
+    prototypeDesc.SetKey(prototypeKey);
+    prototypeDesc.SetSharedFieldType(SharedFieldType::SENDABLE);
+    prototypeDesc.SetValue(globalConst->GetHandledNull());
+    descs.push_back(prototypeDesc);
 }
 
-void JSNapiSendable::Init(JSThread *thread,
-                          FunctionRef::SendablePropertiesInfo &info,
-                          std::vector<PropertyDescriptor> &descs)
+void JSNapiSendable::InitNonStaticDescription(JSThread *thread, std::vector<PropertyDescriptor> &descs)
+{
+    const GlobalEnvConstants *globalConst = thread->GlobalConstants();
+
+    JSHandle<JSTaggedValue> constructorKey = globalConst->GetHandledConstructorString();
+    PropertyDescriptor constructorDesc(thread, false, false, false);
+    constructorDesc.SetKey(constructorKey);
+    constructorDesc.SetSharedFieldType(SharedFieldType::SENDABLE);
+    constructorDesc.SetValue(globalConst->GetHandledNull());
+    descs.push_back(constructorDesc);
+}
+
+void JSNapiSendable::InitWithPropertiesInfo(JSThread *thread,
+                                            FunctionRef::SendablePropertiesInfo &info,
+                                            std::vector<PropertyDescriptor> &descs)
 {
     EcmaVM *vm = thread->GetEcmaVM();
     auto length = info.keys.size();
 
     for (size_t i = 0; i < length; ++i) {
-        PropertyDescriptor desc(thread, info.attributes[i].IsWritable(), info.attributes[i].IsEnumerable(),
+        PropertyDescriptor desc(thread,
+                                info.attributes[i].IsWritable(),
+                                info.attributes[i].IsEnumerable(),
                                 info.attributes[i].IsConfigurable());
         desc.SetKey(JSNApiHelper::ToJSHandle(info.keys[i]));
         auto type = GetSharedFieldType(thread, info.types[i], info.attributes[i].GetValue(vm));
