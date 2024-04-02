@@ -18,6 +18,7 @@
 
 #include "ecmascript/js_array.h"
 #include "ecmascript/js_dataview.h"
+#include "ecmascript/js_hclass.h"
 #include "ecmascript/js_typed_array.h"
 #include "ecmascript/js_tagged_value.h"
 
@@ -26,12 +27,16 @@ class JSStableArray {
 public:
     enum SeparatorFlag : int { MINUS_ONE = -1, MINUS_TWO = -2 };
     static JSTaggedValue Push(JSHandle<JSArray> receiver, EcmaRuntimeCallInfo *argv);
+    static JSTaggedValue Push(JSHandle<JSSharedArray> receiver, EcmaRuntimeCallInfo *argv);
     static JSTaggedValue Pop(JSHandle<JSArray> receiver, EcmaRuntimeCallInfo *argv);
+    static JSTaggedValue Pop(JSHandle<JSSharedArray> receiver, EcmaRuntimeCallInfo *argv);
     static JSTaggedValue Splice(JSHandle<JSArray> receiver, EcmaRuntimeCallInfo *argv, uint32_t start,
                                 uint32_t insertCount, uint32_t actualDeleteCount,
                                 JSHandle<JSObject> newArrayHandle, uint32_t len);
     static JSTaggedValue Shift(JSHandle<JSArray> receiver, EcmaRuntimeCallInfo *argv);
+    static JSTaggedValue Shift(JSHandle<JSSharedArray> receiver, EcmaRuntimeCallInfo *argv);
     static JSTaggedValue Join(JSHandle<JSArray> receiver, EcmaRuntimeCallInfo *argv);
+    static JSTaggedValue Join(JSHandle<JSSharedArray> receiver, EcmaRuntimeCallInfo *argv);
     static JSTaggedValue HandleFindIndexOfStable(JSThread *thread, JSHandle<JSObject> thisObjHandle,
                                                  JSHandle<JSTaggedValue> callbackFnHandle,
                                                  JSHandle<JSTaggedValue> thisArgHandle, uint32_t &k);
@@ -39,6 +44,9 @@ public:
                                                      JSHandle<JSTaggedValue> callbackFnHandle,
                                                      JSHandle<JSTaggedValue> thisArgHandle, int64_t &k);
     static JSTaggedValue HandleEveryOfStable(JSThread *thread, JSHandle<JSObject> thisObjHandle,
+                                             JSHandle<JSTaggedValue> callbackFnHandle,
+                                             JSHandle<JSTaggedValue> thisArgHandle, uint32_t &k);
+    static JSTaggedValue HandleSomeOfStable(JSThread *thread, JSHandle<JSObject> thisObjHandle,
                                              JSHandle<JSTaggedValue> callbackFnHandle,
                                              JSHandle<JSTaggedValue> thisArgHandle, uint32_t &k);
     static JSTaggedValue HandleforEachOfStable(JSThread *thread, JSHandle<JSObject> thisObjHandle,
@@ -60,6 +68,7 @@ public:
                                                        DataViewType targetType, uint64_t targetOffset,
                                                        uint32_t srcLength, JSHandle<JSObject> &obj);
     static JSTaggedValue At(JSHandle<JSArray> receiver, EcmaRuntimeCallInfo *argv);
+    static JSTaggedValue At(JSHandle<JSSharedArray> receiver, EcmaRuntimeCallInfo *argv);
     static JSTaggedValue With(JSThread *thread, JSHandle<JSArray> receiver,
                               int64_t insertCount, int64_t index, JSHandle<JSTaggedValue> value);
     static JSTaggedValue ToSpliced(JSHandle<JSArray> receiver, EcmaRuntimeCallInfo *argv,
@@ -79,6 +88,10 @@ public:
                                                 JSHandle<JSTaggedValue> callbackFnHandle,
                                                 JSHandle<JSTaggedValue> thisArgHandle,
                                                 JSMutableHandle<JSTaggedValue> &kValue, int64_t &k);
+    static JSTaggedValue HandleReduceRightOfStable(JSThread *thread, JSHandle<JSObject> thisObjHandle,
+                                                   JSHandle<JSTaggedValue> callbackFnHandle,
+                                                   JSMutableHandle<JSTaggedValue> &accumulator,
+                                                   JSHandle<JSTaggedValue> thisArgHandle, int64_t &k);
 
 private:
     static void SetSepValue(JSHandle<EcmaString> sepStringHandle, int &sep, uint32_t &sepLength);

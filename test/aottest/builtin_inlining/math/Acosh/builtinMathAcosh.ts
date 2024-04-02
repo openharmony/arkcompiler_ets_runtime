@@ -23,34 +23,35 @@ let len:number = 1;
 
 // Check without params
 len = Math.acosh();
-print(len); // NaN
+print(len); //: NaN
 
 len = Math.acosh(NaN);
-print(len); // NaN
+print(len); //: NaN
 
 // Check with single param, in x < 1
 len = Math.acosh(0);
-print(len); // NaN 
+print(len); //: NaN
 
 // Check with single param, in x < 1
 len = Math.acosh(-1);
-print(len); // NaN
+print(len); //: NaN
 
 // Check with single param, in x >= 1
 len = Math.acosh(1);
-print(len); // NaN
+print(len); //: 0
 
 // Check with single param, in x >= 1
 len = Math.acosh(10);
-print(len); // 2.993222846126381
+print(len); //: 2.993222846126381
 
 // Replace standart builtin
 let true_acosh = Math.acosh
 Math.acosh = replace
 len = Math.acosh(111);
-print(len);
+print(len); //: 111
 
 // Call standart builtin with non-number param
 Math.acosh = true_acosh
 len = Math.acosh("NaN"); // deopt
-print(len); // NaN
+//aot: [trace] Check Type: NotNumber1
+print(len); //: NaN

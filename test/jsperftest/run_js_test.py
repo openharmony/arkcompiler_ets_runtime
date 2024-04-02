@@ -25,6 +25,7 @@ import os
 import shutil
 import stat
 import subprocess
+from typing import Union
 from collections import namedtuple
 from openpyxl import Workbook, load_workbook
 from openpyxl.styles import PatternFill
@@ -152,6 +153,15 @@ def ark_divide_v_8_compute(exec_time, v_8_excute_time):
     return ark_divide_v_8
 
 
+def cast_to_float_or_str(value: str) -> Union[float, str]:
+    """Return float value by str if it is possible, return input str otherwise"""
+    try:
+        result = float(value)
+    except ValueError:
+        result = value
+    return result
+
+
 def append_row_data(report_file, case_test_data):
     wb = load_workbook(report_file)
     ws = wb.worksheets[0]
@@ -187,9 +197,14 @@ def append_row_data(report_file, case_test_data):
                 ark_divide_v_8_with_jitless = str("{:.2f}".format(float(exec_time) / float(v_8_jitless_excute_time)))
         jis_case_file_name_with_class = Constants.JS_FILE_SUPER_LINK_DICT['/'.join([class_name, api_name])]
         js_file_super_link = '/'.join([Constants.HYPERLINK_HEAD, jis_case_file_name_with_class])
-        new_row = [js_case_name, scene, excute_status, exec_time, yesterday_excute_time,
-                   is_degraded_str, v_8_excute_time, v_8_jitless_excute_time, ark_divide_v_8,
-                   ark_divide_v_8_with_jitless, js_file_super_link, ' ']
+        new_row = [js_case_name, scene, excute_status,
+                   cast_to_float_or_str(exec_time), yesterday_excute_time,
+                   is_degraded_str,
+                   cast_to_float_or_str(v_8_excute_time),
+                   cast_to_float_or_str(v_8_jitless_excute_time),
+                   cast_to_float_or_str(ark_divide_v_8),
+                   cast_to_float_or_str(ark_divide_v_8_with_jitless),
+                   js_file_super_link, ' ']
         ws.append(new_row)
         if is_degraded_str is str(True):
             ws.cell(row=ws.max_row, column=6).fill = PatternFill(start_color='FF0000', end_color='FF0000',
@@ -207,8 +222,7 @@ def append_row_data(report_file, case_test_data):
     wb.save(report_file)
     return Constants.RET_OK
 
-
-def run_js_case_via_ark(binary_path, js_file_path, class_name, api_name, report_file):
+def run_js_case_via_ark(binary_path, js_file_path, class_name, api_name, iterations, report_file):
     composite_scenes = get_js_file_class_api_scenes(js_file_path)
     case_test_data = {}
     execute_status = Constants.FAIL
@@ -224,29 +238,17 @@ def run_js_case_via_ark(binary_path, js_file_path, class_name, api_name, report_
     os.makedirs(fangzhou_test_path)
 
     class_folder_path = os.path.join(fangzhou_test_path, class_name)
-    api_path = os.path.join(class_folder_path, api_name)
     if not os.path.exists(class_folder_path):
         os.makedirs(class_folder_path)
-    abc_file_path = api_path + ".abc"
     cur_abc_file = os.path.join(Constants.CUR_PATH, api_name + ".abc")
     api_log_path = os.path.join(class_folder_path, api_name + ".log")
 
-    es2abc_path = Constants.ES2ABC_PATH
-    # tranmit abc
-    cmd = [es2abc_path, js_file_path]
+    cmd = [Constants.ES2ABC_PATH, "--output", cur_abc_file,  js_file_path]
 
     logger.info("run cmd: %s", cmd)
     ret = subprocess.run(cmd)
     if ret.returncode != 0:
         logger.error("ret = %s, %s generate abc file failed. cmd: %s", str(ret), js_file_name, cmd)
-        append_row_data(report_file, case_test_data)
-        return case_test_data
-
-    cmd2 = ["cp", cur_abc_file, abc_file_path]
-    ret = subprocess.run(cmd2)
-    if ret.returncode != 0:
-        logger.error("ret.returncode = %s, %s generate abc file failed. cmd: %s", str(ret.returncode), js_file_name,
-                     cmd2)
         append_row_data(report_file, case_test_data)
         return case_test_data
     # execute abc
@@ -257,38 +259,33 @@ def run_js_case_via_ark(binary_path, js_file_path, class_name, api_name, report_
     logger.info("run cmd: %s", cmd)
     flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
     modes = stat.S_IWUSR | stat.S_IRUSR
-    if os.path.exists(api_log_path):
-        os.remove(api_log_path)
-    with os.fdopen(os.open(api_log_path, flags, modes), 'wb') as outfile:
-        ret = subprocess.run(cmd, stdout=outfile)
 
-    if ret.returncode != 0:
-        logger.error("%s execute abc file failed. cmd: %s", js_file_name, cmd)
-        append_row_data(report_file, case_test_data)
-        return case_test_data
-    else:
-        case_test_data.clear()
+    data = {}
+    for _ in range(iterations):
         if os.path.exists(api_log_path):
-            with open(api_log_path, 'r') as f:
-                for line in f:
-                    if "scene_output" not in line:
-                        continue
+            os.remove(api_log_path)
+        with os.fdopen(os.open(api_log_path, flags, modes), 'wb') as outfile:
+            ret = subprocess.run(cmd, stdout=outfile)
 
-                    mid_str = line.split(':')[1].strip()
-                    scene = mid_str.split()[2]
-                    main_key = '/'.join([js_file_name, scene]).lower()
-                    execute_time = line.split(':')[2]
-                    execute_status = Constants.PASS
-                    case_test_data[main_key] = Constants.CaseTestDataType(execute_status, execute_time)
+        if ret.returncode != 0:
+            logger.error("%s execute abc file failed. cmd: %s", js_file_name, cmd)
+            append_row_data(report_file, case_test_data)
+            return case_test_data
+        if os.path.exists(api_log_path):
+            data = update_data_by_log(data, api_log_path, js_file_name[:-3])
 
-        append_row_data(report_file, case_test_data)
-        logger.info("%s execute abc file successfully. cmd: %s case_test_data: %s", js_file_name, cmd, case_test_data)
-
+    case_test_data.clear()
+    execute_status = Constants.PASS
+    for k, time_value in data.items():
+        case_test_data[k] = Constants.CaseTestDataType(execute_status, str(time_value / iterations))
+    append_row_data(report_file, case_test_data)
+    logger.info("%s execute abc file successfully. cmd: %s case_test_data: %s",
+                js_file_name, cmd, case_test_data)
     os.remove(cur_abc_file)
     return case_test_data
 
 
-def run_via_ark(jspath, report_file):
+def run_via_ark(jspath, report_file, iterations):
     if not os.path.exists(jspath):
         logger.error("js perf cases path is not exist. jspath: %s", jspath)
     logger.info("begin to run js perf test via ark. js perf cases path: %s", jspath)
@@ -305,7 +302,7 @@ def run_via_ark(jspath, report_file):
             api_name = results[-1].split(".")[0]
             js_case_name = '/'.join([class_name, results[-1]])
             logger.info("begin to execute %s.", js_case_name)
-            test_data = run_js_case_via_ark(BINARY_PATH, file_path, class_name, api_name, report_file)
+            test_data = run_js_case_via_ark(BINARY_PATH, file_path, class_name, api_name, iterations, report_file)
             for _, key in enumerate(test_data.keys()):
                 Constants.TODAY_EXCUTE_INFO[key] = test_data.get(key)
             logger.info("finish executing %s. executing info: %s.", js_case_name, Constants.TODAY_EXCUTE_INFO)
@@ -428,6 +425,25 @@ def append_summary_info(report_file, total_cost_time):
     return Constants.RET_OK
 
 
+def process_args(args: argparse.Namespace) -> argparse.Namespace:
+    """Process and check argument values"""
+    if not os.path.exists(args.binarypath):
+        logger.error("parameter --binarypath is not exist. Please check it! binary path: %s", args.binarypath)
+        raise RuntimeError("error bad  parameters  --binarypath")
+    if args.output_folder_path is None:
+        args.output_folder_path = os.getcwd()
+    if not os.path.isabs(args.output_folder_path):
+        args.output_folder_path = os.path.abspath(args.output_folder_path)
+    if not os.path.exists(args.d_8_binary_path):
+        logger.error("parameter --d_8_binary_path is not exist. Please check it! d 8  binary path: %s",
+                     args.d_8_binary_path)
+        raise RuntimeError("error bad  parameters  --d_8_binary_path: {}".format(args.d_8_binary_path))
+    if args.iterations <= 0:
+        logger.error("parameter --iterations <= 0. Please check it! iterations: %s",
+                     args.iterations)
+        raise RuntimeError(f"error bad  parameters --iterations: {args.iterations}")
+    return args
+
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -466,24 +482,14 @@ def get_args():
         default="full_x86_64",
         help="Code repository version and platform",
     )
-    args = parser.parse_args()
-
-    if not os.path.exists(args.binarypath):
-        logger.error("parameter --binarypath is not exist. Please check it! binary path: %s", args.binarypath)
-        raise RuntimeError("error bad  parameters  --binarypath")
-
-    if args.output_folder_path is None:
-        args.output_folder_path = os.getcwd()
-
-    if not os.path.isabs(args.output_folder_path):
-        args.output_folder_path = os.path.abspath(args.output_folder_path)
-
-    if not os.path.exists(args.d_8_binary_path):
-        logger.error("parameter --d_8_binary_path is not exist. Please check it! d 8  binary path: %s",
-                     args.d_8_binary_path)
-        raise RuntimeError("error bad  parameters  --d_8_binary_path: {}".format(args.d_8_binary_path))
-
-    return args
+    parser.add_argument(
+        "--iterations",
+        "-n",
+        default=1,
+        type=int,
+        help="Number of benchmark launches"
+    )
+    return process_args(parser.parse_args())
 
 
 def init_report(report_file):
@@ -572,34 +578,9 @@ def get_yesterday_excute_times(yesterday_report):
             excute_time = ws.cell(row=row_num, column=4).value
             Constants.YESTERDAY_EXCUTE_TIME_DICT[main_key] = excute_time
 
-
-def run_v_8_single_js_case(js_file_path, cmd_para, js_case_name):
-    v_8_exec_time_dict = {}
-    scenes = get_js_file_class_api_scenes(js_file_path)
-
-    v_8_log_path = os.path.join(Constants.CUR_PATH, "v_8.log")
-    if os.path.exists(v_8_log_path):
-        os.remove(v_8_log_path)
-
-    flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
-    modes = stat.S_IWUSR | stat.S_IRUSR
-    with os.fdopen(os.open(v_8_log_path, flags, modes), 'wb') as outfile:
-        if len(cmd_para) == 0:
-            cmd = [Constants.V_8_ENGINED_PATH, js_file_path]
-        else:
-            cmd = [Constants.V_8_ENGINED_PATH, cmd_para, js_file_path]
-        logger.info("run cmd:%s", cmd)
-        ret = subprocess.run(cmd, stdout=outfile)
-
-        if ret.returncode != 0:
-            for elem in enumerate(scenes):
-                v_8_exec_time_dict[elem] = 0
-            logger.error("execute cmd failed. cmd: %s", cmd)
-            return v_8_exec_time_dict
-
-    logger.info("v 8 excute %s successfully. cmd: %s", js_file_path, cmd)
-
-    with open(v_8_log_path, 'r') as f:
+def update_data_by_log(data: dict, log_path: str, js_name: str) -> dict:
+    """Update execution time data by log file"""
+    with open(log_path, 'r') as f:
         for line in f:
             if "scene_output" not in line:
                 continue
@@ -607,10 +588,44 @@ def run_v_8_single_js_case(js_file_path, cmd_para, js_case_name):
             mid_str = str_array[1].strip()
             scene = mid_str.split()[2]
             exec_time = str_array[2]
-            key_str = '/'.join([js_case_name + '.js', scene]).lower()
-            v_8_exec_time_dict[key_str] = exec_time
+            key_str = '/'.join([js_name + '.js', scene]).lower()
+            if key_str not in data:
+                data[key_str] = float(exec_time)
+            else:
+                data[key_str] += float(exec_time)
+    return data
 
-    os.remove(v_8_log_path)
+def run_v_8_single_js_case(js_file_path, cmd_para, js_case_name, iterations: int):
+    v_8_exec_time_dict = {}
+    scenes = get_js_file_class_api_scenes(js_file_path)
+
+    v_8_log_path = os.path.join(Constants.CUR_PATH, "v_8.log")
+
+    flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
+    modes = stat.S_IWUSR | stat.S_IRUSR
+
+    if len(cmd_para) == 0:
+        cmd = [Constants.V_8_ENGINED_PATH, js_file_path]
+    else:
+        cmd = [Constants.V_8_ENGINED_PATH, cmd_para, js_file_path]
+    logger.info("run cmd:%s", cmd)
+    data = {}
+    for _ in range(iterations):
+        if os.path.exists(v_8_log_path):
+            os.remove(v_8_log_path)
+        with os.fdopen(os.open(v_8_log_path, flags, modes), 'wb') as outfile:
+            ret = subprocess.run(cmd, stdout=outfile, check=False)
+        if ret.returncode != 0:
+            for elem in enumerate(scenes):
+                v_8_exec_time_dict[elem] = 0
+            logger.error("execute cmd failed. cmd: %s", cmd)
+            return v_8_exec_time_dict
+        data = update_data_by_log(data, v_8_log_path, js_case_name)
+        os.remove(v_8_log_path)
+
+    for k, time_value in data.items():
+        v_8_exec_time_dict[k] = str(time_value / iterations)
+    logger.info("v 8 excute %s successfully. cmd: %s", js_file_path, cmd)
     return v_8_exec_time_dict
 
 
@@ -632,7 +647,7 @@ def get_given_column_data(report_file, column_index):
     return column_data
 
 
-def get_v_8_excute_times(jspath, v_8_based_report_file):
+def get_v_8_excute_times(jspath, v_8_based_report_file, iterations):
     if os.path.exists(v_8_based_report_file) and os.path.isfile(v_8_based_report_file):
         # Generate v 8 benchmark data on the 1st, 11th, and 21st of each month.The testing at other times refers to
         # these V 8 benchmark data
@@ -654,14 +669,14 @@ def get_v_8_excute_times(jspath, v_8_based_report_file):
         api_name = results[-1].split(".")[0]
         js_case_name = '/'.join([class_name, api_name])
 
-        v_8_exec_time_dict = run_v_8_single_js_case(file_path, '', js_case_name)
+        v_8_exec_time_dict = run_v_8_single_js_case(file_path, '', js_case_name, iterations)
         for key in v_8_exec_time_dict.keys():
             Constants.V_8_EXCUTE_TIME_DICT[key] = v_8_exec_time_dict[key]
 
     return Constants.RET_OK
 
 
-def get_v_8_jitless_excute_times(jspath, v_8_based_report_file_path):
+def get_v_8_jitless_excute_times(jspath, v_8_based_report_file_path, iterations):
     if os.path.exists(v_8_based_report_file_path) and os.path.isfile(v_8_based_report_file_path):
         # Generate v 8 benchmark data on the 1st, 11th, and 21st of each month.The testing at other times refers to
         # these V 8 benchmark data
@@ -684,7 +699,7 @@ def get_v_8_jitless_excute_times(jspath, v_8_based_report_file_path):
         api_name = results[-1].split(".")[0]
         js_case_name = '/'.join([class_name, api_name])
 
-        v_8_exec_time_dict = run_v_8_single_js_case(file_path, '--jitless', js_case_name)
+        v_8_exec_time_dict = run_v_8_single_js_case(file_path, '--jitless', js_case_name, iterations)
         for key in v_8_exec_time_dict.keys():
             Constants.V_8_JITLESS_EXCUTE_TIME_DICT[key] = v_8_exec_time_dict[key]
 
@@ -749,10 +764,10 @@ if __name__ == "__main__":
     init_report(TODAY_EXCEL_PATH)
     get_yesterday_excute_times(YESTERDAY_EXCEL_PATH)
     v_8_based_report_path = get_v_8_benchmark_daily_report_path()
-    get_v_8_excute_times(paras.jspath, v_8_based_report_path)
-    get_v_8_jitless_excute_times(paras.jspath, v_8_based_report_path)
+    get_v_8_excute_times(paras.jspath, v_8_based_report_path, paras.iterations)
+    get_v_8_jitless_excute_times(paras.jspath, v_8_based_report_path, paras.iterations)
 
-    run_via_ark(paras.jspath, TODAY_EXCEL_PATH)
+    run_via_ark(paras.jspath, TODAY_EXCEL_PATH, paras.iterations)
     end_time = datetime.datetime.now(tz=datetime.timezone.utc)
 
     totol_time = u"%s" % (end_time - start_time)

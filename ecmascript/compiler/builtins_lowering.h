@@ -28,7 +28,6 @@ public:
     ~BuiltinLowering() = default;
     void LowerTypedCallBuitin(GateRef gate);
     GateRef LowerCallTargetCheck(Environment *env, GateRef gate);
-    void LowerTypedSqrt(GateRef gate);
     GateRef CheckPara(GateRef gate, GateRef funcCheck);
     void LowerTypedLocaleCompare(GateRef gate);
     void LowerTypedArraySort(GateRef gate);

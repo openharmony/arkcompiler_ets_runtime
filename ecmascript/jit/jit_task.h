@@ -30,13 +30,15 @@ enum CompileState : uint8_t {
 
 class JitTask {
 public:
-    JitTask(EcmaVM *vm, Jit *jit, JSHandle<JSFunction> &jsFunction, CString &methodName, uint32_t taskThreadId)
+    JitTask(EcmaVM *vm, Jit *jit, JSHandle<JSFunction> &jsFunction, CString &methodName, int32_t offset,
+            uint32_t taskThreadId)
         : vm_(vm),
         jit_(jit),
         jsFunction_(jsFunction),
         compilerTask_(nullptr),
         state_(CompileState::SUCCESS),
         methodInfo_(methodName),
+        offset_(offset),
         taskThreadId_(taskThreadId) { }
     ~JitTask();
     void Optimize();
@@ -44,6 +46,7 @@ public:
     void PrepareCompile();
 
     void InstallCode();
+    void InstallOsrCode(JSHandle<Method> &method, JSHandle<MachineCode> &codeObj);
     MachineCodeDesc *GetMachineCodeDesc()
     {
         return &codeDesc_;
@@ -52,6 +55,11 @@ public:
     JSHandle<JSFunction> GetJsFunction() const
     {
         return jsFunction_;
+    }
+
+    int32_t GetOffset() const
+    {
+        return offset_;
     }
 
     void RequestInstallCode()
@@ -67,6 +75,11 @@ public:
     void SetCompileFailed()
     {
         state_ = CompileState::FAIL;
+    }
+
+    bool IsOsrTask()
+    {
+        return offset_ != MachineCode::INVALID_OSR_OFFSET;
     }
 
     Jit *GetJit()
@@ -117,6 +130,7 @@ private:
     MachineCodeDesc codeDesc_;
     CompileState state_;
     CString methodInfo_;
+    int32_t offset_;
     uint32_t taskThreadId_;
 };
 }  // namespace panda::ecmascript

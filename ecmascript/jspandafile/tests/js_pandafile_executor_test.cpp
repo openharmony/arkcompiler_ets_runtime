@@ -164,4 +164,15 @@ HWTEST_F_L0(JSPandaFileExecutorTest, ExecuteFromBuffer)
     std::shared_ptr<JSPandaFile> foundPf = pfManager->FindJSPandaFile(fileName);
     EXPECT_TRUE(foundPf == nullptr);
 }
+
+HWTEST_F_L0(JSPandaFileExecutorTest, ExecuteAbcFileWithSingletonPatternFlag)
+{
+    int result = JSPandaFileExecutor::ExecuteAbcFileWithSingletonPatternFlag(thread, "",
+        "entry", JSPandaFile::ENTRY_MAIN_FUNCTION, false);
+    EXPECT_EQ(result, JSPandaFileExecutor::ROUTE_URI_ERROR);
+
+    int result1 = JSPandaFileExecutor::ExecuteAbcFileWithSingletonPatternFlag(thread, "com.application.example",
+        "entry", JSPandaFile::ENTRY_MAIN_FUNCTION, false);
+    EXPECT_EQ(result1, JSPandaFileExecutor::ROUTE_URI_ERROR);
+}
 }  // namespace panda::test

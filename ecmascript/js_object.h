@@ -18,6 +18,7 @@
 
 #include "ecmascript/ecma_macros.h"
 #include "ecmascript/ecma_string.h"
+#include "ecmascript/ecma_vm.h"
 #include "ecmascript/filter_helper.h"
 #include "ecmascript/ic/property_box.h"
 #include "ecmascript/js_handle.h"
@@ -383,7 +384,8 @@ public:
 
     void* GetNativePointerField(int32_t index) const;
     void SetNativePointerField(const JSThread *thread, int32_t index, void *nativePointer,
-        const DeleteEntryPoint &callBack, void *data, size_t nativeBindingsize = 0);
+                               const DeleteEntryPoint &callBack, void *data, size_t nativeBindingsize = 0,
+                               Concurrent isConcurrent = Concurrent::NO);
     int32_t GetNativePointerFieldCount() const;
     void SetNativePointerFieldCount(const JSThread *thread, int32_t count);
 
@@ -521,7 +523,7 @@ public:
                                        const JSHandle<JSTaggedValue> &key, const JSHandle<JSTaggedValue> &receiver);
 
     static OperationResult GetProperty(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
-                                       const JSHandle<JSTaggedValue> &key);
+                                       const JSHandle<JSTaggedValue> &key, SCheckMode sCheckMode = SCheckMode::CHECK);
 
     static OperationResult GetProperty(JSThread *thread, const JSHandle<JSTaggedValue> &obj, uint32_t index);
 
@@ -531,7 +533,8 @@ public:
                             const JSHandle<JSTaggedValue> &value, bool mayThrow = false);
 
     static bool SetProperty(JSThread *thread, const JSHandle<JSTaggedValue> &obj, const JSHandle<JSTaggedValue> &key,
-                            const JSHandle<JSTaggedValue> &value, bool mayThrow = false);
+                            const JSHandle<JSTaggedValue> &value, bool mayThrow = false,
+                            SCheckMode checkMode = SCheckMode::CHECK);
 
     static bool SetProperty(JSThread *thread, const JSHandle<JSTaggedValue> &obj, const JSHandle<JSTaggedValue> &key,
                             const JSHandle<JSTaggedValue> &value, const JSHandle<JSTaggedValue> &receiver,
@@ -598,6 +601,8 @@ public:
     bool IsArguments() const;
     bool IsDate() const;
     bool IsJSArray() const;
+    bool IsJSSArray() const;
+    bool IsJSShared() const;
     bool IsJSMap() const;
     bool IsJSSet() const;
     bool IsJSRegExp() const;
@@ -738,6 +743,11 @@ public:
     static void TryOptimizeAsFastElements(const JSThread *thread, JSHandle<JSObject> obj);
     static void OptimizeAsFastProperties(const JSThread *thread, JSHandle<JSObject> obj);
 
+    static void SetSProperties(JSThread *thread,
+                               JSHandle<JSObject> obj,
+                               JSHandle<JSHClass> hclass,
+                               const std::vector<PropertyDescriptor> &descs);
+
 protected:
     static void ElementsToDictionary(const JSThread *thread, JSHandle<JSObject> obj);
 
@@ -748,6 +758,7 @@ private:
     friend class ObjectFastOperator;
     friend class ICRuntimeStub;
     friend class RuntimeStubs;
+    friend class JSSharedArray;
 
     PropertyBox* GetGlobalPropertyBox(JSTaggedValue key);
     static bool PUBLIC_API AddElementInternal(

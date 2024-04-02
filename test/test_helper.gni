@@ -2219,6 +2219,7 @@ template("host_aot_test_action") {
   _test_aot_path_ = "$target_out_dir/${_target_name_}.an"
   _test_aot_snapshot_path_ = "$target_out_dir/${_target_name_}.ai"
   _test_aot_arg_ = "$target_out_dir/${_target_name_}"
+  _test_profiler_path_ = "${_test_aot_arg_}/modules.ap"
   _test_aot_path_slowpath_ = "$target_out_dir/slowpath/${_target_name_}.an"
   _test_aot_snapshot_path_slowpath_ =
       "$target_out_dir/slowpath/${_target_name_}.ai"
@@ -2247,6 +2248,29 @@ template("host_aot_test_action") {
         "$target_out_dir/slowpath/litecg/${_target_name_}.ai"
     _test_aot_arg_slowpath_litecg_ =
         "$target_out_dir/slowpath/litecg/${_target_name_}"
+  }
+
+  if (defined(invoker.gen_expect_output) && invoker.gen_expect_output) {
+    _test_expect_path_ = "$target_out_dir/expect_output.txt"
+    _test_pgo_expect_path_ = "$target_out_dir/pgo_expect_output.txt"
+
+    action("${_target_name_}GenExpectOutput") {
+      script = "$js_root/script/gen_expect_output.sh"
+      sources = [ _test_ts_path_ ]
+      outputs = [ _test_expect_path_ ]
+      args = [ "aot" ] + rebase_path(sources + outputs)
+    }
+
+    action("${_target_name_}PgoGenExpectOutput") {
+      script = "$js_root/script/gen_expect_output.sh"
+      sources = [ _test_ts_path_ ]
+      outputs = [ _test_pgo_expect_path_ ]
+      args = [ "pgo" ] + rebase_path(sources + outputs)
+    }
+    _deps_ += [
+      ":${_target_name_}GenExpectOutput",
+      ":${_target_name_}PgoGenExpectOutput",
+    ]
   }
 
   es2abc_gen_abc("gen_${_target_name_}_abc") {
@@ -2298,7 +2322,7 @@ template("host_aot_test_action") {
     _aot_run_options_ =
         " --asm-interpreter=true" + " --entry-point=${_target_name_}" +
         " --enable-pgo-profiler=true" + " --compiler-pgo-profiler-path=" +
-        rebase_path(_test_aot_arg_) + "/modules.ap"
+        rebase_path(_test_profiler_path_)
 
     if (defined(invoker.is_enable_enableArkTools) &&
         invoker.is_enable_enableArkTools) {
@@ -2331,7 +2355,7 @@ template("host_aot_test_action") {
 
     inputs = [ _test_abc_path_ ]
 
-    outputs = [ "$target_out_dir/${_target_name_}/pgo" ]
+    outputs = [ _test_profiler_path_ ]
   }
 
   action("${_target_name_}AotCompileAction") {
@@ -2357,8 +2381,8 @@ template("host_aot_test_action") {
         " --compiler-opt-inlining=false" + " --compiler-opt-loop-peeling=false"
 
     if (defined(invoker.is_enable_pgo) && invoker.is_enable_pgo) {
-      _aot_compile_options_ += " --compiler-pgo-profiler-path=" +
-                               rebase_path(_test_aot_arg_) + "/modules.ap"
+      _aot_compile_options_ +=
+          " --compiler-pgo-profiler-path=" + rebase_path(_test_profiler_path_)
     }
     if (defined(invoker.is_enable_trace_deopt) &&
         invoker.is_enable_trace_deopt) {
@@ -2771,8 +2795,8 @@ template("host_aot_test_action") {
           " --compiler-enable-litecg=true"
 
       if (defined(invoker.is_enable_pgo) && invoker.is_enable_pgo) {
-        _aot_compile_options_ += " --compiler-pgo-profiler-path=" +
-                                 rebase_path(_test_aot_arg_) + "/modules.ap"
+        _aot_compile_options_ +=
+            " --compiler-pgo-profiler-path=" + rebase_path(_test_profiler_path_)
       }
       if (defined(invoker.is_enable_trace_deopt) &&
           invoker.is_enable_trace_deopt) {
@@ -3180,8 +3204,8 @@ template("host_aot_test_action") {
           " --compiler-target-triple=aarch64-unknown-linux-gnu"
 
       if (defined(invoker.is_enable_pgo) && invoker.is_enable_pgo) {
-        _aot_compile_options_ += " --compiler-pgo-profiler-path=" +
-                                 rebase_path(_test_aot_arg_) + "/modules.ap"
+        _aot_compile_options_ +=
+            " --compiler-pgo-profiler-path=" + rebase_path(_test_profiler_path_)
       }
       if (defined(invoker.is_enable_trace_deopt) &&
           invoker.is_enable_trace_deopt) {

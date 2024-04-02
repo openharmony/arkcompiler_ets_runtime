@@ -34,6 +34,7 @@ class JSFunction;
 class ObjectFactory;
 class JSBoundFunction;
 class JSProxy;
+class JSTypedArray;
 
 class GeneratorContext;
 struct EcmaRuntimeCallInfo;
@@ -105,6 +106,7 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(DebugPrint)                              \
     V(DebugPrintCustom)                        \
     V(DebugPrintInstruction)                   \
+    V(DebugOsrEntry)                           \
     V(Comment)                                 \
     V(FatalPrint)                              \
     V(FatalPrintCustom)                        \
@@ -116,7 +118,6 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(DoubleToInt)                             \
     V(DoubleToLength)                          \
     V(FloatMod)                                \
-    V(FloatSqrt)                               \
     V(FloatAcos)                               \
     V(FloatAcosh)                              \
     V(FloatAsin)                               \
@@ -130,12 +131,18 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(FloatSinh)                               \
     V(FloatTan)                                \
     V(FloatTanh)                               \
+    V(FloatTrunc)                              \
     V(FloatLog)                                \
     V(FloatLog2)                               \
     V(FloatLog10)                              \
     V(FloatLog1p)                              \
+    V(FloatExp)                                \
+    V(FloatExpm1)                              \
+    V(FloatCbrt)                               \
     V(FloatFloor)                              \
     V(FloatPow)                                \
+    V(FloatCeil)                               \
+    V(NumberIsFinite)                          \
     V(FindElementWithCache)                    \
     V(CreateArrayFromList)                     \
     V(StringsAreEquals)                        \
@@ -152,12 +159,15 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(LocaleCompareNoGc)                       \
     V(StringGetStart)                          \
     V(StringGetEnd)                            \
-    V(ArrayTrim)
+    V(ArrayTrim)                               \
+    V(ClearJitCompiledCodeFlags)               \
+    V(CopyTypedArrayBuffer)
 
 #define RUNTIME_STUB_WITH_GC_LIST(V)      \
     V(AddElementInternal)                 \
     V(AllocateInYoung)                    \
     V(AllocateInSOld)                     \
+    V(TypedArraySpeciesCreate)            \
     V(CallInternalGetter)                 \
     V(CallInternalSetter)                 \
     V(CallGetPrototype)                   \
@@ -460,6 +470,7 @@ public:
     static void DebugPrint(int fmtMessageId, ...);
     static void DebugPrintCustom(uintptr_t fmt, ...);
     static void DebugPrintInstruction([[maybe_unused]] uintptr_t argGlue, const uint8_t *pc);
+    static void DebugOsrEntry([[maybe_unused]] uintptr_t argGlue, const uint8_t *codeEntry);
     static void Comment(uintptr_t argStr);
     static void FatalPrint(int fmtMessageId, ...);
     static void FatalPrintCustom(uintptr_t fmt, ...);
@@ -474,7 +485,6 @@ public:
     static int32_t DoubleToInt(double x, size_t bits);
     static JSTaggedType DoubleToLength(double x);
     static double FloatMod(double x, double y);
-    static JSTaggedType FloatSqrt(double x);
     static double FloatAcos(double x);
     static double FloatAcosh(double x);
     static double FloatAsin(double x);
@@ -488,12 +498,18 @@ public:
     static double FloatSinh(double x);
     static double FloatTan(double x);
     static double FloatTanh(double x);
+    static double FloatTrunc(double x);
     static double FloatFloor(double x);
     static double FloatLog(double x);
     static double FloatLog2(double x);
     static double FloatLog10(double x);
     static double FloatLog1p(double x);
+    static double FloatExp(double x);
+    static double FloatExpm1(double x);
     static double FloatPow(double base, double exp);
+    static double FloatCbrt(double x);
+    static double FloatCeil(double x);
+    static bool NumberIsFinite(double x);
     static int32_t FindElementWithCache(uintptr_t argGlue, JSTaggedType hclass,
                                         JSTaggedType key, int32_t num);
     static bool StringsAreEquals(EcmaString *str1, EcmaString *str2);
@@ -516,6 +532,10 @@ public:
 
     static int32_t StringGetStart(bool isUtf8, EcmaString *srcString, int32_t length, int32_t startIndex);
     static int32_t StringGetEnd(bool isUtf8, EcmaString *srcString, int32_t start, int32_t length, int32_t startIndex);
+    static void ClearJitCompiledCodeFlags(Method *method);
+    static void CopyTypedArrayBuffer(JSTypedArray *srcArray, JSTypedArray *targetArray,
+                                     int32_t startPos, int32_t count, int32_t elementSize);
+
 private:
     static void DumpToStreamWithHint(std::ostream &out, std::string_view prompt, JSTaggedValue value);
     static void PrintHeapReginInfo(uintptr_t argGlue);

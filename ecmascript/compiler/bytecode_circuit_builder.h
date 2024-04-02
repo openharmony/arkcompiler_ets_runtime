@@ -284,6 +284,11 @@ public:
         return true;
     }
 
+    void SetOsrOffset(int32_t offset)
+    {
+        osrOffset_ = offset;
+    }
+
     bool NeedCheckSafePointAndStackOver() const
     {
         return !isInline_ && !method_->IsNoGC();
@@ -389,7 +394,7 @@ public:
         return pgoTypeRecorder_.GetElementsKindsForUser(GetPcOffsetByGate(gate));
     }
 
-    std::vector<ElementsKind> GetTransitionElementsKindsForUser(GateRef gate) const
+    PUBLIC_API std::vector<ElementsKind> GetTransitionElementsKindsForUser(GateRef gate) const
     {
         return pgoTypeRecorder_.GetTransitionElementsKindsForUser(GetPcOffsetByGate(gate));
     }
@@ -575,6 +580,16 @@ public:
                                  GateType::AnyType());
     }
 
+    bool IsOSR() const
+    {
+        return osrOffset_ != MachineCode::INVALID_OSR_OFFSET;
+    }
+
+    bool IsCacheBBOfOSRLoop(const BytecodeRegion &bb) const
+    {
+        return catchBBOfOSRLoop_.find(&bb) != catchBBOfOSRLoop_.end();
+    }
+
 private:
     void CollectTryCatchBlockInfo(ExceptionInfo &Exception);
     void BuildCatchBlocks(const ExceptionInfo &Exception);
@@ -582,6 +597,7 @@ private:
     void BuildRegions(const ExceptionInfo &Exception);
     // build circuit
     void BuildCircuitArgs();
+    void BuildOSRArgs();
     std::vector<GateRef> CreateGateInList(const BytecodeInfo &info, const GateMetaData *meta);
     GateRef NewConst(const BytecodeInfo &info);
     void NewJSGate(BytecodeRegion &bb);
@@ -591,6 +607,11 @@ private:
     void MergeThrowGate(BytecodeRegion &bb, uint32_t bcIndex);
     void MergeExceptionGete(BytecodeRegion &bb, const BytecodeInfo& bytecodeInfo, uint32_t bcIndex);
     void BuildSubCircuit();
+    bool FindOsrLoopHeadBB();
+    void GenDeoptAndReturnForOsrLoopExit(BytecodeRegion& osrLoopExitBB);
+    void CollectCacheBBforOSRLoop(BytecodeRegion *bb);
+    void HandleOsrLoopBody(BytecodeRegion &osrLoopBodyBB);
+    void BuildOsrCircuit();
 
     void UpdateCFG();
     void CollectTryPredsInfo();
@@ -620,6 +641,7 @@ private:
     ArgumentAccessor argAcc_;
     TypeRecorder typeRecorder_;
     PGOTypeRecorder pgoTypeRecorder_;
+    int32_t osrOffset_ {MachineCode::INVALID_OSR_OFFSET};
     bool hasTypes_ {false};
     bool enableLog_ {false};
     bool enableTypeLowering_ {false};
@@ -638,6 +660,7 @@ private:
     size_t numOfLiveBB_ {0};
     bool isInline_ {false};
     uint32_t methodId_ {0};
+    std::set<const BytecodeRegion *> catchBBOfOSRLoop_{};
 };
 }  // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_CLASS_LINKER_BYTECODE_CIRCUIT_IR_BUILDER_H

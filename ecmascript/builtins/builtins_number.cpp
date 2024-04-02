@@ -530,7 +530,7 @@ JSTaggedValue NumberToStringResultCache::CreateCacheTable(const JSThread *thread
 JSTaggedValue NumberToStringResultCache::FindCachedResult(JSTaggedValue &number)
 {
     int entry = NumberToStringResultCache::GetNumberHash(number);
-    uint32_t index = entry * ENTRY_SIZE;
+    uint32_t index = static_cast<uint32_t>(entry * ENTRY_SIZE);
     JSTaggedValue entryNumber = Get(index + NUMBER_INDEX);
     if (entryNumber == number) {
         return Get(index + RESULT_INDEX);

@@ -61,7 +61,7 @@ public:
     void PrintAllGatesWithBytecode() const;
     void GetAllGates(std::vector<GateRef>& gates) const;
     static GateRef NullGate();
-    void Verify(GateRef gate) const;
+    void Verify(GateRef gate, const std::string& methodName = "") const;
     panda::ecmascript::FrameType GetFrameType() const;
     void SetFrameType(panda::ecmascript::FrameType type);
     GateRef GetConstantGate(MachineType machineType, uint64_t value, GateType type);
@@ -216,6 +216,16 @@ public:
 
     bool GetDebugInfo(GateRef g, size_t &index) const;
 
+    bool IsOsr() const
+    {
+        return isOsr_;
+    }
+
+    void SetIsOsr()
+    {
+        isOsr_ = true;
+    }
+
 private:
     static const size_t CIRCUIT_SPACE = 1U << 30U;  // 1GB
 public:
@@ -280,6 +290,7 @@ private:
     std::map<GateRef, GateRef> initialEnvCache_ {};
     panda::ecmascript::FrameType frameType_ {FrameType::OPTIMIZED_FRAME};
     bool isArch64_ { false };
+    bool isOsr_ { false };
 
     Chunk chunk_;
     GateRef root_ { NullGate() };

@@ -20,15 +20,20 @@
 
 namespace panda::ecmascript {
 template<typename Derived, typename HashObject>
-JSHandle<Derived> LinkedHashTable<Derived, HashObject>::Create(const JSThread *thread, int numberOfElements)
+JSHandle<Derived> LinkedHashTable<Derived, HashObject>::Create(const JSThread *thread,
+    int numberOfElements, MemSpaceKind spaceKind)
 {
     ASSERT_PRINT(numberOfElements > 0, "size must be a non-negative integer");
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     auto capacity = static_cast<uint32_t>(numberOfElements);
     ASSERT_PRINT(helpers::math::IsPowerOfTwo(capacity), "capacity must be pow of '2'");
     int length = ELEMENTS_START_INDEX + numberOfElements + numberOfElements * (HashObject::ENTRY_SIZE + 1);
-
-    auto table = JSHandle<Derived>(factory->NewTaggedArray(length));
+    JSHandle<Derived> table;
+    if (spaceKind == MemSpaceKind::SHARED) {
+        table = JSHandle<Derived>(factory->NewSOldSpaceTaggedArray(length));
+    } else {
+        table = JSHandle<Derived>(factory->NewTaggedArray(length));
+    }
     table->SetNumberOfElements(thread, 0);
     table->SetNumberOfDeletedElements(thread, 0);
     table->SetCapacity(thread, capacity);
@@ -96,7 +101,8 @@ JSHandle<Derived> LinkedHashTable<Derived, HashObject>::GrowCapacity(const JSThr
         return table;
     }
     int newCapacity = ComputeCapacity(table->NumberOfElements() + numberOfAddedElements);
-    JSHandle<Derived> newTable = Create(thread, newCapacity);
+    JSHandle<Derived> newTable = Create(thread, newCapacity,
+        table.GetTaggedValue().IsInSharedHeap() ? MemSpaceKind::SHARED : MemSpaceKind::LOCAL);
     table->Rehash(thread, *newTable);
     return newTable;
 }
@@ -123,16 +129,17 @@ JSHandle<Derived> LinkedHashTable<Derived, HashObject>::Shrink(const JSThread *t
         return table;
     }
 
-    JSHandle<Derived> newTable = Create(thread, newCapacity);
+    JSHandle<Derived> newTable = Create(thread, newCapacity,
+        table.GetTaggedValue().IsInSharedHeap() ? MemSpaceKind::SHARED : MemSpaceKind::LOCAL);
 
     table->Rehash(thread, *newTable);
     return newTable;
 }
 
 // LinkedHashMap
-JSHandle<LinkedHashMap> LinkedHashMap::Create(const JSThread *thread, int numberOfElements)
+JSHandle<LinkedHashMap> LinkedHashMap::Create(const JSThread *thread, int numberOfElements, MemSpaceKind spaceKind)
 {
-    return LinkedHashTable<LinkedHashMap, LinkedHashMapObject>::Create(thread, numberOfElements);
+    return LinkedHashTable<LinkedHashMap, LinkedHashMapObject>::Create(thread, numberOfElements, spaceKind);
 }
 
 JSHandle<LinkedHashMap> LinkedHashMap::Delete(const JSThread *thread, const JSHandle<LinkedHashMap> &obj,
@@ -170,7 +177,8 @@ bool LinkedHashMap::Has(const JSThread *thread, JSTaggedValue key) const
 
 JSHandle<LinkedHashMap> LinkedHashMap::Clear(const JSThread *thread, const JSHandle<LinkedHashMap> &table)
 {
-    JSHandle<LinkedHashMap> newMap = LinkedHashMap::Create(thread);
+    JSHandle<LinkedHashMap> newMap = LinkedHashMap::Create(thread, LinkedHashMap::MIN_CAPACITY,
+        table.GetTaggedValue().IsInSharedHeap() ? MemSpaceKind::SHARED : MemSpaceKind::LOCAL);
     if (table->Capacity() > 0) {
         table->SetNextTable(thread, newMap.GetTaggedValue());
         table->SetNumberOfDeletedElements(thread, -1);
@@ -185,9 +193,9 @@ JSHandle<LinkedHashMap> LinkedHashMap::Shrink(const JSThread *thread, const JSHa
 }
 
 // LinkedHashSet
-JSHandle<LinkedHashSet> LinkedHashSet::Create(const JSThread *thread, int numberOfElements)
+JSHandle<LinkedHashSet> LinkedHashSet::Create(const JSThread *thread, int numberOfElements, MemSpaceKind spaceKind)
 {
-    return LinkedHashTable<LinkedHashSet, LinkedHashSetObject>::Create(thread, numberOfElements);
+    return LinkedHashTable<LinkedHashSet, LinkedHashSetObject>::Create(thread, numberOfElements, spaceKind);
 }
 
 JSHandle<LinkedHashSet> LinkedHashSet::Delete(const JSThread *thread, const JSHandle<LinkedHashSet> &obj,
@@ -216,7 +224,8 @@ bool LinkedHashSet::Has(const JSThread *thread, JSTaggedValue key) const
 
 JSHandle<LinkedHashSet> LinkedHashSet::Clear(const JSThread *thread, const JSHandle<LinkedHashSet> &table)
 {
-    JSHandle<LinkedHashSet> newSet = LinkedHashSet::Create(thread);
+    JSHandle<LinkedHashSet> newSet = LinkedHashSet::Create(thread, LinkedHashSet::MIN_CAPACITY,
+        table.GetTaggedValue().IsInSharedHeap() ? MemSpaceKind::SHARED : MemSpaceKind::LOCAL);
     if (table->Capacity() > 0) {
         table->SetNextTable(thread, newSet.GetTaggedValue());
         table->SetNumberOfDeletedElements(thread, -1);

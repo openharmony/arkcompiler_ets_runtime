@@ -63,6 +63,9 @@ namespace panda::ecmascript {
 class ProtoChangeDetails;
 class PropertyLookupResult;
 class SharedHeap;
+class JSSharedArray;
+class LayoutInfo;
+class NameDictionary;
 namespace pgo {
     class HClassLayoutDesc;
     class PGOHClassTreeDesc;
@@ -113,7 +116,9 @@ struct Reference;
                                                                                                                        \
         JS_REG_EXP,  /* ///////////////////////////////////////////////////////////////////////////////////-PADDING */ \
         JS_SET,      /* ///////////////////////////////////////////////////////////////////////////////////-PADDING */ \
+        JS_SHARED_SET, /*  ////////////////////////////////////////////////////////////////////////////////-PADDING */ \
         JS_MAP,      /* ///////////////////////////////////////////////////////////////////////////////////-PADDING */ \
+        JS_SHARED_MAP, /* /////////////////////////////////////////////////////////////////////////////////-PADDING */ \
         JS_WEAK_MAP, /* ///////////////////////////////////////////////////////////////////////////////////-PADDING */ \
         JS_WEAK_SET, /* ///////////////////////////////////////////////////////////////////////////////////-PADDING */ \
         JS_WEAK_REF, /* ///////////////////////////////////////////////////////////////////////////////////-PADDING */ \
@@ -124,7 +129,9 @@ struct Reference;
         JS_ASYNC_FROM_SYNC_ITERATOR, /* ///////////////////////////////////////////////////////////////////-PADDING */ \
         JS_FORIN_ITERATOR,       /* ///////////////////////////////////////////////////////////////////////-PADDING */ \
         JS_MAP_ITERATOR,         /* ///////////////////////////////////////////////////////////////////////-PADDING */ \
+        JS_SHARED_MAP_ITERATOR,  /* ///////////////////////////////////////////////////////////////////////-PADDING */ \
         JS_SET_ITERATOR,         /* ///////////////////////////////////////////////////////////////////////-PADDING */ \
+        JS_SHARED_SET_ITERATOR,  /* ///////////////////////////////////////////////////////////////////////-PADDING */ \
         JS_REG_EXP_ITERATOR,        /* ////////////////////////////////////////////////////////////////////-PADDING */ \
         JS_API_ARRAYLIST_ITERATOR, /* /////////////////////////////////////////////////////////////////////-PADDING */ \
         JS_API_DEQUE_ITERATOR,   /* ///////////////////////////////////////////////////////////////////////-PADDING */ \
@@ -141,6 +148,7 @@ struct Reference;
         JS_API_LINKED_LIST_ITERATOR, /* ///////////////////////////////////////////////////////////////////-PADDING */ \
         JS_API_LIST_ITERATOR,    /* ///////////////////////////////////////////////////////////////////////-PADDING */ \
         JS_ARRAY_ITERATOR,       /* ///////////////////////////////////////////////////////////////////////-PADDING */ \
+        JS_SHARED_ARRAY_ITERATOR, /* //////////////////////////////////////////////////////////////////////-PADDING */ \
         JS_SEGMENT_ITERATOR,       /* /////////////////////////////////////////////////////////////////////-PADDING */ \
         JS_STRING_ITERATOR,      /* ///////////////////////////////////////////////////////////////////////-PADDING */ \
         JS_INTL, /* ///////////////////////////////////////////////////////////////////////////////////////-PADDING */ \
@@ -166,6 +174,7 @@ struct Reference;
                                                                                                                        \
         /* SPECIAL indexed objects begin, DON'T CHANGE HERE ///////////////////////////////////////////////-PADDING */ \
         JS_ARRAY,       /* ////////////////////////////////////////////////////////////////////////////////-PADDING */ \
+        JS_SHARED_ARRAY, /* ///////////////////////////////////////////////////////////////////////////////-PADDING */ \
         JS_API_ARRAY_LIST, /* /////////////////////////////////////////////////////////////////////////////-PADDING */ \
         JS_API_LIGHT_WEIGHT_MAP,      /* //////////////////////////////////////////////////////////////////-PADDING */ \
         JS_API_LIGHT_WEIGHT_SET, /* ///////////////////////////////////////////////////////////////////////-PADDING */ \
@@ -339,14 +348,6 @@ enum class EnumCacheKind : uint8_t {
 
 }  // namespace EnumCache
 
-namespace JSShared {
-// check mode for js shared
-enum SCheckMode: uint8_t {
-    SKIP = 0,
-    CHECK
-};
-} // namespace JSShared
-
 class JSHClass : public TaggedObject {
 public:
     static constexpr int TYPE_BITFIELD_NUM = 8;
@@ -369,7 +370,8 @@ public:
     using LevelBit = IsTSBit::NextField<uint32_t, LEVEL_BTTFIELD_NUM>;                            // 25-29
     using IsJSFunctionBit = LevelBit::NextFlag;                                                   // 30
     using IsOnHeap = IsJSFunctionBit::NextFlag;                                                   // 31
-    using BitFieldLastBit = IsOnHeap;
+    using IsJSSharedBit = IsOnHeap::NextFlag;                                                     // 32
+    using BitFieldLastBit = IsJSSharedBit;
     static_assert(BitFieldLastBit::START_BIT + BitFieldLastBit::SIZE <= sizeof(uint32_t) * BITS_PER_BYTE, "Invalid");
 
     static constexpr int DEFAULT_CAPACITY_OF_IN_OBJECTS = 4;
@@ -877,9 +879,19 @@ public:
         return GetObjectType() == JSType::JS_SET;
     }
 
+    bool IsJSSharedSet() const
+    {
+        return GetObjectType() == JSType::JS_SHARED_SET;
+    }
+
     bool IsJSMap() const
     {
         return GetObjectType() == JSType::JS_MAP;
+    }
+
+    bool IsJSSharedMap() const
+    {
+        return GetObjectType() == JSType::JS_SHARED_MAP;
     }
 
     bool IsJSWeakMap() const
@@ -914,12 +926,13 @@ public:
 
     bool IsJSShared() const
     {
-        return IsJSSharedType(GetObjectType());
+        uint32_t bits = GetBitField();
+        return IsJSSharedBit::Decode(bits);
     }
 
-    static inline bool IsJSSharedType(JSType jsType)
+    inline void SetIsJSShared(bool flag) const
     {
-        return (jsType == JSType::JS_SHARED_OBJECT || jsType == JSType::JS_SHARED_FUNCTION);
+        IsJSSharedBit::Set<uint32_t>(flag, GetBitFieldAddr());
     }
 
     inline bool IsJSError() const
@@ -1197,6 +1210,12 @@ public:
         return GetObjectType() == JSType::JS_SET_ITERATOR;
     }
 
+    // iterator of shared set
+    inline bool IsJSSharedSetIterator() const
+    {
+        return GetObjectType() == JSType::JS_SHARED_SET_ITERATOR;
+    }
+
     inline bool IsJSRegExpIterator() const
     {
         return GetObjectType() == JSType::JS_REG_EXP_ITERATOR;
@@ -1207,9 +1226,20 @@ public:
         return GetObjectType() == JSType::JS_MAP_ITERATOR;
     }
 
+    // iterator of shared map
+    inline bool IsJSSharedMapIterator() const
+    {
+        return GetObjectType() == JSType::JS_SHARED_MAP_ITERATOR;
+    }
+
     inline bool IsJSArrayIterator() const
     {
         return GetObjectType() == JSType::JS_ARRAY_ITERATOR;
+    }
+
+    inline bool IsJSSharedArrayIterator() const
+    {
+        return GetObjectType() == JSType::JS_SHARED_ARRAY_ITERATOR;
     }
 
     inline bool IsJSAPIPlainArrayIterator() const
@@ -1627,6 +1657,11 @@ public:
         return GetObjectType() == JSType::JS_SHARED_OBJECT;
     }
 
+    inline bool IsJSSharedArray() const
+    {
+        return GetObjectType() == JSType::JS_SHARED_ARRAY;
+    }
+
     inline void SetElementsKind(ElementsKind kind)
     {
         uint32_t bits = GetBitField();
@@ -1886,7 +1921,15 @@ public:
     DECL_VISIT_OBJECT(PROTOTYPE_OFFSET, BIT_FIELD_OFFSET);
     inline JSHClass *FindProtoTransitions(const JSTaggedValue &key, const JSTaggedValue &proto);
 
+    static JSHandle<JSHClass> CreateSHClass(JSThread *thread,
+                                            const std::vector<PropertyDescriptor> &descs,
+                                            bool isFunction = false);
+    static JSHandle<JSHClass> CreateSConstructorHClass(JSThread *thread, const std::vector<PropertyDescriptor> &descs);
+    static JSHandle<JSHClass> CreateSPrototypeHClass(JSThread *thread, const std::vector<PropertyDescriptor> &descs);
+
 private:
+    static JSHandle<LayoutInfo> CreateSInlinedLayout(JSThread *thread, const std::vector<PropertyDescriptor> &descs);
+    static JSHandle<NameDictionary> CreateSDictLayout(JSThread *thread, const std::vector<PropertyDescriptor> &descs);
     static inline void AddTransitions(const JSThread *thread, const JSHandle<JSHClass> &parent,
                                       const JSHandle<JSHClass> &child, const JSHandle<JSTaggedValue> &key,
                                       PropertyAttributes attr);

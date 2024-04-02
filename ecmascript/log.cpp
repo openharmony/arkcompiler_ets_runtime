@@ -54,7 +54,7 @@ Level ConvertToLevel(LogLevel hilogLevel)
 LogLevel GetHiLogLevel()
 {
     for (int32_t level = LogLevel::LOG_LEVEL_MIN; level <= LogLevel::LOG_LEVEL_MAX; level++) {
-        if (HiLogIsLoggable(ARK_DOMAIN, TAG, static_cast<LogLevel>(level))) {
+        if (HiLogIsLoggable(LOG_DOMAIN, LOG_TAG, static_cast<LogLevel>(level))) {
             return static_cast<LogLevel>(level);
         }
     }

@@ -23,51 +23,52 @@ let res:number = 0;
 
 // Check without params
 res = Math.log1p();
-print(res); // NaN
+print(res); //: NaN
 
 // Check with single param
 res = Math.log1p(-1);
-print(res); // -Infinity
+print(res); //: -Infinity
 
 res = Math.log1p(-0);
-print(res); // -0
+print("1/x: " + 1 / res); //: 1/x: -Infinity
 
 res = Math.log1p(+0);
-print(res); // 0
+print(res); //: 0
 
 res = Math.log1p(-123);
-print(res); // NaN
+print(res); //: NaN
 
 res = Math.log1p(Math.E - 1);
-print(res); // 1
+print(res); //: 1
 
 // Check with 2 params
 res = Math.log1p(Math.E - 1, Math.E - 1);
-print(res); // 1
+print(res); //: 1
 
 // Check with 3 params
 res = Math.log1p(Math.E - 1, Math.E - 1, Math.E - 1);
-print(res); // 1
+print(res); //: 1
 
 // Check with 4 params
 res = Math.log1p(Math.E - 1, Math.E - 1, Math.E - 1, Math.E - 1);
-print(res); // 1
+print(res); //: 1
 
 // Check with 5 params
 res = Math.log1p(Math.E - 1, Math.E - 1, Math.E - 1, Math.E - 1, Math.E - 1);
-print(res); // 1
+print(res); //: 1
 
 try {
-    print(Math.log1p(Math.E - 1)); // 1
+    print(Math.log1p(Math.E - 1)); //: 1
 } catch(e) {}
 
 // Replace standart builtin
 let true_log1p = Math.log1p
 Math.log1p = replace
 res = Math.log1p(111);
-print(res); // 111
+print(res); //: 111
 
 // Call standart builtin with non-number param
 Math.log1p = true_log1p
+//aot: [trace] Check Type: NotNumber1
 res = Math.log1p("-1"); // deopt
-print(res); // -Infinity
+print(res); //: -Infinity

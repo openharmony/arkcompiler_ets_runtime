@@ -21,6 +21,7 @@
 #include "ecmascript/global_env_constants.h"
 #include "ecmascript/object_factory-inl.h"
 #include "ecmascript/js_number_format.h"
+#include "ecmascript/checkpoint/thread_state_transition.h"
 
 namespace panda::ecmascript {
 constexpr int32_t STRING_SEPARATOR_LENGTH = 4;
@@ -136,11 +137,14 @@ JSHandle<TaggedArray> JSPluralRules::GetAvailableLocales(JSThread *thread)
     std::set<std::string> set;
     std::string localeStr;
     int32_t len = 0;
-    while (GetNextLocale(locales.get(), localeStr, &len)) {
-        if (len >= STRING_SEPARATOR_LENGTH) {
-            std::replace(localeStr.begin(), localeStr.end(), '_', '-');
+    {
+        ThreadNativeScope nativeScope(thread);
+        while (GetNextLocale(locales.get(), localeStr, &len)) {
+            if (len >= STRING_SEPARATOR_LENGTH) {
+                std::replace(localeStr.begin(), localeStr.end(), '_', '-');
+            }
+            set.insert(localeStr);
         }
-        set.insert(localeStr);
     }
     return BuildLocaleSet(thread, set);
 }

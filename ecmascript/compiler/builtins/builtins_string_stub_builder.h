@@ -32,22 +32,12 @@ public:
     NO_COPY_SEMANTIC(BuiltinsStringStubBuilder);
     void GenerateCircuit() override {}
 
-    void FromCharCode(GateRef glue, GateRef thisValue, GateRef numArgs, Variable* res, Label *exit, Label *slowPath);
-    void CharAt(GateRef glue, GateRef thisValue, GateRef numArgs, Variable* res, Label *exit, Label *slowPath);
-    void CharCodeAt(GateRef glue, GateRef thisValue, GateRef numArgs, Variable* res, Label *exit, Label *slowPath);
-    void CodePointAt(GateRef glue, GateRef thisValue, GateRef numArgs, Variable* res, Label *exit, Label *slowPath);
-    void IndexOf(GateRef glue, GateRef thisValue, GateRef numArgs, Variable* res, Label *exit, Label *slowPath);
-    void Substring(GateRef glue, GateRef thisValue, GateRef numArgs, Variable* res, Label *exit, Label *slowPath);
-    void Replace(GateRef glue, GateRef thisValue, GateRef numArgs, Variable *res, Label *exit, Label *slowPath);
-    void Trim(GateRef glue, GateRef thisValue, GateRef numArgs, Variable *res, Label *exit, Label *slowPath);
-    void Slice(GateRef glue, GateRef thisValue, GateRef numArgs, Variable *res, Label *exit, Label *slowPath);
+#define DECLARE_BUILTINS_SRRING_STUB_BUILDER(method, ...)           \
+    void method(GateRef glue, GateRef thisValue, GateRef numArgs, Variable* res, Label *exit, Label *slowPath);
+BUILTINS_WITH_STRING_STUB_BUILDER(DECLARE_BUILTINS_SRRING_STUB_BUILDER)
+#undef DECLARE_BUILTINS_SRRING_STUB_BUILDER
+
     void LocaleCompare(GateRef glue, GateRef thisValue, GateRef numArgs, Variable *res, Label *exit, Label *slowPath);
-    void Concat(GateRef glue, GateRef thisValue, GateRef numArgs, Variable *res, Label *exit, Label *slowPath);
-    void StartsWith(GateRef glue, GateRef thisValue, GateRef numArgs, Variable *res, Label *exit, Label *slowPath);
-    void ToLowerCase(GateRef glue, GateRef thisValue, GateRef numArgs, Variable *res, Label *exit, Label *slowPath);
-    void EndsWith(GateRef glue, GateRef thisValue, GateRef numArgs, Variable *res, Label *exit, Label *slowPath);
-    void GetStringIterator(GateRef glue, GateRef thisValue, GateRef numArgs,
-                           Variable *res, Label *exit, Label *slowPath);
     void StringIteratorNext(GateRef glue, GateRef thisValue, GateRef numArgs,
                             Variable *res, Label *exit, Label *slowPath);
 

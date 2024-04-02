@@ -17,6 +17,7 @@
 #define ECMASCRIPT_MEM_HEAP_H
 
 #include "ecmascript/base/config.h"
+#include "ecmascript/ecma_vm.h"
 #include "ecmascript/frames.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/mem/linear_space.h"
@@ -32,6 +33,7 @@ class ConcurrentSweeper;
 class EcmaVM;
 class FullGC;
 class GCStats;
+class GCKeyStats;
 class HeapRegionAllocator;
 class HeapTracker;
 #if !WIN_OR_MAC_OR_IOS_PLATFORM
@@ -268,6 +270,8 @@ public:
         return maxMarkTaskCount_;
     }
 
+    void OnAllocateEvent(EcmaVM *ecmaVm, TaggedObject* address, size_t size);
+    inline void SetHClassAndDoAllocateEvent(JSThread *thread, TaggedObject *object, JSHClass *hclass, size_t size);
     bool CheckCanDistributeTask();
     void IncreaseTaskCount();
     void ReduceTaskCount();
@@ -365,7 +369,7 @@ public:
         return onSerializeEvent_;
     }
 
-    bool CheckAndTriggerGC(JSThread *thread, size_t size = 0);
+    bool CheckAndTriggerGC(JSThread *thread);
 
     bool CheckHugeAndTriggerGC(JSThread *thread, size_t size);
 
@@ -514,7 +518,7 @@ public:
     template<class Callback>
     void IterateOverObjects(const Callback &cb) const;
 
-    inline TaggedObject *AllocateClassClass(JSHClass *hclass, size_t size);
+    inline TaggedObject *AllocateClassClass(JSThread *thread, JSHClass *hclass, size_t size);
 
     inline TaggedObject *AllocateNonMovableOrHugeObject(JSThread *thread, JSHClass *hclass);
 
@@ -736,10 +740,8 @@ public:
     inline TaggedObject *AllocateClassClass(JSHClass *hclass, size_t size);
     // Huge
     inline TaggedObject *AllocateHugeObject(JSHClass *hclass, size_t size);
-    inline TaggedObject *AllocateHugeObject(size_t size);
     // Machine code
     inline TaggedObject *AllocateMachineCodeObject(JSHClass *hclass, size_t size);
-    inline TaggedObject *AllocateHugeMachineCodeObject(size_t size);
     // Snapshot
     inline uintptr_t AllocateSnapshotSpace(size_t size);
 
@@ -763,6 +765,8 @@ public:
     void ChangeGCParams(bool inBackground) override;
 
     GCStats *GetEcmaGCStats() override;
+
+    GCKeyStats *GetEcmaGCKeyStats();
     
     JSObjectResizingStrategy *GetJSObjectResizingStrategy();
 
@@ -912,7 +916,6 @@ public:
         WaitAllTasksFinished();
     }
 #endif
-    void OnAllocateEvent(TaggedObject* address, size_t size);
     void OnMoveEvent(uintptr_t address, TaggedObject* forwardAddress, size_t size);
     void AddToKeptObjects(JSHandle<JSTaggedValue> value) const;
     void ClearKeptObjects() const;
@@ -995,6 +998,8 @@ public:
 
     void TryTriggerFullMarkByNativeSize();
 
+    void TryTriggerFullMarkBySharedSize(size_t size);
+
     bool IsMarking() const override
     {
         return thread_->IsMarking();
@@ -1013,15 +1018,19 @@ public:
     void CheckNonMovableSpaceOOM();
     std::tuple<uint64_t, uint8_t *, int, kungfu::CalleeRegAndOffsetVec> CalCallSiteInfo(uintptr_t retAddr) const;
 
-    GCListenerId AddGCListener(FinishGCListener listener, void *data);
-    void RemoveGCListener(GCListenerId listenerId);
+    PUBLIC_API GCListenerId AddGCListener(FinishGCListener listener, void *data);
+    PUBLIC_API void RemoveGCListener(GCListenerId listenerId);
 private:
+    inline TaggedObject *AllocateHugeObject(size_t size);
+    inline TaggedObject *AllocateHugeMachineCodeObject(size_t size);
+
     static constexpr int IDLE_TIME_LIMIT = 10;  // if idle time over 10ms we can do something
     static constexpr int ALLOCATE_SIZE_LIMIT = 100_KB;
     static constexpr int IDLE_MAINTAIN_TIME = 500;
     static constexpr int BACKGROUND_GROW_LIMIT = 2_MB;
     // Threadshold that HintGC will actually trigger GC.
     static constexpr double SURVIVAL_RATE_THRESHOLD = 0.5;
+    static constexpr size_t NEW_ALLOCATED_SHARED_OBJECT_SIZE_LIMIT = DEFAULT_SHARED_HEAP_SIZE / 10; // 10 : ten times.
     void RecomputeLimits();
     void AdjustOldSpaceLimit();
     // record lastRegion for each space, which will be used in ReclaimRegions()
@@ -1030,6 +1039,7 @@ private:
     inline void ReclaimRegions(TriggerGCType gcType);
     inline size_t CalculateCommittedCacheSize();
     void ProcessGCListeners();
+    void CleanCallBack();
     class ParallelGCTask : public Task {
     public:
         ParallelGCTask(int32_t id, Heap *heap, ParallelGCTaskPhase taskPhase)
@@ -1070,6 +1080,23 @@ private:
         NO_MOVE_SEMANTIC(FinishColdStartTask);
     private:
         Heap *heap_;
+    };
+
+    class DeleteCallbackTask : public Task {
+    public:
+        DeleteCallbackTask(int32_t id, std::vector<std::pair<DeleteEntryPoint, std::pair<void *, void *>>> &callbacks)
+            : Task(id)
+        {
+            std::swap(callbacks, nativePointerCallbacks_);
+        };
+        ~DeleteCallbackTask() override = default;
+        bool Run(uint32_t threadIndex) override;
+
+        NO_COPY_SEMANTIC(DeleteCallbackTask);
+        NO_MOVE_SEMANTIC(DeleteCallbackTask);
+
+    private:
+        std::vector<std::pair<DeleteEntryPoint, std::pair<void *, void *>>> nativePointerCallbacks_ {};
     };
 
     class RecursionScope {
@@ -1175,6 +1202,7 @@ private:
     size_t semiSpaceCopiedSize_ {0};
     size_t nativeBindingSize_{0};
     size_t globalSpaceNativeLimit_ {0};
+    size_t newAllocatedSharedObjectSize_ {0};
     MemGrowingType memGrowingtype_ {MemGrowingType::HIGH_THROUGHPUT};
 
     // parallel evacuator task number.

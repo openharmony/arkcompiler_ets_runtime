@@ -14,6 +14,7 @@
  */
 
 #include "ecmascript/js_function_kind.h"
+#include "ecmascript/js_tagged_value.h"
 #include "ecmascript/mem/heap.h"
 #include "ecmascript/object_factory-inl.h"
 
@@ -123,6 +124,12 @@
 #include "ecmascript/require/js_cjs_module.h"
 #include "ecmascript/require/js_cjs_require.h"
 #include "ecmascript/shared_mm/shared_mm.h"
+#include "ecmascript/shared_objects/js_shared_array.h"
+#include "ecmascript/shared_objects/js_shared_array_iterator.h"
+#include "ecmascript/shared_objects/js_shared_map.h"
+#include "ecmascript/shared_objects/js_shared_map_iterator.h"
+#include "ecmascript/shared_objects/js_shared_set.h"
+#include "ecmascript/shared_objects/js_shared_set_iterator.h"
 #include "ecmascript/symbol_table.h"
 #include "ecmascript/tagged_hash_array.h"
 #include "ecmascript/tagged_list.h"
@@ -264,7 +271,7 @@ void ObjectFactory::NewJSArrayBufferData(const JSHandle<JSArrayBuffer> &array, i
         UNREACHABLE();
     }
     JSHandle<JSNativePointer> pointer = NewJSNativePointer(newData, NativeAreaAllocator::FreeBufferFunc,
-                                                           vm_->GetNativeAreaAllocator(), false, size,
+                                                           vm_->GetNativeAreaAllocator(), false, size, Concurrent::NO,
                                                            NativeFlag::ARRAY_BUFFER);
     array->SetArrayBufferData(thread_, pointer);
     array->SetWithNativeAreaAllocator(true);
@@ -304,7 +311,7 @@ JSHandle<JSArrayBuffer> ObjectFactory::NewJSArrayBuffer(int32_t length)
         }
         JSHandle<JSNativePointer> pointer = NewJSNativePointer(newData, NativeAreaAllocator::FreeBufferFunc,
                                                                vm_->GetNativeAreaAllocator(), false, length,
-                                                               NativeFlag::ARRAY_BUFFER);
+                                                               Concurrent::NO, NativeFlag::ARRAY_BUFFER);
         arrayBuffer->SetArrayBufferData(thread_, pointer.GetTaggedValue());
         arrayBuffer->SetWithNativeAreaAllocator(true);
         vm_->GetNativeAreaAllocator()->IncreaseNativeSizeStats(length, NativeFlag::ARRAY_BUFFER);
@@ -399,7 +406,7 @@ void ObjectFactory::NewJSRegExpByteCodeData(const JSHandle<JSRegExp> &regexp, vo
         return;
     }
     JSHandle<JSNativePointer> pointer = NewJSNativePointer(newBuffer, NativeAreaAllocator::FreeBufferFunc,
-                                                           vm_->GetNativeAreaAllocator(), false, size,
+                                                           vm_->GetNativeAreaAllocator(), false, size, Concurrent::NO,
                                                            NativeFlag::REGEXP_BTYECODE);
     regexp->SetByteCodeBuffer(thread_, pointer.GetTaggedValue());
     regexp->SetLength(static_cast<uint32_t>(size));
@@ -690,6 +697,13 @@ JSHandle<JSPrimitiveRef> ObjectFactory::NewJSPrimitiveRef(const JSHandle<JSHClas
     JSHandle<JSPrimitiveRef> obj = JSHandle<JSPrimitiveRef>::Cast(NewJSObject(hclass));
     obj->SetValue(thread_, object);
     return obj;
+}
+
+JSHandle<JSSharedArray> ObjectFactory::NewJSSArray()
+{
+    JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
+    JSHandle<JSFunction> function(env->GetSharedArrayFunction());
+    return JSHandle<JSSharedArray>(NewJSObjectByConstructor(function));
 }
 
 JSHandle<JSArray> ObjectFactory::NewJSArray()
@@ -998,7 +1012,7 @@ JSHandle<JSObject> ObjectFactory::NewJSObjectByConstructor(const JSHandle<JSFunc
     // Check this exception elsewhere
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSObject, thread_);
     JSHandle<JSObject> obj;
-    if (jshclass->IsJSSharedObject()) {
+    if (jshclass->IsJSShared()) {
         obj = NewSharedOldSpaceJSObject(jshclass);
         if (jshclass->IsDictionaryMode()) {
             auto fieldLayout = jshclass->GetLayout();
@@ -1007,6 +1021,7 @@ JSHandle<JSObject> ObjectFactory::NewJSObjectByConstructor(const JSHandle<JSFunc
             auto properties = NewAndCopySNameDictionary(dict, dict->GetLength());
             obj->SetProperties(thread_, properties);
         }
+        InitializeJSObject(obj, jshclass);
     } else {
         obj = NewJSObjectWithInit(jshclass);
     }
@@ -1181,6 +1196,16 @@ void ObjectFactory::InitializeJSObject(const JSHandle<JSObject> &obj, const JSHa
             JSArray::Cast(*obj)->SetPropertyInlinedProps(thread_, JSArray::LENGTH_INLINE_PROPERTY_INDEX, accessor);
             break;
         }
+        case JSType::JS_SHARED_ARRAY: {
+            JSSharedArray::Cast(*obj)->SetLength(0);
+            JSSharedArray::Cast(*obj)->SetTrackInfo(thread_, JSTaggedValue::Undefined());
+            ASSERT(!obj->GetJSHClass()->IsDictionaryMode());
+            JSSharedArray::Cast(*obj)->SetModRecord(0);
+            auto accessor = thread_->GlobalConstants()->GetSharedArrayLengthAccessor();
+            JSSharedArray::Cast(*obj)->SetPropertyInlinedProps(thread_, JSArray::LENGTH_INLINE_PROPERTY_INDEX,
+                                                               accessor);
+            break;
+        }
         case JSType::JS_DATE:
             JSDate::Cast(*obj)->SetTimeValue(thread_, JSTaggedValue(0.0));
             JSDate::Cast(*obj)->SetLocalOffset(thread_, JSTaggedValue(JSDate::MAX_DOUBLE));
@@ -1217,8 +1242,16 @@ void ObjectFactory::InitializeJSObject(const JSHandle<JSObject> &obj, const JSHa
         case JSType::JS_SET:
             JSSet::Cast(*obj)->SetLinkedSet(thread_, JSTaggedValue::Undefined());
             break;
+        case JSType::JS_SHARED_SET:
+            JSSharedSet::Cast(*obj)->SetLinkedSet(thread_, JSTaggedValue::Undefined());
+            JSSharedSet::Cast(*obj)->SetModRecord(0);
+            break;
         case JSType::JS_MAP:
             JSMap::Cast(*obj)->SetLinkedMap(thread_, JSTaggedValue::Undefined());
+            break;
+        case JSType::JS_SHARED_MAP:
+            JSSharedMap::Cast(*obj)->SetLinkedMap(thread_, JSTaggedValue::Undefined());
+            JSSharedMap::Cast(*obj)->SetModRecord(0);
             break;
         case JSType::JS_WEAK_MAP:
             JSWeakMap::Cast(*obj)->SetLinkedMap(thread_, JSTaggedValue::Undefined());
@@ -1771,7 +1804,10 @@ JSHandle<JSFunction> ObjectFactory::NewJSFunctionByHClass(const JSHandle<Method>
     clazz->SetExtensible(true);
     JSFunction::InitializeJSFunction(thread_, function, method->GetFunctionKind());
     function->SetMethod(thread_, method);
-    if (method->IsAotWithCallField()) {
+    if (method->IsJitCompiledCode()) {
+        // jit install code also set aot callfield, should clear flag when new function
+        method->ClearJitCompiledCodeFlags();
+    } else if (method->IsAotWithCallField()) {
         thread_->GetEcmaVM()->GetAOTFileManager()->
             SetAOTFuncEntry(method->GetJSPandaFile(), *function, *method);
     }
@@ -2418,11 +2454,30 @@ JSHandle<TaggedArray> ObjectFactory::NewAndCopyTaggedArray(JSHandle<TaggedArray>
     ASSERT(oldLength <= newLength);
     MemSpaceType spaceType = newLength < LENGTH_THRESHOLD ? MemSpaceType::SEMI_SPACE : MemSpaceType::OLD_SPACE;
     JSHandle<TaggedArray> dstElements = NewTaggedArrayWithoutInit(newLength, spaceType);
+    dstElements->SetExtraLength(srcElements->GetExtraLength());
     if (newLength == 0) {
         return dstElements;
     }
     for (uint32_t i = 0; i < oldLength; i++) {
         dstElements->Set(thread_, i, srcElements->Get(i + k));
+    }
+    for (uint32_t i = oldLength; i < newLength; i++) {
+        dstElements->Set(thread_, i, JSTaggedValue::Hole());
+    }
+    return dstElements;
+}
+
+JSHandle<TaggedArray> ObjectFactory::NewAndCopyTaggedArraySkipBarrier(JSHandle<TaggedArray> &srcElements,
+    uint32_t newLength, uint32_t oldLength, uint32_t k)
+{
+    ASSERT(oldLength <= newLength);
+    MemSpaceType spaceType = newLength < LENGTH_THRESHOLD ? MemSpaceType::SEMI_SPACE : MemSpaceType::OLD_SPACE;
+    JSHandle<TaggedArray> dstElements = NewTaggedArrayWithoutInit(newLength, spaceType);
+    if (newLength == 0) {
+        return dstElements;
+    }
+    for (uint32_t i = 0; i < oldLength; i++) {
+        dstElements->Set<false>(thread_, i, srcElements->Get(i + k));
     }
     for (uint32_t i = oldLength; i < newLength; i++) {
         dstElements->Set(thread_, i, JSTaggedValue::Hole());
@@ -2468,7 +2523,8 @@ JSHandle<TaggedArray> ObjectFactory::NewAndCopyTaggedArrayByObject(JSHandle<JSOb
     ASSERT(oldLength <= newLength);
     MemSpaceType spaceType = newLength < LENGTH_THRESHOLD ? MemSpaceType::SEMI_SPACE : MemSpaceType::OLD_SPACE;
     JSHandle<TaggedArray> dstElements(NewTaggedArrayWithoutInit(newLength, spaceType));
-    JSHandle<TaggedArray> srcElements(thread_, thisObjHandle->GetElements());
+    TaggedArray *srcElements = TaggedArray::Cast(thisObjHandle->GetElements().GetTaggedObject());
+    dstElements->SetExtraLength(srcElements->GetExtraLength());
     if (newLength == 0) {
         return dstElements;
     }
@@ -2489,7 +2545,8 @@ JSHandle<MutantTaggedArray> ObjectFactory::NewAndCopyMutantTaggedArrayByObject(J
     ASSERT(oldLength <= newLength);
     MemSpaceType spaceType = newLength < LENGTH_THRESHOLD ? MemSpaceType::SEMI_SPACE : MemSpaceType::OLD_SPACE;
     JSHandle<MutantTaggedArray> dstElements(NewMutantTaggedArrayWithoutInit(newLength, spaceType));
-    JSHandle<MutantTaggedArray> srcElements(thread_, thisObjHandle->GetElements());
+    MutantTaggedArray *srcElements = MutantTaggedArray::Cast(thisObjHandle->GetElements().GetTaggedObject());
+    dstElements->SetExtraLength(srcElements->GetExtraLength());
     if (newLength == 0) {
         return dstElements;
     }
@@ -2986,6 +3043,16 @@ JSHandle<EcmaString> ObjectFactory::GetStringFromStringTableNonMovable(const uin
     return JSHandle<EcmaString>(thread_, stringTable->CreateAndInternStringNonMovable(vm_, utf8Data, utf8Len));
 }
 
+JSHandle<EcmaString> ObjectFactory::GetStringFromStringTableReadOnly(const uint8_t *utf8Data, uint32_t utf8Len) const
+{
+    NewObjectHook();
+    if (utf8Len == 0) {
+        return GetEmptyString();
+    }
+    auto stringTable = vm_->GetEcmaStringTable();
+    return JSHandle<EcmaString>(thread_, stringTable->CreateAndInternStringReadOnly(vm_, utf8Data, utf8Len));
+}
+
 JSHandle<EcmaString> ObjectFactory::GetStringFromStringTable(const uint16_t *utf16Data, uint32_t utf16Len,
                                                              bool canBeCompress) const
 {
@@ -3081,6 +3148,8 @@ JSHandle<ProfileTypeInfo> ObjectFactory::NewProfileTypeInfo(uint32_t length)
     if (vm_->IsEnableJit()) {
         uint16_t threshold = vm_->GetJSOptions().GetJitHotnessThreshold();
         array->SetJitHotnessThreshold(threshold);
+        threshold = vm_->GetJSOptions().GetOsrHotnessThreshold();
+        array->SetOsrHotnessThreshold(threshold);
     }
     return array;
 }
@@ -3132,6 +3201,22 @@ JSHandle<TaggedQueue> ObjectFactory::GetEmptyTaggedQueue() const
     return JSHandle<TaggedQueue>(thread_->GlobalConstants()->GetHandledEmptyTaggedQueue());
 }
 
+JSHandle<JSSharedSetIterator> ObjectFactory::NewJSSetIterator(const JSHandle<JSSharedSet> &set, IterationKind kind)
+{
+    JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
+    JSHandle<JSTaggedValue> protoValue = env->GetSharedSetIteratorPrototype();
+    const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
+    JSHandle<JSHClass> hclassHandle(globalConst->GetHandledJSSharedSetIteratorClass());
+    hclassHandle->SetPrototype(thread_, protoValue);
+    JSHandle<JSSharedSetIterator> iter(NewJSObject(hclassHandle));
+    iter->GetJSHClass()->SetExtensible(true);
+    iter->SetIteratedSet(thread_, set.GetTaggedValue());
+    iter->SetNextIndex(0);
+    iter->SetIterationKind(kind);
+    ASSERT(iter.GetTaggedValue().IsJSSharedSetIterator());
+    return iter;
+}
+
 JSHandle<JSSetIterator> ObjectFactory::NewJSSetIterator(const JSHandle<JSSet> &set, IterationKind kind)
 {
     JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
@@ -3178,6 +3263,22 @@ JSHandle<JSMapIterator> ObjectFactory::NewJSMapIterator(const JSHandle<JSMap> &m
     iter->SetIteratedMap(thread_, map->GetLinkedMap());
     iter->SetNextIndex(0);
     iter->SetIterationKind(kind);
+    return iter;
+}
+
+JSHandle<JSSharedMapIterator> ObjectFactory::NewJSMapIterator(const JSHandle<JSSharedMap> &map, IterationKind kind)
+{
+    JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
+    JSHandle<JSTaggedValue> protoValue = env->GetSharedMapIteratorPrototype();
+    const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
+    JSHandle<JSHClass> hclassHandle(globalConst->GetHandledJSSharedMapIteratorClass());
+    hclassHandle->SetPrototype(thread_, protoValue);
+    JSHandle<JSSharedMapIterator> iter(NewJSObject(hclassHandle));
+    iter->GetJSHClass()->SetExtensible(true);
+    iter->SetIteratedMap(thread_, map.GetTaggedValue());
+    iter->SetNextIndex(0);
+    iter->SetIterationKind(kind);
+    ASSERT(iter.GetTaggedValue().IsJSSharedMapIterator());
     return iter;
 }
 
@@ -3232,6 +3333,22 @@ JSHandle<JSArrayIterator> ObjectFactory::NewJSArrayIterator(const JSHandle<JSObj
     JSHandle<JSHClass> hclassHandle(globalConst->GetHandledJSArrayIteratorClass());
     hclassHandle->SetPrototype(thread_, protoValue);
     JSHandle<JSArrayIterator> iter(NewJSObject(hclassHandle));
+    iter->GetJSHClass()->SetExtensible(true);
+    iter->SetIteratedArray(thread_, array);
+    iter->SetNextIndex(0);
+    iter->SetIterationKind(kind);
+    return iter;
+}
+
+JSHandle<JSSharedArrayIterator> ObjectFactory::NewJSSharedArrayIterator(const JSHandle<JSObject> &array,
+                                                                        IterationKind kind)
+{
+    JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
+    JSHandle<JSTaggedValue> protoValue = env->GetSharedArrayIteratorPrototype();
+    const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
+    JSHandle<JSHClass> hclassHandle(globalConst->GetHandledJSSharedArrayIteratorClass());
+    hclassHandle->SetPrototype(thread_, protoValue);
+    JSHandle<JSSharedArrayIterator> iter(NewJSObject(hclassHandle));
     iter->GetJSHClass()->SetExtensible(true);
     iter->SetIteratedArray(thread_, array);
     iter->SetNextIndex(0);
@@ -3913,6 +4030,13 @@ JSHandle<EcmaString> ObjectFactory::NewFromASCIINonMovable(std::string_view data
     auto utf8Data = reinterpret_cast<const uint8_t *>(data.data());
     ASSERT(EcmaStringAccessor::CanBeCompressed(utf8Data, data.length()));
     return GetStringFromStringTableNonMovable(utf8Data, data.length());
+}
+
+JSHandle<EcmaString> ObjectFactory::NewFromASCIIReadOnly(std::string_view data)
+{
+    auto utf8Data = reinterpret_cast<const uint8_t *>(data.data());
+    ASSERT(EcmaStringAccessor::CanBeCompressed(utf8Data, data.length()));
+    return GetStringFromStringTableReadOnly(utf8Data, data.length());
 }
 
 JSHandle<EcmaString> ObjectFactory::NewFromUtf8(std::string_view data)

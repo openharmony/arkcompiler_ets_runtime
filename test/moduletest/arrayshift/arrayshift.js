@@ -21,3 +21,14 @@ a1.shift()
 for (let i = 0; i < 3; i++) {
     print(i in a1);
 }
+
+var arr1 = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+var arr2 = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+
+var result1 = arr1.shift();
+print(result1);
+arr2.constructor = function () {
+    return 88;
+}
+var result2 = arr2.shift();
+print(result2);

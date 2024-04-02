@@ -830,7 +830,7 @@ public:
 
     void SetLmbcTotalStkUsed(int32 offset)
     {
-        lmbcArgInfo->lmbcTotalStkUsed = offset;
+        lmbcArgInfo->lmbcTotalStkUsed = static_cast<uint32>(offset);
     }
 
     void SetLmbcCallReturnType(MIRType *ty)

@@ -42,33 +42,33 @@
     V("atan",   Atan,   1, MathAtan)    /* Math.atan ( x ) */               \
     V("atan2",  Atan2,  2, MathAtan2)   /* Math.atan2 ( y, x ) */           \
     V("atanh",  Atanh,  1, MathAtanh)   /* Math.atanh ( x ) */              \
-    V("cbrt",   Cbrt,   1, INVALID)     /* Math.cbrt ( x ) */               \
-    V("ceil",   Ceil,   1, INVALID)     /* Math.ceil ( x ) */               \
-    V("clz32",  Clz32,  1, INVALID)     /* Math.clz32 ( x ) */              \
+    V("cbrt",   Cbrt,   1, MathCbrt)     /* Math.cbrt ( x ) */              \
+    V("ceil",   Ceil,   1, MathCeil)    /* Math.ceil ( x ) */               \
+    V("clz32",  Clz32,  1, MathClz32)   /* Math.clz32 ( x ) */              \
     V("cos",    Cos,    1, MathCos)     /* Math.cos ( x ) */                \
     V("cosh",   Cosh,   1, MathCosh)    /* Math.cosh ( x ) */               \
-    V("exp",    Exp,    1, INVALID)     /* Math.exp ( x ) */                \
-    V("expm1",  Expm1,  1, INVALID)     /* Math.expm1 ( x ) */              \
-    V("floor",  Floor,  1, FLOOR)       /* Math.floor ( x ) */              \
-    V("fround", Fround, 1, INVALID)     /* Math.fround ( x ) */             \
+    V("exp",    Exp,    1, MathExp)     /* Math.exp ( x ) */                \
+    V("expm1",  Expm1,  1, MathExpm1)   /* Math.expm1 ( x ) */              \
+    V("floor",  Floor,  1, MathFloor)       /* Math.floor ( x ) */              \
+    V("fround", Fround, 1, MathFRound)  /* Math.fround ( x ) */             \
     V("hypot",  Hypot,  2, INVALID)     /* Math.hypot ( ...args ) */        \
-    V("imul",   Imul,   2, INVALID)     /* Math.imul ( x, y ) */            \
+    V("imul",   Imul,   2, MathImul)    /* Math.imul ( x, y ) */            \
     V("log",    Log,    1, MathLog)     /* Math.log ( x ) */                \
     V("log10",  Log10,  1, MathLog10)   /* Math.log10 ( x ) */              \
     V("log1p",  Log1p,  1, MathLog1p)   /* Math.log1p ( x ) */              \
     V("log2",   Log2,   1, MathLog2)    /* Math.log2 ( x ) */               \
-    V("max",    Max,    2, INVALID)     /* Math.max ( ...args ) */          \
-    V("min",    Min,    2, INVALID)     /* Math.min ( ...args ) */          \
+    V("max",    Max,    2, MathMax)     /* Math.max ( ...args ) */          \
+    V("min",    Min,    2, MathMin)     /* Math.min ( ...args ) */          \
     V("pow",    Pow,    2, MathPow)     /* Math.pow ( base, exponent ) */   \
     V("random", Random, 0, INVALID)     /* Math.random ( ) */               \
-    V("round",  Round,  1, INVALID)     /* Math.round ( x ) */              \
-    V("sign",   Sign,   1, INVALID)     /* Math.sign ( x ) */               \
+    V("round",  Round,  1, MathRound)   /* Math.round ( x ) */              \
+    V("sign",   Sign,   1, MathSign)    /* Math.sign ( x ) */               \
     V("sin",    Sin,    1, MathSin)     /* Math.sin ( x ) */                \
     V("sinh",   Sinh,   1, MathSinh)    /* Math.sinh ( x ) */               \
-    V("sqrt",   Sqrt,   1, SQRT)        /* Math.sqrt ( x ) */               \
+    V("sqrt",   Sqrt,   1, MathSqrt)    /* Math.sqrt ( x ) */               \
     V("tan",    Tan,    1, MathTan)     /* Math.tan ( x ) */                \
     V("tanh",   Tanh,   1, MathTanh)    /* Math.tanh ( x ) */               \
-    V("trunc",  Trunc,  1, INVALID)     /* Math.trunc ( x ) */
+    V("trunc",  Trunc,  1, MathTrunc)   /* Math.trunc ( x ) */
 
 namespace panda::ecmascript::builtins {
 class BuiltinsMath : public base::BuiltinsBase {

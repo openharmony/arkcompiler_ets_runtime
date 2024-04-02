@@ -24,3 +24,4 @@ TypeError
 12
 TypeError
 test successful!
+test privateproperty class sucecess

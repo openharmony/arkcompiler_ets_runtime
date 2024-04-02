@@ -43,6 +43,10 @@ struct MachineCodeDesc {
 //                      +-----------------------------------+
 //                      |              MarkWord             | 8 bytes
 //      INS_SIZE_OFFSET +-----------------------------------+
+//                      |             OSR offset            | 4 bytes
+//                      +-----------------------------------+
+//                      |              OSR mask             | 4 bytes
+//                      +-----------------------------------+
 //                      |          machine payload size     | 4 bytes
 //                      +-----------------------------------+
 //                      |          FuncEntryDesc size       | 4 bytes
@@ -73,7 +77,10 @@ public:
     }
 
     static constexpr size_t INS_SIZE_OFFSET = TaggedObjectSize();
-    ACCESSORS_PRIMITIVE_FIELD(PayLoadSizeInBytes, uint32_t, INS_SIZE_OFFSET, FUNCENTRYDESSIZE_OFFSET);
+    ACCESSORS_PRIMITIVE_FIELD(OSROffset, int32_t, INS_SIZE_OFFSET, OSRMASK_OFFSET);
+    // The high 16bit is used as the flag bit, and the low 16bit is used as the count of OSR execution times.
+    ACCESSORS_PRIMITIVE_FIELD(OsrMask, uint32_t, OSRMASK_OFFSET, PAYLOADSIZE_OFFSET);
+    ACCESSORS_PRIMITIVE_FIELD(PayLoadSizeInBytes, uint32_t, PAYLOADSIZE_OFFSET, FUNCENTRYDESSIZE_OFFSET);
     ACCESSORS_PRIMITIVE_FIELD(FuncEntryDesSize, uint32_t, FUNCENTRYDESSIZE_OFFSET, INSTRSIZ_OFFSET);
     ACCESSORS_PRIMITIVE_FIELD(InstructionsSize, uint32_t, INSTRSIZ_OFFSET, STACKMAPSIZE_OFFSET);
     ACCESSORS_PRIMITIVE_FIELD(StackMapSize, uint32_t, STACKMAPSIZE_OFFSET, FUNCADDR_OFFSET);
@@ -83,6 +90,9 @@ public:
     static constexpr size_t PAYLOAD_OFFSET = SIZE;
     static constexpr uint32_t DATA_ALIGN = 8;
     static constexpr uint32_t TEXT_ALIGN = 16;
+    static constexpr int32_t INVALID_OSR_OFFSET = -1;
+    static constexpr uint32_t OSR_EXECUTE_CNT_OFFSET = OSRMASK_OFFSET + 2;
+    static constexpr uint16_t OSR_DEOPT_FLAG = 0x80;
 
     DECL_DUMP()
 
@@ -133,6 +143,22 @@ public:
     uintptr_t GetFuncEntryDes() const;
 
     std::tuple<uint64_t, uint8_t *, int, kungfu::CalleeRegAndOffsetVec> CalCallSiteInfo(uintptr_t retAddr) const;
+
+    void SetOsrDeoptFlag(bool isDeopt)
+    {
+        uint16_t flag = Barriers::GetValue<uint16_t>(this, OSRMASK_OFFSET);
+        if (isDeopt) {
+            flag |= OSR_DEOPT_FLAG;
+        } else {
+            flag &= (~OSR_DEOPT_FLAG);
+        }
+        Barriers::SetPrimitive(this, OSRMASK_OFFSET, flag);
+    }
+
+    void SetOsrExecuteCnt(uint16_t count)
+    {
+        Barriers::SetPrimitive(this, OSR_EXECUTE_CNT_OFFSET, count);
+    }
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_MEM_MACHINE_CODE_H

@@ -145,6 +145,7 @@ EcmaString *EcmaStringTable::GetOrInternString(EcmaVM *vm, const uint8_t *utf8Da
 EcmaString *EcmaStringTable::GetOrInternCompressedSubString(EcmaVM *vm, const JSHandle<EcmaString> &string,
     uint32_t offset, uint32_t utf8Len)
 {
+    RuntimeLockHolder locker(vm->GetJSThread(), mutex_);
     auto *utf8Data = EcmaStringAccessor(string).GetDataUtf8() + offset;
     std::pair<EcmaString *, uint32_t> result = GetStringThreadUnsafe(utf8Data, utf8Len, true);
     if (result.first != nullptr) {
@@ -170,6 +171,24 @@ EcmaString *EcmaStringTable::CreateAndInternStringNonMovable(EcmaVM *vm, const u
         return result.first;
     }
     EcmaString *str = EcmaStringAccessor::CreateFromUtf8(vm, utf8Data, utf8Len, true, MemSpaceType::SHARED_NON_MOVABLE);
+    str->SetMixHashcode(result.second);
+    InternStringThreadUnsafe(str);
+    return str;
+}
+
+/*
+    This function is used to create global constant strings from read-only sapce only.
+    It only inserts string into string-table and provides no string-table validity check.
+*/
+EcmaString *EcmaStringTable::CreateAndInternStringReadOnly(EcmaVM *vm, const uint8_t *utf8Data, uint32_t utf8Len)
+{
+    RuntimeLockHolder locker(vm->GetJSThread(), mutex_);
+    std::pair<EcmaString *, uint32_t> result = GetStringThreadUnsafe(utf8Data, utf8Len, true);
+    if (result.first != nullptr) {
+        return result.first;
+    }
+    EcmaString *str = EcmaStringAccessor::CreateFromUtf8(vm, utf8Data, utf8Len, true,
+                                                         MemSpaceType::SHARED_READ_ONLY_SPACE);
     str->SetMixHashcode(result.second);
     InternStringThreadUnsafe(str);
     return str;
@@ -290,12 +309,11 @@ EcmaString *EcmaStringTable::GetOrInternStringWithSpaceType(EcmaVM *vm, const ui
 
 void EcmaStringTable::SweepWeakReference(const WeakRootVisitor &visitor)
 {
+    // No need lock here, only shared gc will sweep string table, meanwhile other threads are suspended.
     for (auto it = table_.begin(); it != table_.end();) {
-        // Strings in string table should not be in the young space. Only old gc will sweep string table.
         auto *object = it->second;
         auto fwd = visitor(object);
-        // todo(hzzhouzebin) wait for shared-gc
-        ASSERT(!Region::ObjectAddressToRange(object)->InYoungSpace());
+        ASSERT(Region::ObjectAddressToRange(object)->InSharedHeap());
         if (fwd == nullptr) {
             LOG_ECMA(VERBOSE) << "StringTable: delete string " << std::hex << object;
             it = table_.erase(it);
@@ -379,7 +397,7 @@ JSTaggedValue SingleCharTable::CreateSingleCharTable(JSThread *thread)
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     for (uint32_t i = 1; i < MAX_ONEBYTE_CHARCODE; ++i) {
         std::string tmp(1, i + 0X00); // 1: size
-        table->Set(thread, i, factory->NewFromASCIINonMovable(tmp).GetTaggedValue());
+        table->Set(thread, i, factory->NewFromASCIIReadOnly(tmp).GetTaggedValue());
     }
     return table.GetTaggedValue();
 }

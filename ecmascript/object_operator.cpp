@@ -24,6 +24,7 @@
 #include "ecmascript/ic/property_box.h"
 #include "ecmascript/js_array.h"
 #include "ecmascript/js_function.h"
+#include "ecmascript/js_handle.h"
 #include "ecmascript/js_hclass-inl.h"
 #include "ecmascript/js_object-inl.h"
 #include "ecmascript/js_primitive_ref.h"
@@ -33,6 +34,7 @@
 #include "ecmascript/object_fast_operator-inl.h"
 #include "ecmascript/property_attributes.h"
 #include "ecmascript/property_detector-inl.h"
+#include "ecmascript/shared_objects/js_shared_array.h"
 #include "ecmascript/tagged_dictionary.h"
 
 namespace panda::ecmascript {
@@ -896,7 +898,11 @@ void ObjectOperator::WriteElement(const JSHandle<JSObject> &receiver, JSHandle<J
 void ObjectOperator::DeleteElementInHolder() const
 {
     JSHandle<JSObject> obj(holder_);
-
+    if (obj->IsJSSArray()) {
+        auto arrayHandler = JSHandle<JSSharedArray>::Cast(obj);
+        JSSharedArray::DeleteInElementMode(thread_, arrayHandler);
+        return;
+    }
     JSHandle<JSTaggedValue> holeHandle(thread_, JSTaggedValue::Hole());
     if (!ElementAccessor::IsDictionaryMode(obj)) {
         ElementAccessor::Set(thread_, obj, index_, holeHandle, true, ElementsKind::HOLE);

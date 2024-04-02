@@ -241,6 +241,7 @@ public:
     GateRef InSharedSweepableSpace(GateRef region);
     GateRef TaggedIsGeneratorObject(GateRef x);
     GateRef TaggedIsJSArray(GateRef x);
+    GateRef IsTaggedArray(GateRef x);
     GateRef TaggedIsAsyncGeneratorObject(GateRef x);
     GateRef TaggedIsJSGlobalObject(GateRef x);
     GateRef TaggedIsWeak(GateRef x);
@@ -365,6 +366,7 @@ public:
     GateRef IsConstructor(GateRef object);
     GateRef IsBase(GateRef func);
     GateRef IsJsArray(GateRef obj);
+    GateRef IsJsSArray(GateRef obj);
     GateRef IsByteArray(GateRef obj);
     GateRef IsJsCOWArray(GateRef obj);
     GateRef IsMutantTaggedArray(GateRef elements);
@@ -495,7 +497,7 @@ public:
     GateRef GetUnsharedConstpoolIndex(GateRef constpool);
     GateRef GetUnsharedConstpool(GateRef array, GateRef index);
     GateRef GetValueFromMutantTaggedArray(GateRef elements, GateRef index);
-    void CheckUpdateSharedType(bool isDicMode, Variable *result, GateRef glue, GateRef jsType, GateRef attr,
+    void CheckUpdateSharedType(bool isDicMode, Variable *result, GateRef glue, GateRef receiver, GateRef attr,
                                GateRef value, Label *executeSetProp, Label *exit);
     void MatchFieldType(Variable *result, GateRef glue, GateRef fieldType, GateRef value, Label *executeSetProp,
                                Label *exit);
@@ -512,8 +514,8 @@ public:
     void SetValueToTaggedArray(VariableType valType, GateRef glue, GateRef array, GateRef index, GateRef val);
     void UpdateValueAndAttributes(GateRef glue, GateRef elements, GateRef index, GateRef value, GateRef attr);
     GateRef IsSpecialIndexedObj(GateRef jsType);
-    GateRef IsJSSharedType(GateRef jsType);
     GateRef IsSpecialContainer(GateRef jsType);
+    GateRef IsSharedArray(GateRef jsType);
     GateRef IsAccessorInternal(GateRef value);
     template<typename DictionaryT>
     GateRef GetAttributesFromDictionary(GateRef elements, GateRef entry);
@@ -777,6 +779,8 @@ public:
     GateRef GetIhcFromAOTLiteralInfo(GateRef info);
     GateRef IsAotWithCallField(GateRef method);
     GateRef IsFastCall(GateRef method);
+    GateRef IsJitCompiledCode(GateRef method);
+    void ClearJitCompiledCodeFlags(GateRef glue, GateRef method);
     GateRef JudgeAotAndFastCall(GateRef jsFunc, CircuitBuilder::JudgeMethodType type);
     GateRef JudgeAotAndFastCallWithMethod(GateRef method, CircuitBuilder::JudgeMethodType type);
     GateRef GetInternalString(GateRef glue, GateRef key);
@@ -802,7 +806,7 @@ public:
     GateRef GetIterator(GateRef glue, GateRef obj, ProfileOperation callback);
     GateRef JSCallDispatch(GateRef glue, GateRef func, GateRef actualNumArgs, GateRef jumpSize, GateRef hotnessCounter,
                            JSCallMode mode, std::initializer_list<GateRef> args,
-                           ProfileOperation callback = ProfileOperation());
+                           ProfileOperation callback = ProfileOperation(), bool checkIsCallable = true);
     GateRef IsFastTypeArray(GateRef jsType);
     GateRef GetTypeArrayPropertyByName(GateRef glue, GateRef receiver, GateRef holder, GateRef key, GateRef jsType);
     GateRef SetTypeArrayPropertyByName(GateRef glue, GateRef receiver, GateRef holder, GateRef key, GateRef value,
@@ -837,6 +841,9 @@ public:
     GateRef AppendSkipHole(GateRef glue, GateRef first, GateRef second, GateRef copyLength);
     GateRef IntToEcmaString(GateRef glue, GateRef number);
     GateRef NumberToString(GateRef glue, GateRef number);
+    inline GateRef IsMarkerCellValid(GateRef cell);
+    inline GateRef GetAccessorHasChanged(GateRef obj);
+    inline GateRef ComputeTaggedTypedArraySize(GateRef elementSize, GateRef length);
 
 private:
     using BinaryOperation = std::function<GateRef(Environment*, GateRef, GateRef)>;

@@ -96,6 +96,20 @@
     }
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
+#define ACCESSORS_SYNCHRONIZED_PRIMITIVE_FIELD(name, type, offset, endOffset)                                \
+    static constexpr size_t endOffset = (offset) + sizeof(type);                                             \
+    inline type Get##name() const                                                                            \
+    {                                                                                                        \
+        return reinterpret_cast<volatile std::atomic<type> *>(ToUintPtr(this) + offset)                      \
+        ->load(std::memory_order_acquire);                                                                   \
+    }                                                                                                        \
+    inline void Set##name(type value)                                                                        \
+    {                                                                                                        \
+        reinterpret_cast<volatile std::atomic<type> *>(ToUintPtr(this) + offset)                             \
+        ->store(value, std::memory_order_release);                                                           \
+    }
+
+// NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define ACCESSORS_SYNCHRONIZED(name, offset, endOffset)                                                               \
     static constexpr size_t endOffset = (offset) + JSTaggedValue::TaggedTypeSize();                                   \
     JSTaggedValue Get##name() const                                                                                   \

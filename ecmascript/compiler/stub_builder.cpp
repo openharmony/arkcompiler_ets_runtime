@@ -21,11 +21,11 @@
 #include "ecmascript/compiler/assembler_module.h"
 #include "ecmascript/compiler/access_object_stub_builder.h"
 #include "ecmascript/compiler/builtins/builtins_string_stub_builder.h"
+#include "ecmascript/compiler/builtins/builtins_typedarray_stub_builder.h"
 #include "ecmascript/compiler/interpreter_stub.h"
 #include "ecmascript/compiler/new_object_stub_builder.h"
 #include "ecmascript/compiler/profiler_stub_builder.h"
 #include "ecmascript/compiler/rt_call_signature.h"
-#include "ecmascript/compiler/typed_array_stub_builder.h"
 #include "ecmascript/global_env_constants.h"
 #include "ecmascript/ic/properties_cache.h"
 #include "ecmascript/js_api/js_api_arraylist.h"
@@ -148,58 +148,105 @@ void StubBuilder::MatchFieldType(GateRef fieldType, GateRef value, Label *execut
     Label isJSShared(env);
     Label checkBigInt(env);
     Label isBigInt(env);
-    Label checkJSNone(env);
-    Label isJSNone(env);
+    Label checkNoneOrGeneric(env);
+    Label isNoneOrGeneric(env);
+    Label checkNull(env);
+    Label isNull(env);
+    Label checkUndefined(env);
+    Label isUndefined(env);
     Label exit(env);
     DEFVARIABLE(result, VariableType::BOOL(), False());
-    BRANCH(Equal(fieldType, Int32(static_cast<int32_t>(SharedFieldType::NUMBER))), &isNumber, &checkBoolean);
+    BRANCH(BoolAnd(
+        Int32NotEqual(Int32And(fieldType, Int32(static_cast<int32_t>(SharedFieldType::NUMBER))), Int32(0)),
+        TaggedIsNumber(value)),
+        &isNumber, &checkBoolean);
     Bind(&isNumber);
     {
-        result = TaggedIsNumber(value);
+        result = True();
         Jump(&exit);
     }
     Bind(&checkBoolean);
     {
-        BRANCH(Equal(fieldType, Int32(static_cast<int32_t>(SharedFieldType::BOOLEAN))), &isBoolean, &checkString);
+        BRANCH(BoolAnd(
+            Int32NotEqual(Int32And(fieldType, Int32(static_cast<int32_t>(SharedFieldType::BOOLEAN))), Int32(0)),
+            TaggedIsBoolean(value)),
+            &isBoolean, &checkString);
         Bind(&isBoolean);
         {
-            result = TaggedIsBoolean(value);
+            result = True();
             Jump(&exit);
         }
     }
     Bind(&checkString);
     {
-        BRANCH(Equal(fieldType, Int32(static_cast<int32_t>(SharedFieldType::STRING))), &isString, &checkJSShared);
+        BRANCH(BoolAnd(
+            Int32NotEqual(Int32And(fieldType, Int32(static_cast<int32_t>(SharedFieldType::STRING))), Int32(0)),
+            BoolOr(TaggedIsString(value), TaggedIsNull(value))),
+            &isString, &checkJSShared);
         Bind(&isString);
         {
-            result = BoolOr(TaggedIsString(value), TaggedIsNull(value));
+            result = True();
             Jump(&exit);
         }
     }
     Bind(&checkJSShared);
     {
-        BRANCH(Equal(fieldType, Int32(static_cast<int32_t>(SharedFieldType::SENDABLE))), &isJSShared, &checkBigInt);
+        BRANCH(BoolAnd(
+            Int32NotEqual(Int32And(fieldType, Int32(static_cast<int32_t>(SharedFieldType::SENDABLE))), Int32(0)),
+            BoolOr(TaggedIsShared(value), TaggedIsNull(value))),
+            &isJSShared, &checkBigInt);
         Bind(&isJSShared);
         {
-            result = BoolOr(TaggedIsShared(value), TaggedIsNull(value));
+            result = True();
             Jump(&exit);
         }
     }
     Bind(&checkBigInt);
     {
-        BRANCH(Equal(fieldType, Int32(static_cast<int32_t>(SharedFieldType::BIG_INT))), &isBigInt, &checkJSNone);
+        BRANCH(BoolAnd(
+            Int32NotEqual(Int32And(fieldType, Int32(static_cast<int32_t>(SharedFieldType::BIG_INT))), Int32(0)),
+            TaggedIsBigInt(value)),
+            &isBigInt, &checkNoneOrGeneric);
         Bind(&isBigInt);
         {
-            result = TaggedIsBigInt(value);
+            result = True();
             Jump(&exit);
         }
     }
-    Bind(&checkJSNone);
+    Bind(&checkNoneOrGeneric);
     {
-        BRANCH(Equal(fieldType, Int32(static_cast<int32_t>(SharedFieldType::NONE))), &isJSNone, &exit);
-        Bind(&isJSNone);
+        BRANCH(BoolAnd(
+            BoolOr(Equal(fieldType, Int32(static_cast<int32_t>(SharedFieldType::NONE))),
+                Int32NotEqual(Int32And(fieldType, Int32(static_cast<int32_t>(SharedFieldType::GENERIC))), Int32(0))),
+            BoolOr(TaggedIsShared(value), BoolNot(TaggedIsHeapObject(value)))),
+            &isNoneOrGeneric, &checkNull);
+        Bind(&isNoneOrGeneric);
         {
-            // bypass none type
+            // (none || generic) && (jsShared || !heapObject)
+            result = True();
+            Jump(&exit);
+        }
+    }
+    Bind(&checkNull);
+    {
+        BRANCH(BoolAnd(
+            Int32NotEqual(Int32And(fieldType, Int32(static_cast<int32_t>(SharedFieldType::NULL_TYPE))), Int32(0)),
+            TaggedIsNull(value)),
+            &isNull, &checkUndefined);
+        Bind(&isNull);
+        {
+            result = True();
+            Jump(&exit);
+        }
+    }
+    Bind(&checkUndefined);
+    {
+        BRANCH(BoolAnd(
+            Int32NotEqual(Int32And(fieldType, Int32(static_cast<int32_t>(SharedFieldType::UNDEFINED))), Int32(0)),
+            TaggedIsUndefined(value)),
+            &isUndefined, &exit);
+        Bind(&isUndefined);
+        {
             result = True();
             Jump(&exit);
         }
@@ -1717,23 +1764,27 @@ GateRef StubBuilder::CheckPolyHClass(GateRef cachedValue, GateRef hclass)
     BRANCH(TaggedIsWeak(cachedValue), &exit, &cachedValueNotWeak);
     Bind(&cachedValueNotWeak);
     {
-        GateRef length = GetLengthOfTaggedArray(cachedValue);
-        Jump(&loopHead);
-        LoopBegin(&loopHead);
+        Label isTaggedArray(env);
+        Branch(IsTaggedArray(cachedValue), &isTaggedArray, &exit);
+        Bind(&isTaggedArray);
         {
-            BRANCH(Int32UnsignedLessThan(*i, length), &iLessLength, &exit);
-            Bind(&iLessLength);
+            GateRef length = GetLengthOfTaggedArray(cachedValue);
+            Jump(&loopHead);
+            LoopBegin(&loopHead);
             {
-                GateRef element = GetValueFromTaggedArray(cachedValue, *i);
-                BRANCH(Equal(LoadObjectFromWeakRef(element), hclass), &hasHclass, &loopEnd);
-                Bind(&hasHclass);
-                result = GetValueFromTaggedArray(cachedValue,
-                                                 Int32Add(*i, Int32(1)));
-                Jump(&exit);
+                BRANCH(Int32UnsignedLessThan(*i, length), &iLessLength, &exit);
+                Bind(&iLessLength);
+                {
+                    GateRef element = GetValueFromTaggedArray(cachedValue, *i);
+                    BRANCH(Equal(LoadObjectFromWeakRef(element), hclass), &hasHclass, &loopEnd);
+                    Bind(&hasHclass);
+                    result = GetValueFromTaggedArray(cachedValue, Int32Add(*i, Int32(1)));
+                    Jump(&exit);
+                }
+                Bind(&loopEnd);
+                i = Int32Add(*i, Int32(2)); // 2 means one ic, two slot
+                LoopEnd(&loopHead);
             }
-            Bind(&loopEnd);
-            i = Int32Add(*i, Int32(2));  // 2 means one ic, two slot
-            LoopEnd(&loopHead);
         }
     }
     Bind(&exit);
@@ -1775,7 +1826,7 @@ GateRef StubBuilder::LoadICWithHandler(
         BRANCH(TaggedIsInt(*handler), &handlerIsInt, &handlerNotInt);
         Bind(&handlerIsInt);
         {
-            GateRef handlerInfo = GetInt32OfTInt(*handler);
+            GateRef handlerInfo = GetInt64OfTInt(*handler);
             BRANCH(IsField(handlerInfo), &handlerInfoIsField, &handlerInfoNotField);
             Bind(&handlerInfoIsField);
             {
@@ -1982,13 +2033,13 @@ GateRef StubBuilder::ICStoreElement(GateRef glue, GateRef receiver, GateRef key,
         BRANCH(TaggedIsInt(*varHandler), &handlerIsInt, &handlerNotInt);
         Bind(&handlerIsInt);
         {
-            GateRef handlerInfo = GetInt32OfTInt(*varHandler);
+            GateRef handlerInfo = GetInt64OfTInt(*varHandler);
             BRANCH(IsTypedArrayElement(handlerInfo), &handlerInfoIsTypedArray, &handerInfoNotTypedArray);
             Bind(&handlerInfoIsTypedArray);
             {
                 GateRef hclass = LoadHClass(receiver);
                 GateRef jsType = GetObjectType(hclass);
-                TypedArrayStubBuilder typedArrayBuilder(this);
+                BuiltinsTypedArrayStubBuilder typedArrayBuilder(this);
                 result = typedArrayBuilder.StoreTypedArrayElement(glue, receiver, index64, value, jsType);
                 Jump(&exit);
             }
@@ -2134,7 +2185,7 @@ GateRef StubBuilder::StoreICWithHandler(GateRef glue, GateRef receiver, GateRef 
         BRANCH(TaggedIsInt(*handler), &handlerIsInt, &handlerNotInt);
         Bind(&handlerIsInt);
         {
-            GateRef handlerInfo = GetInt32OfTInt(*handler);
+            GateRef handlerInfo = GetInt64OfTInt(*handler);
             BRANCH(IsNonSharedStoreField(handlerInfo), &handlerInfoIsField, &handlerInfoNotField);
             Bind(&handlerInfoIsField);
             {
@@ -2223,7 +2274,7 @@ GateRef StubBuilder::StoreICWithHandler(GateRef glue, GateRef receiver, GateRef 
                 {
                     holder = GetStoreTSHandlerHolder(*handler);
                     handler = GetStoreTSHandlerHandlerInfo(*handler);
-                    GateRef handlerInfo = GetInt32OfTInt(*handler);
+                    GateRef handlerInfo = GetInt64OfTInt(*handler);
                     BRANCH(IsField(handlerInfo), &aotHandlerInfoIsField, &aotHandlerInfoNotField);
                     Bind(&aotHandlerInfoIsField);
                     {
@@ -2315,10 +2366,10 @@ GateRef StubBuilder::StoreWithTransition(GateRef glue, GateRef receiver, GateRef
     GateRef handlerInfo;
     if (withPrototype) {
         newHClass = GetTransWithProtoHClass(handler);
-        handlerInfo = GetInt32OfTInt(GetTransWithProtoHandlerInfo(handler));
+        handlerInfo = GetInt64OfTInt(GetTransWithProtoHandlerInfo(handler));
     } else {
         newHClass = GetTransitionHClass(handler);
-        handlerInfo = GetInt32OfTInt(GetTransitionHandlerInfo(handler));
+        handlerInfo = GetInt64OfTInt(GetTransitionHandlerInfo(handler));
     }
 
     GateRef oldHClass = LoadHClass(receiver);
@@ -2531,7 +2582,7 @@ GateRef StubBuilder::GetPropertyByIndex(GateRef glue, GateRef receiver, GateRef 
             BRANCH(IsFastTypeArray(jsType), &isFastTypeArray, &notFastTypeArray);
             Bind(&isFastTypeArray);
             {
-                TypedArrayStubBuilder typedArrayStubBuilder(this);
+                BuiltinsTypedArrayStubBuilder typedArrayStubBuilder(this);
                 result = typedArrayStubBuilder.FastGetPropertyByIndex(glue, *holder, index, jsType);
                 Jump(&exit);
             }
@@ -3497,7 +3548,13 @@ GateRef StubBuilder::SetPropertyByIndex(GateRef glue, GateRef receiver, GateRef 
     }
     Label isExtensible(env);
     Label notExtensible(env);
+    Label throwNotExtensible(env);
     BRANCH(IsExtensible(receiver), &isExtensible, &notExtensible);
+    Bind(&notExtensible);
+    {
+        // fixme(hzzhouzebin) this makes SharedArray's frozen no sense.
+        BRANCH(IsJsSArray(receiver), &isExtensible, &throwNotExtensible);
+    }
     Bind(&isExtensible);
     {
         Label success(env);
@@ -3515,7 +3572,7 @@ GateRef StubBuilder::SetPropertyByIndex(GateRef glue, GateRef receiver, GateRef 
             Jump(&exit);
         }
     }
-    Bind(&notExtensible);
+    Bind(&throwNotExtensible);
     {
         GateRef taggedId = Int32(GET_MESSAGE_STRING_ID(SetPropertyWhenNotExtensible));
         CallRuntime(glue, RTSTUB_ID(ThrowTypeError), { IntToTaggedInt(taggedId) });
@@ -3705,11 +3762,11 @@ GateRef StubBuilder::SetPropertyByName(GateRef glue, GateRef receiver, GateRef k
                             // JSObject::Cast(holder)->SetProperty(thread, hclass, attr, value)
                             // return JSTaggedValue::Undefined()
                             Label executeSetProp(env);
-                            CheckUpdateSharedType(false, &result, glue, jsType, attr, value, &executeSetProp, &exit);
+                            CheckUpdateSharedType(false, &result, glue, receiver, attr, value, &executeSetProp, &exit);
                             Bind(&executeSetProp);
                             JSObjectSetProperty(glue, *holder, hclass, attr, key, value);
                             ProfilerStubBuilder(env).UpdatePropAttrWithValue(
-                                glue, jsType, layOutInfo, attr, entry, value, callback);
+                                glue, receiver, layOutInfo, attr, entry, value, callback);
                             result = Undefined();
                             Jump(&exit);
                         }
@@ -3778,7 +3835,7 @@ GateRef StubBuilder::SetPropertyByName(GateRef glue, GateRef receiver, GateRef k
                             // dict->UpdateValue(thread, entry, value)
                             // return JSTaggedValue::Undefined()
                             Label executeSetProp(env);
-                            CheckUpdateSharedType(true, &result, glue, jsType, attr1, value, &executeSetProp, &exit);
+                            CheckUpdateSharedType(true, &result, glue, receiver, attr1, value, &executeSetProp, &exit);
                             Bind(&executeSetProp);
                             UpdateValueInDict<NameDictionary>(glue, array, entry1, value);
                             result = Undefined();
@@ -3813,7 +3870,7 @@ GateRef StubBuilder::SetPropertyByName(GateRef glue, GateRef receiver, GateRef k
         GateRef holeAttr = GetPropAttrFromLayoutInfo(receiverLayoutInfo, *receiverHoleEntry);
         JSObjectSetProperty(glue, receiver, receiverHClass, holeAttr, key, value);
         ProfilerStubBuilder(env).UpdatePropAttrWithValue(
-            glue, jsType, receiverLayoutInfo, holeAttr, *receiverHoleEntry, value, callback);
+            glue, receiver, receiverLayoutInfo, holeAttr, *receiverHoleEntry, value, callback);
         result = Undefined();
         Jump(&exit);
     }
@@ -6815,7 +6872,7 @@ bool StubBuilder::IsCallModeSupportPGO(JSCallMode mode)
 
 GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNumArgs, GateRef jumpSize,
                                     GateRef hotnessCounter, JSCallMode mode, std::initializer_list<GateRef> args,
-                                    ProfileOperation callback)
+                                    ProfileOperation callback, bool checkIsCallable)
 {
     auto env = GetEnvironment();
     Label entryPass(env);
@@ -6829,20 +6886,26 @@ GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNu
     // save pc
     SavePcIfNeeded(glue);
     GateRef bitfield = 0;
+    GateRef hclass = 0;
 #if ECMASCRIPT_ENABLE_FUNCTION_CALL_TIMER
     CallNGCRuntime(glue, RTSTUB_ID(StartCallTimer), { glue, func, False()});
 #endif
-    BRANCH(TaggedIsHeapObject(func), &funcIsHeapObject, &funcNotCallable);
-    Bind(&funcIsHeapObject);
-    GateRef hclass = LoadHClass(func);
-    bitfield = Load(VariableType::INT32(), hclass, IntPtr(JSHClass::BIT_FIELD_OFFSET));
-    BRANCH(IsCallableFromBitField(bitfield), &funcIsCallable, &funcNotCallable);
-    Bind(&funcNotCallable);
-    {
-        CallRuntime(glue, RTSTUB_ID(ThrowNotCallableException), {});
-        Jump(&exit);
+    if (checkIsCallable) {
+        BRANCH(TaggedIsHeapObject(func), &funcIsHeapObject, &funcNotCallable);
+        Bind(&funcIsHeapObject);
+        hclass = LoadHClass(func);
+        bitfield = Load(VariableType::INT32(), hclass, IntPtr(JSHClass::BIT_FIELD_OFFSET));
+        BRANCH(IsCallableFromBitField(bitfield), &funcIsCallable, &funcNotCallable);
+        Bind(&funcNotCallable);
+        {
+            CallRuntime(glue, RTSTUB_ID(ThrowNotCallableException), {});
+            Jump(&exit);
+        }
+        Bind(&funcIsCallable);
+    } else {
+        hclass = LoadHClass(func);
+        bitfield = Load(VariableType::INT32(), hclass, IntPtr(JSHClass::BIT_FIELD_OFFSET));
     }
-    Bind(&funcIsCallable);
     GateRef method = GetMethodFromJSFunction(func);
     GateRef callField = GetCallFieldFromMethod(method);
     GateRef isNativeMask = Int64(static_cast<uint64_t>(1) << MethodLiteral::IsNativeBit::START_BIT);
@@ -7656,7 +7719,7 @@ GateRef StubBuilder::GetTypeArrayPropertyByName(GateRef glue, GateRef receiver, 
         BRANCH(Int32GreaterThanOrEqual(index, Int32(0)), &validIndex, &notValidIndex);
         Bind(&validIndex);
         {
-            TypedArrayStubBuilder typedArrayStubBuilder(this);
+            BuiltinsTypedArrayStubBuilder typedArrayStubBuilder(this);
             result = typedArrayStubBuilder.FastGetPropertyByIndex(glue, holder, index, jsType);
             Jump(&exit);
         }

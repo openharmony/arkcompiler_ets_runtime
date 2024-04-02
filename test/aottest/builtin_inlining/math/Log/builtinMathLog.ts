@@ -23,48 +23,49 @@ let res:number = 0;
 
 // Check without params
 res = Math.log();
-print(res); // NaN
+print(res); //: NaN
 
 // Check with single param
 res = Math.log(-0);
-print(res); // -Infinity
+print(res); //: -Infinity
 
 res = Math.log(+0);
-print(res); // -Infinity
+print(res); //: -Infinity
 
 res = Math.log(-123);
-print(res); // NaN
+print(res); //: NaN
 
 res = Math.log(Math.E);
-print(res); // 1
+print(res); //: 1
 
 // Check with 2 params
 res = Math.log(Math.E, Math.E);
-print(res); // 1
+print(res); //: 1
 
 // Check with 3 params
 res = Math.log(Math.E, Math.E, Math.E);
-print(res); // 1
+print(res); //: 1
 
 // Check with 4 params
 res = Math.log(Math.E, Math.E, Math.E, Math.E);
-print(res); // 1
+print(res); //: 1
 
 // Check with 5 params
 res = Math.log(Math.E, Math.E, Math.E, Math.E, Math.E);
-print(res); // 1
+print(res); //: 1
 
 try {
-    print(Math.log(Math.E)); // 1
+    print(Math.log(Math.E)); //: 1
 } catch(e) {}
 
 // Replace standart builtin
 let true_log = Math.log
 Math.log = replace
 res = Math.log(111);
-print(res); // 111
+print(res); //: 111
 
 // Call standart builtin with non-number param
 Math.log = true_log
+//aot: [trace] Check Type: NotNumber1
 res = Math.log("-0"); // deopt
-print(res); // -Infinity
+print(res); //: -Infinity

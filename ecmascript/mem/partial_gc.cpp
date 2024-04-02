@@ -44,7 +44,8 @@ void PartialGC::RunPhases()
         + ";Startup" + std::to_string(heap_->onStartUpEvent())
         + ";ConMark" + std::to_string(static_cast<int>(heap_->GetJSThread()->GetMarkStatus()))
         + ";Young" + std::to_string(heap_->GetNewSpace()->GetCommittedSize())
-        + ";Old" + std::to_string(heap_->GetOldSpace()->GetCommittedSize()));
+        + ";Old" + std::to_string(heap_->GetOldSpace()->GetCommittedSize())
+        + ";TotalCommit" + std::to_string(heap_->GetCommittedSize()));
     TRACE_GC(GCStats::Scope::ScopeId::TotalGC, gcStats);
     MEM_ALLOCATE_AND_GC_TRACE(heap_->GetEcmaVM(), PartialGC_RunPhases);
 

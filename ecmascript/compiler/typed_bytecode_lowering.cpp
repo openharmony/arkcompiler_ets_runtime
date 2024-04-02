@@ -1101,7 +1101,7 @@ bool TypedBytecodeLowering::TryLowerTypedLdObjByValueForBuiltin(GateRef gate)
     LoadBulitinObjTypeInfoAccessor tacc(thread_, circuit_, gate, chunk_);
     GateRef result = Circuit::NullGate();
     // Just supported mono.
-    if (tacc.IsMono()) {
+    if (tacc.IsMonoIgnoreElemKind()) {
         if (tacc.IsBuiltinsString()) {
             AddProfiling(gate);
             result = LoadStringByIndex(tacc);
@@ -1292,7 +1292,7 @@ bool TypedBytecodeLowering::TryLowerTypedStObjByValueForBuiltin(GateRef gate)
 {
     StoreBulitinObjTypeInfoAccessor tacc(thread_, circuit_, gate, chunk_);
     // Just supported mono.
-    if (tacc.IsMono()) {
+    if (tacc.IsMonoIgnoreElemKind()) {
         if (tacc.IsBuiltinsArray()) {
             AddProfiling(gate);
             StoreJSArrayByIndex(tacc);
@@ -1651,12 +1651,8 @@ void TypedBytecodeLowering::LowerTypedCallArg1(GateRef gate)
     CallArg1TypeInfoAccessor tacc(thread_, circuit_, gate);
     GateRef func = tacc.GetFunc();
     GateRef a0Value = tacc.GetValue();
-    GateType a0Type = tacc.GetValueGateType();
     BuiltinsStubCSigns::ID id = tacc.TryGetPGOBuiltinId();
-    if ((IS_TYPED_BUILTINS_MATH_ID(id) && a0Type.IsNumberType())) {
-        AddProfiling(gate);
-        SpeculateCallBuiltin(gate, func, { a0Value }, id, false);
-    } else if (IS_TYPED_BUILTINS_NUMBER_ID(id)) {
+    if (IS_TYPED_BUILTINS_NUMBER_ID(id)) {
         AddProfiling(gate);
         SpeculateCallBuiltin(gate, func, { a0Value }, id, true);
     } else {

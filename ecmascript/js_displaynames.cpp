@@ -169,8 +169,10 @@ JSHandle<JSDisplayNames> JSDisplayNames::InitializeDisplayNames(JSThread *thread
     property = globalConst->GetHandledTypeString();
     auto type = JSLocale::GetOptionOfString<TypednsOption>(thread, optionsObject, property,
                                                            {TypednsOption::LANGUAGE, TypednsOption::REGION,
-                                                           TypednsOption::SCRIPT, TypednsOption::CURRENCY},
-                                                           {"language", "region", "script", "currency"},
+                                                           TypednsOption::SCRIPT, TypednsOption::CURRENCY,
+                                                           TypednsOption::CALENDAR, TypednsOption::DATETIMEFIELD},
+                                                           {"language", "region", "script", "currency",
+                                                           "calendar", "dateTimeField"},
                                                            TypednsOption::UNDEFINED);
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSDisplayNames, thread);
 

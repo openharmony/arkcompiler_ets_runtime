@@ -126,4 +126,30 @@ void Method::ClearAOTFlagsWhenInit()
     SetAotCodeBit(false);
     SetIsFastCall(false);
 }
+
+bool Method::IsJitCompiledCode() const
+{
+    uint64_t extraLiteralInfo = GetExtraLiteralInfo();
+    return IsJitCompiledCodeBit::Decode(extraLiteralInfo);
+}
+
+void Method::SetJitCompiledCode(bool flag)
+{
+    uint64_t extraLiteralInfo = GetExtraLiteralInfo();
+    IsJitCompiledCodeBit::Update(extraLiteralInfo, flag);
+}
+
+void Method::ClearJitCompiledCodeFlags()
+{
+    ClearAOTFlagsWhenInit();
+    const JSPandaFile *jsPandaFile = GetJSPandaFile();
+    MethodLiteral *methodLiteral = jsPandaFile->FindMethodLiteral(GetMethodId().GetOffset());
+    SetCodeEntryOrLiteral(reinterpret_cast<uintptr_t>(methodLiteral));
+    SetJitCompiledCode(false);
+}
+
+bool Method::CanSerializeCodeEntry() const
+{
+    return IsAotWithCallField() && !IsJitCompiledCode();
+}
 } // namespace panda::ecmascript

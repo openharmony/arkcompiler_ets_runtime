@@ -76,6 +76,7 @@ group("ark_js_host_linux_tools_packages") {
     deps += [
       "ecmascript/compiler:ark_aot_compiler(${host_toolchain})",
       "ecmascript/compiler:ark_stub_compiler(${host_toolchain})",
+      "ecmascript/compiler:libark_jsoptimizer(${host_toolchain})",
       "ecmascript/pgo_profiler/prof_dump:profdump(${host_toolchain})",
     ]
   }
@@ -279,6 +280,9 @@ config("hiviewdfx_config") {
   }
   if (enable_hilog) {
     defines += [ "ENABLE_HILOG" ]
+  }
+  if (enable_hisysevent) {
+    defines += [ "ENABLE_HISYSEVENT" ]
   }
 
   include_dirs = [ "$hilog_root/include" ]
@@ -551,6 +555,7 @@ ecma_source = [
   "ecmascript/base/array_helper.cpp",
   "ecmascript/base/atomic_helper.cpp",
   "ecmascript/base/builtins_base.cpp",
+  "ecmascript/base/dtoa_helper.cpp",
   "ecmascript/base/error_helper.cpp",
   "ecmascript/base/fast_json_stringifier.cpp",
   "ecmascript/base/json_helper.cpp",
@@ -564,6 +569,7 @@ ecma_source = [
   "ecmascript/builtins/builtins.cpp",
   "ecmascript/builtins/builtins_ark_tools.cpp",
   "ecmascript/builtins/builtins_array.cpp",
+  "ecmascript/builtins/builtins_shared_array.cpp",
   "ecmascript/builtins/builtins_arraybuffer.cpp",
   "ecmascript/builtins/builtins_async_from_sync_iterator.cpp",
   "ecmascript/builtins/builtins_async_function.cpp",
@@ -598,6 +604,8 @@ ecma_source = [
   "ecmascript/builtins/builtins_shared_function.cpp",
   "ecmascript/builtins/builtins_string_iterator.cpp",
   "ecmascript/builtins/builtins_shared_object.cpp",
+  "ecmascript/builtins/builtins_shared_set.cpp",
+  "ecmascript/builtins/builtins_shared_map.cpp",
   "ecmascript/builtins/builtins_symbol.cpp",
   "ecmascript/builtins/builtins_typedarray.cpp",
   "ecmascript/builtins/builtins_weak_map.cpp",
@@ -722,7 +730,9 @@ ecma_source = [
   "ecmascript/js_api/js_api_vector_iterator.cpp",
   "ecmascript/js_arguments.cpp",
   "ecmascript/js_array.cpp",
+  "ecmascript/shared_objects/js_shared_array.cpp",
   "ecmascript/js_array_iterator.cpp",
+  "ecmascript/shared_objects/js_shared_array_iterator.cpp",
   "ecmascript/js_arraybuffer.cpp",
   "ecmascript/js_async_from_sync_iterator.cpp",
   "ecmascript/js_async_function.cpp",
@@ -739,6 +749,7 @@ ecma_source = [
   "ecmascript/js_iterator.cpp",
   "ecmascript/js_map.cpp",
   "ecmascript/js_map_iterator.cpp",
+  "ecmascript/jsnapi_sendable.cpp",
   "ecmascript/method.cpp",
   "ecmascript/js_object.cpp",
   "ecmascript/js_primitive_ref.cpp",
@@ -768,6 +779,7 @@ ecma_source = [
   "ecmascript/mem/free_object_list.cpp",
   "ecmascript/mem/free_object_set.cpp",
   "ecmascript/mem/gc_stats.cpp",
+  "ecmascript/mem/gc_key_stats.cpp",
   "ecmascript/mem/heap.cpp",
   "ecmascript/mem/heap_region_allocator.cpp",
   "ecmascript/mem/incremental_marker.cpp",
@@ -824,6 +836,10 @@ ecma_source = [
   "ecmascript/serializer/base_serializer.cpp",
   "ecmascript/serializer/value_serializer.cpp",
   "ecmascript/shared_object_factory.cpp",
+  "ecmascript/shared_objects/js_shared_map.cpp",
+  "ecmascript/shared_objects/js_shared_map_iterator.cpp",
+  "ecmascript/shared_objects/js_shared_set.cpp",
+  "ecmascript/shared_objects/js_shared_set_iterator.cpp",
   "ecmascript/stackmap/ark_stackmap_builder.cpp",
   "ecmascript/stackmap/ark_stackmap_parser.cpp",
   "ecmascript/stackmap/litecg/litecg_stackmap_type.cpp",
@@ -1075,19 +1091,20 @@ ohos_source_set("libark_jsruntime_test_set") {
       "/system/lib64/${arkcompiler_relative_lib_path}/lib_ark_builtins.d.abc"
   defines += [ "TARGET_BUILTINS_DTS_PATH=\"${target_builtins_dts_path}\"" ]
 
+  deps = []
+  external_deps = []
   if (defined(is_arkui_x) && is_arkui_x) {
-    deps = [
+    deps += [
       "$ark_third_party_root/icu/icu4c:static_icui18n",
       "$ark_third_party_root/icu/icu4c:static_icuuc",
     ]
   } else {
-    deps = [
-      "$ark_third_party_root/icu/icu4c:shared_icui18n",
-      "$ark_third_party_root/icu/icu4c:shared_icuuc",
+    external_deps += [
+      "icu:shared_icui18n",
+      "icu:shared_icuuc",
     ]
   }
 
-  external_deps = []
   if (enable_dump_in_faultlog) {
     external_deps += [ "libuv:uv" ]
   }
@@ -1180,11 +1197,14 @@ ohos_shared_library("libark_jsruntime") {
     }
   }
 
-  deps = [
-    ":libark_jsruntime_static",
-    sdk_libc_secshared_dep,
-  ]
+  deps = [ ":libark_jsruntime_static" ]
   external_deps = []
+  if (defined(is_arkui_x) && is_arkui_x && target_os == "ios") {
+    deps += [ "$ark_third_party_root/bounds_checking_function:libsec_static" ]
+  } else {
+    external_deps += [ "bounds_checking_function:libsec_shared" ]
+  }
+
   if (!is_arkui_x) {
     external_deps += [ "runtime_core:libarkfile_static" ]
   } else {
@@ -1192,6 +1212,7 @@ ohos_shared_library("libark_jsruntime") {
   }
 
   all_dependent_configs = [ ":ark_jsruntime_public_config" ]
+  public_configs = [ ":ark_jsruntime_public_config" ]
 
   if (is_ohos && is_standard_system && !is_debug) {
     version_script = "libark_jsruntime.map"
@@ -1224,9 +1245,9 @@ ohos_shared_library("libark_jsruntime") {
       "$ark_third_party_root/icu/icu4c:static_icuuc",
     ]
   } else {
-    deps += [
-      "$ark_third_party_root/icu/icu4c:shared_icui18n",
-      "$ark_third_party_root/icu/icu4c:shared_icuuc",
+    external_deps += [
+      "icu:shared_icui18n",
+      "icu:shared_icuuc",
     ]
   }
   innerapi_tags = [ "platformsdk_indirect" ]
@@ -1236,13 +1257,14 @@ ohos_shared_library("libark_jsruntime") {
 
 ohos_shared_library("libark_jsruntime_test") {
   stack_protector_ret = false
-  deps = [
-    ":libark_jsruntime_test_set",
-    "$ark_root/libpandafile:libarkfile_static",
-  ]
-
+  deps = [ ":libark_jsruntime_test_set" ]
+  external_deps = [ "runtime_core:libarkfile_static" ]
   public_configs = [ "$js_root:ark_jsruntime_public_config" ]
   public_configs += [ ":include_llvm" ]
+
+  if (enable_hilog) {
+    external_deps += [ "hilog:libhilog" ]
+  }
 
   ldflags = []
   if (enable_coverage) {
@@ -1257,7 +1279,10 @@ ohos_shared_library("libark_jsruntime_test") {
   if (!is_mingw && !is_mac) {
     output_extension = "so"
   }
-  subsystem_name = "test"
+
+  # Set the subsystem name
+  part_name = "ets_runtime"
+  subsystem_name = "arkcompiler"
 }
 
 ohos_prebuilt_etc("app_aot_enable_list") {

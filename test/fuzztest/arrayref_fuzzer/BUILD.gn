@@ -18,7 +18,7 @@ import("//build/config/features.gni")
 import("//build/ohos.gni")
 
 ####################################fuzztest##################################
-ohos_fuzztest("ArrayRefFuzzerTest") {
+ohos_fuzztest("ArrayRefFuzzTest") {
   module_out_path = ets_runtime_output_path
 
   fuzz_config_file = "$js_root/test/fuzztest/arrayref_fuzzer"
@@ -40,5 +40,5 @@ ohos_fuzztest("ArrayRefFuzzerTest") {
 group("fuzztest") {
   testonly = true
   deps = []
-  deps += [ ":ArrayRefFuzzerTest" ]
+  deps += [ ":ArrayRefFuzzTest" ]
 }

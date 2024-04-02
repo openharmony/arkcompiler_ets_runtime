@@ -1447,6 +1447,20 @@ DEF_CALL_SIGNATURE(StringGetEnd)
     callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
 }
 
+DEF_CALL_SIGNATURE(ClearJitCompiledCodeFlags)
+{
+    // 1 : 1 input parameters
+    CallSignature ClearJitCompiledCodeFlags("ClearJitCompiledCodeFlags", 0, 1,
+        ArgumentsOrder::DEFAULT_ORDER, VariableType::VOID());
+    *callSign = ClearJitCompiledCodeFlags;
+    std::array<VariableType, 1> params = { // 1 : 1 input parameters
+        VariableType::JS_POINTER(),
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetGCLeafFunction(true);
+    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
+}
+
 #define PUSH_CALL_ARGS_AND_DISPATCH_SIGNATURE_COMMON(name)                  \
     /* 1 : 1 input parameters */                                            \
     CallSignature signature(#name, 0, 1,                                    \
@@ -1775,6 +1789,23 @@ DEF_CALL_SIGNATURE(DebugPrintInstruction)
     callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
 }
 
+DEF_CALL_SIGNATURE(DebugOsrEntry)
+{
+    // 2 : 2 input parameters
+    CallSignature debugOsrEntry("DebugOsrEntry", 0, 2,
+        ArgumentsOrder::DEFAULT_ORDER, VariableType::VOID());
+    *callSign = debugOsrEntry;
+    // 2 : 2 input parameters
+    std::array<VariableType, 2> params = {
+        VariableType::NATIVE_POINTER(),
+        VariableType::NATIVE_POINTER(),
+    };
+    callSign->SetVariadicArgs(true);
+    callSign->SetParameters(params.data());
+    callSign->SetGCLeafFunction(true);
+    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
+}
+
 DEF_CALL_SIGNATURE(Comment)
 {
     // 1 : 1 input parameters
@@ -1866,20 +1897,6 @@ DEF_CALL_SIGNATURE(InsertLocalToShareRSet)
     callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
 }
 
-DEF_CALL_SIGNATURE(FloatSqrt)
-{
-    // 1 : 1 input parameters
-    CallSignature index("FloatSqrt", 0, 1, ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
-    *callSign = index;
-    // 1 : 1 input parameters
-    std::array<VariableType, 1> params = {
-        VariableType::FLOAT64(),
-    };
-    callSign->SetParameters(params.data());
-    callSign->SetGCLeafFunction(true);
-    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
-}
-
 #define DEF_FLOAT_UNARY_CALL_SIGNATURE_BY_NAME(NAME)                                               \
     DEF_CALL_SIGNATURE(NAME)                                                                       \
     {                                                                                              \
@@ -1907,11 +1924,17 @@ DEF_FLOAT_UNARY_CALL_SIGNATURE_BY_NAME(FloatSin)
 DEF_FLOAT_UNARY_CALL_SIGNATURE_BY_NAME(FloatSinh)
 DEF_FLOAT_UNARY_CALL_SIGNATURE_BY_NAME(FloatTan)
 DEF_FLOAT_UNARY_CALL_SIGNATURE_BY_NAME(FloatTanh)
+DEF_FLOAT_UNARY_CALL_SIGNATURE_BY_NAME(FloatExp)
+DEF_FLOAT_UNARY_CALL_SIGNATURE_BY_NAME(FloatExpm1)
+DEF_FLOAT_UNARY_CALL_SIGNATURE_BY_NAME(FloatTrunc)
 DEF_FLOAT_UNARY_CALL_SIGNATURE_BY_NAME(FloatFloor)
 DEF_FLOAT_UNARY_CALL_SIGNATURE_BY_NAME(FloatLog)
 DEF_FLOAT_UNARY_CALL_SIGNATURE_BY_NAME(FloatLog2)
 DEF_FLOAT_UNARY_CALL_SIGNATURE_BY_NAME(FloatLog10)
 DEF_FLOAT_UNARY_CALL_SIGNATURE_BY_NAME(FloatLog1p)
+DEF_FLOAT_UNARY_CALL_SIGNATURE_BY_NAME(FloatCbrt)
+DEF_FLOAT_UNARY_CALL_SIGNATURE_BY_NAME(FloatClz32)
+DEF_FLOAT_UNARY_CALL_SIGNATURE_BY_NAME(FloatCeil)
 
 #undef DEF_FLOAT_UNARY_CALL_SIGNATURE_BY_NAME
 
@@ -1948,6 +1971,20 @@ DEF_CALL_SIGNATURE(FindElementWithCache)
         VariableType::JS_ANY(),
         VariableType::JS_ANY(),
         VariableType::INT32(),
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetGCLeafFunction(true);
+    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
+}
+
+DEF_CALL_SIGNATURE(NumberIsFinite)
+{
+    // 1 : 1 input parameters
+    CallSignature index("NumberIsFinite", 0, 1, ArgumentsOrder::DEFAULT_ORDER, VariableType::BOOL());
+    *callSign = index;
+    // 1 : 1 input parameters
+    std::array<VariableType, 1> params = {
+        VariableType::FLOAT64(),
     };
     callSign->SetParameters(params.data());
     callSign->SetGCLeafFunction(true);
@@ -2390,5 +2427,24 @@ DEF_CALL_SIGNATURE(DeleteObjectProperty)
     };
     callSign->SetParameters(params.data());
     callSign->SetCallConv(CallSignature::CallConv::CCallConv);
+}
+
+DEF_CALL_SIGNATURE(CopyTypedArrayBuffer)
+{
+    // 5 : 5 input parameters
+    CallSignature CopyTypedArrayBuffer("CopyTypedArrayBuffer", 0, 5,
+        ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
+    *callSign = CopyTypedArrayBuffer;
+    // 5 : 5 input parameters
+    std::array<VariableType, 5> params = {
+        VariableType::JS_POINTER(),
+        VariableType::JS_POINTER(),
+        VariableType::INT32(),
+        VariableType::INT32(),
+        VariableType::INT32()
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetGCLeafFunction(true);
+    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
 }
 }  // namespace panda::ecmascript::kungfu

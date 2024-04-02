@@ -51,12 +51,12 @@ public:
 
     GateRef UpdateTrackTypeInPropAttr(GateRef attr, GateRef value, ProfileOperation callback);
     void UpdatePropAttrIC(GateRef glue, GateRef receiver, GateRef value, GateRef handler, ProfileOperation callback);
-    void UpdatePropAttrWithValue(GateRef glue, GateRef jsType, GateRef layout, GateRef attr, GateRef attrIndex,
+    void UpdatePropAttrWithValue(GateRef glue, GateRef receiver, GateRef layout, GateRef attr, GateRef attrIndex,
                                  GateRef value, ProfileOperation callback);
 
     GateRef IsProfileTypeInfoDumped(GateRef profileTypeInfo, ProfileOperation callback);
 
-    void TryJitCompile(GateRef glue, GateRef func, GateRef profileTypeInfo);
+    void TryJitCompile(GateRef glue, GateRef pc, GateRef func, GateRef profileTypeInfo);
     GateRef IsHotForJitCompiling(GateRef profileTypeInfo, ProfileOperation callback);
     GateRef IsHotForJitCompiling(GateRef profileTypeInfo);
 
@@ -82,6 +82,10 @@ private:
     GateRef GetJitHotnessThreshold(GateRef profileTypeInfo);
     GateRef GetJitHotnessThresholdOffset(GateRef profileTypeInfo);
     GateRef GetJitHotnessCntOffset(GateRef profileTypeInfo);
+    GateRef GetOsrHotnessThresholdOffset(GateRef profileTypeInfo);
+    GateRef GetOsrHotnessThreshold(GateRef profileTypeInfo);
+    GateRef GetOsrHotnessCntOffset(GateRef profileTypeInfo);
+    GateRef GetOsrHotnessCnt(GateRef profileTypeInfo);
 };
 } // namespace panda::ecmascript::kungfu
 #endif // ECMASCRIPT_COMPILER_PROFILER_STUB_BUILDER_H

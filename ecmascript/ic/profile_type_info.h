@@ -91,19 +91,28 @@ std::string ICKindToString(ICKind kind);
  *      |    low 32bits(PeriodCount)     |
  *      |    hight 32bits(jit hotness)   |
  *      +--------------------------------+
+ *      |    low 32bits(osr hotness)     |
+ *      |    hight 32bits(not in use)    |
+ *      +--------------------------------+
  */
 class ProfileTypeInfo : public TaggedArray {
 public:
     static const uint32_t MAX_FUNC_CACHE_INDEX = std::numeric_limits<uint32_t>::max();
     static constexpr uint32_t INVALID_SLOT_INDEX = 0xFF;
     static constexpr uint32_t MAX_SLOT_INDEX = 0xFFFF;
-    static constexpr size_t BIT_FIELD_INDEX = 1;
+    static constexpr size_t BIT_FIELD_INDEX = 2;
     static constexpr size_t RESERVED_LENGTH = BIT_FIELD_INDEX;
+    // 1 : one more slot for registering osr jit code array
+    static constexpr size_t EXTRA_CACHE_SLOT_INDEX = RESERVED_LENGTH + 1;
     static constexpr size_t INITIAL_PEROID_INDEX = 0;
+    static constexpr size_t INITIAL_OSR_HOTNESS_THRESHOLD = 0;
+    static constexpr size_t INITIAL_OSR_HOTNESS_CNT = 0;
     static constexpr size_t PRE_DUMP_PEROID_INDEX = 1;
     static constexpr size_t DUMP_PEROID_INDEX = 2;
-    static constexpr size_t JIT_HOTNESS_THRESHOLD_OFFSET_FROM_BITFIELD = 4; // 4 : 4 byte offset from bitfield
-    static constexpr size_t JIT_CNT_OFFSET_FROM_THRESHOLD = 2; // 2 : 2 byte offset from jit hotness threshold
+    static constexpr size_t JIT_HOTNESS_THRESHOLD_OFFSET_FROM_BITFIELD = 4;  // 4 : 4 byte offset from bitfield
+    static constexpr size_t JIT_CNT_OFFSET_FROM_THRESHOLD = 2;  // 2 : 2 byte offset from jit hotness threshold
+    static constexpr size_t OSR_HOTNESS_THRESHOLD_OFFSET_FROM_BITFIELD = 8;  // 8 : 8 byte offset from bitfield
+    static constexpr size_t OSR_CNT_OFFSET_FROM_OSR_THRESHOLD = 2;  // 2 : 2 byte offset from osr hotness threshold
 
     static ProfileTypeInfo *Cast(TaggedObject *object)
     {
@@ -113,7 +122,11 @@ public:
 
     static size_t ComputeSize(uint32_t cacheSize)
     {
-        return TaggedArray::ComputeSize(JSTaggedValue::TaggedTypeSize(), cacheSize + RESERVED_LENGTH);
+        if (cacheSize == INVALID_SLOT_INDEX) {
+            // used as hole.
+            ++cacheSize;
+        }
+        return TaggedArray::ComputeSize(JSTaggedValue::TaggedTypeSize(), cacheSize + EXTRA_CACHE_SLOT_INDEX);
     }
 
     inline uint32_t GetCacheLength() const
@@ -124,13 +137,28 @@ public:
     inline void InitializeWithSpecialValue(JSTaggedValue initValue, uint32_t capacity, uint32_t extraLength = 0)
     {
         ASSERT(initValue.IsSpecial());
-        SetLength(capacity + RESERVED_LENGTH);
+        bool needHole {false};
+        if (capacity == INVALID_SLOT_INDEX) {
+            // used as hole.
+            ++capacity;
+            needHole = true;
+        }
+        SetLength(capacity + EXTRA_CACHE_SLOT_INDEX);
         SetExtraLength(extraLength);
         for (uint32_t i = 0; i < capacity; i++) {
             size_t offset = JSTaggedValue::TaggedTypeSize() * i;
             Barriers::SetPrimitive<JSTaggedType>(GetData(), offset, initValue.GetRawData());
         }
+        if (needHole) {
+            Barriers::SetPrimitive<JSTaggedType>(GetData(), INVALID_SLOT_INDEX * JSTaggedValue::TaggedTypeSize(),
+                                                 JSTaggedValue::Hole().GetRawData());
+        }
+        // the last of the cache is used to save osr jit code array
+        Barriers::SetPrimitive<JSTaggedType>(GetData(), capacity * JSTaggedValue::TaggedTypeSize(),
+                                             JSTaggedValue::Undefined().GetRawData());
         SetPeriodIndex(INITIAL_PEROID_INDEX);
+        SetOsrHotnessThreshold(INITIAL_OSR_HOTNESS_THRESHOLD);
+        SetOsrHotnessCnt(INITIAL_OSR_HOTNESS_CNT);
     }
 
     void SetPreDumpPeriodIndex()
@@ -153,6 +181,16 @@ public:
         Barriers::SetPrimitive(GetData(), GetJitHotnessThresholdBitfieldOffset(), count);
     }
 
+    uint16_t GetOsrHotnessThreshold() const
+    {
+        return Barriers::GetValue<uint16_t>(GetData(), GetOsrHotnessThresholdBitfieldOffset());
+    }
+
+    void SetOsrHotnessThreshold(uint16_t count)
+    {
+        Barriers::SetPrimitive(GetData(), GetOsrHotnessThresholdBitfieldOffset(), count);
+    }
+
     uint16_t GetJitHotnessCnt() const
     {
         return Barriers::GetValue<uint16_t>(GetData(), GetJitHotnessCntBitfieldOffset());
@@ -161,6 +199,11 @@ public:
     void SetJitHotnessCnt(uint16_t count)
     {
         Barriers::SetPrimitive(GetData(), GetJitHotnessCntBitfieldOffset(), count);
+    }
+
+    void SetOsrHotnessCnt(uint16_t count)
+    {
+        Barriers::SetPrimitive(GetData(), GetOsrHotnessCntBitfieldOffset(), count);
     }
 
     DECL_VISIT_ARRAY(DATA_OFFSET, GetCacheLength(), GetCacheLength());
@@ -192,6 +235,17 @@ private:
     inline size_t GetJitHotnessCntBitfieldOffset() const
     {
         return GetJitHotnessThresholdBitfieldOffset() + JIT_CNT_OFFSET_FROM_THRESHOLD;
+    }
+
+    // osr hotness(16bits) + count(16bits)
+    inline size_t GetOsrHotnessThresholdBitfieldOffset() const
+    {
+        return GetBitfieldOffset() + OSR_HOTNESS_THRESHOLD_OFFSET_FROM_BITFIELD;
+    }
+
+    inline size_t GetOsrHotnessCntBitfieldOffset() const
+    {
+        return GetOsrHotnessThresholdBitfieldOffset() + OSR_CNT_OFFSET_FROM_OSR_THRESHOLD;
     }
 };
 

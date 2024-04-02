@@ -225,7 +225,11 @@ FrameLiveOut *FrameStateBuilder::GetOrOCreateBBLiveOut(size_t bbIndex)
 {
     // As BB0 is empty, its bbBeginStateLiveouts is the same as BB1.
     if (bbIndex == 0) {
-        bbIndex = 1;
+        if (bcBuilder_->IsOSR()) {
+            bbIndex = GetOsrLoopHeadBBId();
+        } else {
+            bbIndex = 1;
+        }
     }
     auto liveout = bbBeginStateLiveouts_[bbIndex];
     if (liveout == nullptr) {
@@ -378,6 +382,58 @@ void FrameStateBuilder::UpdateFrameValues(const BytecodeInfo &bytecodeInfo,
     BindStateSplitAfter(bytecodeInfo, bcId, gate);
 }
 
+void FrameStateBuilder::SetOsrLoopHeadBB(const BytecodeRegion &osrLoopBodyBB)
+{
+    auto *loopInfo = GetLoopInfoByLoopBody(osrLoopBodyBB);
+    if (loopInfo == nullptr) {
+        loopHeadOfOSR_ = nullptr;
+    } else {
+        loopHeadOfOSR_ = &(bcBuilder_->GetBasicBlockById(loopInfo->loopHeadId));
+    }
+    return;
+}
+
+bool FrameStateBuilder::IsOsrLoopExit(const BytecodeRegion &curBB)
+{
+    if (loopHeadOfOSR_ == nullptr) {
+        return false;
+    }
+    auto *loopInfo = GetLoopInfoByLoopBody(*loopHeadOfOSR_);
+    if (!loopInfo || !loopInfo->loopExits) {
+        return false;
+    }
+    for (auto *exit : *loopInfo->loopExits) {
+        if (exit == &curBB) {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool FrameStateBuilder::OutOfOsrLoop(const BytecodeRegion &curBB)
+{
+    if (loopHeadOfOSR_ == nullptr) {
+        return false;
+    }
+    const LoopInfo &loopInfoOfOSR = GetLoopInfo(*loopHeadOfOSR_);
+    const LoopInfo *curLoop = GetLoopInfoByLoopBody(curBB);
+    while (curLoop != nullptr) {
+        if (curLoop == &loopInfoOfOSR) {
+            return false;
+        }
+        curLoop = curLoop->parentInfo;
+    }
+    return true;
+}
+
+size_t FrameStateBuilder::GetOsrLoopHeadBBId() const
+{
+    if (loopHeadOfOSR_ == nullptr) {
+        return -1;
+    }
+    return loopHeadOfOSR_->id;
+}
+
 void FrameStateBuilder::InitEntryBB(const BytecodeRegion &bb)
 {
     auto frameContext = GetOrOCreateMergedContext(bb.id);
@@ -406,23 +462,54 @@ void FrameStateBuilder::InitEntryBB(const BytecodeRegion &bb)
             }
         }
     }
+
+    // init live interpreter registers
+    if (!bcBuilder_->IsOSR()) {
+        return;
+    }
+    auto *liveOut = GetFrameLiveoutBefore(GetOsrLoopHeadBBId());
+    for (size_t i = 0; i < envIndex_; i++) {
+        if (!liveOut->TestBit(i)) {
+            continue;
+        }
+        GateRef init = circuit_->NewGate(circuit_->GetMetaBuilder()->InitVreg(i), MachineType::I64,
+                                         {circuit_->GetArgRoot()}, GateType::TaggedValue());
+        frameContext->SetValuesAt(i, init);
+    }
+    if (liveOut->TestBit(envIndex_)) {
+        // -7: env
+        GateRef env = circuit_->NewGate(circuit_->GetMetaBuilder()->InitVreg(INIT_VRGE_ENV), MachineType::I64,
+                                        {circuit_->GetArgRoot()}, GateType::TaggedValue());
+        frameContext->SetValuesAt(envIndex_, env);
+    }
 }
 
 void FrameStateBuilder::NewMerge(const BytecodeRegion &bbNext)
 {
     auto frameContext = GetMergedBbContext(bbNext.id);
     size_t numOfIns = bbNext.numOfStatePreds;
-    const GateMetaData* metaData = bbNext.loopNumber > 0 ?
-        circuit_->LoopBegin(numOfIns) : circuit_->Merge(numOfIns);
-    auto merge = circuit_->NewGate(metaData,
-        std::vector<GateRef>(numOfIns, Circuit::NullGate()));
-    auto dependMerge = circuit_->NewGate(circuit_->DependSelector(numOfIns),
-        std::vector<GateRef>(numOfIns + 1, Circuit::NullGate()));
-    acc_.NewIn(dependMerge, 0, merge); // 0: is state
+    if (IsOsrLoopExit(bbNext)) {
+        // Only the precursor within the OSR loop is required.
+        numOfIns = 0;
+        for (const BytecodeRegion *bb : bbNext.preds) {
+            if (OutOfOsrLoop(*bb)) {
+                continue;
+            }
+            numOfIns++;
+        }
+    }
+
+    bool isLoopHead = !(bcBuilder_->IsOSR() && OutOfOsrLoop(bbNext)) && bbNext.loopNumber > 0;
+    const GateMetaData *metaData = isLoopHead ? circuit_->LoopBegin(numOfIns) : circuit_->Merge(numOfIns);
+    auto merge = circuit_->NewGate(metaData, std::vector<GateRef>(numOfIns, Circuit::NullGate()));
+    auto dependMerge =
+        circuit_->NewGate(circuit_->DependSelector(numOfIns), std::vector<GateRef>(numOfIns + 1, Circuit::NullGate()));
+    acc_.NewIn(dependMerge, 0, merge);  // 0: is state
     // reset current state and depend
     frameContext->currentState_ = merge;
     frameContext->currentDepend_ = dependMerge;
-    if (bbNext.loopNumber > 0) {
+
+    if (isLoopHead) {
         ChunkVector<GateRef>& headerGates = bcBuilder_->GetLoopHeaderGates();
         auto& loopInfo = GetLoopInfo(bbNext);
         headerGates[loopInfo.sortIndx] = merge;
@@ -446,12 +533,29 @@ void FrameStateBuilder::MergeStateDepend(const BytecodeRegion &bb, const Bytecod
         NewMerge(bbNext);
     }
     if (IsLoopBackEdge(bb, bbNext)) {
-        ASSERT(index != 0);
+        if (!(bcBuilder_->IsOSR() && IsOsrLoopExit(bbNext))) {
+            ASSERT(index != 0);
+        }
         entryState = circuit_->NewGate(circuit_->LoopBack(), { entryState });
     }
     acc_.NewIn(mergedContext->currentState_, index, entryState);
     acc_.NewIn(mergedContext->currentDepend_, index + 1, entryDepend); // 1: skip state
     mergedContext->needStateSplit_ = true;
+}
+
+size_t FrameStateBuilder::GetNumOfStatePreds(const BytecodeRegion &bb)
+{
+    size_t numOfIns = bb.numOfStatePreds;
+    if (bcBuilder_->IsOSR() && IsOsrLoopExit(bb)) {
+        numOfIns = 0;
+        for (const BytecodeRegion *b : bb.preds) {
+            if (OutOfOsrLoop(*b)) {
+                continue;
+            }
+            numOfIns++;
+        }
+    }
+    return numOfIns;
 }
 
 GateRef FrameStateBuilder::MergeValue(const BytecodeRegion &bb,
@@ -465,9 +569,10 @@ GateRef FrameStateBuilder::MergeValue(const BytecodeRegion &bb,
         acc_.NewIn(nextValue, index + 1, currentValue);
         currentValue = nextValue;
     } else if (currentValue != nextValue) {
-        auto inList = std::vector<GateRef>(1 + bb.numOfStatePreds, Circuit::NullGate()); // 1: state
-        auto phi = circuit_->NewGate(circuit_->ValueSelector(bb.numOfStatePreds),
-            MachineType::I64, inList.size(), inList.data(), GateType::AnyType());
+        size_t numOfIns = GetNumOfStatePreds(bb);
+        auto inList = std::vector<GateRef>(1 + numOfIns, Circuit::NullGate());  // 1: state
+        auto phi = circuit_->NewGate(circuit_->ValueSelector(numOfIns), MachineType::I64, inList.size(), inList.data(),
+                                     GateType::AnyType());
         acc_.NewIn(phi, 0, stateMerge);
         if (nextValue != Circuit::NullGate()) {
             for (size_t i = 0; i < index; i++) {
@@ -588,7 +693,10 @@ void FrameStateBuilder::NewLoopExit(const BytecodeRegion &bbNext, BitSet *loopAs
 
 void FrameStateBuilder::TryInsertLoopExit(const BytecodeRegion &bb, const BytecodeRegion &bbNext)
 {
-    if (!bcBuilder_->EnableLoopOptimization()) {
+    if (!bcBuilder_->EnableLoopOptimization() && !bcBuilder_->IsOSR()) {
+        return;
+    }
+    if (bcBuilder_->IsOSR() && bcBuilder_->IsCacheBBOfOSRLoop(bbNext)) {
         return;
     }
     auto currentLoop = GetLoopInfoByLoopBody(bb);
@@ -613,14 +721,14 @@ void FrameStateBuilder::TryInsertLoopExit(const BytecodeRegion &bb, const Byteco
     }
 }
 
-void FrameStateBuilder::AdvanceToNextBB(const BytecodeRegion &bb)
+void FrameStateBuilder::AdvanceToNextBB(const BytecodeRegion &bb, bool isOsrLoopExit)
 {
     liveContext_ = GetMergedBbContext(bb.id);
     ASSERT(liveContext_ != nullptr);
     if (bb.loopNumber > 0) {
         // use bb as merged values
         SaveCurrentContext(bb);
-    } else {
+    } else if (!isOsrLoopExit) {
         // all input merged
         ASSERT(liveContext_->currentIndex_ == bb.numOfStatePreds);
     }
@@ -672,7 +780,9 @@ void FrameStateBuilder::MergeIntoSuccessor(const BytecodeRegion &bb, const Bytec
 
 bool FrameStateBuilder::IsLoopBackEdge(const BytecodeRegion &bb, const BytecodeRegion &bbNext)
 {
-    if (bbNext.loopNumber > 0) {
+    if (bcBuilder_->IsOSR() && OutOfOsrLoop(bbNext)) {
+        return false;
+    } else if (bbNext.loopNumber > 0) {
         auto& loopInfo = GetLoopInfo(bbNext);
         return loopInfo.loopBodys->TestBit(bb.id);
     }
@@ -872,9 +982,11 @@ public:
             CountLoopBody(loopInfo, info.fromId);
             PropagateLoopBody(loopInfo);
         }
-        if (!bcBuilder_->EnableLoopOptimization()) {
+
+        if (!bcBuilder_->EnableLoopOptimization() && !bcBuilder_->IsOSR()) {
             return;
         }
+
         auto size = bcBuilder_->GetBasicBlockCount();
         dfsStack_.resize(size, DFSState(0, 0));
         ComputeLoopTree();
@@ -968,7 +1080,9 @@ public:
         while (currentDepth > 0) {
             auto &curState = dfsStack_[currentDepth - 1]; // -1: for current
             auto const &bb = bcBuilder_->GetBasicBlockById(curState.bbId);
-            ASSERT(bb.catches.empty());
+            if (!bcBuilder_->IsOSR()) {
+                ASSERT(bb.catches.empty());
+            }
             auto index = curState.index;
             BytecodeRegion* bbNext = nullptr;
             if (index >= bb.succs.size()) {

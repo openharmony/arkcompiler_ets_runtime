@@ -54,8 +54,8 @@ public:
                                             JSTaggedValue value, JSTaggedValue handler);
     static inline JSTaggedValue StorePrototype(JSThread *thread, JSTaggedValue receiver,
                                                JSTaggedValue value, JSTaggedValue handler);
-    static inline JSTaggedValue LoadFromField(JSObject *receiver, uint32_t handlerInfo);
-    static inline void StoreField(JSThread *thread, JSObject *receiver, JSTaggedValue value, uint32_t handler);
+    static inline JSTaggedValue LoadFromField(JSObject *receiver, uint64_t handlerInfo);
+    static inline void StoreField(JSThread *thread, JSObject *receiver, JSTaggedValue value, uint64_t handler);
     static inline JSTaggedValue LoadGlobal(JSTaggedValue handler);
     static inline JSTaggedValue StoreGlobal(JSThread *thread, JSTaggedValue value, JSTaggedValue handler);
     static inline JSTaggedValue LoadPrototype(JSThread *thread, JSTaggedValue receiver, JSTaggedValue handler);

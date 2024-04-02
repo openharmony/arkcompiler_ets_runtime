@@ -687,6 +687,23 @@ LoadBulitinObjTypeInfoAccessor::LoadBulitinObjTypeInfoAccessor(const JSThread *t
     FetchBuiltinsTypes();
 }
 
+bool AccBuiltinObjTypeInfoAccessor::IsMonoIgnoreElemKind() const
+{
+    if (IsMono()) {
+        return true;
+    }
+    if (types_.empty()) {
+        return false;
+    }
+    auto firstIter = types_[0];
+    for (auto type : types_) {
+        if (type.IsBuiltinsType() != firstIter.IsBuiltinsType()) {
+            return false;
+        }
+    }
+    return true;
+}
+
 bool AccBuiltinObjTypeInfoAccessor::IsAllString() const
 {
     if (types_.empty()) {

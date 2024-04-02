@@ -432,6 +432,7 @@ private:
     V(DebugPrint)                               \
     V(DebugPrintCustom)                         \
     V(DebugPrintInstruction)                    \
+    V(DebugOsrEntry)                            \
     V(Comment)                                  \
     V(FatalPrint)                               \
     V(FatalPrintCustom)                         \
@@ -441,7 +442,6 @@ private:
     V(DoubleToInt)                              \
     V(DoubleToLength)                           \
     V(FloatMod)                                 \
-    V(FloatSqrt)                                \
     V(FloatAcos)                                \
     V(FloatAcosh)                               \
     V(FloatAsin)                                \
@@ -455,12 +455,19 @@ private:
     V(FloatSinh)                                \
     V(FloatTan)                                 \
     V(FloatTanh)                                \
+    V(FloatTrunc)                               \
     V(FloatLog)                                 \
     V(FloatLog2)                                \
     V(FloatLog10)                               \
     V(FloatLog1p)                               \
+    V(FloatExp)                                 \
+    V(FloatExpm1)                               \
+    V(FloatCbrt)                                \
+    V(FloatClz32)                               \
     V(FloatFloor)                               \
     V(FloatPow)                                 \
+    V(FloatCeil)                                \
+    V(NumberIsFinite)                           \
     V(FindElementWithCache)                     \
     V(MarkingBarrier)                           \
     V(StoreBarrier)                             \
@@ -504,7 +511,10 @@ private:
     V(LocaleCompareNoGc)                        \
     V(StringGetStart)                           \
     V(StringGetEnd)                             \
-    V(ArrayTrim)
+    V(ArrayTrim)                                \
+    V(OptimizedFastJmp)                         \
+    V(ClearJitCompiledCodeFlags)                \
+    V(CopyTypedArrayBuffer)
 
 #define DECL_CALL_SIGNATURE(name)                                  \
 class name##CallSignature final {                                  \

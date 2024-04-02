@@ -160,7 +160,7 @@ void MIRParser::Error(const std::string &str)
 {
     std::stringstream strStream;
     const std::string &lexName = lexer.GetName();
-    int curIdx = lexer.GetCurIdx() - lexName.length() + 1;
+    int curIdx = static_cast<int>(lexer.GetCurIdx()) - static_cast<int>(lexName.length()) + 1;
     strStream << "line: " << lexer.GetLineNum() << ":" << curIdx << ":";
     message += strStream.str();
     message += str;
@@ -185,7 +185,7 @@ void MIRParser::Warning(const std::string &str)
 {
     std::stringstream strStream;
     const std::string &lexName = lexer.GetName();
-    int curIdx = lexer.GetCurIdx() - lexName.length() + 1;
+    int curIdx = static_cast<int>(lexer.GetCurIdx()) - static_cast<int>(lexName.length()) + 1;
     strStream << "  >> warning line: " << lexer.GetLineNum() << ":" << curIdx << ":";
     warningMessage += strStream.str();
     warningMessage += str;
@@ -305,7 +305,7 @@ bool MIRParser::ParseArrayType(TyIdx &arrayTyIdx)
             Error("expect int value parsing array type after [ but get ");
             return false;
         }
-        int64 val = lexer.GetTheIntVal();
+        int64 val = static_cast<int64>(lexer.GetTheIntVal());
         if (val < 0) {
             Error("expect array value >= 0 ");
             return false;
@@ -435,7 +435,7 @@ bool MIRParser::ParsePragmaElementForArray(MIRPragmaElement &elem)
         Error("parsing pragma error: expecting int but get ");
         return false;
     }
-    int64 size = lexer.GetTheIntVal();
+    int64 size = static_cast<int64>(lexer.GetTheIntVal());
     tk = lexer.NextToken();
     if (tk != TK_coma && size) {
         Error("parsing pragma error: expecting , but get ");
@@ -483,7 +483,7 @@ bool MIRParser::ParsePragmaElementForAnnotation(MIRPragmaElement &elem)
         Error("parsing pragma error: expecting int but get ");
         return false;
     }
-    int64 size = lexer.GetTheIntVal();
+    int64 size = static_cast<int64>(lexer.GetTheIntVal());
     tk = lexer.NextToken();
     if (tk != TK_coma && size) {
         Error("parsing pragma error: expecting , but get ");
@@ -3297,7 +3297,7 @@ bool MIRParser::ParseMPLT(std::ifstream &mpltFile, const std::string &importFile
 {
     // save relevant values for the main input file
     std::ifstream *airFileSave = lexer.GetFile();
-    int lineNumSave = lexer.lineNum;
+    int lineNumSave = static_cast<int>(lexer.lineNum);
     std::string modFileNameSave = mod.GetFileName();
     // set up to read next line from the import file
     lexer.curIdx = 0;
@@ -3340,7 +3340,7 @@ bool MIRParser::ParseMPLT(std::ifstream &mpltFile, const std::string &importFile
     // restore old values to continue reading from the main input file
     lexer.curIdx = 0;  // to force reading new line
     lexer.currentLineSize = 0;
-    lexer.lineNum = lineNumSave;
+    lexer.lineNum = static_cast<size_t>(lineNumSave);
     lexer.SetFile(*airFileSave);
     mod.SetFileName(modFileNameSave);
     return true;

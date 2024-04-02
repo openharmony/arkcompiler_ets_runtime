@@ -26,7 +26,6 @@ include_libmplphase = [
   "${MAPLEALL_ROOT}/maple_be/include/be",
   "${MAPLEALL_ROOT}/maple_be/include/ad",
   "${MAPLEALL_ROOT}/maple_be/include/ad/target",
-  "${MAPLEALL_THIRD_PARTY_ROOT}/bounds_checking_function/include",
   "${MAPLEALL_ROOT}/maple_driver/include",
 ]
 
@@ -43,6 +42,7 @@ ohos_static_library("libmplphase") {
   configs = [ "${MAPLEALL_ROOT}:mapleallcompilecfg" ]
   sources = src_libmplphase
   include_dirs = include_libmplphase
+  external_deps = [ "bounds_checking_function:libsec_static" ]
   output_dir = "${root_out_dir}/lib/${HOST_ARCH}"
   part_name = "ets_runtime"
   subsystem_name = "arkcompiler"

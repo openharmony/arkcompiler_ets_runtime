@@ -45,6 +45,8 @@
 #endif
 
 #include "llvm/IR/Instructions.h"
+#include "llvm/IR/Intrinsics.h"
+#include "llvm/IR/IRBuilder.h"
 
 #if defined(__clang__)
 #pragma clang diagnostic pop
@@ -204,6 +206,14 @@ void LLVMIRBuilder::InitializeHandlers()
         {OpCode::MUL_WITH_OVERFLOW, &LLVMIRBuilder::HandleMulWithOverflow},
         {OpCode::EXTRACT_VALUE, &LLVMIRBuilder::HandleExtractValue},
         {OpCode::SQRT, &LLVMIRBuilder::HandleSqrt},
+        {OpCode::EXP, &LLVMIRBuilder::HandleExp},
+        {OpCode::ABS, &LLVMIRBuilder::HandleAbs},
+        {OpCode::MIN, &LLVMIRBuilder::HandleMin},
+        {OpCode::MAX, &LLVMIRBuilder::HandleMax},
+        {OpCode::CLZ32, &LLVMIRBuilder::HandleClz32},
+        {OpCode::DOUBLE_TRUNC, &LLVMIRBuilder::HandleDoubleTrunc},
+        {OpCode::CEIL, &LLVMIRBuilder::HandleCeil},
+        {OpCode::FLOOR, &LLVMIRBuilder::HandleFloor},
         {OpCode::READSP, &LLVMIRBuilder::HandleReadSp},
         {OpCode::FINISH_ALLOCATE, &LLVMIRBuilder::HandleFinishAllocate},
     };
@@ -1981,6 +1991,165 @@ void LLVMIRBuilder::VisitSqrt(GateRef gate, GateRef e1)
     }
 }
 
+void LLVMIRBuilder::HandleExp(GateRef gate)
+{
+    GateRef base = acc_.GetIn(gate, 0U);
+    GateRef power = acc_.GetIn(gate, 1U);
+    VisitExp(gate, base, power);
+}
+
+void LLVMIRBuilder::VisitExp([[maybe_unused]] GateRef gate, [[maybe_unused]] GateRef e1, [[maybe_unused]] GateRef e2)
+{
+#ifdef SUPPORT_LLVM_INTRINSICS_WITH_CALLS
+    llvm::Value *e1Value = llvm::unwrap(GetLValue(e1));
+    llvm::Value *e2Value = llvm::unwrap(GetLValue(e2));
+
+    [[maybe_unused]] auto machineType = acc_.GetMachineType(gate);
+    ASSERT(machineType == MachineType::F64);
+    ASSERT(acc_.GetMachineType(e1) == machineType);
+    ASSERT(acc_.GetMachineType(e2) == machineType);
+
+    llvm::Value *result = nullptr;
+
+    constexpr double one = 1.0;
+    if (acc_.IsConstant(e1) && acc_.GetFloat64FromConstant(e1) == std::exp(one)) {
+        llvm::Intrinsic::ID llvmId = llvm::Intrinsic::exp;
+        result = llvm::unwrap(builder_)->CreateUnaryIntrinsic(llvmId, e2Value);
+    } else {
+        llvm::Intrinsic::ID llvmId = llvm::Intrinsic::pow;
+        result = llvm::unwrap(builder_)->CreateBinaryIntrinsic(llvmId, e1Value, e2Value);
+    }
+#else
+    UNREACHABLE();
+#endif
+}
+
+void LLVMIRBuilder::HandleCeil(GateRef gate)
+{
+    GateRef param = acc_.GetIn(gate, 0);
+    VisitCeil(gate, param);
+}
+
+void LLVMIRBuilder::VisitCeil(GateRef gate, GateRef e1)
+{
+    llvm::Value *e1Value = llvm::unwrap(GetLValue(e1));
+    ASSERT(acc_.GetMachineType(e1) == acc_.GetMachineType(gate));
+    llvm::Intrinsic::ID llvmId = llvm::Intrinsic::ceil;
+    llvm::Value *result = llvm::unwrap(builder_)->CreateUnaryIntrinsic(llvmId, e1Value);
+    Bind(gate, llvm::wrap(result));
+
+    if (IsLogEnabled()) {
+        SetDebugInfo(gate, llvm::wrap(result));
+    }
+}
+
+template<typename... Ts>
+static llvm::CallInst *BuildLLVMIntrinsic(llvm::IRBuilder<> *builder, llvm::Intrinsic::ID llvmId, Ts... inputs)
+{
+    static_assert((std::is_same_v<Ts, llvm::Value *> && ...));
+    if constexpr (sizeof...(inputs) == 1) {
+        return builder->CreateUnaryIntrinsic(llvmId, inputs...);
+    } else {
+        static_assert(sizeof...(inputs) == 2);
+        return builder->CreateBinaryIntrinsic(llvmId, inputs...);
+    }
+}
+
+void LLVMIRBuilder::HandleAbs(GateRef gate)
+{
+    VisitAbs(gate, acc_.GetIn(gate, 0));
+}
+
+void LLVMIRBuilder::VisitAbs(GateRef gate, GateRef e1)
+{
+    auto machineType = acc_.GetMachineType(gate);
+    ASSERT(acc_.GetMachineType(e1) == machineType);
+    llvm::Intrinsic::ID llvmId = 0;
+    auto *builder = llvm::unwrap(builder_);
+    llvm::Value *value = llvm::unwrap(GetLValue(e1));
+    LLVMValueRef result;
+    if (machineType == MachineType::I32) {
+        llvmId = llvm::Intrinsic::abs;
+        llvm::Type *type = llvm::Type::getInt1Ty(*llvm::unwrap(context_));
+        llvm::Value *poison = llvm::Constant::getIntegerValue(type, llvm::APInt(1, 0));
+        result = llvm::wrap(BuildLLVMIntrinsic(builder, llvmId, value, poison));
+    } else if (machineType == MachineType::F64) {
+        llvmId = llvm::Intrinsic::fabs;
+        result = llvm::wrap(BuildLLVMIntrinsic(builder, llvmId, value));
+    } else {
+        LOG_ECMA(FATAL) << "`Abs` type should be untagged double or signed int";
+        UNREACHABLE();
+    }
+    Bind(gate, result);
+
+    if (IsLogEnabled()) {
+        SetDebugInfo(gate, result);
+    }
+}
+
+void LLVMIRBuilder::HandleMin(GateRef gate)
+{
+    VisitMin(gate, acc_.GetIn(gate, 0), acc_.GetIn(gate, 1U));
+}
+
+void LLVMIRBuilder::VisitMin(GateRef gate, GateRef e1, GateRef e2)
+{
+    auto machineType = acc_.GetMachineType(gate);
+    ASSERT(acc_.GetMachineType(e1) == machineType);
+    ASSERT(acc_.GetMachineType(e2) == machineType);
+    llvm::Intrinsic::ID llvmId = 0;
+    if (machineType == MachineType::I32) {
+        llvmId = llvm::Intrinsic::smin;
+    } else if (machineType == MachineType::F64) {
+        llvmId = llvm::Intrinsic::minimum;
+    } else {
+        LOG_ECMA(FATAL) << "`Min` type should be untagged double or signed int";
+        UNREACHABLE();
+    }
+    VisitIntrinsic(gate, llvmId, e1, e2);
+}
+
+void LLVMIRBuilder::HandleMax(GateRef gate)
+{
+    VisitMax(gate, acc_.GetIn(gate, 0), acc_.GetIn(gate, 1U));
+}
+
+void LLVMIRBuilder::VisitMax(GateRef gate, GateRef e1, GateRef e2)
+{
+    auto machineType = acc_.GetMachineType(gate);
+    ASSERT(acc_.GetMachineType(e1) == machineType);
+    ASSERT(acc_.GetMachineType(e2) == machineType);
+    llvm::Intrinsic::ID llvmId = 0;
+    if (machineType == MachineType::I32) {
+        llvmId = llvm::Intrinsic::smax;
+    } else if (machineType == MachineType::F64) {
+        llvmId = llvm::Intrinsic::maximum;
+    } else {
+        LOG_ECMA(FATAL) << "`Max` type should be untagged double or signed int";
+        UNREACHABLE();
+    }
+    VisitIntrinsic(gate, llvmId, e1, e2);
+}
+
+void LLVMIRBuilder::HandleFloor(GateRef gate)
+{
+    VisitIntrinsic(gate, llvm::Intrinsic::floor, acc_.GetIn(gate, 0));
+}
+
+template<typename... Ts>
+void LLVMIRBuilder::VisitIntrinsic(GateRef gate, llvm::Intrinsic::ID llvmId, Ts... inputs)
+{
+    static_assert((std::is_same_v<Ts, GateRef> && ...));
+
+    auto *builder = llvm::unwrap(builder_);
+    LLVMValueRef result = llvm::wrap(BuildLLVMIntrinsic(builder, llvmId, llvm::unwrap(GetLValue(inputs))...));
+    Bind(gate, result);
+
+    if (IsLogEnabled()) {
+        SetDebugInfo(gate, result);
+    }
+}
+
 LLVMIntPredicate LLVMIRBuilder::ConvertLLVMPredicateFromICMP(ICmpCondition cond)
 {
     switch (cond) {
@@ -2100,6 +2269,25 @@ void LLVMIRBuilder::HandleChangeTaggedPointerToInt64(GateRef gate)
 void LLVMIRBuilder::HandleChangeInt64ToTagged(GateRef gate)
 {
     VisitChangeInt64ToTagged(gate, acc_.GetIn(gate, 0));
+}
+
+void LLVMIRBuilder::HandleDoubleTrunc(GateRef gate)
+{
+    GateRef param = acc_.GetIn(gate, 0);
+    VisitDoubleTrunc(gate, param);
+}
+
+void LLVMIRBuilder::VisitDoubleTrunc(GateRef gate, GateRef e1)
+{
+    llvm::Value *e1Value = llvm::unwrap(GetLValue(e1));
+    ASSERT(acc_.GetMachineType(e1) == acc_.GetMachineType(gate));
+    llvm::Intrinsic::ID llvmId = llvm::Intrinsic::trunc;
+    llvm::Value *result = llvm::unwrap(builder_)->CreateUnaryIntrinsic(llvmId, e1Value);
+    Bind(gate, llvm::wrap(result));
+
+    if (IsLogEnabled()) {
+        SetDebugInfo(gate, llvm::wrap(result));
+    }
 }
 
 void LLVMIRBuilder::VisitIntDiv(GateRef gate, GateRef e1, GateRef e2)
@@ -2416,6 +2604,26 @@ void LLVMIRBuilder::HandleDeoptCheck(GateRef gate)
     }
     LLVMBuildRet(builder_, returnValue);
     Bind(gate, result);
+}
+
+void LLVMIRBuilder::HandleClz32(GateRef gate)
+{
+    VisitClz32(gate, acc_.GetIn(gate, 0));
+}
+
+void LLVMIRBuilder::VisitClz32(GateRef gate,  GateRef param)
+{
+    LLVMValueRef value = GetLValue(param);
+    LLVMValueRef trueConst = LLVMConstInt(GetInt1T(), 0, true);
+
+    llvm::CallInst *result = llvm::unwrap(builder_)->CreateBinaryIntrinsic(llvm::Intrinsic::ctlz,
+                                                                           llvm::unwrap(value),
+                                                                           llvm::unwrap(trueConst));
+    Bind(gate, llvm::wrap(result));
+
+    if (IsLogEnabled()) {
+        SetDebugInfo(gate, value);
+    }
 }
 
 LLVMTypeRef LLVMIRBuilder::GetExperimentalDeoptTy()

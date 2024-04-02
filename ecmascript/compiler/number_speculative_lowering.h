@@ -46,7 +46,6 @@ private:
     void VisitUndefinedStrictEqOrUndefinedStrictNotEq(GateRef gate);
     void VisitUndefinedEqOrUndefinedNotEq(GateRef gate);
     void VisitEqualOrNotEqual(GateRef gate);
-    void VisitCallBuiltins(GateRef gate);
     void VisitRangeGuard(GateRef gate);
     void VisitRangeCheckPredicate(GateRef gate);
     void VisitIndexCheck(GateRef gate);
@@ -55,6 +54,8 @@ private:
     void VisitLoadElement(GateRef gate);
     void VisitLoadProperty(GateRef gate);
     void VisitLoadPropertyOnProto(GateRef gate);
+    void VisitRound(GateRef gate);
+    void VisitFRound(GateRef gate);
 
     template<TypedBinOp Op>
     void VisitNumberCalculate(GateRef gate);

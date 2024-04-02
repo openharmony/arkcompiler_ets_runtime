@@ -36,6 +36,16 @@ class EcmaString;
 class JSThread;
 struct Reference;
 
+namespace JSShared {
+// check mode for js shared
+enum SCheckMode: uint8_t {
+    SKIP = 0,
+    CHECK
+};
+} // namespace JSShared
+
+using SCheckMode = JSShared::SCheckMode;
+
 static constexpr double SAFE_NUMBER = 9007199254740991LL;
 
 // Don't switch the order!
@@ -407,7 +417,7 @@ public:
 
     // ecma6 7.3
     static OperationResult GetProperty(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
-                                       const JSHandle<JSTaggedValue> &key);
+                                       const JSHandle<JSTaggedValue> &key, SCheckMode sCheckMode = SCheckMode::CHECK);
 
     static OperationResult GetProperty(JSThread *thread, const JSHandle<JSTaggedValue> &obj, uint32_t key);
     static OperationResult GetProperty(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
@@ -416,8 +426,8 @@ public:
                             const JSHandle<JSTaggedValue> &value, bool mayThrow = false);
 
     static bool PUBLIC_API SetProperty(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
-                                       const JSHandle<JSTaggedValue> &key,
-                                       const JSHandle<JSTaggedValue> &value, bool mayThrow = false);
+                                       const JSHandle<JSTaggedValue> &key, const JSHandle<JSTaggedValue> &value,
+                                       bool mayThrow = false, SCheckMode checkMode = SCheckMode::CHECK);
 
     static bool SetProperty(JSThread *thread, const JSHandle<JSTaggedValue> &obj, const JSHandle<JSTaggedValue> &key,
                             const JSHandle<JSTaggedValue> &value, const JSHandle<JSTaggedValue> &receiver,
@@ -448,7 +458,9 @@ public:
 
     // Type
     bool IsJSMap() const;
+    bool IsJSSharedMap() const;
     bool IsJSSet() const;
+    bool IsJSSharedSet() const;
     bool IsJSWeakMap() const;
     bool IsJSWeakSet() const;
     bool IsJSWeakRef() const;
@@ -482,9 +494,11 @@ public:
     bool IsJSGlobalObject() const;
     bool IsJSError() const;
     bool IsArray(JSThread *thread) const;
+    bool IsSArray(JSThread *thread) const;
     bool IsCOWArray() const;
     bool IsMutantTaggedArray() const;
     bool IsJSArray() const;
+    bool IsJSSharedArray() const;
     bool PUBLIC_API IsJSCOWArray() const;
     bool IsStableJSArray(JSThread *thread) const;
     bool IsStableJSArguments(JSThread *thread) const;
@@ -530,9 +544,12 @@ public:
     bool IsSharedArrayBuffer() const;
 
     bool IsJSSetIterator() const;
+    bool IsJSSharedSetIterator() const;
     bool IsJSRegExpIterator() const;
     bool IsJSMapIterator() const;
+    bool IsJSSharedMapIterator() const;
     bool IsJSArrayIterator() const;
+    bool IsJSSharedArrayIterator() const;
     bool IsIterator() const;
     bool IsAsyncIterator() const;
     bool IsGeneratorFunction() const;
@@ -655,6 +672,8 @@ public:
     bool IsJSSharedObject() const;
     bool IsJSSharedFunction() const;
     bool IsJSShared() const;
+    bool IsSharedType() const;
+
     bool PUBLIC_API IsInSharedHeap() const;
     bool IsInSharedSweepableSpace() const;
     static bool IsSameTypeOrHClass(JSTaggedValue x, JSTaggedValue y);
@@ -711,6 +730,9 @@ private:
     }
 
     friend class PropertyAttributes;
+    friend class ICRuntimeStub;
+    friend class LoadHandler;
+    friend class StoreHandler;
 };
 STATIC_ASSERT_EQ_ARCH(sizeof(JSTaggedValue), JSTaggedValue::SizeArch32, JSTaggedValue::SizeArch64);
 }  // namespace panda::ecmascript

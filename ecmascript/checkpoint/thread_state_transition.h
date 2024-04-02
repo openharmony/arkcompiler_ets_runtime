@@ -29,10 +29,6 @@ public:
             oldState_ = self_->GetState();
             if (oldState_ != newState) {
                 self_->UpdateState(newState);
-            } else {
-                if (oldState_ == ThreadState::RUNNING) {
-                    self_->CheckSafepointIfSuspended();
-                }
             }
         }
 
@@ -40,10 +36,6 @@ public:
     {
         if (oldState_ != self_->GetState()) {
             self_->UpdateState(oldState_);
-        } else {
-            if (oldState_ == ThreadState::RUNNING) {
-                self_->CheckSafepointIfSuspended();
-            }
         }
     }
 
@@ -97,11 +89,13 @@ public:
     explicit SuspendAllScope(JSThread* self)
         : self_(self), scope_(self, ThreadState::IS_SUSPENDED)
     {
+        TRACE_GC(GCStats::Scope::ScopeId::SuspendAll, SharedHeap::GetInstance()->GetEcmaGCStats());
         ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "SuspendAll");
         Runtime::GetInstance()->SuspendAll(self_);
     }
     ~SuspendAllScope()
     {
+        TRACE_GC(GCStats::Scope::ScopeId::ResumeAll, SharedHeap::GetInstance()->GetEcmaGCStats());
         ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "ResumeAll");
         Runtime::GetInstance()->ResumeAll(self_);
     }

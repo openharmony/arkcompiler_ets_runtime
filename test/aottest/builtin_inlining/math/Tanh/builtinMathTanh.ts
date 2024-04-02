@@ -23,34 +23,35 @@ let len:number = 1;
 
 // Check without params
 len = Math.tanh();
-print(len); // NaN
+print(len); //: NaN
 
 len = Math.tanh(NaN);
-print(len); // NaN
+print(len); //: NaN
 
 // Check with single param
 len = Math.tanh(0);
-print(len); // 0
+print(len); //: 0
 
 // Check with single param
 len = Math.tanh(-1);
-print(len); // -0.7615941559557649
+print(len); //: -0.7615941559557649
 
 // Check with single param
 len = Math.tanh(1);
-print(len); // 0.7615941559557649
+print(len); //: 0.7615941559557649
 
 // Check with single param
 len = Math.tanh(10);
-print(len); // 0.9999999958776927
+print(len); //: 0.9999999958776927
 
 // Replace stanhdart builtin
 let true_tanh = Math.tanh
 Math.tanh = replace
 len = Math.tanh(111);
-print(len);
+print(len); //: 111
 
 // Call stanhdart builtin with non-number param
 Math.tanh = true_tanh
+//aot: [trace] Check Type: NotNumber1
 len = Math.tanh("NaN"); // deopt
-print(len); // NaN
+print(len); //: NaN

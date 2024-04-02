@@ -280,11 +280,13 @@ public:
 
     void SetInitialBuiltinHClass(
         BuiltinTypeId type, JSHClass *builtinHClass, JSHClass *instanceHClass,
-                            JSHClass *prototypeHClass, JSHClass *prototypeOfPrototypeHClass = nullptr);
+                            JSHClass *prototypeHClass, JSHClass *prototypeOfPrototypeHClass = nullptr,
+                            JSHClass *extraHClass = nullptr);
 
     JSHClass *GetBuiltinHClass(BuiltinTypeId type) const;
 
     JSHClass *GetBuiltinInstanceHClass(BuiltinTypeId type) const;
+    JSHClass *GetBuiltinExtraHClass(BuiltinTypeId type) const;
     JSHClass *GetArrayInstanceHClass(ElementsKind kind) const;
 
     PUBLIC_API JSHClass *GetBuiltinPrototypeHClass(BuiltinTypeId type) const;
@@ -794,6 +796,7 @@ public:
     }
 
     void InvokeWeakNodeFreeGlobalCallBack();
+    void InvokeSharedNativePointerCallbacks();
     void InvokeWeakNodeNativeFinalizeCallback();
     bool IsStartGlobalLeakCheck() const;
     bool EnableGlobalObjectLeakCheck() const;
@@ -1143,7 +1146,7 @@ public:
     void CheckSafepointIfSuspended()
     {
         if (IsSuspended()) {
-            CheckSafepoint();
+            WaitSuspension();
         }
     }
 
@@ -1163,6 +1166,7 @@ public:
     void SuspendThread(bool internalSuspend);
     void ResumeThread(bool internalSuspend);
     void WaitSuspension();
+    static bool IsMainThread();
     PUBLIC_API void ManagedCodeBegin();
     PUBLIC_API void ManagedCodeEnd();
 #ifndef NDEBUG
@@ -1213,8 +1217,6 @@ private:
     void DumpStack() DUMP_API_ATTR;
 
     static size_t GetAsmStackLimit();
-
-    static bool IsMainThread();
 
     static constexpr size_t DEFAULT_MAX_SYSTEM_STACK_SIZE = 8_MB;
 

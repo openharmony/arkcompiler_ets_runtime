@@ -460,18 +460,50 @@ void OptimizedCall::JSCallInternal(ExtendedAssembler *assembler, Register jsfunc
         __ Ldr(Register(X5), MemoryOperand(sp, 0));  // get number args
         __ Sub(Register(X5), Register(X5), Immediate(NUM_MANDATORY_JSFUNC_ARGS));
         if (!isNew) {
+            Label lCall0;
+            Label lCall1;
+            Label lCall2;
+            Label lCall3;
             Label lTailCall;
             Register fp(X29);
+            __ Cmp(Register(X5), Immediate(0));
+            __ B(Condition::EQ, &lCall0);
+            __ Cmp(Register(X5), Immediate(1));
+            __ B(Condition::EQ, &lCall1);
+            __ Cmp(Register(X5), Immediate(2));  // 2: 2 args
+            __ B(Condition::EQ, &lCall2);
+            __ Cmp(Register(X5), Immediate(3));  // 3: 3 args
+            __ B(Condition::EQ, &lCall3);
+
+            __ Bind(&lCall0);
+            {
+                __ Mov(Register(X6), Immediate(JSTaggedValue::VALUE_UNDEFINED));
+                __ Mov(Register(X7), Immediate(JSTaggedValue::VALUE_UNDEFINED));
+                __ B(&lTailCall);
+            }
+
+            __ Bind(&lCall1);
+            {
+                __ Ldp(Register(X6), Register(X7), MemoryOperand(sp, QUADRUPLE_SLOT_SIZE));
+                __ Mov(Register(X7), Immediate(JSTaggedValue::VALUE_UNDEFINED));  // reset x7
+                __ B(&lTailCall);
+            }
+
+            __ Bind(&lCall2);
+            {
+                __ Ldp(Register(X6), Register(X7), MemoryOperand(sp, QUADRUPLE_SLOT_SIZE));
+                __ B(&lTailCall);
+            }
+
+            __ Bind(&lCall3);
             __ Ldp(Register(X6), Register(X7), MemoryOperand(sp, QUADRUPLE_SLOT_SIZE));  // get arg0 arg1
-            __ Cmp(Register(X5), Immediate(3));  // 3: callarg3
-            __ B(Condition::NE, &lTailCall);
             PushAsmBridgeFrame(assembler);
             {
-                // push arg3 and call
+                // push arg2 and call
                 TempRegister2Scope scope2(assembler);
-                Register arg3 = __ TempRegister2();
-                __ Ldr(arg3, MemoryOperand(fp, OCTUPLE_SLOT_SIZE)); // get arg2
-                __ Stp(arg3, Register(X8), MemoryOperand(sp, -DOUBLE_SLOT_SIZE, PREINDEX));
+                Register arg2 = __ TempRegister2();
+                __ Ldr(arg2, MemoryOperand(fp, OCTUPLE_SLOT_SIZE));
+                __ Stp(arg2, Register(X8), MemoryOperand(sp, -DOUBLE_SLOT_SIZE, PREINDEX));
                 __ Blr(builtinStub);
                 __ Add(sp, sp, Immediate(DOUBLE_SLOT_SIZE));
             }

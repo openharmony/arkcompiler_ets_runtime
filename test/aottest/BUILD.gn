@@ -267,6 +267,10 @@ group("ark_aot_ts_test") {
     "unaryop_special_value",
     "xor",
     "sharedcheck",
+    "sharedarray",
+    "sharedcollectionsexception",
+    "sharedmap",
+    "sharedset",
     "definesendableclass",
     "sendablecontext",
   ]

@@ -17,6 +17,7 @@
 #define ECMASCRIPT_OBJECT_OPERATOR_H
 
 #include "ecmascript/js_handle.h"
+#include "ecmascript/js_object.h"
 #include "ecmascript/property_attributes.h"
 
 #include "ecmascript/ecma_string.h"
@@ -25,6 +26,7 @@
 namespace panda::ecmascript {
 class PropertyDescriptor;
 class JSObject;
+using SCheckMode = JSShared::SCheckMode;
 
 enum class OperatorType : uint8_t {
     PROTOTYPE_CHAIN,

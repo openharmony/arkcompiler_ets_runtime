@@ -26,7 +26,7 @@ void PrintIndentation(int32 indent)
     int64 indentAmount = static_cast<int64>(indent) * kIndentunit;
     do {
         LogInfo::MapleLogger() << kBlankString.substr(0, indentAmount);
-        indentAmount -= kBlankString.length();
+        indentAmount -= static_cast<int64>(kBlankString.length());
     } while (indentAmount > 0);
 }
 

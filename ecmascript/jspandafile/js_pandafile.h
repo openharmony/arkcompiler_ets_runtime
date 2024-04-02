@@ -290,6 +290,8 @@ public:
 
     bool CheckAndGetRecordInfo(const CString &recordName, JSRecordInfo &recordInfo) const;
 
+    const JSRecordInfo &GetRecordInfo(const CString &recordName);
+
     CString GetJsonStringId(const JSRecordInfo &jsRecordInfo) const;
 
     bool PUBLIC_API IsModule(const JSRecordInfo &jsRecordInfo) const
@@ -335,6 +337,10 @@ public:
     JSRecordInfo &FindRecordInfo(const CString &recordName)
     {
         auto info = jsRecordInfo_.find(recordName);
+        // check entry name, fix framework abc find recordName fail bug
+        if (recordName == "_GLOBAL") {
+            info = jsRecordInfo_.find(ENTRY_FUNCTION_NAME);
+        }
         if (info == jsRecordInfo_.end()) {
             LOG_FULL(FATAL) << "find recordName failed: " << recordName;
             UNREACHABLE();

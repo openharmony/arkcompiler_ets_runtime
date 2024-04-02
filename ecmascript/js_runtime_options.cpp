@@ -165,7 +165,9 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
     "--compiler-opt-array-onheap-check:    Enable TypedArray on heap check for aot compiler: Default: 'false'\n"
     "--compiler-enable-litecg:             Enable LiteCG: Default: 'false'\n"
     "--compiler-enable-jit:                Enable jit: Default: 'false'\n"
+    "--compiler-enable-osr:                Enable osr: Default: 'false'\n"
     "--compiler-jit-hotness-threshold:     Set hotness threshold for jit. Default: '2'\n"
+    "--compiler-osr-hotness-threshold:     Set hotness threshold for osr. Default: '2'\n"
     "--compiler-force-jit-compile-main:    Enable jit compile main function: Default: 'false'\n"
     "--compiler-trace-jit:                 Enable trace jit: Default: 'false'\n"
     "--compiler-typed-op-profiler:         Enable Typed Opcode Statistics for aot runtime. Default: 'false'\n"
@@ -270,13 +272,16 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"compiler-pkg-info", required_argument, nullptr, OPTION_COMPILER_PKG_INFO},
         {"compiler-external-pkg-info", required_argument, nullptr, OPTION_COMPILER_EXTERNAL_PKG_INFO},
         {"compiler-enable-external-pkg", required_argument, nullptr, OPTION_COMPILER_ENABLE_EXTERNAL_PKG},
+        {"compiler-framework-abc-path", required_argument, nullptr, OPTION_COMPILER_FRAMEWORK_ABC_PATH},
         {"compiler-enable-lexenv-specialization", required_argument, nullptr,
             OPTION_COMPILER_ENABLE_LEXENV_SPECIALIZATION},
         {"compiler-enable-native-inline", required_argument, nullptr, OPTION_COMPILER_ENABLE_NATIVE_INLINE},
         {"compiler-enable-lowering-builtin", required_argument, nullptr, OPTION_COMPILER_ENABLE_LOWERING_BUILTIN},
         {"compiler-enable-litecg", required_argument, nullptr, OPTION_COMPILER_ENABLE_LITECG},
         {"compiler-enable-jit", required_argument, nullptr, OPTION_COMPILER_ENABLE_JIT},
+        {"compiler-enable-osr", required_argument, nullptr, OPTION_COMPILER_ENABLE_OSR},
         {"compiler-jit-hotness-threshold", required_argument, nullptr, OPTION_COMPILER_JIT_HOTNESS_THRESHOLD},
+        {"compiler-osr-hotness-threshold", required_argument, nullptr, OPTION_COMPILER_OSR_HOTNESS_THRESHOLD},
         {"compiler-force-jit-compile-main", required_argument, nullptr, OPTION_COMPILER_FORCE_JIT_COMPILE_MAIN},
         {"compiler-typed-op-profiler", required_argument, nullptr, OPTION_COMPILER_TYPED_OP_PROFILER},
         {"compiler-opt-branch-profiling", required_argument, nullptr, OPTION_COMPILER_OPT_BRANCH_PROFILING},
@@ -676,7 +681,7 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                 }
                 break;
             case OPTION_COMPILER_PGO_SAVE_MIN_INTERVAL:
-                ret = ParseUint32Param("compiler-pgo-save-min-interval)", &argUint32);
+                ret = ParseUint32Param("compiler-pgo-save-min-interval", &argUint32);
                 if (ret) {
                     SetPGOSaveMinInterval(argUint32);
                 } else {
@@ -845,6 +850,9 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
             case OPTION_TARGET_COMPILER_MODE:
                 SetTargetCompilerMode(optarg);
                 break;
+            case OPTION_COMPILER_FRAMEWORK_ABC_PATH:
+                SetCompilerFrameworkAbcPath(optarg);
+                break;
             case OPTION_HAP_PATH:
                 SetHapPath(optarg);
                 break;
@@ -954,12 +962,30 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                     return false;
                 }
                 break;
+            case OPTION_COMPILER_ENABLE_OSR:
+                ret = ParseBoolParam(&argBool);
+                if (ret) {
+                    SetEnableOSR(argBool);
+                } else {
+                    return false;
+                }
+                break;
             case OPTION_COMPILER_JIT_HOTNESS_THRESHOLD:
                 ret = ParseUint32Param("compiler-jit-hotness-threshold", &argUint32);
                 if (ret) {
                     uint16_t val = argUint32 > std::numeric_limits<uint16_t>::max() ?
                         std::numeric_limits<uint16_t>::max() : static_cast<uint16_t>(argUint32);
                     SetJitHotnessThreshold(val);
+                } else {
+                    return false;
+                }
+                break;
+            case OPTION_COMPILER_OSR_HOTNESS_THRESHOLD:
+                ret = ParseUint32Param("compiler-osr-hotness-threshold", &argUint32);
+                if (ret) {
+                    uint16_t val = argUint32 > std::numeric_limits<uint16_t>::max() ?
+                        std::numeric_limits<uint16_t>::max() : static_cast<uint16_t>(argUint32);
+                    SetOsrHotnessThreshold(val);
                 } else {
                     return false;
                 }

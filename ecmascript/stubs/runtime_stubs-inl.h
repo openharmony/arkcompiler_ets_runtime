@@ -3037,7 +3037,6 @@ JSTaggedValue RuntimeStubs::RuntimeCreatePrivateProperty(JSThread *thread, JSTag
         if (LIKELY(literalValue.IsJSFunction())) {
             JSFunction *func = JSFunction::Cast(literalValue.GetTaggedObject());
             func->SetLexicalEnv(thread, handleLexicalEnv.GetTaggedValue());
-            func->GetClass()->SetExtensible(false);
             func->SetModule(thread, handleModule.GetTaggedValue());
         }
         handleLexicalEnv->SetProperties(thread, startIndex + count + i, literalValue);

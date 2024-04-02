@@ -383,7 +383,7 @@ bool DateParse::DayValue::SetDayValue(int *time)
     if (index_ == 0) {
         return false;
     }
-    int year = 0;
+    int year = 1;
     int mon = 1;
     int day = 1;
     for (int i = index_; i < DAY_LEN; i++) {
@@ -427,7 +427,7 @@ bool DateParse::DayValue::SetDayValue(int *time)
         }
     }
     if (!IsIso()) {
-        if (IsBetween(year, 1, 49)) { // if year is between 1-49
+        if (IsBetween(year, 0, 49)) { // if year is between 0-49
             year += 2000; // 2000 : it means 2001-2049
         } else if (IsBetween(year, 50, 99)) { // if year is between 50-99
             year += 1900; // 1900 : it may means 1950-1999

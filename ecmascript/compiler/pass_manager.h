@@ -176,7 +176,7 @@ public:
         PGOProfilerDecoder &profilerDecoder, PassOptions *passOptions)
         : PassManager(vm, triple, optLevel, relocMode, log, logList, 1, 1, profilerDecoder, passOptions, "") { };
 
-    bool Compile(JSHandle<JSFunction> &jsFunction, AOTFileGenerator &gen);
+    bool Compile(JSHandle<JSFunction> &jsFunction, AOTFileGenerator &gen, int32_t osrOffset = -1);
     bool RunCg();
     virtual ~JitPassManager();
 

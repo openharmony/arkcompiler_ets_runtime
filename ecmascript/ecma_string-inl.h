@@ -169,6 +169,9 @@ inline EcmaString *EcmaString::CreateLineStringWithSpaceType(const EcmaVM *vm, s
         case MemSpaceType::SHARED_NON_MOVABLE:
             string = vm->GetFactory()->AllocNonMovableLineStringObject(size);
             break;
+        case MemSpaceType::SHARED_READ_ONLY_SPACE:
+            string = vm->GetFactory()->AllocReadOnlyLineStringObject(size);
+            break;
         default:
             LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();

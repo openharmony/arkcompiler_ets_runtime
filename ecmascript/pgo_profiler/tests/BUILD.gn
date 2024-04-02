@@ -30,6 +30,7 @@ test_js_files = [
   "array_size_test",
   "truck",
   "vehicle",
+  "typedarray_length",
 ]
 
 foreach(file, test_js_files) {

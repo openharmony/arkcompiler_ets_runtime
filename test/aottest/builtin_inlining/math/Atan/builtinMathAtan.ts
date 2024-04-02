@@ -23,34 +23,35 @@ let len:number = 1;
 
 // Check without params
 len = Math.atan();
-print(len); // NaN
+print(len); //: NaN
 
 len = Math.atan(NaN);
-print(len); // NaN
+print(len); //: NaN
 
 // Check with single param
 len = Math.atan(0);
-print(len); // 0
+print(len); //: 0
 
 // Check with single param
-len = Math.atan(-1);
-print(len); //-0.7853981633974483
+len = Math.atan(-1); // -PI/4
+print(len); //: -0.7853981633974483
 
 // Check with single param
-len = Math.atan(1);
-print(len); // 0.7853981633974483
+len = Math.atan(1); // PI/4
+print(len); //: 0.7853981633974483
 
 // Check with single param, in |x| > 1
 len = Math.atan(10);
-print(len); // 1.4711276743037347
+print(len); //: 1.4711276743037347
 
 // Replace standart builtin
 let true_atan = Math.atan
 Math.atan = replace
 len = Math.atan(111);
-print(len);
+print(len); //: 111
 
 // Call standart builtin with non-number param
 Math.atan = true_atan
 len = Math.atan("NaN"); // deopt
-print(len); // NaN
+//aot: [trace] Check Type: NotNumber1
+print(len); //: NaN

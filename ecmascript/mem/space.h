@@ -54,6 +54,11 @@ enum MemSpaceType {
     SHARED_SWEEPING_SPACE_NUM = SHARED_SWEEPING_SPACE_END - SHARED_SWEEPING_SPACE_BEGIN + 1,
 };
 
+enum class MemSpaceKind {
+    LOCAL = 0,
+    SHARED = 1
+};
+
 static inline bool IsSMemSpace(MemSpaceType type)
 {
     return (type >= MemSpaceType::SHARED_BEGIN) && (type <= MemSpaceType::SHARED_END);

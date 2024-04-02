@@ -106,6 +106,12 @@
 #include "ecmascript/module/js_module_namespace.h"
 #include "ecmascript/module/js_module_source_text.h"
 #include "ecmascript/module/js_shared_module.h"
+#include "ecmascript/shared_objects/js_shared_array.h"
+#include "ecmascript/shared_objects/js_shared_array_iterator.h"
+#include "ecmascript/shared_objects/js_shared_map.h"
+#include "ecmascript/shared_objects/js_shared_map_iterator.h"
+#include "ecmascript/shared_objects/js_shared_set.h"
+#include "ecmascript/shared_objects/js_shared_set_iterator.h"
 #include "ecmascript/tagged_node.h"
 #include "ecmascript/ts_types/ts_type.h"
 #include "ecmascript/ts_types/ts_type_table.h"
@@ -258,8 +264,14 @@ public:
             case JSType::JS_SET:
                 JSSet::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
+            case JSType::JS_SHARED_SET:
+                JSSharedSet::Cast(object)->VisitRangeSlot<visitType>(visitor);
+                break;
             case JSType::JS_MAP:
                 JSMap::Cast(object)->VisitRangeSlot<visitType>(visitor);
+                break;
+            case JSType::JS_SHARED_MAP:
+                JSSharedMap::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::JS_WEAK_MAP:
                 JSWeakMap::Cast(object)->VisitRangeSlot<visitType>(visitor);
@@ -285,14 +297,23 @@ public:
             case JSType::JS_MAP_ITERATOR:
                 JSMapIterator::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
+            case JSType::JS_SHARED_MAP_ITERATOR:
+                JSSharedMapIterator::Cast(object)->VisitRangeSlot<visitType>(visitor);
+                break;
             case JSType::JS_SET_ITERATOR:
                 JSSetIterator::Cast(object)->VisitRangeSlot<visitType>(visitor);
+                break;
+            case JSType::JS_SHARED_SET_ITERATOR:
+                JSSharedSetIterator::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::JS_REG_EXP_ITERATOR:
                 JSRegExpIterator::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::JS_ARRAY_ITERATOR:
                 JSArrayIterator::Cast(object)->VisitRangeSlot<visitType>(visitor);
+                break;
+            case JSType::JS_SHARED_ARRAY_ITERATOR:
+                JSSharedArrayIterator::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::JS_STRING_ITERATOR:
                 JSStringIterator::Cast(object)->VisitRangeSlot<visitType>(visitor);
@@ -328,6 +349,9 @@ public:
                 break;
             case JSType::JS_ARRAY:
                 JSArray::Cast(object)->VisitRangeSlot<visitType>(visitor);
+                break;
+            case JSType::JS_SHARED_ARRAY:
+                JSSharedArray::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::JS_TYPED_ARRAY:
             case JSType::JS_INT8_ARRAY:

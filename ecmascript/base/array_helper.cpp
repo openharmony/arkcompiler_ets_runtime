@@ -25,6 +25,7 @@
 #include "ecmascript/js_tagged_number.h"
 #include "ecmascript/js_tagged_value-inl.h"
 #include "ecmascript/object_fast_operator-inl.h"
+#include "ecmascript/shared_objects/js_shared_array.h"
 
 namespace panda::ecmascript::base {
 int64_t ArrayHelper::GetStartIndex(JSThread *thread, const JSHandle<JSTaggedValue> &startIndexHandle,
@@ -143,7 +144,7 @@ bool ArrayHelper::IsConcatSpreadable(JSThread *thread, const JSHandle<JSTaggedVa
     }
 
     // 5. Return IsArray(O).
-    return obj->IsArray(thread);
+    return obj->IsArray(thread) || obj->IsJSSharedArray();
 }
 
 // must use 'double' as return type, for sort result may double.
@@ -250,6 +251,9 @@ int64_t ArrayHelper::GetLength(JSThread *thread, const JSHandle<JSTaggedValue> &
     if (thisHandle->IsJSArray()) {
         return JSArray::Cast(thisHandle->GetTaggedObject())->GetArrayLength();
     }
+    if (thisHandle->IsJSSharedArray()) {
+        return JSSharedArray::Cast(thisHandle->GetTaggedObject())->GetArrayLength();
+    }
     if (thisHandle->IsTypedArray()) {
         return JSHandle<JSTypedArray>::Cast(thisHandle)->GetArrayLength();
     }
@@ -265,6 +269,9 @@ int64_t ArrayHelper::GetArrayLength(JSThread *thread, const JSHandle<JSTaggedVal
 {
     if (thisHandle->IsJSArray()) {
         return JSArray::Cast(thisHandle->GetTaggedObject())->GetArrayLength();
+    }
+    if (thisHandle->IsJSSharedArray()) {
+        return JSSharedArray::Cast(thisHandle->GetTaggedObject())->GetArrayLength();
     }
     JSHandle<JSTaggedValue> lengthKey = thread->GlobalConstants()->GetHandledLengthString();
     JSHandle<JSTaggedValue> lenResult = JSTaggedValue::GetProperty(thread, thisHandle, lengthKey).GetValue();
