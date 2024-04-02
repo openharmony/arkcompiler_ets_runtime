@@ -66,7 +66,7 @@ public:
         FlatStringStubBuilder *flatString);
     void AllocTreeStringObject(Variable *result, Label *exit, GateRef first, GateRef second,
         GateRef length, bool compressed);
-    void HeapAlloc(Variable *result, Label *exit, RegionSpaceFlag spaceType);
+    void HeapAlloc(Variable *result, Label *exit, RegionSpaceFlag spaceType, GateRef hclass);
     void NewJSArrayLiteral(Variable *result, Label *exit, RegionSpaceFlag spaceType, GateRef obj, GateRef hclass,
                            GateRef trackInfo, bool isEmptyArray);
     GateRef NewTrackInfo(GateRef glue, GateRef cachedHClass, GateRef cachedFunc, RegionSpaceFlag spaceFlag,
@@ -100,9 +100,9 @@ private:
         GateRef glue, GateRef jsFunc, GateRef pc, GateRef arrayLiteral, ProfileOperation callback);
     GateRef CreateEmptyArrayCommon(GateRef glue, GateRef hclass, GateRef trackInfo);
     void AllocateInYoungPrologue(Variable *result, Label *callRuntime, Label *exit);
-    void AllocateInYoung(Variable *result, Label *exit);
-    void AllocateInYoung(Variable *result, Label *error, Label *noError);
-    void AllocateInSOld(Variable *result, Label *exit);
+    void AllocateInYoung(Variable *result, Label *exit, GateRef hclass);
+    void AllocateInYoung(Variable *result, Label *error, Label *noError, GateRef hclass);
+    void AllocateInSOld(Variable *result, Label *exit, GateRef hclass);
     void InitializeTaggedArrayWithSpeicalValue(Label *exit,
         GateRef array, GateRef value, GateRef start, GateRef length);
     GateRef glue_ {Circuit::NullGate()};

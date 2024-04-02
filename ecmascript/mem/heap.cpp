@@ -905,10 +905,11 @@ void Heap::AdjustOldSpaceLimit()
         << " globalSpaceAllocLimit_: " << globalSpaceAllocLimit_;
 }
 
-void Heap::OnAllocateEvent([[maybe_unused]] TaggedObject* address, [[maybe_unused]] size_t size)
+void BaseHeap::OnAllocateEvent([[maybe_unused]] EcmaVM *ecmaVm, [[maybe_unused]] TaggedObject* address,
+                               [[maybe_unused]] size_t size)
 {
 #if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
-    HeapProfilerInterface *profiler = GetEcmaVM()->GetHeapProfile();
+    HeapProfilerInterface *profiler = ecmaVm->GetHeapProfile();
     if (profiler != nullptr) {
         base::BlockHookScope blockScope;
         profiler->AllocationEvent(address, size);

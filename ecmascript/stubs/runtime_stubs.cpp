@@ -162,6 +162,11 @@ DEF_RUNTIME_STUBS(AllocateInYoung)
         result = heap->AllocateYoungOrHugeObject(size);
         ASSERT(result != nullptr);
     }
+    if (argc > 1) { // 1: means the first parameter
+        JSHandle<JSHClass> hclassHandle = GetHArg<JSHClass>(argv, argc, 1);  // 1: means the first parameter
+        auto hclass = JSHClass::Cast(hclassHandle.GetTaggedValue().GetTaggedObject());
+        heap->SetHClassAndDoAllocateEvent(thread, result, hclass, size);
+    }
     return JSTaggedValue(result).GetRawData();
 }
 
@@ -177,6 +182,11 @@ DEF_RUNTIME_STUBS(AllocateInSOld)
     if (result == nullptr) {
         result = sharedHeap->AllocateOldOrHugeObject(thread, size);
         ASSERT(result != nullptr);
+    }
+    if (argc > 1) { // 1: means the first parameter
+        JSHandle<JSHClass> hclassHandle = GetHArg<JSHClass>(argv, argc, 1);  // 1: means the first parameter
+        auto hclass = JSHClass::Cast(hclassHandle.GetTaggedValue().GetTaggedObject());
+        sharedHeap->SetHClassAndDoAllocateEvent(thread, result, hclass, size);
     }
     return JSTaggedValue(result).GetRawData();
 }

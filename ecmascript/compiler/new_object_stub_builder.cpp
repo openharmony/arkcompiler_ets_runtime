@@ -41,11 +41,11 @@ void NewObjectStubBuilder::NewLexicalEnv(Variable *result, Label *exit, GateRef 
     // Be careful. NO GC is allowed when initization is not complete.
     Label hasPendingException(env);
     Label noException(env);
-    AllocateInYoung(result, &hasPendingException, &noException);
+    auto hclass = GetGlobalConstantValue(
+        VariableType::JS_POINTER(), glue_, ConstantIndex::ENV_CLASS_INDEX);
+    AllocateInYoung(result, &hasPendingException, &noException, hclass);
     Bind(&noException);
     {
-        auto hclass = GetGlobalConstantValue(
-            VariableType::JS_POINTER(), glue_, ConstantIndex::ENV_CLASS_INDEX);
         StoreHClass(glue_, result->ReadVariable(), hclass);
         Label afterInitialize(env);
         InitializeTaggedArrayWithSpeicalValue(&afterInitialize,
@@ -106,7 +106,7 @@ void NewObjectStubBuilder::NewJSObject(Variable *result, Label *exit, GateRef hc
     // Be careful. NO GC is allowed when initization is not complete.
     Label hasPendingException(env);
     Label noException(env);
-    AllocateInYoung(result, &hasPendingException, &noException);
+    AllocateInYoung(result, &hasPendingException, &noException, hclass);
     Bind(&noException);
     {
         StoreHClass(glue_, result->ReadVariable(), hclass);
@@ -175,11 +175,11 @@ void NewObjectStubBuilder::NewTaggedArrayChecked(Variable *result, GateRef len, 
     size_ = ComputeTaggedArraySize(ZExtInt32ToPtr(len));
     // Be careful. NO GC is allowed when initization is not complete.
     Label noException(env);
-    AllocateInYoung(result, exit, &noException);
+    auto hclass = GetGlobalConstantValue(
+        VariableType::JS_POINTER(), glue_, ConstantIndex::ARRAY_CLASS_INDEX);
+    AllocateInYoung(result, exit, &noException, hclass);
     Bind(&noException);
     {
-        auto hclass = GetGlobalConstantValue(
-            VariableType::JS_POINTER(), glue_, ConstantIndex::ARRAY_CLASS_INDEX);
         StoreBuiltinHClass(glue_, result->ReadVariable(), hclass);
         Label afterInitialize(env);
         InitializeTaggedArrayWithSpeicalValue(&afterInitialize,
@@ -194,15 +194,15 @@ void NewObjectStubBuilder::NewMutantTaggedArrayChecked(Variable *result, GateRef
     auto env = GetEnvironment();
     size_ = ComputeTaggedArraySize(ZExtInt32ToPtr(len));
     Label afterAllocate(env);
+    auto hclass = GetGlobalConstantValue(
+        VariableType::JS_POINTER(), glue_, ConstantIndex::MUTANT_TAGGED_ARRAY_CLASS_INDEX);
     // Be careful. NO GC is allowed when initization is not complete.
-    AllocateInYoung(result, &afterAllocate);
+    AllocateInYoung(result, &afterAllocate, hclass);
     Bind(&afterAllocate);
     Label noException(env);
     BRANCH(TaggedIsException(result->ReadVariable()), exit, &noException);
     Bind(&noException);
     {
-        auto hclass = GetGlobalConstantValue(
-            VariableType::JS_POINTER(), glue_, ConstantIndex::MUTANT_TAGGED_ARRAY_CLASS_INDEX);
         StoreHClass(glue_, result->ReadVariable(), hclass);
         Label afterInitialize(env);
         InitializeTaggedArrayWithSpeicalValue(&afterInitialize,
@@ -838,10 +838,10 @@ void NewObjectStubBuilder::NewArgumentsList(Variable *result, Label *exit,
     DEFVARIABLE(i, VariableType::INT32(), Int32(0));
     Label setHClass(env);
     size_ = ComputeTaggedArraySize(ZExtInt32ToPtr(numArgs));
-    AllocateInYoung(result, exit, &setHClass);
-    Bind(&setHClass);
     GateRef arrayClass = GetGlobalConstantValue(VariableType::JS_POINTER(), glue_,
                                                 ConstantIndex::ARRAY_CLASS_INDEX);
+    AllocateInYoung(result, exit, &setHClass, arrayClass);
+    Bind(&setHClass);
     StoreHClass(glue_, result->ReadVariable(), arrayClass);
     Store(VariableType::INT32(), glue_, result->ReadVariable(), IntPtr(TaggedArray::LENGTH_OFFSET), numArgs);
     Store(VariableType::INT32(), glue_, result->ReadVariable(), IntPtr(TaggedArray::EXTRA_LENGTH_OFFSET), Int32(0));
@@ -901,7 +901,7 @@ void NewObjectStubBuilder::NewJSArrayLiteral(Variable *result, Label *exit, Regi
     auto env = GetEnvironment();
     Label initializeArray(env);
     Label afterInitialize(env);
-    HeapAlloc(result, &initializeArray, spaceType);
+    HeapAlloc(result, &initializeArray, spaceType, hclass);
     Bind(&initializeArray);
     Store(VariableType::JS_POINTER(), glue_, result->ReadVariable(), IntPtr(0), hclass);
     InitializeWithSpeicalValue(&afterInitialize, result->ReadVariable(), Undefined(), Int32(JSArray::SIZE),
@@ -936,21 +936,21 @@ void NewObjectStubBuilder::NewJSArrayLiteral(Variable *result, Label *exit, Regi
     Jump(exit);
 }
 
-void NewObjectStubBuilder::HeapAlloc(Variable *result, Label *exit, RegionSpaceFlag spaceType)
+void NewObjectStubBuilder::HeapAlloc(Variable *result, Label *exit, RegionSpaceFlag spaceType, GateRef hclass)
 {
     switch (spaceType) {
         case RegionSpaceFlag::IN_YOUNG_SPACE:
-            AllocateInYoung(result, exit);
+            AllocateInYoung(result, exit, hclass);
             break;
         default:
             break;
     }
 }
 
-void NewObjectStubBuilder::AllocateInSOld(Variable *result, Label *exit)
+void NewObjectStubBuilder::AllocateInSOld(Variable *result, Label *exit, GateRef hclass)
 {
     DEFVARIABLE(ret, VariableType::JS_ANY(), Undefined());
-    ret = CallRuntime(glue_, RTSTUB_ID(AllocateInSOld), {IntToTaggedInt(size_)});
+    ret = CallRuntime(glue_, RTSTUB_ID(AllocateInSOld), {IntToTaggedInt(size_), hclass});
     result->WriteVariable(*ret);
     Jump(exit);
 }
@@ -990,7 +990,7 @@ void NewObjectStubBuilder::AllocateInYoungPrologue(Variable *result, Label *call
 #endif
 }
 
-void NewObjectStubBuilder::AllocateInYoung(Variable *result, Label *exit)
+void NewObjectStubBuilder::AllocateInYoung(Variable *result, Label *exit, GateRef hclass)
 {
     auto env = GetEnvironment();
     Label callRuntime(env);
@@ -999,13 +999,13 @@ void NewObjectStubBuilder::AllocateInYoung(Variable *result, Label *exit)
     {
         DEFVARIABLE(ret, VariableType::JS_ANY(), Undefined());
         ret = CallRuntime(glue_, RTSTUB_ID(AllocateInYoung), {
-            IntToTaggedInt(size_) });
+            IntToTaggedInt(size_), hclass });
         result->WriteVariable(*ret);
         Jump(exit);
     }
 }
 
-void NewObjectStubBuilder::AllocateInYoung(Variable *result, Label *error, Label *noError)
+void NewObjectStubBuilder::AllocateInYoung(Variable *result, Label *error, Label *noError, GateRef hclass)
 {
     auto env = GetEnvironment();
     Label callRuntime(env);
@@ -1014,7 +1014,7 @@ void NewObjectStubBuilder::AllocateInYoung(Variable *result, Label *error, Label
     {
         DEFVARIABLE(ret, VariableType::JS_ANY(), Undefined());
         ret = CallRuntime(glue_, RTSTUB_ID(AllocateInYoung), {
-            IntToTaggedInt(size_) });
+            IntToTaggedInt(size_), hclass });
         result->WriteVariable(*ret);
         BRANCH(TaggedIsException(*ret), error, noError);
     }
@@ -1032,7 +1032,7 @@ GateRef NewObjectStubBuilder::NewTrackInfo(GateRef glue, GateRef cachedHClass, G
     auto hclass = GetGlobalConstantValue(VariableType::JS_POINTER(), glue, ConstantIndex::TRACK_INFO_CLASS_INDEX);
     GateRef size = GetObjectSizeFromHClass(hclass);
     SetParameters(glue, size);
-    HeapAlloc(&result, &initialize, RegionSpaceFlag::IN_YOUNG_SPACE);
+    HeapAlloc(&result, &initialize, RegionSpaceFlag::IN_YOUNG_SPACE, hclass);
     Bind(&initialize);
     Store(VariableType::JS_POINTER(), glue_, *result, IntPtr(0), hclass);
     GateRef cachedHClassOffset = IntPtr(TrackInfo::CACHED_HCLASS_OFFSET);
@@ -1097,11 +1097,11 @@ void NewObjectStubBuilder::AllocLineStringObject(Variable *result, Label *exit, 
             IntPtr(static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT)));
     }
     Label afterAllocate(env);
-    AllocateInSOld(result, &afterAllocate);
-
-    Bind(&afterAllocate);
     GateRef stringClass = GetGlobalConstantValue(VariableType::JS_POINTER(), glue_,
                                                  ConstantIndex::LINE_STRING_CLASS_INDEX);
+    AllocateInSOld(result, &afterAllocate, stringClass);
+
+    Bind(&afterAllocate);
     StoreHClass(glue_, result->ReadVariable(), stringClass);
     SetLength(glue_, result->ReadVariable(), length, compressed);
     SetRawHashcode(glue_, result->ReadVariable(), Int32(0), False());
@@ -1115,11 +1115,11 @@ void NewObjectStubBuilder::AllocSlicedStringObject(Variable *result, Label *exit
 
     size_ = AlignUp(IntPtr(SlicedString::SIZE), IntPtr(static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT)));
     Label afterAllocate(env);
-    AllocateInSOld(result, &afterAllocate);
-
-    Bind(&afterAllocate);
     GateRef stringClass = GetGlobalConstantValue(VariableType::JS_POINTER(), glue_,
                                                  ConstantIndex::SLICED_STRING_CLASS_INDEX);
+    AllocateInSOld(result, &afterAllocate, stringClass);
+
+    Bind(&afterAllocate);
     StoreHClass(glue_, result->ReadVariable(), stringClass);
     GateRef mixLength = Load(VariableType::INT32(), flatString->GetFlatString(), IntPtr(EcmaString::MIX_LENGTH_OFFSET));
     GateRef isCompressed = Int32And(Int32(EcmaString::STRING_COMPRESSED_BIT), mixLength);
@@ -1140,11 +1140,11 @@ void NewObjectStubBuilder::AllocTreeStringObject(Variable *result, Label *exit, 
 
     size_ = AlignUp(IntPtr(TreeEcmaString::SIZE), IntPtr(static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT)));
     Label afterAllocate(env);
-    AllocateInSOld(result, &afterAllocate);
-
-    Bind(&afterAllocate);
     GateRef stringClass = GetGlobalConstantValue(VariableType::JS_POINTER(), glue_,
                                                  ConstantIndex::TREE_STRING_CLASS_INDEX);
+    AllocateInSOld(result, &afterAllocate, stringClass);
+
+    Bind(&afterAllocate);
     StoreHClass(glue_, result->ReadVariable(), stringClass);
     SetLength(glue_, result->ReadVariable(), length, compressed);
     SetRawHashcode(glue_, result->ReadVariable(), Int32(0), False());
@@ -1516,7 +1516,7 @@ void NewObjectStubBuilder::CreateJSCollectionIterator(
 
     Label noException(env);
     // Be careful. NO GC is allowed when initization is not complete.
-    AllocateInYoung(result, exit, &noException);
+    AllocateInYoung(result, exit, &noException, iteratorHClass);
     Bind(&noException);
     {
         StoreBuiltinHClass(glue_, result->ReadVariable(), iteratorHClass);
@@ -1652,10 +1652,10 @@ void NewObjectStubBuilder::NewByteArray(Variable *result, Label *exit, GateRef e
     Label initializeExit(env);
     size_ = AlignUp(ComputeTaggedTypedArraySize(ZExtInt32ToPtr(elementSize), ZExtInt32ToPtr(length)),
         IntPtr(static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT)));
-    AllocateInYoung(result, exit, &noError);
+    auto hclass = GetGlobalConstantValue(VariableType::JS_POINTER(), glue_, ConstantIndex::BYTE_ARRAY_CLASS_INDEX);
+    AllocateInYoung(result, exit, &noError, hclass);
     Bind(&noError);
     {
-        auto hclass = GetGlobalConstantValue(VariableType::JS_POINTER(), glue_, ConstantIndex::BYTE_ARRAY_CLASS_INDEX);
         StoreBuiltinHClass(glue_, result->ReadVariable(), hclass);
         GateRef byteLength = Int32Mul(elementSize, length);
         auto startOffset = Int32(ByteArray::DATA_OFFSET);

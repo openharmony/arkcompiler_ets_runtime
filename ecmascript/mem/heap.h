@@ -269,6 +269,8 @@ public:
         return maxMarkTaskCount_;
     }
 
+    void OnAllocateEvent(EcmaVM *ecmaVm, TaggedObject* address, size_t size);
+    inline void SetHClassAndDoAllocateEvent(JSThread *thread, TaggedObject *object, JSHClass *hclass, size_t size);
     bool CheckCanDistributeTask();
     void IncreaseTaskCount();
     void ReduceTaskCount();
@@ -737,10 +739,8 @@ public:
     inline TaggedObject *AllocateClassClass(JSHClass *hclass, size_t size);
     // Huge
     inline TaggedObject *AllocateHugeObject(JSHClass *hclass, size_t size);
-    inline TaggedObject *AllocateHugeObject(size_t size);
     // Machine code
     inline TaggedObject *AllocateMachineCodeObject(JSHClass *hclass, size_t size);
-    inline TaggedObject *AllocateHugeMachineCodeObject(size_t size);
     // Snapshot
     inline uintptr_t AllocateSnapshotSpace(size_t size);
 
@@ -913,7 +913,6 @@ public:
         WaitAllTasksFinished();
     }
 #endif
-    void OnAllocateEvent(TaggedObject* address, size_t size);
     void OnMoveEvent(uintptr_t address, TaggedObject* forwardAddress, size_t size);
     void AddToKeptObjects(JSHandle<JSTaggedValue> value) const;
     void ClearKeptObjects() const;
@@ -1019,6 +1018,9 @@ public:
     PUBLIC_API GCListenerId AddGCListener(FinishGCListener listener, void *data);
     PUBLIC_API void RemoveGCListener(GCListenerId listenerId);
 private:
+    inline TaggedObject *AllocateHugeObject(size_t size);
+    inline TaggedObject *AllocateHugeMachineCodeObject(size_t size);
+
     static constexpr int IDLE_TIME_LIMIT = 10;  // if idle time over 10ms we can do something
     static constexpr int ALLOCATE_SIZE_LIMIT = 100_KB;
     static constexpr int IDLE_MAINTAIN_TIME = 500;
