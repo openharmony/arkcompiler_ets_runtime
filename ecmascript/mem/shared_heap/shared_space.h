@@ -104,15 +104,30 @@ public:
         return committedSize_ >= maximumCapacity_ + outOfMemoryOvershootSize_;
     }
 
+    void CheckAndTriggerLocalFullMark(JSThread *thread);
+
     size_t GetTotalAllocatedSize() const;
 
     void InvokeAllocationInspector(Address object, size_t size, size_t alignedSize);
 
+    template<class Callback>
+    void EnumerateReclaimRegions(const Callback &cb) const
+    {
+        for (Region *current : reclaimRegionList_) {
+            if (current != nullptr) {
+                cb(current);
+            }
+        }
+    }
+
+    void ReclaimRegions();
 protected:
     FreeListAllocator *allocator_;
     SweepState sweepState_ = SweepState::NO_SWEEP;
 
 private:
+    static constexpr double LIVE_OBJECT_SIZE_RATIO = 0.8;
+
     uintptr_t AllocateWithExpand(JSThread *thread, size_t size);
     uintptr_t TryAllocate(JSThread *thread, size_t size);
     bool Expand(JSThread *thread);
@@ -124,7 +139,9 @@ private:
     SharedHeap *sHeap_ {nullptr};
     std::vector<Region *> sweepingList_;
     std::vector<Region *> sweptList_;
+    std::set<Region*> reclaimRegionList_;
     size_t liveObjectSize_ {0};
+    size_t triggerLocalFullMarkLimit_ {0};
 };
 
 class SharedNonMovableSpace : public SharedSparseSpace {
@@ -195,8 +212,13 @@ public:
     {
         return committedSize_ + size >= maximumCapacity_ + outOfMemoryOvershootSize_;
     }
+
+    void CheckAndTriggerLocalFullMark(JSThread *thread, size_t size);
 private:
     static constexpr size_t HUGE_OBJECT_BITSET_SIZE = 16;
+    static constexpr double HUGE_OBJECT_SIZE_RATIO = 0.8;
+
+    size_t triggerLocalFullMarkLimit_ {0};
     EcmaList<Region> hugeNeedFreeList_ {};
     Mutex allocateLock_;
 };

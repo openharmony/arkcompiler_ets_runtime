@@ -157,6 +157,7 @@ void SharedHeap::CollectGarbage(JSThread *thread, [[maybe_unused]]TriggerGCType 
 void SharedHeap::CollectGarbageImpl(TriggerGCType gcType, GCReason reason)
 {
     Prepare();
+    localFullMarkTriggered_ = false;
     GetEcmaGCStats()->RecordStatisticBeforeGC(gcType, reason);
     if (UNLIKELY(ShouldVerifyHeap())) {
         // pre gc heap verify
@@ -204,6 +205,8 @@ void SharedHeap::Reclaim()
 
 void SharedHeap::ReclaimRegions()
 {
+    sOldSpace_->ReclaimRegions();
+    sNonMovableSpace_->ReclaimRegions();
     sSweeper_->WaitAllTaskFinished();
     EnumerateOldSpaceRegionsWithRecord([] (Region *region) {
         region->ClearMarkGCBitset();
@@ -239,6 +242,23 @@ void SharedHeap::EnableParallelGC(JSRuntimeOptions &option)
         sharedGC_->ResetWorkManager(sWorkManager_);
     }
     sSweeper_->ConfigConcurrentSweep(option.EnableConcurrentSweep());
+}
+
+void SharedHeap::TryTriggerLocalConcurrentMarking(JSThread *thread)
+{
+    if (localFullMarkTriggered_) {
+        return;
+    }
+    {
+        SuspendAllScope scope(thread);
+        if (!localFullMarkTriggered_) {
+            localFullMarkTriggered_ = true;
+            Runtime::GetInstance()->GCIterateThreadList([](JSThread *thread) {
+                ASSERT(!thread->IsInRunningState());
+                thread->SetFullMarkRequest();
+            });
+        }
+    }
 }
 
 size_t SharedHeap::VerifyHeapObjects(VerifyKind verifyKind) const
@@ -1345,6 +1365,24 @@ void Heap::TryTriggerFullMarkByNativeSize()
             CheckAndTriggerOldGC();
         }
     }
+}
+
+bool Heap::TryTriggerFullMarkBySharedLimit()
+{
+    bool keepFullMarkRequest = false;
+    if (concurrentMarker_->IsEnabled()) {
+        if (!CheckCanTriggerConcurrentMarking()) {
+            return keepFullMarkRequest;
+        }
+        markType_ = MarkType::MARK_FULL;
+        if (ConcurrentMarker::TryIncreaseTaskCounts()) {
+            concurrentMarker_->Mark();
+        } else {
+            // need retry full mark request again.
+            keepFullMarkRequest = true;
+        }
+    }
+    return keepFullMarkRequest;
 }
 
 void Heap::TryTriggerFullMarkBySharedSize(size_t size)
