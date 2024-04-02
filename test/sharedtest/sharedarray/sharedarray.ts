@@ -40,6 +40,13 @@ class SubClass extends SuperClass {
     }
 }
 
+class SubSharedClass extends SharedArray {
+    constructor() {
+        "use sendable"
+        super()
+    }
+}
+
 SharedArray.from<string>(["a", "r", "k"])
 
 function at() {
@@ -517,6 +524,132 @@ function testStringForIC(index: number) {
     }
 }
 
+function frozenTest(array: SharedArray) {
+    try {
+        array.notExistProp = 1;
+    } catch (err) {
+        print("Add prop to array failed. err: " + err);
+    }
+    try {
+        Object.defineProperty(array, "defineNotExistProp", { value: 321, writable: false });
+    } catch (err) {
+        print("defineNotExistProp to array failed. err: " + err);
+    }
+    try {
+        array.at = 1;
+    } catch (err) {
+        print("Update function [at] failed. err: " + err);
+    }
+    try {
+        Object.defineProperty(array, "at", { value: 321, writable: false });
+    } catch (err) {
+        print("Update function [at] by defineProperty failed. err: " + err);
+    }
+    array.push(111);
+}
+
+function arrayFrozenTest() {
+    print("Start Test arrayFrozenTest")
+    let arr1 = new SharedArray<string>("ARK");
+    print("arrayFrozenTest [new] single string. arr: " + arr1);
+    frozenTest(arr1);
+    arr1 = new SharedArray<string>("A", "R", "K");
+    print("arrayFrozenTest [new]. arr: " + arr1);
+    frozenTest(arr1);
+    arr1 = SharedArray.from<string>(["A", "R", "K"]);
+    print("arrayFrozenTest static [from]. arr: " + arr1);
+    frozenTest(arr1);
+    arr1 = SharedArray.create<string>(3, "A");
+    print("arrayFrozenTest static [create]. arr: " + arr1);
+    frozenTest(arr1);
+}
+
+function sharedArrayFrozenTest() {
+    print("Start Test sharedArrayFrozenTest")
+    let arr1 = new SubSharedClass();
+    arr1.push("A");
+    arr1.push("R");
+    arr1.push("K");
+    print("sharedArrayFrozenTest [new]. arr: " + arr1);
+    frozenTest(arr1);
+}
+
+function increaseArray() {
+    print("Start Test extendSharedTest")
+    let sub = new SubSharedClass();
+    for (let idx: number = 0; idx < 1200; idx++) {
+        sub.push(idx + 10);
+    }
+    print("Push: " + sub);
+}
+
+function arrayFromSet(){
+    print("Start Test arrayFromSet")
+    const set = new Set(["foo", "bar", "baz", "foo"]);
+    const sharedSet = new SharedSet(["foo", "bar", "baz", "foo"]);
+    print("Create from normal set: " + SharedArray.from(set));
+    print("Create from shared set: " + SharedArray.from(set));
+}
+
+function arrayFromNormalMap() {
+    print("Start Test arrayFromNormalMap")
+    const map = new Map([
+        [1, 2],
+        [2, 4],
+        [4, 8],
+      ]);
+      Array.from(map);
+      // [[1, 2], [2, 4], [4, 8]]
+      
+      const mapper = new Map([
+        ["1", "a"],
+        ["2", "b"],
+      ]);
+      Array.from(mapper.values());
+      // ['a', 'b'];
+      
+      Array.from(mapper.keys());
+      // ['1', '2'];
+}
+
+function arrayFromSharedMap() {
+    print("Start test arrayFromSharedMap")
+    const map = new SharedMap([
+        [1, 2],
+        [2, 4],
+        [4, 8],
+      ]);
+      try {
+        print("create from sharedMap: " + SharedArray.from(map));
+      } catch (err) {
+        print("create from sharedMap with non-sendable array failed. err: " + err + ", code: " + err.code);
+      }
+      // [[1, 2], [2, 4], [4, 8]]
+      
+      const mapper = new SharedMap([
+        SharedArray.from(["1", "a"]),
+        SharedArray.from(["2", "b"]),
+      ]);
+      print("create from sharedMapper.values(): " + SharedArray.from(mapper.values()));
+      // ['a', 'b'];
+      
+      print("create from sharedMapper.values(): " + SharedArray.from(mapper.keys()));
+      // ['1', '2'];
+}
+
+function arrayFromNotArray() {
+    print("Start test arrayFromNotArray")
+    function NotArray(len: number) {
+        print("NotArray called with length", len);
+    }
+
+    try {
+        print("Create array from notArray: " + SharedArray.from.call(NotArray, new Set(["foo", "bar", "baz"])));
+    } catch (err) {
+        print("Create array from notArray failed. err: " + err + ", code: " + err.code);
+    }
+}
+
 at()
 
 entries()
@@ -571,3 +704,10 @@ print("Start Test testStringForIC")
 for (let index: number = 0; index < 100; index++) {
     testStringForIC(index)
 }
+
+arrayFrozenTest()
+sharedArrayFrozenTest()
+arrayFromSet()
+arrayFromNormalMap()
+arrayFromSharedMap()
+arrayFromNotArray()

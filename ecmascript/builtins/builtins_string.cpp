@@ -39,9 +39,11 @@
 #include "ecmascript/js_regexp.h"
 #include "ecmascript/js_string_iterator.h"
 #include "ecmascript/js_tagged_value-inl.h"
+#include "ecmascript/js_tagged_value.h"
 #include "ecmascript/mem/c_containers.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/property_detector-inl.h"
+#include "ecmascript/shared_objects/js_shared_array.h"
 #include "ecmascript/tagged_array-inl.h"
 #include "ecmascript/tagged_array.h"
 #ifdef ARK_SUPPORT_INTL
@@ -2336,6 +2338,43 @@ JSTaggedValue BuiltinsString::StringToList(JSThread *thread, JSHandle<EcmaString
     StringToListResultCache::SetCachedResult(thread, cacheTable, str, elements);
 
     return newArrayHandle.GetTaggedValue();
+}
+
+JSTaggedValue BuiltinsString::StringToSList(JSThread *thread, JSHandle<EcmaString> &str)
+{
+    JSHandle<StringToListResultCache> cacheTable(thread->GetCurrentEcmaContext()->GetStringToListResultCache());
+    JSTaggedValue cacheResult = StringToListResultCache::FindCachedResult(thread, cacheTable, str);
+    if (cacheResult != JSTaggedValue::Undefined()) {
+        JSHandle<JSTaggedValue> resultArray(
+            JSSharedArray::CreateArrayFromList(thread, JSHandle<TaggedArray>(thread, cacheResult)));
+        return resultArray.GetTaggedValue();
+    }
+
+    JSTaggedValue newSharedArray = JSSharedArray::ArrayCreate(thread, JSTaggedNumber(0)).GetTaggedValue();
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    JSHandle<JSObject> newSharedArrayHandle(thread, newSharedArray);
+    JSHandle<EcmaString> iteratedString(str);
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<TaggedArray> oldElements(thread, newSharedArrayHandle->GetElements());
+    uint32_t totalElements = EcmaStringAccessor(iteratedString).GetLength();
+    JSHandle<TaggedArray> elements =
+        (oldElements->GetLength() < totalElements)
+            ? factory->ExtendArray(oldElements, totalElements, JSTaggedValue::Hole(), MemSpaceType::SHARED_OLD_SPACE)
+            : oldElements;
+    uint32_t index = 0;
+    newSharedArrayHandle->SetElements(thread, elements);
+    while (index < totalElements) {
+        uint16_t c = EcmaStringAccessor(iteratedString).Get(index);
+        JSHandle<EcmaString> newStr = factory->NewFromUtf16Literal(&c, 1);
+        ElementAccessor::Set(thread, newSharedArrayHandle, index, newStr, true);
+        index++;
+        thread->CheckSafepointIfSuspended();
+    }
+    JSHandle<JSSharedArray>(newSharedArrayHandle)->SetArrayLength(thread, totalElements);
+
+    StringToListResultCache::SetCachedResult(thread, cacheTable, str, elements);
+    newSharedArrayHandle->GetJSHClass()->SetExtensible(false);
+    return newSharedArrayHandle.GetTaggedValue();
 }
 
 JSTaggedValue StringSplitResultCache::CreateCacheTable(const JSThread *thread)

@@ -435,7 +435,7 @@ public:
                                    const JSHandle<JSTaggedValue> &value, SCheckMode sCheckMode = SCheckMode::CHECK);
 
     static bool CreateDataProperty(JSThread *thread, const JSHandle<JSObject> &obj, uint32_t index,
-                                   const JSHandle<JSTaggedValue> &value);
+                                   const JSHandle<JSTaggedValue> &value, SCheckMode sCheckMode = SCheckMode::CHECK);
 
     static bool CreateMethodProperty(JSThread *thread, const JSHandle<JSObject> &obj,
                                      const JSHandle<JSTaggedValue> &key, const JSHandle<JSTaggedValue> &value);
@@ -445,7 +445,8 @@ public:
                                           SCheckMode sCheckMode = SCheckMode::CHECK);
 
     static bool CreateDataPropertyOrThrow(JSThread *thread, const JSHandle<JSObject> &obj, uint32_t index,
-                                          const JSHandle<JSTaggedValue> &value);
+                                          const JSHandle<JSTaggedValue> &value,
+                                          SCheckMode sCheckMode = SCheckMode::CHECK);
 
     static JSHandle<TaggedArray> PUBLIC_API EnumerableOwnNames(JSThread *thread, const JSHandle<JSObject> &obj);
 
@@ -500,14 +501,15 @@ public:
                                   const PropertyDescriptor &desc, SCheckMode sCheckMode = SCheckMode::CHECK);
 
     static bool DefineOwnProperty(JSThread *thread, const JSHandle<JSObject> &obj, uint32_t index,
-                                  const PropertyDescriptor &desc);
+                                  const PropertyDescriptor &desc, SCheckMode sCheckMode = SCheckMode::CHECK);
 
     static bool OrdinaryDefineOwnProperty(JSThread *thread, const JSHandle<JSObject> &obj,
                                           const JSHandle<JSTaggedValue> &key, const PropertyDescriptor &desc,
                                           SCheckMode sCheckMode = SCheckMode::CHECK);
 
     static bool OrdinaryDefineOwnProperty(JSThread *thread, const JSHandle<JSObject> &obj, uint32_t index,
-                                          const PropertyDescriptor &desc);
+                                          const PropertyDescriptor &desc,
+                                          SCheckMode sCheckMode = SCheckMode::CHECK);
 
     static bool IsCompatiblePropertyDescriptor(bool extensible, const PropertyDescriptor &desc,
                                                const PropertyDescriptor &current);

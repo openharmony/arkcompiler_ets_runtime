@@ -754,7 +754,7 @@ void Builtins::InitializeSharedArray(const JSHandle<GlobalEnv> &env, const JSHan
     arrFuncPrototype->SetPropertyInlinedProps(thread_, protoFieldIndex++, arrayFunction.GetTaggedValue());
     JSHandle<JSObject> globalObject(thread_, env->GetGlobalObject());
     JSHandle<JSTaggedValue> nameString(factory_->NewFromUtf8("SharedArray"));
-    PropertyDescriptor desc(thread_, JSHandle<JSTaggedValue>::Cast(arrayFunction), true, false, true);
+    PropertyDescriptor desc(thread_, JSHandle<JSTaggedValue>::Cast(arrayFunction), false, false, false);
     JSObject::DefineOwnProperty(thread_, globalObject, nameString, desc);
     RETURN_IF_ABRUPT_COMPLETION(thread_);
     for (const base::BuiltinFunctionEntry &entry : BuiltinsSharedArray::GetSharedArrayPrototypeFunctions()) {
