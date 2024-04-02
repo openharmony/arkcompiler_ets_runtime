@@ -13,14 +13,16 @@
  * limitations under the License.
  */
 #include "ecmascript/compiler/mcr_lowering.h"
+#include "ecmascript/compiler/argument_accessor.h"
 #include "ecmascript/compiler/bytecodes.h"
 #include "ecmascript/compiler/share_gate_meta_data.h"
+#include "ecmascript/compiler/share_opcodes.h"
 #include "ecmascript/global_env.h"
-#include "ecmascript/jspandafile/program_object.h"
-#include "ecmascript/js_thread.h"
 #include "ecmascript/js_function.h"
+#include "ecmascript/js_hclass.h"
+#include "ecmascript/js_thread.h"
+#include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/message_string.h"
-#include "ecmascript/compiler/argument_accessor.h"
 
 namespace panda::ecmascript::kungfu {
 
@@ -102,6 +104,15 @@ GateRef MCRLowering::VisitGate(GateRef gate)
             break;
         case OpCode::IS_NOT_UNDEFINED_OR_HOLE_CHECK:
             LowerIsNotUndefinedOrHoleCheck(gate);
+            break;
+        case OpCode::IS_ECMA_OBJECT_CHECK:
+            LowerIsEcmaObjectCheck(gate);
+            break;
+        case OpCode::IS_TAGGED_BOOLEAN_CHECK:
+            LowerIsTaggedBooleanCheck(gate);
+            break;
+        case OpCode::IS_DATA_VIEW_CHECK:
+            LowerIsDataViewCheck(gate);
             break;
         case OpCode::STORE_MEMORY:
             LowerStoreMemory(gate);
@@ -911,6 +922,36 @@ void MCRLowering::LowerIsNotUndefinedOrHoleCheck(GateRef gate)
     GateRef value = acc_.GetValueIn(gate, 0);
     GateRef isUndefinedorHole = builder_.TaggedIsUndefinedOrHole(value);
     builder_.DeoptCheck(isUndefinedorHole, frameState, DeoptType::ISNOTUNDEFINEDORHOLE);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
+}
+
+void MCRLowering::LowerIsEcmaObjectCheck(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    GateRef frameState = acc_.GetFrameState(gate);
+    GateRef obj = acc_.GetValueIn(gate, 0);
+    GateRef isEcmaObject = builder_.IsEcmaObject(obj);
+    builder_.DeoptCheck(isEcmaObject, frameState, DeoptType::ISNOTECMAOBJECT);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
+}
+
+void MCRLowering::LowerIsDataViewCheck(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    GateRef frameState = acc_.GetFrameState(gate);
+    GateRef obj = acc_.GetValueIn(gate, 0);
+    GateRef isDataView = builder_.CheckJSType(obj, JSType::JS_DATA_VIEW);
+    builder_.DeoptCheck(isDataView, frameState, DeoptType::ISNOTDATAVIEW);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
+}
+
+void MCRLowering::LowerIsTaggedBooleanCheck(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    GateRef frameState = acc_.GetFrameState(gate);
+    GateRef value = acc_.GetValueIn(gate, 0);
+    GateRef taggedIsBoolean = builder_.TaggedIsBoolean(value);
+    builder_.DeoptCheck(taggedIsBoolean, frameState, DeoptType::ISNOTTAGGEDBOOLEAN);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 

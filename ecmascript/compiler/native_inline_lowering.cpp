@@ -13,9 +13,12 @@
  * limitations under the License.
  */
 #include "ecmascript/compiler/native_inline_lowering.h"
+#include "ecmascript/base/number_helper.h"
+#include "ecmascript/compiler/circuit.h"
 #include "ecmascript/compiler/circuit_builder-inl.h"
 #include "ecmascript/compiler/circuit_builder_helper.h"
-#include "ecmascript/compiler/circuit.h"
+#include "ecmascript/compiler/share_gate_meta_data.h"
+#include "ecmascript/js_dataview.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/message_string.h"
 
@@ -178,6 +181,29 @@ void NativeInlineLowering::RunNativeInlineLowering()
                 break;
             case BuiltinsStubCSigns::ID::MathFloor:
                 TryInlineMathUnaryBuiltin(gate, argc, id, circuit_->MathFloor(), skipThis);
+                break;
+            case BuiltinsStubCSigns::ID::ArrayBufferIsView:
+                TryInlineArrayBufferIsView(gate, argc, id, skipThis);
+                break;
+            case BuiltinsStubCSigns::ID::DataViewGetFloat32:
+            case BuiltinsStubCSigns::ID::DataViewGetFloat64:
+            case BuiltinsStubCSigns::ID::DataViewGetInt8:
+            case BuiltinsStubCSigns::ID::DataViewGetInt16:
+            case BuiltinsStubCSigns::ID::DataViewGetInt32:
+            case BuiltinsStubCSigns::ID::DataViewGetUint16:
+            case BuiltinsStubCSigns::ID::DataViewGetUint32:
+            case BuiltinsStubCSigns::ID::DataViewGetUint8:
+                TryInlineDataViewGet(gate, argc, id);
+                break;
+            case BuiltinsStubCSigns::ID::DataViewSetFloat32:
+            case BuiltinsStubCSigns::ID::DataViewSetFloat64:
+            case BuiltinsStubCSigns::ID::DataViewSetInt8:
+            case BuiltinsStubCSigns::ID::DataViewSetInt16:
+            case BuiltinsStubCSigns::ID::DataViewSetInt32:
+            case BuiltinsStubCSigns::ID::DataViewSetUint8:
+            case BuiltinsStubCSigns::ID::DataViewSetUint16:
+            case BuiltinsStubCSigns::ID::DataViewSetUint32:
+                TryInlineDataViewSet(gate, argc, id);
                 break;
             default:
                 break;
@@ -353,6 +379,85 @@ void NativeInlineLowering::TryInlineMathMinMaxBuiltin(GateRef gate, size_t argc,
     for (size_t i = 1; i < argc; i++) {
         auto param = acc_.GetValueIn(gate, i + firstParam);
         ret = builder_.BuildMathBuiltinOp(op, {ret, param});
+    }
+    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), ret);
+}
+
+void NativeInlineLowering::TryInlineArrayBufferIsView(GateRef gate,
+                                                      size_t argc,
+                                                      BuiltinsStubCSigns::ID id,
+                                                      bool skipThis)
+{
+    if (!skipThis) {
+        return;
+    }
+    if (argc != 1) {
+        return;
+    }
+    CallThis1TypeInfoAccessor tacc(thread_, circuit_, gate);
+    Environment env(gate, circuit_, &builder_);
+    if (!Uncheck()) {
+        builder_.CallTargetCheck(gate, tacc.GetFunc(), builder_.IntPtr(static_cast<int64_t>(id)), {tacc.GetArg0()});
+    }
+    GateRef arg0 = tacc.GetArg0();
+    GateRef ret = builder_.ArrayBufferIsView(arg0);
+    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), ret);
+}
+
+void NativeInlineLowering::TryInlineDataViewGet(GateRef gate, size_t argc, BuiltinsStubCSigns::ID id)
+{
+    if (argc != 1 && argc != 2) { // number of args must be 1/2
+        return;
+    }
+    Environment env(gate, circuit_, &builder_);
+    if (!Uncheck()) {
+        builder_.CallTargetCheck(gate, acc_.GetValueIn(gate, argc + 1), builder_.IntPtr(static_cast<int64_t>(id)));
+    }
+    GateRef thisObj = acc_.GetValueIn(gate, 0); // 0: this
+    builder_.IsEcmaObjectCheck(thisObj);
+    builder_.IsDataViewCheck(thisObj);
+    GateRef dataViewCallID = builder_.Int32(id);
+    GateRef index = acc_.GetValueIn(gate, 1); // 1: index of dataView
+    GateRef ret = Circuit::NullGate();
+    GateRef frameState = acc_.GetFrameState(gate);
+    if (argc == 1) { // if not provide isLittleEndian, default use big endian
+        ret = builder_.DataViewGet(thisObj, index, dataViewCallID, builder_.TaggedFalse(), frameState);
+    } else if (argc == 2) { // 2: provide isLittleEndian
+        GateRef isLittleEndian = acc_.GetValueIn(gate, 2); // 2: is little endian mode
+        builder_.IsTaggedBooleanCheck(isLittleEndian);
+        ret = builder_.DataViewGet(thisObj, index, dataViewCallID, isLittleEndian, frameState);
+    }
+    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), ret);
+}
+
+void NativeInlineLowering::TryInlineDataViewSet(GateRef gate, size_t argc, BuiltinsStubCSigns::ID id)
+{
+    if (argc != 1 && argc != 2 && argc != 3) { // number of args must be 1/2/3
+        return;
+    }
+    Environment env(gate, circuit_, &builder_);
+    if (!Uncheck()) {
+        builder_.CallTargetCheck(gate, acc_.GetValueIn(gate, argc + 1), builder_.IntPtr(static_cast<int64_t>(id)));
+    }
+    GateRef thisObj = acc_.GetValueIn(gate, 0); // 0: this
+    builder_.IsEcmaObjectCheck(thisObj);
+    builder_.IsDataViewCheck(thisObj);
+    GateRef dataViewCallID = builder_.Int32(id);
+    GateRef index = acc_.GetValueIn(gate, 1); // 1: index
+
+    GateRef ret = Circuit::NullGate();
+    GateRef frameState = acc_.GetFrameState(gate);
+    if (argc == 1) { // arg counts is 1
+        ret = builder_.DataViewSet(
+            thisObj, index, builder_.Double(base::NAN_VALUE), dataViewCallID, builder_.TaggedFalse(), frameState);
+    } else if (argc == 2) { // arg counts is 2
+        GateRef value = acc_.GetValueIn(gate, 2); // 2: value
+        ret = builder_.DataViewSet(thisObj, index, value, dataViewCallID, builder_.TaggedFalse(), frameState);
+    } else if (argc == 3) { // arg counts is 3
+        GateRef value = acc_.GetValueIn(gate, 2); // 2: value
+        GateRef isLittleEndian = acc_.GetValueIn(gate, 3); // 3: is little endian mode
+        builder_.IsTaggedBooleanCheck(isLittleEndian);
+        ret = builder_.DataViewSet(thisObj, index, value, dataViewCallID, isLittleEndian, frameState);
     }
     acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), ret);
 }

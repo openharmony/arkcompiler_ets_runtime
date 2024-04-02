@@ -320,6 +320,7 @@
       panda::ecmascript::TypeLiteralExtractor::TypeLiteralExtractor*;
       panda::ecmascript::Unlink*;
       panda::ecmascript::base::utf_helper::ConvertRegionUtf16ToUtf8*;
+      panda::ecmascript::base::NumberHelper::DoubleInRangeInt32*;
       panda::ecmascript::kungfu::AOTSnapshot::StoreConstantPoolInfo*;
       panda::ecmascript::kungfu::ArkStackMapBuilder::Collect*;
       panda::ecmascript::kungfu::ArkStackMapBuilder::GenerateArkStackMap*;

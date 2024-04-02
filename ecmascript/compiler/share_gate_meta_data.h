@@ -114,6 +114,12 @@ enum class TypedCallTargetCheckOp : uint8_t;
     V(IsNotUndefinedOrHole,            ISNOTUNDEFINEDORHOLE)          \
     V(BuiltinInliningTypeGuard,        BUILTIN_INLINING_TYPE_GUARD)   \
     V(OsrLoopExit,                     OSRLOOPEXIT)                   \
+    V(IsNotEcmaObject,                 ISNOTECMAOBJECT)               \
+    V(IsNotDataView,                   ISNOTDATAVIEW)                 \
+    V(IsNotTaggedBoolean,              ISNOTTAGGEDBOOLEAN)            \
+    V(IndexLessZeroOrInfinity,         INDEXLESSZEROORINFINITY)       \
+    V(ArrayBufferIsDetached,           ARRAYBUFFERISDETACHED)         \
+    V(TotalSizeOverflow,               TOTALSIZEOVERFLOW)
 
 enum class DeoptType : uint8_t {
     NOTCHECK = 0,

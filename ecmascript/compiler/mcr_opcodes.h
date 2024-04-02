@@ -29,6 +29,9 @@ namespace panda::ecmascript::kungfu {
     V(LexVarIsHoleCheck, LEX_VAR_IS_HOLE_CHECK, GateFlags::CHECKABLE, 1, 1, 1)                              \
     V(IsUndefinedOrHoleCheck, IS_UNDEFINED_OR_HOLE_CHECK, GateFlags::CHECKABLE, 1, 1, 1)                    \
     V(IsNotUndefinedOrHoleCheck, IS_NOT_UNDEFINED_OR_HOLE_CHECK, GateFlags::CHECKABLE, 1, 1, 1)             \
+    V(IsEcmaObjectCheck, IS_ECMA_OBJECT_CHECK, GateFlags::CHECKABLE, 1, 1, 1)                               \
+    V(IsDataViewCheck, IS_DATA_VIEW_CHECK, GateFlags::CHECKABLE, 1, 1, 1)                                   \
+    V(IsTaggedBooleanCheck, IS_TAGGED_BOOLEAN_CHECK, GateFlags::CHECKABLE, 1, 1, 1)                         \
     V(TaggedIsHeapObject, TAGGED_IS_HEAP_OBJECT, GateFlags::NO_WRITE, 1, 1, 1)                              \
     V(IsMarkerCellValid, IS_MARKER_CELL_VALID, GateFlags::NO_WRITE, 1, 1, 1)                                \
     V(StringEqual, STRING_EQUAL, GateFlags::NO_WRITE, 1, 1, 2)
@@ -106,6 +109,9 @@ namespace panda::ecmascript::kungfu {
     V(MathImul, MATH_IMUL, GateFlags::NO_WRITE, 1, 1, 2)                                        \
     V(GlobalIsFinite, GLOBAL_IS_FINITE, GateFlags::NO_WRITE, 1, 1, 1)                           \
     V(GlobalIsNan, GLOBAL_IS_NAN, GateFlags::NO_WRITE, 1, 1, 1)                                 \
+    V(ArrayBufferIsView, ARRAY_BUFFER_IS_VIEW, GateFlags::NO_WRITE, 1, 1, 1)                    \
+    V(DataViewGet, DATA_VIEW_GET, GateFlags::NO_WRITE, 1, 1, 5)                                 \
+    V(DataViewSet, DATA_VIEW_SET, GateFlags::NO_WRITE, 1, 1, 6)                                 \
     MCR_BINARY_GATE_META_DATA_CACHE_LIST(V)
 
 #define MCR_GATE_META_DATA_LIST_WITH_PC_OFFSET(V)                                                            \
