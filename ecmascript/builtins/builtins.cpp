@@ -2215,6 +2215,8 @@ void Builtins::Initialize##Type(const JSHandle<GlobalEnv> &env, const JSHandle<J
     arrayFunction->SetProtoOrHClass(thread_, arrFuncInstanceHClass.GetTaggedValue());                           \
     SetConstant(arrFuncPrototype, "BYTES_PER_ELEMENT", JSTaggedValue(bytesPerElement));                         \
     SetConstant(JSHandle<JSObject>(arrayFunction), "BYTES_PER_ELEMENT", JSTaggedValue(bytesPerElement));        \
+    /* %TypedArray%.protoofprototype (where %TypedArray% is one of Int8Array, Uint8Array, etc.) */              \
+    JSTaggedValue protoOfPrototypeValue = arrFuncPrototype->GetJSHClass()->GetPrototype();                      \
     env->Set##Type##Function(thread_, arrayFunction);                                                           \
     env->Set##Type##FunctionPrototype(thread_, arrFuncPrototypeValue);                                          \
     env->Set##Type##RootHclass(thread_, arrFuncInstanceHClass);                                                 \
@@ -2223,7 +2225,9 @@ void Builtins::Initialize##Type(const JSHandle<GlobalEnv> &env, const JSHandle<J
     thread_->SetInitialBuiltinHClass(BuiltinTypeId::TYPE,                                                       \
         arrayFunction->GetJSHClass(),                                                                           \
         *arrFuncInstanceHClass,                                                                                 \
-        arrFuncPrototype->GetJSHClass());                                                                       \
+        arrFuncPrototype->GetJSHClass(),                                                                        \
+        protoOfPrototypeValue.IsHeapObject() ? protoOfPrototypeValue.GetTaggedObject()->GetClass() : nullptr,   \
+        *arrFuncInstanceHClassOnHeap);                                                                          \
 }
 
 BUILTIN_TYPED_ARRAY_TYPES(BUILTIN_TYPED_ARRAY_DEFINE_INITIALIZE)

@@ -730,6 +730,7 @@
             <option name="push" value="obj/arkcompiler/ets_runtime/ecmascript/pgo_profiler/tests/array_size_test.abc -> /data/test" src="out"/>
             <option name="push" value="obj/arkcompiler/ets_runtime/ecmascript/pgo_profiler/tests/truck.abc -> /data/test" src="out"/>
             <option name="push" value="obj/arkcompiler/ets_runtime/ecmascript/pgo_profiler/tests/vehicle.abc -> /data/test" src="out"/>
+            <option name="push" value="obj/arkcompiler/ets_runtime/ecmascript/pgo_profiler/tests/typedarray_length.abc -> /data/test" src="out"/>
         </preparer>
     </target>
     <target name="HeapTrackerFirstTest">

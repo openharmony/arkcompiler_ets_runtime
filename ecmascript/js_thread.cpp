@@ -513,7 +513,7 @@ void JSThread::ResetGuardians()
 
 void JSThread::SetInitialBuiltinHClass(
     BuiltinTypeId type, JSHClass *builtinHClass, JSHClass *instanceHClass,
-    JSHClass *prototypeHClass, JSHClass *prototypeOfPrototypeHClass)
+    JSHClass *prototypeHClass, JSHClass *prototypeOfPrototypeHClass, JSHClass *extraHClass)
 {
     size_t index = BuiltinHClassEntries::GetEntryIndex(type);
     auto &entry = glueData_.builtinHClassEntries_.entries[index];
@@ -522,11 +522,13 @@ void JSThread::SetInitialBuiltinHClass(
                     << ", builtinHClass = " << builtinHClass
                     << ", instanceHClass = " << instanceHClass
                     << ", prototypeHClass = " << prototypeHClass
-                    << ", prototypeOfPrototypeHClass = " << prototypeOfPrototypeHClass;
+                    << ", prototypeOfPrototypeHClass = " << prototypeOfPrototypeHClass
+                    << ", extraHClass = " << extraHClass;
     entry.builtinHClass = builtinHClass;
     entry.instanceHClass = instanceHClass;
     entry.prototypeHClass = prototypeHClass;
     entry.prototypeOfPrototypeHClass = prototypeOfPrototypeHClass;
+    entry.extraHClass = extraHClass;
 }
 
 JSHClass *JSThread::GetBuiltinHClass(BuiltinTypeId type) const
@@ -539,6 +541,12 @@ JSHClass *JSThread::GetBuiltinInstanceHClass(BuiltinTypeId type) const
 {
     size_t index = BuiltinHClassEntries::GetEntryIndex(type);
     return glueData_.builtinHClassEntries_.entries[index].instanceHClass;
+}
+
+JSHClass *JSThread::GetBuiltinExtraHClass(BuiltinTypeId type) const
+{
+    size_t index = BuiltinHClassEntries::GetEntryIndex(type);
+    return glueData_.builtinHClassEntries_.entries[index].extraHClass;
 }
 
 JSHClass *JSThread::GetArrayInstanceHClass(ElementsKind kind) const
