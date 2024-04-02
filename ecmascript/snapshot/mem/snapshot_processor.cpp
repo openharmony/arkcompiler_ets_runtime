@@ -1035,6 +1035,7 @@ SnapshotProcessor::~SnapshotProcessor()
 {
     pandaMethod_.clear();
     stringVector_.clear();
+    deserializeStringVector_.clear();
     regionIndexMap_.clear();
     if (oldLocalSpace_ != nullptr) {
         oldLocalSpace_->Reset();
@@ -1343,10 +1344,11 @@ void SnapshotProcessor::DeserializeHugeSpaceObject(uintptr_t beginAddr, HugeObje
 void SnapshotProcessor::DeserializeString(uintptr_t stringBegin, uintptr_t stringEnd)
 {
     EcmaStringTable *stringTable = vm_->GetEcmaStringTable();
-    ASSERT(stringVector_.empty());
+    JSThread *thread = vm_->GetJSThread();
+    ASSERT(deserializeStringVector_.empty());
     auto oldSpace = sHeap_->GetOldSpace();
     auto hugeSpace = sHeap_->GetHugeObjectSpace();
-    auto globalConst = const_cast<GlobalEnvConstants *>(vm_->GetJSThread()->GlobalConstants());
+    auto globalConst = const_cast<GlobalEnvConstants *>(thread->GlobalConstants());
     auto lineStringClass = globalConst->GetLineStringClass();
     auto constantStringClass = globalConst->GetConstantStringClass();
     while (stringBegin < stringEnd) {
@@ -1359,7 +1361,7 @@ void SnapshotProcessor::DeserializeString(uintptr_t stringBegin, uintptr_t strin
             uint32_t id = constantStr->GetEntityIdU32();
             auto stringData = jsPandaFile->GetStringData(EntityId(id)).data;
             constantStr->SetConstantData(const_cast<uint8_t *>(stringData));
-            constantStr->SetRelocatedData(vm_->GetJSThread(), JSTaggedValue::Undefined(), BarrierMode::SKIP_BARRIER);
+            constantStr->SetRelocatedData(thread, JSTaggedValue::Undefined(), BarrierMode::SKIP_BARRIER);
         } else {
             ASSERT(index == 0);
             str->SetClassWithoutBarrier(reinterpret_cast<JSHClass *>(lineStringClass.GetTaggedObject()));
@@ -1367,19 +1369,19 @@ void SnapshotProcessor::DeserializeString(uintptr_t stringBegin, uintptr_t strin
         size_t strSize = EcmaStringAccessor(str).ObjectSize();
         strSize = AlignUp(strSize, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
         {
-            RuntimeLockHolder locker(vm_->GetJSThread(), stringTable->mutex_);
+            RuntimeLockHolder locker(thread, stringTable->mutex_);
             auto strFromTable = stringTable->GetStringThreadUnsafe(str);
             if (strFromTable) {
-                stringVector_.emplace_back(ToUintPtr(strFromTable));
+                deserializeStringVector_.emplace_back(thread, strFromTable);
             } else {
                 uintptr_t newObj = 0;
                 if (UNLIKELY(strSize > MAX_REGULAR_HEAP_OBJECT_SIZE)) {
-                    newObj = hugeSpace->Allocate(vm_->GetJSThread(), strSize);
+                    newObj = hugeSpace->Allocate(thread, strSize);
                 } else {
-                    newObj = oldSpace->Allocate(vm_->GetJSThread(), strSize, false);
+                    newObj = oldSpace->Allocate(thread, strSize, false);
                 }
                 if (newObj == 0) {
-                    LOG_ECMA_MEM(FATAL) << "Snapshot Allocate OldLocalSpace OOM";
+                    LOG_ECMA_MEM(FATAL) << "Snapshot Allocate OldSharedSpace OOM";
                     UNREACHABLE();
                 }
                 if (memcpy_s(ToVoidPtr(newObj), strSize, str, strSize) != EOK) {
@@ -1389,7 +1391,7 @@ void SnapshotProcessor::DeserializeString(uintptr_t stringBegin, uintptr_t strin
                 str = reinterpret_cast<EcmaString *>(newObj);
                 EcmaStringAccessor(str).ClearInternString();
                 stringTable->GetOrInternStringThreadUnsafe(vm_, str);
-                stringVector_.emplace_back(newObj);
+                deserializeStringVector_.emplace_back(thread, str);
             }
         }
         stringBegin += strSize;
@@ -1678,8 +1680,15 @@ void SnapshotProcessor::DeserializeTaggedField(uint64_t *value, TaggedObject *ro
             ASSERT((ToUintPtr(value) % static_cast<uint8_t>(MemAlignment::MEM_ALIGN_OBJECT)) == 0);
             rootRegion->InsertOldToNewRSet((uintptr_t)value);
         }
-        if (!rootRegion->InSharedHeap() && valueRegion->InSharedSweepableSpace()) {
-            rootRegion->AtomicInsertLocalToShareRSet((uintptr_t)value);
+        if (valueRegion->InSharedSweepableSpace()) {
+            if (!rootRegion->InSharedHeap()) {
+                rootRegion->AtomicInsertLocalToShareRSet((uintptr_t)value);
+            }
+            // In deserializing can not use barriers, only mark the shared value to prevent markingbit being lost
+            if (vm_->GetJSThread()->IsSharedConcurrentMarkingOrFinished()) {
+                ASSERT(DaemonThread::GetInstance()->IsConcurrentMarkingOrFinished());
+                valueRegion->AtomicMark(reinterpret_cast<void*>(taggedObjectAddr));
+            }
         }
         *value = taggedObjectAddr;
         return;
@@ -1762,7 +1771,7 @@ uintptr_t SnapshotProcessor::TaggedObjectEncodeBitToAddr(EncodeBit taggedBit)
     ASSERT(taggedBit.IsReference());
     if (!builtinsDeserialize_ && taggedBit.IsReferenceToString()) {
         size_t stringIndex = taggedBit.GetNativePointerOrObjectIndex();
-        return stringVector_[stringIndex];
+        return reinterpret_cast<uintptr_t>(*deserializeStringVector_.at(stringIndex));
     }
     size_t regionIndex = taggedBit.GetRegionIndex();
     if (UNLIKELY(regionIndexMap_.find(regionIndex) == regionIndexMap_.end())) {

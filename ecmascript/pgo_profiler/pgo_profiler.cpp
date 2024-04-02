@@ -468,6 +468,7 @@ void PGOProfiler::UpdateExtraProfileTypeInfo(ApEntityId abcId,
 
 void PGOProfiler::HandlePGOPreDump()
 {
+    ConcurrentGuard guard(v_, "HandlePGOPreDump");
     if (!isEnable_ || !vm_->GetJSOptions().IsEnableProfileDump()) {
         return;
     }

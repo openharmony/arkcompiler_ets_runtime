@@ -170,7 +170,10 @@ HWTEST_F_L0(JSPandaFileManagerTest, MultiEcmaVM_Add_Find_Remove_JSPandaFile)
         EXPECT_TRUE(instance1->GetJSThread()->GetCurrentEcmaContext()->HasCachedConstpool(pf1.get()));
         TestHelper::DestroyEcmaVMWithScope(instance1, scope1); // Remove 'instance1' when ecmaVM destruct.
     });
-    t1.join();
+    {
+        ThreadSuspensionScope suspensionScope(thread);
+        t1.join();
+    }
 
     std::shared_ptr<JSPandaFile> foundPf1 = pfManager->FindJSPandaFile(filename1);
     EXPECT_TRUE(foundPf1 != nullptr);
@@ -211,8 +214,8 @@ HWTEST_F_L0(JSPandaFileManagerTest, GC_Add_Find_Remove_JSPandaFile)
 
     CreateJSPandaFileAndConstpool(instance);
     // Remove 'instance' and JSPandafile when trigger GC.
-    SharedHeap::GetInstance()->CollectGarbage(instance->GetJSThread(), ecmascript::TriggerGCType::SHARED_GC,
-                                              GCReason::OTHER);
+    SharedHeap::GetInstance()->CollectGarbage<TriggerGCType::SHARED_GC, GCReason::OTHER>(instance->GetJSThread());
+    SharedHeap::GetInstance()->CollectGarbage<TriggerGCType::SHARED_GC, GCReason::OTHER>(instance->GetJSThread());
     std::shared_ptr<JSPandaFile> afterRemovePf = pfManager->FindJSPandaFile(filename);
     EXPECT_EQ(afterRemovePf, nullptr);
 }

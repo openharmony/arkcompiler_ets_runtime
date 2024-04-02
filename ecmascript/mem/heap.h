@@ -18,6 +18,7 @@
 
 #include "ecmascript/base/config.h"
 #include "ecmascript/ecma_vm.h"
+#include "ecmascript/daemon/daemon_thread.h"
 #include "ecmascript/frames.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/mem/linear_space.h"
@@ -47,6 +48,7 @@ class MemController;
 class NativeAreaAllocator;
 class ParallelEvacuator;
 class PartialGC;
+class SharedConcurrentMarker;
 class SharedConcurrentSweeper;
 class SharedGC;
 class SharedGCMarker;
@@ -90,14 +92,16 @@ enum AppSensitiveStatus : uint8_t {
 enum class VerifyKind {
     VERIFY_PRE_GC,
     VERIFY_POST_GC,
-    VERIFY_CONCURRENT_MARK_YOUNG,
+    VERIFY_MARK_YOUNG,
     VERIFY_EVACUATE_YOUNG,
-    VERIFY_CONCURRENT_MARK_FULL,
+    VERIFY_MARK_FULL,
     VERIFY_EVACUATE_OLD,
     VERIFY_EVACUATE_FULL,
     VERIFY_SHARED_RSET_POST_FULL_GC,
     VERIFY_PRE_SHARED_GC,
-    VERIFY_POST_SHARED_GC
+    VERIFY_POST_SHARED_GC,
+    VERIFY_SHARED_GC_MARK,
+    VERIFY_SHARED_GC_SWEEP,
 };
 
 class BaseHeap {
@@ -107,17 +111,31 @@ public:
     NO_COPY_SEMANTIC(BaseHeap);
     NO_MOVE_SEMANTIC(BaseHeap);
 
+    virtual void Destroy() = 0;
+
     virtual bool IsMarking() const = 0;
 
-    virtual bool IsReadyToMark() const = 0;
+    virtual bool IsReadyToConcurrentMark() const = 0;
 
     virtual bool NeedStopCollection() = 0;
 
-    virtual void TryTriggerConcurrentMarking() = 0;
+    virtual void SetSensitiveStatus(AppSensitiveStatus status) = 0;
+
+    virtual AppSensitiveStatus GetSensitiveStatus() const = 0;
+
+    virtual bool SetOnStartupEvent(bool startup) = 0;
+
+    virtual bool OnStartupEvent() const = 0;
 
     virtual void TryTriggerIdleCollection() = 0;
 
     virtual void TryTriggerIncrementalMarking() = 0;
+
+    /*
+     * Wait for existing concurrent marking tasks to be finished (if any).
+     * Return true if there's ongoing concurrent marking.
+     */
+    virtual bool CheckOngoingConcurrentMarking() = 0;
 
     virtual bool OldSpaceExceedCapacity(size_t size) const = 0;
 
@@ -158,21 +176,6 @@ public:
     bool IsAlive(TaggedObject *object) const;
 
     bool ContainObject(TaggedObject *object) const;
-
-    void SetOnSerializeEvent(bool isSerialize)
-    {
-        onSerializeEvent_ = isSerialize;
-        if (!onSerializeEvent_ && !InSensitiveStatus()) {
-            TryTriggerIncrementalMarking();
-            TryTriggerIdleCollection();
-            TryTriggerConcurrentMarking();
-        }
-    }
-
-    bool GetOnSerializeEvent() const
-    {
-        return onSerializeEvent_;
-    }
 
     bool GetOldGCRequested()
     {
@@ -226,39 +229,6 @@ public:
         return heapAliveSizeAfterGC_;
     }
 
-    bool InSensitiveStatus() const
-    {
-        return sensitiveStatus_.load(std::memory_order_relaxed) == AppSensitiveStatus::ENTER_HIGH_SENSITIVE
-            || onStartupEvent_;
-    }
-
-    AppSensitiveStatus GetSensitiveStatus() const
-    {
-        return sensitiveStatus_.load(std::memory_order_relaxed);
-    }
-
-    bool onStartUpEvent() const
-    {
-        return onStartupEvent_;
-    }
-
-    void SetSensitiveStatus(AppSensitiveStatus status)
-    {
-        sensitiveStatus_.store(status, std::memory_order_release);
-    }
-
-    bool CASSensitiveStatus(AppSensitiveStatus expect, AppSensitiveStatus status)
-    {
-        return sensitiveStatus_.compare_exchange_strong(expect, status, std::memory_order_seq_cst);
-    }
-
-    void NotifyPostFork()
-    {
-        LockHolder holder(finishColdStartMutex_);
-        onStartupEvent_ = true;
-        LOG_GC(INFO) << "SmartGC: enter app cold start";
-    }
-
     // Whether should verify heap during gc.
     bool ShouldVerifyHeap() const
     {
@@ -286,7 +256,42 @@ public:
     void SetMachineCodeOutOfMemoryError(JSThread *thread, size_t size, std::string functionName);
 
 protected:
+    bool InSensitiveStatus() const
+    {
+        return GetSensitiveStatus() == AppSensitiveStatus::ENTER_HIGH_SENSITIVE ||
+               OnStartupEvent();
+    }
+
     void FatalOutOfMemoryError(size_t size, std::string functionName);
+
+    enum class HeapType {
+        LOCAL_HEAP,
+        SHARED_HEAP,
+        INVALID,
+    };
+
+    class RecursionScope {
+    public:
+        explicit RecursionScope(BaseHeap* heap, HeapType heapType) : heap_(heap), heapType_(heapType)
+        {
+            if (heap_->recursionDepth_++ != 0) {
+                LOG_GC(FATAL) << "Recursion in HeapCollectGarbage(isShared=" << static_cast<int>(heapType_)
+                              << ") Constructor, depth: " << heap_->recursionDepth_;
+            }
+        }
+        ~RecursionScope()
+        {
+            if (--heap_->recursionDepth_ != 0) {
+                LOG_GC(FATAL) << "Recursion in HeapCollectGarbage(isShared=" << static_cast<int>(heapType_)
+                              << ") Destructor, depth: " << heap_->recursionDepth_;
+            }
+        }
+    private:
+        BaseHeap *heap_ {nullptr};
+        HeapType heapType_ {HeapType::INVALID};
+    };
+
+    static constexpr double TRIGGER_SHARED_CONCURRENT_MARKING_OBJECT_LIMIT_RATE = 0.75;
 
     const EcmaParamConfiguration config_;
     MarkType markType_ {MarkType::MARK_YOUNG};
@@ -298,6 +303,7 @@ protected:
 
     size_t heapAliveSizeAfterGC_ {0};
     size_t globalSpaceAllocLimit_ {0};
+    size_t globalSpaceConcurrentMarkLimit_ {0};
     // parallel marker task count.
     uint32_t runningTaskCount_ {0};
     uint32_t maxMarkTaskCount_ {0};
@@ -309,13 +315,10 @@ protected:
     bool inBackground_ {false};
     bool shouldThrowOOMError_ {false};
     bool oldGCRequested_ {false};
-    bool onSerializeEvent_ {false};
-    std::atomic<AppSensitiveStatus> sensitiveStatus_ {AppSensitiveStatus::NORMAL_SCENE};
-    bool onStartupEvent_ {false};
-    Mutex finishColdStartMutex_;
     // ONLY used for heap verification.
     bool shouldVerifyHeap_ {false};
     bool isVerifying_ {false};
+    int32_t recursionDepth_ {0};
 };
 
 class SharedHeap : public BaseHeap {
@@ -323,16 +326,23 @@ public:
     SharedHeap(const EcmaParamConfiguration &config) : BaseHeap(config) {}
     virtual ~SharedHeap() = default;
 
-    static SharedHeap* GetInstance();
+    static void CreateNewInstance();
+    static SharedHeap *GetInstance();
+    static void DestroyInstance();
 
     void Initialize(NativeAreaAllocator *nativeAreaAllocator, HeapRegionAllocator *heapRegionAllocator,
-        const JSRuntimeOptions &option);
+        const JSRuntimeOptions &option, DaemonThread *dThread);
+
+    void Destroy() override;
 
     void PostInitialization(const GlobalEnvConstants *globalEnvConstants, const JSRuntimeOptions &option);
 
     void EnableParallelGC(JSRuntimeOptions &option);
-    void DisableParallelGC();
+
+    void DisableParallelGC(JSThread *thread);
+
     void AdjustGlobalSpaceAllocLimit();
+
     class ParallelMarkTask : public Task {
     public:
         ParallelMarkTask(int32_t id, SharedHeap *heap)
@@ -365,12 +375,51 @@ public:
         return false;
     }
 
-    bool IsReadyToMark() const override
+    bool IsReadyToConcurrentMark() const override
     {
-        return true;
+        return dThread_->IsReadyToConcurrentMark();
     }
 
     bool NeedStopCollection() override;
+
+    void SetSensitiveStatus(AppSensitiveStatus status) override
+    {
+        LockHolder lock(smartGCStats_.sensitiveStatusMutex_);
+        smartGCStats_.sensitiveStatus_ = status;
+        if (!InSensitiveStatus()) {
+            smartGCStats_.sensitiveStatusCV_.Signal();
+        }
+    }
+
+    // This should be called when holding lock of sensitiveStatusMutex_.
+    AppSensitiveStatus GetSensitiveStatus() const override
+    {
+        return smartGCStats_.sensitiveStatus_;
+    }
+
+    bool SetOnStartupEvent(bool onStartup) override
+    {
+        LockHolder lock(smartGCStats_.sensitiveStatusMutex_);
+        smartGCStats_.onStartupEvent_ = onStartup;
+        if (!InSensitiveStatus()) {
+            smartGCStats_.sensitiveStatusCV_.Signal();
+        }
+        return true;
+    }
+
+    // This should be called when holding lock of sensitiveStatusMutex_.
+    bool OnStartupEvent() const override
+    {
+        return smartGCStats_.onStartupEvent_;
+    }
+
+    void WaitSensitiveStatusFinished()
+    {
+        LockHolder lock(smartGCStats_.sensitiveStatusMutex_);
+        while (InSensitiveStatus() && !smartGCStats_.forceGC_) {
+            smartGCStats_.sensitiveStatusCV_.Wait(&smartGCStats_.sensitiveStatusMutex_);
+        }
+    }
 
     bool ObjectExceedMaxHeapSize() const override;
 
@@ -380,11 +429,15 @@ public:
 
     void TryTriggerLocalConcurrentMarking(JSThread *currentThread);
 
-    void TryTriggerConcurrentMarking() override
-    {
-        LOG_FULL(ERROR) << "SharedHeap TryTriggerConcurrentMarking() not support yet";
-        return;
-    }
+    // Called when all vm is destroyed, and try to destroy daemon thread.
+    void WaitAllTasksFinishedAfterAllJSThreadEliminated();
+
+    void WaitAllTasksFinished(JSThread *thread);
+
+    void StartConcurrentMarking(TriggerGCType gcType, GCReason gcReason);         // In daemon thread
+
+    // Use JSThread instead of DaemonThread to check if IsReadyToSharedConcurrentMark, to avoid an atomic load.
+    bool CheckCanTriggerConcurrentMarking(JSThread *thread);
 
     void TryTriggerIdleCollection() override
     {
@@ -398,6 +451,10 @@ public:
         return;
     }
 
+    void UpdateWorkManager(SharedGCWorkManager *sWorkManager);
+
+    bool CheckOngoingConcurrentMarking() override;
+
     bool OldSpaceExceedCapacity(size_t size) const override
     {
         size_t totalSize = sOldSpace_->GetCommittedSize() + size;
@@ -409,6 +466,11 @@ public:
         return sOldSpace_->GetHeapObjectSize() >= sOldSpace_->GetInitialCapacity();
     }
 
+    SharedConcurrentMarker *GetConcurrentMarker() const
+    {
+        return sConcurrentMarker_;
+    }
+
     SharedConcurrentSweeper *GetSweeper() const
     {
         return sSweeper_;
@@ -418,8 +480,6 @@ public:
     {
         return parallelGC_;
     }
-
-    bool MainThreadInSensitiveStatus() const;
 
     SharedOldSpace *GetOldSpace() const
     {
@@ -441,8 +501,33 @@ public:
         return sReadOnlySpace_;
     }
 
-    void CollectGarbage(JSThread *thread, TriggerGCType gcType, GCReason reason);
-    void CollectGarbageImpl(TriggerGCType gcType, GCReason reason);
+    void SetForceGC(bool forceGC)
+    {
+        LockHolder lock(smartGCStats_.sensitiveStatusMutex_);
+        smartGCStats_.forceGC_ = forceGC;
+        if (smartGCStats_.forceGC_) {
+            smartGCStats_.sensitiveStatusCV_.Signal();
+        }
+    }
+
+    inline void TryTriggerConcurrentMarking(JSThread *thread);
+
+    template<TriggerGCType gcType, GCReason gcReason>
+    void TriggerConcurrentMarking(JSThread *thread);
+
+    template<TriggerGCType gcType, GCReason gcReason>
+    void CollectGarbage(JSThread *thread);
+
+    // Only means the main body of SharedGC is finished, i.e. if parallel_gc is enabled, this flags will be set
+    // to true even if sweep_task and clear_task is running asynchronously
+    void NotifyGCCompleted();            // In daemon thread
+
+    // Called when all vm is destroyed, and try to destroy daemon thread
+    void WaitGCFinishedAfterAllJSThreadEliminated();
+
+    void WaitGCFinished(JSThread *thread);
+
+    void DaemonCollectGarbage(TriggerGCType gcType, GCReason reason);
 
     void SetMaxMarkTaskCount(uint32_t maxTaskCount)
     {
@@ -502,7 +587,7 @@ public:
         }
     }
 
-    void Prepare();
+    void Prepare(bool inTriggerGCThread);
     void Reclaim();
     void PostGCMarkingTask();
 
@@ -555,18 +640,54 @@ public:
 
     size_t VerifyHeapObjects(VerifyKind verifyKind) const;
 private:
+
+    inline void CollectGarbageFinish(bool inDaemon);
+
     void ReclaimRegions();
 
-    bool parallelGC_ {true};
-    bool optionalLogEnabled_ {false};
-    bool localFullMarkTriggered_ {false};
+    void ForceCollectGarbageWithoutDaemonThread(TriggerGCType gcType, GCReason gcReason, JSThread *thread);
+
+    struct SharedHeapSmartGCStats {
+        /**
+         * For SmartGC.
+         * For daemon thread, it check these status before trying to collect garbage, and wait until finish.
+         * It need that check-wait events is atomic, so use a Mutex/CV.
+        */
+        Mutex sensitiveStatusMutex_;
+        ConditionVariable sensitiveStatusCV_;
+        AppSensitiveStatus sensitiveStatus_ {AppSensitiveStatus::NORMAL_SCENE};
+        bool onStartupEvent_ {false};
+        // If the SharedHeap is almost OOM and a collect is failed, cause a GC with GCReason::ALLOCATION_FAILED,
+        // must do GC at once even in sensitive status.
+        bool forceGC_ {false};
+    };
+
+    SharedHeapSmartGCStats smartGCStats_;
+
+    static SharedHeap *instance_;
+
     GCStats *sGCStats_ {nullptr};
+
+    bool localFullMarkTriggered_ {false};
+
+    bool optionalLogEnabled_ {false};
+
+    bool parallelGC_ {true};
+
+    // Only means the main body of SharedGC is finished, i.e. if parallel_gc is enabled, this flags will be set
+    // to true even if sweep_task and clear_task is running asynchronously
+    bool gcFinished_ {true};
+    Mutex waitGCFinishedMutex_;
+    ConditionVariable waitGCFinishedCV_;
+
+    DaemonThread *dThread_ {nullptr};
     const GlobalEnvConstants *globalEnvConstants_ {nullptr};
     SharedOldSpace *sOldSpace_ {nullptr};
     SharedNonMovableSpace *sNonMovableSpace_ {nullptr};
     SharedReadOnlySpace *sReadOnlySpace_ {nullptr};
     SharedHugeObjectSpace *sHugeObjectSpace_ {nullptr};
     SharedGCWorkManager *sWorkManager_ {nullptr};
+    SharedConcurrentMarker *sConcurrentMarker_ {nullptr};
     SharedConcurrentSweeper *sSweeper_ {nullptr};
     SharedGC *sharedGC_ {nullptr};
     SharedGCMarker *sharedGCMarker_ {nullptr};
@@ -581,7 +702,7 @@ public:
     NO_COPY_SEMANTIC(Heap);
     NO_MOVE_SEMANTIC(Heap);
     void Initialize();
-    void Destroy();
+    void Destroy() override;
     void Prepare();
     void GetHeapPrepare();
     void Resume(TriggerGCType gcType);
@@ -728,6 +849,11 @@ public:
         return workManager_;
     }
 
+    WorkNode *&GetMarkingObjectLocalBuffer()
+    {
+        return sharedConcurrentMarkingLocalBuffer_;
+    }
+
     const GlobalEnvConstants *GetGlobalConst() const override
     {
         return thread_->GlobalConstants();
@@ -799,7 +925,7 @@ public:
     void TriggerIdleCollection(int idleMicroSec);
     void NotifyMemoryPressure(bool inHighMemoryPressure);
 
-    void TryTriggerConcurrentMarking() override;
+    void TryTriggerConcurrentMarking();
     void AdjustBySurvivalRate(size_t originalNewSpaceSize);
     void TriggerConcurrentMarking();
     bool CheckCanTriggerConcurrentMarking();
@@ -808,11 +934,7 @@ public:
     void TryTriggerIncrementalMarking() override;
     void CalculateIdleDuration();
     void UpdateWorkManager(WorkManager *workManager);
-    /*
-     * Wait for existing concurrent marking tasks to be finished (if any).
-     * Return true if there's ongoing concurrent marking.
-     */
-    bool CheckOngoingConcurrentMarking();
+    bool CheckOngoingConcurrentMarking() override;
 
     inline void SwapNewSpace();
     inline void SwapOldSpace();
@@ -919,6 +1041,21 @@ public:
         return idleTask_ == IdleTaskType::NO_TASK;
     }
 
+    void SetOnSerializeEvent(bool isSerialize)
+    {
+        onSerializeEvent_ = isSerialize;
+        if (!onSerializeEvent_ && !InSensitiveStatus()) {
+            TryTriggerIncrementalMarking();
+            TryTriggerIdleCollection();
+            TryTriggerConcurrentMarking();
+        }
+    }
+
+    bool GetOnSerializeEvent() const
+    {
+        return onSerializeEvent_;
+    }
+
     void NotifyFinishColdStart(bool isMainThread = true);
 
     void NotifyFinishColdStartSoon();
@@ -930,6 +1067,40 @@ public:
     bool ObjectExceedMaxHeapSize() const override;
 
     bool NeedStopCollection() override;
+
+    void SetSensitiveStatus(AppSensitiveStatus status) override
+    {
+        sHeap_->SetSensitiveStatus(status);
+        smartGCStats_.sensitiveStatus_.store(status, std::memory_order_release);
+    }
+
+    AppSensitiveStatus GetSensitiveStatus() const override
+    {
+        return smartGCStats_.sensitiveStatus_.load(std::memory_order_acquire);
+    }
+
+    bool CASSensitiveStatus(AppSensitiveStatus expect, AppSensitiveStatus status)
+    {
+        return smartGCStats_.sensitiveStatus_.compare_exchange_strong(expect, status, std::memory_order_seq_cst);
+    }
+
+    bool SetOnStartupEvent(bool onStartup) override
+    {
+        sHeap_->SetOnStartupEvent(onStartup);
+        bool expect = OnStartupEvent();
+        return smartGCStats_.onStartupEvent_.compare_exchange_strong(expect, onStartup, std::memory_order_release);
+    }
+
+    bool OnStartupEvent() const override
+    {
+        return smartGCStats_.onStartupEvent_.load(std::memory_order_acquire);
+    }
+
+    void NotifyPostFork()
+    {
+        smartGCStats_.onStartupEvent_.store(true, std::memory_order_release);
+        LOG_GC(INFO) << "SmartGC: enter app cold start";
+    }
 
 #if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
     void StartHeapTracking()
@@ -1033,9 +1204,9 @@ public:
         return thread_->IsMarking();
     }
 
-    bool IsReadyToMark() const override
+    bool IsReadyToConcurrentMark() const override
     {
-        return thread_->IsReadyToMark();
+        return thread_->IsReadyToConcurrentMark();
     }
 
     bool IsYoungGC() const
@@ -1133,26 +1304,21 @@ private:
         JSThread *thread_ {nullptr};
     };
 
-    class RecursionScope {
-    public:
-        explicit RecursionScope(Heap* heap) : heap_(heap)
-        {
-            if (heap_->recursionDepth_++ != 0) {
-                LOG_GC(FATAL) << "Recursion in HeapCollectGarbage Constructor, depth: " << heap_->recursionDepth_;
-            }
-        }
-        ~RecursionScope()
-        {
-            if (--heap_->recursionDepth_ != 0) {
-                LOG_GC(FATAL) << "Recursion in HeapCollectGarbage Destructor, depth: " << heap_->recursionDepth_;
-            }
-        }
-    private:
-        Heap* heap_ {nullptr};
-    };
-
     EcmaVM *ecmaVm_ {nullptr};
     JSThread *thread_ {nullptr};
+
+    SharedHeap *sHeap_ {nullptr};
+
+    struct MainLocalHeapSmartGCStats {
+        /**
+         * For SmartGC.
+         * For main js thread, it check these status everytime when trying to
+         * collect garbage(e.g. in JSThread::CheckSafePoint), and skip if need, so std::atomic is almost enough.
+        */
+        std::atomic<AppSensitiveStatus> sensitiveStatus_ {AppSensitiveStatus::NORMAL_SCENE};
+        std::atomic<bool> onStartupEvent_ {false};
+    };
+    MainLocalHeapSmartGCStats smartGCStats_;
 
     /*
      * Heap spaces.
@@ -1222,7 +1388,16 @@ private:
 
     // Work manager managing the tasks mostly generated in the GC mark phase.
     WorkManager *workManager_ {nullptr};
+    /**
+     * During SharedGC concurrent marking, barrier will push shared object to mark stack for marking,
+     * in LocalGC can just push non-shared object to WorkNode for MAIN_THREAD_INDEX, but in SharedGC, only can
+     * either use a global lock for DAEMON_THREAD_INDEX's WorkNode, or push to a local WorkNode, and push to global
+     * in remark.
+     * If the heap is destructed before push this node to global, check and try to push remain object as well.
+    */
+    WorkNode *sharedConcurrentMarkingLocalBuffer_ {nullptr};
 
+    bool onSerializeEvent_ {false};
     bool parallelGC_ {true};
     bool fullGCRequested_ {false};
     bool fullMarkRequested_ {false};
@@ -1254,7 +1429,6 @@ private:
     IdleTaskType idleTask_ {IdleTaskType::NO_TASK};
     float idlePredictDuration_ {0.0f};
     double idleTaskFinishTime_ {0.0};
-    int32_t recursionDepth_ {0};
 
     /*
      * The listeners which are called at the end of GC

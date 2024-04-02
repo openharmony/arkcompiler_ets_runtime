@@ -267,10 +267,12 @@ public:
     void Finish();
 
     bool Push(uint32_t threadId, TaggedObject *object);
+    bool PushToLocalMarkingBuffer(WorkNode *&markingBuffer, TaggedObject *object);
     bool Pop(uint32_t threadId, TaggedObject **object);
 
     bool PopWorkNodeFromGlobal(uint32_t threadId);
     void PushWorkNodeToGlobal(uint32_t threadId, bool postTask = true);
+    void PushLocalBufferToGlobal(WorkNode *&node, bool postTask = true);
 
     inline void PushWeakReference(uint32_t threadId, JSTaggedType *weak)
     {

@@ -94,6 +94,8 @@ uintptr_t EcmaHandleScope::NewHandle(JSThread *thread, JSTaggedType value)
         UNREACHABLE();
     }
 #endif
+    // Handle is a kind of GC_ROOT, and should only directly hold Obejct or Primitive, not a weak reference.
+    ASSERT(!JSTaggedValue(value).IsWeak());
     auto context = thread->GetCurrentEcmaContext();
 #ifdef ECMASCRIPT_ENABLE_HANDLE_LEAK_CHECK
     // Each Handle must be managed by HandleScope, otherwise it may cause Handle leakage.

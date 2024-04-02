@@ -21,23 +21,23 @@
 
 namespace panda::ecmascript {
 #ifdef ECMASCRIPT_SUPPORT_HEAPSAMPLING
-#define CHECK_SOBJECT_AND_INC_OBJ_SIZE(size)                                  \
-    if (object != 0) {                                                        \
-        IncreaseLiveObjectSize(size);                                         \
-        if (sHeap_->IsReadyToMark()) {                                        \
-            Region::ObjectAddressToRange(object)->IncreaseAliveObject(size);  \
-        }                                                                     \
-        InvokeAllocationInspector(object, size, size);                        \
-        return object;                                                        \
+#define CHECK_SOBJECT_AND_INC_OBJ_SIZE(size)                                            \
+    if (object != 0) {                                                                  \
+        IncreaseLiveObjectSize(size);                                                   \
+        if (sHeap_->IsReadyToConcurrentMark()) {                                        \
+            Region::ObjectAddressToRange(object)->IncreaseAliveObject(size);            \
+        }                                                                               \
+        InvokeAllocationInspector(object, size, size);                                  \
+        return object;                                                                  \
     }
 #else
-#define CHECK_SOBJECT_AND_INC_OBJ_SIZE(size)                                  \
-    if (object != 0) {                                                        \
-        IncreaseLiveObjectSize(size);                                         \
-        if (heap_->IsReadyToMark()) {                                         \
-            Region::ObjectAddressToRange(object)->IncreaseAliveObject(size);  \
-        }                                                                     \
-        return object;                                                        \
+#define CHECK_SOBJECT_AND_INC_OBJ_SIZE(size)                                            \
+    if (object != 0) {                                                                  \
+        IncreaseLiveObjectSize(size);                                                   \
+        if (heap_->IsReadyToConcurrentMark()) {                                         \
+            Region::ObjectAddressToRange(object)->IncreaseAliveObject(size);            \
+        }                                                                               \
+        return object;                                                                  \
     }
 #endif
 

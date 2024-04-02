@@ -212,9 +212,9 @@ HWTEST_F_L0(TransitionsDictionaryTest, PutIfAbsent)
         int foundEntry = transDic->FindEntry(key.GetTaggedValue(), metaData.GetTaggedValue());
         EXPECT_EQ(foundEntry, index + 3);
 
-        JSHandle<JSTaggedValue> foundValue(thread, transDic->GetValue(foundEntry));
-        JSHandle<JSTaggedValue> weakValue(thread, value->CreateAndGetWeakRef());
-        EXPECT_EQ(foundValue.GetTaggedValue(), weakValue.GetTaggedValue());
+        JSTaggedValue foundValue = transDic->GetValue(foundEntry);
+        JSTaggedValue weakValue = value->CreateAndGetWeakRef();
+        EXPECT_EQ(foundValue, weakValue);
     }
     vm->SetEnableForceGC(true);
 }

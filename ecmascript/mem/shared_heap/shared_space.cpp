@@ -89,7 +89,7 @@ uintptr_t SharedSparseSpace::Allocate(JSThread *thread, size_t size, bool allowG
     object = AllocateWithExpand(thread, size);
     CHECK_SOBJECT_AND_INC_OBJ_SIZE(size);
     if (allowGC) {
-        sHeap_->CollectGarbage(thread, TriggerGCType::SHARED_GC, GCReason::ALLOCATION_FAILED);
+        sHeap_->CollectGarbage<TriggerGCType::SHARED_GC, GCReason::ALLOCATION_FAILED>(thread);
         object = Allocate(thread, size, false);
     }
     return object;

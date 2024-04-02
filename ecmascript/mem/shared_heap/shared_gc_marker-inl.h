@@ -52,7 +52,15 @@ inline void SharedGCMarker::HandleRoots(uint32_t threadId, [[maybe_unused]] Root
     }
 }
 
-inline void SharedGCMarker::HandleRangeRoots(uint32_t threadId, [[maybe_unused]] Root type, ObjectSlot start,
+inline void SharedGCMarker::HandleLocalRoots(uint32_t threadId, [[maybe_unused]] Root type, ObjectSlot slot)
+{
+    JSTaggedValue value(slot.GetTaggedType());
+    if (value.IsInSharedSweepableSpace()) {
+        MarkObject(threadId, value.GetTaggedObject());
+    }
+}
+
+inline void SharedGCMarker::HandleLocalRangeRoots(uint32_t threadId, [[maybe_unused]] Root type, ObjectSlot start,
     ObjectSlot end)
 {
     for (ObjectSlot slot = start; slot < end; slot++) {
@@ -66,9 +74,9 @@ inline void SharedGCMarker::HandleRangeRoots(uint32_t threadId, [[maybe_unused]]
     }
 }
 
-inline void SharedGCMarker::HandleDerivedRoots([[maybe_unused]] Root type, [[maybe_unused]] ObjectSlot base,
-                                               [[maybe_unused]] ObjectSlot derived,
-                                               [[maybe_unused]] uintptr_t baseOldObject)
+inline void SharedGCMarker::HandleLocalDerivedRoots([[maybe_unused]] Root type, [[maybe_unused]] ObjectSlot base,
+                                                    [[maybe_unused]] ObjectSlot derived,
+                                                    [[maybe_unused]] uintptr_t baseOldObject)
 {
     // It is only used to update the derived value. The mark of share GC does not need to update slot
 }
@@ -92,11 +100,17 @@ ARK_INLINE bool SharedGCMarker::VisitBodyInObj(TaggedObject *root, ObjectSlot st
     return true;
 }
 
-inline void SharedGCMarker::ProcessLocalToShare(uint32_t threadId, Heap *localHeap)
+inline void SharedGCMarker::ProcessLocalToShareNoMarkStack(uint32_t threadId, Heap *localHeap,
+                                                           SharedMarkType markType)
 {
-    localHeap->EnumerateRegions(
-        std::bind(&SharedGCMarker::HandleLocalToShareRSet, this, threadId, std::placeholders::_1));
-    ProcessMarkStack(threadId);
+    if (markType == SharedMarkType::NOT_CONCURRENT_MARK) {
+        localHeap->EnumerateRegions(std::bind(&SharedGCMarker::HandleLocalToShareRSet, this, threadId,
+                                              std::placeholders::_1));
+    } else {
+        bool isRemark = markType == SharedMarkType::CONCURRENT_MARK_REMARK;
+        localHeap->EnumerateRegions(std::bind(&SharedGCMarker::ConcurrentMarkHandleLocalToShareRSet,
+                                              this, threadId, isRemark, std::placeholders::_1));
+    }
 }
 
 inline void SharedGCMarker::RecordWeakReference(uint32_t threadId, JSTaggedType *slot)
@@ -115,6 +129,29 @@ inline void SharedGCMarker::HandleLocalToShareRSet(uint32_t threadId, Region *re
             if (value.IsWeakForHeapObject()) {
                 RecordWeakReference(threadId, reinterpret_cast<JSTaggedType *>(mem));
             } else {
+                MarkObject(threadId, value.GetTaggedObject());
+            }
+            return true;
+        } else {
+            // clear bit.
+            return false;
+        }
+    });
+}
+
+inline void SharedGCMarker::ConcurrentMarkHandleLocalToShareRSet(uint32_t threadId, bool isRemark, Region *region)
+{
+    // If the mem does not point to a shared object, the related bit in localToShareRSet will be cleared.
+    region->AtomicIterateAllLocalToShareBits([this, threadId, isRemark](void *mem) -> bool {
+        ObjectSlot slot(ToUintPtr(mem));
+        JSTaggedValue value(slot.GetTaggedType());
+        if (value.IsInSharedSweepableSpace()) {
+            if (value.IsWeakForHeapObject()) {
+                if (isRemark) {
+                    RecordWeakReference(threadId, reinterpret_cast<JSTaggedType *>(mem));
+                }
+            } else {
+                // In Remark, also need to mark object created by deserialize.
                 MarkObject(threadId, value.GetTaggedObject());
             }
             return true;

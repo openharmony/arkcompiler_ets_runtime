@@ -141,10 +141,9 @@ HWTEST_F_L0(ICRuntimeStubTest, CheckPolyHClass)
     TaggedObject *handleWeakObj = TaggedObject::Cast(handleTaggedObjVal.GetWeakReferent());
     JSHClass *handleObjClass = static_cast<JSHClass *>(handleWeakObj);
 
-    JSHandle<JSTaggedValue> handleTaggedObjWeakVal(thread, handleTaggedObjVal);
     handleCacheArray->Set(thread, 0, JSTaggedValue::Undefined()); // 0 : 0 set value in zero
     handleCacheArray->Set(thread, 1, JSTaggedValue::Undefined()); // 1 : 1 set value in one
-    handleCacheArray->Set(thread, 2, handleTaggedObjWeakVal.GetTaggedValue()); // 2 : 2 set weakvalue in two
+    handleCacheArray->Set(thread, 2, handleTaggedObjVal); // 2 : 2 set weakvalue in two
     handleCacheArray->Set(thread, 3, handlePropertyBox.GetTaggedValue()); // 3 : 3 set value in three
     handleCacheArray->Set(thread, 4, handleEmptyStr.GetTaggedValue()); // 4 : 4 set value in four
     JSTaggedValue handleWeakCacheValue(handleCacheArray.GetTaggedValue());
@@ -467,8 +466,9 @@ HWTEST_F_L0(ICRuntimeStubTest, StoreWithTransition_In_Filed)
     JSHandle<JSTaggedValue> objFun = env->GetObjectFunction();
     JSHandle<JSTaggedValue> arrFun = env->GetArrayFunction();
     JSHandle<JSObject> handleObj = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(objFun), objFun);
+    JSHandle<JSHClass> originHClass(thread, handleObj->GetJSHClass());
     JSHandle<JSObject> handleArrObj = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(arrFun), arrFun);
-    auto hclass = handleArrObj->GetJSHClass();
+    auto hclass = handleArrObj->SynchronizedGetClass();
 
     uint32_t handler = 0U;
     uint32_t bitOffset = 1U;
@@ -488,6 +488,7 @@ HWTEST_F_L0(ICRuntimeStubTest, StoreWithTransition_In_Filed)
     ICRuntimeStub::StoreWithTransition(thread, *handleObj, JSTaggedValue(2), handleTranHandler.GetTaggedValue());
     auto resultArray = TaggedArray::Cast(handleObj->GetProperties().GetTaggedObject());
     EXPECT_EQ(resultArray->Get(bitOffset).GetInt(), 2);
+    handleObj->SynchronizedSetClass(thread, *originHClass);
 }
 
 HWTEST_F_L0(ICRuntimeStubTest, Field_StoreAndLoad)

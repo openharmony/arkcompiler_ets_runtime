@@ -44,9 +44,13 @@ static ARK_INLINE void WriteBarrier(const JSThread *thread, void *obj, size_t of
         objectRegion->AtomicInsertLocalToShareRSet(slotAddr);
     }
     ASSERT(!objectRegion->InSharedHeap() || valueRegion->InSharedHeap());
-    if (thread->IsConcurrentMarkingOrFinished()) {
+    if (!valueRegion->InSharedHeap() && thread->IsConcurrentMarkingOrFinished()) {
         Barriers::Update(thread, slotAddr, objectRegion, reinterpret_cast<TaggedObject *>(value),
                          valueRegion, writeType);
+    }
+    if (writeType != WriteBarrierType::DESERIALIZE &&
+        valueRegion->InSharedSweepableSpace() && thread->IsSharedConcurrentMarkingOrFinished()) {
+        Barriers::UpdateShared(thread, reinterpret_cast<TaggedObject *>(value), valueRegion);
     }
 }
 

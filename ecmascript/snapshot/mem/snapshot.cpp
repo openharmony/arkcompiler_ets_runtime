@@ -166,12 +166,14 @@ bool Snapshot::Deserialize(SnapshotType type, const CString &snapshotFile, bool 
         return false;
     }
     uintptr_t oldSpaceBegin = readFile + sizeof(SnapShotHeader);
-    processor.DeserializeObjectExcludeString(oldSpaceBegin, hdr.oldSpaceObjSize, hdr.nonMovableObjSize,
-                                             hdr.machineCodeObjSize, hdr.snapshotObjSize, hdr.hugeObjSize);
     uintptr_t stringBegin = oldSpaceBegin + hdr.oldSpaceObjSize + hdr.nonMovableObjSize +
         hdr.machineCodeObjSize + hdr.snapshotObjSize + hdr.hugeObjSize;
     uintptr_t stringEnd = stringBegin + hdr.stringSize;
+    [[maybe_unused]] EcmaHandleScope stringHandleScope(vm_->GetJSThread());
     processor.DeserializeString(stringBegin, stringEnd);
+
+    processor.DeserializeObjectExcludeString(oldSpaceBegin, hdr.oldSpaceObjSize, hdr.nonMovableObjSize,
+                                             hdr.machineCodeObjSize, hdr.snapshotObjSize, hdr.hugeObjSize);
 
     FileUnMap(MemMap(fileMap.GetOriginAddr(), hdr.pandaFileBegin));
     std::shared_ptr<JSPandaFile> jsPandaFile;

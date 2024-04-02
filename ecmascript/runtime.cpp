@@ -18,6 +18,7 @@
 
 #include "ecmascript/checkpoint/thread_state_transition.h"
 #include "ecmascript/compiler/aot_file/an_file_data_manager.h"
+#include "ecmascript/daemon/daemon_thread.h"
 #include "ecmascript/ecma_string_table.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/jit/jit.h"
@@ -69,6 +70,8 @@ void Runtime::CreateIfFirstVm(const JSRuntimeOptions &options)
                                                       options.GetPGOHotnessThreshold());
         ASSERT(instance_ == nullptr);
         instance_ = new Runtime();
+        SharedHeap::CreateNewInstance();
+        DaemonThread::CreateNewInstance();
         firstVmCreated_ = true;
     }
 }
@@ -101,7 +104,7 @@ void Runtime::PreInitialization(const EcmaVM *vm)
     heapRegionAllocator_ = std::make_unique<HeapRegionAllocator>();
     stringTable_ = std::make_unique<EcmaStringTable>();
     SharedHeap::GetInstance()->Initialize(nativeAreaAllocator_.get(), heapRegionAllocator_.get(),
-        const_cast<EcmaVM*>(vm)->GetJSOptions());
+        const_cast<EcmaVM*>(vm)->GetJSOptions(), DaemonThread::GetInstance());
 }
 
 void Runtime::PostInitialization(const EcmaVM *vm)
@@ -118,7 +121,9 @@ void Runtime::DestroyIfLastVm()
 {
     LockHolder lock(*vmCreationLock_);
     if (--vmCount_ <= 0) {
-        SharedHeap::GetInstance()->Prepare();
+        SharedHeap::GetInstance()->WaitAllTasksFinishedAfterAllJSThreadEliminated();
+        DaemonThread::DestroyInstance();
+        SharedHeap::DestroyInstance();
         AnFileDataManager::GetInstance()->SafeDestroyAllData();
         MemMapAllocator::GetInstance()->Finalize();
         PGOProfilerManager::GetInstance()->Destroy();
@@ -133,6 +138,7 @@ void Runtime::DestroyIfLastVm()
 void Runtime::RegisterThread(JSThread* newThread)
 {
     LockHolder lock(threadsLock_);
+    ASSERT(std::find(threads_.begin(), threads_.end(), newThread) == threads_.end());
     threads_.emplace_back(newThread);
     // send all current suspended requests to the new thread
     for (uint32_t i = 0; i < suspendNewCount_; i++) {
@@ -144,6 +150,7 @@ void Runtime::RegisterThread(JSThread* newThread)
 void Runtime::UnregisterThread(JSThread* thread)
 {
     LockHolder lock(threadsLock_);
+    ASSERT(std::find(threads_.begin(), threads_.end(), thread) != threads_.end());
     ASSERT(!thread->IsInRunningState());
     threads_.remove(thread);
 }
@@ -152,17 +159,21 @@ void Runtime::SuspendAll(JSThread *current)
 {
     ASSERT(current != nullptr);
     ASSERT(!current->IsInRunningState());
-    ASSERT(!mutatorLock_.HasLock());
+#ifndef NDEBUG
+    ASSERT(!current->HasLaunchedSuspendAll());
+    current->LaunchSuspendAll();
+#endif
     SuspendAllThreadsImpl(current);
-    mutatorLock_.WriteLock();
 }
 
 void Runtime::ResumeAll(JSThread *current)
 {
     ASSERT(current != nullptr);
     ASSERT(!current->IsInRunningState());
-    ASSERT(mutatorLock_.HasLock());
-    mutatorLock_.Unlock();
+#ifndef NDEBUG
+    ASSERT(current->HasLaunchedSuspendAll());
+    current->CompleteSuspendAll();
+#endif
     ResumeAllThreadsImpl(current);
 }
 
@@ -178,7 +189,7 @@ void Runtime::SuspendAllThreadsImpl(JSThread *current)
         }
         suspendNewCount_++;
         if (threads_.size() == 1) {
-            ASSERT(current == mainThread_);
+            ASSERT(current == mainThread_ || current->IsDaemonThread());
             return;
         }
         barrier.Initialize(threads_.size() - 1);

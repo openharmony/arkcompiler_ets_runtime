@@ -20,46 +20,67 @@
 
 namespace panda::ecmascript {
 
+template<typename T, ThreadState newState>
 class ThreadStateTransitionScope final {
+    static_assert(std::is_base_of_v<JSThread, T>);
+    static_assert(!std::is_same_v<JitThread, T>);
 public:
-    explicit ThreadStateTransitionScope(JSThread* self, ThreadState newState)
+    explicit ThreadStateTransitionScope(T* self)
         : self_(self)
         {
             ASSERT(self_ != nullptr);
-#if defined(ECMASCRIPT_ENABLE_SCOPE_LOCK_STAT)
-            auto vm = self_->GetEcmaVM();
-            bool isCollectingStats = vm->IsCollectingScopeLockStats();
-            if (isCollectingStats) {
-                vm->IncreaseEnterThreadManagedScopeCount();
-            }
-#endif
             oldState_ = self_->GetState();
-            if (oldState_ != newState) {
+            if constexpr (std::is_same_v<DaemonThread, T>) {
+                if (oldState_ != newState) {
+                    if constexpr (newState == ThreadState::RUNNING) {
+                        self_->TransferDaemonThreadToRunning();
+                    } else {
+                        self_->UpdateState(newState);
+                    }
+                }
+            } else {
 #if defined(ECMASCRIPT_ENABLE_SCOPE_LOCK_STAT)
+                auto vm = self_->GetEcmaVM();
+                bool isCollectingStats = vm->IsCollectingScopeLockStats();
                 if (isCollectingStats) {
-                    vm->IncreaseUpdateThreadStateTransCount();
+                    vm->IncreaseEnterThreadManagedScopeCount();
                 }
 #endif
-                self_->UpdateState(newState);
+                if (oldState_ != newState) {
+#if defined(ECMASCRIPT_ENABLE_SCOPE_LOCK_STAT)
+                    if (isCollectingStats) {
+                        vm->IncreaseUpdateThreadStateTransCount();
+                    }
+#endif
+                    self_->UpdateState(newState);
+                }
             }
         }
 
     ~ThreadStateTransitionScope()
     {
         if (oldState_ != self_->GetState()) {
-            self_->UpdateState(oldState_);
+            if constexpr (std::is_same_v<DaemonThread, T>) {
+                if (oldState_ == ThreadState::RUNNING) {
+                    self_->TransferDaemonThreadToRunning();
+                } else {
+                    self_->UpdateState(oldState_);
+                }
+            } else {
+                self_->UpdateState(oldState_);
+            }
         }
     }
 
 private:
-    JSThread* self_;
+    T* self_;
     ThreadState oldState_;
     NO_COPY_SEMANTIC(ThreadStateTransitionScope);
 };
 
 class ThreadSuspensionScope final {
 public:
-    explicit ThreadSuspensionScope(JSThread* self) : scope_(self, ThreadState::IS_SUSPENDED)
+    explicit ThreadSuspensionScope(JSThread* self) : scope_(self)
     {
         ASSERT(self->GetState() == ThreadState::IS_SUSPENDED);
     }
@@ -67,13 +88,13 @@ public:
     ~ThreadSuspensionScope() = default;
 
 private:
-    ThreadStateTransitionScope scope_;
+    ThreadStateTransitionScope<JSThread, ThreadState::IS_SUSPENDED> scope_;
     NO_COPY_SEMANTIC(ThreadSuspensionScope);
 };
 
 class ThreadNativeScope final {
 public:
-    explicit ThreadNativeScope(JSThread* self) : scope_(self, ThreadState::NATIVE)
+    explicit ThreadNativeScope(JSThread* self) : scope_(self)
     {
         ASSERT(self->GetState() == ThreadState::NATIVE);
     }
@@ -81,25 +102,31 @@ public:
     ~ThreadNativeScope() = default;
 
 private:
-    ThreadStateTransitionScope scope_;
+    ThreadStateTransitionScope<JSThread, ThreadState::NATIVE> scope_;
     NO_COPY_SEMANTIC(ThreadNativeScope);
 };
 
+template<typename T>
 class ThreadManagedScope final {
+    static_assert(std::is_base_of_v<JSThread, T>);
+    static_assert(!std::is_same_v<JitThread, T>);
 public:
-    explicit ThreadManagedScope(JSThread* self) : scope_(self, ThreadState::RUNNING) {}
+    explicit ThreadManagedScope(T* self) : scope_(self) {}
 
     ~ThreadManagedScope() = default;
 
 private:
-    ThreadStateTransitionScope scope_;
+    ThreadStateTransitionScope<T, ThreadState::RUNNING> scope_;
     NO_COPY_SEMANTIC(ThreadManagedScope);
 };
 
+template<typename T>
 class SuspendAllScope final {
+    static_assert(std::is_base_of_v<JSThread, T>);
+    static_assert(!std::is_same_v<JitThread, T>);
 public:
-    explicit SuspendAllScope(JSThread* self)
-        : self_(self), scope_(self, ThreadState::IS_SUSPENDED)
+    explicit SuspendAllScope(T* self)
+        : self_(self), scope_(self)
     {
         TRACE_GC(GCStats::Scope::ScopeId::SuspendAll, SharedHeap::GetInstance()->GetEcmaGCStats());
         ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "SuspendAll");
@@ -112,8 +139,8 @@ public:
         Runtime::GetInstance()->ResumeAll(self_);
     }
 private:
-    JSThread* self_;
-    ThreadStateTransitionScope scope_;
+    T* self_;
+    ThreadStateTransitionScope<T, ThreadState::IS_SUSPENDED> scope_;
     NO_COPY_SEMANTIC(SuspendAllScope);
 };
 }  // namespace panda::ecmascript

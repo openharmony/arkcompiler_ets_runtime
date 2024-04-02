@@ -17,7 +17,6 @@
 #include "ecmascript/builtins/builtins.h"
 #include "ecmascript/builtins/builtins_function.h"
 #include "ecmascript/builtins/builtins_object.h"
-#include "ecmascript/checkpoint/thread_state_transition.h"
 #include "ecmascript/compiler/aot_file/an_file_data_manager.h"
 #include "ecmascript/compiler/aot_file/aot_file_manager.h"
 #include "ecmascript/compiler/circuit_builder_helper.h"
@@ -369,7 +368,10 @@ HWTEST_F_L0(JSNApiTests, JSNApi_CreateJSVM_DestroyJSVM)
         vm1_->SetEnableForceGC(false);
         JSNApi::DestroyJSVM(vm1_);
     });
-    t1.join();
+    {
+        ThreadSuspensionScope suspensionScope(thread_);
+        t1.join();
+    }
 }
 
 /**
@@ -612,7 +614,10 @@ HWTEST_F_L0(JSNApiTests, SynchronizVMInfo)
         }
         JSNApi::DestroyJSVM(hostVM);
     });
-    t1.join();
+    {
+        ThreadSuspensionScope suspensionScope(thread_);
+        t1.join();
+    }
 }
 
 /*
@@ -738,6 +743,7 @@ HWTEST_F_L0(JSNApiTests, PostFork)
     RuntimeOption option;
     ecmascript::ThreadNativeScope nativeScope(vm_->GetJSThread());
     LocalScope scope(vm_);
+    JSNApi::PreFork(vm_);
     JSNApi::PostFork(vm_, option);
 }
 

@@ -626,6 +626,8 @@
     if (!(vm)->GetJSThread()->IsCrossThreadExecutionEnable()) {                       \
         ASSERT((vm)->GetJSThread()->GetThreadId() == JSThread::GetCurrentThreadId()); \
     }
+#define CHECK_DAEMON_THREAD()                                                               \
+    ASSERT(os::thread::GetCurrentThreadId() == DaemonThread::GetInstance()->GetThreadId())
 
 #if !defined(NDEBUG)
 #define STACK_ASSERT_SCOPE(thread) [[maybe_unused]] StackAssertScope stackAssertScope = StackAssertScope(thread)
