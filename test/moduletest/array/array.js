@@ -597,3 +597,21 @@ var result_unshift1 = arr_unshift1.unshift(1, 2, 3, 4, 5);
 print(result_unshift1);
 var result_unshift2 = arr_unshift2.unshift(1, 2, 3);
 print(result_unshift2);
+
+class C3 {
+    constructor(a5) {
+        try { a5(this, this, ..."895053461", ..."p"); } catch (e) {}
+    }
+    a;
+    valueOf(a9) {
+        const v10 = a9?.[this];
+        -718821.501160539 !== a9;
+        const t6 = "895053461";
+        t6[a9] = "895053461";
+        return v10;
+    }
+}
+const v12 = new C3("p");
+new C3(v12);
+new C3(C3);
+print(new C3(C3));
