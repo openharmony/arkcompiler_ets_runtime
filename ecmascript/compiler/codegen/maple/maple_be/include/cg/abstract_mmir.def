@@ -52,16 +52,24 @@
  DEFINE_MOP(MOP_sext_rr_64_32,  {&OpndDesc::Reg64ID,&OpndDesc::Reg32IS},ISABSTRACT|ISCONVERSION,0,"sext_r64_r32","",1)
 
  /* int2float conversion */
- DEFINE_MOP(MOP_cvt_fr_u32, {&OpndDesc::Reg32FD,&OpndDesc::Reg32IS},ISABSTRACT|ISCONVERSION,0,"cvt_fr_u32","",1)
- DEFINE_MOP(MOP_cvt_fr_u64, {&OpndDesc::Reg64FD,&OpndDesc::Reg64IS},ISABSTRACT|ISCONVERSION,0,"cvt_fr_u64","",1)
- DEFINE_MOP(MOP_cvt_fr_i32, {&OpndDesc::Reg32FD,&OpndDesc::Reg32IS},ISABSTRACT|ISCONVERSION,0,"cvt_fr_i32","",1)
- DEFINE_MOP(MOP_cvt_fr_i64, {&OpndDesc::Reg64FD,&OpndDesc::Reg64IS},ISABSTRACT|ISCONVERSION,0,"cvt_fr_i64","",1)
+ DEFINE_MOP(MOP_cvt_f32_u32, {&OpndDesc::Reg32FD, &OpndDesc::Reg32IS}, ISABSTRACT | ISCONVERSION, 0, "cvt_f32_u32", "", 1)
+ DEFINE_MOP(MOP_cvt_f64_u32, {&OpndDesc::Reg64FD, &OpndDesc::Reg32IS}, ISABSTRACT | ISCONVERSION, 0, "cvt_f64_u32", "", 1)
+ DEFINE_MOP(MOP_cvt_f32_u64, {&OpndDesc::Reg32FD, &OpndDesc::Reg64IS}, ISABSTRACT | ISCONVERSION, 0, "cvt_f32_u64", "", 1)
+ DEFINE_MOP(MOP_cvt_f64_u64, {&OpndDesc::Reg64FD, &OpndDesc::Reg64IS}, ISABSTRACT | ISCONVERSION, 0, "cvt_f64_u64", "", 1)
+ DEFINE_MOP(MOP_cvt_f32_i32, {&OpndDesc::Reg32FD, &OpndDesc::Reg32IS}, ISABSTRACT | ISCONVERSION, 0, "cvt_f32_i32", "", 1)
+ DEFINE_MOP(MOP_cvt_f64_i32, {&OpndDesc::Reg64FD, &OpndDesc::Reg32IS}, ISABSTRACT | ISCONVERSION, 0, "cvt_f64_i32", "", 1)
+ DEFINE_MOP(MOP_cvt_f32_i64, {&OpndDesc::Reg32FD, &OpndDesc::Reg64IS}, ISABSTRACT | ISCONVERSION, 0, "cvt_f32_i64", "", 1)
+ DEFINE_MOP(MOP_cvt_f64_i64, {&OpndDesc::Reg64FD, &OpndDesc::Reg64IS}, ISABSTRACT | ISCONVERSION, 0, "cvt_f64_i64", "", 1)
 
  /* float2int conversion */
- DEFINE_MOP(MOP_cvt_rf_u32, {&OpndDesc::Reg32ID,&OpndDesc::Reg32FS},ISABSTRACT|ISCONVERSION,0,"cvt_rf_u32","",1)
- DEFINE_MOP(MOP_cvt_rf_u64, {&OpndDesc::Reg64ID,&OpndDesc::Reg64FS},ISABSTRACT|ISCONVERSION,0,"cvt_rf_u64","",1)
- DEFINE_MOP(MOP_cvt_rf_i32, {&OpndDesc::Reg32ID,&OpndDesc::Reg32FS},ISABSTRACT|ISCONVERSION,0,"cvt_rf_i32","",1)
- DEFINE_MOP(MOP_cvt_rf_i64, {&OpndDesc::Reg64ID,&OpndDesc::Reg64FS},ISABSTRACT|ISCONVERSION,0,"cvt_rf_i64","",1)
+ DEFINE_MOP(MOP_cvt_u32_f32, {&OpndDesc::Reg32ID, &OpndDesc::Reg32FS}, ISABSTRACT | ISCONVERSION, 0, "cvt_u32_f32", "", 1)
+ DEFINE_MOP(MOP_cvt_u64_f32, {&OpndDesc::Reg64ID, &OpndDesc::Reg32FS}, ISABSTRACT | ISCONVERSION, 0, "cvt_u64_f32", "", 1)
+ DEFINE_MOP(MOP_cvt_u32_f64, {&OpndDesc::Reg32ID, &OpndDesc::Reg64FS}, ISABSTRACT | ISCONVERSION, 0, "cvt_u32_f64", "", 1)
+ DEFINE_MOP(MOP_cvt_u64_f64, {&OpndDesc::Reg64ID, &OpndDesc::Reg64FS}, ISABSTRACT | ISCONVERSION, 0, "cvt_u64_f64", "", 1)
+ DEFINE_MOP(MOP_cvt_i32_f32, {&OpndDesc::Reg32ID, &OpndDesc::Reg32FS}, ISABSTRACT | ISCONVERSION, 0, "cvt_i32_f32", "", 1)
+ DEFINE_MOP(MOP_cvt_i64_f32, {&OpndDesc::Reg64ID, &OpndDesc::Reg32FS}, ISABSTRACT | ISCONVERSION, 0, "cvt_i64_f32", "", 1)
+ DEFINE_MOP(MOP_cvt_i32_f64, {&OpndDesc::Reg32ID, &OpndDesc::Reg64FS}, ISABSTRACT | ISCONVERSION, 0, "cvt_i32_f64", "", 1)
+ DEFINE_MOP(MOP_cvt_i64_f64, {&OpndDesc::Reg64ID, &OpndDesc::Reg64FS}, ISABSTRACT | ISCONVERSION, 0, "cvt_i64_f64", "", 1)
 
  /* float conversion */
  DEFINE_MOP(MOP_cvt_ff_64_32, {&OpndDesc::Reg64FD,&OpndDesc::Reg32FS},ISABSTRACT|ISCONVERSION,0,"cvt_ff_64_32","",1)
