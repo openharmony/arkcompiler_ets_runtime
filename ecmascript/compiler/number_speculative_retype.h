@@ -108,6 +108,9 @@ private:
     GateRef VisitStoreProperty(GateRef gate);
     GateRef VisitLoadProperty(GateRef gate);
     GateRef VisitNumberRelated(GateRef gate);
+    GateRef VisitCallBuiltins(GateRef gate);
+    GateRef VisitDataViewGet(GateRef gate);
+    GateRef VisitDataViewSet(GateRef gate);
     GateRef VisitOthers(GateRef gate);
     GateRef VisitTypeConvert(GateRef gate);
     GateRef VisitFrameState(GateRef gate);
@@ -134,12 +137,16 @@ private:
 
     GateRef CheckAndConvertToInt32(GateRef gate, GateType gateType, ConvertSupport support = ConvertSupport::ENABLE,
                                    OpType type = OpType::NORMAL);
+    GateRef CheckBoundAndConvertToInt32(GateRef gate,
+                                        ConvertSupport support = ConvertSupport::ENABLE,
+                                        OpType type = OpType::NORMAL);
     GateRef CheckAndConvertToFloat64(GateRef gate, GateType gateType,
                                     ConvertToNumber convert = ConvertToNumber::BOOL_ONLY);
     GateRef CheckAndConvertToTagged(GateRef gate, GateType gateType, ConvertToNumber convert);
     GateRef CheckAndConvertToBool(GateRef gate, GateType gateType);
     GateRef ConvertToTagged(GateRef gate);
     GateRef TryConvertConstant(GateRef gate, bool needInt32);
+    GateRef TryConvertConstantToInt32(GateRef gate);
     GateRef ConvertTaggedToNJSValue(GateRef gate, TypeInfo output);
     TypeInfo GetOuputForPhi(GateRef gate, bool ignoreConstant);
 

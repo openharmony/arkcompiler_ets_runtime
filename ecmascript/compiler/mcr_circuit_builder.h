@@ -88,6 +88,18 @@ GateRef CircuitBuilder::TaggedObjectIsEcmaObject(GateRef obj)
         Int32GreaterThanOrEqual(objectType, Int32(static_cast<int32_t>(JSType::ECMA_OBJECT_FIRST))));
 }
 
+GateRef CircuitBuilder::TaggedObjectIsByteArray(GateRef obj)
+{
+    GateRef objectType = GetObjectType(LoadHClass(obj));
+    return Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::BYTE_ARRAY)));
+}
+
+GateRef CircuitBuilder::TaggedObjectIsDataView(GateRef obj)
+{
+    GateRef objectType = GetObjectType(LoadHClass(obj));
+    return Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::JS_DATA_VIEW)));
+}
+
 GateRef CircuitBuilder::IsSpecialSlicedString(GateRef obj)
 {
     GateRef objectType = GetObjectType(LoadHClass(obj));

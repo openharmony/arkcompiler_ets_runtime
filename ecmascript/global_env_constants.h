@@ -153,7 +153,10 @@ class ObjectFactory;
     V(JSTaggedValue, EmptyLayoutInfo, EMPTY_LAYOUT_INFO_OBJECT_INDEX, ecma_roots_special)              \
     V(JSTaggedValue, DefaultSupers, DEFAULT_SUPERS_INDEX, ecma_roots_special)                          \
     V(JSTaggedValue, EmptyTaggedQueue, EMPTY_TAGGED_QUEUE_OBJECT_INDEX, ecma_roots_special)            \
-    V(JSTaggedValue, UndefinedCompletionRecord, UNDEFINED_COMPLRTION_RECORD_INDEX, ecma_roots_special) \
+    V(JSTaggedValue, UndefinedCompletionRecord, UNDEFINED_COMPLRTION_RECORD_INDEX, ecma_roots_special)
+
+// Use for builtins inlining
+#define GLOBAL_ENV_INLINED_BUILTINS(V)                                                                 \
     V(JSTaggedValue, MathSqrt, MATH_SQRT_INDEX, ecma_roots_special)                                    \
     V(JSTaggedValue, MathAcos, MATH_ACOS_INDEX, ecma_roots_special)                                    \
     V(JSTaggedValue, MathAcosh, MATH_ACOSH_INDEX, ecma_roots_special)                                  \
@@ -197,7 +200,24 @@ class ObjectFactory;
     V(JSTaggedValue, StringIteratorProtoNext, STRING_ITERATOR_PROTO_NEXT_INDEX, ecma_roots_special)    \
     V(JSTaggedValue, ArrayIteratorProtoNext, ARRAY_ITERATOR_PROTO_NEXT_INDEX, ecma_roots_special)      \
     V(JSTaggedValue, IteratorProtoReturn, ITERATOR_PROTO_RETURN_INDEX, ecma_roots_special)             \
-    V(JSTaggedValue, StringFromCharCode, STRING_FROM_CHAR_CODE_INDEX, ecma_roots_special)
+    V(JSTaggedValue, StringFromCharCode, STRING_FROM_CHAR_CODE_INDEX, ecma_roots_special)              \
+    V(JSTaggedValue, ArrayBufferIsView, ARRAY_BUFFER_IS_VIEW_INDEX, ecma_roots_special)                \
+    V(JSTaggedValue, DataViewGetFloat32, DATA_VIEW_GET_FLOAT32_INDEX, ecma_roots_special)              \
+    V(JSTaggedValue, DataViewGetFloat64, DATA_VIEW_GET_FLOAT64_INDEX, ecma_roots_special)              \
+    V(JSTaggedValue, DataViewGetInt8, DATA_VIEW_GET_INT8_INDEX, ecma_roots_special)                    \
+    V(JSTaggedValue, DataViewGetInt16, DATA_VIEW_GET_INT16_INDEX, ecma_roots_special)                  \
+    V(JSTaggedValue, DataViewGetInt32, DATA_VIEW_GET_INT32_INDEX, ecma_roots_special)                  \
+    V(JSTaggedValue, DataViewGetUint16, DATA_VIEW_GET_UINT16_INDEX, ecma_roots_special)                \
+    V(JSTaggedValue, DataViewGetUint32, DATA_VIEW_GET_UINT32_INDEX, ecma_roots_special)                \
+    V(JSTaggedValue, DataViewGetUint8, DATA_VIEW_GET_UINT8_INDEX, ecma_roots_special)                  \
+    V(JSTaggedValue, DataViewSetFloat32, DATA_VIEW_SET_FLOAT32_INDEX, ecma_roots_special)              \
+    V(JSTaggedValue, DataViewSetFloat64, DATA_VIEW_SET_FLOAT64_INDEX, ecma_roots_special)              \
+    V(JSTaggedValue, DataViewSetInt8, DATA_VIEW_SET_INT8_INDEX, ecma_roots_special)                    \
+    V(JSTaggedValue, DataViewSetInt16, DATA_VIEW_SET_INT16_INDEX, ecma_roots_special)                  \
+    V(JSTaggedValue, DataViewSetInt32, DATA_VIEW_SET_INT32_INDEX, ecma_roots_special)                  \
+    V(JSTaggedValue, DataViewSetUint8, DATA_VIEW_SET_UINT8_INDEX, ecma_roots_special)                  \
+    V(JSTaggedValue, DataViewSetUint16, DATA_VIEW_SET_UINT16_INDEX, ecma_roots_special)                \
+    V(JSTaggedValue, DataViewSetUint32, DATA_VIEW_SET_UINT32_INDEX, ecma_roots_special)
 
 // All of type JSTaggedValue
 #define SHARED_GLOBAL_ENV_CONSTANT_STRING(V)                                                                \
@@ -567,6 +587,7 @@ enum class ConstantIndex : size_t {
     SHARED_GLOBAL_ENV_CONSTANT_SPECIAL(INDEX_FILTER_WITH_TYPE)
     GLOBAL_ENV_CONSTANT_CLASS(INDEX_FILTER_WITH_TYPE)
     GLOBAL_ENV_CONSTANT_SPECIAL(INDEX_FILTER_WITH_TYPE)
+    GLOBAL_ENV_INLINED_BUILTINS(INDEX_FILTER_WITH_TYPE)
     GLOBAL_ENV_CONSTANT_CONSTANT(INDEX_FILTER_WITH_TYPE)
     GLOBAL_ENV_CACHES(INDEX_FILTER_WITH_TYPE)
 #undef INDEX_FILTER_STRING
@@ -634,6 +655,7 @@ public:
     SHARED_GLOBAL_ENV_CONSTANT_SPECIAL(DECL_GET_WITH_TYPE)
     GLOBAL_ENV_CONSTANT_CLASS(DECL_GET_WITH_TYPE)
     GLOBAL_ENV_CONSTANT_SPECIAL(DECL_GET_WITH_TYPE)
+    GLOBAL_ENV_INLINED_BUILTINS(DECL_GET_WITH_TYPE)
     GLOBAL_ENV_CONSTANT_CONSTANT(DECL_GET_WITH_TYPE)
     GLOBAL_ENV_CACHES(DECL_GET_WITH_TYPE)
 #undef DECL_GET_STRING

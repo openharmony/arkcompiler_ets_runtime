@@ -16,10 +16,14 @@
 #ifndef ECMASCRIPT_COMPILER_BUILTIN_INLINE_H
 #define ECMASCRIPT_COMPILER_BUILTIN_INLINE_H
 
+#include "ecmascript/compiler/builtins/builtins_call_signature.h"
 #include "ecmascript/compiler/circuit_builder.h"
 #include "ecmascript/compiler/gate_accessor.h"
+#include "ecmascript/compiler/graph_linearizer.h"
 #include "ecmascript/compiler/pass_manager.h"
+#include "ecmascript/compiler/share_gate_meta_data.h"
 #include "ecmascript/compiler/type_info_accessors.h"
+#include "ecmascript/js_dataview.h"
 #include "ecmascript/ts_types/ts_manager.h"
 
 namespace panda::ecmascript::kungfu {
@@ -55,6 +59,9 @@ private:
     void TryInlineMathMinMaxBuiltin(GateRef gate, size_t argc, BuiltinsStubCSigns::ID id, const GateMetaData* op,
                                     double defaultValue, bool skipThis);
     void TryInlineMathClz32Builtin(GateRef gate, size_t argc, bool skipThis);
+    void TryInlineArrayBufferIsView(GateRef gate, size_t argc, BuiltinsStubCSigns::ID id, bool skipThis);
+    void TryInlineDataViewGet(GateRef gate, size_t argc, BuiltinsStubCSigns::ID id);
+    void TryInlineDataViewSet(GateRef gate, size_t argc, BuiltinsStubCSigns::ID id);
 
     bool EnableLog() const
     {

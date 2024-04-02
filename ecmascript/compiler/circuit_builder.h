@@ -19,19 +19,20 @@
 #include "ecmascript/base/number_helper.h"
 #include "ecmascript/compiler/assembler/assembler.h"
 #include "ecmascript/compiler/builtins/builtins_call_signature.h"
-#include "ecmascript/compiler/circuit.h"
 #include "ecmascript/compiler/call_signature.h"
+#include "ecmascript/compiler/circuit.h"
 #include "ecmascript/compiler/gate.h"
 #include "ecmascript/compiler/gate_accessor.h"
+#include "ecmascript/compiler/lcr_gate_meta_data.h"
+#include "ecmascript/compiler/pgo_type/pgo_type_location.h"
+#include "ecmascript/compiler/share_gate_meta_data.h"
 #include "ecmascript/compiler/variable_type.h"
 #include "ecmascript/global_env_constants.h"
-#include "ecmascript/compiler/pgo_type/pgo_type_location.h"
-#include "ecmascript/jspandafile/constpool_value.h"
 #include "ecmascript/js_hclass.h"
 #include "ecmascript/js_runtime_options.h"
 #include "ecmascript/js_tagged_value.h"
+#include "ecmascript/jspandafile/constpool_value.h"
 #include "ecmascript/tagged_array.h"
-#include <cstdint>
 
 namespace panda::ecmascript::kungfu {
 using namespace panda::ecmascript;
@@ -106,6 +107,7 @@ class PostSchedule;
     V(CastDoubleToInt64, Bitcast, MachineType::I64)                    \
     V(CastInt64ToFloat64, Bitcast, MachineType::F64)                   \
     V(CastInt32ToFloat32, Bitcast, MachineType::F32)                   \
+    V(CaseFloat32ToInt32, Bitcast, MachineType::I32)                   \
     V(SExtInt32ToInt64, Sext, MachineType::I64)                        \
     V(SExtInt1ToInt64, Sext, MachineType::I64)                         \
     V(SExtInt1ToInt32, Sext, MachineType::I32)                         \
@@ -218,6 +220,7 @@ public:
     GateRef IsJsCOWArray(GateRef obj);
     GateRef IsCOWArray(GateRef objectType);
     GateRef IsTaggedArray(GateRef object);
+    GateRef CheckJSType(GateRef object, JSType jsType);
     GateRef IsMutantTaggedArray(GateRef objectType);
     GateRef SwitchCase(GateRef switchBranch, int64_t value);
     GateRef Int8(int8_t val);
@@ -530,6 +533,9 @@ public:
     GateRef LexVarIsHoleCheck(GateRef value);
     GateRef IsUndefinedOrHoleCheck(GateRef value);
     GateRef IsNotUndefinedOrHoleCheck(GateRef value);
+    GateRef IsEcmaObjectCheck(GateRef obj);
+    GateRef IsDataViewCheck(GateRef obj);
+    GateRef IsTaggedBooleanCheck(GateRef value);
     GateRef Int32UnsignedUpperBoundCheck(GateRef value, GateRef upperBound);
     GateRef Int32DivWithCheck(GateRef left, GateRef right);
     GateType GetGateTypeOfValueType(ValueType type);
@@ -692,6 +698,8 @@ public:
     inline GateRef TaggedObjectIsShared(GateRef obj);
     inline GateRef TaggedObjectBothAreString(GateRef x, GateRef y);
     inline GateRef TaggedObjectIsEcmaObject(GateRef obj);
+    inline GateRef TaggedObjectIsByteArray(GateRef obj);
+    inline GateRef TaggedObjectIsDataView(GateRef obj);
     inline GateRef IsSpecialHole(GateRef x);
     inline GateRef IsNotSpecialHole(GateRef x);
     inline GateRef TaggedTrue();
@@ -726,6 +734,15 @@ public:
         GateRef charSize, VariableType type);
     void SetRawHashcode(GateRef glue, GateRef str, GateRef rawHashcode, GateRef isInteger);
     GateRef StringFromSingleCharCode(GateRef gate);
+    GateRef ArrayBufferIsView(GateRef gate);
+    GateRef DataViewGet(
+        GateRef thisobj, GateRef index, GateRef dataViewCallID, GateRef isLittleEndian, GateRef frameState);
+    GateRef DataViewSet(GateRef thisobj,
+                        GateRef index,
+                        GateRef value,
+                        GateRef dataViewCallID,
+                        GateRef isLittleEndian,
+                        GateRef frameState);
     GateRef ToNumber(GateRef gate, GateRef value, GateRef glue);
     GateRef IsASCIICharacter(GateRef gate);
 
@@ -776,6 +793,9 @@ public:
         MemoryOrder order = MemoryOrder::Default());
 
     // cast operation
+    inline GateRef Int16ToBigEndianInt16(GateRef x);
+    inline GateRef Int32ToBigEndianInt32(GateRef x);
+    inline GateRef Int64ToBigEndianInt64(GateRef x);
     inline GateRef GetInt64OfTInt(GateRef x);
     inline GateRef GetInt32OfTInt(GateRef x);
     inline GateRef TaggedCastToIntPtr(GateRef x);
@@ -785,6 +805,8 @@ public:
     inline GateRef GetDoubleOfTNumber(GateRef x);
     inline GateRef DoubleToInt(GateRef x, Label *exit);
     inline GateRef DoubleToInt(GateRef glue, GateRef x, size_t typeBits);
+    inline GateRef DoubleCheckINFInRangeInt32(GateRef x);
+    inline GateRef DoubleInRangeInt32(GateRef x);
     inline GateRef Int32ToTaggedPtr(GateRef x);
     inline GateRef Int64ToTaggedPtr(GateRef x);
     inline GateRef Int32ToTaggedInt(GateRef x);

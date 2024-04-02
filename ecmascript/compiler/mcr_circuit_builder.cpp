@@ -14,6 +14,9 @@
  */
 
 #include "ecmascript/compiler/mcr_circuit_builder.h"
+
+#include "ecmascript/compiler/circuit_builder.h"
+#include "ecmascript/compiler/share_gate_meta_data.h"
 #include "ecmascript/message_string.h"
 #include "ecmascript/stubs/runtime_stubs-inl.h"
 #include "ecmascript/stubs/runtime_stubs.h"
@@ -707,6 +710,51 @@ GateRef CircuitBuilder::IsNotUndefinedOrHoleCheck(GateRef value)
     auto frameState = acc_.FindNearestFrameState(currentDepend);
     GateRef ret = GetCircuit()->NewGate(circuit_->IsNotUndefinedOrHoleCheck(),
         MachineType::I1, {currentControl, currentDepend, value, frameState}, GateType::NJSValue());
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
+}
+
+GateRef CircuitBuilder::IsEcmaObjectCheck(GateRef gate)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    auto frameState = acc_.FindNearestFrameState(currentDepend);
+    GateRef ret = GetCircuit()->NewGate(circuit_->IsEcmaObjectCheck(),
+                                        MachineType::I1,
+                                        {currentControl, currentDepend, gate, frameState},
+                                        GateType::NJSValue());
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
+}
+
+GateRef CircuitBuilder::IsDataViewCheck(GateRef gate)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    auto frameState = acc_.FindNearestFrameState(currentDepend);
+    GateRef ret = GetCircuit()->NewGate(circuit_->IsDataViewCheck(),
+                                        MachineType::I1,
+                                        {currentControl, currentDepend, gate, frameState},
+                                        GateType::NJSValue());
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
+}
+
+GateRef CircuitBuilder::IsTaggedBooleanCheck(GateRef value)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    auto frameState = acc_.FindNearestFrameState(currentDepend);
+    GateRef ret = GetCircuit()->NewGate(circuit_->IsTaggedBooleanCheck(),
+                                        MachineType::I1,
+                                        {currentControl, currentDepend, value, frameState},
+                                        GateType::NJSValue());
     currentLabel->SetControl(ret);
     currentLabel->SetDepend(ret);
     return ret;
@@ -1592,6 +1640,50 @@ GateRef CircuitBuilder::StringFromSingleCharCode(GateRef gate)
     GateRef ret =
         GetCircuit()->NewGate(circuit_->StringFromSingleCharCode(), MachineType::I64,
             { currentControl, currentDepend, gate }, GateType::AnyType());
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
+}
+
+GateRef CircuitBuilder::ArrayBufferIsView(GateRef gate)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    GateRef ret = GetCircuit()->NewGate(
+        circuit_->ArrayBufferIsView(), MachineType::I64, {currentControl, currentDepend, gate}, GateType::AnyType());
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
+}
+
+GateRef CircuitBuilder::DataViewGet(
+    GateRef thisobj, GateRef index, GateRef dataViewCallID, GateRef isLittleEndian, GateRef frameState)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    GateRef ret = GetCircuit()->NewGate(
+        circuit_->DataViewGet(),
+        MachineType::I64,
+        {currentControl, currentDepend, thisobj, index, dataViewCallID, isLittleEndian, frameState},
+        GateType::AnyType());
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
+}
+
+GateRef CircuitBuilder::DataViewSet(
+    GateRef thisobj, GateRef index, GateRef value, GateRef dataViewCallID, GateRef isLittleEndian, GateRef frameState)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    GateRef ret = GetCircuit()->NewGate(
+        circuit_->DataViewSet(),
+        MachineType::I64,
+        {currentControl, currentDepend, thisobj, index, value, dataViewCallID, isLittleEndian, frameState},
+        GateType::TaggedValue());
     currentLabel->SetControl(ret);
     currentLabel->SetDepend(ret);
     return ret;

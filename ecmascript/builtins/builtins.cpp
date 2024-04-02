@@ -2273,7 +2273,14 @@ void Builtins::InitializeArrayBuffer(const JSHandle<GlobalEnv> &env, const JSHan
     SetFunction(env, arrayBufferFuncPrototype, "slice", ArrayBuffer::Slice, FunctionLength::TWO);
 
     // ArrayBuffer method
-    SetFunction(env, arrayBufferFunction, "isView", ArrayBuffer::IsView, FunctionLength::ONE);
+    for (const base::BuiltinFunctionEntry& entry: ArrayBuffer::GetArrayBufferFunctions()) {
+        SetFunction(env,
+                    arrayBufferFunction,
+                    entry.GetName(),
+                    entry.GetEntrypoint(),
+                    entry.GetLength(),
+                    entry.GetBuiltinStubId());
+    }
 
     // 24.1.3.3 get ArrayBuffer[@@species]
     JSHandle<JSTaggedValue> speciesSymbol = env->GetSpeciesSymbol();
