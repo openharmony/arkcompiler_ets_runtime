@@ -69,6 +69,7 @@ struct CompilationOptions {
     bool isEnableLoweringBuiltin_;
     bool isEnableOptBranchProfiling_;
     bool isEnableEscapeAnalysis_;
+    bool isEnableInductionVariableAnalysis_;
 };
 
 class AotCompilerPreprocessor {

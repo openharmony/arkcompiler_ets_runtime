@@ -129,6 +129,7 @@ libark_jsoptimizer_sources = [
   "hcr_circuit_builder.cpp",
   "hcr_gate_meta_data.cpp",
   "ic_stub_builder.cpp",
+  "induction_variable_analysis.cpp",
   "instruction_combine.cpp",
   "interpreter_stub.cpp",
   "ir_builder.cpp",

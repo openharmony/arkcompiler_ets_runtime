@@ -293,11 +293,11 @@ VirtualObject* EscapeAnalysis::GetOrCreateVirtualObject(size_t numIn, GateInfo* 
 
 GateRef EscapeAnalysis::VisitCreateObjectWithBuffer(GateRef gate, GateInfo* info)
 {
-    constexpr size_t startIn = 5; // 5 : start of props
+    constexpr size_t startIn = 4; // 4 : start of props
     constexpr size_t fieldSize = 8; // 8 : bytes per field
     constexpr size_t stride = 2; // 2: offset and value
     auto numIn = acc_.GetNumValueIn(gate);
-    size_t size = acc_.GetConstantValue(acc_.GetValueIn(gate, 1)) / fieldSize;
+    size_t size = acc_.GetConstantValue(acc_.GetValueIn(gate, 0)) / fieldSize;
     VirtualObject* vObj = GetOrCreateVirtualObject(size, info);
     
     for (size_t i = startIn; i < numIn; i += stride) {

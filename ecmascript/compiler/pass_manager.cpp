@@ -121,6 +121,7 @@ bool JitPassManager::Compile(JSHandle<JSFunction> &jsFunction, AOTFileGenerator 
         pipeline.RunPass<RedundantPhiEliminationPass>();
         pipeline.RunPass<AsyncFunctionLoweringPass>();
         pipeline.RunPass<TypeBytecodeLoweringPass>();
+        pipeline.RunPass<InductionVariableAnalysisPass>();
         pipeline.RunPass<RedundantPhiEliminationPass>();
         pipeline.RunPass<NTypeBytecodeLoweringPass>();
         if (data_->IsTypeAbort()) {
@@ -288,6 +289,7 @@ bool PassManager::Compile(JSPandaFile *jsPandaFile, const std::string &fileName,
             return;
         }
         pipeline.RunPass<TypeBytecodeLoweringPass>();
+        pipeline.RunPass<InductionVariableAnalysisPass>();
         pipeline.RunPass<RedundantPhiEliminationPass>();
         pipeline.RunPass<NTypeBytecodeLoweringPass>();
         if (data.IsTypeAbort()) {
