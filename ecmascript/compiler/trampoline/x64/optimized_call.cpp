@@ -460,24 +460,28 @@ void OptimizedCall::GenJSCall(ExtendedAssembler *assembler, bool isNew)
 
             __ Bind(&lCall0);
             {
-                __ PushAlignBytes();
+                __ Pushq(JSTaggedValue::VALUE_UNDEFINED);
+                __ Pushq(JSTaggedValue::VALUE_UNDEFINED);
+                __ Pushq(JSTaggedValue::VALUE_UNDEFINED);
                 __ Callq(r10);
-                __ Addq(DOUBLE_SLOT_SIZE, rsp);
+                __ Addq(QUADRUPLE_SLOT_SIZE, rsp);
                 __ Jmp(&lexit);
             }
 
             __ Bind(&lCall1);
             {
+                __ Pushq(JSTaggedValue::VALUE_UNDEFINED);
+                __ Pushq(JSTaggedValue::VALUE_UNDEFINED);
                 __ Movq(Operand(argV, 0), r11);                     // arg0
                 __ Pushq(r11);
                 __ Callq(r10);
-                __ Addq(DOUBLE_SLOT_SIZE, rsp);
+                __ Addq(QUADRUPLE_SLOT_SIZE, rsp);
                 __ Jmp(&lexit);
             }
 
             __ Bind(&lCall2);
             {
-                __ PushAlignBytes();
+                __ Pushq(JSTaggedValue::VALUE_UNDEFINED);
                 __ Movq(Operand(argV, FRAME_SLOT_SIZE), r11);        // arg1
                 __ Pushq(r11);
                 __ Movq(Operand(argV, 0), r11);                      // arg0
