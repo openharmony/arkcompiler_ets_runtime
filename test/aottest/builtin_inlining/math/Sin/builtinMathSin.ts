@@ -23,39 +23,40 @@ let len:number = 1;
 
 // Check without params
 len = Math.sin();
-print(len); // Nan
+print(len); //: NaN
 
 // Check with single param
 len = Math.sin(0);
-print(len); // 0
+print(len); //: 0
 
 // Check with single not zero param
 len = Math.sin(Math.PI / 2);
-print(len); // 1
+print(len); //: 1
 
 // Check with 2 params
 len = Math.sin(0,0);
-print(len); // 0
+print(len); //: 0
 
 // Check with 3 params
 len = Math.sin(0,0,0);
-print(len); // 0
+print(len); //: 0
 
 // Check with 4 params
 len = Math.sin(0,0,0,0);
-print(len); // 0
+print(len); //: 0
 
 // Check with 5 params
 len = Math.sin(0,0,0,0,0);
-print(len); // 0
+print(len); //: 0
 
 // Replace standart builtin
 let true_sin = Math.sin
 Math.sin = replace
 len = Math.sin(111);
-print(len); // 111
+print(len); //: 111
 
 // Call standart builtin with non-number param
 Math.sin = true_sin
+//aot: [trace] Check Type: NotNumber1
 len = Math.sin("0"); // deopt
-print(len); // 0
+print(len); //: 0

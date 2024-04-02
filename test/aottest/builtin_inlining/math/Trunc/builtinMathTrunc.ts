@@ -35,66 +35,75 @@ function printTrunc(x : any) {
 }
 
 // Check without params
-print(Math.trunc()); // NaN
+print(Math.trunc()); //: NaN
 
 // Check with special float params
-print(Math.trunc(NaN)); // NaN
-print(Math.trunc(Infinity)); // Infinity
-print(Math.trunc(-Infinity)); // -Infinity
-print(Math.trunc(+0)); // 0
-print("1/x: " + 1 / Math.trunc(-0)); // -Infinity
+print(Math.trunc(NaN)); //: NaN
+print(Math.trunc(Infinity)); //: Infinity
+print(Math.trunc(-Infinity)); //: -Infinity
+print(Math.trunc(+0)); //: 0
+print("1/x: " + 1 / Math.trunc(-0)); //: 1/x: -Infinity
 
 // Check with single integer param
-print(Math.trunc(1)); // 1
-print(Math.trunc(-12)); // -12
+print(Math.trunc(1)); //: 1
+print(Math.trunc(-12)); //: -12
 
 // Check with single float param
-print(Math.trunc(1.15613251)); // 1
-print(Math.trunc(2.5)); // 2
-print(Math.trunc(3.84556546)); // 3
-print(Math.trunc(-1.124212)); // -1
-print("1/x: " + 1 / Math.trunc(-8.5e-80)); // -Infinity
-print(Math.trunc(-4.5)); // -4
+print(Math.trunc(1.15613251)); //: 1
+print(Math.trunc(2.5)); //: 2
+print(Math.trunc(3.84556546)); //: 3
+print(Math.trunc(-1.124212)); //: -1
+print("1/x: " + 1 / Math.trunc(-8.5e-80)); //: 1/x: -Infinity
+print(Math.trunc(-4.5)); //: -4
 
 // Check with 2 params
-print(Math.trunc(2.4, 10.5)); // 2
+print(Math.trunc(2.4, 10.5)); //: 2
 
 // Check with 3 params
-print(Math.trunc(3.123, 10, 1e-39)); // 3
+print(Math.trunc(3.123, 10, 1e-39)); //: 3
 
 // Check with 4 params
-print(Math.trunc(4.89, 10.5, 0, 11)); // 4
+print(Math.trunc(4.89, 10.5, 0, 11)); //: 4
 
 // Replace standart builtin
 let true_trunc = Math.trunc
 Math.trunc = replace
-print(Math.trunc(111.09)); // 111.09, no deopt
+print(Math.trunc(111.09)); //: 111.09
 Math.trunc = true_trunc
 
 // Call standart builtin with non-number param
-printTrunc("abc"); // NaN, deopt
-printTrunc("2.45"); // 2
+//aot: [trace] Check Type: NotNumber2
+printTrunc("abc"); //: NaN
+//aot: [trace] Check Type: NotNumber2
+printTrunc("2.45"); //: 2
 
 if (ArkTools.isAOTCompiled(printTrunc)) {
     // Replace standard builtin after call to standard builtin was profiled
     Math.trunc = replace
 }
-printTrunc(-12.1); // -12; or -12.1, deopt
-printTrunc("abc"); // NaN; or abc, deopt
+printTrunc(-12.1); //pgo: -12
+//aot: [trace] Check Type: NotCallTarget1
+//aot: -12.1
+
+printTrunc("abc"); //pgo: NaN
+//aot: [trace] Check Type: NotCallTarget1
+//aot: abc
 
 Math.trunc = true_trunc
 
 // Checl IR correctness inside try-block
 try {
-    printTrunc(-48.12); // -48
-    printTrunc("abc"); // NaN
+    printTrunc(-48.12); //: -48
+    //aot: [trace] Check Type: NotNumber2
+    printTrunc("abc"); //: NaN
 } catch (e) {
 }
 
 let obj = {
     valueOf: () => { return -35.121; }
 };
-print(Math.trunc(obj)); // -35
+//aot: [trace] Check Type: NotNumber2
+print(Math.trunc(obj)); //: -35
 
 function Throwing() {
     this.value = -14.12;
@@ -108,11 +117,11 @@ Throwing.prototype.valueOf = function() {
 let throwingObj = new Throwing();
 
 try {
-    print(Math.trunc(throwingObj)); // -14
+    print(Math.trunc(throwingObj)); //: -14
     throwingObj.value = 10;
-    print(Math.trunc(throwingObj)); // exception
+    print(Math.trunc(throwingObj)); //: Error: already positive
 } catch(e) {
     print(e);
 } finally {
-    print(Math.trunc(obj)); // -35
+    print(Math.trunc(obj)); //: -35
 }

@@ -627,6 +627,11 @@ public:
     static Local<NativePointerRef> NewConcurrent(const EcmaVM *vm, void *nativePointer,
                                                  NativePointerCallback callBack,
                                                  void *data, size_t nativeBindingsize = 0);
+    static Local<NativePointerRef> NewSendable(const EcmaVM *vm,
+                                               void *nativePointer,
+                                               NativePointerCallback callBack,
+                                               void *data,
+                                               size_t nativeBindingsize = 0);
     void *Value();
 };
 
@@ -691,10 +696,14 @@ using FunctionCallback = Local<JSValueRef>(*)(JsiRuntimeCallInfo*);
 using InternalFunctionCallback = JSValueRef(*)(JsiRuntimeCallInfo*);
 class ECMA_PUBLIC_API FunctionRef : public ObjectRef {
 public:
+    enum class SendableType {
+        NONE,
+        OBJECT,
+    };
     struct SendablePropertiesInfo {
-        Local<panda::ArrayRef> keys;
-        Local<panda::ArrayRef> values;
-        PropertyAttribute *attributes;
+        std::vector<Local<JSValueRef>> keys;
+        std::vector<SendableType> types;
+        std::vector<PropertyAttribute> attributes;
     };
     struct SendablePropertiesInfos {
         SendablePropertiesInfo instancePropertiesInfo;
@@ -724,7 +733,7 @@ public:
                                                        Deleter deleter,
                                                        void *data,
                                                        Local<StringRef> name,
-                                                       SendablePropertiesInfos infos,
+                                                       SendablePropertiesInfos &infos,
                                                        Local<FunctionRef> parent,
                                                        bool callNapi = false,
                                                        size_t nativeBindingsize = 0);

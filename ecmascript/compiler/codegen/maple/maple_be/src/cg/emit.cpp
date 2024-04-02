@@ -595,7 +595,7 @@ void Emitter::EmitBitFieldConstant(StructEmitInfo &structEmitInfo, MIRConst &mir
                                                structEmitInfo.GetCombineBitFieldValue());
     }
     if (CGOptions::IsBigEndian()) {
-        uint64 beValue = fieldValue.GetExtValue();
+        uint64 beValue = static_cast<uint64>(fieldValue.GetExtValue());
         if (fieldValue.IsNegative()) {
             beValue = beValue - ((beValue >> fieldSize) << fieldSize);
         }
@@ -1333,6 +1333,7 @@ MIRAddroffuncConst *Emitter::GetAddroffuncConst(const MIRSymbol &mirSymbol, MIRA
         /* point addr data. */
         MIRAddrofConst *pAddr = safe_cast<MIRAddrofConst>(pAddrConst);
         MIRSymbol *symAddrSym = GlobalTables::GetGsymTable().GetSymbolFromStidx(pAddr->GetSymbolIndex().Idx());
+        DEBUG_ASSERT(symAddrSym != nullptr, "null ptr check");
         MIRAggConst *methodAddrAggConst = safe_cast<MIRAggConst>(symAddrSym->GetKonst());
         MIRAggConst *addrAggConst = safe_cast<MIRAggConst>(methodAddrAggConst->GetConstVecItem(0));
         MIRConst *funcAddrConst = addrAggConst->GetConstVecItem(0);
@@ -1345,9 +1346,10 @@ MIRAddroffuncConst *Emitter::GetAddroffuncConst(const MIRSymbol &mirSymbol, MIRA
                 namemangler::kMuidFuncDefTabPrefixStr + cg->GetMIRModule()->GetFileNameAsPostfix();
             MIRSymbol *funDefTabSy = GlobalTables::GetGsymTable().GetSymbolFromStrIdx(
                 GlobalTables::GetStrTable().GetStrIdxFromName(funcDefTabName));
+            DEBUG_ASSERT(funDefTabSy != nullptr, "null ptr check");
             MIRAggConst &funDefTabAggConst = static_cast<MIRAggConst &>(*funDefTabSy->GetKonst());
             MIRIntConst *funcAddrIndexConst = safe_cast<MIRIntConst>(funcAddrConst);
-            uint64 indexDefTab = funcAddrIndexConst->GetExtValue();
+            uint64 indexDefTab = static_cast<uint64>(funcAddrIndexConst->GetExtValue());
             MIRAggConst *defTabAggConst = safe_cast<MIRAggConst>(funDefTabAggConst.GetConstVecItem(indexDefTab));
             MIRConst *funcConst = defTabAggConst->GetConstVecItem(0);
             if (funcConst->GetKind() == kConstAddrofFunc) {
@@ -1363,7 +1365,7 @@ MIRAddroffuncConst *Emitter::GetAddroffuncConst(const MIRSymbol &mirSymbol, MIRA
 int64 Emitter::GetFieldOffsetValue(const std::string &className, const MIRIntConst &intConst,
                                    const std::map<GStrIdx, MIRType *> &strIdx2Type)
 {
-    uint64 idx = intConst.GetExtValue();
+    uint64 idx = static_cast<uint64>(intConst.GetExtValue());
     bool isDefTabIndex = idx & 0x1;
     int64 fieldIdx = idx >> 1;
     if (isDefTabIndex) {
@@ -1592,7 +1594,7 @@ void Emitter::EmitIntConst(const MIRSymbol &mirSymbol, MIRAggConst &aggConst, ui
         std::string widthFlag = ".quad";
 #endif /* USE_32BIT_REF */
         int64 fieldOffset = GetFieldOffsetValue(typeName, *intConst, strIdx2Type);
-        uint64 fieldIdx = intConst->GetExtValue();
+        uint64 fieldIdx = static_cast<uint64>(intConst->GetExtValue());
         bool isDefTabIndex = fieldIdx & 0x1;
         if (isDefTabIndex) {
             /* it's def table index. */
@@ -1800,7 +1802,7 @@ void Emitter::EmitArrayConstant(MIRConst &mirConst)
             DEBUG_ASSERT(false, "should not run here");
         }
     }
-    int64 iNum = (arrayType.GetSizeArrayItem(0) > 0) ? (static_cast<int64>(arrayType.GetSizeArrayItem(0))) - uNum : 0;
+    int64 iNum = (arrayType.GetSizeArrayItem(0) > 0) ? (static_cast<int64>(arrayType.GetSizeArrayItem(0)) - uNum) : 0;
     if (iNum > 0) {
         if (!cg->GetMIRModule()->IsCModule()) {
             CHECK_FATAL(!Globals::GetInstance()->GetBECommon()->IsEmptyOfTypeSizeTable(), "container empty check");
@@ -3053,6 +3055,7 @@ void Emitter::EmitMuidTable(const std::vector<MIRSymbol *> &vec, const std::map<
             MIRAddrofConst *symAddr = safe_cast<MIRAddrofConst>(mirConst);
             CHECK_FATAL(symAddr != nullptr, "call static_cast failed in EmitMuidTable");
             MIRSymbol *symAddrSym = GlobalTables::GetGsymTable().GetSymbolFromStidx(symAddr->GetSymbolIndex().Idx());
+            DEBUG_ASSERT(symAddrSym != nullptr, "null ptr check");
             if (isConstString) {
                 EmitAddressString(symAddrSym->GetName() + " - . + ");
                 Emit(kDataRefIsOffset);
@@ -3292,7 +3295,6 @@ void Emitter::EmitDIFormSpecification(unsigned int dwform)
 void Emitter::EmitDIAttrValue(DBGDie *die, DBGDieAttr *attr, DwAt attrName, DwTag tagName, DebugInfo *di)
 {
     MapleVector<DBGDieAttr *> &attrvec = die->GetAttrVec();
-
     switch (attr->GetDwForm()) {
         case DW_FORM_string: {
             const std::string &name = GlobalTables::GetStrTable().GetStringFromStrIdx(attr->GetId());
@@ -3567,6 +3569,7 @@ void Emitter::EmitDIDebugInfoSection(DebugInfo *mirdi)
 
         for (size_t i = 0; i < diae->GetAttrPairs().size(); i += k2ByteSize) {
             DBGDieAttr *attr = LFindAttribute(die->GetAttrVec(), DwAt(apl[i]));
+            DEBUG_ASSERT(attr != nullptr, "null ptr check");
             if (!LShouldEmit(unsigned(apl[i + 1]))) {
                 continue;
             }

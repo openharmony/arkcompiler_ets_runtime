@@ -26,7 +26,11 @@ public:
     NO_MOVE_SEMANTIC(BuiltinsFunctionStubBuilder);
     NO_COPY_SEMANTIC(BuiltinsFunctionStubBuilder);
     void GenerateCircuit() override {}
-    void Apply(GateRef glue, GateRef thisValue, GateRef numArgs, Variable* res, Label *exit, Label *slowPath);
+#define DECLARE_BUILTINS_FUNCTION_STUB_BUILDER(method, ...)           \
+    void method(GateRef glue, GateRef thisValue, GateRef numArgs, Variable* res, Label *exit, Label *slowPath);
+BUILTINS_WITH_FUNCTION_STUB_BUILDER(DECLARE_BUILTINS_FUNCTION_STUB_BUILDER)
+#undef DECLARE_BUILTINS_FUNCTION_STUB_BUILDER
+
     GateRef BuildArgumentsListFastElements(GateRef glue, GateRef arrayObj);
 private:
     GateRef MakeArgListWithHole(GateRef glue, GateRef argv, GateRef length);

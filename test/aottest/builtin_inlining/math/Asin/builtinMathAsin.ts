@@ -23,34 +23,35 @@ let len:number = 1;
 
 // Check without params
 len = Math.asin();
-print(len); // NaN
+print(len); //: NaN
 
 len = Math.asin(NaN);
-print(len); // NaN
+print(len); //: NaN
 
 // Check with single param, in |x| <= 1
 len = Math.asin(0);
-print(len); // 0
+print(len); //: 0
 
 // Check with single param, in |x| <= 1
-len = Math.asin(-1);
-print(len); // - PI / 2 = - 1.5707963267948966
+len = Math.asin(-1); // -PI/2
+print(len); //: -1.5707963267948966
 
 // Check with single param, in |x| <= 1
-len = Math.asin(1);
-print(len); // PI / 2 = 1.5707963267948966
+len = Math.asin(1); // PI/2
+print(len); //: 1.5707963267948966
 
 // Check with single param, in |x| > 1
 len = Math.asin(10);
-print(len); // Nan
+print(len); //: NaN
 
 // Replace standart builtin
 let true_asin = Math.asin
 Math.asin = replace
 len = Math.asin(111);
-print(len);
+print(len); //: 111
 
 // Call standart builtin with non-number param
 Math.asin = true_asin
 len = Math.asin("NaN"); // deopt
-print(len); // NaN
+//aot: [trace] Check Type: NotNumber1
+print(len); //: NaN

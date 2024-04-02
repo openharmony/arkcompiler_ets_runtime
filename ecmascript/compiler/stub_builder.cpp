@@ -21,11 +21,11 @@
 #include "ecmascript/compiler/assembler_module.h"
 #include "ecmascript/compiler/access_object_stub_builder.h"
 #include "ecmascript/compiler/builtins/builtins_string_stub_builder.h"
+#include "ecmascript/compiler/builtins/builtins_typedarray_stub_builder.h"
 #include "ecmascript/compiler/interpreter_stub.h"
 #include "ecmascript/compiler/new_object_stub_builder.h"
 #include "ecmascript/compiler/profiler_stub_builder.h"
 #include "ecmascript/compiler/rt_call_signature.h"
-#include "ecmascript/compiler/typed_array_stub_builder.h"
 #include "ecmascript/global_env_constants.h"
 #include "ecmascript/ic/properties_cache.h"
 #include "ecmascript/js_api/js_api_arraylist.h"
@@ -148,10 +148,8 @@ void StubBuilder::MatchFieldType(GateRef fieldType, GateRef value, Label *execut
     Label isJSShared(env);
     Label checkBigInt(env);
     Label isBigInt(env);
-    Label checkJSNone(env);
-    Label isJSNone(env);
-    Label checkGeneric(env);
-    Label isGeneric(env);
+    Label checkNoneOrGeneric(env);
+    Label isNoneOrGeneric(env);
     Label checkNull(env);
     Label isNull(env);
     Label checkUndefined(env);
@@ -208,31 +206,23 @@ void StubBuilder::MatchFieldType(GateRef fieldType, GateRef value, Label *execut
         BRANCH(BoolAnd(
             Int32NotEqual(Int32And(fieldType, Int32(static_cast<int32_t>(SharedFieldType::BIG_INT))), Int32(0)),
             TaggedIsBigInt(value)),
-            &isBigInt, &checkJSNone);
+            &isBigInt, &checkNoneOrGeneric);
         Bind(&isBigInt);
         {
             result = True();
             Jump(&exit);
         }
     }
-    Bind(&checkJSNone);
-    {
-        BRANCH(Equal(fieldType, Int32(static_cast<int32_t>(SharedFieldType::NONE))), &isJSNone, &checkGeneric);
-        Bind(&isJSNone);
-        {
-            // bypass none type
-            result = True();
-            Jump(&exit);
-        }
-    }
-    Bind(&checkGeneric);
+    Bind(&checkNoneOrGeneric);
     {
         BRANCH(BoolAnd(
-            Int32NotEqual(Int32And(fieldType, Int32(static_cast<int32_t>(SharedFieldType::GENERIC))), Int32(0)),
+            BoolOr(Equal(fieldType, Int32(static_cast<int32_t>(SharedFieldType::NONE))),
+                Int32NotEqual(Int32And(fieldType, Int32(static_cast<int32_t>(SharedFieldType::GENERIC))), Int32(0))),
             BoolOr(TaggedIsShared(value), BoolNot(TaggedIsHeapObject(value)))),
-            &isGeneric, &checkNull);
-        Bind(&isGeneric);
+            &isNoneOrGeneric, &checkNull);
+        Bind(&isNoneOrGeneric);
         {
+            // (none || generic) && (jsShared || !heapObject)
             result = True();
             Jump(&exit);
         }
@@ -2049,7 +2039,7 @@ GateRef StubBuilder::ICStoreElement(GateRef glue, GateRef receiver, GateRef key,
             {
                 GateRef hclass = LoadHClass(receiver);
                 GateRef jsType = GetObjectType(hclass);
-                TypedArrayStubBuilder typedArrayBuilder(this);
+                BuiltinsTypedArrayStubBuilder typedArrayBuilder(this);
                 result = typedArrayBuilder.StoreTypedArrayElement(glue, receiver, index64, value, jsType);
                 Jump(&exit);
             }
@@ -2592,7 +2582,7 @@ GateRef StubBuilder::GetPropertyByIndex(GateRef glue, GateRef receiver, GateRef 
             BRANCH(IsFastTypeArray(jsType), &isFastTypeArray, &notFastTypeArray);
             Bind(&isFastTypeArray);
             {
-                TypedArrayStubBuilder typedArrayStubBuilder(this);
+                BuiltinsTypedArrayStubBuilder typedArrayStubBuilder(this);
                 result = typedArrayStubBuilder.FastGetPropertyByIndex(glue, *holder, index, jsType);
                 Jump(&exit);
             }
@@ -6747,107 +6737,6 @@ void StubBuilder::ReturnExceptionIfAbruptCompletion(GateRef glue)
     return;
 }
 
-GateRef StubBuilder::CalcHashcodeForInt(GateRef value)
-{
-    return env_->GetBuilder()->CalcHashcodeForInt(value);
-}
-
-GateRef StubBuilder::CanDoubleRepresentInt(GateRef exp, GateRef expBits, GateRef fractionBits)
-{
-    GateRef isNanOrInf = Int64Equal(expBits, Int64(base::DOUBLE_EXPONENT_MASK));
-    GateRef isSubnormal = BoolAnd(
-        Int64Equal(expBits, Int64(0)),
-        Int64NotEqual(fractionBits, Int64(0)));
-    GateRef hasFraction = Int64NotEqual(
-        Int64And(
-            Int64LSL(fractionBits, exp),
-            Int64(base::DOUBLE_SIGNIFICAND_MASK)),
-        Int64(0));
-    GateRef badExp = BoolOr(
-        Int64LessThan(exp, Int64(0)),
-        Int64GreaterThanOrEqual(exp, Int64(31U)));
-    return BoolOr(BoolOr(BoolOr(isNanOrInf, isSubnormal), badExp), hasFraction);
-}
-
-void StubBuilder::CalcHashcodeForDouble(GateRef x, Variable *res, Label *exit)
-{
-    auto env = GetEnvironment();
-    GateRef xInt64 = ChangeTaggedPointerToInt64(x);
-    GateRef fractionBits = Int64And(xInt64, Int64(base::DOUBLE_SIGNIFICAND_MASK));
-    GateRef expBits = Int64And(xInt64, Int64(base::DOUBLE_EXPONENT_MASK));
-    GateRef signBit = Int64And(xInt64, Int64(base::DOUBLE_SIGN_MASK));
-    GateRef isZero = BoolAnd(
-        Int64Equal(expBits, Int64(0)),
-        Int64Equal(fractionBits, Int64(0)));
-    Label zero(env);
-    Label nonZero(env);
-
-    BRANCH(isZero, &zero, &nonZero);
-    Bind(&nonZero);
-    {
-        DEFVARIABLE(value, VariableType::JS_ANY(), x);
-        // exp = (u64 & DOUBLE_EXPONENT_MASK) >> DOUBLE_SIGNIFICAND_SIZE - DOUBLE_EXPONENT_BIAS
-        GateRef exp = Int64Sub(
-            Int64LSR(expBits, Int64(base::DOUBLE_SIGNIFICAND_SIZE)),
-            Int64(base::DOUBLE_EXPONENT_BIAS));
-        Label convertToInt(env);
-        Label calcHash(env);
-        BRANCH(CanDoubleRepresentInt(exp, expBits, fractionBits), &calcHash, &convertToInt);
-        Bind(&convertToInt);
-        {
-            GateRef shift = Int64Sub(Int64(base::DOUBLE_SIGNIFICAND_SIZE), exp);
-            GateRef intVal = Int64Add(
-                Int64LSL(Int64(1), exp),
-                Int64LSR(fractionBits, shift));
-            DEFVARIABLE(intVariable, VariableType::INT64(), intVal);
-            Label negate(env);
-            Label pass(env);
-            BRANCH(Int64NotEqual(signBit, Int64(0)), &negate, &calcHash);
-            Bind(&negate);
-            {
-                intVariable = Int64Sub(Int64(0), intVal);
-                Jump(&pass);
-            }
-            Bind(&pass);
-            value = Int64ToTaggedPtr(*intVariable);
-            Jump(&calcHash);
-        }
-        Bind(&calcHash);
-        {
-            *res = env_->GetBuilder()->CalcHashcodeForInt(*value);
-            Jump(exit);
-        }
-    }
-
-    Bind(&zero);
-    *res = env_->GetBuilder()->CalcHashcodeForInt(IntToTaggedPtr(Int32(0)));
-    Jump(exit);
-}
-
-void StubBuilder::CalcHashcodeForObject(GateRef glue, GateRef value, Variable *res, Label *exit)
-{
-    auto env = GetEnvironment();
-
-    GateRef hash = GetHash(value);
-    *res = TruncInt64ToInt32(TaggedCastToIntPtr(hash));
-    Label calcHash(env);
-    BRANCH(Int32Equal(**res, Int32(0)), &calcHash, exit);
-    Bind(&calcHash);
-    GateRef offset = IntPtr(JSThread::GlueData::GetRandomStatePtrOffset(env_->Is32Bit()));
-    GateRef randomStatePtr = Load(VariableType::NATIVE_POINTER(), glue, offset);
-    GateRef randomState = Load(VariableType::INT64(), randomStatePtr, IntPtr(0));
-    GateRef k1 = Int64Xor(randomState, Int64LSR(randomState, Int64(base::RIGHT12)));
-    GateRef k2 = Int64Xor(k1, Int64LSL(k1, Int64(base::LEFT25)));
-    GateRef k3 = Int64Xor(k2, Int64LSR(k2, Int64(base::RIGHT27)));
-    Store(VariableType::INT64(), glue, randomStatePtr, IntPtr(0), k3);
-    GateRef k4 = Int64Mul(k3, Int64(base::GET_MULTIPLY));
-    GateRef k5 = Int64LSR(k4, Int64(base::INT64_BITS - base::INT32_BITS));
-    GateRef k6 = Int32And(TruncInt64ToInt32(k5), Int32(INT32_MAX));
-    SetHash(glue, value, IntToTaggedPtr(k6));
-    *res = k6;
-    Jump(exit);
-}
-
 GateRef StubBuilder::GetHashcodeFromString(GateRef glue, GateRef value)
 {
     return env_->GetBuilder()->GetHashcodeFromString(glue, value);
@@ -6983,7 +6872,7 @@ bool StubBuilder::IsCallModeSupportPGO(JSCallMode mode)
 
 GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNumArgs, GateRef jumpSize,
                                     GateRef hotnessCounter, JSCallMode mode, std::initializer_list<GateRef> args,
-                                    ProfileOperation callback)
+                                    ProfileOperation callback, bool checkIsCallable)
 {
     auto env = GetEnvironment();
     Label entryPass(env);
@@ -6997,20 +6886,26 @@ GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNu
     // save pc
     SavePcIfNeeded(glue);
     GateRef bitfield = 0;
+    GateRef hclass = 0;
 #if ECMASCRIPT_ENABLE_FUNCTION_CALL_TIMER
     CallNGCRuntime(glue, RTSTUB_ID(StartCallTimer), { glue, func, False()});
 #endif
-    BRANCH(TaggedIsHeapObject(func), &funcIsHeapObject, &funcNotCallable);
-    Bind(&funcIsHeapObject);
-    GateRef hclass = LoadHClass(func);
-    bitfield = Load(VariableType::INT32(), hclass, IntPtr(JSHClass::BIT_FIELD_OFFSET));
-    BRANCH(IsCallableFromBitField(bitfield), &funcIsCallable, &funcNotCallable);
-    Bind(&funcNotCallable);
-    {
-        CallRuntime(glue, RTSTUB_ID(ThrowNotCallableException), {});
-        Jump(&exit);
+    if (checkIsCallable) {
+        BRANCH(TaggedIsHeapObject(func), &funcIsHeapObject, &funcNotCallable);
+        Bind(&funcIsHeapObject);
+        hclass = LoadHClass(func);
+        bitfield = Load(VariableType::INT32(), hclass, IntPtr(JSHClass::BIT_FIELD_OFFSET));
+        BRANCH(IsCallableFromBitField(bitfield), &funcIsCallable, &funcNotCallable);
+        Bind(&funcNotCallable);
+        {
+            CallRuntime(glue, RTSTUB_ID(ThrowNotCallableException), {});
+            Jump(&exit);
+        }
+        Bind(&funcIsCallable);
+    } else {
+        hclass = LoadHClass(func);
+        bitfield = Load(VariableType::INT32(), hclass, IntPtr(JSHClass::BIT_FIELD_OFFSET));
     }
-    Bind(&funcIsCallable);
     GateRef method = GetMethodFromJSFunction(func);
     GateRef callField = GetCallFieldFromMethod(method);
     GateRef isNativeMask = Int64(static_cast<uint64_t>(1) << MethodLiteral::IsNativeBit::START_BIT);
@@ -7824,7 +7719,7 @@ GateRef StubBuilder::GetTypeArrayPropertyByName(GateRef glue, GateRef receiver, 
         BRANCH(Int32GreaterThanOrEqual(index, Int32(0)), &validIndex, &notValidIndex);
         Bind(&validIndex);
         {
-            TypedArrayStubBuilder typedArrayStubBuilder(this);
+            BuiltinsTypedArrayStubBuilder typedArrayStubBuilder(this);
             result = typedArrayStubBuilder.FastGetPropertyByIndex(glue, holder, index, jsType);
             Jump(&exit);
         }

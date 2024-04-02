@@ -21,5 +21,6 @@ host_aot_test_action("builtinMathExp") {
   is_enable_trace_deopt = true
   is_enable_enableArkTools = true
   log_option = " --log-info=trace"
+  gen_expect_output = true
   deps = []
 }

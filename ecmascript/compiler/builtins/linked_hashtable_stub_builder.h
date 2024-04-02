@@ -195,8 +195,6 @@ private:
         SetElement(linkedTable, bucketIndex, IntToTaggedInt(entry));
     }
 
-    void CalcHashcodeForNumber(GateRef key, Variable *res, Label *exit);
-
     GateRef GetDeletedElementsAt(GateRef linkedTable, GateRef entry);
     GateRef GrowCapacity(GateRef linkedTable, GateRef numberOfAddedElements);
     GateRef HasSufficientCapacity(GateRef linkedTable, GateRef numOfAddElements);

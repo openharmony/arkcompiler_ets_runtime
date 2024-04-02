@@ -64,6 +64,8 @@ class ProtoChangeDetails;
 class PropertyLookupResult;
 class SharedHeap;
 class JSSharedArray;
+class LayoutInfo;
+class NameDictionary;
 namespace pgo {
     class HClassLayoutDesc;
     class PGOHClassTreeDesc;
@@ -171,8 +173,8 @@ struct Reference;
         JS_ASYNC_FUNC_OBJECT, /* //////////////////////////////////////////////////////////////////////////-PADDING */ \
                                                                                                                        \
         /* SPECIAL indexed objects begin, DON'T CHANGE HERE ///////////////////////////////////////////////-PADDING */ \
-        JS_SHARED_ARRAY, /* ///////////////////////////////////////////////////////////////////////////////-PADDING */ \
         JS_ARRAY,       /* ////////////////////////////////////////////////////////////////////////////////-PADDING */ \
+        JS_SHARED_ARRAY, /* ///////////////////////////////////////////////////////////////////////////////-PADDING */ \
         JS_API_ARRAY_LIST, /* /////////////////////////////////////////////////////////////////////////////-PADDING */ \
         JS_API_LIGHT_WEIGHT_MAP,      /* //////////////////////////////////////////////////////////////////-PADDING */ \
         JS_API_LIGHT_WEIGHT_SET, /* ///////////////////////////////////////////////////////////////////////-PADDING */ \
@@ -345,14 +347,6 @@ enum class EnumCacheKind : uint8_t {
 };
 
 }  // namespace EnumCache
-
-namespace JSShared {
-// check mode for js shared
-enum SCheckMode: uint8_t {
-    SKIP = 0,
-    CHECK
-};
-} // namespace JSShared
 
 class JSHClass : public TaggedObject {
 public:
@@ -1927,7 +1921,15 @@ public:
     DECL_VISIT_OBJECT(PROTOTYPE_OFFSET, BIT_FIELD_OFFSET);
     inline JSHClass *FindProtoTransitions(const JSTaggedValue &key, const JSTaggedValue &proto);
 
+    static JSHandle<JSHClass> CreateSHClass(JSThread *thread,
+                                            const std::vector<PropertyDescriptor> &descs,
+                                            bool isFunction = false);
+    static JSHandle<JSHClass> CreateSConstructorHClass(JSThread *thread, const std::vector<PropertyDescriptor> &descs);
+    static JSHandle<JSHClass> CreateSPrototypeHClass(JSThread *thread, const std::vector<PropertyDescriptor> &descs);
+
 private:
+    static JSHandle<LayoutInfo> CreateSInlinedLayout(JSThread *thread, const std::vector<PropertyDescriptor> &descs);
+    static JSHandle<NameDictionary> CreateSDictLayout(JSThread *thread, const std::vector<PropertyDescriptor> &descs);
     static inline void AddTransitions(const JSThread *thread, const JSHandle<JSHClass> &parent,
                                       const JSHandle<JSHClass> &child, const JSHandle<JSTaggedValue> &key,
                                       PropertyAttributes attr);

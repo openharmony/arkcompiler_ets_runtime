@@ -114,7 +114,7 @@
     /* %TypedArray%.prototype.set ( source [ , offset ] ) */                            \
     V("set",            Set,            1, INVALID)                                     \
     /* %TypedArray%.prototype.slice ( start, end ) */                                   \
-    V("slice",          Slice,          2, INVALID)                                     \
+    V("slice",          Slice,          2, TypedArraySlice)                             \
     /* %TypedArray%.prototype.some ( callbackfn [ , thisArg ] ) */                      \
     V("some",           Some,           1, INVALID)                                     \
     /* %TypedArray%.prototype.sort ( comparefn ) */                                     \

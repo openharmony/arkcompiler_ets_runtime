@@ -512,7 +512,9 @@ private:
     V(StringGetStart)                           \
     V(StringGetEnd)                             \
     V(ArrayTrim)                                \
-    V(OptimizedFastJmp)
+    V(OptimizedFastJmp)                         \
+    V(ClearJitCompiledCodeFlags)                \
+    V(CopyTypedArrayBuffer)
 
 #define DECL_CALL_SIGNATURE(name)                                  \
 class name##CallSignature final {                                  \

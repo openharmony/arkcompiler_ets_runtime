@@ -21,11 +21,11 @@
 #include "ecmascript/global_env.h"
 #include "ecmascript/interpreter/interpreter.h"
 #include "ecmascript/js_array.h"
-#include "ecmascript/js_shared_array.h"
 #include "ecmascript/js_hclass.h"
 #include "ecmascript/js_tagged_number.h"
 #include "ecmascript/js_tagged_value-inl.h"
 #include "ecmascript/object_fast_operator-inl.h"
+#include "ecmascript/shared_objects/js_shared_array.h"
 
 namespace panda::ecmascript::base {
 int64_t ArrayHelper::GetStartIndex(JSThread *thread, const JSHandle<JSTaggedValue> &startIndexHandle,
@@ -144,7 +144,7 @@ bool ArrayHelper::IsConcatSpreadable(JSThread *thread, const JSHandle<JSTaggedVa
     }
 
     // 5. Return IsArray(O).
-    return obj->IsArray(thread) || obj->IsSArray(thread);
+    return obj->IsArray(thread) || obj->IsJSSharedArray();
 }
 
 // must use 'double' as return type, for sort result may double.

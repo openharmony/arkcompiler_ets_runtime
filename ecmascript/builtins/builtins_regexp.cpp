@@ -1310,10 +1310,9 @@ JSTaggedValue BuiltinsRegExp::RegExpSearchFast(JSThread *thread,
                                                const JSHandle<JSTaggedValue> string)
 {
     JSHandle<RegExpExecResultCache> cacheTable(thread->GetCurrentEcmaContext()->GetRegExpCache());
-    uint32_t lastIndexInput = static_cast<uint32_t>(GetLastIndex(thread, regexp, true));
     JSTaggedValue cacheResult = cacheTable->FindCachedResult(thread, string,
                                                              RegExpExecResultCache::SEARCH_TYPE, regexp,
-                                                             JSTaggedValue(lastIndexInput));
+                                                             JSTaggedValue(0));
     if (!cacheResult.IsUndefined()) {
         return cacheResult;
     }
@@ -1570,10 +1569,9 @@ JSTaggedValue BuiltinsRegExp::RegExpSplitFast(JSThread *thread, const JSHandle<J
     }
     JSHandle<RegExpExecResultCache> cacheTable(thread->GetCurrentEcmaContext()->GetRegExpCache());
     if (useCache) {
-        uint32_t lastIndexInput = static_cast<uint32_t>(GetLastIndex(thread, regexp, true));
         JSTaggedValue cacheResult = cacheTable->FindCachedResult(thread, jsString,
                                                                  RegExpExecResultCache::SPLIT_TYPE, regexp,
-                                                                 JSTaggedValue(lastIndexInput));
+                                                                 JSTaggedValue(0));
         if (!cacheResult.IsUndefined()) {
             return cacheResult;
         }
@@ -2759,7 +2757,7 @@ JSTaggedValue BuiltinsRegExp::GetExecResultIndex(JSThread *thread, const JSHandl
     }
     JSHandle<JSTaggedValue> resultIndex = thread->GlobalConstants()->GetHandledIndexString();
     JSTaggedValue index = ObjectFastOperator::FastGetPropertyByValue(
-            thread, execResults.GetTaggedValue(), resultIndex.GetTaggedValue());
+        thread, execResults.GetTaggedValue(), resultIndex.GetTaggedValue());
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     return index;
 }
@@ -2772,7 +2770,7 @@ JSTaggedValue BuiltinsRegExp::GetExecResultGroups(JSThread *thread, const JSHand
     }
     JSHandle<JSTaggedValue> groupKey = thread->GlobalConstants()->GetHandledGroupsString();
     JSTaggedValue groups = ObjectFastOperator::FastGetPropertyByValue(
-            thread, execResults.GetTaggedValue(), groupKey.GetTaggedValue());
+        thread, execResults.GetTaggedValue(), groupKey.GetTaggedValue());
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     return groups;
 }

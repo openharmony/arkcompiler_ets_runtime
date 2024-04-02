@@ -606,6 +606,26 @@ HWTEST_F_L0(RegExpTest, ParseError48)
     ASSERT_TRUE(parseResult);
 }
 
+HWTEST_F_L0(RegExpTest, ParseError49)
+{
+    RegExpParser parser = RegExpParser(thread, chunk_);
+    CString source("/\\p{Line_Break=Glue}/u");
+    parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 16);
+    parser.Parse();
+    bool parseResult = parser.IsError();
+    ASSERT_TRUE(parseResult);
+}
+
+HWTEST_F_L0(RegExpTest, ParseError50)
+{
+    RegExpParser parser = RegExpParser(thread, chunk_);
+    CString source("/\\p{lb=AL}/u");
+    parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 16);
+    parser.Parse();
+    bool parseResult = parser.IsError();
+    ASSERT_TRUE(parseResult);
+}
+
 HWTEST_F_L0(RegExpTest, ParseNoError1)
 {
     RegExpParser parser = RegExpParser(thread, chunk_);
@@ -640,6 +660,26 @@ HWTEST_F_L0(RegExpTest, ParseNoError4)
 {
     RegExpParser parser = RegExpParser(thread, chunk_);
     CString source("[\\⊲|\\⇐]");
+    parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 1);
+    parser.Parse();
+    bool parseResult = parser.IsError();
+    ASSERT_FALSE(parseResult);
+}
+
+HWTEST_F_L0(RegExpTest, ParseNoError5)
+{
+    RegExpParser parser = RegExpParser(thread, chunk_);
+    CString source("/\\p{General_Category=Letter}/u");
+    parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 1);
+    parser.Parse();
+    bool parseResult = parser.IsError();
+    ASSERT_FALSE(parseResult);
+}
+
+HWTEST_F_L0(RegExpTest, ParseNoError6)
+{
+    RegExpParser parser = RegExpParser(thread, chunk_);
+    CString source("/\\p{gc=L}/u");
     parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 1);
     parser.Parse();
     bool parseResult = parser.IsError();

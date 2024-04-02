@@ -79,12 +79,32 @@ map key[forEach]: 1
 map key[forEach]: 2
 map key[forEach]: 3
 map key[forEach]: 4
-Set Scenario[forEach]: TypeError: Concurrent modification exception
-Delete Scenario[forEach]: TypeError: Concurrent modification exception
-Clear Scenario[forEach]: TypeError: Concurrent modification exception
+Set Scenario[forEach]: BusinessError: Concurrent modification exception, errCode: 10200201
+Delete Scenario[forEach]: BusinessError: Concurrent modification exception, errCode: 10200201
+Clear Scenario[forEach]: BusinessError: Concurrent modification exception, errCode: 10200201
 ===Concurrent modification during iteration Test(forEach) end===
 ===Type check begin===
-sharedMap set[shared] element
-sharedMap set[unshared]: TypeError: the key of shared map must be shared too
-sharedMap set[unshared]: TypeError: the key of shared map must be shared too
+sharedMap set[shared] element success
+sharedMap set[unshared]: BusinessError: Parameter error. Only accept sendable value., errCode: 401
+sharedMap set[unshared]: BusinessError: Parameter error. Only accept sendable value., errCode: 401
 ===Type check end===
+===Class inheritance test begin ===
+true
+1
+add extension(.): TypeError: Cannot add property in prevent extensions
+add extension([]): TypeError: Cannot add property in prevent extensions
+SubSharedMap set[unshared]: BusinessError: Parameter error. Only accept sendable value., errCode: 401
+3
+SubSharedMap [key, value][for-of]: [1, one]
+SubSharedMap [key, value][for-of]: [2, two]
+SubSharedMap [key, value][for-of]: [3, three]
+SubSharedMap Delete Scenario[forEach]: BusinessError: Concurrent modification exception, errCode: 10200201
+true
+1
+SubSubSharedMap set[unshared]: BusinessError: Parameter error. Only accept sendable value., errCode: 401
+3
+SubSubSharedMap [key, value][for-of]: [1, one]
+SubSubSharedMap [key, value][for-of]: [2, two]
+SubSubSharedMap [key, value][for-of]: [3, three]
+SubSubSharedMap Delete Scenario[forEach]: BusinessError: Concurrent modification exception, errCode: 10200201
+===Class inheritance test end ===

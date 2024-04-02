@@ -606,6 +606,28 @@ void EcmaContext::AddConstpool(const JSPandaFile *jsPandaFile, JSTaggedValue con
     constpoolMap.insert({index, constpool});
 }
 
+void EcmaContext::UpdateConstpool(const std::string& fileName, JSTaggedValue constpool, int32_t index)
+{
+    for (auto iter = cachedSharedConstpools_.begin(); iter != cachedSharedConstpools_.end(); iter++) {
+        std::string curFileName = iter->first->GetJSPandaFileDesc().c_str();
+        auto &constpoolMap = iter->second;
+        // update the aot literal info under each constpool id in the framework abc file
+        if (curFileName != fileName || constpoolMap.find(index) == constpoolMap.end()) {
+            continue;
+        }
+        ConstantPool *curConstPool = ConstantPool::Cast(constpoolMap[index].GetTaggedObject());
+        const ConstantPool *taggedPool = ConstantPool::Cast(constpool.GetTaggedObject());
+        uint32_t constpoolLen = taggedPool->GetCacheLength();
+        for (uint32_t i = 0; i < constpoolLen; i++) {
+            auto val = taggedPool->GetObjectFromCache(i);
+            if (val.IsAOTLiteralInfo()) {
+                curConstPool->SetObjectToCache(thread_, i, val);
+            }
+        }
+        break;
+    }
+}
+
 JSHandle<JSTaggedValue> EcmaContext::GetAndClearEcmaUncaughtException() const
 {
     JSHandle<JSTaggedValue> exceptionHandle = GetEcmaUncaughtException();
@@ -798,6 +820,11 @@ void EcmaContext::ClearBufferData()
     while (iter != cachedSharedConstpools_.end()) {
         LOG_ECMA(INFO) << "remove js pandafile by vm destruct, file:" << iter->first->GetJSPandaFileDesc();
         JSPandaFileManager::GetInstance()->RemoveJSPandaFileVm(vm_, iter->first);
+        auto item = iter->second.begin();
+        while (item != iter->second.end()) {
+            InsertFreeUnsharedConstpoolCount(item->second);
+            item++;
+        }
         iter++;
     }
     cachedSharedConstpools_.clear();

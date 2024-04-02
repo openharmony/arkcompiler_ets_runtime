@@ -169,8 +169,10 @@ JSHandle<JSDisplayNames> JSDisplayNames::InitializeDisplayNames(JSThread *thread
     property = globalConst->GetHandledTypeString();
     auto type = JSLocale::GetOptionOfString<TypednsOption>(thread, optionsObject, property,
                                                            {TypednsOption::LANGUAGE, TypednsOption::REGION,
-                                                           TypednsOption::SCRIPT, TypednsOption::CURRENCY},
-                                                           {"language", "region", "script", "currency"},
+                                                           TypednsOption::SCRIPT, TypednsOption::CURRENCY,
+                                                           TypednsOption::CALENDAR, TypednsOption::DATETIMEFIELD},
+                                                           {"language", "region", "script", "currency",
+                                                           "calendar", "dateTimeField"},
                                                            TypednsOption::UNDEFINED);
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSDisplayNames, thread);
 
@@ -329,7 +331,8 @@ JSHandle<EcmaString> JSDisplayNames::CanonicalCodeForDisplayNames(JSThread *thre
         UErrorCode status = U_ZERO_ERROR;
         icu::LocaleDisplayNames *icuLocaldisplaynames = displayNames->GetIcuLocaleDisplayNames();
         icu::Locale locales = icuLocaldisplaynames->getLocale();
-        std::unique_ptr<icu::DateTimePatternGenerator> generator(icu::DateTimePatternGenerator::createInstance(locales, status));
+        std::unique_ptr<icu::DateTimePatternGenerator> generator(
+            icu::DateTimePatternGenerator::createInstance(locales, status));
         icu::UnicodeString result = generator->getFieldDisplayName(field, width);
         return intl::LocaleHelper::UStringToString(thread, result);
     }
@@ -347,7 +350,8 @@ JSHandle<EcmaString> JSDisplayNames::CanonicalCodeForDisplayNames(JSThread *thre
     return codeResult;
 }
 
-UDateTimePatternField JSDisplayNames::StringToUDateTimePatternField(const char* code) {
+UDateTimePatternField JSDisplayNames::StringToUDateTimePatternField(const char* code)
+{
     if (std::strcmp(code, "day") == 0) {
         return UDATPG_DAY_FIELD;
     }

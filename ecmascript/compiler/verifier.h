@@ -29,7 +29,8 @@ class Verifier {
 public:
     static bool RunDataIntegrityCheck(const Circuit *circuit);
 
-    static bool RunStateGatesCheck(const Circuit *circuit, const std::vector<GateRef> &bbGatesList);
+    static bool RunStateGatesCheck(const Circuit *circuit, const std::vector<GateRef> &bbGatesList,
+                                   const std::string& methodName);
 
     static bool RunCFGSoundnessCheck(const Circuit *circuit, const std::vector<GateRef> &bbGatesList,
                                      const std::unordered_map<GateRef, size_t> &bbGatesAddrToIdx);

@@ -280,11 +280,13 @@ public:
 
     void SetInitialBuiltinHClass(
         BuiltinTypeId type, JSHClass *builtinHClass, JSHClass *instanceHClass,
-                            JSHClass *prototypeHClass, JSHClass *prototypeOfPrototypeHClass = nullptr);
+                            JSHClass *prototypeHClass, JSHClass *prototypeOfPrototypeHClass = nullptr,
+                            JSHClass *extraHClass = nullptr);
 
     JSHClass *GetBuiltinHClass(BuiltinTypeId type) const;
 
     JSHClass *GetBuiltinInstanceHClass(BuiltinTypeId type) const;
+    JSHClass *GetBuiltinExtraHClass(BuiltinTypeId type) const;
     JSHClass *GetArrayInstanceHClass(ElementsKind kind) const;
 
     PUBLIC_API JSHClass *GetBuiltinPrototypeHClass(BuiltinTypeId type) const;
@@ -794,6 +796,7 @@ public:
     }
 
     void InvokeWeakNodeFreeGlobalCallBack();
+    void InvokeSharedNativePointerCallbacks();
     void InvokeWeakNodeNativeFinalizeCallback();
     bool IsStartGlobalLeakCheck() const;
     bool EnableGlobalObjectLeakCheck() const;
@@ -814,11 +817,6 @@ public:
     uint32_t GetPropertiesGrowStep() const
     {
         return glueData_.propertiesGrowStep_;
-    }
-
-    void SetRandomStatePtr(uint64_t *ptr)
-    {
-        glueData_.randomStatePtr_ = reinterpret_cast<uintptr_t>(ptr);
     }
 
     struct GlueData : public base::AlignedStruct<JSTaggedValue::TaggedTypeSize(),
@@ -853,7 +851,6 @@ public:
                                                  BuiltinEntries,
                                                  base::AlignedBool,
                                                  base::AlignedPointer,
-                                                 base::AlignedPointer,
                                                  base::AlignedUint32> {
         enum class Index : size_t {
             BCStubEntriesIndex = 0,
@@ -887,7 +884,6 @@ public:
             BuiltinEntriesIndex,
             IsTracingIndex,
             unsharedConstpoolsIndex,
-            RandomStatePtrIndex,
             stateAndFlagsIndex,
             NumOfMembers
         };
@@ -1069,11 +1065,6 @@ public:
             return GetOffset<static_cast<size_t>(Index::stateAndFlagsIndex)>(isArch32);
         }
 
-        static size_t GetRandomStatePtrOffset(bool isArch32)
-        {
-            return GetOffset<static_cast<size_t>(Index::RandomStatePtrIndex)>(isArch32);
-        }
-
         alignas(EAS) BCStubEntries bcStubEntries_;
         alignas(EAS) JSTaggedValue exception_ {JSTaggedValue::Hole()};
         alignas(EAS) JSTaggedValue globalObject_ {JSTaggedValue::Hole()};
@@ -1105,7 +1096,6 @@ public:
         alignas(EAS) BuiltinEntries builtinEntries_;
         alignas(EAS) bool isTracing_ {false};
         alignas(EAS) uintptr_t unsharedConstpools_ {0};
-        alignas(EAS) uintptr_t randomStatePtr_ {0};
         alignas(EAS) ThreadStateAndFlags stateAndFlags_ {};
     };
     STATIC_ASSERT_EQ_ARCH(sizeof(GlueData), GlueData::SizeArch32, GlueData::SizeArch64);
@@ -1176,6 +1166,7 @@ public:
     void SuspendThread(bool internalSuspend);
     void ResumeThread(bool internalSuspend);
     void WaitSuspension();
+    static bool IsMainThread();
     PUBLIC_API void ManagedCodeBegin();
     PUBLIC_API void ManagedCodeEnd();
 #ifndef NDEBUG
@@ -1226,8 +1217,6 @@ private:
     void DumpStack() DUMP_API_ATTR;
 
     static size_t GetAsmStackLimit();
-
-    static bool IsMainThread();
 
     static constexpr size_t DEFAULT_MAX_SYSTEM_STACK_SIZE = 8_MB;
 

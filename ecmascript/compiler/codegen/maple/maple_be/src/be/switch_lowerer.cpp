@@ -118,7 +118,7 @@ RangeGotoNode *SwitchLowerer::BuildRangeGotoNode(int32 startIdx, int32 endIdx)
          */
         while ((stmt->GetCasePair(i).first != (lastCaseTag + 1)) && (stmt->GetCasePair(i).first != lastCaseTag)) {
             /* fill in a gap in the case tags */
-            curTag = (++lastCaseTag) - node->GetTagOffset();
+            curTag = static_cast<uint32>((++lastCaseTag) - node->GetTagOffset());
             if (stmt->GetDefaultLabel() != 0) {
                 node->AddRangeGoto(curTag, stmt->GetDefaultLabel());
             }

@@ -41,11 +41,13 @@ public:
     JSTaggedValue GetValue(JSThread *thread, uint32_t entry) const;
 
     static constexpr size_t LINKED_MAP_OFFSET = JSObject::SIZE;
-    ACCESSORS(LinkedMap, LINKED_MAP_OFFSET, MOD_RECORD_OFFET)
-    ACCESSORS_SYNCHRONIZED_PRIMITIVE_FIELD(ModRecord, uint32_t, MOD_RECORD_OFFET, LAST_OFFSET)
+    ACCESSORS(LinkedMap, LINKED_MAP_OFFSET, MOD_RECORD_OFFSET)
+    ACCESSORS_SYNCHRONIZED_PRIMITIVE_FIELD(ModRecord, uint32_t, MOD_RECORD_OFFSET, LAST_OFFSET)
     DEFINE_ALIGN_SIZE(LAST_OFFSET);
-    DECL_VISIT_OBJECT_FOR_JS_OBJECT(JSObject, LINKED_MAP_OFFSET, MOD_RECORD_OFFET)
 
+    static constexpr uint32_t MAX_INLINE = PropertyAttributes::MAX_FAST_PROPS_CAPACITY -
+        SIZE / JSTaggedValue::TaggedTypeSize() + 1;
+    DECL_VISIT_OBJECT_FOR_JS_OBJECT(JSObject, LINKED_MAP_OFFSET, MOD_RECORD_OFFSET)
     DECL_DUMP()
 };
 }  // namespace panda::ecmascript

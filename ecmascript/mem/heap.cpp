@@ -44,6 +44,7 @@
 #include "ecmascript/mem/verification.h"
 #include "ecmascript/mem/work_manager.h"
 #include "ecmascript/mem/gc_stats.h"
+#include "ecmascript/mem/gc_key_stats.h"
 #include "ecmascript/runtime_call_id.h"
 #include "ecmascript/runtime_lock.h"
 #if !WIN_OR_MAC_OR_IOS_PLATFORM
@@ -700,6 +701,12 @@ void Heap::CollectGarbage(TriggerGCType gcType, GCReason reason)
         }
         // GC log
         GetEcmaGCStats()->RecordStatisticAfterGC();
+#ifdef ENABLE_HISYSEVENT
+        GetEcmaGCKeyStats()->IncGCCount();
+        if (GetEcmaGCKeyStats()->CheckIfMainThread() && GetEcmaGCKeyStats()->CheckIfKeyPauseTime()) {
+            GetEcmaGCKeyStats()->AddGCStatsToKey();
+        }
+#endif
         GetEcmaGCStats()->PrintGCStatistic();
     }
 
@@ -905,10 +912,11 @@ void Heap::AdjustOldSpaceLimit()
         << " globalSpaceAllocLimit_: " << globalSpaceAllocLimit_;
 }
 
-void Heap::OnAllocateEvent([[maybe_unused]] TaggedObject* address, [[maybe_unused]] size_t size)
+void BaseHeap::OnAllocateEvent([[maybe_unused]] EcmaVM *ecmaVm, [[maybe_unused]] TaggedObject* address,
+                               [[maybe_unused]] size_t size)
 {
 #if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
-    HeapProfilerInterface *profiler = GetEcmaVM()->GetHeapProfile();
+    HeapProfilerInterface *profiler = ecmaVm->GetHeapProfile();
     if (profiler != nullptr) {
         base::BlockHookScope blockScope;
         profiler->AllocationEvent(address, size);
@@ -1451,6 +1459,11 @@ GCStats *Heap::GetEcmaGCStats()
     return ecmaVm_->GetEcmaGCStats();
 }
 
+GCKeyStats *Heap::GetEcmaGCKeyStats()
+{
+    return ecmaVm_->GetEcmaGCKeyStats();
+}
+
 JSObjectResizingStrategy *Heap::GetJSObjectResizingStrategy()
 {
     return ecmaVm_->GetJSObjectResizingStrategy();
@@ -1600,9 +1613,6 @@ bool Heap::NeedStopCollection()
         return true;
     }
     LOG_GC(INFO) << "SmartGC: force expand will cause OOM, have to trigger gc";
-    GetNewSpace()->SetOverShootSize(
-        GetNewSpace()->GetCommittedSize() - GetNewSpace()->GetInitialCapacity() +
-        config_.GetOldSpaceOvershootSize());
     return false;
 }
 

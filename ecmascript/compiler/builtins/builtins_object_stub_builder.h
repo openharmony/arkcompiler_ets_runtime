@@ -28,13 +28,14 @@ public:
     NO_MOVE_SEMANTIC(BuiltinsObjectStubBuilder);
     NO_COPY_SEMANTIC(BuiltinsObjectStubBuilder);
     void GenerateCircuit() override {}
+
+#define DECLARE_BUILTINS_OBJECT_STUB_BUILDER(method, ...)           \
+    void method(Variable *result, Label *exit, Label *slowPath);
+BUILTINS_WITH_OBJECT_STUB_BUILDER(DECLARE_BUILTINS_OBJECT_STUB_BUILDER)
+#undef DECLARE_BUILTINS_OBJECT_STUB_BUILDER
+
     GateRef CreateListFromArrayLike(GateRef glue, GateRef arrayObj);
     GateRef CreateArrayFromList(GateRef glue, GateRef elements);
-    void ToString(Variable *result, Label *exit, Label *slowPath);
-    void Create(Variable *result, Label *exit, Label *slowPath);
-    void Assign(Variable *result, Label *exit, Label *slowPath);
-    void HasOwnProperty(Variable *result, Label *exit, Label *slowPath);
-    void Keys(Variable *result, Label *exit, Label *slowPath);
 
 private:
     GateRef OrdinaryNewJSObjectCreate(GateRef proto);

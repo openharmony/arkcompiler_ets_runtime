@@ -1218,4 +1218,34 @@ HWTEST_F_L0(PGOProfilerTest, ApVersionMatchCheck)
     unlink("ark-ApVersionMatchCheck/modules.ap");
     unlink("ark-ApVersionMatchCheck/");
 }
+
+HWTEST_F_L0(PGOProfilerTest, TypedArrayOnHeap)
+{
+    mkdir("ark-profiler24/", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+    const char *targetRecordName = "typedarray_length";
+    ExecuteAndLoadJSPandaFile("ark-profiler24/", targetRecordName);
+    ASSERT_NE(pf_, nullptr);
+    uint32_t checksum = pf_->GetChecksum();
+
+    // Loader
+    PGOProfilerDecoder decoder("ark-profiler24/modules.ap", 1);
+    ASSERT_TRUE(decoder.LoadAndVerify(checksum));
+    auto methodLiterals = pf_->GetMethodLiteralMap();
+    for (auto iter : methodLiterals) {
+        auto methodLiteral = iter.second;
+        auto methodId = methodLiteral->GetMethodId();
+        auto methodName = methodLiteral->GetMethodName(pf_.get(), methodId);
+        auto callback = [methodName](uint32_t offset, const PGOType *type) {
+            ASSERT_NE(offset, 0);
+            if (type->IsRwOpType() && std::string(methodName) == "test") {
+                auto pgoRWOpType = *reinterpret_cast<const PGORWOpType *>(type);
+                ASSERT_TRUE(pgoRWOpType.GetCount() == 1);
+            }
+        };
+        decoder.GetTypeInfo(pf_.get(), targetRecordName, methodLiteral,
+                            callback);
+    }
+    unlink("ark-profiler24/modules.ap");
+    rmdir("ark-profiler24/");
+}
 }  // namespace panda::test

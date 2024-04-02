@@ -322,7 +322,6 @@ public:
     GateRef GetPropertiesArray(GateRef object);
     // SetProperties in js_object.h
     void SetPropertiesArray(VariableType type, GateRef glue, GateRef object, GateRef propsArray);
-    GateRef GetHash(GateRef object);
     void SetHash(GateRef glue, GateRef object, GateRef hash);
     GateRef GetLengthOfTaggedArray(GateRef array);
     GateRef GetLengthOfJSTypedArray(GateRef array);
@@ -453,9 +452,6 @@ public:
     GateRef GetLayoutFromHClass(GateRef hClass);
     GateRef GetBitFieldFromHClass(GateRef hClass);
     GateRef GetLengthFromString(GateRef value);
-    GateRef CalcHashcodeForInt(GateRef value);
-    void CalcHashcodeForDouble(GateRef value, Variable *res, Label *exit);
-    void CalcHashcodeForObject(GateRef glue, GateRef value, Variable *res, Label *exit);
     GateRef GetHashcodeFromString(GateRef glue, GateRef value);
     inline GateRef IsIntegerString(GateRef string);
     inline void SetRawHashcode(GateRef glue, GateRef str, GateRef rawHashcode, GateRef isInteger);
@@ -519,6 +515,7 @@ public:
     void UpdateValueAndAttributes(GateRef glue, GateRef elements, GateRef index, GateRef value, GateRef attr);
     GateRef IsSpecialIndexedObj(GateRef jsType);
     GateRef IsSpecialContainer(GateRef jsType);
+    GateRef IsSharedArray(GateRef jsType);
     GateRef IsAccessorInternal(GateRef value);
     template<typename DictionaryT>
     GateRef GetAttributesFromDictionary(GateRef elements, GateRef entry);
@@ -782,6 +779,8 @@ public:
     GateRef GetIhcFromAOTLiteralInfo(GateRef info);
     GateRef IsAotWithCallField(GateRef method);
     GateRef IsFastCall(GateRef method);
+    GateRef IsJitCompiledCode(GateRef method);
+    void ClearJitCompiledCodeFlags(GateRef glue, GateRef method);
     GateRef JudgeAotAndFastCall(GateRef jsFunc, CircuitBuilder::JudgeMethodType type);
     GateRef JudgeAotAndFastCallWithMethod(GateRef method, CircuitBuilder::JudgeMethodType type);
     GateRef GetInternalString(GateRef glue, GateRef key);
@@ -807,7 +806,7 @@ public:
     GateRef GetIterator(GateRef glue, GateRef obj, ProfileOperation callback);
     GateRef JSCallDispatch(GateRef glue, GateRef func, GateRef actualNumArgs, GateRef jumpSize, GateRef hotnessCounter,
                            JSCallMode mode, std::initializer_list<GateRef> args,
-                           ProfileOperation callback = ProfileOperation());
+                           ProfileOperation callback = ProfileOperation(), bool checkIsCallable = true);
     GateRef IsFastTypeArray(GateRef jsType);
     GateRef GetTypeArrayPropertyByName(GateRef glue, GateRef receiver, GateRef holder, GateRef key, GateRef jsType);
     GateRef SetTypeArrayPropertyByName(GateRef glue, GateRef receiver, GateRef holder, GateRef key, GateRef value,
@@ -842,6 +841,9 @@ public:
     GateRef AppendSkipHole(GateRef glue, GateRef first, GateRef second, GateRef copyLength);
     GateRef IntToEcmaString(GateRef glue, GateRef number);
     GateRef NumberToString(GateRef glue, GateRef number);
+    inline GateRef IsMarkerCellValid(GateRef cell);
+    inline GateRef GetAccessorHasChanged(GateRef obj);
+    inline GateRef ComputeTaggedTypedArraySize(GateRef elementSize, GateRef length);
 
 private:
     using BinaryOperation = std::function<GateRef(Environment*, GateRef, GateRef)>;
@@ -861,7 +863,6 @@ private:
     void InitializeArguments();
     void CheckDetectorName(GateRef glue, GateRef key, Label *fallthrough, Label *slow);
     bool IsCallModeSupportPGO(JSCallMode mode);
-    GateRef CanDoubleRepresentInt(GateRef exp, GateRef expBits, GateRef fractionBits);
 
     CallSignature *callSignature_ {nullptr};
     Environment *env_;

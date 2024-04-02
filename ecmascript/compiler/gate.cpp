@@ -242,41 +242,92 @@ void Gate::CheckFrameStateInput() const
     }
 }
 
-void Gate::CheckStateOutput() const
+std::string Gate::GetValueInAndOut(bool inListPreview, size_t highlightIdx) const
 {
-    if (GetMetaData()->IsState()) {
-        size_t cnt = 0;
-        const Gate *curGate = this;
-        if (!curGate->IsFirstOutNull()) {
-            const Out *curOut = curGate->GetFirstOutConst();
-            auto meta = curOut->GetGateConst()->GetMetaData();
+    auto opcode = GetOpCode();
+    if (opcode != OpCode::NOP && opcode != OpCode::DEAD) {
+        std::string log("{\"id\":" + std::to_string(id_) + ", \"op\":\"" + GateMetaData::Str(opcode) + "\", ");
+        log += "\",\"in\":[";
+        size_t idx = 0;
+        auto stateSize = GetStateCount();
+        auto dependSize = GetDependCount();
+        auto valueSize = GetInValueCount();
+        auto frameStateSize = GetInFrameStateCount();
+        auto rootSize = GetRootCount();
+        size_t start = 0;
+        size_t end = stateSize;
+        idx = PrintInGate(end, idx, start, inListPreview, highlightIdx, log);
+        end += dependSize;
+        start += stateSize;
+        idx = PrintInGate(end, idx, start, inListPreview, highlightIdx, log);
+        end += valueSize;
+        start += dependSize;
+        idx = PrintInGate(end, idx, start, inListPreview, highlightIdx, log);
+        end += frameStateSize;
+        start += valueSize;
+        idx = PrintInGate(end, idx, start, inListPreview, highlightIdx, log);
+        end += rootSize;
+        start += frameStateSize;
+        idx = PrintInGate(end, idx, start, inListPreview, highlightIdx, log, true);
+
+        log += "], \"out\":[";
+
+        if (!IsFirstOutNull()) {
+            const Out *curOut = GetFirstOutConst();
+            opcode = curOut->GetGateConst()->GetOpCode();
+            log += std::to_string(curOut->GetGateConst()->GetId()) +
+                    (inListPreview ? std::string(":" + GateMetaData::Str(opcode)) : std::string(""));
+
+            while (!curOut->IsNextOutNull()) {
+                curOut = curOut->GetNextOutConst();
+                log += ", " +  std::to_string(curOut->GetGateConst()->GetId()) +
+                       (inListPreview ? std::string(":" + GateMetaData::Str(opcode))
+                                       : std::string(""));
+            }
+        }
+        log += "]},";
+        return log;
+    }
+    return "";
+}
+
+void Gate::CheckStateOutput(const std::string& methodName) const
+{
+    if (!GetMetaData()->IsState()) {
+        return;
+    }
+    size_t cnt = 0;
+    const Gate *curGate = this;
+    if (!curGate->IsFirstOutNull()) {
+        const Out *curOut = curGate->GetFirstOutConst();
+        auto meta = curOut->GetGateConst()->GetMetaData();
+        if (curOut->IsStateEdge() && meta->IsState()) {
+            cnt++;
+        }
+        while (!curOut->IsNextOutNull()) {
+            curOut = curOut->GetNextOutConst();
+            meta = curOut->GetGateConst()->GetMetaData();
             if (curOut->IsStateEdge() && meta->IsState()) {
                 cnt++;
             }
-            while (!curOut->IsNextOutNull()) {
-                curOut = curOut->GetNextOutConst();
-                meta = curOut->GetGateConst()->GetMetaData();
-                if (curOut->IsStateEdge() && meta->IsState()) {
-                    cnt++;
-                }
-            }
         }
-        size_t expected = 0;
-        bool needCheck = true;
-        if (GetMetaData()->IsTerminalState()) {
-            expected = 0;
-        } else if (GetOpCode() == OpCode::IF_BRANCH || GetOpCode() == OpCode::JS_BYTECODE) {
-            expected = 2; // 2: expected number of state out branches
-        } else if (GetOpCode() == OpCode::SWITCH_BRANCH) {
-            needCheck = false;
-        } else {
-            expected = 1;
-        }
-        if (needCheck && cnt != expected) {
-            curGate->Print();
-            CheckFailed("Number of state out branches is not valid (expected:" + std::to_string(expected) +
-                " actual:" + std::to_string(cnt) + ")", -1);
-        }
+    }
+    size_t expected = 0;
+    bool needCheck = true;
+    if (GetMetaData()->IsTerminalState()) {
+        expected = 0;
+    } else if (GetOpCode() == OpCode::IF_BRANCH || GetOpCode() == OpCode::JS_BYTECODE) {
+        expected = 2; // 2: expected number of state out branches
+    } else if (GetOpCode() == OpCode::SWITCH_BRANCH) {
+        needCheck = false;
+    } else {
+        expected = 1;
+    }
+    if (needCheck && cnt != expected) {
+        curGate->Print();
+        std::string log = curGate->GetValueInAndOut(true);
+        CheckFailed("Number of state out branches is not valid (expected:" + std::to_string(expected) +
+            " actual:" + std::to_string(cnt) + ") methodName:" + methodName + " gateValue:" + log, -1);
     }
 }
 
@@ -367,7 +418,7 @@ void Gate::CheckRelay() const
     }
 }
 
-void Gate::Verify(bool isArch64) const
+void Gate::Verify(bool isArch64, const std::string& methodName) const
 {
     CheckNullInput();
     CheckStateInput();
@@ -375,7 +426,7 @@ void Gate::Verify(bool isArch64) const
     CheckDependInput();
     CheckFrameStateInput();
     CheckRootInput();
-    CheckStateOutput();
+    CheckStateOutput(methodName);
     CheckBranchOutput();
     CheckNOP();
     CheckSelector();

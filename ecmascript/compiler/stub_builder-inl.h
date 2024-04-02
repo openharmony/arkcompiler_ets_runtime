@@ -1069,12 +1069,6 @@ inline void StubBuilder::SetPropertiesArray(VariableType type, GateRef glue, Gat
     Store(type, glue, object, propertiesOffset, propsArray);
 }
 
-inline GateRef StubBuilder::GetHash(GateRef object)
-{
-    GateRef hashOffset = IntPtr(ECMAObject::HASH_OFFSET);
-    return Load(VariableType::JS_ANY(), object, hashOffset);
-}
-
 inline void StubBuilder::SetHash(GateRef glue, GateRef object, GateRef hash)
 {
     GateRef hashOffset = IntPtr(ECMAObject::HASH_OFFSET);
@@ -2205,6 +2199,11 @@ inline GateRef StubBuilder::IsSpecialContainer(GateRef jsType)
         Int32Equal(jsType, Int32(static_cast<int32_t>(JSType::JS_API_VECTOR))));
 }
 
+inline GateRef StubBuilder::IsSharedArray(GateRef jsType)
+{
+    return Int32Equal(jsType, Int32(static_cast<int32_t>(JSType::JS_SHARED_ARRAY)));
+}
+
 inline GateRef StubBuilder::IsFastTypeArray(GateRef jsType)
 {
     return BoolAnd(
@@ -2854,6 +2853,22 @@ inline GateRef StubBuilder::IsFastCall(GateRef method)
         Int64(0));
 }
 
+inline GateRef StubBuilder::IsJitCompiledCode(GateRef method)
+{
+    GateRef fieldOffset = IntPtr(Method::EXTRA_LITERAL_INFO_OFFSET);
+    GateRef literalField = Load(VariableType::INT64(), method, fieldOffset);
+    return Int64NotEqual(
+        Int64And(
+            Int64LSR(literalField, Int64(Method::IsJitCompiledCodeBit::START_BIT)),
+            Int64((1LU << Method::IsJitCompiledCodeBit::SIZE) - 1)),
+        Int64(0));
+}
+
+inline void StubBuilder::ClearJitCompiledCodeFlags(GateRef glue, GateRef method)
+{
+    CallNGCRuntime(glue, RTSTUB_ID(ClearJitCompiledCodeFlags), { method });
+}
+
 inline GateRef StubBuilder::HasPrototype(GateRef kind)
 {
     GateRef greater = Int32GreaterThanOrEqual(kind,
@@ -3217,6 +3232,21 @@ inline GateRef StubBuilder::GetKey(GateRef layoutInfo, GateRef index)
 {
     GateRef fixedIdx = GetKeyIndex(index);
     return GetValueFromTaggedArray(layoutInfo, fixedIdx);
+}
+
+inline GateRef StubBuilder::IsMarkerCellValid(GateRef cell)
+{
+    return env_->GetBuilder()->IsMarkerCellValid(cell);
+}
+
+inline GateRef StubBuilder::GetAccessorHasChanged(GateRef obj)
+{
+    return env_->GetBuilder()->GetAccessorHasChanged(obj);
+}
+
+inline GateRef StubBuilder::ComputeTaggedTypedArraySize(GateRef elementSize, GateRef length)
+{
+    return PtrAdd(IntPtr(ByteArray::DATA_OFFSET), PtrMul(elementSize, length));
 }
 } //  namespace panda::ecmascript::kungfu
 #endif // ECMASCRIPT_COMPILER_STUB_INL_H

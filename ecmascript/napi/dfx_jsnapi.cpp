@@ -73,6 +73,7 @@ void DFXJSNApi::DumpHeapSnapshot([[maybe_unused]] const EcmaVM *vm, [[maybe_unus
 {
 #if defined(ECMASCRIPT_SUPPORT_SNAPSHOT)
     ecmascript::base::BlockHookScope blockScope;
+    ecmascript::ThreadManagedScope managedScope(vm->GetAssociatedJSThread());
     ecmascript::HeapProfilerInterface *heapProfile = ecmascript::HeapProfilerInterface::GetInstance(
         const_cast<EcmaVM *>(vm));
     heapProfile->DumpHeapSnapshot(ecmascript::DumpFormat(dumpFormat), stream, progress,
@@ -245,6 +246,7 @@ void DFXJSNApi::TriggerGCWithVm([[maybe_unused]] const EcmaVM *vm)
     }
     int ret = uv_queue_work(loop, work, [](uv_work_t *) {}, [](uv_work_t *work, int32_t) {
         EcmaVM *vm = static_cast<EcmaVM *>(work->data);
+        ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
         vm->CollectGarbage(ecmascript::TriggerGCType::FULL_GC, ecmascript::GCReason::EXTERNAL_TRIGGER);
         delete work;
     });
@@ -259,6 +261,7 @@ void DFXJSNApi::TriggerGCWithVm([[maybe_unused]] const EcmaVM *vm)
 void DFXJSNApi::DestroyHeapProfiler([[maybe_unused]] const EcmaVM *vm)
 {
 #if defined(ECMASCRIPT_SUPPORT_SNAPSHOT)
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     ecmascript::HeapProfilerInterface::Destroy(const_cast<EcmaVM *>(vm));
 #else
     LOG_ECMA(ERROR) << "Not support arkcompiler heap snapshot";
@@ -302,6 +305,7 @@ bool DFXJSNApi::StartHeapTracking([[maybe_unused]] const EcmaVM *vm, [[maybe_unu
 {
 #if defined(ECMASCRIPT_SUPPORT_SNAPSHOT)
     ecmascript::base::BlockHookScope blockScope;
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     ecmascript::HeapProfilerInterface *heapProfile = ecmascript::HeapProfilerInterface::GetInstance(
         const_cast<EcmaVM *>(vm));
     return heapProfile->StartHeapTracking(timeInterval, isVmMode, stream, traceAllocation, newThread);
@@ -315,6 +319,7 @@ bool DFXJSNApi::UpdateHeapTracking([[maybe_unused]] const EcmaVM *vm, [[maybe_un
 {
 #if defined(ECMASCRIPT_SUPPORT_SNAPSHOT)
     ecmascript::base::BlockHookScope blockScope;
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     ecmascript::HeapProfilerInterface *heapProfile = ecmascript::HeapProfilerInterface::GetInstance(
         const_cast<EcmaVM *>(vm));
     return heapProfile->UpdateHeapTracking(stream);
@@ -341,6 +346,7 @@ bool DFXJSNApi::StopHeapTracking([[maybe_unused]] const EcmaVM *vm, [[maybe_unus
 {
 #if defined(ECMASCRIPT_SUPPORT_SNAPSHOT)
     ecmascript::base::BlockHookScope blockScope;
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     bool result = false;
     ecmascript::HeapProfilerInterface *heapProfile = ecmascript::HeapProfilerInterface::GetInstance(
         const_cast<EcmaVM *>(vm));
@@ -406,6 +412,7 @@ void DFXJSNApi::SetOverLimit(EcmaVM *vm, bool state)
 
 void DFXJSNApi::GetHeapPrepare(const EcmaVM *vm)
 {
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     const_cast<ecmascript::Heap *>(vm->GetHeap())->GetHeapPrepare();
 }
 

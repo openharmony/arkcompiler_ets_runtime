@@ -55,66 +55,73 @@ let obj = {
 };
 
 // Check without params
-print(Math.expm1()); // NaN
+print(Math.expm1()); //: NaN
 
 // Check with single param
-printZero(Math.expm1(0)); // 0
-printZero(Math.expm1(-0)); // -0
-print(Math.expm1(1)); // 1.718281828459045
-print(Math.expm1(-100)); // -1
-print(Math.expm1(100)); // 2.6881171418161356e+43
-print(Math.expm1(10e-10)); // 1.0000000005000001e-9
+printZero(Math.expm1(0)); //: 0
+printZero("1/x: " + 1 / Math.expm1(-0)); //: 1/x: -Infinity
+print(Math.expm1(1)); //: 1.718281828459045
+print(Math.expm1(-100)); //: -1
+print(Math.expm1(100)); //: 2.6881171418161356e+43
+print(Math.expm1(10e-10)); //: 1.0000000005000001e-9
 
 // Check with special float params
-print(Math.expm1(-Infinity)); // -1
-print(Math.expm1(Infinity)); // Infinity
-print(Math.expm1(NaN)); // NaN
+print(Math.expm1(-Infinity)); //: -1
+print(Math.expm1(Infinity)); //: Infinity
+print(Math.expm1(NaN)); //: NaN
 
 // Check with 2 params
-print(Math.expm1(1, 1)); // 1.718281828459045
+print(Math.expm1(1, 1)); //: 1.718281828459045
 
 // Check with 3 params
-print(Math.expm1(1, 1, 1)); // 1.718281828459045
+print(Math.expm1(1, 1, 1)); //: 1.718281828459045
 
 // Check with 4 params
-print(Math.expm1(1, 1, 1, 1)); // 1.718281828459045
+print(Math.expm1(1, 1, 1, 1)); //: 1.718281828459045
 
 // Check with 5 params
-print(Math.expm1(1, 1, 1, 1, 1)); // 1.718281828459045
+print(Math.expm1(1, 1, 1, 1, 1)); //: 1.718281828459045
 
 try {
-    print(Math.expm1(1)); // 1.718281828459045
+    print(Math.expm1(1)); //: 1.718281828459045
 } catch(e) {}
 
 // Replace standart builtin
 let trueExpm1 = Math.expm1
 Math.expm1 = replace
-print(Math.expm1(111)); // 111
+print(Math.expm1(111)); //: 111
 Math.expm1 = trueExpm1
 
-print(Math.expm1(1)); // 1.718281828459045
+print(Math.expm1(1)); //: 1.718281828459045
 
 // Call standart builtin with non-number param
-// Check Type: NotNumber1
-printExpm1("1"); // 1.718281828459045
-// Check Type: NotNumber1
-printExpm1("NaN"); // NaN
-// Check Type: NotNumber1
-printExpm1("abc"); // NaN
+//aot: [trace] Check Type: NotNumber1
+printExpm1("1"); //: 1.718281828459045
+//aot: [trace] Check Type: NotNumber1
+printExpm1("NaN"); //: NaN
+//aot: [trace] Check Type: NotNumber1
+printExpm1("abc"); //: NaN
 
 if (ArkTools.isAOTCompiled(printExpm1)) {
     // Replace standard builtin after call to standard builtin was profiled
     Math.expm1 = replace
 }
 
-// Check Type: NotCallTarget1
-printExpm1(1); // 1.718281828459045
-// Check Type: NotCallTarget1
-printExpm1(2); // 6.38905609893065
-// Check Type: NotCallTarget1
-printExpm1("1"); // 1.718281828459045
-// Check Type: NotCallTarget1
-printExpm1("2"); // 6.38905609893065
+printExpm1(1); //pgo: 1.718281828459045
+//aot: [trace] Check Type: NotCallTarget1
+//aot: 1
+
+printExpm1(2); //pgo: 6.38905609893065
+//aot: [trace] Check Type: NotCallTarget1
+//aot: 2
+
+printExpm1("1"); //pgo: 1.718281828459045
+//aot: [trace] Check Type: NotCallTarget1
+//aot: 1
+
+printExpm1("2"); //pgo: 6.38905609893065
+//aot: [trace] Check Type: NotCallTarget1
+//aot: 2
 
 Math.expm1 = trueExpm1
 
@@ -123,14 +130,15 @@ try {
     print(Math.expm1(1)); //: 1.718281828459045
     print(Math.expm1(1, 2)); //: 1.718281828459045
     printExpm1(1, 2); //: 1.718281828459045
-    // Check Type: NotNumber1
+    //aot: [trace] Check Type: NotNumber1
     printExpm1("abc", 3e3); //: NaN
 } catch (e) {
 }
 
-// Check Type: NotNumber1
-printExpm1(obj); // -0.9999999998973812
-// Check Type: NotNumber1
-printExpm1(doubleObj); // 13.879731724872837
-// Check Type: NotNumber1
-printExpm1(nanObj); // NaN
+//aot: [trace] Check Type: NotNumber1
+//: obj.valueOf
+printExpm1(obj); //: -0.9999999998973812
+//aot: [trace] Check Type: NotNumber1
+printExpm1(doubleObj); //: 13.879731724872837
+//aot: [trace] Check Type: NotNumber1
+printExpm1(nanObj); //: NaN

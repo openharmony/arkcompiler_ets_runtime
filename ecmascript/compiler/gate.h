@@ -192,12 +192,13 @@ public:
     void CheckDependInput() const;
     void CheckRootInput() const;
     void CheckFrameStateInput() const;
-    void CheckStateOutput() const;
+    void CheckStateOutput(const std::string& methodName) const;
+    std::string GetValueInAndOut(bool inListPreview = false, size_t highlightIdx = -1) const;
     void CheckBranchOutput() const;
     void CheckNOP() const;
     void CheckSelector() const;
     void CheckRelay() const;
-    void Verify(bool isArch64) const;
+    void Verify(bool isArch64, const std::string& methodName) const;
     [[nodiscard]] MarkCode GetMark(TimeStamp stamp) const;
     void SetMark(MarkCode mark, TimeStamp stamp);
     MachineType GetMachineType() const

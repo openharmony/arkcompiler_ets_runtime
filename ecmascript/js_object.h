@@ -523,7 +523,7 @@ public:
                                        const JSHandle<JSTaggedValue> &key, const JSHandle<JSTaggedValue> &receiver);
 
     static OperationResult GetProperty(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
-                                       const JSHandle<JSTaggedValue> &key);
+                                       const JSHandle<JSTaggedValue> &key, SCheckMode sCheckMode = SCheckMode::CHECK);
 
     static OperationResult GetProperty(JSThread *thread, const JSHandle<JSTaggedValue> &obj, uint32_t index);
 
@@ -533,7 +533,8 @@ public:
                             const JSHandle<JSTaggedValue> &value, bool mayThrow = false);
 
     static bool SetProperty(JSThread *thread, const JSHandle<JSTaggedValue> &obj, const JSHandle<JSTaggedValue> &key,
-                            const JSHandle<JSTaggedValue> &value, bool mayThrow = false);
+                            const JSHandle<JSTaggedValue> &value, bool mayThrow = false,
+                            SCheckMode checkMode = SCheckMode::CHECK);
 
     static bool SetProperty(JSThread *thread, const JSHandle<JSTaggedValue> &obj, const JSHandle<JSTaggedValue> &key,
                             const JSHandle<JSTaggedValue> &value, const JSHandle<JSTaggedValue> &receiver,
@@ -742,6 +743,11 @@ public:
     static void TryOptimizeAsFastElements(const JSThread *thread, JSHandle<JSObject> obj);
     static void OptimizeAsFastProperties(const JSThread *thread, JSHandle<JSObject> obj);
 
+    static void SetSProperties(JSThread *thread,
+                               JSHandle<JSObject> obj,
+                               JSHandle<JSHClass> hclass,
+                               const std::vector<PropertyDescriptor> &descs);
+
 protected:
     static void ElementsToDictionary(const JSThread *thread, JSHandle<JSObject> obj);
 
@@ -752,6 +758,7 @@ private:
     friend class ObjectFastOperator;
     friend class ICRuntimeStub;
     friend class RuntimeStubs;
+    friend class JSSharedArray;
 
     PropertyBox* GetGlobalPropertyBox(JSTaggedValue key);
     static bool PUBLIC_API AddElementInternal(

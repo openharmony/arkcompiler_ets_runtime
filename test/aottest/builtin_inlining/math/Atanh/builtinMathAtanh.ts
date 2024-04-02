@@ -23,38 +23,39 @@ let len:number = 1;
 
 // Check without params
 len = Math.atanh();
-print(len); // NaN
+print(len); //: NaN
 
 len = Math.atanh(NaN);
-print(len); // NaN
+print(len); //: NaN
 
 // Check with single param
 len = Math.atanh(0);
-print(len); // 0 
+print(len); //: 0
 
 // Check with single param
 len = Math.atanh(0.5);
-print(len); // 0.5493061443340548
+print(len); //: 0.5493061443340548
 
 // Check with single param
 len = Math.atanh(-1);
-print(len); // -Infinity
+print(len); //: -Infinity
 
 // Check with single param
 len = Math.atanh(1);
-print(len); // Infinity
+print(len); //: Infinity
 
 // Check with single param
 len = Math.atanh(10);
-print(len); // NaN
+print(len); //: NaN
 
 // Replace standart builtin
 let true_atanh = Math.atanh
 Math.atanh = replace
 len = Math.atanh(111);
-print(len);
+print(len); //: 111
 
 // Call standart builtin with non-number param
 Math.atanh = true_atanh
-len = Math.atanh("NaN"); // deopt
-print(len); // NaN
+len = Math.atanh("abc"); // deopt
+//aot: [trace] Check Type: NotNumber1
+print(len); //: NaN

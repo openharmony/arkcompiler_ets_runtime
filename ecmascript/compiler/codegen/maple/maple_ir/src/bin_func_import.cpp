@@ -204,6 +204,7 @@ BaseNode *BinaryMplImport::ImportExpression(MIRFunction *func)
         case OP_addroffunc: {
             PUIdx puIdx = ImportFuncViaSym(func);
             MIRFunction *f = GlobalTables::GetFunctionTable().GetFuncTable()[puIdx];
+            CHECK_FATAL(f != nullptr, "null ptr");
             f->GetFuncSymbol()->SetAppearsInCode(true);
             AddroffuncNode *addrNode = mod.CurFuncCodeMemPool()->New<AddroffuncNode>(typ, puIdx);
             return addrNode;
@@ -568,6 +569,7 @@ BlockNode *BinaryMplImport::ImportBlockNode(MIRFunction *func)
                 CallNode *s = func->GetCodeMemPool()->New<CallNode>(mod, op);
                 s->SetPUIdx(ImportFuncViaSym(func));
                 MIRFunction *f = GlobalTables::GetFunctionTable().GetFunctionFromPuidx(s->GetPUIdx());
+                CHECK_FATAL(f != nullptr, "null ptr");
                 f->GetFuncSymbol()->SetAppearsInCode(true);
                 numOpr = static_cast<uint8>(ReadNum());
                 s->SetNumOpnds(numOpr);
@@ -587,6 +589,7 @@ BlockNode *BinaryMplImport::ImportBlockNode(MIRFunction *func)
                 CallNode *s = func->GetCodeMemPool()->New<CallNode>(mod, op);
                 s->SetPUIdx(ImportFuncViaSym(func));
                 MIRFunction *f = GlobalTables::GetFunctionTable().GetFunctionFromPuidx(s->GetPUIdx());
+                CHECK_FATAL(f != nullptr, "null ptr");
                 f->GetFuncSymbol()->SetAppearsInCode(true);
                 ImportReturnValues(func, &s->GetReturnVec());
                 numOpr = static_cast<uint8>(ReadNum());
@@ -606,6 +609,7 @@ BlockNode *BinaryMplImport::ImportBlockNode(MIRFunction *func)
                 CallNode *s = func->GetCodeMemPool()->New<CallNode>(mod, op);
                 s->SetPUIdx(ImportFuncViaSym(func));
                 MIRFunction *f = GlobalTables::GetFunctionTable().GetFunctionFromPuidx(s->GetPUIdx());
+                CHECK_FATAL(f != nullptr, "null ptr");
                 f->GetFuncSymbol()->SetAppearsInCode(true);
                 s->SetTyIdx(ImportType());
                 numOpr = static_cast<uint8>(ReadNum());
@@ -620,6 +624,7 @@ BlockNode *BinaryMplImport::ImportBlockNode(MIRFunction *func)
                 CallNode *s = func->GetCodeMemPool()->New<CallNode>(mod, op);
                 s->SetPUIdx(ImportFuncViaSym(func));
                 MIRFunction *f = GlobalTables::GetFunctionTable().GetFunctionFromPuidx(s->GetPUIdx());
+                CHECK_FATAL(f != nullptr, "null ptr");
                 f->GetFuncSymbol()->SetAppearsInCode(true);
                 s->SetTyIdx(ImportType());
                 ImportReturnValues(func, &s->GetReturnVec());
@@ -926,6 +931,7 @@ void BinaryMplImport::ReadFunctionBodyField()
     for (int64 i = 0; i < size; ++i) {
         PUIdx puIdx = ImportFunction();
         MIRFunction *fn = GlobalTables::GetFunctionTable().GetFunctionFromPuidx(puIdx);
+        CHECK_FATAL(fn != nullptr, "null ptr");
         mod.SetCurFunction(fn);
         fn->GetFuncSymbol()->SetAppearsInCode(true);
         localSymTab.clear();

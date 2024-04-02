@@ -73,9 +73,7 @@
 #include "ecmascript/js_api/js_api_vector_iterator.h"
 #include "ecmascript/js_arguments.h"
 #include "ecmascript/js_array.h"
-#include "ecmascript/js_shared_array.h"
 #include "ecmascript/js_array_iterator.h"
-#include "ecmascript/js_shared_array_iterator.h"
 #include "ecmascript/js_arraybuffer.h"
 #include "ecmascript/js_async_from_sync_iterator.h"
 #include "ecmascript/js_async_function.h"
@@ -126,6 +124,8 @@
 #include "ecmascript/require/js_cjs_module.h"
 #include "ecmascript/require/js_cjs_require.h"
 #include "ecmascript/shared_mm/shared_mm.h"
+#include "ecmascript/shared_objects/js_shared_array.h"
+#include "ecmascript/shared_objects/js_shared_array_iterator.h"
 #include "ecmascript/shared_objects/js_shared_map.h"
 #include "ecmascript/shared_objects/js_shared_map_iterator.h"
 #include "ecmascript/shared_objects/js_shared_set.h"
@@ -1200,6 +1200,7 @@ void ObjectFactory::InitializeJSObject(const JSHandle<JSObject> &obj, const JSHa
             JSSharedArray::Cast(*obj)->SetLength(0);
             JSSharedArray::Cast(*obj)->SetTrackInfo(thread_, JSTaggedValue::Undefined());
             ASSERT(!obj->GetJSHClass()->IsDictionaryMode());
+            JSSharedArray::Cast(*obj)->SetModRecord(0);
             auto accessor = thread_->GlobalConstants()->GetSharedArrayLengthAccessor();
             JSSharedArray::Cast(*obj)->SetPropertyInlinedProps(thread_, JSArray::LENGTH_INLINE_PROPERTY_INDEX,
                                                                accessor);
@@ -1803,7 +1804,10 @@ JSHandle<JSFunction> ObjectFactory::NewJSFunctionByHClass(const JSHandle<Method>
     clazz->SetExtensible(true);
     JSFunction::InitializeJSFunction(thread_, function, method->GetFunctionKind());
     function->SetMethod(thread_, method);
-    if (method->IsAotWithCallField()) {
+    if (method->IsJitCompiledCode()) {
+        // jit install code also set aot callfield, should clear flag when new function
+        method->ClearJitCompiledCodeFlags();
+    } else if (method->IsAotWithCallField()) {
         thread_->GetEcmaVM()->GetAOTFileManager()->
             SetAOTFuncEntry(method->GetJSPandaFile(), *function, *method);
     }
@@ -2450,11 +2454,30 @@ JSHandle<TaggedArray> ObjectFactory::NewAndCopyTaggedArray(JSHandle<TaggedArray>
     ASSERT(oldLength <= newLength);
     MemSpaceType spaceType = newLength < LENGTH_THRESHOLD ? MemSpaceType::SEMI_SPACE : MemSpaceType::OLD_SPACE;
     JSHandle<TaggedArray> dstElements = NewTaggedArrayWithoutInit(newLength, spaceType);
+    dstElements->SetExtraLength(srcElements->GetExtraLength());
     if (newLength == 0) {
         return dstElements;
     }
     for (uint32_t i = 0; i < oldLength; i++) {
         dstElements->Set(thread_, i, srcElements->Get(i + k));
+    }
+    for (uint32_t i = oldLength; i < newLength; i++) {
+        dstElements->Set(thread_, i, JSTaggedValue::Hole());
+    }
+    return dstElements;
+}
+
+JSHandle<TaggedArray> ObjectFactory::NewAndCopyTaggedArraySkipBarrier(JSHandle<TaggedArray> &srcElements,
+    uint32_t newLength, uint32_t oldLength, uint32_t k)
+{
+    ASSERT(oldLength <= newLength);
+    MemSpaceType spaceType = newLength < LENGTH_THRESHOLD ? MemSpaceType::SEMI_SPACE : MemSpaceType::OLD_SPACE;
+    JSHandle<TaggedArray> dstElements = NewTaggedArrayWithoutInit(newLength, spaceType);
+    if (newLength == 0) {
+        return dstElements;
+    }
+    for (uint32_t i = 0; i < oldLength; i++) {
+        dstElements->Set<false>(thread_, i, srcElements->Get(i + k));
     }
     for (uint32_t i = oldLength; i < newLength; i++) {
         dstElements->Set(thread_, i, JSTaggedValue::Hole());
@@ -2500,7 +2523,8 @@ JSHandle<TaggedArray> ObjectFactory::NewAndCopyTaggedArrayByObject(JSHandle<JSOb
     ASSERT(oldLength <= newLength);
     MemSpaceType spaceType = newLength < LENGTH_THRESHOLD ? MemSpaceType::SEMI_SPACE : MemSpaceType::OLD_SPACE;
     JSHandle<TaggedArray> dstElements(NewTaggedArrayWithoutInit(newLength, spaceType));
-    JSHandle<TaggedArray> srcElements(thread_, thisObjHandle->GetElements());
+    TaggedArray *srcElements = TaggedArray::Cast(thisObjHandle->GetElements().GetTaggedObject());
+    dstElements->SetExtraLength(srcElements->GetExtraLength());
     if (newLength == 0) {
         return dstElements;
     }
@@ -2521,7 +2545,8 @@ JSHandle<MutantTaggedArray> ObjectFactory::NewAndCopyMutantTaggedArrayByObject(J
     ASSERT(oldLength <= newLength);
     MemSpaceType spaceType = newLength < LENGTH_THRESHOLD ? MemSpaceType::SEMI_SPACE : MemSpaceType::OLD_SPACE;
     JSHandle<MutantTaggedArray> dstElements(NewMutantTaggedArrayWithoutInit(newLength, spaceType));
-    JSHandle<MutantTaggedArray> srcElements(thread_, thisObjHandle->GetElements());
+    MutantTaggedArray *srcElements = MutantTaggedArray::Cast(thisObjHandle->GetElements().GetTaggedObject());
+    dstElements->SetExtraLength(srcElements->GetExtraLength());
     if (newLength == 0) {
         return dstElements;
     }
@@ -3018,6 +3043,16 @@ JSHandle<EcmaString> ObjectFactory::GetStringFromStringTableNonMovable(const uin
     return JSHandle<EcmaString>(thread_, stringTable->CreateAndInternStringNonMovable(vm_, utf8Data, utf8Len));
 }
 
+JSHandle<EcmaString> ObjectFactory::GetStringFromStringTableReadOnly(const uint8_t *utf8Data, uint32_t utf8Len) const
+{
+    NewObjectHook();
+    if (utf8Len == 0) {
+        return GetEmptyString();
+    }
+    auto stringTable = vm_->GetEcmaStringTable();
+    return JSHandle<EcmaString>(thread_, stringTable->CreateAndInternStringReadOnly(vm_, utf8Data, utf8Len));
+}
+
 JSHandle<EcmaString> ObjectFactory::GetStringFromStringTable(const uint16_t *utf16Data, uint32_t utf16Len,
                                                              bool canBeCompress) const
 {
@@ -3316,7 +3351,6 @@ JSHandle<JSSharedArrayIterator> ObjectFactory::NewJSSharedArrayIterator(const JS
     JSHandle<JSSharedArrayIterator> iter(NewJSObject(hclassHandle));
     iter->GetJSHClass()->SetExtensible(true);
     iter->SetIteratedArray(thread_, array);
-    iter->SetExpectedModCount(JSHandle<JSSharedArray>::Cast(array)->GetModCount());
     iter->SetNextIndex(0);
     iter->SetIterationKind(kind);
     return iter;
@@ -3996,6 +4030,13 @@ JSHandle<EcmaString> ObjectFactory::NewFromASCIINonMovable(std::string_view data
     auto utf8Data = reinterpret_cast<const uint8_t *>(data.data());
     ASSERT(EcmaStringAccessor::CanBeCompressed(utf8Data, data.length()));
     return GetStringFromStringTableNonMovable(utf8Data, data.length());
+}
+
+JSHandle<EcmaString> ObjectFactory::NewFromASCIIReadOnly(std::string_view data)
+{
+    auto utf8Data = reinterpret_cast<const uint8_t *>(data.data());
+    ASSERT(EcmaStringAccessor::CanBeCompressed(utf8Data, data.length()));
+    return GetStringFromStringTableReadOnly(utf8Data, data.length());
 }
 
 JSHandle<EcmaString> ObjectFactory::NewFromUtf8(std::string_view data)

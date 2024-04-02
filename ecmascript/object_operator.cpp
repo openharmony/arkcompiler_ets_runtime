@@ -28,13 +28,13 @@
 #include "ecmascript/js_hclass-inl.h"
 #include "ecmascript/js_object-inl.h"
 #include "ecmascript/js_primitive_ref.h"
-#include "ecmascript/js_shared_array.h"
 #include "ecmascript/layout_info.h"
 #include "ecmascript/mem/c_string.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/object_fast_operator-inl.h"
 #include "ecmascript/property_attributes.h"
 #include "ecmascript/property_detector-inl.h"
+#include "ecmascript/shared_objects/js_shared_array.h"
 #include "ecmascript/tagged_dictionary.h"
 
 namespace panda::ecmascript {

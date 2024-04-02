@@ -64,9 +64,7 @@
 #include "ecmascript/js_api/js_api_vector.h"
 #include "ecmascript/js_api/js_api_vector_iterator.h"
 #include "ecmascript/js_array.h"
-#include "ecmascript/js_shared_array.h"
 #include "ecmascript/js_array_iterator.h"
-#include "ecmascript/js_shared_array_iterator.h"
 #include "ecmascript/js_arraybuffer.h"
 #include "ecmascript/js_async_from_sync_iterator.h"
 #include "ecmascript/js_async_function.h"
@@ -111,6 +109,8 @@
 #include "ecmascript/require/js_cjs_module_cache.h"
 #include "ecmascript/require/js_cjs_require.h"
 #include "ecmascript/require/js_cjs_exports.h"
+#include "ecmascript/shared_objects/js_shared_array.h"
+#include "ecmascript/shared_objects/js_shared_array_iterator.h"
 #include "ecmascript/shared_objects/js_shared_map.h"
 #include "ecmascript/shared_objects/js_shared_map_iterator.h"
 #include "ecmascript/shared_objects/js_shared_set.h"
@@ -2255,7 +2255,6 @@ void JSSharedArrayIterator::Dump(std::ostream &os) const
 {
     JSSharedArray *array = JSSharedArray::Cast(GetIteratedArray().GetTaggedObject());
     os << " - length: " << std::dec << array->GetArrayLength() << "\n";
-    os << " - expectedModCount: " << std::dec << GetExpectedModCount() << "\n";
     os << " - nextIndex: " << std::dec << GetNextIndex() << "\n";
     os << " - IterationKind: " << std::dec << static_cast<int>(GetIterationKind()) << "\n";
     JSObject::Dump(os);
@@ -4808,7 +4807,7 @@ void TaggedHashArray::Dump(std::ostream &os) const
 void TaggedHashArray::DumpForSnapshot(std::vector<Reference> &vec) const
 {
     DISALLOW_GARBAGE_COLLECTION;
-    int capacity = GetLength();
+    int capacity = static_cast<int>(GetLength());
     vec.reserve(vec.size() + capacity);
     for (int hashIndex = 0; hashIndex < capacity; hashIndex++) {
         JSTaggedValue value = Get(hashIndex);
@@ -5237,7 +5236,7 @@ void JSArray::DumpForSnapshot(std::vector<Reference> &vec) const
 
 void JSSharedArray::DumpForSnapshot(std::vector<Reference> &vec) const
 {
-    vec.emplace_back("ModCount: ", JSTaggedValue(GetModCount()));
+    vec.emplace_back("ModRecord: ", JSTaggedValue(GetModRecord()));
     JSObject::DumpForSnapshot(vec);
 }
 
@@ -5389,7 +5388,6 @@ void JSSharedArrayIterator::DumpForSnapshot(std::vector<Reference> &vec) const
     JSSharedArray *array = JSSharedArray::Cast(GetIteratedArray().GetTaggedObject());
     vec.emplace_back("iteratedarray", GetIteratedArray());
     array->DumpForSnapshot(vec);
-    vec.emplace_back(CString("expectedModCount"), JSTaggedValue(GetExpectedModCount()));
     vec.emplace_back(CString("NextIndex"), JSTaggedValue(GetNextIndex()));
     vec.emplace_back(CString("IterationKind"), JSTaggedValue(static_cast<int>(GetIterationKind())));
     JSObject::DumpForSnapshot(vec);

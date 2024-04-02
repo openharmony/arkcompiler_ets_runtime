@@ -20,7 +20,7 @@
 #include "ecmascript/js_array.h"
 #include "ecmascript/linked_hash_table.h"
 #include "ecmascript/object_factory.h"
-#include "ecmascript/shared_objects/concurrent_modification_scope.h"
+#include "ecmascript/shared_objects/concurrent_api_scope.h"
 #include "ecmascript/shared_objects/js_shared_set.h"
 
 namespace panda::ecmascript {
@@ -45,7 +45,7 @@ JSTaggedValue JSSharedSetIterator::NextInternal(JSThread *thread, JSHandle<JSTag
         return JSIterator::CreateIterResultObject(thread, undefinedHandle, true).GetTaggedValue();
     }
     JSHandle<JSSharedSet> iteratedSet(thread, iter->GetIteratedSet());
-    [[maybe_unused]] ConcurrentModScope<JSSharedSet> scope(thread, *iteratedSet);
+    [[maybe_unused]] ConcurrentApiScope<JSSharedSet> scope(thread, *iteratedSet);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception());
     JSHandle<LinkedHashSet> set(thread, iteratedSet->GetLinkedSet());
 

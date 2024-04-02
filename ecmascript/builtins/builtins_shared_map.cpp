@@ -20,7 +20,7 @@
 #include "ecmascript/interpreter/interpreter.h"
 #include "ecmascript/linked_hash_table.h"
 #include "ecmascript/object_factory.h"
-#include "ecmascript/shared_objects/concurrent_modification_scope.h"
+#include "ecmascript/shared_objects/concurrent_api_scope.h"
 #include "ecmascript/shared_objects/js_shared_map.h"
 #include "ecmascript/shared_objects/js_shared_map_iterator.h"
 
@@ -31,11 +31,12 @@ JSTaggedValue BuiltinsSharedMap::Constructor(EcmaRuntimeCallInfo *argv)
     JSThread *thread = argv->GetThread();
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    // 1.If NewTarget is undefined, throw a TypeError exception
+    // 1. If NewTarget is undefined, throw exception
     JSHandle<JSTaggedValue> newTarget = GetNewTarget(argv);
     if (newTarget->IsUndefined()) {
-        // throw type error
-        THROW_TYPE_ERROR_AND_RETURN(thread, "new target can't be undefined", JSTaggedValue::Exception());
+        JSTaggedValue error = containers::ContainerError::BusinessError(
+            thread, containers::ErrorFlag::IS_NULL_ERROR, "The ArkTS Map's constructor cannot be directly invoked.");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
     // 2.Let Map be OrdinaryCreateFromConstructor(NewTarget, "%MapPrototype%", «‍[[MapData]]» ).
     JSHandle<JSTaggedValue> constructor = GetConstructor(argv);
@@ -75,7 +76,9 @@ JSTaggedValue BuiltinsSharedMap::Set(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSSharedMap()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not SharedMap", JSTaggedValue::Exception());
+        auto error = containers::ContainerError::BusinessError(thread, containers::ErrorFlag::BIND_ERROR,
+                                                               "The set method cannot be bound.");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
     JSHandle<JSTaggedValue> key = GetCallArg(argv, 0);
     JSHandle<JSTaggedValue> value = GetCallArg(argv, 1);
@@ -91,7 +94,9 @@ JSTaggedValue BuiltinsSharedMap::Clear(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSSharedMap()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not SharedMap", JSTaggedValue::Exception());
+        auto error = containers::ContainerError::BusinessError(thread, containers::ErrorFlag::BIND_ERROR,
+                                                               "The clear method cannot be bound.");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
     JSHandle<JSSharedMap> map(self);
     JSSharedMap::Clear(thread, map);
@@ -105,7 +110,9 @@ JSTaggedValue BuiltinsSharedMap::Delete(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSSharedMap()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not SharedMap", JSTaggedValue::Exception());
+        auto error = containers::ContainerError::BusinessError(thread, containers::ErrorFlag::BIND_ERROR,
+                                                               "The delete method cannot be bound.");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
     JSHandle<JSSharedMap> map(self);
     JSHandle<JSTaggedValue> key = GetCallArg(argv, 0);
@@ -120,7 +127,9 @@ JSTaggedValue BuiltinsSharedMap::Has(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> self(GetThis(argv));
     if (!self->IsJSSharedMap()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not SharedMap", JSTaggedValue::Exception());
+        auto error = containers::ContainerError::BusinessError(thread, containers::ErrorFlag::BIND_ERROR,
+                                                               "The has method cannot be bound.");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
     JSSharedMap *jsMap = JSSharedMap::Cast(self.GetTaggedValue().GetTaggedObject());
     JSHandle<JSTaggedValue> key = GetCallArg(argv, 0);
@@ -135,7 +144,9 @@ JSTaggedValue BuiltinsSharedMap::Get(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> self(GetThis(argv));
     if (!self->IsJSSharedMap()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not SharedMap", JSTaggedValue::Exception());
+        auto error = containers::ContainerError::BusinessError(thread, containers::ErrorFlag::BIND_ERROR,
+                                                               "The get method cannot be bound.");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
     JSSharedMap *jsMap = JSSharedMap::Cast(self.GetTaggedValue().GetTaggedObject());
     JSHandle<JSTaggedValue> key = GetCallArg(argv, 0);
@@ -149,11 +160,13 @@ JSTaggedValue BuiltinsSharedMap::ForEach(EcmaRuntimeCallInfo *argv)
     BUILTINS_API_TRACE(thread, SharedMap, ForEach);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> self = GetThis(argv);
-    [[maybe_unused]] ConcurrentModScope<JSSharedMap> scope(thread, self.GetTaggedValue().GetTaggedObject());
-    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception());
     if (!self->IsJSSharedMap()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not SharedMap", JSTaggedValue::Exception());
+        auto error = containers::ContainerError::BusinessError(thread, containers::ErrorFlag::BIND_ERROR,
+                                                               "The forEach method cannot be bound.");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
+    [[maybe_unused]] ConcurrentApiScope<JSSharedMap> scope(thread, self.GetTaggedValue().GetTaggedObject());
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception());
     JSHandle<JSSharedMap> map(self);
     JSHandle<JSTaggedValue> func(GetCallArg(argv, 0));
     if (!func->IsCallable()) {
@@ -208,6 +221,11 @@ JSTaggedValue BuiltinsSharedMap::Entries(EcmaRuntimeCallInfo *argv)
     JSThread *thread = argv->GetThread();
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> self = GetThis(argv);
+    if (!self->IsJSSharedMap()) {
+        auto error = containers::ContainerError::BusinessError(thread, containers::ErrorFlag::BIND_ERROR,
+                                                               "The entries method cannot be bound.");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
+    }
     JSHandle<JSTaggedValue> iter = JSSharedMapIterator::CreateMapIterator(thread, self, IterationKind::KEY_AND_VALUE);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     return iter.GetTaggedValue();
@@ -219,6 +237,11 @@ JSTaggedValue BuiltinsSharedMap::Keys(EcmaRuntimeCallInfo *argv)
     JSThread *thread = argv->GetThread();
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> self = GetThis(argv);
+    if (!self->IsJSSharedMap()) {
+        auto error = containers::ContainerError::BusinessError(thread, containers::ErrorFlag::BIND_ERROR,
+                                                               "The keys method cannot be bound.");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
+    }
     JSHandle<JSTaggedValue> iter = JSSharedMapIterator::CreateMapIterator(thread, self, IterationKind::KEY);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     return iter.GetTaggedValue();
@@ -230,6 +253,11 @@ JSTaggedValue BuiltinsSharedMap::Values(EcmaRuntimeCallInfo *argv)
     JSThread *thread = argv->GetThread();
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> self = GetThis(argv);
+    if (!self->IsJSSharedMap()) {
+        auto error = containers::ContainerError::BusinessError(thread, containers::ErrorFlag::BIND_ERROR,
+                                                               "The values method cannot be bound.");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
+    }
     JSHandle<JSTaggedValue> iter = JSSharedMapIterator::CreateMapIterator(thread, self, IterationKind::VALUE);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     return iter.GetTaggedValue();

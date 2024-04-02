@@ -1630,6 +1630,7 @@ bool CopyRegProp::IsValidCopyProp(const RegOperand &dstReg, const RegOperand &sr
         srcll = regll->GetLiveInterval(srcRegNO);
         static_cast<AArch64LiveIntervalAnalysis *>(regll)->CheckInterference(*dstll, *srcll);
         BB *useBB = useInsn->GetBB();
+        DEBUG_ASSERT(useBB != nullptr, "useBB is null");
         if (dstll->IsConflictWith(srcRegNO) &&
             /* support override value when the version is not transphi */
             (((useBB->IsInPhiDef(srcRegNO) || useBB->IsInPhiList(srcRegNO)) && useBB->HasCriticalEdge()) ||

@@ -174,7 +174,7 @@ void AArch64ObjEmitter::HandleTextSectionFixup()
                 }
                 case kAArch64LdrPCRelLo12:
                 case kAArch64AddPCRelLo12: {
-                    int32 relOffset = fixup->GetRelOffset();
+                    int32 relOffset = static_cast<int32>(fixup->GetRelOffset());
                     uint32 offset = fixup->GetOffset();
                     uint64 type = R_AARCH64_ADD_ABS_LO12_NC;
                     int64 rodataSecSymIdx = ~rodataSection->GetIndex() + 1;
@@ -1380,7 +1380,7 @@ uint32 AArch64ObjEmitter::GenLoadPairInsn(const Insn &insn) const
         divisor = k4ByteSize;
     }
     uint32 imm7Mask = 0x7f;
-    opnd |= (static_cast<uint32>(offsetValue / divisor) & imm7Mask) << kShiftFifteen;
+    opnd |= (static_cast<uint32>((offsetValue / divisor) & imm7Mask) << kShiftFifteen);
 
     uint32 specialOpCode = 0;
     if (memOpnd.IsPostIndexed()) {
@@ -1459,7 +1459,7 @@ uint32 AArch64ObjEmitter::GenLoadPairFloatInsn(const Insn &insn) const
         divisor = k4ByteSize;
     }
     uint32 imm7Mask = 0x7f;
-    opnd |= (static_cast<uint32>(offsetValue / divisor) & imm7Mask) << kShiftFifteen;
+    opnd |= (static_cast<uint32>(static_cast<uint32>(offsetValue) / divisor) & imm7Mask) << kShiftFifteen;
 
     uint32 specialOpCode = 0;
     if (memOpnd.IsPostIndexed()) {
@@ -1496,7 +1496,7 @@ uint32 AArch64ObjEmitter::GenStorePairFloatInsn(const Insn &insn) const
         divisor = k4ByteSize;
     }
     uint32 imm7Mask = 0x7f;
-    opnd |= (static_cast<uint32>(offsetValue / divisor) & imm7Mask) << kShiftFifteen;
+    opnd |= (static_cast<uint32>(static_cast<uint32>(offsetValue) / divisor) & imm7Mask) << kShiftFifteen;
 
     uint32 specialOpCode = 0;
     if (memOpnd.IsPostIndexed()) {

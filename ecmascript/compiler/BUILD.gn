@@ -97,6 +97,7 @@ libark_jsoptimizer_sources = [
   "builtins/builtins_object_stub_builder.cpp",
   "builtins/builtins_string_stub_builder.cpp",
   "builtins/builtins_stubs.cpp",
+  "builtins/builtins_typedarray_stub_builder.cpp",
   "builtins/containers_stub_builder.cpp",
   "builtins/linked_hashtable_stub_builder.cpp",
   "builtins_lowering.cpp",
@@ -184,7 +185,6 @@ libark_jsoptimizer_sources = [
   "type_inference/pgo_type_infer_helper.cpp",
   "type_info_accessors.cpp",
   "type_recorder.cpp",
-  "typed_array_stub_builder.cpp",
   "typed_bytecode_lowering.cpp",
   "typed_hcr_lowering.cpp",
   "typed_native_inline_lowering.cpp",
@@ -429,6 +429,11 @@ ohos_shared_library("libark_jsoptimizer") {
 
   if (run_with_asan) {
     defines = [ "RUN_WITH_ASAN" ]
+  }
+
+  external_deps = []
+  if (enable_hilog) {
+    external_deps += [ "hilog:libhilog" ]
   }
 
   install_enable = false

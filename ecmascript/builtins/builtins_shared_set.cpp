@@ -21,7 +21,7 @@
 
 #include "ecmascript/linked_hash_table.h"
 #include "ecmascript/object_factory.h"
-#include "ecmascript/shared_objects/concurrent_modification_scope.h"
+#include "ecmascript/shared_objects/concurrent_api_scope.h"
 #include "ecmascript/shared_objects/js_shared_set.h"
 #include "ecmascript/shared_objects/js_shared_set_iterator.h"
 #include "ecmascript/tagged_array-inl.h"
@@ -34,11 +34,12 @@ JSTaggedValue BuiltinsSharedSet::Constructor(EcmaRuntimeCallInfo *argv)
     JSThread *thread = argv->GetThread();
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    // 1.If NewTarget is undefined, throw a TypeError exception
+    // 1. If NewTarget is undefined, throw exception
     JSHandle<JSTaggedValue> newTarget = GetNewTarget(argv);
     if (newTarget->IsUndefined()) {
-        // throw type error
-        THROW_TYPE_ERROR_AND_RETURN(thread, "new target can't be undefined", JSTaggedValue::Exception());
+        JSTaggedValue error = containers::ContainerError::BusinessError(
+            thread, containers::ErrorFlag::IS_NULL_ERROR, "The ArkTS Set's constructor cannot be directly invoked.");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
     // 2.Let set be OrdinaryCreateFromConstructor(NewTarget, "%SetPrototype%", «‍[[SetData]]» ).
     JSHandle<JSTaggedValue> constructor = GetConstructor(argv);
@@ -114,7 +115,9 @@ JSTaggedValue BuiltinsSharedSet::Add(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSSharedSet()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not SharedSet", JSTaggedValue::Exception());
+        auto error = containers::ContainerError::BusinessError(thread, containers::ErrorFlag::BIND_ERROR,
+                                                               "The add method cannot be bound.");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
     JSHandle<JSTaggedValue> value(GetCallArg(argv, 0));
     JSHandle<JSSharedSet> set(self);
@@ -130,7 +133,9 @@ JSTaggedValue BuiltinsSharedSet::Clear(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSSharedSet()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not SharedSet", JSTaggedValue::Exception());
+        auto error = containers::ContainerError::BusinessError(thread, containers::ErrorFlag::BIND_ERROR,
+                                                               "The clear method cannot be bound.");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
     JSHandle<JSSharedSet> set(self);
     JSSharedSet::Clear(thread, set);
@@ -145,7 +150,9 @@ JSTaggedValue BuiltinsSharedSet::Delete(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSSharedSet()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not SharedSet", JSTaggedValue::Exception());
+        auto error = containers::ContainerError::BusinessError(thread, containers::ErrorFlag::BIND_ERROR,
+                                                               "The delete method cannot be bound.");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
     JSHandle<JSSharedSet> set(self);
     JSHandle<JSTaggedValue> value = GetCallArg(argv, 0);
@@ -161,7 +168,9 @@ JSTaggedValue BuiltinsSharedSet::Has(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSSharedSet()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not SharedSet", JSTaggedValue::Exception());
+        auto error = containers::ContainerError::BusinessError(thread, containers::ErrorFlag::BIND_ERROR,
+                                                               "The has method cannot be bound.");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
     JSSharedSet* jsSet = JSSharedSet::Cast(self.GetTaggedValue().GetTaggedObject());
     JSHandle<JSTaggedValue> value = GetCallArg(argv, 0);
@@ -175,12 +184,14 @@ JSTaggedValue BuiltinsSharedSet::ForEach(EcmaRuntimeCallInfo *argv)
     BUILTINS_API_TRACE(thread, SharedSet, ForEach);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> self = GetThis(argv);
-    [[maybe_unused]] ConcurrentModScope<JSSharedSet> scope(thread, self.GetTaggedValue().GetTaggedObject());
+    if (!self->IsJSSharedSet()) {
+        auto error = containers::ContainerError::BusinessError(thread, containers::ErrorFlag::BIND_ERROR,
+                                                               "The forEach method cannot be bound.");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
+    }
+    [[maybe_unused]] ConcurrentApiScope<JSSharedSet> scope(thread, self.GetTaggedValue().GetTaggedObject());
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception());
 
-    if (!self->IsJSSharedSet()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not SharedSet", JSTaggedValue::Exception());
-    }
     JSHandle<JSSharedSet> set(self);
     JSHandle<JSTaggedValue> func(GetCallArg(argv, 0));
     if (!func->IsCallable()) {
@@ -235,6 +246,11 @@ JSTaggedValue BuiltinsSharedSet::Entries(EcmaRuntimeCallInfo *argv)
     JSThread *thread = argv->GetThread();
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> self = GetThis(argv);
+    if (!self->IsJSSharedSet()) {
+        auto error = containers::ContainerError::BusinessError(thread, containers::ErrorFlag::BIND_ERROR,
+                                                               "The entries method cannot be bound.");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
+    }
     JSHandle<JSTaggedValue> iter = JSSharedSetIterator::CreateSetIterator(thread, self, IterationKind::KEY_AND_VALUE);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Undefined());
     return iter.GetTaggedValue();
@@ -247,6 +263,11 @@ JSTaggedValue BuiltinsSharedSet::Values(EcmaRuntimeCallInfo *argv)
     JSThread *thread = argv->GetThread();
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> self = GetThis(argv);
+    if (!self->IsJSSharedSet()) {
+        auto error = containers::ContainerError::BusinessError(thread, containers::ErrorFlag::BIND_ERROR,
+                                                               "The values method cannot be bound.");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
+    }
     JSHandle<JSTaggedValue> iter = JSSharedSetIterator::CreateSetIterator(thread, self, IterationKind::VALUE);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Undefined());
     return iter.GetTaggedValue();

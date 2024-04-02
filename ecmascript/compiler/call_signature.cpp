@@ -1447,6 +1447,20 @@ DEF_CALL_SIGNATURE(StringGetEnd)
     callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
 }
 
+DEF_CALL_SIGNATURE(ClearJitCompiledCodeFlags)
+{
+    // 1 : 1 input parameters
+    CallSignature ClearJitCompiledCodeFlags("ClearJitCompiledCodeFlags", 0, 1,
+        ArgumentsOrder::DEFAULT_ORDER, VariableType::VOID());
+    *callSign = ClearJitCompiledCodeFlags;
+    std::array<VariableType, 1> params = { // 1 : 1 input parameters
+        VariableType::JS_POINTER(),
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetGCLeafFunction(true);
+    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
+}
+
 #define PUSH_CALL_ARGS_AND_DISPATCH_SIGNATURE_COMMON(name)                  \
     /* 1 : 1 input parameters */                                            \
     CallSignature signature(#name, 0, 1,                                    \
@@ -2413,5 +2427,24 @@ DEF_CALL_SIGNATURE(DeleteObjectProperty)
     };
     callSign->SetParameters(params.data());
     callSign->SetCallConv(CallSignature::CallConv::CCallConv);
+}
+
+DEF_CALL_SIGNATURE(CopyTypedArrayBuffer)
+{
+    // 5 : 5 input parameters
+    CallSignature CopyTypedArrayBuffer("CopyTypedArrayBuffer", 0, 5,
+        ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
+    *callSign = CopyTypedArrayBuffer;
+    // 5 : 5 input parameters
+    std::array<VariableType, 5> params = {
+        VariableType::JS_POINTER(),
+        VariableType::JS_POINTER(),
+        VariableType::INT32(),
+        VariableType::INT32(),
+        VariableType::INT32()
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetGCLeafFunction(true);
+    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
 }
 }  // namespace panda::ecmascript::kungfu

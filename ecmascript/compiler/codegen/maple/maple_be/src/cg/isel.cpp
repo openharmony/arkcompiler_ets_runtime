@@ -743,7 +743,7 @@ MirTypeInfo MPISel::GetMirTypeInfoFormFieldIdAndMirType(FieldID fieldId, MIRType
         DEBUG_ASSERT((mirType->IsMIRStructType() || mirType->IsMIRUnionType()), "non-structure");
         MIRStructType *structType = static_cast<MIRStructType *>(mirType);
         mirType = structType->GetFieldType(fieldId);
-        mirTypeInfo.offset = static_cast<uint32>(cgFunc->GetBecommon().GetFieldOffset(*structType, fieldId).first);
+        mirTypeInfo.offset = static_cast<uint64_t>(cgFunc->GetBecommon().GetFieldOffset(*structType, fieldId).first);
     }
     mirTypeInfo.primType = mirType->GetPrimType();
     // aggSize for AggType

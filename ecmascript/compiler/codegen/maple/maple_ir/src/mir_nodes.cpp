@@ -282,7 +282,7 @@ BlockNode *BlockNode::CloneTreeWithFreqs(MapleAllocator &allocator, std::unorder
         }
         toFreqs[nnode->GetStmtID()] = (newFreq > 0 || (numer == 0)) ? newFreq : 1;
         if (updateOp & kUpdateOrigFreq) {  // upateOp & 1 : update from
-            int64_t left = ((oldFreq - newFreq) > 0 || (oldFreq == 0)) ? (oldFreq - newFreq) : 1;
+            int64_t left = ((oldFreq - newFreq) > 0 || (oldFreq == 0)) ? static_cast<int64_t>(oldFreq - newFreq) : 1;
             fromFreqs[GetStmtID()] = static_cast<uint64_t>(left);
         }
     }
@@ -317,7 +317,8 @@ BlockNode *BlockNode::CloneTreeWithFreqs(MapleAllocator &allocator, std::unorder
                 toFreqs[newStmt->GetStmtID()] =
                     (newFreq > 0 || oldFreq == 0 || numer == 0) ? static_cast<uint64_t>(newFreq) : 1;
                 if (updateOp & kUpdateOrigFreq) {
-                    int64_t left = ((oldFreq - newFreq) > 0 || oldFreq == 0) ? (oldFreq - newFreq) : 1;
+                    int64_t left = ((oldFreq - newFreq) > 0 || oldFreq == 0) ?
+                        static_cast<int64_t>(oldFreq - newFreq) : 1;
                     fromFreqs[stmt.GetStmtID()] = static_cast<uint64_t>(left);
                 }
             }
@@ -763,6 +764,7 @@ void AddroffuncNode::Dump(int32) const
 {
     LogInfo::MapleLogger() << kOpcodeInfo.GetTableItemAt(GetOpCode()).name << " " << GetPrimTypeName(GetPrimType());
     MIRFunction *func = GlobalTables::GetFunctionTable().GetFunctionFromPuidx(puIdx);
+    CHECK_FATAL(func != nullptr, "null ptr");
     LogInfo::MapleLogger() << " &"
                            << GlobalTables::GetGsymTable().GetSymbolFromStidx(func->GetStIdx().Idx())->GetName();
 }
@@ -1127,6 +1129,7 @@ void DoloopNode::DumpDoVar(const MIRModule &mod) const
                                << " (\n";
     } else {
         const MIRSymbol *st = mod.CurFunction()->GetLocalOrGlobalSymbol(doVarStIdx);
+        CHECK_FATAL(st != nullptr, "null ptr");
         LogInfo::MapleLogger() << " %" << st->GetName() << " (\n";
     }
 }

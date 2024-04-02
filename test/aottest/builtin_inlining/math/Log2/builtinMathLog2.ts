@@ -23,48 +23,49 @@ let res:number = 0;
 
 // Check without params
 res = Math.log2();
-print(res); // NaN
+print(res); //: NaN
 
 // Check with single param
 res = Math.log2(-0);
-print(res); // -Infinity
+print(res); //: -Infinity
 
 res = Math.log2(+0);
-print(res); // -Infinity
+print(res); //: -Infinity
 
 res = Math.log2(-123);
-print(res); // NaN
+print(res); //: NaN
 
 res = Math.log2(2);
-print(res); // 1
+print(res); //: 1
 
 // Check with 2 params
 res = Math.log2(2, 2);
-print(res); // 1
+print(res); //: 1
 
 // Check with 3 params
 res = Math.log2(2, 2, 2);
-print(res); // 1
+print(res); //: 1
 
 // Check with 4 params
 res = Math.log2(2, 2, 2, 2);
-print(res); // 1
+print(res); //: 1
 
 // Check with 5 params
 res = Math.log2(2, 2, 2, 2, 2);
-print(res); // 1
+print(res); //: 1
 
 try {
-    print(Math.log2(2)); // 1
+    print(Math.log2(2)); //: 1
 } catch(e) {}
 
 // Replace standart builtin
 let true_log2 = Math.log2
 Math.log2 = replace
 res = Math.log2(111);
-print(res); // 111
+print(res); //: 111
 
 // Call standart builtin with non-number param
 Math.log2 = true_log2
+//aot: [trace] Check Type: NotNumber1
 res = Math.log2("-0"); // deopt
-print(res); // -Infinity
+print(res); //: -Infinity

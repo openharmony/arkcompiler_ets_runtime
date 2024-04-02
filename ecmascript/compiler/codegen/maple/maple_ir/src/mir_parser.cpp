@@ -919,6 +919,7 @@ bool MIRParser::ParseStmtCall(StmtNodePtr &stmt)
     callStmt->SetPUIdx(pIdx);
 
     MIRFunction *callee = GlobalTables::GetFunctionTable().GetFuncTable()[pIdx];
+    DEBUG_ASSERT(callee != nullptr, "callee is null in MIRParser::ParseStmtCall");
     callee->GetFuncSymbol()->SetAppearsInCode(true);
     if (callee->GetName() == "setjmp") {
         mod.CurFunction()->SetHasSetjmp();
@@ -2056,7 +2057,7 @@ bool MIRParser::ParseStmtBlockForReg()
     MIRType *mirType = GlobalTables::GetTypeTable().GetTypeFromTyIdx(tyidx);
     preg->SetMIRType(mirType);
     if (lexer.GetTokenKind() == TK_intconst) {
-        int64 theIntVal = lexer.GetTheIntVal();
+        int64 theIntVal = static_cast<int64>(lexer.GetTheIntVal());
         if (theIntVal != 0 && theIntVal != 1) {
             Error("parseDeclareReg failed");
             return false;
@@ -3371,6 +3372,7 @@ bool MIRParser::ParseConstAddrLeafExpr(MIRConstPtr &cexpr)
         auto *aof = static_cast<AddroffuncNode *>(expr);
         MIRFunction *f = GlobalTables::GetFunctionTable().GetFunctionFromPuidx(aof->GetPUIdx());
         MIRSymbol *fName = f->GetFuncSymbol();
+        DEBUG_ASSERT(fName != nullptr, "null ptr check");
         fName->SetAppearsInCode(true);
         TyIdx ptyIdx = fName->GetTyIdx();
         MIRPtrType ptrType(ptyIdx);

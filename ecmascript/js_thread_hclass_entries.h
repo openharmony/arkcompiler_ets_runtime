@@ -47,6 +47,8 @@ struct BuiltinHClassEntries {
         JSHClass *prototypeHClass = nullptr;
         // prototypeOfPrototypeHClass = HClass of X.prototype.prototype
         JSHClass *prototypeOfPrototypeHClass = nullptr;
+        //extraHClass . In typedArray means instanceHClassOnHeap
+        JSHClass *extraHClass = nullptr;
     };
     Entry entries[N_ENTRIES];
 
@@ -73,6 +75,12 @@ struct BuiltinHClassEntries {
     {
         size_t index = GetEntryIndex(type);
         return sizeof(Entry) * index + MEMBER_OFFSET(Entry, instanceHClass);
+    }
+
+    static size_t GetExtraHClassOffset(BuiltinTypeId type)
+    {
+        size_t index = GetEntryIndex(type);
+        return sizeof(Entry) * index + MEMBER_OFFSET(Entry, extraHClass);
     }
 
     static size_t GetPrototypeHClassOffset(BuiltinTypeId type)
