@@ -22,6 +22,7 @@
 #include "ecmascript/global_env.h"
 #include "ecmascript/pgo_profiler/pgo_profiler.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_layout.h"
+#include "ecmascript/shared_objects/js_shared_array.h"
 #include "ecmascript/tagged_array.h"
 #include "ecmascript/vtable.h"
 #include "ecmascript/ic/proto_change_details.h"
@@ -178,6 +179,22 @@ void JSHClass::Initialize(const JSThread *thread, uint32_t size, JSType type,
     InitializeWithDefaultValue(thread, size, type, inlinedProps);
     if (JSType::JS_OBJECT_FIRST <= type && type <= JSType::JS_OBJECT_LAST) {
         SetLayout(thread, layout);
+    }
+    switch (type) {
+        case JSType::JS_SHARED_OBJECT:
+        case JSType::JS_SHARED_FUNCTION:
+        case JSType::JS_SHARED_SET:
+        case JSType::JS_SHARED_MAP:
+        case JSType::JS_SHARED_ARRAY:
+        case JSType::BIGINT:
+        case JSType::LINE_STRING:
+        case JSType::CONSTANT_STRING:
+        case JSType::SLICED_STRING:
+        case JSType::TREE_STRING:
+            SetIsJSShared(true);
+            break;
+        default:
+            break;
     }
 }
 
@@ -492,7 +509,7 @@ void JSHClass::OptimizeAsFastProperties(const JSThread *thread, const JSHandle<J
     if (isDictionary) {
         ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
         JSHandle<LayoutInfo> layoutInfoHandle = factory->CreateLayoutInfo(numberOfProperties);
-        int numberOfInlinedProps = newJsHClass->GetInlinedProperties();
+        int numberOfInlinedProps = static_cast<int>(newJsHClass->GetInlinedProperties());
         for (int i = 0; i < numberOfProperties; i++) {
             JSTaggedValue key = properties->GetKey(indexOrder[i]);
             PropertyAttributes attributes = properties->GetAttributes(indexOrder[i]);
@@ -1309,4 +1326,97 @@ PropertyLookupResult JSHClass::LookupPropertyInBuiltinHClass(const JSThread *thr
     result.SetIsFound(false);
     return result;
 }
+
+JSHandle<JSHClass> JSHClass::CreateSHClass(JSThread *thread,
+                                           const std::vector<PropertyDescriptor> &descs,
+                                           bool isFunction)
+{
+    EcmaVM *vm = thread->GetEcmaVM();
+    ObjectFactory *factory = vm->GetFactory();
+
+    uint32_t length = descs.size();
+    uint32_t maxInline = isFunction ? JSSharedFunction::MAX_INLINE : JSSharedObject::MAX_INLINE;
+
+    JSHandle<JSHClass> hclass =
+        isFunction ? factory->NewSEcmaHClass(JSSharedFunction::SIZE, JSType::JS_SHARED_FUNCTION, length)
+                   : factory->NewSEcmaHClass(JSSharedObject::SIZE, JSType::JS_SHARED_OBJECT, length);
+    if (LIKELY(length <= maxInline)) {
+        auto layout = CreateSInlinedLayout(thread, descs);
+        hclass->SetLayout(thread, layout);
+        hclass->SetNumberOfProps(length);
+    } else {
+        auto layout = CreateSDictLayout(thread, descs);
+        hclass->SetLayout(thread, layout);
+        hclass->SetNumberOfProps(0);
+        hclass->SetIsDictionaryMode(true);
+    }
+
+    return hclass;
+}
+
+JSHandle<JSHClass> JSHClass::CreateSConstructorHClass(JSThread *thread, const std::vector<PropertyDescriptor> &descs)
+{
+    auto hclass = CreateSHClass(thread, descs, true);
+    hclass->SetClassConstructor(true);
+    hclass->SetConstructor(true);
+    return hclass;
+}
+
+JSHandle<JSHClass> JSHClass::CreateSPrototypeHClass(JSThread *thread, const std::vector<PropertyDescriptor> &descs)
+{
+    auto hclass = CreateSHClass(thread, descs);
+    hclass->SetClassPrototype(true);
+    hclass->SetIsPrototype(true);
+    return hclass;
+}
+
+JSHandle<LayoutInfo> JSHClass::CreateSInlinedLayout(JSThread *thread, const std::vector<PropertyDescriptor> &descs)
+{
+    EcmaVM *vm = thread->GetEcmaVM();
+    ObjectFactory *factory = vm->GetFactory();
+
+    auto length = descs.size();
+    auto layout = factory->CreateSLayoutInfo(length);
+    JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
+
+    for (uint32_t i = 0; i < length; ++i) {
+        key.Update(descs[i].GetKey());
+        PropertyAttributes attr =
+            PropertyAttributes::Default(descs[i].IsWritable(), descs[i].IsEnumerable(), descs[i].IsConfigurable());
+        if (UNLIKELY(descs[i].GetValue()->IsAccessor())) {
+            attr.SetIsAccessor(true);
+        }
+        attr.SetIsInlinedProps(true);
+        attr.SetRepresentation(Representation::TAGGED);
+        attr.SetSharedFieldType(descs[i].GetSharedFieldType());
+        attr.SetOffset(i);
+        layout->AddKey(thread, i, key.GetTaggedValue(), attr);
+    }
+
+    return layout;
+}
+
+JSHandle<NameDictionary> JSHClass::CreateSDictLayout(JSThread *thread, const std::vector<PropertyDescriptor> &descs)
+{
+    auto length = descs.size();
+    JSMutableHandle<NameDictionary> dict(
+        thread, NameDictionary::CreateInSharedHeap(thread, NameDictionary::ComputeHashTableSize(length)));
+    JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
+
+    auto globalConst = const_cast<GlobalEnvConstants *>(thread->GlobalConstants());
+    JSHandle<JSTaggedValue> value = globalConst->GetHandledUndefined();
+
+    for (uint32_t i = 0; i < length; ++i) {
+        key.Update(descs[i].GetKey());
+        PropertyAttributes attr =
+            PropertyAttributes::Default(descs[i].IsWritable(), descs[i].IsEnumerable(), descs[i].IsConfigurable());
+        attr.SetSharedFieldType(descs[i].GetSharedFieldType());
+        attr.SetBoxType(PropertyBoxType::UNDEFINED);
+        JSHandle<NameDictionary> newDict = NameDictionary::Put(thread, dict, key, value, attr);
+        dict.Update(newDict);
+    }
+
+    return dict;
+}
+
 }  // namespace panda::ecmascript

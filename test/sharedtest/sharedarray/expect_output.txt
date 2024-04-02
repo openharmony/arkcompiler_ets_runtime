@@ -1,0 +1,155 @@
+# Copyright (c) 2024 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+Start Test at
+An index of 2 returns 8
+An index of -2 returns 130
+An index of 200 returns undefined
+Start Test entries
+0,a
+1,b
+2,c
+Start Test keys
+0
+1
+2
+Start Test values
+a
+b
+c
+Start Test find
+12
+5
+Start Test includes
+true
+true
+false
+Start Test index
+3
+Start Test fill
+1,2,0,0
+1,5,5,5
+6,6,6,6
+Start Test pop
+poped: 44
+Start Test randomUpdate
+30
+Start Test randomGet
+5,12,8,130,44
+Start Test randomAdd
+add element by index access failed. err: BusinessError: The value of index is out of range., code: 10200001
+Start Test create
+Start Test from
+A,B,C
+E,,M,P,T,Y
+Create from sendable undefined element list success. arr: ,,1
+Start Test fromTemplate
+artTSTest1: 1,2,3
+arkTSTest2: 1,2,3
+Start Test length
+Array length: 3
+Array length after changed: 3
+Start Test push
+Elements pushed: 1,3,5,2,4,6
+Start Test concat
+1,3,5,2,4,6
+1,3,5,2,4,6,100,101,102
+Start Test join
+Fire,Air,Water
+FireAirWater
+Fire-Air-Water
+Start Test shift
+2
+undefined
+Start Test unshift
+5
+Start Test slice
+ant,bison,camel,duck,elephant
+camel,duck,elephant
+camel,duck
+Start Test sort
+Dec,Feb,Jan,March
+1,10000,21,30,4
+Start Test indexOf
+1
+4
+-1
+Start Test forEach
+a
+b
+c
+a[0] = a, a
+a[1] = b, b
+a[2] = c, c
+Start Test map
+2,8,18,32
+Start Test filter
+exuberant,destruction,present
+5
+8
+44
+Start Test reduce
+10
+20
+10 1 2 3 4
+Start Test staticCreate
+5,5,5,5,5,5,5,5,5,5
+Create with without initialValue failed. err: BusinessError: Parameter error.Not enough parameters., code: 401
+Create with negative length failed. err: BusinessError: Parameter error.Invalid array length., code: 401
+Create with exceed max length failed. err: BusinessError: Parameter error.Invalid array length., code: 401
+Start Test readonlyLength
+10
+10
+Start Test shrinkTo
+10
+Shrink to array.length: 5,5,5,5,5,5,5,5,5,5
+Shrink to array.length + 1: 5,5,5,5,5,5,5,5,5,5
+Shrink to -1 fail. err: BusinessError: Parameter error.Invalid array length., code: 401
+Shrink to invalid 0x100000000 fail. err: BusinessError: Parameter error.Invalid array length., code: 401
+1
+5
+Start Test growTo
+5
+ExtendTo to array.length: 5,5,5,5,5
+ExtendTo to array.length - 1: 5,5,5,5,5
+ExtendTo to 0: 5,5,5,5,5
+ExtendTo to -1 fail. err: BusinessError: Parameter error.Invalid array length., code: 401
+ExtendTo to invalid 0x100000000 fail. err: BusinessError: Parameter error.Invalid array length., code: 401
+ExtendTo to 8 without initValue fail. err: BusinessError: Parameter error.Not enough parameters., code: 401
+8
+5,5,5,5,5,11,11,11
+Start Test indexAccess
+element1: 3
+element1 assigned to 10: 10
+Index access read out of range failed. err: BusinessError: The value of index is out of range., code: 10200001
+Index access write out of range failed. err: BusinessError: The value of index is out of range., code: 10200001
+read element while iterate array fail. err: BusinessError: The value of index is out of range., errCode: 10200001
+write element while iterate array fail. err: BusinessError: Concurrent modification exception, errCode: 10200201
+Start Test indexStringAccess
+String index element1: 3
+String index element1 assigned to 10: 10
+String Index access read out of range failed. err: BusinessError: The value of index is out of range., code: 10200001
+String Index access write out of range failed. err: BusinessError: The value of index is out of range., code: 10200001
+String index read element while iterate array fail. err: BusinessError: The value of index is out of range., errCode: 10200001
+String index write element while iterate array fail. err: BusinessError: Concurrent modification exception, errCode: 10200201
+Start Test testForIC
+[IC] Index access read in range success. array: 3
+[IC] Index access write in range success.
+[IC] assign readonly length no error.
+[IC] Index access read out of range failed. err: BusinessError: The value of index is out of range., code: 10200001
+[IC] Index access write out of range failed. err: BusinessError: The value of index is out of range., code: 10200001
+Start Test testStringForIC
+[IC] String Index access read in range success. array: 3
+[IC] String Index access write in range success.
+[IC] String Index access read out of range failed. err: BusinessError: The value of index is out of range., code: 10200001
+[IC] String Index access write out of range failed. err: BusinessError: The value of index is out of range., code: 10200001

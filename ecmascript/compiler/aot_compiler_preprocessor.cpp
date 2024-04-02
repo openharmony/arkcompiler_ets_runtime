@@ -156,10 +156,8 @@ std::shared_ptr<JSPandaFile> AotCompilerPreprocessor::CreateAndVerifyJSPandaFile
     if (runtimeOptions_.IsTargetCompilerMode()) {
         auto pkgArgsIter = pkgsArgs_.find(fileName);
         if (pkgArgsIter == pkgsArgs_.end()) {
-            LOG_COMPILER(ERROR) << "Can not find file in ohos pkgs args. file name: " << fileName;
-            return nullptr;
-        }
-        if (!(pkgArgsIter->second->GetJSPandaFile(runtimeOptions_, jsPandaFile))) {
+            jsPandaFile = jsPandaFileManager->OpenJSPandaFile(fileName.c_str());
+        } else if (!(pkgArgsIter->second->GetJSPandaFile(runtimeOptions_, jsPandaFile))) {
             return nullptr;
         }
     } else {

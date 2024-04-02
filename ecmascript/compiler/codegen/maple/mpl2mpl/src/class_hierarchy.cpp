@@ -630,6 +630,7 @@ void KlassHierarchy::AddKlassRelationAndMethods()
         // Add method info
         for (const auto &methodPair : klass->GetMIRStructType()->GetMethods()) {
             MIRSymbol *funcSym = GlobalTables::GetGsymTable().GetSymbolFromStidx(methodPair.first.Idx());
+            DEBUG_ASSERT(funcSym != nullptr, "null ptr check");
             MIRFunction *method = funcSym->GetFunction();
             klass->AddMethod(method);
             if (method->GetName().compare(klass->GetKlassName() + namemangler::kClinitSuffix) == 0) {

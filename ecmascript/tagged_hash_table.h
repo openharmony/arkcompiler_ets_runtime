@@ -90,7 +90,8 @@ public:
         return newTable;
     }
 
-    static JSHandle<Derived> Create(const JSThread *thread, int entriesCount, bool inShareSpace = false)
+    static JSHandle<Derived> Create(const JSThread *thread, int entriesCount,
+                                    MemSpaceKind spaceKind = MemSpaceKind::LOCAL)
     {
         ASSERT_PRINT((entriesCount > 0), "the size must be greater than zero");
         auto size = static_cast<uint32_t>(entriesCount);
@@ -98,7 +99,7 @@ public:
 
         int length = Derived::GetEntryIndex(entriesCount);
 
-        JSHandle<Derived> table = inShareSpace ?
+        JSHandle<Derived> table = spaceKind == MemSpaceKind::SHARED ?
             JSHandle<Derived>(thread->GetEcmaVM()->GetFactory()->NewSDictionaryArray(length)) :
             JSHandle<Derived>(thread->GetEcmaVM()->GetFactory()->NewDictionaryArray(length));
         table->SetEntriesCount(thread, 0);
@@ -159,7 +160,8 @@ public:
             return table;
         }
 
-        JSHandle<Derived> newTable = TaggedHashTable::Create(thread, newSize);
+        JSHandle<Derived> newTable = TaggedHashTable::Create(thread, newSize,
+            table.GetTaggedValue().IsInSharedHeap() ? MemSpaceKind::SHARED : MemSpaceKind::LOCAL);
 
         table->Rehash(thread, *newTable);
         return newTable;
@@ -408,9 +410,9 @@ public:
     }
 
     static JSHandle<Derived> Create(const JSThread *thread, int numberOfElements = DEFAULT_ELEMENTS_NUMBER,
-        bool inShareSpace = false)
+        MemSpaceKind spaceKind = MemSpaceKind::LOCAL)
     {
-        JSHandle<Derived> dict = HashTableT::Create(thread, numberOfElements, inShareSpace);
+        JSHandle<Derived> dict = HashTableT::Create(thread, numberOfElements, spaceKind);
         dict->SetNextEnumerationIndex(thread, PropertyAttributes::INITIAL_PROPERTY_INDEX);
         return dict;
     }

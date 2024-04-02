@@ -43,6 +43,7 @@ private:
     NO_COPY_SEMANTIC(SharedModuleManager);
     NO_MOVE_SEMANTIC(SharedModuleManager);
     JSHandle<SourceTextModule> GetImportedSModule(JSThread *thread, JSTaggedValue referencing);
+    JSTaggedValue GetModuleValue(JSThread *thread, JSHandle<SourceTextModule> module, int index) const;
 
     static constexpr uint32_t DEAULT_DICTIONART_CAPACITY = 4;
 

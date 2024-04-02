@@ -44,6 +44,7 @@
 #include "ecmascript/mem/verification.h"
 #include "ecmascript/mem/work_manager.h"
 #include "ecmascript/mem/gc_stats.h"
+#include "ecmascript/mem/gc_key_stats.h"
 #include "ecmascript/runtime_call_id.h"
 #include "ecmascript/runtime_lock.h"
 #if !WIN_OR_MAC_OR_IOS_PLATFORM
@@ -67,9 +68,9 @@ SharedHeap* SharedHeap::GetInstance()
     return shareHeap;
 }
 
-bool SharedHeap::CheckAndTriggerGC(JSThread *thread, size_t size)
+bool SharedHeap::CheckAndTriggerGC(JSThread *thread)
 {
-    if ((OldSpaceExceedLimit() || OldSpaceExceedCapacity(size) || GetHeapObjectSize() > globalSpaceAllocLimit_) &&
+    if ((OldSpaceExceedLimit() || GetHeapObjectSize() > globalSpaceAllocLimit_) &&
         !NeedStopCollection()) {
         CollectGarbage(thread, TriggerGCType::SHARED_GC, GCReason::ALLOCATION_LIMIT);
         return true;
@@ -700,6 +701,12 @@ void Heap::CollectGarbage(TriggerGCType gcType, GCReason reason)
         }
         // GC log
         GetEcmaGCStats()->RecordStatisticAfterGC();
+#ifdef ENABLE_HISYSEVENT
+        GetEcmaGCKeyStats()->IncGCCount();
+        if (GetEcmaGCKeyStats()->CheckIfMainThread() && GetEcmaGCKeyStats()->CheckIfKeyPauseTime()) {
+            GetEcmaGCKeyStats()->AddGCStatsToKey();
+        }
+#endif
         GetEcmaGCStats()->PrintGCStatistic();
     }
 
@@ -713,6 +720,8 @@ void Heap::CollectGarbage(TriggerGCType gcType, GCReason reason)
     // Weak node nativeFinalizeCallback may execute JS and change the weakNodeList status,
     // even lead to another GC, so this have to invoke after this GC process.
     thread_->InvokeWeakNodeNativeFinalizeCallback();
+    // PostTask for ProcessNativeDelete
+    CleanCallBack();
 
     if (UNLIKELY(ShouldVerifyHeap())) {
         // verify post gc heap verify
@@ -903,10 +912,11 @@ void Heap::AdjustOldSpaceLimit()
         << " globalSpaceAllocLimit_: " << globalSpaceAllocLimit_;
 }
 
-void Heap::OnAllocateEvent([[maybe_unused]] TaggedObject* address, [[maybe_unused]] size_t size)
+void BaseHeap::OnAllocateEvent([[maybe_unused]] EcmaVM *ecmaVm, [[maybe_unused]] TaggedObject* address,
+                               [[maybe_unused]] size_t size)
 {
 #if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
-    HeapProfilerInterface *profiler = GetEcmaVM()->GetHeapProfile();
+    HeapProfilerInterface *profiler = ecmaVm->GetHeapProfile();
     if (profiler != nullptr) {
         base::BlockHookScope blockScope;
         profiler->AllocationEvent(address, size);
@@ -1335,6 +1345,21 @@ void Heap::TryTriggerFullMarkByNativeSize()
     }
 }
 
+void Heap::TryTriggerFullMarkBySharedSize(size_t size)
+{
+    newAllocatedSharedObjectSize_ += size;
+    if (newAllocatedSharedObjectSize_ >= NEW_ALLOCATED_SHARED_OBJECT_SIZE_LIMIT) {
+        if (concurrentMarker_->IsEnabled()) {
+            SetFullMarkRequestedState(true);
+            TryTriggerConcurrentMarking();
+            newAllocatedSharedObjectSize_ = 0;
+        } else if (!NeedStopCollection()) {
+            CollectGarbage(TriggerGCType::OLD_GC, GCReason::ALLOCATION_LIMIT);
+            newAllocatedSharedObjectSize_= 0;
+        }
+    }
+}
+
 void Heap::IncreaseNativeBindingSize(JSNativePointer *object)
 {
     size_t size = object->GetBindingSize();
@@ -1432,6 +1457,11 @@ void Heap::ChangeGCParams(bool inBackground)
 GCStats *Heap::GetEcmaGCStats()
 {
     return ecmaVm_->GetEcmaGCStats();
+}
+
+GCKeyStats *Heap::GetEcmaGCKeyStats()
+{
+    return ecmaVm_->GetEcmaGCKeyStats();
 }
 
 JSObjectResizingStrategy *Heap::GetJSObjectResizingStrategy()
@@ -1583,9 +1613,6 @@ bool Heap::NeedStopCollection()
         return true;
     }
     LOG_GC(INFO) << "SmartGC: force expand will cause OOM, have to trigger gc";
-    GetNewSpace()->SetOverShootSize(
-        GetNewSpace()->GetCommittedSize() - GetNewSpace()->GetInitialCapacity() +
-        config_.GetOldSpaceOvershootSize());
     return false;
 }
 
@@ -1633,6 +1660,27 @@ bool Heap::FinishColdStartTask::Run([[maybe_unused]] uint32_t threadIndex)
 {
     std::this_thread::sleep_for(std::chrono::microseconds(2000000));  // 2000000 means 2s
     heap_->NotifyFinishColdStart(false);
+    return true;
+}
+
+void Heap::CleanCallBack()
+{
+    auto &callbacks = this->GetEcmaVM()->GetNativePointerCallbacks();
+    if (!callbacks.empty()) {
+        Taskpool::GetCurrentTaskpool()->PostTask(
+            std::make_unique<DeleteCallbackTask>(this->GetJSThread()->GetThreadId(), callbacks)
+        );
+    }
+    ASSERT(callbacks.empty());
+}
+
+bool Heap::DeleteCallbackTask::Run([[maybe_unused]] uint32_t threadIndex)
+{
+    for (auto iter : nativePointerCallbacks_) {
+        if (iter.first != nullptr) {
+            iter.first(iter.second.first, iter.second.second);
+        }
+    }
     return true;
 }
 

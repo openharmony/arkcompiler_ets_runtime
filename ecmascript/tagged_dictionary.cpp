@@ -195,7 +195,7 @@ JSHandle<NameDictionary> NameDictionary::Create(const JSThread *thread, int numb
 
 JSHandle<NameDictionary> NameDictionary::CreateInSharedHeap(const JSThread *thread, int numberOfElements)
 {
-    return OrderHashTableT::Create(thread, numberOfElements, true);
+    return OrderHashTableT::Create(thread, numberOfElements, MemSpaceKind::SHARED);
 }
 
 PropertyAttributes NameDictionary::GetAttributes(int entry) const

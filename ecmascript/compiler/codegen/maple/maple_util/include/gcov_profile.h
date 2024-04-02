@@ -72,7 +72,7 @@ public:
     }
     void SetStmtFreq(uint32_t stmtID, int64_t freq)
     {
-        stmtFreqs[stmtID] = freq;
+        stmtFreqs[stmtID] = static_cast<uint64_t>(freq);
     }
     void EraseStmtFreq(uint32_t stmtID)
     {

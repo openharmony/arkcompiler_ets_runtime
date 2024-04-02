@@ -707,6 +707,11 @@ inline GateRef StubBuilder::TaggedIsJSArray(GateRef x)
     return env_->GetBuilder()->TaggedIsJSArray(x);
 }
 
+inline GateRef StubBuilder::IsTaggedArray(GateRef x)
+{
+    return env_->GetBuilder()->IsTaggedArray(x);
+}
+
 inline GateRef StubBuilder::TaggedIsAsyncGeneratorObject(GateRef x)
 {
     return env_->GetBuilder()->TaggedIsAsyncGeneratorObject(x);
@@ -1265,8 +1270,7 @@ inline GateRef StubBuilder::IsJsProxy(GateRef obj)
 
 inline GateRef StubBuilder::IsJSShared(GateRef obj)
 {
-    GateRef objectType = GetObjectType(LoadHClass(obj));
-    return IsJSSharedType(objectType);
+    return TaggedIsShared(obj);
 }
 
 inline GateRef StubBuilder::IsJSGlobalObject(GateRef obj)
@@ -1299,6 +1303,12 @@ inline GateRef StubBuilder::IsJsArray(GateRef obj)
 {
     GateRef objectType = GetObjectType(LoadHClass(obj));
     return Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::JS_ARRAY)));
+}
+
+inline GateRef StubBuilder::IsJsSArray(GateRef obj)
+{
+    GateRef objectType = GetObjectType(LoadHClass(obj));
+    return Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::JS_SHARED_ARRAY)));
 }
 
 inline GateRef StubBuilder::IsByteArray(GateRef obj)
@@ -1622,7 +1632,7 @@ inline GateRef StubBuilder::IsField(GateRef attr)
 {
     return Int32Equal(
         Int32And(
-            Int32LSR(attr, Int32(HandlerBase::KindBit::START_BIT)),
+            TruncInt64ToInt32(Int64LSR(attr, Int64(HandlerBase::KindBit::START_BIT))),
             Int32((1LLU << HandlerBase::KindBit::SIZE) - 1)),
         Int32(HandlerBase::HandlerKind::FIELD));
 }
@@ -1631,7 +1641,7 @@ inline GateRef StubBuilder::IsNonSharedStoreField(GateRef attr)
 {
     return Int32Equal(
         Int32And(
-            Int32LSR(attr, Int32(HandlerBase::SWholeKindBit::START_BIT)),
+            TruncInt64ToInt32(Int64LSR(attr, Int64(HandlerBase::SWholeKindBit::START_BIT))),
             Int32((1LLU << HandlerBase::SWholeKindBit::SIZE) - 1)),
         Int32(HandlerBase::StoreHandlerKind::S_FIELD));
 }
@@ -1639,8 +1649,8 @@ inline GateRef StubBuilder::IsNonSharedStoreField(GateRef attr)
 inline GateRef StubBuilder::IsStoreShared(GateRef attr)
 {
     return Int32NotEqual(
-        Int32And(Int32LSR(attr,
-            Int32(HandlerBase::SSharedBit::START_BIT)),
+        Int32And(
+            TruncInt64ToInt32(Int64LSR(attr, Int64(HandlerBase::SSharedBit::START_BIT))),
             Int32((1LLU << HandlerBase::SSharedBit::SIZE) - 1)),
         Int32(0));
 }
@@ -1649,7 +1659,7 @@ inline GateRef StubBuilder::IsElement(GateRef attr)
 {
     return Int32Equal(
         Int32And(
-            Int32LSR(attr, Int32(HandlerBase::KindBit::START_BIT)),
+            TruncInt64ToInt32(Int64LSR(attr, Int64(HandlerBase::KindBit::START_BIT))),
             Int32((1LLU << HandlerBase::KindBit::SIZE) - 1)),
         Int32(HandlerBase::HandlerKind::ELEMENT));
 }
@@ -1658,7 +1668,7 @@ inline GateRef StubBuilder::IsStringElement(GateRef attr)
 {
     return Int32Equal(
         Int32And(
-            Int32LSR(attr, Int32(HandlerBase::KindBit::START_BIT)),
+            TruncInt64ToInt32(Int64LSR(attr, Int64(HandlerBase::KindBit::START_BIT))),
             Int32((1LLU << HandlerBase::KindBit::SIZE) - 1)),
         Int32(HandlerBase::HandlerKind::STRING));
 }
@@ -1667,7 +1677,7 @@ inline GateRef StubBuilder::IsNumber(GateRef attr)
 {
     return Int32Equal(
         Int32And(
-            Int32LSR(attr, Int32(HandlerBase::KindBit::START_BIT)),
+            TruncInt64ToInt32(Int64LSR(attr, Int64(HandlerBase::KindBit::START_BIT))),
             Int32((1LLU << HandlerBase::KindBit::SIZE) - 1)),
         Int32(HandlerBase::HandlerKind::NUMBER));
 }
@@ -1676,7 +1686,7 @@ inline GateRef StubBuilder::IsStringLength(GateRef attr)
 {
     return Int32Equal(
         Int32And(
-            Int32LSR(attr, Int32(HandlerBase::KindBit::START_BIT)),
+            TruncInt64ToInt32(Int64LSR(attr, Int64(HandlerBase::KindBit::START_BIT))),
             Int32((1LLU << HandlerBase::KindBit::SIZE) - 1)),
         Int32(HandlerBase::HandlerKind::STRING_LENGTH));
 }
@@ -1685,7 +1695,7 @@ inline GateRef StubBuilder::IsTypedArrayElement(GateRef attr)
 {
     return Int32Equal(
         Int32And(
-            Int32LSR(attr, Int32(HandlerBase::KindBit::START_BIT)),
+            TruncInt64ToInt32(Int64LSR(attr, Int64(HandlerBase::KindBit::START_BIT))),
             Int32((1LLU << HandlerBase::KindBit::SIZE) - 1)),
         Int32(HandlerBase::HandlerKind::TYPED_ARRAY));
 }
@@ -1694,7 +1704,7 @@ inline GateRef StubBuilder::IsNonExist(GateRef attr)
 {
     return Int32Equal(
         Int32And(
-            Int32LSR(attr, Int32(HandlerBase::KindBit::START_BIT)),
+            TruncInt64ToInt32(Int64LSR(attr, Int64(HandlerBase::KindBit::START_BIT))),
             Int32((1LLU << HandlerBase::KindBit::SIZE) - 1)),
         Int32(HandlerBase::HandlerKind::NON_EXIST));
 }
@@ -1702,8 +1712,8 @@ inline GateRef StubBuilder::IsNonExist(GateRef attr)
 inline GateRef StubBuilder::HandlerBaseIsAccessor(GateRef attr)
 {
     return Int32NotEqual(
-        Int32And(Int32LSR(attr,
-            Int32(HandlerBase::AccessorBit::START_BIT)),
+        Int32And(
+            TruncInt64ToInt32(Int64LSR(attr, Int64(HandlerBase::AccessorBit::START_BIT))),
             Int32((1LLU << HandlerBase::AccessorBit::SIZE) - 1)),
         Int32(0));
 }
@@ -1711,8 +1721,8 @@ inline GateRef StubBuilder::HandlerBaseIsAccessor(GateRef attr)
 inline GateRef StubBuilder::HandlerBaseIsJSArray(GateRef attr)
 {
     return Int32NotEqual(
-        Int32And(Int32LSR(attr,
-            Int32(HandlerBase::IsJSArrayBit::START_BIT)),
+        Int32And(
+            TruncInt64ToInt32(Int64LSR(attr, Int64(HandlerBase::IsJSArrayBit::START_BIT))),
             Int32((1LLU << HandlerBase::IsJSArrayBit::SIZE) - 1)),
         Int32(0));
 }
@@ -1720,30 +1730,31 @@ inline GateRef StubBuilder::HandlerBaseIsJSArray(GateRef attr)
 inline GateRef StubBuilder::HandlerBaseIsInlinedProperty(GateRef attr)
 {
     return Int32NotEqual(
-        Int32And(Int32LSR(attr,
-            Int32(HandlerBase::InlinedPropsBit::START_BIT)),
+        Int32And(
+            TruncInt64ToInt32(Int64LSR(attr, Int64(HandlerBase::InlinedPropsBit::START_BIT))),
             Int32((1LLU << HandlerBase::InlinedPropsBit::SIZE) - 1)),
         Int32(0));
 }
 
 inline GateRef StubBuilder::HandlerBaseGetOffset(GateRef attr)
 {
-    return Int32And(Int32LSR(attr,
-        Int32(HandlerBase::OffsetBit::START_BIT)),
+    return Int32And(
+        TruncInt64ToInt32(Int64LSR(attr, Int64(HandlerBase::OffsetBit::START_BIT))),
         Int32((1LLU << HandlerBase::OffsetBit::SIZE) - 1));
 }
 
 
 inline GateRef StubBuilder::HandlerBaseGetAttrIndex(GateRef attr)
 {
-    return Int32And(Int32LSR(attr,
-        Int32(HandlerBase::AttrIndexBit::START_BIT)),
+    return Int32And(
+        TruncInt64ToInt32(Int64LSR(attr, Int64(HandlerBase::AttrIndexBit::START_BIT))),
         Int32((1LLU << HandlerBase::AttrIndexBit::SIZE) - 1));
 }
 
 inline GateRef StubBuilder::HandlerBaseGetRep(GateRef attr)
 {
-    return Int32And(Int32LSR(attr, Int32(HandlerBase::RepresentationBit::START_BIT)),
+    return Int32And(
+        TruncInt64ToInt32(Int64LSR(attr, Int64(HandlerBase::RepresentationBit::START_BIT))),
         Int32((1LLU << HandlerBase::RepresentationBit::SIZE) - 1));
 }
 
@@ -2132,13 +2143,13 @@ inline GateRef StubBuilder::IsSpecialIndexedObj(GateRef jsType)
     return Int32GreaterThan(jsType, Int32(static_cast<int32_t>(JSType::JS_ARRAY)));
 }
 
-inline void StubBuilder::CheckUpdateSharedType(bool isDicMode, Variable *result, GateRef glue, GateRef jsType,
+inline void StubBuilder::CheckUpdateSharedType(bool isDicMode, Variable *result, GateRef glue, GateRef receiver,
                                                GateRef attr, GateRef value, Label *executeSetProp, Label *exit)
 {
     auto *env = GetEnvironment();
-    Label isSharedObj(env);
-    BRANCH(IsJSSharedType(jsType), &isSharedObj, executeSetProp);
-    Bind(&isSharedObj);
+    Label isJSShared(env);
+    BRANCH(IsJSShared(receiver), &isJSShared, executeSetProp);
+    Bind(&isJSShared);
     {
         Label typeMismatch(env);
         GateRef fieldType = isDicMode ? GetDictSharedFieldTypeInPropAttr(attr) : GetSharedFieldTypeInPropAttr(attr);
@@ -2170,20 +2181,14 @@ inline void StubBuilder::MatchFieldType(Variable *result, GateRef glue, GateRef 
 
 inline GateRef StubBuilder::GetFieldTypeFromHandler(GateRef attr)
 {
-    return Int32And(Int32LSR(attr,
-        Int32(HandlerBase::SFieldTypeBit::START_BIT)),
+    return Int32And(
+        TruncInt64ToInt32(Int64LSR(attr, Int64(HandlerBase::SFieldTypeBit::START_BIT))),
         Int32((1LLU << HandlerBase::SFieldTypeBit::SIZE) - 1));
 }
 
 inline GateRef StubBuilder::ClearSharedStoreKind(GateRef handlerInfo)
 {
-    return Int32And(handlerInfo, Int32Not(Int32(HandlerBase::SSharedBit::Mask())));
-}
-
-inline GateRef StubBuilder::IsJSSharedType(GateRef jsType)
-{
-    return BoolOr(Int32Equal(jsType, Int32(static_cast<int32_t>(JSType::JS_SHARED_OBJECT))),
-                  Int32Equal(jsType, Int32(static_cast<int32_t>(JSType::JS_SHARED_FUNCTION))));
+    return Int64And(handlerInfo, Int64Not(Int64(HandlerBase::SSharedBit::Mask())));
 }
 
 inline GateRef StubBuilder::IsSpecialContainer(GateRef jsType)
@@ -2192,6 +2197,11 @@ inline GateRef StubBuilder::IsSpecialContainer(GateRef jsType)
     return BoolOr(
         Int32Equal(jsType, Int32(static_cast<int32_t>(JSType::JS_API_ARRAY_LIST))),
         Int32Equal(jsType, Int32(static_cast<int32_t>(JSType::JS_API_VECTOR))));
+}
+
+inline GateRef StubBuilder::IsSharedArray(GateRef jsType)
+{
+    return Int32Equal(jsType, Int32(static_cast<int32_t>(JSType::JS_SHARED_ARRAY)));
 }
 
 inline GateRef StubBuilder::IsFastTypeArray(GateRef jsType)
@@ -2843,6 +2853,22 @@ inline GateRef StubBuilder::IsFastCall(GateRef method)
         Int64(0));
 }
 
+inline GateRef StubBuilder::IsJitCompiledCode(GateRef method)
+{
+    GateRef fieldOffset = IntPtr(Method::EXTRA_LITERAL_INFO_OFFSET);
+    GateRef literalField = Load(VariableType::INT64(), method, fieldOffset);
+    return Int64NotEqual(
+        Int64And(
+            Int64LSR(literalField, Int64(Method::IsJitCompiledCodeBit::START_BIT)),
+            Int64((1LU << Method::IsJitCompiledCodeBit::SIZE) - 1)),
+        Int64(0));
+}
+
+inline void StubBuilder::ClearJitCompiledCodeFlags(GateRef glue, GateRef method)
+{
+    CallNGCRuntime(glue, RTSTUB_ID(ClearJitCompiledCodeFlags), { method });
+}
+
 inline GateRef StubBuilder::HasPrototype(GateRef kind)
 {
     GateRef greater = Int32GreaterThanOrEqual(kind,
@@ -3206,6 +3232,21 @@ inline GateRef StubBuilder::GetKey(GateRef layoutInfo, GateRef index)
 {
     GateRef fixedIdx = GetKeyIndex(index);
     return GetValueFromTaggedArray(layoutInfo, fixedIdx);
+}
+
+inline GateRef StubBuilder::IsMarkerCellValid(GateRef cell)
+{
+    return env_->GetBuilder()->IsMarkerCellValid(cell);
+}
+
+inline GateRef StubBuilder::GetAccessorHasChanged(GateRef obj)
+{
+    return env_->GetBuilder()->GetAccessorHasChanged(obj);
+}
+
+inline GateRef StubBuilder::ComputeTaggedTypedArraySize(GateRef elementSize, GateRef length)
+{
+    return PtrAdd(IntPtr(ByteArray::DATA_OFFSET), PtrMul(elementSize, length));
 }
 } //  namespace panda::ecmascript::kungfu
 #endif // ECMASCRIPT_COMPILER_STUB_INL_H

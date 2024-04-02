@@ -90,3 +90,21 @@ function run(): void {
 }
 
 run();
+
+function testFastPath() {
+    let array = [ 1 ]
+
+    function foo(arr) {
+        let ret = arr[0];
+        array[0] = undefined
+        return ret
+    }
+
+    for (let i = 0; i < 100000; i++) {
+        foo(array)
+        foo(array)
+    }
+    print(array[0])
+}
+
+testFastPath();

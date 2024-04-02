@@ -24,8 +24,18 @@
 #include "ecmascript/napi/include/jsnapi.h"
 
 #ifdef ENABLE_HILOG
-#include "hilog/log.h"
+#if defined(__clang__)
+#pragma clang diagnostic ignored "-Wgnu-zero-variadic-macro-arguments"
+#elif defined(__GNUC__)
+#pragma GCC diagnostic ignored "-Wgnu-zero-variadic-macro-arguments"
 #endif
+#include "hilog/log.h"
+#undef LOG_DOMAIN
+#define LOG_DOMAIN 0xD003F00
+#undef LOG_TAG
+#define LOG_TAG "ArkCompiler"
+#endif
+
 
 using LOG_LEVEL = panda::RuntimeOption::LOG_LEVEL;
 enum Level {
@@ -54,9 +64,6 @@ enum Component {
 
 namespace panda::ecmascript {
 #ifdef ENABLE_HILOG
-constexpr static unsigned int ARK_DOMAIN = 0xD003F00;
-constexpr static auto TAG = "ArkCompiler";
-constexpr static OHOS::HiviewDFX::HiLogLabel LABEL = {LOG_CORE, ARK_DOMAIN, TAG};
 
 #if ECMASCRIPT_ENABLE_VERBOSE_LEVEL_LOG
 // print Debug level log if enable Verbose log
@@ -128,15 +135,15 @@ public:
         if constexpr (level == LOG_LEVEL_MIN) {
             // print nothing
         } else if constexpr (level == LOG_DEBUG) {
-            OHOS::HiviewDFX::HiLog::Debug(LABEL, "%{public}s", stream_.str().c_str());
+            HILOG_DEBUG(LOG_CORE, "%{public}s", stream_.str().c_str());
         } else if constexpr (level == LOG_INFO) {
-            OHOS::HiviewDFX::HiLog::Info(LABEL, "%{public}s", stream_.str().c_str());
+            HILOG_INFO(LOG_CORE, "%{public}s", stream_.str().c_str());
         } else if constexpr (level == LOG_WARN) {
-            OHOS::HiviewDFX::HiLog::Warn(LABEL, "%{public}s", stream_.str().c_str());
+            HILOG_WARN(LOG_CORE, "%{public}s", stream_.str().c_str());
         } else if constexpr (level == LOG_ERROR) {
-            OHOS::HiviewDFX::HiLog::Error(LABEL, "%{public}s", stream_.str().c_str());
+            HILOG_ERROR(LOG_CORE, "%{public}s", stream_.str().c_str());
         } else {
-            OHOS::HiviewDFX::HiLog::Fatal(LABEL, "%{public}s", stream_.str().c_str());
+            HILOG_FATAL(LOG_CORE, "%{public}s", stream_.str().c_str());
             std::abort();
         }
     }

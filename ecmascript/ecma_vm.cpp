@@ -107,7 +107,6 @@ EcmaVM *EcmaVM::Create(const JSRuntimeOptions &options)
         EcmaParamConfiguration::HeapType::DEFAULT_HEAP;
     auto config = EcmaParamConfiguration(heapType,
                                          MemMapAllocator::GetInstance()->GetCapacity());
-    MemMapAllocator::GetInstance()->IncreaseAndCheckReserved(config.GetMaxHeapSize());
     JSRuntimeOptions newOptions = options;
     // only define SUPPORT_ENABLE_ASM_INTERP can enable asm-interpreter
 #if !defined(SUPPORT_ENABLE_ASM_INTERP)
@@ -164,6 +163,10 @@ void EcmaVM::PostFork()
         options_.SetEnablePGOProfiler(true);
     }
     ResetPGOProfiler();
+
+    bool isEnableJit = options_.IsEnableJIT() && options_.GetEnableAsmInterpreter();
+    options_.SetEnableAPPJIT(true);
+    Jit::GetInstance()->SetEnableOrDisable(options_, isEnableJit);
 #ifdef ENABLE_POSTFORK_FORCEEXPAND
     heap_->NotifyPostFork();
     heap_->NotifyFinishColdStartSoon();
@@ -180,6 +183,7 @@ EcmaVM::EcmaVM(JSRuntimeOptions options, EcmaParamConfiguration config)
     icEnabled_ = options_.EnableIC();
     optionalLogEnabled_ = options_.EnableOptionalLog();
     options_.ParseAsmInterOption();
+    SetEnableOsr(options_.IsEnableOSR() && options_.IsEnableJIT() && options_.GetEnableAsmInterpreter());
 }
 
 void EcmaVM::InitializePGOProfiler()
@@ -219,15 +223,11 @@ bool EcmaVM::IsEnableElementsKind() const
 
 bool EcmaVM::IsEnableJit() const
 {
-    if (options_.IsWorker()) {
-        return GetJit()->IsEnable();
-    }
-    return options_.GetEnableAsmInterpreter() && options_.IsEnableJIT();
+    return GetJit()->IsEnable();
 }
 
 void EcmaVM::EnableJit() const
 {
-    Jit::GetInstance()->SetEnable(this);
     GetJSThread()->SwitchJitProfileStubs();
 }
 
@@ -248,6 +248,7 @@ bool EcmaVM::Initialize()
     heap_ = new Heap(this);
     heap_->Initialize();
     gcStats_ = chunk_.New<GCStats>(heap_, options_.GetLongPauseTime());
+    gcKeyStats_ = chunk_.New<GCKeyStats>(heap_, gcStats_);
     factory_ = chunk_.New<ObjectFactory>(thread_, heap_, SharedHeap::GetInstance());
     if (UNLIKELY(factory_ == nullptr)) {
         LOG_FULL(FATAL) << "alloc factory_ failed";
@@ -329,6 +330,11 @@ EcmaVM::~EcmaVM()
         }
         chunk_.Delete(gcStats_);
         gcStats_ = nullptr;
+    }
+
+    if (gcKeyStats_ != nullptr) {
+        chunk_.Delete(gcKeyStats_);
+        gcKeyStats_ = nullptr;
     }
 
     if (JsStackInfo::loader == aotFileManager_) {
@@ -472,6 +478,37 @@ void EcmaVM::ProcessNativeDelete(const WeakRootVisitor &visitor)
                 ++iter;
             }
         }
+
+        auto newIter = concurrentNativePointerList_.begin();
+        while (newIter != concurrentNativePointerList_.end()) {
+            JSNativePointer *object = *newIter;
+            auto fwd = visitor(reinterpret_cast<TaggedObject *>(object));
+            if (fwd == nullptr) {
+                nativeAreaAllocator_->DecreaseNativeSizeStats(object->GetBindingSize(), object->GetNativeFlag());
+                nativePointerCallbacks_.emplace_back(std::make_pair(object->GetDeleter(),
+                                                                    std::make_pair(object->GetExternalPointer(),
+                                                                                   object->GetData())));
+                newIter = concurrentNativePointerList_.erase(newIter);
+            } else {
+                ++newIter;
+            }
+        }
+    }
+}
+
+void EcmaVM::ProcessSharedNativeDelete(const WeakRootVisitor &visitor)
+{
+    auto sharedIter = sharedNativePointerList_.begin();
+    while (sharedIter != sharedNativePointerList_.end()) {
+        JSNativePointer *object = *sharedIter;
+        auto fwd = visitor(reinterpret_cast<TaggedObject *>(object));
+        if (fwd == nullptr) {
+            sharedNativePointerCallbacks_.emplace_back(
+                std::make_pair(object->GetDeleter(), std::make_pair(object->GetExternalPointer(), object->GetData())));
+            sharedIter = sharedNativePointerList_.erase(sharedIter);
+        } else {
+            ++sharedIter;
+        }
     }
 }
 
@@ -500,14 +537,43 @@ void EcmaVM::ProcessReferences(const WeakRootVisitor &visitor)
             }
             ++iter;
         }
+
+        auto newIter = concurrentNativePointerList_.begin();
+        while (newIter != concurrentNativePointerList_.end()) {
+            JSNativePointer *object = *newIter;
+            auto fwd = visitor(reinterpret_cast<TaggedObject *>(object));
+            if (fwd == nullptr) {
+                nativeAreaAllocator_->DecreaseNativeSizeStats(object->GetBindingSize(), object->GetNativeFlag());
+                nativePointerCallbacks_.emplace_back(std::make_pair(object->GetDeleter(),
+                                                                    std::make_pair(object->GetExternalPointer(),
+                                                                                   object->GetData())));
+                newIter = concurrentNativePointerList_.erase(newIter);
+                continue;
+            }
+            heap_->IncreaseNativeBindingSize(JSNativePointer::Cast(fwd));
+            if (fwd != reinterpret_cast<TaggedObject *>(object)) {
+                *newIter = JSNativePointer::Cast(fwd);
+            }
+            ++newIter;
+        }
     }
     GetPGOProfiler()->ProcessReferences(visitor);
 }
 
-void EcmaVM::PushToNativePointerList(JSNativePointer *pointer)
+void EcmaVM::PushToNativePointerList(JSNativePointer *pointer, Concurrent isConcurrent)
 {
     ASSERT(!JSTaggedValue(pointer).IsInSharedHeap());
-    nativePointerList_.emplace_back(pointer);
+    if (isConcurrent == Concurrent::YES) {
+        concurrentNativePointerList_.emplace_back(pointer);
+    } else {
+        nativePointerList_.emplace_back(pointer);
+    }
+}
+
+void EcmaVM::PushToSharedNativePointerList(JSNativePointer *pointer)
+{
+    ASSERT(JSTaggedValue(pointer).IsInSharedHeap());
+    sharedNativePointerList_.emplace_back(pointer);
 }
 
 void EcmaVM::RemoveFromNativePointerList(JSNativePointer *pointer)
@@ -518,6 +584,13 @@ void EcmaVM::RemoveFromNativePointerList(JSNativePointer *pointer)
         nativeAreaAllocator_->DecreaseNativeSizeStats(object->GetBindingSize(), object->GetNativeFlag());
         object->Destroy();
         nativePointerList_.erase(iter);
+    }
+    auto newIter = std::find(concurrentNativePointerList_.begin(), concurrentNativePointerList_.end(), pointer);
+    if (newIter != concurrentNativePointerList_.end()) {
+        JSNativePointer *object = *newIter;
+        nativeAreaAllocator_->DecreaseNativeSizeStats(object->GetBindingSize(), object->GetNativeFlag());
+        object->Destroy();
+        concurrentNativePointerList_.erase(newIter);
     }
 }
 
@@ -543,6 +616,9 @@ bool EcmaVM::ContainInDeregisterModuleList(CString module)
 void EcmaVM::ClearBufferData()
 {
     for (auto iter : nativePointerList_) {
+        iter->Destroy();
+    }
+    for (auto iter : concurrentNativePointerList_) {
         iter->Destroy();
     }
     nativePointerList_.clear();

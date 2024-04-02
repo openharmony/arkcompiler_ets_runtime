@@ -97,6 +97,7 @@ libark_jsoptimizer_sources = [
   "builtins/builtins_object_stub_builder.cpp",
   "builtins/builtins_string_stub_builder.cpp",
   "builtins/builtins_stubs.cpp",
+  "builtins/builtins_typedarray_stub_builder.cpp",
   "builtins/containers_stub_builder.cpp",
   "builtins/linked_hashtable_stub_builder.cpp",
   "builtins_lowering.cpp",
@@ -184,7 +185,6 @@ libark_jsoptimizer_sources = [
   "type_inference/pgo_type_infer_helper.cpp",
   "type_info_accessors.cpp",
   "type_recorder.cpp",
-  "typed_array_stub_builder.cpp",
   "typed_bytecode_lowering.cpp",
   "typed_hcr_lowering.cpp",
   "typed_native_inline_lowering.cpp",
@@ -421,13 +421,19 @@ ohos_shared_library("libark_jsoptimizer") {
   stack_protector_ret = false
   deps = [
     ":libark_jsoptimizer_set_with_maple",
-    "$ark_third_party_root/bounds_checking_function:libsec_shared",
     "$js_root:libark_jsruntime",
     "${MAPLEALL_ROOT}/maple_be:libcg",
   ]
 
+  external_deps = [ "bounds_checking_function:libsec_shared" ]
+
   if (run_with_asan) {
     defines = [ "RUN_WITH_ASAN" ]
+  }
+
+  external_deps = []
+  if (enable_hilog) {
+    external_deps += [ "hilog:libhilog" ]
   }
 
   install_enable = false
@@ -476,9 +482,9 @@ ohos_executable("ark_stub_compiler") {
       "$ark_third_party_root/icu/icu4c:static_icuuc",
     ]
   } else {
-    deps += [
-      "$ark_third_party_root/icu/icu4c:shared_icui18n",
-      "$ark_third_party_root/icu/icu4c:shared_icuuc",
+    external_deps += [
+      "icu:shared_icui18n",
+      "icu:shared_icuuc",
     ]
   }
 
@@ -531,9 +537,9 @@ ohos_executable("ark_aot_compiler") {
       "$ark_third_party_root/icu/icu4c:static_icuuc",
     ]
   } else {
-    deps += [
-      "$ark_third_party_root/icu/icu4c:shared_icui18n",
-      "$ark_third_party_root/icu/icu4c:shared_icuuc",
+    external_deps += [
+      "icu:shared_icui18n",
+      "icu:shared_icuuc",
     ]
   }
 

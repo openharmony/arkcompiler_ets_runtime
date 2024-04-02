@@ -24,6 +24,7 @@
 #include <sys/time.h>
 
 #include "ecmascript/base/builtins_base.h"
+#include "ecmascript/base/dtoa_helper.h"
 #include "ecmascript/base/string_helper.h"
 #include "ecmascript/builtins/builtins_number.h"
 #include "ecmascript/ecma_string_table.h"
@@ -312,12 +313,12 @@ void NumberHelper::CustomEcvtIsFixed(double &valueNumber, int &digits, int *deci
             while (digits >= MIN_RADIX && buf[digits - 1] == '0') {
                 digits--;
             }
-            digitsMax = digits;
+            digitsMax = static_cast<unsigned int>(digits);
         } else {
-            digitsMin = digits + 1;
+            digitsMin = static_cast<unsigned int>(digits) + 1;
         }
     }
-    digits = digitsMax;
+    digits = static_cast<int>(digitsMax);
 }
 
 int NumberHelper::CustomEcvt(double valueNumber, int digits, int *decimalPoint,
@@ -437,7 +438,8 @@ void NumberHelper::DoubleToASCIIWithFlag(std::string& buf, double valueNumber, i
         std::string buf1(JS_DTOA_BUF_SIZE, '\0');
         int decimalPoint = 0;
         int sign = 0;
-        bool fixed = ((flags & POINT_INDEX) == base::FIXED_FORMAT);
+        bool fixed = ((static_cast<unsigned int>(flags) & POINT_INDEX) ==
+            static_cast<unsigned int>(base::FIXED_FORMAT));
         int numberMax = fixed ? digits : MAX_DIGITS;
         int digitNumber = CustomEcvt(valueNumber, digits, &decimalPoint, buf1, fixed, &sign);
         int number = decimalPoint;
@@ -632,61 +634,28 @@ JSHandle<EcmaString> NumberHelper::DoubleToEcmaString(const JSThread *thread, do
     }
 
     ASSERT(d > 0);
-
-    // 5. Otherwise, let n, k, and s be integers such that k ≥ 1, 10k−1 ≤ s < 10k, the Number value for s × 10n−k is m,
-    // and k is as small as possible. If there are multiple possibilities for s, choose the value of s for which s ×
-    // 10n−k is closest in value to m. If there are two such possible values of s, choose the one that is even. Note
-    // that k is the number of digits in the decimal representation of s and that s is not divisible by 10.
-    if (0.1 <= d && d < 1) {  // 0.1: 10 ** -1
-        // Fast path. In this case, n==0, just need to calculate k and s.
-        std::string resultFast = "0.";
-        int64_t sFast = 0;
-        int kFast = 1;
-        int64_t power = 1;
-        while (kFast <= DOUBLE_MAX_PRECISION) {
-            power *= 10;  // 10: base 10
-            int digitFast = static_cast<int64_t>(d * power) % 10;  // 10: base 10
-            ASSERT(0 <= digitFast && digitFast <= 9);  // 9: single digit max
-            sFast = sFast * 10 + digitFast;  // 10: base 10
-            resultFast += (digitFast + '0');
-            if (sFast / static_cast<double>(power) == d) {  // s * (10 ** -k)
-                result += resultFast;
-                return factory->NewFromASCII(result.c_str());
-            }
-            kFast++;
-        }
-    }
     char buffer[JS_DTOA_BUF_SIZE] = {0};
-    int n = 0;
-    int k = GetMinmumDigits(d, &n, buffer);
+    int n; // decimal point
+    int k; // length
+    dtoa::DtoaHelper::Dtoa(d, buffer, &n, &k); //Fast Double To Ascii.
     std::string base = buffer;
     if (n > 0 && n <= MAX_DIGITS) {
-        base.erase(1, 1);
         if (k <= n) {
-            // 6. If k ≤ n ≤ 21, return the String consisting of the code units of the k digits of the decimal
-            // representation of s (in order, with no leading zeroes), followed by n−k occurrences of the code unit
-            // 0x0030 (DIGIT ZERO).
+            // 6. If k ≤ n ≤ 21
             base += std::string(n - k, '0');
         } else {
-            // 7. If 0 < n ≤ 21, return the String consisting of the code units of the most significant n digits of the
-            // decimal representation of s, followed by the code unit 0x002E (FULL STOP), followed by the code units of
-            // the remaining k−n digits of the decimal representation of s.
+            // 7. If 0 < n ≤ 21
             base.insert(n, 1, '.');
         }
     } else if (MIN_DIGITS < n && n <= 0) {
-        // 8. If −6 < n ≤ 0, return the String consisting of the code unit 0x0030 (DIGIT ZERO), followed by the code
-        // unit 0x002E (FULL STOP), followed by −n occurrences of the code unit 0x0030 (DIGIT ZERO), followed by the
-        // code units of the k digits of the decimal representation of s.
-        base.erase(1, 1);
+        // 8. If −6 < n ≤ 0
         base = std::string("0.") + std::string(-n, '0') + base;
     } else {
-        if (k == 1) {
-            // 9. Otherwise, if k = 1, return the String consisting of the code unit of the single digit of s
-            base.erase(1, 1);
+        // 9. & 10. Otherwise
+        base.erase(1, k - 1);
+        if (k != 1) {
+            base += std::string(".") + std::string(buffer + 1);
         }
-        // followed by code unit 0x0065 (LATIN SMALL LETTER E), followed by the code unit 0x002B (PLUS SIGN) or the
-        // code unit 0x002D (HYPHEN-MINUS) according to whether n−1 is positive or negative, followed by the code
-        // units of the decimal representation of the integer abs(n−1) (with no leading zeroes).
         base += "e" + (n >= 1 ? std::string("+") : "") + std::to_string(n - 1);
     }
     result += base;

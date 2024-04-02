@@ -179,13 +179,13 @@ public:
     void SetCachedResult(const JSThread *thread, JSTaggedValue &number, JSHandle<EcmaString> &result);
     int GetNumberHash(JSTaggedValue &number)
     {
-        int mask = INITIAL_CACHE_NUMBER - 1;
-        int value = 0;
+        unsigned int mask = INITIAL_CACHE_NUMBER - 1;
+        unsigned int value = 0;
         if (number.IsInt()) {
-            value = number.GetInt();
+            value = static_cast<unsigned int>(number.GetInt());
         } else {
             int64_t bits = base::bit_cast<int64_t>(number.GetDouble());
-            value = static_cast<int>(bits) ^ static_cast<int>(bits >> 32); // 32: hight 32 bit
+            value = static_cast<unsigned int>(bits) ^ static_cast<unsigned int>(bits >> 32); // 32: hight 32 bit
         }
         return value & mask;
     }

@@ -22,7 +22,7 @@
 
 namespace panda::ecmascript::kungfu {
 
-void BuiltinsFunctionStubBuilder::Apply(GateRef glue, GateRef thisValue,
+void BuiltinsFunctionStubBuilder::PrototypeApply(GateRef glue, GateRef thisValue,
     GateRef numArgs, Variable* res, Label *exit, Label *slowPath)
 {
     auto env = GetEnvironment();

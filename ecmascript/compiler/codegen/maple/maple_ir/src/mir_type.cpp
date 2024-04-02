@@ -1109,7 +1109,7 @@ bool MIRClassType::IsExceptionType() const
 
 FieldID MIRClassType::GetLastFieldID() const
 {
-    FieldID fieldID = fields.size();
+    FieldID fieldID = static_cast<int32>(fields.size());
     if (parentTyIdx != 0u) {
         const auto *parentClassType =
             static_cast<const MIRClassType *>(GlobalTables::GetTypeTable().GetTypeFromTyIdx(parentTyIdx));
@@ -1786,7 +1786,7 @@ int64 MIRArrayType::GetBitOffsetFromArrayAddress(std::vector<int64> &indexArray)
     int64 sum = 0;  // element numbers before the specified element
     uint32 numberOfElemInLowerDim = 1;
     for (uint32 id = 1; id <= dim; ++id) {
-        sum += indexArray[dim - id] * numberOfElemInLowerDim;
+        sum += indexArray[dim - id] * static_cast<int64>(numberOfElemInLowerDim);
         numberOfElemInLowerDim *= sizeArray[dim - id];
     }
     size_t elemsize = GetElemType()->GetSize();
@@ -1795,7 +1795,7 @@ int64 MIRArrayType::GetBitOffsetFromArrayAddress(std::vector<int64> &indexArray)
     }
     elemsize = RoundUp(elemsize, typeAttrs.GetAlign());
     constexpr int64 bitsPerByte = 8;
-    int64 offset = static_cast<uint64>(sum) * elemsize * static_cast<uint64>(bitsPerByte);
+    int64 offset = static_cast<int64>(static_cast<uint64>(sum) * elemsize * static_cast<uint64>(bitsPerByte));
     if (GetElemType()->GetKind() == kTypeArray && indexArray.size() > dim) {
         std::vector<int64> subIndexArray(indexArray.begin() + dim, indexArray.end());
         offset += static_cast<MIRArrayType *>(GetElemType())->GetBitOffsetFromArrayAddress(subIndexArray);
@@ -2127,7 +2127,7 @@ FieldPair MIRStructType::TraverseToField(FieldID fieldID) const
         return TraverseToFieldRef(fieldID);
     }
     // in parentfields
-    uint32 parentFieldIdx = -fieldID;
+    uint32 parentFieldIdx = static_cast<uint32>(-fieldID);
     if (parentFields.empty() || parentFieldIdx > parentFields.size()) {
         return {GStrIdx(0), TyIdxFieldAttrPair(TyIdx(0), FieldAttrs())};
     }

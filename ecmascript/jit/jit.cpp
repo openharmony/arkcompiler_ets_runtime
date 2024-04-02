@@ -21,7 +21,7 @@
 namespace panda::ecmascript {
 std::deque<JitTask*> Jit::asyncCompileJitTasks_;
 Mutex Jit::asyncCompileJitTasksMtx_;
-void (*Jit::initJitCompiler_)(EcmaVM *vm) = nullptr;
+void (*Jit::initJitCompiler_)(JSRuntimeOptions options) = nullptr;
 bool(*Jit::jitCompile_)(void*, JitTask*) = nullptr;
 bool(*Jit::jitFinalize_)(void*, JitTask*) = nullptr;
 void*(*Jit::createJitCompilerTask_)(JitTask*) = nullptr;
@@ -34,14 +34,23 @@ Jit *Jit::GetInstance()
     return &instance_;
 }
 
-void Jit::SetEnable(const EcmaVM *vm)
+void Jit::SetEnableOrDisable(const JSRuntimeOptions &options, bool isEnable)
 {
+    if (options.IsEnableAPPJIT()) {
+        // temporary for app jit options test.
+        LOG_JIT(DEBUG) << (isEnable ? "jit is enable" : "jit is disable");
+        return;
+    }
+    if (!isEnable) {
+        jitEnable_ = false;
+        return;
+    }
     if (!initialized_) {
         Initialize();
     }
     if (initialized_ && !jitEnable_) {
         jitEnable_ = true;
-        initJitCompiler_(const_cast<EcmaVM*>(vm));
+        initJitCompiler_(options);
     }
 }
 
@@ -65,7 +74,7 @@ void Jit::Initialize()
         return;
     }
 
-    initJitCompiler_ = reinterpret_cast<void(*)(EcmaVM*)>(FindSymbol(libHandle_, JITCOMPILEINIT.c_str()));
+    initJitCompiler_ = reinterpret_cast<void(*)(JSRuntimeOptions)>(FindSymbol(libHandle_, JITCOMPILEINIT.c_str()));
     if (initJitCompiler_ == nullptr) {
         LOG_JIT(ERROR) << "jit can't find symbol initJitCompiler";
         return;
@@ -124,10 +133,14 @@ void Jit::DeleteJitCompile(void *compiler)
     deleteJitCompile_(compiler);
 }
 
-void Jit::Compile(EcmaVM *vm, JSHandle<JSFunction> &jsFunction, JitCompileMode mode)
+void Jit::Compile(EcmaVM *vm, JSHandle<JSFunction> &jsFunction, int32_t offset, JitCompileMode mode)
 {
     auto jit = Jit::GetInstance();
     if (!jit->IsEnable()) {
+        return;
+    }
+
+    if (!vm->IsEnableOsr() && offset != MachineCode::INVALID_OSR_OFFSET) {
         return;
     }
 
@@ -144,18 +157,27 @@ void Jit::Compile(EcmaVM *vm, JSHandle<JSFunction> &jsFunction, JitCompileMode m
         LOG_JIT(DEBUG) << "skip method, as it compiling:" << methodName;
         return;
     }
+
     if (jsFunction->GetMachineCode() != JSTaggedValue::Undefined()) {
-        LOG_JIT(DEBUG) << "skip method, as it has been jit compiled:" << methodName;
-        return;
+        MachineCode *machineCode = MachineCode::Cast(jsFunction->GetMachineCode().GetTaggedObject());
+        if (machineCode->GetOSROffset() == MachineCode::INVALID_OSR_OFFSET) {
+            LOG_JIT(DEBUG) << "skip method, as it has been jit compiled:" << methodName;
+            return;
+        }
     }
+
     // using hole value to indecate compiling. todo: reset when failed
     jsFunction->SetMachineCode(vm->GetJSThread(), JSTaggedValue::Hole());
+
+    LOG_JIT(DEBUG) << "start compile:" << methodName << ", kind:" << static_cast<int>(kind) <<
+        ", mode:" << ((mode == SYNC) ? "sync" : "async") <<
+        (offset == MachineCode::INVALID_OSR_OFFSET ? "" : ", OSR offset: " + std::to_string(offset));
 
     {
         CString msg = "compile method:" + methodName + ", in work thread";
         Scope scope(msg);
 
-        JitTask *jitTask = new JitTask(vm, jit, jsFunction, methodName, vm->GetJSThread()->GetThreadId());
+        JitTask *jitTask = new JitTask(vm, jit, jsFunction, methodName, offset, vm->GetJSThread()->GetThreadId());
 
         jitTask->PrepareCompile();
 

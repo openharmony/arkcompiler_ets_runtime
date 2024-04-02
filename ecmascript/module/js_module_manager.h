@@ -56,6 +56,7 @@ public:
     JSHandle<SourceTextModule> HostGetImportedModule(JSTaggedValue referencing);
     JSTaggedValue HostGetImportedModule(void *src);
     bool IsImportedModuleLoaded(JSTaggedValue referencing);
+    bool IsEvaluatedModule(JSTaggedValue referencing);
 
     JSHandle<JSTaggedValue> ResolveNativeModule(const CString &moduleRequestName, ModuleTypes moduleType);
     JSHandle<JSTaggedValue> HostResolveImportedModule(const void *buffer, size_t size, const CString &filename);
@@ -68,6 +69,13 @@ public:
     JSHandle<JSTaggedValue> HostResolveImportedModule(const JSPandaFile *jsPandaFile, const CString &filename);
 
     JSHandle<JSTaggedValue> LoadNativeModule(JSThread *thread, const std::string &key);
+
+    JSHandle<JSTaggedValue> ExecuteNativeModule(JSThread *thread, const std::string &recordName);
+
+    JSHandle<JSTaggedValue> ExecuteJsonModule(JSThread *thread, const std::string &recordName,
+                                              const CString &filename, const JSPandaFile *jsPandaFile);
+    JSHandle<JSTaggedValue> ExecuteCjsModule(JSThread *thread, const std::string &recordName,
+                                             const JSPandaFile *jsPandaFile);
     JSHandle<JSTaggedValue> GetModuleNameSpaceFromFile(
         JSThread *thread, std::string &recordNameStr, std::string &baseFileName);
 
@@ -114,8 +122,6 @@ private:
     JSTaggedValue GetModuleValueOutterInternal(int32_t index, JSTaggedValue currentModule);
     void StoreModuleValueInternal(JSHandle<SourceTextModule> &currentModule,
                                   int32_t index, JSTaggedValue value);
-
-    JSTaggedValue GetValueFromExportObject(JSHandle<JSTaggedValue> &exportObject, int32_t index);
 
     // deprecated begin
     JSTaggedValue GetModuleValueOutterInternal(JSTaggedValue key, JSTaggedValue currentModule);

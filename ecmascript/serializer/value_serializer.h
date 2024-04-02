@@ -49,7 +49,6 @@ private:
     bool PrepareTransfer(JSThread *thread, const JSHandle<JSTaggedValue> &transfer);
     bool PrepareClone(JSThread *thread, const JSHandle<JSTaggedValue> &cloneList);
     bool CheckObjectCanSerialize(TaggedObject *object, bool &findSharedObject);
-
     bool IsInternalJSType(JSType type)
     {
         if (type >= JSType::JS_RECORD_FIRST && type <= JSType::JS_RECORD_LAST) {

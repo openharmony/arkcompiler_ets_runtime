@@ -31,4 +31,14 @@ JSTaggedValue ContainerError::BusinessError(JSThread *thread, int32_t errorCode,
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     return error.GetTaggedValue();
 }
+
+JSTaggedValue ContainerError::BindError(JSThread *thread, const char *msg)
+{
+    return ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR, msg);
+}
+
+JSTaggedValue ContainerError::ParamError(JSThread *thread, const char *msg)
+{
+    return ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, msg);
+}
 }  // namespace panda::ecmascript::containers

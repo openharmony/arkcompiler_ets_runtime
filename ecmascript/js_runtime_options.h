@@ -147,6 +147,7 @@ enum CommandValues {
     OPTION_COMPILER_PKG_INFO,
     OPTION_COMPILER_EXTERNAL_PKG_INFO,
     OPTION_COMPILER_ENABLE_EXTERNAL_PKG,
+    OPTION_COMPILER_FRAMEWORK_ABC_PATH,
     OPTION_COMPILER_OPT_ARRAY_BOUNDS_CHECK_ELIMINATION,
     OPTION_COMPILER_OPT_LOOP_INVARIANT_CODE_MOTION,
     OPTION_COMPILER_OPT_CONSTANT_FOLDING,
@@ -159,7 +160,9 @@ enum CommandValues {
     OPTION_COMPILER_ENABLE_LOWERING_BUILTIN,
     OPTION_COMPILER_ENABLE_LITECG,
     OPTION_COMPILER_ENABLE_JIT,
+    OPTION_COMPILER_ENABLE_OSR,
     OPTION_COMPILER_JIT_HOTNESS_THRESHOLD,
+    OPTION_COMPILER_OSR_HOTNESS_THRESHOLD,
     OPTION_COMPILER_FORCE_JIT_COMPILE_MAIN,
     OPTION_COMPILER_TRACE_JIT,
     OPTION_ENABLE_ELEMENTSKIND,
@@ -1077,6 +1080,26 @@ public:
         return enableJIT_;
     }
 
+    void SetEnableAPPJIT(bool value)
+    {
+        enableAPPJIT_ = value;
+    }
+
+    bool IsEnableAPPJIT() const
+    {
+        return enableAPPJIT_;
+    }
+
+    void SetEnableOSR(bool value)
+    {
+        enableOSR_ = value;
+    }
+
+    bool IsEnableOSR() const
+    {
+        return enableOSR_;
+    }
+
     void SetJitHotnessThreshold(uint16_t value)
     {
         jitHotnessThreshold_ = value;
@@ -1085,6 +1108,16 @@ public:
     uint16_t GetJitHotnessThreshold() const
     {
         return jitHotnessThreshold_;
+    }
+
+    void SetOsrHotnessThreshold(uint16_t value)
+    {
+        osrHotnessThreshold_ = value;
+    }
+
+    uint16_t GetOsrHotnessThreshold() const
+    {
+        return osrHotnessThreshold_;
     }
 
     void SetForceJitCompileMain(bool value)
@@ -1285,6 +1318,21 @@ public:
     size_t GetMaxInlineBytecodes()
     {
         return maxInlineBytecodes_;
+    }
+
+    void SetCompilerFrameworkAbcPath(std::string frameworkAbcPath)
+    {
+        frameworkAbcPath_ = std::move(frameworkAbcPath);
+    }
+
+    std::string GetCompilerFrameworkAbcPath() const
+    {
+        return frameworkAbcPath_;
+    }
+
+    bool WasSetCompilerFrameworkAbcPath() const
+    {
+        return WasOptionSet(OPTION_COMPILER_FRAMEWORK_ABC_PATH);
     }
 
     void SetTargetCompilerMode(std::string mode)
@@ -1506,7 +1554,7 @@ public:
     {
         return optBCRange_;
     }
-    
+
     void SetEnableEscapeAnalysis(bool value)
     {
         enableEscapeAnalysis_ = value;
@@ -1618,7 +1666,10 @@ private:
     bool enableOptInlining_ {true};
     bool enableOptPGOType_ {true};
     bool enableJIT_{false};
+    bool enableAPPJIT_{false};
+    bool enableOSR_{false};
     uint16_t jitHotnessThreshold_ {2};
+    uint16_t osrHotnessThreshold_ {2};
     bool forceJitCompileMain_{false};
     bool enableGlobalTypeInfer_ {false};
     bool enableOptTrackField_ {true};
@@ -1646,6 +1697,7 @@ private:
     bool traceInstructionCombine_{false};
     size_t maxInlineBytecodes_ {45};
     std::string targetCompilerMode_ {""};
+    std::string frameworkAbcPath_ {""};
     std::string hapPath_ {""};
     uint32_t hapAbcOffset_ {0};
     uint32_t hapAbcSize_ {0};

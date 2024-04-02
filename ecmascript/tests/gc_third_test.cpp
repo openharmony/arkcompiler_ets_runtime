@@ -189,4 +189,33 @@ HWTEST_F_L0(GCTest, ArkToolsHintGC)
         heap->ChangeGCParams(false);
     }
 }
+
+HWTEST_F_L0(GCTest, CallbackTask)
+{
+    auto vm = thread->GetEcmaVM();
+    Heap *heap = const_cast<Heap *>(vm->GetHeap());
+    auto factory = vm->GetFactory();
+    {
+        [[maybe_unused]] ecmascript::EcmaHandleScope baseScope(thread);
+
+        for (int i = 0; i < 10; i++) {
+            // NOLINTNEXTLINE(cppcoreguidelines-no-malloc)
+            void *externalPointer = malloc(10);
+            [[maybe_unused]] JSHandle<JSNativePointer> nativePointer
+                = factory->NewJSNativePointer(externalPointer,
+                                              [](void* pointer, [[maybe_unused]] void* data) {
+                                                  if (pointer != nullptr) {
+                                                      free(pointer);
+                                                  }
+                                              },
+                                              nullptr, false, 10, Concurrent::YES);
+        }
+    }
+    size_t number = vm->GetConcurrentNativePointerListSize();
+    EXPECT_TRUE(number > 0);
+    heap->CollectGarbage(TriggerGCType::OLD_GC);
+    size_t newNumber = vm->GetConcurrentNativePointerListSize();
+    EXPECT_TRUE(number > newNumber);
+}
+
 } // namespace panda::test

@@ -17,6 +17,7 @@
 
 #include "ecmascript/base/number_helper.h"
 #include "ecmascript/compiler/gate_accessor.h"
+#include "ecmascript/deoptimizer/deoptimizer.h"
 #include "ecmascript/ts_types/ts_manager.h"
 #include "libpandafile/bytecode_instruction-inl.h"
 
@@ -410,6 +411,51 @@ void BytecodeCircuitBuilder::BuildFrameArgs()
     argAcc_.SetFrameArgs(frameArgs);
 }
 
+void BytecodeCircuitBuilder::BuildOSRArgs()
+{
+    // offset -1 : glue
+    (void)circuit_->NewGate(circuit_->GetMetaBuilder()->InitVreg(INIT_VRGE_GLUE), MachineType::I64,
+                            {circuit_->GetArgRoot()}, GateType::NJSValue());
+    // offset -2 : argc
+    GateRef argc = method_->IsFastCall()
+                       ? circuit_->GetConstantGate(MachineType::I64, 0, GateType::NJSValue())
+                       : circuit_->NewGate(circuit_->GetMetaBuilder()->InitVreg(INIT_VRGE_ARGS), MachineType::I64,
+                                           {circuit_->GetArgRoot()}, GateType::TaggedValue());
+    // offset -3 : func
+    (void)circuit_->NewGate(circuit_->GetMetaBuilder()->InitVreg(INIT_VRGE_FUNCTION), MachineType::I64,
+                            {circuit_->GetArgRoot()}, GateType::TaggedValue());
+    // offset -4 : new_target
+    GateRef newTarget =
+        method_->IsFastCall()
+            ? circuit_->GetConstantGate(MachineType::I64, JSTaggedValue::VALUE_UNDEFINED, GateType::UndefinedType())
+            : circuit_->NewGate(circuit_->GetMetaBuilder()->InitVreg(INIT_VRGE_NEW_TARGET), MachineType::I64,
+                                {circuit_->GetArgRoot()}, GateType::TaggedValue());
+    // offset -5 : this_object
+    (void)circuit_->NewGate(circuit_->GetMetaBuilder()->InitVreg(INIT_VRGE_THIS_OBJECT), MachineType::I64,
+                            {circuit_->GetArgRoot()}, GateType::TaggedValue());
+    // offset -6 : numargs
+    (void)circuit_->NewGate(circuit_->GetMetaBuilder()->InitVreg(INIT_VRGE_NUM_ARGS), MachineType::I64,
+                            {circuit_->GetArgRoot()}, GateType::TaggedValue());
+    for (size_t argIdx = 1; argIdx <= method_->GetNumArgsWithCallField(); argIdx++) {
+        // common args
+        argAcc_.NewArg(method_->IsFastCall() ? static_cast<size_t>(FastCallArgIdx::NUM_OF_ARGS)
+                                             : static_cast<size_t>(CommonArgIdx::NUM_OF_ARGS) + argIdx);
+    }
+
+    auto &args = argAcc_.args_;
+    if (args.size() == 0) {
+        GateAccessor(circuit_).GetArgsOuts(args);
+        std::reverse(args.begin(), args.end());
+        if (method_->IsFastCall() && args.size() >= static_cast<uint8_t>(FastCallArgIdx::NUM_OF_ARGS)) {
+            args.insert(args.begin() + static_cast<uint8_t>(CommonArgIdx::ACTUAL_ARGC), argc);
+            // 3: newtarget index
+            args.insert(args.begin() + static_cast<uint8_t>(CommonArgIdx::NEW_TARGET), newTarget);
+        }
+    }
+
+    BuildFrameArgs();
+}
+
 std::vector<GateRef> BytecodeCircuitBuilder::CreateGateInList(
     const BytecodeInfo &info, const GateMetaData *meta)
 {
@@ -757,13 +803,162 @@ void BytecodeCircuitBuilder::BuildSubCircuit()
     }
 }
 
+bool BytecodeCircuitBuilder::FindOsrLoopHeadBB()
+{
+    int32_t loopBackBcIndex {-1};
+    for (size_t k = 0; k < pcOffsets_.size(); k++) {
+        if (static_cast<int32_t>(pcOffsets_[k] - pcOffsets_[0]) == osrOffset_) {
+            loopBackBcIndex = k;
+        }
+    }
+    if (loopBackBcIndex == -1) {
+        LOG_COMPILER(ERROR) << "Unable to find the loop back of OSR.";
+        return false;
+    }
+    auto &rpoList = frameStateBuilder_.GetRpoList();
+    for (auto &bbId : rpoList) {
+        auto &bb = RegionAt(bbId);
+        if (bb.end == static_cast<uint32_t>(loopBackBcIndex)) {
+            frameStateBuilder_.SetOsrLoopHeadBB(bb);
+            return true;
+        }
+    }
+    LOG_COMPILER(ERROR) << "Unable to find the loop head bb of OSR.";
+    return false;
+}
+
+void BytecodeCircuitBuilder::GenDeoptAndReturnForOsrLoopExit(BytecodeRegion &osrLoopExitBB)
+{
+    frameStateBuilder_.AdvanceToNextBB(osrLoopExitBB, true);
+    GateRef state = frameStateBuilder_.GetCurrentState();
+    GateRef depend = frameStateBuilder_.GetCurrentDepend();
+    std::string comment = Deoptimizier::DisplayItems(DeoptType::OSRLOOPEXIT);
+    GateRef type =
+        circuit_->GetConstantGate(MachineType::I64, static_cast<int64_t>(DeoptType::OSRLOOPEXIT), GateType::NJSValue());
+    GateRef condition = circuit_->GetConstantGate(MachineType::I1, 0, GateType::NJSValue());
+    GateRef deopt = circuit_->NewGate(circuit_->DeoptCheck(), MachineType::I1,
+                                      {state, depend, condition, gateAcc_.GetFrameState(depend), type},
+                                      GateType::NJSValue(), comment.c_str());
+    GateRef dependRelay = circuit_->NewGate(circuit_->DependRelay(), {deopt, depend});
+    GateRef undef =
+        circuit_->GetConstantGate(MachineType::I64, JSTaggedValue::VALUE_UNDEFINED, GateType::TaggedValue());
+    circuit_->NewGate(circuit_->Return(), {state, dependRelay, undef, circuit_->GetReturnRoot()});
+}
+
+void BytecodeCircuitBuilder::CollectCacheBBforOSRLoop(BytecodeRegion *bb)
+{
+    catchBBOfOSRLoop_.insert(bb);
+    for (BytecodeRegion *succBB : bb->succs) {
+        CollectCacheBBforOSRLoop(succBB);
+    }
+}
+
+void BytecodeCircuitBuilder::HandleOsrLoopBody(BytecodeRegion &osrLoopBodyBB)
+{
+    if (!osrLoopBodyBB.trys.empty()) {
+        GateRef state = frameStateBuilder_.GetCurrentState();
+        GateRef depend = frameStateBuilder_.GetCurrentDepend();
+        auto getException =
+            circuit_->NewGate(circuit_->GetException(), MachineType::I64, {state, depend}, GateType::AnyType());
+        frameStateBuilder_.UpdateAccumulator(getException);
+        frameStateBuilder_.UpdateStateDepend(state, getException);
+    }
+    // collect catch BB.
+    if (!osrLoopBodyBB.catches.empty()) {
+        for (BytecodeRegion *targetBB : osrLoopBodyBB.catches) {
+            CollectCacheBBforOSRLoop(targetBB);
+        }
+    }
+    EnumerateBlock(osrLoopBodyBB, [this, &osrLoopBodyBB](const BytecodeInfo &bytecodeInfo) -> bool {
+        NewByteCode(osrLoopBodyBB);
+        if (bytecodeInfo.IsJump() || bytecodeInfo.IsThrow()) {
+            return false;
+        }
+        return true;
+    });
+    bool needFallThrough = true;
+    if (!osrLoopBodyBB.IsEmptryBlock()) {
+        const BytecodeInfo &bytecodeInfo = GetBytecodeInfo(osrLoopBodyBB.end);
+        needFallThrough = bytecodeInfo.needFallThrough();
+    }
+    // fallThrough or empty merge osrLoopBodyBB
+    if (needFallThrough) {
+        ASSERT(osrLoopBodyBB.succs.size() == 1);  // 1: fall through
+        auto &bbNext = RegionAt(osrLoopBodyBB.succs[0]->id);
+        frameStateBuilder_.MergeIntoSuccessor(osrLoopBodyBB, bbNext);
+        bbNext.expandedPreds.push_back({osrLoopBodyBB.id, osrLoopBodyBB.end, false});
+    }
+}
+
+void BytecodeCircuitBuilder::BuildOsrCircuit()
+{
+    if (!FindOsrLoopHeadBB()) {
+        LOG_COMPILER(FATAL) << "invalid osr offset";
+    }
+    circuit_->SetIsOsr();
+    auto &entryBlock = RegionAt(0);
+    frameStateBuilder_.InitEntryBB(entryBlock);
+    std::set<size_t> osrLoopExitBBIds;
+    auto &rpoList = frameStateBuilder_.GetRpoList();
+    for (auto &bbId : rpoList) {
+        auto &bb = RegionAt(bbId);
+        if (frameStateBuilder_.IsOsrLoopExit(bb)) {
+            // The loop exit BB is in front of the loop head BB. At this time,
+            // the loop exit BB does not have the context object, and the processing of the loop exit BB is delayed.
+            if (frameStateBuilder_.IsContextExists(bb.id)) {
+                GenDeoptAndReturnForOsrLoopExit(bb);
+            } else {
+                osrLoopExitBBIds.insert(bbId);
+            }
+            continue;
+        }
+
+        // Processes only the BBs related to the loop specified by the OSR.
+        if (!IsEntryBlock(bb.id) && frameStateBuilder_.OutOfOsrLoop(bb) && !IsCacheBBOfOSRLoop(bb)) {
+            continue;
+        }
+
+        frameStateBuilder_.AdvanceToNextBB(bb);
+        if (IsEntryBlock(bb.id)) {
+            if (NeedCheckSafePointAndStackOver()) {
+                GateRef state = frameStateBuilder_.GetCurrentState();
+                GateRef depend = frameStateBuilder_.GetCurrentDepend();
+                auto stackCheck = circuit_->NewGate(circuit_->CheckSafePointAndStackOver(), {state, depend});
+                bb.dependCache = stackCheck;
+                frameStateBuilder_.UpdateStateDepend(stackCheck, stackCheck);
+            }
+            auto *bbNext = &RegionAt(bb.id + 1);
+            while (!IsEntryBlock(bbNext->id) && frameStateBuilder_.OutOfOsrLoop(*bbNext)) {
+                bbNext = &RegionAt(bbNext->id + 1);
+            }
+            frameStateBuilder_.MergeIntoSuccessor(bb, *bbNext);
+            bbNext->expandedPreds.push_back({bb.id, bb.end, false});
+            continue;
+        }
+
+        HandleOsrLoopBody(bb);
+    }
+    for (size_t bbId : osrLoopExitBBIds) {
+        auto &bb = RegionAt(bbId);
+        GenDeoptAndReturnForOsrLoopExit(bb);
+    }
+}
+
 void BytecodeCircuitBuilder::BuildCircuit()
 {
-    // create arg gates array
-    BuildCircuitArgs();
-    frameStateBuilder_.DoBytecodeAnalysis();
-    // build states sub-circuit of each block
-    BuildSubCircuit();
+    if (IsOSR()) {
+        // create osr arg gates array
+        BuildOSRArgs();
+        frameStateBuilder_.DoBytecodeAnalysis();
+        // build states sub-circuit of osr block
+        BuildOsrCircuit();
+    } else {
+        // create arg gates array
+        BuildCircuitArgs();
+        frameStateBuilder_.DoBytecodeAnalysis();
+        // build states sub-circuit of each block
+        BuildSubCircuit();
+    }
     if (IsLogEnabled()) {
         PrintGraph("Bytecode2Gate");
         LOG_COMPILER(INFO) << "\033[34m" << "============= "

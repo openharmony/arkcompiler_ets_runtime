@@ -26,6 +26,7 @@
 #include "ecmascript/mem/c_containers.h"
 #include "ecmascript/mem/c_string.h"
 #include "ecmascript/mem/gc_stats.h"
+#include "ecmascript/mem/gc_key_stats.h"
 #include "ecmascript/napi/include/dfx_jsnapi.h"
 #include "ecmascript/napi/include/jsnapi.h"
 #include "ecmascript/pgo_profiler/pgo_profiler.h"
@@ -48,11 +49,13 @@ class HeapTracker;
 class JSNativePointer;
 class Program;
 class GCStats;
+class GCKeyStats;
 class CpuProfiler;
 class Tracing;
 class RegExpExecResultCache;
 class JSPromise;
 enum class PromiseRejectionEvent : uint8_t;
+enum class Concurrent { YES, NO };
 class JSPandaFileManager;
 class JSPandaFile;
 class EcmaStringTable;
@@ -100,6 +103,7 @@ using RequestAotCallback =
 using SearchHapPathCallBack = std::function<bool(const std::string moduleName, std::string &hapPath)>;
 using DeviceDisconnectCallback = std::function<bool()>;
 using UncatchableErrorHandler = std::function<void(panda::TryCatch&)>;
+using DeleteEntryPoint = void (*)(void *, void *);
 class EcmaVM {
 public:
     static EcmaVM *Create(const JSRuntimeOptions &options);
@@ -143,6 +147,11 @@ public:
     GCStats *GetEcmaGCStats() const
     {
         return gcStats_;
+    }
+
+    GCKeyStats *GetEcmaGCKeyStats() const
+    {
+        return gcKeyStats_;
     }
 
     JSThread *GetAssociatedJSThread() const
@@ -207,7 +216,7 @@ public:
         return icEnabled_;
     }
 
-    void PushToNativePointerList(JSNativePointer *pointer);
+    void PushToNativePointerList(JSNativePointer *pointer, Concurrent isConcurrent = Concurrent::NO);
     void RemoveFromNativePointerList(JSNativePointer *pointer);
     void PushToDeregisterModuleList(CString module);
     void RemoveFromDeregisterModuleList(CString module);
@@ -243,6 +252,9 @@ public:
     }
     void ProcessNativeDelete(const WeakRootVisitor &visitor);
     void ProcessReferences(const WeakRootVisitor &visitor);
+
+    void PushToSharedNativePointerList(JSNativePointer *pointer);
+    void ProcessSharedNativeDelete(const WeakRootVisitor &visitor);
 
     SnapshotEnv *GetSnapshotEnv() const
     {
@@ -319,6 +331,11 @@ public:
         return nativePointerList_;
     }
 
+    size_t GetConcurrentNativePointerListSize() const
+    {
+        return concurrentNativePointerList_.size();
+    }
+
     void SetResolveBufferCallback(ResolveBufferCallback cb)
     {
         resolveBufferCallback_ = cb;
@@ -328,7 +345,7 @@ public:
     {
         return resolveBufferCallback_;
     }
-    
+
     void SetSearchHapPathCallBack(SearchHapPathCallBack cb)
     {
         SearchHapPathCallBack_ = cb;
@@ -580,6 +597,16 @@ public:
     bool PUBLIC_API IsEnableJit() const;
     void EnableJit() const;
 
+    bool IsEnableOsr() const
+    {
+        return isEnableOsr_;
+    }
+
+    void SetEnableOsr(bool state)
+    {
+        isEnableOsr_ = state;
+    }
+
     bool isOverLimit() const
     {
         return overLimit_;
@@ -600,7 +627,17 @@ public:
         return thread_->GetThreadId();
     }
 
+    std::vector<std::pair<DeleteEntryPoint, std::pair<void *, void *>>> &GetNativePointerCallbacks()
+    {
+        return nativePointerCallbacks_;
+    }
+
     static void InitializeIcuData(const JSRuntimeOptions &options);
+
+    std::vector<std::pair<DeleteEntryPoint, std::pair<void *, void *>>> &GetSharedNativePointerCallbacks()
+    {
+        return sharedNativePointerCallbacks_;
+    }
 protected:
 
     void PrintJSErrorInfo(const JSHandle<JSTaggedValue> &exceptionInfo) const;
@@ -620,6 +657,7 @@ private:
     bool icEnabled_ {true};
     bool initialized_ {false};
     GCStats *gcStats_ {nullptr};
+    GCKeyStats *gcKeyStats_ {nullptr};
     EcmaStringTable *stringTable_ {nullptr};
 
     // VM memory management.
@@ -629,6 +667,10 @@ private:
     Heap *heap_ {nullptr};
     ObjectFactory *factory_ {nullptr};
     CList<JSNativePointer *> nativePointerList_;
+    CList<JSNativePointer *> concurrentNativePointerList_;
+    std::vector<std::pair<DeleteEntryPoint, std::pair<void *, void *>>> nativePointerCallbacks_ {};
+    CList<JSNativePointer *> sharedNativePointerList_;
+    std::vector<std::pair<DeleteEntryPoint, std::pair<void *, void *>>> sharedNativePointerCallbacks_ {};
     // VM execution states.
     JSThread *thread_ {nullptr};
 
@@ -710,6 +752,7 @@ private:
     friend class EcmaContext;
     CMap<uint32_t, EcmaVM *> workerList_ {};
     Mutex mutex_;
+    bool isEnableOsr_ {false};
     bool overLimit_ {false};
 };
 }  // namespace ecmascript

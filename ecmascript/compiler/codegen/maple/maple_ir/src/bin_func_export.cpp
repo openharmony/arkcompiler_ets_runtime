@@ -59,6 +59,7 @@ void BinaryMplExport::OutputBaseNode(const BaseNode *b)
 
 void BinaryMplExport::OutputLocalSymbol(MIRSymbol *sym)
 {
+    CHECK_FATAL(sym != nullptr, "null ptr");
     std::unordered_map<const MIRSymbol *, int64>::iterator it = localSymMark.find(sym);
     if (it != localSymMark.end()) {
         WriteNum(-(it->second));
@@ -70,7 +71,7 @@ void BinaryMplExport::OutputLocalSymbol(MIRSymbol *sym)
     WriteNum(sym->GetSKind());
     WriteNum(sym->GetStorageClass());
     size_t mark = localSymMark.size();
-    localSymMark[sym] = mark;
+    localSymMark[sym] = static_cast<int64>(mark);
     OutputTypeAttrs(sym->GetAttrs());
     WriteNum(static_cast<int64>(sym->GetIsTmp()));
     if (sym->GetSKind() == kStVar || sym->GetSKind() == kStFunc) {
@@ -104,7 +105,7 @@ void BinaryMplExport::OutputPreg(MIRPreg *preg)
     WriteNum(kBinPreg);
     Write(static_cast<uint8>(preg->GetPrimType()));
     size_t mark = localPregMark.size();
-    localPregMark[preg] = mark;
+    localPregMark[preg] = static_cast<int>(mark);
 }
 
 void BinaryMplExport::OutputLabel(LabelIdx lidx)
@@ -117,7 +118,7 @@ void BinaryMplExport::OutputLabel(LabelIdx lidx)
 
     WriteNum(kBinLabel);
     size_t mark = labelMark.size();
-    labelMark[lidx] = mark;
+    labelMark[lidx] = static_cast<int64>(mark);
 }
 
 void BinaryMplExport::OutputLocalTypeNameTab(const MIRTypeNameTable *typeNameTab)

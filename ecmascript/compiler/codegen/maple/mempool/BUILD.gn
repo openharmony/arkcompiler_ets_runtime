@@ -22,7 +22,6 @@ include_directories = [
   "${MAPLEALL_ROOT}/maple_ir/include",
   "${MAPLEALL_ROOT}/maple_util/include",
   "${MAPLEALL_ROOT}/maple_driver/include",
-  "${MAPLEALL_THIRD_PARTY_ROOT}/bounds_checking_function/include",
 ]
 
 ohos_static_library("libmempool") {
@@ -30,6 +29,7 @@ ohos_static_library("libmempool") {
   configs = [ "${MAPLEALL_ROOT}:mapleallcompilecfg" ]
   sources = src_libmempool
   include_dirs = include_directories
+  external_deps = [ "bounds_checking_function:libsec_static" ]
   output_dir = "${root_out_dir}/lib/${HOST_ARCH}"
   part_name = "ets_runtime"
   subsystem_name = "arkcompiler"

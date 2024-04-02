@@ -81,6 +81,7 @@ namespace panda::ecmascript::kungfu {
 
 #define SHARE_GATE_META_DATA_LIST_WITH_ONE_PARAMETER(V)   \
     V(Arg, ARG, GateFlags::HAS_ROOT, 0, 0, 0)             \
+    V(InitVreg, INITVREG, GateFlags::HAS_ROOT, 0, 0, 0)  \
     SHARE_GATE_META_DATA_LIST_WITH_VALUE(V)
 
 #define IMMUTABLE_META_DATA_CACHE_LIST(V)                                                       \
@@ -151,6 +152,15 @@ enum class OpCode : uint8_t {
     GATE_OPCODE_LIST(DECLARE_GATE_OPCODE)
 #undef DECLARE_GATE_OPCODE
 };
+
+// Special virtual register in the OSR.
+static constexpr size_t INIT_VRGE_GLUE = -1;
+static constexpr size_t INIT_VRGE_ARGS = -2;
+static constexpr size_t INIT_VRGE_FUNCTION = -3;
+static constexpr size_t INIT_VRGE_NEW_TARGET = -4;
+static constexpr size_t INIT_VRGE_THIS_OBJECT = -5;
+static constexpr size_t INIT_VRGE_NUM_ARGS = -6;
+static constexpr size_t INIT_VRGE_ENV = -7;
 
 }
 

@@ -239,9 +239,9 @@ void Circuit::SetMark(GateRef gate, MarkCode mark) const
     const_cast<Gate *>(LoadGatePtrConst(gate))->SetMark(mark, GetTime());
 }
 
-void Circuit::Verify(GateRef gate) const
+void Circuit::Verify(GateRef gate, const std::string& methodName) const
 {
-    LoadGatePtrConst(gate)->Verify(IsArch64());
+    LoadGatePtrConst(gate)->Verify(IsArch64(), methodName);
 }
 
 GateRef Circuit::NullGate()

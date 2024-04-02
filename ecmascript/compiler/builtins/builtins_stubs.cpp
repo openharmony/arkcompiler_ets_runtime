@@ -21,12 +21,12 @@
 #include "ecmascript/compiler/builtins/builtins_function_stub_builder.h"
 #include "ecmascript/compiler/builtins/builtins_string_stub_builder.h"
 #include "ecmascript/compiler/builtins/builtins_number_stub_builder.h"
+#include "ecmascript/compiler/builtins/builtins_typedarray_stub_builder.h"
 #include "ecmascript/compiler/builtins/containers_vector_stub_builder.h"
 #include "ecmascript/compiler/builtins/containers_stub_builder.h"
 #include "ecmascript/compiler/builtins/builtins_collection_stub_builder.h"
 #include "ecmascript/compiler/builtins/builtins_object_stub_builder.h"
 #include "ecmascript/compiler/codegen/llvm/llvm_ir_builder.h"
-#include "ecmascript/compiler/typed_array_stub_builder.h"
 #include "ecmascript/compiler/interpreter_stub-inl.h"
 #include "ecmascript/compiler/new_object_stub_builder.h"
 #include "ecmascript/compiler/stub_builder-inl.h"
@@ -152,18 +152,18 @@ GateRef BuiltinsStubBuilder::CallSlowPath(GateRef nativeCode, GateRef glue, Gate
     return ret;
 }
 
-#define DECLARE_BUILTINS_WITH_STRING_STUB_BUILDER(method, resultVariableType, initValue)            \
-DECLARE_BUILTINS(String##method)                                                                    \
+#define DECLARE_BUILTINS_STUB_BUILDER(method, type, initValue)                                      \
+DECLARE_BUILTINS(type##method)                                                                      \
 {                                                                                                   \
     auto env = GetEnvironment();                                                                    \
-    DEFVARIABLE(res, VariableType::resultVariableType(), initValue);                                \
+    DEFVARIABLE(res, VariableType::JS_ANY(), initValue);                                            \
     Label exit(env);                                                                                \
     Label slowPath(env);                                                                            \
-    BuiltinsStringStubBuilder stringStubBuilder(this);                                              \
-    stringStubBuilder.method(glue, thisValue, numArgs, &res, &exit, &slowPath);                     \
+    Builtins##type##StubBuilder builder(this);                                                      \
+    builder.method(glue, thisValue, numArgs, &res, &exit, &slowPath);                               \
     Bind(&slowPath);                                                                                \
     {                                                                                               \
-        auto name = BuiltinsStubCSigns::GetName(BUILTINS_STUB_ID(String##method));                  \
+        auto name = BuiltinsStubCSigns::GetName(BUILTINS_STUB_ID(type##method));                    \
         res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func, newTarget, name.c_str());    \
         Jump(&exit);                                                                                \
     }                                                                                               \
@@ -171,202 +171,103 @@ DECLARE_BUILTINS(String##method)                                                
     Return(*res);                                                                                   \
 }
 
-#define BUILTINS_WITH_STRING_STUB_BUILDER(V)                                        \
-    V(CharAt,       JS_POINTER, Hole())                                             \
-    V(FromCharCode, JS_ANY,     Hole())                                             \
-    V(CharCodeAt,   JS_ANY,     DoubleToTaggedDoublePtr(Double(base::NAN_VALUE)))   \
-    V(CodePointAt,  JS_ANY,     Undefined())                                        \
-    V(IndexOf,      JS_ANY,     IntToTaggedPtr(Int32(-1)))                          \
-    V(Substring,    JS_ANY,     IntToTaggedPtr(Int32(-1)))                          \
-    V(Replace,      JS_ANY,     Undefined())                                        \
-    V(Trim,         JS_ANY,     Undefined())                                        \
-    V(Concat,       JS_ANY,     Undefined())                                        \
-    V(Slice,        JS_ANY,     Undefined())                                        \
-    V(ToLowerCase,  JS_ANY,     Undefined())                                        \
-    V(StartsWith,   JS_ANY,     TaggedFalse())                                      \
-    V(EndsWith,     JS_ANY,     TaggedFalse())
-
-DECLARE_BUILTINS(LocaleCompare)
-{
-    auto env = GetEnvironment();
-    DEFVARIABLE(res, VariableType::JS_ANY(), Undefined());
-    Label exit(env);
-    Label slowPath(env);
-    BuiltinsStringStubBuilder stringStubBuilder(this);
-    stringStubBuilder.LocaleCompare(glue, thisValue, numArgs, &res, &exit, &slowPath);
-    Bind(&slowPath);
-    {
-        auto name = BuiltinsStubCSigns::GetName(BUILTINS_STUB_ID(LocaleCompare));
-        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func, newTarget, name.c_str());
-        Jump(&exit);
-    }
-    Bind(&exit);
-    Return(*res);
+#define DECLARE_BUILTINS_STUB_BUILDER1(method, type, initValue)                                     \
+DECLARE_BUILTINS(type##method)                                                                      \
+{                                                                                                   \
+    auto env = GetEnvironment();                                                                    \
+    DEFVARIABLE(res, VariableType::JS_ANY(), initValue);                                            \
+    Label thisCollectionObj(env);                                                                   \
+    Label slowPath(env);                                                                            \
+    Label exit(env);                                                                                \
+    Builtins##type##StubBuilder builder(this, glue, thisValue, numArgs);                            \
+    builder.method(&res, &exit, &slowPath);                                                         \
+    Bind(&slowPath);                                                                                \
+    {                                                                                               \
+        auto name = BuiltinsStubCSigns::GetName(BUILTINS_STUB_ID(type##method));                    \
+        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func, newTarget, name.c_str());    \
+        Jump(&exit);                                                                                \
+    }                                                                                               \
+    Bind(&exit);                                                                                    \
+    Return(*res);                                                                                   \
 }
 
-DECLARE_BUILTINS(GetStringIterator)
-{
-    auto env = GetEnvironment();
-    DEFVARIABLE(res, VariableType::JS_ANY(), Undefined());
-    Label exit(env);
-    Label slowPath(env);
-    BuiltinsStringStubBuilder stringStubBuilder(this);
-    stringStubBuilder.GetStringIterator(glue, thisValue, numArgs, &res, &exit, &slowPath);
-    Bind(&slowPath);
-    {
-        auto name = BuiltinsStubCSigns::GetName(BUILTINS_STUB_ID(GetStringIterator));
-        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func, newTarget, name.c_str());
-        Jump(&exit);
-    }
-    Bind(&exit);
-    Return(*res);
+// map and set stub function
+#define DECLARE_BUILTINS_COLLECTION_STUB_BUILDER(method, type, retDefaultValue)                     \
+DECLARE_BUILTINS(type##method)                                                                      \
+{                                                                                                   \
+    auto env = GetEnvironment();                                                                    \
+    DEFVARIABLE(res, VariableType::JS_ANY(), retDefaultValue);                                      \
+    Label slowPath(env);                                                                            \
+    Label exit(env);                                                                                \
+    BuiltinsCollectionStubBuilder<JS##type> builder(this, glue, thisValue, numArgs);                \
+    builder.method(&res, &exit, &slowPath);                                                         \
+    Bind(&slowPath);                                                                                \
+    {                                                                                               \
+        auto name = BuiltinsStubCSigns::GetName(BUILTINS_STUB_ID(type##method));                    \
+        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func, newTarget, name.c_str());    \
+        Jump(&exit);                                                                                \
+    }                                                                                               \
+    Bind(&exit);                                                                                    \
+    Return(*res);                                                                                   \
 }
 
-DECLARE_BUILTINS(STRING_ITERATOR_PROTO_NEXT)
-{
-    auto env = GetEnvironment();
-    DEFVARIABLE(res, VariableType::JS_ANY(), Undefined());
-    Label exit(env);
-    Label slowPath(env);
-    BuiltinsStringStubBuilder stringStubBuilder(this);
-    stringStubBuilder.StringIteratorNext(glue, thisValue, numArgs, &res, &exit, &slowPath);
-    Bind(&slowPath);
-    {
-        auto name = BuiltinsStubCSigns::GetName(BUILTINS_STUB_ID(STRING_ITERATOR_PROTO_NEXT));
-        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func, newTarget, name.c_str());
-        Jump(&exit);
-    }
-    Bind(&exit);
-    Return(*res);
+BUILTINS_METHOD_STUB_LIST(DECLARE_BUILTINS_STUB_BUILDER, DECLARE_BUILTINS_STUB_BUILDER1,
+                          DECLARE_BUILTINS_COLLECTION_STUB_BUILDER)
+#undef DECLARE_BUILTINS_STUB_BUILDER
+#undef DECLARE_BUILTINS_STUB_BUILDER1
+#undef DECLARE_BUILTINS_COLLECTION_STUB_BUILDER
+
+// aot and builtins public stub function
+#define DECLARE_AOT_AND_BUILTINS_STUB_BUILDER(stubName, method, type, initValue)                    \
+DECLARE_BUILTINS(stubName)                                                                          \
+{                                                                                                   \
+    auto env = GetEnvironment();                                                                    \
+    DEFVARIABLE(res, VariableType::JS_ANY(), initValue);                                            \
+    Label exit(env);                                                                                \
+    Label slowPath(env);                                                                            \
+    Builtins##type##StubBuilder builder(this);                                                      \
+    builder.method(glue, thisValue, numArgs, &res, &exit, &slowPath);                               \
+    Bind(&slowPath);                                                                                \
+    {                                                                                               \
+        auto name = BuiltinsStubCSigns::GetName(BUILTINS_STUB_ID(stubName));                        \
+        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func, newTarget, name.c_str());    \
+        Jump(&exit);                                                                                \
+    }                                                                                               \
+    Bind(&exit);                                                                                    \
+    Return(*res);                                                                                   \
 }
 
-BUILTINS_WITH_STRING_STUB_BUILDER(DECLARE_BUILTINS_WITH_STRING_STUB_BUILDER)
+#define AOT_AND_BUILTINS_STUB_LIST_WITH_METHOD(V)                                                   \
+    V(LocaleCompare,              LocaleCompare,      String, Undefined())                          \
+    V(STRING_ITERATOR_PROTO_NEXT, StringIteratorNext, String, Undefined())                          \
+    V(SORT,                       Sort,               Array,  Undefined())
 
-#undef DECLARE_BUILTINS_WITH_STRING_STUB_BUILDER
-#undef BUILTINS_WITH_STRING_STUB_BUILDER
+AOT_AND_BUILTINS_STUB_LIST_WITH_METHOD(DECLARE_AOT_AND_BUILTINS_STUB_BUILDER)
+#undef AOT_AND_BUILTINS_STUB_LIST
+#undef DECLARE_AOT_AND_BUILTINS_STUB_BUILDER
 
-DECLARE_BUILTINS(FunctionPrototypeApply)
-{
-    auto env = GetEnvironment();
-    DEFVARIABLE(res, VariableType::JS_ANY(), Undefined());
-    Label exit(env);
-    Label slowPath(env);
-    BuiltinsFunctionStubBuilder functionStubBuilder(this);
-    functionStubBuilder.Apply(glue, thisValue, numArgs, &res, &exit, &slowPath);
-    Bind(&slowPath);
-    {
-        auto name = BuiltinsStubCSigns::GetName(BUILTINS_STUB_ID(FunctionPrototypeApply));
-        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func, newTarget, name.c_str());
-        Jump(&exit);
-    }
-    Bind(&exit);
-    Return(*res);
+// containers stub function
+#define DECLARE_BUILTINS_WITH_CONTAINERS_STUB_BUILDER(funcName, type, method, methodType, resultVariableType)   \
+DECLARE_BUILTINS(type##funcName)                                                                                \
+{                                                                                                               \
+    auto env = GetEnvironment();                                                                                \
+    DEFVARIABLE(res, VariableType::resultVariableType(), Undefined());                                          \
+    Label exit(env);                                                                                            \
+    Label slowPath(env);                                                                                        \
+    ContainersStubBuilder containersBuilder(this);                                                              \
+    containersBuilder.method(glue, thisValue, numArgs, &res, &exit, &slowPath, ContainersType::methodType);     \
+    Bind(&slowPath);                                                                                            \
+    {                                                                                                           \
+        auto name = BuiltinsStubCSigns::GetName(BUILTINS_STUB_ID(type##funcName));                              \
+        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func, newTarget, name.c_str());                \
+        Jump(&exit);                                                                                            \
+    }                                                                                                           \
+    Bind(&exit);                                                                                                \
+    Return(*res);                                                                                               \
 }
-
-#define DECLARE_BUILTINS_WITH_CONTAINERS_STUB_BUILDER(StubName, Method, methodType, resultVariableType)     \
-DECLARE_BUILTINS(StubName)                                                                                  \
-{                                                                                                           \
-    auto env = GetEnvironment();                                                                            \
-    DEFVARIABLE(res, VariableType::resultVariableType(), Undefined());                                      \
-    Label exit(env);                                                                                        \
-    Label slowPath(env);                                                                                    \
-    ContainersStubBuilder containersBuilder(this);                                                          \
-    containersBuilder.Method(glue, thisValue, numArgs, &res, &exit, &slowPath, ContainersType::methodType); \
-    Bind(&slowPath);                                                                                        \
-    {                                                                                                       \
-        auto name = BuiltinsStubCSigns::GetName(BUILTINS_STUB_ID(StubName));                                \
-        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func, newTarget, name.c_str());            \
-        Jump(&exit);                                                                                        \
-    }                                                                                                       \
-    Bind(&exit);                                                                                            \
-    Return(*res);                                                                                           \
-}
-
-#define BUILTINS_WITH_CONTAINERS_STUB_BUILDER(V) \
-    V(ArrayListForEach,            ContainersCommonFuncCall,  ARRAYLIST_FOREACH,            JS_POINTER) \
-    V(DequeForEach,                DequeCommonFuncCall,       DEQUE_FOREACH,                JS_POINTER) \
-    V(HashMapForEach,              ContainersHashCall,        HASHMAP_FOREACH,              JS_POINTER) \
-    V(HashSetForEach,              ContainersHashCall,        HASHSET_FOREACH,              JS_POINTER) \
-    V(LightWeightMapForEach,       ContainersLightWeightCall, LIGHTWEIGHTMAP_FOREACH,       JS_POINTER) \
-    V(LightWeightSetForEach,       ContainersLightWeightCall, LIGHTWEIGHTSET_FOREACH,       JS_POINTER) \
-    V(LinkedListForEach,           ContainersLinkedListCall,  LINKEDLIST_FOREACH,           JS_POINTER) \
-    V(ListForEach,                 ContainersLinkedListCall,  LIST_FOREACH,                 JS_POINTER) \
-    V(PlainArrayForEach,           ContainersCommonFuncCall,  PLAINARRAY_FOREACH,           JS_POINTER) \
-    V(QueueForEach,                QueueCommonFuncCall,       QUEUE_FOREACH,                JS_POINTER) \
-    V(StackForEach,                ContainersCommonFuncCall,  STACK_FOREACH,                JS_POINTER) \
-    V(VectorForEach,               ContainersCommonFuncCall,  VECTOR_FOREACH,               JS_POINTER) \
-    V(ArrayListReplaceAllElements, ContainersCommonFuncCall,  ARRAYLIST_REPLACEALLELEMENTS, JS_POINTER) \
-    V(VectorReplaceAllElements,    ContainersCommonFuncCall,  VECTOR_REPLACEALLELEMENTS,    JS_POINTER)
 
 BUILTINS_WITH_CONTAINERS_STUB_BUILDER(DECLARE_BUILTINS_WITH_CONTAINERS_STUB_BUILDER)
-
 #undef DECLARE_BUILTINS_WITH_CONTAINERS_STUB_BUILDER
-#undef BUILTINS_WITH_CONTAINERS_STUB_BUILDER
-
-#define DECLARE_BUILTINS_WITH_ARRAY_STUB_BUILDER(Method, resultVariableType)                        \
-DECLARE_BUILTINS(Array##Method)                                                                     \
-{                                                                                                   \
-    auto env = GetEnvironment();                                                                    \
-    DEFVARIABLE(res, VariableType::resultVariableType(), Undefined());                              \
-    Label exit(env);                                                                                \
-    Label slowPath(env);                                                                            \
-    BuiltinsArrayStubBuilder arrayStubBuilder(this);                                                \
-    arrayStubBuilder.Method(glue, thisValue, numArgs, &res, &exit, &slowPath);                      \
-    Bind(&slowPath);                                                                                \
-    {                                                                                               \
-        auto name = BuiltinsStubCSigns::GetName(BUILTINS_STUB_ID(Array##Method));                   \
-        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func, newTarget, name.c_str());    \
-        Jump(&exit);                                                                                \
-    }                                                                                               \
-    Bind(&exit);                                                                                    \
-    Return(*res);                                                                                   \
-}
-
-#define BUILTINS_WITH_ARRAY_STUB_BUILDER(V) \
-    V(Concat,           JS_ANY)             \
-    V(Filter,           JS_POINTER)         \
-    V(Find,             JS_ANY)             \
-    V(FindIndex,        JS_ANY)             \
-    V(From,             JS_ANY)             \
-    V(Splice,           JS_ANY)             \
-    V(ForEach,          JS_ANY)             \
-    V(IndexOf,          JS_ANY)             \
-    V(LastIndexOf,      JS_ANY)             \
-    V(Pop,              JS_ANY)             \
-    V(Slice,            JS_POINTER)         \
-    V(Reduce,           JS_ANY)             \
-    V(Reverse,          JS_POINTER)         \
-    V(Push,             JS_ANY)             \
-    V(Values,           JS_POINTER)         \
-    V(Includes,         JS_ANY)             \
-    V(CopyWithin,       JS_ANY)             \
-    V(Every,            JS_ANY)             \
-    V(FindLastIndex,    JS_ANY)             \
-    V(FindLast,         JS_ANY)             \
-    V(Map,              JS_ANY)
-
-DECLARE_BUILTINS(SORT)
-{
-    auto env = GetEnvironment();
-    DEFVARIABLE(res, VariableType::JS_ANY(), Undefined());
-    Label exit(env);
-    Label slowPath(env);
-    BuiltinsArrayStubBuilder arrayStubBuilder(this);
-    arrayStubBuilder.Sort(glue, thisValue, numArgs, &res, &exit, &slowPath);
-    Bind(&slowPath);
-    {
-        auto name = BuiltinsStubCSigns::GetName(BUILTINS_STUB_ID(SORT));
-        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func, newTarget, name.c_str());
-        Jump(&exit);
-    }
-    Bind(&exit);
-    Return(*res);
-}
-
-BUILTINS_WITH_ARRAY_STUB_BUILDER(DECLARE_BUILTINS_WITH_ARRAY_STUB_BUILDER)
-
-#undef DECLARE_BUILTINS_WITH_ARRAY_STUB_BUILDER
-#undef BUILTINS_WITH_ARRAY_STUB_BUILDER
 
 DECLARE_BUILTINS(BooleanConstructor)
 {
@@ -423,90 +324,6 @@ DECLARE_BUILTINS(BooleanConstructor)
     Bind(&slowPath1);
     {
         auto name = BuiltinsStubCSigns::GetName(BUILTINS_STUB_ID(BooleanConstructor));
-        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func, newTarget, name.c_str());
-        Jump(&exit);
-    }
-    Bind(&exit);
-    Return(*res);
-}
-
-DECLARE_BUILTINS(NumberConstructor)
-{
-    auto env = GetEnvironment();
-    DEFVARIABLE(res, VariableType::JS_ANY(), Undefined());
-    DEFVARIABLE(numberValue, VariableType::JS_ANY(), IntToTaggedPtr(IntPtr(0)));
-    Label thisCollectionObj(env);
-    Label slowPath(env);
-    Label slowPath1(env);
-    Label slowPath2(env);
-    Label exit(env);
-
-    Label hasArg(env);
-    Label numberCreate(env);
-    Label newTargetIsHeapObject(env);
-    BRANCH(TaggedIsHeapObject(newTarget), &newTargetIsHeapObject, &slowPath1);
-    Bind(&newTargetIsHeapObject);
-    BRANCH(Int64GreaterThan(numArgs, IntPtr(0)), &hasArg, &numberCreate);
-    Bind(&hasArg);
-    {
-        GateRef value = GetArgNCheck(Int32(0));
-        Label number(env);
-        BRANCH(TaggedIsNumber(value), &number, &slowPath);
-        Bind(&number);
-        {
-            numberValue = value;
-            res = value;
-            Jump(&numberCreate);
-        }
-    }
-
-    Bind(&numberCreate);
-    Label newObj(env);
-    Label newTargetIsJSFunction(env);
-    BRANCH(TaggedIsUndefined(newTarget), &exit, &newObj);
-    Bind(&newObj);
-    {
-        BRANCH(IsJSFunction(newTarget), &newTargetIsJSFunction, &slowPath);
-        Bind(&newTargetIsJSFunction);
-        {
-            Label intialHClassIsHClass(env);
-            GateRef intialHClass = Load(VariableType::JS_ANY(), newTarget,
-                IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
-            BRANCH(IsJSHClass(intialHClass), &intialHClassIsHClass, &slowPath2);
-            Bind(&intialHClassIsHClass);
-            {
-                NewObjectStubBuilder newBuilder(this);
-                newBuilder.SetParameters(glue, 0);
-                Label afterNew(env);
-                newBuilder.NewJSObject(&res, &afterNew, intialHClass);
-                Bind(&afterNew);
-                {
-                    GateRef valueOffset = IntPtr(JSPrimitiveRef::VALUE_OFFSET);
-                    Store(VariableType::INT64(), glue, *res, valueOffset, *numberValue);
-                    Jump(&exit);
-                }
-            }
-            Bind(&slowPath2);
-            {
-                auto name = BuiltinsStubCSigns::GetName(BUILTINS_STUB_ID(NumberConstructor));
-                GateRef argv = GetArgv();
-                res = CallBuiltinRuntimeWithNewTarget(glue,
-                    { glue, nativeCode, func, thisValue, numArgs, argv, newTarget }, name.c_str());
-                Jump(&exit);
-            }
-        }
-    }
-
-    Bind(&slowPath);
-    {
-        auto name = BuiltinsStubCSigns::GetName(BUILTINS_STUB_ID(NumberConstructor));
-        GateRef argv = GetArgv();
-        res = CallBuiltinRuntime(glue, { glue, nativeCode, func, thisValue, numArgs, argv }, true, name.c_str());
-        Jump(&exit);
-    }
-    Bind(&slowPath1);
-    {
-        auto name = BuiltinsStubCSigns::GetName(BUILTINS_STUB_ID(NumberConstructor));
         res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func, newTarget, name.c_str());
         Jump(&exit);
     }
@@ -615,167 +432,17 @@ DECLARE_BUILTINS(DateConstructor)
     Return(*res);
 }
 
+DECLARE_BUILTINS(NumberConstructor)
+{
+    BuiltinsNumberStubBuilder builder(this, glue, thisValue, numArgs);
+    builder.GenNumberConstructor(nativeCode, func, newTarget);
+}
+
 DECLARE_BUILTINS(ArrayConstructor)
 {
-    auto env = GetEnvironment();
-    DEFVARIABLE(res, VariableType::JS_ANY(), Undefined());
-
-    Label newTargetIsHeapObject(env);
-    Label newTargetIsJSFunction(env);
-    Label slowPath(env);
-    Label slowPath1(env);
-    Label slowPath2(env);
-    Label exit(env);
-
-    BRANCH(TaggedIsHeapObject(newTarget), &newTargetIsHeapObject, &slowPath1);
-    Bind(&newTargetIsHeapObject);
-    BRANCH(IsJSFunction(newTarget), &newTargetIsJSFunction, &slowPath);
-    Bind(&newTargetIsJSFunction);
-    {
-        Label fastGetHclass(env);
-        Label intialHClassIsHClass(env);
-        GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
-        GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
-        auto arrayFunc = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv, GlobalEnv::ARRAY_FUNCTION_INDEX);
-        BRANCH(Equal(arrayFunc, newTarget), &fastGetHclass, &slowPath2);
-        Bind(&fastGetHclass);
-        GateRef intialHClass = Load(VariableType::JS_ANY(), newTarget, IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
-        DEFVARIABLE(arrayLength, VariableType::INT64(), Int64(0));
-        BRANCH(IsJSHClass(intialHClass), &intialHClassIsHClass, &slowPath2);
-        Bind(&intialHClassIsHClass);
-        {
-            Label noArg(env);
-            Label hasArg(env);
-            Label arrayCreate(env);
-            BRANCH(Int64Equal(numArgs, IntPtr(0)), &noArg, &hasArg);
-            Bind(&noArg);
-            {
-                Jump(&arrayCreate);
-            }
-            Bind(&hasArg);
-            {
-                Label hasOneArg(env);
-                BRANCH(Int64Equal(numArgs, IntPtr(1)), &hasOneArg, &slowPath);
-                Bind(&hasOneArg);
-                {
-                    Label argIsNumber(env);
-                    GateRef arg0 = GetArg(numArgs, IntPtr(0));
-                    BRANCH(TaggedIsNumber(arg0), &argIsNumber, &slowPath);
-                    Bind(&argIsNumber);
-                    {
-                        Label argIsInt(env);
-                        Label argIsDouble(env);
-                        BRANCH(TaggedIsInt(arg0), &argIsInt, &argIsDouble);
-                        Bind(&argIsInt);
-                        {
-                            Label validIntLength(env);
-                            GateRef intLen = GetInt64OfTInt(arg0);
-                            GateRef isGEZero = Int64GreaterThanOrEqual(intLen, Int64(0));
-                            GateRef isLEMaxLen = Int64LessThanOrEqual(intLen, Int64(JSArray::MAX_ARRAY_INDEX));
-                            BRANCH(BoolAnd(isGEZero, isLEMaxLen), &validIntLength, &slowPath);
-                            Bind(&validIntLength);
-                            {
-                                arrayLength = intLen;
-                                Jump(&arrayCreate);
-                            }
-                        }
-                        Bind(&argIsDouble);
-                        {
-                            Label validDoubleLength(env);
-                            GateRef doubleLength = GetDoubleOfTDouble(arg0);
-                            GateRef doubleToInt = DoubleToInt(glue, doubleLength);
-                            GateRef intToDouble = CastInt64ToFloat64(SExtInt32ToInt64(doubleToInt));
-                            GateRef doubleEqual = DoubleEqual(doubleLength, intToDouble);
-                            GateRef doubleLEMaxLen =
-                                DoubleLessThanOrEqual(doubleLength, Double(JSArray::MAX_ARRAY_INDEX));
-                            BRANCH(BoolAnd(doubleEqual, doubleLEMaxLen), &validDoubleLength, &slowPath);
-                            Bind(&validDoubleLength);
-                            {
-                                arrayLength = SExtInt32ToInt64(doubleToInt);
-                                Jump(&arrayCreate);
-                            }
-                        }
-                    }
-                }
-            }
-            Bind(&arrayCreate);
-            {
-                Label lengthValid(env);
-                BRANCH(Int64GreaterThan(*arrayLength, Int64(JSObject::MAX_GAP)), &slowPath, &lengthValid);
-                Bind(&lengthValid);
-                {
-                    NewObjectStubBuilder newBuilder(this);
-                    newBuilder.SetParameters(glue, 0);
-                    res = newBuilder.NewJSArrayWithSize(intialHClass, *arrayLength);
-                    GateRef lengthOffset = IntPtr(JSArray::LENGTH_OFFSET);
-                    Store(VariableType::INT32(), glue, *res, lengthOffset, TruncInt64ToInt32(*arrayLength));
-                    GateRef accessor = GetGlobalConstantValue(VariableType::JS_ANY(), glue,
-                                                              ConstantIndex::ARRAY_LENGTH_ACCESSOR);
-                    SetPropertyInlinedProps(glue, *res, intialHClass, accessor,
-                                            Int32(JSArray::LENGTH_INLINE_PROPERTY_INDEX));
-                    SetExtensibleToBitfield(glue, *res, true);
-                    Jump(&exit);
-                }
-            }
-        }
-        Bind(&slowPath2);
-        {
-            auto name = BuiltinsStubCSigns::GetName(BUILTINS_STUB_ID(ArrayConstructor));
-            GateRef argv = GetArgv();
-            res = CallBuiltinRuntimeWithNewTarget(glue, { glue, nativeCode, func, thisValue, numArgs, argv, newTarget },
-                name.c_str());
-            Jump(&exit);
-        }
-    }
-    Bind(&slowPath);
-    {
-        auto name = BuiltinsStubCSigns::GetName(BUILTINS_STUB_ID(ArrayConstructor));
-        GateRef argv = GetArgv();
-        res = CallBuiltinRuntime(glue, { glue, nativeCode, func, thisValue, numArgs, argv }, true, name.c_str());
-        Jump(&exit);
-    }
-    Bind(&slowPath1);
-    {
-        auto name = BuiltinsStubCSigns::GetName(BUILTINS_STUB_ID(ArrayConstructor));
-        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func, newTarget, name.c_str());
-        Jump(&exit);
-    }
-
-    Bind(&exit);
-    Return(*res);
+    BuiltinsArrayStubBuilder builder(this);
+    builder.GenArrayConstructor(glue, nativeCode, func, newTarget, thisValue, numArgs);
 }
-
-#define DECLARE_BUILTINS_OBJECT_STUB_BUILDER(type, method, retType, retDefaultValue)                \
-DECLARE_BUILTINS(type##method)                                                                      \
-{                                                                                                   \
-    auto env = GetEnvironment();                                                                    \
-    DEFVARIABLE(res, retType, retDefaultValue);                                                     \
-    Label thisCollectionObj(env);                                                                   \
-    Label slowPath(env);                                                                            \
-    Label exit(env);                                                                                \
-    BuiltinsObjectStubBuilder builder(this, glue, thisValue, numArgs);                              \
-    builder.method(&res, &exit, &slowPath);                                                         \
-    Bind(&slowPath);                                                                                \
-    {                                                                                               \
-        auto name = BuiltinsStubCSigns::GetName(BUILTINS_STUB_ID(type##method));                    \
-        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func, newTarget, name.c_str());    \
-        Jump(&exit);                                                                                \
-    }                                                                                               \
-    Bind(&exit);                                                                                    \
-    Return(*res);                                                                                   \
-}
-
-// Object.protetype.ToString
-DECLARE_BUILTINS_OBJECT_STUB_BUILDER(Object, ToString, VariableType::JS_ANY(), Undefined());
-// Object.protetype.Create
-DECLARE_BUILTINS_OBJECT_STUB_BUILDER(Object, Create, VariableType::JS_ANY(), Undefined());
-// Object.protetype.Assign
-DECLARE_BUILTINS_OBJECT_STUB_BUILDER(Object, Assign, VariableType::JS_ANY(), Undefined());
-// Object.protetype.HasOwnProperty
-DECLARE_BUILTINS_OBJECT_STUB_BUILDER(Object, HasOwnProperty, VariableType::JS_ANY(), TaggedFalse());
-// Object.protetype.Keys
-DECLARE_BUILTINS_OBJECT_STUB_BUILDER(Object, Keys, VariableType::JS_ANY(), Undefined());
-#undef DECLARE_BUILTINS_OBJECT_STUB_BUILDER
 
 DECLARE_BUILTINS(MapConstructor)
 {
@@ -788,105 +455,4 @@ DECLARE_BUILTINS(SetConstructor)
     LinkedHashTableStubBuilder<LinkedHashSet, LinkedHashSetObject> hashTableBuilder(this, glue);
     hashTableBuilder.GenMapSetConstructor(nativeCode, func, newTarget, thisValue, numArgs);
 }
-
-#define DECLARE_BUILTINS_COLLECTION_STUB_BUILDER(type, method, retType, retDefaultValue)            \
-DECLARE_BUILTINS(type##method)                                                                      \
-{                                                                                                   \
-    auto env = GetEnvironment();                                                                    \
-    DEFVARIABLE(res, retType, retDefaultValue);                                                     \
-    Label slowPath(env);                                                                            \
-    Label exit(env);                                                                                \
-    BuiltinsCollectionStubBuilder<JS##type> builder(this, glue, thisValue, numArgs);                \
-    builder.method(&res, &exit, &slowPath);                                                         \
-    Bind(&slowPath);                                                                                \
-    {                                                                                               \
-        auto name = BuiltinsStubCSigns::GetName(BUILTINS_STUB_ID(type##method));                    \
-        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func, newTarget, name.c_str());    \
-        Jump(&exit);                                                                                \
-    }                                                                                               \
-    Bind(&exit);                                                                                    \
-    Return(*res);                                                                                   \
-}
-
-// Set.protetype.Clear
-DECLARE_BUILTINS_COLLECTION_STUB_BUILDER(Set, Clear, VariableType::JS_ANY(), Undefined());
-// Set.protetype.Values
-DECLARE_BUILTINS_COLLECTION_STUB_BUILDER(Set, Values, VariableType::JS_ANY(), Undefined());
-// Set.protetype.Entries
-DECLARE_BUILTINS_COLLECTION_STUB_BUILDER(Set, Entries, VariableType::JS_ANY(), Undefined());
-// Set.protetype.ForEach
-DECLARE_BUILTINS_COLLECTION_STUB_BUILDER(Set, ForEach, VariableType::JS_ANY(), Undefined());
-// Set.protetype.Add
-DECLARE_BUILTINS_COLLECTION_STUB_BUILDER(Set, Add, VariableType::JS_ANY(), Undefined());
-// Set.protetype.Delete
-DECLARE_BUILTINS_COLLECTION_STUB_BUILDER(Set, Delete, VariableType::JS_ANY(), Undefined());
-// Set.protetype.Has
-DECLARE_BUILTINS_COLLECTION_STUB_BUILDER(Set, Has, VariableType::JS_ANY(), Undefined());
-// Map.protetype.Clear
-DECLARE_BUILTINS_COLLECTION_STUB_BUILDER(Map, Clear, VariableType::JS_ANY(), Undefined());
-// Map.protetype.Values
-DECLARE_BUILTINS_COLLECTION_STUB_BUILDER(Map, Values, VariableType::JS_ANY(), Undefined());
-// Map.protetype.Entries
-DECLARE_BUILTINS_COLLECTION_STUB_BUILDER(Map, Entries, VariableType::JS_ANY(), Undefined());
-// Map.protetype.Keys
-DECLARE_BUILTINS_COLLECTION_STUB_BUILDER(Map, Keys, VariableType::JS_ANY(), Undefined());
-// Map.protetype.ForEach
-DECLARE_BUILTINS_COLLECTION_STUB_BUILDER(Map, ForEach, VariableType::JS_ANY(), Undefined());
-// Map.protetype.set
-DECLARE_BUILTINS_COLLECTION_STUB_BUILDER(Map, Set, VariableType::JS_ANY(), Undefined());
-// Map.protetype.Delete
-DECLARE_BUILTINS_COLLECTION_STUB_BUILDER(Map, Delete, VariableType::JS_ANY(), Undefined());
-// Map.protetype.Has
-DECLARE_BUILTINS_COLLECTION_STUB_BUILDER(Map, Has, VariableType::JS_ANY(), Undefined());
-// Map.protetype.Get
-DECLARE_BUILTINS_COLLECTION_STUB_BUILDER(Map, Get, VariableType::JS_ANY(), Undefined());
-#undef DECLARE_BUILTINS_COLLECTION_STUB_BUILDER
-
-#define DECLARE_BUILTINS_NUMBER_STUB_BUILDER(type, method, retType, retDefaultValue)                \
-DECLARE_BUILTINS(type##method)                                                                      \
-{                                                                                                   \
-    auto env = GetEnvironment();                                                                    \
-    DEFVARIABLE(res, retType, retDefaultValue);                                                     \
-    Label slowPath(env);                                                                            \
-    Label exit(env);                                                                                \
-    BuiltinsNumberStubBuilder builder(this, glue, thisValue, numArgs);                              \
-    builder.method(&res, &exit, &slowPath);                                                         \
-    Bind(&slowPath);                                                                                \
-    {                                                                                               \
-        auto name = BuiltinsStubCSigns::GetName(BUILTINS_STUB_ID(type##method));                    \
-        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func, newTarget, name.c_str());    \
-        Jump(&exit);                                                                                \
-    }                                                                                               \
-    Bind(&exit);                                                                                    \
-    Return(*res);                                                                                   \
-}
-
-// Number.ParseFloat
-DECLARE_BUILTINS_NUMBER_STUB_BUILDER(Number, ParseFloat, VariableType::JS_ANY(), Undefined());
-#undef DECLARE_BUILTINS_NUMBER_STUB_BUILDER
-
-#define DECLARE_BUILTINS_TYPEDARRAY_STUB_BUILDER(type, method, retType, retDefaultValue)            \
-DECLARE_BUILTINS(type##method)                                                                      \
-{                                                                                                   \
-    auto env = GetEnvironment();                                                                    \
-    DEFVARIABLE(res, retType, retDefaultValue);                                                     \
-    Label slowPath(env);                                                                            \
-    Label exit(env);                                                                                \
-    TypedArrayStubBuilder builder(this);                                                            \
-    builder.method(glue, thisValue, numArgs, &res, &exit, &slowPath);                               \
-    Bind(&slowPath);                                                                                \
-    {                                                                                               \
-        auto name = BuiltinsStubCSigns::GetName(BUILTINS_STUB_ID(type##method));                    \
-        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func, newTarget, name.c_str());    \
-        Jump(&exit);                                                                                \
-    }                                                                                               \
-    Bind(&exit);                                                                                    \
-    Return(*res);                                                                                   \
-}
-
-// TypedArray.Subarray
-DECLARE_BUILTINS_TYPEDARRAY_STUB_BUILDER(TypedArray, SubArray, VariableType::JS_ANY(), Undefined());
-DECLARE_BUILTINS_TYPEDARRAY_STUB_BUILDER(TypedArray, GetByteLength, VariableType::JS_ANY(), Undefined());
-DECLARE_BUILTINS_TYPEDARRAY_STUB_BUILDER(TypedArray, GetByteOffset, VariableType::JS_ANY(), Undefined());
-#undef DECLARE_BUILTINS_TYPEDARRAY_STUB_BUILDER
 }  // namespace panda::ecmascript::kungfu

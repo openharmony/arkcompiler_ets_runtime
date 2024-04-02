@@ -97,6 +97,7 @@ public:
 private:
     HeapSnapshot *snapshot_;
     HeapTrackerSample sample_;
+    TaggedObject *prevAllocation_ {nullptr};
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_DFX_HPROF_HEAP_TRACKER_H

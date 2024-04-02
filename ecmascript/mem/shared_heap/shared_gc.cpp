@@ -84,8 +84,9 @@ void SharedGC::Sweep()
 
     Runtime::GetInstance()->GCIterateThreadList([&](JSThread *thread) {
         ASSERT(!thread->IsInRunningState());
-        thread->GetCurrentEcmaContext()->ProcessNativeDelete(gcUpdateWeak);
+        thread->GetCurrentEcmaContext()->ProcessNativeDeleteInSharedGC(gcUpdateWeak);
         thread->IterateWeakEcmaGlobalStorage(gcUpdateWeak, true);
+        thread->GetEcmaVM()->ProcessSharedNativeDelete(gcUpdateWeak);
     });
 
     sHeap_->GetSweeper()->Sweep();

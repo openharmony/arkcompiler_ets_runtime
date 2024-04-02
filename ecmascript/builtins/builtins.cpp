@@ -92,6 +92,9 @@
 #include "ecmascript/require/js_cjs_module_cache.h"
 #include "ecmascript/require/js_cjs_require.h"
 #include "ecmascript/require/js_cjs_exports.h"
+#include "ecmascript/shared_objects/js_shared_array_iterator.h"
+#include "ecmascript/shared_objects/js_shared_map_iterator.h"
+#include "ecmascript/shared_objects/js_shared_set_iterator.h"
 #include "ecmascript/symbol_table.h"
 #include "ecmascript/marker_cell.h"
 #include "ecmascript/napi/include/jsnapi.h"
@@ -200,6 +203,7 @@ using AsyncGeneratorObject = builtins::BuiltinsAsyncGenerator;
 
 void Builtins::Initialize(const JSHandle<GlobalEnv> &env, JSThread *thread, bool lazyInit, bool isRealm)
 {
+    thread->CheckSafepointIfSuspended();
     thread_ = thread;
     vm_ = thread->GetEcmaVM();
     factory_ = vm_->GetFactory();
@@ -243,6 +247,7 @@ void Builtins::Initialize(const JSHandle<GlobalEnv> &env, JSThread *thread, bool
     // initialize Function, forbidden change order
     InitializeFunction(env, emptyFuncClass);
 
+    thread->CheckSafepointIfSuspended();
     JSHandle<JSHClass> asyncAwaitStatusFuncClass =
         factory_->CreateFunctionClass(FunctionKind::NORMAL_FUNCTION, JSAsyncAwaitStatusFunction::SIZE,
                                       JSType::JS_ASYNC_AWAIT_STATUS_FUNCTION, env->GetFunctionPrototype());
@@ -283,9 +288,17 @@ void Builtins::Initialize(const JSHandle<GlobalEnv> &env, JSThread *thread, bool
                                                   JSType::JS_FUNCTION, env->GetFunctionPrototype());
     env->SetFunctionClassWithoutName(thread_, functionClass);
 
+    thread->CheckSafepointIfSuspended();
     functionClass = factory_->CreateBoundFunctionClass();
     env->SetBoundFunctionClass(thread_, functionClass);
-
+    auto runtimeGlobalEnv = Runtime::GetInstance()->GetGlobalEnv();
+    if (runtimeGlobalEnv.IsHole()) {
+        InitializeSSymbolAttributes(env);
+        InitializeSObjectAndSFunction(env);
+    } else {
+        CopySObjectAndSFunction(env, runtimeGlobalEnv);
+        RegisterSendableContainers(env);
+    }
     if (!isRealm) {
         InitializeAllTypeError(env, objFuncClass);
         InitializeSymbol(env, primRefObjHClass);
@@ -297,6 +310,7 @@ void Builtins::Initialize(const JSHandle<GlobalEnv> &env, JSThread *thread, bool
         InitializeBigIntWithRealm(env);
     }
 
+    thread->CheckSafepointIfSuspended();
     InitializeArray(env, objFuncPrototypeVal);
     if (lazyInit) {
         LazyInitializeDate(env);
@@ -323,17 +337,12 @@ void Builtins::Initialize(const JSHandle<GlobalEnv> &env, JSThread *thread, bool
         InitializeDataView(env, objFuncPrototypeVal);
         InitializeSharedArrayBuffer(env, objFuncClass);
     }
+    thread->CheckSafepointIfSuspended();
     InitializeNumber(env, globalObject, primRefObjHClass);
     InitializeObject(env, objFuncPrototype, objectFunction);
     InitializeBoolean(env, primRefObjHClass);
     InitializeRegExp(env);
     InitializeString(env, objFuncPrototypeVal);
-    auto runtimeGlobalEnv = Runtime::GetInstance()->GetGlobalEnv();
-    if (runtimeGlobalEnv.IsHole()) {
-        InitializeSObjectAndSFunction(env);
-    } else {
-        CopySObjectAndSFunction(env, runtimeGlobalEnv);
-    }
     JSHandle<JSHClass> argumentsClass = factory_->CreateJSArguments(env);
     env->SetArgumentsClass(thread_, argumentsClass);
     SetArgumentsSharedAccessor(env);
@@ -354,6 +363,7 @@ void Builtins::Initialize(const JSHandle<GlobalEnv> &env, JSThread *thread, bool
     InitializeAsyncGeneratorFunction(env, objFuncClass);
     InitializePromise(env, objFuncClass);
     InitializePromiseJob(env);
+    thread->CheckSafepointIfSuspended();
 #ifdef ARK_SUPPORT_INTL
     InitializeIntl(env, objFuncPrototypeVal);
     if (lazyInit) {
@@ -379,6 +389,7 @@ void Builtins::Initialize(const JSHandle<GlobalEnv> &env, JSThread *thread, bool
         InitializeSegments(env);
         InitializeSegmenter(env);
     }
+    thread->CheckSafepointIfSuspended();
 #endif
     InitializeModuleNamespace(env, objFuncClass);
     InitializeCjsModule(env);
@@ -402,6 +413,7 @@ void Builtins::Initialize(const JSHandle<GlobalEnv> &env, JSThread *thread, bool
     env->SetAsyncFunctionClass(thread_, asyncFuncClass);
     thread_->ResetGuardians();
 
+    thread->CheckSafepointIfSuspended();
     if (vm_->GetJSOptions().IsEnableLoweringBuiltin()) {
         if (!lazyInit) {
             thread_->InitializeBuiltinObject();
@@ -476,8 +488,10 @@ void Builtins::InitializeGlobalObject(const JSHandle<GlobalEnv> &env, const JSHa
 
     // Global object function
     SetFunction(env, globalObject, "eval", Global::NotSupportEval, FunctionLength::ONE);
-    SetFunction(env, globalObject, "isFinite", Global::IsFinite, FunctionLength::ONE);
-    SetFunction(env, globalObject, "isNaN", Global::IsNaN, FunctionLength::ONE);
+    SetFunction(env, globalObject, "isFinite", Global::IsFinite, FunctionLength::ONE,
+                kungfu::BuiltinsStubCSigns::GlobalIsFinite);
+    SetFunction(env, globalObject, "isNaN", Global::IsNaN, FunctionLength::ONE,
+                kungfu::BuiltinsStubCSigns::GlobalIsNan);
     SetFunction(env, globalObject, "decodeURI", Global::DecodeURI, FunctionLength::ONE);
     SetFunction(env, globalObject, "encodeURI", Global::EncodeURI, FunctionLength::ONE);
     SetFunction(env, globalObject, "escape", Global::Escape, FunctionLength::ONE);
@@ -600,53 +614,12 @@ void Builtins::InitializeSymbol(const JSHandle<GlobalEnv> &env, const JSHandle<J
                     entry.GetLength(), entry.GetBuiltinStubId());
     }
 
-    // Symbol attribute
-    JSHandle<JSTaggedValue> hasInstanceSymbol(factory_->NewSWellKnownSymbolWithChar("Symbol.hasInstance"));
-    SetNoneAttributeProperty(symbolFunction, "hasInstance", hasInstanceSymbol);
-    JSHandle<JSTaggedValue> isConcatSpreadableSymbol(factory_->NewWellKnownSymbolWithChar("Symbol.isConcatSpreadable"));
-    SetNoneAttributeProperty(symbolFunction, "isConcatSpreadable", isConcatSpreadableSymbol);
-    JSHandle<JSTaggedValue> toStringTagSymbol(factory_->NewWellKnownSymbolWithChar("Symbol.toStringTag"));
-    SetNoneAttributeProperty(symbolFunction, "toStringTag", toStringTagSymbol);
-    JSHandle<JSTaggedValue> asyncIteratorSymbol(factory_->NewPublicSymbolWithChar("Symbol.asyncIterator"));
-    SetNoneAttributeProperty(symbolFunction, "asyncIterator", asyncIteratorSymbol);
-    JSHandle<JSTaggedValue> matchSymbol(factory_->NewPublicSymbolWithChar("Symbol.match"));
-    SetNoneAttributeProperty(symbolFunction, "match", matchSymbol);
-    JSHandle<JSTaggedValue> matchAllSymbol(factory_->NewPublicSymbolWithChar("Symbol.matchAll"));
-    SetNoneAttributeProperty(symbolFunction, "matchAll", matchAllSymbol);
-    JSHandle<JSTaggedValue> searchSymbol(factory_->NewPublicSymbolWithChar("Symbol.search"));
-    SetNoneAttributeProperty(symbolFunction, "search", searchSymbol);
-    JSHandle<JSTaggedValue> toPrimitiveSymbol(factory_->NewPublicSymbolWithChar("Symbol.toPrimitive"));
-    SetNoneAttributeProperty(symbolFunction, "toPrimitive", toPrimitiveSymbol);
-    JSHandle<JSTaggedValue> unscopablesSymbol(factory_->NewPublicSymbolWithChar("Symbol.unscopables"));
-    SetNoneAttributeProperty(symbolFunction, "unscopables", unscopablesSymbol);
-    JSHandle<JSTaggedValue> nativeBindingSymbol(factory_->NewPublicSymbolWithChar("Symbol.nativeBinding"));
-    SetNoneAttributeProperty(symbolFunction, "nativeBinding", nativeBindingSymbol);
+    // Symbol attributes
+#define REGISTER_SYMBOL(name, Name) \
+    SetNoneAttributeProperty(symbolFunction, #name, env->Get##Name##Symbol());
 
-    // Symbol attributes with detectors
-    // Create symbol string before create symbol to allocate symbol continuously
-    // Attention: Symbol serialization & deserialization are not supported now and
-    // the order of symbols and symbol-strings must be maintained too when
-    // Symbol serialization & deserialization are ready.
-#define INIT_SYMBOL_STRING(name, description, key)                                         \
-    {                                                                                      \
-        [[maybe_unused]] JSHandle<EcmaString> string = factory_->NewFromUtf8(description); \
-    }
-DETECTOR_SYMBOL_LIST(INIT_SYMBOL_STRING)
-#undef INIT_SYMBOL_STRING
-
-#define INIT_PUBLIC_SYMBOL(name, description, key)                                \
-    JSHandle<JSSymbol> key##Symbol = factory_->NewEmptySymbol();                  \
-    JSHandle<EcmaString> key##String = factory_->NewFromUtf8(description);        \
-    key##Symbol->SetDescription(thread_, key##String.GetTaggedValue());           \
-    key##Symbol->SetHashField(SymbolTable::Hash(key##String.GetTaggedValue()));   \
-    env->Set##name(thread_, key##Symbol);
-DETECTOR_SYMBOL_LIST(INIT_PUBLIC_SYMBOL)
-#undef INIT_PUBLIC_SYMBOL
-
-#define REGISTER_SYMBOL(name, description, key) \
-    SetNoneAttributeProperty(symbolFunction, #key, JSHandle<JSTaggedValue>(key##Symbol));
-DETECTOR_SYMBOL_LIST(REGISTER_SYMBOL)
-#undef REGISTER_SYMBOL
+BUILTIN_ALL_SYMBOLS(REGISTER_SYMBOL)
+    env->SetSymbolFunction(thread_, symbolFunction);
 
     // symbol.prototype.description
     PropertyDescriptor descriptionDesc(thread_);
@@ -656,25 +629,13 @@ DETECTOR_SYMBOL_LIST(REGISTER_SYMBOL)
 
     // Setup symbol.prototype[@@toPrimitive]
     SetFunctionAtSymbol<JSSymbol::SYMBOL_TO_PRIMITIVE_TYPE>(
-        env, symbolFuncPrototype, toPrimitiveSymbol, "[Symbol.toPrimitive]", Symbol::ToPrimitive, FunctionLength::ONE);
+        env, symbolFuncPrototype, env->GetToPrimitiveSymbol(), "[Symbol.toPrimitive]",
+        Symbol::ToPrimitive, FunctionLength::ONE);
     // install the Symbol.prototype methods
     SetFunction(env, symbolFuncPrototype, thread_->GlobalConstants()->GetHandledToStringString(), Symbol::ToString,
                 FunctionLength::ZERO);
     SetFunction(env, symbolFuncPrototype, thread_->GlobalConstants()->GetHandledValueOfString(), Symbol::ValueOf,
                 FunctionLength::ZERO);
-
-    env->SetSymbolFunction(thread_, symbolFunction);
-    env->SetHasInstanceSymbol(thread_, hasInstanceSymbol);
-    env->SetIsConcatSpreadableSymbol(thread_, isConcatSpreadableSymbol);
-    env->SetToStringTagSymbol(thread_, toStringTagSymbol);
-    env->SetAsyncIteratorSymbol(thread_, asyncIteratorSymbol);
-    env->SetMatchSymbol(thread_, matchSymbol);
-    env->SetMatchAllSymbol(thread_, matchAllSymbol);
-    env->SetSearchSymbol(thread_, searchSymbol);
-    env->SetSpeciesSymbol(thread_, speciesSymbol);
-    env->SetToPrimitiveSymbol(thread_, toPrimitiveSymbol);
-    env->SetUnscopablesSymbol(thread_, unscopablesSymbol);
-    env->SetNativeBindingSymbol(thread_, nativeBindingSymbol);
 
     // Setup %SymbolPrototype%
     SetStringTagSymbol(env, symbolFuncPrototype, "Symbol");
@@ -1254,8 +1215,7 @@ void Builtins::InitializeSet(const JSHandle<GlobalEnv> &env, JSHandle<JSTaggedVa
         factory_->NewEcmaHClass(JSSet::SIZE, JSType::JS_SET, setFuncPrototypeValue);
     // Set() = new Function()
     JSHandle<JSTaggedValue> setFunction(
-        NewBuiltinConstructor(env, setFuncPrototype, BuiltinsSet::SetConstructor, "Set", FunctionLength::ZERO,
-                              BUILTINS_STUB_ID(SetConstructor)));
+        NewBuiltinConstructor(env, setFuncPrototype, BuiltinsSet::SetConstructor, "Set", FunctionLength::ZERO));
     JSFunction::SetFunctionPrototypeOrInstanceHClass(thread_,
                                                      JSHandle<JSFunction>(setFunction),
                                                      setFuncInstanceHClass.GetTaggedValue());
@@ -1331,8 +1291,7 @@ void Builtins::InitializeMap(const JSHandle<GlobalEnv> &env, JSHandle<JSTaggedVa
         factory_->NewEcmaHClass(JSMap::SIZE, JSType::JS_MAP, mapFuncPrototypeValue);
     // Map() = new Function()
     JSHandle<JSTaggedValue> mapFunction(
-        NewBuiltinConstructor(env, mapFuncPrototype, BuiltinsMap::MapConstructor, "Map", FunctionLength::ZERO,
-                              BUILTINS_STUB_ID(MapConstructor)));
+        NewBuiltinConstructor(env, mapFuncPrototype, BuiltinsMap::MapConstructor, "Map", FunctionLength::ZERO));
     // Map().prototype = Map.Prototype & Map.prototype.constructor = Map()
     JSFunction::SetFunctionPrototypeOrInstanceHClass(thread_,
                                                      JSHandle<JSFunction>(mapFunction),
@@ -1599,7 +1558,6 @@ void Builtins::InitializeMath(const JSHandle<GlobalEnv> &env, const JSHandle<JST
     for (const base::BuiltinConstantEntry &entry: Math::GetMathConstants()) {
         SetConstant(mathObject, entry.GetName(), entry.GetTaggedValue());
     }
-
     JSHandle<JSTaggedValue> mathString(factory_->NewFromASCII("Math"));
     JSHandle<JSObject> globalObject(thread_, env->GetGlobalObject());
     PropertyDescriptor mathDesc(thread_, JSHandle<JSTaggedValue>::Cast(mathObject), true, false, true);
@@ -1657,7 +1615,7 @@ void Builtins::InitializeString(const JSHandle<GlobalEnv> &env, JSHandle<JSTagge
     }
     JSHandle<JSTaggedValue> stringIter = SetAndReturnFunctionAtSymbol(env, stringFuncPrototype,
         env->GetIteratorSymbol(), "[Symbol.iterator]", BuiltinsString::GetStringIterator, FunctionLength::ZERO,
-        BUILTINS_STUB_ID(GetStringIterator));
+        BUILTINS_STUB_ID(StringGetStringIterator));
 
     // String method
     for (const base::BuiltinFunctionEntry &entry: BuiltinsString::GetStringFunctions()) {
@@ -1768,8 +1726,11 @@ void Builtins::InitializeIterator(const JSHandle<GlobalEnv> &env, const JSHandle
 
     InitializeForinIterator(env, iteratorFuncClass);
     InitializeSetIterator(env, iteratorFuncClass);
+    InitializeSSetIterator(env, iteratorFuncClass);
     InitializeMapIterator(env, iteratorFuncClass);
+    InitializeSMapIterator(env, iteratorFuncClass);
     InitializeArrayIterator(env, iteratorFuncClass, iteratorPrototypeHClass);
+    InitializeSArrayIterator(env, iteratorFuncClass);
     InitializeStringIterator(env, iteratorFuncClass);
     InitializeRegexpIterator(env, iteratorFuncClass);
 #ifdef ARK_SUPPORT_INTL
@@ -1834,6 +1795,21 @@ void Builtins::InitializeSetIterator(const JSHandle<GlobalEnv> &env,
     hclassHandle->SetExtensible(true);
 }
 
+void Builtins::InitializeSSetIterator(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &iteratorFuncClass) const
+{
+    // SetIterator.prototype
+    JSHandle<JSObject> setIteratorPrototype(factory_->NewJSObjectWithInit(iteratorFuncClass));
+    // Iterator.prototype.next()
+    SetFunction(env, setIteratorPrototype, "next", JSSharedSetIterator::Next, FunctionLength::ZERO);
+    SetStringTagSymbol(env, setIteratorPrototype, "SharedSet Iterator");
+    env->SetSharedSetIteratorPrototype(thread_, setIteratorPrototype);
+    JSHandle<JSTaggedValue> protoValue = env->GetSharedSetIteratorPrototype();
+    const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
+    JSHandle<JSHClass> hclassHandle(globalConst->GetHandledJSSharedSetIteratorClass());
+    hclassHandle->SetPrototype(thread_, protoValue);
+    hclassHandle->SetExtensible(true);
+}
+
 void Builtins::InitializeMapIterator(const JSHandle<GlobalEnv> &env,
                                      const JSHandle<JSHClass> &iteratorFuncClass) const
 {
@@ -1847,6 +1823,22 @@ void Builtins::InitializeMapIterator(const JSHandle<GlobalEnv> &env,
     JSHandle<JSTaggedValue> protoValue = env->GetMapIteratorPrototype();
     const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
     JSHandle<JSHClass> hclassHandle(globalConst->GetHandledJSMapIteratorClass());
+    hclassHandle->SetPrototype(thread_, protoValue);
+    hclassHandle->SetExtensible(true);
+}
+
+void Builtins::InitializeSMapIterator(const JSHandle<GlobalEnv> &env,
+                                      const JSHandle<JSHClass> &iteratorFuncClass) const
+{
+    // MapIterator.prototype
+    JSHandle<JSObject> mapIteratorPrototype(factory_->NewJSObjectWithInit(iteratorFuncClass));
+    // Iterator.prototype.next()
+    SetFunction(env, mapIteratorPrototype, "next", JSSharedMapIterator::Next, FunctionLength::ZERO);
+    SetStringTagSymbol(env, mapIteratorPrototype, "SharedMap Iterator");
+    env->SetSharedMapIteratorPrototype(thread_, mapIteratorPrototype);
+    JSHandle<JSTaggedValue> protoValue = env->GetSharedMapIteratorPrototype();
+    const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
+    JSHandle<JSHClass> hclassHandle(globalConst->GetHandledJSSharedMapIteratorClass());
     hclassHandle->SetPrototype(thread_, protoValue);
     hclassHandle->SetExtensible(true);
 }
@@ -1868,6 +1860,17 @@ void Builtins::InitializeArrayIterator(const JSHandle<GlobalEnv> &env,
     thread_->SetInitialBuiltinHClass(BuiltinTypeId::ARRAY_ITERATOR, nullptr,
         *arrayIteratorInstanceHClass, arrayIteratorPrototype->GetJSHClass(), *iteratorPrototypeClass);
     env->SetArrayIteratorPrototype(thread_, arrayIteratorPrototype);
+}
+
+void Builtins::InitializeSArrayIterator(const JSHandle<GlobalEnv> &env,
+                                        const JSHandle<JSHClass> &iteratorFuncClass) const
+{
+    // ArrayIterator.prototype
+    JSHandle<JSObject> arrayIteratorPrototype(factory_->NewJSObjectWithInit(iteratorFuncClass));
+    // Iterator.prototype.next()
+    SetFunction(env, arrayIteratorPrototype, "next", JSSharedArrayIterator::Next, FunctionLength::ZERO);
+    SetStringTagSymbol(env, arrayIteratorPrototype, "SharedArray Iterator");
+    env->SetSharedArrayIteratorPrototype(thread_, arrayIteratorPrototype);
 }
 
 void Builtins::InitializeRegexpIterator(const JSHandle<GlobalEnv> &env,
@@ -2212,6 +2215,8 @@ void Builtins::Initialize##Type(const JSHandle<GlobalEnv> &env, const JSHandle<J
     arrayFunction->SetProtoOrHClass(thread_, arrFuncInstanceHClass.GetTaggedValue());                           \
     SetConstant(arrFuncPrototype, "BYTES_PER_ELEMENT", JSTaggedValue(bytesPerElement));                         \
     SetConstant(JSHandle<JSObject>(arrayFunction), "BYTES_PER_ELEMENT", JSTaggedValue(bytesPerElement));        \
+    /* %TypedArray%.protoofprototype (where %TypedArray% is one of Int8Array, Uint8Array, etc.) */              \
+    JSTaggedValue protoOfPrototypeValue = arrFuncPrototype->GetJSHClass()->GetPrototype();                      \
     env->Set##Type##Function(thread_, arrayFunction);                                                           \
     env->Set##Type##FunctionPrototype(thread_, arrFuncPrototypeValue);                                          \
     env->Set##Type##RootHclass(thread_, arrFuncInstanceHClass);                                                 \
@@ -2220,7 +2225,9 @@ void Builtins::Initialize##Type(const JSHandle<GlobalEnv> &env, const JSHandle<J
     thread_->SetInitialBuiltinHClass(BuiltinTypeId::TYPE,                                                       \
         arrayFunction->GetJSHClass(),                                                                           \
         *arrFuncInstanceHClass,                                                                                 \
-        arrFuncPrototype->GetJSHClass());                                                                       \
+        arrFuncPrototype->GetJSHClass(),                                                                        \
+        protoOfPrototypeValue.IsHeapObject() ? protoOfPrototypeValue.GetTaggedObject()->GetClass() : nullptr,   \
+        *arrFuncInstanceHClassOnHeap);                                                                          \
 }
 
 BUILTIN_TYPED_ARRAY_TYPES(BUILTIN_TYPED_ARRAY_DEFINE_INITIALIZE)
@@ -3797,5 +3804,25 @@ JSHandle<JSTaggedValue> Builtins::CreateArrayUnscopables(JSThread *thread) const
     JSHandle<JSTaggedValue> toSplicedKey((factory->NewFromASCII("toSpliced")));
     JSObject::CreateDataProperty(thread, unscopableList, toSplicedKey, trueVal);
     return JSHandle<JSTaggedValue>::Cast(unscopableList);
+}
+
+void Builtins::RegisterSendableContainers(const JSHandle<GlobalEnv> &env) const
+{
+    auto globalObject = JSHandle<JSObject>::Cast(env->GetJSGlobalObject());
+    {
+        JSHandle<JSTaggedValue> nameString(factory_->NewFromUtf8("SharedMap"));
+        PropertyDescriptor desc(thread_, env->GetSBuiltininMapFunction(), true, false, true);
+        JSObject::DefineOwnProperty(thread_, globalObject, nameString, desc);
+    }
+    {
+        JSHandle<JSTaggedValue> nameString(factory_->NewFromUtf8("SharedSet"));
+        PropertyDescriptor desc(thread_, env->GetSBuiltininSetFunction(), true, false, true);
+        JSObject::DefineOwnProperty(thread_, globalObject, nameString, desc);
+    }
+    {
+        JSHandle<JSTaggedValue> nameString(factory_->NewFromUtf8("SharedArray"));
+        PropertyDescriptor desc(thread_, env->GetSharedArrayFunction(), true, false, true);
+        JSObject::DefineOwnProperty(thread_, globalObject, nameString, desc);
+    }
 }
 }  // namespace panda::ecmascript

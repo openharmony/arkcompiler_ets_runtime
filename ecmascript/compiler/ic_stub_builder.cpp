@@ -13,8 +13,9 @@
  * limitations under the License.
  */
 #include "ecmascript/compiler/ic_stub_builder.h"
+
+#include "ecmascript/compiler/builtins/builtins_typedarray_stub_builder.h"
 #include "ecmascript/compiler/stub_builder-inl.h"
-#include "ecmascript/compiler/typed_array_stub_builder.h"
 
 namespace panda::ecmascript::kungfu {
 void ICStubBuilder::NamedICAccessor(Variable* cachedHandler, Label *tryICHandler)
@@ -198,7 +199,7 @@ void ICStubBuilder::LoadICByValue(
     ValuedICAccessor(&cachedHandler, &loadWithHandler, &loadElement);
     Bind(&loadElement);
     {
-        GateRef handlerInfo = NumberGetInt(glue_, *cachedHandler);
+        GateRef handlerInfo = GetInt64OfTInt(*cachedHandler);
         BRANCH(IsElement(handlerInfo), &handlerInfoIsElement, &handlerInfoNotElement);
         Bind(&handlerInfoIsElement);
         {
@@ -220,7 +221,7 @@ void ICStubBuilder::LoadICByValue(
                 {
                     GateRef hclass = LoadHClass(receiver_);
                     GateRef jsType = GetObjectType(hclass);
-                    TypedArrayStubBuilder typedArrayBuilder(reinterpret_cast<StubBuilder*>(this));
+                    BuiltinsTypedArrayStubBuilder typedArrayBuilder(reinterpret_cast<StubBuilder*>(this));
                     ret = typedArrayBuilder.LoadTypedArrayElement(glue_, receiver_, propKey_, jsType);
                     Jump(&exit);
                 }

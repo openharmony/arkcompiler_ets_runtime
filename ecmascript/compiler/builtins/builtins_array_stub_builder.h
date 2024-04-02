@@ -30,66 +30,15 @@ public:
     NO_COPY_SEMANTIC(BuiltinsArrayStubBuilder);
     void GenerateCircuit() override {}
 
-    void Concat(GateRef glue, GateRef thisValue, GateRef numArgs,
-        Variable *result, Label *exit, Label *slowPath);
+#define DECLARE_BUILTINS_ARRAY_STUB_BUILDER(method, ...)           \
+    void method(GateRef glue, GateRef thisValue, GateRef numArgs, Variable *result, Label *exit, Label *slowPath);
+BUILTINS_WITH_ARRAY_STUB_BUILDER(DECLARE_BUILTINS_ARRAY_STUB_BUILDER)
+#undef DECLARE_BUILTINS_ARRAY_STUB_BUILDER
 
-    void Filter(GateRef glue, GateRef thisValue, GateRef numArgs,
-        Variable *result, Label *exit, Label *slowPath);
+    void Sort(GateRef glue, GateRef thisValue, GateRef numArgs, Variable *result, Label *exit, Label *slowPath);
 
-    void Find(GateRef glue, GateRef thisValue, GateRef numArgs,
-        Variable *result, Label *exit, Label *slowPath);
-
-    void FindIndex(GateRef glue, GateRef thisValue, GateRef numArgs,
-        Variable *result, Label *exit, Label *slowPath);
-
-    void ForEach(GateRef glue, GateRef thisValue, GateRef numArgs,
-        Variable *result, Label *exit, Label *slowPath);
-
-    void IndexOf(GateRef glue, GateRef thisValue, GateRef numArgs,
-        Variable *result, Label *exit, Label *slowPath);
-
-    void LastIndexOf(GateRef glue, GateRef thisValue, GateRef numArgs,
-        Variable *result, Label *exit, Label *slowPath);
-
-    void Pop(GateRef glue, GateRef thisValue, GateRef numArgs,
-        Variable *result, Label *exit, Label *slowPath);
-
-    void Slice(GateRef glue, GateRef thisValue, GateRef numArgs,
-        Variable *result, Label *exit, Label *slowPath);
-
-    void Sort(GateRef glue, GateRef thisValue,
-        GateRef numArgs, Variable *result, Label *exit, Label *slowPath);
-
-    void Values(GateRef glue, GateRef thisValue, GateRef numArgs,
-        Variable *result, Label *exit, Label *slowPath);
-    
-    void Reduce(GateRef glue, GateRef thisValue, GateRef numArgs,
-        Variable *result, Label *exit, Label *slowPath);
-
-    void Reverse(GateRef glue, GateRef thisValue, GateRef numArgs,
-        Variable *result, Label *exit, Label *slowPath);
-
-    void From(GateRef glue, GateRef thisValue, GateRef numArgs, Variable *result, Label *exit, Label *slowPath);
-    void Splice(GateRef glue, GateRef thisValue, GateRef numArgs, Variable *result, Label *exit, Label *slowPath);
-
-    void Push(GateRef glue, GateRef thisValue, GateRef numArgs,
-        Variable *result, Label *exit, Label *slowPath);
-
-    void Includes(GateRef glue, GateRef thisValue, GateRef numArgs, Variable *result, Label *exit, Label *slowPath);
-
-    void CopyWithin(GateRef glue, GateRef thisValue, GateRef numArgs,
-        Variable *result, Label *exit, Label *slowPath);
-
-    void Every(GateRef glue, GateRef thisValue, GateRef numArgs,
-        Variable *result, Label *exit, Label *slowPath);
-
-    void Map(GateRef glue, GateRef thisValue, GateRef numArgs, Variable *result, Label *exit, Label *slowPath);
-
-    void FindLastIndex(GateRef glue, GateRef thisValue, GateRef numArgs,
-        Variable *result, Label *exit, Label *slowPath);
-
-    void FindLast(GateRef glue, GateRef thisValue, GateRef numArgs,
-        Variable *result, Label *exit, Label *slowPath);
+    void GenArrayConstructor(GateRef glue, GateRef nativeCode, GateRef func,
+        GateRef newTarget, GateRef thisValue, GateRef numArgs);
 
     GateRef IsConcatSpreadable(GateRef glue, GateRef obj);
 

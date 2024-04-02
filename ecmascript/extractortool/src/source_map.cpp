@@ -119,6 +119,43 @@ void SourceMap::Init(uint8_t *data, size_t dataSize, const std::string& url)
     SplitSourceMap(url, content);
 }
 
+void SourceMap::Init(uint8_t *data, size_t dataSize)
+{
+    std::string content;
+    content.assign(data, data + dataSize);
+    SplitSourceMap(content);
+}
+
+void SourceMap::SplitSourceMap(const std::string& sourceMapData)
+{
+    size_t urlLeft = 0;
+    size_t urlRight = 0;
+    size_t leftBracket = 0;
+    size_t rightBracket = 0;
+    std::string value;
+    while ((leftBracket = sourceMapData.find(": {", rightBracket)) != std::string::npos) {
+        urlLeft = leftBracket;
+        urlRight = sourceMapData.find("  \"", rightBracket) + INDEX_THREE;
+        std::string key = sourceMapData.substr(urlRight, urlLeft - urlRight - INDEX_ONE);
+        rightBracket = sourceMapData.find("},", leftBracket);
+        value = sourceMapData.substr(leftBracket, rightBracket);
+        std::size_t sources = value.find("\"sources\": [");
+        if (sources == std::string::npos) {
+            continue;
+        }
+        std::size_t names = value.find("],", sources);
+        if (names == std::string::npos) {
+            continue;
+        }
+        // Intercept the sourcemap file path as the key
+        std::string filePath = value.substr(sources + NUM_TWENTY, names - sources - NUM_TWENTYSIX);
+        std::shared_ptr<SourceMapData> modularMap = std::make_shared<SourceMapData>();
+        modularMap->url_ = filePath;
+        ExtractSourceMapData(value, modularMap);
+        sourceMaps_.emplace(key, modularMap);
+    }
+}
+
 void SourceMap::SplitSourceMap(const std::string& url, const std::string& sourceMapData)
 {
     auto iter = sourceMaps_.find(url);

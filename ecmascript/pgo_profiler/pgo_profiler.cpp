@@ -567,8 +567,7 @@ void PGOProfiler::ProfileBytecode(ApEntityId abcId, const CString &recordName, J
                 break;
             }
             case EcmaOpcode::STOBJBYNAME_IMM8_ID16_V8:
-            case EcmaOpcode::STTHISBYNAME_IMM8_ID16:
-            case EcmaOpcode::DEFINEFIELDBYNAME_IMM8_ID16_V8: {
+            case EcmaOpcode::STTHISBYNAME_IMM8_ID16: {
                 uint8_t slotId = READ_INST_8_0();
                 CHECK_SLOTID_BREAK(slotId);
                 DumpICByName(abcId, recordName, methodId, bcOffset, slotId, profileTypeInfo, BCType::STORE);
@@ -999,6 +998,9 @@ void PGOProfiler::DumpICByValueWithHandler(ApEntityId abcId, const CString &reco
         ASSERT(secondValue.IsPrototypeHandler());
         PrototypeHandler *prototypeHandler = PrototypeHandler::Cast(secondValue.GetTaggedObject());
         auto cellValue = prototypeHandler->GetProtoCell();
+        if (!cellValue.IsProtoChangeMarker()) {
+            return;
+        }
         ASSERT(cellValue.IsProtoChangeMarker());
         ProtoChangeMarker *cell = ProtoChangeMarker::Cast(cellValue.GetTaggedObject());
         if (cell->GetHasChanged()) {
@@ -1448,19 +1450,37 @@ void PGOProfiler::AddBuiltinsInfoByNameInProt(ApEntityId abcId, const CString &r
     }
 
     auto exceptHoldHClass = thread->GetBuiltinPrototypeHClass(builtinsId.value());
+    auto exceptPrototypeOfPrototypeHClass =
+        thread->GetBuiltinPrototypeOfPrototypeHClass(builtinsId.value());
     // iterator needs to find two layers of prototype
     if (builtinsId == BuiltinTypeId::ARRAY_ITERATOR) {
-        auto exceptPrototypeOfPrototypeHClass =
-            thread->GetBuiltinPrototypeOfPrototypeHClass(builtinsId.value());
         if ((exceptRecvHClass != receiver) ||
             (exceptHoldHClass != hold && exceptPrototypeOfPrototypeHClass != hold)) {
             return;
         }
+    } else if (IsTypedArrayType(builtinsId.value())) {
+        auto exceptRecvHClassOnHeap = thread->GetBuiltinExtraHClass(builtinsId.value());
+        ASSERT_PRINT(exceptRecvHClassOnHeap == nullptr || exceptRecvHClassOnHeap->IsOnHeapFromBitField(),
+                     "must be on heap");
+        if (IsJSHClassNotEqual(receiver, hold, exceptRecvHClass, exceptRecvHClassOnHeap,
+                               exceptHoldHClass, exceptPrototypeOfPrototypeHClass)) {
+            return;
+        }
     } else if (exceptRecvHClass != receiver || exceptHoldHClass != hold) {
-        return ;
+        return;
     }
 
     AddBuiltinsInfo(abcId, recordName, methodId, bcOffset, receiver, receiver);
+}
+
+bool PGOProfiler::IsJSHClassNotEqual(JSHClass *receiver, JSHClass *hold, JSHClass *exceptRecvHClass,
+                                     JSHClass *exceptRecvHClassOnHeap, JSHClass *exceptHoldHClass,
+                                     JSHClass *exceptPrototypeOfPrototypeHClass)
+{
+    //exceptRecvHClass = IHC, exceptRecvHClassOnHeap = IHC OnHeap
+    //exceptHoldHClass = PHC, exceptPrototypeOfPrototypeHClass = HClass of X.prototype.prototype
+    return ((exceptRecvHClass != receiver && exceptRecvHClassOnHeap != receiver) ||
+            (exceptHoldHClass != hold && exceptPrototypeOfPrototypeHClass != hold));
 }
 
 void PGOProfiler::AddBuiltinsGlobalInfo(ApEntityId abcId, const CString &recordName, EntityId methodId,

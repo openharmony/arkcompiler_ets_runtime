@@ -53,3 +53,27 @@ Object.defineProperty(BigInt64Array.prototype, "constructor", {
 });
 sample.slice();
 print(calls);
+
+// module test for IR
+var arr;
+function TestTypedArraySlice(e) {
+  arr = new e([-5, 10, 20, 30, -40, 50.5, -60.6]);
+}
+
+TestTypedArraySlice(Int8Array);
+print(arr.slice());
+
+TestTypedArraySlice(Int8Array);
+print(arr.slice(1.6, 6));
+
+TestTypedArraySlice(Int8Array);
+print(arr.slice(1));
+
+TestTypedArraySlice(Int8Array);
+print(arr.slice(1, 6.6));
+
+TestTypedArraySlice(Int8Array);
+print(arr.slice(3, 2));
+
+TestTypedArraySlice(Int8Array);
+print(arr.slice(1, 6));

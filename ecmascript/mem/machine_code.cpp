@@ -25,6 +25,10 @@ void MachineCode::SetData(const MachineCodeDesc *desc, JSHandle<Method> &method,
     DISALLOW_GARBAGE_COLLECTION;
     EntityId methodId = method->GetMethodId();
 
+    SetOSROffset(MachineCode::INVALID_OSR_OFFSET);
+    SetOsrDeoptFlag(false);
+    SetOsrExecuteCnt(0);
+
     size_t rodataSizeBeforeTextAlign = AlignUp(desc->rodataSizeBeforeText, MachineCode::TEXT_ALIGN);
     size_t codeSizeAlign = AlignUp(desc->codeSize, MachineCode::DATA_ALIGN);
     size_t rodataSizeAfterTextAlign = AlignUp(desc->rodataSizeAfterText, MachineCode::DATA_ALIGN);
@@ -42,7 +46,6 @@ void MachineCode::SetData(const MachineCodeDesc *desc, JSHandle<Method> &method,
     SetPayLoadSizeInBytes(dataSize);
 
     uint8_t *textStart = reinterpret_cast<uint8_t*>(GetText());
-    ASSERT(IsAligned(reinterpret_cast<uintptr_t>(textStart), TEXT_ALIGN));
     uint8_t *pText = textStart;
     if (rodataSizeBeforeTextAlign != 0) {
         if (memcpy_s(pText, rodataSizeBeforeTextAlign,

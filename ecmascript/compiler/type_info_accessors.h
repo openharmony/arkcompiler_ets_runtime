@@ -855,6 +855,8 @@ public:
                IsAllString();
     }
 
+    bool IsMonoIgnoreElemKind() const;
+
     size_t GetTypeCount()
     {
         return types_.size();
@@ -944,14 +946,14 @@ public:
     // Default get is elementsKind before possible transition
     ElementsKind TryGetArrayElementsKind() const
     {
-        [[maybe_unused]] bool condition = IsArrayTypeKind() || (IsMono() && IsBuiltinsArray());
+        [[maybe_unused]] bool condition = IsArrayTypeKind() || (IsMonoIgnoreElemKind() && IsBuiltinsArray());
         ASSERT(condition);
         return acc_.TryGetArrayElementsKind(gate_);
     }
 
     ElementsKind TryGetArrayElementsKindAfterTransition() const
     {
-        [[maybe_unused]] bool condition = IsArrayTypeKind() || (IsMono() && IsBuiltinsArray());
+        [[maybe_unused]] bool condition = IsArrayTypeKind() || (IsMonoIgnoreElemKind() && IsBuiltinsArray());
         ASSERT(condition);
         return acc_.TryGetArrayElementsKindAfterTransition(gate_);
     }

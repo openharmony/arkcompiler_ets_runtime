@@ -57,6 +57,18 @@ null
 aaa
 aa
 TypeError: this does not have [[RegExpMatcher]]
+0
+true
+0
+0
+true
+0
+0
+true
+0
+0
+true
+0
 undefined
 undefined
 undefined
@@ -70,7 +82,6 @@ undefined
 TypeError
 TypeError
 /(?:)/
-g
 \/vedio\/av(uuu)(uuu)
 beep, ,boop,   ,afff测试样本one1
 verifyRegExp_1: ,bcdefghijklmnopqrstuvwxyz,bcdefghijklmnopqrstuvwxyz,bcdefghijklmnopqrstuvwxyz,bcdefghijklmnopqrstuvwxyz
@@ -87,3 +98,44 @@ true
 true
 true
 SyntaxError: Invalid regular expression :/[\p{}]/u
+a,b,c
+a,b,c
+a,b,c
+a,b,c
+true
+a,b,c
+1
+-1
+1
+2
+a,bc
+2
+a,bc
+2
+abc
+2
+abc
+2
+abc,abc
+0
+abc,abc
+0
+g
+abc
+3
+abc
+6
+/a+b+c/y
+0
+true
+0
+3
+false
+8
+0
+true
+0
+3
+true
+8
+SyntaxError: nothing to repeat

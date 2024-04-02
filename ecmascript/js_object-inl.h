@@ -103,6 +103,16 @@ inline bool JSObject::IsJSArray() const
     return GetJSHClass()->IsJSArray();
 }
 
+inline bool JSObject::IsJSSArray() const
+{
+    return GetJSHClass()->IsJSSharedArray();
+}
+
+inline bool JSObject::IsJSShared() const
+{
+    return GetJSHClass()->IsJSShared();
+}
+
 inline bool JSObject::IsJSMap() const
 {
     return GetJSHClass()->IsJSMap();

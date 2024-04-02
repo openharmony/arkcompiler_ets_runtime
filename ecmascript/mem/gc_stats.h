@@ -164,6 +164,11 @@ public:
         GCStats* stats_;
     };
 
+    float GetScopeDuration(int pos) const
+    {
+        return scopeDuration_[pos];
+    }
+
 protected:
     bool CheckIfNeedPrint(GCType type);
     void PrintVerboseGCStatistic();

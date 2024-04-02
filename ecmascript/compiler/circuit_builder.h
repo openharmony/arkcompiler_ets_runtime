@@ -61,6 +61,7 @@ class PostSchedule;
     V(Int64Add, Add, MachineType::I64)                                    \
     V(DoubleAdd, Add, MachineType::F64)                                   \
     V(PtrAdd, Add, MachineType::ARCH)                                     \
+    V(DoubleExp, Exp, MachineType::F64)                                   \
     V(Int16Sub, Sub, MachineType::I16)                                    \
     V(Int32Sub, Sub, MachineType::I32)                                    \
     V(Int64Sub, Sub, MachineType::I64)                                    \
@@ -92,7 +93,11 @@ class PostSchedule;
     V(Int32LSR, Lsr, MachineType::I32)                                    \
     V(Int64LSR, Lsr, MachineType::I64)                                    \
     V(Int32ASR, Asr, MachineType::I32)                                    \
-    V(Int64ASR, Asr, MachineType::I64)
+    V(Int64ASR, Asr, MachineType::I64)                                    \
+    V(Int32Min, Min, MachineType::I32)                                    \
+    V(DoubleMin, Min, MachineType::F64)                                   \
+    V(Int32Max, Max, MachineType::I32)                                    \
+    V(DoubleMax, Max, MachineType::F64)
 
 #define UNARY_ARITHMETIC_METHOD_LIST_WITH_BITWIDTH(V)                  \
     V(BoolNot, Rev, MachineType::I1)                                   \
@@ -116,6 +121,7 @@ class PostSchedule;
     V(SExtInt32ToPtr, Sext, MachineType::ARCH)                         \
     V(ZExtInt16ToInt32, Zext, MachineType::I32)                        \
     V(ZExtInt16ToInt64, Zext, MachineType::I64)                        \
+    V(DoubleTrunc, DoubleTrunc, MachineType::F64)                      \
     V(TruncInt16ToInt8, Trunc, MachineType::I8)                        \
     V(TruncInt64ToInt32, Trunc, MachineType::I32)                      \
     V(TruncPtrToInt32, Trunc, MachineType::I32)                        \
@@ -135,7 +141,12 @@ class PostSchedule;
     V(SExtInt16ToInt64, Sext, MachineType::I64)                        \
     V(SExtInt16ToInt32, Sext, MachineType::I32)                        \
     V(SExtInt8ToInt32, Sext, MachineType::I32)                         \
-    V(SExtInt8ToInt64, Sext, MachineType::I64)
+    V(SExtInt8ToInt64, Sext, MachineType::I64)                         \
+    V(Abs, Abs, MachineType::I32)                                      \
+    V(FAbs, Abs, MachineType::F64)                                     \
+    V(CountLeadingZeroes32, Clz32, MachineType::I32)                   \
+    V(DoubleCeil, Ceil, MachineType::F64)                              \
+    V(DoubleFloor, Floor, MachineType::F64)
 
 #define UNARY_ARITHMETIC_METHOD_LIST_WITH_BITWIDTH_PRIVATE(V)          \
     V(ChangeTaggedPointerToInt64, TaggedToInt64, MachineType::I64)
@@ -183,7 +194,7 @@ public:
     GateRef Arguments(size_t index);
     GateRef DefaultCase(GateRef switchBranch);
     GateRef DependRelay(GateRef state, GateRef depend);
-    GateRef DeoptCheck(GateRef condition, GateRef frameState, DeoptType type);
+    void DeoptCheck(GateRef condition, GateRef frameState, DeoptType type);
     GateRef GetElementsArray(GateRef object);
     GateRef GetLengthOfTaggedArray(GateRef array);
     GateRef GetLengthOfJSTypedArray(GateRef array);

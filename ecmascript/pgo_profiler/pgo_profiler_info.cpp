@@ -28,6 +28,7 @@
 #include "ecmascript/log.h"
 #include "ecmascript/log_wrapper.h"
 #include "ecmascript/mem/c_string.h"
+#include "ecmascript/ohos/framework_helper.h"
 #include "ecmascript/pgo_profiler/ap_file/pgo_file_info.h"
 #include "ecmascript/pgo_profiler/ap_file/pgo_method_type_set.h"
 #include "ecmascript/pgo_profiler/ap_file/pgo_profile_type_pool.h"
@@ -1004,6 +1005,8 @@ void PGORecordSimpleInfos::ParseFromBinary(void *buffer, PGOProfilerHeader *cons
         PGOMethodIdSet *methodIds = nativeAreaAllocator_.New<PGOMethodIdSet>(chunk_.get());
         if (methodIds->ParseFromBinary(*this, &addr)) {
             auto methodIdsResult = methodIds_.try_emplace(JSPandaFile::GetNormalizedFileDesc(abcDesc));
+            // check record name, the default record name of the framework abc does not enter the aot compilation
+            FrameworkHelper::GetRealRecordName(recordName);
             (methodIdsResult.first->second).emplace(recordName, methodIds);
         }
     }

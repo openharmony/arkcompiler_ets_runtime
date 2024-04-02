@@ -95,7 +95,7 @@ void Tracing::RecordTraceEvent(TraceEvent &event)
 
 void Tracing::TraceEventRecordTracingStart()
 {
-    int64_t ts = GetTimeStamp();
+    int64_t ts = static_cast<int64_t>(GetTimeStamp());
     std::string args = "{\"data\":{\"frameTreeNodeId\":1,\"frames\":[{";
     args += "\"frame\":\"0\",\"name\":\"\",";
     args += "\"processId\":" + std::to_string(getpid()) + ",";
@@ -117,7 +117,7 @@ void Tracing::TraceEventRecordMemory()
         return;
     }
 
-    int64_t ts = GetTimeStamp();
+    int64_t ts = static_cast<int64_t>(GetTimeStamp());
     TraceEvent event("disabled-by-default-devtools.timeline", "UpdateCounters", "I", getpid(), tid_);
     event.SetTs(ts);
     event.SetTts(ts);
@@ -130,7 +130,7 @@ void Tracing::TraceEventRecordMemory()
 
 void Tracing::TraceEventRecordCpuProfilerStart(struct ProfileInfo* profileInfo)
 {
-    int64_t ts = GetTimeStamp();
+    int64_t ts = static_cast<int64_t>(GetTimeStamp());
     std::string args = "{\"data\":{\"startTime\":" + std::to_string(profileInfo->startTime) + "}}";
     TraceEvent event("disabled-by-default-v8.cpu_profiler", "Profile", "P", getpid(), tid_);
     event.SetTs(ts);
@@ -148,7 +148,7 @@ void Tracing::TraceEventRecordCpuProfiler(struct ProfileInfo* profileInfo, int &
         return;
     }
 
-    int64_t ts = GetTimeStamp();
+    int64_t ts = static_cast<int64_t>(GetTimeStamp());
     TraceEvent event("disabled-by-default-v8.cpu_profiler", "ProfileChunk", "P", getpid(), tid_);
     event.SetTs(ts);
     event.SetTts(ts);
@@ -253,7 +253,7 @@ void Tracing::TraceEventUpdateCpuProfiler(struct ProfileInfo *profileInfo)
 
 void Tracing::TraceEventRecordCpuProfilerEnd(struct ProfileInfo* profileInfo)
 {
-    int64_t ts = GetTimeStamp();
+    int64_t ts = static_cast<int64_t>(GetTimeStamp());
     std::string args = "{\"data\":{\"endTime\":" + std::to_string(profileInfo->stopTime) + "}}";
     TraceEvent event("disabled-by-default-v8.cpu_profiler", "ProfileChunk", "P", getpid(), tid_);
     event.SetTs(ts);

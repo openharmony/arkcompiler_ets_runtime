@@ -81,15 +81,15 @@
     /* Array.prototype.reduce ( callbackfn [ , initialValue ] ) */          \
     V("reduce",         Reduce,           1, ArrayReduce)                   \
     /* Array.prototype.reduceRight ( callbackfn [ , initialValue ] ) */     \
-    V("reduceRight",    ReduceRight,      1, INVALID)                       \
+    V("reduceRight",    ReduceRight,      1, ArrayReduceRight)              \
     /* Array.prototype.reverse ( ) */                                       \
     V("reverse",        Reverse,          0, ArrayReverse)                  \
     /* Array.prototype.shift ( ) */                                         \
-    V("shift",          Shift,            0, INVALID)                       \
+    V("shift",          Shift,            0, ArrayShift)                    \
     /* Array.prototype.slice ( start, end ) */                              \
     V("slice",          Slice,            2, ArraySlice)                    \
     /* Array.prototype.some ( callbackfn [ , thisArg ] ) */                 \
-    V("some",           Some,             1, INVALID)                       \
+    V("some",           Some,             1, ArraySome)                     \
     /* Array.prototype.sort ( comparefn ) */                                \
     V("sort",           Sort,             1, SORT)                          \
     /* Array.prototype.splice ( start, deleteCount, ...items ) */           \
@@ -105,7 +105,7 @@
     /* Array.prototype.toString ( ) */                                      \
     V("toString",       ToString,         0, INVALID)                       \
     /* Array.prototype.unshift ( ...items ) */                              \
-    V("unshift",        Unshift,          1, INVALID)                       \
+    V("unshift",        Unshift,          1, ArrayUnshift)                  \
     /* Array.prototype.values ( ) */                                        \
     V("values",         Values,           0, ArrayValues)                   \
     /* Array.prototype.with ( index, value ) */                             \

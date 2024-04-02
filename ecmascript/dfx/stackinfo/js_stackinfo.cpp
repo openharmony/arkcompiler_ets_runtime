@@ -16,7 +16,6 @@
 #include "ecmascript/dfx/stackinfo/js_stackinfo.h"
 #include "ecmascript/base/builtins_base.h"
 #include "ecmascript/ecma_vm.h"
-#include "ecmascript/extractortool/src/source_map.h"
 #include "ecmascript/interpreter/frame_handler.h"
 #include "ecmascript/interpreter/interpreter.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
@@ -443,11 +442,15 @@ std::optional<CodeInfo> TranslateByteCodePc(uintptr_t realPc, const std::vector<
 }
 
 template<typename T>
-void ParseJsFrameInfo(JSPandaFile *jsPandaFile, EntityId methodId, uintptr_t offset, T &jsFrame)
+void ParseJsFrameInfo(JSPandaFile *jsPandaFile, DebugInfoExtractor *debugExtractor,
+                      EntityId methodId, uintptr_t offset, T &jsFrame)
 {
+    if (jsPandaFile == nullptr) {
+        LOG_ECMA(ERROR) << "Parse jsFrame info failed, jsPandaFile is nullptr.";
+        return;
+    }
     std::string name = MethodLiteral::ParseFunctionName(jsPandaFile, methodId);
     name = name.empty() ? "anonymous" : name;
-    auto debugExtractor = std::make_unique<DebugInfoExtractor>(jsPandaFile);
     std::string url = debugExtractor->GetSourceFile(methodId);
 
     // line number and column number
@@ -480,16 +483,21 @@ void ParseJsFrameInfo(JSPandaFile *jsPandaFile, EntityId methodId, uintptr_t off
 }
 
 bool ArkParseJsFrameInfo(uintptr_t byteCodePc, uintptr_t mapBase, uintptr_t loadOffset,
-                         uint8_t *data, uint64_t dataSize, JsFunction *jsFunction)
+                         uint8_t *data, uint64_t dataSize, uintptr_t extractorptr, JsFunction *jsFunction)
 {
     if (data == nullptr) {
         LOG_ECMA(ERROR) << "Parse JSframe info failed, buffer is nullptr.";
         return false;
     }
     loadOffset = loadOffset % PageSize();
-    auto pf = panda_file::OpenPandaFileFromSecureMemory(data, dataSize);
-    std::shared_ptr<JSPandaFile> jsPandaFile = std::make_shared<JSPandaFile>(pf.release(), "");
-    auto methodInfos = ReadAllMethodInfos(jsPandaFile);
+    auto extractor = reinterpret_cast<JSSymbolExtractor*>(extractorptr);
+    if (extractor == nullptr) {
+        LOG_ECMA(ERROR) << "Parse JSframe info failed, extractor is nullptr.";
+        return false;
+    }
+    auto jsPandaFile = extractor->GetJSPandaFile(data, dataSize);
+    auto debugExtractor = extractor->GetDebugExtractor();
+    auto methodInfos = extractor->GetmethodInfos();
     if (methodInfos.empty()) {
         LOG_ECMA(ERROR) << "Read all method info from JSPandaFile failed, methodInfos is empty.";
         return false;
@@ -502,7 +510,7 @@ bool ArkParseJsFrameInfo(uintptr_t byteCodePc, uintptr_t mapBase, uintptr_t load
     }
     auto methodId = EntityId(codeInfo->methodId);
     auto offset = codeInfo->offset;
-    ParseJsFrameInfo(jsPandaFile.get(), methodId, offset, *jsFunction);
+    ParseJsFrameInfo(jsPandaFile, debugExtractor, methodId, offset, *jsFunction);
 
     jsFunction->codeBegin = byteCodePc - offset;
     jsFunction->codeSize = codeInfo->codeSize;
@@ -592,8 +600,7 @@ bool ArkGetNextFrame(void *ctx, ReadMemFunc readMem, uintptr_t &currentPtr, uint
 
 bool StepArk(void *ctx, ReadMemFunc readMem, uintptr_t *fp, uintptr_t *sp, uintptr_t *pc, bool *isJsFrame)
 {
-    constexpr size_t FP_SIZE = 8;
-    constexpr size_t LR_SIZE = 8;
+    constexpr size_t FP_SIZE = sizeof(uintptr_t);
     uintptr_t currentPtr = *fp;
     if (currentPtr == 0) {
         LOG_ECMA(ERROR) << "fp is nullptr in StepArk()!";
@@ -604,11 +611,10 @@ bool StepArk(void *ctx, ReadMemFunc readMem, uintptr_t *fp, uintptr_t *sp, uintp
     if (ArkGetNextFrame(ctx, readMem, currentPtr, frameType, *pc)) {
         if (ArkFrameCheck(frameType)) {
             currentPtr += sizeof(FrameType);
+            *sp = currentPtr;
             bool ret = readMem(ctx, currentPtr, fp);
             currentPtr += FP_SIZE;
             ret &= readMem(ctx, currentPtr, pc);
-            currentPtr += LR_SIZE;
-            ret &= readMem(ctx, currentPtr, sp);
             *isJsFrame = false;
             return ret;
         } else {
@@ -926,7 +932,7 @@ std::string ArkGetFileName(int pid, uintptr_t jsPandaFileAddr, std::string &hapP
 }
 
 JsFrame ArkParseJsFrameInfo(const panda_file::File *pf, std::string &fileName,
-                            uintptr_t preMethodId, uintptr_t offset, std::string hapPath)
+                            uintptr_t preMethodId, uintptr_t offset)
 {
     std::shared_ptr<JSPandaFile> newJsPandaFile =
             JSPandaFileManager::GetInstance()->NewJSPandaFile(pf, fileName.c_str());
@@ -954,9 +960,6 @@ JsFrame ArkParseJsFrameInfo(const panda_file::File *pf, std::string &fileName,
             columnNumber = 0;
         }
     }
-    SourceMap sourceMapObj;
-    sourceMapObj.Init(url, hapPath);
-    sourceMapObj.TranslateUrlPositionBySourceMap(url, lineNumber, columnNumber);
     JsFrame jsFrame;
     size_t urlSize = url.size() + 1;
     size_t nameSize = name.size() + 1;
@@ -988,8 +991,7 @@ bool ArkGetNextFrame(uintptr_t &currentPtr, uintptr_t typeOffset,
 bool GetArkNativeFrameInfo(int pid, uintptr_t *pc, uintptr_t *fp, uintptr_t *sp,
                            panda::ecmascript::JsFrame *jsFrame, size_t &size)
 {
-    constexpr size_t FP_SIZE = 8;
-    constexpr size_t LR_SIZE = 8;
+    constexpr size_t FP_SIZE = sizeof(uintptr_t);
     uintptr_t currentPtr = *fp;
     if (currentPtr == 0) {
         LOG_ECMA(ERROR) << "fp is nullptr in GetArkNativeFrameInfo()!";
@@ -1070,7 +1072,7 @@ bool GetArkNativeFrameInfo(int pid, uintptr_t *pc, uintptr_t *fp, uintptr_t *sp,
             }
             continue;
         }
-        JsFrame frame = ArkParseJsFrameInfo(pf.release(), fileName, preMethodId, offset, hapPath);
+        JsFrame frame = ArkParseJsFrameInfo(pf.release(), fileName, preMethodId, offset);
         frames.push_back(frame);
         
         if (!ArkGetNextFrame(currentPtr, typeOffset, prevOffset, pid)) {
@@ -1078,11 +1080,10 @@ bool GetArkNativeFrameInfo(int pid, uintptr_t *pc, uintptr_t *fp, uintptr_t *sp,
         }
     }
     currentPtr += sizeof(FrameType);
+    *sp = currentPtr;
     bool ret = ReadUintptrFromAddr(pid, currentPtr, *fp, true);
     currentPtr += FP_SIZE;
     ret &= ReadUintptrFromAddr(pid, currentPtr, *pc, true);
-    currentPtr += LR_SIZE;
-    ret &= ReadUintptrFromAddr(pid, currentPtr, *sp, true);
 
     size = frames.size() > size ? size : frames.size();
     for (size_t i = 0; i < size ; ++i) {
@@ -1245,7 +1246,116 @@ bool GetArkJSHeapCrashInfo(int pid, uintptr_t *bytecodePc, uintptr_t *fp, bool o
     }
     return true;
 }
+
+JSSymbolExtractor::~JSSymbolExtractor()
+{
+    if (sourceMap_ != nullptr) {
+        sourceMap_.reset();
+    }
+    if (debugExtractor_ != nullptr) {
+        debugExtractor_.reset();
+    }
+    if (jsPandaFile_ != nullptr) {
+        jsPandaFile_.reset();
+    }
+    methodInfo_.clear();
+}
+
+JSSymbolExtractor* JSSymbolExtractor::Create()
+{
+    auto extractor = new JSSymbolExtractor();
+    return extractor;
+}
+
+bool JSSymbolExtractor::Destory(JSSymbolExtractor *extractor)
+{
+    if (extractor == nullptr) {
+        LOG_ECMA(ERROR) << "Destory ark symbol extractor failed, extractor is nullptr.";
+        return false;
+    }
+    delete extractor;
+    extractor = nullptr;
+    return true;
+}
+
+std::vector<MethodInfo> JSSymbolExtractor::GetmethodInfos()
+{
+    if (methodInfo_.empty()) {
+        methodInfo_ = ReadAllMethodInfos(jsPandaFile_);
+    }
+
+    return methodInfo_;
+}
+
+JSPandaFile* JSSymbolExtractor::GetJSPandaFile(uint8_t *data, size_t dataSize)
+{
+    if (jsPandaFile_ == nullptr) {
+        JSSymbolExtractor::CreateJSPandaFile(data, dataSize);
+    }
+    return jsPandaFile_.get();
+}
+
+void JSSymbolExtractor::CreateJSPandaFile(uint8_t *data, size_t dataSize)
+{
+    auto pf = panda_file::OpenPandaFileFromSecureMemory(data, dataSize);
+    jsPandaFile_ = std::make_shared<JSPandaFile>(pf.release(), "");
+}
+
+SourceMap* JSSymbolExtractor::GetSourceMap(uint8_t *data, size_t dataSize)
+{
+    if (sourceMap_ == nullptr) {
+        JSSymbolExtractor::CreateSourceMap(data, dataSize);
+    }
+    return sourceMap_.get();
+}
+
+void JSSymbolExtractor::CreateSourceMap(uint8_t *data, size_t dataSize)
+{
+    SourceMap sourcemap;
+    sourcemap.Init(data, dataSize);
+    sourceMap_ = std::make_shared<SourceMap>(sourcemap);
+}
+
+DebugInfoExtractor* JSSymbolExtractor::GetDebugExtractor()
+{
+    if (debugExtractor_ == nullptr) {
+        JSSymbolExtractor::CreateDebugExtractor();
+    }
+    return debugExtractor_.get();
+}
+
+void JSSymbolExtractor::CreateDebugExtractor()
+{
+    debugExtractor_ = std::make_unique<DebugInfoExtractor>(jsPandaFile_.get());
+}
+
+uintptr_t ArkCreateJSSymbolExtractor()
+{
+    auto extractor = JSSymbolExtractor::Create();
+    auto extractorptr = reinterpret_cast<uintptr_t>(extractor);
+    return extractorptr;
+}
+
+bool ArkDestoryJSSymbolExtractor(uintptr_t extractorptr)
+{
+    auto extractor = reinterpret_cast<JSSymbolExtractor*>(extractorptr);
+    return JSSymbolExtractor::Destory(extractor);
+}
 } // namespace panda::ecmascript
+
+__attribute__((visibility("default"))) int ark_create_js_symbol_extractor(uintptr_t *extractorptr)
+{
+    *extractorptr = panda::ecmascript::ArkCreateJSSymbolExtractor();
+    return 1;
+}
+
+__attribute__((visibility("default"))) int ark_destory_js_symbol_extractor(uintptr_t extractorptr)
+{
+    if (panda::ecmascript::ArkDestoryJSSymbolExtractor(extractorptr)) {
+        return 1;
+    }
+    return -1;
+}
 
 __attribute__((visibility("default"))) int step_ark(
     void *ctx, panda::ecmascript::ReadMemFunc readMem, uintptr_t *fp, uintptr_t *sp, uintptr_t *pc, bool *isJsFrame)
@@ -1258,9 +1368,10 @@ __attribute__((visibility("default"))) int step_ark(
 
 __attribute__((visibility("default"))) int ark_parse_js_frame_info(
     uintptr_t byteCodePc, uintptr_t mapBase, uintptr_t loadOffset, uint8_t *data,
-    uint64_t dataSize, panda::ecmascript::JsFunction *jsFunction)
+    uint64_t dataSize, uintptr_t extractorptr, panda::ecmascript::JsFunction *jsFunction)
 {
-    if (panda::ecmascript::ArkParseJsFrameInfo(byteCodePc, mapBase, loadOffset, data, dataSize, jsFunction)) {
+    if (panda::ecmascript::ArkParseJsFrameInfo(byteCodePc, mapBase, loadOffset, data,
+                                               dataSize, extractorptr, jsFunction)) {
         return 1;
     }
     return -1;
@@ -1298,7 +1409,6 @@ __attribute__((visibility("default"))) int get_ark_native_frame_info(int pid, ui
     uintptr_t *fp, uintptr_t *sp, panda::ecmascript::JsFrame *jsFrame, size_t &size)
 {
     if (GetArkNativeFrameInfo(pid, pc, fp, sp, jsFrame, size)) {
-        LOG_ECMA(INFO) << "get_ark_native_frame_info success.";
         return 1;
     }
     return -1;

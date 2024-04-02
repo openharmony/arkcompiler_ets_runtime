@@ -62,6 +62,7 @@ void MIRAddrofConst::Dump(const MIRSymbolTable *localSymTab) const
                                             : localSymTab->GetSymbolFromStIdx(stIdx.Idx());
     DEBUG_ASSERT(stIdx.IsGlobal() || sym->GetStorageClass() == kScPstatic || sym->GetStorageClass() == kScFstatic,
                  "MIRAddrofConst can only point to a global symbol");
+    CHECK_FATAL(sym != nullptr, "null ptr");
     LogInfo::MapleLogger() << (stIdx.IsGlobal() ? " $" : " %") << sym->GetName();
     if (fldID > 0) {
         LogInfo::MapleLogger() << " " << fldID;
@@ -90,6 +91,7 @@ void MIRAddroffuncConst::Dump(const MIRSymbolTable *) const
 {
     LogInfo::MapleLogger() << "addroffunc " << GetPrimTypeName(PTY_ptr);
     MIRFunction *func = GlobalTables::GetFunctionTable().GetFunctionFromPuidx(puIdx);
+    CHECK_FATAL(func != nullptr, "null ptr");
     LogInfo::MapleLogger() << " &"
                            << GlobalTables::GetGsymTable().GetSymbolFromStidx(func->GetStIdx().Idx())->GetName();
 }

@@ -122,6 +122,30 @@ void GraphEditor::PropagateMerge(const Edge& edge)
     }
 }
 
+bool GraphEditor::HasOsrDeoptUse(GateRef gate)
+{
+    std::vector<GateRef> valueOuts;
+    acc_.GetValueUses(gate, valueOuts);
+    for (auto out : valueOuts) {
+        if (acc_.GetOpCode(out) != OpCode::FRAME_STATE) {
+            continue;
+        }
+        std::vector<GateRef> outs;
+        acc_.GetValueUses(out, outs);
+        for (auto use : outs) {
+            if (acc_.GetOpCode(use) != OpCode::DEOPT_CHECK) {
+                continue;
+            }
+            GateRef deoptType = acc_.GetValueIn(use, 2);  // 2: deopt type
+            uint64_t v = acc_.GetConstantValue(deoptType);
+            if (v == static_cast<uint64_t>(DeoptType::OSRLOOPEXIT)) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
 void GraphEditor::EliminatePhi()
 {
     circuit_->AdvanceTime();
@@ -139,7 +163,7 @@ void GraphEditor::EliminatePhi()
             phis.emplace_back(gate);
             continue;
         }
-        if (acc_.IsFrameValues(gate)) {
+        if (acc_.IsFrameValues(gate) && !HasOsrDeoptUse(gate)) {
             continue;
         }
         // get used phi

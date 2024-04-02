@@ -15,6 +15,7 @@
 
 #include "ecmascript/js_date_time_format.h"
 
+#include "ecmascript/checkpoint/thread_state_transition.h"
 #include "ecmascript/intl/locale_helper.h"
 #include "ecmascript/ecma_macros.h"
 #include "ecmascript/global_env.h"
@@ -46,7 +47,11 @@ struct CommonDateFormatPart {
 };
 
 namespace {
-const std::vector<std::string> ICU_LONG_SHORT = {"long", "short"};
+const std::vector<std::string> ICU_LONG_SHORT = {
+    "long", "short",
+    "longOffset", "shortOffset",
+    "longGeneric", "shortGeneric"
+};
 const std::vector<std::string> ICU_NARROW_LONG_SHORT = {"narrow", "long", "short"};
 const std::vector<std::string> ICU2_DIGIT_NUMERIC = {"2-digit", "numeric"};
 const std::vector<std::string> ICU_NARROW_LONG_SHORT2_DIGIT_NUMERIC = {"narrow", "long", "short", "2-digit", "numeric"};
@@ -71,7 +76,11 @@ const std::vector<IcuPatternEntry> ICU_HOUR_PE = {
 };
 const std::vector<IcuPatternEntry> ICU_MINUTE_PE = {{"mm", "2-digit"}, {"m", "numeric"}};
 const std::vector<IcuPatternEntry> ICU_SECOND_PE = {{"ss", "2-digit"}, {"s", "numeric"}};
-const std::vector<IcuPatternEntry> ICU_YIME_ZONE_NAME_PE = {{"zzzz", "long"}, {"z", "short"}};
+const std::vector<IcuPatternEntry> ICU_YIME_ZONE_NAME_PE = {
+    {"zzzz", "long"}, {"z", "short"},
+    {"OOOO", "longOffset"}, {"O", "shortOffset"},
+    {"vvvv", "longGeneric"}, {"v", "shortGeneric"}
+};
 
 const std::map<char16_t, HourCycleOption> HOUR_CYCLE_MAP = {
     {'K', HourCycleOption::H11},
@@ -414,6 +423,12 @@ JSHandle<JSDateTimeFormat> JSDateTimeFormat::InitializeDateTimeFormat(JSThread *
     ASSERT_PRINT(!icuLocale.isBogus(), "icuLocale is bogus");
     UErrorCode status = U_ZERO_ERROR;
 
+    if (numberingSystem->IsUndefined()) {
+        std::string numberingSystemStr = JSLocale::GetNumberingSystem(icuLocale);
+        auto result = factory->NewFromStdString(numberingSystemStr);
+        dateTimeFormat->SetNumberingSystem(thread, result);
+    }
+
     // Set resolvedIcuLocaleCopy to a copy of icuLocale.
     // Set icuLocale.[[ca]] to calendar.
     // Set icuLocale.[[nu]] to numberingSystem.
@@ -450,8 +465,11 @@ JSHandle<JSDateTimeFormat> JSDateTimeFormat::InitializeDateTimeFormat(JSThread *
     }
 
     // 36.a. Let hcDefault be dataLocaleData.[[hourCycle]].
-    std::unique_ptr<icu::DateTimePatternGenerator> generator(
-        icu::DateTimePatternGenerator::createInstance(icuLocale, status));
+    std::unique_ptr<icu::DateTimePatternGenerator> generator;
+    {
+        ThreadNativeScope nativeScope(thread);
+        generator.reset(icu::DateTimePatternGenerator::createInstance(icuLocale, status));
+    }
     if (U_FAILURE(status) || generator == nullptr) {
         if (status == UErrorCode::U_MISSING_RESOURCE_ERROR) {
             THROW_REFERENCE_ERROR_AND_RETURN(thread, "can not find icu data resources", dateTimeFormat);
@@ -810,7 +828,10 @@ JSHandle<EcmaString> JSDateTimeFormat::FormatDateTime(JSThread *thread,
     icu::UnicodeString result;
 
     // 3. Set result to the string-concatenation of result and part.[[Value]].
-    simpleDateFormat->format(xValue, result);
+    {
+        ThreadNativeScope nativeScope(thread);
+        simpleDateFormat->format(xValue, result);
+    }
 
     // 4. Return result.
     return intl::LocaleHelper::UStringToString(thread, result);
@@ -825,7 +846,10 @@ JSHandle<JSArray> JSDateTimeFormat::FormatDateTimeToParts(JSThread *thread,
     UErrorCode status = U_ZERO_ERROR;
     icu::FieldPositionIterator fieldPositionIter;
     icu::UnicodeString formattedParts;
-    simpleDateFormat->format(x, formattedParts, &fieldPositionIter, status);
+    {
+        ThreadNativeScope nativeScope(thread);
+        simpleDateFormat->format(x, formattedParts, &fieldPositionIter, status);
+    }
     if (U_FAILURE(status) != 0) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "format failed", thread->GetEcmaVM()->GetFactory()->NewJSArray());
     }
@@ -1003,6 +1027,8 @@ void JSDateTimeFormat::ResolvedOptions(JSThread *thread, const JSHandle<JSDateTi
         }
     } else if (icuCalendar == "ethiopic-amete-alem") {
         calendarValue.Update(globalConst->GetHandledEthioaaString().GetTaggedValue());
+    } else if (icuCalendar.length() != 0) {
+        calendarValue.Update(factory->NewFromStdString(icuCalendar).GetTaggedValue());
     }
     property = globalConst->GetHandledCalendarString();
     JSObject::CreateDataPropertyOrThrow(thread, options, property, calendarValue);

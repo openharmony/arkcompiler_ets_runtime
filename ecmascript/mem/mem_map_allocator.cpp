@@ -25,30 +25,86 @@ MemMapAllocator *MemMapAllocator::GetInstance()
     return vmAllocator_;
 }
 
+void MemMapAllocator::InitializeRegularRegionMap([[maybe_unused]] size_t alignment)
+{
+#if defined(PANDA_TARGET_64) && !WIN_OR_MAC_OR_IOS_PLATFORM
+    size_t initialRegularObjectCapacity = std::min(capacity_ / 2, INITIAL_REGULAR_OBJECT_CAPACITY);
+    size_t i = 0;
+    while (i < MEM_MAP_RETRY_NUM) {
+        void *addr = reinterpret_cast<void *>(ToUintPtr(RandomGenerateBigAddr(REGULAR_OBJECT_MEM_MAP_BEGIN_ADDR)) +
+            i * STEP_INCREASE_MEM_MAP_ADDR);
+        MemMap memMap = PageMap(initialRegularObjectCapacity, PAGE_PROT_NONE, alignment, addr);
+        if (ToUintPtr(memMap.GetMem()) >= ToUintPtr(addr)) {
+            PageTag(memMap.GetMem(), memMap.GetSize(), PageTagType::MEMPOOL_CACHE);
+            PageRelease(memMap.GetMem(), memMap.GetSize());
+            memMapPool_.InsertMemMap(memMap);
+            memMapPool_.SplitMemMapToCache(memMap);
+            break;
+        } else {
+            PageUnmap(memMap);
+            LOG_ECMA(ERROR) << "Regular object mem map big addr fail: " << errno;
+        }
+        i++;
+    }
+#endif
+}
+
+void MemMapAllocator::InitializeHugeRegionMap(size_t alignment)
+{
+    size_t initialHugeObjectCapacity = std::min(capacity_ / 2, INITIAL_HUGE_OBJECT_CAPACITY);
+#if defined(PANDA_TARGET_64) && !WIN_OR_MAC_OR_IOS_PLATFORM
+    size_t i = 0;
+    while (i <= MEM_MAP_RETRY_NUM) {
+        void *addr = reinterpret_cast<void *>(ToUintPtr(RandomGenerateBigAddr(HUGE_OBJECT_MEM_MAP_BEGIN_ADDR)) +
+            i * STEP_INCREASE_MEM_MAP_ADDR);
+        MemMap memMap = PageMap(initialHugeObjectCapacity, PAGE_PROT_NONE, alignment, addr);
+        if (ToUintPtr(memMap.GetMem()) >= ToUintPtr(addr) || i == MEM_MAP_RETRY_NUM) {
+            PageTag(memMap.GetMem(), memMap.GetSize(), PageTagType::MEMPOOL_CACHE);
+            PageRelease(memMap.GetMem(), memMap.GetSize());
+            memMapFreeList_.Initialize(memMap, capacity_);
+            break;
+        } else {
+            PageUnmap(memMap);
+            LOG_ECMA(ERROR) << "Huge object mem map big addr fail: " << errno;
+        }
+        i++;
+    }
+#else
+    MemMap hugeMemMap = PageMap(initialHugeObjectCapacity, PAGE_PROT_NONE, alignment);
+    PageTag(hugeMemMap.GetMem(), hugeMemMap.GetSize(), PageTagType::MEMPOOL_CACHE);
+    PageRelease(hugeMemMap.GetMem(), hugeMemMap.GetSize());
+    memMapFreeList_.Initialize(hugeMemMap, capacity_);
+#endif
+}
+
 MemMap MemMapAllocator::Allocate(const uint32_t threadId, size_t size, size_t alignment,
                                  const std::string &spaceName, bool regular, bool isMachineCode)
 {
-    if (UNLIKELY(memMapTotalSize_ + size > capacity_)) {
-        LOG_GC(ERROR) << "memory map overflow";
-        return MemMap();
-    }
-
     MemMap mem;
     if (regular) {
         mem = memMapPool_.GetRegularMemFromCommitted(size);
         if (mem.GetMem() != nullptr) {
             int prot = isMachineCode ? PAGE_PROT_EXEC_READWRITE : PAGE_PROT_READWRITE;
             PageTagType type = isMachineCode ? PageTagType::MACHINE_CODE : PageTagType::HEAP;
-            PageProtect(mem.GetMem(), mem.GetSize(), prot);
+            if (!PageProtect(mem.GetMem(), mem.GetSize(), prot)) {
+                return MemMap();
+            }
             PageTag(mem.GetMem(), size, type, spaceName, threadId);
             return mem;
+        }
+
+        if (UNLIKELY(memMapTotalSize_ + size > capacity_)) {
+            LOG_GC(ERROR) << "memory map overflow";
+            return MemMap();
         }
         mem = memMapPool_.GetMemFromCache(size);
         if (mem.GetMem() != nullptr) {
             memMapTotalSize_ += size;
             int prot = isMachineCode ? PAGE_PROT_EXEC_READWRITE : PAGE_PROT_READWRITE;
             PageTagType type = isMachineCode ? PageTagType::MACHINE_CODE : PageTagType::HEAP;
-            PageProtect(mem.GetMem(), mem.GetSize(), prot);
+            if (!PageProtect(mem.GetMem(), mem.GetSize(), prot)) {
+                return MemMap();
+            }
             PageTag(mem.GetMem(), size, type, spaceName, threadId);
             return mem;
         }
@@ -56,12 +112,18 @@ MemMap MemMapAllocator::Allocate(const uint32_t threadId, size_t size, size_t al
         memMapPool_.InsertMemMap(mem);
         mem = memMapPool_.SplitMemFromCache(mem);
     } else {
+        if (UNLIKELY(memMapTotalSize_ + size > capacity_)) {
+            LOG_GC(ERROR) << "memory map overflow";
+            return MemMap();
+        }
         mem = memMapFreeList_.GetMemFromList(size);
     }
     if (mem.GetMem() != nullptr) {
         int prot = isMachineCode ? PAGE_PROT_EXEC_READWRITE : PAGE_PROT_READWRITE;
         PageTagType type = isMachineCode ? PageTagType::MACHINE_CODE : PageTagType::HEAP;
-        PageProtect(mem.GetMem(), mem.GetSize(), prot);
+        if (!PageProtect(mem.GetMem(), mem.GetSize(), prot)) {
+            return MemMap();
+        }
         PageTag(mem.GetMem(), mem.GetSize(), type, spaceName, threadId);
         memMapTotalSize_ += mem.GetSize();
     }
@@ -96,7 +158,9 @@ void MemMapAllocator::Free(void *mem, size_t size, bool isRegular)
 {
     memMapTotalSize_ -= size;
     PageTag(mem, size, PageTagType::MEMPOOL_CACHE);
-    PageProtect(mem, size, PAGE_PROT_NONE);
+    if (!PageProtect(mem, size, PAGE_PROT_NONE)) {
+        return;
+    }
     PageRelease(mem, size);
     if (isRegular) {
         memMapPool_.AddMemToCache(mem, size);
@@ -108,14 +172,7 @@ void MemMapAllocator::Free(void *mem, size_t size, bool isRegular)
 void MemMapAllocator::AdapterSuitablePoolCapacity()
 {
     size_t physicalSize = PhysicalSize();
-    capacity_ = std::max<size_t>(physicalSize / PHY_SIZE_MULTIPLE, MIN_MEM_POOL_CAPACITY);
-    if (capacity_ > LARGE_POOL_SIZE) {
-        capacity_ = std::max<size_t>(capacity_, STANDARD_POOL_SIZE);
-    } else if (capacity_ >= MEDIUM_POOL_SIZE) {
-        capacity_ = std::min<size_t>(capacity_, STANDARD_POOL_SIZE);
-    } else if (capacity_ >= LOW_POOL_SIZE) {
-        capacity_ = std::max<size_t>(capacity_, 128_MB);
-    }
+    capacity_ = std::min<size_t>(physicalSize * DEFAULT_CAPACITY_RATE, MAX_MEM_POOL_CAPACITY);
     LOG_GC(INFO) << "Ark Auto adapter memory pool capacity:" << capacity_;
 }
 }  // namespace panda::ecmascript

@@ -445,6 +445,7 @@ public:
             CombinedPassVisitor visitor(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk);
             TypedNativeInlineLowering lowering(data->GetCircuit(),
                                                &visitor,
+                                               data->GetPassContext(),
                                                data->GetCompilerConfig(),
                                                &chunk);
             visitor.AddPass(&lowering);

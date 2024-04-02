@@ -69,7 +69,8 @@ public:
     static JSTaggedValue FlagsBitsToString(JSThread *thread, uint8_t flags);
     // 21.2.5.2.1 Runtime Semantics: RegExpExec ( R, S )
     static JSTaggedValue RegExpExec(JSThread *thread, const JSHandle<JSTaggedValue> &regexp,
-                                    const JSHandle<JSTaggedValue> &inputString, bool useCache);
+                                    const JSHandle<JSTaggedValue> &inputString, bool useCache,
+                                    bool isIntermediateResult = false);
     // 21.2.5.2.3 AdvanceStringIndex ( S, index, unicode )
     static int64_t AdvanceStringIndex(const JSHandle<JSTaggedValue> &inputStr, int64_t index,
                                       bool unicode);
@@ -81,7 +82,27 @@ public:
                                          JSHandle<JSTaggedValue> string,
                                          JSHandle<JSTaggedValue> inputReplaceValue);
     static JSTaggedValue GetAllFlagsInternal(JSThread *thread, JSHandle<JSTaggedValue> &thisObj);
-    static JSTaggedValue IsValidRegularExpression(JSThread *thread, JSHandle<JSTaggedValue> &thisObj);
+    static bool IsFastRegExp(JSThread *thread, JSHandle<JSTaggedValue> regexp);
+    static bool GetFlag(JSThread *thread, const JSHandle<JSTaggedValue> regexp, uint32_t flag, bool isFastPath);
+    static void SetLastIndex(JSThread *thread, const JSHandle<JSTaggedValue> regexp,
+        JSTaggedValue lastIndex, bool isFastPath);
+    static int64_t GetLastIndex(JSThread *thread, const JSHandle<JSTaggedValue> regexp, bool isFastPath);
+    static JSTaggedValue RegExpBuiltinExecWithoutResult(JSThread *thread, const JSHandle<JSTaggedValue> regexp,
+                                                        const JSHandle<JSTaggedValue> inputStr,
+                                                        bool isFastPath, uint32_t lastIndex, bool useCache);
+    // 21.2.5.2.2 Runtime Semantics: RegExpBuiltinExec ( R, S )
+    static JSTaggedValue RegExpBuiltinExec(JSThread *thread, const JSHandle<JSTaggedValue> regexp,
+                                           const JSHandle<JSTaggedValue> inputStr,
+                                           bool isFastPath, bool useCache, bool isIntermediateResult = false);
+    static JSTaggedValue RegExpSearchFast(JSThread *thread, const JSHandle<JSTaggedValue> regexp,
+                                          const JSHandle<JSTaggedValue> string);
+    static JSTaggedValue RegExpSplit(JSThread *thread, const JSHandle<JSTaggedValue> regexp,
+                                     JSHandle<JSTaggedValue> jsString, JSHandle<JSTaggedValue> limit,
+                                     bool isFastPath);
+    static JSTaggedValue GetExecResultIndex(JSThread *thread, const JSHandle<JSTaggedValue> &execResults,
+                                            bool isFastPath);
+    static JSTaggedValue GetExecResultGroups(JSThread *thread, const JSHandle<JSTaggedValue> &execResults,
+                                             bool isFastPath);
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define SET_GET_CAPTURE(index)                                                                                \
     static JSTaggedValue GetCapture##index(JSThread *thread, const JSHandle<JSObject> &obj);                  \
@@ -104,17 +125,15 @@ private:
     static constexpr uint32_t MAX_SPLIT_LIMIT = 0xFFFFFFFFu;
     static constexpr uint32_t REGEXP_GLOBAL_ARRAY_SIZE = 9;
     static constexpr uint32_t LAST_INDEX_OFFSET = 0;
-    static constexpr uint32_t MAX_REGEXP_STRING_COUNT = 1U << 16;
+    static constexpr uint32_t EXEC_RESULT_INDEX_OFFSET = 1;
+    static constexpr uint32_t EXEC_RESULT_INPUT_OFFSET = 2;
+    static constexpr uint32_t EXEC_RESULT_GROUPS_OFFSET = 3;
 
-    static bool Matcher(JSThread *thread, const JSHandle<JSTaggedValue> &regexp,
+    static bool Matcher(JSThread *thread, const JSHandle<JSTaggedValue> regexp,
                         const uint8_t *buffer, size_t length, int32_t lastindex, bool isUtf16);
 
     static JSTaggedValue GetFlagsInternal(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
                                           const JSHandle<JSTaggedValue> &constructor, const uint8_t mask);
-    // 21.2.5.2.2 Runtime Semantics: RegExpBuiltinExec ( R, S )
-    static JSTaggedValue RegExpBuiltinExec(JSThread *thread, const JSHandle<JSTaggedValue> &regexp,
-                                           const JSHandle<JSTaggedValue> &inputStr, bool useCache);
-
     // 21.2.3.2.1 Runtime Semantics: RegExpAlloc ( newTarget )
     static JSTaggedValue RegExpAlloc(JSThread *thread, const JSHandle<JSTaggedValue> &newTarget);
 
@@ -126,21 +145,21 @@ private:
     // 21.2.3.2.4 Runtime Semantics: EscapeRegExpPattern ( P, F )
     static EcmaString *EscapeRegExpPattern(JSThread *thread, const JSHandle<JSTaggedValue> &src,
                                            const JSHandle<JSTaggedValue> &flags);
-    static JSTaggedValue RegExpReplaceFast(JSThread *thread, JSHandle<JSTaggedValue> &regexp,
+    static JSTaggedValue RegExpReplaceFast(JSThread *thread, JSHandle<JSTaggedValue> regexp,
                                            JSHandle<EcmaString> inputString, uint32_t inputLength);
-    static JSTaggedValue RegExpTestFast(JSThread *thread, JSHandle<JSTaggedValue> &regexp,
-                                        const JSHandle<JSTaggedValue> &inputString, bool useCache);
-    static JSTaggedValue RegExpExecForTestFast(JSThread *thread, JSHandle<JSTaggedValue> &regexp,
-                                               const JSHandle<JSTaggedValue> &inputStr, bool useCache);
-    static bool IsFastRegExp(JSThread *thread, JSHandle<JSTaggedValue> &regexp);
+    static JSTaggedValue RegExpTestFast(JSThread *thread, JSHandle<JSTaggedValue> regexp,
+                                        const JSHandle<JSTaggedValue> inputString, bool useCache);
+    static JSTaggedValue RegExpExecForTestFast(JSThread *thread, JSHandle<JSTaggedValue> regexp,
+                                               const JSHandle<JSTaggedValue> inputStr, bool useCache);
     // 22.2.7.8 MakeMatchIndicesIndexPairArray ( S, indices, groupNames, hasGroups )
     static JSHandle<JSTaggedValue> MakeMatchIndicesIndexPairArray(JSThread* thread,
         const std::vector<std::pair<JSTaggedValue, JSTaggedValue>>& indices,
         const std::vector<JSHandle<JSTaggedValue>>& groupNames, bool hasGroups);
-    static bool RegExpExecInternal(JSThread *thread, const JSHandle<JSTaggedValue> &regexp,
-                                   JSHandle<EcmaString> &inputString, int32_t lastIndex);
-    static JSTaggedValue RegExpSplitFast(JSThread *thread, const JSHandle<JSTaggedValue> &regexp,
-                                         JSHandle<EcmaString> string, uint32_t limit, bool useCache);
+    static bool RegExpExecInternal(JSThread *thread, const JSHandle<JSTaggedValue> regexp,
+                                   JSHandle<EcmaString> inputString, int32_t lastIndex);
+    static JSTaggedValue RegExpSplitFast(JSThread *thread, const JSHandle<JSTaggedValue> regexp,
+                                         JSHandle<JSTaggedValue> string, uint32_t limit, bool useCache);
+    static bool GetOringinalFlag(JSThread *thread, const JSHandle<JSTaggedValue> regexp, uint32_t flag);
 };
 
 class RegExpExecResultCache : public TaggedArray {
@@ -151,7 +170,8 @@ public:
         MATCH_TYPE,
         EXEC_TYPE,
         INTERMEDIATE_REPLACE_TYPE,
-        TEST_TYPE
+        TEST_TYPE,
+        SEARCH_TYPE,
     };
     static RegExpExecResultCache *Cast(TaggedObject *object)
     {
@@ -159,15 +179,14 @@ public:
     }
     static JSTaggedValue CreateCacheTable(JSThread *thread);
     // extend as an additional parameter to judge cached
-    JSTaggedValue FindCachedResult(JSThread *thread, const JSHandle<JSTaggedValue> &patten,
-                                   const JSHandle<JSTaggedValue> &flags, const JSHandle<JSTaggedValue> &input,
-                                   CacheType type, const JSHandle<JSTaggedValue> &regexp,
+    JSTaggedValue FindCachedResult(JSThread *thread, const JSHandle<JSTaggedValue> input,
+                                   CacheType type, const JSHandle<JSTaggedValue> regexp,
                                    JSTaggedValue lastIndexInput, JSTaggedValue extend = JSTaggedValue::Undefined(),
                                    bool isIntermediateResult = false);
     // extend as an additional parameter to judge cached
     static void AddResultInCache(JSThread *thread, JSHandle<RegExpExecResultCache> cache,
-                                 const JSHandle<JSTaggedValue> &patten, const JSHandle<JSTaggedValue> &flags,
-                                 const JSHandle<JSTaggedValue> &input, const JSHandle<JSTaggedValue> &resultArray,
+                                 const JSHandle<JSTaggedValue> regexp,
+                                 const JSHandle<JSTaggedValue> input, const JSHandle<JSTaggedValue> resultArray,
                                  CacheType type, uint32_t lastIndexInput, uint32_t lastIndex,
                                  JSTaggedValue extend = JSTaggedValue::Undefined(),
                                  bool isIntermediateResult = false);
@@ -269,9 +288,10 @@ private:
     static constexpr int RESULT_EXEC_INDEX = 8;
     static constexpr int RESULT_INTERMEDIATE_REPLACE_INDEX = 9;
     static constexpr int RESULT_TEST_INDEX = 10;
+    static constexpr int RESULT_SEARCH_INDEX = 11;
     // Extend index used for saving an additional parameter to judge cached
-    static constexpr int EXTEND_INDEX = 11;
-    static constexpr int ENTRY_SIZE = 12;
+    static constexpr int EXTEND_INDEX = 12;
+    static constexpr int ENTRY_SIZE = 13;
 };
 
 class RegExpGlobalResult : public TaggedArray {

@@ -1430,7 +1430,7 @@ JSHandle<EcmaString> TSModuleTable::GetModuleRequestByModuleId(JSThread *thread,
 
 JSHandle<EcmaString> TSModuleTable::GetAbcRequestByModuleId(JSThread *thread, int entry) const
 {
-    int amiOffset = GetAbcRequestOffset(entry);
+    int amiOffset = static_cast<int>(GetAbcRequestOffset(entry));
     JSHandle<EcmaString> abcPath(thread, Get(amiOffset));
     return abcPath;
 }

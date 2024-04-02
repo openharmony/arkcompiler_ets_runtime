@@ -15,10 +15,10 @@
 
 #include "ecmascript/compiler/builtins/builtins_object_stub_builder.h"
 
+#include "ecmascript/compiler/builtins/builtins_typedarray_stub_builder.h"
 #include "ecmascript/compiler/circuit_builder_helper.h"
 #include "ecmascript/compiler/new_object_stub_builder.h"
 #include "ecmascript/compiler/stub_builder-inl.h"
-#include "ecmascript/compiler/typed_array_stub_builder.h"
 #include "ecmascript/js_arguments.h"
 #include "ecmascript/js_primitive_ref.h"
 #include "ecmascript/message_string.h"
@@ -57,7 +57,7 @@ GateRef BuiltinsObjectStubBuilder::CreateListFromArrayLike(GateRef glue, GateRef
             GateRef int32Len = GetLengthOfJSTypedArray(arrayObj);
             NewObjectStubBuilder newBuilder(this);
             GateRef array = newBuilder.NewTaggedArray(glue, int32Len);
-            TypedArrayStubBuilder arrayStubBuilder(this);
+            BuiltinsTypedArrayStubBuilder arrayStubBuilder(this);
             arrayStubBuilder.FastCopyElementToArray(glue, arrayObj, array);
             // c. ReturnIfAbrupt(next).
             Label isPendingException2(env);
@@ -1214,10 +1214,15 @@ GateRef BuiltinsObjectStubBuilder::GetEnumElementKeys(GateRef glue, GateRef obj)
                 LoopEnd(&loopHead, env, glue);
                 Bind(&afterLoop);
                 {
-                    Store(VariableType::INT32(), glue_,
-                        elementArray, IntPtr(TaggedArray::LENGTH_OFFSET), *elementIndex);
                     result = elementArray;
-                    Jump(&exit);
+                    Label needTrim(env);
+                    BRANCH(Int32LessThan(*elementIndex, numOfElements), &needTrim, &exit);
+                    Bind(&needTrim);
+                    {
+                        CallNGCRuntime(glue, RTSTUB_ID(ArrayTrim),
+                                       {glue, elementArray, ZExtInt32ToInt64(*elementIndex)});
+                        Jump(&exit);
+                    }
                 }
             }
         }

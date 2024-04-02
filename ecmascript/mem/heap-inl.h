@@ -168,18 +168,19 @@ TaggedObject *Heap::AllocateYoungOrHugeObject(JSHClass *hclass)
 TaggedObject *Heap::AllocateYoungOrHugeObject(size_t size)
 {
     size = AlignUp(size, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
+    TaggedObject *object = nullptr;
     if (size > MAX_REGULAR_HEAP_OBJECT_SIZE) {
-        return AllocateHugeObject(size);
-    }
-
-    auto object = reinterpret_cast<TaggedObject *>(activeSemiSpace_->Allocate(size));
-    if (object == nullptr) {
-        CollectGarbage(SelectGCType(), GCReason::ALLOCATION_LIMIT);
+        object = AllocateHugeObject(size);
+    } else {
         object = reinterpret_cast<TaggedObject *>(activeSemiSpace_->Allocate(size));
         if (object == nullptr) {
-            CollectGarbage(SelectGCType(), GCReason::ALLOCATION_FAILED);
+            CollectGarbage(SelectGCType(), GCReason::ALLOCATION_LIMIT);
             object = reinterpret_cast<TaggedObject *>(activeSemiSpace_->Allocate(size));
-            CHECK_OBJ_AND_THROW_OOM_ERROR(object, size, activeSemiSpace_, "Heap::AllocateYoungOrHugeObject");
+            if (object == nullptr) {
+                CollectGarbage(SelectGCType(), GCReason::ALLOCATION_FAILED);
+                object = reinterpret_cast<TaggedObject *>(activeSemiSpace_->Allocate(size));
+                CHECK_OBJ_AND_THROW_OOM_ERROR(object, size, activeSemiSpace_, "Heap::AllocateYoungOrHugeObject");
+            }
         }
     }
     return object;
@@ -189,8 +190,14 @@ TaggedObject *Heap::AllocateYoungOrHugeObject(JSHClass *hclass, size_t size)
 {
     auto object = AllocateYoungOrHugeObject(size);
     object->SetClass(thread_, hclass);
-    OnAllocateEvent(reinterpret_cast<TaggedObject*>(object), size);
+    OnAllocateEvent(GetEcmaVM(), object, size);
     return object;
+}
+
+void BaseHeap::SetHClassAndDoAllocateEvent(JSThread *thread, TaggedObject *object, JSHClass *hclass, size_t size)
+{
+    object->SetClass(thread, hclass);
+    OnAllocateEvent(thread->GetEcmaVM(), object, size);
 }
 
 uintptr_t Heap::AllocateYoungSync(size_t size)
@@ -218,63 +225,76 @@ TaggedObject *Heap::TryAllocateYoungGeneration(JSHClass *hclass, size_t size)
     if (object != nullptr) {
         object->SetClass(thread_, hclass);
     }
+    OnAllocateEvent(GetEcmaVM(), object, size);
     return object;
 }
 
 TaggedObject *Heap::AllocateOldOrHugeObject(JSHClass *hclass)
 {
     size_t size = hclass->GetObjectSize();
-    return AllocateOldOrHugeObject(hclass, size);
+    TaggedObject *object = AllocateOldOrHugeObject(hclass, size);
+    OnAllocateEvent(GetEcmaVM(), object, size);
+    return object;
 }
 
 TaggedObject *Heap::AllocateOldOrHugeObject(JSHClass *hclass, size_t size)
 {
     size = AlignUp(size, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
+    TaggedObject *object = nullptr;
     if (size > MAX_REGULAR_HEAP_OBJECT_SIZE) {
-        return AllocateHugeObject(hclass, size);
+        object = AllocateHugeObject(hclass, size);
+    } else {
+        object = reinterpret_cast<TaggedObject *>(oldSpace_->Allocate(size));
+        CHECK_OBJ_AND_THROW_OOM_ERROR(object, size, oldSpace_, "Heap::AllocateOldOrHugeObject");
+        object->SetClass(thread_, hclass);
     }
-    auto object = reinterpret_cast<TaggedObject *>(oldSpace_->Allocate(size));
-    CHECK_OBJ_AND_THROW_OOM_ERROR(object, size, oldSpace_, "Heap::AllocateOldOrHugeObject");
-    object->SetClass(thread_, hclass);
-    OnAllocateEvent(reinterpret_cast<TaggedObject*>(object), size);
+    OnAllocateEvent(GetEcmaVM(), reinterpret_cast<TaggedObject*>(object), size);
     return object;
 }
 
 TaggedObject *Heap::AllocateReadOnlyOrHugeObject(JSHClass *hclass)
 {
     size_t size = hclass->GetObjectSize();
-    return AllocateReadOnlyOrHugeObject(hclass, size);
+    TaggedObject *object = AllocateReadOnlyOrHugeObject(hclass, size);
+    OnAllocateEvent(GetEcmaVM(), object, size);
+    return object;
 }
 
 TaggedObject *Heap::AllocateReadOnlyOrHugeObject(JSHClass *hclass, size_t size)
 {
     size = AlignUp(size, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
+    TaggedObject *object = nullptr;
     if (size > MAX_REGULAR_HEAP_OBJECT_SIZE) {
-        return AllocateHugeObject(hclass, size);
+        object = AllocateHugeObject(hclass, size);
+    } else {
+        object = reinterpret_cast<TaggedObject *>(readOnlySpace_->Allocate(size));
+        CHECK_OBJ_AND_THROW_OOM_ERROR(object, size, readOnlySpace_, "Heap::AllocateReadOnlyOrHugeObject");
+        object->SetClass(thread_, hclass);
     }
-    auto object = reinterpret_cast<TaggedObject *>(readOnlySpace_->Allocate(size));
-    CHECK_OBJ_AND_THROW_OOM_ERROR(object, size, readOnlySpace_, "Heap::AllocateReadOnlyOrHugeObject");
-    object->SetClass(thread_, hclass);
-    OnAllocateEvent(reinterpret_cast<TaggedObject*>(object), size);
+    OnAllocateEvent(GetEcmaVM(), object, size);
     return object;
 }
 
 TaggedObject *Heap::AllocateNonMovableOrHugeObject(JSHClass *hclass)
 {
     size_t size = hclass->GetObjectSize();
-    return AllocateNonMovableOrHugeObject(hclass, size);
+    TaggedObject *object = AllocateNonMovableOrHugeObject(hclass, size);
+    OnAllocateEvent(GetEcmaVM(), object, size);
+    return object;
 }
 
 TaggedObject *Heap::AllocateNonMovableOrHugeObject(JSHClass *hclass, size_t size)
 {
     size = AlignUp(size, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
+    TaggedObject *object = nullptr;
     if (size > MAX_REGULAR_HEAP_OBJECT_SIZE) {
-        return AllocateHugeObject(hclass, size);
+        object = AllocateHugeObject(hclass, size);
+    } else {
+        object = reinterpret_cast<TaggedObject *>(nonMovableSpace_->CheckAndAllocate(size));
+        CHECK_OBJ_AND_THROW_OOM_ERROR(object, size, nonMovableSpace_, "Heap::AllocateNonMovableOrHugeObject");
+        object->SetClass(thread_, hclass);
     }
-    auto object = reinterpret_cast<TaggedObject *>(nonMovableSpace_->CheckAndAllocate(size));
-    CHECK_OBJ_AND_THROW_OOM_ERROR(object, size, nonMovableSpace_, "Heap::AllocateNonMovableOrHugeObject");
-    object->SetClass(thread_, hclass);
-    OnAllocateEvent(reinterpret_cast<TaggedObject*>(object), size);
+    OnAllocateEvent(GetEcmaVM(), object, size);
     return object;
 }
 
@@ -287,14 +307,14 @@ TaggedObject *Heap::AllocateClassClass(JSHClass *hclass, size_t size)
         UNREACHABLE();
     }
     *reinterpret_cast<MarkWordType *>(ToUintPtr(object)) = reinterpret_cast<MarkWordType>(hclass);
-    OnAllocateEvent(reinterpret_cast<TaggedObject*>(object), size);
+    OnAllocateEvent(GetEcmaVM(), object, size);
     return object;
 }
 
-TaggedObject *SharedHeap::AllocateClassClass(JSHClass *hclass, size_t size)
+TaggedObject *SharedHeap::AllocateClassClass(JSThread *thread, JSHClass *hclass, size_t size)
 {
     size = AlignUp(size, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
-    auto object = reinterpret_cast<TaggedObject *>(sNonMovableSpace_->AllocateWithoutGC(size));
+    auto object = reinterpret_cast<TaggedObject *>(sNonMovableSpace_->AllocateWithoutGC(thread, size));
     if (UNLIKELY(object == nullptr)) {
         LOG_ECMA_MEM(FATAL) << "Heap::AllocateClassClass can not allocate any space";
         UNREACHABLE();
@@ -336,7 +356,7 @@ TaggedObject *Heap::AllocateHugeObject(JSHClass *hclass, size_t size)
     CheckAndTriggerOldGC(size);
     auto object = AllocateHugeObject(size);
     object->SetClass(thread_, hclass);
-    OnAllocateEvent(reinterpret_cast<TaggedObject*>(object), size);
+    OnAllocateEvent(GetEcmaVM(), object, size);
     return object;
 }
 
@@ -354,7 +374,7 @@ TaggedObject *Heap::AllocateMachineCodeObject(JSHClass *hclass, size_t size)
         reinterpret_cast<TaggedObject *>(machineCodeSpace_->Allocate(size));
     CHECK_OBJ_AND_THROW_OOM_ERROR(object, size, machineCodeSpace_, "Heap::AllocateMachineCodeObject");
     object->SetClass(thread_, hclass);
-    OnAllocateEvent(reinterpret_cast<TaggedObject*>(object), size);
+    OnAllocateEvent(GetEcmaVM(), object, size);
     return object;
 }
 
@@ -365,6 +385,7 @@ uintptr_t Heap::AllocateSnapshotSpace(size_t size)
     if (UNLIKELY(object == 0)) {
         FatalOutOfMemoryError(size, "Heap::AllocateSnapshotSpaceObject");
     }
+    OnAllocateEvent(GetEcmaVM(), reinterpret_cast<TaggedObject *>(object), size);
     return object;
 }
 

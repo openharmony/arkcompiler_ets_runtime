@@ -18,7 +18,7 @@ import("//build/config/features.gni")
 import("//build/ohos.gni")
 
 ##################################fuzztest#####################################
-ohos_fuzztest("BooleanRefValueFuzzerTest") {
+ohos_fuzztest("BooleanRefValueFuzzTest") {
   module_out_path = ets_runtime_output_path
 
   fuzz_config_file = "$js_root/test/fuzztest/booleanrefvalue_fuzzer"
@@ -42,5 +42,5 @@ ohos_fuzztest("BooleanRefValueFuzzerTest") {
 group("fuzztest") {
   testonly = true
   deps = []
-  deps += [ ":BooleanRefValueFuzzerTest" ]
+  deps += [ ":BooleanRefValueFuzzTest" ]
 }

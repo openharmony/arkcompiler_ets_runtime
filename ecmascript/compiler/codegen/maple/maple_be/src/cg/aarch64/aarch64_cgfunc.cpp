@@ -956,7 +956,7 @@ bool AArch64CGFunc::CheckIfSplitOffsetWithAdd(const MemOperand &memOpnd, uint32 
     int32 q0 = opndVal / maxPimm;
     int32 addend = q0 * maxPimm;
     int32 r0 = opndVal - addend;
-    int32 alignment = memOpnd.GetImmediateOffsetAlignment(bitLen);
+    int32 alignment = static_cast<int32_t>(memOpnd.GetImmediateOffsetAlignment(bitLen));
     int32 r1 = static_cast<uint32>(r0) & ((1u << static_cast<uint32>(alignment)) - 1);
     addend = addend + r1;
     return (addend > 0);
@@ -2258,7 +2258,7 @@ void AArch64CGFunc::SelectBlkassignoff(BlkassignoffNode &bNode, Operand *src)
         if (offset < 0) {
             /* length of ALL stack based args for this call, this location is where the
                next large agg resides, its addr will then be passed */
-            offset = LmbcFindTotalStkUsed(parmList) + LmbcTotalRegsUsed();
+            offset = static_cast<int32_t>(LmbcFindTotalStkUsed(parmList) + LmbcTotalRegsUsed());
         }
         SetLmbcTotalStkUsed(offset + bNode.blockSize); /* next use */
         SetLmbcArgInfo(regResult, PTY_i64, 0, 1);      /* 1 reg for ptr */
@@ -2811,7 +2811,7 @@ RegOperand *AArch64CGFunc::LmbcStructReturnLoad(int32 offset)
 
 Operand *AArch64CGFunc::SelectIreadfpoff(const BaseNode &parent, IreadFPoffNode &ireadoff)
 {
-    uint32 offset = ireadoff.GetOffset();
+    uint32 offset = static_cast<uint32>(ireadoff.GetOffset());
     PrimType primType = ireadoff.GetPrimType();
     uint32 bytelen = GetPrimTypeSize(primType);
     uint32 bitlen = bytelen * kBitsPerByte;
@@ -3051,6 +3051,7 @@ Operand *SelectLiteral(T *c, MIRFunction *func, uint32 labelIdx, AArch64CGFunc *
     MIRSymbol *st = func->GetSymTab()->CreateSymbol(kScopeLocal);
     std::string lblStr(".LB_");
     MIRSymbol *funcSt = GlobalTables::GetGsymTable().GetSymbolFromStidx(func->GetStIdx().Idx());
+    DEBUG_ASSERT(funcSt != nullptr, "nullptr check");
     std::string funcName = funcSt->GetName();
     lblStr += funcName;
     lblStr += std::to_string(labelIdx);
@@ -3857,7 +3858,7 @@ void AArch64CGFunc::SelectMpy(Operand &resOpnd, Operand &opnd0, Operand &opnd1, 
 
             return;
         } else if (immValue > 2) {  // immValue should larger than 2
-            uint32 zeroNum = __builtin_ffsll(immValue) - 1;
+            uint32 zeroNum = static_cast<uint32>(__builtin_ffsll(immValue) - 1);
             int64 headVal = static_cast<uint64>(immValue) >> zeroNum;
             /*
              * if (headVal - 1) & (headVal - 2) == 0, that is (immVal >> zeroNum) - 1 == 1 << n
@@ -5714,6 +5715,7 @@ void AArch64CGFunc::SelectRangeGoto(RangeGotoNode &rangeGotoNode, Operand &srcOp
     lblSt->SetKonst(arrayConst);
     std::string lblStr(".LB_");
     MIRSymbol *funcSt = GlobalTables::GetGsymTable().GetSymbolFromStidx(GetFunction().GetStIdx().Idx());
+    CHECK_FATAL(funcSt != nullptr, "funcSt should not be nullptr");
     uint32 labelIdxTmp = GetLabelIdx();
     lblStr += funcSt->GetName();
     lblStr += std::to_string(labelIdxTmp++);
@@ -6814,9 +6816,9 @@ bool AArch64CGFunc::GenRetCleanup(const IntrinsiccallNode *cleanupNode, bool for
     if (minByteOffset < INT_MAX) {
         int32 refLocBase = memLayout->GetRefLocBaseLoc();
         uint32 refNum = memLayout->GetSizeOfRefLocals() / kAarch64OffsetAlign;
-        CHECK_FATAL((refLocBase + (refNum - 1) * kAarch64IntregBytelen) < std::numeric_limits<int32>::max(),
-                    "out of range");
-        int32 refLocEnd = refLocBase + (refNum - 1) * kAarch64IntregBytelen;
+        CHECK_FATAL((static_cast<uint32_t>(refLocBase) + (refNum - 1) * kAarch64IntregBytelen) <
+            static_cast<uint32_t>(std::numeric_limits<int32>::max()), "out of range");
+        int32 refLocEnd = refLocBase + static_cast<int32>((refNum - 1) * kAarch64IntregBytelen);
         int32 realMin = minByteOffset < refLocBase ? refLocBase : minByteOffset;
         int32 realMax = maxByteOffset > refLocEnd ? refLocEnd : maxByteOffset;
         if (forEA) {
@@ -6872,7 +6874,7 @@ bool AArch64CGFunc::GenRetCleanup(const IntrinsiccallNode *cleanupNode, bool for
         srcOpnds->PushOpnd(parmRegOpnd1);
         SelectCopy(parmRegOpnd1, PTY_a64, vReg0, PTY_a64);
 
-        uint32 realRefNum = (realMax - realMin) / kAarch64OffsetAlign + 1;
+        uint32 realRefNum = static_cast<uint32>((realMax - realMin) / kAarch64OffsetAlign + 1);
 
         ImmOperand &countOpnd = CreateImmOperand(realRefNum, k64BitSize, true);
 
@@ -9612,7 +9614,7 @@ void AArch64CGFunc::SelectMPLProfCounterInc(const IntrinsiccallNode &intrnNode)
         DEBUG_ASSERT(mirConst != nullptr, "nullptr check");
         CHECK_FATAL(mirConst->GetKind() == kConstInt, "expect MIRIntConst type");
         MIRIntConst *mirIntConst = safe_cast<MIRIntConst>(mirConst);
-        int64 offset = GetPrimTypeSize(PTY_u64) * mirIntConst->GetExtValue();
+        int64 offset = static_cast<int64>(GetPrimTypeSize(PTY_u64)) * mirIntConst->GetExtValue();
 
         if (!CGOptions::IsQuiet()) {
             maple::LogInfo::MapleLogger(kLlInfo) << "At counter table offset: " << offset << std::endl;
@@ -9645,7 +9647,7 @@ void AArch64CGFunc::SelectMPLProfCounterInc(const IntrinsiccallNode &intrnNode)
     DEBUG_ASSERT(mirConst != nullptr, "nullptr check");
     CHECK_FATAL(mirConst->GetKind() == kConstInt, "expect MIRIntConst type");
     MIRIntConst *mirIntConst = safe_cast<MIRIntConst>(mirConst);
-    int64 idx = GetPrimTypeSize(PTY_u32) * mirIntConst->GetExtValue();
+    int64 idx = static_cast<int64>(GetPrimTypeSize(PTY_u32)) * mirIntConst->GetExtValue();
     if (!CGOptions::IsQuiet()) {
         maple::LogInfo::MapleLogger(kLlErr) << "Id index " << idx << std::endl;
     }

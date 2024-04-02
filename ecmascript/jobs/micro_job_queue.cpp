@@ -42,6 +42,7 @@ void MicroJobQueue::EnqueueJob(JSThread *thread, JSHandle<MicroJobQueue> jobQueu
     // 3. Assert: arguments is a List that has the same number of elements as the number of parameters required by job.
     // 4. Let callerContext be the running execution context.
     // 5. Let callerRealm be callerContext’s Realm.
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "MicroJobQueue::EnqueueJob");
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<PendingJob> pendingJob(factory->NewPendingJob(job, argv));
@@ -60,6 +61,7 @@ void MicroJobQueue::EnqueueJob(JSThread *thread, JSHandle<MicroJobQueue> jobQueu
 
 void MicroJobQueue::ExecutePendingJob(JSThread *thread, JSHandle<MicroJobQueue> jobQueue)
 {
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "MicroJobQueue::ExecutePendingJob");
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSMutableHandle<TaggedQueue> promiseQueue(thread, jobQueue->GetPromiseJobQueue());
     JSMutableHandle<PendingJob> pendingJob(thread, JSTaggedValue::Undefined());

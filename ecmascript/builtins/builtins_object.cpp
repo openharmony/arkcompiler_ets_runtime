@@ -896,7 +896,7 @@ JSTaggedValue BuiltinsObject::GetBuiltinObjectToString(JSThread *thread, const J
 {
     BUILTINS_API_TRACE(thread, Object, GetBuiltinObjectToString);
     // 4. Let isArray be IsArray(O).
-    bool isArray = object->IsJSArray();
+    bool isArray = object.GetTaggedValue().IsArray(thread);
     // 5. ReturnIfAbrupt(isArray).
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 

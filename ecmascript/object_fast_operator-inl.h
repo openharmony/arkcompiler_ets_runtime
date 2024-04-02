@@ -16,11 +16,15 @@
 #ifndef ECMASCRIPT_OBJECT_FAST_OPERATOR_INL_H
 #define ECMASCRIPT_OBJECT_FAST_OPERATOR_INL_H
 
+#include "ecmascript/js_handle.h"
+#include "ecmascript/js_tagged_value.h"
 #include "ecmascript/jspandafile/class_info_extractor.h"
 #include "ecmascript/object_fast_operator.h"
 
+#include "ecmascript/base/array_helper.h"
 #include "ecmascript/ecma_string_table.h"
 #include "ecmascript/element_accessor-inl.h"
+#include "ecmascript/interpreter/fast_runtime_stub-inl.h"
 #include "ecmascript/js_api/js_api_arraylist.h"
 #include "ecmascript/js_api/js_api_deque.h"
 #include "ecmascript/js_api/js_api_linked_list.h"
@@ -37,6 +41,8 @@
 #include "ecmascript/message_string.h"
 #include "ecmascript/property_attributes.h"
 #include "ecmascript/runtime_call_id.h"
+#include "ecmascript/shared_objects/concurrent_api_scope.h"
+#include "ecmascript/shared_objects/js_shared_array.h"
 #include "ecmascript/tagged_dictionary.h"
 
 namespace panda::ecmascript {
@@ -319,7 +325,7 @@ JSTaggedValue ObjectFastOperator::SetPropertyByName(JSThread *thread, JSTaggedVa
     return JSTaggedValue::Undefined();
 }
 
-template<ObjectFastOperator::Status status>
+template <ObjectFastOperator::Status status>
 JSTaggedValue ObjectFastOperator::GetPropertyByIndex(JSThread *thread, JSTaggedValue receiver, uint32_t index)
 {
     INTERPRETER_TRACE(thread, GetPropertyByIndex);
@@ -373,7 +379,7 @@ JSTaggedValue ObjectFastOperator::GetPropertyByIndex(JSThread *thread, JSTaggedV
     return JSTaggedValue::Undefined();
 }
 
-template<ObjectFastOperator::Status status>
+template <ObjectFastOperator::Status status>
 JSTaggedValue ObjectFastOperator::SetPropertyByIndex(JSThread *thread, JSTaggedValue receiver, uint32_t index,
                                                      JSTaggedValue value)
 {
@@ -454,7 +460,7 @@ JSTaggedValue ObjectFastOperator::SetPropertyByIndex(JSThread *thread, JSTaggedV
     return AddPropertyByIndex(thread, receiver, index, value);
 }
 
-template<ObjectFastOperator::Status status>
+template <ObjectFastOperator::Status status>
 JSTaggedValue ObjectFastOperator::GetPropertyByValue(JSThread *thread, JSTaggedValue receiver, JSTaggedValue key)
 {
     INTERPRETER_TRACE(thread, GetPropertyByValue);
@@ -515,17 +521,17 @@ JSTaggedValue ObjectFastOperator::SetPropertyByValue(JSThread *thread, JSTaggedV
 }
 
 bool ObjectFastOperator::FastSetPropertyByValue(JSThread *thread, JSTaggedValue receiver, JSTaggedValue key,
-                                                JSTaggedValue value)
+                                                JSTaggedValue value, SCheckMode sCheckMode)
 {
     INTERPRETER_TRACE(thread, FastSetPropertyByValue);
-    JSTaggedValue result = ObjectFastOperator::SetPropertyByValue(thread, receiver, key, value);
+    JSTaggedValue result = ObjectFastOperator::SetPropertyByValue(thread, receiver, key, value, sCheckMode);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
     if (!result.IsHole()) {
         return !result.IsException();
     }
     return JSTaggedValue::SetProperty(thread, JSHandle<JSTaggedValue>(thread, receiver),
                                       JSHandle<JSTaggedValue>(thread, key), JSHandle<JSTaggedValue>(thread, value),
-                                      true);
+                                      true, sCheckMode);
 }
 
 bool ObjectFastOperator::FastSetPropertyByIndex(JSThread *thread, JSTaggedValue receiver, uint32_t index,
@@ -559,13 +565,14 @@ JSTaggedValue ObjectFastOperator::FastGetPropertyByName(JSThread *thread, JSTagg
     return result;
 }
 
-JSTaggedValue ObjectFastOperator::FastGetPropertyByValue(JSThread *thread, JSTaggedValue receiver, JSTaggedValue key)
+JSTaggedValue ObjectFastOperator::FastGetPropertyByValue(JSThread *thread, JSTaggedValue receiver, JSTaggedValue key,
+                                                         SCheckMode sCheckMode)
 {
     INTERPRETER_TRACE(thread, FastGetPropertyByValue);
     JSTaggedValue result = ObjectFastOperator::GetPropertyByValue(thread, receiver, key);
     if (result.IsHole()) {
         return JSTaggedValue::GetProperty(thread, JSHandle<JSTaggedValue>(thread, receiver),
-            JSHandle<JSTaggedValue>(thread, key)).GetValue().GetTaggedValue();
+            JSHandle<JSTaggedValue>(thread, key), sCheckMode).GetValue().GetTaggedValue();
     }
     return result;
 }
@@ -738,6 +745,11 @@ bool ObjectFastOperator::IsSpecialIndexedObj(JSType jsType)
     return jsType > JSType::JS_ARRAY;
 }
 
+bool ObjectFastOperator::IsJSSharedArray(JSType jsType)
+{
+    return jsType == JSType::JS_SHARED_ARRAY;
+}
+
 bool ObjectFastOperator::IsFastTypeArray(JSType jsType)
 {
     return jsType >= JSType::JS_TYPED_ARRAY_FIRST && jsType <= JSType::JS_TYPED_ARRAY_LAST;
@@ -883,7 +895,8 @@ JSTaggedValue ObjectFastOperator::AddPropertyByIndex(JSThread *thread, JSTaggedV
 {
     INTERPRETER_TRACE(thread, AddPropertyByIndex);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
-    if (UNLIKELY(!JSObject::Cast(receiver)->IsExtensible())) {
+    // fixme(hzzhouzebin) this makes SharedArray's frozen no sense.
+    if (UNLIKELY(!JSObject::Cast(receiver)->IsExtensible())  && !receiver.IsJSSharedArray()) {
         THROW_TYPE_ERROR_AND_RETURN(thread, GET_MESSAGE_STRING(SetPropertyWhenNotExtensible),
                                     JSTaggedValue::Exception());
     }
@@ -941,6 +954,28 @@ bool ObjectFastOperator::GetNumFromString(const char *str, int len, int *index, 
     *num = value;
     *index = indexStr;
     return true;
+}
+
+JSTaggedValue ObjectFastOperator::FastGetPropertyByPorpsIndex(JSThread *thread,
+                                                              JSTaggedValue receiver, uint32_t index)
+{
+    JSTaggedValue value = JSTaggedValue::Hole();
+    JSObject *obj = JSObject::Cast(receiver);
+    TaggedArray *properties = TaggedArray::Cast(obj->GetProperties().GetTaggedObject());
+    if (!properties->IsDictionaryMode()) {
+        JSHClass *jsHclass = obj->GetJSHClass();
+        LayoutInfo *layoutInfo = LayoutInfo::Cast(jsHclass->GetLayout().GetTaggedObject());
+        PropertyAttributes attr = layoutInfo->GetAttr(index);
+        value = obj->GetProperty(jsHclass, attr);
+    } else {
+        NameDictionary *dict = NameDictionary::Cast(properties);
+        value = dict->GetValue(index);
+    }
+    if (UNLIKELY(value.IsAccessor())) {
+        return FastRuntimeStub::CallGetter(thread, JSTaggedValue(obj), JSTaggedValue(obj), value);
+    }
+    ASSERT(!value.IsAccessor());
+    return value;
 }
 }
 #endif  // ECMASCRIPT_OBJECT_FAST_OPERATOR_INL_H

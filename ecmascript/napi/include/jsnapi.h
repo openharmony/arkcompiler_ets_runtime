@@ -256,6 +256,11 @@ public:
         profileDir_ = value;
     }
 
+    void SetEnableJIT(bool value)
+    {
+        enableJIT_ = value;
+    }
+
 private:
     std::string GetGcType() const
     {
@@ -366,6 +371,11 @@ private:
         return profileDir_;
     }
 
+    bool GetEnableJIT() const
+    {
+        return enableJIT_;
+    }
+
     GC_TYPE gcType_ = GC_TYPE::EPSILON;
     LOG_LEVEL logLevel_ = LOG_LEVEL::DEBUG;
     uint32_t gcPoolSize_ = ecmascript::DEFAULT_GC_POOL_SIZE;
@@ -386,6 +396,7 @@ private:
     std::string anDir_ {};
     bool enableProfile_ {false};
     std::string profileDir_ {};
+    bool enableJIT_ {false};
     friend JSNApi;
 };
 

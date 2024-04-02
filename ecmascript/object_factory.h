@@ -23,12 +23,12 @@
 #include "ecmascript/js_handle.h"
 #include "ecmascript/js_hclass.h"
 #include "ecmascript/js_native_pointer.h"
-#include "ecmascript/js_shared_object.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/mem/heap_region_allocator.h"
 #include "ecmascript/mem/machine_code.h"
 #include "ecmascript/mem/native_area_allocator.h"
 #include "ecmascript/mem/space.h"
+#include "ecmascript/shared_objects/js_shared_object.h"
 #include "ecmascript/tagged_array.h"
 #include "ecmascript/byte_array.h"
 
@@ -57,12 +57,17 @@ class JSArguments;
 class TaggedQueue;
 class JSForInIterator;
 class JSSet;
+class JSSharedSet;
 class JSMap;
+class JSSharedMap;
 class JSRegExp;
 class JSSetIterator;
+class JSSharedSetIterator;
 class JSRegExpIterator;
 class JSMapIterator;
+class JSSharedMapIterator;
 class JSArrayIterator;
+class JSSharedArrayIterator;
 class JSAPIPlainArrayIterator;
 class JSStringIterator;
 class JSGeneratorObject;
@@ -189,7 +194,6 @@ enum class MethodIndex : uint8_t;
 
 using ErrorType = base::ErrorType;
 using base::ErrorType;
-using DeleteEntryPoint = void (*)(void *, void *);
 
 enum class RemoveSlots { YES, NO };
 enum class GrowMode { KEEP, GROW };
@@ -328,6 +332,7 @@ public:
     JSHandle<job::PendingJob> NewPendingJob(const JSHandle<JSFunction> &func, const JSHandle<TaggedArray> &argv);
 
     JSHandle<JSArray> NewJSArray();
+    JSHandle<JSSharedArray> NewJSSArray();
     JSHandle<JSArray> PUBLIC_API NewJSArray(size_t length, JSHandle<JSHClass> &hclass);
     JSHandle<TaggedArray> PUBLIC_API NewJsonFixedArray(size_t start, size_t length,
                                                        const std::vector<JSHandle<JSTaggedValue>> &vec);
@@ -360,6 +365,8 @@ public:
                                                uint32_t oldLength, uint32_t k = 0);
     JSHandle<TaggedArray> NewAndCopyTaggedArray(JSHandle<TaggedArray> &srcElements, uint32_t newLength,
                                                 uint32_t oldLength, uint32_t k = 0);
+    JSHandle<TaggedArray> NewAndCopyTaggedArraySkipBarrier(JSHandle<TaggedArray> &srcElements, uint32_t newLength,
+                                                           uint32_t oldLength, uint32_t k = 0);
     JSHandle<TaggedArray> NewAndCopySNameDictionary(JSHandle<TaggedArray> &srcElements, uint32_t length);
     JSHandle<TaggedArray> NewAndCopyTaggedArrayByObject(JSHandle<JSObject> thisObjHandle, uint32_t newLength,
                                                         uint32_t oldLength, uint32_t k = 0);
@@ -433,6 +440,7 @@ public:
     JSHandle<TaggedQueue> GetEmptyTaggedQueue() const;
 
     JSHandle<JSSetIterator> NewJSSetIterator(const JSHandle<JSSet> &set, IterationKind kind);
+    JSHandle<JSSharedSetIterator> NewJSSetIterator(const JSHandle<JSSharedSet> &set, IterationKind kind);
 
     JSHandle<JSRegExpIterator> NewJSRegExpIterator(const JSHandle<JSTaggedValue> &matcher,
                                                    const JSHandle<EcmaString> &inputStr, bool global,
@@ -440,7 +448,10 @@ public:
 
     JSHandle<JSMapIterator> NewJSMapIterator(const JSHandle<JSMap> &map, IterationKind kind);
 
+    JSHandle<JSSharedMapIterator> NewJSMapIterator(const JSHandle<JSSharedMap> &map, IterationKind kind);
+
     JSHandle<JSArrayIterator> NewJSArrayIterator(const JSHandle<JSObject> &array, IterationKind kind);
+    JSHandle<JSSharedArrayIterator> NewJSSharedArrayIterator(const JSHandle<JSObject> &array, IterationKind kind);
 
     JSHandle<CompletionRecord> NewCompletionRecord(CompletionRecordType type, JSHandle<JSTaggedValue> value);
 
@@ -512,6 +523,7 @@ public:
                                                         void *data = nullptr,
                                                         bool nonMovable = false,
                                                         size_t nativeBindingsize = 0,
+                                                        Concurrent isConcurrent = Concurrent::NO,
                                                         NativeFlag flag = NativeFlag::NO_DIV);
 
     JSHandle<JSObject> NewOldSpaceObjLiteralByHClass(const JSHandle<JSHClass> &hclass);
@@ -585,6 +597,7 @@ public:
     inline EcmaString *AllocLineStringObject(size_t size);
     inline EcmaString *AllocLineStringObjectNoGC(size_t size);
     inline EcmaString *AllocOldSpaceLineStringObject(size_t size);
+    inline EcmaString *AllocReadOnlyLineStringObject(size_t size);
     inline EcmaString *AllocNonMovableLineStringObject(size_t size);
     inline EcmaString *AllocSlicedStringObject(MemSpaceType type);
     inline EcmaString *AllocConstantStringObject(MemSpaceType type);
@@ -696,6 +709,7 @@ public:
 
     // -----------------------------------shared object-----------------------------------------
     JSHandle<JSObject> NewSharedOldSpaceJSObject(const JSHandle<JSHClass> &jshclass);
+    JSHandle<JSObject> NewSharedOldSpaceJSObjectWithInit(const JSHandle<JSHClass> &jshclass);
 
     TaggedObject *NewSharedOldSpaceObject(const JSHandle<JSHClass> &hclass);
 
@@ -755,7 +769,9 @@ public:
 
     JSHandle<TaggedArray> NewSOldSpaceTaggedArray(uint32_t length, JSTaggedValue initVal = JSTaggedValue::Hole());
 
-    JSHandle<TaggedArray> NewSTaggedArray(uint32_t length, JSTaggedValue initVal, MemSpaceType spaceType);
+    JSHandle<TaggedArray> NewSTaggedArray(uint32_t length,
+                                          JSTaggedValue initVal = JSTaggedValue::Hole(),
+                                          MemSpaceType spaceType = SHARED_OLD_SPACE);
 
     JSHandle<AccessorData> NewSAccessorData();
 
@@ -801,7 +817,11 @@ public:
     JSHandle<AccessorData> NewSInternalAccessor(void *setter, void *getter);
 
     JSHandle<JSSymbol> NewSWellKnownSymbol(const JSHandle<JSTaggedValue> &name);
+    JSHandle<JSSymbol> NewSEmptySymbol();
     JSHandle<JSSymbol> NewSWellKnownSymbolWithChar(std::string_view description);
+    JSHandle<JSSymbol> NewSPublicSymbolWithChar(std::string_view description);
+    JSHandle<JSSymbol> NewSPublicSymbol(const JSHandle<JSTaggedValue> &name);
+
 private:
     friend class GlobalEnv;
     friend class GlobalEnvConstants;
@@ -839,6 +859,8 @@ private:
 
     // used to create nonmovable utf8 string at global constants
     JSHandle<EcmaString> NewFromASCIINonMovable(std::string_view data);
+    // used to create nonmovable utf8 string at global constants
+    JSHandle<EcmaString> NewFromASCIIReadOnly(std::string_view data);
 
     // used for creating Function
     JSHandle<JSFunction> NewJSFunction(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &hclass);
@@ -858,6 +880,7 @@ private:
     JSHandle<EcmaString> GetCompressedSubStringFromStringTable(const JSHandle<EcmaString> &string, uint32_t offset,
                                                                uint32_t utf8Len) const;
     JSHandle<EcmaString> GetStringFromStringTableNonMovable(const uint8_t *utf8Data, uint32_t utf8Len) const;
+    JSHandle<EcmaString> GetStringFromStringTableReadOnly(const uint8_t *utf8Data, uint32_t utf8Len) const;
     // For MUtf-8 string data
     EcmaString *PUBLIC_API GetRawStringFromStringTable(StringData sd,
                                                        MemSpaceType type = MemSpaceType::SHARED_OLD_SPACE,

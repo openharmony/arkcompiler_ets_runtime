@@ -311,20 +311,21 @@ void CircuitBuilder::ClearConstantCache(GateRef gate)
     GetCircuit()->ClearConstantCache(machineType, value, gateType);
 }
 
-GateRef CircuitBuilder::DeoptCheck(GateRef condition, GateRef frameState, DeoptType type)
+void CircuitBuilder::DeoptCheck(GateRef condition, GateRef frameState, DeoptType type)
 {
     std::string comment = Deoptimizier::DisplayItems(type);
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
     ASSERT(acc_.GetOpCode(frameState) == OpCode::FRAME_STATE);
-    GateRef ret = GetCircuit()->NewGate(circuit_->DeoptCheck(),
+    GateRef deoptCheck = GetCircuit()->NewGate(circuit_->DeoptCheck(),
         MachineType::I1, { currentControl, currentDepend, condition,
         frameState, Int64(static_cast<int64_t>(type))}, GateType::NJSValue(), comment.c_str());
-    auto dependRelay = DependRelay(ret, currentDepend);
-    currentLabel->SetControl(ret);
+    // Add a state output to avoid schedule a phi node to deoptCheck's BB by mistake
+    GateRef trueBB = circuit_->NewGate(circuit_->OrdinaryBlock(), { deoptCheck });
+    auto dependRelay = DependRelay(trueBB, currentDepend);
+    currentLabel->SetControl(trueBB);
     currentLabel->SetDepend(dependRelay);
-    return ret;
 }
 
 GateRef CircuitBuilder::GetSuperConstructor(GateRef ctor)

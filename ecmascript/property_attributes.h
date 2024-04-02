@@ -37,14 +37,16 @@ enum class TrackType : uint8_t {
     NUMBER = INT | DOUBLE,
     TAGGED = 0x1ULL << 2
 };
-
-enum class SharedFieldType : uint8_t {
+enum class SharedFieldType {
     NONE = 0,
-    NUMBER = 1,
-    STRING = 2,
-    BOOLEAN = 3,
-    SENDABLE = 4,
-    BIG_INT = 5,
+    NUMBER = (1 << 0),
+    STRING = (1 << 1),
+    BOOLEAN = (1 << 2),
+    SENDABLE = (1 << 3),
+    BIG_INT = (1 << 4),
+    GENERIC = (1 << 5),
+    NULL_TYPE = (1 << 6),
+    UNDEFINED = (1 << 7),
 };
 
 enum class PropertyBoxType {
@@ -70,14 +72,14 @@ enum class PropertyBoxType {
  *         --------------------------------
  *    Fast | OffsetField(bit 8...17)
  *         | TrackTypeField(bit 18...20)
- *         | SharedFieldTypeField(bit 21...23)
- *         | SortedIndexField(bit 24...33)
- *         | IsConstPropsField(bit 34)
- *         | IsNotHoleField(bit 35)
+ *         | SharedFieldTypeField(bit 21...28)
+ *         | SortedIndexField(bit 29...38)
+ *         | IsConstPropsField(bit 39)
+ *         | IsNotHoleField(bit 40)
  *         -----------------------------
  *    Slow | PropertyBoxTypeField(bit 8...9)
  *         | DictionaryOrderField(bit 10...29)
- *         | SharedFieldTypeField(bit 30...32)
+ *         | SharedFieldTypeField(bit 30...37)
  */
 class PropertyAttributes {
 public:
@@ -95,7 +97,7 @@ public:
     static constexpr uint32_t OFFSET_BITFIELD_NUM = 10;
     static constexpr uint32_t REPRESENTATION_NUM = 2;
     static constexpr uint32_t TRACK_TYPE_NUM = 3;
-    static constexpr uint32_t FIELD_TYPE_NUM = 3;
+    static constexpr uint32_t FIELD_TYPE_NUM = 8;
     static constexpr uint32_t MAX_FAST_PROPS_CAPACITY = (1U << OFFSET_BITFIELD_NUM) - 1;
     static constexpr unsigned BITS_PER_BYTE = 8;
 
@@ -124,12 +126,12 @@ public:
     using TrackTypeField = OffsetField::NextField<TrackType, TRACK_TYPE_NUM>;     // 20: 3 bits
 
     // normal attr should include SharedFieldTypeField when set to layout
-    static constexpr uint32_t NORMAL_ATTR_BITS = 23;
+    static constexpr uint32_t NORMAL_ATTR_BITS = 28;
     using NormalAttrField = BitField<uint32_t, 0, NORMAL_ATTR_BITS>;
-    using SharedFieldTypeField = TrackTypeField::NextField<SharedFieldType, FIELD_TYPE_NUM>; // 23: 3 bits
-    using SortedIndexField = SharedFieldTypeField::NextField<uint32_t, OFFSET_BITFIELD_NUM>; // 33: 10 bits
-    using IsConstPropsField = SortedIndexField::NextFlag;                              // 34
-    using IsNotHoleField = IsConstPropsField::NextFlag;                                // 35
+    using SharedFieldTypeField = TrackTypeField::NextField<SharedFieldType, FIELD_TYPE_NUM>; // 28: 8 bits
+    using SortedIndexField = SharedFieldTypeField::NextField<uint32_t, OFFSET_BITFIELD_NUM>; // 38: 10 bits
+    using IsConstPropsField = SortedIndexField::NextFlag;                              // 39
+    using IsNotHoleField = IsConstPropsField::NextFlag;                                // 40
     using FastModeLastField = IsNotHoleField;
     static_assert(
         FastModeLastField::START_BIT + FastModeLastField::SIZE <= MAX_BIT_SIZE, "Invalid");

@@ -14,6 +14,7 @@
  */
 
 #include <cmath>
+#include <cfenv>
 #include <sstream>
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/log.h"
@@ -25,6 +26,7 @@
 #include "ecmascript/base/number_helper.h"
 #include "ecmascript/base/string_helper.h"
 #include "ecmascript/builtins/builtins_array.h"
+#include "ecmascript/builtins/builtins_arraybuffer.h"
 #include "ecmascript/js_stable_array.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/base/typed_array_helper.h"
@@ -160,6 +162,11 @@ DEF_RUNTIME_STUBS(AllocateInYoung)
         result = heap->AllocateYoungOrHugeObject(size);
         ASSERT(result != nullptr);
     }
+    if (argc > 1) { // 1: means the first parameter
+        JSHandle<JSHClass> hclassHandle = GetHArg<JSHClass>(argv, argc, 1);  // 1: means the first parameter
+        auto hclass = JSHClass::Cast(hclassHandle.GetTaggedValue().GetTaggedObject());
+        heap->SetHClassAndDoAllocateEvent(thread, result, hclass, size);
+    }
     return JSTaggedValue(result).GetRawData();
 }
 
@@ -176,7 +183,44 @@ DEF_RUNTIME_STUBS(AllocateInSOld)
         result = sharedHeap->AllocateOldOrHugeObject(thread, size);
         ASSERT(result != nullptr);
     }
+    if (argc > 1) { // 1: means the first parameter
+        JSHandle<JSHClass> hclassHandle = GetHArg<JSHClass>(argv, argc, 1);  // 1: means the first parameter
+        auto hclass = JSHClass::Cast(hclassHandle.GetTaggedValue().GetTaggedObject());
+        sharedHeap->SetHClassAndDoAllocateEvent(thread, result, hclass, size);
+    }
     return JSTaggedValue(result).GetRawData();
+}
+
+DEF_RUNTIME_STUBS(TypedArraySpeciesCreate)
+{
+    RUNTIME_STUBS_HEADER(TypedArraySpeciesCreate);
+    JSHandle<JSTaggedValue> obj = GetHArg<JSTaggedValue>(argv, argc, 0);    // 0: means the zeroth parameter
+    JSHandle<JSTypedArray> thisObj(obj);
+    JSTaggedValue indexValue = GetArg(argv, argc, 1);   // 1: means the first parameter
+    uint32_t index = static_cast<uint32_t>(indexValue.GetInt());
+    JSTaggedValue arrayLen = GetArg(argv, argc, 2); // 2: means the second parameter
+    uint32_t length = static_cast<uint32_t>(arrayLen.GetInt());
+    JSTaggedType args[1] = {JSTaggedValue(length).GetRawData()};
+    JSHandle<JSObject> newArr = base::TypedArrayHelper::TypedArraySpeciesCreate(thread, thisObj, index, args);
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception().GetRawData());
+    return newArr.GetTaggedValue().GetRawData();
+}
+
+void RuntimeStubs::CopyTypedArrayBuffer(JSTypedArray *srcArray, JSTypedArray *targetArray,
+    int32_t startPos, int32_t count, int32_t elementSize)
+{
+    DISALLOW_GARBAGE_COLLECTION;
+    JSTaggedValue srcBuffer = srcArray->GetViewedArrayBufferOrByteArray();
+    JSTaggedValue targetBuffer = targetArray->GetViewedArrayBufferOrByteArray();
+    uint32_t srcByteIndex = startPos * elementSize + srcArray->GetByteOffset();
+    uint32_t targetByteIndex = targetArray->GetByteOffset();
+    uint8_t *srcBuf = (uint8_t *)builtins::BuiltinsArrayBuffer::GetDataPointFromBuffer(srcBuffer, srcByteIndex);
+    uint8_t *targetBuf = (uint8_t *)builtins::BuiltinsArrayBuffer::GetDataPointFromBuffer(targetBuffer,
+                                                                                          targetByteIndex);
+    if (memmove_s(targetBuf, elementSize * count, srcBuf, elementSize * count) != EOK) {
+        LOG_FULL(FATAL) << "memmove_s failed";
+        UNREACHABLE();
+    }
 }
 
 DEF_RUNTIME_STUBS(CallInternalGetter)
@@ -747,6 +791,11 @@ void RuntimeStubs::DebugPrintInstruction([[maybe_unused]] uintptr_t argGlue, con
 {
     BytecodeInstruction inst(pc);
     LOG_INTERPRETER(DEBUG) << inst;
+}
+
+void RuntimeStubs::DebugOsrEntry([[maybe_unused]] uintptr_t argGlue, const uint8_t *codeEntry)
+{
+    LOG_JIT(DEBUG) << "[OSR]: Enter OSR Code: " << reinterpret_cast<const void*>(codeEntry);
 }
 
 void RuntimeStubs::Comment(uintptr_t argStr)
@@ -1516,7 +1565,8 @@ DEF_RUNTIME_STUBS(JitCompile)
 {
     RUNTIME_STUBS_HEADER(JitCompile);
     JSHandle<JSFunction> thisFunc = GetHArg<JSFunction>(argv, argc, 0);  // 0: means the zeroth parameter
-    Jit::Compile(thread->GetEcmaVM(), thisFunc, JitCompileMode::ASYNC);
+    JSTaggedValue offset = GetArg(argv, argc, 1);  // 1: means the first parameter
+    Jit::Compile(thread->GetEcmaVM(), thisFunc, offset.GetInt(), JitCompileMode::ASYNC);
     return JSTaggedValue::Undefined().GetRawData();
 }
 
@@ -2879,12 +2929,6 @@ double RuntimeStubs::FloatMod(double x, double y)
     return std::fmod(x, y);
 }
 
-JSTaggedType RuntimeStubs::FloatSqrt(double x)
-{
-    double result = std::sqrt(x);
-    return JSTaggedValue(result).GetRawData();
-}
-
 double RuntimeStubs::FloatAcos(double x)
 {
     return std::acos(x);
@@ -2950,9 +2994,23 @@ double RuntimeStubs::FloatTanh(double x)
     return std::tanh(x);
 }
 
+double RuntimeStubs::FloatCbrt(double x)
+{
+    return std::cbrt(x);
+}
+
+double RuntimeStubs::FloatTrunc(double x)
+{
+    return std::trunc(x);
+}
+
+double RuntimeStubs::FloatCeil(double x)
+{
+    return std::ceil(x);
+}
+
 double RuntimeStubs::FloatFloor(double x)
 {
-    ASSERT(!std::isnan(x));
     return std::floor(x);
 }
 
@@ -2976,9 +3034,24 @@ double RuntimeStubs::FloatLog1p(double x)
     return std::log1p(x);
 }
 
+double RuntimeStubs::FloatExp(double x)
+{
+    return std::exp(x);
+}
+
+double RuntimeStubs::FloatExpm1(double x)
+{
+    return std::expm1(x);
+}
+
 double RuntimeStubs::FloatPow(double base, double exp)
 {
     return std::pow(base, exp);
+}
+
+bool RuntimeStubs::NumberIsFinite(double x)
+{
+    return std::isfinite(x);
 }
 
 int32_t RuntimeStubs::DoubleToInt(double x, size_t bits)
@@ -3436,7 +3509,9 @@ DEF_RUNTIME_STUBS(NameDictionaryGetAllEnumKeys)
     JSHandle<TaggedArray> keyArray = factory->NewTaggedArray(numOfKeys);
     NameDictionary *dict = NameDictionary::Cast(object->GetProperties().GetTaggedObject());
     dict->GetAllEnumKeys(thread, 0, keyArray, &keys);
-    keyArray->SetLength(keys);
+    if (keys < keyArray->GetLength()) {
+        keyArray->Trim(thread, keys);
+    }
     return keyArray.GetTaggedValue().GetRawData();
 }
 
@@ -3450,7 +3525,9 @@ DEF_RUNTIME_STUBS(NumberDictionaryGetAllEnumKeys)
     uint32_t keys = elementIndex;
     NumberDictionary::GetAllEnumKeys(
         thread, JSHandle<NumberDictionary>(array), elementIndex, elementArray, &keys);
-    elementArray->SetLength(keys);
+    if (keys < elementArray->GetLength()) {
+        elementArray->Trim(thread, keys);
+    }
     return JSTaggedValue::Undefined().GetRawData();
 }
 
@@ -3507,6 +3584,12 @@ void RuntimeStubs::ArrayTrim(uintptr_t argGlue, TaggedArray *array, int64_t newL
     uint32_t length = static_cast<uint32_t>(newLength);
     auto thread = JSThread::GlueToJSThread(argGlue);
     array->Trim(thread, length);
+}
+
+void RuntimeStubs::ClearJitCompiledCodeFlags(Method *method)
+{
+    DISALLOW_GARBAGE_COLLECTION;
+    method->ClearJitCompiledCodeFlags();
 }
 
 DEF_RUNTIME_STUBS(ArrayForEachContinue)

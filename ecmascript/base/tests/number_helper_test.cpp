@@ -158,6 +158,53 @@ HWTEST_F_L0(NumberHelperTest, DoubleToString_002)
 }
 
 /**
+ * @tc.name: DoubleToEcmaString
+ * @tc.desc: This function Convert the double type data into a EcmaString.
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F_L0(NumberHelperTest, DoubleToEcmaString)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+
+    JSHandle<EcmaString> resultStr1 =
+        factory->NewFromASCII("5562684646268003");
+    double d1 = 5562684646268003;
+    JSHandle<EcmaString> resultJSHandle1 = NumberHelper::DoubleToEcmaString(thread, d1);
+    EXPECT_EQ(EcmaStringAccessor::Compare(instance, resultJSHandle1, resultStr1), 0);
+
+    JSHandle<EcmaString> resultStr2 =
+        factory->NewFromASCII("0.005431");
+    double d2 = 0.005431;
+    JSHandle<EcmaString> resultJSHandle2 = NumberHelper::DoubleToEcmaString(thread, d2);
+    EXPECT_EQ(EcmaStringAccessor::Compare(instance, resultJSHandle2, resultStr2), 0);
+
+    JSHandle<EcmaString> resultStr3 =
+        factory->NewFromASCII("1.9045e-7");
+    double d3 = 0.00000019045;
+    JSHandle<EcmaString> resultJSHandle3 = NumberHelper::DoubleToEcmaString(thread, d3);
+    EXPECT_EQ(EcmaStringAccessor::Compare(instance, resultJSHandle3, resultStr3), 0);
+
+    JSHandle<EcmaString> resultStr4 =
+        factory->NewFromASCII("-79.39773355813419");
+    double d4 = -79.39773355813419;
+    JSHandle<EcmaString> resultJSHandle4 = NumberHelper::DoubleToEcmaString(thread, d4);
+    EXPECT_EQ(EcmaStringAccessor::Compare(instance, resultJSHandle4, resultStr4), 0);
+
+    JSHandle<EcmaString> resultStr5 =
+        factory->NewFromASCII("1e+21");
+    double d5 = 1e21;
+    JSHandle<EcmaString> resultJSHandle5 = NumberHelper::DoubleToEcmaString(thread, d5);
+    EXPECT_EQ(EcmaStringAccessor::Compare(instance, resultJSHandle5, resultStr5), 0);
+
+    JSHandle<EcmaString> resultStr6 =
+        factory->NewFromASCII("340000000000000000");
+    double d6 = 340000000000000000;
+    JSHandle<EcmaString> resultJSHandle6 = NumberHelper::DoubleToEcmaString(thread, d6);
+    EXPECT_EQ(EcmaStringAccessor::Compare(instance, resultJSHandle6, resultStr6), 0);
+}
+
+/**
  * @tc.name: IsEmptyString
  * @tc.desc: Check whether the character is empty string through "IsEmptyString" function.
  * @tc.type: FUNC

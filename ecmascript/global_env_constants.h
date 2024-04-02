@@ -109,9 +109,12 @@ class ObjectFactory;
     V(JSTaggedValue, JSRegExpClass, JS_REGEXP_CLASS_INDEX, ecma_roots_class)                                          \
     V(JSTaggedValue, JSProxyOrdinaryClass, JS_PROXY_ORDINARY_CLASS_INDEX, ecma_roots_class)                           \
     V(JSTaggedValue, JSSetIteratorClass, JS_SET_ITERATOR_CLASS_INDEX, ecma_roots_class)                               \
+    V(JSTaggedValue, JSSharedSetIteratorClass, JS_SHARED_SET_ITERATOR_CLASS_INDEX, ecma_roots_class)                  \
     V(JSTaggedValue, JSRegExpIteratorClass, JS_REGEXP_ITERATOR_CLASS_INDEX, ecma_roots_class)                         \
     V(JSTaggedValue, JSMapIteratorClass, JS_MAP_ITERATOR_CLASS_INDEX, ecma_roots_class)                               \
+    V(JSTaggedValue, JSSharedMapIteratorClass, JS_SHARED_MAP_ITERATOR_CLASS_INDEX, ecma_roots_class)                  \
     V(JSTaggedValue, JSArrayIteratorClass, JS_ARRAY_ITERATOR_CLASS_INDEX, ecma_roots_class)                           \
+    V(JSTaggedValue, JSSharedArrayIteratorClass, JS_SHARED_ARRAY_ITERATOR_CLASS_INDEX, ecma_roots_class)              \
     V(JSTaggedValue, JSAPIArrayListIteratorClass, JS_API_ARRAYLIST_ITERATOR_CLASS_INDEX, ecma_roots_class)            \
     V(JSTaggedValue, JSAPIDequeIteratorClass, JS_API_DEQUE_ITERATOR_CLASS_INDEX, ecma_roots_class)                    \
     V(JSTaggedValue, JSAPILightWeightMapIteratorClass, JS_API_LIGHTWEIGHTMAP_ITERATOR_CLASS_INDEX, ecma_roots_class)  \
@@ -151,7 +154,7 @@ class ObjectFactory;
     V(JSTaggedValue, DefaultSupers, DEFAULT_SUPERS_INDEX, ecma_roots_special)                          \
     V(JSTaggedValue, EmptyTaggedQueue, EMPTY_TAGGED_QUEUE_OBJECT_INDEX, ecma_roots_special)            \
     V(JSTaggedValue, UndefinedCompletionRecord, UNDEFINED_COMPLRTION_RECORD_INDEX, ecma_roots_special) \
-    V(JSTaggedValue, MathSqrtFunction, MATH_SQRT_FUNCTION_INDEX, ecma_roots_special)                   \
+    V(JSTaggedValue, MathSqrt, MATH_SQRT_INDEX, ecma_roots_special)                                    \
     V(JSTaggedValue, MathAcos, MATH_ACOS_INDEX, ecma_roots_special)                                    \
     V(JSTaggedValue, MathAcosh, MATH_ACOSH_INDEX, ecma_roots_special)                                  \
     V(JSTaggedValue, MathAsin, MATH_ASIN_INDEX, ecma_roots_special)                                    \
@@ -161,17 +164,31 @@ class ObjectFactory;
     V(JSTaggedValue, MathAtanh, MATH_ATANH_INDEX, ecma_roots_special)                                  \
     V(JSTaggedValue, MathCos, MATH_COS_INDEX, ecma_roots_special)                                      \
     V(JSTaggedValue, MathCosh, MATH_COSH_INDEX, ecma_roots_special)                                    \
+    V(JSTaggedValue, MathSign, MATH_SIGN_INDEX, ecma_roots_special)                                    \
     V(JSTaggedValue, MathSin, MATH_SIN_INDEX, ecma_roots_special)                                      \
     V(JSTaggedValue, MathSinh, MATH_SINH_INDEX, ecma_roots_special)                                    \
     V(JSTaggedValue, MathTan, MATH_TAN_INDEX, ecma_roots_special)                                      \
     V(JSTaggedValue, MathTanh, MATH_TANH_INDEX, ecma_roots_special)                                    \
+    V(JSTaggedValue, MathTrunc, MATH_TRUNC_INDEX, ecma_roots_special)                                  \
     V(JSTaggedValue, MathLog, MATH_LOG_INDEX, ecma_roots_special)                                      \
     V(JSTaggedValue, MathLog2, MATH_LOG2_INDEX, ecma_roots_special)                                    \
     V(JSTaggedValue, MathLog10, MATH_LOG10_INDEX, ecma_roots_special)                                  \
     V(JSTaggedValue, MathLog1p, MATH_LOG1P_INDEX, ecma_roots_special)                                  \
+    V(JSTaggedValue, MathExp, MATH_EXP_INDEX, ecma_roots_special)                                      \
+    V(JSTaggedValue, MathExpm1, MATH_EXPM1_INDEX, ecma_roots_special)                                  \
+    V(JSTaggedValue, MathClz32, MATH_CLZ32_INDEX, ecma_roots_special)                                  \
     V(JSTaggedValue, MathAbs, MATH_ABS_INDEX, ecma_roots_special)                                      \
     V(JSTaggedValue, MathPow, MATH_POW_INDEX, ecma_roots_special)                                      \
-    V(JSTaggedValue, MathFloorFunction, MATH_FLOOR_FUNCTION_INDEX, ecma_roots_special)                 \
+    V(JSTaggedValue, MathCbrt, MATH_CBRT_INDEX, ecma_roots_special)                                    \
+    V(JSTaggedValue, MathMin, MATH_MIN_INDEX, ecma_roots_special)                                      \
+    V(JSTaggedValue, MathMax, MATH_MAX_INDEX, ecma_roots_special)                                      \
+    V(JSTaggedValue, MathRound, MATH_ROUND_INDEX, ecma_roots_special)                                  \
+    V(JSTaggedValue, MathFRound, MATH_FROUND_INDEX, ecma_roots_special)                                \
+    V(JSTaggedValue, MathCeil, MATH_CEIL_INDEX, ecma_roots_special)                                    \
+    V(JSTaggedValue, MathFloor, MATH_FLOOR_INDEX, ecma_roots_special)                                  \
+    V(JSTaggedValue, MathImul, MATH_IMUL_INDEX, ecma_roots_special)                                    \
+    V(JSTaggedValue, GlobalIsFinite, GLOBAL_IS_FINITE_INDEX, ecma_roots_special)                       \
+    V(JSTaggedValue, GlobalIsNan, GLOBAL_IS_NAN_INDEX, ecma_roots_special)                             \
     V(JSTaggedValue, LocaleCompareFunction, LOCALE_COMPARE_FUNCTION_INDEX, ecma_roots_special)         \
     V(JSTaggedValue, ArraySortFunction, ARRAY_SORT_FUNCTION_INDEX, ecma_roots_special)                 \
     V(JSTaggedValue, JsonStringifyFunction, JSON_STRINGIFY_FUNCTION_INDEX, ecma_roots_special)         \
@@ -414,6 +431,8 @@ class ObjectFactory;
     V(EthioaaString,                  ETHIOAA_INDEX,                         "ethioaa")                     \
     V(StickyString,                   STICKY_INDEX,                          "sticky")                      \
     V(HasIndicesString,               HAS_INDICES_INDEX,                     "hasIndices")                  \
+    V(MultilineString,                MULTILINE_INDEX,                       "multiline")                   \
+    V(IgnoreCaseString,               IGNORE_CASE_INDEX,                     "ignoreCase")                  \
     V(IndicesString,                  INDICES_INDEX,                         "indices")                     \
     V(UString,                        U_INDEX,                               "u")                           \
     V(IndexString,                    INDEX_INDEX,                           "index")                       \
@@ -517,7 +536,8 @@ class ObjectFactory;
     V(JSTaggedValue, FunctionPrototypeAccessor, FUNCTION_PROTOTYPE_ACCESSOR, ecma_roots_accessor) \
     V(JSTaggedValue, FunctionNameAccessor, FUNCTION_NAME_ACCESSOR, ecma_roots_accessor)           \
     V(JSTaggedValue, FunctionLengthAccessor, FUNCTION_LENGTH_ACCESSOR, ecma_roots_accessor)       \
-    V(JSTaggedValue, ArrayLengthAccessor, ARRAY_LENGTH_ACCESSOR, ecma_roots_accessor)
+    V(JSTaggedValue, ArrayLengthAccessor, ARRAY_LENGTH_ACCESSOR, ecma_roots_accessor)             \
+    V(JSTaggedValue, SharedArrayLengthAccessor, SHARED_ARRAY_LENGTH_ACCESSOR, ecma_roots_accessor)
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define SHARED_GLOBAL_ENV_CONSTANT_SPECIAL(V)                                                     \

@@ -221,6 +221,127 @@ void name##StubBuilder::GenerateCircuitImpl(GateRef glue, GateRef sp, GateRef pc
     }                                                                                             \
     Bind(&NeedCallRuntimeFalse)
 
+#define TRY_OSR()                                                                                                    \
+    DEFVARIABLE(varOsrCache, VariableType::NATIVE_POINTER(), Undefined());                                           \
+    DEFVARIABLE(varMachineCodeOffset, VariableType::JS_ANY(), Undefined());                                          \
+    DEFVARIABLE(varMachineCode, VariableType::NATIVE_POINTER(), Undefined());                                        \
+    Label getOsrCache(env);                                                                                          \
+    Label getMachineCode(env);                                                                                       \
+    Label checkDeOptFlag(env);                                                                                       \
+    Label checkExecCount(env);                                                                                       \
+    Label clearMachineCode(env);                                                                                     \
+    Label executeBCByAOT(env);                                                                                       \
+    Label executeBCByInterpreter(env);                                                                               \
+    GateRef curFrame = GetFrame(sp);                                                                                 \
+    GateRef curFunction = GetFunctionFromFrame(curFrame);                                                            \
+    GateRef curMethod = Load(VariableType::JS_ANY(), curFunction, IntPtr(JSFunctionBase::METHOD_OFFSET));            \
+    Branch(TaggedIsUndefined(profileTypeInfo), &executeBCByInterpreter, &getOsrCache);                               \
+    Bind(&getOsrCache);                                                                                              \
+    {                                                                                                                \
+        GateRef profileTypeInfoLength = GetLengthOfTaggedArray(profileTypeInfo);                                     \
+        GateRef typeInfoNum = Int32Sub(profileTypeInfoLength, Int32(ProfileTypeInfo::EXTRA_CACHE_SLOT_INDEX));       \
+        GateRef relativeOffset = PtrMul(ZExtInt32ToPtr(typeInfoNum), IntPtr(JSTaggedValue::TaggedTypeSize()));       \
+        GateRef osrCacheOffset = PtrAdd(relativeOffset, IntPtr(TaggedArray::DATA_OFFSET));                           \
+        varOsrCache = Load(VariableType::NATIVE_POINTER(), profileTypeInfo, osrCacheOffset);                         \
+        Branch(TaggedIsUndefinedOrNull(*varOsrCache), &executeBCByInterpreter, &getMachineCode);                     \
+    }                                                                                                                \
+    Bind(&getMachineCode);                                                                                           \
+    {                                                                                                                \
+        DEFVARIABLE(varIndex, VariableType::INT32(), Int32(0));                                                      \
+        Label traverseOsrCache(env);                                                                                 \
+        Label compareOffset(env);                                                                                    \
+        Label addIndex(env);                                                                                         \
+        Label traverseOsrCacheAgain(env);                                                                            \
+        GateRef fistPC = Load(VariableType::NATIVE_POINTER(), curMethod,                                             \
+                              IntPtr(Method::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET));                              \
+        GateRef jmpOffsetInFunc = TruncPtrToInt32(PtrSub(pc, fistPC));                                               \
+        GateRef length = GetLengthOfTaggedArray(*varOsrCache);                                                       \
+        Branch(Int32LessThan(*varIndex, length), &traverseOsrCache, &executeBCByInterpreter);                        \
+        LoopBegin(&traverseOsrCache);                                                                                \
+        {                                                                                                            \
+            GateRef relativeOffset = PtrMul(ZExtInt32ToPtr(*varIndex), IntPtr(JSTaggedValue::TaggedTypeSize()));     \
+            varMachineCodeOffset = PtrAdd(relativeOffset, IntPtr(TaggedArray::DATA_OFFSET));                         \
+            varMachineCode = Load(VariableType::NATIVE_POINTER(), *varOsrCache, *varMachineCodeOffset);              \
+            Branch(TaggedIsUndefinedOrNull(*varMachineCode), &addIndex, &compareOffset);                             \
+            Bind(&compareOffset);                                                                                    \
+            {                                                                                                        \
+                GateRef offsetField = Load(VariableType::INT32(), *varMachineCode,                                   \
+                                           IntPtr(MachineCode::INS_SIZE_OFFSET));                                    \
+                Branch(Int32Equal(jmpOffsetInFunc, offsetField), &checkExecCount, &addIndex);                        \
+            }                                                                                                        \
+            Bind(&addIndex);                                                                                         \
+            {                                                                                                        \
+                varIndex = Int32Add(*varIndex, Int32(1));                                                            \
+                varMachineCode = NullPtr();                                                                          \
+                Branch(Int32LessThan(*varIndex, length), &traverseOsrCacheAgain, &executeBCByInterpreter);           \
+            }                                                                                                        \
+            Bind(&traverseOsrCacheAgain);                                                                            \
+        }                                                                                                            \
+        LoopEnd(&traverseOsrCache);                                                                                  \
+    }                                                                                                                \
+    Bind(&checkExecCount);                                                                                           \
+    {                                                                                                                \
+        GateRef execCnt = Load(VariableType::INT16(), *varMachineCode, IntPtr(MachineCode::OSR_EXECUTE_CNT_OFFSET)); \
+        Branch(Int32LessThan(ZExtInt16ToInt32(execCnt), Int32(5)), &checkDeOptFlag, &dispatch);                      \
+    }                                                                                                                \
+    Bind(&checkDeOptFlag);                                                                                           \
+    {                                                                                                                \
+        GateRef deOptField = Load(VariableType::INT16(), *varMachineCode, IntPtr(MachineCode::OSRMASK_OFFSET));      \
+        Branch(Equal(deOptField, Int16(MachineCode::OSR_DEOPT_FLAG)), &clearMachineCode, &executeBCByAOT);           \
+    }                                                                                                                \
+    Bind(&clearMachineCode);                                                                                         \
+    {                                                                                                                \
+        Store(VariableType::NATIVE_POINTER(), glue, *varOsrCache, *varMachineCodeOffset, NullPtr());                 \
+        Jump(&executeBCByInterpreter);                                                                               \
+    }                                                                                                                \
+    Bind(&executeBCByAOT);                                                                                           \
+    {                                                                                                                \
+        DEFVARIABLE(varRetVal, VariableType::JS_ANY(), Undefined());                                                 \
+        Label fastCallOptimized(env);                                                                                \
+        Label callOptimized(env);                                                                                    \
+        Label handleReturn(env);                                                                                     \
+        Label resumeRspAndReturn(env);                                                                               \
+        Label resumeRspAndDispatch(env);                                                                             \
+        Store(VariableType::NATIVE_POINTER(), glue, curFunction, IntPtr(JSFunction::MACHINECODE_OFFSET),             \
+              *varMachineCode);                                                                                      \
+        GateRef execCnt = Load(VariableType::INT16(), *varMachineCode, IntPtr(MachineCode::OSR_EXECUTE_CNT_OFFSET)); \
+        GateRef newExecCnt = Int16Add(execCnt, Int16(1));                                                            \
+        Store(VariableType::INT16(), glue, *varMachineCode, IntPtr(MachineCode::OSR_EXECUTE_CNT_OFFSET),             \
+              newExecCnt);                                                                                           \
+        GateRef codeAddr = Load(VariableType::NATIVE_POINTER(), *varMachineCode,                                     \
+                                IntPtr(MachineCode::FUNCADDR_OFFSET));                                               \
+        varRetVal = FastCallOptimized(glue, codeAddr, { glue, sp });                                                 \
+        Jump(&handleReturn);                                                                                         \
+        Bind(&handleReturn);                                                                                         \
+        {                                                                                                            \
+            GateRef prevSp = Load(VariableType::NATIVE_POINTER(), curFrame,                                          \
+                             IntPtr(AsmInterpretedFrame::GetBaseOffset(env->IsArch32Bit())));                        \
+            GateRef prevFrame = GetFrame(prevSp);                                                                    \
+            GateRef prevPc = GetPcFromFrame(prevFrame);                                                              \
+            Branch(IntPtrEqual(prevPc, IntPtr(0)), &resumeRspAndReturn, &resumeRspAndDispatch);                      \
+            Bind(&resumeRspAndReturn);                                                                               \
+            {                                                                                                        \
+                CallNGCRuntime(glue, RTSTUB_ID(ResumeRspAndReturn), { *varRetVal, prevSp, sp});                      \
+                Return();                                                                                            \
+            }                                                                                                        \
+            Bind(&resumeRspAndDispatch);                                                                             \
+            {                                                                                                        \
+                GateRef prevFunction = GetFunctionFromFrame(prevFrame);                                              \
+                GateRef prevMethod = Load(VariableType::JS_ANY(), prevFunction,                                      \
+                                          IntPtr(JSFunctionBase::METHOD_OFFSET));                                    \
+                GateRef prevConstpool = GetConstpoolFromMethod(prevMethod);                                          \
+                GateRef prevProfileTypeInfo = GetProfileTypeInfoFromFunction(prevFunction);                          \
+                GateRef prevHotnessCounter = GetHotnessCounterFromMethod(prevMethod);                                \
+                GateRef jumpSize = GetCallSizeFromFrame(prevFrame);                                                  \
+                CallNGCRuntime(glue, RTSTUB_ID(ResumeRspAndDispatch),                                                \
+                               {glue, sp, prevPc, prevConstpool, prevProfileTypeInfo, *varRetVal,                    \
+                                prevHotnessCounter, jumpSize});                                                      \
+                Return();                                                                                            \
+            }                                                                                                        \
+        }                                                                                                            \
+    }                                                                                                                \
+    Bind(&executeBCByInterpreter)
+
 template <bool needPrint>
 void InterpreterStubBuilder::DebugPrintInstruction()
 {
@@ -752,6 +873,8 @@ DECLARE_ASM_HANDLER(HandleJmpImm8)
     Label dispatch(env);
     Label slowPath(env);
 
+    TRY_OSR();
+
     UPDATE_HOTNESS(sp, callback);
     DISPATCH_BAK(JUMP, SExtInt32ToPtr(offset));
 }
@@ -766,6 +889,8 @@ DECLARE_ASM_HANDLER(HandleJmpImm16)
     Label dispatch(env);
     Label slowPath(env);
 
+    TRY_OSR();
+
     UPDATE_HOTNESS(sp, callback);
     DISPATCH_BAK(JUMP, SExtInt32ToPtr(offset));
 }
@@ -779,6 +904,9 @@ DECLARE_ASM_HANDLER(HandleJmpImm32)
     GateRef offset = ReadInstSigned32_0(pc);
     Label dispatch(env);
     Label slowPath(env);
+
+    TRY_OSR();
+
     UPDATE_HOTNESS(sp, callback);
     DISPATCH_BAK(JUMP, SExtInt32ToPtr(offset));
 }

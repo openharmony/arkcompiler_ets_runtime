@@ -63,6 +63,9 @@ bool ValueSerializer::CheckObjectCanSerialize(TaggedObject *object, bool &findSh
         case JSType::JS_OBJECT:
         case JSType::JS_ASYNC_FUNCTION:  // means CONCURRENT_FUNCTION
             return true;
+        case JSType::JS_SHARED_SET:
+        case JSType::JS_SHARED_MAP:
+        case JSType::JS_SHARED_ARRAY:
         case JSType::JS_SHARED_OBJECT:
         case JSType::JS_SHARED_FUNCTION: {
             if (serializeSharedEvent_ > 0) {

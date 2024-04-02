@@ -57,14 +57,14 @@ public:
     static inline JSTaggedValue SetPropertyByName(JSThread *thread, JSTaggedValue receiver, JSTaggedValue key,
                                                   JSTaggedValue value, SCheckMode sCheckMode = SCheckMode::CHECK);
 
-    template<Status status = Status::None>
+    template <Status status = Status::None>
     static inline JSTaggedValue GetPropertyByIndex(JSThread *thread, JSTaggedValue receiver, uint32_t index);
 
-    template<Status status = Status::None>
+    template <Status status = Status::None>
     static inline JSTaggedValue SetPropertyByIndex(JSThread *thread, JSTaggedValue receiver, uint32_t index,
                                                    JSTaggedValue value);
 
-    template<Status status = Status::None>
+    template <Status status = Status::None>
     static inline JSTaggedValue GetPropertyByValue(JSThread *thread, JSTaggedValue receiver, JSTaggedValue key);
 
     template <Status status = Status::None>
@@ -72,14 +72,15 @@ public:
                                                    JSTaggedValue value, SCheckMode sCheckMode = SCheckMode::CHECK);
 
     static inline bool FastSetPropertyByValue(JSThread *thread, JSTaggedValue receiver, JSTaggedValue key,
-                                              JSTaggedValue value);
+                                              JSTaggedValue value, SCheckMode sCheckMode = SCheckMode::CHECK);
 
     static inline bool FastSetPropertyByIndex(JSThread *thread, JSTaggedValue receiver, uint32_t index,
                                               JSTaggedValue value);
 
     static inline JSTaggedValue FastGetPropertyByName(JSThread *thread, JSTaggedValue receiver, JSTaggedValue key);
 
-    static inline JSTaggedValue FastGetPropertyByValue(JSThread *thread, JSTaggedValue receiver, JSTaggedValue key);
+    static inline JSTaggedValue FastGetPropertyByValue(JSThread *thread, JSTaggedValue receiver, JSTaggedValue key,
+                                                       SCheckMode sCheckMode = SCheckMode::CHECK);
 
     static inline JSTaggedValue FastGetPropertyByIndex(JSThread *thread, JSTaggedValue receiver, uint32_t index);
 
@@ -92,6 +93,7 @@ public:
 
     static inline JSTaggedValue CallGetter(JSThread *thread, JSTaggedValue receiver, JSTaggedValue holder,
                                            JSTaggedValue value);
+    static inline JSTaggedValue FastGetPropertyByPorpsIndex(JSThread *thread, JSTaggedValue receiver, uint32_t index);
 private:
     static inline JSTaggedValue CallSetter(JSThread *thread, JSTaggedValue receiver, JSTaggedValue value,
                                            JSTaggedValue accessorValue);
@@ -100,6 +102,8 @@ private:
                                         PropertyAttributes attr);
 
     static inline bool IsSpecialIndexedObj(JSType jsType);
+
+    static inline bool IsJSSharedArray(JSType jsType);
 
     static inline bool IsFastTypeArray(JSType jsType);
 

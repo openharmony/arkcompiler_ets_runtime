@@ -108,6 +108,13 @@ size_t GateAccessor::GetOffset(GateRef gate) const
     return accessor.GetOffset();
 }
 
+size_t GateAccessor::GetInitOffset(GateRef gate) const
+{
+    ASSERT(GetOpCode(gate) == OpCode::INITVREG);
+    Gate *gatePtr = circuit_->LoadGatePtr(gate);
+    return gatePtr->GetOneParameterMetaData()->GetValue();
+}
+
 uint32_t GateAccessor::GetTrueWeight(GateRef gate) const
 {
     ASSERT(GetOpCode(gate) == OpCode::IF_BRANCH);

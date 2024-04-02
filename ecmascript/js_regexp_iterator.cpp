@@ -52,59 +52,57 @@ JSTaggedValue JSRegExpIterator::Next(EcmaRuntimeCallInfo *argv)
     // 6. Let S be O.[[IteratedString]].
     // 7. Let global be O.[[Global]].
     // 8. Let fullUnicode be O.[[Unicode]].
-    JSHandle<JSTaggedValue> regexHandle(thread, jsIterator->GetIteratingRegExp());
+    JSHandle<JSTaggedValue> regexp(thread, jsIterator->GetIteratingRegExp());
     JSHandle<JSTaggedValue> inputStr(thread, jsIterator->GetIteratedString());
     bool global = jsIterator->GetGlobal();
     bool fullUnicode = jsIterator->GetUnicode();
 
     // 9. Let match be ? RegExpExec(R, S).
-    JSTaggedValue match = BuiltinsRegExp::RegExpExec(thread, regexHandle, inputStr, false);
-    JSHandle<JSTaggedValue> matchHandle(thread, match);
+    JSMutableHandle<JSTaggedValue> match(thread, JSTaggedValue::Undefined());
+    bool isFastPath = BuiltinsRegExp::IsFastRegExp(thread, regexp);
+    if (isFastPath) {
+        match.Update(BuiltinsRegExp::RegExpBuiltinExec(thread, regexp, inputStr, isFastPath, true));
+    } else {
+        match.Update(BuiltinsRegExp::RegExpExec(thread, regexp, inputStr, false));
+    }
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
     // 10. If match is null, then
     //     a. Set O.[[Done]] to true.
     //     b. Return ! CreateIterResultObject(undefined, true).
     // Else,
-    if (matchHandle->IsNull()) {
+    if (match->IsNull()) {
         jsIterator->SetDone(true);
         return JSIterator::CreateIterResultObject(thread, undefinedHandle, true).GetTaggedValue();
-    } else {
-        // a. If global is true, then
-        //    i. Let matchStr be ? ToString(? Get(match, "0")).
-        if (global) {
-            const GlobalEnvConstants *globalConstants = thread->GlobalConstants();
-            JSHandle<JSTaggedValue> zeroString(globalConstants->GetHandledZeroString());
-            JSHandle<JSTaggedValue> getZero(JSObject::GetProperty(thread, matchHandle, zeroString).GetValue());
-            JSHandle<EcmaString> matchStr = JSTaggedValue::ToString(thread, getZero);
-            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-            // ii. If matchStr is the empty String, then
-            //     1. Let thisIndex be ? ToLength(? Get(R, "lastIndex")).
-            //     2. Let nextIndex be ! AdvanceStringIndex(S, thisIndex, fullUnicode).
-            //     3. Perform ? Set(R, "lastIndex", 𝔽(nextIndex), true).
-            if (EcmaStringAccessor(matchStr).GetLength() == 0) {
-                JSHandle<JSTaggedValue> lastIndexString(globalConstants->GetHandledLastIndexString());
-                JSHandle<JSTaggedValue> getLastIndex(JSObject::GetProperty(thread, regexHandle,
-                    lastIndexString).GetValue());
-                RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-                JSTaggedNumber thisIndex = JSTaggedValue::ToLength(thread, getLastIndex);
-                RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-                uint32_t nextIndex = static_cast<uint32_t>(
-                    BuiltinsRegExp::AdvanceStringIndex(inputStr, thisIndex.ToUint32(), fullUnicode));
-                ObjectFastOperator::FastSetPropertyByValue(thread, regexHandle.GetTaggedValue(),
-                                                           lastIndexString.GetTaggedValue(),
-                                                           JSTaggedValue(nextIndex));
-            }
-            // iii. Return ! CreateIterResultObject(match, false).
-            return JSIterator::CreateIterResultObject(thread, matchHandle, false).GetTaggedValue();
-        } else {
-            // b. Else,
-            //    i. Set O.[[Done]] to true.
-            //   ii. Return ! CreateIterResultObject(match, false).
-            jsIterator->SetDone(true);
-            return JSIterator::CreateIterResultObject(thread, matchHandle, false).GetTaggedValue();
-        }
     }
+    if (!global) {
+        //  b. Else, if non global case
+        //    i. Set O.[[Done]] to true.
+        //    ii. Return ! CreateIterResultObject(match, false).
+        jsIterator->SetDone(true);
+        return JSIterator::CreateIterResultObject(thread, match, false).GetTaggedValue();
+    }
+    // a. If global is true, then
+    //    i. Let matchStr be ? ToString(? Get(match, "0")).
+    const GlobalEnvConstants *globalConstants = thread->GlobalConstants();
+    JSHandle<JSTaggedValue> zeroString(globalConstants->GetHandledZeroString());
+    JSHandle<JSTaggedValue> getZero(JSObject::GetProperty(thread, match, zeroString).GetValue());
+    JSHandle<EcmaString> matchStr = JSTaggedValue::ToString(thread, getZero);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    // ii. If matchStr is the empty String, then
+    //     1. Let thisIndex be ? ToLength(? Get(R, "lastIndex")).
+    //     2. Let nextIndex be ! AdvanceStringIndex(S, thisIndex, fullUnicode).
+    //     3. Perform ? Set(R, "lastIndex", 𝔽(nextIndex), true).
+    if (EcmaStringAccessor(matchStr).GetLength() == 0) {
+        uint32_t lastIndex = static_cast<uint32_t>(BuiltinsRegExp::GetLastIndex(thread, regexp, isFastPath));
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        uint32_t nextIndex = static_cast<uint32_t>(
+            BuiltinsRegExp::AdvanceStringIndex(inputStr, lastIndex, fullUnicode));
+        BuiltinsRegExp::SetLastIndex(thread, regexp, JSTaggedValue(nextIndex), isFastPath);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    }
+    // iii. Return ! CreateIterResultObject(match, false).
+    return JSIterator::CreateIterResultObject(thread, match, false).GetTaggedValue();
 }
 
 JSHandle<JSTaggedValue> JSRegExpIterator::CreateRegExpStringIterator(JSThread *thread,

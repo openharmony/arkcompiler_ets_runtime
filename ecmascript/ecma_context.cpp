@@ -36,6 +36,7 @@
 #include "ecmascript/js_function.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/log.h"
+#include "ecmascript/log_wrapper.h"
 #include "ecmascript/module/module_path_helper.h"
 #include "ecmascript/module/js_shared_module.h"
 #include "ecmascript/object_factory.h"
@@ -51,6 +52,8 @@ namespace panda::ecmascript {
 using PathHelper = base::PathHelper;
 
 int32_t EcmaContext::unsharedConstpoolCount_ = 0;
+CUnorderedSet<int32_t> EcmaContext::freeUnsharedConstpoolCount_ {};
+std::mutex EcmaContext::unsharedConstpoolCountMutex_;
 
 EcmaContext::EcmaContext(JSThread *thread)
     : thread_(thread),
@@ -561,6 +564,14 @@ JSHandle<ConstantPool> EcmaContext::FindOrCreateConstPool(const JSPandaFile *jsP
     return JSHandle<ConstantPool>(thread_, constpool);
 }
 
+void EcmaContext::InsertFreeUnsharedConstpoolCount(JSTaggedValue sharedConstpool)
+{
+    std::lock_guard<std::mutex> guard(unsharedConstpoolCountMutex_);
+    int32_t index = ConstantPool::Cast(sharedConstpool.GetTaggedObject())->GetUnsharedConstpoolIndex().GetInt();
+    ASSERT(0 <= index && index != ConstantPool::CONSTPOOL_TYPE_FLAG && index < UNSHARED_CONSTANTPOOL_COUNT);
+    freeUnsharedConstpoolCount_.insert(index);
+}
+
 void EcmaContext::CreateAllConstpool(const JSPandaFile *jsPandaFile)
 {
     auto headers = jsPandaFile->GetPandaFile()->GetIndexHeaders();
@@ -595,6 +606,28 @@ void EcmaContext::AddConstpool(const JSPandaFile *jsPandaFile, JSTaggedValue con
     constpoolMap.insert({index, constpool});
 }
 
+void EcmaContext::UpdateConstpool(const std::string& fileName, JSTaggedValue constpool, int32_t index)
+{
+    for (auto iter = cachedSharedConstpools_.begin(); iter != cachedSharedConstpools_.end(); iter++) {
+        std::string curFileName = iter->first->GetJSPandaFileDesc().c_str();
+        auto &constpoolMap = iter->second;
+        // update the aot literal info under each constpool id in the framework abc file
+        if (curFileName != fileName || constpoolMap.find(index) == constpoolMap.end()) {
+            continue;
+        }
+        ConstantPool *curConstPool = ConstantPool::Cast(constpoolMap[index].GetTaggedObject());
+        const ConstantPool *taggedPool = ConstantPool::Cast(constpool.GetTaggedObject());
+        uint32_t constpoolLen = taggedPool->GetCacheLength();
+        for (uint32_t i = 0; i < constpoolLen; i++) {
+            auto val = taggedPool->GetObjectFromCache(i);
+            if (val.IsAOTLiteralInfo()) {
+                curConstPool->SetObjectToCache(thread_, i, val);
+            }
+        }
+        break;
+    }
+}
+
 JSHandle<JSTaggedValue> EcmaContext::GetAndClearEcmaUncaughtException() const
 {
     JSHandle<JSTaggedValue> exceptionHandle = GetEcmaUncaughtException();
@@ -602,8 +635,9 @@ JSHandle<JSTaggedValue> EcmaContext::GetAndClearEcmaUncaughtException() const
     return exceptionHandle;
 }
 
-void EcmaContext::ProcessNativeDelete(const WeakRootVisitor &visitor)
+void EcmaContext::ProcessNativeDeleteInSharedGC(const WeakRootVisitor &visitor)
 {
+    // share-gc trigger.
     auto iterator = cachedSharedConstpools_.begin();
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "Constpools:" + std::to_string(cachedSharedConstpools_.size()));
     while (iterator != cachedSharedConstpools_.end()) {
@@ -617,6 +651,9 @@ void EcmaContext::ProcessNativeDelete(const WeakRootVisitor &visitor)
                 if (fwd == nullptr) {
                     constpoolIter = constpools.erase(constpoolIter);
                     EraseUnsharedConstpool(constpoolVal);
+                    // when shared constpool is not referenced by any objects,
+                    // global unshared constpool count can be reuse.
+                    InsertFreeUnsharedConstpoolCount(constpoolVal);
                     continue;
                 }
             }
@@ -783,6 +820,11 @@ void EcmaContext::ClearBufferData()
     while (iter != cachedSharedConstpools_.end()) {
         LOG_ECMA(INFO) << "remove js pandafile by vm destruct, file:" << iter->first->GetJSPandaFileDesc();
         JSPandaFileManager::GetInstance()->RemoveJSPandaFileVm(vm_, iter->first);
+        auto item = iter->second.begin();
+        while (item != iter->second.end()) {
+            InsertFreeUnsharedConstpoolCount(item->second);
+            item++;
+        }
         iter++;
     }
     cachedSharedConstpools_.clear();

@@ -239,7 +239,7 @@ public:
      * Before: moduleName
      * After:  data/storage/el1/bundle/moduleName/ets/modules.abc
      */
-    inline static CString ConcatPandaFilePath(CString &moduleName)
+    inline static CString ConcatPandaFilePath(const CString &moduleName)
     {
         if (moduleName.size() == 0) {
             return CString();

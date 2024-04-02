@@ -13,5 +13,10 @@
 
 group("ark_aot_builtin_inlining_test") {
   testonly = true
-  deps = [ "math:ark_aot_builtin_inlining_math_test" ]
+  deps = [
+    "global:ark_aot_builtin_inlining_global_test",
+    "map:ark_aot_builtin_inlining_map_test",
+    "math:ark_aot_builtin_inlining_math_test",
+    "set:ark_aot_builtin_inlining_set_test",
+  ]
 }
