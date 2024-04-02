@@ -431,7 +431,6 @@ ohos_shared_library("libark_jsoptimizer") {
     defines = [ "RUN_WITH_ASAN" ]
   }
 
-  external_deps = []
   if (enable_hilog) {
     external_deps += [ "hilog:libhilog" ]
   }
