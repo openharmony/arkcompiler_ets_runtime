@@ -1033,6 +1033,18 @@ private:
     bool isRevert_ = false;
 };
 
+class ECMA_PUBLIC_API JsiNativeScope {
+public:
+    explicit JsiNativeScope(const EcmaVM *vm);
+    ~JsiNativeScope();
+    ECMA_DISALLOW_COPY(JsiNativeScope);
+    ECMA_DISALLOW_MOVE(JsiNativeScope);
+
+private:
+    JSThread *thread_;
+    uint16_t oldThreadState_;
+};
+
 /**
  * JsiRuntimeCallInfo is used for ace_engine and napi, is same to ark EcamRuntimeCallInfo except data.
  */

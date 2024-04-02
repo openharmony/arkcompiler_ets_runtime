@@ -2728,6 +2728,20 @@ JSExecutionScope::~JSExecutionScope()
     isRevert_ = false;
 }
 
+// ------------------------------------ JsiNativeScope -----------------------------------------------
+
+JsiNativeScope::JsiNativeScope(const EcmaVM *vm)
+{
+    thread_ = vm->GetAssociatedJSThread();
+    oldThreadState_ = static_cast<uint16_t>(thread_->GetState());
+    thread_->UpdateState(ecmascript::ThreadState::NATIVE);
+}
+
+JsiNativeScope::~JsiNativeScope()
+{
+    thread_->UpdateState(static_cast<ecmascript::ThreadState>(oldThreadState_));
+}
+
 // ------------------------------------ JsiRuntimeCallInfo -----------------------------------------------
 void *JsiRuntimeCallInfo::GetData()
 {

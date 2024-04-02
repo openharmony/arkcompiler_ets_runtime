@@ -69,6 +69,7 @@
       panda::Exception::*;
       panda::JSON::*;
       panda::JsiRuntimeCallInfo::*;
+      panda::JsiNativeScope::*;
       panda::JSExecutionScope::*;
 
       panda::ecmascript::Log::*;
