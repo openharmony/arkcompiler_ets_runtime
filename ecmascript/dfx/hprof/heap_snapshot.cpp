@@ -1157,7 +1157,7 @@ void HeapSnapshot::AddSyntheticRoot()
     Node *syntheticRoot = Node::NewNode(chunk_, 1, nodeCount_, GetString("SyntheticRoot"),
                                         NodeType::SYNTHETIC, 0, 0, 0);
     InsertNodeAt(0, syntheticRoot);
-
+    CUnorderedSet<JSTaggedType> values {};
     int edgeOffset = 0;
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define ROOT_EDGE_BUILDER_CORE(type, slot)                                                            \
@@ -1167,6 +1167,12 @@ void HeapSnapshot::AddSyntheticRoot()
             TaggedObject *root = value.GetTaggedObject();                                             \
             Node *rootNode = entryMap_.FindEntry(Node::NewAddress(root));                             \
             if (rootNode != nullptr) {                                                                \
+                JSTaggedType valueTo = value.GetRawData();                                            \
+                auto it = values.find(valueTo);                                                       \
+                if (it != values.end()) {                                                             \
+                    return;                                                                           \
+                }                                                                                     \
+                values.insert(valueTo);                                                               \
                 Edge *edge = Edge::NewEdge(chunk_,                                                    \
                     edgeCount_, EdgeType::SHORTCUT, syntheticRoot, rootNode, GetString("-subroot-")); \
                 InsertEdgeAt(edgeOffset, edge);                                                       \
@@ -1176,7 +1182,8 @@ void HeapSnapshot::AddSyntheticRoot()
         }                                                                                             \
     } while (false)
 
-    RootVisitor rootEdgeBuilder = [this, syntheticRoot, &edgeOffset]([[maybe_unused]] Root type, ObjectSlot slot) {
+    RootVisitor rootEdgeBuilder = [this, syntheticRoot, &edgeOffset, &values](
+        [[maybe_unused]] Root type, ObjectSlot slot) {
         ROOT_EDGE_BUILDER_CORE(type, slot);
     };
     RootBaseAndDerivedVisitor rootBaseEdgeBuilder = []
@@ -1184,8 +1191,8 @@ void HeapSnapshot::AddSyntheticRoot()
          [[maybe_unused]] uintptr_t baseOldObject) {
     };
 
-    RootRangeVisitor rootRangeEdgeBuilder = [this, syntheticRoot, &edgeOffset]([[maybe_unused]] Root type,
-                                                                               ObjectSlot start, ObjectSlot end) {
+    RootRangeVisitor rootRangeEdgeBuilder = [this, syntheticRoot, &edgeOffset, &values]([[maybe_unused]] Root type,
+        ObjectSlot start, ObjectSlot end) {
         for (ObjectSlot slot = start; slot < end; slot++) {
             ROOT_EDGE_BUILDER_CORE(type, slot);
         }
