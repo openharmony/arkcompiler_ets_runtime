@@ -34,11 +34,11 @@
 // V(name, func, length, stubIndex)
 // where BuiltinsNumber::func refers to the native implementation of Number[name].
 //       kungfu::BuiltinsStubCSigns::stubIndex refers to the builtin stub index, or INVALID if no stub available.
-#define BUILTIN_NUMBER_NON_GLOBAL_FUNCTIONS(V)                                          \
-    V("isFinite",      IsFinite,      1, INVALID) /* Number.isFinite ( number ) */      \
-    V("isInteger",     IsInteger,     1, INVALID) /* Number.isInteger ( number ) */     \
-    V("isNaN",         IsNaN,         1, INVALID) /* Number.isNaN ( number ) */         \
-    V("isSafeInteger", IsSafeInteger, 1, INVALID) /* Number.isSafeInteger ( number ) */
+#define BUILTIN_NUMBER_NON_GLOBAL_FUNCTIONS(V)                                                           \
+    V("isFinite",      IsFinite,      1, NumberIsFinite)          /* Number.isFinite ( number ) */       \
+    V("isInteger",     IsInteger,     1, NumberIsInteger)         /* Number.isInteger ( number ) */      \
+    V("isNaN",         IsNaN,         1, NumberIsNaN)             /* Number.isNaN ( number ) */          \
+    V("isSafeInteger", IsSafeInteger, 1, NumberIsSafeInteger)     /* Number.isSafeInteger ( number ) */
 
 // List of functions in Number that can be accessed via globalThis.
 // V(name, func, length, stubIndex)

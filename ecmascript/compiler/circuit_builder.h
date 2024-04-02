@@ -734,6 +734,10 @@ public:
         GateRef charSize, VariableType type);
     void SetRawHashcode(GateRef glue, GateRef str, GateRef rawHashcode, GateRef isInteger);
     GateRef StringFromSingleCharCode(GateRef gate);
+    GateRef NumberIsNaN(GateRef gate);
+    GateRef NumberIsFinite(GateRef gate);
+    GateRef NumberIsInteger(GateRef gate);
+    GateRef NumberIsSafeInteger(GateRef gate);
     GateRef ArrayBufferIsView(GateRef gate);
     GateRef DataViewGet(
         GateRef thisobj, GateRef index, GateRef dataViewCallID, GateRef isLittleEndian, GateRef frameState);

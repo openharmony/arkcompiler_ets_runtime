@@ -217,9 +217,14 @@ GateRef NumberSpeculativeRetype::VisitGate(GateRef gate)
         case OpCode::MATH_TRUNC:
             return VisitMathTrunc(gate);
         case OpCode::GLOBAL_IS_FINITE:
-            return VisitGlobalBuiltin<false>(gate);
+        case OpCode::NUMBER_IS_FINITE:
+            return VisitNumberOrGlobalBuiltin<false>(gate);
         case OpCode::GLOBAL_IS_NAN:
-            return VisitGlobalBuiltin<true>(gate);
+        case OpCode::NUMBER_IS_NAN:
+            return VisitNumberOrGlobalBuiltin<true>(gate);
+        case OpCode::NUMBER_IS_INTEGER:
+        case OpCode::NUMBER_IS_SAFEINTEGER:
+            return VisitNumberIsInteger(gate);
         case OpCode::MATH_IMUL:
             return VisitMathImul(gate);
         case OpCode::DATA_VIEW_GET:
@@ -1504,11 +1509,13 @@ double NumberSpeculativeRetype::GetDoubleValueFromConst(GateRef gate)
 }
 
 template <bool IS_NAN>
-GateRef NumberSpeculativeRetype::VisitGlobalBuiltin(GateRef gate)
+GateRef NumberSpeculativeRetype::VisitNumberOrGlobalBuiltin(GateRef gate)
 {
     if (IsRetype()) {
         ASSERT(acc_.GetOpCode(gate) == OpCode::GLOBAL_IS_FINITE ||
-               acc_.GetOpCode(gate) == OpCode::GLOBAL_IS_NAN);
+               acc_.GetOpCode(gate) == OpCode::NUMBER_IS_FINITE ||
+               acc_.GetOpCode(gate) == OpCode::GLOBAL_IS_NAN ||
+               acc_.GetOpCode(gate) == OpCode::NUMBER_IS_NAN);
         return SetOutputType(gate, GateType::BooleanType());
     }
     ASSERT(IsConvert());
@@ -1534,6 +1541,32 @@ GateRef NumberSpeculativeRetype::VisitGlobalBuiltin(GateRef gate)
 #else
     input = CheckAndConvertToFloat64(input, GateType::NumberType());
 #endif
+    acc_.ReplaceValueIn(gate, input, 0);
+    ResizeAndSetTypeInfo(input, TypeInfo::FLOAT64);
+    acc_.ReplaceStateIn(gate, builder_.GetState());
+    acc_.ReplaceDependIn(gate, builder_.GetDepend());
+    return Circuit::NullGate();
+}
+
+GateRef NumberSpeculativeRetype::VisitNumberIsInteger(GateRef gate)
+{
+    if (IsRetype()) {
+        ASSERT(acc_.GetOpCode(gate) == OpCode::NUMBER_IS_INTEGER ||
+               acc_.GetOpCode(gate) == OpCode::NUMBER_IS_SAFEINTEGER);
+        return SetOutputType(gate, GateType::BooleanType());
+    }
+    ASSERT(IsConvert());
+    Environment env(gate, circuit_, &builder_);
+    ASSERT(acc_.GetNumValueIn(gate) == 1);
+    GateRef input = acc_.GetValueIn(gate, 0);
+    auto type = GetNumberInputTypeInfo(input);
+    if (type == TypeInfo::FLOAT64) {
+        GateRef result = builder_.TaggedFalse();
+        ResizeAndSetTypeInfo(result, TypeInfo::TAGGED);
+        acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
+        return Circuit::NullGate();
+    }
+    input = CheckAndConvertToInt32(input, GateType::NumberType());
     acc_.ReplaceValueIn(gate, input, 0);
     ResizeAndSetTypeInfo(input, TypeInfo::FLOAT64);
     acc_.ReplaceStateIn(gate, builder_.GetState());

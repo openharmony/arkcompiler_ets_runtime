@@ -22,6 +22,7 @@
 #include "ecmascript/compiler/circuit_builder-inl.h"
 #include "ecmascript/compiler/circuit_builder.h"
 #include "ecmascript/compiler/circuit_builder_helper.h"
+#include "ecmascript/compiler/lcr_circuit_builder.h"
 #include "ecmascript/compiler/gate.h"
 #include "ecmascript/compiler/rt_call_signature.h"
 #include "ecmascript/compiler/share_gate_meta_data.h"
@@ -177,6 +178,18 @@ GateRef TypedNativeInlineLowering::VisitGate(GateRef gate)
             break;
         case OpCode::ARRAY_BUFFER_IS_VIEW:
             LowerArrayBufferIsView(gate);
+            break;
+        case OpCode::NUMBER_IS_FINITE:
+            LowerNumberIsFinite(gate);
+            break;
+        case OpCode::NUMBER_IS_INTEGER:
+            LowerNumberIsInteger(gate);
+            break;
+        case OpCode::NUMBER_IS_NAN:
+            LowerNumberIsNaN(gate);
+            break;
+        case OpCode::NUMBER_IS_SAFEINTEGER:
+            LowerNumberIsSafeInteger(gate);
             break;
         default:
             break;
@@ -1423,4 +1436,43 @@ void TypedNativeInlineLowering::LowerMathSignTagged(GateRef gate)
     builder_.Bind(&exit);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *taggedRes);
 }
+
+void TypedNativeInlineLowering::LowerNumberIsFinite(GateRef gate)
+{
+    GateRef value = acc_.GetValueIn(gate, 0);
+    Environment env(gate, circuit_, &builder_);
+    GateRef result = LowerGlobalDoubleIsFinite(value);
+
+    acc_.ReplaceGate(gate, builder_.GetStateDepend(), result);
+}
+
+void TypedNativeInlineLowering::LowerNumberIsInteger(GateRef gate)
+{
+    GateRef value = acc_.GetValueIn(gate, 0);
+    Environment env(gate, circuit_, &builder_);
+    GateRef result = builder_.TaggedIsInt(value);
+
+    acc_.ReplaceGate(gate, builder_.GetStateDepend(), result);
+}
+
+void TypedNativeInlineLowering::LowerNumberIsNaN(GateRef gate)
+{
+    GateRef value = acc_.GetValueIn(gate, 0);
+    Environment env(gate, circuit_, &builder_);
+    GateRef result = builder_.DoubleIsNAN(value);
+
+    acc_.ReplaceGate(gate, builder_.GetStateDepend(), result);
+}
+
+void TypedNativeInlineLowering::LowerNumberIsSafeInteger(GateRef gate)
+{
+    GateRef value = acc_.GetValueIn(gate, 0);
+    Environment env(gate, circuit_, &builder_);
+    auto temp = builder_.Int64LSL(builder_.CastDoubleToInt64(value), builder_.Int64(1));
+    auto res = builder_.Int64LSR(temp, builder_.Int64(1));
+    auto result = builder_.Int64LessThanOrEqual(res, builder_.Int64(base::MAX_SAFE_INTEGER));
+
+    acc_.ReplaceGate(gate, builder_.GetStateDepend(), result);
+}
+
 }

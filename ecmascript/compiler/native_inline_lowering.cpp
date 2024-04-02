@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 #include "ecmascript/compiler/native_inline_lowering.h"
+#include "ecmascript/builtins/builtins_number.h"
 #include "ecmascript/base/number_helper.h"
 #include "ecmascript/compiler/circuit.h"
 #include "ecmascript/compiler/circuit_builder-inl.h"
@@ -76,6 +77,18 @@ void NativeInlineLowering::RunNativeInlineLowering()
         switch (id) {
             case BuiltinsStubCSigns::ID::StringFromCharCode:
                 TryInlineStringFromCharCode(gate, argc, skipThis);
+                break;
+            case BuiltinsStubCSigns::ID::NumberIsFinite:
+                TryInlineNumberIsFinite(gate, argc, skipThis);
+                break;
+            case BuiltinsStubCSigns::ID::NumberIsInteger:
+                TryInlineNumberIsInteger(gate, argc, skipThis);
+                break;
+            case BuiltinsStubCSigns::ID::NumberIsNaN:
+                TryInlineNumberIsNaN(gate, argc, skipThis);
+                break;
+            case BuiltinsStubCSigns::ID::NumberIsSafeInteger:
+                TryInlineNumberIsSafeInteger(gate, argc, skipThis);
                 break;
             case BuiltinsStubCSigns::ID::MathAcos:
                 TryInlineMathUnaryBuiltin(gate, argc, id, circuit_->MathAcos(), skipThis);
@@ -237,6 +250,78 @@ void NativeInlineLowering::TryInlineStringFromCharCode(GateRef gate, size_t argc
                                  {tacc.GetArg0()});
     }
     GateRef ret = builder_.StringFromSingleCharCode(tacc.GetArg0());
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), ret);
+}
+
+void NativeInlineLowering::TryInlineNumberIsFinite(GateRef gate, size_t argc, bool skipThis)
+{
+    if (!skipThis) {
+        return;
+    }
+    if (argc != 1) {
+        return;
+    }
+    CallThis1TypeInfoAccessor tacc(thread_, circuit_, gate);
+    Environment env(gate, circuit_, &builder_);
+    if (!Uncheck()) {
+        builder_.CallTargetCheck(gate, tacc.GetFunc(),
+                                 builder_.IntPtr(static_cast<int64_t>(BuiltinsStubCSigns::ID::NumberIsFinite)));
+    }
+    GateRef ret = builder_.NumberIsFinite(tacc.GetArg0());
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), ret);
+}
+
+void NativeInlineLowering::TryInlineNumberIsInteger(GateRef gate, size_t argc, bool skipThis)
+{
+    if (!skipThis) {
+        return;
+    }
+    if (argc != 1) {
+        return;
+    }
+    CallThis1TypeInfoAccessor tacc(thread_, circuit_, gate);
+    Environment env(gate, circuit_, &builder_);
+    if (!Uncheck()) {
+        builder_.CallTargetCheck(gate, tacc.GetFunc(),
+                                 builder_.IntPtr(static_cast<int64_t>(BuiltinsStubCSigns::ID::NumberIsInteger)));
+    }
+    GateRef ret = builder_.NumberIsInteger(tacc.GetArg0());
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), ret);
+}
+
+void NativeInlineLowering::TryInlineNumberIsNaN(GateRef gate, size_t argc, bool skipThis)
+{
+    if (!skipThis) {
+        return;
+    }
+    if (argc != 1) {
+        return;
+    }
+    CallThis1TypeInfoAccessor tacc(thread_, circuit_, gate);
+    Environment env(gate, circuit_, &builder_);
+    if (!Uncheck()) {
+        builder_.CallTargetCheck(gate, tacc.GetFunc(),
+                                 builder_.IntPtr(static_cast<int64_t>(BuiltinsStubCSigns::ID::NumberIsNaN)));
+    }
+    GateRef ret = builder_.NumberIsNaN(tacc.GetArg0());
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), ret);
+}
+
+void NativeInlineLowering::TryInlineNumberIsSafeInteger(GateRef gate, size_t argc, bool skipThis)
+{
+    if (!skipThis) {
+        return;
+    }
+    if (argc != 1) {
+        return;
+    }
+    CallThis1TypeInfoAccessor tacc(thread_, circuit_, gate);
+    Environment env(gate, circuit_, &builder_);
+    if (!Uncheck()) {
+        builder_.CallTargetCheck(gate, tacc.GetFunc(),
+                                 builder_.IntPtr(static_cast<int64_t>(BuiltinsStubCSigns::ID::NumberIsSafeInteger)));
+    }
+    GateRef ret = builder_.NumberIsSafeInteger(tacc.GetArg0());
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), ret);
 }
 
