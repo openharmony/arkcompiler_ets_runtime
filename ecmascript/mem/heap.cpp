@@ -68,7 +68,7 @@ SharedHeap* SharedHeap::GetInstance()
     return shareHeap;
 }
 
-bool SharedHeap::CheckAndTriggerGC(JSThread *thread)
+bool SharedHeap::CheckAndTriggerSharedGC(JSThread *thread)
 {
     if ((OldSpaceExceedLimit() || GetHeapObjectSize() > globalSpaceAllocLimit_) &&
         !NeedStopCollection()) {
@@ -78,13 +78,38 @@ bool SharedHeap::CheckAndTriggerGC(JSThread *thread)
     return false;
 }
 
-bool SharedHeap::CheckHugeAndTriggerGC(JSThread *thread, size_t size)
+bool SharedHeap::CheckHugeAndTriggerSharedGC(JSThread *thread, size_t size)
 {
-    if (sHugeObjectSpace_->CommittedSizeExceed(size) && !NeedStopCollection()) {
+    if ((sHugeObjectSpace_->CommittedSizeExceed(size) || GetHeapObjectSize() > globalSpaceAllocLimit_) &&
+        !NeedStopCollection()) {
         CollectGarbage(thread, TriggerGCType::SHARED_GC, GCReason::ALLOCATION_LIMIT);
         return true;
     }
     return false;
+}
+
+// Shared gc trigger
+void SharedHeap::AdjustGlobalSpaceAllocLimit()
+{
+    globalSpaceAllocLimit_ = std::max(GetHeapObjectSize() * growingFactor_,
+                                      config_.GetDefaultGlobalAllocLimit() * 2); // 2: double
+    globalSpaceAllocLimit_ = std::min(std::min(globalSpaceAllocLimit_, GetCommittedSize() + growingStep_),
+                                      config_.GetMaxHeapSize());
+    LOG_ECMA(INFO) << "Shared gc adjust global space alloc limit to: " << globalSpaceAllocLimit_;
+}
+
+bool SharedHeap::ObjectExceedMaxHeapSize() const
+{
+    return OldSpaceExceedLimit() || sHugeObjectSpace_->CommittedSizeExceed();
+}
+
+bool SharedHeap::MainThreadInSensitiveStatus() const
+{
+    JSThread *mainThread = Runtime::GetInstance()->GetMainThread();
+    if (mainThread == nullptr) {
+        return false;
+    }
+    return const_cast<Heap *>(mainThread->GetEcmaVM()->GetHeap())->InSensitiveStatus();
 }
 
 void SharedHeap::Initialize(NativeAreaAllocator *nativeAreaAllocator, HeapRegionAllocator *heapRegionAllocator,
@@ -101,11 +126,13 @@ void SharedHeap::Initialize(NativeAreaAllocator *nativeAreaAllocator, HeapRegion
 
     size_t readOnlySpaceCapacity = config_.GetDefaultReadOnlySpaceSize();
     size_t oldSpaceCapacity = (maxHeapSize - nonmovableSpaceCapacity - readOnlySpaceCapacity) / 2; // 2: half
-    globalSpaceAllocLimit_ = maxHeapSize;
+    globalSpaceAllocLimit_ = config_.GetDefaultGlobalAllocLimit();
 
     sOldSpace_ = new SharedOldSpace(this, oldSpaceCapacity, oldSpaceCapacity);
     sReadOnlySpace_ = new SharedReadOnlySpace(this, readOnlySpaceCapacity, readOnlySpaceCapacity);
     sHugeObjectSpace_ = new SharedHugeObjectSpace(this, heapRegionAllocator_, oldSpaceCapacity, oldSpaceCapacity);
+    growingFactor_ = config_.GetSharedHeapLimitGrowingFactor();
+    growingStep_ = config_.GetSharedHeapLimitGrowingStep();
 }
 
 void SharedHeap::PostInitialization(const GlobalEnvConstants *globalEnvConstants, const JSRuntimeOptions &option)
@@ -167,6 +194,8 @@ void SharedHeap::CollectGarbageImpl(TriggerGCType gcType, GCReason reason)
     sharedGC_->RunPhases();
     // Record alive object size after shared gc
     NotifyHeapAliveSizeAfterGC(GetHeapObjectSize());
+    // Adjust shared gc trigger threshold
+    AdjustGlobalSpaceAllocLimit();
     if (UNLIKELY(ShouldVerifyHeap())) {
         // pre gc heap verify
         LOG_ECMA(DEBUG) << "after gc shared heap verify";
@@ -277,6 +306,18 @@ size_t SharedHeap::VerifyHeapObjects(VerifyKind verifyKind) const
         sHugeObjectSpace_->IterateOverObjects(verifier);
     }
     return failCount;
+}
+
+bool SharedHeap::NeedStopCollection()
+{
+    if (!MainThreadInSensitiveStatus()) {
+        return false;
+    }
+
+    if (!ObjectExceedMaxHeapSize()) {
+        return true;
+    }
+    return false;
 }
 
 Heap::Heap(EcmaVM *ecmaVm)

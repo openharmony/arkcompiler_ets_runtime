@@ -208,7 +208,7 @@ public:
 
     void InvokeAllocationInspector(Address object, size_t objectSize);
 
-    bool CommittedSizeExceed(size_t size) const
+    bool CommittedSizeExceed(size_t size = 0) const
     {
         return committedSize_ + size >= maximumCapacity_ + outOfMemoryOvershootSize_;
     }

@@ -52,6 +52,11 @@ enum class MarkStatus : uint8_t {
     MARK_FINISHED,
 };
 
+enum class GCKind : uint8_t {
+    LOCAL_GC,
+    SHARED_GC
+};
+
 enum class PGOProfilerStatus : uint8_t {
     PGO_PROFILER_DISABLE,
     PGO_PROFILER_ENABLE,
@@ -371,7 +376,7 @@ public:
         return os::thread::GetCurrentThreadId();
     }
 
-    void IterateWeakEcmaGlobalStorage(const WeakRootVisitor &visitor, bool isSharedGC = false);
+    void IterateWeakEcmaGlobalStorage(const WeakRootVisitor &visitor, GCKind gcKind = GCKind::LOCAL_GC);
 
     PUBLIC_API PropertiesCache *GetPropertiesCache() const;
 
@@ -518,9 +523,9 @@ public:
         return enableLazyBuiltins_;
     }
 
-    void SetReadyForGCIterating()
+    void SetReadyForGCIterating(bool flag)
     {
-        readyForGCIterating_ = true;
+        readyForGCIterating_ = flag;
     }
 
     bool ReadyForGCIterating() const

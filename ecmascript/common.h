@@ -48,6 +48,7 @@ enum class GCReason : uint8_t {
     IDLE,
     SWITCH_BACKGROUND,
     EXTERNAL_TRIGGER,
+    WORKER_DESTRUCTION,
     OTHER,
 };
 

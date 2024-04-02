@@ -259,7 +259,7 @@ bool EcmaVM::Initialize()
     auto context = new EcmaContext(thread_);
     thread_->PushContext(context);
     [[maybe_unused]] EcmaHandleScope scope(thread_);
-    thread_->SetReadyForGCIterating();
+    thread_->SetReadyForGCIterating(true);
     snapshotEnv_ = new SnapshotEnv(this);
     context->Initialize();
     snapshotEnv_->AddGlobalConstToMap();
@@ -345,6 +345,14 @@ EcmaVM::~EcmaVM()
         heap_->Destroy();
         delete heap_;
         heap_ = nullptr;
+    }
+
+    SharedHeap *sHeap = SharedHeap::GetInstance();
+    const Heap *heap = Runtime::GetInstance()->GetMainThread()->GetEcmaVM()->GetHeap();
+    if (heap && IsWorkerThread() && Runtime::SharedGCRequest() && !heap->InSensitiveStatus()) {
+        // destory workervm to release mem.
+        thread_->SetReadyForGCIterating(false);
+        sHeap->CollectGarbage(thread_, TriggerGCType::SHARED_GC, GCReason::WORKER_DESTRUCTION);
     }
 
     if (debuggerManager_ != nullptr) {
