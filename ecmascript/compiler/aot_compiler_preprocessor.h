@@ -42,6 +42,7 @@ struct CompilationOptions {
     std::string logOption_;
     std::string logMethodsList_;
     bool compilerLogTime_;
+    bool deviceIsScreenOff_;
     size_t maxAotMethodSize_;
     size_t maxMethodsInModule_;
     uint32_t hotnessThreshold_;

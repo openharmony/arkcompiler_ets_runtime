@@ -46,6 +46,7 @@ JitCompilationOptions::JitCompilationOptions(JSRuntimeOptions runtimeOptions)
     logOption_ = runtimeOptions.GetCompilerLogOption();
     logMethodsList_ = runtimeOptions.GetMethodsListForLog();
     compilerLogTime_ = runtimeOptions.IsEnableCompilerLogTime();
+    deviceIsScreenOff_ = runtimeOptions.GetDeviceState();
     hotnessThreshold_ = runtimeOptions.GetPGOHotnessThreshold();
     profilerIn_ = std::string(runtimeOptions.GetPGOProfilerPath());
     isEnableArrayBoundsCheckElimination_ = runtimeOptions.IsEnableArrayBoundsCheckElimination();

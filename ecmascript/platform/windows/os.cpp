@@ -19,6 +19,8 @@
 #include <sysinfoapi.h>
 #include <timezoneapi.h>
 
+#include "ecmascript/log_wrapper.h"
+
 namespace panda::ecmascript {
 size_t MallocUsableSize(void *ptr)
 {
@@ -49,5 +51,10 @@ int PrctlSetVMA([[maybe_unused]] const void *ptr, [[maybe_unused]] const size_t 
 long PtracePeektext([[maybe_unused]] int pid, [[maybe_unused]] uintptr_t addr)
 {
     return static_cast<long>(-1);
+}
+
+void BindSmallCpuCore()
+{
+    LOG_ECMA(INFO) << "Bind Small Core in windows not support";
 }
 }  // namespace panda::ecmascript

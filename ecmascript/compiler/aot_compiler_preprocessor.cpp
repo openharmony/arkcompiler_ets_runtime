@@ -37,6 +37,7 @@ CompilationOptions::CompilationOptions(EcmaVM *vm, JSRuntimeOptions &runtimeOpti
     logOption_ = runtimeOptions.GetCompilerLogOption();
     logMethodsList_ = runtimeOptions.GetMethodsListForLog();
     compilerLogTime_ = runtimeOptions.IsEnableCompilerLogTime();
+    deviceIsScreenOff_ = runtimeOptions.GetDeviceState();
     maxAotMethodSize_ = runtimeOptions.GetMaxAotMethodSize();
     maxMethodsInModule_ = runtimeOptions.GetCompilerModuleMethods();
     hotnessThreshold_ = runtimeOptions.GetPGOHotnessThreshold();
