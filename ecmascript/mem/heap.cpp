@@ -164,6 +164,8 @@ void SharedHeap::CollectGarbageImpl(TriggerGCType gcType, GCReason reason)
         SharedHeapVerification(this, VerifyKind::VERIFY_PRE_SHARED_GC).VerifyAll();
     }
     sharedGC_->RunPhases();
+    // Record alive object size after shared gc
+    NotifyHeapAliveSizeAfterGC(GetHeapObjectSize());
     if (UNLIKELY(ShouldVerifyHeap())) {
         // pre gc heap verify
         LOG_ECMA(DEBUG) << "after gc shared heap verify";
@@ -1429,6 +1431,10 @@ void Heap::ChangeGCParams(bool inBackground)
         LOG_GC(INFO) << "app is inBackground";
         if (GetHeapObjectSize() - heapAliveSizeAfterGC_ > BACKGROUND_GROW_LIMIT) {
             CollectGarbage(TriggerGCType::FULL_GC, GCReason::SWITCH_BACKGROUND);
+        }
+        auto sharedHeap = SharedHeap::GetInstance();
+        if (sharedHeap->GetHeapObjectSize() - sharedHeap->GetHeapAliveSizeAfterGC() > BACKGROUND_GROW_LIMIT) {
+            sharedHeap->CollectGarbage(thread_, TriggerGCType::SHARED_GC, GCReason::SWITCH_BACKGROUND);
         }
         if (GetMemGrowingType() != MemGrowingType::PRESSURE) {
             SetMemGrowingType(MemGrowingType::CONSERVATIVE);
