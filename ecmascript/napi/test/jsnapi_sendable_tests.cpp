@@ -21,7 +21,7 @@ using namespace panda::ecmascript;
 
 namespace panda::test {
 class JSNApiTests : public testing::Test {
-  public:
+public:
     static void SetUpTestCase()
     {
         GTEST_LOG_(INFO) << "SetUpTestCase";
@@ -83,7 +83,7 @@ class JSNApiTests : public testing::Test {
         return base::bit_cast<JSTaggedType>(val) + JSTaggedValue::DOUBLE_ENCODE_OFFSET;
     }
 
-  protected:
+protected:
     JSThread *thread_ = nullptr;
     EcmaVM *vm_ = nullptr;
     Local<StringRef> staticKey;
@@ -121,9 +121,8 @@ Local<FunctionRef> GetNewSendableClassFunction(
     infos.nonStaticPropertiesInfo.types.push_back(FunctionRef::SendableType::NONE);
     infos.nonStaticPropertiesInfo.attributes.push_back(PropertyAttribute(nonStaticStr, true, true, true));
 
-    Local<StringRef> nameStr = StringRef::NewFromUtf8(vm, "name");
-    Local<FunctionRef> constructor =
-        FunctionRef::NewSendableClassFunction(vm, FunctionCallback, nullptr, nullptr, nameStr, infos, parent);
+    Local<FunctionRef> constructor = FunctionRef::NewSendableClassFunction(
+        vm, FunctionCallback, nullptr, nullptr, StringRef::NewFromUtf8(vm, "name"), infos, parent);
 
     return constructor;
 }
@@ -139,10 +138,17 @@ HWTEST_F_L0(JSNApiTests, NewSendableClassFunction)
     JSHandle<JSTaggedValue> jsConstructor = JSNApiHelper::ToJSHandle(constructor);
     ASSERT_TRUE(jsConstructor->IsClassConstructor());
 
-    Local<JSValueRef> prototype = constructor->GetFunctionPrototype(vm_);
-    ASSERT_TRUE(prototype->IsObject());
-    JSHandle<JSTaggedValue> jsPrototype = JSNApiHelper::ToJSHandle(prototype);
+    Local<JSValueRef> functionPrototype = constructor->GetFunctionPrototype(vm_);
+    ASSERT_TRUE(functionPrototype->IsObject());
+    JSHandle<JSTaggedValue> jsPrototype = JSNApiHelper::ToJSHandle(functionPrototype);
     ASSERT_TRUE(jsPrototype->IsClassPrototype());
+
+    const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
+    auto prototype = JSTaggedValue::GetProperty(
+                         thread_, JSNApiHelper::ToJSHandle(constructor), globalConst->GetHandledPrototypeString())
+                         .GetValue();
+    ASSERT_FALSE(prototype->IsUndefined());
+    ASSERT_TRUE(prototype->IsECMAObject() || prototype->IsNull());
 }
 
 HWTEST_F_L0(JSNApiTests, NewSendableClassFunctionProperties)
