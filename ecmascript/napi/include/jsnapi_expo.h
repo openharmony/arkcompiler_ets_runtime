@@ -457,6 +457,7 @@ public:
     bool IsArgumentsObject();
     bool IsGeneratorFunction();
     bool IsAsyncFunction();
+    bool IsConcurrentFunction();
     bool IsJSLocale();
     bool IsJSDateTimeFormat();
     bool IsJSRelativeTimeFormat();
