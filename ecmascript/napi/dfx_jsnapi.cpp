@@ -377,6 +377,7 @@ void DFXJSNApi::StopRuntimeStat(EcmaVM *vm)
 
 size_t DFXJSNApi::GetArrayBufferSize(const EcmaVM *vm)
 {
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     return vm->GetHeap()->GetArrayBufferSize();
 }
 
@@ -387,6 +388,7 @@ size_t DFXJSNApi::GetHeapTotalSize(const EcmaVM *vm)
 
 size_t DFXJSNApi::GetHeapUsedSize(const EcmaVM *vm)
 {
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     return vm->GetHeap()->GetLiveObjectSize();
 }
 
