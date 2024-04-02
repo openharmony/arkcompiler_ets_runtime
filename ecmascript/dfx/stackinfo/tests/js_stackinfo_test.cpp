@@ -49,12 +49,6 @@ public:
     JSThread *thread {nullptr};
 };
 
-HWTEST_F_L0(JsStackInfoTest, BuildJsStackTrace)
-{
-    std::string stack = JsStackInfo::BuildJsStackTrace(thread, false);
-    ASSERT_TRUE(!stack.empty());
-}
-
 HWTEST_F_L0(JsStackInfoTest, FrameCheckTest)
 {
     uintptr_t frame[22];

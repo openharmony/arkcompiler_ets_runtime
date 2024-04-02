@@ -26,6 +26,9 @@
 #if defined(PANDA_TARGET_OHOS)
 #include "ecmascript/extractortool/src/extractor.h"
 #endif
+#if defined(ENABLE_EXCEPTION_BACKTRACE)
+#include "ecmascript/platform/backtrace.h"
+#endif
 
 namespace panda::ecmascript {
 std::string JsStackInfo::BuildMethodTrace(Method *method, uint32_t pcOffset, bool enableStackSourceFile)
@@ -124,6 +127,13 @@ std::string JsStackInfo::BuildJsStackTrace(JSThread *thread, bool needNative)
             strm << addr;
             data.append("    at native method (").append(strm.str()).append(")\n");
         }
+    }
+    if (data.empty()) {
+#if defined(ENABLE_EXCEPTION_BACKTRACE)
+        std::ostringstream stack;
+        Backtrace(stack);
+        data = stack.str();
+#endif
     }
     return data;
 }
