@@ -61,7 +61,7 @@ public:
     void PrintAllGatesWithBytecode() const;
     void GetAllGates(std::vector<GateRef>& gates) const;
     static GateRef NullGate();
-    void Verify(GateRef gate) const;
+    void Verify(GateRef gate, const std::string& methodName = "") const;
     panda::ecmascript::FrameType GetFrameType() const;
     void SetFrameType(panda::ecmascript::FrameType type);
     GateRef GetConstantGate(MachineType machineType, uint64_t value, GateType type);
