@@ -248,6 +248,7 @@ bool EcmaVM::Initialize()
     heap_ = new Heap(this);
     heap_->Initialize();
     gcStats_ = chunk_.New<GCStats>(heap_, options_.GetLongPauseTime());
+    gcKeyStats_ = chunk_.New<GCKeyStats>(heap_, gcStats_);
     factory_ = chunk_.New<ObjectFactory>(thread_, heap_, SharedHeap::GetInstance());
     if (UNLIKELY(factory_ == nullptr)) {
         LOG_FULL(FATAL) << "alloc factory_ failed";
@@ -329,6 +330,11 @@ EcmaVM::~EcmaVM()
         }
         chunk_.Delete(gcStats_);
         gcStats_ = nullptr;
+    }
+
+    if (gcKeyStats_ != nullptr) {
+        chunk_.Delete(gcKeyStats_);
+        gcKeyStats_ = nullptr;
     }
 
     if (JsStackInfo::loader == aotFileManager_) {
