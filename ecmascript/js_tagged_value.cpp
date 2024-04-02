@@ -645,7 +645,7 @@ JSHandle<JSObject> JSTaggedValue::ToObject(JSThread *thread, const JSHandle<JSTa
 
 // 7.3.1 Get ( O, P )
 OperationResult JSTaggedValue::GetProperty(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
-                                           const JSHandle<JSTaggedValue> &key)
+                                           const JSHandle<JSTaggedValue> &key, SCheckMode sCheckMode)
 {
     if (obj->IsUndefined() || obj->IsNull() || obj->IsHole()) {
         std::string keyStr = EcmaStringAccessor(ToString(thread, key)).ToStdString();
@@ -671,7 +671,7 @@ OperationResult JSTaggedValue::GetProperty(JSThread *thread, const JSHandle<JSTa
         return GetJSAPIProperty(thread, obj, key);
     }
 
-    return JSObject::GetProperty(thread, obj, key);
+    return JSObject::GetProperty(thread, obj, key, sCheckMode);
 }
 
 OperationResult JSTaggedValue::GetProperty(JSThread *thread, const JSHandle<JSTaggedValue> &obj, uint32_t key)

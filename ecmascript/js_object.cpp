@@ -869,14 +869,17 @@ bool JSObject::SetProperty(JSThread *thread, const JSHandle<JSObject> &obj, cons
 }
 
 bool JSObject::SetProperty(JSThread *thread, const JSHandle<JSTaggedValue> &obj, const JSHandle<JSTaggedValue> &key,
-                           const JSHandle<JSTaggedValue> &value, bool mayThrow, SCheckMode checkMode)
+                           const JSHandle<JSTaggedValue> &value, bool mayThrow, SCheckMode sCheckMode)
 {
     ASSERT_PRINT(!(obj->IsUndefined() || obj->IsNull() || obj->IsHole()), "Obj is not a valid object");
     ASSERT_PRINT(JSTaggedValue::IsPropertyKey(key), "Key is not a property key");
 
+    if (obj->IsJSSharedArray()) {
+        return JSSharedArray::SetProperty(thread, obj, key, value, mayThrow, sCheckMode);
+    }
     // 2 ~ 4 findProperty in Receiver, Obj and its parents
     ObjectOperator op(thread, obj, key);
-    return SetProperty(&op, value, mayThrow, checkMode);
+    return SetProperty(&op, value, mayThrow);
 }
 
 bool JSObject::SetProperty(JSThread *thread, const JSHandle<JSTaggedValue> &obj, uint32_t index,
@@ -919,8 +922,7 @@ bool JSObject::SetPropertyForDataDescriptorProxy(JSThread *thread, ObjectOperato
 }
 
 bool JSObject::SetPropertyForDataDescriptor(ObjectOperator *op, const JSHandle<JSTaggedValue> &value,
-                                            JSHandle<JSTaggedValue> &receiver, bool mayThrow, bool isInternalAccessor,
-                                            SCheckMode checkMode)
+                                            JSHandle<JSTaggedValue> &receiver, bool mayThrow, bool isInternalAccessor)
 {
     JSThread *thread = op->GetThread();
     if (!op->IsWritable()) {
@@ -981,7 +983,7 @@ bool JSObject::SetPropertyForDataDescriptor(ObjectOperator *op, const JSHandle<J
             }
             return false;
         }
-        isSuccess = op->UpdateDataValue(JSHandle<JSObject>(receiver), value, isInternalAccessor, mayThrow, checkMode);
+        isSuccess = op->UpdateDataValue(JSHandle<JSObject>(receiver), value, isInternalAccessor, mayThrow);
         RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, isSuccess);
     } else {
         // 5f. Else if Receiver does not currently have a property P, Return CreateDataProperty(Receiver, P, V).
@@ -1003,8 +1005,7 @@ bool JSObject::SetPropertyForDataDescriptor(ObjectOperator *op, const JSHandle<J
     return isSuccess;
 }
 
-bool JSObject::SetProperty(ObjectOperator *op, const JSHandle<JSTaggedValue> &value, bool mayThrow,
-                           SCheckMode checkMode)
+bool JSObject::SetProperty(ObjectOperator *op, const JSHandle<JSTaggedValue> &value, bool mayThrow)
 {
     JSThread *thread = op->GetThread();
     op->UpdateDetector();
@@ -1032,7 +1033,7 @@ bool JSObject::SetProperty(ObjectOperator *op, const JSHandle<JSTaggedValue> &va
 
     // 5. If IsDataDescriptor(ownDesc) is true, then
     if (!op->IsAccessorDescriptor() || isInternalAccessor) {
-        return SetPropertyForDataDescriptor(op, value, receiver, mayThrow, isInternalAccessor, checkMode);
+        return SetPropertyForDataDescriptor(op, value, receiver, mayThrow, isInternalAccessor);
     }
     // 6. Assert: IsAccessorDescriptor(ownDesc) is true.
     ASSERT(op->IsAccessorDescriptor());
@@ -1109,11 +1110,13 @@ OperationResult JSObject::GetProperty(JSThread *thread, const JSHandle<JSObject>
 }
 
 OperationResult JSObject::GetProperty(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
-                                      const JSHandle<JSTaggedValue> &key)
+                                      const JSHandle<JSTaggedValue> &key, SCheckMode sCheckMode)
 {
     ASSERT_PRINT(!(obj->IsUndefined() || obj->IsNull() || obj->IsHole()), "Obj is not a valid object");
     ASSERT_PRINT(JSTaggedValue::IsPropertyKey(key), "Key is not a property key");
-
+    if (obj->IsJSSharedArray()) {
+        return JSSharedArray::GetProperty(thread, obj, key, sCheckMode);
+    }
     ObjectOperator op(thread, obj, key);
     return OperationResult(thread, GetProperty(thread, &op), PropertyMetaData(op.IsFound()));
 }
@@ -1284,6 +1287,10 @@ bool JSObject::OrdinaryDefineOwnProperty(JSThread *thread, const JSHandle<JSObje
     ObjectOperator op(thread, objValue, key, OperatorType::OWN);
 
     bool extensible = obj->IsExtensible();
+    // make extensible for shared array to add element.
+    if (obj->IsJSSArray() && op.IsElement()) {
+        extensible = true;
+    }
     PropertyDescriptor current(thread);
     op.ToPropertyDescriptor(current);
     // 4. Return ValidateAndApplyPropertyDescriptor(O, P, extensible, Desc, current).

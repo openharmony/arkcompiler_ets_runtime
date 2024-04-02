@@ -2199,6 +2199,11 @@ inline GateRef StubBuilder::IsSpecialContainer(GateRef jsType)
         Int32Equal(jsType, Int32(static_cast<int32_t>(JSType::JS_API_VECTOR))));
 }
 
+inline GateRef StubBuilder::IsSharedArray(GateRef jsType)
+{
+    return Int32Equal(jsType, Int32(static_cast<int32_t>(JSType::JS_SHARED_ARRAY)));
+}
+
 inline GateRef StubBuilder::IsFastTypeArray(GateRef jsType)
 {
     return BoolAnd(

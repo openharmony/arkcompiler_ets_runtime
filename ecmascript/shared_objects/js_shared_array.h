@@ -90,19 +90,27 @@ public:
                                       SCheckMode mode = SCheckMode::CHECK);
 
     static bool LengthSetter(JSThread *thread, const JSHandle<JSObject> &self, const JSHandle<JSTaggedValue> &value,
-                             bool mayThrow = false, SCheckMode mode = SCheckMode::CHECK);
+                             bool mayThrow = false);
+    static bool DummyLengthSetter(JSThread *thread, const JSHandle<JSObject> &self,
+                                  const JSHandle<JSTaggedValue> &value, bool mayThrow = false);
 
     static JSHandle<JSTaggedValue> FastGetPropertyByValue(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
                                                           uint32_t index);
 
     static JSHandle<JSTaggedValue> FastGetPropertyByValue(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
-                                                          const JSHandle<JSTaggedValue> &key);
+                                                          const JSHandle<JSTaggedValue> &key,
+                                                          SCheckMode sCheckMode = SCheckMode::SKIP);
 
     static bool FastSetPropertyByValue(JSThread *thread, const JSHandle<JSTaggedValue> &obj, uint32_t index,
                                        const JSHandle<JSTaggedValue> &value);
 
     static bool FastSetPropertyByValue(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
                                        const JSHandle<JSTaggedValue> &key, const JSHandle<JSTaggedValue> &value);
+
+    static OperationResult GetProperty(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
+                                      const JSHandle<JSTaggedValue> &key, SCheckMode sCheckMode);
+    static bool SetProperty(JSThread *thread, const JSHandle<JSTaggedValue> &obj, const JSHandle<JSTaggedValue> &key,
+                           const JSHandle<JSTaggedValue> &value, bool mayThrow, SCheckMode sCheckMode);
 
     static JSTaggedValue Sort(JSThread *thread, const JSHandle<JSTaggedValue> &obj, const JSHandle<JSTaggedValue> &fn);
     static bool IncludeInSortedValue(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
