@@ -298,7 +298,13 @@ JSTaggedValue BuiltinsArrayBuffer::CloneArrayBuffer(JSThread *thread, const JSHa
     }
     // 4. Let srcLength be the value of srcBuffer’s [[ArrayBufferByteLength]] internal slot.
     JSHandle<JSArrayBuffer> arrBuf(srcBuffer);
-    uint32_t srcLen = arrBuf->GetArrayBufferByteLength();
+    uint32_t srcLen = 0;
+    if (srcBuffer->IsByteArray()) {
+        JSHandle<ByteArray> byteArrayBuf(srcBuffer);
+        srcLen = byteArrayBuf->GetByteLength();
+    } else {
+        srcLen = arrBuf->GetArrayBufferByteLength();
+    }
     // 5. Assert: srcByteOffset ≤ srcLength.
     ASSERT(srcByteOffset <= srcLen);
     // 6. Let cloneLength be srcLength – srcByteOffset.

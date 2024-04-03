@@ -93,3 +93,9 @@ function testTypeArrayAt2(ctor) {
     }
     return true;
 }
+
+const v40 = new Uint8ClampedArray(16);
+v40.set(v40);
+const v59 = new Uint8ClampedArray(11);
+v59.set(0);
+print(v59)
