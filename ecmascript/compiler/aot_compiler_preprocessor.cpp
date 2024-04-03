@@ -176,7 +176,7 @@ std::shared_ptr<JSPandaFile> AotCompilerPreprocessor::CreateAndVerifyJSPandaFile
         return nullptr;
     }
 
-    jsPandaFileManager->AddJSPandaFileVm(vm_, jsPandaFile);
+    jsPandaFileManager->AddJSPandaFile(jsPandaFile);
     return jsPandaFile;
 }
 
@@ -226,7 +226,7 @@ void AotCompilerPreprocessor::GenerateGlobalTypes(const CompilationOptions &cOpt
                                             JSHandle<ConstantPool> constpoolHandle(tsManager->GetConstantPool());
                                             JSThread *thread = vm_->GetJSThread();
                                             JSTaggedValue unsharedCp = thread->GetCurrentEcmaContext()
-                                                ->FindUnsharedConstpool(constpoolHandle.GetTaggedValue());
+                                                ->FindOrCreateUnsharedConstpool(constpoolHandle.GetTaggedValue());
                                             ASSERT(ConstantPool::CheckUnsharedConstpool(unsharedCp));
                                             JSTaggedValue arr =
                                                 ConstantPool::GetLiteralFromCache<ConstPoolType::ARRAY_LITERAL>(

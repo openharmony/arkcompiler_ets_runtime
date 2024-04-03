@@ -419,7 +419,7 @@ public:
         }
 
         if (!taggedPool->GetJSPandaFile()->IsNewVersion()) {
-            JSTaggedValue unsharedCp = thread->GetCurrentEcmaContext()->FindUnsharedConstpool(constpool);
+            JSTaggedValue unsharedCp = thread->GetCurrentEcmaContext()->FindOrCreateUnsharedConstpool(constpool);
             taggedPool = ConstantPool::Cast(unsharedCp.GetTaggedObject());
             return taggedPool->Get(index);
         }
@@ -638,7 +638,7 @@ public:
         auto val = taggedPool->Get(index);
         if (val.IsHole()) {
             if (!taggedPool->GetJSPandaFile()->IsNewVersion()) {
-                JSTaggedValue unsharedCp = thread->GetCurrentEcmaContext()->FindUnsharedConstpool(constpool);
+                JSTaggedValue unsharedCp = thread->GetCurrentEcmaContext()->FindOrCreateUnsharedConstpool(constpool);
                 taggedPool = ConstantPool::Cast(unsharedCp.GetTaggedObject());
                 return taggedPool->Get(index);
             }

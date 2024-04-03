@@ -1359,7 +1359,7 @@ void TSManager::GenerateBuiltinSummary()
     if (jsPandaFile == nullptr) {
         LOG_COMPILER(FATAL) << "load lib_ark_builtins.d.ts failed";
     }
-    JSPandaFileManager::GetInstance()->AddJSPandaFileVm(vm_, jsPandaFile);
+    JSPandaFileManager::GetInstance()->AddJSPandaFile(jsPandaFile);
     SetBuiltinPandaFile(jsPandaFile.get());
     CString builtinsRecordName(TSTypeTable::BUILTINS_TABLE_NAME);
     SetBuiltinRecordName(builtinsRecordName);

@@ -93,6 +93,10 @@ namespace panda::ecmascript {
 #else
     #define ECMASCRIPT_DISABLE_CONCURRENT_MARKING 0
 #endif
+
+#define ECMASCRIPT_ENABLE_VALUE_SERIALIZER 1
+
+#define UNSHARED_CONSTANTPOOL_COUNT 10240
 }  // namespace panda::ecmascript
 
 #endif  // ECMASCRIPT_BASE_CONFIG_H

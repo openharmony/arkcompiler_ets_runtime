@@ -33,7 +33,7 @@
 namespace panda::ecmascript {
 class Runtime {
 public:
-    static Runtime *GetInstance();
+    PUBLIC_API static Runtime *GetInstance();
 
     static void CreateIfFirstVm(const JSRuntimeOptions &options);
     static void DestroyIfLastVm();
@@ -118,11 +118,33 @@ public:
         }
     }
 
+    bool HasCachedConstpool(const JSPandaFile *jsPandaFile);
+    PUBLIC_API JSTaggedValue FindConstpool(const JSPandaFile *jsPandaFile, int32_t index);
+    JSTaggedValue FindConstpoolUnlocked(const JSPandaFile *jsPandaFile, int32_t index);
+    void AddConstpool(const JSPandaFile *jsPandaFile, JSTaggedValue constpool, int32_t index = 0);
+    std::optional<std::reference_wrapper<CMap<int32_t, JSTaggedValue>>> FindConstpools(
+        const JSPandaFile *jsPandaFile);
+    void EraseUnusedConstpool(const JSPandaFile *jsPandaFile, int32_t index, JSTaggedValue sharedConstpool);
+    void InsertFreeSharedConstpoolCount(JSTaggedValue sharedConstpool);
+    int32_t GetAndIncreaseSharedConstpoolCount()
+    {
+        LockHolder lock(constpoolIndexLock_);
+        if (freeSharedConstpoolIndex_.size() > 0) {
+            auto iter = freeSharedConstpoolIndex_.begin();
+            int32_t freeCount = *iter;
+            freeSharedConstpoolIndex_.erase(iter);
+            return freeCount;
+        }
+        return sharedConstpoolCount_++;
+    }
+
+    void ProcessNativeDeleteInSharedGC(const WeakRootVisitor &visitor);
+
 private:
     static constexpr int32_t WORKER_DESTRUCTION_COUNT = 3;
     static constexpr int32_t MIN_GC_TRIGGER_VM_COUNT = 4;
     Runtime() = default;
-    ~Runtime() = default;
+    ~Runtime();
     void SuspendAllThreadsImpl(JSThread *current);
     void ResumeAllThreadsImpl(JSThread *current);
 
@@ -156,6 +178,13 @@ private:
     std::unique_ptr<EcmaStringTable> stringTable_;
     std::unordered_map<uint32_t, std::vector<TaggedObject *>> serializeRootMap_;
     std::vector<uint32_t> serializeDataIndexVector_;
+
+    // Shared constantpool cache
+    Mutex constpoolLock_;
+    CMap<const JSPandaFile *, CMap<int32_t, JSTaggedValue>> cachedSharedConstpools_ {};
+    Mutex constpoolIndexLock_;
+    int32_t sharedConstpoolCount_ = 0; // shared constpool count.
+    std::set<int32_t> freeSharedConstpoolIndex_ {}; // reuse shared constpool index.
 
     // Runtime instance and VMs creation.
     static int32_t vmCount_;

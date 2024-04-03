@@ -84,10 +84,10 @@ void SharedGC::Sweep()
         return reinterpret_cast<TaggedObject *>(ToUintPtr(nullptr));
     };
     Runtime::GetInstance()->GetEcmaStringTable()->SweepWeakReference(gcUpdateWeak);
+    Runtime::GetInstance()->ProcessNativeDeleteInSharedGC(gcUpdateWeak);
 
     Runtime::GetInstance()->GCIterateThreadList([&](JSThread *thread) {
         ASSERT(!thread->IsInRunningState());
-        thread->GetCurrentEcmaContext()->ProcessNativeDeleteInSharedGC(gcUpdateWeak);
         thread->IterateWeakEcmaGlobalStorage(gcUpdateWeak, GCKind::SHARED_GC);
         thread->GetEcmaVM()->ProcessSharedNativeDelete(gcUpdateWeak);
     });

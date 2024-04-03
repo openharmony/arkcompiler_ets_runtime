@@ -255,7 +255,7 @@ JSHandle<ConstantPool> BaseSnapshotInfo::GetUnsharedConstpool(const ItemData &da
 {
     EcmaContext *context = thread_->GetCurrentEcmaContext();
     JSTaggedValue shareCp = context->FindConstpool(jsPandaFile_, data.constantPoolId_);
-    JSHandle<ConstantPool> cp(thread_, context->FindUnsharedConstpool(shareCp));
+    JSHandle<ConstantPool> cp(thread_, context->FindOrCreateUnsharedConstpool(shareCp));
     return cp;
 }
 
