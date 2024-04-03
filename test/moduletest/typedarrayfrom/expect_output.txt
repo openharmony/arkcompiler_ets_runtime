@@ -13,3 +13,4 @@
 
 get value
 0
+TypeError: obj is not Callable
