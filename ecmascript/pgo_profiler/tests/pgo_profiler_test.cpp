@@ -78,7 +78,7 @@ public:
 
     void TearDown() override
     {
-        JSPandaFileManager::GetInstance()->RemoveJSPandaFileVm(vm_, pf_.get());
+        JSPandaFileManager::GetInstance()->RemoveJSPandaFile(pf_.get());
         vm_ = nullptr;
         pf_.reset();
         PGOProfilerManager::GetInstance()->Destroy();
@@ -397,7 +397,7 @@ HWTEST_F_L0(PGOProfilerTest, DisEnableSample)
     option.SetProfileDir("ark-profiler3/");
     vm_ = JSNApi::CreateJSVM(option);
     vm_->GetJSThread()->ManagedCodeBegin();
-    JSPandaFileManager::GetInstance()->AddJSPandaFileVm(vm_, pf_);
+    JSPandaFileManager::GetInstance()->AddJSPandaFile(pf_);
     JSHandle<ConstantPool> constPool = vm_->GetFactory()->NewSConstantPool(4);
     constPool->SetJSPandaFile(pf_.get());
     uint32_t checksum = pf_->GetChecksum();
@@ -490,7 +490,7 @@ HWTEST_F_L0(PGOProfilerTest, PGOProfilerDoubleVM)
     option.SetProfileDir("ark-profiler5/");
     vm_ = JSNApi::CreateJSVM(option);
     vm_->GetJSThread()->ManagedCodeBegin();
-    JSPandaFileManager::GetInstance()->AddJSPandaFileVm(vm_, pf_);
+    JSPandaFileManager::GetInstance()->AddJSPandaFile(pf_);
     JSHandle<ConstantPool> constPool = vm_->GetFactory()->NewSConstantPool(4);
     constPool->SetJSPandaFile(pf_.get());
     uint32_t checksum = 304293;
@@ -564,7 +564,7 @@ HWTEST_F_L0(PGOProfilerTest, PGOProfilerDecoderNoHotMethod)
     option.SetProfileDir("ark-profiler8/");
     vm_ = JSNApi::CreateJSVM(option);
     vm_->GetJSThread()->ManagedCodeBegin();
-    JSPandaFileManager::GetInstance()->AddJSPandaFileVm(vm_, pf_);
+    JSPandaFileManager::GetInstance()->AddJSPandaFile(pf_);
     JSHandle<ConstantPool> constPool = vm_->GetFactory()->NewSConstantPool(4);
     constPool->SetJSPandaFile(pf_.get());
     uint32_t checksum = pf_->GetChecksum();
@@ -609,7 +609,7 @@ HWTEST_F_L0(PGOProfilerTest, PGOProfilerPostTask)
     option.SetProfileDir("ark-profiler9/");
     vm_ = JSNApi::CreateJSVM(option);
     vm_->GetJSThread()->ManagedCodeBegin();
-    JSPandaFileManager::GetInstance()->AddJSPandaFileVm(vm_, pf_);
+    JSPandaFileManager::GetInstance()->AddJSPandaFile(pf_);
     JSHandle<ConstantPool> constPool = vm_->GetFactory()->NewSConstantPool(4);
     constPool->SetJSPandaFile(pf_.get());
     uint32_t checksum = 304293;
@@ -697,7 +697,7 @@ HWTEST_F_L0(PGOProfilerTest, FailResetProfilerInWorker)
     // PgoProfiler is disabled as default.
     vm_ = JSNApi::CreateJSVM(option);
     vm_->GetJSThread()->ManagedCodeBegin();
-    JSPandaFileManager::GetInstance()->AddJSPandaFileVm(vm_, pf_);
+    JSPandaFileManager::GetInstance()->AddJSPandaFile(pf_);
     uint32_t checksum = pf_->GetChecksum();
     PGOProfilerManager::GetInstance()->SamplePandaFileInfo(checksum, "sample_test.abc");
     ASSERT_TRUE(vm_ != nullptr) << "Cannot create Runtime";

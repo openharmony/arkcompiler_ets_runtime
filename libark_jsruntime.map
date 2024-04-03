@@ -116,7 +116,7 @@
       panda::ecmascript::DynChunk::EmitChar*;
       panda::ecmascript::EcmaContext::FindConstpool*;
       panda::ecmascript::EcmaContext::FindOrCreateConstPool*;
-      panda::ecmascript::EcmaContext::FindUnsharedConstpool*;
+      panda::ecmascript::EcmaContext::FindOrCreateUnsharedConstpool*;
       panda::ecmascript::EcmaContext::SetTSManager*;
       panda::ecmascript::EcmaRuntimeStat::StartCount*;
       panda::ecmascript::EcmaRuntimeStat::StopCount*;

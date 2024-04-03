@@ -887,7 +887,7 @@ JSTaggedValue RuntimeStubs::RuntimeCreateClassWithBuffer(JSThread *thread,
     JSMutableHandle<JSTaggedValue> chc(thread, JSTaggedValue::Undefined());
 
     JSHandle<ConstantPool> cp(thread,
-        thread->GetCurrentEcmaContext()->FindUnsharedConstpool(constpoolHandle.GetTaggedValue()));
+        thread->GetCurrentEcmaContext()->FindOrCreateUnsharedConstpool(constpoolHandle.GetTaggedValue()));
     JSTaggedValue val = cp->GetObjectFromCache(literalId);
     if (val.IsAOTLiteralInfo()) {
         JSHandle<AOTLiteralInfo> aotLiteralInfo(thread, val);
@@ -2121,7 +2121,8 @@ JSTaggedValue RuntimeStubs::RuntimeDefinefunc(JSThread *thread, const JSHandle<J
     JSMutableHandle<JSTaggedValue> ihc(thread, JSTaggedValue::Undefined());
     JSTaggedValue val = constpoolHandle->GetObjectFromCache(methodId);
     if (val.IsAOTLiteralInfo()) {
-        JSTaggedValue unsharedCp = thread->GetCurrentEcmaContext()->FindUnsharedConstpool(constpool.GetTaggedValue());
+        JSTaggedValue unsharedCp =
+            thread->GetCurrentEcmaContext()->FindOrCreateUnsharedConstpool(constpool.GetTaggedValue());
         JSHandle<ConstantPool> unsharedCpHandle(thread, unsharedCp);
         val = unsharedCpHandle->GetObjectFromCache(methodId);
         JSHandle<AOTLiteralInfo> aotLiteralInfo(thread, val);
@@ -3019,7 +3020,7 @@ JSTaggedValue RuntimeStubs::RuntimeCreatePrivateProperty(JSThread *thread, JSTag
     }
 
     JSTaggedValue cp = thread->GetCurrentEcmaContext()->
-        FindUnsharedConstpool(handleConstpool.GetTaggedValue());
+        FindOrCreateUnsharedConstpool(handleConstpool.GetTaggedValue());
     JSTaggedValue literalObj = ConstantPool::GetClassLiteralFromCache(
         thread, JSHandle<ConstantPool>(thread, cp), literalId, entry);
 
