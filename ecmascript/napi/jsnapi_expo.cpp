@@ -719,6 +719,13 @@ bool JSValueRef::IsAsyncFunction()
     return JSNApiHelper::ToJSTaggedValue(this).IsJSAsyncFunction();
 }
 
+bool JSValueRef::IsConcurrentFunction()
+{
+    JSHandle<JSTaggedValue> funcVal = JSNApiHelper::ToJSHandle(this);
+    JSHandle<JSFunction> transFunc = JSHandle<JSFunction>::Cast(funcVal);
+    return transFunc->GetFunctionKind() == ecmascript::FunctionKind::CONCURRENT_FUNCTION;
+}
+
 bool JSValueRef::IsArgumentsObject()
 {
     return JSNApiHelper::ToJSTaggedValue(this).IsArguments();
