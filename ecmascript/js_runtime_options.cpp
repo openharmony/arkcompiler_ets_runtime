@@ -340,6 +340,7 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         WasSet(option);
         switch (option) {
             case OPTION_AOT_FILE:
+                LOG_ECMA(ERROR) << "aot output file:" << optarg;
                 SetAOTOutputFile(optarg);
                 ecmascript::AnFileDataManager::GetInstance()->SetEnable(true);
                 break;

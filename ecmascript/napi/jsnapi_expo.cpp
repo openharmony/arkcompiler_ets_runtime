@@ -93,6 +93,7 @@
 #include "ecmascript/serializer/value_serializer.h"
 #include "ecmascript/tagged_array.h"
 #include "ecmascript/js_weak_container.h"
+#include "ecmascript/ohos/aot_crash_info.h"
 #ifdef ARK_SUPPORT_INTL
 #include "ecmascript/js_bigint.h"
 #include "ecmascript/js_collator.h"
@@ -3623,8 +3624,48 @@ void JSNApi::SetDeviceDisconnectCallback(EcmaVM *vm, DeviceDisconnectCallback cb
     vm->SetDeviceDisconnectCallback(cb);
 }
 
+bool JSNApi::IsAotCrash()
+{
+    std::string realOutPath;
+    std::string arkProfilePath = ecmascript::ohos::AotCrashInfo::GetSandBoxPath();
+    std::string sanboxPath = panda::os::file::File::GetExtendedFilePath(arkProfilePath);
+    if (!ecmascript::RealPath(sanboxPath, realOutPath, false)) {
+        return false;
+    }
+    realOutPath = realOutPath + "/" + ecmascript::ohos::AotCrashInfo::GetCrashFileName();
+    ecmascript::ohos::AotCrashInfo aotCrashInfo;
+    std::string soBuildId = aotCrashInfo.GetRuntimeBuildId();
+    std::ifstream ifile(realOutPath.c_str());
+    int aotCrashCount = 0;
+    int othersCrashCount = 0;
+    if (ifile.is_open()) {
+        std::string iline;
+        while (ifile >> iline) {
+            std::string buildId = ecmascript::ohos::AotCrashInfo::GetBuildId(iline);
+            ecmascript::ohos::CrashType type = ecmascript::ohos::AotCrashInfo::GetCrashType(iline);
+            if (type == ecmascript::ohos::CrashType::AOT && buildId == soBuildId) {
+                aotCrashCount++;
+            }
+            if (type == ecmascript::ohos::CrashType::OTHERS && buildId == soBuildId) {
+                othersCrashCount++;
+            }
+        }
+        ifile.close();
+        if (aotCrashCount >= ecmascript::ohos::AotCrashInfo::GetAotCrashCount()
+            || othersCrashCount >= ecmascript::ohos::AotCrashInfo::GetOthersCrashCount()) {
+            return true;
+        }
+    }
+    return false;
+}
+
 void JSNApi::LoadAotFile(EcmaVM *vm, const std::string &moduleName)
 {
+    if (IsAotCrash()) {
+        LOG_ECMA(INFO) << "Stop load AOT because there are more crashes";
+        return;
+    }
+    
     CROSS_THREAD_AND_EXCEPTION_CHECK(vm);
     ecmascript::ThreadManagedScope scope(thread);
     if (!ecmascript::AnFileDataManager::GetInstance()->IsEnable()) {

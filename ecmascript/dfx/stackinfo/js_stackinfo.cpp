@@ -13,6 +13,8 @@
  * limitations under the License.
  */
 
+#include <sys/time.h>
+
 #include "ecmascript/dfx/stackinfo/js_stackinfo.h"
 #include "ecmascript/base/builtins_base.h"
 #include "ecmascript/ecma_vm.h"
@@ -28,6 +30,8 @@
 #endif
 
 namespace panda::ecmascript {
+const int USEC_PER_SEC = 1000 * 1000;
+const int NSEC_PER_USEC = 1000;
 std::string JsStackInfo::BuildMethodTrace(Method *method, uint32_t pcOffset, bool enableStackSourceFile)
 {
     std::string data;
@@ -128,6 +132,56 @@ std::string JsStackInfo::BuildJsStackTrace(JSThread *thread, bool needNative)
     return data;
 }
 
+uint64_t GetMicrosecondsTimeStamp()
+{
+    struct timespec time;
+    clock_gettime(CLOCK_MONOTONIC, &time);
+    return time.tv_sec * USEC_PER_SEC + time.tv_nsec / NSEC_PER_USEC;
+}
+
+void BuildCrashInfo()
+{
+    std::string realOutPath;
+    std::string sanboxPath = panda::os::file::File::GetExtendedFilePath(ohos::AotCrashInfo::GetSandBoxPath());
+    if (!ecmascript::RealPath(sanboxPath, realOutPath, false)) {
+        return;
+    }
+    uint64_t timestamp = GetMicrosecondsTimeStamp();
+    ohos::AotCrashInfo aotCrashInfo;
+    std::string soBuildId = aotCrashInfo.GetRuntimeBuildId();
+    if (soBuildId == "") {
+        LOG_ECMA(INFO) << "can't get so buildId";
+        return;
+    }
+    realOutPath = realOutPath + "/" + ohos::AotCrashInfo::GetCrashFileName();
+    std::ifstream ifile(realOutPath.c_str());
+    std::vector<std::string> lines;
+    if (ifile.is_open()) {
+        std::string iline;
+        while (ifile >> iline) {
+            std::string buildId = ohos::AotCrashInfo::GetBuildId(iline);
+            if (buildId != soBuildId) {
+                continue;
+            }
+            lines.emplace_back(iline);
+        }
+        ifile.close();
+    }
+    ohos::CrashType type;
+    if (JsStackInfo::loader->IsEnableAOT()) {
+        type = ohos::CrashType::AOT;
+    } else {
+        type = ohos::CrashType::OTHERS;
+    }
+    std::string buildLine = ohos::AotCrashInfo::BuildAotCrashInfo(soBuildId, std::to_string(timestamp), type);
+    lines.emplace_back(buildLine);
+    std::ofstream file(realOutPath.c_str(), std::ofstream::out);
+    for (const std::string& line : lines) {
+        file << line << "\n";
+    }
+    file.close();
+}
+
 std::vector<struct JsFrameInfo> JsStackInfo::BuildJsStackInfo(JSThread *thread)
 {
     std::vector<struct JsFrameInfo> jsFrame;
@@ -216,6 +270,7 @@ void CrashCallback(char *buf __attribute__((unused)), size_t len __attribute__((
         return;
     }
     LOG_ECMA(ERROR) << std::hex << "CrashCallback pc:" << pc << " fp:" << fp;
+    BuildCrashInfo();
     FrameIterator frame(reinterpret_cast<JSTaggedType *>(fp));
     bool isBuiltinStub = (frame.GetFrameType() == FrameType::OPTIMIZED_FRAME);
     Method *method = frame.CheckAndGetMethod();
