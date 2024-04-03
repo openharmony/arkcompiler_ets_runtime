@@ -5127,10 +5127,13 @@ DECLARE_ASM_HANDLER(HandleDefineFieldByNameImm8Id16V8)
     Label icPath(env);
     Label slowPath(env);
     Label exit(env);
+    Label isEcmaObj(env);
     // hclass hit -> ic path
     Label tryGetHclass(env);
     Label firstValueHeapObject(env);
     Label hclassNotHit(env);
+    BRANCH(IsEcmaObject(receiver), &isEcmaObj, &slowPath);
+    Bind(&isEcmaObj);
     BRANCH(TaggedIsUndefined(profileTypeInfo), &hclassNotHit, &tryGetHclass);
     Bind(&tryGetHclass);
     {
