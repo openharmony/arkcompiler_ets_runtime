@@ -627,7 +627,6 @@ JSHandle<NameDictionary> ClassHelper::BuildDictionaryProperties(JSThread *thread
 
 bool ClassHelper::MatchFieldType(SharedFieldType fieldType, JSTaggedValue value)
 {
-    bool checkRet = false;
     uint32_t sharedFieldType = static_cast<uint32_t>(fieldType);
     if ((sharedFieldType & static_cast<uint32_t>(SharedFieldType::NUMBER)) != 0 && value.IsNumber()) {
         return true;
@@ -651,7 +650,7 @@ bool ClassHelper::MatchFieldType(SharedFieldType fieldType, JSTaggedValue value)
     } else if ((sharedFieldType & static_cast<uint32_t>(SharedFieldType::UNDEFINED)) != 0 && value.IsUndefined()) {
         return true;
     }
-    return checkRet;
+    return false;
 }
 
 void ClassHelper::HandleElementsProperties(JSThread *thread, const JSHandle<JSObject> &object,

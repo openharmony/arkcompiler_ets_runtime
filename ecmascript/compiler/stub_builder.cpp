@@ -156,10 +156,10 @@ void StubBuilder::MatchFieldType(GateRef fieldType, GateRef value, Label *execut
     Label isUndefined(env);
     Label exit(env);
     DEFVARIABLE(result, VariableType::BOOL(), False());
-    BRANCH(BoolAnd(
+    GateRef checkType = BoolAnd(
         Int32NotEqual(Int32And(fieldType, Int32(static_cast<int32_t>(SharedFieldType::NUMBER))), Int32(0)),
-        TaggedIsNumber(value)),
-        &isNumber, &checkBoolean);
+        TaggedIsNumber(value));
+    BRANCH(checkType, &isNumber, &checkBoolean);
     Bind(&isNumber);
     {
         result = True();
@@ -167,10 +167,10 @@ void StubBuilder::MatchFieldType(GateRef fieldType, GateRef value, Label *execut
     }
     Bind(&checkBoolean);
     {
-        BRANCH(BoolAnd(
+        checkType = BoolAnd(
             Int32NotEqual(Int32And(fieldType, Int32(static_cast<int32_t>(SharedFieldType::BOOLEAN))), Int32(0)),
-            TaggedIsBoolean(value)),
-            &isBoolean, &checkString);
+            TaggedIsBoolean(value));
+        BRANCH(checkType, &isBoolean, &checkString);
         Bind(&isBoolean);
         {
             result = True();
@@ -179,10 +179,10 @@ void StubBuilder::MatchFieldType(GateRef fieldType, GateRef value, Label *execut
     }
     Bind(&checkString);
     {
-        BRANCH(BoolAnd(
+        checkType = BoolAnd(
             Int32NotEqual(Int32And(fieldType, Int32(static_cast<int32_t>(SharedFieldType::STRING))), Int32(0)),
-            BoolOr(TaggedIsString(value), TaggedIsNull(value))),
-            &isString, &checkJSShared);
+            BoolOr(TaggedIsString(value), TaggedIsNull(value)));
+        BRANCH(checkType, &isString, &checkJSShared);
         Bind(&isString);
         {
             result = True();
@@ -191,10 +191,10 @@ void StubBuilder::MatchFieldType(GateRef fieldType, GateRef value, Label *execut
     }
     Bind(&checkJSShared);
     {
-        BRANCH(BoolAnd(
+        checkType = BoolAnd(
             Int32NotEqual(Int32And(fieldType, Int32(static_cast<int32_t>(SharedFieldType::SENDABLE))), Int32(0)),
-            BoolOr(TaggedIsSharedObj(value), TaggedIsNull(value))),
-            &isJSShared, &checkBigInt);
+            BoolOr(TaggedIsSharedObj(value), TaggedIsNull(value)));
+        BRANCH(checkType, &isJSShared, &checkBigInt);
         Bind(&isJSShared);
         {
             result = True();
@@ -229,10 +229,10 @@ void StubBuilder::MatchFieldType(GateRef fieldType, GateRef value, Label *execut
     }
     Bind(&checkNull);
     {
-        BRANCH(BoolAnd(
+        checkType = BoolAnd(
             Int32NotEqual(Int32And(fieldType, Int32(static_cast<int32_t>(SharedFieldType::NULL_TYPE))), Int32(0)),
-            TaggedIsNull(value)),
-            &isNull, &checkUndefined);
+            TaggedIsNull(value));
+        BRANCH(checkType, &isNull, &checkUndefined);
         Bind(&isNull);
         {
             result = True();
@@ -241,10 +241,10 @@ void StubBuilder::MatchFieldType(GateRef fieldType, GateRef value, Label *execut
     }
     Bind(&checkUndefined);
     {
-        BRANCH(BoolAnd(
+        checkType = BoolAnd(
             Int32NotEqual(Int32And(fieldType, Int32(static_cast<int32_t>(SharedFieldType::UNDEFINED))), Int32(0)),
-            TaggedIsUndefined(value)),
-            &isUndefined, &exit);
+            TaggedIsUndefined(value));
+        BRANCH(checkType, &isUndefined, &exit);
         Bind(&isUndefined);
         {
             result = True();
