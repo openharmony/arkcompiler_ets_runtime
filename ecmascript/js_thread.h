@@ -185,8 +185,6 @@ public:
 
     bool DoStackOverflowCheck(const JSTaggedType *sp);
 
-    bool DoAsmStackOverflowCheck();
-
     bool DoStackLimitCheck();
 
     NativeAreaAllocator *GetNativeAreaAllocator() const

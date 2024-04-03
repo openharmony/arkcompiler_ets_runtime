@@ -984,7 +984,7 @@ JSTaggedValue JSProxy::ConstructInternal(EcmaRuntimeCallInfo *info)
     }
     JSThread *thread = info->GetThread();
     // check stack overflow because infinite recursion may occur
-    if (thread->DoAsmStackOverflowCheck()) {
+    if (thread->DoStackLimitCheck()) {
         return JSTaggedValue::Exception();
     }
 
@@ -1048,7 +1048,7 @@ JSTaggedValue JSProxy::ConstructInternal(EcmaRuntimeCallInfo *info)
 bool JSProxy::IsArray(JSThread *thread) const
 {
     // check stack overflow because infinite recursion may occur
-    if (thread->DoAsmStackOverflowCheck()) {
+    if (thread->DoStackLimitCheck()) {
         return false;
     }
     if (GetHandler().IsNull()) {

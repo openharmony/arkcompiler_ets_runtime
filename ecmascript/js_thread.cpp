@@ -471,12 +471,6 @@ bool JSThread::DoStackLimitCheck()
     return false;
 }
 
-bool JSThread::DoAsmStackOverflowCheck()
-{
-    // check stack overflow because infinite recursion may occur
-    return (IsAsmInterpreter() && DoStackLimitCheck());
-}
-
 uintptr_t *JSThread::ExpandHandleStorage()
 {
     return GetCurrentEcmaContext()->ExpandHandleStorage();

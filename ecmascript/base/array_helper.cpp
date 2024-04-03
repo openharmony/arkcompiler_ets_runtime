@@ -286,7 +286,7 @@ JSTaggedValue ArrayHelper::FlattenIntoArray(JSThread *thread, const JSHandle<JSO
                                             const JSHandle<JSTaggedValue> &mapperFunctionHandle,
                                             const JSHandle<JSTaggedValue> &thisArg)
 {
-    if (thread->DoAsmStackOverflowCheck()) {
+    if (thread->DoStackLimitCheck()) {
         return JSTaggedValue::Exception();
     }
     // 1. Assert: Type(target) is Object.
