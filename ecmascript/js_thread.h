@@ -990,6 +990,11 @@ public:
                    BuiltinHClassEntries::GetPrototypeOfPrototypeHClassOffset(type);
         }
 
+        static size_t GetBuiltinExtraHClassOffset(BuiltinTypeId type, bool isArch32)
+        {
+            return GetBuiltinHClassEntriesOffset(isArch32) + BuiltinHClassEntries::GetExtraHClassOffset(type);
+        }
+
         static size_t GetBCDebuggerStubEntriesOffset(bool isArch32)
         {
             return GetOffset<static_cast<size_t>(Index::BCDebuggerStubEntriesIndex)>(isArch32);

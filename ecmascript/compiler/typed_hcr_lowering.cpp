@@ -530,25 +530,16 @@ void TypedHCRLowering::LowerRangeCheckPredicate(GateRef gate)
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 
-void TypedHCRLowering::LowerBuiltinPrototypeHClassCheck(GateRef gate)
+void TypedHCRLowering::BuiltinInstanceHClassCheck(Environment *env, GateRef gate)
 {
-    Environment env(gate, circuit_, &builder_);
     BuiltinPrototypeHClassAccessor accessor = acc_.GetBuiltinHClassAccessor(gate);
     BuiltinTypeId type = accessor.GetBuiltinTypeId();
     ElementsKind kind = accessor.GetElementsKind();
-    bool isPrototypeOfPrototype = accessor.IsPrototypeOfPrototype();
     GateRef frameState = GetFrameState(gate);
     GateRef glue = acc_.GetGlueFromArgList();
-
     GateRef receiver = acc_.GetValueIn(gate, 0);
-    builder_.HeapObjectCheck(receiver, frameState);
-
-    JSThread *thread = tsManager_->GetThread();
-    // Only HClasses recorded in the JSThread during builtin initialization are available
-    [[maybe_unused]] JSHClass *initialPrototypeHClass = thread->GetBuiltinPrototypeHClass(type);
-    ASSERT(initialPrototypeHClass != nullptr);
-
     GateRef ihcMatches = Circuit::NullGate();
+    JSThread *thread = tsManager_->GetThread();
     if (type == BuiltinTypeId::ARRAY) {
         if (Elements::IsGeneric(kind)) {
             auto arrayHClassIndexMap = thread->GetArrayHClassIndexMap();
@@ -564,16 +555,39 @@ void TypedHCRLowering::LowerBuiltinPrototypeHClassCheck(GateRef gate)
                 builder_.NotEqual(elementsKind, builder_.Int32(static_cast<size_t>(ElementsKind::GENERIC)));
         }
     } else {
-        size_t ihcOffset = JSThread::GlueData::GetBuiltinInstanceHClassOffset(type, env.IsArch32Bit());
+        size_t ihcOffset = JSThread::GlueData::GetBuiltinInstanceHClassOffset(type, env->IsArch32Bit());
         GateRef initialIhcAddress = builder_.LoadConstOffset(VariableType::JS_POINTER(), glue, ihcOffset);
         GateRef receiverHClass = builder_.LoadHClassByConstOffset(receiver);
-        ihcMatches = builder_.Equal(receiverHClass, initialIhcAddress);
+        if (IsTypedArrayType(type)) {
+             // check IHC onHeap hclass
+            size_t ihcOnHeapOffset = JSThread::GlueData::GetBuiltinExtraHClassOffset(type, env->IsArch32Bit());
+            GateRef initialIhcOnHeapAddress = builder_.LoadConstOffset(VariableType::JS_POINTER(),
+                                                                       glue, ihcOnHeapOffset);
+            ihcMatches = builder_.Int64Or(builder_.Equal(receiverHClass, initialIhcAddress),
+                                          builder_.Equal(receiverHClass, initialIhcOnHeapAddress));
+        } else {
+            ihcMatches = builder_.Equal(receiverHClass, initialIhcAddress);
+        }
     }
     // De-opt if HClass of x changed where X is the current builtin object.
     builder_.DeoptCheck(ihcMatches, frameState, DeoptType::BUILTININSTANCEHCLASSMISMATCH);
+}
+
+void TypedHCRLowering::BuiltinPrototypeHClassCheck(Environment *env, GateRef gate)
+{
+    BuiltinPrototypeHClassAccessor accessor = acc_.GetBuiltinHClassAccessor(gate);
+    BuiltinTypeId type = accessor.GetBuiltinTypeId();
+    bool isPrototypeOfPrototype = accessor.IsPrototypeOfPrototype();
+    GateRef frameState = GetFrameState(gate);
+    GateRef glue = acc_.GetGlueFromArgList();
+    GateRef receiver = acc_.GetValueIn(gate, 0);
+    JSThread *thread = tsManager_->GetThread();
+    // Only HClasses recorded in the JSThread during builtin initialization are available
+    [[maybe_unused]] JSHClass *initialPrototypeHClass = thread->GetBuiltinPrototypeHClass(type);
+    ASSERT(initialPrototypeHClass != nullptr);
 
     // Phc = PrototypeHClass
-    size_t phcOffset = JSThread::GlueData::GetBuiltinPrototypeHClassOffset(type, env.IsArch32Bit());
+    size_t phcOffset = JSThread::GlueData::GetBuiltinPrototypeHClassOffset(type, env->IsArch32Bit());
     GateRef receiverPhcAddress = builder_.LoadPrototypeHClass(receiver);
     GateRef initialPhcAddress = builder_.LoadConstOffset(VariableType::JS_POINTER(), glue, phcOffset);
     GateRef phcMatches = builder_.Equal(receiverPhcAddress, initialPhcAddress);
@@ -582,14 +596,23 @@ void TypedHCRLowering::LowerBuiltinPrototypeHClassCheck(GateRef gate)
 
     // array.Iterator should compare PrototypeOfPrototypeHClass.
     if (isPrototypeOfPrototype) {
-        size_t pphcOffset = JSThread::GlueData::GetBuiltinPrototypeOfPrototypeHClassOffset(type, env.IsArch32Bit());
+        size_t pphcOffset = JSThread::GlueData::GetBuiltinPrototypeOfPrototypeHClassOffset(type, env->IsArch32Bit());
         GateRef receiverPPhcAddress = builder_.LoadPrototypeOfPrototypeHClass(receiver);
         GateRef initialPPhcAddress = builder_.LoadConstOffset(VariableType::JS_POINTER(), glue, pphcOffset);
         GateRef pphcMatches = builder_.Equal(receiverPPhcAddress, initialPPhcAddress);
         // De-opt if HClass of X.prototype.prototype changed where X is the current builtin object.
         builder_.DeoptCheck(pphcMatches, frameState, DeoptType::BUILTINPROTOHCLASSMISMATCH2);
     }
+}
 
+void TypedHCRLowering::LowerBuiltinPrototypeHClassCheck(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    GateRef frameState = GetFrameState(gate);
+    GateRef receiver = acc_.GetValueIn(gate, 0);
+    builder_.HeapObjectCheck(receiver, frameState);
+    BuiltinInstanceHClassCheck(&env, gate); // check IHC
+    BuiltinPrototypeHClassCheck(&env, gate); // check PHC
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 

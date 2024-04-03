@@ -225,6 +225,8 @@ private:
 
     GateRef CallAccessor(GateRef glue, GateRef gate, GateRef function, GateRef receiver, AccessorMode mode,
                          GateRef value = Circuit::NullGate());
+    void BuiltinInstanceHClassCheck(Environment *env, GateRef gate);
+    void BuiltinPrototypeHClassCheck(Environment *env, GateRef gate);
     void ReplaceHirWithPendingException(GateRef hirGate, GateRef glue, GateRef state, GateRef depend, GateRef value);
 
     GateRef DoubleToTaggedDoublePtr(GateRef gate);
