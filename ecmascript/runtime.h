@@ -124,8 +124,7 @@ public:
     void AddConstpool(const JSPandaFile *jsPandaFile, JSTaggedValue constpool, int32_t index = 0);
     std::optional<std::reference_wrapper<CMap<int32_t, JSTaggedValue>>> FindConstpools(
         const JSPandaFile *jsPandaFile);
-    void EraseUnusedConstpool(const JSPandaFile *jsPandaFile, int32_t index, JSTaggedValue sharedConstpool);
-    void InsertFreeSharedConstpoolCount(JSTaggedValue sharedConstpool);
+    void EraseUnusedConstpool(const JSPandaFile *jsPandaFile, int32_t index, int32_t constpoolIndex);
     int32_t GetAndIncreaseSharedConstpoolCount()
     {
         LockHolder lock(constpoolIndexLock_);
@@ -181,7 +180,7 @@ private:
 
     // Shared constantpool cache
     Mutex constpoolLock_;
-    CMap<const JSPandaFile *, CMap<int32_t, JSTaggedValue>> cachedSharedConstpools_ {};
+    CMap<const JSPandaFile *, CMap<int32_t, JSTaggedValue>> globalSharedConstpools_ {};
     Mutex constpoolIndexLock_;
     int32_t sharedConstpoolCount_ = 0; // shared constpool count.
     std::set<int32_t> freeSharedConstpoolIndex_ {}; // reuse shared constpool index.

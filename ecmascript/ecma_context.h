@@ -266,7 +266,7 @@ public:
     JSTaggedValue PUBLIC_API FindOrCreateUnsharedConstpool(JSTaggedValue sharedConstpool);
     JSHandle<ConstantPool> CreateConstpoolPair(JSPandaFile *jsPandaFile, EntityId methodId);
     JSTaggedValue FindConstpoolWithAOT(const JSPandaFile *jsPandaFile, int32_t index);
-    void EraseUnusedConstpool(const JSPandaFile *jsPandaFile, int32_t index, JSTaggedValue sharedConstpool);
+    void EraseUnusedConstpool(const JSPandaFile *jsPandaFile, int32_t index, int32_t constpoolIndex);
     std::optional<std::reference_wrapper<CMap<int32_t, JSTaggedValue>>> FindConstpools(
         const JSPandaFile *jsPandaFile);
 
@@ -500,7 +500,6 @@ public:
         return isAotEntry_;
     }
 
-    void InsertFreeSharedConstpoolCount(JSTaggedValue sharedConstpool);
     void SetUnsharedConstpool(int32_t unsharedConstpoolIndex, JSTaggedValue constpool)
     {
         ASSERT(0 <= unsharedConstpoolIndex && unsharedConstpoolIndex < UNSHARED_CONSTANTPOOL_COUNT);
