@@ -63,6 +63,10 @@ private:
     void LowerDoubleRounding(GateRef gate);
     void LowerArrayBufferIsView(GateRef gate);
     void LowerDataViewProtoFunc(GateRef gate, DataViewProtoFunc proto);
+    void LowerNumberIsFinite(GateRef gate);
+    void LowerNumberIsInteger(GateRef gate);
+    void LowerNumberIsNaN(GateRef gate);
+    void LowerNumberIsSafeInteger(GateRef gate);
     GateRef BuiltinIdToSize(GateRef ID);
     GateRef GetValueFromBuffer(GateRef bufferIndex, GateRef dataPointer, GateRef isLittleEndian, GateRef builtinId);
     GateRef SetValueInBuffer(GateRef bufferIndex,

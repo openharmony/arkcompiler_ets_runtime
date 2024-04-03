@@ -97,7 +97,8 @@ private:
     GateRef VisitMathTrunc(GateRef gate);
     GateRef VisitMathImul(GateRef gate);
     template <bool IS_NAN>
-    GateRef VisitGlobalBuiltin(GateRef gate);
+    GateRef VisitNumberOrGlobalBuiltin(GateRef gate);
+    GateRef VisitNumberIsInteger(GateRef gate);
     GateRef VisitBooleanJump(GateRef gate);
     GateRef VisitRangeCheckPredicate(GateRef gate);
     GateRef VisitIndexCheck(GateRef gate);

@@ -46,6 +46,10 @@ public:
 private:
     std::optional<std::pair<size_t, bool>> GetCallInfo(GateRef gate);
     void TryInlineStringFromCharCode(GateRef gate, size_t argc, bool skipThis);
+    void TryInlineNumberIsFinite(GateRef gate, size_t argc, bool skipThis);
+    void TryInlineNumberIsInteger(GateRef gate, size_t argc, bool skipThis);
+    void TryInlineNumberIsNaN(GateRef gate, size_t argc, bool skipThis);
+    void TryInlineNumberIsSafeInteger(GateRef gate, size_t argc, bool skipThis);
     void TryInlineMathUnaryBuiltin(GateRef gate, size_t argc, BuiltinsStubCSigns::ID id, const GateMetaData* op,
                                    bool skipThis);
     void TryInlineMathBinaryBuiltin(GateRef gate, size_t argc, BuiltinsStubCSigns::ID id, const GateMetaData* op,

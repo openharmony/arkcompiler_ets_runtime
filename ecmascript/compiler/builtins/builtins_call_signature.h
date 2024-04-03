@@ -220,8 +220,12 @@ namespace panda::ecmascript::kungfu {
     V(DataViewSetUint8)                             \
     V(DataViewSetUint16)                            \
     V(DataViewSetUint32)                            \
+    V(NumberIsFinite)                               \
+    V(NumberIsInteger)                              \
+    V(NumberIsNaN)                                  \
+    V(NumberIsSafeInteger)                          \
     V(TYPED_BUILTINS_INLINE_FIRST = MathAcos)       \
-    V(TYPED_BUILTINS_INLINE_LAST = DataViewSetUint32)
+    V(TYPED_BUILTINS_INLINE_LAST = NumberIsSafeInteger)
 
 class BuiltinsStubCSigns {
 public:
@@ -451,6 +455,14 @@ public:
                 return ConstantIndex::DATA_VIEW_SET_UINT16_INDEX;
             case BuiltinsStubCSigns::ID::DataViewSetUint32:
                 return ConstantIndex::DATA_VIEW_SET_UINT32_INDEX;
+            case BuiltinsStubCSigns::ID::NumberIsFinite:
+                return ConstantIndex::NUMBER_IS_FINITE_INDEX;
+            case BuiltinsStubCSigns::ID::NumberIsInteger:
+                return ConstantIndex::NUMBER_IS_INTEGER_INDEX;
+            case BuiltinsStubCSigns::ID::NumberIsNaN:
+                return ConstantIndex::NUMBER_IS_NAN_INDEX;
+            case BuiltinsStubCSigns::ID::NumberIsSafeInteger:
+                return ConstantIndex::NUMBER_IS_SAFEINTEGER_INDEX;
             default:
                 LOG_COMPILER(FATAL) << "this branch is unreachable";
                 UNREACHABLE();
