@@ -327,6 +327,8 @@ public:
         switch (builtinId) {
             case BuiltinsStubCSigns::ID::StringFromCharCode:
             case BuiltinsStubCSigns::ID::MapGet:
+            case BuiltinsStubCSigns::ID::MapHas:
+            case BuiltinsStubCSigns::ID::SetHas:
                 return true;
             default:
                 return false;
@@ -445,6 +447,10 @@ public:
                 return ConstantIndex::MATH_IMUL_INDEX;
             case BuiltinsStubCSigns::ID::MapGet:
                 return ConstantIndex::MAP_GET_INDEX;
+            case BuiltinsStubCSigns::ID::MapHas:
+                return ConstantIndex::MAP_HAS_INDEX;
+            case BuiltinsStubCSigns::ID::SetHas:
+                return ConstantIndex::SET_HAS_INDEX;
             case BuiltinsStubCSigns::ID::StringLocaleCompare:
                 return ConstantIndex::LOCALE_COMPARE_FUNCTION_INDEX;
             case BuiltinsStubCSigns::ID::ArraySort:
@@ -559,6 +565,8 @@ public:
             {GlobalIsFinite, "isFinite"},
             {GlobalIsNan, "isNan"},
             {MapGet, "Map.get"},
+            {MapHas, "Map.has"},
+            {SetHas, "Set.has"},
         };
         if (builtinId2Str.count(id) > 0) {
             return builtinId2Str.at(id);

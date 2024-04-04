@@ -6776,7 +6776,6 @@ void StubBuilder::CalcHashcodeForDouble(GateRef x, Variable *res, Label *exit)
     GateRef xInt64 = Int64Sub(ChangeTaggedPointerToInt64(x), Int64(JSTaggedValue::DOUBLE_ENCODE_OFFSET));
     GateRef fractionBits = Int64And(xInt64, Int64(base::DOUBLE_SIGNIFICAND_MASK));
     GateRef expBits = Int64And(xInt64, Int64(base::DOUBLE_EXPONENT_MASK));
-    GateRef signBit = Int64And(xInt64, Int64(base::DOUBLE_SIGN_MASK));
     GateRef isZero = BoolAnd(
         Int64Equal(expBits, Int64(0)),
         Int64Equal(fractionBits, Int64(0)));
@@ -6796,22 +6795,8 @@ void StubBuilder::CalcHashcodeForDouble(GateRef x, Variable *res, Label *exit)
         BRANCH(CanDoubleRepresentInt(exp, expBits, fractionBits), &calcHash, &convertToInt);
         Bind(&convertToInt);
         {
-            GateRef shift = Int64Sub(Int64(base::DOUBLE_SIGNIFICAND_SIZE), exp);
-            GateRef intVal = Int64Add(
-                Int64LSL(Int64(1), exp),
-                Int64LSR(fractionBits, shift));
-            DEFVARIABLE(intVariable, VariableType::INT64(), intVal);
-            Label negate(env);
-            Label pass(env);
-            BRANCH(Int64NotEqual(signBit, Int64(0)), &negate, &pass);
-            Bind(&negate);
-            {
-                intVariable = Int64Sub(Int64(0), intVal);
-                Jump(&pass);
-            }
-            Bind(&pass);
-            value = IntToTaggedPtr(TruncInt64ToInt32(*intVariable));
-            Jump(&calcHash);
+            *res = ChangeFloat64ToInt32(CastInt64ToFloat64(xInt64));
+            Jump(exit);
         }
         Bind(&calcHash);
         {
@@ -6821,7 +6806,7 @@ void StubBuilder::CalcHashcodeForDouble(GateRef x, Variable *res, Label *exit)
     }
 
     Bind(&zero);
-    *res = env_->GetBuilder()->CalcHashcodeForInt(IntToTaggedPtr(Int32(0)));
+    *res = Int32(0);
     Jump(exit);
 }
 

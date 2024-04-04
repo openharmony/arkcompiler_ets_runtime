@@ -48,8 +48,18 @@ function check(key) {
     }
 }
 
+function checkIntAsDouble(intKey) {
+    intKey /= 2;
+    intKey += 0.5;
+    intKey *= 2;
+    intKey -= 1;
+    check(intKey);
+}
+
 check(0);
 check(1);
+check(1 << 30);
+check((1 << 30) - 1);
 check(-1);
 check(1.5);
 check(-1.5);
@@ -66,6 +76,24 @@ check(Number.POSITIVE_INFINITY);
 check(Number.NEGATIVE_INFINITY);
 check(Number.parseFloat("+0.0"));
 check(Number.parseFloat("-0.0"));
+check(true);
+check(false);
+check(undefined);
+check(null);
+check("");
+check("ab");
+check({});
+check(12n);
+checkIntAsDouble(0);
+checkIntAsDouble(1);
+checkIntAsDouble(-1);
+checkIntAsDouble(-1234);
+checkIntAsDouble(1234);
+checkIntAsDouble(1 << 29);
+checkIntAsDouble(-(1 << 29));
+checkIntAsDouble(1 << 30);
+checkIntAsDouble(-(1 << 30));
+check(Symbol.iterator);
 
 // regression test
 check(Number.parseFloat("1392210229"));

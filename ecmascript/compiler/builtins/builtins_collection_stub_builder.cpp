@@ -245,7 +245,7 @@ void BuiltinsCollectionStubBuilder<CollectionType>::Has(Variable *result, Label 
         LinkedHashTableStubBuilder<LinkedHashSet, LinkedHashSetObject> linkedHashTableStubBuilder(this, glue_);
         res = linkedHashTableStubBuilder.Has(linkedTable, key);
     }
-    *result = res;
+    *result = BooleanToTaggedBooleanPtr(res);
     Jump(exit);
 }
 

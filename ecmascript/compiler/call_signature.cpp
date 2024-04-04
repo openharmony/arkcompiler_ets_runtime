@@ -2383,18 +2383,32 @@ DEF_CALL_SIGNATURE(CreateJSMapIterator)
 
 DEF_CALL_SIGNATURE(JSMapGet)
 {
-    // 3 : 3 input parameters
-    CallSignature signature("JSMapGet", 0, 3,
-        ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
-    *callSign = signature;
-    // 3 : 3 input parameters
-    std::array<VariableType, 3> params = {
-        VariableType::NATIVE_POINTER(),  // glue
-        VariableType::JS_ANY(),          // obj
-        VariableType::JS_ANY(),          // key
-    };
-    callSign->SetParameters(params.data());
-    callSign->SetCallConv(CallSignature::CallConv::CCallConv);
+    *callSign = CallSignature("JSMapGet", 0, ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY(),
+        {
+            VariableType::NATIVE_POINTER(),  // glue
+            VariableType::JS_ANY(),          // obj
+            VariableType::JS_ANY(),          // key
+        });
+}
+
+DEF_CALL_SIGNATURE(JSMapHas)
+{
+    *callSign = CallSignature("JSMapHas", 0, ArgumentsOrder::DEFAULT_ORDER, VariableType::BOOL(),
+        {
+            VariableType::NATIVE_POINTER(),  // glue
+            VariableType::JS_ANY(),          // obj
+            VariableType::JS_ANY(),          // key
+        });
+}
+
+DEF_CALL_SIGNATURE(JSSetHas)
+{
+    *callSign = CallSignature("JSSetHas", 0, ArgumentsOrder::DEFAULT_ORDER, VariableType::BOOL(),
+        {
+            VariableType::NATIVE_POINTER(),  // glue
+            VariableType::JS_ANY(),          // obj
+            VariableType::JS_ANY(),          // key
+        });
 }
 
 DEF_CALL_SIGNATURE(FastStringEqual)
@@ -2410,7 +2424,6 @@ DEF_CALL_SIGNATURE(FastStringEqual)
         VariableType::JS_ANY(),          // ecmaString2
     };
     callSign->SetParameters(params.data());
-    callSign->SetCallConv(CallSignature::CallConv::CCallConv);
 }
 
 DEF_CALL_SIGNATURE(FastStringAdd)

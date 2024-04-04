@@ -224,6 +224,12 @@ void NativeInlineLowering::RunNativeInlineLowering()
             case BuiltinsStubCSigns::ID::MapGet:
                 InlineStubBuiltin(gate, 1U, argc, id, circuit_->MapGet(), skipThis);
                 break;
+            case BuiltinsStubCSigns::ID::MapHas:
+                InlineStubBuiltin(gate, 1U, argc, id, circuit_->MapHas(), skipThis);
+                break;
+            case BuiltinsStubCSigns::ID::SetHas:
+                InlineStubBuiltin(gate, 1U, argc, id, circuit_->SetHas(), skipThis);
+                break;
             default:
                 break;
         }
