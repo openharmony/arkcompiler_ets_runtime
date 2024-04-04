@@ -85,6 +85,7 @@ public:
     void NewMutantTaggedArrayChecked(Variable *result, GateRef len, Label *exit);
     template <typename IteratorType, typename CollectionType>
     void CreateJSCollectionIterator(Variable *result, Label *exit, GateRef set, GateRef kind);
+    void CreateJSTypedArrayIterator(Variable *result, Label *exit, GateRef set, GateRef kind);
     GateRef NewTaggedSubArray(GateRef glue, GateRef srcTypedArray, GateRef elementSize, GateRef newLength,
         GateRef beginIndex, GateRef arrayCls, GateRef buffer);
     GateRef NewTypedArray(GateRef glue, GateRef srcTypedArray, GateRef srcType, GateRef length);

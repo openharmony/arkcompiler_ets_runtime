@@ -1175,6 +1175,57 @@ void JSSetHasStubBuilder::GenerateCircuit()
     Return(builder.Has(linkedTable, key));
 }
 
+void CreateJSTypedArrayEntriesStubBuilder::GenerateCircuit()
+{
+    auto env = GetEnvironment();
+    Label exit(env);
+
+    GateRef glue = PtrArgument(0);
+    GateRef obj = TaggedArgument(1);
+    DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
+
+    NewObjectStubBuilder newBuilder(this);
+    newBuilder.SetGlue(glue);
+    GateRef kind = Int32(static_cast<int32_t>(IterationKind::KEY_AND_VALUE));
+    newBuilder.CreateJSTypedArrayIterator(&result, &exit, obj, kind);
+    Bind(&exit);
+    Return(*result);
+}
+
+void CreateJSTypedArrayKeysStubBuilder::GenerateCircuit()
+{
+    auto env = GetEnvironment();
+    Label exit(env);
+
+    GateRef glue = PtrArgument(0);
+    GateRef obj = TaggedArgument(1);
+    DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
+
+    NewObjectStubBuilder newBuilder(this);
+    newBuilder.SetGlue(glue);
+    GateRef kind = Int32(static_cast<int32_t>(IterationKind::KEY));
+    newBuilder.CreateJSTypedArrayIterator(&result, &exit, obj, kind);
+    Bind(&exit);
+    Return(*result);
+}
+
+void CreateJSTypedArrayValuesStubBuilder::GenerateCircuit()
+{
+    auto env = GetEnvironment();
+    Label exit(env);
+
+    GateRef glue = PtrArgument(0);
+    GateRef obj = TaggedArgument(1);
+    DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
+
+    NewObjectStubBuilder newBuilder(this);
+    newBuilder.SetGlue(glue);
+    GateRef kind = Int32(static_cast<int32_t>(IterationKind::VALUE));
+    newBuilder.CreateJSTypedArrayIterator(&result, &exit, obj, kind);
+    Bind(&exit);
+    Return(*result);
+}
+
 CallSignature CommonStubCSigns::callSigns_[CommonStubCSigns::NUM_OF_STUBS];
 
 void CommonStubCSigns::Initialize()

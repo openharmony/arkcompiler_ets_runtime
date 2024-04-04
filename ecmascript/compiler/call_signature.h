@@ -517,6 +517,9 @@ private:
     V(JSMapGet)                                 \
     V(JSMapHas)                                 \
     V(JSSetHas)                                 \
+    V(CreateJSTypedArrayEntries)                \
+    V(CreateJSTypedArrayKeys)                   \
+    V(CreateJSTypedArrayValues)                 \
     V(JSHClassFindProtoTransitions)             \
     V(NumberHelperStringToDouble)               \
     V(GetStringToListCacheArray)                \

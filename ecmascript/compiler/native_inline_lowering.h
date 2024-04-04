@@ -29,9 +29,10 @@
 namespace panda::ecmascript::kungfu {
 class NativeInlineLowering {
 public:
-    explicit NativeInlineLowering(Circuit *circuit, PassContext *ctx, bool enableLog, const std::string& name)
+    explicit NativeInlineLowering(Circuit *circuit, CompilationConfig* cmpCfg, PassContext *ctx, bool enableLog,
+                                  const std::string& name)
         : circuit_(circuit),
-          builder_(circuit),
+          builder_(circuit, cmpCfg),
           acc_(circuit),
           glue_(acc_.GetGlueFromArgList()),
           tsManager_(ctx->GetTSManager()),
@@ -50,6 +51,8 @@ private:
     void TryInlineNumberIsInteger(GateRef gate, size_t argc, bool skipThis);
     void TryInlineNumberIsNaN(GateRef gate, size_t argc, bool skipThis);
     void TryInlineNumberIsSafeInteger(GateRef gate, size_t argc, bool skipThis);
+    void TryInlineTypedArrayIteratorBuiltin(GateRef gate, BuiltinsStubCSigns::ID id,
+                                            const GateMetaData* op, bool skipThis);
     void TryInlineMathUnaryBuiltin(GateRef gate, size_t argc, BuiltinsStubCSigns::ID id, const GateMetaData* op,
                                    bool skipThis);
     void TryInlineMathBinaryBuiltin(GateRef gate, size_t argc, BuiltinsStubCSigns::ID id, const GateMetaData* op,

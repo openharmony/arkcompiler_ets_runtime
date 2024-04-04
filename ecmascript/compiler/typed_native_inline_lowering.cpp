@@ -38,6 +38,10 @@
 #include "ecmascript/js_primitive_ref.h"
 #include "ecmascript/message_string.h"
 #include "macros.h"
+#include "ecmascript/compiler/new_object_stub_builder.h"
+#include "ecmascript/global_env.h"
+#include "ecmascript/js_array_iterator.h"
+#include "ecmascript/js_iterator.h"
 
 namespace panda::ecmascript::kungfu {
 GateRef TypedNativeInlineLowering::VisitGate(GateRef gate)
@@ -219,6 +223,18 @@ GateRef TypedNativeInlineLowering::VisitGate(GateRef gate)
         case OpCode::DATE_NOW:
             LowerGeneralWithoutArgs(gate, RTSTUB_ID(CallDateNow));
             break;
+        case OpCode::TYPED_ARRAY_ENTRIES:
+            LowerTypedArrayIterator(gate, CommonStubCSigns::CreateJSTypedArrayEntries,
+                                    IterationKind::KEY_AND_VALUE);
+            break;
+        case OpCode::TYPED_ARRAY_KEYS:
+            LowerTypedArrayIterator(gate, CommonStubCSigns::CreateJSTypedArrayKeys,
+                                    IterationKind::KEY);
+            break;
+        case OpCode::TYPED_ARRAY_VALUES:
+            LowerTypedArrayIterator(gate, CommonStubCSigns::CreateJSTypedArrayValues,
+                                    IterationKind::VALUE);
+            break;
         default:
             break;
     }
@@ -265,6 +281,91 @@ void TypedNativeInlineLowering::LowerMathCeilFloorWithRuntimeCall(GateRef gate)
     }
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
 }
+
+GateRef TypedNativeInlineLowering::AllocateTypedArrayIterator(GateRef glue, GateRef self,
+                                                              GateRef iteratorHClass,
+                                                              IterationKind iterationKind)
+{
+    GateRef emptyArray = builder_.GetGlobalConstantValue(ConstantIndex::EMPTY_ARRAY_OBJECT_INDEX);
+    GateRef kind = builder_.Int32(static_cast<int32_t>(iterationKind));
+
+    builder_.StartAllocate();
+
+    GateRef iterator = builder_.HeapAlloc(glue, builder_.IntPtr(JSArrayIterator::SIZE),
+        GateType::TaggedValue(), RegionSpaceFlag::IN_YOUNG_SPACE);
+
+    builder_.StoreConstOffset(VariableType::JS_POINTER(), iterator, TaggedObject::HCLASS_OFFSET,
+        iteratorHClass, MemoryOrder::NeedBarrierAndAtomic());
+    builder_.StoreConstOffset(VariableType::INT64(), iterator, JSObject::HASH_OFFSET,
+        builder_.Int64(JSTaggedValue(0).GetRawData()));
+    builder_.StoreConstOffset(VariableType::INT64(), iterator, JSObject::PROPERTIES_OFFSET, emptyArray);
+    builder_.StoreConstOffset(VariableType::INT64(), iterator, JSObject::ELEMENTS_OFFSET, emptyArray);
+
+    builder_.StoreConstOffset(VariableType::JS_ANY(), iterator, JSArrayIterator::ITERATED_ARRAY_OFFSET, self);
+    builder_.StoreConstOffset(VariableType::INT32(), iterator, JSArrayIterator::NEXT_INDEX_OFFSET, builder_.Int32(0));
+    builder_.StoreConstOffset(VariableType::INT32(), iterator, JSArrayIterator::BIT_FIELD_OFFSET, kind);
+
+    GateRef result = builder_.FinishAllocate(iterator);
+    builder_.SubCfgExit();
+
+    return result;
+}
+
+void TypedNativeInlineLowering::LowerTypedArrayIterator(GateRef gate, CommonStubCSigns::ID index,
+                                                        IterationKind iterationKind)
+{
+    Environment env(gate, circuit_, &builder_);
+
+    GateRef glue = acc_.GetGlueFromArgList();
+    GateRef self = acc_.GetValueIn(gate, 0);
+
+    DEFVALUE(result, (&builder_), VariableType::JS_ANY(), builder_.Undefined());
+
+    Label selfExistsLabel(&env);
+    Label isHeapObjectLabel(&env);
+    Label isTypedArrayLabel(&env);
+    Label selfValidLabel(&env);
+    Label selfInvalidLabel(&env);
+    Label exit(&env);
+
+    GateRef selfExists = builder_.TaggedIsNotUndefinedAndNullAndHole(self);
+    BRANCH_CIR(selfExists, &selfExistsLabel, &selfInvalidLabel);
+    builder_.Bind(&selfExistsLabel);
+
+    GateRef isHeapObject = builder_.TaggedIsHeapObject(self);
+    BRANCH_CIR(isHeapObject, &isHeapObjectLabel, &selfInvalidLabel);
+    builder_.Bind(&isHeapObjectLabel);
+
+    GateRef isTypedArray = builder_.IsTypedArray(self);
+    BRANCH_CIR(isTypedArray, &isTypedArrayLabel, &selfInvalidLabel);
+    builder_.Bind(&isTypedArrayLabel);
+
+    GateRef hasNoConstructor = builder_.BoolNot(builder_.HasConstructor(self));
+    BRANCH_CIR(hasNoConstructor, &selfValidLabel, &selfInvalidLabel);
+    builder_.Bind(&selfValidLabel);
+    {
+        GateRef glueGlobalEnvOffset = builder_.IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env.Is32Bit()));
+        GateRef glueGlobalEnv = builder_.Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
+        GateRef prototype = builder_.GetGlobalEnvValue(VariableType::JS_POINTER(), glueGlobalEnv,
+                                                       GlobalEnv::ARRAY_ITERATOR_PROTOTYPE_INDEX);
+
+        GateRef iteratorHClass = builder_.GetGlobalConstantValue(ConstantIndex::JS_ARRAY_ITERATOR_CLASS_INDEX);
+        GateRef offset = builder_.IntPtr(JSHClass::PROTOTYPE_OFFSET);
+        builder_.Store(VariableType::JS_POINTER(), glue, iteratorHClass, offset, prototype);
+
+        result = AllocateTypedArrayIterator(glue, self, iteratorHClass, iterationKind);
+        builder_.Jump(&exit);
+    }
+
+    builder_.Bind(&selfInvalidLabel);
+    {
+        result = builder_.CallStub(glue, gate, index, { glue, self });
+        builder_.Jump(&exit);
+    }
+    builder_.Bind(&exit);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
+}
+
 GateRef TypedNativeInlineLowering::LowerGlobalDoubleIsFinite(GateRef value)
 {
     // set the sign bit to 0 by shift left then right.

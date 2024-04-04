@@ -286,6 +286,9 @@ GateRef BuiltinLowering::CheckPara(GateRef gate, GateRef funcCheck)
         case BuiltinsStubCSigns::ID::ArrayIteratorProtoNext:
         case BuiltinsStubCSigns::ID::IteratorProtoReturn:
         case BuiltinsStubCSigns::ID::NumberConstructor:
+        case BuiltinsStubCSigns::ID::TypedArrayEntries:
+        case BuiltinsStubCSigns::ID::TypedArrayKeys:
+        case BuiltinsStubCSigns::ID::TypedArrayValues:
             // Don't need check para
             return funcCheck;
         default: {

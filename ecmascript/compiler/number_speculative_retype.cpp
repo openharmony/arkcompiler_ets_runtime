@@ -285,6 +285,9 @@ GateRef NumberSpeculativeRetype::VisitGate(GateRef gate)
         case OpCode::TYPED_CALL_BUILTIN_SIDE_EFFECT:
         case OpCode::MAP_GET:
         case OpCode::NEW_NUMBER:
+        case OpCode::TYPED_ARRAY_ENTRIES:
+        case OpCode::TYPED_ARRAY_KEYS:
+        case OpCode::TYPED_ARRAY_VALUES:
             return VisitOthers(gate);
         default:
             return Circuit::NullGate();

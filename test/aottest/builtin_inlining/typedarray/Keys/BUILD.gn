@@ -11,16 +11,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-group("ark_aot_builtin_inlining_test") {
-  testonly = true
-  deps = [
-    "bigint:ark_aot_builtin_inlining_bigint_test",
-    "date:ark_aot_builtin_inlining_date_test",
-    "global:ark_aot_builtin_inlining_global_test",
-    "map:ark_aot_builtin_inlining_map_test",
-    "math:ark_aot_builtin_inlining_math_test",
-    "number:ark_aot_builtin_inlining_number_test",
-    "set:ark_aot_builtin_inlining_set_test",
-    "typedarray:ark_aot_builtin_inlining_typedarray_test",
-  ]
+import("//arkcompiler/ets_runtime/test/test_helper.gni")
+
+host_aot_builtin_inlining_test_action("builtinTypedArrayKeys") {
 }

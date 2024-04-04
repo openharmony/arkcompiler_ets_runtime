@@ -110,6 +110,9 @@ private:
     void LowerGlobalIsFinite(GateRef gate);
     void LowerGlobalIsNan(GateRef gate);
     void LowerGeneralWithoutArgs(GateRef gate, RuntimeStubCSigns::ID stubId);
+    GateRef AllocateTypedArrayIterator(GateRef glue, GateRef self,
+                                       GateRef iteratorHClass, IterationKind iterationKind);
+    void LowerTypedArrayIterator(GateRef gate, CommonStubCSigns::ID index, IterationKind iterationKind);
 
     GateRef LowerGlobalDoubleIsFinite(GateRef value);
     GateRef LowerGlobalTNumberIsFinite(GateRef value);

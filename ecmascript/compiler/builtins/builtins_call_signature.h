@@ -139,6 +139,9 @@ namespace panda::ecmascript::kungfu {
     V(Some,            TypedArray,  Undefined())    \
     V(Filter,          TypedArray,  Undefined())    \
     V(With,            TypedArray,  Undefined())    \
+    V(Entries,         TypedArray,  Undefined())    \
+    V(Keys,            TypedArray,  Undefined())    \
+    V(Values,          TypedArray,  Undefined())    \
     V(Slice,           TypedArray,  Undefined())    \
     V(SubArray,        TypedArray,  Undefined())    \
     V(Sort,            TypedArray,  Undefined())    \
@@ -332,6 +335,9 @@ public:
             case BuiltinsStubCSigns::ID::MapGet:
             case BuiltinsStubCSigns::ID::MapHas:
             case BuiltinsStubCSigns::ID::SetHas:
+            case BuiltinsStubCSigns::ID::TypedArrayEntries:
+            case BuiltinsStubCSigns::ID::TypedArrayKeys:
+            case BuiltinsStubCSigns::ID::TypedArrayValues:
                 return true;
             default:
                 return false;
@@ -476,6 +482,12 @@ public:
                 return ConstantIndex::DATE_GET_TIME_INDEX;
             case BuiltinsStubCSigns::ID::DateNow:
                 return ConstantIndex::DATE_NOW_INDEX;
+            case BuiltinsStubCSigns::ID::TypedArrayEntries:
+                return ConstantIndex::TYPED_ARRAY_ENTRIES_INDEX;
+            case BuiltinsStubCSigns::ID::TypedArrayKeys:
+                return ConstantIndex::TYPED_ARRAY_KEYS_INDEX;
+            case BuiltinsStubCSigns::ID::TypedArrayValues:
+                return ConstantIndex::TYPED_ARRAY_VALUES_INDEX;
             case BuiltinsStubCSigns::ID::GlobalIsFinite:
                 return ConstantIndex::GLOBAL_IS_FINITE_INDEX;
             case BuiltinsStubCSigns::ID::GlobalIsNan:
@@ -572,6 +584,9 @@ public:
             {MathMin, "Math.min"},
             {DateGetTime, "Date.prototype.getTime"},
             {DateNow, "Date.now"},
+            {TypedArrayEntries, "TypedArray.entries"},
+            {TypedArrayKeys, "TypedArray.keys"},
+            {TypedArrayValues, "TypedArray.values"},
             {GlobalIsFinite, "isFinite"},
             {GlobalIsNan, "isNan"},
             {BigIntAsIntN, "BigInt.asIntN"},

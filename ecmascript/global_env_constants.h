@@ -209,6 +209,9 @@ class ObjectFactory;
     V(JSTaggedValue, ArrayIteratorProtoNext, ARRAY_ITERATOR_PROTO_NEXT_INDEX, ecma_roots_builtins)      \
     V(JSTaggedValue, IteratorProtoReturn, ITERATOR_PROTO_RETURN_INDEX, ecma_roots_builtins)             \
     V(JSTaggedValue, StringFromCharCode, STRING_FROM_CHAR_CODE_INDEX, ecma_roots_builtins)              \
+    V(JSTaggedValue, TypedArrayEntries, TYPED_ARRAY_ENTRIES_INDEX, ecma_roots_special)                  \
+    V(JSTaggedValue, TypedArrayKeys, TYPED_ARRAY_KEYS_INDEX, ecma_roots_special)                        \
+    V(JSTaggedValue, TypedArrayValues, TYPED_ARRAY_VALUES_INDEX, ecma_roots_special)                    \
     V(JSTaggedValue, ArrayBufferIsView, ARRAY_BUFFER_IS_VIEW_INDEX, ecma_roots_builtins)                \
     V(JSTaggedValue, DataViewGetFloat32, DATA_VIEW_GET_FLOAT32_INDEX, ecma_roots_builtins)              \
     V(JSTaggedValue, DataViewGetFloat64, DATA_VIEW_GET_FLOAT64_INDEX, ecma_roots_builtins)              \

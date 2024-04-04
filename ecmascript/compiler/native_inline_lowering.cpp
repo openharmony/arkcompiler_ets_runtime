@@ -20,6 +20,10 @@
 #include "ecmascript/compiler/circuit_builder_helper.h"
 #include "ecmascript/compiler/share_gate_meta_data.h"
 #include "ecmascript/js_dataview.h"
+#include "ecmascript/compiler/circuit.h"
+#include "ecmascript/compiler/new_object_stub_builder.h"
+#include "ecmascript/global_env.h"
+#include "ecmascript/js_iterator.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/message_string.h"
 
@@ -89,6 +93,15 @@ void NativeInlineLowering::RunNativeInlineLowering()
                 break;
             case BuiltinsStubCSigns::ID::NumberIsSafeInteger:
                 TryInlineNumberIsSafeInteger(gate, argc, skipThis);
+                break;
+            case BuiltinsStubCSigns::ID::TypedArrayEntries:
+                TryInlineTypedArrayIteratorBuiltin(gate, id, circuit_->TypedArrayEntries(), skipThis);
+                break;
+            case BuiltinsStubCSigns::ID::TypedArrayKeys:
+                TryInlineTypedArrayIteratorBuiltin(gate, id, circuit_->TypedArrayKeys(), skipThis);
+                break;
+            case BuiltinsStubCSigns::ID::TypedArrayValues:
+                TryInlineTypedArrayIteratorBuiltin(gate, id, circuit_->TypedArrayValues(), skipThis);
                 break;
             case BuiltinsStubCSigns::ID::MathAcos:
                 TryInlineMathUnaryBuiltin(gate, argc, id, circuit_->MathAcos(), skipThis);
@@ -382,6 +395,29 @@ void NativeInlineLowering::TryInlineBigIntAsIntN(GateRef gate, size_t argc, Buil
     bool isUnsigned = (id == BuiltinsStubCSigns::ID::BigIntAsUintN);
     const auto* op = isUnsigned ? circuit_->BigIntAsUintN() : circuit_->BigIntAsIntN();
     GateRef ret = builder_.BuildBigIntAsIntN(op, {bits, bigint, frameState});
+    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), ret);
+}
+
+void NativeInlineLowering::TryInlineTypedArrayIteratorBuiltin(GateRef gate,
+                                                              BuiltinsStubCSigns::ID id,
+                                                              const GateMetaData* op, bool skipThis)
+{
+    if (!skipThis) {
+        return;
+    }
+
+    CallThis0TypeInfoAccessor tacc(compilationEnv_, circuit_, gate);
+    Environment env(gate, circuit_, &builder_);
+
+    if (!Uncheck()) {
+        builder_.CallTargetCheck(gate, tacc.GetFunc(), builder_.IntPtr(static_cast<int64_t>(id)), {tacc.GetThisObj()});
+    }
+
+    if (EnableTrace()) {
+        AddTraceLogs(gate, id);
+    }
+
+    GateRef ret = builder_.BuildTypedArrayIterator(acc_.GetValueIn(gate, 0), op);
     acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), ret);
 }
 
