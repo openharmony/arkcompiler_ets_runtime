@@ -244,6 +244,15 @@ void NativeInlineLowering::RunNativeInlineLowering()
             case BuiltinsStubCSigns::ID::MapHas:
                 InlineStubBuiltin(gate, 1U, argc, id, circuit_->MapHas(), skipThis);
                 break;
+            case BuiltinsStubCSigns::ID::MapKeys:
+                InlineStubBuiltin(gate, 0U, argc, id, circuit_->MapKeys(), skipThis);
+                break;
+            case BuiltinsStubCSigns::ID::MapValues:
+                InlineStubBuiltin(gate, 0U, argc, id, circuit_->MapValues(), skipThis);
+                break;
+            case BuiltinsStubCSigns::ID::MapEntries:
+                InlineStubBuiltin(gate, 0U, argc, id, circuit_->MapEntries(), skipThis);
+                break;
             case BuiltinsStubCSigns::ID::SetHas:
                 InlineStubBuiltin(gate, 1U, argc, id, circuit_->SetHas(), skipThis);
                 break;
@@ -255,6 +264,12 @@ void NativeInlineLowering::RunNativeInlineLowering()
                 break;
             case BuiltinsStubCSigns::ID::SetDelete:
                 InlineStubBuiltin(gate, 1U, argc, id, circuit_->SetDelete(), skipThis);
+                break;
+            case BuiltinsStubCSigns::ID::SetValues:
+                InlineStubBuiltin(gate, 0U, argc, id, circuit_->SetValues(), skipThis);
+                break;
+            case BuiltinsStubCSigns::ID::SetEntries:
+                InlineStubBuiltin(gate, 0U, argc, id, circuit_->SetEntries(), skipThis);
                 break;
             default:
                 break;

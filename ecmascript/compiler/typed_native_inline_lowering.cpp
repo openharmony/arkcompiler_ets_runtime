@@ -217,6 +217,15 @@ GateRef TypedNativeInlineLowering::VisitGate(GateRef gate)
         case OpCode::MAP_HAS:
             LowerToCommonStub(gate, CommonStubCSigns::JSMapHas);
             break;
+        case OpCode::MAP_KEYS:
+            LowerToCommonStub(gate, CommonStubCSigns::JSMapKeys);
+            break;
+        case OpCode::MAP_VALUES:
+            LowerToCommonStub(gate, CommonStubCSigns::JSMapValues);
+            break;
+        case OpCode::MAP_ENTRIES:
+            LowerToCommonStub(gate, CommonStubCSigns::CreateJSMapIterator);
+            break;
         case OpCode::SET_HAS:
             LowerToCommonStub(gate, CommonStubCSigns::JSSetHas);
             break;
@@ -240,6 +249,12 @@ GateRef TypedNativeInlineLowering::VisitGate(GateRef gate)
             break;
         case OpCode::SET_DELETE:
             LowerToCommonStub(gate, CommonStubCSigns::JSSetDelete);
+            break;
+        case OpCode::SET_VALUES:
+            LowerToCommonStub(gate, CommonStubCSigns::CreateJSSetIterator);
+            break;
+        case OpCode::SET_ENTRIES:
+            LowerToCommonStub(gate, CommonStubCSigns::JSSetEntries);
             break;
         default:
             break;

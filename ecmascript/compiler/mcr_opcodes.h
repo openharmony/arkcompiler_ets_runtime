@@ -127,10 +127,15 @@ namespace panda::ecmascript::kungfu {
     V(MapGet, MAP_GET, GateFlags::NO_WRITE, 1, 1, 2)                                            \
     V(DateGetTime, DATE_GET_TIME, GateFlags::NO_WRITE, 1, 1, 1)                                 \
     V(MapHas, MAP_HAS, GateFlags::NO_WRITE, 1, 1, 2)                                            \
+    V(MapKeys, MAP_KEYS, GateFlags::NO_WRITE, 1, 1, 1)                                          \
+    V(MapValues, MAP_VALUES, GateFlags::NO_WRITE, 1, 1, 1)                                      \
+    V(MapEntries, MAP_ENTRIES, GateFlags::NO_WRITE, 1, 1, 1)                                    \
     V(SetHas, SET_HAS, GateFlags::NO_WRITE, 1, 1, 2)                                            \
     V(MapDelete, MAP_DELETE, GateFlags::NO_WRITE, 1, 1, 2)                                      \
     V(SetDelete, SET_DELETE, GateFlags::NO_WRITE, 1, 1, 2)                                      \
     V(DateNow, DATE_NOW, GateFlags::NONE_FLAG, 1, 1, 0)                                         \
+    V(SetValues, SET_VALUES, GateFlags::NO_WRITE, 1, 1, 1)                                      \
+    V(SetEntries, SET_ENTRIES, GateFlags::NO_WRITE, 1, 1, 1)                                    \
     MCR_BINARY_GATE_META_DATA_CACHE_LIST(V)
 
 #define MCR_GATE_META_DATA_LIST_WITH_PC_OFFSET(V)                                                            \

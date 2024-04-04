@@ -1108,39 +1108,30 @@ void GetnextpropnameStubBuilder::GenerateCircuit()
     Return(result);
 }
 
-void CreateJSSetIteratorStubBuilder::GenerateCircuit()
-{
-    auto env = GetEnvironment();
-    Label exit(env);
-
-    GateRef glue = PtrArgument(0);
-    GateRef obj = TaggedArgument(1);
-    DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
-
-    NewObjectStubBuilder newBuilder(this);
-    newBuilder.SetGlue(glue);
-    GateRef kind = Int32(static_cast<int32_t>(IterationKind::VALUE));
-    newBuilder.CreateJSCollectionIterator<JSSetIterator, JSSet>(&result, &exit, obj, kind);
-    Bind(&exit);
-    Return(*result);
+#define CREATE_ITERATOR_STUB_BUILDER(name, collection, iterationKind)                                            \
+void name##StubBuilder::GenerateCircuit()                                                                        \
+{                                                                                                                \
+    auto env = GetEnvironment();                                                                                 \
+    Label exit(env);                                                                                             \
+                                                                                                                 \
+    GateRef glue = PtrArgument(0);                                                                               \
+    GateRef obj = TaggedArgument(1);                                                                             \
+    DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());                                                    \
+                                                                                                                 \
+    NewObjectStubBuilder newBuilder(this);                                                                       \
+    newBuilder.SetGlue(glue);                                                                                    \
+    GateRef kind = Int32(static_cast<int32_t>(IterationKind::iterationKind));                                    \
+    newBuilder.CreateJSCollectionIterator<JS##collection##Iterator, JS##collection>(&result, &exit, obj, kind);  \
+    Bind(&exit);                                                                                                 \
+    Return(*result);                                                                                             \
 }
 
-void CreateJSMapIteratorStubBuilder::GenerateCircuit()
-{
-    auto env = GetEnvironment();
-    Label exit(env);
+CREATE_ITERATOR_STUB_BUILDER(CreateJSSetIterator, Set, VALUE)
+CREATE_ITERATOR_STUB_BUILDER(JSSetEntries, Set, KEY_AND_VALUE)
+CREATE_ITERATOR_STUB_BUILDER(JSMapKeys, Map, KEY)
+CREATE_ITERATOR_STUB_BUILDER(JSMapValues, Map, VALUE)
+CREATE_ITERATOR_STUB_BUILDER(CreateJSMapIterator, Map, KEY_AND_VALUE)
 
-    GateRef glue = PtrArgument(0);
-    GateRef obj = TaggedArgument(1);
-    DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
-
-    NewObjectStubBuilder newBuilder(this);
-    newBuilder.SetGlue(glue);
-    GateRef kind = Int32(static_cast<int32_t>(IterationKind::KEY_AND_VALUE));
-    newBuilder.CreateJSCollectionIterator<JSMapIterator, JSMap>(&result, &exit, obj, kind);
-    Bind(&exit);
-    Return(*result);
-}
 
 void JSMapGetStubBuilder::GenerateCircuit()
 {

@@ -36,22 +36,29 @@ function printEntries(x : any) {
 let myMap = new Map([[0, 0], [0.0, 5], [-1, 1], [2000, 0.5], [56, "oops"], ["xyz", ", ."]]);
 
 // Check without params
+//aot: [trace] aot inline builtin: Map.entries, caller function name:func_main_0@builtinMapEntries
 print(myMap.entries()); //: [object Map Iterator]
 
 // Check with single param
+//aot: [trace] aot inline builtin: Map.entries, caller function name:func_main_0@builtinMapEntries
 print(myMap.entries(0).next().value); //: 0,5
 
 // Check with 2 params
+//aot: [trace] aot inline builtin: Map.entries, caller function name:func_main_0@builtinMapEntries
 print(myMap.entries(0, 0).next().value); //: 0,5
 
 // Check with 3 params
+//aot: [trace] aot inline builtin: Map.entries, caller function name:func_main_0@builtinMapEntries
 print(myMap.entries(-1, 10.2, 15).next().value); //: 0,5
 
 // Check own methods
+//aot: [trace] aot inline builtin: Map.entries, caller function name:func_main_0@builtinMapEntries
 print(myMap.entries().throw); //: function throw() { [native code] }
+//aot: [trace] aot inline builtin: Map.entries, caller function name:func_main_0@builtinMapEntries
 print(myMap.entries().return); //: function return() { [native code] }
 
 // Check using in loop
+//aot: [trace] aot inline builtin: Map.entries, caller function name:func_main_0@builtinMapEntries
 for (let key of myMap.entries()) {
     print(key);
 }
@@ -74,21 +81,26 @@ if (ArkTools.isAOTCompiled(printEntries)) {
     myMap.entries = replace
 }
 printEntries(2.5); //pgo: [object Map Iterator]
+//aot: [trace] Check Type: NotCallTarget1
 //aot: 2.5
 
 printEntries("abc"); //pgo: [object Map Iterator]
+//aot: [trace] Check Type: NotCallTarget1
 //aot: abc
 
 myMap.entries = true_entries
 
 // Check IR correctness inside try-block
 try {
+    //aot: [trace] aot inline builtin: Map.entries, caller function name:doEntries@builtinMapEntries
     printEntries(2.5); //: [object Map Iterator]
+    //aot: [trace] aot inline builtin: Map.entries, caller function name:doEntries@builtinMapEntries
     printEntries("abc"); //: [object Map Iterator]
 } catch (e) {
 }
 
 // Check using in a loop
+//aot: [trace] aot inline builtin: Map.entries, caller function name:func_main_0@builtinMapEntries
 let iter1 = myMap.entries();
 for (let key of iter1) {
     print(key);
@@ -108,6 +120,7 @@ for (let key of iter1) {
 print(iter1.next().value); //: undefined
 
 // Check using after inserting / deleting
+//aot: [trace] aot inline builtin: Map.entries, caller function name:func_main_0@builtinMapEntries
 let iter2 = myMap.entries();
 //aot: [trace] aot inline builtin: Map.delete, caller function name:func_main_0@builtinMapEntries
 myMap.delete(-1);

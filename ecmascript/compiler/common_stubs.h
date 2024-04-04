@@ -90,7 +90,10 @@ namespace panda::ecmascript::kungfu {
     V(Getpropiterator)                \
     V(Getnextpropname)                \
     V(CreateJSSetIterator)            \
+    V(JSSetEntries)                   \
     V(CreateJSMapIterator)            \
+    V(JSMapKeys)                      \
+    V(JSMapValues)                    \
     V(JSMapGet)                       \
     V(JSMapHas)                       \
     V(JSSetHas)                       \
