@@ -241,6 +241,9 @@ GateRef NumberSpeculativeRetype::VisitGate(GateRef gate)
             return VisitDataViewSet(gate);
         case OpCode::DATE_GET_TIME:
             return VisitDateGetTime(gate);
+        case OpCode::BIGINT_ASINTN:
+        case OpCode::BIGINT_ASUINTN:
+            return VisitBigIntAsIntN(gate);
         case OpCode::MAP_HAS:
         case OpCode::SET_HAS:
             return VisitOthers(gate, GateType::BooleanType());
@@ -1717,6 +1720,22 @@ GateRef NumberSpeculativeRetype::VisitMathTrunc(GateRef gate)
     ASSERT(acc_.GetNumValueIn(gate) == 1);
     GateRef input = acc_.GetValueIn(gate, 0);
     acc_.ReplaceValueIn(gate, CheckAndConvertToTagged(input, GateType::NumberType(), ConvertToNumber::BOOL_ONLY), 0);
+    acc_.ReplaceStateIn(gate, builder_.GetState());
+    acc_.ReplaceDependIn(gate, builder_.GetDepend());
+    return Circuit::NullGate();
+}
+
+GateRef NumberSpeculativeRetype::VisitBigIntAsIntN(GateRef gate)
+{
+    if (IsRetype()) {
+        return SetOutputType(gate, GateType::AnyType());
+    }
+    ASSERT(IsConvert());
+    Environment env(gate, circuit_, &builder_);
+    ASSERT(acc_.GetNumValueIn(gate) == 3U);
+    GateRef bits = acc_.GetValueIn(gate, 0);
+    acc_.ReplaceValueIn(gate, ConvertToTagged(CheckAndConvertToFloat64(bits, GateType::NumberType(),
+                                                                       ConvertToNumber::BOOL_ONLY)), 0);
     acc_.ReplaceStateIn(gate, builder_.GetState());
     acc_.ReplaceDependIn(gate, builder_.GetDepend());
     return Circuit::NullGate();

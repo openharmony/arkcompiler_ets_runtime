@@ -1326,6 +1326,36 @@ DEF_CALL_SIGNATURE(NumberHelperStringToDouble)
     callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
 }
 
+DEF_CALL_SIGNATURE(CallBigIntAsIntN)
+{
+    // 2 : 2 input parameters
+    CallSignature signature("CallBigIntAsIntN", 0, 2, ArgumentsOrder::DEFAULT_ORDER,
+                            VariableType::JS_POINTER());
+    *callSign = signature;
+    std::array<VariableType, 2> params = { // 2 : 2 input parameters
+        VariableType::FLOAT64(),
+        VariableType::JS_POINTER()
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetGCLeafFunction(true);
+    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
+}
+
+DEF_CALL_SIGNATURE(CallBigIntAsUintN)
+{
+    // 2 : 2 input parameters
+    CallSignature signature("CallBigIntAsUintN", 0, 2, ArgumentsOrder::DEFAULT_ORDER,
+                            VariableType::JS_POINTER());
+    *callSign = signature;
+    std::array<VariableType, 2> params = { // 2 : 2 input parameters
+        VariableType::FLOAT64(),
+        VariableType::JS_POINTER(),
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetGCLeafFunction(true);
+    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
+}
+
 DEF_CALL_SIGNATURE(GetStringToListCacheArray)
 {
     // 1 : 1 input parameters

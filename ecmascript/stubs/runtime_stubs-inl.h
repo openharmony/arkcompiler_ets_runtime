@@ -32,6 +32,7 @@
 #include "ecmascript/js_arguments.h"
 #include "ecmascript/js_async_function.h"
 #include "ecmascript/js_async_generator_object.h"
+#include "ecmascript/js_bigint.h"
 #include "ecmascript/js_for_in_iterator.h"
 #include "ecmascript/js_generator_object.h"
 #include "ecmascript/js_iterator.h"
@@ -2478,6 +2479,20 @@ JSTaggedValue RuntimeStubs::RuntimeThrowSyntaxError(JSThread *thread, const char
 JSTaggedValue RuntimeStubs::RuntimeLdBigInt(JSThread *thread, const JSHandle<JSTaggedValue> &numberBigInt)
 {
     return JSTaggedValue::ToBigInt(thread, numberBigInt);
+}
+
+JSTaggedValue RuntimeStubs::RuntimeCallBigIntAsIntN(JSThread *thread, JSTaggedValue bits, JSTaggedValue bigint)
+{
+    auto biginteger = JSHandle<BigInt>(thread, bigint);
+    JSTaggedNumber bitness = JSTaggedValue::ToNumber(thread, bits);
+    return BigInt::AsintN(thread, bitness, biginteger);
+}
+
+JSTaggedValue RuntimeStubs::RuntimeCallBigIntAsUintN(JSThread *thread, JSTaggedValue bits, JSTaggedValue bigint)
+{
+    auto biginteger = JSHandle<BigInt>(thread, bigint);
+    JSTaggedNumber bitness = JSTaggedValue::ToNumber(thread, bits);
+    return BigInt::AsUintN(thread, bitness, biginteger);
 }
 
 JSTaggedValue RuntimeStubs::RuntimeNewLexicalEnvWithName(JSThread *thread, uint16_t numVars, uint16_t scopeId)

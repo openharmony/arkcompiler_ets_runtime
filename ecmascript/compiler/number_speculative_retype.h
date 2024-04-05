@@ -99,6 +99,7 @@ private:
     template <bool IS_NAN>
     GateRef VisitNumberOrGlobalBuiltin(GateRef gate);
     GateRef VisitNumberIsInteger(GateRef gate);
+    GateRef VisitBigIntAsIntN(GateRef gate);
     GateRef VisitBooleanJump(GateRef gate);
     GateRef VisitRangeCheckPredicate(GateRef gate);
     GateRef VisitIndexCheck(GateRef gate);

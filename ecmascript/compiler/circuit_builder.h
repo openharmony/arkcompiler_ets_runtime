@@ -646,6 +646,7 @@ public:
     GateRef TypedCreateObjWithBuffer(std::vector<GateRef> &valueIn);
     template<TypedLoadOp Op>
     GateRef ConvertJSArrayHoleAsUndefined(GateRef receiver);
+    GateRef BuildBigIntAsIntN(const GateMetaData* op, std::vector<GateRef> &&args);
 
     // bit operation
     inline GateRef TaggedIsInt(GateRef x);

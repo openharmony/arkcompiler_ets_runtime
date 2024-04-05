@@ -354,6 +354,8 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(LdBigInt)                           \
     V(ToNumeric)                          \
     V(ToNumericConvertBigInt)             \
+    V(CallBigIntAsIntN)                   \
+    V(CallBigIntAsUintN)                  \
     V(DynamicImport)                      \
     V(CreateAsyncGeneratorObj)            \
     V(AsyncGeneratorResolve)              \
@@ -804,6 +806,8 @@ private:
     static inline JSTaggedValue RuntimeThrowReferenceError(JSThread *thread, JSTaggedValue prop, const char *desc);
     static inline JSTaggedValue RuntimeThrowSyntaxError(JSThread *thread, const char *message);
     static inline JSTaggedValue RuntimeLdBigInt(JSThread *thread, const JSHandle<JSTaggedValue> &numberBigInt);
+    static inline JSTaggedValue RuntimeCallBigIntAsIntN(JSThread *thread, JSTaggedValue bits, JSTaggedValue bigint);
+    static inline JSTaggedValue RuntimeCallBigIntAsUintN(JSThread *thread, JSTaggedValue bits, JSTaggedValue bigint);
     static inline JSTaggedValue RuntimeNewLexicalEnvWithName(JSThread *thread, uint16_t numVars, uint16_t scopeId);
     static inline JSTaggedValue RuntimeOptGetUnmapedArgs(JSThread *thread, uint32_t actualNumArgs);
     static inline JSTaggedValue RuntimeGetUnmapedJSArgumentObj(JSThread *thread,

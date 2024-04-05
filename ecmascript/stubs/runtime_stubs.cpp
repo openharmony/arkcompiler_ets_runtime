@@ -55,6 +55,7 @@
 #include "ecmascript/interpreter/interpreter_assembly.h"
 #include "ecmascript/js_api/js_api_arraylist.h"
 #include "ecmascript/js_array_iterator.h"
+#include "ecmascript/js_bigint.h"
 #include "ecmascript/js_date.h"
 #include "ecmascript/js_function.h"
 #include "ecmascript/js_map_iterator.h"
@@ -2520,6 +2521,22 @@ DEF_RUNTIME_STUBS(LdBigInt)
     RUNTIME_STUBS_HEADER(LdBigInt);
     JSHandle<JSTaggedValue> numberBigInt = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
     return RuntimeLdBigInt(thread, numberBigInt).GetRawData();
+}
+
+DEF_RUNTIME_STUBS(CallBigIntAsIntN)
+{
+    RUNTIME_STUBS_HEADER(CallBigIntAsIntN);
+    JSTaggedValue bits = GetArg(argv, argc, 0);  // 0: means the zeroth parameter
+    JSTaggedValue bigint = GetArg(argv, argc, 1);  // 1: means the first parameter
+    return RuntimeCallBigIntAsIntN(thread, bits, bigint).GetRawData();
+}
+
+DEF_RUNTIME_STUBS(CallBigIntAsUintN)
+{
+    RUNTIME_STUBS_HEADER(CallBigIntAsUintN);
+    JSTaggedValue bits = GetArg(argv, argc, 0);  // 0: means the zeroth parameter
+    JSTaggedValue bigint = GetArg(argv, argc, 1);  // 1: means the first parameter
+    return RuntimeCallBigIntAsUintN(thread, bits, bigint).GetRawData();
 }
 
 DEF_RUNTIME_STUBS(ToNumeric)

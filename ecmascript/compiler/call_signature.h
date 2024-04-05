@@ -432,6 +432,8 @@ private:
     V(StringsAreEquals)                         \
     V(BigIntEquals)                             \
     V(BigIntSameValueZero)                      \
+    V(CallBigIntAsIntN)                         \
+    V(CallBigIntAsUintN)                        \
     V(Dump)                                     \
     V(DebugDump)                                \
     V(DumpWithHint)                             \

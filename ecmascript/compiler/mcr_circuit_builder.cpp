@@ -1780,6 +1780,19 @@ GateRef CircuitBuilder::NumberIsSafeInteger(GateRef gate)
     return ret;
 }
 
+GateRef CircuitBuilder::BuildBigIntAsIntN(const GateMetaData* op, std::vector<GateRef> &&args)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    GateRef ret =
+        GetCircuit()->NewGate(op, MachineType::I64,
+            ConcatParams({std::vector{currentControl, currentDepend}, args}), GateType::TaggedValue());
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
+}
+
 GateRef CircuitBuilder::IsASCIICharacter(GateRef gate)
 {
     return Int32UnsignedLessThan(Int32Sub(gate, Int32(1)), Int32(base::utf_helper::UTF8_1B_MAX));

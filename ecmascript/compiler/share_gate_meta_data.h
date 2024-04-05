@@ -115,6 +115,8 @@ enum class TypedCallTargetCheckOp : uint8_t;
     V(IsUndefinedOrHole,               ISUNDEFINEDORHOLE)             \
     V(IsNotUndefinedOrHole,            ISNOTUNDEFINEDORHOLE)          \
     V(BuiltinInliningTypeGuard,        BUILTIN_INLINING_TYPE_GUARD)   \
+    V(RangeError,                      RANGE_ERROR)                   \
+    V(NotBigInt,                       NOT_BIG_INT)                   \
     V(OsrLoopExit,                     OSRLOOPEXIT)                   \
     V(IsNotEcmaObject,                 ISNOTECMAOBJECT)               \
     V(IsNotDataView,                   ISNOTDATAVIEW)                 \

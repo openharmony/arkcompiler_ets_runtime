@@ -192,6 +192,8 @@ class ObjectFactory;
     V(JSTaggedValue, MathCeil, MATH_CEIL_INDEX, ecma_roots_builtins)                                    \
     V(JSTaggedValue, MathFloor, MATH_FLOOR_INDEX, ecma_roots_builtins)                                  \
     V(JSTaggedValue, MathImul, MATH_IMUL_INDEX, ecma_roots_builtins)                                    \
+    V(JSTaggedValue, BigIntAsIntN, BIGINT_AS_INTN_INDEX, ecma_roots_builtins)                           \
+    V(JSTaggedValue, BigIntAsUintN, BIGINT_AS_UINTN_INDEX, ecma_roots_builtins)                         \
     V(JSTaggedValue, GlobalIsFinite, GLOBAL_IS_FINITE_INDEX, ecma_roots_builtins)                       \
     V(JSTaggedValue, GlobalIsNan, GLOBAL_IS_NAN_INDEX, ecma_roots_builtins)                             \
     V(JSTaggedValue, MapGet, MAP_GET_INDEX, ecma_roots_builtins)                                        \

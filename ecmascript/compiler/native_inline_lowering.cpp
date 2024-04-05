@@ -221,6 +221,10 @@ void NativeInlineLowering::RunNativeInlineLowering()
             case BuiltinsStubCSigns::ID::DataViewSetUint32:
                 TryInlineDataViewSet(gate, argc, id);
                 break;
+            case BuiltinsStubCSigns::ID::BigIntAsIntN:
+            case BuiltinsStubCSigns::ID::BigIntAsUintN:
+                TryInlineBigIntAsIntN(gate, argc, id, skipThis);
+                break;
             case BuiltinsStubCSigns::ID::MapGet:
                 InlineStubBuiltin(gate, 1U, argc, id, circuit_->MapGet(), skipThis);
                 break;
@@ -355,6 +359,30 @@ void NativeInlineLowering::TryInlineNumberIsSafeInteger(GateRef gate, size_t arg
     }
     GateRef ret = builder_.NumberIsSafeInteger(tacc.GetArg0());
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), ret);
+}
+
+void NativeInlineLowering::TryInlineBigIntAsIntN(GateRef gate, size_t argc, BuiltinsStubCSigns::ID id,
+                                                 bool skipThis)
+{
+    Environment env(gate, circuit_, &builder_);
+    bool firstParam = skipThis ? 1 : 0;
+    if (argc < 2U) {
+        return;
+    }
+    if (!Uncheck()) {
+        builder_.CallTargetCheck(gate, acc_.GetValueIn(gate, argc + firstParam),
+                                 builder_.IntPtr(static_cast<int64_t>(id)));
+    }
+    if (EnableTrace()) {
+        AddTraceLogs(gate, id);
+    }
+    GateRef bits = acc_.GetValueIn(gate, firstParam);
+    GateRef bigint = acc_.GetValueIn(gate, firstParam + 1);
+    GateRef frameState = acc_.GetFrameState(gate);
+    bool isUnsigned = (id == BuiltinsStubCSigns::ID::BigIntAsUintN);
+    const auto* op = isUnsigned ? circuit_->BigIntAsUintN() : circuit_->BigIntAsIntN();
+    GateRef ret = builder_.BuildBigIntAsIntN(op, {bits, bigint, frameState});
+    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), ret);
 }
 
 void NativeInlineLowering::TryInlineMathUnaryBuiltin(GateRef gate, size_t argc, BuiltinsStubCSigns::ID id,

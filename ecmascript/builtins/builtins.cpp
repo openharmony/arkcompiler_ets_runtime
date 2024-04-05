@@ -806,13 +806,16 @@ void Builtins::InitializeBigInt(const JSHandle<GlobalEnv> &env, const JSHandle<J
                                                      bigIntFuncInstanceHClass.GetTaggedValue());
 
     // BigInt.prototype method
-    SetFunction(env, bigIntFuncPrototype, "toLocaleString", BuiltinsBigInt::ToLocaleString, FunctionLength::ZERO);
-    SetFunction(env, bigIntFuncPrototype, "toString", BuiltinsBigInt::ToString, FunctionLength::ZERO);
-    SetFunction(env, bigIntFuncPrototype, "valueOf", BuiltinsBigInt::ValueOf, FunctionLength::ZERO);
+    for (const auto &entry : BuiltinsBigInt::GetBigIntPrototypeFunctions()) {
+        SetFunction(env, bigIntFuncPrototype, entry.GetName(), entry.GetEntrypoint(),
+                    entry.GetLength(), entry.GetBuiltinStubId());
+    }
 
     // BigInt method
-    SetFunction(env, bigIntFunction, "asUintN", BuiltinsBigInt::AsUintN, FunctionLength::TWO);
-    SetFunction(env, bigIntFunction, "asIntN", BuiltinsBigInt::AsIntN, FunctionLength::TWO);
+    for (const auto &entry : BuiltinsBigInt::GetBigIntFunctions()) {
+        SetFunction(env, bigIntFunction, entry.GetName(), entry.GetEntrypoint(),
+                    entry.GetLength(), entry.GetBuiltinStubId());
+    }
 
     // @@ToStringTag
     SetStringTagSymbol(env, bigIntFuncPrototype, "BigInt");

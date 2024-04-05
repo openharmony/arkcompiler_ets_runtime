@@ -30,6 +30,7 @@
 #include "ecmascript/compiler/variable_type.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_arraybuffer.h"
+#include "ecmascript/js_bigint.h"
 #include "ecmascript/js_dataview.h"
 #include "ecmascript/js_hclass.h"
 #include "ecmascript/js_native_pointer.h"
@@ -184,6 +185,12 @@ GateRef TypedNativeInlineLowering::VisitGate(GateRef gate)
             break;
         case OpCode::ARRAY_BUFFER_IS_VIEW:
             LowerArrayBufferIsView(gate);
+            break;
+        case OpCode::BIGINT_ASINTN:
+            LowerBigIntAsIntN<false>(gate);
+            break;
+        case OpCode::BIGINT_ASUINTN:
+            LowerBigIntAsIntN<true>(gate);
             break;
         case OpCode::NUMBER_IS_FINITE:
             LowerNumberIsFinite(gate);
@@ -988,6 +995,85 @@ void TypedNativeInlineLowering::LowerArrayBufferIsView(GateRef gate)
     builder_.Bind(&returnTaggedTrue);
     {
         result = builder_.TaggedTrue();
+        builder_.Jump(&exit);
+    }
+    builder_.Bind(&exit);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
+}
+
+template <bool IS_UNSIGNED>
+void TypedNativeInlineLowering::LowerBigIntAsIntN(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    Label hasException(&builder_);
+    Label exit(&builder_);
+    Label returnBigInt(&builder_);
+    Label notZeroBigInt(&builder_);
+    Label commonCase(&builder_);
+#if BIGINT_CONSTRUCTOR_IMPLEMENTED // NOTE: add fastpath after BigInt constructor implementing
+    Label zeroBits(&builder_);
+    Label notZeroBits(&builder_);
+#endif // BIGINT_CONSTRUCTOR_IMPLEMENTED
+
+    GateRef glue = acc_.GetGlueFromArgList();
+    GateRef bits = acc_.GetValueIn(gate, 0);
+    GateRef bigint = acc_.GetValueIn(gate, 1);
+    GateRef frameState = acc_.GetValueIn(gate, 2);
+    GateRef bitness = builder_.GetDoubleOfTDouble(bits);
+    DEFVALUE(result, (&builder_), VariableType::JS_ANY(), builder_.Undefined());
+
+    // Deoptimization if bitness is negative or more than safe number
+    GateRef safeNumber = builder_.Double(SAFE_NUMBER);
+    GateRef positiveCheck = builder_.DoubleGreaterThanOrEqual(bitness, builder_.Double(0));
+    GateRef safeCheck = builder_.DoubleLessThanOrEqual(bitness, safeNumber);
+    builder_.DeoptCheck(positiveCheck, frameState, DeoptType::RANGE_ERROR);
+    builder_.DeoptCheck(safeCheck, frameState, DeoptType::RANGE_ERROR);
+    builder_.DeoptCheck(builder_.TaggedIsBigInt(bigint), frameState, DeoptType::NOT_BIG_INT);
+
+    // Return bigint(0), if bits == 0
+#if BIGINT_CONSTRUCTOR_IMPLEMENTED // NOTE: add fastpath after BigInt constructor implementing
+    BRANCH_CIR(builder_.DoubleEqual(bitness, builder_.Double(0)), &zeroBits, &notZeroBits);
+    builder_.Bind(&zeroBits);
+    {
+        result = builder_.BigIntConstructor(0);
+        builder_.Jump(&exit);
+    }
+    builder_.Bind(&notZeroBits);
+#endif // BIGINT_CONSTRUCTOR_IMPLEMENTED
+
+    // Return bigint, if bigint == 0
+    GateRef lengthOffset = builder_.IntPtr(BigInt::LENGTH_OFFSET);
+    GateRef length = builder_.Load(VariableType::INT32(), bigint, lengthOffset);
+    GateRef isOneBit = builder_.Int32Equal(length, builder_.Int32(1));
+
+    GateRef dataOffset = builder_.IntPtr(BigInt::DATA_OFFSET);
+    GateRef firstDigit = builder_.Load(VariableType::INT32(), bigint, dataOffset);
+    GateRef isZero = builder_.Int32Equal(firstDigit, builder_.Int32(0));
+    BRANCH_CIR(builder_.BoolAnd(isOneBit, isZero), &returnBigInt, &notZeroBigInt);
+
+    // Return bigint, if bits >= max_value
+    builder_.Bind(&notZeroBigInt);
+    GateRef maxLengthBits = builder_.Double(static_cast<double>(BigInt::kMaxLengthBits));
+    BRANCH_CIR(builder_.DoubleGreaterThanOrEqual(bitness, maxLengthBits), &returnBigInt, &commonCase);
+    builder_.Bind(&returnBigInt);
+    {
+        result = bigint;
+        builder_.Jump(&exit);
+    }
+
+    // Common case
+    builder_.Bind(&commonCase);
+    if constexpr (IS_UNSIGNED) {
+        result = builder_.CallRuntime(glue, RTSTUB_ID(CallBigIntAsUintN), Gate::InvalidGateRef,
+                                      {bits, bigint}, gate);
+    } else {
+        result = builder_.CallRuntime(glue, RTSTUB_ID(CallBigIntAsIntN), Gate::InvalidGateRef,
+                                      {bits, bigint}, gate);
+    }
+    BRANCH_CIR(builder_.HasPendingException(glue), &hasException, &exit);
+    builder_.Bind(&hasException);
+    {
+        result = builder_.ExceptionConstant();
         builder_.Jump(&exit);
     }
     builder_.Bind(&exit);

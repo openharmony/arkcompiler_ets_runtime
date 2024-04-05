@@ -236,6 +236,8 @@ namespace panda::ecmascript::kungfu {
     V(GlobalIsFinite)                               \
     V(GlobalIsNan)                                  \
     V(ArrayBufferIsView)                            \
+    V(BigIntAsIntN)                                 \
+    V(BigIntAsUintN)                                \
     V(DataViewGetFloat32)                           \
     V(DataViewGetFloat64)                           \
     V(DataViewGetInt8)                              \
@@ -512,6 +514,10 @@ public:
                 return ConstantIndex::DATA_VIEW_SET_UINT16_INDEX;
             case BuiltinsStubCSigns::ID::DataViewSetUint32:
                 return ConstantIndex::DATA_VIEW_SET_UINT32_INDEX;
+            case BuiltinsStubCSigns::ID::BigIntAsIntN:
+                return ConstantIndex::BIGINT_AS_INTN_INDEX;
+            case BuiltinsStubCSigns::ID::BigIntAsUintN:
+                return ConstantIndex::BIGINT_AS_UINTN_INDEX;
             case BuiltinsStubCSigns::ID::NumberIsFinite:
                 return ConstantIndex::NUMBER_IS_FINITE_INDEX;
             case BuiltinsStubCSigns::ID::NumberIsInteger:
@@ -568,6 +574,8 @@ public:
             {DateNow, "Date.now"},
             {GlobalIsFinite, "isFinite"},
             {GlobalIsNan, "isNan"},
+            {BigIntAsIntN, "BigInt.asIntN"},
+            {BigIntAsUintN, "BigInt.asUintN"},
             {MapGet, "Map.get"},
             {MapHas, "Map.has"},
             {SetHas, "Set.has"},
@@ -622,6 +630,8 @@ public:
             {"now", DateNow},
             {"isFinite", GlobalIsFinite},
             {"isNan", GlobalIsNan},
+            {"asIntN", BigIntAsIntN},
+            {"asUintN", BigIntAsUintN},
         };
         if (str2BuiltinId.count(idStr) > 0) {
             return str2BuiltinId.at(idStr);
