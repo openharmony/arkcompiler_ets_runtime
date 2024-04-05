@@ -32,6 +32,7 @@
 #include "ecmascript/js_dataview.h"
 #include "ecmascript/js_hclass.h"
 #include "ecmascript/js_native_pointer.h"
+#include "ecmascript/js_date.h"
 #include "ecmascript/message_string.h"
 #include "macros.h"
 
@@ -193,6 +194,9 @@ GateRef TypedNativeInlineLowering::VisitGate(GateRef gate)
             break;
         case OpCode::MAP_GET:
             LowerToCommonStub(gate, CommonStubCSigns::JSMapGet);
+            break;
+        case OpCode::DATE_GET_TIME:
+            LowerDateGetTime(gate);
             break;
         default:
             break;
@@ -1513,6 +1517,15 @@ void TypedNativeInlineLowering::LowerToBuiltinStub(GateRef gate, BuiltinsStubCSi
     GateRef target = builder_.IntPtr(id * ptrSize);
     GateRef ret = builder_.Call(cs, glue, target, builder_.GetDepend(), args, Circuit::NullGate());
     acc_.ReplaceGate(gate, builder_.GetStateDepend(), ret);
+}
+
+void TypedNativeInlineLowering::LowerDateGetTime(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    GateRef obj = acc_.GetValueIn(gate, 0);
+    GateRef dateValueOffset = builder_.IntPtr(JSDate::TIME_VALUE_OFFSET);
+    GateRef result = builder_.Load(VariableType::JS_ANY(), obj, dateValueOffset);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
 }
 
 }

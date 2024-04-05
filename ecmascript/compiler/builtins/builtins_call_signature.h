@@ -231,6 +231,7 @@ namespace panda::ecmascript::kungfu {
     V(MathMin)                                      \
     V(MathMax)                                      \
     V(MathImul)                                     \
+    V(DateGetTime)                                  \
     V(GlobalIsFinite)                               \
     V(GlobalIsNan)                                  \
     V(ArrayBufferIsView)                            \
@@ -462,6 +463,8 @@ public:
                 return ConstantIndex::ITERATOR_PROTO_RETURN_INDEX;
             case BuiltinsStubCSigns::ID::StringFromCharCode:
                 return ConstantIndex::STRING_FROM_CHAR_CODE_INDEX;
+            case BuiltinsStubCSigns::ID::DateGetTime:
+                return ConstantIndex::DATE_GET_TIME_INDEX;
             case BuiltinsStubCSigns::ID::GlobalIsFinite:
                 return ConstantIndex::GLOBAL_IS_FINITE_INDEX;
             case BuiltinsStubCSigns::ID::GlobalIsNan:
@@ -552,6 +555,7 @@ public:
             {MathImul, "Math.imul"},
             {MathMax, "Math.max"},
             {MathMin, "Math.min"},
+            {DateGetTime, "Date.prototype.getTime"},
             {GlobalIsFinite, "isFinite"},
             {GlobalIsNan, "isNan"},
             {MapGet, "Map.get"},
@@ -602,6 +606,7 @@ public:
             {"next", StringIteratorProtoNext},
             {"sort", ArraySort},
             {"stringify", JsonStringify},
+            {"getTime", DateGetTime},
             {"isFinite", GlobalIsFinite},
             {"isNan", GlobalIsNan},
         };

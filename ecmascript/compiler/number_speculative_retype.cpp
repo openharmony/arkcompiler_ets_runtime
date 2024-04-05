@@ -239,6 +239,8 @@ GateRef NumberSpeculativeRetype::VisitGate(GateRef gate)
             return VisitDataViewGet(gate);
         case OpCode::DATA_VIEW_SET:
             return VisitDataViewSet(gate);
+        case OpCode::DATE_GET_TIME:
+            return VisitDateGetTime(gate);
         case OpCode::JS_BYTECODE:
         case OpCode::RUNTIME_CALL:
         case OpCode::PRIMITIVE_TYPE_CHECK:
@@ -1826,6 +1828,16 @@ GateRef NumberSpeculativeRetype::VisitDataViewSet(GateRef gate)
     acc_.ReplaceValueIn(gate, inputValue, 2); // replace input value to Double64
     acc_.ReplaceStateIn(gate, builder_.GetState());
     acc_.ReplaceDependIn(gate, builder_.GetDepend());
+    return Circuit::NullGate();
+}
+
+GateRef NumberSpeculativeRetype::VisitDateGetTime(GateRef gate)
+{
+    if (IsRetype()) {
+        return SetOutputType(gate, GateType::TaggedValue());
+    }
+    ASSERT(IsConvert());
+    // Nothing to do, because one input and it is object "this"
     return Circuit::NullGate();
 }
 
