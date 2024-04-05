@@ -64,7 +64,7 @@ public:
                               const JSHandle<JSTaggedValue> &valueX, const JSHandle<JSTaggedValue> &valueY);
     static double StringSortCompare(JSThread *thread, const JSHandle<JSTaggedValue> &valueX,
                                     const JSHandle<JSTaggedValue> &valueY);
-    static int64_t GetLength(JSThread *thread, const JSHandle<JSTaggedValue> &thisHandle);
+    static PUBLIC_API int64_t GetLength(JSThread *thread, const JSHandle<JSTaggedValue> &thisHandle);
     static int64_t GetArrayLength(JSThread *thread, const JSHandle<JSTaggedValue> &thisHandle);
     static JSTaggedValue FlattenIntoArray(JSThread *thread, const JSHandle<JSObject> &newArrayHandle,
                                           const JSHandle<JSTaggedValue> &thisObjVal, const FlattenArgs &args,

@@ -52,6 +52,11 @@ enum class MarkStatus : uint8_t {
     MARK_FINISHED,
 };
 
+enum class GCKind : uint8_t {
+    LOCAL_GC,
+    SHARED_GC
+};
+
 enum class PGOProfilerStatus : uint8_t {
     PGO_PROFILER_DISABLE,
     PGO_PROFILER_ENABLE,
@@ -280,11 +285,13 @@ public:
 
     void SetInitialBuiltinHClass(
         BuiltinTypeId type, JSHClass *builtinHClass, JSHClass *instanceHClass,
-                            JSHClass *prototypeHClass, JSHClass *prototypeOfPrototypeHClass = nullptr);
+                            JSHClass *prototypeHClass, JSHClass *prototypeOfPrototypeHClass = nullptr,
+                            JSHClass *extraHClass = nullptr);
 
     JSHClass *GetBuiltinHClass(BuiltinTypeId type) const;
 
     JSHClass *GetBuiltinInstanceHClass(BuiltinTypeId type) const;
+    JSHClass *GetBuiltinExtraHClass(BuiltinTypeId type) const;
     JSHClass *GetArrayInstanceHClass(ElementsKind kind) const;
 
     PUBLIC_API JSHClass *GetBuiltinPrototypeHClass(BuiltinTypeId type) const;
@@ -369,7 +376,7 @@ public:
         return os::thread::GetCurrentThreadId();
     }
 
-    void IterateWeakEcmaGlobalStorage(const WeakRootVisitor &visitor, bool isSharedGC = false);
+    void IterateWeakEcmaGlobalStorage(const WeakRootVisitor &visitor, GCKind gcKind = GCKind::LOCAL_GC);
 
     PUBLIC_API PropertiesCache *GetPropertiesCache() const;
 
@@ -516,9 +523,9 @@ public:
         return enableLazyBuiltins_;
     }
 
-    void SetReadyForGCIterating()
+    void SetReadyForGCIterating(bool flag)
     {
-        readyForGCIterating_ = true;
+        readyForGCIterating_ = flag;
     }
 
     bool ReadyForGCIterating() const
@@ -817,11 +824,6 @@ public:
         return glueData_.propertiesGrowStep_;
     }
 
-    void SetRandomStatePtr(uint64_t *ptr)
-    {
-        glueData_.randomStatePtr_ = reinterpret_cast<uintptr_t>(ptr);
-    }
-
     struct GlueData : public base::AlignedStruct<JSTaggedValue::TaggedTypeSize(),
                                                  BCStubEntries,
                                                  JSTaggedValue,
@@ -853,7 +855,6 @@ public:
                                                  base::AlignedPointer,
                                                  BuiltinEntries,
                                                  base::AlignedBool,
-                                                 base::AlignedPointer,
                                                  base::AlignedPointer,
                                                  base::AlignedUint32> {
         enum class Index : size_t {
@@ -888,7 +889,6 @@ public:
             BuiltinEntriesIndex,
             IsTracingIndex,
             unsharedConstpoolsIndex,
-            RandomStatePtrIndex,
             stateAndFlagsIndex,
             NumOfMembers
         };
@@ -1070,11 +1070,6 @@ public:
             return GetOffset<static_cast<size_t>(Index::stateAndFlagsIndex)>(isArch32);
         }
 
-        static size_t GetRandomStatePtrOffset(bool isArch32)
-        {
-            return GetOffset<static_cast<size_t>(Index::RandomStatePtrIndex)>(isArch32);
-        }
-
         alignas(EAS) BCStubEntries bcStubEntries_;
         alignas(EAS) JSTaggedValue exception_ {JSTaggedValue::Hole()};
         alignas(EAS) JSTaggedValue globalObject_ {JSTaggedValue::Hole()};
@@ -1106,7 +1101,6 @@ public:
         alignas(EAS) BuiltinEntries builtinEntries_;
         alignas(EAS) bool isTracing_ {false};
         alignas(EAS) uintptr_t unsharedConstpools_ {0};
-        alignas(EAS) uintptr_t randomStatePtr_ {0};
         alignas(EAS) ThreadStateAndFlags stateAndFlags_ {};
     };
     STATIC_ASSERT_EQ_ARCH(sizeof(GlueData), GlueData::SizeArch32, GlueData::SizeArch64);
@@ -1143,6 +1137,11 @@ public:
 
     void InitializeBuiltinObject(const std::string& key);
     void InitializeBuiltinObject();
+
+    void SetFullMarkRequest()
+    {
+        fullMarkRequest_ = true;
+    }
 
     inline bool IsThreadSafe()
     {
@@ -1271,6 +1270,8 @@ private:
     std::string profileName_ {""};
 
     bool finalizationCheckState_ {false};
+    // Shared heap
+    bool fullMarkRequest_ {false};
 
     CMap<ElementsKind, ConstantIndex> arrayHClassIndexMap_;
 

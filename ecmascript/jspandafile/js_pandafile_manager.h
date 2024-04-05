@@ -64,12 +64,12 @@ public:
     {
         LockHolder lock(jsPandaFileLock_);
         for (const auto &item : loadedJSPandaFiles_) {
-            if (!cb(item.second.first)) {
+            if (!cb(item.second)) {
                 return;
             }
         }
         for (const auto &item : oldJSPandaFiles_) {
-            if (!cb(item.first)) {
+            if (!cb(item)) {
                 return;
             }
         }
@@ -78,8 +78,8 @@ public:
     std::shared_ptr<JSPandaFile> FindJSPandaFileByNormalizedName(const CString &normalizedName);
     std::shared_ptr<JSPandaFile> FindJSPandaFile(const CString &filename);
     std::shared_ptr<JSPandaFile> FindMergedJSPandaFile();
-    void AddJSPandaFileVm(const EcmaVM *vm, const std::shared_ptr<JSPandaFile> &jsPandaFile);
-    void RemoveJSPandaFileVm(const EcmaVM *vm, const JSPandaFile *jsPandaFile);
+    void AddJSPandaFile(const std::shared_ptr<JSPandaFile> &jsPandaFile);
+    void RemoveJSPandaFile(const JSPandaFile *jsPandaFile);
     void ClearNameMap();
 private:
     JSPandaFileManager() = default;
@@ -95,18 +95,16 @@ private:
     std::shared_ptr<JSPandaFile> GetJSPandaFile(const panda_file::File *pf);
     std::shared_ptr<JSPandaFile> FindJSPandaFileWithChecksum(const CString &filename, uint32_t checksum);
     std::shared_ptr<JSPandaFile> FindJSPandaFileUnlocked(const CString &filename);
-    void InsertJSPandaFileVmUnlocked(const EcmaVM *vm, const std::shared_ptr<JSPandaFile> &jsPandaFile);
     void ObsoleteLoadedJSPandaFile(const CString &filename);
 
     static void *AllocateBuffer(size_t size);
     static void FreeBuffer(void *mem);
 
     RecursiveMutex jsPandaFileLock_;
-    // JSPandaFile was hold by ecma vm list.
-    using JSPandaFileVmsPair = std::pair<std::shared_ptr<JSPandaFile>, std::set<const EcmaVM *>>;
-    std::unordered_map<const CString, JSPandaFileVmsPair, CStringHash> loadedJSPandaFiles_;
+    // JSPandaFile was shared by all vm.
+    std::unordered_map<const CString, std::shared_ptr<JSPandaFile>, CStringHash> loadedJSPandaFiles_;
     // for plugin update.
-    std::unordered_map<std::shared_ptr<JSPandaFile>, std::set<const EcmaVM *>> oldJSPandaFiles_;
+    std::set<std::shared_ptr<JSPandaFile>> oldJSPandaFiles_;
     std::unordered_map<const JSPandaFile *, std::unique_ptr<DebugInfoExtractor>> extractors_;
 
     friend class JSPandaFile;

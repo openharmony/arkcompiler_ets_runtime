@@ -4,7 +4,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -13,9 +13,15 @@
  * limitations under the License.
  */
 
-#ifndef JSNAPIEXECUTEMODULEFROMBUFFER_FUZZER_H
-#define JSNAPIEXECUTEMODULEFROMBUFFER_FUZZER_H
-
-#define FUZZ_PROJECT_NAME "jsnapiexecutemodulefrombuffer_fuzzer.h"
-
-#endif
+class Items {
+    public static test(itemMap){
+        itemMap.forEach((value) => { // OneItem
+            value.length; // OneItem.value.length
+        });
+    }
+}
+let itemMap = new Map();
+for (let i = 1; i < 10; i++) {
+    itemMap.set(i, new Int8Array(i * 6));
+}
+Items.test(itemMap)

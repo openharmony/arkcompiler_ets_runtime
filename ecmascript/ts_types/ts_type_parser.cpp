@@ -881,7 +881,7 @@ JSHandle<JSTaggedValue> TSTypeParser::ParseObjectPGOType(GlobalTSTypeRef gt, PGO
 {
     JSHandle<ConstantPool> constpoolHandle(tsManager_->GetConstantPool());
     JSTaggedValue unsharedConstpool = thread_->GetCurrentEcmaContext()->
-        FindUnsharedConstpool(constpoolHandle.GetTaggedValue());
+        FindOrCreateUnsharedConstpool(constpoolHandle.GetTaggedValue());
     JSTaggedValue obj = ConstantPool::GetLiteralFromCache<ConstPoolType::OBJECT_LITERAL>(
         thread_, unsharedConstpool, info.cpIdx, info.recordName);
     JSHandle<JSObject> objHandle(thread_, obj);

@@ -909,22 +909,6 @@ inline bool JSTaggedValue::IsArray(JSThread *thread) const
     return false;
 }
 
-inline bool JSTaggedValue::IsSArray(JSThread *thread) const
-{
-    if (!IsHeapObject()) {
-        return false;
-    }
-    JSHClass *jsHclass = GetTaggedObject()->GetClass();
-    if (jsHclass->IsJSSharedArray()) {
-        return true;
-    }
-
-    if (jsHclass->IsJSProxy()) {
-        return JSProxy::Cast(GetTaggedObject())->IsArray(thread);
-    }
-    return false;
-}
-
 inline bool JSTaggedValue::IsCOWArray() const
 {
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsCOWArray();

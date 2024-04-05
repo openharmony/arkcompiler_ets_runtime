@@ -31,8 +31,9 @@ enum ErrorFlag {
 };
 class ContainerError {
 public:
-    static JSTaggedValue BusinessError(JSThread *thread, int32_t errorCode, const char *msg);
-    static JSTaggedValue BindError(JSThread *thread, const char *msg);
+    static PUBLIC_API JSTaggedValue BusinessError(JSThread *thread, int32_t errorCode, const char *msg);
+    static PUBLIC_API JSTaggedValue BindError(JSThread *thread, const char *msg);
+    static PUBLIC_API JSTaggedValue ParamError(JSThread *thread, const char *msg);
 };
 } // namespace panda::ecmascript::containers
 #endif // ECMASCRIPT_CONTAINERS_CONTAINERS_ERROR_H

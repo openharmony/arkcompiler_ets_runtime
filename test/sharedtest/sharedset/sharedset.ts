@@ -235,3 +235,92 @@ try {
   print("sharedSet add[unshared]: " + e + ", errCode: " + e.code);
 }
 print("===Type check end===");
+
+print("===Class inheritance test begin ===");
+class SubSharedSet<T> extends SharedSet {
+  desc: string = "I'am SubSharedSet";
+  constructor(entries?: T[] | null) {
+    "use sendable";
+    super(entries)
+  }
+}
+
+let subSharedset = new SubSharedSet<number>();
+subSharedset.add(1);
+print(subSharedset.has(1));
+print(subSharedset.size);
+
+subSharedset = new SubSharedSet<number>([1, 2, 3]);
+print(subSharedset.has(1));
+print(subSharedset.has(2));
+print(subSharedset.has(3));
+print(subSharedset.size);
+
+try {
+  let obj = {};
+  subSharedset = new SubSharedSet<Object>([obj]);
+  print(subSharedset.size);
+} catch (e) {
+  print("SubSharedSet add[unshared]: " + e + ", errCode: " + e.code);
+}
+
+subSharedset = new SubSharedSet<string>(["one", "two", "three"]);
+for (const [key, _] of subSharedset.entries()) {
+  print("SubSharedSet key[for-of]: " + key);
+}
+
+try {
+  subSharedset = new SubSharedSet<number>([1, 2, 3, 4]);
+  print(subSharedset.size);
+  subSharedset.forEach((key: number, _: number, set: SubSharedSet) => {
+    if (key % 2 == 0) {
+      set.delete(key);
+    }
+  });
+} catch (e) {
+  print("SubSharedSet Delete Scenario[forEach]: " + e + ", errCode: " + e.code);
+}
+
+class SubSubSharedSet<T> extends SubSharedSet {
+  constructor(entries?: T[] | null) {
+    "use sendable";
+    super(entries)
+  }
+}
+
+let subSubSharedSet = new SubSubSharedSet<number>([1, 2, 3]);
+print(subSubSharedSet.has(1));
+print(subSubSharedSet.has(2));
+print(subSubSharedSet.has(3));
+print(subSubSharedSet.size);
+
+try {
+  subSubSharedSet["extension"] = "value";
+} catch(e) {
+  print("add extension(.): " + e);
+}
+try {
+  subSubSharedSet.extension = "value";
+} catch(e) {
+  print("add extension([]): " + e);
+}
+
+try {
+  let obj = {};
+  subSubSharedSet = new SubSubSharedSet<Object>([obj]);
+  print(subSubSharedSet.size);
+} catch (e) {
+  print("SubSubSharedSet add[unshared]: " + e + ", errCode: " + e.code);
+}
+
+try {
+  subSubSharedSet = new SubSubSharedSet<number>([1, 2, 3, 4]);
+  subSubSharedSet.forEach((key: number, _: number, set: SubSubSharedSet) => {
+    if (key % 2 == 0) {
+      set.delete(key);
+    }
+  });
+} catch (e) {
+  print("SubSubSharedSet Delete Scenario[forEach]: " + e + ", errCode: " + e.code);
+}
+print("===Class inheritance test end ===");

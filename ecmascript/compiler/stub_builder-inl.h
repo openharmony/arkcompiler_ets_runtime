@@ -609,9 +609,9 @@ inline GateRef StubBuilder::TaggedIsStringIterator(GateRef obj)
     return env_->GetBuilder()->TaggedIsStringIterator(obj);
 }
 
-inline GateRef StubBuilder::TaggedIsShared(GateRef obj)
+inline GateRef StubBuilder::TaggedIsSharedObj(GateRef obj)
 {
-    return env_->GetBuilder()->TaggedIsShared(obj);
+    return env_->GetBuilder()->TaggedIsSharedObj(obj);
 }
 
 inline GateRef StubBuilder::TaggedIsStringOrSymbol(GateRef obj)
@@ -1069,12 +1069,6 @@ inline void StubBuilder::SetPropertiesArray(VariableType type, GateRef glue, Gat
     Store(type, glue, object, propertiesOffset, propsArray);
 }
 
-inline GateRef StubBuilder::GetHash(GateRef object)
-{
-    GateRef hashOffset = IntPtr(ECMAObject::HASH_OFFSET);
-    return Load(VariableType::JS_ANY(), object, hashOffset);
-}
-
 inline void StubBuilder::SetHash(GateRef glue, GateRef object, GateRef hash)
 {
     GateRef hashOffset = IntPtr(ECMAObject::HASH_OFFSET);
@@ -1276,7 +1270,7 @@ inline GateRef StubBuilder::IsJsProxy(GateRef obj)
 
 inline GateRef StubBuilder::IsJSShared(GateRef obj)
 {
-    return TaggedIsShared(obj);
+    return TaggedIsSharedObj(obj);
 }
 
 inline GateRef StubBuilder::IsJSGlobalObject(GateRef obj)
@@ -2203,6 +2197,11 @@ inline GateRef StubBuilder::IsSpecialContainer(GateRef jsType)
     return BoolOr(
         Int32Equal(jsType, Int32(static_cast<int32_t>(JSType::JS_API_ARRAY_LIST))),
         Int32Equal(jsType, Int32(static_cast<int32_t>(JSType::JS_API_VECTOR))));
+}
+
+inline GateRef StubBuilder::IsSharedArray(GateRef jsType)
+{
+    return Int32Equal(jsType, Int32(static_cast<int32_t>(JSType::JS_SHARED_ARRAY)));
 }
 
 inline GateRef StubBuilder::IsFastTypeArray(GateRef jsType)

@@ -28,29 +28,29 @@
     /*   DataView.prototype.get%Type% ( byteOffset ) */                             \
     /* For %Type% of 2 or more bytes: */                                            \
     /*   DataView.prototype.get%Type% ( byteOffset [ , littleEndian ] ) */          \
-    V("getFloat32",     GetFloat32,     1, INVALID)                                 \
-    V("getFloat64",     GetFloat64,     1, INVALID)                                 \
-    V("getInt8",        GetInt8,        1, INVALID)                                 \
-    V("getInt16",       GetInt16,       1, INVALID)                                 \
-    V("getInt32",       GetInt32,       1, INVALID)                                 \
-    V("getBigInt64",    GetBigInt64,    1, INVALID)                                 \
-    V("getUint16",      GetUint16,      1, INVALID)                                 \
-    V("getUint32",      GetUint32,      1, INVALID)                                 \
-    V("getUint8",       GetUint8,       1, INVALID)                                 \
-    V("getBigUint64",   GetBigUint64,   1, INVALID)                                 \
+    V("getFloat32",     GetFloat32,     1, DataViewGetFloat32  )                    \
+    V("getFloat64",     GetFloat64,     1, DataViewGetFloat64  )                    \
+    V("getInt8",        GetInt8,        1, DataViewGetInt8     )                    \
+    V("getInt16",       GetInt16,       1, DataViewGetInt16    )                    \
+    V("getInt32",       GetInt32,       1, DataViewGetInt32    )                    \
+    V("getBigInt64",    GetBigInt64,    1, INVALID             )                    \
+    V("getUint16",      GetUint16,      1, DataViewGetUint16   )                    \
+    V("getUint32",      GetUint32,      1, DataViewGetUint32   )                    \
+    V("getUint8",       GetUint8,       1, DataViewGetUint8    )                    \
+    V("getBigUint64",   GetBigUint64,   1, INVALID             )                    \
     /* For %Type% of 1 bytes: */                                                    \
     /*   DataView.prototype.setInt8 ( byteOffset, value ) */                        \
     /* For %Type% of 2 or more bytes: */                                            \
     /*   DataView.prototype.setInt16 ( byteOffset, value [ , littleEndian ] ) */    \
-    V("setFloat32",     SetFloat32,     2, INVALID)                                 \
-    V("setFloat64",     SetFloat64,     2, INVALID)                                 \
-    V("setInt8",        SetInt8,        2, INVALID)                                 \
-    V("setInt16",       SetInt16,       2, INVALID)                                 \
-    V("setInt32",       SetInt32,       2, INVALID)                                 \
+    V("setFloat32",     SetFloat32,     2, DataViewSetFloat32)                      \
+    V("setFloat64",     SetFloat64,     2, DataViewSetFloat64)                      \
+    V("setInt8",        SetInt8,        2, DataViewSetInt8)                         \
+    V("setInt16",       SetInt16,       2, DataViewSetInt16)                        \
+    V("setInt32",       SetInt32,       2, DataViewSetInt32)                        \
     V("setBigInt64",    SetBigInt64,    2, INVALID)                                 \
-    V("setUint8",       SetUint8,       2, INVALID)                                 \
-    V("setUint16",      SetUint16,      2, INVALID)                                 \
-    V("setUint32",      SetUint32,      2, INVALID)                                 \
+    V("setUint8",       SetUint8,       2, DataViewSetUint8)                        \
+    V("setUint16",      SetUint16,      2, DataViewSetUint16)                       \
+    V("setUint32",      SetUint32,      2, DataViewSetUint32)                       \
     V("setBigUint64",   SetBigUint64,   2, INVALID)
 
 namespace panda::ecmascript::builtins {

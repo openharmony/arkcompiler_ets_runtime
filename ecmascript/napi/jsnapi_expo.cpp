@@ -93,6 +93,7 @@
 #include "ecmascript/serializer/value_serializer.h"
 #include "ecmascript/tagged_array.h"
 #include "ecmascript/js_weak_container.h"
+#include "ecmascript/ohos/aot_crash_info.h"
 #ifdef ARK_SUPPORT_INTL
 #include "ecmascript/js_bigint.h"
 #include "ecmascript/js_collator.h"
@@ -717,6 +718,13 @@ bool JSValueRef::IsAsyncGeneratorObject()
 bool JSValueRef::IsAsyncFunction()
 {
     return JSNApiHelper::ToJSTaggedValue(this).IsJSAsyncFunction();
+}
+
+bool JSValueRef::IsConcurrentFunction()
+{
+    JSHandle<JSTaggedValue> funcVal = JSNApiHelper::ToJSHandle(this);
+    JSHandle<JSFunction> transFunc = JSHandle<JSFunction>::Cast(funcVal);
+    return transFunc->GetFunctionKind() == ecmascript::FunctionKind::CONCURRENT_FUNCTION;
 }
 
 bool JSValueRef::IsArgumentsObject()
@@ -2352,8 +2360,7 @@ Local<FunctionRef> FunctionRef::NewSendableClassFunction(const EcmaVM *vm,
     JSHandle<JSFunction> constructor = factory->NewSFunctionByHClass(
         reinterpret_cast<void *>(nativeFunc), constructorHClass, ecmascript::FunctionKind::CLASS_CONSTRUCTOR);
 
-    infos.nonStaticPropertiesInfo.attributes.front() = PropertyAttribute(
-        JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>::Cast(constructor)), false, false, false);
+    sendable.SetSConstructor(constructor);
     JSObject::SetSProperties(thread, prototype, prototypeHClass, sendable.GetNonStaticDescs());
     JSObject::SetSProperties(thread, JSHandle<JSObject>::Cast(constructor), constructorHClass,
                              sendable.GetStaticDescs());
@@ -2728,6 +2735,20 @@ JSExecutionScope::~JSExecutionScope()
     isRevert_ = false;
 }
 
+// ------------------------------------ JsiNativeScope -----------------------------------------------
+
+JsiNativeScope::JsiNativeScope(const EcmaVM *vm)
+{
+    thread_ = vm->GetAssociatedJSThread();
+    oldThreadState_ = static_cast<uint16_t>(thread_->GetState());
+    thread_->UpdateState(ecmascript::ThreadState::NATIVE);
+}
+
+JsiNativeScope::~JsiNativeScope()
+{
+    thread_->UpdateState(static_cast<ecmascript::ThreadState>(oldThreadState_));
+}
+
 // ------------------------------------ JsiRuntimeCallInfo -----------------------------------------------
 void *JsiRuntimeCallInfo::GetData()
 {
@@ -2975,11 +2996,6 @@ void JSNApi::SetProfilerState(const EcmaVM *vm, bool value)
 void JSNApi::SetSourceMapTranslateCallback(EcmaVM *vm, SourceMapTranslateCallback callback)
 {
     vm->SetSourceMapTranslateCallback(callback);
-}
-
-void JSNApi::SetNativeStackCallback(EcmaVM *vm, NativeStackCallback callback)
-{
-    vm->SetNativeStackCallback(callback);
 }
 
 void JSNApi::SetSourceMapCallback(EcmaVM *vm, SourceMapCallback callback)
@@ -3249,7 +3265,8 @@ bool JSNApi::StartDebugger([[maybe_unused]] EcmaVM *vm, [[maybe_unused]] const D
 #endif // ECMASCRIPT_SUPPORT_DEBUGGER
 }
 
-// for old process.
+// rk
+// FA or Stage
 bool JSNApi::StartDebuggerForOldProcess([[maybe_unused]] EcmaVM *vm, [[maybe_unused]] const DebugOption &option,
                                         [[maybe_unused]] int32_t instanceId,
                                         [[maybe_unused]] const DebuggerPostTask &debuggerPostTask)
@@ -3306,7 +3323,8 @@ bool JSNApi::StartDebuggerForOldProcess([[maybe_unused]] EcmaVM *vm, [[maybe_unu
 #endif // ECMASCRIPT_SUPPORT_DEBUGGER
 }
 
-// for socketpair process in ohos platform.
+// ohos or emulator
+// FA or Stage
 bool JSNApi::StartDebuggerForSocketPair([[maybe_unused]] int tid, [[maybe_unused]] int socketfd)
 {
 #if defined(ECMASCRIPT_SUPPORT_DEBUGGER)
@@ -3343,8 +3361,11 @@ bool JSNApi::StartDebuggerForSocketPair([[maybe_unused]] int tid, [[maybe_unused
 #endif // ECMASCRIPT_SUPPORT_DEBUGGER
 }
 
+// ohos or emulator
+// FA or Stage
 // release or debug hap : aa start
 //                        aa start -D
+//                        aa start -p
 //                        new worker
 bool JSNApi::NotifyDebugMode([[maybe_unused]] int tid,
                              [[maybe_unused]] EcmaVM *vm,
@@ -3375,7 +3396,11 @@ bool JSNApi::NotifyDebugMode([[maybe_unused]] int tid,
     jsDebuggerManager->SetDebugLibraryHandle(std::move(handle.Value()));
     jsDebuggerManager->SetDebugMode(option.isDebugMode && debugApp);
     jsDebuggerManager->SetIsDebugApp(debugApp);
+#ifdef PANDA_TARGET_ARM32
     ret = StartDebuggerForOldProcess(vm, option, instanceId, debuggerPostTask);
+#else
+    ret = true;
+#endif
 
     // store debugger postTask in inspector.
     using StoreDebuggerInfo = void (*)(int, EcmaVM *, const DebuggerPostTask &);
@@ -3387,6 +3412,23 @@ bool JSNApi::NotifyDebugMode([[maybe_unused]] int tid,
         return false;
     }
     reinterpret_cast<StoreDebuggerInfo>(symOfStoreDebuggerInfo.Value())(tid, vm, debuggerPostTask);
+
+#ifndef PANDA_TARGET_ARM32
+    // Initialize debugger
+    using InitializeDebuggerForSocketpair = bool(*)(void*);
+    auto sym = panda::os::library_loader::ResolveSymbol(
+        jsDebuggerManager->GetDebugLibraryHandle(), "InitializeDebuggerForSocketpair");
+    if (!sym) {
+        LOG_ECMA(ERROR) << "[NotifyDebugMode] Resolve InitializeDebuggerForSocketpair symbol fail: "
+            << sym.Error().ToString();
+        return false;
+    }
+    if (!reinterpret_cast<InitializeDebuggerForSocketpair>(sym.Value())(vm)) {
+        LOG_ECMA(ERROR) << "[NotifyDebugMode] InitializeDebuggerForSocketpair fail";
+        return false;
+    }
+#endif
+
     if (option.isDebugMode) {
         using WaitForDebugger = void (*)(EcmaVM *);
         auto symOfWaitForDebugger = panda::os::library_loader::ResolveSymbol(
@@ -3577,8 +3619,48 @@ void JSNApi::SetDeviceDisconnectCallback(EcmaVM *vm, DeviceDisconnectCallback cb
     vm->SetDeviceDisconnectCallback(cb);
 }
 
+bool JSNApi::IsAotCrash()
+{
+    std::string realOutPath;
+    std::string arkProfilePath = ecmascript::ohos::AotCrashInfo::GetSandBoxPath();
+    std::string sanboxPath = panda::os::file::File::GetExtendedFilePath(arkProfilePath);
+    if (!ecmascript::RealPath(sanboxPath, realOutPath, false)) {
+        return false;
+    }
+    realOutPath = realOutPath + "/" + ecmascript::ohos::AotCrashInfo::GetCrashFileName();
+    ecmascript::ohos::AotCrashInfo aotCrashInfo;
+    std::string soBuildId = aotCrashInfo.GetRuntimeBuildId();
+    std::ifstream ifile(realOutPath.c_str());
+    int aotCrashCount = 0;
+    int othersCrashCount = 0;
+    if (ifile.is_open()) {
+        std::string iline;
+        while (ifile >> iline) {
+            std::string buildId = ecmascript::ohos::AotCrashInfo::GetBuildId(iline);
+            ecmascript::ohos::CrashType type = ecmascript::ohos::AotCrashInfo::GetCrashType(iline);
+            if (type == ecmascript::ohos::CrashType::AOT && buildId == soBuildId) {
+                aotCrashCount++;
+            }
+            if (type == ecmascript::ohos::CrashType::OTHERS && buildId == soBuildId) {
+                othersCrashCount++;
+            }
+        }
+        ifile.close();
+        if (aotCrashCount >= ecmascript::ohos::AotCrashInfo::GetAotCrashCount()
+            || othersCrashCount >= ecmascript::ohos::AotCrashInfo::GetOthersCrashCount()) {
+            return true;
+        }
+    }
+    return false;
+}
+
 void JSNApi::LoadAotFile(EcmaVM *vm, const std::string &moduleName)
 {
+    if (IsAotCrash()) {
+        LOG_ECMA(INFO) << "Stop load AOT because there are more crashes";
+        return;
+    }
+    
     CROSS_THREAD_AND_EXCEPTION_CHECK(vm);
     ecmascript::ThreadManagedScope scope(thread);
     if (!ecmascript::AnFileDataManager::GetInstance()->IsEnable()) {

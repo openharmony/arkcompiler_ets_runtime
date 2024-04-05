@@ -28,7 +28,7 @@
 #include "ecmascript/message_string.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/object_fast_operator-inl.h"
-#include "ecmascript/shared_objects/concurrent_modification_scope.h"
+#include "ecmascript/shared_objects/concurrent_api_scope.h"
 
 namespace panda::ecmascript {
 using base::ArrayHelper;
@@ -36,17 +36,24 @@ using base::ArrayHelper;
 JSTaggedValue JSSharedArray::LengthGetter([[maybe_unused]] JSThread *thread, const JSHandle<JSObject> &self,
                                           SCheckMode checkMode)
 {
-    [[maybe_unused]] ConcurrentModScope<JSSharedArray> scope(thread, self.GetTaggedValue().GetTaggedObject(),
+    [[maybe_unused]] ConcurrentApiScope<JSSharedArray> scope(thread, self.GetTaggedValue().GetTaggedObject(),
                                                              checkMode);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception());
     return JSTaggedValue(JSSharedArray::Cast(*self)->GetLength());
 }
 
-bool JSSharedArray::LengthSetter(JSThread *thread, const JSHandle<JSObject> &self, const JSHandle<JSTaggedValue> &value,
-                                 bool mayThrow, SCheckMode checkMode)
+bool JSSharedArray::DummyLengthSetter([[maybe_unused]] JSThread *thread,
+                                      [[maybe_unused]] const JSHandle<JSObject> &self,
+                                      [[maybe_unused]] const JSHandle<JSTaggedValue> &value,
+                                      [[maybe_unused]] bool mayThrow)
 {
-    [[maybe_unused]] ConcurrentModScope<JSSharedArray, ModType::WRITE> scope(
-        thread, self.GetTaggedValue().GetTaggedObject(), checkMode);
+    // length is the read only property for Shared Array
+    return true;
+}
+
+bool JSSharedArray::LengthSetter(JSThread *thread, const JSHandle<JSObject> &self, const JSHandle<JSTaggedValue> &value,
+                                 bool mayThrow)
+{
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
     uint32_t newLen = 0;
     if (!JSTaggedValue::ToArrayLength(thread, value, &newLen) && mayThrow) {
@@ -96,7 +103,7 @@ JSHandle<JSTaggedValue> JSSharedArray::ArrayCreate(JSThread *thread, JSTaggedNum
     if (arrayLength > MAX_ARRAY_INDEX) {
         JSHandle<JSTaggedValue> exception(thread, JSTaggedValue::Exception());
         auto error = containers::ContainerError::BusinessError(thread, containers::ErrorFlag::TYPE_ERROR,
-                                                               "Parameter error.array length must less than 2^32 - 1");
+                                                               "Parameter error.Array length must less than 2^32.");
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, exception);
     }
     uint32_t normalArrayLength = length.ToUint32();
@@ -107,7 +114,6 @@ JSHandle<JSTaggedValue> JSSharedArray::ArrayCreate(JSThread *thread, JSTaggedNum
     JSHandle<JSObject> obj = factory->NewJSObjectByConstructor(arrayFunc, newTarget);
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
     // 9. Set the [[Extensible]] internal slot of A to true.
-    obj->GetJSHClass()->SetExtensible(true);
 
     // 10. Perform OrdinaryDefineOwnProperty(A, "length", PropertyDescriptor{[[Value]]: length, [[Writable]]:
     // true, [[Enumerable]]: false, [[Configurable]]: false}).
@@ -135,7 +141,7 @@ JSTaggedValue JSSharedArray::ArraySpeciesCreate(JSThread *thread, const JSHandle
     // Let C be undefined.
     // Let isArray be IsArray(originalArray).
     JSHandle<JSTaggedValue> originalValue(originalArray);
-    bool isSArray = originalValue->IsSArray(thread);
+    bool isSArray = originalValue->IsJSSharedArray();
     // ReturnIfAbrupt(isArray).
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     // If isArray is true, then
@@ -272,7 +278,7 @@ bool JSSharedArray::ArraySetLength(JSThread *thread, const JSHandle<JSObject> &a
     // 3. - 7. Convert Desc.[[Value]] to newLen.
     uint32_t newLen = 0;
     if (!JSTaggedValue::ToArrayLength(thread, desc.GetValue(), &newLen)) {
-        THROW_RANGE_ERROR_AND_RETURN(thread, "array length must less than 2^32 - 1", false);
+        THROW_RANGE_ERROR_AND_RETURN(thread, "array length must equal or less than 2^32.", false);
     }
     // 8. Set newLenDesc.[[Value]] to newLen.
     // (Done below, if needed.)
@@ -371,6 +377,25 @@ bool JSSharedArray::IsLengthString(JSThread *thread, const JSHandle<JSTaggedValu
     return key.GetTaggedValue() == thread->GlobalConstants()->GetLengthString();
 }
 
+JSHandle<JSSharedArray> JSSharedArray::CreateArrayFromList(JSThread *thread, const JSHandle<TaggedArray> &elements)
+{
+    // Assert: elements is a List whose elements are all ECMAScript language values.
+    // 2. Let array be ArrayCreate(0).
+    uint32_t length = elements->GetLength();
+
+    // 4. For each element e of elements
+    auto env = thread->GetEcmaVM()->GetGlobalEnv();
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<JSFunction> arrayFunc(env->GetSharedArrayFunction());
+    JSHandle<JSObject> obj = factory->NewJSObjectByConstructor(arrayFunc);
+    JSSharedArray::Cast(*obj)->SetArrayLength(thread, length);
+    obj->SetElements(thread, elements);
+    obj->GetJSHClass()->SetExtensible(false);
+    JSHandle<JSSharedArray> arr(obj);
+
+    return arr;
+}
+
 JSHandle<JSTaggedValue> JSSharedArray::FastGetPropertyByValue(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
                                                               uint32_t index)
 {
@@ -380,9 +405,10 @@ JSHandle<JSTaggedValue> JSSharedArray::FastGetPropertyByValue(JSThread *thread, 
 }
 
 JSHandle<JSTaggedValue> JSSharedArray::FastGetPropertyByValue(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
-                                                              const JSHandle<JSTaggedValue> &key)
+                                                              const JSHandle<JSTaggedValue> &key, SCheckMode sCheckMode)
 {
-    auto result = ObjectFastOperator::FastGetPropertyByValue(thread, obj.GetTaggedValue(), key.GetTaggedValue());
+    auto result =
+        ObjectFastOperator::FastGetPropertyByValue(thread, obj.GetTaggedValue(), key.GetTaggedValue(), sCheckMode);
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
     return JSHandle<JSTaggedValue>(thread, result);
 }
@@ -397,7 +423,46 @@ bool JSSharedArray::FastSetPropertyByValue(JSThread *thread, const JSHandle<JSTa
                                            const JSHandle<JSTaggedValue> &key, const JSHandle<JSTaggedValue> &value)
 {
     return ObjectFastOperator::FastSetPropertyByValue(thread, obj.GetTaggedValue(), key.GetTaggedValue(),
-                                                      value.GetTaggedValue());
+                                                      value.GetTaggedValue(), SCheckMode::SKIP);
+}
+
+OperationResult JSSharedArray::GetProperty(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
+                                           const JSHandle<JSTaggedValue> &key, SCheckMode sCheckMode)
+{
+    // Add Concurrent check for shared array
+    [[maybe_unused]] ConcurrentApiScope<JSSharedArray> scope(thread, obj.GetTaggedValue().GetTaggedObject(),
+                                                             sCheckMode);
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread,
+                                      OperationResult(thread, JSTaggedValue::Exception(), PropertyMetaData(false)));
+
+    ObjectOperator op(thread, obj, key);
+    // Out of bounds check for shared array
+    if ((obj->IsJSSharedArray() && sCheckMode == SCheckMode::CHECK) && op.IsElement() && !op.IsFound()) {
+        auto error = containers::ContainerError::BusinessError(thread, containers::ErrorFlag::RANGE_ERROR,
+                                                               "The value of index is out of range.");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error,
+                                         OperationResult(thread, JSTaggedValue::Exception(), PropertyMetaData(false)));
+    }
+    return OperationResult(thread, JSObject::GetProperty(thread, &op), PropertyMetaData(op.IsFound()));
+}
+
+bool JSSharedArray::SetProperty(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
+                                const JSHandle<JSTaggedValue> &key, const JSHandle<JSTaggedValue> &value, bool mayThrow,
+                                SCheckMode sCheckMode)
+{
+    // Concurrent check for shared array
+    [[maybe_unused]] ConcurrentApiScope<JSSharedArray, ModType::WRITE> scope(
+        thread, obj.GetTaggedValue().GetTaggedObject(), sCheckMode);
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
+    // 2 ~ 4 findProperty in Receiver, Obj and its parents
+    ObjectOperator op(thread, obj, key);
+    // Out of bounds check for shared array
+    if ((obj->IsJSSharedArray() && sCheckMode == SCheckMode::CHECK) && op.IsElement() && !op.IsFound()) {
+        auto error = containers::ContainerError::BusinessError(thread, containers::ErrorFlag::RANGE_ERROR,
+                                                               "The value of index is out of range.");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, false);
+    }
+    return JSObject::SetProperty(&op, value, mayThrow);
 }
 
 // ecma2024 23.1.3.20 Array.prototype.sort(comparefn)

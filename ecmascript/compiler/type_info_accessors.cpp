@@ -687,6 +687,23 @@ LoadBulitinObjTypeInfoAccessor::LoadBulitinObjTypeInfoAccessor(const JSThread *t
     FetchBuiltinsTypes();
 }
 
+bool AccBuiltinObjTypeInfoAccessor::IsMonoIgnoreElemKind() const
+{
+    if (IsMono()) {
+        return true;
+    }
+    if (types_.empty()) {
+        return false;
+    }
+    auto firstIter = types_[0];
+    for (auto type : types_) {
+        if (type.IsBuiltinsType() != firstIter.IsBuiltinsType()) {
+            return false;
+        }
+    }
+    return true;
+}
+
 bool AccBuiltinObjTypeInfoAccessor::IsAllString() const
 {
     if (types_.empty()) {
@@ -772,7 +789,7 @@ void CreateObjWithBufferTypeInfoAccessor::Init()
     auto imm = acc_.GetConstantValue(index_);
     auto methodOffset = acc_.TryGetMethodOffset(GetGate());
     JSTaggedValue cp = tsManager_->GetConstantPool(methodOffset);
-    JSTaggedValue unsharedCp = thread_->GetCurrentEcmaContext()->FindUnsharedConstpool(cp);
+    JSTaggedValue unsharedCp = thread_->GetCurrentEcmaContext()->FindOrCreateUnsharedConstpool(cp);
     JSTaggedValue obj = ConstantPool::GetLiteralFromCache<ConstPoolType::OBJECT_LITERAL>(
         tsManager_->GetEcmaVM()->GetJSThread(), unsharedCp, imm, recordName_);
     objHandle_ = JSHandle<JSObject>(thread_, obj);

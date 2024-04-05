@@ -132,6 +132,7 @@ public:
 
     static int32_t GetObjectHash(const EcmaVM *ecmaVM, const JSHandle<JSTaggedValue> &tagged);
     static void GetObjectClassName(const EcmaVM *ecmaVM, Local<JSValueRef> &tagged, std::string &className);
+    static void SwitchThreadStateRunningOrNative(const EcmaVM *ecmaVM, ThreadState newState);
 
     // HotReload
     static std::vector<DebugInfoExtractor *> GetPatchExtractors(const EcmaVM *ecmaVm, const std::string &url);

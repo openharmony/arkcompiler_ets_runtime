@@ -96,7 +96,6 @@ using JSTaggedType = uint64_t;
 using ConcurrentCallback = void (*)(Local<JSValueRef> result, bool success, void *taskInfo, void *data);
 using SourceMapCallback = std::function<std::string(const std::string& rawStack)>;
 using SourceMapTranslateCallback = std::function<bool(std::string& url, int& line, int& column)>;
-using NativeStackCallback = std::function<std::string()>;
 using DeviceDisconnectCallback = std::function<bool()>;
 
 #define ECMA_DISALLOW_COPY(className)      \
@@ -457,6 +456,7 @@ public:
     bool IsArgumentsObject();
     bool IsGeneratorFunction();
     bool IsAsyncFunction();
+    bool IsConcurrentFunction();
     bool IsJSLocale();
     bool IsJSDateTimeFormat();
     bool IsJSRelativeTimeFormat();
@@ -1033,6 +1033,18 @@ private:
     bool isRevert_ = false;
 };
 
+class ECMA_PUBLIC_API JsiNativeScope {
+public:
+    explicit JsiNativeScope(const EcmaVM *vm);
+    ~JsiNativeScope();
+    ECMA_DISALLOW_COPY(JsiNativeScope);
+    ECMA_DISALLOW_MOVE(JsiNativeScope);
+
+private:
+    JSThread *thread_;
+    uint16_t oldThreadState_;
+};
+
 /**
  * JsiRuntimeCallInfo is used for ace_engine and napi, is same to ark EcamRuntimeCallInfo except data.
  */
@@ -1315,7 +1327,6 @@ public:
     static void SetNativePtrGetter(EcmaVM *vm, void* cb);
     static void SetSourceMapCallback(EcmaVM *vm, SourceMapCallback cb);
     static void SetSourceMapTranslateCallback(EcmaVM *vm, SourceMapTranslateCallback cb);
-    static void SetNativeStackCallback(EcmaVM *vm, NativeStackCallback cb);
     static void SetHostEnqueueJob(const EcmaVM* vm, Local<JSValueRef> cb);
     static EcmaVM* CreateEcmaVM(const ecmascript::JSRuntimeOptions &options);
     static void PreFork(EcmaVM *vm);
@@ -1377,6 +1388,7 @@ private:
     static uintptr_t ClearWeak(const EcmaVM *vm, uintptr_t localAddress);
     static bool IsWeak(const EcmaVM *vm, uintptr_t localAddress);
     static void DisposeGlobalHandleAddr(const EcmaVM *vm, uintptr_t addr);
+    static bool IsAotCrash();
     template<typename T>
     friend class Global;
     template<typename T>

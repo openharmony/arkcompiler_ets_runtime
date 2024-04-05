@@ -21,6 +21,14 @@
 #include "ecmascript/js_dataview.h"
 #include "ecmascript/js_typed_array.h"
 
+// List of functions in ArrayBuffer, excluding the '@@' properties.
+// V(name, func, length, stubIndex)
+// where BuiltinsArrayBuffer::func refers to the native implementation of ArrayBuffer[name].
+//       kungfu::BuiltinsStubCSigns::stubIndex refers to the builtin stub index, or INVALID if no stub available.
+#define BUILTIN_ARRAY_BUFFER_FUNCTIONS(V)                                           \
+    /* ArrayBuffer.isView ( arg ) */                                                \
+    V("isView", IsView, 1, ArrayBufferIsView)
+
 namespace panda::ecmascript::builtins {
 static constexpr double NUMBER_HALF = 0.5;
 static constexpr uint32_t BITS_EIGHT = 8;
@@ -72,6 +80,12 @@ public:
     // es12 25.1.2.7 IsBigIntElementType ( type )
     static bool IsBigIntElementType(DataViewType type);
 
+    // Excluding the '@@' internal properties
+    static Span<const base::BuiltinFunctionEntry> GetArrayBufferFunctions()
+    {
+        return Span<const base::BuiltinFunctionEntry>(ARRAY_BUFFER_FUNCTIONS);
+    }
+
     static JSTaggedValue FastSetValueInBuffer(JSThread* thread, JSTaggedValue arrBuf, uint32_t byteIndex,
                                               DataViewType type, double val, bool littleEndian);
     static JSTaggedValue TryFastSetValueInBuffer(JSThread *thread, JSTaggedValue arrBuf, uint32_t byteBeginOffset,
@@ -98,6 +112,12 @@ public:
     static void *GetDataPointFromBuffer(JSTaggedValue arrBuf, uint32_t byteOffset = 0);
 
 private:
+#define BUILTIN_ARRAY_BUFFER_ENTRY(name, func, length, id)                                                             \
+    base::BuiltinFunctionEntry::Create((name), (BuiltinsArrayBuffer::func), (length), (kungfu::BuiltinsStubCSigns::id)),
+
+    static constexpr std::array ARRAY_BUFFER_FUNCTIONS = {BUILTIN_ARRAY_BUFFER_FUNCTIONS(BUILTIN_ARRAY_BUFFER_ENTRY)};
+#undef BUILTIN_ARRAY_BUFFER_ENTRY
+
     template <typename T>
     static T LittleEndianToBigEndian(T liValue);
     template<typename T>
@@ -140,6 +160,9 @@ private:
                                           uint8_t *block, uint32_t byteIndex, bool littleEndian);
 
     static JSTaggedValue TypedArrayToList(JSThread *thread, JSHandle<JSTypedArray>& items);
+
+    static constexpr uint64_t MAX_NATIVE_SIZE_LIMIT = 4_GB;
+    static constexpr char const *NATIVE_SIZE_OUT_OF_LIMIT_MESSAGE = "total array buffer size out of limit(4_GB)";
 
     friend class BuiltinsArray;
     friend class BuiltinsSharedArray;

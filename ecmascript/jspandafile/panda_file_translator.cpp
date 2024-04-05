@@ -125,7 +125,7 @@ JSHandle<Program> PandaFileTranslator::GenerateProgram(EcmaVM *vm, const JSPanda
         } else {
             sconstpool = JSHandle<ConstantPool>(vm->GetJSThread(), constpoolVal);
             unsharedConstpool = JSHandle<ConstantPool>(
-                vm->GetJSThread(), context->FindUnsharedConstpool(sconstpool.GetTaggedValue()));
+                vm->GetJSThread(), context->FindOrCreateUnsharedConstpool(sconstpool.GetTaggedValue()));
         }
 
         if (!jsPandaFile->IsBundlePack()) {
@@ -311,7 +311,7 @@ JSHandle<ConstantPool> PandaFileTranslator::AllocateSharedConstPool(EcmaVM *vm, 
     uint32_t constpoolIndex = jsPandaFile->GetConstpoolIndex();
     JSHandle<ConstantPool> sconstpool = factory->NewSConstantPool(constpoolIndex);
     sconstpool->SetJSPandaFile(jsPandaFile);
-    sconstpool->SetUnsharedConstpoolIndex(JSTaggedValue(context->GetAndIncreaseUnsharedConstpoolCount()));
+    sconstpool->SetUnsharedConstpoolIndex(JSTaggedValue(context->GetAndIncreaseSharedConstpoolCount()));
     sconstpool->SetSharedConstpoolId(JSTaggedValue(0)); // 0 :old version has one constpool.
     return sconstpool;
 }

@@ -84,7 +84,7 @@ HWTEST_F_L0(PandaFileTranslatorTest, GenerateProgram)
     MethodLiteral *method2 = new MethodLiteral(methodId[1]);
     pf->SetMethodLiteralToMap(method1);
     pf->SetMethodLiteralToMap(method2);
-    pfManager->AddJSPandaFileVm(instance, pf);
+    pfManager->AddJSPandaFile(pf);
 
     JSHandle<ecmascript::Program> program1 = pfManager->GenerateProgram(vm, pf.get(), std::string_view("func"));
     JSHandle<JSFunction> mainFunc1(thread, program1->GetMainFunction());
@@ -97,7 +97,7 @@ HWTEST_F_L0(PandaFileTranslatorTest, GenerateProgram)
     JSHandle<JSTaggedValue> funcName2 = JSFunction::GetFunctionName(thread, JSHandle<JSFunctionBase>(mainFunc2));
     EXPECT_STREQ(EcmaStringAccessor(JSHandle<EcmaString>::Cast(funcName2)).ToCString().c_str(), "func_main_0");
 
-    pfManager->RemoveJSPandaFileVm(instance, pf.get());
+    pfManager->RemoveJSPandaFile(pf.get());
 }
 
 HWTEST_F_L0(PandaFileTranslatorTest, TranslateClasses)
@@ -123,7 +123,7 @@ HWTEST_F_L0(PandaFileTranslatorTest, TranslateClasses)
         methodId.push_back(mda.GetMethodId());
     });
     pf->UpdateMainMethodIndex(methodId[0].GetOffset());
-    pfManager->AddJSPandaFileVm(instance, pf);
+    pfManager->AddJSPandaFile(pf);
     EXPECT_TRUE(pf->FindMethodLiteral(methodId[0].GetOffset()) == nullptr);
 
     const char *methodName = MethodLiteral::GetMethodName(pf.get(), methodId[0]);
@@ -131,6 +131,6 @@ HWTEST_F_L0(PandaFileTranslatorTest, TranslateClasses)
     EXPECT_TRUE(pf->FindMethodLiteral(methodId[0].GetOffset()) != nullptr);
     EXPECT_EQ(pf->FindMethodLiteral(methodId[0].GetOffset())->GetFunctionKind(),
                                     ecmascript::FunctionKind::NONE_FUNCTION);
-    pfManager->RemoveJSPandaFileVm(instance, pf.get());
+    pfManager->RemoveJSPandaFile(pf.get());
 }
 }  // namespace panda::test

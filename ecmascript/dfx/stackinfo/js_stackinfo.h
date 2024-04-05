@@ -19,6 +19,7 @@
 #include <csignal>
 #include "ecmascript/compiler/aot_file/aot_file_manager.h"
 #include "ecmascript/extractortool/src/source_map.h"
+#include "ecmascript/ohos/aot_crash_info.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 
@@ -111,6 +112,8 @@ public:
     static AOTFileManager *loader;
 };
 void CrashCallback(char *buf, size_t len, void *ucontext);
+void BuildCrashInfo();
+uint64_t GetMicrosecondsTimeStamp();
 } // namespace panda::ecmascript
 #endif  // ECMASCRIPT_DFX_STACKINFO_JS_STACKINFO_H
 extern "C" int step_ark_managed_native_frame(

@@ -42,6 +42,7 @@
 #include "ecmascript/js_typed_array.h"
 #include "ecmascript/message_string.h"
 #include "ecmascript/module/js_module_namespace.h"
+#include "ecmascript/shared_objects/js_shared_array.h"
 #include "ecmascript/tagged_array.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/symbol_table.h"
@@ -645,7 +646,7 @@ JSHandle<JSObject> JSTaggedValue::ToObject(JSThread *thread, const JSHandle<JSTa
 
 // 7.3.1 Get ( O, P )
 OperationResult JSTaggedValue::GetProperty(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
-                                           const JSHandle<JSTaggedValue> &key)
+                                           const JSHandle<JSTaggedValue> &key, SCheckMode sCheckMode)
 {
     if (obj->IsUndefined() || obj->IsNull() || obj->IsHole()) {
         std::string keyStr = EcmaStringAccessor(ToString(thread, key)).ToStdString();
@@ -671,7 +672,7 @@ OperationResult JSTaggedValue::GetProperty(JSThread *thread, const JSHandle<JSTa
         return GetJSAPIProperty(thread, obj, key);
     }
 
-    return JSObject::GetProperty(thread, obj, key);
+    return JSObject::GetProperty(thread, obj, key, sCheckMode);
 }
 
 OperationResult JSTaggedValue::GetProperty(JSThread *thread, const JSHandle<JSTaggedValue> &obj, uint32_t key)
@@ -885,6 +886,10 @@ bool JSTaggedValue::DefineOwnProperty(JSThread *thread, const JSHandle<JSTaggedV
 {
     if (obj->IsJSArray()) {
         return JSArray::DefineOwnProperty(thread, JSHandle<JSObject>(obj), key, desc);
+    }
+
+    if (obj->IsJSSharedArray()) {
+        return JSSharedArray::DefineOwnProperty(thread, JSHandle<JSObject>(obj), key, desc);
     }
 
     if (obj->IsJSProxy()) {

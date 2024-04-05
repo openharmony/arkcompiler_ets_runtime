@@ -173,6 +173,9 @@ private:
     void UpdateExtraProfileTypeInfo(ApEntityId abcId, const CString& recordName, EntityId methodId, WorkNode* current);
     WorkNode* PopFromProfileQueue();
     void SaveProfiler(bool force);
+    bool IsJSHClassNotEqual(JSHClass *receiver, JSHClass *hold, JSHClass *exceptRecvHClass,
+                            JSHClass *exceptRecvHClassOnHeap, JSHClass *exceptHoldHClass,
+                            JSHClass *exceptPrototypeOfPrototypeHClass);
 
     class PGOProfilerTask : public Task {
     public:

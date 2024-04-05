@@ -16,9 +16,12 @@
 #ifndef ECMASCRIPT_COMPILER_TYPED_NATIVE_INLINE_LOWERING_H
 #define ECMASCRIPT_COMPILER_TYPED_NATIVE_INLINE_LOWERING_H
 
+#include <cstdint>
+#include "ecmascript/compiler/circuit.h"
 #include "ecmascript/compiler/combined_pass_visitor.h"
 #include "ecmascript/compiler/pass_manager.h"
-
+#include "ecmascript/compiler/share_gate_meta_data.h"
+#include "ecmascript/compiler/variable_type.h"
 namespace panda::ecmascript::kungfu {
 class TypedNativeInlineLowering : public PassVisitor {
 public:
@@ -35,6 +38,10 @@ public:
     ~TypedNativeInlineLowering() = default;
     GateRef VisitGate(GateRef gate) override;
 private:
+    enum class DataViewProtoFunc : uint8_t { GET = 0, SET = 1 };
+
+    enum ElmentSize : uint32_t { BITS_8 = 1, BITS_16 = 2, BITS_32 = 4, BITS_64 = 8 };
+
     void LowerGeneralUnaryMath(GateRef gate, RuntimeStubCSigns::ID stubId);
     void LowerMathAtan2(GateRef gate);
     void LowerTrunc(GateRef gate);
@@ -54,6 +61,20 @@ private:
     GateRef BuildRounding(GateRef gate, GateRef value, OpCode op);
     void LowerTaggedRounding(GateRef gate);
     void LowerDoubleRounding(GateRef gate);
+    void LowerArrayBufferIsView(GateRef gate);
+    void LowerDataViewProtoFunc(GateRef gate, DataViewProtoFunc proto);
+    void LowerNumberIsFinite(GateRef gate);
+    void LowerNumberIsInteger(GateRef gate);
+    void LowerNumberIsNaN(GateRef gate);
+    void LowerNumberIsSafeInteger(GateRef gate);
+    GateRef BuiltinIdToSize(GateRef ID);
+    GateRef GetValueFromBuffer(GateRef bufferIndex, GateRef dataPointer, GateRef isLittleEndian, GateRef builtinId);
+    GateRef SetValueInBuffer(GateRef bufferIndex,
+                             GateRef value,
+                             GateRef dataPointer,
+                             GateRef isLittleEndian,
+                             GateRef builtinId,
+                             GateRef glue);
 
     GateRef BuildIntAbs(GateRef value);
     GateRef BuildDoubleAbs(GateRef value);

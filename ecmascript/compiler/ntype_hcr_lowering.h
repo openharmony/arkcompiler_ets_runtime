@@ -74,7 +74,7 @@ private:
     JSTaggedValue GetArrayLiteralValue(uint32_t cpId, uint32_t cpIdx)
     {
         JSTaggedValue cp = GetConstantpoolValue(cpId);
-        JSTaggedValue unsharedCp = thread_->GetCurrentEcmaContext()->FindUnsharedConstpool(cp);
+        JSTaggedValue unsharedCp = thread_->GetCurrentEcmaContext()->FindOrCreateUnsharedConstpool(cp);
         return ConstantPool::GetLiteralFromCache<ConstPoolType::ARRAY_LITERAL>(
             thread_, unsharedCp, cpIdx, recordName_);
     }

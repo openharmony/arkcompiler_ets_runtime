@@ -13,9 +13,10 @@
  * limitations under the License.
  */
 
-#include "libpandabase/utils/hash.h"
-
 #include "ecmascript/compiler/mcr_circuit_builder.h"
+
+#include "ecmascript/compiler/circuit_builder.h"
+#include "ecmascript/compiler/share_gate_meta_data.h"
 #include "ecmascript/message_string.h"
 #include "ecmascript/stubs/runtime_stubs-inl.h"
 #include "ecmascript/stubs/runtime_stubs.h"
@@ -714,6 +715,51 @@ GateRef CircuitBuilder::IsNotUndefinedOrHoleCheck(GateRef value)
     return ret;
 }
 
+GateRef CircuitBuilder::IsEcmaObjectCheck(GateRef gate)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    auto frameState = acc_.FindNearestFrameState(currentDepend);
+    GateRef ret = GetCircuit()->NewGate(circuit_->IsEcmaObjectCheck(),
+                                        MachineType::I1,
+                                        {currentControl, currentDepend, gate, frameState},
+                                        GateType::NJSValue());
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
+}
+
+GateRef CircuitBuilder::IsDataViewCheck(GateRef gate)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    auto frameState = acc_.FindNearestFrameState(currentDepend);
+    GateRef ret = GetCircuit()->NewGate(circuit_->IsDataViewCheck(),
+                                        MachineType::I1,
+                                        {currentControl, currentDepend, gate, frameState},
+                                        GateType::NJSValue());
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
+}
+
+GateRef CircuitBuilder::IsTaggedBooleanCheck(GateRef value)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    auto frameState = acc_.FindNearestFrameState(currentDepend);
+    GateRef ret = GetCircuit()->NewGate(circuit_->IsTaggedBooleanCheck(),
+                                        MachineType::I1,
+                                        {currentControl, currentDepend, value, frameState},
+                                        GateType::NJSValue());
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
+}
+
 GateRef CircuitBuilder::ValueCheckNegOverflow(GateRef value)
 {
     auto currentLabel = env_->GetCurrentLabel();
@@ -1168,43 +1214,6 @@ GateRef CircuitBuilder::GetLengthFromString(GateRef value)
     return Int32LSR(len, Int32(EcmaString::STRING_LENGTH_SHIFT_COUNT));
 }
 
-GateRef CircuitBuilder::Rotl(GateRef word, uint32_t shift)
-{
-    static constexpr uint32_t MAX_BITS = 32;
-    return Int32Or(Int32LSL(word, Int32(shift)), Int32LSR(word, Int32(MAX_BITS - shift)));
-}
-
-GateRef CircuitBuilder::CalcHashcodeForInt(GateRef value)
-{
-    GateRef rawVal = ChangeTaggedPointerToInt64(value);
-    GateRef low = TruncInt64ToInt32(rawVal);
-    GateRef k1 = Int32Mul(low, Int32(MurmurHash32Const::C1));
-    GateRef k2 = Rotl(k1, MurmurHash32Const::MAIN_FIRST_SHIFT);
-    GateRef k3 = Int32Mul(k2, Int32(MurmurHash32Const::C2));
-    GateRef hash1 = Int32Xor(Int32(DEFAULT_SEED), k3);
-    GateRef hash2 = Rotl(hash1, MurmurHash32Const::MAIN_SECOND_SHIFT);
-    GateRef hash3 = Int32Add(Int32Mul(hash2, Int32(MurmurHash32Const::MAIN_MULTIPLICATOR)),
-        Int32(MurmurHash32Const::MAIN_CONSTANT));
-
-    GateRef high = TruncInt64ToInt32(Int64LSR(rawVal, Int64(32U)));
-    GateRef k4 = Int32Mul(high, Int32(MurmurHash32Const::C1));
-    GateRef k5 = Rotl(k4, MurmurHash32Const::MAIN_FIRST_SHIFT);
-    GateRef k6 = Int32Mul(k5, Int32(MurmurHash32Const::C2));
-    GateRef hash4 = Int32Xor(hash3, k6);
-    GateRef hash5 = Rotl(hash4, MurmurHash32Const::MAIN_SECOND_SHIFT);
-    GateRef hash6 = Int32Add(Int32Mul(hash5, Int32(MurmurHash32Const::MAIN_MULTIPLICATOR)),
-        Int32(MurmurHash32Const::MAIN_CONSTANT));
-
-    GateRef hash7 = Int32Xor(hash6, Int32(8U));
-    // Finalize
-    GateRef hash8 = Int32Xor(hash7, Int32LSR(hash7, Int32(MurmurHash32Const::FINALIZE_FIRST_SHIFT)));
-    GateRef hash9 = Int32Mul(hash8, Int32(MurmurHash32Const::FINALIZE_FIRST_MULTIPLICATOR));
-    GateRef hash10 = Int32Xor(hash9, Int32LSR(hash9, Int32(MurmurHash32Const::FINALIZE_SECOND_SHIFT)));
-    GateRef hash11 = Int32Mul(hash10, Int32(MurmurHash32Const::FINALIZE_SECOND_MULTIPLICATOR));
-    GateRef hash12 = Int32Xor(hash11, Int32LSR(hash11, Int32(MurmurHash32Const::FINALIZE_THIRD_SHIFT)));
-    return hash12;
-}
-
 GateRef CircuitBuilder::GetHashcodeFromString(GateRef glue, GateRef value)
 {
     ASSERT(!GetCircuit()->IsOptimizedJSFunctionFrame());
@@ -1630,6 +1639,102 @@ GateRef CircuitBuilder::StringFromSingleCharCode(GateRef gate)
     auto currentDepend = currentLabel->GetDepend();
     GateRef ret =
         GetCircuit()->NewGate(circuit_->StringFromSingleCharCode(), MachineType::I64,
+            { currentControl, currentDepend, gate }, GateType::AnyType());
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
+}
+
+GateRef CircuitBuilder::ArrayBufferIsView(GateRef gate)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    GateRef ret = GetCircuit()->NewGate(
+        circuit_->ArrayBufferIsView(), MachineType::I64, {currentControl, currentDepend, gate}, GateType::AnyType());
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
+}
+
+GateRef CircuitBuilder::DataViewGet(
+    GateRef thisobj, GateRef index, GateRef dataViewCallID, GateRef isLittleEndian, GateRef frameState)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    GateRef ret = GetCircuit()->NewGate(
+        circuit_->DataViewGet(),
+        MachineType::I64,
+        {currentControl, currentDepend, thisobj, index, dataViewCallID, isLittleEndian, frameState},
+        GateType::AnyType());
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
+}
+
+GateRef CircuitBuilder::DataViewSet(
+    GateRef thisobj, GateRef index, GateRef value, GateRef dataViewCallID, GateRef isLittleEndian, GateRef frameState)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    GateRef ret = GetCircuit()->NewGate(
+        circuit_->DataViewSet(),
+        MachineType::I64,
+        {currentControl, currentDepend, thisobj, index, value, dataViewCallID, isLittleEndian, frameState},
+        GateType::TaggedValue());
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
+}
+
+GateRef CircuitBuilder::NumberIsFinite(GateRef gate)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    GateRef ret =
+        GetCircuit()->NewGate(circuit_->NumberIsFinite(), MachineType::I64,
+            { currentControl, currentDepend, gate }, GateType::AnyType());
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
+}
+
+GateRef CircuitBuilder::NumberIsInteger(GateRef gate)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    GateRef ret =
+        GetCircuit()->NewGate(circuit_->NumberIsInteger(), MachineType::I64,
+            { currentControl, currentDepend, gate }, GateType::AnyType());
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
+}
+
+GateRef CircuitBuilder::NumberIsNaN(GateRef gate)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    GateRef ret =
+        GetCircuit()->NewGate(circuit_->NumberIsNaN(), MachineType::I64,
+            { currentControl, currentDepend, gate }, GateType::AnyType());
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
+}
+
+GateRef CircuitBuilder::NumberIsSafeInteger(GateRef gate)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    GateRef ret =
+        GetCircuit()->NewGate(circuit_->NumberIsSafeInteger(), MachineType::I64,
             { currentControl, currentDepend, gate }, GateType::AnyType());
     currentLabel->SetControl(ret);
     currentLabel->SetDepend(ret);

@@ -401,9 +401,9 @@ void JSThread::IterateHandleWithCheck(const RootVisitor &visitor, const RootRang
     }
 }
 
-void JSThread::IterateWeakEcmaGlobalStorage(const WeakRootVisitor &visitor, bool isSharedGC)
+void JSThread::IterateWeakEcmaGlobalStorage(const WeakRootVisitor &visitor, GCKind gcKind)
 {
-    auto callBack = [this, visitor, isSharedGC](WeakNode *node) {
+    auto callBack = [this, visitor, gcKind](WeakNode *node) {
         JSTaggedValue value(node->GetObject());
         if (!value.IsHeapObject()) {
             return;
@@ -422,7 +422,7 @@ void JSThread::IterateWeakEcmaGlobalStorage(const WeakRootVisitor &visitor, bool
             if (!freeGlobalCallBack) {
                 // If no callback, dispose global immediately
                 DisposeGlobalHandle(ToUintPtr(node));
-            } else if (isSharedGC) {
+            } else if (gcKind == GCKind::SHARED_GC) {
                 // For shared GC, free global should defer execute in its own thread
                 weakNodeFreeGlobalCallbacks_.push_back(std::make_pair(freeGlobalCallBack, node->GetReference()));
             } else {
@@ -513,7 +513,7 @@ void JSThread::ResetGuardians()
 
 void JSThread::SetInitialBuiltinHClass(
     BuiltinTypeId type, JSHClass *builtinHClass, JSHClass *instanceHClass,
-    JSHClass *prototypeHClass, JSHClass *prototypeOfPrototypeHClass)
+    JSHClass *prototypeHClass, JSHClass *prototypeOfPrototypeHClass, JSHClass *extraHClass)
 {
     size_t index = BuiltinHClassEntries::GetEntryIndex(type);
     auto &entry = glueData_.builtinHClassEntries_.entries[index];
@@ -522,11 +522,13 @@ void JSThread::SetInitialBuiltinHClass(
                     << ", builtinHClass = " << builtinHClass
                     << ", instanceHClass = " << instanceHClass
                     << ", prototypeHClass = " << prototypeHClass
-                    << ", prototypeOfPrototypeHClass = " << prototypeOfPrototypeHClass;
+                    << ", prototypeOfPrototypeHClass = " << prototypeOfPrototypeHClass
+                    << ", extraHClass = " << extraHClass;
     entry.builtinHClass = builtinHClass;
     entry.instanceHClass = instanceHClass;
     entry.prototypeHClass = prototypeHClass;
     entry.prototypeOfPrototypeHClass = prototypeOfPrototypeHClass;
+    entry.extraHClass = extraHClass;
 }
 
 JSHClass *JSThread::GetBuiltinHClass(BuiltinTypeId type) const
@@ -539,6 +541,12 @@ JSHClass *JSThread::GetBuiltinInstanceHClass(BuiltinTypeId type) const
 {
     size_t index = BuiltinHClassEntries::GetEntryIndex(type);
     return glueData_.builtinHClassEntries_.entries[index].instanceHClass;
+}
+
+JSHClass *JSThread::GetBuiltinExtraHClass(BuiltinTypeId type) const
+{
+    size_t index = BuiltinHClassEntries::GetEntryIndex(type);
+    return glueData_.builtinHClassEntries_.entries[index].extraHClass;
 }
 
 JSHClass *JSThread::GetArrayInstanceHClass(ElementsKind kind) const
@@ -1058,6 +1066,9 @@ void JSThread::TransferToRunning()
     }
     if (!vm_->GetSharedNativePointerCallbacks().empty()) {
         InvokeSharedNativePointerCallbacks();
+    }
+    if (fullMarkRequest_) {
+        fullMarkRequest_ = const_cast<Heap*>(vm_->GetHeap())->TryTriggerFullMarkBySharedLimit();
     }
 }
 

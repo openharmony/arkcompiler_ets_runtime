@@ -1215,8 +1215,7 @@ void Builtins::InitializeSet(const JSHandle<GlobalEnv> &env, JSHandle<JSTaggedVa
         factory_->NewEcmaHClass(JSSet::SIZE, JSType::JS_SET, setFuncPrototypeValue);
     // Set() = new Function()
     JSHandle<JSTaggedValue> setFunction(
-        NewBuiltinConstructor(env, setFuncPrototype, BuiltinsSet::SetConstructor, "Set", FunctionLength::ZERO,
-                              BUILTINS_STUB_ID(SetConstructor)));
+        NewBuiltinConstructor(env, setFuncPrototype, BuiltinsSet::SetConstructor, "Set", FunctionLength::ZERO));
     JSFunction::SetFunctionPrototypeOrInstanceHClass(thread_,
                                                      JSHandle<JSFunction>(setFunction),
                                                      setFuncInstanceHClass.GetTaggedValue());
@@ -1292,8 +1291,7 @@ void Builtins::InitializeMap(const JSHandle<GlobalEnv> &env, JSHandle<JSTaggedVa
         factory_->NewEcmaHClass(JSMap::SIZE, JSType::JS_MAP, mapFuncPrototypeValue);
     // Map() = new Function()
     JSHandle<JSTaggedValue> mapFunction(
-        NewBuiltinConstructor(env, mapFuncPrototype, BuiltinsMap::MapConstructor, "Map", FunctionLength::ZERO,
-                              BUILTINS_STUB_ID(MapConstructor)));
+        NewBuiltinConstructor(env, mapFuncPrototype, BuiltinsMap::MapConstructor, "Map", FunctionLength::ZERO));
     // Map().prototype = Map.Prototype & Map.prototype.constructor = Map()
     JSFunction::SetFunctionPrototypeOrInstanceHClass(thread_,
                                                      JSHandle<JSFunction>(mapFunction),
@@ -1551,7 +1549,7 @@ void Builtins::InitializeMath(const JSHandle<GlobalEnv> &env, const JSHandle<JST
     [[maybe_unused]] EcmaHandleScope scope(thread_);
     JSHandle<JSHClass> mathClass = factory_->NewEcmaHClass(JSObject::SIZE, JSType::JS_OBJECT, objFuncPrototypeVal);
     JSHandle<JSObject> mathObject = factory_->NewJSObjectWithInit(mathClass);
-    RandomGenerator::InitRandom(thread_);
+    RandomGenerator::InitRandom();
 
     for (const base::BuiltinFunctionEntry &entry: Math::GetMathFunctions()) {
         SetFunction(env, mathObject, entry.GetName(), entry.GetEntrypoint(),
@@ -2217,6 +2215,8 @@ void Builtins::Initialize##Type(const JSHandle<GlobalEnv> &env, const JSHandle<J
     arrayFunction->SetProtoOrHClass(thread_, arrFuncInstanceHClass.GetTaggedValue());                           \
     SetConstant(arrFuncPrototype, "BYTES_PER_ELEMENT", JSTaggedValue(bytesPerElement));                         \
     SetConstant(JSHandle<JSObject>(arrayFunction), "BYTES_PER_ELEMENT", JSTaggedValue(bytesPerElement));        \
+    /* %TypedArray%.protoofprototype (where %TypedArray% is one of Int8Array, Uint8Array, etc.) */              \
+    JSTaggedValue protoOfPrototypeValue = arrFuncPrototype->GetJSHClass()->GetPrototype();                      \
     env->Set##Type##Function(thread_, arrayFunction);                                                           \
     env->Set##Type##FunctionPrototype(thread_, arrFuncPrototypeValue);                                          \
     env->Set##Type##RootHclass(thread_, arrFuncInstanceHClass);                                                 \
@@ -2225,7 +2225,9 @@ void Builtins::Initialize##Type(const JSHandle<GlobalEnv> &env, const JSHandle<J
     thread_->SetInitialBuiltinHClass(BuiltinTypeId::TYPE,                                                       \
         arrayFunction->GetJSHClass(),                                                                           \
         *arrFuncInstanceHClass,                                                                                 \
-        arrFuncPrototype->GetJSHClass());                                                                       \
+        arrFuncPrototype->GetJSHClass(),                                                                        \
+        protoOfPrototypeValue.IsHeapObject() ? protoOfPrototypeValue.GetTaggedObject()->GetClass() : nullptr,   \
+        *arrFuncInstanceHClassOnHeap);                                                                          \
 }
 
 BUILTIN_TYPED_ARRAY_TYPES(BUILTIN_TYPED_ARRAY_DEFINE_INITIALIZE)
@@ -2271,7 +2273,14 @@ void Builtins::InitializeArrayBuffer(const JSHandle<GlobalEnv> &env, const JSHan
     SetFunction(env, arrayBufferFuncPrototype, "slice", ArrayBuffer::Slice, FunctionLength::TWO);
 
     // ArrayBuffer method
-    SetFunction(env, arrayBufferFunction, "isView", ArrayBuffer::IsView, FunctionLength::ONE);
+    for (const base::BuiltinFunctionEntry& entry: ArrayBuffer::GetArrayBufferFunctions()) {
+        SetFunction(env,
+                    arrayBufferFunction,
+                    entry.GetName(),
+                    entry.GetEntrypoint(),
+                    entry.GetLength(),
+                    entry.GetBuiltinStubId());
+    }
 
     // 24.1.3.3 get ArrayBuffer[@@species]
     JSHandle<JSTaggedValue> speciesSymbol = env->GetSpeciesSymbol();

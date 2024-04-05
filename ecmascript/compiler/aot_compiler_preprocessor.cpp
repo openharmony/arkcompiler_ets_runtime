@@ -37,6 +37,7 @@ CompilationOptions::CompilationOptions(EcmaVM *vm, JSRuntimeOptions &runtimeOpti
     logOption_ = runtimeOptions.GetCompilerLogOption();
     logMethodsList_ = runtimeOptions.GetMethodsListForLog();
     compilerLogTime_ = runtimeOptions.IsEnableCompilerLogTime();
+    deviceIsScreenOff_ = runtimeOptions.GetDeviceState();
     maxAotMethodSize_ = runtimeOptions.GetMaxAotMethodSize();
     maxMethodsInModule_ = runtimeOptions.GetCompilerModuleMethods();
     hotnessThreshold_ = runtimeOptions.GetPGOHotnessThreshold();
@@ -63,6 +64,7 @@ CompilationOptions::CompilationOptions(EcmaVM *vm, JSRuntimeOptions &runtimeOpti
     isEnableOptBranchProfiling_ = runtimeOptions.IsEnableBranchProfiling();
     optBCRange_ = runtimeOptions.GetOptCodeRange();
     isEnableEscapeAnalysis_ = runtimeOptions.IsEnableEscapeAnalysis();
+    isEnableInductionVariableAnalysis_ = runtimeOptions.IsEnableInductionVariableAnalysis();
 }
 
 bool AotCompilerPreprocessor::HandleTargetCompilerMode(CompilationOptions &cOptions)
@@ -156,10 +158,8 @@ std::shared_ptr<JSPandaFile> AotCompilerPreprocessor::CreateAndVerifyJSPandaFile
     if (runtimeOptions_.IsTargetCompilerMode()) {
         auto pkgArgsIter = pkgsArgs_.find(fileName);
         if (pkgArgsIter == pkgsArgs_.end()) {
-            LOG_COMPILER(ERROR) << "Can not find file in ohos pkgs args. file name: " << fileName;
-            return nullptr;
-        }
-        if (!(pkgArgsIter->second->GetJSPandaFile(runtimeOptions_, jsPandaFile))) {
+            jsPandaFile = jsPandaFileManager->OpenJSPandaFile(fileName.c_str());
+        } else if (!(pkgArgsIter->second->GetJSPandaFile(runtimeOptions_, jsPandaFile))) {
             return nullptr;
         }
     } else {
@@ -176,7 +176,7 @@ std::shared_ptr<JSPandaFile> AotCompilerPreprocessor::CreateAndVerifyJSPandaFile
         return nullptr;
     }
 
-    jsPandaFileManager->AddJSPandaFileVm(vm_, jsPandaFile);
+    jsPandaFileManager->AddJSPandaFile(jsPandaFile);
     return jsPandaFile;
 }
 
@@ -226,7 +226,7 @@ void AotCompilerPreprocessor::GenerateGlobalTypes(const CompilationOptions &cOpt
                                             JSHandle<ConstantPool> constpoolHandle(tsManager->GetConstantPool());
                                             JSThread *thread = vm_->GetJSThread();
                                             JSTaggedValue unsharedCp = thread->GetCurrentEcmaContext()
-                                                ->FindUnsharedConstpool(constpoolHandle.GetTaggedValue());
+                                                ->FindOrCreateUnsharedConstpool(constpoolHandle.GetTaggedValue());
                                             ASSERT(ConstantPool::CheckUnsharedConstpool(unsharedCp));
                                             JSTaggedValue arr =
                                                 ConstantPool::GetLiteralFromCache<ConstPoolType::ARRAY_LITERAL>(

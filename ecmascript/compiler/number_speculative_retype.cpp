@@ -14,11 +14,17 @@
  */
 
 #include "ecmascript/compiler/number_speculative_retype.h"
+
+#include "ecmascript/compiler/builtins/builtins_call_signature.h"
+#include "ecmascript/compiler/circuit.h"
 #include "ecmascript/compiler/circuit_builder-inl.h"
-#include "ecmascript/compiler/share_gate_meta_data.h"
+#include "ecmascript/compiler/circuit_builder.h"
 #include "ecmascript/compiler/number_gate_info.h"
+#include "ecmascript/compiler/rt_call_signature.h"
+#include "ecmascript/compiler/share_gate_meta_data.h"
+#include "ecmascript/compiler/share_opcodes.h"
 #include "ecmascript/compiler/type.h"
-#include <cstdint>
+#include "ecmascript/compiler/variable_type.h"
 
 namespace panda::ecmascript::kungfu {
 GateRef NumberSpeculativeRetype::SetOutputType(GateRef gate, GateType gateType)
@@ -211,11 +217,20 @@ GateRef NumberSpeculativeRetype::VisitGate(GateRef gate)
         case OpCode::MATH_TRUNC:
             return VisitMathTrunc(gate);
         case OpCode::GLOBAL_IS_FINITE:
-            return VisitGlobalBuiltin<false>(gate);
+        case OpCode::NUMBER_IS_FINITE:
+            return VisitNumberOrGlobalBuiltin<false>(gate);
         case OpCode::GLOBAL_IS_NAN:
-            return VisitGlobalBuiltin<true>(gate);
+        case OpCode::NUMBER_IS_NAN:
+            return VisitNumberOrGlobalBuiltin<true>(gate);
+        case OpCode::NUMBER_IS_INTEGER:
+        case OpCode::NUMBER_IS_SAFEINTEGER:
+            return VisitNumberIsInteger(gate);
         case OpCode::MATH_IMUL:
             return VisitMathImul(gate);
+        case OpCode::DATA_VIEW_GET:
+            return VisitDataViewGet(gate);
+        case OpCode::DATA_VIEW_SET:
+            return VisitDataViewSet(gate);
         case OpCode::JS_BYTECODE:
         case OpCode::RUNTIME_CALL:
         case OpCode::PRIMITIVE_TYPE_CHECK:
@@ -940,6 +955,38 @@ GateRef NumberSpeculativeRetype::TryConvertConstant(GateRef gate, bool needInt32
     return Circuit::NullGate();
 }
 
+GateRef NumberSpeculativeRetype::TryConvertConstantToInt32(GateRef gate)
+{
+    if (acc_.GetOpCode(gate) != OpCode::CONSTANT) {
+        return Circuit::NullGate();
+    }
+
+    if (acc_.GetGateType(gate).IsNJSValueType()) {
+        MachineType mType = acc_.GetMachineType(gate);
+        if (mType == MachineType::I32) {
+            int32_t rawValue = acc_.GetInt32FromConstant(gate);
+            return builder_.Int32(rawValue);
+        } else if (mType == MachineType::F64) {
+            double rawValue = acc_.GetFloat64FromConstant(gate);
+            int32_t int32Value = base::NumberHelper::DoubleInRangeInt32(rawValue);
+            return builder_.Int32(int32Value);
+        } else {
+            return Circuit::NullGate();
+        }
+    }
+
+    JSTaggedValue value(acc_.GetConstantValue(gate));
+    if (value.IsInt()) {
+        int32_t rawValue = value.GetInt();
+        return builder_.Int32(rawValue);
+    } else if (value.IsDouble()) {
+        double rawValue = value.GetDouble();
+        int32_t int32Value = base::NumberHelper::DoubleInRangeInt32(rawValue);
+        return builder_.Int32(int32Value);
+    }
+    return Circuit::NullGate();
+}
+
 GateRef NumberSpeculativeRetype::CheckAndConvertToInt32(GateRef gate, GateType gateType, ConvertSupport support,
                                                         OpType type)
 {
@@ -1006,6 +1053,70 @@ GateRef NumberSpeculativeRetype::CheckAndConvertToInt32(GateRef gate, GateType g
     return result;
 }
 
+GateRef NumberSpeculativeRetype::CheckBoundAndConvertToInt32(GateRef gate, ConvertSupport support, OpType type)
+{
+    auto result = TryConvertConstantToInt32(gate);
+    GateType gateType = acc_.GetGateType(gate);
+    if (result != Circuit::NullGate()) {
+        acc_.DeleteGateIfNoUse(gate);
+        ResizeAndSetTypeInfo(result, TypeInfo::INT32);
+        return result;
+    }
+    TypeInfo output = GetOutputTypeInfo(gate);
+    switch (output) {
+        case TypeInfo::INT1:
+            result = builder_.ConvertBoolToInt32(gate, support);
+            break;
+        case TypeInfo::CHAR:
+        case TypeInfo::INT32:
+            return gate;
+        case TypeInfo::UINT32: {
+            result = builder_.CheckUInt32AndConvertToInt32(gate);
+            break;
+        }
+        case TypeInfo::FLOAT64: {
+            result = builder_.DoubleCheckINFInRangeInt32(gate);
+            break;
+        }
+        case TypeInfo::HOLE_INT:
+            result = builder_.CheckHoleIntAndConvertToInt32(gate);
+            break;
+        case TypeInfo::HOLE_DOUBLE:
+            result = builder_.CheckHoleDoubleAndConvertToInt32(gate);
+            break;
+        case TypeInfo::NONE:
+        case TypeInfo::TAGGED: {
+            if (gateType.IsIntType()) {
+                result = builder_.CheckTaggedIntAndConvertToInt32(gate);
+            } else if (gateType.IsDoubleType()) {
+                GateRef doubleValue = builder_.CheckTaggedDoubleAndConvertToFloat64(gate);
+                result = builder_.DoubleInRangeInt32(doubleValue);
+            } else if (gateType.IsNullType()) {
+                result = builder_.CheckNullAndConvertToInt32(gate);
+            } else if (gateType.IsBooleanType()) {
+                result = builder_.CheckTaggedBooleanAndConvertToInt32(gate);
+            } else if (gateType.IsUndefinedType()) {
+                if (type == OpType::SHIFT_AND_LOGICAL) {
+                    result = builder_.CheckUndefinedAndConvertToInt32(gate);
+                } else {
+                    LOG_ECMA(FATAL) << "undefined cannot convert to int type";
+                }
+            } else {
+                GateRef doubleValue = builder_.CheckTaggedNumberAndConvertToFloat64(gate);
+                result = builder_.DoubleInRangeInt32(doubleValue);
+            }
+            break;
+        }
+        default: {
+            LOG_ECMA(FATAL) << "this branch is unreachable";
+            UNREACHABLE();
+            return Circuit::NullGate();
+        }
+    }
+    ResizeAndSetTypeInfo(result, TypeInfo::INT32);
+    return result;
+}
+
 GateRef NumberSpeculativeRetype::CheckAndConvertToFloat64(GateRef gate, GateType gateType,
                                                           ConvertToNumber convert)
 {
@@ -1047,7 +1158,6 @@ GateRef NumberSpeculativeRetype::CheckAndConvertToFloat64(GateRef gate, GateType
             } else if (gateType.IsUndefinedType()) {
                 result = builder_.CheckUndefinedAndConvertToFloat64(gate);
             } else {
-                ASSERT(gateType.IsNumberType());
                 if (convert == ConvertToNumber::ALL) {
                     GateRef glue = acc_.GetGlueFromArgList();
                     GateRef number = builder_.ToNumber(glue, gate, glue);
@@ -1399,11 +1509,13 @@ double NumberSpeculativeRetype::GetDoubleValueFromConst(GateRef gate)
 }
 
 template <bool IS_NAN>
-GateRef NumberSpeculativeRetype::VisitGlobalBuiltin(GateRef gate)
+GateRef NumberSpeculativeRetype::VisitNumberOrGlobalBuiltin(GateRef gate)
 {
     if (IsRetype()) {
         ASSERT(acc_.GetOpCode(gate) == OpCode::GLOBAL_IS_FINITE ||
-               acc_.GetOpCode(gate) == OpCode::GLOBAL_IS_NAN);
+               acc_.GetOpCode(gate) == OpCode::NUMBER_IS_FINITE ||
+               acc_.GetOpCode(gate) == OpCode::GLOBAL_IS_NAN ||
+               acc_.GetOpCode(gate) == OpCode::NUMBER_IS_NAN);
         return SetOutputType(gate, GateType::BooleanType());
     }
     ASSERT(IsConvert());
@@ -1429,6 +1541,32 @@ GateRef NumberSpeculativeRetype::VisitGlobalBuiltin(GateRef gate)
 #else
     input = CheckAndConvertToFloat64(input, GateType::NumberType());
 #endif
+    acc_.ReplaceValueIn(gate, input, 0);
+    ResizeAndSetTypeInfo(input, TypeInfo::FLOAT64);
+    acc_.ReplaceStateIn(gate, builder_.GetState());
+    acc_.ReplaceDependIn(gate, builder_.GetDepend());
+    return Circuit::NullGate();
+}
+
+GateRef NumberSpeculativeRetype::VisitNumberIsInteger(GateRef gate)
+{
+    if (IsRetype()) {
+        ASSERT(acc_.GetOpCode(gate) == OpCode::NUMBER_IS_INTEGER ||
+               acc_.GetOpCode(gate) == OpCode::NUMBER_IS_SAFEINTEGER);
+        return SetOutputType(gate, GateType::BooleanType());
+    }
+    ASSERT(IsConvert());
+    Environment env(gate, circuit_, &builder_);
+    ASSERT(acc_.GetNumValueIn(gate) == 1);
+    GateRef input = acc_.GetValueIn(gate, 0);
+    auto type = GetNumberInputTypeInfo(input);
+    if (type == TypeInfo::FLOAT64) {
+        GateRef result = builder_.TaggedFalse();
+        ResizeAndSetTypeInfo(result, TypeInfo::TAGGED);
+        acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
+        return Circuit::NullGate();
+    }
+    input = CheckAndConvertToInt32(input, GateType::NumberType());
     acc_.ReplaceValueIn(gate, input, 0);
     ResizeAndSetTypeInfo(input, TypeInfo::FLOAT64);
     acc_.ReplaceStateIn(gate, builder_.GetState());
@@ -1614,7 +1752,60 @@ GateRef NumberSpeculativeRetype::VisitMathImul(GateRef gate)
 
     acc_.SetGateType(gate, GateType::NJSValue());
     acc_.SetMachineType(gate, MachineType::I32);
+    acc_.ReplaceStateIn(gate, builder_.GetState());
+    acc_.ReplaceDependIn(gate, builder_.GetDepend());
+    return Circuit::NullGate();
+}
 
+GateRef NumberSpeculativeRetype::VisitDataViewGet(GateRef gate)
+{
+    GateRef builtinsID = acc_.GetValueIn(gate, 2);
+    auto ID = static_cast<BuiltinsStubCSigns::ID>(acc_.GetConstantValue(builtinsID));
+    if (IsRetype()) {
+        switch (ID) {
+            case BuiltinsStubCSigns::ID::DataViewGetInt8:
+                return SetOutputType(gate, GateType::IntType());
+            case BuiltinsStubCSigns::ID::DataViewGetUint8:
+                return SetOutputType(gate, GateType::IntType());
+            case BuiltinsStubCSigns::ID::DataViewGetInt16:
+                return SetOutputType(gate, GateType::IntType());
+            case BuiltinsStubCSigns::ID::DataViewGetUint16:
+                return SetOutputType(gate, GateType::IntType());
+            case BuiltinsStubCSigns::ID::DataViewGetInt32:
+                return SetOutputType(gate, GateType::IntType());
+            case BuiltinsStubCSigns::ID::DataViewGetUint32:
+                return SetOutputType(gate, TypeInfo::UINT32);
+            case BuiltinsStubCSigns::ID::DataViewGetFloat32:
+                return SetOutputType(gate, GateType::DoubleType());
+            case BuiltinsStubCSigns::ID::DataViewGetFloat64:
+                return SetOutputType(gate, GateType::DoubleType());
+            default:
+                UNREACHABLE();
+        }
+    }
+    ASSERT(IsConvert());
+    Environment env(gate, circuit_, &builder_);
+    GateRef index = acc_.GetValueIn(gate, 1);
+    GateRef input = CheckBoundAndConvertToInt32(index, ConvertSupport::ENABLE, OpType::SHIFT_AND_LOGICAL);
+    acc_.ReplaceValueIn(gate, input, 1);
+    acc_.ReplaceStateIn(gate, builder_.GetState());
+    acc_.ReplaceDependIn(gate, builder_.GetDepend());
+    return Circuit::NullGate();
+}
+
+GateRef NumberSpeculativeRetype::VisitDataViewSet(GateRef gate)
+{
+    if (IsRetype()) {
+        return SetOutputType(gate, GateType::UndefinedType());
+    }
+    ASSERT(IsConvert());
+    Environment env(gate, circuit_, &builder_);
+    GateRef index = acc_.GetValueIn(gate, 1);
+    GateRef inputIndex = CheckBoundAndConvertToInt32(index, ConvertSupport::ENABLE, OpType::SHIFT_AND_LOGICAL);
+    GateRef value = acc_.GetValueIn(gate, 2);
+    GateRef inputValue = CheckAndConvertToFloat64(value, acc_.GetGateType(value), ConvertToNumber::BOOL_ONLY);
+    acc_.ReplaceValueIn(gate, inputIndex, 1); // replace index of dataview to Int32
+    acc_.ReplaceValueIn(gate, inputValue, 2); // replace input value to Double64
     acc_.ReplaceStateIn(gate, builder_.GetState());
     acc_.ReplaceDependIn(gate, builder_.GetDepend());
     return Circuit::NullGate();

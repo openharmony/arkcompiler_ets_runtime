@@ -162,6 +162,11 @@ DEF_RUNTIME_STUBS(AllocateInYoung)
         result = heap->AllocateYoungOrHugeObject(size);
         ASSERT(result != nullptr);
     }
+    if (argc > 1) { // 1: means the first parameter
+        JSHandle<JSHClass> hclassHandle = GetHArg<JSHClass>(argv, argc, 1);  // 1: means the first parameter
+        auto hclass = JSHClass::Cast(hclassHandle.GetTaggedValue().GetTaggedObject());
+        heap->SetHClassAndDoAllocateEvent(thread, result, hclass, size);
+    }
     return JSTaggedValue(result).GetRawData();
 }
 
@@ -177,6 +182,11 @@ DEF_RUNTIME_STUBS(AllocateInSOld)
     if (result == nullptr) {
         result = sharedHeap->AllocateOldOrHugeObject(thread, size);
         ASSERT(result != nullptr);
+    }
+    if (argc > 1) { // 1: means the first parameter
+        JSHandle<JSHClass> hclassHandle = GetHArg<JSHClass>(argv, argc, 1);  // 1: means the first parameter
+        auto hclass = JSHClass::Cast(hclassHandle.GetTaggedValue().GetTaggedObject());
+        sharedHeap->SetHClassAndDoAllocateEvent(thread, result, hclass, size);
     }
     return JSTaggedValue(result).GetRawData();
 }
@@ -1332,7 +1342,7 @@ DEF_RUNTIME_STUBS(GetObjectLiteralFromCache)
     JSHandle<JSTaggedValue> constpool = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
     JSTaggedValue index = GetArg(argv, argc, 1);  // 1: means the first parameter
     JSHandle<JSTaggedValue> module = GetHArg<JSTaggedValue>(argv, argc, 2);  // 2: means the second parameter
-    JSTaggedValue cp = thread->GetCurrentEcmaContext()->FindUnsharedConstpool(constpool.GetTaggedValue());
+    JSTaggedValue cp = thread->GetCurrentEcmaContext()->FindOrCreateUnsharedConstpool(constpool.GetTaggedValue());
     return ConstantPool::GetLiteralFromCache<ConstPoolType::OBJECT_LITERAL>(
         thread, cp, index.GetInt(), module.GetTaggedValue()).GetRawData();
 }
@@ -1343,7 +1353,7 @@ DEF_RUNTIME_STUBS(GetArrayLiteralFromCache)
     JSHandle<JSTaggedValue> constpool = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
     JSTaggedValue index = GetArg(argv, argc, 1);  // 1: means the first parameter
     JSHandle<JSTaggedValue> module = GetHArg<JSTaggedValue>(argv, argc, 2);  // 2: means the second parameter
-    JSTaggedValue cp = thread->GetCurrentEcmaContext()->FindUnsharedConstpool(constpool.GetTaggedValue());
+    JSTaggedValue cp = thread->GetCurrentEcmaContext()->FindOrCreateUnsharedConstpool(constpool.GetTaggedValue());
     return ConstantPool::GetLiteralFromCache<ConstPoolType::ARRAY_LITERAL>(
         thread, cp, index.GetInt(), module.GetTaggedValue()).GetRawData();
 }

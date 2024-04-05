@@ -109,10 +109,11 @@ bool Verifier::RunDataIntegrityCheck(const Circuit *circuit)
     return true;
 }
 
-bool Verifier::RunStateGatesCheck(const Circuit *circuit, const std::vector<GateRef> &bbGatesList)
+bool Verifier::RunStateGatesCheck(const Circuit *circuit, const std::vector<GateRef> &bbGatesList,
+                                  const std::string& methodName)
 {
     for (const auto &bbGate : bbGatesList) {
-        circuit->Verify(bbGate);
+        circuit->Verify(bbGate, methodName);
     }
     return true;
 }
@@ -486,7 +487,7 @@ bool Verifier::Run(const Circuit *circuit, const std::string& methodName, bool e
     std::unordered_map<GateRef, size_t> bbGatesAddrToIdx;
     std::vector<size_t> immDom;
     Scheduler::CalculateDominatorTree(circuit, bbGatesList, bbGatesAddrToIdx, immDom);
-    if (!RunStateGatesCheck(circuit, bbGatesList)) {
+    if (!RunStateGatesCheck(circuit, bbGatesList, methodName)) {
         if (enableLog) {
             LOG_COMPILER(ERROR) << "[Verifier][Fail] RunStateGatesCheck failed";
         }

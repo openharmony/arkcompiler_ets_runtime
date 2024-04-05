@@ -1101,7 +1101,7 @@ bool TypedBytecodeLowering::TryLowerTypedLdObjByValueForBuiltin(GateRef gate)
     LoadBulitinObjTypeInfoAccessor tacc(thread_, circuit_, gate, chunk_);
     GateRef result = Circuit::NullGate();
     // Just supported mono.
-    if (tacc.IsMono()) {
+    if (tacc.IsMonoIgnoreElemKind()) {
         if (tacc.IsBuiltinsString()) {
             AddProfiling(gate);
             result = LoadStringByIndex(tacc);
@@ -1292,7 +1292,7 @@ bool TypedBytecodeLowering::TryLowerTypedStObjByValueForBuiltin(GateRef gate)
 {
     StoreBulitinObjTypeInfoAccessor tacc(thread_, circuit_, gate, chunk_);
     // Just supported mono.
-    if (tacc.IsMono()) {
+    if (tacc.IsMonoIgnoreElemKind()) {
         if (tacc.IsBuiltinsArray()) {
             AddProfiling(gate);
             StoreJSArrayByIndex(tacc);

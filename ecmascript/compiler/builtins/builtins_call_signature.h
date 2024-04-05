@@ -203,8 +203,29 @@ namespace panda::ecmascript::kungfu {
     V(MathImul)                                     \
     V(GlobalIsFinite)                               \
     V(GlobalIsNan)                                  \
+    V(ArrayBufferIsView)                            \
+    V(DataViewGetFloat32)                           \
+    V(DataViewGetFloat64)                           \
+    V(DataViewGetInt8)                              \
+    V(DataViewGetInt16)                             \
+    V(DataViewGetInt32)                             \
+    V(DataViewGetUint16)                            \
+    V(DataViewGetUint32)                            \
+    V(DataViewGetUint8)                             \
+    V(DataViewSetFloat32)                           \
+    V(DataViewSetFloat64)                           \
+    V(DataViewSetInt8)                              \
+    V(DataViewSetInt16)                             \
+    V(DataViewSetInt32)                             \
+    V(DataViewSetUint8)                             \
+    V(DataViewSetUint16)                            \
+    V(DataViewSetUint32)                            \
+    V(NumberIsFinite)                               \
+    V(NumberIsInteger)                              \
+    V(NumberIsNaN)                                  \
+    V(NumberIsSafeInteger)                          \
     V(TYPED_BUILTINS_INLINE_FIRST = MathAcos)       \
-    V(TYPED_BUILTINS_INLINE_LAST = GlobalIsNan)
+    V(TYPED_BUILTINS_INLINE_LAST = NumberIsSafeInteger)
 
 class BuiltinsStubCSigns {
 public:
@@ -400,6 +421,48 @@ public:
                 return ConstantIndex::GLOBAL_IS_FINITE_INDEX;
             case BuiltinsStubCSigns::ID::GlobalIsNan:
                 return ConstantIndex::GLOBAL_IS_NAN_INDEX;
+            case BuiltinsStubCSigns::ID::ArrayBufferIsView:
+                return ConstantIndex::ARRAY_BUFFER_IS_VIEW_INDEX;
+            case BuiltinsStubCSigns::ID::DataViewGetFloat32:
+                return ConstantIndex::DATA_VIEW_GET_FLOAT32_INDEX;
+            case BuiltinsStubCSigns::ID::DataViewGetFloat64:
+                return ConstantIndex::DATA_VIEW_GET_FLOAT64_INDEX;
+            case BuiltinsStubCSigns::ID::DataViewGetInt8:
+                return ConstantIndex::DATA_VIEW_GET_INT8_INDEX;
+            case BuiltinsStubCSigns::ID::DataViewGetInt16:
+                return ConstantIndex::DATA_VIEW_GET_INT16_INDEX;
+            case BuiltinsStubCSigns::ID::DataViewGetInt32:
+                return ConstantIndex::DATA_VIEW_GET_INT32_INDEX;
+            case BuiltinsStubCSigns::ID::DataViewGetUint16:
+                return ConstantIndex::DATA_VIEW_GET_UINT16_INDEX;
+            case BuiltinsStubCSigns::ID::DataViewGetUint32:
+                return ConstantIndex::DATA_VIEW_GET_UINT32_INDEX;
+            case BuiltinsStubCSigns::ID::DataViewGetUint8:
+                return ConstantIndex::DATA_VIEW_GET_UINT8_INDEX;
+            case BuiltinsStubCSigns::ID::DataViewSetFloat32:
+                return ConstantIndex::DATA_VIEW_SET_FLOAT32_INDEX;
+            case BuiltinsStubCSigns::ID::DataViewSetFloat64:
+                return ConstantIndex::DATA_VIEW_SET_FLOAT64_INDEX;
+            case BuiltinsStubCSigns::ID::DataViewSetInt8:
+                return ConstantIndex::DATA_VIEW_SET_INT8_INDEX;
+            case BuiltinsStubCSigns::ID::DataViewSetInt16:
+                return ConstantIndex::DATA_VIEW_SET_INT16_INDEX;
+            case BuiltinsStubCSigns::ID::DataViewSetInt32:
+                return ConstantIndex::DATA_VIEW_SET_INT32_INDEX;
+            case BuiltinsStubCSigns::ID::DataViewSetUint8:
+                return ConstantIndex::DATA_VIEW_SET_UINT8_INDEX;
+            case BuiltinsStubCSigns::ID::DataViewSetUint16:
+                return ConstantIndex::DATA_VIEW_SET_UINT16_INDEX;
+            case BuiltinsStubCSigns::ID::DataViewSetUint32:
+                return ConstantIndex::DATA_VIEW_SET_UINT32_INDEX;
+            case BuiltinsStubCSigns::ID::NumberIsFinite:
+                return ConstantIndex::NUMBER_IS_FINITE_INDEX;
+            case BuiltinsStubCSigns::ID::NumberIsInteger:
+                return ConstantIndex::NUMBER_IS_INTEGER_INDEX;
+            case BuiltinsStubCSigns::ID::NumberIsNaN:
+                return ConstantIndex::NUMBER_IS_NAN_INDEX;
+            case BuiltinsStubCSigns::ID::NumberIsSafeInteger:
+                return ConstantIndex::NUMBER_IS_SAFEINTEGER_INDEX;
             default:
                 LOG_COMPILER(FATAL) << "this branch is unreachable";
                 UNREACHABLE();

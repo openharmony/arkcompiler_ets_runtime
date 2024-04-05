@@ -22,7 +22,7 @@
 #include "ecmascript/js_handle.h"
 #include "ecmascript/js_hclass.h"
 #include "ecmascript/object_factory.h"
-#include "ecmascript/shared_objects/concurrent_modification_scope.h"
+#include "ecmascript/shared_objects/concurrent_api_scope.h"
 #include "ecmascript/shared_objects/js_shared_array.h"
 
 namespace panda::ecmascript {
@@ -50,7 +50,7 @@ JSTaggedValue JSSharedArrayIterator::NextInternal(JSThread *thread, JSHandle<JST
     // 4.Let a be O.[[IteratedArrayLike]].
     JSHandle<JSTaggedValue> array(thread, iter->GetIteratedArray());
     JSHandle<JSSharedArray> iteratedArray(thread, iter->GetIteratedArray());
-    [[maybe_unused]] ConcurrentModScope<JSSharedArray> scope(thread, *iteratedArray);
+    [[maybe_unused]] ConcurrentApiScope<JSSharedArray> scope(thread, *iteratedArray);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception());
     JSHandle<JSTaggedValue> undefinedHandle(thread, JSTaggedValue::Undefined());
     // 5.If a is undefined, return CreateIterResultObject(undefined, true).

@@ -48,6 +48,7 @@ enum class GCReason : uint8_t {
     IDLE,
     SWITCH_BACKGROUND,
     EXTERNAL_TRIGGER,
+    WORKER_DESTRUCTION,
     OTHER,
 };
 
@@ -184,8 +185,6 @@ using Address = uintptr_t;
 #else
 #define WIN_OR_MAC_OR_IOS_PLATFORM false
 #endif
-
-#define ECMASCRIPT_ENABLE_VALUE_SERIALIZER 1
 
 #define STATIC_ASSERT_EQ_ARCH(expect, valueArch32, valueArch64) \
     STATIC_ASSERT_EQ_ARCH32(expect, valueArch32);               \

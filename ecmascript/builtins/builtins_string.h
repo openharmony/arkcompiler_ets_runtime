@@ -254,6 +254,7 @@ public:
         return GetStringPrototypeFunctions().Size() + 3;
     }
     static JSTaggedValue StringToList(JSThread *thread, JSHandle<EcmaString> &str);
+    static JSTaggedValue StringToSList(JSThread *thread, JSHandle<EcmaString> &str);
 
 private:
 #define BUILTIN_STRING_FUNCTION_ENTRY(name, method, length, builtinId) \

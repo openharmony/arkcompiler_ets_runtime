@@ -14,7 +14,6 @@
  */
 
 #include "ecmascript/compiler/builtins_lowering.h"
-
 #include "ecmascript/global_env.h"
 
 namespace panda::ecmascript::kungfu {

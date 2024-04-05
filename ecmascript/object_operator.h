@@ -290,7 +290,7 @@ public:
         SetFound(NOT_FOUND_INDEX, JSTaggedValue::Undefined(), PropertyAttributes::GetDefaultAttributes(), false, false);
     }
     bool UpdateDataValue(const JSHandle<JSObject> &receiver, const JSHandle<JSTaggedValue> &value,
-                         bool isInternalAccessor, bool mayThrow = false, SCheckMode checkMode = SCheckMode::CHECK);
+                         bool isInternalAccessor, bool mayThrow = false);
     bool WriteDataPropertyInHolder(const PropertyDescriptor &desc)
     {
         JSHandle<JSObject> receiver(holder_);
