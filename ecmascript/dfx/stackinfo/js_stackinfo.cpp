@@ -253,7 +253,7 @@ std::vector<struct JsFrameInfo> JsStackInfo::BuildJsStackInfo(JSThread *thread)
                 thread, JSFunction::Cast(function.GetTaggedObject())->GetFunctionExtraInfo());
             if (extraInfoValue->IsJSNativePointer()) {
                 JSHandle<JSNativePointer> extraInfo(extraInfoValue);
-                native = reinterpret_cast<uintptr_t *>(extraInfo->GetExternalPointer());
+                native = reinterpret_cast<uintptr_t *>(extraInfo->GetData());
             }
         }
     }
@@ -1126,6 +1126,9 @@ bool GetArkNativeFrameInfo(int pid, uintptr_t *pc, uintptr_t *fp, uintptr_t *sp,
 {
     constexpr size_t FP_SIZE = sizeof(uintptr_t);
     uintptr_t currentPtr = *fp;
+    if (pid == getpid()) {
+        g_needCheck = false;
+    }
     if (currentPtr == 0) {
         LOG_ECMA(ERROR) << "fp is nullptr in GetArkNativeFrameInfo()!";
         return false;

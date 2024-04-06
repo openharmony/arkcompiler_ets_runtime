@@ -170,4 +170,10 @@ HWTEST_F_L0(JsStackInfoTest, GetArkNativeFrameInfo)
     EXPECT_TRUE(pc = 1234);
     EXPECT_TRUE(fp = 62480);
 }
+
+HWTEST_F_L0(JsStackInfoTest, BuildJsStackInfo)
+{
+    auto jsFrame = JsStackInfo::BuildJsStackInfo(thread);
+    EXPECT_TRUE(jsFrame.empty());
+}
 }  // namespace panda::test
