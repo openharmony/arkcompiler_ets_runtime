@@ -119,9 +119,8 @@ JSHandle<Program> PandaFileTranslator::GenerateProgram(EcmaVM *vm, const JSPanda
             sconstpool = constpoolPair.first;
             unsharedConstpool = constpoolPair.second;
             // old version dont support multi constpool
-            context->AddConstpool(jsPandaFile, sconstpool.GetTaggedValue());
-            context->SetUnsharedConstpool(
-                sconstpool->GetUnsharedConstpoolIndex().GetInt(), unsharedConstpool.GetTaggedValue());
+            sconstpool = context->AddOrUpdateConstpool(jsPandaFile, sconstpool);
+            context->SetUnsharedConstpool(sconstpool, unsharedConstpool.GetTaggedValue());
         } else {
             sconstpool = JSHandle<ConstantPool>(vm->GetJSThread(), constpoolVal);
             unsharedConstpool = JSHandle<ConstantPool>(
@@ -307,11 +306,10 @@ void PandaFileTranslator::ParseFuncAndLiteralConstPool(EcmaVM *vm, const JSPanda
 JSHandle<ConstantPool> PandaFileTranslator::AllocateSharedConstPool(EcmaVM *vm, const JSPandaFile *jsPandaFile)
 {
     ObjectFactory *factory = vm->GetFactory();
-    EcmaContext *context = vm->GetJSThread()->GetCurrentEcmaContext();
     uint32_t constpoolIndex = jsPandaFile->GetConstpoolIndex();
     JSHandle<ConstantPool> sconstpool = factory->NewSConstantPool(constpoolIndex);
     sconstpool->SetJSPandaFile(jsPandaFile);
-    sconstpool->SetUnsharedConstpoolIndex(JSTaggedValue(context->GetAndIncreaseSharedConstpoolCount()));
+    sconstpool->SetUnsharedConstpoolIndex(JSTaggedValue(0));
     sconstpool->SetSharedConstpoolId(JSTaggedValue(0)); // 0 :old version has one constpool.
     return sconstpool;
 }

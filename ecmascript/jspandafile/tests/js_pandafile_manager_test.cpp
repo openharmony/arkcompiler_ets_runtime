@@ -155,11 +155,9 @@ HWTEST_F_L0(JSPandaFileManagerTest, MultiEcmaVM_Add_Find_Remove_JSPandaFile)
 
     EcmaContext *context = instance->GetJSThread()->GetCurrentEcmaContext();
     JSHandle<ConstantPool> constpool1 = instance->GetFactory()->NewSConstantPool(1);
-    constpool1->SetUnsharedConstpoolIndex(JSTaggedValue(context->GetAndIncreaseSharedConstpoolCount()));
     JSHandle<ConstantPool> constpool2 = instance->GetFactory()->NewSConstantPool(2);
-    constpool2->SetUnsharedConstpoolIndex(JSTaggedValue(context->GetAndIncreaseSharedConstpoolCount()));
-    context->AddConstpool(pf1.get(), constpool1.GetTaggedValue(), 0);
-    context->AddConstpool(pf2.get(), constpool2.GetTaggedValue(), 0);
+    constpool1 = context->AddOrUpdateConstpool(pf1.get(), constpool1, 0);
+    constpool2 = context->AddOrUpdateConstpool(pf2.get(), constpool2, 0);
 
     std::thread t1([&]() {
         EcmaVM *instance1;
@@ -201,11 +199,9 @@ void CreateJSPandaFileAndConstpool(EcmaVM *vm)
     [[maybe_unused]] EcmaHandleScope handleScope(vm->GetJSThread());
     JSHandle<ConstantPool> constpool = vm->GetFactory()->NewSConstantPool(1);
     auto context = vm->GetJSThread()->GetCurrentEcmaContext();
-    auto unsharedConstpoolIndex = context->GetAndIncreaseSharedConstpoolCount();
+    constpool = context->AddOrUpdateConstpool(pf.get(), constpool, 0);
     JSHandle<ConstantPool> newConstpool = vm->GetFactory()->NewConstantPool(1);
-    constpool->SetUnsharedConstpoolIndex(JSTaggedValue(unsharedConstpoolIndex));
-    context->SetUnsharedConstpool(unsharedConstpoolIndex, newConstpool.GetTaggedValue());
-    context->AddConstpool(pf.get(), constpool.GetTaggedValue(), 0);
+    context->SetUnsharedConstpool(constpool, newConstpool.GetTaggedValue());
 }
 
 HWTEST_F_L0(JSPandaFileManagerTest, GC_Add_Find_Remove_JSPandaFile)

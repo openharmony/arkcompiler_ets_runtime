@@ -230,16 +230,23 @@ JSTaggedValue Runtime::FindConstpoolUnlocked(const JSPandaFile *jsPandaFile, int
     return constpoolIter->second;
 }
 
-void Runtime::AddConstpool(const JSPandaFile *jsPandaFile, JSTaggedValue constpool, int32_t index)
+JSHandle<ConstantPool> Runtime::AddOrUpdateConstpool(const JSPandaFile *jsPandaFile,
+                                                     JSHandle<ConstantPool> constpool,
+                                                     int32_t index)
 {
     LockHolder lock(constpoolLock_);
-    ASSERT(constpool.IsConstantPool());
     if (globalSharedConstpools_.find(jsPandaFile) == globalSharedConstpools_.end()) {
         globalSharedConstpools_[jsPandaFile] = CMap<int32_t, JSTaggedValue>();
     }
     auto &constpoolMap = globalSharedConstpools_[jsPandaFile];
-    ASSERT(constpoolMap.find(index) == constpoolMap.end());
-    constpoolMap.insert({index, constpool});
+    auto iter = constpoolMap.find(index);
+    if (iter == constpoolMap.end()) {
+        int32_t constpoolIndex = GetAndIncreaseSharedConstpoolCount();
+        constpool->SetUnsharedConstpoolIndex(JSTaggedValue(constpoolIndex));
+        constpoolMap.insert({index, constpool.GetTaggedValue()});
+        return constpool;
+    }
+    return JSHandle<ConstantPool>(reinterpret_cast<uintptr_t>(&iter->second));
 }
 
 std::optional<std::reference_wrapper<CMap<int32_t, JSTaggedValue>>> Runtime::FindConstpools(
@@ -268,7 +275,7 @@ void Runtime::ProcessNativeDeleteInSharedGC(const WeakRootVisitor &visitor)
                 auto fwd = visitor(obj);
                 if (fwd == nullptr) {
                     int32_t constpoolIndex =
-                        ConstantPool::Cast(constpoolVal.GetTaggedObject())->GetUnsharedConstpoolIndex().GetInt();
+                        ConstantPool::Cast(constpoolVal.GetTaggedObject())->GetUnsharedConstpoolIndex();
                     ASSERT(0 <= constpoolIndex && constpoolIndex != ConstantPool::CONSTPOOL_TYPE_FLAG &&
                         constpoolIndex < UNSHARED_CONSTANTPOOL_COUNT);
                     EraseUnusedConstpool(iterator->first, constpoolIter->first, constpoolIndex);
@@ -293,10 +300,10 @@ void Runtime::ProcessNativeDeleteInSharedGC(const WeakRootVisitor &visitor)
 
 void Runtime::EraseUnusedConstpool(const JSPandaFile *jsPandaFile, int32_t index, int32_t constpoolIndex)
 {
-    LockHolder lock(threadsLock_);
-    for (auto thread : threads_) {
+    GCIterateThreadList([jsPandaFile, index, constpoolIndex](JSThread* thread) {
+        ASSERT(!thread->IsInRunningState());
         auto context = thread->GetCurrentEcmaContext();
         context->EraseUnusedConstpool(jsPandaFile, index, constpoolIndex);
-    }
+    });
 }
 }  // namespace panda::ecmascript
