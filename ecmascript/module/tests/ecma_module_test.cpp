@@ -453,7 +453,7 @@ HWTEST_F_L0(EcmaModuleTest, NormalizePath)
     EXPECT_EQ(res5, normalName5);
 }
 
-HWTEST_F_L0(EcmaModuleTest, ParseOhmUrl)
+HWTEST_F_L0(EcmaModuleTest, ParseAbcPathAndOhmUrl)
 {
     // old pages url
     instance->SetBundleName("com.bundleName.test");
@@ -462,13 +462,13 @@ HWTEST_F_L0(EcmaModuleTest, ParseOhmUrl)
     CString outFileName = "";
     CString res1 = "com.bundleName.test/moduleName/ets/pages/index";
     CString entryPoint;
-    ModulePathHelper::ParseOhmUrl(instance, inputFileName, outFileName, entryPoint);
+    ModulePathHelper::ParseAbcPathAndOhmUrl(instance, inputFileName, outFileName, entryPoint);
     EXPECT_EQ(entryPoint, res1);
     EXPECT_EQ(outFileName, "");
 
     // new pages url
     inputFileName = "@bundle:com.bundleName.test/moduleName/ets/pages/index.abc";
-    ModulePathHelper::ParseOhmUrl(instance, inputFileName, outFileName, entryPoint);
+    ModulePathHelper::ParseAbcPathAndOhmUrl(instance, inputFileName, outFileName, entryPoint);
     EXPECT_EQ(entryPoint, res1);
     EXPECT_EQ(outFileName, "/data/storage/el1/bundle/moduleName/ets/modules.abc");
 
@@ -476,7 +476,7 @@ HWTEST_F_L0(EcmaModuleTest, ParseOhmUrl)
     inputFileName = "@bundle:com.bundleName.test/moduleName1/ets/pages/index.abc";
     CString outRes = "/data/storage/el1/bundle/moduleName1/ets/modules.abc";
     CString res2 = "com.bundleName.test/moduleName1/ets/pages/index";
-    ModulePathHelper::ParseOhmUrl(instance, inputFileName, outFileName, entryPoint);
+    ModulePathHelper::ParseAbcPathAndOhmUrl(instance, inputFileName, outFileName, entryPoint);
     EXPECT_EQ(entryPoint, res2);
     EXPECT_EQ(outFileName, outRes);
 
@@ -484,7 +484,7 @@ HWTEST_F_L0(EcmaModuleTest, ParseOhmUrl)
     inputFileName = "@bundle:com.bundleName.test1/moduleName1/ets/pages/index.abc";
     CString outRes1 = "/data/storage/el1/bundle/com.bundleName.test1/moduleName1/moduleName1/ets/modules.abc";
     CString res3 = "com.bundleName.test1/moduleName1/ets/pages/index";
-    ModulePathHelper::ParseOhmUrl(instance, inputFileName, outFileName, entryPoint);
+    ModulePathHelper::ParseAbcPathAndOhmUrl(instance, inputFileName, outFileName, entryPoint);
     EXPECT_EQ(entryPoint, res3);
     EXPECT_EQ(outFileName, outRes1);
 
@@ -492,7 +492,7 @@ HWTEST_F_L0(EcmaModuleTest, ParseOhmUrl)
     inputFileName = "/data/storage/el1/bundle/entry/ets/mainAbility.abc";
     CString outRes2 = "/data/storage/el1/bundle/entry/ets/modules.abc";
     CString res4 = "com.bundleName.test/entry/ets/mainAbility";
-    ModulePathHelper::ParseOhmUrl(instance, inputFileName, outFileName, entryPoint);
+    ModulePathHelper::ParseAbcPathAndOhmUrl(instance, inputFileName, outFileName, entryPoint);
     EXPECT_EQ(entryPoint, res4);
     EXPECT_EQ(outFileName, outRes2);
 
@@ -500,7 +500,7 @@ HWTEST_F_L0(EcmaModuleTest, ParseOhmUrl)
     outFileName = "";
     inputFileName = "/data/storage/el1/bundle/moduleName/ets/mainAbility.abc";
     CString res5 = "com.bundleName.test/moduleName/ets/mainAbility";
-    ModulePathHelper::ParseOhmUrl(instance, inputFileName, outFileName, entryPoint);
+    ModulePathHelper::ParseAbcPathAndOhmUrl(instance, inputFileName, outFileName, entryPoint);
     EXPECT_EQ(entryPoint, res5);
     EXPECT_EQ(outFileName, "/data/storage/el1/bundle/moduleName/ets/modules.abc");
 }
@@ -724,6 +724,48 @@ HWTEST_F_L0(EcmaModuleTest, ParseFileNameToVMAName)
     inputFileName = "/data/storage/el1/bundle/com.example.application/ets/modules.abc";
     outFileName = ModulePathHelper::ParseFileNameToVMAName(inputFileName);
     exceptOutFileName = "ArkTS Code:com.example.application/ets/modules.abc";
+    EXPECT_EQ(outFileName, exceptOutFileName);
+}
+
+HWTEST_F_L0(EcmaModuleTest, ConcatUnifiedOhmUrl)
+{
+    CString pkgName = "entry";
+    CString path = "/Index";
+    CString version = "1.0.0";
+    CString outFileName = ModulePathHelper::ConcatUnifiedOhmUrl("", pkgName, path, version);
+    CString exceptOutFileName = "&entry/src/main/Index&1.0.0";
+    EXPECT_EQ(outFileName, exceptOutFileName);
+
+    CString path2 = "Index";
+    outFileName = ModulePathHelper::ConcatUnifiedOhmUrl("", path2, version);
+    exceptOutFileName = "&Index&1.0.0";
+    EXPECT_EQ(outFileName, exceptOutFileName);
+}
+
+HWTEST_F_L0(EcmaModuleTest, ConcatImportFileNormalizedOhmurl)
+{
+    CString recordPath = "entry/ets/";
+    CString requestName = "test";
+    CString outFileName = ModulePathHelper::ConcatImportFileNormalizedOhmurl(recordPath, requestName);
+    CString exceptOutFileName = "@normalized:N&&entry/ets/test&";
+    EXPECT_EQ(outFileName, exceptOutFileName);
+}
+
+HWTEST_F_L0(EcmaModuleTest, ConcatNativeSoNormalizedOhmurl)
+{
+    CString pkgName = "libentry.so";
+    CString outFileName = ModulePathHelper::ConcatNativeSoNormalizedOhmurl("", "", pkgName, "");
+    CString exceptOutFileName = "@normalized:Y&&&libentry.so&";
+    EXPECT_EQ(outFileName, exceptOutFileName);
+}
+
+HWTEST_F_L0(EcmaModuleTest, ConcatNotSoNormalizedOhmurl)
+{
+    CString pkgName = "har";
+    CString path = "Index";
+    CString version = "1.0.0";
+    CString outFileName = ModulePathHelper::ConcatNotSoNormalizedOhmurl("", "", pkgName, path, version);
+    CString exceptOutFileName = "@normalized:N&&&har/Index&1.0.0";
     EXPECT_EQ(outFileName, exceptOutFileName);
 }
 }  // namespace panda::test

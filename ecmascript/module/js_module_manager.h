@@ -58,7 +58,8 @@ public:
     bool IsImportedModuleLoaded(JSTaggedValue referencing);
     bool IsEvaluatedModule(JSTaggedValue referencing);
 
-    JSHandle<JSTaggedValue> ResolveNativeModule(const CString &moduleRequestName, ModuleTypes moduleType);
+    JSHandle<JSTaggedValue> ResolveNativeModule(const CString &moduleRequestName, const CString &baseFileName,
+        ModuleTypes moduleType);
     JSHandle<JSTaggedValue> HostResolveImportedModule(const void *buffer, size_t size, const CString &filename);
     JSHandle<JSTaggedValue> HostResolveImportedModule(const CString &referencingModule,
         bool executeFromJob = false);

@@ -146,7 +146,10 @@ public:
                                    const JSHandle<StarExportEntry> &exportEntry, size_t idx, uint32_t len);
     static std::pair<bool, ModuleTypes> CheckNativeModule(const CString &moduleRequestName);
     static Local<JSValueRef> GetRequireNativeModuleFunc(EcmaVM *vm, ModuleTypes moduleType);
-    static void MakeAppArgs(const EcmaVM *vm, std::vector<Local<JSValueRef>> &arguments, const CString &moduleName);
+    static void MakeNormalizedAppArgs(const EcmaVM *vm, std::vector<Local<JSValueRef>> &arguments,
+        const CString &soPath, const CString &moduleName);
+    static void MakeAppArgs(const EcmaVM *vm, std::vector<Local<JSValueRef>> &arguments,
+        const CString &soPath, const CString &moduleName);
     static void MakeInternalArgs(const EcmaVM *vm, std::vector<Local<JSValueRef>> &arguments,
                                  const CString &moduleRequestName);
     static bool LoadNativeModule(JSThread *thread, JSHandle<SourceTextModule> &requiredModule,
