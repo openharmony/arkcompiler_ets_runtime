@@ -14,6 +14,7 @@
  */
 
 #include "ecmascript/js_object.h"
+#include "ecmascript/js_handle.h"
 #include "ecmascript/js_object-inl.h"
 
 #include "ecmascript/accessor_data.h"
@@ -333,6 +334,41 @@ void JSObject::OptimizeAsFastProperties(const JSThread *thread, JSHandle<JSObjec
     obj->SetProperties(thread, array);
 }
 
+void JSObject::SetSProperties(JSThread *thread,
+                              JSHandle<JSObject> obj,
+                              JSHandle<JSHClass> hclass,
+                              const std::vector<PropertyDescriptor> &descs)
+{
+    uint32_t length = descs.size();
+    JSMutableHandle<JSTaggedValue> propKey(thread, JSTaggedValue::Undefined());
+    JSMutableHandle<JSTaggedValue> propValue(thread, JSTaggedValue::Undefined());
+
+    if (LIKELY(!hclass->IsDictionaryMode())) {
+        for (uint32_t i = 0; i < length; ++i) {
+            propValue.Update(descs[i].GetValue());
+            // note(lzl): IsSAccessor?
+            if (!propValue->IsSharedType() && !propValue->IsAccessor()) {
+                THROW_TYPE_ERROR(thread, "The properties of sendable class must be sendable too.");
+            }
+            obj->SetPropertyInlinedProps(thread, i, propValue.GetTaggedValue());
+        }
+    } else {
+        JSMutableHandle<ecmascript::NameDictionary> dict(
+            thread, ecmascript::NameDictionary::CreateInSharedHeap(
+                thread, ecmascript::NameDictionary::ComputeHashTableSize(length)));
+        for (uint32_t i = 0; i < length; i++) {
+            propKey.Update(descs[i].GetKey());
+            propValue.Update(descs[i].GetValue());
+            PropertyAttributes attr =
+                PropertyAttributes::Default(descs[i].IsWritable(), descs[i].IsEnumerable(), descs[i].IsConfigurable());
+            JSHandle<ecmascript::NameDictionary> newDict =
+                ecmascript::NameDictionary::PutIfAbsent(thread, dict, propKey, propValue, attr);
+            dict.Update(newDict);
+        }
+        obj->SetProperties(thread, dict);
+    }
+}
+
 bool JSObject::IsArrayLengthWritable(JSThread *thread, const JSHandle<JSObject> &receiver)
 {
     auto *hclass = receiver->GetJSHClass();
@@ -370,10 +406,8 @@ bool JSObject::AddElementInternal(JSThread *thread, const JSHandle<JSObject> &re
         JSSharedArray *arr = JSSharedArray::Cast(*receiver);
         uint32_t oldLength = arr->GetArrayLength();
         if (index >= oldLength) {
-            if (!IsArrayLengthWritable(thread, receiver)) {
-                return false;
-            }
-            arr->SetArrayLength(thread, index + 1);
+            JSHandle<JSTaggedValue> newLength(thread, JSTaggedValue(static_cast<uint32_t>(index + 1)));
+            JSSharedArray::LengthSetter(thread, receiver, newLength);
             if (index > oldLength) {
                 kind = ElementsKind::HOLE;
             }
@@ -834,14 +868,17 @@ bool JSObject::SetProperty(JSThread *thread, const JSHandle<JSObject> &obj, cons
 }
 
 bool JSObject::SetProperty(JSThread *thread, const JSHandle<JSTaggedValue> &obj, const JSHandle<JSTaggedValue> &key,
-                           const JSHandle<JSTaggedValue> &value, bool mayThrow, SCheckMode checkMode)
+                           const JSHandle<JSTaggedValue> &value, bool mayThrow, SCheckMode sCheckMode)
 {
     ASSERT_PRINT(!(obj->IsUndefined() || obj->IsNull() || obj->IsHole()), "Obj is not a valid object");
     ASSERT_PRINT(JSTaggedValue::IsPropertyKey(key), "Key is not a property key");
 
+    if (obj->IsJSSharedArray()) {
+        return JSSharedArray::SetProperty(thread, obj, key, value, mayThrow, sCheckMode);
+    }
     // 2 ~ 4 findProperty in Receiver, Obj and its parents
     ObjectOperator op(thread, obj, key);
-    return SetProperty(&op, value, mayThrow, checkMode);
+    return SetProperty(&op, value, mayThrow);
 }
 
 bool JSObject::SetProperty(JSThread *thread, const JSHandle<JSTaggedValue> &obj, uint32_t index,
@@ -884,8 +921,7 @@ bool JSObject::SetPropertyForDataDescriptorProxy(JSThread *thread, ObjectOperato
 }
 
 bool JSObject::SetPropertyForDataDescriptor(ObjectOperator *op, const JSHandle<JSTaggedValue> &value,
-                                            JSHandle<JSTaggedValue> &receiver, bool mayThrow, bool isInternalAccessor,
-                                            SCheckMode checkMode)
+                                            JSHandle<JSTaggedValue> &receiver, bool mayThrow, bool isInternalAccessor)
 {
     JSThread *thread = op->GetThread();
     if (!op->IsWritable()) {
@@ -946,12 +982,12 @@ bool JSObject::SetPropertyForDataDescriptor(ObjectOperator *op, const JSHandle<J
             }
             return false;
         }
-        isSuccess = op->UpdateDataValue(JSHandle<JSObject>(receiver), value, isInternalAccessor, mayThrow, checkMode);
+        isSuccess = op->UpdateDataValue(JSHandle<JSObject>(receiver), value, isInternalAccessor, mayThrow);
         RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, isSuccess);
     } else {
         // 5f. Else if Receiver does not currently have a property P, Return CreateDataProperty(Receiver, P, V).
         // fixme(hzzhouzebin) this makes SharedArray's frozen no sense.
-        if (!receiver->IsExtensible(thread) && !receiver->IsJSSharedArray()) {
+        if (!receiver->IsExtensible(thread) && !(receiver->IsJSSharedArray() && op->IsElement())) {
             if (mayThrow) {
                 THROW_TYPE_ERROR_AND_RETURN(thread, GET_MESSAGE_STRING(SetPropertyWhenNotExtensible), false);
             }
@@ -968,8 +1004,7 @@ bool JSObject::SetPropertyForDataDescriptor(ObjectOperator *op, const JSHandle<J
     return isSuccess;
 }
 
-bool JSObject::SetProperty(ObjectOperator *op, const JSHandle<JSTaggedValue> &value, bool mayThrow,
-                           SCheckMode checkMode)
+bool JSObject::SetProperty(ObjectOperator *op, const JSHandle<JSTaggedValue> &value, bool mayThrow)
 {
     JSThread *thread = op->GetThread();
     op->UpdateDetector();
@@ -997,7 +1032,7 @@ bool JSObject::SetProperty(ObjectOperator *op, const JSHandle<JSTaggedValue> &va
 
     // 5. If IsDataDescriptor(ownDesc) is true, then
     if (!op->IsAccessorDescriptor() || isInternalAccessor) {
-        return SetPropertyForDataDescriptor(op, value, receiver, mayThrow, isInternalAccessor, checkMode);
+        return SetPropertyForDataDescriptor(op, value, receiver, mayThrow, isInternalAccessor);
     }
     // 6. Assert: IsAccessorDescriptor(ownDesc) is true.
     ASSERT(op->IsAccessorDescriptor());
@@ -1074,11 +1109,13 @@ OperationResult JSObject::GetProperty(JSThread *thread, const JSHandle<JSObject>
 }
 
 OperationResult JSObject::GetProperty(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
-                                      const JSHandle<JSTaggedValue> &key)
+                                      const JSHandle<JSTaggedValue> &key, SCheckMode sCheckMode)
 {
     ASSERT_PRINT(!(obj->IsUndefined() || obj->IsNull() || obj->IsHole()), "Obj is not a valid object");
     ASSERT_PRINT(JSTaggedValue::IsPropertyKey(key), "Key is not a property key");
-
+    if (obj->IsJSSharedArray()) {
+        return JSSharedArray::GetProperty(thread, obj, key, sCheckMode);
+    }
     ObjectOperator op(thread, obj, key);
     return OperationResult(thread, GetProperty(thread, &op), PropertyMetaData(op.IsFound()));
 }
@@ -1234,9 +1271,9 @@ bool JSObject::DefineOwnProperty(JSThread *thread, const JSHandle<JSObject> &obj
 }
 
 bool JSObject::DefineOwnProperty(JSThread *thread, const JSHandle<JSObject> &obj, uint32_t index,
-                                 const PropertyDescriptor &desc)
+                                 const PropertyDescriptor &desc, SCheckMode sCheckMode)
 {
-    return OrdinaryDefineOwnProperty(thread, obj, index, desc);
+    return OrdinaryDefineOwnProperty(thread, obj, index, desc, sCheckMode);
 }
 
 // 9.1.6.1 OrdinaryDefineOwnProperty (O, P, Desc)
@@ -1250,6 +1287,10 @@ bool JSObject::OrdinaryDefineOwnProperty(JSThread *thread, const JSHandle<JSObje
     ObjectOperator op(thread, objValue, key, OperatorType::OWN);
 
     bool extensible = obj->IsExtensible();
+    // make extensible for shared array to add element.
+    if (obj->IsJSSArray() && op.IsElement()) {
+        extensible = true;
+    }
     PropertyDescriptor current(thread);
     op.ToPropertyDescriptor(current);
     // 4. Return ValidateAndApplyPropertyDescriptor(O, P, extensible, Desc, current).
@@ -1257,7 +1298,7 @@ bool JSObject::OrdinaryDefineOwnProperty(JSThread *thread, const JSHandle<JSObje
 }
 
 bool JSObject::OrdinaryDefineOwnProperty(JSThread *thread, const JSHandle<JSObject> &obj, uint32_t index,
-                                         const PropertyDescriptor &desc)
+                                         const PropertyDescriptor &desc, SCheckMode sCheckMode)
 {
     JSHandle<JSTaggedValue> objValue(obj);
     ObjectOperator op(thread, objValue, index, OperatorType::OWN);
@@ -1265,7 +1306,7 @@ bool JSObject::OrdinaryDefineOwnProperty(JSThread *thread, const JSHandle<JSObje
     bool extensible = obj->IsExtensible();
     PropertyDescriptor current(thread);
     op.ToPropertyDescriptor(current);
-    return ValidateAndApplyPropertyDescriptor(&op, extensible, desc, current);
+    return ValidateAndApplyPropertyDescriptor(&op, extensible, desc, current, sCheckMode);
 }
 
 bool JSObject::ValidateDataDescriptorWhenConfigurable(ObjectOperator *op, const PropertyDescriptor &desc,
@@ -1300,7 +1341,7 @@ bool JSObject::ValidateAndApplyPropertyDescriptor(ObjectOperator *op, bool exten
     // 2. If current is undefined, then
     if (current.IsEmpty()) {
         // 2a. If extensible is false, return false.
-        if (!extensible) {
+        if (!(extensible || (op->GetReceiver()->IsJSShared() && sCheckMode == SCheckMode::SKIP))) {
             return false;
         }
         if (!op->HasHolder()) {
@@ -1506,6 +1547,9 @@ bool JSObject::PreventExtensions(JSThread *thread, const JSHandle<JSObject> &obj
     if (obj->IsExtensible()) {
         JSHandle<JSHClass> jshclass(thread, obj->GetJSHClass());
         JSHandle<JSHClass> newHclass = JSHClass::TransitionExtension(thread, jshclass);
+#if ECMASCRIPT_ENABLE_IC
+        JSHClass::NotifyHclassChanged(thread, jshclass, newHclass);
+#endif
         obj->SynchronizedSetClass(thread, *newHclass);
         JSHClass::TryRestoreElementsKind(thread, newHclass, obj);
     }
@@ -1672,7 +1716,7 @@ bool JSObject::CreateDataProperty(JSThread *thread, const JSHandle<JSObject> &ob
 }
 
 bool JSObject::CreateDataProperty(JSThread *thread, const JSHandle<JSObject> &obj, uint32_t index,
-                                  const JSHandle<JSTaggedValue> &value)
+                                  const JSHandle<JSTaggedValue> &value, SCheckMode sCheckMode)
 {
     ASSERT_PRINT(obj->IsECMAObject(), "Obj is not a valid object");
     auto result = ObjectFastOperator::SetPropertyByIndex<ObjectFastOperator::Status::DefineSemantics>
@@ -1681,7 +1725,7 @@ bool JSObject::CreateDataProperty(JSThread *thread, const JSHandle<JSObject> &ob
         return !result.IsException();
     }
     PropertyDescriptor desc(thread, value, true, true, true);
-    return DefineOwnProperty(thread, obj, index, desc);
+    return DefineOwnProperty(thread, obj, index, desc, sCheckMode);
 }
 
 // 7.3.5 CreateMethodProperty (O, P, V)
@@ -1700,11 +1744,11 @@ bool JSObject::CreateDataPropertyOrThrow(JSThread *thread, const JSHandle<JSObje
 }
 
 bool JSObject::CreateDataPropertyOrThrow(JSThread *thread, const JSHandle<JSObject> &obj, uint32_t index,
-                                         const JSHandle<JSTaggedValue> &value)
+                                         const JSHandle<JSTaggedValue> &value,  SCheckMode sCheckMode)
 {
     ASSERT_PRINT(obj->IsECMAObject(), "Obj is not a valid object");
 
-    bool success = CreateDataProperty(thread, obj, index, value);
+    bool success = CreateDataProperty(thread, obj, index, value, sCheckMode);
     if (!success) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "failed to create data property", success);
     }
@@ -1874,10 +1918,16 @@ JSHandle<TaggedArray> JSObject::EnumerableOwnNames(JSThread *thread, const JSHan
         if (copyLengthOfKeys != 0 && copyLengthOfElements != 0) {
             keys = TaggedArray::AppendSkipHole(thread, elementArray, keyArray, copyLengthOfKeys + copyLengthOfElements);
         } else if (copyLengthOfKeys != 0) {
-            keyArray->SetLength(copyLengthOfKeys); // keyArray will skip nonEnumerable properties, need re-set length.
+            if (copyLengthOfKeys < keyArray->GetLength()) {
+                // keyArray will skip nonEnumerable properties, need re-set length.
+                keyArray->Trim(thread, copyLengthOfKeys);
+            }
             return keyArray;
         } else if (copyLengthOfElements != 0) {
-            elementArray->SetLength(copyLengthOfElements); // elementArray will skip hole value, need re-set length.
+            if (copyLengthOfElements < elementArray->GetLength()) {
+                // elementArray will skip hole value, need re-set length.
+                elementArray->Trim(thread, copyLengthOfElements);
+            }
             return elementArray;
         } else {
             keys = factory->EmptyArray();
@@ -2810,10 +2860,15 @@ void ECMAObject::SetNativePointerField(const JSThread *thread, int32_t index, vo
         if (static_cast<int32_t>(array->GetExtraLength()) > index) {
             EcmaVM *vm = thread->GetEcmaVM();
             JSHandle<JSTaggedValue> current = JSHandle<JSTaggedValue>(thread, array->Get(thread, index));
+            JSHandle<JSTaggedValue> obj(thread, this);
             if (!current->IsHole() && nativePointer == nullptr) {
                 // Try to remove native pointer if exists.
                 vm->RemoveFromNativePointerList(*JSHandle<JSNativePointer>(current));
                 array->Set(thread, index, JSTaggedValue::Hole());
+            } else if (obj->IsJSShared()) {
+                JSHandle<JSNativePointer> pointer =
+                    vm->GetFactory()->NewSJSNativePointer(nativePointer, callBack, data, false, nativeBindingsize);
+                array->Set(thread, index, pointer.GetTaggedValue());
             } else {
                 JSHandle<JSNativePointer> pointer = vm->GetFactory()->NewJSNativePointer(
                     nativePointer, callBack, data, false, nativeBindingsize, isConcurrent);
@@ -2849,7 +2904,8 @@ void ECMAObject::SetNativePointerFieldCount(const JSThread *thread, int32_t coun
             // Native Pointer field count is fixed.
             if (array->GetExtraLength() == 0) {
                 JSHandle<TaggedArray> newArray =
-                    thread->GetEcmaVM()->GetFactory()->NewTaggedArray(count + RESOLVED_MAX_SIZE);
+                    value->IsJSShared() ? thread->GetEcmaVM()->GetFactory()->NewSTaggedArray(count + RESOLVED_MAX_SIZE)
+                                        : thread->GetEcmaVM()->GetFactory()->NewTaggedArray(count + RESOLVED_MAX_SIZE);
                 newArray->SetExtraLength(count);
                 newArray->Set(thread, count + HASH_INDEX, array->Get(HASH_INDEX));
                 newArray->Set(thread, count + FUNCTION_EXTRA_INDEX, array->Get(FUNCTION_EXTRA_INDEX));
@@ -2857,7 +2913,8 @@ void ECMAObject::SetNativePointerFieldCount(const JSThread *thread, int32_t coun
             }
         } else if (value->IsJSNativePointer()) {
             JSHandle<TaggedArray> newArray =
-                thread->GetEcmaVM()->GetFactory()->NewTaggedArray(count + RESOLVED_MAX_SIZE);
+                value->IsJSShared() ? thread->GetEcmaVM()->GetFactory()->NewSTaggedArray(count + RESOLVED_MAX_SIZE)
+                                    : thread->GetEcmaVM()->GetFactory()->NewTaggedArray(count + RESOLVED_MAX_SIZE);
             newArray->SetExtraLength(count);
             newArray->Set(thread, count + HASH_INDEX, JSTaggedValue(0));
             newArray->Set(thread, count + FUNCTION_EXTRA_INDEX, value);
@@ -2867,7 +2924,9 @@ void ECMAObject::SetNativePointerFieldCount(const JSThread *thread, int32_t coun
             UNREACHABLE();
         }
     } else {
-        JSHandle<TaggedArray> newArray = thread->GetEcmaVM()->GetFactory()->NewTaggedArray(count + 1);
+        JSHandle<TaggedArray> newArray = value->IsJSShared()
+                                             ? thread->GetEcmaVM()->GetFactory()->NewSTaggedArray(count + 1)
+                                             : thread->GetEcmaVM()->GetFactory()->NewTaggedArray(count + 1);
         newArray->SetExtraLength(count);
         newArray->Set(thread, count + HASH_INDEX, value);
         Barriers::SetObject<true>(thread, *obj, HASH_OFFSET, newArray.GetTaggedValue().GetRawData());

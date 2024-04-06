@@ -20,12 +20,16 @@
         ],
         "rom": "20MB",
         "ram": "~8000KB",
+	"hisysevent_config": [
+	      "//arkcompiler/ets_runtime/hisysevent.yaml"
+	],
         "deps": {
             "components": [
               "faultloggerd",
               "init",
               "hitrace",
               "hilog",
+	      "hisysevent",
               "qos_manager",
               "runtime_core",
               "c_utils",
@@ -36,8 +40,6 @@
               "icu"
             ],
             "third_party": [
-              "bounds_checking_function",
-              "icu"
             ]
         },
         "build": {

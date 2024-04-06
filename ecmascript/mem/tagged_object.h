@@ -52,6 +52,7 @@ private:
 
     MarkWordType class_;
 
+    friend class BaseHeap;
     friend class Heap;
     friend class SharedHeap;
     friend class ObjectFactory;

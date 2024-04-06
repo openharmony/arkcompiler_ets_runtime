@@ -435,7 +435,7 @@ public:
                                    const JSHandle<JSTaggedValue> &value, SCheckMode sCheckMode = SCheckMode::CHECK);
 
     static bool CreateDataProperty(JSThread *thread, const JSHandle<JSObject> &obj, uint32_t index,
-                                   const JSHandle<JSTaggedValue> &value);
+                                   const JSHandle<JSTaggedValue> &value, SCheckMode sCheckMode = SCheckMode::CHECK);
 
     static bool CreateMethodProperty(JSThread *thread, const JSHandle<JSObject> &obj,
                                      const JSHandle<JSTaggedValue> &key, const JSHandle<JSTaggedValue> &value);
@@ -445,7 +445,8 @@ public:
                                           SCheckMode sCheckMode = SCheckMode::CHECK);
 
     static bool CreateDataPropertyOrThrow(JSThread *thread, const JSHandle<JSObject> &obj, uint32_t index,
-                                          const JSHandle<JSTaggedValue> &value);
+                                          const JSHandle<JSTaggedValue> &value,
+                                          SCheckMode sCheckMode = SCheckMode::CHECK);
 
     static JSHandle<TaggedArray> PUBLIC_API EnumerableOwnNames(JSThread *thread, const JSHandle<JSObject> &obj);
 
@@ -500,14 +501,15 @@ public:
                                   const PropertyDescriptor &desc, SCheckMode sCheckMode = SCheckMode::CHECK);
 
     static bool DefineOwnProperty(JSThread *thread, const JSHandle<JSObject> &obj, uint32_t index,
-                                  const PropertyDescriptor &desc);
+                                  const PropertyDescriptor &desc, SCheckMode sCheckMode = SCheckMode::CHECK);
 
     static bool OrdinaryDefineOwnProperty(JSThread *thread, const JSHandle<JSObject> &obj,
                                           const JSHandle<JSTaggedValue> &key, const PropertyDescriptor &desc,
                                           SCheckMode sCheckMode = SCheckMode::CHECK);
 
     static bool OrdinaryDefineOwnProperty(JSThread *thread, const JSHandle<JSObject> &obj, uint32_t index,
-                                          const PropertyDescriptor &desc);
+                                          const PropertyDescriptor &desc,
+                                          SCheckMode sCheckMode = SCheckMode::CHECK);
 
     static bool IsCompatiblePropertyDescriptor(bool extensible, const PropertyDescriptor &desc,
                                                const PropertyDescriptor &current);
@@ -523,7 +525,7 @@ public:
                                        const JSHandle<JSTaggedValue> &key, const JSHandle<JSTaggedValue> &receiver);
 
     static OperationResult GetProperty(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
-                                       const JSHandle<JSTaggedValue> &key);
+                                       const JSHandle<JSTaggedValue> &key, SCheckMode sCheckMode = SCheckMode::CHECK);
 
     static OperationResult GetProperty(JSThread *thread, const JSHandle<JSTaggedValue> &obj, uint32_t index);
 
@@ -744,6 +746,11 @@ public:
     static void TryOptimizeAsFastElements(const JSThread *thread, JSHandle<JSObject> obj);
     static void OptimizeAsFastProperties(const JSThread *thread, JSHandle<JSObject> obj);
 
+    static void SetSProperties(JSThread *thread,
+                               JSHandle<JSObject> obj,
+                               JSHandle<JSHClass> hclass,
+                               const std::vector<PropertyDescriptor> &descs);
+
 protected:
     static void ElementsToDictionary(const JSThread *thread, JSHandle<JSObject> obj);
 
@@ -754,6 +761,7 @@ private:
     friend class ObjectFastOperator;
     friend class ICRuntimeStub;
     friend class RuntimeStubs;
+    friend class JSSharedArray;
 
     PropertyBox* GetGlobalPropertyBox(JSTaggedValue key);
     static bool PUBLIC_API AddElementInternal(
@@ -761,8 +769,7 @@ private:
         PropertyAttributes attr = PropertyAttributes(PropertyAttributes::GetDefaultAttributes()));
 
     static JSTaggedValue GetProperty(JSThread *thread, ObjectOperator *op);
-    static bool SetProperty(ObjectOperator *op, const JSHandle<JSTaggedValue> &value, bool mayThrow,
-                            SCheckMode checkMode = SCheckMode::CHECK);
+    static bool SetProperty(ObjectOperator *op, const JSHandle<JSTaggedValue> &value, bool mayThrow);
     static void DeletePropertyInternal(JSThread *thread, const JSHandle<JSObject> &obj,
                                        const JSHandle<JSTaggedValue> &key, uint32_t index);
     int FindProperty(const JSHandle<JSTaggedValue> &key);
@@ -787,8 +794,7 @@ private:
     static bool ValidateDataDescriptorWhenConfigurable(ObjectOperator *op, const PropertyDescriptor &desc,
                                                        const PropertyDescriptor &current, SCheckMode sCheckMode);
     static bool SetPropertyForDataDescriptor(ObjectOperator *op, const JSHandle<JSTaggedValue> &value,
-                                             JSHandle<JSTaggedValue> &receiver, bool mayThrow, bool isInternalAccessor,
-                                             SCheckMode checkMode = SCheckMode::CHECK);
+                                             JSHandle<JSTaggedValue> &receiver, bool mayThrow, bool isInternalAccessor);
     static bool SetPropertyForDataDescriptorProxy(JSThread *thread, ObjectOperator *op,
                                                   const JSHandle<JSTaggedValue> &value,
                                                   JSHandle<JSTaggedValue> &receiver);

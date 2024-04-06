@@ -82,7 +82,7 @@ JSHandle<JSTaggedValue> JSArray::ArrayCreate(JSThread *thread, JSTaggedNumber le
     double arrayLength = length.GetNumber();
     if (arrayLength > MAX_ARRAY_INDEX) {
         JSHandle<JSTaggedValue> exception(thread, JSTaggedValue::Exception());
-        THROW_RANGE_ERROR_AND_RETURN(thread, "array length must less than 2^32 - 1", exception);
+        THROW_RANGE_ERROR_AND_RETURN(thread, "array length must equal or less than 2^32.", exception);
     }
     uint32_t normalArrayLength = length.ToUint32();
 
@@ -294,7 +294,7 @@ bool JSArray::ArraySetLength(JSThread *thread, const JSHandle<JSObject> &array, 
     // 3. - 7. Convert Desc.[[Value]] to newLen.
     uint32_t newLen = 0;
     if (!JSTaggedValue::ToArrayLength(thread, desc.GetValue(), &newLen)) {
-        THROW_RANGE_ERROR_AND_RETURN(thread, "array length must less than 2^32 - 1", false);
+        THROW_RANGE_ERROR_AND_RETURN(thread, "array length must equal or less than 2^32.", false);
     }
     // 8. Set newLenDesc.[[Value]] to newLen.
     // (Done below, if needed.)

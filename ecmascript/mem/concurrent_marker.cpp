@@ -120,7 +120,6 @@ void ConcurrentMarker::Reset(bool revertCSet)
             heap_->EnumerateNewSpaceRegions(callback);
         }
     }
-    DecreaseTaskCounts();
 }
 
 void ConcurrentMarker::InitializeMarking()
@@ -163,6 +162,7 @@ bool ConcurrentMarker::MarkerTask::Run(uint32_t threadId)
     heap_->GetNonMovableMarker()->ProcessMarkStack(threadId);
     heap_->WaitRunningTaskFinished();
     heap_->GetConcurrentMarker()->FinishMarking(clockScope.TotalSpentTime());
+    DecreaseTaskCounts();
     return true;
 }
 

@@ -79,6 +79,7 @@ host_unittest_action("Base_003_Test") {
 
   sources = [
     # test file
+    "dtoa_helper_test.cpp",
     "number_helper_test.cpp",
     "string_helper_test.cpp",
     "typed_array_helper_test.cpp",

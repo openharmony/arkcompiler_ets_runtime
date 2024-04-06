@@ -34,6 +34,7 @@
 #include "ecmascript/napi/include/jsnapi.h"
 #include "ecmascript/ohos/ohos_pkg_args.h"
 #include "ecmascript/platform/file.h"
+#include "ecmascript/platform/os.h"
 
 namespace panda::ecmascript::kungfu {
 namespace {
@@ -73,6 +74,13 @@ int Main(const int argc, const char **argv)
     if (!retOpt) {
         LOG_COMPILER(ERROR) << AotCompilerPreprocessor::GetHelper();
         return 1;
+    }
+
+    if (runtimeOptions.WasSetDeviceState()) {
+        bool deviceIsScreenOff = runtimeOptions.GetDeviceState();
+        if (!deviceIsScreenOff) {
+            BindSmallCpuCore();
+        }
     }
 
     if (runtimeOptions.IsStartupTime()) {
@@ -143,6 +151,7 @@ int Main(const int argc, const char **argv)
                 .EnableLoweringBuiltin(cOptions.isEnableLoweringBuiltin_)
                 .EnableOptBranchProfiling(cOptions.isEnableOptBranchProfiling_)
                 .EnableEscapeAnalysis(cOptions.isEnableEscapeAnalysis_)
+                .EnableInductionVariableAnalysis(cOptions.isEnableInductionVariableAnalysis_)
                 .Build();
 
         PassManager passManager(vm,

@@ -19,6 +19,7 @@
 #include <csignal>
 #include "ecmascript/compiler/aot_file/aot_file_manager.h"
 #include "ecmascript/extractortool/src/source_map.h"
+#include "ecmascript/ohos/aot_crash_info.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 
@@ -73,14 +74,12 @@ struct JsFrameDebugInfo {
         : methodId(methodId), offset(offset), hapPath(hapPath), filePath(filePath) {}
 };
 
-#if defined(PANDA_TARGET_OHOS)
 struct JsFrame {
     char functionName[FUNCTIONNAME_MAX];
     char url[URL_MAX];
     int32_t line;
     int32_t column;
 };
-#endif
 
 class JSSymbolExtractor {
 public:
@@ -113,6 +112,8 @@ public:
     static AOTFileManager *loader;
 };
 void CrashCallback(char *buf, size_t len, void *ucontext);
+void BuildCrashInfo();
+uint64_t GetMicrosecondsTimeStamp();
 } // namespace panda::ecmascript
 #endif  // ECMASCRIPT_DFX_STACKINFO_JS_STACKINFO_H
 extern "C" int step_ark_managed_native_frame(

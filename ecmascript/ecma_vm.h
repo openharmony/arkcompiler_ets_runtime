@@ -26,6 +26,7 @@
 #include "ecmascript/mem/c_containers.h"
 #include "ecmascript/mem/c_string.h"
 #include "ecmascript/mem/gc_stats.h"
+#include "ecmascript/mem/gc_key_stats.h"
 #include "ecmascript/napi/include/dfx_jsnapi.h"
 #include "ecmascript/napi/include/jsnapi.h"
 #include "ecmascript/pgo_profiler/pgo_profiler.h"
@@ -48,6 +49,7 @@ class HeapTracker;
 class JSNativePointer;
 class Program;
 class GCStats;
+class GCKeyStats;
 class CpuProfiler;
 class Tracing;
 class RegExpExecResultCache;
@@ -93,7 +95,6 @@ class Jit;
 using NativePtrGetter = void* (*)(void* info);
 using SourceMapCallback = std::function<std::string(const std::string& rawStack)>;
 using SourceMapTranslateCallback = std::function<bool(std::string& url, int& line, int& column)>;
-using NativeStackCallback = std::function<std::string()>;
 using ResolveBufferCallback = std::function<bool(std::string dirPath, uint8_t **buff, size_t *buffSize)>;
 using UnloadNativeModuleCallback = std::function<bool(const std::string &moduleKey)>;
 using RequestAotCallback =
@@ -145,6 +146,11 @@ public:
     GCStats *GetEcmaGCStats() const
     {
         return gcStats_;
+    }
+
+    GCKeyStats *GetEcmaGCKeyStats() const
+    {
+        return gcKeyStats_;
     }
 
     JSThread *GetAssociatedJSThread() const
@@ -246,6 +252,9 @@ public:
     void ProcessNativeDelete(const WeakRootVisitor &visitor);
     void ProcessReferences(const WeakRootVisitor &visitor);
 
+    void PushToSharedNativePointerList(JSNativePointer *pointer);
+    void ProcessSharedNativeDelete(const WeakRootVisitor &visitor);
+
     SnapshotEnv *GetSnapshotEnv() const
     {
         return snapshotEnv_;
@@ -301,16 +310,6 @@ public:
         return sourceMapTranslateCallback_;
     }
 
-    void SetNativeStackCallback(NativeStackCallback cb)
-    {
-        nativeStackCallback_ = cb;
-    }
-
-    NativeStackCallback GetNativeStackCallback() const
-    {
-        return nativeStackCallback_;
-    }
-
     size_t GetNativePointerListSize()
     {
         return nativePointerList_.size();
@@ -335,7 +334,7 @@ public:
     {
         return resolveBufferCallback_;
     }
-    
+
     void SetSearchHapPathCallBack(SearchHapPathCallBack cb)
     {
         SearchHapPathCallBack_ = cb;
@@ -623,6 +622,11 @@ public:
     }
 
     static void InitializeIcuData(const JSRuntimeOptions &options);
+
+    std::vector<std::pair<DeleteEntryPoint, std::pair<void *, void *>>> &GetSharedNativePointerCallbacks()
+    {
+        return sharedNativePointerCallbacks_;
+    }
 protected:
 
     void PrintJSErrorInfo(const JSHandle<JSTaggedValue> &exceptionInfo) const;
@@ -642,6 +646,7 @@ private:
     bool icEnabled_ {true};
     bool initialized_ {false};
     GCStats *gcStats_ {nullptr};
+    GCKeyStats *gcKeyStats_ {nullptr};
     EcmaStringTable *stringTable_ {nullptr};
 
     // VM memory management.
@@ -653,6 +658,8 @@ private:
     CList<JSNativePointer *> nativePointerList_;
     CList<JSNativePointer *> concurrentNativePointerList_;
     std::vector<std::pair<DeleteEntryPoint, std::pair<void *, void *>>> nativePointerCallbacks_ {};
+    CList<JSNativePointer *> sharedNativePointerList_;
+    std::vector<std::pair<DeleteEntryPoint, std::pair<void *, void *>>> sharedNativePointerCallbacks_ {};
     // VM execution states.
     JSThread *thread_ {nullptr};
 
@@ -676,7 +683,6 @@ private:
     NativePtrGetter nativePtrGetter_ {nullptr};
     SourceMapCallback sourceMapCallback_ {nullptr};
     SourceMapTranslateCallback sourceMapTranslateCallback_ {nullptr};
-    NativeStackCallback nativeStackCallback_ {nullptr};
     void *loop_ {nullptr};
 
     // resolve path to get abc's buffer

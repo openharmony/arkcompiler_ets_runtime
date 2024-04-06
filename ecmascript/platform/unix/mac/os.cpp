@@ -56,4 +56,9 @@ long PtracePeektext([[maybe_unused]] int pid, [[maybe_unused]] uintptr_t addr)
 {
     return static_cast<long>(-1);
 }
+
+void BindSmallCpuCore()
+{
+    LOG_ECMA(INFO) << "Bind Small Core in macos not support";
+}
 }  // namespace panda::ecmascript

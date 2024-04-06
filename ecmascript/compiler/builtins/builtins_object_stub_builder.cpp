@@ -299,7 +299,7 @@ void BuiltinsObjectStubBuilder::Create(Variable *result, Label *exit, Label *slo
     GateRef proto = GetCallArg0(numArgs_);
     GateRef protoIsNull = TaggedIsNull(proto);
     GateRef protoIsEcmaObj = IsEcmaObject(proto);
-    GateRef protoIsJSShared = TaggedIsShared(proto);
+    GateRef protoIsJSShared = TaggedIsSharedObj(proto);
     BRANCH(BoolOr(BoolAnd(BoolNot(protoIsEcmaObj), BoolNot(protoIsNull)), protoIsJSShared), slowPath, &newObject);
     Bind(&newObject);
     {
@@ -1214,10 +1214,15 @@ GateRef BuiltinsObjectStubBuilder::GetEnumElementKeys(GateRef glue, GateRef obj)
                 LoopEnd(&loopHead, env, glue);
                 Bind(&afterLoop);
                 {
-                    Store(VariableType::INT32(), glue_,
-                        elementArray, IntPtr(TaggedArray::LENGTH_OFFSET), *elementIndex);
                     result = elementArray;
-                    Jump(&exit);
+                    Label needTrim(env);
+                    BRANCH(Int32LessThan(*elementIndex, numOfElements), &needTrim, &exit);
+                    Bind(&needTrim);
+                    {
+                        CallNGCRuntime(glue, RTSTUB_ID(ArrayTrim),
+                                       {glue, elementArray, ZExtInt32ToInt64(*elementIndex)});
+                        Jump(&exit);
+                    }
                 }
             }
         }

@@ -70,6 +70,7 @@
 #include "ecmascript/js_tagged_number.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/js_typed_array.h"
+#include "ecmascript/jsnapi_sendable.h"
 #include "ecmascript/jspandafile/debug_info_extractor.h"
 #include "ecmascript/jspandafile/js_pandafile_executor.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
@@ -92,6 +93,7 @@
 #include "ecmascript/serializer/value_serializer.h"
 #include "ecmascript/tagged_array.h"
 #include "ecmascript/js_weak_container.h"
+#include "ecmascript/ohos/aot_crash_info.h"
 #ifdef ARK_SUPPORT_INTL
 #include "ecmascript/js_bigint.h"
 #include "ecmascript/js_collator.h"
@@ -132,6 +134,7 @@ using ecmascript::JSHClass;
 using ecmascript::JSIterator;
 using ecmascript::JSMap;
 using ecmascript::JSMapIterator;
+using ecmascript::JSNapiSendable;
 using ecmascript::JSNativePointer;
 using ecmascript::JSObject;
 using ecmascript::JSPandaFile;
@@ -715,6 +718,13 @@ bool JSValueRef::IsAsyncGeneratorObject()
 bool JSValueRef::IsAsyncFunction()
 {
     return JSNApiHelper::ToJSTaggedValue(this).IsJSAsyncFunction();
+}
+
+bool JSValueRef::IsConcurrentFunction()
+{
+    JSHandle<JSTaggedValue> funcVal = JSNApiHelper::ToJSHandle(this);
+    JSHandle<JSFunction> transFunc = JSHandle<JSFunction>::Cast(funcVal);
+    return transFunc->GetFunctionKind() == ecmascript::FunctionKind::CONCURRENT_FUNCTION;
 }
 
 bool JSValueRef::IsArgumentsObject()
@@ -2051,8 +2061,19 @@ Local<NativePointerRef> NativePointerRef::NewConcurrent(
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
     ObjectFactory *factory = vm->GetFactory();
-    JSHandle<JSNativePointer> obj = factory->NewJSNativePointer(nativePointer, callBack, data,
-        false, nativeBindingsize, Concurrent::YES);
+    JSHandle<JSNativePointer> obj =
+        factory->NewJSNativePointer(nativePointer, callBack, data, false, nativeBindingsize, Concurrent::YES);
+    return JSNApiHelper::ToLocal<NativePointerRef>(JSHandle<JSTaggedValue>(obj));
+}
+
+Local<NativePointerRef> NativePointerRef::NewSendable(
+    const EcmaVM *vm, void *nativePointer, NativePointerCallback callBack, void *data, size_t nativeBindingsize)
+{
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
+    ObjectFactory *factory = vm->GetFactory();
+    JSHandle<JSNativePointer> obj =
+        factory->NewSJSNativePointer(nativePointer, callBack, data, false, nativeBindingsize);
     return JSNApiHelper::ToLocal<NativePointerRef>(JSHandle<JSTaggedValue>(obj));
 }
 
@@ -2317,165 +2338,12 @@ Local<FunctionRef> FunctionRef::NewClassFunction(EcmaVM *vm, InternalFunctionCal
     return scope.Escape(result);
 }
 
-ecmascript::SharedFieldType GetSharedFieldType(Local<JSValueRef> value)
-{
-    auto valueHandle = JSNApiHelper::ToJSHandle(value);
-    if (valueHandle->IsUndefined()) {
-        return ecmascript::SharedFieldType::NONE;
-    }
-    if (valueHandle->IsNumber()) {
-        return ecmascript::SharedFieldType::NUMBER;
-    }
-    if (valueHandle->IsString()) {
-        return ecmascript::SharedFieldType::STRING;
-    }
-    if (valueHandle->IsBoolean()) {
-        return ecmascript::SharedFieldType::BOOLEAN;
-    }
-    if (valueHandle->IsObject()) {
-        return ecmascript::SharedFieldType::SENDABLE;
-    }
-    if (valueHandle->IsBigInt()) {
-        return ecmascript::SharedFieldType::BIG_INT;
-    }
-    LOG_ECMA(ERROR) << "SharedFieldType";
-    return ecmascript::SharedFieldType::NONE;
-}
-
-JSHandle<JSHClass> CreateInlinedSendableHClass(JSThread *thread,
-                                               FunctionRef::SendablePropertiesInfo info,
-                                               bool isProtoClass)
-{
-    EcmaVM *vm = thread->GetEcmaVM();
-    ObjectFactory *factory = vm->GetFactory();
-    JSHandle<JSHClass> hclass;
-    uint32_t length = info.keys->Length(vm);
-    JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
-    JSHandle<ecmascript::LayoutInfo> layout = factory->CreateSLayoutInfo(length);
-
-    for (uint32_t i = 0; i < length; ++i) {
-        key.Update(JSNApiHelper::ToJSHandle(info.keys->Get(vm, i)));
-        ASSERT(key->IsString());
-        ecmascript::SharedFieldType type = GetSharedFieldType(info.values->Get(vm, i));
-        ecmascript::PropertyAttributes attr = ecmascript::PropertyAttributes::Default(
-            info.attributes[i].IsWritable(), info.attributes[i].IsEnumerable(), info.attributes[i].IsConfigurable());
-        if (UNLIKELY(JSNApiHelper::ToJSHandle(info.attributes[i].GetValue(vm))->IsAccessor())) {
-            attr.SetIsAccessor(true);
-        }
-        attr.SetIsInlinedProps(true);
-        attr.SetRepresentation(ecmascript::Representation::TAGGED);
-        attr.SetSharedFieldType(type);
-        attr.SetOffset(i);
-        layout->AddKey(thread, i, key.GetTaggedValue(), attr);
-    }
-    hclass = isProtoClass ? factory->NewSEcmaHClass(ecmascript::JSSharedObject::SIZE,
-                                                    ecmascript::JSType::JS_SHARED_OBJECT, length)
-                          : factory->NewSEcmaHClass(ecmascript::JSSharedFunction::SIZE,
-                                                    ecmascript::JSType::JS_SHARED_FUNCTION, length);
-    hclass->SetLayout(thread, layout);
-    hclass->SetNumberOfProps(length);
-    return hclass;
-}
-
-JSHandle<JSHClass> CreateDictSendableHClass(JSThread *thread,
-                                            FunctionRef::SendablePropertiesInfo info,
-                                            bool isProtoClass)
-{
-    EcmaVM *vm = thread->GetEcmaVM();
-    ObjectFactory *factory = vm->GetFactory();
-    JSHandle<JSHClass> hclass;
-    uint32_t length = info.keys->Length(vm);
-    JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
-    JSMutableHandle<ecmascript::NameDictionary> dict(thread,
-        ecmascript::NameDictionary::CreateInSharedHeap(thread,
-        ecmascript::NameDictionary::ComputeHashTableSize(length)));
-    auto globalConst = const_cast<GlobalEnvConstants *>(thread->GlobalConstants());
-    JSHandle<JSTaggedValue> value = globalConst->GetHandledUndefined();
-
-    for (uint32_t i = 0; i < length; ++i) {
-        key.Update(JSNApiHelper::ToJSHandle(info.keys->Get(vm, i)));
-        ASSERT(key->IsString());
-        ecmascript::SharedFieldType type = GetSharedFieldType(info.values->Get(vm, i));
-        ecmascript::PropertyAttributes attr = ecmascript::PropertyAttributes::Default(
-            info.attributes[i].IsWritable(), info.attributes[i].IsEnumerable(), info.attributes[i].IsConfigurable());
-        attr.SetSharedFieldType(type);
-        attr.SetBoxType(ecmascript::PropertyBoxType::UNDEFINED);
-        JSHandle<ecmascript::NameDictionary> newDict = ecmascript::NameDictionary::Put(thread, dict, key, value, attr);
-        dict.Update(newDict);
-    }
-    hclass =
-        isProtoClass
-            ? factory->NewSEcmaHClass(ecmascript::JSSharedObject::SIZE, ecmascript::JSType::JS_SHARED_OBJECT, 0)
-            : factory->NewSEcmaHClass(ecmascript::JSSharedFunction::SIZE, ecmascript::JSType::JS_SHARED_FUNCTION, 0);
-    hclass->SetLayout(thread, dict);
-    hclass->SetNumberOfProps(0);
-    hclass->SetIsDictionaryMode(true);
-    return hclass;
-}
-
-JSHandle<JSHClass> CreateSendableHClass(JSThread *thread, FunctionRef::SendablePropertiesInfo info, bool isProtoClass)
-{
-    EcmaVM *vm = thread->GetEcmaVM();
-    uint32_t length = info.keys->Length(vm);
-    uint32_t maxInline =
-        isProtoClass ? ecmascript::JSSharedObject::MAX_INLINE : ecmascript::JSSharedFunction::MAX_INLINE;
-    JSHandle<JSHClass> hclass;
-
-    if (LIKELY(length <= maxInline)) {
-        hclass = CreateInlinedSendableHClass(thread, info, isProtoClass);
-    } else {
-        hclass = CreateDictSendableHClass(thread, info, isProtoClass);
-    }
-    if (isProtoClass) {
-        hclass->SetClassPrototype(true);
-        hclass->SetIsPrototype(true);
-    } else {
-        hclass->SetClassConstructor(true);
-        hclass->SetConstructor(true);
-    }
-
-    return hclass;
-}
-
-void SetInlinedAndDictProps(JSThread *thread,
-                            FunctionRef::SendablePropertiesInfo info,
-                            JSHandle<JSHClass> hclass,
-                            JSHandle<JSObject> obj)
-{
-    EcmaVM *vm = thread->GetEcmaVM();
-    JSMutableHandle<JSTaggedValue> propKey(thread, JSTaggedValue::Undefined());
-    JSMutableHandle<JSTaggedValue> propValue(thread, JSTaggedValue::Undefined());
-
-    uint32_t length = info.keys->Length(vm);
-    if (LIKELY(!hclass->IsDictionaryMode())) {
-        for (uint32_t i = 0; i < length; ++i) {
-            propValue.Update(JSNApiHelper::ToJSHandle(info.attributes[i].GetValue(vm)));
-            obj->SetPropertyInlinedProps(thread, i, propValue.GetTaggedValue());
-        }
-    } else {
-        JSMutableHandle<ecmascript::NameDictionary> dict(thread,
-            ecmascript::NameDictionary::CreateInSharedHeap(thread,
-            ecmascript::NameDictionary::ComputeHashTableSize(length)));
-        for (uint32_t i = 0; i < length; i++) {
-            ecmascript::PropertyAttributes attr = ecmascript::PropertyAttributes::Default(
-                info.attributes[i].IsWritable(), info.attributes[i].IsEnumerable(),
-                info.attributes[i].IsConfigurable());
-            propKey.Update(JSNApiHelper::ToJSHandle(info.keys->Get(vm, i)));
-            propValue.Update(JSNApiHelper::ToJSHandle(info.attributes[i].GetValue(vm)));
-            JSHandle<ecmascript::NameDictionary> newDict =
-                ecmascript::NameDictionary::PutIfAbsent(thread, dict, propKey, propValue, attr);
-            dict.Update(newDict);
-        }
-        obj->SetProperties(thread, dict);
-    }
-}
-
 Local<FunctionRef> FunctionRef::NewSendableClassFunction(const EcmaVM *vm,
                                                          InternalFunctionCallback nativeFunc,
                                                          Deleter deleter,
                                                          void *data,
                                                          Local<StringRef> name,
-                                                         SendablePropertiesInfos propertiesInfos,
+                                                         SendablePropertiesInfos &infos,
                                                          Local<FunctionRef> parent,
                                                          bool callNapi,
                                                          size_t nativeBindingSize)
@@ -2484,27 +2352,18 @@ Local<FunctionRef> FunctionRef::NewSendableClassFunction(const EcmaVM *vm,
     ecmascript::ThreadManagedScope managedScope(thread);
     EscapeLocalScope scope(vm);
     ObjectFactory *factory = vm->GetFactory();
-    const GlobalEnvConstants *globalConst = thread->GlobalConstants();
 
-    auto [instancePropertiesInfo, staticPropertiesInfo, nonStaticPropertiesInfo] = propertiesInfos;
-    JSHandle<JSTaggedValue> nameKey = globalConst->GetHandledNameString();
-    staticPropertiesInfo.keys->Set(vm, 0, JSNApiHelper::ToLocal<StringRef>(nameKey));
-    staticPropertiesInfo.values->Set(vm, 0, name);
-    JSHandle<JSTaggedValue> constructorKey = globalConst->GetHandledConstructorString();
-    nonStaticPropertiesInfo.keys->Set(vm, 0, JSNApiHelper::ToLocal<StringRef>(constructorKey));
-    nonStaticPropertiesInfo.values->Set(vm, 0, JSValueRef::Null(vm));
-
-    JSHandle<JSHClass> prototypeHClass = CreateSendableHClass(thread, nonStaticPropertiesInfo, true);
+    JSNapiSendable sendable(thread, infos, name);
+    JSHandle<JSHClass> prototypeHClass = JSHClass::CreateSPrototypeHClass(thread, sendable.GetNonStaticDescs());
     JSHandle<JSObject> prototype = factory->NewSharedOldSpaceJSObject(prototypeHClass);
-    JSHandle<JSHClass> constructorHClass = CreateSendableHClass(thread, staticPropertiesInfo, false);
+    JSHandle<JSHClass> constructorHClass = JSHClass::CreateSConstructorHClass(thread, sendable.GetStaticDescs());
     JSHandle<JSFunction> constructor = factory->NewSFunctionByHClass(
         reinterpret_cast<void *>(nativeFunc), constructorHClass, ecmascript::FunctionKind::CLASS_CONSTRUCTOR);
 
-    staticPropertiesInfo.attributes[0] = PropertyAttribute(name, false, false, false);
-    nonStaticPropertiesInfo.attributes[0] = PropertyAttribute(
-        JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>::Cast(constructor)), false, false, false);
-    SetInlinedAndDictProps(thread, nonStaticPropertiesInfo, prototypeHClass, prototype);
-    SetInlinedAndDictProps(thread, staticPropertiesInfo, constructorHClass, JSHandle<JSObject>::Cast(constructor));
+    sendable.SetSConstructor(constructor);
+    JSObject::SetSProperties(thread, prototype, prototypeHClass, sendable.GetNonStaticDescs());
+    JSObject::SetSProperties(thread, JSHandle<JSObject>::Cast(constructor), constructorHClass,
+                             sendable.GetStaticDescs());
 
     if (!parent->IsNull()) {
         auto parentPrototype = parent->GetFunctionPrototype(vm);
@@ -2518,7 +2377,7 @@ Local<FunctionRef> FunctionRef::NewSendableClassFunction(const EcmaVM *vm,
     constructor->SetCallNapi(callNapi);
     constructor->SetSFunctionExtraInfo(thread, nullptr, deleter, data, nativeBindingSize);
 
-    JSHandle<JSHClass> iHClass = CreateSendableHClass(thread, instancePropertiesInfo, true);
+    JSHandle<JSHClass> iHClass = JSHClass::CreateSHClass(thread, sendable.GetInstanceDescs());
     iHClass->SetPrototype(thread, JSHandle<JSTaggedValue>(prototype));
     iHClass->SetExtensible(false);
     constructor->SetProtoOrHClass(thread, iHClass);
@@ -2876,6 +2735,20 @@ JSExecutionScope::~JSExecutionScope()
     isRevert_ = false;
 }
 
+// ------------------------------------ JsiNativeScope -----------------------------------------------
+
+JsiNativeScope::JsiNativeScope(const EcmaVM *vm)
+{
+    thread_ = vm->GetAssociatedJSThread();
+    oldThreadState_ = static_cast<uint16_t>(thread_->GetState());
+    thread_->UpdateState(ecmascript::ThreadState::NATIVE);
+}
+
+JsiNativeScope::~JsiNativeScope()
+{
+    thread_->UpdateState(static_cast<ecmascript::ThreadState>(oldThreadState_));
+}
+
 // ------------------------------------ JsiRuntimeCallInfo -----------------------------------------------
 void *JsiRuntimeCallInfo::GetData()
 {
@@ -3125,11 +2998,6 @@ void JSNApi::SetSourceMapTranslateCallback(EcmaVM *vm, SourceMapTranslateCallbac
     vm->SetSourceMapTranslateCallback(callback);
 }
 
-void JSNApi::SetNativeStackCallback(EcmaVM *vm, NativeStackCallback callback)
-{
-    vm->SetNativeStackCallback(callback);
-}
-
 void JSNApi::SetSourceMapCallback(EcmaVM *vm, SourceMapCallback callback)
 {
     vm->SetSourceMapCallback(callback);
@@ -3267,8 +3135,6 @@ void JSNApi::DestroyJSVM(EcmaVM *ecmaVm)
         return;
     }
     ecmaVm->GetJSThread()->ManagedCodeBegin();
-    auto &config = ecmaVm->GetEcmaParamConfiguration();
-    MemMapAllocator::GetInstance()->DecreaseReserved(config.GetMaxHeapSize());
     EcmaVM::Destroy(ecmaVm);
 }
 
@@ -3399,7 +3265,8 @@ bool JSNApi::StartDebugger([[maybe_unused]] EcmaVM *vm, [[maybe_unused]] const D
 #endif // ECMASCRIPT_SUPPORT_DEBUGGER
 }
 
-// for old process.
+// rk
+// FA or Stage
 bool JSNApi::StartDebuggerForOldProcess([[maybe_unused]] EcmaVM *vm, [[maybe_unused]] const DebugOption &option,
                                         [[maybe_unused]] int32_t instanceId,
                                         [[maybe_unused]] const DebuggerPostTask &debuggerPostTask)
@@ -3456,7 +3323,8 @@ bool JSNApi::StartDebuggerForOldProcess([[maybe_unused]] EcmaVM *vm, [[maybe_unu
 #endif // ECMASCRIPT_SUPPORT_DEBUGGER
 }
 
-// for socketpair process in ohos platform.
+// ohos or emulator
+// FA or Stage
 bool JSNApi::StartDebuggerForSocketPair([[maybe_unused]] int tid, [[maybe_unused]] int socketfd)
 {
 #if defined(ECMASCRIPT_SUPPORT_DEBUGGER)
@@ -3493,8 +3361,11 @@ bool JSNApi::StartDebuggerForSocketPair([[maybe_unused]] int tid, [[maybe_unused
 #endif // ECMASCRIPT_SUPPORT_DEBUGGER
 }
 
+// ohos or emulator
+// FA or Stage
 // release or debug hap : aa start
 //                        aa start -D
+//                        aa start -p
 //                        new worker
 bool JSNApi::NotifyDebugMode([[maybe_unused]] int tid,
                              [[maybe_unused]] EcmaVM *vm,
@@ -3525,7 +3396,11 @@ bool JSNApi::NotifyDebugMode([[maybe_unused]] int tid,
     jsDebuggerManager->SetDebugLibraryHandle(std::move(handle.Value()));
     jsDebuggerManager->SetDebugMode(option.isDebugMode && debugApp);
     jsDebuggerManager->SetIsDebugApp(debugApp);
+#ifdef PANDA_TARGET_ARM32
     ret = StartDebuggerForOldProcess(vm, option, instanceId, debuggerPostTask);
+#else
+    ret = true;
+#endif
 
     // store debugger postTask in inspector.
     using StoreDebuggerInfo = void (*)(int, EcmaVM *, const DebuggerPostTask &);
@@ -3537,6 +3412,23 @@ bool JSNApi::NotifyDebugMode([[maybe_unused]] int tid,
         return false;
     }
     reinterpret_cast<StoreDebuggerInfo>(symOfStoreDebuggerInfo.Value())(tid, vm, debuggerPostTask);
+
+#ifndef PANDA_TARGET_ARM32
+    // Initialize debugger
+    using InitializeDebuggerForSocketpair = bool(*)(void*);
+    auto sym = panda::os::library_loader::ResolveSymbol(
+        jsDebuggerManager->GetDebugLibraryHandle(), "InitializeDebuggerForSocketpair");
+    if (!sym) {
+        LOG_ECMA(ERROR) << "[NotifyDebugMode] Resolve InitializeDebuggerForSocketpair symbol fail: "
+            << sym.Error().ToString();
+        return false;
+    }
+    if (!reinterpret_cast<InitializeDebuggerForSocketpair>(sym.Value())(vm)) {
+        LOG_ECMA(ERROR) << "[NotifyDebugMode] InitializeDebuggerForSocketpair fail";
+        return false;
+    }
+#endif
+
     if (option.isDebugMode) {
         using WaitForDebugger = void (*)(EcmaVM *);
         auto symOfWaitForDebugger = panda::os::library_loader::ResolveSymbol(
@@ -3727,8 +3619,48 @@ void JSNApi::SetDeviceDisconnectCallback(EcmaVM *vm, DeviceDisconnectCallback cb
     vm->SetDeviceDisconnectCallback(cb);
 }
 
+bool JSNApi::IsAotCrash()
+{
+    std::string realOutPath;
+    std::string arkProfilePath = ecmascript::ohos::AotCrashInfo::GetSandBoxPath();
+    std::string sanboxPath = panda::os::file::File::GetExtendedFilePath(arkProfilePath);
+    if (!ecmascript::RealPath(sanboxPath, realOutPath, false)) {
+        return false;
+    }
+    realOutPath = realOutPath + "/" + ecmascript::ohos::AotCrashInfo::GetCrashFileName();
+    ecmascript::ohos::AotCrashInfo aotCrashInfo;
+    std::string soBuildId = aotCrashInfo.GetRuntimeBuildId();
+    std::ifstream ifile(realOutPath.c_str());
+    int aotCrashCount = 0;
+    int othersCrashCount = 0;
+    if (ifile.is_open()) {
+        std::string iline;
+        while (ifile >> iline) {
+            std::string buildId = ecmascript::ohos::AotCrashInfo::GetBuildId(iline);
+            ecmascript::ohos::CrashType type = ecmascript::ohos::AotCrashInfo::GetCrashType(iline);
+            if (type == ecmascript::ohos::CrashType::AOT && buildId == soBuildId) {
+                aotCrashCount++;
+            }
+            if (type == ecmascript::ohos::CrashType::OTHERS && buildId == soBuildId) {
+                othersCrashCount++;
+            }
+        }
+        ifile.close();
+        if (aotCrashCount >= ecmascript::ohos::AotCrashInfo::GetAotCrashCount()
+            || othersCrashCount >= ecmascript::ohos::AotCrashInfo::GetOthersCrashCount()) {
+            return true;
+        }
+    }
+    return false;
+}
+
 void JSNApi::LoadAotFile(EcmaVM *vm, const std::string &moduleName)
 {
+    if (IsAotCrash()) {
+        LOG_ECMA(INFO) << "Stop load AOT because there are more crashes";
+        return;
+    }
+    
     CROSS_THREAD_AND_EXCEPTION_CHECK(vm);
     ecmascript::ThreadManagedScope scope(thread);
     if (!ecmascript::AnFileDataManager::GetInstance()->IsEnable()) {

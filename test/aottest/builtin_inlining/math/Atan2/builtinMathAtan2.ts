@@ -23,51 +23,52 @@ let len:number = 1;
 
 // Check without params
 len = Math.atan2();
-print(len); // NaN
+print(len); //: NaN
 
 len = Math.atan2(NaN);
-print(len); // NaN
+print(len); //: NaN
 
 len = Math.atan2(NaN, NaN);
-print(len); // NaN
+print(len); //: NaN
 
 len = Math.atan2(0, NaN);
-print(len); // NaN
+print(len); //: NaN
 
 len = Math.atan2(NaN, 0);
-print(len); // NaN
+print(len); //: NaN
 
 len = Math.atan2(-1, 1.5);
-print(len); // -0.5880026035475675
+print(len); //: -0.5880026035475675
 
-len = Math.atan2(1, -0);
-print(len); // Math.PI / 2
+len = Math.atan2(1, -0); // PI/2
+print(len); //: 1.5707963267948966
 
 len = Math.atan2(0, 1);
-print(len); // 0
+print(len); //: 0
 
-len = Math.atan2(0, -0);
-print(len); // Math.PI
+len = Math.atan2(0, -0); // PI
+print(len); //: 3.141592653589793
 
 len = Math.atan2(-0, 0);
-print(len); // -0.
+print("1/x: " + 1/len); //: 1/x: -Infinity
 
-len = Math.atan2(-0, -0);
-print(len); // -Math.PI
+len = Math.atan2(-0, -0); // -PI
+print(len); //: -3.141592653589793
 
 len = Math.atan2(-1, Number.POSITIVE_INFINITY)
-print(len) // -0. !!!! NOTE: now it's return 0, need investigate
+print("1/x: " + 1/len) //: 1/x: -Infinity
 
 len = Math.atan2(1, Number.POSITIVE_INFINITY)
-print(len) // 0.
+print(len) //: 0
 
 // Replace standart builtin
 let true_atan2 = Math.atan2
 Math.atan2 = replace
 len = Math.atan2(111);
-print(len);
+print(len); //: 111
 
 // Call standart builtin with non-number param
 Math.atan2 = true_atan2
 len = Math.atan2(0, "NaN"); // deopt
-print(len); // NaN
+//aot: [trace] Check Type: NotNumber1
+print(len); //: NaN

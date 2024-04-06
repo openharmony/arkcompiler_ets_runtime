@@ -28,6 +28,7 @@
 #include "ecmascript/js_tagged_value-inl.h"
 #include "ecmascript/js_typed_array.h"
 #include "ecmascript/object_factory-inl.h"
+#include "ecmascript/shared_objects/js_shared_array.h"
 #include "ecmascript/tagged_dictionary.h"
 #include "ecmascript/message_string.h"
 
@@ -196,6 +197,10 @@ JSTaggedValue LoadICRuntime::LoadValueMiss(JSHandle<JSTaggedValue> receiver, JSH
     if (receiver->IsTypedArray()) {
         return LoadTypedArrayValueMiss(receiver, key);
     }
+    // fixme(hzzhouzebin) Open IC for SharedArray later.
+    if (receiver->IsJSSharedArray()) {
+        return JSSharedArray::GetProperty(thread_, receiver, key, SCheckMode::CHECK).GetValue().GetTaggedValue();
+    }
     ObjectOperator op(GetThread(), receiver, key);
     auto result = JSHandle<JSTaggedValue>(thread_, JSObject::GetProperty(GetThread(), &op));
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
@@ -345,6 +350,17 @@ JSTaggedValue StoreICRuntime::StoreMiss(JSHandle<JSTaggedValue> receiver, JSHand
         }
     }
     UpdateReceiverHClass(JSHandle<JSTaggedValue>(GetThread(), JSHandle<JSObject>::Cast(receiver)->GetClass()));
+
+    // fixme(hzzhouzebin) Open IC for SharedArray later.
+    if (receiver->IsJSSharedArray()) {
+        bool success = JSSharedArray::SetProperty(thread_, receiver, key, value, true, SCheckMode::CHECK);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
+        if (success) {
+            return JSTaggedValue::Undefined();
+        }
+        return JSTaggedValue::Exception();
+    }
+
     ObjectOperator op = ConstructOp(receiver, key, value, isOwn);
     if (!op.IsFound()) {
         if (kind == ICKind::NamedGlobalStoreIC) {

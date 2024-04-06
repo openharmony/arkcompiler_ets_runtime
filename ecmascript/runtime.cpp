@@ -16,21 +16,25 @@
 #include "ecmascript/runtime.h"
 #include <memory>
 
+#include "ecmascript/checkpoint/thread_state_transition.h"
 #include "ecmascript/compiler/aot_file/an_file_data_manager.h"
+#include "ecmascript/ecma_string_table.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/jit/jit.h"
-#include "ecmascript/ecma_string_table.h"
+#include "ecmascript/jspandafile/js_pandafile_manager.h"
+#include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/log_wrapper.h"
 #include "ecmascript/mem/mem_map_allocator.h"
 #include "ecmascript/module/js_module_manager.h"
+#include "ecmascript/napi/include/jsnapi_expo.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
-#include "ecmascript/checkpoint/thread_state_transition.h"
-#include "jsnapi_expo.h"
+#include "libpandafile/index_accessor.h"
 
 namespace panda::ecmascript {
 using PGOProfilerManager = pgo::PGOProfilerManager;
 
 int32_t Runtime::vmCount_ = 0;
+int32_t Runtime::destroyCount_ = 0;
 bool Runtime::firstVmCreated_ = false;
 Mutex *Runtime::vmCreationLock_ = new Mutex();
 Runtime *Runtime::instance_ = nullptr;
@@ -39,6 +43,19 @@ Runtime *Runtime::GetInstance()
 {
     ASSERT(instance_ != nullptr);
     return instance_;
+}
+
+Runtime::~Runtime()
+{
+    LockHolder lock(constpoolLock_);
+    auto iter = globalSharedConstpools_.begin();
+    while (iter != globalSharedConstpools_.end()) {
+        LOG_ECMA(INFO) << "remove js pandafile by vm destruct, file:" << iter->first->GetJSPandaFileDesc();
+        JSPandaFileManager::GetInstance()->RemoveJSPandaFile(iter->first);
+        iter->second.clear();
+        iter++;
+    }
+    globalSharedConstpools_.clear();
 }
 
 void Runtime::CreateIfFirstVm(const JSRuntimeOptions &options)
@@ -176,6 +193,101 @@ void Runtime::IterateSerializeRoot(const RootVisitor &v)
         for (auto &rootObj : it.second) {
             v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&rootObj)));
         }
+    }
+}
+
+bool Runtime::HasCachedConstpool(const JSPandaFile *jsPandaFile)
+{
+    LockHolder lock(constpoolLock_);
+    return globalSharedConstpools_.find(jsPandaFile) != globalSharedConstpools_.end();
+}
+
+JSTaggedValue Runtime::FindConstpool(const JSPandaFile *jsPandaFile, int32_t index)
+{
+    LockHolder lock(constpoolLock_);
+    return FindConstpoolUnlocked(jsPandaFile, index);
+}
+
+JSTaggedValue Runtime::FindConstpoolUnlocked(const JSPandaFile *jsPandaFile, int32_t index)
+{
+    auto iter = globalSharedConstpools_.find(jsPandaFile);
+    if (iter == globalSharedConstpools_.end()) {
+        return JSTaggedValue::Hole();
+    }
+    auto constpoolIter = iter->second.find(index);
+    if (constpoolIter == iter->second.end()) {
+        return JSTaggedValue::Hole();
+    }
+    return constpoolIter->second;
+}
+
+void Runtime::AddConstpool(const JSPandaFile *jsPandaFile, JSTaggedValue constpool, int32_t index)
+{
+    LockHolder lock(constpoolLock_);
+    ASSERT(constpool.IsConstantPool());
+    if (globalSharedConstpools_.find(jsPandaFile) == globalSharedConstpools_.end()) {
+        globalSharedConstpools_[jsPandaFile] = CMap<int32_t, JSTaggedValue>();
+    }
+    auto &constpoolMap = globalSharedConstpools_[jsPandaFile];
+    ASSERT(constpoolMap.find(index) == constpoolMap.end());
+    constpoolMap.insert({index, constpool});
+}
+
+std::optional<std::reference_wrapper<CMap<int32_t, JSTaggedValue>>> Runtime::FindConstpools(
+    const JSPandaFile *jsPandaFile)
+{
+    LockHolder lock(constpoolLock_);
+    auto iter = globalSharedConstpools_.find(jsPandaFile);
+    if (iter == globalSharedConstpools_.end()) {
+        return std::nullopt;
+    }
+    return iter->second;
+}
+
+void Runtime::ProcessNativeDeleteInSharedGC(const WeakRootVisitor &visitor)
+{
+    // No need lock here, only shared gc will sweep shared constpool, meanwhile other threads are suspended.
+    auto iterator = globalSharedConstpools_.begin();
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "Constpools:" + std::to_string(globalSharedConstpools_.size()));
+    while (iterator != globalSharedConstpools_.end()) {
+        auto &constpools = iterator->second;
+        auto constpoolIter = constpools.begin();
+        while (constpoolIter != constpools.end()) {
+            JSTaggedValue constpoolVal = constpoolIter->second;
+            if (constpoolVal.IsHeapObject()) {
+                TaggedObject *obj = constpoolVal.GetTaggedObject();
+                auto fwd = visitor(obj);
+                if (fwd == nullptr) {
+                    int32_t constpoolIndex =
+                        ConstantPool::Cast(constpoolVal.GetTaggedObject())->GetUnsharedConstpoolIndex().GetInt();
+                    ASSERT(0 <= constpoolIndex && constpoolIndex != ConstantPool::CONSTPOOL_TYPE_FLAG &&
+                        constpoolIndex < UNSHARED_CONSTANTPOOL_COUNT);
+                    EraseUnusedConstpool(iterator->first, constpoolIter->first, constpoolIndex);
+                    constpoolIter = constpools.erase(constpoolIter);
+                    // when shared constpool is not referenced by any objects,
+                    // global unshared constpool count can be reuse.
+                    freeSharedConstpoolIndex_.insert(constpoolIndex);
+                    continue;
+                }
+            }
+            ++constpoolIter;
+        }
+        if (constpools.size() == 0) {
+            LOG_ECMA(INFO) << "remove js pandafile by gc, file:" << iterator->first->GetJSPandaFileDesc();
+            JSPandaFileManager::GetInstance()->RemoveJSPandaFile(iterator->first);
+            iterator = globalSharedConstpools_.erase(iterator);
+        } else {
+            ++iterator;
+        }
+    }
+}
+
+void Runtime::EraseUnusedConstpool(const JSPandaFile *jsPandaFile, int32_t index, int32_t constpoolIndex)
+{
+    LockHolder lock(threadsLock_);
+    for (auto thread : threads_) {
+        auto context = thread->GetCurrentEcmaContext();
+        context->EraseUnusedConstpool(jsPandaFile, index, constpoolIndex);
     }
 }
 }  // namespace panda::ecmascript

@@ -120,9 +120,6 @@ public:
                                                        const JSHandle<JSHClass> &constructorHClass);
 
     static bool PUBLIC_API MatchFieldType(SharedFieldType fieldType, JSTaggedValue value);
-
-    static bool PUBLIC_API MismatchFieldType(JSTaggedValue holder, SCheckMode sCheckMode, SharedFieldType fieldType,
-                                  JSTaggedValue value);
 private:
     static JSHandle<NameDictionary> BuildDictionaryProperties(JSThread *thread, const JSHandle<JSObject> &object,
                                                               JSHandle<TaggedArray> &keys,
@@ -198,6 +195,7 @@ private:
 
     static void UpdateValueToAccessor(JSThread *thread, JSMutableHandle<JSTaggedValue> &value,
                                       JSHandle<AccessorData> &accessor);
+    static std::pair<uint32_t, uint32_t> GetSizeAndMaxInlineByType(JSType type);
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_JSPANDAFILE_CLASS_INFO_EXTRACTOR_H

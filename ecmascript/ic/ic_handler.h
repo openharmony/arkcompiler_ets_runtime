@@ -70,111 +70,113 @@ public:
     static_assert(SSharedBit::Mask() || SKindBit::Mask() == KindBit::Mask());
     using SFieldTypeBit = AttrIndexBit::NextField<SharedFieldType, PropertyAttributes::FIELD_TYPE_NUM>;
     static_assert(static_cast<size_t>(StoreHandlerKind::S_TOTAL_KINDS) <= (1 << STORE_KIND_BIT_LENGTH));
+    using Type = uint64_t;
+    static_assert(sizeof(Type) <= JSTaggedValue::TaggedTypeSize());
 
     HandlerBase() = default;
     virtual ~HandlerBase() = default;
 
-    static inline bool IsAccessor(uint64_t handler)
+    static inline bool IsAccessor(Type handler)
     {
         return AccessorBit::Get(handler);
     }
 
-    static inline SharedFieldType GetFieldType(uint64_t handler)
+    static inline SharedFieldType GetFieldType(Type handler)
     {
         return static_cast<SharedFieldType>(SFieldTypeBit::Get(handler));
     }
 
-    static inline bool IsNonExist(uint64_t handler)
+    static inline bool IsNonExist(Type handler)
     {
         return GetKind(handler) == HandlerKind::NON_EXIST;
     }
 
-    static inline bool IsField(uint64_t handler)
+    static inline bool IsField(Type handler)
     {
         return GetKind(handler) == HandlerKind::FIELD;
     }
 
-    static inline bool IsNonSharedStoreField(uint64_t handler)
+    static inline bool IsNonSharedStoreField(Type handler)
     {
         return static_cast<StoreHandlerKind>(GetKind(handler)) == StoreHandlerKind::S_FIELD;
     }
 
-    static inline bool IsStoreShared(uint64_t handler)
+    static inline bool IsStoreShared(Type handler)
     {
         return SSharedBit::Get(handler);
     }
 
-    static inline void ClearSharedStoreKind(uint64_t &handler)
+    static inline void ClearSharedStoreKind(Type &handler)
     {
-        SSharedBit::Set<uint64_t>(false, &handler);
+        SSharedBit::Set<Type>(false, &handler);
     }
 
-    static inline bool IsString(uint64_t handler)
+    static inline bool IsString(Type handler)
     {
         return GetKind(handler) == HandlerKind::STRING;
     }
 
-    static inline bool IsNumber(uint64_t handler)
+    static inline bool IsNumber(Type handler)
     {
         return GetKind(handler) == HandlerKind::NUMBER;
     }
 
-    static inline bool IsStringLength(uint64_t handler)
+    static inline bool IsStringLength(Type handler)
     {
         return GetKind(handler) == HandlerKind::STRING_LENGTH;
     }
 
-    static inline bool IsElement(uint64_t handler)
+    static inline bool IsElement(Type handler)
     {
         return IsNormalElement(handler) || IsStringElement(handler) || IsTypedArrayElement(handler);
     }
 
-    static inline bool IsNormalElement(uint64_t handler)
+    static inline bool IsNormalElement(Type handler)
     {
         return GetKind(handler) == HandlerKind::ELEMENT;
     }
 
-    static inline bool IsStringElement(uint64_t handler)
+    static inline bool IsStringElement(Type handler)
     {
         return GetKind(handler) == HandlerKind::STRING;
     }
 
-    static inline bool IsTypedArrayElement(uint64_t handler)
+    static inline bool IsTypedArrayElement(Type handler)
     {
         return GetKind(handler) == HandlerKind::TYPED_ARRAY;
     }
 
-    static inline bool IsDictionary(uint64_t handler)
+    static inline bool IsDictionary(Type handler)
     {
         return GetKind(handler) == HandlerKind::DICTIONARY;
     }
 
-    static inline bool IsInlinedProps(uint64_t handler)
+    static inline bool IsInlinedProps(Type handler)
     {
         return InlinedPropsBit::Get(handler);
     }
 
-    static inline HandlerKind GetKind(uint64_t handler)
+    static inline HandlerKind GetKind(Type handler)
     {
         return KindBit::Get(handler);
     }
 
-    static inline bool IsJSArray(uint64_t handler)
+    static inline bool IsJSArray(Type handler)
     {
         return IsJSArrayBit::Get(handler);
     }
 
-    static inline bool NeedSkipInPGODump(uint64_t handler)
+    static inline bool NeedSkipInPGODump(Type handler)
     {
         return NeedSkipInPGODumpBit::Get(handler);
     }
 
-    static inline int GetOffset(uint64_t handler)
+    static inline int GetOffset(Type handler)
     {
         return OffsetBit::Get(handler);
     }
 
-    static inline bool IsOnHeap(uint64_t handler)
+    static inline bool IsOnHeap(Type handler)
     {
         return IsOnHeapBit::Get(handler);
     }

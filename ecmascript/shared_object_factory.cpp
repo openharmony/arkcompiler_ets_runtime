@@ -400,7 +400,7 @@ JSHandle<JSNativePointer> ObjectFactory::NewSJSNativePointer(void *externalPoint
     obj->SetNativeFlag(flag);
 
     if (callBack != nullptr) {
-        vm_->PushToNativePointerList(static_cast<JSNativePointer *>(header));
+        vm_->PushToSharedNativePointerList(static_cast<JSNativePointer *>(header));
         // In some cases, the size of JS/TS object is too small and the native binding size is too large.
         // Check and try trigger concurrent mark here.
     }

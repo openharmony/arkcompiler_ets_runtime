@@ -36,4 +36,9 @@ JSTaggedValue ContainerError::BindError(JSThread *thread, const char *msg)
 {
     return ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR, msg);
 }
+
+JSTaggedValue ContainerError::ParamError(JSThread *thread, const char *msg)
+{
+    return ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, msg);
+}
 }  // namespace panda::ecmascript::containers

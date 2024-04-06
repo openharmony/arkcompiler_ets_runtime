@@ -47,16 +47,18 @@ Start Test randomUpdate
 Start Test randomGet
 5,12,8,130,44
 Start Test randomAdd
-7
+add element by index access failed. err: BusinessError: The value of index is out of range., code: 10200001
 Start Test create
 Start Test from
 A,B,C
+E,,M,P,T,Y
+Create from sendable undefined element list success. arr: ,,1
 Start Test fromTemplate
 artTSTest1: 1,2,3
 arkTSTest2: 1,2,3
 Start Test length
 Array length: 3
-Array length after changed: 50
+Array length after changed: 3
 Start Test push
 Elements pushed: 1,3,5,2,4,6
 Start Test concat
@@ -100,3 +102,92 @@ Start Test reduce
 10
 20
 10 1 2 3 4
+Start Test staticCreate
+5,5,5,5,5,5,5,5,5,5
+Create with without initialValue failed. err: BusinessError: Parameter error.Not enough parameters., code: 401
+Create with negative length failed. err: BusinessError: Parameter error.Invalid array length., code: 401
+Create with exceed max length failed. err: BusinessError: Parameter error.Invalid array length., code: 401
+Start Test readonlyLength
+10
+10
+Start Test shrinkTo
+10
+Shrink to array.length: 5,5,5,5,5,5,5,5,5,5
+Shrink to array.length + 1: 5,5,5,5,5,5,5,5,5,5
+Shrink to -1 fail. err: BusinessError: Parameter error.Invalid array length., code: 401
+Shrink to invalid 0x100000000 fail. err: BusinessError: Parameter error.Invalid array length., code: 401
+1
+5
+Start Test growTo
+5
+ExtendTo to array.length: 5,5,5,5,5
+ExtendTo to array.length - 1: 5,5,5,5,5
+ExtendTo to 0: 5,5,5,5,5
+ExtendTo to -1 fail. err: BusinessError: Parameter error.Invalid array length., code: 401
+ExtendTo to invalid 0x100000000 fail. err: BusinessError: Parameter error.Invalid array length., code: 401
+ExtendTo to 8 without initValue fail. err: BusinessError: Parameter error.Not enough parameters., code: 401
+8
+5,5,5,5,5,11,11,11
+Start Test indexAccess
+element1: 3
+element1 assigned to 10: 10
+Index access read out of range failed. err: BusinessError: The value of index is out of range., code: 10200001
+Index access write out of range failed. err: BusinessError: The value of index is out of range., code: 10200001
+read element while iterate array fail. err: BusinessError: The value of index is out of range., errCode: 10200001
+write element while iterate array fail. err: BusinessError: Concurrent modification exception, errCode: 10200201
+Start Test indexStringAccess
+String index element1: 3
+String index element1 assigned to 10: 10
+String Index access read out of range failed. err: BusinessError: The value of index is out of range., code: 10200001
+String Index access write out of range failed. err: BusinessError: The value of index is out of range., code: 10200001
+String index read element while iterate array fail. err: BusinessError: The value of index is out of range., errCode: 10200001
+String index write element while iterate array fail. err: BusinessError: Concurrent modification exception, errCode: 10200201
+Start Test testForIC
+[IC] Index access read in range success. array: 3
+[IC] Index access write in range success.
+[IC] assign readonly length no error.
+[IC] Index access read out of range failed. err: BusinessError: The value of index is out of range., code: 10200001
+[IC] Index access write out of range failed. err: BusinessError: The value of index is out of range., code: 10200001
+Start Test testStringForIC
+[IC] String Index access read in range success. array: 3
+[IC] String Index access write in range success.
+[IC] String Index access read out of range failed. err: BusinessError: The value of index is out of range., code: 10200001
+[IC] String Index access write out of range failed. err: BusinessError: The value of index is out of range., code: 10200001
+Start Test arrayFrozenTest
+arrayFrozenTest [new] single string. arr: ARK
+Add prop to array failed. err: TypeError: Cannot add property in prevent extensions
+defineNotExistProp to array failed. err: TypeError: Cannot define property
+Update function [at] failed. err: TypeError: Cannot assign to read only property
+Update function [at] by defineProperty failed. err: TypeError: Cannot define property
+arrayFrozenTest [new]. arr: A,R,K
+Add prop to array failed. err: TypeError: Cannot add property in prevent extensions
+defineNotExistProp to array failed. err: TypeError: Cannot define property
+Update function [at] failed. err: TypeError: Cannot assign to read only property
+Update function [at] by defineProperty failed. err: TypeError: Cannot define property
+arrayFrozenTest static [from]. arr: A,R,K
+Add prop to array failed. err: TypeError: Cannot add property in prevent extensions
+defineNotExistProp to array failed. err: TypeError: Cannot define property
+Update function [at] failed. err: TypeError: Cannot assign to read only property
+Update function [at] by defineProperty failed. err: TypeError: Cannot define property
+arrayFrozenTest static [create]. arr: A,A,A
+Add prop to array failed. err: TypeError: Cannot add property in prevent extensions
+defineNotExistProp to array failed. err: TypeError: Cannot define property
+Update function [at] failed. err: TypeError: Cannot assign to read only property
+Update function [at] by defineProperty failed. err: TypeError: Cannot define property
+Start Test sharedArrayFrozenTest
+sharedArrayFrozenTest [new]. arr: A,R,K
+Add prop to array failed. err: TypeError: Cannot add property in prevent extensions
+defineNotExistProp to array failed. err: TypeError: Cannot define property
+Update function [at] failed. err: TypeError: Cannot assign to read only property
+Update function [at] by defineProperty failed. err: TypeError: Cannot define property
+Start Test arrayFromSet
+Create from normal set: foo,bar,baz
+Create from shared set: foo,bar,baz
+Start Test arrayFromNormalMap
+Start test arrayFromSharedMap
+create from sharedMap with non-sendable array failed. err: BusinessError: Parameter error.Only accept sendable value., code: 401
+create from sharedMapper.values(): a,b
+create from sharedMapper.values(): 1,2
+Start test arrayFromNotArray
+NotArray called with length undefined
+Create array from notArray failed. err: TypeError: Failed to construct the array., code: undefined

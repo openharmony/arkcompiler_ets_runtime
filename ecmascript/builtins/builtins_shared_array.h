@@ -24,7 +24,8 @@
 //       kungfu::BuiltinsStubCSigns::stubIndex refers to the builtin stub index, or INVALID if no stub available.
 #define BUILTIN_SHARED_ARRAY_FUNCTIONS(V)                      \
     /* SharedArray.from ( items [ , mapfn [ , thisArg ] ] ) */ \
-    V("from", From, 1, INVALID)
+    V("from", From, 1, INVALID)                                \
+    V("create", Create, 2, INVALID)
     // fixme(hzzhouzebin) Support later.
     // /* SharedArray.IsArray ( arg ) */                          \
     // V("IsArray", IsArray, 1, INVALID)                          \
@@ -78,7 +79,9 @@
     /* SharedArray.prototype.values ( ) */                                       \
     /* SharedArray.prototype.unshift ( ...items ) */                             \
     V("unshift", Unshift, 1, INVALID)                                            \
-    V("values", Values, 0, INVALID)
+    V("values", Values, 0, INVALID)                                              \
+    V("shrinkTo", ShrinkTo, 0, INVALID)                                          \
+    V("extendTo", ExtendTo, 0, INVALID)
     // fixme(hzzhouzebin) Support later.
     // /* SharedArray.prototype.with ( index, value ) */                            \
     // V("with", With, 2, INVALID)                                                  \
@@ -114,6 +117,7 @@ class BuiltinsSharedArray : public base::BuiltinsBase {
 public:
     static JSTaggedValue ArrayConstructor(EcmaRuntimeCallInfo *argv);
     static JSTaggedValue From(EcmaRuntimeCallInfo *argv);
+    static JSTaggedValue Create(EcmaRuntimeCallInfo *argv);
     static JSTaggedValue Species(EcmaRuntimeCallInfo *argv);
 
     // prototype
@@ -140,6 +144,8 @@ public:
     static JSTaggedValue Unscopables(EcmaRuntimeCallInfo *argv);
     static JSTaggedValue Includes(EcmaRuntimeCallInfo *argv);
     static JSTaggedValue At(EcmaRuntimeCallInfo *argv);
+    static JSTaggedValue ShrinkTo(EcmaRuntimeCallInfo *argv);
+    static JSTaggedValue ExtendTo(EcmaRuntimeCallInfo *argv);
 
     // Excluding the '@@' internal properties
     static Span<const base::BuiltinFunctionEntry> GetSharedArrayFunctions()

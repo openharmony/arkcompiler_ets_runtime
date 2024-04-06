@@ -778,7 +778,9 @@ public:
 
     JSHandle<TaggedArray> NewSOldSpaceTaggedArray(uint32_t length, JSTaggedValue initVal = JSTaggedValue::Hole());
 
-    JSHandle<TaggedArray> PUBLIC_API NewSTaggedArray(uint32_t length, JSTaggedValue initVal, MemSpaceType spaceType);
+    JSHandle<TaggedArray> PUBLIC_API NewSTaggedArray(uint32_t length,
+                                                     JSTaggedValue initVal = JSTaggedValue::Hole(),
+                                                     MemSpaceType spaceType = SHARED_OLD_SPACE);
 
     JSHandle<AccessorData> NewSAccessorData();
 
@@ -828,6 +830,7 @@ public:
     JSHandle<JSSymbol> NewSWellKnownSymbolWithChar(std::string_view description);
     JSHandle<JSSymbol> NewSPublicSymbolWithChar(std::string_view description);
     JSHandle<JSSymbol> NewSPublicSymbol(const JSHandle<JSTaggedValue> &name);
+
 private:
     friend class GlobalEnv;
     friend class GlobalEnvConstants;

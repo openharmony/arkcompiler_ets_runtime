@@ -34,15 +34,17 @@ void HeapTrackerSample::Run()
 
 void HeapTracker::AllocationEvent(TaggedObject *address, size_t size)
 {
-    if (snapshot_ != nullptr) {
-        Node *node = snapshot_->AddNode(address, size);
-        if (node != nullptr && snapshot_->trackAllocations()) {
-            int selfSize = static_cast<int>(node->GetSelfSize());
-            int sequenceId = static_cast<int>(node->GetId());
-            int traceId = snapshot_->AddTraceNode(sequenceId, selfSize);
-            if (traceId != -1) {
-                node->SetTraceId(static_cast<uint64_t>(traceId));
-            }
+    if (snapshot_ == nullptr || address == nullptr || prevAllocation_ == address) {
+        return;
+    }
+    prevAllocation_ = address;
+    Node *node = snapshot_->AddNode(address, size);
+    if (node != nullptr && snapshot_->trackAllocations()) {
+        int selfSize = static_cast<int>(node->GetSelfSize());
+        int sequenceId = static_cast<int>(node->GetId());
+        int traceId = snapshot_->AddTraceNode(sequenceId, selfSize);
+        if (traceId != -1) {
+            node->SetTraceId(static_cast<uint64_t>(traceId));
         }
     }
 }

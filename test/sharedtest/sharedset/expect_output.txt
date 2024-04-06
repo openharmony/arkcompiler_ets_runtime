@@ -80,6 +80,28 @@ Clear Scenario[forEach]: BusinessError: Concurrent modification exception, errCo
 ===Concurrent modification during iteration Test(forEach) end===
 ===Type check begin===
 sharedSet add[shared] element success
-sharedSet add[unshared]: BusinessError: Parameter error. Only accept sendable value, errCode: 401
-sharedSet add[unshared]: BusinessError: Parameter error. Only accept sendable value, errCode: 401
+sharedSet add[unshared]: BusinessError: Parameter error. Only accept sendable value., errCode: 401
+sharedSet add[unshared]: BusinessError: Parameter error. Only accept sendable value., errCode: 401
 ===Type check end===
+===Class inheritance test begin ===
+true
+1
+true
+true
+true
+3
+SubSharedSet add[unshared]: BusinessError: Parameter error. Only accept sendable value., errCode: 401
+SubSharedSet key[for-of]: one
+SubSharedSet key[for-of]: two
+SubSharedSet key[for-of]: three
+4
+SubSharedSet Delete Scenario[forEach]: BusinessError: Concurrent modification exception, errCode: 10200201
+true
+true
+true
+3
+add extension(.): TypeError: Cannot add property in prevent extensions
+add extension([]): TypeError: Cannot add property in prevent extensions
+SubSubSharedSet add[unshared]: BusinessError: Parameter error. Only accept sendable value., errCode: 401
+SubSubSharedSet Delete Scenario[forEach]: BusinessError: Concurrent modification exception, errCode: 10200201
+===Class inheritance test end ===

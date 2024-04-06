@@ -229,3 +229,95 @@ try {
   print("sharedMap set[unshared]: " + e + ", errCode: " + e.code);
 }
 print("===Type check end===");
+
+print("===Class inheritance test begin ===");
+class SubSharedMap<K, V> extends SharedMap {
+  desc: string = "I'am SubSharedMap";
+  constructor(entries?: [K, V][] | null) {
+    "use sendable";
+    super(entries)
+  }
+}
+
+let subSharedMap = new SubSharedMap<number, string>();
+subSharedMap.set(1, "one");
+print(subSharedMap.has(1));
+print(subSharedMap.size);
+
+try {
+  subSharedMap["extension"] = "value";
+} catch(e) {
+  print("add extension(.): " + e);
+}
+try {
+  subSharedMap.extension = "value";
+} catch(e) {
+  print("add extension([]): " + e);
+}
+
+try {
+  let obj = {};
+  subSharedMap = new SubSharedMap<string, Object>([["object", obj]]);
+  print(subSharedMap.size);
+} catch (e) {
+  print("SubSharedMap set[unshared]: " + e + ", errCode: " + e.code);
+}
+
+subSharedMap = new SubSharedMap<number, string>([
+  [1, "one"],
+  [2, "two"],
+  [3, "three"]]);
+print(subSharedMap.size);
+for (const [key, value] of subSharedMap.entries()) {
+  print("SubSharedMap [key, value][for-of]: " + "[" + key + ", " + value + "]");
+}
+
+try {
+  subSharedMap.forEach((value: string, key: number, map: SubSharedMap) => {
+    if (key % 2 == 0) {
+      map.delete(key);
+    }
+  });
+} catch (e) {
+  print("SubSharedMap Delete Scenario[forEach]: " + e + ", errCode: " + e.code);
+}
+
+class SubSubSharedMap<K, V> extends SubSharedMap {
+  constructor(entries?: [K, V][] | null) {
+    "use sendable";
+    super(entries)
+  }
+}
+
+let subSubSharedMap = new SubSubSharedMap<number, string>();
+subSubSharedMap.set(1, "one");
+print(subSubSharedMap.has(1));
+print(subSubSharedMap.size);
+
+try {
+  let obj = {};
+  subSubSharedMap = new SubSubSharedMap<string, Object>([["object", obj]]);
+  print(subSubSharedMap.size);
+} catch (e) {
+  print("SubSubSharedMap set[unshared]: " + e + ", errCode: " + e.code);
+}
+
+subSubSharedMap = new SubSubSharedMap<number, string>([
+  [1, "one"],
+  [2, "two"],
+  [3, "three"]]);
+print(subSharedMap.size);
+for (const [key, value] of subSharedMap.entries()) {
+  print("SubSubSharedMap [key, value][for-of]: " + "[" + key + ", " + value + "]");
+}
+
+try {
+  subSubSharedMap.forEach((value: string, key: number, map: SubSubSharedMap) => {
+    if (key % 2 == 0) {
+      map.delete(key);
+    }
+  });
+} catch (e) {
+  print("SubSubSharedMap Delete Scenario[forEach]: " + e + ", errCode: " + e.code);
+}
+print("===Class inheritance test end ===");

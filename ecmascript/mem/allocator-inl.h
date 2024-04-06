@@ -37,7 +37,9 @@ void BumpPointerAllocator::Reset(uintptr_t begin, uintptr_t end)
     begin_ = begin;
     top_ = begin;
     end_ = end;
+#ifdef ARK_ASAN_ON
     ASAN_POISON_MEMORY_REGION(reinterpret_cast<void *>(top_), (end_ - top_));
+#endif
 }
 
 void BumpPointerAllocator::Reset(uintptr_t begin, uintptr_t end, uintptr_t top)
@@ -45,7 +47,9 @@ void BumpPointerAllocator::Reset(uintptr_t begin, uintptr_t end, uintptr_t top)
     begin_ = begin;
     top_ = top;
     end_ = end;
+#ifdef ARK_ASAN_ON
     ASAN_POISON_MEMORY_REGION(reinterpret_cast<void *>(top_), (end_ - top_));
+#endif
 }
 
 void BumpPointerAllocator::ResetTopPointer(uintptr_t top)
@@ -160,7 +164,9 @@ void FreeListAllocator::Free(uintptr_t begin, size_t size, bool isAdd)
         FreeObject::FillFreeObject(heap_, begin, size);
         ASAN_UNPOISON_MEMORY_REGION(reinterpret_cast<void *>(begin), size);
         freeList_->Free(begin, size, isAdd);
+#ifdef ARK_ASAN_ON
         ASAN_POISON_MEMORY_REGION(reinterpret_cast<void *>(begin), size);
+#endif
     }
 }
 

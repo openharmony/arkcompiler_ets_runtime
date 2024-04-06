@@ -144,7 +144,7 @@ bool ArrayHelper::IsConcatSpreadable(JSThread *thread, const JSHandle<JSTaggedVa
     }
 
     // 5. Return IsArray(O).
-    return obj->IsArray(thread) || obj->IsSArray(thread);
+    return obj->IsArray(thread) || obj->IsJSSharedArray();
 }
 
 // must use 'double' as return type, for sort result may double.

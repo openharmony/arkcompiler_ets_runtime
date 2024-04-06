@@ -18,7 +18,7 @@
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/linked_hash_table.h"
 #include "ecmascript/object_factory.h"
-#include "ecmascript/shared_objects/concurrent_modification_scope.h"
+#include "ecmascript/shared_objects/concurrent_api_scope.h"
 
 namespace panda::ecmascript {
 void JSSharedMap::Set(JSThread *thread, const JSHandle<JSSharedMap> &map,
@@ -26,10 +26,10 @@ void JSSharedMap::Set(JSThread *thread, const JSHandle<JSSharedMap> &map,
 {
     if (!key->IsSharedType() || !value->IsSharedType()) {
         auto error = containers::ContainerError::BusinessError(thread, containers::ErrorFlag::TYPE_ERROR,
-                                                               "Parameter error. Only accept sendable value");
+                                                               "Parameter error. Only accept sendable value.");
         THROW_NEW_ERROR_AND_RETURN(thread, error);
     }
-    [[maybe_unused]] ConcurrentModScope<JSSharedMap, ModType::WRITE> scope(thread,
+    [[maybe_unused]] ConcurrentApiScope<JSSharedMap, ModType::WRITE> scope(thread,
         map.GetTaggedValue().GetTaggedObject());
     RETURN_IF_ABRUPT_COMPLETION(thread);
 
@@ -40,7 +40,7 @@ void JSSharedMap::Set(JSThread *thread, const JSHandle<JSSharedMap> &map,
 
 bool JSSharedMap::Delete(JSThread *thread, const JSHandle<JSSharedMap> &map, const JSHandle<JSTaggedValue> &key)
 {
-    [[maybe_unused]] ConcurrentModScope<JSSharedMap, ModType::WRITE> scope(thread,
+    [[maybe_unused]] ConcurrentApiScope<JSSharedMap, ModType::WRITE> scope(thread,
         map.GetTaggedValue().GetTaggedObject());
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
     JSHandle<LinkedHashMap> mapHandle(thread, LinkedHashMap::Cast(map->GetLinkedMap().GetTaggedObject()));
@@ -54,7 +54,7 @@ bool JSSharedMap::Delete(JSThread *thread, const JSHandle<JSSharedMap> &map, con
 
 void JSSharedMap::Clear(JSThread *thread, const JSHandle<JSSharedMap> &map)
 {
-    [[maybe_unused]] ConcurrentModScope<JSSharedMap, ModType::WRITE> scope(thread,
+    [[maybe_unused]] ConcurrentApiScope<JSSharedMap, ModType::WRITE> scope(thread,
         map.GetTaggedValue().GetTaggedObject());
     RETURN_IF_ABRUPT_COMPLETION(thread);
     JSHandle<LinkedHashMap> mapHandle(thread, LinkedHashMap::Cast(map->GetLinkedMap().GetTaggedObject()));
@@ -64,28 +64,28 @@ void JSSharedMap::Clear(JSThread *thread, const JSHandle<JSSharedMap> &map)
 
 bool JSSharedMap::Has(JSThread *thread, JSTaggedValue key) const
 {
-    [[maybe_unused]] ConcurrentModScope<JSSharedMap> scope(thread, reinterpret_cast<const TaggedObject*>(this));
+    [[maybe_unused]] ConcurrentApiScope<JSSharedMap> scope(thread, reinterpret_cast<const TaggedObject*>(this));
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
     return LinkedHashMap::Cast(GetLinkedMap().GetTaggedObject())->Has(thread, key);
 }
 
 JSTaggedValue JSSharedMap::Get(JSThread *thread, JSTaggedValue key) const
 {
-    [[maybe_unused]] ConcurrentModScope<JSSharedMap> scope(thread, reinterpret_cast<const TaggedObject*>(this));
+    [[maybe_unused]] ConcurrentApiScope<JSSharedMap> scope(thread, reinterpret_cast<const TaggedObject*>(this));
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Undefined());
     return LinkedHashMap::Cast(GetLinkedMap().GetTaggedObject())->Get(thread, key);
 }
 
 uint32_t JSSharedMap::GetSize(JSThread *thread) const
 {
-    [[maybe_unused]] ConcurrentModScope<JSSharedMap> scope(thread, reinterpret_cast<const TaggedObject*>(this));
+    [[maybe_unused]] ConcurrentApiScope<JSSharedMap> scope(thread, reinterpret_cast<const TaggedObject*>(this));
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, 0);
     return LinkedHashMap::Cast(GetLinkedMap().GetTaggedObject())->NumberOfElements();
 }
 
 JSTaggedValue JSSharedMap::GetKey(JSThread *thread, uint32_t entry) const
 {
-    [[maybe_unused]] ConcurrentModScope<JSSharedMap> scope(thread, reinterpret_cast<const TaggedObject*>(this));
+    [[maybe_unused]] ConcurrentApiScope<JSSharedMap> scope(thread, reinterpret_cast<const TaggedObject*>(this));
     ASSERT_PRINT(entry >= 0 && entry < GetSize(thread), "entry must be non-negative integer less than capacity");
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Undefined());
     return LinkedHashMap::Cast(GetLinkedMap().GetTaggedObject())->GetKey(entry);
@@ -93,7 +93,7 @@ JSTaggedValue JSSharedMap::GetKey(JSThread *thread, uint32_t entry) const
 
 JSTaggedValue JSSharedMap::GetValue(JSThread *thread, uint32_t entry) const
 {
-    [[maybe_unused]] ConcurrentModScope<JSSharedMap> scope(thread, reinterpret_cast<const TaggedObject*>(this));
+    [[maybe_unused]] ConcurrentApiScope<JSSharedMap> scope(thread, reinterpret_cast<const TaggedObject*>(this));
     ASSERT_PRINT(entry >= 0 && entry < GetSize(thread), "entry must be non-negative integer less than capacity");
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Undefined());
     return LinkedHashMap::Cast(GetLinkedMap().GetTaggedObject())->GetValue(entry);

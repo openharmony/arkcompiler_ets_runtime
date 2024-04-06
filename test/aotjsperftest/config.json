@@ -1,0 +1,18 @@
+{
+	"full_x86_64":{
+		"ETS_RUNTIME_PATH": "out/rk3568/clang_x64/arkcompiler/ets_runtime/",
+		"ICU_PATH": "out/rk3568/clang_x64/thirdparty/icu/",
+		"BUILTINS_DTS":"out/rk3568/clang_x64/obj/arkcompiler/ets_runtime/lib_ark_builtins/es2abc/lib_ark_builtins.d.abc",
+		"ZLIB_PATH": "out/rk3568/clang_x64/thirdparty/zlib/", 
+		"LIB_PATH": "prebuilts/clang/ohos/linux-x86_64/llvm/lib/",
+		"ES2ABC": "out/rk3568/clang_x64/arkcompiler/ets_frontend/es2abc"
+	},
+	"independent_x86_64": {
+		"ETS_RUNTIME_PATH": "out/x64.release/arkcompiler/ets_runtime",
+		"ICU_PATH": "out/x64.release/thirdparty/icu/",
+		"BUILTINS_DTS":"out/x64.release/obj/arkcompiler/ets_runtime/lib_ark_builtins/es2abc/lib_ark_builtins.d.abc",
+		"ZLIB_PATH": "", 
+        "LIB_PATH": "",
+		"ES2ABC": "out/x64.release/arkcompiler/ets_frontend/es2abc"
+	}	
+}

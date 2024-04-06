@@ -131,6 +131,13 @@ protected:
         return *current_ == '}';
     }
 
+    JSHandle<JSTaggedValue> CreateSJsonPrototype()
+    {
+        JSHandle<JSFunction> sObjFunction(thread_->GetEcmaVM()->GetGlobalEnv()->GetSObjectFunction());
+        JSHandle<JSTaggedValue> jsonPrototype = JSHandle<JSTaggedValue>(thread_, sObjFunction->GetFunctionPrototype());
+        return jsonPrototype;
+    }
+
     JSTaggedValue ParseJSONText()
     {
         JSHandle<JSTaggedValue> parseValue;
@@ -148,7 +155,17 @@ protected:
                 switch (token) {
                     case Tokens::OBJECT:
                         if (EmptyObjectCheck()) {
-                            parseValue = JSHandle<JSTaggedValue>(factory_->NewJSObject(initialJSObjectClass_));
+                            if (transformType_ == TransformType::SENDABLE) {
+                                JSHandle<JSHClass> sHclass;
+                                JSHandle<JSTaggedValue> sJsonPrototype = CreateSJsonPrototype();
+                                JSHandle<LayoutInfo> sLayout = factory_->CreateSLayoutInfo(0);
+                                sHclass = factory_->NewSEcmaHClass(JSSharedObject::SIZE, 0, JSType::JS_SHARED_OBJECT,
+                                                                   JSHandle<JSTaggedValue>(sJsonPrototype),
+                                                                   JSHandle<JSTaggedValue>(sLayout));
+                                parseValue = JSHandle<JSTaggedValue>(factory_->NewSharedOldSpaceJSObject(sHclass));
+                            } else {
+                                parseValue = JSHandle<JSTaggedValue>(factory_->NewJSObject(initialJSObjectClass_));
+                            }
                             GetNextNonSpaceChar();
                             break;
                         }
@@ -318,11 +335,13 @@ protected:
         uint32_t fieldNum = size / 2; // 2: key-value pair
         // add layout
         JSHandle<JSHClass> hclass;
-        JSHandle<JSFunction> sObjFunction(thread_->GetEcmaVM()->GetGlobalEnv()->GetSObjectFunction());
-        JSHandle<JSTaggedValue> jsonPrototype = JSHandle<JSTaggedValue>(thread_, sObjFunction->GetFunctionPrototype());
+        JSHandle<JSTaggedValue> jsonPrototype = CreateSJsonPrototype();
+        JSHandle<LayoutInfo> layout = factory_->CreateSLayoutInfo(fieldNum);
 
         if (fieldNum == 0) {
-            hclass = factory_->NewSEcmaHClass(JSSharedObject::SIZE,  JSType::JS_SHARED_OBJECT, fieldNum);
+            hclass = factory_->NewSEcmaHClass(JSSharedObject::SIZE, fieldNum, JSType::JS_SHARED_OBJECT,
+                                              JSHandle<JSTaggedValue>(jsonPrototype),
+                                              JSHandle<JSTaggedValue>(layout));
             JSHandle<JSObject> obj = factory_->NewSharedOldSpaceJSObject(hclass);
             return JSHandle<JSTaggedValue>(obj);
         } else if (LIKELY(fieldNum <= JSSharedObject::MAX_INLINE)) {
@@ -332,8 +351,6 @@ protected:
                 propertyArray->Set(thread_, i, keyHandle);
                 propertyArray->Set(thread_, i + 1, JSTaggedValue(int(FieldType::NONE)));
             }
-
-            JSHandle<LayoutInfo> layout = factory_->CreateSLayoutInfo(fieldNum);
             hclass = factory_->NewSEcmaHClass(JSSharedObject::SIZE, fieldNum, JSType::JS_SHARED_OBJECT,
                                               JSHandle<JSTaggedValue>(jsonPrototype),
                                               JSHandle<JSTaggedValue>(layout));

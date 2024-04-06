@@ -200,7 +200,7 @@ Method *PatchLoader::GetPatchMethod(JSThread *thread,
         ClassLiteral *classLiteral;
         if (baseConstpool->GetObjectFromCache(constpoolIndex).IsHole()) {
             JSTaggedValue unsharedBaseConstpool = thread->GetCurrentEcmaContext()->
-                FindUnsharedConstpool(constpoolVal);
+                FindOrCreateUnsharedConstpool(constpoolVal);
             classLiteral = ClassLiteral::Cast(
                 ConstantPool::Cast(unsharedBaseConstpool.GetTaggedObject())->GetObjectFromCache(constpoolIndex));
         } else {
@@ -334,7 +334,7 @@ void PatchLoader::FindAndReplaceSameMethod(JSThread *thread, const JSPandaFile *
             }
         }
 
-        JSTaggedValue unsharedConstpool = context->FindUnsharedConstpool(item.second);
+        JSTaggedValue unsharedConstpool = context->FindOrCreateUnsharedConstpool(item.second);
         ConstantPool *baseUnsharedConstpool = ConstantPool::Cast(unsharedConstpool.GetTaggedObject());
         const uint32_t len = baseUnsharedConstpool->GetCacheLength();
         for (uint32_t constpoolIndex = 0; constpoolIndex < len; constpoolIndex++) {

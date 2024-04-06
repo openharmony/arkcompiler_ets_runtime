@@ -71,3 +71,9 @@ let res16 = longTwoBytesString.split('\u0429');
 print(res15.length)
 print(res15.length == res16.length);
 print(res15[0] == res16[0]);
+
+// Test split string is tree string
+var a = "12345678910"
+var b = "12345678910"
+var c = a.concat(b);
+c.split("")

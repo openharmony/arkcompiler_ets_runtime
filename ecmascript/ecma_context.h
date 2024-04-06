@@ -256,15 +256,17 @@ public:
 
     void AddConstpool(const JSPandaFile *jsPandaFile, JSTaggedValue constpool, int32_t index = 0);
 
+    void UpdateConstpool(const std::string& fileName, JSTaggedValue constpool, int32_t index = 0);
+
     bool HasCachedConstpool(const JSPandaFile *jsPandaFile) const;
 
     JSTaggedValue PUBLIC_API FindConstpool(const JSPandaFile *jsPandaFile, int32_t index);
     // For new version instruction.
     JSTaggedValue PUBLIC_API FindConstpool(const JSPandaFile *jsPandaFile, panda_file::File::EntityId id);
-    JSTaggedValue PUBLIC_API FindUnsharedConstpool(JSTaggedValue sharedConstpool);
+    JSTaggedValue PUBLIC_API FindOrCreateUnsharedConstpool(JSTaggedValue sharedConstpool);
     JSHandle<ConstantPool> CreateConstpoolPair(JSPandaFile *jsPandaFile, EntityId methodId);
     JSTaggedValue FindConstpoolWithAOT(const JSPandaFile *jsPandaFile, int32_t index);
-    void EraseUnsharedConstpool(JSTaggedValue sharedConstpool);
+    void EraseUnusedConstpool(const JSPandaFile *jsPandaFile, int32_t index, int32_t constpoolIndex);
     std::optional<std::reference_wrapper<CMap<int32_t, JSTaggedValue>>> FindConstpools(
         const JSPandaFile *jsPandaFile);
 
@@ -274,8 +276,6 @@ public:
 
     void HandleUncaughtException(JSTaggedValue exception);
     void HandleUncaughtException();
-    void ProcessNativeDeleteInSharedGC(const WeakRootVisitor &visitor);
-    void ProcessReferences(const WeakRootVisitor &visitor);
     JSHandle<GlobalEnv> GetGlobalEnv() const;
     bool GlobalEnvIsHole()
     {
@@ -500,29 +500,18 @@ public:
         return isAotEntry_;
     }
 
-    void InsertFreeUnsharedConstpoolCount(JSTaggedValue sharedConstpool);
     void SetUnsharedConstpool(int32_t unsharedConstpoolIndex, JSTaggedValue constpool)
     {
         ASSERT(0 <= unsharedConstpoolIndex && unsharedConstpoolIndex < UNSHARED_CONSTANTPOOL_COUNT);
-        unsharedConstpools_->data()[unsharedConstpoolIndex] = constpool;
+        unsharedConstpools_[unsharedConstpoolIndex] = constpool;
     }
 
-    int32_t GetAndIncreaseUnsharedConstpoolCount()
-    {
-        std::lock_guard<std::mutex> guard(unsharedConstpoolCountMutex_);
-        if (freeUnsharedConstpoolCount_.size() > 0) {
-            auto iter = freeUnsharedConstpoolCount_.begin();
-            int32_t freeCount = *iter;
-            freeUnsharedConstpoolCount_.erase(iter);
-            return freeCount;
-        }
-        return unsharedConstpoolCount_++;
-    }
+    int32_t GetAndIncreaseSharedConstpoolCount();
 
-    void CheckUnsharedConstpoolArrayLimit(int32_t index)
+    void CheckUnsharedConstpoolArrayLimit(int32_t count)
     {
-        if (index >= UNSHARED_CONSTANTPOOL_COUNT) {
-            LOG_ECMA(FATAL) << "the unshared constpool array need to expanding capacity";
+        if (count >= UNSHARED_CONSTANTPOOL_COUNT) {
+            LOG_ECMA(FATAL) << "the unshared constpool array need to expanding capacity, count :" << count;
             UNREACHABLE();
         }
     }
@@ -568,12 +557,8 @@ private:
 
     CMap<const JSPandaFile *, CMap<int32_t, JSTaggedValue>> cachedSharedConstpools_ {};
     // todo(lijiamin) Consider expanding capacity.
-    static constexpr int32_t UNSHARED_CONSTANTPOOL_COUNT = 10240;
-    std::array<JSTaggedValue, UNSHARED_CONSTANTPOOL_COUNT> *unsharedConstpools_ = nullptr;
-    static int32_t unsharedConstpoolCount_; // unshared constpool index.
+    std::array<JSTaggedValue, UNSHARED_CONSTANTPOOL_COUNT> unsharedConstpools_ {};
     static constexpr int32_t SHARED_CONSTPOOL_KEY_NOT_FOUND = INT32_MAX; // INT32_MAX :invalid value.
-    static CUnorderedSet<int32_t> freeUnsharedConstpoolCount_; // reuse unshared Constpool Count.
-    static std::mutex unsharedConstpoolCountMutex_;
 
     // for HotReload of module.
     CMap<CString, JSHandle<JSTaggedValue>> cachedPatchModules_ {};

@@ -65,3 +65,10 @@ for (let i = 0; i < 100; i++) {
 }
 
 print("primitiveic load success")
+
+for(let i=0;i<2;i++){
+  let obj={};
+  let x=obj.__proto__;
+  Object.freeze(x);
+}
+print("load ic by name test2 success!")

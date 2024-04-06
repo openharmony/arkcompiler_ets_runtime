@@ -278,7 +278,7 @@ void GlobalEnvConstants::InitSharedMiscellanious(JSThread *thread, ObjectFactory
     accessor = factory->NewSInternalAccessor(reinterpret_cast<void *>(JSArray::LengthSetter),
                                              reinterpret_cast<void *>(JSArray::LengthGetter));
     SetConstant(ConstantIndex::ARRAY_LENGTH_ACCESSOR, accessor);
-    accessor = factory->NewSInternalAccessor(reinterpret_cast<void *>(JSSharedArray::LengthSetter),
+    accessor = factory->NewSInternalAccessor(reinterpret_cast<void *>(JSSharedArray::DummyLengthSetter),
                                              reinterpret_cast<void *>(JSSharedArray::LengthGetter));
     SetConstant(ConstantIndex::SHARED_ARRAY_LENGTH_ACCESSOR, accessor);
     // Specials

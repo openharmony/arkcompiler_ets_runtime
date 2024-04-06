@@ -49,12 +49,6 @@ public:
     JSThread *thread {nullptr};
 };
 
-HWTEST_F_L0(JsStackInfoTest, BuildJsStackTrace)
-{
-    std::string stack = JsStackInfo::BuildJsStackTrace(thread, false);
-    ASSERT_TRUE(!stack.empty());
-}
-
 HWTEST_F_L0(JsStackInfoTest, FrameCheckTest)
 {
     uintptr_t frame[22];
@@ -81,7 +75,7 @@ HWTEST_F_L0(JsStackInfoTest, FrameCheckTest)
     frame[20] = reinterpret_cast<uintptr_t>(FrameType::OPTIMIZED_JS_FUNCTION_UNFOLD_ARGV_FRAME);
     frame[21] = reinterpret_cast<uintptr_t>(FrameType::BUILTIN_FRAME_WITH_ARGV_STACK_OVER_FLOW_FRAME);
 
-    for (i = 0; i < 22; i++) {
+    for (int i = 0; i < 22; i++) {
         bool ret1 = ArkFrameCheck(frame[i]);
         if (i == 1 || i == 17) {
             EXPECT_TRUE(ret1 == true);
@@ -89,10 +83,10 @@ HWTEST_F_L0(JsStackInfoTest, FrameCheckTest)
             EXPECT_TRUE(ret1 == false);
         }
         bool ret2 = IsFunctionFrame(frame[i]);
-        if (i == 2 || i == 3 || i == 8 || i == 9 || i ==10 || i == 15) {
+        if (i == 2 || i == 3 || i == 8 || i == 9 || i == 10 || i == 15) {
             EXPECT_TRUE(ret2 == true);
         } else {
-            EXPECT_FALSE(ret2 == false);
+            EXPECT_TRUE(ret2 == false);
         }
     }
 }
@@ -121,6 +115,12 @@ HWTEST_F_L0(JsStackInfoTest, TranslateByteCodePc)
 
 HWTEST_F_L0(JsStackInfoTest, GetArkNativeFrameInfo)
 {
+    if (sizeof(uintptr_t) == sizeof(uint32_t)) {  // 32 bit
+        // The frame structure is different between 32 bit and 64 bit.
+        // Skip 32 bit because there is no ArkJS Heap.
+        return;
+    }
+
     uintptr_t pc = 0;
     uintptr_t fp = 0;
     uintptr_t sp = 0;
@@ -136,5 +136,44 @@ HWTEST_F_L0(JsStackInfoTest, GetArkNativeFrameInfo)
     bool ret = GetArkNativeFrameInfo(getpid(), &pc, &fp, &sp, &jsFrame, &size);
     EXPECT_FALSE(ret);
     EXPECT_TRUE(size == 22);
+
+    JSTaggedType frame1[3];  // 3: size of ASM_INTERPRETER_ENTRY_FRAME
+    frame1[0] = pc;  // 0: pc
+    frame1[1] = 62480;  // 1: base.prev
+    frame1[2] = static_cast<JSTaggedType>(FrameType::ASM_INTERPRETER_ENTRY_FRAME);  // 2: base.type
+    uintptr_t fp_frame1 = reinterpret_cast<uintptr_t>(&frame3[3]);  // 3: bottom of frame
+
+    JSTaggedType frame2[9];  // 9: size of AsmInterpretedFrame
+    frame2[0] = JSTaggedValue::Hole().GetRawData();  // 0: function
+    frame2[1] = JSTaggedValue::Hole().GetRawData();  // 1: thisObj
+    frame2[2] = JSTaggedValue::Hole().GetRawData();  // 2: acc
+    frame2[3] = JSTaggedValue::Hole().GetRawData();  // 3: env
+    frame2[4] = static_cast<JSTaggedType>(0);  // 4: callSize
+    frame2[5] = static_cast<JSTaggedType>(0);  // 5: fp
+    frame2[6] = reinterpret_cast<JSTaggedType>(&bytecode[2]);  // 6: pc
+    frame2[7] = fp_frame1;  // 7: base.prev
+    frame2[8] = static_cast<JSTaggedType>(FrameType::ASM_INTERPRETER_FRAME);  // 8: base.type
+    uintptr_t fp_frame2 = reinterpret_cast<uintptr_t>(&frame[9]);  // 9: bottom of frame
+
+    JSTaggedType frame3[6];  // 6: size of BUILTIN_FRAME
+    frame3[0] = JSTaggedValue::Hole().GetRawData();  // 0: stackArgs
+    frame3[1] = JSTaggedValue::Hole().GetRawData();  // 1:numArgs
+    frame3[2] = JSTaggedValue::Hole().GetRawData();  // 2: thread
+    frame3[3] = JSTaggedValue::Hole().GetRawData();  // 3: returnAddr
+    frame3[4] = fp_frame2;  // 4: prevFp
+    frame3[5] = static_cast<JSTaggedType>(FrameType::BUILTIN_FRAME);  // 5: type
+    uintptr_t fp_frame3 = reinterpret_cast<uintptr_t>(&frame1[6]);  // 6: bottom of frame
+    fp = fp_frame3;
+    bool ret = GetArkNativeFrameInfo(getpid(), &pc, &fp, &sp, &jsFrame, &size);
+    EXPECT_TRUE(ret);
+    EXPECT_TRUE(sp = &fp_frame1);
+    EXPECT_TRUE(pc = 1234);
+    EXPECT_TRUE(fp = 62480);
+}
+
+HWTEST_F_L0(JsStackInfoTest, BuildJsStackInfo)
+{
+    auto jsFrame = JsStackInfo::BuildJsStackInfo(thread);
+    EXPECT_TRUE(jsFrame.empty());
 }
 }  // namespace panda::test

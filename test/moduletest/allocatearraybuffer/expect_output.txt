@@ -14,3 +14,5 @@
 undefined
 NaN
 1
+RangeError: total array buffer size out of limit(4_GB)
+RangeError: total array buffer size out of limit(4_GB)

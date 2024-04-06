@@ -26,6 +26,7 @@
 #include "ecmascript/base/number_helper.h"
 #include "ecmascript/base/string_helper.h"
 #include "ecmascript/builtins/builtins_array.h"
+#include "ecmascript/builtins/builtins_arraybuffer.h"
 #include "ecmascript/js_stable_array.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/base/typed_array_helper.h"
@@ -161,6 +162,11 @@ DEF_RUNTIME_STUBS(AllocateInYoung)
         result = heap->AllocateYoungOrHugeObject(size);
         ASSERT(result != nullptr);
     }
+    if (argc > 1) { // 1: means the first parameter
+        JSHandle<JSHClass> hclassHandle = GetHArg<JSHClass>(argv, argc, 1);  // 1: means the first parameter
+        auto hclass = JSHClass::Cast(hclassHandle.GetTaggedValue().GetTaggedObject());
+        heap->SetHClassAndDoAllocateEvent(thread, result, hclass, size);
+    }
     return JSTaggedValue(result).GetRawData();
 }
 
@@ -176,6 +182,11 @@ DEF_RUNTIME_STUBS(AllocateInSOld)
     if (result == nullptr) {
         result = sharedHeap->AllocateOldOrHugeObject(thread, size);
         ASSERT(result != nullptr);
+    }
+    if (argc > 1) { // 1: means the first parameter
+        JSHandle<JSHClass> hclassHandle = GetHArg<JSHClass>(argv, argc, 1);  // 1: means the first parameter
+        auto hclass = JSHClass::Cast(hclassHandle.GetTaggedValue().GetTaggedObject());
+        sharedHeap->SetHClassAndDoAllocateEvent(thread, result, hclass, size);
     }
     return JSTaggedValue(result).GetRawData();
 }
@@ -193,6 +204,23 @@ DEF_RUNTIME_STUBS(TypedArraySpeciesCreate)
     JSHandle<JSObject> newArr = base::TypedArrayHelper::TypedArraySpeciesCreate(thread, thisObj, index, args);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception().GetRawData());
     return newArr.GetTaggedValue().GetRawData();
+}
+
+void RuntimeStubs::CopyTypedArrayBuffer(JSTypedArray *srcArray, JSTypedArray *targetArray,
+    int32_t startPos, int32_t count, int32_t elementSize)
+{
+    DISALLOW_GARBAGE_COLLECTION;
+    JSTaggedValue srcBuffer = srcArray->GetViewedArrayBufferOrByteArray();
+    JSTaggedValue targetBuffer = targetArray->GetViewedArrayBufferOrByteArray();
+    uint32_t srcByteIndex = startPos * elementSize + srcArray->GetByteOffset();
+    uint32_t targetByteIndex = targetArray->GetByteOffset();
+    uint8_t *srcBuf = (uint8_t *)builtins::BuiltinsArrayBuffer::GetDataPointFromBuffer(srcBuffer, srcByteIndex);
+    uint8_t *targetBuf = (uint8_t *)builtins::BuiltinsArrayBuffer::GetDataPointFromBuffer(targetBuffer,
+                                                                                          targetByteIndex);
+    if (memmove_s(targetBuf, elementSize * count, srcBuf, elementSize * count) != EOK) {
+        LOG_FULL(FATAL) << "memmove_s failed";
+        UNREACHABLE();
+    }
 }
 
 DEF_RUNTIME_STUBS(CallInternalGetter)
@@ -1314,7 +1342,7 @@ DEF_RUNTIME_STUBS(GetObjectLiteralFromCache)
     JSHandle<JSTaggedValue> constpool = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
     JSTaggedValue index = GetArg(argv, argc, 1);  // 1: means the first parameter
     JSHandle<JSTaggedValue> module = GetHArg<JSTaggedValue>(argv, argc, 2);  // 2: means the second parameter
-    JSTaggedValue cp = thread->GetCurrentEcmaContext()->FindUnsharedConstpool(constpool.GetTaggedValue());
+    JSTaggedValue cp = thread->GetCurrentEcmaContext()->FindOrCreateUnsharedConstpool(constpool.GetTaggedValue());
     return ConstantPool::GetLiteralFromCache<ConstPoolType::OBJECT_LITERAL>(
         thread, cp, index.GetInt(), module.GetTaggedValue()).GetRawData();
 }
@@ -1325,7 +1353,7 @@ DEF_RUNTIME_STUBS(GetArrayLiteralFromCache)
     JSHandle<JSTaggedValue> constpool = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
     JSTaggedValue index = GetArg(argv, argc, 1);  // 1: means the first parameter
     JSHandle<JSTaggedValue> module = GetHArg<JSTaggedValue>(argv, argc, 2);  // 2: means the second parameter
-    JSTaggedValue cp = thread->GetCurrentEcmaContext()->FindUnsharedConstpool(constpool.GetTaggedValue());
+    JSTaggedValue cp = thread->GetCurrentEcmaContext()->FindOrCreateUnsharedConstpool(constpool.GetTaggedValue());
     return ConstantPool::GetLiteralFromCache<ConstPoolType::ARRAY_LITERAL>(
         thread, cp, index.GetInt(), module.GetTaggedValue()).GetRawData();
 }
@@ -3481,7 +3509,9 @@ DEF_RUNTIME_STUBS(NameDictionaryGetAllEnumKeys)
     JSHandle<TaggedArray> keyArray = factory->NewTaggedArray(numOfKeys);
     NameDictionary *dict = NameDictionary::Cast(object->GetProperties().GetTaggedObject());
     dict->GetAllEnumKeys(thread, 0, keyArray, &keys);
-    keyArray->SetLength(keys);
+    if (keys < keyArray->GetLength()) {
+        keyArray->Trim(thread, keys);
+    }
     return keyArray.GetTaggedValue().GetRawData();
 }
 
@@ -3495,7 +3525,9 @@ DEF_RUNTIME_STUBS(NumberDictionaryGetAllEnumKeys)
     uint32_t keys = elementIndex;
     NumberDictionary::GetAllEnumKeys(
         thread, JSHandle<NumberDictionary>(array), elementIndex, elementArray, &keys);
-    elementArray->SetLength(keys);
+    if (keys < elementArray->GetLength()) {
+        elementArray->Trim(thread, keys);
+    }
     return JSTaggedValue::Undefined().GetRawData();
 }
 

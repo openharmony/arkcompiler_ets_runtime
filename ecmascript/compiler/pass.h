@@ -30,6 +30,7 @@
 #include "ecmascript/compiler/escape_analysis_editor.h"
 #include "ecmascript/compiler/graph_editor.h"
 #include "ecmascript/compiler/graph_linearizer.h"
+#include "ecmascript/compiler/induction_variable_analysis.h"
 #include "ecmascript/compiler/later_elimination.h"
 #include "ecmascript/compiler/mcr_lowering.h"
 #include "ecmascript/compiler/lexical_env_specialization_pass.h"
@@ -328,6 +329,27 @@ public:
         Editvisitor.AddPass(&escapeAnalysisEditor);
         Editvisitor.VisitGraph();
         visitor.PrintLog("escape Analysis");
+        return true;
+    }
+};
+
+class InductionVariableAnalysisPass {
+public:
+    bool Run(PassData *data)
+    {
+        PassOptions *passOptions = data->GetPassOptions();
+        if (!passOptions->EnableInductionVariableAnalysis()) {
+            return false;
+        }
+        TimeScope timescope("InductionVariableAnalysisPass", data->GetMethodName(),
+                            data->GetMethodOffset(), data->GetLog());
+        bool enableLog = data->GetLog()->EnableMethodCIRLog();
+        JSRuntimeOptions runtimeOption = data->GetPassContext()->GetEcmaVM()->GetJSOptions();
+        Chunk chunk(data->GetNativeAreaAllocator());
+        InductionVariableAnalysis inductionVariableAnalysis(data->GetCircuit(), data->GetPassContext(), enableLog,
+                                                            data->GetMethodName(), &chunk,
+                                                            runtimeOption.GetTraceInductionVariableAnalysis());
+        inductionVariableAnalysis.Run();
         return true;
     }
 };

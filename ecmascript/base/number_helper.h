@@ -141,7 +141,7 @@ public:
         const uint8_t *end, JSTaggedValue string);
     static double StringToDouble(const uint8_t *start, const uint8_t *end, uint8_t radix, uint32_t flags = NO_FLAGS);
     static int32_t DoubleToInt(double d, size_t bits);
-    static int32_t DoubleInRangeInt32(double d);
+    static int32_t PUBLIC_API DoubleInRangeInt32(double d);
     static JSTaggedValue StringToDoubleWithRadix(const uint8_t *start, const uint8_t *end, int radix, bool *negative);
     static CString IntToString(int number);
     static CString IntegerToString(double number, int radix);
@@ -171,7 +171,7 @@ private:
 // The value is used in xorshift64* random generator to generate result.
 class RandomGenerator {
 public:
-    static void InitRandom(JSThread *thread);
+    static void InitRandom();
     static double NextDouble();
     static int32_t GenerateIdentityHash();
     static int32_t Next(int bits);

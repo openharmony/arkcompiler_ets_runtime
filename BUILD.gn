@@ -281,6 +281,9 @@ config("hiviewdfx_config") {
   if (enable_hilog) {
     defines += [ "ENABLE_HILOG" ]
   }
+  if (enable_hisysevent) {
+    defines += [ "ENABLE_HISYSEVENT" ]
+  }
 
   include_dirs = [ "$hilog_root/include" ]
 }
@@ -404,6 +407,10 @@ config("ark_jsruntime_common_config") {
   if (!is_mac && target_os != "ios" && !use_libfuzzer && !enable_lto_O0) {
     cflags_cc += [ "-flto=thin" ]
     ldflags += [ "-flto=thin" ]
+  }
+
+  if (use_libfuzzer) {
+    defines += [ "FUZZ_TEST" ]
   }
 
   if (is_debug) {
@@ -552,6 +559,7 @@ ecma_source = [
   "ecmascript/base/array_helper.cpp",
   "ecmascript/base/atomic_helper.cpp",
   "ecmascript/base/builtins_base.cpp",
+  "ecmascript/base/dtoa_helper.cpp",
   "ecmascript/base/error_helper.cpp",
   "ecmascript/base/fast_json_stringifier.cpp",
   "ecmascript/base/json_helper.cpp",
@@ -745,6 +753,7 @@ ecma_source = [
   "ecmascript/js_iterator.cpp",
   "ecmascript/js_map.cpp",
   "ecmascript/js_map_iterator.cpp",
+  "ecmascript/jsnapi_sendable.cpp",
   "ecmascript/method.cpp",
   "ecmascript/js_object.cpp",
   "ecmascript/js_primitive_ref.cpp",
@@ -774,6 +783,7 @@ ecma_source = [
   "ecmascript/mem/free_object_list.cpp",
   "ecmascript/mem/free_object_set.cpp",
   "ecmascript/mem/gc_stats.cpp",
+  "ecmascript/mem/gc_key_stats.cpp",
   "ecmascript/mem/heap.cpp",
   "ecmascript/mem/heap_region_allocator.cpp",
   "ecmascript/mem/incremental_marker.cpp",
@@ -1191,11 +1201,14 @@ ohos_shared_library("libark_jsruntime") {
     }
   }
 
-  deps = [
-    ":libark_jsruntime_static",
-    sdk_libc_secshared_dep,
-  ]
+  deps = [ ":libark_jsruntime_static" ]
   external_deps = []
+  if (defined(is_arkui_x) && is_arkui_x && target_os == "ios") {
+    deps += [ "$ark_third_party_root/bounds_checking_function:libsec_static" ]
+  } else {
+    external_deps += [ "bounds_checking_function:libsec_shared" ]
+  }
+
   if (!is_arkui_x) {
     external_deps += [ "runtime_core:libarkfile_static" ]
   } else {

@@ -1091,30 +1091,24 @@ void MPISel::SelectCvtFloat2Int(RegOperand &resOpnd, Operand &opnd0, PrimType to
 {
     uint32 toSize = GetPrimTypeBitSize(toType);
     bool isSigned = !IsPrimitiveUnsigned(toType);
-    PrimType newToType = toType;
-    // cvt f64/32 -> u16 / u8 -> cvt f u32 + cvt u32 -> u8
-    if (toSize < k32BitSize) {
-        newToType = isSigned ? PTY_i32 : PTY_u32;
-    }
-    uint32 newToSize = GetPrimTypeBitSize(newToType);
-    RegOperand &tmpFloatOpnd = cgFunc->GetOpndBuilder()->CreateVReg(newToSize, kRegTyFloat);
-    SelectFloatCvt(tmpFloatOpnd, opnd0, newToType, fromType);
+
+    // Due to fp precision, should use one insn to perform cvt.
+    RegOperand &regOpnd0 = SelectCopy2Reg(opnd0, fromType);
     MOperator mOp = abstract::MOP_undef;
-    if (newToSize == k32BitSize) {
-        mOp = isSigned ? abstract::MOP_cvt_rf_i32 : abstract::MOP_cvt_rf_u32;
-    } else if (newToSize == k64BitSize) {
-        mOp = isSigned ? abstract::MOP_cvt_rf_i64 : abstract::MOP_cvt_rf_u64;
-    } else {
-        CHECK_FATAL(false, "niy");
+    switch (fromType) {
+        case PTY_f64:
+            mOp = (toSize <= k32BitSize) ? ((isSigned) ? abstract::MOP_cvt_i32_f64 : abstract::MOP_cvt_u32_f64) :
+                                           ((isSigned) ? abstract::MOP_cvt_i64_f64 : abstract::MOP_cvt_u64_f64);
+            break;
+        case PTY_f32:
+            mOp = (toSize <= k32BitSize) ? ((isSigned) ? abstract::MOP_cvt_i32_f32 : abstract::MOP_cvt_u32_f32) :
+                                           ((isSigned) ? abstract::MOP_cvt_i64_f32 : abstract::MOP_cvt_u64_f32);
+            break;
+        default:
+            CHECK_FATAL(false, "NYI");
     }
     Insn &insn = cgFunc->GetInsnBuilder()->BuildInsn(mOp, InsnDesc::GetAbstractId(mOp));
-    if (toSize == newToSize) {
-        (void)insn.AddOpndChain(resOpnd).AddOpndChain(tmpFloatOpnd);
-    } else if (toSize < newToSize) {
-        RegOperand &tmpIntOpnd = cgFunc->GetOpndBuilder()->CreateVReg(newToSize, kRegTyFloat);
-        (void)insn.AddOpndChain(tmpIntOpnd).AddOpndChain(tmpFloatOpnd);
-        SelectIntCvt(resOpnd, tmpIntOpnd, toType, newToType);
-    }
+    (void)insn.AddOpndChain(resOpnd).AddOpndChain(regOpnd0);
     cgFunc->GetCurBB()->AppendInsn(insn);
 }
 
@@ -1123,23 +1117,22 @@ void MPISel::SelectCvtInt2Float(RegOperand &resOpnd, Operand &opnd0, PrimType to
     uint32 fromSize = GetPrimTypeBitSize(fromType);
     bool isSigned = !IsPrimitiveUnsigned(fromType);
     MOperator mOp = abstract::MOP_undef;
-    PrimType newFromType = PTY_begin;
-    if (fromSize == k32BitSize) {
-        mOp = isSigned ? abstract::MOP_cvt_fr_i32 : abstract::MOP_cvt_fr_u32;
-        newFromType = PTY_f64;
-    } else if (fromSize == k64BitSize) {
-        mOp = isSigned ? abstract::MOP_cvt_fr_i64 : abstract::MOP_cvt_fr_u64;
-        newFromType = PTY_f64;
-    } else {
-        CHECK_FATAL(false, "niy");
+    switch (toType) {
+        case PTY_f64:
+            mOp = (fromSize <= k32BitSize) ? ((isSigned) ? abstract::MOP_cvt_f64_i32 : abstract::MOP_cvt_f64_u32) :
+                                             ((isSigned) ? abstract::MOP_cvt_f64_i64 : abstract::MOP_cvt_f64_u64);
+            break;
+        case PTY_f32:
+            mOp = (fromSize <= k32BitSize) ? ((isSigned) ? abstract::MOP_cvt_f32_i32 : abstract::MOP_cvt_f32_u32) :
+                                             ((isSigned) ? abstract::MOP_cvt_f32_i64 : abstract::MOP_cvt_f32_u64);
+            break;
+        default:
+            CHECK_FATAL(false, "NYI");
     }
     RegOperand &regOpnd0 = SelectCopy2Reg(opnd0, fromType);
-    RegOperand &tmpFloatOpnd =
-        cgFunc->GetOpndBuilder()->CreateVReg(GetPrimTypeBitSize(newFromType), cgFunc->GetRegTyFromPrimTy(newFromType));
     Insn &insn = cgFunc->GetInsnBuilder()->BuildInsn(mOp, InsnDesc::GetAbstractId(mOp));
-    (void)insn.AddOpndChain(tmpFloatOpnd).AddOpndChain(regOpnd0);
+    (void)insn.AddOpndChain(resOpnd).AddOpndChain(regOpnd0);
     cgFunc->GetCurBB()->AppendInsn(insn);
-    SelectFloatCvt(resOpnd, tmpFloatOpnd, toType, newFromType);
 }
 
 void MPISel::SelectIntCvt(RegOperand &resOpnd, Operand &opnd0, PrimType toType, PrimType fromType)

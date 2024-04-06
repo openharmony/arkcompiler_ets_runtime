@@ -44,6 +44,7 @@ public:
                                   const PropertyDescriptor &desc);
 
     static bool IsLengthString(JSThread *thread, const JSHandle<JSTaggedValue> &key);
+    static JSHandle<JSSharedArray> CreateArrayFromList(JSThread *thread, const JSHandle<TaggedArray> &elements);
     // use first inlined property slot for array length
     inline uint32_t GetArrayLength() const
     {
@@ -72,6 +73,8 @@ public:
     ACCESSORS_SYNCHRONIZED_PRIMITIVE_FIELD(ModRecord, uint32_t, MOD_RECORD_OFFSET, LAST_OFFSET)
     DEFINE_ALIGN_SIZE(LAST_OFFSET);
 
+    static constexpr uint32_t MAX_INLINE = PropertyAttributes::MAX_FAST_PROPS_CAPACITY -
+        SIZE / JSTaggedValue::TaggedTypeSize() + 1;
     DECL_VISIT_OBJECT_FOR_JS_OBJECT(JSObject, TRACK_INFO_OFFSET, MOD_RECORD_OFFSET)
 
     static const uint32_t MAX_ARRAY_INDEX = MAX_ELEMENT_INDEX;
@@ -88,19 +91,27 @@ public:
                                       SCheckMode mode = SCheckMode::CHECK);
 
     static bool LengthSetter(JSThread *thread, const JSHandle<JSObject> &self, const JSHandle<JSTaggedValue> &value,
-                             bool mayThrow = false, SCheckMode mode = SCheckMode::CHECK);
+                             bool mayThrow = false);
+    static bool DummyLengthSetter(JSThread *thread, const JSHandle<JSObject> &self,
+                                  const JSHandle<JSTaggedValue> &value, bool mayThrow = false);
 
     static JSHandle<JSTaggedValue> FastGetPropertyByValue(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
                                                           uint32_t index);
 
     static JSHandle<JSTaggedValue> FastGetPropertyByValue(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
-                                                          const JSHandle<JSTaggedValue> &key);
+                                                          const JSHandle<JSTaggedValue> &key,
+                                                          SCheckMode sCheckMode = SCheckMode::SKIP);
 
     static bool FastSetPropertyByValue(JSThread *thread, const JSHandle<JSTaggedValue> &obj, uint32_t index,
                                        const JSHandle<JSTaggedValue> &value);
 
     static bool FastSetPropertyByValue(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
                                        const JSHandle<JSTaggedValue> &key, const JSHandle<JSTaggedValue> &value);
+
+    static OperationResult GetProperty(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
+                                      const JSHandle<JSTaggedValue> &key, SCheckMode sCheckMode);
+    static bool SetProperty(JSThread *thread, const JSHandle<JSTaggedValue> &obj, const JSHandle<JSTaggedValue> &key,
+                           const JSHandle<JSTaggedValue> &value, bool mayThrow, SCheckMode sCheckMode);
 
     static JSTaggedValue Sort(JSThread *thread, const JSHandle<JSTaggedValue> &obj, const JSHandle<JSTaggedValue> &fn);
     static bool IncludeInSortedValue(JSThread *thread, const JSHandle<JSTaggedValue> &obj,

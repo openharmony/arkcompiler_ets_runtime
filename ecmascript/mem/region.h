@@ -633,7 +633,9 @@ public:
             markGCBitset_->Clear(bitsetSize_);
             begin_ = AlignUp(begin + bitsetSize_, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
             // The object region marked with poison until it is allocated if is_asan is true
+#ifdef ARK_ASAN_ON
             ASAN_POISON_MEMORY_REGION(reinterpret_cast<void *>(begin_), (end - begin_));
+#endif
         }
 
         static size_t GetFlagOffset(bool isArch32)

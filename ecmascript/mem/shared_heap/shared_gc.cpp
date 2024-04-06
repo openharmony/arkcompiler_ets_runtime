@@ -49,6 +49,7 @@ void SharedGC::Initialize()
     });
     sWorkManager_->Initialize();
 }
+
 void SharedGC::Mark()
 {
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "SharedGC::Mark");
@@ -57,9 +58,11 @@ void SharedGC::Mark()
     Runtime::GetInstance()->GCIterateThreadList([&](JSThread *thread) {
         ASSERT(!thread->IsInRunningState());
         auto vm = thread->GetEcmaVM();
-        vm->GetHeap()->GetSweeper()->EnsureAllTaskFinished();
+        auto heap = const_cast<Heap*>(vm->GetHeap());
+        heap->GetSweeper()->EnsureAllTaskFinished();
+        heap->WaitClearTaskFinished();
         sHeap_->GetSharedGCMarker()->MarkRoots(MAIN_THREAD_INDEX, vm);
-        sHeap_->GetSharedGCMarker()->ProcessLocalToShare(MAIN_THREAD_INDEX, const_cast<Heap*>(vm->GetHeap()));
+        sHeap_->GetSharedGCMarker()->ProcessLocalToShare(MAIN_THREAD_INDEX, heap);
     });
     sHeap_->WaitRunningTaskFinished();
 }
@@ -81,11 +84,12 @@ void SharedGC::Sweep()
         return reinterpret_cast<TaggedObject *>(ToUintPtr(nullptr));
     };
     Runtime::GetInstance()->GetEcmaStringTable()->SweepWeakReference(gcUpdateWeak);
+    Runtime::GetInstance()->ProcessNativeDeleteInSharedGC(gcUpdateWeak);
 
     Runtime::GetInstance()->GCIterateThreadList([&](JSThread *thread) {
         ASSERT(!thread->IsInRunningState());
-        thread->GetCurrentEcmaContext()->ProcessNativeDeleteInSharedGC(gcUpdateWeak);
-        thread->IterateWeakEcmaGlobalStorage(gcUpdateWeak, true);
+        thread->IterateWeakEcmaGlobalStorage(gcUpdateWeak, GCKind::SHARED_GC);
+        thread->GetEcmaVM()->ProcessSharedNativeDelete(gcUpdateWeak);
     });
 
     sHeap_->GetSweeper()->Sweep();

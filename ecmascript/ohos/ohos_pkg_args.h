@@ -36,6 +36,7 @@
 #include "ecmascript/mem/c_string.h"
 #include "ecmascript/module/module_path_helper.h"
 #include "ecmascript/ohos/enable_aot_list_helper.h"
+#include "ecmascript/ohos/framework_helper.h"
 #include "ecmascript/pgo_profiler/pgo_utils.h"
 #include "ecmascript/platform/file.h"
 #if defined(CODE_ENCRYPTION_ENABLE)
@@ -84,6 +85,12 @@ public:
         for (const auto &pkgInfo : preProcessor.pkgsArgs_) {
             preProcessor.pandaFileNames_.emplace_back(pkgInfo.first);
             pkgInfo.second->Dump();
+        }
+        JSThread *thread = preProcessor.vm_->GetJSThread();
+        FrameworkHelper frameworkHelper(thread);
+        auto &frameworkAbcFiles = frameworkHelper.GetFrameworkAbcFiles();
+        for (const auto &abcPath : frameworkAbcFiles) {
+            preProcessor.pandaFileNames_.emplace_back(abcPath);
         }
         return true;
     }

@@ -73,6 +73,9 @@ private:
     void LowerLexVarIsHoleCheck(GateRef gate);
     void LowerIsUndefinedOrHoleCheck(GateRef gate);
     void LowerIsNotUndefinedOrHoleCheck(GateRef gate);
+    void LowerIsEcmaObjectCheck(GateRef gate);
+    void LowerIsDataViewCheck(GateRef gate);
+    void LowerIsTaggedBooleanCheck(GateRef gate);
     void LowerStoreMemory(GateRef gate);
     void LowerCheckNullAndConvert(GateRef gate, GateRef frameState);
     void LowerUndefinedAndConvert(GateRef gate, GateRef frameState);

@@ -68,6 +68,16 @@ class SuperClass {
   propBool: boolean = false
   propBigInt1: bigint = BigInt(12345678910)
   propBigInt2: bigint = BigInt(987654321)
+  propStringOrNull: string | null = "I'm propStringOrNull"
+  propStringOrUndefined: string | undefined = "I'm propStringOrUndefined"
+  propNumberOrNull: number | null = 1
+  propNumberOrUndefined: number | undefined = 1
+  propBoolOrNull: boolean | null = true
+  propBoolOrUndefined: boolean | undefined = true
+  propBigIntOrNull: bigint | null = BigInt(12345678910)
+  propBigIntOrUndefined: bigint | undefined = BigInt(12345678910)
+  propSenableOrNull: SimpleStringSendable | null
+  propSenableOrUndefined: SimpleStringSendable | undefined
   static staticPropString: string = "I'm staticPropString";
   publicPropString: string = "I'm privatePropString";
 
@@ -243,6 +253,41 @@ function testUpdateInstancePropsToNull(testObj: SubClass) {
   } catch (error) {
     print("Fail to update propBigInt2 to null with stobjbyname. err: " + error)
   }
+
+  try {
+    testObj.propStringOrNull = null
+    print("Success update propStringOrNull to null with stobjbyname")
+  } catch (error) {
+    print("Fail to update propStringOrNull to null with stobjbyname. err: " + error)
+  }
+
+  try {
+    testObj.propNumberOrNull = null
+    print("Success update propNumberOrNull to null with stobjbyname")
+  } catch (error) {
+    print("Fail to update propNumberOrNull to null with stobjbyname. err: " + error)
+  }
+
+  try {
+    testObj.propBoolOrNull = null
+    print("Success update propBoolOrNull to null with stobjbyname")
+  } catch (error) {
+    print("Fail to update propBoolOrNull to null with stobjbyname. err: " + error)
+  }
+
+  try {
+    testObj.propBigIntOrNull = null
+    print("Success update propBigIntOrNull to null with stobjbyname")
+  } catch (error) {
+    print("Fail to update propBigIntOrNull to null with stobjbyname. err: " + error)
+  }
+
+  try {
+    testObj.propSenableOrNull = null
+    print("Success update propSenableOrNull to null with stobjbyname")
+  } catch (error) {
+    print("Fail to update propSenableOrNull to null with stobjbyname. err: " + error)
+  }
 }
 
 function testUpdateInstancePropsToUndefined(testObj: SubClass) {
@@ -287,6 +332,41 @@ function testUpdateInstancePropsToUndefined(testObj: SubClass) {
     print("Success update propBigInt2 to undefined with stobjbyname")
   } catch (error) {
     print("Fail to update propBigInt2 to undefined with stobjbyname. err: " + error)
+  }
+
+  try {
+    testObj.propStringOrUndefined = undefined
+    print("Success update propStringOrUndefined to undefined with stobjbyname")
+  } catch (error) {
+    print("Fail to update propStringOrUndefined to undefined with stobjbyname. err: " + error)
+  }
+
+  try {
+    testObj.propNumberOrUndefined = undefined
+    print("Success update propNumberOrUndefined to undefined with stobjbyname")
+  } catch (error) {
+    print("Fail to update propNumberOrUndefined to undefined with stobjbyname. err: " + error)
+  }
+
+  try {
+    testObj.propBoolOrUndefined = undefined
+    print("Success update propBoolOrUndefined to undefined with stobjbyname")
+  } catch (error) {
+    print("Fail to update propBoolOrUndefined to undefined with stobjbyname. err: " + error)
+  }
+
+  try {
+    testObj.propBigIntOrUndefined = undefined
+    print("Success update propBigIntOrUndefined to undefined with stobjbyname")
+  } catch (error) {
+    print("Fail to update propBigIntOrUndefined to undefined with stobjbyname. err: " + error)
+  }
+
+  try {
+    testObj.propSenableOrUndefined = undefined
+    print("Success update propSenableOrUndefined to undefined with stobjbyname")
+  } catch (error) {
+    print("Fail to update propSenableOrUndefined to undefined with stobjbyname. err: " + error)
   }
 }
 
@@ -589,8 +669,49 @@ function testICChecking(testObj: SubClass)
   testICCheckingUpdateInstanceAccessor(testObj);
 }
 
+function testSetMismatchedType(testObj: SubClass)
+{
+  print("Start testSetMismatchedType");
+  try {
+    testObj.propStringOrUndefined = 11;
+    print("Success update propStringOrUndefined to number with stobjbyname");
+  } catch (error) {
+    print("Fail to update propStringOrUndefined to number with stobjbyname. err: " + error);
+  }
+
+  try {
+    testObj.propNumberOrUndefined = "l'm string";
+    print("Success update propNumberOrUndefined to string with stobjbyname");
+  } catch (error) {
+    print("Fail to update propNumberOrUndefined to string with stobjbyname. err: " + error);
+  }
+
+  try {
+    testObj.propBoolOrUndefined = 11;
+    print("Success update propBoolOrUndefined to number with stobjbyname");
+  } catch (error) {
+    print("Fail to update propBoolOrUndefined to number with stobjbyname. err: " + error);
+  }
+
+  try {
+    testObj.propBigIntOrUndefined = "l'm string";
+    print("Success update propBigIntOrUndefined to string with stobjbyname");
+  } catch (error) {
+    print("Fail to update propBigIntOrUndefined to string with stobjbyname. err: " + error);
+  }
+
+  try {
+    testObj.propSenableOrUndefined = 11;
+    print("Success update propSenableOrUndefined to number with stobjbyname");
+  } catch (error) {
+    print("Fail to update propSenableOrUndefined to number with stobjbyname. err: " + error);
+  }
+}
+
 let b = new SubClass()
 b.subClassPropSendable = new SimpleStringSendable()
+b.propSenableOrNull = new SimpleStringSendable()
+b.propSenableOrUndefined = new SimpleStringSendable()
 testUpdate(b)
 testDelete(b)
 testExtend(b)
@@ -599,3 +720,4 @@ testUpdateWithType(b)
 testKeywords(b)
 testNormInherit()
 testICChecking(b);
+testSetMismatchedType(b);

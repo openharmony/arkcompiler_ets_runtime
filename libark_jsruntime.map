@@ -69,6 +69,7 @@
       panda::Exception::*;
       panda::JSON::*;
       panda::JsiRuntimeCallInfo::*;
+      panda::JsiNativeScope::*;
       panda::JSExecutionScope::*;
 
       panda::ecmascript::Log::*;
@@ -83,6 +84,7 @@
       panda::ecmascript::WorkSpaceChunk::*;
       panda::ecmascript::pgo::PGOProfilerDecoder::*;
       panda::ecmascript::pgo::PGOProfilerEncoder::*;
+      panda::ecmascript::containers::ContainerError::*;
       panda::ecmascript::NativeAreaAllocator::*;
 
       panda::os::thread::*;
@@ -114,7 +116,7 @@
       panda::ecmascript::DynChunk::EmitChar*;
       panda::ecmascript::EcmaContext::FindConstpool*;
       panda::ecmascript::EcmaContext::FindOrCreateConstPool*;
-      panda::ecmascript::EcmaContext::FindUnsharedConstpool*;
+      panda::ecmascript::EcmaContext::FindOrCreateUnsharedConstpool*;
       panda::ecmascript::EcmaContext::SetTSManager*;
       panda::ecmascript::EcmaRuntimeStat::StartCount*;
       panda::ecmascript::EcmaRuntimeStat::StopCount*;
@@ -319,7 +321,9 @@
       panda::ecmascript::TypeAnnotationExtractor::TypeAnnotationExtractor*;
       panda::ecmascript::TypeLiteralExtractor::TypeLiteralExtractor*;
       panda::ecmascript::Unlink*;
+      panda::ecmascript::base::ArrayHelper::GetLength*;
       panda::ecmascript::base::utf_helper::ConvertRegionUtf16ToUtf8*;
+      panda::ecmascript::base::NumberHelper::DoubleInRangeInt32*;
       panda::ecmascript::kungfu::AOTSnapshot::StoreConstantPoolInfo*;
       panda::ecmascript::kungfu::ArkStackMapBuilder::Collect*;
       panda::ecmascript::kungfu::ArkStackMapBuilder::GenerateArkStackMap*;

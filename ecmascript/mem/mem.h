@@ -44,11 +44,7 @@ static constexpr size_t LARGE_POOL_SIZE = 480_MB;
 static constexpr size_t MEDIUM_POOL_SIZE = 256_MB;
 static constexpr size_t LOW_POOL_SIZE = 64_MB;
 static constexpr size_t MIN_MEM_POOL_CAPACITY = 64_MB;
-static constexpr size_t WORKER_NUM = 8;
-static constexpr size_t PHY_SIZE_MULTIPLE = WORKER_NUM + 1;
-// todo(Gymee) fix size for shared heap
-static constexpr size_t STANDARD_POOL_SIZE =
-    WORKER_NUM * DEFAULT_WORKER_HEAP_SIZE + DEFAULT_HEAP_SIZE + DEFAULT_SHARED_HEAP_SIZE;
+static constexpr size_t MAX_MEM_POOL_CAPACITY = 1536_MB;
 
 #if defined(PANDA_TARGET_32)
     static constexpr size_t MAX_GLOBAL_NATIVE_LIMIT = 512_MB;
@@ -73,6 +69,7 @@ static constexpr double MIN_OBJECT_SURVIVAL_RATE = 0.75;
 static constexpr double GROW_OBJECT_SURVIVAL_RATE = 0.8;
 static constexpr double SHRINK_OBJECT_SURVIVAL_RATE = 0.2;
 static constexpr double LOW_ALLOCATION_SPEED_PER_MS = 1000;
+static constexpr double DEFAULT_CAPACITY_RATE = 0.6;
 // Objects which are larger than half of the region size are huge objects.
 // Regular objects will be allocated on regular regions and migrated on spaces.
 // They will never be moved to huge object space. So we take half of a regular

@@ -74,6 +74,7 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
     "--compiler-trace-value-numbering:     Enable tracing value numbering for aot runtime. Default: 'false'\n"
     "--compiler-max-inline-bytecodes       Set max bytecodes count which aot function can be inlined. Default: '25'\n"
     "--compiler-deopt-threshold:           Set max count which aot function can occur deoptimization. Default: '10'\n"
+    "--compiler-device-state               Compiler device state for aot. Check device screen state. Default: 'false'\n"
     "--compiler-stress-deopt:              Enable stress deopt for aot compiler. Default: 'false'\n"
     "--compiler-opt-code-profiler:         Enable opt code Bytecode Statistics for aot runtime. Default: 'false'\n"
     "--compiler-opt-bc-range:              Range list for EcmaOpCode range Example '1:2,5:8'\n"
@@ -177,7 +178,9 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
     "                                      Default: '0:4294967295'\n"
     "--compiler-codegen-options:           Compile options passed to codegen. Default: ''\n\n"
     "--compiler-opt-escape-analysis:       Enable escape analysis for aot compiler. Default: 'true'\n"
-    "--compiler-trace-escape-analysis:     Enable tracing escape analysis for aot compiler. Default: 'false'\n";
+    "--compiler-trace-escape-analysis:     Enable tracing escape analysis for aot compiler. Default: 'false'\n"
+    "--compiler-opt-induction-variable:    Enable induciton variable analysis for aot compiler. Default: 'false'\n"
+    "--compiler-trace-induction-variable:  Enable tracing induction variable for aot compiler. Default: 'false'\n";
 
 bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
 {
@@ -204,6 +207,7 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"compiler-trace-instruction-combine", required_argument, nullptr, OPTION_COMPILER_TRACE_INSTRUCTION_COMBINE},
         {"compiler-max-inline-bytecodes", required_argument, nullptr, OPTION_COMPILER_MAX_INLINE_BYTECODES},
         {"compiler-deopt-threshold", required_argument, nullptr, OPTION_COMPILER_DEOPT_THRESHOLD},
+        {"compiler-device-state", required_argument, nullptr, OPTION_COMPILER_DEVICE_STATE},
         {"compiler-stress-deopt", required_argument, nullptr, OPTION_COMPILER_STRESS_DEOPT},
         {"compiler-opt-code-profiler", required_argument, nullptr, OPTION_COMPILER_OPT_CODE_PROFILER},
         {"compiler-opt-bc-range", required_argument, nullptr, OPTION_COMPILER_OPT_BC_RANGE},
@@ -290,6 +294,8 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"compiler-codegen-options", required_argument, nullptr, OPTION_COMPILER_CODEGEN_OPT},
         {"compiler-opt-escape-analysis", required_argument, nullptr, OPTION_COMPILER_OPT_ESCAPE_ANALYSIS},
         {"compiler-trace-escape-analysis", required_argument, nullptr, OPTION_COMPILER_TRACE_ESCAPE_ANALYSIS},
+        {"compiler-opt-induction-variable", required_argument, nullptr, OPTION_COMPILER_OPT_INDUCTION_VARIABLE},
+        {"compiler-trace-induction-variable", required_argument, nullptr, OPTION_COMPILER_TRACE_INDUCTION_VARIABLE},
         {nullptr, 0, nullptr, 0},
     };
 
@@ -334,6 +340,7 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         WasSet(option);
         switch (option) {
             case OPTION_AOT_FILE:
+                LOG_ECMA(ERROR) << "aot output file:" << optarg;
                 SetAOTOutputFile(optarg);
                 ecmascript::AnFileDataManager::GetInstance()->SetEnable(true);
                 break;
@@ -457,6 +464,14 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                 ret = ParseUint32Param("deopt-threshol", &argUint32);
                 if (ret) {
                     SetDeoptThreshold(argUint32);
+                } else {
+                    return false;
+                }
+                break;
+            case OPTION_COMPILER_DEVICE_STATE:
+                ret = ParseBoolParam(&argBool);
+                if (ret) {
+                    SetDeviceState(argBool);
                 } else {
                     return false;
                 }
@@ -1050,6 +1065,22 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                 ret = ParseBoolParam(&argBool);
                 if (ret) {
                     SetEnableTraceEscapeAnalysis(argBool);
+                } else {
+                    return false;
+                }
+                break;
+            case OPTION_COMPILER_OPT_INDUCTION_VARIABLE:
+                ret = ParseBoolParam(&argBool);
+                if (ret) {
+                    SetEnableInductionVariableAnalysis(argBool);
+                } else {
+                    return false;
+                }
+                break;
+            case OPTION_COMPILER_TRACE_INDUCTION_VARIABLE:
+                ret = ParseBoolParam(&argBool);
+                if (ret) {
+                    SetEnableTraceInductionVariableAnalysis(argBool);
                 } else {
                     return false;
                 }

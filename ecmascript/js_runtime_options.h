@@ -133,6 +133,7 @@ enum CommandValues {
     OPTION_COMPILER_PGO_SAVE_MIN_INTERVAL,
     OPTION_ENABLE_PGO_PROFILER,
     OPTION_PRINT_EXECUTE_TIME,
+    OPTION_COMPILER_DEVICE_STATE,
     OPTION_COMPILER_VERIFY_VTABLE,
     OPTION_COMPILER_SELECT_METHODS,
     OPTION_COMPILER_SKIP_METHODS,
@@ -175,6 +176,8 @@ enum CommandValues {
     OPTION_COMPILER_OPT_ESCAPE_ANALYSIS,
     OPTION_COMPILER_TRACE_ESCAPE_ANALYSIS,
     OPTION_LAST,
+    OPTION_COMPILER_OPT_INDUCTION_VARIABLE,
+    OPTION_COMPILER_TRACE_INDUCTION_VARIABLE,
 };
 static_assert(OPTION_SPLIT_ONE == 64);
 
@@ -1230,6 +1233,21 @@ public:
         return stressDeopt_;
     }
 
+    void SetDeviceState(bool value)
+    {
+        deviceIsScreenOff_ = value;
+    }
+
+    bool GetDeviceState() const
+    {
+        return deviceIsScreenOff_;
+    }
+
+    bool WasSetDeviceState() const
+    {
+        return WasOptionSet(OPTION_COMPILER_DEVICE_STATE);
+    }
+
     void SetOptCodeProfiler(bool value)
     {
         optCodeProfiler_ = value;
@@ -1554,7 +1572,7 @@ public:
     {
         return optBCRange_;
     }
-    
+
     void SetEnableEscapeAnalysis(bool value)
     {
         enableEscapeAnalysis_ = value;
@@ -1575,6 +1593,26 @@ public:
         return traceEscapeAnalysis_;
     }
 
+    void SetEnableInductionVariableAnalysis(bool value)
+    {
+        enableInductionVariableAnalysis_ = value;
+    }
+
+    bool IsEnableInductionVariableAnalysis() const
+    {
+        return enableInductionVariableAnalysis_;
+    }
+
+    void SetEnableTraceInductionVariableAnalysis(bool value)
+    {
+        traceInductionVariableAnalysis_ = value;
+    }
+
+    bool GetTraceInductionVariableAnalysis() const
+    {
+        return traceInductionVariableAnalysis_;
+    }
+    
 private:
     static bool StartsWith(const std::string &haystack, const std::string &needle)
     {
@@ -1686,6 +1724,7 @@ private:
     bool traceDeopt_ {false};
     uint8_t deoptThreshold_ {10};
     bool stressDeopt_ {false};
+    bool deviceIsScreenOff_ {true};
     bool optCodeProfiler_ {false};
     bool startGlobalLeakCheck_ {false};
     bool verifyVTable_ {false};
@@ -1719,6 +1758,8 @@ private:
     arg_list_t compileCodegenOption_ {{""}};
     bool enableEscapeAnalysis_ {false};
     bool traceEscapeAnalysis_ {false};
+    bool enableInductionVariableAnalysis_ {false};
+    bool traceInductionVariableAnalysis_ {false};
 };
 }  // namespace panda::ecmascript
 

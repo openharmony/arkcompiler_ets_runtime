@@ -156,10 +156,10 @@ void StubBuilder::MatchFieldType(GateRef fieldType, GateRef value, Label *execut
     Label isUndefined(env);
     Label exit(env);
     DEFVARIABLE(result, VariableType::BOOL(), False());
-    BRANCH(BoolAnd(
+    GateRef checkType = BoolAnd(
         Int32NotEqual(Int32And(fieldType, Int32(static_cast<int32_t>(SharedFieldType::NUMBER))), Int32(0)),
-        TaggedIsNumber(value)),
-        &isNumber, &checkBoolean);
+        TaggedIsNumber(value));
+    BRANCH(checkType, &isNumber, &checkBoolean);
     Bind(&isNumber);
     {
         result = True();
@@ -167,10 +167,10 @@ void StubBuilder::MatchFieldType(GateRef fieldType, GateRef value, Label *execut
     }
     Bind(&checkBoolean);
     {
-        BRANCH(BoolAnd(
+        checkType = BoolAnd(
             Int32NotEqual(Int32And(fieldType, Int32(static_cast<int32_t>(SharedFieldType::BOOLEAN))), Int32(0)),
-            TaggedIsBoolean(value)),
-            &isBoolean, &checkString);
+            TaggedIsBoolean(value));
+        BRANCH(checkType, &isBoolean, &checkString);
         Bind(&isBoolean);
         {
             result = True();
@@ -179,10 +179,10 @@ void StubBuilder::MatchFieldType(GateRef fieldType, GateRef value, Label *execut
     }
     Bind(&checkString);
     {
-        BRANCH(BoolAnd(
+        checkType = BoolAnd(
             Int32NotEqual(Int32And(fieldType, Int32(static_cast<int32_t>(SharedFieldType::STRING))), Int32(0)),
-            BoolOr(TaggedIsString(value), TaggedIsNull(value))),
-            &isString, &checkJSShared);
+            BoolOr(TaggedIsString(value), TaggedIsNull(value)));
+        BRANCH(checkType, &isString, &checkJSShared);
         Bind(&isString);
         {
             result = True();
@@ -191,10 +191,10 @@ void StubBuilder::MatchFieldType(GateRef fieldType, GateRef value, Label *execut
     }
     Bind(&checkJSShared);
     {
-        BRANCH(BoolAnd(
+        checkType = BoolAnd(
             Int32NotEqual(Int32And(fieldType, Int32(static_cast<int32_t>(SharedFieldType::SENDABLE))), Int32(0)),
-            BoolOr(TaggedIsShared(value), TaggedIsNull(value))),
-            &isJSShared, &checkBigInt);
+            BoolOr(TaggedIsSharedObj(value), TaggedIsNull(value)));
+        BRANCH(checkType, &isJSShared, &checkBigInt);
         Bind(&isJSShared);
         {
             result = True();
@@ -218,7 +218,7 @@ void StubBuilder::MatchFieldType(GateRef fieldType, GateRef value, Label *execut
         BRANCH(BoolAnd(
             BoolOr(Equal(fieldType, Int32(static_cast<int32_t>(SharedFieldType::NONE))),
                 Int32NotEqual(Int32And(fieldType, Int32(static_cast<int32_t>(SharedFieldType::GENERIC))), Int32(0))),
-            BoolOr(TaggedIsShared(value), BoolNot(TaggedIsHeapObject(value)))),
+            BoolOr(TaggedIsSharedObj(value), BoolNot(TaggedIsHeapObject(value)))),
             &isNoneOrGeneric, &checkNull);
         Bind(&isNoneOrGeneric);
         {
@@ -229,10 +229,10 @@ void StubBuilder::MatchFieldType(GateRef fieldType, GateRef value, Label *execut
     }
     Bind(&checkNull);
     {
-        BRANCH(BoolAnd(
+        checkType = BoolAnd(
             Int32NotEqual(Int32And(fieldType, Int32(static_cast<int32_t>(SharedFieldType::NULL_TYPE))), Int32(0)),
-            TaggedIsNull(value)),
-            &isNull, &checkUndefined);
+            TaggedIsNull(value));
+        BRANCH(checkType, &isNull, &checkUndefined);
         Bind(&isNull);
         {
             result = True();
@@ -241,10 +241,10 @@ void StubBuilder::MatchFieldType(GateRef fieldType, GateRef value, Label *execut
     }
     Bind(&checkUndefined);
     {
-        BRANCH(BoolAnd(
+        checkType = BoolAnd(
             Int32NotEqual(Int32And(fieldType, Int32(static_cast<int32_t>(SharedFieldType::UNDEFINED))), Int32(0)),
-            TaggedIsUndefined(value)),
-            &isUndefined, &exit);
+            TaggedIsUndefined(value));
+        BRANCH(checkType, &isUndefined, &exit);
         Bind(&isUndefined);
         {
             result = True();
@@ -6735,107 +6735,6 @@ void StubBuilder::ReturnExceptionIfAbruptCompletion(GateRef glue)
     Bind(&exit);
     env->SubCfgExit();
     return;
-}
-
-GateRef StubBuilder::CalcHashcodeForInt(GateRef value)
-{
-    return env_->GetBuilder()->CalcHashcodeForInt(value);
-}
-
-GateRef StubBuilder::CanDoubleRepresentInt(GateRef exp, GateRef expBits, GateRef fractionBits)
-{
-    GateRef isNanOrInf = Int64Equal(expBits, Int64(base::DOUBLE_EXPONENT_MASK));
-    GateRef isSubnormal = BoolAnd(
-        Int64Equal(expBits, Int64(0)),
-        Int64NotEqual(fractionBits, Int64(0)));
-    GateRef hasFraction = Int64NotEqual(
-        Int64And(
-            Int64LSL(fractionBits, exp),
-            Int64(base::DOUBLE_SIGNIFICAND_MASK)),
-        Int64(0));
-    GateRef badExp = BoolOr(
-        Int64LessThan(exp, Int64(0)),
-        Int64GreaterThanOrEqual(exp, Int64(31U)));
-    return BoolOr(BoolOr(BoolOr(isNanOrInf, isSubnormal), badExp), hasFraction);
-}
-
-void StubBuilder::CalcHashcodeForDouble(GateRef x, Variable *res, Label *exit)
-{
-    auto env = GetEnvironment();
-    GateRef xInt64 = ChangeTaggedPointerToInt64(x);
-    GateRef fractionBits = Int64And(xInt64, Int64(base::DOUBLE_SIGNIFICAND_MASK));
-    GateRef expBits = Int64And(xInt64, Int64(base::DOUBLE_EXPONENT_MASK));
-    GateRef signBit = Int64And(xInt64, Int64(base::DOUBLE_SIGN_MASK));
-    GateRef isZero = BoolAnd(
-        Int64Equal(expBits, Int64(0)),
-        Int64Equal(fractionBits, Int64(0)));
-    Label zero(env);
-    Label nonZero(env);
-
-    BRANCH(isZero, &zero, &nonZero);
-    Bind(&nonZero);
-    {
-        DEFVARIABLE(value, VariableType::JS_ANY(), x);
-        // exp = (u64 & DOUBLE_EXPONENT_MASK) >> DOUBLE_SIGNIFICAND_SIZE - DOUBLE_EXPONENT_BIAS
-        GateRef exp = Int64Sub(
-            Int64LSR(expBits, Int64(base::DOUBLE_SIGNIFICAND_SIZE)),
-            Int64(base::DOUBLE_EXPONENT_BIAS));
-        Label convertToInt(env);
-        Label calcHash(env);
-        BRANCH(CanDoubleRepresentInt(exp, expBits, fractionBits), &calcHash, &convertToInt);
-        Bind(&convertToInt);
-        {
-            GateRef shift = Int64Sub(Int64(base::DOUBLE_SIGNIFICAND_SIZE), exp);
-            GateRef intVal = Int64Add(
-                Int64LSL(Int64(1), exp),
-                Int64LSR(fractionBits, shift));
-            DEFVARIABLE(intVariable, VariableType::INT64(), intVal);
-            Label negate(env);
-            Label pass(env);
-            BRANCH(Int64NotEqual(signBit, Int64(0)), &negate, &calcHash);
-            Bind(&negate);
-            {
-                intVariable = Int64Sub(Int64(0), intVal);
-                Jump(&pass);
-            }
-            Bind(&pass);
-            value = Int64ToTaggedPtr(*intVariable);
-            Jump(&calcHash);
-        }
-        Bind(&calcHash);
-        {
-            *res = env_->GetBuilder()->CalcHashcodeForInt(*value);
-            Jump(exit);
-        }
-    }
-
-    Bind(&zero);
-    *res = env_->GetBuilder()->CalcHashcodeForInt(IntToTaggedPtr(Int32(0)));
-    Jump(exit);
-}
-
-void StubBuilder::CalcHashcodeForObject(GateRef glue, GateRef value, Variable *res, Label *exit)
-{
-    auto env = GetEnvironment();
-
-    GateRef hash = GetHash(value);
-    *res = TruncInt64ToInt32(TaggedCastToIntPtr(hash));
-    Label calcHash(env);
-    BRANCH(Int32Equal(**res, Int32(0)), &calcHash, exit);
-    Bind(&calcHash);
-    GateRef offset = IntPtr(JSThread::GlueData::GetRandomStatePtrOffset(env_->Is32Bit()));
-    GateRef randomStatePtr = Load(VariableType::NATIVE_POINTER(), glue, offset);
-    GateRef randomState = Load(VariableType::INT64(), randomStatePtr, IntPtr(0));
-    GateRef k1 = Int64Xor(randomState, Int64LSR(randomState, Int64(base::RIGHT12)));
-    GateRef k2 = Int64Xor(k1, Int64LSL(k1, Int64(base::LEFT25)));
-    GateRef k3 = Int64Xor(k2, Int64LSR(k2, Int64(base::RIGHT27)));
-    Store(VariableType::INT64(), glue, randomStatePtr, IntPtr(0), k3);
-    GateRef k4 = Int64Mul(k3, Int64(base::GET_MULTIPLY));
-    GateRef k5 = Int64LSR(k4, Int64(base::INT64_BITS - base::INT32_BITS));
-    GateRef k6 = Int32And(TruncInt64ToInt32(k5), Int32(INT32_MAX));
-    SetHash(glue, value, IntToTaggedPtr(k6));
-    *res = k6;
-    Jump(exit);
 }
 
 GateRef StubBuilder::GetHashcodeFromString(GateRef glue, GateRef value)

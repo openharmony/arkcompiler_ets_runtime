@@ -16,7 +16,6 @@ import("//arkcompiler/ets_runtime/js_runtime_config.gni")
 include_directories = [
   "${MAPLEALL_ROOT}/maple_ir/include",
   "${MAPLEALL_ROOT}/mempool/include",
-  "${MAPLEALL_THIRD_PARTY_ROOT}/bounds_checking_function/include",
   "${MAPLEALL_ROOT}/maple_me/include",
   "${MAPLEALL_ROOT}/maple_ipa/include",
   "${MAPLEALL_ROOT}/maple_ipa/include/old",
@@ -45,6 +44,7 @@ ohos_static_library("libmplme") {
   configs = [ "${MAPLEALL_ROOT}:mapleallcompilecfg" ]
   sources = src_libmplme
   include_dirs = include_directories
+  external_deps = [ "bounds_checking_function:libsec_static" ]
   output_dir = "${root_out_dir}/lib/${HOST_ARCH}"
   part_name = "ets_runtime"
   subsystem_name = "arkcompiler"

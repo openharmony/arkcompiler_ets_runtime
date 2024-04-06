@@ -2428,4 +2428,23 @@ DEF_CALL_SIGNATURE(DeleteObjectProperty)
     callSign->SetParameters(params.data());
     callSign->SetCallConv(CallSignature::CallConv::CCallConv);
 }
+
+DEF_CALL_SIGNATURE(CopyTypedArrayBuffer)
+{
+    // 5 : 5 input parameters
+    CallSignature CopyTypedArrayBuffer("CopyTypedArrayBuffer", 0, 5,
+        ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
+    *callSign = CopyTypedArrayBuffer;
+    // 5 : 5 input parameters
+    std::array<VariableType, 5> params = {
+        VariableType::JS_POINTER(),
+        VariableType::JS_POINTER(),
+        VariableType::INT32(),
+        VariableType::INT32(),
+        VariableType::INT32()
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetGCLeafFunction(true);
+    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
+}
 }  // namespace panda::ecmascript::kungfu

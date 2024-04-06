@@ -7663,7 +7663,7 @@ JSTaggedValue EcmaInterpreter::GetConstantPool(JSTaggedType *sp)
 JSTaggedValue EcmaInterpreter::GetUnsharedConstpool(JSThread* thread, JSTaggedType *sp)
 {
     InterpretedFrame *state = reinterpret_cast<InterpretedFrame *>(sp) - 1;
-    return thread->GetCurrentEcmaContext()->FindUnsharedConstpool(state->constpool);
+    return thread->GetCurrentEcmaContext()->FindOrCreateUnsharedConstpool(state->constpool);
 }
 
 bool EcmaInterpreter::UpdateHotnessCounter(JSThread* thread, JSTaggedType *sp, JSTaggedValue acc, int32_t offset)

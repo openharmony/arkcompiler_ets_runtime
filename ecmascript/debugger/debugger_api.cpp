@@ -42,6 +42,7 @@
 #include "ecmascript/js_api/js_api_lightweightset.h"
 #include "ecmascript/jobs/micro_job_queue.h"
 #include "ecmascript/frames.h"
+#include "ecmascript/checkpoint/thread_state_transition.h"
 
 namespace panda::ecmascript::tooling {
 using panda::ecmascript::base::ALLOW_BINARY;
@@ -327,6 +328,19 @@ void DebuggerApi::GetObjectClassName(const EcmaVM *ecmaVM, Local<JSValueRef> &ta
     if (!constructor->IsNull()) {
         Local<StringRef> constructorFuncName = Local<FunctionRef>(constructor)->GetName(ecmaVM);
         className = constructorFuncName->ToString();
+    }
+}
+
+void DebuggerApi::SwitchThreadStateRunningOrNative(const EcmaVM *ecmaVM, ThreadState newState)
+{
+    JSThread *thread = ecmaVM->GetJSThread();
+    if (newState != ThreadState::NATIVE && newState != ThreadState::RUNNING) {
+        return;
+    }
+    if (newState == ThreadState::NATIVE) {
+        ecmascript::ThreadNativeScope nativeScope(thread);
+    } else {
+        ecmascript::ThreadManagedScope managedScope(thread);
     }
 }
 

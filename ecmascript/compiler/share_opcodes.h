@@ -136,7 +136,7 @@ namespace panda::ecmascript::kungfu {
     MCR_GATE_OPCODE_LIST(V)     \
     HCR_GATE_OPCODE_LIST(V)
 
-enum class OpCode : uint8_t {
+enum class OpCode : uint16_t {
     NOP = 0,
 #define DECLARE_GATE_OPCODE(NAME, OP, R, S, D, V) OP,
     IMMUTABLE_META_DATA_CACHE_LIST(DECLARE_GATE_OPCODE)

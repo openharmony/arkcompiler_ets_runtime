@@ -80,7 +80,7 @@ HWTEST_F_L0(JSPandaFileManagerTest, NewJSPandaFile)
     auto expectFileName = pf->GetJSPandaFileDesc();
     EXPECT_STREQ(expectFileName.c_str(), "__JSPandaFileManagerTest.pa");
     remove(fileName.c_str());
-    pfManager->RemoveJSPandaFileVm(instance, pf.get());
+    pfManager->RemoveJSPandaFile(pf.get());
 }
 
 HWTEST_F_L0(JSPandaFileManagerTest, OpenJSPandaFile)
@@ -100,7 +100,7 @@ HWTEST_F_L0(JSPandaFileManagerTest, OpenJSPandaFile)
     ojspf = pfManager->OpenJSPandaFile(filename);
     EXPECT_TRUE(ojspf != nullptr);
     EXPECT_STREQ(ojspf->GetJSPandaFileDesc().c_str(), "__JSPandaFileManagerTest.pa");
-    pfManager->RemoveJSPandaFileVm(instance, ojspf.get());
+    pfManager->RemoveJSPandaFile(ojspf.get());
 
     remove(filename);
     ojspf = pfManager->OpenJSPandaFile(filename);
@@ -121,15 +121,15 @@ HWTEST_F_L0(JSPandaFileManagerTest, Add_Find_Remove_JSPandaFile)
     std::unique_ptr<const File> pfPtr2 = pandasm::AsmEmitter::Emit(res.Value());
     std::shared_ptr<JSPandaFile> pf1 = pfManager->NewJSPandaFile(pfPtr1.release(), CString(filename1));
     std::shared_ptr<JSPandaFile> pf2 = pfManager->NewJSPandaFile(pfPtr2.release(), CString(filename2));
-    pfManager->AddJSPandaFileVm(instance, pf1);
-    pfManager->AddJSPandaFileVm(instance, pf2);
+    pfManager->AddJSPandaFile(pf1);
+    pfManager->AddJSPandaFile(pf2);
     std::shared_ptr<JSPandaFile> foundPf1 = pfManager->FindJSPandaFile(filename1);
     std::shared_ptr<JSPandaFile> foundPf2 = pfManager->FindJSPandaFile(filename2);
     EXPECT_STREQ(foundPf1->GetJSPandaFileDesc().c_str(), "__JSPandaFileManagerTest1.pa");
     EXPECT_STREQ(foundPf2->GetJSPandaFileDesc().c_str(), "__JSPandaFileManagerTest2.pa");
 
-    pfManager->RemoveJSPandaFileVm(instance, pf1.get());
-    pfManager->RemoveJSPandaFileVm(instance, pf2.get());
+    pfManager->RemoveJSPandaFile(pf1.get());
+    pfManager->RemoveJSPandaFile(pf2.get());
     std::shared_ptr<JSPandaFile> afterRemovePf1 = pfManager->FindJSPandaFile(filename1);
     std::shared_ptr<JSPandaFile> afterRemovePf2 = pfManager->FindJSPandaFile(filename2);
     EXPECT_EQ(afterRemovePf1, nullptr);
@@ -150,13 +150,16 @@ HWTEST_F_L0(JSPandaFileManagerTest, MultiEcmaVM_Add_Find_Remove_JSPandaFile)
     std::unique_ptr<const File> pfPtr2 = pandasm::AsmEmitter::Emit(res.Value());
     std::shared_ptr<JSPandaFile> pf1 = pfManager->NewJSPandaFile(pfPtr1.release(), CString(filename1));
     std::shared_ptr<JSPandaFile> pf2 = pfManager->NewJSPandaFile(pfPtr2.release(), CString(filename2));
-    pfManager->AddJSPandaFileVm(instance, pf1);
-    pfManager->AddJSPandaFileVm(instance, pf2);
+    pfManager->AddJSPandaFile(pf1);
+    pfManager->AddJSPandaFile(pf2);
 
+    EcmaContext *context = instance->GetJSThread()->GetCurrentEcmaContext();
     JSHandle<ConstantPool> constpool1 = instance->GetFactory()->NewSConstantPool(1);
+    constpool1->SetUnsharedConstpoolIndex(JSTaggedValue(context->GetAndIncreaseSharedConstpoolCount()));
     JSHandle<ConstantPool> constpool2 = instance->GetFactory()->NewSConstantPool(2);
-    instance->GetJSThread()->GetCurrentEcmaContext()->AddConstpool(pf1.get(), constpool1.GetTaggedValue(), 0);
-    instance->GetJSThread()->GetCurrentEcmaContext()->AddConstpool(pf2.get(), constpool2.GetTaggedValue(), 0);
+    constpool2->SetUnsharedConstpoolIndex(JSTaggedValue(context->GetAndIncreaseSharedConstpoolCount()));
+    context->AddConstpool(pf1.get(), constpool1.GetTaggedValue(), 0);
+    context->AddConstpool(pf2.get(), constpool2.GetTaggedValue(), 0);
 
     std::thread t1([&]() {
         EcmaVM *instance1;
@@ -165,8 +168,8 @@ HWTEST_F_L0(JSPandaFileManagerTest, MultiEcmaVM_Add_Find_Remove_JSPandaFile)
         TestHelper::CreateEcmaVMWithScope(instance1, thread1, scope1);
         std::shared_ptr<JSPandaFile> loadedPf1 =
             pfManager->LoadJSPandaFile(thread1, filename1, JSPandaFile::ENTRY_MAIN_FUNCTION);
-        instance1->GetJSThread()->GetCurrentEcmaContext()->AddConstpool(pf1.get(), constpool1.GetTaggedValue(), 0);
         EXPECT_TRUE(pf1 == loadedPf1);
+        EXPECT_TRUE(instance1->GetJSThread()->GetCurrentEcmaContext()->HasCachedConstpool(pf1.get()));
         TestHelper::DestroyEcmaVMWithScope(instance1, scope1); // Remove 'instance1' when ecmaVM destruct.
     });
     t1.join();
@@ -174,8 +177,8 @@ HWTEST_F_L0(JSPandaFileManagerTest, MultiEcmaVM_Add_Find_Remove_JSPandaFile)
     std::shared_ptr<JSPandaFile> foundPf1 = pfManager->FindJSPandaFile(filename1);
     EXPECT_TRUE(foundPf1 != nullptr);
 
-    pfManager->RemoveJSPandaFileVm(instance, pf1.get());
-    pfManager->RemoveJSPandaFileVm(instance, pf2.get());
+    pfManager->RemoveJSPandaFile(pf1.get());
+    pfManager->RemoveJSPandaFile(pf2.get());
     std::shared_ptr<JSPandaFile> afterRemovePf1 = pfManager->FindJSPandaFile(filename1);
     std::shared_ptr<JSPandaFile> afterRemovePf2 = pfManager->FindJSPandaFile(filename2);
     EXPECT_EQ(afterRemovePf1, nullptr);
@@ -193,12 +196,12 @@ void CreateJSPandaFileAndConstpool(EcmaVM *vm)
     auto res = parser.Parse(data);
     std::unique_ptr<const File> pfPtr = pandasm::AsmEmitter::Emit(res.Value());
     std::shared_ptr<JSPandaFile> pf = pfManager->NewJSPandaFile(pfPtr.release(), CString(filename));
-    pfManager->AddJSPandaFileVm(vm, pf);
+    pfManager->AddJSPandaFile(pf);
 
     [[maybe_unused]] EcmaHandleScope handleScope(vm->GetJSThread());
     JSHandle<ConstantPool> constpool = vm->GetFactory()->NewSConstantPool(1);
     auto context = vm->GetJSThread()->GetCurrentEcmaContext();
-    auto unsharedConstpoolIndex = context->GetAndIncreaseUnsharedConstpoolCount();
+    auto unsharedConstpoolIndex = context->GetAndIncreaseSharedConstpoolCount();
     JSHandle<ConstantPool> newConstpool = vm->GetFactory()->NewConstantPool(1);
     constpool->SetUnsharedConstpoolIndex(JSTaggedValue(unsharedConstpoolIndex));
     context->SetUnsharedConstpool(unsharedConstpoolIndex, newConstpool.GetTaggedValue());
@@ -235,9 +238,9 @@ HWTEST_F_L0(JSPandaFileManagerTest, LoadJSPandaFile)
     std::shared_ptr<JSPandaFile> pf1 = pfManager->NewJSPandaFile(pfPtr1.release(), CString(filename1));
     std::shared_ptr<JSPandaFile> pf2 = pfManager->NewJSPandaFile(pfPtr2.release(), CString(filename2));
     std::shared_ptr<JSPandaFile> pf3 = pfManager->NewJSPandaFile(pfPtr3.release(), CString(filename3));
-    pfManager->AddJSPandaFileVm(instance, pf1);
-    pfManager->AddJSPandaFileVm(instance, pf2);
-    pfManager->AddJSPandaFileVm(instance, pf3);
+    pfManager->AddJSPandaFile(pf1);
+    pfManager->AddJSPandaFile(pf2);
+    pfManager->AddJSPandaFile(pf3);
     std::shared_ptr<JSPandaFile> loadedPf1 =
         pfManager->LoadJSPandaFile(thread, filename1, JSPandaFile::ENTRY_MAIN_FUNCTION);
     std::shared_ptr<JSPandaFile> loadedPf2 =
@@ -254,9 +257,9 @@ HWTEST_F_L0(JSPandaFileManagerTest, LoadJSPandaFile)
     EXPECT_STREQ(loadedPf2->GetJSPandaFileDesc().c_str(), "__JSPandaFileManagerTest2.pa");
     EXPECT_STREQ(loadedPf3->GetJSPandaFileDesc().c_str(), "__JSPandaFileManagerTest3.abc");
 
-    pfManager->RemoveJSPandaFileVm(instance, pf1.get());
-    pfManager->RemoveJSPandaFileVm(instance, pf2.get());
-    pfManager->RemoveJSPandaFileVm(instance, pf3.get());
+    pfManager->RemoveJSPandaFile(pf1.get());
+    pfManager->RemoveJSPandaFile(pf2.get());
+    pfManager->RemoveJSPandaFile(pf3.get());
 }
 
 HWTEST_F_L0(JSPandaFileManagerTest, GenerateProgram)
@@ -282,14 +285,14 @@ HWTEST_F_L0(JSPandaFileManagerTest, GenerateProgram)
     pf->UpdateMainMethodIndex(methodId[0].GetOffset());
     MethodLiteral *method = new MethodLiteral(methodId[0]);
     pf->SetMethodLiteralToMap(method);
-    pfManager->AddJSPandaFileVm(instance, pf);
+    pfManager->AddJSPandaFile(pf);
 
     JSHandle<ecmascript::Program> program = pfManager->GenerateProgram(vm, pf.get(), JSPandaFile::ENTRY_FUNCTION_NAME);
     JSHandle<JSFunction> mainFunc(thread, program->GetMainFunction());
     JSHandle<JSTaggedValue> funcName = JSFunction::GetFunctionName(thread, JSHandle<JSFunctionBase>(mainFunc));
     EXPECT_STREQ(EcmaStringAccessor(JSHandle<EcmaString>::Cast(funcName)).ToCString().c_str(), "foo");
 
-    pfManager->RemoveJSPandaFileVm(instance, pf.get());
+    pfManager->RemoveJSPandaFile(pf.get());
 }
 
 HWTEST_F_L0(JSPandaFileManagerTest, GetJSPtExtractor)
@@ -303,11 +306,11 @@ HWTEST_F_L0(JSPandaFileManagerTest, GetJSPtExtractor)
     JSPandaFileManager *pfManager = JSPandaFileManager::GetInstance();
     std::unique_ptr<const File> pfPtr = pandasm::AsmEmitter::Emit(res.Value());
     std::shared_ptr<JSPandaFile> pf = pfManager->NewJSPandaFile(pfPtr.release(), CString(filename));
-    pfManager->AddJSPandaFileVm(instance, pf);
+    pfManager->AddJSPandaFile(pf);
     DebugInfoExtractor *extractor = pfManager->GetJSPtExtractor(pf.get());
     EXPECT_TRUE(extractor != nullptr);
 
-    pfManager->RemoveJSPandaFileVm(instance, pf.get());
+    pfManager->RemoveJSPandaFile(pf.get());
 }
 
 HWTEST_F_L0(JSPandaFileManagerTest, EnumerateJSPandaFiles)
@@ -324,8 +327,8 @@ HWTEST_F_L0(JSPandaFileManagerTest, EnumerateJSPandaFiles)
     std::unique_ptr<const File> pfPtr2 = pandasm::AsmEmitter::Emit(res.Value());
     std::shared_ptr<JSPandaFile> pf1 = pfManager->NewJSPandaFile(pfPtr1.release(), CString(filename1));
     std::shared_ptr<JSPandaFile> pf2 = pfManager->NewJSPandaFile(pfPtr2.release(), CString(filename2));
-    pfManager->AddJSPandaFileVm(instance, pf1);
-    pfManager->AddJSPandaFileVm(instance, pf2);
+    pfManager->AddJSPandaFile(pf1);
+    pfManager->AddJSPandaFile(pf2);
     std::vector<CString> descList{};
     int count = 0;
     pfManager->EnumerateJSPandaFiles([&](const std::shared_ptr<JSPandaFile> &file) -> bool {
@@ -340,7 +343,7 @@ HWTEST_F_L0(JSPandaFileManagerTest, EnumerateJSPandaFiles)
     EXPECT_STREQ(descList[0].c_str(), "__JSPandaFileManagerTest4.pa");
     EXPECT_STREQ(descList[1].c_str(), "__JSPandaFileManagerTest3.pa");
 
-    pfManager->RemoveJSPandaFileVm(instance, pf1.get());
-    pfManager->RemoveJSPandaFileVm(instance, pf2.get());
+    pfManager->RemoveJSPandaFile(pf1.get());
+    pfManager->RemoveJSPandaFile(pf2.get());
 }
 }  // namespace panda::test

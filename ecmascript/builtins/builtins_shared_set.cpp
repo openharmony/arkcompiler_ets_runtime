@@ -21,7 +21,7 @@
 
 #include "ecmascript/linked_hash_table.h"
 #include "ecmascript/object_factory.h"
-#include "ecmascript/shared_objects/concurrent_modification_scope.h"
+#include "ecmascript/shared_objects/concurrent_api_scope.h"
 #include "ecmascript/shared_objects/js_shared_set.h"
 #include "ecmascript/shared_objects/js_shared_set_iterator.h"
 #include "ecmascript/tagged_array-inl.h"
@@ -116,7 +116,7 @@ JSTaggedValue BuiltinsSharedSet::Add(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSSharedSet()) {
         auto error = containers::ContainerError::BusinessError(thread, containers::ErrorFlag::BIND_ERROR,
-                                                               "The add method cannot be bound with non-sendable");
+                                                               "The add method cannot be bound.");
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
     JSHandle<JSTaggedValue> value(GetCallArg(argv, 0));
@@ -134,7 +134,7 @@ JSTaggedValue BuiltinsSharedSet::Clear(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSSharedSet()) {
         auto error = containers::ContainerError::BusinessError(thread, containers::ErrorFlag::BIND_ERROR,
-                                                               "The clear method cannot be bound with non-sendable");
+                                                               "The clear method cannot be bound.");
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
     JSHandle<JSSharedSet> set(self);
@@ -151,7 +151,7 @@ JSTaggedValue BuiltinsSharedSet::Delete(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSSharedSet()) {
         auto error = containers::ContainerError::BusinessError(thread, containers::ErrorFlag::BIND_ERROR,
-                                                               "The delete method cannot be bound with non-sendable");
+                                                               "The delete method cannot be bound.");
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
     JSHandle<JSSharedSet> set(self);
@@ -169,7 +169,7 @@ JSTaggedValue BuiltinsSharedSet::Has(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSSharedSet()) {
         auto error = containers::ContainerError::BusinessError(thread, containers::ErrorFlag::BIND_ERROR,
-                                                               "The has method cannot be bound with non-sendable");
+                                                               "The has method cannot be bound.");
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
     JSSharedSet* jsSet = JSSharedSet::Cast(self.GetTaggedValue().GetTaggedObject());
@@ -186,10 +186,10 @@ JSTaggedValue BuiltinsSharedSet::ForEach(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSSharedSet()) {
         auto error = containers::ContainerError::BusinessError(thread, containers::ErrorFlag::BIND_ERROR,
-                                                               "The forEach method cannot be bound with non-sendable");
+                                                               "The forEach method cannot be bound.");
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
-    [[maybe_unused]] ConcurrentModScope<JSSharedSet> scope(thread, self.GetTaggedValue().GetTaggedObject());
+    [[maybe_unused]] ConcurrentApiScope<JSSharedSet> scope(thread, self.GetTaggedValue().GetTaggedObject());
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception());
 
     JSHandle<JSSharedSet> set(self);
@@ -248,7 +248,7 @@ JSTaggedValue BuiltinsSharedSet::Entries(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSSharedSet()) {
         auto error = containers::ContainerError::BusinessError(thread, containers::ErrorFlag::BIND_ERROR,
-                                                               "The entries method cannot be bound with non-sendable");
+                                                               "The entries method cannot be bound.");
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
     JSHandle<JSTaggedValue> iter = JSSharedSetIterator::CreateSetIterator(thread, self, IterationKind::KEY_AND_VALUE);
@@ -265,7 +265,7 @@ JSTaggedValue BuiltinsSharedSet::Values(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSSharedSet()) {
         auto error = containers::ContainerError::BusinessError(thread, containers::ErrorFlag::BIND_ERROR,
-                                                               "The values method cannot be bound with non-sendable");
+                                                               "The values method cannot be bound.");
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
     JSHandle<JSTaggedValue> iter = JSSharedSetIterator::CreateSetIterator(thread, self, IterationKind::VALUE);
