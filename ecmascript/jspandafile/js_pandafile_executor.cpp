@@ -69,7 +69,12 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromAbcFile(JSThread *
     std::shared_ptr<JSPandaFile> jsPandaFile =
         JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, name, entry, needUpdate);
     if (jsPandaFile == nullptr) {
+#ifdef FUZZ_TEST
+        CString msg = "jsPandaFile is nullptr";
+        THROW_REFERENCE_ERROR_AND_RETURN(thread, msg.c_str(), Unexpected(false));
+#else
         LOG_FULL(FATAL) << "Load current file's panda file failed. Current file is " << name;
+#endif
     }
     // realEntry is used to record the original record, which is easy to throw when there are exceptions
     const CString realEntry = entry;
@@ -131,7 +136,12 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromBuffer(JSThread *t
     std::shared_ptr<JSPandaFile> jsPandaFile =
         JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, normalName, entryPoint, buffer, size, needUpdate);
     if (jsPandaFile == nullptr) {
+#ifdef FUZZ_TEST
+        CString msg = "jsPandaFile is nullptr";
+        THROW_REFERENCE_ERROR_AND_RETURN(thread, msg.c_str(), Unexpected(false));
+#else
         LOG_FULL(FATAL) << "Load current file's panda file failed. Current file is " << normalName;
+#endif
     }
     auto vm = thread->GetEcmaVM();
     BindPandaFilesForAot(vm, jsPandaFile.get());
@@ -173,7 +183,12 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteModuleBuffer(
     std::shared_ptr<JSPandaFile> jsPandaFile =
         JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, name, entry, buffer, size, needUpdate);
     if (jsPandaFile == nullptr) {
+#ifdef FUZZ_TEST
+        CString msg = "jsPandaFile is nullptr";
+        THROW_REFERENCE_ERROR_AND_RETURN(thread, msg.c_str(), Unexpected(false));
+#else
         LOG_FULL(FATAL) << "Load current file's panda file failed. Current file is " << name;
+#endif
     }
     BindPandaFilesForAot(vm, jsPandaFile.get());
 
@@ -276,7 +291,12 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromBufferSecure(JSThr
     std::shared_ptr<JSPandaFile> jsPandaFile = JSPandaFileManager::GetInstance()->
         LoadJSPandaFileSecure(thread, normalName, entryPoint, buffer, size, needUpdate);
     if (jsPandaFile == nullptr) {
+#ifdef FUZZ_TEST
+        CString msg = "jsPandaFile is nullptr";
+        THROW_REFERENCE_ERROR_AND_RETURN(thread, msg.c_str(), Unexpected(false));
+#else
         LOG_FULL(FATAL) << "Load current file's panda file failed. Current file is " << normalName;
+#endif
     }
     auto vm = thread->GetEcmaVM();
     BindPandaFilesForAot(vm, jsPandaFile.get());
@@ -343,7 +363,12 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteModuleBufferSecure(JST
     std::shared_ptr<JSPandaFile> jsPandaFile = JSPandaFileManager::GetInstance()->
         LoadJSPandaFileSecure(thread, name, entry, buffer, size, needUpdate);
     if (jsPandaFile == nullptr) {
+#ifdef FUZZ_TEST
+        CString msg = "jsPandaFile is nullptr";
+        THROW_REFERENCE_ERROR_AND_RETURN(thread, msg.c_str(), Unexpected(false));
+#else
         LOG_FULL(FATAL) << "Load current file's panda file failed. Current file is " << name;
+#endif
     }
     BindPandaFilesForAot(vm, jsPandaFile.get());
 
@@ -397,7 +422,12 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::LazyExecuteModule(
     std::shared_ptr<JSPandaFile> jsPandaFile =
         JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, filename, recordName);
     if (jsPandaFile == nullptr) {
+#ifdef FUZZ_TEST
+        CString msg = "jsPandaFile is nullptr";
+        THROW_REFERENCE_ERROR_AND_RETURN(thread, msg.c_str(), Unexpected(false));
+#else
         LOG_FULL(FATAL) << "Load file with filename '" << filename << "' failed, ";
+#endif
     }
 
     // resolve native module

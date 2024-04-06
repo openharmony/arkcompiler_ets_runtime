@@ -409,6 +409,10 @@ config("ark_jsruntime_common_config") {
     ldflags += [ "-flto=thin" ]
   }
 
+  if (use_libfuzzer) {
+    defines += [ "FUZZ_TEST" ]
+  }
+
   if (is_debug) {
     cflags_cc += [
       "-O0",
