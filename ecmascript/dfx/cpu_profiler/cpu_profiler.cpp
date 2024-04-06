@@ -170,11 +170,11 @@ std::unique_ptr<struct ProfileInfo> CpuProfiler::StopCpuProfilerForInfo()
     vm_->GetJSThread()->SetIsProfiling(false);
     generator_->SetIsStart(false);
     if (generator_->SemPost(0) != 0) {
-        LOG_ECMA(ERROR) << "sem_[0] post failed";
+        LOG_ECMA(ERROR) << "sem_[0] post failed, errno = " << errno;
         return profileInfo;
     }
     if (generator_->SemWait(1) != 0) {
-        LOG_ECMA(ERROR) << "sem_[1] wait failed";
+        LOG_ECMA(ERROR) << "sem_[1] wait failed, errno = " << errno;
         return profileInfo;
     }
     profileInfo = generator_->GetProfileInfo();

@@ -610,16 +610,19 @@ void DFXJSNApi::StartCpuProfilerForInfo([[maybe_unused]] const EcmaVM *vm, [[may
 std::unique_ptr<ProfileInfo> DFXJSNApi::StopCpuProfilerForInfo([[maybe_unused]] const EcmaVM *vm)
 {
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
+    LOG_ECMA(INFO) << "DFXJSNApi::StopCpuProfilerForInfo, vm = " << vm;
     if (vm == nullptr) {
+        LOG_ECMA(ERROR) << "DFXJSNApi::StopCpuProfilerForInfo, vm == nullptr";
         return nullptr;
     }
     CpuProfiler *profiler = vm->GetProfiler();
     if (profiler == nullptr) {
+        LOG_ECMA(ERROR) << "DFXJSNApi::StopCpuProfilerForInfo, profiler == nullptr";
         return nullptr;
     }
     auto profile = profiler->StopCpuProfilerForInfo();
     if (profile == nullptr) {
-        LOG_DEBUGGER(ERROR) << "Transfer CpuProfiler::StopCpuProfilerImpl is failure";
+        LOG_ECMA(ERROR) << "DFXJSNApi::StopCpuProfilerForInfo, CpuProfiler::StopCpuProfilerForInfo failed";
     }
     delete profiler;
     profiler = nullptr;
