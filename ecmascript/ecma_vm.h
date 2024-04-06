@@ -398,6 +398,52 @@ public:
         isBundlePack_ = value;
     }
 
+    // UnifiedOhmUrlPack means app compiles ohmurl using old format like "@bundle:",
+    // or new unified rules like "@normalize:"
+    // if pkgContextInfoList is empty, means use old ohmurl packing.
+    bool IsNormalizedOhmUrlPack() const
+    {
+        return !pkgContextInfoList_.empty();
+    }
+
+    void SetPkgNameList(const std::map<std::string, std::string> &list)
+    {
+        for (auto it = list.begin(); it != list.end(); ++it) {
+            pkgNameList_.emplace(it->first.c_str(), it->second.c_str());
+        }
+    }
+
+    inline CString GetPkgName(const CString &moduleName) const
+    {
+        auto it = pkgNameList_.find(moduleName);
+        if (it == pkgNameList_.end()) {
+            LOG_ECMA(ERROR) << " Get Pkg Name failed";
+            return "";
+        }
+        return it->second;
+    }
+
+    inline CMap<CString, CMap<CString, CVector<CString>>> GetPkgContextInfoLit() const
+    {
+        return pkgContextInfoList_;
+    }
+
+    inline CString GetPkgNameWithAlias(const CString &alias) const
+    {
+        auto it = pkgAliasList_.find(alias);
+        if (it == pkgAliasList_.end()) {
+            return alias;
+        }
+        return it->second;
+    }
+
+    void SetPkgAliasList(const std::map<std::string, std::string> &list)
+    {
+        for (auto it = list.begin(); it != list.end(); ++it) {
+            pkgAliasList_.emplace(it->first.c_str(), it->second.c_str());
+        }
+    }
+
     void SetMockModuleList(const std::map<std::string, std::string> &list)
     {
         for (auto it = list.begin(); it != list.end(); ++it) {
@@ -476,6 +522,8 @@ public:
     bool IsHmsModule(const CString &moduleStr) const;
 
     CString GetHmsModule(const CString &module) const;
+
+    void SetpkgContextInfoList(const std::map<std::string, std::vector<std::vector<std::string>>> &list);
 
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
     CpuProfiler *GetProfiler() const
@@ -668,8 +716,8 @@ private:
     bool optionalLogEnabled_ {false};
     // Debugger
     tooling::JsDebuggerManager *debuggerManager_ {nullptr};
-    // merge abc
-    bool isBundlePack_ {true}; // isBundle means app compile mode is JSBundle
+    // isBundle means app compile mode is JSBundle
+    bool isBundlePack_ {true};
 #if !WIN_OR_MAC_OR_IOS_PLATFORM
     HeapProfilerInterface *heapProfile_ {nullptr};
 #endif
@@ -679,7 +727,9 @@ private:
     CList<CString> deregisterModuleList_;
     CMap<CString, CString> mockModuleList_;
     CMap<CString, HmsMap> hmsModuleList_;
-
+    CMap<CString, CString> pkgNameList_;
+    CMap<CString, CMap<CString, CVector<CString>>> pkgContextInfoList_;
+    CMap<CString, CString> pkgAliasList_;
     NativePtrGetter nativePtrGetter_ {nullptr};
     SourceMapCallback sourceMapCallback_ {nullptr};
     SourceMapTranslateCallback sourceMapTranslateCallback_ {nullptr};

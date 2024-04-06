@@ -131,14 +131,16 @@ JSHandle<JSTaggedValue> ModuleDataExtractor::ParseJsonModule(JSThread *thread, c
 }
 
 JSHandle<JSTaggedValue> ModuleDataExtractor::ParseNativeModule(JSThread *thread, const CString &moduleRequestName,
-                                                               ModuleTypes moduleType)
+                                                               const CString &baseFileName, ModuleTypes moduleType)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<SourceTextModule> moduleRecord = factory->NewSourceTextModule();
 
     // set moduleRecordName as non-undefined to distinguish between merge and non-merge mode
     JSHandle<EcmaString> falsyRecordName = factory->NewFromUtf8(moduleRequestName);
+    JSHandle<EcmaString> fileName = factory->NewFromUtf8(baseFileName);
     moduleRecord->SetEcmaModuleRecordName(thread, falsyRecordName);
+    moduleRecord->SetEcmaModuleFilename(thread, fileName);
     JSHandle<JSTaggedValue> defaultName = thread->GlobalConstants()->GetHandledDefaultString();
     JSHandle<LocalExportEntry> localExportEntry = factory->NewLocalExportEntry(defaultName,
         defaultName, LocalExportEntry::LOCAL_DEFAULT_INDEX);

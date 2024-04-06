@@ -34,6 +34,34 @@
 
 namespace panda::ecmascript {
 using PathHelper = base::PathHelper;
+
+// use "@bundle" as ohmurl's rules, will be abandon later
+std::pair<CString, CString> JSPandaFileExecutor::ParseAbcEntryPoint(JSThread *thread, const CString &filename,
+    [[maybe_unused]] std::string_view entryPoint)
+{
+    CString name;
+    CString entry;
+    [[maybe_unused]] EcmaVM *vm = thread->GetEcmaVM();
+#if defined(PANDA_TARGET_LINUX) || defined(OHOS_UNIT_TEST) || defined(PANDA_TARGET_MACOS)
+    return {filename, entryPoint.data()};
+#else
+    CString normalName = PathHelper::NormalizePath(filename);
+    ModulePathHelper::ParseAbcPathAndOhmUrl(vm, normalName, name, entry);
+#if !defined(PANDA_TARGET_WINDOWS)
+    if (name.empty()) {
+        name = vm->GetAssetPath();
+    }
+#elif defined(PANDA_TARGET_WINDOWS)
+    CString assetPath = vm->GetAssetPath();
+    name = assetPath + "\\" + JSPandaFile::MERGE_ABC_NAME;
+#else
+    CString assetPath = vm->GetAssetPath();
+    name = assetPath + "/" + JSPandaFile::MERGE_ABC_NAME;
+#endif
+#endif
+    return std::make_pair(name, entry);
+}
+
 Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromAbcFile(JSThread *thread, const CString &filename,
     std::string_view entryPoint, bool needUpdate, bool executeFromJob)
 {
@@ -43,24 +71,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromAbcFile(JSThread *
     CString name;
     EcmaVM *vm = thread->GetEcmaVM();
     if (!vm->IsBundlePack() && !executeFromJob) {
-#if defined(PANDA_TARGET_LINUX) || defined(OHOS_UNIT_TEST) || defined(PANDA_TARGET_MACOS)
-        name = filename;
-        entry = entryPoint.data();
-#else
-        CString normalName = PathHelper::NormalizePath(filename);
-        ModulePathHelper::ParseOhmUrl(vm, normalName, name, entry);
-#if !defined(PANDA_TARGET_WINDOWS)
-        if (name.empty()) {
-            name = vm->GetAssetPath();
-        }
-#elif defined(PANDA_TARGET_WINDOWS)
-        CString assetPath = vm->GetAssetPath();
-        name = assetPath + "\\" + JSPandaFile::MERGE_ABC_NAME;
-#else
-        CString assetPath = vm->GetAssetPath();
-        name = assetPath + "/" + JSPandaFile::MERGE_ABC_NAME;
-#endif
-#endif
+        std::tie(name, entry) = ParseAbcEntryPoint(thread, filename, entryPoint);
     } else {
         name = filename;
         entry = entryPoint.data();
@@ -79,7 +90,8 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromAbcFile(JSThread *
     // realEntry is used to record the original record, which is easy to throw when there are exceptions
     const CString realEntry = entry;
     // If it is an old record, delete the bundleName and moduleName
-    if (!jsPandaFile->IsBundlePack() && !executeFromJob && !vm->GetBundleName().empty()) {
+    if (!jsPandaFile->IsBundlePack() && !vm->IsNormalizedOhmUrlPack() && !executeFromJob &&
+        !vm->GetBundleName().empty()) {
         jsPandaFile->CheckIsRecordWithBundleName(entry);
         if (!jsPandaFile->IsRecordWithBundleName()) {
             PathHelper::AdaptOldIsaRecord(entry);
@@ -147,6 +159,9 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromBuffer(JSThread *t
     BindPandaFilesForAot(vm, jsPandaFile.get());
 
     CString entry = entryPoint.data();
+    if (vm->IsNormalizedOhmUrlPack()) {
+        entry = ModulePathHelper::TransformToNormalizedOhmUrl(vm, entry);
+    }
     JSRecordInfo recordInfo;
     bool hasRecord = jsPandaFile->CheckAndGetRecordInfo(entry, recordInfo);
     if (!hasRecord) {
@@ -167,6 +182,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteModuleBuffer(
     LOG_ECMA(DEBUG) << "JSPandaFileExecutor::ExecuteModuleBuffer filename " << filename;
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "JSPandaFileExecutor::ExecuteModuleBuffer");
     CString name;
+    CString entry;
     EcmaVM *vm = thread->GetEcmaVM();
 #if !defined(PANDA_TARGET_WINDOWS)
     name = vm->GetAssetPath();
@@ -178,8 +194,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteModuleBuffer(
     name = assetPath + "/" + JSPandaFile::MERGE_ABC_NAME;
 #endif
     CString normalName = PathHelper::NormalizePath(filename);
-    CString entry;
-    ModulePathHelper::ParseOhmUrl(vm, normalName, name, entry);
+    ModulePathHelper::ParseAbcPathAndOhmUrl(vm, normalName, name, entry);
     std::shared_ptr<JSPandaFile> jsPandaFile =
         JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, name, entry, buffer, size, needUpdate);
     if (jsPandaFile == nullptr) {
@@ -196,7 +211,9 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteModuleBuffer(
 
     // realEntry is used to record the original record, which is easy to throw when there are exceptions
     const CString realEntry = entry;
-    if (!isBundle) {
+    if (vm->IsNormalizedOhmUrlPack()) {
+        entry = ModulePathHelper::TransformToNormalizedOhmUrl(vm, entry);
+    } else if (!isBundle) {
         jsPandaFile->CheckIsRecordWithBundleName(entry);
         if (!jsPandaFile->IsRecordWithBundleName()) {
             PathHelper::AdaptOldIsaRecord(entry);
@@ -302,6 +319,9 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromBufferSecure(JSThr
     BindPandaFilesForAot(vm, jsPandaFile.get());
 
     CString entry = entryPoint.data();
+    if (vm->IsNormalizedOhmUrlPack()) {
+        entry = ModulePathHelper::TransformToNormalizedOhmUrl(vm, entry);
+    }
     JSRecordInfo recordInfo;
     bool hasRecord = jsPandaFile->CheckAndGetRecordInfo(entry, recordInfo);
     if (!hasRecord) {
@@ -357,9 +377,9 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteModuleBufferSecure(JST
     CString assetPath = vm->GetAssetPath();
     name = assetPath + "/" + JSPandaFile::MERGE_ABC_NAME;
 #endif
-    CString normalName = PathHelper::NormalizePath(filename);
     CString entry;
-    ModulePathHelper::ParseOhmUrl(vm, normalName, name, entry);
+    CString normalName = PathHelper::NormalizePath(filename);
+    ModulePathHelper::ParseAbcPathAndOhmUrl(vm, normalName, name, entry);
     std::shared_ptr<JSPandaFile> jsPandaFile = JSPandaFileManager::GetInstance()->
         LoadJSPandaFileSecure(thread, name, entry, buffer, size, needUpdate);
     if (jsPandaFile == nullptr) {
@@ -374,7 +394,9 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteModuleBufferSecure(JST
 
     // realEntry is used to record the original record, which is easy to throw when there are exceptions
     const CString realEntry = entry;
-    if (!jsPandaFile->IsBundlePack()) {
+    if (vm->IsNormalizedOhmUrlPack()) {
+        entry = ModulePathHelper::TransformToNormalizedOhmUrl(vm, entry);
+    } else if (!jsPandaFile->IsBundlePack()) {
         jsPandaFile->CheckIsRecordWithBundleName(entry);
         if (!jsPandaFile->IsRecordWithBundleName()) {
             PathHelper::AdaptOldIsaRecord(entry);

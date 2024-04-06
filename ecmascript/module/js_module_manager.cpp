@@ -577,14 +577,15 @@ JSHandle<JSTaggedValue> ModuleManager::ResolveModule(JSThread *thread, const JSP
     return moduleRecord;
 }
 
-JSHandle<JSTaggedValue> ModuleManager::ResolveNativeModule(const CString &moduleRequestName, ModuleTypes moduleType)
+JSHandle<JSTaggedValue> ModuleManager::ResolveNativeModule(const CString &moduleRequestName,
+    const CString &baseFileName, ModuleTypes moduleType)
 {
     ObjectFactory *factory = vm_->GetFactory();
     JSThread *thread = vm_->GetJSThread();
 
     JSHandle<JSTaggedValue> referencingModule(factory->NewFromUtf8(moduleRequestName));
     JSHandle<JSTaggedValue> moduleRecord = ModuleDataExtractor::ParseNativeModule(thread,
-        moduleRequestName, moduleType);
+        moduleRequestName, baseFileName, moduleType);
     JSHandle<NameDictionary> dict(thread, resolvedModules_);
     resolvedModules_ = NameDictionary::Put(thread, dict, referencingModule, moduleRecord,
         PropertyAttributes::Default()).GetTaggedValue();
@@ -813,7 +814,7 @@ JSHandle<JSTaggedValue> ModuleManager::ExecuteNativeModule(JSThread *thread, con
         CString requestPath = ConvertToString(record.GetTaggedValue());
         CString entryPoint = PathHelper::GetStrippedModuleName(requestPath);
         auto [isNative, moduleType] = SourceTextModule::CheckNativeModule(requestPath);
-        JSHandle<JSTaggedValue> nativeModuleHandle = ResolveNativeModule(requestPath, moduleType);
+        JSHandle<JSTaggedValue> nativeModuleHandle = ResolveNativeModule(requestPath, "", moduleType);
         JSHandle<SourceTextModule> nativeModule =
             JSHandle<SourceTextModule>::Cast(nativeModuleHandle);
         if (!SourceTextModule::LoadNativeModule(thread, nativeModule, moduleType)) {

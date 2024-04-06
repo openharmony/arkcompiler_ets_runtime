@@ -43,7 +43,7 @@ JSTaggedValue DynamicImport::ExecuteNativeOrJsonModule(JSThread *thread, JSHandl
         JSHandle<SourceTextModule> moduleRecord(thread, thread->GlobalConstants()->GetUndefined());
         if (moduleType != ModuleTypes::JSON_MODULE) {
             // nativeModule
-            JSHandle<JSTaggedValue> nativeModuleHld = moduleManager->ResolveNativeModule(requestPath, moduleType);
+            JSHandle<JSTaggedValue> nativeModuleHld = moduleManager->ResolveNativeModule(requestPath, "", moduleType);
             moduleRecord = JSHandle<SourceTextModule>::Cast(nativeModuleHld);
             if (!SourceTextModule::LoadNativeModule(thread, moduleRecord, moduleType)) {
                 LOG_FULL(ERROR) << " dynamically loading native module" << requestPath << " failed";
