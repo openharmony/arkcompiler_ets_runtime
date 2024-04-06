@@ -212,6 +212,8 @@ private:
         EcmaRuntimeCallInfo *argv, JSThread *thread, const JSHandle<JSTaggedValue> &thisHandle);
     static JSTaggedValue LastIndexOfSlowPath(
         EcmaRuntimeCallInfo *argv, JSThread *thread, const JSHandle<JSTaggedValue> &thisObjVal, int64_t fromIndex);
+    static JSTaggedValue ToStringImpl(
+        EcmaRuntimeCallInfo *argv, JSThread *thread, const JSHandle<JSTaggedValue> &thisObjVal);
 #define ARRAY_PROPERTIES_PAIR(name, func, length, id) \
     std::pair<std::string_view, bool>(name, false),
     static constexpr std::array ARRAY_PROTOTYPE_PROPERTIES = {

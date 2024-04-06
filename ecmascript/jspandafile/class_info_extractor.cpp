@@ -21,6 +21,7 @@
 #include "ecmascript/shared_objects/js_shared_array.h"
 #include "ecmascript/shared_objects/js_shared_map.h"
 #include "ecmascript/shared_objects/js_shared_set.h"
+#include "ecmascript/shared_objects/js_shared_typed_array.h"
 #include "ecmascript/tagged_dictionary.h"
 
 namespace panda::ecmascript {
@@ -1087,6 +1088,9 @@ std::pair<uint32_t, uint32_t> SendableClassDefiner::GetSizeAndMaxInlineByType(JS
         case JSType::JS_SHARED_SET:
             return { JSSharedSet::SIZE, JSSharedSet::MAX_INLINE };
         default:
+            if (JSType::JS_SHARED_TYPED_ARRAY_FIRST < type && type <= JSType::JS_SHARED_TYPED_ARRAY_LAST) {
+                return { JSSharedTypedArray::SIZE, JSSharedTypedArray::MAX_INLINE };
+            }
             LOG_ECMA(FATAL) << "this branch is unreachable, cannot get size for type: " << static_cast<uint32_t>(type);
             UNREACHABLE();
             return {};

@@ -380,7 +380,7 @@ OperationResult JSTypedArray::IntegerIndexedElementGet(JSThread *thread, const J
     ASSERT(index.IsNumber());
     // 2. Assert: O is an Object that has [[ViewedArrayBuffer]], [[ArrayLength]], [[ByteOffset]], and
     // [[TypedArrayName]] internal slots.
-    ASSERT(typedarray->IsTypedArray());
+    ASSERT(typedarray->IsTypedArray() || typedarray->IsSharedTypedArray());
     // 3. Let buffer be the value of O’s [[ViewedArrayBuffer]] internal slot.
     JSHandle<JSTypedArray> typedarrayObj(typedarray);
     JSTaggedValue buffer = typedarrayObj->GetViewedArrayBufferOrByteArray();
@@ -499,7 +499,7 @@ bool JSTypedArray::FastCopyElementToArray(JSThread *thread, const JSHandle<JSTag
 {
     // 2. Assert: O is an Object that has [[ViewedArrayBuffer]], [[ArrayLength]], [[ByteOffset]], and
     // [[TypedArrayName]] internal slots.
-    ASSERT(typedArray->IsTypedArray());
+    ASSERT(typedArray->IsTypedArray() || typedArray->IsSharedTypedArray());
     // 3. Let buffer be the value of O’s [[ViewedArrayBuffer]] internal slot.
     JSHandle<JSTypedArray> typedarrayObj(typedArray);
     JSHandle<JSTaggedValue> bufferHandle = JSHandle<JSTaggedValue>(thread,
@@ -536,7 +536,7 @@ OperationResult JSTypedArray::FastElementGet(JSThread *thread, const JSHandle<JS
 {
     // 2. Assert: O is an Object that has [[ViewedArrayBuffer]], [[ArrayLength]], [[ByteOffset]], and
     // [[TypedArrayName]] internal slots.
-    ASSERT(typedarray->IsTypedArray());
+    ASSERT(typedarray->IsTypedArray() || typedarray->IsSharedTypedArray());
     // 3. Let buffer be the value of O’s [[ViewedArrayBuffer]] internal slot.
     JSHandle<JSTypedArray> typedarrayObj(typedarray);
     JSTaggedValue buffer = typedarrayObj->GetViewedArrayBufferOrByteArray();
@@ -573,7 +573,7 @@ bool JSTypedArray::IntegerIndexedElementSet(JSThread *thread, const JSHandle<JST
     ASSERT(index.IsNumber());
     // 2. Assert: O is an Object that has [[ViewedArrayBuffer]], [[ArrayLength]], [[ByteOffset]], and
     // [[TypedArrayName]] internal slots.
-    ASSERT(typedarray->IsTypedArray());
+    ASSERT(typedarray->IsTypedArray() || typedarray->IsSharedTypedArray());
     // 3. If O.[[ContentType]] is BigInt, let numValue be ? ToBigInt(value).
     JSHandle<JSTaggedValue> numValueHandle;
     ContentType contentType = JSHandle<JSTypedArray>::Cast(typedarray)->GetContentType();
@@ -747,7 +747,7 @@ bool JSTypedArray::FastTypedArrayFill(JSThread *thread, const JSHandle<JSTaggedV
 {
     // Assert: O is an Object that has [[ViewedArrayBuffer]], [[ArrayLength]], [[ByteOffset]], and
     // [[TypedArrayName]] internal slots.
-    ASSERT(typedArray->IsTypedArray());
+    ASSERT(typedArray->IsTypedArray() || typedArray->IsSharedTypedArray());
     // If O.[[ContentType]] is BigInt, let numValue be ? ToBigInt(value).
     JSHandle<JSTypedArray> typedArrayObj = JSHandle<JSTypedArray>::Cast(typedArray);
     if (UNLIKELY(typedArrayObj->GetContentType() == ContentType::BigInt || value->IsECMAObject())) {

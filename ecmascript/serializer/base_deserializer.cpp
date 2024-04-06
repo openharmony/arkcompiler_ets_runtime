@@ -545,6 +545,28 @@ JSTaggedType BaseDeserializer::RelocateObjectProtoAddr(uint8_t objectType)
             return env->GetBigInt64ArrayFunctionPrototype().GetTaggedType();
         case (uint8_t)JSType::JS_BIGUINT64_ARRAY:
             return env->GetBigUint64ArrayFunctionPrototype().GetTaggedType();
+        case (uint8_t)JSType::JS_SHARED_INT8_ARRAY:
+            return env->GetSharedInt8ArrayFunctionPrototype().GetTaggedType();
+        case (uint8_t)JSType::JS_SHARED_UINT8_ARRAY:
+            return env->GetSharedUint8ArrayFunctionPrototype().GetTaggedType();
+        case (uint8_t)JSType::JS_SHARED_UINT8_CLAMPED_ARRAY:
+            return env->GetSharedUint8ClampedArrayFunctionPrototype().GetTaggedType();
+        case (uint8_t)JSType::JS_SHARED_INT16_ARRAY:
+            return env->GetSharedInt16ArrayFunctionPrototype().GetTaggedType();
+        case (uint8_t)JSType::JS_SHARED_UINT16_ARRAY:
+            return env->GetSharedUint16ArrayFunctionPrototype().GetTaggedType();
+        case (uint8_t)JSType::JS_SHARED_INT32_ARRAY:
+            return env->GetSharedInt32ArrayFunctionPrototype().GetTaggedType();
+        case (uint8_t)JSType::JS_SHARED_UINT32_ARRAY:
+            return env->GetSharedUint32ArrayFunctionPrototype().GetTaggedType();
+        case (uint8_t)JSType::JS_SHARED_FLOAT32_ARRAY:
+            return env->GetSharedFloat32ArrayFunctionPrototype().GetTaggedType();
+        case (uint8_t)JSType::JS_SHARED_FLOAT64_ARRAY:
+            return env->GetSharedFloat64ArrayFunctionPrototype().GetTaggedType();
+        case (uint8_t)JSType::JS_SHARED_BIGINT64_ARRAY:
+            return env->GetSharedBigInt64ArrayFunctionPrototype().GetTaggedType();
+        case (uint8_t)JSType::JS_SHARED_BIGUINT64_ARRAY:
+            return env->GetSharedBigUint64ArrayFunctionPrototype().GetTaggedType();
         case (uint8_t)JSType::JS_ARRAY_BUFFER:
             return JSHandle<JSFunction>(env->GetArrayBufferFunction())->GetFunctionPrototype().GetRawData();
         case (uint8_t)JSType::JS_SHARED_ARRAY_BUFFER:

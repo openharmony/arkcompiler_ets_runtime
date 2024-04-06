@@ -1783,43 +1783,22 @@ JSTaggedValue BuiltinsSharedArray::ToString(EcmaRuntimeCallInfo *argv)
     BUILTINS_API_TRACE(argv->GetThread(), SharedArray, ToString);
     JSThread *thread = argv->GetThread();
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
-    auto ecmaVm = thread->GetEcmaVM();
 
-    // 1. Let array be ToObject(this value).
     JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
-    if (!thisHandle->IsJSSharedArray()) {
+    if (thisHandle->IsJSSharedArray()) {
+        [[maybe_unused]] ConcurrentApiScope<JSSharedArray> scope(
+            thread, thisHandle.GetTaggedValue().GetTaggedObject());
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        return ToStringImpl(argv, thread, thisHandle);
+    } else if (thisHandle->IsSharedTypedArray()) {
+        [[maybe_unused]] ConcurrentApiScope<JSSharedTypedArray> scope(
+            thread, thisHandle.GetTaggedValue().GetTaggedObject());
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        return ToStringImpl(argv, thread, thisHandle);
+    } else {
         auto error = ContainerError::BindError(thread, "The toString method cannot be bound.");
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
-    JSHandle<JSObject> thisObjHandle = JSTaggedValue::ToObject(thread, thisHandle);
-    [[maybe_unused]] ConcurrentApiScope<JSSharedArray> scope(thread, thisHandle.GetTaggedValue().GetTaggedObject());
-    // 2. ReturnIfAbrupt(array).
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    JSHandle<JSTaggedValue> thisObjVal(thisObjHandle);
-
-    // 3. Let func be Get(array, "join").
-    JSHandle<JSTaggedValue> joinKey = thread->GlobalConstants()->GetHandledJoinString();
-    JSHandle<JSTaggedValue> callbackFnHandle = JSTaggedValue::GetProperty(thread, thisObjVal, joinKey).GetValue();
-
-    // 4. ReturnIfAbrupt(func).
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-
-    // 5. If IsCallable(func) is false, let func be the intrinsic function %ObjProto_toString% (19.1.3.6).
-    if (!callbackFnHandle->IsCallable()) {
-        JSHandle<GlobalEnv> env = ecmaVm->GetGlobalEnv();
-        JSHandle<JSTaggedValue> objectPrototype = env->GetObjectFunctionPrototype();
-        JSHandle<JSTaggedValue> toStringKey = thread->GlobalConstants()->GetHandledToStringString();
-        callbackFnHandle = JSTaggedValue::GetProperty(thread, objectPrototype, toStringKey).GetValue();
-        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    }
-    const uint32_t argsLength = argv->GetArgsNumber();
-    JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
-    EcmaRuntimeCallInfo *info =
-        EcmaInterpreter::NewRuntimeCallInfo(thread, callbackFnHandle, thisObjVal, undefined, argsLength);
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    info->SetCallArg(argsLength, 0, argv, 0);
-    auto opResult = JSFunction::Call(info);
-    return opResult;
 }
 
 // 22.1.3.28 Array.prototype.unshift ( ...items )
@@ -2233,5 +2212,38 @@ JSTaggedValue BuiltinsSharedArray::ExtendTo(EcmaRuntimeCallInfo *argv)
     JSSharedArray::LengthSetter(thread, thisObjHandle, key, true);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     return JSTaggedValue::Undefined();
+}
+
+JSTaggedValue BuiltinsSharedArray::ToStringImpl(EcmaRuntimeCallInfo *argv, JSThread *thread,
+    const JSHandle<JSTaggedValue> &thisHandle)
+{
+    auto ecmaVm = thread->GetEcmaVM();
+    // 1. Let array be ToObject(this value).
+    JSHandle<JSObject> thisObjHandle = JSTaggedValue::ToObject(thread, thisHandle);
+    JSHandle<JSTaggedValue> thisObjVal(thisObjHandle);
+
+    // 2. Let func be Get(array, "join").
+    JSHandle<JSTaggedValue> joinKey = thread->GlobalConstants()->GetHandledJoinString();
+    JSHandle<JSTaggedValue> callbackFnHandle = JSTaggedValue::GetProperty(thread, thisObjVal, joinKey).GetValue();
+
+    // 3. ReturnIfAbrupt(func).
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+
+    // 4. If IsCallable(func) is false, let func be the intrinsic function %ObjProto_toString% (19.1.3.6).
+    if (!callbackFnHandle->IsCallable()) {
+        JSHandle<GlobalEnv> env = ecmaVm->GetGlobalEnv();
+        JSHandle<JSTaggedValue> objectPrototype = env->GetObjectFunctionPrototype();
+        JSHandle<JSTaggedValue> toStringKey = thread->GlobalConstants()->GetHandledToStringString();
+        callbackFnHandle = JSTaggedValue::GetProperty(thread, objectPrototype, toStringKey).GetValue();
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    }
+    const uint32_t argsLength = argv->GetArgsNumber();
+    JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
+    EcmaRuntimeCallInfo *info =
+        EcmaInterpreter::NewRuntimeCallInfo(thread, callbackFnHandle, thisObjVal, undefined, argsLength);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    info->SetCallArg(argsLength, 0, argv, 0);
+    auto opResult = JSFunction::Call(info);
+    return opResult;
 }
 }  // namespace panda::ecmascript::builtins

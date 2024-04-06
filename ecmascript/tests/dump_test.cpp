@@ -118,6 +118,7 @@
 #include "ecmascript/shared_objects/js_shared_map_iterator.h"
 #include "ecmascript/shared_objects/js_shared_set.h"
 #include "ecmascript/shared_objects/js_shared_set_iterator.h"
+#include "ecmascript/shared_objects/js_shared_typed_array.h"
 #include "ecmascript/tagged_array.h"
 #include "ecmascript/tagged_dictionary.h"
 #include "ecmascript/tagged_hash_array.h"
@@ -880,6 +881,21 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
             case JSType::JS_BIGUINT64_ARRAY: {
                 CHECK_DUMP_FIELDS(JSObject::SIZE, JSTypedArray::SIZE, 4U);
                 NEW_OBJECT_AND_DUMP(JSTypedArray, JS_TYPED_ARRAY);
+                break;
+            }
+            case JSType::JS_SHARED_TYPED_ARRAY:
+            case JSType::JS_SHARED_INT8_ARRAY:
+            case JSType::JS_SHARED_UINT8_ARRAY:
+            case JSType::JS_SHARED_UINT8_CLAMPED_ARRAY:
+            case JSType::JS_SHARED_INT16_ARRAY:
+            case JSType::JS_SHARED_UINT16_ARRAY:
+            case JSType::JS_SHARED_INT32_ARRAY:
+            case JSType::JS_SHARED_UINT32_ARRAY:
+            case JSType::JS_SHARED_FLOAT32_ARRAY:
+            case JSType::JS_SHARED_FLOAT64_ARRAY:
+            case JSType::JS_SHARED_BIGINT64_ARRAY:
+            case JSType::JS_SHARED_BIGUINT64_ARRAY: {
+                // Fixme(Gymee) Add test later
                 break;
             }
             case JSType::JS_PRIMITIVE_REF: {
