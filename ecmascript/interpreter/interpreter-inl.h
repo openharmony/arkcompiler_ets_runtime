@@ -660,7 +660,7 @@ JSTaggedValue EcmaInterpreter::Execute(EcmaRuntimeCallInfo *info)
     ASSERT(thread->IsInManagedState());
     INTERPRETER_TRACE(thread, Execute);
     // check stack overflow before re-enter interpreter
-    STACK_LIMIT_CHECK(thread, thread->GetException());
+    STACK_LIMIT_CHECK(thread, JSTaggedValue::Exception());
     if (thread->IsAsmInterpreter()) {
         return InterpreterAssembly::Execute(info);
     }

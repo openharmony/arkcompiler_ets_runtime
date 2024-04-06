@@ -519,7 +519,7 @@ bool JSProxy::HasProperty(JSThread *thread, const JSHandle<JSProxy> &proxy, cons
 OperationResult JSProxy::GetProperty(JSThread *thread, const JSHandle<JSProxy> &proxy,
                                      const JSHandle<JSTaggedValue> &key, const JSHandle<JSTaggedValue> &receiver)
 {
-    STACK_LIMIT_CHECK(thread, OperationResult(thread, thread->GetException(), PropertyMetaData(false)));
+    STACK_LIMIT_CHECK(thread, OperationResult(thread, JSTaggedValue::Exception(), PropertyMetaData(false)));
     const GlobalEnvConstants *globalConst = thread->GlobalConstants();
     // step 1 ~ 10 are almost same as GetOwnProperty
     ASSERT(JSTaggedValue::IsPropertyKey(key));
