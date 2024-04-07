@@ -23,6 +23,7 @@ test_js_files = [
   "op_type_test",
   "class_test",
   "call_test",
+  "builtins_test",
   "array_test",
   "object_literal",
   "sample_test",

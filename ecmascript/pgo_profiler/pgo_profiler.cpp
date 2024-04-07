@@ -1400,12 +1400,19 @@ void PGOProfiler::AddObjectInfoWithMega(
 void PGOProfiler::AddBuiltinsInfoByNameInInstance(ApEntityId abcId, const CString &recordName, EntityId methodId,
     int32_t bcOffset, JSHClass *receiver)
 {
+    auto thread = vm_->GetJSThread();
     auto type = receiver->GetObjectType();
+    const auto &ctorEntries = thread->GetCtorHclassEntries();
+    auto entry = ctorEntries.find(receiver);
+    if (entry != ctorEntries.end()) {
+        AddBuiltinsGlobalInfo(abcId, recordName, methodId, bcOffset, entry->second);
+        return ;
+    }
+
     auto builtinsId = ToBuiltinsTypeId(type);
     if (!builtinsId.has_value()) {
         return;
     }
-    auto thread = vm_->GetJSThread();
     JSHClass *exceptRecvHClass = nullptr;
     if (builtinsId == BuiltinTypeId::ARRAY) {
         exceptRecvHClass = thread->GetArrayInstanceHClass(receiver->GetElementsKind());
@@ -1421,8 +1428,9 @@ void PGOProfiler::AddBuiltinsInfoByNameInInstance(ApEntityId abcId, const CStrin
         if (builtinsId == BuiltinTypeId::OBJECT) {
             exceptRecvHClass = JSHClass::Cast(thread->GlobalConstants()->GetIteratorResultClass().GetTaggedObject());
             if (exceptRecvHClass == receiver) {
-                AddBuiltinsGlobalInfo(abcId, recordName, methodId, bcOffset,
-                                      ConstantIndex::ITERATOR_RESULT_CLASS);
+                GlobalIndex globalsId;
+                globalsId.UpdateGlobalConstId(static_cast<size_t>(ConstantIndex::ITERATOR_RESULT_CLASS));
+                AddBuiltinsGlobalInfo(abcId, recordName, methodId, bcOffset, globalsId);
             }
         }
         return ;
@@ -1484,10 +1492,10 @@ bool PGOProfiler::IsJSHClassNotEqual(JSHClass *receiver, JSHClass *hold, JSHClas
 }
 
 void PGOProfiler::AddBuiltinsGlobalInfo(ApEntityId abcId, const CString &recordName, EntityId methodId,
-                                        int32_t bcOffset, ConstantIndex globalId)
+                                        int32_t bcOffset, GlobalIndex globalsId)
 {
     ProfileType recordType = GetRecordProfileType(abcId, recordName);
-    PGOObjectInfo info(ProfileType::CreateGlobals(abcId, globalId));
+    PGOObjectInfo info(ProfileType::CreateGlobals(abcId, globalsId));
     recordInfos_->AddObjectInfo(recordType, methodId, bcOffset, info);
 }
 

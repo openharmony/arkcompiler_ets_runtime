@@ -22,6 +22,7 @@
 
 #include "ecmascript/builtin_entries.h"
 #include "ecmascript/elements.h"
+#include "ecmascript/global_index.h"
 #include "ecmascript/js_hclass.h"
 #include "ecmascript/log.h"
 #include "ecmascript/log_wrapper.h"
@@ -194,9 +195,9 @@ public:
         return ProfileType(abcId, id, Kind::BuiltinsId);
     }
 
-    static ProfileType CreateGlobals(ApEntityId abcId, ConstantIndex constantIndex)
+    static ProfileType CreateGlobals(ApEntityId abcId, GlobalIndex globalsId)
     {
-        auto id = static_cast<uint32_t>(constantIndex);
+        auto id = globalsId.GetGlobalIndex();
         return ProfileType(abcId, id, Kind::GlobalsId);
     }
 
@@ -340,10 +341,10 @@ public:
         return builtinsId.GetBuiltinsId();
     }
 
-    ConstantIndex GetGlobalsId() const
+    GlobalIndex GetGlobalsId() const
     {
         ASSERT(IsGlobalsType());
-        auto globalsId = static_cast<ConstantIndex>(GetId());
+        auto globalsId = GlobalIndex(GetId());
         return globalsId;
     }
 
