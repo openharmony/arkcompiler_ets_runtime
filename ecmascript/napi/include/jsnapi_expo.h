@@ -1351,9 +1351,12 @@ public:
     static void SetBundle(EcmaVM *vm, bool value);
     static void SetAssetPath(EcmaVM *vm, const std::string &assetPath);
     static void SetMockModuleList(EcmaVM *vm, const std::map<std::string, std::string> &list);
+    static void SetPkgNameList(EcmaVM *vm, const std::map<std::string, std::string> &list);
+    static void SetPkgAliasList(EcmaVM *vm, const std::map<std::string, std::string> &list);
     static void SetHmsModuleList(EcmaVM *vm, const std::vector<panda::HmsMap> &list);
     static void SetModuleInfo(EcmaVM *vm, const std::string &assetPath, const std::string &entryPoint);
-
+    static void SetpkgContextInfoList(EcmaVM *vm, const std::map<std::string,
+        std::vector<std::vector<std::string>>> &list);
     static void SetLoop(EcmaVM *vm, void *loop);
     static std::string GetAssetPath(EcmaVM *vm);
     static bool InitForConcurrentThread(EcmaVM *vm, ConcurrentCallback cb, void *data);

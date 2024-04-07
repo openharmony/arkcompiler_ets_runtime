@@ -60,6 +60,7 @@ public:
 
     static void BuildClassInfoExtractorFromLiteral(JSThread *thread, JSHandle<ClassInfoExtractor> &extractor,
                                                    const JSHandle<TaggedArray> &literal,
+                                                   uint32_t length,
                                                    ClassKind kind = ClassKind::NON_SENDABLE);
 
     static JSHandle<JSHClass> CreatePrototypeHClass(JSThread *thread,
@@ -137,6 +138,7 @@ public:
                                                                  const JSHandle<TaggedArray> &fieldTypeArray);
 
     static void DefineSendableInstanceHClass(JSThread *thread, const JSHandle<TaggedArray> &fieldTypeArray,
+                                             uint32_t length,
                                              const JSHandle<JSFunction> &ctor, const JSHandle<JSTaggedValue> &base);
 
     static JSHandle<TaggedArray> ExtractStaticFieldTypeArray(JSThread *thread,
@@ -163,11 +165,12 @@ public:
     }
 
     static void PUBLIC_API AddFieldTypeToHClass(JSThread *thread, const JSHandle<TaggedArray> &fieldTypeArray,
-                                     const JSHandle<LayoutInfo> &layout, const JSHandle<JSHClass> &hclass);
+                                                uint32_t length, const JSHandle<LayoutInfo> &layout,
+                                                const JSHandle<JSHClass> &hclass);
 
     static void PUBLIC_API AddFieldTypeToHClass(JSThread *thread, const JSHandle<TaggedArray> &fieldTypeArray,
-                                     const JSHandle<NameDictionary> &nameDict, const JSHandle<JSHClass> &hclass);
-
+                                                uint32_t length, const JSHandle<NameDictionary> &nameDict,
+                                                const JSHandle<JSHClass> &hclass);
 private:
     static SharedFieldType FromFieldType(FieldType type)
     {
@@ -184,7 +187,7 @@ private:
     static void UpdateAccessorFunction(JSThread *thread, const JSMutableHandle<JSTaggedValue> &value,
                                        const JSHandle<JSTaggedValue> &homeObject, const JSHandle<JSFunction> &ctor);
 
-    static void AddFieldTypeToDict(JSThread *thread, const JSHandle<TaggedArray> &fieldTypeArray,
+    static void AddFieldTypeToDict(JSThread *thread, const JSHandle<TaggedArray> &fieldTypeArray, uint32_t length,
                                    JSMutableHandle<NameDictionary> &dict,
                                    PropertyAttributes attributes = PropertyAttributes::Default(true, true, false));
 

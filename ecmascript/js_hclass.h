@@ -1945,6 +1945,8 @@ private:
 
     void InitializeWithDefaultValue(const JSThread *thread, uint32_t size, JSType type, uint32_t inlinedProps);
 
+    bool IsJSTypeShared(JSType type);
+
     inline void Copy(const JSThread *thread, const JSHClass *jshclass);
 
     uint32_t *GetBitFieldAddr() const

@@ -32,6 +32,7 @@ SamplingProcessor::~SamplingProcessor() {}
 
 void *SamplingProcessor::Run(void *arg)
 {
+    LOG_ECMA(INFO) << "SamplingProcessor::Run start";
     RunParams params = *reinterpret_cast<RunParams *>(arg);
     SamplesRecord *generator = params.generatorParam;
     uint32_t interval = params.intervalParam;
@@ -59,6 +60,7 @@ void *SamplingProcessor::Run(void *arg)
             endTime = GetMicrosecondsTimeStamp();
         }
         if (generator->GetMethodNodeCount() + generator->GetframeStackLength() >= MAX_NODE_COUNT) {
+            LOG_ECMA(ERROR) << "SamplingProcessor::Run, exceed MAX_NODE_COUNT";
             break;
         }
         if (generator->samplesQueue_->IsEmpty()) {
@@ -76,9 +78,10 @@ void *SamplingProcessor::Run(void *arg)
     generator->AddTraceEvent(true);
     pthread_setname_np(tid, "OS_GC_Thread");
     if (generator->SemPost(1) != 0) {
-        LOG_ECMA(ERROR) << "sem_[1] post failed";
+        LOG_ECMA(ERROR) << "sem_[1] post failed, errno = " << errno;
         return nullptr;
     }
+    LOG_ECMA(INFO) << "SamplingProcessor::Run end";
     return nullptr;
 }
 

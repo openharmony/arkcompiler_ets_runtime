@@ -97,7 +97,7 @@
     /* Array.prototype.toLocaleString ( [ reserved1 [ , reserved2 ] ] ) */  \
     V("toLocaleString", ToLocaleString,   0, INVALID)                       \
     /* Array.prototype.toReversed ( ) */                                    \
-    V("toReversed",     ToReversed,       0, INVALID)                       \
+    V("toReversed",     ToReversed,       0, ArrayToReversed)               \
     /* Array.prototype.toSorted ( comparefn ) */                            \
     V("toSorted",       ToSorted,         1, INVALID)                       \
     /* Array.prototype.toSpliced ( start, skipCount, ...items ) */          \

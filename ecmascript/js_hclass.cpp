@@ -162,12 +162,38 @@ void JSHClass::InitializeWithDefaultValue(const JSThread *thread, uint32_t size,
     SetVTable(thread, JSTaggedValue::Undefined());
 }
 
+bool JSHClass::IsJSTypeShared(JSType type)
+{
+    bool isShared = false;
+    switch (type) {
+        case JSType::JS_SHARED_OBJECT:
+        case JSType::JS_SHARED_FUNCTION:
+        case JSType::JS_SHARED_SET:
+        case JSType::JS_SHARED_MAP:
+        case JSType::JS_SHARED_ARRAY:
+        case JSType::BIGINT:
+        case JSType::LINE_STRING:
+        case JSType::CONSTANT_STRING:
+        case JSType::SLICED_STRING:
+        case JSType::TREE_STRING:
+            isShared = true;
+            break;
+        default:
+            break;
+    }
+    return isShared;
+}
+
 // class JSHClass
 void JSHClass::Initialize(const JSThread *thread, uint32_t size, JSType type, uint32_t inlinedProps)
 {
     InitializeWithDefaultValue(thread, size, type, inlinedProps);
     if (JSType::JS_OBJECT_FIRST <= type && type <= JSType::JS_OBJECT_LAST) {
-        SetLayout(thread, thread->GlobalConstants()->GetEmptyLayoutInfo());
+        if (IsJSTypeShared(type)) {
+            SetLayout(thread, thread->GlobalConstants()->GetHandledEmptySLayoutInfo());
+        } else {
+            SetLayout(thread, thread->GlobalConstants()->GetEmptyLayoutInfo());
+        }
     }
     InitTSInheritInfo(thread);
 }
@@ -180,21 +206,8 @@ void JSHClass::Initialize(const JSThread *thread, uint32_t size, JSType type,
     if (JSType::JS_OBJECT_FIRST <= type && type <= JSType::JS_OBJECT_LAST) {
         SetLayout(thread, layout);
     }
-    switch (type) {
-        case JSType::JS_SHARED_OBJECT:
-        case JSType::JS_SHARED_FUNCTION:
-        case JSType::JS_SHARED_SET:
-        case JSType::JS_SHARED_MAP:
-        case JSType::JS_SHARED_ARRAY:
-        case JSType::BIGINT:
-        case JSType::LINE_STRING:
-        case JSType::CONSTANT_STRING:
-        case JSType::SLICED_STRING:
-        case JSType::TREE_STRING:
-            SetIsJSShared(true);
-            break;
-        default:
-            break;
+    if (IsJSTypeShared(type)) {
+        SetIsJSShared(true);
     }
 }
 

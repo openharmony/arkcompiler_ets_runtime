@@ -2881,6 +2881,21 @@ void JSNApi::SetHmsModuleList(EcmaVM *vm, const std::vector<panda::HmsMap> &list
     vm->SetHmsModuleList(list);
 }
 
+void JSNApi::SetPkgAliasList(EcmaVM *vm, const std::map<std::string, std::string> &list)
+{
+    vm->SetPkgAliasList(list);
+}
+
+void JSNApi::SetPkgNameList(EcmaVM *vm, const std::map<std::string, std::string> &list)
+{
+    vm->SetPkgNameList(list);
+}
+
+void JSNApi::SetpkgContextInfoList(EcmaVM *vm, const std::map<std::string, std::vector<std::vector<std::string>>> &list)
+{
+    vm->SetpkgContextInfoList(list);
+}
+
 bool JSNApi::InitForConcurrentThread(EcmaVM *vm, ConcurrentCallback cb, void *data)
 {
     vm->SetConcurrentCallback(cb, data);
@@ -4123,7 +4138,7 @@ Local<ObjectRef> JSNApi::GetExportObject(EcmaVM *vm, const std::string &file, co
     ecmascript::CString entry = file.c_str();
     ecmascript::CString name = vm->GetAssetPath();
     if (!vm->IsBundlePack()) {
-        ModulePathHelper::ParseOhmUrl(vm, entry, name, entry);
+        ModulePathHelper::ParseAbcPathAndOhmUrl(vm, entry, name, entry);
         std::shared_ptr<JSPandaFile> jsPandaFile =
             JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, name, entry.c_str(), false);
         if (jsPandaFile == nullptr) {
@@ -4188,15 +4203,16 @@ Local<ObjectRef> JSNApi::GetModuleNameSpaceFromFile(EcmaVM *vm, const std::strin
     std::string recordNameStr;
     std::string abcFilePath;
     if (module_path.size() != 0) {
-        recordNameStr = module_path + PathHelper::SLASH_TAG + file;
         ecmascript::CString moduleName = ModulePathHelper::GetModuleNameWithPath(module_path.c_str());
         abcFilePath = ModulePathHelper::ConcatPandaFilePath(moduleName);
+        recordNameStr = ModulePathHelper::TranslateNapiFileRequestPath(thread, module_path.c_str(), file.c_str());
     } else {
         // need get moduleName from stack
         std::pair<std::string, std::string> moduleInfo = vm->GetCurrentModuleInfo(false);
-        recordNameStr = std::string(vm->GetBundleName().c_str()) + PathHelper::SLASH_TAG +
-            moduleInfo.first + PathHelper::SLASH_TAG + file;
+        std::string path = std::string(vm->GetBundleName().c_str()) + PathHelper::SLASH_TAG +
+            moduleInfo.first;
         abcFilePath = moduleInfo.second;
+        recordNameStr = ModulePathHelper::TranslateNapiFileRequestPath(thread, path.c_str(), file.c_str());
     }
     LOG_ECMA(DEBUG) << "JSNApi::LoadModuleNameSpaceFromFile: Concated recordName " << recordNameStr.c_str();
     ecmascript::ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();

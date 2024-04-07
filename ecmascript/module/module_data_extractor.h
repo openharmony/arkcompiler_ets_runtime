@@ -40,7 +40,7 @@ public:
     static JSHandle<JSTaggedValue> ParseJsonModule(JSThread *thread, const JSPandaFile *jsPandaFile,
                                                    const CString &moduleFilename, const CString &recordName = nullptr);
     static JSHandle<JSTaggedValue> ParseNativeModule(JSThread *thread, const CString &moduleRequestName,
-                                                     ModuleTypes moduleType);
+                                                     const CString &baseFileName, ModuleTypes moduleType);
     static JSTaggedValue JsonParse(JSThread *thread, const JSPandaFile *jsPandaFile, CString entryPoint);
 };
 }  // namespace panda::ecmascript

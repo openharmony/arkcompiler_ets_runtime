@@ -166,11 +166,14 @@ JSTaggedValue BuiltinsPromiseJob::DynamicImportJob(EcmaRuntimeCallInfo *argv)
             LOG_FULL(FATAL) << "Load current file's panda file failed. Current file is " << recordNameStr;
         }
         // translate requestPath to OhmUrl
-        if (ModulePathHelper::NeedTranstale(requestPath)) {
+        if (vm->IsNormalizedOhmUrlPack()) {
+            ModulePathHelper::TranslateExpressionToNormalized(thread, fileNameStr, recordNameStr, requestPath);
+            LOG_ECMA(DEBUG) << "Exit Translate Normalized OhmUrl for DynamicImport, resultPath: " << requestPath;
+        } else if (ModulePathHelper::NeedTranstale(requestPath)) {
             ModulePathHelper::TranstaleExpressionInput(curJsPandaFile.get(), requestPath);
-            specifierString = thread->GetEcmaVM()->GetFactory()->NewFromUtf8(requestPath);
             LOG_ECMA(DEBUG) << "Exit Translate OhmUrl for DynamicImport, resultPath: " << requestPath;
         }
+        specifierString = thread->GetEcmaVM()->GetFactory()->NewFromUtf8(requestPath);
     }
     // resolve native module
     auto [isNative, moduleType] = SourceTextModule::CheckNativeModule(requestPath);

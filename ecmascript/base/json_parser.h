@@ -131,7 +131,7 @@ protected:
         return *current_ == '}';
     }
 
-    JSHandle<JSTaggedValue> CreateSJsonPrototype()
+    JSHandle<JSTaggedValue> GetSJsonPrototype()
     {
         JSHandle<JSFunction> sObjFunction(thread_->GetEcmaVM()->GetGlobalEnv()->GetSObjectFunction());
         JSHandle<JSTaggedValue> jsonPrototype = JSHandle<JSTaggedValue>(thread_, sObjFunction->GetFunctionPrototype());
@@ -157,11 +157,9 @@ protected:
                         if (EmptyObjectCheck()) {
                             if (transformType_ == TransformType::SENDABLE) {
                                 JSHandle<JSHClass> sHclass;
-                                JSHandle<JSTaggedValue> sJsonPrototype = CreateSJsonPrototype();
-                                JSHandle<LayoutInfo> sLayout = factory_->CreateSLayoutInfo(0);
+                                JSHandle<JSTaggedValue> sJsonPrototype = GetSJsonPrototype();
                                 sHclass = factory_->NewSEcmaHClass(JSSharedObject::SIZE, 0, JSType::JS_SHARED_OBJECT,
-                                                                   JSHandle<JSTaggedValue>(sJsonPrototype),
-                                                                   JSHandle<JSTaggedValue>(sLayout));
+                                                                   JSHandle<JSTaggedValue>(sJsonPrototype));
                                 parseValue = JSHandle<JSTaggedValue>(factory_->NewSharedOldSpaceJSObject(sHclass));
                             } else {
                                 parseValue = JSHandle<JSTaggedValue>(factory_->NewJSObject(initialJSObjectClass_));
@@ -333,19 +331,16 @@ protected:
         size_t start = continuation.index_;
         size_t size = propertyList.size() - start;
         uint32_t fieldNum = size / 2; // 2: key-value pair
-        // add layout
         JSHandle<JSHClass> hclass;
-        JSHandle<JSTaggedValue> jsonPrototype = CreateSJsonPrototype();
-        JSHandle<LayoutInfo> layout = factory_->CreateSLayoutInfo(fieldNum);
-
+        JSHandle<JSTaggedValue> jsonPrototype = GetSJsonPrototype();
         if (fieldNum == 0) {
             hclass = factory_->NewSEcmaHClass(JSSharedObject::SIZE, fieldNum, JSType::JS_SHARED_OBJECT,
-                                              JSHandle<JSTaggedValue>(jsonPrototype),
-                                              JSHandle<JSTaggedValue>(layout));
+                                              JSHandle<JSTaggedValue>(jsonPrototype));
             JSHandle<JSObject> obj = factory_->NewSharedOldSpaceJSObject(hclass);
             return JSHandle<JSTaggedValue>(obj);
         } else if (LIKELY(fieldNum <= JSSharedObject::MAX_INLINE)) {
             JSHandle<TaggedArray> propertyArray = factory_->NewSTaggedArray(size);
+            JSHandle<LayoutInfo> layout = factory_->CreateSLayoutInfo(fieldNum);
             for (size_t i = 0; i < size; i += 2) { // 2: prop name and value
                 JSHandle<JSTaggedValue> keyHandle = propertyList[start + i];
                 propertyArray->Set(thread_, i, keyHandle);
@@ -354,7 +349,7 @@ protected:
             hclass = factory_->NewSEcmaHClass(JSSharedObject::SIZE, fieldNum, JSType::JS_SHARED_OBJECT,
                                               JSHandle<JSTaggedValue>(jsonPrototype),
                                               JSHandle<JSTaggedValue>(layout));
-            SendableClassDefiner::AddFieldTypeToHClass(thread_, propertyArray, layout, hclass);
+            SendableClassDefiner::AddFieldTypeToHClass(thread_, propertyArray, size, layout, hclass);
             JSHandle<JSObject> obj = factory_->NewSharedOldSpaceJSObject(hclass);
             uint32_t index = 0;
             for (size_t i = 0; i < size; i += 2) { // 2: prop name and value

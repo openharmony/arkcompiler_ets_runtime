@@ -65,6 +65,10 @@ public:
     static constexpr char EXT_NAME_JS[] = ".js";
     static constexpr char EXT_NAME_JSON[] = ".json";
     static constexpr char EXT_NAME_Z_SO[] = ".z.so";
+    static constexpr char EXT_NAME_D_TS[] = ".d.ts";
+    static constexpr char PREFIX_NORMALIZED[] = "@normalized:";
+    static constexpr char PREFIX_NORMALIZED_SO[] = "@normalized:Y";
+    static constexpr char PREFIX_NORMALIZED_NOT_SO[] = "@normalized:N";
     static constexpr char PREFIX_BUNDLE[] = "@bundle:";
     static constexpr char PREFIX_MODULE[] = "@module:";
     static constexpr char PREFIX_PACKAGE[] = "@package:";
@@ -85,6 +89,8 @@ public:
     static constexpr char PREVIER_TEST_DIR[] = ".test";
     static constexpr char PHYCICAL_FILE_PATH[] = "/src/main";
     static constexpr char VMA_NAME_ARKTS_CODE[] = "ArkTS Code";
+    static constexpr char ENTRY_MAIN_FUNCTION[] = "_GLOBAL::func_main_0";
+    static constexpr char TRUE_FLAG[] = "true";
 
     static constexpr size_t MAX_PACKAGE_LEVEL = 1;
     static constexpr size_t SEGMENTS_LIMIT_TWO = 2;
@@ -101,14 +107,34 @@ public:
     static constexpr size_t APP_PREFIX_SIZE = 5;
     static constexpr size_t BUNDLE_INSTALL_PATH_LEN = 25;
     static constexpr size_t PHYCICAL_FILE_PATH_LEN = 10;
+    static constexpr size_t NORMALIZED_OHMURL_ARGS_NUM = 5;
+    static constexpr size_t NORMALIZED_MODULE_NAME_INDEX = 1;
+    static constexpr size_t NORMALIZED_BUNDLE_NAME_INDEX = 2;
+    static constexpr size_t NORMALIZED_IMPORT_PATH_INDEX = 3;
+    static constexpr size_t NORMALIZED_VERSION_INDEX = 4;
+
+    static constexpr size_t PKGINFO_PACKAGE_NAME_INDEX = 1;
+    static constexpr size_t PKGINFO_BUDNLE_NAME_INDEX = 3;
+    static constexpr size_t PKGINFO_MODULE_NAME_INDEX = 5;
+    static constexpr size_t PKGINFO_VERSION_INDEX = 7;
+    static constexpr size_t PKGINFO_ENTRY_PATH_INDEX = 9;
+    static constexpr size_t PKGINFO_IS_SO_INDEX = 11;
 
     static CString PUBLIC_API ConcatFileNameWithMerge(JSThread *thread, const JSPandaFile *jsPandaFile,
                                                       CString &baseFileName, CString recordName, CString requestName);
-    static void ParseOhmUrl(EcmaVM *vm, const CString &inputFileName,
-                            CString &outBaseFileName, CString &outEntryPoint);
+    static void ParseAbcPathAndOhmUrl(EcmaVM *vm, const CString &inputFileName, CString &outBaseFileName,
+                                      CString &outEntryPoint);
+    static CString ConcatUnifiedOhmUrl(const CString &bundleName, const CString &pkgname, const CString &path,
+                                       const CString &version);
+    static CString ConcatUnifiedOhmUrl(const CString &bundleName, const CString &normalizedpath,
+        const CString &version);
+    static CString ConcatHspFileNameCrossBundle(const CString &bundleName, const CString &moduleName);
+    static CString ConcatHspFileName(const CString &moduleName);
+    static CString TransformToNormalizedOhmUrl(EcmaVM *vm, const CString &oldEntryPoint);
     static CString ParseUrl(EcmaVM *vm, const CString &recordName);
     static CString ParsePrefixBundle(JSThread *thread, const JSPandaFile *jsPandaFile,
         [[maybe_unused]] CString &baseFileName, CString moduleRequestName, [[maybe_unused]] CString recordName);
+    static CString ParseNormalizedOhmUrl(JSThread *thread, CString &baseFileName, CString requestName);
     static CString MakeNewRecord(const JSPandaFile *jsPandaFile, CString &baseFileName,
                                  const CString &recordName, const CString &requestName);
     static CString FindOhpmEntryPoint(const JSPandaFile *jsPandaFile, const CString &ohpmPath,
@@ -135,7 +161,19 @@ public:
                                                    CString &baseFileName, const CString &requestName);
     static void ParseCrossModuleFile(const JSPandaFile *jsPandaFile, CString &requestPath);
     static CString ReformatPath(CString requestName);
-
+    static void TranslateExpressionToNormalized(JSThread *thread, [[maybe_unused]] CString &baseFileName,
+                                                CString recordName, CString &requestPath);
+    static CVector<CString> GetPkgContextInfoListElements(JSThread *thread, CString &moduleName,
+                                                          CString &packageName);
+    static CString TranslateNapiFileRequestPath(JSThread *thread, const CString &modulePath,
+                                                const CString &requestName);
+    static CVector<CString> SplitNormalizedOhmurl(const CString &ohmurl);
+    static CString ConcatImportFileNormalizedOhmurl(const CString &recordPath, const CString &requestName);
+    static CString ConcatNativeSoNormalizedOhmurl(const CString &moduleName, const CString &bundleName,
+                                                  const CString &pkgName, const CString &version);
+    static CString ConcatNotSoNormalizedOhmurl(const CString &moduleName, const CString &bundleName,
+                                               const CString &pkgName, const CString &entryPath,
+                                               const CString &version);
     /*
      * Before: data/storage/el1/bundle/moduleName/ets/modules.abc
      * After:  bundle/moduleName
@@ -205,7 +243,25 @@ public:
         }
         return CString();
     }
-    
+
+    /*
+     * Before: &moduleName/src/xxx
+     * After:  moduleName
+     */
+    inline static CString GetModuleNameWithNormalizedName(const CString recordName)
+    {
+        size_t pos1 = recordName.find(PathHelper::NORMALIZED_OHMURL_TAG);
+        if (pos1 != CString::npos) {
+            pos1++;
+            size_t pos2 = recordName.find(PathHelper::SLASH_TAG, pos1);
+            if (pos2 != CString::npos) {
+                CString moduleName = recordName.substr(pos1, pos2 - pos1);
+                return moduleName;
+            }
+        }
+        return CString();
+    }
+
     /*
      * Before: bundleName/moduleName
      * After:  moduleName
@@ -245,6 +301,30 @@ public:
             return CString();
         }
         return BUNDLE_INSTALL_PATH + moduleName + MERGE_ABC_ETS_MODULES;
+    }
+
+    inline static CString GetBundleNameFromNormalized(const EcmaVM *vm, const CString &moduleName)
+    {
+        CVector<CString> res = SplitNormalizedOhmurl(moduleName);
+        if (res.size() != NORMALIZED_OHMURL_ARGS_NUM) {
+            LOG_FULL(ERROR) << "GetBundleNameFromNormalized Invalid normalized ohmurl";
+            return "";
+        }
+        CString bundleName = res[NORMALIZED_BUNDLE_NAME_INDEX];
+        if (bundleName.size() == 0) {
+            return vm->GetBundleName();
+        }
+        return bundleName;
+    }
+
+    inline static CString GetNormalizedPathFromOhmUrl(const CString &moduleName)
+    {
+        CVector<CString> res = SplitNormalizedOhmurl(moduleName);
+        if (res.size() != NORMALIZED_OHMURL_ARGS_NUM) {
+            LOG_FULL(ERROR) << "GetNormalizedPathFromOhmUrl Invalid normalized ohmurl";
+            return "";
+        }
+        return res[NORMALIZED_IMPORT_PATH_INDEX];
     }
 };
 } // namespace panda::ecmascript

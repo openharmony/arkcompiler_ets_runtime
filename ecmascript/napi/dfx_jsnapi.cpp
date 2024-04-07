@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include <semaphore.h>
 #include "ecmascript/napi/include/dfx_jsnapi.h"
 
 #include "ecmascript/base/block_hook_scope.h"
@@ -37,6 +38,8 @@
 #include "faultloggerd_client.h"
 #include "uv.h"
 #endif
+
+sem_t g_heapdumpCnt;
 
 namespace panda {
 using ecmascript::CString;
@@ -113,6 +116,7 @@ void DFXJSNApi::DumpHeapSnapshot([[maybe_unused]] const EcmaVM *vm, [[maybe_unus
 {
 #if defined(ECMASCRIPT_SUPPORT_SNAPSHOT)
 #if defined(ENABLE_DUMP_IN_FAULTLOG)
+    sem_wait(&g_heapdumpCnt);
     auto &options = const_cast<EcmaVM *>(vm)->GetJSOptions();
     options.SwitchStartGlobalLeakCheck();
     if (options.EnableGlobalLeakCheck() && options.IsStartGlobalLeakCheck()) {
@@ -131,6 +135,7 @@ void DFXJSNApi::DumpHeapSnapshot([[maybe_unused]] const EcmaVM *vm, [[maybe_unus
     }
     FileDescriptorStream stream(fd);
     DumpHeapSnapshot(vm, dumpFormat, &stream, nullptr, isVmMode, isPrivate, captureNumericValue, isFullGC);
+    sem_post(&g_heapdumpCnt);
 #endif // ENABLE_DUMP_IN_FAULTLOG
 #else
     LOG_ECMA(ERROR) << "Not support arkcompiler heap snapshot";
@@ -143,10 +148,12 @@ void DFXJSNApi::DumpHeapSnapshot([[maybe_unused]] const EcmaVM *vm, [[maybe_unus
                                  [[maybe_unused]] bool captureNumericValue, [[maybe_unused]] bool isFullGC,
                                  [[maybe_unused]] uint32_t tid)
 {
+    const int THREAD_COUNT = 1;
     if (vm->IsWorkerThread()) {
         LOG_ECMA(ERROR) << "this is a workthread!";
         return;
     }
+    sem_init(&g_heapdumpCnt, 0, THREAD_COUNT);
     // dump host vm
     uint32_t curTid = vm->GetTid();
     LOG_ECMA(INFO) << "DumpHeapSnapshot tid " << tid << " curTid " << curTid;
@@ -610,16 +617,19 @@ void DFXJSNApi::StartCpuProfilerForInfo([[maybe_unused]] const EcmaVM *vm, [[may
 std::unique_ptr<ProfileInfo> DFXJSNApi::StopCpuProfilerForInfo([[maybe_unused]] const EcmaVM *vm)
 {
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
+    LOG_ECMA(INFO) << "DFXJSNApi::StopCpuProfilerForInfo, vm = " << vm;
     if (vm == nullptr) {
+        LOG_ECMA(ERROR) << "DFXJSNApi::StopCpuProfilerForInfo, vm == nullptr";
         return nullptr;
     }
     CpuProfiler *profiler = vm->GetProfiler();
     if (profiler == nullptr) {
+        LOG_ECMA(ERROR) << "DFXJSNApi::StopCpuProfilerForInfo, profiler == nullptr";
         return nullptr;
     }
     auto profile = profiler->StopCpuProfilerForInfo();
     if (profile == nullptr) {
-        LOG_DEBUGGER(ERROR) << "Transfer CpuProfiler::StopCpuProfilerImpl is failure";
+        LOG_ECMA(ERROR) << "DFXJSNApi::StopCpuProfilerForInfo, CpuProfiler::StopCpuProfilerForInfo failed";
     }
     delete profiler;
     profiler = nullptr;
