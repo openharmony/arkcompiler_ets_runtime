@@ -118,6 +118,8 @@ public:
                                      const JSHandle<JSTaggedValue> &value);
     static JSHandle<TaggedArray> ToTaggedArray(JSThread *thread, const JSHandle<JSTaggedValue> &obj);
     static void PUBLIC_API CheckAndCopyArray(const JSThread *thread, JSHandle<JSSharedArray> obj);
+    static JSHandle<TaggedArray> SetCapacity(const JSThread *thread, const JSHandle<TaggedArray> &array,
+                                             uint32_t capa);
     static void SetCapacity(JSThread *thread, const JSHandle<JSObject> &array, uint32_t oldLen, uint32_t newLen,
                             bool isNew = false);
     static void SortElements(JSThread *thread, const JSHandle<TaggedArray> &elements,

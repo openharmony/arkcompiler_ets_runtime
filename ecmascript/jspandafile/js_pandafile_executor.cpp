@@ -28,6 +28,7 @@
 #include "ecmascript/mem/c_string.h"
 #include "ecmascript/mem/c_containers.h"
 #include "ecmascript/module/js_module_manager.h"
+#include "ecmascript/module/js_shared_module_manager.h"
 #include "ecmascript/module/module_path_helper.h"
 #include "ecmascript/patch/quick_fix_manager.h"
 #include "ecmascript/checkpoint/thread_state_transition.h"
@@ -111,13 +112,15 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromAbcFile(JSThread *
             thread->ManagedCodeBegin();
         }
         [[maybe_unused]] EcmaHandleScope scope(thread);
-        ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
+        SharedModuleManager* sharedModuleManager = SharedModuleManager::GetInstance();
         JSHandle<JSTaggedValue> moduleRecord(thread->GlobalConstants()->GetHandledUndefined());
         if (jsPandaFile->IsBundlePack()) {
-            moduleRecord = moduleManager->HostResolveImportedModule(name, executeFromJob);
+            moduleRecord = sharedModuleManager->ResolveImportedModule(thread, name, executeFromJob);
         } else {
-            moduleRecord = moduleManager->HostResolveImportedModuleWithMerge(name, entry, executeFromJob);
+            moduleRecord = sharedModuleManager->ResolveImportedModuleWithMerge(thread, name, entry, executeFromJob);
         }
+        
+        ASSERT(!SourceTextModule::IsSharedModule(JSHandle<SourceTextModule>(moduleRecord)));
         SourceTextModule::Instantiate(thread, moduleRecord, executeFromJob);
         if (thread->HasPendingException()) {
             return Unexpected(false);

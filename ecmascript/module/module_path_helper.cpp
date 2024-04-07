@@ -846,4 +846,12 @@ CVector<CString> ModulePathHelper::SplitNormalizedOhmurl(const CString &ohmurl)
     res.emplace_back(tail);
     return res;
 }
+
+bool ModulePathHelper::SkipDefaultBundleFile(JSThread *thread, const CString &moduleFileName)
+{
+    // relative file path like "../../xxxx" can't be loaded rightly in aot compilation phase
+    // just to skip misunderstanding error log in LoadJSPandaFile when we ignore Module Resolving Failure.
+    return !thread->GetEcmaVM()->EnableReportModuleResolvingFailure() &&
+        (IsSandboxPath(moduleFileName) || IsRelativeFilePath(moduleFileName));
+}
 }  // namespace panda::ecmascript

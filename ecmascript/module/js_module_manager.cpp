@@ -57,28 +57,8 @@ JSTaggedValue ModuleManager::GetCurrentModule()
     return module;
 }
 
-JSHandle<JSTaggedValue> ModuleManager::GenerateFuncModule(const JSPandaFile *jsPandaFile,
-                                                          const CString &entryPoint, ClassKind classKind)
-{
-    CString recordName = jsPandaFile->GetRecordName(entryPoint);
-    JSRecordInfo recordInfo;
-    jsPandaFile->CheckAndGetRecordInfo(recordName, recordInfo);
-    if (jsPandaFile->IsModule(recordInfo)) {
-        JSHandle<JSTaggedValue> module(HostGetImportedModule(recordName));
-        if (classKind == ClassKind::NON_SENDABLE) {
-            return module;
-        } else {
-            // [[todo::DaiHN]] Sendable class defined in Shared Module would set Shared Module directly.
-            // Clone isolate module at shared-heap to mark sendable class.
-            return SendableClassModule::GenerateSendableFuncModule(vm_->GetJSThread(), module);
-        }
-    }
-    return JSHandle<JSTaggedValue>(vm_->GetFactory()->NewFromUtf8(recordName));
-}
-
 JSHandle<JSTaggedValue> ModuleManager::GenerateSendableFuncModule(const JSHandle<JSTaggedValue> &module)
 {
-    // [[todo::DaiHN]] Sendable class defined in Shared Module would set Shared Module directly.
     // Clone isolate module at shared-heap to mark sendable class.
     return SendableClassModule::GenerateSendableFuncModule(vm_->GetJSThread(), module);
 }
@@ -417,16 +397,6 @@ bool ModuleManager::IsEvaluatedModule(JSTaggedValue referencing)
     return false;
 }
 
-bool ModuleManager::SkipDefaultBundleFile(const CString &moduleFileName) const
-{
-    // relative file path like "../../xxxx" can't be loaded rightly in aot compilation phase
-    const char relativeFilePath[] = "..";
-    // just to skip misunderstanding error log in LoadJSPandaFile when we ignore Module Resolving Failure.
-    return !vm_->EnableReportModuleResolvingFailure() &&
-        (base::StringHelper::StringStartWith(moduleFileName, ModulePathHelper::BUNDLE_INSTALL_PATH) ||
-        base::StringHelper::StringStartWith(moduleFileName, relativeFilePath));
-}
-
 JSHandle<JSTaggedValue> ModuleManager::ResolveModuleInMergedABC(JSThread *thread, const JSPandaFile *jsPandaFile,
     const CString &recordName, bool executeFromJob)
 {
@@ -463,8 +433,8 @@ JSHandle<JSTaggedValue> ModuleManager::CommonResolveImportedModuleWithMerge(cons
 {
     JSThread *thread = vm_->GetJSThread();
 
-    std::shared_ptr<JSPandaFile> jsPandaFile = SkipDefaultBundleFile(moduleFileName) ? nullptr :
-        JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, moduleFileName, recordName, false);
+    std::shared_ptr<JSPandaFile> jsPandaFile = ModulePathHelper::SkipDefaultBundleFile(thread, moduleFileName) ?
+        nullptr : JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, moduleFileName, recordName, false);
     if (jsPandaFile == nullptr) {
         // In Aot Module Instantiate, we miss some runtime parameters from framework like bundleName or moduleName
         // which may cause wrong recordName parsing and we also can't load files not in this app hap. But in static
@@ -562,13 +532,13 @@ JSHandle<JSTaggedValue> ModuleManager::ResolveModule(JSThread *thread, const JSP
     JSRecordInfo recordInfo = const_cast<JSPandaFile *>(jsPandaFile)->FindRecordInfo(JSPandaFile::ENTRY_FUNCTION_NAME);
     if (jsPandaFile->IsModule(recordInfo)) {
         moduleRecord = ModuleDataExtractor::ParseModule(thread, jsPandaFile, moduleFileName, moduleFileName);
-    } else if (jsPandaFile->IsJson(recordInfo)) {
-        moduleRecord = ModuleDataExtractor::ParseJsonModule(thread, jsPandaFile, moduleFileName);
     } else {
         ASSERT(jsPandaFile->IsCjs(recordInfo));
         moduleRecord = ModuleDataExtractor::ParseCjsModule(thread, jsPandaFile);
     }
-    ModuleDeregister::InitForDeregisterModule(thread, moduleRecord, executeFromJob);
+    // json file can not be compiled into isolate abc.
+    ASSERT(!jsPandaFile->IsJson(recordInfo));
+    ModuleDeregister::InitForDeregisterModule(moduleRecord, executeFromJob);
     JSHandle<NameDictionary> dict(thread, resolvedModules_);
     JSHandle<JSTaggedValue> referencingHandle = JSHandle<JSTaggedValue>::Cast(factory->NewFromUtf8(moduleFileName));
     resolvedModules_ =
@@ -617,27 +587,34 @@ JSHandle<JSTaggedValue> ModuleManager::ResolveModuleWithMerge(
 
     JSHandle<JSTaggedValue> recordNameHandle = JSHandle<JSTaggedValue>::Cast(factory->NewFromUtf8(recordName));
     JSHandle<SourceTextModule>::Cast(moduleRecord)->SetEcmaModuleRecordName(thread, recordNameHandle);
-    ModuleDeregister::InitForDeregisterModule(thread, moduleRecord, executeFromJob);
+    ModuleDeregister::InitForDeregisterModule(moduleRecord, executeFromJob);
     return moduleRecord;
 }
 
-void ModuleManager::AddResolveImportedModule(const JSPandaFile *jsPandaFile, const CString &referencingModule)
+void ModuleManager::AddResolveImportedModule(JSHandle<JSTaggedValue> &record, JSHandle<JSTaggedValue> &module)
 {
     JSThread *thread = vm_->GetJSThread();
-    JSHandle<JSTaggedValue> moduleRecord =
-        ModuleDataExtractor::ParseModule(thread, jsPandaFile, referencingModule, referencingModule);
-    AddResolveImportedModule(referencingModule, moduleRecord);
+    JSHandle<NameDictionary> dict(thread, resolvedModules_);
+    resolvedModules_ =
+        NameDictionary::Put(thread, dict, record, module, PropertyAttributes::Default())
+        .GetTaggedValue();
 }
 
 void ModuleManager::AddResolveImportedModule(const CString &referencingModule, JSHandle<JSTaggedValue> moduleRecord)
 {
-    JSThread *thread = vm_->GetJSThread();
     ObjectFactory *factory = vm_->GetFactory();
     JSHandle<JSTaggedValue> referencingHandle(factory->NewFromUtf8(referencingModule));
-    JSHandle<NameDictionary> dict(thread, resolvedModules_);
-    resolvedModules_ =
-        NameDictionary::Put(thread, dict, referencingHandle, moduleRecord, PropertyAttributes::Default())
-        .GetTaggedValue();
+    AddResolveImportedModule(referencingHandle, moduleRecord);
+}
+
+void ModuleManager::AddToInstantiatingSModuleList(const CString &record)
+{
+    InstantiatingSModuleList_.push_back(record);
+}
+
+CVector<CString> ModuleManager::GetInstantiatingSModuleList()
+{
+    return InstantiatingSModuleList_;
 }
 
 JSTaggedValue ModuleManager::GetModuleNamespace(int32_t index)
@@ -889,5 +866,28 @@ JSHandle<JSTaggedValue> ModuleManager::GetModuleNameSpaceFromFile(
     moduleRecord->SetLoadingTypes(ecmascript::LoadingTypes::STABLE_MODULE);
     return ecmascript::SourceTextModule::GetModuleNamespace(
         thread, JSHandle<ecmascript::SourceTextModule>(moduleRecord));
+}
+
+JSHandle<JSTaggedValue> ModuleManager::TryGetImportedModule(JSTaggedValue referencing)
+{
+    NameDictionary *dict = NameDictionary::Cast(resolvedModules_.GetTaggedObject());
+    JSThread *thread = vm_->GetJSThread();
+    int entry = dict->FindEntry(referencing);
+    if (entry == -1) {
+        return thread->GlobalConstants()->GetHandledUndefined();
+    }
+    JSTaggedValue result = dict->GetValue(entry);
+    return JSHandle<JSTaggedValue>(thread, result);
+}
+
+void ModuleManager::RemoveModuleFromCache(JSTaggedValue recordName)
+{
+    JSThread *thread = vm_->GetJSThread();
+    JSHandle<NameDictionary> dict(thread, resolvedModules_.GetTaggedObject());
+    int entry = dict->FindEntry(recordName);
+    LOG_ECMA_IF(entry == -1, FATAL) << "Can not get module: " << ConvertToString(recordName) <<
+         ", when try to remove the module";
+
+    resolvedModules_  = NameDictionary::Remove(thread, dict, entry).GetTaggedValue();
 }
 } // namespace panda::ecmascript

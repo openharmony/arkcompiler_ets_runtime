@@ -156,7 +156,8 @@ HWTEST_F_L0(EcmaModuleTest, StoreModuleValue)
     JSHandle<JSTaggedValue> localNameHandle = JSHandle<JSTaggedValue>::Cast(objFactory->NewFromUtf8(localName));
     JSHandle<JSTaggedValue> exportNameHandle = JSHandle<JSTaggedValue>::Cast(objFactory->NewFromUtf8(exportName));
     JSHandle<LocalExportEntry> localExportEntry =
-        objFactory->NewLocalExportEntry(exportNameHandle, localNameHandle, LocalExportEntry::LOCAL_DEFAULT_INDEX);
+        objFactory->NewLocalExportEntry(exportNameHandle, localNameHandle, LocalExportEntry::LOCAL_DEFAULT_INDEX,
+                                        SharedTypes::UNSENDABLE_MODULE);
     JSHandle<SourceTextModule> module = objFactory->NewSourceTextModule();
     SourceTextModule::AddLocalExportEntry(thread, module, localExportEntry, 0, 1);
 
@@ -189,7 +190,7 @@ HWTEST_F_L0(EcmaModuleTest, GetModuleValue)
     JSHandle<JSTaggedValue> exportNameHandle =
         JSHandle<JSTaggedValue>::Cast(objFactory->NewFromUtf8(exportName));
     JSHandle<LocalExportEntry> localExportEntry = objFactory->NewLocalExportEntry(exportNameHandle,
-        exportLocalNameHandle, LocalExportEntry::LOCAL_DEFAULT_INDEX);
+        exportLocalNameHandle, LocalExportEntry::LOCAL_DEFAULT_INDEX, SharedTypes::UNSENDABLE_MODULE);
     JSHandle<SourceTextModule> moduleExport = objFactory->NewSourceTextModule();
     SourceTextModule::AddLocalExportEntry(thread, moduleExport, localExportEntry, 0, 1);
     // store module value
@@ -262,9 +263,10 @@ HWTEST_F_L0(EcmaModuleTest, PreventExtensions_IsExtensible)
     JSHandle<EcmaString> moduleFilename = objectFactory->NewFromUtf8(baseFileName);
     module->SetEcmaModuleFilename(thread, moduleFilename);
     ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
-    moduleManager->AddResolveImportedModule(baseFileName, JSHandle<JSTaggedValue>::Cast(module));
+    JSHandle<JSTaggedValue> moduleRecord = JSHandle<JSTaggedValue>::Cast(module);
+    moduleManager->AddResolveImportedModule(baseFileName, moduleRecord);
     JSHandle<ModuleNamespace> np =
-    ModuleNamespace::ModuleNamespaceCreate(thread, JSHandle<JSTaggedValue>::Cast(module), localExportEntries);
+    ModuleNamespace::ModuleNamespaceCreate(thread, moduleRecord, localExportEntries);
     EXPECT_FALSE(np->IsExtensible());
     EXPECT_TRUE(ModuleNamespace::PreventExtensions());
 }

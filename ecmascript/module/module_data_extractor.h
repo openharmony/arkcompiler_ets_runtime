@@ -24,6 +24,7 @@ namespace panda::ecmascript {
 using EntityId = panda_file::File::EntityId;
 
 class ModuleDataExtractor {
+private:
 public:
     ModuleDataExtractor() = default;
     virtual ~ModuleDataExtractor() = default;
@@ -38,7 +39,7 @@ public:
                                                const CString &descriptor, const CString &moduleFilename);
     static JSHandle<JSTaggedValue> ParseCjsModule(JSThread *thread, const JSPandaFile *jsPandaFile);
     static JSHandle<JSTaggedValue> ParseJsonModule(JSThread *thread, const JSPandaFile *jsPandaFile,
-                                                   const CString &moduleFilename, const CString &recordName = nullptr);
+                                                   const CString &moduleFilename, const CString &recordName);
     static JSHandle<JSTaggedValue> ParseNativeModule(JSThread *thread, const CString &moduleRequestName,
                                                      const CString &baseFileName, ModuleTypes moduleType);
     static JSTaggedValue JsonParse(JSThread *thread, const JSPandaFile *jsPandaFile, CString entryPoint);

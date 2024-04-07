@@ -214,6 +214,7 @@ JSTaggedValue BuiltinsPromiseJob::DynamicImportJob(EcmaRuntimeCallInfo *argv)
             thread, jsonRecordName, ModuleTypes::JSON_MODULE, resolve, reject, jsPandaFile.get());
     }
     // Loading request module.
+    thread->GetEcmaVM()->PushToDeregisterModuleList(entryPoint);
     if (!moduleManager->IsImportedModuleLoaded(moduleName.GetTaggedValue())) {
         if (!JSPandaFileExecutor::ExecuteFromAbcFile(thread, fileNameStr.c_str(), entryPoint.c_str(), false, true)) {
             CString msg = "Cannot execute request dynamic-imported module : " + entryPoint;

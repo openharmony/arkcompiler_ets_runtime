@@ -213,6 +213,15 @@ JSTaggedValue JSSharedArray::ArraySpeciesCreate(JSThread *thread, const JSHandle
     return result;
 }
 
+JSHandle<TaggedArray> JSSharedArray::SetCapacity(const JSThread *thread, const JSHandle<TaggedArray> &array,
+                                                 uint32_t capa)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    uint32_t oldLength = array->GetLength();
+    JSHandle<TaggedArray> newArray = factory->CopySArray(array, oldLength, capa);
+    return newArray;
+}
+
 void JSSharedArray::SetCapacity(JSThread *thread, const JSHandle<JSObject> &array, uint32_t oldLen, uint32_t newLen,
                                 bool isNew)
 {

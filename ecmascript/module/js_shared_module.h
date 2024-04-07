@@ -23,10 +23,23 @@ class SendableClassModule {
 public:
     static JSHandle<JSTaggedValue> GenerateSendableFuncModule(JSThread *thread, const JSHandle<JSTaggedValue> &module);
 
+    static void CloneEnvOfSModule(JSThread *thread, JSHandle<SourceTextModule> &module,
+                                  JSHandle<TaggedArray> &envRec);
+
+    static JSHandle<TaggedArray> CloneModuleEnvironment(JSThread *thread,
+                                                        const JSHandle<JSTaggedValue> &moduleEnvironment);
+
 private:
     static JSHandle<JSTaggedValue> CloneRecordBinding(JSThread *thread, JSTaggedValue indexBinding);
-    static JSHandle<JSTaggedValue> CloneModuleEnvironment(JSThread *thread,
-                                                          const JSHandle<JSTaggedValue> &moduleEnvironment);
+};
+
+class JSSharedModule {
+public:
+    static JSHandle<TaggedArray> CloneEnvForSModule(JSThread *thread, const JSHandle<SourceTextModule> &module,
+        JSHandle<TaggedArray> &envRec);
+
+private:
+    static JSHandle<JSTaggedValue> CloneRecordBinding(JSThread *thread, JSTaggedValue indexBinding);
 };
 
 class ResolvedRecordBinding final : public Record {
@@ -41,5 +54,12 @@ public:
     DECL_DUMP()
     DECL_VISIT_OBJECT(MODULE_RECORD_OFFSET, INDEX_OFFSET)
 };
+
+class SharedModuleHelper {
+public:
+    static JSHandle<JSTaggedValue> ParseSharedModule(JSThread *thread, const JSPandaFile *jsPandaFile,
+                                                     const CString &descriptor, const CString &moduleFilename);
+};
+
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_MODULE_JS_SHARED_MODULE_H

@@ -275,6 +275,60 @@ JSHandle<TaggedArray> ObjectFactory::SharedEmptyArray() const
     return JSHandle<TaggedArray>(thread_->GlobalConstants()->GetHandledEmptyArray());
 }
 
+JSHandle<TaggedArray> ObjectFactory::CopySArray(const JSHandle<TaggedArray> &old, uint32_t oldLength,
+                                                uint32_t newLength, JSTaggedValue initVal, ElementsKind kind)
+{
+    if (newLength == 0) {
+        return SharedEmptyArray();
+    }
+    if (newLength > oldLength) {
+        return ExtendSArray(old, newLength, initVal, kind);
+    }
+
+    NewObjectHook();
+    // Shared-array does not support Mutantarray yet.
+    ASSERT(!old->GetClass()->IsMutantTaggedArray());
+
+    size_t size = TaggedArray::ComputeSize(JSTaggedValue::TaggedTypeSize(), newLength);
+    JSHClass *arrayClass = JSHClass::Cast(thread_->GlobalConstants()->GetArrayClass().GetTaggedObject());
+    TaggedObject *header = sHeap_->AllocateOldOrHugeObject(thread_, arrayClass, size);
+    JSHandle<TaggedArray> newArray(thread_, header);
+    newArray->SetLength(newLength);
+    newArray->SetExtraLength(old->GetExtraLength());
+
+    for (uint32_t i = 0; i < newLength; i++) {
+        newArray->Set(thread_, i, old->Get(i));
+    }
+
+    return newArray;
+}
+
+JSHandle<TaggedArray> ObjectFactory::ExtendSArray(const JSHandle<TaggedArray> &old, uint32_t length,
+                                                  JSTaggedValue initVal, [[maybe_unused]] ElementsKind kind)
+{
+    ASSERT(length > old->GetLength());
+    NewObjectHook();
+    size_t size = TaggedArray::ComputeSize(JSTaggedValue::TaggedTypeSize(), length);
+    JSHClass *arrayClass = nullptr;
+    // Shared-array does not support Mutantarray yet.
+    ASSERT(!old->GetClass()->IsMutantTaggedArray());
+    arrayClass = JSHClass::Cast(thread_->GlobalConstants()->GetArrayClass().GetTaggedObject());
+
+    TaggedObject *header = sHeap_->AllocateOldOrHugeObject(thread_, arrayClass, size);
+    JSHandle<TaggedArray> newArray(thread_, header);
+    newArray->SetLength(length);
+    newArray->SetExtraLength(old->GetExtraLength());
+
+    uint32_t oldLength = old->GetLength();
+    for (uint32_t i = 0; i < oldLength; i++) {
+        newArray->Set(thread_, i, old->Get(i));
+    }
+    for (uint32_t i = oldLength; i < length; i++) {
+        newArray->Set(thread_, i, initVal);
+    }
+    return newArray;
+}
+
 JSHandle<TaggedArray> ObjectFactory::NewSTaggedArrayWithoutInit(uint32_t length)
 {
     NewSObjectHook();
@@ -526,7 +580,7 @@ JSHandle<JSSymbol> ObjectFactory::NewSPublicSymbolWithChar(std::string_view desc
     return NewSPublicSymbol(JSHandle<JSTaggedValue>(string));
 }
 
-JSHandle<SourceTextModule> ObjectFactory::NewSModule()
+JSHandle<SourceTextModule> ObjectFactory::NewSSourceTextModule()
 {
     NewObjectHook();
     TaggedObject *header = sHeap_->AllocateOldOrHugeObject(thread_,
@@ -558,6 +612,57 @@ JSHandle<SourceTextModule> ObjectFactory::NewSModule()
     obj->SetIsNewBcVersion(false);
     obj->SetRegisterCounts(UINT16_MAX);
     obj->SetSharedType(SharedTypes::UNSENDABLE_MODULE);
+    return obj;
+}
+
+JSHandle<ImportEntry> ObjectFactory::NewSImportEntry(const JSHandle<JSTaggedValue> &moduleRequest,
+                                                     const JSHandle<JSTaggedValue> &importName,
+                                                     const JSHandle<JSTaggedValue> &localName)
+{
+    NewObjectHook();
+    TaggedObject *header = sHeap_->AllocateOldOrHugeObject(thread_,
+        JSHClass::Cast(thread_->GlobalConstants()->GetImportEntryClass().GetTaggedObject()));
+    JSHandle<ImportEntry> obj(thread_, header);
+    obj->SetModuleRequest(thread_, moduleRequest);
+    obj->SetImportName(thread_, importName);
+    obj->SetLocalName(thread_, localName);
+    return obj;
+}
+
+JSHandle<LocalExportEntry> ObjectFactory::NewSLocalExportEntry(const JSHandle<JSTaggedValue> &exportName,
+    const JSHandle<JSTaggedValue> &localName, const uint32_t index)
+{
+    NewObjectHook();
+    TaggedObject *header = sHeap_->AllocateOldOrHugeObject(thread_,
+        JSHClass::Cast(thread_->GlobalConstants()->GetLocalExportEntryClass().GetTaggedObject()));
+    JSHandle<LocalExportEntry> obj(thread_, header);
+    obj->SetExportName(thread_, exportName);
+    obj->SetLocalName(thread_, localName);
+    obj->SetLocalIndex(index);
+    return obj;
+}
+
+JSHandle<IndirectExportEntry> ObjectFactory::NewSIndirectExportEntry(const JSHandle<JSTaggedValue> &exportName,
+                                                                     const JSHandle<JSTaggedValue> &moduleRequest,
+                                                                     const JSHandle<JSTaggedValue> &importName)
+{
+    NewObjectHook();
+    TaggedObject *header = sHeap_->AllocateOldOrHugeObject(thread_,
+        JSHClass::Cast(thread_->GlobalConstants()->GetIndirectExportEntryClass().GetTaggedObject()));
+    JSHandle<IndirectExportEntry> obj(thread_, header);
+    obj->SetExportName(thread_, exportName);
+    obj->SetModuleRequest(thread_, moduleRequest);
+    obj->SetImportName(thread_, importName);
+    return obj;
+}
+
+JSHandle<StarExportEntry> ObjectFactory::NewSStarExportEntry(const JSHandle<JSTaggedValue> &moduleRequest)
+{
+    NewObjectHook();
+    TaggedObject *header = sHeap_->AllocateOldOrHugeObject(thread_,
+        JSHClass::Cast(thread_->GlobalConstants()->GetStarExportEntryClass().GetTaggedObject()));
+    JSHandle<StarExportEntry> obj(thread_, header);
+    obj->SetModuleRequest(thread_, moduleRequest);
     return obj;
 }
 

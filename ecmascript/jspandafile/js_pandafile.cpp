@@ -156,6 +156,9 @@ void JSPandaFile::InitializeUnMergedPF()
             info.classId = index;
             info.isCjs = true;
         }
+        if (!info.isSharedModule && std::strcmp(IS_SHARED_MODULE, desc) == 0) {
+            info.isSharedModule = true;
+        }
         if (!info.hasTopLevelAwait && std::strcmp(HASTLA_CLASS, desc) == 0) {
             info.hasTopLevelAwait = true;
         }
@@ -193,6 +196,8 @@ void JSPandaFile::InitializeMergedPF()
                 info.jsonStringId = fieldAccessor.GetValue<uint32_t>().value();
             } else if (std::strcmp(MODULE_RECORD_IDX, fieldName) == 0) {
                 info.moduleRecordIdx = fieldAccessor.GetValue<int32_t>().value();
+            } else if (std::strcmp(IS_SHARED_MODULE, fieldName) == 0) {
+                info.isSharedModule = fieldAccessor.GetValue<bool>().value();
             } else if (std::strcmp(HAS_TOP_LEVEL_AWAIT, fieldName) == 0) {
                 info.hasTopLevelAwait = fieldAccessor.GetValue<bool>().value();
             } else if (std::strcmp(TYPE_FLAG, fieldName) == 0) {

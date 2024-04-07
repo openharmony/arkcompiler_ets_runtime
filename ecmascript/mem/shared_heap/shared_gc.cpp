@@ -55,6 +55,7 @@ void SharedGC::Mark()
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "SharedGC::Mark");
     TRACE_GC(GCStats::Scope::ScopeId::Mark, sHeap_->GetEcmaGCStats());
     sHeap_->GetSharedGCMarker()->MarkSerializeRoots(MAIN_THREAD_INDEX);
+    sHeap_->GetSharedGCMarker()->MarkSharedModule(MAIN_THREAD_INDEX);
     Runtime::GetInstance()->GCIterateThreadList([&](JSThread *thread) {
         ASSERT(!thread->IsInRunningState());
         auto vm = thread->GetEcmaVM();

@@ -129,7 +129,6 @@ private:
 
     static void ClearPatchInfo(JSThread *thread, const CString &patchFileName);
 
-    static void ReplaceModuleOfMethod(JSThread *thread, const JSPandaFile *baseFile, PatchInfo &patchInfo);
     static Method *GetPatchMethod(JSThread *thread,
         const BaseMethodIndex &methodIndex, const JSTaggedValue baseConstpool);
     static void FindAndReplaceClassLiteral(JSThread *thread, const JSPandaFile *baseFile,

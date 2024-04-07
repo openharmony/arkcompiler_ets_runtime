@@ -94,12 +94,7 @@ void ModuleDeregister::RemoveModule(JSThread *thread, JSHandle<SourceTextModule>
             LOG_FULL(INFO) << "Remove native module " << ConvertToString(moduleRecordName).c_str() << " failed.";
         }
     }
-    JSHandle<NameDictionary> dict(thread, moduleManager->resolvedModules_.GetTaggedObject());
-    int entry = dict->FindEntry(moduleRecordName);
-    LOG_ECMA_IF(entry == -1, FATAL) << "Can not get module: " << ConvertToString(moduleRecordName) <<
-         ", when try to remove the module";
-
-    moduleManager->resolvedModules_  = NameDictionary::Remove(thread, dict, entry).GetTaggedValue();
+    moduleManager->RemoveModuleFromCache(moduleRecordName);
 }
 
 void ModuleDeregister::IncreaseRegisterCounts(JSThread *thread, JSHandle<SourceTextModule> module,
