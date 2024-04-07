@@ -4470,13 +4470,17 @@ JSHandle<JSAPILinkedList> ObjectFactory::NewJSAPILinkedList()
 JSHandle<ImportEntry> ObjectFactory::NewImportEntry()
 {
     JSHandle<JSTaggedValue> defautValue = thread_->GlobalConstants()->GetHandledUndefined();
-    return NewImportEntry(defautValue, defautValue, defautValue);
+    return NewImportEntry(defautValue, defautValue, defautValue, SharedTypes::UNSENDABLE_MODULE);
 }
 
 JSHandle<ImportEntry> ObjectFactory::NewImportEntry(const JSHandle<JSTaggedValue> &moduleRequest,
                                                     const JSHandle<JSTaggedValue> &importName,
-                                                    const JSHandle<JSTaggedValue> &localName)
+                                                    const JSHandle<JSTaggedValue> &localName,
+                                                    SharedTypes sharedTypes)
 {
+    if (sharedTypes == SharedTypes::SHARED_MODULE) {
+        return NewSImportEntry(moduleRequest, importName, localName);
+    }
     NewObjectHook();
     TaggedObject *header = heap_->AllocateYoungOrHugeObject(
         JSHClass::Cast(thread_->GlobalConstants()->GetImportEntryClass().GetTaggedObject()));
@@ -4490,12 +4494,16 @@ JSHandle<ImportEntry> ObjectFactory::NewImportEntry(const JSHandle<JSTaggedValue
 JSHandle<LocalExportEntry> ObjectFactory::NewLocalExportEntry()
 {
     JSHandle<JSTaggedValue> defautValue = thread_->GlobalConstants()->GetHandledUndefined();
-    return NewLocalExportEntry(defautValue, defautValue, LocalExportEntry::LOCAL_DEFAULT_INDEX);
+    return NewLocalExportEntry(defautValue, defautValue, LocalExportEntry::LOCAL_DEFAULT_INDEX,
+                               SharedTypes::UNSENDABLE_MODULE);
 }
 
 JSHandle<LocalExportEntry> ObjectFactory::NewLocalExportEntry(const JSHandle<JSTaggedValue> &exportName,
-    const JSHandle<JSTaggedValue> &localName, const uint32_t index)
+    const JSHandle<JSTaggedValue> &localName, const uint32_t index, SharedTypes sharedTypes)
 {
+    if (sharedTypes == SharedTypes::SHARED_MODULE) {
+        return NewSLocalExportEntry(exportName, localName, index);
+    }
     NewObjectHook();
     TaggedObject *header = heap_->AllocateYoungOrHugeObject(
         JSHClass::Cast(thread_->GlobalConstants()->GetLocalExportEntryClass().GetTaggedObject()));
@@ -4509,13 +4517,17 @@ JSHandle<LocalExportEntry> ObjectFactory::NewLocalExportEntry(const JSHandle<JST
 JSHandle<IndirectExportEntry> ObjectFactory::NewIndirectExportEntry()
 {
     JSHandle<JSTaggedValue> defautValue = thread_->GlobalConstants()->GetHandledUndefined();
-    return NewIndirectExportEntry(defautValue, defautValue, defautValue);
+    return NewIndirectExportEntry(defautValue, defautValue, defautValue, SharedTypes::UNSENDABLE_MODULE);
 }
 
 JSHandle<IndirectExportEntry> ObjectFactory::NewIndirectExportEntry(const JSHandle<JSTaggedValue> &exportName,
                                                                     const JSHandle<JSTaggedValue> &moduleRequest,
-                                                                    const JSHandle<JSTaggedValue> &importName)
+                                                                    const JSHandle<JSTaggedValue> &importName,
+                                                                    SharedTypes sharedTypes)
 {
+    if (sharedTypes == SharedTypes::SHARED_MODULE) {
+        return NewSIndirectExportEntry(exportName, moduleRequest, importName);
+    }
     NewObjectHook();
     TaggedObject *header = heap_->AllocateYoungOrHugeObject(
         JSHClass::Cast(thread_->GlobalConstants()->GetIndirectExportEntryClass().GetTaggedObject()));
@@ -4529,11 +4541,15 @@ JSHandle<IndirectExportEntry> ObjectFactory::NewIndirectExportEntry(const JSHand
 JSHandle<StarExportEntry> ObjectFactory::NewStarExportEntry()
 {
     JSHandle<JSTaggedValue> defautValue = thread_->GlobalConstants()->GetHandledUndefined();
-    return NewStarExportEntry(defautValue);
+    return NewStarExportEntry(defautValue, SharedTypes::UNSENDABLE_MODULE);
 }
 
-JSHandle<StarExportEntry> ObjectFactory::NewStarExportEntry(const JSHandle<JSTaggedValue> &moduleRequest)
+JSHandle<StarExportEntry> ObjectFactory::NewStarExportEntry(const JSHandle<JSTaggedValue> &moduleRequest,
+                                                            SharedTypes sharedTypes)
 {
+    if (sharedTypes == SharedTypes::SHARED_MODULE) {
+        return NewSStarExportEntry(moduleRequest);
+    }
     NewObjectHook();
     TaggedObject *header = heap_->AllocateYoungOrHugeObject(
         JSHClass::Cast(thread_->GlobalConstants()->GetStarExportEntryClass().GetTaggedObject()));

@@ -32,6 +32,7 @@ public:
     void ResetWorkManager(SharedGCWorkManager *workManager);
     void MarkRoots(uint32_t threadId, EcmaVM *localVm);
     void MarkSerializeRoots(uint32_t threadId);
+    void MarkSharedModule(uint32_t threadId);
     void ProcessMarkStack(uint32_t threadId);
     template <typename Callback>
     inline bool VisitBodyInObj(TaggedObject *root, ObjectSlot start, ObjectSlot end, Callback callback);

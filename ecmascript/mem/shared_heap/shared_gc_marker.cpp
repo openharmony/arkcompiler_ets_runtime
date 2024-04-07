@@ -17,6 +17,7 @@
 
 #include "ecmascript/mem/object_xray.h"
 #include "ecmascript/mem/visitor.h"
+#include "ecmascript/module/js_shared_module_manager.h"
 #include "ecmascript/runtime.h"
 
 namespace panda::ecmascript {
@@ -39,6 +40,14 @@ void SharedGCMarker::MarkSerializeRoots(uint32_t threadId)
     auto callback =
         std::bind(&SharedGCMarker::HandleRoots, this, threadId, std::placeholders::_1, std::placeholders::_2);
     Runtime::GetInstance()->IterateSerializeRoot(callback);
+}
+
+void SharedGCMarker::MarkSharedModule(uint32_t threadId)
+{
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "SharedGCMarker::MarkSharedModule");
+    auto visitor = std::bind(&SharedGCMarker::HandleRoots, this, threadId, std::placeholders::_1,
+                             std::placeholders::_2);
+    SharedModuleManager::GetInstance()->Iterate(visitor);
 }
 
 void SharedGCMarker::ProcessMarkStack(uint32_t threadId)

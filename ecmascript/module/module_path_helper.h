@@ -174,6 +174,19 @@ public:
     static CString ConcatNotSoNormalizedOhmurl(const CString &moduleName, const CString &bundleName,
                                                const CString &pkgName, const CString &entryPath,
                                                const CString &version);
+    static inline bool IsSandboxPath(const CString &moduleFileName)
+    {
+        return base::StringHelper::StringStartWith(moduleFileName, ModulePathHelper::BUNDLE_INSTALL_PATH);
+    }
+
+    static inline bool IsRelativeFilePath(const CString &moduleFileName)
+    {
+        const char relativeFilePath[] = "..";
+        return base::StringHelper::StringStartWith(moduleFileName, relativeFilePath);
+    }
+
+    static bool SkipDefaultBundleFile(JSThread *thread, const CString &moduleFileName);
+
     /*
      * Before: data/storage/el1/bundle/moduleName/ets/modules.abc
      * After:  bundle/moduleName

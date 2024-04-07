@@ -295,7 +295,12 @@ Expected<JSTaggedValue, bool> EcmaContext::CommonInvokeEcmaEntrypoint(const JSPa
         if (!jsPandaFile->IsBundlePack()) {
             moduleName = entry;
         }
-        JSHandle<JSTaggedValue> module(moduleManager_->HostGetImportedModule(moduleName));
+        JSHandle<SourceTextModule> module;
+        if (jsPandaFile->IsSharedModule(recordInfo)) {
+            module = SharedModuleManager::GetInstance()->GetSModule(thread_, entry);
+        } else {
+            module = moduleManager_->HostGetImportedModule(moduleName);
+        }
         // esm -> SourceTextModule; cjs or script -> string of recordName
         func->SetModule(thread_, module);
     } else {

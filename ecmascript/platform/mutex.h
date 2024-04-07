@@ -39,10 +39,6 @@ protected:
 
 private:
     pthread_mutex_t mutex_;
-
-    NO_COPY_SEMANTIC(Mutex);
-    NO_MOVE_SEMANTIC(Mutex);
-
     friend class ConditionVariable;
 };
 
@@ -95,9 +91,6 @@ public:
 
 private:
     pthread_cond_t cond_;
-
-    NO_COPY_SEMANTIC(ConditionVariable);
-    NO_MOVE_SEMANTIC(ConditionVariable);
 };
 
 class LockHolder {

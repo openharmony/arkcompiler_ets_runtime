@@ -191,7 +191,7 @@ enum class CompletionRecordType : uint8_t;
 enum class PrimitiveType : uint8_t;
 enum class IterationKind : uint8_t;
 enum class MethodIndex : uint8_t;
-
+enum class SharedTypes : uint8_t;
 using ErrorType = base::ErrorType;
 using base::ErrorType;
 
@@ -657,17 +657,20 @@ public:
     JSHandle<ImportEntry> NewImportEntry();
     JSHandle<ImportEntry> NewImportEntry(const JSHandle<JSTaggedValue> &moduleRequest,
                                          const JSHandle<JSTaggedValue> &importName,
-                                         const JSHandle<JSTaggedValue> &localName);
+                                         const JSHandle<JSTaggedValue> &localName,
+                                         SharedTypes sharedTypes);
     JSHandle<LocalExportEntry> NewLocalExportEntry();
     JSHandle<LocalExportEntry> NewLocalExportEntry(
         const JSHandle<JSTaggedValue> &exportName, const JSHandle<JSTaggedValue> &localName,
-        const uint32_t index = 0);
+        const uint32_t index, SharedTypes sharedTypes);
     JSHandle<IndirectExportEntry> NewIndirectExportEntry();
     JSHandle<IndirectExportEntry> NewIndirectExportEntry(const JSHandle<JSTaggedValue> &exportName,
                                                          const JSHandle<JSTaggedValue> &moduleRequest,
-                                                         const JSHandle<JSTaggedValue> &importName);
+                                                         const JSHandle<JSTaggedValue> &importName,
+                                                         SharedTypes sharedTypes);
     JSHandle<StarExportEntry> NewStarExportEntry();
-    JSHandle<StarExportEntry> NewStarExportEntry(const JSHandle<JSTaggedValue> &moduleRequest);
+    JSHandle<StarExportEntry> NewStarExportEntry(const JSHandle<JSTaggedValue> &moduleRequest,
+                                                 SharedTypes sharedTypes);
     JSHandle<SourceTextModule> NewSourceTextModule();
     JSHandle<ResolvedBinding> NewResolvedBindingRecord();
     JSHandle<ResolvedBinding> NewResolvedBindingRecord(const JSHandle<SourceTextModule> &module,
@@ -727,7 +730,15 @@ public:
 
     JSHandle<JSHClass> NewSEcmaReadOnlyHClass(JSHClass *hclass, uint32_t size, JSType type,
                                              uint32_t inlinedProps = JSHClass::DEFAULT_CAPACITY_OF_IN_OBJECTS);
+
     JSHandle<TaggedArray> SharedEmptyArray() const;
+
+    JSHandle<TaggedArray> CopySArray(const JSHandle<TaggedArray> &old, uint32_t oldLength, uint32_t newLength,
+                                               JSTaggedValue initVal = JSTaggedValue::Hole(),
+                                               ElementsKind kind = ElementsKind::GENERIC);
+
+    JSHandle<TaggedArray> ExtendSArray(const JSHandle<TaggedArray> &old, uint32_t length,
+                                       JSTaggedValue initVal, [[maybe_unused]] ElementsKind kind);
 
     JSHandle<Method> NewSMethodForNativeFunction(const void *func, FunctionKind kind = FunctionKind::NORMAL_FUNCTION,
                                                 kungfu::BuiltinsStubCSigns::ID builtinId =
@@ -775,7 +786,20 @@ public:
 
     JSHandle<AccessorData> NewSAccessorData();
 
-    JSHandle<SourceTextModule> NewSModule();
+    JSHandle<SourceTextModule> NewSSourceTextModule();
+
+    JSHandle<ImportEntry> NewSImportEntry(const JSHandle<JSTaggedValue> &moduleRequest,
+                                         const JSHandle<JSTaggedValue> &importName,
+                                         const JSHandle<JSTaggedValue> &localName);
+
+    JSHandle<LocalExportEntry> NewSLocalExportEntry(const JSHandle<JSTaggedValue> &exportName,
+        const JSHandle<JSTaggedValue> &localName, const uint32_t index);
+
+    JSHandle<IndirectExportEntry> NewSIndirectExportEntry(const JSHandle<JSTaggedValue> &exportName,
+                                                         const JSHandle<JSTaggedValue> &moduleRequest,
+                                                         const JSHandle<JSTaggedValue> &importName);
+
+    JSHandle<StarExportEntry> NewSStarExportEntry(const JSHandle<JSTaggedValue> &moduleRequest);
 
     JSHandle<ResolvedIndexBinding> NewSResolvedIndexBindingRecord();
 

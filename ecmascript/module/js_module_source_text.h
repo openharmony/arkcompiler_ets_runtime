@@ -23,6 +23,7 @@
 #include "ecmascript/tagged_array.h"
 
 namespace panda::ecmascript {
+struct StateVisit;
 enum class ModuleStatus : uint8_t {
     UNINSTANTIATED = 0x01,
     INSTANTIATING,
@@ -66,6 +67,8 @@ public:
     static constexpr uint32_t FIRST_ASYNC_EVALUATING_ORDINAL = 2;
     static constexpr uint32_t NOT_ASYNC_EVALUATED = 0;
     static constexpr uint32_t ASYNC_EVALUATE_DID_FINISH = 1;
+    static constexpr bool SHARED_MODULE_TAG = true;
+
     struct AsyncEvaluatingOrdinalCompare {
         bool operator()(const JSHandle<SourceTextModule> &lhs, const JSHandle<SourceTextModule> &rhs) const
         {
@@ -80,10 +83,15 @@ public:
     // 15.2.1.17 Runtime Semantics: HostResolveImportedModule ( referencingModule, specifier )
     static JSHandle<JSTaggedValue> HostResolveImportedModule(JSThread *thread,
                                                              const JSHandle<SourceTextModule> &module,
-                                                             const JSHandle<JSTaggedValue> &moduleRequest);
+                                                             const JSHandle<JSTaggedValue> &moduleRequest,
+                                                             bool executeFromJob = false);
     static JSHandle<JSTaggedValue> HostResolveImportedModuleWithMerge(JSThread *thread,
                                                                       const JSHandle<SourceTextModule> &module,
-                                                                      const JSHandle<JSTaggedValue> &moduleRequest);
+                                                                      const JSHandle<JSTaggedValue> &moduleRequest,
+                                                                      bool executeFromJob = false);
+
+    static JSHandle<JSTaggedValue> ReplaceModuleThroughFeature(JSThread *thread,
+        const CString &requestName);
 
     // 15.2.1.16.2 GetExportedNames(exportStarSet)
     static CVector<std::string> GetExportedNames(JSThread *thread, const JSHandle<SourceTextModule> &module,
@@ -106,10 +114,13 @@ public:
     static void ModuleDeclarationArrayEnvironmentSetup(JSThread *thread, const JSHandle<SourceTextModule> &module);
 
     // 15.2.1.16.5.1 InnerModuleEvaluation ( module, stack, index )
-    static int InnerModuleEvaluation(JSThread *thread, const JSHandle<ModuleRecord> &moduleRecord,
+    static int InnerModuleEvaluation(JSThread *thread, const JSHandle<SourceTextModule> &moduleRecord,
         CVector<JSHandle<SourceTextModule>> &stack, int index, const void *buffer = nullptr,
         size_t size = 0, bool executeFromJob = false);
 
+    static int InnerModuleEvaluationUnsafe(JSThread *thread,
+        const JSHandle<ModuleRecord> &moduleRecord, CVector<JSHandle<SourceTextModule>> &stack,
+        int index, const void *buffer, size_t size, bool executeFromJob);
     // 15.2.1.16.5.2 ModuleExecution ( module )
     static Expected<JSTaggedValue, bool> ModuleExecution(JSThread *thread, const JSHandle<SourceTextModule> &module,
                                  const void *buffer = nullptr, size_t size = 0, bool executeFromJob = false);
@@ -176,6 +187,25 @@ public:
     {
         return currentModule->GetSharedType() > SharedTypes::UNSENDABLE_MODULE;
     }
+
+    inline static bool IsSharedModule(JSHandle<SourceTextModule> currentModule)
+    {
+        return currentModule->GetSharedType() == SharedTypes::SHARED_MODULE;
+    }
+
+    static bool IsEvaluatedModule(JSThread *thread, StateVisit &stateVisit,
+        const JSHandle<SourceTextModule> &module);
+
+    static bool IsEvaluatingModule(JSThread *thread, StateVisit &stateVisit,
+        const JSHandle<SourceTextModule> &module);
+    static bool IsInstaniatedModule(JSThread *thread, StateVisit &stateVisit,
+        const JSHandle<SourceTextModule> &module);
+
+    static bool WaitModuleEvaluated(JSThread *thread, StateVisit &stateVisit,
+        const JSHandle<SourceTextModule> &module);
+
+    static ModuleStatus GetModuleEvaluatingType(JSThread *thread, StateVisit &stateVisit,
+        const JSHandle<SourceTextModule> &module);
 
     inline static bool IsSendableFunctionModule(JSTaggedValue currentModule)
     {
@@ -270,7 +300,10 @@ public:
                                 int index, const JSHandle<Method> &method);
     static void CheckCircularImportTool(JSThread *thread, const CString &circularModuleRecordName,
                                         CList<CString> &referenceList, bool printOtherCircular = false);
-
+    static std::tuple<bool, JSHandle<SourceTextModule>> GetResolvedModule(JSThread *thread,
+        const JSHandle<SourceTextModule> &module, const JSHandle<JSTaggedValue> &moduleRequest);
+    static std::tuple<bool, JSHandle<SourceTextModule>> GetResolvedModuleWithMerge(JSThread *thread,
+        const JSHandle<SourceTextModule> &module, const JSHandle<JSTaggedValue> &moduleRequest);
 private:
     static void SetExportName(JSThread *thread,
                               const JSHandle<JSTaggedValue> &moduleRequest, const JSHandle<SourceTextModule> &module,
@@ -321,6 +354,8 @@ private:
                                      CString &requiredModuleName, bool printOtherCircular);
     static bool IsCircular(const CList<CString> &referenceList, const CString &requiredModuleName);
     static void PrintCircular(const CList<CString> &referenceList, Level level);
+
+    friend class SharedModuleManager;
 };
 
 class ResolvedBinding final : public Record {

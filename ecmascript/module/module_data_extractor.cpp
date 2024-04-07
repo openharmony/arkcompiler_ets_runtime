@@ -70,7 +70,13 @@ void ModuleDataExtractor::ExtractModuleDatas(JSThread *thread, const JSPandaFile
     ModuleDataAccessor mda(jsPandaFile, moduleId);
     const std::vector<uint32_t> &requestModules = mda.getRequestModules();
     size_t len = requestModules.size();
-    JSHandle<TaggedArray> requestModuleArray = factory->NewTaggedArray(len);
+    JSHandle<TaggedArray> requestModuleArray;
+    if (SourceTextModule::IsSharedModule(moduleRecord)) {
+        requestModuleArray = factory->NewSTaggedArray(len, JSTaggedValue::Hole(), MemSpaceType::SHARED_OLD_SPACE);
+    } else {
+        requestModuleArray = factory->NewTaggedArray(len);
+    }
+
     for (size_t idx = 0; idx < len; idx++) {
         StringData sd = jsPandaFile->GetStringData(panda_file::File::EntityId(requestModules[idx]));
         JSTaggedValue value(factory->GetRawStringFromStringTable(sd));
@@ -98,7 +104,7 @@ JSHandle<JSTaggedValue> ModuleDataExtractor::ParseCjsModule(JSThread *thread, co
 
     JSHandle<JSTaggedValue> defaultName = thread->GlobalConstants()->GetHandledDefaultString();
     JSHandle<LocalExportEntry> localExportEntry = factory->NewLocalExportEntry(defaultName,
-        defaultName, LocalExportEntry::LOCAL_DEFAULT_INDEX);
+        defaultName, LocalExportEntry::LOCAL_DEFAULT_INDEX, SharedTypes::UNSENDABLE_MODULE);
     SourceTextModule::AddLocalExportEntry(thread, moduleRecord, localExportEntry, 0, 1); // 1 means len
     moduleRecord->SetStatus(ModuleStatus::UNINSTANTIATED);
     moduleRecord->SetTypes(ModuleTypes::CJS_MODULE);
@@ -115,7 +121,7 @@ JSHandle<JSTaggedValue> ModuleDataExtractor::ParseJsonModule(JSThread *thread, c
 
     JSHandle<JSTaggedValue> defaultName = thread->GlobalConstants()->GetHandledDefaultString();
     JSHandle<LocalExportEntry> localExportEntry = factory->NewLocalExportEntry(defaultName,
-        defaultName, LocalExportEntry::LOCAL_DEFAULT_INDEX);
+        defaultName, LocalExportEntry::LOCAL_DEFAULT_INDEX, SharedTypes::UNSENDABLE_MODULE);
     SourceTextModule::AddLocalExportEntry(thread, moduleRecord, localExportEntry, 0, 1); // 1 means len
     JSTaggedValue jsonData = JsonParse(thread, jsPandaFile, recordName);
     moduleRecord->StoreModuleValue(thread, 0, JSHandle<JSTaggedValue>(thread, jsonData)); // index = 0
@@ -143,7 +149,7 @@ JSHandle<JSTaggedValue> ModuleDataExtractor::ParseNativeModule(JSThread *thread,
     moduleRecord->SetEcmaModuleFilename(thread, fileName);
     JSHandle<JSTaggedValue> defaultName = thread->GlobalConstants()->GetHandledDefaultString();
     JSHandle<LocalExportEntry> localExportEntry = factory->NewLocalExportEntry(defaultName,
-        defaultName, LocalExportEntry::LOCAL_DEFAULT_INDEX);
+        defaultName, LocalExportEntry::LOCAL_DEFAULT_INDEX, SharedTypes::UNSENDABLE_MODULE);
     SourceTextModule::AddLocalExportEntry(thread, moduleRecord, localExportEntry, 0, 1);
     moduleRecord->SetTypes(moduleType);
     moduleRecord->SetIsNewBcVersion(true);

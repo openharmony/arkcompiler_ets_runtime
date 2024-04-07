@@ -23,6 +23,7 @@
 #include "ecmascript/js_thread.h"
 #include "ecmascript/module/js_module_manager.h"
 #include "ecmascript/module/js_shared_module.h"
+#include "ecmascript/module/js_shared_module_manager.h"
 #include "ecmascript/patch/quick_fix_manager.h"
 #include "ecmascript/tagged_array-inl.h"
 
@@ -301,8 +302,8 @@ JSHandle<JSFunction> LiteralDataExtractor::DefineMethodInLiteral(JSThread *threa
         factory->NewSMethod(jsPandaFile, methodLiteral, constpool, entryIndex, isLoadedAOT, &canFastCall);
     JSHandle<JSHClass> functionClass;
     JSHandle<JSFunction> jsFunc = CreateJSFunctionInLiteral(vm, method, kind, classKind);
-    ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
-    JSHandle<JSTaggedValue> module = moduleManager->GenerateFuncModule(jsPandaFile, entryPoint, classKind);
+    JSHandle<JSTaggedValue> module = SharedModuleManager::GetInstance()->GenerateFuncModule(thread, jsPandaFile,
+                                                                                            entryPoint, classKind);
     jsFunc->SetModule(thread, module.GetTaggedValue());
     jsFunc->SetLength(length);
     return jsFunc;

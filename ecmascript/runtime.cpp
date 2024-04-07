@@ -109,7 +109,6 @@ void Runtime::PostInitialization(const EcmaVM *vm)
     globalConstants_ = mainThread_->GlobalConstants();
     globalEnv_ = vm->GetGlobalEnv().GetTaggedValue();
     SharedHeap::GetInstance()->PostInitialization(globalConstants_, const_cast<EcmaVM*>(vm)->GetJSOptions());
-    // [[todo::DaiHN]] need adding root iterate.
     SharedModuleManager::GetInstance()->Initialize(vm);
 }
 
@@ -120,6 +119,7 @@ void Runtime::DestroyIfLastVm()
         AnFileDataManager::GetInstance()->SafeDestroyAllData();
         MemMapAllocator::GetInstance()->Finalize();
         PGOProfilerManager::GetInstance()->Destroy();
+        SharedModuleManager::GetInstance()->Destroy();
         ASSERT(instance_ != nullptr);
         delete instance_;
         instance_ = nullptr;
