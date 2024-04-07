@@ -900,7 +900,8 @@ JSTaggedValue RuntimeStubs::RuntimeCreateClassWithBuffer(JSThread *thread,
     JSHandle<ClassLiteral> classLiteral(thread, literalObj);
     JSHandle<TaggedArray> arrayHandle(thread, classLiteral->GetArray());
     JSHandle<ClassInfoExtractor> extractor = factory->NewClassInfoExtractor(method);
-    ClassInfoExtractor::BuildClassInfoExtractorFromLiteral(thread, extractor, arrayHandle);
+    auto literalLength = arrayHandle->GetLength();
+    ClassInfoExtractor::BuildClassInfoExtractorFromLiteral(thread, extractor, arrayHandle, literalLength);
 
     if (ShouldUseAOTHClass(ihc, chc, classLiteral)) {
         classLiteral->SetIsAOTUsed(true);
@@ -947,9 +948,10 @@ JSTaggedValue RuntimeStubs::RuntimeCreateSharedClass(JSThread *thread,
     auto literalLength = arrayHandle->GetLength();
     // fieldTypeId is the last element in literal buffer
     auto fieldTypeId = static_cast<uint32_t>(arrayHandle->Get(literalLength - 1).GetInt());
-    arrayHandle->Trim(thread, literalLength - 1);
+    // Don't trim array, because define class maybe called on muilt-time in the same vm or diferrent vm
     JSHandle<ClassInfoExtractor> extractor = factory->NewClassInfoExtractor(method);
-    ClassInfoExtractor::BuildClassInfoExtractorFromLiteral(thread, extractor, arrayHandle);
+    ClassInfoExtractor::BuildClassInfoExtractorFromLiteral(thread, extractor, arrayHandle,
+                                                           literalLength - 1, ClassKind::SENDABLE);
 
     JSHandle<TaggedArray> fieldTypeArray = ConstantPool::GetFieldLiteral(thread, constpoolHandle, fieldTypeId, entry);
     JSHandle<TaggedArray> staticFieldArray = SendableClassDefiner::ExtractStaticFieldTypeArray(thread, fieldTypeArray);
@@ -965,8 +967,10 @@ JSTaggedValue RuntimeStubs::RuntimeCreateSharedClass(JSThread *thread,
 
     uint32_t arrayLength = fieldTypeArray->GetLength();
     auto instanceFieldNums = static_cast<uint32_t>(fieldTypeArray->Get(arrayLength - 1).GetInt());
-    fieldTypeArray->Trim(thread, instanceFieldNums * 2); // 2: key-type
-    SendableClassDefiner::DefineSendableInstanceHClass(thread, fieldTypeArray, cls, base);
+    // Don't trim array, because define class maybe called on muilt-time in the same vm or diferrent vm
+    uint32_t instanceLength = instanceFieldNums * 2;  // 2: key and value
+    ASSERT(instanceLength < arrayLength);
+    SendableClassDefiner::DefineSendableInstanceHClass(thread, fieldTypeArray, instanceLength, cls, base);
     return cls.GetTaggedValue();
 }
 
