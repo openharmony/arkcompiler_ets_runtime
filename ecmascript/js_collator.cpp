@@ -295,11 +295,9 @@ JSHandle<JSCollator> JSCollator::InitializeCollator(JSThread *thread,
     // 28. Set collator.[[IgnorePunctuation]] to ignorePunctuation.
     bool ignorePunctuation = false;
     bool defaultIgnorePunctuation = false;
-    std::string localesString =
-            locales->IsUndefined() ? "" : EcmaStringAccessor(locales.GetTaggedValue()).ToStdString();
-    transform(localesString.begin(), localesString.end(), localesString.begin(), ::tolower);
     // If the ignorePunctuation is not defined, which in "th" locale that is true but false on other locales.
-    if (localesString == "th") {
+    JSHandle<EcmaString> thKey = factory->NewFromUtf8("th");
+    if (JSTaggedValue::Equal(thread, JSHandle<JSTaggedValue>::Cast(thKey), locales)) {
         defaultIgnorePunctuation = true;
     }
     JSLocale::GetOptionOfBool(thread, optionsObject, globalConst->GetHandledIgnorePunctuationString(),
