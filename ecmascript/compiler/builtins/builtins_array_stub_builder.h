@@ -45,6 +45,9 @@ BUILTINS_WITH_ARRAY_STUB_BUILDER(DECLARE_BUILTINS_ARRAY_STUB_BUILDER)
     GateRef NewArray(GateRef glue, GateRef count);
 
     GateRef CalculatePositionWithLength(GateRef position, GateRef length);
+
+    GateRef DoReverse(GateRef glue, GateRef thisValue, GateRef receiver, GateRef receiverState,
+        Variable *result, Label *exit);
 private:
     static constexpr uint32_t MAX_LENGTH_ZERO = 0;
     static constexpr uint32_t MAX_LENGTH_ONE = 1;
