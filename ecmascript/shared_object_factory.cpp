@@ -85,20 +85,6 @@ JSHandle<JSHClass> ObjectFactory::NewSEcmaHClass(uint32_t size, JSType type, uin
                           size, type, inlinedProps);
 }
 
-JSHandle<JSHClass> ObjectFactory::NewSEcmaHClass(uint32_t size, uint32_t inlinedProps, JSType type,
-                                                 const JSHandle<JSTaggedValue> &prototype)
-{
-    NewSObjectHook();
-    uint32_t classSize = JSHClass::SIZE;
-    auto *newClass = static_cast<JSHClass *>(sHeap_->AllocateNonMovableOrHugeObject(thread_,
-        JSHClass::Cast(thread_->GlobalConstants()->GetHClassClass().GetTaggedObject()), classSize));
-    newClass->Initialize(thread_, size, type, inlinedProps, thread_->GlobalConstants()->GetHandledEmptySLayoutInfo());
-    JSHandle<JSHClass> hclass(thread_, newClass);
-    hclass->SetPrototype(thread_, prototype.GetTaggedValue());
-    hclass->SetExtensible(false);
-    return hclass;
-}
-
 JSHandle<JSHClass> ObjectFactory::NewSEcmaHClass(JSHClass *hclass, uint32_t size, JSType type, uint32_t inlinedProps)
 {
     NewSObjectHook();

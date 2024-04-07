@@ -130,6 +130,7 @@
 #include "ecmascript/shared_objects/js_shared_map_iterator.h"
 #include "ecmascript/shared_objects/js_shared_set.h"
 #include "ecmascript/shared_objects/js_shared_set_iterator.h"
+#include "ecmascript/shared_objects/js_shared_typed_array.h"
 #include "ecmascript/symbol_table.h"
 #include "ecmascript/tagged_hash_array.h"
 #include "ecmascript/tagged_list.h"
@@ -1228,6 +1229,26 @@ void ObjectFactory::InitializeJSObject(const JSHandle<JSObject> &obj, const JSHa
             JSTypedArray::Cast(*obj)->SetByteOffset(0);
             JSTypedArray::Cast(*obj)->SetArrayLength(0);
             JSTypedArray::Cast(*obj)->SetContentType(ContentType::None);
+            break;
+        case JSType::JS_SHARED_TYPED_ARRAY:
+        case JSType::JS_SHARED_INT8_ARRAY:
+        case JSType::JS_SHARED_UINT8_ARRAY:
+        case JSType::JS_SHARED_UINT8_CLAMPED_ARRAY:
+        case JSType::JS_SHARED_INT16_ARRAY:
+        case JSType::JS_SHARED_UINT16_ARRAY:
+        case JSType::JS_SHARED_INT32_ARRAY:
+        case JSType::JS_SHARED_UINT32_ARRAY:
+        case JSType::JS_SHARED_FLOAT32_ARRAY:
+        case JSType::JS_SHARED_FLOAT64_ARRAY:
+        case JSType::JS_SHARED_BIGINT64_ARRAY:
+        case JSType::JS_SHARED_BIGUINT64_ARRAY:
+            JSSharedTypedArray::Cast(*obj)->SetViewedArrayBufferOrByteArray(thread_, JSTaggedValue::Undefined());
+            JSSharedTypedArray::Cast(*obj)->SetTypedArrayName(thread_, JSTaggedValue::Undefined());
+            JSSharedTypedArray::Cast(*obj)->SetByteLength(0);
+            JSSharedTypedArray::Cast(*obj)->SetByteOffset(0);
+            JSSharedTypedArray::Cast(*obj)->SetArrayLength(0);
+            JSSharedTypedArray::Cast(*obj)->SetContentType(ContentType::None);
+            JSSharedTypedArray::Cast(*obj)->SetModRecord(0);
             break;
         case JSType::JS_REG_EXP:
             JSRegExp::Cast(*obj)->SetByteCodeBuffer(thread_, JSTaggedValue::Undefined());

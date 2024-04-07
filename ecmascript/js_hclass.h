@@ -201,6 +201,18 @@ struct Reference;
         JS_FLOAT64_ARRAY,       /* ////////////////////////////////////////////////////////////////////////-PADDING */ \
         JS_BIGINT64_ARRAY,      /* ////////////////////////////////////////////////////////////////////////-PADDING */ \
         JS_BIGUINT64_ARRAY,     /* JS_TYPED_ARRAY_LAST //////////////////////////////////////////////////////////// */ \
+        JS_SHARED_TYPED_ARRAY,  /* JS_SHARED_TYPED_ARRAY_FIRST //////////////////////////////////////////////////// */ \
+        JS_SHARED_INT8_ARRAY,  /* /////////////////////////////////////////////////////////////////////////-PADDING */ \
+        JS_SHARED_UINT8_ARRAY, /* /////////////////////////////////////////////////////////////////////////-PADDING */ \
+        JS_SHARED_UINT8_CLAMPED_ARRAY, /* /////////////////////////////////////////////////////////////////-PADDING */ \
+        JS_SHARED_INT16_ARRAY,         /* /////////////////////////////////////////////////////////////////-PADDING */ \
+        JS_SHARED_UINT16_ARRAY,        /* /////////////////////////////////////////////////////////////////-PADDING */ \
+        JS_SHARED_INT32_ARRAY,         /* /////////////////////////////////////////////////////////////////-PADDING */ \
+        JS_SHARED_UINT32_ARRAY,        /* /////////////////////////////////////////////////////////////////-PADDING */ \
+        JS_SHARED_FLOAT32_ARRAY,       /* /////////////////////////////////////////////////////////////////-PADDING */ \
+        JS_SHARED_FLOAT64_ARRAY,       /* /////////////////////////////////////////////////////////////////-PADDING */ \
+        JS_SHARED_BIGINT64_ARRAY,      /* /////////////////////////////////////////////////////////////////-PADDING */ \
+        JS_SHARED_BIGUINT64_ARRAY,     /* JS_SHARED_TYPED_ARRAY_LAST ////////////////////////////////////////////// */ \
         JS_PRIMITIVE_REF, /* number\boolean\string. SPECIAL indexed objects end, DON'T CHANGE HERE ////////-PADDING */ \
         JS_MODULE_NAMESPACE, /* ///////////////////////////////////////////////////////////////////////////-PADDING */ \
         JS_CJS_MODULE, /* /////////////////////////////////////////////////////////////////////////////////-PADDING */ \
@@ -305,6 +317,9 @@ struct Reference;
                                                                                                                        \
         JS_TYPED_ARRAY_FIRST = JS_TYPED_ARRAY, /* /////////////////////////////////////////////////////////-PADDING */ \
         JS_TYPED_ARRAY_LAST = JS_BIGUINT64_ARRAY, /* //////////////////////////////////////////////////////-PADDING */ \
+                                                                                                                       \
+        JS_SHARED_TYPED_ARRAY_FIRST = JS_SHARED_TYPED_ARRAY, /* ///////////////////////////////////////////-PADDING */ \
+        JS_SHARED_TYPED_ARRAY_LAST = JS_SHARED_BIGUINT64_ARRAY, /* ////////////////////////////////////////-PADDING */ \
                                                                                                                        \
         MODULE_RECORD_FIRST = MODULE_RECORD, /* ///////////////////////////////////////////////////////////-PADDING */ \
         MODULE_RECORD_LAST = SOURCE_TEXT_MODULE_RECORD, /* ////////////////////////////////////////////////-PADDING */ \
@@ -703,6 +718,12 @@ public:
         return (JSType::JS_TYPED_ARRAY_FIRST < jsType && jsType <= JSType::JS_TYPED_ARRAY_LAST);
     }
 
+    inline bool IsSharedTypedArray() const
+    {
+        JSType jsType = GetObjectType();
+        return (JSType::JS_SHARED_TYPED_ARRAY_FIRST < jsType && jsType <= JSType::JS_SHARED_TYPED_ARRAY_LAST);
+    }
+
     inline bool HasOrdinaryGet() const
     {
         return (IsSpecialContainer() || IsModuleNamespace() || IsJSBigInt64Array() || IsJSBigUint64Array());
@@ -766,6 +787,66 @@ public:
     inline bool IsJSBigUint64Array() const
     {
         return GetObjectType() == JSType::JS_BIGUINT64_ARRAY;
+    }
+
+    inline bool IsJSSharedTypedArray() const
+    {
+        return GetObjectType() == JSType::JS_SHARED_TYPED_ARRAY;
+    }
+
+    inline bool IsJSSharedInt8Array() const
+    {
+        return GetObjectType() == JSType::JS_SHARED_INT8_ARRAY;
+    }
+
+    inline bool IsJSSharedUint8Array() const
+    {
+        return GetObjectType() == JSType::JS_SHARED_UINT8_ARRAY;
+    }
+
+    inline bool IsJSSharedUint8ClampedArray() const
+    {
+        return GetObjectType() == JSType::JS_SHARED_UINT8_CLAMPED_ARRAY;
+    }
+
+    inline bool IsJSSharedInt16Array() const
+    {
+        return GetObjectType() == JSType::JS_SHARED_INT16_ARRAY;
+    }
+
+    inline bool IsJSSharedUint16Array() const
+    {
+        return GetObjectType() == JSType::JS_SHARED_UINT16_ARRAY;
+    }
+
+    inline bool IsJSSharedInt32Array() const
+    {
+        return GetObjectType() == JSType::JS_SHARED_INT32_ARRAY;
+    }
+
+    inline bool IsJSSharedUint32Array() const
+    {
+        return GetObjectType() == JSType::JS_SHARED_UINT32_ARRAY;
+    }
+
+    inline bool IsJSSharedFloat32Array() const
+    {
+        return GetObjectType() == JSType::JS_SHARED_FLOAT32_ARRAY;
+    }
+
+    inline bool IsJSSharedFloat64Array() const
+    {
+        return GetObjectType() == JSType::JS_SHARED_FLOAT64_ARRAY;
+    }
+
+    inline bool IsJSSharedBigInt64Array() const
+    {
+        return GetObjectType() == JSType::JS_SHARED_BIGINT64_ARRAY;
+    }
+
+    inline bool IsJSSharedBigUint64Array() const
+    {
+        return GetObjectType() == JSType::JS_SHARED_BIGUINT64_ARRAY;
     }
 
     inline bool IsJsGlobalEnv() const

@@ -120,7 +120,7 @@ private:
     bool TryLowerTypedLdObjByNameForBuiltin(GateRef gate);
     bool TryLowerTypedLdObjByNameForBuiltinsId(const LoadBulitinObjTypeInfoAccessor &tacc, BuiltinTypeId type);
     bool TryLowerTypedLdObjByNameForBuiltin(const LoadBulitinObjTypeInfoAccessor &tacc, BuiltinTypeId type);
-    bool TryLowerTypedLdObjByNameForGlobalsId(const LoadBulitinObjTypeInfoAccessor &tacc, ConstantIndex globalsId);
+    bool TryLowerTypedLdObjByNameForGlobalsId(const LoadBulitinObjTypeInfoAccessor &tacc, GlobalIndex globalsId);
     void LowerTypedLdArrayLength(const LoadBulitinObjTypeInfoAccessor &tacc);
     void LowerTypedLdTypedArrayLength(const LoadBulitinObjTypeInfoAccessor &tacc);
     void LowerTypedLdStringLength(const LoadBulitinObjTypeInfoAccessor &tacc);

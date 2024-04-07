@@ -321,12 +321,8 @@ JSTaggedValue ObjectFastOperator::SetPropertyByName(JSThread *thread, JSTaggedVa
         THROW_TYPE_ERROR_AND_RETURN(thread, GET_MESSAGE_STRING(SetPropertyWhenNotExtensible),
                                     JSTaggedValue::Exception());
     }
+    ASSERT(!receiver.IsJSShared());
     PropertyAttributes attr = PropertyAttributes::Default();
-    if (receiver.IsJSShared()) {
-        SharedFieldType trackType = SendableClassDefiner::FromTaggedValue(value);
-        attr.SetSharedFieldType(trackType);
-        attr.SetConfigurable(false);
-    }
     AddPropertyByName(thread, objHandle, keyHandle, valueHandle, attr);
     return JSTaggedValue::Undefined();
 }

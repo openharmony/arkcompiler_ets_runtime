@@ -112,6 +112,7 @@
 #include "ecmascript/shared_objects/js_shared_map_iterator.h"
 #include "ecmascript/shared_objects/js_shared_set.h"
 #include "ecmascript/shared_objects/js_shared_set_iterator.h"
+#include "ecmascript/shared_objects/js_shared_typed_array.h"
 #include "ecmascript/tagged_node.h"
 #include "ecmascript/ts_types/ts_type.h"
 #include "ecmascript/ts_types/ts_type_table.h"
@@ -366,6 +367,20 @@ public:
             case JSType::JS_BIGINT64_ARRAY:
             case JSType::JS_BIGUINT64_ARRAY:
                 JSTypedArray::Cast(object)->VisitRangeSlot<visitType>(visitor);
+                break;
+            case JSType::JS_SHARED_TYPED_ARRAY:
+            case JSType::JS_SHARED_INT8_ARRAY:
+            case JSType::JS_SHARED_UINT8_ARRAY:
+            case JSType::JS_SHARED_UINT8_CLAMPED_ARRAY:
+            case JSType::JS_SHARED_INT16_ARRAY:
+            case JSType::JS_SHARED_UINT16_ARRAY:
+            case JSType::JS_SHARED_INT32_ARRAY:
+            case JSType::JS_SHARED_UINT32_ARRAY:
+            case JSType::JS_SHARED_FLOAT32_ARRAY:
+            case JSType::JS_SHARED_FLOAT64_ARRAY:
+            case JSType::JS_SHARED_BIGINT64_ARRAY:
+            case JSType::JS_SHARED_BIGUINT64_ARRAY:
+                JSSharedTypedArray::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::BYTE_ARRAY:
                 if (visitType == VisitType::ALL_VISIT) {

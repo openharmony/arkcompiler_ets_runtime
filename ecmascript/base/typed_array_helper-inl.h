@@ -77,24 +77,34 @@ DataViewType TypedArrayHelper::GetType(JSType type)
 {
     switch (type) {
         case JSType::JS_INT8_ARRAY:
+        case JSType::JS_SHARED_INT8_ARRAY:
             return DataViewType::INT8;
         case JSType::JS_UINT8_ARRAY:
+        case JSType::JS_SHARED_UINT8_ARRAY:
             return DataViewType::UINT8;
         case JSType::JS_UINT8_CLAMPED_ARRAY:
+        case JSType::JS_SHARED_UINT8_CLAMPED_ARRAY:
             return DataViewType::UINT8_CLAMPED;
         case JSType::JS_INT16_ARRAY:
+        case JSType::JS_SHARED_INT16_ARRAY:
             return DataViewType::INT16;
         case JSType::JS_UINT16_ARRAY:
+        case JSType::JS_SHARED_UINT16_ARRAY:
             return DataViewType::UINT16;
         case JSType::JS_INT32_ARRAY:
+        case JSType::JS_SHARED_INT32_ARRAY:
             return DataViewType::INT32;
         case JSType::JS_UINT32_ARRAY:
+        case JSType::JS_SHARED_UINT32_ARRAY:
             return DataViewType::UINT32;
         case JSType::JS_FLOAT32_ARRAY:
+        case JSType::JS_SHARED_FLOAT32_ARRAY:
             return DataViewType::FLOAT32;
         case JSType::JS_FLOAT64_ARRAY:
+        case JSType::JS_SHARED_FLOAT64_ARRAY:
             return DataViewType::FLOAT64;
         case JSType::JS_BIGINT64_ARRAY:
+        case JSType::JS_SHARED_BIGINT64_ARRAY:
             return DataViewType::BIGINT64;
         default:
             return DataViewType::BIGUINT64;
@@ -113,13 +123,21 @@ uint32_t TypedArrayHelper::GetElementSize(JSType type)
         case JSType::JS_INT8_ARRAY:
         case JSType::JS_UINT8_ARRAY:
         case JSType::JS_UINT8_CLAMPED_ARRAY:
+        case JSType::JS_SHARED_INT8_ARRAY:
+        case JSType::JS_SHARED_UINT8_ARRAY:
+        case JSType::JS_SHARED_UINT8_CLAMPED_ARRAY:
             return ElementSize::ONE;
         case JSType::JS_INT16_ARRAY:
         case JSType::JS_UINT16_ARRAY:
+        case JSType::JS_SHARED_INT16_ARRAY:
+        case JSType::JS_SHARED_UINT16_ARRAY:
             return ElementSize::TWO;
         case JSType::JS_INT32_ARRAY:
         case JSType::JS_UINT32_ARRAY:
         case JSType::JS_FLOAT32_ARRAY:
+        case JSType::JS_SHARED_INT32_ARRAY:
+        case JSType::JS_SHARED_UINT32_ARRAY:
+        case JSType::JS_SHARED_FLOAT32_ARRAY:
             return ElementSize::FOUR;
         default:
             return ElementSize::EIGHT;
@@ -151,8 +169,30 @@ JSHandle<JSTaggedValue> TypedArrayHelper::GetConstructor(JSThread *thread, const
             return env->GetFloat64ArrayFunction();
         case JSType::JS_BIGINT64_ARRAY:
             return env->GetBigInt64ArrayFunction();
-        default:
+        case JSType::JS_BIGUINT64_ARRAY:
             return env->GetBigUint64ArrayFunction();
+        case JSType::JS_SHARED_INT8_ARRAY:
+            return env->GetSharedInt8ArrayFunction();
+        case JSType::JS_SHARED_UINT8_ARRAY:
+            return env->GetSharedUint8ArrayFunction();
+        case JSType::JS_SHARED_UINT8_CLAMPED_ARRAY:
+            return env->GetSharedUint8ClampedArrayFunction();
+        case JSType::JS_SHARED_INT16_ARRAY:
+            return env->GetSharedInt16ArrayFunction();
+        case JSType::JS_SHARED_UINT16_ARRAY:
+            return env->GetSharedUint16ArrayFunction();
+        case JSType::JS_SHARED_INT32_ARRAY:
+            return env->GetSharedInt32ArrayFunction();
+        case JSType::JS_SHARED_UINT32_ARRAY:
+            return env->GetSharedUint32ArrayFunction();
+        case JSType::JS_SHARED_FLOAT32_ARRAY:
+            return env->GetSharedFloat32ArrayFunction();
+        case JSType::JS_SHARED_FLOAT64_ARRAY:
+            return env->GetSharedFloat64ArrayFunction();
+        case JSType::JS_SHARED_BIGINT64_ARRAY:
+            return env->GetSharedBigInt64ArrayFunction();
+        default:
+            return env->GetSharedBigUint64ArrayFunction();
     }
 }
 
@@ -186,6 +226,36 @@ JSHandle<JSFunction> TypedArrayHelper::GetConstructorFromType(JSThread *thread, 
     return JSHandle<JSFunction>(env->GetBigUint64ArrayFunction());
 }
 
+JSHandle<JSFunction> TypedArrayHelper::GetSharedConstructorFromType(JSThread *thread, const DataViewType arrayType)
+{
+    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+    switch (arrayType) {
+        case DataViewType::INT8:
+            return JSHandle<JSFunction>(env->GetSharedInt8ArrayFunction());
+        case DataViewType::UINT8:
+            return JSHandle<JSFunction>(env->GetSharedUint8ArrayFunction());
+        case DataViewType::UINT8_CLAMPED:
+            return JSHandle<JSFunction>(env->GetSharedUint8ClampedArrayFunction());
+        case DataViewType::INT16:
+            return JSHandle<JSFunction>(env->GetSharedInt16ArrayFunction());
+        case DataViewType::UINT16:
+            return JSHandle<JSFunction>(env->GetSharedUint16ArrayFunction());
+        case DataViewType::INT32:
+            return JSHandle<JSFunction>(env->GetSharedInt32ArrayFunction());
+        case DataViewType::UINT32:
+            return JSHandle<JSFunction>(env->GetSharedUint32ArrayFunction());
+        case DataViewType::FLOAT32:
+            return JSHandle<JSFunction>(env->GetSharedFloat32ArrayFunction());
+        case DataViewType::FLOAT64:
+            return JSHandle<JSFunction>(env->GetSharedFloat64ArrayFunction());
+        case DataViewType::BIGINT64:
+            return JSHandle<JSFunction>(env->GetSharedBigInt64ArrayFunction());
+        default:
+            break;
+    }
+    return JSHandle<JSFunction>(env->GetSharedBigUint64ArrayFunction());
+}
+
 JSHandle<JSTaggedValue> TypedArrayHelper::GetConstructorNameFromType(JSThread *thread, const DataViewType arrayType)
 {
     const GlobalEnvConstants *globalConst = thread->GlobalConstants();
@@ -214,6 +284,37 @@ JSHandle<JSTaggedValue> TypedArrayHelper::GetConstructorNameFromType(JSThread *t
             break;
     }
     return globalConst->GetHandledBigInt64ArrayString();
+}
+
+JSHandle<JSTaggedValue> TypedArrayHelper::GetSharedConstructorNameFromType(JSThread *thread,
+    const DataViewType arrayType)
+{
+    const GlobalEnvConstants *globalConst = thread->GlobalConstants();
+    switch (arrayType) {
+        case DataViewType::INT8:
+            return globalConst->GetHandledSharedInt8ArrayString();
+        case DataViewType::UINT8:
+            return globalConst->GetHandledSharedUint8ArrayString();
+        case DataViewType::UINT8_CLAMPED:
+            return globalConst->GetHandledSharedUint8ClampedArrayString();
+        case DataViewType::INT16:
+            return globalConst->GetHandledSharedInt16ArrayString();
+        case DataViewType::UINT16:
+            return globalConst->GetHandledSharedUint16ArrayString();
+        case DataViewType::INT32:
+            return globalConst->GetHandledSharedInt32ArrayString();
+        case DataViewType::UINT32:
+            return globalConst->GetHandledSharedUint32ArrayString();
+        case DataViewType::FLOAT32:
+            return globalConst->GetHandledSharedFloat32ArrayString();
+        case DataViewType::FLOAT64:
+            return globalConst->GetHandledSharedFloat64ArrayString();
+        case DataViewType::BIGINT64:
+            return globalConst->GetHandledSharedBigInt64ArrayString();
+        default:
+            break;
+    }
+    return globalConst->GetHandledSharedBigInt64ArrayString();
 }
 
 JSHandle<JSHClass> TypedArrayHelper::GetOnHeapHclassFromType(

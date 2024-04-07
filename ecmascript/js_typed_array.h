@@ -28,12 +28,14 @@ public:
     static JSTypedArray *Cast(TaggedObject *object)
     {
     #if ECMASCRIPT_ENABLE_CAST_CHECK
-        if (!(JSTaggedValue(object).IsTypedArray() || JSTaggedValue(object).IsJSTypedArray())) {
+        if (!(JSTaggedValue(object).IsTypedArray() || JSTaggedValue(object).IsJSTypedArray() ||
+              JSTaggedValue(object).IsSharedTypedArray() || JSTaggedValue(object).IsJSSharedTypedArray())) {
             LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
         }
     #else
-        ASSERT(JSTaggedValue(object).IsTypedArray() || JSTaggedValue(object).IsJSTypedArray());
+        ASSERT(JSTaggedValue(object).IsTypedArray() || JSTaggedValue(object).IsJSTypedArray() ||
+               JSTaggedValue(object).IsSharedTypedArray() || JSTaggedValue(object).IsJSSharedTypedArray());
     #endif
         return static_cast<JSTypedArray *>(object);
     }

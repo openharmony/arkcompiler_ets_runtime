@@ -1012,6 +1012,71 @@ inline bool JSTaggedValue::IsJSBigUint64Array() const
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSBigUint64Array();
 }
 
+inline bool JSTaggedValue::IsSharedTypedArray() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsSharedTypedArray();
+}
+
+inline bool JSTaggedValue::IsJSSharedTypedArray() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSSharedTypedArray();
+}
+
+inline bool JSTaggedValue::IsJSSharedInt8Array() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSSharedInt8Array();
+}
+
+inline bool JSTaggedValue::IsJSSharedUint8Array() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSSharedUint8Array();
+}
+
+inline bool JSTaggedValue::IsJSSharedUint8ClampedArray() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSSharedUint8ClampedArray();
+}
+
+inline bool JSTaggedValue::IsJSSharedInt16Array() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSSharedInt16Array();
+}
+
+inline bool JSTaggedValue::IsJSSharedUint16Array() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSSharedUint16Array();
+}
+
+inline bool JSTaggedValue::IsJSSharedInt32Array() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSSharedInt32Array();
+}
+
+inline bool JSTaggedValue::IsJSSharedUint32Array() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSSharedUint32Array();
+}
+
+inline bool JSTaggedValue::IsJSSharedFloat32Array() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSSharedFloat32Array();
+}
+
+inline bool JSTaggedValue::IsJSSharedFloat64Array() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSSharedFloat64Array();
+}
+
+inline bool JSTaggedValue::IsJSSharedBigInt64Array() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSSharedBigInt64Array();
+}
+
+inline bool JSTaggedValue::IsJSSharedBigUint64Array() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSSharedBigUint64Array();
+}
+
 inline bool JSTaggedValue::IsJSMap() const
 {
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSMap();
