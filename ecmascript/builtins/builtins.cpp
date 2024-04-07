@@ -3837,6 +3837,11 @@ void Builtins::RegisterSendableContainers(const JSHandle<GlobalEnv> &env) const
         PropertyDescriptor desc(thread_, env->GetSharedArrayFunction(), true, false, true);
         JSObject::DefineOwnProperty(thread_, globalObject, nameString, desc);
     }
+    {
+        JSHandle<JSTaggedValue> nameString(factory_->NewFromUtf8("SendableArrayBuffer"));
+        PropertyDescriptor desc(thread_, env->GetSBuiltininArrayBufferFunction(), true, false, true);
+        JSObject::DefineOwnProperty(thread_, globalObject, nameString, desc);
+    }
 #define REGISTER_BUILTIN_SHARED_TYPED_ARRAY(Type, ctorName, TYPE, bytesPerElement)           \
     {                                                                                        \
         JSHandle<JSTaggedValue> nameString(factory_->NewFromUtf8(#ctorName));                \

@@ -113,6 +113,7 @@
 #include "ecmascript/module/js_module_source_text.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/shared_objects/js_shared_array.h"
+#include "ecmascript/shared_objects/js_sendable_arraybuffer.h"
 #include "ecmascript/shared_objects/js_shared_array_iterator.h"
 #include "ecmascript/shared_objects/js_shared_map.h"
 #include "ecmascript/shared_objects/js_shared_map_iterator.h"
@@ -827,6 +828,11 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
             case JSType::JS_ARRAY_BUFFER: {
                 CHECK_DUMP_FIELDS(JSObject::SIZE, JSArrayBuffer::SIZE, 2U);
                 NEW_OBJECT_AND_DUMP(JSArrayBuffer, JS_ARRAY_BUFFER);
+                break;
+            }
+            case JSType::JS_SENDABLE_ARRAY_BUFFER: {
+                CHECK_DUMP_FIELDS(JSObject::SIZE, JSSendableArrayBuffer::SIZE, 2U);
+                NEW_OBJECT_AND_DUMP(JSSendableArrayBuffer, JS_SENDABLE_ARRAY_BUFFER);
                 break;
             }
             case JSType::JS_PROMISE: {

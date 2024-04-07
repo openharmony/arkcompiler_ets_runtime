@@ -345,6 +345,15 @@ namespace panda::ecmascript {
     V(SharedArrayBuffer, IsView)              \
     V(SharedArrayBuffer, Species)             \
     V(SharedArrayBuffer, GetByteLength)       \
+    V(SendableArrayBuffer, Constructor)       \
+    V(SendableArrayBuffer, Slice)             \
+    V(SendableArrayBuffer, Species)           \
+    V(SendableArrayBuffer, GetByteLength)     \
+    V(SendableArrayBuffer, GetValueFromBuffer)  \
+    V(SendableArrayBuffer, SetValueInBuffer)  \
+    V(SendableArrayBuffer, CloneArrayBuffer)  \
+    V(SendableArrayBuffer, AllocateSendableArrayBuffer) \
+    V(SendableArrayBuffer, IsView)            \
     V(AsyncFromSyncIterator, Next)            \
     V(AsyncFromSyncIterator, Throw)           \
     V(AsyncFromSyncIterator, Return)          \

@@ -95,10 +95,15 @@ public:
 private:
     static JSTaggedValue CreateFromOrdinaryObject(EcmaRuntimeCallInfo *argv, const JSHandle<JSObject> &obj,
                                                   const DataViewType arrayType);
+    static JSTaggedValue CreateFromSendableOrdinaryObject(EcmaRuntimeCallInfo *argv, const JSHandle<JSObject> &obj,
+                                                          const DataViewType arrayType);
     static JSTaggedValue CreateFromTypedArray(EcmaRuntimeCallInfo *argv, const JSHandle<JSObject> &obj,
                                               const DataViewType arrayType);
     static JSTaggedValue CreateFromArrayBuffer(EcmaRuntimeCallInfo *argv, const JSHandle<JSObject> &obj,
                                                const DataViewType arrayType);
+    static JSTaggedValue CreateFromSendableArrayBuffer(EcmaRuntimeCallInfo *argv,
+                                                       const JSHandle<JSObject> &obj,
+                                                       const DataViewType arrayType);
     static JSHandle<JSObject> AllocateTypedArrayBuffer(JSThread *thread, const JSHandle<JSObject> &obj,
                                                        uint64_t length, const DataViewType arrayType);
     static JSHandle<JSObject> AllocateSharedTypedArrayBuffer(JSThread *thread, const JSHandle<JSObject> &obj,

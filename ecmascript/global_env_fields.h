@@ -226,6 +226,7 @@
     V(JSTaggedValue, SObjectFunctionPrototype, SHARED_OBJECT_FUNCTION_PROTOTYPE_INDEX)                           \
     V(JSTaggedValue, SFunctionFunction, SHARED_FUNCTION_FUNCTION_INDEX)                                          \
     V(JSTaggedValue, SFunctionPrototype, SHARED_FUNCTION_PROTOTYPE_INDEX)                                        \
+    V(JSTaggedValue, SBuiltininArrayBufferFunction, SENDABLE_BUILTIN_ARRAY_BUFFER_FUNCTION_INDEX)                \
     V(JSTaggedValue, SBuiltininSetFunction, SHARED_BUILTIN_SET_FUNCTION_INDEX)                                   \
     V(JSTaggedValue, SBuiltininMapFunction, SHARED_BUILTIN_MAP_FUNCTION_INDEX)                                   \
     V(JSTaggedValue, SConstructorClass, SHARED_CONSTRUCTOR_CLASS_INDEX)                                          \
@@ -248,6 +249,7 @@
     V(JSTaggedValue, UnscopablesSymbol, UNSCOPABLES_SYMBOL_INDEX)                                                \
     V(JSTaggedValue, NativeBindingSymbol, NATIVE_BINDING_SYMBOL_INDEX)                                           \
     V(JSTaggedValue, HasInstanceSymbol, HASINSTANCE_SYMBOL_INDEX)                                                \
+    V(JSTaggedValue, SendableArrayBufferPrototype, SENDABLE_ARRAY_BUFFER_PROTOTYPE_INDEX)                        \
     V(JSTaggedValue, SharedArrayFunction, SHARED_ARRAY_FUNCTION_INDEX)                                           \
     V(JSTaggedValue, SharedArrayPrototype, SHARED_ARRAY_PROTOTYPE_INDEX)                                         \
     V(JSTaggedValue, SharedMapPrototype,  SHARED_MAP_PROTOTYPE_INDEX)                                            \
@@ -284,7 +286,7 @@
 
 namespace panda::ecmascript {
 #define GLOBAL_ENV_FIELD_ENUM_ITEM(Type, Name, INDEX) INDEX,
-    enum class GlobalEnvField: uint8_t {
+    enum class GlobalEnvField: uint16_t {
         GLOBAL_ENV_FIELDS(GLOBAL_ENV_FIELD_ENUM_ITEM)
         FINAL_INDEX
     };

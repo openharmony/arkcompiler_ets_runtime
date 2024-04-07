@@ -74,6 +74,7 @@ class JSGeneratorObject;
 class CompletionRecord;
 class GeneratorContext;
 class JSArrayBuffer;
+class JSSendableArrayBuffer;
 class JSDataView;
 class JSPromise;
 class JSPromiseReactionsFunction;
@@ -497,6 +498,7 @@ public:
                                         bool canShareHClass);
 
     void NewJSArrayBufferData(const JSHandle<JSArrayBuffer> &array, int32_t length);
+    void NewJSSendableArrayBufferData(const JSHandle<JSSendableArrayBuffer> &array, int32_t length);
 
     JSHandle<JSArrayBuffer> NewJSArrayBuffer(int32_t length);
 
