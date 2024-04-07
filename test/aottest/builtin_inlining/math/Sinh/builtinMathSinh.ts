@@ -23,24 +23,30 @@ let len:number = 1;
 
 // Check without params
 len = Math.sinh();
+//aot: [trace] aot inline builtin: Math.sinh, caller function name:func_main_0@builtinMathSinh
 print(len); //: NaN
 
 len = Math.sinh(NaN);
+//aot: [trace] aot inline builtin: Math.sinh, caller function name:func_main_0@builtinMathSinh
 print(len); //: NaN
 
 // Check with single param
 len = Math.sinh(0);
+//aot: [trace] aot inline builtin: Math.sinh, caller function name:func_main_0@builtinMathSinh
 print(len); //: 0
 
 // Check with single param
 len = Math.sinh(-1);
+//aot: [trace] aot inline builtin: Math.sinh, caller function name:func_main_0@builtinMathSinh
 print(len); //: -1.1752011936438014
 
 // Check with single param
 len = Math.sinh(1);
+//aot: [trace] aot inline builtin: Math.sinh, caller function name:func_main_0@builtinMathSinh
 print(len); //: 1.1752011936438014
 
 // Check with single param
+//aot: [trace] aot inline builtin: Math.sinh, caller function name:func_main_0@builtinMathSinh
 len = Math.sinh(10);
 print(len); //: 11013.232874703393
 
@@ -52,6 +58,7 @@ print(len); //: 111
 
 // Call standart builtin with non-number param
 Math.sinh = true_sinh
+//aot: [trace] aot inline builtin: Math.sinh, caller function name:func_main_0@builtinMathSinh
 //aot: [trace] Check Type: NotNumber1
 len = Math.sinh("NaN"); // deopt
 print(len); //: NaN
