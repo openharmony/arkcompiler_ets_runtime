@@ -159,8 +159,6 @@ bool HeapProfiler::DumpHeapSnapshot(DumpFormat dumpFormat, Stream *stream, Progr
             [[maybe_unused]] bool heapClean = ForceFullGC(vm_);
             ASSERT(heapClean);
         }
-        SuspendAllScope suspendScope(vm_->GetAssociatedJSThread());
-        ForceSharedGC();
         LOG_ECMA(INFO) << "HeapProfiler DumpSnapshot start";
         if (isFullGC) {
             size_t heapSize = vm_->GetHeap()->GetLiveObjectSize();
