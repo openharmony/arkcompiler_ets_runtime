@@ -294,6 +294,17 @@ class ObjectFactory;
     V(Float64ArrayString,             FLOAT64_ARRAY_STRING_INDEX,            "Float64Array")                \
     V(BigInt64ArrayString,            BIGINT64_ARRAY_STRING_INDEX,           "BigInt64Array")               \
     V(BigUint64ArrayString,           BIGUINT64_ARRAY_STRING_INDEX,          "BigUint64Array")              \
+    V(SharedInt8ArrayString,          SHARED_INT8_ARRAY_STRING_INDEX,        "SharedInt8Array")             \
+    V(SharedUint8ArrayString,         SHARED_UINT8_ARRAY_STRING_INDEX,       "SharedUint8Array")            \
+    V(SharedUint8ClampedArrayString,  SHARED_UINT8_CLAMPED_ARRAY_STRING_INDEX, "SharedUint8ClampedArray")   \
+    V(SharedInt16ArrayString,         SHARED_INT16_ARRAY_STRING_INDEX,       "SharedInt16Array")            \
+    V(SharedUint16ArrayString,        SHARED_UINT16_ARRAY_STRING_INDEX,      "SharedUint16Array")           \
+    V(SharedInt32ArrayString,         SHARED_INT32_ARRAY_STRING_INDEX,       "SharedInt32Array")            \
+    V(SharedUint32ArrayString,        SHARED_UINT32_ARRAY_STRING_INDEX,      "SharedUint32Array")           \
+    V(SharedFloat32ArrayString,       SHARED_FLOAT32_ARRAY_STRING_INDEX,     "SharedFloat32Array")          \
+    V(SharedFloat64ArrayString,       SHARED_FLOAT64_ARRAY_STRING_INDEX,     "SharedFloat64Array")          \
+    V(SharedBigInt64ArrayString,      SHARED_BIGINT64_ARRAY_STRING_INDEX,    "SharedBigInt64Array")         \
+    V(SharedBigUint64ArrayString,     SHARED_BIGUINT64_ARRAY_STRING_INDEX,   "SharedBigUint64Array")        \
     V(AsyncFunctionString,            ASYNC_FUNCTION_STRING_INDEX,           "AsyncFunction")               \
     V(PromiseResolveString,           PROMISE_RESOLVE_STRING_INDEX,          "resolve")                     \
     V(IdString,                       ID_STRING_INDEX,                       "id")                          \

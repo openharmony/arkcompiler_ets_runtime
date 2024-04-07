@@ -115,6 +115,7 @@
 #include "ecmascript/shared_objects/js_shared_map_iterator.h"
 #include "ecmascript/shared_objects/js_shared_set.h"
 #include "ecmascript/shared_objects/js_shared_set_iterator.h"
+#include "ecmascript/shared_objects/js_shared_typed_array.h"
 #include "ecmascript/tagged_array.h"
 #include "ecmascript/tagged_dictionary.h"
 #include "ecmascript/tagged_hash_array.h"
@@ -257,6 +258,30 @@ CString JSHClass::DumpJSType(JSType type)
             return "BigInt64 Array";
         case JSType::JS_BIGUINT64_ARRAY:
             return "BigUint64 Array";
+        case JSType::JS_SHARED_TYPED_ARRAY:
+            return "Shared Typed Array";
+        case JSType::JS_SHARED_INT8_ARRAY:
+            return "Shared Int8 Array";
+        case JSType::JS_SHARED_UINT8_ARRAY:
+            return "Shared Uint8 Array";
+        case JSType::JS_SHARED_UINT8_CLAMPED_ARRAY:
+            return "Shared Uint8 Clamped Array";
+        case JSType::JS_SHARED_INT16_ARRAY:
+            return "Shared Int16 Array";
+        case JSType::JS_SHARED_UINT16_ARRAY:
+            return "Shared Uint16 Array";
+        case JSType::JS_SHARED_INT32_ARRAY:
+            return "Shared Int32 Array";
+        case JSType::JS_SHARED_UINT32_ARRAY:
+            return "Shared Uint32 Array";
+        case JSType::JS_SHARED_FLOAT32_ARRAY:
+            return "Shared Float32 Array";
+        case JSType::JS_SHARED_FLOAT64_ARRAY:
+            return "Shared Float64 Array";
+        case JSType::JS_SHARED_BIGINT64_ARRAY:
+            return "Shared BigInt64 Array";
+        case JSType::JS_SHARED_BIGUINT64_ARRAY:
+            return "Shared BigUint64 Array";
         case JSType::BYTE_ARRAY:
             return "ByteArray";
         case JSType::JS_ARGUMENTS:
@@ -2544,6 +2569,18 @@ void JSStringIterator::Dump(std::ostream &os) const
     JSObject::Dump(os);
 }
 void JSTypedArray::Dump(std::ostream &os) const
+{
+    os << " - viewed-array-buffer: ";
+    GetViewedArrayBufferOrByteArray().Dump(os);
+    os << " - typed-array-name: ";
+    GetTypedArrayName().Dump(os);
+    os << " - byte-length: " << GetByteLength();
+    os << " - byte-offset: " << GetByteOffset();
+    os << " - array-length: " << GetArrayLength();
+    JSObject::Dump(os);
+}
+
+void JSSharedTypedArray::Dump(std::ostream &os) const
 {
     os << " - viewed-array-buffer: ";
     GetViewedArrayBufferOrByteArray().Dump(os);

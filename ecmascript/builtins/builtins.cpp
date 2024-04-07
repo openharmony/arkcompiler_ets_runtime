@@ -51,6 +51,7 @@
 #include "ecmascript/builtins/builtins_regexp.h"
 #include "ecmascript/builtins/builtins_set.h"
 #include "ecmascript/builtins/builtins_sharedarraybuffer.h"
+#include "ecmascript/builtins/builtins_shared_typedarray.h"
 #include "ecmascript/builtins/builtins_string.h"
 #include "ecmascript/builtins/builtins_string_iterator.h"
 #include "ecmascript/builtins/builtins_symbol.h"
@@ -3831,5 +3832,12 @@ void Builtins::RegisterSendableContainers(const JSHandle<GlobalEnv> &env) const
         PropertyDescriptor desc(thread_, env->GetSharedArrayFunction(), true, false, true);
         JSObject::DefineOwnProperty(thread_, globalObject, nameString, desc);
     }
+#define REGISTER_BUILTIN_SHARED_TYPED_ARRAY(Type, ctorName, TYPE, bytesPerElement)           \
+    {                                                                                        \
+        JSHandle<JSTaggedValue> nameString(factory_->NewFromUtf8(#ctorName));                \
+        PropertyDescriptor desc(thread_, env->Get##ctorName##Function(), true, false, true); \
+        JSObject::DefineOwnProperty(thread_, globalObject, nameString, desc);                \
+    }
+    BUILTIN_SHARED_TYPED_ARRAY_TYPES(REGISTER_BUILTIN_SHARED_TYPED_ARRAY)
 }
 }  // namespace panda::ecmascript
