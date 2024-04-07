@@ -113,6 +113,8 @@ private:
 
     void LowerTypedTryLdGlobalByName(GateRef gate);
 
+    void LowerTypedStPrivateProperty(GateRef gate);
+    void LowerTypedLdPrivateProperty(GateRef gate);
     void LowerTypedLdObjByName(GateRef gate);
     void LowerTypedStObjByName(GateRef gate);
     void LowerTypedStOwnByName(GateRef gate);

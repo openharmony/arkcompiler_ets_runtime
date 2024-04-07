@@ -257,6 +257,16 @@ JSTaggedValue LoadICRuntime::LoadMiss(JSHandle<JSTaggedValue> receiver, JSHandle
         }
     }
 
+    if (key->IsJSFunction()) { // key is a private getter
+        JSHandle<JSTaggedValue> undefined = thread_->GlobalConstants()->GetHandledUndefined();
+        EcmaRuntimeCallInfo* info =
+            EcmaInterpreter::NewRuntimeCallInfo(thread_, key, receiver, undefined, 0); // 0: getter has 0 argument
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
+        JSTaggedValue resGetter = JSFunction::Call(info);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
+        return resGetter;
+    }
+
     ObjectOperator op(GetThread(), receiver, key);
     auto result = JSHandle<JSTaggedValue>(thread_, JSObject::GetProperty(GetThread(), &op));
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
@@ -359,6 +369,17 @@ JSTaggedValue StoreICRuntime::StoreMiss(JSHandle<JSTaggedValue> receiver, JSHand
             return JSTaggedValue::Undefined();
         }
         return JSTaggedValue::Exception();
+    }
+
+    if (key->IsJSFunction()) { // key is a private setter
+        JSHandle<JSTaggedValue> undefined = thread_->GlobalConstants()->GetHandledUndefined();
+        EcmaRuntimeCallInfo* info =
+            EcmaInterpreter::NewRuntimeCallInfo(thread_, key, receiver, undefined, 1); // 1: setter has 1 argument
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
+        info->SetCallArg(value.GetTaggedValue());
+        JSTaggedValue resSetter = JSFunction::Call(info);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
+        return resSetter;
     }
 
     ObjectOperator op = ConstructOp(receiver, key, value, isOwn);

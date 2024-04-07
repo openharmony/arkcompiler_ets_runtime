@@ -1006,4 +1006,48 @@ GateRef CircuitBuilder::LoadBuiltinObject(size_t offset)
     return ret;
 }
 
+GateRef CircuitBuilder::GetKeyFromLexivalEnv(GateRef lexicalEnv, GateRef levelIndex, GateRef slotIndex)
+{
+    Label entry(env_);
+    SubCfgEntry(&entry);
+    Label exit(env_);
+    Label loopHead(env_);
+    Label loopEnd(env_);
+    Label afterLoop(env_);
+
+    DEFVALUE(result, env_, VariableType::JS_ANY(), Hole());
+    DEFVALUE(currentEnv, env_, VariableType::JS_ANY(), lexicalEnv);
+    DEFVALUE(i, env_, VariableType::INT32(), Int32(0));
+
+    Branch(Int32LessThan(*i, levelIndex), &loopHead, &afterLoop);
+    LoopBegin(&loopHead);
+    {
+        currentEnv = GetParentEnv(*currentEnv);
+        i = Int32Add(*i, Int32(1));
+        Branch(Int32LessThan(*i, levelIndex), &loopEnd, &afterLoop);
+        Bind(&loopEnd);
+        LoopEnd(&loopHead);
+    }
+    Bind(&afterLoop);
+    {
+        result = GetPropertiesFromLexicalEnv(*currentEnv, slotIndex);
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *result;
+    SubCfgExit();
+    return ret;
+}
+
+GateRef CircuitBuilder::GetParentEnv(GateRef object)
+{
+    GateRef index = Int32(LexicalEnv::PARENT_ENV_INDEX);
+    return GetValueFromTaggedArray(object, index);
+}
+
+GateRef CircuitBuilder::GetPropertiesFromLexicalEnv(GateRef object, GateRef index)
+{
+    GateRef valueIndex = Int32Add(index, Int32(LexicalEnv::RESERVED_ENV_LENGTH));
+    return GetValueFromTaggedArray(object, valueIndex);
+}
 }  // namespace panda::ecmascript::kungfu

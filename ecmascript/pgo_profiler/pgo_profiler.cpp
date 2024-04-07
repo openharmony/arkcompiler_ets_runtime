@@ -548,7 +548,8 @@ void PGOProfiler::ProfileBytecode(ApEntityId abcId, const CString &recordName, J
         auto pc = bcIns.GetAddress();
         switch (opcode) {
             case EcmaOpcode::LDTHISBYNAME_IMM8_ID16:
-            case EcmaOpcode::LDOBJBYNAME_IMM8_ID16: {
+            case EcmaOpcode::LDOBJBYNAME_IMM8_ID16:
+            case EcmaOpcode::LDPRIVATEPROPERTY_IMM8_IMM16_IMM16: {
                 uint8_t slotId = READ_INST_8_0();
                 CHECK_SLOTID_BREAK(slotId);
                 DumpICByName(abcId, recordName, methodId, bcOffset, slotId, profileTypeInfo, BCType::LOAD);
@@ -574,7 +575,8 @@ void PGOProfiler::ProfileBytecode(ApEntityId abcId, const CString &recordName, J
                 break;
             }
             case EcmaOpcode::STOBJBYNAME_IMM8_ID16_V8:
-            case EcmaOpcode::STTHISBYNAME_IMM8_ID16: {
+            case EcmaOpcode::STTHISBYNAME_IMM8_ID16:
+            case EcmaOpcode::STPRIVATEPROPERTY_IMM8_IMM16_IMM16_V8: {
                 uint8_t slotId = READ_INST_8_0();
                 CHECK_SLOTID_BREAK(slotId);
                 DumpICByName(abcId, recordName, methodId, bcOffset, slotId, profileTypeInfo, BCType::STORE);

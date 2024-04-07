@@ -794,6 +794,127 @@ protected:
     ChunkVector<ObjectAccessInfo> checkerInfos_;
 };
 
+class LoadPrivatePropertyTypeInfoAccessor final : public ObjAccByNameTypeInfoAccessor {
+public:
+    LoadPrivatePropertyTypeInfoAccessor(const CompilationEnv *env, Circuit* circuit, GateRef gate, Chunk* chunk)
+        : ObjAccByNameTypeInfoAccessor(env, circuit, gate, chunk, AccessMode::STORE), types_(chunk_)
+    {
+        levelIndex_ = acc_.GetValueIn(gate, 1); // 1: levelIndex
+        slotIndex_ = acc_.GetValueIn(gate, 2); // 2: slotIndex
+        lexicalEnv_ = acc_.GetValueIn(gate, 3); // 3: lexicalEnv
+        receiver_ = acc_.GetValueIn(gate, 4); // 4: acc as receiver
+        FetchPGORWTypesDual();
+        hasIllegalType_ = !GenerateObjectAccessInfo();
+    }
+    NO_COPY_SEMANTIC(LoadPrivatePropertyTypeInfoAccessor);
+    NO_MOVE_SEMANTIC(LoadPrivatePropertyTypeInfoAccessor);
+
+    bool IsMono() const
+    {
+        return types_.size() == 1;
+    }
+
+    bool TypesIsEmpty() const
+    {
+        return types_.size() == 0;
+    }
+
+    GateRef GetLevelIndex() const
+    {
+        return levelIndex_;
+    }
+
+    GateRef GetSlotIndex() const
+    {
+        return slotIndex_;
+    }
+
+    GateRef GetLexicalEnv() const
+    {
+        return lexicalEnv_;
+    }
+
+    bool IsAccessor() const
+    {
+        return isAccessor_;
+    }
+
+private:
+    void FetchPGORWTypesDual();
+    bool GenerateObjectAccessInfo();
+    JSTaggedValue GetKeyTaggedValue() const;
+
+    ChunkVector<std::pair<ProfileTyper, ProfileTyper>> types_;
+    GateRef levelIndex_;
+    GateRef slotIndex_;
+    GateRef lexicalEnv_;
+    bool isAccessor_ {false};
+};
+
+class StorePrivatePropertyTypeInfoAccessor final : public ObjAccByNameTypeInfoAccessor {
+public:
+    StorePrivatePropertyTypeInfoAccessor(const CompilationEnv *env, Circuit* circuit, GateRef gate, Chunk* chunk)
+        : ObjAccByNameTypeInfoAccessor(env, circuit, gate, chunk, AccessMode::STORE), types_(chunk_)
+    {
+        levelIndex_ = acc_.GetValueIn(gate, 1); // 1: levelIndex
+        slotIndex_ = acc_.GetValueIn(gate, 2); // 2: slotIndex
+        receiver_ = acc_.GetValueIn(gate, 3); // 3: receiver
+        lexicalEnv_ = acc_.GetValueIn(gate, 4); // 4: lexicalEnv
+        value_ = acc_.GetValueIn(gate, 5); // 5: acc as value
+        FetchPGORWTypesDual();
+        hasIllegalType_ = !GenerateObjectAccessInfo();
+    }
+    NO_COPY_SEMANTIC(StorePrivatePropertyTypeInfoAccessor);
+    NO_MOVE_SEMANTIC(StorePrivatePropertyTypeInfoAccessor);
+
+    bool IsMono() const
+    {
+        return types_.size() == 1;
+    }
+
+    bool TypesIsEmpty() const
+    {
+        return types_.size() == 0;
+    }
+
+    GateRef GetValue() const
+    {
+        return value_;
+    }
+
+    GateRef GetLevelIndex() const
+    {
+        return levelIndex_;
+    }
+
+    GateRef GetSlotIndex() const
+    {
+        return slotIndex_;
+    }
+
+    GateRef GetLexicalEnv() const
+    {
+        return lexicalEnv_;
+    }
+
+    bool IsAccessor() const
+    {
+        return isAccessor_;
+    }
+
+private:
+    void FetchPGORWTypesDual();
+    bool GenerateObjectAccessInfo();
+    JSTaggedValue GetKeyTaggedValue() const;
+
+    ChunkVector<std::tuple<ProfileTyper, ProfileTyper, ProfileTyper>> types_;
+    GateRef value_;
+    GateRef levelIndex_;
+    GateRef slotIndex_;
+    GateRef lexicalEnv_;
+    bool isAccessor_ {false};
+};
+
 class LoadObjByNameTypeInfoAccessor final : public ObjAccByNameTypeInfoAccessor {
 public:
     LoadObjByNameTypeInfoAccessor(const CompilationEnv *env,

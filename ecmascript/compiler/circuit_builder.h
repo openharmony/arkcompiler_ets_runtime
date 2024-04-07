@@ -398,8 +398,14 @@ public:
     inline GateRef GetMethodId(GateRef func);
     inline GateRef GetBuiltinsId(GateRef func);
     inline GateRef IsAOTLiteralInfo(GateRef x);
+    GateRef GetKeyFromLexivalEnv(GateRef lexicalEnv, GateRef levelIndex, GateRef slotIndex);
+    GateRef GetParentEnv(GateRef object);
+    GateRef GetPropertiesFromLexicalEnv(GateRef object, GateRef index);
 
     // call operation
+    GateRef CallPrivateGetter(GateRef hirGate, GateRef receiver, GateRef accessor, const char* comment = nullptr);
+    GateRef CallPrivateSetter(
+        GateRef hirGate, GateRef receiver, GateRef accessor, GateRef value, const char* comment = nullptr);
     GateRef CallGetter(GateRef hirGate, GateRef receiver, GateRef holder,
         GateRef propertyLookupResult, const char* comment = nullptr);
     GateRef CallSetter(GateRef hirGate, GateRef receiver, GateRef holder, GateRef propertyLookupResult,

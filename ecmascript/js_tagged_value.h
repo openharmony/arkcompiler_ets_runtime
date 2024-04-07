@@ -709,6 +709,11 @@ public:
     void D() const DUMP_API_ATTR;
     void DumpForSnapshot(std::vector<Reference> &vec, bool isVmMode = true) const;
     static void DV(JSTaggedType val) DUMP_API_ATTR;
+    friend std::ostream& operator<<(std::ostream& os, const JSTaggedValue& value)
+    {
+        value.Dump(os);
+        return os;
+    }
 
 private:
     JSTaggedType value_;

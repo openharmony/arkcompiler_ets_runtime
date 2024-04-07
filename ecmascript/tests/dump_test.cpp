@@ -1014,7 +1014,7 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 break;
             }
             case JSType::SYMBOL: {
-                CHECK_DUMP_FIELDS(TaggedObject::TaggedObjectSize(), JSSymbol::SIZE, 2U);
+                CHECK_DUMP_FIELDS(TaggedObject::TaggedObjectSize(), JSSymbol::SIZE, 3U);
                 JSHandle<JSSymbol> symbol = factory->NewJSSymbol();
                 DUMP_FOR_HANDLE(symbol);
                 break;

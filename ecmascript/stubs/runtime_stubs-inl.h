@@ -3025,10 +3025,12 @@ JSTaggedValue RuntimeStubs::RuntimeDefineField(JSThread *thread, JSTaggedValue o
 JSTaggedValue RuntimeStubs::RuntimeCreatePrivateProperty(JSThread *thread, JSTaggedValue lexicalEnv,
     uint32_t count, JSTaggedValue constpool, uint32_t literalId, JSTaggedValue module)
 {
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    ObjectFactory* factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<LexicalEnv> handleLexicalEnv(thread, lexicalEnv);
     JSHandle<ConstantPool> handleConstpool(thread, constpool);
     JSHandle<JSTaggedValue> handleModule(thread, module);
+    JSHandle<ConstantPool> unsharedConstpoolHandle(
+        thread, thread->GetCurrentEcmaContext()->FindOrCreateUnsharedConstpool(constpool));
     CString entry = ModuleManager::GetRecordName(handleModule.GetTaggedValue());
     uint32_t length = handleLexicalEnv->GetLength() - LexicalEnv::RESERVED_ENV_LENGTH;
     uint32_t startIndex = 0;
@@ -3036,17 +3038,27 @@ JSTaggedValue RuntimeStubs::RuntimeCreatePrivateProperty(JSThread *thread, JSTag
         startIndex++;
     }
 
+    JSTaggedValue aotSymbolInfo = unsharedConstpoolHandle->GetAotSymbolInfo();
+    JSHandle<TaggedArray> aotSymbolInfoHandle(thread, aotSymbolInfo);
+    FrameHandler frameHandler(thread);
+    uint32_t abcId = frameHandler.GetAbcId();
     ASSERT(startIndex + count <= length);
     for (uint32_t i = 0; i < count; i++) {
-        JSHandle<JSSymbol> symbol = factory->NewJSSymbol();
-        handleLexicalEnv->SetProperties(thread, startIndex + i, symbol.GetTaggedValue());
+        auto index = startIndex + i;
+        uint64_t id = JSSymbol::GeneratePrivateId(abcId, literalId, index);
+        JSHandle<JSSymbol> symbolHandle;
+        JSTaggedValue symbol = ConstantPool::GetSymbolFromSymbolInfo(aotSymbolInfoHandle, id);
+        if (ConstantPool::IsAotSymbolInfoExist(aotSymbolInfoHandle, symbol)) {
+            symbolHandle = JSHandle<JSSymbol>(thread, symbol);
+        } else {
+            symbolHandle = factory->NewJSSymbol();
+            symbolHandle->SetPrivateId(id);
+        }
+        handleLexicalEnv->SetProperties(thread, index, symbolHandle.GetTaggedValue());
     }
 
-    JSTaggedValue cp = thread->GetCurrentEcmaContext()->
-        FindOrCreateUnsharedConstpool(handleConstpool.GetTaggedValue());
-    JSTaggedValue literalObj = ConstantPool::GetClassLiteralFromCache(
-        thread, JSHandle<ConstantPool>(thread, cp), literalId, entry);
-
+    JSTaggedValue literalObj =
+        ConstantPool::GetClassLiteralFromCache(thread, unsharedConstpoolHandle, literalId, entry);
     JSHandle<ClassLiteral> classLiteral(thread, literalObj);
     JSHandle<TaggedArray> literalBuffer(thread, classLiteral->GetArray());
     uint32_t literalBufferLength = literalBuffer->GetLength();
@@ -3066,9 +3078,17 @@ JSTaggedValue RuntimeStubs::RuntimeCreatePrivateProperty(JSThread *thread, JSTag
         handleLexicalEnv->SetProperties(thread, startIndex + count + i, literalValue);
     }
     if (instacePropertyCount > 0) {
-        JSHandle<JSSymbol> methodSymbol = factory->NewPublicSymbolWithChar("method");
-        handleLexicalEnv->SetProperties(thread, startIndex + count + literalBufferLength - 1,
-                                        methodSymbol.GetTaggedValue());
+        auto index = startIndex + count + literalBufferLength - 1;
+        uint64_t id = JSSymbol::GeneratePrivateId(abcId, literalId, index);
+        JSHandle<JSSymbol> symbolHandle;
+        JSTaggedValue symbol = ConstantPool::GetSymbolFromSymbolInfo(aotSymbolInfoHandle, id);
+        if (ConstantPool::IsAotSymbolInfoExist(aotSymbolInfoHandle, symbol)) {
+            symbolHandle = JSHandle<JSSymbol>(thread, symbol);
+        } else {
+            symbolHandle = factory->NewPublicSymbolWithChar("method");
+            symbolHandle->SetPrivateId(id);
+        }
+        handleLexicalEnv->SetProperties(thread, index, symbolHandle.GetTaggedValue());
     }
     return JSTaggedValue::Undefined();
 }

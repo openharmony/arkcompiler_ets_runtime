@@ -20,6 +20,8 @@
 namespace panda::ecmascript::kungfu {
 using ProfileType = pgo::ProfileType;
 using ProfileTyper = std::pair<ProfileType, ProfileType>;
+using ProfileTypeTuple = std::tuple<ProfileType, ProfileType, uint64_t>;
+
 class PGOTypeLocation {
 public:
     enum class Type : uint8_t {

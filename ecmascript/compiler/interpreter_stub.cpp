@@ -711,25 +711,70 @@ DECLARE_ASM_HANDLER(HandleGetasynciteratorImm8)
 
 DECLARE_ASM_HANDLER(HandleLdPrivatePropertyImm8Imm16Imm16)
 {
+    auto env = GetEnvironment();
     GateRef lexicalEnv = GetEnvFromFrame(GetFrame(sp));
-    [[maybe_unused]] GateRef slotId = ReadInst8_0(pc);
+    GateRef slotId = ReadInst8_0(pc);
     GateRef levelIndex = ReadInst16_1(pc);
     GateRef slotIndex = ReadInst16_3(pc);
-    GateRef res = CallRuntime(glue, RTSTUB_ID(LdPrivateProperty), {lexicalEnv,
-        IntToTaggedInt(levelIndex), IntToTaggedInt(slotIndex), acc});  // acc as obj
-    CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(LDPRIVATEPROPERTY_IMM8_IMM16_IMM16));
+
+    DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
+
+    Label slowPath(env);
+    Label icPath(env);
+    Label exit(env);
+
+    Branch(TaggedIsUndefined(profileTypeInfo), &slowPath, &icPath);
+    Bind(&icPath);
+    {
+        GateRef key = GetKeyFromLexivalEnv(lexicalEnv, ZExtInt16ToInt32(levelIndex), ZExtInt16ToInt32(slotIndex));
+        AccessObjectStubBuilder builder(this);
+        result = builder.LoadPrivatePropertyByName(glue, acc, key, profileTypeInfo, slotId, callback);
+        Jump(&exit);
+    }
+    Bind(&slowPath);
+    {
+        result = CallRuntime(glue,
+                             RTSTUB_ID(LdPrivateProperty),
+                             {lexicalEnv, IntToTaggedInt(levelIndex), IntToTaggedInt(slotIndex), acc}); // acc as obj
+        Jump(&exit);
+    }
+    Bind(&exit);
+    CHECK_EXCEPTION_WITH_ACC(*result, INT_PTR(LDPRIVATEPROPERTY_IMM8_IMM16_IMM16));
 }
 
 DECLARE_ASM_HANDLER(HandleStPrivatePropertyImm8Imm16Imm16V8)
 {
+    auto env = GetEnvironment();
     GateRef lexicalEnv = GetEnvFromFrame(GetFrame(sp));
-    [[maybe_unused]] GateRef slotId = ReadInst8_0(pc);
+    GateRef slotId = ReadInst8_0(pc);
     GateRef levelIndex = ReadInst16_1(pc);
     GateRef slotIndex = ReadInst16_3(pc);
     GateRef obj = GetVregValue(sp, ZExtInt8ToPtr(ReadInst8_5(pc)));
-    GateRef res = CallRuntime(glue, RTSTUB_ID(StPrivateProperty), {lexicalEnv,
-        IntToTaggedInt(levelIndex), IntToTaggedInt(slotIndex), obj, acc});  // acc as value
-    CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(STPRIVATEPROPERTY_IMM8_IMM16_IMM16_V8));
+
+    DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
+
+    Label slowPath(env);
+    Label icPath(env);
+    Label exit(env);
+
+    Branch(TaggedIsUndefined(profileTypeInfo), &slowPath, &icPath);
+    Bind(&icPath);
+    {
+        GateRef key = GetKeyFromLexivalEnv(lexicalEnv, ZExtInt16ToInt32(levelIndex), ZExtInt16ToInt32(slotIndex));
+        AccessObjectStubBuilder builder(this);
+        result = builder.StorePrivatePropertyByName(glue, obj, key, acc, profileTypeInfo, slotId, callback);
+        Jump(&exit);
+    }
+    Bind(&slowPath);
+    {
+        result =
+            CallRuntime(glue,
+                        RTSTUB_ID(StPrivateProperty),
+                        {lexicalEnv, IntToTaggedInt(levelIndex), IntToTaggedInt(slotIndex), obj, acc}); // acc as value
+        Jump(&exit);
+    }
+    Bind(&exit);
+    CHECK_EXCEPTION_WITH_ACC(*result, INT_PTR(STPRIVATEPROPERTY_IMM8_IMM16_IMM16_V8));
 }
 
 DECLARE_ASM_HANDLER(HandleTestInImm8Imm16Imm16)

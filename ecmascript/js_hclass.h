@@ -69,9 +69,11 @@ class NameDictionary;
 namespace pgo {
     class HClassLayoutDesc;
     class PGOHClassTreeDesc;
+    class PGOHandler;
 } // namespace pgo
 using HClassLayoutDesc = pgo::HClassLayoutDesc;
 using PGOHClassTreeDesc = pgo::PGOHClassTreeDesc;
+using PGOHandler = pgo::PGOHandler;
 
 struct Reference;
 
@@ -493,6 +495,10 @@ public:
 
     static void CopyTSInheritInfo(const JSThread *thread, const JSHandle<JSHClass> &oldHClass,
                                   JSHandle<JSHClass> &newHClass);
+
+    static JSHandle<JSTaggedValue> ParseKeyFromPGOCString(ObjectFactory* factory,
+                                                          const CString& key,
+                                                          const PGOHandler& handler);
 
     inline void ClearBitField()
     {
@@ -1987,18 +1993,26 @@ public:
 
     static CString DumpJSType(JSType type);
 
-    static JSHandle<JSHClass> CreateRootHClass(const JSThread *thread, const HClassLayoutDesc *desc, uint32_t maxNum);
-    static JSHandle<JSHClass> CreateChildHClass(
-        const JSThread *thread, const JSHandle<JSHClass> &parent, const HClassLayoutDesc *desc);
-    static bool DumpForRootHClass(const JSHClass *hclass, HClassLayoutDesc *desc);
-    static bool DumpForChildHClass(const JSHClass *hclass, HClassLayoutDesc *desc);
-    static bool UpdateRootLayoutDesc(
-        const JSHClass *hclass, const PGOHClassTreeDesc *treeDesc, HClassLayoutDesc *rootDesc);
-    static bool UpdateChildLayoutDesc(const JSHClass *hclass, HClassLayoutDesc *childDesc);
+    static JSHandle<JSHClass> CreateRootHClassFromPGO(const JSThread* thread,
+                                                      const HClassLayoutDesc* desc,
+                                                      uint32_t maxNum);
+    static JSHandle<JSHClass> CreateChildHClassFromPGO(const JSThread* thread,
+                                                       const JSHandle<JSHClass>& parent,
+                                                       const HClassLayoutDesc* desc);
+    static bool DumpRootHClassByPGO(const JSHClass* hclass, HClassLayoutDesc* desc);
+    static bool DumpChildHClassByPGO(const JSHClass* hclass, HClassLayoutDesc* desc);
+    static bool UpdateRootLayoutDescByPGO(const JSHClass* hclass,
+                                          const PGOHClassTreeDesc* treeDesc,
+                                          HClassLayoutDesc* rootDesc);
+    static bool UpdateChildLayoutDescByPGO(const JSHClass* hclass, HClassLayoutDesc* childDesc);
     static CString DumpToString(JSTaggedType hclassVal);
 
     DECL_VISIT_OBJECT(PROTOTYPE_OFFSET, BIT_FIELD_OFFSET);
     inline JSHClass *FindProtoTransitions(const JSTaggedValue &key, const JSTaggedValue &proto);
+    inline bool HasTransitions() const
+    {
+        return !GetTransitions().IsUndefined();
+    }
 
     static JSHandle<JSHClass> CreateSHClass(JSThread *thread,
                                             const std::vector<PropertyDescriptor> &descs,

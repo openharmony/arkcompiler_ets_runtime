@@ -145,6 +145,8 @@ private:
     void LowerLoadTypedArrayLength(GateRef gate);
     void LowerStringLength(GateRef gate);
     void LowerMapSize(GateRef gate);
+    void LowerCallPrivateGetter(GateRef gate, GateRef glue);
+    void LowerCallPrivateSetter(GateRef gate, GateRef glue);
     void LowerLoadProperty(GateRef gate);
     void LowerCallGetter(GateRef gate, GateRef glue);
     void LowerStoreProperty(GateRef gate);

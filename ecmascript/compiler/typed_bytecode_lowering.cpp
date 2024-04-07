@@ -256,6 +256,12 @@ void TypedBytecodeLowering::Lower(GateRef gate)
         case EcmaOpcode::CALLRANGE_IMM8_IMM8_V8:
             LowerTypedCallrange(gate);
             break;
+        case EcmaOpcode::STPRIVATEPROPERTY_IMM8_IMM16_IMM16_V8:
+            LowerTypedStPrivateProperty(gate);
+            break;
+        case EcmaOpcode::LDPRIVATEPROPERTY_IMM8_IMM16_IMM16:
+            LowerTypedLdPrivateProperty(gate);
+            break;
         case EcmaOpcode::LDOBJBYNAME_IMM8_ID16:
         case EcmaOpcode::LDOBJBYNAME_IMM16_ID16:
         case EcmaOpcode::LDTHISBYNAME_IMM8_ID16:
@@ -561,6 +567,81 @@ void TypedBytecodeLowering::LowerTypedLdObjByName(GateRef gate)
     builder_.Bind(&exit);
     acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), *result);
     DeleteConstDataIfNoUser(tacc.GetKey());
+}
+
+void TypedBytecodeLowering::LowerTypedLdPrivateProperty(GateRef gate)
+{
+    DISALLOW_GARBAGE_COLLECTION;
+    LoadPrivatePropertyTypeInfoAccessor tacc(compilationEnv_, circuit_, gate, chunk_);
+
+    if (tacc.HasIllegalType()) {
+        return;
+    }
+
+    AddProfiling(gate);
+    Label exit(&builder_);
+
+    GateRef receiver = tacc.GetReceiver();
+    GateRef levelIndex = tacc.GetLevelIndex();
+    GateRef slotIndex = tacc.GetSlotIndex();
+
+    DEFVALUE(result, (&builder_), VariableType::JS_ANY(), builder_.Undefined());
+    GateRef frameState = acc_.FindNearestFrameState(builder_.GetDepend());
+    GateRef key = builder_.GetKeyFromLexivalEnv(
+        tacc.GetLexicalEnv(), builder_.TaggedGetInt(levelIndex), builder_.TaggedGetInt(slotIndex));
+
+    if (tacc.IsAccessor()) {
+        builder_.DeoptCheck(builder_.IsJSFunction(key), frameState, DeoptType::NOTJSFUNCTION);
+        result = builder_.CallPrivateGetter(gate, receiver, key);
+        builder_.Jump(&exit);
+    } else {
+        builder_.DeoptCheck(builder_.TaggedIsSymbol(key), frameState, DeoptType::NOTSYMBOL);
+        builder_.ObjectTypeCheck(true, receiver, builder_.Int32(tacc.GetExpectedHClassIndex(0)), frameState);
+        result = BuildNamedPropertyAccess(gate, receiver, receiver, tacc.GetAccessInfo(0).Plr());
+        builder_.Jump(&exit);
+    }
+
+    builder_.Bind(&exit);
+    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), *result);
+    DeleteConstDataIfNoUser(key);
+}
+
+void TypedBytecodeLowering::LowerTypedStPrivateProperty(GateRef gate)
+{
+    DISALLOW_GARBAGE_COLLECTION;
+    StorePrivatePropertyTypeInfoAccessor tacc(compilationEnv_, circuit_, gate, chunk_);
+
+    if (tacc.HasIllegalType()) {
+        return;
+    }
+
+    AddProfiling(gate);
+    Label exit(&builder_);
+
+    GateRef receiver = tacc.GetReceiver();
+    GateRef levelIndex = tacc.GetLevelIndex();
+    GateRef slotIndex = tacc.GetSlotIndex();
+    GateRef value = tacc.GetValue();
+
+    GateRef frameState = acc_.FindNearestFrameState(builder_.GetDepend());
+    GateRef key = builder_.GetKeyFromLexivalEnv(
+        tacc.GetLexicalEnv(), builder_.TaggedGetInt(levelIndex), builder_.TaggedGetInt(slotIndex));
+
+    if (tacc.IsAccessor()) {
+        builder_.DeoptCheck(builder_.IsJSFunction(key), frameState, DeoptType::NOTJSFUNCTION);
+        builder_.CallPrivateSetter(gate, receiver, key, value);
+        builder_.Jump(&exit);
+    } else {
+        builder_.DeoptCheck(builder_.TaggedIsSymbol(key), frameState, DeoptType::NOTSYMBOL);
+        builder_.ObjectTypeCheck(true, receiver, builder_.Int32(tacc.GetExpectedHClassIndex(0)), frameState);
+        BuildNamedPropertyAccess(
+            gate, receiver, receiver, value, tacc.GetAccessInfo(0).Plr(), tacc.GetExpectedHClassIndex(0));
+        builder_.Jump(&exit);
+    }
+
+    builder_.Bind(&exit);
+    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), Circuit::NullGate());
+    DeleteConstDataIfNoUser(key);
 }
 
 void TypedBytecodeLowering::LowerTypedStObjByName(GateRef gate)

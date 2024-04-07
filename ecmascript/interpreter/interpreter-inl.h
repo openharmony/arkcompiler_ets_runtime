@@ -4524,13 +4524,42 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
     }
     HANDLE_OPCODE(LDPRIVATEPROPERTY_IMM8_IMM16_IMM16) {
         JSTaggedValue lexicalEnv = GET_FRAME(sp)->env;
-        [[maybe_unused]] uint32_t slotId = READ_INST_8_0();
+        uint32_t slotId = READ_INST_8_0();
         uint32_t levelIndex = READ_INST_16_1();
         uint32_t slotIndex = READ_INST_16_3();
         JSTaggedValue obj = GET_ACC();
         LOG_INST() << "intrinsics::ldprivateproperty" << " levelIndex:" << levelIndex
                    << ", slotIndex:" << slotIndex << ", obj:" << obj.GetRawData();
+#if ECMASCRIPT_ENABLE_IC
+        auto profileTypeInfo = GetRuntimeProfileTypeInfo(sp);
+        if (!profileTypeInfo.IsUndefined()) {
+            auto profileTypeArray = ProfileTypeInfo::Cast(profileTypeInfo.GetTaggedObject());
+            JSTaggedValue firstValue = profileTypeArray->Get(slotId);
+            JSTaggedValue res = JSTaggedValue::Hole();
 
+            if (LIKELY(firstValue.IsHeapObject())) {
+                JSTaggedValue secondValue = profileTypeArray->Get(slotId + 1);
+                res = ICRuntimeStub::TryLoadICByName(thread, obj, firstValue, secondValue);
+            }
+            if (LIKELY(!res.IsHole())) {
+                INTERPRETER_RETURN_IF_ABRUPT(res);
+                SET_ACC(res);
+                DISPATCH(LDPRIVATEPROPERTY_IMM8_IMM16_IMM16);
+            } else if (!firstValue.IsHole()) { // IC miss and not enter the megamorphic state, store as polymorphic
+                JSTaggedValue currentLexicalEnv = lexicalEnv;
+                for (uint32_t i = 0; i < levelIndex; i++) {
+                    currentLexicalEnv = LexicalEnv::Cast(currentLexicalEnv.GetTaggedObject())->GetParentEnv();
+                    ASSERT(!currentLexicalEnv.IsUndefined());
+                }
+                JSTaggedValue key = LexicalEnv::Cast(currentLexicalEnv.GetTaggedObject())->GetProperties(slotIndex);
+
+                res = ICRuntimeStub::LoadICByName(thread, profileTypeArray, obj, key, slotId);
+                INTERPRETER_RETURN_IF_ABRUPT(res);
+                SET_ACC(res);
+                DISPATCH(LDPRIVATEPROPERTY_IMM8_IMM16_IMM16);
+            }
+        }
+#endif
         JSTaggedValue res = SlowRuntimeStub::LdPrivateProperty(thread, lexicalEnv, levelIndex, slotIndex, obj);
         INTERPRETER_RETURN_IF_ABRUPT(res);
         SET_ACC(res);
@@ -4538,7 +4567,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
     }
     HANDLE_OPCODE(STPRIVATEPROPERTY_IMM8_IMM16_IMM16_V8) {
         JSTaggedValue lexicalEnv = GET_FRAME(sp)->env;
-        [[maybe_unused]] uint32_t slotId = READ_INST_8_0();
+        uint32_t slotId = READ_INST_8_0();
         uint32_t levelIndex = READ_INST_16_1();
         uint32_t slotIndex = READ_INST_16_3();
         uint32_t v0 = READ_INST_8_5();
@@ -4549,6 +4578,37 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
                    <<", obj:" << obj.GetRawData() << ", value:" << value.GetRawData();
 
         SAVE_ACC();
+#if ECMASCRIPT_ENABLE_IC
+        auto profileTypeInfo = GetRuntimeProfileTypeInfo(sp);
+        if (!profileTypeInfo.IsUndefined()) {
+            auto profileTypeArray = ProfileTypeInfo::Cast(profileTypeInfo.GetTaggedObject());
+            JSTaggedValue firstValue = profileTypeArray->Get(slotId);
+            JSTaggedValue res = JSTaggedValue::Hole();
+
+            if (LIKELY(firstValue.IsHeapObject())) {
+                JSTaggedValue secondValue = profileTypeArray->Get(slotId + 1);
+                res = ICRuntimeStub::TryStoreICByName(thread, obj, firstValue, secondValue, value);
+            }
+
+            if (LIKELY(!res.IsHole())) {
+                INTERPRETER_RETURN_IF_ABRUPT(res);
+                RESTORE_ACC();
+                DISPATCH(STPRIVATEPROPERTY_IMM8_IMM16_IMM16_V8);
+            } else if (!firstValue.IsHole()) { // IC miss and not enter the megamorphic state, store as polymorphic
+                JSTaggedValue currentLexicalEnv = lexicalEnv;
+                for (uint32_t i = 0; i < levelIndex; i++) {
+                    currentLexicalEnv = LexicalEnv::Cast(currentLexicalEnv.GetTaggedObject())->GetParentEnv();
+                    ASSERT(!currentLexicalEnv.IsUndefined());
+                }
+                JSTaggedValue key = LexicalEnv::Cast(currentLexicalEnv.GetTaggedObject())->GetProperties(slotIndex);
+
+                res = ICRuntimeStub::StoreICByName(thread, profileTypeArray, obj, key, value, slotId);
+                INTERPRETER_RETURN_IF_ABRUPT(res);
+                RESTORE_ACC();
+                DISPATCH(STPRIVATEPROPERTY_IMM8_IMM16_IMM16_V8);
+            }
+        }
+#endif
         JSTaggedValue res = SlowRuntimeStub::StPrivateProperty(thread, lexicalEnv, levelIndex, slotIndex, obj, value);
         INTERPRETER_RETURN_IF_ABRUPT(res);
         RESTORE_ACC();

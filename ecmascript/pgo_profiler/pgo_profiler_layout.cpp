@@ -87,7 +87,7 @@ bool PGOHClassTreeDesc::DumpForRoot(JSTaggedType root, ProfileType rootType)
         transitionLayout_.emplace(rootType, rootLayout);
     }
 
-    return JSHClass::DumpForRootHClass(rootHClass, rootLayout);
+    return JSHClass::DumpRootHClassByPGO(rootHClass, rootLayout);
 }
 
 bool PGOHClassTreeDesc::DumpForChild(JSTaggedType child, ProfileType childType)
@@ -98,18 +98,18 @@ bool PGOHClassTreeDesc::DumpForChild(JSTaggedType child, ProfileType childType)
     auto childHClass = JSHClass::Cast(JSTaggedValue(child).GetTaggedObject());
     if (rootIter != transitionLayout_.end()) {
         auto rootLayout = rootIter->second;
-        JSHClass::UpdateRootLayoutDesc(childHClass, this, rootLayout);
+        JSHClass::UpdateRootLayoutDescByPGO(childHClass, this, rootLayout);
     }
 
     HClassLayoutDesc *childLayout;
     auto iter = transitionLayout_.find(childType);
     if (iter != transitionLayout_.end()) {
         childLayout = iter->second;
-        return JSHClass::UpdateChildLayoutDesc(childHClass, childLayout);
+        return JSHClass::UpdateChildLayoutDescByPGO(childHClass, childLayout);
     } else {
         childLayout = new ChildHClassLayoutDesc(childType);
         transitionLayout_.emplace(childType, childLayout);
-        return JSHClass::DumpForChildHClass(childHClass, childLayout);
+        return JSHClass::DumpChildHClassByPGO(childHClass, childLayout);
     }
 }
 
