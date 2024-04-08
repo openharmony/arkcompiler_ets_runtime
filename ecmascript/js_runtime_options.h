@@ -1148,6 +1148,16 @@ public:
         return enableAPPJIT_;
     }
 
+    void SetEnableJitFrame(bool value)
+    {
+        enableJitFrame_ = value;
+    }
+
+    bool IsEnableJitFrame() const
+    {
+        return enableJitFrame_;
+    }
+
     bool IsEnableJitDfxDump() const
     {
         return isEnableJitDfxDump_;
@@ -1934,6 +1944,7 @@ private:
     bool enableMemoryAnalysis_ {true};
     bool checkPgoVersion_ {false};
     bool enableJitFastCompile_ {false};
+    bool enableJitFrame_{false};
 };
 }  // namespace panda::ecmascript
 

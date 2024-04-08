@@ -3113,9 +3113,14 @@ JSTaggedType RuntimeStubs::GetActualArgvNoGC(uintptr_t argGlue)
     FrameIterator it(current, thread);
     ASSERT(it.IsOptimizedFrame());
     it.Advance<GCVisitedFlag::VISITED>();
-    ASSERT(it.IsOptimizedJSFunctionFrame());
-    auto optimizedJSFunctionFrame = it.GetFrame<OptimizedJSFunctionFrame>();
-    return reinterpret_cast<uintptr_t>(optimizedJSFunctionFrame->GetArgv(it));
+    ASSERT(it.IsAotOrJitFunctionFrame());
+    if (it.IsFastJitFunctionFrame()) {
+        auto fastJitFunctionFrame = it.GetFrame<FASTJITFunctionFrame>();
+        return reinterpret_cast<uintptr_t>(fastJitFunctionFrame->GetArgv(it));
+    } else {
+        auto optimizedJSFunctionFrame = it.GetFrame<OptimizedJSFunctionFrame>();
+        return reinterpret_cast<uintptr_t>(optimizedJSFunctionFrame->GetArgv(it));
+    }
 }
 
 double RuntimeStubs::FloatMod(double x, double y)

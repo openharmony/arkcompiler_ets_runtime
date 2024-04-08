@@ -32,7 +32,8 @@ enum class RunningState : size_t {
     BUILTIN,
     NAPI,
     ARKUI_ENGINE,
-    RUNTIME
+    RUNTIME,
+    JIT
 };
 
 struct MethodKey {

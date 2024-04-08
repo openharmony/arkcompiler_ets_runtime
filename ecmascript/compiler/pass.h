@@ -824,7 +824,8 @@ public:
         CreateCodeGen(module, enableLog);
         CodeGenerator codegen(cgImpl_, data->GetMethodName());
         codegen.Run(data->GetCircuit(), data->GetConstScheduleResult(), data->GetCompilerConfig(),
-                    data->GetMethodLiteral(), data->GetJSPandaFile(), enableOptInlining, enableOptBranchProfiling);
+                    data->GetMethodLiteral(), data->GetJSPandaFile(), data->GetCircuit()->GetFrameType(),
+                    enableOptInlining, enableOptBranchProfiling);
         return true;
     }
 private:

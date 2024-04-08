@@ -189,10 +189,11 @@ RunningState JsStackGetter::GetRunningState(const FrameIterator &it, const EcmaV
             return RunningState::NAPI;
         }
         if (isNative) {
-            if (function->GetNativeFunctionExtraInfo().CheckIsJSNativePointer()) {
-                return RunningState::ARKUI_ENGINE;
-            }
-            return RunningState::BUILTIN;
+            return function->GetNativeFunctionExtraInfo().CheckIsJSNativePointer() ? RunningState::ARKUI_ENGINE :
+                                                                                     RunningState::BUILTIN;
+        }
+        if (it.IsFastJitFunctionFrame()) {
+            return RunningState::JIT;
         }
         if (it.IsOptimizedJSFunctionFrame()) {
             return RunningState::AOT;
@@ -216,10 +217,8 @@ RunningState JsStackGetter::GetRunningState(const FrameIterator &it, const EcmaV
         return RunningState::NAPI;
     }
     if (isNative) {
-        if (function->GetNativeFunctionExtraInfo().CheckIsJSNativePointer()) {
-            return RunningState::ARKUI_ENGINE;
-        }
-        return RunningState::BUILTIN;
+        return function->GetNativeFunctionExtraInfo().CheckIsJSNativePointer() ? RunningState::ARKUI_ENGINE :
+                                                                                 RunningState::BUILTIN;
     }
 
     return RunningState::OTHER;

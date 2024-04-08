@@ -121,6 +121,8 @@ public:
         traceDeopt_ = options.GetTraceDeopt();
     }
     void CollectVregs(const std::vector<kungfu::ARKDeopt>& deoptBundle, size_t shift);
+    template<class T>
+    void AssistCollectDeoptBundleVec(FrameIterator &it, T &frame);
     void CollectDeoptBundleVec(std::vector<kungfu::ARKDeopt>& deoptBundle);
     JSTaggedType ConstructAsmInterpretFrame();
     void UpdateAndDumpDeoptInfo(kungfu::DeoptType type);

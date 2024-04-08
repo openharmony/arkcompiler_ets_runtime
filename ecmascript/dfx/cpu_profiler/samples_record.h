@@ -73,6 +73,7 @@ struct ProfileInfo {
     uint64_t napiTime = 0;
     uint64_t arkuiEngineTime = 0;
     uint64_t runtimeTime = 0;
+    uint64_t jitTime = 0;
     uint64_t otherTime = 0;
 };
 

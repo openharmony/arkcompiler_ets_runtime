@@ -207,10 +207,21 @@ public:
         return static_cast<size_t>(gateCount_ - 1);
     }
 
+    bool IsOptimizedOrFastJit() const
+    {
+        return  IsOptimizedJSFunctionFrame() || IsFastJitFunctionFrame();
+    }
+
     bool IsOptimizedJSFunctionFrame() const
     {
         return frameType_ == FrameType::OPTIMIZED_JS_FUNCTION_FRAME
             || frameType_ == FrameType::OPTIMIZED_JS_FAST_CALL_FUNCTION_FRAME;
+    }
+
+    bool IsFastJitFunctionFrame() const
+    {
+        return frameType_ == FrameType::FASTJIT_FUNCTION_FRAME
+            || frameType_ == FrameType::FASTJIT_FAST_CALL_FUNCTION_FRAME;
     }
 
     bool GetDebugInfo(GateRef g, size_t &index) const;

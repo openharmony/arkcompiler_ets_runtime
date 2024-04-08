@@ -414,6 +414,7 @@ private:
     void ComputeArgCountAndExtraInfo(size_t &actualNumArgs, LLVMValueRef &pcOffset, GateRef &frameArgs,
                                     const std::vector<GateRef> &inList, CallExceptionKind kind);
     void SaveLexicalEnvOnOptJSFuncFrame(LLVMValueRef value);
+    void SaveByteCodePcOnOptJSFuncFrame(LLVMValueRef value);
     void SaveJSFuncOnOptJSFuncFrame(LLVMValueRef value);
     void SaveFrameTypeOnFrame(FrameType frameType, LLVMBuilderRef builder);
     void UpdateLeaveFrame(LLVMValueRef glue);

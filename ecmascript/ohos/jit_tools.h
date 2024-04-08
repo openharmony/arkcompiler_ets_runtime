@@ -23,7 +23,7 @@ namespace panda::ecmascript::ohos {
 
 class JitTools {
 public:
-    static bool GetJitEscapeEanble()
+    static bool GetJitEscapeDisable()
     {
     #ifdef JIT_ESCAPE_ENABLE
         return OHOS::system::GetBoolParameter("ark.jit.escape.disable", false);
@@ -60,6 +60,14 @@ public:
     {
     #ifdef JIT_ESCAPE_ENABLE
         return OHOS::system::GetBoolParameter("ark.jit.enable.dumpobj", false);
+    #endif
+        return false;
+    }
+
+    static bool GetJitFrameEnable()
+    {
+    #ifdef JIT_ESCAPE_ENABLE
+        return OHOS::system::GetBoolParameter("ark.jit.enable.jitframe", false);
     #endif
         return false;
     }

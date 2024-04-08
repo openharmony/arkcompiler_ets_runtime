@@ -437,6 +437,9 @@ std::string SamplesRecord::AddRunningState(char *functionName, RunningState stat
                 temp.append("(RUNTIME)");
             }
             break;
+        case RunningState::JIT:
+            temp.append("(JIT)");
+            break;
         default:
             break;
     }
@@ -480,6 +483,10 @@ void SamplesRecord::StatisticStateTime(int timeDelta, RunningState state)
         }
         case RunningState::RUNTIME: {
             profileInfo_->runtimeTime += static_cast<uint64_t>(timeDelta);
+            return;
+        }
+        case RunningState::JIT: {
+            profileInfo_->jitTime += static_cast<uint64_t>(timeDelta);
             return;
         }
         default: {

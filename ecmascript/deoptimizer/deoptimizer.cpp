@@ -256,6 +256,22 @@ void Deoptimizier::CollectVregs(const std::vector<kungfu::ARKDeopt>& deoptBundle
 //               |        .  .  .   .               |        v
 //               +----------------------------------+--------+
 
+template<class T>
+void Deoptimizier::AssistCollectDeoptBundleVec(FrameIterator &it, T &frame)
+{
+    CalleeRegAndOffsetVec calleeRegInfo;
+    frame->GetFuncCalleeRegAndOffset(it, calleeRegInfo);
+    context_.calleeRegAndOffset = calleeRegInfo;
+    context_.callsiteSp = it.GetCallSiteSp();
+    context_.callsiteFp = reinterpret_cast<uintptr_t>(it.GetSp());
+    auto preFrameSp = frame->ComputePrevFrameSp(it);
+    frameArgc_ = frame->GetArgc(preFrameSp);
+    frameArgvs_ = frame->GetArgv(preFrameSp);
+    stackContext_.callFrameTop_ = it.GetPrevFrameCallSiteSp();
+    stackContext_.returnAddr_ = frame->GetReturnAddr();
+    stackContext_.callerFp_ = reinterpret_cast<uintptr_t>(frame->GetPrevFrameFp());
+}
+
 void Deoptimizier::CollectDeoptBundleVec(std::vector<ARKDeopt>& deoptBundle)
 {
     JSTaggedType *lastLeave = const_cast<JSTaggedType *>(thread_->GetLastLeaveFrame());
@@ -268,17 +284,14 @@ void Deoptimizier::CollectDeoptBundleVec(std::vector<ARKDeopt>& deoptBundle)
             case FrameType::OPTIMIZED_JS_FUNCTION_FRAME: {
                 auto frame = it.GetFrame<OptimizedJSFunctionFrame>();
                 frame->GetDeoptBundleInfo(it, deoptBundle);
-                CalleeRegAndOffsetVec calleeRegInfo;
-                frame->GetFuncCalleeRegAndOffset(it, calleeRegInfo);
-                context_.calleeRegAndOffset = calleeRegInfo;
-                context_.callsiteSp = it.GetCallSiteSp();
-                context_.callsiteFp = reinterpret_cast<uintptr_t>(it.GetSp());
-                auto preFrameSp = frame->ComputePrevFrameSp(it);
-                frameArgc_ = frame->GetArgc(preFrameSp);
-                frameArgvs_ = frame->GetArgv(preFrameSp);
-                stackContext_.callFrameTop_ = it.GetPrevFrameCallSiteSp();
-                stackContext_.returnAddr_ = frame->GetReturnAddr();
-                stackContext_.callerFp_ = reinterpret_cast<uintptr_t>(frame->GetPrevFrameFp());
+                AssistCollectDeoptBundleVec(it, frame);
+                break;
+            }
+            case FrameType::FASTJIT_FUNCTION_FRAME:
+            case FrameType::FASTJIT_FAST_CALL_FUNCTION_FRAME: {
+                auto frame = it.GetFrame<FASTJITFunctionFrame>();
+                frame->GetDeoptBundleInfo(it, deoptBundle);
+                AssistCollectDeoptBundleVec(it, frame);
                 break;
             }
             case FrameType::ASM_BRIDGE_FRAME: {

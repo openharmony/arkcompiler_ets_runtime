@@ -91,7 +91,6 @@ bool JitPassManager::Compile(JSHandle<ProfileTypeInfo> &profileTypeInfo,
         if (UNLIKELY(!hasTypes)) {
             LOG_COMPILER(INFO) << "record: " << recordName << " has no types";
         }
-
         if (compilationEnv_->GetJSOptions().IsEnableJITPGO()) {
             Jit::JitLockHolder lock(compilationEnv_, "PGO ProfileBytecode");
             jitProfiler_ = compilationEnv_->GetPGOProfiler()->GetJITProfile();
@@ -103,8 +102,15 @@ bool JitPassManager::Compile(JSHandle<ProfileTypeInfo> &profileTypeInfo,
         } else {
             jitProfiler_ = nullptr;
         }
-        circuit_ = new Circuit(compilationEnv_->GetNativeAreaAllocator(), ctx_->GetAOTModule()->GetDebugInfo(),
-            fullName.c_str(), cmpCfg->Is64Bit(), FrameType::OPTIMIZED_JS_FUNCTION_FRAME);
+
+        if (compilationEnv_->GetJSOptions().IsEnableJitFrame()) {
+            circuit_ = new Circuit(compilationEnv_->GetNativeAreaAllocator(), ctx_->GetAOTModule()->GetDebugInfo(),
+                fullName.c_str(), cmpCfg->Is64Bit(), FrameType::FASTJIT_FUNCTION_FRAME);
+        } else {
+            circuit_ = new Circuit(compilationEnv_->GetNativeAreaAllocator(), ctx_->GetAOTModule()->GetDebugInfo(),
+                fullName.c_str(), cmpCfg->Is64Bit(), FrameType::OPTIMIZED_JS_FUNCTION_FRAME);
+        }
+
         PGOProfilerDecoder *decoder = passOptions_->EnableOptPGOType() ? &profilerDecoder_ : nullptr;
 
         builder_ = new BytecodeCircuitBuilder(jsPandaFile, methodLiteral, methodPCInfo,

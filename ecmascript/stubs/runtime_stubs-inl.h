@@ -2954,9 +2954,14 @@ JSTaggedType *RuntimeStubs::GetActualArgv(JSThread *thread)
     FrameIterator it(current, thread);
     ASSERT(it.IsLeaveFrame());
     it.Advance<GCVisitedFlag::VISITED>();
-    ASSERT(it.IsOptimizedJSFunctionFrame());
-    auto optimizedJSFunctionFrame = it.GetFrame<OptimizedJSFunctionFrame>();
-    return optimizedJSFunctionFrame->GetArgv(it);
+    ASSERT(it.IsAotOrJitFunctionFrame());
+    if (it.IsFastJitFunctionFrame()) {
+        auto optimizedJSJITFunctionFrame = it.GetFrame<FASTJITFunctionFrame>();
+        return optimizedJSJITFunctionFrame->GetArgv(it);
+    } else {
+        auto optimizedJSFunctionFrame = it.GetFrame<OptimizedJSFunctionFrame>();
+        return optimizedJSFunctionFrame->GetArgv(it);
+    }
 }
 
 JSTaggedType *RuntimeStubs::GetActualArgvFromStub(JSThread *thread)
@@ -2967,7 +2972,11 @@ JSTaggedType *RuntimeStubs::GetActualArgvFromStub(JSThread *thread)
     it.Advance<GCVisitedFlag::VISITED>();
     ASSERT(it.IsOptimizedFrame());
     it.Advance<GCVisitedFlag::VISITED>();
-    ASSERT(it.IsOptimizedJSFunctionFrame());
+    ASSERT(it.IsAotOrJitFunctionFrame());
+    if (it.IsFastJitFunctionFrame()) {
+        auto optimizedJSJITFunctionFrame = it.GetFrame<FASTJITFunctionFrame>();
+        return optimizedJSJITFunctionFrame->GetArgv(it);
+    }
     auto optimizedJSFunctionFrame = it.GetFrame<OptimizedJSFunctionFrame>();
     return optimizedJSFunctionFrame->GetArgv(it);
 }
