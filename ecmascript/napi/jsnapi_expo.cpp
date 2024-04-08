@@ -2449,10 +2449,10 @@ JSValueRef* FunctionRef::CallForNapi(const EcmaVM *vm, JSValueRef *thisObj,
             info->SetCallArg(i, arg);
         }
         if (thread->IsAsmInterpreter()) {
-            RETURN_VALUE_IF_ABRUPT_COMPLETION(thread,
-                reinterpret_cast<JSValueRef *>(JSHandle<JSTaggedValue>(thread, thread->GetException()).GetAddress()));
-            STACK_LIMIT_CHECK(thread,
-                reinterpret_cast<JSValueRef *>(JSHandle<JSTaggedValue>(thread, thread->GetException()).GetAddress()));
+            RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, reinterpret_cast<JSValueRef *>(
+                JSHandle<JSTaggedValue>(thread, JSTaggedValue::Exception()).GetAddress()));
+            STACK_LIMIT_CHECK(thread, reinterpret_cast<JSValueRef *>(
+                JSHandle<JSTaggedValue>(thread, JSTaggedValue::Exception()).GetAddress()));
             auto *hclass = func.GetTaggedObject()->GetClass();
             if (hclass->IsClassConstructor()) {
                 RETURN_STACK_BEFORE_THROW_IF_ASM(thread);
