@@ -6798,11 +6798,13 @@ GateRef StubBuilder::GetIterator(GateRef glue, GateRef obj, ProfileOperation cal
     Label exit(env);
     env->SubCfgEntry(&entryPass);
     DEFVARIABLE(result, VariableType::JS_ANY(), Exception());
+    DEFVARIABLE(taggedId, VariableType::INT32(), Int32(0));
 
     Label isPendingException(env);
     Label noPendingException(env);
     Label isHeapObject(env);
     Label objIsCallable(env);
+    Label throwError(env);
 
     GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
     GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
@@ -6816,16 +6818,22 @@ GateRef StubBuilder::GetIterator(GateRef glue, GateRef obj, ProfileOperation cal
     }
     Bind(&noPendingException);
     callback.ProfileGetIterator(*result);
-    BRANCH(TaggedIsHeapObject(*result), &isHeapObject, &exit);
+    BRANCH(TaggedIsHeapObject(*result), &isHeapObject, &throwError);
     Bind(&isHeapObject);
-    BRANCH(IsCallable(*result), &objIsCallable, &exit);
+    BRANCH(IsCallable(*result), &objIsCallable, &throwError);
     Bind(&objIsCallable);
     {
         result = JSCallDispatch(glue, *result, Int32(0), 0, Circuit::NullGate(),
                                 JSCallMode::CALL_GETTER, { obj }, ProfileOperation());
         Jump(&exit);
     }
-
+    Bind(&throwError);
+    {
+        taggedId = Int32(GET_MESSAGE_STRING_ID(ObjIsNotCallable));
+        CallRuntime(glue, RTSTUB_ID(ThrowTypeError), { IntToTaggedInt(*taggedId) });
+        result = Exception();
+        Jump(&exit);
+    }
     Bind(&exit);
     auto ret = *result;
     env->SubCfgExit();

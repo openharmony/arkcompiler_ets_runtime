@@ -28,3 +28,16 @@ it.__proto__["next"]=function (){
 }
 var fromArr=Int8Array.from(arr);
 print(fromArr.length)
+
+const v1 = ([-4.0,415.6053436378277,0.0,-33773.81284924084,-5.0]).__proto__;
+v1[Symbol.iterator] = 1;
+function f2() {
+    return f2;
+}
+class C3 extends f2 {
+}
+try {
+    new C3()
+} catch (e) {
+    print(e);
+}
