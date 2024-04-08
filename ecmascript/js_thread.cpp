@@ -217,7 +217,7 @@ void JSThread::InvokeWeakNodeFreeGlobalCallBack()
 
 void JSThread::InvokeSharedNativePointerCallbacks()
 {
-    auto callbacks = vm_->GetSharedNativePointerCallbacks();
+    auto &callbacks = vm_->GetSharedNativePointerCallbacks();
     while (!callbacks.empty()) {
         auto callbackPair = callbacks.back();
         callbacks.pop_back();
