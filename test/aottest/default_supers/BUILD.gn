@@ -12,6 +12,6 @@
 # limitations under the License.
 import("//arkcompiler/ets_runtime/test/test_helper.gni")
 
-host_aot_assert_test_action("default_supers") {
+host_aot_test_action("default_supers") {
   deps = []
 }

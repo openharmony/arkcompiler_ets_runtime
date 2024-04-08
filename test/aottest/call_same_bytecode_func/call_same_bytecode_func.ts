@@ -13,7 +13,6 @@
  * limitations under the License.
  */
 declare function print(str:any):string;
-declare function assert_equal(a: Object, b: Object):void;
 
 function foo1(a:string, b:string)
 {
@@ -34,8 +33,8 @@ function foo4()
 {
     print("hello");
 }
-assert_equal(foo2(3, 4), 7);
-assert_equal(foo1("1", "2"), "12");
+print(foo2(3, 4));
+print(foo1("1", "2"));
 
 foo3();
 foo4();
