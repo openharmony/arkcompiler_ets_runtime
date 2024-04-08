@@ -1580,8 +1580,6 @@
         "intl/relative-time-format/default-locale-fr-CA.js",
         "intl/relative-time-format/format-en.js",
         "intl/displaynames/calendar-v2.js",
-        "intl/displaynames/constructor-order-v2.js",
-        "intl/displaynames/resolved-options-v2.js",
         "intl/displaynames/date-time-field-v2.js",
         "intl/locale/locale-info-gettextinfo.js",
         "intl/locale/locale-numberingSystems.js",

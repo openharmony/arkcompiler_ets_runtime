@@ -194,6 +194,14 @@ JSHandle<JSDisplayNames> JSDisplayNames::InitializeDisplayNames(JSThread *thread
     // 17. Set displayNames.[[Fallback]] to fallback.
     displayNames->SetFallback(fallback);
 
+    // Let languageDisplay be ? GetOption(options, "languageDisplay", string, « "dialect", "standard" », "dialect").
+    property = globalConst->GetHandledLanguageDisplayString();
+    auto langDisplay = JSLocale::GetOptionOfString<LanguageDisplayOption>(
+        thread, optionsObject, property, {LanguageDisplayOption::DIALECT, LanguageDisplayOption::STANDARD},
+        {"dialect", "standard"}, LanguageDisplayOption::DIALECT);
+    RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSDisplayNames, thread);
+    displayNames->SetLanguageDisplay(langDisplay);
+
     // 18. Set displayNames.[[Locale]] to the value of r.[[Locale]].
     JSHandle<EcmaString> localeStr = intl::LocaleHelper::ToLanguageTag(thread, icuLocale);
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSDisplayNames, thread);
@@ -374,6 +382,24 @@ JSHandle<JSTaggedValue> FallbackOptionToEcmaString(JSThread *thread, FallbackOpt
     return result;
 }
 
+JSHandle<JSTaggedValue> LanguageDisplayOptionToEcmaString(JSThread *thread, LanguageDisplayOption langDisplay)
+{
+    JSMutableHandle<JSTaggedValue> result(thread, JSTaggedValue::Undefined());
+    auto globalConst = thread->GlobalConstants();
+    switch (langDisplay) {
+        case LanguageDisplayOption::DIALECT:
+            result.Update(globalConst->GetHandledDialectString().GetTaggedValue());
+            break;
+        case LanguageDisplayOption::STANDARD:
+            result.Update(globalConst->GetHandledStandardString().GetTaggedValue());
+            break;
+        default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
+            UNREACHABLE();
+    }
+    return result;
+}
+
 void JSDisplayNames::ResolvedOptions(JSThread *thread, const JSHandle<JSDisplayNames> &displayNames,
                                      const JSHandle<JSObject> &options)
 {
@@ -405,5 +431,15 @@ void JSDisplayNames::ResolvedOptions(JSThread *thread, const JSHandle<JSDisplayN
     JSHandle<JSTaggedValue> fallbackString = FallbackOptionToEcmaString(thread, fallback);
     JSObject::CreateDataPropertyOrThrow(thread, options, propertyKey, fallbackString);
     RETURN_IF_ABRUPT_COMPLETION(thread);
+
+    // [[languageDisplay]]
+    // The default languageDisplay is 'dialect' if type is 'language'
+    if (type == TypednsOption::LANGUAGE) {
+        LanguageDisplayOption langDisplay = displayNames->GetLanguageDisplay();
+        propertyKey = globalConst->GetHandledLanguageDisplayString();
+        JSHandle<JSTaggedValue> langDisplayString = LanguageDisplayOptionToEcmaString(thread, langDisplay);
+        JSObject::CreateDataPropertyOrThrow(thread, options, propertyKey, langDisplayString);
+        RETURN_IF_ABRUPT_COMPLETION(thread);
+    }
 }
 }  // namespace panda::ecmascript
