@@ -18,12 +18,14 @@
 #include "ecmascript/builtins/builtins_function.h"
 #include "ecmascript/builtins/builtins_object.h"
 #include "ecmascript/builtins/builtins_symbol.h"
+#include "ecmascript/builtins/builtins_sendable_arraybuffer.h"
 #include "ecmascript/builtins/builtins_shared_function.h"
 #include "ecmascript/builtins/builtins_shared_object.h"
 #include "ecmascript/builtins/builtins_shared_map.h"
 #include "ecmascript/builtins/builtins_shared_set.h"
 #include "ecmascript/builtins/builtins_shared_typedarray.h"
 #include "ecmascript/shared_objects/js_shared_array.h"
+#include "ecmascript/shared_objects/js_sendable_arraybuffer.h"
 #include "ecmascript/shared_objects/js_shared_map.h"
 #include "ecmascript/shared_objects/js_shared_object.h"
 #include "ecmascript/shared_objects/js_shared_set.h"
@@ -42,6 +44,7 @@ using BuiltinsSharedSet = builtins::BuiltinsSharedSet;
 using BuiltinsSharedMap = builtins::BuiltinsSharedMap;
 using BuiltinsSharedArray = builtins::BuiltinsSharedArray;
 using BuiltinsSharedTypedArray = builtins::BuiltinsSharedTypedArray;
+using BuiltinsSendableArrayBuffer = builtins::BuiltinsSendableArrayBuffer;
 
 void Builtins::InitializeSObjectAndSFunction(const JSHandle<GlobalEnv> &env) const
 {
@@ -69,6 +72,7 @@ void Builtins::InitializeSObjectAndSFunction(const JSHandle<GlobalEnv> &env) con
     InitializeSMap(env, sObjPrototype, sFuncPrototype);
     InitializeSharedArray(env, sObjPrototype, sFuncPrototype);
     InitializeSTypedArray(env, sObjPrototype, sFuncPrototype);
+    InitializeSArrayBuffer(env, sObjPrototype, sFuncPrototype);
     env->SetSObjectFunctionPrototype(thread_, sObjPrototype);
 }
 
@@ -115,6 +119,69 @@ void Builtins::InitializeSObject(const JSHandle<GlobalEnv> &env, const JSHandle<
     JSHandle<JSTaggedValue> protoSetter =
         CreateSGetterSetter(env, Object::ProtoSetter, "__proto__", FunctionLength::ONE);
     SetSAccessor(sObjPrototype, fieldIndex, protoGetter, protoSetter);
+}
+
+void Builtins::InitializeSArrayBuffer(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &sObjPrototype,
+    const JSHandle<JSFunction> &sFuncPrototype) const
+{
+    [[maybe_unused]] EcmaHandleScope scope(thread_);
+    const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
+    // SendableArrayBuffer.prototype
+    JSHandle<JSHClass> arrayBufferPrototypeHClass = CreateSArrayBufferPrototypeHClass(sObjPrototype);
+    JSHandle<JSObject> arrayBufferPrototype =
+        factory_->NewSharedOldSpaceJSObjectWithInit(arrayBufferPrototypeHClass);
+
+    JSHandle<JSTaggedValue> arrayBufferPrototypeValue(arrayBufferPrototype);
+
+    // SendableArrayBuffer.prototype_or_hclass
+    auto emptySLayout = globalConst->GetHandledEmptySLayoutInfo();
+    JSHandle<JSHClass> arrayBufferIHClass = factory_->NewSEcmaHClass(
+        JSSendableArrayBuffer::SIZE, 0, JSType::JS_SENDABLE_ARRAY_BUFFER, arrayBufferPrototypeValue, emptySLayout);
+
+    // SendableArrayBuffer = new Function()
+    JSHandle<JSHClass> arrayBufferFuncHClass = CreateSArrayBufferFunctionHClass(sFuncPrototype);
+
+    JSHandle<JSFunction> arrayBufferFunction =
+        factory_->NewSFunctionByHClass(reinterpret_cast<void *>(BuiltinsSendableArrayBuffer::ArrayBufferConstructor),
+                                       arrayBufferFuncHClass, FunctionKind::BUILTIN_CONSTRUCTOR);
+
+    InitializeSCtor(arrayBufferIHClass, arrayBufferFunction, "SendableArrayBuffer", FunctionLength::ONE);
+    JSHandle<JSObject> globalObject(thread_, env->GetGlobalObject());
+    JSHandle<JSTaggedValue> nameString(factory_->NewFromUtf8("SendableArrayBuffer"));
+    PropertyDescriptor desc(thread_, JSHandle<JSTaggedValue>::Cast(arrayBufferFunction), true, false, true);
+    JSObject::DefineOwnProperty(thread_, globalObject, nameString, desc);
+    RETURN_IF_ABRUPT_COMPLETION(thread_);
+
+    // SendableArrayBuffer prototype method
+    uint32_t fieldIndex = 0;
+    SetSFunction(env, arrayBufferPrototype, "slice",
+        BuiltinsSendableArrayBuffer::Slice, fieldIndex++, FunctionLength::TWO);
+
+    // 24.1.4.1 get SendableArrayBuffer.prototype.byteLength
+    JSHandle<JSTaggedValue> lengthGetter =
+        CreateSGetterSetter(env, BuiltinsSendableArrayBuffer::GetByteLength, "byteLength", FunctionLength::ZERO);
+    SetSAccessor(
+        JSHandle<JSObject>(arrayBufferPrototype), fieldIndex++, lengthGetter, globalConst->GetHandledUndefined());
+
+    // 24.1.4.4 SendableArrayBuffer.prototype[@@toStringTag]
+    JSHandle<JSTaggedValue> strTag(factory_->NewFromUtf8("SendableArrayBuffer"));
+    arrayBufferPrototype->SetPropertyInlinedProps(thread_, fieldIndex++, strTag.GetTaggedValue());
+
+    // 24.1.3.3 get SendableArrayBuffer[@@species]
+    fieldIndex = JSFunction::PROTOTYPE_INLINE_PROPERTY_INDEX + 1;
+    JSHandle<JSTaggedValue> speciesGetter =
+        CreateSGetterSetter(env, BuiltinsSendableArrayBuffer::Species, "[Symbol.species]", FunctionLength::ZERO);
+    SetSAccessor(
+        JSHandle<JSObject>(arrayBufferFunction), fieldIndex++, speciesGetter, globalConst->GetHandledUndefined());
+    
+    // SendableArrayBuffer method
+    for (const base::BuiltinFunctionEntry& entry: BuiltinsSendableArrayBuffer::GetArrayBufferFunctions()) {
+        SetSFunction(env, JSHandle<JSObject>(arrayBufferFunction), entry.GetName(), entry.GetEntrypoint(), fieldIndex++,
+                     entry.GetLength(), entry.GetBuiltinStubId());
+    }
+
+    env->SetSendableArrayBufferPrototype(thread_, arrayBufferPrototype);
+    env->SetSBuiltininArrayBufferFunction(thread_, arrayBufferFunction);
 }
 
 void Builtins::InitializeSSet(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &sObjPrototype,
@@ -368,6 +435,35 @@ JSHandle<JSHClass> Builtins::CreateSFunctionHClass(const JSHandle<JSFunction> &s
     return sobjPrototypeHClass;
 }
 
+JSHandle<JSHClass> Builtins::CreateSArrayBufferFunctionHClass(const JSHandle<JSFunction> &sFuncPrototype) const
+{
+    uint32_t index = 0;
+    auto env = vm_->GetGlobalEnv();
+    PropertyAttributes attributes = PropertyAttributes::Default(false, false, false);
+    attributes.SetIsInlinedProps(true);
+    attributes.SetRepresentation(Representation::TAGGED);
+    auto properties = BuiltinsSendableArrayBuffer::GetFunctionProperties();
+    uint32_t length = properties.size();
+    JSHandle<JSTaggedValue> keyString;
+    JSHandle<LayoutInfo> layout = factory_->CreateSLayoutInfo(length);
+    for (const auto &[key, isAccessor] : properties) {
+        attributes.SetOffset(index);
+        attributes.SetIsAccessor(isAccessor);
+        if (key == "[Symbol.species]") {
+            keyString = env->GetSpeciesSymbol();
+        } else {
+            keyString = JSHandle<JSTaggedValue>(factory_->NewFromUtf8(key));
+        }
+        layout->AddKey(thread_, index++, keyString.GetTaggedValue(), attributes);
+    }
+    JSHandle<JSHClass> sobjPrototypeHClass =
+        factory_->NewSEcmaHClass(JSSharedFunction::SIZE, length, JSType::JS_SHARED_FUNCTION,
+                                 JSHandle<JSTaggedValue>(sFuncPrototype), JSHandle<JSTaggedValue>(layout));
+    sobjPrototypeHClass->SetConstructor(true);
+    sobjPrototypeHClass->SetCallable(true);
+    return sobjPrototypeHClass;
+}
+
 JSHandle<JSHClass> Builtins::CreateSSetFunctionHClass(const JSHandle<JSFunction> &sFuncPrototype) const
 {
     uint32_t index = 0;
@@ -452,6 +548,35 @@ JSHandle<JSHClass> Builtins::CreateSFunctionPrototypeHClass(const JSHandle<JSTag
                                  JSHandle<JSTaggedValue>(layout));
     sobjPrototypeHClass->SetCallable(true);
     return sobjPrototypeHClass;
+}
+
+JSHandle<JSHClass> Builtins::CreateSArrayBufferPrototypeHClass(const JSHandle<JSObject> &sObjPrototype) const
+{
+    uint32_t index = 0;
+    auto env = vm_->GetGlobalEnv();
+    PropertyAttributes attributes = PropertyAttributes::Default(false, false, false);
+    attributes.SetIsInlinedProps(true);
+    attributes.SetRepresentation(Representation::TAGGED);
+    auto properties = BuiltinsSendableArrayBuffer::GetPrototypeProperties();
+    uint32_t length = properties.size();
+    ASSERT(length == BuiltinsSendableArrayBuffer::GetNumPrototypeInlinedProperties());
+    JSHandle<LayoutInfo> layout = factory_->CreateSLayoutInfo(length);
+    JSHandle<JSTaggedValue> keyString;
+    for (const auto &[key, isAccessor] : properties) {
+        attributes.SetOffset(index);
+        attributes.SetIsAccessor(isAccessor);
+        if (key == "[Symbol.toStringTag]") {
+            keyString = env->GetToStringTagSymbol();
+        } else {
+            keyString = JSHandle<JSTaggedValue>(factory_->NewFromUtf8(key));
+        }
+        layout->AddKey(thread_, index++, keyString.GetTaggedValue(), attributes);
+    }
+    JSHandle<JSHClass> sArrayBufferPrototypeHClass =
+        factory_->NewSEcmaHClass(JSSharedObject::SIZE, length, JSType::JS_SHARED_OBJECT,
+                                 JSHandle<JSTaggedValue>(sObjPrototype),
+                                 JSHandle<JSTaggedValue>(layout));
+    return sArrayBufferPrototypeHClass;
 }
 
 JSHandle<JSHClass> Builtins::CreateSSetPrototypeHClass(const JSHandle<JSObject> &sObjPrototype) const

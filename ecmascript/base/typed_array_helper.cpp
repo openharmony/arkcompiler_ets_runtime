@@ -20,6 +20,7 @@
 #include "ecmascript/base/error_type.h"
 #include "ecmascript/base/typed_array_helper-inl.h"
 #include "ecmascript/builtins/builtins_arraybuffer.h"
+#include "ecmascript/builtins/builtins_sendable_arraybuffer.h"
 #include "ecmascript/ecma_macros.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/global_env.h"
@@ -35,6 +36,7 @@
 #include "ecmascript/object_factory.h"
 #include "ecmascript/property_detector-inl.h"
 #include "ecmascript/shared_objects/js_shared_typed_array.h"
+#include "ecmascript/shared_objects/js_sendable_arraybuffer.h"
 
 namespace panda::ecmascript::base {
 using BuiltinsArrayBuffer = builtins::BuiltinsArrayBuffer;
@@ -122,13 +124,13 @@ JSTaggedValue TypedArrayHelper::SharedTypedArrayConstructor(EcmaRuntimeCallInfo 
     if (firstArg->IsTypedArray() || firstArg->IsSharedTypedArray()) {
         return TypedArrayHelper::CreateFromTypedArray(argv, obj, arrayType);
     }
-    if (firstArg->IsArrayBuffer() || firstArg->IsSharedArrayBuffer()) {
-        return TypedArrayHelper::CreateFromArrayBuffer(argv, obj, arrayType);
+    if (firstArg->IsArrayBuffer() || firstArg->IsSharedArrayBuffer() || firstArg->IsSendableArrayBuffer()) {
+        return TypedArrayHelper::CreateFromSendableArrayBuffer(argv, obj, arrayType);
     }
     if (firstArg->IsStableJSArray(thread)) {
         return TypedArrayHelper::FastCopyElementFromArray(argv, obj, arrayType);
     }
-    return TypedArrayHelper::CreateFromOrdinaryObject(argv, obj, arrayType);
+    return TypedArrayHelper::CreateFromSendableOrdinaryObject(argv, obj, arrayType);
 }
 
 JSTaggedValue TypedArrayHelper::FastCopyElementFromArray(EcmaRuntimeCallInfo *argv, const JSHandle<JSObject> &obj,
@@ -224,6 +226,100 @@ JSTaggedValue TypedArrayHelper::CreateFromOrdinaryObject(EcmaRuntimeCallInfo *ar
     uint64_t rawLen = lenTemp.GetNumber();
     // 10. Perform ? AllocateTypedArrayBuffer(O, len).
     TypedArrayHelper::AllocateTypedArrayBuffer(thread, obj, rawLen, arrayType);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    // 11. Let k be 0.
+    // 12. Repeat, while k < len
+    //   a. Let Pk be ! ToString(k).
+    //   b. Let kValue be ? Get(arrayLike, Pk).
+    //   c. Perform ? Set(O, Pk, kValue, true).
+    //   d. Set k to k + 1.
+    JSMutableHandle<JSTaggedValue> tKey(thread, JSTaggedValue::Undefined());
+    uint32_t len = static_cast<uint32_t>(rawLen);
+    uint32_t k = 0;
+    while (k < len) {
+        tKey.Update(JSTaggedValue(k));
+        JSHandle<JSTaggedValue> kKey(JSTaggedValue::ToString(thread, tKey));
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        JSHandle<JSTaggedValue> kValue = JSTaggedValue::GetProperty(thread, objectArg, kKey).GetValue();
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        JSTaggedValue::SetProperty(thread, JSHandle<JSTaggedValue>::Cast(obj), kKey, kValue, true);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        k++;
+    }
+    // 13. Return O.
+    return obj.GetTaggedValue();
+}
+
+// es11 22.2.4.4 TypedArray ( object )
+JSTaggedValue TypedArrayHelper::CreateFromSendableOrdinaryObject(EcmaRuntimeCallInfo *argv,
+                                                                 const JSHandle<JSObject> &obj,
+                                                                 const DataViewType arrayType)
+{
+    ASSERT(argv);
+    JSThread *thread = argv->GetThread();
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+    EcmaVM *ecmaVm = thread->GetEcmaVM();
+    JSHandle<GlobalEnv> env = ecmaVm->GetGlobalEnv();
+    JSHandle<JSTaggedValue> objectArg = BuiltinsBase::GetCallArg(argv, 0);
+    JSHandle<JSObject> object(objectArg);
+    // 5. Let usingIterator be ? GetMethod(object, @@iterator).
+    JSHandle<JSTaggedValue> iteratorSymbol = env->GetIteratorSymbol();
+    JSHandle<JSTaggedValue> usingIterator =
+        JSObject::GetMethod(thread, JSHandle<JSTaggedValue>::Cast(object), iteratorSymbol);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+
+    // 6. If usingIterator is not undefined, then
+    if (!usingIterator->IsUndefined()) {
+        CVector<JSHandle<JSTaggedValue>> vec;
+        // a. Let values be ? IterableToList(object, usingIterator).
+        // b. Let len be the number of elements in values.
+        // c. Perform ? AllocateTypedArrayBuffer(O, len).
+        JSHandle<JSTaggedValue> iterator = JSIterator::GetIterator(thread, objectArg, usingIterator);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        JSHandle<JSTaggedValue> next(thread, JSTaggedValue::True());
+        while (!next->IsFalse()) {
+            next = JSIterator::IteratorStep(thread, iterator);
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+            if (!next->IsFalse()) {
+                JSHandle<JSTaggedValue> nextValue = JSIterator::IteratorValue(thread, next);
+                vec.push_back(nextValue);
+            }
+        }
+        uint32_t len = static_cast<uint32_t>(vec.size());
+        TypedArrayHelper::AllocateSharedTypedArrayBuffer(thread, obj, len, arrayType);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        // d. Let k be 0.
+        // e. Repeat, while k < len
+        //   i. Let Pk be ! ToString(k).
+        //   ii. Let kValue be the first element of values and remove that element from values.
+        //   iii. Perform ? Set(O, Pk, kValue, true).
+        //   iv. Set k to k + 1.
+        JSMutableHandle<JSTaggedValue> tKey(thread, JSTaggedValue::Undefined());
+        uint32_t k = 0;
+        while (k < len) {
+            tKey.Update(JSTaggedValue(k));
+            JSHandle<JSTaggedValue> kKey(JSTaggedValue::ToString(thread, tKey));
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+            JSHandle<JSTaggedValue> kValue = vec[k];
+            JSTaggedValue::SetProperty(thread, JSHandle<JSTaggedValue>::Cast(obj), kKey, kValue, true);
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+            k++;
+        }
+        // f. Assert: values is now an empty List.
+        // g. Return O.
+        return obj.GetTaggedValue();
+    }
+
+    // 7. NOTE: object is not an Iterable so assume it is already an array-like object.
+    // 8. Let arrayLike be object.
+    // 9. Let len be ? LengthOfArrayLike(arrayLike).
+    JSHandle<JSTaggedValue> lengthKey = thread->GlobalConstants()->GetHandledLengthString();
+    JSTaggedNumber lenTemp =
+        JSTaggedValue::ToLength(thread, JSTaggedValue::GetProperty(thread, objectArg, lengthKey).GetValue());
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    uint64_t rawLen = lenTemp.GetNumber();
+    // 10. Perform ? AllocateTypedArrayBuffer(O, len).
+    TypedArrayHelper::AllocateSharedTypedArrayBuffer(thread, obj, rawLen, arrayType);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     // 11. Let k be 0.
     // 12. Repeat, while k < len
@@ -415,6 +511,78 @@ JSTaggedValue TypedArrayHelper::CreateFromArrayBuffer(EcmaRuntimeCallInfo *argv,
     // 15. Set O.[[ByteOffset]] to offset.
     // 16. Set O.[[ArrayLength]] to newByteLength / elementSize.
     JSTypedArray *jsTypedArray = JSTypedArray::Cast(*obj);
+    jsTypedArray->SetViewedArrayBufferOrByteArray(thread, buffer);
+    jsTypedArray->SetByteLength(newByteLength);
+    jsTypedArray->SetByteOffset(offset);
+    jsTypedArray->SetArrayLength(newByteLength / elementSize);
+    // 17. Return O.
+    return obj.GetTaggedValue();
+}
+
+// es11 22.2.4.5 TypedArray ( buffer [ , byteOffset [ , length ] ] )
+JSTaggedValue TypedArrayHelper::CreateFromSendableArrayBuffer(EcmaRuntimeCallInfo *argv,
+                                                              const JSHandle<JSObject> &obj,
+                                                              const DataViewType arrayType)
+{
+    ASSERT(argv);
+    JSThread *thread = argv->GetThread();
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+    // 5. Let elementSize be the Element Size value specified in Table 61 for constructorName.
+    // 6. Let offset be ? ToIndex(byteOffset).
+    uint32_t elementSize = TypedArrayHelper::GetSizeFromType(arrayType);
+    JSHandle<JSTaggedValue> byteOffset = BuiltinsBase::GetCallArg(argv, 1);
+    JSTaggedNumber index = JSTaggedValue::ToIndex(thread, byteOffset);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    auto offset = static_cast<uint32_t>(index.GetNumber());
+    // 7. If offset modulo elementSize ≠ 0, throw a RangeError exception.
+    if (offset % elementSize != 0) {
+        THROW_RANGE_ERROR_AND_RETURN(thread, "The offset cannot be an integral multiple of elementSize.",
+                                     JSTaggedValue::Exception());
+    }
+    // 8. If length is not undefined, then
+    //   a. Let newLength be ? ToIndex(length).
+    JSHandle<JSTaggedValue> length = BuiltinsBase::GetCallArg(argv, BuiltinsBase::ArgsPosition::THIRD);
+    uint64_t newLength = 0;
+    if (!length->IsUndefined()) {
+        index = JSTaggedValue::ToIndex(thread, length);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        newLength = static_cast<uint64_t>(index.GetNumber());
+    }
+    // 9. If IsDetachedBuffer(buffer) is true, throw a TypeError exception.
+    JSHandle<JSTaggedValue> buffer = BuiltinsBase::GetCallArg(argv, 0);
+    if (builtins::BuiltinsSendableArrayBuffer::IsDetachedBuffer(buffer.GetTaggedValue())) {
+        THROW_TYPE_ERROR_AND_RETURN(thread, "The srcData is detached buffer.", JSTaggedValue::Exception());
+    }
+    // 10. Let bufferByteLength be buffer.[[ArrayBufferByteLength]].
+    uint32_t bufferByteLength = JSHandle<JSSendableArrayBuffer>(buffer)->GetArrayBufferByteLength();
+    // 11. If length is undefined, then
+    //   a. If bufferByteLength modulo elementSize ≠ 0, throw a RangeError exception.
+    //   b. Let newByteLength be bufferByteLength - offset.
+    //   c. If newByteLength < 0, throw a RangeError exception.
+    uint64_t newByteLength = 0;
+    if (length->IsUndefined()) {
+        if (bufferByteLength % elementSize != 0) {
+            THROW_RANGE_ERROR_AND_RETURN(thread, "The bufferByteLength cannot be an integral multiple of elementSize.",
+                                         JSTaggedValue::Exception());
+        }
+        if (bufferByteLength < offset) {
+            THROW_RANGE_ERROR_AND_RETURN(thread, "The newByteLength is less than 0.", JSTaggedValue::Exception());
+        }
+        newByteLength = bufferByteLength - offset;
+    } else {
+        // 12. Else,
+        //   a. Let newByteLength be newLength × elementSize.
+        //   b. If offset + newByteLength > bufferByteLength, throw a RangeError exception.
+        newByteLength = newLength * elementSize;
+        if (offset + newByteLength > bufferByteLength) {
+            THROW_RANGE_ERROR_AND_RETURN(thread, "The newByteLength is out of range.", JSTaggedValue::Exception());
+        }
+    }
+    // 13. Set O.[[ViewedArrayBuffer]] to buffer.
+    // 14. Set O.[[ByteLength]] to newByteLength.
+    // 15. Set O.[[ByteOffset]] to offset.
+    // 16. Set O.[[ArrayLength]] to newByteLength / elementSize.
+    JSSharedTypedArray *jsTypedArray = JSSharedTypedArray::Cast(*obj);
     jsTypedArray->SetViewedArrayBufferOrByteArray(thread, buffer);
     jsTypedArray->SetByteLength(newByteLength);
     jsTypedArray->SetByteOffset(offset);
@@ -621,7 +789,7 @@ JSHandle<JSObject> TypedArrayHelper::AllocateSharedTypedArrayBuffer(JSThread *th
     if (byteLength > JSTypedArray::MAX_ONHEAP_LENGTH) {
         JSHandle<JSTaggedValue> constructor = thread->GetEcmaVM()->GetGlobalEnv()->GetArrayBufferFunction();
         data = JSHandle<JSTaggedValue>(thread,
-            BuiltinsArrayBuffer::AllocateArrayBuffer(thread, constructor, byteLength));
+            builtins::BuiltinsSendableArrayBuffer::AllocateSendableArrayBuffer(thread, constructor, byteLength));
         RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSHandle<JSObject>(thread, JSTaggedValue::Exception()));
         ASSERT_PRINT(!JSHandle<TaggedObject>(obj)->GetClass()->IsOnHeapFromBitField(), "must be not on heap");
     } else {

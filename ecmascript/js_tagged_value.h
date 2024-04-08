@@ -555,6 +555,7 @@ public:
     bool IsStringIterator() const;
     bool IsArrayBuffer() const;
     bool IsSharedArrayBuffer() const;
+    bool IsSendableArrayBuffer() const;
 
     bool IsJSSetIterator() const;
     bool IsJSSharedSetIterator() const;

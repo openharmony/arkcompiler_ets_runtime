@@ -329,6 +329,7 @@ bool JSSerializer::WriteTaggedObject(const JSHandle<JSTaggedValue> &value)
             return WriteJSTypedArray(value, SerializationUID::JS_BIGUINT64_ARRAY);
         case JSType::JS_ARRAY_BUFFER:
         case JSType::JS_SHARED_ARRAY_BUFFER:
+        case JSType::JS_SENDABLE_ARRAY_BUFFER:
             return WriteJSArrayBuffer(value);
         case JSType::LINE_STRING:
         case JSType::CONSTANT_STRING:

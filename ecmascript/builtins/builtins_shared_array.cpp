@@ -1795,6 +1795,8 @@ JSTaggedValue BuiltinsSharedArray::ToString(EcmaRuntimeCallInfo *argv)
             thread, thisHandle.GetTaggedValue().GetTaggedObject());
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         return ToStringImpl(argv, thread, thisHandle);
+    } else if (thisHandle->IsTypedArray()) {
+        return ToStringImpl(argv, thread, thisHandle);
     } else {
         auto error = ContainerError::BindError(thread, "The toString method cannot be bound.");
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());

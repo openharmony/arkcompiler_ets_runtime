@@ -363,6 +363,8 @@ private:
                            const JSHandle<JSFunction> &sFuncPrototype) const;
     void InitializeSFunction(const JSHandle<GlobalEnv> &env,
                              const JSHandle<JSFunction> &sFuncPrototype) const;
+    void InitializeSArrayBuffer(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &objFuncClass,
+                                const JSHandle<JSFunction> &sFuncPrototype) const;
     void InitializeSSet(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &sObjPrototype,
                         const JSHandle<JSFunction> &sFuncPrototype) const;
     void InitializeSMap(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &sObjPrototype,
@@ -394,6 +396,8 @@ private:
     JSHandle<JSHClass> CreateSTypedArrayPrototypeHClass(const JSHandle<JSObject> &sObjPrototype) const;
     JSHandle<JSHClass> CreateSTypedArrayFunctionHClass(const JSHandle<JSFunction> &sFuncPrototype) const;
     JSHandle<JSHClass> CreateSSpecificTypedArrayFuncHClass(const JSHandle<JSFunction> &sFuncPrototype) const;
+    JSHandle<JSHClass> CreateSArrayBufferPrototypeHClass(const JSHandle<JSObject> &sObjPrototype) const;
+    JSHandle<JSHClass> CreateSArrayBufferFunctionHClass(const JSHandle<JSFunction> &sFuncPrototype) const;
 
     void InitializeSCtor(const JSHandle<JSHClass> &protoHClass, const JSHandle<JSFunction> &ctor,
                          std::string_view name, int length) const;

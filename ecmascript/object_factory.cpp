@@ -125,6 +125,7 @@
 #include "ecmascript/require/js_cjs_require.h"
 #include "ecmascript/shared_mm/shared_mm.h"
 #include "ecmascript/shared_objects/js_shared_array.h"
+#include "ecmascript/shared_objects/js_sendable_arraybuffer.h"
 #include "ecmascript/shared_objects/js_shared_array_iterator.h"
 #include "ecmascript/shared_objects/js_shared_map.h"
 #include "ecmascript/shared_objects/js_shared_map_iterator.h"
@@ -277,6 +278,41 @@ void ObjectFactory::NewJSArrayBufferData(const JSHandle<JSArrayBuffer> &array, i
     array->SetArrayBufferData(thread_, pointer);
     array->SetWithNativeAreaAllocator(true);
     vm_->GetNativeAreaAllocator()->IncreaseNativeSizeStats(length, NativeFlag::ARRAY_BUFFER);
+}
+
+void ObjectFactory::NewJSSendableArrayBufferData(const JSHandle<JSSendableArrayBuffer> &array, int32_t length)
+{
+    if (length == 0) {
+        return;
+    }
+
+    JSTaggedValue data = array->GetArrayBufferData();
+    size_t size = static_cast<size_t>(length) * sizeof(uint8_t);
+    NativeAreaAllocator *nativeAreaAllocator = sHeap_->GetNativeAreaAllocator();
+    if (!data.IsUndefined()) {
+        auto *pointer = JSNativePointer::Cast(data.GetTaggedObject());
+        auto newData = nativeAreaAllocator->AllocateBuffer(size);
+        if (memset_s(newData, length, 0, length) != EOK) {
+            LOG_FULL(FATAL) << "memset_s failed";
+            UNREACHABLE();
+        }
+        pointer->ResetExternalPointer(newData);
+        nativeAreaAllocator->ModifyNativeSizeStats(pointer->GetBindingSize(), size,
+                                                   NativeFlag::ARRAY_BUFFER);
+        return;
+    }
+
+    auto newData = nativeAreaAllocator->AllocateBuffer(size);
+    if (memset_s(newData, length, 0, length) != EOK) {
+        LOG_FULL(FATAL) << "memset_s failed";
+        UNREACHABLE();
+    }
+    JSHandle<JSNativePointer> pointer = NewSJSNativePointer(newData, NativeAreaAllocator::FreeBufferFunc,
+                                                            nativeAreaAllocator, false, size,
+                                                            NativeFlag::ARRAY_BUFFER);
+    array->SetArrayBufferData(thread_, pointer);
+    array->SetWithNativeAreaAllocator(true);
+    nativeAreaAllocator->IncreaseNativeSizeStats(length, NativeFlag::ARRAY_BUFFER);
 }
 
 void ObjectFactory::NewJSSharedArrayBufferData(const JSHandle<JSArrayBuffer> &array, int32_t length)
@@ -1323,6 +1359,10 @@ void ObjectFactory::InitializeJSObject(const JSHandle<JSObject> &obj, const JSHa
             JSArrayBuffer::Cast(*obj)->SetArrayBufferData(thread_, JSTaggedValue::Undefined());
             JSArrayBuffer::Cast(*obj)->SetArrayBufferByteLength(0);
             JSArrayBuffer::Cast(*obj)->SetShared(true);
+            break;
+        case JSType::JS_SENDABLE_ARRAY_BUFFER:
+            JSSendableArrayBuffer::Cast(*obj)->SetArrayBufferData(thread_, JSTaggedValue::Undefined());
+            JSSendableArrayBuffer::Cast(*obj)->SetArrayBufferByteLength(0);
             break;
         case JSType::JS_PROMISE:
             JSPromise::Cast(*obj)->SetPromiseState(PromiseState::PENDING);

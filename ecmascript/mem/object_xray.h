@@ -107,6 +107,7 @@
 #include "ecmascript/module/js_module_source_text.h"
 #include "ecmascript/module/js_shared_module.h"
 #include "ecmascript/shared_objects/js_shared_array.h"
+#include "ecmascript/shared_objects/js_sendable_arraybuffer.h"
 #include "ecmascript/shared_objects/js_shared_array_iterator.h"
 #include "ecmascript/shared_objects/js_shared_map.h"
 #include "ecmascript/shared_objects/js_shared_map_iterator.h"
@@ -321,6 +322,9 @@ public:
                 break;
             case JSType::JS_ARRAY_BUFFER:
                 JSArrayBuffer::Cast(object)->VisitRangeSlot<visitType>(visitor);
+                break;
+            case JSType::JS_SENDABLE_ARRAY_BUFFER:
+                JSSendableArrayBuffer::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::JS_SHARED_ARRAY_BUFFER:
                 JSArrayBuffer::Cast(object)->VisitRangeSlot<visitType>(visitor);

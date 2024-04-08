@@ -382,6 +382,8 @@ CString *HeapSnapshot::GenerateNodeName(TaggedObject *entry)
             return GetString("StringIterator");
         case JSType::JS_ARRAY_BUFFER:
             return GetString("ArrayBuffer");
+        case JSType::JS_SENDABLE_ARRAY_BUFFER:
+            return GetString("SendableArrayBuffer");
         case JSType::JS_SHARED_ARRAY_BUFFER:
             return GetString("SharedArrayBuffer");
         case JSType::JS_PROXY_REVOC_FUNCTION:

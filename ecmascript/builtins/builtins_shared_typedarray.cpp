@@ -386,11 +386,6 @@ JSTaggedValue BuiltinsSharedTypedArray::GetBuffer(EcmaRuntimeCallInfo *argv)
     if (!thisHandle->IsECMAObject()) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "This value is not an object.", JSTaggedValue::Exception());
     }
-    // 3. If O does not have a [[ViewedArrayBuffer]] internal slot, throw a TypeError exception.
-    if (!thisHandle->IsSharedTypedArray()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "This value does not have a [[ViewedArrayBuffer]] internal slot.",
-                                    JSTaggedValue::Exception());
-    }
     // 4. Let buffer be the value of O’s [[ViewedArrayBuffer]] internal slot.
     JSHandle<JSTypedArray> typedArray = JSHandle<JSTypedArray>::Cast(thisHandle);
     JSTaggedValue buffer = JSTypedArray::GetOffHeapBuffer(thread, typedArray);
@@ -410,11 +405,6 @@ JSTaggedValue BuiltinsSharedTypedArray::GetByteLength(EcmaRuntimeCallInfo *argv)
     // 2. If Type(O) is not Object, throw a TypeError exception.
     if (!thisHandle->IsECMAObject()) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "This value is not an object.", JSTaggedValue::Exception());
-    }
-    // 3. If O does not have a [[ViewedArrayBuffer]] internal slot, throw a TypeError exception.
-    if (!thisHandle->IsSharedTypedArray()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "This value does not have a [[ViewedArrayBuffer]] internal slot.",
-                                    JSTaggedValue::Exception());
     }
     // 4. Let buffer be the value of O’s [[ViewedArrayBuffer]] internal slot.
     JSHandle<JSTypedArray> typeArrayObj = JSHandle<JSTypedArray>::Cast(thisHandle);
@@ -440,11 +430,6 @@ JSTaggedValue BuiltinsSharedTypedArray::GetByteOffset(EcmaRuntimeCallInfo *argv)
     // 2. If Type(O) is not Object, throw a TypeError exception.
     if (!thisHandle->IsECMAObject()) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "This value is not an object.", JSTaggedValue::Exception());
-    }
-    // 3. If O does not have a [[ViewedArrayBuffer]] internal slot, throw a TypeError exception.
-    if (!thisHandle->IsSharedTypedArray()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "This value does not have a [[ViewedArrayBuffer]] internal slot.",
-                                    JSTaggedValue::Exception());
     }
     // 4. Let buffer be the value of O’s [[ViewedArrayBuffer]] internal slot.
     JSHandle<JSTypedArray> typeArrayObj = JSHandle<JSTypedArray>::Cast(thisHandle);
@@ -763,7 +748,7 @@ JSTaggedValue BuiltinsSharedTypedArray::Join(EcmaRuntimeCallInfo *argv)
 
     JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
 
-    if (!thisHandle->IsSharedTypedArray()) {
+    if (!thisHandle->IsSharedTypedArray() && !thisHandle->IsTypedArray()) {
         THROW_TYPE_ERROR_AND_RETURN(argv->GetThread(), "This is not a TypedArray.", JSTaggedValue::Exception());
     }
 
@@ -881,11 +866,6 @@ JSTaggedValue BuiltinsSharedTypedArray::GetLength(EcmaRuntimeCallInfo *argv)
     // 2. If Type(O) is not Object, throw a TypeError exception.
     if (!thisHandle->IsECMAObject()) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "This value is not an object.", JSTaggedValue::Exception());
-    }
-    // 3. If O does not have a [[TypedArrayName]] internal slot, throw a TypeError exception.
-    if (!thisHandle->IsSharedTypedArray()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "This value does not have a [[TypedArrayName]] internal slot.",
-                                    JSTaggedValue::Exception());
     }
     // 4. Assert: O has [[ViewedArrayBuffer]] and [[ArrayLength]] internal slots.
     // 5. Let buffer be the value of O’s [[ViewedArrayBuffer]] internal slot.

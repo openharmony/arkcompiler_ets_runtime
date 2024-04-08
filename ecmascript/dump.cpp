@@ -110,6 +110,7 @@
 #include "ecmascript/require/js_cjs_require.h"
 #include "ecmascript/require/js_cjs_exports.h"
 #include "ecmascript/shared_objects/js_shared_array.h"
+#include "ecmascript/shared_objects/js_sendable_arraybuffer.h"
 #include "ecmascript/shared_objects/js_shared_array_iterator.h"
 #include "ecmascript/shared_objects/js_shared_map.h"
 #include "ecmascript/shared_objects/js_shared_map_iterator.h"
@@ -314,6 +315,8 @@ CString JSHClass::DumpJSType(JSType type)
             return "RegExpIterator";
         case JSType::JS_ARRAY_BUFFER:
             return "ArrayBuffer";
+        case JSType::JS_SENDABLE_ARRAY_BUFFER:
+            return "SendableArrayBuffer";
         case JSType::JS_SHARED_ARRAY_BUFFER:
             return "SharedArrayBuffer";
         case JSType::JS_PROXY_REVOC_FUNCTION:
@@ -914,6 +917,9 @@ static void DumpObject(TaggedObject *obj, std::ostream &os)
             break;
         case JSType::JS_ARRAY_BUFFER:
             JSArrayBuffer::Cast(obj)->Dump(os);
+            break;
+        case JSType::JS_SENDABLE_ARRAY_BUFFER:
+            JSSendableArrayBuffer::Cast(obj)->Dump(os);
             break;
         case JSType::JS_SHARED_ARRAY_BUFFER:
             JSArrayBuffer::Cast(obj)->Dump(os);
@@ -2914,6 +2920,14 @@ void JSArrayBuffer::Dump(std::ostream &os) const
     os << " - Shared: " << GetShared();
 }
 
+void JSSendableArrayBuffer::Dump(std::ostream &os) const
+{
+    os << " - byte-length: " << GetArrayBufferByteLength();
+    os << " - buffer-data: ";
+    GetArrayBufferData().Dump(os);
+    os << " - Shared: " << GetShared();
+}
+
 void PromiseReaction::Dump(std::ostream &os) const
 {
     os << " - promise-capability: ";
@@ -4399,6 +4413,9 @@ static void DumpObject(TaggedObject *obj, std::vector<Reference> &vec, bool isVm
         case JSType::JS_SHARED_ARRAY_BUFFER:
             JSArrayBuffer::Cast(obj)->DumpForSnapshot(vec);
             return;
+        case JSType::JS_SENDABLE_ARRAY_BUFFER:
+            JSSendableArrayBuffer::Cast(obj)->DumpForSnapshot(vec);
+            return;
         case JSType::JS_PROXY_REVOC_FUNCTION:
             JSProxyRevocFunction::Cast(obj)->DumpForSnapshot(vec);
             return;
@@ -5675,6 +5692,14 @@ void JSDataView::DumpForSnapshot(std::vector<Reference> &vec) const
 }
 
 void JSArrayBuffer::DumpForSnapshot(std::vector<Reference> &vec) const
+{
+    vec.emplace_back(CString("buffer-data"), GetArrayBufferData());
+    vec.emplace_back(CString("byte-length"), JSTaggedValue(GetArrayBufferByteLength()));
+    vec.emplace_back(CString("shared"), JSTaggedValue(GetShared()));
+    JSObject::DumpForSnapshot(vec);
+}
+
+void JSSendableArrayBuffer::DumpForSnapshot(std::vector<Reference> &vec) const
 {
     vec.emplace_back(CString("buffer-data"), GetArrayBufferData());
     vec.emplace_back(CString("byte-length"), JSTaggedValue(GetArrayBufferByteLength()));
