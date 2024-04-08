@@ -1304,9 +1304,41 @@ void TypedBytecodeLowering::LowerTypedIsTrueOrFalse(GateRef gate, bool flag)
     acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
 }
 
+bool TryLowerNewNumber(CircuitBuilder *builder, GateAccessor acc, GateRef gate)
+{
+    auto loadBuiltin = acc.GetValueIn(gate, 0);
+    if ((acc.GetOpCode(loadBuiltin) == OpCode::LOAD_BUILTIN_OBJECT) &&
+            (acc.GetIndex(loadBuiltin) == static_cast<size_t>(BuiltinType::BT_NUMBER))) {
+        auto arg = builder->ToTaggedIntPtr(builder->Int32(0));
+        if (acc.GetNumValueIn(gate) != 1) {
+            ASSERT(acc.GetNumValueIn(gate) == 2U);
+            arg = acc.GetValueIn(gate, 1);
+        }
+
+        auto currentLabel = builder->GetCurrentEnvironment()->GetCurrentLabel();
+        auto currentControl = currentLabel->GetControl();
+        auto currentDepend = currentLabel->GetDepend();
+        GateRef frameState = acc.FindNearestFrameState(gate);
+        GateRef newNumber = acc.GetCircuit()->NewGate(acc.GetCircuit()->NewNumber(),
+            MachineType::I64,
+            {currentControl, currentDepend, loadBuiltin, arg, frameState},
+            GateType::TaggedPointer());
+
+        currentLabel->SetControl(newNumber);
+        currentLabel->SetDepend(newNumber);
+
+        acc.ReplaceHirAndDeleteIfException(gate, builder->GetStateDepend(), newNumber);
+        return true;
+    }
+    return false;
+}
+
 void TypedBytecodeLowering::LowerTypedNewObjRange(GateRef gate)
 {
     if (TryLowerNewBuiltinConstructor(gate)) {
+        return;
+    }
+    if (TryLowerNewNumber(&builder_, acc_, gate)) {
         return;
     }
     NewObjRangeTypeInfoAccessor tacc(compilationEnv_, circuit_, gate);
