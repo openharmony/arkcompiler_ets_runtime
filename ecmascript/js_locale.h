@@ -492,7 +492,7 @@ public:
                                                const JSHandle<EcmaString> &localeString,
                                                const JSHandle<JSObject> &options);
 
-    static JSHandle<EcmaString> NormalizeKeywordValue(JSThread *thread, const JSHandle<JSLocale> &locale,
+    static JSTaggedValue NormalizeKeywordValue(JSThread *thread, const JSHandle<JSLocale> &locale,
                                                     const std::string &key);
 
     static JSHandle<EcmaString> ToString(JSThread *thread, const JSHandle<JSLocale> &locale);

@@ -1590,7 +1590,6 @@
         "intl/locale/locale-info-check-property.js",
         "intl/locale/locale-info-timezones-sorted.js",
         "intl/locale/locale-info-check-return-types.js",
-        "intl/locale/property.js",
         "intl/locale/locale-info-ext.js",
         "intl/locale/locale-getCollations.js",
         "intl/enumeration/timeZone-sorted.js",
