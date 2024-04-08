@@ -29,6 +29,7 @@
 #include "ecmascript/property_detector-inl.h"
 #include "ecmascript/js_arraybuffer.h"
 #include "ecmascript/interpreter/fast_runtime_stub-inl.h"
+#include "ecmascript/linked_hash_table.h"
 #include "builtins_typedarray.h"
 #include "ecmascript/jit/jit.h"
 
@@ -247,6 +248,15 @@ JSTaggedValue BuiltinsArkTools::CheckCircularImport(EcmaRuntimeCallInfo *info)
     LOG_ECMA(INFO) << "checkCircularImport begin with: "<< string;
     SourceTextModule::CheckCircularImportTool(thread, string, referenceList, printOtherCircular);
     return JSTaggedValue::Undefined();
+}
+
+JSTaggedValue BuiltinsArkTools::HashCode(EcmaRuntimeCallInfo *info)
+{
+    ASSERT(info);
+    JSThread *thread = info->GetThread();
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+    JSHandle<JSTaggedValue> key = GetCallArg(info, 0);
+    return JSTaggedValue(LinkedHash::Hash(thread, key.GetTaggedValue()));
 }
 
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)

@@ -126,6 +126,7 @@ libark_jsoptimizer_sources = [
   "gate_accessor.cpp",
   "graph_editor.cpp",
   "graph_linearizer.cpp",
+  "hash_stub_builder.cpp",
   "hcr_circuit_builder.cpp",
   "hcr_gate_meta_data.cpp",
   "ic_stub_builder.cpp",

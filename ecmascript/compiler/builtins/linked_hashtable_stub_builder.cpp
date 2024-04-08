@@ -16,6 +16,7 @@
 #include "ecmascript/compiler/builtins/linked_hashtable_stub_builder.h"
 
 #include "ecmascript/compiler/builtins/builtins_stubs.h"
+#include "ecmascript/compiler/hash_stub_builder.h"
 #include "ecmascript/compiler/new_object_stub_builder.h"
 #include "ecmascript/linked_hash_table.h"
 #include "ecmascript/js_set.h"
@@ -72,7 +73,8 @@ void LinkedHashTableStubBuilder<LinkedHashTableType, LinkedHashTableObject>::Reh
             }
             Bind(&notWeak);
 
-            GateRef hash = GetHash(*key);
+            HashStubBuilder hashBuilder(this, glue_);
+            GateRef hash = hashBuilder.GetHash(*key);
             GateRef bucket = HashToBucket(newTable, hash);
             InsertNewEntry(newTable, bucket, *desEntry);
             GateRef desIndex = EntryToIndex(newTable, *desEntry);
@@ -220,79 +222,6 @@ GateRef LinkedHashTableStubBuilder<LinkedHashTableType, LinkedHashTableObject>::
     auto ret = *res;
     env->SubCfgExit();
     return ret;
-}
-
-template <typename LinkedHashTableType, typename LinkedHashTableObject>
-GateRef LinkedHashTableStubBuilder<LinkedHashTableType, LinkedHashTableObject>::GetHash(GateRef key)
-{
-    auto env = GetEnvironment();
-    Label entryLabel(env);
-    Label exit(env);
-    env->SubCfgEntry(&entryLabel);
-    DEFVARIABLE(res, VariableType::INT32(), Int32(0));
-
-    Label slowGetHash(env);
-    Label symbolKey(env);
-    Label stringCheck(env);
-    BRANCH(TaggedIsSymbol(key), &symbolKey, &stringCheck);
-
-    Bind(&symbolKey);
-    res = Load(VariableType::INT32(), key, IntPtr(JSSymbol::HASHFIELD_OFFSET));
-    Jump(&exit);
-
-    Bind(&stringCheck);
-    Label stringKey(env);
-    Label objectCheck(env);
-    BRANCH(TaggedIsString(key), &stringKey, &objectCheck);
-    Bind(&stringKey);
-    res = GetHashcodeFromString(glue_, key);
-    Jump(&exit);
-
-    Bind(&objectCheck);
-    Label heapObjectKey(env);
-    Label numberCheck(env);
-    BRANCH(TaggedIsHeapObject(key), &heapObjectKey, &numberCheck);
-
-    Bind(&heapObjectKey);
-    Label ecmaObjectKey(env);
-    BRANCH(TaggedObjectIsEcmaObject(key), &ecmaObjectKey, &slowGetHash);
-    Bind(&ecmaObjectKey);
-    CalcHashcodeForObject(glue_, key, &res, &exit);
-
-    Bind(&numberCheck);
-    Label numberKey(env);
-    BRANCH(TaggedIsNumber(key), &numberKey, &slowGetHash);
-
-    Bind(&numberKey);
-    CalcHashcodeForNumber(key, &res, &exit);
-
-    Bind(&slowGetHash);
-    res = GetInt32OfTInt(CallRuntime(glue_, RTSTUB_ID(GetLinkedHash), { key }));
-    Jump(&exit);
-
-    Bind(&exit);
-    auto ret = *res;
-    env->SubCfgExit();
-    return ret;
-}
-
-template <typename LinkedHashTableType, typename LinkedHashTableObject>
-void LinkedHashTableStubBuilder<LinkedHashTableType, LinkedHashTableObject>::CalcHashcodeForNumber(
-    GateRef key, Variable *res, Label *exit)
-{
-    auto env = GetEnvironment();
-    Label doubleKey(env);
-    Label intKey(env);
-    BRANCH(TaggedIsDouble(key), &doubleKey, &intKey);
-    Bind(&doubleKey);
-    {
-        CalcHashcodeForDouble(key, res, exit);
-    }
-    Bind(&intKey);
-    {
-        *res = CalcHashcodeForInt(key);
-        Jump(exit);
-    }
 }
 
 template <typename LinkedHashTableType, typename LinkedHashTableObject>
@@ -577,7 +506,8 @@ GateRef LinkedHashTableStubBuilder<LinkedHashTableType, LinkedHashTableObject>::
     env->SubCfgEntry(&cfgEntry);
     Label exit(env);
     DEFVARIABLE(res, VariableType::JS_ANY(), linkedTable);
-    GateRef hash = GetHash(key);
+    HashStubBuilder hashBuilder(this, glue_);
+    GateRef hash = hashBuilder.GetHash(key);
     GateRef entry = FindElement(linkedTable, key, hash);
     Label findEntry(env);
     Label notFind(env);
@@ -623,7 +553,8 @@ GateRef LinkedHashTableStubBuilder<LinkedHashTableType, LinkedHashTableObject>::
     env->SubCfgEntry(&cfgEntry);
     Label exit(env);
     DEFVARIABLE(res, VariableType::JS_ANY(), TaggedFalse());
-    GateRef hash = GetHash(key);
+    HashStubBuilder hashBuilder(this, glue_);
+    GateRef hash = hashBuilder.GetHash(key);
     GateRef entry = FindElement(linkedTable, key, hash);
     Label findEntry(env);
     BRANCH(Int32Equal(entry, Int32(-1)), &exit, &findEntry);
@@ -658,7 +589,8 @@ GateRef LinkedHashTableStubBuilder<LinkedHashTableType, LinkedHashTableObject>::
     GateRef size = GetNumberOfElements(linkedTable);
     BRANCH(Int32Equal(size, Int32(0)), &exit, &nonEmpty);
     Bind(&nonEmpty);
-    GateRef hash = GetHash(key);
+    HashStubBuilder hashBuilder(this, glue_);
+    GateRef hash = hashBuilder.GetHash(key);
 
     GateRef entry = FindElement(linkedTable, key, hash);
     Label findEntry(env);
@@ -782,7 +714,8 @@ GateRef LinkedHashTableStubBuilder<LinkedHashTableType, LinkedHashTableObject>::
     env->SubCfgEntry(&cfgEntry);
     Label exit(env);
     DEFVARIABLE(res, VariableType::JS_ANY(), Undefined());
-    GateRef hash = GetHash(key);
+    HashStubBuilder hashBuilder(this, glue_);
+    GateRef hash = hashBuilder.GetHash(key);
     GateRef entry = FindElement(linkedTable, key, hash);
     Label findEntry(env);
     Branch(Int32Equal(entry, Int32(-1)), &exit, &findEntry);

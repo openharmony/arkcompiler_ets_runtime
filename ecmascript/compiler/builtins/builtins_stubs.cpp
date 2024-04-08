@@ -31,6 +31,7 @@
 #include "ecmascript/compiler/new_object_stub_builder.h"
 #include "ecmascript/compiler/stub_builder-inl.h"
 #include "ecmascript/compiler/stub_builder.h"
+#include "ecmascript/compiler/hash_stub_builder.h"
 #include "ecmascript/compiler/variable_type.h"
 #include "ecmascript/js_date.h"
 #include "ecmascript/js_primitive_ref.h"
@@ -216,6 +217,28 @@ BUILTINS_METHOD_STUB_LIST(DECLARE_BUILTINS_STUB_BUILDER, DECLARE_BUILTINS_STUB_B
 #undef DECLARE_BUILTINS_STUB_BUILDER
 #undef DECLARE_BUILTINS_STUB_BUILDER1
 #undef DECLARE_BUILTINS_COLLECTION_STUB_BUILDER
+
+DECLARE_BUILTINS(ArkToolsHashCode)
+{
+    (void) nativeCode;
+    (void) func;
+    (void) newTarget;
+    (void) thisValue;
+    auto env = GetEnvironment();
+    GateRef key = GetCallArg0(numArgs);
+
+    Label irHash(env);
+    Label rtHash(env);
+    BRANCH(IntPtrEqual(numArgs, IntPtr(1)), &irHash, &rtHash);
+    Bind(&irHash);
+    {
+        HashStubBuilder hashBuilder(this, glue);
+        GateRef hash = hashBuilder.GetHash(key);
+        Return(env->GetBuilder()->Int32ToTaggedPtr(hash));
+    }
+    Bind(&rtHash);
+    Return(CallRuntime(glue, RTSTUB_ID(GetLinkedHash), { key }));
+}
 
 // aot and builtins public stub function
 #define DECLARE_AOT_AND_BUILTINS_STUB_BUILDER(stubName, method, type, initValue)                    \

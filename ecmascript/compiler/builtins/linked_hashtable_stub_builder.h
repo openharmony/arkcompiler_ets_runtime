@@ -56,7 +56,6 @@ private:
         return Int32Add(bucket, Int32(LinkedHashTableType::ELEMENTS_START_INDEX));
     }
 
-    GateRef GetHash(GateRef key);
     GateRef HashObjectIsMatch(GateRef key, GateRef other);
     GateRef FindElement(GateRef linkedTable, GateRef key, GateRef hash);
     GateRef GetKey(GateRef linkedTable, GateRef entry)
@@ -194,8 +193,6 @@ private:
         SetNextEntry(linkedTable, entry, previousEntry);
         SetElement(linkedTable, bucketIndex, IntToTaggedInt(entry));
     }
-
-    void CalcHashcodeForNumber(GateRef key, Variable *res, Label *exit);
 
     GateRef GetDeletedElementsAt(GateRef linkedTable, GateRef entry);
     GateRef GrowCapacity(GateRef linkedTable, GateRef numberOfAddedElements);
