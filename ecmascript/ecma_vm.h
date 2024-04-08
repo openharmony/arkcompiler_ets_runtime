@@ -475,6 +475,7 @@ public:
 #if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
     void DeleteHeapProfile();
     HeapProfilerInterface *GetHeapProfile();
+    void  SetHeapProfile(HeapProfilerInterface *heapProfile) { heapProfile_ = heapProfile; }
     HeapProfilerInterface *GetOrNewHeapProfile();
     void StartHeapTracking();
     void StopHeapTracking();
