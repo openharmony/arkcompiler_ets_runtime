@@ -693,7 +693,8 @@ public:
         bool enableLog = data->GetLog()->EnableMethodCIRLog() || data->GetLog()->EnableMethodASMLog();
         Chunk chunk(data->GetNativeAreaAllocator());
         CombinedPassVisitor visitor(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk);
-        EarlyElimination earlyElimination(data->GetCircuit(), &visitor, &chunk);
+        JSRuntimeOptions runtimeOption = data->GetPassContext()->GetEcmaVM()->GetJSOptions();
+        EarlyElimination earlyElimination(data->GetCircuit(), &visitor, &chunk, runtimeOption.IsEnableMemoryAnalysis());
         visitor.AddPass(&earlyElimination);
         visitor.VisitGraph();
         visitor.PrintLog("early elimination");

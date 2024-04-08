@@ -229,6 +229,9 @@ GateRef EarlyElimination::UpdateDependChain(GateRef gate, DependInfoNode* depend
 
 DependInfoNode* EarlyElimination::UpdateWrite(GateRef gate, DependInfoNode* dependInfo)
 {
+    if (!enableMemoryAnalysis_) {
+        return new (chunk_) DependInfoNode(chunk_);
+    }
     auto op = acc_.GetOpCode(gate);
     switch (op) {
         case OpCode::STORE_PROPERTY:

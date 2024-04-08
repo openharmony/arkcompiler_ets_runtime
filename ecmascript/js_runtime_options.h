@@ -173,6 +173,7 @@ enum CommandValues {
     OPTION_COMPILER_METHODS_RANGE,
     OPTION_COMPILER_CODEGEN_OPT,
     OPTION_COMPILER_OPT_BC_RANGE_HELP,
+    OPTION_COMPILER_MEMORY_ANALYSIS,
     OPTION_COMPILER_OPT_ESCAPE_ANALYSIS,
     OPTION_COMPILER_TRACE_ESCAPE_ANALYSIS,
     OPTION_LAST,
@@ -1612,7 +1613,17 @@ public:
     {
         return traceInductionVariableAnalysis_;
     }
-    
+
+    void SetEnableMemoryAnalysis(bool value)
+    {
+        enableMemoryAnalysis_ = value;
+    }
+
+    bool IsEnableMemoryAnalysis() const
+    {
+        return enableMemoryAnalysis_;
+    }
+
 private:
     static bool StartsWith(const std::string &haystack, const std::string &needle)
     {
@@ -1760,6 +1771,7 @@ private:
     bool traceEscapeAnalysis_ {false};
     bool enableInductionVariableAnalysis_ {false};
     bool traceInductionVariableAnalysis_ {false};
+    bool enableMemoryAnalysis_ {true};
 };
 }  // namespace panda::ecmascript
 
