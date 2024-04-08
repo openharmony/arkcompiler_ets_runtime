@@ -101,7 +101,7 @@
     /* Array.prototype.toSorted ( comparefn ) */                            \
     V("toSorted",       ToSorted,         1, INVALID)                       \
     /* Array.prototype.toSpliced ( start, skipCount, ...items ) */          \
-    V("toSpliced",      ToSpliced,        2, INVALID)                       \
+    V("toSpliced",      ToSpliced,        2, ArrayToSpliced)                \
     /* Array.prototype.toString ( ) */                                      \
     V("toString",       ToString,         0, INVALID)                       \
     /* Array.prototype.unshift ( ...items ) */                              \

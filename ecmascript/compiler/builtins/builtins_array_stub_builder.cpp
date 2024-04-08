@@ -2641,6 +2641,229 @@ void BuiltinsArrayStubBuilder::Splice(GateRef glue, GateRef thisValue, GateRef n
     }
 }
 
+void BuiltinsArrayStubBuilder::ToSpliced(GateRef glue, GateRef thisValue, GateRef numArgs,
+    Variable *result, Label *exit, Label *slowPath)
+{
+    auto env = GetEnvironment();
+    Label isHeapObject(env);
+    Label isJsArray(env);
+    Label isStability(env);
+    Label defaultConstr(env);
+    BRANCH(TaggedIsHeapObject(thisValue), &isHeapObject, slowPath);
+    Bind(&isHeapObject);
+    BRANCH(IsJsArray(thisValue), &isJsArray, slowPath);
+    Bind(&isJsArray);
+    BRANCH(HasConstructor(thisValue), slowPath, &defaultConstr);
+    Bind(&defaultConstr);
+    BRANCH(IsStableJSArray(glue, thisValue), &isStability, slowPath);
+    Bind(&isStability);
+    Label notCOWArray(env);
+    BRANCH(IsJsCOWArray(thisValue), slowPath, &notCOWArray);
+    Bind(&notCOWArray);
+
+    GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
+    GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
+    auto arrayFunc = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv, GlobalEnv::ARRAY_FUNCTION_INDEX);
+    GateRef intialHClass = Load(VariableType::JS_ANY(), arrayFunc, IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
+    Label equalCls(env);
+    GateRef arrayCls = LoadHClass(thisValue);
+    BRANCH(Equal(intialHClass, arrayCls), &equalCls, slowPath);
+    Bind(&equalCls);
+
+    GateRef thisLen = GetArrayLength(thisValue);
+    Label lessThreeArg(env);
+    DEFVARIABLE(actualStart, VariableType::INT32(), Int32(0));
+    DEFVARIABLE(actualDeleteCount, VariableType::INT32(), Int32(0));
+    DEFVARIABLE(newLen, VariableType::INT32(), Int32(0));
+    DEFVARIABLE(insertCount, VariableType::INT32(), Int32(0));
+    GateRef argc = ChangeIntPtrToInt32(numArgs);
+    // 3: max arg count
+    BRANCH(Int32LessThanOrEqual(argc, Int32(3)), &lessThreeArg, slowPath);
+    Bind(&lessThreeArg);
+    {
+        Label checkOverFlow(env);
+        Label greaterZero(env);
+        Label greaterOne(env);
+        Label checkGreaterOne(env);
+        Label notOverFlow(env);
+        Label copyAfter(env);
+        // 0: judge the first arg exists
+        BRANCH(Int32GreaterThan(argc, Int32(0)), &greaterZero, &checkGreaterOne);
+        Bind(&greaterZero);
+        {
+            GateRef taggedStart = GetCallArg0(numArgs);
+            Label taggedStartInt(env);
+            BRANCH(TaggedIsInt(taggedStart), &taggedStartInt, slowPath);
+            Bind(&taggedStartInt);
+            {
+                GateRef intStart = GetInt32OfTInt(taggedStart);
+                actualStart = CalArrayRelativePos(intStart, thisLen);
+                actualDeleteCount = Int32Sub(thisLen, *actualStart);
+                Jump(&checkGreaterOne);
+            }
+        }
+        Bind(&checkGreaterOne);
+        {
+            // 1: judge the second arg exists
+            BRANCH(Int32GreaterThan(argc, Int32(1)), &greaterOne, &checkOverFlow);
+            Bind(&greaterOne);
+            {
+                // 2: arg count which is not an item
+                insertCount = Int32Sub(argc, Int32(2));
+                GateRef argDeleteCount = GetCallArg1(numArgs);
+                Label argDeleteCountInt(env);
+                BRANCH(TaggedIsInt(argDeleteCount), &argDeleteCountInt, slowPath);
+                Bind(&argDeleteCountInt);
+                {
+                    DEFVARIABLE(deleteCount, VariableType::INT32(), TaggedGetInt(argDeleteCount));
+                    Label deleteCountLessZero(env);
+                    Label calActualDeleteCount(env);
+                    BRANCH(Int32LessThan(*deleteCount, Int32(0)), &deleteCountLessZero, &calActualDeleteCount);
+                    Bind(&deleteCountLessZero);
+                    {
+                        deleteCount = Int32(0);
+                        Jump(&calActualDeleteCount);
+                    }
+                    Bind(&calActualDeleteCount);
+                    {
+                        actualDeleteCount = *deleteCount;
+                        Label lessArrayLen(env);
+                        BRANCH(Int32LessThan(Int32Sub(thisLen, *actualStart), *deleteCount),
+                            &lessArrayLen, &checkOverFlow);
+                        Bind(&lessArrayLen);
+                        {
+                            actualDeleteCount = Int32Sub(thisLen, *actualStart);
+                            Jump(&checkOverFlow);
+                        }
+                    }
+                }
+            }
+            Bind(&checkOverFlow);
+            {
+                newLen = Int32Add(Int32Sub(thisLen, *actualDeleteCount), *insertCount);
+                BRANCH(Int64GreaterThan(ZExtInt32ToInt64(*newLen), Int64(base::MAX_SAFE_INTEGER)),
+                    slowPath, &notOverFlow);
+                Bind(&notOverFlow);
+                Label newLenEmpty(env);
+                Label newLenNotEmpty(env);
+                BRANCH(Int32Equal(*newLen, Int32(0)), &newLenEmpty, &newLenNotEmpty);
+                Bind(&newLenEmpty);
+                {
+                    NewObjectStubBuilder newBuilder(this);
+                    result->WriteVariable(newBuilder.CreateEmptyArray(glue));
+                    Jump(exit);
+                }
+                Bind(&newLenNotEmpty);
+                {
+                    Label copyBefore(env);
+                    Label insertArg(env);
+                    GateRef newArray = NewArray(glue, Int32(0));
+                    GrowElementsCapacity(glue, newArray, *newLen);
+                    DEFVARIABLE(oldIndex, VariableType::INT32(), Int32(0));
+                    DEFVARIABLE(newIndex, VariableType::INT32(), Int32(0));
+                    BRANCH(Int32GreaterThan(*actualStart, Int32(0)), &copyBefore, &insertArg);
+                    Bind(&copyBefore);
+                    {
+                        Label loopHead(env);
+                        Label loopEnd(env);
+                        Label loopNext(env);
+                        Label loopExit(env);
+                        Label eleIsHole(env);
+                        Label eleNotHole(env);
+                        Jump(&loopHead);
+                        LoopBegin(&loopHead);
+                        {
+                            BRANCH(Int32LessThan(*oldIndex, *actualStart), &loopNext, &loopExit);
+                            Bind(&loopNext);
+                            GateRef ele = GetTaggedValueWithElementsKind(thisValue, *oldIndex);
+                            BRANCH(TaggedIsHole(ele), &eleIsHole, &eleNotHole);
+                            Bind(&eleIsHole);
+                            {
+                                SetValueWithElementsKind(glue, newArray, Undefined(), *newIndex, Boolean(true),
+                                    Int32(static_cast<uint32_t>(ElementsKind::NONE)));
+                                Jump(&loopEnd);
+                            }
+                            Bind(&eleNotHole);
+                            {
+                                SetValueWithElementsKind(glue, newArray, ele, *newIndex, Boolean(true),
+                                    Int32(static_cast<uint32_t>(ElementsKind::NONE)));
+                                Jump(&loopEnd);
+                            }
+                        }
+                        Bind(&loopEnd);
+                        oldIndex = Int32Add(*oldIndex, Int32(1));
+                        newIndex = Int32Add(*newIndex, Int32(1));
+                        LoopEnd(&loopHead);
+                        Bind(&loopExit);
+                        Jump(&insertArg);
+                    }
+                    Bind(&insertArg);
+                    {
+                        Label insert(env);
+                        BRANCH(Int32GreaterThan(*insertCount, Int32(0)), &insert, &copyAfter);
+                        Bind(&insert);
+                        {
+                            GateRef insertNum = GetCallArg2(numArgs);
+                            SetValueWithElementsKind(glue, newArray, insertNum, *newIndex, Boolean(true),
+                                Int32(static_cast<uint32_t>(ElementsKind::NONE)));
+                            newIndex = Int32Add(*newIndex, Int32(1));
+                            Jump(&copyAfter);
+                        }
+                    }
+                    Bind(&copyAfter);
+                    {
+                        Label canCopyAfter(env);
+                        Label setLength(env);
+                        oldIndex = Int32Add(*actualStart, *actualDeleteCount);
+                        BRANCH(Int32LessThan(*oldIndex, thisLen), &canCopyAfter, &setLength);
+                        Bind(&canCopyAfter);
+                        {
+                            Label loopHead1(env);
+                            Label loopNext1(env);
+                            Label loopEnd1(env);
+                            Label loopExit1(env);
+                            Label ele1IsHole(env);
+                            Label ele1NotHole(env);
+                            Jump(&loopHead1);
+                            LoopBegin(&loopHead1);
+                            {
+                                BRANCH(Int32LessThan(*oldIndex, thisLen), &loopNext1, &loopExit1);
+                                Bind(&loopNext1);
+                                GateRef ele1 = GetTaggedValueWithElementsKind(thisValue, *oldIndex);
+                                BRANCH(TaggedIsHole(ele1), &ele1IsHole, &ele1NotHole);
+                                Bind(&ele1IsHole);
+                                {
+                                    SetValueWithElementsKind(glue, newArray, Undefined(), *newIndex, Boolean(true),
+                                        Int32(static_cast<uint32_t>(ElementsKind::NONE)));
+                                    Jump(&loopEnd1);
+                                }
+                                Bind(&ele1NotHole);
+                                {
+                                    SetValueWithElementsKind(glue, newArray, ele1, *newIndex, Boolean(true),
+                                        Int32(static_cast<uint32_t>(ElementsKind::NONE)));
+                                    Jump(&loopEnd1);
+                                }
+                            }
+                            Bind(&loopEnd1);
+                            oldIndex = Int32Add(*oldIndex, Int32(1));
+                            newIndex = Int32Add(*newIndex, Int32(1));
+                            LoopEnd(&loopHead1);
+                            Bind(&loopExit1);
+                            Jump(&setLength);
+                        }
+                        Bind(&setLength);
+                        {
+                            SetArrayLength(glue, newArray, *newLen);
+                            result->WriteVariable(newArray);
+                            Jump(exit);
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 void BuiltinsArrayStubBuilder::CopyWithin(GateRef glue, GateRef thisValue, GateRef numArgs,
     Variable *result, Label *exit, Label *slowPath)
 {
