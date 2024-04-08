@@ -21,6 +21,7 @@ arrow
 async_arrow
 true
 main over
+RangeError: Stack overflow!
 1
 testAsync failed: Error: hello world!!!
 undefined

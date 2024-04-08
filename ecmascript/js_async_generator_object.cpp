@@ -75,12 +75,15 @@ JSTaggedValue JSAsyncGeneratorObject::AsyncGeneratorResolve(JSThread *thread,
     JSHandle<JSTaggedValue> resolve(thread, capability->GetResolve());
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
     EcmaRuntimeCallInfo* info =
-        EcmaInterpreter::NewRuntimeCallInfo(thread, resolve, undefined, undefined, 1);
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        EcmaInterpreter::NewRuntimeCallInfo(thread, resolve, undefined, undefined, 1, false);
     info->SetCallArg(its.GetTaggedValue());
     [[maybe_unused]] JSTaggedValue res = JSFunction::Call(info);
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-
+    if ((thread)->HasPendingException()) {
+        [[maybe_unused]] JSType errorType = thread->GetException().GetTaggedObject()->GetClass()->GetObjectType();
+        ASSERT(errorType == JSType::JS_RANGE_ERROR);
+        thread->ClearException();
+        return JSTaggedValue::Undefined();
+    }
     // 9. Perform ! AsyncGeneratorResumeNext(generator).
     AsyncGeneratorResumeNext(thread, generator);
     // 10. Return undefined.
