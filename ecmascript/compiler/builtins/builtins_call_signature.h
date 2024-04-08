@@ -67,6 +67,7 @@ namespace panda::ecmascript::kungfu {
     V(Keys,            Object,   Undefined())
 
 #define BUILTINS_WITH_ARRAY_STUB_BUILDER(V)         \
+    V(With,          Array,   Undefined())          \
     V(Unshift,       Array,   Undefined())          \
     V(Shift,         Array,   Undefined())          \
     V(Concat,        Array,   Undefined())          \
