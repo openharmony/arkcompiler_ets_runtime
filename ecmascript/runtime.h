@@ -161,6 +161,7 @@ private:
     }
 
     Mutex threadsLock_;
+    ConditionVariable threadSuspendCondVar_;
     Mutex serializeLock_;
     std::list<JSThread*> threads_;
     uint32_t suspendNewCount_ {0};
