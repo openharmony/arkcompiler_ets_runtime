@@ -95,7 +95,8 @@ namespace panda::ecmascript::kungfu {
     V(FindLast,      Array,   Undefined())          \
     V(ReduceRight,   Array,   Undefined())          \
     V(Map,           Array,   Undefined())          \
-    V(FlatMap,       Array,   Undefined())
+    V(FlatMap,       Array,   Undefined())          \
+    V(ToSorted,      Array,   Undefined())
 
 #define BUILTINS_WITH_SET_STUB_BUILDER(V)           \
     V(Clear,    Set,   Undefined())                 \

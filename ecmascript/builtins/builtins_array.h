@@ -99,7 +99,7 @@
     /* Array.prototype.toReversed ( ) */                                    \
     V("toReversed",     ToReversed,       0, ArrayToReversed)               \
     /* Array.prototype.toSorted ( comparefn ) */                            \
-    V("toSorted",       ToSorted,         1, INVALID)                       \
+    V("toSorted",       ToSorted,         1, ArrayToSorted)                 \
     /* Array.prototype.toSpliced ( start, skipCount, ...items ) */          \
     V("toSpliced",      ToSpliced,        2, ArrayToSpliced)                \
     /* Array.prototype.toString ( ) */                                      \
