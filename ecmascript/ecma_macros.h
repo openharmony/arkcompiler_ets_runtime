@@ -328,15 +328,15 @@
     } while (false)
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
-#define THROW_ERROR(thread, type, message)                               \
-    do {                                                                 \
-        if ((thread)->HasPendingException()) {                           \
-            return;                                                      \
-        }                                                                \
-        ObjectFactory *_factory = (thread)->GetEcmaVM()->GetFactory();   \
-        JSHandle<JSObject> _error = _factory->GetJSError(type, message); \
-        (thread)->SetException(_error.GetTaggedValue());                 \
-        return;                                                          \
+#define THROW_ERROR(thread, type, message)                                      \
+    do {                                                                        \
+        if ((thread)->HasPendingException()) {                                  \
+            return;                                                             \
+        }                                                                       \
+        ObjectFactory *_factory = (thread)->GetEcmaVM()->GetFactory();          \
+        JSHandle<JSObject> _error = _factory->GetJSError(type, message, false); \
+        (thread)->SetException(_error.GetTaggedValue());                        \
+        return;                                                                 \
     } while (false)
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
@@ -359,41 +359,41 @@
     } while (false)
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
-#define THROW_NEW_ERROR_AND_RETURN_HANDLE(thread, errorType, type, message)    \
-    do {                                                                       \
-        if ((thread)->HasPendingException()) {                                 \
-            return JSHandle<type>(thread, JSTaggedValue::Exception());         \
-        }                                                                      \
-        ObjectFactory *_factory = (thread)->GetEcmaVM()->GetFactory();         \
-        JSHandle<JSObject> _error = _factory->GetJSError(errorType, message);  \
-        (thread)->SetException(_error.GetTaggedValue());                       \
-        return JSHandle<type>(thread, JSTaggedValue::Exception());             \
+#define THROW_NEW_ERROR_AND_RETURN_HANDLE(thread, errorType, type, message)             \
+    do {                                                                                \
+        if ((thread)->HasPendingException()) {                                          \
+            return JSHandle<type>(thread, JSTaggedValue::Exception());                  \
+        }                                                                               \
+        ObjectFactory *_factory = (thread)->GetEcmaVM()->GetFactory();                  \
+        JSHandle<JSObject> _error = _factory->GetJSError(errorType, message, false);    \
+        (thread)->SetException(_error.GetTaggedValue());                                \
+        return JSHandle<type>(thread, JSTaggedValue::Exception());                      \
     } while (false)
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
-#define THROW_NEW_ERROR_WITH_MSG_AND_RETURN_VALUE(thread, errorType, message, value) \
-    do {                                                                             \
-        if ((thread)->HasPendingException()) {                                       \
-            return (value);                                                          \
-        }                                                                            \
-        ObjectFactory *_factory = (thread)->GetEcmaVM()->GetFactory();               \
-        JSHandle<JSObject> _error = _factory->GetJSError(errorType, message);        \
-        (thread)->SetException(_error.GetTaggedValue());                             \
-        return (value);                                                              \
+#define THROW_NEW_ERROR_WITH_MSG_AND_RETURN_VALUE(thread, errorType, message, value)        \
+    do {                                                                                    \
+        if ((thread)->HasPendingException()) {                                              \
+            return (value);                                                                 \
+        }                                                                                   \
+        ObjectFactory *_factory = (thread)->GetEcmaVM()->GetFactory();                      \
+        JSHandle<JSObject> _error = _factory->GetJSError(errorType, message, false);        \
+        (thread)->SetException(_error.GetTaggedValue());                                    \
+        return (value);                                                                     \
     } while (false)
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
-#define THROW_MODULE_NOT_FOUND_ERROR_WITH_RETURN_VALUE(thread, requestStr, currentRecord, value)             \
-    do {                                                                                                     \
-        if ((thread)->HasPendingException()) {                                                               \
-            return (value);                                                                                  \
-        }                                                                                                    \
-        ObjectFactory *_factory = (thread)->GetEcmaVM()->GetFactory();                                       \
-        CString normalizeStr = ModulePathHelper::ReformatPath(currentRecord);                                \
-        CString msg =  "Cannot find module '" + requestStr + "' imported from '" + normalizeStr + "'.";      \
-        JSHandle<JSObject> _error = _factory->GetJSError(ErrorType::REFERENCE_ERROR, msg.c_str());           \
-        (thread)->SetException(_error.GetTaggedValue());                                                     \
-        return (value);                                                                                      \
+#define THROW_MODULE_NOT_FOUND_ERROR_WITH_RETURN_VALUE(thread, requestStr, currentRecord, value)            \
+    do {                                                                                                    \
+        if ((thread)->HasPendingException()) {                                                              \
+            return (value);                                                                                 \
+        }                                                                                                   \
+        ObjectFactory *_factory = (thread)->GetEcmaVM()->GetFactory();                                      \
+        CString normalizeStr = ModulePathHelper::ReformatPath(currentRecord);                               \
+        CString msg =  "Cannot find module '" + requestStr + "' imported from '" + normalizeStr + "'.";     \
+        JSHandle<JSObject> _error = _factory->GetJSError(ErrorType::REFERENCE_ERROR, msg.c_str(), false);   \
+        (thread)->SetException(_error.GetTaggedValue());                                                    \
+        return (value);                                                                                     \
     } while (false)
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
