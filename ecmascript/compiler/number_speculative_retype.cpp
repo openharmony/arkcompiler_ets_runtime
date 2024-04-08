@@ -1537,8 +1537,9 @@ GateRef NumberSpeculativeRetype::VisitNumberOrGlobalBuiltin(GateRef gate)
     Environment env(gate, circuit_, &builder_);
     ASSERT(acc_.GetNumValueIn(gate) == 1);
     GateRef input = acc_.GetValueIn(gate, 0);
-#ifdef SUPPORT_CHECK_TO_INT
-    auto type = GetNumberInputTypeInfo(input);
+    // We change IsNan/IsFinite to constant if input is INT32 without check
+    // So we skip tagged input with int profiled type
+    auto type = GetNumberInputTypeInfo(input, true);
     if (type == TypeInfo::INT32) {
         GateRef result;
         if constexpr (IS_NAN) {
@@ -1553,9 +1554,7 @@ GateRef NumberSpeculativeRetype::VisitNumberOrGlobalBuiltin(GateRef gate)
         ASSERT(type == TypeInfo::FLOAT64);
         input = CheckAndConvertToFloat64(input, GateType::NumberType());
     }
-#else
-    input = CheckAndConvertToFloat64(input, GateType::NumberType());
-#endif
+
     acc_.ReplaceValueIn(gate, input, 0);
     ResizeAndSetTypeInfo(input, TypeInfo::FLOAT64);
     acc_.ReplaceStateIn(gate, builder_.GetState());
@@ -1714,7 +1713,7 @@ GateRef NumberSpeculativeRetype::VisitMathTrunc(GateRef gate)
     return Circuit::NullGate();
 }
 
-TypeInfo NumberSpeculativeRetype::GetNumberInputTypeInfo(GateRef gate)
+TypeInfo NumberSpeculativeRetype::GetNumberInputTypeInfo(GateRef gate, bool skipTagged)
 {
     TypeInfo typeInfo = GetOutputTypeInfo(gate);
     switch (typeInfo) {
@@ -1724,6 +1723,9 @@ TypeInfo NumberSpeculativeRetype::GetNumberInputTypeInfo(GateRef gate)
             return TypeInfo::INT32;
         case TypeInfo::NONE:
         case TypeInfo::TAGGED: {
+            if (skipTagged) {
+                return TypeInfo::FLOAT64;
+            }
             GateType gateType = acc_.GetGateType(gate);
             if (gateType.IsIntType() || gateType.IsBooleanType()) {
                 return TypeInfo::INT32;
