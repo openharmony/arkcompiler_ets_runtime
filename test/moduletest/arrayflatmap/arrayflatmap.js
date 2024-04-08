@@ -23,3 +23,43 @@
     const result = wannabe.flatMap(x => [x, x]);
     print(result instanceof MyArray);
 }
+
+var arr1 = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+var arr2 = new Array();
+function testFunction(element, index, array) {
+    if (index == 0) {
+        array.length = 6;
+    }
+    return [element, element * element];
+}
+for (let i = 0; i < 10; i++) arr2[i] = i;
+
+var result1 = arr1.flatMap(testFunction);
+print(result1);
+var result2 = arr2.flatMap(testFunction);
+print(result2);
+
+var arr3 = [0, 1, , , 4, , 6, 7, 8, 9];
+arr3.__proto__.push(0);
+arr3.__proto__.push(1);
+arr3.__proto__.push(2);
+arr3.__proto__.push(3);
+function testFunction(element, index, array) {
+    if (index == 0) {
+        array.length = 6;
+    }
+    if (index < 3)
+        return 1;
+    else
+        return [element, element * element];
+}
+var result3 = arr3.flatMap(testFunction);
+print(result3);
+arr3.__proto__.pop(0);
+arr3.__proto__.pop(1);
+arr3.__proto__.pop(2);
+arr3.__proto__.pop(3);
+
+let arr4 = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+var result4 = arr4.flatMap(testFunction);
+print(result4);

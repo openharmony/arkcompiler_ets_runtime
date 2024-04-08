@@ -59,7 +59,7 @@
     /* Array.prototype.flat ( [ depth ] ) */                                \
     V("flat",           Flat,             0, INVALID)                       \
     /* Array.prototype.flatMap ( mapperFunction [ , thisArg ] ) */          \
-    V("flatMap",        FlatMap,          1, INVALID)                       \
+    V("flatMap",        FlatMap,          1, ArrayFlatMap)                  \
     /* Array.prototype.forEach ( callbackfn [ , thisArg ] ) */              \
     V("forEach",        ForEach,          1, ArrayForEach)                  \
     /* Array.prototype.includes ( searchElement [ , fromIndex ] ) */        \
