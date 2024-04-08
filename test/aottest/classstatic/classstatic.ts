@@ -186,6 +186,7 @@ class cpu1 {
 
     get kind() { 
         print(this.mode);
+        return this.mode;
     }
     static Constant = 1;
     static Curve = 2;
