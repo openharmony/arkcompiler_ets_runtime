@@ -121,7 +121,7 @@ HWTEST_F_L0(LoopOptimizationTest, LoopInt32TypedArraySumOptimizationTest)
     LoopPeeling(nullptr, &circuit, false, "LoopInt32TypedArraySumOptimizationTest", &chunk, &beforeOpt).Peel();
     EXPECT_TRUE(Verifier::Run(&circuit));
     CombinedPassVisitor visitor(&circuit, false, "LoopInt32TypedArraySumOptimizationTest", &chunk);
-    EarlyElimination earlyElimination(&circuit, &visitor, &chunk);
+    EarlyElimination earlyElimination(&circuit, &visitor, &chunk, true);
     visitor.AddPass(&earlyElimination);
     visitor.VisitGraph();
     analysis.CollectLoopBody(&afterOpt);
