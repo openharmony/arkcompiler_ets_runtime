@@ -274,10 +274,10 @@ RangeInfo RangeAnalysis::GetRangeOfCompare(GateRef gate, GateRef value, bool fla
     ASSERT((left == value) || (right == value));
     bool swap = right == value;
     if (flag) {
-        op = TypedBinaryMetaData::GetRevCompareOp(op);
+        op = acc_.GetRevCompareOpForTypedBinOp(op);
     }
     if (swap) {
-        op = TypedBinaryMetaData::GetSwapCompareOp(op);
+        op = acc_.GetSwapCompareOpForTypedBinOp(op);
     }
     auto range = GetRange(swap ? left : right);
     if (range.IsNone()) {

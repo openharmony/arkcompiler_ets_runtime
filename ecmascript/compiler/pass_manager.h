@@ -16,16 +16,15 @@
 #ifndef ECMASCRIPT_COMPILER_PASS_MANAGER_H
 #define ECMASCRIPT_COMPILER_PASS_MANAGER_H
 
+#include "ecmascript/compiler/aot_compiler_preprocessor.h"
 #include "ecmascript/compiler/bytecode_info_collector.h"
 #include "ecmascript/compiler/compiler_log.h"
 #include "ecmascript/compiler/file_generators.h"
 #include "ecmascript/compiler/ir_module.h"
-#include "ecmascript/compiler/pass_options.h"
 #include "ecmascript/compiler/ir_module.h"
+#include "ecmascript/compiler/pass_options.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/jspandafile/method_literal.h"
-#include "ecmascript/pgo_profiler/pgo_profiler_decoder.h"
-#include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
 #include "ecmascript/ts_types/ts_manager.h"
 
 namespace panda::ecmascript::kungfu {
@@ -33,6 +32,9 @@ class Bytecodes;
 class LexEnvManager;
 class CompilationConfig;
 class PassData;
+class CallMethodFlagMap;
+struct AbcFileInfo;
+
 class PassContext {
 public:
     PassContext(const std::string &triple, CompilerLog *log, BytecodeInfoCollector* collector, IRModule *aotModule,
@@ -142,10 +144,12 @@ class PassManager {
 public:
     explicit PassManager(EcmaVM* vm, std::string &triple, size_t optLevel, size_t relocMode,
         CompilerLog *log, AotMethodLogList *logList, size_t maxAotMethodSize, size_t maxMethodsInModule,
-        PGOProfilerDecoder &profilerDecoder, PassOptions *passOptions, std::string optBCRange)
+        PGOProfilerDecoder &profilerDecoder, PassOptions *passOptions,
+        const CallMethodFlagMap *callMethodFlagMap, const CVector<AbcFileInfo> &fileInfos, std::string optBCRange)
         : vm_(vm), triple_(triple), optLevel_(optLevel), relocMode_(relocMode), log_(log),
           logList_(logList), maxAotMethodSize_(maxAotMethodSize), maxMethodsInModule_(maxMethodsInModule),
-          profilerDecoder_(profilerDecoder), passOptions_(passOptions), optBCRange_(optBCRange) {
+          profilerDecoder_(profilerDecoder), passOptions_(passOptions),
+          callMethodFlagMap_(callMethodFlagMap), fileInfos_(fileInfos), optBCRange_(optBCRange) {
                 enableJITLog_ =  vm_->GetJSOptions().GetTraceJIT();
             };
 
@@ -165,6 +169,8 @@ protected:
     size_t maxMethodsInModule_ {0};
     PGOProfilerDecoder &profilerDecoder_;
     PassOptions *passOptions_ {nullptr};
+    const CallMethodFlagMap *callMethodFlagMap_ {nullptr};
+    const CVector<AbcFileInfo> &fileInfos_;
     std::string optBCRange_ {};
     bool enableJITLog_ {false};
 };
@@ -174,7 +180,8 @@ public:
     JitPassManager(EcmaVM* vm, std::string &triple, size_t optLevel, size_t relocMode,
         CompilerLog *log, AotMethodLogList *logList,
         PGOProfilerDecoder &profilerDecoder, PassOptions *passOptions)
-        : PassManager(vm, triple, optLevel, relocMode, log, logList, 1, 1, profilerDecoder, passOptions, "") { };
+        : PassManager(vm, triple, optLevel, relocMode, log, logList, 1, 1, profilerDecoder, passOptions,
+                      nullptr, CVector<AbcFileInfo> {}, "") { };
 
     bool Compile(JSHandle<JSFunction> &jsFunction, AOTFileGenerator &gen, int32_t osrOffset = -1);
     bool RunCg();

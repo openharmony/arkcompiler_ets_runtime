@@ -104,14 +104,13 @@ try {
 } catch(e) {}
 
 Math.cos = replace
+//aot: [trace] Check Type: NotJSCallTarget4
 len = Math.cos(111);
 print(len); //: 111
 
 // Call standart builtin with non-number param
 Math.cos = true_cos
 
-//aot: [trace] aot inline builtin: Math.cos, caller function name:func_main_0@builtinMathCos
-//aot: [trace] Check Type: NotNumber1
 len = Math.cos("0");
 print(len); //: 1
 

@@ -25,27 +25,27 @@ public:
         : thread_(vm->GetJSThread()), aotSnapshot_(vm) {}
     ~PGOTypeManager() = default;
 
-    static int32_t GetConstantPoolIDByMethodOffset(const JSPandaFile *jsPandaFile, uint32_t methodOffset);
-
     void Iterate(const RootVisitor &v);
 
     // common
-    JSThread* GetJSThread()
+    uint32_t PUBLIC_API GetConstantPoolIDByMethodOffset(const uint32_t methodOffset) const;
+
+    JSTaggedValue PUBLIC_API GetConstantPoolByMethodOffset(const uint32_t methodOffset) const;
+
+    JSTaggedValue PUBLIC_API GetStringFromConstantPool(const uint32_t methodOffset, const uint16_t cpIdx) const;
+
+    inline JSThread* GetJSThread()
     {
         return thread_;
     }
 
-    void PUBLIC_API SetCurConstantPool(const JSPandaFile *jsPandaFile, uint32_t methodOffset);
-
-    JSHandle<JSTaggedValue> GetCurConstantPool() const
+    void PUBLIC_API SetCurCompilationFile(const JSPandaFile *jsPandaFile)
     {
-        return JSHandle<JSTaggedValue>(uintptr_t(&curCP_));
+        curJSPandaFile_ = jsPandaFile;
     }
 
     // snapshot
     void PUBLIC_API InitAOTSnapshot(uint32_t compileFilesCount);
-    void GenArrayInfo();
-    void GenConstantIndexInfo();
 
     AOTSnapshot& GetAOTSnapshot()
     {
@@ -103,10 +103,12 @@ public:
     {
         locToElmsKindMap_.emplace(loc, kind);
     }
-
+ 
 private:
     // snapshot
     void GenHClassInfo();
+    void GenArrayInfo();
+    void GenConstantIndexInfo();
 
     // opt to std::unordered_map
     using TransIdToHClass = std::map<ProfileType, JSTaggedType>;
@@ -123,10 +125,9 @@ private:
     std::map<panda_file::File::EntityId, ElementsKind> idElmsKindMap_ {};
     AOTSnapshot aotSnapshot_;
 
-    // When the passmanager iterates each method, the curCP_ and curCPID_ should be updated,
-    // so that subsequent passes (type_infer, ts_hcr_lowering) can obtain the correct constpool.
-    JSTaggedValue curCP_ {JSTaggedValue::Hole()};
-    int32_t curCPID_ {0};
+    // Since there is only one PGOTypeManager instance during compilation,
+    // the currently compiled jspandafile needs to be set to satisfy multi-file compilation.
+    const JSPandaFile *curJSPandaFile_ {nullptr};
 };
 }  // panda::ecmascript::kungfu
 #endif // ECMASCRIPT_COMPILER_PGO_TYPE_PGO_TYPE_MANAGER_H

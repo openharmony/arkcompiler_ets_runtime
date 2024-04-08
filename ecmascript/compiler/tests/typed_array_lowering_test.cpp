@@ -37,6 +37,8 @@ using ecmascript::kungfu::Environment;
 using ecmascript::kungfu::CombinedPassVisitor;
 using ecmascript::kungfu::TypedHCRLowering;
 using ecmascript::OnHeapMode;
+using ecmascript::kungfu::ParamType;
+
 HWTEST_F_L0(TypedArrayLoweringTests, LoadTypedArrayLength)
 {
     // construct a circuit
@@ -49,7 +51,7 @@ HWTEST_F_L0(TypedArrayLoweringTests, LoadTypedArrayLength)
     // after number speculative runner
     builder.SetEnvironment(&env);
     auto array = builder.Arguments(1);
-    auto loadLength = builder.LoadTypedArrayLength(array, GateType::AnyType());
+    auto loadLength = builder.LoadTypedArrayLength(array, ParamType::AnyType());
     acc.SetMachineType(loadLength, MachineType::I32);
     acc.SetGateType(loadLength, GateType::NJSValue());
     auto convert = builder.ConvertInt32ToTaggedInt(loadLength);

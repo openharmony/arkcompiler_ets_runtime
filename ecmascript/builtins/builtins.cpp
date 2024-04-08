@@ -1580,7 +1580,7 @@ void Builtins::InitializeJson(const JSHandle<GlobalEnv> &env, const JSHandle<JST
     JSHandle<JSObject> jsonObject = factory_->NewJSObjectWithInit(jsonHClass);
 
     SetFunction(env, jsonObject, "parse", Json::Parse, FunctionLength::TWO);
-    SetFunction(env, jsonObject, "stringify", Json::Stringify, FunctionLength::THREE, BUILTINS_STUB_ID(STRINGIFY));
+    SetFunction(env, jsonObject, "stringify", Json::Stringify, FunctionLength::THREE, BUILTINS_STUB_ID(JsonStringify));
 
     PropertyDescriptor jsonDesc(thread_, JSHandle<JSTaggedValue>::Cast(jsonObject), true, false, true);
     JSHandle<JSTaggedValue> jsonString(factory_->NewFromASCII("JSON"));
@@ -1656,7 +1656,7 @@ void Builtins::InitializeStringIterator(const JSHandle<GlobalEnv> &env,
                                                      strIterFuncInstanceHClass.GetTaggedValue());
 
     SetFunction(env, strIterPrototype, "next", StringIterator::Next, FunctionLength::ZERO,
-                BUILTINS_STUB_ID(STRING_ITERATOR_PROTO_NEXT));
+                BUILTINS_STUB_ID(StringIteratorProtoNext));
     SetStringTagSymbol(env, strIterPrototype, "String Iterator");
 
     env->SetStringIterator(thread_, strIterFunction);
@@ -1700,7 +1700,7 @@ void Builtins::InitializeIterator(const JSHandle<GlobalEnv> &env, const JSHandle
     SetFunction(env, iteratorPrototype, "next", BuiltinsIterator::Next, FunctionLength::ONE);
     // Iterator.prototype.return()
     SetFunction(env, iteratorPrototype, "return", BuiltinsIterator::Return, FunctionLength::ONE,
-        BUILTINS_STUB_ID(ITERATOR_PROTO_RETURN));
+        BUILTINS_STUB_ID(IteratorProtoReturn));
     // Iterator.prototype.throw()
     SetFunction(env, iteratorPrototype, "throw", BuiltinsIterator::Throw, FunctionLength::ONE);
     // %IteratorPrototype% [ @@iterator ]
@@ -1791,7 +1791,7 @@ void Builtins::InitializeSetIterator(const JSHandle<GlobalEnv> &env,
     JSHandle<JSObject> setIteratorPrototype(factory_->NewJSObjectWithInit(iteratorFuncClass));
     // Iterator.prototype.next()
     SetFunction(env, setIteratorPrototype, "next", JSSetIterator::Next, FunctionLength::ZERO,
-                BUILTINS_STUB_ID(SET_ITERATOR_PROTO_NEXT));
+                BUILTINS_STUB_ID(SetIteratorProtoNext));
     SetStringTagSymbol(env, setIteratorPrototype, "Set Iterator");
     env->SetSetIteratorPrototype(thread_, setIteratorPrototype);
     JSHandle<JSTaggedValue> protoValue = env->GetSetIteratorPrototype();
@@ -1823,7 +1823,7 @@ void Builtins::InitializeMapIterator(const JSHandle<GlobalEnv> &env,
     JSHandle<JSObject> mapIteratorPrototype(factory_->NewJSObjectWithInit(iteratorFuncClass));
     // Iterator.prototype.next()
     SetFunction(env, mapIteratorPrototype, "next", JSMapIterator::Next, FunctionLength::ZERO,
-                BUILTINS_STUB_ID(MAP_ITERATOR_PROTO_NEXT));
+                BUILTINS_STUB_ID(MapIteratorProtoNext));
     SetStringTagSymbol(env, mapIteratorPrototype, "Map Iterator");
     env->SetMapIteratorPrototype(thread_, mapIteratorPrototype);
     JSHandle<JSTaggedValue> protoValue = env->GetMapIteratorPrototype();
@@ -1860,7 +1860,7 @@ void Builtins::InitializeArrayIterator(const JSHandle<GlobalEnv> &env,
     JSHandle<JSHClass> arrayIteratorInstanceHClass(globalConst->GetHandledJSArrayIteratorClass());
     // Iterator.prototype.next()
     SetFunction(env, arrayIteratorPrototype, "next", JSArrayIterator::Next, FunctionLength::ZERO,
-                BUILTINS_STUB_ID(ARRAY_ITERATOR_PROTO_NEXT));
+                BUILTINS_STUB_ID(ArrayIteratorProtoNext));
     arrayIteratorInstanceHClass->SetPrototype(thread_, arrayIteratorPrototypeValue);
     SetStringTagSymbol(env, arrayIteratorPrototype, "Array Iterator");
     thread_->SetInitialBuiltinHClass(BuiltinTypeId::ARRAY_ITERATOR, nullptr,

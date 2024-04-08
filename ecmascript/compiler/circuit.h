@@ -184,16 +184,6 @@ public:
         return metaBuilder_.JSBytecode(valuesIn, methodId, opcode, pcOffset, bcIndex, flags);
     }
 
-    const GateMetaData* TypedBinaryOp(uint64_t value, TypedBinOp binOp, PGOTypeRef type)
-    {
-        return metaBuilder_.TypedBinaryOp(value, binOp, type);
-    }
-
-    const GateMetaData* TypedCallTargetCheckOp(uint32_t numIns, uint64_t value, TypedCallTargetCheckOp checkOp)
-    {
-        return metaBuilder_.TypedCallTargetCheckOp(numIns, value, checkOp);
-    }
-
     GateRef DeadGate()
     {
         if (dead_ == NullGate()) {

@@ -16,12 +16,9 @@
 #ifndef ECMASCRIPT_COMPILER_NTYPE_HCR_LOWERING_H
 #define ECMASCRIPT_COMPILER_NTYPE_HCR_LOWERING_H
 
-#include "ecmascript/compiler/argument_accessor.h"
-#include "ecmascript/compiler/builtins/builtins_call_signature.h"
-#include "ecmascript/compiler/bytecode_circuit_builder.h"
-#include "ecmascript/compiler/circuit_builder-inl.h"
 #include "ecmascript/compiler/combined_pass_visitor.h"
 #include "ecmascript/compiler/pass_manager.h"
+#include "ecmascript/jspandafile/program_object.h"
 
 namespace panda::ecmascript::kungfu {
 class NTypeHCRLowering : public PassVisitor {
@@ -33,7 +30,6 @@ public:
           thread_(ctx->GetEcmaVM()->GetJSThread()),
           builder_(circuit, ctx->GetCompilerConfig()),
           dependEntry_(circuit->GetDependRoot()),
-          tsManager_(ctx->GetTSManager()),
           jsPandaFile_(ctx->GetJSPandaFile()),
           recordName_(recordName),
           profiling_(ctx->GetCompilerConfig()->IsProfiling()),
@@ -84,7 +80,6 @@ private:
     JSThread *thread_ {nullptr};
     CircuitBuilder builder_;
     GateRef dependEntry_;
-    TSManager *tsManager_ {nullptr};
     const JSPandaFile *jsPandaFile_ {nullptr};
     const CString &recordName_;
     panda_file::File::EntityId methodId_ {0};

@@ -1000,7 +1000,7 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 break;
             }
             case JSType::PROTOTYPE_HANDLER: {
-                CHECK_DUMP_FIELDS(TaggedObject::TaggedObjectSize(), PrototypeHandler::SIZE, 3U);
+                CHECK_DUMP_FIELDS(TaggedObject::TaggedObjectSize(), PrototypeHandler::SIZE, 4U);
                 JSHandle<PrototypeHandler> protoHandler = factory->NewPrototypeHandler();
                 DUMP_FOR_HANDLE(protoHandler);
                 break;

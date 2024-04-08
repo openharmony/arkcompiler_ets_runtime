@@ -58,15 +58,15 @@ public:
 
     static constexpr uint32_t RECORD_ID_FOR_BUNDLE = 1;
 
-    static const ProfileType PROFILE_TYPE_NONE;
+    static PUBLIC_API const ProfileType PROFILE_TYPE_NONE;
 
-    static constexpr uint32_t ID_BITFIELD_NUM = 32;
-    static constexpr uint32_t ABC_ID_BITFIELD_NUM = 20;
-    static constexpr uint32_t KIND_BITFIELD_NUM = 11;
+    static constexpr uint32_t ID_BITFIELD_NUM = 32;  // 0-31
+    static constexpr uint32_t ABC_ID_BITFIELD_NUM = 10; // 32-41
+    static constexpr uint32_t KIND_BITFIELD_NUM = 8;  // 42 - 49
     using IdBits = BitField<uint32_t, 0, ID_BITFIELD_NUM>;
     using AbcIdBits = IdBits::NextField<uint32_t, ABC_ID_BITFIELD_NUM>;
     using KindBits = AbcIdBits::NextField<Kind, KIND_BITFIELD_NUM>;
-    using IsRootBits = KindBits::NextFlag;
+    using IsRootBits = KindBits::NextFlag;  // 50
 
     class BuiltinsId {
     public:

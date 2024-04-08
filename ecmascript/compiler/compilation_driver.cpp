@@ -257,10 +257,10 @@ bool CompilationDriver::FilterOption(const std::map<std::string, std::vector<std
     return find(vec.begin(), vec.end(), methodName) != vec.end();
 }
 
-void CompilationDriver::SetCurrentConstantPool(uint32_t methodOffset) const
+void CompilationDriver::SetCurrentCompilationFile() const
 {
     PGOTypeManager *ptManager = vm_->GetJSThread()->GetCurrentEcmaContext()->GetPTManager();
-    ptManager->SetCurConstantPool(jsPandaFile_, methodOffset);
+    ptManager->SetCurCompilationFile(jsPandaFile_);
 }
 
 void CompilationDriver::StoreConstantPoolInfo() const

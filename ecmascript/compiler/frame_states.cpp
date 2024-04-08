@@ -12,17 +12,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "ecmascript/compiler/bytecode_circuit_builder.h"
 #include "ecmascript/compiler/frame_states.h"
-#include "ecmascript/ts_types/ts_manager.h"
+
 #include <cstddef>
+
+#include "ecmascript/compiler/bytecode_circuit_builder.h"
 
 namespace panda::ecmascript::kungfu {
 FrameStateBuilder::FrameStateBuilder(BytecodeCircuitBuilder *builder,
     Circuit *circuit, const MethodLiteral *literal)
     : bcBuilder_(builder),
-      tsManager_(builder->GetTSManager()),
-      typeRecorder_(builder->GetTypeRecorder()),
       pgoTypeRecorder_(builder->GetPGOTypeRecorder()),
       numVregs_(literal->GetNumberVRegs() + FIXED_ARGS),
       accumulatorIndex_(literal->GetNumberVRegs() + 1), // 1: acc
@@ -254,11 +253,8 @@ FrameContext *FrameStateBuilder::GetOrOCreateMergedContext(uint32_t bbIndex)
     return context;
 }
 
-void FrameStateBuilder::FillBcInputs(const BytecodeInfo &bytecodeInfo, uint32_t bcIndex, GateRef gate)
+void FrameStateBuilder::FillBcInputs(const BytecodeInfo &bytecodeInfo, GateRef gate)
 {
-    auto type = typeRecorder_->GetType(bcIndex);
-    acc_.SetGateType(gate, type);
-    EcmaOpcode opcode = bytecodeInfo.GetOpcode();
     auto pgoType = pgoTypeRecorder_->GetPGOType(acc_.TryGetPcOffset(gate));
     acc_.TrySetPGOType(gate, pgoType);
 
@@ -280,13 +276,6 @@ void FrameStateBuilder::FillBcInputs(const BytecodeInfo &bytecodeInfo, uint32_t 
             acc_.NewIn(gate, inIdx, defVreg);
         } else {
             GateRef defAcc = liveContext_->ValuesAt(accumulatorIndex_);
-            if (Bytecodes::IsCallOp(opcode)) {
-                auto oldGt = acc_.GetGateType(defAcc).GetGTRef();
-                GateType callTargetType = typeRecorder_->GetCallTargetType(bcIndex);
-                if (!tsManager_->MethodOffsetIsVaild(oldGt) && !callTargetType.IsAnyType()) {
-                    acc_.SetGateType(defAcc, callTargetType);
-                }
-            }
             acc_.NewIn(gate, inIdx, defAcc);
         }
     }
@@ -324,7 +313,7 @@ void FrameStateBuilder::UpdateStateDepend(GateRef state, GateRef depend)
     liveContext_->currentDepend_ = depend;
 }
 
-void FrameStateBuilder::UpdateMoveValues(const BytecodeInfo &bytecodeInfo, uint32_t bcId)
+void FrameStateBuilder::UpdateMoveValues(const BytecodeInfo &bytecodeInfo)
 {
     GateRef gate = Circuit::NullGate();
     if (bytecodeInfo.AccIn()) {
@@ -340,13 +329,6 @@ void FrameStateBuilder::UpdateMoveValues(const BytecodeInfo &bytecodeInfo, uint3
         auto vreg = bytecodeInfo.vregOut[0];
         liveContext_->SetValuesAt(vreg, gate);
     }
-    if (bcBuilder_->HasTypes()) {
-        GateType type = acc_.GetGateType(gate);
-        if (type.IsAnyType()) {
-            type = typeRecorder_->UpdateType(bcId, type);
-            acc_.SetGateType(gate, type);
-        }
-    }
 }
 
 void FrameStateBuilder::UpdateFrameValues(const BytecodeInfo &bytecodeInfo,
@@ -359,7 +341,7 @@ void FrameStateBuilder::UpdateFrameValues(const BytecodeInfo &bytecodeInfo,
     }
     // jump gate is null
     if (gate != Circuit::NullGate()) {
-        FillBcInputs(bytecodeInfo, bcId, gate);
+        FillBcInputs(bytecodeInfo, gate);
     }
     auto liveout = GetFrameLiveoutAfter(bcId);
     // variable kill

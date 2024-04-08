@@ -150,11 +150,11 @@ private:
     void UpdateLayout(JSHClass *hclass);
     void UpdateTranstionLayout(JSHClass *parent, JSHClass *child);
     bool AddTranstionObjectInfo(ProfileType recordType, EntityId methodId, int32_t bcOffset, JSHClass *receiver,
-        JSHClass *hold, JSHClass *holdTra);
+        JSHClass *hold, JSHClass *holdTra, PGOSampleType accessorMethod);
     void UpdatePrototypeChainInfo(JSHClass *receiver, JSHClass *holder, PGOObjectInfo &info);
 
     bool AddObjectInfo(ApEntityId abcId, const CString &recordName, EntityId methodId, int32_t bcOffset,
-                       JSHClass *receiver, JSHClass *hold, JSHClass *holdTra);
+                       JSHClass *receiver, JSHClass *hold, JSHClass *holdTra, uint32_t accessorMethodId = 0);
     void AddObjectInfoWithMega(ApEntityId abcId, const CString &recordName, EntityId methodId, int32_t bcOffset);
     void AddBuiltinsInfoByNameInInstance(ApEntityId abcId, const CString &recordName, EntityId methodId,
         int32_t bcOffset, JSHClass *receiver);
@@ -443,6 +443,7 @@ private:
     };
 
     static ApEntityId GetMethodAbcId(JSFunction *jsFunction);
+    static ApEntityId GetMethodAbcId(JSTaggedValue jsMethod);
     ProfileType GetRecordProfileType(JSFunction *jsFunction, const CString &recordName);
     ProfileType GetRecordProfileType(ApEntityId abcId, const CString &recordName);
     ProfileType GetRecordProfileType(const std::shared_ptr<JSPandaFile> &pf, ApEntityId abcId,

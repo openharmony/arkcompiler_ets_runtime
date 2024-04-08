@@ -87,7 +87,6 @@ public:
                        MethodInfo &methodInfo)
     {
         Module *module = GetModule();
-        SetCurrentConstantPool(methodOffset);
         cb(bytecodeInfo_.GetRecordName(index), methodName, methodLiteral, methodOffset,
             methodPcInfo, methodInfo, module);
         if (methodInfo.IsTypeInferAbort()) {
@@ -102,6 +101,7 @@ public:
     {
         UpdatePGO();
         InitializeCompileQueue();
+        SetCurrentCompilationFile();
         uint32_t index = 0;
         auto &methodList = bytecodeInfo_.GetMethodList();
         const auto &methodPcInfos = bytecodeInfo_.GetMethodPcInfos();
@@ -353,7 +353,7 @@ protected:
     bool FilterOption(const std::map<std::string, std::vector<std::string>> &optionMap, const std::string &recordName,
                       const std::string &methodName) const;
 
-    void SetCurrentConstantPool(uint32_t methodOffset) const;
+    void SetCurrentCompilationFile() const;
 
     void StoreConstantPoolInfo() const;
 

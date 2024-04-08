@@ -133,7 +133,6 @@ namespace panda::ecmascript::kungfu {
 
 #define GATE_OPCODE_LIST(V)     \
     SHARE_GATE_OPCODE_LIST(V)   \
-    MCR_GATE_OPCODE_LIST(V)     \
     HCR_GATE_OPCODE_LIST(V)
 
 enum class OpCode : uint16_t {

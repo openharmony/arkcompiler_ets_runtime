@@ -183,6 +183,7 @@ print(Math.max(-4, 0, 2, -Infinity)); //: 2
 print(Math.max(1, 2, 1.5, 2, 8)); //: 8
 
 // Replace standard builtin
+//aot: [trace] Check Type: NotJSCallTarget4
 let trueMax = Math.max
 Math.max = replace
 print(Math.max(-1.001, -90)); //: -1.001
@@ -212,10 +213,8 @@ Math.max = trueMax
 
 // Check IR correctness inside try-block
 try {
-    //aot: [trace] aot inline builtin: Math.max, caller function name:func_main_0@builtinMathMax
-    print(Math.max(19)); //: 19
-    //aot: [trace] aot inline builtin: Math.max, caller function name:func_main_0@builtinMathMax
-    print(Math.max(19, 20)); //: 20
+    //aot: [trace] aot inline builtin: Math.max, caller function name:printMax@builtinMathMax
+    printMax(19, 20); //: 20
     //aot: [trace] aot inline builtin: Math.max, caller function name:printMax@builtinMathMax
     printMax(19, 12); //: 19
     //aot: [trace] aot inline builtin: Math.max, caller function name:printMax@builtinMathMax

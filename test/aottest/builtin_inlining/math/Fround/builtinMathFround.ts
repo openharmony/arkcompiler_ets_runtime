@@ -128,6 +128,7 @@ print(Math.fround(4.1, 0, 0, 0)); //: 4.099999904632568
 print(Math.fround(-4.1, 0, 0, 0, 0)); //: -4.099999904632568
 
 // Replace standard builtin
+//aot: [trace] Check Type: NotJSCallTarget4
 let true_fround = Math.fround
 Math.fround = replace
 
@@ -161,10 +162,8 @@ Math.fround = true_fround
 
 // Check IR correctness inside try-block
 try {
-    //aot: [trace] aot inline builtin: Math.fround, caller function name:func_main_0@builtinMathFround
-    print(Math.fround()) //: NaN
-    //aot: [trace] aot inline builtin: Math.fround, caller function name:func_main_0@builtinMathFround
-    print(Math.fround(0.3)) //: 0.30000001192092896
+    //aot: [trace] aot inline builtin: Math.fround, caller function name:doFround@builtinMathFround
+    printFround(0.3) //: 0.30000001192092896
     //aot: [trace] aot inline builtin: Math.fround, caller function name:doFround@builtinMathFround
     printFround(-12); //: -12
     //aot: [trace] aot inline builtin: Math.fround, caller function name:doFround@builtinMathFround
@@ -176,6 +175,4 @@ try {
 let obj = {
     valueOf: () => { return -22.5; }
 };
-//aot: [trace] aot inline builtin: Math.fround, caller function name:func_main_0@builtinMathFround
-//aot: [trace] Check Type: NotNumber1
 print(Math.fround(obj)); //: -22.5

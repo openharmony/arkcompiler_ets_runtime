@@ -57,14 +57,12 @@ print(Math.sqrt(Infinity)); //: Infinity
 print(Math.sqrt(-Infinity)); //: NaN
 
 // Replace standart builtin
+//aot: [trace] Check Type: NotJSCallTarget4
 let true_sqrt = Math.sqrt
 Math.sqrt = replace
 print(Math.sqrt(111)); //: 111
 
 Math.sqrt = true_sqrt
-//aot: [trace] aot inline builtin: Math.sqrt, caller function name:func_main_0@builtinMathSqrt
 print(Math.sqrt(Math.PI)); //: 1.7724538509055159
-//aot: [trace] aot inline builtin: Math.sqrt, caller function name:func_main_0@builtinMathSqrt
-//aot: [trace] Check Type: NotNumber1
 print(Math.sqrt("9")); //: 3
 

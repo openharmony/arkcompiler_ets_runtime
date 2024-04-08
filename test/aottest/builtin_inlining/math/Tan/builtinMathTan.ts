@@ -56,6 +56,7 @@ len = Math.tan(10);
 print(len); //: 0.6483608274590866
 
 // Replace standart builtin
+//aot: [trace] Check Type: NotJSCallTarget4
 let true_tan = Math.tan
 Math.tan = replace
 len = Math.tan(111);
@@ -63,7 +64,5 @@ print(len); //: 111
 
 // Call standart builtin with non-number param
 Math.tan = true_tan
-//aot: [trace] aot inline builtin: Math.tan, caller function name:func_main_0@builtinMathTan
-//aot: [trace] Check Type: NotNumber1
 len = Math.tan("NaN"); // deopt
 print(len); //: NaN

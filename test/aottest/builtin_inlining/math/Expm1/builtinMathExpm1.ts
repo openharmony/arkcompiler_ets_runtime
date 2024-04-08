@@ -104,13 +104,14 @@ try {
 } catch(e) {}
 
 // Replace standart builtin
+//aot: [trace] Check Type: NotJSCallTarget4
 let trueExpm1 = Math.expm1
 Math.expm1 = replace
 print(Math.expm1(111)); //: 111
 Math.expm1 = trueExpm1
 
-//aot: [trace] aot inline builtin: Math.expm1, caller function name:func_main_0@builtinMathExpm1
-print(Math.expm1(1)); //: 1.718281828459045
+//aot: [trace] aot inline builtin: Math.expm1, caller function name:printExpm1@builtinMathExpm1
+printExpm1(1); //: 1.718281828459045
 
 // Call standart builtin with non-number param
 //aot: [trace] aot inline builtin: Math.expm1, caller function name:printExpm1@builtinMathExpm1
@@ -148,10 +149,10 @@ Math.expm1 = trueExpm1
 
 // Check IR correctness inside try-block
 try {
-    //aot: [trace] aot inline builtin: Math.expm1, caller function name:func_main_0@builtinMathExpm1
-    print(Math.expm1(1)); //: 1.718281828459045
-    //aot: [trace] aot inline builtin: Math.expm1, caller function name:func_main_0@builtinMathExpm1
-    print(Math.expm1(1, 2)); //: 1.718281828459045
+    //aot: [trace] aot inline builtin: Math.expm1, caller function name:printExpm1@builtinMathExpm1
+    printExpm1(1); //: 1.718281828459045
+    //aot: [trace] aot inline builtin: Math.expm1, caller function name:printExpm1@builtinMathExpm1
+    printExpm1(1, 2); //: 1.718281828459045
     //aot: [trace] aot inline builtin: Math.expm1, caller function name:printExpm1@builtinMathExpm1
     printExpm1(1, 2); //: 1.718281828459045
     //aot: [trace] aot inline builtin: Math.expm1, caller function name:printExpm1@builtinMathExpm1

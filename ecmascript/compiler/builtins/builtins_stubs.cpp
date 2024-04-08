@@ -237,10 +237,10 @@ DECLARE_BUILTINS(stubName)                                                      
     Return(*res);                                                                                   \
 }
 
-#define AOT_AND_BUILTINS_STUB_LIST_WITH_METHOD(V)                                                   \
-    V(LocaleCompare,              LocaleCompare,      String, Undefined())                          \
-    V(STRING_ITERATOR_PROTO_NEXT, StringIteratorNext, String, Undefined())                          \
-    V(SORT,                       Sort,               Array,  Undefined())
+#define AOT_AND_BUILTINS_STUB_LIST_WITH_METHOD(V)                                                 \
+    V(StringLocaleCompare,              LocaleCompare,      String, Undefined())                  \
+    V(StringIteratorProtoNext,  StringIteratorNext, String, Undefined())                          \
+    V(ArraySort,           Sort,               Array,  Undefined())
 
 AOT_AND_BUILTINS_STUB_LIST_WITH_METHOD(DECLARE_AOT_AND_BUILTINS_STUB_BUILDER)
 #undef AOT_AND_BUILTINS_STUB_LIST

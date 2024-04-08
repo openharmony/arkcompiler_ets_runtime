@@ -135,6 +135,7 @@ print(Math.round(4.1, 0, 0, 0)); //: 4
 print(Math.round(-4.1, 0, 0, 0, 0)); //: -4
 
 // Replace standard builtin
+//aot: [trace] Check Type: NotJSCallTarget4
 let true_round = Math.round
 Math.round = replace
 
@@ -168,10 +169,8 @@ Math.round = true_round
 
 // Check IR correctness inside try-block
 try {
-    //aot: [trace] aot inline builtin: Math.round, caller function name:func_main_0@builtinMathRound
-    print(Math.round()) //: NaN
-    //aot: [trace] aot inline builtin: Math.round, caller function name:func_main_0@builtinMathRound
-    print(Math.round(0.3)) //: 0
+    //aot: [trace] aot inline builtin: Math.round, caller function name:doRound@builtinMathRound
+    printRound(0.3) //: 0
     //aot: [trace] aot inline builtin: Math.round, caller function name:doRound@builtinMathRound
     printRound(-12); //: -12
     //aot: [trace] aot inline builtin: Math.round, caller function name:doRound@builtinMathRound
@@ -183,6 +182,4 @@ try {
 let obj = {
     valueOf: () => { return -22.5; }
 };
-//aot: [trace] aot inline builtin: Math.round, caller function name:func_main_0@builtinMathRound
-//aot: [trace] Check Type: NotNumber2
 print(Math.round(obj)); //: -22

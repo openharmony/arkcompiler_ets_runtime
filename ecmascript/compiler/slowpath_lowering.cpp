@@ -14,13 +14,15 @@
  */
 
 #include "ecmascript/compiler/slowpath_lowering.h"
-#include "ecmascript/dfx/vm_thread_control.h"
-#include "ecmascript/compiler/share_gate_meta_data.h"
-#include "ecmascript/dfx/vmstat/opt_code_profiler.h"
-#include "ecmascript/js_thread.h"
-#include "ecmascript/message_string.h"
+
 #include "ecmascript/compiler/bytecodes.h"
 #include "ecmascript/compiler/new_object_stub_builder.h"
+#include "ecmascript/compiler/share_gate_meta_data.h"
+#include "ecmascript/dfx/vm_thread_control.h"
+#include "ecmascript/dfx/vmstat/opt_code_profiler.h"
+#include "ecmascript/js_async_generator_object.h"
+#include "ecmascript/js_generator_object.h"
+#include "ecmascript/js_thread.h"
 
 namespace panda::ecmascript::kungfu {
 using UseIterator = GateAccessor::UseIterator;
@@ -1542,8 +1544,7 @@ GateRef SlowPathLowering::LowerUpdateArrayHClass(GateRef gate, GateRef array)
 {
     ElementsKind kind = acc_.TryGetElementsKind(gate);
     if (!Elements::IsGeneric(kind)) {
-        auto thread = tsManager_->GetEcmaVM()->GetJSThread();
-        size_t hclassIndex = static_cast<size_t>(thread->GetArrayHClassIndexMap().at(kind));
+        size_t hclassIndex = static_cast<size_t>(thread_->GetArrayHClassIndexMap().at(kind));
         GateRef gConstAddr = builder_.Load(VariableType::JS_POINTER(), glue_,
             builder_.IntPtr(JSThread::GlueData::GetGlobalConstOffset(false)));
         GateRef constantIndex = builder_.IntPtr(JSTaggedValue::TaggedTypeSize() * hclassIndex);
@@ -2744,17 +2745,18 @@ void SlowPathLowering::AddProfiling(GateRef gate, bool skipGenerator)
             return;
         }
 
+        GateRef func = builder_.Undefined();
         if (acc_.HasFrameState(gate)) {
-            GateRef func = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
-            GateRef bcIndex = builder_.Int32ToTaggedInt(builder_.Int32(acc_.TryGetBcIndex(gate)));
-            auto ecmaOpcodeGate = builder_.Int32(static_cast<uint32_t>(ecmaOpcode));
-            GateRef constOpcode = builder_.Int32ToTaggedInt(ecmaOpcodeGate);
-            GateRef mode =
-                builder_.Int32ToTaggedInt(builder_.Int32(static_cast<int32_t>(OptCodeProfiler::Mode::SLOW_PATH)));
-            GateRef profiling = builder_.CallRuntime(glue_, RTSTUB_ID(ProfileOptimizedCode), acc_.GetDep(gate),
-                { func, bcIndex, constOpcode, mode }, gate);
-            acc_.SetDep(gate, profiling);
+            func = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
         }
+        GateRef bcIndex = builder_.Int32ToTaggedInt(builder_.Int32(acc_.TryGetBcIndex(gate)));
+        auto ecmaOpcodeGate = builder_.Int32(static_cast<uint32_t>(ecmaOpcode));
+        GateRef constOpcode = builder_.Int32ToTaggedInt(ecmaOpcodeGate);
+        GateRef mode =
+            builder_.Int32ToTaggedInt(builder_.Int32(static_cast<int32_t>(OptCodeProfiler::Mode::SLOW_PATH)));
+        GateRef profiling = builder_.CallRuntime(glue_, RTSTUB_ID(ProfileOptimizedCode), acc_.GetDep(gate),
+            { func, bcIndex, constOpcode, mode }, gate);
+        acc_.SetDep(gate, profiling);
     }
 }
 

@@ -498,33 +498,33 @@ public:
     GateRef FlattenTreeStringCheck(GateRef gate);
     GateRef HClassStableArrayCheck(GateRef gate, GateRef frameState, ArrayMetaDataAccessor accessor);
     GateRef ArrayGuardianCheck(GateRef frameState);
-    GateRef TypedArrayCheck(GateRef gate, GateType type, TypedArrayMetaDateAccessor::Mode mode,
+    GateRef TypedArrayCheck(GateRef gate, ParamType paramType, TypedArrayMetaDateAccessor::Mode mode,
                             OnHeapMode onHeap = OnHeapMode::NONE);
-    GateRef LoadTypedArrayLength(GateRef gate, GateType type, OnHeapMode onHeap = OnHeapMode::NONE);
+    GateRef LoadTypedArrayLength(GateRef gate, ParamType paramType, OnHeapMode onHeap = OnHeapMode::NONE);
     GateRef RangeGuard(GateRef gate, uint32_t left, uint32_t right);
     GateRef BuiltinPrototypeHClassCheck(GateRef gate, BuiltinTypeId type, ElementsKind kind,
                                         bool isPrototypeOfPrototype);
     GateRef OrdinaryHasInstanceCheck(GateRef target, GateRef jsFunc, std::vector<GateRef> &expectedHCIndexes);
     GateRef IndexCheck(GateRef gate, GateRef index);
-    GateRef ObjectTypeCheck(GateType type, bool isHeapObject, GateRef gate, GateRef hclassIndex,
+    GateRef ObjectTypeCheck(bool isHeapObject, GateRef gate, GateRef hclassIndex,
                             GateRef frameState = Gate::InvalidGateRef);
     GateRef TryPrimitiveTypeCheck(GateType type, GateRef gate);
     GateRef CallTargetCheck(GateRef gate, GateRef function, GateRef id, const char* comment = nullptr);
     GateRef CallTargetCheck(GateRef gate, GateRef function, GateRef id, std::vector<GateRef> params,
                             const char* comment = nullptr);
-    GateRef JSCallTargetFromDefineFuncCheck(GateType type, GateRef func, GateRef gate);
+    GateRef JSCallTargetFromDefineFuncCheck(GateRef func, GateRef gate);
     template<TypedCallTargetCheckOp Op>
-    GateRef JSCallTargetTypeCheck(GateType type, GateRef func, GateRef methodIndex, GateRef gate);
+    GateRef JSCallTargetTypeCheck(GateRef func, GateRef methodIndex, GateRef gate);
     template<TypedCallTargetCheckOp Op>
-    GateRef JSCallThisTargetTypeCheck(GateType type, GateRef func, GateRef gate);
+    GateRef JSCallThisTargetTypeCheck(GateRef func, GateRef gate);
     template<TypedCallTargetCheckOp Op>
-    inline GateRef JSNoGCCallThisTargetTypeCheck(GateType type, GateRef func, GateRef methodId, GateRef gate);
-    GateRef TypeOfCheck(GateRef gate, GateType type);
-    GateRef TypedTypeOf(GateType type);
+    inline GateRef JSNoGCCallThisTargetTypeCheck(GateRef func, GateRef methodId, GateRef gate);
+    GateRef TypeOfCheck(GateRef gate, ParamType paramType);
+    GateRef TypedTypeOf(ParamType paramType);
     GateRef TypedCallOperator(GateRef hirGate, MachineType type, const std::vector<GateRef>& inList, bool isSideEffect);
     inline GateRef TypedCallBuiltin(GateRef hirGate, const std::vector<GateRef> &args,
                                     BuiltinsStubCSigns::ID id, bool isSideEffect);
-    GateRef TypeConvert(MachineType type, GateType typeFrom, GateType typeTo, const std::vector<GateRef>& inList);
+    GateRef TypeConvert(MachineType type, ParamType typeFrom, GateType typeTo, const std::vector<GateRef>& inList);
     GateRef Int32CheckRightIsZero(GateRef right);
     GateRef RemainderIsNegativeZero(GateRef left, GateRef right);
     GateRef Float64CheckRightIsZero(GateRef right);
@@ -544,20 +544,18 @@ public:
     GateRef InsertTypedArrayCheck(GateType type, GateRef array);
     GateRef ArrayConstructorCheck(GateRef gate);
     GateRef ObjectConstructorCheck(GateRef gate);
-    GateRef InsertTypedBinaryop(GateRef left, GateRef right, GateType leftType, GateType rightType,
-                                GateType gateType, PGOTypeRef pgoType, TypedBinOp op);
+    GateRef InsertTypedBinaryop(GateRef left, GateRef right, TypedBinOp op);
     GateRef InsertRangeCheckPredicate(GateRef left, TypedBinOp cond, GateRef right);
-    GateRef TypedConditionJump(MachineType type, TypedJumpOp jumpOp, uint32_t weight, GateType typeVal,
+    GateRef TypedConditionJump(MachineType type, TypedJumpOp jumpOp, uint32_t weight, ParamType paramType,
                                const std::vector<GateRef>& inList);
     GateRef TypedNewAllocateThis(GateRef ctor, GateRef hclassIndex, GateRef frameState);
     GateRef TypedSuperAllocateThis(GateRef superCtor, GateRef newTarget, GateRef frameState);
     template<TypedBinOp Op>
-    inline GateRef TypedBinaryOp(GateRef x, GateRef y, GateType xType, GateType yType, GateType gateType,
-                                 PGOTypeRef pgoType);
+    inline GateRef TypedBinaryOp(GateRef x, GateRef y, ParamType paramType);
     template<TypedUnOp Op>
-    inline GateRef TypedUnaryOp(GateRef x, GateType xType, GateType gateType);
+    inline GateRef TypedUnaryOp(GateRef x, ParamType paramType);
     template<TypedJumpOp Op>
-    inline GateRef TypedConditionJump(GateRef x, GateType xType, uint32_t weight);
+    inline GateRef TypedConditionJump(GateRef x, ParamType paramType, uint32_t weight);
     GateRef Convert(GateRef gate, ValueType src, ValueType dst);
     GateRef ConvertBoolToTaggedBoolean(GateRef gate);
     GateRef ConvertTaggedBooleanToBool(GateRef gate);
@@ -606,7 +604,7 @@ public:
     GateRef StartAllocate();
     GateRef FinishAllocate(GateRef value);
 
-    inline GateRef PrimitiveToNumber(GateRef x, VariableType type);
+    inline GateRef PrimitiveToNumber(GateRef x, ParamType paramType);
     inline GateRef GetValueFromTaggedArray(GateRef array, GateRef index);
     inline GateRef GetValueFromTaggedArray(VariableType valType, GateRef array, GateRef index);
     inline GateRef GetValueFromJSArrayWithElementsKind(VariableType type, GateRef array, GateRef index);

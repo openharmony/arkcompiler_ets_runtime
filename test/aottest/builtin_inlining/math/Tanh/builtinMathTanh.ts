@@ -51,6 +51,7 @@ len = Math.tanh(10);
 print(len); //: 0.9999999958776927
 
 // Replace stanhdart builtin
+//aot: [trace] Check Type: NotJSCallTarget4
 let true_tanh = Math.tanh
 Math.tanh = replace
 len = Math.tanh(111);
@@ -58,7 +59,5 @@ print(len); //: 111
 
 // Call stanhdart builtin with non-number param
 Math.tanh = true_tanh
-//aot: [trace] aot inline builtin: Math.tanh, caller function name:func_main_0@builtinMathTanh
-//aot: [trace] Check Type: NotNumber1
 len = Math.tanh("NaN"); // deopt
 print(len); //: NaN

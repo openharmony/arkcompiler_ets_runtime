@@ -20,6 +20,7 @@
 #include "ecmascript/js_tagged_value-inl.h"
 #include "ecmascript/js_typed_array.h"
 #include "ecmascript/mem/tagged_object.h"
+#include "ecmascript/js_function.h"
 
 namespace panda::ecmascript {
 class HandlerBase {
@@ -387,6 +388,21 @@ public:
         if (op.IsFound()) {
             handler->SetHolder(thread, op.GetHolder());
         }
+        if (op.IsAccessorDescriptor()) {
+            JSTaggedValue result = op.GetValue();
+            if (result.IsPropertyBox()) {
+                result = PropertyBox::Cast(result.GetTaggedObject())->GetValue();
+            }
+            AccessorData *accessor = AccessorData::Cast(result.GetTaggedObject());
+            if (!accessor->IsInternal()) {
+                JSTaggedValue getter = accessor->GetGetter();
+                if (!getter.IsUndefined()) {
+                    JSHandle<JSFunction> func(thread, getter);
+                    uint32_t methodOffset = Method::Cast(func->GetMethod())->GetMethodId().GetOffset();
+                    handler->SetAccessorMethodId(methodOffset);
+                }
+            }
+        }
         // ShareToLocal is prohibited
         if (!hclass->IsJSShared()) {
             auto result = JSHClass::EnableProtoChangeMarker(thread, hclass);
@@ -402,6 +418,19 @@ public:
         JSHandle<JSTaggedValue> handlerInfo = StoreHandler::StoreProperty(thread, op);
         handler->SetHandlerInfo(thread, handlerInfo);
         handler->SetHolder(thread, op.GetHolder());
+        if (op.IsAccessorDescriptor()) {
+            JSTaggedValue result = op.GetValue();
+            if (result.IsPropertyBox()) {
+                result = PropertyBox::Cast(result.GetTaggedObject())->GetValue();
+            }
+            AccessorData *accessor = AccessorData::Cast(result.GetTaggedObject());
+            if (!accessor->IsInternal()) {
+                JSTaggedValue getter = accessor->GetSetter();
+                JSHandle<JSFunction> func(thread, getter);
+                handler->SetAccessorMethodId(
+                    Method::Cast(func->GetMethod())->GetMethodId().GetOffset());
+            }
+        }
         // ShareToLocal is prohibited
         if (!hclass->IsJSShared()) {
             auto result = JSHClass::EnableProtoChangeMarker(thread, hclass);
@@ -416,9 +445,12 @@ public:
 
     ACCESSORS(ProtoCell, PROTO_CELL_OFFSET, HOLDER_OFFSET)
 
-    ACCESSORS(Holder, HOLDER_OFFSET, SIZE)
+    ACCESSORS(Holder, HOLDER_OFFSET, ACCESSOR_METHOD_ID_OFFSET)
 
-    DECL_VISIT_OBJECT(HANDLER_INFO_OFFSET, SIZE)
+    ACCESSORS_PRIMITIVE_FIELD(AccessorMethodId, uint32_t, ACCESSOR_METHOD_ID_OFFSET, LAST_OFFSET)
+
+    DEFINE_ALIGN_SIZE(LAST_OFFSET);
+    DECL_VISIT_OBJECT(HANDLER_INFO_OFFSET, ACCESSOR_METHOD_ID_OFFSET)
     DECL_DUMP()
 };
 

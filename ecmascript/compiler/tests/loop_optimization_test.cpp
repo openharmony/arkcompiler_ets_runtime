@@ -56,6 +56,7 @@ using ecmascript::kungfu::TypedBinOp;
 using ecmascript::kungfu::PGOTypeRef;
 using ecmascript::kungfu::PGOSampleType;
 using ecmascript::kungfu::GraphLinearizer;
+using ecmascript::kungfu::ParamType;
 HWTEST_F_L0(LoopOptimizationTest, LoopInt32TypedArraySumOptimizationTest)
 {
     // construct a circuit
@@ -79,26 +80,20 @@ HWTEST_F_L0(LoopOptimizationTest, LoopInt32TypedArraySumOptimizationTest)
     builder.LoopBegin(&loopHead);
     auto loopBegin = builder.GetState();
     EXPECT_TRUE(acc.IsLoopHead(loopBegin));
-    auto loadLength = builder.LoadTypedArrayLength(array, GateType::AnyType());
+    auto loadLength = builder.LoadTypedArrayLength(array, ParamType::AnyType());
     acc.SetMachineType(loadLength, MachineType::I32);
     acc.SetGateType(loadLength, GateType::NJSValue());
-    auto cmp = builder.TypedBinaryOp<TypedBinOp::TYPED_ADD>(
-        *index, loadLength, GateType::IntType(), GateType::IntType(),
-        GateType::NJSValue(), PGOTypeRef::NoneType());
+    auto cmp = builder.TypedBinaryOp<TypedBinOp::TYPED_ADD>(*index, loadLength, ParamType::IntType());
     acc.SetMachineType(cmp, MachineType::I1);
     builder.Branch(cmp, &loopBody, &loopExit);
     builder.Bind(&loopBody);
     auto loadElement = builder.LoadElement<ecmascript::kungfu::TypedLoadOp::INT32ARRAY_LOAD_ELEMENT>(array, *index);
     acc.SetMachineType(loadElement, MachineType::I32);
     acc.SetGateType(loadElement, GateType::NJSValue());
-    auto sumAdd = builder.TypedBinaryOp<TypedBinOp::TYPED_ADD>(
-        *sum, loadElement, GateType::IntType(), GateType::IntType(),
-        GateType::NJSValue(), PGOTypeRef::NoneType());
+    auto sumAdd = builder.TypedBinaryOp<TypedBinOp::TYPED_ADD>(*sum, loadElement, ParamType::IntType());
     acc.SetMachineType(sumAdd, MachineType::I32);
     sum = sumAdd;
-    auto indexInc = builder.TypedBinaryOp<TypedBinOp::TYPED_ADD>(
-        *index, builder.Int32(1), GateType::IntType(), GateType::IntType(),
-        GateType::NJSValue(), PGOTypeRef::NoneType());
+    auto indexInc = builder.TypedBinaryOp<TypedBinOp::TYPED_ADD>(*index, builder.Int32(1), ParamType::IntType());
     acc.SetMachineType(indexInc, MachineType::I32);
     index = indexInc;
     builder.LoopEnd(&loopHead);

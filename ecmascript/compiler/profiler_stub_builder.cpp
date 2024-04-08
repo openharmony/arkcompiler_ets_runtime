@@ -265,7 +265,7 @@ void ProfilerStubBuilder::ProfileCall(
         Bind(&currentIsHotness);
         {
             Label icSlotValid(env);
-            Label isInt(env);
+            Label isHeapObject(env);
             Label uninitialized(env);
             Label updateSlot(env);
 
@@ -274,23 +274,21 @@ void ProfilerStubBuilder::ProfileCall(
             BRANCH(Int32LessThan(slotId, length), &icSlotValid, &exit);
             Bind(&icSlotValid);
             GateRef slotValue = GetValueFromTaggedArray(profileTypeInfo, slotId);
-            BRANCH(TaggedIsInt(slotValue), &isInt, &uninitialized);
-            Bind(&isInt);
+            BRANCH(TaggedIsHeapObject(slotValue), &isHeapObject, &uninitialized);
+            Bind(&isHeapObject);
             {
                 Label change(env);
                 Label resetSlot(env);
-                GateRef oldSlotValue = TaggedGetInt(slotValue);
-                GateRef methodId = env->GetBuilder()->GetMethodId(target);
-                BRANCH(Int32Equal(oldSlotValue, TruncInt64ToInt32(methodId)), &exit, &change);
+                GateRef method = env->GetBuilder()->GetMethodFromFunction(target);
+                BRANCH(Int64Equal(slotValue, method), &exit, &change);
                 Bind(&change);
                 {
-                    GateRef polyCallCheck = Int32Equal(oldSlotValue, Int32(base::PGO_POLY_INLINE_REP));
-                    GateRef emptyCallCheck = Int32Equal(oldSlotValue, Int32(0));
-                    BRANCH(BoolOr(polyCallCheck, emptyCallCheck), &exit, &resetSlot);
+                    BRANCH(Int64Equal(ChangeTaggedPointerToInt64(slotValue), Int64(0)), &exit, &resetSlot);
                 }
                 Bind(&resetSlot);
                 {
-                    GateRef nonType = IntToTaggedInt(Int32(base::PGO_POLY_INLINE_REP));
+                    // NOTICE-PGO: lx about poly
+                    GateRef nonType = IntToTaggedInt(Int64(0));
                     SetValueToTaggedArray(VariableType::JS_ANY(), glue, profileTypeInfo, slotId, nonType);
                     TryPreDumpInner(glue, func, profileTypeInfo);
                     Jump(&exit);
@@ -302,9 +300,8 @@ void ProfilerStubBuilder::ProfileCall(
             }
             Bind(&updateSlot);
             {
-                GateRef methodId = env->GetBuilder()->GetMethodId(target);
-                GateRef methodIdValue = IntToTaggedInt(TruncInt64ToInt32(methodId));
-                SetValueToTaggedArray(VariableType::JS_ANY(), glue, profileTypeInfo, slotId, methodIdValue);
+                GateRef method = env->GetBuilder()->GetMethodFromFunction(target);
+                SetValueToTaggedArray(VariableType::JS_ANY(), glue, profileTypeInfo, slotId, method);
                 TryPreDumpInner(glue, func, profileTypeInfo);
                 Jump(&exit);
             }
@@ -663,7 +660,7 @@ GateRef ProfilerStubBuilder::GetIterationFunctionId(GateRef glue, GateRef iterat
     BRANCH(Int64Equal(iterator, *maybeFunc), &isArrayProtoValues, &notArrayProtoValues);
     Bind(&isArrayProtoValues);
     {
-        functionId = Int32(PGO_BUILTINS_STUB_ID(ARRAY_PROTO_ITERATOR));
+        functionId = Int32(PGO_BUILTINS_STUB_ID(ArrayProtoIterator));
         Jump(&exit);
     }
     Bind(&notArrayProtoValues);
@@ -671,7 +668,7 @@ GateRef ProfilerStubBuilder::GetIterationFunctionId(GateRef glue, GateRef iterat
     BRANCH(Int64Equal(iterator, *maybeFunc), &isSetProtoValues, &notSetProtoValues);
     Bind(&isSetProtoValues);
     {
-        functionId = Int32(PGO_BUILTINS_STUB_ID(SET_PROTO_ITERATOR));
+        functionId = Int32(PGO_BUILTINS_STUB_ID(SetProtoIterator));
         Jump(&exit);
     }
     Bind(&notSetProtoValues);
@@ -679,7 +676,7 @@ GateRef ProfilerStubBuilder::GetIterationFunctionId(GateRef glue, GateRef iterat
     BRANCH(Int64Equal(iterator, *maybeFunc), &isMapProtoEntries, &notMapProtoEntries);
     Bind(&isMapProtoEntries);
     {
-        functionId = Int32(PGO_BUILTINS_STUB_ID(MAP_PROTO_ITERATOR));
+        functionId = Int32(PGO_BUILTINS_STUB_ID(MapProtoIterator));
         Jump(&exit);
     }
     Bind(&notMapProtoEntries);
@@ -687,7 +684,7 @@ GateRef ProfilerStubBuilder::GetIterationFunctionId(GateRef glue, GateRef iterat
     BRANCH(Int64Equal(iterator, *maybeFunc), &isStringProtoIter, &notStringProtoIter);
     Bind(&isStringProtoIter);
     {
-        functionId = Int32(PGO_BUILTINS_STUB_ID(STRING_PROTO_ITERATOR));
+        functionId = Int32(PGO_BUILTINS_STUB_ID(StringProtoIterator));
         Jump(&exit);
     }
     Bind(&notStringProtoIter);
@@ -696,7 +693,7 @@ GateRef ProfilerStubBuilder::GetIterationFunctionId(GateRef glue, GateRef iterat
     BRANCH(Int64Equal(iterator, *maybeFunc), &isTypedArrayProtoValues, &exit);
     Bind(&isTypedArrayProtoValues);
     {
-        functionId = Int32(PGO_BUILTINS_STUB_ID(TYPED_ARRAY_PROTO_ITERATOR));
+        functionId = Int32(PGO_BUILTINS_STUB_ID(TypeArrayProtoIterator));
         Jump(&exit);
     }
     Bind(&exit);

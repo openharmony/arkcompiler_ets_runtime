@@ -14,7 +14,7 @@
 0
 ReferenceError: a is not defined
     at name (hidden:25:25)
-    at foo1 (maybe inlined). depth: 0
+    at unknown (maybe inlined). depth: 0
     at foo2 (hidden:35:35)
     at func_main_0 (hidden:37:1)
 

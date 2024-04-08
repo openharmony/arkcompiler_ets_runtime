@@ -131,7 +131,7 @@ void NumberSpeculativeLowering::VisitTypedBinaryOp(GateRef gate)
             break;
         }
         default: {
-            if (acc_.HasPrimitiveNumberType(gate)) {
+            if (acc_.HasNumberType(gate)) {
                 VisitNumberBinaryOp(gate);
             }
             break;
@@ -279,7 +279,7 @@ void NumberSpeculativeLowering::VisitTypedUnaryOp(GateRef gate)
 void NumberSpeculativeLowering::VisitTypedConditionJump(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
-    GateType type = acc_.GetTypedJumpAccessor(gate).GetTypeValue();
+    ParamType type = acc_.GetTypedJumpAccessor(gate).GetParamType();
     if (type.IsBooleanType()) {
         VisitBooleanJump(gate);
     } else {
@@ -292,17 +292,11 @@ void NumberSpeculativeLowering::VisitNumberCalculate(GateRef gate)
 {
     GateRef left = acc_.GetValueIn(gate, 0);
     GateRef right = acc_.GetValueIn(gate, 1);
-    GateType gateType = acc_.GetGateType(gate);
-    const PGOSampleType *sampleType = acc_.GetTypedBinaryType(gate).GetPGOSampleType();
-    if (sampleType->IsNumber()) {
-        if (sampleType->IsInt()) {
-            gateType = GateType::IntType();
-        } else {
-            gateType = GateType::DoubleType();
-        }
-    }
+    TypedBinaryAccessor accessor(acc_.TryGetValue(gate));
+    const ParamType paramType = accessor.GetParamType();
+    ASSERT(paramType.HasNumberType());
     GateRef result = Circuit::NullGate();
-    if (gateType.IsIntType()) {
+    if (paramType.IsIntType()) {
         result = CalculateInts<Op>(left, right);    // int op int
         UpdateRange(result, GetRange(gate));
         acc_.SetMachineType(gate, MachineType::I32);
@@ -319,20 +313,11 @@ void NumberSpeculativeLowering::VisitNumberCompare(GateRef gate)
 {
     GateRef left = acc_.GetValueIn(gate, 0);
     GateRef right = acc_.GetValueIn(gate, 1);
-    GateType leftType = acc_.GetLeftType(gate);
-    GateType rightType = acc_.GetRightType(gate);
-    const PGOSampleType *sampleType = acc_.GetTypedBinaryType(gate).GetPGOSampleType();
-    if (sampleType->IsNumber()) {
-        if (sampleType->IsInt()) {
-            leftType = GateType::IntType();
-            rightType = GateType::IntType();
-        } else {
-            leftType = GateType::NumberType();
-            rightType = GateType::NumberType();
-        }
-    }
+    TypedBinaryAccessor accessor(acc_.TryGetValue(gate));
+    const ParamType paramType = accessor.GetParamType();
+    ASSERT(paramType.HasNumberType());
     GateRef result = Circuit::NullGate();
-    if (leftType.IsIntType() && rightType.IsIntType()) {
+    if (paramType.IsIntType()) {
         result = CompareInts<Op>(left, right);  // int op int
     } else {
         result = CompareDoubles<Op>(left, right);   // float op float
@@ -370,17 +355,11 @@ void NumberSpeculativeLowering::VisitNumberDiv(GateRef gate)
 {
     GateRef left = acc_.GetValueIn(gate, 0);
     GateRef right = acc_.GetValueIn(gate, 1);
-    GateType gateType = acc_.GetGateType(gate);
-    const PGOSampleType *sampleType = acc_.GetTypedBinaryType(gate).GetPGOSampleType();
-    if (sampleType->IsNumber()) {
-        if (sampleType->IsInt()) {
-            gateType = GateType::IntType();
-        } else {
-            gateType = GateType::DoubleType();
-        }
-    }
+    TypedBinaryAccessor accessor(acc_.TryGetValue(gate));
+    const ParamType paramType = accessor.GetParamType();
+    ASSERT(paramType.HasNumberType());
     GateRef result = Circuit::NullGate();
-    if (gateType.IsIntType()) {
+    if (paramType.IsIntType()) {
         result = builder_.Int32DivWithCheck(left, right);
         acc_.SetMachineType(gate, MachineType::I32);
     } else {
@@ -397,19 +376,11 @@ void NumberSpeculativeLowering::VisitNumberMod(GateRef gate)
 {
     GateRef left = acc_.GetValueIn(gate, 0);
     GateRef right = acc_.GetValueIn(gate, 1);
-    GateType gateType = acc_.GetGateType(gate);
-    const PGOSampleType *sampleType = acc_.GetTypedBinaryType(gate).GetPGOSampleType();
-    if (sampleType->IsNumber()) {
-        if (sampleType->IsInt()) {
-            gateType = GateType::IntType();
-        } else if (sampleType->IsDouble()) {
-            gateType = GateType::DoubleType();
-        } else {
-            gateType = GateType::NumberType();
-        }
-    }
+    TypedBinaryAccessor accessor(acc_.TryGetValue(gate));
+    const ParamType paramType = accessor.GetParamType();
+    ASSERT(paramType.HasNumberType());
     GateRef result = Circuit::NullGate();
-    if (gateType.IsIntType()) {
+    if (paramType.IsIntType()) {
         if (GetRange(right).MaybeZero()) {
             builder_.Int32CheckRightIsZero(right);
         }
@@ -434,8 +405,8 @@ template<TypedUnOp Op>
 void NumberSpeculativeLowering::VisitNumberMonocular(GateRef gate)
 {
     TypedUnaryAccessor accessor(acc_.TryGetValue(gate));
-    GateType type = accessor.GetTypeValue();
-    ASSERT(type.IsPrimitiveNumberType());
+    ParamType type = accessor.GetParamType();
+    ASSERT(type.HasNumberType());
     GateRef value = acc_.GetValueIn(gate, 0);
     GateRef result = Circuit::NullGate();
     if (type.IsIntType()) {
@@ -455,7 +426,7 @@ void NumberSpeculativeLowering::VisitNumberMonocular(GateRef gate)
 
 void NumberSpeculativeLowering::VisitNumberNot(GateRef gate)
 {
-    ASSERT(TypedUnaryAccessor(acc_.TryGetValue(gate)).GetTypeValue().IsPrimitiveNumberType());
+    ASSERT(TypedUnaryAccessor(acc_.TryGetValue(gate)).GetParamType().HasNumberType());
     GateRef value = acc_.GetValueIn(gate, 0);
     GateRef result = builder_.Int32Not(value);
     UpdateRange(result, GetRange(gate));

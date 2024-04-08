@@ -3638,6 +3638,7 @@ JSHandle<PrototypeHandler> ObjectFactory::NewPrototypeHandler()
     handler->SetHandlerInfo(thread_, JSTaggedValue::Undefined());
     handler->SetProtoCell(thread_, JSTaggedValue::Undefined());
     handler->SetHolder(thread_, JSTaggedValue::Undefined());
+    handler->SetAccessorMethodId(0);
     return handler;
 }
 

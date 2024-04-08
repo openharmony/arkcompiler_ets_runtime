@@ -15,6 +15,9 @@
 #ifndef ECMASCRIPT_COMPILER_AOT_COMPILER_PREPROCESSOR_H
 #define ECMASCRIPT_COMPILER_AOT_COMPILER_PREPROCESSOR_H
 
+#include "ecmascript/compiler/bytecode_info_collector.h"
+#include "ecmascript/compiler/compiler_log.h"
+#include "ecmascript/pgo_profiler/pgo_profiler_decoder.h"
 #include "ecmascript/compiler/pass_manager.h"
 #include "ecmascript/ecma_vm.h"
 #include "macros.h"
@@ -32,9 +35,22 @@ struct AbcFileInfo {
     std::shared_ptr<JSPandaFile> jsPandaFile_;
 };
 
+class CallMethodFlagMap {
+public:
+    CallMethodFlagMap() {}
+    void SetIsFastCall(CString fileDesc, uint32_t methodOffset, bool isFastCall);
+    bool IsFastCall(CString fileDesc, uint32_t methodOffset) const;
+    void SetIsAotCompile(CString fileDesc, uint32_t methodOffset, bool isAotCompile);
+    bool IsAotCompile(CString fileDesc, uint32_t methodOffset) const;
+private:
+    std::map<std::pair<CString, uint32_t>, bool> abcIdMethodIdToIsFastCall_ {};
+    std::map<std::pair<CString, uint32_t>, bool> abcIdMethodIdToIsAotCompile_ {};
+};
+
 struct CompilationOptions {
     explicit CompilationOptions(EcmaVM *vm, JSRuntimeOptions &runtimeOptions);
-
+    void ParseOption(const std::string &option, std::map<std::string, std::vector<std::string>> &optionMap) const;
+    std::vector<std::string> SplitString(const std::string &str, const char ch) const;
     std::string triple_;
     std::string outputFileName_;
     size_t optLevel_;
@@ -70,6 +86,8 @@ struct CompilationOptions {
     bool isEnableOptBranchProfiling_;
     bool isEnableEscapeAnalysis_;
     bool isEnableInductionVariableAnalysis_;
+    std::map<std::string, std::vector<std::string>> optionSelectMethods_;
+    std::map<std::string, std::vector<std::string>> optionSkipMethods_;
 };
 
 class AotCompilerPreprocessor {
@@ -95,11 +113,39 @@ public:
 
     bool GenerateAbcFileInfos();
 
-    void GenerateGlobalTypes(const CompilationOptions &cOptions);
-
     void GeneratePGOTypes(const CompilationOptions &cOptions);
 
     void SnapshotInitialize();
+
+    bool FilterOption(const std::map<std::string, std::vector<std::string>> &optionMap,
+                      const std::string &recordName, const std::string &methodName) const;
+
+    bool IsSkipMethod(const JSPandaFile *jsPandaFile, const BCInfo &bytecodeInfo,
+                      const CString &recordName, const MethodLiteral *methodLiteral,
+                      const MethodPcInfo &methodPCInfo, const std::string &methodName,
+                      CompilationOptions &cOptions) const;
+
+    void GenerateMethodMap(CompilationOptions &cOptions);
+
+    void SetIsFastCall(CString fileDesc, uint32_t methodOffset, bool isFastCall)
+    {
+        callMethodFlagMap_.SetIsFastCall(fileDesc, methodOffset, isFastCall);
+    }
+
+    bool IsFastCall(CString fileDesc, uint32_t methodOffset)
+    {
+        return callMethodFlagMap_.IsFastCall(fileDesc, methodOffset);
+    }
+
+    void SetIsAotCompile(CString fileDesc, uint32_t methodOffset, bool isAotCompile)
+    {
+        callMethodFlagMap_.SetIsAotCompile(fileDesc, methodOffset, isAotCompile);
+    }
+
+    bool GetIsAotCompile(CString fileDesc, uint32_t methodOffset)
+    {
+        return callMethodFlagMap_.IsAotCompile(fileDesc, methodOffset);
+    }
 
     std::string GetMainPkgArgsAppSignature() const;
 
@@ -126,6 +172,10 @@ public:
     {
         return pkgsArgs_;
     }
+    const CallMethodFlagMap *GetCallMethodFlagMap()
+    {
+        return &callMethodFlagMap_;
+    }
 
     static std::string GetHelper()
     {
@@ -144,6 +194,8 @@ private:
 
     void ResolveModule(const JSPandaFile *jsPandaFile, const std::string &fileName);
 
+    void RecordArrayElement(const CompilationOptions &cOptions);
+
     EcmaVM *vm_;
     JSRuntimeOptions &runtimeOptions_;
     std::map<std::string, std::shared_ptr<OhosPkgArgs>> &pkgsArgs_;
@@ -151,6 +203,7 @@ private:
     PGOProfilerDecoder &profilerDecoder_;
     arg_list_t &pandaFileNames_;
     CVector<AbcFileInfo> fileInfos_;
+    CallMethodFlagMap callMethodFlagMap_;
     friend class OhosPkgArgs;
 };
 }  // namespace panda::ecmascript::kungfu

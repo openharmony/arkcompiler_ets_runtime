@@ -16,6 +16,7 @@
 #ifndef ECMASCRIPT_COMPILER_TYPE_H
 #define ECMASCRIPT_COMPILER_TYPE_H
 
+#include "ecmascript/js_hclass.h"
 #include "ecmascript/ts_types/global_ts_type_ref.h"
 
 #define VALUE_TYPE_LIST(V)  \
@@ -41,15 +42,102 @@ enum class ValueType : uint8_t {
 };
 
 namespace panda::ecmascript::kungfu {
-class GateType {
+#define PRIMITIVE_TYPE_LIST(V)         \
+    V(ANY, AnyType)                    \
+    V(NUMBER, NumberType)              \
+    V(BOOLEAN, BooleanType)            \
+    V(VOID_TYPE, VoidType)             \
+    V(STRING, StringType)              \
+    V(SYMBOL, SymbolType)              \
+    V(NULL_TYPE, NullType)             \
+    V(UNDEFINED, UndefinedType)        \
+    V(INT, IntType)                    \
+    V(BIG_INT, BigIntType)             \
+    V(DOUBLE, DoubleType)              \
+
+// ParamType: Prediction type from PGO, bound to MetaData in GATE
+#define PARAM_TYPE_LIST(V)             \
+    V(INT_OVERFLOW, IntOverflowType)   \
+
+class ParamType {
 public:
-    constexpr explicit GateType(uint32_t type = 0) : type_(type)
+    explicit ParamType(uint32_t type = 0) : type_(type) {}
+
+    explicit ParamType(JSType jsType)
     {
+        type_ = BUILTIN_TYPE | static_cast<uint32_t>(jsType);
     }
 
-    explicit GateType(GlobalTSTypeRef gt) : type_(0)
+#define DEFINE_TYPE_CONSTRUCTOR(type, name) \
+    static ParamType name() { return ParamType(static_cast<uint32_t>(type)); }
+
+    PRIMITIVE_TYPE_LIST(DEFINE_TYPE_CONSTRUCTOR)
+    PARAM_TYPE_LIST(DEFINE_TYPE_CONSTRUCTOR)
+#undef DEFINE_TYPE_CONSTRUCTOR
+
+#define DEFINE_JUDGE_METHOD(type, name) \
+    bool Is##name() const { return type_ == static_cast<uint32_t>(type); }
+
+    PRIMITIVE_TYPE_LIST(DEFINE_JUDGE_METHOD)
+    PARAM_TYPE_LIST(DEFINE_JUDGE_METHOD)
+#undef DEFINE_JUDGE_METHOD
+
+    uint32_t Value() const
     {
-        type_ |= gt.GetType();
+        return type_;
+    }
+
+    bool HasNumberType() const
+    {
+        return IsNumberType() || IsIntType() || IsIntOverflowType() || IsDoubleType();
+    }
+
+    bool IsBuiltinType() const
+    {
+        return type_ & BUILTIN_TYPE;
+    }
+
+    JSType GetBuiltinType() const
+    {
+        return static_cast<JSType>(type_ & ~BUILTIN_TYPE);
+    }
+
+    bool operator ==(const ParamType &other) const
+    {
+        return type_ == other.type_;
+    }
+
+    bool operator !=(const ParamType &other) const
+    {
+        return !(*this == other);
+    }
+
+private:
+    enum : uint8_t {
+#define DECLARE_TYPE(type, name) type,
+        PRIMITIVE_TYPE_LIST(DECLARE_TYPE)
+        PARAM_TYPE_LIST(DECLARE_TYPE)
+#undef DECLARE_TYPE
+    };
+
+    static constexpr uint32_t BUILTIN_TYPE = (1 << 31); // 31 : the 31-th bit is set implies builtin type
+
+    uint32_t type_ {0};
+};
+#undef PARAM_TYPE_LIST
+
+// GateType: Trusted type, directly bound to Gate
+class GateType {
+public:
+    constexpr explicit GateType(uint32_t type = 0)
+    {
+        type_ |= type;
+    }
+
+    explicit GateType([[maybe_unused]]GlobalTSTypeRef gt)
+    {
+        // linxiang shoult remove in part3
+        type_ = EMPTY;
     }
 
     ~GateType() = default;
@@ -86,142 +174,113 @@ public:
 
     static GateType AnyType()
     {
-        GlobalTSTypeRef r(0, static_cast<int>(TSPrimitiveType::ANY));
-        return GateType(r);
+        return GateType(static_cast<uint32_t>(TSPrimitiveType::ANY));
     }
 
     static GateType NumberType()
     {
-        GlobalTSTypeRef r(0, static_cast<int>(TSPrimitiveType::NUMBER));
-        return GateType(r);
+        return GateType(static_cast<uint32_t>(TSPrimitiveType::NUMBER));
     }
 
     static GateType DoubleType()
     {
-        GlobalTSTypeRef r(0, static_cast<int>(TSPrimitiveType::DOUBLE));
-        return GateType(r);
+        return GateType(static_cast<uint32_t>(TSPrimitiveType::DOUBLE));
     }
 
     static GateType BooleanType()
     {
-        GlobalTSTypeRef r(0, static_cast<int>(TSPrimitiveType::BOOLEAN));
-        return GateType(r);
+        return GateType(static_cast<uint32_t>(TSPrimitiveType::BOOLEAN));
     }
 
     static GateType VoidType()
     {
-        GlobalTSTypeRef r(0, static_cast<int>(TSPrimitiveType::VOID_TYPE));
-        return GateType(r);
+        return GateType(static_cast<uint32_t>(TSPrimitiveType::VOID_TYPE));
     }
 
     static GateType StringType()
     {
-        GlobalTSTypeRef r(0, static_cast<int>(TSPrimitiveType::STRING));
-        return GateType(r);
+        return GateType(static_cast<uint32_t>(TSPrimitiveType::STRING));
     }
 
     static GateType SymbolType()
     {
-        GlobalTSTypeRef r(0, static_cast<int>(TSPrimitiveType::SYMBOL));
-        return GateType(r);
+        return GateType(static_cast<uint32_t>(TSPrimitiveType::SYMBOL));
     }
 
     static GateType NullType()
     {
-        GlobalTSTypeRef r(0, static_cast<int>(TSPrimitiveType::NULL_TYPE));
-        return GateType(r);
+        return GateType(static_cast<uint32_t>(TSPrimitiveType::NULL_TYPE));
     }
 
     static GateType UndefinedType()
     {
-        GlobalTSTypeRef r(0, static_cast<int>(TSPrimitiveType::UNDEFINED));
-        return GateType(r);
+        return GateType(static_cast<uint32_t>(TSPrimitiveType::UNDEFINED));
     }
 
     static GateType IntType()
     {
-        GlobalTSTypeRef r(0, static_cast<int>(TSPrimitiveType::INT));
-        return GateType(r);
+        return GateType(static_cast<uint32_t>(TSPrimitiveType::INT));
     }
 
     static GateType BigIntType()
     {
-        GlobalTSTypeRef r(0, static_cast<int>(TSPrimitiveType::BIG_INT));
-        return GateType(r);
+        return GateType(static_cast<uint32_t>(TSPrimitiveType::BIG_INT));
     }
 
     bool IsAnyType() const
     {
-        GlobalTSTypeRef r = GetGTRef();
-        uint32_t m = r.GetModuleId();
-        uint32_t l = r.GetLocalId();
-        return (m == 0) && (l == static_cast<uint32_t>(TSPrimitiveType::ANY));
+        uint32_t type = GetType();
+        return type == static_cast<uint32_t>(TSPrimitiveType::ANY);
     }
 
     bool IsNumberType() const
     {
-        GlobalTSTypeRef r = GetGTRef();
-        uint32_t m = r.GetModuleId();
-        uint32_t l = r.GetLocalId();
-        return (m == 0) && ((l == static_cast<uint32_t>(TSPrimitiveType::NUMBER)) ||
-                            (l == static_cast<uint32_t>(TSPrimitiveType::INT))    ||
-                            (l == static_cast<uint32_t>(TSPrimitiveType::DOUBLE)));
+        uint32_t type = GetType();
+        return ((type == static_cast<uint32_t>(TSPrimitiveType::NUMBER)) ||
+               (type == static_cast<uint32_t>(TSPrimitiveType::INT))    ||
+               (type == static_cast<uint32_t>(TSPrimitiveType::DOUBLE)));
     }
 
     bool IsIntType() const
     {
-        GlobalTSTypeRef r = GetGTRef();
-        uint32_t m = r.GetModuleId();
-        uint32_t l = r.GetLocalId();
-        return (m == 0) && (l == static_cast<uint32_t>(TSPrimitiveType::INT));
+        uint32_t type = GetType();
+        return type == static_cast<uint32_t>(TSPrimitiveType::INT);
     }
 
     bool IsDoubleType() const
     {
-        GlobalTSTypeRef r = GetGTRef();
-        uint32_t m = r.GetModuleId();
-        uint32_t l = r.GetLocalId();
-        return (m == 0) && (l == static_cast<uint32_t>(TSPrimitiveType::DOUBLE));
+        uint32_t type = GetType();
+        return type == static_cast<uint32_t>(TSPrimitiveType::DOUBLE);
     }
 
     bool IsStringType() const
     {
-        GlobalTSTypeRef r = GetGTRef();
-        uint32_t m = r.GetModuleId();
-        uint32_t l = r.GetLocalId();
-        return (m == 0) && (l == static_cast<uint32_t>(TSPrimitiveType::STRING));
+        uint32_t type = GetType();
+        return type == static_cast<uint32_t>(TSPrimitiveType::STRING);
     }
 
     bool IsNullType() const
     {
-        GlobalTSTypeRef r = GetGTRef();
-        uint32_t m = r.GetModuleId();
-        uint32_t l = r.GetLocalId();
-        return (m == 0) && (l == static_cast<uint32_t>(TSPrimitiveType::NULL_TYPE));
+        uint32_t type = GetType();
+        return type == static_cast<uint32_t>(TSPrimitiveType::NULL_TYPE);
     }
 
     bool IsUndefinedType() const
     {
-        GlobalTSTypeRef r = GetGTRef();
-        uint32_t m = r.GetModuleId();
-        uint32_t l = r.GetLocalId();
-        return (m == 0) && (l == static_cast<uint32_t>(TSPrimitiveType::UNDEFINED));
+        uint32_t type = GetType();
+        return type == static_cast<uint32_t>(TSPrimitiveType::UNDEFINED);
     }
 
     bool IsBooleanType() const
     {
-        GlobalTSTypeRef r = GetGTRef();
-        uint32_t m = r.GetModuleId();
-        uint32_t l = r.GetLocalId();
-        return (m == 0) && (l == static_cast<uint32_t>(TSPrimitiveType::BOOLEAN));
+        uint32_t type = GetType();
+        return type == static_cast<uint32_t>(TSPrimitiveType::BOOLEAN);
     }
 
     bool IsBigIntType() const
     {
-        GlobalTSTypeRef r = GetGTRef();
-        uint32_t m = r.GetModuleId();
-        uint32_t l = r.GetLocalId();
-        return (m == 0) && (l == static_cast<uint32_t>(TSPrimitiveType::BIG_INT));
+        uint32_t type = GetType();
+        return type == static_cast<uint32_t>(TSPrimitiveType::BIG_INT);
     }
 
     bool IsNJSValueType() const
@@ -236,10 +295,8 @@ public:
 
     bool IsSymbolType() const
     {
-        GlobalTSTypeRef r = GetGTRef();
-        uint32_t m = r.GetModuleId();
-        uint32_t l = r.GetLocalId();
-        return (m == 0) && (l == static_cast<uint32_t>(TSPrimitiveType::SYMBOL));
+        uint32_t type = GetType();
+        return type == static_cast<uint32_t>(TSPrimitiveType::SYMBOL);
     }
 
     // In addition to normal number types, null, undefined, boolean types will be converted to numeric types when doing
@@ -289,10 +346,16 @@ public:
         return type_ >= other.type_;
     }
 
+    uint32_t GetType() const
+    {
+        return type_ & (~MIR_TYPE_MASK);
+    }
+
     GlobalTSTypeRef GetGTRef() const
     {
-        uint32_t r = type_ & (~MIR_TYPE_MASK);
-        return GlobalTSTypeRef(r);
+        // linxiang shoult remove in part3
+        GlobalTSTypeRef empty;
+        return empty;
     }
 
 private:

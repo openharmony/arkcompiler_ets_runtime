@@ -15,6 +15,8 @@
 
 #include "ecmascript/compiler/async_function_lowering.h"
 
+#include "ecmascript/js_generator_object.h"
+
 namespace panda::ecmascript::kungfu {
 void AsyncFunctionLowering::ProcessAll()
 {

@@ -84,6 +84,7 @@
       panda::ecmascript::WorkSpaceChunk::*;
       panda::ecmascript::pgo::PGOProfilerDecoder::*;
       panda::ecmascript::pgo::PGOProfilerEncoder::*;
+      panda::ecmascript::pgo::ProfileType::PROFILE_TYPE_NONE;
       panda::ecmascript::containers::ContainerError::*;
       panda::ecmascript::NativeAreaAllocator::*;
 
@@ -329,6 +330,9 @@
       panda::ecmascript::kungfu::ArkStackMapBuilder::GenerateArkStackMap*;
       panda::ecmascript::kungfu::ArkStackMapBuilder::Run*;
       panda::ecmascript::kungfu::PGOBCInfo::Record*;
+      panda::ecmascript::kungfu::PGOTypeManager::GetConstantPoolIDByMethodOffset*;
+      panda::ecmascript::kungfu::PGOTypeManager::GetConstantPoolByMethodOffset*;
+      panda::ecmascript::kungfu::PGOTypeManager::GetStringFromConstantPool*;
       panda::ecmascript::kungfu::PGOTypeManager::GetElementsIndexByEntityId*;
       panda::ecmascript::kungfu::PGOTypeManager::GetHClassIndexByProfileType*;
       panda::ecmascript::kungfu::PGOTypeManager::InitAOTSnapshot*;
