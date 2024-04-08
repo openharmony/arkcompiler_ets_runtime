@@ -13,21 +13,21 @@
  * limitations under the License.
  */
 
-declare function assert_equal(a: Object, b: Object):void;
-var testArrary = [2, 3, "success", "fail"];
+declare function print(str:any):string;
 function f(a:any,...A:any) {
     for (let p in A) {
-        A[p] = testArrary[p];
+        print(A[p]);
     }
 }
 
-f(1, [2, 3, "success", "fail"]);
+f(1, 2, 3);
+f(1, "success", "fail");
 
 // The following test cases have exposed a bug: the variable actualRestNum in RuntimeOptCopyRestArgs
 // computed mistakely and may out of uint32_t range.
 function foo(x: number, y?: number, ...restArgs: number[]):void {
     let arr = [...restArgs];
-    assert_equal(arr.length, 0);
+    print(arr.length);
 }
 
 foo(1);

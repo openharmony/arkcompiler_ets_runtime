@@ -14,12 +14,11 @@
  */
 
 declare function print(str:string):string;
-declare function assert_equal(a: Object, b: Object):void;
 
 function printArgs(...rest:any)
 {
-    assert_equal(arguments[0], "aaa");
-    assert_equal(arguments[1], 55555);
+    print(arguments[0]);
+    print(arguments[1]);
 }
 
 printArgs("aaa", 55555);

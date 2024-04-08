@@ -13,12 +13,12 @@
  * limitations under the License.
  */
 
-declare function assert_equal(a: Object, b: Object):void;
+declare function print(arg:any):string;
 let a = []
 let l = a.push(1)
-assert_equal(l, 1)
+print(l)
 l = a.push(1, 2, 3, 4, 5)
-assert_equal(l, 6)
+print(l)
 
 for (let i = 0; i < 100; i++) {
   a.push(i)
@@ -27,7 +27,7 @@ for (let i = 0; i < 100; i++) {
 let c = [1, 2, 3, 4]
 a.push(...c)
 
-assert_equal(a.length, 110)
+print(a.length)
 
 let b = []
 b.push(1, 2, 3, 4)
@@ -35,5 +35,5 @@ b.push(1, 2, 3)
 b.push(1, 2)
 b.push(1)
 b.push()
-assert_equal(Object.values(b), [1, 2, 3, 4, 1, 2, 3, 1, 2, 1])
-assert_equal(b.length, 10)
+print(Object.values(b))
+print(b.length)

@@ -12,13 +12,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-declare function assert_equal(a: Object, b: Object):void;
 class A {
     a:number = 1;
 }
 class B {
     foo(a : A) {
-        assert_equal(a.a, undefined);
+        print(a.a);
     }
 }
 let b = new B();

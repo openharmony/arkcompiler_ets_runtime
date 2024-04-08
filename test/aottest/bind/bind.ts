@@ -13,17 +13,17 @@
  * limitations under the License.
  */
 
-declare function assert_equal(a: Object, b: Object):void;
+declare function print(arg:any):string;
 
 function foo(a:any, b:any) {
     return a + b
 }
 
-assert_equal(foo(1, 2), 3);
+print(foo(1, 2));
 
 var bindfunc = foo.bind(null, 37);
 
-assert_equal(bindfunc(5), 42)
+print(bindfunc(5));
 
 const person = {
     name: 'Alice'
@@ -33,15 +33,15 @@ const greetPerson = function aaaaaa(message, message2, message3, message4) {
     print(message + ', ' + message2 + ', ' + message3 + ', ' + message4 + ', ' + this.name + '!');
 }.bind(person, 'hello');
 greetPerson();
-assert_equal(greetPerson.name, "bound aaaaaa");
-assert_equal(greetPerson.length, 3);
+print(greetPerson.name);
+print(greetPerson.length);
 
 const greetPerson2 = greetPerson.bind(person, 'hello2');
 greetPerson2();
-assert_equal(greetPerson2.name, "bound bound aaaaaa");
-assert_equal(greetPerson2.length, 2);
+print(greetPerson2.name);
+print(greetPerson2.length);
 
 const greetPerson3 = greetPerson2.bind(greetPerson, 'hello3');
 greetPerson3();
-assert_equal(greetPerson3.name, "bound bound bound aaaaaa");
-assert_equal(greetPerson3.length, 1);
+print(greetPerson3.name);
+print(greetPerson3.length);

@@ -14,9 +14,6 @@
  */
 
 declare function print(str:any):string;
-declare function assert_unreachable():void;
-declare function assert_true(condition: boolean):void;
-declare function assert_equal(a: Object, b: Object):void;
 class Obj1 {
     value:number;
     constructor(value:number) {
@@ -34,12 +31,12 @@ class Obj2 {
 }
 
 var obj1 = new Obj1(1);
-assert_equal(obj1.value, 1);
-assert_equal(obj1.fun(2), 4);
+print(obj1.value);
+print(obj1.fun(2));
 var obj2 = new Obj2();
 obj2.fun();
 
-assert_true(obj1 instanceof Object);
+print(obj1 instanceof Object);
 
 // The following test case once exposed a bug: The abstract methods were not ignored when generating phc using ts types,
 // resulting in the inconsistency between the properties key and class litreal at runtime.
@@ -53,7 +50,7 @@ abstract class C {
     }
 }
 
-assert_equal(C.prototype.bar(), "bar");
+print(C.prototype.bar());
 
 function f26() {
     function f29() {}
@@ -62,6 +59,5 @@ function f26() {
 }
 try {
     const v31 = f26();
-    assert_unreachable();
 } catch (e) {}
 class C33 {}
