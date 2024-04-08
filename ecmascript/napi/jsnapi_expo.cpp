@@ -2866,6 +2866,11 @@ void JSNApi::SetLoop(EcmaVM *vm, void *loop)
     vm->SetLoop(loop);
 }
 
+void JSNApi::SetWeakFinalizeTaskCallback(EcmaVM *vm, const WeakFinalizeTaskCallback &callback)
+{
+    vm->GetAssociatedJSThread()->SetWeakFinalizeTaskCallback(callback);
+}
+
 std::string JSNApi::GetAssetPath(EcmaVM *vm)
 {
     return vm->GetAssetPath().c_str();

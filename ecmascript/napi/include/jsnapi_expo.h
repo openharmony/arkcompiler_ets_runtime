@@ -89,6 +89,7 @@ struct HmsMap {
 
 using Deleter = void (*)(void *nativePointer, void *data);
 using WeakRefClearCallBack = void (*)(void *);
+using WeakFinalizeTaskCallback = std::function<void()>;
 using EcmaVM = ecmascript::EcmaVM;
 using EcmaContext = ecmascript::EcmaContext;
 using JSThread = ecmascript::JSThread;
@@ -1358,6 +1359,7 @@ public:
     static void SetpkgContextInfoList(EcmaVM *vm, const std::map<std::string,
         std::vector<std::vector<std::string>>> &list);
     static void SetLoop(EcmaVM *vm, void *loop);
+    static void SetWeakFinalizeTaskCallback(EcmaVM *vm, const WeakFinalizeTaskCallback &callback);
     static std::string GetAssetPath(EcmaVM *vm);
     static bool InitForConcurrentThread(EcmaVM *vm, ConcurrentCallback cb, void *data);
     static bool InitForConcurrentFunction(EcmaVM *vm, Local<JSValueRef> func, void *taskInfo);

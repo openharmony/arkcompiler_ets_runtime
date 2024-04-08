@@ -1198,7 +1198,10 @@ public:
     MutatorLock::MutatorLockState GetMutatorLockState() const;
     void SetMutatorLockState(MutatorLock::MutatorLockState newState);
 #endif
-
+    void SetWeakFinalizeTaskCallback(const WeakFinalizeTaskCallback &callback)
+    {
+        finalizeTaskCallback_ = callback;
+    }
 private:
     NO_COPY_SEMANTIC(JSThread);
     NO_MOVE_SEMANTIC(JSThread);
@@ -1267,6 +1270,7 @@ private:
          WeakClearCallback nativeFinalizeCallBack)> setWeak_;
     std::function<uintptr_t(uintptr_t nodeAddr)> clearWeak_;
     std::function<bool(uintptr_t addr)> isWeak_;
+    WeakFinalizeTaskCallback finalizeTaskCallback_ {nullptr};
     uint32_t globalNumberCount_ {0};
 
     // Run-time state
