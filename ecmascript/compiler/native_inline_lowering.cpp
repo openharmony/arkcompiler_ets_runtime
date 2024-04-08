@@ -73,7 +73,7 @@ void NativeInlineLowering::RunNativeInlineLowering()
         }
         auto [argc, skipThis] = optCallInfo.value();
         CallTypeInfoAccessor ctia(thread_, circuit_, gate);
-        BuiltinsStubCSigns::ID id = ctia.TryGetPGOBuiltinId();
+        BuiltinsStubCSigns::ID id = ctia.TryGetPGOBuiltinMethodId();
         switch (id) {
             case BuiltinsStubCSigns::ID::StringFromCharCode:
                 TryInlineStringFromCharCode(gate, argc, skipThis);

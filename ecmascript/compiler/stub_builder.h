@@ -844,10 +844,10 @@ public:
     inline GateRef IsMarkerCellValid(GateRef cell);
     inline GateRef GetAccessorHasChanged(GateRef obj);
     inline GateRef ComputeTaggedTypedArraySize(GateRef elementSize, GateRef length);
+    GateRef ChangeTaggedPointerToInt64(GateRef x);
 
 private:
     using BinaryOperation = std::function<GateRef(Environment*, GateRef, GateRef)>;
-    GateRef ChangeTaggedPointerToInt64(GateRef x);
     template<OpCode Op>
     GateRef FastAddSubAndMul(GateRef glue, GateRef left, GateRef right, ProfileOperation callback);
     GateRef FastIntDiv(GateRef left, GateRef right, Label *bailout, ProfileOperation callback);

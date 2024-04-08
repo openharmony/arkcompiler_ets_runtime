@@ -69,6 +69,7 @@ try {
 } catch(e) {}
 
 // Replace standart builtin
+//aot: [trace] Check Type: NotJSCallTarget4
 let true_log = Math.log
 Math.log = replace
 res = Math.log(111);
@@ -76,7 +77,5 @@ print(res); //: 111
 
 // Call standart builtin with non-number param
 Math.log = true_log
-//aot: [trace] aot inline builtin: Math.log, caller function name:func_main_0@builtinMathLog
-//aot: [trace] Check Type: NotNumber1
 res = Math.log("-0"); // deopt
 print(res); //: -Infinity

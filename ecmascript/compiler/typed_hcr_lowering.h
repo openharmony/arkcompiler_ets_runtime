@@ -20,6 +20,7 @@
 #include "ecmascript/compiler/bytecode_circuit_builder.h"
 #include "ecmascript/compiler/circuit_builder-inl.h"
 #include "ecmascript/compiler/combined_pass_visitor.h"
+#include "ecmascript/compiler/type_info_accessors.h"
 
 namespace panda::ecmascript::kungfu {
 // TypeHCRLowering Process
@@ -126,7 +127,7 @@ private:
     void LowerType(GateRef gate);
     void LowerPrimitiveTypeCheck(GateRef gate);
     void LowerTypeConvert(GateRef gate);
-    void LowerPrimitiveToNumber(GateRef dst, GateRef src, GateType srcType);
+    void LowerPrimitiveToNumber(GateRef dst, GateRef src, ParamType srcType);
     void LowerIntCheck(GateRef gate);
     void LowerDoubleCheck(GateRef gate);
     void LowerNumberCheck(GateRef gate);
@@ -189,7 +190,7 @@ private:
     void LowerTypedSuperAllocateThis(GateRef gate, GateRef glue);
     void LowerGetSuperConstructor(GateRef gate);
     void LowerJSInlineTargetTypeCheck(GateRef gate);
-    void SetDeoptTypeInfo(BuiltinTypeId id, DeoptType &type, size_t &typedArrayRootHclassIndex,
+    void SetDeoptTypeInfo(JSType jstype, DeoptType &type, size_t &typedArrayRootHclassIndex,
         size_t &typedArrayRootHclassOnHeapIndex);
     void LowerLookupHolder(GateRef gate);
     void LowerLoadGetter(GateRef gate);

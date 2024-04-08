@@ -13,16 +13,15 @@
  * limitations under the License.
  */
 #include "ecmascript/compiler/pass_manager.h"
+
 #include "ecmascript/compiler/bytecodes.h"
 #include "ecmascript/compiler/compilation_driver.h"
 #include "ecmascript/compiler/pass.h"
 #include "ecmascript/ecma_handle_scope.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
-#include "ecmascript/jspandafile/panda_file_translator.h"
 #include "ecmascript/log.h"
 #include "ecmascript/log_wrapper.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
-#include "ecmascript/ts_types/ts_manager.h"
 
 namespace panda::ecmascript::kungfu {
 using PGOProfilerManager = pgo::PGOProfilerManager;
@@ -66,10 +65,7 @@ bool JitPassManager::Compile(JSHandle<JSFunction> &jsFunction, AOTFileGenerator 
 
         auto jsPandaFile = ctx_->GetJSPandaFile();
         auto cmpCfg = ctx_->GetCompilerConfig();
-        auto tsManager = ctx_->GetTSManager();
         auto module = m->GetModule();
-        // note: TSManager need to set current constantpool before all pass
-        tsManager->SetCurConstantPool(jsPandaFile, methodOffset);
         log_->SetMethodLog(fileName, methodName, logList_);
 
         std::string fullName = module->GetFuncName(methodLiteral, jsPandaFile);
@@ -87,10 +83,9 @@ bool JitPassManager::Compile(JSHandle<JSFunction> &jsFunction, AOTFileGenerator 
             fullName.c_str(), cmpCfg->Is64Bit(), FrameType::OPTIMIZED_JS_FUNCTION_FRAME);
         PGOProfilerDecoder *decoder = passOptions_->EnableOptPGOType() ? &profilerDecoder_ : nullptr;
 
-        builder_ = new BytecodeCircuitBuilder(jsPandaFile, methodLiteral, methodPCInfo, tsManager,
-            circuit_, ctx_->GetByteCodes(), hasTypes, enableMethodLog && log_->OutputCIR(),
-            passOptions_->EnableTypeLowering(), fullName, recordName, decoder, false,
-            passOptions_->EnableOptTrackField());
+        builder_ = new BytecodeCircuitBuilder(jsPandaFile, methodLiteral, methodPCInfo,
+            circuit_, ctx_->GetByteCodes(), enableMethodLog && log_->OutputCIR(),
+            passOptions_->EnableTypeLowering(), fullName, recordName, decoder, false);
         builder_->SetOsrOffset(osrOffset);
         {
             TimeScope timeScope("BytecodeToCircuit", methodName, methodOffset, log_);
@@ -98,7 +93,8 @@ bool JitPassManager::Compile(JSHandle<JSFunction> &jsFunction, AOTFileGenerator 
         }
 
         data_ = new PassData(builder_, circuit_, ctx_, log_, fullName, &methodInfo, hasTypes, recordName,
-            methodLiteral, methodOffset, vm_->GetNativeAreaAllocator(), decoder, passOptions_);
+            methodLiteral, methodOffset, nullptr, CVector<AbcFileInfo> {},
+            vm_->GetNativeAreaAllocator(), decoder, passOptions_);
         PassRunner<PassData> pipeline(data_);
         if (data_->GetMethodLiteral()->HasDebuggerStmt()) {
             data_->AbortCompilation();
@@ -109,11 +105,6 @@ bool JitPassManager::Compile(JSHandle<JSFunction> &jsFunction, AOTFileGenerator 
         if (builder_->EnableLoopOptimization()) {
             pipeline.RunPass<LoopOptimizationPass>();
             pipeline.RunPass<RedundantPhiEliminationPass>();
-        }
-        pipeline.RunPass<TypeInferPass>();
-        if (data_->IsTypeAbort()) {
-            data_->AbortCompilation();
-            return;
         }
         pipeline.RunPass<PGOTypeInferPass>();
         pipeline.RunPass<TSClassAnalysisPass>();
@@ -228,10 +219,7 @@ bool PassManager::Compile(JSPandaFile *jsPandaFile, const std::string &fileName,
         PassContext ctx(triple_, log_, &collector, m->GetModule(), &profilerDecoder_);
         auto jsPandaFile = ctx.GetJSPandaFile();
         auto cmpCfg = ctx.GetCompilerConfig();
-        auto tsManager = ctx.GetTSManager();
         auto module = m->GetModule();
-        // note: TSManager need to set current constantpool before all pass
-        tsManager->SetCurConstantPool(jsPandaFile, methodOffset);
         log_->SetMethodLog(fileName, methodName, logList_);
 
         std::string fullName = module->GetFuncName(methodLiteral, jsPandaFile);
@@ -250,17 +238,17 @@ bool PassManager::Compile(JSPandaFile *jsPandaFile, const std::string &fileName,
 
         PGOProfilerDecoder *decoder = passOptions_->EnableOptPGOType() ? &profilerDecoder_ : nullptr;
 
-        BytecodeCircuitBuilder builder(jsPandaFile, methodLiteral, methodPCInfo, tsManager, &circuit,
-                                       ctx.GetByteCodes(), hasTypes, enableMethodLog && log_->OutputCIR(),
-                                       passOptions_->EnableTypeLowering(), fullName, recordName, decoder, false,
-                                       passOptions_->EnableOptTrackField());
+        BytecodeCircuitBuilder builder(jsPandaFile, methodLiteral, methodPCInfo, &circuit,
+                                       ctx.GetByteCodes(), enableMethodLog && log_->OutputCIR(),
+                                       passOptions_->EnableTypeLowering(), fullName, recordName, decoder, false);
         {
             TimeScope timeScope("BytecodeToCircuit", methodName, methodOffset, log_);
             builder.BytecodeToCircuit();
         }
 
         PassData data(&builder, &circuit, &ctx, log_, fullName, &methodInfo, hasTypes, recordName,
-                      methodLiteral, methodOffset, vm_->GetNativeAreaAllocator(), decoder, passOptions_,
+                      methodLiteral, methodOffset, callMethodFlagMap_, fileInfos_,
+                      vm_->GetNativeAreaAllocator(), decoder, passOptions_,
                       optBCRange_);
         PassRunner<PassData> pipeline(&data);
         if (data.GetMethodLiteral()->HasDebuggerStmt()) {
@@ -273,29 +261,14 @@ bool PassManager::Compile(JSPandaFile *jsPandaFile, const std::string &fileName,
             pipeline.RunPass<LoopOptimizationPass>();
             pipeline.RunPass<RedundantPhiEliminationPass>();
         }
-        pipeline.RunPass<TypeInferPass>();
-        if (data.IsTypeAbort()) {
-            data.AbortCompilation();
-            return;
-        }
         pipeline.RunPass<PGOTypeInferPass>();
-        pipeline.RunPass<TSClassAnalysisPass>();
         pipeline.RunPass<TSInlineLoweringPass>();
         pipeline.RunPass<RedundantPhiEliminationPass>();
         pipeline.RunPass<AsyncFunctionLoweringPass>();
-        // skip async function, because some application run with errors.
-        if (methodInfo.IsTypeInferAbort()) {
-            data.AbortCompilation();
-            return;
-        }
         pipeline.RunPass<TypeBytecodeLoweringPass>();
         pipeline.RunPass<InductionVariableAnalysisPass>();
         pipeline.RunPass<RedundantPhiEliminationPass>();
         pipeline.RunPass<NTypeBytecodeLoweringPass>();
-        if (data.IsTypeAbort()) {
-            data.AbortCompilation();
-            return;
-        }
         pipeline.RunPass<EarlyEliminationPass>();
         pipeline.RunPass<NumberSpeculativePass>();
         pipeline.RunPass<LaterEliminationPass>();

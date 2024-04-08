@@ -227,16 +227,6 @@ public:
         return OneParameterMetaData::Cast(meta_);
     }
 
-    const TypedBinaryMetaData* GetTypedBinaryMetaData() const
-    {
-        return TypedBinaryMetaData::Cast(meta_);
-    }
-
-    const TypedCallTargetCheckMetaData* GetTypedCallTargetCheckMetaData() const
-    {
-        return TypedCallTargetCheckMetaData::Cast(meta_);
-    }
-
     const StringMetaData* GetStringMetaData() const
     {
         ASSERT(meta_->IsStringType());

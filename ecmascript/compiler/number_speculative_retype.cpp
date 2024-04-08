@@ -44,14 +44,22 @@ GateRef NumberSpeculativeRetype::SetOutputType(GateRef gate, GateType gateType)
     return old == type ? Circuit::NullGate() : gate;
 }
 
-GateRef NumberSpeculativeRetype::SetOutputType(GateRef gate, PGOSampleType pgoType)
+GateRef NumberSpeculativeRetype::SetOutputType(GateRef gate, ParamType paramType)
 {
     TypeInfo type = GetOutputTypeInfo(gate);
     TypeInfo old = type;
-    if (pgoType.IsInt()) {
+    if (paramType.IsIntType()) {
         type = TypeInfo::INT32;
-    } else {
+    } else if (paramType.IsNumberType()) {
         type = TypeInfo::FLOAT64;
+    } else if (paramType.IsDoubleType()) {
+        type = TypeInfo::FLOAT64;
+    } else if (paramType.IsIntOverflowType()) {
+        type = TypeInfo::FLOAT64;
+    } else if (paramType.IsBooleanType()) {
+        type = TypeInfo::INT1;
+    } else {
+        type = TypeInfo::TAGGED;
     }
     SetOutputTypeInfo(gate, type);
     return old == type ? Circuit::NullGate() : gate;
@@ -279,7 +287,7 @@ GateRef NumberSpeculativeRetype::VisitTypedBinaryOp(GateRef gate)
         acc_.GetTypedBinaryOp(gate) != TypedBinOp::TYPED_STRICTNOTEQ &&
         acc_.GetTypedBinaryOp(gate) != TypedBinOp::TYPED_EQ &&
         acc_.GetTypedBinaryOp(gate) != TypedBinOp::TYPED_NOTEQ) {
-        if (acc_.HasPrimitiveNumberType(gate)) {
+        if (acc_.HasNumberType(gate)) {
             return VisitNumberBinaryOp(gate);
         }
     }
@@ -418,8 +426,7 @@ GateRef NumberSpeculativeRetype::VisitStringAdd(GateRef gate)
             GateRef input = acc_.GetValueIn(gate, i);
             TypeInfo inputInfo = GetOutputTypeInfo(input);
             if (inputInfo == TypeInfo::CHAR) {
-                GateRef glue = acc_.GetGlueFromArgList();
-                input = builder_.CallStub(glue, gate, CommonStubCSigns::CreateStringBySingleCharCode, { glue, input });
+                input = builder_.ConvertCharToEcmaString(input);
             }
             acc_.ReplaceValueIn(gate, input, i);
         }
@@ -539,8 +546,11 @@ GateRef NumberSpeculativeRetype::VisitNumberBinaryOp(GateRef gate)
         case TypedBinOp::TYPED_XOR: {
             return VisitNumberShiftAndLogical(gate);
         }
-        default:
-            return VisitNumberRelated(gate);
+        default: {
+            TypedBinaryAccessor accessor(acc_.TryGetValue(gate));
+            const ParamType paramType = accessor.GetParamType();
+            return VisitNumberRelated(gate, paramType);
+        }
     }
 }
 
@@ -558,16 +568,19 @@ GateRef NumberSpeculativeRetype::VisitTypedUnaryOp(GateRef gate)
         case TypedUnOp::TYPED_ISFALSE:
         case TypedUnOp::TYPED_ISTRUE:
             return VisitIsTrueOrFalse(gate);
-        default:
-            return VisitNumberRelated(gate);
+        default: {
+            TypedUnaryAccessor accessor(acc_.TryGetValue(gate));
+            ParamType paramType = accessor.GetParamType();
+            return VisitNumberRelated(gate, paramType);
+        }
     }
 }
 
 GateRef NumberSpeculativeRetype::VisitTypedConditionJump(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
-    TypedUnaryAccessor accessor(acc_.TryGetValue(gate));
-    auto type = accessor.GetTypeValue();
+    TypedJumpAccessor accessor(acc_.TryGetValue(gate));
+    ParamType type = accessor.GetParamType();
     if (type.IsBooleanType()) {
         return VisitBooleanJump(gate);
     } else {
@@ -579,17 +592,13 @@ GateRef NumberSpeculativeRetype::VisitTypedConditionJump(GateRef gate)
 GateRef NumberSpeculativeRetype::VisitNumberCalculate(GateRef gate)
 {
     if (IsRetype()) {
-        const PGOSampleType *sampleType = acc_.GetTypedBinaryType(gate).GetPGOSampleType();
-        if (sampleType->IsNumber()) {
-            return SetOutputType(gate, *sampleType);
-        } else {
-            GateType gateType = acc_.GetGateType(gate);
-            GateType resType = gateType.IsIntType() ? GateType::IntType() : GateType::DoubleType();
-            return SetOutputType(gate, resType);
-        }
+        TypedBinaryAccessor accessor(acc_.TryGetValue(gate));
+        const ParamType paramType = accessor.GetParamType();
+        ASSERT(paramType.HasNumberType());
+        return SetOutputType(gate, paramType);
     } else if (IsConvert()) {
         Environment env(gate, circuit_, &builder_);
-        ConvertForBinaryOp(gate);
+        ConvertForNumberBinaryOp(gate);
     }
     return Circuit::NullGate();
 }
@@ -601,7 +610,7 @@ GateRef NumberSpeculativeRetype::VisitNumberCompare(GateRef gate)
     }
     if (IsConvert()) {
         Environment env(gate, circuit_, &builder_);
-        ConvertForCompareOp(gate);
+        ConvertForNumberCompareOp(gate);
     }
     return Circuit::NullGate();
 }
@@ -613,19 +622,7 @@ GateRef NumberSpeculativeRetype::VisitNumberShiftAndLogical(GateRef gate)
     }
     if (IsConvert()) {
         Environment env(gate, circuit_, &builder_);
-        GateType leftType = acc_.GetLeftType(gate);
-        GateType rightType = acc_.GetRightType(gate);
-        const PGOSampleType *sampleType = acc_.GetTypedBinaryType(gate).GetPGOSampleType();
-        if (sampleType->IsNumber()) {
-            if (sampleType->IsInt()) {
-                leftType = GateType::IntType();
-                rightType = GateType::IntType();
-            } else {
-                leftType = GateType::NumberType();
-                rightType = GateType::NumberType();
-            }
-        }
-        ConvertForShiftAndLogicalOperator(gate, leftType, rightType);
+        ConvertForNumberShiftAndLogicalOperator(gate);
     }
     return Circuit::NullGate();
 }
@@ -633,8 +630,8 @@ GateRef NumberSpeculativeRetype::VisitNumberShiftAndLogical(GateRef gate)
 GateRef NumberSpeculativeRetype::VisitNumberMonocular(GateRef gate)
 {
     TypedUnaryAccessor accessor(acc_.TryGetValue(gate));
-    GateType type = accessor.GetTypeValue();
-    ASSERT(type.IsPrimitiveNumberType());
+    ParamType type = accessor.GetParamType();
+    ASSERT(type.HasNumberType());
     if (type.IsIntType()) {
         return VisitIntMonocular(gate);
     } else {
@@ -665,8 +662,15 @@ GateRef NumberSpeculativeRetype::VisitDoubleMonocular(GateRef gate)
 
     if (IsConvert()) {
         TypedUnaryAccessor accessor(acc_.TryGetValue(gate));
+        ParamType paramType = accessor.GetParamType();
         GateRef value = acc_.GetValueIn(gate, 0);
-        acc_.ReplaceValueIn(gate, CheckAndConvertToFloat64(value, accessor.GetTypeValue()), 0);
+        GateType valueType = GateType::NumberType();
+        if (paramType.IsIntType()) {
+            valueType = GateType::IntType();
+        } else if (paramType.IsDoubleType()) {
+            valueType = GateType::DoubleType();
+        }
+        acc_.ReplaceValueIn(gate, CheckAndConvertToFloat64(value, valueType), 0);
         acc_.ReplaceStateIn(gate, builder_.GetState());
         acc_.ReplaceDependIn(gate, builder_.GetDepend());
     }
@@ -676,14 +680,23 @@ GateRef NumberSpeculativeRetype::VisitDoubleMonocular(GateRef gate)
 GateRef NumberSpeculativeRetype::VisitIsTrueOrFalse(GateRef gate)
 {
     TypedUnaryAccessor accessor(acc_.TryGetValue(gate));
-    GateType valueType = accessor.GetTypeValue();
-    ASSERT(valueType.IsPrimitiveNumberType());
+    ParamType paramType = accessor.GetParamType();
+    ASSERT(paramType.HasNumberType() || paramType.IsBooleanType());
     if (IsRetype()) {
         return SetOutputType(gate, GateType::BooleanType());
     }
     if (IsConvert()) {
         Environment env(gate, circuit_, &builder_);
         GateRef value = acc_.GetValueIn(gate, 0);
+        GateType valueType = GateType::NumberType();
+        // NOTICE-PGO: wx support undefined
+        if (paramType.IsIntType()) {
+            valueType = GateType::IntType();
+        } else if (paramType.IsDoubleType()) {
+            valueType = GateType::DoubleType();
+        } else if (paramType.IsBooleanType()) {
+            valueType = GateType::BooleanType();
+        }
         auto input = CheckAndConvertToBool(value, valueType);
         ResizeAndSetTypeInfo(input, TypeInfo::INT1);
         acc_.ReplaceValueIn(gate, input, 0);
@@ -696,14 +709,20 @@ GateRef NumberSpeculativeRetype::VisitIsTrueOrFalse(GateRef gate)
 GateRef NumberSpeculativeRetype::VisitNumberNot(GateRef gate)
 {
     TypedUnaryAccessor accessor(acc_.TryGetValue(gate));
-    GateType valueType = accessor.GetTypeValue();
-    ASSERT(valueType.IsPrimitiveNumberType());
+    ParamType paramType = accessor.GetParamType();
+    ASSERT(paramType.HasNumberType());
     if (IsRetype()) {
         return SetOutputType(gate, GateType::IntType());
     }
     if (IsConvert()) {
         Environment env(gate, circuit_, &builder_);
         GateRef value = acc_.GetValueIn(gate, 0);
+        GateType valueType = GateType::NumberType();
+        if (paramType.IsIntType()) {
+            valueType = GateType::IntType();
+        } else if (paramType.IsDoubleType()) {
+            valueType = GateType::DoubleType();
+        }
         acc_.ReplaceValueIn(gate,
             CheckAndConvertToInt32(value, valueType, ConvertSupport::ENABLE, OpType::SHIFT_AND_LOGICAL), 0);
         acc_.ReplaceStateIn(gate, builder_.GetState());
@@ -735,7 +754,7 @@ GateRef NumberSpeculativeRetype::VisitBooleanJump(GateRef gate)
     return Circuit::NullGate();
 }
 
-GateRef NumberSpeculativeRetype::VisitNumberRelated(GateRef gate)
+GateRef NumberSpeculativeRetype::VisitNumberRelated(GateRef gate, ParamType paramType)
 {
     if (IsRetype()) {
         return SetOutputType(gate, GateType::NumberType());
@@ -743,10 +762,19 @@ GateRef NumberSpeculativeRetype::VisitNumberRelated(GateRef gate)
     if (IsConvert()) {
         Environment env(gate, circuit_, &builder_);
         size_t valueNum = acc_.GetNumValueIn(gate);
+        GateType inputType = GateType::AnyType();
+        if (paramType.IsIntType() || paramType.IsIntOverflowType()) {
+            inputType = GateType::IntType();
+        } else if (paramType.IsDoubleType()) {
+            inputType = GateType::DoubleType();
+        } else if (paramType.IsNumberType()) {
+            inputType = GateType::NumberType();
+        } else if (paramType.IsBooleanType()) {
+            inputType = GateType::BooleanType();
+        }
         for (size_t i = 0; i < valueNum; ++i) {
             GateRef input = acc_.GetValueIn(gate, i);
-            GateType inputType = acc_.GetGateType(input);
-            if (inputType.IsNumberType() || inputType.IsBooleanType()) {
+            if (paramType.HasNumberType() || paramType.IsBooleanType()) {
                 acc_.ReplaceValueIn(gate, CheckAndConvertToTagged(input, inputType, ConvertToNumber::BOOL_ONLY), i);
             }
         }
@@ -829,59 +857,44 @@ GateRef NumberSpeculativeRetype::CheckAndConvertToBool(GateRef gate, GateType ga
     }
 }
 
-void NumberSpeculativeRetype::ConvertForBinaryOp(GateRef gate)
+void NumberSpeculativeRetype::ConvertForNumberBinaryOp(GateRef gate)
 {
-    const PGOSampleType *sampleType = acc_.GetTypedBinaryType(gate).GetPGOSampleType();
-    if (sampleType->IsNumber()) {
-        if (sampleType->IsInt()) {
-            GateType leftType = GateType::IntType();
-            GateType rightType = GateType::IntType();
-            ConvertForIntOperator(gate, leftType, rightType);
-        } else {
-            GateType leftType = GateType::NumberType();
-            GateType rightType = GateType::NumberType();
-            if (sampleType->IsIntOverFlow()) {
-                leftType = GateType::IntType();
-                rightType = GateType::IntType();
-            } else if (sampleType->IsDouble()) {
-                leftType = GateType::DoubleType();
-                rightType = GateType::DoubleType();
-            }
-            ConvertForDoubleOperator(gate, leftType, rightType);
-        }
-    } else {
-        GateType gateType = acc_.GetGateType(gate);
-        GateType leftType = acc_.GetLeftType(gate);
-        GateType rightType = acc_.GetRightType(gate);
-        if (gateType.IsIntType()) {
-            ConvertForIntOperator(gate, leftType, rightType);
-        } else {
-            ConvertForDoubleOperator(gate, leftType, rightType);
-        }
+    TypedBinaryAccessor accessor(acc_.TryGetValue(gate));
+    const ParamType paramType = accessor.GetParamType();
+    ASSERT(paramType.HasNumberType());
+    if (paramType.IsIntType()) {
+        ConvertForIntOperator(gate, GateType::IntType(), GateType::IntType());
+    } else if (paramType.IsIntOverflowType()) {
+        ConvertForDoubleOperator(gate, GateType::IntType(), GateType::IntType());
+    } else if (paramType.IsDoubleType()) {
+        ConvertForDoubleOperator(gate, GateType::DoubleType(), GateType::DoubleType());
+    } else if (paramType.IsNumberType()) {
+        ConvertForDoubleOperator(gate, GateType::NumberType(), GateType::NumberType());
     }
 }
 
-void NumberSpeculativeRetype::ConvertForCompareOp(GateRef gate)
+void NumberSpeculativeRetype::ConvertForNumberCompareOp(GateRef gate)
 {
-    const PGOSampleType *sampleType = acc_.GetTypedBinaryType(gate).GetPGOSampleType();
-    if (sampleType->IsNumber()) {
-        if (sampleType->IsInt()) {
-            GateType leftType = GateType::IntType();
-            GateType rightType = GateType::IntType();
-            ConvertForIntOperator(gate, leftType, rightType);
-        } else {
-            GateType leftType = GateType::NumberType();
-            GateType rightType = GateType::NumberType();
-            ConvertForDoubleOperator(gate, leftType, rightType);
-        }
+    TypedBinaryAccessor accessor(acc_.TryGetValue(gate));
+    const ParamType paramType = accessor.GetParamType();
+    ASSERT(paramType.HasNumberType());
+    ASSERT(!paramType.IsIntOverflowType());
+    if (paramType.IsIntType()) {
+        ConvertForIntOperator(gate, GateType::IntType(), GateType::IntType());
     } else {
-        GateType leftType = acc_.GetLeftType(gate);
-        GateType rightType = acc_.GetRightType(gate);
-        if (leftType.IsIntType() && rightType.IsIntType()) {
-            ConvertForIntOperator(gate, leftType, rightType);
-        } else {
-            ConvertForDoubleOperator(gate, leftType, rightType);
-        }
+        ConvertForDoubleOperator(gate, GateType::NumberType(), GateType::NumberType());
+    }
+}
+
+void NumberSpeculativeRetype::ConvertForNumberShiftAndLogicalOperator(GateRef gate)
+{
+    TypedBinaryAccessor accessor(acc_.TryGetValue(gate));
+    const ParamType paramType = accessor.GetParamType();
+    ASSERT(paramType.HasNumberType());
+    if (paramType.IsIntType()) {
+        ConvertForShiftAndLogicalOperator(gate, GateType::IntType(), GateType::IntType());
+    } else {
+        ConvertForShiftAndLogicalOperator(gate, GateType::NumberType(), GateType::NumberType());
     }
 }
 
@@ -1284,6 +1297,9 @@ GateRef NumberSpeculativeRetype::VisitIndexCheck(GateRef gate)
         GateRef index = acc_.GetValueIn(gate, 1);
         GateType receiverType = acc_.GetGateType(receiver);
         GateType indexType = acc_.GetGateType(index);
+        if (indexType.IsAnyType()) {
+            indexType = GateType::IntType();
+        }
         acc_.ReplaceValueIn(gate, CheckAndConvertToInt32(receiver, receiverType), 0);
         acc_.ReplaceValueIn(gate, CheckAndConvertToInt32(index, indexType), 1);
 
@@ -1443,15 +1459,15 @@ GateRef NumberSpeculativeRetype::VisitTypeConvert(GateRef gate)
 {
     GateRef input = acc_.GetValueIn(gate, 0);
     TypeInfo inputInfo = GetOutputTypeInfo(input);
+    TypeConvertAccessor accessor(acc_.TryGetValue(gate));
+    ParamType paramType = accessor.GetLeftType();
     if (IsRetype()) {
         if (inputInfo == TypeInfo::TAGGED) {
             if (acc_.IsConstantNumber(input)) {
                 return Circuit::NullGate();
             }
-            GateType gateType = acc_.GetGateType(gate);
-            ASSERT(gateType.IsNumberType());
-            GateType resType = gateType.IsIntType() ? GateType::IntType() : GateType::DoubleType();
-            return SetOutputType(gate, resType);
+            ASSERT(paramType.HasNumberType());
+            return SetOutputType(gate, paramType);
         }
         TypeInfo oldType = GetOutputTypeInfo(gate);
         SetOutputTypeInfo(gate, inputInfo);
@@ -1461,9 +1477,8 @@ GateRef NumberSpeculativeRetype::VisitTypeConvert(GateRef gate)
     ASSERT(inputInfo != TypeInfo::INT1 && inputInfo != TypeInfo::NONE);
     Environment env(gate, circuit_, &builder_);
     if (inputInfo == TypeInfo::TAGGED && !acc_.IsConstantNumber(input)) {
-        GateType gateType = acc_.GetGateType(gate);
-        ASSERT(gateType.IsNumberType());
-        if (gateType.IsIntType()) {
+        ASSERT(paramType.HasNumberType());
+        if (paramType.IsIntType()) {
             input = CheckAndConvertToInt32(input, GateType::IntType());
             ResizeAndSetTypeInfo(input, TypeInfo::INT32);
         } else {

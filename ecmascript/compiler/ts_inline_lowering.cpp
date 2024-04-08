@@ -12,17 +12,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include "ecmascript/compiler/ts_inline_lowering.h"
+
 #include "ecmascript/compiler/bytecode_circuit_builder.h"
 #include "ecmascript/compiler/bytecodes.h"
 #include "ecmascript/compiler/compiler_log.h"
 #include "ecmascript/compiler/pass.h"
-#include "ecmascript/compiler/ts_inline_lowering.h"
 #include "ecmascript/compiler/type_info_accessors.h"
-#include "ecmascript/ts_types/ts_manager.h"
-#include "ecmascript/ts_types/ts_type.h"
-#include "libpandabase/utils/utf.h"
-#include "libpandafile/class_data_accessor-inl.h"
-#include "ecmascript/ts_types/ts_type_accessor.h"
 
 namespace panda::ecmascript::kungfu {
 void TSInlineLowering::RunTSInlineLowering()
@@ -54,18 +50,10 @@ void TSInlineLowering::CollectInlineInfo()
 void TSInlineLowering::GetInlinedMethodId(GateRef gate)
 {
     ASSERT(acc_.GetOpCode(gate) == OpCode::FRAME_ARGS);
-    GateRef func = acc_.GetValueIn(gate, static_cast<size_t>(FrameArgIdx::FUNC));
     uint32_t methodOffset = 0;
-    auto funcType = acc_.GetGateType(func);
-    if (tsManager_->IsFunctionTypeKind(funcType)) {
-        GlobalTSTypeRef gt = funcType.GetGTRef();
-        methodOffset = tsManager_->GetFuncMethodOffset(gt);
-    }
-    if (methodOffset == 0) {
-        auto pgoType = acc_.TryGetPGOType(gate);
-        if (pgoType.IsValidCallMethodId()) {
-            methodOffset = pgoType.GetCallMethodId();
-        }
+    auto pgoType = acc_.TryGetPGOType(gate);
+    if (pgoType.IsValidCallMethodId()) {
+        methodOffset = pgoType.GetCallMethodId();
     }
     acc_.UpdateMethodOffset(gate, methodOffset);
 }
@@ -136,7 +124,7 @@ void TSInlineLowering::TryInline(InlineTypeInfoAccessor &info, ChunkQueue<Inline
     auto &methodInfo = bytecodeInfo.GetMethodList().at(methodOffset);
     auto &methodPcInfos = bytecodeInfo.GetMethodPcInfos();
     auto &methodPcInfo = methodPcInfos[methodInfo.GetMethodPcInfoIndex()];
-    if (ctx_->FilterMethod(inlinedMethod, methodPcInfo)) {
+    if (info.IsNormalCall() && ctx_->FilterMethod(inlinedMethod, methodPcInfo)) {
         return;
     }
     GateRef frameState = GetFrameState(info);
@@ -213,7 +201,6 @@ void TSInlineLowering::InlineCall(MethodInfo &methodInfo, MethodPcInfo &methodPC
                                   InlineTypeInfoAccessor &info)
 {
     const JSPandaFile *jsPandaFile = ctx_->GetJSPandaFile();
-    TSManager *tsManager = ctx_->GetTSManager();
     CompilerLog *log = ctx_->GetCompilerLog();
     CString recordName = MethodLiteral::GetRecordName(jsPandaFile, method->GetMethodId());
     bool hasTyps = jsPandaFile->HasTSTypes(recordName);
@@ -223,10 +210,8 @@ void TSInlineLowering::InlineCall(MethodInfo &methodInfo, MethodPcInfo &methodPC
 
     circuit_->InitRoot();
     BytecodeCircuitBuilder builder(jsPandaFile, method, methodPCInfo,
-                                   tsManager, circuit_,
-                                   ctx_->GetByteCodes(), true, IsLogEnabled(),
-                                   enableTypeLowering_, fullName, recordName, ctx_->GetPfDecoder(), true,
-                                   passOptions_->EnableOptTrackField());
+                                   circuit_, ctx_->GetByteCodes(), IsLogEnabled(),
+                                   enableTypeLowering_, fullName, recordName, ctx_->GetPfDecoder(), true);
     {
         if (enableTypeLowering_) {
             BuildFrameStateChain(info, builder);
@@ -239,14 +224,14 @@ void TSInlineLowering::InlineCall(MethodInfo &methodInfo, MethodPcInfo &methodPC
 
     PassData data(&builder, circuit_, ctx_, log, fullName,
                   &methodInfo, hasTyps, recordName,
-                  method, method->GetMethodId().GetOffset(), nativeAreaAllocator_, ctx_->GetPfDecoder(), passOptions_);
+                  method, method->GetMethodId().GetOffset(), nullptr, CVector<AbcFileInfo>{},
+                  nativeAreaAllocator_, ctx_->GetPfDecoder(), passOptions_);
     PassRunner<PassData> pipeline(&data);
     pipeline.RunPass<RedundantPhiEliminationPass>();
     if (builder.EnableLoopOptimization()) {
         pipeline.RunPass<LoopOptimizationPass>();
         pipeline.RunPass<RedundantPhiEliminationPass>();
     }
-    pipeline.RunPass<TypeInferPass>();
     pipeline.RunPass<PGOTypeInferPass>();
 }
 
@@ -546,7 +531,7 @@ void TSInlineLowering::InlineAccessorCheck(const InlineTypeInfoAccessor &info)
     ASSERT(ptManager->QueryHClass(receiverType.first, receiverType.second).IsJSHClass());
 
     bool noNeedCheckHeapObject = acc_.IsHeapObjectFromElementsKind(receiver);
-    builder_.ObjectTypeCheck(acc_.GetGateType(gate), noNeedCheckHeapObject, receiver, builder_.Int32(receiverHCIndex),
+    builder_.ObjectTypeCheck(noNeedCheckHeapObject, receiver, builder_.Int32(receiverHCIndex),
                              acc_.GetFrameState(gate));
     auto currentLabel = env.GetCurrentLabel();
     auto callState = currentLabel->GetControl();
@@ -715,16 +700,14 @@ void TSInlineLowering::SetInitCallTargetAndConstPoolId(InlineTypeInfoAccessor &i
     if (initCallTarget_ == Circuit::NullGate()) {
         GateRef frameArgs = GetFrameArgs(info);
         initCallTarget_ = acc_.GetValueIn(frameArgs, 0);
-        const JSPandaFile *pf = ctx_->GetJSPandaFile();
-        initConstantPoolId_ = tsManager_->GetConstantPoolIDByMethodOffset(pf, initMethodOffset_);
+        initConstantPoolId_ = ptManager_->GetConstantPoolIDByMethodOffset(initMethodOffset_);
     }
 }
 
-int32_t TSInlineLowering::GetAccessorConstpoolId(InlineTypeInfoAccessor &info)
+uint32_t TSInlineLowering::GetAccessorConstpoolId(InlineTypeInfoAccessor &info)
 {
     ASSERT(info.IsCallAccessor());
     uint32_t inlineMethodOffset = info.GetCallMethodId();
-    const JSPandaFile *pf = ctx_->GetJSPandaFile();
-    return tsManager_->GetConstantPoolIDByMethodOffset(pf, inlineMethodOffset);
+    return ptManager_->GetConstantPoolIDByMethodOffset(inlineMethodOffset);
 }
 }  // namespace panda::ecmascript

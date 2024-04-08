@@ -66,8 +66,8 @@ private:
         return state_ == State::Convert;
     }
 
-    GateRef SetOutputType(GateRef gate, PGOSampleType type);
     GateRef SetOutputType(GateRef gate, GateType type);
+    GateRef SetOutputType(GateRef gate, ParamType type);
     GateRef SetOutputType(GateRef gate, Representation rep);
     GateRef SetOutputType(GateRef gate, TypeInfo type);
     TypeInfo GetNumberTypeInfo(GateRef gate);
@@ -108,7 +108,7 @@ private:
     GateRef VisitStoreElement(GateRef gate);
     GateRef VisitStoreProperty(GateRef gate);
     GateRef VisitLoadProperty(GateRef gate);
-    GateRef VisitNumberRelated(GateRef gate);
+    GateRef VisitNumberRelated(GateRef gate, ParamType paramType);
     GateRef VisitCallBuiltins(GateRef gate);
     GateRef VisitDataViewGet(GateRef gate);
     GateRef VisitDataViewSet(GateRef gate);
@@ -126,8 +126,10 @@ private:
     GateRef VisitMonoCallGetterOnProto(GateRef gate);
     GateRef VisitMonoStoreProperty(GateRef gate);
 
-    void ConvertForBinaryOp(GateRef gate);
-    void ConvertForCompareOp(GateRef gate);
+    void ConvertForNumberBinaryOp(GateRef gate);
+    void ConvertForNumberCompareOp(GateRef gate);
+    void ConvertForNumberShiftAndLogicalOperator(GateRef gate);
+
     void ConvertForIntOperator(GateRef gate, GateType leftType, GateType rightType);
     void ConvertForShiftAndLogicalOperator(GateRef gate, GateType leftType, GateType rightType);
     void ConvertForDoubleOperator(GateRef gate, GateType leftType, GateType rightType);

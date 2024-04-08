@@ -16,8 +16,6 @@
 #include <chrono>
 #include <iostream>
 #include <memory>
-#include <signal.h>  // NOLINTNEXTLINE(modernize-deprecated-headers)
-#include <vector>
 
 #include "ecmascript/base/string_helper.h"
 #include "ecmascript/checkpoint/thread_state_transition.h"
@@ -26,11 +24,8 @@
 #include "ecmascript/compiler/pass_manager.h"
 #include "ecmascript/ecma_string.h"
 #include "ecmascript/js_runtime_options.h"
-#include "ecmascript/jspandafile/js_pandafile_manager.h"
-#include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/log.h"
 #include "ecmascript/log_wrapper.h"
-#include "ecmascript/module/js_module_manager.h"
 #include "ecmascript/napi/include/jsnapi.h"
 #include "ecmascript/ohos/ohos_pkg_args.h"
 #include "ecmascript/platform/file.h"
@@ -125,10 +120,11 @@ int Main(const int argc, const char **argv)
         if (!cPreprocessor.GenerateAbcFileInfos()) {
             return 1;
         }
-        cPreprocessor.GenerateGlobalTypes(cOptions);
         cPreprocessor.GeneratePGOTypes(cOptions);
         cPreprocessor.SnapshotInitialize();
         ret = cPreprocessor.GetCompilerResult();
+        const auto &fileInfos = cPreprocessor.GetAbcFileInfo();
+        cPreprocessor.GenerateMethodMap(cOptions);
 
         PassOptions::Builder optionsBuilder;
         PassOptions passOptions =
@@ -164,11 +160,13 @@ int Main(const int argc, const char **argv)
                                 cOptions.maxMethodsInModule_,
                                 profilerDecoder,
                                 &passOptions,
+                                cPreprocessor.GetCallMethodFlagMap(),
+                                fileInfos,
                                 cOptions.optBCRange_);
 
         bool isEnableLiteCG = runtimeOptions.IsCompilerEnableLiteCG();
         AOTFileGenerator generator(&log, &logList, vm, cOptions.triple_, isEnableLiteCG);
-        const auto &fileInfos = cPreprocessor.GetAbcFileInfo();
+
         CompileValidFiles(passManager, generator, ret, fileInfos);
         std::string appSignature = cPreprocessor.GetMainPkgArgsAppSignature();
         generator.SaveAOTFile(cOptions.outputFileName_ + AOTFileManager::FILE_EXTENSION_AN, appSignature);

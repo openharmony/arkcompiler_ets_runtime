@@ -16,12 +16,10 @@
 #ifndef ECMASCRIPT_COMPILER_PASS_H
 #define ECMASCRIPT_COMPILER_PASS_H
 
-#include "ecmascript/compiler/array_bounds_check_elimination.h"
 #include "ecmascript/compiler/async_function_lowering.h"
 #include "ecmascript/compiler/bytecode_circuit_builder.h"
 #include "ecmascript/compiler/codegen/llvm/llvm_codegen.h"
 #include "ecmascript/compiler/combined_pass_visitor.h"
-#include "ecmascript/compiler/common_stubs.h"
 #include "ecmascript/compiler/compiler_log.h"
 #include "ecmascript/compiler/constant_folding.h"
 #include "ecmascript/compiler/dead_code_elimination.h"
@@ -49,8 +47,6 @@
 #include "ecmascript/compiler/ts_inline_lowering.h"
 #include "ecmascript/compiler/typed_bytecode_lowering.h"
 #include "ecmascript/compiler/ts_hcr_opt_pass.h"
-#include "ecmascript/compiler/type_inference/global_type_infer.h"
-#include "ecmascript/compiler/type_inference/initialization_analysis.h"
 #include "ecmascript/compiler/type_inference/pgo_type_infer.h"
 #include "ecmascript/compiler/typed_hcr_lowering.h"
 #include "ecmascript/compiler/typed_native_inline_lowering.h"
@@ -73,12 +69,14 @@ public:
     PassData(BytecodeCircuitBuilder *builder, Circuit *circuit, PassContext *ctx, CompilerLog *log,
              std::string methodName, MethodInfo *methodInfo = nullptr, bool hasTypes = false,
              const CString &recordName = "", MethodLiteral *methodLiteral = nullptr,
-             uint32_t methodOffset = 0, NativeAreaAllocator *allocator = nullptr,
+             uint32_t methodOffset = 0, const CallMethodFlagMap *callMethodFlagMap = nullptr,
+             const CVector<AbcFileInfo> &fileInfos = CVector<AbcFileInfo>{}, NativeAreaAllocator *allocator = nullptr,
              PGOProfilerDecoder *decoder = nullptr, PassOptions *passOptions = nullptr,
              std::string optBCRange = "")
         : builder_(builder), circuit_(circuit), ctx_(ctx), log_(log), methodName_(methodName),
           methodInfo_(methodInfo), hasTypes_(hasTypes), recordName_(recordName), methodLiteral_(methodLiteral),
-          methodOffset_(methodOffset), allocator_(allocator), decoder_(decoder), passOptions_(passOptions),
+          methodOffset_(methodOffset), callMethodFlagMap_(callMethodFlagMap), fileInfos_(fileInfos),
+          allocator_(allocator), decoder_(decoder), passOptions_(passOptions),
           optBCRange_(optBCRange)
     {
     }
@@ -194,6 +192,16 @@ public:
     {
         return optBCRange_;
     }
+    
+    const CallMethodFlagMap *GetCallMethodFlagMap() const
+    {
+        return callMethodFlagMap_;
+    }
+
+    const CVector<AbcFileInfo> &GetFileInfos() const
+    {
+        return fileInfos_;
+    }
 
     bool IsTypeAbort() const
     {
@@ -242,6 +250,8 @@ private:
     const CString &recordName_;
     MethodLiteral *methodLiteral_ {nullptr};
     uint32_t methodOffset_;
+    const CallMethodFlagMap *callMethodFlagMap_ {nullptr};
+    const CVector<AbcFileInfo> &fileInfos_;
     NativeAreaAllocator *allocator_ {nullptr};
     PGOProfilerDecoder *decoder_ {nullptr};
     PassOptions *passOptions_ {nullptr};
@@ -264,24 +274,6 @@ private:
     T1* data_;
 };
 
-class TypeInferPass {
-public:
-    bool Run(PassData* data)
-    {
-        PassOptions *passOptions = data->GetPassOptions();
-        if (passOptions != nullptr && !passOptions->EnableTypeInfer()) {
-            return false;
-        }
-        TimeScope timescope("TypeInferPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
-        bool enableLog = data->GetLog()->GetEnableMethodLog() && data->GetLog()->OutputType();
-        GlobalTypeInfer globalTypeInfer(data->GetPassContext(), data->GetMethodOffset(), data->GetRecordName(),
-                                        data->GetPGOProfilerDecoder(), passOptions->EnableOptTrackField(),
-                                        enableLog, data->HasTypes());
-        globalTypeInfer.ProcessTypeInference(data->GetBuilder(), data->GetCircuit());
-        return true;
-    }
-};
-
 class PGOTypeInferPass {
 public:
     bool Run(PassData* data)
@@ -289,7 +281,7 @@ public:
         TimeScope timescope("PGOTypeInferPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
         bool enableLog = data->GetLog()->GetEnableMethodLog() && data->GetLog()->OutputType();
         Chunk chunk(data->GetNativeAreaAllocator());
-        PGOTypeInfer pgoTypeInfer(data->GetCircuit(), data->GetTSManager(), data->GetBuilder(),
+        PGOTypeInfer pgoTypeInfer(data->GetCircuit(), data->GetTSManager(), data->GetPTManager(), data->GetBuilder(),
                                   data->GetMethodName(), &chunk, enableLog);
         pgoTypeInfer.Run();
         return true;
@@ -373,6 +365,8 @@ public:
                                       data->GetMethodName(),
                                       passOptions->EnableLoweringBuiltin(),
                                       data->GetRecordName(),
+                                      data->GetCallMethodFlagMap(),
+                                      data->GetPGOProfilerDecoder(),
                                       data->GetOptBCRange());
         bool success = lowering.RunTypedBytecodeLowering();
         if (!success) {
@@ -402,8 +396,7 @@ public:
         TimeScope timescope("NTypeBytecodeLoweringPass", data->GetMethodName(),
             data->GetMethodOffset(), data->GetLog());
         bool enableLog = data->GetLog()->EnableMethodCIRLog();
-        NTypeBytecodeLowering lowering(data->GetCircuit(), data->GetPassContext(), data->GetTSManager(),
-            enableLog, data->GetMethodName());
+        NTypeBytecodeLowering lowering(data->GetCircuit(), data->GetPassContext(), enableLog, data->GetMethodName());
         lowering.RunNTypeBytecodeLowering();
         Chunk chunk(data->GetNativeAreaAllocator());
         CombinedPassVisitor visitor(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk);
@@ -568,7 +561,7 @@ public:
     {
         TimeScope timescope("SlowPathLoweringPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
         bool enableLog = data->GetLog()->EnableMethodCIRLog();
-        SlowPathLowering lowering(data->GetCircuit(), data->GetCompilerConfig(), data->GetTSManager(),
+        SlowPathLowering lowering(data->GetCircuit(), data->GetCompilerConfig(), data->GetPassContext(),
                                   data->GetMethodLiteral(), enableLog, data->GetMethodName());
         lowering.CallRuntimeLowering();
         return true;
@@ -806,7 +799,7 @@ public:
         Chunk chunk(data->GetNativeAreaAllocator());
         bool enableLog = data->GetLog()->EnableMethodCIRLog();
         bool licm = data->GetPassOptions()->EnableOptLoopInvariantCodeMotion();
-        bool liteCG = data->GetTSManager()->GetEcmaVM()->GetJSOptions().IsCompilerEnableLiteCG();
+        bool liteCG = data->GetPassContext()->GetEcmaVM()->GetJSOptions().IsCompilerEnableLiteCG();
         GraphLinearizer(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk, false, licm, liteCG)
             .Run(data->GetCfg());
         PostSchedule(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk).Run(data->GetCfg());

@@ -190,7 +190,7 @@ public:
 
     PGOSampleTemplate CombineType(PGOSampleTemplate type)
     {
-        if (type_.index() == 0) {
+        if (IsPrimitiveType()) {
             auto oldType = static_cast<uint32_t>(std::get<Type>(type_));
             oldType = oldType & static_cast<uint32_t>(AnyType());
             type_ =
@@ -223,7 +223,7 @@ public:
 
     std::string GetTypeString() const
     {
-        if (type_.index() == 0) {
+        if (IsPrimitiveType()) {
             return std::to_string(static_cast<uint32_t>(std::get<Type>(type_)));
         } else {
             return std::get<PGOProfileType>(type_).GetTypeString();
@@ -232,7 +232,7 @@ public:
 
     std::string ToString() const
     {
-        if (type_.index() == 0) {
+        if (IsPrimitiveType()) {
             auto type = std::get<Type>(type_);
             switch (type) {
                 case Type::NONE:
@@ -285,50 +285,80 @@ public:
         return std::get<PGOProfileType>(type_);
     }
 
+    bool IsPrimitiveType() const
+    {
+        return type_.index() == 0;
+    }
+
     Type GetPrimitiveType() const
     {
+        ASSERT(IsPrimitiveType());
         auto type = static_cast<uint32_t>(std::get<Type>(type_));
         return Type(type & static_cast<uint32_t>(AnyType()));
     }
 
     uint32_t GetWeight() const
     {
-        ASSERT(type_.index() == 0);
+        ASSERT(IsPrimitiveType());
         auto type = static_cast<uint32_t>(std::get<Type>(type_));
         return type >> WEIGHT_START_BIT;
     }
 
     bool IsAny() const
     {
-        return type_.index() == 0 && GetPrimitiveType() == Type::ANY;
+        return IsPrimitiveType() && GetPrimitiveType() == Type::ANY;
     }
 
     bool IsNone() const
     {
-        return type_.index() == 0 && GetPrimitiveType() == Type::NONE;
+        return IsPrimitiveType() && GetPrimitiveType() == Type::NONE;
     }
 
     bool IsInt() const
     {
-        return type_.index() == 0 && GetPrimitiveType() == Type::INT;
+        return IsPrimitiveType() && GetPrimitiveType() == Type::INT;
     }
 
     bool IsIntOverFlow() const
     {
-        return type_.index() == 0 && GetPrimitiveType() == Type::INT_OVERFLOW;
+        return IsPrimitiveType() && GetPrimitiveType() == Type::INT_OVERFLOW;
     }
 
     bool IsDouble() const
     {
-        return type_.index() == 0 && GetPrimitiveType() == Type::DOUBLE;
+        return IsPrimitiveType() && GetPrimitiveType() == Type::DOUBLE;
     }
 
     bool IsString() const
     {
-        return type_.index() == 0 && GetPrimitiveType() == Type::STRING;
+        return IsPrimitiveType() && GetPrimitiveType() == Type::STRING;
+    }
+
+    bool IsBigInt() const
+    {
+        return type_.index() == 0 && GetPrimitiveType() == Type::BIG_INT;
+    }
+
+    bool IsBoolean() const
+    {
+        return type_.index() == 0 && GetPrimitiveType() == Type::BOOLEAN;
+    }
+
+    bool IsHeapObject() const
+    {
+        return type_.index() == 0 && GetPrimitiveType() == Type::HEAP_OBJECT;
     }
 
     bool IsNumber() const
+    {
+        if (type_.index() != 0) {
+            return false;
+        }
+        auto primType = GetPrimitiveType();
+        return primType == Type::NUMBER || primType == Type::NUMBER1;
+    }
+
+    bool HasNumber() const
     {
         if (type_.index() != 0) {
             return false;
@@ -344,6 +374,11 @@ public:
             default:
                 return false;
         }
+    }
+
+    bool IsProfileTypeNone() const
+    {
+        return type_.index() == 1 && GetProfileType() == ProfileType::PROFILE_TYPE_NONE;
     }
 
     bool operator<(const PGOSampleTemplate &right) const
@@ -457,15 +492,17 @@ enum class ProtoChainMarker : uint8_t {
     NOT_EXSIT,
 };
 
-template <typename PGOProfileType>
+template <typename PGOProfileType, typename PGOSampleType>
 class PGOObjectTemplate {
 public:
     PGOObjectTemplate() = default;
     PGOObjectTemplate(PGOProfileType type) : receiverType_(type) {}
     PGOObjectTemplate(PGOProfileType receiverRootType, PGOProfileType receiverType, PGOProfileType holdRootType,
-        PGOProfileType holdType, PGOProfileType holdTraRootType, PGOProfileType holdTraType)
+        PGOProfileType holdType, PGOProfileType holdTraRootType,
+        PGOProfileType holdTraType, PGOSampleType accessorMethod)
         : receiverRootType_(receiverRootType), receiverType_(receiverType), holdRootType_(holdRootType),
-        holdType_(holdType), holdTraRootType_(holdTraRootType), holdTraType_(holdTraType) {}
+        holdType_(holdType), holdTraRootType_(holdTraRootType),
+        holdTraType_(holdTraType), accessorMethod_(accessorMethod) {}
 
     void AddPrototypePt(std::vector<std::pair<PGOProfileType, PGOProfileType>> protoChain)
     {
@@ -485,6 +522,7 @@ public:
         holdType_ = PGOProfileType(context, from.GetHoldType());
         holdTraRootType_ = PGOProfileType(context, from.GetHoldTraRootType());
         holdTraType_ = PGOProfileType(context, from.GetHoldTraType());
+        accessorMethod_ = PGOSampleType::ConvertFrom(context, from.GetAccessorMethod());
         protoChainMarker_ = from.GetProtoChainMarker();
     }
 
@@ -502,6 +540,8 @@ public:
         result += holdTraRootType_.GetTypeString();
         result += ", holdTra";
         result += holdTraType_.GetTypeString();
+        result += ", accessorMethod";
+        result += accessorMethod_.GetTypeString();
         result += ")";
         return result;
     }
@@ -539,6 +579,11 @@ public:
     PGOProfileType GetHoldTraType() const
     {
         return holdTraType_;
+    }
+
+    PGOSampleType GetAccessorMethod() const
+    {
+        return accessorMethod_;
     }
 
     ProtoChainMarker GetProtoChainMarker() const
@@ -597,11 +642,12 @@ private:
     PGOProfileType holdType_ { PGOProfileType() };
     PGOProfileType holdTraRootType_ { PGOProfileType() };
     PGOProfileType holdTraType_ { PGOProfileType() };
+    PGOSampleType accessorMethod_ { PGOSampleType() };
     ProtoChainMarker protoChainMarker_ {ProtoChainMarker::NOT_EXSIT};
     PGOProtoChainTemplate<PGOProfileType> *protoChain_ { nullptr };
 };
-using PGOObjectInfo = PGOObjectTemplate<ProfileType>;
-using PGOObjectInfoRef = PGOObjectTemplate<ProfileTypeRef>;
+using PGOObjectInfo = PGOObjectTemplate<ProfileType, PGOSampleType>;
+using PGOObjectInfoRef = PGOObjectTemplate<ProfileTypeRef, PGOSampleTypeRef>;
 
 template <typename PGOObjectInfoType>
 class PGORWOpTemplate : public PGOType {
@@ -845,7 +891,7 @@ public:
         return sampleType->GetProfileType().GetRaw();
     }
 
-    const PGOSampleType* GetPGOSampleType()
+    const PGOSampleType* GetPGOSampleType() const
     {
         if (type_ == nullptr) {
             static PGOSampleType noneType = PGOSampleType::NoneType();
@@ -853,6 +899,29 @@ public:
         }
         ASSERT(type_->IsScalarOpType());
         return static_cast<const PGOSampleType*>(type_);
+    }
+
+    bool IsPGOSampleType() const
+    {
+        if (type_ == nullptr) {
+            return false;
+        }
+        return type_->IsScalarOpType();
+    }
+
+    bool HasNumber() const
+    {
+        return GetPGOSampleType()->HasNumber();
+    }
+
+    bool IsBoolean() const
+    {
+        return GetPGOSampleType()->IsBoolean();
+    }
+
+    bool IsString() const
+    {
+        return GetPGOSampleType()->IsString();
     }
 
     const PGORWOpType* GetPGORWOpType()

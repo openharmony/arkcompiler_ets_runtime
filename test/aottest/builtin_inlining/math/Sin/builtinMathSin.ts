@@ -57,6 +57,7 @@ len = Math.sin(0,0,0,0,0);
 print(len); //: 0
 
 // Replace standart builtin
+//aot: [trace] Check Type: NotJSCallTarget4
 let true_sin = Math.sin
 Math.sin = replace
 len = Math.sin(111);
@@ -64,7 +65,5 @@ print(len); //: 111
 
 // Call standart builtin with non-number param
 Math.sin = true_sin
-//aot: [trace] aot inline builtin: Math.sin, caller function name:func_main_0@builtinMathSin
-//aot: [trace] Check Type: NotNumber1
 len = Math.sin("0"); // deopt
 print(len); //: 0

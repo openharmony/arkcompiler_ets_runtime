@@ -387,10 +387,6 @@ void BytecodeCircuitBuilder::BuildCircuitArgs()
         }
     }
     argAcc_.CollectArgs();
-    if (HasTypes()) {
-        argAcc_.FillArgsGateType(&typeRecorder_);
-    }
-
     BuildFrameArgs();
 }
 
@@ -741,7 +737,7 @@ void BytecodeCircuitBuilder::NewByteCode(BytecodeRegion &bb)
         // handle return.dyn and returnundefined bytecodes
         gate = NewReturn(bb);
     } else if (bytecodeInfo.IsMov()) {
-        frameStateBuilder_.UpdateMoveValues(bytecodeInfo, iterator.Index());
+        frameStateBuilder_.UpdateMoveValues(bytecodeInfo);
     } else if (!bytecodeInfo.IsDiscarded()) {
         LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();

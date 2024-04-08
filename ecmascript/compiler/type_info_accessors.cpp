@@ -19,41 +19,84 @@
 #include "ecmascript/compiler/circuit.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/global_env_fields.h"
-#include "ecmascript/js_hclass-inl.h"
-#include "ecmascript/jspandafile/js_pandafile.h"
 #include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/ts_types/ts_type_accessor.h"
 
 namespace panda::ecmascript::kungfu {
 JSTaggedValue TypeInfoAccessor::GetStringFromConstantPool(const JSThread *thread, uint32_t methodId, uint32_t index)
 {
-    return thread->GetCurrentEcmaContext()->GetTSManager()->GetStringFromConstantPool(methodId, index);
+    return thread->GetCurrentEcmaContext()->GetPTManager()->GetStringFromConstantPool(methodId, index);
+}
+
+ParamType TypeInfoAccessor::PGOSampleTypeToParamType() const
+{
+    if (pgoType_.IsPGOSampleType()) {
+        auto sample = pgoType_.GetPGOSampleType();
+        if (sample->IsInt()) {
+            return ParamType::IntType();
+        } else if (sample->IsIntOverFlow()) {
+            return ParamType::IntOverflowType();
+        } else if (sample->IsDouble()) {
+            return ParamType::DoubleType();
+        } else if (sample->IsString()) {
+            return ParamType::StringType();
+        } else if (sample->IsBigInt()) {
+            return ParamType::BigIntType();
+        } else if (sample->IsBoolean()) {
+            return ParamType::BooleanType();
+        } else if (sample->IsNumber()) {
+            return ParamType::NumberType();
+        }
+    }
+    return ParamType::AnyType();
+}
+
+ParamType TypeInfoAccessor::PGOBuiltinTypeToParamType(ProfileType pgoType)
+{
+    if (pgoType.IsBuiltinsType()) {
+        return ParamType(pgoType.GetBuiltinsType());
+    }
+    return ParamType::AnyType();
 }
 
 // TypeTrusted means the type of gate is already PrimitiveTypeCheck-passed,
 // or the gate is constant and no need to check.
-bool TypeInfoAccessor::IsTrustedType(GateAccessor acc, GateRef gate)
+bool TypeInfoAccessor::IsTrustedBooleanType(GateAccessor acc, GateRef gate)
 {
-    if (acc.IsConstant(gate)) {
+    if (acc.IsConstant(gate) && acc.GetGateType(gate).IsBooleanType()) {
         return true;
     }
     auto op = acc.GetOpCode(gate);
-    if (acc.IsTypedOperator(gate)) {
-        if (op == OpCode::TYPED_BINARY_OP) {
-            return !acc.GetGateType(gate).IsIntType();
-        } else {
-            return true;
+    if (op == OpCode::TYPED_BINARY_OP) {
+        TypedBinaryAccessor accessor(acc.TryGetValue(gate));
+        TypedBinOp binOp = accessor.GetTypedBinOp();
+        switch (binOp) {
+            case TypedBinOp::TYPED_EQ:
+            case TypedBinOp::TYPED_LESS:
+            case TypedBinOp::TYPED_NOTEQ:
+            case TypedBinOp::TYPED_LESSEQ:
+            case TypedBinOp::TYPED_GREATER:
+            case TypedBinOp::TYPED_STRICTEQ:
+            case TypedBinOp::TYPED_GREATEREQ:
+            case TypedBinOp::TYPED_STRICTNOTEQ:
+                return true;
+            default:
+                return false;
+        }
+    } else if (op == OpCode::TYPED_UNARY_OP) {
+        TypedUnaryAccessor accessor(acc.TryGetValue(gate));
+        TypedUnOp unOp = accessor.GetTypedUnOp();
+        switch (unOp) {
+            case TypedUnOp::TYPED_ISTRUE:
+            case TypedUnOp::TYPED_ISFALSE:
+                return true;
+            default:
+                return false;
         }
     }
     if (op == OpCode::JS_BYTECODE) {
         EcmaOpcode ecmaOpcode = acc.GetByteCodeOpcode(gate);
         switch (ecmaOpcode) {
-            case EcmaOpcode::ADD2_IMM8_V8:
-            case EcmaOpcode::SUB2_IMM8_V8:
-            case EcmaOpcode::MUL2_IMM8_V8:
-                return !acc.GetGateType(gate).IsIntType();
-            case EcmaOpcode::INC_IMM8:
-            case EcmaOpcode::DEC_IMM8:
             case EcmaOpcode::LESS_IMM8_V8:
             case EcmaOpcode::LESSEQ_IMM8_V8:
             case EcmaOpcode::GREATER_IMM8_V8:
@@ -65,6 +108,90 @@ bool TypeInfoAccessor::IsTrustedType(GateAccessor acc, GateRef gate)
             case EcmaOpcode::ISTRUE:
             case EcmaOpcode::ISFALSE:
                 return true;
+            default:
+                break;
+        }
+    }
+    return false;
+}
+
+bool TypeInfoAccessor::IsTrustedNumberType(GateAccessor acc, GateRef gate)
+{
+    if (acc.IsConstant(gate) && acc.GetGateType(gate).IsNumberType()) {
+        return true;
+    }
+    auto op = acc.GetOpCode(gate);
+    if (op == OpCode::TYPED_BINARY_OP) {
+        TypedBinaryAccessor accessor(acc.TryGetValue(gate));
+        TypedBinOp binOp = accessor.GetTypedBinOp();
+        switch (binOp) {
+            case TypedBinOp::TYPED_ADD:
+            case TypedBinOp::TYPED_SUB:
+            case TypedBinOp::TYPED_MUL:
+            case TypedBinOp::TYPED_DIV:
+            case TypedBinOp::TYPED_MOD:
+            case TypedBinOp::TYPED_SHL:
+            case TypedBinOp::TYPED_SHR:
+            case TypedBinOp::TYPED_ASHR:
+            case TypedBinOp::TYPED_AND:
+            case TypedBinOp::TYPED_OR:
+            case TypedBinOp::TYPED_XOR:
+                return accessor.GetParamType().HasNumberType();
+            default:
+                return false;
+        }
+    } else if (op == OpCode::TYPED_UNARY_OP) {
+        TypedUnaryAccessor accessor(acc.TryGetValue(gate));
+        TypedUnOp unOp = accessor.GetTypedUnOp();
+        switch (unOp) {
+            case TypedUnOp::TYPED_DEC:
+            case TypedUnOp::TYPED_INC:
+            case TypedUnOp::TYPED_NEG:
+            case TypedUnOp::TYPED_NOT:
+                return accessor.GetParamType().HasNumberType();
+            default:
+                return false;
+        }
+    } else if (op == OpCode::TYPE_CONVERT) {
+        // typeconvert only use in tomumeric
+        return true;
+    } else if (op == OpCode::LOAD_ELEMENT) {
+        auto loadOp = acc.GetTypedLoadOp(gate);
+        switch (loadOp) {
+            case TypedLoadOp::INT8ARRAY_LOAD_ELEMENT:
+            case TypedLoadOp::UINT8ARRAY_LOAD_ELEMENT:
+            case TypedLoadOp::UINT8CLAMPEDARRAY_LOAD_ELEMENT:
+            case TypedLoadOp::INT16ARRAY_LOAD_ELEMENT:
+            case TypedLoadOp::UINT16ARRAY_LOAD_ELEMENT:
+            case TypedLoadOp::INT32ARRAY_LOAD_ELEMENT:
+            case TypedLoadOp::UINT32ARRAY_LOAD_ELEMENT:
+            case TypedLoadOp::FLOAT32ARRAY_LOAD_ELEMENT:
+            case TypedLoadOp::FLOAT64ARRAY_LOAD_ELEMENT:
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    if (op == OpCode::JS_BYTECODE) {
+        EcmaOpcode ecmaOpcode = acc.GetByteCodeOpcode(gate);
+        switch (ecmaOpcode) {
+            case EcmaOpcode::ADD2_IMM8_V8:
+            case EcmaOpcode::SUB2_IMM8_V8:
+            case EcmaOpcode::MUL2_IMM8_V8:
+            case EcmaOpcode::DIV2_IMM8_V8:
+            case EcmaOpcode::MOD2_IMM8_V8:
+            case EcmaOpcode::SHL2_IMM8_V8:
+            case EcmaOpcode::SHR2_IMM8_V8:
+            case EcmaOpcode::ASHR2_IMM8_V8:
+            case EcmaOpcode::AND2_IMM8_V8:
+            case EcmaOpcode::OR2_IMM8_V8:
+            case EcmaOpcode::XOR2_IMM8_V8:
+            case EcmaOpcode::INC_IMM8:
+            case EcmaOpcode::DEC_IMM8:
+            case EcmaOpcode::NEG_IMM8:
+            case EcmaOpcode::NOT_IMM8:
+                return acc.TryGetPGOType(gate).GetPGOSampleType()->HasNumber();
             default:
                 break;
         }
@@ -102,71 +229,6 @@ bool TypeInfoAccessor::IsTrustedStringType(
     return false;
 }
 
-BinOpTypeInfoAccessor::BinOpTypeInfoAccessor(const JSThread *thread, Circuit *circuit,
-                                             GateRef gate, bool convertNumberType)
-    : TypeInfoAccessor(thread, circuit, gate), convertNumberType_(convertNumberType)
-{
-    left_ = acc_.GetValueIn(gate, 0);  // 0: left
-    right_ = acc_.GetValueIn(gate, 1);  // 1: right
-}
-
-bool BinOpTypeInfoAccessor::HasNumberType() const
-{
-    GateType leftType = acc_.GetGateType(left_);
-    GateType rightType = acc_.GetGateType(right_);
-
-    const PGOSampleType *sampleType = acc_.TryGetPGOType(gate_).GetPGOSampleType();
-    if (sampleType->IsNumber()) {
-        return true;
-    } else if (convertNumberType_ && sampleType->IsNone() && leftType.IsPrimitiveNumberType() &&
-               rightType.IsPrimitiveNumberType()) {
-        return true;
-    } else if (!convertNumberType_ && sampleType->IsNone() && leftType.IsNumberType() && rightType.IsNumberType()) {
-        return true;
-    } else {
-        return false;
-    }
-    return false;
-}
-
-bool BinOpTypeInfoAccessor::HasStringType() const
-{
-    const PGOSampleType *sampleType = acc_.TryGetPGOType(gate_).GetPGOSampleType();
-    return sampleType->IsString();
-}
-
-UnOpTypeInfoAccessor::UnOpTypeInfoAccessor(const JSThread *thread, Circuit *circuit, GateRef gate)
-    : TypeInfoAccessor(thread, circuit, gate)
-{
-    value_ = acc_.GetValueIn(gate, 0); // 0: value
-}
-
-bool UnOpTypeInfoAccessor::ValueIsNumberType() const
-{
-    const PGOSampleType *sampleType = acc_.TryGetPGOType(gate_).GetPGOSampleType();
-    if (sampleType->IsNumber()) {
-        return true;
-    }
-    return false;
-}
-
-GateType  UnOpTypeInfoAccessor::FetchNumberType() const
-{
-    const PGOSampleType *sampleType = acc_.TryGetPGOType(gate_).GetPGOSampleType();
-    if (sampleType->IsNumber()) {
-        if (sampleType->IsInt()) {
-            return GateType::IntType();
-        } else if (sampleType->IsDouble()) {
-            return GateType::DoubleType();
-        } else {
-            return GateType::NumberType();
-        }
-    } else {
-        LOG_COMPILER(FATAL) << "this branch is unreachable";
-        UNREACHABLE();
-    }
-}
-
 bool NewObjRangeTypeInfoAccessor::FindHClass()
 {
     auto sampleType = acc_.TryGetPGOType(gate_).GetPGOSampleType();
@@ -183,15 +245,7 @@ bool NewObjRangeTypeInfoAccessor::FindHClass()
 
 bool TypeOfTypeInfoAccessor::IsIllegalType() const
 {
-    GateType valueType = GetValueGateType();
-    if (!valueType.IsDigitablePrimitiveType() && !valueType.IsStringType() && !valueType.IsSymbolType()) {
-        if (!tsManager_->IsFunctionTypeKind(valueType) && !tsManager_->IsObjectTypeKind(valueType) &&
-            !tsManager_->IsClassTypeKind(valueType) && !tsManager_->IsClassInstanceTypeKind(valueType) &&
-            !tsManager_->IsArrayTypeKind(valueType)) {
-            return true;
-        }
-    }
-    return false;
+    return true;
 }
 
 SuperCallTypeInfoAccessor::SuperCallTypeInfoAccessor(const JSThread *thread, Circuit *circuit, GateRef gate)
@@ -200,7 +254,7 @@ SuperCallTypeInfoAccessor::SuperCallTypeInfoAccessor(const JSThread *thread, Cir
     ctor_ = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
 }
 
-BuiltinsStubCSigns::ID CallTypeInfoAccessor::TryGetPGOBuiltinId() const
+BuiltinsStubCSigns::ID CallTypeInfoAccessor::TryGetPGOBuiltinMethodId() const
 {
     PGOTypeRef sampleType = acc_.TryGetPGOType(gate_);
     if (sampleType.GetPGOSampleType()->IsNone()) {
@@ -212,55 +266,56 @@ BuiltinsStubCSigns::ID CallTypeInfoAccessor::TryGetPGOBuiltinId() const
     return BuiltinsStubCSigns::ID::NONE;
 }
 
-BuiltinsStubCSigns::ID CallTypeInfoAccessor::TryGetBuiltinId(BuiltinTypeId id) const
-{
-    GateType funcType = acc_.GetGateType(func_);
-    if (!tsManager_->IsBuiltinObjectMethod(id, funcType)) {
-        return BuiltinsStubCSigns::ID::NONE;
-    }
-    std::string name = tsManager_->GetFuncName(funcType);
-    BuiltinsStubCSigns::ID stubId = BuiltinsStubCSigns::GetBuiltinId(name);
-    return stubId;
-}
-
-GetIteratorTypeInfoAccessor::GetIteratorTypeInfoAccessor(const JSThread *thread, Circuit *circuit, GateRef gate)
-    : CallTypeInfoAccessor(thread, circuit, gate)
+GetIteratorTypeInfoAccessor::GetIteratorTypeInfoAccessor(const JSThread *thread, Circuit *circuit, GateRef gate,
+                                                         const JSPandaFile *jsPandaFile,
+                                                         const CallMethodFlagMap *callMethodFlagMap)
+    : CallTypeInfoAccessor(thread, circuit, gate, jsPandaFile, callMethodFlagMap)
 {
     argc_ = 0; // 0: number of argc
     func_ = acc_.GetValueIn(gate, 0); // 1: func
 }
 
-CallArg0TypeInfoAccessor::CallArg0TypeInfoAccessor(const JSThread *thread, Circuit *circuit, GateRef gate)
-    : CallTypeInfoAccessor(thread, circuit, gate)
+CallArg0TypeInfoAccessor::CallArg0TypeInfoAccessor(const JSThread *thread, Circuit *circuit, GateRef gate,
+                                                   const JSPandaFile *jsPandaFile,
+                                                   const CallMethodFlagMap *callMethodFlagMap)
+    : CallTypeInfoAccessor(thread, circuit, gate, jsPandaFile, callMethodFlagMap)
 {
     argc_ = 0; // 0: number of argc
     func_ = acc_.GetValueIn(gate, 0); // 0: func
 }
 
-CallArg1TypeInfoAccessor::CallArg1TypeInfoAccessor(const JSThread *thread, Circuit *circuit, GateRef gate)
-    : CallTypeInfoAccessor(thread, circuit, gate)
+CallArg1TypeInfoAccessor::CallArg1TypeInfoAccessor(const JSThread *thread, Circuit *circuit, GateRef gate,
+                                                   const JSPandaFile *jsPandaFile,
+                                                   const CallMethodFlagMap *callMethodFlagMap)
+    : CallTypeInfoAccessor(thread, circuit, gate, jsPandaFile, callMethodFlagMap)
 {
     argc_ = 1; // 1: number of argc
     value_ = acc_.GetValueIn(gate, 0); // 0: value
     func_ = acc_.GetValueIn(gate, 1); // 1: func
 }
 
-CallArg2TypeInfoAccessor::CallArg2TypeInfoAccessor(const JSThread *thread, Circuit *circuit, GateRef gate)
-    : CallTypeInfoAccessor(thread, circuit, gate)
+CallArg2TypeInfoAccessor::CallArg2TypeInfoAccessor(const JSThread *thread, Circuit *circuit, GateRef gate,
+                                                   const JSPandaFile *jsPandaFile,
+                                                   const CallMethodFlagMap *callMethodFlagMap)
+    : CallTypeInfoAccessor(thread, circuit, gate, jsPandaFile, callMethodFlagMap)
 {
     argc_ = 2; // 2: number of argc
     func_ = acc_.GetValueIn(gate, 2); // 2: func
 }
 
-CallArg3TypeInfoAccessor::CallArg3TypeInfoAccessor(const JSThread *thread, Circuit *circuit, GateRef gate)
-    : CallTypeInfoAccessor(thread, circuit, gate)
+CallArg3TypeInfoAccessor::CallArg3TypeInfoAccessor(const JSThread *thread, Circuit *circuit, GateRef gate,
+                                                   const JSPandaFile *jsPandaFile,
+                                                   const CallMethodFlagMap *callMethodFlagMap)
+    : CallTypeInfoAccessor(thread, circuit, gate, jsPandaFile, callMethodFlagMap)
 {
     argc_ = 3; // 3: number of argc
     func_ = acc_.GetValueIn(gate, 3); // 3: func
 }
 
-CallRangeTypeInfoAccessor::CallRangeTypeInfoAccessor(const JSThread *thread, Circuit *circuit, GateRef gate)
-    : CallTypeInfoAccessor(thread, circuit, gate)
+CallRangeTypeInfoAccessor::CallRangeTypeInfoAccessor(const JSThread *thread, Circuit *circuit, GateRef gate,
+                                                     const JSPandaFile *jsPandaFile,
+                                                     const CallMethodFlagMap *callMethodFlagMap)
+    : CallTypeInfoAccessor(thread, circuit, gate, jsPandaFile, callMethodFlagMap)
 {
     size_t numArgs = acc_.GetNumValueIn(gate);
     constexpr size_t callTargetIndex = 1; // acc
@@ -270,51 +325,64 @@ CallRangeTypeInfoAccessor::CallRangeTypeInfoAccessor(const JSThread *thread, Cir
 
 bool CallThisTypeInfoAccessor::CanOptimizeAsFastCall()
 {
-    GateType funcType = acc_.GetGateType(func_);
-    if (!tsManager_->IsFunctionTypeKind(funcType)) {
-        return false;
-    }
+    auto profileType = acc_.TryGetPGOType(gate_).GetPGOSampleType();
     auto op = acc_.GetOpCode(func_);
-    if (op != OpCode::LOAD_PROPERTY || !acc_.IsVtable(func_)) {
+    if (!IsValidCallMethodId()) {
         return false;
     }
-    return true;
+    if (!profileType->IsNone()) {
+        if (profileType->IsProfileTypeNone() || op != OpCode::LOAD_PROPERTY) {
+            return false;
+        }
+        return true;
+    }
+    return false;
 }
 
-CallThis0TypeInfoAccessor::CallThis0TypeInfoAccessor(const JSThread *thread, Circuit *circuit, GateRef gate)
-    : CallThisTypeInfoAccessor(thread, circuit, gate)
+CallThis0TypeInfoAccessor::CallThis0TypeInfoAccessor(const JSThread *thread, Circuit *circuit, GateRef gate,
+                                                     const JSPandaFile *jsPandaFile,
+                                                     const CallMethodFlagMap *callMethodFlagMap)
+    : CallThisTypeInfoAccessor(thread, circuit, gate, jsPandaFile, callMethodFlagMap)
 {
     argc_ = 0; // 0: number of argc
     func_ = acc_.GetValueIn(gate, 1); // 1: func
 }
 
-CallThis1TypeInfoAccessor::CallThis1TypeInfoAccessor(const JSThread *thread, Circuit *circuit, GateRef gate)
-    : CallThisTypeInfoAccessor(thread, circuit, gate)
+CallThis1TypeInfoAccessor::CallThis1TypeInfoAccessor(const JSThread *thread, Circuit *circuit, GateRef gate,
+                                                     const JSPandaFile *jsPandaFile,
+                                                     const CallMethodFlagMap *callMethodFlagMap)
+    : CallThisTypeInfoAccessor(thread, circuit, gate, jsPandaFile, callMethodFlagMap)
 {
     argc_ = 1; // 1: number of argc
     func_ = acc_.GetValueIn(gate, 2); // 2: func
     a0_ = acc_.GetValueIn(gate, 1); // 1: arg0
 }
 
-CallThis2TypeInfoAccessor::CallThis2TypeInfoAccessor(const JSThread *thread, Circuit *circuit, GateRef gate)
-    : CallThisTypeInfoAccessor(thread, circuit, gate)
+CallThis2TypeInfoAccessor::CallThis2TypeInfoAccessor(const JSThread *thread, Circuit *circuit, GateRef gate,
+                                                     const JSPandaFile *jsPandaFile,
+                                                     const CallMethodFlagMap *callMethodFlagMap)
+    : CallThisTypeInfoAccessor(thread, circuit, gate, jsPandaFile, callMethodFlagMap)
 {
     argc_ = 2; // 2: number of argc
     func_ = acc_.GetValueIn(gate, 3); // 3: func
 }
 
-CallThis3TypeInfoAccessor::CallThis3TypeInfoAccessor(const JSThread *thread, Circuit *circuit, GateRef gate)
-    : CallThisTypeInfoAccessor(thread, circuit, gate)
+CallThis3TypeInfoAccessor::CallThis3TypeInfoAccessor(const JSThread *thread, Circuit *circuit, GateRef gate,
+                                                     const JSPandaFile *jsPandaFile,
+                                                     const CallMethodFlagMap *callMethodFlagMap)
+    : CallThisTypeInfoAccessor(thread, circuit, gate, jsPandaFile, callMethodFlagMap)
 {
     argc_ = 3; // 3: number of argc
-    func_ = acc_.GetValueIn(gate, 3); // 3: func
+    func_ = acc_.GetValueIn(gate, 4); // 4: func
     a0_ = acc_.GetValueIn(gate, 1); // 1: arg0
     a1_ = acc_.GetValueIn(gate, 2); // 2: arg1
     a2_ = acc_.GetValueIn(gate, 3); // 3: arg2
 }
 
-CallThisRangeTypeInfoAccessor::CallThisRangeTypeInfoAccessor(const JSThread *thread, Circuit *circuit, GateRef gate)
-    : CallThisTypeInfoAccessor(thread, circuit, gate)
+CallThisRangeTypeInfoAccessor::CallThisRangeTypeInfoAccessor(const JSThread *thread, Circuit *circuit, GateRef gate,
+                                                             const JSPandaFile *jsPandaFile,
+                                                             const CallMethodFlagMap *callMethodFlagMap)
+    : CallThisTypeInfoAccessor(thread, circuit, gate, jsPandaFile, callMethodFlagMap)
 {
     constexpr size_t fixedInputsNum = 1;
     constexpr size_t callTargetIndex = 1;  // 1: acc
@@ -353,7 +421,7 @@ PropertyLookupResult InlineTypeInfoAccessor::GetAccessorPlr() const
     GateRef constData = acc_.GetValueIn(gate_, 1);
     uint16_t propIndex = acc_.GetConstantValue(constData);
     auto methodOffset = acc_.TryGetMethodOffset(gate_);
-    auto prop = tsManager_->GetStringFromConstantPool(methodOffset, propIndex);
+    auto prop = ptManager_->GetStringFromConstantPool(methodOffset, propIndex);
     // PGO currently does not support call, so GT is still used to support inline operations.
     // However, the original GT solution cannot support accessing the property of prototype, so it is filtered here
     if (EcmaStringAccessor(prop).ToStdString() == "prototype") {
@@ -398,13 +466,11 @@ uint32_t InlineTypeInfoAccessor::GetCallMethodId() const
             return methodOffset;
         }
     }
-    if (methodOffset == 0) {
-        if (IsFunctionTypeKind()) {
-            auto funcGT = GetReceiverGT().GetGTRef();
-            methodOffset = tsManager_->GetFuncMethodOffset(funcGT);
-        } else if (IsClassInstanceTypeKind()) {
-            auto funcGT = GetAccessorFuncGT();
-            methodOffset = tsManager_->GetFuncMethodOffset(funcGT);
+    if (IsCallAccessor()) {
+        const PGORWOpType *pgoTypes = acc_.TryGetPGOType(gate_).GetPGORWOpType();
+        auto pgoType = pgoTypes->GetObjectInfo(0);
+        if (pgoType.GetAccessorMethod().GetProfileType().IsValidCallMethodId()) {
+            return pgoType.GetAccessorMethod().GetProfileType().GetCallMethodId();
         }
     }
     return methodOffset;
@@ -687,30 +753,13 @@ LoadBulitinObjTypeInfoAccessor::LoadBulitinObjTypeInfoAccessor(const JSThread *t
     FetchBuiltinsTypes();
 }
 
-bool AccBuiltinObjTypeInfoAccessor::IsMonoIgnoreElemKind() const
+bool AccBuiltinObjTypeInfoAccessor::IsMonoBuiltins() const
 {
-    if (IsMono()) {
-        return true;
-    }
-    if (types_.empty()) {
+    if (types_.size() == 0) {
         return false;
     }
-    auto firstIter = types_[0];
-    for (auto type : types_) {
-        if (type.IsBuiltinsType() != firstIter.IsBuiltinsType()) {
-            return false;
-        }
-    }
-    return true;
-}
-
-bool AccBuiltinObjTypeInfoAccessor::IsAllString() const
-{
-    if (types_.empty()) {
-        return false;
-    }
-    for (auto type : types_) {
-        if (!type.IsBuiltinsString()) {
+    for (size_t i = 0; i < types_.size(); i++) {
+        if (!types_[0].IsBuiltinsType()) {
             return false;
         }
     }
@@ -788,7 +837,7 @@ void CreateObjWithBufferTypeInfoAccessor::Init()
 {
     auto imm = acc_.GetConstantValue(index_);
     auto methodOffset = acc_.TryGetMethodOffset(GetGate());
-    JSTaggedValue cp = tsManager_->GetConstantPool(methodOffset);
+    JSTaggedValue cp = ptManager_->GetConstantPoolByMethodOffset(methodOffset);
     JSTaggedValue unsharedCp = thread_->GetCurrentEcmaContext()->FindOrCreateUnsharedConstpool(cp);
     JSTaggedValue obj = ConstantPool::GetLiteralFromCache<ConstPoolType::OBJECT_LITERAL>(
         tsManager_->GetEcmaVM()->GetJSThread(), unsharedCp, imm, recordName_);

@@ -105,6 +105,7 @@ print(myMap.get(obj)); //: undefined
 function Throwing() {
     this.value = -1;
 }
+//aot: [trace] Check Type: InconsistentHClass6
 Throwing.prototype.valueOf = function() {
     if (this.value > 0) {
         throw new Error("already positive");

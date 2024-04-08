@@ -18,6 +18,7 @@
 
 #include "ecmascript/builtin_entries.h"
 #include "ecmascript/compiler/argument_accessor.h"
+#include "ecmascript/compiler/aot_compiler_preprocessor.h"
 #include "ecmascript/compiler/builtins/builtins_call_signature.h"
 #include "ecmascript/compiler/bytecode_circuit_builder.h"
 #include "ecmascript/compiler/circuit_builder-inl.h"
@@ -38,6 +39,8 @@ public:
                          const std::string& name,
                          bool enableLoweringBuiltin,
                          const CString& recordName,
+                         const CallMethodFlagMap* callMethodFlagMap,
+                         PGOProfilerDecoder *decoder,
                          const std::string optBCRange)
         : circuit_(circuit),
           acc_(circuit),
@@ -58,6 +61,8 @@ public:
           thread_(ctx->GetEcmaVM()->GetJSThread()),
           enableLoweringBuiltin_(enableLoweringBuiltin),
           recordName_(recordName),
+          callMethodFlagMap_(callMethodFlagMap),
+          decoder_(decoder),
           optBCRange_(optBCRange)
     {
     }
@@ -99,7 +104,7 @@ private:
 
     void Lower(GateRef gate);
     template<TypedBinOp Op>
-    void LowerTypedBinOp(GateRef gate, bool convertNumberType = true);
+    void LowerTypedBinOp(GateRef gate);
     template<TypedUnOp Op>
     void LowerTypedUnOp(GateRef gate);
     template<TypedBinOp Op>
@@ -119,7 +124,7 @@ private:
     using AccessMode = PGOObjectAccessHelper::AccessMode;
     bool TryLowerTypedLdObjByNameForBuiltin(GateRef gate);
     bool TryLowerTypedLdObjByNameForBuiltinsId(const LoadBulitinObjTypeInfoAccessor &tacc, BuiltinTypeId type);
-    bool TryLowerTypedLdObjByNameForBuiltin(const LoadBulitinObjTypeInfoAccessor &tacc, BuiltinTypeId type);
+    bool TryLowerTypedLdObjByNameForBuiltin(const LoadBulitinObjTypeInfoAccessor &tacc);
     bool TryLowerTypedLdObjByNameForGlobalsId(const LoadBulitinObjTypeInfoAccessor &tacc, GlobalIndex globalsId);
     void LowerTypedLdArrayLength(const LoadBulitinObjTypeInfoAccessor &tacc);
     void LowerTypedLdTypedArrayLength(const LoadBulitinObjTypeInfoAccessor &tacc);
@@ -197,9 +202,9 @@ private:
     void AddHitBytecodeCount();
 
     template<TypedBinOp Op>
-    void SpeculateStrings(GateRef gate);
+    void SpeculateStrings(const BinOpTypeInfoAccessor& tacc);
     template<TypedBinOp Op>
-    void SpeculateNumbers(GateRef gate);
+    void SpeculateNumbers(const BinOpTypeInfoAccessor& tacc);
     template<TypedUnOp Op>
     void SpeculateNumber(const UnOpTypeInfoAccessor& tacc);
     void SpeculateConditionJump(const ConditionJumpTypeInfoAccessor &tacc, bool flag);
@@ -211,6 +216,9 @@ private:
     bool CheckIsInOptBCIgnoreRange(int32_t index, EcmaOpcode ecmaOpcode);
     int32_t GetEcmaOpCodeListIndex(EcmaOpcode ecmaOpCode);
     void ParseOptBytecodeRange();
+
+    const JSPandaFile* GetCalleePandaFile(GateRef gate);
+
     void AddProfiling(GateRef gate);
 
     bool Uncheck() const
@@ -243,6 +251,8 @@ private:
     const JSThread *thread_ {nullptr};
     bool enableLoweringBuiltin_ {false};
     const CString &recordName_;
+    const CallMethodFlagMap *callMethodFlagMap_;
+    PGOProfilerDecoder *decoder_ {nullptr};
     std::string optBCRange_;
     std::vector<std::vector<int32_t>> optBCRangeList_;
 };

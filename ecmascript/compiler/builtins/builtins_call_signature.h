@@ -154,21 +154,21 @@ namespace panda::ecmascript::kungfu {
     V(MapConstructor)
 
 #define AOT_AND_BUILTINS_STUB_LIST(V)               \
-    V(LocaleCompare)                                \
-    V(STRING_ITERATOR_PROTO_NEXT)                   \
-    V(SORT)
+    V(StringLocaleCompare)                                \
+    V(StringIteratorProtoNext)                   \
+    V(ArraySort)
 
 #define AOT_BUILTINS_STUB_LIST(V)                   \
-    V(STRINGIFY)                                    \
-    V(MAP_PROTO_ITERATOR)                           \
-    V(SET_PROTO_ITERATOR)                           \
-    V(STRING_PROTO_ITERATOR)                        \
-    V(ARRAY_PROTO_ITERATOR)                         \
-    V(TYPED_ARRAY_PROTO_ITERATOR)                   \
-    V(MAP_ITERATOR_PROTO_NEXT)                      \
-    V(SET_ITERATOR_PROTO_NEXT)                      \
-    V(ARRAY_ITERATOR_PROTO_NEXT)                    \
-    V(ITERATOR_PROTO_RETURN)
+    V(JsonStringify)                                    \
+    V(MapProtoIterator)                                 \
+    V(MapIteratorProtoNext)                             \
+    V(SetProtoIterator)                                 \
+    V(SetIteratorProtoNext)                             \
+    V(StringProtoIterator)                              \
+    V(ArrayProtoIterator)                               \
+    V(ArrayIteratorProtoNext)                           \
+    V(TypeArrayProtoIterator)                           \
+    V(IteratorProtoReturn)
 
 // List of builtins which will try to be inlined in TypedNativeInlineLoweringPass
 #define AOT_BUILTINS_INLINE_LIST(V)                 \
@@ -244,8 +244,8 @@ public:
 #undef DEF_STUB_ID_DYN
 #undef DEF_STUB_ID
         BUILTINS_CONSTRUCTOR_STUB_FIRST = BooleanConstructor,
-        TYPED_BUILTINS_FIRST = STRINGIFY,
-        TYPED_BUILTINS_LAST = ITERATOR_PROTO_RETURN,
+        TYPED_BUILTINS_FIRST = JsonStringify,
+        TYPED_BUILTINS_LAST = IteratorProtoReturn,
         INVALID = 0xFF,
     };
     static_assert(ID::NONE == 0);
@@ -283,9 +283,9 @@ public:
 
     static bool IsTypedBuiltin(ID builtinId)
     {
-        return (BuiltinsStubCSigns::ID::LocaleCompare == builtinId) ||
-               (BuiltinsStubCSigns::ID::STRING_ITERATOR_PROTO_NEXT == builtinId) ||
-               (BuiltinsStubCSigns::ID::SORT == builtinId) ||
+        return (BuiltinsStubCSigns::ID::StringLocaleCompare == builtinId) ||
+               (BuiltinsStubCSigns::ID::StringIteratorProtoNext == builtinId) ||
+               (BuiltinsStubCSigns::ID::ArraySort == builtinId) ||
                ((BuiltinsStubCSigns::ID::TYPED_BUILTINS_FIRST <= builtinId) &&
                (builtinId <= BuiltinsStubCSigns::ID::TYPED_BUILTINS_LAST));
     }
@@ -313,11 +313,22 @@ public:
     static bool IsTypedBuiltinCallThis0(ID builtinId)
     {
         switch (builtinId) {
-            case BuiltinsStubCSigns::ID::MAP_ITERATOR_PROTO_NEXT:
-            case BuiltinsStubCSigns::ID::SET_ITERATOR_PROTO_NEXT:
-            case BuiltinsStubCSigns::ID::STRING_ITERATOR_PROTO_NEXT:
-            case BuiltinsStubCSigns::ID::ARRAY_ITERATOR_PROTO_NEXT:
-            case BuiltinsStubCSigns::ID::ITERATOR_PROTO_RETURN:
+            case BuiltinsStubCSigns::ID::MapIteratorProtoNext:
+            case BuiltinsStubCSigns::ID::SetIteratorProtoNext:
+            case BuiltinsStubCSigns::ID::StringIteratorProtoNext:
+            case BuiltinsStubCSigns::ID::ArrayIteratorProtoNext:
+            case BuiltinsStubCSigns::ID::IteratorProtoReturn:
+            case BuiltinsStubCSigns::ID::ArraySort:
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    static bool IsTypedBuiltinCallThis1(ID builtinId)
+    {
+        switch (builtinId) {
+            case BuiltinsStubCSigns::ID::JsonStringify:
                 return true;
             default:
                 return false;
@@ -327,7 +338,7 @@ public:
     static bool IsTypedBuiltinCallThis3(ID builtinId)
     {
         switch (builtinId) {
-            case BuiltinsStubCSigns::ID::LocaleCompare:
+            case BuiltinsStubCSigns::ID::StringLocaleCompare:
                 return true;
             default:
                 return false;
@@ -403,21 +414,21 @@ public:
                 return ConstantIndex::MATH_FROUND_INDEX;
             case BuiltinsStubCSigns::ID::MathImul:
                 return ConstantIndex::MATH_IMUL_INDEX;
-            case BuiltinsStubCSigns::ID::LocaleCompare:
+            case BuiltinsStubCSigns::ID::StringLocaleCompare:
                 return ConstantIndex::LOCALE_COMPARE_FUNCTION_INDEX;
-            case BuiltinsStubCSigns::ID::SORT:
+            case BuiltinsStubCSigns::ID::ArraySort:
                 return ConstantIndex::ARRAY_SORT_FUNCTION_INDEX;
-            case BuiltinsStubCSigns::ID::STRINGIFY:
+            case BuiltinsStubCSigns::ID::JsonStringify:
                 return ConstantIndex::JSON_STRINGIFY_FUNCTION_INDEX;
-            case BuiltinsStubCSigns::ID::MAP_ITERATOR_PROTO_NEXT:
+            case BuiltinsStubCSigns::ID::MapIteratorProtoNext:
                 return ConstantIndex::MAP_ITERATOR_PROTO_NEXT_INDEX;
-            case BuiltinsStubCSigns::ID::SET_ITERATOR_PROTO_NEXT:
+            case BuiltinsStubCSigns::ID::SetIteratorProtoNext:
                 return ConstantIndex::SET_ITERATOR_PROTO_NEXT_INDEX;
-            case BuiltinsStubCSigns::ID::STRING_ITERATOR_PROTO_NEXT:
+            case BuiltinsStubCSigns::ID::StringIteratorProtoNext:
                 return ConstantIndex::STRING_ITERATOR_PROTO_NEXT_INDEX;
-            case BuiltinsStubCSigns::ID::ARRAY_ITERATOR_PROTO_NEXT:
+            case BuiltinsStubCSigns::ID::ArrayIteratorProtoNext:
                 return ConstantIndex::ARRAY_ITERATOR_PROTO_NEXT_INDEX;
-            case BuiltinsStubCSigns::ID::ITERATOR_PROTO_RETURN:
+            case BuiltinsStubCSigns::ID::IteratorProtoReturn:
                 return ConstantIndex::ITERATOR_PROTO_RETURN_INDEX;
             case BuiltinsStubCSigns::ID::StringFromCharCode:
                 return ConstantIndex::STRING_FROM_CHAR_CODE_INDEX;
@@ -556,10 +567,10 @@ public:
             {"imul", MathImul},
             {"max", MathMax},
             {"min", MathMin},
-            {"localeCompare", LocaleCompare},
-            {"next", STRING_ITERATOR_PROTO_NEXT},
-            {"sort", SORT},
-            {"stringify", STRINGIFY},
+            {"localeCompare", StringLocaleCompare},
+            {"next", StringIteratorProtoNext},
+            {"sort", ArraySort},
+            {"stringify", JsonStringify},
             {"isFinite", GlobalIsFinite},
             {"isNan", GlobalIsNan},
         };
@@ -595,6 +606,7 @@ enum class BuiltinsArgs : size_t {
 #define IS_TYPED_INLINE_BUILTINS_ID(id) kungfu::BuiltinsStubCSigns::IsTypedInlineBuiltin(id)
 #define IS_TYPED_BUILTINS_NUMBER_ID(id) kungfu::BuiltinsStubCSigns::IsTypedBuiltinNumber(id)
 #define IS_TYPED_BUILTINS_ID_CALL_THIS0(id) kungfu::BuiltinsStubCSigns::IsTypedBuiltinCallThis0(id)
+#define IS_TYPED_BUILTINS_ID_CALL_THIS1(id) kungfu::BuiltinsStubCSigns::IsTypedBuiltinCallThis1(id)
 #define IS_TYPED_BUILTINS_ID_CALL_THIS3(id) kungfu::BuiltinsStubCSigns::IsTypedBuiltinCallThis3(id)
 #define GET_TYPED_CONSTANT_INDEX(id) kungfu::BuiltinsStubCSigns::GetConstantIndex(id)
 #define GET_TYPED_GLOBAL_ENV_INDEX(id) kungfu::BuiltinsStubCSigns::GetGlobalEnvIndex(id)

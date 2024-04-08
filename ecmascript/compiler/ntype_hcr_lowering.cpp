@@ -13,13 +13,9 @@
  * limitations under the License.
  */
 
-#include "ecmascript/js_arguments.h"
 #include "ecmascript/compiler/ntype_hcr_lowering.h"
-#include "ecmascript/dfx/vmstat/opt_code_profiler.h"
-#include "ecmascript/compiler/new_object_stub_builder.h"
 
 namespace panda::ecmascript::kungfu {
-
 GateRef NTypeHCRLowering::VisitGate(GateRef gate)
 {
     GateRef glue = acc_.GetGlueFromArgList();
@@ -172,15 +168,14 @@ GateRef NTypeHCRLowering::NewJSArrayLiteral(GateRef glue, GateRef gate, GateRef 
     ElementsKind kind = acc_.GetArrayMetaDataAccessor(gate).GetElementsKind();
     GateRef hclass = Circuit::NullGate();
     if (!Elements::IsGeneric(kind)) {
-        auto thread = tsManager_->GetEcmaVM()->GetJSThread();
-        auto hclassIndex = thread->GetArrayHClassIndexMap().at(kind);
+        auto hclassIndex = thread_->GetArrayHClassIndexMap().at(kind);
         hclass = builder_.GetGlobalConstantValue(hclassIndex);
     } else {
         GateRef globalEnv = builder_.GetGlobalEnv();
         hclass = builder_.GetGlobalEnvObjHClass(globalEnv, GlobalEnv::ARRAY_FUNCTION_INDEX);
     }
 
-    JSHandle<JSFunction> arrayFunc(tsManager_->GetEcmaVM()->GetGlobalEnv()->GetArrayFunction());
+    JSHandle<JSFunction> arrayFunc(thread_->GetEcmaVM()->GetGlobalEnv()->GetArrayFunction());
     JSTaggedValue protoOrHClass = arrayFunc->GetProtoOrHClass();
     JSHClass *arrayHC = JSHClass::Cast(protoOrHClass.GetTaggedObject());
     size_t arraySize = arrayHC->GetObjectSize();

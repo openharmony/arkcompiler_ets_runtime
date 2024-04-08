@@ -58,7 +58,7 @@
     /* String.prototype.lastIndexOf ( searchString [ , position ] ) */              \
     V("lastIndexOf",       LastIndexOf,       1, INVALID)                           \
     /* String.prototype.localeCompare ( that [ , reserved1 [ , reserved2 ] ] ) */   \
-    V("localeCompare",     LocaleCompare,     1, LocaleCompare)                     \
+    V("localeCompare",     LocaleCompare,     1, StringLocaleCompare)                     \
     /* String.prototype.match ( regexp ) */                                         \
     V("match",             Match,             1, INVALID)                           \
     /* String.prototype.matchAll ( regexp ) */                                      \

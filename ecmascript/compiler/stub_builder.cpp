@@ -5690,7 +5690,7 @@ GateRef StubBuilder::TryStringAdd(Environment *env, GateRef glue, GateRef left, 
     Bind(&stringLeftAddNumberRight);
     {
         Label hasPendingException(env);
-        callback.ProfileOpType(Int32(PGOSampleType::StringType()));
+        // NOTICE-PGO: support string and number
         BuiltinsStringStubBuilder builtinsStringStubBuilder(this);
         result = builtinsStringStubBuilder.StringConcat(glue, left, NumberToString(glue, right));
         BRANCH(HasPendingException(glue), &hasPendingException, &exit);
@@ -5701,7 +5701,7 @@ GateRef StubBuilder::TryStringAdd(Environment *env, GateRef glue, GateRef left, 
     Bind(&numberLeftAddStringRight);
     {
         Label hasPendingException(env);
-        callback.ProfileOpType(Int32(PGOSampleType::StringType()));
+        // NOTICE-PGO: support string and number
         BuiltinsStringStubBuilder builtinsStringStubBuilder(this);
         result = builtinsStringStubBuilder.StringConcat(glue, NumberToString(glue, left), right);
         BRANCH(HasPendingException(glue), &hasPendingException, &exit);
@@ -5743,7 +5743,7 @@ GateRef StubBuilder::FastBinaryOp(GateRef glue, GateRef left, GateRef right,
     DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
     DEFVARIABLE(doubleLeft, VariableType::FLOAT64(), Double(0));
     DEFVARIABLE(doubleRight, VariableType::FLOAT64(), Double(0));
-    
+
     if (Op == OpCode::ADD) { // Try string Add
         result = TryStringAdd(env, glue, left, right, intOp, floatOp, callback);
     } else {
@@ -7044,10 +7044,6 @@ GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNu
     }
     // 4. call nonNative
     Bind(&methodNotNative);
-
-    if (IsCallModeSupportPGO(mode)) {
-        callback.ProfileCall(func);
-    }
     Label funcIsClassConstructor(env);
     Label funcNotClassConstructor(env);
     Label methodNotAot(env);
@@ -7062,6 +7058,9 @@ GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNu
     } else {
         BRANCH(IsClassConstructorFromBitField(bitfield), &funcIsClassConstructor, &methodNotAot);
         Bind(&funcIsClassConstructor);
+    }
+    if (IsCallModeSupportPGO(mode)) {
+        callback.ProfileCall(func);
     }
     GateRef sp = 0;
     if (env->IsAsmInterp()) {

@@ -352,20 +352,14 @@ bool EarlyElimination::CheckReplacement(GateRef lhs, GateRef rhs)
             break;
         }
         case OpCode::TYPED_ARRAY_CHECK: {
-            if (acc_.GetTypedArrayMetaDateAccessor(lhs).GetType() !=
-                acc_.GetTypedArrayMetaDateAccessor(rhs).GetType()) {
+            if (acc_.GetTypedArrayMetaDateAccessor(lhs).GetParamType() !=
+                acc_.GetTypedArrayMetaDateAccessor(rhs).GetParamType()) {
                 return false;
             }
             break;
         }
         case OpCode::TYPE_OF_CHECK: {
-            if (acc_.GetParamGateType(lhs) != acc_.GetParamGateType(rhs)) {
-                return false;
-            }
-            break;
-        }
-        case OpCode::OBJECT_TYPE_CHECK: {
-            if (acc_.GetObjectTypeAccessor(lhs).GetType() != acc_.GetObjectTypeAccessor(rhs).GetType()) {
+            if (acc_.GetParamType(lhs) != acc_.GetParamType(rhs)) {
                 return false;
             }
             break;

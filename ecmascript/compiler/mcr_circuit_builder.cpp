@@ -28,7 +28,7 @@
 
 namespace panda::ecmascript::kungfu {
 
-GateRef CircuitBuilder::ObjectTypeCheck(GateType type, bool isHeapObject, GateRef gate, GateRef hclassIndex,
+GateRef CircuitBuilder::ObjectTypeCheck(bool isHeapObject, GateRef gate, GateRef hclassIndex,
                                         GateRef frameState)
 {
     auto currentLabel = env_->GetCurrentLabel();
@@ -37,7 +37,7 @@ GateRef CircuitBuilder::ObjectTypeCheck(GateType type, bool isHeapObject, GateRe
     if (frameState == Circuit::NullGate()) {
         frameState = acc_.FindNearestFrameState(currentDepend);
     }
-    ObjectTypeAccessor accessor(type, isHeapObject);
+    ObjectTypeAccessor accessor(isHeapObject);
     GateRef ret = GetCircuit()->NewGate(circuit_->ObjectTypeCheck(accessor.ToValue()), MachineType::I1,
         {currentControl, currentDepend, gate, hclassIndex, frameState}, GateType::NJSValue());
     currentLabel->SetControl(ret);
@@ -180,28 +180,29 @@ GateRef CircuitBuilder::ArrayGuardianCheck(GateRef frameState)
     return ret;
 }
 
-GateRef CircuitBuilder::TypedArrayCheck(GateRef gate, GateType type, TypedArrayMetaDateAccessor::Mode mode,
+GateRef CircuitBuilder::TypedArrayCheck(GateRef gate, ParamType type, TypedArrayMetaDateAccessor::Mode mode,
                                         OnHeapMode onHeap)
 {
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
     auto frameState = acc_.FindNearestFrameState(currentDepend);
-    TypedArrayMetaDateAccessor accessor(type, mode, onHeap);
-    GateRef ret = GetCircuit()->NewGate(circuit_->TypedArrayCheck(accessor.ToValue()), MachineType::I1,
+    uint64_t value = TypedArrayMetaDateAccessor::ToValue(type, mode, onHeap);
+    GateRef ret = GetCircuit()->NewGate(circuit_->TypedArrayCheck(value), MachineType::I1,
                                         {currentControl, currentDepend, gate, frameState}, GateType::NJSValue());
     currentLabel->SetControl(ret);
     currentLabel->SetDepend(ret);
     return ret;
 }
 
-GateRef CircuitBuilder::LoadTypedArrayLength(GateRef gate, GateType type, OnHeapMode onHeap)
+GateRef CircuitBuilder::LoadTypedArrayLength(GateRef gate, ParamType paramType, OnHeapMode onHeap)
 {
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
-    TypedArrayMetaDateAccessor accessor(type, TypedArrayMetaDateAccessor::Mode::LOAD_LENGTH, onHeap);
-    GateRef ret = GetCircuit()->NewGate(circuit_->LoadTypedArrayLength(accessor.ToValue()), MachineType::I64,
+    uint64_t value = TypedArrayMetaDateAccessor::ToValue(paramType,
+                                                         TypedArrayMetaDateAccessor::Mode::LOAD_LENGTH, onHeap);
+    GateRef ret = GetCircuit()->NewGate(circuit_->LoadTypedArrayLength(value), MachineType::I64,
                                         {currentControl, currentDepend, gate}, GateType::IntType());
     currentLabel->SetControl(ret);
     currentLabel->SetDepend(ret);
@@ -274,25 +275,25 @@ GateRef CircuitBuilder::IndexCheck(GateRef gate, GateRef index)
     return ret;
 }
 
-GateRef CircuitBuilder::TypeOfCheck(GateRef gate, GateType type)
+GateRef CircuitBuilder::TypeOfCheck(GateRef gate, ParamType paramType)
 {
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
     auto frameState = acc_.FindNearestFrameState(currentDepend);
-    GateRef ret = GetCircuit()->NewGate(circuit_->TypeOfCheck(static_cast<size_t>(type.Value())),
+    GateRef ret = GetCircuit()->NewGate(circuit_->TypeOfCheck(static_cast<uint64_t>(paramType.Value())),
         MachineType::I64, {currentControl, currentDepend, gate, frameState}, GateType::IntType());
     currentLabel->SetControl(ret);
     currentLabel->SetDepend(ret);
     return ret;
 }
 
-GateRef CircuitBuilder::TypedTypeOf(GateType type)
+GateRef CircuitBuilder::TypedTypeOf(ParamType paramType)
 {
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
-    GateRef ret = GetCircuit()->NewGate(circuit_->TypeOf(static_cast<size_t>(type.Value())),
+    GateRef ret = GetCircuit()->NewGate(circuit_->TypeOf(static_cast<uint64_t>(paramType.Value())),
         MachineType::I64, {currentControl, currentDepend}, GateType::AnyType());
     currentLabel->SetControl(ret);
     currentLabel->SetDepend(ret);
@@ -582,15 +583,15 @@ GateRef CircuitBuilder::CallTargetCheck(GateRef gate, GateRef function, GateRef 
     return ret;
 }
 
-GateRef CircuitBuilder::JSCallTargetFromDefineFuncCheck(GateType type, GateRef func, GateRef gate)
+GateRef CircuitBuilder::JSCallTargetFromDefineFuncCheck(GateRef func, GateRef gate)
 {
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
     auto frameState = acc_.GetFrameState(gate);
-    GateRef ret = GetCircuit()->NewGate(circuit_->TypedCallTargetCheckOp(1, static_cast<size_t>(type.Value()),
-        TypedCallTargetCheckOp::JSCALL_IMMEDIATE_AFTER_FUNC_DEF),
-        MachineType::I1, {currentControl, currentDepend, func, frameState}, GateType::NJSValue());
+    uint64_t value = TypedCallTargetCheckAccessor::ToValue(TypedCallTargetCheckOp::JSCALL_IMMEDIATE_AFTER_FUNC_DEF);
+    GateRef ret = GetCircuit()->NewGate(circuit_->TypedCallTargetCheckOp(value), MachineType::I1,
+        {currentControl, currentDepend, func, IntPtr(INVALID_INDEX), frameState}, GateType::NJSValue());
     currentLabel->SetControl(ret);
     currentLabel->SetDepend(ret);
     return ret;
@@ -813,18 +814,18 @@ GateRef CircuitBuilder::Int32DivWithCheck(GateRef left, GateRef right)
 }
 
 GateRef CircuitBuilder::TypedConditionJump(MachineType type, TypedJumpOp jumpOp, uint32_t weight,
-    GateType typeVal, const std::vector<GateRef>& inList)
+    ParamType paramType, const std::vector<GateRef>& inList)
 {
-    uint64_t value = TypedJumpAccessor::ToValue(typeVal, jumpOp, weight);
+    uint64_t value = TypedJumpAccessor::ToValue(paramType, jumpOp, weight);
     return GetCircuit()->NewGate(circuit_->TypedConditionJump(value),
         type, inList.size(), inList.data(), GateType::Empty());
 }
 
-GateRef CircuitBuilder::TypeConvert(MachineType type, GateType typeFrom, GateType typeTo,
+GateRef CircuitBuilder::TypeConvert(MachineType type, ParamType typeFrom, GateType typeTo,
                                     const std::vector<GateRef>& inList)
 {
     // merge types of valueIns before and after convertion
-    uint64_t operandTypes = GatePairTypeAccessor::ToValue(typeFrom, typeTo);
+    uint64_t operandTypes = TypeConvertAccessor::ToValue(typeFrom, typeTo);
     return GetCircuit()->NewGate(circuit_->TypedConvert(operandTypes),
         type, inList.size(), inList.data(), GateType::AnyType());
 }
@@ -1063,17 +1064,16 @@ GateType CircuitBuilder::GetGateTypeOfValueType(ValueType type)
     }
 }
 
-GateRef CircuitBuilder::InsertTypedBinaryop(GateRef left, GateRef right, GateType leftType, GateType rightType,
-                                            GateType gateType, PGOTypeRef pgoType, TypedBinOp op)
+GateRef CircuitBuilder::InsertTypedBinaryop(GateRef left, GateRef right, TypedBinOp op)
 {
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
-    uint64_t operandTypes = GatePairTypeAccessor::ToValue(leftType, rightType);
-    auto ret = GetCircuit()->NewGate(circuit_->TypedBinaryOp(operandTypes, op, pgoType),
+    uint64_t value = TypedBinaryAccessor::ToValue(ParamType::NumberType(), op);
+    auto ret = GetCircuit()->NewGate(circuit_->TypedBinaryOp(value),
                                      MachineType::I64,
                                      {currentControl, currentDepend, left, right},
-                                     gateType);
+                                     GateType::AnyType());
     acc_.ReplaceInAfterInsert(currentControl, currentDepend, ret);
     currentLabel->SetControl(ret);
     currentLabel->SetDepend(ret);
@@ -1086,8 +1086,8 @@ GateRef CircuitBuilder::InsertRangeCheckPredicate(GateRef left, TypedBinOp cond,
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
     auto frameState = acc_.FindNearestFrameState(currentDepend);
-    TypedBinaryAccessor accessor(GateType::IntType(), cond);
-    auto ret = GetCircuit()->NewGate(circuit_->RangeCheckPredicate(accessor.ToValue()),
+    uint64_t value = TypedBinaryAccessor::ToValue(ParamType::IntType(), cond);
+    auto ret = GetCircuit()->NewGate(circuit_->RangeCheckPredicate(value),
                                      MachineType::I32,
                                      {currentControl, currentDepend, left, right, frameState},
                                      GateType::IntType());

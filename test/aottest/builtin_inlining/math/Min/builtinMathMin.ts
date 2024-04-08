@@ -177,6 +177,7 @@ print(Math.min(4, 0, -2, Infinity)); //: -2
 print(Math.min(-1, -2, -1.5, -2, -8)); //: -8
 
 // Replace standard builtin
+//aot: [trace] Check Type: NotJSCallTarget4
 let trueMin = Math.min
 Math.min = replace
 print(Math.min(-1.001, -90)); //: -1.001
@@ -234,8 +235,6 @@ printMin(nanObj, obj); //: NaN
 printMin(24, obj); //: -23
 
 // call obj.valueOf twice
-//aot: [trace] aot inline builtin: Math.min, caller function name:func_main_0@builtinMathMin
-//aot: [trace] Check Type: NotNumber2
 //: obj.valueOf
 //: obj.valueOf
 print(Math.min(NaN, obj, obj)); //: NaN

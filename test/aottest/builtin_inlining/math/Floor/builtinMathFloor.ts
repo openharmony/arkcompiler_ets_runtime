@@ -40,41 +40,42 @@ print(Math.floor());            //: NaN
 
 // Replace standart builtin
 let backup = Math.floor
+//aot: [trace] Check Type: NotCallTarget1
 Math.floor = replace
-print(Math.floor(111));         //: 111
+printFloor(111);         //: 111
 Math.floor = backup
 
 // Check with NaN param
-//aot: [trace] aot inline builtin: Math.floor, caller function name:func_main_0@builtinMathFloor
-print(Math.floor(NaN));         //: NaN
+//aot: [trace] aot inline builtin: Math.floor, caller function name:doFloor@builtinMathFloor
+printFloor(NaN);         //: NaN
 
 // Check with infinity param
-//aot: [trace] aot inline builtin: Math.floor, caller function name:func_main_0@builtinMathFloor
-print(Math.floor(-Infinity));   //: -Infinity
-//aot: [trace] aot inline builtin: Math.floor, caller function name:func_main_0@builtinMathFloor
-print(Math.floor(+Infinity));   //: Infinity
+//aot: [trace] aot inline builtin: Math.floor, caller function name:doFloor@builtinMathFloor
+printFloor(-Infinity);   //: -Infinity
+//aot: [trace] aot inline builtin: Math.floor, caller function name:doFloor@builtinMathFloor
+printFloor(+Infinity);   //: Infinity
 
 // Check with zero param
-//aot: [trace] aot inline builtin: Math.floor, caller function name:func_main_0@builtinMathFloor
-print(Math.floor(-0.0));        //: 0
-//aot: [trace] aot inline builtin: Math.floor, caller function name:func_main_0@builtinMathFloor
-print(Math.floor(0.0));         //: 0
-//aot: [trace] aot inline builtin: Math.floor, caller function name:func_main_0@builtinMathFloor
-print(Math.floor(+0.0));        //: 0
+//aot: [trace] aot inline builtin: Math.floor, caller function name:doFloor@builtinMathFloor
+printFloor(-0.0);        //: 0
+//aot: [trace] aot inline builtin: Math.floor, caller function name:doFloor@builtinMathFloor
+printFloor(0.0);         //: 0
+//aot: [trace] aot inline builtin: Math.floor, caller function name:doFloor@builtinMathFloor
+printFloor(+0.0);        //: 0
 
 // Check with integer param
-//aot: [trace] aot inline builtin: Math.floor, caller function name:func_main_0@builtinMathFloor
-print(Math.floor(-1.0));        //: -1
-//aot: [trace] aot inline builtin: Math.floor, caller function name:func_main_0@builtinMathFloor
-print(Math.floor(+1.0));        //: 1
-//aot: [trace] aot inline builtin: Math.floor, caller function name:func_main_0@builtinMathFloor
-print(Math.floor(-12.0));       //: -12
-//aot: [trace] aot inline builtin: Math.floor, caller function name:func_main_0@builtinMathFloor
-print(Math.floor(+12.0));       //: 12
-//aot: [trace] aot inline builtin: Math.floor, caller function name:func_main_0@builtinMathFloor
-print(Math.floor(-123.0));      //: -123
-//aot: [trace] aot inline builtin: Math.floor, caller function name:func_main_0@builtinMathFloor
-print(Math.floor(+123.0));      //: 123
+//aot: [trace] aot inline builtin: Math.floor, caller function name:doFloor@builtinMathFloor
+printFloor(-1.0);        //: -1
+//aot: [trace] aot inline builtin: Math.floor, caller function name:doFloor@builtinMathFloor
+printFloor(+1.0);        //: 1
+//aot: [trace] aot inline builtin: Math.floor, caller function name:doFloor@builtinMathFloor
+printFloor(-12.0);       //: -12
+//aot: [trace] aot inline builtin: Math.floor, caller function name:doFloor@builtinMathFloor
+printFloor(+12.0);       //: 12
+//aot: [trace] aot inline builtin: Math.floor, caller function name:doFloor@builtinMathFloor
+printFloor(-123.0);      //: -123
+//aot: [trace] aot inline builtin: Math.floor, caller function name:doFloor@builtinMathFloor
+printFloor(+123.0);      //: 123
 
 //aot: [trace] aot inline builtin: Math.floor, caller function name:doFloor@builtinMathFloor
 printFloor(1.5);                //: 1
@@ -100,18 +101,18 @@ printFloor("abc");              //aot: [trace] Check Type: NotCallTarget1
 Math.floor = backup
 
 // Check with fractional param
-//aot: [trace] aot inline builtin: Math.floor, caller function name:func_main_0@builtinMathFloor
-print(Math.floor(-1.25));       //: -2
-//aot: [trace] aot inline builtin: Math.floor, caller function name:func_main_0@builtinMathFloor
-print(Math.floor(+1.25));       //: 1
-//aot: [trace] aot inline builtin: Math.floor, caller function name:func_main_0@builtinMathFloor
-print(Math.floor(-1.50));       //: -2
-//aot: [trace] aot inline builtin: Math.floor, caller function name:func_main_0@builtinMathFloor
-print(Math.floor(+1.50));       //: 1
-//aot: [trace] aot inline builtin: Math.floor, caller function name:func_main_0@builtinMathFloor
-print(Math.floor(-1.75));       //: -2
-//aot: [trace] aot inline builtin: Math.floor, caller function name:func_main_0@builtinMathFloor
-print(Math.floor(+1.75));       //: 1
+//aot: [trace] aot inline builtin: Math.floor, caller function name:doFloor@builtinMathFloor
+printFloor(-1.25);       //: -2
+//aot: [trace] aot inline builtin: Math.floor, caller function name:doFloor@builtinMathFloor
+printFloor(+1.25);       //: 1
+//aot: [trace] aot inline builtin: Math.floor, caller function name:doFloor@builtinMathFloor
+printFloor(-1.50);       //: -2
+//aot: [trace] aot inline builtin: Math.floor, caller function name:doFloor@builtinMathFloor
+printFloor(+1.50);       //: 1
+//aot: [trace] aot inline builtin: Math.floor, caller function name:doFloor@builtinMathFloor
+printFloor(-1.75);       //: -2
+//aot: [trace] aot inline builtin: Math.floor, caller function name:doFloor@builtinMathFloor
+printFloor(+1.75);       //: 1
 
 // Check with non-number param
 //aot: [trace] aot inline builtin: Math.floor, caller function name:doFloor@builtinMathFloor
@@ -132,6 +133,6 @@ printFloor(true);       //aot: [trace] Check Type: NotNumber1
 //aot: [trace] aot inline builtin: Math.floor, caller function name:doFloor@builtinMathFloor
 printFloor(new Object); //aot: [trace] Check Type: NotNumber1
                         //: NaN
-//aot: [trace] aot inline builtin: Math.floor, caller function name:doFloor@builtinMathFloor
-printFloor("1.3333");   //aot: [trace] Check Type: NotNumber1
+//aot: [trace] Check Type: NotJSFastCallTarget1
+printFloor("1.3333");
                         //: 1

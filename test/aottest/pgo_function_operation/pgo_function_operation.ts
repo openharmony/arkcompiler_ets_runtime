@@ -28,13 +28,11 @@ A.prototype.bar = function() {
 }
 
 let a = new A();
-print(ArkTools.isTSHClass(a));
 print(a.x);
 a.x =2;
 print(a.x);
 a.foo();
 a.bar();
-print(ArkTools.isTSHClass(a));
 
 
 function B() {
