@@ -244,6 +244,9 @@ void JSThread::InvokeWeakNodeNativeFinalizeCallback()
         auto callback = callbackPair.first;
         (*callback)(callbackPair.second);
     }
+    if (finalizeTaskCallback_ != nullptr) {
+        finalizeTaskCallback_();
+    }
     runningNativeFinalizeCallbacks_ = false;
 }
 

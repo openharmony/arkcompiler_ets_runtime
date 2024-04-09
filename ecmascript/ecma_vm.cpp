@@ -475,6 +475,7 @@ void EcmaVM::ProcessNativeDelete(const WeakRootVisitor &visitor)
 {
     if (!heap_->IsYoungGC()) {
         auto iter = nativePointerList_.begin();
+        ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "ProcessNativeDeleteNum:" + std::to_string(nativePointerList_.size()));
         while (iter != nativePointerList_.end()) {
             JSNativePointer *object = *iter;
             auto fwd = visitor(reinterpret_cast<TaggedObject *>(object));
@@ -529,7 +530,7 @@ void EcmaVM::ProcessReferences(const WeakRootVisitor &visitor)
         heap_->ResetNativeBindingSize();
         // array buffer
         auto iter = nativePointerList_.begin();
-        ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "ProcessNativeDeleteNum:" + std::to_string(nativePointerList_.size()));
+        ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "ProcessReferencesNum:" + std::to_string(nativePointerList_.size()));
         while (iter != nativePointerList_.end()) {
             JSNativePointer *object = *iter;
             auto fwd = visitor(reinterpret_cast<TaggedObject *>(object));
