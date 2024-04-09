@@ -241,6 +241,9 @@ JSHandle<LinkedHashSet> LinkedHashSet::Shrink(const JSThread *thread, const JSHa
 
 int LinkedHash::Hash(const JSThread *thread, JSTaggedValue key)
 {
+    if (key.IsInt()) {
+        return key.GetInt();
+    }
     if (key.IsSymbol()) {
         auto symbolString = JSSymbol::Cast(key.GetTaggedObject());
         return symbolString->GetHashField();
