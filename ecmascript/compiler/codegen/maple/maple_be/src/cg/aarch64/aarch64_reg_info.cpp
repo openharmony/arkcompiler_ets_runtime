@@ -24,7 +24,7 @@ void AArch64RegInfo::Init()
 {
     for (regno_t regNO = kRinvalid; regNO < kMaxRegNum; ++regNO) {
         /* when yieldpoint is enabled, x19 is reserved. */
-        if (IsYieldPointReg(regNO)) {
+        if (IsYieldPointReg(regNO) || IsReservedReg(regNO)) {
             continue;
         }
         if (regNO == R29 && GetCurrFunction()->UseFP()) {

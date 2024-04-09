@@ -839,7 +839,7 @@ public:
     {
         curModulePC = pc;
     }
-    
+
     uint32 GetCurModulePC() const
     {
         return curModulePC;
