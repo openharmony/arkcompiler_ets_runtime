@@ -277,6 +277,7 @@ public:
     GateRef TaggedPtrToTaggedDoublePtr(GateRef x);
     GateRef TaggedPtrToTaggedIntPtr(GateRef x);
     GateRef CastDoubleToInt64(GateRef x);
+    GateRef CastFloat32ToInt32(GateRef x);
     GateRef TaggedTrue();
     GateRef TaggedFalse();
     GateRef TaggedUndefined();
@@ -346,6 +347,7 @@ public:
     GateRef IsExtensible(GateRef object);
     GateRef TaggedObjectIsEcmaObject(GateRef obj);
     GateRef IsEcmaObject(GateRef obj);
+    GateRef IsDataView(GateRef obj);
     GateRef IsSymbol(GateRef obj);
     GateRef IsString(GateRef obj);
     GateRef IsLineString(GateRef obj);
@@ -588,6 +590,7 @@ public:
     GateRef ChangeInt32ToFloat64(GateRef x);
     GateRef ChangeUInt32ToFloat64(GateRef x);
     GateRef ChangeFloat64ToInt32(GateRef x);
+    GateRef TruncDoubleToFloat32(GateRef x);
     GateRef DeletePropertyOrThrow(GateRef glue, GateRef obj, GateRef value);
     GateRef ToObject(GateRef glue, GateRef obj);
     GateRef DeleteProperty(GateRef glue, GateRef obj, GateRef value);
@@ -841,6 +844,11 @@ public:
     GateRef AppendSkipHole(GateRef glue, GateRef first, GateRef second, GateRef copyLength);
     GateRef IntToEcmaString(GateRef glue, GateRef number);
     GateRef NumberToString(GateRef glue, GateRef number);
+    inline GateRef GetViewedArrayBuffer(GateRef dataView);
+    inline GateRef GetByteOffset(GateRef dataView);
+    inline GateRef GetByteLength(GateRef dataView);
+    inline GateRef GetArrayBufferData(GateRef buffer);
+    GateRef IsDetachedBuffer(GateRef buffer);
     inline GateRef IsMarkerCellValid(GateRef cell);
     inline GateRef GetAccessorHasChanged(GateRef obj);
     inline GateRef ComputeTaggedTypedArraySize(GateRef elementSize, GateRef length);

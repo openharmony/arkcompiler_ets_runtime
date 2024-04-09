@@ -39,6 +39,7 @@ using namespace panda::ecmascript;
 #define DEFVALUE(varname, cirBuilder, type, val) \
         Variable varname(cirBuilder, type, cirBuilder->NextVariableId(), val)
 
+class BuiltinsTypedArrayStubBuilder;
 class BuiltinsStringStubBuilder;
 class CompilationConfig;
 class Environment;
@@ -107,7 +108,7 @@ class PostSchedule;
     V(CastDoubleToInt64, Bitcast, MachineType::I64)                    \
     V(CastInt64ToFloat64, Bitcast, MachineType::F64)                   \
     V(CastInt32ToFloat32, Bitcast, MachineType::F32)                   \
-    V(CaseFloat32ToInt32, Bitcast, MachineType::I32)                   \
+    V(CastFloat32ToInt32, Bitcast, MachineType::I32)                   \
     V(SExtInt32ToInt64, Sext, MachineType::I64)                        \
     V(SExtInt1ToInt64, Sext, MachineType::I64)                         \
     V(SExtInt1ToInt32, Sext, MachineType::I32)                         \
@@ -884,6 +885,7 @@ private:
     CompilationConfig *cmpCfg_ {nullptr};
     friend StubBuilder;
     friend BuiltinsStringStubBuilder;
+    friend BuiltinsTypedArrayStubBuilder;
     friend TypedBytecodeLowering;
     friend NTypeBytecodeLowering;
     friend PGOHCRLowering;

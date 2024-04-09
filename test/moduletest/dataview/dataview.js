@@ -31,3 +31,54 @@ try {
 } catch(e) {
     print(e)
 }
+
+const buf = new ArrayBuffer(16);
+const first = new DataView(buf, 0, 8);
+const second = new DataView(buf, 8);
+// test setInt32
+second.setInt32(0, NaN);
+print(second.getInt32(0));
+second.setInt32(0, 13.54);
+print(second.getInt32(0));
+second.setInt32(0, -413.54);
+print(second.getInt32(0));
+second.setInt32(1, 2147483648);
+print(second.getInt32(1));
+second.setInt32(1, 13.54);
+print(second.getInt32(0));
+second.setInt32(0, Infinity);
+print(second.getInt32(0));
+second.setInt32(0, 27, true);
+print(second.getInt32(0));
+
+// test setFloat32
+second.setFloat32(0, NaN);
+print(second.getInt32(0));
+second.setFloat32(0, 13.54);
+print(second.getInt32(0));
+second.setFloat32(0, -413.54);
+print(second.getInt32(0));
+second.setFloat32(1, 2147483648);
+print(second.getInt32(1));
+second.setFloat32(1, 13.54);
+print(second.getInt32(0));
+second.setFloat32(0, Infinity);
+print(second.getInt32(0));
+second.setFloat32(0, 27, true);
+print(second.getInt32(0));
+
+// test setFloat64
+second.setFloat64(0, NaN);
+print(second.getInt32(0));
+second.setFloat64(0, 13.54);
+print(second.getInt32(0));
+second.setFloat64(0, -413.54);
+print(second.getInt32(0));
+second.setFloat64(0, 2147483648);
+print(second.getInt32(1));
+second.setFloat64(0, 13.54);
+print(second.getInt32(0));
+second.setFloat64(0, Infinity);
+print(second.getInt32(0));
+second.setFloat64(0, 27, true);
+print(second.getInt32(0));

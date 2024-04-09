@@ -31,6 +31,7 @@
 
 namespace panda::ecmascript::builtins {
 static constexpr double NUMBER_HALF = 0.5;
+static constexpr uint32_t BITS_MASK_FF = 0xFF;
 static constexpr uint32_t BITS_EIGHT = 8;
 static constexpr uint32_t BITS_TWENTY_FOUR = 24;
 static constexpr uint32_t BITS_FORTY = 40;

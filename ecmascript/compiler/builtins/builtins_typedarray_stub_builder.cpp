@@ -20,37 +20,6 @@
 #include "ecmascript/compiler/new_object_stub_builder.h"
 
 namespace panda::ecmascript::kungfu {
-GateRef BuiltinsTypedArrayStubBuilder::IsDetachedBuffer(GateRef buffer)
-{
-    auto env = GetEnvironment();
-    Label entryPass(env);
-    env->SubCfgEntry(&entryPass);
-    Label isNull(env);
-    Label exit(env);
-    Label isByteArray(env);
-    Label notByteArray(env);
-    DEFVARIABLE(result, VariableType::BOOL(), False());
-    BRANCH(IsByteArray(buffer), &isByteArray, &notByteArray);
-    Bind(&isByteArray);
-    {
-        Jump(&exit);
-    }
-    Bind(&notByteArray);
-    {
-        GateRef dataSlot = GetArrayBufferData(buffer);
-        BRANCH(TaggedIsNull(dataSlot), &isNull, &exit);
-        Bind(&isNull);
-        {
-            result = True();
-            Jump(&exit);
-        }
-    }
-    Bind(&exit);
-    auto ret = *result;
-    env->SubCfgExit();
-    return ret;
-}
-
 GateRef BuiltinsTypedArrayStubBuilder::GetDataPointFromBuffer(GateRef arrBuf)
 {
     auto env = GetEnvironment();
@@ -60,11 +29,11 @@ GateRef BuiltinsTypedArrayStubBuilder::GetDataPointFromBuffer(GateRef arrBuf)
     Label exit(env);
     Label isByteArray(env);
     Label notByteArray(env);
-    DEFVARIABLE(result, VariableType::JS_ANY(), arrBuf);
+    DEFVARIABLE(result, VariableType::NATIVE_POINTER(), IntPtr(0));
     BRANCH(IsByteArray(arrBuf), &isByteArray, &notByteArray);
     Bind(&isByteArray);
     {
-        result = PtrAdd(*result, IntPtr(ByteArray::DATA_OFFSET));
+        result = ChangeByteArrayTaggedPointerToInt64(PtrAdd(arrBuf, IntPtr(ByteArray::DATA_OFFSET)));
         Jump(&exit);
     }
     Bind(&notByteArray);
