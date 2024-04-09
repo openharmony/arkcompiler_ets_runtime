@@ -1,16 +1,29 @@
 {
-	"full_x86_64":{
+	"full_x86_64": {
 		"ETS_RUNTIME_PATH": "out/rk3568/clang_x64/arkcompiler/ets_runtime/",
-		"ICU_PATH": "out/rk3568/clang_x64/thirdparty/icu/",
-		"ZLIB_PATH": "out/rk3568/clang_x64/thirdparty/zlib/", 
-		"LIB_PATH": "prebuilts/clang/ohos/linux-x86_64/llvm/lib/",
+		"STUB_AN": "out/rk3568/clang_x64/gen/arkcompiler/ets_runtime/stub.an",
+		"LIBS_LIST": [
+			"out/rk3568/clang_x64/thirdparty/icu/",
+			"out/rk3568/clang_x64/thirdparty/zlib/",
+			"prebuilts/clang/ohos/linux-x86_64/llvm/lib/"
+		],
 		"ES2ABC": "out/rk3568/clang_x64/arkcompiler/ets_frontend/es2abc"
 	},
 	"independent_x86_64": {
 		"ETS_RUNTIME_PATH": "out/x64.release/arkcompiler/ets_runtime",
-		"ICU_PATH": "out/x64.release/thirdparty/icu/",
-		"ZLIB_PATH": "", 
-        "LIB_PATH": "",
+		"STUB_AN": "out/x64.release/gen/arkcompiler/ets_runtime/stub.an",
+		"LIBS_LIST": [
+			"out/x64.release/thirdparty/icu/"
+		],
 		"ES2ABC": "out/x64.release/arkcompiler/ets_frontend/es2abc"
-	}	
+	},
+	"independent_arm64": {
+		"ETS_RUNTIME_PATH": "out/arm64.release/arkcompiler/ets_runtime",
+		"STUB_AN": "out/arm64.release/gen/arkcompiler/ets_runtime/stub.an",
+		"LIBS_LIST": [
+			"out/arm64.release/thirdparty/icu/",
+			"out/arm64.release/thirdparty/bounds_checking_function"
+		],
+		"ES2ABC": "out/x64.release/arkcompiler/ets_frontend/es2abc"
+	}
 }
