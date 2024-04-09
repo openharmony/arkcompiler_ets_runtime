@@ -19,7 +19,16 @@
 #include <pthread.h>
 
 #include "ecmascript/common.h"
-
+#ifdef DEBUG
+#define FATAL_IF_ERROR(f, rc)                           \
+    do {                                                \
+        if (rc != 0) {                                  \
+            LOG_ECMA(FATAL)<< f << " failed: " << rc;   \
+        }                                               \
+    } while (false)
+#else
+#define FATAL_IF_ERROR(f, rc) static_cast<void>(0)
+#endif
 namespace panda::ecmascript {
 
 class PUBLIC_API Mutex {
