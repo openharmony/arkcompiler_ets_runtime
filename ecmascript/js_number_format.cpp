@@ -488,6 +488,13 @@ void JSNumberFormat::InitializeNumberFormat(JSThread *thread, const JSHandle<JSN
         }
     }
 
+    if (!numberingSystemStr.empty()) {
+        // If numberingSystem is invalid, Let numberingSystem be undefined.
+        if (!JSLocale::IsWellNumberingSystem(numberingSystemStr)) {
+            numberFormat->SetNumberingSystem(thread, undefinedValue);
+        }
+    }
+
     // 10. Let localeData be %NumberFormat%.[[LocaleData]].
     JSHandle<TaggedArray> availableLocales;
     if (requestedLocales->GetLength() == 0) {
