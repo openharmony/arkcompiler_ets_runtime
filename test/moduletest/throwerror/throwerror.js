@@ -57,3 +57,11 @@ try {
 } catch (e) {
     print(e.name);
 }
+
+try {
+    const v40 = [1, -3.0];
+    v40[1] = v40;
+    print(v40.flat(536870887));
+} catch (e) {
+    print(e)
+}
