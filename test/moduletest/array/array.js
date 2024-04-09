@@ -615,3 +615,15 @@ const v12 = new C3("p");
 new C3(v12);
 new C3(C3);
 print(new C3(C3));
+
+// Test case for toSorted()
+var arr_toSorted1 = ["Mar", "Jan", "Feb", "Dec"];
+var arr_toSorted2 = new Array();
+arr_toSorted2[0] = "Mar";
+arr_toSorted2[1] = "Jan";
+arr_toSorted2[2] = "Feb";
+arr_toSorted2[3] = "Dec";
+var result_toSorted1 = arr_toSorted1.toSorted();
+print(result_toSorted1);
+var result_toSorted2 = arr_toSorted2.toSorted();
+print(result_toSorted2);
