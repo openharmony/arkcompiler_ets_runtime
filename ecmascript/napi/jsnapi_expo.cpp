@@ -1722,6 +1722,24 @@ bool ObjectRef::Set(const EcmaVM *vm, Local<JSValueRef> key, Local<JSValueRef> v
                                                       valueValue.GetTaggedValue());
 }
 
+bool ObjectRef::Set(const EcmaVM *vm, const char *utf8, Local<JSValueRef> value)
+{
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, false);
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
+    [[maybe_unused]] LocalScope scope(vm);
+    JSHandle<JSTaggedValue> obj = JSNApiHelper::ToJSHandle(this);
+    LOG_IF_SPECIAL(obj, ERROR);
+    ObjectFactory *factory = vm->GetFactory();
+    JSHandle<JSTaggedValue> keyValue(factory->NewFromUtf8(utf8));
+    JSTaggedValue valueValue = JSNApiHelper::ToJSTaggedValue(*value);
+    if (!obj->IsHeapObject()) {
+        return JSTaggedValue::SetProperty(thread, obj, keyValue, JSHandle<JSTaggedValue>(thread, valueValue));
+    }
+    return ObjectFastOperator::FastSetPropertyByValue(thread, obj.GetTaggedValue(),
+                                                      keyValue.GetTaggedValue(),
+                                                      valueValue);
+}
+
 bool ObjectRef::Set(const EcmaVM *vm, uint32_t key, Local<JSValueRef> value)
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, false);
@@ -1763,6 +1781,26 @@ Local<JSValueRef> ObjectRef::Get(const EcmaVM *vm, Local<JSValueRef> key)
     JSHandle<JSTaggedValue> obj = JSNApiHelper::ToJSHandle(this);
     LOG_IF_SPECIAL(obj, ERROR);
     JSHandle<JSTaggedValue> keyValue = JSNApiHelper::ToJSHandle(key);
+    if (!obj->IsHeapObject()) {
+        OperationResult ret = JSTaggedValue::GetProperty(thread, obj, keyValue);
+        RETURN_VALUE_IF_ABRUPT(thread, JSValueRef::Undefined(vm));
+        return scope.Escape(JSNApiHelper::ToLocal<JSValueRef>(ret.GetValue()));
+    }
+    JSTaggedValue ret = ObjectFastOperator::FastGetPropertyByValue(thread, obj.GetTaggedValue(),
+                                                                   keyValue.GetTaggedValue());
+    RETURN_VALUE_IF_ABRUPT(thread, JSValueRef::Undefined(vm));
+    return scope.Escape(JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(thread, ret)));
+}
+
+Local<JSValueRef> ObjectRef::Get(const EcmaVM *vm, const char *utf8)
+{
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
+    EscapeLocalScope scope(vm);
+    JSHandle<JSTaggedValue> obj = JSNApiHelper::ToJSHandle(this);
+    LOG_IF_SPECIAL(obj, ERROR);
+    ObjectFactory *factory = vm->GetFactory();
+    JSHandle<JSTaggedValue> keyValue(factory->NewFromUtf8(utf8));
     if (!obj->IsHeapObject()) {
         OperationResult ret = JSTaggedValue::GetProperty(thread, obj, keyValue);
         RETURN_VALUE_IF_ABRUPT(thread, JSValueRef::Undefined(vm));

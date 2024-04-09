@@ -653,10 +653,12 @@ public:
                                                        Local<FunctionRef> setter);
     bool ConvertToNativeBindingObject(const EcmaVM *vm, Local<NativePointerRef> value);
     bool Set(const EcmaVM *vm, Local<JSValueRef> key, Local<JSValueRef> value);
+    bool Set(const EcmaVM *vm, const char *utf8, Local<JSValueRef> value);
     bool Set(const EcmaVM *vm, uint32_t key, Local<JSValueRef> value);
     bool SetAccessorProperty(const EcmaVM *vm, Local<JSValueRef> key, Local<FunctionRef> getter,
                              Local<FunctionRef> setter, PropertyAttribute attribute = PropertyAttribute::Default());
     Local<JSValueRef> Get(const EcmaVM *vm, Local<JSValueRef> key);
+    Local<JSValueRef> Get(const EcmaVM *vm, const char *utf8);
     Local<JSValueRef> Get(const EcmaVM *vm, int32_t key);
 
     bool GetOwnProperty(const EcmaVM *vm, Local<JSValueRef> key, PropertyAttribute &property);
