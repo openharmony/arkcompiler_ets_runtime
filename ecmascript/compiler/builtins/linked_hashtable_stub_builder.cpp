@@ -16,6 +16,7 @@
 #include "ecmascript/compiler/builtins/linked_hashtable_stub_builder.h"
 
 #include "ecmascript/compiler/builtins/builtins_stubs.h"
+#include "ecmascript/compiler/hash_stub_builder.h"
 #include "ecmascript/compiler/new_object_stub_builder.h"
 #include "ecmascript/linked_hash_table.h"
 #include "ecmascript/js_set.h"
@@ -72,7 +73,8 @@ void LinkedHashTableStubBuilder<LinkedHashTableType, LinkedHashTableObject>::Reh
             }
             Bind(&notWeak);
 
-            GateRef hash = GetHash(*key);
+            HashStubBuilder hashBuilder(this, glue_);
+            GateRef hash = hashBuilder.GetHash(*key);
             GateRef bucket = HashToBucket(newTable, hash);
             InsertNewEntry(newTable, bucket, *desEntry);
             GateRef desIndex = EntryToIndex(newTable, *desEntry);
@@ -215,45 +217,6 @@ GateRef LinkedHashTableStubBuilder<LinkedHashTableType, LinkedHashTableObject>::
             res = True();
             Jump(&exit);
         }
-    }
-    Bind(&exit);
-    auto ret = *res;
-    env->SubCfgExit();
-    return ret;
-}
-
-template <typename LinkedHashTableType, typename LinkedHashTableObject>
-GateRef LinkedHashTableStubBuilder<LinkedHashTableType, LinkedHashTableObject>::GetHash(GateRef key)
-{
-    auto env = GetEnvironment();
-    Label entryLabel(env);
-    Label exit(env);
-    env->SubCfgEntry(&entryLabel);
-    DEFVARIABLE(res, VariableType::INT32(), Int32(0));
-
-    Label symbolKey(env);
-    Label stringCheck(env);
-    BRANCH(TaggedIsSymbol(key), &symbolKey, &stringCheck);
-    Bind(&symbolKey);
-    {
-        res = Load(VariableType::INT32(), key, IntPtr(JSSymbol::HASHFIELD_OFFSET));
-        Jump(&exit);
-    }
-    Bind(&stringCheck);
-    Label stringKey(env);
-    Label slowGetHash(env);
-    BRANCH(TaggedIsString(key), &stringKey, &slowGetHash);
-    Bind(&stringKey);
-    {
-        res = GetHashcodeFromString(glue_, key);
-        Jump(&exit);
-    }
-    Bind(&slowGetHash);
-    {
-        // GetHash();
-        GateRef hash = CallRuntime(glue_, RTSTUB_ID(GetLinkedHash), { key });
-        res = GetInt32OfTInt(hash);
-        Jump(&exit);
     }
     Bind(&exit);
     auto ret = *res;
@@ -543,7 +506,8 @@ GateRef LinkedHashTableStubBuilder<LinkedHashTableType, LinkedHashTableObject>::
     env->SubCfgEntry(&cfgEntry);
     Label exit(env);
     DEFVARIABLE(res, VariableType::JS_ANY(), linkedTable);
-    GateRef hash = GetHash(key);
+    HashStubBuilder hashBuilder(this, glue_);
+    GateRef hash = hashBuilder.GetHash(key);
     GateRef entry = FindElement(linkedTable, key, hash);
     Label findEntry(env);
     Label notFind(env);
@@ -589,7 +553,8 @@ GateRef LinkedHashTableStubBuilder<LinkedHashTableType, LinkedHashTableObject>::
     env->SubCfgEntry(&cfgEntry);
     Label exit(env);
     DEFVARIABLE(res, VariableType::JS_ANY(), TaggedFalse());
-    GateRef hash = GetHash(key);
+    HashStubBuilder hashBuilder(this, glue_);
+    GateRef hash = hashBuilder.GetHash(key);
     GateRef entry = FindElement(linkedTable, key, hash);
     Label findEntry(env);
     BRANCH(Int32Equal(entry, Int32(-1)), &exit, &findEntry);
@@ -624,7 +589,9 @@ GateRef LinkedHashTableStubBuilder<LinkedHashTableType, LinkedHashTableObject>::
     GateRef size = GetNumberOfElements(linkedTable);
     BRANCH(Int32Equal(size, Int32(0)), &exit, &nonEmpty);
     Bind(&nonEmpty);
-    GateRef hash = GetHash(key);
+    HashStubBuilder hashBuilder(this, glue_);
+    GateRef hash = hashBuilder.GetHash(key);
+
     GateRef entry = FindElement(linkedTable, key, hash);
     Label findEntry(env);
     BRANCH(Int32Equal(entry, Int32(-1)), &exit, &findEntry);
@@ -747,7 +714,8 @@ GateRef LinkedHashTableStubBuilder<LinkedHashTableType, LinkedHashTableObject>::
     env->SubCfgEntry(&cfgEntry);
     Label exit(env);
     DEFVARIABLE(res, VariableType::JS_ANY(), Undefined());
-    GateRef hash = GetHash(key);
+    HashStubBuilder hashBuilder(this, glue_);
+    GateRef hash = hashBuilder.GetHash(key);
     GateRef entry = FindElement(linkedTable, key, hash);
     Label findEntry(env);
     Branch(Int32Equal(entry, Int32(-1)), &exit, &findEntry);

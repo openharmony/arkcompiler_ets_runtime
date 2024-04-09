@@ -56,7 +56,6 @@ private:
         return Int32Add(bucket, Int32(LinkedHashTableType::ELEMENTS_START_INDEX));
     }
 
-    GateRef GetHash(GateRef key);
     GateRef HashObjectIsMatch(GateRef key, GateRef other);
     GateRef FindElement(GateRef linkedTable, GateRef key, GateRef hash);
     GateRef GetKey(GateRef linkedTable, GateRef entry)

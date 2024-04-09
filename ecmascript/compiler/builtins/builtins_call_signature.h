@@ -31,7 +31,8 @@ namespace panda::ecmascript::kungfu {
     BUILTINS_METHOD_STUB_LIST(D, D, D)              \
     BUILTINS_WITH_CONTAINERS_STUB_BUILDER(D)        \
     BUILTINS_CONSTRUCTOR_STUB_LIST(V)               \
-    AOT_AND_BUILTINS_STUB_LIST(V)
+    AOT_AND_BUILTINS_STUB_LIST(V)                   \
+    BUILTINS_ARKTOOLS_STUB_BUILDER(D)
 
 #define BUILTINS_METHOD_STUB_LIST(V, T, D)          \
     BUILTINS_WITH_STRING_STUB_BUILDER(V)            \
@@ -146,6 +147,9 @@ namespace panda::ecmascript::kungfu {
     V(ForEach,            Vector,         ContainersCommonFuncCall,  VECTOR_FOREACH,               JS_POINTER) \
     V(ReplaceAllElements, ArrayList,      ContainersCommonFuncCall,  ARRAYLIST_REPLACEALLELEMENTS, JS_POINTER) \
     V(ReplaceAllElements, Vector,         ContainersCommonFuncCall,  VECTOR_REPLACEALLELEMENTS,    JS_POINTER)
+
+#define BUILTINS_ARKTOOLS_STUB_BUILDER(V) \
+    V(HashCode, ArkTools, Undefined())
 
 #define BUILTINS_CONSTRUCTOR_STUB_LIST(V)           \
     V(BooleanConstructor)                           \

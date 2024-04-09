@@ -49,7 +49,8 @@
     V("printTypedOpProfilerAndReset",   PrintTypedOpProfilerAndReset,   1, INVALID)       \
     V("isOnHeap",                       IsOnHeap,                       1, INVALID)       \
     V("checkDeoptStatus",               CheckDeoptStatus,               2, INVALID)       \
-    V("checkCircularImport",            CheckCircularImport,            2, INVALID)
+    V("checkCircularImport",            CheckCircularImport,            2, INVALID)       \
+    V("hashCode",                       HashCode,                       1, ArkToolsHashCode)
 
 #define BUILTIN_ARK_TOOLS_FUNCTIONS_REGRESS(V)                                                                \
     V("prepareFunctionForOptimization",            PrepareFunctionForOptimization,            1, INVALID)     \
@@ -169,6 +170,8 @@ public:
     static JSTaggedValue RemoveAOTFlag(EcmaRuntimeCallInfo *info);
 
     static JSTaggedValue CheckCircularImport(EcmaRuntimeCallInfo *info);
+
+    static JSTaggedValue HashCode(EcmaRuntimeCallInfo *info);
 
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
     static JSTaggedValue StartCpuProfiler(EcmaRuntimeCallInfo *info);

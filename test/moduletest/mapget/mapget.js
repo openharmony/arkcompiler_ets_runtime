@@ -32,3 +32,40 @@ for (let i = 0; i < 4; ++i) {
     let value = map.get(i);
     print(value);
 }
+
+map = new Map();
+let key = Number.parseFloat("1392210229");
+map.set(key, "success");
+let value = map.get(key);
+print(value);
+
+
+function check(key) {
+    let irHash = ArkTools.hashCode(key);
+    let rtHash = ArkTools.hashCode(key, true);
+    if (irHash != rtHash) {
+        throw new Error("Mismatch hash for " + key + ": expected " + rtHash + ", but got " + irHash);
+    }
+}
+
+check(0);
+check(1);
+check(-1);
+check(1.5);
+check(-1.5);
+check(Number.EPSILON);
+check(Number.NaN);
+check(Number.MIN_VALUE);
+check(Number.MAX_VALUE);
+check(Number.MIN_SAFE_INTEGER);
+check(Number.MIN_SAFE_INTEGER - 1);
+check(Number.MAX_SAFE_INTEGER);
+check(Number.MAX_SAFE_INTEGER + 1);
+check(Number.NaN);
+check(Number.POSITIVE_INFINITY);
+check(Number.NEGATIVE_INFINITY);
+check(Number.parseFloat("+0.0"));
+check(Number.parseFloat("-0.0"));
+
+// regression test
+check(Number.parseFloat("1392210229"));
