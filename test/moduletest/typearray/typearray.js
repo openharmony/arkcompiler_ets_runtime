@@ -327,3 +327,27 @@ Object.defineProperty(Int8Array.prototype, "constructor", {
 TestTypedArrayFilter(Int8Array);
 print(arr.filter(TestTypedArrayFilterFunc));
 print(calls);
+
+// test case for some()
+[
+    Float64Array,
+    Float32Array,
+    Int32Array,
+    Int16Array,
+    Int8Array,
+    Uint32Array,
+    Uint16Array,
+    Uint8Array,
+    Uint8ClampedArray
+].forEach(function (ctor, i) {
+if (testTypeArraySome(ctor)) {
+        print(ctor.name + " test success !!!")
+    } else {
+        print(ctor.name + " test fail !!!")
+    }
+});
+
+function testTypeArraySome(ctor) {
+    let obj = new ctor([-1, 0, 2, 5, 8]);
+    return obj.some((element, index, array) => element > 5);
+}
