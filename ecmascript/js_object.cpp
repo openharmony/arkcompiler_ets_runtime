@@ -1859,6 +1859,36 @@ bool JSObject::SetIntegrityLevel(JSThread *thread, const JSHandle<JSObject> &obj
     return true;
 }
 
+bool JSObject::FreezeSharedObject(JSThread *thread, const JSHandle<JSObject> &obj)
+{
+    ASSERT_PRINT(JSHandle<JSTaggedValue>(obj)->IsJSSharedObject() || JSHandle<JSTaggedValue>(obj)->IsJSSharedFunction(),
+                 "Obj is not a valid shared object");
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    // It is not extensible for shared object.
+    if (obj->IsExtensible()) {
+        return false;
+    }
+    JSHandle<JSHClass> hclass(thread, obj->GetClass());
+    auto newClass = JSHClass::Clone(thread, hclass);
+    if (!hclass->IsDictionaryMode()) {
+        uint32_t propNumber = hclass->NumberOfProps();
+        JSHandle<LayoutInfo> layoutInfo(thread, hclass->GetLayout());
+        JSHandle<LayoutInfo> newLayoutInfo = factory->CreateSLayoutInfo(propNumber);
+        for (uint32_t i = 0; i < propNumber; i++) {
+            JSTaggedValue key = layoutInfo->GetKey(i);
+            PropertyAttributes attr = layoutInfo->GetAttr(i);
+            attr.SetWritable(false);
+            newLayoutInfo->AddKey(thread, i, key, attr);
+        }
+        newClass->SetLayout(thread, newLayoutInfo);
+        obj->SynchronizedSetClass(thread, *newClass);
+    } else {
+        auto dict = NameDictionary::Cast(obj->GetProperties().GetTaggedObject());
+        dict->UpdateAllAttributesToNoWitable(thread);
+    }
+    return true;
+}
+
 // 7.3.15 TestIntegrityLevel (O, level)
 bool JSObject::TestIntegrityLevel(JSThread *thread, const JSHandle<JSObject> &obj, IntegrityLevel level)
 {
