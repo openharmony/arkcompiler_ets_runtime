@@ -106,19 +106,6 @@ class LayoutInfo;
 class JSIntlBoundFunction;
 class FreeObject;
 class JSNativePointer;
-class TSModuleTable;
-class TSTypeTable;
-class TSObjLayoutInfo;
-class TSType;
-class TSObjectType;
-class TSClassType;
-class TSUnionType;
-class TSInterfaceType;
-class TSClassInstanceType;
-class TSFunctionType;
-class TSArrayType;
-class TSIteratorInstanceType;
-class TSNamespaceType;
 class JSAPIArrayList;
 class JSAPIArrayListIterator;
 class JSAPIDeque;
@@ -571,20 +558,6 @@ public:
     JSHandle<ClassInfoExtractor> NewClassInfoExtractor(JSHandle<JSTaggedValue> method);
     JSHandle<ClassLiteral> NewClassLiteral();
 
-    // ----------------------------------- new TSType ----------------------------------------
-    JSHandle<TSObjLayoutInfo> CreateTSObjLayoutInfo(int propNum, JSTaggedValue initVal = JSTaggedValue::Hole());
-    JSHandle<TSObjectType> NewTSObjectType(uint32_t numOfKeys);
-    JSHandle<TSClassType> NewTSClassType();
-    JSHandle<TSUnionType> NewTSUnionType(uint32_t length);
-    JSHandle<TSInterfaceType> NewTSInterfaceType();
-    JSHandle<TSClassInstanceType> NewTSClassInstanceType();
-    JSHandle<TSTypeTable> NewTSTypeTable(uint32_t length);
-    JSHandle<TSModuleTable> NewTSModuleTable(uint32_t length);
-    JSHandle<TSFunctionType> NewTSFunctionType(uint32_t length);
-    JSHandle<TSArrayType> NewTSArrayType();
-    JSHandle<TSIteratorInstanceType> NewTSIteratorInstanceType();
-    JSHandle<TSNamespaceType> NewTSNamespaceType();
-
     // ----------------------------------- new string ----------------------------------------
     JSHandle<EcmaString> PUBLIC_API NewFromASCII(std::string_view data);
     JSHandle<EcmaString> PUBLIC_API NewFromUtf8(std::string_view data);
@@ -877,7 +850,6 @@ private:
     friend class GlobalEnvConstants;
     friend class EcmaString;
     friend class SnapshotProcessor;
-    friend class TSManager;
     friend class SingleCharTable;
     void InitObjectFields(const TaggedObject *object);
 

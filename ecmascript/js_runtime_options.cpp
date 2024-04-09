@@ -46,8 +46,6 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
     "--ark-bundle-name:                    Set ark bundle name\n"
     "--asm-interpreter:                    Enable asm interpreter. Default: 'true'\n"
     "--asm-opcode-disable-range:           Opcode range when asm interpreter is enabled.\n"
-    "--compiler-assert-types:              Enable type assertion for type inference tests. Default: 'false'\n"
-    "--builtins-dts:                       Builtins.d.abc file path for AOT.\n"
     "--builtins-lazy:                     Load some builtins function later.This option is only valid in workervm.\n"
     "--compiler-log:                       Log Option For aot compiler and stub compiler,\n"
     "                                      'none': no log,\n"
@@ -65,7 +63,6 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
                                            "Default: 'none'\n"
     "--compiler-type-threshold:            enable to skip methods whose type is no more than threshold. Default: -1\n"
     "--compiler-log-snapshot:              Enable to print snapshot information. Default: 'false'\n"
-    "--compiler-opt-global-typeinfer:      Enable global typeinfer for aot compiler: Default: 'false'\n"
     "--compiler-log-time:                  Enable to print pass compiler time. Default: 'false'\n"
     "--enable-ark-tools:                   Enable ark tools to debug. Default: 'false'\n"
     "--compiler-trace-bc:                  Enable tracing bytecode for aot runtime. Default: 'false'\n"
@@ -127,7 +124,6 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
     "--merge-abc:                          ABC file is merge abc. Default: 'false'\n"
     "--compiler-opt-level:                 Optimization level configuration of aot compiler. Default: '3'\n"
     "--options:                            Print compiler and runtime options\n"
-    "--compiler-print-type-info:           Enable print type info. Default: 'false'\n"
     "--serializer-buffer-size-limit:       Max serializer buffer size used by the VM in Byte. Default size is 2GB\n"
     "--snapshot-file:                      Snapshot file. Default: '/system/etc/snapshot'\n"
     "--startup-time:                       Print the start time of command execution. Default: 'false'\n"
@@ -191,14 +187,11 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"ark-bundleName", required_argument, nullptr, OPTION_ARK_BUNDLENAME},
         {"asm-interpreter", required_argument, nullptr, OPTION_ENABLE_ASM_INTERPRETER},
         {"asm-opcode-disable-range", required_argument, nullptr, OPTION_ASM_OPCODE_DISABLE_RANGE},
-        {"compiler-assert-types", required_argument, nullptr, OPTION_COMPILER_ASSERT_TYPES},
-        {"builtins-dts", required_argument, nullptr, OPTION_BUILTINS_DTS},
         {"builtins-lazy", required_argument, nullptr, OPTION_ENABLE_BUILTINS_LAZY},
         {"compiler-log", required_argument, nullptr, OPTION_COMPILER_LOG_OPT},
         {"compiler-log-methods", required_argument, nullptr, OPTION_COMPILER_LOG_METHODS},
         {"compiler-log-snapshot", required_argument, nullptr, OPTION_COMPILER_LOG_SNAPSHOT},
         {"compiler-log-time", required_argument, nullptr, OPTION_COMPILER_LOG_TIME},
-        {"compiler-opt-global-typeinfer", required_argument, nullptr, OPTION_COMPILER_OPT_GLOBAL_TYPEINFER},
         {"compiler-type-threshold", required_argument, nullptr, OPTION_COMPILER_TYPE_THRESHOLD},
         {"enable-ark-tools", required_argument, nullptr, OPTION_ENABLE_ARK_TOOLS},
         {"compiler-trace-bc", required_argument, nullptr, OPTION_COMPILER_TRACE_BC},
@@ -251,7 +244,6 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"merge-abc", required_argument, nullptr, OPTION_MERGE_ABC},
         {"enable-context", required_argument, nullptr, OPTION_ENABLE_CONTEXT},
         {"compiler-opt-level", required_argument, nullptr, OPTION_ASM_OPT_LEVEL},
-        {"compiler-print-type-info", required_argument, nullptr, OPTION_COMPILER_PRINT_TYPE_INFO},
         {"reloc-mode", required_argument, nullptr, OPTION_RELOCATION_MODE},
         {"serializer-buffer-size-limit", required_argument, nullptr, OPTION_SERIALIZER_BUFFER_SIZE_LIMIT},
         {"startup-time", required_argument, nullptr, OPTION_STARTUP_TIME},
@@ -371,17 +363,6 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                 break;
             case OPTION_ASM_OPCODE_DISABLE_RANGE:
                 SetAsmOpcodeDisableRange(optarg);
-                break;
-            case OPTION_COMPILER_ASSERT_TYPES:
-                ret = ParseBoolParam(&argBool);
-                if (ret) {
-                    SetAssertTypes(argBool);
-                } else {
-                    return false;
-                }
-                break;
-            case OPTION_BUILTINS_DTS:
-                SetBuiltinsDTS(optarg);
                 break;
             case OPTION_ENABLE_BUILTINS_LAZY:
                 ret = ParseBoolParam(&argBool);
@@ -655,14 +636,6 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                     return false;
                 }
                 break;
-            case OPTION_COMPILER_PRINT_TYPE_INFO:
-                ret = ParseBoolParam(&argBool);
-                if (ret) {
-                    SetPrintTypeInfo(argBool);
-                } else {
-                    return false;
-                }
-                break;
             case OPTION_PRINT_EXECUTE_TIME:
                 ret = ParseBoolParam(&argBool);
                 if (ret) {
@@ -842,14 +815,6 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                 ret = ParseBoolParam(&argBool);
                 if (ret) {
                     SetEnableOptTrackField(argBool);
-                } else {
-                    return false;
-                }
-                break;
-            case OPTION_COMPILER_OPT_GLOBAL_TYPEINFER:
-                ret = ParseBoolParam(&argBool);
-                if (ret) {
-                    SetEnableGlobalTypeInfer(argBool);
                 } else {
                     return false;
                 }
@@ -1241,17 +1206,9 @@ void JSRuntimeOptions::ParseListArgParam(const std::string &option, arg_list_t *
     return;
 }
 
-void JSRuntimeOptions::SetTargetBuiltinsDtsPath()
-{
-    WasSet(CommandValues::OPTION_BUILTINS_DTS);
-    std::string builtinsDtsPath = TARGET_BUILTINS_DTS_PATH;
-    SetBuiltinsDTS(builtinsDtsPath);
-}
-
 void JSRuntimeOptions::SetOptionsForTargetCompilation()
 {
     if (IsTargetCompilerMode()) {
-        SetTargetBuiltinsDtsPath();
         SetTargetTriple("aarch64-unknown-linux-gnu");
         SetEnableOptTrackField(false);
         SetEnableOptInlining(false);

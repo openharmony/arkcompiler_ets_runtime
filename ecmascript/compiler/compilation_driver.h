@@ -38,7 +38,7 @@ public:
                       bool outputAsm,
                       size_t maxMethodsInModule,
                       const std::pair<uint32_t, uint32_t> &compilerMethodsRange);
-    virtual ~CompilationDriver();
+    ~CompilationDriver() = default;
 
     NO_COPY_SEMANTIC(CompilationDriver);
     NO_MOVE_SEMANTIC(CompilationDriver);

@@ -130,7 +130,6 @@
 #include "ecmascript/template_map.h"
 #include "ecmascript/tests/test_helper.h"
 #include "ecmascript/transitions_dictionary.h"
-#include "ecmascript/ts_types/ts_type.h"
 #include "ecmascript/require/js_cjs_module.h"
 #include "ecmascript/require/js_cjs_require.h"
 #include "ecmascript/require/js_cjs_exports.h"
@@ -1181,60 +1180,6 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 JSHandle<ClassInfoExtractor> classInfoExtractor = factory->NewClassInfoExtractor(
                     JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
                 DUMP_FOR_HANDLE(classInfoExtractor);
-                break;
-            }
-            case JSType::TS_OBJECT_TYPE: {
-                CHECK_DUMP_FIELDS(TaggedObject::TaggedObjectSize(), TSObjectType::SIZE, 3U);
-                JSHandle<TSObjectType> objectType = factory->NewTSObjectType(0);
-                DUMP_FOR_HANDLE(objectType);
-                break;
-            }
-            case JSType::TS_CLASS_TYPE: {
-                CHECK_DUMP_FIELDS(TaggedObject::TaggedObjectSize(), TSClassType::SIZE, 7U);
-                JSHandle<TSClassType> classType = factory->NewTSClassType();
-                DUMP_FOR_HANDLE(classType);
-                break;
-            }
-            case JSType::TS_INTERFACE_TYPE: {
-                CHECK_DUMP_FIELDS(TaggedObject::TaggedObjectSize(), TSInterfaceType::SIZE, 4U);
-                JSHandle<TSInterfaceType> interfaceType = factory->NewTSInterfaceType();
-                DUMP_FOR_HANDLE(interfaceType);
-                break;
-            }
-            case JSType::TS_CLASS_INSTANCE_TYPE: {
-                CHECK_DUMP_FIELDS(TaggedObject::TaggedObjectSize(), TSClassInstanceType::SIZE, 2U);
-                JSHandle<TSClassInstanceType> classInstanceType = factory->NewTSClassInstanceType();
-                DUMP_FOR_HANDLE(classInstanceType);
-                break;
-            }
-            case JSType::TS_UNION_TYPE: {
-                CHECK_DUMP_FIELDS(TaggedObject::TaggedObjectSize(), TSUnionType::SIZE, 2U);
-                JSHandle<TSUnionType> unionType = factory->NewTSUnionType(1);
-                DUMP_FOR_HANDLE(unionType);
-                break;
-            }
-            case JSType::TS_FUNCTION_TYPE: {
-                CHECK_DUMP_FIELDS(TaggedObject::TaggedObjectSize(), TSFunctionType::SIZE, 5U);
-                JSHandle<TSFunctionType> functionType = factory->NewTSFunctionType(1);
-                DUMP_FOR_HANDLE(functionType);
-                break;
-            }
-            case JSType::TS_ARRAY_TYPE: {
-                CHECK_DUMP_FIELDS(TaggedObject::TaggedObjectSize(), TSArrayType::SIZE, 2U);
-                JSHandle<TSArrayType> arrayType = factory->NewTSArrayType();
-                DUMP_FOR_HANDLE(arrayType);
-                break;
-            }
-            case JSType::TS_ITERATOR_INSTANCE_TYPE: {
-                CHECK_DUMP_FIELDS(TaggedObject::TaggedObjectSize(), TSIteratorInstanceType::SIZE, 2U);
-                JSHandle<TSIteratorInstanceType> iteratorInstanceType = factory->NewTSIteratorInstanceType();
-                DUMP_FOR_HANDLE(iteratorInstanceType);
-                break;
-            }
-            case JSType::TS_NAMESPACE_TYPE: {
-                CHECK_DUMP_FIELDS(TaggedObject::TaggedObjectSize(), TSNamespaceType::SIZE, 2U);
-                JSHandle<TSNamespaceType> namespaceType = factory->NewTSNamespaceType();
-                DUMP_FOR_HANDLE(namespaceType);
                 break;
             }
             case JSType::JS_API_ARRAY_LIST: {

@@ -92,12 +92,9 @@ enum CommandValues {
     OPTION_COMPILER_LOG_METHODS,
     OPTION_COMPILER_TYPE_THRESHOLD,
     OPTION_ENABLE_RUNTIME_STAT,
-    OPTION_COMPILER_ASSERT_TYPES,
-    OPTION_COMPILER_PRINT_TYPE_INFO,
     OPTION_COMPILER_LOG_SNAPSHOT,
     OPTION_COMPILER_LOG_TIME,
     OPTION_ENABLE_WORKER,
-    OPTION_BUILTINS_DTS,
     OPTION_COMPILER_TRACE_BC,
     OPTION_COMPILER_TRACE_DEOPT,
     OPTION_COMPILER_TRACE_INLINE,
@@ -126,13 +123,12 @@ enum CommandValues {
     OPTION_COMPILER_OPT_INLINING,
     OPTION_COMPILER_OPT_PGOTYPE,
     OPTION_COMPILER_OPT_TRACK_FIELD,
-    OPTION_COMPILER_OPT_GLOBAL_TYPEINFER,
     OPTION_COMPILER_PGO_PROFILER_PATH,
-    OPTION_SPLIT_ONE,
     OPTION_COMPILER_PGO_HOTNESS_THRESHOLD,
     OPTION_COMPILER_PGO_SAVE_MIN_INTERVAL,
     OPTION_ENABLE_PGO_PROFILER,
     OPTION_PRINT_EXECUTE_TIME,
+    OPTION_SPLIT_ONE,
     OPTION_COMPILER_DEVICE_STATE,
     OPTION_COMPILER_VERIFY_VTABLE,
     OPTION_COMPILER_SELECT_METHODS,
@@ -765,41 +761,6 @@ public:
         return WasOptionSet(OPTION_STARTUP_TIME);
     }
 
-    bool AssertTypes() const
-    {
-        return assertTypes_;
-    }
-
-    void SetAssertTypes(bool value)
-    {
-        assertTypes_ = value;
-    }
-
-    bool PrintTypeInfo() const
-    {
-        return printTypeInfo_;
-    }
-
-    void SetPrintTypeInfo(bool value)
-    {
-        printTypeInfo_ = value;
-    }
-
-    void SetBuiltinsDTS(const std::string& value)
-    {
-        builtinsDTS_ = panda::os::file::File::GetExtendedFilePath(value);
-    }
-
-    bool WasSetBuiltinsDTS() const
-    {
-        return WasOptionSet(OPTION_BUILTINS_DTS);
-    }
-
-    std::string GetBuiltinsDTS() const
-    {
-        return builtinsDTS_;
-    }
-
     void SetTraceBc(bool value)
     {
         traceBc_ = value;
@@ -1211,16 +1172,6 @@ public:
         return enableOptTrackField_;
     }
 
-    void SetEnableGlobalTypeInfer(bool value)
-    {
-        enableGlobalTypeInfer_ = value;
-    }
-
-    bool IsEnableGlobalTypeInfer() const
-    {
-        return enableGlobalTypeInfer_;
-    }
-
     uint32_t GetCompilerModuleMethods() const
     {
         return compilerModuleMethods_;
@@ -1445,8 +1396,6 @@ public:
     {
         return compilerNoCheck_;
     }
-
-    void SetTargetBuiltinsDtsPath();
 
     void SetOptionsForTargetCompilation();
 
@@ -1754,10 +1703,7 @@ private:
     bool compilerLogSnapshot_ {false};
     bool compilerLogTime_ {false};
     bool enableRuntimeStat_ {false};
-    bool assertTypes_ {false};
-    bool printTypeInfo_ {false};
     bool isWorker_ {false};
-    std::string builtinsDTS_ {""};
     bool traceBc_ {false};
     std::string logLevel_ {"error"};
     arg_list_t logDebug_ {{"all"}};
@@ -1788,7 +1734,6 @@ private:
     uint16_t jitHotnessThreshold_ {2};
     uint16_t osrHotnessThreshold_ {2};
     bool forceJitCompileMain_{false};
-    bool enableGlobalTypeInfer_ {false};
     bool enableOptTrackField_ {true};
     uint32_t compilerModuleMethods_ {100};
     uint64_t wasSetPartOne_ {0};

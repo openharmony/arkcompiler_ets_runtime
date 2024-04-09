@@ -23,7 +23,6 @@ namespace panda::ecmascript::kungfu {
     V(EarlyElimination, true)                                                    \
     V(LaterElimination, true)                                                    \
     V(ValueNumbering, false)                                                     \
-    V(TypeInfer, false)                                                          \
     V(OptInlining, false)                                                        \
     V(OptNoGCCall, false)                                                        \
     V(OptPGOType, false)                                                         \

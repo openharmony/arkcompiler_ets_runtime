@@ -19,6 +19,7 @@
 #include <memory>
 
 #include "ecmascript/compiler/codegen/maple/maple_util/include/profile_type.h"
+#include "ecmascript/compiler/pgo_type/pgo_type_manager.h"
 #include "ecmascript/elements.h"
 #include "ecmascript/enum_conversion.h"
 #include "ecmascript/ic/ic_handler.h"

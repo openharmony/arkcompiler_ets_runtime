@@ -45,7 +45,6 @@
 #include "ecmascript/runtime.h"
 #include "ecmascript/stackmap/llvm/llvm_stackmap_parser.h"
 #include "ecmascript/template_string.h"
-#include "ecmascript/ts_types/ts_manager.h"
 
 namespace panda::ecmascript {
 using ArrayHelper = base::ArrayHelper;

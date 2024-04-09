@@ -2333,10 +2333,7 @@ template("host_aot_test_action") {
     }
     dst_file = rebase_path(_test_abc_path_)
     extension = "ts"
-    extra_args = [
-      "--merge-abc",
-      "--type-extractor",
-    ]
+    extra_args = [ "--merge-abc" ]
 
     if (!(defined(invoker.without_module) && invoker.without_module)) {
       extra_args += [ "--module" ]
@@ -2438,11 +2435,6 @@ template("host_aot_test_action") {
         invoker.is_enable_trace_deopt) {
       _aot_compile_options_ += " --compiler-trace-deopt=true"
     }
-    if (defined(invoker.is_enable_builtins_dts) &&
-        invoker.is_enable_builtins_dts) {
-      deps += [ "//arkcompiler/ets_runtime:es2abc_gen_builtins_d_abc" ]
-      _aot_compile_options_ += " --builtins-dts=" + rebase_path(root_out_dir) + "/obj/arkcompiler/ets_runtime/lib_ark_builtins/es2abc/lib_ark_builtins.d.abc"
-    }
     if (defined(invoker.is_enable_opt_inlining) &&
         invoker.is_enable_opt_inlining) {
       _aot_compile_options_ +=
@@ -2528,12 +2520,6 @@ template("host_aot_test_action") {
     if (defined(invoker.is_enable_trace_deopt) &&
         invoker.is_enable_trace_deopt) {
       _aot_compile_options_ += " --compiler-trace-deopt=true"
-    }
-
-    if (defined(invoker.is_enable_builtins_dts) &&
-        invoker.is_enable_builtins_dts) {
-      deps += [ "//arkcompiler/ets_runtime:es2abc_gen_builtins_d_abc" ]
-      _aot_compile_options_ += " --builtins-dts=" + rebase_path(root_out_dir) + "/obj/arkcompiler/ets_runtime/lib_ark_builtins/es2abc/lib_ark_builtins.d.abc"
     }
 
     if (defined(invoker.is_enable_opt_inlining) &&
@@ -2852,12 +2838,6 @@ template("host_aot_test_action") {
           invoker.is_enable_trace_deopt) {
         _aot_compile_options_ += " --compiler-trace-deopt=true"
       }
-      if (defined(invoker.is_enable_builtins_dts) &&
-          invoker.is_enable_builtins_dts) {
-        deps += [ "//arkcompiler/ets_runtime:es2abc_gen_builtins_d_abc" ]
-        _aot_compile_options_ += " --builtins-dts=" +
-                                 rebase_path(root_out_dir) + "/obj/arkcompiler/ets_runtime/lib_ark_builtins/es2abc/lib_ark_builtins.d.abc"
-      }
       if (defined(invoker.is_enable_opt_inlining) &&
           invoker.is_enable_opt_inlining) {
         _aot_compile_options_ +=
@@ -2947,13 +2927,6 @@ template("host_aot_test_action") {
       if (defined(invoker.is_enable_trace_deopt) &&
           invoker.is_enable_trace_deopt) {
         _aot_compile_options_ += " --compiler-trace-deopt=true"
-      }
-
-      if (defined(invoker.is_enable_builtins_dts) &&
-          invoker.is_enable_builtins_dts) {
-        deps += [ "//arkcompiler/ets_runtime:es2abc_gen_builtins_d_abc" ]
-        _aot_compile_options_ += " --builtins-dts=" +
-                                 rebase_path(root_out_dir) + "/obj/arkcompiler/ets_runtime/lib_ark_builtins/es2abc/lib_ark_builtins.d.abc"
       }
 
       if (defined(invoker.is_enable_opt_inlining) &&
@@ -3261,12 +3234,6 @@ template("host_aot_test_action") {
           invoker.is_enable_trace_deopt) {
         _aot_compile_options_ += " --compiler-trace-deopt=true"
       }
-      if (defined(invoker.is_enable_builtins_dts) &&
-          invoker.is_enable_builtins_dts) {
-        deps += [ "//arkcompiler/ets_runtime:es2abc_gen_builtins_d_abc" ]
-        _aot_compile_options_ += " --builtins-dts=" +
-                                 rebase_path(root_out_dir) + "/obj/arkcompiler/ets_runtime/lib_ark_builtins/es2abc/lib_ark_builtins.d.abc"
-      }
       if (defined(invoker.is_enable_opt_inlining) &&
           invoker.is_enable_opt_inlining) {
         _aot_compile_options_ +=
@@ -3357,13 +3324,6 @@ template("host_aot_test_action") {
       if (defined(invoker.is_enable_trace_deopt) &&
           invoker.is_enable_trace_deopt) {
         _aot_compile_options_ += " --compiler-trace-deopt=true"
-      }
-
-      if (defined(invoker.is_enable_builtins_dts) &&
-          invoker.is_enable_builtins_dts) {
-        deps += [ "//arkcompiler/ets_runtime:es2abc_gen_builtins_d_abc" ]
-        _aot_compile_options_ += " --builtins-dts=" +
-                                 rebase_path(root_out_dir) + "/obj/arkcompiler/ets_runtime/lib_ark_builtins/es2abc/lib_ark_builtins.d.abc"
       }
 
       if (defined(invoker.is_enable_opt_inlining) &&
@@ -3679,10 +3639,7 @@ template("host_aot_assert_test_action") {
     }
     dst_file = rebase_path(_test_abc_path_)
     extension = "ts"
-    extra_args = [
-      "--merge-abc",
-      "--type-extractor",
-    ]
+    extra_args = [ "--merge-abc" ]
 
     if (!(defined(invoker.without_module) && invoker.without_module)) {
       extra_args += [ "--module" ]
@@ -3781,11 +3738,6 @@ template("host_aot_assert_test_action") {
         invoker.is_enable_trace_deopt) {
       _aot_compile_options_ += " --compiler-trace-deopt=true"
     }
-    if (defined(invoker.is_enable_builtins_dts) &&
-        invoker.is_enable_builtins_dts) {
-      deps += [ "//arkcompiler/ets_runtime:es2abc_gen_builtins_d_abc" ]
-      _aot_compile_options_ += " --builtins-dts=" + rebase_path(root_out_dir) + "/obj/arkcompiler/ets_runtime/lib_ark_builtins/es2abc/lib_ark_builtins.d.abc"
-    }
     if (defined(invoker.is_enable_opt_inlining) &&
         invoker.is_enable_opt_inlining) {
       _aot_compile_options_ +=
@@ -3873,12 +3825,6 @@ template("host_aot_assert_test_action") {
     if (defined(invoker.is_enable_trace_deopt) &&
         invoker.is_enable_trace_deopt) {
       _aot_compile_options_ += " --compiler-trace-deopt=true"
-    }
-
-    if (defined(invoker.is_enable_builtins_dts) &&
-        invoker.is_enable_builtins_dts) {
-      deps += [ "//arkcompiler/ets_runtime:es2abc_gen_builtins_d_abc" ]
-      _aot_compile_options_ += " --builtins-dts=" + rebase_path(root_out_dir) + "/obj/arkcompiler/ets_runtime/lib_ark_builtins/es2abc/lib_ark_builtins.d.abc"
     }
 
     if (defined(invoker.is_enable_opt_inlining) &&
@@ -4267,17 +4213,6 @@ template("host_pgotypeinfer_test_action") {
     _aot_compile_options_ += " --compiler-pgo-profiler-path=" +
                              rebase_path(_test_aot_arg_) + "/modules.ap"
 
-    if (defined(invoker.is_enable_builtins_dts) &&
-        invoker.is_enable_builtins_dts) {
-      deps += [ "//arkcompiler/ets_runtime:es2abc_gen_builtins_d_abc" ]
-      _aot_compile_options_ += " --builtins-dts=" + rebase_path(root_out_dir) + "/obj/arkcompiler/ets_runtime/lib_ark_builtins/es2abc/lib_ark_builtins.d.abc"
-    }
-
-    if (defined(invoker.is_enable_global_typeinfer) &&
-        invoker.is_enable_global_typeinfer) {
-      _aot_compile_options_ += " --compiler-opt-global-typeinfer=true"
-    }
-
     args = [
       "--script-file",
       rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime/ark_aot_compiler",
@@ -4327,17 +4262,6 @@ template("host_pgotypeinfer_test_action") {
     # Pgo Option
     _aot_compile_options_ += " --compiler-pgo-profiler-path=" +
                              rebase_path(_test_aot_arg_) + "/modules.ap"
-
-    if (defined(invoker.is_enable_builtins_dts) &&
-        invoker.is_enable_builtins_dts) {
-      deps += [ "//arkcompiler/ets_runtime:es2abc_gen_builtins_d_abc" ]
-      _aot_compile_options_ += " --builtins-dts=" + rebase_path(root_out_dir) + "/obj/arkcompiler/ets_runtime/lib_ark_builtins/es2abc/lib_ark_builtins.d.abc"
-    }
-
-    if (defined(invoker.is_enable_global_typeinfer) &&
-        invoker.is_enable_global_typeinfer) {
-      _aot_compile_options_ += " --compiler-opt-global-typeinfer=true"
-    }
 
     args = [
       "--script-file",

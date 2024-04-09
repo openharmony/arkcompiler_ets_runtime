@@ -147,7 +147,7 @@ HWTEST_F_L0(OhosTest, OhosPkgArgsParse)
     runtimeOptions_.SetPGOProfilerPath(runtimeAp);
     runtimeOptions_.SetCompilerPkgJsonInfo(BuildOhosPkgJson(""));
 
-    CompilationOptions cOptions(vm_, runtimeOptions_);
+    CompilationOptions cOptions(runtimeOptions_);
     AotCompilerPreprocessor preProcessor(vm_, runtimeOptions_, pkgArgsMap, decoder, pandaFileNames);
     OhosPkgArgs::ParseArgs(preProcessor, cOptions);
 
@@ -169,7 +169,7 @@ HWTEST_F_L0(OhosTest, OhosPkgArgsParsePgoDir)
     arg_list_t pandaFileNames {};
     std::map<std::string, std::shared_ptr<OhosPkgArgs>> pkgArgsMap;
     PGOProfilerDecoder decoder;
-    CompilationOptions cOptions(vm_, runtimeOptions_);
+    CompilationOptions cOptions(runtimeOptions_);
     AotCompilerPreprocessor preProcessor(vm_, runtimeOptions_, pkgArgsMap, decoder, pandaFileNames);
     OhosPkgArgs::ParseArgs(preProcessor, cOptions);
 
@@ -192,7 +192,7 @@ HWTEST_F_L0(OhosTest, UseBaselineApFromPgoDir)
     arg_list_t pandaFileNames {};
     std::map<std::string, std::shared_ptr<OhosPkgArgs>> pkgArgsMap;
     PGOProfilerDecoder decoder;
-    CompilationOptions cOptions(vm_, runtimeOptions_);
+    CompilationOptions cOptions(runtimeOptions_);
     AotCompilerPreprocessor preProcessor(vm_, runtimeOptions_, pkgArgsMap, decoder, pandaFileNames);
     runtimeOptions_.SetCompilerPkgJsonInfo(BuildOhosPkgJson(pgoDir));
     // Input format is correct, but there is no available ap file for pgoDir, return success.
@@ -220,7 +220,7 @@ HWTEST_F_L0(OhosTest, UseRuntimeApWhenOnlyRuntimeExits)
     arg_list_t pandaFileNames {};
     std::map<std::string, std::shared_ptr<OhosPkgArgs>> pkgArgsMap;
     PGOProfilerDecoder decoder;
-    CompilationOptions cOptions(vm_, runtimeOptions_);
+    CompilationOptions cOptions(runtimeOptions_);
     AotCompilerPreprocessor preProcessor(vm_, runtimeOptions_, pkgArgsMap, decoder, pandaFileNames);
     runtimeOptions_.SetCompilerPkgJsonInfo(BuildOhosPkgJson(pgoDir));
     ASSERT_TRUE(FileExist(runtimeAp.c_str()));
@@ -250,7 +250,7 @@ HWTEST_F_L0(OhosTest, UseMergedApWhenOnlyMergedExist)
     arg_list_t pandaFileNames {};
     std::map<std::string, std::shared_ptr<OhosPkgArgs>> pkgArgsMap;
     PGOProfilerDecoder decoder;
-    CompilationOptions cOptions(vm_, runtimeOptions_);
+    CompilationOptions cOptions(runtimeOptions_);
     AotCompilerPreprocessor preProcessor(vm_, runtimeOptions_, pkgArgsMap, decoder, pandaFileNames);
     runtimeOptions_.SetCompilerPkgJsonInfo(BuildOhosPkgJson(pgoDir));
     ASSERT_TRUE(preProcessor.HandleTargetCompilerMode(cOptions));
@@ -280,7 +280,7 @@ HWTEST_F_L0(OhosTest, UseMergedApWhenBothRuntimeAndMergedExist)
     arg_list_t pandaFileNames {};
     std::map<std::string, std::shared_ptr<OhosPkgArgs>> pkgArgsMap;
     PGOProfilerDecoder decoder;
-    CompilationOptions cOptions(vm_, runtimeOptions_);
+    CompilationOptions cOptions(runtimeOptions_);
     AotCompilerPreprocessor preProcessor(vm_, runtimeOptions_, pkgArgsMap, decoder, pandaFileNames);
     runtimeOptions_.SetCompilerPkgJsonInfo(BuildOhosPkgJson(pgoDir));
     ASSERT_TRUE(OhosPkgArgs::ParseArgs(preProcessor, cOptions));

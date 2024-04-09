@@ -81,7 +81,6 @@ class JSArrayBuffer;
 class JSFunction;
 class SourceTextModule;
 class Program;
-class TSManager;
 class AOTFileManager;
 class SlowRuntimeStub;
 class RequireManager;

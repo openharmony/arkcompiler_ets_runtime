@@ -15,6 +15,5 @@ import("//arkcompiler/ets_runtime/test/test_helper.gni")
 
 host_aot_test_action("builtins_array") {
   deps = []
-  is_enable_builtins_dts = true
   log_option = " --log-debug=builtins"
 }

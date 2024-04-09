@@ -659,16 +659,6 @@ public:
     bool IsRegularObject() const;
     bool IsMachineCodeObject() const;
     bool IsClassInfoExtractor() const;
-    bool IsTSType() const;
-    bool IsTSObjectType() const;
-    bool IsTSClassType() const;
-    bool IsTSUnionType() const;
-    bool IsTSInterfaceType() const;
-    bool IsTSClassInstanceType() const;
-    bool IsTSFunctionType() const;
-    bool IsTSArrayType() const;
-    bool IsTSIteratorInstanceType() const;
-    bool IsTSNamespaceType() const;
 
     bool IsCjsExports() const;
     bool IsCjsModule() const;

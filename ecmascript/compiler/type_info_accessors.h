@@ -22,7 +22,6 @@
 #include "ecmascript/enum_conversion.h"
 #include "ecmascript/global_index.h"
 #include "ecmascript/jspandafile/program_object.h"
-#include "ecmascript/ts_types/ts_manager.h"
 #include "libpandafile/index_accessor.h"
 
 namespace panda::ecmascript::kungfu {
@@ -36,7 +35,6 @@ public:
     {
         pgoType_ = acc_.TryGetPGOType(gate);
         // NOTICE-PGO: wx delete in part3
-        tsManager_ = compilationEnv_->GetTSManager();
         ptManager_ = compilationEnv_->GetPTManager();
     }
 
@@ -62,7 +60,6 @@ protected:
     GateRef gate_;
     PGOTypeRef pgoType_;
     // NOTICE-PGO: wx delete in part3
-    TSManager *tsManager_ {nullptr};
     PGOTypeManager *ptManager_ {nullptr};
 };
 
@@ -204,12 +201,9 @@ public:
         return GetCtorGT().IsBuiltinModule();
     }
 
-    bool IsBuiltinConstructor(BuiltinTypeId type)
+    bool IsBuiltinConstructor([[maybe_unused]] BuiltinTypeId type)
     {
-        if (compilationEnv_->IsJitCompiler()) {
-            return false;
-        }
-        return tsManager_->IsBuiltinConstructor(type, GetCtorGT());
+        return false; // NOTICE-PGO:: tsManager_->IsBuiltinConstructor(type, GetCtorGT());
     }
 
 private:
@@ -238,14 +232,6 @@ public:
                               GateRef gate);
     NO_COPY_SEMANTIC(SuperCallTypeInfoAccessor);
     NO_MOVE_SEMANTIC(SuperCallTypeInfoAccessor);
-
-    bool IsClassTypeKind() const
-    {
-        if (compilationEnv_->IsJitCompiler()) {
-            return false;
-        }
-        return tsManager_->IsClassTypeKind(acc_.GetGateType(ctor_));
-    }
 
     bool IsValidCallMethodId() const
     {
@@ -625,14 +611,6 @@ public:
         return false;
     }
 
-    bool IsClassInstanceTypeKind() const
-    {
-        if (compilationEnv_->IsJitCompiler()) {
-            return false;
-        }
-        return tsManager_->IsClassInstanceTypeKind(acc_.GetGateType(receiver_));
-    }
-
     bool IsValidCallMethodId() const
     {
         return pgoType_.IsValidCallMethodId();
@@ -700,7 +678,6 @@ public:
 
 private:
     PropertyLookupResult GetAccessorPlr() const;
-    GlobalTSTypeRef GetAccessorFuncGT() const;
 
     GateRef receiver_;
     CallKind kind_ {CallKind::INVALID};
@@ -764,14 +741,6 @@ public:
     GateRef GetReceiver() const
     {
         return receiver_;
-    }
-
-    GateType GetReceiverGateType() const
-    {
-        if (compilationEnv_->IsJitCompiler()) {
-            return acc_.GetGateType(receiver_);
-        }
-        return tsManager_->TryNarrowUnionType(acc_.GetGateType(receiver_));
     }
 
 protected:
@@ -1053,14 +1022,6 @@ public:
     std::optional<GlobalIndex> GetGlobalsId() const
     {
         return types_[0].GetGlobalsId();
-    }
-
-    bool IsBuiltinInstanceType(BuiltinTypeId type) const
-    {
-        if (compilationEnv_->IsJitCompiler()) {
-            return false;
-        }
-        return tsManager_->IsBuiltinInstanceType(type, GetReceiverGateType());
     }
 
     OnHeapMode TryGetHeapMode() const

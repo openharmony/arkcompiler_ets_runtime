@@ -18,7 +18,6 @@
 #include "ecmascript/base/number_helper.h"
 #include "ecmascript/compiler/gate_accessor.h"
 #include "ecmascript/deoptimizer/deoptimizer.h"
-#include "ecmascript/ts_types/ts_manager.h"
 #include "libpandafile/bytecode_instruction-inl.h"
 
 namespace panda::ecmascript::kungfu {

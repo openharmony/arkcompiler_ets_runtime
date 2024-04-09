@@ -91,7 +91,6 @@
 #include "ecmascript/tagged_queue.h"
 #include "ecmascript/taskpool/task.h"
 #include "ecmascript/taskpool/taskpool.h"
-#include "ecmascript/ts_types/ts_manager.h"
 
 #include "ecmascript/ohos/enable_aot_list_helper.h"
 

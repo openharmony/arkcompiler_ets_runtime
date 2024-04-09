@@ -14,10 +14,12 @@
  */
 
 #include "ecmascript/compiler/typed_hcr_lowering.h"
+
 #include "ecmascript/compiler/builtins_lowering.h"
+#include "ecmascript/compiler/builtins/builtins_string_stub_builder.h"
 #include "ecmascript/compiler/mcr_gate_meta_data.h"
 #include "ecmascript/compiler/new_object_stub_builder.h"
-#include "ecmascript/compiler/builtins/builtins_string_stub_builder.h"
+#include "ecmascript/compiler/pgo_type/pgo_type_manager.h"
 #include "ecmascript/compiler/rt_call_signature.h"
 #include "ecmascript/compiler/share_gate_meta_data.h"
 #include "ecmascript/compiler/variable_type.h"
@@ -29,7 +31,6 @@
 #include "ecmascript/js_object.h"
 #include "ecmascript/js_primitive_ref.h"
 #include "ecmascript/message_string.h"
-#include "ecmascript/subtyping_operator.h"
 #include "ecmascript/vtable.h"
 
 namespace panda::ecmascript::kungfu {

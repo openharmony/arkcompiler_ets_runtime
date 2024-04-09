@@ -56,14 +56,11 @@ JitCompilationOptions::JitCompilationOptions(JSRuntimeOptions runtimeOptions)
     isEnableValueNumbering_ = runtimeOptions.IsEnableValueNumbering();
     isEnableOptInlining_ = runtimeOptions.IsEnableOptInlining();
     isEnableOptString_ = runtimeOptions.IsEnableOptString();
-    isEnableTypeInfer_ =
-        isEnableTypeLowering_ || runtimeOptions.AssertTypes();
     isEnableOptPGOType_ = runtimeOptions.IsEnableOptPGOType();
     isEnableOptTrackField_ = runtimeOptions.IsEnableOptTrackField();
     isEnableOptLoopPeeling_ = runtimeOptions.IsEnableOptLoopPeeling();
     isEnableOptOnHeapCheck_ = runtimeOptions.IsEnableOptOnHeapCheck();
     isEnableOptLoopInvariantCodeMotion_ = runtimeOptions.IsEnableOptLoopInvariantCodeMotion();
-    isEnableCollectLiteralInfo_ = false;
     isEnableOptConstantFolding_ = runtimeOptions.IsEnableOptConstantFolding();
     isEnableLexenvSpecialization_ = runtimeOptions.IsEnableLexenvSpecialization();
     isEnableNativeInline_ = runtimeOptions.IsEnableNativeInline();
@@ -86,14 +83,12 @@ void JitCompiler::Init(JSRuntimeOptions runtimeOptions)
             .EnableEarlyElimination(jitOptions_.isEnableEarlyElimination_)
             .EnableLaterElimination(jitOptions_.isEnableLaterElimination_)
             .EnableValueNumbering(jitOptions_.isEnableValueNumbering_)
-            .EnableTypeInfer(jitOptions_.isEnableTypeInfer_)
             .EnableOptInlining(jitOptions_.isEnableOptInlining_)
             .EnableOptString(jitOptions_.isEnableOptString_)
             .EnableOptPGOType(jitOptions_.isEnableOptPGOType_)
             .EnableOptTrackField(jitOptions_.isEnableOptTrackField_)
             .EnableOptLoopPeeling(jitOptions_.isEnableOptLoopPeeling_)
             .EnableOptLoopInvariantCodeMotion(jitOptions_.isEnableOptLoopInvariantCodeMotion_)
-            .EnableCollectLiteralInfo(jitOptions_.isEnableCollectLiteralInfo_)
             .EnableOptConstantFolding(jitOptions_.isEnableOptConstantFolding_)
             .EnableLexenvSpecialization(jitOptions_.isEnableLexenvSpecialization_)
             .EnableInlineNative(jitOptions_.isEnableNativeInline_)

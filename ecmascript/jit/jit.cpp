@@ -15,6 +15,7 @@
 
 #include "ecmascript/jit/jit.h"
 #include "ecmascript/jit/jit_task.h"
+#include "ecmascript/js_function.h"
 #include "ecmascript/platform/mutex.h"
 #include "ecmascript/platform/file.h"
 #include "ecmascript/dfx/vmstat/jit_preheat_profiler.h"

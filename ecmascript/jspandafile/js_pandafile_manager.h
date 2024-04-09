@@ -19,7 +19,6 @@
 #include "ecmascript/jspandafile/js_pandafile.h"
 #include "ecmascript/jspandafile/panda_file_translator.h"
 #include "ecmascript/jspandafile/debug_info_extractor.h"
-#include "ecmascript/ts_types/ts_type_table.h"
 #include "ecmascript/platform/mutex.h"
 
 namespace panda {
@@ -81,9 +80,6 @@ public:
     {
         LockHolder lock(jsPandaFileLock_);
         for (const auto &item : loadedJSPandaFiles_) {
-            if (item.first == panda::ecmascript::TSTypeTable::DEFAULT_TYPE_VIRTUAL_NAME) {
-                continue;
-            }
             if (!cb(item.second)) {
                 return;
             }

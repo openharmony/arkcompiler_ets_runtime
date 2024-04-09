@@ -61,7 +61,6 @@ class JSPromise;
 class JSTaggedValue;
 class EcmaVM;
 class ModuleManager;
-class TSManager;
 class AOTFileManager;
 class QuickFixManager;
 class OptCodeProfiler;
@@ -135,17 +134,10 @@ public:
         return moduleManager_;
     }
 
-    TSManager *GetTSManager() const
-    {
-        return tsManager_;
-    }
-
     kungfu::PGOTypeManager *GetPTManager() const
     {
         return ptManager_;
     }
-
-    void PUBLIC_API SetTSManager(TSManager *set);
 
     ARK_INLINE JSThread *GetJSThread() const
     {
@@ -570,7 +562,6 @@ private:
 
     // VM resources.
     ModuleManager *moduleManager_ {nullptr};
-    TSManager *tsManager_ {nullptr};
     kungfu::PGOTypeManager *ptManager_ {nullptr};
     AOTFileManager *aotFileManager_ {nullptr};
 
