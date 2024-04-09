@@ -119,6 +119,9 @@ public:
     std::string GetRuntimeBuildId()
     {
         std::string realPath;
+        if (!FileExist(RUNTIME_SO_PATH)) {
+            return "";
+        }
         std::string soPath = panda::os::file::File::GetExtendedFilePath(RUNTIME_SO_PATH);
         if (!ecmascript::RealPath(soPath, realPath, false)) {
             return "";
