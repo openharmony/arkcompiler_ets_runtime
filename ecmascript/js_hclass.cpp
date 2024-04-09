@@ -162,24 +162,9 @@ void JSHClass::InitializeWithDefaultValue(const JSThread *thread, uint32_t size,
     SetVTable(thread, JSTaggedValue::Undefined());
 }
 
-// class JSHClass
-void JSHClass::Initialize(const JSThread *thread, uint32_t size, JSType type, uint32_t inlinedProps)
+bool JSHClass::IsJSTypeShared(JSType type)
 {
-    InitializeWithDefaultValue(thread, size, type, inlinedProps);
-    if (JSType::JS_OBJECT_FIRST <= type && type <= JSType::JS_OBJECT_LAST) {
-        SetLayout(thread, thread->GlobalConstants()->GetEmptyLayoutInfo());
-    }
-    InitTSInheritInfo(thread);
-}
-
-// for sharedHeap
-void JSHClass::Initialize(const JSThread *thread, uint32_t size, JSType type,
-    uint32_t inlinedProps, const JSHandle<JSTaggedValue> &layout)
-{
-    InitializeWithDefaultValue(thread, size, type, inlinedProps);
-    if (JSType::JS_OBJECT_FIRST <= type && type <= JSType::JS_OBJECT_LAST) {
-        SetLayout(thread, layout);
-    }
+    bool isShared = false;
     switch (type) {
         case JSType::JS_SHARED_OBJECT:
         case JSType::JS_SHARED_FUNCTION:
@@ -204,10 +189,34 @@ void JSHClass::Initialize(const JSThread *thread, uint32_t size, JSType type,
         case JSType::CONSTANT_STRING:
         case JSType::SLICED_STRING:
         case JSType::TREE_STRING:
-            SetIsJSShared(true);
+            isShared = true;
             break;
         default:
             break;
+    }
+    return isShared;
+}
+
+// class JSHClass
+void JSHClass::Initialize(const JSThread *thread, uint32_t size, JSType type, uint32_t inlinedProps)
+{
+    InitializeWithDefaultValue(thread, size, type, inlinedProps);
+    if (JSType::JS_OBJECT_FIRST <= type && type <= JSType::JS_OBJECT_LAST) {
+        SetLayout(thread, thread->GlobalConstants()->GetEmptyLayoutInfo());
+    }
+    InitTSInheritInfo(thread);
+}
+
+// for sharedHeap
+void JSHClass::Initialize(const JSThread *thread, uint32_t size, JSType type,
+    uint32_t inlinedProps, const JSHandle<JSTaggedValue> &layout)
+{
+    InitializeWithDefaultValue(thread, size, type, inlinedProps);
+    if (JSType::JS_OBJECT_FIRST <= type && type <= JSType::JS_OBJECT_LAST) {
+        SetLayout(thread, layout);
+    }
+    if (IsJSTypeShared(type)) {
+        SetIsJSShared(true);
     }
 }
 

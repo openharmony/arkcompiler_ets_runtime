@@ -321,7 +321,9 @@ JSTaggedValue ObjectFastOperator::SetPropertyByName(JSThread *thread, JSTaggedVa
         THROW_TYPE_ERROR_AND_RETURN(thread, GET_MESSAGE_STRING(SetPropertyWhenNotExtensible),
                                     JSTaggedValue::Exception());
     }
-    AddPropertyByName(thread, objHandle, keyHandle, valueHandle, PropertyAttributes::Default());
+    ASSERT(!receiver.IsJSShared());
+    PropertyAttributes attr = PropertyAttributes::Default();
+    AddPropertyByName(thread, objHandle, keyHandle, valueHandle, attr);
     return JSTaggedValue::Undefined();
 }
 

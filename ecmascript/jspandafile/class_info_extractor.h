@@ -20,6 +20,7 @@
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/js_tagged_value_internals.h"
 #include "ecmascript/jspandafile/method_literal.h"
+#include "ecmascript/property_attributes.h"
 
 namespace panda::ecmascript {
 // ClassInfoExtractor will analyze and extract the contents from class literal to keys, properties and elements(both
@@ -145,7 +146,31 @@ public:
 
     static void FilterDuplicatedKeys(JSThread *thread, const JSHandle<TaggedArray> &keys,
                                      const JSHandle<TaggedArray> &properties);
+    
+    static SharedFieldType FromTaggedValue(JSTaggedValue value)
+    {
+        if (value.IsNull()) {
+            return SharedFieldType::NONE;
+        } else if (value.IsNumber()) {
+            return SharedFieldType::NUMBER;
+        } else if (value.IsString()) {
+            return SharedFieldType::STRING;
+        } else if (value.IsBoolean()) {
+            return SharedFieldType::BOOLEAN;
+        } else if (value.IsJSSharedObject()) {
+            return SharedFieldType::SENDABLE;
+        } else {
+            return SharedFieldType::NONE;
+        }
+    }
 
+    static void PUBLIC_API AddFieldTypeToHClass(JSThread *thread, const JSHandle<TaggedArray> &fieldTypeArray,
+                                                uint32_t length, const JSHandle<LayoutInfo> &layout,
+                                                const JSHandle<JSHClass> &hclass);
+
+    static void PUBLIC_API AddFieldTypeToHClass(JSThread *thread, const JSHandle<TaggedArray> &fieldTypeArray,
+                                                uint32_t length, const JSHandle<NameDictionary> &nameDict,
+                                                const JSHandle<JSHClass> &hclass);
 private:
     static SharedFieldType FromFieldType(FieldType type)
     {
@@ -161,12 +186,6 @@ private:
 
     static void UpdateAccessorFunction(JSThread *thread, const JSMutableHandle<JSTaggedValue> &value,
                                        const JSHandle<JSTaggedValue> &homeObject, const JSHandle<JSFunction> &ctor);
-
-    static void AddFieldTypeToHClass(JSThread *thread, const JSHandle<TaggedArray> &fieldTypeArray, uint32_t length,
-                                     const JSHandle<LayoutInfo> &layout, const JSHandle<JSHClass> &hclass);
-
-    static void AddFieldTypeToHClass(JSThread *thread, const JSHandle<TaggedArray> &fieldTypeArray, uint32_t length,
-                                     const JSHandle<NameDictionary> &nameDict, const JSHandle<JSHClass> &hclass);
 
     static void AddFieldTypeToDict(JSThread *thread, const JSHandle<TaggedArray> &fieldTypeArray, uint32_t length,
                                    JSMutableHandle<NameDictionary> &dict,

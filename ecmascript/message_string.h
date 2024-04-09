@@ -42,6 +42,7 @@ namespace panda::ecmascript {
     V(INT32_VALUE, "value: %ld")                                                             \
     V(TargetTypeNotObject, "Type of target is not Object")                                   \
     V(CanNotGetNotEcmaObject, "Can not get Prototype on non ECMA Object")                    \
+    V(SendableArrayForJson, "Array not supported for SENDABLE_JSON")                         \
     V(InstanceOfErrorTargetNotCallable, "InstanceOf error when target is not Callable")      \
     V(ApplyTargetNotCallable, "apply target is not callable")                                \
     V(TargetNotStableJSArray, "target not stable JSArray")                                   \

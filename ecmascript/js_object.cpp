@@ -1190,7 +1190,8 @@ JSTaggedValue JSObject::GetProperty(JSThread *thread, ObjectOperator *op)
     return CallGetter(thread, accessor, receiver);
 }
 
-bool JSObject::DeleteProperty(JSThread *thread, const JSHandle<JSObject> &obj, const JSHandle<JSTaggedValue> &key)
+bool JSObject::DeleteProperty(JSThread *thread, const JSHandle<JSObject> &obj, const JSHandle<JSTaggedValue> &key,
+                              SCheckMode sCheckMode)
 {
     // 1. Assert: IsPropertyKey(P) is true.
     ASSERT_PRINT(JSTaggedValue::IsPropertyKey(key), "Key is not a property key");
@@ -1205,7 +1206,7 @@ bool JSObject::DeleteProperty(JSThread *thread, const JSHandle<JSObject> &obj, c
     // a. Remove the own property with name P from O.
     // b. Return true.
     // 6. Return false.
-    if (op.IsConfigurable()) {
+    if (op.IsConfigurable() || sCheckMode == SCheckMode::SKIP) {
         op.DeletePropertyInHolder();
         obj->GetClass()->SetHasDeleteProperty(true);
         return true;

@@ -108,8 +108,27 @@ JSHandle<JSHClass> ObjectFactory::NewSEcmaHClass(uint32_t size, uint32_t inlined
         prototype->GetTaggedObject()->GetClass()->SetIsPrototype(true);
     }
     hclass->SetProto(thread_, prototype.GetTaggedValue());
-    hclass->SetExtensible(false);
     hclass->SetNumberOfProps(inlinedProps);
+    hclass->SetExtensible(false);
+    return hclass;
+}
+
+JSHandle<JSHClass> ObjectFactory::NewSEcmaHClassDictMode(uint32_t size, uint32_t inlinedProps, JSType type,
+                                                         const JSHandle<JSTaggedValue> &prototype)
+{
+    NewSObjectHook();
+    uint32_t classSize = JSHClass::SIZE;
+    auto *newClass = static_cast<JSHClass *>(sHeap_->AllocateNonMovableOrHugeObject(thread_,
+        JSHClass::Cast(thread_->GlobalConstants()->GetHClassClass().GetTaggedObject()), classSize));
+    newClass->Initialize(thread_, size, type, inlinedProps, thread_->GlobalConstants()->GetHandledEmptySLayoutInfo());
+    JSHandle<JSHClass> hclass(thread_, newClass);
+    if (prototype->IsJSObject()) {
+        prototype->GetTaggedObject()->GetClass()->SetIsPrototype(true);
+    }
+    hclass->SetProto(thread_, prototype.GetTaggedValue());
+    hclass->SetNumberOfProps(0);
+    hclass->SetIsDictionaryMode(true);
+    hclass->SetExtensible(false);
     return hclass;
 }
 

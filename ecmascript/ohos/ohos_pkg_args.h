@@ -23,6 +23,7 @@
 #include <vector>
 #include <fcntl.h>
 
+#include "ecmascript/base/json_helper.h"
 #include "ecmascript/base/json_parser.h"
 #include "ecmascript/compiler/aot_compiler_preprocessor.h"
 #include "ecmascript/ecma_vm.h"
@@ -43,6 +44,7 @@
 #endif
 
 namespace panda::ecmascript::kungfu {
+using TransformType = ecmascript::base::JsonHelper::TransformType;
 class OhosPkgArgs {
 public:
     constexpr static const char *const KEY_BUNDLE_NAME = "bundleName";
@@ -172,7 +174,7 @@ public:
         LocalScope scope(vm);
         ObjectFactory *factory = vm->GetFactory();
         auto *jsThread = vm->GetJSThread();
-        ecmascript::base::Utf8JsonParser parser(jsThread);
+        ecmascript::base::Utf8JsonParser parser(jsThread, TransformType::NORMAL);
 
         JSHandle<EcmaString> handleStr = factory->NewFromASCII(jsonInfo.c_str());  // JSON Object
         JSHandle<JSTaggedValue> result = parser.Parse(handleStr);
@@ -207,7 +209,7 @@ public:
         LocalScope scope(vm);
         ObjectFactory *factory = vm->GetFactory();
         auto *jsThread = vm->GetJSThread();
-        ecmascript::base::Utf8JsonParser parser(jsThread);
+        ecmascript::base::Utf8JsonParser parser(jsThread, TransformType::NORMAL);
 
         JSHandle<EcmaString> handleStr(factory->NewFromASCII(jsonInfo.c_str()));  // JSON Object
         JSHandle<JSTaggedValue> result = parser.Parse(handleStr);
