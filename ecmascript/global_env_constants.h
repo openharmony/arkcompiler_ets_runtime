@@ -743,6 +743,8 @@ private:
     void InitSharedRootsClasses(ObjectFactory *factory);
     void InitSharedMiscellanious(JSThread *thread, ObjectFactory *factory);
     void InitRootsClasses(ObjectFactory *factory);
+    void InitRootsClassesPartOne(JSHClass *hClass, ObjectFactory *factory);
+    void InitRootsClassesPartTwo(JSHClass *hClass, ObjectFactory *factory);
     void InitMiscellanious(JSThread *thread, ObjectFactory *factory);
     void InitGlobalCaches();
     void InitJSAPIContainers();
