@@ -44,9 +44,12 @@ bool InductionVariableAnalysis::IsInductionVariable(GateRef gate) const
     if (binOp != TypedBinOp::TYPED_ADD && binOp != TypedBinOp::TYPED_SUB) {
         return false;
     }
-    if (!acc_.GetGateType(valueGate).IsIntType()) {
+    TypedBinaryAccessor accessor(acc_.TryGetValue(valueGate));
+    const ParamType paramType = accessor.GetParamType();
+    if (!paramType.IsIntType()) {
         return false;
     }
+
     for (size_t i = 2; i < numValueIn; i++) { // 2: skip startGate and valueGate
         if (acc_.GetValueIn(gate, i) != valueGate) {
             return false;
@@ -78,7 +81,9 @@ std::pair<int32_t, int32_t> InductionVariableAnalysis::GetStartAndStride(GateRef
     ASSERT(acc_.GetOpCode(valueGate) == OpCode::TYPED_BINARY_OP);
     [[maybe_unused]]TypedBinOp binOp = acc_.GetTypedBinaryOp(valueGate);
     ASSERT(binOp == TypedBinOp::TYPED_ADD || binOp == TypedBinOp::TYPED_SUB);
-    ASSERT(acc_.GetGateType(valueGate).IsIntType());
+    TypedBinaryAccessor accessor(acc_.TryGetValue(valueGate));
+    [[maybe_unused]]const ParamType paramType = accessor.GetParamType();
+    ASSERT(paramType.IsIntType());
 
     GateRef strideGate = acc_.GetValueIn(valueGate, 1);
     if (acc_.GetValueIn(valueGate, 0) != gate) {
@@ -189,15 +194,15 @@ void InductionVariableAnalysis::ReplaceInductionVariable(const GraphLinearizer::
                 continue;
             }
             auto [start, stride] = GetStartAndStride(*it);
-            uint64_t result = start + static_cast<uint64_t>(stride) * loopTimes;
-            if (result > static_cast<uint64_t>(INT_MAX) || result < static_cast<uint64_t>(INT_MIN)) {
+            int64_t result = start + static_cast<int64_t>(stride) * loopTimes;
+            if (result > static_cast<int64_t>(INT_MAX) || result < static_cast<int64_t>(INT_MIN)) {
                 return;
             }
             if (IsLogEnabled() && IsTraced()) {
                 LOG_COMPILER(INFO) << "result = " << start << " + " << stride << " * "
                                     << loopTimes << " = " << result;
             }
-            TryReplaceOutOfLoopUses(*it, loop, result);
+            TryReplaceOutOfLoopUses(*it, loop, static_cast<int32_t>(result));
         }
     }
 }

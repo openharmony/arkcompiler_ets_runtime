@@ -32,6 +32,7 @@ group("ark_aot_js_test") {
     "regressioncase",
     "definefieldbyname",
     "definefieldbyname2",
+    "induction_variable",
   ]
 
   deps = []
