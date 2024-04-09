@@ -2983,6 +2983,16 @@ void JSNApi::AllowCrossThreadExecution(EcmaVM *vm)
     vm->GetAssociatedJSThread()->EnableCrossThreadExecution();
 }
 
+void* JSNApi::GetEnv(EcmaVM *vm)
+{
+    return vm->GetEnv();
+}
+
+void JSNApi::SetEnv(EcmaVM *vm, void *env)
+{
+    vm->SetEnv(env);
+}
+
 void JSNApi::SynchronizVMInfo(EcmaVM *vm, const EcmaVM *hostVM)
 {
     vm->SetBundleName(hostVM->GetBundleName());
@@ -3675,7 +3685,7 @@ void JSNApi::LoadAotFile(EcmaVM *vm, const std::string &moduleName)
         LOG_ECMA(INFO) << "Stop load AOT because there are more crashes";
         return;
     }
-    
+
     CROSS_THREAD_AND_EXCEPTION_CHECK(vm);
     ecmascript::ThreadManagedScope scope(thread);
     if (!ecmascript::AnFileDataManager::GetInstance()->IsEnable()) {

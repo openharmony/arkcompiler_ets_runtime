@@ -675,6 +675,17 @@ public:
     {
         return sharedNativePointerCallbacks_;
     }
+
+    void *GetEnv() const
+    {
+        return env_;
+    }
+
+    void SetEnv(void *env)
+    {
+        env_ = env;
+    }
+
 protected:
 
     void PrintJSErrorInfo(const JSHandle<JSTaggedValue> &exceptionInfo) const;
@@ -792,6 +803,7 @@ private:
     Mutex mutex_;
     bool isEnableOsr_ {false};
     bool overLimit_ {false};
+    void *env_ = nullptr;
 };
 }  // namespace ecmascript
 }  // namespace panda
