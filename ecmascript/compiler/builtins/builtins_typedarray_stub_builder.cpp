@@ -17,6 +17,7 @@
 
 #include "ecmascript/base/typed_array_helper.h"
 #include "ecmascript/byte_array.h"
+#include "ecmascript/compiler/builtins/builtins_array_stub_builder.h"
 #include "ecmascript/compiler/new_object_stub_builder.h"
 
 namespace panda::ecmascript::kungfu {
@@ -457,6 +458,136 @@ GateRef BuiltinsTypedArrayStubBuilder::CalculatePositionWithLength(GateRef posit
     auto ret = *result;
     env->SubCfgExit();
     return ret;
+}
+
+void BuiltinsTypedArrayStubBuilder::Filter(GateRef glue, GateRef thisValue, GateRef numArgs,
+    Variable *result, Label *exit, Label *slowPath)
+{
+    auto env = GetEnvironment();
+    Label thisExists(env);
+    Label isEcmaObject(env);
+    Label isTypedArray(env);
+    Label isFastTypedArray(env);
+    Label defaultConstr(env);
+    Label prototypeIsEcmaObj(env);
+    Label isProtoChangeMarker(env);
+    Label accessorNotChanged(env);
+    BRANCH(TaggedIsUndefinedOrNull(thisValue), slowPath, &thisExists);
+    Bind(&thisExists);
+    BRANCH(IsEcmaObject(thisValue), &isEcmaObject, slowPath);
+    Bind(&isEcmaObject);
+    BRANCH(IsTypedArray(thisValue), &isTypedArray, slowPath);
+    Bind(&isTypedArray);
+    GateRef arrayType = GetObjectType(LoadHClass(thisValue));
+    BRANCH(IsFastTypeArray(arrayType), &isFastTypedArray, slowPath);
+    Bind(&isFastTypedArray);
+    BRANCH(HasConstructor(thisValue), slowPath, &defaultConstr);
+    Bind(&defaultConstr);
+    GateRef prototype = GetPrototypeFromHClass(LoadHClass(thisValue));
+    BRANCH(IsEcmaObject(prototype), &prototypeIsEcmaObj, slowPath);
+    Bind(&prototypeIsEcmaObj);
+    GateRef marker = GetProtoChangeMarkerFromHClass(LoadHClass(prototype));
+    Branch(TaggedIsProtoChangeMarker(marker), &isProtoChangeMarker, slowPath);
+    Bind(&isProtoChangeMarker);
+    Branch(GetAccessorHasChanged(marker), slowPath, &accessorNotChanged);
+    Bind(&accessorNotChanged);
+
+    Label arg0HeapObject(env);
+    Label callable(env);
+    GateRef callbackFnHandle = GetCallArg0(numArgs);
+    BRANCH(TaggedIsHeapObject(callbackFnHandle), &arg0HeapObject, slowPath);
+    Bind(&arg0HeapObject);
+    {
+        BRANCH(IsCallable(callbackFnHandle), &callable, slowPath);
+        Bind(&callable);
+        {
+            GateRef argHandle = GetCallArg1(numArgs);
+            GateRef thisLen = GetArrayLength(thisValue);
+            BuiltinsArrayStubBuilder arrayStubBuilder(this);
+            GateRef kept = arrayStubBuilder.NewArray(glue, ZExtInt32ToInt64(thisLen));
+            DEFVARIABLE(i, VariableType::INT32(), Int32(0));
+            DEFVARIABLE(newArrayLen, VariableType::INT32(), Int32(0));
+            Label loopHead(env);
+            Label loopEnd(env);
+            Label next(env);
+            Label loopExit(env);
+            Jump(&loopHead);
+            LoopBegin(&loopHead);
+            {
+                Label hasException0(env);
+                Label notHasException0(env);
+                Label hasException1(env);
+                Label notHasException1(env);
+                Label retValueIsTrue(env);
+                BRANCH(Int32LessThan(*i, thisLen), &next, &loopExit);
+                Bind(&next);
+                {
+                    GateRef kValue = FastGetPropertyByIndex(glue, thisValue, *i, arrayType);
+                    BRANCH(HasPendingException(glue), &hasException0, &notHasException0);
+                    Bind(&hasException0);
+                    {
+                        result->WriteVariable(Exception());
+                        Jump(exit);
+                    }
+                    Bind(&notHasException0);
+                    {
+                        GateRef key = IntToTaggedInt(*i);
+                        GateRef retValue = JSCallDispatch(glue, callbackFnHandle, Int32(NUM_MANDATORY_JSFUNC_ARGS),
+                            0, Circuit::NullGate(), JSCallMode::CALL_THIS_ARG3_WITH_RETURN,
+                            { argHandle, kValue, key, thisValue });
+                        BRANCH(HasPendingException(glue), &hasException1, &notHasException1);
+                        Bind(&hasException1);
+                        {
+                            result->WriteVariable(Exception());
+                            Jump(exit);
+                        }
+                        Bind(&notHasException1);
+                        {
+                            BRANCH(TaggedIsTrue(FastToBoolean(retValue)), &retValueIsTrue, &loopEnd);
+                            Bind(&retValueIsTrue);
+                            {
+                                arrayStubBuilder.SetValueWithElementsKind(glue, kept, kValue, *newArrayLen,
+                                    Boolean(true), Int32(static_cast<uint32_t>(ElementsKind::NONE)));
+                                newArrayLen = Int32Add(*newArrayLen, Int32(1));
+                                Jump(&loopEnd);
+                            }
+                        }
+                    }
+                }
+            }
+            Bind(&loopEnd);
+            i = Int32Add(*i, Int32(1));
+            LoopEnd(&loopHead);
+            Bind(&loopExit);
+
+            NewObjectStubBuilder newBuilder(this);
+            newBuilder.SetParameters(glue, 0);
+            GateRef newArray = newBuilder.NewTypedArray(glue, thisValue, arrayType, TruncInt64ToInt32(*newArrayLen));
+            i = Int32(0);
+            Label loopHead2(env);
+            Label loopEnd2(env);
+            Label next2(env);
+            Label loopExit2(env);
+            Jump(&loopHead2);
+            LoopBegin(&loopHead2);
+            {
+                BRANCH(Int32LessThan(*i, *newArrayLen), &next2, &loopExit2);
+                Bind(&next2);
+                {
+                    GateRef kValue = arrayStubBuilder.GetTaggedValueWithElementsKind(kept, *i);
+                    StoreTypedArrayElement(glue, newArray, ZExtInt32ToInt64(*i), kValue, arrayType);
+                    Jump(&loopEnd2);
+                }
+            }
+            Bind(&loopEnd2);
+            i = Int32Add(*i, Int32(1));
+            LoopEnd(&loopHead2);
+            Bind(&loopExit2);
+
+            result->WriteVariable(newArray);
+            Jump(exit);
+        }
+    }
 }
 
 void BuiltinsTypedArrayStubBuilder::Slice(GateRef glue, GateRef thisValue, GateRef numArgs,

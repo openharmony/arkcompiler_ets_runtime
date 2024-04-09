@@ -302,3 +302,28 @@ print(t11[v2]);
 const v3 = String.fromCharCode(564654156456456465465)
 const v5 = new Int16Array(true);
 print(v5["join"](v3));
+
+// Test case for filter()
+let arr;
+var calls = 0;
+function TestTypedArrayFilter(e) {
+    arr = new e([-5, 10, 20, 30, 40, 50, 60.6]);
+}
+
+function TestTypedArrayFilterFunc(element, index, array) {
+    return element >= 10;
+}
+
+TestTypedArrayFilter(Int8Array);
+print(arr.filter(TestTypedArrayFilterFunc));
+print(calls);
+
+Object.defineProperty(Int8Array.prototype, "constructor", {
+    get: function () {
+        calls++;
+    }
+});
+
+TestTypedArrayFilter(Int8Array);
+print(arr.filter(TestTypedArrayFilterFunc));
+print(calls);

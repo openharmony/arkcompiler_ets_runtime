@@ -82,7 +82,7 @@
     /* %TypedArray%.prototype.fill ( value [ , start [ , end ] ] ) */                   \
     V("fill",           Fill,           1, INVALID)                                     \
     /* %TypedArray%.prototype.filter ( callbackfn [ , thisArg ] ) */                    \
-    V("filter",         Filter,         1, INVALID)                                     \
+    V("filter",         Filter,         1, TypedArrayFilter)                            \
     /* %TypedArray%.prototype.find ( predicate [ , thisArg ] ) */                       \
     V("find",           Find,           1, INVALID)                                     \
     /* %TypedArray%.prototype.findIndex ( predicate [ , thisArg ] ) */                  \
