@@ -2381,6 +2381,22 @@ DEF_CALL_SIGNATURE(CreateJSMapIterator)
     callSign->SetCallConv(CallSignature::CallConv::CCallConv);
 }
 
+DEF_CALL_SIGNATURE(JSMapGet)
+{
+    // 3 : 3 input parameters
+    CallSignature signature("JSMapGet", 0, 3,
+        ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
+    *callSign = signature;
+    // 3 : 3 input parameters
+    std::array<VariableType, 3> params = {
+        VariableType::NATIVE_POINTER(),  // glue
+        VariableType::JS_ANY(),          // obj
+        VariableType::JS_ANY(),          // key
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetCallConv(CallSignature::CallConv::CCallConv);
+}
+
 DEF_CALL_SIGNATURE(FastStringEqual)
 {
     // 3 : 3 input parameters

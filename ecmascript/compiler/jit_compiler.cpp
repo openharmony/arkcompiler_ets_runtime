@@ -74,6 +74,7 @@ void JitCompiler::Init(JSRuntimeOptions runtimeOptions)
 {
     BytecodeStubCSigns::Initialize();
     CommonStubCSigns::Initialize();
+    BuiltinsStubCSigns::Initialize();
     RuntimeStubCSigns::Initialize();
 
     JitCompilationOptions jitOptions(runtimeOptions);

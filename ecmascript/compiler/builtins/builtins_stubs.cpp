@@ -470,12 +470,14 @@ DECLARE_BUILTINS(ArrayConstructor)
 DECLARE_BUILTINS(MapConstructor)
 {
     LinkedHashTableStubBuilder<LinkedHashMap, LinkedHashMapObject> hashTableBuilder(this, glue);
-    hashTableBuilder.GenMapSetConstructor(nativeCode, func, newTarget, thisValue, numArgs);
+    hashTableBuilder.GenMapSetConstructor(nativeCode, func, newTarget, thisValue,
+        numArgs, GetCallArg0(numArgs), GetArgv());
 }
 
 DECLARE_BUILTINS(SetConstructor)
 {
     LinkedHashTableStubBuilder<LinkedHashSet, LinkedHashSetObject> hashTableBuilder(this, glue);
-    hashTableBuilder.GenMapSetConstructor(nativeCode, func, newTarget, thisValue, numArgs);
+    hashTableBuilder.GenMapSetConstructor(nativeCode, func, newTarget, thisValue,
+        numArgs, GetCallArg0(numArgs), GetArgv());
 }
 }  // namespace panda::ecmascript::kungfu

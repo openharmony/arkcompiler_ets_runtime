@@ -1658,7 +1658,7 @@ GateRef CircuitBuilder::ToNumber(GateRef gate, GateRef value, GateRef glue)
     return ret;
 }
 
-GateRef CircuitBuilder::BuildMathBuiltinOp(const GateMetaData* op, std::vector<GateRef> args)
+GateRef CircuitBuilder::BuildControlDependOp(const GateMetaData* op, std::vector<GateRef> args)
 {
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();

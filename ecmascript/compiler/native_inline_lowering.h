@@ -66,6 +66,8 @@ private:
     void TryInlineArrayBufferIsView(GateRef gate, size_t argc, BuiltinsStubCSigns::ID id, bool skipThis);
     void TryInlineDataViewGet(GateRef gate, size_t argc, BuiltinsStubCSigns::ID id);
     void TryInlineDataViewSet(GateRef gate, size_t argc, BuiltinsStubCSigns::ID id);
+    void InlineStubBuiltin(GateRef gate, size_t builtinArgc, size_t realArgc, BuiltinsStubCSigns::ID id,
+        const GateMetaData* op, bool skipThis);
 
     void AddTraceLogs(GateRef gate, BuiltinsStubCSigns::ID id);
 

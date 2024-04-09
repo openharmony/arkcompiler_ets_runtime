@@ -164,6 +164,7 @@ void AotCompilerPreprocessor::AOTInitialize()
 {
     BytecodeStubCSigns::Initialize();
     CommonStubCSigns::Initialize();
+    BuiltinsStubCSigns::Initialize();
     RuntimeStubCSigns::Initialize();
     vm_->GetJSThread()->GetCurrentEcmaContext()->GetTSManager()->Initialize();
 }

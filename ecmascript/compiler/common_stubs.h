@@ -91,6 +91,7 @@ namespace panda::ecmascript::kungfu {
     V(Getnextpropname)                \
     V(CreateJSSetIterator)            \
     V(CreateJSMapIterator)            \
+    V(JSMapGet)                       \
     V(GetSingleCharCodeByIndex)       \
     V(FastStringEqual)                \
     V(FastStringAdd)                  \

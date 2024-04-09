@@ -18,6 +18,7 @@
 #include "ecmascript/base/number_helper.h"
 #include "ecmascript/compiler/access_object_stub_builder.h"
 #include "ecmascript/compiler/builtins/builtins_string_stub_builder.h"
+#include "ecmascript/compiler/builtins/linked_hashtable_stub_builder.h"
 #include "ecmascript/compiler/codegen/llvm/llvm_ir_builder.h"
 #include "ecmascript/compiler/interpreter_stub.h"
 #include "ecmascript/compiler/new_object_stub_builder.h"
@@ -29,6 +30,7 @@
 #include "ecmascript/js_map_iterator.h"
 #include "ecmascript/js_set.h"
 #include "ecmascript/js_set_iterator.h"
+#include "ecmascript/linked_hash_table.h"
 #include "ecmascript/message_string.h"
 #include "ecmascript/tagged_hash_table.h"
 
@@ -1138,6 +1140,18 @@ void CreateJSMapIteratorStubBuilder::GenerateCircuit()
     newBuilder.CreateJSCollectionIterator<JSMapIterator, JSMap>(&result, &exit, obj, kind);
     Bind(&exit);
     Return(*result);
+}
+
+void JSMapGetStubBuilder::GenerateCircuit()
+{
+    GateRef glue = PtrArgument(0);
+    GateRef obj = TaggedArgument(1);
+    GateRef key = TaggedArgument(2U);
+
+    LinkedHashTableStubBuilder<LinkedHashMap, LinkedHashMapObject> linkedHashTableStubBuilder(this, glue);
+    GateRef linkedTable = linkedHashTableStubBuilder.GetLinked(obj);
+    GateRef result = linkedHashTableStubBuilder.Get(linkedTable, key);
+    Return(result);
 }
 
 CallSignature CommonStubCSigns::callSigns_[CommonStubCSigns::NUM_OF_STUBS];

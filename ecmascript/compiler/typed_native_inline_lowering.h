@@ -109,6 +109,9 @@ private:
     GateRef LowerGlobalTNumberIsFinite(GateRef value);
     GateRef LowerGlobalTNumberIsNan(GateRef value);
 
+    void LowerToCommonStub(GateRef gate, CommonStubCSigns::ID id);
+    void LowerToBuiltinStub(GateRef gate, BuiltinsStubCSigns::ID id);
+
     GateRef FindFrameState(GateRef gate);
 private:
     Circuit* circuit_ {nullptr};
