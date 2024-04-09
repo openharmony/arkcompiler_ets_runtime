@@ -101,10 +101,30 @@ panda::JSValueRef FunctionCallback(JsiRuntimeCallInfo *info)
     return **thisRef;
 }
 
-Local<FunctionRef> GetNewSendableClassFunction(
-    EcmaVM *vm, const char *instanceKey, const char *staticKey, const char *nonStaticKey, Local<FunctionRef> parent)
+Local<FunctionRef> GetNewSendableClassFunction(EcmaVM *vm,
+                                               const char *instanceKey,
+                                               const char *staticKey,
+                                               const char *nonStaticKey,
+                                               Local<FunctionRef> parent,
+                                               bool isDict = false)
 {
     FunctionRef::SendablePropertiesInfos infos;
+
+    if (isDict) {
+        uint32_t maxInline = std::max(JSSharedFunction::MAX_INLINE, JSSharedObject::MAX_INLINE);
+        for (uint32_t i = 0; i < maxInline; ++i) {
+            Local<StringRef> tempStr = StringRef::NewFromUtf8(vm, std::to_string(i).c_str());
+            infos.instancePropertiesInfo.keys.push_back(tempStr);
+            infos.instancePropertiesInfo.types.push_back(FunctionRef::SendableType::NONE);
+            infos.instancePropertiesInfo.attributes.push_back(PropertyAttribute(tempStr, true, true, true));
+            infos.staticPropertiesInfo.keys.push_back(tempStr);
+            infos.staticPropertiesInfo.types.push_back(FunctionRef::SendableType::NONE);
+            infos.staticPropertiesInfo.attributes.push_back(PropertyAttribute(tempStr, true, true, true));
+            infos.nonStaticPropertiesInfo.keys.push_back(tempStr);
+            infos.nonStaticPropertiesInfo.types.push_back(FunctionRef::SendableType::NONE);
+            infos.nonStaticPropertiesInfo.attributes.push_back(PropertyAttribute(tempStr, true, true, true));
+        }
+    }
 
     Local<StringRef> instanceStr = StringRef::NewFromUtf8(vm, instanceKey);
     infos.instancePropertiesInfo.keys.push_back(instanceStr);
@@ -186,6 +206,41 @@ HWTEST_F_L0(JSNApiTests, NewSendableClassFunctionProperties)
     ASSERT_EQ("undefined", prototype->Get(vm_, invalidKey)->ToString(vm_)->ToString());
 }
 
+HWTEST_F_L0(JSNApiTests, NewSendableClassFunctionDictProperties)
+{
+    LocalScope scope(vm_);
+    Local<FunctionRef> constructor =
+        GetNewSendableClassFunction(vm_, "instance", "static", "nonStatic", FunctionRef::Null(vm_), true);
+    Local<ObjectRef> prototype = constructor->GetFunctionPrototype(vm_);
+
+    ASSERT_EQ("static", constructor->Get(vm_, staticKey)->ToString(vm_)->ToString());
+    ASSERT_EQ("nonStatic", prototype->Get(vm_, nonStaticKey)->ToString(vm_)->ToString());
+    ASSERT_EQ("undefined", constructor->Get(vm_, invalidKey)->ToString(vm_)->ToString());
+    ASSERT_EQ("undefined", prototype->Get(vm_, invalidKey)->ToString(vm_)->ToString());
+
+    // set static property on constructor
+    constructor->Set(vm_, staticKey, StringRef::NewFromUtf8(vm_, "static0"));
+    ASSERT_EQ("static0", constructor->Get(vm_, staticKey)->ToString(vm_)->ToString());
+
+    // set non static property on prototype
+    prototype->Set(vm_, nonStaticKey, StringRef::NewFromUtf8(vm_, "nonStatic0"));
+    ASSERT_EQ("nonStatic0", prototype->Get(vm_, nonStaticKey)->ToString(vm_)->ToString());
+
+    // set invalid property on constructor
+    ASSERT_FALSE(vm_->GetJSThread()->HasPendingException());
+    constructor->Set(vm_, invalidKey, StringRef::NewFromUtf8(vm_, "invalid"));
+    ASSERT_TRUE(vm_->GetJSThread()->HasPendingException());
+    JSNApi::GetAndClearUncaughtException(vm_);
+    ASSERT_EQ("undefined", constructor->Get(vm_, invalidKey)->ToString(vm_)->ToString());
+
+    // set invalid property on prototype
+    ASSERT_FALSE(vm_->GetJSThread()->HasPendingException());
+    prototype->Set(vm_, invalidKey, StringRef::NewFromUtf8(vm_, "invalid"));
+    ASSERT_TRUE(vm_->GetJSThread()->HasPendingException());
+    JSNApi::GetAndClearUncaughtException(vm_);
+    ASSERT_EQ("undefined", prototype->Get(vm_, invalidKey)->ToString(vm_)->ToString());
+}
+
 HWTEST_F_L0(JSNApiTests, NewSendableClassFunctionInstance)
 {
     LocalScope scope(vm_);
@@ -230,11 +285,86 @@ HWTEST_F_L0(JSNApiTests, NewSendableClassFunctionInstance)
     ASSERT_EQ("undefined", obj->Get(vm_, invalidKey)->ToString(vm_)->ToString());
 }
 
+HWTEST_F_L0(JSNApiTests, NewSendableClassFunctionDictInstance)
+{
+    LocalScope scope(vm_);
+    Local<FunctionRef> constructor =
+        GetNewSendableClassFunction(vm_, "instance", "static", "nonStatic", FunctionRef::Null(vm_), true);
+    Local<JSValueRef> argv[1] = {NumberRef::New(vm_, 0)};
+    Local<ObjectRef> obj = constructor->Constructor(vm_, argv, 0);
+    Local<ObjectRef> obj0 = constructor->Constructor(vm_, argv, 0);
+
+    ASSERT_TRUE(JSFunction::InstanceOf(thread_, JSNApiHelper::ToJSHandle(obj), JSNApiHelper::ToJSHandle(constructor)));
+    ASSERT_TRUE(JSFunction::InstanceOf(thread_, JSNApiHelper::ToJSHandle(obj0), JSNApiHelper::ToJSHandle(constructor)));
+
+    // set instance property
+    ASSERT_EQ("undefined", obj->Get(vm_, instanceKey)->ToString(vm_)->ToString());
+    ASSERT_EQ("undefined", obj0->Get(vm_, instanceKey)->ToString(vm_)->ToString());
+    obj->Set(vm_, instanceKey, StringRef::NewFromUtf8(vm_, "instance"));
+    ASSERT_EQ("instance", obj->Get(vm_, instanceKey)->ToString(vm_)->ToString());
+    ASSERT_EQ("undefined", obj0->Get(vm_, instanceKey)->ToString(vm_)->ToString());
+
+    // set non static property on prototype and get from instance
+    ASSERT_EQ("nonStatic", obj->Get(vm_, nonStaticKey)->ToString(vm_)->ToString());
+    ASSERT_EQ("nonStatic", obj0->Get(vm_, nonStaticKey)->ToString(vm_)->ToString());
+    Local<ObjectRef> prototype = obj->GetPrototype(vm_);
+    prototype->Set(vm_, nonStaticKey, StringRef::NewFromUtf8(vm_, "nonStatic0"));
+    ASSERT_EQ("nonStatic0", obj->Get(vm_, nonStaticKey)->ToString(vm_)->ToString());
+    ASSERT_EQ("nonStatic0", obj0->Get(vm_, nonStaticKey)->ToString(vm_)->ToString());
+
+    // set non static property on instance
+    ASSERT_FALSE(vm_->GetJSThread()->HasPendingException());
+    obj->Set(vm_, nonStaticKey, StringRef::NewFromUtf8(vm_, "nonStatic1"));
+    ASSERT_TRUE(vm_->GetJSThread()->HasPendingException());
+    JSNApi::GetAndClearUncaughtException(vm_);
+    ASSERT_EQ("nonStatic0", obj->Get(vm_, nonStaticKey)->ToString(vm_)->ToString());
+    ASSERT_EQ("nonStatic0", obj0->Get(vm_, nonStaticKey)->ToString(vm_)->ToString());
+
+    // set invalid property on instance
+    ASSERT_EQ("undefined", obj->Get(vm_, invalidKey)->ToString(vm_)->ToString());
+    ASSERT_FALSE(vm_->GetJSThread()->HasPendingException());
+    obj->Set(vm_, invalidKey, StringRef::NewFromUtf8(vm_, "invalid"));
+    ASSERT_TRUE(vm_->GetJSThread()->HasPendingException());
+    JSNApi::GetAndClearUncaughtException(vm_);
+    ASSERT_EQ("undefined", obj->Get(vm_, invalidKey)->ToString(vm_)->ToString());
+}
+
 HWTEST_F_L0(JSNApiTests, NewSendableClassFunctionInherit)
 {
     LocalScope scope(vm_);
     Local<FunctionRef> parent =
         GetNewSendableClassFunction(vm_, "parentInstance", "parentStatic", "parentNonStatic", FunctionRef::Null(vm_));
+    Local<FunctionRef> constructor = GetNewSendableClassFunction(vm_, "instance", "static", "nonStatic", parent);
+    Local<JSValueRef> argv[1] = {NumberRef::New(vm_, 0)};
+    Local<ObjectRef> obj = constructor->Constructor(vm_, argv, 0);
+    Local<ObjectRef> obj0 = constructor->Constructor(vm_, argv, 0);
+
+    ASSERT_TRUE(JSFunction::InstanceOf(thread_, JSNApiHelper::ToJSHandle(obj), JSNApiHelper::ToJSHandle(parent)));
+    ASSERT_TRUE(JSFunction::InstanceOf(thread_, JSNApiHelper::ToJSHandle(obj0), JSNApiHelper::ToJSHandle(parent)));
+
+    // set parent instance property on instance
+    Local<StringRef> parentInstanceKey = StringRef::NewFromUtf8(vm_, "parentInstance");
+    ASSERT_EQ("undefined", obj->Get(vm_, parentInstanceKey)->ToString(vm_)->ToString());
+    ASSERT_FALSE(vm_->GetJSThread()->HasPendingException());
+    obj->Set(vm_, parentInstanceKey, StringRef::NewFromUtf8(vm_, "parentInstance"));
+    ASSERT_TRUE(vm_->GetJSThread()->HasPendingException());
+    JSNApi::GetAndClearUncaughtException(vm_);
+    ASSERT_EQ("undefined", obj->Get(vm_, parentInstanceKey)->ToString(vm_)->ToString());
+
+    // get parent static property from constructor
+    Local<StringRef> parentStaticKey = StringRef::NewFromUtf8(vm_, "parentStatic");
+    ASSERT_EQ("parentStatic", constructor->Get(vm_, parentStaticKey)->ToString(vm_)->ToString());
+
+    // get parent non static property form instance
+    Local<StringRef> parentNonStaticKey = StringRef::NewFromUtf8(vm_, "parentNonStatic");
+    ASSERT_EQ("parentNonStatic", obj->Get(vm_, parentNonStaticKey)->ToString(vm_)->ToString());
+}
+
+HWTEST_F_L0(JSNApiTests, NewSendableClassFunctionDictInherit)
+{
+    LocalScope scope(vm_);
+    Local<FunctionRef> parent = GetNewSendableClassFunction(
+        vm_, "parentInstance", "parentStatic", "parentNonStatic", FunctionRef::Null(vm_), true);
     Local<FunctionRef> constructor = GetNewSendableClassFunction(vm_, "instance", "static", "nonStatic", parent);
     Local<JSValueRef> argv[1] = {NumberRef::New(vm_, 0)};
     Local<ObjectRef> obj = constructor->Constructor(vm_, argv, 0);
