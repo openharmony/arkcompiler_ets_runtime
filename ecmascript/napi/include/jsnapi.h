@@ -195,6 +195,11 @@ public:
         arkBundleName_ = bundleName;
     }
 
+    void SetMemConfigProperty(std::string configProperty)
+    {
+        memConfigProperty_ = configProperty;
+    }
+
     void SetGcThreadNum(size_t num)
     {
         gcThreadNum_ = num;
@@ -321,6 +326,11 @@ private:
         return arkBundleName_;
     }
 
+    std::string GetMemConfigProperty() const
+    {
+        return memConfigProperty_;
+    }
+
     size_t GetGcThreadNum() const
     {
         return gcThreadNum_;
@@ -385,6 +395,7 @@ private:
     bool enableCpuprofiler_ {false};
     int arkProperties_ {-1};
     std::string arkBundleName_ = {""};
+    std::string memConfigProperty_ = {""};
     size_t gcThreadNum_ {DEFAULT_GC_THREAD_NUM};
     size_t longPauseTime_ {DEFAULT_LONG_PAUSE_TIME};
     bool enableAsmInterpreter_ {true};

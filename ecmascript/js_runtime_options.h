@@ -386,6 +386,29 @@ public:
         }
     }
 
+    void SetMemConfigProperty(std::string configProperty)
+    {
+        if (configProperty != "") {
+            std::string key;
+            std::string value;
+            for (char c : configProperty) {
+                if (isdigit(c)) {
+                    value += c;
+                } else {
+                    key += c;
+                }
+            }
+            if (key == "jsHeap") {
+                heapSize_ = stoi(value) * 1_MB;
+            }
+        }
+    }
+
+    size_t GetHeapSize() const
+    {
+        return heapSize_;
+    }
+
     int GetDefaultProperties()
     {
         return ArkProperties::PARALLEL_GC | ArkProperties::CONCURRENT_MARK | ArkProperties::CONCURRENT_SWEEP |
@@ -1665,6 +1688,7 @@ private:
     uint32_t forceSharedGc_ {1};
     int arkProperties_ = GetDefaultProperties();
     std::string arkBundleName_ = {""};
+    size_t heapSize_ = {0};
     uint32_t gcThreadNum_ {7}; // 7: default thread num
     uint32_t longPauseTime_ {40}; // 40: default pause time
     std::string aotOutputFile_ {""};
