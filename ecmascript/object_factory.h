@@ -499,6 +499,7 @@ public:
 
     void NewJSArrayBufferData(const JSHandle<JSArrayBuffer> &array, int32_t length);
     void NewJSSendableArrayBufferData(const JSHandle<JSSendableArrayBuffer> &array, int32_t length);
+    JSHandle<JSSendableArrayBuffer> NewJSSendableArrayBuffer(int32_t length);
 
     JSHandle<JSArrayBuffer> NewJSArrayBuffer(int32_t length);
 

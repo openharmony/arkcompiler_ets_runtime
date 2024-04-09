@@ -900,6 +900,8 @@ namespace panda::ecmascript {
     V(SharedTypedArray, Reduce)               \
     V(SharedTypedArray, Reverse)              \
     V(SharedTypedArray, Some)                 \
+    V(SharedTypedArray, ToLocaleString)       \
+    V(SharedTypedArray, ToString)             \
     V(SharedTypedArray, Includes)             \
     V(SharedTypedArray, From)                 \
     V(SharedTypedArray, Of)                   \

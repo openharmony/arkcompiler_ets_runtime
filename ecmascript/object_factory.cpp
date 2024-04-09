@@ -315,6 +315,20 @@ void ObjectFactory::NewJSSendableArrayBufferData(const JSHandle<JSSendableArrayB
     nativeAreaAllocator->IncreaseNativeSizeStats(length, NativeFlag::ARRAY_BUFFER);
 }
 
+JSHandle<JSSendableArrayBuffer> ObjectFactory::NewJSSendableArrayBuffer(int32_t length)
+{
+    JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
+
+    JSHandle<JSFunction> constructor(env->GetSBuiltininArrayBufferFunction());
+    JSHandle<JSSendableArrayBuffer> sendableArrayBuffer(NewJSObjectByConstructor(constructor));
+    sendableArrayBuffer->SetArrayBufferByteLength(length);
+    if (length > 0) {
+        NewJSSendableArrayBufferData(sendableArrayBuffer, length);
+        sendableArrayBuffer->SetShared(true);
+    }
+    return sendableArrayBuffer;
+}
+
 void ObjectFactory::NewJSSharedArrayBufferData(const JSHandle<JSArrayBuffer> &array, int32_t length)
 {
     if (length == 0) {
@@ -1013,7 +1027,7 @@ JSHandle<JSObject> ObjectFactory::NewJSObjectByConstructor(const JSHandle<JSFunc
                                      env->GetObjectFunctionPrototype());
         }
         JSHandle<JSObject> obj;
-        if (jshclass->IsJSSharedObject()) {
+        if (jshclass->IsJSShared()) {
             obj = NewSharedOldSpaceJSObject(jshclass);
             if (jshclass->IsDictionaryMode()) {
                 auto fieldLayout = jshclass->GetLayout();
@@ -1022,6 +1036,7 @@ JSHandle<JSObject> ObjectFactory::NewJSObjectByConstructor(const JSHandle<JSFunc
                 auto properties = NewAndCopySNameDictionary(dict, dict->GetLength());
                 obj->SetProperties(thread_, properties);
             }
+            InitializeJSObject(obj, jshclass);
         } else {
             obj = NewJSObjectWithInit(jshclass);
         }

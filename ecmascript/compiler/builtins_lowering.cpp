@@ -222,7 +222,7 @@ GateRef BuiltinLowering::LowerCallTargetCheckWithGlobalEnv(GateRef gate, Builtin
 GateRef BuiltinLowering::LowerCallTargetCheckWithDetector(GateRef gate, BuiltinsStubCSigns::ID id)
 {
     JSType expectType = JSType::INVALID;
-    uint8_t detectorIndex = 0;
+    uint16_t detectorIndex = 0;
     switch (id) {
         case BuiltinsStubCSigns::ID::MapProtoIterator: {
             expectType = JSType::JS_MAP;
