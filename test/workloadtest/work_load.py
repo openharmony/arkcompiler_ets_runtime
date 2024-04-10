@@ -64,6 +64,8 @@ def parse_args():
     parser.add_argument('--run-count', default='10', nargs='?',
                         help='Compile all cases, execute the case count')
     parser.add_argument('--code-v', default='', nargs='?', help='Compile weekly_workload')
+    parser.add_argument('--swift-tools-path', default='', nargs='?', help='swift tools path')
+    parser.add_argument('--Ninja-ReleaseAssert', default='', nargs='?', help='Ninja ReleaseAssert')
     return parser.parse_args()
 
 
@@ -130,16 +132,22 @@ def execute_shell_script(script_path, args):
             print(error_output)
 
 
-def configure_environment(path, file_path, tools_type):
-    text = "--case-path weekly_workload\n" \
-           f"--ts-tools-path {path}\n" \
+def configure_environment(args, code_v, tools_type):
+    swift_tools_path = '~/tools/swift-5.7.3-RELEASE-ubuntu22.04/usr/bin'
+    if args.swift_tools_path:
+        swift_tools_path = args.swift_tools_path
+    ninja_releaseAssert = '~/apple/build/Ninja-ReleaseAssert'
+    if args.Ninja_ReleaseAssert:
+        ninja_releaseAssert = args.Ninja_ReleaseAssert
+    text = f"--case-path {code_v}\n" \
+           f"--ts-tools-path {args.code_path}\n" \
            f"--tools-type {tools_type}\n" \
-           "--swift-tools-path ~/tools/swift-5.7.3-RELEASE-ubuntu22.04/usr/bin\n" \
+           f"--swift-tools-path {swift_tools_path}\n" \
            "--android-ndk ~/apple/android-ndk-r25c\n" \
-           "--Ninja-ReleaseAssert ~/apple/build/Ninja-ReleaseAssert\n" \
+           f"--Ninja-ReleaseAssert {ninja_releaseAssert}\n" \
            "end"
     args = os.O_RDWR | os.O_CREAT
-    file_descriptor = os.open(file_path, args, stat.S_IRUSR | stat.S_IWUSR)
+    file_descriptor = os.open('toolspath.txt', args, stat.S_IRUSR | stat.S_IWUSR)
     file_object = os.fdopen(file_descriptor, "w+")
     file_object.write(text)
 
@@ -190,20 +198,10 @@ def report(boundary_value: int):
             data_one.append(row)
         for row in sheet_two.iter_rows(min_row=2, values_only=True):
             data_two.append(row)
-        if len(data_one) != len(data_two):
-            return
         print('generate report dependent files:', max_two_files)
         result_data = []
         write_to_txt('../out/pgo_daily.txt', 'case:percentage\n')
-        for row_one, row_two in zip(data_one, data_two):
-            case = row_one[0]
-            average_one = row_one[-1]
-            average_two = row_two[-1]
-            if average_one != 0:
-                difference = (average_one - average_two) / average_one * 100
-                percentage = "{:.2f}%".format(difference)
-                result_data.append([case, percentage])
-                write_to_txt('../out/pgo_daily.txt', ''.join([case, ":",percentage, '\n']))
+        build_data(data_one, data_two, result_data)
         result_wb = Workbook()
         result_sheet = result_wb.active
         result_sheet.append(['case', 'percentage'])
@@ -214,11 +212,39 @@ def report(boundary_value: int):
                 cell.fill = red_fill
                 boundary_num += 1
         now = datetime.datetime.now()
+        name = "".join([now.strftime("%Y%m%d%H%M%S") + "_pgo_daily.xlsx"])
         result_sheet.append(['Total_Case', str(len(result_data))])
         result_sheet.append(['Boundary_Total_Case', str(boundary_num)])
         write_to_txt('../out/pgo_daily.txt', ''.join(["Total_Case", ":", str(len(result_data)), '\n']))
         write_to_txt('../out/pgo_daily.txt', ''.join(["Boundary_Total_Case", ":", str(boundary_num), '\n']))
-        result_wb.save(os.path.join("../out", "".join([now.strftime("%Y%m%d%H%M%S") + "_pgo_daily.xlsx"])))
+        result_wb.save(os.path.join("../out", name))
+        print('generate report {} success.'.format(name))
+
+
+def build_data(data_one, data_two, result_data):
+    for row_one in data_one:
+        for row_two in data_two:
+            if row_one[0] == row_two[0]:
+                append_data(row_one, row_two, result_data)
+
+
+def append_data(row_one, row_two, result_data):
+    case = row_one[0]
+    average_one = convert_to_num(row_one[-1])
+    average_two = convert_to_num(row_two[-1])
+    if average_one != 0 and average_one != -1 and average_two != -1:
+        difference = (average_one - average_two) / average_one * 100
+        percentage = "{:.2f}%".format(difference)
+        result_data.append([case, percentage])
+        write_to_txt('../out/pgo_daily.txt', ''.join([case, ":", percentage, '\n']))
+
+
+def convert_to_num(str_num):
+    try:
+        double_num = float(str_num)
+        return double_num
+    except ValueError:
+        return -1
 
 
 def del_out_file():
@@ -244,13 +270,13 @@ def main(args):
     run_count = '10'
     if args.run_count:
         run_count = args.run_count
-    code_v = ''
+    code_v = 'weekly_workload'
     if args.code_v:
         code_v = args.code_v
     if args.run_aot:
         print('execute run_aot.sh is currently not supported')
     else:
-        configure_environment(args.code_path, 'toolspath.txt', tools_type)
+        configure_environment(args, code_v, tools_type)
         execute_args = ['--build', '--excel']
         if code_v:
             execute_args.append('--code-v')
