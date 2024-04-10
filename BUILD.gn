@@ -1308,3 +1308,12 @@ ohos_prebuilt_etc("app_aot_disable_list") {
   part_name = "ets_runtime"
   subsystem_name = "arkcompiler"
 }
+
+ohos_prebuilt_etc("app_jit_enable_list") {
+  relative_install_dir = "ark"
+  source = "$js_root/ecmascript/ohos/app_jit_enable_list.conf"
+
+  # Set the subsystem name
+  part_name = "ets_runtime"
+  subsystem_name = "arkcompiler"
+}

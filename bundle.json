@@ -46,6 +46,7 @@
             "sub_component": [
                 "//arkcompiler/ets_runtime:app_aot_enable_list",
                 "//arkcompiler/ets_runtime:app_aot_disable_list",
+                "//arkcompiler/ets_runtime:app_jit_enable_list",
                 "//arkcompiler/ets_runtime:ark_js_packages",
                 "//arkcompiler/ets_runtime/etc:arkcompiler.para.dac"
             ],
