@@ -429,6 +429,81 @@ GateRef BuiltinsTypedArrayStubBuilder::CalculatePositionWithLength(GateRef posit
     return ret;
 }
 
+void BuiltinsTypedArrayStubBuilder::Every(GateRef glue, GateRef thisValue,  GateRef numArgs,
+    Variable *result, Label *exit, Label *slowPath)
+{
+    auto env = GetEnvironment();
+    Label isHeapObject(env);
+    Label typedArray(env);
+    Label defaultConstr(env);
+    BRANCH(TaggedIsHeapObject(thisValue), &isHeapObject, slowPath);
+    Bind(&isHeapObject);
+    BRANCH(IsTypedArray(thisValue), &typedArray, slowPath);
+    Bind(&typedArray);
+    BRANCH(HasConstructor(thisValue), slowPath, &defaultConstr);
+    Bind(&defaultConstr);
+    Label arg0HeapObject(env);
+    Label callable(env);
+    GateRef callbackFnHandle = GetCallArg0(numArgs);
+    BRANCH(TaggedIsHeapObject(callbackFnHandle), &arg0HeapObject, slowPath);
+    Bind(&arg0HeapObject);
+    BRANCH(IsCallable(callbackFnHandle), &callable, slowPath);
+    Bind(&callable);
+    GateRef argHandle = GetCallArg1(numArgs);
+    DEFVARIABLE(i, VariableType::INT32(), Int32(0));
+    DEFVARIABLE(kValue, VariableType::JS_ANY(), Hole());
+    GateRef thisArrlen = GetArrayLength(thisValue);
+    Label loopHead(env);
+    Label loopEnd(env);
+    Label next(env);
+    Label loopExit(env);
+    Jump(&loopHead);
+    LoopBegin(&loopHead);
+    {
+        Label hasException0(env);
+        Label notHasException0(env);
+        Label hasException1(env);
+        Label notHasException1(env);
+        Label retValueIsFalse(env);
+        BRANCH(Int32LessThan(*i, thisArrlen), &next, &loopExit);
+        Bind(&next);
+        kValue = FastGetPropertyByIndex(glue, thisValue, *i, GetObjectType(LoadHClass(thisValue)));
+        BRANCH(HasPendingException(glue), &hasException0, &notHasException0);
+        Bind(&hasException0);
+        {
+            result->WriteVariable(Exception());
+            Jump(exit);
+        }
+        Bind(&notHasException0);
+        {
+            GateRef key = IntToTaggedInt(*i);
+            GateRef retValue = JSCallDispatch(glue, callbackFnHandle, Int32(NUM_MANDATORY_JSFUNC_ARGS), 0,
+                Circuit::NullGate(), JSCallMode::CALL_THIS_ARG3_WITH_RETURN, { argHandle, *kValue, key, thisValue });
+            BRANCH(HasPendingException(glue), &hasException1, &notHasException1);
+            Bind(&hasException1);
+            {
+                result->WriteVariable(Exception());
+                Jump(exit);
+            }
+            Bind(&notHasException1);
+            {
+                BRANCH(TaggedIsFalse(FastToBoolean(retValue)), &retValueIsFalse, &loopEnd);
+                Bind(&retValueIsFalse);
+                {
+                    result->WriteVariable(TaggedFalse());
+                    Jump(exit);
+                }
+            }
+        }
+    }
+    Bind(&loopEnd);
+    i = Int32Add(*i, Int32(1));
+    LoopEnd(&loopHead);
+    Bind(&loopExit);
+    result->WriteVariable(TaggedTrue());
+    Jump(exit);
+}
+
 void BuiltinsTypedArrayStubBuilder::Some(GateRef glue, GateRef thisValue, GateRef numArgs,
     Variable *result, Label *exit, Label *slowPath)
 {
