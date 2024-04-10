@@ -351,3 +351,19 @@ function testTypeArraySome(ctor) {
     let obj = new ctor([-1, 0, 2, 5, 8]);
     return obj.some((element, index, array) => element > 5);
 }
+
+// Test case for every()
+let arr1_every = new Int16Array([1, 2, 3, 4, 5, 6, 7, 8, 9]);
+function testEvery_true(ele) {
+    return ele > 0;
+}
+function testEvery_false(ele) {
+    return ele > 10;
+}
+print(arr1_every.every(testEvery_true));
+print(arr1_every.every(testEvery_false));
+
+let arr2_every = new Int16Array();
+print(arr2_every.every(testEvery_false));
+let arr3_every = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+print(arr3_every.every(testEvery_true));

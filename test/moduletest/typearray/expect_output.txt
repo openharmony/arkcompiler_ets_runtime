@@ -56,3 +56,7 @@ Uint32Array test success !!!
 Uint16Array test success !!!
 Uint8Array test success !!!
 Uint8ClampedArray test success !!!
+true
+false
+true
+true

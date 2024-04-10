@@ -78,7 +78,7 @@
     /* %TypedArray%.prototype.entries ( ) */                                            \
     V("entries",        Entries,        0, INVALID)                                     \
     /* %TypedArray%.prototype.every ( callbackfn [ , thisArg ] ) */                     \
-    V("every",          Every,          1, INVALID)                                     \
+    V("every",          Every,          1, TypedArrayEvery)                             \
     /* %TypedArray%.prototype.fill ( value [ , start [ , end ] ] ) */                   \
     V("fill",           Fill,           1, INVALID)                                     \
     /* %TypedArray%.prototype.filter ( callbackfn [ , thisArg ] ) */                    \
