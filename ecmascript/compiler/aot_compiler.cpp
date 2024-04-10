@@ -165,6 +165,14 @@ int Main(const int argc, const char **argv)
                                 cOptions.optBCRange_);
 
         bool isEnableLiteCG = runtimeOptions.IsCompilerEnableLiteCG();
+        if (cPreprocessor.GetMainPkgArgs()) {
+            std::string bundleName = cPreprocessor.GetMainPkgArgs()->GetBundleName();
+            if (ohos::EnableAotListHelper::GetInstance()->IsEnableList(bundleName)) {
+                isEnableLiteCG = true;
+            }
+        }
+        vm->GetJSOptions().SetCompilerEnableLiteCG(isEnableLiteCG);
+
         AOTFileGenerator generator(&log, &logList, vm, cOptions.triple_, isEnableLiteCG);
 
         CompileValidFiles(passManager, generator, ret, fileInfos);
