@@ -9031,4 +9031,35 @@ void StubBuilder::MigrateFromHoleNumberToHoleInt(GateRef glue, GateRef object)
     Bind(&exit);
     env->SubCfgExit();
 }
+
+GateRef StubBuilder::IsDetachedBuffer(GateRef buffer)
+{
+    auto env = GetEnvironment();
+    Label entryPass(env);
+    env->SubCfgEntry(&entryPass);
+    Label isNull(env);
+    Label exit(env);
+    Label isByteArray(env);
+    Label notByteArray(env);
+    DEFVARIABLE(result, VariableType::BOOL(), False());
+    BRANCH(IsByteArray(buffer), &isByteArray, &notByteArray);
+    Bind(&isByteArray);
+    {
+        Jump(&exit);
+    }
+    Bind(&notByteArray);
+    {
+        GateRef dataSlot = GetArrayBufferData(buffer);
+        BRANCH(TaggedIsNull(dataSlot), &isNull, &exit);
+        Bind(&isNull);
+        {
+            result = True();
+            Jump(&exit);
+        }
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
 }  // namespace panda::ecmascript::kungfu

@@ -18,6 +18,7 @@
 #include "ecmascript/base/number_helper.h"
 #include "ecmascript/compiler/builtins/builtins_array_stub_builder.h"
 #include "ecmascript/compiler/builtins/builtins_call_signature.h"
+#include "ecmascript/compiler/builtins/builtins_dataview_stub_builder.h"
 #include "ecmascript/compiler/builtins/builtins_function_stub_builder.h"
 #include "ecmascript/compiler/builtins/builtins_string_stub_builder.h"
 #include "ecmascript/compiler/builtins/builtins_number_stub_builder.h"
@@ -33,6 +34,7 @@
 #include "ecmascript/compiler/stub_builder.h"
 #include "ecmascript/compiler/hash_stub_builder.h"
 #include "ecmascript/compiler/variable_type.h"
+#include "ecmascript/js_dataview.h"
 #include "ecmascript/js_date.h"
 #include "ecmascript/js_primitive_ref.h"
 #include "ecmascript/linked_hash_table.h"
@@ -212,11 +214,32 @@ DECLARE_BUILTINS(type##method)                                                  
     Return(*res);                                                                                   \
 }
 
+// map and set stub function
+#define DECLARE_BUILTINS_DATAVIEW_STUB_BUILDER(method, type, numType, function, retDefaultValue)    \
+DECLARE_BUILTINS(type##method)                                                                      \
+{                                                                                                   \
+    auto env = GetEnvironment();                                                                    \
+    DEFVARIABLE(res, VariableType::JS_ANY(), retDefaultValue);                                      \
+    Label slowPath(env);                                                                            \
+    Label exit(env);                                                                                \
+    BuiltinsDataViewStubBuilder builder(this);                                                      \
+    builder.function<DataViewType::numType>(glue, thisValue, numArgs, &res, &exit, &slowPath);      \
+    Bind(&slowPath);                                                                                \
+    {                                                                                               \
+        auto name = BuiltinsStubCSigns::GetName(BUILTINS_STUB_ID(type##method));                    \
+        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func, newTarget, name.c_str());    \
+        Jump(&exit);                                                                                \
+    }                                                                                               \
+    Bind(&exit);                                                                                    \
+    Return(*res);                                                                                   \
+}
+
 BUILTINS_METHOD_STUB_LIST(DECLARE_BUILTINS_STUB_BUILDER, DECLARE_BUILTINS_STUB_BUILDER1,
-                          DECLARE_BUILTINS_COLLECTION_STUB_BUILDER)
+                          DECLARE_BUILTINS_COLLECTION_STUB_BUILDER, DECLARE_BUILTINS_DATAVIEW_STUB_BUILDER)
 #undef DECLARE_BUILTINS_STUB_BUILDER
 #undef DECLARE_BUILTINS_STUB_BUILDER1
 #undef DECLARE_BUILTINS_COLLECTION_STUB_BUILDER
+#undef DECLARE_BUILTINS_DATAVIEW_STUB_BUILDER
 
 DECLARE_BUILTINS(ArkToolsHashCode)
 {

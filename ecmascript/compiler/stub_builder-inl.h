@@ -30,6 +30,7 @@
 #include "ecmascript/ic/profile_type_info.h"
 #include "ecmascript/ic/proto_change_details.h"
 #include "ecmascript/js_array.h"
+#include "ecmascript/js_arraybuffer.h"
 #include "ecmascript/js_function.h"
 #include "ecmascript/js_for_in_iterator.h"
 #include "ecmascript/js_generator_object.h"
@@ -848,6 +849,11 @@ inline GateRef StubBuilder::CastDoubleToInt64(GateRef x)
     return env_->GetBuilder()->CastDoubleToInt64(x);
 }
 
+inline GateRef StubBuilder::CastFloat32ToInt32(GateRef x)
+{
+    return env_->GetBuilder()->CastFloat32ToInt32(x);
+}
+
 inline GateRef StubBuilder::TaggedTrue()
 {
     return env_->GetBuilder()->TaggedTrue();
@@ -1225,6 +1231,12 @@ inline GateRef StubBuilder::IsSymbol(GateRef obj)
 {
     GateRef objectType = GetObjectType(LoadHClass(obj));
     return Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::SYMBOL)));
+}
+
+inline GateRef StubBuilder::IsDataView(GateRef obj)
+{
+    GateRef objectType = GetObjectType(LoadHClass(obj));
+    return Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::JS_DATA_VIEW)));
 }
 
 inline GateRef StubBuilder::IsString(GateRef obj)
@@ -2325,6 +2337,11 @@ inline GateRef StubBuilder::ChangeFloat64ToInt32(GateRef x)
     return env_->GetBuilder()->ChangeFloat64ToInt32(x);
 }
 
+inline GateRef StubBuilder::TruncDoubleToFloat32(GateRef x)
+{
+    return env_->GetBuilder()->TruncDoubleToFloat32(x);
+}
+
 inline GateRef StubBuilder::ChangeTaggedPointerToInt64(GateRef x)
 {
     return env_->GetBuilder()->ChangeTaggedPointerToInt64(x);
@@ -3253,6 +3270,30 @@ inline GateRef StubBuilder::GetAccessorHasChanged(GateRef obj)
 inline GateRef StubBuilder::ComputeTaggedTypedArraySize(GateRef elementSize, GateRef length)
 {
     return PtrAdd(IntPtr(ByteArray::DATA_OFFSET), PtrMul(elementSize, length));
+}
+
+inline GateRef StubBuilder::GetViewedArrayBuffer(GateRef dataView)
+{
+    return Load(VariableType::JS_ANY(), dataView,
+                IntPtr(JSDataView::VIEW_ARRAY_BUFFER_OFFSET));
+}
+
+inline GateRef StubBuilder::GetByteOffset(GateRef dataView)
+{
+    return Load(VariableType::INT32(), dataView,
+                IntPtr(JSDataView::BYTE_OFFSET_OFFSET));
+}
+
+inline GateRef StubBuilder::GetByteLength(GateRef dataView)
+{
+    return Load(VariableType::INT32(), dataView,
+                IntPtr(JSDataView::BYTE_LENGTH_OFFSET));
+}
+
+inline GateRef StubBuilder::GetArrayBufferData(GateRef buffer)
+{
+    GateRef offset = IntPtr(JSArrayBuffer::DATA_OFFSET);
+    return Load(VariableType::JS_ANY(), buffer, offset);
 }
 } //  namespace panda::ecmascript::kungfu
 #endif // ECMASCRIPT_COMPILER_STUB_INL_H

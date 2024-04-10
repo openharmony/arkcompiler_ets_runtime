@@ -1268,7 +1268,7 @@ GateRef TypedNativeInlineLowering::SetValueInBuffer(
                 }
                 builder_.Bind(&bigEndian);
                 {
-                    GateRef int32Value = builder_.CaseFloat32ToInt32(float32Value);
+                    GateRef int32Value = builder_.CastFloat32ToInt32(float32Value);
                     GateRef bigEndianInt32Value = builder_.Int32ToBigEndianInt32(int32Value);
                     GateRef bigEndianFloat32Value = builder_.CastInt32ToFloat32(bigEndianInt32Value);
                     builder_.Store(VariableType::FLOAT32(), glue, dataPointer, offset, bigEndianFloat32Value);

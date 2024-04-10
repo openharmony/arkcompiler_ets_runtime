@@ -28,13 +28,13 @@ namespace panda::ecmascript::kungfu {
 // BUILTINS_STUB_LIST is shared both ASM Interpreter and AOT.
 // AOT_BUILTINS_STUB_LIST is used in AOT only.
 #define BUILTINS_STUB_LIST(V, D)                    \
-    BUILTINS_METHOD_STUB_LIST(D, D, D)              \
+    BUILTINS_METHOD_STUB_LIST(D, D, D, D)           \
     BUILTINS_WITH_CONTAINERS_STUB_BUILDER(D)        \
     BUILTINS_CONSTRUCTOR_STUB_LIST(V)               \
     AOT_AND_BUILTINS_STUB_LIST(V)                   \
     BUILTINS_ARKTOOLS_STUB_BUILDER(D)
 
-#define BUILTINS_METHOD_STUB_LIST(V, T, D)          \
+#define BUILTINS_METHOD_STUB_LIST(V, T, D, K)       \
     BUILTINS_WITH_STRING_STUB_BUILDER(V)            \
     BUILTINS_WITH_OBJECT_STUB_BUILDER(T)            \
     BUILTINS_WITH_ARRAY_STUB_BUILDER(V)             \
@@ -42,7 +42,8 @@ namespace panda::ecmascript::kungfu {
     BUILTINS_WITH_MAP_STUB_BUILDER(D)               \
     BUILTINS_WITH_FUNCTION_STUB_BUILDER(V)          \
     BUILTINS_WITH_NUMBER_STUB_BUILDER(T)            \
-    BUILTINS_WITH_TYPEDARRAY_STUB_BUILDER(V)
+    BUILTINS_WITH_TYPEDARRAY_STUB_BUILDER(V)        \
+    BUILTINS_WITH_DATAVIEW_STUB_BUILDER(K)
 
 #define BUILTINS_WITH_STRING_STUB_BUILDER(V)                                            \
     V(CharAt,             String,   Hole())                                             \
@@ -131,6 +132,11 @@ namespace panda::ecmascript::kungfu {
     V(SubArray,        TypedArray,  Undefined())    \
     V(GetByteLength,   TypedArray,  Undefined())    \
     V(GetByteOffset,   TypedArray,  Undefined())
+
+#define BUILTINS_WITH_DATAVIEW_STUB_BUILDER(V)                           \
+    V(SetInt32,     DataView,  INT32,     SetTypedValue, Undefined())    \
+    V(SetFloat32,   DataView,  FLOAT32,   SetTypedValue, Undefined())    \
+    V(SetFloat64,   DataView,  FLOAT64,   SetTypedValue, Undefined())
 
 #define BUILTINS_WITH_CONTAINERS_STUB_BUILDER(V)                                                               \
     V(ForEach,            ArrayList,      ContainersCommonFuncCall,  ARRAYLIST_FOREACH,            JS_POINTER) \
@@ -222,11 +228,8 @@ namespace panda::ecmascript::kungfu {
     V(DataViewGetUint16)                            \
     V(DataViewGetUint32)                            \
     V(DataViewGetUint8)                             \
-    V(DataViewSetFloat32)                           \
-    V(DataViewSetFloat64)                           \
     V(DataViewSetInt8)                              \
     V(DataViewSetInt16)                             \
-    V(DataViewSetInt32)                             \
     V(DataViewSetUint8)                             \
     V(DataViewSetUint16)                            \
     V(DataViewSetUint32)                            \
@@ -299,6 +302,10 @@ public:
     static bool IsTypedInlineBuiltin(ID builtinId)
     {
         if (TYPED_BUILTINS_INLINE_FIRST <= builtinId && builtinId <= TYPED_BUILTINS_INLINE_LAST) {
+            return true;
+        }
+        if (BuiltinsStubCSigns::ID::DataViewSetInt32 <= builtinId &&
+            builtinId <= BuiltinsStubCSigns::ID::DataViewSetFloat64) {
             return true;
         }
         // NOTE(schernykh): try to remove this switch and move StringFromCharCode to TYPED_BUILTINS_INLINE list
