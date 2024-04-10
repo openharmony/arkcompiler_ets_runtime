@@ -2897,14 +2897,16 @@ void ECMAObject::SetNativePointerFieldCount(const JSThread *thread, int32_t coun
     JSTaggedType hashField = Barriers::GetValue<JSTaggedType>(this, HASH_OFFSET);
     JSHandle<JSTaggedValue> value(thread, JSTaggedValue(hashField));
     JSHandle<ECMAObject> obj(thread, this);
+    JSHandle<JSTaggedValue> object(obj);
+    bool isShared = object->IsJSShared();
     if (value->IsHeapObject()) {
         if (value->IsTaggedArray()) {
             JSHandle<TaggedArray> array(value);
             // Native Pointer field count is fixed.
             if (array->GetExtraLength() == 0) {
                 JSHandle<TaggedArray> newArray =
-                    value->IsJSShared() ? thread->GetEcmaVM()->GetFactory()->NewSTaggedArray(count + RESOLVED_MAX_SIZE)
-                                        : thread->GetEcmaVM()->GetFactory()->NewTaggedArray(count + RESOLVED_MAX_SIZE);
+                    isShared ? thread->GetEcmaVM()->GetFactory()->NewSTaggedArray(count + RESOLVED_MAX_SIZE)
+                             : thread->GetEcmaVM()->GetFactory()->NewTaggedArray(count + RESOLVED_MAX_SIZE);
                 newArray->SetExtraLength(count);
                 newArray->Set(thread, count + HASH_INDEX, array->Get(HASH_INDEX));
                 newArray->Set(thread, count + FUNCTION_EXTRA_INDEX, array->Get(FUNCTION_EXTRA_INDEX));
@@ -2912,8 +2914,8 @@ void ECMAObject::SetNativePointerFieldCount(const JSThread *thread, int32_t coun
             }
         } else if (value->IsJSNativePointer()) {
             JSHandle<TaggedArray> newArray =
-                value->IsJSShared() ? thread->GetEcmaVM()->GetFactory()->NewSTaggedArray(count + RESOLVED_MAX_SIZE)
-                                    : thread->GetEcmaVM()->GetFactory()->NewTaggedArray(count + RESOLVED_MAX_SIZE);
+                isShared ? thread->GetEcmaVM()->GetFactory()->NewSTaggedArray(count + RESOLVED_MAX_SIZE)
+                         : thread->GetEcmaVM()->GetFactory()->NewTaggedArray(count + RESOLVED_MAX_SIZE);
             newArray->SetExtraLength(count);
             newArray->Set(thread, count + HASH_INDEX, JSTaggedValue(0));
             newArray->Set(thread, count + FUNCTION_EXTRA_INDEX, value);
@@ -2923,9 +2925,8 @@ void ECMAObject::SetNativePointerFieldCount(const JSThread *thread, int32_t coun
             UNREACHABLE();
         }
     } else {
-        JSHandle<TaggedArray> newArray = value->IsJSShared()
-                                             ? thread->GetEcmaVM()->GetFactory()->NewSTaggedArray(count + 1)
-                                             : thread->GetEcmaVM()->GetFactory()->NewTaggedArray(count + 1);
+        JSHandle<TaggedArray> newArray = isShared ? thread->GetEcmaVM()->GetFactory()->NewSTaggedArray(count + 1)
+                                                  : thread->GetEcmaVM()->GetFactory()->NewTaggedArray(count + 1);
         newArray->SetExtraLength(count);
         newArray->Set(thread, count + HASH_INDEX, value);
         Barriers::SetObject<true>(thread, *obj, HASH_OFFSET, newArray.GetTaggedValue().GetRawData());
