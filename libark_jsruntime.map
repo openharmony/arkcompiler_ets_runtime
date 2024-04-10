@@ -208,6 +208,7 @@
       panda::ecmascript::NameDictionary::SetAttributes*;
       panda::ecmascript::NameDictionary::SetEntry*;
       panda::ecmascript::NameDictionary::UpdateValue*;
+      panda::ecmascript::NameDictionary::CreateInSharedHeap*;
       panda::ecmascript::NumberDictionary::GetAttributes*;
       panda::ecmascript::NumberDictionary::Hash*;
       panda::ecmascript::NumberDictionary::IsMatch*;
@@ -228,6 +229,13 @@
       panda::ecmascript::ObjectFactory::NewJSObject*;
       panda::ecmascript::ObjectFactory::NewJsonFixedArray*;
       panda::ecmascript::ObjectFactory::NewTaggedArray*;
+      panda::ecmascript::ObjectFactory::CreateSLayoutInfo*;
+      panda::ecmascript::ObjectFactory::NewSEcmaHClass*;
+      panda::ecmascript::ObjectFactory::NewSharedOldSpaceJSObject*;
+      panda::ecmascript::ObjectFactory::NewSharedOldSpaceJSObjectWithInit*;
+      panda::ecmascript::ObjectFactory::NewSTaggedArray*;
+      panda::ecmascript::ObjectFactory::NewSEcmaHClassDictMode*;
+      panda::ecmascript::SendableClassDefiner::AddFieldTypeToHClass*;
       panda::ecmascript::ObjectOperator::UpdateDetector*;
       panda::ecmascript::PageMap*;
       panda::ecmascript::PageSize*;
