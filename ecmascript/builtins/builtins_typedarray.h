@@ -106,7 +106,7 @@
     /* %TypedArray%.prototype.map ( callbackfn [ , thisArg ] ) */                       \
     V("map",            Map,            1, INVALID)                                     \
     /* %TypedArray%.prototype.reduce ( callbackfn [ , initialValue ] ) */               \
-    V("reduce",         Reduce,         1, INVALID)                                     \
+    V("reduce",         Reduce,         1, TypedArrayReduce)                            \
     /* %TypedArray%.prototype.reduceRight ( callbackfn [ , initialValue ] ) */          \
     V("reduceRight",    ReduceRight,    1, INVALID)                                     \
     /* %TypedArray%.prototype.reverse ( ) */                                            \

@@ -429,6 +429,109 @@ GateRef BuiltinsTypedArrayStubBuilder::CalculatePositionWithLength(GateRef posit
     return ret;
 }
 
+void BuiltinsTypedArrayStubBuilder::Reduce(GateRef glue, GateRef thisValue, GateRef numArgs,
+    Variable *result, Label *exit, Label *slowPath)
+{
+    auto env = GetEnvironment();
+    Label ecmaObj(env);
+    Label defaultConstr(env);
+    Label atLeastOneArg(env);
+    Label callbackFnHandleHeapObject(env);
+    Label callbackFnHandleCallable(env);
+    Label noTypeError(env);
+    Label typedArray(env);
+
+    BRANCH(IsEcmaObject(thisValue), &ecmaObj, slowPath);
+    Bind(&ecmaObj);
+    BRANCH(IsTypedArray(thisValue), &typedArray, slowPath);
+    Bind(&typedArray);
+    BRANCH(HasConstructor(thisValue), slowPath, &defaultConstr);
+    Bind(&defaultConstr);
+    GateRef thisLen = GetArrayLength(thisValue);
+    BRANCH(Int64GreaterThanOrEqual(numArgs, IntPtr(1)), &atLeastOneArg, slowPath);
+    Bind(&atLeastOneArg);
+    GateRef callbackFnHandle = GetCallArg0(numArgs);
+    BRANCH(TaggedIsHeapObject(callbackFnHandle), &callbackFnHandleHeapObject, slowPath);
+    Bind(&callbackFnHandleHeapObject);
+    BRANCH(IsCallable(callbackFnHandle), &callbackFnHandleCallable, slowPath);
+    Bind(&callbackFnHandleCallable);
+    GateRef thisLenIsZero = Int32Equal(thisLen, Int32(0));
+    GateRef numArgsLessThanTwo = Int64LessThan(numArgs, IntPtr(2));
+    BRANCH(BoolAnd(thisLenIsZero, numArgsLessThanTwo), slowPath, &noTypeError);
+    Bind(&noTypeError);
+    {
+        DEFVARIABLE(accumulator, VariableType::JS_ANY(), Undefined());
+        DEFVARIABLE(k, VariableType::INT32(), Int32(0));
+        Label updateAccumulator(env);
+        Label accumulateBegin(env);
+        Label defaultValue(env);
+        // 2 : index of the param
+        BRANCH(Int64Equal(numArgs, IntPtr(2)), &updateAccumulator, &defaultValue);
+        Bind(&updateAccumulator);
+        {
+            accumulator = GetCallArg1(numArgs);
+            Jump(&accumulateBegin);
+        }
+        Bind(&defaultValue);
+        {
+            accumulator = FastGetPropertyByIndex(glue, thisValue, Int32(0), GetObjectType(LoadHClass(thisValue)));
+            k = Int32Add(*k, Int32(1));
+            Jump(&accumulateBegin);
+        }
+        Bind(&accumulateBegin);
+        {
+            // 4 : max value of the param amount
+            GateRef argsLength = Int32(4);
+            NewObjectStubBuilder newBuilder(this);
+            GateRef argList = newBuilder.NewTaggedArray(glue, argsLength);
+            Label loopHead(env);
+            Label next(env);
+            Label loopEnd(env);
+            Label loopExit(env);
+            Jump(&loopHead);
+            LoopBegin(&loopHead);
+            {
+                BRANCH(Int32LessThan(*k, thisLen), &next, &loopExit);
+                Bind(&next);
+                {
+                    GateRef kValue = FastGetPropertyByIndex(glue, thisValue, *k, GetObjectType(LoadHClass(thisValue)));
+                    // 0 : the first position
+                    SetValueToTaggedArray(VariableType::JS_ANY(), glue, argList, Int32(0), *accumulator);
+                    // 1 : the second position
+                    SetValueToTaggedArray(VariableType::JS_ANY(), glue, argList, Int32(1), kValue);
+                    // 2 : the third position
+                    SetValueToTaggedArray(VariableType::INT32(), glue, argList, Int32(2), IntToTaggedInt(*k));
+                    // 3 : the fourth position
+                    SetValueToTaggedArray(VariableType::JS_ANY(), glue, argList, Int32(3), thisValue);
+                    GateRef argv = PtrAdd(argList, IntPtr(TaggedArray::DATA_OFFSET));
+                    GateRef callResult = JSCallDispatch(glue, callbackFnHandle, argsLength, 0,
+                        Circuit::NullGate(), JSCallMode::CALL_THIS_ARGV_WITH_RETURN,
+                        {argsLength, argv, Undefined()});
+                    Label hasException1(env);
+                    Label notHasException1(env);
+                    BRANCH(HasPendingException(glue), &hasException1, &notHasException1);
+                    Bind(&hasException1);
+                    {
+                        result->WriteVariable(Exception());
+                        Jump(exit);
+                    }
+                    Bind(&notHasException1);
+                    {
+                        accumulator = callResult;
+                        Jump(&loopEnd);
+                    }
+                }
+            }
+            Bind(&loopEnd);
+            k = Int32Add(*k, Int32(1));
+            LoopEnd(&loopHead);
+            Bind(&loopExit);
+            result->WriteVariable(*accumulator);
+            Jump(exit);
+        }
+    }
+}
+
 void BuiltinsTypedArrayStubBuilder::Every(GateRef glue, GateRef thisValue,  GateRef numArgs,
     Variable *result, Label *exit, Label *slowPath)
 {
