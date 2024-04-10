@@ -2959,36 +2959,14 @@ bool JSNApi::InitForConcurrentFunction(EcmaVM *vm, Local<JSValueRef> function, v
     }
     transFunc->SetFunctionExtraInfo(thread, nullptr, nullptr, taskInfo);
     transFunc->SetCallNapi(false);
+    thread->SetTaskInfo(reinterpret_cast<uintptr_t>(taskInfo));
     return true;
 }
 
 void* JSNApi::GetCurrentTaskInfo(const EcmaVM *vm)
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, nullptr);
-    ecmascript::ThreadManagedScope managedScope(thread);
-    JSTaggedType *current = const_cast<JSTaggedType *>(thread->GetCurrentFrame());
-    ecmascript::FrameIterator it(current, thread);
-    for (; !it.Done(); it.Advance<ecmascript::GCVisitedFlag::VISITED>()) {
-        if (!it.IsJSFrame()) {
-            continue;
-        }
-        auto method = it.CheckAndGetMethod();
-        if (method == nullptr || method->IsNativeWithCallField() ||
-            method->GetFunctionKind() != ecmascript::FunctionKind::CONCURRENT_FUNCTION) {
-            continue;
-        }
-        auto functionObj = it.GetFunction();
-        JSHandle<JSFunction> function(thread, functionObj);
-        JSTaggedValue extraInfoValue = function->GetFunctionExtraInfo();
-        if (!extraInfoValue.IsJSNativePointer()) {
-            LOG_ECMA(DEBUG) << "Concurrent function donnot have taskInfo";
-            continue;
-        }
-        JSHandle<JSNativePointer> extraInfo(thread, extraInfoValue);
-        return extraInfo->GetData();
-    }
-    LOG_ECMA(ERROR) << "TaskInfo is nullptr";
-    return nullptr;
+    return reinterpret_cast<void*>(thread->GetTaskInfo());
 }
 
 void JSNApi::SetBundleName(EcmaVM *vm, const std::string &bundleName)

@@ -2619,6 +2619,12 @@ void SlowPathLowering::LowerResumeGenerator(GateRef gate)
     {
         GateRef resumeResultOffset = builder_.IntPtr(JSGeneratorObject::GENERATOR_RESUME_RESULT_OFFSET);
         result = builder_.Load(VariableType::JS_ANY(), obj, resumeResultOffset);
+        GateRef taskInfoOffset = builder_.IntPtr(JSGeneratorObject::TASK_INFO_OFFSET);
+        GateRef taskInfo = builder_.Load(VariableType::NATIVE_POINTER(), obj, taskInfoOffset);
+        GateRef glueTaskOffset =
+            builder_.IntPtr(JSThread::GlueData::GetTaskInfoOffset(builder_.GetCompilationConfig()->Is32Bit()));
+        builder_.Store(VariableType::NATIVE_POINTER(), glue_, glue_, glueTaskOffset, taskInfo);
+        builder_.Store(VariableType::NATIVE_POINTER(), glue_, obj, taskInfoOffset, builder_.IntPtr(0));
         builder_.Jump(&exit);
     }
     builder_.Bind(&exit);

@@ -1257,6 +1257,12 @@ DECLARE_ASM_HANDLER(HandleResumegenerator)
     {
         GateRef resumeResultOffset = IntPtr(JSGeneratorObject::GENERATOR_RESUME_RESULT_OFFSET);
         varAcc = Load(VariableType::JS_ANY(), obj, resumeResultOffset);
+        GateRef taskInfoOffset = IntPtr(JSGeneratorObject::TASK_INFO_OFFSET);
+        GateRef taskInfo = Load(VariableType::NATIVE_POINTER(), obj, taskInfoOffset);
+        Store(VariableType::NATIVE_POINTER(), glue, glue,
+            IntPtr(JSThread::GlueData::GetTaskInfoOffset(env->Is32Bit())), taskInfo);
+        Store(VariableType::NATIVE_POINTER(), glue, obj,
+            IntPtr(JSGeneratorObject::TASK_INFO_OFFSET), IntPtr(0));
         Jump(&dispatch);
     }
     Bind(&dispatch);

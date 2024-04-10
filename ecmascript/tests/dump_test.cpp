@@ -846,7 +846,7 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 break;
             }
             case JSType::JS_GENERATOR_OBJECT: {
-                CHECK_DUMP_FIELDS(JSObject::SIZE, JSGeneratorObject::SIZE, 3U);
+                CHECK_DUMP_FIELDS(JSObject::SIZE, JSGeneratorObject::SIZE, 4U);
                 NEW_OBJECT_AND_DUMP(JSGeneratorObject, JS_GENERATOR_OBJECT);
                 break;
             }
