@@ -831,6 +831,9 @@ JSHandle<NameDictionary> SendableClassDefiner::BuildSendableDictionaryProperties
     JSMutableHandle<JSTaggedValue> propValue(thread, JSTaggedValue::Undefined());
     for (uint32_t index = 0; index < length; index++) {
         PropertyAttributes attributes = PropertyAttributes::Default(false, false, false);
+        if (UNLIKELY(properties->Get(index).IsAccessor())) {
+            attributes.SetIsAccessor(true);
+        }
         propKey.Update(keys->Get(index));
         propValue.Update(properties->Get(index));
         // constructor don't need to clone
