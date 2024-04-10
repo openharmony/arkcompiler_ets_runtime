@@ -112,7 +112,7 @@
     /* %TypedArray%.prototype.reverse ( ) */                                            \
     V("reverse",        Reverse,        0, INVALID)                                     \
     /* %TypedArray%.prototype.set ( source [ , offset ] ) */                            \
-    V("set",            Set,            1, INVALID)                                     \
+    V("set",            Set,            1, TypedArraySet)                               \
     /* %TypedArray%.prototype.slice ( start, end ) */                                   \
     V("slice",          Slice,          2, TypedArraySlice)                             \
     /* %TypedArray%.prototype.some ( callbackfn [ , thisArg ] ) */                      \
