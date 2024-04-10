@@ -1083,4 +1083,30 @@ HWTEST_F_L0(JSNApiTests, NewObjectWithNamedPropertiesDuplicate)
     EXPECT_TRUE(obj.GetTaggedValue() == JSTaggedValue::Undefined());
     thread_->ClearException();
 }
+
+HWTEST_F_L0(JSNApiTests, GetNamedPropertyByPassingUtf8Key)
+{
+    LocalScope scope(vm_);
+    Local<ObjectRef> object = ObjectRef::New(vm_);
+    const char* utf8Key = "TestKey";
+    Local<JSValueRef> key = StringRef::NewFromUtf8(vm_, utf8Key);
+    Local<JSValueRef> value = ObjectRef::New(vm_);
+    PropertyAttribute attribute(value, true, true, true);
+
+    ASSERT_TRUE(object->DefineProperty(vm_, key, attribute));
+    Local<JSValueRef> value1 = object->Get(vm_, utf8Key);
+    ASSERT_TRUE(value->IsStrictEquals(vm_, value1));
+}
+
+HWTEST_F_L0(JSNApiTests, SetNamedPropertyByPassingUtf8Key)
+{
+    LocalScope scope(vm_);
+    Local<ObjectRef> object = ObjectRef::New(vm_);
+    const char* utf8Key = "TestKey";
+    Local<JSValueRef> value = ObjectRef::New(vm_);
+
+    ASSERT_TRUE(object->Set(vm_, utf8Key, value));
+    Local<JSValueRef> value1 = object->Get(vm_, utf8Key);
+    ASSERT_TRUE(value->IsStrictEquals(vm_, value1));
+}
 } // namespace panda::test
