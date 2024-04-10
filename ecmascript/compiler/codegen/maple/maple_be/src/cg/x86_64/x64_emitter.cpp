@@ -1546,7 +1546,7 @@ void X64Emitter::EmitBBHeaderLabel(CGFunc &cgFunc, LabelIdx labIdx, uint32 freq)
     bbLabel.append(to_string(funcUniqueId));
     bbLabel.append("__");
     bbLabel.append(to_string(labIdx));
-    int64 labelSymIdx = CalculateLabelSymIdx(funcUniqueId, static_cast<int64>(labIdx));
+    int64 labelSymIdx = CalculateLabelSymIdx(funcUniqueId, labIdx);
     assmbler.StoreNameIntoSymMap(labelSymIdx, bbLabel);
 
     if (cgFunc.GetCG()->GenerateVerboseCG()) {
