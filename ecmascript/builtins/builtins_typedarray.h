@@ -116,7 +116,7 @@
     /* %TypedArray%.prototype.slice ( start, end ) */                                   \
     V("slice",          Slice,          2, TypedArraySlice)                             \
     /* %TypedArray%.prototype.some ( callbackfn [ , thisArg ] ) */                      \
-    V("some",           Some,           1, INVALID)                                     \
+    V("some",           Some,           1, TypedArraySome)                              \
     /* %TypedArray%.prototype.sort ( comparefn ) */                                     \
     V("sort",           Sort,           1, INVALID)                                     \
     /* %TypedArray%.prototype.subarray ( begin, end ) */                                \
