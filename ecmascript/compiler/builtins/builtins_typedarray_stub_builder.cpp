@@ -1015,6 +1015,321 @@ void BuiltinsTypedArrayStubBuilder::GetByteLength([[maybe_unused]] GateRef glue,
     Jump(exit);
 }
 
+void BuiltinsTypedArrayStubBuilder::DoSort(
+    GateRef glue, GateRef receiver, Variable* result, Label* exit, Label* slowPath)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    Label lenGreaterZero(env);
+    env->SubCfgEntry(&entry);
+    GateRef len = ZExtInt32ToInt64(GetArrayLength(receiver));
+    DEFVARIABLE(i, VariableType::INT64(), Int64(1));
+    DEFVARIABLE(presentValue, VariableType::JS_ANY(), Undefined());
+    DEFVARIABLE(middleValue, VariableType::JS_ANY(), Undefined());
+    DEFVARIABLE(previousValue, VariableType::JS_ANY(), Undefined());
+    Label loopHead(env);
+    Label loopEnd(env);
+    Label loopNext(env);
+    Label loopExit(env);
+    Label isNumber(env);
+    Label hasException0(env);
+    Label notHasException0(env);
+
+    GateRef jsType = GetObjectType(LoadHClass(receiver));
+    presentValue = FastGetPropertyByIndex(glue, receiver, Int32(0), jsType);
+    BRANCH(HasPendingException(glue), &hasException0, &notHasException0);
+    Bind(&hasException0);
+    {
+        result->WriteVariable(Exception());
+        Jump(exit);
+    }
+    Bind(&notHasException0);
+    {
+        BRANCH(TaggedIsNumber(*presentValue), &isNumber, slowPath);
+        Bind(&isNumber);
+        BRANCH(Int64GreaterThan(len, Int64(0)), &lenGreaterZero, slowPath);
+        Bind(&lenGreaterZero);
+
+        GateRef isIntOrNot = TaggedIsInt(*presentValue);
+        GateRef isUint32 = Int32Equal(jsType, Int32(static_cast<int32_t>(JSType::JS_UINT32_ARRAY)));
+
+        Jump(&loopHead);
+        LoopBegin(&loopHead);
+        {
+            BRANCH(Int64LessThan(*i, len), &loopNext, &loopExit);
+            Bind(&loopNext);
+
+            Label hasException1(env);
+            Label notHasException1(env);
+            DEFVARIABLE(beginIndex, VariableType::INT64(), Int64(0));
+            DEFVARIABLE(endIndex, VariableType::INT64(), *i);
+            presentValue = FastGetPropertyByIndex(glue, receiver, TruncInt64ToInt32(*i), jsType);
+            BRANCH(HasPendingException(glue), &hasException1, &notHasException1);
+            Bind(&hasException1);
+            {
+                result->WriteVariable(Exception());
+                Jump(exit);
+            }
+            Bind(&notHasException1);
+            {
+                Label loopHead1(env);
+                Label loopEnd1(env);
+                Label loopNext1(env);
+                Label loopExit1(env);
+
+                Jump(&loopHead1);
+                LoopBegin(&loopHead1);
+                {
+                    BRANCH(Int64LessThan(*beginIndex, *endIndex), &loopNext1, &loopExit1);
+                    Bind(&loopNext1);
+                    Label hasException2(env);
+                    Label notHasException2(env);
+                    GateRef sum = Int64Add(*beginIndex, *endIndex);
+                    GateRef middleIndex = Int64Div(sum, Int64(2));
+                    middleValue = FastGetPropertyByIndex(glue, receiver, TruncInt64ToInt32(middleIndex), jsType);
+                    BRANCH(HasPendingException(glue), &hasException2, &notHasException2);
+                    Bind(&hasException2);
+                    {
+                        result->WriteVariable(Exception());
+                        Jump(exit);
+                    }
+                    Bind(&notHasException2);
+                    {
+                        Label goSort(env);
+                        Label isFloat(env);
+                        Label isInt(env);
+                        Label uint32Compare(env);
+                        Label notUint32(env);
+                        DEFVARIABLE(compareResult, VariableType::INT32(), Int32(0));
+                        BRANCH(isUint32, &uint32Compare, &notUint32);
+                        Bind(&notUint32);
+                        BRANCH(isIntOrNot, &isInt, &isFloat);
+
+                        Bind(&uint32Compare);
+                        {
+                            DEFVARIABLE(middleValueInt64, VariableType::INT64(), Int64(0));
+                            DEFVARIABLE(presentValueInt64, VariableType::INT64(), Int64(0));
+                            middleValueInt64 = GetInt64OfTInt(*middleValue);
+                            presentValueInt64 = GetInt64OfTInt(*presentValue);
+
+                            Label intGreater(env);
+                            Label intEqualOrNot(env);
+                            Label intEqual(env);
+                            Label intLess(env);
+
+                            BRANCH(
+                                Int64GreaterThan(*middleValueInt64, *presentValueInt64), &intGreater, &intEqualOrNot);
+                            Bind(&intGreater);
+                            {
+                                compareResult = Int32(1);
+                                Jump(&goSort);
+                            }
+                            Bind(&intEqualOrNot);
+                            {
+                                BRANCH(Int64Equal(*middleValueInt64, *presentValueInt64), &intEqual, &intLess);
+                                Bind(&intEqual);
+                                {
+                                    compareResult = Int32(0);
+                                    Jump(&goSort);
+                                }
+                                Bind(&intLess);
+                                {
+                                    compareResult = Int32(-1);
+                                    Jump(&goSort);
+                                }
+                            }
+                        }
+
+                        Bind(&isInt);
+                        {
+                            DEFVARIABLE(middleValueInt32, VariableType::INT32(), Int32(0));
+                            DEFVARIABLE(presentValueInt32, VariableType::INT32(), Int32(0));
+                            middleValueInt32 = GetInt32OfTInt(*middleValue);
+                            presentValueInt32 = GetInt32OfTInt(*presentValue);
+
+                            Label intGreater(env);
+                            Label intEqualOrNot(env);
+                            Label intEqual(env);
+                            Label intLess(env);
+
+                            BRANCH(
+                                Int32GreaterThan(*middleValueInt32, *presentValueInt32), &intGreater, &intEqualOrNot);
+                            Bind(&intGreater);
+                            {
+                                compareResult = Int32(1);
+                                Jump(&goSort);
+                            }
+
+                            Bind(&intEqualOrNot);
+                            {
+                                BRANCH(Int32Equal(*middleValueInt32, *presentValueInt32), &intEqual, &intLess);
+                                Bind(&intEqual);
+                                {
+                                    compareResult = Int32(0);
+                                    Jump(&goSort);
+                                }
+                                Bind(&intLess);
+                                {
+                                    compareResult = Int32(-1);
+                                    Jump(&goSort);
+                                }
+                            }
+                        }
+                        Bind(&isFloat);
+                        {
+                            Label floatLess(env);
+                            Label floatEqual(env);
+                            Label floatGreater(env);
+                            Label floatEqualOrNot(env);
+                            Label float32EqualOrNot(env);
+                            Label midIsNotNAN(env);
+                            Label presentIsNotNAN(env);
+
+                            DEFVARIABLE(middleValueFloat64, VariableType::FLOAT64(), Double(0));
+                            DEFVARIABLE(presentValueFloat64, VariableType::FLOAT64(), Double(0));
+
+                            middleValueFloat64 = GetDoubleOfTDouble(*middleValue);
+                            presentValueFloat64 = GetDoubleOfTDouble(*presentValue);
+
+                            BRANCH(DoubleIsNAN(*presentValueFloat64), &floatLess, &presentIsNotNAN);
+                            Bind(&presentIsNotNAN);
+                            BRANCH(DoubleIsNAN(*middleValueFloat64), &floatGreater, &midIsNotNAN);
+                            Bind(&midIsNotNAN);
+
+                            BRANCH(DoubleLessThan(*middleValueFloat64, *presentValueFloat64), &floatLess,
+                                &floatEqualOrNot);
+                            Bind(&floatLess);
+                            {
+                                compareResult = Int32(-1);
+                                Jump(&goSort);
+                            }
+
+                            Bind(&floatEqualOrNot);
+                            {
+                                BRANCH(
+                                    DoubleEqual(*middleValueFloat64, *presentValueFloat64), &floatEqual, &floatGreater);
+                                Bind(&floatEqual);
+                                {
+                                    Label mIsPositive0(env);
+                                    Label mIsNotPositive0(env);
+                                    GateRef valueEqual = StubBuilder::SameValueZero(
+                                        glue, *middleValue, DoubleToTaggedDoublePtr(Double(0.0)));
+                                    BRANCH(valueEqual, &mIsPositive0, &mIsNotPositive0);
+                                    Bind(&mIsPositive0);
+                                    {
+                                        valueEqual = StubBuilder::SameValueZero(
+                                            glue, *presentValue, DoubleToTaggedDoublePtr(Double(-0.0)));
+                                        BRANCH(valueEqual, &floatGreater, &mIsNotPositive0);
+                                    }
+                                    Bind(&mIsNotPositive0);
+                                    {
+                                        compareResult = Int32(0);
+                                        Jump(&goSort);
+                                    }
+                                }
+
+                                Bind(&floatGreater);
+                                {
+                                    compareResult = Int32(1);
+                                    Jump(&goSort);
+                                }
+                            }
+                        }
+                        Bind(&goSort);
+                        {
+                            Label less0(env);
+                            Label greater0(env);
+                            BRANCH(Int32LessThanOrEqual(*compareResult, Int32(0)), &less0, &greater0);
+                            Bind(&greater0);
+                            {
+                                endIndex = middleIndex;
+                                Jump(&loopEnd1);
+                            }
+                            Bind(&less0);
+                            {
+                                beginIndex = middleIndex;
+                                beginIndex = Int64Add(*beginIndex, Int64(1));
+                                Jump(&loopEnd1);
+                            }
+                        }
+                    }
+                }
+                Bind(&loopEnd1);
+                LoopEnd(&loopHead1);
+                Bind(&loopExit1);
+
+                Label shouldCopy(env);
+                GateRef isGreater0 = Int64GreaterThanOrEqual(*endIndex, Int64(0));
+                GateRef isLessI = Int64LessThan(*endIndex, *i);
+                BRANCH(BoolAnd(isGreater0, isLessI), &shouldCopy, &loopEnd);
+                Bind(&shouldCopy);
+                {
+                    DEFVARIABLE(j, VariableType::INT64(), *i);
+                    Label loopHead2(env);
+                    Label loopEnd2(env);
+                    Label loopNext2(env);
+                    Label loopExit2(env);
+                    Jump(&loopHead2);
+                    LoopBegin(&loopHead2);
+                    {
+                        BRANCH(Int64GreaterThan(*j, *endIndex), &loopNext2, &loopExit2);
+                        Bind(&loopNext2);
+                        Label hasException3(env);
+                        Label notHasException3(env);
+                        previousValue = FastGetPropertyByIndex(glue, receiver,
+                            TruncInt64ToInt32(Int64Sub(*j, Int64(1))), GetObjectType(LoadHClass(receiver)));
+                        BRANCH(HasPendingException(glue), &hasException3, &notHasException3);
+                        Bind(&hasException3);
+                        {
+                            result->WriteVariable(Exception());
+                            Jump(exit);
+                        }
+                        Bind(&notHasException3);
+                        {
+                            StoreTypedArrayElement(
+                                glue, receiver, *j, *previousValue, GetObjectType(LoadHClass(receiver)));
+                            Jump(&loopEnd2);
+                        }
+                    }
+                    Bind(&loopEnd2);
+                    j = Int64Sub(*j, Int64(1));
+                    LoopEnd(&loopHead2);
+                    Bind(&loopExit2);
+                    StoreTypedArrayElement(glue, receiver, *j, *presentValue, GetObjectType(LoadHClass(receiver)));
+                    Jump(&loopEnd);
+                }
+            }
+        }
+        Bind(&loopEnd);
+        i = Int64Add(*i, Int64(1));
+        LoopEnd(&loopHead);
+        Bind(&loopExit);
+        env->SubCfgExit();
+    }
+}
+
+void BuiltinsTypedArrayStubBuilder::Sort(
+    GateRef glue, GateRef thisValue, GateRef numArgs, Variable* result, Label* exit, Label* slowPath)
+{
+    auto env = GetEnvironment();
+    Label isHeapObject(env);
+    Label typedArray(env);
+    Label defaultConstr(env);
+    Label argUndefined(env);
+    BRANCH(TaggedIsHeapObject(thisValue), &isHeapObject, slowPath);
+    Bind(&isHeapObject);
+    BRANCH(IsFastTypeArray(GetObjectType(LoadHClass(thisValue))), &typedArray, slowPath);
+    Bind(&typedArray);
+    BRANCH(HasConstructor(thisValue), slowPath, &defaultConstr);
+    Bind(&defaultConstr);
+    GateRef callbackFnHandle = GetCallArg0(numArgs);
+    BRANCH(TaggedIsUndefined(callbackFnHandle), &argUndefined, slowPath);
+    Bind(&argUndefined);
+    DoSort(glue, thisValue, result, exit, slowPath);
+    result->WriteVariable(thisValue);
+    Jump(exit);
+}
+
 void BuiltinsTypedArrayStubBuilder::GetByteOffset([[maybe_unused]] GateRef glue, GateRef thisValue,
     [[maybe_unused]] GateRef numArgs, Variable *result, Label *exit, Label *slowPath)
 {

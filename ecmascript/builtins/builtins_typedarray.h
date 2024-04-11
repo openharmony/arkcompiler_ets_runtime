@@ -118,7 +118,7 @@
     /* %TypedArray%.prototype.some ( callbackfn [ , thisArg ] ) */                      \
     V("some",           Some,           1, TypedArraySome)                              \
     /* %TypedArray%.prototype.sort ( comparefn ) */                                     \
-    V("sort",           Sort,           1, INVALID)                                     \
+    V("sort",           Sort,           1, TypedArraySort)                              \
     /* %TypedArray%.prototype.subarray ( begin, end ) */                                \
     V("subarray",       Subarray,       2, TypedArraySubArray)                          \
     /* %TypedArray%.prototype.toLocaleString ( [ reserved1 [ , reserved2 ] ] ) */       \
