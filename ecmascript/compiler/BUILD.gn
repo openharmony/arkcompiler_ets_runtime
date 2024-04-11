@@ -365,7 +365,7 @@ ohos_source_set("libark_jsoptimizer_set_with_maple") {
     ":enable_maple_config",
   ]
 
-  external_deps = []
+  external_deps = [ "zlib:libz" ]
   deps = []
   if (!is_arkui_x) {
     external_deps += [ "runtime_core:arkfile_header_deps" ]
@@ -515,7 +515,7 @@ ohos_executable("ark_aot_compiler") {
     "$js_root:libark_jsruntime_set",
     "${MAPLEALL_ROOT}/maple_be:libcg",
   ]
-  external_deps = []
+  external_deps = [ "zlib:libz" ]
   if (!is_arkui_x) {
     external_deps += [
       "runtime_core:arkfile_header_deps",
