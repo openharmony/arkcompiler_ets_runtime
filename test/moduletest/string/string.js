@@ -267,3 +267,5 @@ print("sub_string test success!");
 const v0 = [3.0,-1.5053];
 const v4 = v0.join();
 print(v4.startsWith(v4,v0))
+let strFromCodePoint = String.fromCodePoint(49,50,51,0)
+print(strFromCodePoint);

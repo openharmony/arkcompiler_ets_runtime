@@ -387,7 +387,8 @@ protected:
         ASSERT(key->IsString());
         auto newKey = key.GetTaggedValue();
         auto stringAccessor = EcmaStringAccessor(newKey);
-        if (!stringAccessor.IsLineString() || IsNumberCharacter(*stringAccessor.GetDataUtf8())) {
+        if (!stringAccessor.IsLineString() || (stringAccessor.IsUtf8() &&
+            IsNumberCharacter(*stringAccessor.GetDataUtf8()))) {
             uint32_t index = 0;
             if (stringAccessor.ToElementIndex(&index)) {
                 return ObjectFastOperator::SetPropertyByIndex<ObjectFastOperator::Status::UseOwn>(thread_,
