@@ -456,8 +456,8 @@ JSTaggedValue BuiltinsGlobal::Decode(JSThread *thread, const JSHandle<EcmaString
     // 4. Repeat
     int32_t k = 0;
     while (true) {
-        // a. If k equals strLen, return R.
         if (k == strLen) {
+            // a. If k equals strLen, return R.
             auto *uint16tData = reinterpret_cast<uint16_t *>(resStr.data());
             uint32_t resSize = resStr.size();
             return factory->NewFromUtf16Literal(uint16tData, resSize).GetTaggedValue();
@@ -485,140 +485,145 @@ JSTaggedValue BuiltinsGlobal::Decode(JSThread *thread, const JSHandle<EcmaString
             }
             sStr = StringHelper::Utf16ToU16String(&cc, 1);
         } else {
-            [[maybe_unused]] uint32_t start = static_cast<uint32_t>(k);
+            DecodePercentEncoding(thread, str, k, IsInURISet, strLen, sStr);
+        }
+        resStr.append(sStr);
+        k++;
+    }
+}
 
-            // ii. If k + 2 is greater than or equal to strLen, throw a URIError exception.
-            // iii. If the code units at index (k+1) and (k + 2) within string do not represent hexadecimal digits,
-            //      throw a URIError exception.
-            if ((k + 2) >= strLen) {  // 2: means plus 2
+JSTaggedValue BuiltinsGlobal::DecodePercentEncoding(JSThread *thread, const JSHandle<EcmaString> &str, int32_t &k,
+                                                    judgURIFunc IsInURISet, int32_t strLen, std::u16string &sStr)
+{
+    [[maybe_unused]] uint32_t start = static_cast<uint32_t>(k);
+
+    // ii. If k + 2 is greater than or equal to strLen, throw a URIError exception.
+    // iii. If the code units at index (k+1) and (k + 2) within string do not represent hexadecimal digits,
+    //      throw a URIError exception.
+    if ((k + 2) >= strLen) {  // 2: means plus 2
+        THROW_URI_ERROR_AND_RETURN(thread, "DecodeURI: The format of the URI to be parsed is incorrect",
+                                   JSTaggedValue::Exception());
+    }
+    uint16_t frontChar = EcmaStringAccessor(str).Get(k + 1);
+    uint16_t behindChar = EcmaStringAccessor(str).Get(k + 2);  // 2: means plus 2
+    if (!(IsHexDigits(frontChar) && IsHexDigits(behindChar))) {
+        THROW_URI_ERROR_AND_RETURN(thread, "DecodeURI: The format of the URI to be parsed is incorrect",
+                                   JSTaggedValue::Exception());
+    }
+    uint8_t bb = GetValueFromTwoHex(frontChar, behindChar);
+    k += 2;  // 2: means plus 2
+    if ((bb & BIT_MASK_ONE) == 0) {
+        if (!IsInURISet(bb)) {
+            sStr = StringHelper::Utf8ToU16String(&bb, 1);
+        } else {
+            auto substr = EcmaStringAccessor::FastSubString(
+                thread->GetEcmaVM(), str, start, static_cast<uint32_t>(k) - start + 1U);
+            sStr = StringHelper::StringToU16string(
+                EcmaStringAccessor(substr).ToStdString(StringConvertedUsage::LOGICOPERATION));
+        }
+    } else {
+        // vii. Else the most significant bit in B is 1,
+        //   1. Let n be the smallest nonnegative integer such that (B << n) & 0x80 is equal to 0.
+        //   3. Let Octets be an array of 8-bit integers of size n.
+        //   4. Put B into Octets at index 0.
+        //   6. Let j be 1.
+        //   7. Repeat, while j < n
+        //     a. Increase k by 1.
+        //     d. Let B be the 8-bit value represented by the two hexadecimal digits at
+        //        index (k + 1) and (k + 2).
+        //     f. Increase k by 2.
+        //     g. Put B into Octets at index j.
+        //     h. Increase j by 1.
+        //   9. If V < 0x10000, then
+        //     a. Let C be the code unit V.
+        //     b. If C is not in reservedSet, then
+        //        i. Let S be the String containing only the code unit C.
+        //     c. Else C is in reservedSet,
+        //        i. Let S be the substring of string from index start to index k inclusive.
+        //   10. Else V ≥ 0x10000,
+        //     a. Let L be (((V – 0x10000) & 0x3FF) + 0xDC00).
+        //     b. Let H be ((((V – 0x10000) >> 10) & 0x3FF) + 0xD800).
+        //     c. Let S be the String containing the two code units H and L.
+        int32_t n = 0;
+        while ((((static_cast<uint32_t>(bb) << static_cast<uint32_t>(n)) & BIT_MASK_ONE) != 0)) {
+            n++;
+            if (n > 4) { // 4 : 4 means less than 4
+                break;
+            }
+        }
+        // 2. If n equals 1 or n is greater than 4, throw a URIError exception.
+        if ((n == 1) || (n > 4)) {
+            THROW_URI_ERROR_AND_RETURN(thread, "DecodeURI: The format of the URI to be parsed is incorrect",
+                                       JSTaggedValue::Exception());
+        }
+
+        std::vector<uint8_t> oct = {bb};
+
+        // 5. If k + (3 × (n – 1)) is greater than or equal to strLen, throw a URIError exception.
+        if (k + (3 * (n - 1)) >= strLen) {  // 3: means multiply by 3
+            THROW_URI_ERROR_AND_RETURN(thread, "DecodeURI: The format of the URI to be parsed is incorrect",
+                                       JSTaggedValue::Exception());
+        }
+        int32_t j = 1;
+        while (j < n) {
+            k++;
+            uint16_t codeUnit = EcmaStringAccessor(str).Get(k);
+            // b. If the code unit at index k within string is not "%", throw a URIError exception.
+            // c. If the code units at index (k +1) and (k + 2) within string do not represent hexadecimal
+            //    digits, throw a URIError exception.
+            if (!(codeUnit == '%')) {
                 THROW_URI_ERROR_AND_RETURN(thread, "DecodeURI: The format of the URI to be parsed is incorrect",
                                            JSTaggedValue::Exception());
             }
             if (!(IsHexDigits(EcmaStringAccessor(str).Get(k + 1)) &&
-                IsHexDigits(EcmaStringAccessor(str).Get(k + 2)))) {  // 2: means plus 2
+                  IsHexDigits(EcmaStringAccessor(str).Get(k + 2)))) {  // 2: means plus 2
                 THROW_URI_ERROR_AND_RETURN(thread, "DecodeURI: The format of the URI to be parsed is incorrect",
                                            JSTaggedValue::Exception());
             }
-
-            uint16_t frontChar = EcmaStringAccessor(str).Get(k + 1);
-            uint16_t behindChar = EcmaStringAccessor(str).Get(k + 2);  // 2: means plus 2
-            uint8_t bb = GetValueFromTwoHex(frontChar, behindChar);
-            k += 2;  // 2: means plus 2
-            if ((bb & BIT_MASK_ONE) == 0) {
-                if (!IsInURISet(bb)) {
-                    sStr = StringHelper::Utf8ToU16String(&bb, 1);
-                } else {
-                    auto substr = EcmaStringAccessor::FastSubString(
-                        thread->GetEcmaVM(), str, start, static_cast<uint32_t>(k) - start + 1U);
-                    sStr = StringHelper::StringToU16string(
-                        EcmaStringAccessor(substr).ToStdString(StringConvertedUsage::LOGICOPERATION));
-                }
-            } else {
-                // vii. Else the most significant bit in B is 1,
-                //   1. Let n be the smallest nonnegative integer such that (B << n) & 0x80 is equal to 0.
-                //   3. Let Octets be an array of 8-bit integers of size n.
-                //   4. Put B into Octets at index 0.
-                //   6. Let j be 1.
-                //   7. Repeat, while j < n
-                //     a. Increase k by 1.
-                //     d. Let B be the 8-bit value represented by the two hexadecimal digits at
-                //        index (k + 1) and (k + 2).
-                //     f. Increase k by 2.
-                //     g. Put B into Octets at index j.
-                //     h. Increase j by 1.
-                //   9. If V < 0x10000, then
-                //     a. Let C be the code unit V.
-                //     b. If C is not in reservedSet, then
-                //        i. Let S be the String containing only the code unit C.
-                //     c. Else C is in reservedSet,
-                //        i. Let S be the substring of string from index start to index k inclusive.
-                //   10. Else V ≥ 0x10000,
-                //     a. Let L be (((V – 0x10000) & 0x3FF) + 0xDC00).
-                //     b. Let H be ((((V – 0x10000) >> 10) & 0x3FF) + 0xD800).
-                //     c. Let S be the String containing the two code units H and L.
-                int32_t n = 0;
-                while ((((static_cast<uint32_t>(bb) << static_cast<uint32_t>(n)) & BIT_MASK_ONE) != 0)) {
-                    n++;
-                    if (n > 4) { // 4 : 4 means less than 4
-                        break;
-                    }
-                }
-                // 2. If n equals 1 or n is greater than 4, throw a URIError exception.
-                if ((n == 1) || (n > 4)) {  // 4: means greater than 4
-                    THROW_URI_ERROR_AND_RETURN(thread, "DecodeURI: The format of the URI to be parsed is incorrect",
-                                               JSTaggedValue::Exception());
-                }
-
-                std::vector<uint8_t> oct = {bb};
-
-                // 5. If k + (3 × (n – 1)) is greater than or equal to strLen, throw a URIError exception.
-                if (k + (3 * (n - 1)) >= strLen) {  // 3: means multiply by 3
-                    THROW_URI_ERROR_AND_RETURN(thread, "DecodeURI: The format of the URI to be parsed is incorrect",
-                                               JSTaggedValue::Exception());
-                }
-                int32_t j = 1;
-                while (j < n) {
-                    k++;
-                    uint16_t codeUnit = EcmaStringAccessor(str).Get(k);
-                    // b. If the code unit at index k within string is not "%", throw a URIError exception.
-                    // c. If the code units at index (k +1) and (k + 2) within string do not represent hexadecimal
-                    //    digits, throw a URIError exception.
-                    if (!(codeUnit == '%')) {
-                        THROW_URI_ERROR_AND_RETURN(thread, "DecodeURI: The format of the URI to be parsed is incorrect",
-                                                   JSTaggedValue::Exception());
-                    }
-                    if (!(IsHexDigits(EcmaStringAccessor(str).Get(k + 1)) &&
-                        IsHexDigits(EcmaStringAccessor(str).Get(k + 2)))) {  // 2: means plus 2
-                        THROW_URI_ERROR_AND_RETURN(thread, "DecodeURI: The format of the URI to be parsed is incorrect",
-                                                   JSTaggedValue::Exception());
-                    }
-
-                    uint16_t frontChart = EcmaStringAccessor(str).Get(k + 1);
-                    uint16_t behindChart = EcmaStringAccessor(str).Get(k + 2);  // 2: means plus 2
-                    bb = GetValueFromTwoHex(frontChart, behindChart);
-                    // e. If the two most significant bits in B are not 10, throw a URIError exception.
-                    if (!((bb & BIT_MASK_TWO) == BIT_MASK_ONE)) {
-                        THROW_URI_ERROR_AND_RETURN(thread, "DecodeURI: The format of the URI to be parsed is incorrect",
-                                                   JSTaggedValue::Exception());
-                    }
-
-                    k += 2;  // 2: means plus 2
-                    oct.push_back(bb);
-                    j++;
-                }
-
-                // 8. Let V be the value obtained by applying the UTF-8 transformation to Octets, that is,
-                //     from an array of octets into a 21-bit value. If Octets does not contain a valid UTF-8 encoding of
-                //     a Unicode code point throw a URIError exception.
-                if (!base::utf_helper::IsValidUTF8(oct)) {
-                    THROW_URI_ERROR_AND_RETURN(thread, "DecodeURI: The format of the URI to be parsed is incorrect",
-                                               JSTaggedValue::Exception());
-                }
-                uint32_t vv = StringHelper::Utf8ToU32String(oct);
-                if (vv < base::utf_helper::DECODE_SECOND_FACTOR) {
-                    if (!IsInURISet(vv)) {
-                        sStr = StringHelper::Utf16ToU16String(reinterpret_cast<uint16_t *>(&vv), 1);
-                    } else {
-                        auto substr = EcmaStringAccessor::FastSubString(
-                            thread->GetEcmaVM(), str, start, static_cast<uint32_t>(k) - start + 1U);
-                        sStr = StringHelper::StringToU16string(
-                            EcmaStringAccessor(substr).ToStdString(StringConvertedUsage::LOGICOPERATION));
-                    }
-                } else {
-                    uint16_t lv = (((vv - base::utf_helper::DECODE_SECOND_FACTOR) & BIT16_MASK) +
-                        base::utf_helper::DECODE_TRAIL_LOW);
-                    uint16_t hv = ((((vv - base::utf_helper::DECODE_SECOND_FACTOR) >> 10U) & BIT16_MASK) +  // NOLINT
-                        base::utf_helper::DECODE_LEAD_LOW);  // 10: means shift left by 10 digits
-                    sStr = StringHelper::Append(StringHelper::Utf16ToU16String(&hv, 1),
-                                                StringHelper::Utf16ToU16String(&lv, 1));
-                }
+            uint16_t frontChart = EcmaStringAccessor(str).Get(k + 1);
+            uint16_t behindChart = EcmaStringAccessor(str).Get(k + 2);  // 2: means plus 2
+            bb = GetValueFromTwoHex(frontChart, behindChart);
+            // e. If the two most significant bits in B are not 10, throw a URIError exception.
+            if (!((bb & BIT_MASK_TWO) == BIT_MASK_ONE)) {
+                THROW_URI_ERROR_AND_RETURN(thread, "DecodeURI: The format of the URI to be parsed is incorrect",
+                                           JSTaggedValue::Exception());
             }
+            k += 2;  // 2: means plus 2
+            oct.push_back(bb);
+            j++;
         }
-        // e. Let R be a new String value computed by concatenating the previous value of R and S.
-        // f. Increase k by 1.
-        resStr.append(sStr);
-        k++;
+        UTF16EncodeCodePoint(thread, IsInURISet, oct, str, start, k, sStr);
     }
+    return JSTaggedValue::True();
+}
+
+JSTaggedValue BuiltinsGlobal::UTF16EncodeCodePoint(JSThread *thread, judgURIFunc IsInURISet,
+                                                   const std::vector<uint8_t> &oct, const JSHandle<EcmaString> &str,
+                                                   uint32_t &start, int32_t &k, std::u16string &sStr)
+{
+    if (!base::utf_helper::IsValidUTF8(oct)) {
+        THROW_URI_ERROR_AND_RETURN(thread, "DecodeURI: The format of the URI to be parsed is incorrect",
+                                   JSTaggedValue::Exception());
+    }
+    uint32_t vv = StringHelper::Utf8ToU32String(oct);
+    if (vv < base::utf_helper::DECODE_SECOND_FACTOR) {
+        if (!IsInURISet(vv)) {
+            sStr = StringHelper::Utf16ToU16String(reinterpret_cast<uint16_t *>(&vv), 1);
+        } else {
+            auto substr = EcmaStringAccessor::FastSubString(
+                thread->GetEcmaVM(), str, start, static_cast<uint32_t>(k) - start + 1U);
+            sStr = StringHelper::StringToU16string(
+                EcmaStringAccessor(substr).ToStdString(StringConvertedUsage::LOGICOPERATION));
+        }
+    } else {
+        uint16_t lv = (((vv - base::utf_helper::DECODE_SECOND_FACTOR) & BIT16_MASK) +
+            base::utf_helper::DECODE_TRAIL_LOW);
+        uint16_t hv = ((((vv - base::utf_helper::DECODE_SECOND_FACTOR) >> 10U) & BIT16_MASK) +  // NOLINT
+            base::utf_helper::DECODE_LEAD_LOW);  // 10: means shift left by 10 digits
+        sStr = StringHelper::Append(StringHelper::Utf16ToU16String(&hv, 1),
+                                    StringHelper::Utf16ToU16String(&lv, 1));
+    }
+    return JSTaggedValue::True();
 }
 
 void BuiltinsGlobal::PrintString([[maybe_unused]] JSThread *thread, EcmaString *string)
