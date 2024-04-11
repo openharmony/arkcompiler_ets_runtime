@@ -387,3 +387,17 @@ print(arr1_reduceRight.reduceRight(test_ReduceRight));
 print(arr1_reduceRight.reduceRight(test_ReduceRight, 10));
 let arr2_reduceRight = [1, 2, 3, 4, 5, 6, 7, 8, 9];
 print(arr2_reduceRight.reduceRight(test_ReduceRight));
+
+// Test case for copyWithin()
+let arr1_copyWithin = new Int16Array([1, 2, 3, 4, 5, 6, 7, 8, 9]);
+print(arr1_copyWithin.copyWithin(-10, 1, 100));
+let arr2_copyWithin = new Int16Array([1, 2, 3, 4, 5, 6, 7, 8, 9]);
+print(arr2_copyWithin.copyWithin(-3, -100, -1));
+let arr3_copyWithin = new Int16Array([1, 2, 3, 4, 5, 6, 7, 8, 9]);
+print(arr3_copyWithin.copyWithin(4, 1, 10));
+let arr4_copyWithin = new Int16Array([1, 2, 3, 4, 5, 6, 7, 8, 9]);
+print(arr4_copyWithin.copyWithin(4, -2));
+let arr5_copyWithin = new Int16Array([1, 2, 3, 4, 5, 6, 7, 8, 9]);
+print(arr5_copyWithin.copyWithin(4));
+let arr6_copyWithin = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+print(arr6_copyWithin.copyWithin(1));
