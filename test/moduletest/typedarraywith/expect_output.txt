@@ -22,3 +22,5 @@ Uint8Array test success !!!
 Uint8ClampedArray test success !!!
 BigInt64Array test success !!!
 BigUint64Array test success !!!
+1,2,6,4,5
+1,2,6,4,5

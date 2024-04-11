@@ -886,6 +886,86 @@ void BuiltinsTypedArrayStubBuilder::SubArray(GateRef glue, GateRef thisValue, Ga
     Jump(exit);
 }
 
+void BuiltinsTypedArrayStubBuilder::With(GateRef glue, GateRef thisValue, GateRef numArgs,
+    Variable *result, Label *exit, Label *slowPath)
+{
+    auto env = GetEnvironment();
+    DEFVARIABLE(relativeIndex, VariableType::INT64(), Int64(0));
+    DEFVARIABLE(actualIndex, VariableType::INT64(), Int64(0));
+    Label isHeapObject(env);
+    Label typedArray(env);
+    Label notCOWArray(env);
+    BRANCH(TaggedIsHeapObject(thisValue), &isHeapObject, slowPath);
+    Bind(&isHeapObject);
+    BRANCH(IsTypedArray(thisValue), &typedArray, slowPath);
+    Bind(&typedArray);
+    BRANCH(IsJsCOWArray(thisValue), slowPath, &notCOWArray);
+    Bind(&notCOWArray);
+    GateRef thisLen = ZExtInt32ToInt64(GetArrayLength(thisValue));
+    GateRef index = GetCallArg0(numArgs);
+    Label taggedIsInt(env);
+    BRANCH(TaggedIsInt(index), &taggedIsInt, slowPath);
+    Bind(&taggedIsInt);
+    relativeIndex = GetInt64OfTInt(index);
+    DEFVARIABLE(value, VariableType::JS_ANY(), Undefined());
+    Label indexGreaterOrEqualZero(env);
+    Label indexLessZero(env);
+    Label next(env);
+    Label notOutOfRange(env);
+    value = GetCallArg1(numArgs);
+    GateRef hclass = LoadHClass(thisValue);
+    GateRef jsType = GetObjectType(hclass);
+    NewObjectStubBuilder newBuilder(this);
+    newBuilder.SetParameters(glue, 0);
+    GateRef newArray = newBuilder.NewTypedArray(glue, thisValue, jsType, TruncInt64ToInt32(thisLen));
+    CallNGCRuntime(glue, RTSTUB_ID(CopyTypedArrayBuffer),
+        {thisValue, newArray, Int32(0), Int32(0), TruncInt64ToInt32(thisLen),
+        newBuilder.GetElementSizeFromType(glue, jsType)});
+    BRANCH(Int64GreaterThanOrEqual(*relativeIndex, Int64(0)), &indexGreaterOrEqualZero, &indexLessZero);
+    Bind(&indexGreaterOrEqualZero);
+    {
+        actualIndex = *relativeIndex;
+        Jump(&next);
+    }
+    Bind(&indexLessZero);
+    {
+        actualIndex = Int64Add(thisLen, *relativeIndex);
+        Jump(&next);
+    }
+    Bind(&next);
+    {
+        BRANCH(BoolOr(Int64GreaterThanOrEqual(*actualIndex, thisLen), Int64LessThan(*actualIndex, Int64(0))),
+            slowPath, &notOutOfRange);
+        Bind(&notOutOfRange);
+        {
+            DEFVARIABLE(k, VariableType::INT64(), Int64(0));
+            Label loopHead(env);
+            Label loopEnd(env);
+            Label loopExit(env);
+            Label loopNext(env);
+            Label replaceIndex(env);
+            Jump(&loopHead);
+            LoopBegin(&loopHead);
+            {
+                BRANCH(Int64LessThan(*k, thisLen), &loopNext, &loopExit);
+                Bind(&loopNext);
+                BRANCH(Int64Equal(*k, *actualIndex), &replaceIndex, &loopEnd);
+                Bind(&replaceIndex);
+                {
+                    StoreTypedArrayElement(glue, newArray, *k, *value, jsType);
+                    Jump(&loopEnd);
+                }
+            }
+            Bind(&loopEnd);
+            k = Int64Add(*k, Int64(1));
+            LoopEnd(&loopHead);
+            Bind(&loopExit);
+            result->WriteVariable(newArray);
+            Jump(exit);
+        }
+    }
+}
+
 void BuiltinsTypedArrayStubBuilder::GetByteLength([[maybe_unused]] GateRef glue, GateRef thisValue,
     [[maybe_unused]] GateRef numArgs, Variable *result, Label *exit, Label *slowPath)
 {

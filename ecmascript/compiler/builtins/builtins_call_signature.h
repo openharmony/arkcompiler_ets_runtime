@@ -130,6 +130,7 @@ namespace panda::ecmascript::kungfu {
     V(Every,           TypedArray,  Undefined())    \
     V(Some,            TypedArray,  Undefined())    \
     V(Filter,          TypedArray,  Undefined())    \
+    V(With,            TypedArray,  Undefined())    \
     V(Slice,           TypedArray,  Undefined())    \
     V(SubArray,        TypedArray,  Undefined())    \
     V(GetByteLength,   TypedArray,  Undefined())    \
