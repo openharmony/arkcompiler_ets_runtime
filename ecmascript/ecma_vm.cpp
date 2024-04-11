@@ -168,7 +168,12 @@ void EcmaVM::PostFork()
 
     bool isEnableJit = options_.IsEnableJIT() && options_.GetEnableAsmInterpreter();
     options_.SetEnableAPPJIT(true);
-    Jit::GetInstance()->SetEnableOrDisable(options_, isEnableJit);
+    if (ohos::EnableAotListHelper::GetJitInstance()->IsEnableJit(bundleName) && options_.GetEnableAsmInterpreter()) {
+        Jit::GetInstance()->SetEnableOrDisable(options_, isEnableJit);
+        if (isEnableJit) {
+            EnableJit();
+        }
+    }
 #ifdef ENABLE_POSTFORK_FORCEEXPAND
     heap_->NotifyPostFork();
     heap_->NotifyFinishColdStartSoon();
