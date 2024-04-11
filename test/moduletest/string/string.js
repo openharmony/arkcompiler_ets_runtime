@@ -263,3 +263,7 @@ let arr = Array(14);
 let tree_str = arr + 512;
 tree_str.substring(0,arr.length);
 print("sub_string test success!");
+
+const v0 = [3.0,-1.5053];
+const v4 = v0.join();
+print(v4.startsWith(v4,v0))
