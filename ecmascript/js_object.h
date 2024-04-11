@@ -461,6 +461,8 @@ public:
 
     static bool SetIntegrityLevel(JSThread *thread, const JSHandle<JSObject> &obj, IntegrityLevel level);
 
+    static bool FreezeSharedObject(JSThread *thread, const JSHandle<JSObject> &obj);
+
     static bool TestIntegrityLevel(JSThread *thread, const JSHandle<JSObject> &obj, IntegrityLevel level);
 
     static JSHandle<JSTaggedValue> SpeciesConstructor(JSThread *thread, const JSHandle<JSObject> &obj,

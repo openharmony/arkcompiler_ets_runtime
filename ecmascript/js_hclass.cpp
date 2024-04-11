@@ -242,7 +242,12 @@ JSHandle<JSHClass> JSHClass::Clone(const JSThread *thread, const JSHandle<JSHCla
     JSType type = jshclass->GetObjectType();
     uint32_t size = jshclass->GetInlinedPropsStartSize();
     uint32_t numInlinedProps = withoutInlinedProperties ? 0 : jshclass->GetInlinedProperties() + incInlinedProperties;
-    JSHandle<JSHClass> newJsHClass = thread->GetEcmaVM()->GetFactory()->NewEcmaHClass(size, type, numInlinedProps);
+    JSHandle<JSHClass> newJsHClass;
+    if (jshclass.GetTaggedValue().IsInSharedHeap()) {
+        newJsHClass = thread->GetEcmaVM()->GetFactory()->NewSEcmaHClass(size, type, numInlinedProps);
+    } else {
+        newJsHClass = thread->GetEcmaVM()->GetFactory()->NewEcmaHClass(size, type, numInlinedProps);
+    }
     // Copy all
     newJsHClass->Copy(thread, *jshclass);
     newJsHClass->SetTransitions(thread, JSTaggedValue::Undefined());
