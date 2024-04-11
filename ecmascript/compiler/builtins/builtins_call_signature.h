@@ -136,6 +136,7 @@ namespace panda::ecmascript::kungfu {
     V(Filter,          TypedArray,  Undefined())    \
     V(Slice,           TypedArray,  Undefined())    \
     V(SubArray,        TypedArray,  Undefined())    \
+    V(Sort,            TypedArray,  Undefined())    \
     V(GetByteLength,   TypedArray,  Undefined())    \
     V(GetByteOffset,   TypedArray,  Undefined())    \
     V(Set,             TypedArray,  Undefined())
