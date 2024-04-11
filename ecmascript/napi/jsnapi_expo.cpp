@@ -3816,6 +3816,16 @@ int JSNApi::ExecuteWithSingletonPatternFlag(EcmaVM *vm, const std::string &bundl
     return result;
 }
 
+bool JSNApi::IsExecuteModuleInAbcFile(EcmaVM *vm, const std::string &bundleName,
+    const std::string &moduleName, const std::string &ohmurl)
+{
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, false);
+    ecmascript::ThreadManagedScope scope(thread);
+    bool result = ecmascript::JSPandaFileExecutor::IsExecuteModuleInAbcFile(thread, bundleName.c_str(),
+        moduleName.c_str(), ohmurl.c_str());
+    return result;
+}
+
 // The security interface needs to be modified accordingly.
 bool JSNApi::ExecuteModuleBuffer(EcmaVM *vm, const uint8_t *data, int32_t size, const std::string &filename,
                                  bool needUpdate)

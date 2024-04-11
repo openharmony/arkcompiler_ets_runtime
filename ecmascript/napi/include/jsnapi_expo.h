@@ -1262,6 +1262,8 @@ public:
                         const std::string &filename = "", bool needUpdate = false);
     static int ExecuteWithSingletonPatternFlag(EcmaVM *vm, const std::string &bundleName,
         const std::string &moduleName, const std::string &ohmurl, bool isSingletonPattern);
+    static bool IsExecuteModuleInAbcFile(EcmaVM *vm, const std::string &bundleName,
+        const std::string &moduleName, const std::string &ohmurl);
     // merge abc, execute module buffer
     static bool ExecuteModuleBuffer(EcmaVM *vm, const uint8_t *data, int32_t size, const std::string &filename = "",
                                     bool needUpdate = false);

@@ -59,6 +59,8 @@ public:
 
     DebugInfoExtractor *CpuProfilerGetJSPtExtractor(const JSPandaFile *jsPandaFile);
 
+    bool CheckFilePath(JSThread *thread, const CString &fileName);
+
     // for debugger
     template<typename Callback>
     void EnumerateJSPandaFiles(Callback cb)
