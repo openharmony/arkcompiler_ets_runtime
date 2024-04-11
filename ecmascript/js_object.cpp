@@ -1341,7 +1341,7 @@ bool JSObject::ValidateAndApplyPropertyDescriptor(ObjectOperator *op, bool exten
     // 2. If current is undefined, then
     if (current.IsEmpty()) {
         // 2a. If extensible is false, return false.
-        if (!(extensible || (op->GetReceiver()->IsJSShared() && sCheckMode == SCheckMode::SKIP))) {
+        if (!(extensible || (op->HasHolder() && op->GetHolder()->IsJSShared() && sCheckMode == SCheckMode::SKIP))) {
             return false;
         }
         if (!op->HasHolder()) {
