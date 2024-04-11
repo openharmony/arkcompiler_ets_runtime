@@ -367,3 +367,13 @@ let arr2_every = new Int16Array();
 print(arr2_every.every(testEvery_false));
 let arr3_every = [1, 2, 3, 4, 5, 6, 7, 8, 9];
 print(arr3_every.every(testEvery_true));
+
+// Test case for reduce()
+let arr1_reduce = new Int16Array([1, 2, 3, 4, 5, 6, 7, 8, 9]);
+function test_Reduce(a, b){
+    return a+b;
+}
+print(arr1_reduce.reduce(test_Reduce));
+print(arr1_reduce.reduce(test_Reduce, 10));
+let arr2_reduce = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+print(arr2_reduce.reduce(test_Reduce));
