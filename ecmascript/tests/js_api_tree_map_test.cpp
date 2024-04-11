@@ -185,6 +185,74 @@ HWTEST_F_L0(JSAPITreeMapTest, TreeMapDeleteAndHas)
     }
 }
 
+void TestTreeMapGet(int keyIndex,
+                    int valueIndex,
+                    std::string &myKey,
+                    std::string &myValue,
+                    JSHandle<JSAPITreeMap> &tmap,
+                    JSMutableHandle<JSTaggedValue> &key,
+                    JSMutableHandle<JSTaggedValue> &value,
+                    JSThread *thread)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    std::string ikey = myKey + std::to_string(keyIndex);
+    std::string ivalue = myValue + std::to_string(valueIndex);
+    key.Update(factory->NewFromStdString(ikey).GetTaggedValue());
+    value.Update(factory->NewFromStdString(ivalue).GetTaggedValue());
+
+    // test get
+    JSTaggedValue gvalue = JSAPITreeMap::Get(thread, tmap, key);
+    EXPECT_EQ(gvalue, value.GetTaggedValue());
+}
+
+void TestTreeMapReplace(std::string myKey,
+                        std::string myValue,
+                        JSHandle<JSAPITreeMap> &tmap,
+                        JSMutableHandle<JSTaggedValue> &key,
+                        JSMutableHandle<JSTaggedValue> &value,
+                        JSThread *thread,
+                        int nodeNumbers)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    for (int i = 0; i < nodeNumbers / 2; i++) {
+        std::string ikey = myKey + std::to_string(i);
+        std::string ivalue = myValue + std::to_string(i + 1);
+        key.Update(factory->NewFromStdString(ikey).GetTaggedValue());
+        value.Update(factory->NewFromStdString(ivalue).GetTaggedValue());
+
+        // test replace
+        bool success = JSAPITreeMap::Replace(thread, tmap, key, value);
+        EXPECT_EQ(success, true);
+    }
+}
+
+void TestTreeMapGetAndHas(std::string myKey,
+                          std::string myValue,
+                          JSHandle<JSAPITreeMap> &tmap,
+                          JSMutableHandle<JSTaggedValue> &key,
+                          JSMutableHandle<JSTaggedValue> &value,
+                          JSThread *thread,
+                          int nodeNumbers)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    for (int i = 0; i < nodeNumbers; i++) {
+        std::string ikey = myKey + std::to_string(i);
+        std::string ivalue = myValue + std::to_string(i);
+        key.Update(factory->NewFromStdString(ikey).GetTaggedValue());
+        value.Update(factory->NewFromStdString(ivalue).GetTaggedValue());
+
+        // test get
+        JSTaggedValue gvalue = JSAPITreeMap::Get(thread, tmap, key);
+        EXPECT_EQ(gvalue, JSTaggedValue::Undefined());
+
+        // test has
+        bool hasKey = JSAPITreeMap::HasKey(thread, tmap, key);
+        EXPECT_EQ(hasKey, false);
+        bool hasValue = tmap->HasValue(thread, value);
+        EXPECT_EQ(hasValue, false);
+    }
+}
+
 HWTEST_F_L0(JSAPITreeMapTest, TreeMapReplaceAndClear)
 {
     constexpr int NODE_NUMBERS = 8;
@@ -205,16 +273,8 @@ HWTEST_F_L0(JSAPITreeMapTest, TreeMapReplaceAndClear)
     }
     EXPECT_EQ(tmap->GetSize(), NODE_NUMBERS);
 
-    for (int i = 0; i < NODE_NUMBERS / 2; i++) {
-        std::string ikey = myKey + std::to_string(i);
-        std::string ivalue = myValue + std::to_string(i + 1);
-        key.Update(factory->NewFromStdString(ikey).GetTaggedValue());
-        value.Update(factory->NewFromStdString(ivalue).GetTaggedValue());
-
-        // test replace
-        bool success = JSAPITreeMap::Replace(thread, tmap, key, value);
-        EXPECT_EQ(success, true);
-    }
+    // test replace
+    TestTreeMapReplace(myKey, myValue, tmap, key, value, thread, NODE_NUMBERS);
 
     {
         std::string ikey = myKey + std::to_string(NODE_NUMBERS);
@@ -225,26 +285,14 @@ HWTEST_F_L0(JSAPITreeMapTest, TreeMapReplaceAndClear)
         EXPECT_FALSE(success);
     }
 
+    //test get
     for (int i = 0; i < NODE_NUMBERS / 2; i++) {
-        std::string ikey = myKey + std::to_string(i);
-        std::string ivalue = myValue + std::to_string(i + 1);
-        key.Update(factory->NewFromStdString(ikey).GetTaggedValue());
-        value.Update(factory->NewFromStdString(ivalue).GetTaggedValue());
-
-        // test get
-        JSTaggedValue gvalue = JSAPITreeMap::Get(thread, tmap, key);
-        EXPECT_EQ(gvalue, value.GetTaggedValue());
+        TestTreeMapGet(i, i + 1, myKey, myValue, tmap, key, value, thread);
     }
 
+    //test get
     for (int i = NODE_NUMBERS / 2; i < NODE_NUMBERS; i++) {
-        std::string ikey = myKey + std::to_string(i);
-        std::string ivalue = myValue + std::to_string(i);
-        key.Update(factory->NewFromStdString(ikey).GetTaggedValue());
-        value.Update(factory->NewFromStdString(ivalue).GetTaggedValue());
-
-        // test get
-        JSTaggedValue gvalue = JSAPITreeMap::Get(thread, tmap, key);
-        EXPECT_EQ(gvalue, value.GetTaggedValue());
+        TestTreeMapGet(i, i, myKey, myValue, tmap, key, value, thread);
     }
 
     for (int i = 0; i < NODE_NUMBERS / 2; i++) {
@@ -255,22 +303,8 @@ HWTEST_F_L0(JSAPITreeMapTest, TreeMapReplaceAndClear)
 
     JSAPITreeMap::Clear(thread, tmap);
     EXPECT_EQ(tmap->GetSize(), 0);
-    for (int i = 0; i < NODE_NUMBERS; i++) {
-        std::string ikey = myKey + std::to_string(i);
-        std::string ivalue = myValue + std::to_string(i);
-        key.Update(factory->NewFromStdString(ikey).GetTaggedValue());
-        value.Update(factory->NewFromStdString(ivalue).GetTaggedValue());
-
-        // test get
-        JSTaggedValue gvalue = JSAPITreeMap::Get(thread, tmap, key);
-        EXPECT_EQ(gvalue, JSTaggedValue::Undefined());
-
-        // test has
-        bool hasKey = JSAPITreeMap::HasKey(thread, tmap, key);
-        EXPECT_EQ(hasKey, false);
-        bool hasValue = tmap->HasValue(thread, value);
-        EXPECT_EQ(hasValue, false);
-    }
+    // test get and has
+    TestTreeMapGetAndHas(myKey, myValue, tmap, key, value, thread, NODE_NUMBERS);
 }
 
 HWTEST_F_L0(JSAPITreeMapTest, JSAPITreeMapIterator)

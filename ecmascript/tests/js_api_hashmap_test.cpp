@@ -203,6 +203,46 @@ HWTEST_F_L0(JSAPIHashMapTest, HashMapRemoveAndHas)
     }
 }
 
+void TestHashMapReplace(std::string &myKey,
+                        std::string &myValue,
+                        JSHandle<JSAPIHashMap> &hashMap,
+                        JSMutableHandle<JSTaggedValue> &key,
+                        JSMutableHandle<JSTaggedValue> &value,
+                        JSThread *thread,
+                        uint32_t nodeNumbers)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    for (uint32_t i = 0; i < nodeNumbers / 2; i++) {
+        std::string iKey = myKey + std::to_string(i);
+        std::string iValue = myValue + std::to_string(i + 1);
+        key.Update(factory->NewFromStdString(iKey).GetTaggedValue());
+        value.Update(factory->NewFromStdString(iValue).GetTaggedValue());
+        // test replace
+        bool success = hashMap->Replace(thread, key.GetTaggedValue(), value.GetTaggedValue());
+        EXPECT_EQ(success, true);
+    }
+}
+
+void TestHashMapGet(uint32_t keyIndex,
+                    uint32_t valueIndex,
+                    std::string &myKey,
+                    std::string &myValue,
+                    JSHandle<JSAPIHashMap> &hashMap,
+                    JSMutableHandle<JSTaggedValue> &key,
+                    JSMutableHandle<JSTaggedValue> &value,
+                    JSThread *thread)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    std::string iKey = myKey + std::to_string(keyIndex);
+    std::string iValue = myValue + std::to_string(valueIndex);
+    key.Update(factory->NewFromStdString(iKey).GetTaggedValue());
+    value.Update(factory->NewFromStdString(iValue).GetTaggedValue());
+    // test get
+    JSTaggedValue gValue = hashMap->Get(thread, key.GetTaggedValue());
+    EXPECT_EQ(gValue, value.GetTaggedValue());
+}
+
+
 HWTEST_F_L0(JSAPIHashMapTest, HashMapReplaceAndClear)
 {
     constexpr uint32_t NODE_NUMBERS = 8;
@@ -221,32 +261,17 @@ HWTEST_F_L0(JSAPIHashMapTest, HashMapReplaceAndClear)
         JSAPIHashMap::Set(thread, hashMap, key, value);
     }
     EXPECT_EQ(hashMap->GetSize(), NODE_NUMBERS);
+
+    // test replace
+    TestHashMapReplace(myKey, myValue, hashMap, key, value, thread, NODE_NUMBERS);
+
+    //test get
     for (uint32_t i = 0; i < NODE_NUMBERS / 2; i++) {
-        std::string iKey = myKey + std::to_string(i);
-        std::string iValue = myValue + std::to_string(i + 1);
-        key.Update(factory->NewFromStdString(iKey).GetTaggedValue());
-        value.Update(factory->NewFromStdString(iValue).GetTaggedValue());
-        // test replace
-        bool success = hashMap->Replace(thread, key.GetTaggedValue(), value.GetTaggedValue());
-        EXPECT_EQ(success, true);
+        TestHashMapGet(i, i + 1, myKey, myValue, hashMap, key, value, thread);
     }
-    for (uint32_t i = 0; i < NODE_NUMBERS / 2; i++) {
-        std::string iKey = myKey + std::to_string(i);
-        std::string iValue = myValue + std::to_string(i + 1);
-        key.Update(factory->NewFromStdString(iKey).GetTaggedValue());
-        value.Update(factory->NewFromStdString(iValue).GetTaggedValue());
-        // test get
-        JSTaggedValue gValue = hashMap->Get(thread, key.GetTaggedValue());
-        EXPECT_EQ(gValue, value.GetTaggedValue());
-    }
+    //test get
     for (uint32_t i = NODE_NUMBERS / 2; i < NODE_NUMBERS; i++) {
-        std::string iKey = myKey + std::to_string(i);
-        std::string iValue = myValue + std::to_string(i);
-        key.Update(factory->NewFromStdString(iKey).GetTaggedValue());
-        value.Update(factory->NewFromStdString(iValue).GetTaggedValue());
-        // test get
-        JSTaggedValue gValue = hashMap->Get(thread, key.GetTaggedValue());
-        EXPECT_EQ(gValue, value.GetTaggedValue());
+        TestHashMapGet(i, i, myKey, myValue, hashMap, key, value, thread);
     }
     for (uint32_t i = 0; i < NODE_NUMBERS / 2; i++) {
         std::string iKey = myKey + std::to_string(i);
@@ -269,6 +294,44 @@ HWTEST_F_L0(JSAPIHashMapTest, HashMapReplaceAndClear)
         JSTaggedValue hasValue = JSAPIHashMap::HasValue(thread, hashMap, value);
         EXPECT_EQ(hasValue, JSTaggedValue::False());
     }
+}
+
+void TestHashMapKeyAndValue(JSHandle<JSAPIHashMap> &hashMap, JSThread *thread, uint32_t nodeNumbers)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<JSTaggedValue> indexKey(thread, JSTaggedValue(0));
+    JSHandle<JSTaggedValue> elementKey(thread, JSTaggedValue(1));
+    JSHandle<JSTaggedValue> iter(factory->NewJSAPIHashMapIterator(hashMap, IterationKind::KEY_AND_VALUE));
+    JSMutableHandle<JSTaggedValue> iterResult(thread, JSTaggedValue::Undefined());
+    JSMutableHandle<JSTaggedValue> result(thread, JSTaggedValue::Undefined());
+    for (uint32_t i = 0; i < nodeNumbers; i++) {
+        iterResult.Update(JSIterator::IteratorStep(thread, iter).GetTaggedValue());
+        result.Update(JSIterator::IteratorValue(thread, iterResult).GetTaggedValue());
+        JSHandle<JSTaggedValue> tmpKey = JSObject::GetProperty(thread, result, indexKey).GetValue();
+        JSTaggedValue iterKeyFlag = hashMap->HasKey(thread, tmpKey.GetTaggedValue());
+        EXPECT_EQ(JSTaggedValue::True(), iterKeyFlag);
+        JSHandle<JSTaggedValue> tmpValue = JSObject::GetProperty(thread, result, elementKey).GetValue();
+        JSTaggedValue iterValueFlag = JSAPIHashMap::HasValue(thread, hashMap, tmpValue);
+        EXPECT_EQ(JSTaggedValue::True(), iterValueFlag);
+    }
+}
+
+void TestHashMapSet(JSHandle<JSAPIHashMap> &hashMap,
+                    JSThread *thread,
+                    JSMutableHandle<JSTaggedValue> &key,
+                    JSHandle<JSTaggedValue> &keyIter,
+                    JSMutableHandle<JSTaggedValue> &keyIterResult,
+                    uint32_t nodeNumbers)
+{
+    key.Update(JSTaggedValue(nodeNumbers));
+    JSAPIHashMap::Set(thread, hashMap, key, key);
+    keyIterResult.Update(JSIterator::IteratorStep(thread, keyIter).GetTaggedValue());
+    JSHandle<JSTaggedValue> tmpIterKey = JSIterator::IteratorValue(thread, keyIterResult);
+    JSTaggedValue iterKeyFlag = hashMap->HasKey(thread, tmpIterKey.GetTaggedValue());
+    EXPECT_EQ(JSTaggedValue::True(), iterKeyFlag);
+    EXPECT_EQ(hashMap->GetSize(), nodeNumbers);
+    keyIterResult.Update(JSIterator::IteratorStep(thread, keyIter).GetTaggedValue());
+    EXPECT_EQ(JSTaggedValue::False(), keyIterResult.GetTaggedValue());
 }
 
 HWTEST_F_L0(JSAPIHashMapTest, JSAPIHashMapIterator)
@@ -298,22 +361,10 @@ HWTEST_F_L0(JSAPIHashMapTest, JSAPIHashMapIterator)
         JSTaggedValue iterValueFlag = JSAPIHashMap::HasValue(thread, hashMap, tmpIterValue);
         EXPECT_EQ(JSTaggedValue::True(), iterValueFlag);
     }
+
     // test key and value
-    JSHandle<JSTaggedValue> indexKey(thread, JSTaggedValue(0));
-    JSHandle<JSTaggedValue> elementKey(thread, JSTaggedValue(1));
-    JSHandle<JSTaggedValue> iter(factory->NewJSAPIHashMapIterator(hashMap, IterationKind::KEY_AND_VALUE));
-    JSMutableHandle<JSTaggedValue> iterResult(thread, JSTaggedValue::Undefined());
-    JSMutableHandle<JSTaggedValue> result(thread, JSTaggedValue::Undefined());
-    for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
-        iterResult.Update(JSIterator::IteratorStep(thread, iter).GetTaggedValue());
-        result.Update(JSIterator::IteratorValue(thread, iterResult).GetTaggedValue());
-        JSHandle<JSTaggedValue> tmpKey = JSObject::GetProperty(thread, result, indexKey).GetValue();
-        JSTaggedValue iterKeyFlag = hashMap->HasKey(thread, tmpKey.GetTaggedValue());
-        EXPECT_EQ(JSTaggedValue::True(), iterKeyFlag);
-        JSHandle<JSTaggedValue> tmpValue = JSObject::GetProperty(thread, result, elementKey).GetValue();
-        JSTaggedValue iterValueFlag = JSAPIHashMap::HasValue(thread, hashMap, tmpValue);
-        EXPECT_EQ(JSTaggedValue::True(), iterValueFlag);
-    }
+    TestHashMapKeyAndValue(hashMap, thread, NODE_NUMBERS);
+
     // test delete
     key.Update(JSTaggedValue(NODE_NUMBERS / 2));
     JSTaggedValue rValue = JSAPIHashMap::Remove(thread, hashMap, key.GetTaggedValue());
@@ -328,16 +379,10 @@ HWTEST_F_L0(JSAPIHashMapTest, JSAPIHashMapIterator)
         JSTaggedValue iterValueFlag = JSAPIHashMap::HasValue(thread, hashMap, tmpIterValue);
         EXPECT_EQ(JSTaggedValue::True(), iterValueFlag);
     }
+
     // test set
-    key.Update(JSTaggedValue(NODE_NUMBERS));
-    JSAPIHashMap::Set(thread, hashMap, key, key);
-    keyIterResult.Update(JSIterator::IteratorStep(thread, keyIter).GetTaggedValue());
-    JSHandle<JSTaggedValue> tmpIterKey = JSIterator::IteratorValue(thread, keyIterResult);
-    JSTaggedValue iterKeyFlag = hashMap->HasKey(thread, tmpIterKey.GetTaggedValue());
-    EXPECT_EQ(JSTaggedValue::True(), iterKeyFlag);
-    EXPECT_EQ(hashMap->GetSize(), NODE_NUMBERS);
-    keyIterResult.Update(JSIterator::IteratorStep(thread, keyIter).GetTaggedValue());
-    EXPECT_EQ(JSTaggedValue::False(), keyIterResult.GetTaggedValue());
+    TestHashMapSet(hashMap, thread, key, keyIter, keyIterResult, NODE_NUMBERS);
+
 }
 
 HWTEST_F_L0(JSAPIHashMapTest, JSAPIHashMapIteratorRBTreeTest)
