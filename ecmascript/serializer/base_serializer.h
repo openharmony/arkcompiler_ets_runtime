@@ -56,6 +56,7 @@ protected:
     bool SerializeSpecialObjIndividually(JSType objectType, TaggedObject *root, ObjectSlot start, ObjectSlot end);
     void SerializeHClassFieldIndividually(TaggedObject *root, ObjectSlot start, ObjectSlot end);
     void SerializeSFunctionFieldIndividually(TaggedObject *root, ObjectSlot start, ObjectSlot end);
+    void SerializeSFunctionModule(JSFunction *func);
     void SerializeLexicalEnvFieldIndividually(TaggedObject *root, ObjectSlot start, ObjectSlot end);
     void SerializeAsyncFunctionFieldIndividually(TaggedObject *root, ObjectSlot start, ObjectSlot end);
     void SerializeMethodFieldIndividually(TaggedObject *root, ObjectSlot start, ObjectSlot end);

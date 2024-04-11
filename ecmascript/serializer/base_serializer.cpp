@@ -196,11 +196,7 @@ void BaseSerializer::SerializeSFunctionFieldIndividually(TaggedObject *root, Obj
                 break;
             }
             case JSFunction::ECMA_MODULE_OFFSET: {
-                // Module of shared function should write pointer directly when serialize
-                TaggedObject *module = JSFunction::Cast(root)->GetModule().GetTaggedObject();
-                if (!SerializeReference(module)) {
-                    SerializeSharedObject(module);
-                }
+                SerializeSFunctionModule(JSFunction::Cast(root));
                 slot++;
                 break;
             }
@@ -216,6 +212,20 @@ void BaseSerializer::SerializeSFunctionFieldIndividually(TaggedObject *root, Obj
                 break;
             }
         }
+    }
+}
+
+void BaseSerializer::SerializeSFunctionModule(JSFunction *func)
+{
+    JSTaggedValue moduleValue = func->GetModule();
+    if (moduleValue.IsHeapObject()) {
+        if (!SerializeReference(moduleValue.GetTaggedObject())) {
+            // Module of shared function should write pointer directly when serialize
+            SerializeSharedObject(moduleValue.GetTaggedObject());
+        }
+    } else {
+        data_->WriteEncodeFlag(EncodeFlag::PRIMITIVE);
+        data_->WriteJSTaggedValue(moduleValue);
     }
 }
 
