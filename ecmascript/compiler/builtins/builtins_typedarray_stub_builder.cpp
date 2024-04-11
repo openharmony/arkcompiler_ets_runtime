@@ -897,8 +897,8 @@ void BuiltinsTypedArrayStubBuilder::Slice(GateRef glue, GateRef thisValue, GateR
         BRANCH(Int32Equal(TruncInt64ToInt32(*newArrayLen), Int32(0)), &writeVariable, &copyBuffer);
         Bind(&copyBuffer);
         {
-            CallNGCRuntime(glue, RTSTUB_ID(CopyTypedArrayBuffer), {thisValue, newArray, TruncInt64ToInt32(*startPos),
-                TruncInt64ToInt32(*newArrayLen), newBuilder.GetElementSizeFromType(glue, arrayType)});
+            CallNGCRuntime(glue, RTSTUB_ID(CopyTypedArrayBuffer), { thisValue, newArray, TruncInt64ToInt32(*startPos),
+                Int32(0), TruncInt64ToInt32(*newArrayLen), newBuilder.GetElementSizeFromType(glue, arrayType) });
             Jump(&writeVariable);
         }
         Bind(&writeVariable);
@@ -1041,4 +1041,113 @@ void BuiltinsTypedArrayStubBuilder::GetByteOffset([[maybe_unused]] GateRef glue,
     Jump(exit);
 }
 
+void BuiltinsTypedArrayStubBuilder::Set(GateRef glue, GateRef thisValue, GateRef numArgs,
+    Variable *result, Label *exit, Label *slowPath)
+{
+    auto env = GetEnvironment();
+    Label thisExists(env);
+    Label ecmaObj(env);
+    Label typedArray(env);
+    Label typedArrayIsFast(env);
+
+    BRANCH(TaggedIsUndefinedOrNull(thisValue), slowPath, &thisExists);
+    Bind(&thisExists);
+    BRANCH(IsEcmaObject(thisValue), &ecmaObj, slowPath);
+    Bind(&ecmaObj);
+    BRANCH(IsTypedArray(thisValue), &typedArray, slowPath);
+    Bind(&typedArray);
+    BRANCH(IsFastTypeArray(GetObjectType(LoadHClass(thisValue))), &typedArrayIsFast, slowPath);
+    Bind(&typedArrayIsFast);
+    GateRef len = ZExtInt32ToInt64(GetArrayLength(thisValue));
+    GateRef arrayType = GetObjectType(LoadHClass(thisValue));
+    Label notEmptyArray(env);
+    BRANCH(Int64Equal(len, Int64(0)), slowPath, &notEmptyArray);
+    Bind(&notEmptyArray);
+    DEFVARIABLE(realOffset, VariableType::INT64(), Int64(0));
+    DEFVARIABLE(startIndex, VariableType::INT64(), Int64(0));
+    Label hasOffset(env);
+    Label hasNoOffset(env);
+    Label numArgsIsInt(env);
+    GateRef fromOffset = GetCallArg1(numArgs);
+    BRANCH(TaggedIsUndefinedOrNull(fromOffset), &hasNoOffset, &hasOffset);
+    Bind(&hasOffset);
+    {
+        Label taggedIsInt(env);
+        BRANCH(TaggedIsInt(fromOffset), &taggedIsInt, slowPath);
+        Bind(&taggedIsInt);
+        GateRef fromIndexToTagged = SExtInt32ToInt64(TaggedGetInt(fromOffset));
+        Label offsetNotLessZero(env);
+        BRANCH(Int64LessThan(fromIndexToTagged, Int64(0)), slowPath, &offsetNotLessZero);
+        Bind(&offsetNotLessZero);
+        {
+            realOffset = fromIndexToTagged;
+            Jump(&hasNoOffset);
+        }
+    }
+    Bind(&hasNoOffset);
+
+    Label srcArrayIsEcmaObj(env);
+    Label srcArrayIsTypedArray(env);
+    Label srcArrayIsJsArray(env);
+    GateRef srcArray = GetCallArg0(numArgs);
+    BRANCH(IsEcmaObject(srcArray), &srcArrayIsEcmaObj, slowPath);
+    Bind(&srcArrayIsEcmaObj);
+    BRANCH(IsTypedArray(srcArray), &srcArrayIsTypedArray, slowPath);
+    Bind(&srcArrayIsTypedArray);
+    {
+        GateRef srcType = GetObjectType(LoadHClass(srcArray));
+        Label isFastTypeArray(env);
+        BRANCH(IsFastTypeArray(srcType), &isFastTypeArray, slowPath);
+        Bind(&isFastTypeArray);
+        Label isNotSameValue(env);
+        GateRef targetBuffer = GetViewedArrayBuffer(thisValue);
+        GateRef srcBuffer = GetViewedArrayBuffer(srcArray);
+        BRANCH(SameValue(glue, targetBuffer, srcBuffer), slowPath, &isNotSameValue);
+        Bind(&isNotSameValue);
+        Label isNotGreaterThanLen(env);
+        GateRef srcLen = ZExtInt32ToInt64(GetArrayLength(srcArray));
+        BRANCH(Int64GreaterThan(Int64Add(*realOffset, srcLen), len), slowPath, &isNotGreaterThanLen);
+        Bind(&isNotGreaterThanLen);
+        {
+            Label isSameType(env);
+            Label isNotSameType(env);
+            BRANCH(Equal(srcType, arrayType), &isSameType, &isNotSameType);
+            Bind(&isSameType);
+            {
+                NewObjectStubBuilder newBuilder(this);
+                CallNGCRuntime(glue, RTSTUB_ID(CopyTypedArrayBuffer),
+                    { srcArray, thisValue, Int32(0), TruncInt64ToInt32(*realOffset), TruncInt64ToInt32(srcLen),
+                    newBuilder.GetElementSizeFromType(glue, arrayType) });
+                Jump(exit);
+            }
+            Bind(&isNotSameType);
+            {
+                Label loopHead(env);
+                Label loopEnd(env);
+                Label loopExit(env);
+                Label loopNext(env);
+                Jump(&loopHead);
+                LoopBegin(&loopHead);
+                {
+                    BRANCH(Int64LessThan(*startIndex, srcLen), &loopNext, &loopExit);
+                    Bind(&loopNext);
+                    {
+                        GateRef srcValue = FastGetPropertyByIndex(glue, srcArray, TruncInt64ToInt32(*startIndex),
+                            GetObjectType(LoadHClass(srcArray)));
+                        StoreTypedArrayElement(glue, thisValue, *realOffset, srcValue,
+                            GetObjectType(LoadHClass(thisValue)));
+                        Jump(&loopEnd);
+                    }
+                }
+                Bind(&loopEnd);
+                startIndex = Int64Add(*startIndex, Int64(1));
+                realOffset = Int64Add(*realOffset, Int64(1));
+                LoopEnd(&loopHead);
+                Bind(&loopExit);
+                result->WriteVariable(Undefined());
+                Jump(exit);
+            }
+        }
+    }
+}
 }  // namespace panda::ecmascript::kungfu

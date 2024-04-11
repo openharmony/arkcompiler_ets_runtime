@@ -206,14 +206,14 @@ DEF_RUNTIME_STUBS(TypedArraySpeciesCreate)
     return newArr.GetTaggedValue().GetRawData();
 }
 
-void RuntimeStubs::CopyTypedArrayBuffer(JSTypedArray *srcArray, JSTypedArray *targetArray,
-    int32_t startPos, int32_t count, int32_t elementSize)
+void RuntimeStubs::CopyTypedArrayBuffer(JSTypedArray *srcArray, JSTypedArray *targetArray, int32_t srcStartPos,
+    int32_t tarStartPos, int32_t count, int32_t elementSize)
 {
     DISALLOW_GARBAGE_COLLECTION;
     JSTaggedValue srcBuffer = srcArray->GetViewedArrayBufferOrByteArray();
     JSTaggedValue targetBuffer = targetArray->GetViewedArrayBufferOrByteArray();
-    uint32_t srcByteIndex = startPos * elementSize + srcArray->GetByteOffset();
-    uint32_t targetByteIndex = targetArray->GetByteOffset();
+    uint32_t srcByteIndex = srcStartPos * elementSize + srcArray->GetByteOffset();
+    uint32_t targetByteIndex = tarStartPos * elementSize + targetArray->GetByteOffset();
     uint8_t *srcBuf = (uint8_t *)builtins::BuiltinsArrayBuffer::GetDataPointFromBuffer(srcBuffer, srcByteIndex);
     uint8_t *targetBuf = (uint8_t *)builtins::BuiltinsArrayBuffer::GetDataPointFromBuffer(targetBuffer,
                                                                                           targetByteIndex);

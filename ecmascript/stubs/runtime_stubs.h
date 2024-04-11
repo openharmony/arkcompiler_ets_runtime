@@ -534,8 +534,8 @@ public:
     static int32_t StringGetStart(bool isUtf8, EcmaString *srcString, int32_t length, int32_t startIndex);
     static int32_t StringGetEnd(bool isUtf8, EcmaString *srcString, int32_t start, int32_t length, int32_t startIndex);
     static void ClearJitCompiledCodeFlags(Method *method);
-    static void CopyTypedArrayBuffer(JSTypedArray *srcArray, JSTypedArray *targetArray,
-                                     int32_t startPos, int32_t count, int32_t elementSize);
+    static void CopyTypedArrayBuffer(JSTypedArray *srcArray, JSTypedArray *targetArray, int32_t srcStartPos,
+                                     int32_t tarStartPos, int32_t count, int32_t elementSize);
 
 private:
     static void DumpToStreamWithHint(std::ostream &out, std::string_view prompt, JSTaggedValue value);

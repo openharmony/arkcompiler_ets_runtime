@@ -134,7 +134,8 @@ namespace panda::ecmascript::kungfu {
     V(Slice,           TypedArray,  Undefined())    \
     V(SubArray,        TypedArray,  Undefined())    \
     V(GetByteLength,   TypedArray,  Undefined())    \
-    V(GetByteOffset,   TypedArray,  Undefined())
+    V(GetByteOffset,   TypedArray,  Undefined())    \
+    V(Set,             TypedArray,  Undefined())
 
 #define BUILTINS_WITH_DATAVIEW_STUB_BUILDER(V)                           \
     V(SetInt32,     DataView,  INT32,     SetTypedValue, Undefined())    \

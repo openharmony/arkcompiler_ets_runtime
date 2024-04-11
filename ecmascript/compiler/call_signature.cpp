@@ -2447,14 +2447,15 @@ DEF_CALL_SIGNATURE(DeleteObjectProperty)
 
 DEF_CALL_SIGNATURE(CopyTypedArrayBuffer)
 {
-    // 5 : 5 input parameters
-    CallSignature CopyTypedArrayBuffer("CopyTypedArrayBuffer", 0, 5,
+    // 6 : 6 input parameters
+    CallSignature CopyTypedArrayBuffer("CopyTypedArrayBuffer", 0, 6,
         ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
     *callSign = CopyTypedArrayBuffer;
-    // 5 : 5 input parameters
-    std::array<VariableType, 5> params = {
+    // 6 : 6 input parameters
+    std::array<VariableType, 6 > params = {
         VariableType::JS_POINTER(),
         VariableType::JS_POINTER(),
+        VariableType::INT32(),
         VariableType::INT32(),
         VariableType::INT32(),
         VariableType::INT32()
@@ -2463,4 +2464,5 @@ DEF_CALL_SIGNATURE(CopyTypedArrayBuffer)
     callSign->SetGCLeafFunction(true);
     callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
 }
+
 }  // namespace panda::ecmascript::kungfu
