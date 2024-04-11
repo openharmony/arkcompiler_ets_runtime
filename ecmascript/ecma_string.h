@@ -61,7 +61,8 @@ public:
     static constexpr uint32_t IS_INTEGER_MASK = 1U << 31;
     static constexpr uint32_t STRING_COMPRESSED_BIT = 0x1;
     static constexpr uint32_t STRING_INTERN_BIT = 0x2;
-    static constexpr size_t MAX_STRING_LENGTH = 0x40000000U; // 30 bits for string length, 2 bits for special meaning
+    //static constexpr size_t MAX_STRING_LENGTH = 0x40000000U; // 30 bits for string length, 2 bits for special meaning
+	static constexpr size_t MAX_STRING_LENGTH = (1 << 29) - 24; // static constexpr int kMaxLength = nternal::kApiSystemPointerSize == 4 ? (1 << 28) - 16 : (1 << 29) - 24;
     static constexpr uint32_t STRING_LENGTH_SHIFT_COUNT = 2U;
     static constexpr uint32_t MAX_INTEGER_HASH_NUMBER = 0x3B9AC9FF;
     static constexpr uint32_t MAX_CACHED_INTEGER_SIZE = 9;
