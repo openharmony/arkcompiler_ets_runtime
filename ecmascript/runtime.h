@@ -121,21 +121,12 @@ public:
     bool HasCachedConstpool(const JSPandaFile *jsPandaFile);
     PUBLIC_API JSTaggedValue FindConstpool(const JSPandaFile *jsPandaFile, int32_t index);
     JSTaggedValue FindConstpoolUnlocked(const JSPandaFile *jsPandaFile, int32_t index);
-    void AddConstpool(const JSPandaFile *jsPandaFile, JSTaggedValue constpool, int32_t index = 0);
+    JSHandle<ConstantPool> AddOrUpdateConstpool(const JSPandaFile *jsPandaFile,
+                                                JSHandle<ConstantPool> constpool,
+                                                int32_t index = 0);
     std::optional<std::reference_wrapper<CMap<int32_t, JSTaggedValue>>> FindConstpools(
         const JSPandaFile *jsPandaFile);
     void EraseUnusedConstpool(const JSPandaFile *jsPandaFile, int32_t index, int32_t constpoolIndex);
-    int32_t GetAndIncreaseSharedConstpoolCount()
-    {
-        LockHolder lock(constpoolIndexLock_);
-        if (freeSharedConstpoolIndex_.size() > 0) {
-            auto iter = freeSharedConstpoolIndex_.begin();
-            int32_t freeCount = *iter;
-            freeSharedConstpoolIndex_.erase(iter);
-            return freeCount;
-        }
-        return sharedConstpoolCount_++;
-    }
 
     void ProcessNativeDeleteInSharedGC(const WeakRootVisitor &visitor);
 
@@ -160,6 +151,17 @@ private:
         return ++serializeDataIndex_;
     }
 
+    int32_t GetAndIncreaseSharedConstpoolCount()
+    {
+        if (freeSharedConstpoolIndex_.size() > 0) {
+            auto iter = freeSharedConstpoolIndex_.begin();
+            int32_t freeCount = *iter;
+            freeSharedConstpoolIndex_.erase(iter);
+            return freeCount;
+        }
+        return sharedConstpoolCount_++;
+    }
+
     Mutex threadsLock_;
     ConditionVariable threadSuspendCondVar_;
     Mutex serializeLock_;
@@ -182,7 +184,6 @@ private:
     // Shared constantpool cache
     Mutex constpoolLock_;
     CMap<const JSPandaFile *, CMap<int32_t, JSTaggedValue>> globalSharedConstpools_ {};
-    Mutex constpoolIndexLock_;
     int32_t sharedConstpoolCount_ = 0; // shared constpool count.
     std::set<int32_t> freeSharedConstpoolIndex_ {}; // reuse shared constpool index.
 

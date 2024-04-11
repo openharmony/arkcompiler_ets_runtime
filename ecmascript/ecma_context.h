@@ -254,11 +254,16 @@ public:
     JSHandle<ecmascript::JSTaggedValue> GetEcmaUncaughtException() const;
     void EnableUserUncaughtErrorHandler();
 
-    void AddConstpool(const JSPandaFile *jsPandaFile, JSTaggedValue constpool, int32_t index = 0);
+    JSHandle<ConstantPool> AddOrUpdateConstpool(const JSPandaFile *jsPandaFile,
+                                                JSHandle<ConstantPool> constpool,
+                                                int32_t index = 0);
 
     void UpdateConstpool(const std::string& fileName, JSTaggedValue constpool, int32_t index = 0);
 
     bool HasCachedConstpool(const JSPandaFile *jsPandaFile) const;
+
+    void SetUnsharedConstpool(JSHandle<ConstantPool> sharedConstpool, JSTaggedValue unsharedConstpool);
+    void SetUnsharedConstpool(int32_t constpoolIndex, JSTaggedValue unsharedConstpool);
 
     JSTaggedValue PUBLIC_API FindConstpool(const JSPandaFile *jsPandaFile, int32_t index);
     // For new version instruction.
@@ -500,22 +505,6 @@ public:
         return isAotEntry_;
     }
 
-    void SetUnsharedConstpool(int32_t unsharedConstpoolIndex, JSTaggedValue constpool)
-    {
-        ASSERT(0 <= unsharedConstpoolIndex && unsharedConstpoolIndex < UNSHARED_CONSTANTPOOL_COUNT);
-        unsharedConstpools_[unsharedConstpoolIndex] = constpool;
-    }
-
-    int32_t GetAndIncreaseSharedConstpoolCount();
-
-    void CheckUnsharedConstpoolArrayLimit(int32_t count)
-    {
-        if (count >= UNSHARED_CONSTANTPOOL_COUNT) {
-            LOG_ECMA(FATAL) << "the unshared constpool array need to expanding capacity, count :" << count;
-            UNREACHABLE();
-        }
-    }
-
     std::tuple<uint64_t, uint8_t *, int, kungfu::CalleeRegAndOffsetVec> CalCallSiteInfo(uintptr_t retAddr) const;
 private:
     void CJSExecution(JSHandle<JSFunction> &func, JSHandle<JSTaggedValue> &thisArg,
@@ -531,6 +520,15 @@ private:
         std::string_view entryPoint, JSHandle<JSFunction> &func, bool executeFromJob);
     bool LoadAOTFiles(const std::string &aotFileName);
     void RelocateConstantString(const JSPandaFile *jsPandaFile);
+
+    void CheckUnsharedConstpoolArrayLimit(int32_t index)
+    {
+        if (index >= UNSHARED_CONSTANTPOOL_COUNT) {
+            LOG_ECMA(FATAL) << "the unshared constpool array need to expanding capacity, index :" << index;
+            UNREACHABLE();
+        }
+    }
+
     NO_MOVE_SEMANTIC(EcmaContext);
     NO_COPY_SEMANTIC(EcmaContext);
 

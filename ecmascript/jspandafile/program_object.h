@@ -159,7 +159,6 @@ public:
 
     static JSHandle<ConstantPool> CreateSharedConstPool(EcmaVM *vm, const JSPandaFile *jsPandaFile,
                                                        panda_file::File::EntityId id,
-                                                       int32_t unsharedConstpoolIndex = 0,
                                                        int32_t cpId = 0)
     {
         const panda_file::File::IndexHeader *mainIndex = jsPandaFile->GetPandaFile()->GetIndexHeader(id);
@@ -174,7 +173,7 @@ public:
 
         constpool->SetJSPandaFile(jsPandaFile);
         constpool->SetIndexHeader(mainIndex);
-        constpool->SetUnsharedConstpoolIndex(JSTaggedValue(unsharedConstpoolIndex));
+        constpool->SetUnsharedConstpoolIndex(JSTaggedValue(0));
         constpool->SetSharedConstpoolId(JSTaggedValue(cpId));
 
         return constpool;
@@ -192,7 +191,7 @@ public:
     }
 
     static JSHandle<ConstantPool> CreateSharedConstPoolForAOT(
-        EcmaVM *vm, JSHandle<ConstantPool> constpool, int32_t unsharedConstpoolIndex = 0, int32_t cpId = 0)
+        EcmaVM *vm, JSHandle<ConstantPool> constpool, int32_t cpId = 0)
     {
         JSHandle<ConstantPool> sconstpool(vm->GetJSThread(), JSTaggedValue::Hole());
         uint32_t capacity = constpool->GetConstpoolSize();
@@ -222,7 +221,7 @@ public:
         sconstpool->SetConstantIndexInfo(array.GetTaggedValue());
         sconstpool->SetJSPandaFile(constpool->GetJSPandaFile());
         sconstpool->SetIndexHeader(constpool->GetIndexHeader());
-        sconstpool->SetUnsharedConstpoolIndex(JSTaggedValue(unsharedConstpoolIndex));
+        sconstpool->SetUnsharedConstpoolIndex(JSTaggedValue(0));
         sconstpool->SetSharedConstpoolId(JSTaggedValue(cpId));
         return sconstpool;
     }
@@ -241,7 +240,7 @@ public:
 
     static bool CheckUnsharedConstpool(JSTaggedValue constpool)
     {
-        int32_t index = ConstantPool::Cast(constpool.GetTaggedObject())->GetUnsharedConstpoolIndex().GetInt();
+        int32_t index = ConstantPool::Cast(constpool.GetTaggedObject())->GetUnsharedConstpoolIndex();
         if (index == CONSTPOOL_TYPE_FLAG) {
             return true;
         }
@@ -253,9 +252,9 @@ public:
         Barriers::SetPrimitive(GetData(), GetUnsharedConstpoolIndexOffset(), index);
     }
 
-    inline JSTaggedValue GetUnsharedConstpoolIndex() const
+    inline int32_t GetUnsharedConstpoolIndex() const
     {
-        return Barriers::GetValue<JSTaggedValue>(GetData(), GetUnsharedConstpoolIndexOffset());
+        return Barriers::GetValue<JSTaggedValue>(GetData(), GetUnsharedConstpoolIndexOffset()).GetInt();
     }
 
     inline void SetSharedConstpoolId(const JSTaggedValue index)
