@@ -401,3 +401,10 @@ let arr5_copyWithin = new Int16Array([1, 2, 3, 4, 5, 6, 7, 8, 9]);
 print(arr5_copyWithin.copyWithin(4));
 let arr6_copyWithin = [1, 2, 3, 4, 5, 6, 7, 8, 9];
 print(arr6_copyWithin.copyWithin(1));
+
+// Test case for includes()
+let arr1_includes = new Int16Array([1, 2, 3, 4, 5, 6, 7, 8, 9]);
+print(arr1_includes.includes(5, -100));
+print(arr1_includes.includes(55,-1));
+let arr2_includes = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+print(arr2_includes.includes(5));

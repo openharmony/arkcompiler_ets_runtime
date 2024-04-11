@@ -429,6 +429,97 @@ GateRef BuiltinsTypedArrayStubBuilder::CalculatePositionWithLength(GateRef posit
     return ret;
 }
 
+void BuiltinsTypedArrayStubBuilder::Includes(GateRef glue, GateRef thisValue, GateRef numArgs,
+    Variable *result, Label *exit, Label *slowPath)
+{
+    auto env = GetEnvironment();
+    Label typedArray(env);
+    Label isHeapObject(env);
+    Label notFound(env);
+    Label thisLenNotZero(env);
+    BRANCH(IsTypedArray(thisValue), &typedArray, slowPath);
+    Bind(&typedArray);
+    BRANCH(TaggedIsHeapObject(thisValue), &isHeapObject, slowPath);
+    Bind(&isHeapObject);
+    GateRef thisLen = GetArrayLength(thisValue);
+    BRANCH(Int32Equal(thisLen, Int32(0)), &notFound, &thisLenNotZero);
+    Bind(&thisLenNotZero);
+    {
+        DEFVARIABLE(fromIndex, VariableType::INT32(), Int32(0));
+        Label getArgTwo(env);
+        Label nextProcess(env);
+        BRANCH(Int64Equal(numArgs, IntPtr(2)), &getArgTwo, &nextProcess); // 2: 2 parameters
+        Bind(&getArgTwo);
+        {
+            Label secondArgIsInt(env);
+            GateRef fromIndexTemp = GetCallArg1(numArgs);
+            BRANCH(TaggedIsInt(fromIndexTemp), &secondArgIsInt, slowPath);
+            Bind(&secondArgIsInt);
+            fromIndex = GetInt32OfTInt(fromIndexTemp);
+            BRANCH(Int32GreaterThanOrEqual(*fromIndex, thisLen), &notFound, &nextProcess);
+        }
+        Bind(&nextProcess);
+        {
+            Label setBackZero(env);
+            Label calculateFrom(env);
+            Label nextCheck(env);
+            BRANCH(Int64GreaterThanOrEqual(numArgs, IntPtr(1)), &nextCheck, slowPath);
+            Bind(&nextCheck);
+            {
+                Label startLoop(env);
+                BRANCH(Int32LessThan(Int32Add(*fromIndex, thisLen), Int32(0)), &setBackZero, &calculateFrom);
+                Bind(&setBackZero);
+                {
+                    fromIndex = Int32(0);
+                    Jump(&startLoop);
+                }
+                Bind(&calculateFrom);
+                Label fromIndexLessThanZero(env);
+                BRANCH(Int32GreaterThanOrEqual(*fromIndex, Int32(0)), &startLoop, &fromIndexLessThanZero);
+                Bind(&fromIndexLessThanZero);
+                {
+                    fromIndex = Int32Add(*fromIndex, thisLen);
+                    Jump(&startLoop);
+                }
+                Bind(&startLoop);
+                GateRef searchElement = GetCallArg0(numArgs);
+                Label loopHead(env);
+                Label loopEnd(env);
+                Label next(env);
+                Label loopExit(env);
+                Jump(&loopHead);
+                LoopBegin(&loopHead);
+                {
+                    BRANCH(Int32LessThan(*fromIndex, thisLen), &next, &loopExit);
+                    Bind(&next);
+                    {
+                        Label valueFound(env);
+                        GateRef value = FastGetPropertyByIndex(glue, thisValue, *fromIndex,
+                            GetObjectType(LoadHClass(thisValue)));
+                        GateRef valueEqual = StubBuilder::SameValueZero(glue, searchElement, value);
+                        BRANCH(valueEqual, &valueFound, &loopEnd);
+                        Bind(&valueFound);
+                        {
+                            result->WriteVariable(TaggedTrue());
+                            Jump(exit);
+                        }
+                    }
+                }
+                Bind(&loopEnd);
+                fromIndex = Int32Add(*fromIndex, Int32(1));
+                LoopEnd(&loopHead);
+                Bind(&loopExit);
+                Jump(&notFound);
+            }
+        }
+    }
+    Bind(&notFound);
+    {
+        result->WriteVariable(TaggedFalse());
+        Jump(exit);
+    }
+}
+
 void BuiltinsTypedArrayStubBuilder::CopyWithin(GateRef glue, GateRef thisValue, GateRef numArgs,
     Variable *result, Label *exit, Label *slowPath)
 {
