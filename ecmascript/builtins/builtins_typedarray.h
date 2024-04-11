@@ -94,7 +94,7 @@
     /* %TypedArray%.prototype.forEach ( callbackfn [ , thisArg ] ) */                   \
     V("forEach",        ForEach,        1, INVALID)                                     \
     /* %TypedArray%.prototype.includes ( searchElement [ , fromIndex ] ) */             \
-    V("includes",       Includes,       1, INVALID)                                     \
+    V("includes",       Includes,       1, TypedArrayIncludes)                          \
     /* %TypedArray%.prototype.indexOf ( searchElement [ , fromIndex ] ) */              \
     V("indexOf",        IndexOf,        1, INVALID)                                     \
     /* %TypedArray%.prototype.join ( separator ) */                                     \
