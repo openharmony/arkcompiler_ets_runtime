@@ -102,6 +102,8 @@ JSHandle<JSSegmenter> JSSegmenter::InitializeSegmenter(JSThread *thread,
     JSHandle<JSObject> optionsObject;
     if (options->IsUndefined()) {
         optionsObject = factory->CreateNullJSObject();
+    } else if (!options->IsJSObject()) {
+        THROW_TYPE_ERROR_AND_RETURN(thread, "options is not Object", segmenter);
     } else {
         optionsObject = JSTaggedValue::ToObject(thread, options);
         RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSSegmenter, thread);
