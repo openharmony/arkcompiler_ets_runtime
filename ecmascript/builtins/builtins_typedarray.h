@@ -74,7 +74,7 @@
     /* %TypedArray%.prototype.at ( index ) */                                           \
     V("at",             At,             1, INVALID)                                     \
     /* %TypedArray%.prototype.copyWithin ( target, start [ , end ] ) */                 \
-    V("copyWithin",     CopyWithin,     2, INVALID)                                     \
+    V("copyWithin",     CopyWithin,     2, TypedArrayCopyWithin)                        \
     /* %TypedArray%.prototype.entries ( ) */                                            \
     V("entries",        Entries,        0, INVALID)                                     \
     /* %TypedArray%.prototype.every ( callbackfn [ , thisArg ] ) */                     \
