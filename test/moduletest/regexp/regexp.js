@@ -577,3 +577,10 @@ try {
 } catch (error) {
   print(error)
 }
+
+let e = /./;
+e.exec = function() {
+    return [];
+}
+"".replace(e, "");
+delete e.exec;

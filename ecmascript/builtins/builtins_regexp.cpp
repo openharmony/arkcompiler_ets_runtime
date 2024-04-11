@@ -1106,7 +1106,7 @@ JSTaggedValue BuiltinsRegExp::ReplaceInternal(JSThread *thread,
         // b. ReturnIfAbrupt(nCaptures).
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         // c. Let nCaptures be max(nCaptures − 1, 0).
-        ncaptures = std::max<uint32_t>((ncaptures - 1), 0);
+        ncaptures = (ncaptures == 0) ? 0 : ncaptures - 1;
         // d. Let matched be ToString(Get(result, "0")).
         JSTaggedValue value = ObjectFastOperator::GetPropertyByIndex(thread, resultValues.GetTaggedValue(), 0);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
