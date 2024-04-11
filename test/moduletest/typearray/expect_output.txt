@@ -75,3 +75,7 @@ true
 true
 false
 true
+5
+undefined
+undefined
+5
