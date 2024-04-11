@@ -246,10 +246,10 @@ void TestHashMapGetFirstHalf(JSHandle<JSAPIHashMap> &hashMap,
 }
 
 void TestHashMapGetSecondHalf(JSHandle<JSAPIHashMap> &hashMap,
-                             JSMutableHandle<JSTaggedValue> &key,
-                             JSMutableHandle<JSTaggedValue> &value,
-                             JSThread *thread,
-                             uint32_t nodeNumbers)
+                              JSMutableHandle<JSTaggedValue> &key,
+                              JSMutableHandle<JSTaggedValue> &value,
+                              JSThread *thread,
+                              uint32_t nodeNumbers)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     std::string myKey("mykey");

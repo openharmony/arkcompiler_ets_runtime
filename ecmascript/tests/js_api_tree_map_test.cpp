@@ -257,10 +257,10 @@ void TestTreeMapGetFirstHalf(JSHandle<JSAPITreeMap> &tmap,
 }
 
 void TestTreeMapGetSecondHalf(JSHandle<JSAPITreeMap> &tmap,
-                             JSMutableHandle<JSTaggedValue> &key,
-                             JSMutableHandle<JSTaggedValue> &value,
-                             JSThread *thread,
-                             int nodeNumbers)
+                              JSMutableHandle<JSTaggedValue> &key,
+                              JSMutableHandle<JSTaggedValue> &value,
+                              JSThread *thread,
+                              int nodeNumbers)
 {
     std::string myKey("mykey");
     std::string myValue("myvalue");
