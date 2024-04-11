@@ -377,3 +377,13 @@ print(arr1_reduce.reduce(test_Reduce));
 print(arr1_reduce.reduce(test_Reduce, 10));
 let arr2_reduce = [1, 2, 3, 4, 5, 6, 7, 8, 9];
 print(arr2_reduce.reduce(test_Reduce));
+
+// Test case for reduceRight()
+let arr1_reduceRight = new Int16Array([1, 2, 3, 4, 5, 6, 7, 8, 9]);
+function test_ReduceRight(a, b){
+    return a+b;
+}
+print(arr1_reduceRight.reduceRight(test_ReduceRight));
+print(arr1_reduceRight.reduceRight(test_ReduceRight, 10));
+let arr2_reduceRight = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+print(arr2_reduceRight.reduceRight(test_ReduceRight));

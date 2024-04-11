@@ -108,7 +108,7 @@
     /* %TypedArray%.prototype.reduce ( callbackfn [ , initialValue ] ) */               \
     V("reduce",         Reduce,         1, TypedArrayReduce)                            \
     /* %TypedArray%.prototype.reduceRight ( callbackfn [ , initialValue ] ) */          \
-    V("reduceRight",    ReduceRight,    1, INVALID)                                     \
+    V("reduceRight",    ReduceRight,    1, TypedArrayReduceRight)                       \
     /* %TypedArray%.prototype.reverse ( ) */                                            \
     V("reverse",        Reverse,        0, INVALID)                                     \
     /* %TypedArray%.prototype.set ( source [ , offset ] ) */                            \
