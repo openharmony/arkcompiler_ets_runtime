@@ -71,6 +71,7 @@ public:
           captureCount_(0),
           stackCount_(0),
           isError_(false),
+          isEmpty_(false),
           buffer_(chunk),
           groupNames_(chunk)
     {
@@ -245,6 +246,7 @@ private:
         end_ = nullptr;
         c0_ = KEY_EOF;
         isError_ = false;
+        isEmpty_ = false;
     }
 
     void Advance()
@@ -290,6 +292,7 @@ private:
     int captureCount_;
     int stackCount_;
     bool isError_;
+    bool isEmpty_;
     char errorMsg_[TMP_BUF_SIZE] = {0};  // NOLINTNEXTLINE(modernize-avoid-c-arrays)
     int hasNamedCaptures_ = -1;
     int totalCaptureCount_ = -1;

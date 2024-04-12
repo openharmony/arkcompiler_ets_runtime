@@ -572,6 +572,14 @@ print(myExp.toString());
   print(replace_result === cached_reuslt);
   print(re4.lastIndex);
 }
+
+const regex = /(?:)+/;
+const str10 = "abcabcabc";
+const matches = regex.test(str10);
+print(matches);
+const matches1 = regex.exec(str10);
+print(matches1);
+
 try {
   let matchReg = new RegExp("@【哈哈】*^o^*|@小米（kk）",'g');
 } catch (error) {
