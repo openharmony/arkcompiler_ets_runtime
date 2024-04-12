@@ -217,7 +217,7 @@ void RuntimeStubs::CopyTypedArrayBuffer(JSTypedArray *srcArray, JSTypedArray *ta
     uint8_t *srcBuf = (uint8_t *)builtins::BuiltinsArrayBuffer::GetDataPointFromBuffer(srcBuffer, srcByteIndex);
     uint8_t *targetBuf = (uint8_t *)builtins::BuiltinsArrayBuffer::GetDataPointFromBuffer(targetBuffer,
                                                                                           targetByteIndex);
-    if (memmove_s(targetBuf, elementSize * count, srcBuf, elementSize * count) != EOK) {
+    if (count > 0 && memmove_s(targetBuf, elementSize * count, srcBuf, elementSize * count) != EOK) {
         LOG_FULL(FATAL) << "memmove_s failed";
         UNREACHABLE();
     }
