@@ -402,6 +402,35 @@ print(arr5_copyWithin.copyWithin(4));
 let arr6_copyWithin = [1, 2, 3, 4, 5, 6, 7, 8, 9];
 print(arr6_copyWithin.copyWithin(1));
 
+// Test case for findIndex()
+[
+    Float64Array,
+    Float32Array,
+    Int32Array,
+    Int16Array,
+    Int8Array,
+    Uint32Array,
+    Uint16Array,
+    Uint8Array,
+    Uint8ClampedArray
+].forEach(function(ctor, i) {
+    if (testTypeArrayFindIndex(ctor)) {
+        print(ctor.name + " test success !!!")
+    } else {
+        print(ctor.name + " test fail !!!")
+    }
+});
+
+function testFindIndex(element, Last, array) {
+    return element >= 60;
+}
+
+function testTypeArrayFindIndex(ctor) {
+    let obj = new ctor([5, 10, 20, 30, 40, 50, 60])
+    let result = obj.findIndex(testFindIndex);
+    return result != -1;
+}
+
 // Test case for includes()
 let arr1_includes = new Int16Array([1, 2, 3, 4, 5, 6, 7, 8, 9]);
 print(arr1_includes.includes(5, -100));

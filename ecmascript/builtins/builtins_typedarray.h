@@ -86,7 +86,7 @@
     /* %TypedArray%.prototype.find ( predicate [ , thisArg ] ) */                       \
     V("find",           Find,           1, TypedArrayFind)                              \
     /* %TypedArray%.prototype.findIndex ( predicate [ , thisArg ] ) */                  \
-    V("findIndex",      FindIndex,      1, INVALID)                                     \
+    V("findIndex",      FindIndex,      1, TypedArrayFindIndex)                         \
     /* %TypedArray%.prototype.findLast ( predicate [ , thisArg ] ) */                   \
     V("findLast",       FindLast,       1, INVALID)                                     \
     /* %TypedArray%.prototype.findLastIndex ( predicate [ , thisArg ] ) */              \

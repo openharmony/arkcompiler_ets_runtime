@@ -2037,4 +2037,85 @@ void BuiltinsTypedArrayStubBuilder::Set(GateRef glue, GateRef thisValue, GateRef
         }
     }
 }
+
+void BuiltinsTypedArrayStubBuilder::FindIndex(GateRef glue, GateRef thisValue, GateRef numArgs,
+    Variable *result, Label *exit, Label *slowPath)
+{
+    auto env = GetEnvironment();
+    Label ecmaObj(env);
+    Label typedArray(env);
+    Label defaultConstr(env);
+    BRANCH(IsEcmaObject(thisValue), &ecmaObj, slowPath);
+    Bind(&ecmaObj);
+    BRANCH(IsTypedArray(thisValue), &typedArray, slowPath);
+    Bind(&typedArray);
+    BRANCH(HasConstructor(thisValue), slowPath, &defaultConstr);
+    Bind(&defaultConstr);
+
+    Label arg0HeapObject(env);
+    Label callable(env);
+    GateRef callbackFnHandle = GetCallArg0(numArgs);
+    BRANCH(TaggedIsHeapObject(callbackFnHandle), &arg0HeapObject, slowPath);
+    Bind(&arg0HeapObject);
+    BRANCH(IsCallable(callbackFnHandle), &callable, slowPath);
+    Bind(&callable);
+    result->WriteVariable(IntToTaggedPtr(Int32(-1)));
+
+    GateRef argHandle = GetCallArg1(numArgs);
+    DEFVARIABLE(thisArrLen, VariableType::INT64(), ZExtInt32ToInt64(GetArrayLength(thisValue)));
+    DEFVARIABLE(j, VariableType::INT32(), Int32(0));
+    Label loopHead(env);
+    Label loopEnd(env);
+    Label next(env);
+    Label loopExit(env);
+    Jump(&loopHead);
+    LoopBegin(&loopHead);
+    {
+        thisArrLen = ZExtInt32ToInt64(GetArrayLength(thisValue));
+        BRANCH(Int64LessThan(ZExtInt32ToInt64(*j), *thisArrLen), &next, &loopExit);
+        Bind(&next);
+        {
+            Label hasException0(env);
+            Label notHasException0(env);
+            GateRef kValue = FastGetPropertyByIndex(glue, thisValue, *j, GetObjectType(LoadHClass(thisValue)));
+            BRANCH(HasPendingException(glue), &hasException0, &notHasException0);
+            Bind(&hasException0);
+            {
+                result->WriteVariable(Exception());
+                Jump(exit);
+            }
+            Bind(&notHasException0);
+            {
+                GateRef key = IntToTaggedPtr(*j);
+                Label hasException(env);
+                Label notHasException(env);
+                GateRef retValue = JSCallDispatch(glue, callbackFnHandle, Int32(NUM_MANDATORY_JSFUNC_ARGS),
+                    0, Circuit::NullGate(), JSCallMode::CALL_THIS_ARG3_WITH_RETURN,
+                    { argHandle, kValue, key, thisValue });
+                BRANCH(TaggedIsException(retValue), &hasException, &notHasException);
+                Bind(&hasException);
+                {
+                    result->WriteVariable(retValue);
+                    Jump(exit);
+                }
+                Bind(&notHasException);
+                {
+                    Label find(env);
+                    BRANCH(TaggedIsTrue(FastToBoolean(retValue)), &find, &loopEnd);
+                    Bind(&find);
+                    {
+                        result->WriteVariable(key);
+                        Jump(exit);
+                    }
+                }
+            }
+        }
+    }
+    Bind(&loopEnd);
+    thisArrLen = ZExtInt32ToInt64(GetArrayLength(thisValue));
+    j = Int32Add(*j, Int32(1));
+    LoopEnd(&loopHead);
+    Bind(&loopExit);
+    Jump(exit);
+}
 }  // namespace panda::ecmascript::kungfu
