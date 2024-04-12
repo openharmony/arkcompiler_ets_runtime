@@ -2816,7 +2816,7 @@ JSHandle<TaggedArray> ObjectFactory::ExtendArray(const JSHandle<TaggedArray> &ol
                                                  JSTaggedValue initVal, MemSpaceType type,
                                                  [[maybe_unused]] ElementsKind kind)
 {
-    ASSERT(length > old->GetLength());
+    ASSERT(length >= old->GetLength());
     NewObjectHook();
     size_t size = TaggedArray::ComputeSize(JSTaggedValue::TaggedTypeSize(), length);
     JSHClass *arrayClass = nullptr;
