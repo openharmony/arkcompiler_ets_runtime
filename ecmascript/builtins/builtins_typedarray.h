@@ -96,7 +96,7 @@
     /* %TypedArray%.prototype.includes ( searchElement [ , fromIndex ] ) */             \
     V("includes",       Includes,       1, TypedArrayIncludes)                          \
     /* %TypedArray%.prototype.indexOf ( searchElement [ , fromIndex ] ) */              \
-    V("indexOf",        IndexOf,        1, INVALID)                                     \
+    V("indexOf",        IndexOf,        1, TypedArrayIndexOf)                           \
     /* %TypedArray%.prototype.join ( separator ) */                                     \
     V("join",           Join,           1, INVALID)                                     \
     /* %TypedArray%.prototype.keys ( ) */                                               \

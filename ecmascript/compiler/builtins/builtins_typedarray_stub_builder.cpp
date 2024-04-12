@@ -429,6 +429,101 @@ GateRef BuiltinsTypedArrayStubBuilder::CalculatePositionWithLength(GateRef posit
     return ret;
 }
 
+void BuiltinsTypedArrayStubBuilder::IndexOf(GateRef glue, GateRef thisValue, GateRef numArgs,
+    Variable *result, Label *exit, Label *slowPath)
+{
+    auto env = GetEnvironment();
+    Label ecmaObj(env);
+    Label typedArray(env);
+    Label defaultConstr(env);
+    BRANCH(IsEcmaObject(thisValue), &ecmaObj, slowPath);
+    Bind(&ecmaObj);
+    BRANCH(IsTypedArray(thisValue), &typedArray, slowPath);
+    Bind(&typedArray);
+    BRANCH(HasConstructor(thisValue), slowPath, &defaultConstr);
+    Bind(&defaultConstr);
+
+    DEFVARIABLE(fromIndex, VariableType::INT64(), Int64(0));
+    DEFVARIABLE(thisArrLen, VariableType::INT64(), ZExtInt32ToInt64(GetArrayLength(thisValue)));
+    Label thisIsEmpty(env);
+    Label thisIsNotEmpty(env);
+    Label getFromIndex(env);
+    Label next(env);
+    result->WriteVariable(IntToTaggedPtr(Int32(-1)));
+    BRANCH(Int64Equal(*thisArrLen, Int64(0)), &thisIsEmpty, &thisIsNotEmpty);
+    Bind(&thisIsEmpty);
+    Jump(exit);
+    Bind(&thisIsNotEmpty);
+    // 2 : index of the param
+    BRANCH(Int64Equal(numArgs, IntPtr(2)), &getFromIndex, &next);
+    Bind(&getFromIndex);
+    {
+        GateRef index = GetCallArg1(numArgs);
+        Label taggedIsInt(env);
+        Label lessThanZero(env);
+        Label stillLessThanZero(env);
+        BRANCH(TaggedIsInt(index), &taggedIsInt, slowPath);
+        Bind(&taggedIsInt);
+        fromIndex = SExtInt32ToInt64(TaggedGetInt(index));
+        BRANCH(Int64LessThan(*fromIndex, Int64(0)), &lessThanZero, &next);
+        Bind(&lessThanZero);
+        {
+            fromIndex = Int64Add(*fromIndex, *thisArrLen);
+            BRANCH(Int64LessThan(*fromIndex, Int64(0)), &stillLessThanZero, &next);
+            Bind(&stillLessThanZero);
+            fromIndex = Int64(0);
+            Jump(&next);
+        }
+    }
+    Bind(&next);
+    {
+        GateRef target = GetCallArg0(numArgs);
+        DEFVARIABLE(curIndex, VariableType::INT64(), *fromIndex);
+        Label lessThanLength(env);
+        BRANCH(Int64GreaterThanOrEqual(*curIndex, *thisArrLen), exit, &lessThanLength);
+        Bind(&lessThanLength);
+        {
+            Label loopHead(env);
+            Label loopEnd(env);
+            Label loopNext(env);
+            Label loopExit(env);
+            Jump(&loopHead);
+            LoopBegin(&loopHead);
+            {
+                BRANCH(Int64LessThan(*curIndex, *thisArrLen), &loopNext, &loopExit);
+                Bind(&loopNext);
+                {
+                    GateRef kValue = FastGetPropertyByIndex(glue, thisValue,
+                        TruncInt64ToInt32(*curIndex), GetObjectType(LoadHClass(thisValue)));
+                    Label hasException0(env);
+                    Label notHasException0(env);
+                    BRANCH(HasPendingException(glue), &hasException0, &notHasException0);
+                    Bind(&hasException0);
+                    {
+                        result->WriteVariable(Exception());
+                        Jump(exit);
+                    }
+                    Bind(&notHasException0);
+                    {
+                        Label find(env);
+                        BRANCH(FastStrictEqual(glue, target, kValue, ProfileOperation()), &find, &loopEnd);
+                        Bind(&find);
+                        {
+                            result->WriteVariable(IntToTaggedPtr(*curIndex));
+                            Jump(exit);
+                        }
+                    }
+                }
+            }
+            Bind(&loopEnd);
+            curIndex = Int64Add(*curIndex, Int64(1));
+            LoopEnd(&loopHead);
+            Bind(&loopExit);
+            Jump(exit);
+        }
+    }
+}
+
 void BuiltinsTypedArrayStubBuilder::Find(GateRef glue, GateRef thisValue, GateRef numArgs,
     Variable *result, Label *exit, Label *slowPath)
 {
