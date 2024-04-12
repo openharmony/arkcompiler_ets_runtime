@@ -2264,7 +2264,12 @@ template("host_aot_test_action") {
     _src_dir_ = invoker.src_dir
   }
 
-  _test_ts_path_ = "${_src_dir_}/${_target_name_}.ts"
+  if (defined(invoker.gen_ts_by_script) && invoker.gen_ts_by_script) {
+    _test_ts_template_path_ = "${_src_dir_}/${_target_name_}.ts"
+    _test_ts_path_ = "$target_out_dir/${_target_name_}.ts"
+  } else {
+    _test_ts_path_ = "${_src_dir_}/${_target_name_}.ts"
+  }
   _test_abc_path_ = "$target_out_dir/${_target_name_}.abc"
   _test_aot_path_ = "$target_out_dir/${_target_name_}.an"
   _test_aot_snapshot_path_ = "$target_out_dir/${_target_name_}.ai"
@@ -2322,10 +2327,27 @@ template("host_aot_test_action") {
       ":${_target_name_}PgoGenExpectOutput",
     ]
   }
+  
+  if (defined(invoker.gen_ts_by_script) && invoker.gen_ts_by_script) {
+    action("gen_${_target_name_}_ts") {
+      script = "//arkcompiler/ets_runtime/test/generate_test_file.py"
+      src_file = rebase_path(_test_ts_template_path_)
+      dst_file = rebase_path(_test_ts_path_)
+      args = [
+        "--input=$src_file",
+        "--output=$dst_file",
+      ]
+      inputs = [ _test_ts_template_path_ ]
+      outputs = [ _test_ts_path_ ]
+    }
+  }
 
   es2abc_gen_abc("gen_${_target_name_}_abc") {
     extra_visibility = [ ":*" ]  # Only targets in this file can depend on this.
     extra_dependencies = _deps_
+    if (defined(invoker.gen_ts_by_script) && invoker.gen_ts_by_script) {
+      extra_dependencies += [ ":gen_${_target_name_}_ts" ]
+    }
     if (defined(invoker.run_multi_file_tests) && invoker.run_multi_file_tests) {
       src_js = rebase_path("./")
     } else {
