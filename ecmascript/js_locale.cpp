@@ -678,12 +678,12 @@ bool JSLocale::GetOptionOfBool(JSThread *thread, const JSHandle<JSObject> &optio
 
 JSHandle<JSTaggedValue> JSLocale::GetNumberFieldType(JSThread *thread, JSTaggedValue x, int32_t fieldId)
 {
-    ASSERT(x.IsNumber());
+    ASSERT(x.IsNumber() || x.IsBigInt());
     double number = 0;
     auto globalConst = thread->GlobalConstants();
     if (static_cast<UNumberFormatFields>(fieldId) == UNUM_INTEGER_FIELD) {
-        number = x.GetNumber();
-        if (std::isfinite(number)) {
+        number = x.IsBigInt() ? number : x.GetNumber();
+        if (x.IsBigInt() || std::isfinite(number)) {
             return globalConst->GetHandledIntegerString();
         }
         if (std::isnan(number)) {
@@ -701,6 +701,13 @@ JSHandle<JSTaggedValue> JSLocale::GetNumberFieldType(JSThread *thread, JSTaggedV
     } else if (static_cast<UNumberFormatFields>(fieldId) == UNUM_PERCENT_FIELD) {
         return globalConst->GetHandledPercentSignString();
     } else if (static_cast<UNumberFormatFields>(fieldId) == UNUM_SIGN_FIELD) {
+        if (x.IsBigInt()) {
+            JSHandle<JSTaggedValue> bigint(thread, x);
+            JSHandle<BigInt> value(thread, JSTaggedValue::ToBigInt(thread, bigint));
+            RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
+            return value->GetSign() ? globalConst->GetHandledMinusSignString()
+                                    : globalConst->GetHandledPlusSignString();
+        }
         number = x.GetNumber();
         return std::signbit(number) ? globalConst->GetHandledMinusSignString()
                                     : globalConst->GetHandledPlusSignString();
