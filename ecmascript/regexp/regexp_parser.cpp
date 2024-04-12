@@ -111,6 +111,10 @@ void RegExpParser::ParseDisjunction(bool isBackward)
 {
     // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg)
     PrintF("Parse Disjunction------\n");
+    if (c0_ == ')') {
+        isEmpty_ = true;
+        return;
+    }
     size_t start = buffer_.size_;
     ParseAlternative(isBackward);
     if (isError_) {
@@ -746,7 +750,7 @@ void RegExpParser::ParseQuantifier(size_t atomBcStart, int captureStart, int cap
         ParseError("nothing to repeat");
         return;
     }
-    if (min != -1 && max != -1) {
+    if (min != -1 && max != -1 && !isEmpty_) {
         stackCount_++;
         PushOpCode pushOp;
         pushOp.InsertOpCode(&buffer_, atomBcStart);
@@ -788,6 +792,7 @@ void RegExpParser::ParseQuantifier(size_t atomBcStart, int captureStart, int cap
         PopOpCode popOp;
         popOp.EmitOpCode(&buffer_);
     }
+    isEmpty_ = false;
 }
 
 bool RegExpParser::ParseGroupSpecifier(const uint8_t **pp, CString &name)

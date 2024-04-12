@@ -284,3 +284,10 @@ let str1 = 'SC52BAHL01031234567890123456USD'
 print(str1.replace(/[^A-Z0-9]+/gi, ''))
 
 let reg50 = /^[ABCEGHJKLMNPRSTVXY]\d[ABCEGHJ-NPRSTV-Z][\s-]?\d[ABCEGHJ-NPRSTV-Z]\d$/i
+
+const regex = /(?:)+/;
+const str10 = "abcabcabc";
+const matches = regex.test(str10);
+print(matches);
+const matches1 = regex.exec(str10);
+print(matches1);
