@@ -109,3 +109,14 @@ Uint8ClampedArray test success !!!
 BigInt64Array test success !!!
 BigUint64Array test success !!!
 -1
+Float64Array test success !!!
+Float32Array test success !!!
+Int32Array test success !!!
+Int16Array test success !!!
+Int8Array test success !!!
+Uint32Array test success !!!
+Uint16Array test success !!!
+Uint8Array test success !!!
+Uint8ClampedArray test success !!!
+BigInt64Array test success !!!
+BigUint64Array test success !!!
