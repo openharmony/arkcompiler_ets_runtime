@@ -424,3 +424,28 @@ let arr2_find = new Int16Array();
 print(arr2_find.find(testFind_false));
 let arr3_find = [1, 2, 3, 4, 5, 6, 7, 8, 9];
 print(arr3_find.find(testFind_true));
+
+// Test case for indexOf()
+[
+    Float64Array,
+    Float32Array,
+    Int32Array,
+    Int16Array,
+    Int8Array,
+    Uint32Array,
+    Uint16Array,
+    Uint8Array,
+    Uint8ClampedArray
+].forEach(function(ctor, i) {
+    if (testTypeArrayIndexOf(ctor)) {
+        print(ctor.name + " test success !!!")
+    } else {
+        print(ctor.name + " test fail !!!")
+    }
+});
+
+function testTypeArrayIndexOf(ctor) {
+    let obj = new ctor([5, 10, 20, 30, 40, 50, 60])
+    let result = obj.indexOf(60);
+    return result != -1;
+}
