@@ -49,13 +49,13 @@ JitTask::JitTask(JSThread *hostThread, JSThread *compilerThread, Jit *jit, JSHan
     runState_(RunState::INIT)
 {
     ecmaContext_ = hostThread->GetCurrentEcmaContext();
-    persistentHandles_ = std::make_unique<PersistentHandles>(hostThread->GetEcmaVM());
+    sustainingJSHandle_ = std::make_unique<SustainingJSHandle>(hostThread->GetEcmaVM());
 }
 
 void JitTask::PrepareCompile()
 {
     CloneProfileTypeInfo();
-    PersistentHandle();
+    SustainingJSHandles();
     compilerTask_ = jit_->CreateJitCompilerTask(this);
 
     Method *method = Method::Cast(jsFunction_->GetMethod().GetTaggedObject());
@@ -145,7 +145,7 @@ void JitTask::InstallCode()
     size_t size = funcEntryDesSizeAlign + rodataSizeBeforeTextAlign + codeSizeAlign + rodataSizeAfterTextAlign +
         stackMapSizeAlign;
 
-    methodHandle = hostThread_->GetEcmaVM()->GetFactory()->CloneMethod(methodHandle);
+    methodHandle = hostThread_->GetEcmaVM()->GetFactory()->CloneMethodTemporaryForJIT(methodHandle);
     jsFunction_->SetMethod(hostThread_, methodHandle);
     JSHandle<MachineCode> machineCodeObj =
         hostThread_->GetEcmaVM()->GetFactory()->NewMachineCodeObject(size, &codeDesc_, methodHandle);
@@ -171,17 +171,17 @@ void JitTask::InstallCode()
     LOG_JIT(DEBUG) << "Install machine code:" << GetMethodInfo();
 }
 
-void JitTask::PersistentHandle()
+void JitTask::SustainingJSHandles()
 {
-    // transfer to persistent handle
-    JSHandle<JSFunction> persistentJsFunctionHandle = persistentHandles_->NewHandle(jsFunction_);
-    SetJsFunction(persistentJsFunctionHandle);
+    // transfer to sustaining handle
+    JSHandle<JSFunction> sustainingJsFunctionHandle = sustainingJSHandle_->NewHandle(jsFunction_);
+    SetJsFunction(sustainingJsFunctionHandle);
 
-    JSHandle<ProfileTypeInfo> profileTypeInfo = persistentHandles_->NewHandle(profileTypeInfo_);
+    JSHandle<ProfileTypeInfo> profileTypeInfo = sustainingJSHandle_->NewHandle(profileTypeInfo_);
     SetProfileTypeInfo(profileTypeInfo);
 }
 
-void JitTask::ReleasePersistentHandle()
+void JitTask::ReleaseSustainingJSHandle()
 {
 }
 
@@ -211,7 +211,7 @@ void JitTask::CloneProfileTypeInfo()
 
 JitTask::~JitTask()
 {
-    ReleasePersistentHandle();
+    ReleaseSustainingJSHandle();
     jit_->DeleteJitCompile(compilerTask_);
 }
 

@@ -13,20 +13,20 @@
  * limitations under the License.
  */
 
-#include "ecmascript/jit/persistent_handles.h"
+#include "ecmascript/sustaining_js_handle.h"
 
 namespace panda::ecmascript {
-void PersistentHandles::Init()
+void SustainingJSHandle::Init()
 {
     EcmaContext *context = vm_->GetJSThread()->GetCurrentEcmaContext();
-    context->AddPersistentHandles(this);
+    context->AddSustainingJSHandle(this);
 }
 
-PersistentHandles::~PersistentHandles()
+SustainingJSHandle::~SustainingJSHandle()
 {
     if (!isTerminate_) {
         EcmaContext *context = vm_->GetJSThread()->GetCurrentEcmaContext();
-        context->RemovePersistentHandles(this);
+        context->RemoveSustainingJSHandle(this);
     }
     for (auto block : handleBlocks_) {
         delete block;
@@ -34,7 +34,7 @@ PersistentHandles::~PersistentHandles()
     handleBlocks_.clear();
 }
 
-uintptr_t PersistentHandles::GetJsHandleSlot(JSTaggedType value)
+uintptr_t SustainingJSHandle::GetJsHandleSlot(JSTaggedType value)
 {
     if (blockNext_ == blockLimit_) {
         Expand();
@@ -47,7 +47,7 @@ uintptr_t PersistentHandles::GetJsHandleSlot(JSTaggedType value)
     return slot;
 }
 
-uintptr_t PersistentHandles::Expand()
+uintptr_t SustainingJSHandle::Expand()
 {
     auto block = new std::array<JSTaggedType, BLOCK_SIZE>();
     handleBlocks_.push_back(block);
@@ -57,7 +57,7 @@ uintptr_t PersistentHandles::Expand()
     return reinterpret_cast<uintptr_t>(blockNext_);
 }
 
-void PersistentHandles::Iterate(const RootRangeVisitor &rv)
+void SustainingJSHandle::Iterate(const RootRangeVisitor &rv)
 {
     size_t size = handleBlocks_.size();
     for (size_t i = 0; i < size; ++i) {
@@ -68,31 +68,31 @@ void PersistentHandles::Iterate(const RootRangeVisitor &rv)
     }
 }
 
-void PersistentHandlesList::AddPersistentHandles(PersistentHandles *persistentHandles)
+void SustainingJSHandleList::AddSustainingJSHandle(SustainingJSHandle *sustainingJSHandle)
 {
     LockHolder lock(mutex_);
-    if (persistentHandles == nullptr) {
+    if (sustainingJSHandle == nullptr) {
         return;
     }
 
     if (listHead_ == nullptr) {
-        listHead_ = persistentHandles;
+        listHead_ = sustainingJSHandle;
         return;
     }
-    persistentHandles->next_ = listHead_;
-    listHead_->pre_ = persistentHandles;
-    listHead_ = persistentHandles;
+    sustainingJSHandle->next_ = listHead_;
+    listHead_->pre_ = sustainingJSHandle;
+    listHead_ = sustainingJSHandle;
 }
 
-void PersistentHandlesList::RemovePersistentHandles(PersistentHandles *persistentHandles)
+void SustainingJSHandleList::RemoveSustainingJSHandle(SustainingJSHandle *sustainingJSHandle)
 {
     LockHolder lock(mutex_);
-    if (persistentHandles == nullptr) {
+    if (sustainingJSHandle == nullptr) {
         return;
     }
 
-    auto next = persistentHandles->next_;
-    auto pre = persistentHandles->pre_;
+    auto next = sustainingJSHandle->next_;
+    auto pre = sustainingJSHandle->pre_;
     if (pre != nullptr) {
         pre->next_ = next;
     }
@@ -100,12 +100,12 @@ void PersistentHandlesList::RemovePersistentHandles(PersistentHandles *persisten
         next->pre_ = pre;
     }
 
-    if (listHead_ == persistentHandles) {
-        listHead_ = persistentHandles->next_;
+    if (listHead_ == sustainingJSHandle) {
+        listHead_ = sustainingJSHandle->next_;
     }
 }
 
-void PersistentHandlesList::Iterate(const RootRangeVisitor &rv)
+void SustainingJSHandleList::Iterate(const RootRangeVisitor &rv)
 {
     LockHolder lock(mutex_);
     for (auto handles = listHead_; handles != nullptr; handles = handles->next_) {

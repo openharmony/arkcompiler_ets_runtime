@@ -5111,7 +5111,9 @@ void ObjectFactory::FillFreeMemoryRange(uintptr_t start, uintptr_t end)
     }
 }
 
-JSHandle<Method> ObjectFactory::CloneMethod(JSHandle<Method> method)
+// jit compile should not modify method which is shared
+// remove it when compiled code flag move to jsfunction
+JSHandle<Method> ObjectFactory::CloneMethodTemporaryForJIT(JSHandle<Method> method)
 {
     TaggedObject *header = nullptr;
     header = heap_->AllocateOldOrHugeObject(

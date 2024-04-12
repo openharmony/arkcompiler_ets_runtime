@@ -126,6 +126,9 @@ bool TypedBytecodeLowering::CheckIsInOptBCIgnoreRange(int32_t index, EcmaOpcode 
 
 void TypedBytecodeLowering::Lower(GateRef gate)
 {
+    // not all opcode will visit heap, but now jit lock all opcode
+    Jit::JitLockHolder lock(compilationEnv_, "TypedBytecodeLowering::Lower");
+
     EcmaOpcode ecmaOpcode = acc_.GetByteCodeOpcode(gate);
     // initialize label manager
     Environment env(gate, circuit_, &builder_);
@@ -142,10 +145,8 @@ void TypedBytecodeLowering::Lower(GateRef gate)
         case EcmaOpcode::GETITERATOR_IMM16:
             LowerGetIterator(gate);
             break;
-        case EcmaOpcode::CREATEEMPTYOBJECT: {
-                Jit::JitLockHolder lock(compilationEnv_, "LowerCreateEmptyObject");
-                LowerCreateEmptyObject(gate);
-            }
+        case EcmaOpcode::CREATEEMPTYOBJECT:
+            LowerCreateEmptyObject(gate);
             break;
         case EcmaOpcode::CALLTHIS0_IMM8_V8:
             LowerTypedCallthis0(gate);
@@ -157,17 +158,13 @@ void TypedBytecodeLowering::Lower(GateRef gate)
             LowerTypedCallthis2(gate);
             break;
         case EcmaOpcode::CREATEOBJECTWITHBUFFER_IMM8_ID16:
-        case EcmaOpcode::CREATEOBJECTWITHBUFFER_IMM16_ID16: {
-                Jit::JitLockHolder lock(compilationEnv_, "LowerCreateObjectWithBuffer");
-                LowerCreateObjectWithBuffer(gate);
-            }
+        case EcmaOpcode::CREATEOBJECTWITHBUFFER_IMM16_ID16:
+            LowerCreateObjectWithBuffer(gate);
             break;
         case EcmaOpcode::NEWOBJRANGE_IMM8_IMM8_V8:
         case EcmaOpcode::NEWOBJRANGE_IMM16_IMM8_V8:
-        case EcmaOpcode::WIDE_NEWOBJRANGE_PREF_IMM16_V8: {
-                Jit::JitLockHolder lock(compilationEnv_, "LowerTypedNewObjRange");
-                LowerTypedNewObjRange(gate);
-            }
+        case EcmaOpcode::WIDE_NEWOBJRANGE_PREF_IMM16_V8:
+            LowerTypedNewObjRange(gate);
             break;
         case EcmaOpcode::ADD2_IMM8_V8:
             LowerTypedBinOp<TypedBinOp::TYPED_ADD>(gate);
@@ -279,19 +276,15 @@ void TypedBytecodeLowering::Lower(GateRef gate)
         case EcmaOpcode::LDOBJBYNAME_IMM8_ID16:
         case EcmaOpcode::LDOBJBYNAME_IMM16_ID16:
         case EcmaOpcode::LDTHISBYNAME_IMM8_ID16:
-        case EcmaOpcode::LDTHISBYNAME_IMM16_ID16: {
-                Jit::JitLockHolder lock(compilationEnv_, "LowerTypedLdObjByName");
-                LowerTypedLdObjByName(gate);
-            }
+        case EcmaOpcode::LDTHISBYNAME_IMM16_ID16:
+            LowerTypedLdObjByName(gate);
             break;
         case EcmaOpcode::STOBJBYNAME_IMM8_ID16_V8:
         case EcmaOpcode::STOBJBYNAME_IMM16_ID16_V8:
         case EcmaOpcode::STTHISBYNAME_IMM8_ID16:
         case EcmaOpcode::STTHISBYNAME_IMM16_ID16:
-        case EcmaOpcode::DEFINEFIELDBYNAME_IMM8_ID16_V8: {
-                Jit::JitLockHolder lock(compilationEnv_, "LowerTypedStObjByName");
-                LowerTypedStObjByName(gate);
-            }
+        case EcmaOpcode::DEFINEFIELDBYNAME_IMM8_ID16_V8:
+            LowerTypedStObjByName(gate);
             break;
         case EcmaOpcode::LDOBJBYVALUE_IMM8_V8:
         case EcmaOpcode::LDOBJBYVALUE_IMM16_V8:

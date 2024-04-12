@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#ifndef ECMASCRIPT_PERSISTENT_HANDLES_H
-#define ECMASCRIPT_PERSISTENT_HANDLES_H
+#ifndef ECMASCRIPT_SUSTAINING_JS_HANDLE_H
+#define ECMASCRIPT_SUSTAINING_JS_HANDLE_H
 
 #include "ecmascript/common.h"
 #include "ecmascript/platform/mutex.h"
@@ -22,13 +22,13 @@
 
 namespace panda::ecmascript {
 
-class PersistentHandles {
+class SustainingJSHandle {
 public:
-    PersistentHandles(EcmaVM *vm) : vm_(vm)
+    SustainingJSHandle(EcmaVM *vm) : vm_(vm)
     {
         Init();
     }
-    ~PersistentHandles();
+    ~SustainingJSHandle();
     template <typename T>
     JSHandle<T> NewHandle(JSHandle<T> value)
     {
@@ -56,24 +56,24 @@ private:
 
     JSTaggedType *blockNext_ { nullptr };
     JSTaggedType *blockLimit_ { nullptr };
-    PersistentHandles *pre_ { nullptr };
-    PersistentHandles *next_ { nullptr };
+    SustainingJSHandle *pre_ { nullptr };
+    SustainingJSHandle *next_ { nullptr };
     std::atomic_bool isTerminate_ {false};
 
     static constexpr uint32_t BLOCK_SIZE = 256L;
     std::vector<std::array<JSTaggedType, BLOCK_SIZE>*> handleBlocks_;
-    friend class PersistentHandlesList;
+    friend class SustainingJSHandleList;
 };
 
-class PersistentHandlesList {
+class SustainingJSHandleList {
 public:
-    void AddPersistentHandles(PersistentHandles *persistentHandles);
-    void RemovePersistentHandles(PersistentHandles *persistentHandles);
+    void AddSustainingJSHandle(SustainingJSHandle *sustainingJSHandle);
+    void RemoveSustainingJSHandle(SustainingJSHandle *sustainingJSHandle);
     void Iterate(const RootRangeVisitor &rv);
 
 private:
-    PersistentHandles *listHead_ { nullptr };
+    SustainingJSHandle *listHead_ { nullptr };
     Mutex mutex_;
 };
 }  // namespace panda::ecmascript
-#endif  // ECMASCRIPT_PERSISTENT_HANDLES_H
+#endif  // ECMASCRIPT_SUSTAINING_JS_HANDLE_H

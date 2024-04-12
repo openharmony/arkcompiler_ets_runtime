@@ -22,7 +22,7 @@
 
 #include "ecmascript/jit/jit.h"
 #include "ecmascript/jit/jit_thread.h"
-#include "ecmascript/jit/persistent_handles.h"
+#include "ecmascript/sustaining_js_handle.h"
 
 namespace panda::ecmascript {
 enum CompileState : uint8_t {
@@ -65,7 +65,7 @@ public:
 
     void Initialize()
     {
-        RegisterRunnerHook([](os::thread::native_handle_type thread) {
+        Taskpool::Initialize(0, [](os::thread::native_handle_type thread) {
             os::thread::SetThreadName(thread, "OS_JIT_Thread");
             auto jitVm = JitVM::Create();
             JitTaskpool::GetCurrentTaskpool()->SetCompilerVm(jitVm);
@@ -73,7 +73,6 @@ public:
             EcmaVM *compilerVm = JitTaskpool::GetCurrentTaskpool()->GetCompilerVm();
             JitVM::Destroy(compilerVm);
         });
-        Taskpool::Initialize();
     }
 
     void Destroy()
@@ -205,7 +204,7 @@ public:
 
     void Terminated()
     {
-        persistentHandles_->SetTerminated();
+        sustainingJSHandle_->SetTerminated();
     }
 
     class AsyncTask : public Task {
@@ -240,8 +239,8 @@ public:
         std::shared_ptr<JitTask> jitTask_ { nullptr };
     };
 private:
-    void PersistentHandle();
-    void ReleasePersistentHandle();
+    void SustainingJSHandles();
+    void ReleaseSustainingJSHandle();
     void CloneProfileTypeInfo();
     void SetJsFunction(JSHandle<JSFunction> &jsFunction)
     {
@@ -264,7 +263,7 @@ private:
     CString methodInfo_;
     int32_t offset_;
     uint32_t taskThreadId_;
-    std::unique_ptr<PersistentHandles> persistentHandles_;
+    std::unique_ptr<SustainingJSHandle> sustainingJSHandle_;
     EcmaContext *ecmaContext_;
     JitCompileMode jitCompileMode_;
 

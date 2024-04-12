@@ -109,18 +109,42 @@ JSTaggedValue FrameIterator::GetFunction() const
     }
 }
 
-AOTFileInfo::CallSiteInfo FrameIterator::CalCallSiteInfo(uintptr_t retAddr) const
+AOTFileInfo::CallSiteInfo FrameIterator::TryCalCallSiteInfoFromMachineCode(uintptr_t retAddr) const
 {
-    JSTaggedValue func = GetFunction();
-    if (func.IsJSFunction()) {
-        JSFunction *jsfunc = JSFunction::Cast(func.GetTaggedObject());
+    // get CallSiteInfo with jsfunction for jit compiled function
+    FrameType type = GetFrameType();
+    if (type == FrameType::OPTIMIZED_JS_FAST_CALL_FUNCTION_FRAME ||
+        type == FrameType::OPTIMIZED_JS_FUNCTION_FRAME) {
+        auto frame = GetFrame<OptimizedJSFunctionFrame>();
+        JSTaggedValue func = frame->GetFunction();
+        if (!func.IsHeapObject()) {
+            return {};
+        }
+        MarkWord markWord(func.GetTaggedObject());
+        TaggedObject *f = markWord.IsForwardingAddress() ? markWord.ToForwardingAddress() : func.GetTaggedObject();
+        if (!f->GetClass()->IsJSFunction()) {
+            return {};
+        }
+        JSFunction *jsfunc = JSFunction::Cast(f);
+        // machineCode non move
         JSTaggedValue machineCode = jsfunc->GetMachineCode();
-        if (machineCode.IsMachineCodeObject() && MachineCode::Cast(machineCode.GetTaggedObject())->IsInText(retAddr)) {
+        if (machineCode.IsMachineCodeObject() &&
+            MachineCode::Cast(machineCode.GetTaggedObject())->IsInText(retAddr)) {
             return MachineCode::Cast(machineCode.GetTaggedObject())->CalCallSiteInfo(retAddr);
         }
     }
+    return {};
+}
 
-    return const_cast<JSThread *>(thread_)->GetCurrentEcmaContext()->CalCallSiteInfo(retAddr);
+AOTFileInfo::CallSiteInfo FrameIterator::CalCallSiteInfo(uintptr_t retAddr) const
+{
+    auto callSiteInfo = const_cast<JSThread *>(thread_)->GetCurrentEcmaContext()->CalCallSiteInfo(retAddr);
+    if (std::get<1>(callSiteInfo) != nullptr) { // 1 : stackMapAddr
+        return callSiteInfo;
+    }
+    // try get jit code
+    callSiteInfo = TryCalCallSiteInfoFromMachineCode(retAddr);
+    return callSiteInfo;
 }
 
 template <GCVisitedFlag GCVisit>

@@ -47,7 +47,7 @@
 #include "ecmascript/snapshot/mem/snapshot.h"
 #include "ecmascript/platform/log.h"
 #include "ecmascript/global_index_map.h"
-#include "ecmascript/jit/persistent_handles.h"
+#include "ecmascript/sustaining_js_handle.h"
 
 namespace panda::ecmascript {
 using PathHelper = base::PathHelper;
@@ -132,7 +132,7 @@ bool EcmaContext::Initialize()
         typedOpProfiler_ = new TypedOpProfiler();
     }
 
-    persistentHandlesList_ = new PersistentHandlesList();
+    sustainingJSHandleList_ = new SustainingJSHandleList();
     initialized_ = true;
     return true;
 }
@@ -253,9 +253,9 @@ EcmaContext::~EcmaContext()
         delete propertiesCache_;
         propertiesCache_ = nullptr;
     }
-    if (persistentHandlesList_ != nullptr) {
-        delete persistentHandlesList_;
-        persistentHandlesList_ = nullptr;
+    if (sustainingJSHandleList_ != nullptr) {
+        delete sustainingJSHandleList_;
+        sustainingJSHandleList_ = nullptr;
     }
     // clear join stack
     joinStack_.clear();
@@ -924,8 +924,8 @@ void EcmaContext::Iterate(const RootVisitor &v, const RootRangeVisitor &rv)
         }
     }
 
-    if (persistentHandlesList_) {
-        persistentHandlesList_->Iterate(rv);
+    if (sustainingJSHandleList_) {
+        sustainingJSHandleList_->Iterate(rv);
     }
 
     if (!joinStack_.empty()) {
@@ -1103,26 +1103,20 @@ std::tuple<uint64_t, uint8_t *, int, kungfu::CalleeRegAndOffsetVec> EcmaContext:
     uintptr_t retAddr) const
 {
     auto loader = aotFileManager_;
-    auto callSiteInfo = loader->CalCallSiteInfo(retAddr);
-    if (std::get<1>(callSiteInfo) != nullptr) {
-        return callSiteInfo;
-    }
-    // try get jit code
-    callSiteInfo = thread_->GetEcmaVM()->GetHeap()->CalCallSiteInfo(retAddr);
-    return callSiteInfo;
+    return loader->CalCallSiteInfo(retAddr);
 }
 
-void EcmaContext::AddPersistentHandles(PersistentHandles *persistentHandle)
+void EcmaContext::AddSustainingJSHandle(SustainingJSHandle *sustainingHandle)
 {
-    if (persistentHandlesList_) {
-        persistentHandlesList_->AddPersistentHandles(persistentHandle);
+    if (sustainingJSHandleList_) {
+        sustainingJSHandleList_->AddSustainingJSHandle(sustainingHandle);
     }
 }
 
-void EcmaContext::RemovePersistentHandles(PersistentHandles *persistentHandle)
+void EcmaContext::RemoveSustainingJSHandle(SustainingJSHandle *sustainingHandle)
 {
-    if (persistentHandlesList_) {
-        persistentHandlesList_->RemovePersistentHandles(persistentHandle);
+    if (sustainingJSHandleList_) {
+        sustainingJSHandleList_->RemoveSustainingJSHandle(sustainingHandle);
     }
 }
 }  // namespace panda::ecmascript

@@ -34,8 +34,9 @@ static constexpr uint32_t DEFAULT_TASKPOOL_THREAD_NUM = 0;
 
 class Runner {
 public:
-    explicit Runner(uint32_t threadNum, const std::function<void(os::thread::native_handle_type)> prologueHook,
-         const std::function<void(os::thread::native_handle_type)> epilogueHook);
+    explicit Runner(uint32_t threadNum,
+        const std::function<void(os::thread::native_handle_type)> prologueHook,
+        const std::function<void(os::thread::native_handle_type)> epilogueHook);
     ~Runner() = default;
 
     NO_COPY_SEMANTIC(Runner);

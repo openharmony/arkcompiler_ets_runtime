@@ -15,6 +15,7 @@
 
 #ifndef ECMASCRIPT_COMPILER_COMPILATION_ENV_H
 #define ECMASCRIPT_COMPILER_COMPILATION_ENV_H
+
 #include "ecmascript/js_thread.h"
 #include "ecmascript/js_handle.h"
 

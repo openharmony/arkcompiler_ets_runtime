@@ -49,8 +49,8 @@ class JSPromise;
 class RegExpExecResultCache;
 class EcmaHandleScope;
 class GlobalIndexMap;
-class PersistentHandlesList;
-class PersistentHandles;
+class SustainingJSHandleList;
+class SustainingJSHandle;
 enum class PromiseRejectionEvent : uint8_t;
 
 template<typename T>
@@ -510,8 +510,8 @@ public:
 
     std::tuple<uint64_t, uint8_t *, int, kungfu::CalleeRegAndOffsetVec> CalCallSiteInfo(uintptr_t retAddr) const;
 
-    void AddPersistentHandles(PersistentHandles*);
-    void RemovePersistentHandles(PersistentHandles*);
+    void AddSustainingJSHandle(SustainingJSHandle*);
+    void RemoveSustainingJSHandle(SustainingJSHandle*);
 private:
     void CJSExecution(JSHandle<JSFunction> &func, JSHandle<JSTaggedValue> &thisArg,
                       const JSPandaFile *jsPandaFile, std::string_view entryPoint);
@@ -626,8 +626,8 @@ private:
     std::array<CVector<std::pair<CString, int>>, STRINGIFY_CACHE_SIZE> stringifyCache_ {};
     bool isAotEntry_ { false };
 
-    // PersistentHandlesList for jit compile hold ref
-    PersistentHandlesList *persistentHandlesList_ {nullptr};
+    // SustainingJSHandleList for jit compile hold ref
+    SustainingJSHandleList *sustainingJSHandleList_ {nullptr};
 
     friend class EcmaHandleScope;
     friend class JSPandaFileExecutor;

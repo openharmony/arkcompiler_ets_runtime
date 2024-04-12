@@ -38,6 +38,7 @@
 namespace panda::ecmascript {
 void ObjectFactory::NewSObjectHook() const
 {
+    CHECK_NO_HEAP_ALLOC;
 #ifndef NDEBUG
     static std::atomic<uint32_t> count = 0;
     static uint32_t frequency = vm_->GetJSOptions().GetForceSharedGCFrequency();

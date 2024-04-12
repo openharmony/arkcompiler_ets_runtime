@@ -15,6 +15,7 @@
 
 #ifndef ECMASCRIPT_COMPILER_AOT_COMPILATION_ENV_H
 #define ECMASCRIPT_COMPILER_AOT_COMPILATION_ENV_H
+
 #include "ecmascript/compiler/compilation_env.h"
 
 namespace panda::ecmascript {

@@ -38,7 +38,9 @@ public:
     NO_COPY_SEMANTIC(Taskpool);
     NO_MOVE_SEMANTIC(Taskpool);
 
-    void Initialize(int threadNum = DEFAULT_TASKPOOL_THREAD_NUM);
+    void Initialize(int threadNum = DEFAULT_TASKPOOL_THREAD_NUM,
+        std::function<void(os::thread::native_handle_type)> prologueHook = nullptr,
+        const std::function<void(os::thread::native_handle_type)> epilogueHook = nullptr);
     void Destroy(int32_t id);
 
     void PostTask(std::unique_ptr<Task> task) const
@@ -66,12 +68,6 @@ public:
         runner_->SetQosPriority(isForeground);
     }
 
-    void RegisterRunnerHook(const std::function<void(os::thread::native_handle_type)> &prologueHook,
-        const std::function<void(os::thread::native_handle_type)> &epilogueHook)
-    {
-        prologueRunnerHook_ = prologueHook;
-        epilogueRunnerHook_ = epilogueHook;
-    }
     void ForEachTask(const std::function<void(Task*)> &f);
 
 private:
@@ -80,9 +76,6 @@ private:
     std::unique_ptr<Runner> runner_;
     volatile int isInitialized_ = 0;
     Mutex mutex_;
-
-    std::function<void(os::thread::native_handle_type)> prologueRunnerHook_ { nullptr };
-    std::function<void(os::thread::native_handle_type)> epilogueRunnerHook_ { nullptr };
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_PALTFORM_PLATFORM_H

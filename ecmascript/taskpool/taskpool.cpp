@@ -24,12 +24,13 @@ Taskpool *Taskpool::GetCurrentTaskpool()
     return taskpool;
 }
 
-void Taskpool::Initialize(int threadNum)
+void Taskpool::Initialize(int threadNum,
+    std::function<void(os::thread::native_handle_type)> prologueHook,
+    const std::function<void(os::thread::native_handle_type)> epilogueHook)
 {
     LockHolder lock(mutex_);
     if (isInitialized_++ <= 0) {
-        runner_ = std::make_unique<Runner>(TheMostSuitableThreadNum(threadNum),
-            prologueRunnerHook_, epilogueRunnerHook_);
+        runner_ = std::make_unique<Runner>(TheMostSuitableThreadNum(threadNum), prologueHook, epilogueHook);
     }
 }
 

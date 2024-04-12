@@ -1245,7 +1245,9 @@ public:
     }
 
     static void RegisterThread(JSThread *jsThread);
+
     static void UnregisterThread(JSThread *jsThread);
+
     bool IsJitThread() const
     {
         return isJitThread_;
