@@ -524,3 +524,55 @@ function testTypeArrayLastIndexOf1(ctor) {
 let lastIndexOfFailed = new Int16Array(5, 10, 20, 30, 40, 50, 60)
 let lastIndexOfFailedResult = lastIndexOfFailed.lastIndexOf('ABC')
 print(lastIndexOfFailedResult);
+
+// Test case for reverse()
+[
+    Float64Array,
+    Float32Array,
+    Int32Array,
+    Int16Array,
+    Int8Array,
+    Uint32Array,
+    Uint16Array,
+    Uint8Array,
+    Uint8ClampedArray
+].forEach(function(ctor, i) {
+    if (testTypeArrayReverse1(ctor)) {
+        print(ctor.name + " test success !!!")
+    } else {
+        print(ctor.name + " test fail !!!")
+    }
+});
+
+function testTypeArrayReverse1(ctor) {
+    let arr1 = new ctor([1, 2, 3, 4, 5]);
+    arr1.reverse();
+    let arr2 = new ctor([5, 4, 3, 2, 1]);
+    if (arr1.length !== arr2.length) return false;
+    for (let i = 0; i < arr1.length; i++) {
+        if (arr1[i] !== arr2[i]) return false;
+    }
+    return true;
+}
+
+[
+    BigInt64Array,
+    BigUint64Array
+].forEach(function(ctor, i) {
+    if (testTypeArrayReverse2(ctor) ) {
+        print(ctor.name + " test success !!!")
+    } else {
+        print(ctor.name + " test fail !!!")
+    }
+});
+
+function testTypeArrayReverse2(ctor) {
+    let arr1 = new ctor([1n, 2n, 3n, 4n, 5n]);
+    arr1.reverse();
+    let arr2 = new ctor([5n, 4n, 3n, 2n, 1n]);
+    if (arr1.length !== arr2.length) return false;
+    for (let i = 0; i < arr1.length; i++) {
+        if (arr1[i] !== arr2[i]) return false;
+    }
+    return true;
+}

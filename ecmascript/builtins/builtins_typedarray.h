@@ -110,7 +110,7 @@
     /* %TypedArray%.prototype.reduceRight ( callbackfn [ , initialValue ] ) */          \
     V("reduceRight",    ReduceRight,    1, TypedArrayReduceRight)                       \
     /* %TypedArray%.prototype.reverse ( ) */                                            \
-    V("reverse",        Reverse,        0, INVALID)                                     \
+    V("reverse",        Reverse,        0, TypedArrayReverse)                           \
     /* %TypedArray%.prototype.set ( source [ , offset ] ) */                            \
     V("set",            Set,            1, TypedArraySet)                               \
     /* %TypedArray%.prototype.slice ( start, end ) */                                   \

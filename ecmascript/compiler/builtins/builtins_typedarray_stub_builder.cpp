@@ -429,6 +429,72 @@ GateRef BuiltinsTypedArrayStubBuilder::CalculatePositionWithLength(GateRef posit
     return ret;
 }
 
+void BuiltinsTypedArrayStubBuilder::Reverse(GateRef glue, GateRef thisValue, [[maybe_unused]] GateRef numArgs,
+    Variable *result, Label *exit, Label *slowPath)
+{
+    auto env = GetEnvironment();
+    Label ecmaObj(env);
+    Label typedArray(env);
+    Label isFastTypedArray(env);
+    Label defaultConstr(env);
+    BRANCH(IsEcmaObject(thisValue), &ecmaObj, slowPath);
+    Bind(&ecmaObj);
+    BRANCH(IsTypedArray(thisValue), &typedArray, slowPath);
+    Bind(&typedArray);
+    GateRef arrayType = GetObjectType(LoadHClass(thisValue));
+    Branch(IsFastTypeArray(arrayType), &isFastTypedArray, slowPath);
+    Bind(&isFastTypedArray);
+    BRANCH(HasConstructor(thisValue), slowPath, &defaultConstr);
+    Bind(&defaultConstr);
+
+    DEFVARIABLE(thisArrLen, VariableType::INT64(), ZExtInt32ToInt64(GetArrayLength(thisValue)));
+    GateRef middle = Int64Div(*thisArrLen, Int64(2));
+    DEFVARIABLE(lower, VariableType::INT64(), Int64(0));
+    Label loopHead(env);
+    Label loopEnd(env);
+    Label loopNext(env);
+    Label loopExit(env);
+    Jump(&loopHead);
+    LoopBegin(&loopHead);
+    {
+        BRANCH(Int64NotEqual(*lower, middle), &loopNext, &loopExit);
+        Bind(&loopNext);
+        {
+            DEFVARIABLE(upper, VariableType::INT64(), Int64Sub(Int64Sub(*thisArrLen, *lower), Int64(1)));
+            Label hasException0(env);
+            Label hasException1(env);
+            Label notHasException0(env);
+            GateRef lowerValue = FastGetPropertyByIndex(glue, thisValue,
+                TruncInt64ToInt32(*lower), arrayType);
+            GateRef upperValue = FastGetPropertyByIndex(glue, thisValue,
+                TruncInt64ToInt32(*upper), arrayType);
+            BRANCH(HasPendingException(glue), &hasException0, &notHasException0);
+            Bind(&hasException0);
+            {
+                result->WriteVariable(Exception());
+                Jump(exit);
+            }
+            Bind(&notHasException0);
+            {
+                StoreTypedArrayElement(glue, thisValue, *lower, upperValue, arrayType);
+                StoreTypedArrayElement(glue, thisValue, *upper, lowerValue, arrayType);
+                BRANCH(HasPendingException(glue), &hasException1, &loopEnd);
+                Bind(&hasException1);
+                {
+                    result->WriteVariable(Exception());
+                    Jump(exit);
+                }
+            }
+        }
+    }
+    Bind(&loopEnd);
+    lower = Int64Add(*lower, Int64(1));
+    LoopEnd(&loopHead);
+    Bind(&loopExit);
+    result->WriteVariable(thisValue);
+    Jump(exit);
+}
+
 void BuiltinsTypedArrayStubBuilder::LastIndexOf(GateRef glue, GateRef thisValue, GateRef numArgs,
     Variable *result, Label *exit, Label *slowPath)
 {
