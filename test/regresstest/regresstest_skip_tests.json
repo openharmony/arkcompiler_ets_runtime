@@ -1572,7 +1572,6 @@
         "intl/collator/check-co-option.js",
         "intl/collator/options.js",
         "intl/collator/property-override.js",
-        "intl/segmenter/check-lb-option.js",
         "intl/localematcher/bestfit-supplemental-files.js",
         "intl/relative-time-format/resolved-options-nu.js",
         "intl/relative-time-format/default-locale-pt-BR.js",

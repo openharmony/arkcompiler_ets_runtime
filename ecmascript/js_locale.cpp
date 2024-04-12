@@ -373,7 +373,7 @@ std::string JSLocale::UnicodeExtensionValue(const std::string extension, const s
 {
     // 1. Assert: The number of elements in key is 2.
     // 2. Let size be the number of elements in extension.
-    ASSERT(key.size() == INTL_INDEX_TWO);
+    ASSERT(key.size() == INTL_INDEX_TWO || key.size() == INTL_INDEX_ZERO);
     size_t size = extension.size();
     // 3. Let searchValue be the concatenation of "-" , key, and "-".
     std::string searchValue = "-" + key + "-";
@@ -494,6 +494,9 @@ ResolvedLocale JSLocale::ResolveLocale(JSThread *thread, const JSHandle<TaggedAr
         // e. Let value be keyLocaleData[0].
         if ((key != "ca") && (key != "co") && (key != "nu")) {
             keyLocaleData = localeMap[key];
+            if (key == "") {
+                keyLocaleData = localeMap["lb"];
+            }
             value = *keyLocaleData.begin();
         }
 
