@@ -429,6 +429,111 @@ GateRef BuiltinsTypedArrayStubBuilder::CalculatePositionWithLength(GateRef posit
     return ret;
 }
 
+void BuiltinsTypedArrayStubBuilder::LastIndexOf(GateRef glue, GateRef thisValue, GateRef numArgs,
+    Variable *result, Label *exit, Label *slowPath)
+{
+    auto env = GetEnvironment();
+    Label thisExists(env);
+    Label isHeapObject(env);
+    Label typedArray(env);
+
+    BRANCH(TaggedIsUndefinedOrNull(thisValue), slowPath, &thisExists);
+    Bind(&thisExists);
+    BRANCH(TaggedIsHeapObject(thisValue), &isHeapObject, slowPath);
+    Bind(&isHeapObject);
+    BRANCH(IsTypedArray(thisValue), &typedArray, slowPath);
+    Bind(&typedArray);
+
+    GateRef len = ZExtInt32ToInt64(GetArrayLength(thisValue));
+    Label isEmptyArray(env);
+    Label notEmptyArray(env);
+    BRANCH(Int64Equal(len, Int64(0)), &isEmptyArray, &notEmptyArray);
+    Bind(&isEmptyArray);
+    {
+        result->WriteVariable(IntToTaggedPtr(Int32(-1)));
+        Jump(exit);
+    }
+    Bind(&notEmptyArray);
+
+    GateRef value = GetCallArg0(numArgs);
+    DEFVARIABLE(relativeFromIndex, VariableType::INT64(), Int64(0));
+    Label findIndex(env);
+    Label isOneArg(env);
+    Label isTwoArg(env);
+    // 2:Indicates the number of parameters passed in.
+    BRANCH(Int64Equal(TruncPtrToInt32(numArgs), Int32(2)), &isTwoArg, &isOneArg);
+    Bind(&isOneArg);
+    {
+        relativeFromIndex = Int64Sub(len, Int64(1));
+        Jump(&findIndex);
+    }
+    Bind(&isTwoArg);
+    {
+        GateRef fromIndex = GetCallArg1(numArgs);
+        Label taggedIsInt(env);
+        BRANCH(TaggedIsInt(fromIndex), &taggedIsInt, slowPath);
+        Bind(&taggedIsInt);
+        GateRef fromIndexInt = SExtInt32ToInt64(TaggedGetInt(fromIndex));
+        Label isFromIndexLessZero(env);
+        Label isFromIndexNotLessZero(env);
+        BRANCH(Int64LessThan(fromIndexInt, Int64(0)), &isFromIndexLessZero, &isFromIndexNotLessZero);
+        Bind(&isFromIndexLessZero);
+        {
+            relativeFromIndex = Int64Add(len, fromIndexInt);
+            Jump(&findIndex);
+        }
+        Bind(&isFromIndexNotLessZero);
+        {
+            Label isFromIndexGreatLen(env);
+            Label isFromIndexNotGreatLen(env);
+            BRANCH(Int64GreaterThan(fromIndexInt, Int64Sub(len, Int64(1))),
+                &isFromIndexGreatLen, &isFromIndexNotGreatLen);
+            Bind(&isFromIndexGreatLen);
+            {
+                relativeFromIndex = Int64Sub(len, Int64(1));
+                Jump(&findIndex);
+            }
+            Bind(&isFromIndexNotGreatLen);
+            {
+                relativeFromIndex = fromIndexInt;
+                Jump(&findIndex);
+            }
+        }
+    }
+
+    Bind(&findIndex);
+    {
+        Label loopHead(env);
+        Label loopEnd(env);
+        Label loopExit(env);
+        Label loopNext(env);
+        Label isFound(env);
+        Jump(&loopHead);
+        LoopBegin(&loopHead);
+        {
+            BRANCH(Int64LessThan(*relativeFromIndex, Int64(0)), &loopExit, &loopNext);
+            Bind(&loopNext);
+            {
+                GateRef hclass = LoadHClass(thisValue);
+                GateRef jsType = GetObjectType(hclass);
+                GateRef ele = FastGetPropertyByIndex(glue, thisValue, TruncInt64ToInt32(*relativeFromIndex), jsType);
+                BRANCH(FastStrictEqual(glue, value, ele, ProfileOperation()), &isFound, &loopEnd);
+                Bind(&isFound);
+                {
+                    result->WriteVariable(IntToTaggedPtr(*relativeFromIndex));
+                    Jump(exit);
+                }
+            }
+        }
+        Bind(&loopEnd);
+        relativeFromIndex = Int64Sub(*relativeFromIndex, Int64(1));
+        LoopEnd(&loopHead);
+        Bind(&loopExit);
+        result->WriteVariable(IntToTaggedPtr(Int32(-1)));
+        Jump(exit);
+    }
+}
+
 void BuiltinsTypedArrayStubBuilder::IndexOf(GateRef glue, GateRef thisValue, GateRef numArgs,
     Variable *result, Label *exit, Label *slowPath)
 {

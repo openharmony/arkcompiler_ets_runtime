@@ -102,7 +102,7 @@
     /* %TypedArray%.prototype.keys ( ) */                                               \
     V("keys",           Keys,           0, INVALID)                                     \
     /* %TypedArray%.prototype.lastIndexOf ( searchElement [ , fromIndex ] ) */          \
-    V("lastIndexOf",    LastIndexOf,    1, INVALID)                                     \
+    V("lastIndexOf",    LastIndexOf,    1, TypedArrayLastIndexOf)                       \
     /* %TypedArray%.prototype.map ( callbackfn [ , thisArg ] ) */                       \
     V("map",            Map,            1, INVALID)                                     \
     /* %TypedArray%.prototype.reduce ( callbackfn [ , initialValue ] ) */               \
