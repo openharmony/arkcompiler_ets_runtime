@@ -478,3 +478,49 @@ function testTypeArrayIndexOf(ctor) {
     let result = obj.indexOf(60);
     return result != -1;
 }
+
+// Test case for lastIndexOf()
+[
+    Float64Array,
+    Float32Array,
+    Int32Array,
+    Int16Array,
+    Int8Array,
+    Uint32Array,
+    Uint16Array,
+    Uint8Array,
+    Uint8ClampedArray
+].forEach(function(ctor, i) {
+    if (testTypeArrayLastIndexOf(ctor)) {
+        print(ctor.name + " test success !!!")
+    } else {
+        print(ctor.name + " test fail !!!")
+    }
+});
+
+function testTypeArrayLastIndexOf(ctor) {
+    let obj = new ctor([5, 10, 20, 30, 40, 50, 60]);
+    let result = obj.lastIndexOf(5)
+    return result != -1;
+}
+
+[
+    BigInt64Array,
+    BigUint64Array
+].forEach(function(ctor, i) {
+    if (testTypeArrayLastIndexOf1(ctor) ) {
+        print(ctor.name + " test success !!!")
+    } else {
+        print(ctor.name + " test fail !!!")
+    }
+});
+
+function testTypeArrayLastIndexOf1(ctor) {
+    let obj = new ctor([5n, 10n, 20n, 30n, 40n, 50n, 60n]);
+    let result = obj.lastIndexOf(5n)
+    return result != -1;
+}
+
+let lastIndexOfFailed = new Int16Array(5, 10, 20, 30, 40, 50, 60)
+let lastIndexOfFailedResult = lastIndexOfFailed.lastIndexOf('ABC')
+print(lastIndexOfFailedResult);
