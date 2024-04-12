@@ -90,3 +90,10 @@ function testTypeArrayWith2(ctor) {
     }
     return true;
 }
+
+
+const with_arr1 = new Uint8Array([1, 2, 3, 4, 5]);
+print(with_arr1.with(2, 6));
+
+const with_arr2 = new Uint8Array([1, 2, 3, 4, 5]);
+print(with_arr2.with("2", 6));

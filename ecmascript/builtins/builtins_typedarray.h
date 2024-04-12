@@ -130,7 +130,7 @@
     /* %TypedArray%.prototype.values ( ) */                                             \
     V("values",         Values,         0, INVALID)                                     \
     /* %TypedArray%.prototype.with ( index, value ) */                                  \
-    V("with",           With,           2, INVALID)
+    V("with",           With,           2, TypedArrayWith)
 
 namespace panda::ecmascript::builtins {
 class BuiltinsTypedArray : public base::BuiltinsBase {
