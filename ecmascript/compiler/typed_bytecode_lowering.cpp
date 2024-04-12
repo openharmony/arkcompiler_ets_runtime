@@ -1652,7 +1652,7 @@ void TypedBytecodeLowering::LowerTypedCallArg1(GateRef gate)
     GateRef func = tacc.GetFunc();
     GateRef a0Value = tacc.GetValue();
     BuiltinsStubCSigns::ID id = tacc.TryGetPGOBuiltinMethodId();
-    if (IS_TYPED_BUILTINS_NUMBER_ID(id)) {
+    if (!IS_INVALID_ID(id) && IS_TYPED_BUILTINS_NUMBER_ID(id)) {
         AddProfiling(gate);
         SpeculateCallBuiltin(gate, func, { a0Value }, id, true);
     } else {
@@ -1758,7 +1758,7 @@ void TypedBytecodeLowering::LowerTypedCallthis0(GateRef gate)
 {
     CallThis0TypeInfoAccessor tacc(compilationEnv_, circuit_, gate, GetCalleePandaFile(gate), callMethodFlagMap_);
     BuiltinsStubCSigns::ID pgoFuncId = tacc.TryGetPGOBuiltinMethodId();
-    if (IS_TYPED_BUILTINS_ID_CALL_THIS0(pgoFuncId)) {
+    if (!IS_INVALID_ID(pgoFuncId) && IS_TYPED_BUILTINS_ID_CALL_THIS0(pgoFuncId)) {
         AddProfiling(gate);
         SpeculateCallBuiltin(gate, tacc.GetFunc(), { tacc.GetThisObj() }, pgoFuncId, true, true);
         return;
@@ -1773,7 +1773,7 @@ void TypedBytecodeLowering::LowerTypedCallthis1(GateRef gate)
 {
     CallThis1TypeInfoAccessor tacc(compilationEnv_, circuit_, gate, GetCalleePandaFile(gate), callMethodFlagMap_);
     BuiltinsStubCSigns::ID pgoFuncId = tacc.TryGetPGOBuiltinMethodId();
-    if (IS_TYPED_BUILTINS_ID_CALL_THIS1(pgoFuncId)) {
+    if (!IS_INVALID_ID(pgoFuncId) && IS_TYPED_BUILTINS_ID_CALL_THIS1(pgoFuncId)) {
         AddProfiling(gate);
         SpeculateCallBuiltin(gate, tacc.GetFunc(), { tacc.GetArg0() }, pgoFuncId, true);
         return;
@@ -1797,7 +1797,7 @@ void TypedBytecodeLowering::LowerTypedCallthis3(GateRef gate)
 {
     CallThis3TypeInfoAccessor tacc(compilationEnv_, circuit_, gate, GetCalleePandaFile(gate), callMethodFlagMap_);
     BuiltinsStubCSigns::ID pgoFuncId = tacc.TryGetPGOBuiltinMethodId();
-    if (IS_TYPED_BUILTINS_ID_CALL_THIS3(pgoFuncId)) {
+    if (!IS_INVALID_ID(pgoFuncId) && IS_TYPED_BUILTINS_ID_CALL_THIS3(pgoFuncId)) {
         AddProfiling(gate);
         SpeculateCallBuiltin(gate, tacc.GetFunc(), { tacc.GetArgs() }, pgoFuncId, true);
         return;
@@ -1917,7 +1917,7 @@ void TypedBytecodeLowering::LowerGetIterator(GateRef gate)
 {
     GetIteratorTypeInfoAccessor tacc(compilationEnv_, circuit_, gate, GetCalleePandaFile(gate), callMethodFlagMap_);
     BuiltinsStubCSigns::ID id = tacc.TryGetPGOBuiltinMethodId();
-    if (id == BuiltinsStubCSigns::ID::NONE) {
+    if (IS_INVALID_ID(id) && id == BuiltinsStubCSigns::ID::NONE) {
         return;
     }
     AddProfiling(gate);

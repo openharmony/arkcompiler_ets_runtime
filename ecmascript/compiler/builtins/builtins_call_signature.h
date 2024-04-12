@@ -545,9 +545,15 @@ public:
             case BuiltinsStubCSigns::ID::NumberIsSafeInteger:
                 return ConstantIndex::NUMBER_IS_SAFEINTEGER_INDEX;
             default:
-                LOG_COMPILER(FATAL) << "this branch is unreachable";
-                UNREACHABLE();
+                LOG_COMPILER(ERROR) << "GetConstantIndex Invalid Id:" << builtinId;
+                return ConstantIndex::INVALID;
         }
+    }
+
+    static bool CheckBuiltinsIdInvalid(ID builtinId)
+    {
+        auto result = kungfu::BuiltinsStubCSigns::GetConstantIndex(builtinId);
+        return result == ConstantIndex::INVALID;
     }
 
     static size_t GetGlobalEnvIndex(ID builtinId);
@@ -693,6 +699,7 @@ enum class BuiltinsArgs : size_t {
 #define IS_TYPED_BUILTINS_ID_CALL_THIS1(id) kungfu::BuiltinsStubCSigns::IsTypedBuiltinCallThis1(id)
 #define IS_TYPED_BUILTINS_ID_CALL_THIS3(id) kungfu::BuiltinsStubCSigns::IsTypedBuiltinCallThis3(id)
 #define GET_TYPED_CONSTANT_INDEX(id) kungfu::BuiltinsStubCSigns::GetConstantIndex(id)
+#define IS_INVALID_ID(id) kungfu::BuiltinsStubCSigns::CheckBuiltinsIdInvalid(id)
 #define GET_TYPED_GLOBAL_ENV_INDEX(id) kungfu::BuiltinsStubCSigns::GetGlobalEnvIndex(id)
 }  // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_BUILTINS_CALL_SIGNATURE_H
