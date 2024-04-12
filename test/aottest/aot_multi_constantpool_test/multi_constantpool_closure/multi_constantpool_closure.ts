@@ -33,7 +33,9 @@ declare function print(arg:any):string;
 var x = "-1";
 
 function foo() {
+    REPLACE_FUNC_FOO1
 	function foo2() {
+		REPLACE_FUNC_FOO2
 		function foo3() {
 			print("base: " + a65536)
             print("base: " + a65488)

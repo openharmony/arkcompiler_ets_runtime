@@ -2327,10 +2327,10 @@ template("host_aot_test_action") {
       ":${_target_name_}PgoGenExpectOutput",
     ]
   }
-  
+
   if (defined(invoker.gen_ts_by_script) && invoker.gen_ts_by_script) {
     action("gen_${_target_name_}_ts") {
-      script = "//arkcompiler/ets_runtime/test/generate_test_file.py"
+      script = "//arkcompiler/ets_runtime/test/quickfix/generate_js_and_merge_file.py"
       src_file = rebase_path(_test_ts_template_path_)
       dst_file = rebase_path(_test_ts_path_)
       args = [
