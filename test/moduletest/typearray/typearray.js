@@ -408,3 +408,19 @@ print(arr1_includes.includes(5, -100));
 print(arr1_includes.includes(55,-1));
 let arr2_includes = [1, 2, 3, 4, 5, 6, 7, 8, 9];
 print(arr2_includes.includes(5));
+
+// Test case for find()
+let arr1_find = new Int16Array([1, 2, 3, 4, 5, 6, 7, 8, 9]);
+function testFind_true(ele) {
+    return ele === 5;
+}
+function testFind_false(ele) {
+    return ele > 10;
+}
+print(arr1_find.find(testFind_true));
+print(arr1_find.find(testFind_false));
+
+let arr2_find = new Int16Array();
+print(arr2_find.find(testFind_false));
+let arr3_find = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+print(arr3_find.find(testFind_true));

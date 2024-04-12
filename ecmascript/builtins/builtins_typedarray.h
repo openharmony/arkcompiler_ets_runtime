@@ -84,7 +84,7 @@
     /* %TypedArray%.prototype.filter ( callbackfn [ , thisArg ] ) */                    \
     V("filter",         Filter,         1, TypedArrayFilter)                            \
     /* %TypedArray%.prototype.find ( predicate [ , thisArg ] ) */                       \
-    V("find",           Find,           1, INVALID)                                     \
+    V("find",           Find,           1, TypedArrayFind)                              \
     /* %TypedArray%.prototype.findIndex ( predicate [ , thisArg ] ) */                  \
     V("findIndex",      FindIndex,      1, INVALID)                                     \
     /* %TypedArray%.prototype.findLast ( predicate [ , thisArg ] ) */                   \
