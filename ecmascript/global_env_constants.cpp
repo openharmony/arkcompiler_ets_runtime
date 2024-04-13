@@ -97,8 +97,8 @@ void GlobalEnvConstants::Init(JSThread *thread)
         }
     } else {
         InitSharedRootsClasses(factory);
-        InitSharedStrings(factory);
         InitSharedMiscellanious(thread, factory);
+        InitSharedStrings(factory);
     }
     // 2. Init non-shareds.
     InitMiscellanious(thread, factory);
