@@ -13,16 +13,16 @@
  * limitations under the License.
  */
 
-var array = ["1", "2", "3"]
-var map = new Map()
-map.set('a', 1)
-map.set('b', 2)
+let array = ['1', '2', '3'];
+let map = new Map();
+map.set('a', 1);
+map.set('b', 2);
 
 function func() {
 
 }
 
-var objs = [array, map, func]
+let objs = [array, map, func];
 
 // integer or float constant
 let num1 = 42; // int
@@ -33,7 +33,7 @@ let num4 = Infinity; // Positive infinity
 let num5 = -Infinity; // negative infinity
 
 // string
-let str1 = "Hello";
+let str1 = 'Hello';
 let str2 = 'World';
 let str3 = `This is a template string. ${str1} ${str2}!`;
 
@@ -48,28 +48,28 @@ let nullVar = null;
 let undefinedVar;
 
 // array type
-let arr0 = new Int8Array()
-let arr1 = new Uint8Array()
-let arr2 = new Int16Array()
-let arr3 = new Uint16Array()
-let arr4 = new Int32Array()
-let arr5 = new Uint32Array()
-let arr6 = new BigInt64Array()
-let arr7 = new BigUint64Array()
-let arr8 = new Float32Array()
-let arr9 = new Float64Array()
-let arr10 = new Uint8ClampedArray()
-let buffer = new ArrayBuffer(8)
-let sharedBuf = new SharedArrayBuffer(1024)
+let arr0 = new Int8Array();
+let arr1 = new Uint8Array();
+let arr2 = new Int16Array();
+let arr3 = new Uint16Array();
+let arr4 = new Int32Array();
+let arr5 = new Uint32Array();
+let arr6 = new BigInt64Array();
+let arr7 = new BigUint64Array();
+let arr8 = new Float32Array();
+let arr9 = new Float64Array();
+let arr10 = new Uint8ClampedArray();
+let buffer = new ArrayBuffer(8);
+let sharedBuf = new SharedArrayBuffer(1024);
 
-let list = [1, 2, 3, 4, 5]
+let list = [1, 2, 3, 4, 5];
 for (let item of list) {
-    print(item)
+  print(item);
 }
 
 // funtion
 function greet() {
-    print("Hello, this is a function!");
+  print('Hello, this is a function!');
 }
 
 // data type
@@ -80,71 +80,71 @@ let regex = /hello/i; // Case insensitive matching "hello"
 
 // object type
 let obj = {
-  name: "Alice",
+  name: 'Alice',
   age: 25,
   greet: function() {
-    print("Hello, my name is " + this.name);
+    print('Hello, my name is ' + this.name);
   }
 };
 
 // class
 class Person {
-    constructor(name, age) {
-      this.name = name;
-      this.age = age;
-    }
-  
-    greet() {
-        print(`Hello, my name is ${this.name} and I'm ${this.age} years old.`);
-    }
+  constructor(name, age) {
+    this.name = name;
+    this.age = age;
   }
+
+  greet() {
+    print(`Hello, my name is ${this.name} and I'm ${this.age} years old.`);
+  }
+}
   
-let person = new Person("Alice", 25);
+let person = new Person('Alice', 25);
 
 // Exception
 function divide(a, b) {
-    if (b === 0) {
-      throw new Error('The divisor cannot be 0');
-    }
-    return a / b;
+  if (b === 0) {
+    throw new Error('The divisor cannot be 0');
+  }
+  return a / b;
 }
 
 try {
-    let result = divide(10, 0);
+  let result = divide(10, 0);
 } catch (error) {
-    print("\nthrow statement\n");
+  print('\nthrow statement\n');
 }
 
 // Promise
 let promise = new Promise((resolve, reject) => {
-    // Simulated asynchronous operation
-    setTimeout(() => {
-        let success = false; // Simulated operation failed
-        if (success) {
-            resolve('operation success');
-        } else {
-            reject(new Error('operation failed'));
-        }
-    }, 1000);
+  // Simulated asynchronous operation
+  setTimeout(() => {
+    let success = false; // Simulated operation failed
+    if (success) {
+      resolve('operation success');
+    } else {
+      reject(new Error('operation failed'));
+    }
+  }, 1000);
 });
 
 promise.then((result) => {
-    print(result)
+  print(result);
 }).catch((error) => {
-    print("Promise handle\n")
-})
+  print('Promise handle\n');
+});
 
 // Asynchronous type
 async function fetchDataWithAsyncAwait() {
-    return 'async/await get the data';
+  return 'async/await get the data';
 }
 
 async function fetchAndLogData() {
-    try {
-        const data = await fetchDataWithAsyncAwait();
-    } catch (err) {
-        print('ERROR:', err);
-    }
+  try {
+    const data = await fetchDataWithAsyncAwait();
+  } catch (err) {
+    print('ERROR:', err);
+  }
 }
 
 fetchAndLogData();
