@@ -46,9 +46,9 @@ public:
         // 4 : 4 more inline properties in Map.prototype
         //   (1) Map.prototype.constructor
         //   (2) Map.prototype [ @@toStringTag ]
-        //   (3) Map.prototype [ @@iterator ]
+        //   (3) Map.prototype [ @@iterator ] -- removed
         //   (4) get Map.prototype.size -- removed
-        return GetJsonValuePrototypeFunctions().Size() + 3;
+        return GetJsonValuePrototypeFunctions().Size() + 2;
     }
 
     static Span<const std::pair<std::string_view, bool>> GetPrototypeProperties()
@@ -78,7 +78,7 @@ private:
         BUILTIN_JSON_VALUE_PROTOTYPE_FUNCTIONS(JSON_VALUE_PROPERTIES_PAIR)
         std::pair<std::string_view, bool>("[Symbol.toStringTag]", false),
         // std::pair<std::string_view, bool>("size", true),
-        std::pair<std::string_view, bool>("[Symbol.iterator]", false) // TODO(hzzhouzebin) remove it.
+        // std::pair<std::string_view, bool>("[Symbol.iterator]", false) // TODO(hzzhouzebin) remove it.
     };
 
     static constexpr std::array JSON_VALUE_FUNCTION_PROPERTIES = {

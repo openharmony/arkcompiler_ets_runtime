@@ -362,24 +362,6 @@ void Builtins::InitializeSJSONObject(const JSHandle<GlobalEnv> &env, const JSHan
     JSHandle<JSTaggedValue> strTag(factory_->NewFromUtf8("SharedJSONObject"));
     jsonObjectPrototype->SetPropertyInlinedProps(thread_, fieldIndex++, strTag.GetTaggedValue());
 
-    // // 23.1.3.10get SharedMap.prototype.size
-    // JSHandle<JSTaggedValue> sizeGetter = CreateSGetterSetter(env, BuiltinsJsonValue::GetSize, "size",
-    //     FunctionLength::ZERO);
-    // SetSAccessor(jsonObjectPrototype, fieldIndex++, sizeGetter, globalConst->GetHandledUndefined());
-
-    // %MapPrototype% [ @@iterator ]
-    JSHandle<JSTaggedValue> entries(factory_->NewFromASCII("entries"));
-    JSHandle<JSTaggedValue> entriesFunc =
-        JSObject::GetMethod(thread_, JSHandle<JSTaggedValue>::Cast(jsonObjectPrototype), entries);
-    RETURN_IF_ABRUPT_COMPLETION(thread_);
-    jsonObjectPrototype->SetPropertyInlinedProps(thread_, fieldIndex++, entriesFunc.GetTaggedValue());
-
-    fieldIndex = JSFunction::PROTOTYPE_INLINE_PROPERTY_INDEX + 1;
-    // // 23.1.2.2get SharedMap [ @@species ]
-    // JSHandle<JSTaggedValue> speciesGetter =
-    //     CreateSGetterSetter(env, BuiltinsSharedMap::Species, "[Symbol.species]", FunctionLength::ZERO);
-    // SetSAccessor(JSHandle<JSObject>(sharedJsonObjectFunction), fieldIndex, speciesGetter, globalConst->GetHandledUndefined());
-
     env->SetSharedJSONObjectFunctionPrototype(thread_, jsonObjectPrototype);
     env->SetSJSONObjectFunction(thread_, sharedJsonObjectFunction);
 }
@@ -420,27 +402,6 @@ void Builtins::InitializeSJSONTrue(const JSHandle<GlobalEnv> &env, const JSHandl
         SetSFunction(env, jsonObjectPrototype, entry.GetName(), entry.GetEntrypoint(), fieldIndex++,
                      entry.GetLength(), entry.GetBuiltinStubId());
     }
-    // // @@ToStringTag
-    // JSHandle<JSTaggedValue> strTag(factory_->NewFromUtf8("SharedJSONTrue"));
-    // jsonObjectPrototype->SetPropertyInlinedProps(thread_, fieldIndex++, strTag.GetTaggedValue());
-
-    // // 23.1.3.10get SharedMap.prototype.size
-    // JSHandle<JSTaggedValue> sizeGetter = CreateSGetterSetter(env, BuiltinsJsonValue::GetSize, "size",
-    //     FunctionLength::ZERO);
-    // SetSAccessor(jsonObjectPrototype, fieldIndex++, sizeGetter, globalConst->GetHandledUndefined());
-
-    // %MapPrototype% [ @@iterator ]
-    // JSHandle<JSTaggedValue> entries(factory_->NewFromASCII("entries"));
-    // JSHandle<JSTaggedValue> entriesFunc =
-    //     JSObject::GetMethod(thread_, JSHandle<JSTaggedValue>::Cast(jsonObjectPrototype), entries);
-    // RETURN_IF_ABRUPT_COMPLETION(thread_);
-    // jsonObjectPrototype->SetPropertyInlinedProps(thread_, fieldIndex++, entriesFunc.GetTaggedValue());
-
-    // fieldIndex = JSFunction::PROTOTYPE_INLINE_PROPERTY_INDEX + 1;
-    // // 23.1.2.2get SharedMap [ @@species ]
-    // JSHandle<JSTaggedValue> speciesGetter =
-    //     CreateSGetterSetter(env, BuiltinsSharedMap::Species, "[Symbol.species]", FunctionLength::ZERO);
-    // SetSAccessor(JSHandle<JSObject>(sharedJsonObjectFunction), fieldIndex, speciesGetter, globalConst->GetHandledUndefined());
 
     env->SetSharedJSONTrueFunctionPrototype(thread_, jsonObjectPrototype);
     env->SetSJSONTrueFunction(thread_, sharedJsonObjectFunction);
