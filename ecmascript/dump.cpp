@@ -4890,8 +4890,9 @@ void LinkedHashMap::DumpForSnapshot(std::vector<Reference> &vec) const
 
 void JSSharedJSONValue::Dump(std::ostream &os) const
 {
-    os << "wrapped value: \n";
+    JSObject::Dump(os);
     auto value = GetValue();
+    os << "wrapped value(Raw): " << std::hex << value.GetRawData() << "\n";
     if (value.IsJSSharedArray()) {
         JSSharedArray::Cast(value)->Dump(os);
     } else if (value.IsJSSharedMap()) {
