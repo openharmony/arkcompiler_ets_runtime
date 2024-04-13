@@ -117,7 +117,7 @@ public:
     static void DestroyJSDebugger(JSDebugger *debugger);
     static void RegisterHooks(JSDebugger *debugger, PtHooks *hooks);
     static bool SetBreakpoint(JSDebugger *debugger, const JSPtLocation &location,
-                              Local<FunctionRef> condFuncRef);
+                              Local<FunctionRef> condFuncRef, bool isSmartBreakPoint = false);
     static bool RemoveBreakpoint(JSDebugger *debugger, const JSPtLocation &location);
     static void RemoveAllBreakpoints(JSDebugger *debugger);
     static void HandleUncaughtException(const EcmaVM *ecmaVm, std::string &message);
