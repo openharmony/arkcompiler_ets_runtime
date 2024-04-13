@@ -118,7 +118,7 @@ void PropertyAccessor::InitSimplePropertiesEnumCache()
     ObjectFactory *factory = thread_->GetEcmaVM()->GetFactory();
     JSHandle<JSObject> receiverObj(receiver_);
     ASSERT(receiverObj->GetNumberOfElements() == 0);
-
+    ASSERT(!receiver_->IsInSharedHeap());
     JSMutableHandle<TaggedArray> keyArray(thread_, JSTaggedValue::Undefined());
     if (keyLength_ == 0) {
         keyArray.Update(factory->EmptyArray());
@@ -178,6 +178,7 @@ void PropertyAccessor::TryInitEnumCacheWithProtoChainInfo()
         JSObject::SetEnumCacheKind(thread_, TaggedArray::Cast(fastKeysArray_->GetTaggedObject()), EnumCacheKind::NONE);
         return;
     }
+    ASSERT(!receiver_->IsInSharedHeap());
     ASSERT(!onlyHasSimpleProperties_);
     JSHandle<JSObject> receiverObj(receiver_);
     JSHandle<JSHClass> jsHclass(thread_, receiverObj->GetJSHClass());
