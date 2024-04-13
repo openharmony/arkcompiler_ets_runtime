@@ -2787,6 +2787,20 @@ JsiNativeScope::~JsiNativeScope()
     thread_->UpdateState(static_cast<ecmascript::ThreadState>(oldThreadState_));
 }
 
+// ------------------------------------ JsiFastNativeScope -----------------------------------------------
+
+JsiFastNativeScope::JsiFastNativeScope(const EcmaVM *vm)
+{
+    thread_ = vm->GetAssociatedJSThread();
+    oldThreadState_ = static_cast<uint16_t>(thread_->GetState());
+    thread_->UpdateState(ecmascript::ThreadState::RUNNING);
+}
+
+JsiFastNativeScope::~JsiFastNativeScope()
+{
+    thread_->UpdateState(static_cast<ecmascript::ThreadState>(oldThreadState_));
+}
+
 // ------------------------------------ JsiRuntimeCallInfo -----------------------------------------------
 void *JsiRuntimeCallInfo::GetData()
 {

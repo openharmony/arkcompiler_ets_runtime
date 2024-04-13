@@ -1048,6 +1048,18 @@ private:
     uint16_t oldThreadState_;
 };
 
+class ECMA_PUBLIC_API JsiFastNativeScope {
+public:
+    explicit JsiFastNativeScope(const EcmaVM *vm);
+    ~JsiFastNativeScope();
+    ECMA_DISALLOW_COPY(JsiFastNativeScope);
+    ECMA_DISALLOW_MOVE(JsiFastNativeScope);
+
+private:
+    JSThread *thread_;
+    uint16_t oldThreadState_;
+};
+
 /**
  * JsiRuntimeCallInfo is used for ace_engine and napi, is same to ark EcamRuntimeCallInfo except data.
  */
