@@ -17,6 +17,7 @@
 #define ECMASCRIPT_BUILTINS_BUILTINS_SENDABLE_ARRAYBUFFER_H
 
 #include "ecmascript/base/builtins_base.h"
+#include "ecmascript/builtins/builtins_arraybuffer.h"
 #include "ecmascript/base/number_helper.h"
 #include "ecmascript/js_dataview.h"
 #include "ecmascript/js_typed_array.h"
@@ -33,12 +34,8 @@ namespace panda::ecmascript::builtins {
 using DataViewType = ecmascript::DataViewType;
 using BuiltinFunctionEntry = base::BuiltinFunctionEntry;
 
-class BuiltinsSendableArrayBuffer : public base::BuiltinsBase {
+class BuiltinsSendableArrayBuffer : public BuiltinsArrayBuffer {
 public:
-    enum NumberSize : uint8_t {
-        UINT16 = 2, INT16 = 2, UINT32 = 4, INT32 = 4, FLOAT32 = 4, FLOAT64 = 8, BIGINT64 = 8, BIGUINT64 = 8
-    };
-
     // 24.1.2.1 ArrayBuffer(length)
     static JSTaggedValue ArrayBufferConstructor(EcmaRuntimeCallInfo *argv);
     // 24.1.3.1 ArrayBuffer.isView(arg)
@@ -50,54 +47,20 @@ public:
     // 24.1.4.3 ArrayBuffer.prototype.slice()
     static JSTaggedValue Slice(EcmaRuntimeCallInfo *argv);
     // 24.1.1.2 IsDetachedBuffer(arrayBuffer)
+
     static bool IsDetachedBuffer(JSTaggedValue arrayBuffer);
-    // 24.1.1.5 GetValueFromBuffer ( arrayBuffer, byteIndex, type, isLittleEndian )
-    static JSTaggedValue GetValueFromBuffer(JSThread *thread, JSTaggedValue arrBuf, uint32_t byteIndex,
-                                            DataViewType type, bool littleEndian);
-    // 24.1.1.6 SetValueInBuffer ( arrayBuffer, byteIndex, type, value, isLittleEndian )
-    static JSTaggedValue SetValueInBuffer(JSThread *thread, JSTaggedValue arrBuf, uint32_t byteIndex,
-                                          DataViewType type, const JSHandle<JSTaggedValue> &value, bool littleEndian);
     // 24.1.1.4 CloneArrayBuffer( srcBuffer, srcByteOffset [, cloneConstructor] )
     static JSTaggedValue CloneArrayBuffer(JSThread *thread, const JSHandle<JSTaggedValue> &srcBuffer,
                                           uint32_t srcByteOffset, JSHandle<JSTaggedValue> constructor);
     // 24.1.1.1 AllocateArrayBuffer(constructor, byteLength)
     static JSTaggedValue AllocateSendableArrayBuffer(
         JSThread *thread, const JSHandle<JSTaggedValue> &newTarget, uint64_t byteLength);
-    // es12 25.1.2.6 IsUnclampedIntegerElementType ( type )
-    static bool IsUnclampedIntegerElementType(DataViewType type);
-    // es12 25.1.2.7 IsBigIntElementType ( type )
-    static bool IsBigIntElementType(DataViewType type);
 
     // Excluding the '@@' internal properties
     static Span<const base::BuiltinFunctionEntry> GetArrayBufferFunctions()
     {
         return Span<const base::BuiltinFunctionEntry>(ARRAY_BUFFER_FUNCTIONS);
     }
-
-    static JSTaggedValue FastSetValueInBuffer(JSThread* thread, JSTaggedValue arrBuf, uint32_t byteIndex,
-                                              DataViewType type, double val, bool littleEndian);
-    static JSTaggedValue TryFastSetValueInBuffer(JSThread *thread, JSTaggedValue arrBuf, uint32_t byteBeginOffset,
-                                                 uint32_t byteEndOffset, DataViewType type,
-                                                 double val, bool littleEndian);
-    template<typename T>
-    static void FastSetValueInBufferForByte(uint8_t *byteBeginOffset, uint8_t *byteEndOffset,
-                                            double val);
-    static void FastSetValueInBufferForUint8Clamped(uint8_t *byteBeginOffset, uint8_t *byteEndOffset,
-                                                    double val);
-    template<typename T>
-    static void FastSetValueInBufferForInteger(uint8_t *byteBeginOffset, uint8_t *byteEndOffset,
-                                               double val, bool littleEndian);
-    template<typename T>
-    static void FastSetValueInBufferForFloat(uint8_t *byteBeginOffset, uint8_t *byteEndOffset,
-                                             double val, bool littleEndian);
-    template<typename T>
-    static void FastSetValueInBufferForBigInt(JSThread *thread, uint8_t *byteBeginOffset, uint8_t *byteEndOffset,
-                                              double val, bool littleEndian);
-    static JSTaggedValue SetValueInBuffer(JSThread *thread, uint32_t byteIndex, uint8_t *block,
-                                          DataViewType type, double val, bool littleEndian);
-    static JSTaggedValue GetValueFromBuffer(JSThread *thread, uint32_t byteIndex, uint8_t *block,
-                                            DataViewType type, bool littleEndian);
-    static void *GetDataPointFromBuffer(JSTaggedValue arrBuf, uint32_t byteOffset = 0);
 
     static size_t GetNumPrototypeInlinedProperties()
     {
@@ -122,7 +85,9 @@ private:
 #define BUILTIN_ARRAY_BUFFER_ENTRY(name, func, length, id) \
     BuiltinFunctionEntry::Create(name, BuiltinsSendableArrayBuffer::func, length, kungfu::BuiltinsStubCSigns::id),
 
-    static constexpr std::array ARRAY_BUFFER_FUNCTIONS = {BUILTIN_ARRAY_BUFFER_FUNCTIONS(BUILTIN_ARRAY_BUFFER_ENTRY)};
+    static constexpr std::array ARRAY_BUFFER_FUNCTIONS = {
+        BUILTIN_ARRAY_BUFFER_FUNCTIONS(BUILTIN_ARRAY_BUFFER_ENTRY)
+    };
 #undef BUILTIN_ARRAY_BUFFER_ENTRY
 
 #define ARRAYBUFFER_PROPERTIES_PAIR(name, func, length, id) \
@@ -141,56 +106,7 @@ private:
         BUILTIN_ARRAY_BUFFER_FUNCTIONS(ARRAYBUFFER_PROPERTIES_PAIR)
         std::pair<std::string_view, bool>("[Symbol.species]", true),
     };
-#undef SET_PROPERTIES_PAIR
-
-    template <typename T>
-    static T LittleEndianToBigEndian(T liValue);
-    template<typename T>
-    static T LittleEndianToBigEndian64Bit(T liValue);
-
-    template<typename T>
-    static void SetTypeData(uint8_t *block, T value, uint32_t index);
-
-    template<typename T>
-    static void FastSetTypeData(uint8_t *byteBeginOffset, uint8_t *byteEndOffset, T value);
-
-    template<typename T, NumberSize size>
-    static JSTaggedValue GetValueFromBufferForInteger(uint8_t *block, uint32_t byteIndex, bool littleEndian);
-
-    template<typename T, typename UnionType, NumberSize size>
-    static JSTaggedValue GetValueFromBufferForFloat(uint8_t *block, uint32_t byteIndex, bool littleEndian);
-    template<typename T1, typename T2>
-    static JSTaggedValue CommonConvert(T1 &value, T2 &res, bool littleEndian);
-    template<typename T, NumberSize size>
-    static JSTaggedValue GetValueFromBufferForBigInt(JSThread *thread, uint8_t *block,
-                                                     uint32_t byteIndex, bool littleEndian);
-
-    template<typename T>
-    static void SetValueInBufferForByte(double val, uint8_t *block, uint32_t byteIndex);
-
-    static void SetValueInBufferForUint8Clamped(double val, uint8_t *block, uint32_t byteIndex);
-
-    template<typename T>
-    static void SetValueInBufferForInteger(double val, uint8_t *block, uint32_t byteIndex, bool littleEndian);
-
-    template<typename T>
-    static void SetValueInBufferForFloat(double val, uint8_t *block, uint32_t byteIndex, bool littleEndian);
-
-    template<typename T>
-    static void SetValueInBufferForBigInt(JSThread *thread, const JSHandle<JSTaggedValue> &val,
-                                          JSHandle<JSTaggedValue> &arrBuf, uint32_t byteIndex, bool littleEndian);
-
-    template<typename T>
-    static void SetValueInBufferForBigInt(JSThread *thread, double val,
-                                          uint8_t *block, uint32_t byteIndex, bool littleEndian);
-
-    static JSTaggedValue TypedArrayToList(JSThread *thread, JSHandle<JSTypedArray>& items);
-
-    static constexpr uint64_t MAX_NATIVE_SIZE_LIMIT = 4_GB;
-    static constexpr char const *NATIVE_SIZE_OUT_OF_LIMIT_MESSAGE = "total array buffer size out of limit(4_GB)";
-
-    friend class BuiltinsArray;
-    friend class BuiltinsSharedArray;
+#undef ARRAYBUFFER_PROPERTIES_PAIR
 };
 }  // namespace panda::ecmascript::builtins
 
