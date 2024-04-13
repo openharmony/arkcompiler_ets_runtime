@@ -320,7 +320,7 @@ TaggedObject *SharedHeap::AllocateClassClass(JSThread *thread, JSHClass *hclass,
         UNREACHABLE();
     }
     *reinterpret_cast<MarkWordType *>(ToUintPtr(object)) = reinterpret_cast<MarkWordType>(hclass);
-    // todo(Gymee) OnAllocateEvent
+    OnAllocateEvent(thread->GetEcmaVM(), object, size);
     return object;
 }
 
@@ -521,7 +521,7 @@ TaggedObject *SharedHeap::AllocateNonMovableOrHugeObject(JSThread *thread, JSHCl
     CHECK_SOBJ_AND_THROW_OOM_ERROR(thread, object, size, sNonMovableSpace_,
         "SharedHeap::AllocateNonMovableOrHugeObject");
     object->SetClass(thread, hclass);
-    // todo(lukai) OnAllocateEvent
+    OnAllocateEvent(thread->GetEcmaVM(), object, size);
     return object;
 }
 
@@ -540,7 +540,7 @@ TaggedObject *SharedHeap::AllocateOldOrHugeObject(JSThread *thread, JSHClass *hc
     auto object = reinterpret_cast<TaggedObject *>(sOldSpace_->Allocate(thread, size));
     CHECK_SOBJ_AND_THROW_OOM_ERROR(thread, object, size, sOldSpace_, "SharedHeap::AllocateOldOrHugeObject");
     object->SetClass(thread, hclass);
-    // todo(lukai) OnAllocateEvent
+    OnAllocateEvent(thread->GetEcmaVM(), object, size);
     return object;
 }
 
@@ -560,7 +560,7 @@ TaggedObject *SharedHeap::AllocateHugeObject(JSThread *thread, JSHClass *hclass,
 {
     auto object = AllocateHugeObject(thread, size);
     object->SetClass(thread, hclass);
-    // todo(lukai) OnAllocateEvent
+    OnAllocateEvent(thread->GetEcmaVM(), object, size);
     return object;
 }
 
