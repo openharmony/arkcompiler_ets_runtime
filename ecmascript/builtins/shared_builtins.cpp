@@ -27,6 +27,7 @@
 #include "ecmascript/builtins/builtins_shared_typedarray.h"
 #include "ecmascript/shared_objects/js_shared_array.h"
 #include "ecmascript/shared_objects/js_sendable_arraybuffer.h"
+#include "ecmascript/shared_objects/js_shared_json_value.h"
 #include "ecmascript/shared_objects/js_shared_map.h"
 #include "ecmascript/shared_objects/js_shared_object.h"
 #include "ecmascript/shared_objects/js_shared_set.h"
@@ -335,7 +336,7 @@ void Builtins::InitializeSJSONObject(const JSHandle<GlobalEnv> &env, const JSHan
     // JSONObject.prototype_or_hclass
     auto emptySLayout = globalConst->GetHandledEmptySLayoutInfo();
     JSHandle<JSHClass> jsonObjectIHClass =
-        factory_->NewSEcmaHClass(JSSharedMap::SIZE, 0, JSType::JS_SHARED_JSON_OBJECT, jsonValuePrototypeValue, emptySLayout);
+        factory_->NewSEcmaHClass(JSSharedJSONValue::SIZE, 0, JSType::JS_SHARED_JSON_OBJECT, jsonValuePrototypeValue, emptySLayout);
     // JSONObject.hclass
     JSHandle<JSHClass> jsonObjectFuncHClass = CreateSJSONValueFunctionHClass(sFuncPrototype);
     // SharedJSONObject() = new SharedJSONObject()
