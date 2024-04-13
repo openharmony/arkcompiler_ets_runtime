@@ -228,6 +228,13 @@
     V(JSTaggedValue, SBuiltininArrayBufferFunction, SENDABLE_BUILTIN_ARRAY_BUFFER_FUNCTION_INDEX)                \
     V(JSTaggedValue, SBuiltininSetFunction, SHARED_BUILTIN_SET_FUNCTION_INDEX)                                   \
     V(JSTaggedValue, SBuiltininMapFunction, SHARED_BUILTIN_MAP_FUNCTION_INDEX)                                   \
+    V(JSTaggedValue, SJSONObjectFunction, SHARED_JSON_OBJECT_FUNCTION_INDEX)                                     \
+    V(JSTaggedValue, SJSONTrueFunction, SHARED_JSON_TRUE_FUNCTION_INDEX)                                         \
+    V(JSTaggedValue, SJSONFalseFunction, SHARED_JSON_FALSE_FUNCTION_INDEX)                                       \
+    V(JSTaggedValue, SJSONNullFunction, SHARED_JSON_NULL_FUNCTION_INDEX)                                         \
+    V(JSTaggedValue, SJSONNumberFunction, SHARED_JSON_NUMBER_FUNCTION_INDEX)                                     \
+    V(JSTaggedValue, SJSONStringFunction, SHARED_JSON_STRING_FUNCTION_INDEX)                                     \
+    V(JSTaggedValue, SJSONArrayFunction, SHARED_JSON_ARRAY_FUNCTION_INDEX)                                       \
     V(JSTaggedValue, SConstructorClass, SHARED_CONSTRUCTOR_CLASS_INDEX)                                          \
     V(JSTaggedValue, SFunctionClassWithoutProto, SHARED_FUNCTION_CLASS_WITHOUT_PROTO)                            \
     V(JSTaggedValue, SFunctionClassWithoutAccessor, SHARED_FUNCTION_CLASS_WITHOUT_ACCESSOR)                      \
@@ -299,7 +306,15 @@
     V(JSTaggedValue, SharedFloat32ArrayRootHclassOnHeap, SHARED_FLOAT32_ARRAY_ROOT_HCLASS_ON_HEAP_INDEX)         \
     V(JSTaggedValue, SharedFloat64ArrayRootHclassOnHeap, SHARED_FLOAT64_ARRAY_ROOT_HCLASS_ON_HEAP_INDEX)         \
     V(JSTaggedValue, SharedBigInt64ArrayRootHclassOnHeap, SHARED_BIGINT64_ARRAY_ROOT_HCLASS_ON_HEAP_INDEX)       \
-    V(JSTaggedValue, SharedBigUint64ArrayRootHclassOnHeap, SHARED_BIGUINT64_ARRAY_ROOT_HCLASS_ON_HEAP_INDEX)
+    V(JSTaggedValue, SharedBigUint64ArrayRootHclassOnHeap, SHARED_BIGUINT64_ARRAY_ROOT_HCLASS_ON_HEAP_INDEX)     \
+    V(JSTaggedValue, SharedJSONObjectFunctionPrototype, SHARED_JSON_OBJECT_FUNCTION_PROTOTYPE_INDEX)             \
+    V(JSTaggedValue, SharedJSONTrueFunctionPrototype, SHARED_JSON_TRUE_FUNCTION_PROTOTYPE_INDEX)                 \
+    V(JSTaggedValue, SharedJSONFalseFunctionPrototype, SHARED_JSON_FALSE_FUNCTION_PROTOTYPE_INDEX)               \
+    V(JSTaggedValue, SharedJSONNullFunctionPrototype, SHARED_JSON_NULL_FUNCTION_PROTOTYPE_INDEX)                 \
+    V(JSTaggedValue, SharedJSONNumberFunctionPrototype, SHARED_JSON_NUMBER_FUNCTION_PROTOTYPE_INDEX)             \
+    V(JSTaggedValue, SharedJSONStringFunctionPrototype, SHARED_JSON_STRING_FUNCTION_PROTOTYPE_INDEX)             \
+    V(JSTaggedValue, SharedJSONArrayFunctionPrototype, SHARED_JSON_ARRAY_FUNCTION_PROTOTYPE_INDEX)
+
 
 #define GLOBAL_ENV_FIELDS(V)                                \
     GLOBAL_ENV_SHARED_FIELDS(V)                             \

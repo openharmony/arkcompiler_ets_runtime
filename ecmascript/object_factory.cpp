@@ -127,6 +127,7 @@
 #include "ecmascript/shared_objects/js_shared_array.h"
 #include "ecmascript/shared_objects/js_sendable_arraybuffer.h"
 #include "ecmascript/shared_objects/js_shared_array_iterator.h"
+#include "ecmascript/shared_objects/js_shared_json_value.h"
 #include "ecmascript/shared_objects/js_shared_map.h"
 #include "ecmascript/shared_objects/js_shared_map_iterator.h"
 #include "ecmascript/shared_objects/js_shared_set.h"
@@ -790,6 +791,22 @@ JSHandle<TaggedArray> ObjectFactory::NewJsonFixedArray(size_t start, size_t leng
     return array;
 }
 
+JSHandle<TaggedArray> ObjectFactory::NewSJsonFixedArray(size_t start, size_t length,
+                                                       const std::vector<JSHandle<JSTaggedValue>> &vec)
+{
+    if (length == 0) {
+        return EmptyArray();
+    }
+
+    JSHandle<TaggedArray> array = NewTaggedArrayWithoutInit(length, MemSpaceType::SHARED_OLD_SPACE);
+    array->SetExtraLength(0);
+    for (size_t i = 0; i < length; i++) {
+        array->Set(thread_, i, vec[start + i]);
+    }
+    return array;
+}
+
+
 JSHandle<JSForInIterator> ObjectFactory::NewJSForinIterator(const JSHandle<JSTaggedValue> &obj,
                                                             const JSHandle<JSTaggedValue> keys,
                                                             const JSHandle<JSTaggedValue> cachedHclass)
@@ -1106,6 +1123,16 @@ void ObjectFactory::InitializeJSObject(const JSHandle<JSObject> &obj, const JSHa
         case JSType::JS_SHARED_OBJECT:
         case JSType::JS_SHARED_FUNCTION:
         case JSType::JS_ITERATOR: {
+            break;
+        }
+        case JSType::JS_SHARED_JSON_OBJECT:
+        case JSType::JS_SHARED_JSON_NULL:
+        case JSType::JS_SHARED_JSON_TRUE:
+        case JSType::JS_SHARED_JSON_FALSE:
+        case JSType::JS_SHARED_JSON_NUMBER:
+        case JSType::JS_SHARED_JSON_STRING:
+        case JSType::JS_SHARED_JSON_ARRAY: {
+            JSSharedJSONValue::Cast(*obj)->SetValue(thread_, JSTaggedValue::Null());
             break;
         }
 #ifdef ARK_SUPPORT_INTL
@@ -2658,6 +2685,9 @@ JSHandle<TaggedArray> ObjectFactory::NewTaggedArrayWithoutInit(uint32_t length, 
             break;
         case MemSpaceType::OLD_SPACE:
             header = heap_->AllocateOldOrHugeObject(arrayClass, size);
+            break;
+        case MemSpaceType::SHARED_OLD_SPACE:
+            header = sHeap_->AllocateOldOrHugeObject(thread_, arrayClass, size);
             break;
         default:
             LOG_ECMA(FATAL) << "this branch is unreachable";

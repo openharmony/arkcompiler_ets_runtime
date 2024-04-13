@@ -136,6 +136,16 @@ JSTaggedValue BuiltinsJson::ParseWithTransformType(const EcmaVM *vm, JSHandle<JS
 // 24.5.2
 JSTaggedValue BuiltinsJson::Stringify(EcmaRuntimeCallInfo *argv)
 {
+    return BuiltinsJson::StringifyWithTransformType(argv, TransformType::NORMAL);
+}
+
+JSTaggedValue BuiltinsSendableJson::Stringify(EcmaRuntimeCallInfo *argv)
+{
+    return BuiltinsJson::StringifyWithTransformType(argv, TransformType::SENDABLE);
+}
+
+JSTaggedValue BuiltinsJson::StringifyWithTransformType(EcmaRuntimeCallInfo *argv, TransformType transformType)
+{
     BUILTINS_API_TRACE(argv->GetThread(), Json, Stringify);
     ASSERT(argv);
     JSThread *thread = argv->GetThread();
@@ -143,6 +153,16 @@ JSTaggedValue BuiltinsJson::Stringify(EcmaRuntimeCallInfo *argv)
 
     uint32_t argc = argv->GetArgsNumber();
     JSTaggedValue value = GetCallArg(argv, 0).GetTaggedValue();
+    //这样？？
+    // if (value.IsJsonShared()) {
+    //     value = JsonSharedObject::cast(value).GetValue();
+    // }
+    if (transformType == TransformType::SENDABLE) {
+        if (value.IsHeapObject() && !value.IsJSShared() && !value.IsString()) {
+            THROW_TYPE_ERROR_AND_RETURN(thread, GET_MESSAGE_STRING(StringifySendableObject),
+                                        JSTaggedValue::Exception());
+        }
+    }
     if (argc == 1 && thread->GetCurrentEcmaContext()->IsAotEntry()) {
         JSHandle<JSTaggedValue> handleValue(thread, value);
         panda::ecmascript::base::FastJsonStringifier stringifier(thread);

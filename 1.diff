@@ -1,0 +1,688 @@
+diff --git a/BUILD.gn b/BUILD.gn
+index e9b70a860577dac4adaa2b282bf706fa7dd4dc3a..954a96a430c3173c35b5a2dab8d9a6b46e3adab1 100644
+--- a/BUILD.gn
++++ b/BUILD.gn
+@@ -611,6 +611,7 @@ ecma_source = [
+   "ecmascript/builtins/builtins_shared_set.cpp",
+   "ecmascript/builtins/builtins_shared_map.cpp",
+   "ecmascript/builtins/builtins_shared_typedarray.cpp",
++  "ecmascript/builtins/builtins_shared_json_value.cpp",
+   "ecmascript/builtins/builtins_symbol.cpp",
+   "ecmascript/builtins/builtins_typedarray.cpp",
+   "ecmascript/builtins/builtins_weak_map.cpp",
+diff --git a/ecmascript/builtins/builtins.h b/ecmascript/builtins/builtins.h
+index cba8655e42a86850459408727e89c91cbd4fe649..18165dd37c79cc0c15a1dd817377463c5bcf617c 100644
+--- a/ecmascript/builtins/builtins.h
++++ b/ecmascript/builtins/builtins.h
+@@ -372,6 +372,8 @@ private:
+                         const JSHandle<JSFunction> &sFuncPrototype) const;
+     void InitializeSMap(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &sObjPrototype,
+                         const JSHandle<JSFunction> &sFuncPrototype) const;
++    void InitializeSJSONObject(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &sObjPrototype,
++                               const JSHandle<JSFunction> &sFuncPrototype) const;
+     void InitializeSTypedArray(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &sObjPrototype,
+                                const JSHandle<JSFunction> &sFuncPrototype) const;
+     void InitializeSInt8Array(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &objFuncClass) const;
+@@ -401,6 +403,8 @@ private:
+     JSHandle<JSHClass> CreateSSpecificTypedArrayFuncHClass(const JSHandle<JSFunction> &sFuncPrototype) const;
+     JSHandle<JSHClass> CreateSArrayBufferPrototypeHClass(const JSHandle<JSObject> &sObjPrototype) const;
+     JSHandle<JSHClass> CreateSArrayBufferFunctionHClass(const JSHandle<JSFunction> &sFuncPrototype) const;
++    JSHandle<JSHClass> CreateSJSONValueFunctionHClass(const JSHandle<JSFunction> &sFuncPrototype) const;
++    JSHandle<JSHClass> CreateSJSONValuePrototypeHClass(const JSHandle<JSObject> &sObjPrototype) const;
+ 
+     void InitializeSCtor(const JSHandle<JSHClass> &protoHClass, const JSHandle<JSFunction> &ctor,
+                          std::string_view name, int length) const;
+diff --git a/ecmascript/builtins/builtins_shared_json_value.cpp b/ecmascript/builtins/builtins_shared_json_value.cpp
+new file mode 100644
+index 0000000000000000000000000000000000000000..482bb8f0435198195c489f2215fbfa676578baa9
+--- /dev/null
++++ b/ecmascript/builtins/builtins_shared_json_value.cpp
+@@ -0,0 +1,78 @@
++/*
++ * Copyright (c) 2024 Huawei Device Co., Ltd.
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *     http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++#include "ecmascript/builtins/builtins_shared_json_value.h"
++
++#include "ecmascript/ecma_vm.h"
++#include "ecmascript/global_env.h"
++#include "ecmascript/interpreter/interpreter.h"
++#include "ecmascript/js_tagged_value.h"
++#include "ecmascript/containers/containers_errors.h"
++#include "ecmascript/shared_objects/js_shared_json_value.h"
++
++namespace panda::ecmascript::builtins {
++JSTaggedValue BuiltinsJsonValue::ConstructorForObject([[maybe_unused]]EcmaRuntimeCallInfo *argv)
++{
++    BUILTINS_API_TRACE(argv->GetThread(), BuiltinsJsonValue, ConstructorForObject);
++    JSThread *thread = argv->GetThread();
++    [[maybe_unused]] EcmaHandleScope handleScope(thread);
++    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
++    // 1. If NewTarget is undefined, throw exception
++    JSHandle<JSTaggedValue> newTarget = GetNewTarget(argv);
++    if (newTarget->IsUndefined()) {
++        JSTaggedValue error = containers::ContainerError::BusinessError(
++            thread, containers::ErrorFlag::IS_NULL_ERROR, "The JSONValue's constructor cannot be directly invoked.");
++        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
++    }
++    // 2. Get the initial value.
++    JSHandle<JSTaggedValue> value = GetCallArg(argv, 0);
++    if (!value->IsJSSharedMap()) {
++        JSTaggedValue error = containers::ContainerError::ParamError(
++            thread, "Parameter error. Only accept sendable map.");
++        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
++    }
++    // 3.Let Map be OrdinaryCreateFromConstructor(NewTarget, "%MapPrototype%", «‍[[MapData]]» ).
++    JSHandle<JSTaggedValue> constructor = GetConstructor(argv);
++    ASSERT(constructor->IsJSSharedFunction() && constructor.GetTaggedValue().IsInSharedHeap());
++    JSHandle<JSObject> obj = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(constructor), newTarget);
++    ASSERT(obj.GetTaggedValue().IsInSharedHeap());
++    // 3.returnIfAbrupt()
++    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
++    JSHandle<JSSharedJSONValue> jsonValue = JSHandle<JSSharedJSONValue>::Cast(obj);
++    jsonValue->SetValue(thread, value);
++
++    jsonValue->GetValue().D();
++    jsonValue.Dump();
++    return obj.GetTaggedValue();
++}
++
++JSTaggedValue BuiltinsJsonValue::Get([[maybe_unused]]EcmaRuntimeCallInfo *argv)
++{
++    // BUILTINS_API_TRACE(argv->GetThread(), SharedMap, Get);
++    // JSThread *thread = argv->GetThread();
++    // [[maybe_unused]] EcmaHandleScope handleScope(thread);
++    // JSHandle<JSTaggedValue> self(GetThis(argv));
++    // if (!self->IsJSSharedMap()) {
++    //     auto error = containers::ContainerError::BusinessError(thread, containers::ErrorFlag::BIND_ERROR,
++    //                                                            "The get method cannot be bound.");
++    //     THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
++    // }
++    // JSSharedMap *jsMap = JSSharedMap::Cast(self.GetTaggedValue().GetTaggedObject());
++    // JSHandle<JSTaggedValue> key = GetCallArg(argv, 0);
++    // JSTaggedValue value = jsMap->Get(thread, key.GetTaggedValue());
++    // return value;
++    return JSTaggedValue::Undefined();
++}
++}  // namespace panda::ecmascript::builtins
+diff --git a/ecmascript/builtins/builtins_shared_json_value.h b/ecmascript/builtins/builtins_shared_json_value.h
+new file mode 100644
+index 0000000000000000000000000000000000000000..50b8935657834a27784a4b869d3760bca115301d
+--- /dev/null
++++ b/ecmascript/builtins/builtins_shared_json_value.h
+@@ -0,0 +1,91 @@
++/*
++ * Copyright (c) 2024 Huawei Device Co., Ltd.
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *     http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++#ifndef ECMASCRIPT_BUILTINS_BUILTINS_SHARED_JSON_VALUE_H
++#define ECMASCRIPT_BUILTINS_BUILTINS_SHARED_JSON_VALUE_H
++
++#include "ecmascript/base/builtins_base.h"
++#include "ecmascript/ecma_runtime_call_info.h"
++
++// List of functions in Map.prototype, excluding the constructor and '@@' properties.
++// V(name, func, length, stubIndex)
++// where BuiltinsMap::func refers to the native implementation of Map.prototype[name].
++//       kungfu::BuiltinsStubCSigns::stubIndex refers to the builtin stub index, or INVALID if no stub available.
++#define BUILTIN_JSON_VALUE_PROTOTYPE_FUNCTIONS(V)                      \
++    /* json.value.prototype.clear ( ) */                                      \
++    V("get",   Get,   0, INVALID)
++
++namespace panda::ecmascript::builtins {
++class BuiltinsJsonValue : public base::BuiltinsBase {
++public:
++    static JSTaggedValue ConstructorForObject(EcmaRuntimeCallInfo *argv);
++    static JSTaggedValue Get(EcmaRuntimeCallInfo *argv);
++
++    // Excluding the constructor and '@@' internal properties.
++    static Span<const base::BuiltinFunctionEntry> GetJsonValuePrototypeFunctions()
++    {
++        return Span<const base::BuiltinFunctionEntry>(JSON_VALUE_PROTOTYPE_FUNCTIONS);
++    }
++
++    static size_t GetNumPrototypeInlinedProperties()
++    {
++        // 4 : 4 more inline properties in Map.prototype
++        //   (1) Map.prototype.constructor
++        //   (2) Map.prototype [ @@toStringTag ]
++        //   (3) Map.prototype [ @@iterator ]
++        //   (4) get Map.prototype.size -- removed
++        return GetJsonValuePrototypeFunctions().Size() + 3;
++    }
++
++    static Span<const std::pair<std::string_view, bool>> GetPrototypeProperties()
++    {
++        return Span<const std::pair<std::string_view, bool>>(JSON_VALUE_PROTOTYPE_PROPERTIES);
++    }
++
++    static Span<const std::pair<std::string_view, bool>> GetFunctionProperties()
++    {
++        return Span<const std::pair<std::string_view, bool>>(JSON_VALUE_FUNCTION_PROPERTIES);
++    }
++private:
++#define BUILTIN_JSON_VALUE_FUNCTION_ENTRY(name, func, length, id) \
++    base::BuiltinFunctionEntry::Create(name, BuiltinsJsonValue::func, length, kungfu::BuiltinsStubCSigns::id),
++
++    static constexpr std::array JSON_VALUE_PROTOTYPE_FUNCTIONS = {
++        BUILTIN_JSON_VALUE_PROTOTYPE_FUNCTIONS(BUILTIN_JSON_VALUE_FUNCTION_ENTRY)
++    };
++
++#undef BUILTIN_JSON_VALUE_FUNCTION_ENTRY
++
++#define JSON_VALUE_PROPERTIES_PAIR(name, func, length, id) \
++    std::pair<std::string_view, bool>(name, false),
++
++    static constexpr std::array JSON_VALUE_PROTOTYPE_PROPERTIES = {
++        std::pair<std::string_view, bool>("constructor", false),
++        BUILTIN_JSON_VALUE_PROTOTYPE_FUNCTIONS(JSON_VALUE_PROPERTIES_PAIR)
++        std::pair<std::string_view, bool>("[Symbol.toStringTag]", false),
++        // std::pair<std::string_view, bool>("size", true),
++        std::pair<std::string_view, bool>("[Symbol.iterator]", false) // TODO(hzzhouzebin) remove it.
++    };
++
++    static constexpr std::array JSON_VALUE_FUNCTION_PROPERTIES = {
++        std::pair<std::string_view, bool>("length", false), // TODO(hzzhouzebin) remove it.
++        std::pair<std::string_view, bool>("name", false),  // TODO(hzzhouzebin) name equals "JSONXXX"
++        std::pair<std::string_view, bool>("prototype", false),
++        // std::pair<std::string_view, bool>("[Symbol.species]", true), // TODO(hzzhouzebin) remove it.
++    };
++#undef JSON_VALUE_PROPERTIES_PAIR
++};
++}  // namespace panda::ecmascript::builtins
++#endif  // ECMASCRIPT_BUILTINS_BUILTINS_SHARED_JSON_VALUE_H
+diff --git a/ecmascript/builtins/shared_builtins.cpp b/ecmascript/builtins/shared_builtins.cpp
+index ada596b86a6e99e217797769919aa9cf09991865..0c10e2e573bfa38c926c44c64a22276813236622 100644
+--- a/ecmascript/builtins/shared_builtins.cpp
++++ b/ecmascript/builtins/shared_builtins.cpp
+@@ -17,6 +17,7 @@
+ 
+ #include "ecmascript/builtins/builtins_function.h"
+ #include "ecmascript/builtins/builtins_object.h"
++#include "ecmascript/builtins/builtins_shared_json_value.h"
+ #include "ecmascript/builtins/builtins_symbol.h"
+ #include "ecmascript/builtins/builtins_sendable_arraybuffer.h"
+ #include "ecmascript/builtins/builtins_shared_function.h"
+@@ -45,6 +46,7 @@ using BuiltinsSharedMap = builtins::BuiltinsSharedMap;
+ using BuiltinsSharedArray = builtins::BuiltinsSharedArray;
+ using BuiltinsSharedTypedArray = builtins::BuiltinsSharedTypedArray;
+ using BuiltinsSendableArrayBuffer = builtins::BuiltinsSendableArrayBuffer;
++using BuiltinsJsonValue = builtins::BuiltinsJsonValue;
+ 
+ void Builtins::InitializeSObjectAndSFunction(const JSHandle<GlobalEnv> &env) const
+ {
+@@ -73,6 +75,7 @@ void Builtins::InitializeSObjectAndSFunction(const JSHandle<GlobalEnv> &env) con
+     InitializeSharedArray(env, sObjPrototype, sFuncPrototype);
+     InitializeSTypedArray(env, sObjPrototype, sFuncPrototype);
+     InitializeSArrayBuffer(env, sObjPrototype, sFuncPrototype);
++    InitializeSJSONObject(env, sObjPrototype, sFuncPrototype);
+     env->SetSObjectFunctionPrototype(thread_, sObjPrototype);
+ }
+ 
+@@ -313,6 +316,67 @@ void Builtins::InitializeSMap(const JSHandle<GlobalEnv> &env, const JSHandle<JSO
+     env->SetSBuiltininMapFunction(thread_, mapFunction);
+ }
+ 
++void Builtins::InitializeSJSONObject(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &sObjPrototype,
++    const JSHandle<JSFunction> &sFuncPrototype) const
++{
++    [[maybe_unused]] EcmaHandleScope scope(thread_);
++    const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
++    // JSONObject.prototype
++    JSHandle<JSHClass> jsonObjectPrototypeHClass = CreateSJSONValuePrototypeHClass(sObjPrototype);
++    JSHandle<JSObject> jsonObjectPrototype =
++        factory_->NewSharedOldSpaceJSObjectWithInit(jsonObjectPrototypeHClass);
++    JSHandle<JSTaggedValue> jsonValuePrototypeValue(jsonObjectPrototype);
++    // JSONObject.prototype_or_hclass
++    auto emptySLayout = globalConst->GetHandledEmptySLayoutInfo();
++    JSHandle<JSHClass> jsonObjectIHClass =
++        factory_->NewSEcmaHClass(JSSharedMap::SIZE, 0, JSType::JS_SHARED_JSON_OBJECT, jsonValuePrototypeValue, emptySLayout);
++    // JSONObject.hclass
++    JSHandle<JSHClass> jsonObjectFuncHClass = CreateSJSONValueFunctionHClass(sFuncPrototype);
++    // SharedJSONObject() = new SharedJSONObject()
++    JSHandle<JSFunction> sharedJsonObjectFunction =
++        factory_->NewSFunctionByHClass(reinterpret_cast<void *>(BuiltinsJsonValue::ConstructorForObject),
++                                       jsonObjectFuncHClass, FunctionKind::BUILTIN_CONSTRUCTOR);
++    InitializeSCtor(jsonObjectIHClass, sharedJsonObjectFunction, "SharedJSONObject", FunctionLength::ZERO);
++    JSHandle<JSObject> globalObject(thread_, env->GetGlobalObject());
++    JSHandle<JSTaggedValue> nameString(factory_->NewFromUtf8("SharedJSONObject"));
++    PropertyDescriptor desc(thread_, JSHandle<JSTaggedValue>::Cast(sharedJsonObjectFunction), true, false, true);
++    JSObject::DefineOwnProperty(thread_, globalObject, nameString, desc);
++    RETURN_IF_ABRUPT_COMPLETION(thread_);
++
++    // "constructor" property on the prototype
++    uint32_t fieldIndex = 0; // constructor
++    jsonObjectPrototype->SetPropertyInlinedProps(thread_, fieldIndex++, sharedJsonObjectFunction.GetTaggedValue());
++    // SharedMap.prototype functions
++    for (const base::BuiltinFunctionEntry &entry: BuiltinsJsonValue::GetJsonValuePrototypeFunctions()) {
++        SetSFunction(env, jsonObjectPrototype, entry.GetName(), entry.GetEntrypoint(), fieldIndex++,
++                     entry.GetLength(), entry.GetBuiltinStubId());
++    }
++    // @@ToStringTag
++    JSHandle<JSTaggedValue> strTag(factory_->NewFromUtf8("SharedJSONObject"));
++    jsonObjectPrototype->SetPropertyInlinedProps(thread_, fieldIndex++, strTag.GetTaggedValue());
++
++    // // 23.1.3.10get SharedMap.prototype.size
++    // JSHandle<JSTaggedValue> sizeGetter = CreateSGetterSetter(env, BuiltinsJsonValue::GetSize, "size",
++    //     FunctionLength::ZERO);
++    // SetSAccessor(jsonObjectPrototype, fieldIndex++, sizeGetter, globalConst->GetHandledUndefined());
++
++    // %MapPrototype% [ @@iterator ]
++    JSHandle<JSTaggedValue> entries(factory_->NewFromASCII("entries"));
++    JSHandle<JSTaggedValue> entriesFunc =
++        JSObject::GetMethod(thread_, JSHandle<JSTaggedValue>::Cast(jsonObjectPrototype), entries);
++    RETURN_IF_ABRUPT_COMPLETION(thread_);
++    jsonObjectPrototype->SetPropertyInlinedProps(thread_, fieldIndex++, entriesFunc.GetTaggedValue());
++
++    fieldIndex = JSFunction::PROTOTYPE_INLINE_PROPERTY_INDEX + 1;
++    // // 23.1.2.2get SharedMap [ @@species ]
++    // JSHandle<JSTaggedValue> speciesGetter =
++    //     CreateSGetterSetter(env, BuiltinsSharedMap::Species, "[Symbol.species]", FunctionLength::ZERO);
++    // SetSAccessor(JSHandle<JSObject>(sharedJsonObjectFunction), fieldIndex, speciesGetter, globalConst->GetHandledUndefined());
++
++    env->SetSharedJSONObjectFunctionPrototype(thread_, jsonObjectPrototype);
++    env->SetSJSONObjectFunction(thread_, sharedJsonObjectFunction);
++}
++
+ void Builtins::InitializeSFunction(const JSHandle<GlobalEnv> &env,
+                                    const JSHandle<JSFunction> &sFuncPrototype) const
+ {
+@@ -1133,4 +1197,62 @@ JSHandle<JSHClass> Builtins::CreateSSpecificTypedArrayFuncHClass(const JSHandle<
+     sobjPrototypeHClass->SetCallable(true);
+     return sobjPrototypeHClass;
+ }
++
++JSHandle<JSHClass> Builtins::CreateSJSONValuePrototypeHClass(const JSHandle<JSObject> &sObjPrototype) const
++{
++    uint32_t index = 0;
++    auto env = vm_->GetGlobalEnv();
++    PropertyAttributes attributes = PropertyAttributes::Default(false, false, false);
++    attributes.SetIsInlinedProps(true);
++    attributes.SetRepresentation(Representation::TAGGED);
++    auto properties = BuiltinsJsonValue::GetPrototypeProperties();
++    uint32_t length = properties.size();
++    ASSERT(length == BuiltinsJsonValue::GetNumPrototypeInlinedProperties());
++    JSHandle<LayoutInfo> layout = factory_->CreateSLayoutInfo(length);
++    JSHandle<JSTaggedValue> keyString;
++    for (const auto &[key, isAccessor] : properties) {
++        attributes.SetOffset(index);
++        attributes.SetIsAccessor(isAccessor);
++        if (key == "[Symbol.toStringTag]") {
++            keyString = env->GetToStringTagSymbol();
++        } else {
++            keyString = JSHandle<JSTaggedValue>(factory_->NewFromUtf8(key));
++        }
++        layout->AddKey(thread_, index++, keyString.GetTaggedValue(), attributes);
++    }
++    JSHandle<JSHClass> sJsonObjectPrototypeHClass =
++        factory_->NewSEcmaHClass(JSSharedObject::SIZE, length, JSType::JS_SHARED_OBJECT,
++                                 JSHandle<JSTaggedValue>(sObjPrototype),
++                                 JSHandle<JSTaggedValue>(layout));
++    return sJsonObjectPrototypeHClass;
++}
++
++JSHandle<JSHClass> Builtins::CreateSJSONValueFunctionHClass(const JSHandle<JSFunction> &sFuncPrototype) const
++{
++    uint32_t index = 0;
++    auto env = vm_->GetGlobalEnv();
++    PropertyAttributes attributes = PropertyAttributes::Default(false, false, false);
++    attributes.SetIsInlinedProps(true);
++    attributes.SetRepresentation(Representation::TAGGED);
++    auto properties = BuiltinsJsonValue::GetFunctionProperties();
++    uint32_t length = properties.size();
++    JSHandle<JSTaggedValue> keyString;
++    JSHandle<LayoutInfo> layout = factory_->CreateSLayoutInfo(length);
++    for (const auto &[key, isAccessor] : properties) {
++        attributes.SetOffset(index);
++        attributes.SetIsAccessor(isAccessor);
++        if (key == "[Symbol.species]") {
++            keyString = env->GetSpeciesSymbol();
++        } else {
++            keyString = JSHandle<JSTaggedValue>(factory_->NewFromUtf8(key));
++        }
++        layout->AddKey(thread_, index++, keyString.GetTaggedValue(), attributes);
++    }
++    JSHandle<JSHClass> sobjPrototypeHClass =
++        factory_->NewSEcmaHClass(JSSharedFunction::SIZE, length, JSType::JS_SHARED_FUNCTION,
++                                 JSHandle<JSTaggedValue>(sFuncPrototype), JSHandle<JSTaggedValue>(layout));
++    sobjPrototypeHClass->SetConstructor(true);
++    sobjPrototypeHClass->SetCallable(true);
++    return sobjPrototypeHClass;
++}
+ }  // namespace panda::ecmascript
+diff --git a/ecmascript/dfx/hprof/heap_snapshot.cpp b/ecmascript/dfx/hprof/heap_snapshot.cpp
+index bbe0aa0048165eb215aba5ad5ded5fe6405d2234..84503272f843a1044443734524621472f57cd653 100644
+--- a/ecmascript/dfx/hprof/heap_snapshot.cpp
++++ b/ecmascript/dfx/hprof/heap_snapshot.cpp
+@@ -278,6 +278,8 @@ CString *HeapSnapshot::GenerateNodeName(TaggedObject *entry)
+         case JSType::JS_SHARED_FUNCTION: {
+             return GetString("JSSharedFunction");
+         }
++        case JSType::JS_SHARED_JSON_OBJECT:
++            return GetString("SharedJSONValue");
+         case JSType::FREE_OBJECT_WITH_ONE_FIELD:
+         case JSType::FREE_OBJECT_WITH_NONE_FIELD:
+         case JSType::FREE_OBJECT_WITH_TWO_FIELD:
+diff --git a/ecmascript/dump.cpp b/ecmascript/dump.cpp
+index 74cc128ff99983922c8f569bc51536c4f17f74f6..f46abeed9cac90c49a3951f911bdb92cdde14495 100644
+--- a/ecmascript/dump.cpp
++++ b/ecmascript/dump.cpp
+@@ -16,6 +16,7 @@
+ #include <codecvt>
+ #include <iomanip>
+ #include <iostream>
++#include <ostream>
+ #include <string>
+ 
+ #include "ecmascript/accessor_data.h"
+@@ -24,6 +25,8 @@
+ #include "ecmascript/global_dictionary-inl.h"
+ #include "ecmascript/global_env.h"
+ #include "ecmascript/js_hclass.h"
++#include "ecmascript/mem/tagged_object.h"
++#include "ecmascript/shared_objects/js_shared_json_value.h"
+ #include "ecmascript/vtable.h"
+ #include "ecmascript/ic/ic_handler.h"
+ #include "ecmascript/ic/profile_type_info.h"
+@@ -535,6 +538,8 @@ CString JSHClass::DumpJSType(JSType type)
+             return "LocalExportEntry";
+         case JSType::STAR_EXPORTENTRY_RECORD:
+             return "StarExportEntry";
++        case JSType::JS_SHARED_JSON_OBJECT:
++            return "SharedJSONValue";
+         default: {
+             CString ret = "unknown type ";
+             return ret.append(std::to_string(static_cast<char>(type)));
+@@ -1313,6 +1318,9 @@ static void DumpObject(TaggedObject *obj, std::ostream &os)
+         case JSType::CLASS_LITERAL:
+             ClassLiteral::Cast(obj)->Dump(os);
+             break;
++        case JSType::JS_SHARED_JSON_OBJECT:
++            JSSharedJSONValue::Cast(obj)->Dump(os);
++            break;
+         default:
+             LOG_ECMA(FATAL) << "this branch is unreachable";
+             UNREACHABLE();
+@@ -4853,6 +4861,19 @@ void LinkedHashMap::DumpForSnapshot(std::vector<Reference> &vec) const
+     }
+ }
+ 
++void JSSharedJSONValue::Dump(std::ostream &os) const
++{
++    os << "wrapped value: \n";
++    auto value = GetValue();
++    if (value.IsJSSharedArray()) {
++        JSSharedArray::Cast(value)->Dump(os);
++    } else if (value.IsJSSharedMap()) {
++        JSSharedMap::Cast(value)->Dump(os);
++    } else {
++        value.DumpTaggedValue(os);
++    }
++}
++
+ void TaggedHashArray::Dump(std::ostream &os) const
+ {
+     DumpArrayClass(this, os);
+diff --git a/ecmascript/global_env_fields.h b/ecmascript/global_env_fields.h
+index 39a31d99e13d7cca2c19df52f0c411491d174bfa..bf41ef779305993141ef323f6bdd6f1150d0e146 100644
+--- a/ecmascript/global_env_fields.h
++++ b/ecmascript/global_env_fields.h
+@@ -229,6 +229,7 @@
+     V(JSTaggedValue, SBuiltininArrayBufferFunction, SENDABLE_BUILTIN_ARRAY_BUFFER_FUNCTION_INDEX)                \
+     V(JSTaggedValue, SBuiltininSetFunction, SHARED_BUILTIN_SET_FUNCTION_INDEX)                                   \
+     V(JSTaggedValue, SBuiltininMapFunction, SHARED_BUILTIN_MAP_FUNCTION_INDEX)                                   \
++    V(JSTaggedValue, SJSONObjectFunction, SHARED_JSON_OBJECT_FUNCTION_INDEX)                                     \
+     V(JSTaggedValue, SConstructorClass, SHARED_CONSTRUCTOR_CLASS_INDEX)                                          \
+     V(JSTaggedValue, SFunctionClassWithoutProto, SHARED_FUNCTION_CLASS_WITHOUT_PROTO)                            \
+     V(JSTaggedValue, SFunctionClassWithoutAccessor, SHARED_FUNCTION_CLASS_WITHOUT_ACCESSOR)                      \
+@@ -278,6 +279,7 @@
+     V(JSTaggedValue, SharedFloat64ArrayFunctionPrototype, SHARED_FLOAT64_ARRAY_FUNCTION_PROTOTYPE_INDEX)         \
+     V(JSTaggedValue, SharedBigInt64ArrayFunctionPrototype, SHARED_BIGINT64_ARRAY_FUNCTION_PROTOTYPE_INDEX)       \
+     V(JSTaggedValue, SharedBigUint64ArrayFunctionPrototype, SHARED_BIGUINT64_ARRAY_FUNCTION_PROTOTYPE_INDEX)     \
++    V(JSTaggedValue, SharedJSONObjectFunctionPrototype, SHARED_JSON_OBJECT_FUNCTION_PROTOTYPE_INDEX)             \
+ 
+ #define GLOBAL_ENV_FIELDS(V)                                \
+     GLOBAL_ENV_SHARED_FIELDS(V)                             \
+diff --git a/ecmascript/js_hclass.cpp b/ecmascript/js_hclass.cpp
+index 23f2e8ffc34cf12f2477524cbfb6dcacaf7a9f70..dc326b0b6588b90c57499c90f3c120f7cce7ae99 100644
+--- a/ecmascript/js_hclass.cpp
++++ b/ecmascript/js_hclass.cpp
+@@ -20,6 +20,7 @@
+ 
+ #include "ecmascript/base/config.h"
+ #include "ecmascript/global_env.h"
++#include "ecmascript/js_typed_array.h"
+ #include "ecmascript/pgo_profiler/pgo_profiler.h"
+ #include "ecmascript/pgo_profiler/pgo_profiler_layout.h"
+ #include "ecmascript/shared_objects/js_shared_array.h"
+@@ -189,6 +190,7 @@ bool JSHClass::IsJSTypeShared(JSType type)
+         case JSType::CONSTANT_STRING:
+         case JSType::SLICED_STRING:
+         case JSType::TREE_STRING:
++        case JSType::JS_SHARED_JSON_OBJECT:
+             isShared = true;
+             break;
+         default:
+diff --git a/ecmascript/js_hclass.h b/ecmascript/js_hclass.h
+index 4a5d2d8d259ae33493eb373d784048363ea08806..f8e4cc01417e9a53341292a25cca9d0de374f45a 100644
+--- a/ecmascript/js_hclass.h
++++ b/ecmascript/js_hclass.h
+@@ -119,6 +119,8 @@ struct Reference;
+         JS_SHARED_SET, /*  ////////////////////////////////////////////////////////////////////////////////-PADDING */ \
+         JS_MAP,      /* ///////////////////////////////////////////////////////////////////////////////////-PADDING */ \
+         JS_SHARED_MAP, /* /////////////////////////////////////////////////////////////////////////////////-PADDING */ \
++        /* TODO(hzzhouzebin): JS_SHARED_JSON_VALUE -> JS_SHARED_JSON_OBJ/NUMBER/ARRAY/TRUE/FALSE/NULL/STRING*/\
++        JS_SHARED_JSON_OBJECT, /* /////////////////////////////////////////////////////////////////////////-PADDING */ \
+         JS_WEAK_MAP, /* ///////////////////////////////////////////////////////////////////////////////////-PADDING */ \
+         JS_WEAK_SET, /* ///////////////////////////////////////////////////////////////////////////////////-PADDING */ \
+         JS_WEAK_REF, /* ///////////////////////////////////////////////////////////////////////////////////-PADDING */ \
+@@ -976,6 +978,11 @@ public:
+         return GetObjectType() == JSType::JS_SHARED_MAP;
+     }
+ 
++    bool IsJSSharedJSONValue() const
++    {
++        return GetObjectType() == JSType::JS_SHARED_JSON_OBJECT;
++    }
++
+     bool IsJSWeakMap() const
+     {
+         return GetObjectType() == JSType::JS_WEAK_MAP;
+diff --git a/ecmascript/js_tagged_value-inl.h b/ecmascript/js_tagged_value-inl.h
+index 448634abd3b82b50ad459d3f48cbb80dab1f711e..bdb2efb20dbd124624f6e1a62e18c2c4f02b7f4c 100644
+--- a/ecmascript/js_tagged_value-inl.h
++++ b/ecmascript/js_tagged_value-inl.h
+@@ -1087,6 +1087,11 @@ inline bool JSTaggedValue::IsJSSharedMap() const
+     return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSSharedMap();
+ }
+ 
++inline bool JSTaggedValue::IsJSSharedJSONValue() const
++{
++    return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSSharedJSONValue();
++}
++
+ inline bool JSTaggedValue::IsJSWeakMap() const
+ {
+     return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSWeakMap();
+diff --git a/ecmascript/js_tagged_value.h b/ecmascript/js_tagged_value.h
+index c76c31bba783ef8023227773da862782698fca5f..d5d3485b939d951c378ed2bfb423d73a87177c4f 100644
+--- a/ecmascript/js_tagged_value.h
++++ b/ecmascript/js_tagged_value.h
+@@ -687,6 +687,7 @@ public:
+     bool IsJSSharedFunction() const;
+     bool IsJSShared() const;
+     bool IsSharedType() const;
++    bool IsJSSharedJSONValue() const;
+ 
+     bool PUBLIC_API IsInSharedHeap() const;
+     bool IsInSharedSweepableSpace() const;
+diff --git a/ecmascript/mem/object_xray.h b/ecmascript/mem/object_xray.h
+index 275b0926dc0307952e9e45b146a4a634b0deb9c4..2de8476fe2bfe01436416d44b180c1d863388851 100644
+--- a/ecmascript/mem/object_xray.h
++++ b/ecmascript/mem/object_xray.h
+@@ -109,6 +109,7 @@
+ #include "ecmascript/shared_objects/js_shared_array.h"
+ #include "ecmascript/shared_objects/js_sendable_arraybuffer.h"
+ #include "ecmascript/shared_objects/js_shared_array_iterator.h"
++#include "ecmascript/shared_objects/js_shared_json_value.h"
+ #include "ecmascript/shared_objects/js_shared_map.h"
+ #include "ecmascript/shared_objects/js_shared_map_iterator.h"
+ #include "ecmascript/shared_objects/js_shared_set.h"
+@@ -159,6 +160,11 @@ public:
+                 jsSharedObject->VisitRangeSlot<visitType>(visitor);
+                 break;
+             }
++            case JSType::JS_SHARED_JSON_OBJECT: {
++                auto jsSharedJSONValue = JSSharedJSONValue::Cast(object);
++                jsSharedJSONValue->VisitRangeSlot<visitType>(visitor);
++                break;
++            }
+             case JSType::JS_ASYNC_FROM_SYNC_ITERATOR:
+                 JSAsyncFromSyncIterator::Cast(object)->VisitRangeSlot<visitType>(visitor);
+                 break;
+diff --git a/ecmascript/object_factory.cpp b/ecmascript/object_factory.cpp
+index e9136768e3b685e636fa281e34c0007edf11c26f..84842a6ec0fafd18e876ee214ec65e98cfab5a64 100644
+--- a/ecmascript/object_factory.cpp
++++ b/ecmascript/object_factory.cpp
+@@ -127,6 +127,7 @@
+ #include "ecmascript/shared_objects/js_shared_array.h"
+ #include "ecmascript/shared_objects/js_sendable_arraybuffer.h"
+ #include "ecmascript/shared_objects/js_shared_array_iterator.h"
++#include "ecmascript/shared_objects/js_shared_json_value.h"
+ #include "ecmascript/shared_objects/js_shared_map.h"
+ #include "ecmascript/shared_objects/js_shared_map_iterator.h"
+ #include "ecmascript/shared_objects/js_shared_set.h"
+@@ -1093,6 +1094,10 @@ void ObjectFactory::InitializeJSObject(const JSHandle<JSObject> &obj, const JSHa
+         case JSType::JS_ITERATOR: {
+             break;
+         }
++        case JSType::JS_SHARED_JSON_OBJECT: {
++            JSSharedJSONValue::Cast(*obj)->SetValue(thread_, JSTaggedValue::Null());
++            break;
++        }
+ #ifdef ARK_SUPPORT_INTL
+         case JSType::JS_INTL: {
+             JSIntl::Cast(*obj)->SetFallbackSymbol(thread_, JSTaggedValue::Undefined());
+diff --git a/ecmascript/runtime_call_id.h b/ecmascript/runtime_call_id.h
+index fd4626367a24d39d046c6245714dbde4af85db7e..e0126d291e303e69fb1f3b71ecc9060d781deac5 100644
+--- a/ecmascript/runtime_call_id.h
++++ b/ecmascript/runtime_call_id.h
+@@ -353,6 +353,8 @@ namespace panda::ecmascript {
+     V(SendableArrayBuffer, SetValueInBuffer)  \
+     V(SendableArrayBuffer, CloneArrayBuffer)  \
+     V(SendableArrayBuffer, AllocateSendableArrayBuffer) \
++    V(BuiltinsJsonValue, ConstructorForObject) \
++    V(BuiltinsJsonValue, Get)                 \
+     V(SendableArrayBuffer, IsView)            \
+     V(AsyncFromSyncIterator, Next)            \
+     V(AsyncFromSyncIterator, Throw)           \
+diff --git a/ecmascript/shared_objects/js_shared_json_value.h b/ecmascript/shared_objects/js_shared_json_value.h
+new file mode 100644
+index 0000000000000000000000000000000000000000..123f4bccd886f9c4316e0b6826d1e305f217facd
+--- /dev/null
++++ b/ecmascript/shared_objects/js_shared_json_value.h
+@@ -0,0 +1,41 @@
++/*
++ * Copyright (c) 2024 Huawei Device Co., Ltd.
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *     http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++#ifndef ECMASCRIPT_SHARED_OBJECTS_JS_SHARED_JSON_VALUE_H
++#define ECMASCRIPT_SHARED_OBJECTS_JS_SHARED_JSON_VALUE_H
++
++#include "ecmascript/js_object.h"
++#include "ecmascript/js_tagged_value-inl.h"
++
++namespace panda::ecmascript {
++class JSSharedJSONValue : public JSObject {
++public:
++    CAST_CHECK(JSSharedJSONValue, IsJSSharedJSONValue);
++
++    JSTaggedValue Get(JSThread *thread) const
++    {
++        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Undefined());
++        return GetValue();
++    }
++
++    static constexpr size_t VALUE_OFFSET = JSObject::SIZE;
++    ACCESSORS(Value, VALUE_OFFSET, SIZE)
++
++    DECL_VISIT_OBJECT_FOR_JS_OBJECT(JSObject, VALUE_OFFSET, SIZE)
++    DECL_DUMP()
++};
++}  // namespace panda::ecmascript
++
++#endif  // ECMASCRIPT_SHARED_OBJECTS_JS_SHARED_JSON_VALUE_H
+diff --git a/ecmascript/tests/dump_test.cpp b/ecmascript/tests/dump_test.cpp
+index 926c9ef4a5db3bffc29dd190b01e1cd1c5ade1ea..e8c0fed63318a73dd85df5ad77618473c5be078d 100644
+--- a/ecmascript/tests/dump_test.cpp
++++ b/ecmascript/tests/dump_test.cpp
+@@ -115,6 +115,7 @@
+ #include "ecmascript/shared_objects/js_shared_array.h"
+ #include "ecmascript/shared_objects/js_sendable_arraybuffer.h"
+ #include "ecmascript/shared_objects/js_shared_array_iterator.h"
++#include "ecmascript/shared_objects/js_shared_json_value.h"
+ #include "ecmascript/shared_objects/js_shared_map.h"
+ #include "ecmascript/shared_objects/js_shared_map_iterator.h"
+ #include "ecmascript/shared_objects/js_shared_set.h"
+@@ -223,6 +224,14 @@ static JSHandle<JSSet> NewJSSet(JSThread *thread, ObjectFactory *factory, JSHand
+     return jsSet;
+ }
+ 
++static JSHandle<JSSharedJSONValue> NewJSJSONValue(ObjectFactory *factory,
++                                                  JSHandle<JSTaggedValue> proto)
++{
++    JSHandle<JSHClass> jsonValueHClass =
++        factory->NewEcmaHClass(JSSharedJSONValue::SIZE, JSType::JS_SHARED_JSON_OBJECT, proto);
++    return JSHandle<JSSharedJSONValue>::Cast(factory->NewJSObjectWithInit(jsonValueHClass));
++}
++
+ static JSHandle<JSSharedSet> NewJSSharedSet(JSThread *thread, ObjectFactory *factory)
+ {
+     auto globalEnv = thread->GetEcmaVM()->GetGlobalEnv();
+@@ -481,6 +490,12 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
+                 DUMP_FOR_HANDLE(jsObj);
+                 break;
+             }
++            case JSType::JS_SHARED_JSON_OBJECT: {
++                CHECK_DUMP_FIELDS(ECMAObject::SIZE, JSSharedJSONValue::SIZE, 1U);
++                JSHandle<JSSharedJSONValue> jsSharedJsonValue = NewJSJSONValue(factory, proto);
++                DUMP_FOR_HANDLE(jsSharedJsonValue);
++                break;
++            }            
+             case JSType::JS_REALM: {
+                 CHECK_DUMP_FIELDS(JSObject::SIZE, JSRealm::SIZE, 2U);
+                 JSHandle<JSRealm> jsRealm = factory->NewJSRealm();
+

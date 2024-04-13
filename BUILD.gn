@@ -611,6 +611,7 @@ ecma_source = [
   "ecmascript/builtins/builtins_shared_set.cpp",
   "ecmascript/builtins/builtins_shared_map.cpp",
   "ecmascript/builtins/builtins_shared_typedarray.cpp",
+  "ecmascript/builtins/builtins_shared_json_value.cpp",
   "ecmascript/builtins/builtins_symbol.cpp",
   "ecmascript/builtins/builtins_typedarray.cpp",
   "ecmascript/builtins/builtins_weak_map.cpp",

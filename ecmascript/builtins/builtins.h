@@ -372,6 +372,10 @@ private:
                         const JSHandle<JSFunction> &sFuncPrototype) const;
     void InitializeSMap(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &sObjPrototype,
                         const JSHandle<JSFunction> &sFuncPrototype) const;
+    void InitializeSJSONObject(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &sObjPrototype,
+                               const JSHandle<JSFunction> &sFuncPrototype) const;
+    void InitializeSJSONTrue(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &sObjPrototype,
+                             const JSHandle<JSFunction> &sFuncPrototype) const;
     void InitializeSTypedArray(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &sObjPrototype,
                                const JSHandle<JSFunction> &sFuncPrototype) const;
     void InitializeSInt8Array(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &objFuncClass) const;
@@ -402,6 +406,8 @@ private:
     JSHandle<JSHClass> CreateSSpecificTypedArrayInstanceHClass(const JSHandle<JSObject> &sObjPrototype) const;
     JSHandle<JSHClass> CreateSArrayBufferPrototypeHClass(const JSHandle<JSObject> &sObjPrototype) const;
     JSHandle<JSHClass> CreateSArrayBufferFunctionHClass(const JSHandle<JSFunction> &sFuncPrototype) const;
+    JSHandle<JSHClass> CreateSJSONValueFunctionHClass(const JSHandle<JSFunction> &sFuncPrototype) const;
+    JSHandle<JSHClass> CreateSJSONValuePrototypeHClass(const JSHandle<JSObject> &sObjPrototype) const;
 
     void InitializeSCtor(const JSHandle<JSHClass> &protoHClass, const JSHandle<JSFunction> &ctor,
                          std::string_view name, int length) const;

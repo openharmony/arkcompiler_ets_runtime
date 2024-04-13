@@ -237,6 +237,8 @@
       panda::ecmascript::ObjectFactory::NewSTaggedArray*;
       panda::ecmascript::ObjectFactory::NewSEcmaHClassDictMode*;
       panda::ecmascript::SendableClassDefiner::AddFieldTypeToHClass*;
+      panda::ecmascript::ObjectFactory::NewJSSArray*;
+      panda::ecmascript::ObjectFactory::NewSJsonFixedArray*;
       panda::ecmascript::ObjectOperator::UpdateDetector*;
       panda::ecmascript::PageMap*;
       panda::ecmascript::PageSize*;

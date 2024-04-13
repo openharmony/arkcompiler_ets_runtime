@@ -333,10 +333,12 @@ public:
     JSHandle<job::PendingJob> NewPendingJob(const JSHandle<JSFunction> &func, const JSHandle<TaggedArray> &argv);
 
     JSHandle<JSArray> NewJSArray();
-    JSHandle<JSSharedArray> NewJSSArray();
+    JSHandle<JSSharedArray> PUBLIC_API NewJSSArray();
     JSHandle<JSArray> PUBLIC_API NewJSArray(size_t length, JSHandle<JSHClass> &hclass);
     JSHandle<TaggedArray> PUBLIC_API NewJsonFixedArray(size_t start, size_t length,
                                                        const std::vector<JSHandle<JSTaggedValue>> &vec);
+    JSHandle<TaggedArray> PUBLIC_API NewSJsonFixedArray(size_t start, size_t length,
+                                                    const std::vector<JSHandle<JSTaggedValue>> &vec);
 
     JSHandle<JSProxy> NewJSProxy(const JSHandle<JSTaggedValue> &target, const JSHandle<JSTaggedValue> &handler);
     JSHandle<JSRealm> NewJSRealm();
