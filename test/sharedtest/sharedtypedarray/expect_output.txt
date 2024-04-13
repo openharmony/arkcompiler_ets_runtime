@@ -496,3 +496,15 @@ SharedUint32Array test IC success
 SharedUint16Array test IC success
 SharedUint8Array test IC success
 SharedUint8ClampedArray test IC success
+================Test ArrayBuffer================
+SendableArrayBuffer length: 16
+SendableArrayBuffer sliced[0]: 42
+true
+true
+true
+SendableArrayBuffer SharedInt32Array isView: true
+SendableArrayBuffer Int8Array isView: false
+SubSendableArrayBuffer length: 20
+SubSendableArrayBuffer slicedSub[0]: 5
+SubSendableArrayBuffer SharedInt32Array isView: true
+SendableArrayBuffer Int8Array isView: false

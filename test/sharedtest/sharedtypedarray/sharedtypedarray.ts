@@ -691,3 +691,37 @@ function testTypeArrayIC(ctor: Function) {
   }
   return true;
 }
+
+print("================Test ArrayBuffer================");
+let sArrayBuffer : SendableArrayBuffer = new SendableArrayBuffer(16);
+print("SendableArrayBuffer length: " + sArrayBuffer.byteLength);
+let int32View : SharedInt32Array = new SharedInt32Array(sArrayBuffer);
+int32View[1] = 42;
+let sliced = new SharedInt32Array(sArrayBuffer.slice(4, 12));
+print("SendableArrayBuffer sliced[0]: " + sliced[0]);
+
+print(SendableArrayBuffer[Symbol.species] == SendableArrayBuffer);
+print(SendableArrayBuffer.name == "SendableArrayBuffer");
+print(sArrayBuffer[Symbol.toStringTag] == "SendableArrayBuffer");
+
+let isview = SendableArrayBuffer.isView(new SharedInt32Array());
+print("SendableArrayBuffer SharedInt32Array isView: " + isview);
+isview = SendableArrayBuffer.isView(new Int8Array(10));
+print("SendableArrayBuffer Int8Array isView: " + isview);
+
+class SubSendableArrayBuffer extends SendableArrayBuffer {
+  constructor(params: any) {
+    "use sendable";
+    super(params);
+  }
+}
+let subSArrayBuffer = new SubSendableArrayBuffer(20);
+print("SubSendableArrayBuffer length: " + subSArrayBuffer.byteLength);
+let int32View1 : SharedInt32Array = new SharedInt32Array(subSArrayBuffer);
+int32View1[2] = 5;
+let slicedSub = new SharedInt32Array(subSArrayBuffer.slice(8, 16));
+print("SubSendableArrayBuffer slicedSub[0]: " + slicedSub[0]);
+let isviewSub = SubSendableArrayBuffer.isView(new SharedInt32Array());
+print("SubSendableArrayBuffer SharedInt32Array isView: " + isviewSub);
+isviewSub = SendableArrayBuffer.isView(new Int8Array(10));
+print("SendableArrayBuffer Int8Array isView: " + isviewSub);

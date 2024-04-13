@@ -20,6 +20,7 @@
 #include "ecmascript/base/builtins_base.h"
 #include "ecmascript/base/number_helper.h"
 #include "ecmascript/builtins/builtins_bigint.h"
+#include "ecmascript/containers/containers_errors.h"
 #include "ecmascript/ecma_macros.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/global_env.h"
@@ -29,6 +30,7 @@
 #include "ecmascript/js_tagged_number.h"
 #include "ecmascript/js_tagged_value-inl.h"
 #include "ecmascript/js_tagged_value.h"
+#include "ecmascript/mem/heap.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/shared_objects/js_sendable_arraybuffer.h"
 #include "ecmascript/base/typed_array_helper-inl.h"
@@ -40,6 +42,7 @@
 
 namespace panda::ecmascript::builtins {
 using TypedArrayHelper = base::TypedArrayHelper;
+using ContainerError = containers::ContainerError;
 // 24.1.2.1 ArrayBuffer(length)
 JSTaggedValue BuiltinsSendableArrayBuffer::ArrayBufferConstructor(EcmaRuntimeCallInfo *argv)
 {
@@ -50,7 +53,9 @@ JSTaggedValue BuiltinsSendableArrayBuffer::ArrayBufferConstructor(EcmaRuntimeCal
     JSHandle<JSTaggedValue> newTarget = GetNewTarget(argv);
     // 1. If NewTarget is undefined, throw a TypeError exception.
     if (newTarget->IsUndefined()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "newtarget is undefined", JSTaggedValue::Exception());
+        JSTaggedValue error = ContainerError::BusinessError(thread, containers::ErrorFlag::IS_NULL_ERROR,
+            "The ArkTS ArrayBuffer's constructor cannot be directly invoked.");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
     JSHandle<JSTaggedValue> lengthHandle = GetCallArg(argv, 0);
     JSTaggedNumber lenNum = JSTaggedValue::ToIndex(thread, lengthHandle);
@@ -72,7 +77,7 @@ JSTaggedValue BuiltinsSendableArrayBuffer::IsView(EcmaRuntimeCallInfo *argv)
         return BuiltinsSendableArrayBuffer::GetTaggedBoolean(false);
     }
     // 2. If arg has a [[ViewedArrayBuffer]] internal slot, return true.
-    if (arg->IsDataView() || arg->IsTypedArray()) {
+    if (arg->IsDataView() || arg->IsSharedTypedArray()) {
         return BuiltinsSendableArrayBuffer::GetTaggedBoolean(true);
     }
     // 3. Return false.
@@ -130,15 +135,17 @@ JSTaggedValue BuiltinsSendableArrayBuffer::Slice(EcmaRuntimeCallInfo *argv)
     if (!thisHandle->IsHeapObject()) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "this value is not an object", JSTaggedValue::Exception());
     }
-    JSHandle<JSArrayBuffer> arrBuf(thisHandle);
     // 3. If O does not have an [[ArrayBufferData]] internal slot, throw a TypeError exception.
     if (!thisHandle->IsSendableArrayBuffer()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "don't have internal slot", JSTaggedValue::Exception());
+        auto error = ContainerError::BusinessError(thread, containers::ErrorFlag::BIND_ERROR,
+                                                   "The slice method cannot be bound.");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
     // 4. If IsDetachedBuffer(O) is true, throw a TypeError exception.
     if (IsDetachedBuffer(thisHandle.GetTaggedValue())) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "this value IsDetachedBuffer", JSTaggedValue::Exception());
     }
+    JSHandle<JSSendableArrayBuffer> arrBuf(thisHandle);
     // 5. Let len be the value of O’s [[ArrayBufferByteLength]] internal slot.
     int32_t len = static_cast<int32_t>(arrBuf->GetArrayBufferByteLength());
     JSHandle<JSTaggedValue> startHandle = GetCallArg(argv, 0);
@@ -220,7 +227,7 @@ JSTaggedValue BuiltinsSendableArrayBuffer::Slice(EcmaRuntimeCallInfo *argv)
         // 24. Let toBuf be the value of new’s [[ArrayBufferData]] internal slot.
         void *toBuf = GetDataPointFromBuffer(newJsArrBuf.GetTaggedValue());
         // 25. Perform CopyDataBlockBytes(toBuf, fromBuf, first, newLen).
-        JSArrayBuffer::CopyDataPointBytes(toBuf, fromBuf, first, newLen);
+        JSSendableArrayBuffer::CopyDataPointBytes(toBuf, fromBuf, first, newLen);
     }
     // Return new.
     return newArrBuf.GetTaggedValue();
@@ -246,7 +253,8 @@ JSTaggedValue BuiltinsSendableArrayBuffer::AllocateSendableArrayBuffer(
     if (byteLength > INT_MAX) {
         THROW_RANGE_ERROR_AND_RETURN(thread, "Out of range", JSTaggedValue::Exception());
     }
-    uint64_t totalNativeSize = static_cast<uint64_t>(thread->GetNativeAreaAllocator()->GetArrayBufferNativeSize());
+    uint64_t totalNativeSize = static_cast<uint64_t>(
+        SharedHeap::GetInstance()->GetNativeAreaAllocator()->GetArrayBufferNativeSize());
     if (UNLIKELY(totalNativeSize > MAX_NATIVE_SIZE_LIMIT)) {
         THROW_RANGE_ERROR_AND_RETURN(thread, NATIVE_SIZE_OUT_OF_LIMIT_MESSAGE, JSTaggedValue::Exception());
     }
@@ -283,7 +291,7 @@ JSTaggedValue BuiltinsSendableArrayBuffer::CloneArrayBuffer(JSThread *thread,
 {
     BUILTINS_API_TRACE(thread, SendableArrayBuffer, CloneArrayBuffer);
     // 1. Assert: Type(srcBuffer) is Object and it has an [[ArrayBufferData]] internal slot.
-    ASSERT(srcBuffer->IsSendableArrayBuffer() || srcBuffer->IsSharedArrayBuffer() || srcBuffer->IsByteArray());
+    ASSERT(srcBuffer->IsSendableArrayBuffer()|| srcBuffer->IsByteArray());
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     // 2. If cloneConstructor is not present
     if (constructor->IsUndefined()) {
@@ -301,7 +309,7 @@ JSTaggedValue BuiltinsSendableArrayBuffer::CloneArrayBuffer(JSThread *thread,
         }
     }
     // 4. Let srcLength be the value of srcBuffer’s [[ArrayBufferByteLength]] internal slot.
-    JSHandle<JSArrayBuffer> arrBuf(srcBuffer);
+    JSHandle<JSSendableArrayBuffer> arrBuf(srcBuffer);
     uint32_t srcLen = arrBuf->GetArrayBufferByteLength();
     // 5. Assert: srcByteOffset ≤ srcLength.
     ASSERT(srcByteOffset <= srcLen);
@@ -316,14 +324,30 @@ JSTaggedValue BuiltinsSendableArrayBuffer::CloneArrayBuffer(JSThread *thread,
         THROW_TYPE_ERROR_AND_RETURN(thread, "Is Detached Buffer", JSTaggedValue::Exception());
     }
     // 11. Let targetBlock be the value of targetBuffer’s [[ArrayBufferData]] internal slot.
-    JSHandle<JSArrayBuffer> newArrBuf(thread, taggedBuf);
+    JSHandle<JSSendableArrayBuffer> newArrBuf(thread, taggedBuf);
     // Perform CopyDataBlockBytes(targetBlock, 0, srcBlock, srcByteOffset, cloneLength).
     // 7. Let srcBlock be the value of srcBuffer’s [[ArrayBufferData]] internal slot.
     void *fromBuf = GetDataPointFromBuffer(arrBuf.GetTaggedValue());
     void *toBuf = GetDataPointFromBuffer(taggedBuf);
     if (cloneLen > 0) {
-        JSArrayBuffer::CopyDataPointBytes(toBuf, fromBuf, srcByteOffset, cloneLen);
+        JSSendableArrayBuffer::CopyDataPointBytes(toBuf, fromBuf, srcByteOffset, cloneLen);
     }
     return taggedBuf;
+}
+
+void *BuiltinsSendableArrayBuffer::GetDataPointFromBuffer(JSTaggedValue arrBuf, uint32_t byteOffset)
+{
+    if (arrBuf.IsByteArray()) {
+        return reinterpret_cast<void *>(ToUintPtr(ByteArray::Cast(arrBuf.GetTaggedObject())->GetData()) + byteOffset);
+    }
+
+    JSSendableArrayBuffer *arrayBuffer = JSSendableArrayBuffer::Cast(arrBuf.GetTaggedObject());
+    if (arrayBuffer->GetArrayBufferByteLength() == 0) {
+        return nullptr;
+    }
+
+    JSTaggedValue data = arrayBuffer->GetArrayBufferData();
+    return reinterpret_cast<void *>(ToUintPtr(JSNativePointer::Cast(data.GetTaggedObject())
+                                    ->GetExternalPointer()) + byteOffset);
 }
 }  // namespace panda::ecmascript::builtins

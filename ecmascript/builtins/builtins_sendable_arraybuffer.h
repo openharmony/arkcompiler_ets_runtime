@@ -65,9 +65,9 @@ public:
     static size_t GetNumPrototypeInlinedProperties()
     {
         // 3 : 3 more inline properties in Set.prototype
-        //   (1) Set.prototype.slice
-        //   (2) Set.prototype [ @@toStringTag ]
-        //   (3) get Set.prototype.size
+        //  (1) ArrayBuffer.prototype.slice
+        //  (2) get ArrayBuffer.prototype.byteLength
+        //  (3) ArrayBuffer.prototype [ @@toStringTag ]
         return 3;
     }
 
@@ -81,6 +81,7 @@ public:
         return Span<const std::pair<std::string_view, bool>>(ARRAYBUFFER_FUNCTION_PROPERTIES);
     }
 
+    static void *GetDataPointFromBuffer(JSTaggedValue arrBuf, uint32_t byteOffset = 0);
 private:
 #define BUILTIN_ARRAY_BUFFER_ENTRY(name, func, length, id) \
     BuiltinFunctionEntry::Create(name, BuiltinsSendableArrayBuffer::func, length, kungfu::BuiltinsStubCSigns::id),
@@ -103,8 +104,8 @@ private:
         std::pair<std::string_view, bool>("length", false),
         std::pair<std::string_view, bool>("name", false),
         std::pair<std::string_view, bool>("prototype", false),
-        BUILTIN_ARRAY_BUFFER_FUNCTIONS(ARRAYBUFFER_PROPERTIES_PAIR)
         std::pair<std::string_view, bool>("[Symbol.species]", true),
+        BUILTIN_ARRAY_BUFFER_FUNCTIONS(ARRAYBUFFER_PROPERTIES_PAIR)
     };
 #undef ARRAYBUFFER_PROPERTIES_PAIR
 };
