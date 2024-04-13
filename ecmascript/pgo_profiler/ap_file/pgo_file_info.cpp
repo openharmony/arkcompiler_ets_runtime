@@ -18,7 +18,7 @@
 
 namespace panda::ecmascript::pgo {
 using StringHelper = base::StringHelper;
-bool PGOProfilerHeader::strictMatch_ = true;
+bool PGOProfilerHeader::strictMatch_ = false;
 
 bool PGOProfilerHeader::BuildFromLegacy(void *buffer, PGOProfilerHeader **header)
 {

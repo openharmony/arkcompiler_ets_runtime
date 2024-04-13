@@ -111,7 +111,9 @@ public:
 
     void SetShouldCollectLiteralInfo(CompilationOptions &cOptions, const CompilerLog *log);
 
-    bool GenerateAbcFileInfos();
+    uint32_t GenerateAbcFileInfos();
+
+    bool HandleMergedPgoFile(uint32_t checksum);
 
     void GeneratePGOTypes(const CompilationOptions &cOptions);
 

@@ -57,13 +57,8 @@ bool PGOProfilerDecoder::Verify(uint32_t checksum)
     if (!isLoaded_) {
         return false;
     }
-    if (IsMethodMatchEnabled()) {
-        LOG_ECMA(INFO) << "Skip verify file checksum, use method checksum instead.";
-        isVerifySuccess_ = true;
-    } else {
-        isVerifySuccess_ = pandaFileInfos_.Checksum(checksum);
-    }
-    return isVerifySuccess_;
+    // Notice: lx maybe can support method checksum;
+    return pandaFileInfos_.Checksum(checksum);
 }
 
 bool PGOProfilerDecoder::LoadAndVerify(uint32_t checksum, const std::shared_ptr<PGOAbcFilePool> &externalAbcFilePool)
