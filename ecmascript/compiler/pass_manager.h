@@ -17,6 +17,7 @@
 #define ECMASCRIPT_COMPILER_PASS_MANAGER_H
 
 #include "ecmascript/compiler/aot_compiler_preprocessor.h"
+#include "ecmascript/compiler/jit_compilation_env.h"
 #include "ecmascript/compiler/bytecode_info_collector.h"
 #include "ecmascript/compiler/compiler_log.h"
 #include "ecmascript/compiler/file_generators.h"
@@ -34,17 +35,16 @@ class CompilationConfig;
 class PassData;
 class CallMethodFlagMap;
 struct AbcFileInfo;
-
 class PassContext {
 public:
     PassContext(const std::string &triple, CompilerLog *log, BytecodeInfoCollector* collector, IRModule *aotModule,
         PGOProfilerDecoder *decoder)
-        : vm_(collector->GetVM()),
+        : compilationEnv_(collector->GetCompilationEnv()),
           bcInfoCollector_(collector),
-          tsManager_(vm_->GetJSThread()->GetCurrentEcmaContext()->GetTSManager()),
+          tsManager_(compilationEnv_->GetTSManager()),
           bytecodes_(collector->GetByteCodes()),
           lexEnvManager_(bcInfoCollector_->GetEnvManager()),
-          cmpCfg_(triple, &vm_->GetJSOptions()),
+          cmpCfg_(triple, &compilationEnv_->GetJSOptions()),
           log_(log),
           jsPandaFile_(collector->GetJSPandaFile()),
           aotModule_(aotModule),
@@ -59,7 +59,7 @@ public:
 
     PGOTypeManager* GetPTManager() const
     {
-        return vm_->GetJSThread()->GetCurrentEcmaContext()->GetPTManager();
+        return compilationEnv_->GetPTManager();
     }
 
     Bytecodes* GetByteCodes()
@@ -114,12 +114,12 @@ public:
 
     NativeAreaAllocator *GetNativeAreaAllocator() const
     {
-        return vm_->GetNativeAreaAllocator();
+        return compilationEnv_->GetNativeAreaAllocator();
     }
 
-    EcmaVM *GetEcmaVM() const
+    CompilationEnv *GetCompilationEnv() const
     {
-        return vm_;
+        return compilationEnv_;
     }
 
     PGOProfilerDecoder *GetPfDecoder() const
@@ -128,7 +128,7 @@ public:
     }
 
 private:
-    EcmaVM *vm_ {nullptr};
+    CompilationEnv *compilationEnv_ {nullptr};
     BytecodeInfoCollector *bcInfoCollector_ {nullptr};
     TSManager *tsManager_ {nullptr};
     Bytecodes *bytecodes_ {nullptr};
@@ -142,15 +142,15 @@ private:
 
 class PassManager {
 public:
-    explicit PassManager(EcmaVM* vm, std::string &triple, size_t optLevel, size_t relocMode,
+    explicit PassManager(CompilationEnv *env, std::string &triple, size_t optLevel, size_t relocMode,
         CompilerLog *log, AotMethodLogList *logList, size_t maxAotMethodSize, size_t maxMethodsInModule,
         PGOProfilerDecoder &profilerDecoder, PassOptions *passOptions,
         const CallMethodFlagMap *callMethodFlagMap, const CVector<AbcFileInfo> &fileInfos, std::string optBCRange)
-        : vm_(vm), triple_(triple), optLevel_(optLevel), relocMode_(relocMode), log_(log),
+        : compilationEnv_(env), triple_(triple), optLevel_(optLevel), relocMode_(relocMode), log_(log),
           logList_(logList), maxAotMethodSize_(maxAotMethodSize), maxMethodsInModule_(maxMethodsInModule),
           profilerDecoder_(profilerDecoder), passOptions_(passOptions),
           callMethodFlagMap_(callMethodFlagMap), fileInfos_(fileInfos), optBCRange_(optBCRange) {
-                enableJITLog_ =  vm_->GetJSOptions().GetTraceJIT();
+                enableJITLog_ =  compilationEnv_->GetJSOptions().GetTraceJIT();
             };
 
     virtual ~PassManager() = default;
@@ -159,7 +159,7 @@ public:
 protected:
     bool IsReleasedPandaFile(const JSPandaFile *jsPandaFile) const;
 
-    EcmaVM *vm_ {nullptr};
+    CompilationEnv *compilationEnv_ {nullptr};
     std::string triple_ {};
     size_t optLevel_ {3}; // 3 : default backend optimization level
     size_t relocMode_ {2}; // 2 : default relocation mode-- PIC
@@ -177,13 +177,13 @@ protected:
 
 class JitPassManager : public PassManager {
 public:
-    JitPassManager(EcmaVM* vm, std::string &triple, size_t optLevel, size_t relocMode,
+    JitPassManager(JitCompilationEnv *env, std::string &triple, size_t optLevel, size_t relocMode,
         CompilerLog *log, AotMethodLogList *logList,
         PGOProfilerDecoder &profilerDecoder, PassOptions *passOptions)
-        : PassManager(vm, triple, optLevel, relocMode, log, logList, 1, 1, profilerDecoder, passOptions,
+        : PassManager(env, triple, optLevel, relocMode, log, logList, 1, 1, profilerDecoder, passOptions,
                       nullptr, CVector<AbcFileInfo> {}, "") { };
 
-    bool Compile(JSHandle<JSFunction> &jsFunction, AOTFileGenerator &gen, int32_t osrOffset = -1);
+    bool Compile(AOTFileGenerator &gen, int32_t osrOffset = -1);
     bool RunCg();
     virtual ~JitPassManager();
 

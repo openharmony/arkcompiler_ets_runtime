@@ -863,6 +863,7 @@ public:
     JSHandle<JSSymbol> NewSWellKnownSymbolWithChar(std::string_view description);
     JSHandle<JSSymbol> NewSPublicSymbolWithChar(std::string_view description);
     JSHandle<JSSymbol> NewSPublicSymbol(const JSHandle<JSTaggedValue> &name);
+    JSHandle<Method> CloneMethod(JSHandle<Method> method);
 
 private:
     friend class GlobalEnv;

@@ -99,10 +99,10 @@ public:
         STORE
     };
 
-    explicit ObjectAccessHelper(TSManager *tsManager, AccessMode mode, GateRef receiver, GateType type,
+    explicit ObjectAccessHelper(CompilationEnv *env, AccessMode mode, GateRef receiver, GateType type,
                                 JSTaggedValue key, GateRef value)
-        : tsManager_(tsManager),
-          thread_(tsManager_->GetThread()),
+        : tsManager_(env->GetTSManager()),
+          compilationEnv_(env),
           mode_(mode),
           receiver_(receiver),
           type_(type),
@@ -139,7 +139,7 @@ private:
     bool ComputePolymorphism(ChunkVector<ObjectAccessInfo> &infos);
 
     TSManager *tsManager_ {nullptr};
-    const JSThread *thread_ {nullptr};
+    const CompilationEnv *compilationEnv_ {nullptr};
     AccessMode mode_ {};
     GateRef receiver_ {Circuit::NullGate()};
     GateType type_ {GateType::AnyType()};
@@ -156,10 +156,10 @@ public:
         STORE
     };
 
-    explicit PGOObjectAccessHelper(TSManager *tsManager, AccessMode mode, GateRef receiver, ProfileTyper type,
+    explicit PGOObjectAccessHelper(CompilationEnv *env, AccessMode mode, GateRef receiver, ProfileTyper type,
                                    JSTaggedValue key, GateRef value)
-        : tsManager_(tsManager),
-          thread_(tsManager_->GetThread()),
+        : tsManager_(env->GetTSManager()),
+          compilationEnv_(env),
           mode_(mode),
           receiver_(receiver),
           holder_(receiver),
@@ -204,7 +204,7 @@ public:
 private:
 
     TSManager *tsManager_ {nullptr};
-    const JSThread *thread_ {nullptr};
+    const CompilationEnv *compilationEnv_ {nullptr};
     AccessMode mode_ {};
     GateRef receiver_ {Circuit::NullGate()};
     GateRef holder_ {Circuit::NullGate()};

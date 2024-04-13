@@ -21,6 +21,8 @@
 #include "ecmascript/ecma_vm.h"
 
 #include "ecmascript/jit/jit.h"
+#include "ecmascript/jit/jit_thread.h"
+#include "ecmascript/jit/persistent_handles.h"
 
 namespace panda::ecmascript {
 enum CompileState : uint8_t {
@@ -28,18 +30,71 @@ enum CompileState : uint8_t {
     FAIL,
 };
 
+enum RunState : uint8_t {
+    INIT = 0,
+    RUNNING,
+    FINISH
+};
+
+class JitTaskpool : public Taskpool {
+public:
+    PUBLIC_API static JitTaskpool *GetCurrentTaskpool();
+    JitTaskpool() = default;
+    NO_COPY_SEMANTIC(JitTaskpool);
+    NO_MOVE_SEMANTIC(JitTaskpool);
+
+    EcmaVM *GetCompilerVm()
+    {
+        return compilerVm_;
+    }
+
+    void SetCompilerVm(EcmaVM *vm)
+    {
+        LockHolder lock(jitTaskPoolMutex_);
+        compilerVm_ = vm;
+        jitTaskPoolCV_.SignalAll();
+    }
+
+    void WaitForJitTaskPoolReady()
+    {
+        LockHolder lock(jitTaskPoolMutex_);
+        if (compilerVm_ == nullptr) {
+            jitTaskPoolCV_.Wait(&jitTaskPoolMutex_);
+        }
+    }
+
+    void Initialize()
+    {
+        RegisterRunnerHook([](os::thread::native_handle_type thread) {
+            os::thread::SetThreadName(thread, "OS_JIT_Thread");
+            auto jitVm = JitVM::Create();
+            JitTaskpool::GetCurrentTaskpool()->SetCompilerVm(jitVm);
+        }, []([[maybe_unused]] os::thread::native_handle_type thread) {
+            EcmaVM *compilerVm = JitTaskpool::GetCurrentTaskpool()->GetCompilerVm();
+            JitVM::Destroy(compilerVm);
+        });
+        Taskpool::Initialize();
+    }
+
+    void Destroy()
+    {
+        Taskpool::Destroy(compilerVm_->GetJSThread()->GetThreadId());
+    }
+
+private:
+    uint32_t TheMostSuitableThreadNum(uint32_t threadNum) const override;
+    EcmaVM *compilerVm_;
+    Mutex jitTaskPoolMutex_;
+    ConditionVariable jitTaskPoolCV_;
+};
+
 class JitTask {
 public:
-    JitTask(EcmaVM *vm, Jit *jit, JSHandle<JSFunction> &jsFunction, CString &methodName, int32_t offset,
-            uint32_t taskThreadId)
-        : vm_(vm),
-        jit_(jit),
-        jsFunction_(jsFunction),
-        compilerTask_(nullptr),
-        state_(CompileState::SUCCESS),
-        methodInfo_(methodName),
-        offset_(offset),
-        taskThreadId_(taskThreadId) { }
+    JitTask(JSThread *hostThread, JSThread *compilerThread, Jit *jit,
+        JSHandle<JSFunction> &jsFunction, CString &methodName, int32_t offset,
+        uint32_t taskThreadId, JitCompileMode mode);
+    // for ut
+    JitTask(EcmaVM *hVm, EcmaVM *cVm, Jit *jit, uint32_t taskThreadId, JitCompileMode mode);
     ~JitTask();
     void Optimize();
     void Finalize();
@@ -62,11 +117,6 @@ public:
         return offset_;
     }
 
-    void RequestInstallCode()
-    {
-        jit_->RequestInstallCode(this);
-    }
-
     bool IsCompileSuccess() const
     {
         return state_ == CompileState::SUCCESS;
@@ -87,9 +137,24 @@ public:
         return jit_;
     }
 
-    EcmaVM *GetVM()
+    JSThread *GetHostThread()
     {
-        return vm_;
+        return hostThread_;
+    }
+
+    EcmaVM *GetHostVM()
+    {
+        return hostThread_->GetEcmaVM();
+    }
+
+    JSThread *GetCompilerThread()
+    {
+        return compilerThread_;
+    }
+
+    JitVM *GetCompilerVM()
+    {
+        return static_cast<JitVM*>(compilerThread_->GetEcmaVM());
     }
 
     CString GetMethodInfo() const
@@ -106,32 +171,106 @@ public:
     {
         return taskThreadId_;
     }
+
+    EcmaContext *GetEcmaContext() const
+    {
+        return ecmaContext_;
+    }
+
+    void SetRunState(RunState s)
+    {
+        runState_.store(s, std::memory_order_release);
+    }
+
+    void SetRunStateFinish()
+    {
+        LockHolder lock(runStateMutex_);
+        runState_.store(RunState::FINISH);
+        runStateCondition_.SignalAll();
+    }
+
+    bool IsFinish() const
+    {
+        return runState_.load(std::memory_order_acquire) == RunState::FINISH;
+    }
+    bool IsRunning() const
+    {
+        return runState_.load(std::memory_order_acquire) == RunState::RUNNING;
+    }
+    void WaitFinish();
+    bool IsAsyncTask() const
+    {
+        return jitCompileMode_ == JitCompileMode::ASYNC;
+    }
+
+    void Terminated()
+    {
+        persistentHandles_->SetTerminated();
+    }
+
     class AsyncTask : public Task {
     public:
-        explicit AsyncTask(JitTask *jitTask, int32_t id) : Task(id), jitTask_(jitTask) { }
+        explicit AsyncTask(std::shared_ptr<JitTask>jitTask, int32_t id) : Task(id), jitTask_(jitTask) { }
         virtual ~AsyncTask() override = default;
 
         bool Run(uint32_t threadIndex) override;
+        EcmaContext *GetEcmaContext() const
+        {
+            return jitTask_->GetEcmaContext();
+        }
+        EcmaVM *GetHostVM() const
+        {
+            return jitTask_->GetHostThread()->GetEcmaVM();
+        }
+        bool IsRunning() const
+        {
+            return jitTask_->IsRunning();
+        }
+        void WaitFinish() const
+        {
+            jitTask_->WaitFinish();
+        }
+
+        void Terminated()
+        {
+            Task::Terminated();
+            jitTask_->Terminated();
+        }
     private:
-        JitTask *jitTask_;
+        std::shared_ptr<JitTask> jitTask_ { nullptr };
     };
 private:
     void PersistentHandle();
     void ReleasePersistentHandle();
+    void CloneProfileTypeInfo();
     void SetJsFunction(JSHandle<JSFunction> &jsFunction)
     {
         jsFunction_ = jsFunction;
     }
 
-    EcmaVM *vm_;
+    void SetProfileTypeInfo(JSHandle<ProfileTypeInfo> &profileTypeInfo)
+    {
+        profileTypeInfo_ = profileTypeInfo;
+    }
+
+    JSThread *hostThread_;
+    JSThread *compilerThread_;
     Jit *jit_;
     JSHandle<JSFunction> jsFunction_;
+    JSHandle<ProfileTypeInfo> profileTypeInfo_;
     void *compilerTask_;
     MachineCodeDesc codeDesc_;
     CompileState state_;
     CString methodInfo_;
     int32_t offset_;
     uint32_t taskThreadId_;
+    std::unique_ptr<PersistentHandles> persistentHandles_;
+    EcmaContext *ecmaContext_;
+    JitCompileMode jitCompileMode_;
+
+    std::atomic<RunState> runState_;
+    Mutex runStateMutex_;
+    ConditionVariable runStateCondition_;
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_JIT_TASK_H

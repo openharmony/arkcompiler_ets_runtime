@@ -250,7 +250,7 @@ void AotCompilerPreprocessor::RecordArrayElement(const CompilationOptions &cOpti
         JSPandaFile *jsPandaFile = fileInfo.jsPandaFile_.get();
         PGOTypeManager *ptManager = vm_->GetJSThread()->GetCurrentEcmaContext()->GetPTManager();
         ptManager->SetCurCompilationFile(jsPandaFile);
-        BytecodeInfoCollector collector(vm_, jsPandaFile, profilerDecoder_, cOptions.maxAotMethodSize_,
+        BytecodeInfoCollector collector(&aotCompilationEnv_, jsPandaFile, profilerDecoder_, cOptions.maxAotMethodSize_,
                                         cOptions.isEnableCollectLiteralInfo_);
         BCInfo &bytecodeInfo = collector.GetBytecodeInfo();
         const PGOBCInfo *bcInfo = collector.GetPGOBCInfo();
@@ -284,7 +284,7 @@ void AotCompilerPreprocessor::GeneratePGOTypes(const CompilationOptions &cOption
     PGOTypeManager *ptManager = vm_->GetJSThread()->GetCurrentEcmaContext()->GetPTManager();
     for (const AbcFileInfo &fileInfo : fileInfos_) {
         JSPandaFile *jsPandaFile = fileInfo.jsPandaFile_.get();
-        BytecodeInfoCollector collector(vm_, jsPandaFile, profilerDecoder_, cOptions.maxAotMethodSize_,
+        BytecodeInfoCollector collector(&aotCompilationEnv_, jsPandaFile, profilerDecoder_, cOptions.maxAotMethodSize_,
                                         cOptions.isEnableCollectLiteralInfo_);
         PGOTypeParser parser(profilerDecoder_, ptManager);
         parser.CreatePGOType(collector);
@@ -366,7 +366,7 @@ void AotCompilerPreprocessor::GenerateMethodMap(CompilationOptions &cOptions)
     jsPandaFileManager->EnumerateNonVirtualJSPandaFiles(
         [this, &cOptions] (std::shared_ptr<JSPandaFile> jsPandaFilePtr) {
         JSPandaFile *jsPandaFile = jsPandaFilePtr.get();
-        BytecodeInfoCollector collector(vm_, jsPandaFile, profilerDecoder_, cOptions.maxAotMethodSize_,
+        BytecodeInfoCollector collector(&aotCompilationEnv_, jsPandaFile, profilerDecoder_, cOptions.maxAotMethodSize_,
                                         cOptions.isEnableCollectLiteralInfo_);
         BCInfo &bytecodeInfo = collector.GetBytecodeInfo();
         const auto &methodPcInfos = bytecodeInfo.GetMethodPcInfos();

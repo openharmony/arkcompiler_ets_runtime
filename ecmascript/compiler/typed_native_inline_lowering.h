@@ -34,7 +34,7 @@ public:
           circuit_(circuit),
           acc_(circuit),
           builder_(circuit, cmpCfg),
-          isLiteCG_(ctx->GetEcmaVM()->GetJSOptions().IsCompilerEnableLiteCG()) {}
+          isLiteCG_(ctx->GetCompilationEnv()->GetJSOptions().IsCompilerEnableLiteCG()) {}
     ~TypedNativeInlineLowering() = default;
     GateRef VisitGate(GateRef gate) override;
 private:

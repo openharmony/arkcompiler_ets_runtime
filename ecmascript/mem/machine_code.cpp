@@ -146,7 +146,10 @@ std::tuple<uint64_t, uint8_t*, int, kungfu::CalleeRegAndOffsetVec> MachineCode::
         }
         tmpFuncEntryDes++;
     }
-    ASSERT(funcEntryDes != nullptr);
+
+    if (funcEntryDes == nullptr) {
+        return {};
+    }
 
     int delta = funcEntryDes->fpDeltaPrevFrameSp_;
     kungfu::CalleeRegAndOffsetVec calleeRegInfo;

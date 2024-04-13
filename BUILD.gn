@@ -693,6 +693,8 @@ ecma_source = [
   "ecmascript/intl/locale_helper.cpp",
   "ecmascript/jit/jit.cpp",
   "ecmascript/jit/jit_task.cpp",
+  "ecmascript/jit/jit_thread.cpp",
+  "ecmascript/jit/persistent_handles.cpp",
   "ecmascript/jobs/micro_job_queue.cpp",
   "ecmascript/jspandafile/js_pandafile.cpp",
   "ecmascript/jspandafile/js_pandafile_manager.cpp",

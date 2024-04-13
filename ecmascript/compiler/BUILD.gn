@@ -78,6 +78,7 @@ config("include_maple") {
 
 libark_jsoptimizer_sources = [
   "access_object_stub_builder.cpp",
+  "aot_compilation_env.cpp",
   "aot_compiler_preprocessor.cpp",
   "argument_accessor.cpp",
   "array_bounds_check_elimination.cpp",
@@ -114,6 +115,7 @@ libark_jsoptimizer_sources = [
   "combined_pass_visitor.cpp",
   "common_stubs.cpp",
   "compilation_driver.cpp",
+  "compilation_env.cpp",
   "compiler_log.cpp",
   "constant_folding.cpp",
   "dead_code_elimination.cpp",
@@ -136,6 +138,7 @@ libark_jsoptimizer_sources = [
   "interpreter_stub.cpp",
   "ir_builder.cpp",
   "ir_module.cpp",
+  "jit_compilation_env.cpp",
   "jit_compiler.cpp",
   "later_elimination.cpp",
   "lcr_circuit_builder.cpp",

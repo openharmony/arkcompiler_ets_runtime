@@ -20,10 +20,12 @@
 #include <memory>
 #include <thread>
 #include <vector>
+#include <functional>
 
 #include "ecmascript/common.h"
 #include "ecmascript/taskpool/task_queue.h"
 #include "ecmascript/platform/mutex.h"
+#include "libpandabase/os/thread.h"
 
 namespace panda::ecmascript {
 static constexpr uint32_t MIN_TASKPOOL_THREAD_NUM = 3;
@@ -32,7 +34,8 @@ static constexpr uint32_t DEFAULT_TASKPOOL_THREAD_NUM = 0;
 
 class Runner {
 public:
-    explicit Runner(uint32_t threadNum);
+    explicit Runner(uint32_t threadNum, const std::function<void(os::thread::native_handle_type)> prologueHook,
+         const std::function<void(os::thread::native_handle_type)> epilogueHook);
     ~Runner() = default;
 
     NO_COPY_SEMANTIC(Runner);
@@ -64,6 +67,20 @@ public:
         return false;
     }
 
+    void PrologueHook(os::thread::native_handle_type thread)
+    {
+        if (prologueHook_ != nullptr) {
+            prologueHook_(thread);
+        }
+    }
+    void EpilogueHook(os::thread::native_handle_type thread)
+    {
+        if (epilogueHook_ != nullptr) {
+            epilogueHook_(thread);
+        }
+    }
+    void ForEachTask(const std::function<void(Task*)> &f);
+
 private:
     void Run(uint32_t threadId);
     void SetRunTask(uint32_t threadId, Task *task);
@@ -75,6 +92,9 @@ private:
     std::vector<uint32_t> gcThreadId_ {};
     Mutex mtx_;
     Mutex mtxPool_;
+
+    std::function<void(os::thread::native_handle_type)> prologueHook_;
+    std::function<void(os::thread::native_handle_type)> epilogueHook_;
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_TASKPOOL_RUNNER_H

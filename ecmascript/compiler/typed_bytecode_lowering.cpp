@@ -31,6 +31,7 @@
 #include "ecmascript/jspandafile/js_pandafile.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/jspandafile/program_object.h"
+#include "ecmascript/jit/jit.h"
 
 namespace panda::ecmascript::kungfu {
 bool TypedBytecodeLowering::RunTypedBytecodeLowering()
@@ -51,7 +52,7 @@ bool TypedBytecodeLowering::RunTypedBytecodeLowering()
     auto allTypedOpCount = allJSBcCount_ - allNonTypedOpCount_;
     if (allTypedOpCount != 0) {
         typeHitRate = static_cast<double>(hitTypedOpCount_) / static_cast<double>(allTypedOpCount);
-        auto typeThreshold = tsManager_->GetTypeThreshold();
+        auto typeThreshold = const_cast<CompilationEnv*>(compilationEnv_)->GetJSOptions().GetTypeThreshold();
         if (typeHitRate <= typeThreshold) {
             success = false;
         }
@@ -141,8 +142,10 @@ void TypedBytecodeLowering::Lower(GateRef gate)
         case EcmaOpcode::GETITERATOR_IMM16:
             LowerGetIterator(gate);
             break;
-        case EcmaOpcode::CREATEEMPTYOBJECT:
-            LowerCreateEmptyObject(gate);
+        case EcmaOpcode::CREATEEMPTYOBJECT: {
+                Jit::JitLockHolder lock(compilationEnv_, "LowerCreateEmptyObject");
+                LowerCreateEmptyObject(gate);
+            }
             break;
         case EcmaOpcode::CALLTHIS0_IMM8_V8:
             LowerTypedCallthis0(gate);
@@ -154,13 +157,17 @@ void TypedBytecodeLowering::Lower(GateRef gate)
             LowerTypedCallthis2(gate);
             break;
         case EcmaOpcode::CREATEOBJECTWITHBUFFER_IMM8_ID16:
-        case EcmaOpcode::CREATEOBJECTWITHBUFFER_IMM16_ID16:
-            LowerCreateObjectWithBuffer(gate);
+        case EcmaOpcode::CREATEOBJECTWITHBUFFER_IMM16_ID16: {
+                Jit::JitLockHolder lock(compilationEnv_, "LowerCreateObjectWithBuffer");
+                LowerCreateObjectWithBuffer(gate);
+            }
             break;
         case EcmaOpcode::NEWOBJRANGE_IMM8_IMM8_V8:
         case EcmaOpcode::NEWOBJRANGE_IMM16_IMM8_V8:
-        case EcmaOpcode::WIDE_NEWOBJRANGE_PREF_IMM16_V8:
-            LowerTypedNewObjRange(gate);
+        case EcmaOpcode::WIDE_NEWOBJRANGE_PREF_IMM16_V8: {
+                Jit::JitLockHolder lock(compilationEnv_, "LowerTypedNewObjRange");
+                LowerTypedNewObjRange(gate);
+            }
             break;
         case EcmaOpcode::ADD2_IMM8_V8:
             LowerTypedBinOp<TypedBinOp::TYPED_ADD>(gate);
@@ -272,15 +279,19 @@ void TypedBytecodeLowering::Lower(GateRef gate)
         case EcmaOpcode::LDOBJBYNAME_IMM8_ID16:
         case EcmaOpcode::LDOBJBYNAME_IMM16_ID16:
         case EcmaOpcode::LDTHISBYNAME_IMM8_ID16:
-        case EcmaOpcode::LDTHISBYNAME_IMM16_ID16:
-            LowerTypedLdObjByName(gate);
+        case EcmaOpcode::LDTHISBYNAME_IMM16_ID16: {
+                Jit::JitLockHolder lock(compilationEnv_, "LowerTypedLdObjByName");
+                LowerTypedLdObjByName(gate);
+            }
             break;
         case EcmaOpcode::STOBJBYNAME_IMM8_ID16_V8:
         case EcmaOpcode::STOBJBYNAME_IMM16_ID16_V8:
         case EcmaOpcode::STTHISBYNAME_IMM8_ID16:
         case EcmaOpcode::STTHISBYNAME_IMM16_ID16:
-        case EcmaOpcode::DEFINEFIELDBYNAME_IMM8_ID16_V8:
-            LowerTypedStObjByName(gate);
+        case EcmaOpcode::DEFINEFIELDBYNAME_IMM8_ID16_V8: {
+                Jit::JitLockHolder lock(compilationEnv_, "LowerTypedStObjByName");
+                LowerTypedStObjByName(gate);
+            }
             break;
         case EcmaOpcode::LDOBJBYVALUE_IMM8_V8:
         case EcmaOpcode::LDOBJBYVALUE_IMM16_V8:
@@ -358,7 +369,7 @@ int32_t TypedBytecodeLowering::GetEcmaOpCodeListIndex(EcmaOpcode ecmaOpCode)
 template<TypedBinOp Op>
 void TypedBytecodeLowering::LowerTypedBinOp(GateRef gate)
 {
-    BinOpTypeInfoAccessor tacc(thread_, circuit_, gate);
+    BinOpTypeInfoAccessor tacc(compilationEnv_, circuit_, gate);
     if (tacc.HasNumberType()) {
         SpeculateNumbers<Op>(tacc);
     } else if (tacc.IsStringType()) {
@@ -369,7 +380,7 @@ void TypedBytecodeLowering::LowerTypedBinOp(GateRef gate)
 template<TypedUnOp Op>
 void TypedBytecodeLowering::LowerTypedUnOp(GateRef gate)
 {
-    UnOpTypeInfoAccessor tacc(thread_, circuit_, gate);
+    UnOpTypeInfoAccessor tacc(compilationEnv_, circuit_, gate);
     // NOTICE-PGO: wx add support for PrimitiveNumberType
     if (tacc.HasNumberType()) {
         SpeculateNumber<Op>(tacc);
@@ -379,7 +390,7 @@ void TypedBytecodeLowering::LowerTypedUnOp(GateRef gate)
 template<TypedBinOp Op>
 void TypedBytecodeLowering::LowerTypedEqOrNotEq(GateRef gate)
 {
-    BinOpTypeInfoAccessor tacc(thread_, circuit_, gate);
+    BinOpTypeInfoAccessor tacc(compilationEnv_, circuit_, gate);
     if (tacc.LeftOrRightIsUndefinedOrNull()) {
         AddProfiling(gate);
         GateRef left = tacc.GetLeftGate();
@@ -398,10 +409,10 @@ void TypedBytecodeLowering::SpeculateStrings(const BinOpTypeInfoAccessor &tacc)
         AddProfiling(tacc.GetGate());
         GateRef left = tacc.GetLeftGate();
         GateRef right = tacc.GetReightGate();
-        if (!TypeInfoAccessor::IsTrustedStringType(thread_, circuit_, chunk_, acc_, left)) {
+        if (!TypeInfoAccessor::IsTrustedStringType(compilationEnv_, circuit_, chunk_, acc_, left)) {
             builder_.EcmaStringCheck(left);
         }
-        if (!TypeInfoAccessor::IsTrustedStringType(thread_, circuit_, chunk_, acc_, right)) {
+        if (!TypeInfoAccessor::IsTrustedStringType(compilationEnv_, circuit_, chunk_, acc_, right)) {
             builder_.EcmaStringCheck(right);
         }
         GateRef result = builder_.TypedBinaryOp<Op>(left, right, tacc.GetParamType());
@@ -431,7 +442,7 @@ void TypedBytecodeLowering::SpeculateNumber(const UnOpTypeInfoAccessor &tacc)
 
 void TypedBytecodeLowering::LowerTypeToNumeric(GateRef gate)
 {
-    UnOpTypeInfoAccessor tacc(thread_, circuit_, gate);
+    UnOpTypeInfoAccessor tacc(compilationEnv_, circuit_, gate);
     if (tacc.HasNumberType()) {
         AddProfiling(gate);
         LowerPrimitiveTypeToNumber(tacc);
@@ -446,7 +457,7 @@ void TypedBytecodeLowering::LowerPrimitiveTypeToNumber(const UnOpTypeInfoAccesso
 
 void TypedBytecodeLowering::LowerConditionJump(GateRef gate, bool flag)
 {
-    ConditionJumpTypeInfoAccessor tacc(thread_, circuit_, gate);
+    ConditionJumpTypeInfoAccessor tacc(compilationEnv_, circuit_, gate);
     if (TypeInfoAccessor::IsTrustedBooleanType(acc_, tacc.GetValue())) {
         AddProfiling(gate);
         SpeculateConditionJump(tacc, flag);
@@ -479,7 +490,7 @@ void TypedBytecodeLowering::DeleteConstDataIfNoUser(GateRef gate)
 void TypedBytecodeLowering::LowerTypedLdObjByName(GateRef gate)
 {
     DISALLOW_GARBAGE_COLLECTION;
-    LoadObjByNameTypeInfoAccessor tacc(thread_, circuit_, gate, chunk_);
+    LoadObjByNameTypeInfoAccessor tacc(compilationEnv_, circuit_, gate, chunk_);
 
     if (TryLowerTypedLdobjBynameFromGloablBuiltin(gate)) {
         return;
@@ -579,7 +590,7 @@ void TypedBytecodeLowering::LowerTypedLdObjByName(GateRef gate)
 void TypedBytecodeLowering::LowerTypedStObjByName(GateRef gate)
 {
     DISALLOW_GARBAGE_COLLECTION;
-    StoreObjByNameTypeInfoAccessor tacc(thread_, circuit_, gate, chunk_);
+    StoreObjByNameTypeInfoAccessor tacc(compilationEnv_, circuit_, gate, chunk_);
     if (tacc.TypesIsEmpty() || tacc.HasIllegalType()) {
         return;
     }
@@ -778,7 +789,7 @@ GateRef TypedBytecodeLowering::BuildNamedPropertyAccess(
 
 bool TypedBytecodeLowering::TryLowerTypedLdObjByNameForBuiltin(GateRef gate)
 {
-    LoadBulitinObjTypeInfoAccessor tacc(thread_, circuit_, gate, chunk_);
+    LoadBulitinObjTypeInfoAccessor tacc(compilationEnv_, circuit_, gate, chunk_);
     // Just supported mono.
     if (tacc.IsMono()) {
         if (tacc.IsBuiltinsType()) {
@@ -808,7 +819,8 @@ bool TypedBytecodeLowering::TryLowerTypedLdObjByNameForBuiltin(const LoadBulitin
 {
     EcmaString *propString = EcmaString::Cast(tacc.GetKeyTaggedValue().GetTaggedObject());
     // (1) get length
-    EcmaString *lengthString = EcmaString::Cast(thread_->GlobalConstants()->GetLengthString().GetTaggedObject());
+    EcmaString *lengthString =
+        EcmaString::Cast(compilationEnv_->GlobalConstants()->GetLengthString().GetTaggedObject());
     if (propString == lengthString) {
         if (tacc.IsBuiltinsArray()) {
             LowerTypedLdArrayLength(tacc);
@@ -836,9 +848,9 @@ bool TypedBytecodeLowering::TryLowerTypedLdObjByNameForGlobalsId(const LoadBulit
     GateRef frameState = acc_.FindNearestFrameState(gate);
     if (globalsId.IsGlobalConstId()) {
         ConstantIndex index = static_cast<ConstantIndex>(globalsId.GetGlobalConstId());
-        JSHClass *hclass = JSHClass::Cast(thread_->GlobalConstants()->GetGlobalConstantObject(
+        JSHClass *hclass = JSHClass::Cast(compilationEnv_->GlobalConstants()->GetGlobalConstantObject(
             static_cast<size_t>(index)).GetTaggedObject());
-        PropertyLookupResult plr = JSHClass::LookupPropertyInBuiltinHClass(thread_, hclass, key);
+        PropertyLookupResult plr = JSHClass::LookupPropertyInBuiltinHClass(compilationEnv_->GetJSThread(), hclass, key);
         if (!plr.IsFound() || plr.IsAccessor()) {
             return false;
         }
@@ -857,9 +869,9 @@ bool TypedBytecodeLowering::TryLowerTypedLdObjByNameForGlobalsId(const LoadBulit
         return true;
     } else if (globalsId.IsGlobalEnvId()) { // ctor Hclass
         GlobalEnvField index = static_cast<GlobalEnvField>(globalsId.GetGlobalEnvId());
-        JSHClass *hclass = JSHClass::Cast(thread_->GetGlobalEnv()->GetGlobalEnvObjectByIndex(
+        JSHClass *hclass = JSHClass::Cast(compilationEnv_->GetGlobalEnv()->GetGlobalEnvObjectByIndex(
             static_cast<size_t>(index))->GetTaggedObject()->GetClass());
-        PropertyLookupResult plr = JSHClass::LookupPropertyInBuiltinHClass(thread_, hclass, key);
+        PropertyLookupResult plr = JSHClass::LookupPropertyInBuiltinHClass(compilationEnv_->GetJSThread(), hclass, key);
         if (!plr.IsFound() || plr.IsAccessor()) {
             return false;
         }
@@ -881,19 +893,19 @@ bool TypedBytecodeLowering::TryLowerTypedLdObjByNameForGlobalsId(const LoadBulit
 
 bool TypedBytecodeLowering::TryLowerTypedLdobjBynameFromGloablBuiltin(GateRef gate)
 {
-    LoadBulitinObjTypeInfoAccessor tacc(thread_, circuit_, gate, chunk_);
+    LoadBulitinObjTypeInfoAccessor tacc(compilationEnv_, circuit_, gate, chunk_);
     GateRef receiver = tacc.GetReceiver();
     if (acc_.GetOpCode(receiver) != OpCode::LOAD_BUILTIN_OBJECT) {
         return false;
     }
-    JSHandle<GlobalEnv> globalEnv = thread_->GetEcmaVM()->GetGlobalEnv();
+    JSHandle<GlobalEnv> globalEnv = compilationEnv_->GetGlobalEnv();
     uint64_t index = acc_.TryGetValue(receiver);
     BuiltinType type = static_cast<BuiltinType>(index);
     if (type == BuiltinType::BT_MATH) {
         auto math = globalEnv->GetMathFunction();
         JSHClass *hclass = math.GetTaggedValue().GetTaggedObject()->GetClass();
         JSTaggedValue key = tacc.GetKeyTaggedValue();
-        PropertyLookupResult plr = JSHClass::LookupPropertyInBuiltinHClass(thread_, hclass, key);
+        PropertyLookupResult plr = JSHClass::LookupPropertyInBuiltinHClass(compilationEnv_->GetJSThread(), hclass, key);
         if (!plr.IsFound() || plr.IsAccessor()) {
             return false;
         }
@@ -959,9 +971,10 @@ bool TypedBytecodeLowering::TryLowerTypedLdObjByNameForBuiltinMethod(const LoadB
         return false;
     }
     size_t protoFieldIndex = static_cast<size_t>(*protoField);
-    JSHandle<GlobalEnv> globalEnv = thread_->GetEcmaVM()->GetGlobalEnv();
+    JSHandle<GlobalEnv> globalEnv = compilationEnv_->GetGlobalEnv();
     JSHClass *prototypeHClass = globalEnv->GetGlobalEnvObjectByIndex(protoFieldIndex)->GetTaggedObject()->GetClass();
-    PropertyLookupResult plr = JSHClass::LookupPropertyInBuiltinPrototypeHClass(thread_, prototypeHClass, key);
+    PropertyLookupResult plr = JSHClass::LookupPropertyInBuiltinPrototypeHClass(compilationEnv_->GetJSThread(),
+        prototypeHClass, key);
     bool isPrototypeOfPrototype = false;
     // Unable to handle accessor at the moment
     if (!plr.IsFound() || plr.IsAccessor()) {
@@ -972,7 +985,8 @@ bool TypedBytecodeLowering::TryLowerTypedLdObjByNameForBuiltinMethod(const LoadB
             }
             protoFieldIndex = static_cast<size_t>(*protoField);
             prototypeHClass = globalEnv->GetGlobalEnvObjectByIndex(protoFieldIndex)->GetTaggedObject()->GetClass();
-            plr = JSHClass::LookupPropertyInBuiltinPrototypeHClass(thread_, prototypeHClass, key);
+            plr = JSHClass::LookupPropertyInBuiltinPrototypeHClass(compilationEnv_->GetJSThread(),
+                prototypeHClass, key);
             if (!plr.IsFound() || plr.IsAccessor()) {
                 return false;
             } else {
@@ -1007,7 +1021,7 @@ bool TypedBytecodeLowering::TryLowerTypedLdObjByNameForBuiltinMethod(const LoadB
 
 bool TypedBytecodeLowering::TryLowerTypedLdObjByIndexForBuiltin(GateRef gate)
 {
-    LoadBulitinObjTypeInfoAccessor tacc(thread_, circuit_, gate, chunk_);
+    LoadBulitinObjTypeInfoAccessor tacc(compilationEnv_, circuit_, gate, chunk_);
     GateRef result = Circuit::NullGate();
     // Just supported mono.
     if (tacc.IsMono()) {
@@ -1030,7 +1044,7 @@ void TypedBytecodeLowering::LowerTypedLdObjByIndex(GateRef gate)
 
 bool TypedBytecodeLowering::TryLowerTypedStObjByIndexForBuiltin(GateRef gate)
 {
-    StoreBulitinObjTypeInfoAccessor tacc(thread_, circuit_, gate, chunk_);
+    StoreBulitinObjTypeInfoAccessor tacc(compilationEnv_, circuit_, gate, chunk_);
     if (tacc.GetBuiltinsJSType() != JSType::JS_FLOAT32_ARRAY) {
         return false;
     }
@@ -1062,7 +1076,7 @@ void TypedBytecodeLowering::LowerTypedStObjByIndex(GateRef gate)
 
 bool TypedBytecodeLowering::TryLowerTypedLdObjByValueForBuiltin(GateRef gate)
 {
-    LoadBulitinObjTypeInfoAccessor tacc(thread_, circuit_, gate, chunk_);
+    LoadBulitinObjTypeInfoAccessor tacc(compilationEnv_, circuit_, gate, chunk_);
     GateRef result = Circuit::NullGate();
     // Just supported mono.
     if (tacc.IsMono()) {
@@ -1249,7 +1263,7 @@ void TypedBytecodeLowering::StoreTypedArrayByIndex(const StoreBulitinObjTypeInfo
 
 bool TypedBytecodeLowering::TryLowerTypedStObjByValueForBuiltin(GateRef gate)
 {
-    StoreBulitinObjTypeInfoAccessor tacc(thread_, circuit_, gate, chunk_);
+    StoreBulitinObjTypeInfoAccessor tacc(compilationEnv_, circuit_, gate, chunk_);
     // Just supported mono.
     if (tacc.IsMono()) {
         if (tacc.IsBuiltinsArray()) {
@@ -1277,7 +1291,7 @@ void TypedBytecodeLowering::LowerTypedStObjByValue(GateRef gate)
 
 void TypedBytecodeLowering::LowerTypedIsTrueOrFalse(GateRef gate, bool flag)
 {
-    UnOpTypeInfoAccessor tacc(thread_, circuit_, gate);
+    UnOpTypeInfoAccessor tacc(compilationEnv_, circuit_, gate);
     ParamType paramType;
     if (TypeInfoAccessor::IsTrustedBooleanType(acc_, tacc.GetValue())) {
         paramType = ParamType::BooleanType();
@@ -1302,7 +1316,7 @@ void TypedBytecodeLowering::LowerTypedNewObjRange(GateRef gate)
     if (TryLowerNewBuiltinConstructor(gate)) {
         return;
     }
-    NewObjRangeTypeInfoAccessor tacc(thread_, circuit_, gate);
+    NewObjRangeTypeInfoAccessor tacc(compilationEnv_, circuit_, gate);
     if (!tacc.FindHClass()) {
         return;
     }
@@ -1328,7 +1342,7 @@ void TypedBytecodeLowering::LowerTypedNewObjRange(GateRef gate)
 
 bool TypedBytecodeLowering::TryLowerNewBuiltinConstructor(GateRef gate)
 {
-    NewBuiltinCtorTypeInfoAccessor tacc(thread_, circuit_, gate);
+    NewBuiltinCtorTypeInfoAccessor tacc(compilationEnv_, circuit_, gate);
     if (!tacc.IsBuiltinModule()) {
         return false;
     }
@@ -1358,7 +1372,7 @@ bool TypedBytecodeLowering::TryLowerNewBuiltinConstructor(GateRef gate)
 
 void TypedBytecodeLowering::LowerTypedSuperCall(GateRef gate)
 {
-    SuperCallTypeInfoAccessor tacc(thread_, circuit_, gate);
+    SuperCallTypeInfoAccessor tacc(compilationEnv_, circuit_, gate);
     if (!tacc.IsClassTypeKind() && !tacc.IsValidCallMethodId()) {
         return;
     }
@@ -1600,7 +1614,7 @@ const JSPandaFile* TypedBytecodeLowering::GetCalleePandaFile(GateRef gate)
 
 void TypedBytecodeLowering::LowerTypedCallArg0(GateRef gate)
 {
-    CallArg0TypeInfoAccessor tacc(thread_, circuit_, gate, GetCalleePandaFile(gate), callMethodFlagMap_);
+    CallArg0TypeInfoAccessor tacc(compilationEnv_, circuit_, gate, GetCalleePandaFile(gate), callMethodFlagMap_);
     if (!tacc.IsValidCallMethodId()) {
         return;
     }
@@ -1609,7 +1623,7 @@ void TypedBytecodeLowering::LowerTypedCallArg0(GateRef gate)
 
 void TypedBytecodeLowering::LowerTypedCallArg1(GateRef gate)
 {
-    CallArg1TypeInfoAccessor tacc(thread_, circuit_, gate, GetCalleePandaFile(gate), callMethodFlagMap_);
+    CallArg1TypeInfoAccessor tacc(compilationEnv_, circuit_, gate, GetCalleePandaFile(gate), callMethodFlagMap_);
     GateRef func = tacc.GetFunc();
     GateRef a0Value = tacc.GetValue();
     BuiltinsStubCSigns::ID id = tacc.TryGetPGOBuiltinMethodId();
@@ -1626,7 +1640,7 @@ void TypedBytecodeLowering::LowerTypedCallArg1(GateRef gate)
 
 void TypedBytecodeLowering::LowerTypedCallArg2(GateRef gate)
 {
-    CallArg2TypeInfoAccessor tacc(thread_, circuit_, gate, GetCalleePandaFile(gate), callMethodFlagMap_);
+    CallArg2TypeInfoAccessor tacc(compilationEnv_, circuit_, gate, GetCalleePandaFile(gate), callMethodFlagMap_);
     if (!tacc.IsValidCallMethodId()) {
         return;
     }
@@ -1635,7 +1649,7 @@ void TypedBytecodeLowering::LowerTypedCallArg2(GateRef gate)
 
 void TypedBytecodeLowering::LowerTypedCallArg3(GateRef gate)
 {
-    CallArg3TypeInfoAccessor tacc(thread_, circuit_, gate, GetCalleePandaFile(gate), callMethodFlagMap_);
+    CallArg3TypeInfoAccessor tacc(compilationEnv_, circuit_, gate, GetCalleePandaFile(gate), callMethodFlagMap_);
     if (!tacc.IsValidCallMethodId()) {
         return;
     }
@@ -1644,7 +1658,7 @@ void TypedBytecodeLowering::LowerTypedCallArg3(GateRef gate)
 
 void TypedBytecodeLowering::LowerTypedCallrange(GateRef gate)
 {
-    CallRangeTypeInfoAccessor tacc(thread_, circuit_, gate, GetCalleePandaFile(gate), callMethodFlagMap_);
+    CallRangeTypeInfoAccessor tacc(compilationEnv_, circuit_, gate, GetCalleePandaFile(gate), callMethodFlagMap_);
     if (!tacc.IsValidCallMethodId()) {
         return;
     }
@@ -1717,7 +1731,7 @@ void TypedBytecodeLowering::LowerTypedThisCall(const TypeAccessor &tacc)
 
 void TypedBytecodeLowering::LowerTypedCallthis0(GateRef gate)
 {
-    CallThis0TypeInfoAccessor tacc(thread_, circuit_, gate, GetCalleePandaFile(gate), callMethodFlagMap_);
+    CallThis0TypeInfoAccessor tacc(compilationEnv_, circuit_, gate, GetCalleePandaFile(gate), callMethodFlagMap_);
     BuiltinsStubCSigns::ID pgoFuncId = tacc.TryGetPGOBuiltinMethodId();
     if (IS_TYPED_BUILTINS_ID_CALL_THIS0(pgoFuncId)) {
         AddProfiling(gate);
@@ -1732,7 +1746,7 @@ void TypedBytecodeLowering::LowerTypedCallthis0(GateRef gate)
 
 void TypedBytecodeLowering::LowerTypedCallthis1(GateRef gate)
 {
-    CallThis1TypeInfoAccessor tacc(thread_, circuit_, gate, GetCalleePandaFile(gate), callMethodFlagMap_);
+    CallThis1TypeInfoAccessor tacc(compilationEnv_, circuit_, gate, GetCalleePandaFile(gate), callMethodFlagMap_);
     BuiltinsStubCSigns::ID pgoFuncId = tacc.TryGetPGOBuiltinMethodId();
     if (IS_TYPED_BUILTINS_ID_CALL_THIS1(pgoFuncId)) {
         AddProfiling(gate);
@@ -1747,7 +1761,7 @@ void TypedBytecodeLowering::LowerTypedCallthis1(GateRef gate)
 
 void TypedBytecodeLowering::LowerTypedCallthis2(GateRef gate)
 {
-    CallThis2TypeInfoAccessor tacc(thread_, circuit_, gate, GetCalleePandaFile(gate), callMethodFlagMap_);
+    CallThis2TypeInfoAccessor tacc(compilationEnv_, circuit_, gate, GetCalleePandaFile(gate), callMethodFlagMap_);
     if (!tacc.CanOptimizeAsFastCall()) {
         return;
     }
@@ -1756,7 +1770,7 @@ void TypedBytecodeLowering::LowerTypedCallthis2(GateRef gate)
 
 void TypedBytecodeLowering::LowerTypedCallthis3(GateRef gate)
 {
-    CallThis3TypeInfoAccessor tacc(thread_, circuit_, gate, GetCalleePandaFile(gate), callMethodFlagMap_);
+    CallThis3TypeInfoAccessor tacc(compilationEnv_, circuit_, gate, GetCalleePandaFile(gate), callMethodFlagMap_);
     BuiltinsStubCSigns::ID pgoFuncId = tacc.TryGetPGOBuiltinMethodId();
     if (IS_TYPED_BUILTINS_ID_CALL_THIS3(pgoFuncId)) {
         AddProfiling(gate);
@@ -1771,7 +1785,7 @@ void TypedBytecodeLowering::LowerTypedCallthis3(GateRef gate)
 
 void TypedBytecodeLowering::LowerTypedCallthisrange(GateRef gate)
 {
-    CallThisRangeTypeInfoAccessor tacc(thread_, circuit_, gate, GetCalleePandaFile(gate), callMethodFlagMap_);
+    CallThisRangeTypeInfoAccessor tacc(compilationEnv_, circuit_, gate, GetCalleePandaFile(gate), callMethodFlagMap_);
     if (!tacc.CanOptimizeAsFastCall()) {
         return;
     }
@@ -1862,7 +1876,7 @@ void TypedBytecodeLowering::AddHitBytecodeCount()
 
 void TypedBytecodeLowering::LowerTypedTypeOf(GateRef gate)
 {
-    TypeOfTypeInfoAccessor tacc(thread_, circuit_, gate);
+    TypeOfTypeInfoAccessor tacc(compilationEnv_, circuit_, gate);
     if (tacc.IsIllegalType()) {
         return;
     }
@@ -1876,7 +1890,7 @@ void TypedBytecodeLowering::LowerTypedTypeOf(GateRef gate)
 
 void TypedBytecodeLowering::LowerGetIterator(GateRef gate)
 {
-    GetIteratorTypeInfoAccessor tacc(thread_, circuit_, gate, GetCalleePandaFile(gate), callMethodFlagMap_);
+    GetIteratorTypeInfoAccessor tacc(compilationEnv_, circuit_, gate, GetCalleePandaFile(gate), callMethodFlagMap_);
     BuiltinsStubCSigns::ID id = tacc.TryGetPGOBuiltinMethodId();
     if (id == BuiltinsStubCSigns::ID::NONE) {
         return;
@@ -1892,7 +1906,7 @@ void TypedBytecodeLowering::LowerTypedTryLdGlobalByName(GateRef gate)
         return;
     }
     DISALLOW_GARBAGE_COLLECTION;
-    LoadGlobalObjByNameTypeInfoAccessor tacc(thread_, circuit_, gate);
+    LoadGlobalObjByNameTypeInfoAccessor tacc(compilationEnv_, circuit_, gate);
     JSTaggedValue key = tacc.GetKeyTaggedValue();
 
     BuiltinIndex& builtin = BuiltinIndex::GetInstance();
@@ -1908,7 +1922,7 @@ void TypedBytecodeLowering::LowerTypedTryLdGlobalByName(GateRef gate)
 
 void TypedBytecodeLowering::LowerInstanceOf(GateRef gate)
 {
-    InstanceOfTypeInfoAccessor tacc(thread_, circuit_, gate, chunk_);
+    InstanceOfTypeInfoAccessor tacc(compilationEnv_, circuit_, gate, chunk_);
     if (tacc.TypesIsEmpty() || tacc.HasIllegalType()) {
         return;
     }
@@ -1939,7 +1953,7 @@ void TypedBytecodeLowering::LowerCreateEmptyObject(GateRef gate)
     GateRef globalEnv = builder_.GetGlobalEnv();
     GateRef hclass = builder_.GetGlobalEnvObjHClass(globalEnv, GlobalEnv::OBJECT_FUNCTION_INDEX);
 
-    JSHandle<JSFunction> objectFunc(tsManager_->GetEcmaVM()->GetGlobalEnv()->GetObjectFunction());
+    JSHandle<JSFunction> objectFunc(compilationEnv_->GetGlobalEnv()->GetObjectFunction());
     JSTaggedValue protoOrHClass = objectFunc->GetProtoOrHClass();
     JSHClass *objectHC = JSHClass::Cast(protoOrHClass.GetTaggedObject());
     size_t objectSize = objectHC->GetObjectSize();
@@ -1976,7 +1990,8 @@ void TypedBytecodeLowering::LowerTypedStOwnByValue(GateRef gate)
 
 void TypedBytecodeLowering::LowerCreateObjectWithBuffer(GateRef gate)
 {
-    CreateObjWithBufferTypeInfoAccessor tacc(thread_, circuit_, gate, recordName_);
+    DISALLOW_GARBAGE_COLLECTION;
+    CreateObjWithBufferTypeInfoAccessor tacc(compilationEnv_, circuit_, gate, recordName_);
     if (!tacc.CanOptimize()) {
         return;
     }
@@ -1984,9 +1999,9 @@ void TypedBytecodeLowering::LowerCreateObjectWithBuffer(GateRef gate)
     if (hclassVal.IsUndefined()) {
         return;
     }
-    JSHandle<JSHClass> newClass(thread_, hclassVal);
+    JSHClass *newClass = JSHClass::Cast(hclassVal.GetTaggedObject());
     GateRef index = tacc.GetIndex();
-    JSHandle<JSObject> objhandle = tacc.GetObjHandle();
+    JSObject *objhandle = JSObject::Cast(tacc.GetObject());
     std::vector<uint64_t> inlinedProps;
     auto layout = LayoutInfo::Cast(newClass->GetLayout().GetTaggedObject());
     for (uint32_t i = 0; i < newClass->GetInlinedProperties(); i++) {
@@ -2009,7 +2024,7 @@ void TypedBytecodeLowering::LowerCreateObjectWithBuffer(GateRef gate)
     std::vector<GateRef> valueIn;
     valueIn.emplace_back(builder_.IntPtr(size));
     valueIn.emplace_back(index);
-    valueIn.emplace_back(builder_.Int64(newClass.GetTaggedValue().GetRawData()));
+    valueIn.emplace_back(builder_.Int64(JSTaggedValue(newClass).GetRawData()));
     valueIn.emplace_back(acc_.GetValueIn(gate, 1));
     for (uint32_t i = 0; i < newClass->GetInlinedProperties(); i++) {
         auto attr = layout->GetAttr(i);

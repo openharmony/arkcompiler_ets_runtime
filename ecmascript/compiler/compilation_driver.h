@@ -357,7 +357,7 @@ protected:
 
     void StoreConstantPoolInfo() const;
 
-    EcmaVM *vm_ {nullptr};
+    CompilationEnv *compilationEnv_ {nullptr};
     const JSPandaFile *jsPandaFile_ {nullptr};
     PGOProfilerDecoder &pfDecoder_;
     BytecodeInfoCollector* collector_;
@@ -399,14 +399,12 @@ public:
     Module *GetModule();
 
     template <class Callback>
-    void CompileMethod(JSHandle<JSFunction> &jsFunction, const Callback &cb)
+    void CompileMethod(const JSPandaFile *jsPandaFile, MethodLiteral *methodLiteral, const Callback &cb)
     {
+        SetCurrentCompilationFile();
         for (auto mi : bytecodeInfo_.GetMethodList()) {
             bytecodeInfo_.AddSkippedMethod(mi.first);
         }
-        const JSPandaFile *jsPandaFile = Method::Cast(jsFunction->GetMethod().GetTaggedObject())->GetJSPandaFile();
-        Method *method = Method::Cast(jsFunction->GetMethod().GetTaggedObject());
-        MethodLiteral *methodLiteral = method->GetMethodLiteral();
         const std::string methodName(MethodLiteral::GetMethodName(jsPandaFile, methodLiteral->GetMethodId()));
 
         auto &methodList = bytecodeInfo_.GetMethodList();

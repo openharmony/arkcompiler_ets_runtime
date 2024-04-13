@@ -22,6 +22,7 @@
 #include "ecmascript/compiler/aot_compiler_preprocessor.h"
 #include "ecmascript/compiler/aot_file/aot_file_manager.h"
 #include "ecmascript/compiler/pass_manager.h"
+#include "ecmascript/compiler/aot_compilation_env.h"
 #include "ecmascript/ecma_string.h"
 #include "ecmascript/js_runtime_options.h"
 #include "ecmascript/log.h"
@@ -110,6 +111,7 @@ int Main(const int argc, const char **argv)
     }
 
     {
+        AOTCompilationEnv aotCompilationEnv(vm);
         ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
         LocalScope scope(vm);
         arg_list_t pandaFileNames {};
@@ -170,7 +172,7 @@ int Main(const int argc, const char **argv)
                 .EnableInductionVariableAnalysis(cOptions.isEnableInductionVariableAnalysis_)
                 .Build();
 
-        PassManager passManager(vm,
+        PassManager passManager(&aotCompilationEnv,
                                 cOptions.triple_,
                                 cOptions.optLevel_,
                                 cOptions.relocMode_,
@@ -193,7 +195,7 @@ int Main(const int argc, const char **argv)
         }
         vm->GetJSOptions().SetCompilerEnableLiteCG(isEnableLiteCG);
 
-        AOTFileGenerator generator(&log, &logList, vm, cOptions.triple_, isEnableLiteCG);
+        AOTFileGenerator generator(&log, &logList, &aotCompilationEnv, cOptions.triple_, isEnableLiteCG);
 
         CompileValidFiles(passManager, generator, ret, fileInfos);
         std::string appSignature = cPreprocessor.GetMainPkgArgsAppSignature();

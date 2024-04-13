@@ -128,6 +128,8 @@ public:
     };
 
     explicit JSThread(EcmaVM *vm);
+    // only used in jit thread
+    explicit JSThread(EcmaVM *vm, bool isJit);
 
     PUBLIC_API ~JSThread();
 
@@ -262,6 +264,11 @@ public:
     const GlobalEnvConstants *GlobalConstants() const
     {
         return glueData_.globalConst_;
+    }
+
+    void SetGlobalConstants(const GlobalEnvConstants *constants)
+    {
+        glueData_.globalConst_ = const_cast<GlobalEnvConstants*>(constants);
     }
 
     const BuiltinEntries GetBuiltinEntries() const
@@ -1236,6 +1243,28 @@ public:
     {
         finalizeTaskCallback_ = callback;
     }
+
+    static void RegisterThread(JSThread *jsThread);
+    static void UnregisterThread(JSThread *jsThread);
+    bool IsJitThread() const
+    {
+        return isJitThread_;
+    }
+
+    RecursiveMutex *GetJitLock()
+    {
+        return &jitMutex_;
+    }
+
+    void SetMachineCodeLowMemory(bool isLow)
+    {
+        machineCodeLowMemory_ = isLow;
+    }
+
+    bool IsMachineCodeLowMemory()
+    {
+        return machineCodeLowMemory_;
+    }
 private:
     NO_COPY_SEMANTIC(JSThread);
     NO_MOVE_SEMANTIC(JSThread);
@@ -1336,6 +1365,9 @@ private:
     int32_t suspendCount_ {0};
     ConditionVariable suspendCondVar_;
 
+    bool isJitThread_ {false};
+    RecursiveMutex jitMutex_;
+    bool machineCodeLowMemory_ {false};
 #ifndef NDEBUG
     MutatorLock::MutatorLockState mutatorLockState_ = MutatorLock::MutatorLockState::UNLOCKED;
 #endif
@@ -1343,6 +1375,7 @@ private:
     friend class GlobalHandleCollection;
     friend class EcmaVM;
     friend class EcmaContext;
+    friend class JitVM;
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_JS_THREAD_H

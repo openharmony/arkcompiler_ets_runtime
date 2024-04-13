@@ -177,9 +177,9 @@ protected:
 
 class AOTFileGenerator : public FileGenerator {
 public:
-    AOTFileGenerator(const CompilerLog *log, const MethodLogList *logList, EcmaVM* vm, const std::string &triple,
-                     bool useLiteCG = false)
-        : FileGenerator(log, logList), vm_(vm), cfg_(triple), useLiteCG_(useLiteCG) {}
+    AOTFileGenerator(const CompilerLog *log, const MethodLogList *logList, CompilationEnv *env,
+                     const std::string &triple, bool useLiteCG = false)
+        : FileGenerator(log, logList), compilationEnv_(env), cfg_(triple), useLiteCG_(useLiteCG) {}
 
     ~AOTFileGenerator() override = default;
 
@@ -222,7 +222,7 @@ private:
 
     AnFileInfo aotInfo_;
     CGStackMapInfo *stackMapInfo_ = nullptr;
-    EcmaVM* vm_;
+    CompilationEnv *compilationEnv_ {nullptr};
     CompilationConfig cfg_;
     std::string curCompileFileName_;
     // MethodID->EntryIndex

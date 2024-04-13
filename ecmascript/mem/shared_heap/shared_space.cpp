@@ -64,8 +64,10 @@ uintptr_t SharedSparseSpace::Allocate(JSThread *thread, size_t size, bool allowG
 {
     ASSERT(thread->IsInRunningStateOrProfiling());
     thread->CheckSafepointIfSuspended();
+    auto localHeap = const_cast<Heap*>(thread->GetEcmaVM()->GetHeap());
+    // jit thread no heap
+    allowGC = allowGC && (localHeap != nullptr);
     if (allowGC) {
-        auto localHeap = const_cast<Heap*>(thread->GetEcmaVM()->GetHeap());
         localHeap->TryTriggerFullMarkBySharedSize(size);
     }
     uintptr_t object = TryAllocate(thread, size);
@@ -505,7 +507,9 @@ void SharedHugeObjectSpace::CheckAndTriggerLocalFullMark(JSThread *thread, size_
         reinterpret_cast<SharedHeap*>(heap_)->TryTriggerLocalConcurrentMarking(thread);
     } else {
         auto localHeap = const_cast<Heap*>(thread->GetEcmaVM()->GetHeap());
-        localHeap->TryTriggerFullMarkBySharedSize(size);
+        if (localHeap != nullptr) {
+            localHeap->TryTriggerFullMarkBySharedSize(size);
+        }
     }
 }
 }  // namespace panda::ecmascript

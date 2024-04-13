@@ -28,7 +28,8 @@ void Taskpool::Initialize(int threadNum)
 {
     LockHolder lock(mutex_);
     if (isInitialized_++ <= 0) {
-        runner_ = std::make_unique<Runner>(TheMostSuitableThreadNum(threadNum));
+        runner_ = std::make_unique<Runner>(TheMostSuitableThreadNum(threadNum),
+            prologueRunnerHook_, epilogueRunnerHook_);
     }
 }
 
@@ -61,5 +62,13 @@ uint32_t Taskpool::TheMostSuitableThreadNum(uint32_t threadNum) const
     }
     uint32_t numOfThreads = std::min<uint32_t>(NumberOfCpuCore() / 2, MAX_TASKPOOL_THREAD_NUM);
     return std::max<uint32_t>(numOfThreads, MIN_TASKPOOL_THREAD_NUM);
+}
+
+void Taskpool::ForEachTask(const std::function<void(Task*)> &f)
+{
+    if (isInitialized_ <= 0) {
+        return;
+    }
+    runner_->ForEachTask(f);
 }
 }  // namespace panda::ecmascript

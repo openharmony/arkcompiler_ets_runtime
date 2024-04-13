@@ -36,6 +36,7 @@ public:
         SHARED_HEAP
     };
 
+    EcmaParamConfiguration() = default;
     EcmaParamConfiguration(HeapType heapType, size_t poolSize, size_t heapSize = 1_MB)
     {
         switch (heapType) {

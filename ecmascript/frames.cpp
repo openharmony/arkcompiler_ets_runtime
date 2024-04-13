@@ -111,6 +111,15 @@ JSTaggedValue FrameIterator::GetFunction() const
 
 AOTFileInfo::CallSiteInfo FrameIterator::CalCallSiteInfo(uintptr_t retAddr) const
 {
+    JSTaggedValue func = GetFunction();
+    if (func.IsJSFunction()) {
+        JSFunction *jsfunc = JSFunction::Cast(func.GetTaggedObject());
+        JSTaggedValue machineCode = jsfunc->GetMachineCode();
+        if (machineCode.IsMachineCodeObject() && MachineCode::Cast(machineCode.GetTaggedObject())->IsInText(retAddr)) {
+            return MachineCode::Cast(machineCode.GetTaggedObject())->CalCallSiteInfo(retAddr);
+        }
+    }
+
     return const_cast<JSThread *>(thread_)->GetCurrentEcmaContext()->CalCallSiteInfo(retAddr);
 }
 
