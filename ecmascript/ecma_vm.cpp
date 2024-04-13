@@ -792,9 +792,9 @@ void EcmaVM::TriggerConcurrentCallback(JSTaggedValue result, JSTaggedValue hint)
         return;
     }
     
-    void* taskInfo = reinterpret_cast<void*>(thread_->GetTaskInfo());
+    void *taskInfo = reinterpret_cast<void*>(thread_->GetTaskInfo());
     // clear the taskInfo when return, which can prevent the callback to get it
-    thread_->SetTaskInfo(0);
+    thread_->SetTaskInfo(reinterpret_cast<uintptr_t>(nullptr));
     concurrentCallback_(JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(thread_, result)), success,
                         taskInfo, concurrentData_);
 }
