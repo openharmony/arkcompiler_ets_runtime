@@ -153,10 +153,6 @@ JSTaggedValue BuiltinsString::FromCodePoint(EcmaRuntimeCallInfo *argv)
         if (cp < 0 || cp > ENCODE_MAX_UTF16) {
             THROW_RANGE_ERROR_AND_RETURN(thread, "CodePoint < 0 or CodePoint > 0x10FFFF", JSTaggedValue::Exception());
         }
-        if (cp == 0) {
-            CVector<uint16_t> data {0x00};
-            return factory->NewFromUtf16Literal(data.data(), 1).GetTaggedValue();
-        }
         if (cp > UINT16_MAX) {
             uint16_t cu1 =
                 std::floor((static_cast<uint32_t>(cp) - ENCODE_SECOND_FACTOR) / ENCODE_FIRST_FACTOR) + ENCODE_LEAD_LOW;
