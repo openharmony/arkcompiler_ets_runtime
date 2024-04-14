@@ -24,9 +24,9 @@
 #include "ecmascript/shared_objects/js_shared_json_value.h"
 
 namespace panda::ecmascript::builtins {
-JSTaggedValue BuiltinsJsonValue::ConstructorForObject([[maybe_unused]]EcmaRuntimeCallInfo *argv)
+JSTaggedValue BuiltinsJsonValue::JSONObjectConstructor([[maybe_unused]]EcmaRuntimeCallInfo *argv)
 {
-    BUILTINS_API_TRACE(argv->GetThread(), BuiltinsJsonValue, ConstructorForObject);
+    BUILTINS_API_TRACE(argv->GetThread(), BuiltinsJsonValue, JSONObjectConstructor);
     JSThread *thread = argv->GetThread();
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
@@ -34,7 +34,7 @@ JSTaggedValue BuiltinsJsonValue::ConstructorForObject([[maybe_unused]]EcmaRuntim
     JSHandle<JSTaggedValue> newTarget = GetNewTarget(argv);
     if (newTarget->IsUndefined()) {
         JSTaggedValue error = containers::ContainerError::BusinessError(
-            thread, containers::ErrorFlag::IS_NULL_ERROR, "The JSONValue's constructor cannot be directly invoked.");
+            thread, containers::ErrorFlag::IS_NULL_ERROR, "The JSONObject's constructor cannot be directly invoked.");
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
     // 2. Get the initial value.
@@ -53,47 +53,180 @@ JSTaggedValue BuiltinsJsonValue::ConstructorForObject([[maybe_unused]]EcmaRuntim
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSHandle<JSSharedJSONValue> jsonValue = JSHandle<JSSharedJSONValue>::Cast(obj);
     jsonValue->SetValue(thread, value);
-
-    jsonValue->GetValue().D();
-    jsonValue.Dump();
     return obj.GetTaggedValue();
 }
 
-JSTaggedValue BuiltinsJsonValue::ConstructorForJSONTrue([[maybe_unused]]EcmaRuntimeCallInfo *argv)
+JSTaggedValue BuiltinsJsonValue::JSONTrueConstructor([[maybe_unused]]EcmaRuntimeCallInfo *argv)
 {
-    BUILTINS_ENTRY_DEBUG_LOG();
-    ASSERT(argv);
+    BUILTINS_API_TRACE(argv->GetThread(), BuiltinsJsonValue, JSONFalseConstructor);
     JSThread *thread = argv->GetThread();
-    BUILTINS_API_TRACE(thread, Boolean, Constructor);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
-    // 1. Let b be ToBoolean(value).
-    bool boolValue = GetCallArg(argv, 0)->ToBoolean();
-    //我加的
-    if (!boolValue) {
-        JSTaggedValue error = containers::ContainerError::ParamError(
-            thread, "Parameter error. Only accept true.");
-        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
-    }
-    // 2. If NewTarget is undefined, return b.
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    // 1. If NewTarget is undefined, throw exception
     JSHandle<JSTaggedValue> newTarget = GetNewTarget(argv);
     if (newTarget->IsUndefined()) {
-        return GetTaggedBoolean(boolValue);
+        JSTaggedValue error = containers::ContainerError::BusinessError(
+            thread, containers::ErrorFlag::IS_NULL_ERROR, "The JSONFalse's constructor cannot be directly invoked.");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
-    // 3. Let O be OrdinaryCreateFromConstructor(NewTarget, "%BooleanPrototype%", [[BooleanData]] ).
-    // 5. Set the value of O's [[BooleanData]] internal slot to b.
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<JSFunction> constructor = JSHandle<JSFunction>(GetConstructor(argv));
-    JSHandle<JSObject> result = factory->NewJSObjectByConstructor(constructor, newTarget);
-    // 4. ReturnIfAbrupt(O).
+    // 2.Let Map be OrdinaryCreateFromConstructor(NewTarget, "%MapPrototype%", «‍[[MapData]]» ).
+    JSHandle<JSTaggedValue> constructor = GetConstructor(argv);
+    ASSERT(constructor->IsJSSharedFunction() && constructor.GetTaggedValue().IsInSharedHeap());
+    JSHandle<JSObject> obj = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(constructor), newTarget);
+    ASSERT(obj.GetTaggedValue().IsInSharedHeap());
+    // 3.returnIfAbrupt()
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    JSHandle<JSTaggedValue> objValue = JSHandle<JSTaggedValue>(thread, JSTaggedValue::True());
-    JSHandle<JSSharedJSONValue> jsonValue = JSHandle<JSSharedJSONValue>::Cast(result);
-    jsonValue->SetValue(thread, objValue);
-
-    jsonValue->GetValue().D();
-    jsonValue.Dump();
-    return result.GetTaggedValue();
+    JSHandle<JSSharedJSONValue> jsonValue = JSHandle<JSSharedJSONValue>::Cast(obj);
+    jsonValue->SetValue(thread, JSTaggedValue::True());
+    return obj.GetTaggedValue();
 }
+
+JSTaggedValue BuiltinsJsonValue::JSONFalseConstructor(EcmaRuntimeCallInfo *argv)
+{
+    BUILTINS_API_TRACE(argv->GetThread(), BuiltinsJsonValue, JSONFalseConstructor);
+    JSThread *thread = argv->GetThread();
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    // 1. If NewTarget is undefined, throw exception
+    JSHandle<JSTaggedValue> newTarget = GetNewTarget(argv);
+    if (newTarget->IsUndefined()) {
+        JSTaggedValue error = containers::ContainerError::BusinessError(
+            thread, containers::ErrorFlag::IS_NULL_ERROR, "The JSONFalse's constructor cannot be directly invoked.");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
+    }
+    // 2.Let Map be OrdinaryCreateFromConstructor(NewTarget, "%MapPrototype%", «‍[[MapData]]» ).
+    JSHandle<JSTaggedValue> constructor = GetConstructor(argv);
+    ASSERT(constructor->IsJSSharedFunction() && constructor.GetTaggedValue().IsInSharedHeap());
+    JSHandle<JSObject> obj = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(constructor), newTarget);
+    ASSERT(obj.GetTaggedValue().IsInSharedHeap());
+    // 3.returnIfAbrupt()
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    JSHandle<JSSharedJSONValue> jsonValue = JSHandle<JSSharedJSONValue>::Cast(obj);
+    jsonValue->SetValue(thread, JSTaggedValue::False());
+    return obj.GetTaggedValue();
+}
+
+JSTaggedValue BuiltinsJsonValue::JSONNullConstructor(EcmaRuntimeCallInfo *argv)
+{
+    BUILTINS_API_TRACE(argv->GetThread(), BuiltinsJsonValue, JSONNullConstructor);
+    JSThread *thread = argv->GetThread();
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    // 1. If NewTarget is undefined, throw exception
+    JSHandle<JSTaggedValue> newTarget = GetNewTarget(argv);
+    if (newTarget->IsUndefined()) {
+        JSTaggedValue error = containers::ContainerError::BusinessError(
+            thread, containers::ErrorFlag::IS_NULL_ERROR, "The JSONNull's constructor cannot be directly invoked.");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
+    }
+    // 2.Let Map be OrdinaryCreateFromConstructor(NewTarget, "%MapPrototype%", «‍[[MapData]]» ).
+    JSHandle<JSTaggedValue> constructor = GetConstructor(argv);
+    ASSERT(constructor->IsJSSharedFunction() && constructor.GetTaggedValue().IsInSharedHeap());
+    JSHandle<JSObject> obj = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(constructor), newTarget);
+    ASSERT(obj.GetTaggedValue().IsInSharedHeap());
+    // 3.returnIfAbrupt()
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    JSHandle<JSSharedJSONValue> jsonValue = JSHandle<JSSharedJSONValue>::Cast(obj);
+    jsonValue->SetValue(thread, JSTaggedValue::Null());
+    return obj.GetTaggedValue();
+}
+
+JSTaggedValue BuiltinsJsonValue::JSONNumberConstructor(EcmaRuntimeCallInfo *argv)
+{
+    BUILTINS_API_TRACE(argv->GetThread(), BuiltinsJsonValue, JSONNumberConstructor);
+    JSThread *thread = argv->GetThread();
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    // 1. If NewTarget is undefined, throw exception
+    JSHandle<JSTaggedValue> newTarget = GetNewTarget(argv);
+    if (newTarget->IsUndefined()) {
+        JSTaggedValue error = containers::ContainerError::BusinessError(
+            thread, containers::ErrorFlag::IS_NULL_ERROR, "The JSONObject's constructor cannot be directly invoked.");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
+    }
+    // 2. Get the initial value.
+    JSHandle<JSTaggedValue> value = GetCallArg(argv, 0);
+    if (!value->IsNumber()) {
+        JSTaggedValue error = containers::ContainerError::ParamError(
+            thread, "Parameter error. Only accept number.");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
+    }
+    // 3.Let Map be OrdinaryCreateFromConstructor(NewTarget, "%MapPrototype%", «‍[[MapData]]» ).
+    JSHandle<JSTaggedValue> constructor = GetConstructor(argv);
+    ASSERT(constructor->IsJSSharedFunction() && constructor.GetTaggedValue().IsInSharedHeap());
+    JSHandle<JSObject> obj = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(constructor), newTarget);
+    ASSERT(obj.GetTaggedValue().IsInSharedHeap());
+    // 3.returnIfAbrupt()
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    JSHandle<JSSharedJSONValue> jsonValue = JSHandle<JSSharedJSONValue>::Cast(obj);
+    jsonValue->SetValue(thread, value);
+    return obj.GetTaggedValue();
+}
+
+JSTaggedValue BuiltinsJsonValue::JSONStringConstructor(EcmaRuntimeCallInfo *argv)
+{
+    BUILTINS_API_TRACE(argv->GetThread(), BuiltinsJsonValue, JSONNumberConstructor);
+    JSThread *thread = argv->GetThread();
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    // 1. If NewTarget is undefined, throw exception
+    JSHandle<JSTaggedValue> newTarget = GetNewTarget(argv);
+    if (newTarget->IsUndefined()) {
+        JSTaggedValue error = containers::ContainerError::BusinessError(
+            thread, containers::ErrorFlag::IS_NULL_ERROR, "The JSONObject's constructor cannot be directly invoked.");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
+    }
+    // 2. Get the initial value.
+    JSHandle<JSTaggedValue> value = GetCallArg(argv, 0);
+    if (!value->IsString()) {
+        JSTaggedValue error = containers::ContainerError::ParamError(
+            thread, "Parameter error. Only accept string.");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
+    }
+    // 3.Let Map be OrdinaryCreateFromConstructor(NewTarget, "%MapPrototype%", «‍[[MapData]]» ).
+    JSHandle<JSTaggedValue> constructor = GetConstructor(argv);
+    ASSERT(constructor->IsJSSharedFunction() && constructor.GetTaggedValue().IsInSharedHeap());
+    JSHandle<JSObject> obj = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(constructor), newTarget);
+    ASSERT(obj.GetTaggedValue().IsInSharedHeap());
+    // 3.returnIfAbrupt()
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    JSHandle<JSSharedJSONValue> jsonValue = JSHandle<JSSharedJSONValue>::Cast(obj);
+    jsonValue->SetValue(thread, value);
+    return obj.GetTaggedValue();
+}
+
+JSTaggedValue BuiltinsJsonValue::JSONArrayConstructor(EcmaRuntimeCallInfo *argv)
+{
+    BUILTINS_API_TRACE(argv->GetThread(), BuiltinsJsonValue, JSONNumberConstructor);
+    JSThread *thread = argv->GetThread();
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    // 1. If NewTarget is undefined, throw exception
+    JSHandle<JSTaggedValue> newTarget = GetNewTarget(argv);
+    if (newTarget->IsUndefined()) {
+        JSTaggedValue error = containers::ContainerError::BusinessError(
+            thread, containers::ErrorFlag::IS_NULL_ERROR, "The JSONObject's constructor cannot be directly invoked.");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
+    }
+    // 2. Get the initial value.
+    JSHandle<JSTaggedValue> value = GetCallArg(argv, 0);
+    if (!value->IsJSSharedArray()) {
+        JSTaggedValue error = containers::ContainerError::ParamError(
+            thread, "Parameter error. Only accept ArkTS Array.");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
+    }
+    // 3.Let Map be OrdinaryCreateFromConstructor(NewTarget, "%MapPrototype%", «‍[[MapData]]» ).
+    JSHandle<JSTaggedValue> constructor = GetConstructor(argv);
+    ASSERT(constructor->IsJSSharedFunction() && constructor.GetTaggedValue().IsInSharedHeap());
+    JSHandle<JSObject> obj = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(constructor), newTarget);
+    ASSERT(obj.GetTaggedValue().IsInSharedHeap());
+    // 3.returnIfAbrupt()
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    JSHandle<JSSharedJSONValue> jsonValue = JSHandle<JSSharedJSONValue>::Cast(obj);
+    jsonValue->SetValue(thread, value);
+    return obj.GetTaggedValue();
+}
+
 
 // JSTaggedValue BuiltinsJsonValue::ConstructorForObject([[maybe_unused]]EcmaRuntimeCallInfo *argv)
 // {
@@ -138,17 +271,18 @@ JSTaggedValue BuiltinsJsonValue::Get([[maybe_unused]]EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> self(GetThis(argv));
     JSHandle<JSSharedJSONValue> jsonValue = JSHandle<JSSharedJSONValue>::Cast(self);
-    JSTaggedValue value = jsonValue->GetValue();
-    if (!value.IsJSSharedMap()) {
-        auto error = containers::ContainerError::BusinessError(thread, containers::ErrorFlag::BIND_ERROR,
-                                                               "The get method cannot be bound.");
-        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
-    }
-    //这个是不是要先getvalue拿到sharedmap，再去查找？
-    JSSharedMap *jsMap = JSSharedMap::Cast(value.GetTaggedObject());
-    JSHandle<JSTaggedValue> key = GetCallArg(argv, 0);
-    JSTaggedValue value1 = jsMap->Get(thread, key.GetTaggedValue());
-    return value1;
+    return jsonValue->GetValue();
+    // JSTaggedValue value = jsonValue->GetValue();
+    // if (!value.IsJSSharedMap()) {
+    //     auto error = containers::ContainerError::BusinessError(thread, containers::ErrorFlag::BIND_ERROR,
+    //                                                            "The get method cannot be bound.");
+    //     THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
+    // }
+    // //这个是不是要先getvalue拿到sharedmap，再去查找？
+    // JSSharedMap *jsMap = JSSharedMap::Cast(value.GetTaggedObject());
+    // JSHandle<JSTaggedValue> key = GetCallArg(argv, 0);
+    // JSTaggedValue value1 = jsMap->Get(thread, key.GetTaggedValue());
+    // return value1;
     // return JSTaggedValue::Undefined();
 }
 }  // namespace panda::ecmascript::builtins

@@ -24,12 +24,6 @@ class JSSharedJSONValue : public JSObject {
 public:
     CAST_CHECK(JSSharedJSONValue, IsJSSharedJSONValue);
 
-    JSTaggedValue Get(JSThread *thread) const
-    {
-        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Undefined());
-        return GetValue();
-    }
-
     static constexpr size_t VALUE_OFFSET = JSObject::SIZE;
     ACCESSORS(Value, VALUE_OFFSET, SIZE)
 

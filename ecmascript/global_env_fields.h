@@ -228,13 +228,13 @@
     V(JSTaggedValue, SBuiltininArrayBufferFunction, SENDABLE_BUILTIN_ARRAY_BUFFER_FUNCTION_INDEX)                \
     V(JSTaggedValue, SBuiltininSetFunction, SHARED_BUILTIN_SET_FUNCTION_INDEX)                                   \
     V(JSTaggedValue, SBuiltininMapFunction, SHARED_BUILTIN_MAP_FUNCTION_INDEX)                                   \
-    V(JSTaggedValue, SJSONObjectFunction, SHARED_JSON_OBJECT_FUNCTION_INDEX)                                     \
-    V(JSTaggedValue, SJSONTrueFunction, SHARED_JSON_TRUE_FUNCTION_INDEX)                                         \
-    V(JSTaggedValue, SJSONFalseFunction, SHARED_JSON_FALSE_FUNCTION_INDEX)                                       \
-    V(JSTaggedValue, SJSONNullFunction, SHARED_JSON_NULL_FUNCTION_INDEX)                                         \
-    V(JSTaggedValue, SJSONNumberFunction, SHARED_JSON_NUMBER_FUNCTION_INDEX)                                     \
-    V(JSTaggedValue, SJSONStringFunction, SHARED_JSON_STRING_FUNCTION_INDEX)                                     \
-    V(JSTaggedValue, SJSONArrayFunction, SHARED_JSON_ARRAY_FUNCTION_INDEX)                                       \
+    V(JSTaggedValue, SharedJSONObjectFunction, SHARED_JSON_OBJECT_FUNCTION_INDEX)                                \
+    V(JSTaggedValue, SharedJSONTrueFunction, SHARED_JSON_TRUE_FUNCTION_INDEX)                                    \
+    V(JSTaggedValue, SharedJSONFalseFunction, SHARED_JSON_FALSE_FUNCTION_INDEX)                                  \
+    V(JSTaggedValue, SharedJSONNullFunction, SHARED_JSON_NULL_FUNCTION_INDEX)                                    \
+    V(JSTaggedValue, SharedJSONNumberFunction, SHARED_JSON_NUMBER_FUNCTION_INDEX)                                \
+    V(JSTaggedValue, SharedJSONStringFunction, SHARED_JSON_STRING_FUNCTION_INDEX)                                \
+    V(JSTaggedValue, SharedJSONArrayFunction, SHARED_JSON_ARRAY_FUNCTION_INDEX)                                  \
     V(JSTaggedValue, SConstructorClass, SHARED_CONSTRUCTOR_CLASS_INDEX)                                          \
     V(JSTaggedValue, SFunctionClassWithoutProto, SHARED_FUNCTION_CLASS_WITHOUT_PROTO)                            \
     V(JSTaggedValue, SFunctionClassWithoutAccessor, SHARED_FUNCTION_CLASS_WITHOUT_ACCESSOR)                      \

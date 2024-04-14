@@ -19,6 +19,17 @@
 #include "ecmascript/base/builtins_base.h"
 #include "ecmascript/ecma_runtime_call_info.h"
 
+// All types of %TypedArray%.
+// V(Type, ctorName, TYPE) where JSType::JS_##TYPE is the type index.
+#define BUILTIN_SHARED_JSON_VALUE_TYPES(V)              \
+    V(JSONObject, SharedJSONObject, SHARED_JSON_OBJECT) \
+    V(JSONTrue, SharedJSONTrue, SHARED_JSON_TRUE)       \
+    V(JSONFalse, SharedJSONFalse, SHARED_JSON_FALSE)    \
+    V(JSONNull, SharedJSONNull, SHARED_JSON_NULL)       \
+    V(JSONNumber, SharedJSONNumber, SHARED_JSON_NUMBER) \
+    V(JSONString, SharedJSONString, SHARED_JSON_STRING) \
+    V(JSONArray, SharedJSONArray, SHARED_JSON_ARRAY)
+
 // List of functions in Map.prototype, excluding the constructor and '@@' properties.
 // V(name, func, length, stubIndex)
 // where BuiltinsMap::func refers to the native implementation of Map.prototype[name].
@@ -30,8 +41,13 @@
 namespace panda::ecmascript::builtins {
 class BuiltinsJsonValue : public base::BuiltinsBase {
 public:
-    static JSTaggedValue ConstructorForObject(EcmaRuntimeCallInfo *argv);
-    static JSTaggedValue ConstructorForJSONTrue(EcmaRuntimeCallInfo *argv);
+    static JSTaggedValue JSONObjectConstructor(EcmaRuntimeCallInfo *argv);
+    static JSTaggedValue JSONTrueConstructor(EcmaRuntimeCallInfo *argv);
+    static JSTaggedValue JSONFalseConstructor(EcmaRuntimeCallInfo *argv);
+    static JSTaggedValue JSONNullConstructor(EcmaRuntimeCallInfo *argv);
+    static JSTaggedValue JSONNumberConstructor(EcmaRuntimeCallInfo *argv);
+    static JSTaggedValue JSONStringConstructor(EcmaRuntimeCallInfo *argv);
+    static JSTaggedValue JSONArrayConstructor(EcmaRuntimeCallInfo *argv);
     // static JSTaggedValue ConstructorForJSONFalse(EcmaRuntimeCallInfo *argv);
     static JSTaggedValue Get(EcmaRuntimeCallInfo *argv);
 

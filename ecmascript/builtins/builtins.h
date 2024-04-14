@@ -376,6 +376,16 @@ private:
                                const JSHandle<JSFunction> &sFuncPrototype) const;
     void InitializeSJSONTrue(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &sObjPrototype,
                              const JSHandle<JSFunction> &sFuncPrototype) const;
+    void InitializeSJSONFalse(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &sObjPrototype,
+                             const JSHandle<JSFunction> &sFuncPrototype) const;
+    void InitializeSJSONNull(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &sObjPrototype,
+                             const JSHandle<JSFunction> &sFuncPrototype) const;
+    void InitializeSJSONNumber(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &sObjPrototype,
+                             const JSHandle<JSFunction> &sFuncPrototype) const;
+    void InitializeSJSONString(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &sObjPrototype,
+                             const JSHandle<JSFunction> &sFuncPrototype) const;
+    void InitializeSJSONArray(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &sObjPrototype,
+                             const JSHandle<JSFunction> &sFuncPrototype) const;
     void InitializeSTypedArray(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &sObjPrototype,
                                const JSHandle<JSFunction> &sFuncPrototype) const;
     void InitializeSInt8Array(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &objFuncClass) const;
