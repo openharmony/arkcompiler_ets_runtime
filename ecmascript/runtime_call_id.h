@@ -354,13 +354,13 @@ namespace panda::ecmascript {
     V(SendableArrayBuffer, CloneArrayBuffer)  \
     V(SendableArrayBuffer, AllocateSendableArrayBuffer) \
     V(BuiltinsJsonValue, JSONObjectConstructor) \
-    V(BuiltinsJsonValue, JSONArrayConstructor) \
-    V(BuiltinsJsonValue, JSONTrueConstructor) \
-    V(BuiltinsJsonValue, JSONFalseConstructor) \
-    V(BuiltinsJsonValue, JSONNullConstructor) \
+    V(BuiltinsJsonValue, JSONArrayConstructor)  \
+    V(BuiltinsJsonValue, JSONTrueConstructor)   \
+    V(BuiltinsJsonValue, JSONFalseConstructor)  \
+    V(BuiltinsJsonValue, JSONNullConstructor)   \
     V(BuiltinsJsonValue, JSONNumberConstructor) \
     V(BuiltinsJsonValue, JSONStringConstructor) \
-    V(BuiltinsJsonValue, Get)                 \
+    V(BuiltinsJsonValue, Get)                   \
     V(SendableArrayBuffer, IsView)            \
     V(AsyncFromSyncIterator, Next)            \
     V(AsyncFromSyncIterator, Throw)           \

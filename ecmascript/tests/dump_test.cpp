@@ -497,7 +497,7 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
             case JSType::JS_SHARED_JSON_NUMBER:
             case JSType::JS_SHARED_JSON_STRING:
             case JSType::JS_SHARED_JSON_ARRAY: {
-                CHECK_DUMP_FIELDS(ECMAObject::SIZE, JSSharedJSONValue::SIZE, 1U);
+                CHECK_DUMP_FIELDS(JSObject::SIZE, JSSharedJSONValue::SIZE, 1U);
                 JSHandle<JSSharedJSONValue> jsSharedJsonValue = NewJSJSONValue(factory, proto);
                 DUMP_FOR_HANDLE(jsSharedJsonValue);
                 break;
@@ -775,7 +775,7 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
             case JSType::JS_SHARED_ARRAY_ITERATOR: {
                 CHECK_DUMP_FIELDS(JSObject::SIZE, JSArrayIterator::SIZE, 2U);
                 JSHandle<JSSharedArrayIterator> arrayIter = factory->NewJSSharedArrayIterator(
-                    JSHandle<JSObject>::Cast(factory->NewJSSArrayJSSArray()), IterationKind::KEY);
+                    JSHandle<JSObject>::Cast(factory->NewJSSArray()), IterationKind::KEY);
                 DUMP_FOR_HANDLE(arrayIter);
                 break;
             }

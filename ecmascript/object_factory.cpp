@@ -751,78 +751,6 @@ JSHandle<JSPrimitiveRef> ObjectFactory::NewJSPrimitiveRef(const JSHandle<JSHClas
     return obj;
 }
 
-JSHandle<JSSharedArray> ObjectFactory::NewJSSArray()
-{
-    JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
-    JSHandle<JSFunction> function(env->GetSharedArrayFunction());
-    return JSHandle<JSSharedArray>(NewJSObjectByConstructor(function));
-}
-
-JSHandle<JSSharedMap> ObjectFactory::NewJSSMap()
-{
-    auto globalEnv = thread_->GetEcmaVM()->GetGlobalEnv();
-    ObjectFactory *factory = vm_->GetFactory();
-    JSHandle<JSTaggedValue> proto = globalEnv->GetSharedMapPrototype();
-    auto emptySLayout = thread_->GlobalConstants()->GetHandledEmptySLayoutInfo();
-    JSHandle<JSHClass> mapClass = factory->NewSEcmaHClass(JSSharedMap::SIZE, 0,
-        JSType::JS_SHARED_MAP, proto, emptySLayout);
-    JSHandle<JSSharedMap> jsMap = JSHandle<JSSharedMap>::Cast(factory->NewSharedOldSpaceJSObjectWithInit(mapClass));
-    JSHandle<LinkedHashMap> linkedMap(
-        LinkedHashMap::Create(thread_, LinkedHashSet::MIN_CAPACITY, MemSpaceKind::SHARED));
-    jsMap->SetLinkedMap(thread_, linkedMap);
-    jsMap->SetModRecord(0);
-    return jsMap;
-}
-
-JSHandle<JSSharedJSONValue> ObjectFactory::NewSJSONArray()
-{
-    JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
-    JSHandle<JSFunction> function(env->GetSharedJSONArrayFunction());
-    return JSHandle<JSSharedJSONValue>(NewJSObjectByConstructor(function));
-}
-
-JSHandle<JSSharedJSONValue> ObjectFactory::NewSJSONTrue()
-{
-    JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
-    JSHandle<JSFunction> function(env->GetSharedJSONTrueFunction());
-    return JSHandle<JSSharedJSONValue>(NewJSObjectByConstructor(function));
-}
-
-JSHandle<JSSharedJSONValue> ObjectFactory::NewSJSONFalse()
-{
-    JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
-    JSHandle<JSFunction> function(env->GetSharedJSONFalseFunction());
-    return JSHandle<JSSharedJSONValue>(NewJSObjectByConstructor(function));
-}
-
-JSHandle<JSSharedJSONValue> ObjectFactory::NewSJSONString()
-{
-    JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
-    JSHandle<JSFunction> function(env->GetSharedJSONStringFunction());
-    return JSHandle<JSSharedJSONValue>(NewJSObjectByConstructor(function));
-}
-
-JSHandle<JSSharedJSONValue> ObjectFactory::NewSJSONNumber()
-{
-    JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
-    JSHandle<JSFunction> function(env->GetSharedJSONNumberFunction());
-    return JSHandle<JSSharedJSONValue>(NewJSObjectByConstructor(function));
-}
-
-JSHandle<JSSharedJSONValue> ObjectFactory::NewSJSONNull()
-{
-    JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
-    JSHandle<JSFunction> function(env->GetSharedJSONNullFunction());
-    return JSHandle<JSSharedJSONValue>(NewJSObjectByConstructor(function));
-}
-
-JSHandle<JSSharedJSONValue> ObjectFactory::NewSJSONObject()
-{
-    JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
-    JSHandle<JSFunction> function(env->GetSharedJSONObjectFunction());
-    return JSHandle<JSSharedJSONValue>(NewJSObjectByConstructor(function));
-}
-
 JSHandle<JSArray> ObjectFactory::NewJSArray()
 {
     JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
@@ -855,22 +783,6 @@ JSHandle<TaggedArray> ObjectFactory::NewJsonFixedArray(size_t start, size_t leng
     }
     return array;
 }
-
-JSHandle<TaggedArray> ObjectFactory::NewSJsonFixedArray(size_t start, size_t length,
-                                                        const std::vector<JSHandle<JSTaggedValue>> &vec)
-{
-    if (length == 0) {
-        return EmptyArray();
-    }
-
-    JSHandle<TaggedArray> array = NewTaggedArrayWithoutInit(length, MemSpaceType::SHARED_OLD_SPACE);
-    array->SetExtraLength(0);
-    for (size_t i = 0; i < length; i++) {
-        array->Set(thread_, i, vec[start + i]);
-    }
-    return array;
-}
-
 
 JSHandle<JSForInIterator> ObjectFactory::NewJSForinIterator(const JSHandle<JSTaggedValue> &obj,
                                                             const JSHandle<JSTaggedValue> keys,
@@ -1099,7 +1011,6 @@ JSHandle<JSObject> ObjectFactory::NewJSObjectByConstructor(const JSHandle<JSFunc
                                                            uint32_t inlinedProps)
 {
     JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
-    // JSType type = constructor->GetJSHClass()->
     if (!constructor->HasFunctionPrototype() ||
         (constructor->GetProtoOrHClass().IsHeapObject() && constructor->GetFunctionPrototype().IsECMAObject())) {
         JSHandle<JSHClass> jshclass;
