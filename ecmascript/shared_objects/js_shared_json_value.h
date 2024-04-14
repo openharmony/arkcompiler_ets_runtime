@@ -17,7 +17,6 @@
 #define ECMASCRIPT_SHARED_OBJECTS_JS_SHARED_JSON_VALUE_H
 
 #include "ecmascript/js_object.h"
-#include "ecmascript/js_tagged_value-inl.h"
 
 namespace panda::ecmascript {
 class JSSharedJSONValue : public JSObject {

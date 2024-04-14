@@ -48,7 +48,6 @@ public:
     static JSTaggedValue JSONNumberConstructor(EcmaRuntimeCallInfo *argv);
     static JSTaggedValue JSONStringConstructor(EcmaRuntimeCallInfo *argv);
     static JSTaggedValue JSONArrayConstructor(EcmaRuntimeCallInfo *argv);
-    // static JSTaggedValue ConstructorForJSONFalse(EcmaRuntimeCallInfo *argv);
     static JSTaggedValue Get(EcmaRuntimeCallInfo *argv);
 
     // Excluding the constructor and '@@' internal properties.
@@ -93,15 +92,12 @@ private:
         std::pair<std::string_view, bool>("constructor", false),
         BUILTIN_JSON_VALUE_PROTOTYPE_FUNCTIONS(JSON_VALUE_PROPERTIES_PAIR)
         std::pair<std::string_view, bool>("[Symbol.toStringTag]", false),
-        // std::pair<std::string_view, bool>("size", true),
-        // std::pair<std::string_view, bool>("[Symbol.iterator]", false) // TODO(hzzhouzebin) remove it.
     };
 
     static constexpr std::array JSON_VALUE_FUNCTION_PROPERTIES = {
-        std::pair<std::string_view, bool>("length", false), // TODO(hzzhouzebin) remove it.
-        std::pair<std::string_view, bool>("name", false),  // TODO(hzzhouzebin) name equals "JSONXXX"
+        std::pair<std::string_view, bool>("length", false),
+        std::pair<std::string_view, bool>("name", false),
         std::pair<std::string_view, bool>("prototype", false),
-        // std::pair<std::string_view, bool>("[Symbol.species]", true), // TODO(hzzhouzebin) remove it.
     };
 #undef JSON_VALUE_PROPERTIES_PAIR
 };

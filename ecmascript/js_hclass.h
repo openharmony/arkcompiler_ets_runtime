@@ -119,7 +119,6 @@ struct Reference;
         JS_SHARED_SET, /*  ////////////////////////////////////////////////////////////////////////////////-PADDING */ \
         JS_MAP,      /* ///////////////////////////////////////////////////////////////////////////////////-PADDING */ \
         JS_SHARED_MAP, /* /////////////////////////////////////////////////////////////////////////////////-PADDING */ \
-        /* TODO(hzzhouzebin): JS_SHARED_JSON_VALUE -> JS_SHARED_JSON_OBJ/NUMBER/ARRAY/TRUE/FALSE/NULL/STRING*/\
         JS_SHARED_JSON_OBJECT, /* /////////////////////////////////////////////////////////////////////////-PADDING */ \
         JS_SHARED_JSON_STRING,         /* /////////////////////////////////////////////////////////////////-PADDING */ \
         JS_SHARED_JSON_NUMBER,         /* /////////////////////////////////////////////////////////////////-PADDING */ \
@@ -1767,37 +1766,37 @@ public:
 
     inline bool IsJSSharedJSONFalse() const
     {
-       return GetObjectType() == JSType::JS_SHARED_JSON_FALSE;
+        return GetObjectType() == JSType::JS_SHARED_JSON_FALSE;
     }
 
     inline bool IsJSSharedJSONTrue() const
     {
-       return GetObjectType() == JSType::JS_SHARED_JSON_TRUE;
+        return GetObjectType() == JSType::JS_SHARED_JSON_TRUE;
     }
 
     inline bool IsJSSharedJSONString() const
     {
-       return GetObjectType() == JSType::JS_SHARED_JSON_STRING;
+        return GetObjectType() == JSType::JS_SHARED_JSON_STRING;
     }
 
     inline bool IsJSSharedJSONNull() const
     {
-       return GetObjectType() == JSType::JS_SHARED_JSON_NULL;
+        return GetObjectType() == JSType::JS_SHARED_JSON_NULL;
     }
 
     inline bool IsJSSharedJSONObject() const
     {
-       return GetObjectType() == JSType::JS_SHARED_JSON_OBJECT;
+        return GetObjectType() == JSType::JS_SHARED_JSON_OBJECT;
     }
 
     inline bool IsJSSharedJSONNumber() const
     {
-       return GetObjectType() == JSType::JS_SHARED_JSON_NUMBER;
+        return GetObjectType() == JSType::JS_SHARED_JSON_NUMBER;
     }
 
     inline bool IsJSSharedJSONArray() const
     {
-       return GetObjectType() == JSType::JS_SHARED_JSON_ARRAY;
+        return GetObjectType() == JSType::JS_SHARED_JSON_ARRAY;
     }
 
     inline void SetElementsKind(ElementsKind kind)

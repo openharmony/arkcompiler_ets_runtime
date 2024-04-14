@@ -536,7 +536,7 @@ bool JsonStringifier::SerializeJSArray(const JSHandle<JSTaggedValue> &value, con
     if (value->IsJSArray()) {
         JSHandle<JSArray> jsArr(value);
         len = jsArr->GetArrayLength();
-    } else if (value->IsJSSharedArray()){
+    } else if (value->IsJSSharedArray()) {
         JSHandle<JSSharedArray> jsArr(value);
         len = jsArr->GetArrayLength();
     }

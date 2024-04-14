@@ -323,137 +323,52 @@ void Builtins::InitializeSMap(const JSHandle<GlobalEnv> &env, const JSHandle<JSO
     env->SetSBuiltininMapFunction(thread_, mapFunction);
 }
 
-#define BUILTIN_SHARED_JSON_DEFINE_INITIALIZE(Type, ctorName, TYPE)                     \
-void Builtins::InitializeS##Type(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &sObjPrototype,       \
-    const JSHandle<JSFunction> &sFuncPrototype) const  \
-{                                                                                                               \
-     [[maybe_unused]] EcmaHandleScope scope(thread_);                                                                                    \
-    const GlobalEnvConstants *globalConst = thread_->GlobalConstants();                                                                 \
-    /* JSONObject.prototype */                                                                                                            \
-    JSHandle<JSHClass> jsonObjectPrototypeHClass = CreateSJSONValuePrototypeHClass(sObjPrototype);                                      \
-    JSHandle<JSObject> jsonObjectPrototype =                                                                                            \
-        factory_->NewSharedOldSpaceJSObjectWithInit(jsonObjectPrototypeHClass);                                                         \
-    JSHandle<JSTaggedValue> jsonValuePrototypeValue(jsonObjectPrototype);                                                               \
-    /* JSONObject.prototype_or_hclass */                                                                                                   \
-    auto emptySLayout = globalConst->GetHandledEmptySLayoutInfo();                                                                      \
-    JSHandle<JSHClass> jsonObjectIHClass =                                                                                              \
-        factory_->NewSEcmaHClass(JSSharedJSONValue::SIZE, 0, JSType::JS_##TYPE, jsonValuePrototypeValue, emptySLayout);     \
-    /* JSONObject.hclass */                                                                                                               \
-    JSHandle<JSHClass> jsonObjectFuncHClass = CreateSJSONValueFunctionHClass(sFuncPrototype);                                           \
-    /* SharedJSONObject() = new SharedJSONObject() */                                                                                     \
-    JSHandle<JSFunction> sharedJsonObjectFunction =                                                                                     \
-        factory_->NewSFunctionByHClass(reinterpret_cast<void *>(BuiltinsJsonValue::Type##Constructor),                               \
-                                       jsonObjectFuncHClass, FunctionKind::BUILTIN_CONSTRUCTOR);                                        \
-    InitializeSCtor(jsonObjectIHClass, sharedJsonObjectFunction, #ctorName, FunctionLength::ZERO);                             \
-    JSHandle<JSObject> globalObject(thread_, env->GetGlobalObject());                                                                   \
-    JSHandle<JSTaggedValue> nameString(factory_->NewFromUtf8(#ctorName));                                                      \
-    PropertyDescriptor desc(thread_, JSHandle<JSTaggedValue>::Cast(sharedJsonObjectFunction), true, false, true);                       \
-    JSObject::DefineOwnProperty(thread_, globalObject, nameString, desc);                                                               \
-    RETURN_IF_ABRUPT_COMPLETION(thread_);                                                                                               \
-																																		\
-    /* "constructor" property on the prototype */                                                                                          \
-    uint32_t fieldIndex = 0; /* constructor */                                                                                            \
-    jsonObjectPrototype->SetPropertyInlinedProps(thread_, fieldIndex++, sharedJsonObjectFunction.GetTaggedValue());                     \
-    /* SharedJSON.prototype functions */                                                                                                  \
-    for (const base::BuiltinFunctionEntry &entry: BuiltinsJsonValue::GetJsonValuePrototypeFunctions()) {                                \
-        SetSFunction(env, jsonObjectPrototype, entry.GetName(), entry.GetEntrypoint(), fieldIndex++,                                    \
-                     entry.GetLength(), entry.GetBuiltinStubId());                                                                      \
-    }                                                                                                                                   \
-    /* @@ToStringTag */                                                                                                                    \
-    JSHandle<JSTaggedValue> strTag(factory_->NewFromUtf8(#ctorName));                                                          \
-    jsonObjectPrototype->SetPropertyInlinedProps(thread_, fieldIndex++, strTag.GetTaggedValue());                                       \
-																																		\
-    env->Set##ctorName##FunctionPrototype(thread_, jsonObjectPrototype);                                                            \
-    env->Set##ctorName##Function(thread_, sharedJsonObjectFunction);                                                                     \
+#define BUILTIN_SHARED_JSON_DEFINE_INITIALIZE(Type, ctorName, TYPE)                                                   \
+void Builtins::InitializeS##Type(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &sObjPrototype,             \
+    const JSHandle<JSFunction> &sFuncPrototype) const                                                                 \
+{                                                                                                                     \
+     [[maybe_unused]] EcmaHandleScope scope(thread_);                                                                 \
+    const GlobalEnvConstants *globalConst = thread_->GlobalConstants();                                               \
+    /* JSONObject.prototype */                                                                                        \
+    JSHandle<JSHClass> jsonObjectPrototypeHClass = CreateSJSONValuePrototypeHClass(sObjPrototype);                    \
+    JSHandle<JSObject> jsonObjectPrototype =                                                                          \
+        factory_->NewSharedOldSpaceJSObjectWithInit(jsonObjectPrototypeHClass);                                       \
+    JSHandle<JSTaggedValue> jsonValuePrototypeValue(jsonObjectPrototype);                                             \
+    /* JSONObject.prototype_or_hclass */                                                                              \
+    auto emptySLayout = globalConst->GetHandledEmptySLayoutInfo();                                                    \
+    JSHandle<JSHClass> jsonObjectIHClass =                                                                            \
+        factory_->NewSEcmaHClass(                                                                                     \
+            JSSharedJSONValue::SIZE, 0, JSType::JS_##TYPE, jsonValuePrototypeValue, emptySLayout);                    \
+    /* JSONObject.hclass */                                                                                           \
+    JSHandle<JSHClass> jsonObjectFuncHClass = CreateSJSONValueFunctionHClass(sFuncPrototype);                         \
+    /* SharedJSONObject() = new SharedJSONObject() */                                                                 \
+    JSHandle<JSFunction> sharedJsonObjectFunction =                                                                   \
+        factory_->NewSFunctionByHClass(reinterpret_cast<void *>(BuiltinsJsonValue::Type##Constructor),                \
+                                       jsonObjectFuncHClass, FunctionKind::BUILTIN_CONSTRUCTOR);                      \
+    InitializeSCtor(jsonObjectIHClass, sharedJsonObjectFunction, #ctorName, FunctionLength::ZERO);                    \
+    JSHandle<JSObject> globalObject(thread_, env->GetGlobalObject());                                                 \
+    JSHandle<JSTaggedValue> nameString(factory_->NewFromUtf8(#ctorName));                                             \
+    PropertyDescriptor desc(thread_, JSHandle<JSTaggedValue>::Cast(sharedJsonObjectFunction), true, false, true);     \
+    JSObject::DefineOwnProperty(thread_, globalObject, nameString, desc);                                             \
+    RETURN_IF_ABRUPT_COMPLETION(thread_);                                                                             \
+																													  \
+    /* "constructor" property on the prototype */                                                                     \
+    uint32_t fieldIndex = 0; /* constructor */                                                                        \
+    jsonObjectPrototype->SetPropertyInlinedProps(thread_, fieldIndex++, sharedJsonObjectFunction.GetTaggedValue());   \
+    /* SharedJSON.prototype functions */                                                                              \
+    for (const base::BuiltinFunctionEntry &entry: BuiltinsJsonValue::GetJsonValuePrototypeFunctions()) {              \
+        SetSFunction(env, jsonObjectPrototype, entry.GetName(), entry.GetEntrypoint(), fieldIndex++,                  \
+                     entry.GetLength(), entry.GetBuiltinStubId());                                                    \
+    }                                                                                                                 \
+    /* @@ToStringTag */                                                                                               \
+    JSHandle<JSTaggedValue> strTag(factory_->NewFromUtf8(#ctorName));                                                 \
+    jsonObjectPrototype->SetPropertyInlinedProps(thread_, fieldIndex++, strTag.GetTaggedValue());                     \
+	                                                                                                                  \
+    env->Set##ctorName##FunctionPrototype(thread_, jsonObjectPrototype);                                              \
+    env->Set##ctorName##Function(thread_, sharedJsonObjectFunction);                                                  \
 }
 BUILTIN_SHARED_JSON_VALUE_TYPES(BUILTIN_SHARED_JSON_DEFINE_INITIALIZE)
-#undef BUILTIN_SHARED_SHARED_JSON_DEFINE_INITIALIZE
-
-// void Builtins::InitializeSJSONObject(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &sObjPrototype,
-//     const JSHandle<JSFunction> &sFuncPrototype) const
-// {
-//     [[maybe_unused]] EcmaHandleScope scope(thread_);
-//     const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
-//     // JSONObject.prototype
-//     JSHandle<JSHClass> jsonObjectPrototypeHClass = CreateSJSONValuePrototypeHClass(sObjPrototype);
-//     JSHandle<JSObject> jsonObjectPrototype =
-//         factory_->NewSharedOldSpaceJSObjectWithInit(jsonObjectPrototypeHClass);
-//     JSHandle<JSTaggedValue> jsonValuePrototypeValue(jsonObjectPrototype);
-//     // JSONObject.prototype_or_hclass
-//     auto emptySLayout = globalConst->GetHandledEmptySLayoutInfo();
-//     JSHandle<JSHClass> jsonObjectIHClass =
-//         factory_->NewSEcmaHClass(JSSharedJSONValue::SIZE, 0, JSType::JS_SHARED_JSON_OBJECT, jsonValuePrototypeValue, emptySLayout);
-//     // JSONObject.hclass
-//     JSHandle<JSHClass> jsonObjectFuncHClass = CreateSJSONValueFunctionHClass(sFuncPrototype);
-//     // SharedJSONObject() = new SharedJSONObject()
-//     JSHandle<JSFunction> sharedJsonObjectFunction =
-//         factory_->NewSFunctionByHClass(reinterpret_cast<void *>(BuiltinsJsonValue::ConstructorForObject),
-//                                        jsonObjectFuncHClass, FunctionKind::BUILTIN_CONSTRUCTOR);
-//     InitializeSCtor(jsonObjectIHClass, sharedJsonObjectFunction, "SharedJSONObject", FunctionLength::ZERO);
-//     JSHandle<JSObject> globalObject(thread_, env->GetGlobalObject());
-//     JSHandle<JSTaggedValue> nameString(factory_->NewFromUtf8("SharedJSONObject"));
-//     PropertyDescriptor desc(thread_, JSHandle<JSTaggedValue>::Cast(sharedJsonObjectFunction), true, false, true);
-//     JSObject::DefineOwnProperty(thread_, globalObject, nameString, desc);
-//     RETURN_IF_ABRUPT_COMPLETION(thread_);
-
-//     // "constructor" property on the prototype
-//     uint32_t fieldIndex = 0; // constructor
-//     jsonObjectPrototype->SetPropertyInlinedProps(thread_, fieldIndex++, sharedJsonObjectFunction.GetTaggedValue());
-//     // SharedJSON.prototype functions
-//     for (const base::BuiltinFunctionEntry &entry: BuiltinsJsonValue::GetJsonValuePrototypeFunctions()) {
-//         SetSFunction(env, jsonObjectPrototype, entry.GetName(), entry.GetEntrypoint(), fieldIndex++,
-//                      entry.GetLength(), entry.GetBuiltinStubId());
-//     }
-//     // @@ToStringTag
-//     JSHandle<JSTaggedValue> strTag(factory_->NewFromUtf8("SharedJSONObject"));
-//     jsonObjectPrototype->SetPropertyInlinedProps(thread_, fieldIndex++, strTag.GetTaggedValue());
-
-//     env->SetSharedJSONObjectFunctionPrototype(thread_, jsonObjectPrototype);
-//     env->SetSJSONObjectFunction(thread_, sharedJsonObjectFunction);
-// }
-
-// void Builtins::InitializeSJSONTrue(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &sObjPrototype,
-//     const JSHandle<JSFunction> &sFuncPrototype) const
-// {
-//     [[maybe_unused]] EcmaHandleScope scope(thread_);
-//     const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
-//     // JSONTrue.prototype
-//     JSHandle<JSHClass> jsonObjectPrototypeHClass = CreateSJSONValuePrototypeHClass(sObjPrototype);
-//     JSHandle<JSObject> jsonObjectPrototype =
-//         factory_->NewSharedOldSpaceJSObjectWithInit(jsonObjectPrototypeHClass);
-//     JSHandle<JSTaggedValue> jsonValuePrototypeValue(jsonObjectPrototype);
-//     // JSONTrue.prototype_or_hclass
-//     auto emptySLayout = globalConst->GetHandledEmptySLayoutInfo();
-//     JSHandle<JSHClass> jsonObjectIHClass =
-//         factory_->NewSEcmaHClass(JSSharedMap::SIZE, 0, JSType::JS_SHARED_JSON_TRUE, jsonValuePrototypeValue, emptySLayout);
-//     // JSONTrue.hclass
-//     JSHandle<JSHClass> jsonObjectFuncHClass = CreateSJSONValueFunctionHClass(sFuncPrototype);
-//     // SharedJSONTrue() = new SharedJSONTrue()
-//     //这个调用的constructor要改
-//     JSHandle<JSFunction> sharedJsonObjectFunction =
-//         factory_->NewSFunctionByHClass(reinterpret_cast<void *>(BuiltinsJsonValue::JSONTrueConstructor),
-//                                        jsonObjectFuncHClass, FunctionKind::BUILTIN_CONSTRUCTOR);
-//     InitializeSCtor(jsonObjectIHClass, sharedJsonObjectFunction, "SharedJSONTrue", FunctionLength::ZERO);
-//     JSHandle<JSObject> globalObject(thread_, env->GetGlobalObject());
-//     JSHandle<JSTaggedValue> nameString(factory_->NewFromUtf8("SharedJSONTrue"));
-//     PropertyDescriptor desc(thread_, JSHandle<JSTaggedValue>::Cast(sharedJsonObjectFunction), true, false, true);
-//     JSObject::DefineOwnProperty(thread_, globalObject, nameString, desc);
-//     RETURN_IF_ABRUPT_COMPLETION(thread_);
-
-//     // "constructor" property on the prototype
-//     uint32_t fieldIndex = 0; // constructor
-//     jsonObjectPrototype->SetPropertyInlinedProps(thread_, fieldIndex++, sharedJsonObjectFunction.GetTaggedValue());
-//     // SharedMap.prototype functions
-//     for (const base::BuiltinFunctionEntry &entry: BuiltinsJsonValue::GetJsonValuePrototypeFunctions()) {
-//         SetSFunction(env, jsonObjectPrototype, entry.GetName(), entry.GetEntrypoint(), fieldIndex++,
-//                      entry.GetLength(), entry.GetBuiltinStubId());
-//     }
-
-//     env->SetSharedJSONTrueFunctionPrototype(thread_, jsonObjectPrototype);
-//     env->SetSharedJSONTrueFunction(thread_, sharedJsonObjectFunction);
-// }
-
-
+#undef BUILTIN_SHARED_JSON_DEFINE_INITIALIZE
 
 void Builtins::InitializeSFunction(const JSHandle<GlobalEnv> &env,
                                    const JSHandle<JSFunction> &sFuncPrototype) const

@@ -286,7 +286,7 @@ CString *HeapSnapshot::GenerateNodeName(TaggedObject *entry)
         case JSType::JS_SHARED_JSON_STRING:
         case JSType::JS_SHARED_JSON_ARRAY: {
             return GetString("SharedJSONValue");
-        } 
+        }
         case JSType::FREE_OBJECT_WITH_ONE_FIELD:
         case JSType::FREE_OBJECT_WITH_NONE_FIELD:
         case JSType::FREE_OBJECT_WITH_TWO_FIELD:

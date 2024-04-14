@@ -775,7 +775,7 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
             case JSType::JS_SHARED_ARRAY_ITERATOR: {
                 CHECK_DUMP_FIELDS(JSObject::SIZE, JSArrayIterator::SIZE, 2U);
                 JSHandle<JSSharedArrayIterator> arrayIter = factory->NewJSSharedArrayIterator(
-                    JSHandle<JSObject>::Cast(factory->NewJSSArray()), IterationKind::KEY);
+                    JSHandle<JSObject>::Cast(factory->NewJSSArrayJSSArray()), IterationKind::KEY);
                 DUMP_FOR_HANDLE(arrayIter);
                 break;
             }
