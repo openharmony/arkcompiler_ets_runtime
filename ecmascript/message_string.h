@@ -58,7 +58,8 @@ namespace panda::ecmascript {
     V(CanNotConvertContainerObject, "Can not delete property in Container Object")           \
     V(InvalidStringLength, "Invalid string length")                                          \
     V(InvalidNewTarget, "new.target is not an object")                                       \
-    V(ObjIsNotCallable, "obj is not Callable")
+    V(ObjIsNotCallable, "obj is not Callable")                                               \
+    V(SharedObjectRefersLocalObject, "shared object refers a local object")
 
 #define DEBUG_CHECK_MESSAGE_STRING_LIST(V)                                                   \
     V(IsCallable)                                                                            \

@@ -578,7 +578,9 @@ JSHandle<TaggedArray> JSObject::GetAllEnumKeys(JSThread *thread, const JSHandle<
             LayoutInfo::Cast(jsHclass->GetLayout().GetTaggedObject())
                 ->GetAllEnumKeys(thread, end, EnumCache::ENUM_CACHE_HEADER_SIZE, keyArray, keys, obj);
             JSObject::SetEnumCacheKind(thread, *keyArray, EnumCacheKind::ONLY_OWN_KEYS);
-            jsHclass->SetEnumCache(thread, keyArray.GetTaggedValue());
+            if (!JSTaggedValue(jsHclass).IsInSharedHeap()) {
+                jsHclass->SetEnumCache(thread, keyArray.GetTaggedValue());
+            }
             JSHandle<TaggedArray> newkeyArray = factory->CopyFromEnumCache(keyArray);
             return newkeyArray;
         }

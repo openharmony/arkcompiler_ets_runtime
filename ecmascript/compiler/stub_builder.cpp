@@ -1321,6 +1321,17 @@ void StubBuilder::SetValueWithBarrier(GateRef glue, GateRef obj, GateRef offset,
     GateRef slotAddr = PtrAdd(TaggedCastToIntPtr(obj), offset);
     GateRef objectNotInShare = BoolNot(InSharedHeap(objectRegion));
     GateRef valueRegionInShare = InSharedSweepableSpace(valueRegion);
+#ifndef NDEBUG
+    Label fatal(env);
+    Label noFatal(env);
+    BRANCH(BoolAnd(InSharedHeap(objectRegion), BoolNot(InSharedHeap(valueRegion))), &fatal, &noFatal);
+    Bind(&fatal);
+    {
+        FatalPrint(glue, { Int32(GET_MESSAGE_STRING_ID(SharedObjectRefersLocalObject)) });
+        Jump(&exit);
+    }
+    Bind(&noFatal);
+#endif
     BRANCH(BoolAnd(objectNotInShare, valueRegionInShare), &shareBarrier, &shareBarrierExit);
     Bind(&shareBarrier);
     {

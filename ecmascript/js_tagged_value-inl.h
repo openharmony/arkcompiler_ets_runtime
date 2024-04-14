@@ -1449,7 +1449,7 @@ inline bool JSTaggedValue::IsSpecialKeysObject() const
 
 inline bool JSTaggedValue::IsSlowKeysObject() const
 {
-    return IsJSGlobalObject() || IsJSProxy() || IsSpecialKeysObject();
+    return IsJSGlobalObject() || IsJSProxy() || IsSpecialKeysObject() || IsInSharedHeap();
 }
 
 inline bool JSTaggedValue::IsRegularObject() const
