@@ -176,13 +176,8 @@ DEF_RUNTIME_STUBS(AllocateInSOld)
     JSTaggedValue allocateSize = GetArg(argv, argc, 0);  // 0: means the zeroth parameter
     auto size = static_cast<size_t>(allocateSize.GetInt());
     auto sharedHeap = const_cast<SharedHeap*>(SharedHeap::GetInstance());
-    auto oldSpace = sharedHeap->GetOldSpace();
-    ASSERT(size <= MAX_REGULAR_HEAP_OBJECT_SIZE);
-    auto result = reinterpret_cast<TaggedObject *>(oldSpace->Allocate(thread, size));
-    if (result == nullptr) {
-        result = sharedHeap->AllocateOldOrHugeObject(thread, size);
-        ASSERT(result != nullptr);
-    }
+    auto result = sharedHeap->AllocateOldOrHugeObject(thread, size);
+    ASSERT(result != nullptr);
     if (argc > 1) { // 1: means the first parameter
         JSHandle<JSHClass> hclassHandle = GetHArg<JSHClass>(argv, argc, 1);  // 1: means the first parameter
         auto hclass = JSHClass::Cast(hclassHandle.GetTaggedValue().GetTaggedObject());
