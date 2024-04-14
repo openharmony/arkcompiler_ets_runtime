@@ -412,7 +412,7 @@ JSHandle<JSHClass> TypedArrayHelper::GetNotOnHeapHclassFromType(
         case DataViewType::INT32:
             return TypedArrayHelper::GetNotOnHeapHclassInt32Array(thread, objHclass);
         case DataViewType::UINT32:
-            return TypedArrayHelper::GetOnHeapHclassUint32Array(thread, objHclass);
+            return TypedArrayHelper::GetNotOnHeapHclassUint32Array(thread, objHclass);
         case DataViewType::FLOAT32:
             return TypedArrayHelper::GetNotOnHeapHclassFloat32Array(thread, objHclass);
         case DataViewType::FLOAT64:
