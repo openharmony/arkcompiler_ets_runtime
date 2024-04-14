@@ -1,0 +1,510 @@
+# Copyright (c) 2024 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+================Test Basic properties================
+length: 4, byteLength: 4
+BYTES_PER_ELEMENT: 1, 1
+length: 4, byteLength: 8
+BYTES_PER_ELEMENT: 2, 2
+length: 4, byteLength: 16
+BYTES_PER_ELEMENT: 4, 4
+length: 4, byteLength: 16
+BYTES_PER_ELEMENT: 4, 4
+length: 4, byteLength: 32
+BYTES_PER_ELEMENT: 8, 8
+length: 4, byteLength: 32
+BYTES_PER_ELEMENT: 8, 8
+length: 4, byteLength: 4
+BYTES_PER_ELEMENT: 1, 1
+length: 4, byteLength: 8
+BYTES_PER_ELEMENT: 2, 2
+length: 4, byteLength: 4
+BYTES_PER_ELEMENT: 1, 1
+length: 4, byteLength: 16
+BYTES_PER_ELEMENT: 4, 4
+length: 4, byteLength: 32
+BYTES_PER_ELEMENT: 8, 8
+================Test Constructor================
+BusinessError: The ArkTS TypedArray's constructor cannot be directly invoked.
+100,0
+11,22
+11,22
+11,22,33
+11,22,33
+0,11,22
+11,22,33
+0,11,22
+From an non-shared ArrayBuffer: BusinessError: Parameter error. Only accept sendable value., errCode: 401
+0.1,0.1,0.1,0.1
+From an arrayLike: 4, array: [0,0,300,4000]
+From an iterable: 3, array: [1,2,3]
+================Test At================
+SharedFloat64Array test success
+SharedFloat32Array test success
+SharedInt32Array test success
+SharedInt16Array test success
+SharedInt8Array test success
+SharedUint32Array test success
+SharedUint16Array test success
+SharedUint8Array test success
+SharedUint8ClampedArray test success
+SharedBigInt64Array test success
+SharedBigUint64Array test success
+42
+255
+================Test Join================
+true
+true
+true
+true
+true
+true
+true
+true
+true
+true
+true
+true
+true
+true
+true
+true
+true
+true
+true
+true
+true
+true
+true
+true
+true
+true
+true
+true
+true
+true
+true
+true
+true
+================Test Subarray================
+10,11,12,13,14
+11,12,13,14
+10,11,12,13,14
+12,13,14
+0
+0
+10,11,12,13,14
+11,12,13,14
+10,11,12,13,14
+12,13,14
+0
+0
+10,11,12,13,14
+11,12,13,14
+10,11,12,13,14
+12,13,14
+0
+0
+10,11,12,13,14
+11,12,13,14
+10,11,12,13,14
+12,13,14
+0
+0
+10,11,12,13,14
+11,12,13,14
+10,11,12,13,14
+12,13,14
+0
+0
+10,11,12,13,14
+11,12,13,14
+10,11,12,13,14
+12,13,14
+0
+0
+10,11,12,13,14
+11,12,13,14
+10,11,12,13,14
+12,13,14
+0
+0
+10,11,12,13,14
+11,12,13,14
+10,11,12,13,14
+12,13,14
+0
+0
+10,11,12,13,14
+11,12,13,14
+10,11,12,13,14
+12,13,14
+0
+0
+================Test Includes================
+true
+false
+false
+true
+false
+false
+true
+false
+false
+true
+false
+false
+true
+false
+false
+true
+false
+false
+true
+false
+false
+true
+false
+false
+true
+false
+false
+true
+false
+false
+true
+false
+false
+================Test Sort================
+1,11,21,31
+31,21,11,1
+1,11,21,31
+31,21,11,1
+1,11,21,31
+31,21,11,1
+1,11,21,31
+31,21,11,1
+1,11,21,31
+31,21,11,1
+1,11,21,31
+31,21,11,1
+1,11,21,31
+31,21,11,1
+1,11,21,31
+31,21,11,1
+1,11,21,31
+31,21,11,1
+================Test Reverse================
+31,11,21,1
+31,11,21,1
+31,11,21,1
+31,11,21,1
+31,11,21,1
+31,11,21,1
+31,11,21,1
+31,11,21,1
+31,11,21,1
+================Test Some================
+true
+false
+true
+false
+true
+false
+true
+false
+true
+false
+false
+false
+false
+false
+false
+false
+false
+false
+================Test Every================
+true
+true
+true
+true
+true
+false
+false
+false
+false
+================Test Slice================
+10,20,30,40,50
+20,30,40,50
+10,20,30,40,50
+30,40,50
+0
+0
+10,20,30,40,50
+20,30,40,50
+10,20,30,40,50
+30,40,50
+0
+0
+10,20,30,40,50
+20,30,40,50
+10,20,30,40,50
+30,40,50
+0
+0
+10,20,30,40,50
+20,30,40,50
+10,20,30,40,50
+30,40,50
+0
+0
+10,20,30,40,50
+20,30,40,50
+10,20,30,40,50
+30,40,50
+0
+0
+10,20,30,40,50
+20,30,40,50
+10,20,30,40,50
+30,40,50
+0
+0
+10,20,30,40,50
+20,30,40,50
+10,20,30,40,50
+30,40,50
+0
+0
+10,20,30,40,50
+20,30,40,50
+10,20,30,40,50
+30,40,50
+0
+0
+10,20,30,40,50
+20,30,40,50
+10,20,30,40,50
+30,40,50
+0
+0
+================Test IndexOf================
+4
+-1
+-1
+4
+-1
+-1
+4
+-1
+-1
+4
+-1
+-1
+4
+-1
+-1
+4
+-1
+-1
+4
+-1
+-1
+4
+-1
+-1
+4
+-1
+-1
+================Test FindIndex================
+1
+1
+1
+1
+1
+-1
+-1
+-1
+-1
+================Test Find================
+-20
+-20
+-20
+-20
+-20
+undefined
+undefined
+undefined
+undefined
+================Test Fill================
+4,4,4
+1,4,4
+1,4,3
+1,2,3
+4,2,3
+4,4,4
+1,4,4
+1,4,3
+1,2,3
+4,2,3
+4,4,4
+1,4,4
+1,4,3
+1,2,3
+4,2,3
+4,4,4
+1,4,4
+1,4,3
+1,2,3
+4,2,3
+4,4,4
+1,4,4
+1,4,3
+1,2,3
+4,2,3
+================Test Filter================
+true, filterd: [-10,-30,-50]
+true, filterd: [-10,-30,-50]
+true, filterd: [-10,-30,-50]
+true, filterd: [-10,-30,-50]
+true, filterd: [-10,-30,-50]
+true, filterd: []
+true, filterd: []
+true, filterd: []
+true, filterd: []
+================Test CopyWith================
+true, copied: [1,2,3,2,3,6,7,8]
+1,2,3,2,3,4,5,6
+true, copied: [1,2,3,2,3,6,7,8]
+1,2,3,2,3,4,5,6
+true, copied: [1,2,3,2,3,6,7,8]
+1,2,3,2,3,4,5,6
+true, copied: [1,2,3,2,3,6,7,8]
+1,2,3,2,3,4,5,6
+true, copied: [1,2,3,2,3,6,7,8]
+1,2,3,2,3,4,5,6
+true, copied: [1,2,3,2,3,6,7,8]
+1,2,3,2,3,4,5,6
+true, copied: [1,2,3,2,3,6,7,8]
+1,2,3,2,3,4,5,6
+true, copied: [1,2,3,2,3,6,7,8]
+1,2,3,2,3,4,5,6
+true, copied: [1,2,3,2,3,6,7,8]
+1,2,3,2,3,4,5,6
+================Test Map================
+true, mapped: [5,6,7]
+true, mapped: [5,6,7]
+true, mapped: [5,6,7]
+true, mapped: [5,6,7]
+true, mapped: [5,6,7]
+true, mapped: [5,6,7]
+true, mapped: [5,6,7]
+true, mapped: [5,6,7]
+true, mapped: [5,6,7]
+================Test Keys/Values/Entries================
+key: 0, value: 10, entries: 0,10
+key: 1, value: 20, entries: 1,20
+key: 2, value: 30, entries: 2,30
+key: 0, value: 10, entries: 0,10
+key: 1, value: 20, entries: 1,20
+key: 2, value: 30, entries: 2,30
+key: 0, value: 10, entries: 0,10
+key: 1, value: 20, entries: 1,20
+key: 2, value: 30, entries: 2,30
+key: 0, value: 10, entries: 0,10
+key: 1, value: 20, entries: 1,20
+key: 2, value: 30, entries: 2,30
+key: 0, value: 10, entries: 0,10
+key: 1, value: 20, entries: 1,20
+key: 2, value: 30, entries: 2,30
+key: 0, value: 10, entries: 0,10
+key: 1, value: 20, entries: 1,20
+key: 2, value: 30, entries: 2,30
+key: 0, value: 10, entries: 0,10
+key: 1, value: 20, entries: 1,20
+key: 2, value: 30, entries: 2,30
+key: 0, value: 10, entries: 0,10
+key: 1, value: 20, entries: 1,20
+key: 2, value: 30, entries: 2,30
+key: 0, value: 10, entries: 0,10
+key: 1, value: 20, entries: 1,20
+key: 2, value: 30, entries: 2,30
+================Test ForEach================
+array[0] = 0
+array[1] = 1
+array[2] = 2
+array[3] = 3
+1,2
+1,2
+1,2
+1,2
+ForEach: BusinessError: Concurrent modification exception, errCode: 10200201
+================Test From================
+true, array: [1,2,3]
+1,2,3
+2,4,6
+2,4,6
+true, array: [1,2,3]
+1,2,3
+2,4,6
+2,4,6
+true, array: [1,2,3]
+1,2,3
+2,4,6
+2,4,6
+true, array: [1,2,3]
+1,2,3
+2,4,6
+2,4,6
+================Test Set================
+0,0,0,1,2,3,4,5
+0,0,0,1,2,3,0,0
+0,0,1,2,3,4,5,6
+0,0,1,2,3,4,5,6
+0,0,0,0,1,2,0,0
+0,0,0,0,1,2,0,0
+================Test Freeze================
+Object.freeze error: TypeError: Cannot define property
+Object.freeze freeze empty array success
+Object.defineProperty error: TypeError: Cannot define property
+Add nonExistProp error: TypeError: Cannot add property in prevent extensions
+Add nonExistProp error: TypeError: Cannot add property in prevent extensions
+================Test Inheritance================
+array: [1,4,3,2,5], sorted: [1,2,3,4,5]
+length: 5, byteLength: 20
+BYTES_PER_ELEMENT: 4, 4
+array: [1,4,3,2,5], sorted: [1,2,3,4,5]
+length: 5, byteLength: 20
+BYTES_PER_ELEMENT: 4, 4
+================Test IC================
+SharedFloat64Array test IC success
+SharedFloat32Array test IC success
+SharedInt32Array test IC success
+SharedInt16Array test IC success
+SharedInt8Array test IC success
+SharedUint32Array test IC success
+SharedUint16Array test IC success
+SharedUint8Array test IC success
+SharedUint8ClampedArray test IC success
+================Test ArrayBuffer================
+SendableArrayBuffer length: 16
+SendableArrayBuffer sliced[0]: 42
+true
+true
+true
+SendableArrayBuffer SharedInt32Array isView: true
+SendableArrayBuffer Int8Array isView: false
+SubSendableArrayBuffer length: 20
+SubSendableArrayBuffer slicedSub[0]: 5
+SubSendableArrayBuffer SharedInt32Array isView: true
+SendableArrayBuffer Int8Array isView: false

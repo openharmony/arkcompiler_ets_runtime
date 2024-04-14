@@ -23,7 +23,6 @@
 #include "ecmascript/tagged_array.h"
 
 namespace panda::ecmascript {
-// enum class ContentType : uint8_t { None = 1, Number, BigInt };
 class JSSharedTypedArray : public JSTypedArray {
 public:
     static constexpr size_t MAX_ONHEAP_LENGTH = 512 * 8;

@@ -31,11 +31,11 @@ public:
     using Field = GlobalEnvField;
 
 #define GLOBAL_ENV_SLOT(type, name, index) \
-    static constexpr uint8_t index = static_cast<uint8_t>(GlobalEnvField::index);
+    static constexpr uint16_t index = static_cast<uint16_t>(GlobalEnvField::index);
 
     GLOBAL_ENV_FIELDS(GLOBAL_ENV_SLOT)
-    static constexpr uint8_t FIRST_DETECTOR_SYMBOL_INDEX = static_cast<uint8_t>(Field::REPLACE_SYMBOL_INDEX);
-    static constexpr uint8_t LAST_DETECTOR_SYMBOL_INDEX = static_cast<uint8_t>(Field::SPECIES_SYMBOL_INDEX);
+    static constexpr uint16_t FIRST_DETECTOR_SYMBOL_INDEX = static_cast<uint16_t>(Field::REPLACE_SYMBOL_INDEX);
+    static constexpr uint16_t LAST_DETECTOR_SYMBOL_INDEX = static_cast<uint16_t>(Field::SPECIES_SYMBOL_INDEX);
     static constexpr uint16_t FINAL_INDEX = static_cast<uint16_t>(GlobalEnvField::FINAL_INDEX);
     static constexpr uint8_t RESERVED_LENGTH = 1; // divide the gc area
     static constexpr uint16_t JSTHREAD_INDEX = FINAL_INDEX; // not need gc
@@ -96,7 +96,7 @@ public:
     }
 
     // For work serialize, add initialized global env object to snapshot env map
-    void AddValueToSnapshotEnv(const JSThread *thread, JSTaggedValue value, uint8_t index, uint32_t offset)
+    void AddValueToSnapshotEnv(const JSThread *thread, JSTaggedValue value, uint16_t index, uint32_t offset)
     {
         if (!value.IsInternalAccessor()) {
             SnapshotEnv *snapshotEnv = thread->GetEcmaVM()->GetSnapshotEnv();

@@ -930,9 +930,9 @@ void Builtins::InitializeS##Type(const JSHandle<GlobalEnv> &env, const JSHandle<
     /* %SharedTypedArray%.prototype (where %SharedTypedArray% is one of Int8Array, Uint8Array, etc.) */         \
     JSHandle<JSObject> arrFuncPrototype = factory_->NewSharedOldSpaceJSObjectWithInit(arrFuncClass);            \
     JSHandle<JSTaggedValue> arrFuncPrototypeValue(arrFuncPrototype);                                            \
-    /* %TypedArray%.prototype_or_hclass */                                                                      \
+    /* %SharedTypedArray%.prototype_or_hclass */                                                                \
     JSHandle<JSHClass> arrFuncInstanceHClass = factory_->NewSEcmaHClass(                                        \
-        JSSharedTypedArray::SIZE, 0, JSType::JS_SHARED_##TYPE, arrFuncPrototypeValue,emptySLayout);             \
+        JSSharedTypedArray::SIZE, 0, JSType::JS_SHARED_##TYPE, arrFuncPrototypeValue, emptySLayout);            \
     JSHandle<JSHClass> arrFuncInstanceHClassOnHeap = factory_->NewSEcmaHClass(                                  \
         JSSharedTypedArray::SIZE, 0, JSType::JS_SHARED_##TYPE, arrFuncPrototypeValue, emptySLayout);            \
     arrFuncInstanceHClassOnHeap->SetIsOnHeap(true);                                                             \
@@ -949,14 +949,19 @@ void Builtins::InitializeS##Type(const JSHandle<GlobalEnv> &env, const JSHandle<
     PropertyDescriptor desc(thread_, JSHandle<JSTaggedValue>::Cast(arrayFunction), false, false, false);        \
     JSObject::DefineOwnProperty(thread_, globalObject, nameString, desc);                                       \
     RETURN_IF_ABRUPT_COMPLETION(thread_);                                                                       \
+    /* 0: constructor index */                                                                                  \
     uint32_t fieldIndex = 0;                                                                                    \
+    arrFuncPrototype->SetPropertyInlinedProps(thread_, fieldIndex++, arrayFunction.GetTaggedValue());           \
     arrFuncPrototype->SetPropertyInlinedProps(thread_, fieldIndex, JSTaggedValue(bytesPerElement));             \
     fieldIndex = JSFunction::PROTOTYPE_INLINE_PROPERTY_INDEX + 1;                                               \
     JSHandle<JSObject>(arrayFunction)->SetPropertyInlinedProps(thread_, fieldIndex,                             \
         JSTaggedValue(bytesPerElement));                                                                        \
     env->Set##ctorName##Function(thread_, arrayFunction);                                                       \
     env->Set##ctorName##FunctionPrototype(thread_, arrFuncPrototypeValue);                                      \
+    env->Set##ctorName##RootHclass(thread_, arrFuncInstanceHClass);                                             \
+    env->Set##ctorName##RootHclassOnHeap(thread_, arrFuncInstanceHClassOnHeap);                                 \
 }
+
 BUILTIN_SHARED_TYPED_ARRAY_TYPES(BUILTIN_SHARED_TYPED_ARRAY_DEFINE_INITIALIZE)
 #undef BUILTIN_SHARED_TYPED_ARRAY_DEFINE_INITIALIZE
 
@@ -971,17 +976,8 @@ void Builtins::InitializeSTypedArray(const JSHandle<GlobalEnv> &env, const JSHan
     JSHandle<JSTaggedValue> typedArrFuncPrototypeValue(typedArrFuncPrototype);
 
     // SharedTypedArray.prototype_or_hclass
-    JSHandle<LayoutInfo> layout = factory_->CreateSLayoutInfo(1);
-    PropertyAttributes attributes = PropertyAttributes::DefaultAccessor(false, false, false);
-    attributes.SetIsInlinedProps(true);
-    attributes.SetRepresentation(Representation::TAGGED);
-    attributes.SetOffset(0);
-    attributes.SetIsAccessor(false);
-    JSHandle<JSTaggedValue> keyString = JSHandle<JSTaggedValue>(factory_->NewFromUtf8("BYTES_PER_ELEMENT"));
-    layout->AddKey(thread_, 0, keyString.GetTaggedValue(), attributes);
-
-    JSHandle<JSHClass> typedArrFuncInstanceHClass = factory_->NewSEcmaHClass(JSSharedTypedArray::SIZE, 1,
-        JSType::JS_SHARED_TYPED_ARRAY, typedArrFuncPrototypeValue, JSHandle<JSTaggedValue>::Cast(layout));
+    JSHandle<JSHClass> typedArrFuncInstanceHClass = CreateSSpecificTypedArrayInstanceHClass(
+        typedArrFuncPrototype);
     // SharedTypedArray.hclass
     JSHandle<JSHClass> typedArrFuncHClass = CreateSTypedArrayFunctionHClass(sFuncPrototype);
     // SharedTypedArray = new Function()
@@ -1005,13 +1001,6 @@ void Builtins::InitializeSTypedArray(const JSHandle<GlobalEnv> &env, const JSHan
             entry.GetName(), entry.GetLength());
         SetSAccessor(typedArrFuncPrototype, fieldIndex++, getter, globalConst->GetHandledUndefined());
     }
-
-    // %SharedTypedArray%.prototype.toString(), which is strictly equal to Array.prototype.toString
-    JSHandle<JSTaggedValue> arrFuncPrototype = env->GetSharedArrayPrototype();
-    JSHandle<JSTaggedValue> toStringFunc =
-        JSObject::GetMethod(thread_, arrFuncPrototype, globalConst->GetHandledToStringString());
-    RETURN_IF_ABRUPT_COMPLETION(thread_);
-    typedArrFuncPrototype->SetPropertyInlinedProps(thread_, fieldIndex++, toStringFunc.GetTaggedValue());
 
     // %SharedTypedArray%.prototype [ @@iterator ] ( )
     JSHandle<JSTaggedValue> values(factory_->NewFromASCII("values"));
@@ -1132,5 +1121,28 @@ JSHandle<JSHClass> Builtins::CreateSSpecificTypedArrayFuncHClass(const JSHandle<
     sobjPrototypeHClass->SetConstructor(true);
     sobjPrototypeHClass->SetCallable(true);
     return sobjPrototypeHClass;
+}
+
+JSHandle<JSHClass> Builtins::CreateSSpecificTypedArrayInstanceHClass(const JSHandle<JSObject> &sObjPrototype) const
+{
+    uint32_t index = 0;
+    PropertyAttributes attributes = PropertyAttributes::Default(false, false, false);
+    attributes.SetIsInlinedProps(true);
+    attributes.SetRepresentation(Representation::TAGGED);
+    auto properties = BuiltinsSharedTypedArray::GetSpecificArrayPrototypeProperties();
+    uint32_t length = properties.size();
+    JSHandle<LayoutInfo> layout = factory_->CreateSLayoutInfo(length);
+    JSHandle<JSTaggedValue> keyString;
+    for (const auto &[key, isAccessor] : properties) {
+        attributes.SetOffset(index);
+        attributes.SetIsAccessor(isAccessor);
+        keyString = JSHandle<JSTaggedValue>(factory_->NewFromUtf8(key));
+        layout->AddKey(thread_, index++, keyString.GetTaggedValue(), attributes);
+    }
+    JSHandle<JSHClass> sSpecificTypedArrayPrototypeHClass =
+        factory_->NewSEcmaHClass(JSSharedObject::SIZE, length, JSType::JS_SHARED_OBJECT,
+                                 JSHandle<JSTaggedValue>(sObjPrototype),
+                                 JSHandle<JSTaggedValue>(layout));
+    return sSpecificTypedArrayPrototypeHClass;
 }
 }  // namespace panda::ecmascript

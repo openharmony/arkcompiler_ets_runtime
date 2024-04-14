@@ -625,7 +625,8 @@ JSTaggedValue BuiltinsArray::CopyWithin(EcmaRuntimeCallInfo *argv)
     while (count > 0) {
         fromKey.Update(JSTaggedValue(copyFrom));
         toKey.Update(JSTaggedValue(copyTo));
-        bool exists = (thisObjVal->IsTypedArray() || JSTaggedValue::HasProperty(thread, thisObjVal, fromKey));
+        bool exists = (thisObjVal->IsTypedArray() || thisObjVal->IsSharedTypedArray() ||
+            JSTaggedValue::HasProperty(thread, thisObjVal, fromKey));
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         if (exists) {
             JSHandle<JSTaggedValue> fromValHandle = JSArray::FastGetPropertyByValue(thread, thisObjVal, fromKey);
@@ -774,7 +775,7 @@ JSTaggedValue BuiltinsArray::Fill(EcmaRuntimeCallInfo *argv)
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
     JSHandle<JSTaggedValue> value = GetCallArg(argv, 0);
-    if (thisObjVal->IsTypedArray()) {
+    if (thisObjVal->IsTypedArray() || thisObjVal->IsSharedTypedArray()) {
         ContentType contentType = JSHandle<JSTypedArray>::Cast(thisObjVal)->GetContentType();
         if (contentType == ContentType::BigInt) {
             value = JSHandle<JSTaggedValue>(thread, JSTaggedValue::ToBigInt(thread, value));
@@ -832,7 +833,7 @@ JSTaggedValue BuiltinsArray::Fill(EcmaRuntimeCallInfo *argv)
         return JSStableArray::Fill(thread, thisObjHandle, value, start, end, len);
     }
 
-    if (thisObjVal->IsTypedArray()) {
+    if (thisObjVal->IsTypedArray() || thisObjVal->IsSharedTypedArray()) {
         bool result = JSTypedArray::FastTypedArrayFill(thread, thisObjVal, value, start, end);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         if (result) {
@@ -1737,7 +1738,8 @@ JSTaggedValue BuiltinsArray::Reduce(EcmaRuntimeCallInfo *argv)
     } else {
         bool kPresent = false;
         while (!kPresent && k < len) {
-            kPresent = (thisHandle->IsTypedArray() || JSTaggedValue::HasProperty(thread, thisObjVal, k));
+            kPresent = (thisHandle->IsTypedArray() || thisHandle->IsSharedTypedArray() ||
+                JSTaggedValue::HasProperty(thread, thisObjVal, k));
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
             if (kPresent) {
                 accumulator.Update(JSArray::FastGetPropertyByValue(thread, thisObjVal, k).GetTaggedValue());
@@ -2253,7 +2255,8 @@ JSTaggedValue BuiltinsArray::Some(EcmaRuntimeCallInfo *argv)
         }
     }
     while (k < len) {
-        bool exists = (thisHandle->IsTypedArray() || JSTaggedValue::HasProperty(thread, thisObjVal, k));
+        bool exists = (thisHandle->IsTypedArray() || thisHandle->IsSharedTypedArray() ||
+            JSTaggedValue::HasProperty(thread, thisObjVal, k));
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         if (exists) {
             key.Update(JSTaggedValue(k));

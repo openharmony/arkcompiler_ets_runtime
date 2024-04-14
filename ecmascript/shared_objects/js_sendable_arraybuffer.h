@@ -50,6 +50,9 @@ public:
     FIRST_BIT_FIELD(BitField, Shared, bool, SHARED_BITS)
     NEXT_BIT_FIELD(BitField, WithNativeAreaAllocator, bool, WITH_NATIVE_AREA_ALLOCATOR_BITS, Shared)
 
+    static constexpr uint32_t MAX_INLINE = PropertyAttributes::MAX_FAST_PROPS_CAPACITY -
+        SIZE / JSTaggedValue::TaggedTypeSize() + 1;
+
     DECL_VISIT_OBJECT_FOR_JS_OBJECT(JSObject, DATA_OFFSET, BYTE_LENGTH_OFFSET)
     DECL_DUMP()
 };

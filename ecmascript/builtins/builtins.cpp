@@ -3870,5 +3870,6 @@ void Builtins::RegisterSendableContainers(const JSHandle<GlobalEnv> &env) const
         JSObject::DefineOwnProperty(thread_, globalObject, nameString, desc);                \
     }
     BUILTIN_SHARED_TYPED_ARRAY_TYPES(REGISTER_BUILTIN_SHARED_TYPED_ARRAY)
+#undef REGISTER_BUILTIN_SHARED_TYPED_ARRAY
 }
 }  // namespace panda::ecmascript
