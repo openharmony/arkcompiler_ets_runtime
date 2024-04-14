@@ -176,7 +176,7 @@ void AotCompilerPreprocessor::SetShouldCollectLiteralInfo(CompilationOptions &cO
         (profilerDecoder_.IsLoaded() || tsManager->AssertTypes() || log->OutputType());
 }
 
-bool AotCompilerPreprocessor::GenerateAbcFileInfos()
+uint32_t AotCompilerPreprocessor::GenerateAbcFileInfos()
 {
     size_t size = pandaFileNames_.size();
     uint32_t checksum = 0;
@@ -193,7 +193,11 @@ bool AotCompilerPreprocessor::GenerateAbcFileInfos()
         ResolveModule(jsPandaFile.get(), extendedFilePath);
         fileInfos_.emplace_back(fileInfo);
     }
+    return checksum;
+}
 
+bool AotCompilerPreprocessor::HandleMergedPgoFile(uint32_t checksum)
+{
     return PGOProfilerManager::MergeApFiles(checksum, profilerDecoder_);
 }
 
