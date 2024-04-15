@@ -43,3 +43,6 @@ arr = Array.from(src);
 print(arr[666]);
 print(arr[999]);
 print(arr.length);
+
+const v1 = new Map();
+print(Array.from(v1.keys()))
