@@ -45,7 +45,6 @@ enum class EncodeFlag : uint8_t {
     ARRAY_BUFFER,
     TRANSFER_ARRAY_BUFFER,
     SHARED_ARRAY_BUFFER,
-    METHOD,
     NATIVE_BINDING_OBJECT,
     JS_ERROR,
     JS_REG_EXP,
