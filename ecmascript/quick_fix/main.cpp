@@ -54,6 +54,11 @@ std::string GetHelper()
     return str;
 }
 
+bool callback(std::string baseFileName, std::string &patchFileName, void ** patchBuffer, size_t &patchBufferSize)
+{
+    return true;
+}
+
 int Main(const int argc, const char **argv)
 {
     auto startTime =
@@ -147,6 +152,7 @@ int Main(const int argc, const char **argv)
             std::cout << "QuickFix load patch success" << std::endl;
 
             if (size > entryNum) {
+                JSNApi::RegisterQuickFixQueryFunc(vm, callback);
                 res = JSNApi::Execute(vm, baseFileName, entryList[0]);
             }
 
