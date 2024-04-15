@@ -199,6 +199,9 @@
       panda::ecmascript::ModuleManager::GetRecordName*;
       panda::ecmascript::ModuleManager::HostGetImportedModule*;
       panda::ecmascript::ModuleManager::HostResolveImportedModuleWithMerge*;
+      panda::ecmascript::ModuleManagerHelper::GetModuleValue*;
+      panda::ecmascript::ModuleManagerHelper::GetNativeModuleValue*;
+      panda::ecmascript::ModuleManagerHelper::GetModuleValueFromRecordBinding*;
       panda::ecmascript::ModulePathHelper::ConcatFileNameWithMerge*;
       panda::ecmascript::NativeAreaAllocator::AllocateBuffer*;
       panda::ecmascript::NativeAreaAllocator::FreeeBuffer*;
